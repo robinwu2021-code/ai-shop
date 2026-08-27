@@ -165,10 +165,10 @@ async function doLogin(method: LoginMethod) {
         而它其实是这张表单的开关。
       -->
       <view v-if="pwdMethod" class="modes">
-        <text class="modes__i" :class="{ 'is-on': !byPwd }" @tap="switchMode(false)">
+        <text class="txt-body modes__i" :class="{ 'is-on': !byPwd }" @tap="switchMode(false)">
           {{ $t("login.byOtp") }}
         </text>
-        <text class="modes__i" :class="{ 'is-on': byPwd }" @tap="switchMode(true)">
+        <text class="txt-body modes__i" :class="{ 'is-on': byPwd }" @tap="switchMode(true)">
           {{ $t("login.byPassword") }}
         </text>
       </view>
@@ -203,7 +203,7 @@ async function doLogin(method: LoginMethod) {
             maxlength="6"
             :placeholder="$t('login.codePh')"
           />
-          <text v-if="!byPwd" class="sh-btn sh-btn--soft send" :class="{ 'is-off': left > 0 }" @tap="sendCode">
+          <text v-if="!byPwd" class="txt-sub sh-btn sh-btn--soft send" :class="{ 'is-off': left > 0 }" @tap="sendCode">
             {{ left > 0 ? $t("login.resend", { s: left }) : $t("login.sendCode") }}
           </text>
         </view>
@@ -243,7 +243,7 @@ async function doLogin(method: LoginMethod) {
     <!-- 协议勾选：注册的合规前置，默认不勾 -->
     <view class="agree" @tap="agreed = !agreed">
       <sh-check :model-value="agreed"></sh-check>
-      <text class="agree__text">
+      <text class="txt-caption agree__text">
         {{ $t("login.agreePrefix") }}
         <text class="agree__link" @tap.stop="showAgreement">{{ $t("login.agreementTitle") }}</text>
       </text>
@@ -281,7 +281,6 @@ async function doLogin(method: LoginMethod) {
   flex: 1;
   padding: 20rpx 0;
   text-align: center;
-  font-size: 28rpx;
   color: var(--sh-sub);
   border-bottom: 4rpx solid transparent;
 }
@@ -301,9 +300,7 @@ async function doLogin(method: LoginMethod) {
 .send {
   flex-shrink: 0;
   height: 88rpx;
-  line-height: 88rpx;
   padding: 0 28rpx;
-  font-size: 26rpx;
 }
 .send.is-off {
   background: var(--sh-faint);
@@ -357,9 +354,6 @@ async function doLogin(method: LoginMethod) {
 }
 .agree__text {
   flex: 1;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.5;
 }
 .agree__link {
   color: var(--sh-primary-text);

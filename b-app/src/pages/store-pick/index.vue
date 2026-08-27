@@ -76,8 +76,8 @@ function confirm() {
     <view v-for="g in groups" :key="g.entity?.entityNo || 'only'" class="list">
       <!-- 分组头只在多证照时出现 -->
       <view v-if="grouped" class="group">
-        <text class="group__name">{{ g.entity?.name }}</text>
-        <text v-if="entityNote(g)" class="group__note">{{ entityNote(g) }}</text>
+        <text class="txt-strong group__name">{{ g.entity?.name }}</text>
+        <text v-if="entityNote(g)" class="txt-caption group__note">{{ entityNote(g) }}</text>
       </view>
       <view
         v-for="s in g.stores"
@@ -87,10 +87,10 @@ function confirm() {
         @tap="choose(s.storeNo, s.status)"
       >
         <view class="sh-fill">
-          <text class="item__name">
+          <text class="txt-strong item__name">
             {{ s.name }}<text v-if="s.isDefault" class="sh-chip item__chip">{{ $t("storePick.default") }}</text>
           </text>
-          <text class="item__sub">
+          <text class="txt-caption item__sub">
             <template v-if="s.status !== 'ACTIVE'">{{ $t("storePick.closed") }}</template>
             <template v-else>
               {{ s.address || "—" }}<template v-if="s.storeNo === merchant.storeNo && merchant.storePicked"> · {{ $t("storePick.last") }}</template>
@@ -127,8 +127,6 @@ function confirm() {
   margin-top: 8rpx;
 }
 .group__name {
-  font-size: 26rpx;
-  font-weight: 600;
   color: var(--sh-sub);
 }
 /* ⚠️ 此前写的是 `var(--sh-warn, var(--sh-sub))` —— **`--sh-warn` 这个变量不存在**
@@ -137,7 +135,6 @@ function confirm() {
    皮肤变量守卫故意放行带兜底的写法（「拼错了也还有兜底」），
    而这恰恰是它看不见的那一类：**兜底把拼错的后果盖住了**。 */
 .group__note {
-  font-size: 24rpx;
   color: var(--sh-warning);
 }
 .item {
@@ -153,9 +150,6 @@ function confirm() {
 
 .item__name {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .item__chip {
   margin-inline-start: 12rpx;
@@ -164,8 +158,6 @@ function confirm() {
 .item__sub {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .enter {
   margin-top: 32rpx;

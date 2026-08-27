@@ -137,7 +137,7 @@ onShow(() => void load());
 
 <template>
   <sh-scaffold title-key="qual.title" :denied="!merchant.can('biz:store')">
-    <text class="sh-muted intro">{{ $t("qual.intro") }}</text>
+    <text class="txt-caption sh-muted intro">{{ $t("qual.intro") }}</text>
 
     <!-- 已传的证 -->
     <view class="sh-card sh-mt-sm">
@@ -145,11 +145,11 @@ onShow(() => void load());
       <sh-empty v-if="!loading && !data?.items.length" :text='$t("qual.emptyMine")'></sh-empty>
       <view v-for="q in data?.items ?? []" :key="q.qualNo" class="sh-row sh-row--divided row">
         <view class="sh-fill">
-          <text class="row__name">{{ q.qualName }}</text>
-          <text class="sh-muted row__no">{{ q.qualNumber || "—" }}</text>
+          <text class="txt-strong row__name">{{ q.qualName }}</text>
+          <text class="txt-caption sh-muted">{{ q.qualNumber || "—" }}</text>
         </view>
         <!-- 有效期贴在右边：过期的证与没传是同一个后果（上架被拒），要一眼看得见 -->
-        <text class="row__exp" :class="{ 'is-bad': q.status !== 'VALID' }">
+        <text class="txt-caption row__exp" :class="{ 'is-bad': q.status !== 'VALID' }">
           {{ expiryText(q.expireAt) }}
         </text>
       </view>
@@ -184,12 +184,12 @@ onShow(() => void load());
       <text class="txt-title">{{ $t(merchant.categoryGateEnforced ? "qual.locked" : "qual.notGranted") }}</text>
       <view v-for="c in locked" :key="c.code" class="lock">
         <view class="sh-fill">
-          <text class="lock__cats">
+          <text class="txt-sub lock__cats">
             {{ (c.categoryNames ?? []).length ? (c.categoryNames ?? []).join("、") : c.name }}
           </text>
-          <text class="sh-muted lock__need">{{ c.requiredQualification }}</text>
+          <text class="txt-caption sh-muted">{{ c.requiredQualification }}</text>
         </view>
-        <text v-if="submitted(c)" class="lock__wait">{{ $t("qual.waiting") }}</text>
+        <text v-if="submitted(c)" class="txt-caption lock__wait">{{ $t("qual.waiting") }}</text>
         <text v-else class="link" @tap="startAdd((c.qualType ?? 'OTHER') as QualificationType)">
           {{ $t("qual.goUpload") }}
         </text>
@@ -203,13 +203,13 @@ onShow(() => void load());
     <view v-if="form" class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("qual.add") }}</text>
       <sh-kv :label="String($t('qual.fieldName'))">
-        <input maxlength="64" v-model="form.qualName" class="field__input sh-fill" />
+        <input maxlength="64" v-model="form.qualName" class="txt-body field__input sh-fill" />
       </sh-kv>
       <sh-kv :label="String($t('qual.fieldNumber'))">
-        <input maxlength="64" v-model="form.qualNumber" class="field__input sh-fill" />
+        <input maxlength="64" v-model="form.qualNumber" class="txt-body field__input sh-fill" />
       </sh-kv>
       <sh-kv :label="String($t('qual.fieldExpire'))">
-        <input maxlength="10" v-model="form.expireAt" class="field__input sh-fill" placeholder="2027-12-31" />
+        <input maxlength="10" v-model="form.expireAt" class="txt-body field__input sh-fill" placeholder="2027-12-31" />
       </sh-kv>
       <text class="sh-muted sh-hint">{{ $t("qual.expireHint") }}</text>
       <view class="kv kv--top">
@@ -237,22 +237,13 @@ onShow(() => void load());
 .intro {
   display: block;
   padding: 0 8rpx 8rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
 }
 
 .row__name {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
-.row__no {
-  font-size: 24rpx;
-}
+
 .row__exp {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   flex: none;
 }
 /* 过期与撤销：与「没传」是同一个后果，用危险色而不是灰 */
@@ -281,15 +272,11 @@ onShow(() => void load());
 
 .lock__cats {
   display: block;
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
-.lock__need {
-  font-size: 24rpx;
-}
+
 /* 等平台核：不是错误也不是可点的动作，所以既不用危险色也不做成链接 */
 .lock__wait {
-  font-size: 24rpx;
   color: var(--sh-warning);
   flex: none;
 }
@@ -302,8 +289,6 @@ onShow(() => void load());
   padding: 0 20rpx;
   border-radius: 16rpx;
   background: var(--sh-faint);
-  font-size: 28rpx;
-  color: var(--sh-ink);
 }
 .acts {
   display: flex;

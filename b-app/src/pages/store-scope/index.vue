@@ -393,17 +393,17 @@ onShow(() => {
     <view class="sh-card">
       <view class="head">
         <text class="txt-title">{{ $t("store.scope") }}</text>
-        <text class="head__sub">{{ $t("store.scopeAll") }}</text>
+        <text class="txt-caption head__sub">{{ $t("store.scopeAll") }}</text>
       </view>
       <text class="sh-hint">{{ $t("store.scopeLead") }}</text>
 
       <view v-if="areas.length" class="list">
         <view v-for="a in areas" :key="`${a.level}:${a.refCode}`" class="sh-row sh-row--divided item">
           <view class="sh-fill">
-            <text class="item__name" :class="{ 'is-pending': areaPending(a) }">
-              {{ splitName(a).main }}<text v-if="isWhole(a)" class="item__whole"> {{ $t("store.whole") }}</text>
+            <text class="txt-strong item__name" :class="{ 'is-pending': areaPending(a) }">
+              {{ splitName(a).main }}<text v-if="isWhole(a)" class="txt-caption"> {{ $t("store.whole") }}</text>
             </text>
-            <text v-if="splitName(a).path" class="item__path">{{ splitName(a).path }}</text>
+            <text v-if="splitName(a).path" class="txt-caption item__path">{{ splitName(a).path }}</text>
           </view>
           <text v-if="areaPending(a)" class="sh-chip sh-chip--warning">{{ $t("store.areaPending") }}</text>
           <sh-icon-btn name="close" @tap="removeArea(a)"></sh-icon-btn>
@@ -411,7 +411,7 @@ onShow(() => {
       </view>
 
       <!-- 空列表的含义两分：只自提是故障，开了自送/快递是「不限」。绝不能显示同一句话 -->
-      <text v-if="emptyIsBlocking" class="warn">{{ $t("store.areaNeeded") }}</text>
+      <text v-if="emptyIsBlocking" class="txt-caption warn">{{ $t("store.areaNeeded") }}</text>
       <text v-else-if="!areas.length" class="sh-hint">{{ $t("store.areaUnlimited") }}</text>
       <text v-if="areas.length > activeAreas.length" class="sh-hint">{{ $t("store.areaPendingHint") }}</text>
 
@@ -423,7 +423,7 @@ onShow(() => {
         <text v-if="pendingApplies.length" class="sh-hint">
           {{ $t("store.applyProgress", { n: pendingApplies.length }) }} · {{ pendingApplies.map((a) => a.name).join("、") }}
         </text>
-        <text v-for="a in rejectedApplies" :key="a.applyNo" class="warn">
+        <text v-for="a in rejectedApplies" :key="a.applyNo" class="txt-caption warn">
           {{ a.name }} · {{ $t("store.applyRejected") }}{{ a.reason ? `：${a.reason}` : "" }}
         </text>
       </view>
@@ -438,8 +438,8 @@ onShow(() => {
       <template v-for="c in channelRows" :key="c.channel">
         <view class="ch" :class="{ 'is-off': c.denied || c.locked }" @tap="toggleChannel(c.channel)">
           <view class="sh-fill">
-            <text class="ch__name">{{ $t(`channel.${c.channel}`) }}</text>
-            <text class="ch__desc" :class="{ 'ch__desc--warn': c.locked }">{{ c.locked ? $t("store.channelLocked") : c.denied ? $t("store.channelDenied") : $t(`store.channelDesc.${c.channel}`) }}</text>
+            <text class="txt-strong ch__name">{{ $t(`channel.${c.channel}`) }}</text>
+            <text class="txt-caption ch__desc" :class="{ 'ch__desc--warn': c.locked }">{{ c.locked ? $t("store.channelLocked") : c.denied ? $t("store.channelDenied") : $t(`store.channelDesc.${c.channel}`) }}</text>
           </view>
           <sh-switch
             :model-value="c.enabled"
@@ -449,16 +449,16 @@ onShow(() => {
 
         <!-- 开着的路：一行配置摘要 -->
         <view v-if="c.enabled && c.channel === 'STORE_PICKUP'" class="sum" :class="{ 'sum--warn': !form.address }">
-          <text class="sum__t sh-fill">{{ fullAddress ? $t("store.sumPickupAddr", { s: fullAddress }) : $t("store.sumNoAddress") }}</text>
+          <text class="txt-caption sum__t sh-fill">{{ fullAddress ? $t("store.sumPickupAddr", { s: fullAddress }) : $t("store.sumNoAddress") }}</text>
           <sh-go class="sum__go" @tap.stop="goAddress">{{ $t("store.goAddress") }}</sh-go>
         </view>
         <view v-if="c.enabled && c.channel === 'NEIGHBOR_PICKUP'" class="sum" :class="{ 'sum--warn': !neighborRefs.length && !form.address }">
-          <text class="sum__t sh-fill">{{ neighborSummary ? $t("store.pickup.sumRefs", { s: neighborSummary }) : (form.address ? $t("store.pickup.sumNone") : $t("store.pickup.sumNoneNoAddr")) }}</text>
+          <text class="txt-caption sum__t sh-fill">{{ neighborSummary ? $t("store.pickup.sumRefs", { s: neighborSummary }) : (form.address ? $t("store.pickup.sumNone") : $t("store.pickup.sumNoneNoAddr")) }}</text>
           <sh-go class="sum__go" @tap.stop="pickupSheetOpen = true">{{ $t("store.pickup.manage") }}</sh-go>
         </view>
         <view v-if="c.enabled && c.channel === 'MERCHANT_DELIVERY'" class="sum">
           <template v-if="!ruleOpen">
-            <text class="sum__t sh-fill">{{ deliverySummary || $t("store.sumDeliveryUnset") }}</text>
+            <text class="txt-caption sum__t sh-fill">{{ deliverySummary || $t("store.sumDeliveryUnset") }}</text>
             <sh-go class="sum__go" @tap.stop="openRule">{{ $t("store.edit") }}</sh-go>
           </template>
           <view v-else class="rate" @tap.stop>
@@ -479,40 +479,40 @@ onShow(() => {
             <text class="sh-hint">{{ $t("store.rateHint") }}</text>
             <view class="rate__btns">
               <text class="sh-btn sh-btn--soft rate__save" @tap="saveRule">{{ $t("store.saveRate") }}</text>
-              <text class="sh-btn sh-btn--muted rate__cancel" @tap="ruleOpen = false">{{ $t("store.collapse") }}</text>
+              <text class="txt-sub sh-btn sh-btn--muted rate__cancel" @tap="ruleOpen = false">{{ $t("store.collapse") }}</text>
             </view>
           </view>
         </view>
         <view v-if="c.enabled && c.channel === 'MERCHANT_DELIVERY'" class="sum">
           <template v-if="!subsetOpen">
-            <text class="sum__t sh-fill">{{ subsetSummary(c) }}</text>
+            <text class="txt-caption sum__t sh-fill">{{ subsetSummary(c) }}</text>
             <sh-go class="sum__go" @tap.stop="openSubset(c)">{{ $t("store.subset.edit") }}</sh-go>
           </template>
           <view v-else class="rate" @tap.stop>
             <text class="sh-hint">{{ $t("store.subset.hint") }}</text>
             <view class="subset__opt" :class="{ 'is-on': subsetAll }" @tap="subsetAll = true">
-              <text class="subset__t">{{ $t("store.subset.all") }}</text>
+              <text class="txt-sub subset__t">{{ $t("store.subset.all") }}</text>
               <sh-icon v-if="subsetAll" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
             </view>
             <view class="subset__opt" :class="{ 'is-on': !subsetAll }" @tap="subsetAll = false">
-              <text class="subset__t">{{ $t("store.subset.only") }}</text>
+              <text class="txt-sub subset__t">{{ $t("store.subset.only") }}</text>
               <sh-icon v-if="!subsetAll" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
             </view>
             <view v-if="!subsetAll" class="subset__list">
               <view v-for="a in activeAreas" :key="a.areaNo || a.refCode" class="subset__row" @tap="toggleSubsetArea(a)">
-                <text class="subset__name sh-fill">{{ splitName(a).main }}<text v-if="isWhole(a)" class="item__whole"> {{ $t("store.whole") }}</text></text>
+                <text class="txt-sub subset__name sh-fill">{{ splitName(a).main }}<text v-if="isWhole(a)" class="txt-caption"> {{ $t("store.whole") }}</text></text>
                 <sh-check :model-value="subsetPicked.includes(a.areaNo || '')"></sh-check>
               </view>
               <text v-if="!activeAreas.length" class="sh-hint">{{ $t("store.subset.noAreas") }}</text>
             </view>
             <view class="rate__btns">
               <text class="sh-btn sh-btn--soft rate__save" @tap="saveSubset(c)">{{ $t("common.save") }}</text>
-              <text class="sh-btn sh-btn--muted rate__cancel" @tap="subsetOpen = false">{{ $t("store.collapse") }}</text>
+              <text class="txt-sub sh-btn sh-btn--muted rate__cancel" @tap="subsetOpen = false">{{ $t("store.collapse") }}</text>
             </view>
           </view>
         </view>
         <view v-if="c.enabled && c.channel === 'EXPRESS'" class="sum">
-          <text class="sum__t sh-fill">{{ $t("store.sumExpress") }}</text>
+          <text class="txt-caption sum__t sh-fill">{{ $t("store.sumExpress") }}</text>
         </view>
       </template>
     </view>
@@ -551,14 +551,11 @@ onShow(() => {
 }
 .head__sub {
   flex-shrink: 0;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 
 .warn {
   display: block;
   margin-top: 12rpx;
-  font-size: 24rpx;
   color: var(--sh-danger);
 }
 .list {
@@ -567,23 +564,14 @@ onShow(() => {
 
 .item__name {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .item__name.is-pending {
   color: var(--sh-sub);
 }
-.item__whole {
-  font-size: 24rpx;
-  font-weight: 400;
-  color: var(--sh-sub);
-}
+
 .item__path {
   display: block;
   margin-top: 2rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .add {
   margin-top: 20rpx;
@@ -607,16 +595,10 @@ onShow(() => {
 
 .ch__name {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .ch__desc {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
-  color: var(--sh-sub);
 }
 .switch.is-busy {
   opacity: 0.6;
@@ -655,7 +637,6 @@ onShow(() => {
   border-bottom: var(--sh-hairline);
 }
 .subset__t {
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
 
@@ -670,14 +651,9 @@ onShow(() => {
   padding: 12rpx 0;
 }
 .subset__name {
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
-.sum__t {
-  font-size: 24rpx;
-  line-height: 1.5;
-  color: var(--sh-sub);
-}
+
 /* 「去设置 / 管理 / 编辑」这类行内动作，形态与字号由 `sh-go` 给。
    **此前四处里三处在文字尾巴上挂一个 `›` 字符，第四处什么都没有** ——
    同一个类长出两种样子。这里只留「不被压缩」。 */
@@ -709,7 +685,5 @@ onShow(() => {
 .rate__cancel {
   flex-shrink: 0;
   padding: 24rpx 32rpx;
-  font-size: 26rpx;
-  font-weight: 400;
 }
 </style>

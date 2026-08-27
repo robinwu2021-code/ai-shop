@@ -164,16 +164,16 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
           :selected="pickedNos.has(c.categoryNo)"
           @tap="toggle(c)"
         >
-          <text class="opt__name">{{ c.name }}</text>
+          <text class="txt-sub opt__name">{{ c.name }}</text>
           <!-- 有货的数量要显眼：撤架之前商家要看得见代价（有货就撤不掉） -->
-          <text v-if="countOf(c.categoryNo)" class="opt__n">
+          <text v-if="countOf(c.categoryNo)" class="txt-caption">
             {{ $t("storeCategories.goodsCount", { n: countOf(c.categoryNo) }) }}
           </text>
           <!--
             没那张证的类目**先标出来**，别等他勾完一屏再报 70002 ——
             那句「缺少经营这一类的资质」既说不出缺哪张，也说不出去哪申请。
           -->
-          <text v-if="ungranted(c)" class="opt__gate">{{ $t("storeCategories.needCert") }}</text>
+          <text v-if="ungranted(c)" class="txt-caption opt__gate">{{ $t("storeCategories.needCert") }}</text>
         </sh-option>
       </view>
     </view>
@@ -188,15 +188,15 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
           「看看这一类的货」，那条路从这里根本走不通。
         -->
         <view class="sh-fill" @tap="openGoods(c.categoryNo)">
-          <text class="row__name">{{ c.name }}</text>
+          <text class="txt-body row__name">{{ c.name }}</text>
           <!-- 改过名的要标出来：只显示新名字的话，商家找不回平台原来叫什么 -->
-          <text v-if="c.displayName" class="row__from">{{ c.platformName }}</text>
+          <text v-if="c.displayName" class="txt-caption">{{ c.platformName }}</text>
           <!--
             三个数分开给，因为它们回答的是不同问题：在售 = 卖得怎么样，
             待审 = 「为什么这一类看起来没货」的常见答案，
             而括号里的总数才是「能不能撤架」看的那个。
           -->
-          <text class="sh-muted row__stat">
+          <text class="txt-caption sh-muted row__stat">
             {{ $t("storeCategories.onSale", { n: c.onSaleCount }) }}
             <template v-if="c.pendingCount">
               · {{ $t("storeCategories.pending", { n: c.pendingCount }) }}
@@ -206,7 +206,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
             </template>
           </text>
         </view>
-        <text class="row__act" @tap.stop="rename(c)">{{ $t("storeCategories.rename") }}</text>
+        <text class="txt-caption row__act" @tap.stop="rename(c)">{{ $t("storeCategories.rename") }}</text>
       </view>
     </view>
 
@@ -255,39 +255,23 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
 }
 
 .opt__name {
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
 
 .opt__gate {
-  font-size: 24rpx;
   color: var(--sh-warning);
-}
-
-.opt__n {
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 
 .row__stat {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
 }
 
 .row__name {
   flex: 1;
-  font-size: 28rpx;
-  color: var(--sh-ink);
-}
-
-.row__from {
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 
 .row__act {
-  font-size: 24rpx;
   /* primary-text 而不是 primary：主色是为「压白字的按钮底」调的，
      当文字压在页面底上不足 AA —— 没有症状，只是弱视用户读不清 */
   color: var(--sh-primary-text);

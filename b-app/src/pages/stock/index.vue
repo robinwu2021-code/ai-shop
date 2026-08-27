@@ -133,7 +133,7 @@ onShow(load);
     <view v-for="b in rows" :key="b.itemId" class="sh-card sh-mb-sm" @tap="openItem(b)">
       <view class="row__top">
         <view class="sh-fill">
-          <text class="row__title">{{ b.name }}{{ b.specText ? ` · ${b.specText}` : "" }}</text>
+          <text class="txt-strong row__title">{{ b.name }}{{ b.specText ? ` · ${b.specText}` : "" }}</text>
           <view class="row__meta">
             <!--
               可用为 0 且缺货：说成「已售罄」而不是「可用 0」——
@@ -188,9 +188,6 @@ onShow(load);
 
 .row__title {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;

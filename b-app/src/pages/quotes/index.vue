@@ -80,7 +80,7 @@ onShow(load);
 
     <view v-for="r in list" :key="r.requestNo" class="sh-card sh-mt-sm">
       <view class="item__head">
-        <text class="item__title">{{ r.title }}</text>
+        <text class="txt-body item__title">{{ r.title }}</text>
         <text class="sh-chip sh-chip--primary">{{ $t("quotes.wanted", { n: r.interestedCount }) }}</text>
       </view>
       <text class="sh-muted item__desc">{{ r.desc }}</text>
@@ -102,23 +102,23 @@ onShow(load);
           :class="{ 'is-mine': q.merchant.merchantNo === merchant.profile?.merchantNo }"
         >
           <view class="sh-fill">
-            <text class="quote__name">
+            <text class="txt-strong quote__name">
               {{ q.merchant.logo || MERCHANT_LOGO_FALLBACK }} {{ q.merchant.name }}
-              <text v-if="q.merchant.merchantNo === merchant.profile?.merchantNo" class="mine-tag">
+              <text v-if="q.merchant.merchantNo === merchant.profile?.merchantNo" class="txt-caption mine-tag">
                 {{ $t("quotes.mine") }}
               </text>
             </text>
             <text class="sh-muted">{{ $t("quotes.minCount") }} {{ q.minCount }} · {{ q.desc || "—" }}</text>
             <!-- 只公示涨价：曾报 ¥X -->
-            <text v-if="q.revisions.length" class="raised sh-num">
+            <text v-if="q.revisions.length" class="txt-caption raised sh-num">
               {{ $t("quotes.raised", { p: money(q.revisions[q.revisions.length - 1]!.priceMinor) }) }}
             </text>
-            <text v-if="q.merchant.breachCount" class="breach">
+            <text v-if="q.merchant.breachCount" class="txt-caption breach">
               {{ $t("quotes.breach", { n: q.merchant.breachCount }) }}
             </text>
           </view>
           <view class="quote__r">
-            <text class="quote__p sh-num">{{ money(q.priceMinor) }}</text>
+            <text class="txt-body quote__p sh-num">{{ money(q.priceMinor) }}</text>
             <text v-if="q.locked" class="sh-chip">{{ $t("quotes.locked") }}</text>
           </view>
         </view>
@@ -138,8 +138,8 @@ onShow(load);
           <input maxlength="255" v-model="form.desc" class="field__input" :placeholder="$t('quotes.descPh')" />
         </view>
         <view class="btns">
-          <text class="btn btn--ghost" @tap="editing = ''">{{ $t("common.cancel") }}</text>
-          <text class="btn" @tap="submit(r)">{{ $t("quotes.submit") }}</text>
+          <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="editing = ''">{{ $t("common.cancel") }}</text>
+          <text class="sh-btn sh-btn--sm txt-strong btn" @tap="submit(r)">{{ $t("quotes.submit") }}</text>
         </view>
         <text class="sh-hint sh-mt-sm">{{ $t("quotes.lockHint") }}</text>
       </template>
@@ -166,9 +166,6 @@ onShow(load);
 }
 .item__title {
   flex: 1;
-  font-size: 30rpx;
-  font-weight: 400;
-  color: var(--sh-ink);
 }
 .item__desc {
   display: block;
@@ -198,24 +195,18 @@ onShow(load);
 
 .quote__name {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .mine-tag {
-  font-size: 24rpx;
   color: var(--sh-primary-text);
 }
 .raised {
   display: block;
   margin-top: 6rpx;
-  font-size: 24rpx;
   color: var(--sh-warning);
 }
 .breach {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
   color: var(--sh-danger);
 }
 .quote__r {
@@ -223,9 +214,6 @@ onShow(load);
 }
 .quote__p {
   display: block;
-  font-size: 30rpx;
-  font-weight: 400;
-  color: var(--sh-ink);
 }
 .btns {
   display: flex;
@@ -236,16 +224,8 @@ onShow(load);
   flex: 1;
   text-align: center;
   padding: 22rpx 0;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 28rpx;
-  font-weight: 600;
 }
-.btn--ghost {
-  background: var(--sh-faint);
-  color: var(--sh-sub);
-}
+
 .act {
   margin-top: 24rpx;
 }

@@ -7,6 +7,8 @@ import ai.neargo.job.api.JobResult;
 import ai.neargo.job.api.JobStatus;
 import ai.neargo.job.api.TriggerType;
 import ai.neargo.shop.job.JobHandlerRegistry;
+import net.javacrumbs.shedlock.core.LockConfiguration;
+import net.javacrumbs.shedlock.core.LockingTaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -99,7 +103,7 @@ public class JobHandlerEndpoint {
                 triggerOf(req), bizDateOf(req),
                 req == null || req.params() == null ? Map.of() : req.params());
         try {
-            JobResult r = handler.get().run(in);
+            JobResult r = runLocked(handlerName, handler.get(), in);
             if (r.status() == JobStatus.SKIPPED) {
                 // 锁没抢到。**409 而不是 200+SKIPPED** —— 调度器据此不计入连续失败，
                 // 而 200 会让「正常的并发保护」和「跑成了」在 HTTP 层长得一样
@@ -117,6 +121,47 @@ public class JobHandlerEndpoint {
             return ResponseEntity.ok(new RunResp(JobStatus.FAILED.name(),
                     "任务抛异常", e.getClass().getSimpleName()));
         }
+    }
+
+    /**
+     * 带锁执行。<b>锁名就是 handler 名</b> —— 与旧的 {@code @SchedulerLock} 同名，
+     * 于是新旧两条触发路径争的是 {@code shedlock} 表里的同一行。
+     *
+     * <h2>为什么非加不可</h2>
+     * <p>旧的锁挂在 {@code @Scheduled} 的方法上，而调度器打进来的是
+     * {@code JobHandler.run()} —— <b>锁完全不参与</b>。此前不出事只靠三个巧合同时成立：
+     * {@code worker} profile 没开、业务系统单实例、调度器单实例。
+     * 任何一个变了，任务就会双跑，而 ShedLock 拦不住它没参与的那条路。
+     *
+     * <p>连带效果：{@code SKIPPED}/409 这条契约<b>此前线上根本走不到</b>
+     * —— 协议两边都写了、都有测试，但没有任何东西会产生它。
+     *
+     * <h2>持锁时长取声明里的值</h2>
+     * <p>不取一个统一的默认值：「跑多久算异常」只有任务自己知道。
+     * 声明里没有（理论上不会发生，注册表启动时就校验过）才退到 30 分钟。
+     *
+     * <p>{@code lockAtLeastFor} 给 0：那个参数防的是多实例间时钟漂移导致的抢跑，
+     * 而这里的调用方是<b>单一调度器</b>，它自己不会在同一时刻发两次。
+     * 给非零反而会让手动触发在 cron 刚跑完时被无谓地拒掉。
+     */
+    private JobResult runLocked(String handlerName, JobHandler handler, JobInvocation in) {
+        Duration lockAtMost = handlers.declarations().stream()
+                .filter(d -> d.handlerName().equals(handlerName))
+                .findFirst()
+                .map(d -> Duration.ofSeconds(d.lockAtMostSec()))
+                .orElse(Duration.ofMinutes(30));
+        LockingTaskExecutor.TaskResult<JobResult> res;
+        try {
+            res = locks.executeWithLock(
+                    (LockingTaskExecutor.TaskWithResult<JobResult>) () -> handler.run(in),
+                    new LockConfiguration(Instant.now(), handlerName, lockAtMost, Duration.ZERO));
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+        // 没抢到 = 上一轮还在跑。**不是故障**，交给上面转成 409
+        return res.wasExecuted() ? res.getResult() : JobResult.skipped();
     }
 
     /**

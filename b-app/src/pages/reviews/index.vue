@@ -106,26 +106,26 @@ onShow(load);
 
     <view v-for="r in sorted" :key="r.reviewNo" class="sh-card sh-mt-sm">
       <view class="item__head">
-        <text class="item__who">{{ r.avatar }} {{ r.nickname }}</text>
+        <text class="txt-strong">{{ r.avatar }} {{ r.nickname }}</text>
         <!-- single-review：这是**某个人给的星数**，不是聚合评分，不需要 ratingCount 护栏 -->
         <sh-rating :value="r.rating" :size="24"></sh-rating>
       </view>
-      <text class="sh-muted item__meta">{{ r.spec }} · {{ datetime(r.createdAt) }}</text>
+      <text class="txt-caption sh-muted item__meta">{{ r.spec }} · {{ datetime(r.createdAt) }}</text>
 
       <!-- 三维度（B-9.3）：只看总分看不出「货好但送得慢」，而那正是能改的部分。
            老评价没有维度分，不显示这一行而不是显示三个 0 -->
       <view v-if="r.scores" class="dims">
-        <text class="dims__i">{{ $t("reviews.dimGoods") }} {{ r.scores.goods }}</text>
-        <text class="dims__i">{{ $t("reviews.dimFulfill") }} {{ r.scores.fulfillment }}</text>
-        <text class="dims__i">{{ $t("reviews.dimService") }} {{ r.scores.service }}</text>
+        <text class="txt-caption dims__i">{{ $t("reviews.dimGoods") }} {{ r.scores.goods }}</text>
+        <text class="txt-caption dims__i">{{ $t("reviews.dimFulfill") }} {{ r.scores.fulfillment }}</text>
+        <text class="txt-caption dims__i">{{ $t("reviews.dimService") }} {{ r.scores.service }}</text>
       </view>
-      <text class="item__content">{{ r.content }}</text>
+      <text class="txt-body item__content">{{ r.content }}</text>
       <view v-if="r.images.length" class="imgs">
         <text v-for="(img, i) in r.images" :key="i" class="imgs__i">{{ img }}</text>
       </view>
 
-      <view v-if="r.reply && replying !== r.reviewNo" class="reply">
-        <text class="reply__label">{{ $t("reviews.myReply") }}</text>
+      <view v-if="r.reply && replying !== r.reviewNo" class="txt-body reply">
+        <text class="txt-caption reply__label">{{ $t("reviews.myReply") }}</text>
         <text>{{ r.reply }}</text>
       </view>
 
@@ -137,10 +137,10 @@ onShow(load);
           maxlength="100"
         />
         <!-- 「只能发一次」要在他动笔之前说，不是发完之后用一句报错告诉他 -->
-        <text class="sh-muted once">{{ $t("reviews.replyOnce") }}</text>
+        <text class="txt-caption sh-muted once">{{ $t("reviews.replyOnce") }}</text>
         <view class="btns">
-          <text class="btn btn--ghost" @tap="replying = ''">{{ $t("common.cancel") }}</text>
-          <text class="btn" @tap="submit(r)">{{ $t("reviews.submit") }}</text>
+          <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="replying = ''">{{ $t("common.cancel") }}</text>
+          <text class="sh-btn sh-btn--sm txt-strong btn" @tap="submit(r)">{{ $t("reviews.submit") }}</text>
         </view>
       </template>
       <!-- 申诉状态：提交后商家能看到进度与裁决说明。
@@ -158,8 +158,8 @@ onShow(load);
           maxlength="120"
         />
         <view class="btns">
-          <text class="btn btn--ghost" @tap="appealing = ''">{{ $t("common.cancel") }}</text>
-          <text class="btn" @tap="submitAppeal(r)">{{ $t("reviews.appealSubmit") }}</text>
+          <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="appealing = ''">{{ $t("common.cancel") }}</text>
+          <text class="sh-btn sh-btn--sm txt-strong btn" @tap="submitAppeal(r)">{{ $t("reviews.appealSubmit") }}</text>
         </view>
       </template>
 
@@ -184,8 +184,6 @@ onShow(load);
   margin-top: 10rpx;
 }
 .dims__i {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   background: var(--sh-faint);
   padding: 4rpx 12rpx;
   border-radius: 9999px;
@@ -226,22 +224,14 @@ onShow(load);
   align-items: center;
   justify-content: space-between;
 }
-.item__who {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
+
 .item__meta {
   display: block;
   margin-top: 6rpx;
-  font-size: 24rpx;
 }
 .item__content {
   display: block;
   margin-top: 16rpx;
-  font-size: 28rpx;
-  line-height: 1.6;
-  color: var(--sh-ink);
 }
 .imgs {
   display: flex;
@@ -262,21 +252,14 @@ onShow(load);
   padding: 20rpx 24rpx;
   border-radius: 24rpx;
   background: var(--sh-faint);
-  font-size: 28rpx;
-  color: var(--sh-ink);
-  line-height: 1.6;
 }
 .reply__label {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-bottom: 6rpx;
 }
 .once {
   display: block;
   margin-top: 12rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
 }
 .btns {
   display: flex;
@@ -287,16 +270,8 @@ onShow(load);
   flex: 1;
   text-align: center;
   padding: 22rpx 0;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 28rpx;
-  font-weight: 600;
 }
-.btn--ghost {
-  background: var(--sh-faint);
-  color: var(--sh-sub);
-}
+
 .sh-link {
   display: inline-block;
   margin-top: 20rpx;

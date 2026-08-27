@@ -204,16 +204,16 @@ onShow(load);
     <!-- 新模型的活动（P5）。老的四类活动还在下面，两套并存到旧表退场 -->
     <view v-if="!editing" class="entry" @tap="goActivities">
       <view class="entry__main">
-        <text class="entry__t">{{ $t("activities.title") }}</text>
-        <text class="sh-muted entry__d">{{ $t("marketing.activityEntryHint") }}</text>
+        <text class="txt-strong">{{ $t("activities.title") }}</text>
+        <text class="txt-caption sh-muted entry__d">{{ $t("marketing.activityEntryHint") }}</text>
       </view>
       <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
     </view>
 
     <view v-if="!editing" class="entry" @tap="goCoupons">
       <view class="entry__main">
-        <text class="entry__t">{{ $t("coupons.title") }}</text>
-        <text class="sh-muted entry__d">{{ $t("marketing.couponEntryHint") }}</text>
+        <text class="txt-strong">{{ $t("coupons.title") }}</text>
+        <text class="txt-caption sh-muted entry__d">{{ $t("marketing.couponEntryHint") }}</text>
       </view>
       <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
     </view>
@@ -300,8 +300,8 @@ onShow(load);
       </view>
 
       <view class="btns">
-        <text class="btn btn--ghost" @tap="editing = false">{{ $t("common.cancel") }}</text>
-        <text class="btn" @tap="save">{{ $t("common.save") }}</text>
+        <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="editing = false">{{ $t("common.cancel") }}</text>
+        <text class="sh-btn sh-btn--sm txt-strong btn" @tap="save">{{ $t("common.save") }}</text>
       </view>
     </view>
 
@@ -310,7 +310,7 @@ onShow(load);
 
     <view v-for="c in list" :key="c.campaignNo" class="sh-card sh-mt-sm">
       <view class="item__head">
-        <text class="item__name">{{ c.name }}</text>
+        <text class="txt-body item__name">{{ c.name }}</text>
         <text
           class="sh-chip"
           :class="{
@@ -352,14 +352,10 @@ onShow(load);
   padding: 24rpx;
   margin-top: 16rpx;
 }
-.entry__t {
-  font-size: 28rpx;
-  font-weight: 600;
-}
+
 .entry__d {
   display: block;
   margin-top: 6rpx;
-  font-size: 24rpx;
 }
 
 .head {
@@ -390,15 +386,6 @@ onShow(load);
   flex: 1;
   text-align: center;
   padding: 22rpx 0;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 28rpx;
-  font-weight: 600;
-}
-.btn--ghost {
-  background: var(--sh-faint);
-  color: var(--sh-sub);
 }
 
 .item__head {
@@ -409,9 +396,6 @@ onShow(load);
 }
 .item__name {
   flex: 1;
-  font-size: 30rpx;
-  font-weight: 400;
-  color: var(--sh-ink);
 }
 .item__sum {
   display: block;

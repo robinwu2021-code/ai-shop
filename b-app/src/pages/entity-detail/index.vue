@@ -97,8 +97,8 @@ function goPickStore() {
 
     <template v-else>
       <view class="sh-card head">
-        <text class="head__name">{{ entity?.name || "—" }}</text>
-        <text class="head__sub">
+        <text class="txt-title head__name">{{ entity?.name || "—" }}</text>
+        <text class="txt-caption head__sub">
           {{ statusText(entity?.status) }}
           <template v-if="entity?.legalForm"> · {{ entity.legalForm }}</template>
           <template v-if="entity?.verified"> · {{ $t("entityDetail.verified") }}</template>
@@ -108,10 +108,10 @@ function goPickStore() {
       <!-- 营业执照 -->
       <view class="sh-card block" @tap="editQuals">
         <view class="block__row">
-          <text class="block__title">{{ $t("entityDetail.license") }}</text>
+          <text class="txt-strong">{{ $t("entityDetail.license") }}</text>
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
-        <text class="block__val" :class="{ 'is-empty': !license }">
+        <text class="txt-sub block__val" :class="{ 'is-empty': !license }">
           {{ license ? license.qualName : $t("entityDetail.licenseEmpty") }}
         </text>
         <text v-if="!license" class="sh-hint">{{ $t("entityDetail.licenseWhy") }}</text>
@@ -120,10 +120,10 @@ function goPickStore() {
       <!-- 收款账户 -->
       <view class="sh-card block" @tap="editPayment">
         <view class="block__row">
-          <text class="block__title">{{ $t("entityDetail.payment") }}</text>
+          <text class="txt-strong">{{ $t("entityDetail.payment") }}</text>
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
-        <text class="block__val" :class="{ 'is-empty': !payReady }">
+        <text class="txt-sub block__val" :class="{ 'is-empty': !payReady }">
           {{ payReady ? $t("entityDetail.payReady") : $t("entityDetail.payNotReady") }}
         </text>
       </view>
@@ -131,24 +131,24 @@ function goPickStore() {
       <!-- 其它资质 -->
       <view class="sh-card block" @tap="editQuals">
         <view class="block__row">
-          <text class="block__title">{{ $t("entityDetail.quals") }}</text>
+          <text class="txt-strong">{{ $t("entityDetail.quals") }}</text>
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
-        <text class="block__val" :class="{ 'is-empty': !others.length }">
+        <text class="txt-sub block__val" :class="{ 'is-empty': !others.length }">
           {{ others.length ? $t("entityDetail.qualsCount", { n: others.length }) : $t("entityDetail.qualsEmpty") }}
         </text>
       </view>
 
       <!-- 名下门店：只读 -->
       <view class="block">
-        <text class="block__title">{{ $t("entityDetail.stores") }}</text>
+        <text class="txt-strong">{{ $t("entityDetail.stores") }}</text>
         <view class="stores">
           <view v-for="s in stores" :key="s.storeNo" class="sh-card store">
-            <text class="store__name">
+            <text class="txt-body store__name">
               {{ s.name }}
               <text v-if="s.isDefault" class="sh-chip store__chip">{{ $t("storePick.default") }}</text>
             </text>
-            <text class="store__sub">
+            <text class="txt-caption store__sub">
               {{ s.status === "ACTIVE" ? (s.address || "—") : $t("storePick.closed") }}
             </text>
           </view>
@@ -169,15 +169,10 @@ function goPickStore() {
 }
 .head__name {
   display: block;
-  font-size: 34rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .head__sub {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .block {
   margin-top: 16rpx;
@@ -187,15 +182,10 @@ function goPickStore() {
   align-items: center;
   justify-content: space-between;
 }
-.block__title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
+
 .block__val {
   display: block;
   margin-top: 8rpx;
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
 .block__val.is-empty {
@@ -209,8 +199,6 @@ function goPickStore() {
 }
 .store__name {
   display: block;
-  font-size: 28rpx;
-  color: var(--sh-ink);
 }
 .store__chip {
   margin-inline-start: 12rpx;
@@ -218,8 +206,6 @@ function goPickStore() {
 .store__sub {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .sh-link {
   display: block;

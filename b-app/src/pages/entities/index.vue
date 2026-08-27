@@ -85,11 +85,11 @@ function addOne() {
     <view class="list">
       <view v-for="e in rows" :key="e.entityNo" class="sh-row sh-card item" @tap="open(e.entityNo)">
         <view class="sh-fill">
-          <text class="item__name">
+          <text class="txt-strong item__name">
             {{ e.name }}
             <text v-if="e.isPrimary" class="sh-chip item__chip">{{ $t("entities.primary") }}</text>
           </text>
-          <text class="item__sub">
+          <text class="txt-caption item__sub">
             <text class="dot" :class="'is-' + statusTone(e.status)"></text>
             {{ statusText(e.status) }} · {{ $t("entities.storeCount", { n: e.storeCount }) }}
           </text>
@@ -124,9 +124,6 @@ function addOne() {
 
 .item__name {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .item__chip {
   margin-inline-start: 12rpx;
@@ -135,8 +132,6 @@ function addOne() {
 .item__sub {
   display: block;
   margin-top: 6rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .dot {
   display: inline-block;

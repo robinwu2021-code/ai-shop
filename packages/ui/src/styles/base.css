@@ -936,8 +936,21 @@ uni-page-wrapper[style*="--window-bottom"] {
   line-height: 1.3;
   color: var(--sh-ink);
 }
+/*
+ * 强调行：**与正文同字号，靠字重顶出来**。
+ *
+ * 2026-08-28 从 30rpx 改到 28rpx，**字阶里不再有 30 这一档**
+ *（控件仍然是 30：`.sh-btn` 与 `.field__input` —— 那是控件尺寸，不归字阶管）。
+ * 理由是数出来的：
+ * 页面里 `28rpx/600` 用了 **37 处**，而为这个角色定义的 30/600 只有 12 处 ——
+ * 用得比定义的档还多三倍，说明档位当初取错了尺寸，不是页面用错了。
+ *
+ * 而且「同字号 + 换字重」本来就是这个字阶已有的做法：
+ * `.txt-price`(34/700) 与 `.txt-title`(34/600) 就共用 34。
+ * 强调之于正文，正是价格之于标题的那层关系。
+ */
 .txt-strong {
-  font-size: 30rpx;
+  font-size: 28rpx;
   font-weight: 600;
   line-height: 1.4;
   color: var(--sh-ink);

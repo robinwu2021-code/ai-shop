@@ -65,13 +65,13 @@ onShow(load);
       <text class="field__label">{{ $t("memberSettings.scope") }}</text>
 
       <sh-option :selected="setting?.memberScope === 'ENTITY'" @tap="pickScope('ENTITY')">
-        <text class="opt__t">{{ $t("memberSettings.entity") }}</text>
-        <text class="sh-muted opt__d">{{ $t("memberSettings.entityHint") }}</text>
+        <text class="txt-strong opt__t">{{ $t("memberSettings.entity") }}</text>
+        <text class="txt-caption sh-muted opt__d">{{ $t("memberSettings.entityHint") }}</text>
       </sh-option>
 
       <sh-option :selected="setting?.memberScope === 'STORE'" @tap="pickScope('STORE')">
-        <text class="opt__t">{{ $t("memberSettings.store") }}</text>
-        <text class="sh-muted opt__d">{{ $t("memberSettings.storeHint") }}</text>
+        <text class="txt-strong opt__t">{{ $t("memberSettings.store") }}</text>
+        <text class="txt-caption sh-muted opt__d">{{ $t("memberSettings.storeHint") }}</text>
       </sh-option>
 
       <!-- 这一句是这一页最重要的一行：不写它，没人敢动上面那两个 -->
@@ -81,8 +81,8 @@ onShow(load);
     <view class="sh-card sh-mt-sm">
       <view class="sh-row sh-row--between row">
         <view class="sh-fill">
-          <text class="opt__t">{{ $t("memberSettings.autoJoin") }}</text>
-          <text class="sh-muted opt__d">{{ $t("memberSettings.autoJoinHint") }}</text>
+          <text class="txt-strong opt__t">{{ $t("memberSettings.autoJoin") }}</text>
+          <text class="txt-caption sh-muted opt__d">{{ $t("memberSettings.autoJoinHint") }}</text>
         </view>
         <text
           class="sh-chip"
@@ -99,14 +99,10 @@ onShow(load);
 <style scoped>
 .opt__t {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
 }
 .opt__d {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
 }
 .row {
   gap: 24rpx;

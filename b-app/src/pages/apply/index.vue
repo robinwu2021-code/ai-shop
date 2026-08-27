@@ -317,7 +317,7 @@ async function submit() {
          下面的表单已回填上次内容，改缺的那一项再交即可 -->
     <view v-if="status === 'REJECTED'" class="sh-card rejected">
       <text class="txt-title">{{ $t("apply.statusREJECTED") }}</text>
-      <text class="reason">{{ merchant.profile?.rejectReason || $t("apply.rejectFallback") }}</text>
+      <text class="txt-body reason">{{ merchant.profile?.rejectReason || $t("apply.rejectFallback") }}</text>
       <text class="sh-muted sh-mt-xs blk">{{ $t("apply.rejectedHint") }}</text>
     </view>
 
@@ -360,7 +360,7 @@ async function submit() {
           </text>
         </view>
         <!-- 禁用要给出理由：光变灰会让人以为是 bug，然后去反复点它 -->
-        <text v-if="!subjectAllowed('NATURAL_PERSON')" class="warn">
+        <text v-if="!subjectAllowed('NATURAL_PERSON')" class="txt-caption warn">
           {{ $t("apply.microBlocked") }}
         </text>
         <text class="sh-hint">{{ $t("apply.subjectHint") }}</text>
@@ -415,8 +415,8 @@ async function submit() {
         @tap="pickScope(sc)"
       >
         <view class="sh-fill">
-          <text class="scope__name">{{ $t(`serviceScope.${sc}`) }}</text>
-          <text class="scope__desc">{{ $t(`store.scopeDesc.${sc}`) }}</text>
+          <text class="txt-strong scope__name">{{ $t(`serviceScope.${sc}`) }}</text>
+          <text class="txt-caption scope__desc">{{ $t(`store.scopeDesc.${sc}`) }}</text>
         </view>
         <sh-icon v-if="form.serviceScope === sc" class="scope__tick" name="check"
           :size="30" color="var(--sh-primary-text)"></sh-icon>
@@ -437,13 +437,13 @@ async function submit() {
           </text>
         </view>
         <!-- 加载失败与「真的一个小区都没有」要分开说 -->
-        <text v-if="communitiesFailed" class="warn">
+        <text v-if="communitiesFailed" class="txt-caption warn">
           {{ $t("store.communitiesFailed") }}
         </text>
-        <text v-else-if="!communities.length" class="warn">
+        <text v-else-if="!communities.length" class="txt-caption warn">
           {{ $t("store.communitiesEmpty") }}
         </text>
-        <text v-else-if="!form.communityNos.length" class="warn">
+        <text v-else-if="!form.communityNos.length" class="txt-caption warn">
           {{ $t("store.scopeNeedCommunity") }}
         </text>
       </view>
@@ -476,7 +476,7 @@ async function submit() {
         <view v-for="(q, i) in qualItems" :key="i" class="qual">
           <view class="qual__head">
             <text class="qual__type">{{ $t(`apply.qual${q.type}`) }}</text>
-            <text class="qual__del" @tap="removeQual(i)">{{ $t("apply.qualRemove") }}</text>
+            <text class="txt-caption qual__del" @tap="removeQual(i)">{{ $t("apply.qualRemove") }}</text>
           </view>
           <input
             maxlength="64"
@@ -512,7 +512,7 @@ async function submit() {
           <text @tap="addQual('BUSINESS_LICENSE')">＋ {{ $t("apply.qualBUSINESS_LICENSE") }}</text>
           <text @tap="addQual('FOOD_PERMIT')">＋ {{ $t("apply.qualFOOD_PERMIT") }}</text>
         </view>
-        <text v-if="licenseMissing" class="warn">{{ $t("apply.licenseRequired") }}</text>
+        <text v-if="licenseMissing" class="txt-caption warn">{{ $t("apply.licenseRequired") }}</text>
       </view>
     </view>
 
@@ -530,9 +530,7 @@ async function submit() {
 .reason {
   display: block;
   margin-top: 12rpx;
-  font-size: 28rpx;
   color: var(--sh-danger);
-  line-height: 1.6;
 }
 /* 结构化资质：一条一块，与旧的「一排缩略图」区分开 —— 那个表达不出「哪张证」 */
 .qual {
@@ -543,7 +541,9 @@ async function submit() {
 }
 .qual__head { display: flex; justify-content: space-between; align-items: center; }
 .qual__type { font-weight: 600; }
-.qual__del { color: var(--sh-danger); font-size: 24rpx; }
+.qual__del {
+  color: var(--sh-danger);
+}
 .qual__row { display: flex; align-items: center; gap: 16rpx; margin-top: 12rpx; }
 .qual__forever { display: flex; align-items: center; gap: 8rpx; }
 .qual__date { flex: 1; }
@@ -600,16 +600,10 @@ async function submit() {
 
 .scope__name {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .scope__desc {
   display: block;
   margin-top: 6rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
-  color: var(--sh-sub);
 }
 .scope__tick {
   flex-shrink: 0;
@@ -627,7 +621,6 @@ async function submit() {
 .warn {
   display: block;
   margin-top: 16rpx;
-  font-size: 24rpx;
   color: var(--sh-danger);
 }
 .submit {

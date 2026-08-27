@@ -51,17 +51,17 @@ onShow(load);
         :active="tab"
         @change="(k: string) => (tab = k as typeof tab)"
       ></sh-tabs>
-      <text v-if="unread" class="readall" @tap="readAll">{{ $t("message.readAll") }}</text>
+      <text v-if="unread" class="txt-caption readall" @tap="readAll">{{ $t("message.readAll") }}</text>
     </view>
 
     <view v-for="m in shown" :key="m.messageNo" class="sh-card msg" @tap="open(m)">
       <view class="msg__dot" :class="{ 'is-unread': !m.read }" />
       <view class="sh-fill">
         <view class="msg__top">
-          <text class="msg__title" :class="{ 'is-unread': !m.read }">{{ m.title }}</text>
-          <text class="msg__at sh-num">{{ datetime(m.at) }}</text>
+          <text class="txt-body msg__title" :class="{ 'is-unread': !m.read }">{{ m.title }}</text>
+          <text class="txt-caption msg__at sh-num">{{ datetime(m.at) }}</text>
         </view>
-        <text class="msg__body">{{ m.body }}</text>
+        <text class="txt-caption msg__body">{{ m.body }}</text>
         <sh-go v-if="m.link" class="msg__more" :text="String($t('message.view'))"></sh-go>
       </view>
     </view>
@@ -80,7 +80,6 @@ onShow(load);
 
 .readall {
   flex-shrink: 0;
-  font-size: 24rpx;
   color: var(--sh-primary-text);
 }
 /* 面色 / 圆角 / 内边距全交给 `.sh-card` —— 此前这三行是把它照抄了一遍。
@@ -110,22 +109,15 @@ onShow(load);
   gap: 20rpx;
 }
 .msg__title {
-  font-size: 28rpx;
-  color: var(--sh-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .msg__at {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   flex-shrink: 0;
 }
 .msg__body {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
   margin-top: 12rpx;
 }
 /* 字号与颜色由 `sh-go` 给 */

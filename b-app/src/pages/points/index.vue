@@ -66,8 +66,8 @@ onShow(() => {
     <template v-if="account">
       <view class="sh-card">
         <text class="sh-muted">{{ $t("points.periodExpense") }}</text>
-        <text class="amt sh-num">{{ money(account.periodExpenseMinor) }}</text>
-        <text class="sh-muted sub">
+        <text class="txt-mega amt sh-num">{{ money(account.periodExpenseMinor) }}</text>
+        <text class="txt-caption sh-muted sub">
           {{ $t("points.periodHint", { p: account.period }) }}
         </text>
       </view>
@@ -77,13 +77,13 @@ onShow(() => {
           <text class="txt-title">{{ $t("points.switch") }}</text>
           <sh-switch :model-value="account.enabled" :disabled="!!lockedReason"></sh-switch>
         </view>
-        <text class="sh-muted sub">{{ $t("points.switchHint") }}</text>
+        <text class="txt-caption sh-muted sub">{{ $t("points.switchHint") }}</text>
         <!--
           ⚠️ **关不掉时要说清是哪一种。** 只把开关灰掉的话，商家不知道
           该找平台开、还是本来就关不掉 —— 而这两件事的下一步动作完全不同。
         -->
-        <text v-if="lockedReason" class="locked">{{ lockedReason }}</text>
-        <text class="sh-muted sub">{{ $t("points.closeOnlyFuture") }}</text>
+        <text v-if="lockedReason" class="txt-caption locked">{{ lockedReason }}</text>
+        <text class="txt-caption sh-muted sub">{{ $t("points.closeOnlyFuture") }}</text>
       </view>
 
       <!--
@@ -96,7 +96,7 @@ onShow(() => {
           <text class="txt-title">{{ $t("points.rule") }}</text>
           <text class="sh-chip">{{ $t("points.rulePlatform") }}</text>
         </view>
-        <text class="sh-muted sub">{{ $t("points.ruleHint") }}</text>
+        <text class="txt-caption sh-muted sub">{{ $t("points.ruleHint") }}</text>
       </view>
 
       <view class="sh-btn sh-btn--muted sh-mt-sm" @tap="openRecords">
@@ -110,16 +110,10 @@ onShow(() => {
 .amt {
   display: block;
   margin-top: 8rpx;
-  font-size: 60rpx;
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--sh-ink);
 }
 .sub {
   display: block;
   margin-top: 10rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
 }
 .line {
   display: flex;
@@ -129,8 +123,6 @@ onShow(() => {
 .locked {
   display: block;
   margin-top: 10rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
   color: var(--sh-primary-text);
 }
 </style>

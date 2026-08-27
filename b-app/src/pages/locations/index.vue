@@ -88,7 +88,7 @@ onShow(load);
     <view v-for="l in rows" :key="l.locationId" class="sh-card sh-mb-sm" @tap="setSource(l)">
       <view class="row__top">
         <view class="sh-fill">
-          <text class="row__title">{{ l.name }}</text>
+          <text class="txt-strong row__title">{{ l.name }}</text>
           <view class="row__meta">
             <text class="sh-chip" :class="kindClass(l.kind)">
               {{ $t(`locations.kind.${l.kind}`) }}
@@ -142,9 +142,6 @@ onShow(load);
 
 .row__title {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .row__meta {
   display: flex;

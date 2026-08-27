@@ -158,7 +158,7 @@ onShow(load);
     <view v-for="l in lines" :key="l.itemId" class="sh-card sh-mb-sm">
       <view class="row__top">
         <view class="sh-fill">
-          <text class="row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
+          <text class="txt-strong row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
           <view class="row__meta">
             <text class="sh-link sh-num" @tap="editQty(l)">
               {{ $t("purchase.qtyN", { n: l.qty, uom: l.uom || "" }) }}
@@ -220,9 +220,6 @@ onShow(load);
 
 .row__title {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .row__meta {
   display: flex;

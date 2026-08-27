@@ -139,18 +139,18 @@ onShow(load);
       <view v-for="s in visibleStaff" :key="s.mchAccountNo" class="sh-row sh-card sh-mb-sm" @tap="openStaff(s)">
         <view class="sh-fill">
           <view class="row__top">
-            <text class="row__name">{{ nameOf(s) }}</text>
+            <text class="txt-strong">{{ nameOf(s) }}</text>
             <!-- 号码就是他的登录用户名：搜到人之后老板下一眼看的就是这个 -->
-            <text v-if="s.displayName && s.loginPhone" class="row__phone sh-num sh-muted">
+            <text v-if="s.displayName && s.loginPhone" class="txt-caption sh-num sh-muted">
               {{ s.loginPhone }}
             </text>
             <!-- 名字已经回落成「老板」时不再挂同名标签，两个「老板」并排是噪声 -->
-            <text v-if="s.isOwner && nameOf(s) !== $t('staff.owner')" class="tag tag--primary">
+            <text v-if="s.isOwner && nameOf(s) !== $t('staff.owner')" class="txt-caption tag tag--primary">
               {{ $t("staff.owner") }}
             </text>
-            <text v-else-if="s.status !== 'ACTIVE'" class="tag">{{ $t("staff.disabled") }}</text>
+            <text v-else-if="s.status !== 'ACTIVE'" class="txt-caption tag">{{ $t("staff.disabled") }}</text>
           </view>
-          <text class="row__sub sh-muted">{{ summary(s) }}</text>
+          <text class="txt-caption row__sub sh-muted">{{ summary(s) }}</text>
         </view>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
@@ -181,10 +181,10 @@ onShow(load);
       <view v-for="r in roles" :key="r.roleCode" class="sh-row sh-card sh-mb-sm">
         <view class="sh-fill" @tap="openRole(r)">
           <view class="row__top">
-            <text class="row__name">{{ r.name }}</text>
-            <text v-if="r.builtin" class="tag">{{ $t("staff.builtin") }}</text>
+            <text class="txt-strong">{{ r.name }}</text>
+            <text v-if="r.builtin" class="txt-caption tag">{{ $t("staff.builtin") }}</text>
           </view>
-          <text class="row__sub sh-muted">
+          <text class="txt-caption row__sub sh-muted">
             {{ permCount(r) }}　{{ $t("staff.roleUsed", { n: r.usedBy }) }}
           </text>
         </view>
@@ -204,11 +204,11 @@ onShow(load);
       <sh-empty v-if="!logs.length" :text='$t("staff.logsEmpty")'></sh-empty>
       <view v-for="(l, i) in logs" :key="i" class="sh-card log">
         <view class="log__head">
-          <text class="log__t sh-num">{{ datetime(l.at) }}</text>
+          <text class="txt-caption sh-num">{{ datetime(l.at) }}</text>
           <text v-if="l.actor" class="sh-muted">{{ l.actor }}</text>
         </view>
-        <text class="log__d">{{ l.detail || l.action }}</text>
-        <text v-if="l.targetName" class="sh-muted log__who">→ {{ l.targetName }}</text>
+        <text class="txt-body log__d">{{ l.detail || l.action }}</text>
+        <text v-if="l.targetName" class="txt-caption sh-muted log__who">→ {{ l.targetName }}</text>
       </view>
     </template>
   </sh-scaffold>
@@ -233,27 +233,17 @@ onShow(load);
   align-items: center;
   gap: 12rpx;
 }
-.row__name {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
+
 .row__sub {
   display: block;
   margin-top: 6rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
 }
-.row__phone {
-  font-size: 24rpx;
-}
+
 .tag {
   padding: 4rpx 14rpx;
   border-radius: 9999px;
   /* --sh-fill 不存在，此前 tag 底色是透明的（与 .sh-chip 同款，用 --sh-faint） */
   background: var(--sh-faint);
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .tag--primary {
   background: var(--sh-primary-tint);
@@ -277,20 +267,13 @@ onShow(load);
   align-items: baseline;
   justify-content: space-between;
 }
-.log__t {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
+
 .log__d {
   display: block;
   margin-top: 8rpx;
-  font-size: 28rpx;
-  color: var(--sh-ink);
-  line-height: 1.5;
 }
 .log__who {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
 }
 </style>

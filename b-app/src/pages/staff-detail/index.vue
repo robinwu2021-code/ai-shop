@@ -84,11 +84,11 @@ onShow(load);
       <view class="sh-card">
         <view class="head">
           <text class="txt-display">{{ nameOf(staff) }}</text>
-          <text v-if="staff.isOwner" class="tag tag--primary">{{ $t("staff.owner") }}</text>
-          <text v-else-if="staff.status !== 'ACTIVE'" class="tag">{{ $t("staff.disabled") }}</text>
+          <text v-if="staff.isOwner" class="txt-caption tag tag--primary">{{ $t("staff.owner") }}</text>
+          <text v-else-if="staff.status !== 'ACTIVE'" class="txt-caption tag">{{ $t("staff.disabled") }}</text>
         </view>
         <template v-if="staff.loginPhone">
-          <text class="sh-muted phone sh-num">{{ staff.loginPhone }}</text>
+          <text class="txt-caption sh-muted phone sh-num">{{ staff.loginPhone }}</text>
           <text class="sh-muted sh-hint">{{ $t("staff.loginHint") }}</text>
         </template>
         <!-- 老板没有员工手机号：他用 C 端账号登录，这里不该留一行空白 -->
@@ -102,7 +102,7 @@ onShow(load);
         <text class="txt-title">{{ $t("staff.grants") }}</text>
         <text class="sh-muted sh-hint">{{ $t("staff.grantHint") }}</text>
         <view v-for="st in stores" :key="st.storeNo" class="store">
-          <text class="store__name">{{ st.name }}</text>
+          <text class="txt-strong">{{ st.name }}</text>
           <view class="chips">
             <text
               v-for="r in grantable"
@@ -120,10 +120,10 @@ onShow(load);
       <view class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("staff.logs") }}</text>
         <text v-if="!logs.length" class="sh-muted sh-hint">{{ $t("staff.logsEmpty") }}</text>
-        <view v-for="(l, i) in logs" :key="i" class="log">
+        <view v-for="(l, i) in logs" :key="i" class="txt-caption log">
           <text class="log__t sh-num">{{ datetime(l.at) }}</text>
           <text class="log__d sh-fill">{{ l.detail || l.action }}</text>
-          <text v-if="l.actor" class="sh-muted log__a">{{ l.actor }}</text>
+          <text v-if="l.actor" class="txt-caption sh-muted">{{ l.actor }}</text>
         </view>
       </view>
 
@@ -157,7 +157,6 @@ onShow(load);
 .phone {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
 }
 
 .owner-note {
@@ -172,18 +171,12 @@ onShow(load);
 .store {
   margin-top: 14rpx;
 }
-.store__name {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
+
 .tag {
   padding: 4rpx 14rpx;
   border-radius: 9999px;
   /* --sh-fill 不存在，此前 tag 底色是透明的（与 .sh-chip 同款，用 --sh-faint） */
   background: var(--sh-faint);
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .tag--primary {
   background: var(--sh-primary-tint);
@@ -195,7 +188,6 @@ onShow(load);
   gap: 16rpx;
   padding: 12rpx 0;
   border-top: var(--sh-hairline);
-  font-size: 24rpx;
 }
 .log__t {
   color: var(--sh-sub);
@@ -203,9 +195,7 @@ onShow(load);
 .log__d {
   color: var(--sh-ink);
 }
-.log__a {
-  font-size: 24rpx;
-}
+
 .danger .txt-title {
   color: var(--sh-danger);
 }

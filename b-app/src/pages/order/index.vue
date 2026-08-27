@@ -141,11 +141,11 @@ onLoad((q) => {
         <view v-if="order.receiver?.address" class="line line--wrap">
           <text class="sh-muted">{{ $t("order.receiver") }}</text>
           <view class="recv sh-fill">
-            <text class="recv__who">
+            <text class="txt-body recv__who">
               {{ order.receiver.name || "—" }}
               <text v-if="order.receiver.phone" class="sh-num">　{{ order.receiver.phone }}</text>
             </text>
-            <text class="recv__addr">{{ order.receiver.address }}</text>
+            <text class="txt-caption recv__addr">{{ order.receiver.address }}</text>
           </view>
         </view>
       </view>
@@ -155,14 +155,14 @@ onLoad((q) => {
         <view v-for="it in order.items" :key="it.skuNo" class="sh-row item sh-mt-sm">
           <sh-cover class="item__cover" :src="it.cover"></sh-cover>
           <view class="sh-fill">
-            <text class="item__title">{{ it.title }}</text>
+            <text class="txt-body item__title">{{ it.title }}</text>
             <text class="sh-muted">{{ it.spec }} × {{ it.qty }}</text>
           </view>
           <text class="sh-num">{{ money(it.price, order.amount.currency) }}</text>
         </view>
         <view class="line total">
           <text class="sh-muted">{{ $t("order.amount") }}</text>
-          <text class="total__v sh-num">
+          <text class="txt-title sh-num">
             {{ money(order.amount.payableMinor, order.amount.currency) }}
           </text>
         </view>
@@ -174,7 +174,7 @@ onLoad((q) => {
       -->
       <view v-if="canConfirmOffline" class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("order.offlinePay") }}</text>
-        <text class="sh-muted due__hint">{{ $t("order.offlineNotCustodied") }}</text>
+        <text class="txt-caption sh-muted due__hint">{{ $t("order.offlineNotCustodied") }}</text>
         <view class="sh-btn sh-mt-sm" @tap="offlineAsking = true">{{ $t("order.offlinePay") }}</view>
       </view>
 
@@ -218,10 +218,10 @@ onLoad((q) => {
       >
         <text class="sh-muted">{{ $t("order.offlineDue") }}</text>
         <text class="txt-mega due sh-num">{{ money(dueMinor, order.amount.currency) }}</text>
-        <text v-if="deductedMinor > 0" class="due__deducted">
+        <text v-if="deductedMinor > 0" class="txt-sub due__deducted">
           {{ $t("order.offlineDeducted", { v: money(deductedMinor, order.amount.currency) }) }}
         </text>
-        <text class="due__hint">{{ $t("order.offlineNotCustodied") }}</text>
+        <text class="txt-caption due__hint">{{ $t("order.offlineNotCustodied") }}</text>
         <template #actions>
           <view class="sh-btn sh-btn--muted sh-dialog__act" @tap="offlineAsking = false">
             {{ $t("order.offlineCancel") }}
@@ -250,15 +250,10 @@ onLoad((q) => {
 }
 .recv__who {
   display: block;
-  font-size: 28rpx;
-  color: var(--sh-ink);
 }
 .recv__addr {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.4;
 }
 .item {
   gap: 20rpx;
@@ -275,8 +270,6 @@ onLoad((q) => {
 
 .item__title {
   display: block;
-  font-size: 28rpx;
-  color: var(--sh-ink);
 }
 .total {
   margin-top: 16rpx;
@@ -291,19 +284,11 @@ onLoad((q) => {
 .due__deducted {
   display: block;
   margin-top: 8rpx;
-  font-size: 26rpx;
   color: var(--sh-primary-text);
 }
 .due__hint {
   display: block;
   margin-top: 16rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
-  color: var(--sh-sub);
 }
-.total__v {
-  font-size: 34rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
+
 </style>

@@ -64,7 +64,7 @@ onShow(load);
   <sh-scaffold title-key="couponIssues.title" :denied="!merchant.can('biz:campaign')">
     <!-- 刚发完那一批：三个数字并排，跳过原因逐条列出 -->
     <view v-if="latest" class="sh-card fresh">
-      <text class="fresh__t">{{ $t("couponIssues.done", { title: couponTitle(latest.couponNo) }) }}</text>
+      <text class="txt-strong">{{ $t("couponIssues.done", { title: couponTitle(latest.couponNo) }) }}</text>
       <sh-stat
         :items="[
           { value: latest.planned, label: String($t('couponIssues.planned')) },
@@ -75,11 +75,11 @@ onShow(load);
       ></sh-stat>
 
       <view v-if="latest.skipReasons.length" class="reasons">
-        <text v-for="r in latest.skipReasons" :key="r.reason" class="reason">
+        <text v-for="r in latest.skipReasons" :key="r.reason" class="txt-caption reason">
           {{ $t(`couponIssues.reason.${r.reason}`, { n: r.count }) }}
         </text>
       </view>
-      <text class="sh-muted amount">
+      <text class="txt-caption sh-muted amount">
         {{ $t("couponIssues.amount", { n: money(latest.amountMinor) }) }}
       </text>
     </view>
@@ -88,17 +88,17 @@ onShow(load);
 
     <view v-for="b in list" :key="b.issueNo" class="sh-card sh-mb-sm">
       <view class="item__head">
-        <text class="item__name">{{ couponTitle(b.couponNo) }}</text>
+        <text class="txt-strong">{{ couponTitle(b.couponNo) }}</text>
         <text class="sh-muted">{{ stamp(b.issuedAt) }}</text>
       </view>
-      <text class="sh-muted seg">
+      <text class="txt-caption sh-muted seg">
         {{ $t("couponIssues.toSegment", { name: segmentName(b.segmentNo) }) }}
       </text>
-      <text class="sh-num nums">
+      <text class="txt-sub sh-num nums">
         {{ $t("couponIssues.line", { i: b.issued, s: b.skipped, a: money(b.amountMinor) }) }}
       </text>
       <view v-if="b.skipReasons.length" class="reasons">
-        <text v-for="r in b.skipReasons" :key="r.reason" class="reason">
+        <text v-for="r in b.skipReasons" :key="r.reason" class="txt-caption reason">
           {{ $t(`couponIssues.reason.${r.reason}`, { n: r.count }) }}
         </text>
       </view>
@@ -113,10 +113,7 @@ onShow(load);
   border: 2rpx solid var(--sh-primary);
   margin-bottom: 16rpx;
 }
-.fresh__t {
-  font-size: 28rpx;
-  font-weight: 600;
-}
+
 .reasons {
   display: flex;
   flex-wrap: wrap;
@@ -124,8 +121,6 @@ onShow(load);
   margin-top: 12rpx;
 }
 .reason {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   background: var(--sh-faint);
   border-radius: 16rpx;
   padding: 6rpx 12rpx;
@@ -133,7 +128,6 @@ onShow(load);
 .amount {
   display: block;
   margin-top: 12rpx;
-  font-size: 24rpx;
 }
 
 .item__head {
@@ -141,19 +135,14 @@ onShow(load);
   align-items: baseline;
   justify-content: space-between;
 }
-.item__name {
-  font-size: 28rpx;
-  font-weight: 600;
-}
+
 .seg {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
 }
 .nums {
   display: block;
   margin-top: 8rpx;
-  font-size: 26rpx;
 }
 
 </style>

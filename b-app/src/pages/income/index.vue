@@ -47,14 +47,14 @@ onShow(() => {
 <template>
   <sh-scaffold title-key="income.title" :denied="!canView">
     <template v-if="sum">
-      <view class="scope" @tap="toggleScope">
+      <view class="txt-sub scope" @tap="toggleScope">
         {{ allStores ? $t("income.scopeAll") : $t("income.scopeCurrent") }}
       </view>
 
       <view class="sh-card">
         <text class="sh-muted">{{ $t("income.received") }}</text>
-        <text class="amt sh-num">{{ money(sum.receivedMinor) }}</text>
-        <text class="sub sh-muted">{{ $t("income.receivedHint") }}</text>
+        <text class="txt-mega amt sh-num">{{ money(sum.receivedMinor) }}</text>
+        <text class="txt-caption sub sh-muted">{{ $t("income.receivedHint") }}</text>
       </view>
 
       <!--
@@ -64,13 +64,13 @@ onShow(() => {
       <view v-if="sum.inFlightMinor > 0" class="sh-card sh-mt-sm hold">
         <view class="line">
           <text class="sh-muted">{{ $t("income.inFlight") }}</text>
-          <text class="sh-num amt-sm">{{ money(sum.inFlightMinor) }}</text>
+          <text class="txt-price sh-num">{{ money(sum.inFlightMinor) }}</text>
         </view>
-        <text class="sub sh-muted">
+        <text class="txt-caption sub sh-muted">
           {{ $t("income.inFlightHint", { n: sum.inFlightCount }) }}
           <text v-if="stuckDays > 0">　{{ $t("income.stuckDays", { d: stuckDays }) }}</text>
         </text>
-        <text v-if="sum.oldestInFlightAt" class="sub sh-muted sh-num">
+        <text v-if="sum.oldestInFlightAt" class="txt-caption sub sh-muted sh-num">
           {{ datetime(sum.oldestInFlightAt) }}
         </text>
       </view>
@@ -78,9 +78,9 @@ onShow(() => {
       <view class="sh-card sh-mt-sm">
         <view class="line">
           <text class="sh-muted">{{ $t("income.pending") }}</text>
-          <text class="sh-num amt-sm">{{ money(sum.pendingMinor) }}</text>
+          <text class="txt-price sh-num">{{ money(sum.pendingMinor) }}</text>
         </view>
-        <text class="sub sh-muted">{{ $t("income.pendingHint") }}</text>
+        <text class="txt-caption sub sh-muted">{{ $t("income.pendingHint") }}</text>
       </view>
 
       <!--
@@ -90,9 +90,9 @@ onShow(() => {
       <view v-if="sum.offlineMinor > 0" class="sh-card sh-mt-sm">
         <view class="line">
           <text class="sh-muted">{{ $t("income.offline") }}</text>
-          <text class="sh-num amt-sm">{{ money(sum.offlineMinor) }}</text>
+          <text class="txt-price sh-num">{{ money(sum.offlineMinor) }}</text>
         </view>
-        <text class="sub sh-muted">{{ $t("income.offlineHint") }}</text>
+        <text class="txt-caption sub sh-muted">{{ $t("income.offlineHint") }}</text>
       </view>
     </template>
   </sh-scaffold>
@@ -101,16 +101,11 @@ onShow(() => {
 <style scoped>
 .scope {
   margin-bottom: 12rpx;
-  font-size: 26rpx;
   color: var(--sh-primary-text);
 }
 .amt {
   display: block;
   margin-top: 8rpx;
-  font-size: 60rpx;
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--sh-ink);
 }
 .line {
   display: flex;
@@ -118,16 +113,10 @@ onShow(() => {
   justify-content: space-between;
 }
 /* 同一页上比 .amt 小一档的金额（在途/待结/线下），名字要说清它是钱 */
-.amt-sm {
-  font-size: 34rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
-}
+
 .sub {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
 }
 /* 在途那一档用暖色底：它是「要留意」而不是「有问题」 */
 .hold { background: var(--sh-faint); }

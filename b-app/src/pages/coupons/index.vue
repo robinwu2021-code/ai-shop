@@ -123,14 +123,14 @@ onShow(load);
 
     <view v-for="c in list" :key="c.couponNo" class="sh-card sh-mb-sm">
       <view class="item__head">
-        <text class="item__name">{{ c.title }}</text>
+        <text class="txt-strong">{{ c.title }}</text>
         <text v-if="c.status !== 'ACTIVE'" class="sh-chip">
           {{ $t(`coupons.status.${c.status}`) }}
         </text>
       </view>
-      <text class="benefit">{{ benefitText(c) }}</text>
+      <text class="txt-sub benefit">{{ benefitText(c) }}</text>
 
-      <view class="nums">
+      <view class="txt-caption nums">
         <text class="sh-muted sh-num">
           {{ $t("coupons.issued", { n: c.receivedCount, m: c.totalCount ?? "—" }) }}
         </text>
@@ -139,10 +139,10 @@ onShow(load);
           {{ $t("coupons.exposure", { n: money(c.maxExposureMinor) }) }}
         </text>
       </view>
-      <text v-if="c.validityMode === 'RELATIVE'" class="sh-muted valid">
+      <text v-if="c.validityMode === 'RELATIVE'" class="txt-caption sh-muted valid">
         {{ $t("coupons.validRelative", { n: c.validDays }) }}
       </text>
-      <text v-if="c.redeemMode === 'STORE_CODE'" class="sh-muted valid">
+      <text v-if="c.redeemMode === 'STORE_CODE'" class="txt-caption sh-muted valid">
         {{ $t("coupons.storeCode") }}
       </text>
 
@@ -176,26 +176,20 @@ onShow(load);
   align-items: center;
   gap: 12rpx;
 }
-.item__name {
-  font-size: 30rpx;
-  font-weight: 600;
-}
+
 .benefit {
   display: block;
   margin-top: 8rpx;
-  font-size: 26rpx;
   color: var(--sh-primary-text);
 }
 .nums {
   display: flex;
   gap: 24rpx;
   margin-top: 8rpx;
-  font-size: 24rpx;
 }
 .valid {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
 }
 .acts {
   display: flex;

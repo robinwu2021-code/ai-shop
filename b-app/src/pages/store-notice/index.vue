@@ -243,12 +243,12 @@ onShow(load);
           :class="{ 'sh-chip--primary': ttlKey === o.key }"
           @tap="pickTtl(o.key)"
         >{{ $t(`store.ttl.${o.key}`) }}</text>
-        <text v-if="untilText" class="ttl__at">{{ untilText }}</text>
+        <text v-if="untilText" class="txt-caption ttl__at">{{ untilText }}</text>
       </view>
 
       <!-- 同时发到：只有多店主体看得到。默认不勾 —— 见 alsoStoreNos 上的说明 -->
       <view v-if="BACKEND_READY && otherStores.length" class="also">
-        <text class="also__label">{{ $t("store.noticeAlso") }}</text>
+        <text class="txt-caption also__label">{{ $t("store.noticeAlso") }}</text>
         <view class="also__opts">
           <text
             v-for="o in otherStores"
@@ -265,7 +265,7 @@ onShow(load);
       </view>
 
       <!-- 撤下：只在店铺页上真的挂着东西时出现 -->
-      <text v-if="live" class="withdraw" @tap="withdraw">{{ $t("store.noticeWithdraw") }}</text>
+      <text v-if="live" class="txt-sub withdraw" @tap="withdraw">{{ $t("store.noticeWithdraw") }}</text>
     </view>
 
     <!--
@@ -274,19 +274,19 @@ onShow(load);
     -->
     <view v-if="pending" class="sh-card sh-mt-md pend">
       <view class="pend__top">
-        <text class="pend__tag">{{ $t("store.noticeAuditing") }}</text>
-        <text class="pend__at">{{ pendingAt }}</text>
+        <text class="txt-strong pend__tag">{{ $t("store.noticeAuditing") }}</text>
+        <text class="txt-caption">{{ pendingAt }}</text>
       </view>
-      <text class="pend__text">{{ pending.content }}</text>
-      <text class="pend__hint">{{ $t("store.noticeAuditingHint") }}</text>
+      <text class="txt-body pend__text">{{ pending.content }}</text>
+      <text class="txt-caption pend__hint">{{ $t("store.noticeAuditingHint") }}</text>
     </view>
 
     <!-- 常用：店主的公告是在几句话之间轮换，不是每次都写新的。点一下换上，再点发布 -->
     <view v-if="recent.length" class="sh-card sh-mt-md">
-      <text class="field__label">{{ $t("store.noticeRecent") }}</text>
+      <text class="txt-sub field__label">{{ $t("store.noticeRecent") }}</text>
       <view class="recent">
         <view v-for="(r, i) in recent" :key="i" class="recent__row">
-          <text class="recent__i sh-fill" @tap="text = r">{{ r }}</text>
+          <text class="txt-sub recent__i sh-fill" @tap="text = r">{{ r }}</text>
           <sh-icon-btn v-if="BACKEND_READY" name="close" @tap="dropRecent(r)"></sh-icon-btn>
         </view>
       </view>
@@ -301,8 +301,6 @@ onShow(load);
 }
 .also__label {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .also__opts {
   display: flex;
@@ -319,8 +317,6 @@ onShow(load);
 }
 .ttl__at {
   margin-left: auto;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 /* 发布：没有改动时灰着 —— 按下去什么都不会发生的按钮不该长得能按 */
 .go {
@@ -335,8 +331,6 @@ onShow(load);
   display: block;
   margin-top: 20rpx;
   text-align: center;
-  font-size: 26rpx;
-  color: var(--sh-sub);
 }
 /* 审核中：主色浅底，不用警示红 —— 这不是错误，是还没轮到 */
 .pend {
@@ -348,31 +342,19 @@ onShow(load);
   justify-content: space-between;
 }
 .pend__tag {
-  font-size: 26rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
 }
-.pend__at {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
+
 .pend__text {
   display: block;
   margin-top: 12rpx;
-  font-size: 28rpx;
-  line-height: 1.5;
-  color: var(--sh-ink);
 }
 .pend__hint {
   display: block;
   margin-top: 12rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .field__label {
   display: block;
-  font-size: 26rpx;
-  color: var(--sh-sub);
   margin-bottom: 12rpx;
 }
 /* 常用是内容不是标签：不截断、允许换行 */
@@ -390,8 +372,6 @@ onShow(load);
   padding: 16rpx 20rpx;
   border-radius: 16rpx;
   background: var(--sh-faint);
-  font-size: 26rpx;
   color: var(--sh-ink);
-  line-height: 1.5;
 }
 </style>

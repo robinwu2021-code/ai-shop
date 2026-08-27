@@ -211,11 +211,11 @@ onShow(load);
     -->
     <view v-if="locked" class="lock">
       <view class="lock__row">
-        <text class="lock__tag">{{ $t("crossStore.demoTag") }}</text>
-        <text class="lock__t">{{ $t("crossStore.lockTitle") }}</text>
+        <text class="txt-caption lock__tag">{{ $t("crossStore.demoTag") }}</text>
+        <text class="txt-strong">{{ $t("crossStore.lockTitle") }}</text>
       </view>
-      <text class="lock__d">{{ lockedMsg || $t("crossStore.lockHint") }}</text>
-      <text class="lock__d">{{ $t("crossStore.lockUpsell") }}</text>
+      <text class="txt-caption lock__d">{{ lockedMsg || $t("crossStore.lockHint") }}</text>
+      <text class="txt-caption lock__d">{{ $t("crossStore.lockUpsell") }}</text>
       <view class="sh-btn lock__go" @tap="upgrade">{{ $t("crossStore.learnPlan") }}</view>
     </view>
 
@@ -250,7 +250,7 @@ onShow(load);
         <text
           v-for="d in WINDOWS"
           :key="d"
-          class="sh-chip windows__i"
+          class="txt-caption sh-chip windows__i"
           :class="{ 'sh-chip--primary': shownCompare.days === d }"
           @tap="pickWindow(d)"
         >
@@ -265,32 +265,32 @@ onShow(load);
         :class="{ 'is-demo': locked, 'is-best': s.storeNo === bestStoreNo }"
       >
         <view class="store__head">
-          <text class="store__name">{{ s.storeName }}</text>
-          <text v-if="s.isDefault" class="sh-chip tag">{{ $t("crossStore.default") }}</text>
-          <text v-if="s.status !== 'ACTIVE'" class="sh-chip tag">
+          <text class="txt-strong">{{ s.storeName }}</text>
+          <text v-if="s.isDefault" class="txt-caption sh-chip tag">{{ $t("crossStore.default") }}</text>
+          <text v-if="s.status !== 'ACTIVE'" class="txt-caption sh-chip tag">
             {{ $t("crossStore.disabled") }}
           </text>
-          <text v-if="s.storeNo === bestStoreNo" class="sh-chip sh-chip--solid tag">
+          <text v-if="s.storeNo === bestStoreNo" class="txt-caption sh-chip sh-chip--solid tag">
             {{ $t("crossStore.best") }}
           </text>
-          <text v-if="locked" class="sh-chip tag tag--demo">{{ $t("crossStore.demoTag") }}</text>
+          <text v-if="locked" class="txt-caption sh-chip tag tag--demo">{{ $t("crossStore.demoTag") }}</text>
         </view>
 
         <view class="metrics">
           <view class="metrics__i">
-            <text class="metrics__v sh-num">{{ money(s.gmvMinor, shownCompare.currency) }}</text>
+            <text class="txt-title metrics__v sh-num">{{ money(s.gmvMinor, shownCompare.currency) }}</text>
             <text class="sh-muted">{{ $t("crossStore.gmv") }}</text>
           </view>
           <view class="metrics__i">
-            <text class="metrics__v sh-num">{{ s.orders }}</text>
+            <text class="txt-title metrics__v sh-num">{{ s.orders }}</text>
             <text class="sh-muted">{{ $t("crossStore.orders") }}</text>
           </view>
           <view class="metrics__i">
-            <text class="metrics__v sh-num">{{ pct(s.repeatRate) }}</text>
+            <text class="txt-title metrics__v sh-num">{{ pct(s.repeatRate) }}</text>
             <text class="sh-muted">{{ $t("crossStore.repeatRate") }}</text>
           </view>
           <view class="metrics__i">
-            <text class="metrics__v sh-num" :class="{ 'is-warn': s.outOfStockSkus > 0 }">
+            <text class="txt-title metrics__v sh-num" :class="{ 'is-warn': s.outOfStockSkus > 0 }">
               {{ s.outOfStockSkus }}
             </text>
             <text class="sh-muted">{{ $t("crossStore.outOfStock") }}</text>
@@ -300,7 +300,7 @@ onShow(load);
             还没人评过的店后端给的是中位分（只影响排序），显示成星等于凭空给它一个口碑。
           -->
           <view class="metrics__i">
-            <text class="metrics__v sh-num">
+            <text class="txt-title metrics__v sh-num">
               {{ s.ratingCount ? s.rating.toFixed(1) : "—" }}
             </text>
             <text class="sh-muted">{{ $t("crossStore.storeRating") }}</text>
@@ -349,19 +349,11 @@ onShow(load);
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  font-size: 24rpx;
 }
-.lock__t {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
+
 .lock__d {
   display: block;
   margin-top: 12rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
-  color: var(--sh-sub);
 }
 .lock__go {
   margin-top: 20rpx;
@@ -394,13 +386,8 @@ onShow(load);
   flex-wrap: wrap;
   gap: 12rpx;
 }
-.store__name {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
+
 .tag {
-  font-size: 24rpx;
   padding: 4rpx 14rpx;
 }
 /*
@@ -425,10 +412,6 @@ onShow(load);
 }
 .grid__v {
   display: block;
-  font-size: 40rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-  line-height: 1.2;
 }
 .month {
   margin-top: 16rpx;
@@ -445,8 +428,6 @@ onShow(load);
 }
 .todo__v {
   display: block;
-  font-size: 34rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
 }
 .todo__v.is-zero {
@@ -455,8 +436,6 @@ onShow(load);
 .todo__l {
   display: block;
   margin-top: 6rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .rating {
   margin-bottom: 16rpx;
@@ -477,7 +456,6 @@ onShow(load);
   margin-bottom: 16rpx;
 }
 .windows__i {
-  font-size: 24rpx;
   padding: 12rpx 24rpx;
 }
 .metrics {
@@ -491,10 +469,6 @@ onShow(load);
 }
 .metrics__v {
   display: block;
-  font-size: 34rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-  line-height: 1.3;
 }
 .metrics__v.is-warn {
   color: var(--sh-danger);

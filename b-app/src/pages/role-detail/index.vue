@@ -174,7 +174,7 @@ onShow(load);
       <view
         v-for="h in holders"
         :key="h.mchAccountNo"
-        class="holder"
+        class="txt-caption holder"
         @tap="openStaff(h.mchAccountNo)"
       >
         <text>{{ h.displayName || h.loginPhone }}</text>
@@ -214,7 +214,6 @@ onShow(load);
   justify-content: space-between;
   padding: 16rpx 0;
   border-top: var(--sh-hairline);
-  font-size: 24rpx;
   color: var(--sh-ink);
 }
 .save {

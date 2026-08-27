@@ -114,20 +114,20 @@ onShow(load);
       { key: 'ended', rows: ended },
     ]" :key="g.key">
       <view v-if="g.rows.length" class="group">
-        <text class="group__t">{{ $t(`activities.group.${g.key}`, { n: g.rows.length }) }}</text>
-        <text v-if="g.key === 'idle'" class="sh-muted group__d">
+        <text class="txt-strong group__t">{{ $t(`activities.group.${g.key}`, { n: g.rows.length }) }}</text>
+        <text v-if="g.key === 'idle'" class="txt-caption sh-muted group__d">
           {{ $t("activities.idleHint") }}
         </text>
 
         <view v-for="a in g.rows" :key="a.activityNo" class="sh-card sh-mt-xs">
           <view class="item__head">
-            <text class="item__name">{{ a.name }}</text>
+            <text class="txt-strong">{{ a.name }}</text>
             <text v-if="a.endedReason" class="sh-chip">
               {{ $t(`activities.endedReason.${a.endedReason}`) }}
             </text>
           </view>
-          <text class="rule">{{ ruleText(a) }}</text>
-          <text class="sh-muted line">{{ scheduleText(a) }}</text>
+          <text class="txt-sub rule">{{ ruleText(a) }}</text>
+          <text class="txt-caption sh-muted line">{{ scheduleText(a) }}</text>
 
           <!--
             效果卡：**用掉多少、花了多少、还剩多少**。
@@ -169,15 +169,11 @@ onShow(load);
   margin-top: 20rpx;
 }
 .group__t {
-  font-size: 26rpx;
-  font-weight: 600;
   color: var(--sh-sub);
 }
 .group__d {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
 }
 
 .item__head {
@@ -185,20 +181,15 @@ onShow(load);
   align-items: center;
   gap: 12rpx;
 }
-.item__name {
-  font-size: 30rpx;
-  font-weight: 600;
-}
+
 .rule {
   display: block;
   margin-top: 8rpx;
-  font-size: 26rpx;
   color: var(--sh-primary-text);
 }
 .line {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
 }
 .acts {
   display: flex;

@@ -70,12 +70,12 @@ onShow(load);
       <view class="item__head">
         <sh-cover class="item__cover" :src="g.cover"></sh-cover>
         <view class="sh-fill">
-          <text class="item__title">{{ g.title }}</text>
+          <text class="txt-strong item__title">{{ g.title }}</text>
           <text class="sh-muted">{{ g.pickupName }}</text>
         </view>
         <view class="item__price">
-          <text class="sh-num now">{{ money(g.groupPrice) }}</text>
-          <text class="sh-num base">{{ money(g.basePrice) }}</text>
+          <text class="txt-body sh-num now">{{ money(g.groupPrice) }}</text>
+          <text class="txt-caption sh-num base">{{ money(g.basePrice) }}</text>
         </view>
       </view>
 
@@ -93,8 +93,8 @@ onShow(load);
 
     <view v-for="g in groupable" :key="g.goodsNo" class="sh-row sh-card row sh-mb-sm">
       <sh-cover class="row__cover" :src="g.cover"></sh-cover>
-      <text class="row__title sh-fill">{{ g.title }}</text>
-      <text class="btn" @tap="create(g.goodsNo)">{{ $t("groups.open") }}</text>
+      <text class="txt-body sh-fill">{{ g.title }}</text>
+      <text class="sh-btn sh-btn--sm btn" @tap="create(g.goodsNo)">{{ $t("groups.open") }}</text>
     </view>
 
     <text class="tip sh-hint">{{ $t("groups.rules") }}</text>
@@ -129,22 +129,15 @@ onShow(load);
 
 .item__title {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .item__price {
   text-align: end;
 }
 .now {
   display: block;
-  font-size: 30rpx;
-  font-weight: 400;
   color: var(--sh-primary-text);
 }
 .base {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   text-decoration: line-through;
 }
 .progress {
@@ -165,17 +158,11 @@ onShow(load);
   text-align: center;
   line-height: 72rpx;
 }
-.row__title {
-  font-size: 28rpx;
-  color: var(--sh-ink);
-}
+
 .btn {
+
   padding: 18rpx 32rpx;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 24rpx;
-  font-weight: 600;
+
 }
 .tip {
   margin: 32rpx 8rpx;

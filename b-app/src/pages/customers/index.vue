@@ -200,7 +200,7 @@ onShow(load);
       @pick="pickLevel"
     ></sh-stat>
 
-    <text v-if="stats" class="sh-muted sub">
+    <text v-if="stats" class="txt-caption sh-muted sub">
       {{ $t("members.summary", { n: stats.newThisMonth, m: stats.reachable }) }}
     </text>
 
@@ -208,7 +208,7 @@ onShow(load);
       未计入的买家。**先说，比等他问强** ——
       商家一定会拿订单数与会员数对，对不上时他的第一反应是数据丢了。
     -->
-    <view v-if="stats && stats.unlinkedBuyers > 0" class="notice">
+    <view v-if="stats && stats.unlinkedBuyers > 0" class="txt-caption notice">
       {{ $t("members.unlinked", { n: stats.unlinkedBuyers }) }}
     </view>
 
@@ -252,7 +252,7 @@ onShow(load);
     <view v-for="m in list" :key="m.memberNo" class="sh-row sh-card sh-mt-sm" @tap="open(m)">
       <view class="sh-fill">
         <view class="row__head">
-          <text class="row__name">···{{ m.phoneTail || "----" }}</text>
+          <text class="txt-strong">···{{ m.phoneTail || "----" }}</text>
           <text v-if="m.level" class="sh-chip" :class="levelClass(m.level)">
             {{ $t(`members.level.${m.level}`) }}
           </text>
@@ -277,7 +277,7 @@ onShow(load);
     <!-- 口径开关只给店主：它一改，全主体的分层与所有活动受众跟着变 -->
     <text
       v-if="merchant.can('biz:store:admin')"
-      class="settings"
+      class="txt-caption settings"
       @tap="go('/pages/member-settings/index')"
     >
       {{ $t("memberSettings.entry") }}
@@ -301,13 +301,11 @@ onShow(load);
 .settings {
   display: block;
   margin-top: 16rpx;
-  font-size: 24rpx;
   color: var(--sh-primary-text);
 }
 .sub {
   display: block;
   margin: 16rpx 0 0;
-  font-size: 24rpx;
 }
 /* 未计入提示：主色浅底，不是警示红 —— 这不是故障，是一个需要解释的差额 */
 .notice {
@@ -316,8 +314,6 @@ onShow(load);
   border-radius: 24rpx;
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
-  font-size: 24rpx;
-  line-height: 1.5;
 }
 .search {
   margin-top: 16rpx;
@@ -329,10 +325,7 @@ onShow(load);
   gap: 12rpx;
   margin-bottom: 6rpx;
 }
-.row__name {
-  font-size: 28rpx;
-  font-weight: 600;
-}
+
 /* `<text>` 默认 inline —— 不给 block，「6 单 · ¥272」与「下过单 · 今天」会挤成一行 */
 .row__main .sh-muted {
   display: block;

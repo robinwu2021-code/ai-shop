@@ -134,13 +134,13 @@ async function refresh() {
           状态一律照 canReceiveMoney 显示，不在端上比 applyStatus ——
           比错的表现是「显示能收钱但收不了」，要到第一笔订单才暴露
         -->
-        <text class="badge" :class="p.canReceiveMoney ? 'is-ok' : 'is-wait'">
+        <text class="txt-caption badge" :class="p.canReceiveMoney ? 'is-ok' : 'is-wait'">
           {{ p.canReceiveMoney ? $t("payment.ok") : $t(`payment.status.${p.applyStatus}`) }}
         </text>
       </view>
 
       <!-- 驳回原因要显眼：不给原因，商家只会反复重提同一份资料 -->
-      <text v-if="p.rejectReason" class="reason">{{ p.rejectReason }}</text>
+      <text v-if="p.rejectReason" class="txt-caption reason">{{ p.rejectReason }}</text>
 
       <sh-kv v-if="p.canReceiveMoney" between :label="String($t('payment.settleAccount'))">
         <text>{{ p.settleAccountMasked }}</text>
@@ -148,8 +148,8 @@ async function refresh() {
 
       <!-- 还缺什么，逐条列出来。「还差结算账户」比「审核中」有用得多 -->
       <view v-else-if="p.missing.length" class="miss">
-        <text class="miss__t">{{ $t("payment.missingTitle") }}</text>
-        <text v-for="m in p.missing" :key="m" class="miss__i">· {{ $t(`payment.missing.${m}`) }}</text>
+        <text class="txt-body miss__t">{{ $t("payment.missingTitle") }}</text>
+        <text v-for="m in p.missing" :key="m" class="txt-caption miss__i">· {{ $t(`payment.missing.${m}`) }}</text>
       </view>
     </view>
 
@@ -225,7 +225,6 @@ async function refresh() {
 .badge {
   padding: 6rpx 18rpx;
   border-radius: 9999px;
-  font-size: 24rpx;
 }
 .badge.is-ok {
   background: var(--sh-primary-tint);
@@ -238,8 +237,6 @@ async function refresh() {
 .reason {
   display: block;
   margin-top: 16rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
   color: var(--sh-danger);
 }
 .miss {
@@ -247,14 +244,10 @@ async function refresh() {
 }
 .miss__t {
   display: block;
-  font-size: 28rpx;
-  color: var(--sh-ink);
 }
 .miss__i {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .field {
   margin-top: 20rpx;

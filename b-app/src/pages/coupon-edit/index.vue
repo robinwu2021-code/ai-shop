@@ -166,7 +166,7 @@ onLoad((q) => {
       </view>
 
       <view class="sh-row mt2 sh-mt-xs">
-        <text class="row__label">
+        <text class="txt-sub row__label">
           {{ isPercent ? $t("couponEdit.rate") : $t("couponEdit.face") }}
         </text>
         <input maxlength="10" v-model="form.value" class="field__input row__input" type="digit"
@@ -174,7 +174,7 @@ onLoad((q) => {
       </view>
       <!-- 折扣券必须封顶：不封顶的敞口随订单金额无限放大 -->
       <view v-if="isPercent" class="sh-row sh-mt-xs">
-        <text class="row__label">{{ $t("couponEdit.cap") }}</text>
+        <text class="txt-sub row__label">{{ $t("couponEdit.cap") }}</text>
         <input maxlength="10" v-model="form.cap" class="field__input row__input" type="digit" placeholder="20.00" />
       </view>
       <text v-if="isPercent" class="sh-muted sh-hint">{{ $t("couponEdit.capHint") }}</text>
@@ -183,7 +183,7 @@ onLoad((q) => {
     <!-- ② 门槛 -->
     <view class="sh-card sh-mt-sm">
       <view class="sh-row sh-mt-xs">
-        <text class="row__label">{{ $t("couponEdit.minAmount") }}</text>
+        <text class="txt-sub row__label">{{ $t("couponEdit.minAmount") }}</text>
         <input maxlength="10" v-model="form.minAmount" class="field__input row__input" type="digit"
                :placeholder="$t('couponEdit.minAmountPh')" />
       </view>
@@ -206,7 +206,7 @@ onLoad((q) => {
       <text class="sh-muted sh-hint">{{ $t("couponEdit.redeemHint") }}</text>
 
       <view v-if="form.redeemMode === 'STORE_CODE'" class="sh-row mt2 sh-mt-xs">
-        <text class="row__label">{{ $t("couponEdit.times") }}</text>
+        <text class="txt-sub row__label">{{ $t("couponEdit.times") }}</text>
         <input maxlength="6" v-model="form.timesTotal" class="field__input row__input" type="number" />
       </view>
     </view>
@@ -214,7 +214,7 @@ onLoad((q) => {
     <!-- ④ 有效期 -->
     <view class="sh-card sh-mt-sm">
       <view class="sh-row sh-mt-xs">
-        <text class="row__label">{{ $t("couponEdit.validDays") }}</text>
+        <text class="txt-sub row__label">{{ $t("couponEdit.validDays") }}</text>
         <input maxlength="4" v-model="form.validDays" class="field__input row__input" type="number" />
       </view>
       <text class="sh-muted sh-hint">{{ $t("couponEdit.validHint") }}</text>
@@ -223,24 +223,24 @@ onLoad((q) => {
     <!-- ⑤ 发行量与预算 -->
     <view class="sh-card sh-mt-sm">
       <view class="sh-row sh-mt-xs">
-        <text class="row__label">{{ $t("couponEdit.total") }}</text>
+        <text class="txt-sub row__label">{{ $t("couponEdit.total") }}</text>
         <input maxlength="6" v-model="form.totalCount" class="field__input row__input" type="number" />
       </view>
       <view class="sh-row sh-mt-xs">
-        <text class="row__label">{{ $t("couponEdit.perUser") }}</text>
+        <text class="txt-sub row__label">{{ $t("couponEdit.perUser") }}</text>
         <input maxlength="6" v-model="form.perUserLimit" class="field__input row__input" type="number" />
       </view>
       <view class="sh-row sh-mt-xs">
-        <text class="row__label">{{ $t("couponEdit.budget") }}</text>
+        <text class="txt-sub row__label">{{ $t("couponEdit.budget") }}</text>
         <input maxlength="10" v-model="form.budget" class="field__input row__input" type="digit"
                :placeholder="$t('couponEdit.budgetPh')" />
       </view>
 
       <!-- 他填的是张数，要为之负责的是钱 -->
-      <view v-if="exposure > 0" class="exposure" :class="{ 'is-bad': budgetTooLow }">
+      <view v-if="exposure > 0" class="txt-strong exposure" :class="{ 'is-bad': budgetTooLow }">
         {{ $t("couponEdit.exposure", { n: money(exposure) }) }}
       </view>
-      <text v-if="budgetTooLow" class="bad">{{ $t("couponEdit.budgetTooLow") }}</text>
+      <text v-if="budgetTooLow" class="txt-caption bad">{{ $t("couponEdit.budgetTooLow") }}</text>
     </view>
 
     <button class="sh-btn sh-btn--primary save" :disabled="saving" @tap="save">
@@ -261,8 +261,6 @@ onLoad((q) => {
 
 .row__label {
   width: 180rpx;
-  font-size: 26rpx;
-  color: var(--sh-sub);
 }
 .row__input {
   flex: 1;
@@ -273,8 +271,6 @@ onLoad((q) => {
   padding: 16rpx;
   border-radius: 16rpx;
   background: var(--sh-primary-tint);
-  font-size: 26rpx;
-  font-weight: 600;
 }
 .exposure.is-bad {
   background: var(--sh-danger-tint);
@@ -282,9 +278,7 @@ onLoad((q) => {
 .bad {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
   color: var(--sh-danger);
-  line-height: 1.6;
 }
 .save {
   margin-top: 24rpx;

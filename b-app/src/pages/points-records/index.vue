@@ -32,7 +32,7 @@ onShow(() => {
     <view class="sh-card">
       <view class="line">
         <text class="sh-muted">{{ $t("points.periodTotal") }}</text>
-        <text class="sh-num total">{{ money(total) }}</text>
+        <text class="txt-price sh-num">{{ money(total) }}</text>
       </view>
     </view>
 
@@ -40,7 +40,7 @@ onShow(() => {
 
     <view v-for="r in rows" :key="r.settleNo" class="sh-card sh-mt-xs" :class="{ 'is-none': !r.points }">
       <view class="line">
-        <text class="sh-num sub">{{ r.subOrderNo }}</text>
+        <text class="txt-sub sh-num">{{ r.subOrderNo }}</text>
         <!--
           发了分 → 显示费用金；没发 → 显示原因。
           **不显示「¥0.00」** —— 零和「不适用」是两件事，
@@ -67,12 +67,7 @@ onShow(() => {
   gap: 16rpx;
 }
 .line + .line { margin-top: 6rpx; }
-.total {
-  font-size: 34rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
-}
-.sub { font-size: 26rpx; color: var(--sh-sub); }
+
 /* 未发放那几条压低存在感：它们不是账，是解释 */
 .is-none { opacity: 0.72; }
 </style>

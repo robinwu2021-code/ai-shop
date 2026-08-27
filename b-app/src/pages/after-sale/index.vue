@@ -114,12 +114,12 @@ onShow(load);
 
     <view v-for="r in list" :key="r.as.afterSaleNo" class="sh-card sh-mt-sm">
       <view class="item__head">
-        <text class="item__buyer">{{ r.order?.buyerNickname || "—" }}</text>
+        <text class="txt-body">{{ r.order?.buyerNickname || "—" }}</text>
         <text class="sh-muted">{{ datetime(r.as.updatedAt) }}</text>
       </view>
       <view class="item__tags">
         <text class="sh-chip">{{ $t(`afterSale.type${asType(r)}`) }}</text>
-        <text class="sh-muted sh-num item__no">{{ r.as.subOrderNo }}</text>
+        <text class="txt-caption sh-muted sh-num item__no">{{ r.as.subOrderNo }}</text>
       </view>
       <text v-if="r.as.reason" class="sh-muted reason">
         {{ $t("afterSale.buyerReason") }}{{ r.as.reason }}
@@ -137,7 +137,7 @@ onShow(load);
            退款金额这一行照样该出现，那是这一页最要紧的一个数。 -->
       <view class="item__amount">
         <text class="sh-muted">{{ $t("afterSale.refundAmount") }}</text>
-        <text class="sh-num amount">
+        <text class="txt-price sh-num amount">
           {{ money(r.as.refundMinor, r.order?.amount.currency) }}
         </text>
       </view>
@@ -150,18 +150,18 @@ onShow(load);
           maxlength="80"
         />
         <view class="btns">
-          <text class="btn btn--ghost" @tap="rejecting = ''">{{ $t("common.cancel") }}</text>
-          <text class="btn btn--danger" @tap="reject(r)">{{ $t("afterSale.confirmReject") }}</text>
+          <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="rejecting = ''">{{ $t("common.cancel") }}</text>
+          <text class="sh-btn sh-btn--sm txt-strong btn btn--danger" @tap="reject(r)">{{ $t("afterSale.confirmReject") }}</text>
         </view>
       </template>
 
       <!-- 按售后状态给动作。后端没有独立的「等寄回 / 已收货」两态：
            同意即 REFUNDING，是否已寄回看 returnExpressNo 有没有值 -->
       <view v-else-if="asStatus(r) === 'APPLIED'" class="btns">
-        <text class="btn btn--ghost" @tap="rejecting = r.as.afterSaleNo">
+        <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="rejecting = r.as.afterSaleNo">
           {{ $t("afterSale.reject") }}
         </text>
-        <text class="btn" @tap="agree(r)">
+        <text class="sh-btn sh-btn--sm txt-strong btn" @tap="agree(r)">
           {{ asType(r) === "RETURN_REFUND" ? $t("afterSale.agreeReturn") : $t("afterSale.agree") }}
         </text>
       </view>
@@ -181,7 +181,7 @@ onShow(load);
           <text class="sh-muted">{{ $t("afterSale.returnExpress") }}</text>
           <text class="sh-num">{{ r.as.returnExpressNo }}</text>
         </view>
-        <text class="btn btn--auto" @tap="confirmReturn(r)">
+        <text class="sh-btn sh-btn--sm txt-strong btn btn--auto" @tap="confirmReturn(r)">
           {{ $t("afterSale.confirmReceived") }}
         </text>
       </view>
@@ -248,15 +248,10 @@ onShow(load);
   align-items: baseline;
   justify-content: space-between;
 }
-.item__buyer {
-  font-size: 30rpx;
-  font-weight: 400;
-  color: var(--sh-ink);
-}
+
 .item__no {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
 }
 .goods {
   display: flex;
@@ -271,8 +266,6 @@ onShow(load);
   padding: 20rpx 0;
 }
 .amount {
-  font-size: 34rpx;
-  font-weight: 700;
   color: var(--sh-danger);
 }
 /*
@@ -290,11 +283,6 @@ onShow(load);
   flex: 1;
   text-align: center;
   padding: 22rpx 0;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 28rpx;
-  font-weight: 600;
 }
 /*
  * 与运单号同行的那个按钮**按文字宽度收**，不跟着 `flex: 1` 平分。
@@ -307,10 +295,7 @@ onShow(load);
   padding-left: 24rpx;
   padding-right: 24rpx;
 }
-.btn--ghost {
-  background: var(--sh-faint);
-  color: var(--sh-sub);
-}
+
 .btn--danger {
   background: var(--sh-danger);
   color: #fff;

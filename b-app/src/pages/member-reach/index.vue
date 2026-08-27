@@ -128,8 +128,8 @@ onShow(() => {
     <!-- ② 发给谁 -->
     <view class="sh-card sh-mt-sm">
       <view class="sh-row sh-row--between" @tap="pickSegment">
-        <text class="row__label">{{ $t("reach.toWhom") }}</text>
-        <text class="row__v">{{ segmentName }} ▾</text>
+        <text class="txt-sub">{{ $t("reach.toWhom") }}</text>
+        <text class="txt-body row__v">{{ segmentName }} ▾</text>
       </view>
     </view>
 
@@ -144,7 +144,7 @@ onShow(() => {
         ]"
       ></sh-stat>
       <view v-if="plan.skips.length" class="reasons">
-        <text v-for="s in plan.skips" :key="s.reason" class="reason">
+        <text v-for="s in plan.skips" :key="s.reason" class="txt-caption reason">
           {{ $t(`reach.reason.${s.reason}`, { n: s.count }) }}
         </text>
       </view>
@@ -166,9 +166,9 @@ onShow(() => {
 
     <!-- 结果：与发券结果页同一形状，商家看两处学一次 -->
     <view v-if="result" class="sh-card sh-mt-sm done">
-      <text class="done__t">{{ $t("reach.doneTitle", { n: result.sent }) }}</text>
+      <text class="txt-strong">{{ $t("reach.doneTitle", { n: result.sent }) }}</text>
       <view v-if="result.skips.length" class="reasons">
-        <text v-for="s in result.skips" :key="s.reason" class="reason">
+        <text v-for="s in result.skips" :key="s.reason" class="txt-caption reason">
           {{ $t(`reach.reason.${s.reason}`, { n: s.count }) }}
         </text>
       </view>
@@ -187,12 +187,7 @@ onShow(() => {
   margin-top: 12rpx;
 }
 
-.row__label {
-  font-size: 26rpx;
-  color: var(--sh-sub);
-}
 .row__v {
-  font-size: 28rpx;
   color: var(--sh-primary-text);
 }
 .reasons {
@@ -202,8 +197,6 @@ onShow(() => {
   margin-top: 12rpx;
 }
 .reason {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   background: var(--sh-faint);
   border-radius: 16rpx;
   padding: 6rpx 12rpx;
@@ -218,8 +211,5 @@ onShow(() => {
 .done {
   border: 2rpx solid var(--sh-success);
 }
-.done__t {
-  font-size: 28rpx;
-  font-weight: 600;
-}
+
 </style>

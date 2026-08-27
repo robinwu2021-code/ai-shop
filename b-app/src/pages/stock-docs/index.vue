@@ -81,7 +81,7 @@ onShow(load);
     <view v-for="d in rows" :key="d.docNo" class="sh-card sh-mb-sm" @tap="open(d)">
       <view class="row__top">
         <view class="sh-fill">
-          <text class="row__title">{{ $t(`stockDocs.kind.${d.kind}`) }}</text>
+          <text class="txt-strong row__title">{{ $t(`stockDocs.kind.${d.kind}`) }}</text>
           <view class="row__meta">
             <text class="sh-muted sh-num">{{ d.docNo }}</text>
             <text v-if="d.operator" class="sh-muted">{{ d.operator }}</text>
@@ -117,9 +117,6 @@ onShow(load);
 
 .row__title {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .row__meta {
   display: flex;

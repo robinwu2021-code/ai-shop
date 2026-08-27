@@ -149,7 +149,7 @@ onShow(load);
       -->
       <view v-if="plan.status === 'GRACE'" class="banner banner--warn">
         <text class="banner__t">{{ $t("plan.graceTitle") }}</text>
-        <text class="banner__d">{{ $t("plan.graceBody") }}</text>
+        <text class="txt-caption">{{ $t("plan.graceBody") }}</text>
       </view>
 
       <!--
@@ -160,15 +160,15 @@ onShow(load);
         <text class="banner__t">
           {{ $t("plan.suspendedTitle", { n: plan.suspendedStores.length }) }}
         </text>
-        <text class="banner__d">{{ plan.suspendedStores.join("、") }}</text>
-        <text class="banner__d">{{ $t("plan.suspendedBody") }}</text>
+        <text class="txt-caption">{{ plan.suspendedStores.join("、") }}</text>
+        <text class="txt-caption">{{ $t("plan.suspendedBody") }}</text>
       </view>
 
       <!-- 三档对比 -->
       <text class="txt-title sec">{{ $t("plan.tiers") }}</text>
       <view v-for="tier in plan.tiers" :key="tier.planCode" class="sh-card tier">
         <view class="tier__head">
-          <text class="tier__name">{{ tier.name }}</text>
+          <text class="txt-title">{{ tier.name }}</text>
           <text v-if="tier.current" class="sh-chip sh-chip--primary">{{ $t("plan.tierCurrent") }}</text>
         </view>
         <text class="sh-muted">
@@ -239,10 +239,7 @@ onShow(load);
 .banner__t {
   font-weight: 600;
 }
-.banner__d {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
+
 .sec {
   margin: 28rpx 0 12rpx;
 }
@@ -259,10 +256,7 @@ onShow(load);
 }
 /* 34rpx/600 = 字阶的标题档（同 .txt-title）。原先的 32rpx 不在字阶上：
    与 34 只差 1px，分不出层级，却让「调整全局标题字号」这类改动漏掉这一处 */
-.tier__name {
-  font-size: 34rpx;
-  font-weight: 600;
-}
+
 .act {
   margin-top: 20rpx;
 }

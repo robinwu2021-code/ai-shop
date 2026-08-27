@@ -35,23 +35,9 @@ import javax.sql.DataSource;
 @EnableSchedulerLock(defaultLockAtMostFor = "PT30M")
 public class SchedulingConfig {
 
-    /**
-     * 锁存在数据库里，而不是 Redis。
-     *
-     * <p>本仓已经有 Redis（会话），用它做锁也可以。选库的理由是
-     * <b>锁和被锁的数据在同一个事务边界内</b>：积分转正改的是库里的余额行，
-     * 锁也在库里 —— 库挂了两者一起不可用，不会出现「锁还在、库没了」
-     * 这种半可用状态下的重复执行。
-     *
-     * <p>{@code usingDbTime()}：用数据库的时钟判断锁是否过期，而不是各实例自己的。
-     * 不加这句的话，两台机器差几秒就可能同时认为锁已过期。
+    /*
+     * lockProvider 已搬到 ShedLockConfig —— 这里挂着 @Profile("worker")，
+     * 而任务现在由独立调度器经 /internal/job/{name}/run 打进来，那条路跑在
+     * api,ops 下。锁的可用性不该跟着「谁来触发」变。
      */
-    @Bean
-    public LockProvider lockProvider(DataSource dataSource) {
-        return new JdbcTemplateLockProvider(
-                JdbcTemplateLockProvider.Configuration.builder()
-                        .withJdbcTemplate(new org.springframework.jdbc.core.JdbcTemplate(dataSource))
-                        .usingDbTime()
-                        .build());
-    }
 }

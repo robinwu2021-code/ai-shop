@@ -120,7 +120,7 @@ onShow(load);
   -->
   <sh-scaffold title-key="stockDetail.title" :denied="!merchant.can('biz:stock')">
     <template v-if="detail">
-      <text class="head">{{ detail.name }}{{ detail.specText ? ` · ${detail.specText}` : "" }}</text>
+      <text class="txt-title head">{{ detail.name }}{{ detail.specText ? ` · ${detail.specText}` : "" }}</text>
 
       <sh-stat
         :items="[
@@ -166,7 +166,7 @@ onShow(load);
 
         <view v-for="r in ledger" :key="r.id" class="led">
           <view class="sh-fill">
-            <text class="led__title">{{ $t(`stock.reason.${r.reasonCode}`) }}</text>
+            <text class="txt-strong led__title">{{ $t(`stock.reason.${r.reasonCode}`) }}</text>
             <view class="led__meta">
               <text class="sh-muted">{{ r.docNo }}</text>
               <text class="sh-muted">{{ r.operator || "—" }}</text>
@@ -221,9 +221,6 @@ onShow(load);
 }
 .head {
   display: block;
-  font-size: 34rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
   margin-bottom: 16rpx;
 }
 .led {
@@ -238,9 +235,6 @@ onShow(load);
 
 .led__title {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .led__meta {
   display: flex;

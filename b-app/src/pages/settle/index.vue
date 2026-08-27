@@ -124,11 +124,11 @@ onShow(load);
       <text class="txt-title">{{ $t("settle.rateTitle") }}</text>
       <view class="ratecard__row">
         <text class="sh-chip sh-chip--primary">{{ $t("order.trafficMERCHANT_OWNED") }}</text>
-        <text class="ratecard__v sh-num">{{ pct(rate.merchantOwnedRate) }}</text>
+        <text class="txt-body sh-num">{{ pct(rate.merchantOwnedRate) }}</text>
       </view>
       <view class="ratecard__row">
         <text class="sh-chip">{{ $t("order.trafficPLATFORM") }}</text>
-        <text class="ratecard__v sh-num">{{ pct(rate.platformRate) }}</text>
+        <text class="txt-body sh-num">{{ pct(rate.platformRate) }}</text>
       </view>
       <text class="sh-muted ratecard__note">{{ rate.note }}</text>
     </view>
@@ -152,7 +152,7 @@ onShow(load);
       </view>
       <view class="points__row">
         <text class="sh-muted">{{ $t("settle.pointsExpense", { period: points.period }) }}</text>
-        <text class="sh-num big">{{ money(points.periodExpenseMinor) }}</text>
+        <text class="txt-hero sh-num">{{ money(points.periodExpenseMinor) }}</text>
       </view>
       <text v-if="points.disabledReason" class="sh-muted points__note">
         {{ points.disabledReason }}
@@ -201,7 +201,7 @@ onShow(load);
     -->
     <view v-for="b in bills" :key="b.settleNo" class="sh-card bill">
       <view class="bill__head">
-        <text class="bill__period sh-num">{{ monthDay(b.createdAt) }}</text>
+        <text class="txt-strong sh-num">{{ monthDay(b.createdAt) }}</text>
         <text
           class="sh-chip"
           :class="b.status === 'SPLIT' ? 'sh-chip--primary' : 'sh-chip--warning'"
@@ -210,7 +210,7 @@ onShow(load);
 
       <view class="bill__amount">
         <text class="sh-muted">{{ $t("settle.net") }}</text>
-        <text class="sh-num big">{{ money(b.netMinor) }}</text>
+        <text class="txt-hero sh-num">{{ money(b.netMinor) }}</text>
       </view>
 
       <view class="rows">
@@ -254,11 +254,7 @@ onShow(load);
   justify-content: space-between;
   margin-top: 14rpx;
 }
-.ratecard__v {
-  font-size: 30rpx;
-  font-weight: 400;
-  color: var(--sh-ink);
-}
+
 .ratecard__note {
   display: block;
   margin-top: 14rpx;
@@ -293,22 +289,14 @@ onShow(load);
   align-items: center;
   justify-content: space-between;
 }
-.bill__period {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
+
 .bill__amount {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   margin: 24rpx 0;
 }
-.big {
-  font-size: 48rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
+
 .rows {
   border-radius: 24rpx;
   background: var(--sh-faint);

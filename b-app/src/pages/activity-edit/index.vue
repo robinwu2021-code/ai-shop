@@ -214,12 +214,12 @@ onLoad((q) => {
           :selected="form.goal === g.key"
           @tap="pickGoal(g.key)"
         >
-          <text class="opt__t">{{ $t(`activityEdit.goal.${g.key}`) }}</text>
-          <text class="sh-muted opt__d">{{ $t(`activityEdit.goalHint.${g.key}`) }}</text>
+          <text class="txt-strong opt__t">{{ $t(`activityEdit.goal.${g.key}`) }}</text>
+          <text class="txt-caption sh-muted opt__d">{{ $t(`activityEdit.goalHint.${g.key}`) }}</text>
         </sh-option>
       </view>
       <view class="sh-row sh-mt-sm sh-mt-xs">
-        <text class="row__label">{{ $t("activityEdit.name") }}</text>
+        <text class="txt-sub row__label">{{ $t("activityEdit.name") }}</text>
         <input maxlength="64" v-model="form.name" class="field__input row__input"
                :placeholder="$t('activityEdit.namePh')" />
       </view>
@@ -240,18 +240,18 @@ onLoad((q) => {
 
       <template v-if="form.benefitType === 'CUT'">
         <view class="sh-row sh-mt-sm sh-mt-xs">
-          <text class="row__label">{{ $t("activityEdit.threshold") }}</text>
+          <text class="txt-sub row__label">{{ $t("activityEdit.threshold") }}</text>
           <input maxlength="10" v-model="form.threshold" class="field__input row__input" type="digit" />
         </view>
         <view class="sh-row sh-mt-xs">
-          <text class="row__label">{{ $t("activityEdit.cut") }}</text>
+          <text class="txt-sub row__label">{{ $t("activityEdit.cut") }}</text>
           <input maxlength="10" v-model="form.amount" class="field__input row__input" type="digit" />
         </view>
       </template>
 
       <template v-if="form.benefitType === 'PRICE'">
         <view class="sh-row sh-mt-sm sh-mt-xs">
-          <text class="row__label">{{ $t("activityEdit.price") }}</text>
+          <text class="txt-sub row__label">{{ $t("activityEdit.price") }}</text>
           <input maxlength="10" v-model="form.amount" class="field__input row__input" type="digit" />
         </view>
         <text class="sh-muted sh-hint">{{ $t("activityEdit.priceHint") }}</text>
@@ -259,21 +259,21 @@ onLoad((q) => {
 
       <template v-if="form.benefitType === 'GIFT'">
         <view class="sh-row sh-mt-sm sh-mt-xs">
-          <text class="row__label">{{ $t("activityEdit.buyN") }}</text>
+          <text class="txt-sub row__label">{{ $t("activityEdit.buyN") }}</text>
           <input maxlength="6" v-model="form.buyN" class="field__input row__input" type="number" />
         </view>
         <view class="sh-row sh-mt-xs">
-          <text class="row__label">{{ $t("activityEdit.giftM") }}</text>
+          <text class="txt-sub row__label">{{ $t("activityEdit.giftM") }}</text>
           <input maxlength="6" v-model="form.giftM" class="field__input row__input" type="number" />
         </view>
       </template>
 
       <!-- 冲突提示：不阻止，但要在保存前说出来 -->
       <view v-if="conflicts.length" class="conflict">
-        <text v-for="c in conflicts" :key="c.activityNo + c.goodsNo" class="conflict__l">
+        <text v-for="c in conflicts" :key="c.activityNo + c.goodsNo" class="txt-caption conflict__l">
           {{ $t("activityEdit.conflict", { g: c.goodsNo, name: c.activityName }) }}
         </text>
-        <text class="sh-muted conflict__h">{{ $t("activityEdit.conflictHint") }}</text>
+        <text class="txt-caption sh-muted conflict__h">{{ $t("activityEdit.conflictHint") }}</text>
       </view>
     </view>
 
@@ -291,7 +291,7 @@ onLoad((q) => {
       </view>
 
       <view v-if="form.scheduleType === 'ONE_OFF'" class="sh-row sh-mt-sm sh-mt-xs">
-        <text class="row__label">{{ $t("activityEdit.days") }}</text>
+        <text class="txt-sub row__label">{{ $t("activityEdit.days") }}</text>
         <input maxlength="4" v-model="form.days" class="field__input row__input" type="number" />
       </view>
 
@@ -306,7 +306,7 @@ onLoad((q) => {
           >{{ $t(`activities.weekday.${d}`) }}</text>
         </view>
         <view class="sh-row sh-mt-xs">
-          <text class="row__label">{{ $t("activityEdit.timeRange") }}</text>
+          <text class="txt-sub row__label">{{ $t("activityEdit.timeRange") }}</text>
           <input maxlength="5" v-model="form.from" class="field__input row__input" placeholder="08:00" />
           <input maxlength="5" v-model="form.to" class="field__input row__input" placeholder="20:00" />
         </view>
@@ -314,19 +314,19 @@ onLoad((q) => {
       </template>
 
       <view class="sh-row sh-mt-sm sh-mt-xs">
-        <text class="row__label">{{ $t("activityEdit.quota") }}</text>
+        <text class="txt-sub row__label">{{ $t("activityEdit.quota") }}</text>
         <input maxlength="6" v-model="form.quota" class="field__input row__input" type="number" />
       </view>
       <view class="sh-row sh-mt-xs">
-        <text class="row__label">{{ $t("activityEdit.budget") }}</text>
+        <text class="txt-sub row__label">{{ $t("activityEdit.budget") }}</text>
         <input maxlength="10" v-model="form.budget" class="field__input row__input" type="digit"
                :placeholder="$t('activityEdit.budgetPh')" />
       </view>
 
-      <view v-if="exposure > 0" class="exposure">
+      <view v-if="exposure > 0" class="txt-strong exposure">
         {{ $t("activityEdit.exposure", { n: money(exposure) }) }}
       </view>
-      <text v-if="alwaysOnUncapped" class="bad">{{ $t("activityEdit.alwaysOnNeedsCap") }}</text>
+      <text v-if="alwaysOnUncapped" class="txt-caption bad">{{ $t("activityEdit.alwaysOnNeedsCap") }}</text>
     </view>
 
     <!-- ④ 给谁 -->
@@ -339,8 +339,8 @@ onLoad((q) => {
           :selected="form.audienceType === a"
           @tap="form.audienceType = a"
         >
-          <text class="opt__t">{{ $t(`activityEdit.audience.${a || "ALL"}`) }}</text>
-          <text class="sh-muted opt__d">{{ $t(`activityEdit.audienceHint.${a || "ALL"}`) }}</text>
+          <text class="txt-strong opt__t">{{ $t(`activityEdit.audience.${a || "ALL"}`) }}</text>
+          <text class="txt-caption sh-muted opt__d">{{ $t(`activityEdit.audienceHint.${a || "ALL"}`) }}</text>
         </sh-option>
       </view>
     </view>
@@ -374,14 +374,10 @@ onLoad((q) => {
 }
 .opt__t {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
 }
 .opt__d {
   display: block;
   margin-top: 6rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
 }
 .chips {
   display: flex;
@@ -397,8 +393,6 @@ onLoad((q) => {
 
 .row__label {
   width: 200rpx;
-  font-size: 26rpx;
-  color: var(--sh-sub);
 }
 .row__input {
   flex: 1;
@@ -412,28 +406,21 @@ onLoad((q) => {
 }
 .conflict__l {
   display: block;
-  font-size: 24rpx;
-  line-height: 1.6;
 }
 .conflict__h {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
 }
 .exposure {
   margin-top: 16rpx;
   padding: 16rpx;
   border-radius: 16rpx;
   background: var(--sh-primary-tint);
-  font-size: 26rpx;
-  font-weight: 600;
 }
 .bad {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
   color: var(--sh-danger);
-  line-height: 1.6;
 }
 .nav {
   display: flex;

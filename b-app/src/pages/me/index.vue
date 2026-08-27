@@ -141,11 +141,11 @@ onShow(() => {
         以那边为准，把这一行删掉就是。有门总比没门强。
       -->
       <view v-if="merchant.can('biz:finance')" class="cell" @tap="go(ROUTES.income)">
-        <text class="cell__label">{{ $t("me.income") }}</text>
+        <text class="txt-body cell__label">{{ $t("me.income") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <view v-if="merchant.can('biz:finance')" class="cell" @tap="go(ROUTES.settle)">
-        <text class="cell__label">{{ $t("me.settle") }}</text>
+        <text class="txt-body cell__label">{{ $t("me.settle") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <!--
@@ -158,12 +158,12 @@ onShow(() => {
         两处都摆一个门就又回到「同一件事三个入口，人记不住走哪个」。
       -->
       <view v-if="merchant.can('biz:store:admin')" class="cell" @tap="go(ROUTES.staff)">
-        <text class="cell__label">{{ $t("me.staff") }}</text>
+        <text class="txt-body cell__label">{{ $t("me.staff") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <!-- 收款设置：商户维度的钱袋子。「我的」本身就是商户视角，不必再造一层「商户」 -->
       <view v-if="merchant.can('biz:finance')" class="cell" @tap="go(ROUTES.payment)">
-        <text class="cell__label">{{ $t("me.payment") }}</text>
+        <text class="txt-body cell__label">{{ $t("me.payment") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <!--
@@ -172,7 +172,7 @@ onShow(() => {
         一年动一次的执照摆在那儿只会把每天要看的数字往下挤。
       -->
       <view v-if="merchant.can('biz:store')" class="cell" @tap="go(ROUTES.qualifications)">
-        <text class="cell__label">{{ $t("stores.qualEntry") }}</text>
+        <text class="txt-body cell__label">{{ $t("stores.qualEntry") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <!--
@@ -190,9 +190,9 @@ onShow(() => {
         class="cell"
         @tap="go(ROUTES.entities)"
       >
-        <text class="cell__label">{{ $t("entities.title") }}</text>
+        <text class="txt-body cell__label">{{ $t("entities.title") }}</text>
         <!-- 数的是**证照**不是门店：这一行进的是证照列表页，那里一条就是一张证照 -->
-        <text class="cell__sub sh-fill">{{ $t("entities.count", { n: merchant.entityGroups.length }) }}</text>
+        <text class="txt-caption cell__sub sh-fill">{{ $t("entities.count", { n: merchant.entityGroups.length }) }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <!--
@@ -204,14 +204,14 @@ onShow(() => {
         店长看到额度只会去催老板买单，而他不是做这个决定的人。
       -->
       <view v-if="merchant.can('biz:store:admin')" class="cell" @tap="go(ROUTES.plan)">
-        <text class="cell__label">{{ $t("plan.meCell") }}</text>
-        <text v-if="plan" class="cell__value" :class="{ 'cell__value--warn': quotaFull }">
+        <text class="txt-body cell__label">{{ $t("plan.meCell") }}</text>
+        <text v-if="plan" class="txt-caption cell__value" :class="{ 'cell__value--warn': quotaFull }">
           {{ $t("plan.meSub", { name: plan.planName, used: plan.storeUsed, quota: plan.storeQuota }) }}
         </text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <view v-if="merchant.can('biz:customer')" class="cell" @tap="go(ROUTES.stats)">
-        <text class="cell__label">{{ $t("me.stats") }}</text>
+        <text class="txt-body cell__label">{{ $t("me.stats") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
     </view>
@@ -219,8 +219,8 @@ onShow(() => {
     <view class="cells">
       <!-- 消息：新订单/售后/评价的落点。红点数与 tabBar 角标同源（30s 轮询） -->
       <view v-if="merchant.isLogin" class="cell" @tap="go(ROUTES.messages)">
-        <text class="cell__label">{{ $t("me.messages") }}</text>
-        <text v-if="unreadCount" class="cell__badge sh-num">
+        <text class="txt-body cell__label">{{ $t("me.messages") }}</text>
+        <text v-if="unreadCount" class="txt-caption cell__badge sh-num">
           {{ unreadCount > 99 ? "99+" : unreadCount }}
         </text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
@@ -228,18 +228,18 @@ onShow(() => {
       <!-- 登录密码：设过就是「修改」，没设过是「设置」——
            两个词对应的心理动作不同，含糊成一个「密码」会让人不知道点进去会发生什么 -->
       <view v-if="merchant.isLogin" class="cell" @tap="editPassword">
-        <text class="cell__label">{{ $t("me.password") }}</text>
-        <text class="cell__value">
+        <text class="txt-body cell__label">{{ $t("me.password") }}</text>
+        <text class="txt-caption cell__value">
           {{ hasPassword ? $t("me.passwordSet") : $t("me.passwordUnset") }}
         </text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <view class="cell" @tap="sheetOpen = true">
-        <text class="cell__label">{{ $t("me.appearance") }}</text>
-        <text class="cell__value">{{ $t("me.appearanceValue") }}</text>
+        <text class="txt-body cell__label">{{ $t("me.appearance") }}</text>
+        <text class="txt-caption cell__value">{{ $t("me.appearanceValue") }}</text>
       </view>
       <view class="cell" @tap="later">
-        <text class="cell__label">{{ $t("me.help") }}</text>
+        <text class="txt-body cell__label">{{ $t("me.help") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
     </view>
@@ -247,7 +247,7 @@ onShow(() => {
     <!-- 退出登录单独一组：它与上面几项不是同类，紧挨着放容易误点 -->
     <view v-if="merchant.isLogin" class="cells">
       <view class="cell" @tap="logout">
-        <text class="cell__label cell__label--danger">{{ $t("me.logout") }}</text>
+        <text class="txt-body cell__label cell__label--danger">{{ $t("me.logout") }}</text>
       </view>
     </view>
 
@@ -293,16 +293,12 @@ onShow(() => {
   padding: 26rpx;
 }
 .cell__label {
-  font-size: 28rpx;
-  color: var(--sh-ink);
   flex-shrink: 0;
 }
 /* 右侧补充数字（「3 家门店」）：与主标题同一行、色浅一档，
    不换行也不抢视线 —— 它是判断要不要点进去的依据，不是标题的一部分 */
 .cell__sub {
   text-align: end;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 /* 退出登录用警示色：它是不可逆动作，和「查看结算单」不该长得一样 */
 .cell__label--danger {
@@ -312,7 +308,6 @@ onShow(() => {
   flex-shrink: 0;
   min-width: 32rpx;
   height: 32rpx;
-  line-height: 32rpx;
   padding: 0 8rpx;
   border-radius: 9999px;
   background: var(--sh-danger);
@@ -322,8 +317,6 @@ onShow(() => {
   text-align: center;
 }
 .cell__value {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;

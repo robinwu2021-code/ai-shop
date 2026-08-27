@@ -258,22 +258,22 @@ function pickPayment(s: Store, payMerchantNo?: string) {
       <view class="st__top">
         <text class="txt-title">{{ s.name }}</text>
         <view class="tags">
-          <text v-if="s.storeNo === merchant.storeNo" class="tag tag--primary">{{ $t("stores.currentTag") }}</text>
-          <text v-if="s.isDefault" class="tag">{{ $t("stores.default") }}</text>
+          <text v-if="s.storeNo === merchant.storeNo" class="txt-caption tag tag--primary">{{ $t("stores.currentTag") }}</text>
+          <text v-if="s.isDefault" class="txt-caption tag">{{ $t("stores.default") }}</text>
           <!--
             ★ 两种只读必须分开显示：`status` 一模一样，而下一步完全不同 ——
             平台压的要补缴/升档，自己停的点一下启用就开。
             不分开的表现是店主反复点那个对降级店无效的「启用」。
           -->
-          <text v-if="s.planSuspended" class="tag tag--warn">{{ $t("stores.planSuspended") }}</text>
-          <text v-else-if="s.status !== 'ACTIVE'" class="tag">{{ $t("stores.disabled") }}</text>
+          <text v-if="s.planSuspended" class="txt-caption tag tag--warn">{{ $t("stores.planSuspended") }}</text>
+          <text v-else-if="s.status !== 'ACTIVE'" class="txt-caption tag">{{ $t("stores.disabled") }}</text>
           <!-- 收不了钱要显眼：店开着但钱进不来，是最容易被忽略的一种坏 -->
-          <text v-if="!s.payReady" class="tag tag--warn">{{ $t("stores.payNotReady") }}</text>
+          <text v-if="!s.payReady" class="txt-caption tag tag--warn">{{ $t("stores.payNotReady") }}</text>
         </view>
       </view>
 
       <text v-if="s.address" class="addr">{{ s.address }}</text>
-      <text class="meta">{{ $t("stores.staffCount", { n: s.staffCount }) }}</text>
+      <text class="txt-caption meta">{{ $t("stores.staffCount", { n: s.staffCount }) }}</text>
 
       <!--
         今天这家店怎么样。**待办三项照抄跨店总览的口径**（待发货/待自送/待备货）：
@@ -281,7 +281,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
         为 0 的也留着，位置固定才形成肌肉记忆。
       -->
       <view v-if="s.stat" class="today">
-        <text class="today__line">
+        <text class="txt-sub today__line">
           {{ $t("stores.todayLine", {
             n: s.stat.todayOrders,
             gmv: money(s.stat.todayGmvMinor, s.currency),
@@ -289,29 +289,29 @@ function pickPayment(s: Store, payMerchantNo?: string) {
         </text>
         <view class="todo">
           <view class="todo__i">
-            <text class="todo__v sh-num" :class="{ 'is-zero': !s.stat.toShip }">
+            <text class="txt-title todo__v sh-num" :class="{ 'is-zero': !s.stat.toShip }">
               {{ s.stat.toShip }}
             </text>
-            <text class="todo__l">{{ $t("crossStore.toShip") }}</text>
+            <text class="txt-caption todo__l">{{ $t("crossStore.toShip") }}</text>
           </view>
           <view class="todo__i">
-            <text class="todo__v sh-num" :class="{ 'is-zero': !s.stat.toDeliver }">
+            <text class="txt-title todo__v sh-num" :class="{ 'is-zero': !s.stat.toDeliver }">
               {{ s.stat.toDeliver }}
             </text>
-            <text class="todo__l">{{ $t("crossStore.toDeliver") }}</text>
+            <text class="txt-caption todo__l">{{ $t("crossStore.toDeliver") }}</text>
           </view>
           <view class="todo__i">
-            <text class="todo__v sh-num" :class="{ 'is-zero': !s.stat.toStock }">
+            <text class="txt-title todo__v sh-num" :class="{ 'is-zero': !s.stat.toStock }">
               {{ s.stat.toStock }}
             </text>
-            <text class="todo__l">{{ $t("crossStore.toStock") }}</text>
+            <text class="txt-caption todo__l">{{ $t("crossStore.toStock") }}</text>
           </view>
         </view>
       </view>
 
       <!-- 收款号：空 = 用主体默认号，这是常态不是缺配置 -->
       <view class="pay">
-        <text class="pay__label">{{ $t("stores.payment") }}</text>
+        <text class="txt-caption pay__label">{{ $t("stores.payment") }}</text>
         <view class="pay__opts">
           <text
             class="sh-chip"
@@ -406,8 +406,8 @@ function pickPayment(s: Store, payMerchantNo?: string) {
               || (!entityNo && g.entity.entityNo === merchant.profile?.merchantNo)"
             @tap="entityNo = g.entity.entityNo"
           >
-            <text class="pick__name">{{ g.entity.name }}</text>
-            <text class="pick__sub">{{ $t("entities.storeCount", { n: g.entity.storeCount }) }}</text>
+            <text class="txt-sub pick__name">{{ g.entity.name }}</text>
+            <text class="txt-caption pick__sub">{{ $t("entities.storeCount", { n: g.entity.storeCount }) }}</text>
           </sh-option>
         </view>
         <text class="sh-hint">{{ $t("stores.underEntityHint") }}</text>
@@ -443,14 +443,11 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 }
 .pick__name {
   display: block;
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
 .pick__sub {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 
 /* 横向不再自己加内边距：页面边距由 sh-scaffold 统一给，这里再加一道，
@@ -475,8 +472,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   padding: 4rpx 14rpx;
   border-radius: 9999px;
   background: var(--sh-faint);
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .tag--primary {
   background: var(--sh-primary-tint);
@@ -489,16 +484,12 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 .meta {
   display: block;
   margin-top: 10rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .pay {
   margin-top: 20rpx;
 }
 .pay__label {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .pay__opts {
   display: flex;
@@ -533,7 +524,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 }
 .today__line {
   display: block;
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
 .todo {
@@ -546,8 +536,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 }
 .todo__v {
   display: block;
-  font-size: 34rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
 }
 .todo__v.is-zero {
@@ -556,7 +544,5 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 .todo__l {
   display: block;
   margin-top: 6rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 </style>

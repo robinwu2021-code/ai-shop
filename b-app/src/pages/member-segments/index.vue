@@ -103,12 +103,12 @@ onShow(load);
 
     <view v-for="sg in list" :key="sg.segmentNo" class="sh-card sh-mb-sm">
       <view class="item__head">
-        <text class="item__name">{{ sg.name }}</text>
-        <text class="sh-num count">{{ $t("memberSegments.count", { n: sg.lastCount }) }}</text>
+        <text class="txt-strong">{{ sg.name }}</text>
+        <text class="txt-sub sh-num count">{{ $t("memberSegments.count", { n: sg.lastCount }) }}</text>
       </view>
-      <text class="sh-muted cond">{{ summary(sg) }}</text>
+      <text class="txt-caption sh-muted cond">{{ summary(sg) }}</text>
       <!-- 「算于」不是装饰：它是这份数字唯一的保质期标记 -->
-      <text class="sh-muted stamp">
+      <text class="txt-caption sh-muted stamp">
         {{ $t("memberSegments.countedAt", { t: countedAt(sg.countedAt) }) }}
       </text>
       <view class="acts">
@@ -130,23 +130,17 @@ onShow(load);
   align-items: baseline;
   justify-content: space-between;
 }
-.item__name {
-  font-size: 30rpx;
-  font-weight: 600;
-}
+
 .count {
-  font-size: 26rpx;
   color: var(--sh-primary-text);
 }
 .cond {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
 }
 .stamp {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
 }
 .acts {
   display: flex;

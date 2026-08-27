@@ -130,14 +130,14 @@ onShow(() => {
       <text v-if="!slots.length" class="sh-muted sh-hint">{{ $t("schedule.empty") }}</text>
       <view v-for="s in slots" :key="s.slotNo" class="slot">
         <view class="sh-fill">
-          <text class="slot__when sh-num">{{ datetime(s.startAt) }}</text>
+          <text class="txt-body slot__when sh-num">{{ datetime(s.startAt) }}</text>
           <text class="sh-muted">{{ $t("schedule.booked", { b: s.booked, c: s.capacity }) }}</text>
         </view>
         <text class="sh-chip" :class="{ 'sh-chip--primary': s.status === 'OPEN' && s.remaining > 0 }">
           {{ stateText(s) }}
         </text>
         <!-- 停约不删行也不赶人：已经约进来的单还指着它 -->
-        <text v-if="s.status === 'OPEN'" class="slot__act" @tap="close(s)">
+        <text v-if="s.status === 'OPEN'" class="txt-sub slot__act" @tap="close(s)">
           {{ $t("schedule.close") }}
         </text>
       </view>
@@ -162,11 +162,8 @@ onShow(() => {
 
 .slot__when {
   display: block;
-  font-size: 28rpx;
-  color: var(--sh-ink);
 }
 .slot__act {
-  font-size: 26rpx;
   color: var(--sh-primary-text);
 }
 </style>

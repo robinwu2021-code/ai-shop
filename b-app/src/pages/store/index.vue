@@ -209,7 +209,7 @@ onShow(() => {
         <text class="field__label">{{ $t("store.openHours") }}</text>
         <biz-time-range v-model="form.openHours"></biz-time-range>
         <view class="quick">
-          <text v-for="h in HOURS" :key="h.key" class="mini" @tap="form.openHours = h.value">
+          <text v-for="h in HOURS" :key="h.key" class="txt-caption mini" @tap="form.openHours = h.value">
             {{ $t(`store.${h.key}`) }}
           </text>
         </view>
@@ -221,7 +221,7 @@ onShow(() => {
           <input v-model="form.address" class="field__input sh-fill" :maxlength="100" :placeholder="$t('store.addressPh')" />
           <view v-if="geoAvailable" class="addr__locate" @tap="locateAddress">
             <sh-icon name="pin" :size="18" color="var(--sh-primary-text)"></sh-icon>
-            <text class="addr__t">{{ locating ? "…" : pinned ? $t("store.repinAddr") : $t("store.pickAddr") }}</text>
+            <text class="txt-caption addr__t">{{ locating ? "…" : pinned ? $t("store.repinAddr") : $t("store.pickAddr") }}</text>
           </view>
         </view>
         <!--
@@ -255,22 +255,22 @@ onShow(() => {
           <text v-else class="qr__ph">▦</text>
         </view>
         <view class="sh-fill">
-          <text class="qr__t">{{ $t("store.qrcode") }}</text>
+          <text class="txt-strong qr__t">{{ $t("store.qrcode") }}</text>
           <text class="sh-hint">
             {{ qrcode?.imageBase64 ? (qrcode.printableHint || $t("store.qrcodeDesc")) : $t("store.qrcodePending") }}
           </text>
-          <text v-if="qrcode?.storeCode" class="qr__code sh-num">{{ qrcode.storeCode }}</text>
+          <text v-if="qrcode?.storeCode" class="txt-sub qr__code sh-num">{{ qrcode.storeCode }}</text>
           <view class="btns">
-            <text v-if="qrcode?.imageBase64" class="mini" @tap="saveQrImage">{{ $t("store.saveImage") }}</text>
-            <text v-if="qrcode?.url" class="mini" @tap="copyLink">{{ $t("store.copyLink") }}</text>
+            <text v-if="qrcode?.imageBase64" class="txt-caption mini" @tap="saveQrImage">{{ $t("store.saveImage") }}</text>
+            <text v-if="qrcode?.url" class="txt-caption mini" @tap="copyLink">{{ $t("store.copyLink") }}</text>
           </view>
         </view>
       </view>
       <text class="sh-hint">{{ $t("store.qrcodeHint") }}</text>
 
       <view class="kitwrap">
-        <text class="qr__t">{{ $t("store.shareKit") }}</text>
-        <view class="kit">{{ kit?.text }}</view>
+        <text class="txt-strong qr__t">{{ $t("store.shareKit") }}</text>
+        <view class="txt-sub kit">{{ kit?.text }}</view>
         <view class="sh-btn" @tap="copyText">{{ $t("store.copyKit") }}</view>
         <text class="sh-hint">{{ $t("store.shareKitHint") }}</text>
 
@@ -323,15 +323,12 @@ onShow(() => {
   background: var(--sh-primary-tint);
 }
 .addr__t {
-  font-size: 24rpx;
   color: var(--sh-primary-text);
 }
 .mini {
   padding: 12rpx 24rpx;
   border-radius: 16rpx;
   background: var(--sh-faint);
-  color: var(--sh-sub);
-  font-size: 24rpx;
 }
 .qr {
   display: flex;
@@ -360,14 +357,10 @@ onShow(() => {
 
 .qr__t {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .qr__code {
   display: block;
   margin-top: 8rpx;
-  font-size: 26rpx;
   letter-spacing: 4rpx;
   color: var(--sh-ink);
 }
@@ -397,8 +390,6 @@ onShow(() => {
   padding: 24rpx;
   border-radius: 24rpx;
   background: var(--sh-faint);
-  font-size: 26rpx;
-  line-height: 1.7;
   color: var(--sh-ink);
 }
 
@@ -417,8 +408,6 @@ onShow(() => {
 }
 .head__sub {
   flex-shrink: 0;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 
 </style>

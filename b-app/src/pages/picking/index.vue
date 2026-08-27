@@ -167,10 +167,10 @@ onShow(load);
         <view class="row__head">
           <sh-cover class="row__cover" :src="r.cover"></sh-cover>
           <view class="sh-fill">
-            <text class="row__title">{{ r.title }}</text>
+            <text class="txt-strong row__title">{{ r.title }}</text>
             <text class="sh-muted">{{ r.spec }}</text>
           </view>
-          <text class="row__qty sh-num">×{{ r.totalQty }}</text>
+          <text class="txt-title row__qty sh-num">×{{ r.totalQty }}</text>
         </view>
         <view class="buyers">
           <text
@@ -190,10 +190,10 @@ onShow(load);
       <view v-for="b in byBuyer" :key="b.orderNo" class="sh-card sh-mb-sm">
         <view class="row__head">
           <view class="sh-fill">
-            <text class="row__title">{{ b.nickname }}</text>
+            <text class="txt-strong row__title">{{ b.nickname }}</text>
             <text class="sh-muted sh-num">{{ b.orderNo }}</text>
           </view>
-          <text class="row__qty sh-num">
+          <text class="txt-title row__qty sh-num">
             ×{{ b.items.reduce((s, i) => s + i.qty, 0) }}
           </text>
         </view>
@@ -251,13 +251,8 @@ onShow(load);
 
 .row__title {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .row__qty {
-  font-size: 34rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
 }
 .buyers {

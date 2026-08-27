@@ -446,7 +446,7 @@ onShow(() => {
     <view class="search">
       <input
         maxlength="32"
-        class="search__input"
+        class="txt-sub search__input"
         :value="keyword"
         :placeholder="$t('goods.searchPh')"
         confirm-type="search"
@@ -472,7 +472,7 @@ onShow(() => {
       缺资质汇总。**只在真有的时候出现**，且说清是「当前列表里」的数 ——
       分页只加载了一部分，把它说成全店总数是在编一个自己也不知道的数字。
     -->
-    <text v-if="SHOW_CATEGORY_GATE && gatedCount" class="gate-sum">
+    <text v-if="SHOW_CATEGORY_GATE && gatedCount" class="txt-caption gate-sum">
       {{ $t("goods.gateCount", { n: gatedCount }) }}
     </text>
 
@@ -482,7 +482,7 @@ onShow(() => {
         <text
           v-for="c in storeCategories"
           :key="c.categoryNo"
-          class="sh-chip cats__chip"
+          class="txt-caption sh-chip cats__chip"
           :class="{ 'sh-chip--primary': categoryNo === c.categoryNo }"
           @tap="switchCategory(c.categoryNo)"
         >
@@ -526,17 +526,17 @@ onShow(() => {
       <view class="row__top">
         <sh-cover class="row__cover" :src="g.cover"></sh-cover>
         <view class="sh-fill">
-          <text class="row__title">{{ g.title }}</text>
+          <text class="txt-strong row__title">{{ g.title }}</text>
           <view class="row__meta">
-            <text class="row__price sh-num">{{ money(g.price) }}</text>
-            <text class="row__stock sh-num" :class="{ 'is-out': stockOf(g) === 0 }">
+            <text class="txt-strong row__price sh-num">{{ money(g.price) }}</text>
+            <text class="txt-sub row__stock sh-num" :class="{ 'is-out': stockOf(g) === 0 }">
               {{ $t("goods.stock") }} {{ stockOf(g) }}
             </text>
           </view>
         </view>
         <view class="state" :class="'state--' + stateOf(g)">
           <text class="state__dot"></text>
-          <text class="state__txt">{{ $t(`goods.status${stateOf(g)}`) }}</text>
+          <text class="txt-caption state__txt">{{ $t(`goods.status${stateOf(g)}`) }}</text>
         </view>
       </view>
       <view class="row__ops">
@@ -544,25 +544,25 @@ onShow(() => {
           驳回 / 强制下架的理由。**没有它，商家面对「已驳回」只能猜要改什么** ——
           审计日志只有运营看得到。后端一直在发这个字段，端上此前连声明都没有。
         -->
-        <text v-if="g.auditReason" class="reason">{{ g.auditReason }}</text>
+        <text v-if="g.auditReason" class="txt-caption reason">{{ g.auditReason }}</text>
         <!--
           缺资质。放在状态那一列而不是标题旁边：它回答的是
           「这件货为什么上不了架」，属于状态，不是商品属性。
         -->
-        <text v-if="SHOW_CATEGORY_GATE && gateOf(g)" class="reason reason--gate">
+        <text v-if="SHOW_CATEGORY_GATE && gateOf(g)" class="txt-caption reason reason--gate">
           {{ $t("goods.gateRow") }}
         </text>
         <view class="row__btns">
           <!-- 编辑与上下架都会改价/改可见性 → biz:goods；改库存只是数量 → biz:stock。
                这条缝就是店员的权限边界：卖完了能马上改数，但改不了价 -->
-          <text v-if="merchant.can('biz:goods')" class="mini" @tap="edit(g)">
+          <text v-if="merchant.can('biz:goods')" class="txt-caption mini" @tap="edit(g)">
             {{ $t("goods.edit") }}
           </text>
           <!-- 草稿只给「提交审核」：上架按钮对它必被拒，而拒绝的理由（还没过审）
                对一个自己都没提交的商品说不通 -->
           <text
             v-if="g.status === 'DRAFT' && merchant.can('biz:goods')"
-            class="mini"
+            class="txt-caption mini"
             @tap="submit(g)"
           >
             {{ $t("goods.submit") }}
@@ -571,18 +571,18 @@ onShow(() => {
                留着它等于给商家一个永远点不动的按钮，而错在哪一句话都没有 -->
           <text
             v-if="merchant.can('biz:goods') && !pending(g) && g.status !== 'DRAFT'"
-            class="mini"
+            class="txt-caption mini"
             @tap="toggle(g)"
           >
             {{ g.onSale ? $t("goods.offSale") : $t("goods.onSale") }}
           </text>
-          <text v-if="merchant.can('biz:stock')" class="mini" @tap="editStock(g)">
+          <text v-if="merchant.can('biz:stock')" class="txt-caption mini" @tap="editStock(g)">
             {{ $t("goods.editStock") }}
           </text>
           <!-- 只给在售商品：分享一件审核中/已下架的货，买家点进去要么看不见要么下不了单 -->
           <text
             v-if="stateOf(g) === 'ON_SALE' && merchant.can('biz:store')"
-            class="mini"
+            class="txt-caption mini"
             @tap="shareGoods(g)"
           >
             {{ $t("goods.share") }}
@@ -593,7 +593,7 @@ onShow(() => {
           -->
           <text
             v-if="merchant.multiStore && merchant.can('biz:goods')"
-            class="mini"
+            class="txt-caption mini"
             @tap="editStorePrice(g)"
           >
             {{ $t("goods.editStorePrice") }}
@@ -606,8 +606,8 @@ onShow(() => {
       翻页反馈。**没有它，滚到底会以为「就这些了」** —— 而下一页可能正在路上。
       到底了也要说一声：194 条里滚到最后却什么提示都没有，人会怀疑是不是卡住了。
     -->
-    <text v-if="loading && list.length" class="more">{{ $t("common.loading") }}</text>
-    <text v-else-if="list.length && !hasMore" class="more">{{ $t("goods.noMore") }}</text>
+    <text v-if="loading && list.length" class="txt-caption more">{{ $t("common.loading") }}</text>
+    <text v-else-if="list.length && !hasMore" class="txt-caption more">{{ $t("goods.noMore") }}</text>
 
     <!--
       新建商品。**建商品/改价属于 biz:goods**；店员只有 biz:stock，不显示这个入口。
@@ -633,7 +633,7 @@ onShow(() => {
       @close="closeShare"
     >
       <text v-if="shareLoading" class="hint">{{ $t("common.loading") }}</text>
-      <view v-else class="kit">{{ shareText }}</view>
+      <view v-else class="txt-sub kit">{{ shareText }}</view>
       <view v-if="!shareLoading" class="sh-btn" @tap="copyShareText">{{ $t("store.copyKit") }}</view>
 
       <!-- 真海报：合成好的一张图。生不出来（极端情况）就不占地方 -->
@@ -659,7 +659,6 @@ onShow(() => {
 .search__input {
   flex: 1;
   height: 72rpx;
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
 
@@ -668,15 +667,10 @@ onShow(() => {
   display: block;
   padding: 24rpx 0 8rpx;
   text-align: center;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .reason {
   display: block;
   margin-top: 12rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.4;
   text-align: right;
 }
 /* 缺资质：用警示色而不是危险色 —— 商品本身没错，缺的是一张证 */
@@ -686,8 +680,6 @@ onShow(() => {
 .gate-sum {
   display: block;
   padding: 16rpx 24rpx;
-  font-size: 24rpx;
-  line-height: 1.4;
   color: var(--sh-warning);
   background: var(--sh-warning-tint);
 }
@@ -716,7 +708,6 @@ onShow(() => {
   gap: 12rpx;
 }
 .cats__chip {
-  font-size: 24rpx;
   padding: 10rpx 20rpx;
   /*
    * 两条都要，缺一个都会换行 —— 类目从 3 个扩到 6 个之后才显形：
@@ -760,9 +751,6 @@ onShow(() => {
  */
 .row__title {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -775,14 +763,9 @@ onShow(() => {
 }
 /* 降到属性档：仍是深红（可读性由 primary-text 保证），但不再抢标题的位 */
 .row__price {
-  font-size: 26rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
 }
-.row__stock {
-  font-size: 26rpx;
-  color: var(--sh-sub);
-}
+
 /* 卖完了要一眼扫得到 —— 它是「今天要干的活」，而 0 和 180 现在长得一样 */
 .row__stock.is-out {
   color: var(--sh-danger);
@@ -803,10 +786,7 @@ onShow(() => {
   border-radius: 9999px;
   background: var(--sh-sub);
 }
-.state__txt {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
+
 .state--ON_SALE .state__dot {
   background: var(--sh-success);
 }
@@ -835,8 +815,6 @@ onShow(() => {
   margin-top: 16rpx;
 }
 .mini {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   padding: 8rpx 16rpx;
   border-radius: 16rpx;
   background: var(--sh-faint);
@@ -859,8 +837,6 @@ onShow(() => {
   padding: 24rpx;
   border-radius: 24rpx;
   background: var(--sh-faint);
-  font-size: 26rpx;
-  line-height: 1.7;
   color: var(--sh-ink);
 }
 </style>

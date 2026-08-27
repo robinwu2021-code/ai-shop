@@ -266,21 +266,21 @@ onShow(load);
           confirm-type="done"
           @confirm="peekCoupon()"
         />
-        <text class="btn" @tap="peekCoupon()">{{ $t("verify.couponPeek") }}</text>
+        <text class="sh-btn sh-btn--sm txt-strong btn" @tap="peekCoupon()">{{ $t("verify.couponPeek") }}</text>
       </view>
       <view class="sh-btn sh-btn--soft scan" @tap="scanCoupon">{{ $t("verify.scan") }}</view>
-      <text v-if="couponError" class="err">{{ couponError }}</text>
+      <text v-if="couponError" class="txt-body err">{{ couponError }}</text>
 
       <view v-if="couponView" class="peek">
-        <text class="peek__t">{{ couponView.title }}</text>
-        <text class="peek__b">{{ couponView.benefitText }}</text>
-        <text class="sh-muted peek__d">
+        <text class="txt-strong peek__t">{{ couponView.title }}</text>
+        <text class="txt-sub peek__b">{{ couponView.benefitText }}</text>
+        <text class="txt-caption sh-muted peek__d">
           {{ $t("verify.couponHolder", { tail: couponView.phoneTail || "----" }) }}
           <template v-if="couponView.timesTotal > 1">
             · {{ $t("verify.couponRemaining", { n: couponView.remaining, m: couponView.timesTotal }) }}
           </template>
         </text>
-        <text v-if="!couponView.redeemable" class="err">
+        <text v-if="!couponView.redeemable" class="txt-body err">
           {{ $t(`verify.couponReason.${couponView.reason}`) }}
         </text>
 
@@ -295,7 +295,7 @@ onShow(load);
         </button>
       </view>
 
-      <view v-if="couponDone" class="done">{{ couponDone }}</view>
+      <view v-if="couponDone" class="txt-sub done">{{ couponDone }}</view>
     </view>
 
     <template v-if="tab === 'pickup'">
@@ -307,7 +307,7 @@ onShow(load);
       口径定了再放出来，现在藏起来，不是造一个假 0。
     -->
     <view v-if="overview" class="sh-card overview">
-      <text class="overview__name">{{ overview.pickupName }}</text>
+      <text class="txt-strong">{{ overview.pickupName }}</text>
       <view class="overview__grid overview__grid--single">
         <view class="overview__i">
           <text class="overview__n sh-num" :class="{ 'is-on': overview.pendingVerify }">
@@ -331,10 +331,10 @@ onShow(load);
           confirm-type="done"
           @confirm="verify()"
         />
-        <text class="btn" @tap="verify()">{{ $t("verify.submit") }}</text>
+        <text class="sh-btn sh-btn--sm txt-strong btn" @tap="verify()">{{ $t("verify.submit") }}</text>
       </view>
       <view class="sh-btn sh-btn--soft scan" @tap="scan">{{ $t("verify.scan") }}</view>
-      <text v-if="error" class="err">{{ error }}</text>
+      <text v-if="error" class="txt-body err">{{ error }}</text>
 
       <!--
         输码没核销掉时，按这几位搜出来的候选。**让他确认是哪一单，而不是替他选** ——
@@ -343,13 +343,13 @@ onShow(load);
       <view v-if="candidates" class="cands">
         <text v-if="!candidates.length" class="sh-muted">{{ $t("verify.searchEmpty") }}</text>
         <template v-else>
-          <text class="sh-muted cands__hint">{{ $t("verify.searchHint") }}</text>
+          <text class="txt-caption sh-muted cands__hint">{{ $t("verify.searchHint") }}</text>
           <view v-for="c in candidates" :key="c.subOrderNo" class="cand">
             <view class="sh-fill">
-              <text class="cand__code sh-num">{{ c.verifyCode }}</text>
+              <text class="txt-strong cand__code sh-num">{{ c.verifyCode }}</text>
               <text class="sh-muted">{{ c.buyerNickname || "—" }}</text>
             </view>
-            <text class="btn" @tap="verifyCandidate(c)">{{ $t("verify.submit") }}</text>
+            <text class="sh-btn sh-btn--sm txt-strong btn" @tap="verifyCandidate(c)">{{ $t("verify.submit") }}</text>
           </view>
         </template>
       </view>
@@ -369,7 +369,7 @@ onShow(load);
           confirm-type="done"
           @confirm="addToBasket(code)"
         />
-        <text class="btn" @tap="addToBasket(code)">{{ $t("verify.batchAdd") }}</text>
+        <text class="sh-btn sh-btn--sm txt-strong btn" @tap="addToBasket(code)">{{ $t("verify.batchAdd") }}</text>
       </view>
       <view class="sh-btn sh-btn--soft scan" @tap="scanIntoBasket">
         {{ $t("verify.batchScan") }}
@@ -398,7 +398,7 @@ onShow(load);
       <!-- 失败逐条回报：店主要知道是**哪几张**有问题，而不是「3 成功 2 失败」 -->
       <view v-if="batchResult" class="batch-result">
         <text class="ok">{{ $t("verify.batchOk", { n: batchResult.successCount }) }}</text>
-        <view v-for="f in batchResult.failed" :key="f.code" class="fail">
+        <view v-for="f in batchResult.failed" :key="f.code" class="txt-caption fail">
           <text class="sh-num">{{ f.code }}</text>
           <text class="sh-muted">{{ f.reason }}</text>
         </view>
@@ -418,7 +418,7 @@ onShow(load);
     -->
     <view
       v-if="!waiting.length && preparingCount && merchant.can('biz:receive')"
-      class="prep-hint"
+      class="txt-sub prep-hint"
       @tap="goToPicking"
     >
       <text>{{ $t("picking.verifyPrepHint", { n: preparingCount }) }}</text>
@@ -433,10 +433,10 @@ onShow(load);
       :class="{ 'is-just': justDone === o.subOrderNo }"
     >
       <view class="sh-fill">
-        <text class="row-item__code sh-num">{{ o.verifyCode }}</text>
+        <text class="txt-title row-item__code sh-num">{{ o.verifyCode }}</text>
         <text class="sh-muted">{{ o.buyerNickname || "—" }} · {{ o.items.length }} 件</text>
       </view>
-      <text class="btn" @tap="verify(o.verifyCode)">{{ $t("verify.doIt") }}</text>
+      <text class="sh-btn sh-btn--sm txt-strong btn" @tap="verify(o.verifyCode)">{{ $t("verify.doIt") }}</text>
     </view>
     </template>
   </sh-scaffold>
@@ -454,19 +454,15 @@ onShow(load);
 }
 .peek__t {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
 }
 .peek__b {
   display: block;
   margin-top: 6rpx;
-  font-size: 26rpx;
   color: var(--sh-primary-text);
 }
 .peek__d {
   display: block;
   margin-top: 6rpx;
-  font-size: 24rpx;
 }
 .redeem {
   margin-top: 20rpx;
@@ -476,17 +472,12 @@ onShow(load);
   padding: 16rpx;
   border-radius: 16rpx;
   background: var(--sh-success-tint);
-  font-size: 26rpx;
 }
 
 .overview {
   margin-bottom: 14rpx;
 }
-.overview__name {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
+
 .overview__grid {
   display: flex;
   margin-top: 16rpx;
@@ -539,7 +530,6 @@ onShow(load);
   justify-content: space-between;
   gap: 16rpx;
   margin-top: 10rpx;
-  font-size: 24rpx;
   color: var(--sh-danger);
 }
 .sh-link {
@@ -555,11 +545,6 @@ onShow(load);
 }
 .btn {
   padding: 20rpx 32rpx;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 28rpx;
-  font-weight: 600;
 }
 .scan {
   margin-top: 20rpx;
@@ -571,7 +556,6 @@ onShow(load);
   border-radius: 24rpx;
   background: var(--sh-danger-tint);
   color: var(--sh-danger);
-  font-size: 28rpx;
 }
 
 .cands {
@@ -580,7 +564,6 @@ onShow(load);
 .cands__hint {
   display: block;
   margin-bottom: 12rpx;
-  font-size: 24rpx;
 }
 .cand {
   display: flex;
@@ -592,10 +575,8 @@ onShow(load);
 
 .cand__code {
   display: block;
-  font-size: 30rpx;
   /* 600 而不是 700：700 这个项目里只给价格留着，取货码靠字号和留白突出就够 */
   font-weight: 600;
-  color: var(--sh-ink);
 }
 .list-head {
   display: flex;
@@ -613,7 +594,6 @@ onShow(load);
   border-radius: 16rpx;
   background: var(--sh-warning-tint);
   color: var(--sh-warning);
-  font-size: 26rpx;
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */
@@ -629,9 +609,6 @@ onShow(load);
 
 .row-item__code {
   display: block;
-  font-size: 34rpx;
-  font-weight: 600;
   letter-spacing: 4rpx;
-  color: var(--sh-ink);
 }
 </style>

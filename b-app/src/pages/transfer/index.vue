@@ -196,7 +196,7 @@ onShow(load);
       <view v-for="l in doc.lines" :key="l.itemId" class="sh-card sh-mb-sm">
         <view class="row__top">
           <view class="sh-fill">
-            <text class="row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
+            <text class="txt-strong row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
           </view>
           <text class="txt-price sh-num">{{ l.qty }}</text>
         </view>
@@ -236,7 +236,7 @@ onShow(load);
       <view v-for="l in lines" :key="l.itemId" class="sh-card sh-mb-sm">
         <view class="row__top">
           <view class="sh-fill">
-            <text class="row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
+            <text class="txt-strong row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
             <text class="sh-muted sh-num">{{ $t("transfer.availableN", { n: l.available }) }}</text>
           </view>
           <text class="sh-link sh-num qty" @tap="editQty(l)">{{ l.qty }}</text>
@@ -293,9 +293,6 @@ onShow(load);
 
 .row__title {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .qty {
   min-width: 72rpx;

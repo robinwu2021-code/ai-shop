@@ -152,12 +152,12 @@ onShow(load);
           配送员拿着它出不了门。自送单的手机号后端给的是完整号（其余履约方式脱敏），
           点一下直接拨：站在楼下找不到人时，多一步操作就是多一次白跑。
         -->
-        <text class="row__buyer">{{ o.receiver?.name || o.buyerNickname || "—" }}</text>
-        <text v-if="o.receiver?.address" class="row__addr">{{ o.receiver.address }}</text>
-        <text v-else class="row__addr row__addr--none">{{ $t("delivery.noAddress") }}</text>
+        <text class="txt-strong row__buyer">{{ o.receiver?.name || o.buyerNickname || "—" }}</text>
+        <text v-if="o.receiver?.address" class="txt-body row__addr">{{ o.receiver.address }}</text>
+        <text v-else class="txt-body row__addr row__addr--none">{{ $t("delivery.noAddress") }}</text>
         <view class="row__sub">
           <text class="sh-muted sh-num">{{ o.orderNo }}</text>
-          <text v-if="o.receiver?.phone" class="row__tel sh-num" @tap="call(o)">
+          <text v-if="o.receiver?.phone" class="txt-strong row__tel sh-num" @tap="call(o)">
             {{ o.receiver.phone }}
           </text>
         </view>
@@ -166,10 +166,10 @@ onShow(load);
         配送员拿到的是**裁剪档**（后端 CourierOrderVO，无金额、无核销码）。
         所以这里按字段有无渲染，而不是按角色判 —— 少一处判断就少一处会漂的地方。
       -->
-      <text v-if="o.amount" class="row__amount sh-num">
+      <text v-if="o.amount" class="txt-price sh-num">
         {{ money(o.amount.payableMinor, o.amount.currency) }}
       </text>
-      <text class="btn" @tap="delivered(o)">{{ $t("order.delivered") }}</text>
+      <text class="sh-btn sh-btn--sm btn" @tap="delivered(o)">{{ $t("order.delivered") }}</text>
     </view>
 
     <text class="tip sh-hint">{{ $t("delivery.noRiderHint") }}</text>
@@ -193,16 +193,10 @@ onShow(load);
 
 .row__buyer {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .row__addr {
   display: block;
   margin-top: 4rpx;
-  font-size: 28rpx;
-  color: var(--sh-ink);
-  line-height: 1.4;
 }
 .row__addr--none {
   color: var(--sh-sub);
@@ -214,22 +208,13 @@ onShow(load);
   margin-top: 6rpx;
 }
 .row__tel {
-  font-size: 28rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
 }
-.row__amount {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
-}
+
 .btn {
+
   padding: 18rpx 28rpx;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 24rpx;
-  font-weight: 600;
+
 }
 .tip {
   margin: 32rpx 8rpx;

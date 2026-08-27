@@ -828,7 +828,7 @@ onShow(() => void load());
         @change="(k: string) => { tab = k as 'dims' | 'props'; void loadAddable(); }"
       ></sh-tabs>
     </view>
-    <text class="sh-muted intro">
+    <text class="txt-caption sh-muted intro">
       {{ $t(tab === "dims" ? "mySpecs.intro" : "mySpecs.introProps") }}
     </text>
 
@@ -875,9 +875,9 @@ onShow(() => void load());
             <sh-icon name="grip" :size="28" color="var(--sh-sub)" />
           </view>
           <!-- 虚线下划线：一眼看出这行字可以改，而不必再摆一个图标 -->
-          <text class="spec__name" @tap.stop="startRename(g, t)">{{ t.name }}</text>
+          <text class="txt-strong spec__name" @tap.stop="startRename(g, t)">{{ t.name }}</text>
           <!-- 自建的标出来：它不参与跨店比价，而那是看不见的差别 -->
-          <text v-if="t.scope === 'MERCHANT'" class="spec__own">{{ $t("mySpecs.own") }}</text>
+          <text v-if="t.scope === 'MERCHANT'" class="txt-caption spec__own">{{ $t("mySpecs.own") }}</text>
           <view class="spec__spacer"></view>
           <sh-icon-btn
             name="sliders"
@@ -893,7 +893,7 @@ onShow(() => void load());
           ></sh-icon-btn>
         </view>
         <!-- 单行省略：换行撑高的话，一屏就少看两个规格 -->
-        <text class="spec__vals" @tap="startEditDim(g, t)">{{ t.options.map((o) => o.label).join(" · ") || $t("mySpecs.noValueYet") }}</text>
+        <text class="txt-caption spec__vals" @tap="startEditDim(g, t)">{{ t.options.map((o) => o.label).join(" · ") || $t("mySpecs.noValueYet") }}</text>
       </view>
 
       <!--
@@ -901,7 +901,7 @@ onShow(() => void load());
         长得一模一样，而后者还建议他去联系运营 —— 那条路走不通，
         因为平台配了，缺的是他自己的一次点击。
       -->
-      <text v-if="!listOf(g).length && picking !== g.categoryNo" class="cat__empty">
+      <text v-if="!listOf(g).length && picking !== g.categoryNo" class="txt-caption cat__empty">
         {{ (addable[g.categoryNo] || []).length
           ? $t(tab === "dims" ? "mySpecs.catAllRemoved" : "mySpecs.catAllRemovedProps")
           : $t(tab === "dims" ? "mySpecs.catNoDims" : "mySpecs.catNoProps") }}
@@ -933,7 +933,7 @@ onShow(() => void load());
         手指下滑很容易顺手点掉自己刚调好的一切。
       -->
       <view class="cat__foot">
-        <text class="cat__reset" @tap="resetOverride(g)">{{ $t("mySpecs.reset") }}</text>
+        <text class="txt-caption" @tap="resetOverride(g)">{{ $t("mySpecs.reset") }}</text>
       </view>
     </view>
 
@@ -947,7 +947,7 @@ onShow(() => void load());
       现在自建规格回到它所属的类目卡里，带「本店」标记，改名/停用就是那一行的两个图标；
       配额挪进了「加规格」面板 —— 那是唯一需要知道它的时刻。
     -->
-    <text class="sh-muted foot">{{ $t("mySpecs.foot") }}</text>
+    <text class="txt-caption sh-muted foot">{{ $t("mySpecs.foot") }}</text>
 
     <!--
       **整条链路一个弹层，三步。**（为什么见 sheetStep 那段注释）
@@ -981,17 +981,17 @@ onShow(() => void load());
             {{ showRest ? $t("mySpecs.restHide") : $t("mySpecs.restShow", { n: pickRest.length }) }}
           </text>
         </view>
-        <text v-if="!pickable.length" class="sh-muted picker__empty">
+        <text v-if="!pickable.length" class="txt-caption sh-muted picker__empty">
           {{ $t("mySpecs.noMoreDim") }}
         </text>
 
         <!-- 自己建放最后：顺序即建议，先看平台有没有现成的 -->
         <view class="sheet-own">
           <view class="picker__own-line">
-            <text class="picker__own-t">
+            <text class="txt-strong picker__own-t">
               {{ $t(tab === "dims" ? "mySpecs.buildOwnDim" : "mySpecs.buildOwnProp") }}
             </text>
-            <text class="sh-muted picker__quota">
+            <text class="txt-caption sh-muted">
               {{ $t("mySpecs.quotaShort", { used: ownUsed, max: ownMax }) }}
             </text>
           </view>
@@ -1003,11 +1003,11 @@ onShow(() => void load());
               :placeholder="buildOwnPhWord"
               @confirm="confirmBuild(pickingCat)"
             />
-            <text class="link build__ok" @tap="confirmBuild(pickingCat)">
+            <text class="txt-sub link" @tap="confirmBuild(pickingCat)">
               {{ $t("mySpecs.save") }}
             </text>
           </view>
-          <text class="sh-muted picker__own-s">{{ $t("mySpecs.buildOwnCost") }}</text>
+          <text class="txt-caption sh-muted picker__own-s">{{ $t("mySpecs.buildOwnCost") }}</text>
         </view>
       </template>
 
@@ -1016,7 +1016,7 @@ onShow(() => void load());
         因为「这一档我要不要」这个判断需要同时看见两边。
       -->
       <template v-else-if="sheetStep === 'values' && editingCat">
-        <text class="sh-muted sheet-lead">{{ $t("mySpecs.valsLead") }}</text>
+        <text class="txt-caption sh-muted sheet-lead">{{ $t("mySpecs.valsLead") }}</text>
         <!--
           档位可以拖。**落点按 chip 的中心点算**，不像规格行那样按行高除 ——
           chip 是横向换行的二维排列，「位移 ÷ 行高」在这里没有意义：
@@ -1026,7 +1026,7 @@ onShow(() => void load());
           <text
             v-for="(v, vi) in draft.values"
             :key="v.code"
-            class="sh-chip val"
+            class="txt-caption sh-chip val"
             :class="{
               'val--drag': valDragFrom === vi,
               'val--slot': valDragFrom >= 0 && valDragTo === vi && valDragFrom !== vi,
@@ -1047,7 +1047,7 @@ onShow(() => void load());
 
         <!-- 平台还有的：点一下加进来 -->
         <view v-if="valCands.length" class="sheet-own">
-          <text class="picker__own-t picker__own-t--quiet">{{ $t("mySpecs.pickHint") }}</text>
+          <text class="txt-strong picker__own-t picker__own-t--quiet">{{ $t("mySpecs.pickHint") }}</text>
           <view class="chips sheet-gap">
             <text v-for="o in valCands" :key="o.code || o.label" class="sh-chip sh-chip--dashed"
                   @tap="pickValue(o)">＋ {{ o.label }}</text>
@@ -1056,7 +1056,7 @@ onShow(() => void load());
 
         <view class="sheet-own">
           <view class="picker__own-line">
-            <text class="picker__own-t">{{ ownValueWord }}</text>
+            <text class="txt-strong picker__own-t">{{ ownValueWord }}</text>
           </view>
           <view class="build">
             <input
@@ -1066,9 +1066,9 @@ onShow(() => void load());
               :placeholder="valuePhWord"
               @confirm="confirmNewValue"
             />
-            <text class="link build__ok" @tap="confirmNewValue">{{ $t("mySpecs.add") }}</text>
+            <text class="txt-sub link" @tap="confirmNewValue">{{ $t("mySpecs.add") }}</text>
           </view>
-          <text class="sh-muted picker__own-s">{{ valueHintWord }}</text>
+          <text class="txt-caption sh-muted picker__own-s">{{ valueHintWord }}</text>
         </view>
 
         <view class="edit__acts">
@@ -1084,9 +1084,9 @@ onShow(() => void load());
         清空就是「用回平台的叫法」。
       -->
       <template v-else-if="sheetStep === 'rename'">
-        <input maxlength="64" v-model="renameDraft.label" class="field__input edit__input sheet-gap"
+        <input maxlength="64" v-model="renameDraft.label" class="txt-body field__input edit__input sheet-gap"
                :placeholder="renameDraft.platformName" />
-        <text class="sh-muted edit__tip">{{ $t("mySpecs.renameTip") }}</text>
+        <text class="txt-caption sh-muted edit__tip">{{ $t("mySpecs.renameTip") }}</text>
         <view class="edit__acts">
           <view class="sh-btn sh-btn--soft edit__btn" @tap="closeSheet">
             {{ $t("mySpecs.cancel") }}
@@ -1115,12 +1115,9 @@ onShow(() => void load());
   margin: 0 26rpx;
 }
 
-
-
 .intro {
   display: block;
   padding: 0 8rpx;
-  font-size: 24rpx;
 }
 
 .cat {
@@ -1149,15 +1146,6 @@ onShow(() => void load());
   padding: 18rpx 26rpx;
   border-top: var(--sh-hairline);
 }
-.cat__empty {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.cat__reset {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-
 
 /* 弹层里各段之间留口气 */
 .sheet-gap {
@@ -1183,21 +1171,14 @@ onShow(() => void load());
   flex: 1;
 }
 
-.build__ok {
-  font-size: 26rpx;
-}
-
 .picker__own-line {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
 }
-.picker__quota {
-  font-size: 24rpx;
-}
+
 .picker__empty {
   display: block;
-  font-size: 24rpx;
 }
 .chips {
   display: flex;
@@ -1207,14 +1188,11 @@ onShow(() => void load());
 
 .picker__own-t {
   display: block;
-  font-size: 26rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
 }
 .picker__own-s {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
 }
 
 /* 一个规格 = 一行主件 + 一行档位。它们是同一条，所以中间不留间距 */
@@ -1267,11 +1245,9 @@ onShow(() => void load());
   */
   display: inline-block;
   border-bottom: 1rpx dashed var(--sh-line);
-  font-size: 28rpx;
   /* 一行里它是主角，用 400 会被下面那行档位拉成同一层。
      字阶只给 400/600/700 三档（守卫测住），所以取 600 而不是原型里的 500 */
   font-weight: 600;
-  color: var(--sh-ink);
 }
 /* 自建的标出来 —— 它不参与跨店比价，而那是看不见的差别 */
 .spec__own {
@@ -1281,7 +1257,6 @@ onShow(() => void load());
   background: var(--sh-faint);
   /* 20 不在字阶上；24 是最小的一档 */
   font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .spec__spacer {
   flex: 1;
@@ -1290,10 +1265,7 @@ onShow(() => void load());
 .spec__vals {
   display: block;
   margin-top: 4rpx;
-  line-height: 1.5;
   padding-left: 52rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1317,7 +1289,6 @@ onShow(() => void load());
 .sheet-lead {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
 }
 
 /* 「平台还有这些」压得比「自己填」轻：前者是挑，后者要他动脑子起名 */
@@ -1333,8 +1304,6 @@ onShow(() => void load());
   border-radius: 16rpx;
   border: 1rpx solid var(--sh-line);
   background: var(--sh-surface);
-  font-size: 28rpx;
-  color: var(--sh-ink);
 }
 .vals {
   display: flex;
@@ -1343,7 +1312,6 @@ onShow(() => void load());
   margin-top: 20rpx;
 }
 .val {
-  font-size: 24rpx;
   transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
 }
 
@@ -1379,7 +1347,6 @@ onShow(() => void load());
 .edit__tip {
   display: block;
   margin-top: 16rpx;
-  font-size: 24rpx;
 }
 .edit__acts {
   display: flex;
@@ -1393,6 +1360,5 @@ onShow(() => void load());
 .foot {
   display: block;
   margin: 28rpx 8rpx;
-  font-size: 24rpx;
 }
 </style>

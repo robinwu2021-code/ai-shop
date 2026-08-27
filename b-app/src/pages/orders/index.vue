@@ -167,7 +167,7 @@ onShow(load);
 
     <!-- 门店范围。只有多店才出现 —— 单店商家看到这个切换只会疑惑 -->
     <view v-if="merchant.multiStore" class="scope" @tap="toggleScope">
-      <text class="scope__cur">
+      <text class="txt-caption scope__cur">
         {{ allStores ? $t("order.scopeAll") : merchant.currentStore?.name || $t("order.scopeCurrent") }}
       </text>
       <sh-go>{{ allStores ? $t("order.scopeToCurrent") : $t("order.scopeToAll") }}</sh-go>
@@ -177,7 +177,7 @@ onShow(load);
 
     <view v-for="o in list" :key="o.orderNo" class="sh-card sh-mb-sm" @tap="open(o)">
       <view class="row__head">
-        <text class="row__no sh-num">{{ o.orderNo }}</text>
+        <text class="txt-caption sh-num">{{ o.orderNo }}</text>
         <!-- 行内显示的是**订单自己的状态**。原先拼的是 tab 的 key
              （`order.tab${PAID ? 'ToShip' : 'All'}`），于是除待发货外一律显示「全部」——
              一屏订单看下来全是「全部」，等于这一列没有信息 -->
@@ -189,14 +189,14 @@ onShow(load);
       <view v-for="it in o.items" :key="it.skuNo" class="sh-row item sh-mb-sm">
         <sh-cover class="item__cover" :src="it.cover"></sh-cover>
         <view class="sh-fill">
-          <text class="item__title">{{ it.title }}</text>
+          <text class="txt-strong item__title">{{ it.title }}</text>
           <text class="sh-muted">{{ it.spec }} × {{ it.qty }}</text>
         </view>
       </view>
 
       <view class="row__foot">
         <text class="sh-muted">{{ datetime(o.createdAt) }}</text>
-        <text class="row__amount sh-num">{{ money(o.amount.payableMinor, o.amount.currency) }}</text>
+        <text class="txt-price sh-num">{{ money(o.amount.payableMinor, o.amount.currency) }}</text>
       </view>
     </view>
   </sh-scaffold>
@@ -213,7 +213,6 @@ onShow(load);
   border-radius: 16rpx;
 }
 .scope__cur {
-  font-size: 24rpx;
   color: var(--sh-ink);
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。
@@ -225,10 +224,7 @@ onShow(load);
   justify-content: space-between;
   margin-bottom: 20rpx;
 }
-.row__no {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
+
 .item {
   gap: 20rpx;
 }
@@ -251,9 +247,6 @@ onShow(load);
  */
 .item__title {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .row__foot {
   display: flex;
@@ -261,9 +254,5 @@ onShow(load);
   justify-content: space-between;
   margin-top: 12rpx;
 }
-.row__amount {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
-}
+
 </style>

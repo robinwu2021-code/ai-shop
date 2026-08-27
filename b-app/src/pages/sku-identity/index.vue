@@ -122,7 +122,7 @@ function arrow(from?: string | null, to?: string | null): string {
     <!-- 第一步：把现状拿下来。**先导出再改**是唯一不会认错行的路 -->
     <view class="sh-card sh-mt-sm">
       <sh-section :title="String($t('skuIdentity.step1'))">
-        <view class="sh-btn sh-btn--soft act" :class="{ 'sh-btn--muted': busy }" @tap="doExport">
+        <view class="txt-sub sh-btn sh-btn--soft act" :class="{ 'sh-btn--muted': busy }" @tap="doExport">
           {{ $t("skuIdentity.export") }}
         </view>
       </sh-section>
@@ -132,7 +132,7 @@ function arrow(from?: string | null, to?: string | null): string {
     <!-- 第二步：把改好的表交回来 -->
     <view class="sh-card sh-mt-sm">
       <sh-section :title="String($t('skuIdentity.step2'))">
-        <view v-if="canPickFile" class="sh-btn sh-btn--soft act" @tap="choose">
+        <view v-if="canPickFile" class="txt-sub sh-btn sh-btn--soft act" @tap="choose">
           {{ $t("skuIdentity.choose") }}
         </view>
       </sh-section>
@@ -142,7 +142,7 @@ function arrow(from?: string | null, to?: string | null): string {
       -->
       <textarea
         v-model="csv"
-        class="field__area paste"
+        class="txt-caption field__area paste"
         :placeholder="$t('skuIdentity.pastePh')"
         @input="onEdited"
       />
@@ -178,7 +178,7 @@ function arrow(from?: string | null, to?: string | null): string {
         <sh-kv
           v-for="p in report.problems"
           :key="p.line"
-          class="prob"
+          class="txt-caption prob"
           :key-width="120"
           :label="String($t('skuIdentity.line', { n: p.line }))"
         >{{ p.reason }}</sh-kv>
@@ -186,13 +186,13 @@ function arrow(from?: string | null, to?: string | null): string {
 
       <!-- 前后对照：让他确认「改的是不是我想的那些」 -->
       <view v-if="report.samples.length" class="prev">
-        <text class="sh-muted prev__t">{{ $t("skuIdentity.previewTitle") }}</text>
+        <text class="txt-caption sh-muted prev__t">{{ $t("skuIdentity.previewTitle") }}</text>
         <view v-for="s in report.samples" :key="s.skuNo" class="row">
-          <text class="row__t">{{ s.goods }}<text v-if="s.spec" class="sh-muted"> · {{ s.spec }}</text></text>
+          <text class="txt-strong row__t">{{ s.goods }}<text v-if="s.spec" class="sh-muted"> · {{ s.spec }}</text></text>
           <view class="row__cells">
-            <text class="cell">{{ $t("skuIdentity.barcode") }} {{ arrow(s.barcodeFrom, s.barcodeTo) }}</text>
-            <text class="cell">{{ $t("skuIdentity.code") }} {{ arrow(s.codeFrom, s.codeTo) }}</text>
-            <text class="cell">{{ $t("skuIdentity.unit") }} {{ arrow(s.unitFrom, s.unitTo) }}</text>
+            <text class="txt-caption">{{ $t("skuIdentity.barcode") }} {{ arrow(s.barcodeFrom, s.barcodeTo) }}</text>
+            <text class="txt-caption">{{ $t("skuIdentity.code") }} {{ arrow(s.codeFrom, s.codeTo) }}</text>
+            <text class="txt-caption">{{ $t("skuIdentity.unit") }} {{ arrow(s.unitFrom, s.unitTo) }}</text>
           </view>
         </view>
       </view>
@@ -208,7 +208,7 @@ function arrow(from?: string | null, to?: string | null): string {
       </view>
     </view>
 
-    <text class="sh-muted foot">{{ $t("skuIdentity.foot") }}</text>
+    <text class="txt-caption sh-muted foot">{{ $t("skuIdentity.foot") }}</text>
   </sh-scaffold>
 </template>
 
@@ -216,7 +216,6 @@ function arrow(from?: string | null, to?: string | null): string {
 
 .act {
   padding: 10rpx 26rpx;
-  font-size: 26rpx;
 }
 
 /* 规则表：左边一个词、右边一句话 —— 他扫左边就够，右边是给存疑的人看的 */
@@ -231,7 +230,6 @@ function arrow(from?: string | null, to?: string | null): string {
 .paste {
   margin-top: 16rpx;
   min-height: 200rpx;
-  font-size: 24rpx;
 }
 
 .acts {
@@ -252,8 +250,6 @@ function arrow(from?: string | null, to?: string | null): string {
 /* 只留本页版面与语义色：排法归 sh-kv。行号是红的 —— 这一块整个是「出错的行」 */
 .prob {
   padding: 6rpx 0;
-  font-size: 24rpx;
-  line-height: 1.5;
 }
 .prob .kv__k {
   color: var(--sh-danger);
@@ -266,7 +262,6 @@ function arrow(from?: string | null, to?: string | null): string {
 
 .prev__t {
   display: block;
-  font-size: 24rpx;
 }
 
 .row {
@@ -276,9 +271,6 @@ function arrow(from?: string | null, to?: string | null): string {
 
 .row__t {
   display: block;
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 
 .row__cells {
@@ -288,16 +280,9 @@ function arrow(from?: string | null, to?: string | null): string {
   margin-top: 6rpx;
 }
 
-.cell {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-
 .foot {
   display: block;
   margin-top: 24rpx;
   padding: 0 8rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
 }
 </style>
