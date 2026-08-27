@@ -31,6 +31,16 @@ import java.util.stream.Collectors;
 public class MerchantStaffServiceImpl implements MerchantStaffService {
 
     private final MchAccountMapper staffMapper;
+
+    /**
+     * 踢会话用。
+     *
+     * <p>⚠️ <b>过渡期取的是 {@code CONSUMER} 池</b>：B 端此刻仍签发 {@code ctk_}，
+     * 店员的会话装在 {@code usr_session} 里（主体是 {@code mch_account_no}）。
+     * A7（B 端改发 {@code btk_}）落地时，这里与 {@link #issueStaffSession} 一起改成
+     * {@code MERCHANT} —— 两处在同一个方法区里，改一个不会漏掉另一个。
+     */
+    private final ai.neargo.shop.auth.TokenStores tokenStores;
     private final MchStoreMapper storeMapper;
     private final MchStoreRoleMapper roleMapper;
     private final MchStaffLogMapper logMapper;
@@ -39,12 +49,14 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     private final TokenStore tokenStore;
     private final OtpStore otpStore;
 
-    public MerchantStaffServiceImpl(MchAccountMapper staffMapper, MchStoreMapper storeMapper,
+    public MerchantStaffServiceImpl(MchAccountMapper staffMapper,
+                                    ai.neargo.shop.auth.TokenStores tokenStores, MchStoreMapper storeMapper,
                                     MchStoreRoleMapper roleMapper, MchStaffLogMapper logMapper,
                                     ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper roleDefMapper,
                                     StaffAuditLogger audit, TokenStore tokenStore,
                                     OtpStore otpStore) {
         this.staffMapper = staffMapper;
+        this.tokenStores = tokenStores;
         this.storeMapper = storeMapper;
         this.roleMapper = roleMapper;
         this.logMapper = logMapper;
@@ -175,11 +187,38 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         }
         a.setStatus(active ? MchAccount.ACTIVE : MchAccount.DISABLED);
         DataScopeContext.executeWithoutScope(() -> staffMapper.updateById(a));
+        if (!active) {
+            /*
+             * **停用要踢掉在线会话。**
+             *
+             * 只改状态的话，他手里那个令牌在 30 天过期之前照常能用 ——
+             * 而按下停用的老板以为立刻生效了。运营端（OpsServiceImpl）与 C 端
+             * （UserServiceImpl）早就这么做了，**只有 B 端一直没有**。
+             *
+             * 会话进库之后还有第二道：MerchantIdentityLoader 每请求都查 status，
+             * 停用的账号下一个请求就 401。两道都要 —— 那道依赖 token-store=db，
+             * 而它今天还没开。
+             */
+            kicked(mchAccountNo);
+        }
         log(merchantNo, mchAccountNo,
                 active ? MchStaffLog.STAFF_ENABLE : MchStaffLog.STAFF_DISABLE, null, null,
                 // 停用不删门店授权，日志里点明 —— 否则事后会以为权限已经收回了
                 active ? "启用员工" : "停用员工（门店授权保留）");
         return single(merchantNo, a);
+    }
+
+    /**
+     * 踢掉这个员工的在线会话。
+     *
+     * <p><b>只在「停用」时调，不在「改门店授权」时调</b> ——
+     * 门店归属由 {@code BizIdentityResolver} 每请求现算（按 {@code X-Store-No} 校验），
+     * 改了下一个请求就生效，不需要打断他。
+     * 停用不一样：那是「这个人不该再进来」，而身份是不是还有效，
+     * 在 token-store 还没切库的今天只有踢会话这一条路。
+     */
+    private void kicked(String mchAccountNo) {
+        tokenStores.of(ai.neargo.shop.auth.Realm.CONSUMER).revokeUser(mchAccountNo);
     }
 
     @Override
