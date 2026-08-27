@@ -20,6 +20,7 @@ export * from "./risk";
 export * from "./message";
 export * from "./content";
 export * from "./system";
+export * from "./job";
 
 /**
  * 运营侧看到的一条会员（P8）。

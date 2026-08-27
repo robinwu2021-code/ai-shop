@@ -407,6 +407,22 @@ export const NAV: NavSection[] = [
     ],
   },
 
+  // ── P-17.1 定时任务（**独立成一个入口，不做成系统配置的一个 tab**）──────
+  //
+  // 系统配置那七个 tab 回答的是「平台怎么配」，而这一页回答的是「后台此刻在不在跑」——
+  // 一个是配置，一个是运行时监控。塞进那七个 tab 里，出事时没人会想到去那儿翻。
+  //
+  // perm 用 read 而不是 manage：叶子的 perm 决定能不能**看见入口**，
+  // 而「能看任务跑没跑」的人比「能停任务」的人多得多 ——
+  // 一个任务出事时，先来看的往往是被它影响到的那条业务线的人。
+  // 开关/改频率/立即执行由页面内部按 system:job:manage 显隐。
+  {
+    key: "jobs", label: "定时任务", icon: "Timer", module: "system", href: "/jobs", pinBottom: true,
+    children: [
+      { href: "/jobs", label: "任务与执行日志", perm: "system:job:read", group: "运行配置", matrix: "P-17.1", ready: true },
+    ],
+  },
+
   // ── P-17 系统配置（固定在 Rail 底部）────────────────────────────────────
   {
     key: "system", label: "系统配置", icon: "Settings", module: "system", href: "/system", pinBottom: true,

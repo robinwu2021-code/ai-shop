@@ -1221,7 +1221,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 132,
+      "count": 134,
       "domains": [
         {
           "name": "经营看板",
@@ -2733,6 +2733,33 @@
           ]
         },
         {
+          "name": "定时任务",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/jobs",
+              "title": "定时任务",
+              "domain": "定时任务",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/jobs"
+            },
+            {
+              "app": "ops-web",
+              "route": "/jobs",
+              "title": "任务与执行日志",
+              "domain": "定时任务",
+              "group": "运行配置",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/jobs"
+            }
+          ]
+        },
+        {
           "name": "系统配置",
           "pages": [
             {
@@ -2872,5 +2899,5 @@
       ]
     }
   ],
-  "total": 231
+  "total": 233
 }

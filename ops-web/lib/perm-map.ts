@@ -110,6 +110,10 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   // 存储空间治理：看清单与发起回收是两个码，页面按后者显隐勾选框与批量条
   "system:media:read": "system:media:read",
   "system:media:purge": "system:media:purge",
+  // 定时任务：看与管两个码。读的人多得多 —— 一个任务出事时，
+  // 先来看的往往是被它影响到的那条业务线的人，而他们不该有权把它停掉
+  "system:job:read": "system:job:read",
+  "system:job:manage": "system:job:manage",
   "iam:role:grant": "iam:role:grant",
   "merchant:merchant:read": "merchant:merchant:read",
   /*

@@ -8022,3 +8022,13 @@ VALUES
     ('SUPER_ADMIN', 'ACT__SYSTEM_JOB_MANAGE', 'OPS', NOW(), NOW()),
     ('TECH_OPS', 'ACT__SYSTEM_JOB_READ', 'OPS', NOW(), NOW()),
     ('TECH_OPS', 'ACT__SYSTEM_JOB_MANAGE', 'OPS', NOW(), NOW());
+INSERT INTO sys_function (function_code, name, end_code, icon, href, sort, enabled, created_at, updated_at)
+VALUES ('OPS_JOBS', '定时任务', 'OPS', 'Timer', '/jobs', 195, 1, NOW(), NOW());
+INSERT INTO sys_function_point
+    (point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+     backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+VALUES ('OPS_JOBS', 'OPS_JOBS', '任务与执行日志', '运行配置', '/jobs',
+        'system:job:read', 'system:job:read', 'IMPLEMENTED', 1, 'P-17.1', 'MENU', 10, NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+VALUES ('SUPER_ADMIN', 'OPS_JOBS', 'OPS', NOW(), NOW()),
+       ('TECH_OPS', 'OPS_JOBS', 'OPS', NOW(), NOW());
