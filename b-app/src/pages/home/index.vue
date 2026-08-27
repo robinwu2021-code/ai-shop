@@ -129,20 +129,20 @@ const noticeValue = computed(() => {
  * 而点进去的页面各有各的判权：画一个点进去报 70006 的格子，
  * 比不画它更糟 —— 它每天都在那儿，每天都点不开。
  */
+/*
+ * 进销存**不进这个九宫格**。
+ *
+ * 原来它是第八格，数字是「缺货 + 滞销」—— 而店铺健康时那两个数恒为 0，
+ * 于是这格永远写着「0 库存」，混在七个订单待办里，读起来像「你没有库存」。
+ * 实测那家店库存里有 17 个在售 SKU，格子上却是 0：**格子上的数与里面的东西
+ * 是两回事，而商家没有理由知道这一点**。
+ *
+ * 它是一个模块，不是一个待办数，所以给它自己一张卡（见模板里的 .inv），
+ * 三个真数都摆出来，常用的三个动作直达。
+ */
 const cells = computed(() => {
   const t = todo.value;
-  // **库存那格不依赖 todo**：理货员有 biz:stock 却常常没有 biz:order:view，
-  // 早退的话他连这道门都没有 —— 而改库存正是他每天的活
-  const stockCell = merchant.can("biz:stock") && stockSummary.value
-    ? [{
-        key: "stock",
-        // 「要处理」= 缺货 + 滞销。两个数加起来才是他今天要看的量
-        n: stockSummary.value.shortageCount + stockSummary.value.staleCount,
-        route: ROUTES.stock,
-        perm: "biz:stock",
-      }]
-    : [];
-  if (!t) return stockCell;
+  if (!t) return [] as { key: string; n: number; route: string; perm: string }[];
   // 显式标注：否则 TS 会把 route 收窄成 base 里那几个字面量，splice 进来的核销/分拣路由报错
   const base: { key: string; n: number; route: string; perm: string }[] = [
     { key: "toShip", n: t.toShip, route: ROUTES.orders, perm: "biz:ship" },
@@ -162,7 +162,7 @@ const cells = computed(() => {
     base.splice(2, 0, { key: "toVerify", n: t.toVerify, route: ROUTES.verify, perm: "biz:verify" });
     base.splice(3, 0, { key: "toPick", n: t.toPick, route: ROUTES.picking, perm: "biz:receive" });
   }
-  return [...base.filter((c) => merchant.can(c.perm)), ...stockCell];
+  return base.filter((c) => merchant.can(c.perm));
 });
 
 const ownedRate = computed(() =>
@@ -294,6 +294,44 @@ onShow(load);
         <view v-for="c in cells" :key="c.key" class="sh-card grid__cell" @tap="open(c.route)">
           <text class="grid__n sh-num" :class="{ 'is-zero': !c.n }">{{ c.n }}</text>
           <text class="grid__label">{{ $t(`home.${c.key}`) }}</text>
+        </view>
+      </view>
+
+      <!--
+        进销存：**给它一张自己的卡**，不塞进上面那个待办九宫格。
+
+        它是一个模块（九个页面），而九宫格里那七格是订单流水线上的待办数。
+        混在一起时它显示「缺货 + 滞销」＝ 0，和旁边七个 0 长得一模一样，
+        商家看不见它 —— 而库存里其实有几十上百个 SKU。
+
+        三个数都摆出来（在售 / 缺货 / 滞销），点哪儿都进库存；
+        下面三个是他每天真正要做的动作，直达，不用先进库存页再找。
+      -->
+      <view v-if="stockSummary && merchant.can('biz:stock')" class="sh-card inv">
+        <view class="inv__head" @tap="open(ROUTES.stock)">
+          <text class="txt-title">{{ $t("home.inv.title") }}</text>
+          <sh-go :text="String($t('home.inv.all'))"></sh-go>
+        </view>
+        <view class="inv__row">
+          <view class="inv__item" @tap="open(ROUTES.stock)">
+            <text class="inv__v sh-num">{{ stockSummary.itemCount }}</text>
+            <text class="sh-muted">{{ $t("home.inv.onSale") }}</text>
+          </view>
+          <view class="inv__item" @tap="open(ROUTES.stock)">
+            <text class="inv__v sh-num" :class="{ 'is-warn': stockSummary.shortageCount > 0 }">
+              {{ stockSummary.shortageCount }}
+            </text>
+            <text class="sh-muted">{{ $t("home.inv.shortage") }}</text>
+          </view>
+          <view class="inv__item" @tap="open(ROUTES.stock)">
+            <text class="inv__v sh-num">{{ stockSummary.staleCount }}</text>
+            <text class="sh-muted">{{ $t("home.inv.stale") }}</text>
+          </view>
+        </view>
+        <view class="inv__acts">
+          <view class="inv__act" @tap="open(ROUTES.purchaseEdit)">{{ $t("stock.entry.purchase") }}</view>
+          <view class="inv__act" @tap="open(ROUTES.stockCheck)">{{ $t("stock.entry.check") }}</view>
+          <view class="inv__act" @tap="open(ROUTES.stockDocs)">{{ $t("stock.entry.docs") }}</view>
         </view>
       </view>
 
@@ -494,6 +532,50 @@ onShow(load);
   font-size: 24rpx;
   color: var(--sh-sub);
 }
+/* 进销存卡：三个数 + 三个直达动作。与 .stats 同一套骨架，但多一行动作条 */
+.inv {
+  margin-bottom: 16rpx;
+}
+.inv__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.inv__row {
+  display: flex;
+  margin-top: 16rpx;
+}
+.inv__item {
+  flex: 1;
+  text-align: center;
+}
+.inv__v {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 600;
+  color: var(--sh-ink);
+}
+/* 缺货是唯一需要立刻动手的那个数，其余两个不抢眼 */
+.inv__v.is-warn {
+  color: var(--sh-danger);
+}
+.inv__acts {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 2rpx solid var(--sh-line);
+}
+.inv__act {
+  flex: 1;
+  text-align: center;
+  padding: 14rpx 0;
+  border-radius: 12rpx;
+  background: var(--sh-bg);
+  color: var(--sh-ink);
+  font-size: 26rpx;
+}
+
 .stats {
   margin-bottom: 16rpx;
 }
