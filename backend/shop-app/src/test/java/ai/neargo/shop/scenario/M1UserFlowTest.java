@@ -284,6 +284,31 @@ class M1UserFlowTest {
 
     // ---------------------------------------------------------------- helpers
 
+    @Test
+    @DisplayName("★★ 收货人手机号要判**号段**，不是只判 11 位 —— `00000000000` 存不进地址簿")
+    void receiverPhoneMustLookLikeAPhone() throws Exception {
+        String token = login("13600136010");
+
+        /*
+         * 为什么盯着这一个字段：**收货人电话不等于账号手机号**，它是手填的，
+         * 而它是履约那一端唯一的联系方式 —— 号码错了，骑手打不通、自提点核销不了，
+         * 而下单那一刻一切正常。此前只有 @NotBlank：非空即可。
+         */
+        for (String bad : new String[] {"00000000000", "12345678901", "1390000111", "abcdefghijk"}) {
+            mvc().perform(post("/mp/user/address").header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"张三\",\"phone\":\"" + bad
+                                    + "\",\"detail\":\"文一西路 1 号\",\"isDefault\":false}"))
+                    .andExpect(jsonPath("$.code").value(10400))
+                    .andExpect(result -> assertThat(result.getResponse().getContentAsString())
+                            .as("拒了要说清是哪个字段 —— 只回「参数错误」的话，用户改哪儿全靠猜")
+                            .contains("手机号"));
+        }
+
+        // 正常号照旧能存 —— 校验收窄了，但没把正常路径一起收掉
+        saveAddress(token, null, "张三", "13900001111", "文一西路 1 号", false);
+    }
+
     private String saveAddress(String token, String addressId, String name, String phone,
                                String detail, boolean isDefault) throws Exception {
         String idPart = addressId == null ? "" : "\"addressId\":\"" + addressId + "\",";

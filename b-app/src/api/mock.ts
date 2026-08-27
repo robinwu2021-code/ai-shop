@@ -26,6 +26,7 @@ import {
   allCommunitySeeds,
 } from "@shared/mock/db";
 import { currentCurrency, money } from "@shared/utils/money";
+import { isPhone } from "@shared/utils/validate";
 // 能力位被拒要抛**带业务码**的错（70023），页面据此渲染示例态而不是错误页
 import { ApiError } from "@shared/net/http-client";
 import {
@@ -3338,6 +3339,9 @@ export const mockApi: MerchantApi = {
   },
 
   async mEnrollMember(payload) {
+    // 与真后端同一条判据（`Phones.CN_MOBILE`）。**替身不能比正主松** ——
+    // 松了的话在 mock 下录得进去、接真后端一片 400，而 mock 那一遍看着完全正常
+    if (!isPhone(payload.phone ?? "")) throw new Error("手机号格式不对，应为 11 位大陆手机号");
     const tail = (payload.phone ?? "").slice(-4);
     const exist = mockMembers().find((m) => m.phoneTail === tail);
     if (exist) {

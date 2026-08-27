@@ -112,7 +112,7 @@ public class BizMemberController {
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @PostMapping("/biz/members")
-    public MemberVO enroll(@RequestBody EnrollReq req) {
+    public MemberVO enroll(@jakarta.validation.Valid @RequestBody EnrollReq req) {
         BizContext ctx = BizContext.current();
         var m = memberService.enroll(BizContext.requireMerchantNo(), req.phone(), req.remark(),
                 req.tagNos(), req.storeNo() != null ? req.storeNo() : ctx.currentStoreNo(),
@@ -296,7 +296,10 @@ public class BizMemberController {
     public record SegmentReq(String segmentNo, String name, String scopeStoreNo, MemberQuery rule) {
     }
 
-    public record EnrollReq(String phone, String remark, List<String> tagNos, String storeNo) {
+    public record EnrollReq(@jakarta.validation.constraints.Pattern(
+                                    regexp = ai.neargo.shop.common.Phones.CN_MOBILE,
+                                    message = ai.neargo.shop.common.Phones.MESSAGE) String phone,
+                            String remark, List<String> tagNos, String storeNo) {
     }
 
     public record PatchReq(String remark, String status) {

@@ -46,23 +46,28 @@
 
 
 
-# ── 选中态自画（含未拆出的）（10 处）→ 用 .sh-chip--primary / --solid
-# C 端 10 页 / 20 条声明。**判据仍然过宽，动手前必须逐条看** ——
+# ── 选中态自画（含未拆出的）（8 处）→ 用 .sh-chip--primary / --solid
+#
+# 2026-08-27 已还：**开关圆点 2 处**（address 的「设为默认地址」、order-confirm 的
+# 「使用积分」）→ `sh-switch`。这两处是**布尔开关**，不是分段选择 —— 判据把它们
+# 和 chip 收成一类，正是下面那段说的「五种东西」之一。
+# 照 B 端现成的用法接：外层行拿 `@tap`、`sh-switch` 只传 `:model-value` 不接 v-model
+#（三个 B 端调用点都是这么写的；给它加 `@tap.stop` 会把那三处一起弄坏）。
+# 顺带把 44rpx / 40rpx 两个**各自量出来的**圆点尺寸一并消掉。
+#
+# C 端 8 页 / 18 条声明。**判据仍然过宽，动手前必须逐条看** ——
 # 逐条核过之后：真正是「chip 形态选中态」的约 11 条（primary-tint 或实心主色），
-# 其余是另外几种东西：单选圆点 ×2（address / order-confirm 的 `.dot`）、
-# 带描边的选项卡 ×2（after-sale `.type`、order-confirm `.mode` —— 那是 `sh-option`）、
+# 其余是另外几种东西：带描边的选项卡 ×2（after-sale `.type`、order-confirm `.mode` —— 那是 `sh-option`）、
 # 开关方块 ×1（groups `.toggle__box` —— `sh-switch`）、
 # 高亮数值 ×1（order-confirm `.cell__v`，danger 色，根本不是选中）、
 # 收藏星 ×1（store `.fav`，warning 色）。
 # **B 端同一条判据误命中过三次**，这里原样重演。照数字动手会把五种东西收成一个件。
-c-app/address segment
 c-app/after-sale segment
 c-app/community segment
 c-app/goods segment
 c-app/group segment
 c-app/groups segment
 c-app/me segment
-c-app/order-confirm segment
 c-app/pay segment
 c-app/store segment
 

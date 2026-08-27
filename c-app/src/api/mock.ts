@@ -25,6 +25,7 @@ import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
 import { fulfillmentFor } from "@shared/strategies/fulfillment";
 import { CATEGORY_TYPE, FULFILLMENT, PAY_MODE, POINTS, SERVICE_SCOPE, TRADE_RULES } from "@shared/utils/constants";
 import { currentCurrency } from "@shared/utils/money";
+import { isPhone } from "@shared/utils/validate";
 import { pointsExpireAt } from "@shared/utils/datetime";
 import { defaultFulfillment } from "@shared/utils/goods";
 import { buyNGetM, giftQtyFor } from "@shared/utils/promotion";
@@ -349,6 +350,9 @@ export const mockApi: ShopApi = {
   },
 
   async saveAddress(payload) {
+    // 与真后端同一条判据（`Phones.CN_MOBILE`）。**替身不能比正主松** ——
+    // 收货人电话是履约那一端唯一的联系方式，mock 放行等于把这条链路的验收让过去了
+    if (!isPhone(payload.phone ?? "")) throw new Error("手机号格式不对，应为 11 位大陆手机号");
     if (payload.addressId) {
       const i = db.addresses.findIndex((a) => a.addressId === payload.addressId);
       if (i < 0) throw new Error("地址不存在");

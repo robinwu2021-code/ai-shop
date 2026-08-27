@@ -1541,7 +1541,7 @@
       ],
       "usage": {
         "b-app": 3,
-        "c-app": 0
+        "c-app": 2
       },
       "note": "开关",
       "why": "三页各画一个，**三个数没有一个对得上**（宽 84/88、圆角 胶囊/24rpx、位移 40/42/46）。全 B 端零处原生 `&lt;switch&gt;`"
@@ -2951,20 +2951,13 @@
         "sh-empty",
         "sh-scaffold",
         "sh-sheet",
+        "sh-switch",
         "biz-region-picker"
       ],
       "libClassHits": 13,
-      "localSelectors": 20,
-      "localCssLines": 91,
-      "rolled": [
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary / --solid",
-          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-          "gap": false
-        }
-      ]
+      "localSelectors": 18,
+      "localCssLines": 82,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3306,20 +3299,13 @@
       "file": "c-app/src/pages/order-confirm/index.vue",
       "components": [
         "sh-actionbar",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-switch"
       ],
       "libClassHits": 22,
-      "localSelectors": 44,
-      "localCssLines": 226,
-      "rolled": [
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary / --solid",
-          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-          "gap": false
-        }
-      ]
+      "localSelectors": 42,
+      "localCssLines": 216,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3521,14 +3507,12 @@
       "gap": false,
       "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
       "pages": [
-        "c-app/address",
         "c-app/after-sale",
         "c-app/community",
         "c-app/goods",
         "c-app/group",
         "c-app/groups",
         "c-app/me",
-        "c-app/order-confirm",
         "c-app/pay",
         "c-app/store"
       ]

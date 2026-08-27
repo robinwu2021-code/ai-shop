@@ -217,7 +217,7 @@ onLoad((q) => {
 
         <view class="switchrow" @tap="draft.isDefault = !draft.isDefault">
           <text class="switchrow__label">{{ $t("address.asDefault") }}</text>
-          <view class="dot" :class="{ 'is-on': draft.isDefault }" />
+          <sh-switch :model-value="draft.isDefault"></sh-switch>
         </view>
 
         <view class="sh-btn sheet__save" :class="{ 'is-disabled': !valid }" @tap="save">
@@ -313,15 +313,6 @@ onLoad((q) => {
 .switchrow__label {
   font-size: 26rpx;
   color: var(--sh-ink);
-}
-.dot {
-  width: 44rpx;
-  height: 44rpx;
-  border-radius: 9999px;
-  background: var(--sh-faint);
-}
-.dot.is-on {
-  background: var(--sh-primary);
 }
 .sheet__save {
   margin-top: 36rpx;

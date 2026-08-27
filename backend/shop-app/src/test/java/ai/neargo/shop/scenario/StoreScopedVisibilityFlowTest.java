@@ -235,11 +235,19 @@ class StoreScopedVisibilityFlowTest {
          * 所以下面回读一次确认。
          */
         setBuyerCommunity(buyer, communityNo);
-        // 自送要有收货地址（70014）
+        /*
+         * 自送要有收货地址（70014）。
+         *
+         * **收货人电话不用 buyerPhone**：测试的登录号一律走 `126` 前缀（约定俗成的
+         * 「一眼假」号段，保证不会撞上真号），而 `126` 不是大陆手机号段 ——
+         * `SaveAddressReq` 现在按 `Phones.CN_MOBILE` 判格式，会拒。
+         * 收货人电话本来就与账号手机号是两个字段（家里的座机、代收人的号都可能填在这），
+         * 所以这里填一个格式合法的号，`126` 那条约定原样留着。
+         */
         String addressId = json.readTree(mvc().perform(post("/mp/user/address")
                         .header("Authorization", "Bearer " + buyer)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"买家\",\"phone\":\"" + buyerPhone + "\",\"province\":\"浙江省\","
+                        .content("{\"name\":\"买家\",\"phone\":\"13600180013\",\"province\":\"浙江省\","
                                 + "\"city\":\"杭州市\",\"district\":\"西湖区\",\"detail\":\"文三路 1 号\","
                                 + "\"isDefault\":true,\"tag\":\"家\"}"))
                 .andExpect(jsonPath("$.code").value(0))

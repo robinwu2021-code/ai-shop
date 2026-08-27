@@ -165,7 +165,7 @@ public class MpUserController {
     }
 
     @PostMapping("/address")
-    public List<AddressVO> saveAddress(@RequestBody SaveAddressReq req) {
+    public List<AddressVO> saveAddress(@jakarta.validation.Valid @RequestBody SaveAddressReq req) {
         return addressService.save(new AddressService.SaveCommand(
                 req.addressId(), req.name(), req.phone(), req.region(), req.province(), req.city(),
                 req.district(), req.detail(), req.isDefault(), req.tag(),
@@ -194,7 +194,10 @@ public class MpUserController {
     }
 
     /** @param latE6 地图选点给的坐标（gcj02，E6）；不传 = 不改 */
-    public record SaveAddressReq(String addressId, @NotBlank String name, @NotBlank String phone,
+    public record SaveAddressReq(String addressId, @NotBlank String name,
+                                 @NotBlank @jakarta.validation.constraints.Pattern(
+                                         regexp = ai.neargo.shop.common.Phones.CN_MOBILE,
+                                         message = ai.neargo.shop.common.Phones.MESSAGE) String phone,
                                  String region,
                                  String province, String city, String district,
                                  @NotBlank String detail, Boolean isDefault, String tag,

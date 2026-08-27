@@ -641,7 +641,7 @@ onMounted(async () => {
               ? $t("confirm.pointsUsed", { n: amount.pointsUsed, p: money(amount.pointsDeductMinor) })
               : $t("confirm.pointsHave", { n: pointBalance }) }}
           </text>
-          <view v-if="!pointsBlockedReason" class="dot" :class="{ 'is-on': usePoints }" />
+          <sh-switch v-if="!pointsBlockedReason" :model-value="usePoints"></sh-switch>
         </view>
       </view>
 
@@ -892,16 +892,6 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 16rpx;
-}
-.dot {
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 9999px;
-  background: var(--sh-faint);
-  flex-shrink: 0;
-}
-.dot.is-on {
-  background: var(--sh-primary);
 }
 .actionbar__sum {
   flex: 1;
