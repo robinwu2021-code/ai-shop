@@ -67,19 +67,24 @@ Ehcache 持久化目录**关不干净就会被整个删掉**（日志里只有�
 ```
 id            BIGINT PK
 token_hash    CHAR(64)  UK    -- SHA-256(token) 的十六进制。**不存明文**
-realm         VARCHAR(16)     -- OPERATOR / CONSUMER
 user_no       VARCHAR(32)     -- 主体标识，revokeUser 按它批量撤销
-nickname      VARCHAR(64)
-roles         VARCHAR(512)    -- JSON 数组。判权现算，这里只存角色
-perms         TEXT            -- JSON。**仅作 LivePermResolver 解析失败时的回落**
-tenant_no     VARCHAR(32)
-scope_json    TEXT            -- DataScopeSpec
 issued_at     DATETIME
 expires_at    DATETIME        -- 签发 + 30 天，与今天一致
 last_seen_at  DATETIME        -- 节流写回，见 5.4
 revoked_at    DATETIME NULL   -- **软撤销，不物理删**
-revoke_reason VARCHAR(32)     -- LOGOUT / ROLE_CHANGED / DISABLED / PURGED
+revoke_reason VARCHAR(32)     -- LOGOUT / DISABLED / FORCED_OUT / PURGED
 ```
+
+> **八列，到此为止。会话表只回答一件事：这个令牌属于谁、还有效吗。**
+>
+> 初稿在这里还塞了 `nickname` / `roles` / `perms` / `tenant_no` / `scope_json`，
+> 那违反了本文自己在 13.3 定的原则 ——「变动频率高于会话生命期的东西，不进会话」。
+> 昵称、角色、数据域全是这种东西：会话活 30 天，而角色可能今天改。
+> 存进去就有第二个真源，而过期的那一份**不会报错，只会让人拥有他昨天的权限**。
+> 还原路径见 **第 15 节**，代价比想象的小。
+>
+> `realm` 列也去掉了 —— 表本身就是按端分的（`usr_/mch_/ops_session`），
+> 再存一列 realm 等于允许「运营端的行出现在 C 端表里」这种状态存在。
 
 索引：`uk_session_token(token_hash)`、`idx_session_user(user_no, revoked_at)`、
 `idx_session_expires(expires_at)`、`idx_session_revoked(revoked_at)`。
@@ -356,20 +361,16 @@ record SessionTable(String table, Realm realm, String tokenPrefix) { }
 
 ## 13.3 三张表的差异：**只在载荷列上**
 
-公共列（三张表都有，形状一模一样）：
+**三张表完全同构，一列不差：**
 
 ```
 id / token_hash / user_no / issued_at / expires_at / last_seen_at
 / revoked_at / revoke_reason
 ```
 
-差异列：
-
-| 表 | 额外列 | 为什么 |
-|---|---|---|
-| `usr_session`（C） | 无 | C 端无 RBAC，会话里除了「你是谁」不需要别的 |
-| `mch_session`（B） | 无 | **刻意不存 `store_no` / `entity_no`** —— 见下 |
-| `ops_session`（运营） | `roles` / `perms` / `tenant_no` / `scope_json` | RBAC 需要；`perms` 仅作现算失败时的回落（第 1 节） |
+初稿给 `ops_session` 加过 `roles` / `perms` / `tenant_no` / `scope_json`，**已删**（见第 3 节）。
+删掉之后有个意外的好处：**三张表同构，那套「一套代码三次装配」就没有任何例外分支了** ——
+`SessionDao` 连行映射都只有一份。有例外分支的抽象迟早会被例外撑开。
 
 **B 端为什么不把门店存进会话**：门店由每个请求的 `X-Store-No` 头决定，
 一个店长可以在多个门店之间切换；`BizIdentityResolver.resolve(userNo, storeNo)`
@@ -514,7 +515,8 @@ record SessionProfile(
 | `revokePoll` | **10 秒** | 5 秒 | 5 秒 | 封禁必须生效；C 端稍宽是因为撤销事件本身稀少 |
 | `lastSeenThrottle` | **24 小时** | 1 小时 | 1 小时 | C 端这一列只用于「这个会话还活着吗」，24 小时精度足够 |
 | `asyncLoginLog` | **是** | 是 | 否 | 运营端登录稀少且审计要求最高，同步写更可靠 |
-| 会话载荷列 | **无额外列** | 无额外列 | roles/perms/tenant/scope | 见 13.3 |
+| 会话载荷列 | — | — | — | **三端同构，均无额外列**（第 3 节） |
+| 身份缓存 TTL | **60 秒** | 30 秒 | 30 秒 | 还原后的 `LoginUser`，见 15.3 |
 | 过滤器链 | **最短**：无 RBAC、无 `BizContext` 解析 | + `BizIdentityResolver` | + `LivePermResolver` | C 端本来就不需要那两步 |
 
 > C 端的「轻」是四件事叠出来的：**列最少、回源最少、写回最少、过滤器链最短**。
@@ -594,3 +596,84 @@ id / at / event / user_no / result / reason
 | C 端日志表增长最快，异步写掩盖问题 | 丢弃要计数并暴露成指标，**丢了要看得见**；否则「日志少了」永远查不出来 |
 | 有人给会话表加外键"保证一致性" | A13 架构测试直接拦 |
 | 分三条迁移后取号更容易撞 | 一次取三个连号，取前看当前最大号（现为 V262） |
+
+---
+
+# 15. 会话只存令牌之后，身份怎么还原
+
+## 15.1 还原路径（三端各一条，都在本端库内闭环）
+
+`token → user_no` 之后，`LoginUser` 由**用户表现读 + 现算**得到：
+
+| 端 | 还原路径 | 库内读几次 |
+|---|---|---|
+| C | `usr_account`（昵称、状态） | 1 |
+| B | `mch_account`（账号、状态）→ `BizIdentityResolver(userNo, X-Store-No)` | 1 + 身份解析（本来就每请求现算） |
+| 运营 | `sys_ops_staff`（`roles` JSON、`real_name`、`status`、`tenant_no`）→ `LivePermResolver(roles)` → `scopeOf(staff, perms)` | 1 + 两次纯计算 |
+
+**关键实测**：运营端的 `DataScopeSpec` 本来就是 `scopeOf(staff, perms)` **算出来的**
+（`OpsServiceImpl:639`），不是存出来的；`roles` 就在 `sys_ops_staff` 的列上；
+`perms` 已经是 `LivePermResolver` 现算。
+**也就是说，会话里那四列全都是可以重新算出来的东西 —— 存它们只是把一份快照埋进了 30 天有效期里。**
+
+## 15.2 白得的三个好处
+
+删掉那几列之后，下面这些**不再需要 `revokeUser` 兜底**：
+
+| 变更 | 原来 | 现在 |
+|---|---|---|
+| 改角色 | 必须踢人，否则新权限要等下次登录 | **下一个请求就生效**（roles 现读） |
+| 改数据域 | 必须踢人 | 同上（scope 现算） |
+| 改昵称 | 会话里那份一直是旧的 | 现读 |
+| **停用账号** | 踢人 | **仍然踢人**，且多一道保险：还原时读到 `status != ACTIVE` 直接 401 |
+
+`revokeUser` 因此收窄成它本来的语义：**主动登出、强制下线、停用**。
+这是好事 —— 一个接口被用来实现四五件不同的事时，
+总有一天会有人漏调其中一处，而漏调的表现是「改了权限没生效」，很难联想到会话。
+
+> 顺带把 13.4 那张「三端撤销触发点」表简化了一半：
+> 「改角色/改数据域」不再是必须踢人的时刻。**要核的只剩停用与归属变更。**
+
+## 15.3 代价：每请求多一次身份还原 → 两级缓存
+
+这是这条改动唯一的成本，解法是**把缓存按变化频率拆成两层**：
+
+```
+L1-会话   token_hash → (user_no, expires_at)
+          会话生命期内**永不变** → TTL 可以长（C 端 5 分钟）
+
+L1-身份   user_no → LoginUser（已还原）
+          随用户表变 → TTL 短（C 端 60s / B 端·运营端 30s）
+```
+
+两层的失效条件不同，所以必须分开：
+放一层里的话，TTL 要么迁就会话（身份变更迟迟不生效），要么迁就身份（令牌白白反复回源查库）。
+
+**这和 14.2「两个旋钮分开拧」是同一个手法**：
+不同变化频率的东西，给不同的过期策略。
+
+### 跨实例的身份失效
+
+- **B 端 / 运营端**：撤销轮询顺带扫 `WHERE updated_at > :lastSeen`，剔掉那几个 `user_no`。
+  同一条轮询、同一套机制，不新增组件。
+- **C 端不扫**：`usr_account` 的 `updated_at` 会被「改昵称、改头像」这类日常操作刷动，
+  百万用户下扫出来的多是无关变更。C 端身份载荷只有「你是谁 + 状态」，
+  60 秒 TTL 足够；**真要立刻生效的封禁走 `revokeUser`**，那条是精确的。
+
+## 15.4 还原失败怎么办（一处容易写错的地方）
+
+令牌有效、但用户表里查不到那个 `user_no`（数据被清过、库不一致）：
+**返回 401 并记一条 `LOGIN_FAILED / ORPHAN_SESSION` 日志，不要放行。**
+
+写成「查不到就给一个空的 LoginUser 放行」的话，症状是
+**一个没有任何权限的幽灵身份在系统里游走** —— 它在多数接口上会被权限挡住，
+于是不报错；直到碰上一个只判「登录了没」的接口。
+
+## 15.5 任务增补
+
+- [ ] A4″ `DbTokenStore` 只读写八列；`LoginUser` 由各端的 `IdentityLoader` 还原
+- [ ] A16 `IdentityLoader` 三份实现（C/B/运营），各自只读本端用户表 —— **分库约束 14.4-③**
+- [ ] A17 两级缓存（L1-会话 / L1-身份），TTL 按 14.2 档位；B/运营端身份失效搭撤销轮询
+- [ ] A18 测试：改角色后**下一个请求**即生效（不必重登）；停用后立即 401；
+      孤儿会话返回 401 且落日志
+- [ ] A19 简化 13.4 的撤销触发点核对清单：只剩停用与归属变更
