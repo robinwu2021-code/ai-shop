@@ -35,12 +35,14 @@ public class UserServiceImpl implements UserService {
 
     private final OpenOrderPort openOrderPort;
     private final TokenStore tokenStore;
+    /** 分池之后踢人必须指明是哪个池，见 TokenStores 的类注释 */
+    private final ai.neargo.shop.auth.TokenStores tokenStores;
     /** 注销要连人档一起解绑（P0）—— 与删凭证是同一件事的两半 */
     private final ai.neargo.shop.user.service.PersonService personService;
 
     public UserServiceImpl(UserMapper userMapper, IdentityMapper identityMapper,
                            PickupQueryPort pickupQueryPort, OtpStore otpStore,
-                           OpenOrderPort openOrderPort, TokenStore tokenStore,
+                           OpenOrderPort openOrderPort, TokenStore tokenStore, ai.neargo.shop.auth.TokenStores tokenStores, 
                            ai.neargo.shop.user.service.PersonService personService) {
         this.identityMapper = identityMapper;
         this.userMapper = userMapper;
@@ -48,6 +50,7 @@ public class UserServiceImpl implements UserService {
         this.otpStore = otpStore;
         this.openOrderPort = openOrderPort;
         this.tokenStore = tokenStore;
+        this.tokenStores = tokenStores;
         this.personService = personService;
     }
 
@@ -109,7 +112,7 @@ public class UserServiceImpl implements UserService {
                 .set(UsrAccount::getStatus, STATUS_DEREGISTERED));
 
         // 踢掉所有在线会话：注销之后那些 token 不该还能用
-        tokenStore.revokeUser(user.getUserNo());
+        tokenStores.of(ai.neargo.shop.auth.Realm.CONSUMER).revokeUser(user.getUserNo());
         log.info("[用户] 账号已注销 userNo={}", user.getUserNo());
     }
 

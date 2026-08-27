@@ -53,12 +53,14 @@ public class PermConfigServiceImpl implements PermConfigService {
     private final RolePermResolver resolver;
     private final AuditLogPort auditLogPort;
     private final TokenStore tokenStore;
+    /** 分池之后踢人必须指明是哪个池，见 TokenStores 的类注释 */
+    private final ai.neargo.shop.auth.TokenStores tokenStores;
     private final tools.jackson.databind.ObjectMapper objectMapper;
 
     public PermConfigServiceImpl(FunctionMapper functionMapper, FunctionPointMapper pointMapper,
                                  RoleMapper roleMapper, RolePointMapper rolePointMapper,
                                  RoleMemberMapper memberMapper, RolePermResolver resolver,
-                                 AuditLogPort auditLogPort, TokenStore tokenStore,
+                                 AuditLogPort auditLogPort, TokenStore tokenStore, ai.neargo.shop.auth.TokenStores tokenStores, 
                                  tools.jackson.databind.ObjectMapper objectMapper) {
         this.functionMapper = functionMapper;
         this.pointMapper = pointMapper;
@@ -68,6 +70,7 @@ public class PermConfigServiceImpl implements PermConfigService {
         this.resolver = resolver;
         this.auditLogPort = auditLogPort;
         this.tokenStore = tokenStore;
+        this.tokenStores = tokenStores;
         this.objectMapper = objectMapper;
     }
 
@@ -321,7 +324,7 @@ public class PermConfigServiceImpl implements PermConfigService {
                 .eq(SysRoleMember::getEndCode, OPS).eq(SysRoleMember::getRoleCode, roleCode));
         int kicked = 0;
         for (SysRoleMember m : members) {
-            kicked += tokenStore.revokeUser(m.getSubjectNo());
+            kicked += tokenStores.of(ai.neargo.shop.auth.Realm.OPERATOR).revokeUser(m.getSubjectNo());
         }
         /*
          * **高危 + 单独记一条**。它打断的是别人正在做的事，

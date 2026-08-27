@@ -72,6 +72,8 @@ public class OpsServiceImpl implements OpsService {
     private final MerchantApplyMapper applyMapper;
     private final MerchantAdminPort merchantAdminPort;
     private final TokenStore tokenStore;
+    /** 分池之后踢人必须指明是哪个池，见 TokenStores 的类注释 */
+    private final ai.neargo.shop.auth.TokenStores tokenStores;
     private final ObjectMapper objectMapper;
     private final ObjectMapper json;
     private final ai.neargo.shop.platform.IndustryService industryService;
@@ -96,7 +98,7 @@ public class OpsServiceImpl implements OpsService {
                           ai.neargo.shop.platform.perm.StaffIdentityResolver identityResolver,
                           AuditLogMapper auditLogMapper,
                           MerchantApplyMapper applyMapper, MerchantAdminPort merchantAdminPort,
-                          TokenStore tokenStore, ObjectMapper json, ObjectMapper objectMapper,
+                          TokenStore tokenStore, ai.neargo.shop.auth.TokenStores tokenStores,  ObjectMapper json, ObjectMapper objectMapper,
                           ai.neargo.shop.platform.IndustryService industryService,
                           ai.neargo.shop.platform.MasterDataService masterDataService,
                           ai.neargo.shop.auth.PasswordHasher passwordHasher,
@@ -123,6 +125,7 @@ public class OpsServiceImpl implements OpsService {
         this.applyMapper = applyMapper;
         this.merchantAdminPort = merchantAdminPort;
         this.tokenStore = tokenStore;
+        this.tokenStores = tokenStores;
         this.json = json;
     }
 
@@ -667,7 +670,7 @@ public class OpsServiceImpl implements OpsService {
          * 照常操作 —— 而停用他的那个人以为立刻生效了。
          */
         if (!enabled) {
-            tokenStore.revokeUser(staffNo);
+            tokenStores.of(ai.neargo.shop.auth.Realm.OPERATOR).revokeUser(staffNo);
         }
         audit("STAFF_ENABLED", staffNo, enabled ? "启用" : "停用", true,
                 objectMapper.writeValueAsString(Map.of("status", enabled ? "DISABLED" : "ACTIVE")),
@@ -876,7 +879,7 @@ public class OpsServiceImpl implements OpsService {
          * 改完密码把自己的其它会话踢掉 —— 改密的常见动机就是「怀疑密码泄露了」，
          * 不踢的话拿着旧 token 的人照样在线，改密等于没改。
          */
-        tokenStore.revokeUser(staff.getStaffNo());
+        tokenStores.of(ai.neargo.shop.auth.Realm.OPERATOR).revokeUser(staff.getStaffNo());
         audit("STAFF_PASSWORD", staff.getStaffNo(), "自助改密", true, null, null);
     }
 
@@ -951,7 +954,7 @@ public class OpsServiceImpl implements OpsService {
         staff.setMustChangePassword(false);
         staffMapper.updateById(staff);
         // 忘记密码的常见动机就是「怀疑被人用了」，不踢的话拿着旧 token 的人照样在线
-        tokenStore.revokeUser(staffNo);
+        tokenStores.of(ai.neargo.shop.auth.Realm.OPERATOR).revokeUser(staffNo);
         audit("STAFF_PASSWORD_RESET", staffNo, "经邮件重置", true, null, null);
     }
 

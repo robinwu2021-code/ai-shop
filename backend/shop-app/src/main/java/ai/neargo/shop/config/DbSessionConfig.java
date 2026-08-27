@@ -1,0 +1,143 @@
+package ai.neargo.shop.config;
+
+import ai.neargo.auth.store.AuthCache;
+import ai.neargo.auth.store.IdentityLoader;
+import ai.neargo.auth.store.SessionDao;
+import ai.neargo.auth.store.SessionProfile;
+import ai.neargo.shop.auth.LoginUser;
+import ai.neargo.shop.auth.Realm;
+import ai.neargo.shop.auth.RealmRoutingTokenStore;
+import ai.neargo.shop.auth.TokenStore;
+import ai.neargo.shop.auth.TokenStores;
+import ai.neargo.shop.auth.store.DbTokenStore;
+import ai.neargo.shop.merchant.auth.MerchantIdentityLoader;
+import ai.neargo.shop.platform.auth.OperatorIdentityLoader;
+import ai.neargo.shop.user.auth.ConsumerIdentityLoader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.beans.factory.annotation.Value;
+
+import javax.sql.DataSource;
+import java.time.Clock;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * 会话进库的装配（{@code shop.auth.token-store=db}）。
+ *
+ * <p><b>三个池各一套：DAO、两级缓存、身份加载器。</b>缓存**必须分开** ——
+ * 共用一份等于把刚在存储层分开的边界，在内存里又合上了。
+ *
+ * <p>业务代码注入的仍然是 {@link TokenStore}：{@link RealmRoutingTokenStore}
+ * 按令牌前缀/会话 realm 自动分发，没有一处业务需要知道有三个池。
+ * 唯一的例外是 {@code revokeUser} —— 主体号不带池信息，必须显式指明，
+ * 见 {@link TokenStores} 的类注释。
+ */
+@Configuration
+@ConditionalOnProperty(name = "shop.auth.token-store", havingValue = "db")
+public class DbSessionConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(DbSessionConfig.class);
+
+    /**
+     * 三张会话表都在平台库，用平台数据源。
+     *
+     * <p>将来某一端拆去独立库时，只需给那一端换一个 {@link JdbcClient} —— DAO 一行不改，
+     * 这正是把它做成构造参数的理由（见 {@code shop-auth-store} 的 pom 注释）。
+     */
+    @Bean
+    JdbcClient authJdbcClient(DataSource dataSource) {
+        return JdbcClient.create(dataSource);
+    }
+
+    @Bean
+    @Primary
+    RealmRoutingTokenStore realmRoutingTokenStore(
+            JdbcClient authJdbcClient,
+            ConsumerIdentityLoader consumers,
+            MerchantIdentityLoader merchants,
+            OperatorIdentityLoader operators) {
+
+        Map<Realm, TokenStore> byRealm = new EnumMap<>(Realm.class);
+        byRealm.put(Realm.CONSUMER, store(authJdbcClient, Realm.CONSUMER, SessionProfiles.CONSUMER,
+                // ⚠️ 过渡期：C 端池里还装着 B 端会话，见 TransitionalConsumerIdentityLoader
+                new TransitionalConsumerIdentityLoader(consumers, merchants)));
+        byRealm.put(Realm.MERCHANT, store(authJdbcClient, Realm.MERCHANT, SessionProfiles.MERCHANT,
+                merchants));
+        byRealm.put(Realm.OPERATOR, store(authJdbcClient, Realm.OPERATOR, SessionProfiles.OPERATOR,
+                operators));
+
+        log.info("会话已改为进库（三池：consumer / merchant / operator）");
+        return new RealmRoutingTokenStore(byRealm);
+    }
+
+    private static DbTokenStore store(JdbcClient jdbc, Realm realm, SessionProfile p,
+                                      IdentityLoader<LoginUser> identities) {
+        int entries = SessionProfiles.cacheEntries(p);
+        return new DbTokenStore(realm, p, new SessionDao(jdbc, p), identities,
+                // **堆内、绝不落盘**：这里出现 disk 层就是把 2026-08-24 那次全员掉线装了回来。
+                // 本缓存的权威都在库里，丢了只是回源查一次
+                new AuthCache<>("auth." + p.poolName() + ".session",
+                        String.class, DbTokenStore.CachedSession.class, p.cacheTtl(), entries),
+                new AuthCache<>("auth." + p.poolName() + ".identity",
+                        String.class, LoginUser.class, p.identityTtl(), entries),
+                Clock.systemDefaultZone());
+    }
+
+    /**
+     * 撤销传播。
+     *
+     * <p><b>刻意不用 {@code @Scheduled}。</b>本仓库有一条架构守卫：
+     * 每个 {@code @Scheduled} 方法都必须加 {@code @SchedulerLock}，
+     * 否则多实例下会各跑一遍 —— 那条规则是对的，但<b>对这一条恰恰相反</b>：
+     * 撤销传播剔的是**本进程的本地缓存**，它必须**每个实例都跑**。
+     * 加了分布式锁，就只有抢到锁的那台会剔缓存，其余各台继续认着已被踢掉的会话 ——
+     * 而那正是这整套改造要消灭的状态。
+     *
+     * <p>所以这里自己排，而不是去给守卫开一个例外：
+     * 守卫的语义（「凡 @Scheduled 必须加锁」）保持为真，本任务只是不属于它管的那一类。
+     */
+    @Bean(destroyMethod = "shutdown")
+    ScheduledExecutorService revocationPollScheduler(
+            RealmRoutingTokenStore routing,
+            @Value("${shop.auth.revoke-poll-ms:5000}") long pollMs) {
+
+        List<DbTokenStore> stores = List.of(
+                (DbTokenStore) routing.of(Realm.CONSUMER),
+                (DbTokenStore) routing.of(Realm.MERCHANT),
+                (DbTokenStore) routing.of(Realm.OPERATOR));
+
+        ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "auth-revoke-poll");
+            t.setDaemon(true);
+            return t;
+        });
+        exec.scheduleWithFixedDelay(() -> {
+            for (DbTokenStore s : stores) {
+                try {
+                    s.pollRevocations();
+                } catch (RuntimeException e) {
+                    /*
+                     * 一个池抖了不能带停另外两个；更要紧的是**不能让异常逃出这个
+                     * Runnable** —— scheduleWithFixedDelay 会因此把任务整个取消，
+                     * 于是撤销传播从此不再跑，而没有任何地方会说它停了。
+                     */
+                    log.error("撤销轮询失败，本轮跳过 pool={} 异常={}",
+                            s, e.getClass().getSimpleName(), e);
+                }
+            }
+        }, pollMs, pollMs, TimeUnit.MILLISECONDS);
+
+        log.info("撤销轮询已启动，间隔 {}ms", pollMs);
+        return exec;
+    }
+}

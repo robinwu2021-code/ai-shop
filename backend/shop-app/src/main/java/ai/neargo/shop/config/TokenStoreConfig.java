@@ -1,11 +1,13 @@
 package ai.neargo.shop.config;
 
 import ai.neargo.shop.auth.TokenStore;
+import ai.neargo.shop.auth.TokenStores;
 import ai.neargo.shop.auth.store.EhcacheTokenStore;
 import ai.neargo.shop.auth.store.MemoryTokenStore;
 import ai.neargo.shop.auth.store.RedisTokenStore;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -71,5 +73,19 @@ public class TokenStoreConfig {
     @ConditionalOnProperty(name = "shop.auth.token-store", havingValue = "redis")
     TokenStore redisTokenStore(StringRedisTemplate redis, ObjectMapper mapper) {
         return new RedisTokenStore(redis, mapper, TTL);
+    }
+
+    /**
+     * 单池形态（memory / ehcache / redis）下的 {@link ai.neargo.shop.auth.TokenStores}：
+     * 三端共用一个存储，取哪个池都返回它。
+     *
+     * <p>{@code db} 形态由 {@code DbSessionConfig} 装配 {@code RealmRoutingTokenStore}
+     * ——它自己就实现了 {@code TokenStores}，所以这里用
+     * {@code @ConditionalOnMissingBean} 让位。
+     */
+    @Bean
+    @ConditionalOnMissingBean(TokenStores.class)
+    TokenStores tokenStores(TokenStore tokenStore) {
+        return TokenStores.single(tokenStore);
     }
 }
