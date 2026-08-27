@@ -1,5 +1,10 @@
 package ai.neargo.shop.media;
 
+import org.springframework.context.annotation.Bean;
+import ai.neargo.job.api.JobDeclaration;
+import ai.neargo.job.api.JobHandler;
+import ai.neargo.job.api.JobInvocation;
+import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -29,7 +34,7 @@ import java.util.List;
  */
 @Profile("worker")
 @Component
-public class MediaReconcileJob {
+public class MediaReconcileJob implements JobHandler {
 
     private static final Logger log = LoggerFactory.getLogger(MediaReconcileJob.class);
 
@@ -50,39 +55,58 @@ public class MediaReconcileJob {
     // 幂等（处理过的行已经不是 PENDING 了），但两个实例同时跑会重复判定同一批
     @SchedulerLock(name = "media-reconcile", lockAtLeastFor = "PT1M", lockAtMostFor = "PT10M")
     public void reconcile() {
-        jobs.run("media-reconcile", () -> {
-            /*
-             * 只收拾「够旧」的：正在上传中的那一瞬间也是 PENDING，
-             * 不留出这段时间就会把别人正传到一半的文件当成残留删掉。
-             */
-            LocalDateTime line = LocalDateTime.now().minusMinutes(staleMinutes);
-            List<SysMediaAsset> stale = assetMapper.selectList(Wrappers.<SysMediaAsset>lambdaQuery()
-                    .eq(SysMediaAsset::getStatus, SysMediaAsset.PENDING)
-                    .lt(SysMediaAsset::getCreatedAt, line));
-            if (stale.isEmpty()) {
-                return null;
-            }
+        // 触发器只负责「到点了」；任务体在 run() 里。J1 只搬不改
+        jobs.run("media-reconcile", () -> run(null).detail());
+    }
 
-            int completed = 0;
-            int dropped = 0;
-            for (SysMediaAsset a : stale) {
-                SysMediaAsset upd = new SysMediaAsset();
-                upd.setId(a.getId());
-                upd.setUpdatedAt(LocalDateTime.now());
-                if (mediaStore.exists(a.getAssetKey())) {
-                    // 字节在，只是第三步没走到 —— 补成 ACTIVE，这张图本来就是好的
-                    upd.setStatus(SysMediaAsset.ACTIVE);
-                    assetMapper.updateById(upd);
-                    completed++;
-                } else {
-                    // 字节不在，这一行没有对应的东西。删行而不是留着：
-                    // 留着会让它永远出现在对账里，而它什么也不代表
-                    assetMapper.deleteById(a.getId());
-                    dropped++;
-                }
+    @Override
+    public String name() {
+        return "media-reconcile";
+    }
+
+    /** 声明。displayName 是运营页面直接显示的那句话 —— 不能是锁名。 */
+    @Bean
+    public JobDeclaration mediareconcileDeclaration() {
+        return new JobDeclaration("media-reconcile", "图片记账对账",
+                "把卡在 PENDING 的媒体行收拾掉：字节还在就补成 ACTIVE，字节没了就删行",
+                "shop-base", "0 5 * * * *", true, 60, 600, true, true);
+    }
+
+    @Override
+    public JobResult run(JobInvocation invocation) {
+        /*
+         * 只收拾「够旧」的：正在上传中的那一瞬间也是 PENDING，
+         * 不留出这段时间就会把别人正传到一半的文件当成残留删掉。
+         */
+        LocalDateTime line = LocalDateTime.now().minusMinutes(staleMinutes);
+        List<SysMediaAsset> stale = assetMapper.selectList(Wrappers.<SysMediaAsset>lambdaQuery()
+                .eq(SysMediaAsset::getStatus, SysMediaAsset.PENDING)
+                .lt(SysMediaAsset::getCreatedAt, line));
+        if (stale.isEmpty()) {
+            // **detail 保持 null** —— JobSupport 用它区分「跑了但没事」
+            return JobResult.ok(null);
+        }
+
+        int completed = 0;
+        int dropped = 0;
+        for (SysMediaAsset a : stale) {
+            SysMediaAsset upd = new SysMediaAsset();
+            upd.setId(a.getId());
+            upd.setUpdatedAt(LocalDateTime.now());
+            if (mediaStore.exists(a.getAssetKey())) {
+                // 字节在，只是第三步没走到 —— 补成 ACTIVE，这张图本来就是好的
+                upd.setStatus(SysMediaAsset.ACTIVE);
+                assetMapper.updateById(upd);
+                completed++;
+            } else {
+                // 字节不在，这一行没有对应的东西。删行而不是留着：
+                // 留着会让它永远出现在对账里，而它什么也不代表
+                assetMapper.deleteById(a.getId());
+                dropped++;
             }
-            log.info("图片记账对账：补齐 {} 行、清掉 {} 行残留", completed, dropped);
-            return null;
-        });
+        }
+        log.info("图片记账对账：补齐 {} 行、清掉 {} 行残留", completed, dropped);
+        // 原本这里也 return null（做了事但不汇报数字）—— J1 只搬不改，保持原样
+        return JobResult.ok(null);
     }
 }

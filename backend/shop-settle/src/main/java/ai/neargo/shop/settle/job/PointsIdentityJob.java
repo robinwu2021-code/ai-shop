@@ -1,5 +1,10 @@
 package ai.neargo.shop.settle.job;
 
+import org.springframework.context.annotation.Bean;
+import ai.neargo.job.api.JobDeclaration;
+import ai.neargo.job.api.JobHandler;
+import ai.neargo.job.api.JobInvocation;
+import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.settle.PointsService;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -30,7 +35,7 @@ import java.util.List;
  */
 @Profile("worker")
 @Component
-public class PointsIdentityJob {
+public class PointsIdentityJob implements JobHandler {
 
     private static final Logger log = LoggerFactory.getLogger(PointsIdentityJob.class);
 
@@ -62,36 +67,54 @@ public class PointsIdentityJob {
     @Scheduled(cron = "${shop.job.points-identity.cron:0 40 0 * * *}")
     @SchedulerLock(name = "points-identity", lockAtLeastFor = "PT4M", lockAtMostFor = "PT30M")
     public void check() {
-        jobs.run("points-identity", () -> {
-            StringBuilder summary = new StringBuilder();
-            int broken = 0;
-            for (String market : MARKETS) {
-                PointsService.IdentityCheck c = pointsService.checkIdentity(market);
-                if (c.balanced()) {
-                    summary.append("[%s 平]".formatted(market));
-                    continue;
-                }
-                broken++;
-                /*
-                 * **打 error 而不是 warn**：这条不是「要留意一下」，
-                 * 是「这套账已经不成立了」。差额为正说明池子里有没人认领的钱，
-                 * 为负说明平台欠的比池子里的多 —— 后者是真实的资金缺口。
-                 *
-                 * 把两边的数与 PENDING 一起打出来，是因为排查的第一步永远是
-                 * 「差在哪一侧」：不打的话看到的只是一个孤零零的差额。
-                 */
-                log.error("[points] ★ 恒等式失衡 market={} 差额={}分（池子={} 应欠={}"
-                                + " ← 流通{}分 + 未兑付{}分）—— "
-                                + "差额为负是真实资金缺口；为正是池子里有没人认领的钱。"
-                                + "先查当天的 EXPIRE_INCOME 与 MERCHANT_RECEIVE 有没有漏记",
-                        c.market(), c.diffMinor(), c.poolBalanceMinor(), c.owedMinor(),
-                        c.circulatingPoints(), c.pendingUseMinor());
-                summary.append("[%s 失衡%d分]".formatted(market, c.diffMinor()));
+        // 触发器只负责「到点了」；任务体在 run() 里。J1 只搬不改
+        jobs.run("points-identity", () -> run(null).detail());
+    }
+
+    @Override
+    public String name() {
+        return "points-identity";
+    }
+
+    /** 声明。displayName 是运营页面直接显示的那句话 —— 不能是锁名。 */
+    @Bean
+    public JobDeclaration pointsIdentityDeclaration() {
+        return JobDeclaration.daily("points-identity", "积分恒等式自检",
+                "逐个市场核对「池子里的钱 = 流通的分 + 未兑付的分」。失衡为负是真实资金缺口",
+                "shop-settle", "0 40 0 * * *");
+    }
+
+    @Override
+    public JobResult run(JobInvocation invocation) {
+        StringBuilder summary = new StringBuilder();
+        int broken = 0;
+        for (String market : MARKETS) {
+            PointsService.IdentityCheck c = pointsService.checkIdentity(market);
+            if (c.balanced()) {
+                summary.append("[%s 平]".formatted(market));
+                continue;
             }
-            // 平的时候也返回一句：JobSupport 的运行记录里要看得出「今天查过了」——
-            // 返回 null 的话，「查了都平」与「任务没跑」在记录上长得一模一样，
-            // 而这正是本轮反复踩到的那个形状
-            return "恒等式自检 %d 个市场，失衡 %d 个 %s".formatted(MARKETS.size(), broken, summary);
-        });
+            broken++;
+            /*
+             * **打 error 而不是 warn**：这条不是「要留意一下」，
+             * 是「这套账已经不成立了」。差额为正说明池子里有没人认领的钱，
+             * 为负说明平台欠的比池子里的多 —— 后者是真实的资金缺口。
+             *
+             * 把两边的数与 PENDING 一起打出来，是因为排查的第一步永远是
+             * 「差在哪一侧」：不打的话看到的只是一个孤零零的差额。
+             */
+            log.error("[points] ★ 恒等式失衡 market={} 差额={}分（池子={} 应欠={}"
+                            + " ← 流通{}分 + 未兑付{}分）—— "
+                            + "差额为负是真实资金缺口；为正是池子里有没人认领的钱。"
+                            + "先查当天的 EXPIRE_INCOME 与 MERCHANT_RECEIVE 有没有漏记",
+                    c.market(), c.diffMinor(), c.poolBalanceMinor(), c.owedMinor(),
+                    c.circulatingPoints(), c.pendingUseMinor());
+            summary.append("[%s 失衡%d分]".formatted(market, c.diffMinor()));
+        }
+        // 平的时候也返回一句：JobSupport 的运行记录里要看得出「今天查过了」——
+        // 返回 null 的话，「查了都平」与「任务没跑」在记录上长得一模一样，
+        // 而这正是本轮反复踩到的那个形状
+    return JobResult.ok("恒等式自检 %d 个市场，失衡 %d 个 %s"
+            .formatted(MARKETS.size(), broken, summary));
     }
 }

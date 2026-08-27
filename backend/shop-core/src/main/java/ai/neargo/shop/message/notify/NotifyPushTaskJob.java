@@ -1,5 +1,10 @@
 package ai.neargo.shop.message.notify;
 
+import org.springframework.context.annotation.Bean;
+import ai.neargo.job.api.JobDeclaration;
+import ai.neargo.job.api.JobHandler;
+import ai.neargo.job.api.JobInvocation;
+import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.context.annotation.Profile;
@@ -17,7 +22,7 @@ import org.springframework.stereotype.Component;
  */
 @Profile("worker")
 @Component
-public class NotifyPushTaskJob {
+public class NotifyPushTaskJob implements JobHandler {
 
     private final NotifyPushTaskService service;
     private final JobSupport jobs;
@@ -30,9 +35,27 @@ public class NotifyPushTaskJob {
     @Scheduled(cron = "${shop.job.push-task.cron:0 * * * * *}")
     @SchedulerLock(name = "notify-push-task", lockAtLeastFor = "PT10S", lockAtMostFor = "PT10M")
     public void dispatch() {
-        jobs.run("notify-push-task", () -> {
-            int tasks = service.dispatchDue();
-            return tasks == 0 ? null : "下发 " + tasks + " 个广播任务";   // 没有到点任务是常态
-        });
+        // 触发器只负责「到点了」；任务体在 run() 里。J1 只搬不改
+        jobs.run("notify-push-task", () -> run(null).detail());
+    }
+
+    @Override
+    public String name() {
+        return "notify-push-task";
+    }
+
+    /** 声明。displayName 是运营页面直接显示的那句话 —— 不能是锁名。 */
+    @Bean
+    public JobDeclaration notifypushtaskDeclaration() {
+        return new JobDeclaration("notify-push-task", "定时推送下发",
+                "把到点的广播推送任务下发给通道。不跑的话运营配的定时推送永远不发出去",
+                "shop-core", "0 * * * * *", true, 60, 600, true, true);
+    }
+
+    @Override
+    public JobResult run(JobInvocation invocation) {
+        int tasks = service.dispatchDue();
+        // 没有到点任务是常态；**detail 保持 null**，JobSupport 用它区分「跑了但没事」
+        return JobResult.ok(tasks == 0 ? null : "下发 " + tasks + " 个广播任务");
     }
 }

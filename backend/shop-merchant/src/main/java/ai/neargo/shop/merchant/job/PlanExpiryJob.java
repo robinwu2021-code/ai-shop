@@ -1,5 +1,10 @@
 package ai.neargo.shop.merchant.job;
 
+import org.springframework.context.annotation.Bean;
+import ai.neargo.job.api.JobDeclaration;
+import ai.neargo.job.api.JobHandler;
+import ai.neargo.job.api.JobInvocation;
+import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.merchant.service.MerchantPlanService;
 import ai.neargo.shop.spi.platform.AuditLogPort;
@@ -25,7 +30,7 @@ import org.springframework.stereotype.Component;
  */
 @Profile("worker")
 @Component
-public class PlanExpiryJob {
+public class PlanExpiryJob implements JobHandler {
 
     private static final Logger log = LoggerFactory.getLogger(PlanExpiryJob.class);
 
@@ -54,20 +59,37 @@ public class PlanExpiryJob {
     // 商家看到两条「已降级」会以为被降了两次。
     @SchedulerLock(name = "plan-expiry", lockAtLeastFor = "PT4M", lockAtMostFor = "PT30M")
     public void scan() {
-        jobs.run("plan-expiry", () -> {
-            MerchantPlanService.SweepResult r = planService.sweepExpiry(System.currentTimeMillis());
-            if (r.toGrace() == 0 && r.toExpired() == 0) {
-                return null;
-            }
-            log.warn("增值包到期扫描：{} 家进入宽限期，{} 家已降级，压为只读 {} 家门店",
-                    r.toGrace(), r.toExpired(), r.storesSuspended());
-            // 写成一条汇总而不是逐商家一条：这个 job 的读者是运营，他要看的是
-            // 「今天有多少人掉下去了」；逐户明细在到期看板上按条件筛，那里才是干活的地方。
-            auditLogPort.record("PLAN_EXPIRY_SWEEP", "-",
-                    r.toGrace() + " 家进入宽限期；" + r.toExpired() + " 家降级，压为只读 "
-                            + r.storesSuspended() + " 家门店",
-                    r.toExpired() > 0);
-            return "宽限 " + r.toGrace() + " / 降级 " + r.toExpired();
-        });
+        // 触发器只负责「到点了」；任务体在 run() 里。J1 只搬不改
+        jobs.run("plan-expiry", () -> run(null).detail());
+    }
+
+    @Override
+    public String name() {
+        return "plan-expiry";
+    }
+
+    /** 声明。displayName 是运营页面直接显示的那句话 —— 不能是锁名。 */
+    @Bean
+    public JobDeclaration planexpiryDeclaration() {
+        return JobDeclaration.daily("plan-expiry", "增值包到期扫描",
+                "扫出到期的商家增值包：进宽限期或降级，并把超额门店压成只读。不跑的话过期商家照常接单",
+                "shop-merchant", "0 25 3 * * *");
+    }
+
+    @Override
+    public JobResult run(JobInvocation invocation) {
+        MerchantPlanService.SweepResult r = planService.sweepExpiry(System.currentTimeMillis());
+        if (r.toGrace() == 0 && r.toExpired() == 0) {
+            return JobResult.ok(null);
+        }
+        log.warn("增值包到期扫描：{} 家进入宽限期，{} 家已降级，压为只读 {} 家门店",
+                r.toGrace(), r.toExpired(), r.storesSuspended());
+        // 写成一条汇总而不是逐商家一条：这个 job 的读者是运营，他要看的是
+        // 「今天有多少人掉下去了」；逐户明细在到期看板上按条件筛，那里才是干活的地方。
+        auditLogPort.record("PLAN_EXPIRY_SWEEP", "-",
+                r.toGrace() + " 家进入宽限期；" + r.toExpired() + " 家降级，压为只读 "
+                        + r.storesSuspended() + " 家门店",
+                r.toExpired() > 0);
+        return JobResult.ok("宽限 " + r.toGrace() + " / 降级 " + r.toExpired());
     }
 }

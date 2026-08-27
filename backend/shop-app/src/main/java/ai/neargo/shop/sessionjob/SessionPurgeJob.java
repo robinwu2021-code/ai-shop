@@ -1,9 +1,14 @@
 package ai.neargo.shop.sessionjob;
 
+import org.springframework.context.annotation.Bean;
 import ai.neargo.auth.store.LoginLogDao;
 import ai.neargo.auth.store.SessionProfile;
 import ai.neargo.auth.store.SessionDao;
 import ai.neargo.shop.config.SessionProfiles;
+import ai.neargo.job.api.JobDeclaration;
+import ai.neargo.job.api.JobHandler;
+import ai.neargo.job.api.JobInvocation;
+import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -33,7 +38,7 @@ import java.util.List;
 @Component
 @Profile("worker")
 @ConditionalOnProperty(name = "shop.auth.token-store", havingValue = "db")
-public class SessionPurgeJob {
+public class SessionPurgeJob implements JobHandler {
 
     /** 会话过期之后再留多久才物理删。留一段是为了让「他上次什么时候掉线的」还查得到。 */
     private static final int SESSION_GRACE_DAYS = 30;
@@ -53,24 +58,42 @@ public class SessionPurgeJob {
     @Scheduled(cron = "${shop.job.session-purge.cron:0 15 4 * * *}")
     @SchedulerLock(name = "session-purge", lockAtLeastFor = "PT1M", lockAtMostFor = "PT30M")
     public void purge() {
-        jobs.run("session-purge", () -> {
-            LocalDateTime now = LocalDateTime.now();
-            int sessions = 0;
-            int logs = 0;
-            for (SessionProfile p : List.of(SessionProfiles.CONSUMER,
-                    SessionProfiles.MERCHANT, SessionProfiles.OPERATOR)) {
-                sessions += purgeBatched(b ->
-                        new SessionDao(jdbc, p).purgeExpiredBefore(
-                                now.minusDays(SESSION_GRACE_DAYS), b));
-                logs += purgeBatched(b ->
-                        new LoginLogDao(jdbc, p).purgeBefore(
-                                now.minusDays(p.logRetentionDays()), b));
-            }
-            if (sessions == 0 && logs == 0) {
-                return null;
-            }
-            return "清理会话 %d 行、登录日志 %d 行".formatted(sessions, logs);
-        });
+        // 触发器只负责「到点了」；任务体在 run() 里。J1 只搬不改
+        jobs.run("session-purge", () -> run(null).detail());
+    }
+
+    @Override
+    public String name() {
+        return "session-purge";
+    }
+
+    /** 声明。displayName 是运营页面直接显示的那句话 —— 不能是锁名。 */
+    @Bean
+    public JobDeclaration sessionpurgeDeclaration() {
+        return JobDeclaration.daily("session-purge", "会话与登录日志清理",
+                "删掉过期很久的会话与超出保留期的登录日志。不跑的话登录日志会长成本库最大的表",
+                "shop-app", "0 15 4 * * *");
+    }
+
+    @Override
+    public JobResult run(JobInvocation invocation) {
+        LocalDateTime now = LocalDateTime.now();
+        int sessions = 0;
+        int logs = 0;
+        for (SessionProfile p : List.of(SessionProfiles.CONSUMER,
+                SessionProfiles.MERCHANT, SessionProfiles.OPERATOR)) {
+            sessions += purgeBatched(b ->
+                    new SessionDao(jdbc, p).purgeExpiredBefore(
+                            now.minusDays(SESSION_GRACE_DAYS), b));
+            logs += purgeBatched(b ->
+                    new LoginLogDao(jdbc, p).purgeBefore(
+                            now.minusDays(p.logRetentionDays()), b));
+        }
+        if (sessions == 0 && logs == 0) {
+            // **detail 保持 null** —— JobSupport 用它区分「跑了但没事」
+            return JobResult.ok(null);
+        }
+        return JobResult.ok("清理会话 %d 行、登录日志 %d 行".formatted(sessions, logs));
     }
 
     private interface Batch {

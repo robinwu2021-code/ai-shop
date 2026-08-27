@@ -1,5 +1,11 @@
 package ai.neargo.shop.settle.job;
 
+import java.util.List;
+import org.springframework.context.annotation.Bean;
+import ai.neargo.job.api.JobDeclaration;
+import ai.neargo.job.api.JobHandler;
+import ai.neargo.job.api.JobInvocation;
+import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.settle.PointsService;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -59,18 +65,8 @@ public class PointsActivateJob {
     // 实例 B 的定时器晚几秒触发又拿到锁」。日结任务不怕多锁几分钟，怕的是白跑一遍。
     @SchedulerLock(name = "points-activate", lockAtLeastFor = "PT4M", lockAtMostFor = "PT30M")
     public void activate() {
-        jobs.run("points-activate", () -> {
-            int n = pointsService.activateDuePoints();
-            if (n == 0) {
-                // 「扫过了，没有到点的」是正常的，不值得每天打一行 warn。
-                // 但也不能完全不记 —— 任务没跑与跑了没事，排查时是两件事，
-                // 而这正是 JobSupport 的运行记录负责区分的
-                log.debug("积分转正：本次没有到点的待生效分");
-                return null;
-            }
-            log.info("积分转正：{} 条待生效分已转为可用", n);
-            return n + " 条待生效分已转为可用";
-        });
+        // 触发器只负责「到点了」；任务体在 activateHandler 里。J1 只搬不改
+        jobs.run("points-activate", () -> activateHandler().run(null).detail());
     }
 
     /**
@@ -88,15 +84,79 @@ public class PointsActivateJob {
     // activate 的 lockAtLeastFor 还没释放就轮到 expire，会被静默跳过一整天
     @SchedulerLock(name = "points-expire", lockAtLeastFor = "PT4M", lockAtMostFor = "PT30M")
     public void expire() {
-        jobs.run("points-expire", () -> {
-            int n = pointsService.expireIdleAccounts();
-            if (n == 0) {
-                log.debug("积分到期：本次没有到期账户");
-                return null;
+        jobs.run("points-expire", () -> expireHandler().run(null).detail());
+    }
+
+    /**
+     * <b>这个类承载两个任务</b>（转正、到期清零），所以它自己不 implements JobHandler ——
+     * 任务的身份是**锁名**，一个类可以有多个。
+     *
+     * <p>盘点时按类数会把这两个数成一个，而它们在 {@code sys_job_run} 里是两行。
+     */
+    @Bean
+    public JobHandler pointsActivateHandler() {
+        return activateHandler();
+    }
+
+    @Bean
+    public JobHandler pointsExpireHandler() {
+        return expireHandler();
+    }
+
+    private JobHandler activateHandler() {
+        return new JobHandler() {
+            @Override
+            public String name() {
+                return "points-activate";
             }
-            // 清零是**用户看得见的损失**，用 info 不用 debug —— 出诉时要查得到那天清了多少
-            log.info("积分到期清零：{} 个账户余额已清空并转入平台收入", n);
-            return n + " 个账户余额已清空并转入平台收入";
-        });
+
+            @Override
+            public JobResult run(JobInvocation invocation) {
+                int n = pointsService.activateDuePoints();
+                if (n == 0) {
+                    // 「扫过了，没有到点的」是正常的，不值得每天打一行 warn。
+                    // 但也不能完全不记 —— 任务没跑与跑了没事，排查时是两件事，
+                    // 而这正是 JobSupport 的运行记录负责区分的
+                    log.debug("积分转正：本次没有到点的待生效分");
+                    // **detail 保持 null** —— JobSupport 用它区分「跑了但没事」，J1 连它都不能变
+                    return JobResult.ok(null);
+                }
+                log.info("积分转正：{} 条待生效分已转为可用", n);
+                return JobResult.ok(n + " 条待生效分已转为可用");
+            }
+        };
+    }
+
+    private JobHandler expireHandler() {
+        return new JobHandler() {
+            @Override
+            public String name() {
+                return "points-expire";
+            }
+
+            @Override
+            public JobResult run(JobInvocation invocation) {
+                int n = pointsService.expireIdleAccounts();
+                if (n == 0) {
+                    log.debug("积分到期：本次没有到期账户");
+                    return JobResult.ok(null);
+                }
+                // 清零是**用户看得见的损失**，用 info 不用 debug —— 出诉时要查得到那天清了多少
+                log.info("积分到期清零：{} 个账户余额已清空并转入平台收入", n);
+                return JobResult.ok(n + " 个账户余额已清空并转入平台收入");
+            }
+        };
+    }
+
+    /** 两条声明。displayName 是运营页面直接显示的那句话。 */
+    @Bean
+    public List<JobDeclaration> pointsJobDeclarations() {
+        return List.of(
+                JobDeclaration.daily("points-activate", "待生效积分转正",
+                        "把过了售后期的待生效积分转成可用余额。不跑的话用户的分永远停在「待生效」",
+                        "shop-settle", "0 5 0 * * *"),
+                JobDeclaration.daily("points-expire", "闲置积分清零",
+                        "把闲置满期的账户余额清空并计入平台收入。不跑的话积分池只增不减，对不平",
+                        "shop-settle", "0 20 0 * * *"));
     }
 }

@@ -1,6 +1,11 @@
 package ai.neargo.shop.merchant.job;
 
+import org.springframework.context.annotation.Bean;
 import ai.neargo.shop.merchant.service.MerchantGovernService;
+import ai.neargo.job.api.JobDeclaration;
+import ai.neargo.job.api.JobHandler;
+import ai.neargo.job.api.JobInvocation;
+import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import org.slf4j.Logger;
@@ -26,7 +31,7 @@ import java.util.Set;
  */
 @Profile("worker")
 @Component
-public class QualificationExpiryJob {
+public class QualificationExpiryJob implements JobHandler {
 
     private static final Logger log = LoggerFactory.getLogger(QualificationExpiryJob.class);
 
@@ -58,19 +63,37 @@ public class QualificationExpiryJob {
     // 但它会重复写审计并重复触达商家。**通知发两遍，商家会以为出了两次问题。**
     @SchedulerLock(name = "qualification-expiry", lockAtLeastFor = "PT4M", lockAtMostFor = "PT30M")
     public void scan() {
-        jobs.run("qualification-expiry", () -> {
-            Set<String> affected = governService.expireOverdueQualifications();
-            if (affected.isEmpty()) {
-                return null;
-            }
-            log.warn("资质到期：{} 家商家的资质已置为过期 {}", affected.size(), affected);
-            for (String merchantNo : affected) {
-                // 写审计而不是只打日志：运营要能在后台看到「谁什么时候过期的」，
-                // 而不是去翻服务器日志
-                auditLogPort.record("QUALIFICATION_EXPIRED", merchantNo,
-                        "资质到期，已置为 EXPIRED；该商家无法再上架需资质的类目");
-            }
-            return affected.size() + " 家商家的资质已过期";
-        });
+        // 触发器只负责「到点了」；任务体在 run() 里。J1 只搬不改
+        jobs.run("qualification-expiry", () -> run(null).detail());
+    }
+
+    @Override
+    public String name() {
+        return "qualification-expiry";
+    }
+
+    /** 声明。displayName 是运营页面直接显示的那句话 —— 不能是锁名。 */
+    @Bean
+    public JobDeclaration qualificationexpiryDeclaration() {
+        return JobDeclaration.daily("qualification-expiry", "商家资质到期扫描",
+                "把过期的商家资质置为 EXPIRED，并写一条审计。不跑的话过期资质仍能上架需资质的类目",
+                "shop-merchant", "0 10 3 * * *");
+    }
+
+    @Override
+    public JobResult run(JobInvocation invocation) {
+        Set<String> affected = governService.expireOverdueQualifications();
+        if (affected.isEmpty()) {
+            // **detail 保持 null** —— JobSupport 用它区分「跑了但没事」
+            return JobResult.ok(null);
+        }
+        log.warn("资质到期：{} 家商家的资质已置为过期 {}", affected.size(), affected);
+        for (String merchantNo : affected) {
+            // 写审计而不是只打日志：运营要能在后台看到「谁什么时候过期的」，
+            // 而不是去翻服务器日志
+            auditLogPort.record("QUALIFICATION_EXPIRED", merchantNo,
+                    "资质到期，已置为 EXPIRED；该商家无法再上架需资质的类目");
+        }
+        return JobResult.ok(affected.size() + " 家商家的资质已过期");
     }
 }

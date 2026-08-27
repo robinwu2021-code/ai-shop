@@ -1,5 +1,10 @@
 package ai.neargo.shop.media;
 
+import org.springframework.context.annotation.Bean;
+import ai.neargo.job.api.JobDeclaration;
+import ai.neargo.job.api.JobHandler;
+import ai.neargo.job.api.JobInvocation;
+import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.context.annotation.Profile;
@@ -18,7 +23,7 @@ import org.springframework.stereotype.Component;
  */
 @Profile("worker")
 @Component
-public class MediaScanJob {
+public class MediaScanJob implements JobHandler {
 
     private final MediaScanner scanner;
     private final JobSupport jobs;
@@ -40,9 +45,27 @@ public class MediaScanJob {
     // last_ref_desc，且把一轮几分钟的全表扫描变成两轮
     @SchedulerLock(name = "media-scan", lockAtLeastFor = "PT4M", lockAtMostFor = "PT30M")
     public void scan() {
-        jobs.run("media-scan", () -> {
-            scanner.scan();
-            return null;
-        });
+        // 触发器只负责「到点了」；任务体在 run() 里。J1 只搬不改
+        jobs.run("media-scan", () -> run(null).detail());
+    }
+
+    @Override
+    public String name() {
+        return "media-scan";
+    }
+
+    /** 声明。displayName 是运营页面直接显示的那句话 —— 不能是锁名。 */
+    @Bean
+    public JobDeclaration mediascanDeclaration() {
+        return JobDeclaration.daily("media-scan", "媒体资源扫描",
+                "扫一遍存储里的媒体文件，为「可回收空间」提供数据",
+                "shop-base", "0 20 3 * * *");
+    }
+
+    @Override
+    public JobResult run(JobInvocation invocation) {
+        scanner.scan();
+        // 原本 return null：扫描本身不产出可汇报的数字，detail 保持 null
+        return JobResult.ok(null);
     }
 }

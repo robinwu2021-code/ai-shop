@@ -1,6 +1,11 @@
 package ai.neargo.shop.invbridge;
 
+import org.springframework.context.annotation.Bean;
 import ai.neargo.shop.invbridge.InventoryBackfillService.Report;
+import ai.neargo.job.api.JobDeclaration;
+import ai.neargo.job.api.JobHandler;
+import ai.neargo.job.api.JobInvocation;
+import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
@@ -25,7 +30,7 @@ import org.springframework.stereotype.Component;
 @Profile("worker")
 @Component
 @ConditionalOnProperty(prefix = "shop.inventory.backfill", name = "enabled", havingValue = "true")
-public class InventoryBackfillJob {
+public class InventoryBackfillJob implements JobHandler {
 
     private static final Logger log = LoggerFactory.getLogger(InventoryBackfillJob.class);
 
@@ -58,19 +63,36 @@ public class InventoryBackfillJob {
     @Scheduled(cron = "${shop.inventory.backfill.cron:0 */10 * * * *}")
     @SchedulerLock(name = "inv-backfill", lockAtLeastFor = "PT30S", lockAtMostFor = "PT30M")
     public void run() {
-        jobs.run("inv-backfill", () -> {
-            Report r = backfill.run(dryRun, batch, cursor);
-            cursor = r.nextAfterId();   // null = 扫完了，下一轮从头开始
-            if (!r.clean()) {
-                // 对差不为零、或还有没搬的，都要看得见 —— 它是 G3 闸门拦下来的那个数
-                log.warn("库存搬运：对差 {} 条、待搬 {} 个，**不得切换真相源**；前三条差异：{}",
-                        r.diffs().size(), r.pending(), r.diffs().stream().limit(3).toList());
-            }
-            return "scanned=" + r.scannedSkus() + " moved=" + r.moved()
-                    + " skipped=" + r.skipped() + " pending=" + r.pending()
-                    + " diffs=" + r.diffs().size()
-                    + (r.nextAfterId() == null ? " (到末尾)" : " (下一轮 after=" + r.nextAfterId() + ")")
-                    + (dryRun ? " (dry-run)" : "");
-        });
+        // 触发器只负责「到点了」；任务体在 run() 里。J1 只搬不改
+        jobs.run("inv-backfill", () -> run(null).detail());
+    }
+
+    @Override
+    public String name() {
+        return "inv-backfill";
+    }
+
+    /** 声明。displayName 是运营页面直接显示的那句话 —— 不能是锁名。 */
+    @Bean
+    public JobDeclaration invbackfillDeclaration() {
+        return new JobDeclaration("inv-backfill", "库存搬运与对差",
+                "把平台库存分批搬进进销存并逐条对差。对差不为零时不得切换真相源",
+                "shop-app", "0 */10 * * * *", true, 60, 1800, true, true);
+    }
+
+    @Override
+    public JobResult run(JobInvocation invocation) {
+        Report r = backfill.run(dryRun, batch, cursor);
+        cursor = r.nextAfterId();   // null = 扫完了，下一轮从头开始
+        if (!r.clean()) {
+            // 对差不为零、或还有没搬的，都要看得见 —— 它是 G3 闸门拦下来的那个数
+            log.warn("库存搬运：对差 {} 条、待搬 {} 个，**不得切换真相源**；前三条差异：{}",
+                    r.diffs().size(), r.pending(), r.diffs().stream().limit(3).toList());
+        }
+        return JobResult.ok("scanned=" + r.scannedSkus() + " moved=" + r.moved()
+                + " skipped=" + r.skipped() + " pending=" + r.pending()
+                + " diffs=" + r.diffs().size()
+                + (r.nextAfterId() == null ? " (到末尾)" : " (下一轮 after=" + r.nextAfterId() + ")")
+                + (dryRun ? " (dry-run)" : ""));
     }
 }

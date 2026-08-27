@@ -1,5 +1,10 @@
 package ai.neargo.shop.trade.job;
 
+import org.springframework.context.annotation.Bean;
+import ai.neargo.job.api.JobDeclaration;
+import ai.neargo.job.api.JobHandler;
+import ai.neargo.job.api.JobInvocation;
+import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.trade.service.OrderService;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -32,7 +37,7 @@ import org.springframework.stereotype.Component;
  */
 @Profile("worker")
 @Component
-public class OrderAutoCloseJob {
+public class OrderAutoCloseJob implements JobHandler {
 
     private static final Logger log = LoggerFactory.getLogger(OrderAutoCloseJob.class);
 
@@ -51,15 +56,33 @@ public class OrderAutoCloseJob {
     // lockAtMostFor 给 3 分钟（大于一轮该花的时间，小于「卡住了还占着」的忍耐度）
     @SchedulerLock(name = "order-auto-close", lockAtLeastFor = "PT30S", lockAtMostFor = "PT3M")
     public void close() {
-        jobs.run("order-auto-close", () -> {
-            int n = orderService.closeExpiredOrders(System.currentTimeMillis());
-            if (n == 0) {
-                return null;
-            }
-            // info 而不是 debug：关单是**用户看得见的**结果（他的订单没了），
-            // 出诉时要查得到那个时段关了多少
-            log.info("[order] 超时未支付自动关单 {} 笔，库存/券/积分已释放", n);
-            return n + " 笔超时未支付订单已关闭";
-        });
+        // 触发器只负责「到点了」；任务体在 run() 里。J1 只搬不改
+        jobs.run("order-auto-close", () -> run(null).detail());
+    }
+
+    @Override
+    public String name() {
+        return "order-auto-close";
+    }
+
+    /** 声明。displayName 是运营页面直接显示的那句话 —— 不能是锁名。 */
+    @Bean
+    public JobDeclaration orderautocloseDeclaration() {
+        return new JobDeclaration("order-auto-close", "订单超时自动关单",
+                "关掉超时未支付的订单并释放库存、券与积分。不跑的话库存被永久占住，那些货再也卖不出去",
+                "shop-core", "0 * * * * *", true, 60, 180, true, true);
+    }
+
+    @Override
+    public JobResult run(JobInvocation invocation) {
+        int n = orderService.closeExpiredOrders(System.currentTimeMillis());
+        if (n == 0) {
+            // **detail 保持 null** —— JobSupport 用它区分「跑了但没事」，J1 连它都不能变
+            return JobResult.ok(null);
+        }
+        // info 而不是 debug：关单是**用户看得见的**结果（他的订单没了），
+        // 出诉时要查得到那个时段关了多少
+        log.info("[order] 超时未支付自动关单 {} 笔，库存/券/积分已释放", n);
+        return JobResult.ok(n + " 笔超时未支付订单已关闭");
     }
 }
