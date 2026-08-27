@@ -5,6 +5,7 @@ import ai.neargo.job.api.JobHandler;
 import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobHandlerRegistry;
+import net.javacrumbs.shedlock.core.LockingTaskExecutor;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,11 +24,35 @@ class JobHandlerEndpointTest {
 
     private final AtomicReference<JobInvocation> seen = new AtomicReference<>();
 
+    /** 真的加锁，不是替身放行 —— 替身太干净会盖住「锁没参与」这个缺陷本身。 */
+    private final CountingLockProvider lockProvider = new CountingLockProvider();
+    private final LockingTaskExecutor locks =
+            new net.javacrumbs.shedlock.core.DefaultLockingTaskExecutor(lockProvider);
+
+    /** 进程内的 LockProvider：按锁名各一把，抢不到就返回 empty（与 ShedLock 语义一致）。 */
+    static final class CountingLockProvider implements net.javacrumbs.shedlock.core.LockProvider {
+        final java.util.Set<String> held = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+        @Override
+        public java.util.Optional<net.javacrumbs.shedlock.core.SimpleLock> lock(
+                net.javacrumbs.shedlock.core.LockConfiguration cfg) {
+            if (!held.add(cfg.getName())) {
+                return java.util.Optional.empty();
+            }
+            return java.util.Optional.of(new net.javacrumbs.shedlock.core.SimpleLock() {
+                @Override
+                public void unlock() {
+                    held.remove(cfg.getName());
+                }
+            });
+        }
+    }
+
     private JobHandlerEndpoint endpointOf(JobHandler handler) {
         JobHandlerRegistry reg = new JobHandlerRegistry(
                 handler == null ? List.of() : List.of(handler),
                 List.of(JobDeclaration.daily("demo", "示例", "说明", "core", "0 0 3 * * ?")));
-        return new JobHandlerEndpoint(reg, TOKEN);
+        return new JobHandlerEndpoint(reg, locks, TOKEN);
     }
 
     private JobHandler handler(String name, java.util.function.Function<JobInvocation, JobResult> body) {
@@ -113,5 +138,43 @@ class JobHandlerEndpointTest {
         ResponseEntity<JobHandlerEndpoint.RunResp> r = ep.run("demo", TOKEN, null);
         assertThat(r.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(seen.get().params()).isEmpty();
+    }
+
+    @Test
+    void 上一轮还在跑时第二次调用被拒_而不是并排跑两遍() {
+        // 手动占住锁 —— 模拟「上一轮还没结束」
+        JobHandlerEndpoint ep = endpointOf(handler("demo", in -> JobResult.ok("ok")));
+        lockProvider.held.add("demo");
+
+        ResponseEntity<JobHandlerEndpoint.RunResp> r = ep
+                .run("demo", TOKEN, new JobHandlerEndpoint.RunReq("r1", "CRON", null, Map.of()));
+
+        assertThat(r.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(r.getBody().status()).isEqualTo("SKIPPED");
+        assertThat(seen.get())
+                .as("锁没抢到就不该碰任务体 —— 否则「并发保护」只是日志里的一句话")
+                .isNull();
+    }
+
+    @Test
+    void 锁名就是handler名_与旧的SchedulerLock争同一行() {
+        JobHandlerEndpoint ep = endpointOf(handler("demo", in -> {
+            // 任务体执行期间，锁必须是持有状态
+            assertThat(lockProvider.held).contains("demo");
+            return JobResult.ok("ok");
+        }));
+        ep.run("demo", TOKEN, new JobHandlerEndpoint.RunReq("r1", "CRON", null, Map.of()));
+        assertThat(lockProvider.held).as("跑完要释放").doesNotContain("demo");
+    }
+
+    @Test
+    void 任务抛异常也要释放锁_否则那个任务锁到超时为止() {
+        JobHandlerEndpoint ep = endpointOf(handler("demo", in -> {
+            throw new IllegalStateException("炸了");
+        }));
+        ep.run("demo", TOKEN, new JobHandlerEndpoint.RunReq("r1", "CRON", null, Map.of()));
+        assertThat(lockProvider.held)
+                .as("不释放的话，下一轮到 lockAtMostFor 之前全被跳过，而现场看上去像任务卡住了")
+                .doesNotContain("demo");
     }
 }

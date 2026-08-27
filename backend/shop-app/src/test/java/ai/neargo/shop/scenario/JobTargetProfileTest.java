@@ -73,6 +73,21 @@ class JobTargetProfileTest {
     }
 
     @Test
+    @DisplayName("★ 锁要在 —— 它此前挂在 @Profile(\"worker\") 下，而任务是从 HTTP 打进来的")
+    void lockMustBeAvailableWithoutWorkerProfile() {
+        /*
+         * 22:41 那次线上起不来是同一类问题的另一半：一个 profile 承担了两件事。
+         * 锁也一样 —— 它原本挂在 SchedulingConfig（@Profile("worker")）下，
+         * 于是「谁来触发」决定了「有没有并发保护」。
+         *
+         * 没有它，JobHandlerEndpoint 连 bean 都装不上；有它但装错了地方，
+         * 就是两条触发路径只有一条被保护 —— 而后者不会有任何报错。
+         */
+        assertThat(ctx.getBean(net.javacrumbs.shedlock.core.LockingTaskExecutor.class)).isNotNull();
+        assertThat(ctx.getBean(net.javacrumbs.shedlock.core.LockProvider.class)).isNotNull();
+    }
+
+    @Test
     @DisplayName("但调度器不能在：任务由独立进程排期，业务系统只被调")
     void 不带worker时不装调度器_否则两个进程会各排一遍() {
         // 两边都排期 = 同一个任务一天跑两次。ShedLock 挡得住同一时刻的并发，

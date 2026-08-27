@@ -54,11 +54,14 @@ public class JobHandlerEndpoint {
     private static final Logger log = LoggerFactory.getLogger(JobHandlerEndpoint.class);
 
     private final JobHandlerRegistry handlers;
+    private final LockingTaskExecutor locks;
     private final String token;
 
     public JobHandlerEndpoint(JobHandlerRegistry handlers,
+                              LockingTaskExecutor locks,
                               @Value("${shop.job.internal-token:}") String token) {
         this.handlers = handlers;
+        this.locks = locks;
         this.token = token;
     }
 
