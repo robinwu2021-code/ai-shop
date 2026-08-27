@@ -63,6 +63,15 @@ const GENERATORS = [
   ["scripts/gen-backend-layers.mjs", ["docs/technical/reference/后端分层清单.md"]],
   ["scripts/gen-ui-lib.py", ["docs/technical/design/ui-lib.json"]],
   /*
+   * 三份界面规范。**必须是生成的**：这个仓库里有 170 份手写设计文档，
+   * 而 2026-08-28 把界面从头理一遍时发现，凡是手写的规范无一例外地陈了 ——
+   * 它们描述的是「写文档那天」的样子。一份说错了的规范比没有规范更糟：
+   * 读的人会理直气壮地照它去对齐。
+   */
+  ["scripts/gen-ui-spec.py", ["docs/technical/design/规范-字体.md",
+                              "docs/technical/design/规范-版面.md",
+                              "docs/technical/design/规范-组件.md"]],
+  /*
    * 行为规格（状态迁移 + 拒绝规则）。此前只有 `glossary.test.ts` 在数条数，
    * 而那条断言在全量 vitest 里 —— 全量不挂闸门，等于没人守。
    * 本次给 mock 补两条手机号拒绝规则时它就红了，靠的是我自己跑全量才看见。
