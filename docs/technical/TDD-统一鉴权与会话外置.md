@@ -6,6 +6,9 @@
 兼容 Redis，但当前没有 Redis，改用 **DB 存取 + Ehcache 同步缓存**。
 创建日期：2026-08-26
 
+> **2026-08-26 补：本方案覆盖 C 端 / B 端 / 运营端三套。**
+> 基础逻辑一套、装配三次；令牌表与用户表各自独立。见 **第 13 节**。
+
 ## 一句话
 
 会话从「进程本地磁盘」搬到「数据库 + 各实例本地内存缓存」，
@@ -299,3 +302,162 @@ T4 与 T6 是两条「写下来容易、被违反时无声」的，必须做撤�
 ---
 
 确认记录：待确认
+
+---
+
+# 13. 三端方案（C 端 / B 端 / 运营端）
+
+## 13.1 现状核对，其中一条是真问题
+
+| | C 端 | B 端（商家） | 运营端 |
+|---|---|---|---|
+| 用户表 | `usr_account` | `mch_account` | `sys_ops_staff` |
+| 主体号段（生产实测） | `U202608181350550001913` | `SF-M0001` | — |
+| 令牌前缀 | `ctk_` | **`ctk_`** ⚠️ | `otk_` |
+| Realm | `CONSUMER` | **`CONSUMER`** ⚠️ | `OPERATOR` |
+| 过滤器 | `ConsumerTokenAuthFilter` | **同一个** ⚠️ | `OperatorTokenAuthFilter` |
+| 权限模型 | 无 RBAC，属主鉴权 | `BizContext`（实体/门店归属）+ `BizPerms` | RBAC（角色 + 现算权限） |
+
+**⚠️ 那三格是同一件事：B 端今天没有自己的令牌池。**
+
+`MerchantStaffServiceImpl` 第 90 行签发的是
+`LoginUser.consumer(staff.getMchAccountNo(), "")` —— 商家员工拿的是 C 端的 `ctk_` 令牌，
+而 `LoginUser.userNo` 这**一个字段**里，C 端塞的是 `usr_account.user_no`、
+B 端塞的是 `mch_account.mch_account_no`。
+
+今天不出事，因为号段恰好不撞（`U2026…` vs `SF-…`）。
+但**那是约定，不是结构保证**：任何一端改了发号规则，撞上的表现是
+「拿商家的令牌能读到某个消费者的数据」，而这种缺陷不会以报错的形式出现。
+
+> `ConsumerTokenAuthFilter` 里已经有一行按 `/biz` 前缀区分 `APP_BIZ` / `APP_C` ——
+> 说明「这是两端」这件事在代码里已经被承认了一半，只是没落到令牌层。
+
+**所以三端分池不只是整洁：它把一个靠约定维持的安全边界变成由结构保证的。**
+
+## 13.2 三张表，但**一套代码**
+
+「基础逻辑相同、表不同」的正确落法不是复制三份 DAO，而是
+**一个实现 + 三次装配**——表名与载荷映射是参数：
+
+```java
+// shop-auth-store：一个类，三个实例
+new SessionDao(jdbc, SessionTable.CONSUMER)   // usr_session
+new SessionDao(jdbc, SessionTable.MERCHANT)   // mch_session
+new SessionDao(jdbc, SessionTable.OPERATOR)   // ops_session
+
+record SessionTable(String table, Realm realm, String tokenPrefix) { }
+```
+
+`DbTokenStore` 同理：三个 Bean，各持一个 `SessionDao` 与一份本地缓存。
+**缓存也必须分开** —— 共用一份缓存等于把刚分开的边界在内存里又合上。
+
+> 一致性机制（TTL 60s + 撤销轮询 5s、不做负缓存、节流写回、软撤销）
+> 三端完全一致，见第 5 节。它们是「基础逻辑」的全部内容。
+
+## 13.3 三张表的差异：**只在载荷列上**
+
+公共列（三张表都有，形状一模一样）：
+
+```
+id / token_hash / user_no / issued_at / expires_at / last_seen_at
+/ revoked_at / revoke_reason
+```
+
+差异列：
+
+| 表 | 额外列 | 为什么 |
+|---|---|---|
+| `usr_session`（C） | 无 | C 端无 RBAC，会话里除了「你是谁」不需要别的 |
+| `mch_session`（B） | 无 | **刻意不存 `store_no` / `entity_no`** —— 见下 |
+| `ops_session`（运营） | `roles` / `perms` / `tenant_no` / `scope_json` | RBAC 需要；`perms` 仅作现算失败时的回落（第 1 节） |
+
+**B 端为什么不把门店存进会话**：门店由每个请求的 `X-Store-No` 头决定，
+一个店长可以在多个门店之间切换；`BizIdentityResolver.resolve(userNo, storeNo)`
+每次现算并校验归属。存进会话就出现第二个真源，
+而**过期的那一个会让「切了门店但权限还是上一个店的」**——
+这类缺陷在界面上看是「数据串了」，排查方向会完全跑偏。
+
+> 这条与运营端 `perms` 现算是同一个原则：**变动频率高于会话生命期的东西，不进会话。**
+
+## 13.4 撤销的触发点，三端各不相同
+
+同一个 `revokeUser` 接口，但**必须调它的时机**是三套业务规则：
+
+| 端 | 必须踢人的时刻 |
+|---|---|
+| 运营端 | 改角色、改数据域、停用账号 |
+| B 端 | 员工被移出门店/实体、员工被停用、**商家整体被停用或套餐到期收权** |
+| C 端 | 主动登出、账号封禁、注销 |
+
+B 端那条今天很可能是缺的（员工被移出后，他手里的令牌到期前照常能用）。
+**这是分池之后才好补的**：现在踢一个商家员工要在 C 端的池子里按 `userNo` 找，
+而那个 `userNo` 是商家账号号——语义已经错位了。
+
+> 实现任务里为此单列一条：**逐一核对三端的撤销触发点，缺的补上并各配一条测试。**
+> 「停用后立即无法操作」是接口契约里已经写着的话，不是新需求。
+
+## 13.5 Realm 扩到三个，前缀成为第一道闸
+
+```java
+public enum Realm { CONSUMER, MERCHANT, OPERATOR }
+
+ctk_… → usr_session    btk_… → mch_session    otk_… → ops_session
+```
+
+前缀校验**不查库**：拿 C 端令牌打 `/biz/**` 或 `/ops/**`，在过滤器第一行就 401。
+这条今天对运营端已经成立（`otk_` 与 `ctk_` 分得开），
+分池之后 B 端才第一次拥有它。
+
+过滤器相应从两个变三个：`ConsumerTokenAuthFilter` / **`MerchantTokenAuthFilter`（新）**
+/ `OperatorTokenAuthFilter`，各自绑定 `/mp/**`、`/biz/**`、`/ops/**`。
+三者共享同一个抽象基类，差别只有「用哪个 store、认哪个前缀」。
+
+## 13.6 切换顺序：**运营端 → B 端 → C 端**
+
+分批，不要一次全切。理由是**故障影响面递增，而发现难度递减**：
+
+| 批 | 影响 | 为什么放这个位置 |
+|---|---|---|
+| **1. 运营端** | 十几个人重新登录 | 人最少、就在身边、出问题几分钟内就有人说 |
+| **2. B 端** | 商家重新登录；**同时是行为变更**（换池） | 要和 b-app 一起验；前端不感知前缀（已确认无硬编码），但 APK 里的旧令牌会全部失效 |
+| **3. C 端** | 全部消费者重新登录 | 人最多、最难联系，放最后 |
+
+每批之间**至少隔一天**，并确认上一批的 `revoke` 传播测试在生产上真的成立
+（踢一个人，另一个实例 5 秒内拒绝）。
+
+> 当前是零数据窗口：平台 0 订单、6 个商家均为演示数据、运营端从未上线。
+> **这类需要全员重新登录的切换，以后不会再有这么便宜的时机。**
+
+## 13.7 一次性做完 vs 分三次做
+
+代码**一次性做完**（一套实现三次装配，分开做反而要写三遍装配与三遍测试），
+**上线分三批**。这是本节的核心建议：
+
+```
+A1–A6 一次做完 ──▶ 三端代码 + 三张表 + 三套测试全部就位
+                      ↓
+A7 分三批切换 ──▶ 运营端 → （隔一天）B 端 → （隔一天）C 端
+```
+
+## 13.8 实现任务（替换第 12 节的 A1–A8）
+
+- [ ] A1 `shop-auth-store`：`SessionRow` / `SessionDao` / `SessionTable`（JdbcClient，零 MyBatis）
+- [ ] A2 迁移：`usr_session` / `mch_session` / `ops_session` 三张表 + 重跑 `gen-test-schema.py`
+- [ ] A3 `Realm` 加 `MERCHANT`；`TokenStore.newToken` 支持 `btk_`
+- [ ] A4 `DbTokenStore`（一个类）× 三次装配，**各自独立的本地缓存**
+- [ ] A5 `MerchantTokenAuthFilter` + 三个过滤器抽公共基类，按路径前缀绑定
+- [ ] A6 B 端签发改为 `Realm.MERCHANT`（`MerchantStaffServiceImpl` 第 90 行）
+- [ ] A7 **逐一核对三端撤销触发点**，补齐 B 端缺的（移出门店/停用/收权），各配一条测试
+- [ ] A8 测试 T1–T8 × 三端；T4（跨实例撤销）与 T6（不做负缓存）做撤掉修复验证
+- [ ] A9 `session-purge` 定时任务清三张表
+- [ ] A10 生产分三批切换（13.6），每批之间验一次跨实例撤销
+- [ ] A11 ADR：为什么不是 JWT、为什么不是现在上 Redis、**为什么三端分池**
+
+## 13.9 三端方案新增的风险
+
+| 风险 | 缓解 |
+|---|---|
+| B 端换池是**行为变更**，不只是存储变更 | 单独一批上线；APK 需重新登录，发版说明写明 |
+| 三张表 → 有人复制三份 DAO | A1 就把 `SessionTable` 做成参数；review 时看有没有出现第二个 `SessionDao` |
+| 三份缓存 → 有人"优化"成一份共用 | 代码注释写明「共用等于把刚分开的边界在内存里又合上」，并配一条断言 |
+| B 端撤销触发点补漏时改到业务代码 | 那是必要的修复（接口契约里已承诺「停用后立即失效」），但要单独提交、单独说明 |
