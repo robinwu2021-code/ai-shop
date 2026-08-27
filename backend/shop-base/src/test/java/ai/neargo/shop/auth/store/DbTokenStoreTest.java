@@ -99,7 +99,7 @@ class DbTokenStoreTest {
         closeables.add(sc);
         closeables.add(ic);
         return new DbTokenStore(Realm.CONSUMER, fast, new SessionDao(jdbc, fast),
-                users, sc, ic, clock);
+                users, sc, ic, auditWriter(fast), clock);
     }
 
     private static void letIdentityCacheExpire() {
@@ -121,7 +121,49 @@ class DbTokenStoreTest {
         closeables.add(sc);
         closeables.add(ic);
         return new DbTokenStore(Realm.CONSUMER, profile, new SessionDao(jdbc, profile),
-                users, sc, ic, clock);
+                users, sc, ic, auditWriter(profile), clock);
+    }
+
+    /** 审计写同一个库，用同步档位 —— 测试里不要引入异步的时序。 */
+    private LoginLogWriter auditWriter(SessionProfile p) {
+        SessionProfile sync = new SessionProfile(
+                p.poolName(), p.sessionTable(), p.loginLogTable(), p.tokenPrefix(),
+                p.sessionTtl(), p.cacheTtl(), p.identityTtl(), p.revokePoll(),
+                p.lastSeenThrottle(), false, p.logRetentionDays());
+        LoginLogWriter w = new LoginLogWriter(new LoginLogDao(jdbc, sync), sync);
+        closeables.add(w);
+        return w;
+    }
+
+    @Test
+    @DisplayName("★ 登录与登出都落审计 —— 不必改任何登录代码，三端的登录都会走到签发这一步")
+    void loginAndLogoutAreAudited() {
+        DbTokenStore store = instance();
+        String token = store.issue(TokenStore.SessionData.of(users.users.get("U1")));
+        store.revoke(token);
+
+        var rows = new LoginLogDao(jdbc, profile).findByUser("U1", 10, 0);
+        assertEquals(2, rows.size());
+        assertEquals("LOGOUT", rows.get(0).event(), "最新的在前");
+        assertEquals("LOGIN", rows.get(1).event());
+        assertTrue(rows.get(1).success());
+    }
+
+    @Test
+    @DisplayName("★ 孤儿会话落成失败事件 —— 那是数据不一致，不是「没登录」")
+    void orphanSessionIsAudited() {
+        DbTokenStore store = instanceWithLiveIdentity();
+        String token = store.issue(TokenStore.SessionData.of(users.users.get("U1")));
+        users.users.remove("U1");
+        letIdentityCacheExpire();
+
+        assertTrue(store.get(token).isEmpty());
+
+        var rows = new LoginLogDao(jdbc, profile).recentFailures(
+                java.time.LocalDateTime.now(clock).minusHours(1), 10);
+        assertEquals(1, rows.size());
+        assertEquals("ORPHAN_SESSION", rows.get(0).event());
+        assertEquals("USER_NOT_FOUND", rows.get(0).reason());
     }
 
     @Test

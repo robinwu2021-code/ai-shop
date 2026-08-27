@@ -383,7 +383,11 @@ class ArchitectureTest {
                 // 放进 inventory 会让那个域反过来依赖平台（独立交付时整段编不过），
                 // 放进 product 会让商品域知道进销存的存在。装配层是它唯一正确的位置 ——
                 // 单独一个顶层包，就是为了让「谁能同时碰两边」这件事一眼看得出来。
-                "invbridge");
+                "invbridge",
+                // sessionjob：会话与登录日志的清理任务。它是**鉴权基础设施**，不是业务域 ——
+                // 只碰 usr_session/mch_session/ops_session 与三张登录日志表，
+                // 一张业务表都不认识
+                "sessionjob");
         List<String> known = new ArrayList<>(infra);
         known.addAll(List.of(DOMAINS));
 

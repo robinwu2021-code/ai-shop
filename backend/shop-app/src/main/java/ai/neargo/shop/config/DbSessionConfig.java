@@ -2,6 +2,8 @@ package ai.neargo.shop.config;
 
 import ai.neargo.auth.store.AuthCache;
 import ai.neargo.auth.store.IdentityLoader;
+import ai.neargo.auth.store.LoginLogDao;
+import ai.neargo.auth.store.LoginLogWriter;
 import ai.neargo.auth.store.SessionDao;
 import ai.neargo.auth.store.SessionProfile;
 import ai.neargo.shop.auth.LoginUser;
@@ -90,6 +92,8 @@ public class DbSessionConfig {
                         String.class, DbTokenStore.CachedSession.class, p.cacheTtl(), entries),
                 new AuthCache<>("auth." + p.poolName() + ".identity",
                         String.class, LoginUser.class, p.identityTtl(), entries),
+                // 审计从签发/撤销处落，**不必改任何登录代码**
+                new LoginLogWriter(new LoginLogDao(jdbc, p), p),
                 Clock.systemDefaultZone());
     }
 

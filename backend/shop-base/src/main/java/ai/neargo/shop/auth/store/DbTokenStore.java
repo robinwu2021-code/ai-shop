@@ -2,12 +2,15 @@ package ai.neargo.shop.auth.store;
 
 import ai.neargo.auth.store.AuthCache;
 import ai.neargo.auth.store.IdentityLoader;
+import ai.neargo.auth.store.LoginEvent;
+import ai.neargo.auth.store.LoginLogWriter;
 import ai.neargo.auth.store.RevokeReason;
 import ai.neargo.auth.store.SessionDao;
 import ai.neargo.auth.store.SessionProfile;
 import ai.neargo.auth.store.SessionRow;
 import ai.neargo.auth.store.TokenHash;
 import ai.neargo.shop.auth.LoginUser;
+import ai.neargo.shop.auth.RequestMetaContext;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.auth.TokenStore;
 import org.slf4j.Logger;
@@ -57,6 +60,7 @@ public class DbTokenStore implements TokenStore {
     private final IdentityLoader<LoginUser> identities;
     private final AuthCache<String, CachedSession> sessionCache;
     private final AuthCache<String, LoginUser> identityCache;
+    private final LoginLogWriter audit;
     private final Clock clock;
 
     /** 撤销轮询的水位线：只处理它之后新撤销的。 */
@@ -70,6 +74,7 @@ public class DbTokenStore implements TokenStore {
                         IdentityLoader<LoginUser> identities,
                         AuthCache<String, CachedSession> sessionCache,
                         AuthCache<String, LoginUser> identityCache,
+                        LoginLogWriter audit,
                         Clock clock) {
         this.realm = realm;
         this.profile = profile;
@@ -77,6 +82,7 @@ public class DbTokenStore implements TokenStore {
         this.identities = identities;
         this.sessionCache = sessionCache;
         this.identityCache = identityCache;
+        this.audit = audit;
         this.clock = clock;
         this.revokeWatermark = LocalDateTime.now(clock);
     }
@@ -97,6 +103,9 @@ public class DbTokenStore implements TokenStore {
         sessions.insert(TokenHash.of(token), user.userNo(), now, expiresAt);
         sessionCache.put(TokenHash.of(token), new CachedSession(user.userNo(), expiresAt, now));
         identityCache.put(user.userNo(), user);
+        // 审计从这里落，**不必改任何登录代码** —— 三端的登录最终都会走到签发这一步。
+        // IP/UA 来自过滤器设好的 RequestMetaContext（每个请求都设，登录接口也不例外）
+        audit(LoginEvent.LOGIN, user.userNo(), null, true);
         return token;
     }
 
@@ -146,6 +155,8 @@ public class DbTokenStore implements TokenStore {
             // 直到碰上一个只判「登录了没」的接口
             log.warn("孤儿会话：令牌有效但用户不存在或不可用 pool={} userNo={}",
                     profile.poolName(), userNo);
+            // 这不是「没登录」，是**数据不一致**（令牌还在、人没了）。必须看得见
+            audit(LoginEvent.ORPHAN_SESSION, userNo, "USER_NOT_FOUND", false);
             return Optional.empty();
         }
         identityCache.put(userNo, loaded.get());
@@ -183,8 +194,10 @@ public class DbTokenStore implements TokenStore {
             return;
         }
         String hash = TokenHash.of(token);
+        Optional<SessionRow> row = sessions.findByHash(hash);
         sessions.revoke(hash, RevokeReason.LOGOUT, LocalDateTime.now(clock));
         sessionCache.evict(hash);
+        row.ifPresent(r -> audit(LoginEvent.LOGOUT, r.userNo(), null, true));
     }
 
     /**
@@ -200,6 +213,9 @@ public class DbTokenStore implements TokenStore {
         int n = sessions.revokeByUser(userNo, RevokeReason.DISABLED, LocalDateTime.now(clock));
         identityCache.evict(userNo);
         pollRevocations();
+        if (n > 0) {
+            audit(LoginEvent.REVOKED, userNo, RevokeReason.DISABLED.name() + " x" + n, true);
+        }
         return n;
     }
 
@@ -228,6 +244,26 @@ public class DbTokenStore implements TokenStore {
             log.debug("撤销传播 pool={} 剔除 {} 条", profile.poolName(), hashes.size());
         }
         return hashes.size();
+    }
+
+    /**
+     * 落一条审计。**IP/UA 取自 {@link RequestMetaContext}** —— 过滤器给每个请求都设了，
+     * 登录接口也不例外。取不到（比如后台线程调 revokeUser）就留空，不猜。
+     */
+    private void audit(LoginEvent event, String userNo, String reason, boolean ok) {
+        RequestMetaContext.Meta meta = RequestMetaContext.current();
+        String ip = meta == null ? null : meta.ip();
+        String ua = meta == null ? null : meta.userAgent();
+        if (ok) {
+            this.audit.success(event, userNo, reason, ip, ua);
+        } else {
+            this.audit.failure(event, userNo, reason, ip, ua);
+        }
+    }
+
+    /** 审计里丢了多少条（异步队列满）。**丢了要看得见**，否则「日志少了」永远查不出来。 */
+    public long auditDropped() {
+        return audit.dropped();
     }
 
     /** 命中率等，暴露成指标用。条目上限设小了只表现为「查库变多」，没有指标只能靠猜。 */

@@ -16,7 +16,16 @@ final class ClientMeta {
     }
 
     static RequestMetaContext.Meta of(HttpServletRequest req, String clientType) {
-        return new RequestMetaContext.Meta(clientIp(req), clientType);
+        return new RequestMetaContext.Meta(clientIp(req), clientType, userAgent(req));
+    }
+
+    /** 截到 255：登录日志那一列就这么宽，在这里截比在写库时被数据库截掉好 —— 后者会报错。 */
+    private static String userAgent(HttpServletRequest req) {
+        String ua = req.getHeader("User-Agent");
+        if (ua == null || ua.isBlank()) {
+            return null;
+        }
+        return ua.length() > 255 ? ua.substring(0, 255) : ua;
     }
 
     /**

@@ -11,7 +11,11 @@ package ai.neargo.shop.auth;
  */
 public final class RequestMetaContext {
 
-    public record Meta(String ip, String clientType) {
+    /**
+     * @param userAgent 原始 User-Agent，**已截到 255**（登录日志那一列的宽度）。
+     *                  它只用于审计：「他上次从哪台设备登的」是排查盗号的第一手材料
+     */
+    public record Meta(String ip, String clientType, String userAgent) {
     }
 
     private static final ThreadLocal<Meta> META = new ThreadLocal<>();
