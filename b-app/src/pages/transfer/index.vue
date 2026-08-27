@@ -172,7 +172,7 @@ onShow(load);
           <text class="txt-caption">{{ $t("transfer.from") }}</text>
           <text class="txt-title">{{ doc.fromLocationName || doc.fromLocationId }}</text>
         </view>
-        <text class="arrow">→</text>
+        <sh-icon class="arrow" name="chevronRight" :size="28" color="var(--sh-sub)"></sh-icon>
         <view class="end end--r">
           <text class="txt-caption">{{ $t("transfer.to") }}</text>
           <text class="txt-title">{{ doc.toLocationName || doc.toLocationId }}</text>
@@ -290,10 +290,7 @@ onShow(load);
 .end--r {
   text-align: right;
 }
-.arrow {
-  color: var(--sh-sub);
-  font-size: 34rpx;
-}
+
 .row {
   margin-bottom: 14rpx;
 }

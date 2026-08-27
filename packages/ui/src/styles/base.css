@@ -561,6 +561,16 @@ uni-page-wrapper[style*="--window-bottom"] {
   background: var(--sh-faint);
   color: var(--sh-sub);
 }
+/* 里面带图标的 chip（选中的勾、可删的 ✕）。
+   `.sh-chip` 本体是 `inline-block` —— 那是给纯文字用的，
+   塞进图标后文字与图标不会垂直居中，也没有间距。
+   ⚠️ 用它的标签要写成 `<view>` 不是 `<text>`：sh-icon 渲染的是 view，
+   小程序里 `<text>` 套 `<view>` 是非法嵌套（H5 上侥幸能显示，真机上不行）。 */
+.sh-chip--icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+}
 .sh-chip--primary {
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);

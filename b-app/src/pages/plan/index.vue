@@ -136,7 +136,8 @@ onShow(load);
             <text class="sh-muted">{{ $t("plan.staffQuota") }}</text>
           </view>
           <view class="use__i">
-            <text class="use__v">{{ plan.crossStoreStats ? "✓" : "—" }}</text>
+            <sh-icon v-if="plan.crossStoreStats" name="check" :size="34" color="var(--sh-ink)"></sh-icon>
+            <text v-else class="use__v">—</text>
             <text class="sh-muted">{{ $t("plan.crossStore") }}</text>
           </view>
         </view>

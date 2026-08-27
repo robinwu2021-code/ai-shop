@@ -8,13 +8,15 @@
 # 缺口类（列表行）不在这份名单里，它已论证不该做成组件，见
 # docs/technical/design/B端页面与组件库-覆盖清单.md §九。
 #
-# 2026-08-26 建立时 33 处 / 7 类；2026-08-27 收到 23 处 / 5 类：
+# 2026-08-26 建立时 33 处 / 7 类；2026-08-27 收到 20 处 / 4 类：
 #   · 「白块自画」整类归零 —— 2 处真抄了 .sh-card 的已改用积木
 #     （messages 的消息卡、home 的九宫格格子），另 5 处是判据误命中：
 #     原规则是「白底 + 任意圆角」，而库里的 .sh-card / .sh-block 都是 lg(32) 四角统一。
 #     圆角五档都是系统给的档，用 md 画一个紧凑行容器不是违规。
 #   · 「弹层 / 遮罩」+2 —— 见该类下的说明。
-#   · 「文字当箭头」整类归零 —— 见下。
+#   · 「文字当箭头」「文字当图标」两类归零，**判据也一并撤下** ——
+#     归零的类别该由硬闸门守住而不是继续挂棘轮，见 packages/shared/tests/icon-chars.test.ts
+#     （模板 + i18n 词条一起扫，已进 pre-push 的设计守卫那一道）。
 #
 # 「文字当箭头」那一类值得留一句：判据只扫模板，**而箭头大多藏在 i18n 词条里**
 # （`goApplyWithLicense: "有营业执照？直接走入驻 ›"`），三种语言各一份，共 30 处。
@@ -50,12 +52,6 @@ cross-store segment
 login segment
 store-pick segment
 verify segment
-
-# ── 文字当图标（✕/×）（3 处）→ 用 sh-icon-btn / sh-icon(close)
-# （未写明理由 —— 补上）
-goods-edit glyphicon
-goods-list glyphicon
-my-specs glyphicon
 
 
 # ── 分段标题（只有标题）（2 处）→ 用 .sh-h2 + 间距档

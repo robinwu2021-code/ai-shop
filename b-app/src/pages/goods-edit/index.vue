@@ -2262,7 +2262,8 @@ async function save(thenSubmit = false) {
         -->
         <view class="inline">
           <input v-model="title[lang]" class="field__input flex1" />
-          <text v-if="title[lang]" class="inline__clear" @tap="title[lang] = ''">✕</text>
+          <sh-icon-btn v-if="title[lang]" class="inline__clear" name="close"
+            color="var(--sh-sub)" @tap="title[lang] = ''"></sh-icon-btn>
         </view>
         <!--
           标准品降成名称下面的**一行入口**（TDD-标准品库）。
@@ -2289,7 +2290,8 @@ async function save(thenSubmit = false) {
         </view>
         <view class="inline">
           <input v-model="subtitle[lang]" class="field__input flex1" />
-          <text v-if="subtitle[lang]" class="inline__clear" @tap="subtitle[lang] = ''">✕</text>
+          <sh-icon-btn v-if="subtitle[lang]" class="inline__clear" name="close"
+            color="var(--sh-sub)" @tap="subtitle[lang] = ''"></sh-icon-btn>
         </view>
       </view>
       <text v-if="MULTI_LANG_UI && untranslated.length" class="sh-muted hint">
@@ -2369,9 +2371,9 @@ async function save(thenSubmit = false) {
             <sh-cover class="dimgs__img" :src="img"></sh-cover>
             <text class="dimgs__i">{{ i + 1 }}</text>
             <view class="dimgs__ops">
-              <text class="mini" @tap="moveDetailImage(i, -1)">↑</text>
-              <text class="mini" @tap="moveDetailImage(i, 1)">↓</text>
-              <text class="mini" @tap="removeDetailImage(i)">✕</text>
+              <view class="mini" @tap="moveDetailImage(i, -1)"><sh-icon name="chevronUp" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
+              <view class="mini" @tap="moveDetailImage(i, 1)"><sh-icon name="chevronDown" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
+              <view class="mini" @tap="removeDetailImage(i)"><sh-icon name="close" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
             </view>
           </view>
           <view
@@ -2379,7 +2381,8 @@ async function save(thenSubmit = false) {
             class="imgs__add"
             @tap="addDetailImages"
           >
-            <text class="imgs__plus">{{ uploading ? "…" : "＋" }}</text>
+            <text v-if="uploading" class="imgs__plus">…</text>
+            <sh-icon v-else name="plus" :size="40" color="var(--sh-sub)"></sh-icon>
           </view>
         </view>
         <text class="sh-muted hint">{{ $t("goods.detailImagesHint") }}</text>
@@ -2567,7 +2570,7 @@ async function save(thenSubmit = false) {
       <view class="cat-sheet" @tap.stop>
         <view class="cat-sheet__bar">
           <text class="cat-sheet__title">{{ $t("goods.pickStd") }}</text>
-          <sh-icon-btn name="close" :size="28" :box="48" @tap="showStd = false"></sh-icon-btn>
+          <sh-icon-btn name="close" @tap="showStd = false"></sh-icon-btn>
         </view>
         <view class="std-search">
           <input
@@ -2698,13 +2701,16 @@ async function save(thenSubmit = false) {
           而描边与加粗都不再需要 —— 字阶那条也写着 600 只给标题与按钮。
         -->
         <view class="opts">
-          <text
+          <view
             v-for="o in allOptionsOf(gi)"
             :key="o.code || o.label"
-            class="sh-chip opt"
+            class="sh-chip sh-chip--icon opt"
             :class="{ 'sh-chip--primary': optionOn(gi, o) }"
             @tap="toggleOption(gi, o)"
-          >{{ optionOn(gi, o) ? "✓ " : "" }}{{ o.label }}</text>
+          >
+            <sh-icon v-if="optionOn(gi, o)" name="check" :size="20" color="currentColor"></sh-icon>
+            <text>{{ o.label }}</text>
+          </view>
         </view>
       </view>
 
@@ -3061,7 +3067,7 @@ async function save(thenSubmit = false) {
           −／＋ 步进。**库存是每天都在动的数**，最常见的改动是「卖掉两袋」——
           点两下比调出键盘、全选、重打快得多。数字仍然可以直接键入。
         -->
-        <text class="step" @tap="stepStock(r, -1)">−</text>
+        <view class="step" @tap="stepStock(r, -1)"><sh-icon name="minus" :size="26" color="var(--sh-sub)"></sh-icon></view>
         <!-- 库存 0 = 这个规格顾客买不到。多规格时最容易漏填的就是它 -->
         <input
           v-model="r.stock"
@@ -3069,7 +3075,7 @@ async function save(thenSubmit = false) {
           :class="{ 'is-out': Number(r.stock) === 0 }"
           type="number"
         />
-        <text class="step" @tap="stepStock(r, 1)">＋</text>
+        <view class="step" @tap="stepStock(r, 1)"><sh-icon name="plus" :size="26" color="var(--sh-sub)"></sh-icon></view>
       </view>
       <!-- 多店：改的是哪家店的库存必须写出来。主体总量与门店库存是两个数 -->
       <text v-if="merchant.multiStore" class="sh-muted hint">
@@ -3559,11 +3565,14 @@ async function save(thenSubmit = false) {
   color: var(--sh-warning);
 }
 /* 库存 −／＋：与输入框同高，形状上是按钮不是文字 */
+/* 图标居中：此前靠 line-height 让字符垂直居中，换成图标后要 flex ——
+   line-height 对 mask 画的方块不起作用，会贴着顶边 */
 .step {
   width: 64rpx;
   height: 64rpx;
-  line-height: 64rpx;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 16rpx;
   background: var(--sh-faint);
   color: var(--sh-sub);
@@ -3576,10 +3585,9 @@ async function save(thenSubmit = false) {
   align-items: center;
   gap: 12rpx;
 }
+/* 清空键。尺寸与颜色由 `sh-icon-btn` 给（它自带 88rpx 点按区，
+   此前是一个 26rpx 的 ✕ 字符，手指要瞄）。这里只留「不被压缩」。 */
 .inline__clear {
-  padding: 0 10rpx;
-  font-size: 26rpx;
-  color: var(--sh-sub);
   flex: none;
 }
 /* 未开通的履约方式：灰着并可见，不隐藏 —— 隐藏会让人以为平台不支持 */

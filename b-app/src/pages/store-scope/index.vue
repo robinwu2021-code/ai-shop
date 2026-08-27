@@ -492,11 +492,11 @@ onShow(() => {
             <text class="hint">{{ $t("store.subset.hint") }}</text>
             <view class="subset__opt" :class="{ 'is-on': subsetAll }" @tap="subsetAll = true">
               <text class="subset__t">{{ $t("store.subset.all") }}</text>
-              <text v-if="subsetAll" class="subset__tick">✓</text>
+              <sh-icon v-if="subsetAll" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
             </view>
             <view class="subset__opt" :class="{ 'is-on': !subsetAll }" @tap="subsetAll = false">
               <text class="subset__t">{{ $t("store.subset.only") }}</text>
-              <text v-if="!subsetAll" class="subset__tick">✓</text>
+              <sh-icon v-if="!subsetAll" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
             </view>
             <view v-if="!subsetAll" class="subset__list">
               <view v-for="a in activeAreas" :key="a.areaNo || a.refCode" class="subset__row" @tap="toggleSubsetArea(a)">
@@ -680,10 +680,7 @@ onShow(() => {
   font-size: 26rpx;
   color: var(--sh-ink);
 }
-.subset__tick {
-  font-size: 26rpx;
-  color: var(--sh-primary-text);
-}
+
 .subset__list {
   margin-top: 8rpx;
 }

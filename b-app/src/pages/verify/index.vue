@@ -373,14 +373,15 @@ onShow(load);
       </view>
 
       <view v-if="basket.length" class="basket">
-        <text
+        <view
           v-for="c in basket"
           :key="c"
-          class="sh-chip sh-num"
+          class="sh-chip sh-chip--icon sh-num basket__c"
           @tap="basket = basket.filter((x) => x !== c)"
         >
-          {{ c }} ✕
-        </text>
+          <text>{{ c }}</text>
+          <sh-icon name="close" :size="20" color="currentColor"></sh-icon>
+        </view>
       </view>
 
       <view

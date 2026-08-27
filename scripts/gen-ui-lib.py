@@ -411,7 +411,10 @@ ROLLED = [
     # 一条规则的误命中，会变成另一条规则的漏报，账面上还看着挺干净。
     ("sheet",   "弹层 / 遮罩",     None, r"^\s*\.[a-z-]*sheet\b|^\s*\.(mask|dlg|modal|popup)\b", "sh-sheet", "sh-sheet"),
     ("sysmodal","系统弹框",       r"showModal\(|showActionSheet\(", None,        None,       "sh-sheet"),
-    ("arrow",   "文字当箭头",      r"[›»]\s*</text>", None,                       None,       "sh-icon(chevronRight)"),
+    # 「文字当箭头」与「文字当图标」两条 2026-08-27 撤下：**两类都已归零**，
+    # 而且这里判不全 —— 它们只扫模板，箭头大多藏在 i18n 词条里（一次漏了 30 处）。
+    # 归零的类别该由硬闸门守住而不是继续挂棘轮：见
+    # packages/shared/tests/icon-chars.test.ts（模板 + 词条一起扫，已进 pre-push）。
     # 这一条现在只该剩 **chip 形态**的选中态。开关 / 勾选框 / 选项卡片
     # 已由 FAMILIES 名册单列（见 read_pages）—— 一个 `--on` 的正则盖住过三个缺件。
     ("segment", "选中态自画（含未拆出的）", None, r"(--on|--off|is-on)\s*[,{]",    None,       ".sh-chip--primary"),
@@ -454,12 +457,6 @@ ROLLED = [
     ("candchip","虚线药丸", None, r"border:\s*2rpx dashed var\(--sh-primary\)", None, ".sh-chip--dashed"),
     # 判据要认「标签上的那个 ✕」，不能只认类名 —— role-detail 的 `.del` 是一个
     # 危险按钮（`sh-btn sh-btn--danger del`），按类名会被误判成可删标签。
-    # 收编 sh-icon-btn 之后改判「文字当图标」：**库里有 close 图标，这些还在用字符**。
-    # 先前叫「可删标签」并算成缺件，其实不对 —— 缺的从来不是件，是纪律：
-    # 同一个动作 store-scope 用 `×`(U+00D7)、其余用 `✕`(U+2715)，连字符都不是同一个。
-    ("glyphicon", "文字当图标（✕/×）",
-     r'class="[^"]*"[^>]*>\s*[✕×]\s*<', None,        None,   "sh-icon-btn / sh-icon(close)"),
-    ("savebar", "底部固定条",      None, r"position:\s*fixed[^}]*bottom:\s*0",    None,       None),
     # 搜索框判**形态**不判名字：`customers` 的 `.search` 只是 `margin-top: 16rpx`
     # 包着一个 `.field__input`（手机号查询），不是搜索框。按名字判第六次误命中。
     # 「搜索框」这条判据**撤掉了**：真正的只有 goods-list 一处

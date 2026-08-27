@@ -1183,7 +1183,8 @@ function close() {
           :placeholder="$t('store.picker.searchPh')"
           confirm-type="search"
         />
-        <text v-if="q" class="filter__x" @tap="q = ''">✕</text>
+        <sh-icon-btn v-if="q" name="close" color="var(--sh-sub)"
+          @tap="q = ''"></sh-icon-btn>
       </view>
 
       <scroll-view scroll-y class="body">
@@ -1206,7 +1207,7 @@ function close() {
                 <text v-else-if="r.sub" class="row__sub">{{ r.sub }}</text>
               </view>
               <view class="row__check" :class="{ 'is-on': r.picked, 'is-off': !!coverNote(r) }" @tap.stop="pickRow(r)">
-                <text v-if="r.picked" class="row__tick">✓</text>
+                <sh-icon v-if="r.picked" name="check" :size="24" color="var(--sh-on-primary)"></sh-icon>
                 <text v-else-if="adding === r.key" class="row__tick">…</text>
               </view>
               <!--
@@ -1352,10 +1353,6 @@ function close() {
 .row__check.is-on {
   border-color: var(--sh-primary);
   background: var(--sh-primary);
-}
-.row__tick {
-  font-size: 24rpx;
-  color: var(--sh-on-primary);
 }
 .row--apply {
   border-bottom: none;
@@ -1515,11 +1512,7 @@ function close() {
   font-size: 26rpx;
   color: var(--sh-ink);
 }
-.filter__x {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  padding: 0 8rpx;
-}
+
 
 /* 已选清单：标题栏右侧「展开」出来的那个浮层，误点很容易，要有个当场能删的地方 */
 .chosen {

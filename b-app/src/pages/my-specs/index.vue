@@ -976,7 +976,7 @@ onShow(() => void load());
             @touchcancel="onValDragEnd"
           >
             {{ draft.labels[v.code] ?? v.code }}
-            <text class="val__x" @tap.stop="dropValue(v.code)">✕</text>
+            <sh-icon class="val__x" name="close" :size="20" color="var(--sh-sub)" @tap.stop="dropValue(v.code)"></sh-icon>
           </text>
         </view>
 
@@ -1292,10 +1292,9 @@ onShow(() => void load());
   100% { transform: scale(1); }
 }
 
+/* 颜色与尺寸由 sh-icon 给 */
 .val__x {
   margin-left: 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .edit__tip {
   display: block;

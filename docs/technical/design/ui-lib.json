@@ -263,6 +263,26 @@
       }
     },
     {
+      "class": ".sh-chip--icon",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "display": "inline-flex",
+        "align-items": "center",
+        "gap": "6rpx"
+      },
+      "px": {
+        "display": "inline-flex",
+        "align-items": "center",
+        "gap": "3px"
+      },
+      "usage": {
+        "b-app": 2,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".sh-muted",
       "group": "字阶",
       "when": "次要文字。**字号走密度变量**，B 端自动降到 24rpx",
@@ -1170,7 +1190,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 6,
+        "b-app": 10,
         "c-app": 0
       },
       "note": "图标按钮",
@@ -1187,7 +1207,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 34,
+        "b-app": 51,
         "c-app": 4
       },
       "note": "单色图标",
@@ -1445,7 +1465,7 @@
       "name": "biz-pickup-sheet",
       "file": "b-app/src/components/biz/biz-pickup-sheet.vue",
       "scope": "B 端",
-      "lines": 365,
+      "lines": 361,
       "props": [
         "visible: boolean",
         "storeNo: string",
@@ -1462,7 +1482,7 @@
       "name": "biz-region-picker",
       "file": "b-app/src/components/biz/biz-region-picker.vue",
       "scope": "B 端",
-      "lines": 1628,
+      "lines": 1621,
       "props": [
         "visible: boolean",
         "areas: ServiceArea[]"
@@ -1580,13 +1600,14 @@
       "file": "b-app/src/pages/apply/index.vue",
       "components": [
         "sh-check",
+        "sh-icon",
         "sh-scaffold",
         "sh-switch",
         "sh-uploader"
       ],
       "libClassHits": 45,
       "localSelectors": 33,
-      "localCssLines": 127,
+      "localCssLines": 125,
       "rolled": [
         {
           "id": "segment",
@@ -1781,9 +1802,9 @@
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 135,
+      "libClassHits": 136,
       "localSelectors": 80,
-      "localCssLines": 431,
+      "localCssLines": 429,
       "rolled": [
         {
           "id": "sysmodal",
@@ -1798,13 +1819,6 @@
           "lib": ".sh-h2 + 间距档",
           "rule": "class=\"sh-h2 (?:sec|grp)\\b",
           "gap": false
-        },
-        {
-          "id": "glyphicon",
-          "label": "文字当图标（✕/×）",
-          "lib": "sh-icon-btn / sh-icon(close)",
-          "rule": "class=\"[^\"]*\"[^>]*>\\s*[✕×]\\s*<",
-          "gap": false
         }
       ]
     },
@@ -1815,13 +1829,14 @@
         "sh-cover",
         "sh-empty",
         "sh-fab",
+        "sh-icon-btn",
         "sh-scaffold",
         "sh-tabs",
         "biz-store-tag"
       ],
       "libClassHits": 7,
-      "localSelectors": 39,
-      "localCssLines": 212,
+      "localSelectors": 38,
+      "localCssLines": 207,
       "rolled": [
         {
           "id": "sheet",
@@ -1836,13 +1851,6 @@
           "lib": null,
           "rule": "^\\s*\\.(row|item)\\b",
           "gap": true
-        },
-        {
-          "id": "glyphicon",
-          "label": "文字当图标（✕/×）",
-          "lib": "sh-icon-btn / sh-icon(close)",
-          "rule": "class=\"[^\"]*\"[^>]*>\\s*[✕×]\\s*<",
-          "gap": false
         }
       ]
     },
@@ -2143,16 +2151,8 @@
       ],
       "libClassHits": 24,
       "localSelectors": 49,
-      "localCssLines": 217,
-      "rolled": [
-        {
-          "id": "glyphicon",
-          "label": "文字当图标（✕/×）",
-          "lib": "sh-icon-btn / sh-icon(close)",
-          "rule": "class=\"[^\"]*\"[^>]*>\\s*[✕×]\\s*<",
-          "gap": false
-        }
-      ]
+      "localCssLines": 215,
+      "rolled": []
     },
     {
       "page": "order",
@@ -2250,6 +2250,7 @@
       "page": "plan",
       "file": "b-app/src/pages/plan/index.vue",
       "components": [
+        "sh-icon",
         "sh-scaffold"
       ],
       "libClassHits": 22,
@@ -2700,6 +2701,7 @@
         "sh-check",
         "sh-go",
         "sh-icon-btn",
+        "sh-icon",
         "sh-savebar",
         "sh-scaffold",
         "sh-switch",
@@ -2708,8 +2710,8 @@
         "biz-store-tag"
       ],
       "libClassHits": 22,
-      "localSelectors": 38,
-      "localCssLines": 183,
+      "localSelectors": 37,
+      "localCssLines": 179,
       "rolled": [
         {
           "id": "listrow",
@@ -2738,13 +2740,14 @@
       "components": [
         "sh-add",
         "sh-empty",
+        "sh-icon",
         "sh-kv",
         "sh-scaffold",
         "sh-sheet"
       ],
       "libClassHits": 37,
-      "localSelectors": 14,
-      "localCssLines": 58,
+      "localSelectors": 13,
+      "localCssLines": 54,
       "rolled": [
         {
           "id": "sysmodal",
@@ -2771,7 +2774,7 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 38,
+      "libClassHits": 39,
       "localSelectors": 38,
       "localCssLines": 192,
       "rolled": [
@@ -2876,18 +2879,6 @@
       ]
     },
     {
-      "id": "glyphicon",
-      "label": "文字当图标（✕/×）",
-      "lib": "sh-icon-btn / sh-icon(close)",
-      "gap": false,
-      "rule": "class=\"[^\"]*\"[^>]*>\\s*[✕×]\\s*<",
-      "pages": [
-        "goods-edit",
-        "goods-list",
-        "my-specs"
-      ]
-    },
-    {
       "id": "sechead",
       "label": "分段标题（只有标题）",
       "lib": ".sh-h2 + 间距档",
@@ -2912,7 +2903,7 @@
   ],
   "counts": {
     "tokens": 10,
-    "blocks": 39,
+    "blocks": 40,
     "components": 28,
     "pages": 61,
     "gapKinds": 1

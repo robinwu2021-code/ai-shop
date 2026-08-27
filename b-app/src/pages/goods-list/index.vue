@@ -451,7 +451,8 @@ onShow(() => {
         confirm-type="search"
         @input="onSearch(String(($event as any).detail.value ?? ''))"
       />
-      <text v-if="keyword" class="search__clear" @tap="clearSearch">✕</text>
+      <sh-icon-btn v-if="keyword" class="search__clear" name="close"
+        color="var(--sh-sub)" @tap="clearSearch"></sh-icon-btn>
     </view>
 
     <view class="bar">
@@ -659,11 +660,7 @@ onShow(() => {
   font-size: 26rpx;
   color: var(--sh-ink);
 }
-.search__clear {
-  padding: 0 8rpx;
-  font-size: 28rpx;
-  color: var(--sh-sub);
-}
+
 /* 翻页反馈：弱化到底，它是状态不是内容 */
 .more {
   display: block;

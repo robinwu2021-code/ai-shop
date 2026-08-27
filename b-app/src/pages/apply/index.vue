@@ -416,7 +416,8 @@ async function submit() {
           <text class="scope__name">{{ $t(`serviceScope.${sc}`) }}</text>
           <text class="scope__desc">{{ $t(`store.scopeDesc.${sc}`) }}</text>
         </view>
-        <text class="scope__tick">{{ form.serviceScope === sc ? "✓" : "" }}</text>
+        <sh-icon v-if="form.serviceScope === sc" class="scope__tick" name="check"
+          :size="30" color="var(--sh-primary-text)"></sh-icon>
       </view>
 
       <!-- 只有「仅本社区」才需要选小区，其余两档选了也用不上 -->
@@ -626,8 +627,6 @@ async function submit() {
 }
 .scope__tick {
   flex-shrink: 0;
-  font-size: 30rpx;
-  color: var(--sh-primary-text);
 }
 .cms {
   margin-top: 20rpx;

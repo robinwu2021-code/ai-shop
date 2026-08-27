@@ -160,7 +160,7 @@ function close() {
               <text v-if="c.status === 'REJECTED' && c.rejectReason" class="row__reason">{{ c.rejectReason }}</text>
             </view>
             <view v-if="selectable(c)" class="row__check" :class="{ 'is-on': isOn(c.pickupNo) }">
-              <text v-if="isOn(c.pickupNo)" class="row__tick">✓</text>
+              <sh-icon v-if="isOn(c.pickupNo)" name="check" :size="24" color="var(--sh-on-primary)"></sh-icon>
             </view>
           </view>
 
@@ -171,7 +171,7 @@ function close() {
               <text class="row__sub">{{ c.communityName }}<template v-if="c.address"> · {{ c.address }}</template></text>
             </view>
             <view class="row__check" :class="{ 'is-on': isOn(c.pickupNo) }">
-              <text v-if="isOn(c.pickupNo)" class="row__tick">✓</text>
+              <sh-icon v-if="isOn(c.pickupNo)" name="check" :size="24" color="var(--sh-on-primary)"></sh-icon>
             </view>
           </view>
           <text v-if="!mine.length && !others.length" class="hint">{{ $t("store.pickup.empty") }}</text>
@@ -306,10 +306,6 @@ function close() {
 .row__check.is-on {
   border-color: var(--sh-primary);
   background: var(--sh-primary);
-}
-.row__tick {
-  font-size: 24rpx;
-  color: var(--sh-on-primary);
 }
 .row--build {
   border-bottom: none;
