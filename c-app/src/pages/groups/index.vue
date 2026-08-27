@@ -141,8 +141,8 @@ onShow(() => {
         </view>
 
         <template v-if="form.toMyHome">
-          <input v-model="form.address" class="field" :placeholder="$t('groupHost.addressPh')" />
-          <input v-model="form.timeSlot" class="field" :placeholder="$t('groupHost.timeSlotPh')" />
+          <input v-model="form.address" class="field__input" :placeholder="$t('groupHost.addressPh')" />
+          <input v-model="form.timeSlot" class="field__input" :placeholder="$t('groupHost.timeSlotPh')" />
           <text class="privacy">{{ $t("groupHost.addressPrivacy") }}</text>
         </template>
 
@@ -245,14 +245,10 @@ onShow(() => {
   font-weight: 600;
   color: var(--sh-ink);
 }
-.field {
-  height: 84rpx;
+/* 只留纵向间距。此前这里高 84rpx，与 base.css 的 88rpx 差 2px ——
+   88rpx ≈ 44pt 是点按目标的下限，缩到 84 省不出什么却贴着下限走 */
+.field__input {
   margin-top: 16rpx;
-  padding: 0 24rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  font-size: 28rpx;
-  color: var(--sh-ink);
 }
 .privacy {
   display: block;

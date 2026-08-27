@@ -145,22 +145,22 @@ onLoad((q) => {
           {{ draft.addressId ? $t("address.edit") : $t("address.add") }}
         </text>
 
-        <input v-model="draft.name" class="field" :placeholder="$t('address.name')" />
+        <input v-model="draft.name" class="field__input" :placeholder="$t('address.name')" />
         <input
           v-model="draft.phone"
-          class="field"
+          class="field__input"
           type="number"
           maxlength="11"
           :placeholder="$t('address.phone')"
         />
         <view class="regionrow">
-          <input v-model="draft.region" class="field regionrow__in" :placeholder="$t('address.region')" />
+          <input v-model="draft.region" class="field__input regionrow__in" :placeholder="$t('address.region')" />
           <text class="regionrow__pick" :class="{ 'is-ok': picked }" @tap="pickOnMap">
             {{ picked ? $t("address.repick") : $t("address.pick") }}
           </text>
         </view>
-        <input v-model="draft.detail" class="field" :placeholder="$t('address.detail')" />
-        <input v-model="draft.tag" class="field" :placeholder="$t('address.tagPh')" />
+        <input v-model="draft.detail" class="field__input" :placeholder="$t('address.detail')" />
+        <input v-model="draft.tag" class="field__input" :placeholder="$t('address.tagPh')" />
 
         <view class="switchrow" @tap="draft.isDefault = !draft.isDefault">
           <text class="switchrow__label">{{ $t("address.asDefault") }}</text>
@@ -273,12 +273,10 @@ onLoad((q) => {
   background: var(--sh-faint);
   margin: 0 auto 32rpx;
 }
-.field {
-  background: var(--sh-faint);
-  border-radius: 24rpx;
-  padding: 26rpx 28rpx;
-  font-size: 26rpx;
-  color: var(--sh-ink);
+/* 共用的 `.field__input`（88rpx 高 / md 圆角 / faint 底 / 30rpx）已经是这个形状 ——
+   此前这里把它重写了一遍，而且字号写成 26rpx，比 base.css 的 30rpx 小两档。
+   这里只留这一页特有的：字段之间的纵向间距。 */
+.field__input {
   margin-top: 16rpx;
 }
 .switchrow {

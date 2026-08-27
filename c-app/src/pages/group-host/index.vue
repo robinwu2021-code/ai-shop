@@ -133,7 +133,7 @@ onShow(load);
         <view class="row">
           <input
             v-model="code"
-            class="field sh-num"
+            class="field__input sh-num"
             :placeholder="$t('groupHost.codePh')"
             confirm-type="done"
             @confirm="verify()"
@@ -214,15 +214,11 @@ onShow(load);
   gap: 16rpx;
   margin-top: 20rpx;
 }
-.field {
+/* 这一页特有的两条：与旁边的按钮同行分宽，以及验证码的字距。
+   其余（高度 / 圆角 / 底色 / 字号）都由 `.field__input` 给 */
+.field__input {
   flex: 1;
-  height: 84rpx;
-  padding: 0 24rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  font-size: 30rpx;
   letter-spacing: 4rpx;
-  color: var(--sh-ink);
 }
 .btn {
   padding: 20rpx 30rpx;

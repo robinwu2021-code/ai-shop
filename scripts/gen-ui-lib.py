@@ -404,13 +404,27 @@ ROLLED = [
     # 「空态」这条判据**撤掉了**：唯一还命中的 `home` 的 `.empty` 是整屏「未入驻」的
     # CTA（`sh-h1` + 说明 + 按钮），不是 `sh-empty` 那个「还没有内容」的一行灰字。
     # 按名字判第七次误命中。sh-empty 本身已有 24 页 27 处在用，这条留着只报假的。
-    ("sheet",   "弹层 / 遮罩",     None, r"^\s*\.(mask|dlg|modal|popup)\b",      "sh-sheet", "sh-sheet"),
+    # 2026-08-27 补上 `sheet`：`goods-list` 与 `goods-edit` 各自画了一个底部弹层
+    # （`.sheet` / `.cat-sheet`，圆角 32/44 上两角 + 绝对定位贴底），
+    # **按类名判的规则一个都没接住** —— 它只认 mask/dlg/modal/popup。
+    # 这两处此前被「白块自画」误报，收紧卡片判据后就彻底消失了 ——
+    # 一条规则的误命中，会变成另一条规则的漏报，账面上还看着挺干净。
+    ("sheet",   "弹层 / 遮罩",     None, r"^\s*\.[a-z-]*sheet\b|^\s*\.(mask|dlg|modal|popup)\b", "sh-sheet", "sh-sheet"),
     ("sysmodal","系统弹框",       r"showModal\(|showActionSheet\(", None,        None,       "sh-sheet"),
     ("arrow",   "文字当箭头",      r"[›»]\s*</text>", None,                       None,       "sh-icon(chevronRight)"),
     # 这一条现在只该剩 **chip 形态**的选中态。开关 / 勾选框 / 选项卡片
     # 已由 FAMILIES 名册单列（见 read_pages）—— 一个 `--on` 的正则盖住过三个缺件。
     ("segment", "选中态自画（含未拆出的）", None, r"(--on|--off|is-on)\s*[,{]",    None,       ".sh-chip--primary"),
-    ("blockdup","白块自画",        None, r"background:\s*var\(--sh-surface\)[^}]*border-radius", None, ".sh-block / .sh-card"),
+    # 判据 2026-08-27 收紧：原来是「白底 + 任意圆角」，于是把 sm(16)/md(24)/xl(44)
+    # 三档的白盒子也算成了「照抄卡片」。**而库里的 .sh-card 与 .sh-block 都是 lg(32)。**
+    # 误命中的五处各有各的形态：底部弹层（xl，那是 sh-sheet 的档）、搜索框（sm）、
+    # 入口行（sm）、设置项容器与规格分类容器（md，两处同形）。
+    # 圆角五档都是系统给的档 —— 用 md 画一个紧凑的行容器不是违规，
+    # 违规的是**把 .sh-card 那三行原样抄一遍**。这是按形状归类第十次误命中。
+    ("blockdup","白块自画",        None,
+     # 圆角要**四角统一**（`32rpx;`）：`32rpx 32rpx 0 0` 是贴底弹层，不是卡片
+     r"(background:\s*var\(--sh-surface\)[^}]*border-radius:\s*32rpx\s*;|border-radius:\s*32rpx\s*;[^}]*background:\s*var\(--sh-surface\))",
+     None, ".sh-block / .sh-card"),
     # ↓ 库里没有的：这几行是缺口
     # 卡内标题行判**声明**不判名字：`groups` / `plan` 里也有个 `.sec`，
     # 但那是 `<text class="sh-h2 sec">` —— 只有标题、只有 margin，没有右侧动作。

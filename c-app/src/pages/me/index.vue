@@ -374,17 +374,17 @@ onShow(() => {
           {{ $t("merchant.microBlocked") }}
         </text>
 
-        <input v-model="mForm.name" class="field" :placeholder="$t('merchant.shopName')" />
-        <input v-model="mForm.category" class="field" :placeholder="$t('merchant.category')" />
-        <input v-model="mForm.contactName" class="field" :placeholder="$t('merchant.contact')" />
+        <input v-model="mForm.name" class="field__input" :placeholder="$t('merchant.shopName')" />
+        <input v-model="mForm.category" class="field__input" :placeholder="$t('merchant.category')" />
+        <input v-model="mForm.contactName" class="field__input" :placeholder="$t('merchant.contact')" />
         <input
           v-model="mForm.contactPhone"
-          class="field"
+          class="field__input"
           type="number"
           maxlength="11"
           :placeholder="$t('merchant.phone')"
         />
-        <input v-model="mForm.desc" class="field" :placeholder="$t('merchant.descPh')" />
+        <input v-model="mForm.desc" class="field__input" :placeholder="$t('merchant.descPh')" />
 
         <view class="sh-btn sheet__save" :class="{ 'is-disabled': !mValid }" @tap="submitMerchant">
           {{ $t("merchant.submitApply") }}
@@ -467,12 +467,8 @@ onShow(() => {
   color: var(--sh-on-primary);
   font-weight: 600;
 }
-.field {
-  background: var(--sh-faint);
-  border-radius: 24rpx;
-  padding: 26rpx 28rpx;
-  font-size: 26rpx;
-  color: var(--sh-ink);
+/* 与 address 逐字节相同的一份重写，现在都走 `.field__input`，只留纵向间距 */
+.field__input {
   margin-top: 16rpx;
 }
 .sheet__save {

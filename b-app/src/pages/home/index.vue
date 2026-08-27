@@ -291,7 +291,7 @@ onShow(load);
       </view>
 
       <view class="grid">
-        <view v-for="c in cells" :key="c.key" class="grid__cell" @tap="open(c.route)">
+        <view v-for="c in cells" :key="c.key" class="sh-card grid__cell" @tap="open(c.route)">
           <text class="grid__n sh-num" :class="{ 'is-zero': !c.n }">{{ c.n }}</text>
           <text class="grid__label">{{ $t(`home.${c.key}`) }}</text>
         </view>
@@ -470,11 +470,12 @@ onShow(load);
   gap: 16rpx;
   margin: 20rpx 0;
 }
+/* 面色与圆角交给 `.sh-card`。**内边距留在这里是有意的**：
+   三列排布下格子只有 ~110px 宽，卡片档的 24rpx 会把两位数的数字挤到换行。
+   用积木 + 覆盖一条，比整张卡照抄一遍强 —— 覆盖的那条一眼看得出是特例。 */
 .grid__cell {
   flex: 1 1 calc(33.33% - 14rpx);
   min-width: calc(33.33% - 14rpx);
-  background: var(--sh-surface);
-  border-radius: 32rpx;
   padding: 20rpx 16rpx;
   text-align: center;
 }

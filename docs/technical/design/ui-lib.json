@@ -586,7 +586,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 179,
+        "b-app": 181,
         "c-app": 57
       }
     },
@@ -923,7 +923,7 @@
       },
       "usage": {
         "b-app": 51,
-        "c-app": 16
+        "c-app": 0
       }
     },
     {
@@ -1003,7 +1003,7 @@
       },
       "usage": {
         "b-app": 91,
-        "c-app": 0
+        "c-app": 14
       }
     },
     {
@@ -1776,13 +1776,6 @@
           "gap": false
         },
         {
-          "id": "blockdup",
-          "label": "白块自画",
-          "lib": ".sh-block / .sh-card",
-          "rule": "background:\\s*var\\(--sh-surface\\)[^}]*border-radius",
-          "gap": false
-        },
-        {
           "id": "sechead",
           "label": "分段标题（只有标题）",
           "lib": ".sh-h2 + 间距档",
@@ -1817,14 +1810,7 @@
           "id": "sheet",
           "label": "弹层 / 遮罩",
           "lib": "sh-sheet",
-          "rule": "^\\s*\\.(mask|dlg|modal|popup)\\b",
-          "gap": false
-        },
-        {
-          "id": "blockdup",
-          "label": "白块自画",
-          "lib": ".sh-block / .sh-card",
-          "rule": "background:\\s*var\\(--sh-surface\\)[^}]*border-radius",
+          "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
           "gap": false
         },
         {
@@ -1871,18 +1857,10 @@
         "sh-scaffold",
         "biz-store-tag"
       ],
-      "libClassHits": 43,
+      "libClassHits": 44,
       "localSelectors": 30,
-      "localCssLines": 154,
-      "rolled": [
-        {
-          "id": "blockdup",
-          "label": "白块自画",
-          "lib": ".sh-block / .sh-card",
-          "rule": "background:\\s*var\\(--sh-surface\\)[^}]*border-radius",
-          "gap": false
-        }
-      ]
+      "localCssLines": 152,
+      "rolled": []
     },
     {
       "page": "income",
@@ -1985,13 +1963,6 @@
           "gap": false
         },
         {
-          "id": "blockdup",
-          "label": "白块自画",
-          "lib": ".sh-block / .sh-card",
-          "rule": "background:\\s*var\\(--sh-surface\\)[^}]*border-radius",
-          "gap": false
-        },
-        {
           "id": "listrow",
           "label": "列表行",
           "lib": null,
@@ -2011,15 +1982,7 @@
       "libClassHits": 9,
       "localSelectors": 12,
       "localCssLines": 75,
-      "rolled": [
-        {
-          "id": "blockdup",
-          "label": "白块自画",
-          "lib": ".sh-block / .sh-card",
-          "rule": "background:\\s*var\\(--sh-surface\\)[^}]*border-radius",
-          "gap": false
-        }
-      ]
+      "rolled": []
     },
     {
       "page": "member-add",
@@ -2154,18 +2117,10 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 1,
+      "libClassHits": 2,
       "localSelectors": 12,
-      "localCssLines": 69,
-      "rolled": [
-        {
-          "id": "blockdup",
-          "label": "白块自画",
-          "lib": ".sh-block / .sh-card",
-          "rule": "background:\\s*var\\(--sh-surface\\)[^}]*border-radius",
-          "gap": false
-        }
-      ]
+      "localCssLines": 66,
+      "rolled": []
     },
     {
       "page": "my-specs",
@@ -2184,13 +2139,6 @@
       "localSelectors": 49,
       "localCssLines": 217,
       "rolled": [
-        {
-          "id": "blockdup",
-          "label": "白块自画",
-          "lib": ".sh-block / .sh-card",
-          "rule": "background:\\s*var\\(--sh-surface\\)[^}]*border-radius",
-          "gap": false
-        },
         {
           "id": "glyphicon",
           "label": "文字当图标（✕/×）",
@@ -2215,7 +2163,7 @@
           "id": "sheet",
           "label": "弹层 / 遮罩",
           "lib": "sh-sheet",
-          "rule": "^\\s*\\.(mask|dlg|modal|popup)\\b",
+          "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
           "gap": false
         },
         {
@@ -2912,22 +2860,6 @@
       ]
     },
     {
-      "id": "blockdup",
-      "label": "白块自画",
-      "lib": ".sh-block / .sh-card",
-      "gap": false,
-      "rule": "background:\\s*var\\(--sh-surface\\)[^}]*border-radius",
-      "pages": [
-        "goods-edit",
-        "goods-list",
-        "home",
-        "marketing",
-        "me",
-        "messages",
-        "my-specs"
-      ]
-    },
-    {
       "id": "segment",
       "label": "选中态自画（含未拆出的）",
       "lib": ".sh-chip--primary",
@@ -2982,7 +2914,7 @@
       "label": "弹层 / 遮罩",
       "lib": "sh-sheet",
       "gap": false,
-      "rule": "^\\s*\\.(mask|dlg|modal|popup)\\b",
+      "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
       "pages": [
         "goods-list",
         "order"

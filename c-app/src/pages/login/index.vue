@@ -142,7 +142,7 @@ async function doLogin(method: LoginMethod) {
       <view class="form">
         <input
           v-model="phone"
-          class="field"
+          class="login__field"
           type="number"
           :placeholder="$t('login.phone')"
           maxlength="11"
@@ -150,7 +150,7 @@ async function doLogin(method: LoginMethod) {
         <view class="otp-row">
           <input
             v-model="otp"
-            class="field otp-row__input"
+            class="login__field otp-row__input"
             type="number"
             :placeholder="$t('login.otp')"
             maxlength="6"
@@ -262,7 +262,13 @@ async function doLogin(method: LoginMethod) {
   flex-direction: column;
   gap: 16rpx;
 }
-.field {
+/* 登录页的输入框是**刻意的另一个形态**：surface 底（不是 faint）、lg 圆角、
+   更大的内边距 —— 整屏只有一两个控件，它要占住视觉重心。
+
+   **不做成 `.field__input--lg` 进库**：只有这一个页面用，进库等于把页面样式搬了个家。
+   但它此前叫 `.field`，squat 在两端共用表单族的名字上 —— 找 `.field__*` 的人
+   会以为这是那一族的基类。改名即可。 */
+.login__field {
   background: var(--sh-surface);
   border-radius: 32rpx;
   padding: 32rpx;

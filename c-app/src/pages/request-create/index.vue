@@ -56,7 +56,7 @@ async function submit() {
     <view class="sh-card">
       <text class="sh-muted tip">{{ $t("request.createTip", { p: community.pickup?.name ?? "" }) }}</text>
 
-      <input v-model="title" class="field" :placeholder="$t('request.titlePh')" maxlength="30" />
+      <input v-model="title" class="field__input" :placeholder="$t('request.titlePh')" maxlength="30" />
       <textarea v-model="desc" class="ta" :placeholder="$t('request.descPh')" maxlength="200" />
 
       <view class="row">
@@ -97,12 +97,9 @@ async function submit() {
   display: block;
   line-height: 1.6;
 }
-.field {
-  background: var(--sh-faint);
-  border-radius: 24rpx;
-  padding: 26rpx 28rpx;
-  font-size: 28rpx;
-  color: var(--sh-ink);
+/* 只留纵向间距。此前这里的字号是 28rpx —— 同一个输入框，
+   六个页面写出了 26 / 28 / 30 三种字号 */
+.field__input {
   margin-top: 24rpx;
 }
 .ta {
