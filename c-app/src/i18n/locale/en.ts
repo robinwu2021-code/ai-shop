@@ -122,6 +122,7 @@ export default {
     INSTANT: "Instant delivery",
   },
   cart: {
+    pickFulfillment: "Choose a pickup method first",
     title: "Cart",
     empty: "Your cart is empty",
     total: "Total",
@@ -432,6 +433,8 @@ export default {
   },
 
   confirm: {
+    pickCoupon: "Choose a coupon",
+    pickSlot: "Choose a time slot",
     pickPickupFirst: "Choose a pickup point first",
     splitNote: "These items come from {n} shops and will create {n} orders, paid in one go",
     appointmentSlot: "Appointment slot",

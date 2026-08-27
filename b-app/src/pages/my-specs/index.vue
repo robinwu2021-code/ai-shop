@@ -761,7 +761,7 @@ async function confirmBuild(g: StoreCategorySpecs) {
   try {
     const dim = await api.mAddSpecDim(name, [], tab.value === "props" ? "PROP" : "SALE");
     if (listOf(g).some((x) => x.templateNo === dim.templateNo)) {
-      uni.showToast({ title: t("mySpecs.dimAlready"), icon: "none" });
+      uni.showToast({ title: t("goods.dimAlready"), icon: "none" });
       return;
     }
     platformNames.value[dim.templateNo] = dim.name;

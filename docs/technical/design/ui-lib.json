@@ -2946,13 +2946,6 @@
           "gap": false
         },
         {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
           "id": "segment",
           "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary / --solid",
@@ -3017,15 +3010,7 @@
       "libClassHits": 9,
       "localSelectors": 15,
       "localCssLines": 95,
-      "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        }
-      ]
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3054,13 +3039,6 @@
       "localSelectors": 29,
       "localCssLines": 168,
       "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
         {
           "id": "segment",
           "label": "选中态自画（含未拆出的）",
@@ -3091,13 +3069,6 @@
       "localSelectors": 13,
       "localCssLines": 75,
       "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
         {
           "id": "blockdup",
           "label": "白块自画",
@@ -3221,15 +3192,7 @@
       "libClassHits": 13,
       "localSelectors": 14,
       "localCssLines": 110,
-      "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        }
-      ]
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3291,13 +3254,6 @@
           "label": "弹层 / 遮罩",
           "lib": "sh-sheet",
           "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
-          "gap": false
-        },
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
           "gap": false
         },
         {
@@ -3394,15 +3350,7 @@
       "libClassHits": 42,
       "localSelectors": 39,
       "localCssLines": 187,
-      "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        }
-      ]
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3417,13 +3365,6 @@
       "localSelectors": 44,
       "localCssLines": 226,
       "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
         {
           "id": "segment",
           "label": "选中态自画（含未拆出的）",
@@ -3460,13 +3401,6 @@
       "localSelectors": 30,
       "localCssLines": 156,
       "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
         {
           "id": "segment",
           "label": "选中态自画（含未拆出的）",
@@ -3579,13 +3513,6 @@
       "localCssLines": 172,
       "rolled": [
         {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
           "id": "segment",
           "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary / --solid",
@@ -3658,25 +3585,6 @@
         "b-app/verify",
         "c-app/group-host",
         "c-app/request-create"
-      ]
-    },
-    {
-      "id": "sysmodal",
-      "label": "系统弹框",
-      "lib": "sh-sheet",
-      "gap": false,
-      "rule": "showModal\\(|showActionSheet\\(",
-      "pages": [
-        "c-app/address",
-        "c-app/cart",
-        "c-app/community",
-        "c-app/coupons",
-        "c-app/home",
-        "c-app/me",
-        "c-app/order",
-        "c-app/order-confirm",
-        "c-app/pay",
-        "c-app/store"
       ]
     },
     {

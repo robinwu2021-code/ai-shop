@@ -122,6 +122,7 @@ export default {
     INSTANT: "تسليم فوري",
   },
   cart: {
+    pickFulfillment: "اختر طريقة الاستلام أولاً",
     title: "السلة",
     empty: "سلتك فارغة",
     total: "الإجمالي",
@@ -432,6 +433,8 @@ export default {
   },
 
   confirm: {
+    pickCoupon: "اختر قسيمة",
+    pickSlot: "اختر موعدًا",
     pickPickupFirst: "اختر نقطة استلام أولاً",
     splitNote: "هذه المنتجات من {n} متاجر وستُنشئ {n} طلبات تُدفع دفعة واحدة",
     appointmentSlot: "موعد الزيارة",

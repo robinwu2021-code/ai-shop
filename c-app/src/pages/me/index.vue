@@ -10,6 +10,7 @@ import { useUserStore } from "@/stores/user";
 import PhoneGate from "@/components/phone-gate.vue";
 import { useCommunityStore } from "@/stores/community";
 import { FEATURES, ROUTES } from "@shared/utils/constants";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const user = useUserStore();
@@ -30,14 +31,7 @@ function gotoLogin() {
 async function onLogout() {
   // 用 callback 包 Promise，与本文件其他确认弹窗一致 —— uni 的 showModal
   // 在各端上并非都返回 Promise，直接 await 在小程序里拿不到 confirm
-  const ok = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: String(t("me.logout")),
-      content: String(t("me.logoutConfirm")),
-      success: (r) => resolve(!!r.confirm),
-      fail: () => resolve(false),
-    });
-  });
+  const ok = await confirm({ title: String(t("me.logout")), hint: String(t("me.logoutConfirm")) });
   if (!ok) return;
   await user.logout();
   uni.reLaunch({ url: "/pages/home/index" });
@@ -54,16 +48,7 @@ async function onLogout() {
  * 那句话没有给他任何判断依据。
  */
 async function onDeregister() {
-  const ok = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: String(t("me.deregister")),
-      content: String(t("me.deregisterConfirm")),
-      confirmText: String(t("me.deregisterYes")),
-      confirmColor: "#B31710",
-      success: (r) => resolve(!!r.confirm),
-      fail: () => resolve(false),
-    });
-  });
+  const ok = await confirm({ title: String(t("me.deregister")), hint: String(t("me.deregisterConfirm")), confirmText: String(t("me.deregisterYes")), danger: true });
   if (!ok) return;
   try {
     await api.deregister();
@@ -76,13 +61,12 @@ async function onDeregister() {
      * 只说「还有未完成的订单」而不给入口，他得自己翻。
      */
     if ((e as { code?: number }).code === 70028) {
-      uni.showModal({
+      void confirm({
         title: String(t("me.deregisterBlocked")),
-        content: String(t("me.deregisterBlockedTip")),
+        hint: String(t("me.deregisterBlockedTip")),
         confirmText: String(t("me.viewOrders")),
-        success: (r) => {
-          if (r.confirm) uni.switchTab({ url: "/pages/order/index" });
-        },
+      }).then((ok) => {
+        if (ok) uni.switchTab({ url: "/pages/order/index" });
       });
       return;
     }

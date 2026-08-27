@@ -13,6 +13,7 @@ import { requestSubscribe, SUBSCRIBE_TMPL } from "@shared/ports/push";
 import { CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
 import type { Order } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 
@@ -75,14 +76,7 @@ async function pay() {
 async function cancel() {
   const o = order.value;
   if (!o) return;
-  const ok = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: String(t("pay.cancelTitle")),
-      content: String(t("pay.cancelTip")),
-      success: (r) => resolve(!!r.confirm),
-      fail: () => resolve(false),
-    });
-  });
+  const ok = await confirm({ title: String(t("pay.cancelTitle")), hint: String(t("pay.cancelTip")) });
   if (!ok) return;
   await api.cancelOrder(o.orderNo);
   uni.redirectTo({ url: `${ROUTES.orders}` });

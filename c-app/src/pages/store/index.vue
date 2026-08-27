@@ -22,6 +22,7 @@ import { money } from "@shared/utils/money";
 import { hourMinute, isoDate } from "@shared/utils/datetime";
 import { buildShareMessage } from "@shared/ports/share";
 import type { FrequentItem, Goods, StoreHome } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const cart = useCartStore();
@@ -161,10 +162,12 @@ async function reorder() {
       parts.push(t("store.reorderDropped", { s: r.dropped.join("、") }));
     if (r.priceUp.length)
       parts.push(t("store.reorderPriceUp", { s: r.priceUp.join("、") }));
-    uni.showModal({
-      title: t("store.reorder"),
-      content: parts.join("\n"),
-      showCancel: false,
+    // `showCancel: false` → `alert: true`（只有一个「知道了」）。
+    // 多行说明照旧靠 `\n`：`sh-confirm` 的 hint 是 `<text>`，换行符原样生效
+    void confirm({
+      title: String(t("store.reorder")),
+      hint: parts.join("\n"),
+      alert: true,
     });
   } finally {
     busy.value = false;

@@ -7,6 +7,7 @@ import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import type { Address } from "@shared/types";
 import { chooseLocation } from "@shared/ports/location";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 
@@ -80,14 +81,7 @@ async function save() {
 }
 
 async function remove(a: Address) {
-  const ok = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: String(t("address.removeTitle")),
-      content: `${a.region} ${a.detail}`,
-      success: (r) => resolve(!!r.confirm),
-      fail: () => resolve(false),
-    });
-  });
+  const ok = await confirm({ title: String(t("address.removeTitle")), hint: `${a.region} ${a.detail}` });
   if (!ok) return;
   list.value = await api.removeAddress(a.addressId);
 }

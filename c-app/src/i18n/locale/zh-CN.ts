@@ -122,6 +122,7 @@ export default {
     INSTANT: "即时发放",
   },
   cart: {
+    pickFulfillment: "先选一种取货方式",
     title: "购物车",
     empty: "购物车是空的",
     total: "合计",
@@ -459,6 +460,8 @@ export default {
   },
 
   confirm: {
+    pickCoupon: "选择优惠券",
+    pickSlot: "选择上门时间",
     pickPickupFirst: "先选一个自提点",
     splitNote: "这些商品来自 {n} 家店，将生成 {n} 笔订单，一次付清",
     appointmentSlot: "上门时段",

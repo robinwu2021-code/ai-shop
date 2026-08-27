@@ -99,7 +99,12 @@ else
   echo "⚠ 跳过生成物闸门：本机没有 node_modules（跑一次 npm i 就会启用）"
 fi
 
-# 设计守卫：字阶 / 圆角 / 皮肤变量 / 令牌对比度 / 字符当图标 / 三语词条一致。
+# 设计守卫：字阶 / 圆角 / 皮肤变量 / 令牌对比度 / 字符当图标 / 三语词条一致 / 词条引用存在。
+#
+# **最后一条 2026-08-27 加**：`i18n-parity` 比的是「三种语言的 key 集合一致」，
+# 而 C 端社区页那十个 key **在三种语言里都缺**，缺得整整齐齐 —— 它一致、它绿，
+# 而用户那一屏直接显示 `community.noLocation` 这串字符。
+# 一致 ≠ 存在，这是两条不同的断言。
 #
 # **最后一条 2026-08-27 才挂上，而守卫本身早就写好了。** 它拦的是「中文加了词条、
 # 英/阿没跟上」—— 后果是那两种语言的用户直接看到裸 key（`picking.qtyTitle` 这种）。
@@ -120,9 +125,10 @@ if [ -d "$ROOT/node_modules" ]; then
   if ! (cd "$GATE_WT/packages/shared" && npx vitest run \
         tests/typography.test.ts tests/design-tokens.test.ts \
         tests/skin-vars.test.ts tests/ui-package.test.ts \
-        tests/icon-chars.test.ts tests/i18n-parity.test.ts >/dev/null 2>&1); then
-    echo "✗ 设计守卫红了（字阶 / 圆角 / 皮肤变量 / 令牌 / 字符当图标 / 三语词条）。看是哪一条："
-    echo "    cd packages/shared && npx vitest run tests/typography.test.ts tests/design-tokens.test.ts tests/skin-vars.test.ts tests/ui-package.test.ts tests/icon-chars.test.ts tests/i18n-parity.test.ts"
+        tests/icon-chars.test.ts tests/i18n-parity.test.ts \
+        tests/i18n-keys-exist.test.ts >/dev/null 2>&1); then
+    echo "✗ 设计守卫红了（字阶 / 圆角 / 皮肤变量 / 令牌 / 字符当图标 / 三语词条 / 词条引用）。看是哪一条："
+    echo "    cd packages/shared && npx vitest run tests/typography.test.ts tests/design-tokens.test.ts tests/skin-vars.test.ts tests/ui-package.test.ts tests/icon-chars.test.ts tests/i18n-parity.test.ts tests/i18n-keys-exist.test.ts"
     echo "  判据取自 HEAD —— 工作区里没提交的改动不会让你被挡住。"
     exit 1
   fi

@@ -24,6 +24,7 @@ import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
 import { couponDiscount } from "@shared/strategies/pricing/types";
 import { currentCurrency } from "@shared/utils/money";
 import type { Address, CartItem, CheckoutCapability, Coupon, FulfillmentType, OrderItem, OrderAmount, PointsDeductible } from "@shared/types";
+import { pick } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const cart = useCartStore();
@@ -86,16 +87,18 @@ const slots = computed(() => {
   return out;
 });
 
-function pickSlot() {
-  const list = slots.value;
+async function pickSlot() {
+  const list = slots.value.slice(0, 12);
   if (!list.length) return;
-  uni.showActionSheet({
-    itemList: list.slice(0, 12).map((s) => s.label),
-    success: (r) => {
-      const picked = list[r.tapIndex];
-      if (picked) appointmentAt.value = picked.at;
-    },
+  const idx = await pick({
+    title: String(t("confirm.pickSlot")),
+    items: list.map((s) => s.label),
+    // 系统面板做不到的一件事：把当前已选的那一档打上勾
+    selected: list.findIndex((s) => s.at === appointmentAt.value),
   });
+  if (idx === null) return;
+  const picked = list[idx];
+  if (picked) appointmentAt.value = picked.at;
 }
 
 const address = computed(() => addresses.value.find((a) => a.addressId === addressId.value));
@@ -370,18 +373,20 @@ async function loadAddresses() {
   }
 }
 
-function pickCoupon() {
+async function pickCoupon() {
   if (!usableCoupons.value.length) return;
   const names = [
     String(t("confirm.noCoupon")),
     ...usableCoupons.value.map((c) => `${c.title} -${money(couponDiscount(c, goodsMinor.value))}`),
   ];
-  uni.showActionSheet({
-    itemList: names,
-    success: (r) => {
-      couponNo.value = r.tapIndex === 0 ? "" : usableCoupons.value[r.tapIndex - 1]!.couponNo;
-    },
+  const idx = await pick({
+    title: String(t("confirm.pickCoupon")),
+    items: names,
+    selected: couponNo.value
+      ? usableCoupons.value.findIndex((c) => c.couponNo === couponNo.value) + 1 : 0,
   });
+  if (idx === null) return;
+  couponNo.value = idx === 0 ? "" : usableCoupons.value[idx - 1]!.couponNo;
 }
 
 function gotoAddress() {

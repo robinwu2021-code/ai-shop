@@ -8,6 +8,7 @@ import { api } from "@/api";
 import { CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
 import { datetime, money } from "@shared/utils/format";
 import type { InvoiceRequest, Order } from "@shared/types";
+import { confirm, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 
@@ -50,20 +51,27 @@ async function loadInvoice() {
 }
 
 async function applyInvoice() {
-  const { confirm, content } = await uni.showModal({
+  /*
+   * ⚠️ 原来这里是 `const { confirm, content } = await uni.showModal(...)` ——
+   * **解构出的 `confirm` 会遮蔽同名的组合式**，同一个文件里另一处确认弹层
+   * 一旦挪进这个函数就会静默拿到一个布尔值。换成 `prompt()` 顺带消掉这个隐患。
+   *
+   * `showModal` 的 `content` 在 `editable: true` 时是**输入框初值**不是说明文字 ——
+   * 这一处用对了（填的是当前抬头），但那个二义在 B 端害过三次。
+   * `prompt()` 把它拆成 `value`（初值）与 `hint`（说明）两个参数，坑长不出来。
+   */
+  const title = await prompt({
     title: String(t("invoice.applyTitle")),
-    editable: true,
-    placeholderText: String(t("invoice.titlePh")),
-    content: invoice.value?.title ?? "",
+    placeholder: String(t("invoice.titlePh")),
+    value: invoice.value?.title ?? "",
   });
-  if (!confirm || !content?.trim()) return;
-  const mail = await uni.showModal({
+  if (!title?.trim()) return;
+  const email = await prompt({
     title: String(t("invoice.emailTitle")),
-    editable: true,
-    placeholderText: String(t("invoice.emailPh")),
-    content: invoice.value?.email ?? "",
+    placeholder: String(t("invoice.emailPh")),
+    value: invoice.value?.email ?? "",
   });
-  if (!mail.confirm || !mail.content?.trim()) return;
+  if (!email?.trim()) return;
   try {
     // 这一版只收个人抬头：单位抬头要税号，而一个 showModal 收不了两个字段。
     // 收不全就开不出票 —— 与其半途报错，不如这一版先只做个人抬头，
@@ -71,8 +79,8 @@ async function applyInvoice() {
     invoice.value = await api.applyInvoice({
       orderNo: orderNo.value,
       titleType: "PERSONAL",
-      title: content.trim(),
-      email: mail.content.trim(),
+      title: title.trim(),
+      email: email.trim(),
     });
     uni.showToast({ title: String(t("invoice.applied")), icon: "none" });
   } catch (e) {
@@ -95,14 +103,7 @@ async function load() {
 async function cancel() {
   const o = order.value;
   if (!o) return;
-  const ok = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: String(t("pay.cancelTitle")),
-      content: String(t("pay.cancelTip")),
-      success: (r) => resolve(!!r.confirm),
-      fail: () => resolve(false),
-    });
-  });
+  const ok = await confirm({ title: String(t("pay.cancelTitle")), hint: String(t("pay.cancelTip")) });
   if (!ok) return;
   try {
     order.value = await api.cancelOrder(o.orderNo);
@@ -133,15 +134,10 @@ function review() {
 async function fillExpress() {
   const o = order.value;
   if (!o) return;
-  const no = await new Promise<string>((resolve) => {
-    uni.showModal({
-      title: String(t("afterSale.returnExpressTitle")),
-      editable: true,
-      placeholderText: String(t("afterSale.returnExpressPh")),
-      success: (r) => resolve(r.confirm ? (r.content || "").trim() : ""),
-      fail: () => resolve(""),
-    });
-  });
+  const no = (await prompt({
+    title: String(t("afterSale.returnExpressTitle")),
+    placeholder: String(t("afterSale.returnExpressPh")),
+  }))?.trim();
   if (!no) return;
   try {
     // 返回的是售后单，不是订单 —— 赋给 order 会把整个详情页覆盖成一张售后单。
@@ -157,15 +153,10 @@ async function fillExpress() {
 async function dispute() {
   const o = order.value;
   if (!o) return;
-  const reason = await new Promise<string>((resolve) => {
-    uni.showModal({
-      title: String(t("afterSale.disputeTitle")),
-      editable: true,
-      placeholderText: String(t("afterSale.disputePh")),
-      success: (r) => resolve(r.confirm ? (r.content || "").trim() : ""),
-      fail: () => resolve(""),
-    });
-  });
+  const reason = (await prompt({
+    title: String(t("afterSale.disputeTitle")),
+    placeholder: String(t("afterSale.disputePh")),
+  }))?.trim();
   if (!reason) return;
   try {
     await api.raiseDispute(o.afterSale!.afterSaleNo, reason);

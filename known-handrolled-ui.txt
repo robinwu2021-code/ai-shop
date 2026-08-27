@@ -20,29 +20,19 @@
 #
 # B 端此刻 **0 条** —— 33 处清完之后一直保持。下面全是 C 端。
 #
-# 2026-08-27 已还：**悬浮贴底条 12 处**（9 个 `.actionbar` + 2 个 `.fab` + 1 个
+# 2026-08-27 已还（二）：**系统弹框 10 页 / 18 处归零** —— 11 处确认 → `confirm()`、
+# 4 处带输入 → `prompt()`、3 处选一项 → `pick()`。三个组合式与宿主 B 端早就有，
+# C 端一处都没接。顺带修掉两处：`me` 的注销确认写着 `confirmColor: "#B31710"`
+#（**写死的十六进制不跟皮肤走**，换成语义档 `danger: true`）；`order` 的
+# `const { confirm, content } = await uni.showModal(...)` **解构出的 `confirm`
+# 会遮蔽同名组合式**，换成 `prompt()` 顺带消掉。
+#
+# 2026-08-27 已还（一）：**悬浮贴底条 12 处**（9 个 `.actionbar` + 2 个 `.fab` + 1 个
 # `.checkoutbar`）收进新组件 `sh-actionbar` —— 那不是「有件不用」，是**库里真的缺一档**：
 # `sh-savebar` 是通栏、`sh-fab` 是角标，而这 12 处要的是「悬浮内缩通栏」。见
 # docs/technical/design/三端版面方案-layout.md
 
 
-# ── 系统弹框（10 处）→ 用 sh-sheet
-# C 端 10 处（8 个 `showModal` + 2 个 `showActionSheet`）。
-# **B 端这一类已经归零**：带输入 → `prompt()`、确认 → `confirm()`、选一项 → `pick()`，
-# 三个组合式加三个宿主都在库里，C 端一处都没接。
-# 这是 C 端欠账里最该先还的：`showModal` 的 `content` 在 `editable:true` 时
-# **不是说明文字而是输入框初值**，B 端为这个坑修过三处真缺陷（其中一处是首次开店必经路径）。
-# 同一个坑在 C 端还原样开着。
-c-app/address sysmodal
-c-app/cart sysmodal
-c-app/community sysmodal
-c-app/coupons sysmodal
-c-app/home sysmodal
-c-app/me sysmodal
-c-app/order sysmodal
-c-app/order-confirm sysmodal
-c-app/pay sysmodal
-c-app/store sysmodal
 
 # ── 选中态自画（含未拆出的）（10 处）→ 用 .sh-chip--primary / --solid
 # C 端 10 页 / 20 条声明。**判据仍然过宽，动手前必须逐条看** ——

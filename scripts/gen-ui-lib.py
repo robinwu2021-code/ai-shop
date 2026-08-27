@@ -515,12 +515,19 @@ def read_pages(comps: list[dict], blocks: list[dict]) -> list[dict]:
           tpl = re.sub(r"<!--.*?-->", "", m.group(1), flags=re.S) if m else ""
           css = strip_comments("\n".join(re.findall(r"<style[^>]*>(.*?)</style>", src, re.S)))
           used = [c for c in comp_names if re.search(rf"<{c}[\s>]", tpl)]
+          # **判代码的规则要先剥注释。** 这一轮里我自己写的注释多次提到被检测的
+          # 那个东西本身（「此前这里是 `uni.showModal(...)`」），于是收编完了、
+          # 判据还在报 —— 报的是那句解释。皮肤变量守卫早为同一件事剥过注释，
+          # 这里补上：`tp` 判的是代码有没有在调它，不是有没有人提过它。
+          code = re.sub(r"<!--.*?-->", "", src, flags=re.S)
+          code = re.sub(r"/\*[\s\S]*?\*/", "", code)
+          code = re.sub(r"^\s*//.*$", "", code, flags=re.M)
           hits = sum(len(re.findall(r"[\"' ]" + re.escape(c) + r"[\"' ]", tpl)) for c in lib_classes)
           rolled = []
           for rid, label, tp, cp, skip_if, lib in ROLLED:
               if skip_if and skip_if in used:
                   continue
-              if (tp and re.search(tp, src)) or (cp and re.search(cp, css, re.M)):
+              if (tp and re.search(tp, code)) or (cp and re.search(cp, css, re.M)):
                   rolled.append({"id": rid, "label": label, "lib": lib,
                                  "rule": tp or cp, "gap": lib is None})
           # 三个被「选中态自画」盖住的缺件：名册是逐处核过的（见 FAMILIES），

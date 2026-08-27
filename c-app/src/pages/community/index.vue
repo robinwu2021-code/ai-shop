@@ -10,6 +10,7 @@ import { fromE6, getLocation, openLocation } from "@shared/ports/location";
 import { distance } from "@shared/utils/format";
 import { ROUTES } from "@shared/utils/constants";
 import type { Community, Pickup, RegionOption } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 
@@ -170,27 +171,13 @@ async function choose(c: Community, p: Pickup) {
    */
   const far = (p.distance ?? c.distance ?? 0) > NEARBY_RADIUS_M;
   if (far) {
-    const ok = await new Promise<boolean>((resolve) => {
-      uni.showModal({
-        title: String(t("community.farTitle")),
-        content: String(t("community.farTip", { d: distance(p.distance ?? c.distance ?? 0) })),
-        success: (r) => resolve(!!r.confirm),
-        fail: () => resolve(false),
-      });
-    });
+    const ok = await confirm({ title: String(t("common.farTitle")), hint: String(t("common.farTip", { d: distance(p.distance ?? c.distance ?? 0) })) });
     if (!ok) return;
   }
 
   const switching = community.bound && community.pickup?.pickupNo !== p.pickupNo;
   if (switching) {
-    const ok = await new Promise<boolean>((resolve) => {
-      uni.showModal({
-        title: String(t("community.switchTitle")),
-        content: String(t("community.switchTip")),
-        success: (r) => resolve(!!r.confirm),
-        fail: () => resolve(false),
-      });
-    });
+    const ok = await confirm({ title: String(t("community.switchTitle")), hint: String(t("community.switchTip")) });
     if (!ok) return;
   }
   await community.bind(c, p);
@@ -230,7 +217,7 @@ onLoad(load);
 
     <!-- 第一步：选区域。只列有已开通社区的区，并把社区数摆在旁边 -->
     <view v-else-if="pickingRegion" class="rg">
-      <text class="rg__tip">{{ $t("community.pickRegion") }}</text>
+      <text class="rg__tip">{{ $t("common.pickRegion") }}</text>
       <view
         v-for="r in community.regions"
         :key="r.regionCode"
@@ -241,7 +228,7 @@ onLoad(load);
           <text class="rg__name">{{ r.name }}</text>
           <text class="rg__city">{{ r.cityName }}</text>
         </view>
-        <text class="sh-chip">{{ $t("community.nCommunities", { n: r.communityCount }) }}</text>
+        <text class="sh-chip">{{ $t("common.nCommunities", { n: r.communityCount }) }}</text>
       </view>
     </view>
 
@@ -253,28 +240,28 @@ onLoad(load);
       <text class="state__title">{{ $t("community.empty") }}</text>
       <text class="state__tip">{{ $t("community.emptyTip") }}</text>
       <view class="state__btn" @tap="browseAll">
-        <text>{{ $t("community.browseAll") }}</text>
+        <text>{{ $t("common.browseAll") }}</text>
       </view>
     </view>
 
-    <text v-else-if="showingAll" class="hint">{{ $t("community.allTip") }}</text>
-    <text v-else-if="!located" class="hint">{{ $t("community.noLocation") }}</text>
+    <text v-else-if="showingAll" class="hint">{{ $t("common.allTip") }}</text>
+    <text v-else-if="!located" class="hint">{{ $t("common.noLocation") }}</text>
 
     <view v-if="region" class="rg__back" @tap="backToRegions">
-      <text>{{ region.cityName }} · {{ region.name }} · {{ $t("community.changeRegion") }}</text>
+      <text>{{ region.cityName }} · {{ region.name }} · {{ $t("common.changeRegion") }}</text>
     </view>
 
     <view v-if="community.list.length" class="search">
       <input
         v-model="keyword"
         class="search__input"
-        :placeholder="String($t('community.searchHint'))"
+        :placeholder="String($t('common.searchHint'))"
         confirm-type="search"
       />
     </view>
 
     <text v-if="community.list.length && !shown.length" class="hint">
-      {{ $t("community.searchEmpty") }}
+      {{ $t("common.searchEmpty") }}
     </text>
 
     <view v-for="c in shown" :key="c.communityNo" class="cm">

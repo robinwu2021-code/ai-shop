@@ -8,6 +8,7 @@ import { api } from "@/api";
 import { useI18n } from "vue-i18n";
 import { isoDate, money } from "@shared/utils/format";
 import type { Coupon, MyStoreCoupon } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const tab = ref<"center" | "mine">("center");
@@ -56,11 +57,12 @@ async function load() {
  */
 function showCode(c: MyStoreCoupon) {
   if (!c.redeemCode) return;
-  uni.showModal({
+  // `showCancel: false` 对应 `alert: true` —— 只有一个「知道了」，没有取消
+  void confirm({
     title: c.title,
-    content: String(t("coupon.codeBody", { code: c.redeemCode, n: c.remaining })),
-    showCancel: false,
+    hint: String(t("coupon.codeBody", { code: c.redeemCode, n: c.remaining })),
     confirmText: String(t("coupon.codeClose")),
+    alert: true,
   });
 }
 

@@ -80,7 +80,7 @@ function addOne() {
     <text class="hint">{{ $t("entities.hint") }}</text>
 
     <view v-if="loading && !rows.length" class="hint">{{ $t("common.loading") }}</view>
-    <view v-else-if="failed && !rows.length" class="hint">{{ $t("common.loadFailed") }}</view>
+    <view v-else-if="failed && !rows.length" class="hint">{{ $t("store.loadFailed") }}</view>
 
     <view class="list">
       <view v-for="e in rows" :key="e.entityNo" class="sh-card item" @tap="open(e.entityNo)">

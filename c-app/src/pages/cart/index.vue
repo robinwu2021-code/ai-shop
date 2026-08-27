@@ -6,6 +6,7 @@ import { useCartStore } from "@/stores/cart";
 import { money } from "@shared/utils/format";
 import { ROUTES } from "@shared/utils/constants";
 import type { CartItem, FulfillmentType } from "@shared/types";
+import { pick } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const cart = useCartStore();
@@ -20,20 +21,20 @@ function inc(skuNo: string, qty: number) {
  * 一组一单：按履约方式分组结算。
  * 有多组时先让用户选一组 —— 自提和快递的收货信息完全不同，混在一单里没法填。
  */
-function checkout() {
+async function checkout() {
   const groups = cart.groups;
   if (!groups.length) return;
   if (groups.length === 1) {
     go(groups[0]!.fulfillment, groups[0]!.items);
     return;
   }
-  uni.showActionSheet({
-    itemList: groups.map((g) => String(t(`fulfillment.${g.fulfillment}`))),
-    success: (r) => {
-      const g = groups[r.tapIndex];
-      if (g) go(g.fulfillment, g.items);
-    },
+  const idx = await pick({
+    title: String(t("cart.pickFulfillment")),
+    items: groups.map((g) => String(t(`fulfillment.${g.fulfillment}`))),
   });
+  if (idx === null) return;
+  const g = groups[idx];
+  if (g) go(g.fulfillment, g.items);
 }
 
 function go(fulfillment: FulfillmentType, items: CartItem[]) {

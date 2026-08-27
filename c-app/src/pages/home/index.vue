@@ -22,6 +22,7 @@ import { countdownShort, money } from "@shared/utils/format";
 import { firstSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
 import type { Goods, GroupBuy } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const community = useCommunityStore();
@@ -106,14 +107,13 @@ async function maybePickCommunity() {
      * 用户不知道自己其实可以挑一个别处的自提点（给父母下单、出差前囤货都是这么用的）。
      * 用 showModal 而不是 toast，正是因为 toast 点不了 —— 它说完就走，什么也不给。
      */
-    uni.showModal({
+    void confirm({
       title: String(t("home.noNearbyTitle")),
-      content: String(t("home.noNearbyPickup")),
+      hint: String(t("home.noNearbyPickup")),
       confirmText: String(t("home.pickManually")),
       cancelText: String(t("home.browseFirst")),
-      success: (r) => {
-        if (r.confirm) gotoCommunity();
-      },
+    }).then((ok) => {
+      if (ok) gotoCommunity();
     });
   }
 }
