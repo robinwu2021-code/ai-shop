@@ -83,6 +83,13 @@ public class DualWriteStockPort implements StockPort {
         mirror("MIRROR_RESTORE", restoreNo, items);
     }
 
+    @Override
+    public void setOnHand(String skuNo, String storeNo, int onHand, String reason) {
+        platform.setOnHand(skuNo, storeNo, onHand, reason);
+        // 手改也要镜像，否则商家在商品页改完，两本账当场分叉
+        bus.publish(new AdjustEvent(skuNo, storeNo, onHand, reason));
+    }
+
     /**
      * 把这一笔记进出站表。
      *
@@ -116,6 +123,26 @@ public class DualWriteStockPort implements StockPort {
         public String eventType() {
             // 带 INV_ 前缀：平台的 eventType 是全局的，不带前缀会与别的域撞
             return "INV_" + type;
+        }
+    }
+
+    /** 手改库存的镜像。**带上目标值而不是差额** —— 差额要两边先一致才算得对 */
+    private record AdjustEvent(String skuNo, String storeNo, int onHand, String reason)
+            implements DomainEvent {
+
+        @Override
+        public String aggregateType() {
+            return AGGREGATE;
+        }
+
+        @Override
+        public String aggregateId() {
+            return skuNo;
+        }
+
+        @Override
+        public String eventType() {
+            return "INV_MIRROR_ADJUST";
         }
     }
 }

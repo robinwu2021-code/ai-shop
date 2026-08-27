@@ -200,6 +200,39 @@ class InventoryDualWriteTest {
                 .isEqualTo(once);
     }
 
+    @Test
+    @DisplayName("★★★ 商品页改库存也落进销存 —— 两个入口，一本账")
+    void goodsPageEditReachesBothBooks() {
+        Fixture f = fixture(10);
+
+        // 商家在商品页把库存改成 4（原本这条路直接 update prd_sku，进销存毫不知情）
+        stockPort.setOnHand(f.skuNo, null, 4, "OTHER");
+        dispatcher.dispatchPending();
+
+        assertThat(onHand(f))
+                .as("**商品页与库存页是两个入口、一本账**。这里对不上的话，"
+                        + "搬运之后同一件货就有两个数、两个改法，而改任一个另一个都不知道")
+                .isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("★★ 手改是「设成这个数」，重投不会越改越少")
+    void goodsPageEditIsIdempotent() {
+        Fixture f = fixture(10);
+
+        stockPort.setOnHand(f.skuNo, null, 6, "OTHER");
+        dispatcher.dispatchPending();
+        assertThat(onHand(f)).isEqualTo(6);
+
+        // 带的是目标值不是差额 —— 同一笔来两遍，第二遍算出来的差异是 0
+        dispatcher.redeliverAllForTest();
+        dispatcher.dispatchPending();
+
+        assertThat(onHand(f))
+                .as("带差额的话重投会再减一次；带目标值天然幂等")
+                .isEqualTo(6);
+    }
+
     // ------------------------------------------------------------------ 种子
 
     private record Fixture(int seq, String skuNo, String owner, String itemId) {

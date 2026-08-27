@@ -90,6 +90,13 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private final ai.neargo.shop.product.service.SpuStdService spuStdService;
     /** 门店级库存。**只有商家显式设置过才有行** —— 见 saveStoreStock 的说明 */
     private final ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper;
+    /**
+     * 改库存走它，不自己 update。
+     *
+     * <p>商家有两个改库存的入口（这一页与库存页），收进 Port 之后
+     * <b>真相源在哪它就落到哪</b> —— 入口可以有两个，账只能有一本。
+     */
+    private final ai.neargo.shop.spi.product.StockPort stockPort;
     /** 门店级上架关系。与库存同一套「有行按店算、无行回退主体」的语义 */
     private final ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper;
     /** 门店货架。商品域只用它回答两个问题：本店有没有这一类、把这一类加进去 */
@@ -99,7 +106,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     /** 规格库（V195）：类目级规格从这里来，SKU 的值编号也靠它反查 */
     private final ai.neargo.shop.product.service.SpecLibraryService specLibrary;
 
-    public MerchantGoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper,
+    public MerchantGoodsServiceImpl(ai.neargo.shop.spi.product.StockPort stockPort,
+                                    GoodsMapper goodsMapper, SkuMapper skuMapper,
                                     SpecTemplateMapper templateMapper,
                                     GoodsService goodsService, CommunityPoolMapper poolMapper,
                                     ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
@@ -126,6 +134,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         this.communityQueryPort = communityQueryPort;
         this.switchPort = switchPort;
         this.admissionPort = admissionPort;
+        this.stockPort = stockPort;
         this.goodsMapper = goodsMapper;
         this.skuMapper = skuMapper;
         this.templateMapper = templateMapper;
@@ -1690,11 +1699,23 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (rows.isEmpty()) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        /*
+         * **走 StockPort，不自己 update。**
+         *
+         * 商家有两个改库存的入口：这一个与库存页的「改数」。原本这里直接
+         * `updateById`、那边走进销存的盘点单 —— 两个都在 B 端、都归商家、
+         * 都叫「改库存」，却写进两本互不知道的账。搬运之后同一件货就有了
+         * 两个数、两个改法，而改任一个另一个都不知道。
+         *
+         * 收进 Port 之后，真相源在哪它就落到哪。**入口可以有两个，账只能有一本。**
+         *
+         * 顺带修掉一个并发缺陷：原来是「先查再 updateById」，
+         * 中间那笔销售会被覆盖掉；Port 那边是带条件的 UPDATE。
+         */
         for (PrdSku row : rows) {
             // 库存不分市场：货就那么多，卖到哪个市场都是同一批。
             // 价格分市场、库存不分 —— 这两件事的口径不同，正是分开存的理由
-            row.setStock(stock);
-            DataScopeContext.executeWithoutScope(() -> skuMapper.updateById(row));
+            stockPort.setOnHand(row.getSkuNo(), null, stock, "OTHER");
         }
         // 补货**不触发重审**：这是每天都在做的事，走完整保存等于每次补货都要重新过审
         return toVO(g);
@@ -1719,19 +1740,17 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                         .eq(PrdStoreStock::getStoreNo, storeNo)
                         .eq(PrdStoreStock::getSkuNo, skuNo)));
         if (row == null) {
-            row = new PrdStoreStock();
-            row.setStoreNo(storeNo);
-            row.setSkuNo(skuNo);
-            row.setEntityNo(merchantNo);
-            row.setLockedStock(0);
-            row.setStock(stock);
-            PrdStoreStock toInsert = row;
+            // 这家店还没有这一行 —— 先建出来（Port 的 setOnHand 只改不建）
+            PrdStoreStock toInsert = new PrdStoreStock();
+            toInsert.setStoreNo(storeNo);
+            toInsert.setSkuNo(skuNo);
+            toInsert.setEntityNo(merchantNo);
+            toInsert.setLockedStock(0);
+            toInsert.setStock(0);
             DataScopeContext.executeWithoutScope(() -> storeStockMapper.insert(toInsert));
-        } else {
-            row.setStock(stock);
-            PrdStoreStock toUpdate = row;
-            DataScopeContext.executeWithoutScope(() -> storeStockMapper.updateById(toUpdate));
         }
+        // 与主体级同一条：走 Port，两本账才不会分叉（见 saveStock 的说明）
+        stockPort.setOnHand(skuNo, storeNo, stock, "OTHER");
         return toVO(g);
     }
 

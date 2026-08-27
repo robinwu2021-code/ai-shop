@@ -5,6 +5,7 @@ import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.ReservationService;
+import ai.neargo.shop.inventory.service.StockCountService;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -45,13 +46,15 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
     /** 与 {@code DualWriteStockPort} 里的 TTL 同一个量级 —— 比它短会先把还能付款的单释放掉 */
     private static final long RESERVE_TTL_SECONDS = 30 * 60L;
 
+    private final StockCountService counts;
     private final ReservationService reservations;
     private final InventoryAclService acl;
     private final LocationService locations;
     private final ObjectMapper json;
 
-    public InventoryMirrorConsumer(ReservationService reservations, InventoryAclService acl,
+    public InventoryMirrorConsumer(StockCountService counts, ReservationService reservations, InventoryAclService acl,
                                    LocationService locations, ObjectMapper json) {
+        this.counts = counts;
         this.reservations = reservations;
         this.acl = acl;
         this.locations = locations;
@@ -67,6 +70,11 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
     public void consume(SysOutbox event) {
         JsonNode p = json.readTree(event.getPayload());
         String ref = text(p, "ref");
+        // 手改那一类没有 ref（它的自然键是 skuNo + 目标值），单独放行
+        if ("INV_MIRROR_ADJUST".equals(event.getEventType())) {
+            adjust(p);
+            return;
+        }
         if (ref == null || ref.isBlank()) {
             // 没有自然键就没法幂等。**丢掉而不是重投** —— 重投一个永远处理不了的事件
             // 只会让队列越堆越长，而堆着的那些会把真正的失败盖住
@@ -79,6 +87,7 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
             case "INV_MIRROR_COMMIT" -> settled(ref, () -> reservations.commitByRef(ref, "MIRROR"));
             case "INV_MIRROR_RELEASE" -> settled(ref, () -> reservations.releaseByRef(ref));
             case "INV_MIRROR_RESTORE" -> restore(ref, p);
+            case "INV_MIRROR_ADJUST" -> adjust(p);
             default -> log.warn("不认识的镜像事件类型：{}", event.getEventType());
         }
     }
@@ -90,6 +99,26 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
         }
         String owner = acl.ownerOfSku(first(p));
         reservations.reserve(owner, ref, lines, RESERVE_TTL_SECONDS);
+    }
+
+    /**
+     * 手改库存的镜像：落成一张盘点单。
+     *
+     * <p><b>天然幂等</b>：它是「设成这个数」而不是「加减多少」——
+     * 同一笔来两遍，第二遍算出来的差异是 0，不会再动一次。
+     */
+    private void adjust(JsonNode p) {
+        String skuNo = text(p, "skuNo");
+        if (skuNo == null) {
+            return;
+        }
+        String owner = acl.ownerOfSku(skuNo);
+        String locationId = locations.resolveStockLocation(
+                owner, acl.locationOfStore(owner, text(p, "storeNo")));
+        String reason = text(p, "reason");
+        int onHand = p.get("onHand") == null ? 0 : p.get("onHand").asInt();
+        counts.adjustOne(owner, locationId, acl.itemIdOfSku(skuNo), onHand,
+                reason == null ? "OTHER" : reason, "GOODS_PAGE");
     }
 
     private void restore(String ref, JsonNode p) {

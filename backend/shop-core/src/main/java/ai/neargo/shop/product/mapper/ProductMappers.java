@@ -140,6 +140,18 @@ public final class ProductMappers {
         int restoreStock(@Param("skuNo") String skuNo, @Param("qty") int qty);
 
         /**
+         * 手改库存：**设成这个数**。
+         *
+         * <p>`locked_stock` 不动 —— 已经被下单占住的量不属于「我数出来有多少」，
+         * 把它一起清掉的话，那些单在支付时会扣到负数。
+         */
+        @Update("""
+                UPDATE prd_sku SET stock = #{stock}, version = version + 1
+                WHERE sku_no = #{skuNo} AND deleted = 0
+                """)
+        int setStock(@Param("skuNo") String skuNo, @Param("stock") int stock);
+
+        /**
          * 预售成交（P-3.3.1）：现货不足时的**第二级闸门**，与 {@link #lockStock} 同一套手法 ——
          * 三个条件全写在 WHERE 里，靠影响行数判断，绝不先查后改。
          *
@@ -218,6 +230,14 @@ public final class ProductMappers {
                 """)
         int restoreStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
                          @Param("qty") int qty);
+
+        /** 手改门店库存：设成这个数，`locked_stock` 不动（同主体级那条） */
+        @Update("""
+                UPDATE prd_store_stock SET stock = #{stock}
+                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0
+                """)
+        int setStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
+                     @Param("stock") int stock);
     }
 
     /**

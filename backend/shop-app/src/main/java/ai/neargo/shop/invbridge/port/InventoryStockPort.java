@@ -3,6 +3,7 @@ package ai.neargo.shop.invbridge.port;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.ReservationService;
+import ai.neargo.shop.inventory.service.StockCountService;
 import ai.neargo.shop.spi.product.StockPort;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
@@ -46,12 +47,14 @@ public class InventoryStockPort implements StockPort {
      */
     private static final long RESERVE_TTL_SECONDS = 30 * 60L;
 
+    private final StockCountService counts;
     private final ReservationService reservations;
     private final InventoryAclService acl;
     private final LocationService locations;
 
-    public InventoryStockPort(ReservationService reservations, InventoryAclService acl,
+    public InventoryStockPort(StockCountService counts, ReservationService reservations, InventoryAclService acl,
                               LocationService locations) {
+        this.counts = counts;
         this.reservations = reservations;
         this.acl = acl;
         this.locations = locations;
@@ -112,5 +115,22 @@ public class InventoryStockPort implements StockPort {
             lines.add(new ReservationService.Line(acl.itemIdOfSku(q.skuNo()), locationId, q.qty()));
         }
         return lines;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>进销存档：<b>落成一张盘点单，不是直接改数</b>。商家在商品页手改的
+     * 「实际有多少」，与他在库存页盘出来的是同一件事 —— 走同一个口，
+     * 账上才分得清这一笔是谁改的。直接改余额的话，他问「我的货怎么变了」时
+     * 没有任何东西可以点开。
+     */
+    @Override
+    public void setOnHand(String skuNo, String storeNo, int onHand, String reason) {
+        String owner = acl.ownerOfSku(skuNo);
+        String locationId = locations.resolveStockLocation(
+                owner, acl.locationOfStore(owner, storeNo));
+        counts.adjustOne(owner, locationId, acl.itemIdOfSku(skuNo), onHand,
+                reason == null ? "OTHER" : reason, "GOODS_PAGE");
     }
 }

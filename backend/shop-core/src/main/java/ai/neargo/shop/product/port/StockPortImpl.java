@@ -9,6 +9,8 @@ import ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -204,6 +206,28 @@ public class StockPortImpl implements StockPort {
 
         public List<String> skuNos() {
             return skuNos;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>平台档：就是原来 {@code MerchantGoodsServiceImpl.saveStock} 那一段，
+     * 只是搬到了 Port 后面。<b>带条件的 UPDATE，不是「先查再 updateById」</b> ——
+     * 后者在并发下会把中间那笔销售覆盖掉，而它与 {@code lockStock} 本来就该是同一套手法。
+     */
+    @Override
+    @Transactional
+    public void setOnHand(String skuNo, String storeNo, int onHand, String reason) {
+        if (onHand < 0) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        boolean perStore = storeNo != null && !storeNo.isBlank() && hasStoreStock(skuNo);
+        int affected = perStore
+                ? storeStockMapper.setStock(storeNo, skuNo, onHand)
+                : DataScopeContext.executeWithoutScope(() -> skuMapper.setStock(skuNo, onHand));
+        if (affected == 0) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
         }
     }
 }

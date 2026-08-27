@@ -48,6 +48,24 @@ public interface StockPort {
     void restore(String restoreNo, List<SkuQty> items);
 
     /**
+     * 把库存<b>设成这个数</b>（商家在商品页手改）。
+     *
+     * <h2>为什么它要进 Port，而不是商品域自己 update</h2>
+     * 商家有两个改库存的入口：商品页的「改库存」与库存页的「改数」。
+     * 前者原本直接 {@code updateById} 改 {@code prd_sku.stock}，后者走进销存的盘点单 ——
+     * <b>两个都在 B 端、都归商家、都叫「改库存」，却写进两本互不知道的账</b>。
+     * 搬运之后同一件货就有了两个数、两个改法，而改任一个另一个都不知道。
+     *
+     * <p>收进 Port 之后，真相源在哪它就落到哪：{@code PLATFORM} 走原来那条，
+     * {@code DUAL} 两边都记，{@code INVENTORY} 落成一张盘点单。
+     * <b>入口可以有两个，账只能有一本。</b>
+     *
+     * @param reason 变更原因（枚举，见 {@code InvEnums.CountReason}）。
+     *               <b>不是自由文本</b> —— 自由文本汇总不出「这个月因为什么改了多少」
+     */
+    void setOnHand(String skuNo, String storeNo, int onHand, String reason);
+
+    /**
      * @param storeNo 这一行在**哪家店**履约，决定扣谁的库存。可空。
      *
      * <p><b>门店放在行上而不是整次调用上</b>：一笔跨商家的订单会拆成多个子单，
