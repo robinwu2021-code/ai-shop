@@ -2,7 +2,7 @@
 
 状态：**草稿 · 待确认**
 关联需求：**缺**（见 §0，本册先行，PRD 待补）
-关联决策：[ADR-005 履约方式与自提点模型](ADR/ADR-005-履约方式与自提点模型.md) · [ADR-009 商家经营范围三档模型](ADR/ADR-009-商家经营范围三档模型.md) · [ADR-011 经营主体与门店边界](ADR/ADR-011-经营主体与门店边界.md) · [TDD-线下支付与预约排期](TDD-线下支付与预约排期.md)
+关联决策：[ADR-019 行业工作流做成独立插件项目](ADR/ADR-019-行业工作流做成独立插件项目.md) · [标准能力基线（零售为默认）](reference/标准能力基线-零售为默认.md) · [ADR-005 履约方式与自提点模型](ADR/ADR-005-履约方式与自提点模型.md) · [ADR-009 商家经营范围三档模型](ADR/ADR-009-商家经营范围三档模型.md) · [ADR-011 经营主体与门店边界](ADR/ADR-011-经营主体与门店边界.md) · [TDD-线下支付与预约排期](TDD-线下支付与预约排期.md)
 创建：2026-08-27
 
 ---
@@ -344,8 +344,12 @@ prn_job(job_no, store_no, printer_no, template_code, payload, status, retry_coun
 | 资源与排期 | `shop-merchant/`（扩） | `mch_resource`、slot 加资源维度、`mch_staff` |
 | 会员资产 | `shop-core/member/`（扩） | 储值 / 次卡 / 流水 |
 | 打印通道 | `shop-channel/print/` | 设备、模板、路由、任务 |
-| **`shop-industry-food`** | 新 maven 模块 | 桌台、开台台账、加菜、结账编排、出品分单 |
-| **`shop-industry-service`** | 新 maven 模块 | 服务工单、排班生成、指定技师、耗卡核销 |
+| `shop-plugin-api` | `backend/shop-plugin-api`（新，**零依赖**） | 插件契约：`IndustryPlugin` / `OrderLifecycleListener` / `PrintPayloadProvider` / `ResourceTypeProvider` / `CheckoutContributor` |
+| **`shop-industry-food`** | `backend-plugins/shop-industry-food`（**独立 maven 项目**） | 桌台、开台台账、加菜、结账编排、出品分单 |
+| **`shop-industry-service`** | `backend-plugins/shop-industry-service`（**独立 maven 项目**） | 服务工单、排班生成、指定技师、耗卡核销 |
+
+> 插件为什么是独立项目、为什么同仓不同 reactor、为什么一期不做热插拔 —— 见 [ADR-019](ADR/ADR-019-行业工作流做成独立插件项目.md)。
+> **零售是基座默认形态**：不装任何插件的 jar 必须能起、零售全量场景测试必须全绿（可剔除闸）。
 
 **修改**（面很小，这是方案成立的证据）
 
@@ -361,15 +365,21 @@ prn_job(job_no, store_no, printer_no, template_code, payload, status, retry_coun
 
 **依赖方向**（架构守卫要能拦住反向）：
 ```
-shop-industry-food / shop-industry-service
-        │ 依赖
-        ▼
-shop-core(trade/product/member) · shop-merchant · shop-channel
-        │ 依赖
-        ▼
-shop-base(取值域 / SPI / 事件)
+shop-industry-food        shop-industry-service      ← 独立 maven 项目，互不认识
+        └──────── 只依赖 ────────┘
+                    ▼
+             shop-plugin-api                          ← 零依赖契约（照 shop-job-api 的写法）
+                    ▲
+                    └── 实现 ── shop-app / shop-core / shop-merchant / shop-channel
+                                        │ 依赖
+                                        ▼
+                                 shop-base(取值域 / SPI / 事件)
 ```
-行业模块之间**互不依赖**。共用的东西（资源、人员、打印）一律下沉，不横向引用。
+三条硬规矩：
+1. **插件不许 import 基座的实体**（`OrdOrder` 等）。实体会连同 MyBatis、事务、列名一起漏过去，
+   一旦插件里出现 `ord_order` 的列名，「改主干不动插件」就不再成立 —— 只能用契约上的 `OrderView`。
+2. **插件之间互不依赖**。共用的东西（资源、人员、打印、叫号）一律下沉到基座，不横向引用 —— 那是插件化最常见的死法。
+3. **没有改价、改库存、改订单状态的扩展点**。插件只能 `CheckoutAdvice` 建议，由基座决定采不采纳。
 
 ---
 
@@ -412,9 +422,9 @@ shop-base(取值域 / SPI / 事件)
 
 | 阶段 | 内容 | 产出闸门 |
 |---|---|---|
-| **0 · 地基** | 能力模型 + `DINE_IN` + `mch_resource` + slot 资源维度 + `mch_staff` | 存量商家行为零变化（回归全绿）；开关两态各有用例 |
-| **1 · 美业** | 排班生成、指定技师预约、服务工单、次卡/储值、服务单打印 | 一家试点店跑通「约—到店—服务—耗卡—结账」 |
-| **2 · 餐饮** | 桌台、开台台账、加菜、先吃后付结账、后厨分单打印 | 一家试点店跑通两种付款顺序 + 真机出票 |
+| **0 · 基座** | 能力模型 + 打印通道 + `shop-plugin-api` + `DINE_IN` + `mch_resource` + slot 资源维度 + `mch_staff`；**零售全能力跑通** | 存量商家行为零变化（回归全绿）；开关两态各有用例；`-Pcore-only` 可构建可启动 |
+| **1 · 美业插件** | `shop-industry-service`：排班生成、指定技师预约、服务工单、耗卡核销、服务单打印（储值/次卡在基座） | 一家试点店跑通「约—到店—服务—耗卡—结账」；剔除该插件后零售仍全绿 |
+| **2 · 餐饮插件** | `shop-industry-food`：桌台、开台台账、加菜、先吃后付结账、后厨分单打印 | 一家试点店跑通两种付款顺序 + 真机出票；剔除该插件后零售与美业仍全绿 |
 | **3 · 收口** | 提成、行业报表、B 端工作台按能力分叉、运营端行业配置 | 三行业共用一份订单/会员/结算报表 |
 
 阶段 0 不交付任何面向商家的新功能，**它的验收标准就是「什么都没变」** —— 这是它最容易被跳过、也最不能跳过的地方。
