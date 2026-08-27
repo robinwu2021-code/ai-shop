@@ -207,6 +207,7 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
         int pending = 0;
         List<Diff> diffs = new ArrayList<>();
 
+        java.util.Set<String> touchedOwners = new java.util.HashSet<>();
         for (PrdSku sku : bySku.values()) {
             String entityNo = sku.getEntityNo();
 
@@ -237,6 +238,7 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
                 ownerId = acl.ownerIdOf(entityNo);
                 itemId = acl.upsertItem(entityNo, sku.getSkuNo(), sku.getGoodsNo(),
                         sku.getSpec(), sku.getBarcode(), sku.getMerchantSkuCode(), sku.getSaleUnit());
+                touchedOwners.add(ownerId);
             }
 
             if (storeRows.isEmpty()) {
@@ -259,6 +261,10 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
             }
         }
 
+        if (!dryRun) {
+            repairStoreSources(touchedOwners);
+        }
+
         Report report = new Report(bySku.size(), moved, skipped, pending,
                 exhausted ? null : lastId, diffs);
         log.info("库存搬运{}：扫描 {} 个 SKU，搬 {} 条，跳过 {} 条，对差 {} 条{}",
@@ -270,6 +276,41 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
     /**
      * @return 1=搬了 · 0=已搬过跳过 · -1=只算不写
      */
+
+    /**
+     * 把**空的、且没配过发货源的**门店库位指向主体默认仓。
+     *
+     * <p>为什么要有这一步：门店库位是**懒创建**的 —— 商家第一次点开「库存」那一刻才建出来。
+     * 所以「新建时带上发货源」（{@code InventoryAclServiceImpl.locationIdOf}）只管得住以后，
+     * 管不住在那次修复之前就已经被创建出来的那些。线上 2026-08-27 就有一个：
+     * 门店库位 0 条余额，而两个默认仓里躺着 204 + 2 件，商家点进去是一片空。
+     *
+     * <p><b>只碰「一件都没有」的库位。</b>门店自己真备了货（有余额）就说明商家是按店管的，
+     * 这时把它指向仓库，是把它自己的真数据换成别人的 —— 比看到空列表更糟。
+     */
+    private void repairStoreSources(java.util.Set<String> owners) {
+        for (String ownerId : owners) {
+            String defaultLoc = null;
+            for (var loc : locations.list(ownerId)) {
+                boolean isStore = InvEnums.LocationKind.STORE.equals(loc.getKind());
+                boolean noSource = loc.getSourceLocationId() == null || loc.getSourceLocationId().isBlank();
+                if (!isStore || !noSource) {
+                    continue;
+                }
+                if (!query.balances(ownerId, loc.getLocationId(), null, 1).isEmpty()) {
+                    continue;   // 自己有货 = 按店管，别动
+                }
+                if (defaultLoc == null) {
+                    defaultLoc = locations.defaultLocation(ownerId);
+                }
+                if (!defaultLoc.equals(loc.getLocationId())) {
+                    locations.setSource(ownerId, loc.getLocationId(), defaultLoc, "SYSTEM");
+                    log.info("库存搬运：门店库位 {} 是空的，指向主体默认仓 {}", loc.getLocationId(), defaultLoc);
+                }
+            }
+        }
+    }
+
     private int moveOne(String ownerId, String entityNo, String storeNo, String skuNo,
                         String itemId, String locationId, int platformQty, int platformHeld,
                         boolean dryRun, List<Diff> diffs) {

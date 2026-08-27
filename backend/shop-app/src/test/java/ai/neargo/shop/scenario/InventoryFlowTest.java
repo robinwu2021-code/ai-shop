@@ -219,6 +219,65 @@ class InventoryFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 搬完之后**从门店视角**要看得见货 —— 否则商家点进库存是一片空")
+    void storeViewSeesMigratedStock() {
+        /*
+         * 复现线上那一幕：商家的库存是主体级的（一行门店库存都没有），
+         * 搬运把它落到默认仓；而 B 端九屏解析到的是**门店自己那个空库位**，
+         * 于是「库存」页一件都没有，货却一件没少地躺在仓库里，且不报错。
+         *
+         * 平台侧的语义在 StockPortImpl：按 SKU 判定，该 SKU 一行门店库存都没有时
+         * 就是主体级，**每个门店都从主体池卖** —— 门店确实是从那个仓取货的。
+         */
+        int seq = SEQ.incrementAndGet();
+        String entityNo = "E-STOREVIEW-" + seq;
+        String skuNo = "SKU-STOREVIEW-" + seq;
+        String storeNo = "ST-STOREVIEW-" + seq;
+
+        PrdSku sku = new PrdSku();
+        sku.setSkuNo(skuNo);
+        sku.setGoodsNo("G-STOREVIEW-" + seq);
+        sku.setEntityNo(entityNo);
+        sku.setMarket("CN");
+        sku.setStock(60);          // 主体级库存
+        sku.setLockedStock(0);
+        sku.setPrice(2500L);
+        skuMapper.insert(sku);
+
+        try {
+            String ownerId = acl.ownerIdOf(entityNo);
+
+            // ① 新建的门店库位必须自带发货源 —— 不带就会解析到自己那个空库位
+            String storeLoc = acl.locationIdOf(entityNo, storeNo);
+            assertThat(locations.resolveStockLocation(ownerId, storeLoc))
+                    .as("新建门店库位没有发货源 —— 商家第一次点开库存就会看到空的")
+                    .isEqualTo(locations.defaultLocation(ownerId));
+
+            // ② 把发货源抹掉，模拟「修复之前就已经建出来的」那些库位
+            locations.setSource(ownerId, storeLoc, null, "测试");
+            assertThat(locations.resolveStockLocation(ownerId, storeLoc)).isEqualTo(storeLoc);
+
+            // ③ 真搬一遍（扫到末尾，确保这个新 SKU 被扫到）
+            Long cursor = null;
+            do {
+                cursor = backfill.run(false, 500, cursor).nextAfterId();
+            } while (cursor != null);
+
+            // ④ 按 B 端的解析方式取数：必须看得见
+            String resolved = locations.resolveStockLocation(ownerId, storeLoc);
+            assertThat(resolved)
+                    .as("搬运没有把空的门店库位指回主体默认仓")
+                    .isEqualTo(locations.defaultLocation(ownerId));
+            assertThat(query.summary(ownerId, resolved).itemCount())
+                    .as("从门店视角一件都看不到 —— 货在默认仓，而九屏看的是门店库位")
+                    .isGreaterThan(0);
+        } finally {
+            // 共享库：造的 SKU 要收走，否则别的用例只跑一批时会被它挤掉 fixture
+            skuMapper.delete(Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getSkuNo, skuNo));
+        }
+    }
+
+    @Test
     @DisplayName("★★★ 只算不写就是一行都不写 —— dry-run 曾经建了 owner/item/ref/location")
     void dryRunWritesNothing() {
         /*

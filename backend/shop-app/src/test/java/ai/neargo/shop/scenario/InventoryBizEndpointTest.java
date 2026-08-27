@@ -61,6 +61,8 @@ class InventoryBizEndpointTest {
     private OtpStore otpStore;
     @Autowired
     private InventoryAclService acl;
+    @Autowired
+    private ai.neargo.shop.inventory.service.LocationService locations;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -346,7 +348,15 @@ class InventoryBizEndpointTest {
         JsonNode ctxNode = ctx;
         String storeNo = ctxNode.get("currentStoreNo").isNull()
                 ? null : ctxNode.get("currentStoreNo").asString();
-        String location = acl.locationIdOf(entityNo, storeNo);
+        /*
+         * **再过一次 resolveStockLocation** —— 控制器的 location() 是两步：
+         * locationIdOf 之后还要解析发货源。原来这里只做了第一步，两者相同纯属
+         * 「那时门店库位没有发货源」；2026-08-27 新建门店库位开始默认指向主体默认仓，
+         * 差别就出来了：种子的货入到仓库，而调拨从门店发，报「库存不足」，
+         * 看起来像调拨坏了 —— 正是本注释开头警告的那一幕，只是换了个方向。
+         */
+        String location = locations.resolveStockLocation(
+                acl.ownerIdOf(entityNo), acl.locationIdOf(entityNo, storeNo));
         String itemA = acl.upsertItem(entityNo, "SKU-BIZINV-" + seq, "东北大米", "5斤装",
                 "6901234567892", "LM-05", "袋");
         acl.upsertItem(entityNo, "SKU-BIZINV-B" + seq, "土鸡蛋", "30枚装", null, null, "箱");
