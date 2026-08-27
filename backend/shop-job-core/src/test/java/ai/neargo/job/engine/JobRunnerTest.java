@@ -157,4 +157,54 @@ class JobRunnerTest {
         assertEquals(java.time.LocalDate.now().minusDays(1), biz.received.get(0).bizDate(),
                 "给今天等于算了半天的账，而这种错不报错，只让数字对不上");
     }
+
+    @Test
+    @DisplayName("★★ job_definition.params 真的到得了任务侧 —— 此前传的是写死的空 Map")
+    void paramsReachTheHandler() {
+        JobDefinitionRow withParams = params(def, """
+                {"channel":"wechat","batchSize":500}""");
+        var biz = new WorkerTestFixture.FakeBusiness()
+                .returning(InvokeOutcome.of(JobStatus.SUCCESS, "好", null, 200));
+
+        runnerWith(biz).run(withParams, TriggerType.CRON);
+
+        assertEquals("wechat", biz.received.getLast().params().get("channel"),
+                "「同一个 handler 配出多个实例」全靠这个字段；传不到就是配了不生效且不报错");
+        assertEquals("500", biz.received.getLast().params().get("batchSize"));
+    }
+
+    @Test
+    @DisplayName("★ 坏 params 不能停任务：照跑，参数为空")
+    void brokenParamsStillRuns() {
+        var biz = new WorkerTestFixture.FakeBusiness()
+                .returning(InvokeOutcome.of(JobStatus.SUCCESS, "好", null, 200));
+
+        runnerWith(biz).run(params(def, "{手打错的"), TriggerType.CRON);
+
+        assertEquals(1, f.runs.findByName("t").runCount(), "一行坏 JSON 不该让这个任务从此不跑");
+        assertTrue(biz.received.getLast().params().isEmpty());
+    }
+
+    @Test
+    @DisplayName("重试时参数不变 —— 每一次尝试都该是同一件事")
+    void retryKeepsParams() {
+        var biz = new WorkerTestFixture.FakeBusiness().returning(
+                InvokeOutcome.unreachable("ConnectException"),
+                InvokeOutcome.of(JobStatus.SUCCESS, "好", null, 200));
+
+        runnerWith(biz).run(params(def, "{\"channel\":\"alipay\"}"), TriggerType.CRON);
+
+        assertTrue(biz.received.size() >= 2);
+        biz.received.forEach(in ->
+                assertEquals("alipay", in.params().get("channel")));
+    }
+
+    /** 换掉 params 的一份拷贝。DAO 没有改 params 的方法 —— 目前只能由运营直接写库。 */
+    private static JobDefinitionRow params(JobDefinitionRow d, String json) {
+        return new JobDefinitionRow(d.id(), d.jobName(), d.displayName(), d.description(),
+                d.handlerName(), d.target(), json, d.cron(), d.enabled(), d.timeoutSec(),
+                d.lockAtMostSec(), d.manualTrigger(), d.logEveryRun(), d.source(), d.missing(),
+                d.ownerModule(), d.createdAt(), d.updatedAt(), d.updatedBy(),
+                d.triggerRequestedAt(), d.lastTriggeredAt());
+    }
 }

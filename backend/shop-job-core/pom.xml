@@ -42,6 +42,13 @@
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
         </dependency>
+        <!-- job_definition.params 是一段 JSON。手写解析器不是选项，
+             而两个宿主（shop-app、shop-job）本来都带着 Jackson，
+             这条依赖不会让任何产物变大一个字节 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>

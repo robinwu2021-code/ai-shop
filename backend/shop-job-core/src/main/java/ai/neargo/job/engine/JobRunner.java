@@ -101,7 +101,7 @@ public class JobRunner {
             }
             JobInvocation in = new JobInvocation(runId,
                     attempt == 0 ? trigger : TriggerType.RETRY,
-                    bizDateFor(def), Map.of());
+                    bizDateFor(def), JobParams.parse(def.jobName(), def.params()));
             last = invoker.invoke(def.target(), def.handlerName(), in, def.timeoutSec());
             if (last.status() != JobStatus.UNREACHABLE) {
                 return last;
