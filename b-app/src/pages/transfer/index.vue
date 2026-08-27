@@ -253,7 +253,7 @@ onShow(load);
       <view class="sh-btn" :class="{ 'sh-btn--muted': !lines.length || busy }" @tap="ship">
         {{ $t("transfer.ship") }}
       </view>
-      <text class="field__hint hint">{{ $t("transfer.twoDocsHint") }}</text>
+      <text class="sh-hint hint">{{ $t("transfer.twoDocsHint") }}</text>
 
       <sh-sheet
         :visible="showPick"

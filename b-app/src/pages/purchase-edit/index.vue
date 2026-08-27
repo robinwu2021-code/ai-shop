@@ -142,7 +142,7 @@ onShow(load);
     <view class="sh-card">
       <text class="field__label">{{ $t("purchase.supplier") }}</text>
       <input maxlength="64" v-model="supplier" class="field__input" :placeholder="String($t('purchase.supplierPh'))" />
-      <text class="field__hint">{{ $t("purchase.supplierHint") }}</text>
+      <text class="sh-hint">{{ $t("purchase.supplierHint") }}</text>
     </view>
 
     <view class="sh-card">
@@ -199,7 +199,7 @@ onShow(load);
         {{ $t("purchase.post") }}
       </view>
     </view>
-    <text class="field__hint hint">{{ $t("purchase.postHint") }}</text>
+    <text class="sh-hint hint">{{ $t("purchase.postHint") }}</text>
 
     <sh-sheet :visible="showPick" :title="String($t('purchase.addItem'))" @close="showPick = false">
       <view v-for="b in pickable" :key="b.itemId" class="pick" @tap="addLine(b)">

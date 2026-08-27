@@ -254,7 +254,7 @@ onLoad((q) => {
           <text class="row__label">{{ $t("activityEdit.price") }}</text>
           <input maxlength="10" v-model="form.amount" class="field__input row__input" type="digit" />
         </view>
-        <text class="sh-muted hint">{{ $t("activityEdit.priceHint") }}</text>
+        <text class="sh-muted sh-hint">{{ $t("activityEdit.priceHint") }}</text>
       </template>
 
       <template v-if="form.benefitType === 'GIFT'">
@@ -310,7 +310,7 @@ onLoad((q) => {
           <input maxlength="5" v-model="form.from" class="field__input row__input" placeholder="08:00" />
           <input maxlength="5" v-model="form.to" class="field__input row__input" placeholder="20:00" />
         </view>
-        <text class="sh-muted hint">{{ $t("activityEdit.recurringHint") }}</text>
+        <text class="sh-muted sh-hint">{{ $t("activityEdit.recurringHint") }}</text>
       </template>
 
       <view class="sh-row sh-mt-sm sh-mt-xs">
@@ -403,12 +403,7 @@ onLoad((q) => {
 .row__input {
   flex: 1;
 }
-.hint {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
-}
+
 .conflict {
   margin-top: 16rpx;
   padding: 16rpx;

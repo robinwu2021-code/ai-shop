@@ -160,7 +160,7 @@ onShow(load);
       </view>
       <view v-else class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("staff.add") }}</text>
-        <text class="hint">{{ $t("staff.addHint") }}</text>
+        <text class="sh-hint">{{ $t("staff.addHint") }}</text>
         <view class="field">
           <text class="field__label">{{ $t("staff.phone") }}</text>
           <input v-model="form.phone" class="field__input" type="number" maxlength="11" />
@@ -176,7 +176,7 @@ onShow(load);
 
     <!-- ══════════ 角色 ══════════ -->
     <template v-else-if="tab === 'roles'">
-      <text class="sh-muted tip">{{ $t("staff.roleTip") }}</text>
+      <text class="sh-muted tip sh-hint">{{ $t("staff.roleTip") }}</text>
 
       <view v-for="r in roles" :key="r.roleCode" class="sh-row sh-card sh-mb-sm">
         <view class="row__main" @tap="openRole(r)">
@@ -200,7 +200,7 @@ onShow(load);
 
     <!-- ══════════ 审计 ══════════ -->
     <template v-else>
-      <text class="sh-muted tip">{{ $t("staff.logTip") }}</text>
+      <text class="sh-muted tip sh-hint">{{ $t("staff.logTip") }}</text>
       <sh-empty v-if="!logs.length" :text='$t("staff.logsEmpty")'></sh-empty>
       <view v-for="(l, i) in logs" :key="i" class="sh-card log">
         <view class="log__head">
@@ -225,10 +225,7 @@ onShow(load);
   flex: 1;
 }
 .tip {
-  display: block;
   margin: 20rpx 8rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
 }
 
 .row__main {
@@ -269,13 +266,7 @@ onShow(load);
 .add {
   margin-top: 24rpx;
 }
-.hint {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
-}
+
 .field {
   margin-top: 20rpx;
 }

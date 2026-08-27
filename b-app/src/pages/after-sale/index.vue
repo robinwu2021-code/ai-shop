@@ -205,7 +205,7 @@ onShow(load);
       </view>
     </view>
 
-    <text v-if="list.length" class="tip">{{ $t("afterSale.hint") }}</text>
+    <text v-if="list.length" class="tip sh-hint">{{ $t("afterSale.hint") }}</text>
   </sh-scaffold>
 </template>
 
@@ -318,10 +318,6 @@ onShow(load);
   color: #fff;
 }
 .tip {
-  display: block;
   margin: 32rpx 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
 }
 </style>

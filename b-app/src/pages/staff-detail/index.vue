@@ -89,10 +89,10 @@ onShow(load);
         </view>
         <template v-if="staff.loginPhone">
           <text class="sh-muted phone sh-num">{{ staff.loginPhone }}</text>
-          <text class="sh-muted note">{{ $t("staff.loginHint") }}</text>
+          <text class="sh-muted sh-hint">{{ $t("staff.loginHint") }}</text>
         </template>
         <!-- 老板没有员工手机号：他用 C 端账号登录，这里不该留一行空白 -->
-        <text v-else class="sh-muted note">{{ $t("staff.ownerLogin") }}</text>
+        <text v-else class="sh-muted sh-hint">{{ $t("staff.ownerLogin") }}</text>
       </view>
 
       <!-- ② 门店 × 角色：矩阵搬到这里，一屏放得下就不折叠。
@@ -100,7 +100,7 @@ onShow(load);
            两处会各自漂移，而漂移的那份没人会发现。 -->
       <view v-if="!staff.isOwner" class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("staff.grants") }}</text>
-        <text class="sh-muted note">{{ $t("staff.grantHint") }}</text>
+        <text class="sh-muted sh-hint">{{ $t("staff.grantHint") }}</text>
         <view v-for="st in stores" :key="st.storeNo" class="store">
           <text class="store__name">{{ st.name }}</text>
           <view class="chips">
@@ -114,12 +114,12 @@ onShow(load);
           </view>
         </view>
       </view>
-      <text v-else class="sh-muted note owner-note">{{ $t("staff.ownerNote") }}</text>
+      <text v-else class="sh-muted owner-note sh-hint">{{ $t("staff.ownerNote") }}</text>
 
       <!-- ③ 只看这个人的变更记录 -->
       <view class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("staff.logs") }}</text>
-        <text v-if="!logs.length" class="sh-muted note">{{ $t("staff.logsEmpty") }}</text>
+        <text v-if="!logs.length" class="sh-muted sh-hint">{{ $t("staff.logsEmpty") }}</text>
         <view v-for="(l, i) in logs" :key="i" class="log">
           <text class="log__t sh-num">{{ datetime(l.at) }}</text>
           <text class="log__d">{{ l.detail || l.action }}</text>
@@ -130,7 +130,7 @@ onShow(load);
       <!-- ④ 危险动作放最后，且把「停用」与「收回授权」分开说 -->
       <view v-if="!staff.isOwner" class="sh-card sh-mt-sm danger">
         <text class="txt-title">{{ $t("staff.dangerTitle") }}</text>
-        <text class="sh-muted note">
+        <text class="sh-muted sh-hint">
           {{ staff.status === "ACTIVE" ? $t("staff.disableHint") : $t("staff.enableHint") }}
         </text>
         <!-- 只有「停用」是危险操作，「启用」是把人放回来 —— 两者不该长一个样。
@@ -159,12 +159,7 @@ onShow(load);
   margin-top: 8rpx;
   font-size: 24rpx;
 }
-.note {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
-}
+
 .owner-note {
   margin: 24rpx 8rpx;
 }

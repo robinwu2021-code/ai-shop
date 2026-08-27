@@ -245,7 +245,7 @@ onShow(load);
         @confirm="load"
       />
     </view>
-    <text v-if="phonePartial" class="sh-muted hint">{{ $t("members.phonePartial") }}</text>
+    <text v-if="phonePartial" class="sh-muted sh-hint">{{ $t("members.phonePartial") }}</text>
 
     <sh-empty v-if="!list.length && !loading" :text="String($t('members.empty'))"></sh-empty>
 
@@ -272,7 +272,7 @@ onShow(load);
       <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
     </view>
 
-    <text v-if="list.length" class="tip">{{ $t("members.privacyHint") }}</text>
+    <text v-if="list.length" class="sh-hint sh-mt-md">{{ $t("members.privacyHint") }}</text>
 
     <!-- 口径开关只给店主：它一改，全主体的分层与所有活动受众跟着变 -->
     <text
@@ -322,11 +322,6 @@ onShow(load);
 .search {
   margin-top: 16rpx;
 }
-.hint {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 24rpx;
-}
 
 .row__main {
   flex: 1;
@@ -347,11 +342,5 @@ onShow(load);
   display: block;
   line-height: 1.6;
 }
-.tip {
-  display: block;
-  margin-top: 24rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
-}
+
 </style>

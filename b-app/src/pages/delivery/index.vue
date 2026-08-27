@@ -132,7 +132,7 @@ onShow(load);
       <view class="field">
         <text class="field__label">{{ $t("delivery.freeThreshold") }}</text>
         <input maxlength="10" v-model="form.freeThreshold" class="field__input sh-num" type="digit" />
-        <text class="hint">{{ $t("delivery.freeHint") }}</text>
+        <text class="sh-hint">{{ $t("delivery.freeHint") }}</text>
       </view>
 
       <view class="sh-btn sh-btn--soft save" @tap="saveRule">{{ $t("common.save") }}</view>
@@ -172,17 +172,12 @@ onShow(load);
       <text class="btn" @tap="delivered(o)">{{ $t("order.delivered") }}</text>
     </view>
 
-    <text class="tip">{{ $t("delivery.noRiderHint") }}</text>
+    <text class="tip sh-hint">{{ $t("delivery.noRiderHint") }}</text>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.hint {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
+
 .save {
   margin-top: 24rpx;
 }
@@ -240,10 +235,6 @@ onShow(load);
   font-weight: 600;
 }
 .tip {
-  display: block;
   margin: 32rpx 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
 }
 </style>

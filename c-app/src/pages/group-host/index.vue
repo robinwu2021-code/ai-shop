@@ -158,7 +158,7 @@ onShow(load);
         <text class="btn" @tap="verify(o.verifyCode)">{{ $t("groupHost.doVerify") }}</text>
       </view>
 
-      <text class="tip">{{ $t("groupHost.afterSaleHint") }}</text>
+      <text class="tip sh-hint">{{ $t("groupHost.afterSaleHint") }}</text>
     </template>
   </sh-scaffold>
 </template>
@@ -254,10 +254,6 @@ onShow(load);
   color: var(--sh-ink);
 }
 .tip {
-  display: block;
   margin: 32rpx 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
 }
 </style>

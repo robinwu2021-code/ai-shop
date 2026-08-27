@@ -109,7 +109,7 @@ onShow(() => {
 
     <!-- 商家团：商品现成的，参与就行 -->
     <template v-if="tab === 'merchant'">
-      <text class="hint">{{ $t("groups.merchantHint") }}</text>
+      <text class="hint sh-hint">{{ $t("groups.merchantHint") }}</text>
 
       <view class="sh-btn sh-btn--soft mkgroup" @tap="openCreate">
         {{ $t("groups.createGroup") }}
@@ -161,7 +161,7 @@ onShow(() => {
 
     <!-- 邻里求团：先有需求，后有供给 -->
     <template v-else>
-      <text class="hint">{{ $t("groups.requestHint") }}</text>
+      <text class="hint sh-hint">{{ $t("groups.requestHint") }}</text>
 
       <view v-for="r in requests" :key="r.requestNo" class="sh-card rq" @tap="openRequest(r)">
         <view class="rq__head">
@@ -263,11 +263,9 @@ onShow(() => {
 }
 
 .hint {
-  display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
+
   margin: 24rpx 4rpx;
+
 }
 .rq {
   margin-bottom: 20rpx;

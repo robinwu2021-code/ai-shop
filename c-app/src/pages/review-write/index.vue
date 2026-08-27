@@ -148,7 +148,7 @@ onLoad((q) => {
       <view class="sh-btn" :class="{ 'is-disabled': !canSubmit }" @tap="submit">
         {{ submitting ? $t("confirm.submitting") : $t("review.submit") }}
       </view>
-      <text class="tip">{{ $t("review.tip") }}</text>
+      <text class="sh-hint sh-mt-sm">{{ $t("review.tip") }}</text>
     </sh-actionbar>
   </sh-scaffold>
 </template>
@@ -229,12 +229,7 @@ onLoad((q) => {
 .imgs {
   margin-top: 16rpx;
 }
-.tip {
-  display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 18rpx;
-}
+
 .is-disabled {
   opacity: 0.45;
 }

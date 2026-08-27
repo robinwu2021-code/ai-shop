@@ -100,7 +100,7 @@ onLoad(async (q) => {
         </view>
       </view>
 
-      <text class="tip">{{ $t("members.privacyHint") }}</text>
+      <text class="sh-hint sh-mt-md">{{ $t("members.privacyHint") }}</text>
     </template>
   </sh-scaffold>
 </template>
@@ -129,11 +129,5 @@ onLoad(async (q) => {
 .val {
   font-weight: 600;
 }
-.tip {
-  display: block;
-  margin-top: 24rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
-}
+
 </style>

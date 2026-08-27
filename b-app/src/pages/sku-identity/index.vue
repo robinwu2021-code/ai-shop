@@ -126,7 +126,7 @@ function arrow(from?: string | null, to?: string | null): string {
           {{ $t("skuIdentity.export") }}
         </view>
       </sh-section>
-      <text class="sh-muted hint">{{ $t("skuIdentity.exportHint") }}</text>
+      <text class="sh-muted sh-hint">{{ $t("skuIdentity.exportHint") }}</text>
     </view>
 
     <!-- 第二步：把改好的表交回来 -->
@@ -214,17 +214,9 @@ function arrow(from?: string | null, to?: string | null): string {
 
 <style scoped>
 
-
 .act {
   padding: 10rpx 26rpx;
   font-size: 26rpx;
-}
-
-.hint {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
 }
 
 /* 规则表：左边一个词、右边一句话 —— 他扫左边就够，右边是给存疑的人看的 */
@@ -232,12 +224,9 @@ function arrow(from?: string | null, to?: string | null): string {
   margin-top: 16rpx;
 }
 
-
 .rule:first-child {
   border-top: none;
 }
-
-
 
 .paste {
   margin-top: 16rpx;
@@ -252,12 +241,6 @@ function arrow(from?: string | null, to?: string | null): string {
 .act--wide {
   width: 100%;
 }
-
-
-
-
-
-
 
 .probs {
   margin-top: 20rpx;
@@ -276,8 +259,6 @@ function arrow(from?: string | null, to?: string | null): string {
   color: var(--sh-danger);
   font-weight: 600;
 }
-
-
 
 .prev {
   margin-top: 20rpx;

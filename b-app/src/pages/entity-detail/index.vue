@@ -92,7 +92,7 @@ function goPickStore() {
   <sh-scaffold title-key="entityDetail.title">
     <view v-if="denied" class="sh-card">
       <text class="txt-display">{{ $t("entityDetail.denied") }}</text>
-      <text class="hint">{{ $t("entityDetail.deniedHint") }}</text>
+      <text class="sh-hint">{{ $t("entityDetail.deniedHint") }}</text>
     </view>
 
     <template v-else>
@@ -114,7 +114,7 @@ function goPickStore() {
         <text class="block__val" :class="{ 'is-empty': !license }">
           {{ license ? license.qualName : $t("entityDetail.licenseEmpty") }}
         </text>
-        <text v-if="!license" class="hint">{{ $t("entityDetail.licenseWhy") }}</text>
+        <text v-if="!license" class="sh-hint">{{ $t("entityDetail.licenseWhy") }}</text>
       </view>
 
       <!-- 收款账户 -->
@@ -152,10 +152,10 @@ function goPickStore() {
               {{ s.status === "ACTIVE" ? (s.address || "—") : $t("storePick.closed") }}
             </text>
           </view>
-          <text v-if="!stores.length" class="hint">{{ $t("entityDetail.noStore") }}</text>
+          <text v-if="!stores.length" class="sh-hint">{{ $t("entityDetail.noStore") }}</text>
         </view>
         <!-- R8：这里不给「进店」，只给一条回选店页的路 -->
-        <text class="hint">{{ $t("entityDetail.storesReadonly") }}</text>
+        <text class="sh-hint">{{ $t("entityDetail.storesReadonly") }}</text>
         <sh-go :text="String($t('entityDetail.goPick'))" @tap="goPickStore"></sh-go>
       </view>
     </template>
@@ -163,13 +163,7 @@ function goPickStore() {
 </template>
 
 <style scoped>
-.hint {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
-  color: var(--sh-sub);
-}
+
 .head {
   margin-top: 8rpx;
 }

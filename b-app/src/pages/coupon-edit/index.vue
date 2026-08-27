@@ -177,7 +177,7 @@ onLoad((q) => {
         <text class="row__label">{{ $t("couponEdit.cap") }}</text>
         <input maxlength="10" v-model="form.cap" class="field__input row__input" type="digit" placeholder="20.00" />
       </view>
-      <text v-if="isPercent" class="sh-muted hint">{{ $t("couponEdit.capHint") }}</text>
+      <text v-if="isPercent" class="sh-muted sh-hint">{{ $t("couponEdit.capHint") }}</text>
     </view>
 
     <!-- ② 门槛 -->
@@ -203,7 +203,7 @@ onLoad((q) => {
           {{ $t(`couponEdit.redeemMode.${m}`) }}
         </text>
       </view>
-      <text class="sh-muted hint">{{ $t("couponEdit.redeemHint") }}</text>
+      <text class="sh-muted sh-hint">{{ $t("couponEdit.redeemHint") }}</text>
 
       <view v-if="form.redeemMode === 'STORE_CODE'" class="sh-row mt2 sh-mt-xs">
         <text class="row__label">{{ $t("couponEdit.times") }}</text>
@@ -217,7 +217,7 @@ onLoad((q) => {
         <text class="row__label">{{ $t("couponEdit.validDays") }}</text>
         <input maxlength="4" v-model="form.validDays" class="field__input row__input" type="number" />
       </view>
-      <text class="sh-muted hint">{{ $t("couponEdit.validHint") }}</text>
+      <text class="sh-muted sh-hint">{{ $t("couponEdit.validHint") }}</text>
     </view>
 
     <!-- ⑤ 发行量与预算 -->
@@ -267,12 +267,7 @@ onLoad((q) => {
 .row__input {
   flex: 1;
 }
-.hint {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
-}
+
 .exposure {
   margin-top: 16rpx;
   padding: 16rpx;

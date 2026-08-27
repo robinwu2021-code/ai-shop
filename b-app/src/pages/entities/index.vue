@@ -77,10 +77,10 @@ function addOne() {
 <template>
   <sh-scaffold title-key="entities.title">
     <text class="txt-display">{{ $t("entities.heading") }}</text>
-    <text class="hint">{{ $t("entities.hint") }}</text>
+    <text class="sh-hint">{{ $t("entities.hint") }}</text>
 
-    <view v-if="loading && !rows.length" class="hint">{{ $t("common.loading") }}</view>
-    <view v-else-if="failed && !rows.length" class="hint">{{ $t("store.loadFailed") }}</view>
+    <view v-if="loading && !rows.length" class="sh-hint">{{ $t("common.loading") }}</view>
+    <view v-else-if="failed && !rows.length" class="sh-hint">{{ $t("store.loadFailed") }}</view>
 
     <view class="list">
       <view v-for="e in rows" :key="e.entityNo" class="sh-row sh-card item" @tap="open(e.entityNo)">
@@ -101,19 +101,13 @@ function addOne() {
     <view class="sh-btn add" :class="{ 'is-disabled': atLimit }" @tap="addOne">
       {{ $t("entities.add") }}
     </view>
-    <text v-if="atLimit" class="hint center">{{ $t("entities.atLimit", { n: MAX }) }}</text>
-    <text class="hint center">{{ $t("entities.footHint") }}</text>
+    <text v-if="atLimit" class="center sh-hint">{{ $t("entities.atLimit", { n: MAX }) }}</text>
+    <text class="center sh-hint">{{ $t("entities.footHint") }}</text>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.hint {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
-  color: var(--sh-sub);
-}
+
 .hint.center {
   margin-top: 20rpx;
   text-align: center;

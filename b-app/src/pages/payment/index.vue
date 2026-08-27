@@ -156,7 +156,7 @@ async function refresh() {
     <!-- 已经能收钱就不再显示表单：重复进件会拿到新的商户号，历史分账仍指向旧号 -->
     <view v-if="current && !done" class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("payment.formTitle") }}</text>
-      <text class="hint">{{ $t("payment.formHint") }}</text>
+      <text class="sh-hint">{{ $t("payment.formHint") }}</text>
 
       <view class="field">
         <text class="field__label">{{ $t("payment.settleAccount") }}</text>
@@ -167,7 +167,7 @@ async function refresh() {
           type="number"
           :placeholder="$t('payment.accountPh')"
         />
-        <text class="hint">{{ $t("payment.accountHint") }}</text>
+        <text class="sh-hint">{{ $t("payment.accountHint") }}</text>
       </view>
 
       <view class="field">
@@ -188,7 +188,7 @@ async function refresh() {
 
       <view v-if="needLicense" class="field">
         <text class="field__label">{{ $t("payment.licenses") }}</text>
-        <text class="hint">{{ $t("payment.licensesHint") }}</text>
+        <text class="sh-hint">{{ $t("payment.licensesHint") }}</text>
         <sh-uploader
           :list="licenses"
           :w="160"
@@ -259,13 +259,7 @@ async function refresh() {
 .field {
   margin-top: 20rpx;
 }
-.hint {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
-  color: var(--sh-sub);
-}
+
 .submit {
   margin-top: 28rpx;
 }

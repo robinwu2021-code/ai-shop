@@ -234,7 +234,7 @@ onShow(() => {
           :maxlength="40"
           :placeholder="$t('store.addressDetailPh')"
         />
-        <text class="hint">{{ pinned ? $t("store.addressPinned") : $t("store.addressHint") }}</text>
+        <text class="sh-hint">{{ pinned ? $t("store.addressPinned") : $t("store.addressHint") }}</text>
       </view>
     </view>
 
@@ -256,7 +256,7 @@ onShow(() => {
         </view>
         <view class="qr__main">
           <text class="qr__t">{{ $t("store.qrcode") }}</text>
-          <text class="hint">
+          <text class="sh-hint">
             {{ qrcode?.imageBase64 ? (qrcode.printableHint || $t("store.qrcodeDesc")) : $t("store.qrcodePending") }}
           </text>
           <text v-if="qrcode?.storeCode" class="qr__code sh-num">{{ qrcode.storeCode }}</text>
@@ -266,13 +266,13 @@ onShow(() => {
           </view>
         </view>
       </view>
-      <text class="hint">{{ $t("store.qrcodeHint") }}</text>
+      <text class="sh-hint">{{ $t("store.qrcodeHint") }}</text>
 
       <view class="kitwrap">
         <text class="qr__t">{{ $t("store.shareKit") }}</text>
         <view class="kit">{{ kit?.text }}</view>
         <view class="sh-btn" @tap="copyText">{{ $t("store.copyKit") }}</view>
-        <text class="hint">{{ $t("store.shareKitHint") }}</text>
+        <text class="sh-hint">{{ $t("store.shareKitHint") }}</text>
 
         <!--
           真海报：封面/店名/价格/小程序码合成的一张图，不是上面那句话再配一个假 URL。
@@ -300,13 +300,7 @@ onShow(() => {
 .field + .field {
   margin-top: 20rpx;
 }
-.hint {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
-  color: var(--sh-sub);
-}
+
 .quick {
   display: flex;
   gap: 12rpx;
@@ -418,7 +412,6 @@ onShow(() => {
 .addr__detail {
   margin-top: 12rpx;
 }
-
 
 /* 卡头：标题 + 右侧一句副标题。这一页此前没有这个块，两段文字会黏成一行 */
 .head {

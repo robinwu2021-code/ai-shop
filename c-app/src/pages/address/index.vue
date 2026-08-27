@@ -212,7 +212,7 @@ onLoad((q) => {
             {{ picked ? $t("address.repick") : $t("address.pick") }}
           </text>
         </view>
-        <text v-if="regionUnsplit" class="field__hint">{{ $t("address.regionIncomplete") }}</text>
+        <text v-if="regionUnsplit" class="sh-hint">{{ $t("address.regionIncomplete") }}</text>
         <input maxlength="255" v-model="draft.detail" class="field__input" :placeholder="$t('address.detail')" />
         <input maxlength="16" v-model="draft.tag" class="field__input" :placeholder="$t('address.tagPh')" />
 

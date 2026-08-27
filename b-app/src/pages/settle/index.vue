@@ -239,8 +239,8 @@ onShow(load);
       </view>
     </view>
 
-    <text class="tip">{{ $t("settle.rateHint") }}</text>
-    <text class="tip">{{ $t("settle.pendingHint") }}</text>
+    <text class="tip sh-hint">{{ $t("settle.rateHint") }}</text>
+    <text class="tip sh-hint">{{ $t("settle.pendingHint") }}</text>
   </sh-scaffold>
 </template>
 
@@ -321,10 +321,6 @@ onShow(load);
   color: var(--sh-danger);
 }
 .tip {
-  display: block;
   margin: 24rpx 8rpx 0;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
 }
 </style>

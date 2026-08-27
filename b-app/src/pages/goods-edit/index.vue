@@ -3237,7 +3237,7 @@ async function save(thenSubmit = false) {
         {{ $t("goods.saveAndSubmit") }}
       </view>
     </view>
-    <text class="tip">{{ $t(isDraft ? "goods.draftTip" : "goods.saveTip") }}</text>
+    <text class="tip sh-hint">{{ $t(isDraft ? "goods.draftTip" : "goods.saveTip") }}</text>
   </sh-scaffold>
 </template>
 
@@ -3262,8 +3262,6 @@ async function save(thenSubmit = false) {
   color: var(--sh-primary-text);
 }
 
-
-
 /* 规格名只读：它来自「商品规格」，在这儿改会让同一个名字在不同商品上写法不一 */
 .group__name {
   flex: 1;
@@ -3276,7 +3274,6 @@ async function save(thenSubmit = false) {
   档位是一排开关：本店有的全列出来，这件货没有的点掉。
   关掉的压成描边灰字 —— 仍看得见「本店还有这一档」，与「这件货有」区分得开。
 */
-
 
 /*
   关掉的档位：**虚线描边**，一眼看得出「还在，只是这件货没有」，
@@ -3298,12 +3295,7 @@ async function save(thenSubmit = false) {
   padding-left: 20rpx;
 }
 
-
-
-
 /* 弹层里「自己填」那一段的小标题 —— 与候选拉开，说明它是另一回事 */
-
-
 
 /* 与「商品规格和参数」页的 .picker__own-t 同一套：26/600/主色 —— 同一段东西同一张脸 */
 .param__own {
@@ -3365,9 +3357,6 @@ async function save(thenSubmit = false) {
   border-bottom: var(--sh-hairline);
   margin-bottom: 8rpx;
 }
-
-
-
 
 .addbar__more {
   font-size: 24rpx;
@@ -3432,11 +3421,6 @@ async function save(thenSubmit = false) {
   而不是规格档位那种带描边加粗的。
 */
 
-
-
-
-
-
 /*
   字段标签在这一页改成**深色半粗**。
 
@@ -3462,7 +3446,6 @@ async function save(thenSubmit = false) {
   与 28rpx 的字段标签差着 6rpx 与一整个卡片间距，够分。
   所以只加粗字段标签，节标题维持 .txt-title 的 600。
 */
-
 
 /*
   图文详情正文：起步 3 行，随内容长高，长到屏高六成为止。
@@ -3779,7 +3762,6 @@ async function save(thenSubmit = false) {
   font-size: 24rpx;
 }
 
-
 .bulk {
   display: flex;
   align-items: center;
@@ -3870,10 +3852,6 @@ async function save(thenSubmit = false) {
   margin-top: 24rpx;
 }
 .tip {
-  display: block;
   margin: 20rpx 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
 }
 </style>

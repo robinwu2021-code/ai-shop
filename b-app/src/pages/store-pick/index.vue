@@ -71,7 +71,7 @@ function confirm() {
 <template>
   <sh-scaffold title-key="storePick.title">
     <text class="txt-display">{{ $t("storePick.heading") }}</text>
-    <text class="hint">{{ $t("storePick.hint") }}</text>
+    <text class="sh-hint">{{ $t("storePick.hint") }}</text>
 
     <view v-for="g in groups" :key="g.entity?.entityNo || 'only'" class="list">
       <!-- 分组头只在多证照时出现 -->
@@ -104,18 +104,12 @@ function confirm() {
     <view class="sh-btn enter" :class="{ 'is-disabled': !current }" @tap="confirm">
       {{ $t("storePick.enter") }}
     </view>
-    <text class="hint center">{{ $t("storePick.crossHint") }}</text>
+    <text class="center sh-hint">{{ $t("storePick.crossHint") }}</text>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.hint {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
-  color: var(--sh-sub);
-}
+
 .hint.center {
   margin-top: 20rpx;
   text-align: center;

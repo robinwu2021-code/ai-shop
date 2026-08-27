@@ -122,7 +122,7 @@ onShow(() => {
           @tap="pickScene(s)"
         >{{ $t(`reach.scene.${s}`) }}</text>
       </view>
-      <text class="sh-muted hint">{{ $t(`reach.sceneHint.${scene}`) }}</text>
+      <text class="sh-muted sh-hint">{{ $t(`reach.sceneHint.${scene}`) }}</text>
     </view>
 
     <!-- ② 发给谁 -->
@@ -148,7 +148,7 @@ onShow(() => {
           {{ $t(`reach.reason.${s.reason}`, { n: s.count }) }}
         </text>
       </view>
-      <text v-if="!plan.reachable" class="sh-muted hint">{{ $t("reach.noneHint") }}</text>
+      <text v-if="!plan.reachable" class="sh-muted sh-hint">{{ $t("reach.noneHint") }}</text>
     </view>
 
     <!-- ④ 内容 -->
@@ -172,7 +172,7 @@ onShow(() => {
           {{ $t(`reach.reason.${s.reason}`, { n: s.count }) }}
         </text>
       </view>
-      <text class="sh-muted hint">{{ $t("reach.doneHint") }}</text>
+      <text class="sh-muted sh-hint">{{ $t("reach.doneHint") }}</text>
     </view>
   </sh-scaffold>
 </template>
@@ -185,12 +185,6 @@ onShow(() => {
   display: flex;
   gap: 12rpx;
   margin-top: 12rpx;
-}
-.hint {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
 }
 
 .row__label {

@@ -308,13 +308,13 @@ onShow(load);
         </view>
 
         <!-- 复购率的分子分母摆出来：一家只有 3 个买家的店，33% 不代表什么 -->
-        <text class="sh-muted note note--tight">
+        <text class="sh-muted note--tight sh-hint">
           {{ $t("crossStore.repeatBasis", { r: s.repeatBuyers, b: s.buyers }) }}
         </text>
       </view>
 
-      <text class="sh-muted note">{{ $t("crossStore.oosNote") }}</text>
-      <text class="sh-muted note">{{ $t("crossStore.legacyNote") }}</text>
+      <text class="sh-muted sh-hint">{{ $t("crossStore.oosNote") }}</text>
+      <text class="sh-muted sh-hint">{{ $t("crossStore.legacyNote") }}</text>
     </template>
 
     <!-- 拿到了但一家店都没有（授权被收回时会这样）：说清楚，别画一张空表 -->
@@ -499,12 +499,7 @@ onShow(load);
 .metrics__v.is-warn {
   color: var(--sh-danger);
 }
-.note {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
-}
+
 .note--tight {
   margin-top: 16rpx;
 }

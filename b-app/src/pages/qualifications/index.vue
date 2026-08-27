@@ -194,7 +194,7 @@ onShow(() => void load());
           {{ $t("qual.goUpload") }}
         </text>
       </view>
-      <text class="sh-muted hint">
+      <text class="sh-muted sh-hint">
         {{ $t(merchant.categoryGateEnforced ? "qual.lockedHint" : "qual.notGrantedHint") }}
       </text>
     </view>
@@ -211,7 +211,7 @@ onShow(() => void load());
       <sh-kv :label="String($t('qual.fieldExpire'))">
         <input maxlength="10" v-model="form.expireAt" class="field__input" placeholder="2027-12-31" />
       </sh-kv>
-      <text class="sh-muted hint">{{ $t("qual.expireHint") }}</text>
+      <text class="sh-muted sh-hint">{{ $t("qual.expireHint") }}</text>
       <view class="kv kv--top">
         <text class="kv__k">{{ $t("qual.fieldPhoto") }}</text>
         <sh-uploader
@@ -228,7 +228,7 @@ onShow(() => void load());
         <view class="sh-btn sh-btn--muted" @tap="form = null">{{ $t("common.cancel") }}</view>
         <view class="sh-btn" @tap="submit">{{ $t("qual.submit") }}</view>
       </view>
-      <text class="sh-muted hint">{{ $t("qual.submitHint") }}</text>
+      <text class="sh-muted sh-hint">{{ $t("qual.submitHint") }}</text>
     </view>
   </sh-scaffold>
 </template>
@@ -299,12 +299,7 @@ onShow(() => void load());
   color: var(--sh-warning);
   flex: none;
 }
-.hint {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
-}
+
 .kv--top {
   align-items: flex-start;
 }

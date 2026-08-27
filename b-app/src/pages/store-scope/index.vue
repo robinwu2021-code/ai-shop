@@ -395,7 +395,7 @@ onShow(() => {
         <text class="txt-title">{{ $t("store.scope") }}</text>
         <text class="head__sub">{{ $t("store.scopeAll") }}</text>
       </view>
-      <text class="hint">{{ $t("store.scopeLead") }}</text>
+      <text class="sh-hint">{{ $t("store.scopeLead") }}</text>
 
       <view v-if="areas.length" class="list">
         <view v-for="a in areas" :key="`${a.level}:${a.refCode}`" class="sh-row sh-row--divided item">
@@ -412,15 +412,15 @@ onShow(() => {
 
       <!-- 空列表的含义两分：只自提是故障，开了自送/快递是「不限」。绝不能显示同一句话 -->
       <text v-if="emptyIsBlocking" class="warn">{{ $t("store.areaNeeded") }}</text>
-      <text v-else-if="!areas.length" class="hint">{{ $t("store.areaUnlimited") }}</text>
-      <text v-if="areas.length > activeAreas.length" class="hint">{{ $t("store.areaPendingHint") }}</text>
+      <text v-else-if="!areas.length" class="sh-hint">{{ $t("store.areaUnlimited") }}</text>
+      <text v-if="areas.length > activeAreas.length" class="sh-hint">{{ $t("store.areaPendingHint") }}</text>
 
       <view class="sh-btn sh-btn--soft add" @tap="pickerOpen = true">
         {{ $t("store.addArea") }}
       </view>
 
       <view v-if="pendingApplies.length || rejectedApplies.length" class="progress">
-        <text v-if="pendingApplies.length" class="hint">
+        <text v-if="pendingApplies.length" class="sh-hint">
           {{ $t("store.applyProgress", { n: pendingApplies.length }) }} · {{ pendingApplies.map((a) => a.name).join("、") }}
         </text>
         <text v-for="a in rejectedApplies" :key="a.applyNo" class="warn">
@@ -476,7 +476,7 @@ onShow(() => {
                 <input v-model="ruleForm.free" class="field__input" type="digit" :maxlength="8" />
               </view>
             </view>
-            <text class="hint">{{ $t("store.rateHint") }}</text>
+            <text class="sh-hint">{{ $t("store.rateHint") }}</text>
             <view class="rate__btns">
               <text class="sh-btn sh-btn--soft rate__save" @tap="saveRule">{{ $t("store.saveRate") }}</text>
               <text class="sh-btn sh-btn--muted rate__cancel" @tap="ruleOpen = false">{{ $t("store.collapse") }}</text>
@@ -489,7 +489,7 @@ onShow(() => {
             <sh-go class="sum__go" @tap.stop="openSubset(c)">{{ $t("store.subset.edit") }}</sh-go>
           </template>
           <view v-else class="rate" @tap.stop>
-            <text class="hint">{{ $t("store.subset.hint") }}</text>
+            <text class="sh-hint">{{ $t("store.subset.hint") }}</text>
             <view class="subset__opt" :class="{ 'is-on': subsetAll }" @tap="subsetAll = true">
               <text class="subset__t">{{ $t("store.subset.all") }}</text>
               <sh-icon v-if="subsetAll" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
@@ -503,7 +503,7 @@ onShow(() => {
                 <text class="subset__name">{{ splitName(a).main }}<text v-if="isWhole(a)" class="item__whole"> {{ $t("store.whole") }}</text></text>
                 <sh-check :model-value="subsetPicked.includes(a.areaNo || '')"></sh-check>
               </view>
-              <text v-if="!activeAreas.length" class="hint">{{ $t("store.subset.noAreas") }}</text>
+              <text v-if="!activeAreas.length" class="sh-hint">{{ $t("store.subset.noAreas") }}</text>
             </view>
             <view class="rate__btns">
               <text class="sh-btn sh-btn--soft rate__save" @tap="saveSubset(c)">{{ $t("common.save") }}</text>
@@ -554,13 +554,7 @@ onShow(() => {
   font-size: 24rpx;
   color: var(--sh-sub);
 }
-.hint {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
-  color: var(--sh-sub);
-}
+
 .warn {
   display: block;
   margin-top: 12rpx;

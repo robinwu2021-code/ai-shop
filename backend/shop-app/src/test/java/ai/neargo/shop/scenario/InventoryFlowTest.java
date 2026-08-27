@@ -4,6 +4,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.invbridge.InventoryBackfillService;
+import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.inventory.entity.InvOutbox;
@@ -55,6 +56,8 @@ class InventoryFlowTest {
 
     @Autowired
     SkuMapper skuMapper;
+    @Autowired
+    ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
     @Autowired
     InventoryAclService acl;
     @Autowired
@@ -216,6 +219,56 @@ class InventoryFlowTest {
         // 原行还在，多出一行反向 —— 不是把那一行改掉或删掉
         assertThat(query.ledger(f.owner, f.item, f.location, null, 50).entries())
                 .hasSize(rowsBefore + 1);
+    }
+
+    @Test
+    @DisplayName("★★★ 搬过来的条目要有**商品名** —— 不是货号，那个商家认不出来")
+    void migratedItemCarriesGoodsTitle() {
+        /*
+         * 线上实测到的：库存清单上是一列 `G0001 · 10斤装`、
+         * `G202608172140220000026 · 500g`。搬运把 `goodsNo` 当成 name 传了，
+         * 而可读的名字在 `prd_goods.title` 上，SKU 上没有。
+         *
+         * 界面照常渲染、接口照常 200 —— 只是商家看不懂自己的库存。
+         */
+        int seq = SEQ.incrementAndGet();
+        String goodsNo = "G-TITLE-" + seq;
+        String skuNo = "SKU-TITLE-" + seq;
+        String title = "东北五常大米-" + seq;
+
+        PrdGoods goods = new PrdGoods();
+        goods.setGoodsNo(goodsNo);
+        goods.setEntityNo("E-TITLE-" + seq);
+        goods.setTitle(title);
+        goodsMapper.insert(goods);
+
+        PrdSku sku = new PrdSku();
+        sku.setSkuNo(skuNo);
+        sku.setGoodsNo(goodsNo);
+        sku.setEntityNo("E-TITLE-" + seq);
+        sku.setMarket("CN");
+        sku.setStock(12);
+        sku.setLockedStock(0);
+        sku.setPrice(3900L);
+        skuMapper.insert(sku);
+
+        try {
+            Long cursor = null;
+            do {
+                cursor = backfill.run(false, 500, cursor).nextAfterId();
+            } while (cursor != null);
+
+            String ownerId = acl.ownerOfSku(skuNo);
+            String itemId = acl.itemIdOfSku(skuNo);
+            assertThat(itemId).as("前提：这个 SKU 应当已经搬过来了").isNotNull();
+
+            assertThat(query.itemDetail(ownerId, itemId).name())
+                    .as("条目名是货号而不是商品名 —— 商家在库存清单上看到的就是这一串")
+                    .isEqualTo(title);
+        } finally {
+            skuMapper.delete(Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getSkuNo, skuNo));
+            goodsMapper.delete(Wrappers.<PrdGoods>lambdaQuery().eq(PrdGoods::getGoodsNo, goodsNo));
+        }
     }
 
     @Test

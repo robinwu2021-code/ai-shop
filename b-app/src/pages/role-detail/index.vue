@@ -151,13 +151,13 @@ onShow(load);
           :placeholder="$t('staff.roleNamePh')"
         />
       </view>
-      <text v-if="readonly" class="sh-muted note">{{ $t("staff.builtinHint") }}</text>
+      <text v-if="readonly" class="sh-muted sh-hint">{{ $t("staff.builtinHint") }}</text>
     </view>
 
     <view class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("staff.rolePermTitle") }}</text>
       <!-- 管员工的权限为什么不在这里，页面上直说 —— 不解释的话下一个人会以为是漏了 -->
-      <text class="sh-muted note">{{ $t("staff.rolePermHint") }}</text>
+      <text class="sh-muted sh-hint">{{ $t("staff.rolePermHint") }}</text>
       <view class="chips">
         <text
           v-for="o in options"
@@ -198,12 +198,7 @@ onShow(load);
 </template>
 
 <style scoped>
-.note {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
-}
+
 .chips {
   display: flex;
   flex-wrap: wrap;

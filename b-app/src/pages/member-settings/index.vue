@@ -75,7 +75,7 @@ onShow(load);
       </sh-option>
 
       <!-- 这一句是这一页最重要的一行：不写它，没人敢动上面那两个 -->
-      <text class="tip">{{ $t("memberSettings.reversible") }}</text>
+      <text class="sh-hint sh-mt-sm">{{ $t("memberSettings.reversible") }}</text>
     </view>
 
     <view class="sh-card sh-mt-sm">
@@ -114,11 +114,5 @@ onShow(load);
 .row__main {
   flex: 1;
 }
-.tip {
-  display: block;
-  margin-top: 20rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
-}
+
 </style>

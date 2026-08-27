@@ -116,7 +116,7 @@ onShow(() => {
         <text class="sh-muted">{{ $t("schedule.capacity") }}</text>
         <input maxlength="6" v-model.number="form.capacity" class="field__input row__in sh-num" type="number" />
       </view>
-      <text class="sh-muted hint">{{ $t("schedule.capacityHint") }}</text>
+      <text class="sh-muted sh-hint">{{ $t("schedule.capacityHint") }}</text>
       <view class="sh-btn sh-mt-sm" @tap="open">{{ $t("schedule.open") }}</view>
     </view>
 
@@ -127,7 +127,7 @@ onShow(() => {
     -->
     <view class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("schedule.list") }}</text>
-      <text v-if="!slots.length" class="sh-muted hint">{{ $t("schedule.empty") }}</text>
+      <text v-if="!slots.length" class="sh-muted sh-hint">{{ $t("schedule.empty") }}</text>
       <view v-for="s in slots" :key="s.slotNo" class="slot">
         <view class="slot__main">
           <text class="slot__when sh-num">{{ datetime(s.startAt) }}</text>
@@ -151,12 +151,7 @@ onShow(() => {
   width: 120rpx;
   text-align: center;
 }
-.hint {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
-}
+
 .slot {
   display: flex;
   align-items: center;

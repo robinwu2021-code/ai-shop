@@ -254,7 +254,7 @@ async function doLogin(method: LoginMethod) {
       **只在快捷登录出现时留一句**：那时它才有用（微信进来要补绑手机号）；
       纯手机号登录的人正在填的就是手机号，这段话对他是纯噪音。
     -->
-    <text v-if="quickMethods.length" class="tip">{{ $t("login.phoneIsIdentity") }}</text>
+    <text v-if="quickMethods.length" class="tip sh-hint">{{ $t("login.phoneIsIdentity") }}</text>
   </sh-scaffold>
 </template>
 
@@ -368,10 +368,6 @@ async function doLogin(method: LoginMethod) {
   color: var(--sh-primary-text);
 }
 .tip {
-  display: block;
   margin: 24rpx 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
 }
 </style>

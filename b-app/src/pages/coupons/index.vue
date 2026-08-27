@@ -159,7 +159,7 @@ onShow(load);
       </view>
     </view>
 
-    <text v-if="active.length" class="tip">{{ $t("coupons.pauseHint") }}</text>
+    <text v-if="active.length" class="sh-hint sh-mt-sm">{{ $t("coupons.pauseHint") }}</text>
   </sh-scaffold>
 </template>
 
@@ -202,11 +202,5 @@ onShow(load);
   gap: 24rpx;
   margin-top: 16rpx;
 }
-.tip {
-  display: block;
-  margin-top: 16rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
-}
+
 </style>

@@ -382,7 +382,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
         而端上今天拿不到别张证照的额度（那个接口只给当前这张），所以这里
         **给一句诚实的话，而不是一个错的数**。
       -->
-      <text class="hint">
+      <text class="sh-hint">
         {{ onOtherEntity
           ? $t("stores.quotaOnThatEntity")
           : (plan
@@ -410,7 +410,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
             <text class="pick__sub">{{ $t("entities.storeCount", { n: g.entity.storeCount }) }}</text>
           </sh-option>
         </view>
-        <text class="hint">{{ $t("stores.underEntityHint") }}</text>
+        <text class="sh-hint">{{ $t("stores.underEntityHint") }}</text>
       </view>
 
       <view class="field">
@@ -514,13 +514,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 .field {
   margin-top: 20rpx;
 }
-.hint {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
-  color: var(--sh-sub);
-}
+
 .add {
   margin-top: 24rpx;
 }
@@ -530,7 +524,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 .cancel {
   margin-top: 16rpx;
 }
-
 
 /* 今日一行 + 待办三格：与跨店总览同一套口径，也同一套样式 */
 .today {

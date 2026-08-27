@@ -256,7 +256,7 @@ function at(iso?: string): string {
       >
         {{ $t("stockCheck.submit") }}
       </view>
-      <text class="field__hint hint">{{ $t("stockCheck.postHint") }}</text>
+      <text class="sh-hint hint">{{ $t("stockCheck.postHint") }}</text>
     </template>
   </sh-scaffold>
 </template>

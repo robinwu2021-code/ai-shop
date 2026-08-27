@@ -97,7 +97,7 @@ onShow(load);
       <text class="btn" @tap="create(g.goodsNo)">{{ $t("groups.open") }}</text>
     </view>
 
-    <text class="tip">{{ $t("groups.rules") }}</text>
+    <text class="tip sh-hint">{{ $t("groups.rules") }}</text>
   </sh-scaffold>
 </template>
 
@@ -183,10 +183,6 @@ onShow(load);
   font-weight: 600;
 }
 .tip {
-  display: block;
   margin: 32rpx 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
 }
 </style>

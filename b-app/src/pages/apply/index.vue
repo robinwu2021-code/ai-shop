@@ -340,7 +340,7 @@ async function submit() {
             {{ i.name }}
           </text>
         </view>
-        <text class="hint">{{ $t("apply.industryHint") }}</text>
+        <text class="sh-hint">{{ $t("apply.industryHint") }}</text>
       </view>
 
       <view class="field">
@@ -363,7 +363,7 @@ async function submit() {
         <text v-if="!subjectAllowed('NATURAL_PERSON')" class="warn">
           {{ $t("apply.microBlocked") }}
         </text>
-        <text class="hint">{{ $t("apply.subjectHint") }}</text>
+        <text class="sh-hint">{{ $t("apply.subjectHint") }}</text>
       </view>
 
       <view class="field">
@@ -405,7 +405,7 @@ async function submit() {
     -->
     <view class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("store.scope") }}</text>
-      <text class="hint">{{ $t("apply.scopeHint") }}</text>
+      <text class="sh-hint">{{ $t("apply.scopeHint") }}</text>
 
       <sh-option
         v-for="sc in scopes"
@@ -454,7 +454,7 @@ async function submit() {
       <view class="switch-row" @tap="form.asPickupPoint = !form.asPickupPoint">
         <view class="switch-row__text">
           <text class="txt-title">{{ $t("apply.asPickup") }}</text>
-          <text class="hint">{{ $t("apply.asPickupHint") }}</text>
+          <text class="sh-hint">{{ $t("apply.asPickupHint") }}</text>
         </view>
         <sh-switch :model-value="form.asPickupPoint"></sh-switch>
       </view>
@@ -463,15 +463,15 @@ async function submit() {
     <view class="sh-card sh-mt-sm">
       <text class="field__label">{{ $t("apply.settle") }}</text>
       <text class="txt-title">{{ $t(`apply.${settleType}`) }}</text>
-      <text class="hint">{{ $t("apply.settleHint") }}</text>
+      <text class="sh-hint">{{ $t("apply.settleHint") }}</text>
       <!-- 免执照档位：整块隐藏，换一句说明。对自然人要执照本来就是错的 -->
       <view v-if="!needLicense" class="license">
-        <text class="hint">{{ $t("apply.noLicenseNeeded") }}</text>
+        <text class="sh-hint">{{ $t("apply.noLicenseNeeded") }}</text>
       </view>
 
       <view v-else class="license">
         <text class="field__label">{{ $t("apply.licenses") }}</text>
-        <text class="hint">{{ $t("apply.licensesHint") }}</text>
+        <text class="sh-hint">{{ $t("apply.licensesHint") }}</text>
 
         <view v-for="(q, i) in qualItems" :key="i" class="qual">
           <view class="qual__head">
@@ -549,7 +549,6 @@ async function submit() {
 .qual__date { flex: 1; }
 .qual__add { display: flex; gap: 24rpx; margin-top: 20rpx; color: var(--sh-primary-text); }
 
-
 .head {
   padding: 32rpx 8rpx 28rpx;
 }
@@ -572,13 +571,7 @@ async function submit() {
   font-size: 24rpx;
   padding: 14rpx 28rpx;
 }
-.hint {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.5;
-}
+
 .switch-row {
   display: flex;
   align-items: center;

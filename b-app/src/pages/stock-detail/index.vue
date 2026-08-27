@@ -201,7 +201,7 @@ onShow(load);
             {{ $t(`stock.reason.${r}`) }}
           </text>
         </view>
-        <text class="field__hint">{{ $t("stockDetail.adjustHint") }}</text>
+        <text class="sh-hint">{{ $t("stockDetail.adjustHint") }}</text>
       </view>
 
       <!--

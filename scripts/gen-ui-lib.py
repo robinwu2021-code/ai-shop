@@ -487,6 +487,11 @@ ROLLED = [
      None, ".sh-mt-* / .sh-mb-*"),
     # 键值行判**声明**不判名字：`activities` 的 `.rule` 是 `display: block` 的
     # 一行灰字，不是「左键右值」。按名字判第九次误命中。
+    # 说明文字：判**声明**不判名字 —— `.hint` 有时是个容器（`padding: 0 4rpx`），
+    # 有时只有 `display: block`。真正该报的是「自己配了一份 24rpx 的说明文字」。
+    # 2026-08-28 收编 41 处（全站 60 处里的可换部分），写法从 **35 种**收到 1 种。
+    ("hint",    "说明文字自配",   None,
+     r"^\s*\.(?:hint|tip|note|memo)\s*\{[^}]*font-size:\s*24rpx",              None, ".sh-hint"),
     ("kv",      "键值行", None, r"\.(?:kv|rule|prob)\b[^{}]*\{[^}]*display:\s*flex", None, None),
     ("addbtn",  "＋ 加一项按钮",   None, r"^\s*\.btn-add\b",                     None,       None),
     # 虚线药丸是**另一件事**，goods-edit 的注释里把两者的分工写死了：

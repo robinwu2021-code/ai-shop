@@ -12,9 +12,11 @@ import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.ReservationService;
 import ai.neargo.shop.inventory.service.StockQueryService;
 import ai.neargo.shop.inventory.support.InvEnums;
+import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdStockLock;
 import ai.neargo.shop.product.entity.PrdStoreStock;
+import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper;
@@ -29,6 +31,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 搬运实现。**读平台、写进销存，两边各自的事务，不跨库**。
@@ -47,6 +52,7 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
     private final StockLockMapper lockMapper;
     private final ReservationService reservations;
     private final SkuMapper skuMapper;
+    private final GoodsMapper goodsMapper;
     private final StoreStockMapper storeStockMapper;
     private final InboundOrderMapper inboundOrderMapper;
     private final InventoryAclService acl;
@@ -55,7 +61,8 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
 
     public InventoryBackfillServiceImpl(LocationService locations,
                                         StockLockMapper lockMapper, ReservationService reservations,
-                                        SkuMapper skuMapper, StoreStockMapper storeStockMapper,
+                                        SkuMapper skuMapper, GoodsMapper goodsMapper,
+                                        StoreStockMapper storeStockMapper,
                                         InboundOrderMapper inboundOrderMapper,
                                         InventoryAclService acl, InboundService inbound,
                                         StockQueryService query) {
@@ -63,6 +70,7 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
         this.lockMapper = lockMapper;
         this.reservations = reservations;
         this.skuMapper = skuMapper;
+        this.goodsMapper = goodsMapper;
         this.storeStockMapper = storeStockMapper;
         this.inboundOrderMapper = inboundOrderMapper;
         this.acl = acl;
@@ -197,6 +205,27 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
             exhausted = false;
         }
 
+        /*
+         * **商品名要一起搬。**
+         *
+         * 原来 name 传的是 `sku.getGoodsNo()` —— 那是货号。于是商家点开「库存」
+         * 看到的是一列 `G0001 · 10斤装`、`G202608172140220000026 · 500g`，
+         * 认不出是什么货。可读的名字在 `prd_goods.title` 上，SKU 上没有。
+         *
+         * **一次查完这一批**，不在循环里逐个查 —— 那是 N+1，一轮 500 个 SKU
+         * 就是 500 次往返。
+         */
+        Set<String> goodsNos = bySku.values().stream()
+                .map(PrdSku::getGoodsNo).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<String, String> titleByGoodsNo = goodsNos.isEmpty() ? Map.of()
+                : DataScopeContext.executeWithoutScope(() ->
+                        goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
+                                        .in(PrdGoods::getGoodsNo, goodsNos))
+                                .stream()
+                                .filter(g -> g.getTitle() != null && !g.getTitle().isBlank())
+                                .collect(Collectors.toMap(PrdGoods::getGoodsNo, PrdGoods::getTitle,
+                                        (a, b) -> a)));
+
         int moved = 0;
         int skipped = 0;
         /*
@@ -236,7 +265,10 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
                 }
             } else {
                 ownerId = acl.ownerIdOf(entityNo);
-                itemId = acl.upsertItem(entityNo, sku.getSkuNo(), sku.getGoodsNo(),
+                // 查不到标题时退回货号 —— 比空名字强，且下一轮商品补了标题就会被改过来
+                // （upsertItem 的更新分支会 setName）
+                String name = titleByGoodsNo.getOrDefault(sku.getGoodsNo(), sku.getGoodsNo());
+                itemId = acl.upsertItem(entityNo, sku.getSkuNo(), name,
                         sku.getSpec(), sku.getBarcode(), sku.getMerchantSkuCode(), sku.getSaleUnit());
                 touchedOwners.add(ownerId);
             }

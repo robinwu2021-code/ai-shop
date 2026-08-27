@@ -338,7 +338,7 @@ onShow(load);
       </text>
     </view>
 
-    <text class="tip">{{ $t("marketing.stackHint") }}</text>
+    <text class="tip sh-hint">{{ $t("marketing.stackHint") }}</text>
   </sh-scaffold>
 </template>
 
@@ -431,11 +431,7 @@ onShow(load);
   margin-top: 20rpx;
 }
 .tip {
-  display: block;
   margin: 32rpx 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
 }
 
 /* 假选择器：长得像输入框，点开是弹层。**这一页只有一处，所以修饰留在页内** ——
