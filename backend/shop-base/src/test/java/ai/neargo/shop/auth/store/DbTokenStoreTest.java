@@ -136,17 +136,23 @@ class DbTokenStoreTest {
     }
 
     @Test
-    @DisplayName("★ 登录与登出都落审计 —— 不必改任何登录代码，三端的登录都会走到签发这一步")
-    void loginAndLogoutAreAudited() {
+    @DisplayName("★ 登出落审计，而登录**不在这里落** —— 存储层只记会话表上的事件")
+    void logoutIsAuditedButLoginIsNot() {
         DbTokenStore store = instance();
         String token = store.issue(TokenStore.SessionData.of(users.users.get("U1")));
         store.revoke(token);
 
         var rows = new LoginLogDao(jdbc, profile).findByUser("U1", 10, 0);
-        assertEquals(2, rows.size());
-        assertEquals("LOGOUT", rows.get(0).event(), "最新的在前");
-        assertEquals("LOGIN", rows.get(1).event());
-        assertTrue(rows.get(1).success());
+        /*
+         * **只有 LOGOUT。**
+         *
+         * 从签发处落 LOGIN 看似省事，但它只在 db 形态下存在 —— 生产走 ehcache，
+         * 于是「登录成功」在生产一条都没有，而三张登录日志表建它就是为了这个。
+         * LOGIN 已挪到 LoginAuditor 由业务层显式调；这里再写一次就是重复。
+         */
+        assertEquals(1, rows.size(), "签发处不该再写 LOGIN —— 那会在切 db 之后变成重复记录");
+        assertEquals("LOGOUT", rows.get(0).event());
+        assertTrue(rows.get(0).success());
     }
 
     @Test

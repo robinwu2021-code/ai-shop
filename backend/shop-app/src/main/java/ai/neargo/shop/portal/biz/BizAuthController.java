@@ -83,6 +83,12 @@ public class BizAuthController {
                     e.errorCode() == null ? "UNKNOWN" : e.errorCode().name());
             throw e;
         }
+        /*
+         * **记进 MERCHANT 池** —— 与上面失败那一侧同一个池，理由见那段注释。
+         * 过渡期里会话仍在 C 端池（A7 之前 B 端发 ctk_），但审计问的是
+         * 「哪个端在被登录」，与会话此刻存在哪里是两件事。
+         */
+        auditor.succeeded(ai.neargo.shop.auth.Realm.MERCHANT, result.user().userNo());
         // 手机号直接从登录结果取：此刻 SecurityContext 里还没有人
         // （过滤器跑在发 token 之前），去查 userService.profile() 只会拿到空
         String phone = result.user().phone();
@@ -200,6 +206,7 @@ public class BizAuthController {
             throw e;
         }
         // 员工可能没有 C 端账号，档案里的 phone 用他的登录号
+        auditor.succeeded(ai.neargo.shop.auth.Realm.MERCHANT, principalOf(token));
         return new MerchantLoginResp(token,
                 merchantController.profileOf(principalOf(token), req.phone()));
     }

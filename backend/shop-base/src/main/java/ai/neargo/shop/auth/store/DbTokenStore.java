@@ -103,9 +103,17 @@ public class DbTokenStore implements TokenStore {
         sessions.insert(TokenHash.of(token), user.userNo(), now, expiresAt);
         sessionCache.put(TokenHash.of(token), new CachedSession(user.userNo(), expiresAt, now));
         identityCache.put(user.userNo(), user);
-        // 审计从这里落，**不必改任何登录代码** —— 三端的登录最终都会走到签发这一步。
-        // IP/UA 来自过滤器设好的 RequestMetaContext（每个请求都设，登录接口也不例外）
-        audit(LoginEvent.LOGIN, user.userNo(), null, true);
+        /*
+         * **这里刻意不写 LOGIN。**
+         *
+         * 从签发处落看似省事（三端登录最终都走到这一步），但它只在 db 形态下存在 ——
+         * 生产走的是 ehcache，于是「登录成功」在生产一条都没有。
+         * LOGIN 已挪到 LoginAuditor，由业务层的登录端点显式调；
+         * 那条路与会话存在哪里无关，切换存储不影响它。
+         *
+         * 留在这里的只有 LOGOUT / REVOKED / ORPHAN_SESSION —— 那三件事
+         * 本身就是会话表上的事件，业务层没有可靠的时机去记。
+         */
         return token;
     }
 

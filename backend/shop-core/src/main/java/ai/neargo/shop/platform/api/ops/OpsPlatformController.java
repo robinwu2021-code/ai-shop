@@ -56,9 +56,12 @@ public class OpsPlatformController {
     @PostMapping("/ops/auth/login")
     public LoginResultVO login(@RequestBody LoginReq req) {
         try {
-            return opsService.login(req.username(), req.password());
+            LoginResultVO r = opsService.login(req.username(), req.password());
+            auditor.succeeded(ai.neargo.shop.auth.Realm.OPERATOR,
+                    r.staff() == null ? null : r.staff().staffNo());
+            return r;
         } catch (ai.neargo.shop.common.BizException e) {
-            // 失败要留痕：成功与登出在签发/撤销处自动落，唯独失败走不到那里
+            // 失败要留痕。成功那一侧见 LoginAuditor 类注释
             auditor.failed(ai.neargo.shop.auth.Realm.OPERATOR,
                     ai.neargo.shop.auth.LoginAuditor.maskPrincipal(req.username()),
                     e.errorCode() == null ? "UNKNOWN" : e.errorCode().name());

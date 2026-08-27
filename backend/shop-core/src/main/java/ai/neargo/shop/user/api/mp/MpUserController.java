@@ -51,13 +51,16 @@ public class MpUserController {
     @PostMapping("/login")
     public AuthService.LoginResult login(@RequestBody LoginReq req) {
         try {
-            return authService.login(new AuthService.LoginCommand(
+            AuthService.LoginResult r = authService.login(new AuthService.LoginCommand(
                     req.grantType(), req.principal(), req.credential(),
                     req.merchantNo(), req.inviterNo(), req.agreed()));
+            // 成功也要留痕。**不再依赖 TokenStore 的签发处** —— 那条路只在
+            // db 形态下存在，而生产走 ehcache，于是成功记录一条都没有
+            auditor.succeeded(ai.neargo.shop.auth.Realm.CONSUMER, r.user().userNo());
+            return r;
         } catch (ai.neargo.shop.common.BizException e) {
             /*
-             * **失败要留痕。** 成功与登出在 TokenStore 的签发/撤销处自动落，
-             * 唯独失败走不到那里 —— 而登录是最容易被刷的接口之一，
+             * **失败要留痕。** 登录是最容易被刷的接口之一，
              * 失败日志是被刷时唯一的证据。
              *
              * 记错误码而不是给用户看的那句话：「密码错误」与「账号被停用」

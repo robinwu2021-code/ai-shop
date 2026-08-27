@@ -48,14 +48,33 @@ public class LoginAuditConfig {
         return new LoginLogWriter(new LoginLogDao(jdbc, p), p);
     }
 
+    /**
+     * <b>常开，不看 {@code shop.auth.token-store} 是什么。</b>
+     *
+     * <p>成功与失败都走这里 —— 原先成功是在 {@code DbTokenStore} 的签发处落的，
+     * 而那条路只在 db 形态下存在，生产（ehcache）于是一条成功记录都没有。
+     * 见 {@link LoginAuditor} 的类注释。
+     */
     @Bean
     LoginAuditor loginAuditor(Map<Realm, LoginLogWriter> loginLogWriters) {
-        return (realm, principal, reason) -> {
-            RequestMetaContext.Meta meta = RequestMetaContext.current();
-            loginLogWriters.get(realm).failure(
-                    LoginEvent.LOGIN_FAILED, principal, reason,
-                    meta == null ? null : meta.ip(),
-                    meta == null ? null : meta.userAgent());
+        return new LoginAuditor() {
+            @Override
+            public void failed(Realm realm, String principal, String reason) {
+                RequestMetaContext.Meta meta = RequestMetaContext.current();
+                loginLogWriters.get(realm).failure(
+                        LoginEvent.LOGIN_FAILED, principal, reason,
+                        meta == null ? null : meta.ip(),
+                        meta == null ? null : meta.userAgent());
+            }
+
+            @Override
+            public void succeeded(Realm realm, String userNo) {
+                RequestMetaContext.Meta meta = RequestMetaContext.current();
+                loginLogWriters.get(realm).success(
+                        LoginEvent.LOGIN, userNo, null,
+                        meta == null ? null : meta.ip(),
+                        meta == null ? null : meta.userAgent());
+            }
         };
     }
 }
