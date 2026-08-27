@@ -11,71 +11,29 @@ const s = confirmState;
 </script>
 
 <template>
-  <view v-if="s.visible" class="cf">
-    <view class="cf__mask" @tap="closeConfirm(false)"></view>
-    <view class="cf__panel">
-      <text class="cf__title">{{ s.title }}</text>
-      <text v-if="s.hint" class="cf__hint">{{ s.hint }}</text>
-      <view class="cf__acts">
-        <text v-if="!s.alert" class="sh-btn sh-btn--muted cf__act" @tap="closeConfirm(false)">
-          {{ s.cancelText || $t("common.cancel") }}
-        </text>
-        <text
-          class="sh-btn cf__act"
-          :class="{ 'sh-btn--danger-solid': s.danger }"
-          @tap="closeConfirm(true)"
-        >{{ s.confirmText || $t("common.confirm") }}</text>
-      </view>
-    </view>
-  </view>
+  <sh-dialog :visible="s.visible" :title="s.title" @close="closeConfirm(false)">
+    <text v-if="s.hint" class="cf__hint">{{ s.hint }}</text>
+    <template #actions>
+      <text v-if="!s.alert" class="sh-btn sh-btn--muted sh-dialog__act" @tap="closeConfirm(false)">
+        {{ s.cancelText || $t("common.cancel") }}
+      </text>
+      <text
+        class="sh-btn sh-dialog__act"
+        :class="{ 'sh-btn--danger-solid': s.danger }"
+        @tap="closeConfirm(true)"
+      >{{ s.confirmText || $t("common.confirm") }}</text>
+    </template>
+  </sh-dialog>
 </template>
 
 <style scoped>
-.cf {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.cf__mask {
-  position: absolute;
-  inset: 0;
-  background: var(--sh-scrim);
-}
-/* 居中而不是贴底：确认是一个「打断」，而底部弹层是「继续往下做一步」。
-   两种意思用两种位置分开 —— 与 sh-prompt 贴底正好相反 */
-.cf__panel {
-  position: relative;
-  width: 560rpx;
-  max-width: 82vw;
-  box-sizing: border-box;
-  padding: 40rpx 36rpx 28rpx;
-  border-radius: 32rpx;
-  background: var(--sh-surface);
-}
-.cf__title {
-  display: block;
-  font-size: 34rpx;
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--sh-ink);
-}
+/* 外壳（遮罩 / 居中 / 面板 / 标题 / 动作条）全在 `sh-dialog` 里 ——
+   这里此前有一份逐条相同的副本，见该组件的注释。 */
 .cf__hint {
   display: block;
   margin-top: 12rpx;
   font-size: 26rpx;
   line-height: 1.6;
   color: var(--sh-sub);
-}
-.cf__acts {
-  display: flex;
-  gap: 16rpx;
-  margin-top: 32rpx;
-}
-.cf__act {
-  flex: 1;
-  padding: 22rpx 0;
 }
 </style>

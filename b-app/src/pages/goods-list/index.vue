@@ -626,20 +626,21 @@ onShow(() => {
       分享单品浮层。**不做成新页面**：这是「顺手转发一下」的动作，跳一页再跳回来
       比弹一层重得多，而且要重新加载列表（跳页会触发 onShow）。
     -->
-    <view v-if="sharing" class="mask" @tap="closeShare">
-      <view class="sheet" @tap.stop>
-        <text class="sheet__t">{{ $t("goods.shareTitle", { s: sharing.title }) }}</text>
-        <text v-if="shareLoading" class="hint">{{ $t("common.loading") }}</text>
-        <view v-else class="kit">{{ shareText }}</view>
-        <view v-if="!shareLoading" class="sh-btn" @tap="copyShareText">{{ $t("store.copyKit") }}</view>
+    <sh-sheet
+      :visible="!!sharing"
+      :title="sharing ? String($t('goods.shareTitle', { s: sharing.title })) : ''"
+      @close="closeShare"
+    >
+      <text v-if="shareLoading" class="hint">{{ $t("common.loading") }}</text>
+      <view v-else class="kit">{{ shareText }}</view>
+      <view v-if="!shareLoading" class="sh-btn" @tap="copyShareText">{{ $t("store.copyKit") }}</view>
 
-        <!-- 真海报：合成好的一张图。生不出来（极端情况）就不占地方 -->
-        <view v-if="poster?.imageBase64" class="poster">
-          <image class="poster__img" :src="`data:image/png;base64,${poster.imageBase64}`" mode="widthFix" />
-          <view class="sh-btn poster__save" @tap="savePosterImage">{{ $t("store.saveImage") }}</view>
-        </view>
+      <!-- 真海报：合成好的一张图。生不出来（极端情况）就不占地方 -->
+      <view v-if="poster?.imageBase64" class="poster">
+        <image class="poster__img" :src="`data:image/png;base64,${poster.imageBase64}`" mode="widthFix" />
+        <view class="sh-btn poster__save" @tap="savePosterImage">{{ $t("store.saveImage") }}</view>
       </view>
-    </view>
+    </sh-sheet>
   </sh-scaffold>
 </template>
 
@@ -849,24 +850,6 @@ onShow(() => {
 }
 
 /* 分享单品浮层：底部弹出，与 biz-region-picker 的 .sheet 同一形态，商家不用重新学 */
-.mask {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  background: var(--sh-scrim);
-}
-.sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  max-height: 85vh;
-  overflow-y: auto;
-  padding: 32rpx 32rpx calc(32rpx + env(safe-area-inset-bottom));
-  border-radius: 32rpx 32rpx 0 0;
-  background: var(--sh-surface);
-  box-sizing: border-box;
-}
 .poster {
   margin-top: 20rpx;
 }
@@ -877,13 +860,6 @@ onShow(() => {
 }
 .poster__save {
   margin-top: 16rpx;
-}
-.sheet__t {
-  display: block;
-  margin-bottom: 20rpx;
-  font-size: 34rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .kit {
   margin-bottom: 24rpx;

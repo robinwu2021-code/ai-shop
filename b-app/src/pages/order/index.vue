@@ -210,23 +210,24 @@ onLoad((q) => {
           · **已抵扣多少**   —— 少了它，顾客的积分会被当成没用过
           · **平台不代收**   —— 说清楚这笔钱不经平台，出纠纷时双方对这一点没有分歧
       -->
-      <view v-if="offlineAsking" class="mask" @tap="offlineAsking = false">
-        <view class="dlg" @tap.stop>
-          <text class="dlg__title">{{ $t("order.offlinePayTitle") }}</text>
-          <text class="sh-muted">{{ $t("order.offlineDue") }}</text>
-          <text class="txt-mega due sh-num">{{ money(dueMinor, order.amount.currency) }}</text>
-          <text v-if="deductedMinor > 0" class="due__deducted">
-            {{ $t("order.offlineDeducted", { v: money(deductedMinor, order.amount.currency) }) }}
-          </text>
-          <text class="due__hint">{{ $t("order.offlineNotCustodied") }}</text>
-          <view class="dlg__acts">
-            <view class="sh-btn sh-btn--muted dlg__act" @tap="offlineAsking = false">
-              {{ $t("order.offlineCancel") }}
-            </view>
-            <view class="sh-btn dlg__act" @tap="confirmOffline">{{ $t("order.offlinePay") }}</view>
+      <sh-dialog
+        :visible="offlineAsking"
+        :title="String($t('order.offlinePayTitle'))"
+        @close="offlineAsking = false"
+      >
+        <text class="sh-muted">{{ $t("order.offlineDue") }}</text>
+        <text class="txt-mega due sh-num">{{ money(dueMinor, order.amount.currency) }}</text>
+        <text v-if="deductedMinor > 0" class="due__deducted">
+          {{ $t("order.offlineDeducted", { v: money(deductedMinor, order.amount.currency) }) }}
+        </text>
+        <text class="due__hint">{{ $t("order.offlineNotCustodied") }}</text>
+        <template #actions>
+          <view class="sh-btn sh-btn--muted sh-dialog__act" @tap="offlineAsking = false">
+            {{ $t("order.offlineCancel") }}
           </view>
-        </view>
-      </view>
+          <view class="sh-btn sh-dialog__act" @tap="confirmOffline">{{ $t("order.offlinePay") }}</view>
+        </template>
+      </sh-dialog>
     </template>
   </sh-scaffold>
 </template>
@@ -293,28 +294,6 @@ onLoad((q) => {
 .total {
   margin-top: 16rpx;
 }
-.mask {
-  position: fixed;
-  inset: 0;
-  background: var(--sh-scrim);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
-.dlg {
-  width: 600rpx;
-  padding: 40rpx;
-  border-radius: 32rpx;
-  background: var(--sh-bg);
-}
-.dlg__title {
-  display: block;
-  font-size: 34rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-  margin-bottom: 20rpx;
-}
 /* 应收金额是这一屏唯一要一眼看清的东西 —— 老板照着它收钱。
    字号字重全交给 `.txt-mega`（字阶第八档，60rpx/700）：**此前这里是把那一档
    的四行声明照抄了一遍**，注释还写着「= 字阶的 .txt-mega」—— 于是清单里
@@ -334,14 +313,6 @@ onLoad((q) => {
   font-size: 24rpx;
   line-height: 1.5;
   color: var(--sh-sub);
-}
-.dlg__acts {
-  display: flex;
-  gap: 20rpx;
-  margin-top: 32rpx;
-}
-.dlg__act {
-  flex: 1;
 }
 .total__v {
   font-size: 34rpx;

@@ -763,6 +763,17 @@ uni-page-wrapper[style*="--window-bottom"] {
   color: var(--sh-warning);
 }
 
+/* 对话框动作键：**必须是全局类**。
+   `sh-dialog` 的动作条是它自己的元素（带它的 scope id），而放进去的按钮来自插槽 ——
+   **插槽内容带的是调用方的 scope id**，所以 `.dlg__acts > * { flex: 1 }` 这种写法
+   一行都不会生效。第一次这么写的结果：两个按钮挤成两个小药丸，等宽没了。
+   与 `.field` 那一族同一条理由（见 b-app/App.vue）：跨插槽的布局只能走全局类。 */
+.sh-dialog__act {
+  flex: 1;
+  padding: 22rpx 0;
+  text-align: center;
+}
+
 /* 主按钮：实心色块 */
 .sh-btn {
   display: block;

@@ -283,6 +283,26 @@
       }
     },
     {
+      "class": ".sh-dialog__act",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "flex": "1",
+        "padding": "22rpx 0",
+        "text-align": "center"
+      },
+      "px": {
+        "flex": "1",
+        "padding": "11px 0",
+        "text-align": "center"
+      },
+      "usage": {
+        "b-app": 4,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".sh-muted",
       "group": "字阶",
       "when": "次要文字。**字号走密度变量**，B 端自动降到 24rpx",
@@ -1105,7 +1125,7 @@
       "name": "sh-confirm",
       "file": "packages/ui/src/components/sh-confirm.vue",
       "scope": "跨端",
-      "lines": 81,
+      "lines": 39,
       "props": [],
       "usage": {
         "b-app": 0,
@@ -1129,6 +1149,23 @@
       },
       "note": "商品封面",
       "why": "`cover` 字段二义：种子是 emoji、商家上传后是 COS URL。14 处渲染点都没分流过"
+    },
+    {
+      "name": "sh-dialog",
+      "file": "packages/ui/src/components/sh-dialog.vue",
+      "scope": "跨端",
+      "lines": 85,
+      "props": [
+        "visible: boolean",
+        "title?: string",
+        "maskClosable?: boolean"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0
+      },
+      "note": "—",
+      "why": "—"
     },
     {
       "name": "sh-empty",
@@ -1341,7 +1378,7 @@
         "hint?: string"
       ],
       "usage": {
-        "b-app": 6,
+        "b-app": 7,
         "c-app": 0
       },
       "note": "底部弹层",
@@ -1831,20 +1868,14 @@
         "sh-fab",
         "sh-icon-btn",
         "sh-scaffold",
+        "sh-sheet",
         "sh-tabs",
         "biz-store-tag"
       ],
       "libClassHits": 7,
-      "localSelectors": 38,
-      "localCssLines": 207,
+      "localSelectors": 35,
+      "localCssLines": 182,
       "rolled": [
-        {
-          "id": "sheet",
-          "label": "弹层 / 遮罩",
-          "lib": "sh-sheet",
-          "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
-          "gap": false
-        },
         {
           "id": "listrow",
           "label": "列表行",
@@ -2159,19 +2190,13 @@
       "file": "b-app/src/pages/order/index.vue",
       "components": [
         "sh-cover",
+        "sh-dialog",
         "sh-scaffold"
       ],
-      "libClassHits": 39,
-      "localSelectors": 21,
-      "localCssLines": 111,
+      "libClassHits": 41,
+      "localSelectors": 16,
+      "localCssLines": 81,
       "rolled": [
-        {
-          "id": "sheet",
-          "label": "弹层 / 遮罩",
-          "lib": "sh-sheet",
-          "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
-          "gap": false
-        },
         {
           "id": "listrow",
           "label": "列表行",
@@ -2888,23 +2913,12 @@
         "goods-edit",
         "store-categories"
       ]
-    },
-    {
-      "id": "sheet",
-      "label": "弹层 / 遮罩",
-      "lib": "sh-sheet",
-      "gap": false,
-      "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
-      "pages": [
-        "goods-list",
-        "order"
-      ]
     }
   ],
   "counts": {
     "tokens": 10,
-    "blocks": 40,
-    "components": 28,
+    "blocks": 41,
+    "components": 29,
     "pages": 61,
     "gapKinds": 1
   }
