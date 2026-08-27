@@ -82,21 +82,21 @@
 「不要辣、少冰、免葱」。
 
 - **落法**：下单时拼进基座 `ord_item.spec`（那本来就是**快照字符串**），
-  同时在台账行留结构化明细 `fnb_check_item.modifiers`（JSON）。
+  同时在订单行的餐饮附属留结构化明细 `fnb_order_item_ext.modifiers`（JSON）。
 - **为什么不做成 SKU**：三个二选一的做法就是 8 个 SKU，六个就是 64 个。SKU 会爆炸，而它们价格完全一样。
 - **为什么快照要写进 `ord_item.spec`**：厨房票、小票、售后单都读订单行；只存台账的话，**外卖单没有台账，做法就丢了**。
 
 ## 2.2 加料（加价）
 「加珍珠 +2、加面 +3」。
 
-- **落法**：加料是**一个真实 SKU**，下单时作为**独立订单行**；从属关系记在台账 `fnb_check_item.parent_line_no`。
+- **落法**：加料是**一个真实 SKU**，下单时作为**独立订单行**；从属关系记在 `fnb_order_item_ext.parent_item_id`。
 - **为什么不做成订单行上的"加价项"**：基座 `ord_item` 没有加价字段，加一个就要动金额计算、退款、结算、发票、积分五处。
   做成独立行则**金额天然正确、按行退款天然正确**，基座一行不改。
 - **代价**：小票上是两行。用台账的父子关系在**渲染时合并显示**，不改数据。
 
 ## 2.3 套餐
 基座组合商品（`prd_sku_bundle`）。`verify_mode` 用「一次性核销」。餐饮包不建套餐表。
-**套餐换菜（可选组）** 一期不做，见 §14。
+**套餐换菜（可选组）** 一期不做，见 §16。
 
 ## 2.4 称重菜（海鲜、烤鱼）
 基座 `ord_item` 已有 `nominalGram` / `weighed` / `weighAdjustMinor`（正=补款、负=退款），**直接复用**。
@@ -137,9 +137,9 @@
     prd_store_goods              markPaid(基座)       │
     prd_store_stock                     │            │
                                         ▼            ▼
-                         ┌────── 制作队列 fnb_check_item ──────┐
-                         │  QUEUED → MAKING → READY → SERVED   │
-                         └──────────────┬──────────────────────┘
+                         ┌─── 制作队列 fnb_order_item_ext ───┐
+                         │ QUEUED → MAKING → READY → SERVED  │
+                         └───────────────┬───────────────────┘
                                         │ 出品分单打印(基座 I3/I4)
                                         ▼
                          交付：上菜 / 叫号取餐 / 外卖发货(基座履约)
@@ -153,7 +153,7 @@
 
 **两处必须记住的**：
 1. **制作与支付无关**。后付时钱还没收，菜必须已经在做了 —— 所以制作由**下达事件**触发，不由 `OrderPaid` 触发。
-2. **金额只有一个真源：基座订单。** 台账只做聚合展示，绝不自己算钱（§7.3）。
+2. **金额只有一个真源：基座订单。** 台账只做聚合展示，绝不自己算钱（§9.3）。
 
 ---
 
@@ -189,7 +189,8 @@
 
 ## 4.3 制作（KDS）
 
-制作状态挂在 `fnb_check_item`（堂食）或直接挂订单行（外卖，`fnb_kitchen_item` 同表 `check_no` 为空）。
+**制作行就是订单行的餐饮附属**（`fnb_order_item_ext`，主键即 `ord_item.id`）。
+堂食有 `check_no`，外卖为空 —— 堂食与外卖共用同一张表、同一个状态机，见 §7。
 
 ```
 QUEUED ──开始制作──> MAKING ──出品──> READY ──上菜/交付──> SERVED
@@ -238,7 +239,7 @@ QUEUED ──等叫──────> HELD ──叫起──> QUEUED
 | | 先付后吃 | 先吃后付 |
 |---|---|---|
 | 做法 | 新开一张订单，付款后下达 | 新开一张订单（`WAIT_OFFLINE_PAY`），立即下达 |
-| 台账 | `fnb_check_order` 追加一行 | 同左 |
+| 台账 | `fnb_order_ext` 追加一行 | 同左 |
 **永远不改已有订单。** 改已支付订单的金额，退款、结算、发票、积分四处全部对不上。
 
 ## 5.2 减菜（还没做）
@@ -260,7 +261,7 @@ QUEUED ──等叫──────> HELD ──叫起──> QUEUED
 **退菜必须有原因和操作人。** 没有原因的退菜是餐饮最大的内控漏洞（员工吃菜、送人情）。
 
 ## 5.4 并台
-- 台账 A `merged_into = B`，A 置 `MERGED`；A 的 `fnb_check_order` 行**改挂 B**；
+- 台账 A `merged_into = B`，A 置 `MERGED`；A 名下各订单的 `fnb_order_ext.check_no` **改挂 B**；
 - **订单一张都不动**；
 - A 的桌台资源立即释放（人已经并到 B 桌了）；
 - 反向拆开：**不支持**。并台是不可逆动作，界面上要明确提示。
@@ -289,13 +290,160 @@ QUEUED ──等叫──────> HELD ──叫起──> QUEUED
 
 ---
 
-# 六 · 数据库（`db/industry/food`，历史表 `fnb_flyway_history`）
+---
 
-> 表全部 `fnb_` 前缀。**餐饮包的迁移不许写基座的表**（有闸门）。
-> 金额列只出现在 `fnb_payment`（收款流水）—— 其余表一分钱都不存，见 §7.3。
+# 六 · 入口与调用方向
+
+## 6.1 一句话
+
+**餐饮的请求进餐饮的门。** 商家和顾客在餐饮场景下打的是 `/x/food/**`，
+由餐饮包**编排**，逐步调用基座能力；基座不知道餐饮存在，也没有一处 `if (餐饮)`。
+
+```
+c-app / b-app（餐饮界面）
+        │  /mp/x/food/**  ·  /biz/x/food/**
+        ▼
+┌──────────────────────────────────────────┐
+│  餐饮包 Controller  →  餐饮编排 Service    │   ← 业务逻辑写在这里
+│   桌台 · 台账 · 点单 · 制作 · 结账          │
+└───────────────┬──────────────────────────┘
+                │ 只走 Core*Api（契约），不碰基座的表
+                ▼
+     基座能力：订单 · 支付 · 库存 · 会员资产 · 打印 · 售后 · 资源
+```
+
+**方向是单向的**：餐饮包 → 基座。基座回头找餐饮包只有一条路 —— **事件**（`OrderLifecycleListener`），
+而且只用于"基座发生了什么，餐饮包要不要跟着动"，不用于让基座等餐饮包返回结果。
+
+## 6.2 哪些请求走餐饮入口，哪些仍走基座入口
+
+判据一句话：**这个动作的主语是不是餐饮对象。**
+
+| 请求 | 入口 | 为什么 |
+|---|---|---|
+| 扫桌码、看菜单、加购、下达、催菜、划菜、结账、开台并台转台 | **餐饮** | 主语是台账/桌台/制作行 |
+| 支付回调（微信） | **基座** | 主语是订单。回调不认识桌子，也不该认识 |
+| 售后申请与退款 | **基座** | 主语是订单行。退菜只是它的前置动作 |
+| 外卖发货、物流轨迹、签收 | **基座** | 主语是履约单 |
+| 会员登录、优惠券、储值充值 | **基座** | 主语是会员 |
+| 商品建档、改价、上下架 | **基座** | 主语是商品。**菜的维护就是商品维护** |
+| 出品部门、做法模板、菜单时段、沽清 | **餐饮** | 主语是菜的餐饮附属属性 |
+
+> 最容易划错的是最后两行：**「建一道菜」走基座商品入口，「给这道菜配出品部门」走餐饮入口。**
+> 合成一个入口就意味着餐饮包要代理商品的全部字段，那是把基座商品又实现了一遍。
+> 界面上可以是同一个页面的两个区块 —— **入口分开不等于界面分开。**
+
+## 6.3 一次下达的完整编排（示例：先吃后付加菜）
+
+```
+POST /biz/x/food/check/{checkNo}/place        ← 餐饮入口
+  │
+  ├─ 1. 校验台账 OPEN（餐饮表 fnb_check）
+  ├─ 2. 校验能力：TABLE_ORDERING / PAY_AFTER_SERVE   → CoreCapabilityApi
+  ├─ 3. 取购物车（fnb_check_cart），展开加料为附加行
+  ├─ 4. 校验菜单时段 ∩ 上架 ∩ 库存                    → 餐饮表 + CoreStockApi
+  ├─ 5. 建订单（履约 DINE_IN，支付方式 OFFLINE）       → CoreOrderApi.place  ★基座
+  ├─ 6. 写餐饮附属：fnb_order_ext（挂台账/轮次）+ fnb_order_item_ext（部门/做法/制作状态）
+  ├─ 7. 清购物车
+  ├─ 8. 生成制作行（fnb_order_item_ext.kitchen_status = QUEUED）
+  └─ 9. 提交后厨打印                                  → CorePrintApi  ★基座
+```
+
+**5 与 6 必须在同一个事务里**（同一数据源，L1/L2 都成立）。
+不在同一事务，就会出现"订单建了但没挂到台账上" —— **一张收了钱却不属于任何桌子的单**，
+而它在两边的报表里都看不出异常。
+
+**9 在事务外**（打印失败不能回滚订单），靠打印任务表自己重试。
+
+## 6.4 端点清单（按主语分组）
+
+```
+# 顾客侧 /mp/x/food/**
+GET    /table/{qrToken}                 扫码进店：桌 + 台账 + 已点
+GET    /menu?channel=DINE_IN            当前时段可点的菜
+POST   /check/{checkNo}/cart            加购（做法/加料）
+DELETE /check/{checkNo}/cart/{lineNo}   删行
+POST   /check/{checkNo}/place           下达（先付返回支付参数）
+GET    /check/{checkNo}/progress        制作进度
+GET    /check/{checkNo}/bill            账单预览
+POST   /check/{checkNo}/pay             自助结账（先付/后付均可）
+
+# 商家侧 /biz/x/food/**
+GET    /table/map                       桌台图
+POST   /check/open                      开台
+POST   /check/{checkNo}/merge           并台
+POST   /check/{checkNo}/transfer        转台
+POST   /check/{checkNo}/place           代客点单
+GET    /kitchen/queue?dept=             KDS 队列
+POST   /kitchen/item/{itemNo}/{action}  start|ready|serve|hold|call|urge|void
+POST   /check/{checkNo}/settle/begin    发起结账
+POST   /check/{checkNo}/settle/pay      收款（可多笔）
+POST   /check/{checkNo}/settle/close    结台
+POST   /goods/{goodsNo}/soldout         沽清 / 恢复
+PUT    /goods/{goodsNo}/dept            配出品部门
+GET/PUT /menu/**                        菜单与时段
+
+# 运营侧 /ops/x/food/**
+GET/PUT /store/{storeNo}/config         门店餐饮配置
+GET/PUT /template/**                    打印模板与路由默认值
+```
+
+---
+
+# 七 · 数据模型：三类表
+
+这是本册最关键的一节。餐饮的数据**不是一堆新表**，而是三类，各有各的规矩：
+
+| 类 | 是什么 | 例子 | 规矩 |
+|---|---|---|---|
+| **A · 餐饮专属表** | 基座里根本没有的对象 | 桌台、台账、购物车、收款流水、出品部门、菜单 | 自由设计，但不许存基座已有的值 |
+| **B · 基座表的餐饮附属表** | 基座对象**多出来的那几列** | 订单的桌号轮次、订单行的做法与制作状态、商品的出品部门、门店的餐饮配置 | **1:1，主键就是基座业务键**，见 §7.2 |
+| **C · 纯基座表** | 餐饮一列都不加，直接用 | 订单、订单行、商品、SKU、库存、会员、券、结算 | **只读或经 `Core*Api` 写**，餐饮迁移不许碰 |
+
+**判据**：这条数据脱离基座对象还有意义吗？
+有 → A（桌台在没有订单时照样存在）；没有 → B（"这一行的做法是免辣"脱离订单行毫无意义）。
+
+## 7.2 附属表的六条规矩
+
+1. **主键 = 基座业务键**，不另立自增主键做唯一标识
+   （`fnb_order_ext.order_no` 就是主键）。另立一个键，就会出现"同一张订单两行附属"。
+2. **只存基座没有的列。绝不复制基座已有的值** —— 金额、状态、标题、数量一律回基座取。
+   > **修正一处早先的设计**：`fnb_kitchen_item.title_snapshot`（为了打后厨票不连表而冗余菜名）
+   > 违反本条，**去掉**。打印内容由 `PrintPayloadProvider` 组装，它拿到的 `OrderView` 里已经有菜名快照，
+   > 而 `ord_item.title` 本身就是下单时的快照，不会变 —— 冗余买不到任何东西，却多一个会分叉的地方。
+3. **缺行 = 默认值，不是错误。** 存量门店开启餐饮包时没有任何附属行，
+   读取一律走 "无行 → 默认" 的路径（与能力开关三态口径同一条道理）。
+4. **写入必须与基座写入同事务。** 同一数据源，L1/L2 都做得到。做不到就必须幂等可补偿。
+5. **生命周期跟随基座对象。** 基座对象被取消/删除，附属行保留（留痕），但不得再被当作有效数据读。
+6. **餐饮迁移只写 `fnb_` 表。** 需要基座加列时，那是基座的迁移和基座的 PR —— 有闸门拦。
+
+## 7.3 三类表在一次点餐里的分工
+
+```
+顾客点了「宫保鸡丁 · 免辣 · 加饭」
+
+C 基座 ord_order            这一单多少钱、什么状态、怎么支付        ← 唯一的钱与状态
+C 基座 ord_item ×2          宫保鸡丁(¥38) / 加饭(¥2)              ← 唯一的行与金额
+B 附属 fnb_order_ext        这单属于 A3 桌、台账 CHK…、第 2 轮
+B 附属 fnb_order_item_ext   免辣、加饭挂在宫保鸡丁下、热菜部、制作中
+A 专属 fnb_check            A3 桌开着，后付，3 位客人
+A 专属 fnb_table            A3 这张桌子本身（没有客人时也在）
+```
+
+**四层各说各的，没有一处重复。** 问"多少钱"永远只有 `ord_item` 回答，
+问"做法是什么"永远只有 `fnb_order_item_ext` 回答。
+
+---
+
+# 八 · 数据库（`db/industry/food`，历史表 `fnb_flyway_history`）
+
+表全部 `fnb_` 前缀，按 §7 的三类分节。
+**金额只出现在 `fnb_payment`（收款流水）** —— 其余一分钱都不存，见 §9.3。
+
+## 8.1 A 类 · 餐饮专属表
 
 ```sql
--- ── 桌台 ──────────────────────────────────────────────
+-- ── 桌台与区域 ────────────────────────────────────────
 CREATE TABLE fnb_table (
   table_no     VARCHAR(32) NOT NULL PRIMARY KEY,
   store_no     VARCHAR(32) NOT NULL,
@@ -303,7 +451,7 @@ CREATE TABLE fnb_table (
   area_no      VARCHAR(32) NULL,
   name         VARCHAR(32) NOT NULL,          -- 「A3」「包间·竹」
   seats        INT NOT NULL DEFAULT 4,
-  qr_token     VARCHAR(64) NOT NULL,          -- 桌码。可重置（换桌牌、防串桌）
+  qr_token     VARCHAR(64) NOT NULL,          -- 桌码，可重置（换桌牌、防串桌）
   status       VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
   UNIQUE KEY uk_fnb_table_qr (qr_token),
   KEY idx_fnb_table_store (store_no, status)
@@ -323,8 +471,8 @@ CREATE TABLE fnb_check (
   table_no     VARCHAR(32) NULL,              -- 外卖/自取无桌
   status       VARCHAR(16) NOT NULL,          -- OPEN/SETTLING/CLOSED/MERGED/VOIDED
   people       INT NULL,
-  pay_mode     VARCHAR(16) NOT NULL,          -- PRE(先付) / POST(后付)，开台时定，不许中途改
-  merged_into  VARCHAR(32) NULL,              -- 并台目标
+  pay_mode     VARCHAR(16) NOT NULL,          -- PRE(先付) / POST(后付)，开台即定，中途不许改
+  merged_into  VARCHAR(32) NULL,
   opened_by    VARCHAR(64) NOT NULL,
   opened_at    DATETIME NOT NULL,
   settling_at  DATETIME NULL,
@@ -332,15 +480,7 @@ CREATE TABLE fnb_check (
   KEY idx_fnb_check_store_status (store_no, status),
   KEY idx_fnb_check_table (table_no, status)
 );
-
-CREATE TABLE fnb_check_order (
-  check_no  VARCHAR(32) NOT NULL,
-  order_no  VARCHAR(32) NOT NULL,             -- → 基座 ord_order
-  seq       INT NOT NULL,                     -- 第几轮点单
-  added_by  VARCHAR(64) NULL,                 -- 谁点的，按人拆单要用
-  PRIMARY KEY (check_no, order_no),
-  KEY idx_fnb_check_order_order (order_no)
-);
+-- ⚠️ 没有 total_amount。应收永远现算，见 §9.3
 
 -- ── 点单购物车（台账维度，不是 userNo 维度，见 §2.8）──
 CREATE TABLE fnb_check_cart (
@@ -350,53 +490,29 @@ CREATE TABLE fnb_check_cart (
   qty        INT NOT NULL,
   modifiers  JSON NULL,                       -- 做法/口味（不加价）
   addon_of   VARCHAR(32) NULL,                -- 加料：指向主行 line_no
-  added_by   VARCHAR(64) NOT NULL,
+  added_by   VARCHAR(64) NOT NULL,            -- 按人拆单要用
   version    BIGINT NOT NULL DEFAULT 0,       -- 乐观锁：同桌多人并发加购
   KEY idx_fnb_cart_check (check_no)
 );
 
--- ── 制作行（KDS）。堂食走 check_no，外卖 check_no 为空 ──
-CREATE TABLE fnb_kitchen_item (
-  item_no        VARCHAR(32) NOT NULL PRIMARY KEY,
-  store_no       VARCHAR(32) NOT NULL,
-  check_no       VARCHAR(32) NULL,
-  order_no       VARCHAR(32) NOT NULL,
-  order_item_id  BIGINT NOT NULL,             -- → 基座 ord_item.id，金额与名称的唯一来源
-  parent_item_no VARCHAR(32) NULL,            -- 加料挂主菜，仅用于显示合并
-  dept_no        VARCHAR(32) NULL,            -- 出品部门，分单路由的依据
-  title_snapshot VARCHAR(128) NOT NULL,       -- 冗余一份菜名：后厨票要打，不该为了打票去连表
-  qty            INT NOT NULL,
-  status         VARCHAR(16) NOT NULL,        -- QUEUED/HELD/MAKING/READY/SERVED/VOIDED
-  queued_at      DATETIME NOT NULL,
-  ready_at       DATETIME NULL,
-  served_at      DATETIME NULL,
-  KEY idx_fnb_kitchen_store_status (store_no, status, queued_at),
-  KEY idx_fnb_kitchen_check (check_no)
-);
-
+-- ── 台账动作留痕 ──────────────────────────────────────
 CREATE TABLE fnb_check_item_log (
-  log_no     VARCHAR(32) NOT NULL PRIMARY KEY,
-  check_no   VARCHAR(32) NULL,
-  item_no    VARCHAR(32) NULL,
-  action     VARCHAR(16) NOT NULL,            -- URGE/HOLD/CALL/SERVE/VOID/GIFT
-  qty        INT NULL,
-  reason     VARCHAR(128) NULL,               -- VOID 必填
-  operator   VARCHAR(64) NOT NULL,
-  created_at DATETIME NOT NULL,
+  log_no        VARCHAR(32) NOT NULL PRIMARY KEY,
+  check_no      VARCHAR(32) NULL,
+  order_item_id BIGINT NULL,
+  action        VARCHAR(16) NOT NULL,         -- URGE/HOLD/CALL/SERVE/VOID/GIFT
+  qty           INT NULL,
+  reason        VARCHAR(128) NULL,            -- VOID 必填
+  operator      VARCHAR(64) NOT NULL,
+  created_at    DATETIME NOT NULL,
   KEY idx_fnb_item_log_check (check_no, created_at)
 );
 
--- ── 出品部门 ───────────────────────────────────────────
+-- ── 出品部门 ──────────────────────────────────────────
 CREATE TABLE fnb_dept (
   dept_no  VARCHAR(32) NOT NULL PRIMARY KEY,
   store_no VARCHAR(32) NOT NULL,
   name     VARCHAR(32) NOT NULL               -- 热菜/凉菜/水吧/烧烤
-);
-CREATE TABLE fnb_goods_dept (
-  store_no VARCHAR(32) NOT NULL,
-  goods_no VARCHAR(32) NOT NULL,
-  dept_no  VARCHAR(32) NOT NULL,
-  PRIMARY KEY (store_no, goods_no)
 );
 
 -- ── 菜单（只管"这个时刻能不能点"，见 §2.6）────────────
@@ -405,7 +521,7 @@ CREATE TABLE fnb_menu (
   store_no   VARCHAR(32) NOT NULL,
   name       VARCHAR(32) NOT NULL,            -- 早市/午市/晚市/夜宵
   time_rule  VARCHAR(128) NOT NULL,           -- 受限表达式：周几 + 时段
-  channels   VARCHAR(64) NOT NULL,            -- DINE_IN,TAKEOUT —— 哪些渠道可见
+  channels   VARCHAR(64) NOT NULL,            -- DINE_IN,TAKEOUT
   enabled    TINYINT NOT NULL DEFAULT 1,
   sort       INT NOT NULL DEFAULT 0
 );
@@ -431,15 +547,95 @@ CREATE TABLE fnb_payment (
 );
 ```
 
-**为什么 `fnb_kitchen_item` 要冗余 `title_snapshot`**：
-后厨票每天要打几千张，为了打一行字去连基座订单行是无谓的耦合与延迟；
-而菜名在下单那一刻就已经是快照了（基座 `ord_item.title` 同理），冗余不会分叉。
+## 8.2 B 类 · 基座表的餐饮附属表
 
----
+**主键就是基座业务键；只存基座没有的列；缺行 = 默认值。**
 
-# 七 · 对象
+```sql
+-- 订单 ← 基座 ord_order
+CREATE TABLE fnb_order_ext (
+  order_no   VARCHAR(32) NOT NULL PRIMARY KEY,   -- ← 基座业务键，就是主键
+  check_no   VARCHAR(32) NULL,                   -- 外卖单为空：外卖没有台账（§1.2）
+  table_no   VARCHAR(32) NULL,
+  seq        INT NOT NULL DEFAULT 1,             -- 第几轮点单
+  people     INT NULL,
+  added_by   VARCHAR(64) NULL,                   -- 谁点的，按人拆单要用
+  KEY idx_fnb_order_ext_check (check_no, seq)
+);
+-- 替代了早先设计里的 fnb_check_order 关联表：一张订单只属于一个台账，
+-- 多对多的表达能力在这里是负担 —— 它会让「一单挂两桌」在类型上可表达。
+-- 并台时改这里的 check_no（旧台账留 MERGED 痕迹），比搬关联行更不易漏。
 
-## 7.1 领域对象（餐饮包内部）
+-- 订单行 ← 基座 ord_item（制作行就是它）
+CREATE TABLE fnb_order_item_ext (
+  order_item_id  BIGINT NOT NULL PRIMARY KEY,    -- ← 基座 ord_item.id，就是主键
+  order_no       VARCHAR(32) NOT NULL,
+  check_no       VARCHAR(32) NULL,
+  store_no       VARCHAR(32) NOT NULL,
+  parent_item_id BIGINT NULL,                    -- 加料挂主菜，仅用于显示合并
+  dept_no        VARCHAR(32) NULL,               -- 出品部门（下单时快照，改配置不影响历史）
+  modifiers      JSON NULL,                      -- 做法明细（结构化；文案已进 ord_item.spec）
+  kitchen_status VARCHAR(16) NOT NULL,           -- QUEUED/HELD/MAKING/READY/SERVED/VOIDED
+  queued_at      DATETIME NOT NULL,
+  ready_at       DATETIME NULL,
+  served_at      DATETIME NULL,
+  KEY idx_fnb_item_queue (store_no, kitchen_status, queued_at),
+  KEY idx_fnb_item_check (check_no)
+);
+-- ⚠️ 不存菜名、不存单价、不存数量 —— 那三样在 ord_item 里已经是快照，回基座取。
+
+-- 商品 ← 基座 prd_goods（按门店，因为出品部门是门店的事）
+CREATE TABLE fnb_goods_ext (
+  store_no        VARCHAR(32) NOT NULL,
+  goods_no        VARCHAR(32) NOT NULL,
+  dept_no         VARCHAR(32) NULL,              -- 出品部门 → 分单路由的依据
+  modifier_group  VARCHAR(32) NULL,              -- 做法模板（免辣/加冰…）
+  takeout_allowed TINYINT NOT NULL DEFAULT 1,    -- 能不能外卖（火锅不能）
+  serve_priority  VARCHAR(16) NULL,              -- 先上/后上/等叫
+  PRIMARY KEY (store_no, goods_no)
+);
+-- 缺行 = 无部门、可外卖、无做法模板。存量门店开餐饮包时一行都没有，照样能跑。
+
+-- 门店 ← 基座 mch_store
+CREATE TABLE fnb_store_config (
+  store_no            VARCHAR(32) NOT NULL PRIMARY KEY,
+  default_pay_mode    VARCHAR(16) NOT NULL DEFAULT 'PRE',  -- 开台默认付款顺序
+  settle_timeout_min  INT NOT NULL DEFAULT 240,            -- 后付单的超时时长（基座 D3 读它）
+  auto_serve_on_ready TINYINT NOT NULL DEFAULT 0,          -- 出品即视为已上菜（快餐档口用）
+  service_fee_mode    VARCHAR(16) NULL,                    -- 服务费/茶位费口径，见 §16
+  pre_bill_enabled    TINYINT NOT NULL DEFAULT 1
+);
+```
+
+## 8.3 C 类 · 直接用的基座表（餐饮迁移一列都不许碰）
+
+| 表 | 餐饮怎么用 |
+|---|---|
+| `ord_order` / `ord_sub_order` / `ord_item` | 钱、状态、行与金额的**唯一**真源 |
+| `ord_after_sale` | 退菜要退钱时走它 |
+| `prd_goods` / `prd_sku` / `prd_store_goods` / `prd_store_price` | 菜品本体与价格 |
+| `prd_store_stock` | 沽清的唯一真源（§2.5） |
+| `prd_sku_bundle` | 套餐 |
+| `mch_resource` / `mch_appointment_slot` | 桌台占用、包间预定 |
+| `mbr_asset_account` / `mbr_asset_txn` | 储值支付 |
+| `prn_printer` / `prn_template` / `prn_route` / `prn_job` | 打印 |
+| `sys_outbox` | 事件 |
+| `sys_idem_record` | 幂等 |
+
+## 8.4 一次「加菜」到底写了哪些表
+
+```
+1. 基座 ord_order / ord_sub_order / ord_item      ← CoreOrderApi.place（★基座写）
+2. 附属 fnb_order_ext                             ← 挂台账、第几轮、谁点的
+3. 附属 fnb_order_item_ext                        ← 部门、做法、制作状态 QUEUED
+4. 专属 fnb_check_cart                            ← 清空已下达的行
+5. 基座 prn_job                                   ← CorePrintApi（事务外）
+```
+1–4 同一个事务。**5 在事务外**，打印失败不回滚订单。
+
+# 九 · 对象
+
+## 9.1 领域对象（餐饮包内部）
 
 | 对象 | 说明 |
 |---|---|
@@ -451,7 +647,7 @@ CREATE TABLE fnb_payment (
 | `CheckoutBill` | 结账单：**从基座订单聚合出来的只读对象**，不落库 |
 | `PaymentAttempt` | 一次收款尝试 |
 
-## 7.2 状态机（两个，都是本包私有）
+## 9.2 状态机（两个，都是本包私有）
 
 ```java
 // 台账
@@ -471,7 +667,7 @@ SERVED → VOIDED                    // 已上菜也可能退（走 §5.3）
 写法照基座 `OrderStateMachine`：**唯一一处允许判断"能不能变"的地方**，
 不许 `if (status == ...)` 散落在 Service 里。
 
-## 7.3 一条写死的规矩：台账不存金额
+## 9.3 一条写死的规矩：台账不存金额
 
 `fnb_check` 上**没有** `total_amount`。应收永远是 `Σ 台账下订单的 payAmount`，现算。
 
@@ -481,7 +677,7 @@ SERVED → VOIDED                    // 已上菜也可能退（走 §5.3）
 
 ---
 
-# 八 · 服务（接口签名）
+# 十 · 服务（接口签名）
 
 ```java
 // ── 桌台与台账 ──
@@ -546,7 +742,7 @@ public interface MenuService {
 
 ---
 
-# 九 · 与基座的交互点（全清单）
+# 十一 · 与基座的交互点（全清单）
 
 **调基座（出）**
 
@@ -581,15 +777,9 @@ public interface MenuService {
 
 ---
 
-# 十 · 端点与权限码
+# 十二 · 权限码
 
-```
-/mp/x/food/**        买家：扫码进店、看菜单、加购、下单、看进度、结账
-/biz/x/food/**       商家：桌台图、开台、代客点单、KDS、划菜、退菜、结账、沽清
-/ops/x/food/**       运营：行业配置、模板与路由默认值
-```
-
-权限码段 `food:*`（按基座「读写分开」的规矩）：
+端点清单见 §6.4。权限码段 `food:*`（按基座「读写分开」的规矩）：
 
 | 码 | 用途 |
 |---|---|
@@ -605,11 +795,11 @@ public interface MenuService {
 
 ---
 
-# 十一 · 打印场景（内容在包内，通道在基座）
+# 十三 · 打印场景（内容在包内，通道在基座）
 
 | scene | 触发 | 路由 | 内容 |
 |---|---|---|---|
-| `KITCHEN` | 下达 / 叫起 | **按 `fnb_goods_dept` 分单**到各部门设备 | 桌号、轮次、菜名、做法、加料、数量 |
+| `KITCHEN` | 下达 / 叫起 | **按 `fnb_goods_ext` 分单**到各部门设备 | 桌号、轮次、菜名、做法、加料、数量 |
 | `KITCHEN_VOID` | 退菜 | 同上 | 撤单标记、原因、操作人 |
 | `URGE` | 催菜 | 同上 | 催菜条 |
 | `CHECKOUT` | 结台 | 前台小票机 | 逐行、优惠、实收、多笔收款明细 |
@@ -619,16 +809,16 @@ public interface MenuService {
 
 ---
 
-# 十二 · 本包明确不做
+# 十四 · 本包明确不做
 
 外卖配送与运力调度（基座履约）· 三方外卖平台对接（另立议题，属渠道接入）·
 进销存与成本卡（基座 `shop-inventory`）· 发票 · 会员与储值的账（基座）·
 优惠券与活动（基座）· 结算分账（基座）· 排队叫号（**基座候选能力，两个行业都要**）·
-套餐可选组换菜（§14）· 事后劈账（§5.5，需先改基座订单模型）。
+套餐可选组换菜（§16）· 事后劈账（§5.5，需先改基座订单模型）。
 
 ---
 
-# 十三 · 测试策略与闸门
+# 十五 · 测试策略与闸门
 
 **单元**
 - 台账状态机与制作状态机的全图（照基座 `OrderStateMachineTest` 的写法：图完整性 + 非法迁移必拒）；
@@ -653,7 +843,7 @@ public interface MenuService {
 
 ---
 
-# 十四 · 待确认（PRD 必须回答）
+# 十六 · 待确认（PRD 必须回答）
 
 1. **跑单**（吃完不付）：挂账给谁？系统只留痕还是要生成一笔应收？平台是否介入？
 2. **折扣与赠菜**：谁有权限？是否需要二次审批？赠菜是否计入成本报表？（基座 `ord_item.isGift` 已有，口径要定）
