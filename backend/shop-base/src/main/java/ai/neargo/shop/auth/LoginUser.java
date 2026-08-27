@@ -77,8 +77,10 @@ public record LoginUser(
      * 与「配了一个空值」要长得一样 —— 否则「不限定」有两种表示，
      * 而其中一种会被当成「限定到空字符串」，结果是这个人什么都看不到。
      *
-     * <p>数据域在**签发那一刻**固化进会话：改了数据域要重建会话才生效，
-     * 所以 {@code setStaffScope} 会踢掉在线会话。
+     * <p><b>数据域曾经在签发那一刻固化进会话</b>，所以 {@code setStaffScope} 要踢会话。
+     * 会话外置（{@code DbTokenStore}）之后身份改为**每次现读现算**，
+     * 改数据域下一个请求就生效 —— 踢会话仍然保留（它顺带断掉别处的缓存，且更保险），
+     * 但已经不是「新数据域生效」的必要条件。
      */
     public static LoginUser operator(String staffNo, String realName,
                                      java.util.List<String> roles, java.util.List<String> perms,
@@ -90,5 +92,22 @@ public record LoginUser(
     public static LoginUser consumer(String userNo, String nickname) {
         return new LoginUser(Realm.CONSUMER, userNo, nickname, List.of(), List.of(), "MAIN",
                 DataScopeSpec.of(ScopeDim.SELF, Set.of(userNo)));
+    }
+
+    /**
+     * 商家（B 端）。主体是 {@code mch_account.mch_account_no}，**不是消费者的 user_no**。
+     *
+     * <p>在此之前 B 端签发的是 {@link #consumer}，于是 {@code userNo} 这一个字段里
+     * C 端塞 {@code usr_account.user_no}、B 端塞商家账号号 —— 靠号段恰好不撞。
+     * 分池之后两者在结构上不可能相遇。
+     *
+     * <p><b>不带实体/门店</b>：那两样由每个请求的 {@code X-Store-No} 决定，
+     * 由 {@code BizIdentityResolver} 现算并校验归属。存进会话就有第二个真源，
+     * 而过期的那一份会让「切了门店但权限还是上一个店的」——
+     * 界面上看是数据串了，排查方向会完全跑偏。
+     */
+    public static LoginUser merchant(String mchAccountNo, String name) {
+        return new LoginUser(Realm.MERCHANT, mchAccountNo, name, List.of(), List.of(), "MAIN",
+                DataScopeSpec.of(ScopeDim.SELF, Set.of(mchAccountNo)));
     }
 }

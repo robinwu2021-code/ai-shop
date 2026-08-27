@@ -638,22 +638,10 @@ public class OpsServiceImpl implements OpsService {
      */
     private static ai.neargo.common.data.scope.DataScopeSpec scopeOf(SysOpsStaff staff,
                                                                      List<String> perms) {
-        if (perms.contains("*")) {
-            return ai.neargo.common.data.scope.DataScopeSpec.ALL;
-        }
-        List<ai.neargo.common.data.scope.DataScopeSpec.Rule> rules = new java.util.ArrayList<>();
-        addRule(rules, ScopeDim.MERCHANT, staff.getMerchantNo());
-        addRule(rules, ScopeDim.COMMUNITY, staff.getCommunityNo());
-        addRule(rules, ScopeDim.PICKUP, staff.getPickupNo());
-        return rules.isEmpty() ? ai.neargo.common.data.scope.DataScopeSpec.ALL
-                : new ai.neargo.common.data.scope.DataScopeSpec(false, rules);
-    }
-
-    private static void addRule(List<ai.neargo.common.data.scope.DataScopeSpec.Rule> rules,
-                                String dim, String value) {
-        if (value != null && !value.isBlank()) {
-            rules.add(new ai.neargo.common.data.scope.DataScopeSpec.Rule(dim, java.util.Set.of(value)));
-        }
+        // 逻辑已抽到 StaffScopes：会话外置之后，数据域每个请求由 OperatorIdentityLoader 现算，
+        // 两处必须共用同一份，否则「登录时算的域」与「请求时算的域」会悄悄分岔
+        return ai.neargo.shop.platform.StaffScopes.of(
+                staff.getMerchantNo(), staff.getCommunityNo(), staff.getPickupNo(), perms);
     }
 
     private boolean isFullAccess(List<String> roles) {

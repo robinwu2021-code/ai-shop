@@ -115,25 +115,17 @@ public class StaffIdentityResolver implements LiveIdentityResolver {
     }
 
     /**
-     * 数据域。**与 {@code OpsServiceImpl.scopeOf} 必须同一套算法** ——
-     * 登录时算一次、这里每请求算一次，两处不一致的表现是
-     * 「刚登录看得到、过一会儿看不到了」，而那种间歇性差异最难查。
+     * 数据域。**算法只有一份**，在 {@link ai.neargo.shop.platform.StaffScopes}。
+     *
+     * <p>这里原本抄了一份 {@code OpsServiceImpl.scopeOf}，并留了一句
+     * 「必须同一套算法」的注释 —— 而**注释拦不住分岔**：两处各自演进的表现是
+     * 「刚登录看得到、过一会儿看不到了」，那种间歇性差异最难查。
+     * 会话外置又要加第三个调用方（{@code OperatorIdentityLoader}），
+     * 三份靠注释同步就更没指望了，所以抽成了一份。
      */
     private static DataScopeSpec scopeOf(SysOpsStaff staff, List<String> perms) {
-        if (perms.contains("*")) {
-            return DataScopeSpec.ALL;
-        }
-        List<DataScopeSpec.Rule> rules = new ArrayList<>();
-        addRule(rules, ScopeDim.MERCHANT, staff.getMerchantNo());
-        addRule(rules, ScopeDim.COMMUNITY, staff.getCommunityNo());
-        addRule(rules, ScopeDim.PICKUP, staff.getPickupNo());
-        return rules.isEmpty() ? DataScopeSpec.ALL : new DataScopeSpec(false, rules);
-    }
-
-    private static void addRule(List<DataScopeSpec.Rule> rules, String dim, String value) {
-        if (value != null && !value.isBlank()) {
-            rules.add(new DataScopeSpec.Rule(dim, java.util.Set.of(value)));
-        }
+        return ai.neargo.shop.platform.StaffScopes.of(
+                staff.getMerchantNo(), staff.getCommunityNo(), staff.getPickupNo(), perms);
     }
 
     /** `["A","B"]` → List。与 OpsServiceImpl 的 readList 同一口径 */
