@@ -1,0 +1,36 @@
+# ai-shop 定时任务调度器 —— 独立进程，独立库。
+#
+# 与 ai-shop.service 的关系：**没有依赖，只有调用**。
+# 业务系统重启时 worker 拿到连接拒绝，记一次 UNREACHABLE 后重试；
+# worker 挂了业务系统毫无感觉。这正是把它拆出来的理由 ——
+# 之前 17 个任务的存活等同于 ai-shop 那个 85MB 单体的存活。
+[Unit]
+Description=ai-shop scheduled job worker
+After=network.target mariadb.service
+Requires=mariadb.service
+# 刻意不写 After=ai-shop.service：worker 起得比业务系统早是允许的，
+# 它会等到第一次轮询成功为止。写上反而会在业务系统起不来时把 worker 一起拖住
+
+[Service]
+User=deploy
+Group=deploy
+WorkingDirectory=/opt/ai-shop-job
+EnvironmentFile=/opt/ai-shop-job/job.env
+Environment=JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+# 堆给 256M：这个进程只做「按时发一个 HTTP 请求 + 写三行库」，
+# 任务体全在业务系统里跑。给大了是从 MariaDB 和页缓存那里抢
+ExecStart=/usr/lib/jvm/java-21-openjdk-amd64/bin/java -Xms128m -Xmx256m -jar /opt/ai-shop-job/shop-job.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=10
+# 关进程给 45 秒：JobWorkerConfig 里调度器 waitForTasksToComplete=true，
+# awaitTermination=30s。systemd 的默认 90s 够，这里写明是为了别人改的时候知道下限
+TimeoutStopSec=45
+StandardOutput=append:/var/log/ai-shop/job.log
+StandardError=append:/var/log/ai-shop/job.log
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/var/log/ai-shop
+
+[Install]
+WantedBy=multi-user.target

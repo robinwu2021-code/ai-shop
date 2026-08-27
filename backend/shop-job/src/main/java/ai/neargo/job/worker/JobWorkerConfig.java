@@ -45,8 +45,23 @@ public class JobWorkerConfig {
         return scheduler;
     }
 
+    /**
+     * <b>密钥空着就不启动。</b>
+     *
+     * <p>不拦的话，worker 会正常起来、正常排期、正常调用，然后每一轮拿回 401 记成
+     * FAILED —— 一个「全部任务都失败」的现场，看上去像业务系统炸了。
+     * 真因（漏配一个环境变量）离症状太远，而这段距离全靠人在半夜自己走完。
+     */
     @Bean
     HttpBusinessClient httpBusinessClient(JobWorkerProperties props) {
+        if (props.getToken() == null || props.getToken().isBlank()) {
+            throw new IllegalStateException(
+                    "shop.job.worker.token 没配（环境变量 JOB_TOKEN）——"
+                            + "它必须与业务系统的 shop.job.internal-token 一致");
+        }
+        if (props.getTargets().isEmpty()) {
+            throw new IllegalStateException("shop.job.worker.targets 是空的，没有任何业务系统可调");
+        }
         return new HttpBusinessClient(props);
     }
 
