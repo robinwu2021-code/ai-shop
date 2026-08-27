@@ -2205,7 +2205,7 @@ async function save(thenSubmit = false) {
         （.sh-muted 26rpx 灰）是同字号同颜色，于是「哪里是一节的开头」无从判断。
         分成四节各给一个 txt-title，层级才立得起来：标题 34rpx 深 > 标签 26rpx 深 > 说明 26rpx 灰。
       -->
-      <text class="txt-title sec__h">{{ $t("goods.secBasic") }}</text>
+      <text class="txt-title sh-mb-md sec__h">{{ $t("goods.secBasic") }}</text>
 
       <!--
         商品图。**主图就是第一张** —— 此前主图与轮播图是两个相邻的图片控件，
@@ -2316,7 +2316,7 @@ async function save(thenSubmit = false) {
       商家要在两处描述同一件事，而两处都不像是同一节。
     -->
     <view class="sh-card mt">
-      <text class="txt-title sec__h">{{ $t("goods.detail") }}</text>
+      <text class="txt-title sh-mb-md sec__h">{{ $t("goods.detail") }}</text>
 
       <!--
         图文详情：**纯文本长文**，不做富文本 —— 手机端做不出像样的富文本编辑，
@@ -2378,10 +2378,10 @@ async function save(thenSubmit = false) {
           </view>
           <view
             v-if="detailImages.length < DETAIL_IMAGE_LIMIT"
-            class="imgs__add"
+            class="dimgs__add"
             @tap="addDetailImages"
           >
-            <text v-if="uploading" class="imgs__plus">…</text>
+            <text v-if="uploading" class="dimgs__wait">…</text>
             <sh-icon v-else name="plus" :size="40" color="var(--sh-sub)"></sh-icon>
           </view>
         </view>
@@ -2391,7 +2391,7 @@ async function save(thenSubmit = false) {
     </view>
 
     <view class="sh-card mt">
-      <text class="txt-title sec__h">{{ $t("goods.secCategory") }}</text>
+      <text class="txt-title sh-mb-md sec__h">{{ $t("goods.secCategory") }}</text>
 
       <view class="field">
         <text class="field__label">{{ $t("goods.category") }} *</text>
@@ -2704,7 +2704,7 @@ async function save(thenSubmit = false) {
           <view
             v-for="o in allOptionsOf(gi)"
             :key="o.code || o.label"
-            class="sh-chip sh-chip--icon opt"
+            class="sh-chip sh-chip--icon"
             :class="{ 'sh-chip--primary': optionOn(gi, o) }"
             @tap="toggleOption(gi, o)"
           >
@@ -3494,9 +3494,9 @@ async function save(thenSubmit = false) {
  * 分区标题与卡内首个字段的距离。标题不是字段，不能沿用 .field 的间距 ——
  * 贴太近就退化成「又一个标签」，正是这轮要消掉的那种含混。
  */
+/* 只剩「块级」。下间距交给间距档的 md（28rpx）—— 此前是 24rpx，不在五档上 */
 .sec__h {
   display: block;
-  margin-bottom: 24rpx;
 }
 /*
  * 一行一个规格、一个数字。价格卡与库存卡共用这一套 ——
@@ -3621,6 +3621,24 @@ async function save(thenSubmit = false) {
 .dimgs__ops {
   display: flex;
   gap: 12rpx;
+}
+/* 「加一张」那一格。**它此前引用的是 `.imgs__add` / `.imgs__plus`，
+   而那一族在 sh-uploader 收编时（2c3e4a2e）连同主图网格一起删掉了** ——
+   于是这一格从那次起就没有任何样式：一个孤零零的加号浮在列表底下，
+   没有框、没有底色、点按区只有字那么大。没人报，因为它仍然点得动。
+   取值与 sh-uploader 的添加格一致（faint 底 + sm 圆角），尺寸跟这一列的图对齐。 */
+.dimgs__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96rpx;
+  height: 128rpx;
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+}
+.dimgs__wait {
+  font-size: 40rpx;
+  color: var(--sh-sub);
 }
 /* 字段切换：段落式小开关，不是按钮 —— 它切的是「看哪一列」，不是执行动作 */
 .segs {

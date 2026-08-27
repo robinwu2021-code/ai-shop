@@ -149,7 +149,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
 
 <template>
   <sh-scaffold title-key="storeCategories.title" :denied="!merchant.can('biz:store:admin')">
-    <view v-for="top in tree" :key="top.categoryNo" class="sh-card grp">
+    <view v-for="top in tree" :key="top.categoryNo" class="sh-card sh-mt-md">
       <text class="txt-title">{{ top.name }}</text>
       <view class="opts">
         <!--
@@ -238,10 +238,6 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
 .mt {
   display: block;
   margin-top: 8rpx;
-}
-
-.grp {
-  margin-top: 24rpx;
 }
 
 .opts {

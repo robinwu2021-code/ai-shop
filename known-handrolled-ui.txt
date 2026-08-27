@@ -57,8 +57,7 @@ store-pick segment
 verify segment
 
 
-# ── 分段标题（只有标题）（2 处）→ 用 .sh-h2 + 间距档
+# ── 分段标题（只有标题）（1 处）→ 用 .sh-h2 + 间距档
 # （未写明理由 —— 补上）
 goods-edit sechead
-store-categories sechead
 

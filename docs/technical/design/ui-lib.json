@@ -303,6 +303,166 @@
       }
     },
     {
+      "class": ".sh-mb-lg",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "margin-bottom": "40rpx"
+      },
+      "px": {
+        "margin-bottom": "20px"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-mb-md",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "margin-bottom": "28rpx"
+      },
+      "px": {
+        "margin-bottom": "14px"
+      },
+      "usage": {
+        "b-app": 3,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-mb-sm",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "margin-bottom": "16rpx"
+      },
+      "px": {
+        "margin-bottom": "8px"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-mb-xl",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "margin-bottom": "64rpx"
+      },
+      "px": {
+        "margin-bottom": "32px"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-mb-xs",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "margin-bottom": "8rpx"
+      },
+      "px": {
+        "margin-bottom": "4px"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-mt-lg",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "margin-top": "40rpx"
+      },
+      "px": {
+        "margin-top": "20px"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-mt-md",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "margin-top": "28rpx"
+      },
+      "px": {
+        "margin-top": "14px"
+      },
+      "usage": {
+        "b-app": 1,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-mt-sm",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "margin-top": "16rpx"
+      },
+      "px": {
+        "margin-top": "8px"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-mt-xl",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "margin-top": "64rpx"
+      },
+      "px": {
+        "margin-top": "32px"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-mt-xs",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "margin-top": "8rpx"
+      },
+      "px": {
+        "margin-top": "4px"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".sh-muted",
       "group": "字阶",
       "when": "次要文字。**字号走密度变量**，B 端自动降到 24rpx",
@@ -1839,9 +1999,9 @@
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 136,
-      "localSelectors": 80,
-      "localCssLines": 429,
+      "libClassHits": 139,
+      "localSelectors": 82,
+      "localCssLines": 441,
       "rolled": [
         {
           "id": "sysmodal",
@@ -2660,17 +2820,10 @@
         "sh-option",
         "sh-scaffold"
       ],
-      "libClassHits": 8,
-      "localSelectors": 15,
-      "localCssLines": 67,
+      "libClassHits": 9,
+      "localSelectors": 14,
+      "localCssLines": 64,
       "rolled": [
-        {
-          "id": "sechead",
-          "label": "分段标题（只有标题）",
-          "lib": ".sh-h2 + 间距档",
-          "rule": "class=\"sh-h2 (?:sec|grp)\\b",
-          "gap": false
-        },
         {
           "id": "listrow",
           "label": "列表行",
@@ -2910,14 +3063,13 @@
       "gap": false,
       "rule": "class=\"sh-h2 (?:sec|grp)\\b",
       "pages": [
-        "goods-edit",
-        "store-categories"
+        "goods-edit"
       ]
     }
   ],
   "counts": {
     "tokens": 10,
-    "blocks": 41,
+    "blocks": 51,
     "components": 29,
     "pages": 61,
     "gapKinds": 1
