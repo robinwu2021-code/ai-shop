@@ -8,12 +8,14 @@ import ai.neargo.shop.inventory.mapper.InventoryMappers.OpenCredentialMapper;
 import ai.neargo.shop.inventory.service.OpenApiCredentialService;
 import ai.neargo.shop.inventory.support.InvKeys;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
 /** 凭证校验实现。 */
+@ConditionalOnInventory
 @Service
 public class OpenApiCredentialServiceImpl implements OpenApiCredentialService {
 

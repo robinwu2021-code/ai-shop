@@ -7,6 +7,7 @@ import ai.neargo.shop.inventory.mapper.InventoryMappers.LedgerMapper;
 import ai.neargo.shop.inventory.service.InventorySnapshotService;
 import ai.neargo.shop.inventory.support.InvEnums;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 /** 日快照实现：重放当天的流水。 */
+@ConditionalOnInventory
 @Service
 public class InventorySnapshotServiceImpl implements InventorySnapshotService {
 
