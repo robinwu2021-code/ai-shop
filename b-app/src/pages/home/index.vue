@@ -570,7 +570,7 @@ onShow(load);
   flex: 1;
   text-align: center;
   padding: 14rpx 0;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
   background: var(--sh-bg);
   color: var(--sh-ink);
   font-size: 26rpx;
