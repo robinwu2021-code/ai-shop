@@ -272,7 +272,7 @@ onShow(load);
       审核中。**摆在发布区下面、常用上面**：它说的是「你刚发的那句还没上」，
       看不到它的话，商家读到的是「已发布」而店铺页上什么都没变。
     -->
-    <view v-if="pending" class="sh-card mt pend">
+    <view v-if="pending" class="sh-card sh-mt-md pend">
       <view class="pend__top">
         <text class="pend__tag">{{ $t("store.noticeAuditing") }}</text>
         <text class="pend__at">{{ pendingAt }}</text>
@@ -282,7 +282,7 @@ onShow(load);
     </view>
 
     <!-- 常用：店主的公告是在几句话之间轮换，不是每次都写新的。点一下换上，再点发布 -->
-    <view v-if="recent.length" class="sh-card mt">
+    <view v-if="recent.length" class="sh-card sh-mt-md">
       <text class="field__label">{{ $t("store.noticeRecent") }}</text>
       <view class="recent">
         <view v-for="(r, i) in recent" :key="i" class="recent__row">
@@ -295,9 +295,6 @@ onShow(load);
 </template>
 
 <style scoped>
-.mt {
-  margin-top: 24rpx;
-}
 /* 同时发到：与有效期同一档视觉，因为它们是同一件事的两个维度（多久、给谁） */
 .also {
   margin-top: 24rpx;

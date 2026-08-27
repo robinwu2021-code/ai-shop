@@ -153,7 +153,7 @@ onShow(load);
       <text v-if="readonly" class="sh-muted note">{{ $t("staff.builtinHint") }}</text>
     </view>
 
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("staff.rolePermTitle") }}</text>
       <!-- 管员工的权限为什么不在这里，页面上直说 —— 不解释的话下一个人会以为是漏了 -->
       <text class="sh-muted note">{{ $t("staff.rolePermHint") }}</text>
@@ -168,7 +168,7 @@ onShow(load);
       </view>
     </view>
 
-    <view v-if="!isNew && holders.length" class="sh-card mt">
+    <view v-if="!isNew && holders.length" class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("staff.roleHolders", { n: holders.length }) }}</text>
       <view
         v-for="h in holders"
@@ -197,9 +197,6 @@ onShow(load);
 </template>
 
 <style scoped>
-.mt {
-  margin-top: 16rpx;
-}
 .note {
   display: block;
   margin-top: 10rpx;

@@ -100,7 +100,7 @@ onShow(load);
       <text class="sh-muted hint">{{ $t("memberTags.systemHint") }}</text>
     </view>
 
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <view class="row">
         <text class="field__label">{{ $t("memberTags.mine") }}</text>
         <text class="sh-chip sh-chip--primary" @tap="create">{{ $t("memberTags.new") }}</text>
@@ -131,9 +131,6 @@ onShow(load);
 </template>
 
 <style scoped>
-.mt {
-  margin-top: 16rpx;
-}
 .row {
   display: flex;
   align-items: center;

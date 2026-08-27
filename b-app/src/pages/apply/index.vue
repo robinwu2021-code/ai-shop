@@ -302,13 +302,13 @@ async function submit() {
   <sh-scaffold title-key="apply.title">
     <view class="head">
       <text class="txt-display">{{ $t("apply.title") }}</text>
-      <text class="sh-muted mt">{{ $t("apply.hint") }}</text>
+      <text class="sh-muted sh-mt-xs blk">{{ $t("apply.hint") }}</text>
     </view>
 
     <!-- 审核中/驳回：不重复渲染整张表，先把状态说清楚 -->
     <view v-if="status === 'APPLYING'" class="sh-card status">
       <text class="txt-title">{{ $t("apply.statusAPPLYING") }}</text>
-      <text class="sh-muted mt">{{ $t("apply.statusAPPLYINGHint") }}</text>
+      <text class="sh-muted sh-mt-xs blk">{{ $t("apply.statusAPPLYINGHint") }}</text>
     </view>
 
     <!-- 驳回：**必须说清楚为什么** —— 只显示「已驳回」等于让人猜，
@@ -316,7 +316,7 @@ async function submit() {
     <view v-if="status === 'REJECTED'" class="sh-card rejected">
       <text class="txt-title">{{ $t("apply.statusREJECTED") }}</text>
       <text class="reason">{{ merchant.profile?.rejectReason || $t("apply.rejectFallback") }}</text>
-      <text class="sh-muted mt">{{ $t("apply.rejectedHint") }}</text>
+      <text class="sh-muted sh-mt-xs blk">{{ $t("apply.rejectedHint") }}</text>
     </view>
 
     <view class="sh-card">
@@ -401,7 +401,7 @@ async function submit() {
       不是展示问题 —— 选大了会卖到送不到的地方（下单后提不了货），
       选小了整片小区都搜不到这家店。所以给后果说明，不只给三个单选。
     -->
-    <view class="sh-card mt-card">
+    <view class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("store.scope") }}</text>
       <text class="hint">{{ $t("apply.scopeHint") }}</text>
 
@@ -448,7 +448,7 @@ async function submit() {
     </view>
 
     <!-- 自提点：小店既是供给方也是取货点（ADR-005 type=STORE） -->
-    <view class="sh-card mt-card">
+    <view class="sh-card sh-mt-sm">
       <view class="switch-row" @tap="form.asPickupPoint = !form.asPickupPoint">
         <view class="switch-row__text">
           <text class="txt-title">{{ $t("apply.asPickup") }}</text>
@@ -458,7 +458,7 @@ async function submit() {
       </view>
     </view>
 
-    <view class="sh-card mt-card">
+    <view class="sh-card sh-mt-sm">
       <text class="field__label">{{ $t("apply.settle") }}</text>
       <text class="txt-title">{{ $t(`apply.${settleType}`) }}</text>
       <text class="hint">{{ $t("apply.settleHint") }}</text>
@@ -549,12 +549,8 @@ async function submit() {
 .head {
   padding: 32rpx 8rpx 28rpx;
 }
-.mt {
+.blk {
   display: block;
-  margin-top: 12rpx;
-}
-.mt-card {
-  margin-top: 16rpx;
 }
 .status {
   margin-bottom: 16rpx;

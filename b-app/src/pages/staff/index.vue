@@ -157,7 +157,7 @@ onShow(load);
       <view v-if="!adding" class="sh-btn sh-btn--soft add" @tap="adding = true">
         {{ $t("staff.add") }}
       </view>
-      <view v-else class="sh-card mt-card">
+      <view v-else class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("staff.add") }}</text>
         <text class="hint">{{ $t("staff.addHint") }}</text>
         <view class="field">
@@ -169,7 +169,7 @@ onShow(load);
           <input v-model="form.name" class="field__input" :placeholder="$t('staff.namePh')" />
         </view>
         <view class="sh-btn save" @tap="add">{{ $t("common.save") }}</view>
-        <view class="sh-btn sh-btn--soft mt-s" @tap="adding = false">{{ $t("common.cancel") }}</view>
+        <view class="sh-btn sh-btn--soft sh-mt-sm" @tap="adding = false">{{ $t("common.cancel") }}</view>
       </view>
     </template>
 
@@ -272,12 +272,6 @@ onShow(load);
 }
 .add {
   margin-top: 24rpx;
-}
-.mt-card {
-  margin-top: 16rpx;
-}
-.mt-s {
-  margin-top: 16rpx;
 }
 .hint {
   display: block;

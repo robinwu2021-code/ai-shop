@@ -72,7 +72,7 @@ onShow(() => {
         </text>
       </view>
 
-      <view class="sh-card mt">
+      <view class="sh-card sh-mt-sm">
         <view class="line" @tap="toggle">
           <text class="txt-title">{{ $t("points.switch") }}</text>
           <sh-switch :model-value="account.enabled" :disabled="!!lockedReason"></sh-switch>
@@ -91,7 +91,7 @@ onShow(() => {
         依据是实测：线上 199 件商品里，用商品级配置配了积分的是 0 件 ——
         一个 0% 填充率的配置项不是「灵活」，是「没人用」。
       -->
-      <view class="sh-card mt">
+      <view class="sh-card sh-mt-sm">
         <view class="line">
           <text class="txt-title">{{ $t("points.rule") }}</text>
           <text class="sh-chip">{{ $t("points.rulePlatform") }}</text>
@@ -99,7 +99,7 @@ onShow(() => {
         <text class="sh-muted sub">{{ $t("points.ruleHint") }}</text>
       </view>
 
-      <view class="sh-btn sh-btn--muted mt" @tap="openRecords">
+      <view class="sh-btn sh-btn--muted sh-mt-sm" @tap="openRecords">
         {{ $t("points.records") }}
       </view>
     </template>
@@ -107,7 +107,6 @@ onShow(() => {
 </template>
 
 <style scoped>
-.mt { margin-top: 16rpx; }
 .amt {
   display: block;
   margin-top: 8rpx;

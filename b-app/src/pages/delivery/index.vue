@@ -114,7 +114,7 @@ onShow(load);
       （他们有 `biz:ship`），但读不到规则 —— 画一张空表格让他填、点保存报 70006，
       比不画它更糟。
     -->
-    <view v-if="canRule && rule" class="sh-card mt">
+    <view v-if="canRule && rule" class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("delivery.rule") }}</text>
 
       <view class="field">
@@ -177,9 +177,6 @@ onShow(load);
 </template>
 
 <style scoped>
-.mt {
-  margin-top: 16rpx;
-}
 .hint {
   display: block;
   margin-top: 12rpx;

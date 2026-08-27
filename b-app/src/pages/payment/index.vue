@@ -124,7 +124,7 @@ async function refresh() {
   <sh-scaffold title-key="payment.title" :denied="!merchant.can('biz:finance')">
     <view class="head">
       <text class="txt-display">{{ $t("payment.title") }}</text>
-      <text class="sh-muted mt">{{ $t("payment.hint") }}</text>
+      <text class="sh-muted sh-mt-xs blk">{{ $t("payment.hint") }}</text>
     </view>
 
     <view v-for="p in list" :key="p.payChannel" class="sh-card ch">
@@ -154,7 +154,7 @@ async function refresh() {
     </view>
 
     <!-- 已经能收钱就不再显示表单：重复进件会拿到新的商户号，历史分账仍指向旧号 -->
-    <view v-if="current && !done" class="sh-card mt-card">
+    <view v-if="current && !done" class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("payment.formTitle") }}</text>
       <text class="hint">{{ $t("payment.formHint") }}</text>
 
@@ -210,12 +210,8 @@ async function refresh() {
   padding: 8rpx 0 16rpx;
 }
 /* 同 stores：`<text>` 默认 inline，不给 block 标题与说明会挤在同一行 */
-.mt {
+.blk {
   display: block;
-  margin-top: 12rpx;
-}
-.mt-card {
-  margin-top: 16rpx;
 }
 .ch {
   margin-top: 14rpx;

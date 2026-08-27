@@ -366,7 +366,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
       {{ $t("stores.add") }}
     </view>
 
-    <view v-else class="sh-card mt-card">
+    <view v-else class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("stores.add") }}</text>
       <!--
         额度说明放在表单里而不是报错后才说：让人白填一遍再被拒是没道理的。
@@ -458,9 +458,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 /* `<text>` 默认 inline —— 不给 block，标题与这行说明会**挤在同一行**
    （「门店管理这里管有几家店…」），而 margin-top 对 inline 元素也不起作用。
    apply / login 两页早就是这么写的，payment / stores 漏了。 */
-.mt-card {
-  margin-top: 16rpx;
-}
 .st {
   margin-top: 14rpx;
 }

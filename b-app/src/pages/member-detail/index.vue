@@ -49,14 +49,14 @@ onLoad(async (q) => {
             {{ $t(`members.level.${data.member.level}`) }}
           </text>
         </view>
-        <text class="sh-muted mt">
+        <text class="sh-muted sh-mt-xs blk">
           {{ $t("memberDetail.joined", { s: monthDay(data.member.joinedAt) }) }}
           · {{ $t(`members.source.${data.member.source}`) }}
         </text>
         <text v-if="data.member.firstStoreNo" class="sh-muted">
           {{ $t("memberDetail.firstStore", { s: storeName(data.member.firstStoreNo) }) }}
         </text>
-        <sh-kv between :label="String($t('memberDetail.lifetime'))" class="kv mt">
+        <sh-kv between :label="String($t('memberDetail.lifetime'))" class="kv sh-mt-xs blk">
           <text class="sh-num val">
             {{ $t("members.stat", {
               n: data.member.orderCount, m: money(data.member.totalSpentMinor) }) }}
@@ -68,7 +68,7 @@ onLoad(async (q) => {
       </view>
 
       <!-- 各店往来：多店商家问的是「南门店有多少熟客」，单店没有这个问题 -->
-      <view v-if="showStores" class="sh-card mt-card">
+      <view v-if="showStores" class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("memberDetail.stores") }}</text>
         <view v-for="s in data.stores" :key="s.storeNo" class="kv line">
           <text>
@@ -82,7 +82,7 @@ onLoad(async (q) => {
       </view>
 
       <!-- 来源轨迹：谁发的链接、哪个员工录的，都要写出来 -->
-      <view class="sh-card mt-card">
+      <view class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("memberDetail.sources") }}</text>
         <view v-for="(s, i) in data.sources" :key="i" class="kv line">
           <text>
@@ -115,12 +115,8 @@ onLoad(async (q) => {
   font-size: 34rpx;
   font-weight: 600;
 }
-.mt {
+.blk {
   display: block;
-  margin-top: 8rpx;
-}
-.mt-card {
-  margin-top: 16rpx;
 }
 /* 只留本页版面：排法（两端对齐）归 sh-kv */
 .kv {

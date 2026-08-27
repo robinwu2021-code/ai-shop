@@ -218,7 +218,7 @@ onLoad((q) => {
           <text class="sh-muted opt__d">{{ $t(`activityEdit.goalHint.${g.key}`) }}</text>
         </sh-option>
       </view>
-      <view class="row mt">
+      <view class="row sh-mt-sm">
         <text class="row__label">{{ $t("activityEdit.name") }}</text>
         <input v-model="form.name" class="field__input row__input"
                :placeholder="$t('activityEdit.namePh')" />
@@ -239,7 +239,7 @@ onLoad((q) => {
       </view>
 
       <template v-if="form.benefitType === 'CUT'">
-        <view class="row mt">
+        <view class="row sh-mt-sm">
           <text class="row__label">{{ $t("activityEdit.threshold") }}</text>
           <input v-model="form.threshold" class="field__input row__input" type="digit" />
         </view>
@@ -250,7 +250,7 @@ onLoad((q) => {
       </template>
 
       <template v-if="form.benefitType === 'PRICE'">
-        <view class="row mt">
+        <view class="row sh-mt-sm">
           <text class="row__label">{{ $t("activityEdit.price") }}</text>
           <input v-model="form.amount" class="field__input row__input" type="digit" />
         </view>
@@ -258,7 +258,7 @@ onLoad((q) => {
       </template>
 
       <template v-if="form.benefitType === 'GIFT'">
-        <view class="row mt">
+        <view class="row sh-mt-sm">
           <text class="row__label">{{ $t("activityEdit.buyN") }}</text>
           <input v-model="form.buyN" class="field__input row__input" type="number" />
         </view>
@@ -290,13 +290,13 @@ onLoad((q) => {
         >{{ $t(`activityEdit.schedule.${s}`) }}</text>
       </view>
 
-      <view v-if="form.scheduleType === 'ONE_OFF'" class="row mt">
+      <view v-if="form.scheduleType === 'ONE_OFF'" class="row sh-mt-sm">
         <text class="row__label">{{ $t("activityEdit.days") }}</text>
         <input v-model="form.days" class="field__input row__input" type="number" />
       </view>
 
       <template v-if="form.scheduleType === 'RECURRING'">
-        <view class="week mt">
+        <view class="week sh-mt-sm">
           <text
             v-for="d in [1, 2, 3, 4, 5, 6, 7]"
             :key="d"
@@ -313,7 +313,7 @@ onLoad((q) => {
         <text class="sh-muted hint">{{ $t("activityEdit.recurringHint") }}</text>
       </template>
 
-      <view class="row mt">
+      <view class="row sh-mt-sm">
         <text class="row__label">{{ $t("activityEdit.quota") }}</text>
         <input v-model="form.quota" class="field__input row__input" type="number" />
       </view>
@@ -407,9 +407,6 @@ onLoad((q) => {
 }
 .row__input {
   flex: 1;
-}
-.mt {
-  margin-top: 16rpx;
 }
 .hint {
   display: block;

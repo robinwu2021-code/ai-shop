@@ -240,7 +240,7 @@ onShow(() => {
 
 
     <!-- 获客工具：店铺码 + 分享文案合一卡。一期主获客路径的商家侧（ADR-004 决策 3） -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("store.tools") }}</text>
 
       <view class="qr">
@@ -297,9 +297,6 @@ onShow(() => {
 </template>
 
 <style scoped>
-.mt {
-  margin-top: 16rpx;
-}
 .field + .field {
   margin-top: 20rpx;
 }

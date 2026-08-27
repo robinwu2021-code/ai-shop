@@ -61,7 +61,7 @@ onShow(() => {
         在途这一档是本批新拆出来的。**此前它混在「已到账」里** ——
         而底下是桩实现，那些钱一分都没动过，商家却以为收到了。
       -->
-      <view v-if="sum.inFlightMinor > 0" class="sh-card mt hold">
+      <view v-if="sum.inFlightMinor > 0" class="sh-card sh-mt-sm hold">
         <view class="line">
           <text class="sh-muted">{{ $t("income.inFlight") }}</text>
           <text class="sh-num amt-sm">{{ money(sum.inFlightMinor) }}</text>
@@ -75,7 +75,7 @@ onShow(() => {
         </text>
       </view>
 
-      <view class="sh-card mt">
+      <view class="sh-card sh-mt-sm">
         <view class="line">
           <text class="sh-muted">{{ $t("income.pending") }}</text>
           <text class="sh-num amt-sm">{{ money(sum.pendingMinor) }}</text>
@@ -87,7 +87,7 @@ onShow(() => {
         当面收款：**这部分他早就拿到了**。
         不显示的话，他会以为平台还欠着这笔；混进「待结算」更糟。
       -->
-      <view v-if="sum.offlineMinor > 0" class="sh-card mt">
+      <view v-if="sum.offlineMinor > 0" class="sh-card sh-mt-sm">
         <view class="line">
           <text class="sh-muted">{{ $t("income.offline") }}</text>
           <text class="sh-num amt-sm">{{ money(sum.offlineMinor) }}</text>
@@ -99,7 +99,6 @@ onShow(() => {
 </template>
 
 <style scoped>
-.mt { margin-top: 16rpx; }
 .scope {
   margin-bottom: 12rpx;
   font-size: 26rpx;

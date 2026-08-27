@@ -267,7 +267,7 @@ onShow(load);
     <!-- 未入驻：整屏只讲一件事 —— 去开张 -->
     <view v-if="!merchant.canOperate" class="empty">
       <text class="txt-display">{{ $t("home.notMerchant") }}</text>
-      <text class="sh-muted mt">{{ $t("home.notMerchantHint") }}</text>
+      <text class="sh-muted sh-mt-sm blk">{{ $t("home.notMerchantHint") }}</text>
       <view class="sh-btn go" @tap="goQuickStart">
         {{ opening ? $t("common.loading") : $t("home.quickStart") }}
       </view>
@@ -423,9 +423,8 @@ onShow(load);
 </template>
 
 <style scoped>
-.mt {
+.blk {
   display: block;
-  margin-top: 16rpx;
 }
 .go {
   /* 48rpx 是一整行字的高度，作为「主按钮与上方内容」的距离过头了 */

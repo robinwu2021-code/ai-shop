@@ -219,7 +219,7 @@ onShow(load);
     </view>
 
     <!-- 新建表单 -->
-    <view v-if="editing" class="sh-card mt">
+    <view v-if="editing" class="sh-card sh-mt-sm">
       <view class="field">
         <text class="field__label">{{ $t("marketing.type") }}</text>
         <view class="chips">
@@ -366,9 +366,6 @@ onShow(load);
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-.mt {
-  margin-top: 16rpx;
 }
 .row {
   display: flex;

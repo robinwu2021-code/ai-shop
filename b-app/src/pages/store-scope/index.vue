@@ -430,7 +430,7 @@ onShow(() => {
     </view>
 
     <!-- ② 送货方式（门店级，即点即存） -->
-    <view v-if="fulfillment" class="sh-card mt">
+    <view v-if="fulfillment" class="sh-card sh-mt-sm">
       <view class="head">
         <text class="txt-title">{{ $t("store.fulfillCard") }}</text>
       </view>
@@ -543,9 +543,6 @@ onShow(() => {
 </template>
 
 <style scoped>
-.mt {
-  margin-top: 16rpx;
-}
 .head {
   display: flex;
   align-items: baseline;

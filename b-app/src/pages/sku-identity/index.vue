@@ -120,7 +120,7 @@ function arrow(from?: string | null, to?: string | null): string {
     </view>
 
     <!-- 第一步：把现状拿下来。**先导出再改**是唯一不会认错行的路 -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <sh-section :title="String($t('skuIdentity.step1'))">
         <view class="sh-btn sh-btn--soft act" :class="{ 'sh-btn--muted': busy }" @tap="doExport">
           {{ $t("skuIdentity.export") }}
@@ -130,7 +130,7 @@ function arrow(from?: string | null, to?: string | null): string {
     </view>
 
     <!-- 第二步：把改好的表交回来 -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <sh-section :title="String($t('skuIdentity.step2'))">
         <view v-if="canPickFile" class="sh-btn sh-btn--soft act" @tap="choose">
           {{ $t("skuIdentity.choose") }}
@@ -154,7 +154,7 @@ function arrow(from?: string | null, to?: string | null): string {
     </view>
 
     <!-- 第三步：核对。**这一屏才是这个功能的主体** -->
-    <view v-if="report" class="sh-card mt">
+    <view v-if="report" class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("skuIdentity.step3") }}</text>
       <!--
         四个数各回答一件事。少了「没变化」那一格，商家会把「改 3 行」
@@ -213,9 +213,6 @@ function arrow(from?: string | null, to?: string | null): string {
 </template>
 
 <style scoped>
-.mt {
-  margin-top: 20rpx;
-}
 
 
 .act {

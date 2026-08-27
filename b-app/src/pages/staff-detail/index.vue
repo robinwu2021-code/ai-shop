@@ -98,7 +98,7 @@ onShow(load);
       <!-- ② 门店 × 角色：矩阵搬到这里，一屏放得下就不折叠。
            角色本身能做什么点进角色详情看 —— 在这里再铺一遍并集，
            两处会各自漂移，而漂移的那份没人会发现。 -->
-      <view v-if="!staff.isOwner" class="sh-card mt">
+      <view v-if="!staff.isOwner" class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("staff.grants") }}</text>
         <text class="sh-muted note">{{ $t("staff.grantHint") }}</text>
         <view v-for="st in stores" :key="st.storeNo" class="store">
@@ -117,7 +117,7 @@ onShow(load);
       <text v-else class="sh-muted note owner-note">{{ $t("staff.ownerNote") }}</text>
 
       <!-- ③ 只看这个人的变更记录 -->
-      <view class="sh-card mt">
+      <view class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("staff.logs") }}</text>
         <text v-if="!logs.length" class="sh-muted note">{{ $t("staff.logsEmpty") }}</text>
         <view v-for="(l, i) in logs" :key="i" class="log">
@@ -128,7 +128,7 @@ onShow(load);
       </view>
 
       <!-- ④ 危险动作放最后，且把「停用」与「收回授权」分开说 -->
-      <view v-if="!staff.isOwner" class="sh-card mt danger">
+      <view v-if="!staff.isOwner" class="sh-card sh-mt-sm danger">
         <text class="txt-title">{{ $t("staff.dangerTitle") }}</text>
         <text class="sh-muted note">
           {{ staff.status === "ACTIVE" ? $t("staff.disableHint") : $t("staff.enableHint") }}
@@ -137,7 +137,7 @@ onShow(load);
              危险态用描边+墨字（见 base.css 的 .sh-btn--danger：品牌主色是红，
              危险色也是红，靠形态而不是颜色区分） -->
         <view
-          class="sh-btn mt-s"
+          class="sh-btn sh-mt-sm"
           :class="staff.status === 'ACTIVE' ? 'sh-btn--danger' : 'sh-btn--soft'"
           @tap="toggleStatus"
         >
@@ -167,12 +167,6 @@ onShow(load);
 }
 .owner-note {
   margin: 24rpx 8rpx;
-}
-.mt {
-  margin-top: 16rpx;
-}
-.mt-s {
-  margin-top: 20rpx;
 }
 .chips {
   display: flex;

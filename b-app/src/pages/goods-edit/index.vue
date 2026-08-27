@@ -2311,7 +2311,7 @@ async function save(thenSubmit = false) {
       此前它们跟在「商品信息」里名称、副标题后面，中间还隔着标准品入口 ——
       商家要在两处描述同一件事，而两处都不像是同一节。
     -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <text class="txt-title sh-mb-md sec__h">{{ $t("goods.detail") }}</text>
 
       <!--
@@ -2386,7 +2386,7 @@ async function save(thenSubmit = false) {
 
     </view>
 
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <text class="txt-title sh-mb-md sec__h">{{ $t("goods.secCategory") }}</text>
 
       <view class="field">
@@ -2596,7 +2596,7 @@ async function save(thenSubmit = false) {
 
     <!-- 类目选择弹层：一次只显示一层，选到叶子自动收起 -->
     <!-- 规格组 -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <!--
           **「套用模板」这个入口没了。** 选完类目已经把本店确认过的那一组
           （名字 + 档位 + code）直接预填进来了，而它展开后列出的第一条
@@ -2728,7 +2728,7 @@ async function save(thenSubmit = false) {
       于是平台没配参数的类目成了死结：他想加第一个参数，可那个按钮所在的卡
       因为没有参数而不显示。空卡的代价是一小段留白，死结的代价是这个功能不存在。
     -->
-    <view v-if="categoryNo" class="sh-card mt">
+    <view v-if="categoryNo" class="sh-card sh-mt-sm">
       <!--
         **加参数在标题行右边**，与「商品规格和参数」页类目卡上的那个加按钮
         同一个位置、同一个样子 —— 同一件事在两页别长两张脸。
@@ -2834,7 +2834,7 @@ async function save(thenSubmit = false) {
     </sh-sheet>
 
     <!-- SKU 矩阵 -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <sh-section :title="String($t('goods.skuMatrix'))">
         <!--
           **字段切换，不是展开。**
@@ -3042,7 +3042,7 @@ async function save(thenSubmit = false) {
       而它们的改动节奏也完全不同 —— 价格是建品时定一次，库存是每天都在动。
       分开之后，「改库存」这件高频事不必先滚过一整片价格字段。
     -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <sh-section :title="String($t('goods.secStock'))"></sh-section>
       <text class="sh-muted hint">{{ $t("goods.stockHint") }}</text>
 
@@ -3094,7 +3094,7 @@ async function save(thenSubmit = false) {
       <p>整段默认不出现 —— 社区店大半的货没有条码。用过一次的人记在本机，
       这件货身上有值时也自动展开（见 externalOn）。
     -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <sh-section :title="String($t('goods.secCode'))">
         <text
           v-if="externalOn"
@@ -3429,9 +3429,6 @@ async function save(thenSubmit = false) {
   text-align: right;
 }
 
-.mt {
-  margin-top: 16rpx;
-}
 .langs {
   display: flex;
   gap: 8rpx;

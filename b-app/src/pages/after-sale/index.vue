@@ -201,7 +201,7 @@ onShow(load);
 
       <view v-else-if="asStatus(r) === 'ARBITRATING'" class="waiting">
         <text class="sh-chip sh-chip--warning">{{ $t("afterSale.disputed") }}</text>
-        <text class="sh-muted mt">{{ $t("afterSale.disputedHint") }}</text>
+        <text class="sh-muted sh-mt-xs blk">{{ $t("afterSale.disputedHint") }}</text>
       </view>
     </view>
 
@@ -241,9 +241,8 @@ onShow(load);
 .express > text:last-child {
   word-break: break-all;
 }
-.mt {
+.blk {
   display: block;
-  margin-top: 10rpx;
 }
 
 .item {

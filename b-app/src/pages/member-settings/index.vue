@@ -78,7 +78,7 @@ onShow(load);
       <text class="tip">{{ $t("memberSettings.reversible") }}</text>
     </view>
 
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <view class="row">
         <view class="row__main">
           <text class="opt__t">{{ $t("memberSettings.autoJoin") }}</text>
@@ -97,9 +97,6 @@ onShow(load);
 </template>
 
 <style scoped>
-.mt {
-  margin-top: 16rpx;
-}
 .opt__t {
   display: block;
   font-size: 28rpx;

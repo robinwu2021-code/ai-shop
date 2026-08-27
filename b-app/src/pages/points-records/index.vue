@@ -38,7 +38,7 @@ onShow(() => {
 
     <sh-empty v-if="!rows.length" :text="$t('points.recordsEmpty')" />
 
-    <view v-for="r in rows" :key="r.settleNo" class="sh-card mt" :class="{ 'is-none': !r.points }">
+    <view v-for="r in rows" :key="r.settleNo" class="sh-card sh-mt-xs" :class="{ 'is-none': !r.points }">
       <view class="line">
         <text class="sh-num sub">{{ r.subOrderNo }}</text>
         <!--
@@ -60,7 +60,6 @@ onShow(() => {
 </template>
 
 <style scoped>
-.mt { margin-top: 12rpx; }
 .line {
   display: flex;
   align-items: baseline;

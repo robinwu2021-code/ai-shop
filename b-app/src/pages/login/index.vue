@@ -261,9 +261,8 @@ async function doLogin(method: LoginMethod) {
 .head {
   padding: 32rpx 8rpx;
 }
-.mt {
+.blk {
   display: block;
-  margin-top: 12rpx;
   line-height: 1.6;
 }
 .row {

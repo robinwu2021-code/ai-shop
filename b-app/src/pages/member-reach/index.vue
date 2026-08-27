@@ -126,7 +126,7 @@ onShow(() => {
     </view>
 
     <!-- ② 发给谁 -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <view class="row" @tap="pickSegment">
         <text class="row__label">{{ $t("reach.toWhom") }}</text>
         <text class="row__v">{{ segmentName }} ▾</text>
@@ -134,7 +134,7 @@ onShow(() => {
     </view>
 
     <!-- ③ 试算：三个数字在写内容之前就摆出来 -->
-    <view v-if="plan" class="sh-card mt">
+    <view v-if="plan" class="sh-card sh-mt-sm">
       <sh-stat
         :items="[
           { value: plan.matched, label: String($t('reach.matched')) },
@@ -152,7 +152,7 @@ onShow(() => {
     </view>
 
     <!-- ④ 内容 -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <text class="field__label">{{ $t("reach.content") }}</text>
       <input v-model="title" class="field__input mt2" :placeholder="$t('reach.titlePh')" />
       <textarea v-model="body" class="field__input area" :placeholder="$t('reach.bodyPh')" />
@@ -165,7 +165,7 @@ onShow(() => {
     </button>
 
     <!-- 结果：与发券结果页同一形状，商家看两处学一次 -->
-    <view v-if="result" class="sh-card mt done">
+    <view v-if="result" class="sh-card sh-mt-sm done">
       <text class="done__t">{{ $t("reach.doneTitle", { n: result.sent }) }}</text>
       <view v-if="result.skips.length" class="reasons">
         <text v-for="s in result.skips" :key="s.reason" class="reason">
@@ -178,9 +178,6 @@ onShow(() => {
 </template>
 
 <style scoped>
-.mt {
-  margin-top: 16rpx;
-}
 .mt2 {
   margin-top: 12rpx;
 }

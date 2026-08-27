@@ -150,7 +150,7 @@ onLoad((q) => {
         </view>
       </view>
 
-      <view class="sh-card mt">
+      <view class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("order.items") }}</text>
         <view v-for="it in order.items" :key="it.skuNo" class="item">
           <sh-cover class="item__cover" :src="it.cover"></sh-cover>
@@ -172,32 +172,32 @@ onLoad((q) => {
         线下收款。**入口是一个按钮，动作在弹窗里** —— 收钱这件事不该一点就成，
         中间要有一屏让老板核对金额。
       -->
-      <view v-if="canConfirmOffline" class="sh-card mt">
+      <view v-if="canConfirmOffline" class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("order.offlinePay") }}</text>
         <text class="sh-muted due__hint">{{ $t("order.offlineNotCustodied") }}</text>
-        <view class="sh-btn mt-s" @tap="offlineAsking = true">{{ $t("order.offlinePay") }}</view>
+        <view class="sh-btn sh-mt-sm" @tap="offlineAsking = true">{{ $t("order.offlinePay") }}</view>
       </view>
 
       <!-- 快递发货：运单号回填（B-11.4.3） -->
-      <view v-if="canShip" class="sh-card mt">
+      <view v-if="canShip" class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("order.ship") }}</text>
         <input
           v-model="expressNo"
-          class="field__input mt-s"
+          class="field__input sh-mt-sm"
           :placeholder="$t('order.expressNo')"
         />
-        <view class="sh-btn mt-s" :class="{ 'sh-btn--muted': !expressNo }" @tap="ship">
+        <view class="sh-btn sh-mt-sm" :class="{ 'sh-btn--muted': !expressNo }" @tap="ship">
           {{ $t("order.ship") }}
         </view>
       </view>
 
       <!-- 商家自送：老板点一下就是送到了，不做骑手轨迹（ADR-005 §5） -->
-      <view v-if="canDeliver" class="sh-card mt">
+      <view v-if="canDeliver" class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("order.delivered") }}</text>
-        <view class="sh-btn mt-s" @tap="delivered">{{ $t("order.delivered") }}</view>
+        <view class="sh-btn sh-mt-sm" @tap="delivered">{{ $t("order.delivered") }}</view>
       </view>
 
-      <view v-if="order.expressNo" class="sh-card mt">
+      <view v-if="order.expressNo" class="sh-card sh-mt-sm">
         <view class="line">
           <text class="sh-muted">{{ $t("order.expressNo") }}</text>
           <text class="sh-num">{{ order.expressNo }}</text>
@@ -233,12 +233,6 @@ onLoad((q) => {
 </template>
 
 <style scoped>
-.mt {
-  margin-top: 16rpx;
-}
-.mt-s {
-  margin-top: 20rpx;
-}
 .line {
   display: flex;
   align-items: center;

@@ -151,7 +151,7 @@ onLoad((q) => {
     </view>
 
     <!-- ① 权益 -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <text class="field__label">{{ $t("couponEdit.benefit") }}</text>
       <view class="chips">
         <text
@@ -181,7 +181,7 @@ onLoad((q) => {
     </view>
 
     <!-- ② 门槛 -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <view class="row">
         <text class="row__label">{{ $t("couponEdit.minAmount") }}</text>
         <input v-model="form.minAmount" class="field__input row__input" type="digit"
@@ -190,7 +190,7 @@ onLoad((q) => {
     </view>
 
     <!-- ③ 核销方式（范围一期只做全店，见 contract 里的说明） -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <text class="field__label">{{ $t("couponEdit.redeem") }}</text>
       <view class="chips">
         <text
@@ -212,7 +212,7 @@ onLoad((q) => {
     </view>
 
     <!-- ④ 有效期 -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <view class="row">
         <text class="row__label">{{ $t("couponEdit.validDays") }}</text>
         <input v-model="form.validDays" class="field__input row__input" type="number" />
@@ -221,7 +221,7 @@ onLoad((q) => {
     </view>
 
     <!-- ⑤ 发行量与预算 -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <view class="row">
         <text class="row__label">{{ $t("couponEdit.total") }}</text>
         <input v-model="form.totalCount" class="field__input row__input" type="number" />
@@ -250,9 +250,6 @@ onLoad((q) => {
 </template>
 
 <style scoped>
-.mt {
-  margin-top: 16rpx;
-}
 .mt2 {
   margin-top: 16rpx;
 }

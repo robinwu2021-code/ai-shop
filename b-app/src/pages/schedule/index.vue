@@ -117,7 +117,7 @@ onShow(() => {
         <input v-model.number="form.capacity" class="field__input row__in sh-num" type="number" />
       </view>
       <text class="sh-muted hint">{{ $t("schedule.capacityHint") }}</text>
-      <view class="sh-btn mt-s" @tap="open">{{ $t("schedule.open") }}</view>
+      <view class="sh-btn sh-mt-sm" @tap="open">{{ $t("schedule.open") }}</view>
     </view>
 
     <!--
@@ -125,7 +125,7 @@ onShow(() => {
       店主看不出「这周没人约」到底是「没开时段」还是「开的都满了」——
       而这两件事该做的动作完全相反。
     -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("schedule.list") }}</text>
       <text v-if="!slots.length" class="sh-muted hint">{{ $t("schedule.empty") }}</text>
       <view v-for="s in slots" :key="s.slotNo" class="slot">
@@ -146,12 +146,6 @@ onShow(() => {
 </template>
 
 <style scoped>
-.mt {
-  margin-top: 16rpx;
-}
-.mt-s {
-  margin-top: 20rpx;
-}
 .row {
   display: flex;
   align-items: center;

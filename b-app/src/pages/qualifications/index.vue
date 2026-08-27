@@ -140,7 +140,7 @@ onShow(() => void load());
     <text class="sh-muted intro">{{ $t("qual.intro") }}</text>
 
     <!-- 已传的证 -->
-    <view class="sh-card mt">
+    <view class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("qual.mine") }}</text>
       <sh-empty v-if="!loading && !data?.items.length" :text='$t("qual.emptyMine")'></sh-empty>
       <view v-for="q in data?.items ?? []" :key="q.qualNo" class="row">
@@ -162,7 +162,7 @@ onShow(() => void load());
     </view>
 
     <!-- 已解锁 -->
-    <view v-if="unlocked.length" class="sh-card mt">
+    <view v-if="unlocked.length" class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("qual.unlocked") }}</text>
       <view class="cats">
         <text v-for="c in unlocked" :key="c.code" class="sh-chip sh-chip--primary">
@@ -175,7 +175,7 @@ onShow(() => void load());
       还不能卖的：这一段是这一页存在的理由。
       对每一类说清「要哪张证」与「现在轮到谁动」—— 传过了是等平台核，没传是去传。
     -->
-    <view v-if="locked.length" class="sh-card mt">
+    <view v-if="locked.length" class="sh-card sh-mt-sm">
       <!--
         闸门关着的时候这一段的**语气要跟着变**：它此刻描述的不是「卖不了」，
         而是「还没授权」。照旧说「还不能卖」是在制造一个不存在的障碍 ——
@@ -200,7 +200,7 @@ onShow(() => void load());
     </view>
 
     <!-- 上传表单 -->
-    <view v-if="form" class="sh-card mt">
+    <view v-if="form" class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("qual.add") }}</text>
       <sh-kv :label="String($t('qual.fieldName'))">
         <input v-model="form.qualName" class="field__input" />
@@ -239,9 +239,6 @@ onShow(() => void load());
   padding: 0 8rpx 8rpx;
   font-size: 24rpx;
   line-height: 1.6;
-}
-.mt {
-  margin-top: 16rpx;
 }
 .row {
   display: flex;
