@@ -1,6 +1,10 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.job.engine.JobRegistry;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 import ai.neargo.shop.job.JobHandlerRegistry;
 import ai.neargo.shop.portal.internal.JobHandlerEndpoint;
 import org.junit.jupiter.api.DisplayName;
@@ -47,6 +51,19 @@ class JobTargetProfileTest {
     @Autowired
     JobHandlerRegistry handlers;
 
+    @Autowired
+    WebApplicationContext webContext;
+
+    private MockMvc mvc() {
+        return MockMvcBuilders.webAppContextSetup(webContext)
+                .apply(org.springframework.security.test.web.servlet.setup
+                        .SecurityMockMvcConfigurers.springSecurity())
+                .build();
+    }
+
+    @Value("${shop.job.internal-token}")
+    String token;
+
     @Test
     @DisplayName("没有 worker profile 时，任务体索引与内部端点仍要在")
     void 任务目标的装配不依赖worker_profile() {
@@ -61,5 +78,28 @@ class JobTargetProfileTest {
         // 两边都排期 = 同一个任务一天跑两次。ShedLock 挡得住同一时刻的并发，
         // 挡不住错开 30 秒的两轮
         assertThat(ctx.getBeanNamesForType(JobRegistry.class)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("内部端点不套 ApiResult 信封 —— 套上之后调度器读到的每个字段都是 null")
+    void 内部端点原样返回数组() throws Exception {
+        String body = mvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/internal/job/declarations").header("X-Job-Token", token))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+        // 顶层就是数组。裹成 {"code":0,"msg":"success","data":[...]} 时这里会变成 '{'，
+        // 而调度器那边不会报错 —— 它按数组遍历一个对象，拿到三个值、字段全 null
+        assertThat(body).startsWith("[");
+        assertThat(body).contains("\"handlerName\"").doesNotContain("\"msg\"");
+    }
+
+    @Test
+    @DisplayName("没有令牌一律 401 —— 这个口不认用户身份，只认共享密钥")
+    void 内部端点必须带密钥() throws Exception {
+        mvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/internal/job/declarations"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .status().isUnauthorized());
     }
 }
