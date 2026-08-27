@@ -51,9 +51,13 @@ public interface TokenStore {
     /**
      * 带池前缀的不透明 token。前缀不是装饰：拿 C 端 token 打 {@code /ops/**} 时，
      * 过滤器不用查库就能判定池不符，直接 401。
+     *
+     * <p>前缀由 {@link Realm#tokenPrefix()} 给出 —— <b>那里是唯一的真源</b>。
+     * 曾经这里写着 {@code realm == OPERATOR ? "otk_" : "ctk_"}，
+     * 那个三元表达式在加第三个池时会**静默地**把新池归进 {@code ctk_}：
+     * 编译过、测试过，只是两端从此共用一个池。
      */
     static String newToken(Realm realm) {
-        String prefix = realm == Realm.OPERATOR ? "otk_" : "ctk_";
-        return prefix + UUID.randomUUID().toString().replace("-", "");
+        return realm.tokenPrefix() + UUID.randomUUID().toString().replace("-", "");
     }
 }
