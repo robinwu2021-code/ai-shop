@@ -47,7 +47,7 @@ public class JobRunner {
         // 那就是它的痕迹，而且那一行永远只有一条，不会膨胀。
         boolean logEveryRun = def.logEveryRun();
         if (logEveryRun) {
-            logs.insertStarted(runId, def.jobName(), trigger, bizDateFor(def), startedAt,
+            logs.insertStarted(runId, def.jobName(), trigger, yesterdayAsBizDate(), startedAt,
                     props.getInstance());
         }
 
@@ -62,7 +62,7 @@ public class JobRunner {
                     outcome.detail(), outcome.error(), outcome.httpStatus());
         } else if (shouldLogSparsely(def, outcome)) {
             // 只在**状态变化或失败**时补一行完整的
-            logs.insertStarted(runId, def.jobName(), trigger, bizDateFor(def), startedAt,
+            logs.insertStarted(runId, def.jobName(), trigger, yesterdayAsBizDate(), startedAt,
                     props.getInstance());
             logs.finish(runId, outcome.status(), LocalDateTime.now(), durationMs,
                     outcome.detail(), outcome.error(), outcome.httpStatus());
@@ -101,7 +101,7 @@ public class JobRunner {
             }
             JobInvocation in = new JobInvocation(runId,
                     attempt == 0 ? trigger : TriggerType.RETRY,
-                    bizDateFor(def), JobParams.parse(def.jobName(), def.params()));
+                    yesterdayAsBizDate(), JobParams.parse(def.jobName(), def.params()));
             last = invoker.invoke(def.target(), def.handlerName(), in, def.timeoutSec());
             if (last.status() != JobStatus.UNREACHABLE) {
                 return last;
@@ -125,13 +125,24 @@ public class JobRunner {
     }
 
     /**
-     * 业务日期。默认取<b>昨天</b>而不是今天。
+     * 业务日期恒为<b>昨天</b>。
      *
-     * <p>日结、对账在凌晨跑，算的永远是**上一个自然日**的账。给今天等于算了半天的账，
+     * <h2>为什么是昨天</h2>
+     * <p>日结、对账在凌晨跑，算的永远是上一个自然日的账。给今天等于算了半天的账，
      * 而这种错不会报错 —— 它只会让数字对不上，然后有人花一天去找原因。
      * 不关心日期的任务忽略这个字段即可。
+     *
+     * <h2>为什么名字里写死「昨天」，而不是留一个参数</h2>
+     * <p>原先的签名是 {@code bizDateFor(JobDefinitionRow def)} —— <b>收了 def 却一行没看</b>。
+     * 一个长得像可配置、实际是常量的参数，比一个老实的常量更危险：
+     * 下一个人会以为「配一下就能改」，而配了不生效且不报错。
+     *
+     * <p>真要按任务配（每小时的任务用今天、手动补跑指定某天），那是往
+     * {@code job_definition} 加一列偏移量的事，届时这个方法会被替换掉 ——
+     * <b>现在为一个还不存在的需求留参数，留下的只是一个说谎的签名。</b>
+     * 当前 11 个任务没有一个真的读 bizDate。
      */
-    private LocalDate bizDateFor(JobDefinitionRow def) {
+    private static LocalDate yesterdayAsBizDate() {
         return LocalDate.now().minusDays(1);
     }
 }
