@@ -50,40 +50,32 @@ public class DbSessionConfig {
 
     private static final Logger log = LoggerFactory.getLogger(DbSessionConfig.class);
 
-    /**
-     * 三张会话表都在平台库，用平台数据源。
-     *
-     * <p>将来某一端拆去独立库时，只需给那一端换一个 {@link JdbcClient} —— DAO 一行不改，
-     * 这正是把它做成构造参数的理由（见 {@code shop-auth-store} 的 pom 注释）。
-     */
-    @Bean
-    JdbcClient authJdbcClient(DataSource dataSource) {
-        return JdbcClient.create(dataSource);
-    }
-
     @Bean
     @Primary
     RealmRoutingTokenStore realmRoutingTokenStore(
             JdbcClient authJdbcClient,
             ConsumerIdentityLoader consumers,
             MerchantIdentityLoader merchants,
-            OperatorIdentityLoader operators) {
+            OperatorIdentityLoader operators,
+            java.util.Map<Realm, LoginLogWriter> loginLogWriters) {
 
         Map<Realm, TokenStore> byRealm = new EnumMap<>(Realm.class);
         byRealm.put(Realm.CONSUMER, store(authJdbcClient, Realm.CONSUMER, SessionProfiles.CONSUMER,
                 // ⚠️ 过渡期：C 端池里还装着 B 端会话，见 TransitionalConsumerIdentityLoader
-                new TransitionalConsumerIdentityLoader(consumers, merchants)));
+                new TransitionalConsumerIdentityLoader(consumers, merchants),
+                loginLogWriters.get(Realm.CONSUMER)));
         byRealm.put(Realm.MERCHANT, store(authJdbcClient, Realm.MERCHANT, SessionProfiles.MERCHANT,
-                merchants));
+                merchants, loginLogWriters.get(Realm.MERCHANT)));
         byRealm.put(Realm.OPERATOR, store(authJdbcClient, Realm.OPERATOR, SessionProfiles.OPERATOR,
-                operators));
+                operators, loginLogWriters.get(Realm.OPERATOR)));
 
         log.info("会话已改为进库（三池：consumer / merchant / operator）");
         return new RealmRoutingTokenStore(byRealm);
     }
 
     private static DbTokenStore store(JdbcClient jdbc, Realm realm, SessionProfile p,
-                                      IdentityLoader<LoginUser> identities) {
+                                      IdentityLoader<LoginUser> identities,
+                                      LoginLogWriter audit) {
         int entries = SessionProfiles.cacheEntries(p);
         return new DbTokenStore(realm, p, new SessionDao(jdbc, p), identities,
                 // **堆内、绝不落盘**：这里出现 disk 层就是把 2026-08-24 那次全员掉线装了回来。
@@ -92,8 +84,8 @@ public class DbSessionConfig {
                         String.class, DbTokenStore.CachedSession.class, p.cacheTtl(), entries),
                 new AuthCache<>("auth." + p.poolName() + ".identity",
                         String.class, LoginUser.class, p.identityTtl(), entries),
-                // 审计从签发/撤销处落，**不必改任何登录代码**
-                new LoginLogWriter(new LoginLogDao(jdbc, p), p),
+                // 审计从签发/撤销处落，**不必改任何登录代码**（写入器由 LoginAuditConfig 共享）
+                audit,
                 Clock.systemDefaultZone());
     }
 

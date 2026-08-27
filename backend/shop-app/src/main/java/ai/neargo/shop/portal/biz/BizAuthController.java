@@ -32,18 +32,22 @@ import java.util.List;
 public class BizAuthController {
 
     private final AuthService authService;
+
+    private final ai.neargo.shop.auth.LoginAuditor auditor;
     private final CommunityService communityService;
     private final BizMerchantController merchantController;
     private final ai.neargo.shop.merchant.service.MerchantStaffService merchantStaffService;
     private final ai.neargo.shop.auth.TokenStore tokenStore;
 
-    public BizAuthController(AuthService authService, CommunityService communityService,
+    public BizAuthController(AuthService authService,
+                             ai.neargo.shop.auth.LoginAuditor auditor, CommunityService communityService,
                              BizMerchantController merchantController,
                              ai.neargo.shop.merchant.service.MerchantStaffService merchantStaffService,
                              ai.neargo.shop.auth.TokenStore tokenStore) {
         this.merchantStaffService = merchantStaffService;
         this.tokenStore = tokenStore;
         this.authService = authService;
+        this.auditor = auditor;
         this.communityService = communityService;
         this.merchantController = merchantController;
     }
@@ -57,10 +61,28 @@ public class BizAuthController {
      */
     @PostMapping("/biz/auth/login")
     public MerchantLoginResp login(@RequestBody LoginReq req) {
-        AuthService.LoginResult result = authService.login(new AuthService.LoginCommand(
-                req.grantType(), req.principal(), req.credential(),
-                // B 端登录不做进店归因：店主登录自己的后台，不是"从谁的分享进的店"
-                null, null, req.agreed()));
+        AuthService.LoginResult result;
+        try {
+            result = authService.login(new AuthService.LoginCommand(
+                    req.grantType(), req.principal(), req.credential(),
+                    // B 端登录不做进店归因：店主登录自己的后台，不是"从谁的分享进的店"
+                    null, null, req.agreed()));
+        } catch (ai.neargo.shop.common.BizException e) {
+            /*
+             * **记进 MERCHANT 池，而不是会话所在的 CONSUMER 池。**
+             *
+             * 审计问的是「哪个端在被刷」，那与会话此刻存在哪里是两件事。
+             * 过渡期里成功登录会落在 usr_login_log（会话还在 C 端池），
+             * 失败落在 mch_login_log —— 分开看着别扭，但把 B 端的失败混进 C 端那张表，
+             * 「有人在刷商家登录」就再也看不出来了。A7 之后两者自然合到一处。
+             *
+             * 只包住 authService.login 这一步：后面查商家档案失败不是登录失败。
+             */
+            auditor.failed(ai.neargo.shop.auth.Realm.MERCHANT,
+                    ai.neargo.shop.auth.LoginAuditor.maskPrincipal(req.principal()),
+                    e.errorCode() == null ? "UNKNOWN" : e.errorCode().name());
+            throw e;
+        }
         // 手机号直接从登录结果取：此刻 SecurityContext 里还没有人
         // （过滤器跑在发 token 之前），去查 userService.profile() 只会拿到空
         String phone = result.user().phone();
@@ -168,7 +190,15 @@ public class BizAuthController {
     @Deprecated
     @PostMapping("/biz/auth/staff-login")
     public MerchantLoginResp staffLogin(@RequestBody StaffLoginReq req) {
-        String token = merchantStaffService.loginByPhone(req.phone(), req.code());
+        String token;
+        try {
+            token = merchantStaffService.loginByPhone(req.phone(), req.code());
+        } catch (ai.neargo.shop.common.BizException e) {
+            auditor.failed(ai.neargo.shop.auth.Realm.MERCHANT,
+                    ai.neargo.shop.auth.LoginAuditor.maskPrincipal(req.phone()),
+                    e.errorCode() == null ? "UNKNOWN" : e.errorCode().name());
+            throw e;
+        }
         // 员工可能没有 C 端账号，档案里的 phone 用他的登录号
         return new MerchantLoginResp(token,
                 merchantController.profileOf(principalOf(token), req.phone()));

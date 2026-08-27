@@ -31,14 +31,17 @@ import java.util.List;
 public class MpUserController {
 
     private final AuthService authService;
+
+    private final ai.neargo.shop.auth.LoginAuditor auditor;
     private final UserService userService;
     private final AddressService addressService;
     /** 手机号快速验证通道。桩实现恒 false，端上据此回落到验证码 */
     private final WxPhonePort wxPhonePort;
 
     public MpUserController(AuthService authService, UserService userService,
-                            AddressService addressService, WxPhonePort wxPhonePort) {
+                            AddressService addressService, WxPhonePort wxPhonePort, ai.neargo.shop.auth.LoginAuditor auditor) {
         this.authService = authService;
+        this.auditor = auditor;
         this.userService = userService;
         this.addressService = addressService;
         this.wxPhonePort = wxPhonePort;
@@ -47,9 +50,24 @@ public class MpUserController {
     /** 登录建户。游客端点。 */
     @PostMapping("/login")
     public AuthService.LoginResult login(@RequestBody LoginReq req) {
-        return authService.login(new AuthService.LoginCommand(
-                req.grantType(), req.principal(), req.credential(),
-                req.merchantNo(), req.inviterNo(), req.agreed()));
+        try {
+            return authService.login(new AuthService.LoginCommand(
+                    req.grantType(), req.principal(), req.credential(),
+                    req.merchantNo(), req.inviterNo(), req.agreed()));
+        } catch (ai.neargo.shop.common.BizException e) {
+            /*
+             * **失败要留痕。** 成功与登出在 TokenStore 的签发/撤销处自动落，
+             * 唯独失败走不到那里 —— 而登录是最容易被刷的接口之一，
+             * 失败日志是被刷时唯一的证据。
+             *
+             * 记错误码而不是给用户看的那句话：「密码错误」与「账号被停用」
+             * 在排查时是两件事，而它们给用户的提示常常是同一句。
+             */
+            auditor.failed(ai.neargo.shop.auth.Realm.CONSUMER,
+                    ai.neargo.shop.auth.LoginAuditor.maskPrincipal(req.principal()),
+                    e.errorCode() == null ? "UNKNOWN" : e.errorCode().name());
+            throw e;
+        }
     }
 
     /** 发验证码。返回体不含验证码 —— 这条别为了联调方便破例。 */

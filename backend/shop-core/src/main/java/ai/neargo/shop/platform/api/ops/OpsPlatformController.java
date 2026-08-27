@@ -39,12 +39,15 @@ import java.util.List;
 public class OpsPlatformController {
 
     private final OpsService opsService;
+
+    private final ai.neargo.shop.auth.LoginAuditor auditor;
     private final IndustryService industryService;
     private final ai.neargo.shop.platform.ServiceScopeAdminService serviceScopeAdminService;
 
     public OpsPlatformController(OpsService opsService, IndustryService industryService,
-                                 ai.neargo.shop.platform.ServiceScopeAdminService serviceScopeAdminService) {
+                                 ai.neargo.shop.platform.ServiceScopeAdminService serviceScopeAdminService, ai.neargo.shop.auth.LoginAuditor auditor) {
         this.opsService = opsService;
+        this.auditor = auditor;
         this.industryService = industryService;
         this.serviceScopeAdminService = serviceScopeAdminService;
     }
@@ -52,7 +55,15 @@ public class OpsPlatformController {
     /** 运营登录。唯一免鉴权的 /ops 端点。 */
     @PostMapping("/ops/auth/login")
     public LoginResultVO login(@RequestBody LoginReq req) {
-        return opsService.login(req.username(), req.password());
+        try {
+            return opsService.login(req.username(), req.password());
+        } catch (ai.neargo.shop.common.BizException e) {
+            // 失败要留痕：成功与登出在签发/撤销处自动落，唯独失败走不到那里
+            auditor.failed(ai.neargo.shop.auth.Realm.OPERATOR,
+                    ai.neargo.shop.auth.LoginAuditor.maskPrincipal(req.username()),
+                    e.errorCode() == null ? "UNKNOWN" : e.errorCode().name());
+            throw e;
+        }
     }
 
     /**
