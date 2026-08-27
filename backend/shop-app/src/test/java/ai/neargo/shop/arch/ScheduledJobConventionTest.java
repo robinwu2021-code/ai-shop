@@ -18,14 +18,14 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 每一个定时任务都要满足的四条约定。
+ * 每一个定时任务都要满足的几条约定。
  *
  * <p>{@link OutboxWiringTest} 管的是 outbox 那**一条**任务有没有被调起来；
  * 这里管的是**所有**任务的形状。分成两个文件是因为两者的失败含义不同：
  * 那边红了是「一条链路断了」，这边红了是「新加的任务少了一样东西」。
  *
- * <p><b>为什么扫源码而不是扫 Bean</b>：这四条里有三条（cron 可配、加锁、只在 worker）
- * 在测试上下文里根本观察不到 —— 测试不是 worker profile，
+ * <p><b>为什么扫源码而不是扫 Bean</b>：其中几条（cron 可配、加锁、排期的门）
+ * 在测试上下文里根本观察不到 —— 默认上下文既不是 worker profile、也没打开 shop.job，
  * 这些任务的 Bean 压根不存在，扫 Bean 只会得到一个空集合然后全绿。
  * <b>「什么都没扫到」是这类守卫最常见的死法</b>，所以下面每条都先断言样本非空。
  */
@@ -126,27 +126,55 @@ class ScheduledJobConventionTest {
     }
 
     @Test
-    @DisplayName("★★ 必须 @Profile(\"worker\") —— 现在靠 SchedulingConfig 兜着，但那是一次编辑之遥")
-    void everyJobIsWorkerOnly() throws IOException {
-        List<String> everywhere = new ArrayList<>();
+    @DisplayName("★★★ @EnableScheduling 只许有一处，且必须 @Profile(\"worker\")")
+    void schedulingIsEnabledOnlyOnWorker() throws IOException {
+        List<String> enablers = new ArrayList<>();
+        for (Path module : Files.list(BACKEND).filter(Files::isDirectory).toList()) {
+            Path src = module.resolve("src/main/java");
+            if (!Files.isDirectory(src)) {
+                continue;
+            }
+            try (var files = Files.walk(src)) {
+                for (Path f : files.filter(p -> p.toString().endsWith(".java")).toList()) {
+                    String code = stripComments(Files.readString(f, StandardCharsets.UTF_8));
+                    if (code.contains("@EnableScheduling")) {
+                        enablers.add(f.getFileName() + (code.contains("@Profile(\"worker\")") ? "" : " ← 没有 worker 门"));
+                    }
+                }
+            }
+        }
+        assertThat(enablers)
+                .as("@EnableScheduling 出现在：%s", enablers)
+                .hasSize(1);
+        assertThat(enablers.get(0)).doesNotContain("没有 worker 门");
+    }
+
+    @Test
+    @DisplayName("★★ 遗留的 @Scheduled 触发器要挂 shop.job.enabled —— 但这道闸已经比从前弱")
+    void legacyScheduledTriggersAreGated() throws IOException {
+        List<String> ungated = new ArrayList<>();
         jobSources().forEach((name, text) -> {
-            if (!text.contains("@Profile(\"worker\")")) {
-                everywhere.add(name);
+            if (!text.contains("shop.job.enabled")) {
+                ungated.add(name);
             }
         });
-        assertThat(everywhere)
+        assertThat(ungated)
                 .as("""
-                        这些定时任务的类上没有 @Profile("worker")：%s
+                        这些还带 @Scheduled 的任务类没有 shop.job.enabled 的门：%s
 
-                          今天它们确实不会在 api/ops 上跑 —— 因为 SchedulingConfig 自己是
-                          @Profile("worker")，没有它 @EnableScheduling 就不存在，@Scheduled 连解析都不会发生。
+                          **这条约定 2026-08-27 变过，变弱了，说明白比改绿重要。**
 
-                          **所以这条守的不是当下的 bug，是那一次编辑**：哪天有人为了某个
-                          非 worker 的任务把 @EnableScheduling 挪出去，这些任务会**静默地**
-                          在每个 api 实例上跑起来。那时的症状是批量任务和下单抢连接池，
-                          在监控上看起来像「数据库变慢了」，没有任何东西指向这次改动。
+                          从前这里要求的是 @Profile("worker")，两道闸互相独立：
+                          生产跑 api,ops，既没有 worker profile、也没打开 shop.job。
 
-                          两道闸都在，才是「挡住了」；只有一道，是「碰巧没漏」。""", everywhere)
+                          拆出独立调度器之后，业务系统必须**持有任务体**才能被调，
+                          于是这些类改挂 shop.job.enabled —— 而生产现在正是 enabled=true。
+                          也就是说：**只剩 @EnableScheduling 那一道闸**（上一条用例守着它）。
+
+                          真正的收尾是把这些遗留的 @Scheduled 触发器摘掉 —— 任务的排期
+                          已经在 job_definition 里，两套排期并存本身就是一个隐患：
+                          worker profile 一旦打开，同一个任务会被 @Scheduled 和
+                          JobRegistry 各排一遍。摘除是独立的一件事，不能夹在部署里做。""", ungated)
                 .isEmpty();
     }
 }
