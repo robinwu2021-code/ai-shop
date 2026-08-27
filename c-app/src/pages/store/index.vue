@@ -332,8 +332,8 @@ function navToStore() {
       <scroll-view v-if="showShelves" class="cats" scroll-x>
         <view class="cats__row">
           <text
-            class="pb-tag cats__chip"
-            :class="{ 'is-on': !pickedCat }"
+            class="sh-chip cats__chip"
+            :class="{ 'sh-chip--primary': !pickedCat }"
             @tap="pickedCat = ''"
           >
             {{ $t("store.allCats") }}
@@ -341,8 +341,8 @@ function navToStore() {
           <text
             v-for="c in shelves"
             :key="c.categoryNo"
-            class="pb-tag cats__chip"
-            :class="{ 'is-on': pickedCat === c.categoryNo }"
+            class="sh-chip cats__chip"
+            :class="{ 'sh-chip--primary': pickedCat === c.categoryNo }"
             @tap="pickedCat = pickedCat === c.categoryNo ? '' : c.categoryNo"
           >
             {{ c.name }} {{ c.count }}
@@ -372,15 +372,17 @@ function navToStore() {
   display: inline-flex;
   gap: 12rpx;
 }
+/*
+ * 类目 chip。**此前挂的是 `pb-tag`，而那个类全仓根本没有定义** ——
+ * 于是未选中的类目是一行裸文字（没有底色、没有圆角），选中的是一个**直角**绿方块，
+ * 而同一屏上「已认证」「买过 3 次」「-25%」全是正经药丸。
+ * 判据把它算成「选中态自画」，其实错得更早：连未选中态都没画出来。
+ */
 .cats__chip {
   white-space: nowrap;
   flex-shrink: 0;
-  font-size: 24rpx;
-  padding: 10rpx 20rpx;
 }
-.cats__chip.is-on {
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
+.cats__chip.sh-chip--primary {
   font-weight: 600;
 }
 

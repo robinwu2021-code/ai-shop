@@ -141,16 +141,16 @@ onLoad((q) => {
       <view class="sh-card block">
         <text class="sh-h2">{{ $t("afterSale.pickType") }}</text>
         <view class="types">
-          <view
+          <sh-option
             v-for="tp in TYPES"
             :key="tp"
             class="type"
-            :class="{ 'is-on': type === tp }"
+            :selected="type === tp"
             @tap="type = tp"
           >
             <text class="type__t">{{ typeText(tp) }}</text>
             <text class="type__d">{{ typeText(tp, "Desc") }}</text>
-          </view>
+          </sh-option>
         </view>
       </view>
 
@@ -160,8 +160,8 @@ onLoad((q) => {
           <view
             v-for="r in REASONS"
             :key="r"
-            class="reason"
-            :class="{ 'is-on': reason === r }"
+            class="sh-seg"
+            :class="{ 'sh-seg--on': reason === r }"
             @tap="reason = r"
           >
             {{ $t(`afterSale.reason.${r}`) }}
@@ -210,16 +210,9 @@ onLoad((q) => {
   gap: 16rpx;
   margin-top: 24rpx;
 }
+/* 描边 + 说明文字那一档由 sh-option 给，这里只管等分 */
 .type {
   flex: 1;
-  padding: 22rpx 20rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  border: 2rpx solid transparent;
-}
-.type.is-on {
-  border-color: var(--sh-primary-text);
-  background: var(--sh-primary-tint);
 }
 .type__t {
   display: block;
@@ -239,18 +232,6 @@ onLoad((q) => {
   flex-wrap: wrap;
   gap: 16rpx;
   margin-top: 24rpx;
-}
-.reason {
-  padding: 20rpx 30rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  color: var(--sh-ink);
-  font-size: 26rpx;
-}
-.reason.is-on {
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-weight: 600;
 }
 .ta {
   width: 100%;

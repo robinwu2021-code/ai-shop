@@ -131,9 +131,7 @@ onShow(() => {
         </view>
 
         <view class="toggle" @tap="form.toMyHome = !form.toMyHome">
-          <text class="toggle__box" :class="{ 'is-on': form.toMyHome }">
-            {{ form.toMyHome ? "✓" : "" }}
-          </text>
+          <sh-check :model-value="form.toMyHome"></sh-check>
           <view class="toggle__main">
             <text class="toggle__label">{{ $t("groupHost.toMyHome") }}</text>
             <text class="sh-muted">{{ $t("groupHost.toMyHomeHint") }}</text>
@@ -222,20 +220,6 @@ onShow(() => {
   gap: 16rpx;
   align-items: flex-start;
   padding: 20rpx 0;
-}
-.toggle__box {
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-  color: var(--sh-on-primary);
-  font-size: 26rpx;
-  text-align: center;
-  line-height: 40rpx;
-  flex-shrink: 0;
-}
-.toggle__box.is-on {
-  background: var(--sh-primary);
 }
 .toggle__main {
   flex: 1;

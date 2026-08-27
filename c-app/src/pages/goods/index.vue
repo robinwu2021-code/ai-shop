@@ -320,9 +320,9 @@ onShareAppMessage(() =>
           <view
             v-for="opt in group.options"
             :key="opt"
-            class="spec"
+            class="sh-seg"
             :class="{
-              'is-on': chosen[gi] === opt,
+              'sh-seg--on': chosen[gi] === opt,
               'is-off': !optionState(gi, opt).inStock,
             }"
             @tap="choose(gi, opt)"
@@ -358,8 +358,8 @@ onShareAppMessage(() =>
         <view
           v-for="s in goods.slots"
           :key="s.date"
-          class="date"
-          :class="{ 'is-on': slotDate === s.date }"
+          class="sh-seg date"
+          :class="{ 'sh-seg--on': slotDate === s.date }"
           @tap="((slotDate = s.date), (slotTime = ''))"
         >
           <text class="date__text sh-num">{{ s.date.slice(5) }}</text>
@@ -371,8 +371,8 @@ onShareAppMessage(() =>
         <view
           v-for="tm in times"
           :key="tm.time"
-          class="time"
-          :class="{ 'is-on': slotTime === tm.time, 'is-off': tm.left <= 0 }"
+          class="sh-seg time"
+          :class="{ 'sh-seg--on': slotTime === tm.time, 'sh-seg--off': tm.left <= 0 }"
           @tap="tm.left > 0 && (slotTime = tm.time)"
         >
           <text class="time__t sh-num">{{ tm.time }}</text>
@@ -599,25 +599,9 @@ onShareAppMessage(() =>
   gap: 16rpx;
   margin-top: 16rpx;
 }
-.spec {
-  padding: 20rpx 32rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-}
-/* 选中态用实底主色而非 tint：mono 这类低饱和皮肤下 tint 与 faint 几乎无差别，
-   选没选中看不出来。实底在四套皮肤 × 明暗下都清晰。 */
-.spec.is-on {
-  background: var(--sh-primary);
-}
-.spec.is-on .spec__name {
-  color: var(--sh-on-primary);
-}
-.spec.is-off {
-  opacity: 0.35;
-}
+/* 底色 / 圆角 / 选中实底都归 .sh-seg —— 那条「为什么不用 tint」的理由
+   已经搬进 base.css，它不该只留在这一个页面里 */
 .spec__name {
-  font-size: 26rpx;
-  color: var(--sh-ink);
   font-weight: 600;
 }
 .giftline {
@@ -667,22 +651,12 @@ onShareAppMessage(() =>
   white-space: nowrap;
   margin-top: 16rpx;
 }
+/* 横滚排里才需要这两条：块本身的形态归 .sh-seg */
 .date {
   display: inline-block;
-  padding: 18rpx 28rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
   margin-inline-end: 12rpx;
 }
-.date.is-on {
-  background: var(--sh-primary);
-}
-.date.is-on .date__text {
-  color: var(--sh-on-primary);
-}
 .date__text {
-  font-size: 26rpx;
-  color: var(--sh-ink);
   font-weight: 600;
 }
 .times-label {
@@ -696,32 +670,25 @@ onShareAppMessage(() =>
   margin-top: 16rpx;
 }
 .time {
-  padding: 16rpx 26rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
   text-align: center;
-}
-.time.is-on {
-  background: var(--sh-primary);
-}
-.time.is-on .time__t,
-.time.is-on .time__left {
-  color: var(--sh-on-primary);
-}
-.time.is-off {
-  opacity: 0.35;
 }
 .time__t {
   display: block;
-  font-size: 26rpx;
   font-weight: 600;
-  color: var(--sh-ink);
 }
+/*
+ * 「剩 3 位」是**次要档**，平时要比时刻淡一档 —— 所以它自己声明了 color，
+ * 也因此不会跟着块继承反白。选中时补这一条，否则实底主色上留着一行 sub 灰字，
+ * 那一行恰恰是这个块里最需要看清的信息。
+ */
 .time__left {
   display: block;
   font-size: 24rpx;
   color: var(--sh-sub);
   margin-top: 2rpx;
+}
+.sh-seg--on .time__left {
+  color: var(--sh-on-primary);
 }
 .fact {
   display: flex;

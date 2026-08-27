@@ -331,8 +331,8 @@ onShow(() => {
           <view
             v-for="i in industries"
             :key="i.industry"
-            class="type"
-            :class="{ 'is-on': mForm.industry === i.industry }"
+            class="sh-seg sh-seg--fill"
+            :class="{ 'sh-seg--on': mForm.industry === i.industry }"
             @tap="mForm.industry = i.industry"
           >
             {{ i.name }}
@@ -343,10 +343,10 @@ onShow(() => {
           <view
             v-for="tp in ['MICRO', 'INDIVIDUAL', 'ENTERPRISE']"
             :key="tp"
-            class="type"
+            class="sh-seg sh-seg--fill"
             :class="{
-              'is-on': mForm.subject === tp,
-              'is-blocked': !subjectAllowed(tp as MerchantSubject),
+              'sh-seg--on': mForm.subject === tp,
+              'sh-seg--off': !subjectAllowed(tp as MerchantSubject),
             }"
             @tap="subjectAllowed(tp as MerchantSubject) && (mForm.subject = tp as MerchantSubject)"
           >
@@ -396,28 +396,11 @@ onShow(() => {
   gap: 16rpx;
   margin-top: 24rpx;
 }
-.type {
-  flex: 1;
-  text-align: center;
-  padding: 22rpx 0;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  color: var(--sh-sub);
-  font-size: 26rpx;
-}
-.type.is-blocked {
-  opacity: 0.4;
-}
 .blocked-tip {
   display: block;
   margin-top: 8rpx;
   font-size: 24rpx;
   color: var(--sh-danger);
-}
-.type.is-on {
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-weight: 600;
 }
 /* 与 address 逐字节相同的一份重写，现在都走 `.field__input`，只留纵向间距 */
 .field__input {

@@ -619,6 +619,55 @@ uni-page-wrapper[style*="--window-bottom"] {
   color: var(--sh-danger);
 }
 
+
+/* ---- 分段选择块：一排里挑一个 ----
+ *
+ * **与 `.sh-chip` 是两件事**：chip 是**标签**（说明这个东西是什么），
+ * 这个是**控件**（点它会改变选择）。形状上 chip 是药丸、这个是 24rpx 圆角块，
+ * 因为它常常要装两行（时刻 + 剩余几位）。
+ *
+ * **收编的是五处**（2026-08-27 扫的），内边距**没有两处相同**：
+ *
+ *   me           .type     22rpx 0      等分
+ *   after-sale   .reason   20rpx 30rpx
+ *   goods        .spec     20rpx 32rpx
+ *   goods        .date     18rpx 28rpx
+ *   goods        .time     16rpx 26rpx
+ *
+ * 五个数各自量出来的，而它们在同一个 App 里做同一件事。取 20rpx 28rpx。
+ *
+ * **选中态是实心主色，不是 tint** —— 这条理由原本只写在 `goods` 的注释里：
+ * mono 这类低饱和皮肤下 tint 与 faint 几乎没有差别，选没选中看不出来。
+ * 实底在四套皮肤 × 明暗下都清晰。前景走 `--sh-on-primary` 而非写死白字，
+ * 理由同 `.sh-chip--solid`（fresh 那类亮主色上白字只有 2.27）。
+ *
+ * 块里的文字**不要自己声明 color**，让它从块上继承 —— 只有这样选中时
+ * 一整块（含子元素）才会一起反白。需要保留次要色调的那一档（如「剩 3 位」）
+ * 才在页面里补一条选中覆盖。
+ */
+.sh-seg {
+  padding: 20rpx 28rpx;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+  color: var(--sh-ink);
+  font-size: 26rpx;
+}
+.sh-seg--on {
+  background: var(--sh-primary);
+  color: var(--sh-on-primary);
+  font-weight: 600;
+}
+/* 不可选：置灰但**仍然显示**。藏起来的话人不知道这一档存在过，
+   会以为是自己找错了地方 */
+.sh-seg--off {
+  opacity: 0.35;
+}
+/* 等分铺满：一排两三个把宽度分完（父级是 flex） */
+.sh-seg--fill {
+  flex: 1;
+  text-align: center;
+}
+
 /* ---- 字阶：六档字号，字重只有三种，且各有专属用途 ----
  *
  * **为什么需要它**：此前 c-app 有 33 个不同字号（19–104rpx），字重只声明过 500/600/700

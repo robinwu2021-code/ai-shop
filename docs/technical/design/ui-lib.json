@@ -401,6 +401,84 @@
       }
     },
     {
+      "class": ".sh-seg",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "padding": "20rpx 28rpx",
+        "border-radius": "24rpx",
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-ink)",
+        "font-size": "26rpx"
+      },
+      "px": {
+        "padding": "10px 14px",
+        "border-radius": "12px",
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-ink)",
+        "font-size": "13px"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 6
+      }
+    },
+    {
+      "class": ".sh-seg--fill",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "flex": "1",
+        "text-align": "center"
+      },
+      "px": {
+        "flex": "1",
+        "text-align": "center"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 2
+      }
+    },
+    {
+      "class": ".sh-seg--off",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "opacity": "0.35"
+      },
+      "px": {
+        "opacity": "0.35"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 2
+      }
+    },
+    {
+      "class": ".sh-seg--on",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)",
+        "font-weight": "600"
+      },
+      "px": {
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)",
+        "font-weight": "600"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 6
+      }
+    },
+    {
       "class": ".sh-muted",
       "group": "字阶",
       "when": "次要文字。**字号走密度变量**，B 端自动降到 24rpx",
@@ -953,7 +1031,7 @@
       },
       "usage": {
         "b-app": 110,
-        "c-app": 55
+        "c-app": 57
       }
     },
     {
@@ -1027,7 +1105,7 @@
       },
       "usage": {
         "b-app": 60,
-        "c-app": 21
+        "c-app": 23
       }
     },
     {
@@ -1231,7 +1309,7 @@
       ],
       "usage": {
         "b-app": 5,
-        "c-app": 0
+        "c-app": 1
       },
       "note": "勾选框 / 单选点",
       "why": "四页各画一个、**四种尺寸**（28/36/44/44）。勾用 `check` 图标 —— 那个图标是这次一起补进 icons.ts 的"
@@ -1394,7 +1472,7 @@
       ],
       "usage": {
         "b-app": 7,
-        "c-app": 0
+        "c-app": 1
       },
       "note": "选项卡片",
       "why": "整块可选，比 chip 重比按钮轻 —— 每个选项里通常还有一行说明"
@@ -2966,21 +3044,14 @@
       "file": "c-app/src/pages/after-sale/index.vue",
       "components": [
         "sh-actionbar",
+        "sh-option",
         "sh-scaffold",
         "sh-uploader"
       ],
-      "libClassHits": 14,
-      "localSelectors": 24,
-      "localCssLines": 136,
-      "rolled": [
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary / --solid",
-          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-          "gap": false
-        }
-      ]
+      "libClassHits": 16,
+      "localSelectors": 21,
+      "localCssLines": 116,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3037,15 +3108,7 @@
       "libClassHits": 4,
       "localSelectors": 29,
       "localCssLines": 165,
-      "rolled": [
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary / --solid",
-          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-          "gap": false
-        }
-      ]
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3073,18 +3136,10 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 45,
-      "localSelectors": 60,
-      "localCssLines": 310,
-      "rolled": [
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary / --solid",
-          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-          "gap": false
-        }
-      ]
+      "libClassHits": 52,
+      "localSelectors": 52,
+      "localCssLines": 271,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3097,17 +3152,9 @@
         "sh-scaffold"
       ],
       "libClassHits": 15,
-      "localSelectors": 31,
-      "localCssLines": 158,
-      "rolled": [
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary / --solid",
-          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-          "gap": false
-        }
-      ]
+      "localSelectors": 24,
+      "localCssLines": 120,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3139,22 +3186,15 @@
       "file": "c-app/src/pages/groups/index.vue",
       "components": [
         "sh-actionbar",
+        "sh-check",
         "sh-empty",
         "sh-scaffold",
         "sh-tabs"
       ],
       "libClassHits": 20,
-      "localSelectors": 22,
-      "localCssLines": 124,
-      "rolled": [
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary / --solid",
-          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-          "gap": false
-        }
-      ]
+      "localSelectors": 20,
+      "localCssLines": 110,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3208,18 +3248,10 @@
         "sh-sheet",
         "sh-theme-sheet"
       ],
-      "libClassHits": 9,
-      "localSelectors": 20,
-      "localCssLines": 110,
-      "rolled": [
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary / --solid",
-          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-          "gap": false
-        }
-      ]
+      "libClassHits": 16,
+      "localSelectors": 17,
+      "localCssLines": 93,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3333,15 +3365,7 @@
       "libClassHits": 10,
       "localSelectors": 30,
       "localCssLines": 156,
-      "rolled": [
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary / --solid",
-          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-          "gap": false
-        }
-      ]
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3435,18 +3459,10 @@
         "sh-scaffold",
         "sh-section"
       ],
-      "libClassHits": 16,
+      "libClassHits": 20,
       "localSelectors": 29,
-      "localCssLines": 168,
-      "rolled": [
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary / --solid",
-          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-          "gap": false
-        }
-      ]
+      "localCssLines": 164,
+      "rolled": []
     }
   ],
   "gaps": [
@@ -3499,28 +3515,11 @@
         "c-app/group-host",
         "c-app/request-create"
       ]
-    },
-    {
-      "id": "segment",
-      "label": "选中态自画（含未拆出的）",
-      "lib": ".sh-chip--primary / --solid",
-      "gap": false,
-      "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-      "pages": [
-        "c-app/after-sale",
-        "c-app/community",
-        "c-app/goods",
-        "c-app/group",
-        "c-app/groups",
-        "c-app/me",
-        "c-app/pay",
-        "c-app/store"
-      ]
     }
   ],
   "counts": {
     "tokens": 10,
-    "blocks": 47,
+    "blocks": 51,
     "components": 31,
     "pages": 90,
     "gapKinds": 1

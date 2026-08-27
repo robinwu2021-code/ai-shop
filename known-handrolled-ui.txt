@@ -46,29 +46,25 @@
 
 
 
-# ── 选中态自画（含未拆出的）（8 处）→ 用 .sh-chip--primary / --solid
+# ── 选中态自画：**2026-08-27 归零**（原 10 处）
 #
-# 2026-08-27 已还：**开关圆点 2 处**（address 的「设为默认地址」、order-confirm 的
-# 「使用积分」）→ `sh-switch`。这两处是**布尔开关**，不是分段选择 —— 判据把它们
-# 和 chip 收成一类，正是下面那段说的「五种东西」之一。
-# 照 B 端现成的用法接：外层行拿 `@tap`、`sh-switch` 只传 `:model-value` 不接 v-model
-#（三个 B 端调用点都是这么写的；给它加 `@tap.stop` 会把那三处一起弄坏）。
-# 顺带把 44rpx / 40rpx 两个**各自量出来的**圆点尺寸一并消掉。
+# 逐条读完 CSS 之后，这 10 处其实是**五种东西**，判据把它们收成了一类：
 #
-# C 端 8 页 / 18 条声明。**判据仍然过宽，动手前必须逐条看** ——
-# 逐条核过之后：真正是「chip 形态选中态」的约 11 条（primary-tint 或实心主色），
-# 其余是另外几种东西：带描边的选项卡 ×2（after-sale `.type`、order-confirm `.mode` —— 那是 `sh-option`）、
-# 开关方块 ×1（groups `.toggle__box` —— `sh-switch`）、
-# 高亮数值 ×1（order-confirm `.cell__v`，danger 色，根本不是选中）、
-# 收藏星 ×1（store `.fav`，warning 色）。
-# **B 端同一条判据误命中过三次**，这里原样重演。照数字动手会把五种东西收成一个件。
-c-app/after-sale segment
-c-app/community segment
-c-app/goods segment
-c-app/group segment
-c-app/groups segment
-c-app/me segment
-c-app/pay segment
-c-app/store segment
-
-
+#   开关圆点 ×2   address「设为默认」/ order-confirm「使用积分」→ sh-switch（上一笔）
+#   chip     ×1   store 的类目行 —— 而它挂的 `pb-tag` **全仓没有定义**：
+#                 未选中的是一行裸文字、选中的是个**直角**绿方块，
+#                 而同屏「已认证」「-25%」都是正经药丸。判据说它「选中态自画」，
+#                 其实错得更早：连未选中态都没画出来。→ sh-chip + --primary
+#   分段块   ×5   me ×2 / after-sale.reason / goods.spec/.date/.time
+#                 → **新建 `.sh-seg`**。五处内边距没有两处相同
+#                 （22/0、20/30、20/32、18/28、16/26），同一个 App 里做同一件事。
+#   选项卡   ×1   after-sale 的类型（两行、描边）→ sh-option
+#   死样式   ×1   group 的 `.tier` —— 多档拼团改成单档之后，模板里一处都没有了，
+#                 7 条规则留在文件里，判据照样把它算成欠账
+#
+# 剩下两处（community 的自提点行、pay 的支付方式行）**不是 chip，是列表行** ——
+# 它们的选中态同样铺主色，但收进 chip 会把一整行的布局弄没。
+# 判据因此收窄：命中的规则若**基态是 flex 横排且纵向居中**，归到 `listrow` 那条缺口，
+# 不再算「有件不用」。收窄后拿一个手画 chip 探过针，确认它仍然会报（不是变成恒绿）。
+#
+# 这条判据到此改了两次，两次砍掉的都是「选中时也铺主色、但根本不是 chip」的东西。

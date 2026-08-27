@@ -213,44 +213,6 @@ onShareAppMessage(() => {
   display: block;
   margin-top: 10rpx;
 }
-.tiers {
-  display: flex;
-  gap: 14rpx;
-  margin-top: 24rpx;
-}
-.tier {
-  flex: 1;
-  background: var(--sh-faint);
-  border-radius: 32rpx;
-  padding: 24rpx 8rpx;
-  text-align: center;
-}
-.tier.is-on {
-  background: var(--sh-primary);
-}
-.tier.is-on .tier__count,
-.tier.is-on .tier__price,
-.tier.is-on .tier__state {
-  color: var(--sh-on-primary);
-}
-.tier__count {
-  display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.tier__price {
-  display: block;
-  font-size: 30rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
-  margin-top: 8rpx;
-}
-.tier__state {
-  display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 6rpx;
-}
 .goal {
   margin-top: 24rpx;
   background: var(--sh-primary-tint);

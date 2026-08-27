@@ -531,6 +531,38 @@ def block_is_container(css: str) -> bool:
     return False
 
 
+def selected_is_chiplike(css: str) -> bool:
+    """命中「选中态铺主色」的那些规则里，**至少有一个是 chip 形态**吗。
+
+    这一条判据要报的是「库里有 `.sh-chip--primary` / `--solid`，页面却自己画了一份」。
+    而「选中时铺主色」这个处理，**列表行也用**：自提点行（头像 + 两行字 + 右侧距离）、
+    支付方式行（图标 + 名称 + 勾）—— 它们选中时同样是一片 tint 底。
+    把它们报成 chip 会导向错误的修法：真收进 chip，一整行的布局就没了。
+
+    列表行的判据取「**基态规则是 flex 横排且纵向居中**」：
+    chip 与分段块是 inline-block / 块级，没有一个是 `flex + align-items: center`
+    —— 它们里面就一段文字，不需要排列子元素。
+
+    列表行属于另一笔账：`listrow`（41 页各造一份，库里真的缺这个件）。
+    在那个件做出来之前，这两处应当落在**那条缺口**下，而不是被算成「有件不用」。
+    """
+    for m in re.finditer(r"^\s*\.([a-zA-Z0-9_-]+)((?:\.[a-zA-Z0-9_-]+)*)\s*\{([^}]*)\}", css, re.M):
+        cls, rest, body = m.group(1), m.group(2), m.group(3)
+        # **只看选中态那些规则**。不加这一条的话，页面里任何一块 tint 底
+        #（进度条、提示条…）都会被当成「有一个 chip 形态的选中态」，判据等于没收窄
+        if not re.search(r"--on|is-on", rest):
+            continue
+        if not re.search(r"background:\s*var\(--sh-primary(?:-tint)?\)", body):
+            continue
+        # 找这个类的**基态**规则（`.cls {` 单独一条）
+        base = re.search(r"^\s*\.%s\s*\{([^}]*)\}" % re.escape(cls), css, re.M)
+        base_body = base.group(1) if base else ""
+        is_row = ("display: flex" in base_body and "align-items: center" in base_body)
+        if not is_row:
+            return True
+    return False
+
+
 def read_pages(comps: list[dict], blocks: list[dict]) -> list[dict]:
     comp_names = [c["name"] for c in comps]
     lib_classes = [b["class"].lstrip(".") for b in blocks]
@@ -561,6 +593,10 @@ def read_pages(comps: list[dict], blocks: list[dict]) -> list[dict]:
               # 写在这里而不是塞进正则：正则要表达「规则体里不许出现 X」得整块回溯，
               # 读起来没人看得懂，而这一条本来就只对一条规则成立。
               if hit and rid == "blockdup" and not block_is_container(css):
+                  hit = None
+              # 「选中态自画」再过一道：命中的若**全都是列表行**，那不是 chip 欠账
+              # （见 selected_is_chiplike 的说明；它们归 listrow 那条缺口）
+              if hit and rid == "segment" and not selected_is_chiplike(css):
                   hit = None
               if hit:
                   rolled.append({"id": rid, "label": label, "lib": lib,
