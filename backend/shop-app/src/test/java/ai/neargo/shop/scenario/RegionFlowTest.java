@@ -72,6 +72,40 @@ class RegionFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ C 端的区划**止于区县**，且不需要登录 —— 那是「我家在哪」不是「我能在哪取货」")
+    void consumerRegionsStopAtDistrictAndNeedNoLogin() throws Exception {
+        seedChain();
+
+        // **不带 token**：区划是公共参照数据。要登录才查得到的话，
+        // 「先填地址、再登录下单」这条路就走不通了
+        JsonNode top = data(mvc().perform(get("/mp/regions"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString());
+        assertThat(codes(top)).contains("33");
+
+        JsonNode cities = data(mvc().perform(get("/mp/regions").param("parent", "33"))
+                .andReturn().getResponse().getContentAsString());
+        assertThat(codes(cities)).containsExactly("3301");
+
+        JsonNode districts = data(mvc().perform(get("/mp/regions").param("parent", "3301"))
+                .andReturn().getResponse().getContentAsString());
+        assertThat(codes(districts)).containsExactly("330106");
+        /*
+         * **区县的 hasChild 必须压成 false。** 不压的话端上看到还能往下钻，
+         * 点进去是「街道」—— 而 usr_address 只有 province/city/district 三列，
+         * 街道没有地方放。让人挑一个存不下去的东西，比不让他挑更糟。
+         */
+        assertThat(districts.get(0).get("hasChild").asBoolean())
+                .as("区县不该再显示可下钻 —— 地址表没有街道那一列").isFalse();
+
+        // 街道那一级即便直接问也不给：它属于自提点与经营范围的模型，不是地址簿的
+        JsonNode streets = data(mvc().perform(get("/mp/regions").param("parent", "330106"))
+                .andReturn().getResponse().getContentAsString());
+        assertThat(names(streets))
+                .as("北山街道不该出现在地址用的区划里").isEmpty();
+    }
+
+    @Test
     @DisplayName("★ 逐级查：省级取顶层（parent 为空），再按 parent 往下走")
     void childrenGoLevelByLevel() throws Exception {
         seedChain();

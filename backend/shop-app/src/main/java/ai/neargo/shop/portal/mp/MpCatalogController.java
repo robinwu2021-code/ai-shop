@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.neargo.shop.platform.OpsService;
+import ai.neargo.shop.platform.RegionService;
 import ai.neargo.shop.platform.dto.OpsVOs.MerchantApplyVO;
 import ai.neargo.shop.auth.SecurityUtils;
 import java.util.Map;
@@ -45,15 +46,18 @@ public class MpCatalogController {
     private final MerchantService merchantService;
     private final CategoryService categoryService;
     private final ai.neargo.shop.platform.OpsService opsService;
+    private final ai.neargo.shop.platform.RegionService regionService;
 
     public MpCatalogController(CommunityService communityService, GoodsService goodsService,
                                MerchantService merchantService, CategoryService categoryService,
-                               ai.neargo.shop.platform.OpsService opsService) {
+                               ai.neargo.shop.platform.OpsService opsService,
+                               ai.neargo.shop.platform.RegionService regionService) {
         this.communityService = communityService;
         this.goodsService = goodsService;
         this.merchantService = merchantService;
         this.categoryService = categoryService;
         this.opsService = opsService;
+        this.regionService = regionService;
     }
 
     @GetMapping("/mp/community/nearby")
@@ -83,6 +87,36 @@ public class MpCatalogController {
     @GetMapping("/mp/community/regions")
     public List<RegionOptionVO> openRegions() {
         return communityService.openRegions();
+    }
+
+    /**
+     * 行政区划的直接下级，**止于区县**（省 → 市 → 区）。{@code parent} 为空取省级。
+     *
+     * <p><b>与上面那条 {@code /mp/community/regions} 是两件事，别混。</b>
+     * 那一条只列「有已开通社区的区」—— 它回答的是「我能在哪儿取货」，
+     * 把整棵树扔给用户去挑自提点，十有八九挑到一个一家店都没有的区。
+     * 这一条回答的是「我家在哪儿」，那是用户的事实，不是平台的经营范围：
+     * 按「已开通」去裁，等于告诉一个住在没开通城市的人「你不住在那儿」。
+     *
+     * <p><b>止于区县</b>是因为收货地址表就到这一级（{@code usr_address} 的
+     * province / city / district 三列），再往下的街道、村是 4 万与 62 万行 ——
+     * 那两级属于自提点与经营范围的模型（见 BizRegionController 的聚落注释），
+     * 不是地址簿的。区县这一层把 hasChild 压成 false：不压的话端上看到可以再钻，
+     * 点进去却是「街道」，而地址表没有那一列可放。
+     *
+     * <p>游客可访问：填地址前先要登录，但**区划是公共参照数据**，
+     * 不该因为没登录就查不到 —— 那会让「先选地址再登录」这条路走不通。
+     */
+    @GetMapping("/mp/regions")
+    public List<RegionService.RegionVO> regions(@RequestParam(required = false) String parent) {
+        return regionService.children(parent, true).stream()
+                .filter(r -> !"STREET".equals(r.level()) && !"VILLAGE".equals(r.level()))
+                .map(r -> "DISTRICT".equals(r.level())
+                        ? new RegionService.RegionVO(r.regionCode(), r.parentCode(), r.level(),
+                                r.name(), r.enabled(), false, r.source(), r.pending(),
+                                r.auditStatus(), r.rejectReason(), r.latE6(), r.lngE6(), r.rural())
+                        : r)
+                .toList();
     }
 
     @GetMapping("/mp/community/{communityNo}")
