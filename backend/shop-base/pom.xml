@@ -91,6 +91,16 @@
             <version>${shedlock.version}</version>
         </dependency>
 
+        <!-- 定时任务契约（JobHandler / JobDeclaration）。**零依赖**，
+             加在这里等于让每个域都能实现它，而不必各自引一遍。
+             它不引 Spring 也不引任何东西，所以不会污染任何使用方 —— 这正是当初
+             把它单独开成一个模块、而不是塞进本模块的理由 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-job-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- 鉴权持久层：会话与登录日志的表访问。它不依赖 shop-base（无环），
              也不引 MyBatis —— 见它自己的 pom 注释 -->
         <dependency>

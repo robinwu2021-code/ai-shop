@@ -1,5 +1,9 @@
 package ai.neargo.shop.settle.job;
 
+import ai.neargo.job.api.JobDeclaration;
+import ai.neargo.job.api.JobHandler;
+import ai.neargo.job.api.JobInvocation;
+import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.settle.service.ReconService;
 import org.slf4j.Logger;
@@ -22,7 +26,7 @@ import org.springframework.stereotype.Component;
  */
 @Profile("worker")
 @Component
-public class ReconScanJob {
+public class ReconScanJob implements JobHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ReconScanJob.class);
 
@@ -40,23 +44,43 @@ public class ReconScanJob {
     // lockAtLeastFor 只给 30 秒 —— 扫得快是常态，锁太久会让下一轮白等。
     @SchedulerLock(name = "recon-scan", lockAtLeastFor = "PT30S", lockAtMostFor = "PT9M")
     public void scan() {
-        jobs.run("recon-scan", () -> {
-            ReconService.ScanResult r = reconService.scan(System.currentTimeMillis());
-            if (r.scanned() == 0) {
-                return null;
-            }
-            /*
-             * 有补回或关单就打 WARN：这两件事都意味着回调链路漏了一笔，
-             * 而回调持续漏单是要人去查的（通道配置、回调域名、我方 502），
-             * 不该淹没在 INFO 里。
-             */
-            if (r.repaired() > 0 || r.closed() > 0) {
-                log.warn("[recon] 自查 {} 笔：**补回 {}** · 关单 {} · 留待下轮 {} —— "
-                                + "补回不为零说明支付回调漏了单，要查回调链路",
-                        r.scanned(), r.repaired(), r.closed(), r.deferred());
-            }
-            return "自查 %d 笔（补回 %d · 关单 %d · 留待 %d）"
-                    .formatted(r.scanned(), r.repaired(), r.closed(), r.deferred());
-        });
+        // 触发器只负责「到点了」；任务体在 run() 里。
+        // **J1 这一批只搬不改** —— @Scheduled 与 @SchedulerLock 暂时保留，J2 装上注册表后才摘
+        jobs.run("recon-scan", () -> run(null).detail());
+    }
+
+    @Override
+    public String name() {
+        return "recon-scan";
+    }
+
+    /** 声明。displayName 是**运营页面直接显示的那句话** —— 不能是锁名，运营看不懂。 */
+    public JobDeclaration declaration() {
+        return new JobDeclaration("recon-scan", "对账自查",
+                "扫出平台账与渠道账对不上的流水：补回漏记的、关掉该关的，其余留待下轮",
+                "shop-settle", "0 */10 * * * *", true, 60, 540, true, true);
+    }
+
+    @Override
+    public JobResult run(JobInvocation invocation) {
+        ReconService.ScanResult r = reconService.scan(System.currentTimeMillis());
+        if (r.scanned() == 0) {
+            // **detail 保持 null**，不要改成「无可处理项」之类的话。
+            // JobSupport 用它区分「跑了但没事」与「跑了并做了事」，
+            // 而 J1 这一批的全部价值是行为等价 —— 连写进 sys_job_run.detail 的内容都不能变
+            return JobResult.ok(null);
+        }
+        /*
+         * 有补回或关单就打 WARN：这两件事都意味着回调链路漏了一笔，
+         * 而回调持续漏单是要人去查的（通道配置、回调域名、我方 502），
+         * 不该淹没在 INFO 里。
+         */
+        if (r.repaired() > 0 || r.closed() > 0) {
+            log.warn("[recon] 自查 {} 笔：**补回 {}** · 关单 {} · 留待下轮 {} —— "
+                            + "补回不为零说明支付回调漏了单，要查回调链路",
+                    r.scanned(), r.repaired(), r.closed(), r.deferred());
+        }
+        return JobResult.ok("自查 %d 笔（补回 %d · 关单 %d · 留待 %d）"
+                .formatted(r.scanned(), r.repaired(), r.closed(), r.deferred()));
     }
 }
