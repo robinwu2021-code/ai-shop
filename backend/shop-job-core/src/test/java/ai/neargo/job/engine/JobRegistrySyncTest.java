@@ -46,6 +46,37 @@ class JobRegistrySyncTest {
     }
 
     @Test
+    @DisplayName("★★ startDisabled：首次入库全部为「停」——页面上看得见，但一个都不跑")
+    void startDisabledRegistersButDoesNotSchedule() {
+        f.props.setStartDisabled(true);
+        biz.declarations = List.of(
+                WorkerTestFixture.decl("a", "0 0 3 * * *"),
+                WorkerTestFixture.decl("b", "0 0 4 * * *"));
+
+        sync.syncOnce();
+
+        assertEquals(2, f.definitions.findAll().size(),
+                "任务要登记进表 —— 运营得先看得见才谈得上打开");
+        assertTrue(registry.scheduledNames().isEmpty(),
+                "一次性放开 14 个任务是 14 处同时的行为变化，真出事时分不清是哪一个");
+    }
+
+    @Test
+    @DisplayName("★ startDisabled 只管首次：运营开过之后，发版不能把它关回去")
+    void startDisabledOnlyAffectsTheFirstInsert() {
+        f.props.setStartDisabled(true);
+        biz.declarations = List.of(WorkerTestFixture.decl("a", "0 0 3 * * *"));
+        sync.syncOnce();
+
+        f.definitions.setEnabled("a", true, "ops:zhang");   // 运营在页面上打开
+        sync.syncOnce();                                    // 下一次发版
+
+        assertTrue(f.definitions.findByName("a").enabled(),
+                "运营开好的任务被发版关回去了 —— 没有报错，只是它从某天起又不跑了");
+        assertEquals(Set.of("a"), registry.scheduledNames());
+    }
+
+    @Test
     @DisplayName("同步是幂等的：同样的声明再来一遍，不重复排程")
     void syncIsIdempotent() {
         biz.declarations = List.of(WorkerTestFixture.decl("a", "0 0 3 * * *"));

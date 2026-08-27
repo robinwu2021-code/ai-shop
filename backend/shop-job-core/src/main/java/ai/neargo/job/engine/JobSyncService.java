@@ -76,9 +76,11 @@ public class JobSyncService {
             for (JobDeclaration d : declarations) {
                 // job_name 首次等于 handler_name。运营将来可以用同一个 handler 再建别的实例，
                 // 那些行的 source=MANUAL，代码永远不碰
-                boolean created = definitions.upsertFromCode(d.handlerName(), d, target);
+                boolean created = definitions.upsertFromCode(d.handlerName(), d, target,
+                        !props.isStartDisabled() && d.enabled());
                 if (created) {
-                    log.info("发现新任务 job={} 模块={}", d.handlerName(), d.ownerModule());
+                    log.info("发现新任务 job={} 模块={} 初始状态={}", d.handlerName(), d.ownerModule(),
+                            props.isStartDisabled() ? "停（等运营打开）" : "开");
                 }
                 live.add(d.handlerName());
             }

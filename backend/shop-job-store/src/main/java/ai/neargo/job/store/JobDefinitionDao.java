@@ -94,12 +94,23 @@ public class JobDefinitionDao {
      * @return true 表示这次是新建（首次见到这个任务）
      */
     public boolean upsertFromCode(String jobName, JobDeclaration d, String target) {
+        return upsertFromCode(jobName, d, target, d.enabled());
+    }
+
+    /**
+     * @param enabledOnFirstInsert 首次入库时的开关。**只在 INSERT 时用** ——
+     *                             之后 {@code enabled} 归运营，代码永不覆盖。
+     *                             第一次启用整套调度时传 false：任务全部登记进表、
+     *                             页面上看得见，但一个都不跑，由运营逐个打开。
+     */
+    public boolean upsertFromCode(String jobName, JobDeclaration d, String target,
+                                  boolean enabledOnFirstInsert) {
         int updated = updateCodeOwnedColumns(jobName, d, target);
         if (updated > 0) {
             return false;
         }
         try {
-            insertFromCode(jobName, d, target);
+            insertFromCode(jobName, d, target, enabledOnFirstInsert);
             return true;
         } catch (DuplicateKeyException e) {
             // 两个实例同时首启动。谁先插进去都行，本次改成更新即可。
@@ -129,7 +140,7 @@ public class JobDefinitionDao {
                 .update();
     }
 
-    private void insertFromCode(String jobName, JobDeclaration d, String target) {
+    private void insertFromCode(String jobName, JobDeclaration d, String target, boolean enabled) {
         jdbc.sql("""
                         INSERT INTO job_definition
                             (job_name, display_name, description, handler_name, target,
@@ -146,7 +157,7 @@ public class JobDefinitionDao {
                 .param("handlerName", d.handlerName())
                 .param("target", target)
                 .param("cron", d.defaultCron())
-                .param("enabled", d.enabled() ? 1 : 0)
+                .param("enabled", enabled ? 1 : 0)
                 .param("timeoutSec", d.timeoutSec())
                 .param("lockAtMostSec", d.lockAtMostSec())
                 .param("manualTrigger", d.manualTrigger() ? 1 : 0)

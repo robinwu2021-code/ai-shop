@@ -48,6 +48,21 @@ public class JobWorkerProperties {
     /** 日志保留天数。 */
     private int logRetentionDays = 30;
 
+    /**
+     * **首次入库时一律置为「停」**，由运营在页面上逐个打开。
+     *
+     * <p>这一条是为「第一次启用」准备的：14 个任务从上线至今一次都没跑过，
+     * 一次性全放开是**行为的净增加**，而且是 14 处同时增加 ——
+     * 真出事时分不清是哪一个引起的。
+     *
+     * <p>开着它的时候，第一次启动会把任务全部登记进表（页面上看得见、有说明、有 cron），
+     * 但一个都不跑。运营挑最无害的那个先开，看一轮，再开下一个。
+     *
+     * <p><b>只影响首次 INSERT</b>：之后 {@code enabled} 归运营，代码永不覆盖 ——
+     * 所以把它一直开着也不会在下次发版时把人家开好的任务关掉。
+     */
+    private boolean startDisabled = false;
+
     public String getInstance() { return instance; }
     public void setInstance(String instance) { this.instance = instance; }
     public Duration getPollInterval() { return pollInterval; }
@@ -64,4 +79,6 @@ public class JobWorkerProperties {
     public void setLogPurgeBatch(int logPurgeBatch) { this.logPurgeBatch = logPurgeBatch; }
     public int getLogRetentionDays() { return logRetentionDays; }
     public void setLogRetentionDays(int logRetentionDays) { this.logRetentionDays = logRetentionDays; }
+    public boolean isStartDisabled() { return startDisabled; }
+    public void setStartDisabled(boolean startDisabled) { this.startDisabled = startDisabled; }
 }
