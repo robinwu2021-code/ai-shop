@@ -7918,3 +7918,7 @@ VALUES
     ('AUDITOR', 'OPS_INVENTORY', 'OPS', NOW(), NOW()),
     ('AUDITOR', 'OPS_INVENTORY__TAB_LEDGER', 'OPS', NOW(), NOW()),
     ('AUDITOR', 'OPS_INVENTORY__TAB_RECON', 'OPS', NOW(), NOW());
+UPDATE sys_function_point
+SET backend_status = 'NOT_IMPLEMENTED',
+    updated_at     = NOW()
+WHERE point_code IN ('OPS_INVENTORY', 'OPS_INVENTORY__TAB_LEDGER', 'OPS_INVENTORY__TAB_RECON');
