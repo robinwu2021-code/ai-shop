@@ -181,7 +181,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
     <view v-if="picked.length" class="sh-card">
       <text class="txt-title">{{ $t("storeCategories.mine") }}</text>
       <text class="sh-muted sh-mt-xs blk">{{ $t("storeCategories.renameHint") }}</text>
-      <view v-for="c in picked" :key="c.categoryNo" class="row">
+      <view v-for="c in picked" :key="c.categoryNo" class="sh-row sh-row--divided row">
         <!--
           点名字进商品（落在这一类上），点右边「改名」才是改名。
           从前整行都是改名 —— 而商家在这一页最常想做的其实是
@@ -254,7 +254,6 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
   padding: 12rpx 24rpx;
 }
 
-
 .opt__name {
   font-size: 26rpx;
   color: var(--sh-ink);
@@ -268,14 +267,6 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
 .opt__n {
   font-size: 24rpx;
   color: var(--sh-sub);
-}
-
-.row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 20rpx 0;
-  border-top: var(--sh-hairline);
 }
 
 .row__main {

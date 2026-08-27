@@ -143,7 +143,7 @@ onShow(() => void load());
     <view class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("qual.mine") }}</text>
       <sh-empty v-if="!loading && !data?.items.length" :text='$t("qual.emptyMine")'></sh-empty>
-      <view v-for="q in data?.items ?? []" :key="q.qualNo" class="row">
+      <view v-for="q in data?.items ?? []" :key="q.qualNo" class="sh-row sh-row--divided row">
         <view class="row__main">
           <text class="row__name">{{ q.qualName }}</text>
           <text class="sh-muted row__no">{{ q.qualNumber || "—" }}</text>
@@ -239,13 +239,6 @@ onShow(() => void load());
   padding: 0 8rpx 8rpx;
   font-size: 24rpx;
   line-height: 1.6;
-}
-.row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 16rpx 0;
-  border-bottom: var(--sh-hairline);
 }
 .row__main {
   flex: 1;

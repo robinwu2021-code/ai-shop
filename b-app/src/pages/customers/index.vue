@@ -249,7 +249,7 @@ onShow(load);
 
     <sh-empty v-if="!list.length && !loading" :text="String($t('members.empty'))"></sh-empty>
 
-    <view v-for="m in list" :key="m.memberNo" class="sh-card row" @tap="open(m)">
+    <view v-for="m in list" :key="m.memberNo" class="sh-row sh-card row" @tap="open(m)">
       <view class="row__main">
         <view class="row__head">
           <text class="row__name">···{{ m.phoneTail || "----" }}</text>
@@ -328,9 +328,6 @@ onShow(load);
   font-size: 24rpx;
 }
 .row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   margin-top: 14rpx;
 }
 .row__main {

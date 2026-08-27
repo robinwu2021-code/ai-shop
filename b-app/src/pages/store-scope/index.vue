@@ -398,7 +398,7 @@ onShow(() => {
       <text class="hint">{{ $t("store.scopeLead") }}</text>
 
       <view v-if="areas.length" class="list">
-        <view v-for="a in areas" :key="`${a.level}:${a.refCode}`" class="item">
+        <view v-for="a in areas" :key="`${a.level}:${a.refCode}`" class="sh-row sh-row--divided item">
           <view class="item__main">
             <text class="item__name" :class="{ 'is-pending': areaPending(a) }">
               {{ splitName(a).main }}<text v-if="isWhole(a)" class="item__whole"> {{ $t("store.whole") }}</text>
@@ -569,13 +569,6 @@ onShow(() => {
 }
 .list {
   margin-top: 12rpx;
-}
-.item {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 18rpx 0;
-  border-bottom: var(--sh-hairline);
 }
 .item__main {
   flex: 1;

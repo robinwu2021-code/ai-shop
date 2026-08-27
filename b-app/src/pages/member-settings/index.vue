@@ -79,7 +79,7 @@ onShow(load);
     </view>
 
     <view class="sh-card sh-mt-sm">
-      <view class="row">
+      <view class="sh-row sh-row--between row">
         <view class="row__main">
           <text class="opt__t">{{ $t("memberSettings.autoJoin") }}</text>
           <text class="sh-muted opt__d">{{ $t("memberSettings.autoJoinHint") }}</text>
@@ -109,9 +109,6 @@ onShow(load);
   line-height: 1.6;
 }
 .row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 24rpx;
 }
 .row__main {

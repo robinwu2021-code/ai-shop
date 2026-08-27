@@ -218,7 +218,7 @@ onLoad((q) => {
           <text class="sh-muted opt__d">{{ $t(`activityEdit.goalHint.${g.key}`) }}</text>
         </sh-option>
       </view>
-      <view class="row sh-mt-sm">
+      <view class="sh-row row sh-mt-sm">
         <text class="row__label">{{ $t("activityEdit.name") }}</text>
         <input maxlength="64" v-model="form.name" class="field__input row__input"
                :placeholder="$t('activityEdit.namePh')" />
@@ -239,18 +239,18 @@ onLoad((q) => {
       </view>
 
       <template v-if="form.benefitType === 'CUT'">
-        <view class="row sh-mt-sm">
+        <view class="sh-row row sh-mt-sm">
           <text class="row__label">{{ $t("activityEdit.threshold") }}</text>
           <input maxlength="10" v-model="form.threshold" class="field__input row__input" type="digit" />
         </view>
-        <view class="row">
+        <view class="sh-row row">
           <text class="row__label">{{ $t("activityEdit.cut") }}</text>
           <input maxlength="10" v-model="form.amount" class="field__input row__input" type="digit" />
         </view>
       </template>
 
       <template v-if="form.benefitType === 'PRICE'">
-        <view class="row sh-mt-sm">
+        <view class="sh-row row sh-mt-sm">
           <text class="row__label">{{ $t("activityEdit.price") }}</text>
           <input maxlength="10" v-model="form.amount" class="field__input row__input" type="digit" />
         </view>
@@ -258,11 +258,11 @@ onLoad((q) => {
       </template>
 
       <template v-if="form.benefitType === 'GIFT'">
-        <view class="row sh-mt-sm">
+        <view class="sh-row row sh-mt-sm">
           <text class="row__label">{{ $t("activityEdit.buyN") }}</text>
           <input maxlength="6" v-model="form.buyN" class="field__input row__input" type="number" />
         </view>
-        <view class="row">
+        <view class="sh-row row">
           <text class="row__label">{{ $t("activityEdit.giftM") }}</text>
           <input maxlength="6" v-model="form.giftM" class="field__input row__input" type="number" />
         </view>
@@ -290,7 +290,7 @@ onLoad((q) => {
         >{{ $t(`activityEdit.schedule.${s}`) }}</text>
       </view>
 
-      <view v-if="form.scheduleType === 'ONE_OFF'" class="row sh-mt-sm">
+      <view v-if="form.scheduleType === 'ONE_OFF'" class="sh-row row sh-mt-sm">
         <text class="row__label">{{ $t("activityEdit.days") }}</text>
         <input maxlength="4" v-model="form.days" class="field__input row__input" type="number" />
       </view>
@@ -305,7 +305,7 @@ onLoad((q) => {
             @tap="toggleWeekday(d)"
           >{{ $t(`activities.weekday.${d}`) }}</text>
         </view>
-        <view class="row">
+        <view class="sh-row row">
           <text class="row__label">{{ $t("activityEdit.timeRange") }}</text>
           <input maxlength="5" v-model="form.from" class="field__input row__input" placeholder="08:00" />
           <input maxlength="5" v-model="form.to" class="field__input row__input" placeholder="20:00" />
@@ -313,11 +313,11 @@ onLoad((q) => {
         <text class="sh-muted hint">{{ $t("activityEdit.recurringHint") }}</text>
       </template>
 
-      <view class="row sh-mt-sm">
+      <view class="sh-row row sh-mt-sm">
         <text class="row__label">{{ $t("activityEdit.quota") }}</text>
         <input maxlength="6" v-model="form.quota" class="field__input row__input" type="number" />
       </view>
-      <view class="row">
+      <view class="sh-row row">
         <text class="row__label">{{ $t("activityEdit.budget") }}</text>
         <input maxlength="10" v-model="form.budget" class="field__input row__input" type="digit"
                :placeholder="$t('activityEdit.budgetPh')" />
@@ -395,9 +395,6 @@ onLoad((q) => {
   gap: 8rpx;
 }
 .row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   margin-top: 12rpx;
 }
 .row__label {

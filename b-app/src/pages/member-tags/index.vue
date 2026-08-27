@@ -101,7 +101,7 @@ onShow(load);
     </view>
 
     <view class="sh-card sh-mt-sm">
-      <view class="row">
+      <view class="sh-row sh-row--between">
         <text class="field__label">{{ $t("memberTags.mine") }}</text>
         <text class="sh-chip sh-chip--primary" @tap="create">{{ $t("memberTags.new") }}</text>
       </view>
@@ -131,11 +131,7 @@ onShow(load);
 </template>
 
 <style scoped>
-.row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+
 .tags {
   display: flex;
   flex-wrap: wrap;

@@ -101,18 +101,18 @@ onShow(() => {
   <sh-scaffold title-key="schedule.title" :denied="!canEdit">
     <view class="sh-card">
       <text class="txt-title">{{ $t("schedule.newSlot") }}</text>
-      <view class="row">
+      <view class="sh-row row">
         <text class="sh-muted">{{ $t("schedule.day") }}</text>
         <input maxlength="3" v-model.number="form.dayOffset" class="field__input row__in sh-num" type="number" />
         <text class="sh-muted">{{ $t("schedule.dayUnit") }}</text>
       </view>
-      <view class="row">
+      <view class="sh-row row">
         <text class="sh-muted">{{ $t("schedule.hour") }}</text>
         <input maxlength="3" v-model.number="form.hour" class="field__input row__in sh-num" type="number" />
         <text class="sh-muted">{{ $t("schedule.hours") }}</text>
         <input maxlength="3" v-model.number="form.hours" class="field__input row__in sh-num" type="number" />
       </view>
-      <view class="row">
+      <view class="sh-row row">
         <text class="sh-muted">{{ $t("schedule.capacity") }}</text>
         <input maxlength="6" v-model.number="form.capacity" class="field__input row__in sh-num" type="number" />
       </view>
@@ -147,9 +147,6 @@ onShow(() => {
 
 <style scoped>
 .row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   margin-top: 16rpx;
 }
 .row__in {

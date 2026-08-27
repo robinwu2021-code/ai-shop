@@ -186,7 +186,7 @@ onShow(load);
         </text>
       </view>
 
-      <view v-for="it in o.items" :key="it.skuNo" class="item">
+      <view v-for="it in o.items" :key="it.skuNo" class="sh-row item">
         <sh-cover class="item__cover" :src="it.cover"></sh-cover>
         <view class="item__main">
           <text class="item__title">{{ it.title }}</text>
@@ -232,9 +232,7 @@ onShow(load);
   color: var(--sh-sub);
 }
 .item {
-  display: flex;
   gap: 20rpx;
-  align-items: center;
   margin-bottom: 16rpx;
 }
 .item__cover {

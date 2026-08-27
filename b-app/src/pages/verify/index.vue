@@ -257,7 +257,7 @@ onShow(load);
 
     <!-- 券核销：先看后核 -->
     <view v-if="tab === 'coupon'" class="sh-card entry">
-      <view class="row">
+      <view class="sh-row row">
         <input
           maxlength="32"
           v-model="couponCode"
@@ -322,7 +322,7 @@ onShow(load);
 
     <!-- 单张核销 -->
     <view v-if="!batchMode" class="sh-card entry">
-      <view class="row">
+      <view class="sh-row row">
         <input
           maxlength="16"
           v-model="code"
@@ -360,7 +360,7 @@ onShow(load);
 
     <!-- 批量核销：连续扫码攒起来，最后一次提交 -->
     <view v-else class="sh-card entry">
-      <view class="row">
+      <view class="sh-row row">
         <input
           maxlength="16"
           v-model="code"
@@ -554,9 +554,7 @@ onShow(load);
   margin: 24rpx 0;
 }
 .row {
-  display: flex;
   gap: 20rpx;
-  align-items: center;
 }
 .btn {
   padding: 20rpx 32rpx;

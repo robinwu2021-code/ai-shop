@@ -152,7 +152,7 @@ onLoad((q) => {
 
       <view class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("order.items") }}</text>
-        <view v-for="it in order.items" :key="it.skuNo" class="item">
+        <view v-for="it in order.items" :key="it.skuNo" class="sh-row item">
           <sh-cover class="item__cover" :src="it.cover"></sh-cover>
           <view class="item__main">
             <text class="item__title">{{ it.title }}</text>
@@ -263,9 +263,7 @@ onLoad((q) => {
   line-height: 1.4;
 }
 .item {
-  display: flex;
   gap: 20rpx;
-  align-items: center;
   margin-top: 14rpx;
 }
 .item__cover {

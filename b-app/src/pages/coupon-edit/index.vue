@@ -165,7 +165,7 @@ onLoad((q) => {
         </text>
       </view>
 
-      <view class="row mt2">
+      <view class="sh-row row mt2">
         <text class="row__label">
           {{ isPercent ? $t("couponEdit.rate") : $t("couponEdit.face") }}
         </text>
@@ -173,7 +173,7 @@ onLoad((q) => {
                :placeholder="isPercent ? '8.5' : '5.00'" />
       </view>
       <!-- 折扣券必须封顶：不封顶的敞口随订单金额无限放大 -->
-      <view v-if="isPercent" class="row">
+      <view v-if="isPercent" class="sh-row row">
         <text class="row__label">{{ $t("couponEdit.cap") }}</text>
         <input maxlength="10" v-model="form.cap" class="field__input row__input" type="digit" placeholder="20.00" />
       </view>
@@ -182,7 +182,7 @@ onLoad((q) => {
 
     <!-- ② 门槛 -->
     <view class="sh-card sh-mt-sm">
-      <view class="row">
+      <view class="sh-row row">
         <text class="row__label">{{ $t("couponEdit.minAmount") }}</text>
         <input maxlength="10" v-model="form.minAmount" class="field__input row__input" type="digit"
                :placeholder="$t('couponEdit.minAmountPh')" />
@@ -205,7 +205,7 @@ onLoad((q) => {
       </view>
       <text class="sh-muted hint">{{ $t("couponEdit.redeemHint") }}</text>
 
-      <view v-if="form.redeemMode === 'STORE_CODE'" class="row mt2">
+      <view v-if="form.redeemMode === 'STORE_CODE'" class="sh-row row mt2">
         <text class="row__label">{{ $t("couponEdit.times") }}</text>
         <input maxlength="6" v-model="form.timesTotal" class="field__input row__input" type="number" />
       </view>
@@ -213,7 +213,7 @@ onLoad((q) => {
 
     <!-- ④ 有效期 -->
     <view class="sh-card sh-mt-sm">
-      <view class="row">
+      <view class="sh-row row">
         <text class="row__label">{{ $t("couponEdit.validDays") }}</text>
         <input maxlength="4" v-model="form.validDays" class="field__input row__input" type="number" />
       </view>
@@ -222,15 +222,15 @@ onLoad((q) => {
 
     <!-- ⑤ 发行量与预算 -->
     <view class="sh-card sh-mt-sm">
-      <view class="row">
+      <view class="sh-row row">
         <text class="row__label">{{ $t("couponEdit.total") }}</text>
         <input maxlength="6" v-model="form.totalCount" class="field__input row__input" type="number" />
       </view>
-      <view class="row">
+      <view class="sh-row row">
         <text class="row__label">{{ $t("couponEdit.perUser") }}</text>
         <input maxlength="6" v-model="form.perUserLimit" class="field__input row__input" type="number" />
       </view>
-      <view class="row">
+      <view class="sh-row row">
         <text class="row__label">{{ $t("couponEdit.budget") }}</text>
         <input maxlength="10" v-model="form.budget" class="field__input row__input" type="digit"
                :placeholder="$t('couponEdit.budgetPh')" />
@@ -259,9 +259,6 @@ onLoad((q) => {
   margin-top: 12rpx;
 }
 .row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   margin-top: 12rpx;
 }
 .row__label {

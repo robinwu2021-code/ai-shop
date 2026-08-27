@@ -42,7 +42,7 @@ onLoad(async (q) => {
   <sh-scaffold title-key="memberDetail.title" :denied="!merchant.can('biz:customer')">
     <template v-if="data">
       <view class="sh-card">
-        <view class="row">
+        <view class="sh-row row">
           <text class="name">···{{ data.member.phoneTail || "----" }}</text>
           <text v-if="data.member.level" class="sh-chip"
             :class="data.member.level === 'SLEEPING' ? 'sh-chip--warning' : 'sh-chip--primary'">
@@ -107,8 +107,6 @@ onLoad(async (q) => {
 
 <style scoped>
 .row {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
 }
 .name {

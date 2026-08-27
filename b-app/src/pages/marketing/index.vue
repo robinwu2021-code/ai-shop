@@ -272,7 +272,7 @@ onShow(load);
       </view>
       <view v-if="need.buyGift" class="field">
         <text class="field__label">{{ $t("marketing.buyGift") }}</text>
-        <view class="row">
+        <view class="sh-row">
           <input maxlength="6" v-model="form.buyN" class="field__input sh-num flex1" type="number" />
           <text class="sh-muted">{{ $t("marketing.buyGiftMid") }}</text>
           <input maxlength="6" v-model="form.giftM" class="field__input sh-num flex1" type="number" />
@@ -367,11 +367,7 @@ onShow(load);
   align-items: center;
   justify-content: space-between;
 }
-.row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
+
 .flex1 {
   flex: 1;
 }

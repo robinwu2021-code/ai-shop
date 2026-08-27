@@ -83,7 +83,7 @@ function addOne() {
     <view v-else-if="failed && !rows.length" class="hint">{{ $t("store.loadFailed") }}</view>
 
     <view class="list">
-      <view v-for="e in rows" :key="e.entityNo" class="sh-card item" @tap="open(e.entityNo)">
+      <view v-for="e in rows" :key="e.entityNo" class="sh-row sh-card item" @tap="open(e.entityNo)">
         <view class="item__main">
           <text class="item__name">
             {{ e.name }}
@@ -125,8 +125,6 @@ function addOne() {
   margin-top: 24rpx;
 }
 .item {
-  display: flex;
-  align-items: center;
   gap: 24rpx;
 }
 .item__main {

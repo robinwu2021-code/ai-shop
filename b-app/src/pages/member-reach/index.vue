@@ -127,7 +127,7 @@ onShow(() => {
 
     <!-- ② 发给谁 -->
     <view class="sh-card sh-mt-sm">
-      <view class="row" @tap="pickSegment">
+      <view class="sh-row sh-row--between" @tap="pickSegment">
         <text class="row__label">{{ $t("reach.toWhom") }}</text>
         <text class="row__v">{{ segmentName }} ▾</text>
       </view>
@@ -192,11 +192,7 @@ onShow(() => {
   font-size: 24rpx;
   line-height: 1.6;
 }
-.row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+
 .row__label {
   font-size: 26rpx;
   color: var(--sh-sub);

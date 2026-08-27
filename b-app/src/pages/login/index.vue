@@ -186,7 +186,7 @@ async function doLogin(method: LoginMethod) {
 
       <view class="field">
         <text class="field__label">{{ byPwd ? $t("login.password") : $t("login.code") }}</text>
-        <view class="row">
+        <view class="sh-row">
           <input
             v-if="byPwd"
             v-model="code"
@@ -266,11 +266,7 @@ async function doLogin(method: LoginMethod) {
   display: block;
   line-height: 1.6;
 }
-.row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
+
 .flex1 {
   flex: 1;
 }

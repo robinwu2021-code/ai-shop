@@ -82,7 +82,7 @@ function confirm() {
       <view
         v-for="s in g.stores"
         :key="s.storeNo"
-        class="sh-card item"
+        class="sh-row sh-card item"
         :class="{ 'is-on': s.storeNo === picked, 'is-off': s.status !== 'ACTIVE' }"
         @tap="choose(s.storeNo, s.status)"
       >
@@ -147,8 +147,6 @@ function confirm() {
   color: var(--sh-warning);
 }
 .item {
-  display: flex;
-  align-items: center;
   gap: 24rpx;
   border: 4rpx solid transparent;
 }

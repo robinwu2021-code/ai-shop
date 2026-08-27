@@ -168,7 +168,7 @@ onShow(load);
       </text>
       <view v-if="pointsRecords" class="rows">
         <sh-empty v-if="!pointsRecords.length" :text='$t("settle.pointsEmpty")'></sh-empty>
-        <view v-for="r in pointsRecords" :key="r.settleNo + r.subOrderNo" class="row">
+        <view v-for="r in pointsRecords" :key="r.settleNo + r.subOrderNo" class="sh-row sh-row--between row">
           <text class="sh-muted sh-num">{{ r.subOrderNo }}</text>
           <text class="sh-num">
             {{ $t("settle.pointsQty", { n: r.points }) }}　{{ money(r.feeMinor) }}
@@ -214,25 +214,25 @@ onShow(load);
       </view>
 
       <view class="rows">
-        <view class="row">
+        <view class="sh-row sh-row--between row">
           <text class="sh-muted">{{ $t("settle.gross") }}</text>
           <text class="sh-num">{{ money(b.grossMinor) }}</text>
         </view>
-        <view class="row">
+        <view class="sh-row sh-row--between row">
           <text class="sh-muted">{{ $t("settle.commission") }}（{{ pct(b.commissionRate) }}）</text>
           <text class="sh-num minus">-{{ money(b.commissionMinor) }}</text>
         </view>
-        <view class="row">
+        <view class="sh-row sh-row--between row">
           <text class="sh-muted">{{ $t("settle.fulfillFee") }}</text>
           <text class="sh-num minus">-{{ money(b.serviceFeeMinor) }}</text>
         </view>
         <!-- 多店商家必须看得见「哪家店挣的」和「打给哪个号」：
              只给其中一个，他就无法回答「河坊街店这个月的钱进了哪张卡」 -->
-        <view v-if="multiStore" class="row">
+        <view v-if="multiStore" class="sh-row sh-row--between row">
           <text class="sh-muted">{{ $t("settle.store") }}</text>
           <text>{{ storeName(b.storeNo) }}</text>
         </view>
-        <view v-if="multiStore && b.payMerchantNo" class="row">
+        <view v-if="multiStore && b.payMerchantNo" class="sh-row sh-row--between row">
           <text class="sh-muted">{{ $t("settle.payTo") }}</text>
           <text class="sh-num">{{ b.payMerchantNo }}</text>
         </view>
@@ -315,9 +315,6 @@ onShow(load);
   padding: 8rpx 24rpx;
 }
 .row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 16rpx 0;
 }
 .minus {

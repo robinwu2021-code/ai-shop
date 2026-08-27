@@ -465,7 +465,16 @@ ROLLED = [
     # 按名字判第四次误命中了（前三次：addbtn/candchip、卡内标题行/分段标题、可删标签）。
     # `effect` 补进来：`activities` 画的就是这个东西，只是没叫这个名。
     ("stat",    "统计数字格",      None, r"^\s*\.(trio|quad|stat|kpi|effect__)\b", "sh-stat", None),
-    ("listrow", "列表行",         None, r"^\s*\.(row|item)\b",                  None,       None),
+    # 2026-08-27 拆成两条。原来一条「列表行」盖住 46 页，而逐条读完 45 条基态规则
+    # 之后它是**两件事**：21 处只有 `margin`（那是**列表项之间的缝**，不是行），
+    # 16+5+3 处才是横排行。混成一条的后果是「41 页各造一份」这个数字既吓人又没法动手 ——
+    # 你不知道该做一个什么件。拆开之后两个件都很小，见 base.css 的 .sh-list / .sh-row。
+    ("listrow", "横排行",         None,
+     r"^\s*\.(?:row|item)\s*\{[^}]*display:\s*flex",                          "sh-row",   ".sh-row"),
+    # 列表项各自挂 margin：容器给 gap 才对 —— 挂 margin 的话最后一项底下会多出一道缝，
+    # 在卡片里就是「下边距比上边距大一截」
+    ("listgap", "列表间距",       None,
+     r"^\s*\.(?:row|item)\s*\{(?:(?!display:)[^}])*\}",                       None,       None),
     # 键值行判**声明**不判名字：`activities` 的 `.rule` 是 `display: block` 的
     # 一行灰字，不是「左键右值」。按名字判第九次误命中。
     ("kv",      "键值行", None, r"\.(?:kv|rule|prob)\b[^{}]*\{[^}]*display:\s*flex", None, None),

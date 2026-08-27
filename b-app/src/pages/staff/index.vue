@@ -136,7 +136,7 @@ onShow(load);
       <sh-empty v-if="!visibleStaff.length" :text='$t("staff.empty")'></sh-empty>
 
       <!-- 一行四样：认人的、状态、他管什么、进详情。**其余全在详情页** -->
-      <view v-for="s in visibleStaff" :key="s.mchAccountNo" class="sh-card row" @tap="openStaff(s)">
+      <view v-for="s in visibleStaff" :key="s.mchAccountNo" class="sh-row sh-card row" @tap="openStaff(s)">
         <view class="row__main">
           <view class="row__top">
             <text class="row__name">{{ nameOf(s) }}</text>
@@ -178,7 +178,7 @@ onShow(load);
     <template v-else-if="tab === 'roles'">
       <text class="sh-muted tip">{{ $t("staff.roleTip") }}</text>
 
-      <view v-for="r in roles" :key="r.roleCode" class="sh-card row">
+      <view v-for="r in roles" :key="r.roleCode" class="sh-row sh-card row">
         <view class="row__main" @tap="openRole(r)">
           <view class="row__top">
             <text class="row__name">{{ r.name }}</text>
@@ -231,9 +231,6 @@ onShow(load);
   line-height: 1.6;
 }
 .row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   margin-bottom: 16rpx;
 }
 .row__main {
