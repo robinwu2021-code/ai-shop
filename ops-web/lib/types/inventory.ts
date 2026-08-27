@@ -88,8 +88,18 @@ export interface InvReconDiff {
   entityNo: string;
   storeNo?: string;
   skuNo: string;
-  /** 平台侧的数（prd_sku / prd_store_stock） */
+  /** 平台侧的实存（prd_sku / prd_store_stock） */
   platformQty: number;
-  /** 进销存侧的数（inv_stock_balance） */
+  /** 进销存侧的实存（inv_stock_balance） */
   inventoryQty: number;
+  /**
+   * 平台侧的预留（`locked_stock`）。
+   *
+   * **实存一样、预留不一样也是差异** —— 只比实存的话，
+   * 「已被下单占住的货」在两边对不上会被报成干净，
+   * 而切过去那些货就重新变成可售了。
+   */
+  platformHeld: number;
+  /** 进销存侧的预留 */
+  inventoryHeld: number;
 }

@@ -1,10 +1,9 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.event.OutboxDispatcher;
-import ai.neargo.shop.inventory.service.InboundService;
+import ai.neargo.shop.invbridge.InventoryBackfillService;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.StockQueryService;
-import ai.neargo.shop.inventory.support.InvEnums;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.spi.product.StockPort;
@@ -15,7 +14,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -52,11 +50,11 @@ class InventoryDualWriteTest {
     @Autowired
     private InventoryAclService acl;
     @Autowired
-    private InboundService inbound;
-    @Autowired
     private StockQueryService query;
     @Autowired
     private SkuMapper skuMapper;
+    @Autowired
+    private InventoryBackfillService backfill;
 
     @Test
     @DisplayName("★★★ 装配的是双写口 —— 拿到 StockPortImpl 就说明这一档整个没生效")
@@ -160,6 +158,48 @@ class InventoryDualWriteTest {
                 .isEqualTo(before);
     }
 
+    @Test
+    @DisplayName("★★★ 在途预留没搬时，对差必须拦住 —— 实存一样但切过去会超卖")
+    void heldLocksMustBeMigratedBeforeSwitch() {
+        Fixture f = fixture(10);
+
+        // 一笔在途：平台占了 3 件（locked_stock=3），进销存那边还没有
+        stockPort.lock("SO-HELD-" + f.seq, List.of(new StockPort.SkuQty(f.skuNo, 3)));
+        // **不投递** —— 模拟「搬运搬了余额，但在途的锁没搬」那一刻
+        assertThat(reserved(f)).as("此刻进销存那边一笔预留都没有").isZero();
+
+        InventoryBackfillService.Report before = backfill.diffOnly(5000);
+        boolean caught = before.diffs().stream()
+                .anyMatch(d -> f.skuNo.equals(d.skuNo()) && d.platformHeld() != d.inventoryHeld());
+        assertThat(caught)
+                .as("实存两边都是 10，只有预留差 3 —— **只比实存的话这里会报干净**，"
+                        + "而切过去那 3 件就重新可售了")
+                .isTrue();
+
+        // 搬在途预留，差异应当消失
+        backfill.migrateHeldLocks(100);
+        assertThat(reserved(f)).as("搬过来之后进销存也占住这 3 件").isEqualTo(3);
+
+        InventoryBackfillService.Report after = backfill.diffOnly(5000);
+        assertThat(after.diffs().stream().anyMatch(d -> f.skuNo.equals(d.skuNo())))
+                .as("搬完之后这一条不该再有差异").isFalse();
+    }
+
+    @Test
+    @DisplayName("★★ 搬在途预留是幂等的 —— 重跑不会把同一笔占两遍")
+    void migratingHeldLocksIsIdempotent() {
+        Fixture f = fixture(10);
+        stockPort.lock("SO-IDEM-" + f.seq, List.of(new StockPort.SkuQty(f.skuNo, 4)));
+
+        backfill.migrateHeldLocks(100);
+        int once = reserved(f);
+        backfill.migrateHeldLocks(100);
+
+        assertThat(reserved(f))
+                .as("幂等靠 external_ref（= lockNo），不靠「只跑一次」")
+                .isEqualTo(once);
+    }
+
     // ------------------------------------------------------------------ 种子
 
     private record Fixture(int seq, String skuNo, String owner, String itemId) {
@@ -187,13 +227,17 @@ class InventoryDualWriteTest {
         sku.setPrice(4200L);
         skuMapper.insert(sku);
 
-        // ② 进销存侧：搬运之后该有的样子
-        String owner = acl.ownerIdOf(entityNo);
-        String location = acl.locationIdOf(entityNo, null);
-        String itemId = acl.upsertItem(entityNo, skuNo, "东北大米", "5斤装", null, null, "袋");
-        inbound.postDirectly(new InboundService.Draft(owner, location,
-                InvEnums.InboundSource.PURCHASE, null, "老周粮油", LocalDateTime.now(), null,
-                List.of(new InboundService.Line(itemId, qty, "袋", 4200L))), "老板");
+        /*
+         * ② 进销存侧：**走真实的搬运**，不自己入一笔货。
+         *
+         * 自己入货的话这个 SKU 没有 INIT 单，`alreadyMoved` 为假 —— 而 `moveOne`
+         * 只在「已搬过」时才记差异（没搬过的当然对不上）。于是对差看不见它，
+         * 那条断言就永远绿着，而它本来是要拦「预留没搬」的。
+         */
+        backfill.run(false, 500, null);
+
+        String owner = acl.ownerOfSku(skuNo);
+        String itemId = acl.itemIdOfSku(skuNo);
 
         return new Fixture(seq, skuNo, owner, itemId);
     }
@@ -204,6 +248,10 @@ class InventoryDualWriteTest {
 
     private int available(Fixture f) {
         return query.itemDetail(f.owner, f.itemId).available();
+    }
+
+    private int reserved(Fixture f) {
+        return query.itemDetail(f.owner, f.itemId).reserved();
     }
 
     private int ledgerSize(Fixture f) {

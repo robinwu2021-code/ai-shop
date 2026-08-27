@@ -40,6 +40,27 @@ public interface InventoryBackfillService {
     Report run(boolean dryRun, int limit, Long afterId);
 
     /**
+     * 把平台侧**还在途的预留**搬过去（{@code prd_stock_lock.status = LOCKED}）。
+     *
+     * <p><b>只搬余额是不够的。</b> 搬运搬的是 {@code prd_sku.stock}（实存），
+     * 而 {@code locked_stock} 原本一个字都没搬 —— 于是：
+     * <pre>
+     *   平台：  stock=100  locked=5   → 可用 95
+     *   进销存：on_hand=100 reserved=0 → 可用 100
+     * </pre>
+     * 两边实存都是 100，<b>对差报「干净」</b>。真在这一刻切过去，
+     * 那 5 件已被下单占住的货重新变成可售 —— <b>超卖，而且是闸门放行之后发生的</b>。
+     *
+     * <p>用 {@code lockNo} 当 {@code external_ref}，与双写的镜像事件同一个自然键：
+     * 搬过来之后那笔单去支付或取消时，{@code commitByRef} / {@code releaseByRef}
+     * 找得到它。用别的键的话，这批预留会一直挂到过期回收 ——
+     * 货占着、单已经成了，而两边都没人知道。
+     *
+     * @return 搬了几笔
+     */
+    int migrateHeldLocks(int limit);
+
+    /**
      * 只对差，不搬。切真相源之前每天跑一次，直到连续为零。
      *
      * <p><b>内部翻到底</b>，不是只看一批：一道只抽样的闸门比没有闸门更坏 ——
@@ -86,8 +107,23 @@ public interface InventoryBackfillService {
         }
     }
 
-    /** @param platformQty 平台侧的数 · @param inventoryQty 进销存侧的数 */
+    /**
+     * @param platformQty      平台侧的实存
+     * @param inventoryQty     进销存侧的实存
+     * @param platformHeld     平台侧的预留（{@code locked_stock}）
+     * @param inventoryHeld    进销存侧的预留
+     *
+     * <p><b>两个数都要比，不能只比实存。</b> 只比实存的话，
+     * 「实存一样、预留差 5 件」会被报成干净 —— 而切过去那 5 件就重新可售了。
+     */
     record Diff(String entityNo, String storeNo, String skuNo,
-                int platformQty, int inventoryQty) {
+                int platformQty, int inventoryQty,
+                int platformHeld, int inventoryHeld) {
+
+        /** 只有实存对不上（老形状的兼容构造，预留视为两边都是 0） */
+        public Diff(String entityNo, String storeNo, String skuNo,
+                    int platformQty, int inventoryQty) {
+            this(entityNo, storeNo, skuNo, platformQty, inventoryQty, 0, 0);
+        }
     }
 }

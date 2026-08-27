@@ -33,6 +33,16 @@ export function ReconTab({ c }: { c: InventoryCopy }) {
     { header: c.invColPlatform, numeric: true, cell: (d) => d.platformQty },
     { header: c.invColInventory, numeric: true, cell: (d) => d.inventoryQty },
     {
+      header: c.invColHeld,
+      numeric: true,
+      // 预留对不上要单独看得见：实存一样时它是唯一的差异，而它同样会导致超卖
+      cell: (d) => (
+        <span className={d.platformHeld !== d.inventoryHeld ? "font-semibold text-destructive" : undefined}>
+          {d.platformHeld} / {d.inventoryHeld}
+        </span>
+      ),
+    },
+    {
       header: c.invColGap,
       numeric: true,
       cell: (d) => {

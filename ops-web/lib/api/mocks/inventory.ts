@@ -68,7 +68,11 @@ export const inventoryMock: InventoryApi = {
       // **故意不干净**：全绿的样子谁都想得出来，不干净时怎么读才是这一页的价值
       clean: false,
       diffs: [
-        { entityNo: "M0001", storeNo: "S0001", skuNo: "SK0003", platformQty: 5, inventoryQty: 3 },
+        // 刻意造两种差异：一条实存对不上、一条**只有预留对不上**
+        { entityNo: "M0001", storeNo: "S0001", skuNo: "SK0003",
+          platformQty: 5, inventoryQty: 3, platformHeld: 0, inventoryHeld: 0 },
+        { entityNo: "M0002", storeNo: "S0002", skuNo: "SK0007",
+          platformQty: 20, inventoryQty: 20, platformHeld: 5, inventoryHeld: 0 },
       ],
     }),
 };

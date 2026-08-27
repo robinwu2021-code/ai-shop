@@ -59,8 +59,10 @@ const zh = {
   invColSku: "SKU",
   invColPlatform: "平台侧",
   invColInventory: "进销存侧",
+  invColHeld: "预留 平台/进销存",
   invColGap: "差",
   invReconNoDiff: "逐条比过，没有差异。",
+  invReconHeldHint: "预留对不上同样会超卖：实存一样、而平台占着 5 件进销存没占，切过去那 5 件就重新可售了。搬运要连在途的锁一起搬。",
   invReconHowTo: "差异只有三种来源，按可能性排：① 某条写库存的路径没经过 StockPort（平台侧还有几处直接改数）② 搬运那一刻正好有单在扣，重查一次会自己好 ③ 真有 bug。",
 };
 
@@ -118,8 +120,10 @@ const en: typeof zh = {
   invColSku: "SKU",
   invColPlatform: "Platform",
   invColInventory: "Inventory",
+  invColHeld: "Held plat/inv",
   invColGap: "Gap",
   invReconNoDiff: "Compared row by row — no differences.",
+  invReconHeldHint: "A held-quantity mismatch oversells just the same: same on-hand, but the platform holds 5 units the inventory side does not — switch now and those 5 go back on sale. The backfill has to migrate in-flight locks too.",
   invReconHowTo: "A difference has three possible causes, most likely first: (1) some write path bypassed StockPort — a few platform services still set stock directly; (2) an order was deducting at the moment of migration, re-check and it clears itself; (3) a real bug.",
 };
 

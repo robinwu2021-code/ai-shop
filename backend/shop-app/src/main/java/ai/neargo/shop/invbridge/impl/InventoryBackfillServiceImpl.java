@@ -8,11 +8,15 @@ import ai.neargo.shop.inventory.entity.InvInboundOrder;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.InboundOrderMapper;
 import ai.neargo.shop.inventory.service.InboundService;
 import ai.neargo.shop.inventory.service.InventoryAclService;
+import ai.neargo.shop.inventory.service.LocationService;
+import ai.neargo.shop.inventory.service.ReservationService;
 import ai.neargo.shop.inventory.service.StockQueryService;
 import ai.neargo.shop.inventory.support.InvEnums;
 import ai.neargo.shop.product.entity.PrdSku;
+import ai.neargo.shop.product.entity.PrdStockLock;
 import ai.neargo.shop.product.entity.PrdStoreStock;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
+import ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
@@ -39,6 +43,9 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
 
     private static final Logger log = LoggerFactory.getLogger(InventoryBackfillServiceImpl.class);
 
+    private final LocationService locations;
+    private final StockLockMapper lockMapper;
+    private final ReservationService reservations;
     private final SkuMapper skuMapper;
     private final StoreStockMapper storeStockMapper;
     private final InboundOrderMapper inboundOrderMapper;
@@ -46,10 +53,15 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
     private final InboundService inbound;
     private final StockQueryService query;
 
-    public InventoryBackfillServiceImpl(SkuMapper skuMapper, StoreStockMapper storeStockMapper,
+    public InventoryBackfillServiceImpl(LocationService locations,
+                                        StockLockMapper lockMapper, ReservationService reservations,
+                                        SkuMapper skuMapper, StoreStockMapper storeStockMapper,
                                         InboundOrderMapper inboundOrderMapper,
                                         InventoryAclService acl, InboundService inbound,
                                         StockQueryService query) {
+        this.locations = locations;
+        this.lockMapper = lockMapper;
+        this.reservations = reservations;
         this.skuMapper = skuMapper;
         this.storeStockMapper = storeStockMapper;
         this.inboundOrderMapper = inboundOrderMapper;
@@ -60,6 +72,60 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
 
     /** 一次对差最多翻多少轮。防的是「平台侧无限长」把一次日常对差跑成一场全表扫描 */
     private static final int DIFF_PAGES_MAX = 200;
+
+    /**
+     * 搬过来的在途预留活多久。与平台的「未支付自动关单」同一个量级 ——
+     * 比它短会把还能付款的单先释放掉，比它长会让已关的单继续占着货。
+     */
+    private static final long HELD_TTL_SECONDS = 30 * 60L;
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>幂等靠 {@code external_ref}（= {@code lockNo}）：进销存那边同一个 ref
+     * 第二次进来会被认出是同一笔。所以重跑安全，中断了下一轮接着来。
+     */
+    @Override
+    public int migrateHeldLocks(int limit) {
+        List<PrdStockLock> held = DataScopeContext.executeWithoutScope(() ->
+                lockMapper.selectList(Wrappers.<PrdStockLock>lambdaQuery()
+                        .eq(PrdStockLock::getStatus, PrdStockLock.LOCKED)
+                        .orderByAsc(PrdStockLock::getId)
+                        .last("LIMIT " + limit)));
+
+        int moved = 0;
+        for (PrdStockLock lock : held) {
+            /*
+             * **吃预售额度的那些不搬**：它们占的不是现货，而是「明天要采的量」。
+             * 进销存里没有「预售额度」这个概念 —— 搬过去会变成占用实存，
+             * 而那批货此刻根本不在仓里。
+             */
+            if (Boolean.TRUE.equals(lock.getPresale())) {
+                continue;
+            }
+            String owner = acl.ownerOfSku(lock.getSkuNo());
+            if (owner == null) {
+                // 这个 SKU 还没搬过余额 —— 先搬余额再搬它的预留，顺序反了会扣成负数
+                continue;
+            }
+            String locationId = locations.resolveStockLocation(
+                    owner, acl.locationOfStore(owner, lock.getStoreNo()));
+            try {
+                reservations.reserve(owner, lock.getLockNo(),
+                        List.of(new ReservationService.Line(
+                                acl.itemIdOfSku(lock.getSkuNo()), locationId, nz(lock.getQty()))),
+                        HELD_TTL_SECONDS);
+                moved++;
+            } catch (RuntimeException e) {
+                // 已经搬过（同 ref）或此刻可用不足，都不该中断整批
+                log.debug("在途预留 {} 未搬：{}", lock.getLockNo(), e.getMessage());
+            }
+        }
+        if (moved > 0) {
+            log.info("搬运在途预留 {} 笔 —— 少了这一步，切换那天这些货会重新变成可售", moved);
+        }
+        return moved;
+    }
 
     @Override
     public Report run(boolean dryRun, int limit, Long afterId) {
@@ -155,7 +221,7 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
                 // 主体级：落到默认库位。**这是「主体级库存 = 一个默认库位」在数据上的兑现**
                 String locationId = acl.locationIdOf(entityNo, null);
                 int r = moveOne(ownerId, entityNo, null, sku.getSkuNo(), itemId, locationId,
-                        nz(sku.getStock()), dryRun, diffs);
+                        nz(sku.getStock()), nz(sku.getLockedStock()), dryRun, diffs);
                 moved += r == 1 ? 1 : 0;
                 skipped += r == 0 ? 1 : 0;
                 pending += r == -1 ? 1 : 0;
@@ -163,7 +229,7 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
                 for (PrdStoreStock st : storeRows) {
                     String locationId = acl.locationIdOf(entityNo, st.getStoreNo());
                     int r = moveOne(ownerId, entityNo, st.getStoreNo(), sku.getSkuNo(), itemId,
-                            locationId, nz(st.getStock()), dryRun, diffs);
+                            locationId, nz(st.getStock()), nz(st.getLockedStock()), dryRun, diffs);
                     moved += r == 1 ? 1 : 0;
                     skipped += r == 0 ? 1 : 0;
                     pending += r == -1 ? 1 : 0;
@@ -183,17 +249,24 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
      * @return 1=搬了 · 0=已搬过跳过 · -1=只算不写
      */
     private int moveOne(String ownerId, String entityNo, String storeNo, String skuNo,
-                        String itemId, String locationId, int platformQty,
+                        String itemId, String locationId, int platformQty, int platformHeld,
                         boolean dryRun, List<Diff> diffs) {
         int inventoryQty = onHandOf(ownerId, itemId);
+        int inventoryHeld = reservedOf(ownerId, itemId);
         String sourceRef = skuNo + "|" + (storeNo == null ? "-" : storeNo);
         boolean already = alreadyMoved(ownerId, sourceRef);
 
         if (already || dryRun) {
             // **对差只在「已经搬过」或「只算不写」时才有意义**：
             // 没搬过的当然对不上，把它算成差异会让报告永远不干净
-            if (already && platformQty != inventoryQty) {
-                diffs.add(new Diff(entityNo, storeNo, skuNo, platformQty, inventoryQty));
+            /*
+             * **实存与预留都要比。** 只比实存的话，「实存一样、预留差 5 件」
+             * 会被报成干净 —— 而切过去那 5 件就重新可售了，
+             * 是闸门放行之后发生的超卖。
+             */
+            if (already && (platformQty != inventoryQty || platformHeld != inventoryHeld)) {
+                diffs.add(new Diff(entityNo, storeNo, skuNo,
+                        platformQty, inventoryQty, platformHeld, inventoryHeld));
             }
             return already ? 0 : -1;
         }
@@ -221,6 +294,12 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
     private int onHandOf(String ownerId, String itemId) {
         ItemDetailVO d = query.itemDetail(ownerId, itemId);
         return d == null ? 0 : d.onHand();
+    }
+
+    /** 进销存侧的预留量。**对差要比它** —— 只比实存会漏掉「切过去就重新可售」那一类 */
+    private int reservedOf(String ownerId, String itemId) {
+        ItemDetailVO d = query.itemDetail(ownerId, itemId);
+        return d == null ? 0 : d.reserved();
     }
 
     private static int nz(Integer v) {
