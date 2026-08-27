@@ -55,7 +55,7 @@ public class OperatorIdentityLoader implements IdentityLoader<LoginUser> {
         if (staff == null || !ACTIVE.equals(staff.getStatus())) {
             return Optional.empty();
         }
-        List<String> roles = readRoles(staff.getRoles());
+        List<String> roles = readRoles(staffNo, staff.getRoles());
         List<String> resolved = perms.resolve(roles);
         if (resolved == null) {
             // 解析器没装上或解析失败。**宁可给空权限也不要抛** ——
@@ -70,8 +70,14 @@ public class OperatorIdentityLoader implements IdentityLoader<LoginUser> {
                         staff.getPickupNo(), resolved)));
     }
 
-    /** {@code roles} 是 JSON 数组。解析不了当作空 —— 与登录路径的处理一致。 */
-    private List<String> readRoles(String jsonArray) {
+    /**
+     * {@code roles} 是 JSON 数组。解析不了当作空 —— 与登录路径的处理一致。
+     *
+     * <p><b>但必须留一条日志。</b>静默兜底会让「这一列坏了」与「这个人本来就没角色」
+     * 长得一模一样：那个人悄无声息地失去全部权限，而运营看到的是「他说他点不动」，
+     * 库里那一列却明明写着角色。<b>兜底可以，无声不行。</b>
+     */
+    private List<String> readRoles(String staffNo, String jsonArray) {
         if (jsonArray == null || jsonArray.isBlank()) {
             return List.of();
         }
@@ -79,6 +85,8 @@ public class OperatorIdentityLoader implements IdentityLoader<LoginUser> {
             return json.readValue(jsonArray, new TypeReference<List<String>>() {
             });
         } catch (Exception e) {
+            log.warn("roles 列不是合法 JSON，按空角色处理 staffNo={} 异常={}",
+                    staffNo, e.getClass().getSimpleName());
             return List.of();
         }
     }
