@@ -732,7 +732,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 49,
+        "b-app": 47,
         "c-app": 1
       }
     },
@@ -1143,6 +1143,22 @@
       "why": "贴右下角压在列表上。**只有一个调用点仍然收进来** —— 收的不是重复，是那一行 `bottom` 里的知识：抬到 tabBar 上方一指宽，否则想点新建却切了页"
     },
     {
+      "name": "sh-go",
+      "file": "packages/ui/src/components/sh-go.vue",
+      "scope": "跨端",
+      "lines": 56,
+      "props": [
+        "text?: string",
+        "quiet?: boolean"
+      ],
+      "usage": {
+        "b-app": 9,
+        "c-app": 0
+      },
+      "note": "—",
+      "why": "—"
+    },
+    {
       "name": "sh-icon-btn",
       "file": "packages/ui/src/components/sh-icon-btn.vue",
       "scope": "跨端",
@@ -1164,14 +1180,14 @@
       "name": "sh-icon",
       "file": "packages/ui/src/components/sh-icon.vue",
       "scope": "跨端",
-      "lines": 48,
+      "lines": 65,
       "props": [
         "name: IconName",
         "size?: number",
         "color?: string"
       ],
       "usage": {
-        "b-app": 32,
+        "b-app": 34,
         "c-app": 4
       },
       "note": "单色图标",
@@ -1462,7 +1478,7 @@
       "name": "biz-store-tag",
       "file": "b-app/src/components/biz/biz-store-tag.vue",
       "scope": "B 端",
-      "lines": 81,
+      "lines": 77,
       "props": [
         "readonly?: boolean"
       ],
@@ -1742,10 +1758,11 @@
       "page": "entity-detail",
       "file": "b-app/src/pages/entity-detail/index.vue",
       "components": [
+        "sh-go",
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 9,
+      "libClassHits": 8,
       "localSelectors": 14,
       "localCssLines": 68,
       "rolled": []
@@ -1854,12 +1871,13 @@
       "page": "home",
       "file": "b-app/src/pages/home/index.vue",
       "components": [
+        "sh-go",
         "sh-scaffold",
         "biz-store-tag"
       ],
       "libClassHits": 44,
       "localSelectors": 30,
-      "localCssLines": 152,
+      "localCssLines": 150,
       "rolled": []
     },
     {
@@ -1879,10 +1897,11 @@
       "components": [
         "sh-add",
         "sh-empty",
+        "sh-icon",
         "sh-scaffold",
         "sh-section"
       ],
-      "libClassHits": 11,
+      "libClassHits": 10,
       "localSelectors": 9,
       "localCssLines": 37,
       "rolled": [
@@ -1891,13 +1910,6 @@
           "label": "系统弹框",
           "lib": "sh-sheet",
           "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
-          "id": "arrow",
-          "label": "文字当箭头",
-          "lib": "sh-icon(chevronRight)",
-          "rule": "[›»]\\s*</text>",
           "gap": false
         },
         {
@@ -1945,21 +1957,14 @@
         "sh-scaffold"
       ],
       "libClassHits": 61,
-      "localSelectors": 20,
-      "localCssLines": 102,
+      "localSelectors": 21,
+      "localCssLines": 107,
       "rolled": [
         {
           "id": "sysmodal",
           "label": "系统弹框",
           "lib": "sh-sheet",
           "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
-          "id": "arrow",
-          "label": "文字当箭头",
-          "lib": "sh-icon(chevronRight)",
-          "rule": "[›»]\\s*</text>",
           "gap": false
         },
         {
@@ -2114,12 +2119,13 @@
       "file": "b-app/src/pages/messages/index.vue",
       "components": [
         "sh-empty",
+        "sh-go",
         "sh-scaffold",
         "sh-tabs"
       ],
       "libClassHits": 2,
       "localSelectors": 12,
-      "localCssLines": 66,
+      "localCssLines": 64,
       "rolled": []
     },
     {
@@ -2181,12 +2187,13 @@
       "components": [
         "sh-cover",
         "sh-empty",
+        "sh-go",
         "sh-scaffold",
         "sh-tabs"
       ],
       "libClassHits": 6,
-      "localSelectors": 12,
-      "localCssLines": 66,
+      "localSelectors": 11,
+      "localCssLines": 62,
       "rolled": [
         {
           "id": "listrow",
@@ -2691,6 +2698,7 @@
       "file": "b-app/src/pages/store-scope/index.vue",
       "components": [
         "sh-check",
+        "sh-go",
         "sh-icon-btn",
         "sh-savebar",
         "sh-scaffold",
@@ -2701,15 +2709,8 @@
       ],
       "libClassHits": 22,
       "localSelectors": 38,
-      "localCssLines": 185,
+      "localCssLines": 183,
       "rolled": [
-        {
-          "id": "arrow",
-          "label": "文字当箭头",
-          "lib": "sh-icon(chevronRight)",
-          "rule": "[›»]\\s*</text>",
-          "gap": false
-        },
         {
           "id": "listrow",
           "label": "列表行",
@@ -2887,18 +2888,6 @@
       ]
     },
     {
-      "id": "arrow",
-      "label": "文字当箭头",
-      "lib": "sh-icon(chevronRight)",
-      "gap": false,
-      "rule": "[›»]\\s*</text>",
-      "pages": [
-        "locations",
-        "marketing",
-        "store-scope"
-      ]
-    },
-    {
       "id": "sechead",
       "label": "分段标题（只有标题）",
       "lib": ".sh-h2 + 间距档",
@@ -2924,7 +2913,7 @@
   "counts": {
     "tokens": 10,
     "blocks": 39,
-    "components": 27,
+    "components": 28,
     "pages": 61,
     "gapKinds": 1
   }

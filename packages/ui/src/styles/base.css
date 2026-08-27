@@ -380,6 +380,12 @@ page {
 .sh-root.is-rtl {
   direction: rtl;
 }
+/* **但 glyph 本身不跟着翻。** 方向性图标（sh-icon 里的 DIRECTIONAL 名单）
+   要自己镜像一次，否则箭头在阿语下指着来路。
+   此前用 `›` 字符时看不出这个问题 —— 那是 bidi-mirrored 字符，浏览器替我们翻了。 */
+.sh-root.is-rtl .icon--dir {
+  transform: scaleX(-1);
+}
 
 /* pages.json 的 tabBar.custom 只有微信小程序认；H5 / App 仍会渲染原生 tabBar，
    于是原生（静态中文、字号锁死）会盖住自定义的 sh-tabbar。

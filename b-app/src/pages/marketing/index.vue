@@ -250,7 +250,10 @@ onShow(load);
       -->
       <view v-if="need.store" class="field" @tap="pickStore">
         <text class="field__label">{{ $t("marketing.store") }}</text>
-        <text class="field__input">{{ storeName(form.storeNo) }} ›</text>
+        <view class="field__input field__input--pick">
+          <text>{{ storeName(form.storeNo) }}</text>
+          <sh-icon name="chevronRight" :size="20" color="var(--sh-sub)"></sh-icon>
+        </view>
       </view>
 
       <view v-if="need.threshold" class="field">
@@ -440,5 +443,17 @@ onShow(load);
   font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
+}
+
+/* 假选择器：长得像输入框，点开是弹层。**这一页只有一处，所以修饰留在页内** ——
+   只有一个调用点的东西进 base.css，等于把页面样式搬了个家。
+   `.field__input` 是 88rpx 高的盒子，这里只补「文字在左、箭头在右」。
+   此前箭头是贴在文本尾巴上的一个 `›` 字符：**字符不是图标** ——
+   它跟着字体走（不同端字形不一样）、拿不到 sh-icon 的尺寸与颜色档，
+   也没法只给它上色而不动文字。 */
+.field__input--pick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 </style>

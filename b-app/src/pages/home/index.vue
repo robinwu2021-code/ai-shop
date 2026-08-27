@@ -271,7 +271,7 @@ onShow(load);
       <view class="sh-btn go" @tap="goQuickStart">
         {{ opening ? $t("common.loading") : $t("home.quickStart") }}
       </view>
-      <text class="applylink" @tap="goApply">{{ $t("home.goApplyWithLicense") }}</text>
+      <sh-go class="applylink" :text="String($t('home.goApplyWithLicense'))" @tap="goApply"></sh-go>
     </view>
 
     <template v-else>
@@ -574,11 +574,11 @@ onShow(load);
   margin-top: 8rpx;
 }
 /* 未入驻的整屏空态：它带标题与主按钮，不是通用空态那一行灰字，所以留在页面里 */
+/* 字号与颜色由 `sh-go` 给（24rpx / primary-text，即 `.sh-link` 那一档）——
+   此前这里是 26rpx，五个同族调用点里唯一的一个例外，没有理由。 */
 .applylink {
-  display: block;
+  display: flex;
   margin-top: 24rpx;
-  font-size: 26rpx;
-  color: var(--sh-primary-text);
 }
 .empty {
   text-align: center;

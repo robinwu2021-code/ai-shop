@@ -62,7 +62,7 @@ onShow(load);
           <text class="msg__at sh-num">{{ datetime(m.at) }}</text>
         </view>
         <text class="msg__body">{{ m.body }}</text>
-        <text v-if="m.link" class="msg__more">{{ $t("message.view") }}</text>
+        <sh-go v-if="m.link" class="msg__more" :text="String($t('message.view'))"></sh-go>
       </view>
     </view>
 
@@ -134,10 +134,9 @@ onShow(load);
   line-height: 1.6;
   margin-top: 12rpx;
 }
+/* 字号与颜色由 `sh-go` 给 */
 .msg__more {
-  display: block;
-  font-size: 24rpx;
-  color: var(--sh-primary-text);
+  display: flex;
   margin-top: 14rpx;
 }
 </style>

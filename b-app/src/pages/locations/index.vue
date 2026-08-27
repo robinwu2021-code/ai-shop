@@ -114,7 +114,8 @@ onShow(load);
           仓落进 else 分支会被一起标成「不可删」，而仓是商家自己建的、可以停用；
           标错的后果是他以为建错了也没法收拾，于是干脆不建。
         -->
-        <text v-if="l.kind === 'STORE'" class="row__end sh-link">›</text>
+        <sh-icon v-if="l.kind === 'STORE'" class="row__end" name="chevronRight"
+          :size="22" color="var(--sh-sub)"></sh-icon>
         <text v-else-if="l.kind === 'TRANSIT'" class="row__end txt-caption">
           {{ $t("locations.undeletable") }}
         </text>

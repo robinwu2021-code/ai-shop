@@ -45,7 +45,7 @@ function go() {
       :color="readonly ? 'var(--sh-sub)' : 'var(--sh-primary-text)'"
     ></sh-icon>
     <text class="tag__name">{{ merchant.currentStore?.name || "—" }}</text>
-    <text v-if="!readonly" class="tag__switch">{{ $t(actionKey) }}</text>
+    <sh-go v-if="!readonly" :text="String($t(actionKey))"></sh-go>
   </view>
 </template>
 
@@ -73,9 +73,5 @@ function go() {
 .tag--flat .tag__name {
   font-weight: 400;
   color: var(--sh-sub);
-}
-.tag__switch {
-  font-size: 24rpx;
-  color: var(--sh-primary-text);
 }
 </style>

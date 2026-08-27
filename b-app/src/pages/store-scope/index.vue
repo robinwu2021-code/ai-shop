@@ -450,16 +450,16 @@ onShow(() => {
         <!-- 开着的路：一行配置摘要 -->
         <view v-if="c.enabled && c.channel === 'STORE_PICKUP'" class="sum" :class="{ 'sum--warn': !form.address }">
           <text class="sum__t">{{ fullAddress ? $t("store.sumPickupAddr", { s: fullAddress }) : $t("store.sumNoAddress") }}</text>
-          <text class="sum__go" @tap.stop="goAddress">{{ $t("store.goAddress") }}</text>
+          <sh-go class="sum__go" @tap.stop="goAddress">{{ $t("store.goAddress") }}</sh-go>
         </view>
         <view v-if="c.enabled && c.channel === 'NEIGHBOR_PICKUP'" class="sum" :class="{ 'sum--warn': !neighborRefs.length && !form.address }">
           <text class="sum__t">{{ neighborSummary ? $t("store.pickup.sumRefs", { s: neighborSummary }) : (form.address ? $t("store.pickup.sumNone") : $t("store.pickup.sumNoneNoAddr")) }}</text>
-          <text class="sum__go" @tap.stop="pickupSheetOpen = true">{{ $t("store.pickup.manage") }} ›</text>
+          <sh-go class="sum__go" @tap.stop="pickupSheetOpen = true">{{ $t("store.pickup.manage") }}</sh-go>
         </view>
         <view v-if="c.enabled && c.channel === 'MERCHANT_DELIVERY'" class="sum">
           <template v-if="!ruleOpen">
             <text class="sum__t">{{ deliverySummary || $t("store.sumDeliveryUnset") }}</text>
-            <text class="sum__go" @tap.stop="openRule">{{ $t("store.edit") }} ›</text>
+            <sh-go class="sum__go" @tap.stop="openRule">{{ $t("store.edit") }}</sh-go>
           </template>
           <view v-else class="rate" @tap.stop>
             <view class="rate__grid">
@@ -486,7 +486,7 @@ onShow(() => {
         <view v-if="c.enabled && c.channel === 'MERCHANT_DELIVERY'" class="sum">
           <template v-if="!subsetOpen">
             <text class="sum__t">{{ subsetSummary(c) }}</text>
-            <text class="sum__go" @tap.stop="openSubset(c)">{{ $t("store.subset.edit") }} ›</text>
+            <sh-go class="sum__go" @tap.stop="openSubset(c)">{{ $t("store.subset.edit") }}</sh-go>
           </template>
           <view v-else class="rate" @tap.stop>
             <text class="hint">{{ $t("store.subset.hint") }}</text>
@@ -707,10 +707,11 @@ onShow(() => {
   line-height: 1.5;
   color: var(--sh-sub);
 }
+/* 「去设置 / 管理 / 编辑」这类行内动作，形态与字号由 `sh-go` 给。
+   **此前四处里三处在文字尾巴上挂一个 `›` 字符，第四处什么都没有** ——
+   同一个类长出两种样子。这里只留「不被压缩」。 */
 .sum__go {
   flex-shrink: 0;
-  font-size: 24rpx;
-  color: var(--sh-primary-text);
 }
 .rate {
   flex: 1;
