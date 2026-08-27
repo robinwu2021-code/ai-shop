@@ -198,8 +198,8 @@ onLoad((q) => {
       <text
         v-for="s in [1, 2, 3, 4]"
         :key="s"
-        class="steps__i"
-        :class="{ 'is-on': step === s, 'is-done': step > s }"
+        class="sh-chip steps__i"
+        :class="{ 'sh-chip--solid': step === s, 'is-done': step > s }"
         @tap="step = s"
       >{{ s }}. {{ $t(`activityEdit.step${s}`) }}</text>
     </view>
@@ -365,17 +365,6 @@ onLoad((q) => {
   flex-wrap: wrap;
   gap: 8rpx;
   margin-bottom: 16rpx;
-}
-.steps__i {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  background: var(--sh-faint);
-  border-radius: 16rpx;
-  padding: 8rpx 12rpx;
-}
-.steps__i.is-on {
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
 }
 .steps__i.is-done {
   color: var(--sh-primary-text);

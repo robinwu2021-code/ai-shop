@@ -405,11 +405,11 @@ async function submit() {
       <text class="txt-title">{{ $t("store.scope") }}</text>
       <text class="hint">{{ $t("apply.scopeHint") }}</text>
 
-      <view
+      <sh-option
         v-for="sc in scopes"
         :key="sc"
         class="scope"
-        :class="{ 'is-on': form.serviceScope === sc }"
+        :selected="form.serviceScope === sc"
         @tap="pickScope(sc)"
       >
         <view class="scope__main">
@@ -418,7 +418,7 @@ async function submit() {
         </view>
         <sh-icon v-if="form.serviceScope === sc" class="scope__tick" name="check"
           :size="30" color="var(--sh-primary-text)"></sh-icon>
-      </view>
+      </sh-option>
 
       <!-- 只有「仅本社区」才需要选小区，其余两档选了也用不上 -->
       <view v-if="form.serviceScope === SERVICE_SCOPE.COMMUNITY" class="cms">
@@ -427,8 +427,8 @@ async function submit() {
           <text
             v-for="c in communities"
             :key="c.communityNo"
-            class="sh-chip cms__i"
-            :class="{ 'is-on': form.communityNos.includes(c.communityNo) }"
+            class="sh-chip"
+            :class="{ 'sh-chip--solid': form.communityNos.includes(c.communityNo) }"
             @tap="toggleCommunity(c.communityNo)"
           >
             {{ c.name }}
@@ -596,17 +596,13 @@ async function submit() {
 }
 
 /* 服务范围选择器：与店铺设置页同一套观感 —— 同一件事在两处长得不一样会让人以为是两件事 */
+/* 形态（描边 / 圆角 / 选中底色）由 `sh-option` 给 —— `member-settings` 的范围
+   选择用的就是它，这里是同一件事漏收的一个。页面只留「名称与说明左、勾右」的排布。 */
 .scope {
   display: flex;
   align-items: center;
   gap: 20rpx;
-  padding: 24rpx;
   margin-top: 16rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-}
-.scope.is-on {
-  background: var(--sh-primary-tint);
 }
 .scope__main {
   flex: 1;
@@ -637,12 +633,7 @@ async function submit() {
   gap: 14rpx;
   margin-top: 14rpx;
 }
-.cms__i.is-on {
-  background: var(--sh-primary);
-  /* 主色上的前景走 --sh-on-primary（按对比度算出来的）；写死白字在 fresh
-     这类亮主色上只有 2.27，选中项反而最难认 */
-  color: var(--sh-on-primary);
-}
+
 .warn {
   display: block;
   margin-top: 16rpx;

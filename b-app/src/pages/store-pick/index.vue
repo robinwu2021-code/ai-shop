@@ -137,9 +137,14 @@ function confirm() {
   font-weight: 600;
   color: var(--sh-sub);
 }
+/* ⚠️ 此前写的是 `var(--sh-warn, var(--sh-sub))` —— **`--sh-warn` 这个变量不存在**
+   （正名是 `--sh-warning`），于是这行字永远走兜底、渲染成普通灰。
+   它本该是一句提醒（这一组里有店打烊了），灰下去就跟旁边的说明文字一样重。
+   皮肤变量守卫故意放行带兜底的写法（「拼错了也还有兜底」），
+   而这恰恰是它看不见的那一类：**兜底把拼错的后果盖住了**。 */
 .group__note {
   font-size: 24rpx;
-  color: var(--sh-warn, var(--sh-sub));
+  color: var(--sh-warning);
 }
 .item {
   display: flex;

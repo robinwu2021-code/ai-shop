@@ -575,6 +575,18 @@ uni-page-wrapper[style*="--window-bottom"] {
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
 }
+/* 更重的一档：实心主色。三处在用同一种处理 ——
+   `apply` 的已选小区、`activity-edit` 的当前步骤、`cross-store` 的「最好的一家」。
+   与 `--primary`（浅底）是同一族的两级强调：浅底说「选中了」，实心说「就是这个」。
+
+   ⚠️ **前景必须走 `--sh-on-primary`，不能写死白字**。那是按对比度算出来的：
+   fresh 这类亮主色上写死白字只有 2.27，选中项反而成了整屏最难认的那一个。
+   三处里已经有一处踩过这个坑并留了注释，收编时把那句话搬到这里 ——
+   它是这一档存在的理由，不该只留在其中一个页面里。 */
+.sh-chip--solid {
+  background: var(--sh-primary);
+  color: var(--sh-on-primary);
+}
 /*
  * 虚线药丸＝**候选**：点一下当场加进来。
  *

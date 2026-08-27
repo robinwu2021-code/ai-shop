@@ -283,6 +283,24 @@
       }
     },
     {
+      "class": ".sh-chip--solid",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)"
+      },
+      "px": {
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)"
+      },
+      "usage": {
+        "b-app": 3,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".sh-dialog__act",
       "group": "其它",
       "when": "—",
@@ -886,7 +904,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 107,
+        "b-app": 108,
         "c-app": 56
       }
     },
@@ -1310,7 +1328,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 6,
+        "b-app": 7,
         "c-app": 0
       },
       "note": "选项卡片",
@@ -1637,17 +1655,10 @@
         "sh-option",
         "sh-scaffold"
       ],
-      "libClassHits": 34,
-      "localSelectors": 21,
-      "localCssLines": 107,
+      "libClassHits": 36,
+      "localSelectors": 19,
+      "localCssLines": 96,
       "rolled": [
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary",
-          "rule": "(--on|--off|is-on)\\s*[,{]",
-          "gap": false
-        },
         {
           "id": "listrow",
           "label": "列表行",
@@ -1683,22 +1694,15 @@
       "components": [
         "sh-check",
         "sh-icon",
+        "sh-option",
         "sh-scaffold",
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 45,
-      "localSelectors": 33,
-      "localCssLines": 125,
-      "rolled": [
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary",
-          "rule": "(--on|--off|is-on)\\s*[,{]",
-          "gap": false
-        }
-      ]
+      "libClassHits": 46,
+      "localSelectors": 31,
+      "localCssLines": 115,
+      "rolled": []
     },
     {
       "page": "coupon-edit",
@@ -1768,18 +1772,10 @@
         "sh-rating",
         "sh-scaffold"
       ],
-      "libClassHits": 30,
-      "localSelectors": 38,
-      "localCssLines": 172,
-      "rolled": [
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary",
-          "rule": "(--on|--off|is-on)\\s*[,{]",
-          "gap": false
-        }
-      ]
+      "libClassHits": 31,
+      "localSelectors": 36,
+      "localCssLines": 165,
+      "rolled": []
     },
     {
       "page": "customers",
@@ -1873,15 +1869,7 @@
       "libClassHits": 139,
       "localSelectors": 82,
       "localCssLines": 441,
-      "rolled": [
-        {
-          "id": "sechead",
-          "label": "分段标题（只有标题）",
-          "lib": ".sh-h2 + 间距档",
-          "rule": "class=\"sh-h2 (?:sec|grp)\\b",
-          "gap": false
-        }
-      ]
+      "rolled": []
     },
     {
       "page": "goods-list",
@@ -1988,13 +1976,6 @@
       "localSelectors": 21,
       "localCssLines": 100,
       "rolled": [
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary",
-          "rule": "(--on|--off|is-on)\\s*[,{]",
-          "gap": false
-        },
         {
           "id": "listrow",
           "label": "列表行",
@@ -2678,13 +2659,6 @@
       "localCssLines": 70,
       "rolled": [
         {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary",
-          "rule": "(--on|--off|is-on)\\s*[,{]",
-          "gap": false
-        },
-        {
           "id": "listrow",
           "label": "列表行",
           "lib": null,
@@ -2771,13 +2745,6 @@
       "localCssLines": 192,
       "rolled": [
         {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary",
-          "rule": "(--on|--off|is-on)\\s*[,{]",
-          "gap": false
-        },
-        {
           "id": "listrow",
           "label": "列表行",
           "lib": null,
@@ -2835,36 +2802,11 @@
         "transfer",
         "verify"
       ]
-    },
-    {
-      "id": "segment",
-      "label": "选中态自画（含未拆出的）",
-      "lib": ".sh-chip--primary",
-      "gap": false,
-      "rule": "(--on|--off|is-on)\\s*[,{]",
-      "pages": [
-        "activity-edit",
-        "apply",
-        "cross-store",
-        "login",
-        "store-pick",
-        "verify"
-      ]
-    },
-    {
-      "id": "sechead",
-      "label": "分段标题（只有标题）",
-      "lib": ".sh-h2 + 间距档",
-      "gap": false,
-      "rule": "class=\"sh-h2 (?:sec|grp)\\b",
-      "pages": [
-        "goods-edit"
-      ]
     }
   ],
   "counts": {
     "tokens": 10,
-    "blocks": 43,
+    "blocks": 44,
     "components": 30,
     "pages": 61,
     "gapKinds": 1

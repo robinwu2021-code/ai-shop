@@ -415,9 +415,18 @@ ROLLED = [
     # 而且这里判不全 —— 它们只扫模板，箭头大多藏在 i18n 词条里（一次漏了 30 处）。
     # 归零的类别该由硬闸门守住而不是继续挂棘轮：见
     # packages/shared/tests/icon-chars.test.ts（模板 + 词条一起扫，已进 pre-push）。
-    # 这一条现在只该剩 **chip 形态**的选中态。开关 / 勾选框 / 选项卡片
-    # 已由 FAMILIES 名册单列（见 read_pages）—— 一个 `--on` 的正则盖住过三个缺件。
-    ("segment", "选中态自画（含未拆出的）", None, r"(--on|--off|is-on)\s*[,{]",    None,       ".sh-chip--primary"),
+    # 这一条 2026-08-27 收窄成**判声明**：`(--on|--off|is-on)` 那个正则盖住的是
+    # 「任何带选中态的东西」，于是下划线 tab、卡片选中环、变主色的大数字全被算进来 ——
+    # 它们的几何各不相同，收编只会给库里添几个只有一个调用点的件。
+    # 真正该报的是「**把 chip 的处理抄在了别的东西上**」：选中时铺主色或主色浅底。
+    # 收窄后原来的 6 处里 3 处是真的（已收进 .sh-chip--solid / sh-option），
+    # 另 3 处是不成族的独一份（login 的下划线 tab、store-pick 的选中环、verify 的主色数字）。
+    ("segment", "选中态自画（含未拆出的）", None,
+     r"(?:--on|is-on)[^{}]*\{[^}]*background:\s*var\(--sh-primary(?:-tint)?\)",
+     None, ".sh-chip--primary / --solid"),
+    # 同样从判名字改成判声明：`.sec__h` 现在只剩 `display: block`（下间距走 `.sh-mb-md`），
+    # 而规则只看名字叫不叫 sec__h —— 按名字归类第十一次误命中。
+    # 真正该报的是「标题自己带着一个不在档上的 margin」。
     # 判据 2026-08-27 收紧：原来是「白底 + 任意圆角」，于是把 sm(16)/md(24)/xl(44)
     # 三档的白盒子也算成了「照抄卡片」。**而库里的 .sh-card 与 .sh-block 都是 lg(32)。**
     # 误命中的五处各有各的形态：底部弹层（xl，那是 sh-sheet 的档）、搜索框（sm）、
@@ -437,8 +446,9 @@ ROLLED = [
     # 只有标题、靠 margin 分段的那一种。**它不缺组件，缺的是间距档** ——
     # 各页写的是 24rpx / 40rpx 8rpx 16rpx / 28rpx 0，差别是真实的版面决定，
     # 收成组件只会多一个 props 去表达「这里松一点」。
-    ("sechead", "分段标题（只有标题）", r'class="sh-h2 (?:sec|grp)\b', r"^\s*\.(sec__h|grp)\b",
-     None, ".sh-h2 + 间距档"),
+    ("sechead", "分段标题（只有标题）", None,
+     r"^\s*\.(?:sec__h|grp)\b[^{}]*\{[^}]*margin",
+     None, ".txt-title + 间距档"),
     # `nums` 从名单里去掉：`coupons` 的 `.nums` 只是两行灰字并排，不是数字格 ——
     # 按名字判第四次误命中了（前三次：addbtn/candchip、卡内标题行/分段标题、可删标签）。
     # `effect` 补进来：`activities` 画的就是这个东西，只是没叫这个名。

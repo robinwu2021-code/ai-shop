@@ -267,10 +267,10 @@ onShow(load);
         <view class="store__head">
           <text class="store__name">{{ s.storeName }}</text>
           <text v-if="s.isDefault" class="sh-chip tag">{{ $t("crossStore.default") }}</text>
-          <text v-if="s.status !== 'ACTIVE'" class="sh-chip tag tag--off">
+          <text v-if="s.status !== 'ACTIVE'" class="sh-chip tag">
             {{ $t("crossStore.disabled") }}
           </text>
-          <text v-if="s.storeNo === bestStoreNo" class="sh-chip tag tag--best">
+          <text v-if="s.storeNo === bestStoreNo" class="sh-chip sh-chip--solid tag">
             {{ $t("crossStore.best") }}
           </text>
           <text v-if="locked" class="sh-chip tag tag--demo">{{ $t("crossStore.demoTag") }}</text>
@@ -402,13 +402,6 @@ onShow(load);
 .tag {
   font-size: 24rpx;
   padding: 4rpx 14rpx;
-}
-.tag--off {
-  color: var(--sh-sub);
-}
-.tag--best {
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
 }
 /*
  * 演示数据的标记：**灰底，不是虚线药丸**。
