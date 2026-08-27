@@ -126,9 +126,9 @@ if [ -d "$ROOT/node_modules" ]; then
         tests/typography.test.ts tests/design-tokens.test.ts \
         tests/skin-vars.test.ts tests/ui-package.test.ts \
         tests/icon-chars.test.ts tests/i18n-parity.test.ts \
-        tests/i18n-keys-exist.test.ts tests/validate.test.ts tests/region.test.ts tests/input-bounds.test.ts >/dev/null 2>&1); then
-    echo "✗ 设计守卫红了（字阶 / 圆角 / 皮肤变量 / 令牌 / 字符当图标 / 三语词条 / 词条引用 / 输入校验 / 省市区拆分 / 输入上限）。看是哪一条："
-    echo "    cd packages/shared && npx vitest run tests/typography.test.ts tests/design-tokens.test.ts tests/skin-vars.test.ts tests/ui-package.test.ts tests/icon-chars.test.ts tests/i18n-parity.test.ts tests/i18n-keys-exist.test.ts tests/validate.test.ts tests/region.test.ts tests/input-bounds.test.ts"
+        tests/i18n-keys-exist.test.ts tests/validate.test.ts tests/region.test.ts tests/input-bounds.test.ts tests/ops-ui-discipline.test.ts >/dev/null 2>&1); then
+    echo "✗ 设计守卫红了（字阶 / 圆角 / 皮肤变量 / 令牌 / 字符当图标 / 三语词条 / 词条引用 / 输入校验 / 省市区拆分 / 输入上限 / 运营端纪律）。看是哪一条："
+    echo "    cd packages/shared && npx vitest run tests/typography.test.ts tests/design-tokens.test.ts tests/skin-vars.test.ts tests/ui-package.test.ts tests/icon-chars.test.ts tests/i18n-parity.test.ts tests/i18n-keys-exist.test.ts tests/validate.test.ts tests/region.test.ts tests/input-bounds.test.ts tests/ops-ui-discipline.test.ts"
     echo "  判据取自 HEAD —— 工作区里没提交的改动不会让你被挡住。"
     exit 1
   fi
