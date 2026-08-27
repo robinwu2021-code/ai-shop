@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -78,6 +79,34 @@ class ArchitectureTest {
         classes = new ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages("ai.neargo.shop");
+    }
+
+    @Test
+    @DisplayName("★★★ 任何 @Bean 都不得返回 Flyway —— 那会把平台的全部迁移悄悄关掉")
+    void noBeanMayExposeFlyway() {
+        /*
+         * Spring Boot 的 FlywayAutoConfiguration 挂着
+         * @ConditionalOnMissingBean(Flyway.class)：容器里只要出现**任何一个**
+         * Flyway bean，它就整体退让。于是「打开第二个库」这件事会顺带
+         * **关掉平台自己的全部数据库迁移** —— 而且零报错：
+         * 库停在打开那一天的版本，之后每次发版都以为迁移跑过了。
+         *
+         * 2026-08-27 本机 A/B 实测：同一个 jar，关进销存则平台 Flyway 应用 29 个
+         * 迁移到 V267；开进销存则平台 Flyway 一次都没跑，库停在 V230。
+         *
+         * 第二个库要跑自己的迁移，就在 @Bean 里 migrate() 完返回一个**别的类型**
+         * 当凭证（InventoryDataSourceConfig.InvMigrated / JobStoreConfig.JobMigrated），
+         * 顺序照样靠参数依赖表达。
+         */
+        JavaClasses everything = new ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .importPackages("ai.neargo");
+        noMethods().that()
+                .areAnnotatedWith("org.springframework.context.annotation.Bean")
+                .should().haveRawReturnType("org.flywaydb.core.Flyway")
+                .because("暴露 Flyway bean 会让 Spring Boot 的 FlywayAutoConfiguration 整体退让，"
+                        + "平台迁移从此一次都不跑，且不会有任何报错")
+                .check(everything);
     }
 
     @Test

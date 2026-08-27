@@ -2,6 +2,7 @@ package ai.neargo.job.store;
 
 import com.zaxxer.hikari.HikariDataSource;
 import org.flywaydb.core.Flyway;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -31,8 +32,12 @@ import javax.sql.DataSource;
  *   <li><b>自己的 Flyway 与自己的历史表</b>（{@link #HISTORY_TABLE}），迁移号从 V1 重来。</li>
  * </ol>
  *
- * <p>注入靠 bean 名字区分（{@code jobDataSource} / {@code jobJdbcClient}），
- * 不靠 {@code @Qualifier} 字符串散落在各处。
+ * <p><b>注入必须写 {@code @Qualifier}，靠参数名是不行的</b>（原来这里写着「靠 bean
+ * 名字区分」—— 那是错的）。Spring 的 {@code determineAutowireCandidate} 先看
+ * {@code @Primary}、再看优先级、**最后才按参数名兜底**；只要容器里有一个
+ * {@code @Primary} 的 {@code DataSource}（嵌进业务实例时就有），
+ * 参数名叫 {@code jobDataSource} 也会被它接走，于是 {@code job_*} 建进平台库
+ * 而 {@code job-pool} 从不启动，**全程零报错**。
  *
  * <p><b>为什么是 {@code @AutoConfiguration} 而不是 {@code @Configuration}</b>：
  * 本模块会被两个应用引用（worker 与 shop-app 的运营端），而它们的 {@code @SpringBootApplication}
@@ -67,11 +72,22 @@ public class JobStoreConfig {
     }
 
     /**
+     * 任务库迁移跑完了的**凭证**。
+     *
+     * <p><b>刻意不是 {@code Flyway} 类型</b>：Spring Boot 的
+     * {@code FlywayAutoConfiguration} 挂着 {@code @ConditionalOnMissingBean(Flyway.class)}，
+     * 容器里只要出现任何一个 {@code Flyway} bean，它就整体退让 —— 平台自己的迁移
+     * 会**悄悄一次都不跑**，库停在打开这个模块那一天的版本，且零报错。
+     * 2026-08-27 在进销存那个同形状的第二数据源上实测到，这里一并改掉。
+     */
+    public record JobMigrated(String historyTable) {}
+
+    /**
      * 迁移在数据源之后、JdbcClient 之前跑 ——
      * 靠参数依赖表达顺序，不靠 {@code @DependsOn} 的字符串（那种写错了不报错）。
      */
     @Bean
-    Flyway jobFlyway(DataSource jobDataSource, JobStoreProperties props) {
+    JobMigrated jobFlyway(@Qualifier("jobDataSource") DataSource jobDataSource, JobStoreProperties props) {
         Flyway flyway = Flyway.configure()
                 .dataSource(jobDataSource)
                 .locations(props.getFlywayLocations())
@@ -82,16 +98,16 @@ public class JobStoreConfig {
         if (props.isFlywayEnabled()) {
             flyway.migrate();
         }
-        return flyway;
+        return new JobMigrated(HISTORY_TABLE);
     }
 
     @Bean
-    JdbcClient jobJdbcClient(DataSource jobDataSource, Flyway jobFlyway) {
+    JdbcClient jobJdbcClient(@Qualifier("jobDataSource") DataSource jobDataSource, JobMigrated jobFlyway) {
         return JdbcClient.create(jobDataSource);
     }
 
     @Bean
-    PlatformTransactionManager jobTransactionManager(DataSource jobDataSource) {
+    PlatformTransactionManager jobTransactionManager(@Qualifier("jobDataSource") DataSource jobDataSource) {
         return new DataSourceTransactionManager(jobDataSource);
     }
 

@@ -62,10 +62,25 @@ public class InventoryDataSourceConfig {
     }
 
     /**
+     * 进销存迁移跑完了的**凭证**。
+     *
+     * <p><b>它刻意不是 {@code Flyway} 类型</b> —— 这一条不是风格，是必须：
+     * Spring Boot 的 {@code FlywayAutoConfiguration} 挂着
+     * {@code @ConditionalOnMissingBean(Flyway.class)}，容器里只要出现**任何一个**
+     * {@code Flyway} bean，它就整体退让。于是「打开进销存」会**悄悄关掉平台自己的
+     * 全部数据库迁移** —— 库停在打开那一天的版本，之后每次发版都以为迁移跑过了，
+     * 而 schema 一直没动，症状要等到某个字段读出 null 才出现，且不指向进销存。
+     *
+     * <p>2026-08-27 本机 A/B 验过：同一个 jar，关进销存则平台 Flyway 应用 29 个迁移
+     * 到 V267；开进销存则平台 Flyway **一次都没跑**，库停在 V230。
+     */
+    public record InvMigrated(String historyTable) {}
+
+    /**
      * 迁移在数据源之后、SqlSessionFactory 之前跑 —— 靠参数依赖表达顺序，不靠 {@code @DependsOn} 的字符串。
      */
     @Bean
-    Flyway invFlyway(@Qualifier("invDataSource") DataSource invDataSource, InventoryProperties props) {
+    InvMigrated invFlyway(@Qualifier("invDataSource") DataSource invDataSource, InventoryProperties props) {
         mustBeOwnDataSource(invDataSource);
         Flyway flyway = Flyway.configure()
                 .dataSource(invDataSource)
@@ -77,12 +92,12 @@ public class InventoryDataSourceConfig {
         if (props.isFlywayEnabled()) {
             flyway.migrate();
         }
-        return flyway;
+        return new InvMigrated(HISTORY_TABLE);
     }
 
     @Bean
     SqlSessionFactory invSqlSessionFactory(@Qualifier("invDataSource") DataSource invDataSource,
-                                           Flyway invFlyway) throws Exception {
+                                           InvMigrated invFlyway) throws Exception {
         MybatisSqlSessionFactoryBean bean = new MybatisSqlSessionFactoryBean();
         bean.setDataSource(invDataSource);
         bean.setTypeAliasesPackage("ai.neargo.shop.inventory.entity");
