@@ -2,6 +2,7 @@ package ai.neargo.job.engine;
 
 import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.job.store.JobDefinitionDao;
+import ai.neargo.job.store.JobDefinitionRow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 每一轮轮询做两件事：**去业务系统问声明 → 把注册表对齐到库**。
+ * 每一轮轮询做三件事：**问声明 → 对齐注册表 → 受理手动触发**。
  */
 public class JobSyncService {
 
@@ -34,6 +35,52 @@ public class JobSyncService {
         if (r.added() + r.rescheduled() + r.removed() + r.invalid() > 0) {
             log.info("调度已对齐：新增 {}、改期 {}、移除 {}、非法 cron {}，当前共 {} 个",
                     r.added(), r.rescheduled(), r.removed(), r.invalid(), r.total());
+        }
+        runTriggerRequests();
+    }
+
+    /**
+     * 受理运营端点下的「立即执行」。
+     *
+     * <p><b>运营端与 worker 不直接通信</b>，中间隔着 {@code job_definition} 的两列时间戳：
+     * 运营写 {@code trigger_requested_at}，worker 在这里把 {@code last_triggered_at}
+     * 推到同一时刻。比大小而不是清标志 —— 清标志那一步失败或进程被杀，
+     * 这个任务会每轮都跑一次，直到有人发现。
+     *
+     * <p>三处顺序上的讲究：
+     * <ol>
+     *   <li><b>先推水位再跑</b>。反过来的话，任务跑挂（或 worker 在跑的中途被重启）
+     *       下一轮会再跑一次，而运营只点了一次。代价是「推完水位、还没排上就崩了」
+     *       会丢掉这一次触发 —— <b>丢一次手动触发，好过一个自己重复的执行循环</b>。</li>
+     *   <li>水位取<b>行里的 {@code trigger_requested_at}</b>，不取 {@code now()}。
+     *       取 now 会把「读出这批行之后、推水位之前」新来的请求一起吞掉；
+     *       取行里的值，那条新请求下一轮照样捞得到。</li>
+     *   <li>{@link JobRegistry#triggerNow} 是<b>异步排一次</b>，不在这里同步跑。
+     *       同步跑的话一个慢任务会把整轮轮询堵住，声明与 cron 变更跟着停摆。</li>
+     * </ol>
+     *
+     * <p>取不到就整轮跳过，理由与 {@link #refreshDeclarations} 相同：库抖一下
+     * 不该让调度对齐这件事也跟着失败。
+     */
+    private void runTriggerRequests() {
+        List<JobDefinitionRow> pending;
+        try {
+            pending = definitions.findTriggerRequested();
+        } catch (RuntimeException e) {
+            log.warn("查手动触发请求失败，本轮跳过 异常={}", e.getClass().getSimpleName());
+            return;
+        }
+        for (JobDefinitionRow d : pending) {
+            try {
+                definitions.markTriggered(d.jobName(), d.triggerRequestedAt());
+            } catch (RuntimeException e) {
+                // 水位没推上去就不能跑 —— 否则下一轮还会捞到它，变成反复执行
+                log.error("受理手动触发失败，不执行 job={} 异常={}",
+                        d.jobName(), e.getClass().getSimpleName());
+                continue;
+            }
+            log.info("手动触发 job={} 请求于 {}", d.jobName(), d.triggerRequestedAt());
+            registry.triggerNow(d.jobName());
         }
     }
 

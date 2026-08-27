@@ -1,10 +1,12 @@
 package ai.neargo.job.engine;
 
 import ai.neargo.job.api.JobStatus;
+import ai.neargo.job.api.TriggerType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
@@ -193,5 +195,80 @@ class JobRegistrySyncTest {
         assertEquals("0 40 4 * * *", f.definitions.findByName("a").cron(),
                 "运营改的 cron 被发版冲掉了 —— 没有报错没有日志，"
                 + "只会有人某天问「为什么它又变回三点了」");
+    }
+
+    // ── 手动触发 ────────────────────────────────────────────────
+    //
+    // **这一组的判据是「业务侧被调用了」，不是「请求落库了」。**
+    // 之前只有落库那半边的断言，于是从运营端到执行之间整条链路断着 ——
+    // 按钮返回 200、库里记着请求、任务永远不跑 —— 而测试一直是绿的。
+
+    @Test
+    @DisplayName("★ 运营点「立即执行」：下一轮轮询真的把它发到业务系统，而不是只在库里记一笔")
+    void manualTriggerActuallyReachesBusiness() {
+        biz.declarations = List.of(WorkerTestFixture.decl("a", "0 0 3 * * *"));
+        sync.syncOnce();
+        int before = biz.received.size();
+
+        assertTrue(f.definitions.requestTrigger("a", LocalDateTime.now(), "ops:zhang"));
+        sync.syncOnce();
+        // triggerNow 是异步排一次：跑一个慢任务不该堵住整轮轮询
+        Runnable queued = scheduler.lastImmediate.get();
+        assertNotNull(queued, "手动触发应当排进调度器，而不是在轮询线程里同步跑");
+        queued.run();
+
+        assertEquals(before + 1, biz.received.size(), "业务系统必须真的收到这一次调用");
+        assertEquals(TriggerType.MANUAL, biz.received.getLast().type());
+        assertEquals(1, f.runs.findByName("a").runCount());
+    }
+
+    @Test
+    @DisplayName("★ 只跑一次：水位推上去之后，后面每一轮都不该再捞到它")
+    void manualTriggerRunsExactlyOnce() {
+        biz.declarations = List.of(WorkerTestFixture.decl("a", "0 0 3 * * *"));
+        sync.syncOnce();
+        f.definitions.requestTrigger("a", LocalDateTime.now(), "ops:zhang");
+
+        sync.syncOnce();
+        scheduler.lastImmediate.getAndSet(null).run();
+        int after = biz.received.size();
+
+        sync.syncOnce();
+        sync.syncOnce();
+
+        assertNull(scheduler.lastImmediate.get(), "第二、三轮不该再排一次");
+        assertEquals(after, biz.received.size(),
+                "清标志式的实现会在这里每轮跑一次，直到有人发现");
+    }
+
+    @Test
+    @DisplayName("水位取请求时刻本身，不取 now —— 否则读出行之后新来的请求会被吞掉")
+    void watermarkIsTheRequestInstantNotNow() {
+        biz.declarations = List.of(WorkerTestFixture.decl("a", "0 0 3 * * *"));
+        sync.syncOnce();
+        // **拉开五分钟**：写成 now() 的话，请求时刻与 markTriggered 里的 now()
+        // 落在同一秒，H2 的秒精度把两者磨平 —— 断言会通过，而变异（改用 now）
+        // 照样通过。那种只在跨秒时才红的闸门，等于没有闸门
+        LocalDateTime requestedAt = LocalDateTime.now().withNano(0).minusMinutes(5);
+        f.definitions.requestTrigger("a", requestedAt, "ops:zhang");
+
+        sync.syncOnce();
+
+        assertEquals(requestedAt, f.definitions.findByName("a").lastTriggeredAt(),
+                "取 now 的话，这两个时刻之间新来的那次请求就没了");
+    }
+
+    @Test
+    @DisplayName("停用的任务不受理手动触发 —— 运营端已经用 403 挡了，这里是第二道")
+    void disabledJobIsNotTriggered() {
+        biz.declarations = List.of(WorkerTestFixture.decl("a", "0 0 3 * * *"));
+        sync.syncOnce();
+        f.definitions.requestTrigger("a", LocalDateTime.now(), "ops:zhang");
+        f.definitions.setEnabled("a", false, "ops:zhang");
+        scheduler.lastImmediate.set(null);
+
+        sync.syncOnce();
+
+        assertNull(scheduler.lastImmediate.get(), "库被手工改过时，worker 也不能跑一个已停的任务");
     }
 }
