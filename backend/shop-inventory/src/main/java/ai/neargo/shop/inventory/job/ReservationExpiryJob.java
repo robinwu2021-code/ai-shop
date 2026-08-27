@@ -6,7 +6,7 @@ import ai.neargo.shop.job.JobSupport;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
  * <p>不回收的后果不是数据难看，是**别人的可用数量白白少掉**：
  * 一笔没人管的预留会一直占着那几件货，而商品在 C 端显示售罄。
  */
-@Profile("worker")
+@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 @ConditionalOnInventory
 @Component
 public class ReservationExpiryJob {

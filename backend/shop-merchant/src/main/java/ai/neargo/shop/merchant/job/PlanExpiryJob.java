@@ -11,7 +11,7 @@ import ai.neargo.shop.spi.platform.AuditLogPort;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -28,7 +28,7 @@ import org.springframework.stereotype.Component;
  *
  * @see MerchantPlanService#sweepExpiry(long) 幂等口径与降级选店规则都在那里
  */
-@Profile("worker")
+@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 @Component
 public class PlanExpiryJob implements JobHandler {
 

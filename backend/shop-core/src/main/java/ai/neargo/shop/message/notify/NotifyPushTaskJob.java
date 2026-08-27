@@ -7,7 +7,7 @@ import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -17,10 +17,10 @@ import org.springframework.stereotype.Component;
  * <p><b>频率 1 分钟</b>：营销广播不是「钱到账了」那种秒级的事，定时下发本就以分钟计；
  * 没有到点任务时这一轮就是一次带索引的查询。
  *
- * <p><b>@Profile("worker") + @SchedulerLock</b>：与所有定时任务同规矩 ——
+ * <p><b>@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true") + @SchedulerLock</b>：与所有定时任务同规矩 ——
  * 只在 worker 实例跑、且两个实例不会把同一批任务各发一遍（营销重复推送很扰民）。
  */
-@Profile("worker")
+@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 @Component
 public class NotifyPushTaskJob implements JobHandler {
 

@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -27,7 +26,7 @@ import org.springframework.stereotype.Component;
  * 谁点的、点了几次、点到哪一批全都要另外记；而任务有 {@code sys_job_run}、
  * 有 ShedLock 防重入、有 cron 可以停 —— 这些本来就有。
  */
-@Profile("worker")
+@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 @Component
 @ConditionalOnProperty(prefix = "shop.inventory.backfill", name = "enabled", havingValue = "true")
 public class InventoryBackfillJob implements JobHandler {

@@ -3,7 +3,7 @@ package ai.neargo.shop.media;
 import ai.neargo.shop.job.JobSupport;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
  * 破坏性任务必须有这个开关。停掉之后批次会一直排在 {@code QUEUED}，
  * 什么也不会丢，打开就接着跑。
  */
-@Profile("worker")
+@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 @Component
 public class MediaPurgeJob {
 

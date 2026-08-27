@@ -38,12 +38,13 @@ import java.util.Optional;
  *       handler 里需要「谁操作的」时写死系统账号</li>
  *   <li><b>不记 body</b>：{@code params} 将来可能带业务标识，{@code detail} 同理。
  *       调度链路的日志不该成为一个额外的数据出口</li>
- *   <li><b>密钥没配就整个不装</b>（{@code @ConditionalOnProperty}）——
- *       默认空密钥等于把这两个口对内网裸奔，而那不会有任何报错</li>
+ *   <li><b>密钥没配就一律 401</b>。装不装跟着 {@code shop.job.enabled} 走，
+ *       <b>不跟着密钥走</b> —— 跟着密钥的话，漏配时端点整个消失、调度器拿 404、
+ *       任务全变 HandlerNotFound，症状指向「代码里没这个任务」，离真因隔了两层</li>
  * </ol>
  */
 @RestController
-@ConditionalOnProperty(name = "shop.job.internal-token")
+@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 public class JobHandlerEndpoint {
 
     private static final Logger log = LoggerFactory.getLogger(JobHandlerEndpoint.class);
@@ -52,7 +53,7 @@ public class JobHandlerEndpoint {
     private final String token;
 
     public JobHandlerEndpoint(JobHandlerRegistry handlers,
-                              @Value("${shop.job.internal-token}") String token) {
+                              @Value("${shop.job.internal-token:}") String token) {
         this.handlers = handlers;
         this.token = token;
     }

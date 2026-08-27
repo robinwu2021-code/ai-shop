@@ -10,7 +10,7 @@ import ai.neargo.shop.trade.service.OrderService;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -35,7 +35,7 @@ import org.springframework.stereotype.Component;
  * {@code pay_deadline_at} 走索引，一轮的代价与待支付单的数量成正比，
  * 在任何正常规模下都是毫秒级。
  */
-@Profile("worker")
+@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 @Component
 public class OrderAutoCloseJob implements JobHandler {
 

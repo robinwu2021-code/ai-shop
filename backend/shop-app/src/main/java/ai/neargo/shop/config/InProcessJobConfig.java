@@ -2,7 +2,6 @@ package ai.neargo.shop.config;
 
 import ai.neargo.job.api.JobStatus;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.job.api.JobHandler;
 import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobResult;
@@ -89,12 +88,6 @@ public class InProcessJobConfig {
     @Bean
     JobDeclarationSource localDeclarationSource(JobHandlerRegistry handlers) {
         return target -> handlers.declarations();
-    }
-
-    @Bean
-    JobHandlerRegistry jobHandlerRegistry(List<JobHandler> handlers,
-                                          List<JobDeclaration> declarations) {
-        return new JobHandlerRegistry(handlers, declarations);
     }
 
     @Bean(destroyMethod = "shutdown")

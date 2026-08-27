@@ -7,7 +7,7 @@ import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component;
  * <p><b>只在 worker 部署跑</b>：全表扫描与 API 抢同一个连接池时，
  * 扫描跑一轮能把下单接口拖到超时，而这种拖慢在监控上看起来像「数据库慢」。
  */
-@Profile("worker")
+@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 @Component
 public class MediaScanJob implements JobHandler {
 

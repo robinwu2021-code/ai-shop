@@ -9,7 +9,7 @@ import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.settle.service.ReconService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -25,7 +25,7 @@ import org.springframework.stereotype.Component;
  * 同一笔单会被查两次 —— 查单本身无害，但补回支付会并发走两遍成功链路，
  * 幂等挡得住重复入账，挡不住两条重复的通知。
  */
-@Profile("worker")
+@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 @Component
 public class ReconScanJob implements JobHandler {
 

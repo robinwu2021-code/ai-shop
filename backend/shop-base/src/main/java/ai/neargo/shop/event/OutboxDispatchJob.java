@@ -6,7 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
@@ -37,7 +37,7 @@ import org.springframework.stereotype.Component;
  * 所以这个任务重跑、并发跑都不会重复发 —— ShedLock 防的不是重复投递，
  * 是**两个实例同时扫同一批**造成的白工与锁竞争。
  */
-@Profile("worker")
+@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 @Component
 public class OutboxDispatchJob {
 

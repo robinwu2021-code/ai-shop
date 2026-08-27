@@ -12,7 +12,6 @@ import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -36,7 +35,7 @@ import java.util.List;
  * 而这两张表同时正被登录写入。
  */
 @Component
-@Profile("worker")
+@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 @ConditionalOnProperty(name = "shop.auth.token-store", havingValue = "db")
 public class SessionPurgeJob implements JobHandler {
 

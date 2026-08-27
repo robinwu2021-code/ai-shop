@@ -4,7 +4,7 @@ import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.inventory.service.InventorySnapshotService;
 import ai.neargo.shop.job.JobSupport;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +17,7 @@ import java.time.LocalDate;
  * （重放一年流水要一个专门的窗口），不该让日常任务顺手做 ——
  * 顺手做的表现是某天凌晨这个任务跑了四个小时，而没人知道为什么。
  */
-@Profile("worker")
+@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 @ConditionalOnInventory
 @Component
 public class InvDailySnapshotJob {

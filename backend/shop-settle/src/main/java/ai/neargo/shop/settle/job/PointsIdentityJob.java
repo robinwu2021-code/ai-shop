@@ -10,7 +10,7 @@ import ai.neargo.shop.settle.PointsService;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -33,7 +33,7 @@ import java.util.List;
  * 一天一次足够 —— 差额不会在几小时内变得不可收拾，
  * 而更高的频率只是让同一条告警重复响。
  */
-@Profile("worker")
+@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 @Component
 public class PointsIdentityJob implements JobHandler {
 

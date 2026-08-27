@@ -11,7 +11,7 @@ import ai.neargo.shop.settle.PointsService;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -40,7 +40,7 @@ import org.springframework.stereotype.Component;
  * 日志里看到的是「转正 0 条」，和「今天确实没有到点的」长得一模一样。
  * 幂等守的是正确性，锁守的是可观测性。
  */
-@Profile("worker")
+@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 @Component
 public class PointsActivateJob {
 

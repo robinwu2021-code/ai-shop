@@ -10,7 +10,7 @@ import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -29,7 +29,7 @@ import java.util.Set;
  * 扫描跑一轮能把下单接口拖到超时，而这种拖慢在监控上看起来像「数据库慢」。
  * api 与 ops 部署上这个 Bean 根本不存在，不需要靠开关关掉它。
  */
-@Profile("worker")
+@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 @Component
 public class QualificationExpiryJob implements JobHandler {
 
