@@ -433,6 +433,12 @@ ROLLED = [
     # 入口行（sm）、设置项容器与规格分类容器（md，两处同形）。
     # 圆角五档都是系统给的档 —— 用 md 画一个紧凑的行容器不是违规，
     # 违规的是**把 .sh-card 那三行原样抄一遍**。这是按形状归类第十次误命中。
+    # 2026-08-27 再收窄一次（扩到 C 端时）：**卡片是容器 —— 没有固有尺寸、不设字号。**
+    # 上一版只要「surface + 四角统一 lg」就算，于是 C 端 6 处里误命中 2 处：
+    #   · `login` 的 `.login__field` 是**输入控件**（有 font-size）
+    #   · `store` 的 `.store__logo` 是 96×96 的**方形 logo 占位**（有 width+height）
+    # 两者只是恰好也用了 surface + lg 圆角。判据按「有没有 font-size / 固定宽高」排除。
+    # 这一条判据到此改了三次，每一次砍掉的都是「长得像卡片但不是容器」的东西。
     ("blockdup","白块自画",        None,
      # 圆角要**四角统一**（`32rpx;`）：`32rpx 32rpx 0 0` 是贴底弹层，不是卡片
      r"(background:\s*var\(--sh-surface\)[^}]*border-radius:\s*32rpx\s*;|border-radius:\s*32rpx\s*;[^}]*background:\s*var\(--sh-surface\))",
@@ -504,6 +510,27 @@ ROLLED = [
 APPS = [("b-app", ROOT / "b-app/src/pages"), ("c-app", ROOT / "c-app/src/pages")]
 
 
+def block_is_container(css: str) -> bool:
+    """这份样式里，至少有一条「白底 + 四角统一 lg 圆角」的规则是**容器**吗。
+
+    容器 = 没有固有尺寸、不设字号。反例是输入控件（带 font-size）与
+    固定尺寸的方块（同时钉死 width 与 height）—— 两者都可能恰好用同一套底色圆角，
+    但把它们收进 `.sh-card` 会连字号和尺寸一起改掉。
+    """
+    for m in re.finditer(r"^[.&#][^{}\n]*\{([^}]*)\}", css, re.M):
+        body = m.group(1)
+        if "var(--sh-surface)" not in body:
+            continue
+        if not re.search(r"border-radius:\s*32rpx\s*;", body):
+            continue
+        if re.search(r"(^|\s)font-size:", body):
+            continue
+        if re.search(r"(^|\s)width:", body) and re.search(r"(^|\s)height:", body):
+            continue
+        return True
+    return False
+
+
 def read_pages(comps: list[dict], blocks: list[dict]) -> list[dict]:
     comp_names = [c["name"] for c in comps]
     lib_classes = [b["class"].lstrip(".") for b in blocks]
@@ -527,7 +554,15 @@ def read_pages(comps: list[dict], blocks: list[dict]) -> list[dict]:
           for rid, label, tp, cp, skip_if, lib in ROLLED:
               if skip_if and skip_if in used:
                   continue
-              if (tp and re.search(tp, code)) or (cp and re.search(cp, css, re.M)):
+              hit = (tp and re.search(tp, code)) or (cp and re.search(cp, css, re.M))
+              # 「白块」再过一道：**卡片是容器 —— 没有固有尺寸、不设字号。**
+              # 命中的那条规则如果自己带 font-size，或同时钉死了宽高，它就不是卡片
+              # （C 端两处：输入控件 `.login__field`、96×96 的 logo 方块 `.store__logo`）。
+              # 写在这里而不是塞进正则：正则要表达「规则体里不许出现 X」得整块回溯，
+              # 读起来没人看得懂，而这一条本来就只对一条规则成立。
+              if hit and rid == "blockdup" and not block_is_container(css):
+                  hit = None
+              if hit:
                   rolled.append({"id": rid, "label": label, "lib": lib,
                                  "rule": tp or cp, "gap": lib is None})
           # 三个被「选中态自画」盖住的缺件：名册是逐处核过的（见 FAMILIES），

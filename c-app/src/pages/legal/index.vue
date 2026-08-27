@@ -22,7 +22,7 @@ onLoad((q) => {
     <view v-if="doc" class="doc">
       <text class="doc__meta">{{ $t("legal.updatedAt", { d: doc.updatedAt }) }}</text>
       <view v-for="s in doc.sections" :key="s.heading" class="sec">
-        <text class="sec__h">{{ s.heading }}</text>
+        <text class="sec__h sh-mb-sm">{{ s.heading }}</text>
         <text v-for="(p, i) in s.body" :key="i" class="sec__p">{{ p }}</text>
       </view>
     </view>
@@ -42,9 +42,10 @@ onLoad((q) => {
 .sec {
   margin-bottom: 40rpx;
 }
+/* 下间距走间距档（sm = 16rpx）——「标题自己带一个 margin」正是
+   那条判据要拦的：间距是版面的事，不该长在标题身上 */
 .sec__h {
   display: block;
-  margin-bottom: 16rpx;
   font-size: 30rpx;
   color: var(--sh-ink);
 }

@@ -94,17 +94,16 @@ onShow(load);
 
     <template v-else>
       <!-- 多个团时切换 -->
-      <view v-if="hosting.length > 1" class="tabs">
-        <text
-          v-for="g in hosting"
-          :key="g.groupNo"
-          class="sh-chip"
-          :class="{ 'sh-chip--primary': active === g.groupNo }"
-          @tap="pick(g.groupNo)"
-        >
-          {{ g.title }}
-        </text>
-      </view>
+      <!-- 此前这里把 `sh-tabs` 手画了一遍：同样是一排 `sh-chip`、选中挂
+           `sh-chip--primary`。组件多做一件事 —— 超过四项自动横滚，
+           而手画那版一多就换行、把下面的内容顶下去。 -->
+      <sh-tabs
+        v-if="hosting.length > 1"
+        class="tabs"
+        :items="hosting.map((g) => ({ key: g.groupNo, label: g.title }))"
+        :active="active"
+        @change="pick"
+      ></sh-tabs>
 
       <view v-if="current" class="sh-card info">
         <view class="info__row" @tap="gotoGroup(current.groupNo)">
@@ -167,10 +166,8 @@ onShow(load);
 .empty.small {
   padding: 48rpx 0;
 }
+/* 排布归 `sh-tabs`，这里只留这一段的上下留白 */
 .tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin: 24rpx 0;
 }
 .info {

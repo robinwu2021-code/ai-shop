@@ -55,7 +55,7 @@ onShow(load);
       <text v-if="unread" class="readall" @tap="readAll">{{ $t("message.readAll") }}</text>
     </view>
 
-    <view v-for="m in shown" :key="m.messageNo" class="msg" @tap="open(m)">
+    <view v-for="m in shown" :key="m.messageNo" class="sh-card msg" @tap="open(m)">
       <view class="msg__dot" :class="{ 'is-unread': !m.read }" />
       <view class="msg__main">
         <view class="msg__top">
@@ -87,12 +87,12 @@ onShow(load);
   font-size: 24rpx;
   color: var(--sh-primary-text);
 }
+/* 面色 / 圆角 / 内边距交给 `.sh-card` —— 此前这三行是把它照抄了一遍。
+   内边距因此从 28rpx 变成 C 端的密度档 32rpx（`--sh-pad-card` 没被 C 端覆盖），
+   差 2px：**那正是密度变量存在的意义** —— 各页各写一个数，调密度时就得逐页找。 */
 .msg {
   display: flex;
   gap: 16rpx;
-  background: var(--sh-surface);
-  border-radius: 32rpx;
-  padding: 28rpx;
   margin-bottom: 16rpx;
 }
 .msg__dot {

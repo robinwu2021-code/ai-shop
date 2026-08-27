@@ -337,6 +337,22 @@
       }
     },
     {
+      "class": ".sh-mb-sm",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "margin-bottom": "16rpx"
+      },
+      "px": {
+        "margin-bottom": "8px"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 1
+      }
+    },
+    {
       "class": ".sh-mt-md",
       "group": "其它",
       "when": "—",
@@ -645,7 +661,7 @@
       },
       "usage": {
         "b-app": 0,
-        "c-app": 27
+        "c-app": 25
       }
     },
     {
@@ -689,7 +705,7 @@
       },
       "usage": {
         "b-app": 0,
-        "c-app": 12
+        "c-app": 10
       }
     },
     {
@@ -709,7 +725,7 @@
       },
       "usage": {
         "b-app": 181,
-        "c-app": 57
+        "c-app": 63
       }
     },
     {
@@ -937,7 +953,7 @@
       },
       "usage": {
         "b-app": 110,
-        "c-app": 56
+        "c-app": 55
       }
     },
     {
@@ -1011,7 +1027,7 @@
       },
       "usage": {
         "b-app": 60,
-        "c-app": 22
+        "c-app": 21
       }
     },
     {
@@ -1474,7 +1490,7 @@
       ],
       "usage": {
         "b-app": 15,
-        "c-app": 0
+        "c-app": 2
       },
       "note": "卡内标题行",
       "why": "收编自 goods-edit 与 sku-identity **逐字节相同**的 `.sec`（8 处调用点）。右侧动作直接进插槽，**不套壳** —— `.sec` 是 space-between，多一层就把「三个孩子摊开」变成「两组左右分」"
@@ -1556,7 +1572,7 @@
       ],
       "usage": {
         "b-app": 9,
-        "c-app": 7
+        "c-app": 8
       },
       "note": "筛选条",
       "why": "抽之前两端有两套实现（chip 横排 / 方块），同一个产品里两种筛选条"
@@ -1592,7 +1608,7 @@
       ],
       "usage": {
         "b-app": 4,
-        "c-app": 0
+        "c-app": 2
       },
       "note": "图片格",
       "why": "已传的缩略图排一行，末尾一个「＋」。收编自 apply / payment / qualifications / goods-edit 四份"
@@ -2961,24 +2977,18 @@
       "file": "c-app/src/pages/after-sale/index.vue",
       "components": [
         "sh-actionbar",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-uploader"
       ],
       "libClassHits": 14,
-      "localSelectors": 28,
-      "localCssLines": 159,
+      "localSelectors": 24,
+      "localCssLines": 136,
       "rolled": [
         {
           "id": "segment",
           "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary / --solid",
           "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-          "gap": false
-        },
-        {
-          "id": "uploader",
-          "label": "图片上传格",
-          "lib": "sh-uploader",
-          "rule": "pickImages\\(|chooseImages\\(",
           "gap": false
         }
       ]
@@ -3035,22 +3045,15 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 3,
+      "libClassHits": 4,
       "localSelectors": 29,
-      "localCssLines": 168,
+      "localCssLines": 165,
       "rolled": [
         {
           "id": "segment",
           "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary / --solid",
           "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-          "gap": false
-        },
-        {
-          "id": "blockdup",
-          "label": "白块自画",
-          "lib": ".sh-block / .sh-card",
-          "rule": "(background:\\s*var\\(--sh-surface\\)[^}]*border-radius:\\s*32rpx\\s*;|border-radius:\\s*32rpx\\s*;[^}]*background:\\s*var\\(--sh-surface\\))",
           "gap": false
         }
       ]
@@ -3065,18 +3068,10 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 8,
+      "libClassHits": 11,
       "localSelectors": 13,
-      "localCssLines": 75,
-      "rolled": [
-        {
-          "id": "blockdup",
-          "label": "白块自画",
-          "lib": ".sh-block / .sh-card",
-          "rule": "(background:\\s*var\\(--sh-surface\\)[^}]*border-radius:\\s*32rpx\\s*;|border-radius:\\s*32rpx\\s*;[^}]*background:\\s*var\\(--sh-surface\\))",
-          "gap": false
-        }
-      ]
+      "localCssLines": 72,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3132,19 +3127,13 @@
       "file": "c-app/src/pages/group-host/index.vue",
       "components": [
         "sh-empty",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-tabs"
       ],
-      "libClassHits": 20,
+      "libClassHits": 18,
       "localSelectors": 18,
-      "localCssLines": 101,
+      "localCssLines": 98,
       "rolled": [
-        {
-          "id": "tabs",
-          "label": "分栏切换",
-          "lib": "sh-tabs",
-          "rule": "^\\s*\\.tabs?\\b",
-          "gap": false
-        },
         {
           "id": "listrow",
           "label": "列表行",
@@ -3202,18 +3191,10 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 0,
+      "libClassHits": 1,
       "localSelectors": 5,
-      "localCssLines": 25,
-      "rolled": [
-        {
-          "id": "sechead",
-          "label": "分段标题（只有标题）",
-          "lib": ".txt-title + 间距档",
-          "rule": "^\\s*\\.(?:sec__h|grp)\\b[^{}]*\\{[^}]*margin",
-          "gap": false
-        }
-      ]
+      "localCssLines": 24,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3226,15 +3207,7 @@
       "libClassHits": 5,
       "localSelectors": 21,
       "localCssLines": 93,
-      "rolled": [
-        {
-          "id": "blockdup",
-          "label": "白块自画",
-          "lib": ".sh-block / .sh-card",
-          "rule": "(background:\\s*var\\(--sh-surface\\)[^}]*border-radius:\\s*32rpx\\s*;|border-radius:\\s*32rpx\\s*;[^}]*background:\\s*var\\(--sh-surface\\))",
-          "gap": false
-        }
-      ]
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3304,18 +3277,10 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 1,
+      "libClassHits": 2,
       "localSelectors": 13,
-      "localCssLines": 72,
-      "rolled": [
-        {
-          "id": "blockdup",
-          "label": "白块自画",
-          "lib": ".sh-block / .sh-card",
-          "rule": "(background:\\s*var\\(--sh-surface\\)[^}]*border-radius:\\s*32rpx\\s*;|border-radius:\\s*32rpx\\s*;[^}]*background:\\s*var\\(--sh-surface\\))",
-          "gap": false
-        }
-      ]
+      "localCssLines": 69,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3326,18 +3291,10 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 4,
+      "libClassHits": 5,
       "localSelectors": 5,
-      "localCssLines": 30,
-      "rolled": [
-        {
-          "id": "blockdup",
-          "label": "白块自画",
-          "lib": ".sh-block / .sh-card",
-          "rule": "(background:\\s*var\\(--sh-surface\\)[^}]*border-radius:\\s*32rpx\\s*;|border-radius:\\s*32rpx\\s*;[^}]*background:\\s*var\\(--sh-surface\\))",
-          "gap": false
-        }
-      ]
+      "localCssLines": 27,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3469,20 +3426,13 @@
       "file": "c-app/src/pages/review-write/index.vue",
       "components": [
         "sh-actionbar",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-uploader"
       ],
       "libClassHits": 5,
-      "localSelectors": 20,
-      "localCssLines": 99,
-      "rolled": [
-        {
-          "id": "uploader",
-          "label": "图片上传格",
-          "lib": "sh-uploader",
-          "rule": "pickImages\\(|chooseImages\\(",
-          "gap": false
-        }
-      ]
+      "localSelectors": 16,
+      "localCssLines": 76,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3506,31 +3456,18 @@
       "file": "c-app/src/pages/store/index.vue",
       "components": [
         "sh-cover",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-section"
       ],
-      "libClassHits": 20,
-      "localSelectors": 30,
-      "localCssLines": 172,
+      "libClassHits": 16,
+      "localSelectors": 29,
+      "localCssLines": 168,
       "rolled": [
         {
           "id": "segment",
           "label": "选中态自画（含未拆出的）",
           "lib": ".sh-chip--primary / --solid",
           "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-          "gap": false
-        },
-        {
-          "id": "blockdup",
-          "label": "白块自画",
-          "lib": ".sh-block / .sh-card",
-          "rule": "(background:\\s*var\\(--sh-surface\\)[^}]*border-radius:\\s*32rpx\\s*;|border-radius:\\s*32rpx\\s*;[^}]*background:\\s*var\\(--sh-surface\\))",
-          "gap": false
-        },
-        {
-          "id": "section",
-          "label": "卡内标题行",
-          "lib": "sh-section",
-          "rule": "\\.(?:sec|cat__head|grp__head)\\b[^{}]*\\{[^}]*justify-content:\\s*space-between",
           "gap": false
         }
       ]
@@ -3607,21 +3544,6 @@
       ]
     },
     {
-      "id": "blockdup",
-      "label": "白块自画",
-      "lib": ".sh-block / .sh-card",
-      "gap": false,
-      "rule": "(background:\\s*var\\(--sh-surface\\)[^}]*border-radius:\\s*32rpx\\s*;|border-radius:\\s*32rpx\\s*;[^}]*background:\\s*var\\(--sh-surface\\))",
-      "pages": [
-        "c-app/community",
-        "c-app/coupons",
-        "c-app/login",
-        "c-app/messages",
-        "c-app/my-memberships",
-        "c-app/store"
-      ]
-    },
-    {
       "id": "sheet",
       "label": "弹层 / 遮罩",
       "lib": "sh-sheet",
@@ -3631,52 +3553,11 @@
         "c-app/address",
         "c-app/me"
       ]
-    },
-    {
-      "id": "uploader",
-      "label": "图片上传格",
-      "lib": "sh-uploader",
-      "gap": false,
-      "rule": "pickImages\\(|chooseImages\\(",
-      "pages": [
-        "c-app/after-sale",
-        "c-app/review-write"
-      ]
-    },
-    {
-      "id": "tabs",
-      "label": "分栏切换",
-      "lib": "sh-tabs",
-      "gap": false,
-      "rule": "^\\s*\\.tabs?\\b",
-      "pages": [
-        "c-app/group-host"
-      ]
-    },
-    {
-      "id": "sechead",
-      "label": "分段标题（只有标题）",
-      "lib": ".txt-title + 间距档",
-      "gap": false,
-      "rule": "^\\s*\\.(?:sec__h|grp)\\b[^{}]*\\{[^}]*margin",
-      "pages": [
-        "c-app/legal"
-      ]
-    },
-    {
-      "id": "section",
-      "label": "卡内标题行",
-      "lib": "sh-section",
-      "gap": false,
-      "rule": "\\.(?:sec|cat__head|grp__head)\\b[^{}]*\\{[^}]*justify-content:\\s*space-between",
-      "pages": [
-        "c-app/store"
-      ]
     }
   ],
   "counts": {
     "tokens": 10,
-    "blocks": 46,
+    "blocks": 47,
     "components": 31,
     "pages": 90,
     "gapKinds": 1

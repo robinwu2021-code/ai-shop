@@ -20,6 +20,12 @@
 #
 # B 端此刻 **0 条** —— 33 处清完之后一直保持。下面全是 C 端。
 #
+# 2026-08-27 已还（三）：**白块 4 · 图片上传格 2 · 分栏切换 1 · 卡内标题行 1 · 分段标题 1**
+# —— 都是「换个标签」级别的，库里的件早就有。
+# 其中「白块」判据**又收窄一次**：上一版只要「surface + 四角统一 lg」就算，
+# 于是把 `login` 的输入控件（有 font-size）和 `store` 的 96×96 logo 方块（钉死宽高）
+# 也算了进来。**卡片是容器 —— 没有固有尺寸、不设字号。** 6 处里真的只有 4 处。
+#
 # 2026-08-27 已还（二）：**系统弹框 10 页 / 18 处归零** —— 11 处确认 → `confirm()`、
 # 4 处带输入 → `prompt()`、3 处选一项 → `pick()`。三个组合式与宿主 B 端早就有，
 # C 端一处都没接。顺带修掉两处：`me` 的注销确认写着 `confirmColor: "#B31710"`
@@ -54,15 +60,6 @@ c-app/order-confirm segment
 c-app/pay segment
 c-app/store segment
 
-# ── 白块自画（6 处）→ 用 .sh-block / .sh-card
-# C 端 6 处，判据是收紧过的（lg(32) 且四角统一），逐条看过都是真的 ——
-# 页面重画了 `.sh-card` / `.sh-block` 的形状，换类名即可，不涉及交互与版面。
-c-app/community blockdup
-c-app/coupons blockdup
-c-app/login blockdup
-c-app/messages blockdup
-c-app/my-memberships blockdup
-c-app/store blockdup
 
 # ── 弹层 / 遮罩（2 处）→ 用 sh-sheet
 # C 端 2 处贴底弹层（address / me 的 `.sheet`）。换 `sh-sheet` 要对一遍
@@ -71,21 +68,6 @@ c-app/address sheet
 c-app/me sheet
 
 
-# ── 图片上传格（2 处）→ 用 sh-uploader
-# C 端 2 处 `pickImages(`（after-sale / review-write）。`sh-uploader` 在库里，
-# B 端四页已经收编过，C 端没接。
-c-app/after-sale uploader
-c-app/review-write uploader
 
-# ── 分栏切换（1 处）→ 用 sh-tabs
-# C 端 1 处（group-host 的 `.tabs`）。`sh-tabs` 在库里。
-c-app/group-host tabs
 
-# ── 分段标题（只有标题）（1 处）→ 用 .txt-title + 间距档
-# C 端 1 处（legal）。**不缺组件，缺间距档** —— 间距档已落成
-# `.sh-mt-md` / `.sh-mb-md`，接上即可。
-c-app/legal sechead
 
-# ── 卡内标题行（1 处）→ 用 sh-section
-# C 端 1 处（store 的 `.sec`，space-between）。`sh-section` 在库里。
-c-app/store section

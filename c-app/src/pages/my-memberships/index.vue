@@ -53,7 +53,7 @@ onShow(load);
   <sh-scaffold title-key="myMembership.title">
     <sh-empty bare v-if="!list.length" :text="String($t('myMembership.empty'))"></sh-empty>
 
-    <view v-for="m in list" :key="m.entityNo" class="card">
+    <view v-for="m in list" :key="m.entityNo" class="sh-card card">
       <view class="card__main">
         <text class="card__name">{{ m.entityName }}</text>
         <text class="sh-muted card__d">
@@ -78,14 +78,14 @@ onShow(load);
 </template>
 
 <style scoped>
+/* 面色 / 圆角 / 内边距交给 `.sh-card` —— 此前这三行是把它照抄了一遍。
+   内边距因此从 28rpx 变成 C 端的密度档 32rpx（`--sh-pad-card` 没被 C 端覆盖），
+   差 2px：**那正是密度变量存在的意义** —— 各页各写一个数，调密度时就得逐页找。 */
 .card {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24rpx;
-  background: var(--sh-surface);
-  border-radius: 32rpx;
-  padding: 28rpx;
   margin-bottom: 20rpx;
 }
 .card__main {

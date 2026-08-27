@@ -102,7 +102,7 @@ onShow(load);
       用户不知道自己有，藏在下面等于没发。
     -->
     <template v-if="tab === 'mine'">
-      <view v-for="c in mineUsable" :key="c.userCouponNo" class="ticket">
+      <view v-for="c in mineUsable" :key="c.userCouponNo" class="sh-card ticket">
         <view class="ticket__amount">
           <text class="ticket__v sh-num">{{ c.benefitText }}</text>
           <text class="ticket__cond sh-num">
@@ -131,7 +131,7 @@ onShow(load);
       </view>
 
       <!-- 过期/用完的折叠在下面，但**不删掉**：券包里少一张，用户会以为平台吞了它 -->
-      <view v-for="c in mineDead" :key="c.userCouponNo" class="ticket is-expired">
+      <view v-for="c in mineDead" :key="c.userCouponNo" class="sh-card ticket is-expired">
         <view class="ticket__amount">
           <text class="ticket__v sh-num">{{ c.benefitText }}</text>
         </view>
@@ -149,7 +149,7 @@ onShow(load);
     <view
       v-for="c in shown"
       :key="c.couponNo"
-      class="ticket"
+      class="sh-card ticket"
       :class="{ 'is-expired': expired(c) }"
     >
       <view class="ticket__amount">
@@ -186,13 +186,13 @@ onShow(load);
 </template>
 
 <style scoped>
+/* 面色 / 圆角 / 内边距交给 `.sh-card` —— 此前这三行是把它照抄了一遍。
+   内边距因此从 28rpx 变成 C 端的密度档 32rpx（`--sh-pad-card` 没被 C 端覆盖），
+   差 2px：**那正是密度变量存在的意义** —— 各页各写一个数，调密度时就得逐页找。 */
 .ticket {
   display: flex;
   align-items: center;
   gap: 24rpx;
-  background: var(--sh-surface);
-  border-radius: 32rpx;
-  padding: 28rpx;
   margin-bottom: 20rpx;
 }
 .ticket.is-expired {

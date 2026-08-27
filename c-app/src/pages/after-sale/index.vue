@@ -179,14 +179,7 @@ onLoad((q) => {
         />
 
         <text class="sh-muted imglabel">{{ $t("afterSale.images") }}</text>
-        <view class="imgs">
-          <view v-for="(img, i) in images" :key="i" class="img">
-            <image class="img__i" :src="img" mode="aspectFill" />
-          </view>
-          <view v-if="images.length < 3" class="img img--add" @tap="pickImages">
-            <text class="img__plus">＋</text>
-          </view>
-        </view>
+        <sh-uploader class="imgs" :list="images" :max="3" :w="160" @add="pickImages"></sh-uploader>
       </view>
 
       <view v-if="instantRefund" class="sh-card block notice">
@@ -274,31 +267,12 @@ onLoad((q) => {
   display: block;
   margin-top: 28rpx;
 }
+/* 只留这一段与页面版面有关的外边距 —— 格子本身（尺寸 / 圆角 / 底色 / 「＋」）
+   全在 `sh-uploader` 里。两页此前的 `.img` 一族**逐字节相同**：
+   160rpx 方格、24rpx 圆角、faint 底、48rpx 的 `＋` 字符。
+   顺带把那个 `＋` 换成真图标 —— 字符跟着字体走，三端字形不一样。 */
 .imgs {
-  display: flex;
-  gap: 16rpx;
   margin-top: 16rpx;
-}
-.img {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  overflow: hidden;
-}
-.img__i {
-  width: 100%;
-  height: 100%;
-}
-.img--add {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.img__plus {
-  font-size: 48rpx;
-  color: var(--sh-sub);
-  line-height: 1;
 }
 .notice {
   background: var(--sh-primary-tint);

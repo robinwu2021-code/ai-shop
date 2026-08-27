@@ -274,14 +274,11 @@ function navToStore() {
 
     <!-- 第一屏：我买过的。这是本页存在的理由 -->
     <view class="sh-block">
-      <view class="sh-block__head sec">
-        <text class="sh-h2">{{
-          hasFrequent ? $t("store.frequent") : $t("store.hot")
-        }}</text>
+      <sh-section pad :title="String(hasFrequent ? $t('store.frequent') : $t('store.hot'))">
         <text v-if="hasFrequent" class="sh-link" @tap="reorder">{{
           $t("store.reorder")
         }}</text>
-      </view>
+      </sh-section>
 
       <view
         v-for="f in frequent"
@@ -319,10 +316,9 @@ function navToStore() {
 
     <!-- 店内搜索 + 全部商品 -->
     <view class="sh-block">
-      <view class="sh-block__head sec">
-        <text class="sh-h2">{{ $t("store.allGoods") }}</text>
+      <sh-section pad :title="String($t('store.allGoods'))">
         <text class="sh-muted sh-num">{{ goods.length }}</text>
-      </view>
+      </sh-section>
       <input
         v-model="keyword"
         class="search"
@@ -466,10 +462,6 @@ function navToStore() {
   line-height: 1.6;
 }
 /* 排布由 .sh-block__head 给，这里只把右侧的「再来一单 / 计数」推到头 */
-.sec {
-  align-items: center;
-  justify-content: space-between;
-}
 /* 底和圆角由外层 .sh-block 给 —— 常买行在块内成行，不再各自一张卡 */
 .freq {
   display: flex;

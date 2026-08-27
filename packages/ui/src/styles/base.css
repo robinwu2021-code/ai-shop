@@ -796,6 +796,7 @@ uni-page-wrapper[style*="--window-bottom"] {
 .sh-mt-xs { margin-top: 8rpx; }
 .sh-mt-sm { margin-top: 16rpx; }
 .sh-mt-md { margin-top: 28rpx; }
+.sh-mb-sm { margin-bottom: 16rpx; }
 .sh-mb-md { margin-bottom: 28rpx; }
 
 /* 对话框动作键：**必须是全局类**。

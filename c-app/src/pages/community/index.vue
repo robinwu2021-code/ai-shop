@@ -264,7 +264,7 @@ onLoad(load);
       {{ $t("common.searchEmpty") }}
     </text>
 
-    <view v-for="c in shown" :key="c.communityNo" class="cm">
+    <view v-for="c in shown" :key="c.communityNo" class="sh-card cm">
       <view
         class="cm__head"
         @tap="expanded = expanded === c.communityNo ? '' : c.communityNo"
@@ -379,10 +379,10 @@ onLoad(load);
   font-size: 26rpx;
   padding: 28rpx 0;
 }
+/* 面色 / 圆角 / 内边距交给 `.sh-card` —— 此前这三行是把它照抄了一遍。
+   内边距因此从 28rpx 变成 C 端的密度档 32rpx（`--sh-pad-card` 没被 C 端覆盖），
+   差 2px：**那正是密度变量存在的意义** —— 各页各写一个数，调密度时就得逐页找。 */
 .cm {
-  background: var(--sh-surface);
-  border-radius: 32rpx;
-  padding: 28rpx;
   margin-bottom: 20rpx;
 }
 .cm__head {
