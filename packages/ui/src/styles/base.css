@@ -84,6 +84,69 @@ html {
 }
 
 
+/*
+ * uni 内置件在 `@media (prefers-color-scheme: dark)` 里**写死的深色**（不走变量，
+ * 所以上面那份 `--UI-*` 兜底管不到）。系统一开深色它们就翻，而我们的 `--sh-*`
+ * 仍是浅色 —— 一屏两套色。会撞上的只有三种件：`<button>`（c-app 2 / b-app 5）、
+ * `<switch>`（b-app 1）、`<picker>` 的滚轮遮罩（b-app 4）。
+ *
+ * ⚠️ **不能用 `@media (prefers-color-scheme: dark)` 去压它** ——
+ * App 构建会把**用户写的**这个媒体查询整块丢掉（uni 自己 app.css 里的那四块留着）。
+ * 拿四个探针验过：裸 `uni-button` 进得去、`:root:not(...) uni-button` 进得去，
+ * 而只要外面套上 `prefers-color-scheme`，**不管里面是什么选择器都进不去**。
+ * `@media (min-width: 601px)` 那种普通查询不受影响 —— 是这一个条件被特判掉了。
+ *
+ * 所以改成**无条件**写：值取自 uni 自己的基态规则（把 `@media` 整段剔掉后读出来的），
+ * 所以浅色下它是一条 no-op，深色下才把 uni 的翻转顶回去。
+ * 前缀 `:root:not([data-theme="dark"])` 让我们**自己**要深色时它自动让开。
+ */
+:root:not([data-theme="dark"]) uni-button,
+:root:not([data-theme="dark"]) uni-button[type="default"] {
+  color: #000;
+  background-color: #f8f8f8;
+}
+:root:not([data-theme="dark"]) .button-hover,
+:root:not([data-theme="dark"]) .button-hover[type="default"] {
+  color: rgba(0, 0, 0, 0.6);
+  background-color: #dedede;
+}
+:root:not([data-theme="dark"]) uni-button[disabled][type="default"],
+:root:not([data-theme="dark"]) uni-button[disabled]:not([type]) {
+  color: rgba(0, 0, 0, 0.3);
+  background-color: #f7f7f7;
+}
+:root:not([data-theme="dark"]) uni-button[type="default"][plain] {
+  color: #353535;
+  border: 1px solid #353535;
+}
+:root:not([data-theme="dark"]) uni-button[type="default"][plain][disabled],
+:root:not([data-theme="dark"]) uni-button[type="primary"][plain][disabled] {
+  color: rgba(0, 0, 0, 0.2);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+:root:not([data-theme="dark"]) uni-switch .uni-switch-input {
+  border-color: #dfdfdf;
+  background-color: #dfdfdf;
+}
+:root:not([data-theme="dark"]) uni-switch .uni-switch-input:before {
+  background-color: #fdfdfd;
+}
+:root:not([data-theme="dark"]) uni-switch .uni-switch-input:after {
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+:root:not([data-theme="dark"]) uni-switch .uni-checkbox-input {
+  background-color: #fff;
+  border: 1px solid #d1d1d1;
+  color: #007aff;
+}
+:root:not([data-theme="dark"]) .uni-picker-view-mask {
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.6)),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.6));
+}
+
+
 /* ---- 与主题无关的常量 ---- */
 :root,
 .sh-root {
@@ -1124,3 +1187,4 @@ uni-page-wrapper[style*="--window-bottom"] {
     transform: translateX(-50%);
   }
 }
+
