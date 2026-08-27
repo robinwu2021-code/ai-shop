@@ -31,6 +31,9 @@ import static org.junit.jupiter.api.Assertions.*;
         // 轮询给足够长，免得冒烟测试里真的去连一个不存在的业务系统
         "shop.job.worker.poll-interval=3600s",
         "shop.job.worker.instance=smoke",
+        // 密钥必配 —— JobWorkerConfig 空密钥直接拒绝启动。
+        // 不拦的话进程一切正常，只是每轮 401，现场看上去像业务系统全线崩了
+        "shop.job.worker.token=smoke-token",
 })
 class JobApplicationSmokeTest {
 
