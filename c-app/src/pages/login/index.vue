@@ -9,6 +9,7 @@ import { onLoad } from "@dcloudio/uni-app";
 import { useUserStore } from "@/stores/user";
 import { loginMethods, type LoginMethod } from "@shared/ports/auth";
 import { api } from "@/api";
+import { isPhone } from "@shared/utils/validate";
 
 const { t } = useI18n();
 const user = useUserStore();
@@ -59,7 +60,7 @@ let timer: ReturnType<typeof setInterval> | undefined;
 onUnmounted(() => clearInterval(timer));
 
 async function sendOtp() {
-  if (!/^\d{11}$/.test(phone.value)) {
+  if (!isPhone(phone.value)) {
     uni.showToast({ title: String(t("login.phoneInvalid")), icon: "none" });
     return;
   }
@@ -83,7 +84,7 @@ async function sendOtp() {
 
 async function doLogin(method: LoginMethod) {
   // 只有要手机号的方式才校验手机号 —— 微信登录不需要，此前的写法会拦住它
-  if (method.needsPhone && !/^\d{11}$/.test(phone.value)) {
+  if (method.needsPhone && !isPhone(phone.value)) {
     uni.showToast({ title: String(t("login.phoneInvalid")), icon: "none" });
     return;
   }

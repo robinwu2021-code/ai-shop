@@ -11,6 +11,7 @@ import PhoneGate from "@/components/phone-gate.vue";
 import { useCommunityStore } from "@/stores/community";
 import { FEATURES, ROUTES } from "@shared/utils/constants";
 import { confirm } from "@ai-shop/ui/prompt";
+import { isPhone } from "@shared/utils/validate";
 
 const { t } = useI18n();
 const user = useUserStore();
@@ -156,7 +157,7 @@ const mValid = computed(
   () =>
     mForm.value.name.trim() &&
     mForm.value.contactName.trim() &&
-    /^\d{11}$/.test(mForm.value.contactPhone.trim()) &&
+    isPhone(mForm.value.contactPhone.trim()) &&
     mForm.value.category.trim(),
 );
 

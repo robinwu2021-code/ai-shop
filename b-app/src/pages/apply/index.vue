@@ -16,6 +16,7 @@ import { ROUTES } from "@/shared/nav";
 import { pickImages } from "@shared/ports/media";
 import { SERVICE_SCOPE } from "@shared/utils/constants";
 import type { Community, MasterData, MerchantSubject, ServiceScope, QualificationItem } from "@shared/types";
+import { isPhone, notBlank } from "@shared/utils/validate";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -128,9 +129,10 @@ const scopeReady = computed(
 );
 const canSubmit = computed(
   () =>
-    !!form.value.name &&
-    !!form.value.contactName &&
-    /^\d{11}$/.test(form.value.contactPhone) &&
+    notBlank(form.value.name) &&
+    notBlank(form.value.contactName) &&
+    // `!!x` 会把 `"   "` 当成填了；`/^\d{11}$/` 会把 `00000000000` 当成手机号
+    isPhone(form.value.contactPhone) &&
     scopeReady.value,
 );
 

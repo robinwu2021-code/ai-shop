@@ -16,6 +16,7 @@ import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { datetime } from "@shared/utils/datetime";
 import type { MerchantRole, MerchantStaff, StaffLog } from "@shared/types";
+import { isPhone } from "@shared/utils/validate";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -82,7 +83,7 @@ async function load() {
 }
 
 function add() {
-  if (!/^\d{11}$/.test(form.value.phone.trim())) {
+  if (!isPhone(form.value.phone.trim())) {
     uni.showToast({ title: t("staff.needPhone"), icon: "none" });
     return;
   }

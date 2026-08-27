@@ -8,6 +8,7 @@ import { api } from "@/api";
 import type { Address } from "@shared/types";
 import { chooseLocation } from "@shared/ports/location";
 import { confirm } from "@ai-shop/ui/prompt";
+import { isPhone, notBlank } from "@shared/utils/validate";
 
 const { t } = useI18n();
 
@@ -51,10 +52,11 @@ async function pickOnMap() {
 
 const valid = computed(
   () =>
-    draft.value.name.trim() &&
-    /^\d{11}$/.test(draft.value.phone.trim()) &&
-    draft.value.region.trim() &&
-    draft.value.detail.trim(),
+    notBlank(draft.value.name) &&
+    // 此前是 `/^\d{11}$/` —— 只查长度，`00000000000` 一路存进地址簿
+    isPhone(draft.value.phone) &&
+    notBlank(draft.value.region) &&
+    notBlank(draft.value.detail),
 );
 
 async function load() {

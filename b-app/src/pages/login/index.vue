@@ -16,6 +16,7 @@ import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { loginMethods, type LoginMethod } from "@shared/ports/auth";
 import { confirm } from "@ai-shop/ui/prompt";
+import { isPhone } from "@shared/utils/validate";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -58,7 +59,7 @@ const left = ref(0);
 let timer: ReturnType<typeof setInterval> | undefined;
 onUnmounted(() => clearInterval(timer));
 
-const phoneOk = computed(() => /^\d{11}$/.test(phone.value));
+const phoneOk = computed(() => isPhone(phone.value));
 /** 副凭证的最短长度：密码 6 位（与后端 PWD_MIN_LEN 一致），验证码 4 位 */
 const credMin = computed(() => (byPwd.value ? 6 : 4));
 const canSubmit = computed(
