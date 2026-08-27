@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 463 个接口**：后端已实现 395（85%）· 前端在调 444
+**合计 622 个接口**：后端已实现 511（82%）· 前端在调 563
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **82** 个接口 ｜ 后端已实现 **81**（99%）｜ 前端在调 **82**
+共 **83** 个接口 ｜ 后端已实现 **82**（99%）｜ 前端在调 **83**
 
 ### after-sale（4）
 
@@ -122,11 +122,12 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/mp/my-coupons` | 商家发给我的券（含到店码） | — | `数组` | 🔒 | ✅ | ✅ |
 
-### my-memberships（1）
+### my-memberships（2）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/mp/my-memberships` | 我是哪几家店的会员 | — | `数组` | 🔒 | ✅ | ✅ |
+| PUT | `/mp/my-memberships/{entityNo}/reach` | 关掉/打开某家店的消息 | — | — | 🔒 | ✅ | ✅ |
 
 ### order（9）
 
@@ -200,7 +201,22 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **99** 个接口 ｜ 后端已实现 **96**（97%）｜ 前端在调 **99**
+共 **198** 个接口 ｜ 后端已实现 **167**（84%）｜ 前端在调 **198**
+
+### activities（4）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/activities` | 活动列表 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/activities` | 建 / 改活动（敞口在这一步算清） | — | `StoreActivity` | 🔒 | ✅ | ✅ |
+| GET | `/biz/activities/{activityNo}` | 活动详情 | — | `StoreActivity` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/activities/{activityNo}/status` | 启停 / 结束 | — | `StoreActivity` | 🔒 | ✅ | ✅ |
+
+### activity-conflicts（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| POST | `/biz/activity-conflicts` | 这些商品已经在哪些活动里 | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### after-sale（4）
 
@@ -210,6 +226,12 @@
 | POST | `/biz/after-sale/{afterSaleNo}/approve` | 同意售后 | `HandleAfterSaleReq` | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/biz/after-sale/{afterSaleNo}/receive` | 确认收到退货 | — | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/biz/after-sale/{afterSaleNo}/reject` | 驳回售后 | `HandleAfterSaleReq` | `Order` | 🔒 | ✅ | ✅ |
+
+### appointment-slots（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| POST | `/biz/appointment-slots/{slotNo}/close` | 停约 | — | `AppointmentSlot` | 🔒 | ✅ | ✅ |
 
 ### auth（5）
 
@@ -235,19 +257,43 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/category/tree` | 类目树（选类目） | — | `数组` | 🔒 | ✅ | ✅ |
 
-### communities（3）
+### communities（4）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/communities` | 可选社区（设经营范围用） | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/biz/communities/applies` | 我提报过的小区 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/communities/apply` | 提报平台还没有的小区 | — | `CommunityApply` | 🔒 | ✅ | ✅ |
+| POST | `/biz/communities/from-map` | 地图上选中的小区直接开通 | — | `Community` | 🔒 | ✅ | ✅ |
 
 ### context（1）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/context` | 我的作用域与权限 | — | `BizScope` | 🔒 | ✅ | ✅ |
+
+### coupon-issues（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/coupon-issues` | 发放记录（含跳过明细） | — | `数组` | 🔒 | ✅ | ✅ |
+
+### coupon-redeem（2）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| POST | `/biz/coupon-redeem` | 到店核销一次（不可撤销） | — | `CouponRedeemResult` | 🔒 | ✅ | ✅ |
+| GET | `/biz/coupon-redeem/{code}` | 先看：这张券能不能核 | — | `CouponRedeemView` | 🔒 | ✅ | ✅ |
+
+### coupons（5）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/coupons` | 券列表 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/coupons` | 建券 / 改券（敞口在这一步算清） | — | `MerchantCoupon` | 🔒 | ✅ | ✅ |
+| GET | `/biz/coupons/{couponNo}` | 券详情 | — | `MerchantCoupon` | 🔒 | ✅ | ✅ |
+| POST | `/biz/coupons/{couponNo}/issue` | 按人群定向发券 | — | `CouponIssueBatch` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/coupons/{couponNo}/status` | 暂停 / 恢复 / 结束 | — | `MerchantCoupon` | 🔒 | ✅ | ✅ |
 
 ### cross-store（2）
 
@@ -260,7 +306,7 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/biz/customers` | 客户与复购 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/customers` | 客户与复购（跨店总览在用） | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### dashboard（2）
 
@@ -276,7 +322,28 @@
 | GET | `/biz/delivery/rule` | 自送规则 | — | `DeliveryRule` | 🔒 | ✅ | ✅ |
 | POST | `/biz/delivery/rule` | 保存自送规则 | `SaveDeliveryRuleReqBody` | `DeliveryRule` | 🔒 | ✅ | ✅ |
 
-### goods（10）
+### entities（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/entities` | 我名下的证照 | — | `数组` | 🔒 | ✅ | ✅ |
+
+### entity（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/entity/{entityNo}` | 一张证照的详情与门店 | — | `EntityStores` | 🔒 | ✅ | ✅ |
+
+### geo（4）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/geo/estates` | 一片地方的小区（服务端读穿透：缓存优先，不够就问地图） | — | `EstateList` | 🔒 | ✅ | ✅ |
+| GET | `/biz/geo/estates/counts` | 下辖各片的小区条数（列表预告） | — | — | 🔒 | ✅ | ✅ |
+| GET | `/biz/geo/reverse` | 坐标转地址（门店地址定位） | — | `GeoReverseResult` | 🔒 | ✅ | ✅ |
+| GET | `/biz/geo/tips` | 地点输入提示（提报小区按名搜 POI） | — | `数组` | 🔒 | ✅ | ✅ |
+
+### goods（11）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -288,6 +355,7 @@
 | POST | `/biz/goods/{goodsNo}/store-stock` | 改当前门店库存 | — | `Goods` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/submit` | 提交审核（草稿→待审） | — | `Goods` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/toggle` | 上下架 | `ToggleGoodsReq` | `Goods` | 🔒 | ✅ | ✅ |
+| POST | `/biz/goods/describe` | 自动生成图文详情 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/recognize` | 拍照识别商品 | `RecognizeGoodsReq` | `GoodsGuess` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/save` | 新建/编辑商品 | `SaveGoodsReqBody` | `Goods` | 🔒 | ✅ | ✅ |
 
@@ -305,7 +373,81 @@
 | GET | `/biz/groups` | 我的商家团 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/groups` | 开团 | `CreateGroupReq` | `GroupBuy` | 🔒 | ✅ | ✅ |
 
-### merchant（6）
+### inventory（26）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| POST | `/biz/inventory/adjust` | 直接改数（走盘点，落单落流水） | — | — | 🔒 | ⬜ | ✅ |
+| GET | `/biz/inventory/balances` | 库存列表（默认只给要处理的） | — | `数组` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/inventory/counts` | 开盘点单（锁账面数） | — | `string` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/inventory/counts/{no}` | 读回盘点单（含账面快照） | — | `StockCount` | 🔒 | ⬜ | ✅ |
+| PUT | `/biz/inventory/counts/{no}/lines` | 填实盘数 | — | — | 🔒 | ⬜ | ✅ |
+| POST | `/biz/inventory/counts/{no}/post` | 盘点过账 | — | — | 🔒 | ⬜ | ✅ |
+| GET | `/biz/inventory/documents` | 出入库单据 | — | `数组` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/inventory/inbounds` | 记一笔进货 | — | `string` | 🔒 | ⬜ | ✅ |
+| PUT | `/biz/inventory/inbounds/{no}` | 改进货草稿 | — | — | 🔒 | ⬜ | ✅ |
+| POST | `/biz/inventory/inbounds/{no}/post` | 进货过账 | — | — | 🔒 | ⬜ | ✅ |
+| POST | `/biz/inventory/inbounds/{no}/void` | 作废入库单 | — | — | 🔒 | ⬜ | ✅ |
+| GET | `/biz/inventory/items/{itemId}` | 单件库存明细 | — | `StockItemDetail` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/inventory/ledger` | 库存变动明细 | — | `StockLedgerPage` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/inventory/locations` | 库位与仓 | — | `数组` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/inventory/locations` | 加一个仓 | — | `string` | 🔒 | ⬜ | ✅ |
+| PUT | `/biz/inventory/locations/{id}/source` | 设发货源 | — | — | 🔒 | ⬜ | ✅ |
+| POST | `/biz/inventory/outbounds` | 报损/领用出库 | — | `string` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/inventory/outbounds/{no}/post` | 出库过账 | — | — | 🔒 | ⬜ | ✅ |
+| POST | `/biz/inventory/outbounds/{no}/void` | 作废出库单 | — | — | 🔒 | ⬜ | ✅ |
+| GET | `/biz/inventory/report/monthly` | 进销存月报 | — | `StockMonthly` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/inventory/report/ranking` | 动销/滞销榜 | — | `数组` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/inventory/summary` | 库存总览三个数 | — | `StockSummary` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/inventory/transfers` | 建调拨单 | — | `string` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/inventory/transfers/{no}` | 读回调拨单 | — | `StockTransfer` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/inventory/transfers/{no}/receive` | 调拨收货 | — | — | 🔒 | ⬜ | ✅ |
+| POST | `/biz/inventory/transfers/{no}/ship` | 调拨发出 | — | — | 🔒 | ⬜ | ✅ |
+
+### member-reach（2）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| POST | `/biz/member-reach/plan` | 群发试算：能发多少、跳过多少 | — | `ReachPlan` | 🔒 | ✅ | ✅ |
+| POST | `/biz/member-reach/send` | 群发（会打扰真实用户） | — | `ReachResult` | 🔒 | ✅ | ✅ |
+
+### member-segments（4）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/member-segments` | 人群列表 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/member-segments` | 存人群（存条件不存名单） | — | `MemberSegment` | 🔒 | ✅ | ✅ |
+| POST | `/biz/member-segments/{segmentNo}/remove` | 删人群（端上没有 DELETE，见 http-client） | — | — | 🔒 | ✅ | ✅ |
+| POST | `/biz/member-segments/preview` | 试算命中与可触达 | — | `MemberSegmentPreview` | 🔒 | ✅ | ✅ |
+
+### member-settings（2）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/member-settings` | 会员经营口径 | — | `MemberSetting` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/member-settings` | 改口径（店主） | — | `MemberSetting` | 🔒 | ✅ | ✅ |
+
+### member-tags（4）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/member-tags` | 标签字典（含人数） | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/member-tags` | 新建标签 | — | `MemberTag` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/member-tags/{tagNo}` | 改名 / 停用 | — | `MemberTag` | 🔒 | ✅ | ✅ |
+| POST | `/biz/member-tags/{tagNo}/merge` | 合并（confirm=false 只试算） | — | `MemberMergePreview` | 🔒 | ✅ | ✅ |
+
+### members（6）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/members` | 会员列表（筛选+分页） | — | `object` | 🔒 | ✅ | ✅ |
+| POST | `/biz/members` | 手工录入（未注册记为线索） | — | `Member` | 🔒 | ✅ | ✅ |
+| GET | `/biz/members/{memberNo}` | 会员详情：各店往来与来源轨迹 | — | `MemberDetail` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/members/{memberNo}` | 改备注 / 拉黑 | — | `Member` | 🔒 | ✅ | ✅ |
+| GET | `/biz/members/stats` | 四层人数与未计入买家 | — | `MemberStats` | 🔒 | ✅ | ✅ |
+| POST | `/biz/members/tags` | 批量打标 / 去标 | — | — | 🔒 | ✅ | ✅ |
+
+### merchant（7）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -315,6 +457,7 @@
 | POST | `/biz/merchant/payment` | 补交资料并提交进件 | `SubmitPaymentReq` | `PaymentApplyment` | 🔒 | ✅ | ✅ |
 | POST | `/biz/merchant/payment/{payChannel}/refresh` | 回查进件结果 | — | `PaymentApplyment` | 🔒 | ✅ | ✅ |
 | GET | `/biz/merchant/profile` | 商家资料 | — | `MerchantProfile` | 🔒 | ✅ | ✅ |
+| POST | `/biz/merchant/quick-start` | 无证照快速开店 | — | `MerchantProfile` | 🔒 | ✅ | ✅ |
 
 ### message（4）
 
@@ -325,14 +468,29 @@
 | POST | `/biz/message/read-all` | 全部已读 | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/biz/message/unread-count` | 未读数（红点轮询，只给一个数） | — | `number` | 🔒 | ✅ | ✅ |
 
-### order（4）
+### my-spec-dims（3）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/my-spec-dims` | 我建的规格维度（含用量与配额） | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/my-spec-dims/{dimNo}/archive` | 停用/启用自建维度 | — | — | 🔒 | ✅ | ✅ |
+| POST | `/biz/my-spec-dims/{dimNo}/rename` | 给自建维度改名 | — | — | 🔒 | ✅ | ✅ |
+
+### order（5）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/order` | 订单列表 | — | `object` | 🔒 | ✅ | ✅ |
 | GET | `/biz/order/{orderNo}` | 订单详情 | — | `Order` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/order/{orderNo}/confirm-offline-pay` | 确认线下收款 | — | `Order` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/delivered` | 自送已送达 | — | `Order` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/ship` | 快递发货 | `ShipReq` | `Order` | 🔒 | ⬜ | ✅ |
+
+### pickable-props（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/pickable-props` | 还能加进这一类的商品参数（本类目已配 + 平台通用 + 自建） | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### pickup（8）
 
@@ -346,6 +504,13 @@
 | POST | `/biz/pickup/verify` | 核销自提码 | `VerifyReq` | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/biz/pickup/verify/batch` | 批量核销 | `VerifyBatchReq` | `VerifyBatchResult` | 🔒 | ✅ | ✅ |
 | GET | `/biz/pickup/verify/search` | 按取货码片段搜单 | — | `数组` | 🔒 | ✅ | ✅ |
+
+### pickup-points（2）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| POST | `/biz/pickup-points` | 自建自提点（待运营核实） | — | `PickupCandidate` | 🔒 | ✅ | ✅ |
+| GET | `/biz/pickup-points/candidates` | 门店可引用的取货点候选 | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### plan（2）
 
@@ -369,11 +534,21 @@
 | POST | `/biz/push-token` | 绑定 App 推送设备（登录后） | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/push-token/unregister` | 解绑推送设备（登出前，共用设备换班必须解） | — | — | 🔒 | ✅ | ✅ |
 
-### regions（1）
+### qualifications（2）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/qualifications` | 我的资质与已获授权的类目 | — | `MyQualifications` | 🔒 | ✅ | ✅ |
+| POST | `/biz/qualifications/save` | 传一张资质证件 | — | `Qualification` | 🔒 | ✅ | ✅ |
+
+### regions（4）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/regions` | 行政区划下一级（框覆盖范围用） | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/regions/path` | 区划从省到自身的路径 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/regions/search` | 跨级搜区划与聚落（选择器搜索） | — | `RegionSearchResult` | 🔒 | ✅ | ✅ |
+| GET | `/biz/regions/villages` | 街道/镇下的官方村名词典（提报村用） | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### review（3）
 
@@ -403,12 +578,41 @@
 | GET | `/biz/roles` | 角色列表（预置 + 自定义） | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/roles` | 建自定义角色 | — | `MerchantRole` | 🔒 | ✅ | ✅ |
 
-### settle（2）
+### settle（3）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/settle/bills` | 结算单列表 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/settle/income` | 收入按状态汇总 | — | `IncomeSummary` | 🔒 | ✅ | ✅ |
 | GET | `/biz/settle/rate-card` | 费率卡 | — | `RateCard` | 🔒 | ✅ | ✅ |
+
+### sku-identity（3）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/sku-identity/export` | 导出本店全部规格行的条码/货号/单位 | — | — | 🔒 | ✅ | ✅ |
+| POST | `/biz/sku-identity/import` | 商品编码批量导入 | — | `SkuIdentityReport` | 🔒 | ✅ | ✅ |
+| POST | `/biz/sku-identity/import/plan` | 商品编码导入试算（不写库） | — | `SkuIdentityReport` | 🔒 | ✅ | ✅ |
+
+### spec-dims（3）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/spec-dims` | 加规格组时能挑的维度（本类目已配 + 平台通用 + 自建） | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/spec-dims` | 自建规格维度（只本店可用） | — | `SpecTemplate` | 🔒 | ✅ | ✅ |
+| GET | `/biz/spec-dims/{dimNo}/values` | 某个规格下平台有的全部档位（加档位的候选） | — | `数组` | 🔒 | ✅ | ✅ |
+
+### spec-override（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| POST | `/biz/spec-override/{categoryNo}` | 本店用哪几个规格、什么顺序、叫什么 | — | `数组` | 🔒 | ✅ | ✅ |
+
+### spec-props（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/spec-props` | 这一类的商品参数（产地/保质期/材质，不分 SKU） | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### spec-templates（2）
 
@@ -416,6 +620,12 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/spec-templates` | 规格模板 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/spec-templates` | 存为常用规格 | `SaveSpecTemplateReq` | `SpecTemplate` | 🔒 | ✅ | ✅ |
+
+### spec-values（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| POST | `/biz/spec-values` | 在平台维度下加一个自有规格值 | — | `SpecValueAdded` | 🔒 | ✅ | ✅ |
 
 ### spu-std（1）
 
@@ -433,7 +643,7 @@
 | POST | `/biz/staff/{mchAccountNo}/store` | 授权到店 | `GrantStoreReq` | `MerchantStaff` | 🔒 | ✅ | ✅ |
 | GET | `/biz/staff/logs` | 员工与授权变更记录 | — | `数组` | 🔒 | ✅ | ✅ |
 
-### store（12）
+### store（15）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -445,10 +655,30 @@
 | POST | `/biz/store/{storeNo}/payment` | 换门店收款号 | `SetStorePaymentReq` | `Store` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/{storeNo}/rename` | 改门店名与地址 | `StoreEditReq` | `Store` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/{storeNo}/status` | 停用/启用门店 | `SetActiveReq` | `Store` | 🔒 | ✅ | ✅ |
+| POST | `/biz/store/announcement` | 只改公告（含有效期，可同时发到别的门店） | — | `StoreProfile` | 🔒 | ✅ | ✅ |
+| POST | `/biz/store/announcement/recent/remove` | 从常用里删一条 | — | `StoreProfile` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/create` | 新建门店 | `StoreEditReq` | `Store` | 🔒 | ✅ | ✅ |
 | GET | `/biz/store/list` | 我的门店 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/store/poster` | 分享海报 | — | `Poster` | 🔒 | ✅ | ✅ |
 | GET | `/biz/store/qrcode` | 店铺码 | — | `StoreQrcode` | 🔒 | ✅ | ✅ |
 | GET | `/biz/store/share-kit` | 分享素材 | — | `ShareKit` | 🔒 | ✅ | ✅ |
+
+### store-spec-dims（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/store-spec-dims` | 本店货架类目各自能用的规格 | — | `数组` | 🔒 | ✅ | ✅ |
+
+### stores（6）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/stores/{storeNo}/appointment-slots` | 预约时段列表 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/stores/{storeNo}/appointment-slots` | 开预约时段 | — | `AppointmentSlot` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stores/{storeNo}/fulfillment` | 门店送货方式 | — | `StoreFulfillment` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/stores/{storeNo}/fulfillment` | 保存门店送货方式 | — | `StoreFulfillment` | 🔒 | ✅ | ✅ |
+| GET | `/biz/stores/{storeNo}/fulfillment/{channel}/impact` | 关掉这一路会影响的在售商品 | — | `数组` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/stores/mine` | 我能进的所有门店（按证照分组） | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### upload（1）
 
@@ -458,7 +688,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **282** 个接口 ｜ 后端已实现 **218**（77%）｜ 前端在调 **263**
+共 **341** 个接口 ｜ 后端已实现 **262**（77%）｜ 前端在调 **282**
 
 ### aftersale（4）
 
@@ -469,7 +699,7 @@
 | GET | `/ops/after-sales/fast-refund-rule` | getFastRefundRule | — | `FastRefundRule` | — | ✅ | ✅ |
 | POST | `/ops/after-sales/fast-refund-rule` | 极速退阈值（P-6.1.2）：金额上限 > 0、时限 ≥ 1 小时 | — | `FastRefundRule` | — | ✅ | ✅ |
 
-### community（17）
+### community（25）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -481,15 +711,23 @@
 | POST | `/ops/communities/{no}/unarchive` | unarchiveCommunity | — | `Community` | — | ⬜ | ✅ |
 | GET | `/ops/communities/applies` | 提报队列 | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/communities/applies/{applyNo}/decide` | 裁决 | — | `CommunityApply` | — | ✅ | ✅ |
+| GET | `/ops/communities/duplicates` | 疑似重复的聚落两两清单 | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/communities/merge` | 合并：把 fromNo 并进 intoNo | — | `Community` | — | ✅ | ✅ |
+| GET | `/ops/communities/near` | 一个坐标附近已开通的聚落，按距离升序 —— 裁决时查重用 */ | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/pickups` | listPickups | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/pickups` | 建自提点 | — | `PickupPoint` | — | ✅ | ✅ |
 | POST | `/ops/pickups/{no}/archive` | archivePickup | — | `PickupPoint` | — | ⬜ | ✅ |
+| POST | `/ops/pickups/{no}/decide` | 裁决商家自建的自提点（P1）：PENDING → ACTIVE / REJECTED | — | `PickupPoint` | — | ⬜ | ✅ |
 | POST | `/ops/pickups/{no}/service-fee` | 履约服务费费率，万分比（P-2.2.4） | — | `PickupPoint` | — | ⬜ | ✅ |
 | POST | `/ops/pickups/{no}/status` | 启停与迁移（P-2.2.2），非法迁移抛错 | — | `PickupPoint` | — | ⬜ | ✅ |
 | POST | `/ops/pickups/{no}/unarchive` | unarchivePickup | — | `PickupPoint` | — | ⬜ | ✅ |
 | GET | `/ops/pickups/risky` | 疑似职业化的临时自提点（P-2.2.5）：近 30 天承接次数 ≥ 阈值 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/regions` | 某区划的直接下级 | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/regions` | 区划人工维护（新增 / 停用 / 改名） | — | `Region` | — | ✅ | ✅ |
+| POST | `/ops/regions/{code}/rename` | 改名不动码，存量引用不受影响 */ | — | `Region` | — | ✅ | ✅ |
+| POST | `/ops/regions/{code}/toggle` | 停用只影响新选择，存量商家的范围不动 | — | `Region` | — | ✅ | ✅ |
 | GET | `/ops/regions/path` | 从省到自身的整条链路 | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/regions/resolve` | 按提报单的地址与坐标推断该挂哪个街道 | — | `数组` | — | ✅ | ✅ |
 
 ### content（12）
 
@@ -522,7 +760,7 @@
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 
-### finance（15）
+### finance（27）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -533,13 +771,25 @@
 | PUT | `/ops/finance/tax-rule` | 个税代扣规则 | — | `TaxRule` | — | ✅ | ✅ |
 | GET | `/ops/finance/withdrawals` | listWithdrawals | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/finance/withdrawals/{withdrawNo}/decide` | 审批一笔提现 | — | `Withdrawal` | — | ✅ | ✅ |
+| GET | `/ops/invoice-requests` | listBuyerInvoiceRequests | — | `数组` | — | ✅ | ⬜ |
+| POST | `/ops/invoice-requests/{requestNo}/issued` | markBuyerInvoiceIssued | — | `BuyerInvoiceRequest` | — | ✅ | ⬜ |
+| POST | `/ops/invoice-requests/{requestNo}/reject` | rejectBuyerInvoiceRequest | — | `BuyerInvoiceRequest` | — | ✅ | ⬜ |
+| GET | `/ops/payables` | listPayables | — | `数组` | — | ✅ | ⬜ |
+| POST | `/ops/payables/{settleNo}/confirm` | 确认对账：双方认了这个数 | — | `Settlement` | — | ✅ | ⬜ |
+| POST | `/ops/payables/{settleNo}/no-invoice` | 标记无票供应商：**不进发票流程，但要在应付列表上标出来** —— 让财务付款前就看见 */ | — | `Settlement` | — | ✅ | ⬜ |
+| POST | `/ops/payables/{settleNo}/paid` | 登记已付款 | — | `Settlement` | — | ✅ | ⬜ |
+| GET | `/ops/points/client-policy` | 积分的**端策略**：哪个端不发放、哪个端不核销、当面付能不能抵扣 | — | `ClientPointsPolicy` | — | ✅ | ⬜ |
+| POST | `/ops/points/client-policy` | savePointsClientPolicy | — | `ClientPointsPolicy` | — | ✅ | ⬜ |
 | GET | `/ops/points/overview` | 积分资金总览 | — | `PointsOverview` | — | ✅ | ✅ |
+| GET | `/ops/purchase-invoices` | listPurchaseInvoices | — | `数组` | — | ✅ | ⬜ |
+| POST | `/ops/purchase-invoices/{invoiceNo}/reject` | rejectPurchaseInvoice | — | `PurchaseInvoice` | — | ✅ | ⬜ |
+| POST | `/ops/purchase-invoices/{invoiceNo}/verify` | verifyPurchaseInvoice | — | `PurchaseInvoice` | — | ✅ | ⬜ |
 | GET | `/ops/refund-split-backs` | 待回退分账的售后单（P-12.1.5 / E4）：售后裁决打的 `refundSplitPending` 标记 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/refund-split-backs/{asNo}/execute` | 执行退款回退分账，**执行后清除该售后单的标记**，否则队列永远消不掉 | — | `AfterSale` | — | ⬜ | ✅ |
 | GET | `/ops/settle/fee-rules` | 全部费率版本，含历史 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/settle/fee-rules` | 新增一个费率版本 | — | `FeeRuleVersion` | — | ✅ | ✅ |
 | GET | `/ops/settle/fee-rules/effective` | 某时刻实际生效的四格费率 | — | `EffectiveFeeRates` | — | ✅ | ✅ |
-| GET | `/ops/settlements` | 结算单列表 | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/settlements` | listSettlements | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/split-records` | listSplitRecords | — | `object` | — | ✅ | ✅ |
 
 ### fulfillment（15）
@@ -609,6 +859,27 @@
 | POST | `/ops/staffs/{no}/roles` | 改角色（**多角色**） | — | `Staff` | — | ⬜ | ⬜ |
 | POST | `/ops/staffs/{no}/scope` | 数据域授权（P-1.1.3） | — | `Staff` | — | ⬜ | ⬜ |
 
+### inventory（4）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/inventory/balances` | **某一个商家**的库存待办（健康度页点进一行之后看的） | — | `数组` | — | ⬜ | ⬜ |
+| GET | `/ops/inventory/health` | 库存健康度：负库存 / 零库存仍在架 / 长期未动销 | — | `数组` | — | ✅ | ⬜ |
+| GET | `/ops/inventory/ledger` | 商家台账（只读） | — | `InvLedgerPage` | — | ⬜ | ⬜ |
+| GET | `/ops/inventory/recon` | 库存对差 | — | `InvReconReport` | — | ✅ | ⬜ |
+
+### job（7）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/jobs` | 任务清单：定义与当前状态**已在后端合成一行** | — | `数组` | — | ✅ | ⬜ |
+| GET | `/ops/jobs/${encodeURIComponent(name)}` | getJob | — | `JobRow` | — | ⬜ | ⬜ |
+| PUT | `/ops/jobs/${encodeURIComponent(name)}/cron` | 改频率 | — | `JobRow` | — | ⬜ | ⬜ |
+| POST | `/ops/jobs/${encodeURIComponent(name)}/disable` | 关 | — | `JobRow` | — | ⬜ | ⬜ |
+| POST | `/ops/jobs/${encodeURIComponent(name)}/enable` | 开 | — | `JobRow` | — | ⬜ | ⬜ |
+| POST | `/ops/jobs/${encodeURIComponent(name)}/trigger` | 立即执行一次 | — | `JobRow` | — | ⬜ | ⬜ |
+| GET | `/ops/jobs/${encodeURIComponent(q.name)}/logs` | 执行日志，倒序 | — | `数组` | — | ⬜ | ⬜ |
+
 ### marketing（22）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
@@ -636,7 +907,19 @@
 | POST | `/ops/marketing/member-cards/{cardNo}/status` | 状态推进（草稿→启用⇄暂停→停售），非法迁移抛错 | — | `MemberCard` | — | ⬜ | ✅ |
 | POST | `/ops/marketing/member-cards/{cardNo}/unarchive` | unarchiveMemberCard | — | `MemberCard` | — | ⬜ | ✅ |
 
-### merchant（32）
+### member（7）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/members` | 跨商家会员名单 | — | `OpsPerson` | — | ✅ | ✅ |
+| GET | `/ops/members/reach-stats` | 触达量与退订率，**按退订率倒序** —— 发得多不是成绩，发到有人关掉才是问题 */ | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/persons/{personNo}` | 人档：他是哪几家店的会员 —— 这正是人档存在的理由 */ | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/persons/{personNo}/reveal-phone` | 查看完整手机号（申诉处置） | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/promotion/activities` | 全平台活动（新模型）：归属、受众、限量 */ | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/promotion/activities/{activityNo}/stop` | 强制停止一个活动 | — | `OpsPromoActivity` | — | ✅ | ✅ |
+| GET | `/ops/promotion/coupons` | 全平台券（新模型）：归属、敞口、异常标记 */ | — | `数组` | — | ✅ | ✅ |
+
+### merchant（35）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -656,6 +939,7 @@
 | GET | `/ops/merchants/{merchantNo}` | getMerchant | — | `Merchant` | — | ✅ | ✅ |
 | POST | `/ops/merchants/{merchantNo}/archive` | archiveMerchant | — | `Merchant` | — | ✅ | ✅ |
 | PUT | `/ops/merchants/{merchantNo}/auth-codes` | 全量覆盖经营授权码 | — | `AuthCodeSetResult` | — | ✅ | ✅ |
+| GET | `/ops/merchants/{merchantNo}/fulfillment` | 商家履约配置（方案 v4，**只读**）：门店 × 送货方式矩阵 | — | `数组` | — | ✅ | ✅ |
 | PUT | `/ops/merchants/{merchantNo}/funds-mode` | 改资金路径 | — | `Merchant` | — | ✅ | ✅ |
 | GET | `/ops/merchants/{merchantNo}/qualifications` | 某商家已登记的资质 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/merchants/{merchantNo}/qualifications` | 登记或更新 | — | `Qualification` | — | ✅ | ✅ |
@@ -672,6 +956,8 @@
 | PUT | `/ops/plan-defs/{planCode}` | 改档位定义 | — | `PlanDef` | — | ✅ | ✅ |
 | POST | `/ops/qualifications/{qualNo}/revoke` | 撤销 | — | `Qualification` | — | ✅ | ✅ |
 | PUT | `/ops/stores/{storeNo}/business-mode` | 改门店经营模式 | — | `StoreMode` | — | ✅ | ✅ |
+| POST | `/ops/stores/{storeNo}/channels/{channel}/lock` | lockChannel | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/stores/{storeNo}/channels/{channel}/unlock` | unlockChannel | — | `object` | — | ✅ | ✅ |
 
 ### message（34）
 
@@ -725,24 +1011,33 @@
 | GET | `/ops/orders/parent/{parentNo}` | 同一次结算拆出的全部子订单（E3 按商家拆单，详情抽屉要能看到兄弟单） | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/orders/proxy` | 代客下单（客服电话代下） | — | `Order` | — | ⬜ | ✅ |
 
-### payment（5）
+### payment（7）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/ops/payments/close-rule` | getCloseRule | — | `CloseRule` | — | ✅ | ✅ |
 | PUT | `/ops/payments/close-rule` | 关单策略（P-4.2.3） | — | `CloseRule` | — | ✅ | ✅ |
+| GET | `/ops/payments/recon-axes` | 四条轴各跑一轮 | — | `数组` | — | ✅ | ⬜ |
+| GET | `/ops/payments/recon-coverage` | 对账覆盖范围 | — | `ReconCoverage` | — | ✅ | ⬜ |
 | GET | `/ops/payments/recon-diffs` | 对账差异列表（P-4.2.1） | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/payments/recon-diffs/{diffNo}/ignore` | 忽略一条差异（如渠道手续费导致的分位差） | — | `ReconDiff` | — | ✅ | ✅ |
 | POST | `/ops/payments/recon-diffs/{diffNo}/resolve` | 处置一条差异（P-4.2.1 / 4.2.2） | — | `ReconDiff` | — | ✅ | ✅ |
 
-### product（27）
+### product（43）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/ops/categories` | 类目树：一次给全量（三级树总量有限，前端自己组树比逐层拉更快） | — | `数组` | — | ✅ | ⬜ |
-| POST | `/ops/categories` | saveCategory | — | `Category` | — | ✅ | ✅ |
+| POST | `/ops/categories` | 新建 / 改类目 | — | `Category` | — | ✅ | ✅ |
 | POST | `/ops/categories/{no}/archive` | 有子类目或有在售商品的类目不能归档 —— 归档后 C 端类目树会断枝 | — | `Category` | — | ⬜ | ✅ |
+| GET | `/ops/categories/{no}/archive-impact` | 停用一个类目会影响什么 | — | `CategoryArchiveImpact` | — | ⬜ | ⬜ |
 | POST | `/ops/categories/{no}/unarchive` | unarchiveCategory | — | `Category` | — | ⬜ | ✅ |
+| GET | `/ops/category-pay-modes` | 类目 × 支付方式 | — | `数组` | — | ✅ | ⬜ |
+| POST | `/ops/category-pay-modes/{categoryNo}` | saveCategoryPayMode | — | `数组` | — | ✅ | ⬜ |
+| GET | `/ops/category-points` | 类目 × 积分 | — | `数组` | — | ✅ | ⬜ |
+| POST | `/ops/category-points/{categoryNo}` | `earnMode` 传 null = 清除这条规则，回到平台兜底 */ | — | `数组` | — | ✅ | ⬜ |
+| GET | `/ops/category-specs` | 类目 × 规格总览（规格库 V195） | — | `数组` | — | ✅ | ⬜ |
+| POST | `/ops/category-specs/{categoryNo}` | 整份替换一个类目的绑定 */ | — | `数组` | — | ✅ | ⬜ |
 | GET | `/ops/goods` | 商品池：按商家/类目/关键词/状态筛，goods 粒度（每行一个商品，SKU 嵌在 `skus[]` 里） | — | `object` | — | ✅ | ⬜ |
 | GET | `/ops/goods/{goodsNo}` | 商品详情：三语文案、SKU 矩阵、规格组、驳回原因，审核抽屉读的就是它 | — | `GoodsDetail` | — | ✅ | ✅ |
 | POST | `/ops/goods/{goodsNo}/audit` | 审核商品 | — | `GoodsAudit` | — | ✅ | ✅ |
@@ -753,14 +1048,23 @@
 | POST | `/ops/skus/{no}/force-off` | 平台**压下架**（P-3.2.3）：必须带原因，原样进商家 B 端 | — | `Sku` | — | ⬜ | ⬜ |
 | POST | `/ops/skus/{no}/presale` | 预售额度与截单时间（P-3.3.1 / 3.3.2）：截单必须早于到货 | — | `Sku` | — | ⬜ | ⬜ |
 | GET | `/ops/skus/oversell` | 超卖告警（P-3.3.3）：已售 > 预售额度 | — | `数组` | — | ✅ | ⬜ |
+| GET | `/ops/spec-dims` | listSpecDims | — | `数组` | — | ✅ | ⬜ |
+| POST | `/ops/spec-dims` | saveSpecDim | — | `SpecDim` | — | ✅ | ⬜ |
+| POST | `/ops/spec-dims/{no}/archive` | archiveSpecDim | — | `SpecDim` | — | ⬜ | ⬜ |
+| POST | `/ops/spec-dims/{no}/unarchive` | unarchiveSpecDim | — | `SpecDim` | — | ⬜ | ⬜ |
 | GET | `/ops/spec-templates` | 平台模板列表 | — | `object` | — | ✅ | ⬜ |
 | POST | `/ops/spec-templates` | 新建或更新（`templateNo` 为空即新建） | — | `SpecTemplate` | — | ✅ | ⬜ |
 | POST | `/ops/spec-templates/{no}/archive` | 归档：商家侧立刻不再下发 | — | `SpecTemplate` | — | ⬜ | ⬜ |
 | POST | `/ops/spec-templates/{no}/unarchive` | unarchiveSpecTemplate | — | `SpecTemplate` | — | ⬜ | ⬜ |
+| POST | `/ops/spec-values` | saveSpecValue | — | `SpecValue` | — | ✅ | ⬜ |
+| POST | `/ops/spec-values/{no}/archive` | archiveSpecValue | — | `SpecValue` | — | ⬜ | ⬜ |
+| POST | `/ops/spec-values/{no}/promote` | 商家自有值 → 平台值 | — | `SpecValue` | — | ⬜ | ⬜ |
+| POST | `/ops/spec-values/{no}/unarchive` | unarchiveSpecValue | — | `SpecValue` | — | ⬜ | ⬜ |
 | GET | `/ops/spu-std` | 标准品列表 | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/spu-std` | 新建 / 更新 | — | `SpuStd` | — | ✅ | ✅ |
 | POST | `/ops/spu-std/{no}/archive` | 归档 | — | `SpuStd` | — | ⬜ | ✅ |
 | POST | `/ops/spu-std/{no}/unarchive` | unarchiveSpuStd | — | `SpuStd` | — | ⬜ | ✅ |
+| POST | `/ops/spu-std/bulk-status` | 批量改状态 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/topics` | 专题列表 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/topics` | 新建 / 改 | — | `Topic` | — | ✅ | ✅ |
 | POST | `/ops/topics/{topicNo}/archived` | 归档 / 取消归档 | — | `Topic` | — | ✅ | ✅ |

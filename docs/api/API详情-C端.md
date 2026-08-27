@@ -1276,6 +1276,21 @@
 类型：[`MyMembership`](#mymembership)\[\]
 
 
+#### PUT `/mp/my-memberships/{entityNo}/reach`
+
+关掉/打开某家店的消息　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `entityNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`any`
+
+
 ### order
 
 #### POST `/mp/order`

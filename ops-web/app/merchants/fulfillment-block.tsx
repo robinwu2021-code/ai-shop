@@ -27,7 +27,9 @@ export function FulfillmentBlock({ merchantNo }: { merchantNo: string }) {
   });
   const lockMut = useMutation({
     mutationFn: (v: { storeNo: string; channel: string; locked: boolean; reason?: string }) =>
-      api.lockChannel(v.storeNo, v.channel, v.locked, v.reason),
+      v.locked
+        ? api.lockChannel(v.storeNo, v.channel, v.reason)
+        : api.unlockChannel(v.storeNo, v.channel),
     onSuccess: (_, v) => {
       qc.invalidateQueries({ queryKey: ["merchant-fulfillment", merchantNo] });
       notify.success(v.locked ? c.toastChannelLocked : c.toastChannelUnlocked);

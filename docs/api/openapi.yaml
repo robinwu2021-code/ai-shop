@@ -172,6 +172,33 @@ components:
         - "name"
       additionalProperties: false
       description: "地点输入提示（高德 inputtips 经后端代理）。提报小区时按名搜 POI，选中就带上坐标 —— 否则坐标只能是「提交那一刻商家站的地方」，多半不在那个小区里。 后端没配 Web 服务 key 时返回空数组，端上就当没有这个功能。"
+    FulfillmentImpactItem: 
+      type: "object"
+      properties: 
+        goodsNo: 
+          type: "string"
+        title: 
+          type: "string"
+      required: 
+        - "goodsNo"
+        - "title"
+      additionalProperties: false
+      description: "关掉某条履约路会影响到的商品（P2 处置前的预览）。\n\n**给它起个名字，不写成内联的 `Array<{ ... }>`**：契约里的匿名结构在规格生成器 那边引用不到，只能落成一个空 object —— 后端照着实现就得自己猜返回什么。"
+    SpecValueAdded: 
+      type: "object"
+      properties: 
+        valueNo: 
+          type: "string"
+        code: 
+          type: "string"
+        label: 
+          type: "string"
+      required: 
+        - "valueNo"
+        - "code"
+        - "label"
+      additionalProperties: false
+      description: "新加的规格取值（商家自建维度）。同上：命名是为了它能进契约"
     PickupCandidate: 
       type: "object"
       properties: 
@@ -8458,6 +8485,40 @@ paths:
                     type: "array"
                     items: 
                       "$ref": "#/components/schemas/MyMembership"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/my-memberships/{entityNo}/reach": 
+    put: 
+      operationId: "setMembershipReach"
+      summary: "关掉/打开某家店的消息"
+      tags: 
+        - "my-memberships"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "entityNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
                 required: 
                   - "code"
                   - "msg"

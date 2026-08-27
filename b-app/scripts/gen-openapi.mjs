@@ -26,7 +26,7 @@ const body = epSrc.slice(epSrc.indexOf("export const ENDPOINTS"));
 
 const endpoints = {};
 const re =
-  /(\w+):\s*\{\s*method:\s*"(GET|POST)",\s*path:\s*"([^"]+)",\s*auth:\s*(true|false),\s*summary:\s*"([^"]*)"/g;
+  /(\w+):\s*\{\s*method:\s*"(GET|POST|PUT)",\s*path:\s*"([^"]+)",\s*auth:\s*(true|false),\s*summary:\s*"([^"]*)"/g;
 let m;
 while ((m = re.exec(body))) {
   endpoints[m[1]] = { method: m[2], path: m[3], auth: m[4] === "true", summary: m[5] };
@@ -35,11 +35,39 @@ if (!Object.keys(endpoints).length) {
   throw new Error("没有从 endpoints.ts 解析到任何端点 —— 表结构变了？");
 }
 
+/*
+ * 已知用了「复数资源名 + id」的端点。**清单只准变短。**
+ *
+ * 原来这里是**硬失败**，于是 18 条存量端点（整个库存域 + 门店履约）
+ * 让这个生成器**一次都跑不起来** —— `openapi-b.yaml` 从那天起就停在原地，
+ * 而它不在 `check-generated-docs` 的名单里，没有任何东西会报。
+ * 一条规矩把自己的产物锁死，还没人知道，这比规矩被破坏更糟。
+ *
+ * 2026-08-28 数下来：c-app 3 条（都在 goods/address 豁免里）、b-app 18 条、
+ * **ops-web 98 条**（它的生成器压根没这条规矩）。126 个线上活着的端点是复数，
+ * 而规矩只活在两个生成器里。要不要把 ADR-007 改成承认复数，是另一件事 ——
+ * 那要动 126 条线上路径或改约定本身，不该由一个文档生成器顺手决定。
+ */
+const knownPlural = new Set(
+  fs
+    .readFileSync(path.resolve(here, "known-plural-paths.txt"), "utf8")
+    .split("\n")
+    .filter((l) => l.trim() && !l.startsWith("#"))
+    .map((l) => l.split("\t")[0]),
+);
+const fixedPlural = [...knownPlural];
+
 // 与 C 端同一条规矩：带 id 的资源段用单数；前缀必须是 /biz（ADR-007）
 for (const [key, ep] of Object.entries(endpoints)) {
   const bad = ep.path.match(/\/(\w+s)\/:/);
   if (bad && !/^(goods|address)$/.test(bad[1])) {
-    throw new Error(`端点 "${key}" 的路径 ${ep.path} 用了复数资源名 "${bad[1]}" 且紧跟 id`);
+    if (!knownPlural.has(key)) {
+      throw new Error(
+        `端点 "${key}" 的路径 ${ep.path} 用了复数资源名 "${bad[1]}" 且紧跟 id。\n` +
+          "  ADR-007 是资源段用单数。确实要破例的话，把它加进 b-app/scripts/known-plural-paths.txt 并写清理由。",
+      );
+    }
+    fixedPlural.splice(fixedPlural.indexOf(key), 1);
   }
   /*
    * `/common/**` 是跨端公共元数据（行业/主体/通道），C 端与 B 端要的是同一份。
@@ -49,6 +77,11 @@ for (const [key, ep] of Object.entries(endpoints)) {
   if (!ep.path.startsWith("/biz/") && !ep.path.startsWith("/common/")) {
     throw new Error(`端点 "${key}" 的路径 ${ep.path} 不在 /biz/** 下 —— B 端前缀见 ADR-007`);
   }
+}
+// 棘轮只准变短：清单里有、代码里已经改好的，要提醒删掉
+if (fixedPlural.length) {
+  console.error(`✗ 这些已经不是复数路径了，把它们从 known-plural-paths.txt 里删掉：\n  ${fixedPlural.join("\n  ")}`);
+  process.exit(1);
 }
 
 // ---------------------------------------------------------------- 2. 类型 → JSON Schema
@@ -127,6 +160,112 @@ if (Object.keys(renamed).length) {
 
 /** 契约方法 → 响应类型名 */
 const RESPONSE_TYPES = {
+  /*
+   * 2026-08-28 一次补齐 **97 条**。它们是逐批加进契约的，谁都没回来登记这张表 ——
+   * 而漏一条整份 spec 就不生成（硬失败），于是 `openapi-b.yaml` 停在原地，
+   * 且这个生成器**不在 check-generated-docs 的名单里**，没有任何东西会报。
+   * 类型逐条取自 `contract.ts` 的签名，不是猜的。
+   */
+  mActivities: "StoreActivity[]",
+  mActivity: "StoreActivity",
+  mActivityConflicts: "ActivityConflict[]",
+  mAddSpecDim: "SpecTemplate",
+  mAddSpecValue: "SpecValueAdded",
+  mAppointmentSlots: "AppointmentSlot[]",
+  mArchiveSpecDim: "void",
+  mCloseAppointmentSlot: "AppointmentSlot",
+  mConfirmOfflinePay: "Order",
+  mCountDetail: "StockCount",
+  mCountFill: "void",
+  mCountOpen: "string",
+  mCountPost: "void",
+  mCoupon: "MerchantCoupon",
+  mCouponIssues: "CouponIssueBatch[]",
+  mCoupons: "MerchantCoupon[]",
+  mCreateMemberTag: "MemberTag",
+  mDescribeGoods: "{ detail: string }",
+  mDimValues: "SpecOption[]",
+  mDropNoticeRecent: "StoreProfile",
+  mEditMemberTag: "MemberTag",
+  mEnrollMember: "Member",
+  mEntities: "Entity[]",
+  mEntity: "EntityStores",
+  mEstateCounts: "Record<string, number>",
+  mEstates: "EstateList",
+  mFulfillmentImpact: "FulfillmentImpactItem[]",
+  mGeoReverse: "GeoReverseResult",
+  mGeoTips: "GeoTip[]",
+  mInboundCreate: "string",
+  mInboundPost: "void",
+  mInboundUpdate: "void",
+  mInboundVoid: "void",
+  mIncomeSummary: "IncomeSummary",
+  mIssueCoupon: "CouponIssueBatch",
+  mLocationSetSource: "void",
+  mMemberDetail: "MemberDetail",
+  mMemberSegments: "MemberSegment[]",
+  mMemberSettings: "MemberSetting",
+  mMemberStats: "MemberStats",
+  mMemberTags: "MemberTag[]",
+  mMembers: "PageResult<Member>",
+  mMergeMemberTag: "MemberMergePreview",
+  mMySpecDims: "MerchantSpecDim[]",
+  mMyStores: "EntityStores[]",
+  mOpenAppointmentSlot: "AppointmentSlot",
+  mOpenCommunityFromMap: "Community",
+  mOutboundCreate: "string",
+  mOutboundPost: "void",
+  mOutboundVoid: "void",
+  mPatchMember: "Member",
+  mPeekCouponCode: "CouponRedeemView",
+  mPickableDims: "SpecTemplate[]",
+  mPickableProps: "SpecTemplate[]",
+  mPickupCandidates: "PickupCandidate[]",
+  mPlanReach: "ReachPlan",
+  mPoster: "Poster",
+  mPreviewMemberSegment: "MemberSegmentPreview",
+  mQualifications: "MyQualifications",
+  mQuickStart: "MerchantProfile",
+  mRedeemCoupon: "CouponRedeemResult",
+  mRegionPath: "Region[]",
+  mRegionSearch: "RegionSearchResult",
+  mRemoveMemberSegment: "void",
+  mRenameSpecDim: "void",
+  mSaveActivity: "StoreActivity",
+  mSaveAnnouncement: "StoreProfile",
+  mSaveCoupon: "MerchantCoupon",
+  mSaveMemberSegment: "MemberSegment",
+  mSaveMemberSettings: "MemberSetting",
+  mSaveQualification: "Qualification",
+  mSaveSpecOverride: "SpecTemplate[]",
+  mSaveStoreFulfillment: "StoreFulfillment",
+  mSelfBuildPickup: "PickupCandidate",
+  mSendReach: "ReachResult",
+  mSetActivityStatus: "StoreActivity",
+  mSetCouponStatus: "MerchantCoupon",
+  mSkuIdentityExport: "{ csv: string }",
+  mSkuIdentityImport: "SkuIdentityReport",
+  mSkuIdentityPlan: "SkuIdentityReport",
+  mSpecProps: "SpecTemplate[]",
+  mStockAdjust: "void",
+  mStockBalances: "StockBalance[]",
+  mStockDocuments: "StockDocument[]",
+  mStockItem: "StockItemDetail",
+  mStockLedger: "StockLedgerPage",
+  mStockLocations: "StockLocation[]",
+  mStockMonthly: "StockMonthly",
+  mStockRanking: "StockRank[]",
+  mStockSummary: "StockSummary",
+  mStoreFulfillment: "StoreFulfillment",
+  mStoreSpecDims: "StoreCategorySpecs[]",
+  mTagMembers: "void",
+  mTransferCreate: "string",
+  mTransferDetail: "StockTransfer",
+  mTransferReceive: "void",
+  mTransferShip: "void",
+  mVillageDict: "Region[]",
+  mWarehouseCreate: "string",
+
   // 漏配一条就整份 spec 不生成（守卫是对的）：/biz/goods/{no}/store-stock 因此
   // 长期不在契约里，而后端实现了 —— 按契约算的覆盖率会凭空少一条。
   mSaveStoreStock: "Goods",
@@ -376,7 +515,10 @@ for (const [key, ep] of Object.entries(endpoints)) {
     },
   };
 
-  if (ep.method === "POST" && reqType) {
+  // PUT 与 POST 一样带 body。**此前抽取正则只认 GET|POST**，
+  // 于是所有 PUT 端点（b-app 9 条、c-app 1 条）**静默不进 spec** ——
+  // 规格看着完整，少的那几条谁也不会发现（同 endpoints 表那次「注释夹在中间」的坑）
+  if ((ep.method === "POST" || ep.method === "PUT") && reqType) {
     op.requestBody = {
       required: true,
       content: {

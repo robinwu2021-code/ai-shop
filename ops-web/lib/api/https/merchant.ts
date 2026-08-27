@@ -5,8 +5,10 @@ import type { MerchantApi } from "../contracts/merchant";
 export const merchantHttp: MerchantApi = {
   storeModes: (merchantNo) => client.get(`/ops/merchants/${merchantNo}/store-modes`),
   merchantFulfillment: (merchantNo) => client.get(`/ops/merchants/${merchantNo}/fulfillment`),
-  lockChannel: (storeNo, channel, locked, reason) =>
-    client.post(`/ops/stores/${storeNo}/channels/${channel}/${locked ? "lock" : "unlock"}`, locked ? { reason } : undefined),
+  lockChannel: (storeNo, channel, reason) =>
+    client.post(`/ops/stores/${storeNo}/channels/${channel}/lock`, { reason }),
+  unlockChannel: (storeNo, channel) =>
+    client.post(`/ops/stores/${storeNo}/channels/${channel}/unlock`),
   modeRisk: () => client.get("/ops/merchants/mode-risk"),
   setFundsMode: ({ merchantNo, ...body }) =>
     client.put(`/ops/merchants/${merchantNo}/funds-mode`, body),

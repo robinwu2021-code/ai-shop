@@ -38,7 +38,7 @@ const body = epSrc.slice(
 
 const endpoints = {};
 const re =
-  /(\w+):\s*\{\s*method:\s*"(GET|POST)",\s*path:\s*"([^"]+)",\s*auth:\s*(true|false),\s*summary:\s*"([^"]*)"/g;
+  /(\w+):\s*\{\s*method:\s*"(GET|POST|PUT)",\s*path:\s*"([^"]+)",\s*auth:\s*(true|false),\s*summary:\s*"([^"]*)"/g;
 let m;
 while ((m = re.exec(body))) {
   endpoints[m[1]] = { method: m[2], path: m[3], auth: m[4] === "true", summary: m[5] };
@@ -234,6 +234,8 @@ const RESPONSE_TYPES = {
    */
   myStoreCoupons: "MyStoreCoupon[]",
   myMemberships: "MyMembership[]",
+  // 这条是 **PUT**，此前抽取正则只认 GET|POST，它压根没进过 spec
+  setMembershipReach: "void",
 };
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
@@ -406,7 +408,10 @@ for (const [key, ep] of Object.entries(endpoints)) {
     },
   };
 
-  if (ep.method === "POST" && reqType) {
+  // PUT 与 POST 一样带 body。**此前抽取正则只认 GET|POST**，
+  // 于是所有 PUT 端点（b-app 9 条、c-app 1 条）**静默不进 spec** ——
+  // 规格看着完整，少的那几条谁也不会发现（同 endpoints 表那次「注释夹在中间」的坑）
+  if ((ep.method === "POST" || ep.method === "PUT") && reqType) {
     op.requestBody = {
       required: true,
       content: {

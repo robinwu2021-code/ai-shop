@@ -60,8 +60,17 @@ export interface MerchantApi {
    * 写入口在 B 端；平台的干预走锁路（P2），不在本契约。
    */
   merchantFulfillment(merchantNo: string): Promise<StoreFulfillmentRow[]>;
-  /** 锁路 / 解锁（P2）。用锁不用删：商家配置原样保留，处置结束一键恢复 */
-  lockChannel(storeNo: string, channel: string, locked: boolean, reason?: string): Promise<void>;
+  /*
+   * 锁路 / 解锁（P2）。用锁不用删：商家配置原样保留，处置结束一键恢复。
+   *
+   * **一个动作两个端点，所以是两个方法。** 此前是一个 `lockChannel(…, locked)`，
+   * 路径里写着 `${locked ? "lock" : "unlock"}` —— 后端那边本来就是两个
+   * `@PostMapping`，契约把它们折成一个，等于把「调哪个端点」藏进了一个布尔参数。
+   * 直接的后果：规格生成器**一条都抽不到**（它的正则在模板串里的引号处断掉），
+   * 于是整份 `openapi-ops.yaml` 生成不出来，而没有任何东西会报。
+   */
+  lockChannel(storeNo: string, channel: string, reason?: string): Promise<void>;
+  unlockChannel(storeNo: string, channel: string): Promise<void>;
 
   merchantDeposit(merchantNo: string): Promise<MerchantDeposit>;
   depositTxns(merchantNo: string): Promise<DepositTxn[]>;

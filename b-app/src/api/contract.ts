@@ -101,6 +101,8 @@ import type {
   StockSummary, StockBalance, StockItemDetail, StockLedgerPage, StockDocument,
   StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
   StockCount, StockTransfer,
+  FulfillmentImpactItem,
+  SpecValueAdded,
 } from "@shared/types";
 
 /** 拍照识别的结果。全部是**建议值**，店主可改可弃 */
@@ -504,7 +506,7 @@ export interface MerchantApi {
   /** 全量保存。「关一路」是 enabled=false 不是删配置 */
   mSaveStoreFulfillment(storeNo: string, payload: StoreFulfillmentSaveReq): Promise<StoreFulfillment>;
   /** 关掉某一路会影响的在售商品：本店货架上只勾了这一路的（P1） */
-  mFulfillmentImpact(storeNo: string, channel: string): Promise<Array<{ goodsNo: string; title: string }>>;
+  mFulfillmentImpact(storeNo: string, channel: string): Promise<FulfillmentImpactItem[]>;
   /** 门店可引用的取货点候选：范围内的常驻点 + 本店自建的点（P1） */
   mPickupCandidates(storeNo: string): Promise<PickupCandidate[]>;
   /** 自建自提点 → PENDING 待运营核实（P1） */
@@ -824,7 +826,7 @@ export interface MerchantApi {
    * <p>量纲维度（重量、容量…）会从文案里抽数字并换算（「1.5kg」→ 1500g）；
    * 抽不出来会拒，端上提示商家把数量写清楚。
    */
-  mAddSpecValue(dimNo: string, label: string): Promise<{ valueNo: string; code: string; label: string }>;
+  mAddSpecValue(dimNo: string, label: string): Promise<SpecValueAdded>;
 
   // ---- 商品编码批量导入导出（P4）
   /**

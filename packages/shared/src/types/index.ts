@@ -76,6 +76,24 @@ export interface PickupRef {
   status: string;
 }
 
+/**
+ * 关掉某条履约路会影响到的商品（P2 处置前的预览）。
+ *
+ * **给它起个名字，不写成内联的 `Array<{ ... }>`**：契约里的匿名结构在规格生成器
+ * 那边引用不到，只能落成一个空 object —— 后端照着实现就得自己猜返回什么。
+ */
+export interface FulfillmentImpactItem {
+  goodsNo: string;
+  title: string;
+}
+
+/** 新加的规格取值（商家自建维度）。同上：命名是为了它能进契约 */
+export interface SpecValueAdded {
+  valueNo: string;
+  code: string;
+  label: string;
+}
+
 /** 门店可引用的取货点候选（P1）：范围内的常驻点 + 本店自建的点 */
 export interface PickupCandidate {
   pickupNo: string;

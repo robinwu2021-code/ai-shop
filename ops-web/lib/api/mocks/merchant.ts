@@ -7,6 +7,14 @@ import type { LegalForm } from "@/lib/types";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
+/** 锁 / 解锁只差一个布尔；两个方法共用它，免得两份实现哪天走岔 */
+function setChannelLock(storeNo: string, channel: string, locked: boolean) {
+  const row = db.storeFulfillments.find((r) => r.storeNo === storeNo);
+  const ch = row?.channels.find((c) => c.channel === channel);
+  if (ch) ch.locked = locked;
+  return wait(undefined, 300);
+}
+
 function findApply(applyNo: string) {
   const a = db.applies.find((x) => x.applyNo === applyNo);
   if (!a) notFound("入驻申请", "Application", applyNo);
@@ -46,12 +54,8 @@ export const merchantMock: MerchantApi = {
   storeModes: async (merchantNo) => wait(db.storeModes.filter((s) => s.merchantNo === merchantNo)),
   // 履约配置只读：mock 数据不区分商家（种子只有 M901 一家有店），照单全返
   merchantFulfillment: async () => wait(db.storeFulfillments.map((r) => ({ ...r, channels: r.channels.map((c) => ({ ...c })) }))),
-  lockChannel: async (storeNo, channel, locked) => {
-    const row = db.storeFulfillments.find((r) => r.storeNo === storeNo);
-    const ch = row?.channels.find((c) => c.channel === channel);
-    if (ch) ch.locked = locked;
-    return wait(undefined, 300);
-  },
+  lockChannel: async (storeNo, channel) => setChannelLock(storeNo, channel, true),
+  unlockChannel: async (storeNo, channel) => setChannelLock(storeNo, channel, false),
   // 无照 × 自营。mock 里从 storeModes 与商家档案现算，**不另建一份数据** ——
   // 另建的话它会和 setStoreBusinessMode 的写入脱节，页面上改完模式清单不变
   modeRisk: async () => wait(

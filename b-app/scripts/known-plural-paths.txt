@@ -1,0 +1,31 @@
+# 已知用了「复数资源名 + id」的端点。**清单只准变短。**
+#
+# ADR-007 定的是资源段用单数，而两端生成器把它做成了**硬失败**。
+# 2026-08-28 数下来：c-app 3 条（都在 goods/address 豁免里）、b-app 18 条、
+# **ops-web 98 条**（它的生成器压根没有这条规矩）。也就是说 126 个**线上活着的**
+# 端点是复数，而规矩只活在两个生成器里 —— 其中 b-app 那个因此**一次都跑不起来**，
+# `openapi-b.yaml` 从那天起就停在原地，且没有任何东西会报。
+#
+# 改成棘轮而不是删掉：**新写的仍然按 ADR-007 拒**，存量记在这儿。
+# 要不要把 ADR-007 改成承认复数，是另一件事 —— 那要动 126 条线上路径或改约定本身，
+# 不该由一个文档生成器顺手决定。
+#
+# 一行一个 `端点键<TAB>路径`。修好一条就删一行。
+mAppointmentSlots	/biz/stores/:storeNo/appointment-slots
+mCountDetail	/biz/inventory/counts/:no
+mCountFill	/biz/inventory/counts/:no/lines
+mCountPost	/biz/inventory/counts/:no/post
+mFulfillmentImpact	/biz/stores/:storeNo/fulfillment/:channel/impact
+mInboundPost	/biz/inventory/inbounds/:no/post
+mInboundUpdate	/biz/inventory/inbounds/:no
+mInboundVoid	/biz/inventory/inbounds/:no/void
+mLocationSetSource	/biz/inventory/locations/:id/source
+mOpenAppointmentSlot	/biz/stores/:storeNo/appointment-slots
+mOutboundPost	/biz/inventory/outbounds/:no/post
+mOutboundVoid	/biz/inventory/outbounds/:no/void
+mSaveStoreFulfillment	/biz/stores/:storeNo/fulfillment
+mStockItem	/biz/inventory/items/:itemId
+mStoreFulfillment	/biz/stores/:storeNo/fulfillment
+mTransferDetail	/biz/inventory/transfers/:no
+mTransferReceive	/biz/inventory/transfers/:no/receive
+mTransferShip	/biz/inventory/transfers/:no/ship
