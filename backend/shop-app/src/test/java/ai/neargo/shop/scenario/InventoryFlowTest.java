@@ -4,6 +4,8 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.invbridge.InventoryBackfillService;
+import ai.neargo.shop.product.entity.PrdSku;
+import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.inventory.entity.InvOutbox;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboxMapper;
 import ai.neargo.shop.inventory.service.InventoryEventSink;
@@ -51,6 +53,8 @@ class InventoryFlowTest {
 
     private static final AtomicInteger SEQ = new AtomicInteger();
 
+    @Autowired
+    SkuMapper skuMapper;
     @Autowired
     InventoryAclService acl;
     @Autowired
@@ -212,6 +216,57 @@ class InventoryFlowTest {
         // 原行还在，多出一行反向 —— 不是把那一行改掉或删掉
         assertThat(query.ledger(f.owner, f.item, f.location, null, 50).entries())
                 .hasSize(rowsBefore + 1);
+    }
+
+    @Test
+    @DisplayName("★★★ 只算不写就是一行都不写 —— dry-run 曾经建了 owner/item/ref/location")
+    void dryRunWritesNothing() {
+        /*
+         * 造一个**一定没搬过**的 SKU。
+         *
+         * 不造的话，库里已经全搬完时 upsertItem 什么都不会插，这条断言就是空的 ——
+         * 它会永远绿着，而它本来要拦的正是「排练写了真数据」。
+         */
+        int seq = SEQ.incrementAndGet();
+        String skuNo = "SKU-DRY-" + seq;
+        PrdSku sku = new PrdSku();
+        sku.setSkuNo(skuNo);
+        sku.setGoodsNo("G-DRY-" + seq);
+        sku.setEntityNo("E-DRY-" + seq);
+        sku.setMarket("CN");
+        sku.setStock(7);
+        sku.setLockedStock(0);
+        sku.setPrice(1000L);
+        skuMapper.insert(sku);
+
+        try {
+            assertThat(acl.itemIdOfSku(skuNo)).as("前提：它还没搬过").isNull();
+
+            // 扫到末尾 —— 只跑一批的话这个新 SKU 可能压根没被扫到
+            Long cursor = null;
+            int pending = 0;
+            do {
+                InventoryBackfillService.Report r = backfill.run(true, 500, cursor);
+                cursor = r.nextAfterId();
+                pending += r.pending();
+            } while (cursor != null);
+
+            assertThat(pending).as("没搬过的必须出现在待搬里").isGreaterThan(0);
+            assertThat(acl.itemIdOfSku(skuNo))
+                    .as("「只算不写」写了主数据 —— ownerIdOf/upsertItem/locationIdOf 都是"
+                            + "「没有就建」，而它们原来在 dryRun 判断之前无条件执行")
+                    .isNull();
+            assertThat(acl.ownerOfSku(skuNo)).as("业主也不该被建出来").isNull();
+        } finally {
+            /*
+             * **必须把这个 SKU 收走。** 留在库里的话，别的用例里
+             * `backfill.run(false, 500, null)` 只跑一批 —— 多出来的 SKU 会把
+             * 它自己的 fixture 挤出那一批，于是它的 SKU 没被搬，断言在
+             * 「付款之后实存真扣」那一行红掉，而报错与 dry-run 毫无关系。
+             * 单独跑绿、合起来跑红，就是这么来的。
+             */
+            skuMapper.delete(Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getSkuNo, skuNo));
+        }
     }
 
     @Test

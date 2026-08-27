@@ -7,6 +7,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.flywaydb.core.Flyway;
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -64,7 +65,8 @@ public class InventoryDataSourceConfig {
      * 迁移在数据源之后、SqlSessionFactory 之前跑 —— 靠参数依赖表达顺序，不靠 {@code @DependsOn} 的字符串。
      */
     @Bean
-    Flyway invFlyway(DataSource invDataSource, InventoryProperties props) {
+    Flyway invFlyway(@Qualifier("invDataSource") DataSource invDataSource, InventoryProperties props) {
+        mustBeOwnDataSource(invDataSource);
         Flyway flyway = Flyway.configure()
                 .dataSource(invDataSource)
                 .locations(props.getFlywayLocations())
@@ -79,7 +81,8 @@ public class InventoryDataSourceConfig {
     }
 
     @Bean
-    SqlSessionFactory invSqlSessionFactory(DataSource invDataSource, Flyway invFlyway) throws Exception {
+    SqlSessionFactory invSqlSessionFactory(@Qualifier("invDataSource") DataSource invDataSource,
+                                           Flyway invFlyway) throws Exception {
         MybatisSqlSessionFactoryBean bean = new MybatisSqlSessionFactoryBean();
         bean.setDataSource(invDataSource);
         bean.setTypeAliasesPackage("ai.neargo.shop.inventory.entity");
@@ -117,8 +120,31 @@ public class InventoryDataSourceConfig {
         };
     }
 
+
+    /**
+     * 拿到的必须是**本领域自己的**数据源，不是平台那套。
+     *
+     * <p><b>为什么要有这一道</b>：拿错的症状是「一切正常」—— 19 张 {@code inv_*}
+     * 连同 {@code inv_flyway_history} 一起建进平台库，{@code inv-pool} 从不启动，
+     * 日志里一行 ERROR 都没有，而「两个库分开了」这件事再也不会发生。
+     *
+     * <p>2026-08-27 线上就是这么发生的：上面三个 {@code @Bean} 按**类型**声明
+     * {@code DataSource}，而平台那套挂着 {@code @Primary} ——
+     * Spring 的 {@code determineAutowireCandidate} 先看 {@code @Primary}、
+     * 再看优先级、最后才按参数名兜底，所以**参数名叫 invDataSource 是没用的**，
+     * {@code @Primary} 永远赢。已加 {@code @Qualifier} 修掉；这一道是它的保险。
+     */
+    private static void mustBeOwnDataSource(DataSource ds) {
+        String pool = ds instanceof HikariDataSource h ? h.getPoolName() : ds.getClass().getSimpleName();
+        if (!"inv-pool".equals(pool)) {
+            throw new IllegalStateException(
+                    "进销存注入到的不是自己的数据源（pool=" + pool + "）—— "
+                    + "迁移与全部 inv_* 读写会打到平台库上，且不会有任何报错。拒绝启动。");
+        }
+    }
+
     @Bean
-    PlatformTransactionManager invTransactionManager(DataSource invDataSource) {
+    PlatformTransactionManager invTransactionManager(@Qualifier("invDataSource") DataSource invDataSource) {
         return new DataSourceTransactionManager(invDataSource);
     }
 }

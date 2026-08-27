@@ -209,17 +209,39 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
 
         for (PrdSku sku : bySku.values()) {
             String entityNo = sku.getEntityNo();
-            String ownerId = acl.ownerIdOf(entityNo);
-            String itemId = acl.upsertItem(entityNo, sku.getSkuNo(), sku.getGoodsNo(),
-                    sku.getSpec(), sku.getBarcode(), sku.getMerchantSkuCode(), sku.getSaleUnit());
 
             List<PrdStoreStock> storeRows = DataScopeContext.executeWithoutScope(() ->
                     storeStockMapper.selectList(Wrappers.<PrdStoreStock>lambdaQuery()
                             .eq(PrdStoreStock::getSkuNo, sku.getSkuNo())));
 
+            /*
+             * **只算不写的时候，一行主数据都不许建。**
+             *
+             * ownerIdOf / upsertItem / locationIdOf 三个都是「没有就建」，而它们原来
+             * 在 dryRun 之前无条件执行 —— 于是一次「只算不写」的排练，在一个空库上
+             * 写出了 owner、item、item_ref、location 四类主数据。
+             * 2026-08-27 线上排练一次写了 414 行，而报告如实地写着 moved=0。
+             *
+             * 改成只读反查：主数据都还没有，就是「这个 SKU 一定没搬过」，记 pending。
+             */
+            String ownerId;
+            String itemId;
+            if (dryRun) {
+                ownerId = acl.ownerOfSku(sku.getSkuNo());
+                itemId = acl.itemIdOfSku(sku.getSkuNo());
+                if (ownerId == null || itemId == null) {
+                    pending += storeRows.isEmpty() ? 1 : storeRows.size();
+                    continue;
+                }
+            } else {
+                ownerId = acl.ownerIdOf(entityNo);
+                itemId = acl.upsertItem(entityNo, sku.getSkuNo(), sku.getGoodsNo(),
+                        sku.getSpec(), sku.getBarcode(), sku.getMerchantSkuCode(), sku.getSaleUnit());
+            }
+
             if (storeRows.isEmpty()) {
                 // 主体级：落到默认库位。**这是「主体级库存 = 一个默认库位」在数据上的兑现**
-                String locationId = acl.locationIdOf(entityNo, null);
+                String locationId = dryRun ? null : acl.locationIdOf(entityNo, null);
                 int r = moveOne(ownerId, entityNo, null, sku.getSkuNo(), itemId, locationId,
                         nz(sku.getStock()), nz(sku.getLockedStock()), dryRun, diffs);
                 moved += r == 1 ? 1 : 0;
@@ -227,7 +249,7 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
                 pending += r == -1 ? 1 : 0;
             } else {
                 for (PrdStoreStock st : storeRows) {
-                    String locationId = acl.locationIdOf(entityNo, st.getStoreNo());
+                    String locationId = dryRun ? null : acl.locationIdOf(entityNo, st.getStoreNo());
                     int r = moveOne(ownerId, entityNo, st.getStoreNo(), sku.getSkuNo(), itemId,
                             locationId, nz(st.getStock()), nz(st.getLockedStock()), dryRun, diffs);
                     moved += r == 1 ? 1 : 0;

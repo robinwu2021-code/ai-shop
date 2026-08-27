@@ -38,6 +38,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 @TestPropertySource(properties = {
         "shop.inventory.stock-authority=DUAL",
         "spring.datasource.url=jdbc:h2:mem:shop_dual;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
+        /*
+         * **进销存那个库也要自己一份。** 只换平台库是半个隔离：
+         * 平台库每开一个上下文就重建一次，而进销存库 DB_CLOSE_DELAY=-1 会一直留着，
+         * 于是上一个测试类的存货漏进来，本类的 fixture 搬运被当成「已经搬过」，
+         * 症状是「付款之后实存真扣」拿到 10 而不是 8 —— 和支付、和双写都没关系。
+         *
+         * 原来漏掉它不是疏忽：那时三个 inv bean 被 @Primary 的平台数据源接走了，
+         * 第二个库压根没被用过，配不配都一样。
+         */
+        "shop.inventory.datasource.url=jdbc:h2:mem:inv_dual;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
 })
 class InventoryDualWriteTest {
 
