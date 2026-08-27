@@ -145,6 +145,27 @@ export const RULES = [
   ["GET", /^\/ops\/spec-templates(\/|$)/, "product:category:read"],
   ["*", /^\/ops\/spec-templates(\/|$)/, "product:category:update"],
 
+  // 规格库（维度与取值）。**读写分开**：类目挑规格是天天要看的，
+  // 而建维度、合并取值、提升为标准值会影响所有商家已建的商品 —— 那是另一件事
+  ["GET", /^\/ops\/category-specs/, "product:spec:read"],
+  ["GET", /^\/ops\/spec-dims/, "product:spec:read"],
+  ["*", /^\/ops\/category-specs/, "product:spec:update"],
+  ["*", /^\/ops\/spec-(dims|values)/, "product:spec:update"],
+
+  // 标准品库：平台维护的「这是什么货」。改它会影响引用它的所有商家商品，
+  // 所以与只读分开 —— 挑标准品建商品的人不该顺带能改标准品本身
+  ["GET", /^\/ops\/spu-std/, "product:std:read"],
+  ["*", /^\/ops\/spu-std/, "product:std:update"],
+
+  // 专题（首页陈列）。摆什么货是运营日常，而它直接决定 C 端首页看到什么
+  ["GET", /^\/ops\/topics/, "product:topic:read"],
+  ["*", /^\/ops\/topics/, "product:topic:update"],
+
+  // 小区可售池是**派生索引**，resync 是按现有商品重建它。
+  // 挂 product:sku:audit 而不是新起一个码：它改的是「哪些商品在哪些小区可见」，
+  // 与审核商品是同一件事的两面。**无菜单入口**（见 NO_UI_PREFIXES）
+  ["POST", /^\/ops\/community-pool\/resync$/, "product:sku:audit"],
+
   // ── 交易订单 ───────────────────────────────────────────────────────────
   ["POST", /^\/ops\/orders\/[^/]+\/intervene$/, "order:order:modify"],
   ["POST", /^\/ops\/orders\/[^/]+\/proxy-cancel$/, "order:order:proxy"],
@@ -199,12 +220,22 @@ export const RULES = [
   ["GET", /^\/ops\/campaigns/, "marketing:campaign:read"],
   ["*", /^\/ops\/campaigns/, "marketing:campaign:update"],
 
+  // 促销（活动与券的只读面 + 停投）。停投是**处置**：它当场改变 C 端看到的价格，
+  // 与新建活动同码，而与只读分开
+  ["GET", /^\/ops\/promotion\/activities/, "marketing:campaign:read"],
+  ["*", /^\/ops\/promotion\/activities/, "marketing:campaign:update"],
+  ["GET", /^\/ops\/promotion\/coupons/, "marketing:coupon:read"],
+
   // ── 团购与求团 ─────────────────────────────────────────────────────────
   ["GET", /^\/ops\/groups/, "group:campaign:read"],
   ["*", /^\/ops\/groups/, "group:campaign:audit"],
   ["POST", /^\/ops\/quotes\/[^/]+\/(price|breach)$/, "group:demand:assign",
     "改价与判毁约都会写进商家信用档案，与只读需求单池分开"],
   ["GET", /^\/ops\/quotes/, "group:demand:read"],
+
+  // 求团需求：看需求是 BD 日常，而**代商家报价**是替别人做决定，另算一码
+  ["GET", /^\/ops\/demands$/, "group:demand:read"],
+  ["POST", /^\/ops\/demands\/[^/]+\/quotes$/, "group:demand:assign"],
 
   // ── 结算与资金 ─────────────────────────────────────────────────────────
   ["POST", /^\/ops\/payables\/[^/]+\/paid$/, "finance:payout:execute",
@@ -271,9 +302,13 @@ export const RULES = [
   // 改微信模板号是**写**：两端不同值时一条也发不出去，等同于关掉这条通道
   ["GET", /^\/ops\/notify-channels/, "message:template:read"],
   ["*", /^\/ops\/notify-channels/, "message:template:update"],
-  // 运营自己的收件箱：免鉴权（理由见 gen-perm-endpoint-matrix.mjs 的 PUBLIC）。
-  // 这里仍要有归属，否则权限码细化时它会被落下而没人知道
-  ["*", /^\/ops\/message/, "message:template:read"],
+  // 运营自己的收件箱（/ops/message*）**不在这里登记**：它免鉴权，
+  // 理由写在 gen-perm-endpoint-matrix.mjs 的 PUBLIC 里。
+  //
+  // 这里曾经有一条 `["*", /^\\/ops\\/message/, "message:template:read"]`，
+  // 用意是「别在权限码细化时被落下」—— 但那条**永远匹配不到**：
+  // 归属检查与死规则检查都先排除 PUBLIC 端点。
+  // 没挂注解的端点本来就不参与「换注解」，它的归属由 PUBLIC 那份清单负责。
   // 站内信的**平台侧**记录（发送记录页第二个 tab）——与上一条不是一回事：
   // 那个是「我的收件箱」，这个是运营在查「平台发给谁了」
   ["GET", /^\/ops\/inapp-messages/, "message:template:read"],
@@ -287,6 +322,12 @@ export const RULES = [
   ["*", /^\/ops\/scene-channel/, "message:template:update"],
   ["GET", /^\/ops\/tickets/, "message:ticket:read"],
   ["*", /^\/ops\/tickets/, "message:ticket:handle"],
+
+  // FAQ（帮助中心）。**读写分开**：客服要能查着答，而改/发布是内容动作 ——
+  // ops-web 的码表只有 message:faq:update，这里补一个 read：
+  // 没有它的话，只想查 FAQ 的客服要被迫拿改的权限
+  ["GET", /^\/ops\/faqs/, "message:faq:read"],
+  ["*", /^\/ops\/faqs/, "message:faq:update"],
 
   // ── 社区与网点 ─────────────────────────────────────────────────────────
   ["GET", /^\/ops\/pickups/, "community:pickup:read"],
@@ -323,6 +364,25 @@ export const RULES = [
   ["*", /^\/ops\/(appearance|rule-texts)/, "system:theme:update"],
   ["GET", /^\/ops\/(feature-flags|markets)/, "system:param:read"],
   ["*", /^\/ops\/(feature-flags|markets)/, "system:param:update"],
+  // ── 存储空间治理（P-17.1「运行配置」）─────────────────────────────────
+  // **读与删分开，而 purge/preview 归在删那边**：它不删东西，但它是删除流程的第一步，
+  // 而「能看占用」的人比「能删」的人多得多 —— 把预览给了只读的人，
+  // 下一步他就会问为什么点了没反应
+  ["GET", /^\/ops\/media\//, "system:media:read"],
+  ["*", /^\/ops\/media\/(purge|scan|backfill)/, "system:media:purge"],
+
+  // ── 会员与人档（P-13）──────────────────────────────────────────────────
+  ["GET", /^\/ops\/members/, "member:member:read"],
+  ["GET", /^\/ops\/persons\/[^/]+$/, "member:person:read"],
+  // 看完整手机号是**单独一码**：人档能查的人多，而能看到完整号码的应当极少。
+  // 它每次都会落审计，权限也该配得上那份审计
+  ["POST", /^\/ops\/persons\/[^/]+\/reveal-phone$/, "member:phone:reveal"],
+
+  // ── 门店渠道锁（无菜单入口）─────────────────────────────────────────────
+  // 锁一个渠道 = 让这家店在该渠道上立刻不可售。它与「改经营模式」同一量级，
+  // 但不是同一件事：那个改的是钱怎么走，这个改的是还卖不卖
+  ["POST", /^\/ops\/stores\/[^/]+\/channels\/[^/]+\/(lock|unlock)$/, "merchant:channel:lock"],
+
 ];
 
 /**
@@ -345,6 +405,10 @@ export const NO_UI_PREFIXES = [
   // 两者都决定钱怎么走，不该分成两套权限
   "/ops/merchants/{merchantNo}/funds-mode",
   "/ops/merchants/mode-risk",
+  // 小区可售池重建：派生索引的维护动作，没有页面，只有出问题时运营手动跑一次
+  "/ops/community-pool/resync",
+  // 门店渠道锁：后端能锁，ops-web 没有入口
+  "/ops/stores/{storeNo}/channels/{channel}/lock",
 ];
 
 /**
