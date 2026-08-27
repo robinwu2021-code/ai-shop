@@ -32,6 +32,20 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-jdbc</artifactId>
         </dependency>
+        <!-- 本地缓存统一走 Ehcache（**堆内，绝不落盘**）。
+             2026-08-24 线上全员掉线，就是 Ehcache 的持久化目录在非正常关闭后被整个删掉，
+             而会话正存在那里。本模块的缓存丢了没有任何后果 —— 回源查库而已；
+             一旦有人给它加 disk 层想「重启后还热着」，就把那次事故重新装了回来，
+             而且这次连数据都不是它的（权威在库），纯亏。 -->
+        <dependency>
+            <groupId>org.ehcache</groupId>
+            <artifactId>ehcache</artifactId>
+            <!-- classifier 必须是 jakarta —— 默认包用的是 javax.cache，Spring Boot 4 下
+                 连 CacheManager 都装配不起来，而报错是 NoClassDefFoundError: javax/cache/...，
+                 看不出是 classifier 选错了。版本不由 parent 管理，与 shop-base 一起钉住。 -->
+            <version>3.12.0</version>
+            <classifier>jakarta</classifier>
+        </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>

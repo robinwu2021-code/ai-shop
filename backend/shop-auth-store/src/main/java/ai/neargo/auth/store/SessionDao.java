@@ -100,10 +100,19 @@ public class SessionDao {
      * <p>只取新增的那几条，**不是全表**，调用方也只剔这几条的缓存 ——
      * 清空整个本地缓存会在踢一个人时让所有在线用户的下一次请求一起回源，
      * 把一次撤销放大成库上的尖峰。
+     *
+     * <p><b>边界是闭区间，这一条是被测试逼出来的。</b>用 {@code >} 的话，
+     * 恰好发生在上一轮水位线那一刻的撤销会被**永久漏掉** ——
+     * 它既不在上一轮（那时还没写库），也不在下一轮（时间戳不大于水位线）。
+     * 症状是「偶尔有人被踢了却还能用」，而且**不可复现**：
+     * 它只在撤销与轮询落在同一时刻时发生。
+     *
+     * <p>闭区间的代价是同一条可能被连续两轮各剔一次 —— 而剔除是幂等的，
+     * 重复一次没有任何后果。<b>用「可能白做一次」换「绝不漏一条」，在这里是明显划算的。</b>
      */
     public List<String> findRevokedSince(LocalDateTime since, int limit) {
         return jdbc.sql("SELECT token_hash FROM " + table
-                        + " WHERE revoked_at > :since ORDER BY revoked_at LIMIT :limit")
+                        + " WHERE revoked_at >= :since ORDER BY revoked_at LIMIT :limit")
                 .param("since", since).param("limit", limit)
                 .query(String.class).list();
     }

@@ -91,6 +91,27 @@
             <version>${shedlock.version}</version>
         </dependency>
 
+        <!-- 鉴权持久层：会话与登录日志的表访问。它不依赖 shop-base（无环），
+             也不引 MyBatis —— 见它自己的 pom 注释 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-auth-store</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 复用它的建库支撑，不在本模块留第二份 schema 加载逻辑 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-auth-store</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!--
             Ehcache 3：会话的**单机持久化**形态（shop.auth.token-store=ehcache）。
             classifier 必须是 jakarta —— 默认包用的是 javax.cache，Spring Boot 4 下
