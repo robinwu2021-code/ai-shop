@@ -133,8 +133,9 @@ onLoad((q) => {
 
     <sh-empty bare v-if="!list.length" :text='$t("address.empty")'></sh-empty>
 
-    <view class="sh-btn fab" @tap="openNew">{{ $t("address.add") }}</view>
-    <view class="fab__spacer" />
+    <sh-actionbar :pad="160">
+      <view class="sh-btn" @tap="openNew">{{ $t("address.add") }}</view>
+    </sh-actionbar>
 
     <!-- 编辑弹层 -->
     <view v-if="editing" class="sheet">
@@ -238,14 +239,6 @@ onLoad((q) => {
 }
 .op--danger {
   color: var(--sh-danger);
-}
-.fab {
-  position: fixed;
-  inset-inline: 28rpx;
-  bottom: calc(28rpx + env(safe-area-inset-bottom));
-}
-.fab__spacer {
-  height: 160rpx;
 }
 .sheet {
   position: fixed;

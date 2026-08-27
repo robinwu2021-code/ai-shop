@@ -197,8 +197,9 @@ onShow(() => {
 
       <sh-empty bare v-if="loaded && !requests.length" :text='$t("groups.requestEmpty")'></sh-empty>
 
-      <view class="sh-btn fab" @tap="createRequest">{{ $t("groups.createGroup") }}</view>
-      <view class="fab__spacer" />
+      <sh-actionbar :pad="160">
+        <view class="sh-btn" @tap="createRequest">{{ $t("groups.createGroup") }}</view>
+      </sh-actionbar>
     </template>
   </sh-scaffold>
 </template>
@@ -330,13 +331,5 @@ onShow(() => {
   flex-wrap: wrap;
   gap: 12rpx;
   margin-top: 20rpx;
-}
-.fab {
-  position: fixed;
-  inset-inline: 28rpx;
-  bottom: calc(28rpx + env(safe-area-inset-bottom));
-}
-.fab__spacer {
-  height: 160rpx;
 }
 </style>

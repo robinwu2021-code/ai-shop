@@ -151,17 +151,22 @@ onLoad((q) => {
       </view>
     </view>
 
-    <view class="actionbar">
+    <sh-actionbar class="bar-center" :pad="220">
       <view class="sh-btn" :class="{ 'is-disabled': !canSubmit }" @tap="submit">
         {{ submitting ? $t("confirm.submitting") : $t("review.submit") }}
       </view>
       <text class="tip">{{ $t("review.tip") }}</text>
-    </view>
-    <view class="spacer" />
+    </sh-actionbar>
   </sh-scaffold>
 </template>
 
 <style scoped>
+/* 条里除了按钮还有一行说明/取消，居中对齐 —— 定位归 `sh-actionbar`，
+   这一条是这一页自己的排布。收编时它一度被连着定位一起删掉了。 */
+.bar-center {
+  text-align: center;
+}
+
 .dim {
   display: flex;
   align-items: center;
@@ -250,12 +255,6 @@ onLoad((q) => {
   color: var(--sh-sub);
   line-height: 1;
 }
-.actionbar {
-  position: fixed;
-  inset-inline: 28rpx;
-  bottom: calc(28rpx + env(safe-area-inset-bottom));
-  text-align: center;
-}
 .tip {
   display: block;
   font-size: 24rpx;
@@ -264,8 +263,5 @@ onLoad((q) => {
 }
 .is-disabled {
   opacity: 0.45;
-}
-.spacer {
-  height: 220rpx;
 }
 </style>

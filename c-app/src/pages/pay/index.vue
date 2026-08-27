@@ -143,12 +143,12 @@ onUnmounted(() => clearInterval(timer));
         </view>
       </view>
 
-      <view class="actionbar">
+      <sh-actionbar class="bar-center" :pad="220">
         <view class="sh-btn" :class="{ 'is-disabled': paying || expired }" @tap="pay">
           {{ paying ? $t("pay.paying") : $t("pay.payNow") }}
         </view>
         <text class="cancel" @tap="cancel">{{ $t("pay.cancel") }}</text>
-      </view>
+      </sh-actionbar>
     </template>
 
     <!-- 支付完成 -->
@@ -169,17 +169,21 @@ onUnmounted(() => clearInterval(timer));
         </view>
       </view>
 
-      <view class="actionbar">
+      <sh-actionbar class="bar-center" :pad="220">
         <view class="sh-btn" @tap="gotoOrder">{{ $t("pay.viewOrder") }}</view>
         <text class="cancel" @tap="gotoHome">{{ $t("pay.keepShopping") }}</text>
-      </view>
+      </sh-actionbar>
     </template>
-
-    <view class="spacer" />
   </sh-scaffold>
 </template>
 
 <style scoped>
+/* 条里除了按钮还有一行说明/取消，居中对齐 —— 定位归 `sh-actionbar`，
+   这一条是这一页自己的排布。收编时它一度被连着定位一起删掉了。 */
+.bar-center {
+  text-align: center;
+}
+
 .hero {
   text-align: center;
   padding-top: 56rpx;
@@ -324,12 +328,6 @@ onUnmounted(() => clearInterval(timer));
   color: var(--sh-ink);
   margin-top: 12rpx;
 }
-.actionbar {
-  position: fixed;
-  inset-inline: 28rpx;
-  bottom: calc(28rpx + env(safe-area-inset-bottom));
-  text-align: center;
-}
 .cancel {
   display: block;
   font-size: 24rpx;
@@ -338,8 +336,5 @@ onUnmounted(() => clearInterval(timer));
 }
 .is-disabled {
   opacity: 0.45;
-}
-.spacer {
-  height: 220rpx;
 }
 </style>

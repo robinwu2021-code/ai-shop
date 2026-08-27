@@ -193,12 +193,11 @@ onLoad((q) => {
         <text class="notice__text">{{ $t("afterSale.instant") }}</text>
       </view>
 
-      <view class="actionbar">
+      <sh-actionbar :pad="180">
         <view class="sh-btn" :class="{ 'is-disabled': !canSubmit }" @tap="submit">
           {{ submitting ? $t("confirm.submitting") : $t("afterSale.submit") }}
         </view>
-      </view>
-      <view class="spacer" />
+      </sh-actionbar>
     </template>
   </sh-scaffold>
 </template>
@@ -360,15 +359,7 @@ onLoad((q) => {
   font-size: 24rpx;
   color: var(--sh-ink);
 }
-.actionbar {
-  position: fixed;
-  inset-inline: 28rpx;
-  bottom: calc(28rpx + env(safe-area-inset-bottom));
-}
 .is-disabled {
   opacity: 0.45;
-}
-.spacer {
-  height: 180rpx;
 }
 </style>

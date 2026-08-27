@@ -1,26 +1,101 @@
 # 已知「库里有这个件、页面还是自己画了一份」的欠账。
 # 判据在 scripts/gen-ui-lib.py 的 ROLLED 表，闸门是 scripts/check-handrolled-ui.mjs。
 #
-# ★ 2026-08-27：**这份名单现在是空的。** B 端 61 页扫过，一处不剩。
+# 键是「端/页 判据id」—— **两端有 11 个重名页**（me / store / groups / order …），
+# 只用页名会把两端串成一条：改好了 B 端的，C 端那条跟着消失。
 #
-# 空名单不等于闸门没用 —— 恰恰相反，它从「已知欠账放行」变成了
-# **一处新的自造都不许进**。新增的会被 pre-push 第八道闸拦下并点名。
+# ★ 2026-08-27：**扫描范围从 B 端一端扩到两端**（b-app 61 页 + c-app 29 页）。
 #
-# 从 33 处清到 0 的过程里，判据本身改了四次，每一次都是同一个毛病：
+# 此前判据只扫 B 端，而清单顶上写着「B 端 61 页扫过」—— 那句话没说谎，
+# 但「自造件 0」读起来像是整个仓库的结论。**一个只覆盖一半的清单，
+# 最危险的不是漏，是它把「没查过」呈现成「查过了没问题」。**
+# C 端第一次进这套判据，35 处。
 #
-#   · 「白块自画」原来是「白底 + 任意圆角」→ 收窄成 lg(32) 四角统一。
-#     库里的卡与块都是 lg，用 md 画一个紧凑行容器不是违规。
-#   · 「弹层 / 遮罩」原来只认 mask/dlg/modal/popup 四个类名 → 补上 sheet。
-#     两个自画的底部弹层此前被「白块」误报着 ——
-#     **一条规则的误命中，替另一条规则的漏报打了掩护。**
-#   · 「选中态自画」原来是 `(--on|--off|is-on)` → 收窄成「抄了 chip 的处理」。
-#     原判据把下划线 tab、卡片选中环、变主色的大数字全算进来，
-#     它们几何各不相同，收编只会给库里添几个只有一个调用点的件。
-#   · 「分段标题」原来判类名叫不叫 sec__h → 改判「标题自己带着 margin」。
+# 扩范围时顺带更正三条**陈判据**：`section` / `uploader` / `fab` 标着「库里没有」，
+# 而 `sh-section` / `sh-uploader` / `sh-fab` 早就做出来了 —— 判据停在了做之前那一刻。
+# 缺口与「有件不用」是两种欠账：前者要设计，后者只要换个标签。
 #
-# 「文字当箭头」「文字当图标」两类判据已撤下，改由硬闸门守：
-# packages/shared/tests/icon-chars.test.ts（模板 + i18n 词条一起扫）。
-# 那两条只扫模板，而箭头大多藏在词条里 —— 一次漏了 30 处。
+# 运营端（ops-web，23 页）不在扫描范围：React/Next，用不了 `sh-*`，是另一套体系。
+# 不扫是有意的，写在这里免得它悄悄缺席。
 #
-# 缺口类（列表行 39 页）不在这份名单里，它已论证不该做成组件，见
-# docs/technical/design/B端页面与组件库-覆盖清单.md §九。
+# B 端此刻 **0 条** —— 33 处清完之后一直保持。下面全是 C 端。
+#
+# 2026-08-27 已还：**悬浮贴底条 12 处**（9 个 `.actionbar` + 2 个 `.fab` + 1 个
+# `.checkoutbar`）收进新组件 `sh-actionbar` —— 那不是「有件不用」，是**库里真的缺一档**：
+# `sh-savebar` 是通栏、`sh-fab` 是角标，而这 12 处要的是「悬浮内缩通栏」。见
+# docs/technical/design/三端版面方案-layout.md
+
+
+# ── 系统弹框（10 处）→ 用 sh-sheet
+# C 端 10 处（8 个 `showModal` + 2 个 `showActionSheet`）。
+# **B 端这一类已经归零**：带输入 → `prompt()`、确认 → `confirm()`、选一项 → `pick()`，
+# 三个组合式加三个宿主都在库里，C 端一处都没接。
+# 这是 C 端欠账里最该先还的：`showModal` 的 `content` 在 `editable:true` 时
+# **不是说明文字而是输入框初值**，B 端为这个坑修过三处真缺陷（其中一处是首次开店必经路径）。
+# 同一个坑在 C 端还原样开着。
+c-app/address sysmodal
+c-app/cart sysmodal
+c-app/community sysmodal
+c-app/coupons sysmodal
+c-app/home sysmodal
+c-app/me sysmodal
+c-app/order sysmodal
+c-app/order-confirm sysmodal
+c-app/pay sysmodal
+c-app/store sysmodal
+
+# ── 选中态自画（含未拆出的）（10 处）→ 用 .sh-chip--primary / --solid
+# C 端 10 页 / 20 条声明。**判据仍然过宽，动手前必须逐条看** ——
+# 逐条核过之后：真正是「chip 形态选中态」的约 11 条（primary-tint 或实心主色），
+# 其余是另外几种东西：单选圆点 ×2（address / order-confirm 的 `.dot`）、
+# 带描边的选项卡 ×2（after-sale `.type`、order-confirm `.mode` —— 那是 `sh-option`）、
+# 开关方块 ×1（groups `.toggle__box` —— `sh-switch`）、
+# 高亮数值 ×1（order-confirm `.cell__v`，danger 色，根本不是选中）、
+# 收藏星 ×1（store `.fav`，warning 色）。
+# **B 端同一条判据误命中过三次**，这里原样重演。照数字动手会把五种东西收成一个件。
+c-app/address segment
+c-app/after-sale segment
+c-app/community segment
+c-app/goods segment
+c-app/group segment
+c-app/groups segment
+c-app/me segment
+c-app/order-confirm segment
+c-app/pay segment
+c-app/store segment
+
+# ── 白块自画（6 处）→ 用 .sh-block / .sh-card
+# C 端 6 处，判据是收紧过的（lg(32) 且四角统一），逐条看过都是真的 ——
+# 页面重画了 `.sh-card` / `.sh-block` 的形状，换类名即可，不涉及交互与版面。
+c-app/community blockdup
+c-app/coupons blockdup
+c-app/login blockdup
+c-app/messages blockdup
+c-app/my-memberships blockdup
+c-app/store blockdup
+
+# ── 弹层 / 遮罩（2 处）→ 用 sh-sheet
+# C 端 2 处贴底弹层（address / me 的 `.sheet`）。换 `sh-sheet` 要对一遍
+# 动画时长与关闭手势 —— 与 B 端那两处同一条。
+c-app/address sheet
+c-app/me sheet
+
+
+# ── 图片上传格（2 处）→ 用 sh-uploader
+# C 端 2 处 `pickImages(`（after-sale / review-write）。`sh-uploader` 在库里，
+# B 端四页已经收编过，C 端没接。
+c-app/after-sale uploader
+c-app/review-write uploader
+
+# ── 分栏切换（1 处）→ 用 sh-tabs
+# C 端 1 处（group-host 的 `.tabs`）。`sh-tabs` 在库里。
+c-app/group-host tabs
+
+# ── 分段标题（只有标题）（1 处）→ 用 .txt-title + 间距档
+# C 端 1 处（legal）。**不缺组件，缺间距档** —— 间距档已落成
+# `.sh-mt-md` / `.sh-mb-md`，接上即可。
+c-app/legal sechead
+
+# ── 卡内标题行（1 处）→ 用 sh-section
+# C 端 1 处（store 的 `.sec`，space-between）。`sh-section` 在库里。
+c-app/store section

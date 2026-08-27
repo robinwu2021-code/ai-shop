@@ -672,7 +672,7 @@ onMounted(async () => {
       </view>
     </view>
 
-    <view class="actionbar">
+    <sh-actionbar pill="lead" :pad="200">
       <view class="actionbar__sum">
         <text class="sh-muted">{{ $t("confirm.payable") }}</text>
         <text class="actionbar__total sh-num">{{ money(amount?.payableMinor ?? 0) }}</text>
@@ -684,8 +684,7 @@ onMounted(async () => {
       >
         {{ submitting ? $t("confirm.submitting") : $t("confirm.submit") }}
       </view>
-    </view>
-    <view class="spacer" />
+    </sh-actionbar>
     <!--
       **必须留在 sh-scaffold 里面。** 这套 `--sh-*` 变量声明在 `:root, .sh-root` 上，
       而**小程序里没有 `:root`** —— 根节点叫 `page`，那条选择器一个节点都不匹配，
@@ -899,17 +898,6 @@ onMounted(async () => {
 .dot.is-on {
   background: var(--sh-primary);
 }
-.actionbar {
-  position: fixed;
-  inset-inline: 28rpx;
-  bottom: calc(28rpx + env(safe-area-inset-bottom));
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  background: var(--sh-surface);
-  border-radius: 9999px;
-  padding: 16rpx 16rpx 16rpx 40rpx;
-}
 .actionbar__sum {
   flex: 1;
   min-width: 0;
@@ -928,9 +916,6 @@ onMounted(async () => {
 }
 .is-disabled {
   opacity: 0.45;
-}
-.spacer {
-  height: 200rpx;
 }
 
 /* 能力提示：拦下的用醒目色，只是提醒的用弱一档 —— 两者的用户动作不同 */

@@ -83,12 +83,11 @@ async function submit() {
       <text class="note__text">{{ $t("request.createNote") }}</text>
     </view>
 
-    <view class="actionbar">
+    <sh-actionbar :pad="180">
       <view class="sh-btn" :class="{ 'is-disabled': !valid }" @tap="submit">
         {{ submitting ? $t("confirm.submitting") : $t("request.createSubmit") }}
       </view>
-    </view>
-    <view class="spacer" />
+    </sh-actionbar>
   </sh-scaffold>
 </template>
 
@@ -167,15 +166,7 @@ async function submit() {
   color: var(--sh-sub);
   line-height: 1.7;
 }
-.actionbar {
-  position: fixed;
-  inset-inline: 28rpx;
-  bottom: calc(28rpx + env(safe-area-inset-bottom));
-}
 .is-disabled {
   opacity: 0.45;
-}
-.spacer {
-  height: 180rpx;
 }
 </style>

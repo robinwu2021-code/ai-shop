@@ -95,7 +95,7 @@ onShow(() => cart.load());
     <sh-empty bare v-if="!cart.items.length" :text='$t("cart.empty")'></sh-empty>
 
     <template v-if="cart.items.length">
-      <view class="checkoutbar">
+      <sh-actionbar pill="lead" tabbar :pad="140">
         <view class="checkoutbar__sum">
           <text class="sh-muted">{{ $t("cart.total") }}</text>
           <text class="checkoutbar__total sh-num">{{ money(cart.totalFen) }}</text>
@@ -103,8 +103,7 @@ onShow(() => cart.load());
         <view class="sh-btn checkoutbar__btn" @tap="checkout">
           {{ $t("cart.checkout") }} ({{ cart.count }})
         </view>
-      </view>
-      <view class="checkoutbar__spacer" />
+      </sh-actionbar>
     </template>
   </sh-scaffold>
 </template>
@@ -190,17 +189,6 @@ onShow(() => cart.load());
   color: var(--sh-ink);
 }
 /* 悬浮结算条要压在底部菜单之上 —— 之前只算了安全区，被菜单盖住了 */
-.checkoutbar {
-  position: fixed;
-  inset-inline: 28rpx;
-  bottom: calc(var(--sh-tabbar-h) + 20rpx + env(safe-area-inset-bottom));
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  background: var(--sh-surface);
-  border-radius: 9999px;
-  padding: 16rpx 16rpx 16rpx 40rpx;
-}
 .checkoutbar__sum {
   flex: 1;
   min-width: 0;
@@ -218,7 +206,4 @@ onShow(() => cart.load());
   font-size: 28rpx;
 }
 /* 给悬浮结算条留出的滚动空间（菜单高度由 sh-scaffold 的 has-tabbar 另行留出） */
-.checkoutbar__spacer {
-  height: 140rpx;
-}
 </style>

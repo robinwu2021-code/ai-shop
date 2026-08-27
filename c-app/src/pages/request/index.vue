@@ -225,7 +225,7 @@ onShareAppMessage(() => {
       </view>
     </view>
 
-    <view class="actionbar">
+    <sh-actionbar :pad="180">
       <view
         v-if="request.status === 'LOCKED'"
         class="sh-btn"
@@ -242,8 +242,7 @@ onShareAppMessage(() => {
       >
         {{ request.interested ? $t("request.joined") : $t("request.join") }}
       </view>
-    </view>
-    <view class="spacer" />
+    </sh-actionbar>
   </sh-scaffold>
 </template>
 
@@ -447,13 +446,5 @@ onShareAppMessage(() => {
 }
 .is-disabled {
   opacity: 0.45;
-}
-.actionbar {
-  position: fixed;
-  inset-inline: 28rpx;
-  bottom: calc(28rpx + env(safe-area-inset-bottom));
-}
-.spacer {
-  height: 180rpx;
 }
 </style>

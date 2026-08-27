@@ -437,12 +437,18 @@ ROLLED = [
      # 圆角要**四角统一**（`32rpx;`）：`32rpx 32rpx 0 0` 是贴底弹层，不是卡片
      r"(background:\s*var\(--sh-surface\)[^}]*border-radius:\s*32rpx\s*;|border-radius:\s*32rpx\s*;[^}]*background:\s*var\(--sh-surface\))",
      None, ".sh-block / .sh-card"),
-    # ↓ 库里没有的：这几行是缺口
+    # ↓ 下面这几行**曾经**是缺口。三条 2026-08-27 更正：
+    # `section` / `uploader` / `fab` 标着 `lib=None`（库里没有），
+    # 而 `sh-section` / `sh-uploader` / `sh-fab` 都已经做出来了 ——
+    # **判据停在了做之前的那一刻**。扩到两端时它们把 C 端的 5 处报成「缺口」，
+    # 而缺口与「有件不用」是两种完全不同的欠账：前者要设计，后者只要换个标签。
+    # 这是这一轮第五次「判据比结论旧」。
     # 卡内标题行判**声明**不判名字：`groups` / `plan` 里也有个 `.sec`，
     # 但那是 `<text class="sh-h2 sec">` —— 只有标题、只有 margin，没有右侧动作。
     # 按名字归成一类，会把「两种形态」误读成「一种被画了两遍」（与 addbtn/candchip 同一课）。
     ("section", "卡内标题行", None,
-     r"\.(?:sec|cat__head|grp__head)\b[^{}]*\{[^}]*justify-content:\s*space-between", None, None),
+     r"\.(?:sec|cat__head|grp__head)\b[^{}]*\{[^}]*justify-content:\s*space-between",
+     "sh-section", "sh-section"),
     # 只有标题、靠 margin 分段的那一种。**它不缺组件，缺的是间距档** ——
     # 各页写的是 24rpx / 40rpx 8rpx 16rpx / 28rpx 0，差别是真实的版面决定，
     # 收成组件只会多一个 props 去表达「这里松一点」。
@@ -477,50 +483,74 @@ ROLLED = [
     # 判据要认「自己画了格子」，不是「调了选图」—— 收编成 sh-uploader 之后，
     # 选图逻辑仍然归页面（那是业务：传几张、传到哪、失败怎么办），
     # 只有 UI 归组件。只认 pickImages 的话，四页收编完清单一动不动。
-    ("uploader","图片上传格",      r"pickImages\(|chooseImages\(", None,   "sh-uploader", None),
-    ("fab",     "悬浮新建按钮",    None, r"^\s*\.fab\b",                         None,       None),
+    ("uploader","图片上传格",      r"pickImages\(|chooseImages\(", None,   "sh-uploader", "sh-uploader"),
+    # ⚠️ C 端那两处叫 `.fab`，但 **`inset-inline` 是两侧都缩** —— 它不是右下角的
+    # 角标按钮，是一条通栏的悬浮底条，与同端 9 处 `.actionbar` 逐字节相同。
+    # 名字对上了、东西不是一个：这是按名字归类的又一次，只不过这次错在**页面**那边。
+    # 指向 `sh-fab` 是为了让判据不再谎称「库里没有」，真正该给它们的是
+    # 「悬浮内缩贴底条」那一档 —— 库里现在确实没有，见 layout 方案。
+    ("fab",     "悬浮新建按钮",    None, r"^\s*\.fab\b",                    "sh-fab",   "sh-fab"),
 ]
 
-B_PAGES = ROOT / "b-app/src/pages"
+# **两端一起扫。**
+#
+# 此前只扫 B 端，而清单顶上写的是「B 端 61 页扫过」—— 那句话本身没说谎，
+# 但它让「自造件 0」读起来像是整个仓库的结论。C 端 29 页从来没进过这套判据，
+# 第一次扫出 37 处 / 10 类。**一个只覆盖一半的清单，最危险的不是漏，
+# 是它把「没查过」呈现成「查过了没问题」。**
+#
+# 运营端（ops-web，23 页）不在这里：那是 React/Next，用不了 `sh-*`，
+# 是另一套体系。不扫它是有意的，但要在清单里说出来，而不是让它悄悄缺席。
+APPS = [("b-app", ROOT / "b-app/src/pages"), ("c-app", ROOT / "c-app/src/pages")]
 
 
 def read_pages(comps: list[dict], blocks: list[dict]) -> list[dict]:
     comp_names = [c["name"] for c in comps]
     lib_classes = [b["class"].lstrip(".") for b in blocks]
     out = []
-    for f in sorted(B_PAGES.rglob("*.vue")):
-        src = f.read_text(encoding="utf-8")
-        m = re.search(r"<template>(.*)</template>", src, re.S)
-        tpl = re.sub(r"<!--.*?-->", "", m.group(1), flags=re.S) if m else ""
-        css = strip_comments("\n".join(re.findall(r"<style[^>]*>(.*?)</style>", src, re.S)))
-        used = [c for c in comp_names if re.search(rf"<{c}[\s>]", tpl)]
-        hits = sum(len(re.findall(r"[\"' ]" + re.escape(c) + r"[\"' ]", tpl)) for c in lib_classes)
-        rolled = []
-        for rid, label, tp, cp, skip_if, lib in ROLLED:
-            if skip_if and skip_if in used:
-                continue
-            if (tp and re.search(tp, src)) or (cp and re.search(cp, css, re.M)):
-                rolled.append({"id": rid, "label": label, "lib": lib,
-                               "rule": tp or cp, "gap": lib is None})
-        # 三个被「选中态自画」盖住的缺件：名册是逐处核过的（见 FAMILIES），
-        # 不是正则猜的 —— 这类控件用名字判会把五种东西归成一类（第八次教训）。
-        page_name = str(f.relative_to(B_PAGES).parent).replace("\\", "/")
-        for fam, _, items in FAMILIES:
-            if FAM_COMP[fam] in used:
-                continue
-            for pg, root, _, _ in items:
-                if pg == page_name:
-                    rolled.append({"id": FAM_ID[fam], "label": fam, "lib": None,
-                                   "rule": f"名册：{pg} .{root}（逐处核过）", "gap": True})
-        out.append({
-            "page": page_name,
-            "file": str(f.relative_to(ROOT)),
-            "components": used,
-            "libClassHits": hits,
-            "localSelectors": len(re.findall(r"\{", css)),
-            "localCssLines": len([l for l in css.split("\n") if l.strip()]),
-            "rolled": rolled,
-        })
+    for app, base in APPS:
+      for f in sorted(base.rglob("*.vue")):
+          src = f.read_text(encoding="utf-8")
+          m = re.search(r"<template>(.*)</template>", src, re.S)
+          tpl = re.sub(r"<!--.*?-->", "", m.group(1), flags=re.S) if m else ""
+          css = strip_comments("\n".join(re.findall(r"<style[^>]*>(.*?)</style>", src, re.S)))
+          used = [c for c in comp_names if re.search(rf"<{c}[\s>]", tpl)]
+          hits = sum(len(re.findall(r"[\"' ]" + re.escape(c) + r"[\"' ]", tpl)) for c in lib_classes)
+          rolled = []
+          for rid, label, tp, cp, skip_if, lib in ROLLED:
+              if skip_if and skip_if in used:
+                  continue
+              if (tp and re.search(tp, src)) or (cp and re.search(cp, css, re.M)):
+                  rolled.append({"id": rid, "label": label, "lib": lib,
+                                 "rule": tp or cp, "gap": lib is None})
+          # 三个被「选中态自画」盖住的缺件：名册是逐处核过的（见 FAMILIES），
+          # 不是正则猜的 —— 这类控件用名字判会把五种东西归成一类（第八次教训）。
+          #
+          # ⚠️ **名册里的页名是 B 端的**，而两端有 11 个重名页（其中 `login`、`points`
+          # 正好在名册里）。扩到两端时不加这一条，C 端的 login 会顶着 B 端 login 的
+          # 核查结论被判成自造 —— **一份逐处核过的名册，被同名页悄悄套用到没核过的地方，
+          # 比正则误命中更难发现：它看起来是有依据的。**
+          page_name = str(f.relative_to(base).parent).replace("\\", "/")
+          for fam, _, items in FAMILIES:
+              if FAM_COMP[fam] in used:
+                  continue
+              for pg, root, _, _ in items:
+                  if app == "b-app" and pg == page_name:
+                      rolled.append({"id": FAM_ID[fam], "label": fam, "lib": None,
+                                     "rule": f"名册：{pg} .{root}（逐处核过）", "gap": True})
+          out.append({
+              "app": app,
+              # **两端有 11 个重名页面**（me / store / groups / order …），
+              # 所以对外的标识必须带端名，否则棘轮的基线会把两端串成一条
+              "page": page_name,
+              "key": f"{app}/{page_name}",
+              "file": str(f.relative_to(ROOT)),
+              "components": used,
+              "libClassHits": hits,
+              "localSelectors": len(re.findall(r"\{", css)),
+              "localCssLines": len([l for l in css.split("\n") if l.strip()]),
+              "rolled": rolled,
+          })
     return out
 
 
@@ -531,7 +561,7 @@ def gaps_of(pages: list[dict]) -> list[dict]:
         for r in p["rolled"]:
             a = agg.setdefault(r["id"], {"id": r["id"], "label": r["label"], "lib": r["lib"],
                                          "gap": r["gap"], "rule": r["rule"], "pages": []})
-            a["pages"].append(p["page"])
+            a["pages"].append(p["key"])
     return sorted(agg.values(), key=lambda a: (not a["gap"], -len(a["pages"])))
 
 
@@ -1198,7 +1228,12 @@ def main() -> None:
         print(f"  ⚠ 清单里有、代码里没人用：{', '.join(debt)}")
     if tiers:
         print(f"  · 字阶里暂时没有调用点的档位（允许，集合要闭合）：{', '.join(tiers)}")
-    print(f"  B 端 {cat['counts']['pages']} 页扫过：{cat['counts']['gapKinds']} 类形态库里没有")
+    per = {}
+    for pg in cat["pages"]:
+        per[pg["app"]] = per.get(pg["app"], 0) + 1
+    scope = " + ".join(f"{k} {v} 页" for k, v in sorted(per.items()))
+    print(f"  {scope} 扫过（运营端是 React，另一套体系，不在此列）："
+          f"{cat['counts']['gapKinds']} 类形态库里没有")
     for g in cat["gaps"]:
         if g["gap"]:
             print(f"    缺 {g['label']:<12} {len(g['pages']):>2} 页各造一份")

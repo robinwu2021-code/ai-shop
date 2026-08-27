@@ -133,7 +133,7 @@ onShareAppMessage(() => {
       <text class="notice__text">{{ $t("group.fallback") }}</text>
     </view>
 
-    <view class="actionbar">
+    <sh-actionbar :pad="180">
       <view
         class="sh-btn"
         :class="{ 'is-disabled': group.joined || closed }"
@@ -141,8 +141,7 @@ onShareAppMessage(() => {
       >
         {{ closed ? $t("group.closed") : group.joined ? $t("group.joinedBtn") : $t("group.join") }}
       </view>
-    </view>
-    <view class="spacer" />
+    </sh-actionbar>
   </sh-scaffold>
 </template>
 
@@ -301,14 +300,6 @@ onShareAppMessage(() => {
   font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
-}
-.actionbar {
-  position: fixed;
-  inset-inline: 28rpx;
-  bottom: calc(28rpx + env(safe-area-inset-bottom));
-}
-.spacer {
-  height: 180rpx;
 }
 .is-disabled {
   opacity: 0.45;

@@ -1169,6 +1169,23 @@
   ],
   "components": [
     {
+      "name": "sh-actionbar",
+      "file": "packages/ui/src/components/sh-actionbar.vue",
+      "scope": "跨端",
+      "lines": 109,
+      "props": [
+        "pill?: \"plain\" | \"lead\"",
+        "tabbar?: boolean",
+        "pad?: number"
+      ],
+      "usage": {
+        "b-app": 0,
+        "c-app": 12
+      },
+      "note": "—",
+      "why": "—"
+    },
+    {
       "name": "sh-add",
       "file": "packages/ui/src/components/sh-add.vue",
       "scope": "跨端",
@@ -1660,7 +1677,9 @@
   ],
   "pages": [
     {
+      "app": "b-app",
       "page": "activities",
+      "key": "b-app/activities",
       "file": "b-app/src/pages/activities/index.vue",
       "components": [
         "sh-empty",
@@ -1681,7 +1700,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "activity-edit",
+      "key": "b-app/activity-edit",
       "file": "b-app/src/pages/activity-edit/index.vue",
       "components": [
         "sh-option",
@@ -1701,7 +1722,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "after-sale",
+      "key": "b-app/after-sale",
       "file": "b-app/src/pages/after-sale/index.vue",
       "components": [
         "sh-empty",
@@ -1721,7 +1744,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "apply",
+      "key": "b-app/apply",
       "file": "b-app/src/pages/apply/index.vue",
       "components": [
         "sh-check",
@@ -1737,7 +1762,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "coupon-edit",
+      "key": "b-app/coupon-edit",
       "file": "b-app/src/pages/coupon-edit/index.vue",
       "components": [
         "sh-scaffold"
@@ -1756,7 +1783,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "coupon-issues",
+      "key": "b-app/coupon-issues",
       "file": "b-app/src/pages/coupon-issues/index.vue",
       "components": [
         "sh-empty",
@@ -1777,7 +1806,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "coupons",
+      "key": "b-app/coupons",
       "file": "b-app/src/pages/coupons/index.vue",
       "components": [
         "sh-empty",
@@ -1797,7 +1828,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "cross-store",
+      "key": "b-app/cross-store",
       "file": "b-app/src/pages/cross-store/index.vue",
       "components": [
         "sh-empty",
@@ -1810,7 +1843,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "customers",
+      "key": "b-app/customers",
       "file": "b-app/src/pages/customers/index.vue",
       "components": [
         "sh-empty",
@@ -1832,7 +1867,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "delivery",
+      "key": "b-app/delivery",
       "file": "b-app/src/pages/delivery/index.vue",
       "components": [
         "sh-empty",
@@ -1852,7 +1889,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "entities",
+      "key": "b-app/entities",
       "file": "b-app/src/pages/entities/index.vue",
       "components": [
         "sh-icon",
@@ -1872,7 +1911,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "entity-detail",
+      "key": "b-app/entity-detail",
       "file": "b-app/src/pages/entity-detail/index.vue",
       "components": [
         "sh-go",
@@ -1885,7 +1926,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "goods-edit",
+      "key": "b-app/goods-edit",
       "file": "b-app/src/pages/goods-edit/index.vue",
       "components": [
         "sh-add",
@@ -1904,7 +1947,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "goods-list",
+      "key": "b-app/goods-list",
       "file": "b-app/src/pages/goods-list/index.vue",
       "components": [
         "sh-cover",
@@ -1930,7 +1975,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "groups",
+      "key": "b-app/groups",
       "file": "b-app/src/pages/groups/index.vue",
       "components": [
         "sh-cover",
@@ -1951,7 +1998,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "home",
+      "key": "b-app/home",
       "file": "b-app/src/pages/home/index.vue",
       "components": [
         "sh-go",
@@ -1964,7 +2013,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "income",
+      "key": "b-app/income",
       "file": "b-app/src/pages/income/index.vue",
       "components": [
         "sh-scaffold"
@@ -1975,7 +2026,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "locations",
+      "key": "b-app/locations",
       "file": "b-app/src/pages/locations/index.vue",
       "components": [
         "sh-add",
@@ -1998,7 +2051,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "login",
+      "key": "b-app/login",
       "file": "b-app/src/pages/login/index.vue",
       "components": [
         "sh-check",
@@ -2018,7 +2073,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "marketing",
+      "key": "b-app/marketing",
       "file": "b-app/src/pages/marketing/index.vue",
       "components": [
         "sh-empty",
@@ -2039,7 +2096,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "me",
+      "key": "b-app/me",
       "file": "b-app/src/pages/me/index.vue",
       "components": [
         "sh-icon",
@@ -2052,7 +2111,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "member-add",
+      "key": "b-app/member-add",
       "file": "b-app/src/pages/member-add/index.vue",
       "components": [
         "sh-scaffold"
@@ -2063,7 +2124,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "member-detail",
+      "key": "b-app/member-detail",
       "file": "b-app/src/pages/member-detail/index.vue",
       "components": [
         "sh-kv",
@@ -2083,7 +2146,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "member-reach",
+      "key": "b-app/member-reach",
       "file": "b-app/src/pages/member-reach/index.vue",
       "components": [
         "sh-scaffold",
@@ -2103,7 +2168,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "member-segments",
+      "key": "b-app/member-segments",
       "file": "b-app/src/pages/member-segments/index.vue",
       "components": [
         "sh-empty",
@@ -2123,7 +2190,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "member-settings",
+      "key": "b-app/member-settings",
       "file": "b-app/src/pages/member-settings/index.vue",
       "components": [
         "sh-option",
@@ -2143,7 +2212,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "member-tags",
+      "key": "b-app/member-tags",
       "file": "b-app/src/pages/member-tags/index.vue",
       "components": [
         "sh-empty",
@@ -2163,7 +2234,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "messages",
+      "key": "b-app/messages",
       "file": "b-app/src/pages/messages/index.vue",
       "components": [
         "sh-empty",
@@ -2177,7 +2250,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "my-specs",
+      "key": "b-app/my-specs",
       "file": "b-app/src/pages/my-specs/index.vue",
       "components": [
         "sh-add",
@@ -2195,7 +2270,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "order",
+      "key": "b-app/order",
       "file": "b-app/src/pages/order/index.vue",
       "components": [
         "sh-cover",
@@ -2216,7 +2293,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "orders",
+      "key": "b-app/orders",
       "file": "b-app/src/pages/orders/index.vue",
       "components": [
         "sh-cover",
@@ -2239,7 +2318,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "payment",
+      "key": "b-app/payment",
       "file": "b-app/src/pages/payment/index.vue",
       "components": [
         "sh-kv",
@@ -2252,7 +2333,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "picking",
+      "key": "b-app/picking",
       "file": "b-app/src/pages/picking/index.vue",
       "components": [
         "sh-cover",
@@ -2274,7 +2357,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "plan",
+      "key": "b-app/plan",
       "file": "b-app/src/pages/plan/index.vue",
       "components": [
         "sh-icon",
@@ -2286,7 +2371,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "points",
+      "key": "b-app/points",
       "file": "b-app/src/pages/points/index.vue",
       "components": [
         "sh-scaffold",
@@ -2298,7 +2385,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "points-records",
+      "key": "b-app/points-records",
       "file": "b-app/src/pages/points-records/index.vue",
       "components": [
         "sh-empty",
@@ -2310,7 +2399,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "purchase-edit",
+      "key": "b-app/purchase-edit",
       "file": "b-app/src/pages/purchase-edit/index.vue",
       "components": [
         "sh-add",
@@ -2333,7 +2424,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "qualifications",
+      "key": "b-app/qualifications",
       "file": "b-app/src/pages/qualifications/index.vue",
       "components": [
         "sh-empty",
@@ -2355,7 +2448,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "quotes",
+      "key": "b-app/quotes",
       "file": "b-app/src/pages/quotes/index.vue",
       "components": [
         "sh-empty",
@@ -2375,7 +2470,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "reviews",
+      "key": "b-app/reviews",
       "file": "b-app/src/pages/reviews/index.vue",
       "components": [
         "sh-empty",
@@ -2396,7 +2493,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "role-detail",
+      "key": "b-app/role-detail",
       "file": "b-app/src/pages/role-detail/index.vue",
       "components": [
         "sh-icon",
@@ -2408,7 +2507,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "schedule",
+      "key": "b-app/schedule",
       "file": "b-app/src/pages/schedule/index.vue",
       "components": [
         "sh-scaffold"
@@ -2427,7 +2528,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "settle",
+      "key": "b-app/settle",
       "file": "b-app/src/pages/settle/index.vue",
       "components": [
         "sh-empty",
@@ -2447,7 +2550,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "sku-identity",
+      "key": "b-app/sku-identity",
       "file": "b-app/src/pages/sku-identity/index.vue",
       "components": [
         "sh-kv",
@@ -2469,7 +2574,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "staff",
+      "key": "b-app/staff",
       "file": "b-app/src/pages/staff/index.vue",
       "components": [
         "sh-empty",
@@ -2491,7 +2598,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "staff-detail",
+      "key": "b-app/staff-detail",
       "file": "b-app/src/pages/staff-detail/index.vue",
       "components": [
         "sh-scaffold"
@@ -2502,7 +2611,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "stats",
+      "key": "b-app/stats",
       "file": "b-app/src/pages/stats/index.vue",
       "components": [
         "sh-icon",
@@ -2515,7 +2626,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "stock",
+      "key": "b-app/stock",
       "file": "b-app/src/pages/stock/index.vue",
       "components": [
         "sh-empty",
@@ -2537,7 +2650,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "stock-check",
+      "key": "b-app/stock-check",
       "file": "b-app/src/pages/stock-check/index.vue",
       "components": [
         "sh-check",
@@ -2558,7 +2673,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "stock-detail",
+      "key": "b-app/stock-detail",
       "file": "b-app/src/pages/stock-detail/index.vue",
       "components": [
         "sh-empty",
@@ -2573,7 +2690,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "stock-docs",
+      "key": "b-app/stock-docs",
       "file": "b-app/src/pages/stock-docs/index.vue",
       "components": [
         "sh-empty",
@@ -2594,7 +2713,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "stock-out",
+      "key": "b-app/stock-out",
       "file": "b-app/src/pages/stock-out/index.vue",
       "components": [
         "sh-add",
@@ -2617,7 +2738,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "stock-report",
+      "key": "b-app/stock-report",
       "file": "b-app/src/pages/stock-report/index.vue",
       "components": [
         "sh-empty",
@@ -2631,7 +2754,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "store",
+      "key": "b-app/store",
       "file": "b-app/src/pages/store/index.vue",
       "components": [
         "sh-icon",
@@ -2646,7 +2771,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "store-categories",
+      "key": "b-app/store-categories",
       "file": "b-app/src/pages/store-categories/index.vue",
       "components": [
         "sh-empty",
@@ -2668,7 +2795,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "store-notice",
+      "key": "b-app/store-notice",
       "file": "b-app/src/pages/store-notice/index.vue",
       "components": [
         "sh-icon-btn",
@@ -2680,7 +2809,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "store-pick",
+      "key": "b-app/store-pick",
       "file": "b-app/src/pages/store-pick/index.vue",
       "components": [
         "sh-check",
@@ -2700,7 +2831,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "store-scope",
+      "key": "b-app/store-scope",
       "file": "b-app/src/pages/store-scope/index.vue",
       "components": [
         "sh-check",
@@ -2728,7 +2861,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "stores",
+      "key": "b-app/stores",
       "file": "b-app/src/pages/stores/index.vue",
       "components": [
         "sh-option",
@@ -2740,7 +2875,9 @@
       "rolled": []
     },
     {
+      "app": "b-app",
       "page": "transfer",
+      "key": "b-app/transfer",
       "file": "b-app/src/pages/transfer/index.vue",
       "components": [
         "sh-add",
@@ -2764,7 +2901,9 @@
       ]
     },
     {
+      "app": "b-app",
       "page": "verify",
+      "key": "b-app/verify",
       "file": "b-app/src/pages/verify/index.vue",
       "components": [
         "sh-empty",
@@ -2784,6 +2923,690 @@
           "gap": true
         }
       ]
+    },
+    {
+      "app": "c-app",
+      "page": "address",
+      "key": "c-app/address",
+      "file": "c-app/src/pages/address/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 13,
+      "localSelectors": 24,
+      "localCssLines": 117,
+      "rolled": [
+        {
+          "id": "sheet",
+          "label": "弹层 / 遮罩",
+          "lib": "sh-sheet",
+          "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
+          "gap": false
+        },
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        },
+        {
+          "id": "segment",
+          "label": "选中态自画（含未拆出的）",
+          "lib": ".sh-chip--primary / --solid",
+          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "after-sale",
+      "key": "c-app/after-sale",
+      "file": "c-app/src/pages/after-sale/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-scaffold"
+      ],
+      "libClassHits": 14,
+      "localSelectors": 28,
+      "localCssLines": 159,
+      "rolled": [
+        {
+          "id": "segment",
+          "label": "选中态自画（含未拆出的）",
+          "lib": ".sh-chip--primary / --solid",
+          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
+          "gap": false
+        },
+        {
+          "id": "uploader",
+          "label": "图片上传格",
+          "lib": "sh-uploader",
+          "rule": "pickImages\\(|chooseImages\\(",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "cards",
+      "key": "c-app/cards",
+      "file": "c-app/src/pages/cards/index.vue",
+      "components": [
+        "sh-cover",
+        "sh-scaffold"
+      ],
+      "libClassHits": 5,
+      "localSelectors": 13,
+      "localCssLines": 75,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "cart",
+      "key": "c-app/cart",
+      "file": "c-app/src/pages/cart/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 9,
+      "localSelectors": 15,
+      "localCssLines": 95,
+      "rolled": [
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "category",
+      "key": "c-app/category",
+      "file": "c-app/src/pages/category/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 3,
+      "localSelectors": 2,
+      "localCssLines": 10,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "community",
+      "key": "c-app/community",
+      "file": "c-app/src/pages/community/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 3,
+      "localSelectors": 29,
+      "localCssLines": 168,
+      "rolled": [
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        },
+        {
+          "id": "segment",
+          "label": "选中态自画（含未拆出的）",
+          "lib": ".sh-chip--primary / --solid",
+          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
+          "gap": false
+        },
+        {
+          "id": "blockdup",
+          "label": "白块自画",
+          "lib": ".sh-block / .sh-card",
+          "rule": "(background:\\s*var\\(--sh-surface\\)[^}]*border-radius:\\s*32rpx\\s*;|border-radius:\\s*32rpx\\s*;[^}]*background:\\s*var\\(--sh-surface\\))",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "coupons",
+      "key": "c-app/coupons",
+      "file": "c-app/src/pages/coupons/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 8,
+      "localSelectors": 13,
+      "localCssLines": 75,
+      "rolled": [
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        },
+        {
+          "id": "blockdup",
+          "label": "白块自画",
+          "lib": ".sh-block / .sh-card",
+          "rule": "(background:\\s*var\\(--sh-surface\\)[^}]*border-radius:\\s*32rpx\\s*;|border-radius:\\s*32rpx\\s*;[^}]*background:\\s*var\\(--sh-surface\\))",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "goods",
+      "key": "c-app/goods",
+      "file": "c-app/src/pages/goods/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-cover",
+        "sh-icon",
+        "sh-scaffold"
+      ],
+      "libClassHits": 45,
+      "localSelectors": 60,
+      "localCssLines": 310,
+      "rolled": [
+        {
+          "id": "segment",
+          "label": "选中态自画（含未拆出的）",
+          "lib": ".sh-chip--primary / --solid",
+          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "group",
+      "key": "c-app/group",
+      "file": "c-app/src/pages/group/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-cover",
+        "sh-scaffold"
+      ],
+      "libClassHits": 15,
+      "localSelectors": 31,
+      "localCssLines": 158,
+      "rolled": [
+        {
+          "id": "segment",
+          "label": "选中态自画（含未拆出的）",
+          "lib": ".sh-chip--primary / --solid",
+          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "group-host",
+      "key": "c-app/group-host",
+      "file": "c-app/src/pages/group-host/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 20,
+      "localSelectors": 18,
+      "localCssLines": 101,
+      "rolled": [
+        {
+          "id": "tabs",
+          "label": "分栏切换",
+          "lib": "sh-tabs",
+          "rule": "^\\s*\\.tabs?\\b",
+          "gap": false
+        },
+        {
+          "id": "listrow",
+          "label": "列表行",
+          "lib": null,
+          "rule": "^\\s*\\.(row|item)\\b",
+          "gap": true
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "groups",
+      "key": "c-app/groups",
+      "file": "c-app/src/pages/groups/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 20,
+      "localSelectors": 22,
+      "localCssLines": 124,
+      "rolled": [
+        {
+          "id": "segment",
+          "label": "选中态自画（含未拆出的）",
+          "lib": ".sh-chip--primary / --solid",
+          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "home",
+      "key": "c-app/home",
+      "file": "c-app/src/pages/home/index.vue",
+      "components": [
+        "sh-cover",
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold"
+      ],
+      "libClassHits": 13,
+      "localSelectors": 14,
+      "localCssLines": 110,
+      "rolled": [
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "legal",
+      "key": "c-app/legal",
+      "file": "c-app/src/pages/legal/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 0,
+      "localSelectors": 5,
+      "localCssLines": 25,
+      "rolled": [
+        {
+          "id": "sechead",
+          "label": "分段标题（只有标题）",
+          "lib": ".txt-title + 间距档",
+          "rule": "^\\s*\\.(?:sec__h|grp)\\b[^{}]*\\{[^}]*margin",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "login",
+      "key": "c-app/login",
+      "file": "c-app/src/pages/login/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 5,
+      "localSelectors": 21,
+      "localCssLines": 93,
+      "rolled": [
+        {
+          "id": "blockdup",
+          "label": "白块自画",
+          "lib": ".sh-block / .sh-card",
+          "rule": "(background:\\s*var\\(--sh-surface\\)[^}]*border-radius:\\s*32rpx\\s*;|border-radius:\\s*32rpx\\s*;[^}]*background:\\s*var\\(--sh-surface\\))",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "me",
+      "key": "c-app/me",
+      "file": "c-app/src/pages/me/index.vue",
+      "components": [
+        "sh-scaffold",
+        "sh-theme-sheet"
+      ],
+      "libClassHits": 11,
+      "localSelectors": 25,
+      "localCssLines": 141,
+      "rolled": [
+        {
+          "id": "sheet",
+          "label": "弹层 / 遮罩",
+          "lib": "sh-sheet",
+          "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
+          "gap": false
+        },
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        },
+        {
+          "id": "segment",
+          "label": "选中态自画（含未拆出的）",
+          "lib": ".sh-chip--primary / --solid",
+          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "merchant",
+      "key": "c-app/merchant",
+      "file": "c-app/src/pages/merchant/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-rating",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 18,
+      "localSelectors": 20,
+      "localCssLines": 110,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "merchants",
+      "key": "c-app/merchants",
+      "file": "c-app/src/pages/merchants/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 20,
+      "localSelectors": 13,
+      "localCssLines": 78,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "messages",
+      "key": "c-app/messages",
+      "file": "c-app/src/pages/messages/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 1,
+      "localSelectors": 13,
+      "localCssLines": 72,
+      "rolled": [
+        {
+          "id": "blockdup",
+          "label": "白块自画",
+          "lib": ".sh-block / .sh-card",
+          "rule": "(background:\\s*var\\(--sh-surface\\)[^}]*border-radius:\\s*32rpx\\s*;|border-radius:\\s*32rpx\\s*;[^}]*background:\\s*var\\(--sh-surface\\))",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "my-memberships",
+      "key": "c-app/my-memberships",
+      "file": "c-app/src/pages/my-memberships/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 4,
+      "localSelectors": 5,
+      "localCssLines": 30,
+      "rolled": [
+        {
+          "id": "blockdup",
+          "label": "白块自画",
+          "lib": ".sh-block / .sh-card",
+          "rule": "(background:\\s*var\\(--sh-surface\\)[^}]*border-radius:\\s*32rpx\\s*;|border-radius:\\s*32rpx\\s*;[^}]*background:\\s*var\\(--sh-surface\\))",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "order",
+      "key": "c-app/order",
+      "file": "c-app/src/pages/order/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 42,
+      "localSelectors": 39,
+      "localCssLines": 187,
+      "rolled": [
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "order-confirm",
+      "key": "c-app/order-confirm",
+      "file": "c-app/src/pages/order-confirm/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-scaffold"
+      ],
+      "libClassHits": 22,
+      "localSelectors": 44,
+      "localCssLines": 226,
+      "rolled": [
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        },
+        {
+          "id": "segment",
+          "label": "选中态自画（含未拆出的）",
+          "lib": ".sh-chip--primary / --solid",
+          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "orders",
+      "key": "c-app/orders",
+      "file": "c-app/src/pages/orders/index.vue",
+      "components": [
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 11,
+      "localSelectors": 23,
+      "localCssLines": 123,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "pay",
+      "key": "c-app/pay",
+      "file": "c-app/src/pages/pay/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-scaffold"
+      ],
+      "libClassHits": 10,
+      "localSelectors": 30,
+      "localCssLines": 156,
+      "rolled": [
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        },
+        {
+          "id": "segment",
+          "label": "选中态自画（含未拆出的）",
+          "lib": ".sh-chip--primary / --solid",
+          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "points",
+      "key": "c-app/points",
+      "file": "c-app/src/pages/points/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 13,
+      "localSelectors": 23,
+      "localCssLines": 120,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "request",
+      "key": "c-app/request",
+      "file": "c-app/src/pages/request/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-rating",
+        "sh-scaffold"
+      ],
+      "libClassHits": 45,
+      "localSelectors": 35,
+      "localCssLines": 196,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "request-create",
+      "key": "c-app/request-create",
+      "file": "c-app/src/pages/request-create/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-scaffold"
+      ],
+      "libClassHits": 7,
+      "localSelectors": 13,
+      "localCssLines": 75,
+      "rolled": [
+        {
+          "id": "listrow",
+          "label": "列表行",
+          "lib": null,
+          "rule": "^\\s*\\.(row|item)\\b",
+          "gap": true
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "review-write",
+      "key": "c-app/review-write",
+      "file": "c-app/src/pages/review-write/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-scaffold"
+      ],
+      "libClassHits": 5,
+      "localSelectors": 20,
+      "localCssLines": 99,
+      "rolled": [
+        {
+          "id": "uploader",
+          "label": "图片上传格",
+          "lib": "sh-uploader",
+          "rule": "pickImages\\(|chooseImages\\(",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "search",
+      "key": "c-app/search",
+      "file": "c-app/src/pages/search/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 12,
+      "localSelectors": 11,
+      "localCssLines": 61,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "store",
+      "key": "c-app/store",
+      "file": "c-app/src/pages/store/index.vue",
+      "components": [
+        "sh-cover",
+        "sh-scaffold"
+      ],
+      "libClassHits": 20,
+      "localSelectors": 30,
+      "localCssLines": 172,
+      "rolled": [
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        },
+        {
+          "id": "segment",
+          "label": "选中态自画（含未拆出的）",
+          "lib": ".sh-chip--primary / --solid",
+          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
+          "gap": false
+        },
+        {
+          "id": "blockdup",
+          "label": "白块自画",
+          "lib": ".sh-block / .sh-card",
+          "rule": "(background:\\s*var\\(--sh-surface\\)[^}]*border-radius:\\s*32rpx\\s*;|border-radius:\\s*32rpx\\s*;[^}]*background:\\s*var\\(--sh-surface\\))",
+          "gap": false
+        },
+        {
+          "id": "section",
+          "label": "卡内标题行",
+          "lib": "sh-section",
+          "rule": "\\.(?:sec|cat__head|grp__head)\\b[^{}]*\\{[^}]*justify-content:\\s*space-between",
+          "gap": false
+        }
+      ]
     }
   ],
   "gaps": [
@@ -2794,53 +3617,160 @@
       "gap": true,
       "rule": "^\\s*\\.(row|item)\\b",
       "pages": [
-        "activities",
-        "activity-edit",
-        "after-sale",
-        "coupon-edit",
-        "coupon-issues",
-        "coupons",
-        "customers",
-        "delivery",
-        "entities",
-        "goods-list",
-        "groups",
-        "locations",
-        "login",
-        "marketing",
-        "member-detail",
-        "member-reach",
-        "member-segments",
-        "member-settings",
-        "member-tags",
-        "order",
-        "orders",
-        "picking",
-        "purchase-edit",
-        "qualifications",
-        "quotes",
-        "reviews",
-        "schedule",
-        "settle",
-        "sku-identity",
-        "staff",
-        "stock",
-        "stock-check",
-        "stock-docs",
-        "stock-out",
-        "store-categories",
-        "store-pick",
-        "store-scope",
-        "transfer",
-        "verify"
+        "b-app/activities",
+        "b-app/activity-edit",
+        "b-app/after-sale",
+        "b-app/coupon-edit",
+        "b-app/coupon-issues",
+        "b-app/coupons",
+        "b-app/customers",
+        "b-app/delivery",
+        "b-app/entities",
+        "b-app/goods-list",
+        "b-app/groups",
+        "b-app/locations",
+        "b-app/login",
+        "b-app/marketing",
+        "b-app/member-detail",
+        "b-app/member-reach",
+        "b-app/member-segments",
+        "b-app/member-settings",
+        "b-app/member-tags",
+        "b-app/order",
+        "b-app/orders",
+        "b-app/picking",
+        "b-app/purchase-edit",
+        "b-app/qualifications",
+        "b-app/quotes",
+        "b-app/reviews",
+        "b-app/schedule",
+        "b-app/settle",
+        "b-app/sku-identity",
+        "b-app/staff",
+        "b-app/stock",
+        "b-app/stock-check",
+        "b-app/stock-docs",
+        "b-app/stock-out",
+        "b-app/store-categories",
+        "b-app/store-pick",
+        "b-app/store-scope",
+        "b-app/transfer",
+        "b-app/verify",
+        "c-app/group-host",
+        "c-app/request-create"
+      ]
+    },
+    {
+      "id": "sysmodal",
+      "label": "系统弹框",
+      "lib": "sh-sheet",
+      "gap": false,
+      "rule": "showModal\\(|showActionSheet\\(",
+      "pages": [
+        "c-app/address",
+        "c-app/cart",
+        "c-app/community",
+        "c-app/coupons",
+        "c-app/home",
+        "c-app/me",
+        "c-app/order",
+        "c-app/order-confirm",
+        "c-app/pay",
+        "c-app/store"
+      ]
+    },
+    {
+      "id": "segment",
+      "label": "选中态自画（含未拆出的）",
+      "lib": ".sh-chip--primary / --solid",
+      "gap": false,
+      "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
+      "pages": [
+        "c-app/address",
+        "c-app/after-sale",
+        "c-app/community",
+        "c-app/goods",
+        "c-app/group",
+        "c-app/groups",
+        "c-app/me",
+        "c-app/order-confirm",
+        "c-app/pay",
+        "c-app/store"
+      ]
+    },
+    {
+      "id": "blockdup",
+      "label": "白块自画",
+      "lib": ".sh-block / .sh-card",
+      "gap": false,
+      "rule": "(background:\\s*var\\(--sh-surface\\)[^}]*border-radius:\\s*32rpx\\s*;|border-radius:\\s*32rpx\\s*;[^}]*background:\\s*var\\(--sh-surface\\))",
+      "pages": [
+        "c-app/community",
+        "c-app/coupons",
+        "c-app/login",
+        "c-app/messages",
+        "c-app/my-memberships",
+        "c-app/store"
+      ]
+    },
+    {
+      "id": "sheet",
+      "label": "弹层 / 遮罩",
+      "lib": "sh-sheet",
+      "gap": false,
+      "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
+      "pages": [
+        "c-app/address",
+        "c-app/me"
+      ]
+    },
+    {
+      "id": "uploader",
+      "label": "图片上传格",
+      "lib": "sh-uploader",
+      "gap": false,
+      "rule": "pickImages\\(|chooseImages\\(",
+      "pages": [
+        "c-app/after-sale",
+        "c-app/review-write"
+      ]
+    },
+    {
+      "id": "tabs",
+      "label": "分栏切换",
+      "lib": "sh-tabs",
+      "gap": false,
+      "rule": "^\\s*\\.tabs?\\b",
+      "pages": [
+        "c-app/group-host"
+      ]
+    },
+    {
+      "id": "sechead",
+      "label": "分段标题（只有标题）",
+      "lib": ".txt-title + 间距档",
+      "gap": false,
+      "rule": "^\\s*\\.(?:sec__h|grp)\\b[^{}]*\\{[^}]*margin",
+      "pages": [
+        "c-app/legal"
+      ]
+    },
+    {
+      "id": "section",
+      "label": "卡内标题行",
+      "lib": "sh-section",
+      "gap": false,
+      "rule": "\\.(?:sec|cat__head|grp__head)\\b[^{}]*\\{[^}]*justify-content:\\s*space-between",
+      "pages": [
+        "c-app/store"
       ]
     }
   ],
   "counts": {
     "tokens": 10,
     "blocks": 46,
-    "components": 30,
-    "pages": 61,
+    "components": 31,
+    "pages": 90,
     "gapKinds": 1
   }
 }

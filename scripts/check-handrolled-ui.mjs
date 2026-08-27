@@ -34,7 +34,9 @@ const rows = [];
 for (const p of JSON.parse(readFileSync(CATALOG, "utf8")).pages) {
   for (const r of p.rolled ?? []) {
     if (r.gap) continue;                       // 缺口不进闸门，理由见文件头
-    rows.push({ id: `${p.page} ${r.id}`, label: r.label, lib: r.lib });
+    // `key` 是「端/页」——**两端有 11 个重名页**（me / store / groups / order …），
+    // 只用页名的话基线会把两端串成一条：改好了 B 端的，C 端那条跟着消失。
+    rows.push({ id: `${p.key ?? p.page} ${r.id}`, label: r.label, lib: r.lib });
   }
 }
 
@@ -46,7 +48,10 @@ const known = existsSync(BASELINE)
 const fresh = rows.filter((r) => !known.has(r.id));
 const stale = [...known].filter((k) => !rows.some((r) => r.id === k));
 
-console.log(`自造件 ${rows.length} 处（已知欠账 ${known.size}）`);
+const perApp = {};
+for (const p of JSON.parse(readFileSync(CATALOG, "utf8")).pages) perApp[p.app] = (perApp[p.app] ?? 0) + 1;
+console.log(`自造件 ${rows.length} 处（已知欠账 ${known.size}）`
+  + `　扫描范围：${Object.entries(perApp).map(([k, v]) => `${k} ${v} 页`).join(" + ")}`);
 for (const r of rows) {
   console.log(`   ${fresh.includes(r) ? "★新增" : "     "} ${r.id.padEnd(28)} ${r.label} → 用 ${r.lib}`);
 }

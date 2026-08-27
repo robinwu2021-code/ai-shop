@@ -484,7 +484,7 @@ onShareAppMessage(() =>
 
     <!-- 底部操作条。详情页不是 tab 页，没有底部菜单，
          所以购物车入口必须在这里给 —— 否则加完购没有任何落点与反馈。 -->
-    <view class="actionbar">
+    <sh-actionbar pill="plain" :pad="220">
       <view class="actionbar__icon" @tap="() => {}">
         <sh-icon name="share" :size="40" color="var(--sh-sub)"></sh-icon>
       </view>
@@ -513,8 +513,7 @@ onShareAppMessage(() =>
       >
         {{ $t("goods.buyNow") }}
       </view>
-    </view>
-    <view class="actionbar__spacer" />
+    </sh-actionbar>
   </sh-scaffold>
 </template>
 
@@ -758,16 +757,6 @@ onShareAppMessage(() =>
 .notice--info .notice__text {
   color: var(--sh-primary-text);
 }
-.actionbar {
-  position: fixed;
-  inset-inline: 28rpx;
-  bottom: calc(28rpx + env(safe-area-inset-bottom));
-  display: flex;
-  gap: 16rpx;
-  background: var(--sh-surface);
-  border-radius: 9999px;
-  padding: 12rpx;
-}
 .actionbar__icon {
   position: relative;
   flex: 0 0 auto;
@@ -814,9 +803,6 @@ onShareAppMessage(() =>
 .actionbar__add {
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
-}
-.actionbar__spacer {
-  height: 220rpx;
 }
 .is-disabled {
   opacity: 0.45;
