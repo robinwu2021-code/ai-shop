@@ -625,6 +625,14 @@ export default {
     reportHint: "Tap a neighbour's name to report a shortage or damage",
     shortage: "Shortage", damage: "Damage", notePh: "Describe it — the customer will see this",
     reported: "Reported. No automatic refund.",
+    /* `{s}` 是原因名（Shortage / Damage）。**英文里它不能像中文那样打头** ——
+       「Shortage how many?」读起来是机翻；放进介词短语才成句 */
+    qtyTitle: "How many for {s}?",
+    qtyInvalid: "Enter a whole number, 1 or more",
+    goVerify: "Go to redemption",
+    arrivedDoneTitle: "{n} neighbours notified",
+    arrivedDoneBody: "Next: wait for them at the redemption desk",
+    verifyPrepHint: "{n} more order(s) still being picked — they can be redeemed once marked arrived",
   },
   delivery: {
     title: "Self delivery", rule: "Delivery rules", radius: "Radius (m)", minOrder: "Minimum order",
@@ -1418,6 +1426,7 @@ export default {
     disable: "Disable",
     enable: "Enable",
     disabled: "disabled",
+    mergeInto: "Merge into which tag",
     mergeNoTarget: "No other tag to merge into",
     mergeTitle: "Merge “{a}” into “{b}”",
     mergeBody: "{n} people move to “{b}”; {m} of them have both and keep one. This cannot be undone.",

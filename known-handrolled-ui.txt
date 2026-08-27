@@ -8,11 +8,15 @@
 # 缺口类（列表行）不在这份名单里，它已论证不该做成组件，见
 # docs/technical/design/B端页面与组件库-覆盖清单.md §九。
 #
-# 2026-08-26 建立时 33 处 / 7 类；2026-08-27 收到 18 处 / 3 类：
+# 2026-08-26 建立时 33 处 / 7 类；2026-08-27 收到 7 处 / 2 类：
 #   · 「白块自画」整类归零 —— 2 处真抄了 .sh-card 的已改用积木
 #     （messages 的消息卡、home 的九宫格格子），另 5 处是判据误命中：
 #     原规则是「白底 + 任意圆角」，而库里的 .sh-card / .sh-block 都是 lg(32) 四角统一。
 #     圆角五档都是系统给的档，用 md 画一个紧凑行容器不是违规。
+#   · 「系统弹框」整类归零：10 处 `showActionSheet` **形状完全一样**
+#     （itemList + success → tapIndex），收成 `pick()` 组合式 + `sh-pick` 宿主，
+#     与 prompt() / confirm() 同一套。取消返回 null 不是 -1 —— 哨兵值总有一天
+#     会被人当成合法下标。
 #   · 「弹层 / 遮罩」先 +2（补判据才现形）、再归零：
 #     goods-list 的分享弹层换了 sh-sheet；order 的线下收款确认是**居中对话框**
 #     不是贴底弹层，而它的外壳与 sh-confirm 逐条相同 —— 抽成了 sh-dialog，
@@ -29,21 +33,6 @@
 # 镜像补在 sh-icon 的 DIRECTIONAL 名单 + `.sh-root.is-rtl .icon--dir` 上。
 
 
-# ── 系统弹框（10 处）→ 用 sh-sheet
-# `showActionSheet` 的「选一项」10 处。**不是换皮肤，是换交互形态** ——
-# 系统动作面板从底部升起、点外部关闭、Android 与 iOS 各长各的样；
-# 换成 sh-sheet 是把它变成我们自己的弹层，交互路径跟着变。
-# 要动就整批动并逐页看过，一处一处改会让同一个 app 里两种面板并存。
-coupons sysmodal
-customers sysmodal
-goods-edit sysmodal
-locations sysmodal
-marketing sysmodal
-member-reach sysmodal
-member-tags sysmodal
-picking sysmodal
-stock-report sysmodal
-transfer sysmodal
 
 # ── 选中态自画（含未拆出的）（6 处）→ 用 .sh-chip--primary
 # 剩下的都是**不成族的独一份**：下划线 tab、步骤条、数字高亮各一处。

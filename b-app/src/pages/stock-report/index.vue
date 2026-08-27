@@ -13,6 +13,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { StockMonthly, StockRank } from "@shared/types";
+import { pick } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -68,14 +69,8 @@ async function pickMonth() {
     items.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
     d.setMonth(d.getMonth() - 1);
   }
-  const idx = await new Promise<number>((resolve) => {
-    uni.showActionSheet({
-      itemList: items,
-      success: (r) => resolve(r.tapIndex),
-      fail: () => resolve(-1),
-    });
-  });
-  if (idx < 0) return;
+  const idx = await pick({ items, selected: items.indexOf(month.value) });
+  if (idx === null) return;
   month.value = items[idx]!;
   await load();
 }

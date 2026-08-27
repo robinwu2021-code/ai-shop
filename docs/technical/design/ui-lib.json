@@ -303,22 +303,6 @@
       }
     },
     {
-      "class": ".sh-mb-lg",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "margin-bottom": "40rpx"
-      },
-      "px": {
-        "margin-bottom": "20px"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 0
-      }
-    },
-    {
       "class": ".sh-mb-md",
       "group": "其它",
       "when": "—",
@@ -335,70 +319,6 @@
       }
     },
     {
-      "class": ".sh-mb-sm",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "margin-bottom": "16rpx"
-      },
-      "px": {
-        "margin-bottom": "8px"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-mb-xl",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "margin-bottom": "64rpx"
-      },
-      "px": {
-        "margin-bottom": "32px"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-mb-xs",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "margin-bottom": "8rpx"
-      },
-      "px": {
-        "margin-bottom": "4px"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-mt-lg",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "margin-top": "40rpx"
-      },
-      "px": {
-        "margin-top": "20px"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 0
-      }
-    },
-    {
       "class": ".sh-mt-md",
       "group": "其它",
       "when": "—",
@@ -411,54 +331,6 @@
       },
       "usage": {
         "b-app": 1,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-mt-sm",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "margin-top": "16rpx"
-      },
-      "px": {
-        "margin-top": "8px"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-mt-xl",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "margin-top": "64rpx"
-      },
-      "px": {
-        "margin-top": "32px"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-mt-xs",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "margin-top": "8rpx"
-      },
-      "px": {
-        "margin-top": "4px"
-      },
-      "usage": {
-        "b-app": 0,
         "c-app": 0
       }
     },
@@ -1445,6 +1317,19 @@
       "why": "整块可选，比 chip 重比按钮轻 —— 每个选项里通常还有一行说明"
     },
     {
+      "name": "sh-pick",
+      "file": "packages/ui/src/components/sh-pick.vue",
+      "scope": "跨端",
+      "lines": 58,
+      "props": [],
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      },
+      "note": "—",
+      "why": "—"
+    },
+    {
       "name": "sh-prompt",
       "file": "packages/ui/src/components/sh-prompt.vue",
       "scope": "跨端",
@@ -1496,7 +1381,7 @@
       "name": "sh-scaffold",
       "file": "packages/ui/src/components/sh-scaffold.vue",
       "scope": "跨端",
-      "lines": 172,
+      "lines": 173,
       "props": [
         "padded?: boolean",
         "titleKey?: string",
@@ -1867,13 +1752,6 @@
       "localCssLines": 47,
       "rolled": [
         {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
           "id": "listrow",
           "label": "列表行",
           "lib": null,
@@ -1916,13 +1794,6 @@
       "localSelectors": 13,
       "localCssLines": 71,
       "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
         {
           "id": "listrow",
           "label": "列表行",
@@ -2003,13 +1874,6 @@
       "localSelectors": 82,
       "localCssLines": 441,
       "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
         {
           "id": "sechead",
           "label": "分段标题（只有标题）",
@@ -2105,13 +1969,6 @@
       "localCssLines": 37,
       "rolled": [
         {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
           "id": "listrow",
           "label": "列表行",
           "lib": null,
@@ -2159,13 +2016,6 @@
       "localSelectors": 21,
       "localCssLines": 107,
       "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
         {
           "id": "listrow",
           "label": "列表行",
@@ -2231,13 +2081,6 @@
       "localCssLines": 57,
       "rolled": [
         {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
           "id": "listrow",
           "label": "列表行",
           "lib": null,
@@ -2297,13 +2140,6 @@
       "localSelectors": 10,
       "localCssLines": 50,
       "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
         {
           "id": "listrow",
           "label": "列表行",
@@ -2415,13 +2251,6 @@
       "localSelectors": 11,
       "localCssLines": 56,
       "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
         {
           "id": "listrow",
           "label": "列表行",
@@ -2786,15 +2615,7 @@
       "libClassHits": 25,
       "localSelectors": 12,
       "localCssLines": 41,
-      "rolled": [
-        {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        }
-      ]
+      "rolled": []
     },
     {
       "page": "store",
@@ -2928,13 +2749,6 @@
       "localCssLines": 54,
       "rolled": [
         {
-          "id": "sysmodal",
-          "label": "系统弹框",
-          "lib": "sh-sheet",
-          "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
           "id": "listrow",
           "label": "列表行",
           "lib": null,
@@ -3023,25 +2837,6 @@
       ]
     },
     {
-      "id": "sysmodal",
-      "label": "系统弹框",
-      "lib": "sh-sheet",
-      "gap": false,
-      "rule": "showModal\\(|showActionSheet\\(",
-      "pages": [
-        "coupons",
-        "customers",
-        "goods-edit",
-        "locations",
-        "marketing",
-        "member-reach",
-        "member-tags",
-        "picking",
-        "stock-report",
-        "transfer"
-      ]
-    },
-    {
       "id": "segment",
       "label": "选中态自画（含未拆出的）",
       "lib": ".sh-chip--primary",
@@ -3069,8 +2864,8 @@
   ],
   "counts": {
     "tokens": 10,
-    "blocks": 51,
-    "components": 29,
+    "blocks": 43,
+    "components": 30,
     "pages": 61,
     "gapKinds": 1
   }

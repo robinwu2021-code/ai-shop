@@ -23,7 +23,7 @@ import { CATEGORY_TYPE, MARKETS, TEMPLATE_TO_TYPE } from "@shared/utils/constant
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
 import { toMajor, toMinor } from "@shared/utils/money";
 import type { Category, CategoryType, CurrencyCode, MarketId, I18nText, GoodsParam, SpecOption, SpecTemplate, SpuStd, StoreCategory } from "@shared/types";
-import { confirm } from "@ai-shop/ui/prompt";
+import { confirm, pick } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -1052,13 +1052,9 @@ function setCoverAt(i: number) {
 }
 
 /** 点非首张的图：只给「设为主图」一件事，删除仍走格子右上角的 ✕ */
-function tapPhoto(i: number) {
+async function tapPhoto(i: number) {
   if (i <= 0) return;
-  uni.showActionSheet({
-    itemList: [String(t("goods.setCover"))],
-    success: (r) => { if (r.tapIndex === 0) setCoverAt(i); },
-    fail: () => {},
-  });
+  if ((await pick({ items: [String(t("goods.setCover"))] })) === 0) setCoverAt(i);
 }
 
 /** 详情图上限。比轮播多：长图是「参数页 / 实拍页 / 售后页」这么一张张摞上去的 */

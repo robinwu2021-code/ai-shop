@@ -14,7 +14,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { MemberSegment, ReachPlan, ReachResult } from "@shared/types";
-import { confirm } from "@ai-shop/ui/prompt";
+import { confirm, pick } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -61,15 +61,13 @@ function pickScene(s: string) {
   void recount();
 }
 
-function pickSegment() {
+async function pickSegment() {
   const items = [String(t("reach.allMembers")), ...segments.value.map((s) => s.name)];
-  uni.showActionSheet({
-    itemList: items,
-    success: (r) => {
-      segmentNo.value = r.tapIndex === 0 ? "" : segments.value[r.tapIndex - 1]?.segmentNo ?? "";
-      void recount();
-    },
-  });
+  const idx = await pick({ items, selected: segmentNo.value
+    ? segments.value.findIndex((s) => s.segmentNo === segmentNo.value) + 1 : 0 });
+  if (idx === null) return;
+  segmentNo.value = idx === 0 ? "" : segments.value[idx - 1]?.segmentNo ?? "";
+  void recount();
 }
 
 const segmentName = computed(() => {

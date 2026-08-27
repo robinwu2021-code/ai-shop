@@ -14,7 +14,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import type { MemberSegment, MerchantCoupon } from "@shared/types";
-import { confirm } from "@ai-shop/ui/prompt";
+import { confirm, pick } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -79,15 +79,11 @@ async function issue(c: MerchantCoupon) {
     uni.showToast({ title: t("coupons.noSegment"), icon: "none" });
     return;
   }
-  const pick = await new Promise<number>((resolve) => {
-    uni.showActionSheet({
-      itemList: segments.value.map((s) => `${s.name}（${s.lastCount}）`),
-      success: (r) => resolve(r.tapIndex),
-      fail: () => resolve(-1),
-    });
+  const idx = await pick({
+    items: segments.value.map((s) => `${s.name}（${s.lastCount}）`),
   });
-  if (pick < 0) return;
-  const seg = segments.value[pick]!;
+  if (idx === null) return;
+  const seg = segments.value[idx]!;
 
   const ok = await confirm({ title: String(t("coupons.issueTitle", { name: seg.name })), hint: String(t("coupons.issueBody", { n: seg.lastCount, title: c.title })) });
   if (!ok) return;

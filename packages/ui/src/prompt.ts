@@ -129,3 +129,59 @@ export function closePrompt(value: string | null): void {
   settle = null;
   done?.(value);
 }
+
+// ── 选一项 ────────────────────────────────────────────────────────────
+//
+// `uni.showActionSheet` 有 10 处，**十处的形状完全一样**：
+//
+//     const idx = await new Promise<number>((resolve) => {
+//       uni.showActionSheet({ itemList: items, success: (r) => resolve(r.tapIndex), fail: () => resolve(-1) });
+//     });
+//
+// 也就是「从一列字里选一项」。收编它与收编 showModal 是同一件事，
+// 但**代价不完全一样**：动作面板是一种交互形态（从底部升起、点外部关闭、
+// 两端各长各的样），换成我们自己的弹层会改变手感，所以十处要一起换、一起看过，
+// 不能一处一处改 —— 那会让同一个 app 里两种面板并存。
+//
+// 返回 `number | null`：取消是 `null`，不是 `-1`。
+// 与 `prompt()` 同一条理由 —— 哨兵值总有一天会被人当成合法下标。
+
+export interface PickOptions {
+  /** 标题。不给就只有列表 */
+  title?: string;
+  /** 说明。一句话说清这一列是什么 */
+  hint?: string;
+  items: string[];
+  /** 当前已选中的下标，会打上勾 */
+  selected?: number;
+}
+
+interface PickState extends PickOptions {
+  visible: boolean;
+  items: string[];
+}
+
+export const pickState = reactive<PickState>({ visible: false, title: "", items: [] });
+
+let settlePick: ((v: number | null) => void) | null = null;
+
+/** 从一列字里选一项。选中返回下标，取消返回 `null`。 */
+export function pick(opts: PickOptions): Promise<number | null> {
+  settlePick?.(null);
+  Object.assign(pickState, {
+    title: "", hint: "", selected: -1,
+    ...opts,
+    visible: true,
+  });
+  return new Promise((resolve) => {
+    settlePick = resolve;
+  });
+}
+
+/** 由 sh-pick 调用，页面不用管 */
+export function closePick(index: number | null): void {
+  pickState.visible = false;
+  const done = settlePick;
+  settlePick = null;
+  done?.(index);
+}

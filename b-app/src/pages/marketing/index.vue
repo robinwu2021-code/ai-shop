@@ -17,6 +17,7 @@ import { money, toMinor } from "@shared/utils/money";
 import { monthDay } from "@shared/utils/datetime";
 import { useMerchantStore } from "@/stores/merchant";
 import type { CampaignType, Goods, MarketingCampaign } from "@shared/types";
+import { pick } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -71,14 +72,15 @@ function storeName(storeNo?: string) {
 }
 
 /** 选门店。第一项是「全部门店」= 不限定 */
-function pickStore() {
+async function pickStore() {
   const usable = merchant.stores.filter((x) => x.status === "ACTIVE");
-  uni.showActionSheet({
-    itemList: [String(t("marketing.allStores")), ...usable.map((x) => x.name || x.storeNo)],
-    success: ({ tapIndex }) => {
-      form.value.storeNo = tapIndex === 0 ? "" : (usable[tapIndex - 1]?.storeNo ?? "");
-    },
+  const idx = await pick({
+    items: [String(t("marketing.allStores")), ...usable.map((x) => x.name || x.storeNo)],
+    selected: form.value.storeNo
+      ? usable.findIndex((x) => x.storeNo === form.value.storeNo) + 1 : 0,
   });
+  if (idx === null) return;
+  form.value.storeNo = idx === 0 ? "" : (usable[idx - 1]?.storeNo ?? "");
 }
 
 async function load() {

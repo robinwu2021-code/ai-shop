@@ -16,7 +16,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { StockLocation } from "@shared/types";
-import { prompt } from "@ai-shop/ui/prompt";
+import { pick, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -61,14 +61,8 @@ async function addWarehouse() {
 async function setSource(l: StockLocation) {
   if (l.kind !== "STORE") return;
   const items = [String(t("locations.ownStock")), ...sources.value.map((s) => s.name)];
-  const idx = await new Promise<number>((resolve) => {
-    uni.showActionSheet({
-      itemList: items,
-      success: (r) => resolve(r.tapIndex),
-      fail: () => resolve(-1),
-    });
-  });
-  if (idx < 0) return;
+  const idx = await pick({ items: items });
+  if (idx === null) return;
   try {
     await api.mLocationSetSource(l.locationId, idx === 0 ? null : sources.value[idx - 1]!.locationId);
     await load();

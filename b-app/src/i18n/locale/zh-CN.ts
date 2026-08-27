@@ -1700,6 +1700,7 @@ export default {
     disable: "停用",
     enable: "启用",
     disabled: "已停用",
+    mergeInto: "并入哪个标签",
     mergeNoTarget: "没有可以合并进去的标签",
     mergeTitle: "把「{a}」并入「{b}」",
     mergeBody: "{n} 人会改成「{b}」，其中 {m} 人两个标签都有，合并后只保留一个。合并不可撤销。",

@@ -772,17 +772,13 @@ uni-page-wrapper[style*="--window-bottom"] {
 
    ⚠️ **这一族现在只有新写的地方在用**。那 26 处存量没有一并替换 ——
    替换要改的不是类名而是**距离本身**（10→8、12→16、20→16 或 28、24→28），
-   那是三十个页面上肉眼可见的变化，得先有人拍板。见覆盖清单 §8.2。 */
-.sh-mt-xs { margin-top: 8rpx; }
-.sh-mt-sm { margin-top: 16rpx; }
+   那是三十个页面上肉眼可见的变化，得先有人拍板。见覆盖清单 §8.2。
+
+   ⚠️ **只定义真在用的那一档。** 一次把五档十个类都摆出来，清单立刻报八个
+   「定义了没人用」—— 而那正是 `.txt-hero` 那条一直挂着的毛病。
+   下一处要 sm 或 lg 的时候再加那一行，档位本身在 tokens.ts 里，不会走丢。 */
 .sh-mt-md { margin-top: 28rpx; }
-.sh-mt-lg { margin-top: 40rpx; }
-.sh-mt-xl { margin-top: 64rpx; }
-.sh-mb-xs { margin-bottom: 8rpx; }
-.sh-mb-sm { margin-bottom: 16rpx; }
 .sh-mb-md { margin-bottom: 28rpx; }
-.sh-mb-lg { margin-bottom: 40rpx; }
-.sh-mb-xl { margin-bottom: 64rpx; }
 
 /* 对话框动作键：**必须是全局类**。
    `sh-dialog` 的动作条是它自己的元素（带它的 scope id），而放进去的按钮来自插槽 ——

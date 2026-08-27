@@ -76,6 +76,7 @@ watch(() => props.titleKey, applyTitle);
          业务代码里 await，而那段代码未必知道自己所在的页面摆没摆过弹层 -->
     <sh-prompt></sh-prompt>
     <sh-confirm></sh-confirm>
+    <sh-pick></sh-pick>
     <app-overlay></app-overlay>
   </view>
 </template>

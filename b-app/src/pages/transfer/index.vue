@@ -12,7 +12,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { StockBalance, StockLocation, StockTransfer } from "@shared/types";
-import { confirm, prompt } from "@ai-shop/ui/prompt";
+import { confirm, pick, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -70,14 +70,8 @@ function nameOf(id?: string): string {
 
 async function pickEnd(which: "from" | "to") {
   const items = choosable.value;
-  const res = await new Promise<number>((resolve) => {
-    uni.showActionSheet({
-      itemList: items.map((l) => l.name),
-      success: (r) => resolve(r.tapIndex),
-      fail: () => resolve(-1),
-    });
-  });
-  if (res < 0) return;
+  const res = await pick({ items: items.map((l) => l.name) });
+  if (res === null) return;
   const id = items[res]!.locationId;
   if (which === "from") fromId.value = id;
   else toId.value = id;

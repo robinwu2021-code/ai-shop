@@ -16,7 +16,7 @@ import { useMerchantStore } from "@/stores/merchant";
 import { FEATURES } from "@shared/utils/constants";
 import { money } from "@shared/utils/money";
 import type { Member, MemberStats, MemberTag } from "@shared/types";
-import { prompt } from "@ai-shop/ui/prompt";
+import { pick, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -127,16 +127,14 @@ async function saveAsSegment() {
   }
 }
 
-function pickStore() {
+async function pickStore() {
   const stores = merchant.stores;
   const items = [String(t("members.allStores")), ...stores.map((s) => s.name || s.storeNo)];
-  uni.showActionSheet({
-    itemList: items,
-    success: (r) => {
-      storeNo.value = r.tapIndex === 0 ? "" : stores[r.tapIndex - 1]?.storeNo ?? "";
-      void load();
-    },
-  });
+  const idx = await pick({ items, selected: storeNo.value
+    ? stores.findIndex((s) => s.storeNo === storeNo.value) + 1 : 0 });
+  if (idx === null) return;
+  storeNo.value = idx === 0 ? "" : stores[idx - 1]?.storeNo ?? "";
+  void load();
 }
 
 function storeName(no: string) {

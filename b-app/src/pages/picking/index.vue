@@ -13,7 +13,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { ROUTES } from "@/shared/nav";
 import type { Order, PickingRow, PickupOrder } from "@shared/types";
-import { confirm, prompt } from "@ai-shop/ui/prompt";
+import { confirm, pick, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 
@@ -81,14 +81,8 @@ async function load() {
  */
 async function report(orderNo: string, skuNo: string, expectedQty: number) {
   const kinds = [t("picking.shortage"), t("picking.damage")] as const;
-  const res = await new Promise<number>((resolve) => {
-    uni.showActionSheet({
-      itemList: [...kinds],
-      success: (r) => resolve(r.tapIndex),
-      fail: () => resolve(-1),
-    });
-  });
-  if (res < 0) return;
+  const res = await pick({ items: [...kinds] });
+  if (res === null) return;
 
   const qtyInput = (await prompt({
     title: String(t("picking.qtyTitle", { s: kinds[res]! })),

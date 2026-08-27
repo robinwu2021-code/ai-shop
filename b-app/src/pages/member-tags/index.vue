@@ -12,7 +12,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { MemberTag } from "@shared/types";
-import { confirm, prompt } from "@ai-shop/ui/prompt";
+import { confirm, pick, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -70,15 +70,12 @@ async function merge(tg: MemberTag) {
     uni.showToast({ title: t("memberTags.mergeNoTarget"), icon: "none" });
     return;
   }
-  const pick = await new Promise<number>((resolve) => {
-    uni.showActionSheet({
-      itemList: others.map((x) => x.name),
-      success: (r) => resolve(r.tapIndex),
-      fail: () => resolve(-1),
-    });
+  const idx = await pick({
+    title: String(t("memberTags.mergeInto")),
+    items: others.map((x) => x.name),
   });
-  if (pick < 0) return;
-  const into = others[pick]!;
+  if (idx === null) return;
+  const into = others[idx]!;
 
   const preview = await api.mMergeMemberTag(tg.tagNo, { intoTagNo: into.tagNo });
   const ok = await confirm({ title: String(t("memberTags.mergeTitle", { a: tg.name, b: into.name })), hint: String(t("memberTags.mergeBody", { n: preview.affectedMembers })) });
