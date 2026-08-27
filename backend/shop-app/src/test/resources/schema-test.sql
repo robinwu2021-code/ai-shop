@@ -3662,6 +3662,87 @@ CREATE TABLE IF NOT EXISTS mch_appointment_slot
     CONSTRAINT uk_slot_no UNIQUE (slot_no)
 );
 
+CREATE TABLE IF NOT EXISTS usr_session
+(
+    id            BIGINT      NOT NULL AUTO_INCREMENT,
+    token_hash    CHAR(64)    NOT NULL,
+    user_no       VARCHAR(32) NOT NULL,
+    issued_at     DATETIME    NOT NULL,
+    expires_at    DATETIME    NOT NULL,
+    last_seen_at  DATETIME,
+    revoked_at    DATETIME,
+    revoke_reason VARCHAR(32),
+    PRIMARY KEY (id),
+    CONSTRAINT uk_usr_session_token UNIQUE (token_hash)
+);
+
+CREATE TABLE IF NOT EXISTS usr_login_log
+(
+    id         BIGINT       NOT NULL AUTO_INCREMENT,
+    at         DATETIME     NOT NULL,
+    event      VARCHAR(24)  NOT NULL,
+    user_no    VARCHAR(32),
+    success    TINYINT      NOT NULL DEFAULT 1,
+    reason     VARCHAR(64),
+    client_ip  VARCHAR(64),
+    user_agent VARCHAR(255),
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS mch_session
+(
+    id            BIGINT      NOT NULL AUTO_INCREMENT,
+    token_hash    CHAR(64)    NOT NULL,
+    user_no       VARCHAR(32) NOT NULL,
+    issued_at     DATETIME    NOT NULL,
+    expires_at    DATETIME    NOT NULL,
+    last_seen_at  DATETIME,
+    revoked_at    DATETIME,
+    revoke_reason VARCHAR(32),
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_session_token UNIQUE (token_hash)
+);
+
+CREATE TABLE IF NOT EXISTS mch_login_log
+(
+    id         BIGINT       NOT NULL AUTO_INCREMENT,
+    at         DATETIME     NOT NULL,
+    event      VARCHAR(24)  NOT NULL,
+    user_no    VARCHAR(32),
+    success    TINYINT      NOT NULL DEFAULT 1,
+    reason     VARCHAR(64),
+    client_ip  VARCHAR(64),
+    user_agent VARCHAR(255),
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS ops_session
+(
+    id            BIGINT      NOT NULL AUTO_INCREMENT,
+    token_hash    CHAR(64)    NOT NULL,
+    user_no       VARCHAR(32) NOT NULL,
+    issued_at     DATETIME    NOT NULL,
+    expires_at    DATETIME    NOT NULL,
+    last_seen_at  DATETIME,
+    revoked_at    DATETIME,
+    revoke_reason VARCHAR(32),
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ops_session_token UNIQUE (token_hash)
+);
+
+CREATE TABLE IF NOT EXISTS ops_login_log
+(
+    id         BIGINT       NOT NULL AUTO_INCREMENT,
+    at         DATETIME     NOT NULL,
+    event      VARCHAR(24)  NOT NULL,
+    user_no    VARCHAR(32),
+    success    TINYINT      NOT NULL DEFAULT 1,
+    reason     VARCHAR(64),
+    client_ip  VARCHAR(64),
+    user_agent VARCHAR(255),
+    PRIMARY KEY (id)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

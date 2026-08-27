@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>shop-auth-store</artifactId>
+    <packaging>jar</packaging>
+    <description>鉴权 · 会话与登录日志的持久层（JdbcClient 手写 SQL，三端各装配一次）</description>
+
+    <!-- ⚠️ **依赖清单是这个模块的设计的一部分。**
+
+         **不依赖 shop-base。** 它把 mybatis-plus 作为编译依赖，
+         而这个模块存在的全部意义，是让**任何**服务（含没有 MyBatis 的 shop-job）
+         都能嵌入鉴权而不必把平台持久层拖进 classpath。引了 shop-base，这一条当场作废。
+
+         **也因此不认识 Realm。** 它的职责是「为一个命名的令牌池存会话」，
+         需要的只是表名与前缀（见 SessionProfile）。realm 是上层的概念，留在 shop-base。
+         少知道一件事，就少一条耦合。
+
+         **用 JdbcClient 不用 Spring Data / MyBatis**：三张表、十几条 SQL，
+         手写比生成更短也更好读；更要紧的是没有代理 —— native 侧零反射配置。 -->
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 测试支撑打成 test-jar：使用方（shop-base 的 DbTokenStore 测试）复用同一份
+                 建库逻辑，不出现第二份 —— 复制的那份会腐烂，而腐烂的那份照样绿 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution><goals><goal>test-jar</goal></goals></execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
