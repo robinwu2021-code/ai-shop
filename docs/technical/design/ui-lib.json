@@ -334,7 +334,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 75,
+        "b-app": 73,
         "c-app": 29
       }
     },
@@ -2084,10 +2084,18 @@
         "sh-scaffold",
         "biz-store-tag"
       ],
-      "libClassHits": 55,
-      "localSelectors": 37,
-      "localCssLines": 184,
-      "rolled": []
+      "libClassHits": 53,
+      "localSelectors": 38,
+      "localCssLines": 190,
+      "rolled": [
+        {
+          "id": "fill",
+          "label": "占满剩余自写",
+          "lib": ".sh-fill",
+          "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "b-app",
@@ -3207,7 +3215,18 @@
       "rolled": []
     }
   ],
-  "gaps": [],
+  "gaps": [
+    {
+      "id": "fill",
+      "label": "占满剩余自写",
+      "lib": ".sh-fill",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
+      "pages": [
+        "b-app/home"
+      ]
+    }
+  ],
   "counts": {
     "tokens": 10,
     "blocks": 55,
