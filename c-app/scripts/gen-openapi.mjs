@@ -161,6 +161,7 @@ const RESPONSE_TYPES = {
   phoneCapable: "PhoneCapable",
   allCommunities: "Community[]",
   openRegions: "RegionOption[]",
+  regions: "RegionNode[]",
   addressList: "Address[]",
   saveAddress: "Address[]",
   removeAddress: "Address[]",
@@ -222,6 +223,17 @@ const RESPONSE_TYPES = {
   subscribeReport: "void",
   registerPushToken: "void",
   unregisterPushToken: "void",
+
+  /*
+   * 会员与门店券（P-13）。**同一个坑第二次踩**：上面那段刚记完「漏一条整份 spec
+   * 就不生成」，这两条又是加了契约没登记 —— 于是 `openapi.yaml` 从那天起
+   * 一次都没再生成过，而没有任何东西会报：这个生成器**不在
+   * check-generated-docs 的名单里**，闸门看不见它。
+   *
+   * 真正的修法是把它挂上闸门（本次一并做），光补这两行下次还会有第三次。
+   */
+  myStoreCoupons: "MyStoreCoupon[]",
+  myMemberships: "MyMembership[]",
 };
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */

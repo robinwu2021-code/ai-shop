@@ -351,6 +351,8 @@
 | `subtitle` | `string` | 是 | 副标题/卖点一句话 |
 | `cover` | `string` | 是 | 封面图 URL。列表页用这一张 |
 | `images` | `string`\[\] | 是 | 详情轮播图 URL 列表 |
+| `detailImages` | `string`\[\] | 否 | 图文详情区的长图，按顺序全宽竖排。 **与 `images` 分开**：轮播是详情页顶部的方图、可左右滑；这些是正文下方的长图、 竖着一张接一张。合成一个数组之后端上只能靠宽高比猜哪几张该轮播 —— 猜错就是 一张 1:3 的长图被塞进方形轮播里。 |
+| `params` | [`GoodsParam`](#goodsparam)\[\] | 否 | **商品参数**（产地 / 保质期 / 材质…）—— 规格库里 `usage_type=PROP` 的那批。 <p>与 `specGroups` 形状相近、语义相反：那个的每一项都会进笛卡尔积生成 SKU， 这个一项也不进。买家不用挑，只是看；筛选靠 `code` / `valueNo`。 |
 | `type` | [`CategoryType`](#categorytype) | 是 | 商品形态，与所属类目的 type 一致。决定详情页用哪套字段 |
 | `categoryNo` | `string` | 是 | 所属类目 |
 | `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 所属商家 —— 商品与服务都要展示商家信息 |
@@ -368,7 +370,7 @@
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
-| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
+| `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
 | `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
@@ -1248,6 +1250,32 @@
 类型：`number`
 
 
+### my-coupons
+
+#### GET `/mp/my-coupons`
+
+商家发给我的券（含到店码）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MyStoreCoupon`](#mystorecoupon)\[\]
+
+
+### my-memberships
+
+#### GET `/mp/my-memberships`
+
+我是哪几家店的会员　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MyMembership`](#mymembership)\[\]
+
+
 ### order
 
 #### POST `/mp/order`
@@ -1269,6 +1297,8 @@
 | `remark` | `string` | 否 | 买家留言 |
 | `groupNo` | `string` | 否 | 参团下单时传团单号。**后端 CreateOrderReq 目前不认这个字段**，接上去会静默变成普通单 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
+| `payMode` | `string` | 否 | 支付方式（`PAY_MODE`）。**不传按 ONLINE** —— 存量端上没有这个字段， 不能因为补了它就让老版本下不了单。 能不能选 OFFLINE 由 `orderCapability` 的 `usablePayModes` 说了算， 而后端在 create 里会**再判一次**：端上不该是唯一的闸。 |
+| `appointmentSlotNo` | `string` | 否 | APPOINTMENT：选定的**预约时段**。这家店开了时段就必填 —— 没开则忽略，走 `appointmentAt` 那条旧路（兼容期）。 |
 | `idempotencyKey` | `string` | 是 | 幂等 key，防重复提交 |
 
 `items[]` 的字段：
@@ -1558,6 +1588,7 @@
 | `usablePayMethods` | `string`\[\] \| `null` | 是 | 整单可用的支付方式 = <b>各商家支持集合的交集</b>。 交集而非并集：一笔支付覆盖整单，有一家不支持就用不了。 <b>空数组 = 这一车货没有任何方式能付</b>，端上要拦在结算页 —— 让他点下去只会得到一个说不清原因的「支付失败」。 <b>null = 未配置</b>（一个商家都还没进件完）——端上<b>不要拦</b>。 两者混成空数组的话，一个完全正常的订单会被拦死。 |
 | `anyNotInvoiceCapable` | `boolean` | 是 | 车里有商家开不了票。**必须在付款前告诉用户**：买完才发现，平台补救不了 |
 | `merchants` | [`MerchantCapability`](#merchantcapability)\[\] | 是 | 逐商家的能力，端上据此在对应的商家分组上打标 |
+| `usablePayModes` | `string`\[\] | 是 | 整单可用的**支付方式**（`PAY_MODE`：ONLINE / OFFLINE）。 ⚠️ **与 `usablePayMethods` 是两根轴，别混**：那个是**通道** （WECHAT / ALIPAY / H5…），这个是**线上付还是当面付**。 一笔订单要同时确定两者。 同样取交集（一笔支付覆盖整单）。**ONLINE 永远在里面**， 所以不会是空集，也就不需要 `null` 那一档 —— 与 `usablePayMethods` 的取舍不同，因为那边真的可能「没配过」。 |
 
 
 #### POST `/mp/order/preview`
@@ -1650,6 +1681,19 @@
 **出参**（`data`）
 
 类型：`any`
+
+
+### regions
+
+#### GET `/mp/regions`
+
+行政区划（省市区三级，地址簿用）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`RegionNode`](#regionnode)\[\]
 
 
 ### review
@@ -1764,6 +1808,7 @@
 | `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 平台建档的商家主数据（名称/资质/评分），店主改不了 |
 | `store` | [`StoreFront`](#storefront) | 是 | 店主自己维护的门面内容 |
 | `goods` | [`Goods`](#goods)\[\] | 是 | 在售商品。首屏展示，分页靠单独的商品列表接口 |
+| `categories` | [`StoreShelf`](#storeshelf)\[\] | 是 | 本店货架：**店主自己排的顺序、自己改的名字**（「本地时鲜」而不是「蔬菜」）。 只含真的有在售商品的类目 —— 摆着却一件货都没有的类目，点进去空手而归。 少于两条时端上不画这一行：一个恒真的筛选开关只是占地方。 |
 | `favorited` | `boolean` | 是 | 我是否收藏了这家店 |
 | `closed` | `boolean` | 否 | 已停业（门店非 ACTIVE：商家自助停用或平台强制下线）。 **是标志而不是 404**：扫码进来的老客要知道「店关了」，不是「链接坏了」。 端上据此盖「已停业」并禁掉加购。 ⚠️ 后端 `StoreHomeVO` 一直在发这个字段，这里此前没声明 —— 于是**扫码进一家已停业的店，看起来与正常营业毫无区别**， 加购、下单一路走到底，最后在库存或下单闸门上撞一个说不清的错误。 |
 
@@ -1835,10 +1880,15 @@
 | `addressId` | `string` | 否 | 有值 = 编辑，无值 = 新增 |
 | `name` | `string` | 是 | 收货人姓名 |
 | `phone` | `string` | 是 | 收货人手机号 |
-| `region` | `string` | 是 | 省市区 |
+| `region` | `string` | 是 | 省市区，拼好给人看的一串 |
+| `province` | `string,null` | 否 | 省 / 市 / 区县，分开的三个。后端 `SaveAddressReq` 一直收这三个字段， 端上一直没发 —— 于是 `usr_address` 那三列永远是 null（见 `Address` 的注释） |
+| `city` | `string,null` | 否 | — |
+| `district` | `string,null` | 否 | — |
 | `detail` | `string` | 是 | 详细地址（街道门牌） |
 | `isDefault` | `boolean` | 是 | 设为默认。置 true 会把原默认地址改为 false |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
+| `latE6` | `number,null` | 否 | 地图选点给的坐标（gcj02，E6）；不传 = 不改 |
+| `lngE6` | `number,null` | 否 | — |
 
 **出参**（`data`）
 
@@ -2064,10 +2114,15 @@
 | `addressId` | `string` | 是 | 地址 ID。这里是 `Id` 不是 `No` —— 它不是业务单号，是用户地址簿里的一条本地记录， 不跨端流转、不出现在订单快照里（下单时地址是**整体快照**进订单的） |
 | `name` | `string` | 是 | 收货人姓名 |
 | `phone` | `string` | 是 | 收货人手机号 |
-| `region` | `string` | 是 | 省市区 |
+| `region` | `string` | 是 | 省市区，拼好给人看的一串 |
+| `province` | `string,null` | 否 | 省 / 市 / 区县，**分开的三个**。 与 `region` 并存不是冗余：`region` 是展示用的一串（存量地址、地图回填都只有它）， 这三列是**能拿来算的**那份 —— 按省算运费、按区派单、按市校经营范围。 后端 `usr_address` 一直有这三列，端上一直没填，于是那些规则全在 null 上求值， 一条都不命中，而页面上完全正常。 可能为空：存量地址是纯手填的，拆不出来。 |
+| `city` | `string,null` | 否 | — |
+| `district` | `string,null` | 否 | — |
 | `detail` | `string` | 是 | 详细地址（街道门牌） |
 | `isDefault` | `boolean` | 是 | 是否默认地址。整个地址簿至多一条为 true |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
+| `latE6` | `number,null` | 否 | 收货点坐标（gcj02，E6）。地图选点回填；**可能为空** —— 存量地址是纯手填的。 商家的「自送半径」要拿它跟门店坐标算距离，没有坐标那条规则就永远算不出结果。 |
+| `lngE6` | `number,null` | 否 | — |
 
 ### AfterSale
 
@@ -2143,9 +2198,9 @@
 - `REFUND_ONLY`
 - `RETURN_REFUND`
 
-### AppointmentSlot
+### AppointmentDaySlots
 
-预约可选时段（SERVICE + APPOINTMENT）
+预约时段的**按天展示分组**（SERVICE + APPOINTMENT）。 ⚠️ <b>与  {@link  AppointmentSlot }  不是一回事</b>，别混：   · 这个是「一天 × 若干时间点」的**展示结构**，给选择器分组用   · 那个是排期的**一行**（有 slotNo，下单占的就是它） 它此前就叫 AppointmentSlot，而唯一的使用处是 `GoodsVO.slots?` —— 一个注释里明写着「后端从不下发」的幽灵字段。真排期落地时把名字让了出来。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
@@ -2244,6 +2299,7 @@
 | `usablePayMethods` | `string`\[\] \| `null` | 是 | 整单可用的支付方式 = <b>各商家支持集合的交集</b>。 交集而非并集：一笔支付覆盖整单，有一家不支持就用不了。 <b>空数组 = 这一车货没有任何方式能付</b>，端上要拦在结算页 —— 让他点下去只会得到一个说不清原因的「支付失败」。 <b>null = 未配置</b>（一个商家都还没进件完）——端上<b>不要拦</b>。 两者混成空数组的话，一个完全正常的订单会被拦死。 |
 | `anyNotInvoiceCapable` | `boolean` | 是 | 车里有商家开不了票。**必须在付款前告诉用户**：买完才发现，平台补救不了 |
 | `merchants` | [`MerchantCapability`](#merchantcapability)\[\] | 是 | 逐商家的能力，端上据此在对应的商家分组上打标 |
+| `usablePayModes` | `string`\[\] | 是 | 整单可用的**支付方式**（`PAY_MODE`：ONLINE / OFFLINE）。 ⚠️ **与 `usablePayMethods` 是两根轴，别混**：那个是**通道** （WECHAT / ALIPAY / H5…），这个是**线上付还是当面付**。 一笔订单要同时确定两者。 同样取交集（一笔支付覆盖整单）。**ONLINE 永远在里面**， 所以不会是空集，也就不需要 `null` 那一档 —— 与 `usablePayMethods` 的取舍不同，因为那边真的可能「没配过」。 |
 
 ### ChooseQuoteReq
 
@@ -2263,6 +2319,11 @@
 | `kind` | `string` | 否 | ESTATE 小区 / VILLAGE 村。只是展示标签，不参与匹配 |
 | `distance` | `number` | 是 | 米 |
 | `pickups` | [`Pickup`](#pickup)\[\] | 是 | 本社区可用的自提点 |
+| `originCode` | `string,null` | 否 | 官方村码，只有 `kind=VILLAGE` 且经官方名录开通的才有。**`regionCode` 是它挂的 街道/镇，不是它自己** —— 经营范围选择器再往下钻一层要用这个码，不能用 regionCode， 否则「牛杜村」会被当成「牛杜镇」去下钻。 |
+| `originName` | `string,null` | 否 | `originCode` 对应的原始官方名（「景滑村委会」，未清理）——仅供展示/追溯， 判「是不是村委会」不要解析它，用下面的 `rural` 字段（服务端存的，不是端上猜的）。 |
+| `rural` | `boolean` | 否 | 是不是村委会（`sys_region.rural`，经 origin_code 反查）。只对 kind=VILLAGE 有意义： 村委会到此为止、不再下钻；居委会/社区还能再挑具体小区。 |
+| `latE6` | `number,null` | 否 | 官方村名录批量补录过的坐标，可能为空 |
+| `lngE6` | `number,null` | 否 | — |
 
 ### Coupon
 
@@ -2343,6 +2404,8 @@
 | `remark` | `string` | 否 | 买家留言 |
 | `groupNo` | `string` | 否 | 参团下单时传团单号。**后端 CreateOrderReq 目前不认这个字段**，接上去会静默变成普通单 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
+| `payMode` | `string` | 否 | 支付方式（`PAY_MODE`）。**不传按 ONLINE** —— 存量端上没有这个字段， 不能因为补了它就让老版本下不了单。 能不能选 OFFLINE 由 `orderCapability` 的 `usablePayModes` 说了算， 而后端在 create 里会**再判一次**：端上不该是唯一的闸。 |
+| `appointmentSlotNo` | `string` | 否 | APPOINTMENT：选定的**预约时段**。这家店开了时段就必填 —— 没开则忽略，走 `appointmentAt` 那条旧路（兼容期）。 |
 | `idempotencyKey` | `string` | 是 | 幂等 key，防重复提交 |
 
 `items[]` 的字段：
@@ -2420,6 +2483,8 @@
 | `subtitle` | `string` | 是 | 副标题/卖点一句话 |
 | `cover` | `string` | 是 | 封面图 URL。列表页用这一张 |
 | `images` | `string`\[\] | 是 | 详情轮播图 URL 列表 |
+| `detailImages` | `string`\[\] | 否 | 图文详情区的长图，按顺序全宽竖排。 **与 `images` 分开**：轮播是详情页顶部的方图、可左右滑；这些是正文下方的长图、 竖着一张接一张。合成一个数组之后端上只能靠宽高比猜哪几张该轮播 —— 猜错就是 一张 1:3 的长图被塞进方形轮播里。 |
+| `params` | [`GoodsParam`](#goodsparam)\[\] | 否 | **商品参数**（产地 / 保质期 / 材质…）—— 规格库里 `usage_type=PROP` 的那批。 <p>与 `specGroups` 形状相近、语义相反：那个的每一项都会进笛卡尔积生成 SKU， 这个一项也不进。买家不用挑，只是看；筛选靠 `code` / `valueNo`。 |
 | `type` | [`CategoryType`](#categorytype) | 是 | 商品形态，与所属类目的 type 一致。决定详情页用哪套字段 |
 | `categoryNo` | `string` | 是 | 所属类目 |
 | `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 所属商家 —— 商品与服务都要展示商家信息 |
@@ -2437,7 +2502,7 @@
 | `origin` | `string` | 否 | FRESH：产地 |
 | `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
 | `storeName` | `string` | 否 | SERVICE：可核销门店 |
-| `slots` | [`AppointmentSlot`](#appointmentslot)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
+| `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
 | `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
@@ -2458,6 +2523,18 @@
 |---|---|:---:|---|
 | `minCount` | `number` | 是 | — |
 | `price` | `number` | 是 | — |
+
+### GoodsParam
+
+一条商品参数。 <p>`valueNo` 是平台值池里的编号，**有它才参与筛选与跨店比较**； 量纲型（功率、净重）平台不枚举值，那时只有 `label`。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `dimNo` | `string` | 是 | 所属规格维度（`usage_type=PROP`） |
+| `name` | `string` | 否 | 维度名（「产地」「保质期」）。**买家页要显示它** —— 只有 dimNo 的话详情页上是一行 `SD_ORIGIN: 本地`。 <p>存在商品身上而不是每次去规格库查：它是**下单那一刻的快照**， 与规格组同一口径 —— 商家事后把本店叫法改了，已卖出的商品不该跟着变。 |
+| `valueNo` | `string` | 否 | 平台值编号。量纲型没有 |
+| `code` | `string` | 否 | 平台值编码，跨店可比 |
+| `label` | `string` | 是 | 展示文案 |
 
 ### GoodsStatus
 
@@ -2821,6 +2898,41 @@
 - `MARKETING`
 - `SYSTEM`
 
+### MyMembership
+
+「我是这家店的会员」（C 端，P7）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 是 | — |
+| `entityName` | `string` | 是 | — |
+| `level` | `string,null` | 否 | — |
+| `orderCount` | `number` | 是 | — |
+| `totalSpentMinor` | `number` | 是 | — |
+| `reachOptOut` | `boolean` | 是 | 我关掉了这家店的消息没有。**只有本人能改** |
+| `joinedAt` | `number` | 是 | — |
+
+### MyStoreCoupon
+
+买家券包里<b>商家发的那一张</b>（新模型，P6）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `userCouponNo` | `string` | 是 | — |
+| `couponNo` | `string` | 是 | — |
+| `title` | `string` | 是 | — |
+| `benefitText` | `string` | 是 | 「减 3 元」「8.5 折」「凭券兑换」这种人话，后端拼好 |
+| `entityNo` | `string,null` | 否 | — |
+| `redeemMode` | `string` | 是 | `ORDER` 下单抵扣 / `STORE_CODE` 到店出示 |
+| `redeemCode` | `string,null` | 否 | 到店出示的码。**只有 STORE_CODE 券有** —— 别给下单券显示码 |
+| `minAmountMinor` | `number,null` | 否 | — |
+| `timesTotal` | `number` | 是 | — |
+| `timesUsed` | `number` | 是 | — |
+| `remaining` | `number` | 是 | 次卡还剩几次 |
+| `expireAt` | `number` | 是 | — |
+| `status` | `string` | 是 | — |
+| `usableNow` | `boolean` | 是 | — |
+
 ### Order
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -2906,11 +3018,10 @@
 
 ### OrderStatus
 
-订单状态。**这是后端真实下发的取值**，不是端上想象的流程。 ⚠️ 曾经这里还有一个 `PREPARING`（备货中）—— 那是 mock 里多出来的一步， 后端从付款直接到 `PAID`（待发货），没有独立的备货态。 端上按一个后端永远不会给的值去筛，筛出来的就是空列表，而且不报错。 ⚠️ 也曾有一个 `REFUNDING` —— 那是**售后单**的状态（ {@link  AfterSaleStatus } ）， 不是订单的。订单只会到 `REFUNDED`。这个混淆的代价是两端的「售后」页签： 它们按 `order.status === "REFUNDING"` 筛，而后端从不下发， **b 端「售后中」页签与工作台售后待办数因此恒为空 / 恒为 0**。 一个订单可以「已完成」的同时挂着一张处理中的售后单 —— 两者并存， 做成互斥的状态就必须二选一，而那是表达不了的。售后要从 `/mp/after-sale` 与 `/biz/after-sale` 单独查。
-
 枚举取值：
 
 - `WAIT_PAY`
+- `WAIT_OFFLINE_PAY`
 - `PAID`
 - `FULFILLING`
 - `COMPLETED`
@@ -2946,6 +3057,8 @@
 | `hostAvatar` | `string` | 是 | 承接商家的头像/门头图 |
 | `openHours` | `string` | 是 | 营业时间文案，如 `08:00-21:00`。展示用，不参与计算 |
 | `arrivalDesc` | `string` | 是 | 到货时间说明，如「次日 18:00 后到」。影响用户选不选这个点 |
+| `latE6` | `number,null` | 否 | 取货点坐标（gcj02，E6）。**可能为空** —— 存量点是手填地址建的。 买家要拿着它导航过去，没有就只能显示地址文本。 |
+| `lngE6` | `number,null` | 否 | — |
 
 ### PickupFeeMode
 
@@ -3118,6 +3231,18 @@
 
 类型：`object`
 
+### RegionNode
+
+行政区划树上的一个节点（`/mp/regions`）。 与  {@link  RegionOption }  是**两个问题的答案**，不要混用： `RegionOption` 答的是「我能在哪儿取货」（只列有已开通社区的区）， 这个答的是「我家在哪儿」—— 没开通的区也要能选出来，人确实住在那儿。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `regionCode` | `string` | 是 | 国标码：省 2 位 / 市 4 位 / 区县 6 位 |
+| `parentCode` | `string,null` | 否 | 上级码。省级为 null |
+| `level` | `string` | 是 | `PROVINCE` \| `CITY` \| `DISTRICT`。地址簿只到区县，街道与村不下发 |
+| `name` | `string` | 是 | — |
+| `hasChild` | `boolean` | 是 | 还有没有下一级。**区县恒为 false** —— 地址表只有省市区三列， 让人点进街道再挑一个存不下去的东西，比不让他挑更糟。 |
+
 ### RegionOption
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -3196,10 +3321,15 @@
 | `addressId` | `string` | 否 | 有值 = 编辑，无值 = 新增 |
 | `name` | `string` | 是 | 收货人姓名 |
 | `phone` | `string` | 是 | 收货人手机号 |
-| `region` | `string` | 是 | 省市区 |
+| `region` | `string` | 是 | 省市区，拼好给人看的一串 |
+| `province` | `string,null` | 否 | 省 / 市 / 区县，分开的三个。后端 `SaveAddressReq` 一直收这三个字段， 端上一直没发 —— 于是 `usr_address` 那三列永远是 null（见 `Address` 的注释） |
+| `city` | `string,null` | 否 | — |
+| `district` | `string,null` | 否 | — |
 | `detail` | `string` | 是 | 详细地址（街道门牌） |
 | `isDefault` | `boolean` | 是 | 设为默认。置 true 会把原默认地址改为 false |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
+| `latE6` | `number,null` | 否 | 地图选点给的坐标（gcj02，E6）；不传 = 不改 |
+| `lngE6` | `number,null` | 否 | — |
 
 ### ServiceScope
 
@@ -3229,6 +3359,10 @@
 | `originPrice` | `number` | 否 | 划线价（最小货币单位）。为空表示不展示划线价 |
 | `stock` | `number` | 是 | 可售库存。下单时服务端二次校验，端上这个值只用于展示与预校验 |
 | `nominalGram` | `number` | 否 | FRESH 且按重计价：标称重量（克） |
+| `costPrice` | `number` | 否 | 成本价（最小货币单位）。**只有商家侧 `/biz/goods/{no}` 下发，C 端恒空。** 进货价是商家的经营秘密，出现在买家端的响应里就等于公开了。 它不参与任何计价，只用来在编辑页实时算毛利。 |
+| `barcode` | `string` | 否 | 商品条码 EAN-13 / UPC（V252）。**只在商家侧下发** —— 它是商家与供应商/ERP 之间的键，对买家没有用处，而条码还能反查到进货渠道。 |
+| `merchantSkuCode` | `string` | 否 | 商家自有货号。他 ERP 里的主键，同样只在商家侧下发 |
+| `saleUnit` | `string` | 否 | 计量单位（件 / 斤 / kg / 份）。**买家侧也要** —— 「5」到底是 5 件还是 5 斤，买家同样需要知道才判断得了贵不贵。 |
 | `priceByMarket` | [`Record_string_number`](#record_string_number) | 否 | 各市场价（市场码 → 最小货币单位）。**只有商家侧 `/biz/goods/{no}` 下发，C 端恒空。** <p>编辑页按市场逐格填，而保存是**整份覆盖** —— 拿不到整张表就只能回填当前 那一格，于是改一次标题，其余市场的价格行就被删了，且不报错： 那两个市场的买家从此看不到这件商品。与 `titleI18n` 是同一个形状的故障。 |
 | `storePrice` | `number` | 否 | 本店单独定的价（最小货币单位）。**只在 B 端下发，空 = 同主体价**，不是 0。 <p>与门店库存回退方向相反：没设过价的店按主体价卖，没设过库存的店按 0 卖 —— 价格视为 0 就是白送。 |
 
@@ -3248,8 +3382,11 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `announcement` | `string` | 是 | 店铺公告：「今日到货」「今天有土鸡蛋」，店主自发（C-ST-04） |
+| `announcementAt` | `number,null` | 否 | 公告最后一次发布的时刻（epoch 毫秒）。没发过、或已过期时为空。 **这一行必须带时间**：一句没有时间的「今天到了新米」，既可能是今早写的， 也可能是上个月忘了撤的 —— 老客分不出来就不会再照着它跑一趟， 而「照着公告来一趟」正是这行字存在的全部理由。 |
 | `openHours` | `string` | 是 | 营业时间文案，店主自填 |
 | `address` | `string` | 是 | 店铺地址，店主自填 |
+| `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。**可能为空** —— 商家没在地图上标过点。 买家侧据此决定「导航到这里」显不显示：没坐标的导航按钮点了只会打开一片空白。 |
+| `lngE6` | `number,null` | 否 | — |
 
 ### StoreHome
 
@@ -3258,8 +3395,19 @@
 | `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 平台建档的商家主数据（名称/资质/评分），店主改不了 |
 | `store` | [`StoreFront`](#storefront) | 是 | 店主自己维护的门面内容 |
 | `goods` | [`Goods`](#goods)\[\] | 是 | 在售商品。首屏展示，分页靠单独的商品列表接口 |
+| `categories` | [`StoreShelf`](#storeshelf)\[\] | 是 | 本店货架：**店主自己排的顺序、自己改的名字**（「本地时鲜」而不是「蔬菜」）。 只含真的有在售商品的类目 —— 摆着却一件货都没有的类目，点进去空手而归。 少于两条时端上不画这一行：一个恒真的筛选开关只是占地方。 |
 | `favorited` | `boolean` | 是 | 我是否收藏了这家店 |
 | `closed` | `boolean` | 否 | 已停业（门店非 ACTIVE：商家自助停用或平台强制下线）。 **是标志而不是 404**：扫码进来的老客要知道「店关了」，不是「链接坏了」。 端上据此盖「已停业」并禁掉加购。 ⚠️ 后端 `StoreHomeVO` 一直在发这个字段，这里此前没声明 —— 于是**扫码进一家已停业的店，看起来与正常营业毫无区别**， 加购、下单一路走到底，最后在库存或下单闸门上撞一个说不清的错误。 |
+
+### StoreShelf
+
+店铺页上的一类。`count` 直接显示，省得买家点进去数
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `categoryNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `count` | `number` | 是 | — |
 
 ### TrafficSource
 

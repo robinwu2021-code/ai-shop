@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 460 个接口**：后端已实现 392（85%）· 前端在调 441
+**合计 463 个接口**：后端已实现 395（85%）· 前端在调 444
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **79** 个接口 ｜ 后端已实现 **78**（99%）｜ 前端在调 **79**
+共 **82** 个接口 ｜ 后端已实现 **81**（99%）｜ 前端在调 **82**
 
 ### after-sale（4）
 
@@ -23,7 +23,7 @@
 | GET | `/mp/after-sale` | 我的售后单 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/mp/after-sale/{afterSaleNo}/escalate` | 上升平台裁决 | — | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/mp/after-sale/{afterSaleNo}/ship` | 填退货运单号 | — | `Order` | 🔒 | ✅ | ✅ |
-| GET | `/mp/after-sale/reasons` | 售后原因清单 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/mp/after-sale/reasons` | 售后原因清单 | — | `数组` | — | ✅ | ✅ |
 
 ### card（1）
 
@@ -44,32 +44,32 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/mp/community` | 全部已开通社区（附近为空时的出路） | — | `数组` | 🔒 | ✅ | ✅ |
-| GET | `/mp/community/nearby` | 附近社区与自提点 | — | `数组` | 🔒 | ✅ | ✅ |
-| GET | `/mp/community/regions` | 有已开通社区的区域清单 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/mp/community` | 全部已开通社区（附近为空时的出路） | — | `数组` | — | ✅ | ✅ |
+| GET | `/mp/community/nearby` | 附近社区与自提点 | — | `数组` | — | ✅ | ✅ |
+| GET | `/mp/community/regions` | 有已开通社区的区域清单 | — | `数组` | — | ✅ | ✅ |
 
 ### coupon（2）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/mp/coupon` | 优惠券列表 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/mp/coupon` | 优惠券列表 | — | `数组` | — | ✅ | ✅ |
 | POST | `/mp/coupon/{couponNo}/receive` | 领取优惠券 | — | `Coupon` | 🔒 | ✅ | ✅ |
 
 ### goods（3）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/mp/goods` | 商品列表 | — | `object` | 🔒 | ✅ | ✅ |
-| GET | `/mp/goods/{goodsNo}` | 商品详情 | — | `Goods` | 🔒 | ✅ | ✅ |
-| GET | `/mp/goods/promoted` | 推荐商品（运营位） | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/mp/goods` | 商品列表 | — | `object` | — | ✅ | ✅ |
+| GET | `/mp/goods/{goodsNo}` | 商品详情 | — | `Goods` | — | ✅ | ✅ |
+| GET | `/mp/goods/promoted` | 推荐商品（运营位） | — | `数组` | — | ✅ | ✅ |
 
 ### group-buy（8）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/mp/group-buy` | 商家团列表 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/mp/group-buy` | 商家团列表 | — | `数组` | — | ✅ | ✅ |
 | POST | `/mp/group-buy` | 发起商家团 | `CreateGroupBuyReq` | `GroupBuy` | 🔒 | ✅ | ✅ |
-| GET | `/mp/group-buy/{groupNo}` | 商家团详情 | — | `GroupBuy` | 🔒 | ✅ | ✅ |
+| GET | `/mp/group-buy/{groupNo}` | 商家团详情 | — | `GroupBuy` | — | ✅ | ✅ |
 | POST | `/mp/group-buy/{groupNo}/join` | 参团 | `JoinGroupBuyReq` | `GroupBuy` | 🔒 | ✅ | ✅ |
 | GET | `/mp/group-buy/{groupNo}/orders` | 本团待取订单 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/mp/group-buy/{groupNo}/receive` | 批次签收 | — | `数组` | 🔒 | ✅ | ✅ |
@@ -80,9 +80,9 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/mp/group-request` | 求团列表 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/mp/group-request` | 求团列表 | — | `数组` | — | ✅ | ✅ |
 | POST | `/mp/group-request` | 发起求团 | `CreateRequestReq` | `GroupRequest` | 🔒 | ✅ | ✅ |
-| GET | `/mp/group-request/{requestNo}` | 求团详情 | — | `GroupRequest` | 🔒 | ✅ | ✅ |
+| GET | `/mp/group-request/{requestNo}` | 求团详情 | — | `GroupRequest` | — | ✅ | ✅ |
 | POST | `/mp/group-request/{requestNo}/choose` | 发起人选定报价（锁价） | `ChooseQuoteReq` | `GroupRequest` | 🔒 | ✅ | ✅ |
 | POST | `/mp/group-request/{requestNo}/confirm` | 二次确认下单 | — | `GroupRequest` | 🔒 | ✅ | ✅ |
 | POST | `/mp/group-request/{requestNo}/interest` | +1 / 取消（意向，非订单） | — | `GroupRequest` | 🔒 | ✅ | ✅ |
@@ -99,11 +99,11 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/mp/merchant` | 商家列表/搜索 | — | `数组` | 🔒 | ✅ | ✅ |
-| GET | `/mp/merchant/{merchantNo}` | 商家详情 | — | `Merchant` | 🔒 | ✅ | ✅ |
+| GET | `/mp/merchant` | 商家列表/搜索 | — | `数组` | — | ✅ | ✅ |
+| GET | `/mp/merchant/{merchantNo}` | 商家详情 | — | `Merchant` | — | ✅ | ✅ |
 | POST | `/mp/merchant/apply` | 商家入驻申请 | `MerchantApplyReq` | `MerchantApplyStatus` | 🔒 | ✅ | ✅ |
 | GET | `/mp/merchant/apply` | 我的入驻申请状态 | — | `MerchantApplyStatus` | 🔒 | ✅ | ✅ |
-| GET | `/mp/merchant/promoted` | 推荐门店（运营位） | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/mp/merchant/promoted` | 推荐门店（运营位） | — | `数组` | — | ✅ | ✅ |
 | GET | `/mp/merchant/visited` | 我买过的商家 | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### message（5）
@@ -115,6 +115,18 @@
 | POST | `/mp/message/read-all` | 全部已读 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/mp/message/subscribe` | 订阅消息授权上报（同意与拒绝都报：后端记额度 + 防反复弹窗） | — | — | 🔒 | ✅ | ✅ |
 | GET | `/mp/message/unread-count` | 未读数（角标用，只给一个数） | — | `number` | 🔒 | ✅ | ✅ |
+
+### my-coupons（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/mp/my-coupons` | 商家发给我的券（含到店码） | — | `数组` | 🔒 | ✅ | ✅ |
+
+### my-memberships（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/mp/my-memberships` | 我是哪几家店的会员 | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### order（9）
 
@@ -145,11 +157,17 @@
 | POST | `/mp/push-token` | 绑定 App 推送设备（登录后） | — | — | 🔒 | ✅ | ✅ |
 | POST | `/mp/push-token/unregister` | 解绑推送设备（登出前，共用设备换人必须解） | — | — | 🔒 | ✅ | ✅ |
 
+### regions（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/mp/regions` | 行政区划（省市区三级，地址簿用） | — | `数组` | — | ✅ | ✅ |
+
 ### review（3）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/mp/review` | 评价列表 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/mp/review` | 评价列表 | — | `数组` | — | ✅ | ✅ |
 | POST | `/mp/review` | 发表评价 | `CreateReviewReq` | `Review` | 🔒 | ✅ | ✅ |
 | POST | `/mp/review/{reviewNo}/like` | 点赞/取消 | — | `Review` | 🔒 | ✅ | ✅ |
 
@@ -157,7 +175,7 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/mp/store/{merchantNo}` | 门店主页 | — | `StoreHome` | 🔒 | ✅ | ✅ |
+| GET | `/mp/store/{merchantNo}` | 门店主页 | — | `StoreHome` | — | ✅ | ✅ |
 | POST | `/mp/store/{merchantNo}/favorite` | 收藏本店 | — | `object` | 🔒 | ✅ | ✅ |
 | GET | `/mp/store/{merchantNo}/frequent` | 常买清单 | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/mp/store/mine` | 我的常去店 | — | `数组` | 🔒 | ✅ | ✅ |
@@ -172,11 +190,11 @@
 | POST | `/mp/user/address/{addressId}/default` | 设为默认地址 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/mp/user/community` | 绑定社区自提点 | `BindCommunityReq` | `User` | 🔒 | ✅ | ✅ |
 | POST | `/mp/user/deregister` | 注销账号（匿名化 + 解绑凭证，交易记录留存） | — | — | 🔒 | ✅ | ✅ |
-| POST | `/mp/user/login` | 登录建户 | `LoginReqBody` | `LoginResp` | 🔒 | ✅ | ✅ |
+| POST | `/mp/user/login` | 登录建户 | `LoginReqBody` | `LoginResp` | — | ✅ | ✅ |
 | POST | `/mp/user/logout` | 登出（作废服务端会话） | — | — | 🔒 | ✅ | ✅ |
-| POST | `/mp/user/otp/send` | 发送验证码 | — | — | 🔒 | ✅ | ✅ |
+| POST | `/mp/user/otp/send` | 发送验证码 | — | — | — | ✅ | ✅ |
 | POST | `/mp/user/phone/bind` | 绑定手机号（验证码） | `BindPhoneReq` | `User` | 🔒 | ✅ | ✅ |
-| GET | `/mp/user/phone/capable` | 一键授权当前可不可用（游客可读） | — | `PhoneCapable` | 🔒 | ✅ | ✅ |
+| GET | `/mp/user/phone/capable` | 一键授权当前可不可用（游客可读） | — | `PhoneCapable` | — | ✅ | ✅ |
 | POST | `/mp/user/phone/wx` | 微信一键授权绑定手机号 | `WxPhoneReq` | `User` | 🔒 | ✅ | ✅ |
 | GET | `/mp/user/profile` | 我的资料 | — | `User` | 🔒 | ✅ | ✅ |
 
@@ -197,11 +215,11 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| POST | `/biz/auth/login` | 商家登录 | `MerchantLoginReqBody` | `MerchantLoginResp` | 🔒 | ✅ | ✅ |
-| POST | `/biz/auth/otp/send` | 发送验证码 | — | — | 🔒 | ✅ | ✅ |
+| POST | `/biz/auth/login` | 商家登录 | `MerchantLoginReqBody` | `MerchantLoginResp` | — | ✅ | ✅ |
+| POST | `/biz/auth/otp/send` | 发送验证码 | — | — | — | ✅ | ✅ |
 | POST | `/biz/auth/password` | 设置登录密码 | — | — | 🔒 | ✅ | ✅ |
 | GET | `/biz/auth/password` | 是否已设密码 | — | `HasPasswordResp` | 🔒 | ✅ | ✅ |
-| POST | `/biz/auth/staff-login` | 员工登录 | `StaffLoginReq` | `MerchantLoginResp` | 🔒 | ✅ | ✅ |
+| POST | `/biz/auth/staff-login` | 员工登录 | `StaffLoginReq` | `MerchantLoginResp` | — | ✅ | ✅ |
 
 ### campaign（3）
 

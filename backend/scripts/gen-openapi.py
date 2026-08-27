@@ -787,6 +787,27 @@ def scalar(v):
 
 
 if __name__ == "__main__":
+    # ─────────────────────────────────────────────────────────────────────────
+    # ⚠️ **这个生成器已被取代，且不能再跑。**
+    #
+    # `docs/api/openapi.yaml` 现在由 `c-app/scripts/gen-openapi.mjs` 生成
+    #（从 C 端端点表 + TS 类型出，文件头第一行就写着 `npm run gen:api`）。
+    # 本脚本写的是同一个路径，但内容来自**需求矩阵**——那份矩阵比实现少一截：
+    # 2026-08-27 实测，跑一次会**删掉 17 个后端真实存在的端点**
+    #（/mp/community/regions、/mp/invoice/*、/mp/push-token、/mp/order/capability…），
+    # 而 diff 有两万五千行，删的那 17 条埋在里面根本看不出来。
+    #
+    # 它不报错、还打一行 `wrote ... 440 endpoints` 的成功日志 ——
+    # 一把上了膛、枪口朝上的枪。留着文件是因为里面那张手工 SCHEMAS 表还有参考价值；
+    # 要真正复活它，得先让需求矩阵补齐那 17 条，并想清楚两个生成器谁写这个路径。
+    # ─────────────────────────────────────────────────────────────────────────
+    print("✗ 本脚本已停用：docs/api/openapi.yaml 由 c-app/scripts/gen-openapi.mjs 生成。",
+          file=sys.stderr)
+    print("  跑它会用需求矩阵覆盖 C 端契约，并静默删掉 17 个真实端点（见上方注释）。",
+          file=sys.stderr)
+    print("  要生成 C 端契约：cd c-app && npm run gen:api", file=sys.stderr)
+    sys.exit(2)
+
     doc, total, todo = build()
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(to_yaml(doc) + "\n")

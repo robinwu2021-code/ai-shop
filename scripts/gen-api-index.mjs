@@ -58,7 +58,15 @@ function readSpec(file) {
     if (!op) continue;
     const s = line.match(/^ {6}summary:\s*"(.*)"\s*$/);
     if (s) op.summary = s[1];
-    if (/^ {6}security:/.test(line)) op.auth = true;
+    /*
+     * **`security: []` 是「不需要鉴权」，不是「有鉴权这一项」。**
+     *
+     * 原先这里只认键名，于是 22 个免登录端点（社区、商品、区划、类目…）
+     * 在清单里全被标成 🔒 —— 而 C 端「先逛店、要下单时再登录」这条路，
+     * 靠的正是这批端点游客能访问。清单把它说反了，且**每一行都说反**，
+     * 一致得看不出是错的。
+     */
+    if (/^ {6}security:\s*$/.test(line)) op.auth = true;
     const t = line.match(/^ {8}- "(.+)"\s*$/);
     if (t && !op.tag) op.tag = t[1];
     // 段落状态机：先看当前在 requestBody 还是 responses 段，再决定 $ref 归谁。

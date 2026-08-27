@@ -30,17 +30,42 @@ import { createHash } from "node:crypto";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** 生成器 → 它产出的、**需要提交**的文件。html 是 md 的派生物，不单列。 */
+/**
+ * 生成器 → 它产出的、**需要提交**的文件。html 是 md 的派生物，不单列。
+ *
+ * 第一个元素是**相对仓库根的路径**（不再默认 `scripts/`）——
+ * 三份 OpenAPI 规格的生成器住在各端自己的 `scripts/` 下，而它们此前一个都没挂在这儿。
+ * 后果不是「产物旧了」这么轻：2026-08-27 查出来**三份规格的生成器全都跑不起来**，
+ * 各自停在最后一次能跑通的那天，而没有任何东西会报：
+ *   · c-app —— 新端点漏登记 RESPONSE_TYPES，生成器直接失败（已修，本次挂上闸门）
+ *   · b-app —— 18 个端点（整个库存域）用了「复数资源名 + id」，撞上它自己那条命名规矩
+ *   · ops-web —— 契约声明了 `lockChannel`，http 实现里没有
+ * 后两条要动的是**线上端点或约定本身**，不是文档，所以先不挂 —— 一道从第一天起
+ * 就红的闸门等于没有闸门（同 `check-new-test-failures.mjs` 的口径）。
+ */
 const GENERATORS = [
-  ["gen-api-index.mjs", ["docs/api/API清单.md", "docs/api/openapi-b.yaml", "docs/api/openapi-c.yaml"]],
-  ["gen-api-detail.mjs", ["docs/api/API详情-B端.md", "docs/api/API详情-C端.md", "docs/api/API详情-平台端.md"]],
-  ["gen-biz-role-matrix.mjs", ["docs/technical/reference/B端功能矩阵-按角色.md"]],
-  ["gen-biz-feature-perm-matrix.mjs", ["docs/technical/reference/B端功能点-权限码-页面.md"]],
-  ["gen-perm-endpoint-matrix.mjs", ["packages/shared/tests/fixtures/ops-role-endpoint-matrix.json"]],
-  ["gen-table-inventory.mjs", ["docs/technical/reference/数据库表清单.md"]],
-  ["gen-c-feature-matrix.mjs", ["docs/technical/reference/C端功能点-登录态-页面.md"]],
-  ["gen-backend-layers.mjs", ["docs/technical/reference/后端分层清单.md"]],
-  ["gen-ui-lib.py", ["docs/technical/design/ui-lib.json"]],
+  /*
+   * ⚠️ 这里原先写着三个产物，而 `gen-api-index.mjs` **只写一个**（`docs/api/API清单.md`）。
+   * `openapi-b.yaml` 是它的**输入**，`openapi-c.yaml` 更是**从来不存在**——
+   * 于是这两条永远「跑前跑后一样」，永远绿。列一个不存在的产物不会报错，
+   * 只会让人以为它被守着。
+   */
+  ["scripts/gen-api-index.mjs", ["docs/api/API清单.md"]],
+  ["c-app/scripts/gen-openapi.mjs", ["docs/api/openapi.yaml"]],
+  ["scripts/gen-api-detail.mjs", ["docs/api/API详情-B端.md", "docs/api/API详情-C端.md", "docs/api/API详情-平台端.md"]],
+  ["scripts/gen-biz-role-matrix.mjs", ["docs/technical/reference/B端功能矩阵-按角色.md"]],
+  ["scripts/gen-biz-feature-perm-matrix.mjs", ["docs/technical/reference/B端功能点-权限码-页面.md"]],
+  ["scripts/gen-perm-endpoint-matrix.mjs", ["packages/shared/tests/fixtures/ops-role-endpoint-matrix.json"]],
+  ["scripts/gen-table-inventory.mjs", ["docs/technical/reference/数据库表清单.md"]],
+  ["scripts/gen-c-feature-matrix.mjs", ["docs/technical/reference/C端功能点-登录态-页面.md"]],
+  ["scripts/gen-backend-layers.mjs", ["docs/technical/reference/后端分层清单.md"]],
+  ["scripts/gen-ui-lib.py", ["docs/technical/design/ui-lib.json"]],
+  /*
+   * 行为规格（状态迁移 + 拒绝规则）。此前只有 `glossary.test.ts` 在数条数，
+   * 而那条断言在全量 vitest 里 —— 全量不挂闸门，等于没人守。
+   * 本次给 mock 补两条手机号拒绝规则时它就红了，靠的是我自己跑全量才看见。
+   */
+  ["scripts/gen-behaviour-spec.mjs", ["docs/api/后端验收清单.md"]],
 ];
 
 const sha = (p) => (existsSync(p) ? createHash("sha1").update(readFileSync(p)).digest("hex") : "∅");
@@ -77,7 +102,7 @@ for (const [script, outputs] of GENERATORS) {
   try {
     // 生成器不限语言：UI 标准库是 python，其余是 node
     const runner = script.endsWith(".py") ? "python3" : "node";
-    execFileSync(runner, [join(ROOT, "scripts", script)], { cwd: ROOT, stdio: "pipe" });
+    execFileSync(runner, [join(ROOT, script)], { cwd: ROOT, stdio: "pipe" });
   } catch (e) {
     paths.forEach((p, i) => restore(p, kept[i]));
     /*
