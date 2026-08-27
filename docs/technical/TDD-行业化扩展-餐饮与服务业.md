@@ -2,7 +2,7 @@
 
 状态：**草稿 · 待确认**
 关联需求：**缺**（见 §0，本册先行，PRD 待补）
-关联决策：[ADR-019 行业工作流做成独立插件项目](ADR/ADR-019-行业工作流做成独立插件项目.md) · [标准能力基线（零售为默认）](reference/标准能力基线-零售为默认.md) · [ADR-005 履约方式与自提点模型](ADR/ADR-005-履约方式与自提点模型.md) · [ADR-009 商家经营范围三档模型](ADR/ADR-009-商家经营范围三档模型.md) · [ADR-011 经营主体与门店边界](ADR/ADR-011-经营主体与门店边界.md) · [TDD-线下支付与预约排期](TDD-线下支付与预约排期.md)
+关联决策：[ADR-019 行业工作流做成独立行业包](ADR/ADR-019-行业工作流做成独立行业包.md) · [核心能力清单](reference/核心能力清单.md) · [ADR-005 履约方式与自提点模型](ADR/ADR-005-履约方式与自提点模型.md) · [ADR-009 商家经营范围三档模型](ADR/ADR-009-商家经营范围三档模型.md) · [ADR-011 经营主体与门店边界](ADR/ADR-011-经营主体与门店边界.md) · [TDD-线下支付与预约排期](TDD-线下支付与预约排期.md)
 创建：2026-08-27
 
 ---
@@ -107,14 +107,22 @@
 | B. 交易主干里按行业分支 | `ord_order.biz_type` + 各处 `if` | ❌ 状态机、结算、售后、报表全部长出行业分支。三个行业之后没人敢改主干 |
 | C. 每个行业一套独立系统（复制主干） | 各自建库建服务 | ❌ 商户/会员/营销要跨系统同步；「统一会员」这条最值钱的诉求当场作废 |
 
-### 4.2 行业挂在哪一层
+### 4.2 行业挂在哪一层 —— 以及一处必须先纠正的事实
 
-**挂门店**，与 `businessMode` 同一层级。理由与那条注释同源：
-「同一主体下旗舰店做自营、加盟店做第三方是常见形态」——
-同理，一个主体名下开了餐厅又开了美容店并不罕见，而**能力开关本来就是按店不同的**
+**`sys_industry` 与 `mch_entity.industry` 已经存在**（7 条种子：CATERING/RETAIL/LIFE_SERVICE/…），
+但它们的语义是**支付通道准入**（能否小微进件）+ 强制积分，是法律与通道事实，
+**不是「这家店按什么流程做生意」**。挪用它会立刻出三种问题：粒度不对（美业与家政同属 `LIFE_SERVICE`）、
+层级不对（在主体上）、语义污染（为美业加一行会顺带改掉这家主体的进件白名单判定）。
+
+**结论**：`sys_industry` 原样不动；行业包绑定另立一列，**挂门店**，与 `businessMode` 同一层级 ——
+理由与那条注释同源：「同一主体下旗舰店做自营、加盟店做第三方是常见形态」，
+同理一个主体开了餐厅又开了美容店并不罕见，而**能力开关本来就是按店不同的**
 （同一家餐厅，A 店上了扫码点餐、B 店还在用纸单）。
 
-主体上只留一个**主营行业**用于展示与入驻引导，不参与任何判定。
+```sql
+ALTER TABLE mch_store ADD COLUMN industry_pkg VARCHAR(32) NOT NULL DEFAULT 'RETAIL';
+```
+命名刻意用 `industry_pkg` 而不是 `industry`，就是为了让下一个人一眼看出这是两件事。
 
 ### 4.3 为什么代码里不问「行业」而问「能力」
 
@@ -134,19 +142,14 @@
 ① 「平台×类目」开关表（`prd_category_pay_mode`）；② 「一行都没有 = 按旧口径放行」的兼容口径。
 
 ```sql
--- 行业主数据。只做预设与展示，不参与判定
-CREATE TABLE sys_industry (
-  industry_code VARCHAR(32) PRIMARY KEY,   -- RETAIL / FOOD / SERVICE
-  name          VARCHAR(64) NOT NULL,
-  status        VARCHAR(16) NOT NULL DEFAULT 'ACTIVE'
-);
+-- ⚠️ sys_industry 已存在（通道准入用），不动它。行业包是另一个取值域。
 
--- 行业 → 默认能力包。开店时展开成门店能力行，之后互不影响
+-- 行业包 → 默认能力包。开店时展开成门店能力行，之后互不影响
 CREATE TABLE sys_industry_capability (
-  industry_code VARCHAR(32) NOT NULL,
+  industry_pkg  VARCHAR(32) NOT NULL,      -- RETAIL / FOOD / BEAUTY
   capability    VARCHAR(48) NOT NULL,
   default_on    TINYINT NOT NULL DEFAULT 1,
-  PRIMARY KEY (industry_code, capability)
+  PRIMARY KEY (industry_pkg, capability)
 );
 
 -- 门店实际开通的能力。**这是唯一被代码读的表**
@@ -157,7 +160,7 @@ CREATE TABLE mch_store_capability (
   PRIMARY KEY (store_no, capability)
 );
 
-ALTER TABLE mch_store ADD COLUMN industry_code VARCHAR(32) NOT NULL DEFAULT 'RETAIL';
+-- mch_store.industry_pkg 见 §4.2
 ```
 
 取值域常量类 `Capabilities`（`shop-base/common/`，与 `Fulfillments` / `PayModes` 同构、同理由：
@@ -344,11 +347,11 @@ prn_job(job_no, store_no, printer_no, template_code, payload, status, retry_coun
 | 资源与排期 | `shop-merchant/`（扩） | `mch_resource`、slot 加资源维度、`mch_staff` |
 | 会员资产 | `shop-core/member/`（扩） | 储值 / 次卡 / 流水 |
 | 打印通道 | `shop-channel/print/` | 设备、模板、路由、任务 |
-| `shop-plugin-api` | `backend/shop-plugin-api`（新，**零依赖**） | 插件契约：`IndustryPlugin` / `OrderLifecycleListener` / `PrintPayloadProvider` / `ResourceTypeProvider` / `CheckoutContributor` |
+| `shop-industry-spi` | `backend/shop-industry-spi`（新，**零依赖**） | 插件契约：`IndustryPlugin` / `OrderLifecycleListener` / `PrintPayloadProvider` / `ResourceTypeProvider` / `CheckoutContributor` |
 | **`shop-industry-food`** | `backend-plugins/shop-industry-food`（**独立 maven 项目**） | 桌台、开台台账、加菜、结账编排、出品分单 |
 | **`shop-industry-service`** | `backend-plugins/shop-industry-service`（**独立 maven 项目**） | 服务工单、排班生成、指定技师、耗卡核销 |
 
-> 插件为什么是独立项目、为什么同仓不同 reactor、为什么一期不做热插拔 —— 见 [ADR-019](ADR/ADR-019-行业工作流做成独立插件项目.md)。
+> 插件为什么是独立项目、为什么同仓不同 reactor、为什么一期不做热插拔 —— 见 [ADR-019](ADR/ADR-019-行业工作流做成独立行业包.md)。
 > **零售是基座默认形态**：不装任何插件的 jar 必须能起、零售全量场景测试必须全绿（可剔除闸）。
 
 **修改**（面很小，这是方案成立的证据）
@@ -356,7 +359,7 @@ prn_job(job_no, store_no, printer_no, template_code, payload, status, retry_coun
 | 模块 | 变更 |
 |---|---|
 | `Fulfillments` | 加 `DINE_IN`，进 `SERVICE_LIKE` |
-| `mch_store` | 加 `industry_code` |
+| `mch_store` | 加 `industry_pkg` |
 | `mch_appointment_slot` | 加 `resource_no`（NULL = 旧行为） |
 | `OrderServiceImpl` | 仅 `WAIT_OFFLINE_PAY` 超时时长改为按门店取配置 |
 | `sys_pay_channel` | 加 `STORED_VALUE` 一行（数据，非代码） |
@@ -368,7 +371,7 @@ prn_job(job_no, store_no, printer_no, template_code, payload, status, retry_coun
 shop-industry-food        shop-industry-service      ← 独立 maven 项目，互不认识
         └──────── 只依赖 ────────┘
                     ▼
-             shop-plugin-api                          ← 零依赖契约（照 shop-job-api 的写法）
+             shop-industry-spi                          ← 零依赖契约（照 shop-job-api 的写法）
                     ▲
                     └── 实现 ── shop-app / shop-core / shop-merchant / shop-channel
                                         │ 依赖
@@ -410,7 +413,7 @@ shop-industry-food        shop-industry-service      ← 独立 maven 项目，�
 1. **能力开关默认关的一态没人测** —— 两个态都要有用例，且撤掉开关判定后测试必须变红。
 2. **迁移号撞车** —— 本方案 20+ 张表，多会话并行时必然撞 Flyway 号；分批提交、改号后 `clean package`。
 3. **H2 与 MariaDB 方言差异** —— 新表大量用 JSON 列与条件 UPDATE，测试绿 ≠ 生产对。
-4. **加列必须补实体字段** —— `mch_store.industry_code`、`slot.resource_no` 各有一个实体要同步，否则那列永远读出 null。
+4. **加列必须补实体字段** —— `mch_store.industry_pkg`、`slot.resource_no` 各有一个实体要同步，否则那列永远读出 null。
 5. **储值的财务口径** —— 预收款、跨门店通用、闭店清算、退卡，这四条**属于业务政策不属于技术**，必须在 PRD 里定死再开工。
 6. **打印靠真机验收**，不接受假打印机的绿测。
 7. **B 端工作台会分叉** —— 后端不分叉不代表前端不分叉：收银台、桌台图、排班表是三套完全不同的界面。前端按能力条件渲染，并且**改完要重跑 `gen-ui-catalog.py`**。
@@ -422,7 +425,7 @@ shop-industry-food        shop-industry-service      ← 独立 maven 项目，�
 
 | 阶段 | 内容 | 产出闸门 |
 |---|---|---|
-| **0 · 基座** | 能力模型 + 打印通道 + `shop-plugin-api` + `DINE_IN` + `mch_resource` + slot 资源维度 + `mch_staff`；**零售全能力跑通** | 存量商家行为零变化（回归全绿）；开关两态各有用例；`-Pcore-only` 可构建可启动 |
+| **0 · 基座** | 能力模型 + 打印通道 + `shop-industry-spi` + `DINE_IN` + `mch_resource` + slot 资源维度 + `mch_staff`；**零售全能力跑通** | 存量商家行为零变化（回归全绿）；开关两态各有用例；`-Pcore-only` 可构建可启动 |
 | **1 · 美业插件** | `shop-industry-service`：排班生成、指定技师预约、服务工单、耗卡核销、服务单打印（储值/次卡在基座） | 一家试点店跑通「约—到店—服务—耗卡—结账」；剔除该插件后零售仍全绿 |
 | **2 · 餐饮插件** | `shop-industry-food`：桌台、开台台账、加菜、先吃后付结账、后厨分单打印 | 一家试点店跑通两种付款顺序 + 真机出票；剔除该插件后零售与美业仍全绿 |
 | **3 · 收口** | 提成、行业报表、B 端工作台按能力分叉、运营端行业配置 | 三行业共用一份订单/会员/结算报表 |
