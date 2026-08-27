@@ -2297,7 +2297,7 @@ async function save(thenSubmit = false) {
           换来的是把改的成本压到最低：右边那个 ✕ 一下清空，长名不用逐字删。
         -->
         <view class="inline">
-          <input v-model="title[lang]" class="field__input flex1" />
+          <input maxlength="64" v-model="title[lang]" class="field__input flex1" />
           <sh-icon-btn v-if="title[lang]" class="inline__clear" name="close"
             color="var(--sh-sub)" @tap="title[lang] = ''"></sh-icon-btn>
         </view>
@@ -2325,7 +2325,7 @@ async function save(thenSubmit = false) {
           <text class="sh-muted">{{ $t("goods.optional") }}</text>
         </view>
         <view class="inline">
-          <input v-model="subtitle[lang]" class="field__input flex1" />
+          <input maxlength="64" v-model="subtitle[lang]" class="field__input flex1" />
           <sh-icon-btn v-if="subtitle[lang]" class="inline__clear" name="close"
             color="var(--sh-sub)" @tap="subtitle[lang] = ''"></sh-icon-btn>
         </view>
@@ -2563,10 +2563,10 @@ async function save(thenSubmit = false) {
       <view v-if="SHOW_FRESH_FIELDS && isFresh" class="field">
         <text class="field__label">{{ $t("goods.freshSection") }}</text>
         <sh-kv :label="String($t('goods.cutoffAt'))">
-          <input v-model="fresh.cutoffAt" class="field__input" placeholder="2026-08-22T18:00" />
+          <input maxlength="16" v-model="fresh.cutoffAt" class="field__input" placeholder="2026-08-22T18:00" />
         </sh-kv>
         <sh-kv :label="String($t('goods.arrivalDesc'))">
-          <input v-model="fresh.arrivalDesc" class="field__input" />
+          <input maxlength="255" v-model="fresh.arrivalDesc" class="field__input" />
         </sh-kv>
         <!--
           **产地这一格搬走了。** 它与规格库里的 `SD_ORIGIN`（usage_type=PROP）
@@ -2592,10 +2592,10 @@ async function save(thenSubmit = false) {
       <view v-if="isService" class="field">
         <text class="field__label">{{ $t("goods.serviceSection") }}</text>
         <sh-kv :label="String($t('goods.durationMin'))">
-          <input v-model="service.durationMin" class="field__input" type="number" />
+          <input maxlength="6" v-model="service.durationMin" class="field__input" type="number" />
         </sh-kv>
         <sh-kv :label="String($t('goods.verifyStore'))">
-          <input v-model="service.storeName" class="field__input" />
+          <input maxlength="64" v-model="service.storeName" class="field__input" />
         </sh-kv>
       </view>
 
@@ -2610,6 +2610,7 @@ async function save(thenSubmit = false) {
         </view>
         <view class="std-search">
           <input
+            maxlength="32"
             v-model="stdKeyword"
             class="field__input"
             :placeholder="$t('goods.stdSearchPh')"
@@ -2834,6 +2835,7 @@ async function save(thenSubmit = false) {
     >
       <view class="build">
         <input
+          maxlength="64"
           v-model="newParam"
           class="build__input"
           :placeholder="$t('goods.addParamPh')"
@@ -2883,6 +2885,7 @@ async function save(thenSubmit = false) {
       <text class="param__own">{{ $t("goods.paramFillOwn") }}</text>
       <view class="build">
         <input
+          maxlength="64"
           v-model="newParamValue"
           class="build__input"
           :placeholder="$t('goods.paramFillPh')"
@@ -2951,6 +2954,7 @@ async function save(thenSubmit = false) {
       -->
       <view v-if="multi && priceField === 'price'" class="bulk">
         <input
+          maxlength="10"
           v-model="bulk.price"
           class="bulk__input sh-num"
           type="digit"
@@ -2961,6 +2965,7 @@ async function save(thenSubmit = false) {
       <!-- 成本多半各规格一个数，但「都填同一个」也常见（同一箱货拆规格卖） -->
       <view v-if="multi && priceField === 'cost'" class="bulk">
         <input
+          maxlength="10"
           v-model="bulk.cost"
           class="bulk__input sh-num"
           type="digit"
@@ -2980,7 +2985,7 @@ async function save(thenSubmit = false) {
         <view class="pr">
           <text class="pr__k">{{ $t(priceLabel) }}</text>
           <text class="pr__cur">￥</text>
-          <input v-model="rows[0]!.priceMajor[market]" class="pr__v sh-num" type="digit" />
+          <input maxlength="10" v-model="rows[0]!.priceMajor[market]" class="pr__v sh-num" type="digit" />
         </view>
         <!-- 毛利跟在售价下面：填价那一刻要看的就是这个数 -->
         <text v-if="marginOf(rows[0]!)" class="pr__margin">
@@ -2990,6 +2995,7 @@ async function save(thenSubmit = false) {
           <text class="pr__k">{{ $t("goods.costPrice") }}</text>
           <text class="pr__cur">￥</text>
           <input
+            maxlength="10"
             v-model="rows[0]!.costMajor"
             class="pr__v sh-num"
             :class="{ 'is-bad': belowCost(rows[0]!) }"
@@ -3002,6 +3008,7 @@ async function save(thenSubmit = false) {
           <text class="pr__k">{{ $t("goods.originPrice") }}</text>
           <text class="pr__cur">￥</text>
           <input
+            maxlength="10"
             v-model="rows[0]!.originMajor"
             class="pr__v sh-num"
             :class="{ 'is-bad': badOrigin(rows[0]!) }"
@@ -3011,7 +3018,7 @@ async function save(thenSubmit = false) {
         <view v-if="SHOW_FRESH_FIELDS && isFresh" class="pr">
           <text class="pr__k">{{ $t("goods.nominalGram") }}</text>
           <text class="pr__cur">g</text>
-          <input v-model="rows[0]!.nominalGram" class="pr__v sh-num" type="number" />
+          <input maxlength="6" v-model="rows[0]!.nominalGram" class="pr__v sh-num" type="number" />
         </view>
       </template>
 
@@ -3024,12 +3031,14 @@ async function save(thenSubmit = false) {
           <text class="pr__k">{{ r.optionValues.join(" · ") }}</text>
           <text class="pr__cur">{{ priceField === "gram" ? "g" : "￥" }}</text>
           <input
+            maxlength="10"
             v-if="priceField === 'price'"
             v-model="r.priceMajor[market]"
             class="pr__v sh-num"
             type="digit"
           />
           <input
+            maxlength="10"
             v-else-if="priceField === 'cost'"
             v-model="r.costMajor"
             class="pr__v sh-num"
@@ -3037,13 +3046,14 @@ async function save(thenSubmit = false) {
             type="digit"
           />
           <input
+            maxlength="10"
             v-else-if="priceField === 'origin'"
             v-model="r.originMajor"
             class="pr__v sh-num"
             :class="{ 'is-bad': badOrigin(r) }"
             type="digit"
           />
-          <input v-else v-model="r.nominalGram" class="pr__v sh-num" type="number" />
+          <input maxlength="6" v-else v-model="r.nominalGram" class="pr__v sh-num" type="number" />
         </view>
         <!-- 逐行看毛利在 8 行的表上没人看得过来，汇成一句 -->
         <text v-if="avgMargin !== null" class="pr__margin">
@@ -3085,10 +3095,10 @@ async function save(thenSubmit = false) {
         </sh-kv>
         <template v-if="groupBuyOpen">
           <sh-kv :label="String($t('goods.groupMinCount'))">
-            <input v-model="groupBuy.minCount" class="field__input" type="number" />
+            <input maxlength="6" v-model="groupBuy.minCount" class="field__input" type="number" />
           </sh-kv>
           <sh-kv :label="String($t('goods.groupPrice'))">
-            <input v-model="groupBuy.price" class="field__input" type="digit" />
+            <input maxlength="10" v-model="groupBuy.price" class="field__input" type="digit" />
           </sh-kv>
           <text class="sh-muted hint">{{ $t("goods.groupBuyOnHint") }}</text>
         </template>
@@ -3109,6 +3119,7 @@ async function save(thenSubmit = false) {
       <!-- 与价格卡同构：同样的分组、同样的规格名、同样的「统一填入」 -->
       <view v-if="multi" class="bulk">
         <input
+          maxlength="6"
           v-model="bulk.stock"
           class="bulk__input sh-num"
           type="number"
@@ -3126,6 +3137,7 @@ async function save(thenSubmit = false) {
         <view class="step" @tap="stepStock(r, -1)"><sh-icon name="minus" :size="26" color="var(--sh-sub)"></sh-icon></view>
         <!-- 库存 0 = 这个规格顾客买不到。多规格时最容易漏填的就是它 -->
         <input
+          maxlength="6"
           v-model="r.stock"
           class="pr__v pr__v--n sh-num"
           :class="{ 'is-out': Number(r.stock) === 0 }"
@@ -3141,7 +3153,7 @@ async function save(thenSubmit = false) {
       <view class="pr">
         <text class="pr__k">{{ $t("goods.limitPerUser") }}</text>
         <!-- 右侧留出 −／＋ 那两格的宽度，两行的输入框才在同一竖列上 -->
-        <input v-model="limitPerUser" class="pr__v pr__v--n pr__v--pad sh-num" type="number" />
+        <input maxlength="6" v-model="limitPerUser" class="pr__v pr__v--n pr__v--pad sh-num" type="number" />
       </view>
     </view>
 
@@ -3174,12 +3186,14 @@ async function save(thenSubmit = false) {
           <view v-for="(r, i) in rows" :key="i" class="pr">
             <text v-if="multi" class="pr__k">{{ r.optionValues.join(" · ") }}</text>
             <input
+              maxlength="64"
               v-if="f.key === 'barcode'"
               v-model="r.barcode"
               class="pr__v pr__v--wide sh-num"
             />
-            <input v-else-if="f.key === 'code'" v-model="r.merchantSkuCode" class="pr__v pr__v--wide" />
+            <input maxlength="64" v-else-if="f.key === 'code'" v-model="r.merchantSkuCode" class="pr__v pr__v--wide" />
             <input
+              maxlength="64"
               v-else
               v-model="r.saleUnit"
               class="pr__v pr__v--wide"

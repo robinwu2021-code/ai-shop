@@ -997,6 +997,7 @@ onShow(() => void load());
           </view>
           <view class="build">
             <input
+              maxlength="64"
               v-model="buildName"
               class="field__input build__input"
               :placeholder="buildOwnPhWord"
@@ -1059,6 +1060,7 @@ onShow(() => void load());
           </view>
           <view class="build">
             <input
+              maxlength="64"
               v-model="newVal"
               class="field__input build__input"
               :placeholder="valuePhWord"
@@ -1082,7 +1084,7 @@ onShow(() => void load());
         清空就是「用回平台的叫法」。
       -->
       <template v-else-if="sheetStep === 'rename'">
-        <input v-model="renameDraft.label" class="field__input edit__input sheet-gap"
+        <input maxlength="64" v-model="renameDraft.label" class="field__input edit__input sheet-gap"
                :placeholder="renameDraft.platformName" />
         <text class="sh-muted edit__tip">{{ $t("mySpecs.renameTip") }}</text>
         <view class="edit__acts">

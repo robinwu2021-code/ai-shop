@@ -220,7 +220,7 @@ onLoad((q) => {
       </view>
       <view class="row sh-mt-sm">
         <text class="row__label">{{ $t("activityEdit.name") }}</text>
-        <input v-model="form.name" class="field__input row__input"
+        <input maxlength="64" v-model="form.name" class="field__input row__input"
                :placeholder="$t('activityEdit.namePh')" />
       </view>
     </view>
@@ -241,18 +241,18 @@ onLoad((q) => {
       <template v-if="form.benefitType === 'CUT'">
         <view class="row sh-mt-sm">
           <text class="row__label">{{ $t("activityEdit.threshold") }}</text>
-          <input v-model="form.threshold" class="field__input row__input" type="digit" />
+          <input maxlength="10" v-model="form.threshold" class="field__input row__input" type="digit" />
         </view>
         <view class="row">
           <text class="row__label">{{ $t("activityEdit.cut") }}</text>
-          <input v-model="form.amount" class="field__input row__input" type="digit" />
+          <input maxlength="10" v-model="form.amount" class="field__input row__input" type="digit" />
         </view>
       </template>
 
       <template v-if="form.benefitType === 'PRICE'">
         <view class="row sh-mt-sm">
           <text class="row__label">{{ $t("activityEdit.price") }}</text>
-          <input v-model="form.amount" class="field__input row__input" type="digit" />
+          <input maxlength="10" v-model="form.amount" class="field__input row__input" type="digit" />
         </view>
         <text class="sh-muted hint">{{ $t("activityEdit.priceHint") }}</text>
       </template>
@@ -260,11 +260,11 @@ onLoad((q) => {
       <template v-if="form.benefitType === 'GIFT'">
         <view class="row sh-mt-sm">
           <text class="row__label">{{ $t("activityEdit.buyN") }}</text>
-          <input v-model="form.buyN" class="field__input row__input" type="number" />
+          <input maxlength="6" v-model="form.buyN" class="field__input row__input" type="number" />
         </view>
         <view class="row">
           <text class="row__label">{{ $t("activityEdit.giftM") }}</text>
-          <input v-model="form.giftM" class="field__input row__input" type="number" />
+          <input maxlength="6" v-model="form.giftM" class="field__input row__input" type="number" />
         </view>
       </template>
 
@@ -292,7 +292,7 @@ onLoad((q) => {
 
       <view v-if="form.scheduleType === 'ONE_OFF'" class="row sh-mt-sm">
         <text class="row__label">{{ $t("activityEdit.days") }}</text>
-        <input v-model="form.days" class="field__input row__input" type="number" />
+        <input maxlength="4" v-model="form.days" class="field__input row__input" type="number" />
       </view>
 
       <template v-if="form.scheduleType === 'RECURRING'">
@@ -307,19 +307,19 @@ onLoad((q) => {
         </view>
         <view class="row">
           <text class="row__label">{{ $t("activityEdit.timeRange") }}</text>
-          <input v-model="form.from" class="field__input row__input" placeholder="08:00" />
-          <input v-model="form.to" class="field__input row__input" placeholder="20:00" />
+          <input maxlength="5" v-model="form.from" class="field__input row__input" placeholder="08:00" />
+          <input maxlength="5" v-model="form.to" class="field__input row__input" placeholder="20:00" />
         </view>
         <text class="sh-muted hint">{{ $t("activityEdit.recurringHint") }}</text>
       </template>
 
       <view class="row sh-mt-sm">
         <text class="row__label">{{ $t("activityEdit.quota") }}</text>
-        <input v-model="form.quota" class="field__input row__input" type="number" />
+        <input maxlength="6" v-model="form.quota" class="field__input row__input" type="number" />
       </view>
       <view class="row">
         <text class="row__label">{{ $t("activityEdit.budget") }}</text>
-        <input v-model="form.budget" class="field__input row__input" type="digit"
+        <input maxlength="10" v-model="form.budget" class="field__input row__input" type="digit"
                :placeholder="$t('activityEdit.budgetPh')" />
       </view>
 

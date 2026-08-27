@@ -368,12 +368,12 @@ async function submit() {
 
       <view class="field">
         <text class="field__label">{{ $t("apply.name") }}</text>
-        <input v-model="form.name" class="field__input" placeholder="张记粮油" />
+        <input maxlength="64" v-model="form.name" class="field__input" placeholder="张记粮油" />
       </view>
 
       <view class="field">
         <text class="field__label">{{ $t("apply.contact") }}</text>
-        <input v-model="form.contactName" class="field__input" placeholder="张老板" />
+        <input maxlength="64" v-model="form.contactName" class="field__input" placeholder="张老板" />
       </view>
 
       <view class="field">
@@ -389,12 +389,12 @@ async function submit() {
 
       <view class="field">
         <text class="field__label">{{ $t("apply.category") }}</text>
-        <input v-model="form.category" class="field__input" :placeholder="$t('apply.categoryPh')" />
+        <input maxlength="64" v-model="form.category" class="field__input" :placeholder="$t('apply.categoryPh')" />
       </view>
 
       <view class="field">
         <text class="field__label">{{ $t("apply.desc") }}</text>
-        <input v-model="form.desc" class="field__input" placeholder="街角三十年老店" />
+        <input maxlength="255" v-model="form.desc" class="field__input" placeholder="街角三十年老店" />
       </view>
     </view>
 
@@ -479,6 +479,7 @@ async function submit() {
             <text class="qual__del" @tap="removeQual(i)">{{ $t("apply.qualRemove") }}</text>
           </view>
           <input
+            maxlength="64"
             v-model="q.code"
             class="sh-input"
             :placeholder="$t('apply.qualCode')"
@@ -489,6 +490,7 @@ async function submit() {
               <text>{{ $t("apply.qualForever") }}</text>
             </view>
             <input
+              maxlength="10"
               v-if="!foreverFlags[i]"
               class="sh-input qual__date"
               type="number"

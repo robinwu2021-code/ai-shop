@@ -139,8 +139,8 @@ onShow(() => {
         </view>
 
         <template v-if="form.toMyHome">
-          <input v-model="form.address" class="field__input" :placeholder="$t('groupHost.addressPh')" />
-          <input v-model="form.timeSlot" class="field__input" :placeholder="$t('groupHost.timeSlotPh')" />
+          <input maxlength="255" v-model="form.address" class="field__input" :placeholder="$t('groupHost.addressPh')" />
+          <input maxlength="64" v-model="form.timeSlot" class="field__input" :placeholder="$t('groupHost.timeSlotPh')" />
           <text class="privacy">{{ $t("groupHost.addressPrivacy") }}</text>
         </template>
 

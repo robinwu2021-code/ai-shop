@@ -253,6 +253,7 @@ onLoad(load);
 
     <view v-if="community.list.length" class="search">
       <input
+        maxlength="32"
         v-model="keyword"
         class="search__input"
         :placeholder="String($t('common.searchHint'))"

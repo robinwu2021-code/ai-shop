@@ -320,6 +320,7 @@ function navToStore() {
         <text class="sh-muted sh-num">{{ goods.length }}</text>
       </sh-section>
       <input
+        maxlength="32"
         v-model="keyword"
         class="search"
         :placeholder="$t('store.searchPh')"

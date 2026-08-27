@@ -144,6 +144,7 @@ onShow(load);
       <view class="field">
         <text class="field__label">{{ $t("staff.roleName") }}</text>
         <input
+          maxlength="64"
           v-model="name"
           class="field__input"
           :disabled="readonly"

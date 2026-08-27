@@ -191,7 +191,7 @@ onLoad((q) => {
       :title="String(draft.addressId ? $t('address.edit') : $t('address.add'))"
       @close="editing = false"
     >
-        <input v-model="draft.name" class="field__input" :placeholder="$t('address.name')" />
+        <input maxlength="64" v-model="draft.name" class="field__input" :placeholder="$t('address.name')" />
         <input
           v-model="draft.phone"
           class="field__input"
@@ -201,6 +201,7 @@ onLoad((q) => {
         />
         <view class="regionrow">
           <input
+            maxlength="96"
             v-model="draft.region"
             class="field__input regionrow__in"
             :placeholder="$t('address.region')"
@@ -212,8 +213,8 @@ onLoad((q) => {
           </text>
         </view>
         <text v-if="regionUnsplit" class="field__hint">{{ $t("address.regionIncomplete") }}</text>
-        <input v-model="draft.detail" class="field__input" :placeholder="$t('address.detail')" />
-        <input v-model="draft.tag" class="field__input" :placeholder="$t('address.tagPh')" />
+        <input maxlength="255" v-model="draft.detail" class="field__input" :placeholder="$t('address.detail')" />
+        <input maxlength="16" v-model="draft.tag" class="field__input" :placeholder="$t('address.tagPh')" />
 
         <view class="switchrow" @tap="draft.isDefault = !draft.isDefault">
           <text class="switchrow__label">{{ $t("address.asDefault") }}</text>

@@ -1726,7 +1726,7 @@
       "name": "biz-region-picker",
       "file": "b-app/src/components/biz/biz-region-picker.vue",
       "scope": "B 端",
-      "lines": 1621,
+      "lines": 1622,
       "props": [
         "visible: boolean",
         "areas: ServiceArea[]"

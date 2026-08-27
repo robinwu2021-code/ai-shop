@@ -212,6 +212,7 @@ function at(iso?: string): string {
             </view>
           </view>
           <input
+            maxlength="6"
             v-model="counted[l.itemId]"
             class="field__input qty sh-num"
             type="number"

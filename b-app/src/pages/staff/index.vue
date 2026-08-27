@@ -125,7 +125,7 @@ onShow(load);
     <!-- ══════════ 员工 ══════════ -->
     <template v-if="tab === 'staff'">
       <view class="bar">
-        <input v-model="keyword" class="field__input" :placeholder="$t('staff.search')" />
+        <input maxlength="32" v-model="keyword" class="field__input" :placeholder="$t('staff.search')" />
         <text
           class="sh-chip"
           :class="{ 'sh-chip--primary': activeOnly }"
@@ -167,7 +167,7 @@ onShow(load);
         </view>
         <view class="field">
           <text class="field__label">{{ $t("staff.name") }}</text>
-          <input v-model="form.name" class="field__input" :placeholder="$t('staff.namePh')" />
+          <input maxlength="64" v-model="form.name" class="field__input" :placeholder="$t('staff.namePh')" />
         </view>
         <view class="sh-btn save" @tap="add">{{ $t("common.save") }}</view>
         <view class="sh-btn sh-btn--soft sh-mt-sm" @tap="adding = false">{{ $t("common.cancel") }}</view>

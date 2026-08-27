@@ -182,6 +182,7 @@ onLoad((q) => {
       <view v-if="canShip" class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("order.ship") }}</text>
         <input
+          maxlength="64"
           v-model="expressNo"
           class="field__input sh-mt-sm"
           :placeholder="$t('order.expressNo')"

@@ -92,6 +92,7 @@ onLoad((q) => {
     <!-- 搜索框 -->
     <view class="searchbar">
       <input
+        maxlength="32"
         v-model="keyword"
         class="searchbar__input"
         :placeholder="$t('search.placeholder')"

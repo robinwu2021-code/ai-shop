@@ -238,12 +238,12 @@ onShow(load);
 
       <view class="field">
         <text class="field__label">{{ $t("marketing.name") }}</text>
-        <input v-model="form.name" class="field__input" :placeholder="$t('marketing.namePh')" />
+        <input maxlength="64" v-model="form.name" class="field__input" :placeholder="$t('marketing.namePh')" />
       </view>
 
       <view class="field">
         <text class="field__label">{{ $t("marketing.days") }}</text>
-        <input v-model="form.days" class="field__input sh-num" type="number" />
+        <input maxlength="4" v-model="form.days" class="field__input sh-num" type="number" />
       </view>
 
       <!--
@@ -260,27 +260,27 @@ onShow(load);
 
       <view v-if="need.threshold" class="field">
         <text class="field__label">{{ $t("marketing.threshold") }}</text>
-        <input v-model="form.threshold" class="field__input sh-num" type="digit" />
+        <input maxlength="10" v-model="form.threshold" class="field__input sh-num" type="digit" />
       </view>
       <view v-if="need.discount" class="field">
         <text class="field__label">{{ $t("marketing.discount") }}</text>
-        <input v-model="form.discount" class="field__input sh-num" type="digit" />
+        <input maxlength="10" v-model="form.discount" class="field__input sh-num" type="digit" />
       </view>
       <view v-if="need.flashPrice" class="field">
         <text class="field__label">{{ $t("marketing.flashPrice") }}</text>
-        <input v-model="form.flashPrice" class="field__input sh-num" type="digit" />
+        <input maxlength="10" v-model="form.flashPrice" class="field__input sh-num" type="digit" />
       </view>
       <view v-if="need.buyGift" class="field">
         <text class="field__label">{{ $t("marketing.buyGift") }}</text>
         <view class="row">
-          <input v-model="form.buyN" class="field__input sh-num flex1" type="number" />
+          <input maxlength="6" v-model="form.buyN" class="field__input sh-num flex1" type="number" />
           <text class="sh-muted">{{ $t("marketing.buyGiftMid") }}</text>
-          <input v-model="form.giftM" class="field__input sh-num flex1" type="number" />
+          <input maxlength="6" v-model="form.giftM" class="field__input sh-num flex1" type="number" />
         </view>
       </view>
       <view v-if="need.total" class="field">
         <text class="field__label">{{ $t("marketing.totalCount") }}</text>
-        <input v-model="form.totalCount" class="field__input sh-num" type="number" />
+        <input maxlength="6" v-model="form.totalCount" class="field__input sh-num" type="number" />
         <text class="sh-muted hint">{{ $t("marketing.totalHint") }}</text>
       </view>
 

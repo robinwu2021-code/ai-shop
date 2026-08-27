@@ -71,6 +71,7 @@ async function submit() {
       <view class="row">
         <text class="row__k">{{ $t("request.budget") }}</text>
         <input
+          maxlength="10"
           v-model="budget"
           class="row__input sh-num"
           type="digit"

@@ -445,6 +445,7 @@ onShow(() => {
     -->
     <view class="search">
       <input
+        maxlength="32"
         class="search__input"
         :value="keyword"
         :placeholder="$t('goods.searchPh')"

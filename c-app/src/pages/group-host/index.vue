@@ -131,6 +131,7 @@ onShow(load);
         <text class="sh-h2">{{ $t("groupHost.verify") }}</text>
         <view class="row">
           <input
+            maxlength="16"
             v-model="code"
             class="field__input sh-num"
             :placeholder="$t('groupHost.codePh')"

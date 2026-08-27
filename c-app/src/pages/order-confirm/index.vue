@@ -647,7 +647,7 @@ onMounted(async () => {
 
       <view class="cell">
         <text class="cell__k">{{ $t("confirm.remark") }}</text>
-        <input v-model="remark" class="cell__input" :placeholder="$t('confirm.remarkPh')" />
+        <input maxlength="255" v-model="remark" class="cell__input" :placeholder="$t('confirm.remarkPh')" />
       </view>
     </view>
 

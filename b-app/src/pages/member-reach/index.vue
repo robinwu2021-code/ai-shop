@@ -154,7 +154,7 @@ onShow(() => {
     <!-- ④ 内容 -->
     <view class="sh-card sh-mt-sm">
       <text class="field__label">{{ $t("reach.content") }}</text>
-      <input v-model="title" class="field__input mt2" :placeholder="$t('reach.titlePh')" />
+      <input maxlength="64" v-model="title" class="field__input mt2" :placeholder="$t('reach.titlePh')" />
       <textarea v-model="body" class="field__input area" :placeholder="$t('reach.bodyPh')" />
     </view>
 

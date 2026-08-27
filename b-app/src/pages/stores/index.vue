@@ -415,11 +415,11 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 
       <view class="field">
         <text class="field__label">{{ $t("stores.name") }}</text>
-        <input v-model="form.name" class="field__input" :placeholder="$t('stores.namePh')" />
+        <input maxlength="64" v-model="form.name" class="field__input" :placeholder="$t('stores.namePh')" />
       </view>
       <view class="field">
         <text class="field__label">{{ $t("stores.address") }}</text>
-        <input v-model="form.address" class="field__input" :placeholder="$t('stores.addressPh')" />
+        <input maxlength="255" v-model="form.address" class="field__input" :placeholder="$t('stores.addressPh')" />
       </view>
 
       <view class="sh-btn submit" @tap="create">{{ $t("common.save") }}</view>

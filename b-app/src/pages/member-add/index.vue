@@ -85,7 +85,7 @@ onShow(load);
       </view>
       <view class="field">
         <text class="field__label">{{ $t("memberAdd.remark") }}</text>
-        <input v-model="remark" class="field__input" :placeholder="$t('memberAdd.remarkPh')" />
+        <input maxlength="255" v-model="remark" class="field__input" :placeholder="$t('memberAdd.remarkPh')" />
       </view>
       <view v-if="mine.length" class="field">
         <text class="field__label">{{ $t("memberAdd.tags") }}</text>

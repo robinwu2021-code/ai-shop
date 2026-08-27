@@ -141,7 +141,7 @@ onShow(load);
   <sh-scaffold title-key="purchase.title" :denied="!merchant.can('biz:stock')">
     <view class="sh-card">
       <text class="field__label">{{ $t("purchase.supplier") }}</text>
-      <input v-model="supplier" class="field__input" :placeholder="String($t('purchase.supplierPh'))" />
+      <input maxlength="64" v-model="supplier" class="field__input" :placeholder="String($t('purchase.supplierPh'))" />
       <text class="field__hint">{{ $t("purchase.supplierHint") }}</text>
     </view>
 

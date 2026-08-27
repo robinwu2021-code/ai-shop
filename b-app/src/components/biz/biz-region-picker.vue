@@ -1175,6 +1175,7 @@ function close() {
       <view v-else class="filter">
         <sh-icon name="search" :size="16" color="var(--sh-sub)"></sh-icon>
         <input
+          maxlength="32"
           v-model="q"
           class="filter__i"
           placeholder-class="sh-ph"

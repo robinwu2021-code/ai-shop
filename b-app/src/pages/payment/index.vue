@@ -161,6 +161,7 @@ async function refresh() {
       <view class="field">
         <text class="field__label">{{ $t("payment.settleAccount") }}</text>
         <input
+          maxlength="32"
           v-model="form.settleAccount"
           class="field__input sh-num"
           type="number"
@@ -171,7 +172,7 @@ async function refresh() {
 
       <view class="field">
         <text class="field__label">{{ $t("payment.contactName") }}</text>
-        <input v-model="form.contactName" class="field__input" placeholder="张老板" />
+        <input maxlength="64" v-model="form.contactName" class="field__input" placeholder="张老板" />
       </view>
 
       <view class="field">

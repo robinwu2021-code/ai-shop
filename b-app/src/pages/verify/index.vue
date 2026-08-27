@@ -259,6 +259,7 @@ onShow(load);
     <view v-if="tab === 'coupon'" class="sh-card entry">
       <view class="row">
         <input
+          maxlength="32"
           v-model="couponCode"
           class="field__input sh-num"
           :placeholder="$t('verify.couponCodePh')"
@@ -323,6 +324,7 @@ onShow(load);
     <view v-if="!batchMode" class="sh-card entry">
       <view class="row">
         <input
+          maxlength="16"
           v-model="code"
           class="field__input sh-num"
           :placeholder="$t('verify.codePh')"
@@ -360,6 +362,7 @@ onShow(load);
     <view v-else class="sh-card entry">
       <view class="row">
         <input
+          maxlength="16"
           v-model="code"
           class="field__input sh-num"
           :placeholder="$t('verify.codePh')"

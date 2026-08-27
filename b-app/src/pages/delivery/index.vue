@@ -119,19 +119,19 @@ onShow(load);
 
       <view class="field">
         <text class="field__label">{{ $t("delivery.radius") }}</text>
-        <input v-model="form.radius" class="field__input sh-num" type="number" />
+        <input maxlength="3" v-model="form.radius" class="field__input sh-num" type="number" />
       </view>
       <view class="field">
         <text class="field__label">{{ $t("delivery.minOrder") }}</text>
-        <input v-model="form.minOrder" class="field__input sh-num" type="digit" />
+        <input maxlength="10" v-model="form.minOrder" class="field__input sh-num" type="digit" />
       </view>
       <view class="field">
         <text class="field__label">{{ $t("delivery.fee") }}</text>
-        <input v-model="form.fee" class="field__input sh-num" type="digit" />
+        <input maxlength="10" v-model="form.fee" class="field__input sh-num" type="digit" />
       </view>
       <view class="field">
         <text class="field__label">{{ $t("delivery.freeThreshold") }}</text>
-        <input v-model="form.freeThreshold" class="field__input sh-num" type="digit" />
+        <input maxlength="10" v-model="form.freeThreshold" class="field__input sh-num" type="digit" />
         <text class="hint">{{ $t("delivery.freeHint") }}</text>
       </view>
 

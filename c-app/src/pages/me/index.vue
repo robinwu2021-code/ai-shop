@@ -358,9 +358,9 @@ onShow(() => {
           {{ $t("merchant.microBlocked") }}
         </text>
 
-        <input v-model="mForm.name" class="field__input" :placeholder="$t('merchant.shopName')" />
-        <input v-model="mForm.category" class="field__input" :placeholder="$t('merchant.category')" />
-        <input v-model="mForm.contactName" class="field__input" :placeholder="$t('merchant.contact')" />
+        <input maxlength="64" v-model="mForm.name" class="field__input" :placeholder="$t('merchant.shopName')" />
+        <input maxlength="64" v-model="mForm.category" class="field__input" :placeholder="$t('merchant.category')" />
+        <input maxlength="64" v-model="mForm.contactName" class="field__input" :placeholder="$t('merchant.contact')" />
         <input
           v-model="mForm.contactPhone"
           class="field__input"
@@ -368,7 +368,7 @@ onShow(() => {
           maxlength="11"
           :placeholder="$t('merchant.phone')"
         />
-        <input v-model="mForm.desc" class="field__input" :placeholder="$t('merchant.descPh')" />
+        <input maxlength="255" v-model="mForm.desc" class="field__input" :placeholder="$t('merchant.descPh')" />
 
         <view class="sh-btn sheet__save" :class="{ 'is-disabled': !mValid }" @tap="submitMerchant">
           {{ $t("merchant.submitApply") }}

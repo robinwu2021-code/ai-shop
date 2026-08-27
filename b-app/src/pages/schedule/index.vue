@@ -103,18 +103,18 @@ onShow(() => {
       <text class="txt-title">{{ $t("schedule.newSlot") }}</text>
       <view class="row">
         <text class="sh-muted">{{ $t("schedule.day") }}</text>
-        <input v-model.number="form.dayOffset" class="field__input row__in sh-num" type="number" />
+        <input maxlength="3" v-model.number="form.dayOffset" class="field__input row__in sh-num" type="number" />
         <text class="sh-muted">{{ $t("schedule.dayUnit") }}</text>
       </view>
       <view class="row">
         <text class="sh-muted">{{ $t("schedule.hour") }}</text>
-        <input v-model.number="form.hour" class="field__input row__in sh-num" type="number" />
+        <input maxlength="3" v-model.number="form.hour" class="field__input row__in sh-num" type="number" />
         <text class="sh-muted">{{ $t("schedule.hours") }}</text>
-        <input v-model.number="form.hours" class="field__input row__in sh-num" type="number" />
+        <input maxlength="3" v-model.number="form.hours" class="field__input row__in sh-num" type="number" />
       </view>
       <view class="row">
         <text class="sh-muted">{{ $t("schedule.capacity") }}</text>
-        <input v-model.number="form.capacity" class="field__input row__in sh-num" type="number" />
+        <input maxlength="6" v-model.number="form.capacity" class="field__input row__in sh-num" type="number" />
       </view>
       <text class="sh-muted hint">{{ $t("schedule.capacityHint") }}</text>
       <view class="sh-btn sh-mt-sm" @tap="open">{{ $t("schedule.open") }}</view>

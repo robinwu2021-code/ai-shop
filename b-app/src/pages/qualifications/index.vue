@@ -203,13 +203,13 @@ onShow(() => void load());
     <view v-if="form" class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("qual.add") }}</text>
       <sh-kv :label="String($t('qual.fieldName'))">
-        <input v-model="form.qualName" class="field__input" />
+        <input maxlength="64" v-model="form.qualName" class="field__input" />
       </sh-kv>
       <sh-kv :label="String($t('qual.fieldNumber'))">
-        <input v-model="form.qualNumber" class="field__input" />
+        <input maxlength="64" v-model="form.qualNumber" class="field__input" />
       </sh-kv>
       <sh-kv :label="String($t('qual.fieldExpire'))">
-        <input v-model="form.expireAt" class="field__input" placeholder="2027-12-31" />
+        <input maxlength="10" v-model="form.expireAt" class="field__input" placeholder="2027-12-31" />
       </sh-kv>
       <text class="sh-muted hint">{{ $t("qual.expireHint") }}</text>
       <view class="kv kv--top">

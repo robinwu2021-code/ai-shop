@@ -127,15 +127,15 @@ onShow(load);
       <template v-if="editing === r.requestNo">
         <view class="field">
           <text class="field__label">{{ $t("quotes.price") }}</text>
-          <input v-model="form.price" class="field__input sh-num" type="digit" />
+          <input maxlength="10" v-model="form.price" class="field__input sh-num" type="digit" />
         </view>
         <view class="field">
           <text class="field__label">{{ $t("quotes.minCount") }}</text>
-          <input v-model="form.minCount" class="field__input sh-num" type="number" />
+          <input maxlength="6" v-model="form.minCount" class="field__input sh-num" type="number" />
         </view>
         <view class="field">
           <text class="field__label">{{ $t("quotes.desc") }}</text>
-          <input v-model="form.desc" class="field__input" :placeholder="$t('quotes.descPh')" />
+          <input maxlength="255" v-model="form.desc" class="field__input" :placeholder="$t('quotes.descPh')" />
         </view>
         <view class="btns">
           <text class="btn btn--ghost" @tap="editing = ''">{{ $t("common.cancel") }}</text>
