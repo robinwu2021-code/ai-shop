@@ -101,7 +101,7 @@ onShow(load);
           class="quote"
           :class="{ 'is-mine': q.merchant.merchantNo === merchant.profile?.merchantNo }"
         >
-          <view class="quote__l">
+          <view class="sh-fill">
             <text class="quote__name">
               {{ q.merchant.logo || MERCHANT_LOGO_FALLBACK }} {{ q.merchant.name }}
               <text v-if="q.merchant.merchantNo === merchant.profile?.merchantNo" class="mine-tag">
@@ -195,10 +195,7 @@ onShow(load);
   border-radius: 24rpx;
   padding: 20rpx 24rpx;
 }
-.quote__l {
-  flex: 1;
-  min-width: 0;
-}
+
 .quote__name {
   display: block;
   font-size: 28rpx;

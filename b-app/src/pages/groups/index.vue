@@ -69,7 +69,7 @@ onShow(load);
     <view v-for="g in groups" :key="g.groupNo" class="sh-card sh-mb-sm">
       <view class="item__head">
         <sh-cover class="item__cover" :src="g.cover"></sh-cover>
-        <view class="item__main">
+        <view class="sh-fill">
           <text class="item__title">{{ g.title }}</text>
           <text class="sh-muted">{{ g.pickupName }}</text>
         </view>
@@ -93,7 +93,7 @@ onShow(load);
 
     <view v-for="g in groupable" :key="g.goodsNo" class="sh-row sh-card row sh-mb-sm">
       <sh-cover class="row__cover" :src="g.cover"></sh-cover>
-      <text class="row__title">{{ g.title }}</text>
+      <text class="row__title sh-fill">{{ g.title }}</text>
       <text class="btn" @tap="create(g.goodsNo)">{{ $t("groups.open") }}</text>
     </view>
 
@@ -126,10 +126,7 @@ onShow(load);
   text-align: center;
   line-height: 88rpx;
 }
-.item__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .item__title {
   display: block;
   font-size: 28rpx;
@@ -169,8 +166,6 @@ onShow(load);
   line-height: 72rpx;
 }
 .row__title {
-  flex: 1;
-  min-width: 0;
   font-size: 28rpx;
   color: var(--sh-ink);
 }

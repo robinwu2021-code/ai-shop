@@ -165,7 +165,7 @@ onShow(load);
         <sh-empty v-if="!ledger.length" compact :text="String($t('stockDetail.ledgerEmpty'))"></sh-empty>
 
         <view v-for="r in ledger" :key="r.id" class="led">
-          <view class="led__main">
+          <view class="sh-fill">
             <text class="led__title">{{ $t(`stock.reason.${r.reasonCode}`) }}</text>
             <view class="led__meta">
               <text class="sh-muted">{{ r.docNo }}</text>
@@ -235,10 +235,7 @@ onShow(load);
 .led + .led {
   border-top: var(--sh-hairline-soft);
 }
-.led__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .led__title {
   display: block;
   font-size: 30rpx;

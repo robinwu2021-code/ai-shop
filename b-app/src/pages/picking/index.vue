@@ -166,7 +166,7 @@ onShow(load);
       <view v-for="r in rows" :key="r.skuNo" class="sh-card sh-mb-sm">
         <view class="row__head">
           <sh-cover class="row__cover" :src="r.cover"></sh-cover>
-          <view class="row__main">
+          <view class="sh-fill">
             <text class="row__title">{{ r.title }}</text>
             <text class="sh-muted">{{ r.spec }}</text>
           </view>
@@ -189,7 +189,7 @@ onShow(load);
     <template v-else>
       <view v-for="b in byBuyer" :key="b.orderNo" class="sh-card sh-mb-sm">
         <view class="row__head">
-          <view class="row__main">
+          <view class="sh-fill">
             <text class="row__title">{{ b.nickname }}</text>
             <text class="sh-muted sh-num">{{ b.orderNo }}</text>
           </view>
@@ -248,10 +248,7 @@ onShow(load);
   text-align: center;
   line-height: 84rpx;
 }
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .row__title {
   display: block;
   font-size: 28rpx;

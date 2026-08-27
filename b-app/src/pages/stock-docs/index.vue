@@ -80,7 +80,7 @@ onShow(load);
 
     <view v-for="d in rows" :key="d.docNo" class="sh-card sh-mb-sm" @tap="open(d)">
       <view class="row__top">
-        <view class="row__main">
+        <view class="sh-fill">
           <text class="row__title">{{ $t(`stockDocs.kind.${d.kind}`) }}</text>
           <view class="row__meta">
             <text class="sh-muted sh-num">{{ d.docNo }}</text>
@@ -114,10 +114,7 @@ onShow(load);
   gap: 20rpx;
   align-items: flex-start;
 }
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .row__title {
   display: block;
   font-size: 30rpx;

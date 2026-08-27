@@ -151,7 +151,7 @@ onShow(load);
       <sh-empty v-if="!waiting.length" compact :text='$t("groupHost.noWaiting")'></sh-empty>
 
       <view v-for="o in waiting" :key="o.subOrderNo" class="sh-card row-item">
-        <view class="row-item__main">
+        <view class="sh-fill">
           <text class="row-item__code sh-num">{{ o.verifyCode }}</text>
           <text class="sh-muted">{{ o.buyerNickname || "—" }} · {{ o.items.length }} 件</text>
         </view>
@@ -242,10 +242,7 @@ onShow(load);
   gap: 20rpx;
   margin-bottom: 16rpx;
 }
-.row-item__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .row-item__code {
   display: block;
   font-size: 34rpx;

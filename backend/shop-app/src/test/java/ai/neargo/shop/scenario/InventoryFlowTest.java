@@ -240,6 +240,7 @@ class InventoryFlowTest {
         goods.setGoodsNo(goodsNo);
         goods.setEntityNo("E-TITLE-" + seq);
         goods.setTitle(title);
+        goods.setType("STANDARD");
         goodsMapper.insert(goods);
 
         PrdSku sku = new PrdSku();

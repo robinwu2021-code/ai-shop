@@ -163,7 +163,4 @@ async function submit() {
   color: var(--sh-sub);
   line-height: 1.7;
 }
-.is-disabled {
-  opacity: 0.45;
-}
 </style>

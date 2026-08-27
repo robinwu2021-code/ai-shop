@@ -459,7 +459,7 @@ onShow(() => {
     <view class="bar">
       <!-- 必须套一层容器：sh-tabs 是**多根组件**（v-if/v-else 两个根），
            Vue 3 下 class 无法透传到 fragment 根上，写在组件标签上会被静默丢弃 -->
-      <view class="bar__tabs">
+      <view class="sh-fill">
         <sh-tabs
           :items="TABS.map((t) => ({ key: t.key, label: String($t(t.labelKey)) }))"
           :active="tab"
@@ -525,7 +525,7 @@ onShow(() => {
     <view v-for="g in list" :key="g.goodsNo" class="sh-card sh-mb-sm">
       <view class="row__top">
         <sh-cover class="row__cover" :src="g.cover"></sh-cover>
-        <view class="row__main">
+        <view class="sh-fill">
           <text class="row__title">{{ g.title }}</text>
           <view class="row__meta">
             <text class="row__price sh-num">{{ money(g.price) }}</text>
@@ -729,10 +729,7 @@ onShow(() => {
   white-space: nowrap;
   flex-shrink: 0;
 }
-.bar__tabs {
-  flex: 1;
-  min-width: 0;
-}
+
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */
 
@@ -751,10 +748,7 @@ onShow(() => {
   text-align: center;
   line-height: 96rpx;
 }
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
+
 /*
  * **标题是这一页的识别锚点，要压过价格。**
  * 原先价格 30rpx/700 深红、标题 28rpx/600（字阶只到 30，所以标题取 30、价格降到 26） —— 商家扫列表是在找「哪个商品」，

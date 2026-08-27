@@ -32,7 +32,7 @@ onShow(load);
     <view v-for="c in cards" :key="c.cardNo" class="card" :class="{ 'is-expired': expired(c) }">
       <view class="card__head">
         <sh-cover class="card__cover" :src="c.cover"></sh-cover>
-        <view class="card__main">
+        <view class="sh-fill">
           <text class="card__title">{{ c.title }}</text>
           <text class="card__no sh-num">{{ c.cardNo }}</text>
         </view>
@@ -85,10 +85,7 @@ onShow(load);
   font-size: 42rpx;
   flex-shrink: 0;
 }
-.card__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .card__title {
   display: block;
   font-size: 28rpx;

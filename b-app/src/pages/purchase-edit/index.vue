@@ -157,7 +157,7 @@ onShow(load);
 
     <view v-for="l in lines" :key="l.itemId" class="sh-card sh-mb-sm">
       <view class="row__top">
-        <view class="row__main">
+        <view class="sh-fill">
           <text class="row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
           <view class="row__meta">
             <text class="sh-link sh-num" @tap="editQty(l)">
@@ -190,7 +190,7 @@ onShow(load);
       存草稿常态就是 muted —— 它是次要动作，不该与「过账」争同一个视觉重量。
     -->
     <view class="btns">
-      <view class="sh-btn sh-btn--muted flex1" @tap="save(false)">{{ $t("purchase.draft") }}</view>
+      <view class="sh-btn sh-btn--muted sh-fill" @tap="save(false)">{{ $t("purchase.draft") }}</view>
       <view
         class="sh-btn flex14"
         :class="{ 'sh-btn--muted': !lines.length || busy }"
@@ -217,10 +217,7 @@ onShow(load);
   gap: 20rpx;
   align-items: center;
 }
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .row__title {
   display: block;
   font-size: 30rpx;
@@ -248,9 +245,7 @@ onShow(load);
   display: flex;
   gap: 20rpx;
 }
-.flex1 {
-  flex: 1;
-}
+
 .flex14 {
   flex: 1.4;
 }

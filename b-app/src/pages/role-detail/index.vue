@@ -224,7 +224,4 @@ onShow(load);
   margin-top: 16rpx;
   color: var(--sh-danger);
 }
-.is-disabled {
-  opacity: 0.5;
-}
 </style>

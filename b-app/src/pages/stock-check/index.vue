@@ -171,7 +171,7 @@ function at(iso?: string): string {
         <view class="row__top">
           <!-- 勾选由整行接管（点一行就选中），sh-check 只负责画 -->
           <sh-check :model-value="picked.includes(b.itemId)"></sh-check>
-          <view class="row__main">
+          <view class="sh-fill">
             <text class="row__title">{{ b.name }}{{ b.specText ? ` · ${b.specText}` : "" }}</text>
             <text class="sh-muted sh-num">{{ $t("stockCheck.bookN", { n: b.onHand }) }}</text>
           </view>
@@ -199,7 +199,7 @@ function at(iso?: string): string {
 
       <view v-for="l in doc.lines" :key="l.itemId" class="sh-card sh-mb-sm">
         <view class="row__top">
-          <view class="row__main">
+          <view class="sh-fill">
             <text class="row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
             <view class="row__meta">
               <text class="sh-muted sh-num">{{ $t("stockCheck.bookN", { n: l.bookQty }) }}</text>
@@ -268,10 +268,7 @@ function at(iso?: string): string {
   gap: 20rpx;
   align-items: center;
 }
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .row__title {
   display: block;
   font-size: 30rpx;

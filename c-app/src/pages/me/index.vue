@@ -203,7 +203,7 @@ onShow(() => {
   <sh-scaffold title-key="tab.me" tab="me">
     <view class="sh-card head" @tap="!user.isLogin && gotoLogin()">
       <text class="head__avatar">{{ user.user?.avatar || "🙂" }}</text>
-      <view class="head__main">
+      <view class="sh-fill">
         <text class="head__name">
           {{ user.isLogin ? user.user?.nickname : $t("me.login") }}
         </text>
@@ -409,9 +409,6 @@ onShow(() => {
 .sheet__save {
   margin-top: 32rpx;
 }
-.is-disabled {
-  opacity: 0.45;
-}
 .head {
   display: flex;
   align-items: center;
@@ -427,10 +424,7 @@ onShow(() => {
   font-size: 52rpx;
   flex-shrink: 0;
 }
-.head__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .head__name {
   display: block;
   font-size: 34rpx;

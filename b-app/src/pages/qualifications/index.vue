@@ -144,7 +144,7 @@ onShow(() => void load());
       <text class="txt-title">{{ $t("qual.mine") }}</text>
       <sh-empty v-if="!loading && !data?.items.length" :text='$t("qual.emptyMine")'></sh-empty>
       <view v-for="q in data?.items ?? []" :key="q.qualNo" class="sh-row sh-row--divided row">
-        <view class="row__main">
+        <view class="sh-fill">
           <text class="row__name">{{ q.qualName }}</text>
           <text class="sh-muted row__no">{{ q.qualNumber || "—" }}</text>
         </view>
@@ -183,7 +183,7 @@ onShow(() => void load());
       -->
       <text class="txt-title">{{ $t(merchant.categoryGateEnforced ? "qual.locked" : "qual.notGranted") }}</text>
       <view v-for="c in locked" :key="c.code" class="lock">
-        <view class="lock__main">
+        <view class="sh-fill">
           <text class="lock__cats">
             {{ (c.categoryNames ?? []).length ? (c.categoryNames ?? []).join("、") : c.name }}
           </text>
@@ -203,13 +203,13 @@ onShow(() => void load());
     <view v-if="form" class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("qual.add") }}</text>
       <sh-kv :label="String($t('qual.fieldName'))">
-        <input maxlength="64" v-model="form.qualName" class="field__input" />
+        <input maxlength="64" v-model="form.qualName" class="field__input sh-fill" />
       </sh-kv>
       <sh-kv :label="String($t('qual.fieldNumber'))">
-        <input maxlength="64" v-model="form.qualNumber" class="field__input" />
+        <input maxlength="64" v-model="form.qualNumber" class="field__input sh-fill" />
       </sh-kv>
       <sh-kv :label="String($t('qual.fieldExpire'))">
-        <input maxlength="10" v-model="form.expireAt" class="field__input" placeholder="2027-12-31" />
+        <input maxlength="10" v-model="form.expireAt" class="field__input sh-fill" placeholder="2027-12-31" />
       </sh-kv>
       <text class="sh-muted sh-hint">{{ $t("qual.expireHint") }}</text>
       <view class="kv kv--top">
@@ -240,10 +240,7 @@ onShow(() => void load());
   font-size: 24rpx;
   line-height: 1.6;
 }
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .row__name {
   display: block;
   font-size: 28rpx;
@@ -281,10 +278,7 @@ onShow(() => void load());
   gap: 16rpx;
   padding: 14rpx 0;
 }
-.lock__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .lock__cats {
   display: block;
   font-size: 26rpx;
@@ -304,8 +298,6 @@ onShow(() => void load());
   align-items: flex-start;
 }
 .field__input {
-  flex: 1;
-  min-width: 0;
   height: 76rpx;
   padding: 0 20rpx;
   border-radius: 16rpx;

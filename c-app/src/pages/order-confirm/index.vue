@@ -678,7 +678,7 @@ onMounted(async () => {
     </view>
 
     <sh-actionbar pill="lead" :pad="200">
-      <view class="actionbar__sum">
+      <view class="sh-fill">
         <text class="sh-muted">{{ $t("confirm.payable") }}</text>
         <text class="actionbar__total sh-num">{{ money(amount?.payableMinor ?? 0) }}</text>
       </view>
@@ -893,10 +893,7 @@ onMounted(async () => {
   align-items: center;
   gap: 16rpx;
 }
-.actionbar__sum {
-  flex: 1;
-  min-width: 0;
-}
+
 .actionbar__total {
   display: block;
   font-size: 34rpx;
@@ -908,9 +905,6 @@ onMounted(async () => {
   padding-left: 52rpx;
   padding-right: 52rpx;
   font-size: 28rpx;
-}
-.is-disabled {
-  opacity: 0.45;
 }
 
 /* 能力提示：拦下的用醒目色，只是提醒的用弱一档 —— 两者的用户动作不同 */

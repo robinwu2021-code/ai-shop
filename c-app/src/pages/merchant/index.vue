@@ -83,7 +83,7 @@ onShareAppMessage(() =>
     <view class="sh-card head">
       <view class="head__top">
         <text class="head__logo">{{ merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
-        <view class="head__main">
+        <view class="sh-fill">
           <view class="head__title">
             <text class="sh-h2">{{ merchant.name }}</text>
             <text
@@ -244,10 +244,7 @@ onShareAppMessage(() =>
   font-size: 52rpx;
   flex-shrink: 0;
 }
-.head__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .head__title {
   display: flex;
   align-items: center;

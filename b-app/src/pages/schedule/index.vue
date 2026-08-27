@@ -129,7 +129,7 @@ onShow(() => {
       <text class="txt-title">{{ $t("schedule.list") }}</text>
       <text v-if="!slots.length" class="sh-muted sh-hint">{{ $t("schedule.empty") }}</text>
       <view v-for="s in slots" :key="s.slotNo" class="slot">
-        <view class="slot__main">
+        <view class="sh-fill">
           <text class="slot__when sh-num">{{ datetime(s.startAt) }}</text>
           <text class="sh-muted">{{ $t("schedule.booked", { b: s.booked, c: s.capacity }) }}</text>
         </view>
@@ -159,10 +159,7 @@ onShow(() => {
   padding: 18rpx 0;
   border-top: var(--sh-hairline);
 }
-.slot__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .slot__when {
   display: block;
   font-size: 28rpx;

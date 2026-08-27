@@ -345,7 +345,7 @@ onShow(load);
         <template v-else>
           <text class="sh-muted cands__hint">{{ $t("verify.searchHint") }}</text>
           <view v-for="c in candidates" :key="c.subOrderNo" class="cand">
-            <view class="cand__main">
+            <view class="sh-fill">
               <text class="cand__code sh-num">{{ c.verifyCode }}</text>
               <text class="sh-muted">{{ c.buyerNickname || "—" }}</text>
             </view>
@@ -432,7 +432,7 @@ onShow(load);
       class="sh-card row-item"
       :class="{ 'is-just': justDone === o.subOrderNo }"
     >
-      <view class="row-item__main">
+      <view class="sh-fill">
         <text class="row-item__code sh-num">{{ o.verifyCode }}</text>
         <text class="sh-muted">{{ o.buyerNickname || "—" }} · {{ o.items.length }} 件</text>
       </view>
@@ -546,9 +546,6 @@ onShow(load);
   display: block;
   margin-top: 20rpx;
 }
-.is-disabled {
-  opacity: 0.45;
-}
 
 .entry {
   margin: 24rpx 0;
@@ -592,10 +589,7 @@ onShow(load);
   padding: 16rpx 0;
   border-top: var(--sh-hairline);
 }
-.cand__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .cand__code {
   display: block;
   font-size: 30rpx;
@@ -632,10 +626,7 @@ onShow(load);
 .row-item.is-just {
   background: var(--sh-success-tint);
 }
-.row-item__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .row-item__code {
   display: block;
   font-size: 34rpx;

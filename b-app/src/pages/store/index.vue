@@ -218,7 +218,7 @@ onShow(() => {
       <view class="field">
         <text class="field__label">{{ $t("store.address") }}</text>
         <view class="addr">
-          <input v-model="form.address" class="field__input addr__input" :maxlength="100" :placeholder="$t('store.addressPh')" />
+          <input v-model="form.address" class="field__input sh-fill" :maxlength="100" :placeholder="$t('store.addressPh')" />
           <view v-if="geoAvailable" class="addr__locate" @tap="locateAddress">
             <sh-icon name="pin" :size="18" color="var(--sh-primary-text)"></sh-icon>
             <text class="addr__t">{{ locating ? "…" : pinned ? $t("store.repinAddr") : $t("store.pickAddr") }}</text>
@@ -254,7 +254,7 @@ onShow(() => {
           <!-- **不画一张假码**：占位图会被印到包装袋上，而它扫不出任何东西 -->
           <text v-else class="qr__ph">▦</text>
         </view>
-        <view class="qr__main">
+        <view class="sh-fill">
           <text class="qr__t">{{ $t("store.qrcode") }}</text>
           <text class="sh-hint">
             {{ qrcode?.imageBase64 ? (qrcode.printableHint || $t("store.qrcodeDesc")) : $t("store.qrcodePending") }}
@@ -311,10 +311,7 @@ onShow(() => {
   align-items: center;
   gap: 12rpx;
 }
-.addr__input {
-  flex: 1;
-  min-width: 0;
-}
+
 .addr__locate {
   flex-shrink: 0;
   display: flex;
@@ -360,10 +357,7 @@ onShow(() => {
   line-height: 1;
   color: var(--sh-sub);
 }
-.qr__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .qr__t {
   display: block;
   font-size: 28rpx;

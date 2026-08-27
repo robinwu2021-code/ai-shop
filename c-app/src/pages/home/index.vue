@@ -208,12 +208,12 @@ onShareAppMessage(() =>
          但**不能删**：自提点决定「东西送到哪、什么时候能拿」，下单前要一眼可确认，
          藏进「我的」会让人下完单才发现提错了点。 -->
     <view class="place">
-      <view class="place__main" @tap="gotoCommunity">
+      <view class="place__main sh-fill" @tap="gotoCommunity">
         <sh-icon name="pin" :size="26" color="var(--sh-primary)"></sh-icon>
         <text class="place__name">
           {{ community.pickup?.name || $t("home.choosePickup") }}
         </text>
-        <text class="place__sub">
+        <text class="place__sub sh-fill">
           {{
             community.pickup
               ? community.pickup.arrivalDesc
@@ -318,8 +318,6 @@ onShareAppMessage(() =>
   padding: 4rpx 0 12rpx;
 }
 .place__main {
-  flex: 1;
-  min-width: 0;
   display: flex;
   align-items: center;
   gap: 10rpx;
@@ -352,8 +350,6 @@ onShareAppMessage(() =>
   white-space: nowrap;
 }
 .place__sub {
-  flex: 1;
-  min-width: 0;
   font-size: 24rpx;
   color: var(--sh-sub);
   overflow: hidden;

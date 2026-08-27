@@ -140,7 +140,7 @@ onLoad((q) => {
         -->
         <view v-if="order.receiver?.address" class="line line--wrap">
           <text class="sh-muted">{{ $t("order.receiver") }}</text>
-          <view class="recv">
+          <view class="recv sh-fill">
             <text class="recv__who">
               {{ order.receiver.name || "—" }}
               <text v-if="order.receiver.phone" class="sh-num">　{{ order.receiver.phone }}</text>
@@ -154,7 +154,7 @@ onLoad((q) => {
         <text class="txt-title">{{ $t("order.items") }}</text>
         <view v-for="it in order.items" :key="it.skuNo" class="sh-row item sh-mt-sm">
           <sh-cover class="item__cover" :src="it.cover"></sh-cover>
-          <view class="item__main">
+          <view class="sh-fill">
             <text class="item__title">{{ it.title }}</text>
             <text class="sh-muted">{{ it.spec }} × {{ it.qty }}</text>
           </view>
@@ -246,8 +246,6 @@ onLoad((q) => {
   gap: 32rpx;
 }
 .recv {
-  flex: 1;
-  min-width: 0;
   text-align: right;
 }
 .recv__who {
@@ -274,10 +272,7 @@ onLoad((q) => {
   text-align: center;
   line-height: 76rpx;
 }
-.item__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .item__title {
   display: block;
   font-size: 28rpx;

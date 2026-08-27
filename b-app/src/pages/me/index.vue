@@ -115,7 +115,7 @@ onShow(() => {
 
     <view v-else class="sh-card head">
       <text class="head__logo">{{ merchant.profile?.logo || MERCHANT_LOGO_FALLBACK }}</text>
-      <view class="head__main">
+      <view class="sh-fill">
         <text class="txt-title">{{ merchant.profile?.name || $t("me.store") }}</text>
         <text class="sh-chip" :class="merchant.isActive ? 'sh-chip--primary' : 'sh-chip--warning'">
           {{ $t(statusKey) }}
@@ -192,7 +192,7 @@ onShow(() => {
       >
         <text class="cell__label">{{ $t("entities.title") }}</text>
         <!-- 数的是**证照**不是门店：这一行进的是证照列表页，那里一条就是一张证照 -->
-        <text class="cell__sub">{{ $t("entities.count", { n: merchant.entityGroups.length }) }}</text>
+        <text class="cell__sub sh-fill">{{ $t("entities.count", { n: merchant.entityGroups.length }) }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <!--
@@ -271,9 +271,7 @@ onShow(() => {
   text-align: center;
   line-height: 108rpx;
 }
-.head__main {
-  flex: 1;
-}
+
 .head__main .sh-chip {
   margin-top: 12rpx;
 }
@@ -302,8 +300,6 @@ onShow(() => {
 /* 右侧补充数字（「3 家门店」）：与主标题同一行、色浅一档，
    不换行也不抢视线 —— 它是判断要不要点进去的依据，不是标题的一部分 */
 .cell__sub {
-  flex: 1;
-  min-width: 0;
   text-align: end;
   font-size: 24rpx;
   color: var(--sh-sub);

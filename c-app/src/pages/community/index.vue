@@ -270,7 +270,7 @@ onLoad(load);
         class="cm__head"
         @tap="expanded = expanded === c.communityNo ? '' : c.communityNo"
       >
-        <view class="cm__main">
+        <view class="sh-fill">
           <text class="cm__name">{{ c.name }}</text>
           <text class="cm__addr">{{ c.address }}</text>
         </view>
@@ -286,7 +286,7 @@ onLoad(load);
           @tap="choose(c, p)"
         >
           <text class="pk__avatar">{{ p.hostAvatar }}</text>
-          <view class="pk__main">
+          <view class="sh-fill">
             <text class="pk__name">{{ p.name }}</text>
             <text class="pk__sub">
               {{ p.hostName }} · {{ p.openHours }} · {{ p.arrivalDesc }}
@@ -391,10 +391,7 @@ onLoad(load);
   align-items: center;
   gap: 20rpx;
 }
-.cm__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .cm__name {
   display: block;
   font-size: 30rpx;
@@ -435,10 +432,7 @@ onLoad(load);
   font-size: 36rpx;
   flex-shrink: 0;
 }
-.pk__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .pk__name {
   display: block;
   font-size: 28rpx;

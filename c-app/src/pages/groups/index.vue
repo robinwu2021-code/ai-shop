@@ -166,7 +166,7 @@ onShow(() => {
       <view v-for="r in requests" :key="r.requestNo" class="sh-card rq" @tap="openRequest(r)">
         <view class="rq__head">
           <text class="rq__avatar">{{ r.initiatorAvatar }}</text>
-          <view class="rq__who">
+          <view class="sh-fill">
             <text class="rq__title">{{ r.title }}</text>
             <text class="rq__by">
               {{ $t("groups.startedBy", { name: r.initiatorNickname }) }} · {{ r.pickupName }}
@@ -285,10 +285,7 @@ onShow(() => {
   font-size: 36rpx;
   flex-shrink: 0;
 }
-.rq__who {
-  flex: 1;
-  min-width: 0;
-}
+
 .rq__title {
   display: block;
   font-size: 28rpx;

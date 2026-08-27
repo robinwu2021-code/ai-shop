@@ -97,7 +97,7 @@ onShow(() => cart.load());
 
     <template v-if="cart.items.length">
       <sh-actionbar pill="lead" tabbar :pad="140">
-        <view class="checkoutbar__sum">
+        <view class="sh-fill">
           <text class="sh-muted">{{ $t("cart.total") }}</text>
           <text class="checkoutbar__total sh-num">{{ money(cart.totalFen) }}</text>
         </view>
@@ -190,10 +190,7 @@ onShow(() => cart.load());
   color: var(--sh-ink);
 }
 /* 悬浮结算条要压在底部菜单之上 —— 之前只算了安全区，被菜单盖住了 */
-.checkoutbar__sum {
-  flex: 1;
-  min-width: 0;
-}
+
 .checkoutbar__total {
   display: block;
   font-size: 34rpx;

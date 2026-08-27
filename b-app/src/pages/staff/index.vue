@@ -137,7 +137,7 @@ onShow(load);
 
       <!-- 一行四样：认人的、状态、他管什么、进详情。**其余全在详情页** -->
       <view v-for="s in visibleStaff" :key="s.mchAccountNo" class="sh-row sh-card sh-mb-sm" @tap="openStaff(s)">
-        <view class="row__main">
+        <view class="sh-fill">
           <view class="row__top">
             <text class="row__name">{{ nameOf(s) }}</text>
             <!-- 号码就是他的登录用户名：搜到人之后老板下一眼看的就是这个 -->
@@ -179,7 +179,7 @@ onShow(load);
       <text class="sh-muted tip sh-hint">{{ $t("staff.roleTip") }}</text>
 
       <view v-for="r in roles" :key="r.roleCode" class="sh-row sh-card sh-mb-sm">
-        <view class="row__main" @tap="openRole(r)">
+        <view class="sh-fill" @tap="openRole(r)">
           <view class="row__top">
             <text class="row__name">{{ r.name }}</text>
             <text v-if="r.builtin" class="tag">{{ $t("staff.builtin") }}</text>
@@ -228,10 +228,6 @@ onShow(load);
   margin: 20rpx 8rpx;
 }
 
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
 .row__top {
   display: flex;
   align-items: center;

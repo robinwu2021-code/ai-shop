@@ -146,7 +146,7 @@ onShow(load);
     <sh-empty v-if="!pending.length" :text='$t("delivery.empty")'></sh-empty>
 
     <view v-for="o in pending" :key="o.orderNo" class="sh-row sh-card row sh-mb-sm">
-      <view class="row__main">
+      <view class="sh-fill">
         <!--
           **送到哪里、找谁、打哪个号** —— 这一页在这之前只有单号和金额，
           配送员拿着它出不了门。自送单的手机号后端给的是完整号（其余履约方式脱敏），
@@ -190,10 +190,7 @@ onShow(load);
 .row {
   gap: 20rpx;
 }
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .row__buyer {
   display: block;
   font-size: 28rpx;

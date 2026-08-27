@@ -190,7 +190,7 @@ async function doLogin(method: LoginMethod) {
           <input
             v-if="byPwd"
             v-model="code"
-            class="field__input flex1"
+            class="field__input sh-fill"
             password
             maxlength="32"
             :placeholder="$t('login.passwordPh')"
@@ -198,7 +198,7 @@ async function doLogin(method: LoginMethod) {
           <input
             v-else
             v-model="code"
-            class="field__input sh-num flex1"
+            class="field__input sh-num sh-fill"
             type="number"
             maxlength="6"
             :placeholder="$t('login.codePh')"
@@ -267,9 +267,6 @@ async function doLogin(method: LoginMethod) {
   line-height: 1.6;
 }
 
-.flex1 {
-  flex: 1;
-}
 /*
  * 方式切换：**分段控件**，两项等宽、选中带下划线。
  * 不做成按钮 —— 它是「同一件事的两种方式」，按钮会读作两个可执行的动作；

@@ -241,7 +241,7 @@ function navToStore() {
     <!-- 店招：登录用户看到的是「常买」优先，这里只占一行 -->
     <view class="store">
       <text class="store__logo">{{ data.merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
-      <view class="store__main">
+      <view class="sh-fill">
         <view class="store__row">
           <text class="store__name">{{ data.merchant.name }}</text>
           <text v-if="data.merchant.verified" class="sh-chip sh-chip--primary">
@@ -249,7 +249,7 @@ function navToStore() {
           </text>
         </view>
         <view class="addr">
-          <text class="sh-muted addr__t">
+          <text class="sh-muted sh-fill">
             {{ data.store.openHours }} · {{ data.store.address }}
           </text>
           <text v-if="data.store.latE6 != null" class="addr__nav" @tap="navToStore">
@@ -287,7 +287,7 @@ function navToStore() {
         :class="{ 'is-off': f.invalid }"
       >
         <sh-cover class="freq__cover" :src="f.cover"></sh-cover>
-        <view class="freq__main" @tap="gotoGoods(f.goodsNo)">
+        <view class="sh-fill" @tap="gotoGoods(f.goodsNo)">
           <text class="freq__title">{{ f.title }}</text>
           <text class="sh-muted">{{ f.spec }}</text>
           <view class="freq__tags">
@@ -392,10 +392,7 @@ function navToStore() {
   align-items: center;
   gap: 12rpx;
 }
-.addr__t {
-  flex: 1;
-  min-width: 0;
-}
+
 .addr__nav {
   flex-shrink: 0;
   padding: 6rpx 18rpx;
@@ -429,10 +426,7 @@ function navToStore() {
   text-align: center;
   line-height: 96rpx;
 }
-.store__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .store__row {
   display: flex;
   align-items: center;
@@ -484,10 +478,7 @@ function navToStore() {
   text-align: center;
   line-height: 88rpx;
 }
-.freq__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .freq__title {
   /* 常买清单的行内商品名 —— 与购物车/订单里的商品行同类，用同一档
      （这里的 .freq 是**横向行**，不是首页那个同名的横滑窄卡） */

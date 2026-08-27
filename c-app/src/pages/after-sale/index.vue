@@ -314,7 +314,4 @@ onLoad((q) => {
   font-size: 24rpx;
   color: var(--sh-ink);
 }
-.is-disabled {
-  opacity: 0.45;
-}
 </style>

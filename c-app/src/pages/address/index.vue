@@ -203,7 +203,7 @@ onLoad((q) => {
           <input
             maxlength="96"
             v-model="draft.region"
-            class="field__input regionrow__in"
+            class="field__input sh-fill"
             :placeholder="$t('address.region')"
             @blur="onRegionInput"
           />
@@ -241,10 +241,7 @@ onLoad((q) => {
   align-items: center;
   gap: 12rpx;
 }
-.regionrow__in {
-  flex: 1;
-  min-width: 0;
-}
+
 .regionrow__pick {
   flex-shrink: 0;
   padding: 12rpx 20rpx;
@@ -317,8 +314,5 @@ onLoad((q) => {
 }
 .sheet__save {
   margin-top: 36rpx;
-}
-.is-disabled {
-  opacity: 0.45;
 }
 </style>

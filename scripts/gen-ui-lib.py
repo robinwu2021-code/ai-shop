@@ -492,6 +492,13 @@ ROLLED = [
     # 2026-08-28 收编 41 处（全站 60 处里的可换部分），写法从 **35 种**收到 1 种。
     ("hint",    "说明文字自配",   None,
      r"^\s*\.(?:hint|tip|note|memo)\s*\{[^}]*font-size:\s*24rpx",              None, ".sh-hint"),
+    # 「占满剩余宽度」与「禁用态」两个一行的工具类。判声明不判名字 ——
+    # 名字有 row__main / item__main / head__main / flex1 四种，而它们是同一件事。
+    # 收编时发现 30 处里 7 处漏了 `min-width: 0`（长标题会顶出屏幕，短数据下测不出来）。
+    ("fill",    "占满剩余自写",   None,
+     r"^\s*\.[\w-]*\s*\{[^}]*flex:\s*1;[^}]*min-width:\s*0",                 None, ".sh-fill"),
+    ("disabled","禁用态自写",     None,
+     r"^\s*\.is-disabled\s*\{",                                              None, ".is-disabled（全局）"),
     ("kv",      "键值行", None, r"\.(?:kv|rule|prob)\b[^{}]*\{[^}]*display:\s*flex", None, None),
     ("addbtn",  "＋ 加一项按钮",   None, r"^\s*\.btn-add\b",                     None,       None),
     # 虚线药丸是**另一件事**，goods-edit 的注释里把两者的分工写死了：

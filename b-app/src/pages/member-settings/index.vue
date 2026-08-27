@@ -80,7 +80,7 @@ onShow(load);
 
     <view class="sh-card sh-mt-sm">
       <view class="sh-row sh-row--between row">
-        <view class="row__main">
+        <view class="sh-fill">
           <text class="opt__t">{{ $t("memberSettings.autoJoin") }}</text>
           <text class="sh-muted opt__d">{{ $t("memberSettings.autoJoinHint") }}</text>
         </view>
@@ -110,9 +110,6 @@ onShow(load);
 }
 .row {
   gap: 24rpx;
-}
-.row__main {
-  flex: 1;
 }
 
 </style>

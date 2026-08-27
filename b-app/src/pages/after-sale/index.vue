@@ -177,7 +177,7 @@ onShow(load);
         v-else-if="asStatus(r) === 'REFUNDING' && asType(r) === 'RETURN_REFUND'"
         class="btns"
       >
-        <view class="express">
+        <view class="express sh-fill">
           <text class="sh-muted">{{ $t("afterSale.returnExpress") }}</text>
           <text class="sh-num">{{ r.as.returnExpressNo }}</text>
         </view>
@@ -229,8 +229,6 @@ onShow(load);
  * 单号可断（运单号比这一格宽是常态）。
  */
 .express {
-  flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4rpx;

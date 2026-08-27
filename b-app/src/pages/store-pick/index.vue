@@ -86,7 +86,7 @@ function confirm() {
         :class="{ 'is-on': s.storeNo === picked, 'is-off': s.status !== 'ACTIVE' }"
         @tap="choose(s.storeNo, s.status)"
       >
-        <view class="item__main">
+        <view class="sh-fill">
           <text class="item__name">
             {{ s.name }}<text v-if="s.isDefault" class="sh-chip item__chip">{{ $t("storePick.default") }}</text>
           </text>
@@ -150,10 +150,7 @@ function confirm() {
 .item.is-off {
   opacity: 0.55;
 }
-.item__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .item__name {
   display: block;
   font-size: 30rpx;

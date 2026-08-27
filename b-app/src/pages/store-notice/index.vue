@@ -286,7 +286,7 @@ onShow(load);
       <text class="field__label">{{ $t("store.noticeRecent") }}</text>
       <view class="recent">
         <view v-for="(r, i) in recent" :key="i" class="recent__row">
-          <text class="recent__i" @tap="text = r">{{ r }}</text>
+          <text class="recent__i sh-fill" @tap="text = r">{{ r }}</text>
           <sh-icon-btn v-if="BACKEND_READY" name="close" @tap="dropRecent(r)"></sh-icon-btn>
         </view>
       </view>
@@ -387,8 +387,6 @@ onShow(load);
   gap: 12rpx;
 }
 .recent__i {
-  flex: 1;
-  min-width: 0;
   padding: 16rpx 20rpx;
   border-radius: 16rpx;
   background: var(--sh-faint);

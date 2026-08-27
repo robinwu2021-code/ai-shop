@@ -229,8 +229,4 @@ onLoad((q) => {
 .imgs {
   margin-top: 16rpx;
 }
-
-.is-disabled {
-  opacity: 0.45;
-}
 </style>

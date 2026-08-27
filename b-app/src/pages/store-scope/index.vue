@@ -399,7 +399,7 @@ onShow(() => {
 
       <view v-if="areas.length" class="list">
         <view v-for="a in areas" :key="`${a.level}:${a.refCode}`" class="sh-row sh-row--divided item">
-          <view class="item__main">
+          <view class="sh-fill">
             <text class="item__name" :class="{ 'is-pending': areaPending(a) }">
               {{ splitName(a).main }}<text v-if="isWhole(a)" class="item__whole"> {{ $t("store.whole") }}</text>
             </text>
@@ -437,7 +437,7 @@ onShow(() => {
 
       <template v-for="c in channelRows" :key="c.channel">
         <view class="ch" :class="{ 'is-off': c.denied || c.locked }" @tap="toggleChannel(c.channel)">
-          <view class="ch__main">
+          <view class="sh-fill">
             <text class="ch__name">{{ $t(`channel.${c.channel}`) }}</text>
             <text class="ch__desc" :class="{ 'ch__desc--warn': c.locked }">{{ c.locked ? $t("store.channelLocked") : c.denied ? $t("store.channelDenied") : $t(`store.channelDesc.${c.channel}`) }}</text>
           </view>
@@ -449,29 +449,29 @@ onShow(() => {
 
         <!-- 开着的路：一行配置摘要 -->
         <view v-if="c.enabled && c.channel === 'STORE_PICKUP'" class="sum" :class="{ 'sum--warn': !form.address }">
-          <text class="sum__t">{{ fullAddress ? $t("store.sumPickupAddr", { s: fullAddress }) : $t("store.sumNoAddress") }}</text>
+          <text class="sum__t sh-fill">{{ fullAddress ? $t("store.sumPickupAddr", { s: fullAddress }) : $t("store.sumNoAddress") }}</text>
           <sh-go class="sum__go" @tap.stop="goAddress">{{ $t("store.goAddress") }}</sh-go>
         </view>
         <view v-if="c.enabled && c.channel === 'NEIGHBOR_PICKUP'" class="sum" :class="{ 'sum--warn': !neighborRefs.length && !form.address }">
-          <text class="sum__t">{{ neighborSummary ? $t("store.pickup.sumRefs", { s: neighborSummary }) : (form.address ? $t("store.pickup.sumNone") : $t("store.pickup.sumNoneNoAddr")) }}</text>
+          <text class="sum__t sh-fill">{{ neighborSummary ? $t("store.pickup.sumRefs", { s: neighborSummary }) : (form.address ? $t("store.pickup.sumNone") : $t("store.pickup.sumNoneNoAddr")) }}</text>
           <sh-go class="sum__go" @tap.stop="pickupSheetOpen = true">{{ $t("store.pickup.manage") }}</sh-go>
         </view>
         <view v-if="c.enabled && c.channel === 'MERCHANT_DELIVERY'" class="sum">
           <template v-if="!ruleOpen">
-            <text class="sum__t">{{ deliverySummary || $t("store.sumDeliveryUnset") }}</text>
+            <text class="sum__t sh-fill">{{ deliverySummary || $t("store.sumDeliveryUnset") }}</text>
             <sh-go class="sum__go" @tap.stop="openRule">{{ $t("store.edit") }}</sh-go>
           </template>
           <view v-else class="rate" @tap.stop>
             <view class="rate__grid">
-              <view class="rate__f">
+              <view class="sh-fill">
                 <text class="field__label">{{ $t("store.minOrder") }}</text>
                 <input v-model="ruleForm.minOrder" class="field__input" type="digit" :maxlength="8" />
               </view>
-              <view class="rate__f">
+              <view class="sh-fill">
                 <text class="field__label">{{ $t("store.fee") }}</text>
                 <input v-model="ruleForm.fee" class="field__input" type="digit" :maxlength="8" />
               </view>
-              <view class="rate__f">
+              <view class="sh-fill">
                 <text class="field__label">{{ $t("store.freeThreshold") }}</text>
                 <input v-model="ruleForm.free" class="field__input" type="digit" :maxlength="8" />
               </view>
@@ -485,7 +485,7 @@ onShow(() => {
         </view>
         <view v-if="c.enabled && c.channel === 'MERCHANT_DELIVERY'" class="sum">
           <template v-if="!subsetOpen">
-            <text class="sum__t">{{ subsetSummary(c) }}</text>
+            <text class="sum__t sh-fill">{{ subsetSummary(c) }}</text>
             <sh-go class="sum__go" @tap.stop="openSubset(c)">{{ $t("store.subset.edit") }}</sh-go>
           </template>
           <view v-else class="rate" @tap.stop>
@@ -500,7 +500,7 @@ onShow(() => {
             </view>
             <view v-if="!subsetAll" class="subset__list">
               <view v-for="a in activeAreas" :key="a.areaNo || a.refCode" class="subset__row" @tap="toggleSubsetArea(a)">
-                <text class="subset__name">{{ splitName(a).main }}<text v-if="isWhole(a)" class="item__whole"> {{ $t("store.whole") }}</text></text>
+                <text class="subset__name sh-fill">{{ splitName(a).main }}<text v-if="isWhole(a)" class="item__whole"> {{ $t("store.whole") }}</text></text>
                 <sh-check :model-value="subsetPicked.includes(a.areaNo || '')"></sh-check>
               </view>
               <text v-if="!activeAreas.length" class="sh-hint">{{ $t("store.subset.noAreas") }}</text>
@@ -512,7 +512,7 @@ onShow(() => {
           </view>
         </view>
         <view v-if="c.enabled && c.channel === 'EXPRESS'" class="sum">
-          <text class="sum__t">{{ $t("store.sumExpress") }}</text>
+          <text class="sum__t sh-fill">{{ $t("store.sumExpress") }}</text>
         </view>
       </template>
     </view>
@@ -564,10 +564,7 @@ onShow(() => {
 .list {
   margin-top: 12rpx;
 }
-.item__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .item__name {
   display: block;
   font-size: 28rpx;
@@ -607,10 +604,7 @@ onShow(() => {
 .ch.is-off {
   opacity: 0.55;
 }
-.ch__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .ch__name {
   display: block;
   font-size: 28rpx;
@@ -676,14 +670,10 @@ onShow(() => {
   padding: 12rpx 0;
 }
 .subset__name {
-  flex: 1;
-  min-width: 0;
   font-size: 26rpx;
   color: var(--sh-ink);
 }
 .sum__t {
-  flex: 1;
-  min-width: 0;
   font-size: 24rpx;
   line-height: 1.5;
   color: var(--sh-sub);
@@ -701,10 +691,7 @@ onShow(() => {
   display: flex;
   gap: 12rpx;
 }
-.rate__f {
-  flex: 1;
-  min-width: 0;
-}
+
 .rate__btns {
   display: flex;
   gap: 16rpx;

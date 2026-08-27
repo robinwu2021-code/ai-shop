@@ -273,9 +273,9 @@ onShow(load);
       <view v-if="need.buyGift" class="field">
         <text class="field__label">{{ $t("marketing.buyGift") }}</text>
         <view class="sh-row">
-          <input maxlength="6" v-model="form.buyN" class="field__input sh-num flex1" type="number" />
+          <input maxlength="6" v-model="form.buyN" class="field__input sh-num sh-fill" type="number" />
           <text class="sh-muted">{{ $t("marketing.buyGiftMid") }}</text>
-          <input maxlength="6" v-model="form.giftM" class="field__input sh-num flex1" type="number" />
+          <input maxlength="6" v-model="form.giftM" class="field__input sh-num sh-fill" type="number" />
         </view>
       </view>
       <view v-if="need.total" class="field">
@@ -368,9 +368,6 @@ onShow(load);
   justify-content: space-between;
 }
 
-.flex1 {
-  flex: 1;
-}
 .chips {
   display: flex;
   flex-wrap: wrap;

@@ -84,7 +84,7 @@ function addOne() {
 
     <view class="list">
       <view v-for="e in rows" :key="e.entityNo" class="sh-row sh-card item" @tap="open(e.entityNo)">
-        <view class="item__main">
+        <view class="sh-fill">
           <text class="item__name">
             {{ e.name }}
             <text v-if="e.isPrimary" class="sh-chip item__chip">{{ $t("entities.primary") }}</text>
@@ -121,10 +121,7 @@ function addOne() {
 .item {
   gap: 24rpx;
 }
-.item__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .item__name {
   display: block;
   font-size: 30rpx;

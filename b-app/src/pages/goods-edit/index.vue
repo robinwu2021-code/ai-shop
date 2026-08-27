@@ -2297,7 +2297,7 @@ async function save(thenSubmit = false) {
           换来的是把改的成本压到最低：右边那个 ✕ 一下清空，长名不用逐字删。
         -->
         <view class="inline">
-          <input maxlength="64" v-model="title[lang]" class="field__input flex1" />
+          <input maxlength="64" v-model="title[lang]" class="field__input sh-fill" />
           <sh-icon-btn v-if="title[lang]" class="inline__clear" name="close"
             color="var(--sh-sub)" @tap="title[lang] = ''"></sh-icon-btn>
         </view>
@@ -2325,7 +2325,7 @@ async function save(thenSubmit = false) {
           <text class="sh-muted">{{ $t("goods.optional") }}</text>
         </view>
         <view class="inline">
-          <input maxlength="64" v-model="subtitle[lang]" class="field__input flex1" />
+          <input maxlength="64" v-model="subtitle[lang]" class="field__input sh-fill" />
           <sh-icon-btn v-if="subtitle[lang]" class="inline__clear" name="close"
             color="var(--sh-sub)" @tap="subtitle[lang] = ''"></sh-icon-btn>
         </view>
@@ -2549,7 +2549,7 @@ async function save(thenSubmit = false) {
           {{ $t("goods.channelsLoading") }}
         </text>
         <view v-else-if="channelsState === 'error'" class="inline">
-          <text class="sh-muted hint flex1">{{ $t("goods.channelsFailed") }}</text>
+          <text class="sh-muted hint sh-fill">{{ $t("goods.channelsFailed") }}</text>
           <text class="sh-link" @tap="loadStoreChannels">{{ $t("common.retry") }}</text>
         </view>
 
@@ -2983,7 +2983,7 @@ async function save(thenSubmit = false) {
       -->
       <template v-if="!multi">
         <view class="pr">
-          <text class="pr__k">{{ $t(priceLabel) }}</text>
+          <text class="pr__k sh-fill">{{ $t(priceLabel) }}</text>
           <text class="pr__cur">￥</text>
           <input maxlength="10" v-model="rows[0]!.priceMajor[market]" class="pr__v sh-num" type="digit" />
         </view>
@@ -2992,7 +2992,7 @@ async function save(thenSubmit = false) {
           {{ $t("goods.margin", { a: marginOf(rows[0]!)!.amount, r: marginOf(rows[0]!)!.rate }) }}
         </text>
         <view class="pr">
-          <text class="pr__k">{{ $t("goods.costPrice") }}</text>
+          <text class="pr__k sh-fill">{{ $t("goods.costPrice") }}</text>
           <text class="pr__cur">￥</text>
           <input
             maxlength="10"
@@ -3005,7 +3005,7 @@ async function save(thenSubmit = false) {
         <text v-if="belowCost(rows[0]!)" class="pr__warn">{{ $t("goods.belowCost") }}</text>
         <text class="sh-muted hint">{{ $t("goods.costHint") }}</text>
         <view class="pr">
-          <text class="pr__k">{{ $t("goods.originPrice") }}</text>
+          <text class="pr__k sh-fill">{{ $t("goods.originPrice") }}</text>
           <text class="pr__cur">￥</text>
           <input
             maxlength="10"
@@ -3016,7 +3016,7 @@ async function save(thenSubmit = false) {
           />
         </view>
         <view v-if="SHOW_FRESH_FIELDS && isFresh" class="pr">
-          <text class="pr__k">{{ $t("goods.nominalGram") }}</text>
+          <text class="pr__k sh-fill">{{ $t("goods.nominalGram") }}</text>
           <text class="pr__cur">g</text>
           <input maxlength="6" v-model="rows[0]!.nominalGram" class="pr__v sh-num" type="number" />
         </view>
@@ -3028,7 +3028,7 @@ async function save(thenSubmit = false) {
       -->
       <template v-else>
         <view v-for="(r, i) in rows" :key="i" class="pr">
-          <text class="pr__k">{{ r.optionValues.join(" · ") }}</text>
+          <text class="pr__k sh-fill">{{ r.optionValues.join(" · ") }}</text>
           <text class="pr__cur">{{ priceField === "gram" ? "g" : "￥" }}</text>
           <input
             maxlength="10"
@@ -3129,7 +3129,7 @@ async function save(thenSubmit = false) {
       </view>
 
       <view v-for="(r, i) in rows" :key="i" class="pr">
-        <text class="pr__k">{{ multi ? r.optionValues.join(" · ") : $t("goods.stock") }}</text>
+        <text class="pr__k sh-fill">{{ multi ? r.optionValues.join(" · ") : $t("goods.stock") }}</text>
         <!--
           −／＋ 步进。**库存是每天都在动的数**，最常见的改动是「卖掉两袋」——
           点两下比调出键盘、全选、重打快得多。数字仍然可以直接键入。
@@ -3151,7 +3151,7 @@ async function save(thenSubmit = false) {
       </text>
 
       <view class="pr">
-        <text class="pr__k">{{ $t("goods.limitPerUser") }}</text>
+        <text class="pr__k sh-fill">{{ $t("goods.limitPerUser") }}</text>
         <!-- 右侧留出 −／＋ 那两格的宽度，两行的输入框才在同一竖列上 -->
         <input maxlength="6" v-model="limitPerUser" class="pr__v pr__v--n pr__v--pad sh-num" type="number" />
       </view>
@@ -3184,7 +3184,7 @@ async function save(thenSubmit = false) {
         <view v-for="f in extFields" :key="f.key" class="codeblock">
           <text class="codeblock__k">{{ $t(f.labelKey) }}</text>
           <view v-for="(r, i) in rows" :key="i" class="pr">
-            <text v-if="multi" class="pr__k">{{ r.optionValues.join(" · ") }}</text>
+            <text v-if="multi" class="pr__k sh-fill">{{ r.optionValues.join(" · ") }}</text>
             <input
               maxlength="64"
               v-if="f.key === 'barcode'"
@@ -3560,8 +3560,6 @@ async function save(thenSubmit = false) {
 }
 .pr__k {
   /* 标签吃掉剩余宽度，控件一律贴右 —— 一列数字对齐比标签对齐重要 */
-  flex: 1;
-  min-width: 0;
   font-size: 26rpx;
   color: var(--sh-sub);
   overflow: hidden;
@@ -3754,9 +3752,7 @@ async function save(thenSubmit = false) {
   align-items: center;
   gap: 16rpx;
 }
-.flex1 {
-  flex: 1;
-}
+
 .del.small {
   width: 40rpx;
   font-size: 24rpx;

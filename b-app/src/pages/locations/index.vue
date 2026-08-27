@@ -87,7 +87,7 @@ onShow(load);
 
     <view v-for="l in rows" :key="l.locationId" class="sh-card sh-mb-sm" @tap="setSource(l)">
       <view class="row__top">
-        <view class="row__main">
+        <view class="sh-fill">
           <text class="row__title">{{ l.name }}</text>
           <view class="row__meta">
             <text class="sh-chip" :class="kindClass(l.kind)">
@@ -139,10 +139,7 @@ onShow(load);
   gap: 20rpx;
   align-items: center;
 }
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .row__title {
   display: block;
   font-size: 30rpx;

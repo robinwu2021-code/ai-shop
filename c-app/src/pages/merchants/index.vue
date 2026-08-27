@@ -138,7 +138,7 @@ onShow(load);
           @tap="open(m.merchantNo)"
         >
           <text class="near__logo">{{ m.logo || MERCHANT_LOGO_FALLBACK }}</text>
-          <view class="near__main">
+          <view class="sh-fill">
             <text class="near__name">{{ m.name }}</text>
             <text class="near__desc">{{ m.desc }}</text>
           </view>
@@ -201,10 +201,7 @@ onShow(load);
   text-align: center;
   flex-shrink: 0;
 }
-.near__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .near__name {
   display: block;
   font-size: 26rpx;

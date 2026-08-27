@@ -507,7 +507,7 @@ onShareAppMessage(() =>
         {{ soldOut ? $t("goods.soldOut") : $t("goods.addCart") }}
       </view>
       <view
-        class="sh-btn actionbar__buy"
+        class="sh-btn actionbar__buy sh-fill"
         :class="{ 'is-disabled': !buyable }"
         @tap="buyable && buyNow()"
       >
@@ -759,8 +759,6 @@ onShareAppMessage(() =>
 }
 .actionbar__add,
 .actionbar__buy {
-  flex: 1;
-  min-width: 0;
   font-size: 26rpx;
   padding: 26rpx 8rpx;
   white-space: nowrap;
@@ -770,9 +768,6 @@ onShareAppMessage(() =>
 .actionbar__add {
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
-}
-.is-disabled {
-  opacity: 0.45;
 }
 .rvhead {
   margin-bottom: 24rpx;

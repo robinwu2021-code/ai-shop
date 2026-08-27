@@ -187,7 +187,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
           从前整行都是改名 —— 而商家在这一页最常想做的其实是
           「看看这一类的货」，那条路从这里根本走不通。
         -->
-        <view class="row__main" @tap="openGoods(c.categoryNo)">
+        <view class="sh-fill" @tap="openGoods(c.categoryNo)">
           <text class="row__name">{{ c.name }}</text>
           <!-- 改过名的要标出来：只显示新名字的话，商家找不回平台原来叫什么 -->
           <text v-if="c.displayName" class="row__from">{{ c.platformName }}</text>
@@ -267,10 +267,6 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
 .opt__n {
   font-size: 24rpx;
   color: var(--sh-sub);
-}
-
-.row__main {
-  flex: 1;
 }
 
 .row__stat {

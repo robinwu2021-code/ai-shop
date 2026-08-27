@@ -328,7 +328,4 @@ onUnmounted(() => clearInterval(timer));
   color: var(--sh-sub);
   margin-top: 24rpx;
 }
-.is-disabled {
-  opacity: 0.45;
-}
 </style>

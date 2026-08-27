@@ -95,7 +95,7 @@ onShareAppMessage(() => {
     <view class="sh-card">
       <view class="head">
         <text class="head__avatar">{{ request.initiatorAvatar }}</text>
-        <view class="head__main">
+        <view class="sh-fill">
           <text class="sh-h2">{{ request.title }}</text>
           <text class="head__by">
             {{ $t("groups.startedBy", { name: request.initiatorNickname }) }} ·
@@ -146,7 +146,7 @@ onShareAppMessage(() => {
       <view v-for="(q, i) in request.quotes" :key="q.quoteNo" class="quote" :class="{ 'is-chosen': q.chosen }">
         <view class="quote__head">
           <text class="quote__logo">{{ q.merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
-          <view class="quote__who">
+          <view class="sh-fill">
             <view class="quote__name-row">
               <text class="quote__name">{{ q.merchant.name }}</text>
               <text v-if="i === 0 && request.quotes.length > 1" class="sh-chip sh-chip--primary tiny">
@@ -267,10 +267,7 @@ onShareAppMessage(() => {
   font-size: 40rpx;
   flex-shrink: 0;
 }
-.head__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .head__by {
   display: block;
   font-size: 24rpx;
@@ -368,10 +365,7 @@ onShareAppMessage(() => {
   font-size: 34rpx;
   flex-shrink: 0;
 }
-.quote__who {
-  flex: 1;
-  min-width: 0;
-}
+
 /* 标签多的时候让它们换行，而不是把商家名挤成「邻…」——
    名字是这里最该看清的信息，标签可以下一行 */
 .quote__name-row {
@@ -443,8 +437,5 @@ onShareAppMessage(() => {
   font-size: 48rpx;
   font-weight: 700;
   color: var(--sh-ink);
-}
-.is-disabled {
-  opacity: 0.45;
 }
 </style>

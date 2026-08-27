@@ -46,7 +46,7 @@ onShow(load);
   <sh-scaffold title-key="message.title">
     <view class="head">
       <sh-tabs
-        class="tabs"
+        class="sh-fill"
         :items="TABS.map((t) => ({ key: t.key, label: String($t(`message.tab.${t.key}`)) }))"
         :active="tab"
         @change="(k: string) => (tab = k as typeof tab)"
@@ -56,7 +56,7 @@ onShow(load);
 
     <view v-for="m in shown" :key="m.messageNo" class="sh-card msg" @tap="open(m)">
       <view class="msg__dot" :class="{ 'is-unread': !m.read }" />
-      <view class="msg__main">
+      <view class="sh-fill">
         <view class="msg__top">
           <text class="msg__title" :class="{ 'is-unread': !m.read }">{{ m.title }}</text>
           <text class="msg__at sh-num">{{ datetime(m.at) }}</text>
@@ -77,10 +77,7 @@ onShow(load);
   gap: 16rpx;
   margin-bottom: 16rpx;
 }
-.tabs {
-  flex: 1;
-  min-width: 0;
-}
+
 .readall {
   flex-shrink: 0;
   font-size: 24rpx;
@@ -105,10 +102,7 @@ onShow(load);
 .msg__dot.is-unread {
   background: var(--sh-danger);
 }
-.msg__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .msg__top {
   display: flex;
   align-items: baseline;

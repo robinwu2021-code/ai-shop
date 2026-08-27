@@ -132,7 +132,7 @@ onShow(load);
 
     <view v-for="b in rows" :key="b.itemId" class="sh-card sh-mb-sm" @tap="openItem(b)">
       <view class="row__top">
-        <view class="row__main">
+        <view class="sh-fill">
           <text class="row__title">{{ b.name }}{{ b.specText ? ` · ${b.specText}` : "" }}</text>
           <view class="row__meta">
             <!--
@@ -185,10 +185,7 @@ onShow(load);
   gap: 20rpx;
   align-items: center;
 }
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .row__title {
   display: block;
   font-size: 30rpx;

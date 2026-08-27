@@ -122,7 +122,7 @@ onShow(load);
         <text v-if="!logs.length" class="sh-muted sh-hint">{{ $t("staff.logsEmpty") }}</text>
         <view v-for="(l, i) in logs" :key="i" class="log">
           <text class="log__t sh-num">{{ datetime(l.at) }}</text>
-          <text class="log__d">{{ l.detail || l.action }}</text>
+          <text class="log__d sh-fill">{{ l.detail || l.action }}</text>
           <text v-if="l.actor" class="sh-muted log__a">{{ l.actor }}</text>
         </view>
       </view>
@@ -201,8 +201,6 @@ onShow(load);
   color: var(--sh-sub);
 }
 .log__d {
-  flex: 1;
-  min-width: 0;
   color: var(--sh-ink);
 }
 .log__a {

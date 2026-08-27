@@ -414,7 +414,7 @@ async function submit() {
         :selected="form.serviceScope === sc"
         @tap="pickScope(sc)"
       >
-        <view class="scope__main">
+        <view class="sh-fill">
           <text class="scope__name">{{ $t(`serviceScope.${sc}`) }}</text>
           <text class="scope__desc">{{ $t(`store.scopeDesc.${sc}`) }}</text>
         </view>
@@ -597,10 +597,7 @@ async function submit() {
   gap: 20rpx;
   margin-top: 16rpx;
 }
-.scope__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .scope__name {
   display: block;
   font-size: 28rpx;

@@ -86,7 +86,7 @@ onShareAppMessage(() => {
     <view class="sh-card">
       <view class="head">
         <sh-cover class="head__cover" :src="group.cover || GOODS_COVER_FALLBACK" @tap="openGoods"></sh-cover>
-        <view class="head__main">
+        <view class="sh-fill">
           <text class="sh-h2">{{ group.title }}</text>
           <text class="head__pickup">📍 {{ group.pickupName }}</text>
         </view>
@@ -162,10 +162,7 @@ onShareAppMessage(() => {
   font-size: 64rpx;
   flex-shrink: 0;
 }
-.head__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .head__pickup {
   display: block;
   font-size: 24rpx;
@@ -262,8 +259,5 @@ onShareAppMessage(() => {
   font-size: 24rpx;
   color: var(--sh-sub);
   line-height: 1.6;
-}
-.is-disabled {
-  opacity: 0.45;
 }
 </style>

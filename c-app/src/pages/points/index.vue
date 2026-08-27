@@ -83,7 +83,7 @@ onShow(load);
     <view class="sh-card block">
       <text class="sh-h2">{{ $t("points.records") }}</text>
       <view v-for="r in records" :key="r.recordNo" class="rec">
-        <view class="rec__main">
+        <view class="sh-fill">
           <text class="rec__title">{{ r.title }}</text>
           <text class="rec__at sh-num">{{ datetime(r.at) }}</text>
         </view>
@@ -184,10 +184,7 @@ onShow(load);
   gap: 24rpx;
   margin-top: 26rpx;
 }
-.rec__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .rec__title {
   display: block;
   font-size: 26rpx;

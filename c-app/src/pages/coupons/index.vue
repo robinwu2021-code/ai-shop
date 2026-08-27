@@ -112,7 +112,7 @@ onShow(load);
           </text>
         </view>
 
-        <view class="ticket__main">
+        <view class="sh-fill">
           <text class="ticket__name">{{ c.title }}</text>
           <!-- 到店券要说清「不能在结算时抵扣」，否则顾客会在收银台等着自动减 -->
           <text v-if="c.redeemMode === 'STORE_CODE'" class="ticket__scope">
@@ -135,7 +135,7 @@ onShow(load);
         <view class="ticket__amount">
           <text class="ticket__v sh-num">{{ c.benefitText }}</text>
         </view>
-        <view class="ticket__main">
+        <view class="sh-fill">
           <text class="ticket__name">{{ c.title }}</text>
           <text class="ticket__exp sh-num">{{ $t("coupon.until", { d: isoDate(c.expireAt) }) }}</text>
         </view>
@@ -161,7 +161,7 @@ onShow(load);
         </text>
       </view>
 
-      <view class="ticket__main">
+      <view class="sh-fill">
         <text class="ticket__name">{{ c.title }}</text>
         <text class="ticket__scope">{{ c.scopeDesc }}</text>
         <text class="ticket__exp sh-num">{{ $t("coupon.until", { d: isoDate(c.endAt) }) }}</text>
@@ -219,10 +219,7 @@ onShow(load);
   color: var(--sh-danger);
   margin-top: 6rpx;
 }
-.ticket__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .ticket__name {
   display: block;
   font-size: 28rpx;

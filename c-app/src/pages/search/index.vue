@@ -94,7 +94,7 @@ onLoad((q) => {
       <input
         maxlength="32"
         v-model="keyword"
-        class="searchbar__input"
+        class="searchbar__input sh-fill"
         :placeholder="$t('search.placeholder')"
         confirm-type="search"
         focus
@@ -202,8 +202,6 @@ onLoad((q) => {
   gap: 16rpx;
 }
 .searchbar__input {
-  flex: 1;
-  min-width: 0;
   background: var(--sh-surface);
   border-radius: 9999px;
   padding: 24rpx 32rpx;

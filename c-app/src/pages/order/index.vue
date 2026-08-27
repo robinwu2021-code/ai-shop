@@ -205,7 +205,7 @@ onShow(load);
       <view class="timeline">
         <view v-for="(n, i) in order.timeline" :key="i" class="node">
           <view class="node__dot" :class="{ 'is-last': i === order.timeline.length - 1 }" />
-          <view class="node__body">
+          <view class="sh-fill">
             <text class="node__label">{{ n.label }}</text>
             <text class="node__at sh-num">{{ datetime(n.at) }}</text>
           </view>
@@ -461,10 +461,7 @@ onShow(load);
 .node__dot.is-last {
   background: var(--sh-primary);
 }
-.node__body {
-  flex: 1;
-  min-width: 0;
-}
+
 .node__label {
   display: block;
   font-size: 26rpx;

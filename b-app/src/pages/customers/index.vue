@@ -250,7 +250,7 @@ onShow(load);
     <sh-empty v-if="!list.length && !loading" :text="String($t('members.empty'))"></sh-empty>
 
     <view v-for="m in list" :key="m.memberNo" class="sh-row sh-card sh-mt-sm" @tap="open(m)">
-      <view class="row__main">
+      <view class="sh-fill">
         <view class="row__head">
           <text class="row__name">···{{ m.phoneTail || "----" }}</text>
           <text v-if="m.level" class="sh-chip" :class="levelClass(m.level)">
@@ -323,10 +323,6 @@ onShow(load);
   margin-top: 16rpx;
 }
 
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
 .row__head {
   display: flex;
   align-items: center;

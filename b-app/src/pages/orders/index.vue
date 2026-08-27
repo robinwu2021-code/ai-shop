@@ -188,7 +188,7 @@ onShow(load);
 
       <view v-for="it in o.items" :key="it.skuNo" class="sh-row item sh-mb-sm">
         <sh-cover class="item__cover" :src="it.cover"></sh-cover>
-        <view class="item__main">
+        <view class="sh-fill">
           <text class="item__title">{{ it.title }}</text>
           <text class="sh-muted">{{ it.spec }} × {{ it.qty }}</text>
         </view>
@@ -241,10 +241,7 @@ onShow(load);
   text-align: center;
   line-height: 76rpx;
 }
-.item__main {
-  flex: 1;
-  min-width: 0;
-}
+
 /*
  * 商品名是这张卡片的**标题**，要靠字重站住，不能只靠颜色。
  * 此前它 26rpx/400 墨色，而紧挨着的规格与时间是 26rpx/400 灰色 ——
