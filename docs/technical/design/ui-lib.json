@@ -278,7 +278,7 @@
         "gap": "3px"
       },
       "usage": {
-        "b-app": 2,
+        "b-app": 4,
         "c-app": 0
       }
     },
@@ -402,7 +402,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 255,
+        "b-app": 256,
         "c-app": 39
       }
     },
@@ -936,7 +936,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 108,
+        "b-app": 110,
         "c-app": 56
       }
     },
@@ -974,7 +974,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 6,
+        "b-app": 7,
         "c-app": 0
       }
     },
@@ -1326,7 +1326,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 51,
+        "b-app": 53,
         "c-app": 4
       },
       "note": "单色图标",
@@ -1898,7 +1898,7 @@
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 146,
+      "libClassHits": 148,
       "localSelectors": 81,
       "localCssLines": 438,
       "rolled": []
@@ -2189,9 +2189,9 @@
         "sh-sheet",
         "sh-tabs"
       ],
-      "libClassHits": 24,
-      "localSelectors": 49,
-      "localCssLines": 215,
+      "libClassHits": 28,
+      "localSelectors": 52,
+      "localCssLines": 227,
       "rolled": []
     },
     {

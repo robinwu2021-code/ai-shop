@@ -1605,34 +1605,69 @@ const newParam = ref("");
 /** 正在给哪个参数加值；null = 没在加 */
 const addingValueFor = ref<SpecTemplate | null>(null);
 const newParamValue = ref("");
-/** 平台在这个参数下有、而这一类没配进来的那些值 —— 与「加档位」同一条：先给候选 */
-const paramCands = ref<SpecOption[]>([]);
+/** 平台在这个参数下的**全部**值。分成「能加的」与「已经在用的」两排，见 openParamValue */
+const paramPool = ref<SpecOption[]>([]);
+/** 池子没取到。**与「平台没配」必须分开说** —— 两者在界面上都是一片空白 */
+const paramPoolFailed = ref(false);
 
+/**
+ * 打开「加可选值」。**取的是平台这一项的全部值，不是「减去已有的」之后那点余数。**
+ *
+ * <p>此前这里直接把 `全部 − 已有` 存进 `paramCands`，于是当类目已经把平台该项的值
+ * 全给了（「产地」平台就三个值，类目全给了），候选恒为空 —— 弹层里只剩一个
+ * 「新建可选值」输入框，**看不到系统里有哪些值，也没有一句话说为什么**。
+ * 商家的描述是「无法添加系统中的值」，而他看到的确实就是这样。
+ *
+ * <p>现在池子整份留着，由下面三个 computed 分成「能加的」与「已经在用的」，
+ * 两排都摆出来 —— **「系统里有什么」和「你还能加什么」是两个问题**，
+ * 只回答后者的话，前者就永远无解。
+ */
 async function openParamValue(d: SpecTemplate) {
   addingValueFor.value = d;
   newParamValue.value = "";
-  paramCands.value = [];
-  const all = await api.mDimValues(d.templateNo).catch(() => []);
-  const have = new Set(d.options.map((o) => o.code ?? o.label));
-  paramCands.value = all.filter((o) => !have.has(o.code ?? o.label));
+  paramPool.value = [];
+  paramPoolFailed.value = false;
+  try {
+    paramPool.value = await api.mDimValues(d.templateNo);
+  } catch {
+    // 吞掉异常会让「取不到」和「平台没配」长成同一屏 —— 那句话就成了假话
+    paramPoolFailed.value = true;
+  }
 }
 
+/** 这一项当前已经能选的值（类目给的 + 他加过的） */
+const paramHave = computed(
+  () => new Set((addingValueFor.value?.options ?? []).map((o) => o.code ?? o.label)),
+);
+/** 平台有、这一类还没有的 —— 点一下就用上 */
+const paramCands = computed(() => paramPool.value.filter((o) => !paramHave.value.has(o.code ?? o.label)));
+/** 平台有、上面那排已经列着的。**照样摆出来**：他要确认的是「系统里有没有」 */
+const paramUsed = computed(() => paramPool.value.filter((o) => paramHave.value.has(o.code ?? o.label)));
+
 /*
- * 副标题要说当下这一屏的实话，三种情况说三句：
- *   有候选           → 「平台还有这些」
- *   没候选但这一项有值 → 不说话（下面那排就是它的值，再说一句是废话）
- *   两样都没有        → 「平台没给这一项配可选值」，这才是那句该出现的时候
+ * 副标题要说当下这一屏的实话。**四种情况说四句** —— 此前是三种，
+ * 而漏掉的那一种恰恰是最常见的：平台有值、但都已经在上面了。
+ * 那一屏此前不说话，于是看起来和「平台什么都没配」一模一样。
+ *
+ *   取不到       → 「没取到平台的可选值，重开一次」  ← 此前被 catch 吞成「没配」
+ *   有能加的     → 「平台可选值」
+ *   池子非空但全在用 → 「平台这一项的值都已经在上面了」  ← 此前不说话
+ *   池子是空的   → 「该参数暂无平台可选值」
+ *
  * 一律写死一句的话，总有一屏在说假话 —— 而假话比没话更贵。
  */
 const paramSheetHint = computed(() => {
+  if (paramPoolFailed.value) return t("goods.paramPoolFailed");
   if (paramCands.value.length) return t("goods.paramMore");
-  return addingValueFor.value?.options.length ? "" : t("goods.paramFillHint");
+  if (paramPool.value.length) return t("goods.paramAllAdded");
+  return t("goods.paramFillHint");
 });
 
 function closeParamValue() {
   addingValueFor.value = null;
   newParamValue.value = "";
-  paramCands.value = [];
+  paramPool.value = [];
+  paramPoolFailed.value = false;
 }
 
 /**
@@ -2810,15 +2845,35 @@ async function save(thenSubmit = false) {
       :hint="paramSheetHint"
       @close="closeParamValue"
     >
-      <!-- 候选在上：平台这个参数下有、而这一类没配进来的那些 -->
+      <!-- 能加的在上：平台有、这一类还没有。虚线 = 点一下就加进来 -->
       <view v-if="paramCands.length" class="param__opts">
-        <text
+        <view
           v-for="o in paramCands"
           :key="o.code || o.label"
-          class="sh-chip sh-chip--dashed"
+          class="sh-chip sh-chip--icon sh-chip--dashed"
           @tap="pickParamCand(o)"
-        >＋ {{ o.label }}</text>
+        >
+          <sh-icon name="plus" :size="18" color="currentColor"></sh-icon>
+          <text>{{ o.label }}</text>
+        </view>
       </view>
+      <!--
+        已经在用的也摆出来。**看起来是废话，其实是这一屏此前答不上来的那个问题**：
+        「系统里到底有没有这个值」。只列「还能加的」时，平台的值全被类目收进来之后
+        这里就是一片空白 —— 而空白既可能是「平台没有」，也可能是「都已经在上面了」。
+        实线（非虚线）＝已经能选，点它直接选中，不用退出去再点一次。
+      -->
+      <template v-if="paramUsed.length">
+        <text class="param__own">{{ $t("goods.paramInUse") }}</text>
+        <view class="param__opts">
+          <text
+            v-for="o in paramUsed"
+            :key="o.code || o.label"
+            class="sh-chip"
+            @tap="pickParamCand(o)"
+          >{{ o.label }}</text>
+        </view>
+      </template>
       <!-- 自己填放最后：顺序即建议，先看平台有没有现成的 -->
       <text class="param__own">{{ $t("goods.paramFillOwn") }}</text>
       <view class="build">

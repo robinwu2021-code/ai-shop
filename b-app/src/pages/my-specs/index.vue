@@ -55,6 +55,41 @@ function listOf(g: StoreCategorySpecs) {
 const loading = ref(false);
 
 
+/**
+ * 每个类目「还能加回来的」候选 —— **判据是「平台给这个类目配过、而你现在没有」**。
+ *
+ * <p>只认带 `categoryNo` 的那些：`mPickableDims` 同时给类目候选、平台通用、自建三段，
+ * 把通用那段也摊在卡片下面的话，每张卡底下都会挂一长串与这一类无关的规格。
+ * 通用与自建仍然走「添加规格」面板 —— 那里它们是被主动找的，这里是被动看见的。
+ *
+ * <p>为什么要摆出来：移除一个规格之后它就从卡片上消失了，而回去的路藏在
+ * 「添加规格」弹层里。商家看到的是「删掉就没了」，那一栏还写着
+ * 「平台尚未为本类目配置规格，可联系运营补充」—— **平台配了，是他自己移除的**。
+ * 那句话把原因归给了平台，还让他去找运营。
+ */
+const addable = ref<Record<string, SpecTemplate[]>>({});
+
+async function loadAddable() {
+  const cats = byCategory.value;
+  if (!cats.length) { addable.value = {}; return; }
+  /*
+   * ⚠️ **必须在 api 上调用，不能把方法摘下来存进变量。**
+   * `const fetch = api.mPickableDims` 会丢掉 `this` —— mock 的实现里这些方法
+   * 互相调用（`return this.mSpecTemplates(...)`），脱离对象就抛。
+   * 而外面那个 `.catch(() => [])` 会把它吞成空数组，界面上就是「一个候选都没有」，
+   * 与「平台真的没配」一模一样。**兜底把 bug 盖住了**，这是今天第三次。
+   */
+  const lists = await Promise.all(cats.map((g) => (tab.value === "dims"
+    ? api.mPickableDims(g.categoryNo)
+    : api.mPickableProps(g.categoryNo)).catch(() => [])));
+  const next: Record<string, SpecTemplate[]> = {};
+  cats.forEach((g, i) => {
+    const have = new Set(listOf(g).map((t) => t.templateNo));
+    next[g.categoryNo] = (lists[i] ?? []).filter((x) => x.categoryNo && !have.has(x.templateNo));
+  });
+  addable.value = next;
+}
+
 async function load() {
   loading.value = true;
   try {
@@ -65,6 +100,8 @@ async function load() {
      * 它按规格组织，与这一页按类目组织的模型对不上。
      */
     byCategory.value = await api.mStoreSpecDims(merchant.storeNo || undefined);
+    // 候选跟着列表走。**不 await 在 try 里阻塞列表** —— 它取不到只是少一排 chip
+    void loadAddable();
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -788,7 +825,7 @@ onShow(() => void load());
           { key: 'props', label: String($t('mySpecs.tabProps')) },
         ]"
         :active="tab"
-        @change="(k: string) => (tab = k as 'dims' | 'props')"
+        @change="(k: string) => { tab = k as 'dims' | 'props'; void loadAddable(); }"
       ></sh-tabs>
     </view>
     <text class="sh-muted intro">
@@ -859,9 +896,36 @@ onShow(() => void load());
         <text class="spec__vals" @tap="startEditDim(g, t)">{{ t.options.map((o) => o.label).join(" · ") || $t("mySpecs.noValueYet") }}</text>
       </view>
 
+      <!--
+        **空态要说清是谁造成的。**「平台没配」与「你自己移除光了」在界面上
+        长得一模一样，而后者还建议他去联系运营 —— 那条路走不通，
+        因为平台配了，缺的是他自己的一次点击。
+      -->
       <text v-if="!listOf(g).length && picking !== g.categoryNo" class="cat__empty">
-        {{ $t(tab === "dims" ? "mySpecs.catNoDims" : "mySpecs.catNoProps") }}
+        {{ (addable[g.categoryNo] || []).length
+          ? $t(tab === "dims" ? "mySpecs.catAllRemoved" : "mySpecs.catAllRemovedProps")
+          : $t(tab === "dims" ? "mySpecs.catNoDims" : "mySpecs.catNoProps") }}
       </text>
+
+      <!--
+        **移除掉的摆在这儿，点一下就回来。**回去的路此前只在「添加规格」弹层里，
+        而他刚做的动作是「移除」—— 让他为了撤销去开一个叫「添加」的面板，
+        等于要求他先想明白这两件事是同一件。虚线 = 候选，与建品页那套一致。
+      -->
+      <view v-if="(addable[g.categoryNo] || []).length && picking !== g.categoryNo" class="back">
+        <text class="sh-muted back__t">{{ $t("mySpecs.addableHere") }}</text>
+        <view class="back__list">
+          <view
+            v-for="p in addable[g.categoryNo]"
+            :key="p.templateNo"
+            class="sh-chip sh-chip--icon sh-chip--dashed"
+            @tap="pickDim(g, p)"
+          >
+            <sh-icon name="plus" :size="18" color="currentColor"></sh-icon>
+            <text>{{ p.name }}</text>
+          </view>
+        </view>
+      </view>
 
       <!--
         「恢复平台默认」= 撤销这一类目下的全部调整。压到最轻并放在最后：
@@ -1064,6 +1128,20 @@ onShow(() => void load());
   overflow: hidden;
 }
 .cat__empty,
+/* 「可添加」区：压在卡片内容与「恢复平台默认」之间 —— 它比每一行的操作轻，
+   但比「恢复全部」重，位置就该在两者中间 */
+.back {
+  padding: 16rpx 26rpx 0;
+}
+.back__t {
+  display: block;
+  margin-bottom: 12rpx;
+}
+.back__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
 .cat__foot {
   display: block;
   padding: 18rpx 26rpx;
