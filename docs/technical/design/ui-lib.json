@@ -419,7 +419,7 @@
       },
       "usage": {
         "b-app": 256,
-        "c-app": 39
+        "c-app": 38
       }
     },
     {
@@ -661,7 +661,7 @@
       },
       "usage": {
         "b-app": 0,
-        "c-app": 25
+        "c-app": 23
       }
     },
     {
@@ -1507,7 +1507,7 @@
       ],
       "usage": {
         "b-app": 7,
-        "c-app": 0
+        "c-app": 2
       },
       "note": "底部弹层",
       "why": "不用 uni.showModal（字不归我们管）、不做页内展开（会把下文顶走）"
@@ -2948,19 +2948,13 @@
       "components": [
         "sh-actionbar",
         "sh-empty",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-sheet"
       ],
-      "libClassHits": 13,
-      "localSelectors": 24,
-      "localCssLines": 117,
+      "libClassHits": 12,
+      "localSelectors": 20,
+      "localCssLines": 91,
       "rolled": [
-        {
-          "id": "sheet",
-          "label": "弹层 / 遮罩",
-          "lib": "sh-sheet",
-          "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
-          "gap": false
-        },
         {
           "id": "segment",
           "label": "选中态自画（含未拆出的）",
@@ -3216,19 +3210,13 @@
       "file": "c-app/src/pages/me/index.vue",
       "components": [
         "sh-scaffold",
+        "sh-sheet",
         "sh-theme-sheet"
       ],
-      "libClassHits": 11,
-      "localSelectors": 25,
-      "localCssLines": 141,
+      "libClassHits": 9,
+      "localSelectors": 20,
+      "localCssLines": 110,
       "rolled": [
-        {
-          "id": "sheet",
-          "label": "弹层 / 遮罩",
-          "lib": "sh-sheet",
-          "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
-          "gap": false
-        },
         {
           "id": "segment",
           "label": "选中态自画（含未拆出的）",
@@ -3541,17 +3529,6 @@
         "c-app/order-confirm",
         "c-app/pay",
         "c-app/store"
-      ]
-    },
-    {
-      "id": "sheet",
-      "label": "弹层 / 遮罩",
-      "lib": "sh-sheet",
-      "gap": false,
-      "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
-      "pages": [
-        "c-app/address",
-        "c-app/me"
       ]
     }
   ],

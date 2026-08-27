@@ -319,13 +319,12 @@ onShow(() => {
     <sh-theme-sheet v-model:visible="themeVisible"></sh-theme-sheet>
 
     <!-- 商家入驻申请 -->
-    <view v-if="merchantVisible" class="sheet">
-      <view class="sheet__mask" @tap="merchantVisible = false" />
-      <view class="sheet__panel">
-        <view class="sheet__grip" />
-        <text class="sh-h2">{{ $t("merchant.apply") }}</text>
-        <text class="sh-muted sheet__hint">{{ $t("merchant.applyFormHint") }}</text>
-
+    <sh-sheet
+      :visible="merchantVisible"
+      :title="String($t('merchant.apply'))"
+      :hint="String($t('merchant.applyFormHint'))"
+      @close="merchantVisible = false"
+    >
         <!-- 行业排在主体之前：它决定主体能不能选小微，顺序反了人会白挑一次 -->
         <view class="types">
           <view
@@ -373,8 +372,7 @@ onShow(() => {
         <view class="sh-btn sheet__save" :class="{ 'is-disabled': !mValid }" @tap="submitMerchant">
           {{ $t("merchant.submitApply") }}
         </view>
-      </view>
-    </view>
+    </sh-sheet>
     <!--
       **必须留在 sh-scaffold 里面。** 这套 `--sh-*` 变量声明在 `:root, .sh-root` 上，
       而**小程序里没有 `:root`** —— 根节点叫 `page`，那条选择器一个节点都不匹配，
@@ -392,37 +390,6 @@ onShow(() => {
   color: var(--sh-primary-text);
 }
 
-.sheet {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-}
-.sheet__mask {
-  position: absolute;
-  inset: 0;
-  background: var(--sh-scrim);
-}
-.sheet__panel {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--sh-surface);
-  border-radius: 44rpx 44rpx 0 0;
-  padding: 24rpx 36rpx calc(48rpx + env(safe-area-inset-bottom));
-}
-.sheet__grip {
-  width: 72rpx;
-  height: 8rpx;
-  border-radius: 9999px;
-  background: var(--sh-faint);
-  margin: 0 auto 32rpx;
-}
-.sheet__hint {
-  display: block;
-  margin-top: 10rpx;
-  line-height: 1.6;
-}
 .types {
   display: flex;
   gap: 16rpx;

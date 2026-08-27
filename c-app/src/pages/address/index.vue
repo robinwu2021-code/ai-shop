@@ -132,14 +132,11 @@ onLoad((q) => {
     </sh-actionbar>
 
     <!-- 编辑弹层 -->
-    <view v-if="editing" class="sheet">
-      <view class="sheet__mask" @tap="editing = false" />
-      <view class="sheet__panel">
-        <view class="sheet__grip" />
-        <text class="sh-h2">
-          {{ draft.addressId ? $t("address.edit") : $t("address.add") }}
-        </text>
-
+    <sh-sheet
+      :visible="editing"
+      :title="String(draft.addressId ? $t('address.edit') : $t('address.add'))"
+      @close="editing = false"
+    >
         <input v-model="draft.name" class="field__input" :placeholder="$t('address.name')" />
         <input
           v-model="draft.phone"
@@ -165,8 +162,7 @@ onLoad((q) => {
         <view class="sh-btn sheet__save" :class="{ 'is-disabled': !valid }" @tap="save">
           {{ $t("common.confirm") }}
         </view>
-      </view>
-    </view>
+    </sh-sheet>
   </sh-scaffold>
 </template>
 
@@ -233,32 +229,6 @@ onLoad((q) => {
 }
 .op--danger {
   color: var(--sh-danger);
-}
-.sheet {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-}
-.sheet__mask {
-  position: absolute;
-  inset: 0;
-  background: var(--sh-scrim);
-}
-.sheet__panel {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--sh-surface);
-  border-radius: 44rpx 44rpx 0 0;
-  padding: 24rpx 36rpx calc(48rpx + env(safe-area-inset-bottom));
-}
-.sheet__grip {
-  width: 72rpx;
-  height: 8rpx;
-  border-radius: 9999px;
-  background: var(--sh-faint);
-  margin: 0 auto 32rpx;
 }
 /* 共用的 `.field__input`（88rpx 高 / md 圆角 / faint 底 / 30rpx）已经是这个形状 ——
    此前这里把它重写了一遍，而且字号写成 26rpx，比 base.css 的 30rpx 小两档。
