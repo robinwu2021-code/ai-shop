@@ -112,7 +112,7 @@ onShow(load);
 
     <sh-empty v-if="!list.length" :text='$t("afterSale.empty")'></sh-empty>
 
-    <view v-for="r in list" :key="r.as.afterSaleNo" class="sh-card item">
+    <view v-for="r in list" :key="r.as.afterSaleNo" class="sh-card sh-mt-sm">
       <view class="item__head">
         <text class="item__buyer">{{ r.order?.buyerNickname || "—" }}</text>
         <text class="sh-muted">{{ datetime(r.as.updatedAt) }}</text>
@@ -245,9 +245,6 @@ onShow(load);
   display: block;
 }
 
-.item {
-  margin-top: 14rpx;
-}
 .item__head {
   display: flex;
   align-items: baseline;

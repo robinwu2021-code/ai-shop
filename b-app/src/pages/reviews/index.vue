@@ -104,7 +104,7 @@ onShow(load);
 
     <sh-empty v-if="!list.length" :text='$t("reviews.empty")'></sh-empty>
 
-    <view v-for="r in sorted" :key="r.reviewNo" class="sh-card item">
+    <view v-for="r in sorted" :key="r.reviewNo" class="sh-card sh-mt-sm">
       <view class="item__head">
         <text class="item__who">{{ r.avatar }} {{ r.nickname }}</text>
         <!-- single-review：这是**某个人给的星数**，不是聚合评分，不需要 ratingCount 护栏 -->
@@ -220,9 +220,7 @@ onShow(load);
   align-items: center;
   justify-content: space-between;
 }
-.item {
-  margin-top: 14rpx;
-}
+
 .item__head {
   display: flex;
   align-items: center;

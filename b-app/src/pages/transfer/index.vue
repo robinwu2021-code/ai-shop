@@ -193,7 +193,7 @@ onShow(load);
       <!-- 草稿态没有行（行在发出的那张出库单上）。说成「还没发出」而不是「空单」 -->
       <sh-empty v-if="!doc.lines.length" :text="String($t('transfer.notShipped'))"></sh-empty>
 
-      <view v-for="l in doc.lines" :key="l.itemId" class="sh-card row">
+      <view v-for="l in doc.lines" :key="l.itemId" class="sh-card sh-mb-sm">
         <view class="row__top">
           <view class="row__main">
             <text class="row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
@@ -233,7 +233,7 @@ onShow(load);
 
       <sh-empty v-if="!lines.length" :text="String($t('transfer.noLines'))"></sh-empty>
 
-      <view v-for="l in lines" :key="l.itemId" class="sh-card row">
+      <view v-for="l in lines" :key="l.itemId" class="sh-card sh-mb-sm">
         <view class="row__top">
           <view class="row__main">
             <text class="row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
@@ -285,9 +285,6 @@ onShow(load);
   text-align: right;
 }
 
-.row {
-  margin-bottom: 14rpx;
-}
 .row__top {
   display: flex;
   gap: 20rpx;

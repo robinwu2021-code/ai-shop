@@ -175,7 +175,7 @@ onShow(load);
 
     <sh-empty v-if="empty" :text='$t("order.empty")'></sh-empty>
 
-    <view v-for="o in list" :key="o.orderNo" class="sh-card row" @tap="open(o)">
+    <view v-for="o in list" :key="o.orderNo" class="sh-card sh-mb-sm" @tap="open(o)">
       <view class="row__head">
         <text class="row__no sh-num">{{ o.orderNo }}</text>
         <!-- 行内显示的是**订单自己的状态**。原先拼的是 tab 的 key
@@ -186,7 +186,7 @@ onShow(load);
         </text>
       </view>
 
-      <view v-for="it in o.items" :key="it.skuNo" class="sh-row item">
+      <view v-for="it in o.items" :key="it.skuNo" class="sh-row item sh-mb-sm">
         <sh-cover class="item__cover" :src="it.cover"></sh-cover>
         <view class="item__main">
           <text class="item__title">{{ it.title }}</text>
@@ -218,9 +218,7 @@ onShow(load);
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */
-.row {
-  margin-bottom: 14rpx;
-}
+
 .row__head {
   display: flex;
   align-items: center;
@@ -233,7 +231,6 @@ onShow(load);
 }
 .item {
   gap: 20rpx;
-  margin-bottom: 16rpx;
 }
 .item__cover {
   font-size: 48rpx;

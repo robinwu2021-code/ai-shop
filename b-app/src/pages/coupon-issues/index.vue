@@ -86,7 +86,7 @@ onShow(load);
 
     <sh-empty v-if="!list.length" :text="String($t('couponIssues.empty'))"></sh-empty>
 
-    <view v-for="b in list" :key="b.issueNo" class="sh-card item">
+    <view v-for="b in list" :key="b.issueNo" class="sh-card sh-mb-sm">
       <view class="item__head">
         <text class="item__name">{{ couponTitle(b.couponNo) }}</text>
         <text class="sh-muted">{{ stamp(b.issuedAt) }}</text>
@@ -135,9 +135,7 @@ onShow(load);
   margin-top: 12rpx;
   font-size: 24rpx;
 }
-.item {
-  margin-bottom: 16rpx;
-}
+
 .item__head {
   display: flex;
   align-items: baseline;

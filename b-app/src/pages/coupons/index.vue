@@ -121,7 +121,7 @@ onShow(load);
 
     <sh-empty v-if="!list.length" :text="String($t('coupons.empty'))"></sh-empty>
 
-    <view v-for="c in list" :key="c.couponNo" class="sh-card item">
+    <view v-for="c in list" :key="c.couponNo" class="sh-card sh-mb-sm">
       <view class="item__head">
         <text class="item__name">{{ c.title }}</text>
         <text v-if="c.status !== 'ACTIVE'" class="sh-chip">
@@ -170,9 +170,7 @@ onShow(load);
   gap: 12rpx;
   margin-bottom: 12rpx;
 }
-.item {
-  margin-bottom: 16rpx;
-}
+
 .item__head {
   display: flex;
   align-items: center;

@@ -119,7 +119,7 @@ onShow(load);
           {{ $t("activities.idleHint") }}
         </text>
 
-        <view v-for="a in g.rows" :key="a.activityNo" class="sh-card item">
+        <view v-for="a in g.rows" :key="a.activityNo" class="sh-card sh-mt-xs">
           <view class="item__head">
             <text class="item__name">{{ a.name }}</text>
             <text v-if="a.endedReason" class="sh-chip">
@@ -179,9 +179,7 @@ onShow(load);
   font-size: 24rpx;
   line-height: 1.5;
 }
-.item {
-  margin-top: 12rpx;
-}
+
 .item__head {
   display: flex;
   align-items: center;

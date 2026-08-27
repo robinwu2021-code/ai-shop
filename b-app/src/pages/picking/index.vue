@@ -163,7 +163,7 @@ onShow(load);
 
     <!-- 按商品：分货用 -->
     <template v-if="view === 'goods'">
-      <view v-for="r in rows" :key="r.skuNo" class="sh-card row">
+      <view v-for="r in rows" :key="r.skuNo" class="sh-card sh-mb-sm">
         <view class="row__head">
           <sh-cover class="row__cover" :src="r.cover"></sh-cover>
           <view class="row__main">
@@ -187,7 +187,7 @@ onShow(load);
 
     <!-- 按用户：装袋用 -->
     <template v-else>
-      <view v-for="b in byBuyer" :key="b.orderNo" class="sh-card row">
+      <view v-for="b in byBuyer" :key="b.orderNo" class="sh-card sh-mb-sm">
         <view class="row__head">
           <view class="row__main">
             <text class="row__title">{{ b.nickname }}</text>
@@ -233,9 +233,7 @@ onShow(load);
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */
-.row {
-  margin-bottom: 14rpx;
-}
+
 .row__head {
   display: flex;
   align-items: center;

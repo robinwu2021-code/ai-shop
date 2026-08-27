@@ -129,7 +129,7 @@ onShow(load);
       <!-- 轻核销：邻居来取货时逐单核掉 -->
       <view class="sh-card verify">
         <text class="sh-h2">{{ $t("groupHost.verify") }}</text>
-        <view class="sh-row row">
+        <view class="sh-row sh-mt-sm">
           <input
             maxlength="16"
             v-model="code"
@@ -206,9 +206,7 @@ onShow(load);
 .verify {
   margin-top: 24rpx;
 }
-.row {
-  margin-top: 20rpx;
-}
+
 /* 这一页特有的两条：与旁边的按钮同行分宽，以及验证码的字距。
    其余（高度 / 圆角 / 底色 / 字号）都由 `.field__input` 给 */
 .field__input {

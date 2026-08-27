@@ -167,7 +167,7 @@ function at(iso?: string): string {
 
       <sh-empty v-if="!picking.length" :text="String($t('stockCheck.pickEmpty'))"></sh-empty>
 
-      <view v-for="b in picking" :key="b.itemId" class="sh-card row" @tap="toggle(b.itemId)">
+      <view v-for="b in picking" :key="b.itemId" class="sh-card sh-mb-sm" @tap="toggle(b.itemId)">
         <view class="row__top">
           <!-- 勾选由整行接管（点一行就选中），sh-check 只负责画 -->
           <sh-check :model-value="picked.includes(b.itemId)"></sh-check>
@@ -197,7 +197,7 @@ function at(iso?: string): string {
         <text class="txt-caption">{{ $t("stockCheck.lockedAt", { at: at(doc.startedAt) }) }}</text>
       </view>
 
-      <view v-for="l in doc.lines" :key="l.itemId" class="sh-card row">
+      <view v-for="l in doc.lines" :key="l.itemId" class="sh-card sh-mb-sm">
         <view class="row__top">
           <view class="row__main">
             <text class="row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
@@ -262,9 +262,7 @@ function at(iso?: string): string {
 </template>
 
 <style scoped>
-.row {
-  margin-bottom: 14rpx;
-}
+
 .row__top {
   display: flex;
   gap: 20rpx;

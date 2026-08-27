@@ -78,7 +78,7 @@ onShow(load);
 
     <sh-empty v-if="!loading && !rows.length" :text="String($t('stockDocs.empty'))"></sh-empty>
 
-    <view v-for="d in rows" :key="d.docNo" class="sh-card row" @tap="open(d)">
+    <view v-for="d in rows" :key="d.docNo" class="sh-card sh-mb-sm" @tap="open(d)">
       <view class="row__top">
         <view class="row__main">
           <text class="row__title">{{ $t(`stockDocs.kind.${d.kind}`) }}</text>
@@ -108,9 +108,7 @@ onShow(load);
 </template>
 
 <style scoped>
-.row {
-  margin-bottom: 14rpx;
-}
+
 .row__top {
   display: flex;
   gap: 20rpx;

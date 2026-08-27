@@ -78,7 +78,7 @@ onShow(load);
 
     <sh-empty v-if="!list.length" :text='$t("quotes.empty")'></sh-empty>
 
-    <view v-for="r in list" :key="r.requestNo" class="sh-card item">
+    <view v-for="r in list" :key="r.requestNo" class="sh-card sh-mt-sm">
       <view class="item__head">
         <text class="item__title">{{ r.title }}</text>
         <text class="sh-chip sh-chip--primary">{{ $t("quotes.wanted", { n: r.interestedCount }) }}</text>
@@ -157,9 +157,7 @@ onShow(load);
   margin: 12rpx 8rpx 0;
   line-height: 1.6;
 }
-.item {
-  margin-top: 14rpx;
-}
+
 .item__head {
   display: flex;
   align-items: center;

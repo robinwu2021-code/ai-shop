@@ -130,7 +130,7 @@ onShow(load);
 
     <sh-empty v-if="!loading && !rows.length" :text="String($t('stock.empty'))"></sh-empty>
 
-    <view v-for="b in rows" :key="b.itemId" class="sh-card row" @tap="openItem(b)">
+    <view v-for="b in rows" :key="b.itemId" class="sh-card sh-mb-sm" @tap="openItem(b)">
       <view class="row__top">
         <view class="row__main">
           <text class="row__title">{{ b.name }}{{ b.specText ? ` · ${b.specText}` : "" }}</text>
@@ -179,9 +179,7 @@ onShow(load);
   display: inline-block;
   margin-right: 12rpx;
 }
-.row {
-  margin-bottom: 14rpx;
-}
+
 .row__top {
   display: flex;
   gap: 20rpx;

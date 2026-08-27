@@ -308,7 +308,7 @@ onShow(load);
     <!-- 活动列表 -->
     <sh-empty v-if="!list.length && !editing" :text='$t("marketing.empty")'></sh-empty>
 
-    <view v-for="c in list" :key="c.campaignNo" class="sh-card item">
+    <view v-for="c in list" :key="c.campaignNo" class="sh-card sh-mt-sm">
       <view class="item__head">
         <text class="item__name">{{ c.name }}</text>
         <text
@@ -403,9 +403,7 @@ onShow(load);
   background: var(--sh-faint);
   color: var(--sh-sub);
 }
-.item {
-  margin-top: 14rpx;
-}
+
 .item__head {
   display: flex;
   align-items: center;

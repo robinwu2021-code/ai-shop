@@ -101,7 +101,7 @@ onShow(load);
   <sh-scaffold title-key="memberSegments.title" :denied="!merchant.can('biz:customer')">
     <sh-empty v-if="!list.length" :text="String($t('memberSegments.empty'))"></sh-empty>
 
-    <view v-for="sg in list" :key="sg.segmentNo" class="sh-card item">
+    <view v-for="sg in list" :key="sg.segmentNo" class="sh-card sh-mb-sm">
       <view class="item__head">
         <text class="item__name">{{ sg.name }}</text>
         <text class="sh-num count">{{ $t("memberSegments.count", { n: sg.lastCount }) }}</text>
@@ -124,9 +124,7 @@ onShow(load);
 </template>
 
 <style scoped>
-.item {
-  margin-bottom: 16rpx;
-}
+
 .item__head {
   display: flex;
   align-items: baseline;

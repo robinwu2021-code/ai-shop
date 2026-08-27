@@ -126,7 +126,7 @@ onShow(load);
 
     <sh-empty v-if="!lines.length" :text="String($t('stockOut.noLines'))"></sh-empty>
 
-    <view v-for="l in lines" :key="l.itemId" class="sh-card row">
+    <view v-for="l in lines" :key="l.itemId" class="sh-card sh-mb-sm">
       <view class="row__top">
         <view class="row__main">
           <text class="row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
@@ -176,9 +176,7 @@ onShow(load);
 </template>
 
 <style scoped>
-.row {
-  margin-bottom: 14rpx;
-}
+
 .row__top {
   display: flex;
   gap: 20rpx;

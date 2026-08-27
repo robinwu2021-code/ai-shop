@@ -66,7 +66,7 @@ onShow(load);
     <text class="txt-title sec">{{ $t("groups.running") }}</text>
     <sh-empty v-if="!groups.length" :text='$t("groups.noRunning")'></sh-empty>
 
-    <view v-for="g in groups" :key="g.groupNo" class="sh-card item">
+    <view v-for="g in groups" :key="g.groupNo" class="sh-card sh-mb-sm">
       <view class="item__head">
         <sh-cover class="item__cover" :src="g.cover"></sh-cover>
         <view class="item__main">
@@ -91,7 +91,7 @@ onShow(load);
     <text class="txt-title sec">{{ $t("groups.canOpen") }}</text>
     <sh-empty v-if="!groupable.length" :text='$t("groups.noGroupable")'></sh-empty>
 
-    <view v-for="g in groupable" :key="g.goodsNo" class="sh-row sh-card row">
+    <view v-for="g in groupable" :key="g.goodsNo" class="sh-row sh-card row sh-mb-sm">
       <sh-cover class="row__cover" :src="g.cover"></sh-cover>
       <text class="row__title">{{ g.title }}</text>
       <text class="btn" @tap="create(g.goodsNo)">{{ $t("groups.open") }}</text>
@@ -111,9 +111,7 @@ onShow(load);
   display: block;
   margin: 40rpx 8rpx 16rpx;
 }
-.item {
-  margin-bottom: 14rpx;
-}
+
 .item__head {
   display: flex;
   align-items: center;
@@ -160,7 +158,6 @@ onShow(load);
 }
 .row {
   gap: 20rpx;
-  margin-bottom: 16rpx;
 }
 .row__cover {
   width: 72rpx;

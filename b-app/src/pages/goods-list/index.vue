@@ -522,7 +522,7 @@ onShow(() => {
       现在：上段是「图 + 名 + 价/库存 + 状态」，下段整宽放按钮并允许换行。
       按钮多一个少一个都不再影响上面那行的可读性。
     -->
-    <view v-for="g in list" :key="g.goodsNo" class="sh-card row">
+    <view v-for="g in list" :key="g.goodsNo" class="sh-card sh-mb-sm">
       <view class="row__top">
         <sh-cover class="row__cover" :src="g.cover"></sh-cover>
         <view class="row__main">
@@ -735,9 +735,7 @@ onShow(() => {
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */
-.row {
-  margin-bottom: 14rpx;
-}
+
 /* 上段：图 + 名/价 + 状态。状态贴右，名字吃掉中间所有剩余宽度 */
 .row__top {
   display: flex;

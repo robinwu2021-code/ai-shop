@@ -145,7 +145,7 @@ onShow(load);
 
     <sh-empty v-if="!pending.length" :text='$t("delivery.empty")'></sh-empty>
 
-    <view v-for="o in pending" :key="o.orderNo" class="sh-row sh-card row">
+    <view v-for="o in pending" :key="o.orderNo" class="sh-row sh-card row sh-mb-sm">
       <view class="row__main">
         <!--
           **送到哪里、找谁、打哪个号** —— 这一页在这之前只有单号和金额，
@@ -194,7 +194,6 @@ onShow(load);
 }
 .row {
   gap: 20rpx;
-  margin-bottom: 16rpx;
 }
 .row__main {
   flex: 1;

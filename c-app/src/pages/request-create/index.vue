@@ -59,7 +59,7 @@ async function submit() {
       <input v-model="title" class="field__input" :placeholder="$t('request.titlePh')" maxlength="30" />
       <textarea v-model="desc" class="ta" :placeholder="$t('request.descPh')" maxlength="200" />
 
-      <view class="sh-row sh-row--between row">
+      <view class="sh-row sh-row--between row sh-mt-md">
         <text class="row__k">{{ $t("request.expect") }}</text>
         <view class="stepper">
           <view class="stepper__btn" @tap="step(-1)"><text>−</text></view>
@@ -68,7 +68,7 @@ async function submit() {
         </view>
       </view>
 
-      <view class="sh-row sh-row--between row">
+      <view class="sh-row sh-row--between row sh-mt-md">
         <text class="row__k">{{ $t("request.budget") }}</text>
         <input
           maxlength="10"
@@ -115,7 +115,6 @@ async function submit() {
 }
 .row {
   gap: 24rpx;
-  margin-top: 28rpx;
 }
 .row__k {
   font-size: 26rpx;

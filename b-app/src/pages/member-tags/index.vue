@@ -108,7 +108,7 @@ onShow(load);
 
       <sh-empty v-if="!mine.length" :text="String($t('memberTags.empty'))"></sh-empty>
 
-      <view v-for="tg in mine" :key="tg.tagNo" class="item">
+      <view v-for="tg in mine" :key="tg.tagNo" class="item sh-mt-sm">
         <view class="item__main">
           <text class="item__name" :class="{ 'is-off': tg.status !== 'ACTIVE' }">{{ tg.name }}</text>
           <text class="sh-muted">
@@ -147,7 +147,6 @@ onShow(load);
 .item {
   border-top: var(--sh-hairline-soft);
   padding-top: 16rpx;
-  margin-top: 16rpx;
 }
 .item__main {
   display: flex;

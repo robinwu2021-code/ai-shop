@@ -348,7 +348,7 @@
         "margin-bottom": "8px"
       },
       "usage": {
-        "b-app": 0,
+        "b-app": 22,
         "c-app": 1
       }
     },
@@ -365,7 +365,7 @@
       },
       "usage": {
         "b-app": 3,
-        "c-app": 0
+        "c-app": 2
       }
     },
     {
@@ -380,8 +380,8 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 69,
-        "c-app": 0
+        "b-app": 79,
+        "c-app": 1
       }
     },
     {
@@ -396,7 +396,7 @@
         "margin-top": "4px"
       },
       "usage": {
-        "b-app": 9,
+        "b-app": 28,
         "c-app": 0
       }
     },
@@ -548,7 +548,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 256,
+        "b-app": 259,
         "c-app": 38
       }
     },
@@ -746,7 +746,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 75,
+        "b-app": 76,
         "c-app": 0
       }
     },
@@ -854,7 +854,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 181,
+        "b-app": 182,
         "c-app": 63
       }
     },
@@ -1054,7 +1054,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 183,
+        "b-app": 186,
         "c-app": 129
       }
     },
@@ -1454,7 +1454,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 9,
+        "b-app": 10,
         "c-app": 0
       },
       "note": "—",
@@ -1833,18 +1833,10 @@
         "sh-scaffold",
         "sh-stat"
       ],
-      "libClassHits": 9,
-      "localSelectors": 11,
-      "localCssLines": 52,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 10,
+      "localSelectors": 10,
+      "localCssLines": 49,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -1855,18 +1847,10 @@
         "sh-option",
         "sh-scaffold"
       ],
-      "libClassHits": 53,
-      "localSelectors": 18,
-      "localCssLines": 90,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 63,
+      "localSelectors": 17,
+      "localCssLines": 87,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -1877,18 +1861,10 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 20,
-      "localSelectors": 20,
-      "localCssLines": 99,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 21,
+      "localSelectors": 19,
+      "localCssLines": 96,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -1916,18 +1892,10 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 39,
-      "localSelectors": 10,
-      "localCssLines": 46,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 47,
+      "localSelectors": 9,
+      "localCssLines": 43,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -1939,18 +1907,10 @@
         "sh-scaffold",
         "sh-stat"
       ],
-      "libClassHits": 6,
-      "localSelectors": 11,
-      "localCssLines": 55,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 7,
+      "localSelectors": 10,
+      "localCssLines": 52,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -1961,18 +1921,10 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 16,
-      "localSelectors": 9,
-      "localCssLines": 47,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 17,
+      "localSelectors": 8,
+      "localCssLines": 44,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2000,18 +1952,10 @@
         "sh-scaffold",
         "sh-stat"
       ],
-      "libClassHits": 21,
-      "localSelectors": 13,
-      "localCssLines": 68,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 22,
+      "localSelectors": 12,
+      "localCssLines": 65,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2022,18 +1966,10 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 31,
+      "libClassHits": 32,
       "localSelectors": 13,
-      "localCssLines": 70,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "localCssLines": 69,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2047,15 +1983,7 @@
       "libClassHits": 5,
       "localSelectors": 14,
       "localCssLines": 63,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2108,18 +2036,10 @@
         "sh-tabs",
         "biz-store-tag"
       ],
-      "libClassHits": 7,
-      "localSelectors": 35,
-      "localCssLines": 182,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 8,
+      "localSelectors": 34,
+      "localCssLines": 179,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2131,18 +2051,10 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 17,
-      "localSelectors": 16,
-      "localCssLines": 90,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 19,
+      "localSelectors": 15,
+      "localCssLines": 86,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2154,9 +2066,9 @@
         "sh-scaffold",
         "biz-store-tag"
       ],
-      "libClassHits": 45,
-      "localSelectors": 30,
-      "localCssLines": 149,
+      "libClassHits": 53,
+      "localSelectors": 38,
+      "localCssLines": 190,
       "rolled": []
     },
     {
@@ -2184,18 +2096,10 @@
         "sh-scaffold",
         "sh-section"
       ],
-      "libClassHits": 10,
-      "localSelectors": 9,
-      "localCssLines": 37,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 11,
+      "localSelectors": 8,
+      "localCssLines": 34,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2221,18 +2125,10 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 63,
-      "localSelectors": 19,
-      "localCssLines": 99,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 64,
+      "localSelectors": 18,
+      "localCssLines": 96,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2274,15 +2170,7 @@
       "libClassHits": 20,
       "localSelectors": 7,
       "localCssLines": 29,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2307,18 +2195,10 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 7,
-      "localSelectors": 8,
-      "localCssLines": 38,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 8,
+      "localSelectors": 7,
+      "localCssLines": 35,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2332,15 +2212,7 @@
       "libClassHits": 11,
       "localSelectors": 5,
       "localCssLines": 24,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2351,18 +2223,10 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 15,
+      "libClassHits": 16,
       "localSelectors": 8,
-      "localCssLines": 42,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "localCssLines": 41,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2410,18 +2274,10 @@
         "sh-dialog",
         "sh-scaffold"
       ],
-      "libClassHits": 51,
+      "libClassHits": 52,
       "localSelectors": 14,
-      "localCssLines": 73,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "localCssLines": 72,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2435,18 +2291,10 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 7,
-      "localSelectors": 11,
-      "localCssLines": 60,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 9,
+      "localSelectors": 10,
+      "localCssLines": 56,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2474,18 +2322,10 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 13,
-      "localSelectors": 11,
-      "localCssLines": 56,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 15,
+      "localSelectors": 10,
+      "localCssLines": 53,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2541,18 +2381,10 @@
         "sh-scaffold",
         "sh-sheet"
       ],
-      "libClassHits": 28,
-      "localSelectors": 13,
-      "localCssLines": 54,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 29,
+      "localSelectors": 12,
+      "localCssLines": 51,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2579,18 +2411,10 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 27,
-      "localSelectors": 21,
-      "localCssLines": 109,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 28,
+      "localSelectors": 20,
+      "localCssLines": 106,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2602,18 +2426,10 @@
         "sh-rating",
         "sh-scaffold"
       ],
-      "libClassHits": 12,
-      "localSelectors": 22,
-      "localCssLines": 124,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 13,
+      "localSelectors": 21,
+      "localCssLines": 121,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2637,18 +2453,10 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 29,
-      "localSelectors": 7,
-      "localCssLines": 33,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 32,
+      "localSelectors": 6,
+      "localCssLines": 30,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2662,15 +2470,7 @@
       "libClassHits": 52,
       "localSelectors": 17,
       "localCssLines": 80,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2686,15 +2486,7 @@
       "libClassHits": 26,
       "localSelectors": 17,
       "localCssLines": 76,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2707,18 +2499,10 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 35,
-      "localSelectors": 20,
-      "localCssLines": 92,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 37,
+      "localSelectors": 19,
+      "localCssLines": 89,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2759,18 +2543,10 @@
         "sh-stat",
         "sh-tabs"
       ],
-      "libClassHits": 14,
-      "localSelectors": 10,
-      "localCssLines": 45,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 15,
+      "localSelectors": 9,
+      "localCssLines": 42,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2782,18 +2558,10 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 33,
-      "localSelectors": 12,
-      "localCssLines": 53,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 35,
+      "localSelectors": 11,
+      "localCssLines": 50,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2822,18 +2590,10 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 10,
-      "localSelectors": 13,
-      "localCssLines": 49,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 11,
+      "localSelectors": 12,
+      "localCssLines": 46,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2847,18 +2607,10 @@
         "sh-scaffold",
         "sh-sheet"
       ],
-      "libClassHits": 24,
-      "localSelectors": 10,
-      "localCssLines": 45,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 25,
+      "localSelectors": 9,
+      "localCssLines": 42,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2935,15 +2687,7 @@
       "libClassHits": 5,
       "localSelectors": 15,
       "localCssLines": 68,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2994,18 +2738,10 @@
         "sh-scaffold",
         "sh-sheet"
       ],
-      "libClassHits": 37,
-      "localSelectors": 13,
-      "localCssLines": 54,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 39,
+      "localSelectors": 12,
+      "localCssLines": 51,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -3021,15 +2757,7 @@
       "libClassHits": 42,
       "localSelectors": 38,
       "localCssLines": 190,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3178,18 +2906,10 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 19,
-      "localSelectors": 18,
-      "localCssLines": 95,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "libClassHits": 20,
+      "localSelectors": 17,
+      "localCssLines": 92,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3418,18 +3138,10 @@
         "sh-actionbar",
         "sh-scaffold"
       ],
-      "libClassHits": 11,
+      "libClassHits": 13,
       "localSelectors": 13,
-      "localCssLines": 72,
-      "rolled": [
-        {
-          "id": "listgap",
-          "label": "列表间距",
-          "lib": null,
-          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-          "gap": true
-        }
-      ]
+      "localCssLines": 71,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3477,58 +3189,12 @@
       "rolled": []
     }
   ],
-  "gaps": [
-    {
-      "id": "listgap",
-      "label": "列表间距",
-      "lib": null,
-      "gap": true,
-      "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*\\}",
-      "pages": [
-        "b-app/activities",
-        "b-app/activity-edit",
-        "b-app/after-sale",
-        "b-app/coupon-edit",
-        "b-app/coupon-issues",
-        "b-app/coupons",
-        "b-app/customers",
-        "b-app/delivery",
-        "b-app/entities",
-        "b-app/goods-list",
-        "b-app/groups",
-        "b-app/locations",
-        "b-app/marketing",
-        "b-app/member-detail",
-        "b-app/member-segments",
-        "b-app/member-settings",
-        "b-app/member-tags",
-        "b-app/order",
-        "b-app/orders",
-        "b-app/picking",
-        "b-app/purchase-edit",
-        "b-app/quotes",
-        "b-app/reviews",
-        "b-app/schedule",
-        "b-app/settle",
-        "b-app/sku-identity",
-        "b-app/staff",
-        "b-app/stock",
-        "b-app/stock-check",
-        "b-app/stock-docs",
-        "b-app/stock-out",
-        "b-app/store-pick",
-        "b-app/transfer",
-        "b-app/verify",
-        "c-app/group-host",
-        "c-app/request-create"
-      ]
-    }
-  ],
+  "gaps": [],
   "counts": {
     "tokens": 10,
     "blocks": 54,
     "components": 31,
     "pages": 90,
-    "gapKinds": 1
+    "gapKinds": 0
   }
 }

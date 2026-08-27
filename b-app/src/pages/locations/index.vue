@@ -85,7 +85,7 @@ onShow(load);
   <sh-scaffold title-key="locations.title" :denied="!merchant.can('biz:store:admin')">
     <sh-empty v-if="!loading && !rows.length" :text="String($t('locations.empty'))"></sh-empty>
 
-    <view v-for="l in rows" :key="l.locationId" class="sh-card row" @tap="setSource(l)">
+    <view v-for="l in rows" :key="l.locationId" class="sh-card sh-mb-sm" @tap="setSource(l)">
       <view class="row__top">
         <view class="row__main">
           <text class="row__title">{{ l.name }}</text>
@@ -133,9 +133,7 @@ onShow(load);
 </template>
 
 <style scoped>
-.row {
-  margin-bottom: 14rpx;
-}
+
 .row__top {
   display: flex;
   gap: 20rpx;
