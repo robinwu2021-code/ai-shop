@@ -425,6 +425,21 @@ public final class Perms {
     public static final String SYSTEM_MEDIA_PURGE = "system:media:purge";
 
     /**
+     * 定时任务的**只读**面：看任务清单、看上次跑成没有、翻执行日志。
+     *
+     * <p><b>与「能关掉任务」分开，而且这一条最该分开</b>：
+     * 排查问题的人比能停任务的人多得多 —— 一个任务出事时，
+     * 先来看的往往是被它影响到的那条业务线的人，而他们不该有权把它停掉。
+     */
+    public static final String SYSTEM_JOB_READ = "system:job:read";
+
+    /**
+     * 开关、改 cron、立即执行。**每一样都当场改变系统的行为**：
+     * 关掉关单任务，库存就从那一刻起不再释放。所以它不与只读同码。
+     */
+    public static final String SYSTEM_JOB_MANAGE = "system:job:manage";
+
+    /**
      * 角色 → 权限码。**对着矩阵 §2.3 的十一个岗位逐条配**。
      *
      * <p><b>本表 2026-08-12 先从 16 个粗码机械展开（阶段 A，等价，零行为变化），
@@ -560,7 +575,11 @@ public final class Perms {
              */
             Map.entry("TECH_OPS", List.of(IAM_AUDIT_READ, SYSTEM_PARAM_READ, SYSTEM_PARAM_UPDATE,
                     SYSTEM_THEME_READ, SYSTEM_THEME_UPDATE,
-                    SYSTEM_MEDIA_READ, SYSTEM_MEDIA_PURGE)));
+                    SYSTEM_MEDIA_READ, SYSTEM_MEDIA_PURGE,
+                    // 定时任务归技术运维：出事时来看的是它，能停的也该是它。
+                    // **只给 TECH_OPS 与超管** —— 停一个任务的后果是业务级的
+                    // （关掉关单，库存从那一刻起不再释放），不该顺手落在别的岗位手里
+                    SYSTEM_JOB_READ, SYSTEM_JOB_MANAGE)));
 
     private Perms() {
     }

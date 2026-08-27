@@ -99,7 +99,18 @@ export function parsePerms(root = ROOT) {
   const codes = new Map();
   for (const m of src.matchAll(/public static final String (\w+) = "([^"]+)";/g)) codes.set(m[1], m[2]);
 
-  const block = src.slice(src.indexOf("ROLE_PERMS = Map.ofEntries("));
+  /*
+   * **先剥注释再解析。**
+   *
+   * 这里是按逗号切 List.of(...) 的，而 ROLE_PERMS 里逐条写着「为什么给这个角色这个码」——
+   * 注释一旦夹在两个码之间，它会被粘到后一个码上，那个码就再也匹配不到常量表。
+   * 后果不是报错，是**那个角色在矩阵里悄悄少一个权限** ——
+   * 而这张矩阵正是「谁能访问什么」的基线，于是守卫会报「他少了几个端点」，
+   * 指向一个根本不存在的收紧。2026-08-27 加 system:job:read 时踩到过一次。
+   */
+  const block = src.slice(src.indexOf("ROLE_PERMS = Map.ofEntries("))
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
   const roles = new Map();
   for (const m of block.matchAll(/Map\.entry\("(\w+)",\s*List\.of\(([\s\S]*?)\)\)/g)) {
     const vals = m[2].split(",").map((s) => s.trim()).filter(Boolean);

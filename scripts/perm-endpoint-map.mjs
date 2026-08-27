@@ -364,6 +364,13 @@ export const RULES = [
   ["*", /^\/ops\/(appearance|rule-texts)/, "system:theme:update"],
   ["GET", /^\/ops\/(feature-flags|markets)/, "system:param:read"],
   ["*", /^\/ops\/(feature-flags|markets)/, "system:param:update"],
+  // ── 定时任务（P-17.1「运行配置」）─────────────────────────────────────
+  // **读与管分开，而且这一处最该分开**：一个任务出事时，先来看的往往是
+  // 被它影响到的那条业务线的人，而他们不该有权把它停掉 ——
+  // 关掉关单任务，库存就从那一刻起不再释放
+  ["GET", /^\/ops\/jobs/, "system:job:read"],
+  ["*", /^\/ops\/jobs/, "system:job:manage"],
+
   // ── 存储空间治理（P-17.1「运行配置」）─────────────────────────────────
   // **读与删分开，而 purge/preview 归在删那边**：它不删东西，但它是删除流程的第一步，
   // 而「能看占用」的人比「能删」的人多得多 —— 把预览给了只读的人，

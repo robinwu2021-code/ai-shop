@@ -28,5 +28,7 @@ public record JobDefinitionRow(
         String ownerModule,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
-        String updatedBy) {
+        String updatedBy,
+        LocalDateTime triggerRequestedAt,
+        LocalDateTime lastTriggeredAt) {
 }

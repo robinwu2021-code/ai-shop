@@ -7999,11 +7999,26 @@ VALUES
     ('AUDITOR', 'OPS_INVENTORY', 'OPS', NOW(), NOW()),
     ('AUDITOR', 'OPS_INVENTORY__TAB_LEDGER', 'OPS', NOW(), NOW()),
     ('AUDITOR', 'OPS_INVENTORY__TAB_RECON', 'OPS', NOW(), NOW());
--- 进销存菜单先置灰（V263）。**perm_code 一起置 null（V267）** ——
--- NOT_IMPLEMENTED 的功能点不该挂后端码，OpsPermConfigFlowTest 断言的就是这条。
--- ui_perm_code 留着：灰显也要先渲染出来，渲染判的是它。
 UPDATE sys_function_point
 SET backend_status = 'NOT_IMPLEMENTED',
-    perm_code      = NULL,
     updated_at     = NOW()
 WHERE point_code IN ('OPS_INVENTORY', 'OPS_INVENTORY__TAB_LEDGER', 'OPS_INVENTORY__TAB_RECON');
+UPDATE sys_function_point
+SET perm_code  = NULL,
+    updated_at = NOW()
+WHERE point_code IN ('OPS_INVENTORY', 'OPS_INVENTORY__TAB_LEDGER', 'OPS_INVENTORY__TAB_RECON')
+  AND backend_status = 'NOT_IMPLEMENTED';
+INSERT INTO sys_function_point
+    (point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+     backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+VALUES
+    ('ACT__SYSTEM_JOB_READ', 'OPS_SYSTEM', 'system:job:read', '仅后端', NULL, NULL,
+     'system:job:read', 'IMPLEMENTED', 0, NULL, 'ACTION', 940, NOW(), NOW()),
+    ('ACT__SYSTEM_JOB_MANAGE', 'OPS_SYSTEM', 'system:job:manage', '仅后端', NULL, NULL,
+     'system:job:manage', 'IMPLEMENTED', 0, NULL, 'ACTION', 939, NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+VALUES
+    ('SUPER_ADMIN', 'ACT__SYSTEM_JOB_READ', 'OPS', NOW(), NOW()),
+    ('SUPER_ADMIN', 'ACT__SYSTEM_JOB_MANAGE', 'OPS', NOW(), NOW()),
+    ('TECH_OPS', 'ACT__SYSTEM_JOB_READ', 'OPS', NOW(), NOW()),
+    ('TECH_OPS', 'ACT__SYSTEM_JOB_MANAGE', 'OPS', NOW(), NOW());

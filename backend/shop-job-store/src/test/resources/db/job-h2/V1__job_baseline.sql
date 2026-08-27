@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS job_definition
     created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by       VARCHAR(64),
+    trigger_requested_at DATETIME NULL,
+    last_triggered_at DATETIME NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_job_def_name UNIQUE (job_name)
 );

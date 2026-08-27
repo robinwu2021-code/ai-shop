@@ -4,6 +4,7 @@ import ai.neargo.job.api.JobDeclaration;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -17,7 +18,8 @@ public class JobDefinitionDao {
     private static final String COLS = """
             id, job_name, display_name, description, handler_name, target, params, cron,
             enabled, timeout_sec, lock_at_most_sec, manual_trigger, log_every_run,
-            source, missing, owner_module, created_at, updated_at, updated_by
+            source, missing, owner_module, created_at, updated_at, updated_by,
+            trigger_requested_at, last_triggered_at
             """;
 
     private final JdbcClient jdbc;
@@ -50,9 +52,11 @@ public class JobDefinitionDao {
                 rs.getString("source"),
                 rs.getBoolean("missing"),
                 rs.getString("owner_module"),
-                rs.getObject("created_at", java.time.LocalDateTime.class),
-                rs.getObject("updated_at", java.time.LocalDateTime.class),
-                rs.getString("updated_by"));
+                rs.getObject("created_at", LocalDateTime.class),
+                rs.getObject("updated_at", LocalDateTime.class),
+                rs.getString("updated_by"),
+                rs.getObject("trigger_requested_at", LocalDateTime.class),
+                rs.getObject("last_triggered_at", LocalDateTime.class));
     }
 
     public List<JobDefinitionRow> findAll() {
@@ -178,6 +182,43 @@ public class JobDefinitionDao {
     public int updateCron(String jobName, String cron, String operator) {
         return jdbc.sql("UPDATE job_definition SET cron = :cron, updated_by = :by WHERE job_name = :n")
                 .param("cron", cron).param("by", operator).param("n", jobName).update();
+    }
+
+    /**
+     * 运营点了「立即执行」：记下请求时刻。
+     *
+     * <p><b>不直接跑</b> —— 运营端与 worker 之间不通信（见 V2 迁移的注释）。
+     * worker 下一轮轮询看到它比 {@code last_triggered_at} 新就跑一次。
+     *
+     * @return 是否记下了（false = 没有这个任务，或它不允许手动触发）
+     */
+    public boolean requestTrigger(String jobName, LocalDateTime at, String operator) {
+        return jdbc.sql("""
+                        UPDATE job_definition SET trigger_requested_at = :at, updated_by = :by
+                         WHERE job_name = :n AND manual_trigger = 1 AND enabled = 1 AND missing = 0
+                        """)
+                .param("at", at).param("by", operator).param("n", jobName)
+                .update() > 0;
+    }
+
+    /**
+     * 有待处理的手动触发的任务。
+     *
+     * <p>比的是两个时间戳而不是清一个布尔标志：清标志那一步失败或进程被杀，
+     * 这个任务就会**每轮都跑一次**，直到有人发现。比大小是幂等的。
+     */
+    public List<JobDefinitionRow> findTriggerRequested() {
+        return jdbc.sql("SELECT " + COLS + " FROM job_definition"
+                        + " WHERE trigger_requested_at IS NOT NULL"
+                        + " AND (last_triggered_at IS NULL OR trigger_requested_at > last_triggered_at)"
+                        + " AND enabled = 1 AND missing = 0")
+                .query(JobDefinitionDao::map).list();
+    }
+
+    /** 手动触发已受理：把水位推上去。**跑之前推**，避免跑挂了下一轮又跑。 */
+    public void markTriggered(String jobName, LocalDateTime at) {
+        jdbc.sql("UPDATE job_definition SET last_triggered_at = :at WHERE job_name = :n")
+                .param("at", at).param("n", jobName).update();
     }
 
     public int setEnabled(String jobName, boolean enabled, String operator) {
