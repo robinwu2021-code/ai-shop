@@ -46,6 +46,9 @@ class JobApplicationSmokeTest {
     @Autowired
     JobSyncService sync;
 
+    @Autowired
+    ai.neargo.job.engine.JobWorkerProperties props;
+
     @Test
     @DisplayName("★ 独立进程能起来：数据源、迁移、注册表、调度器全部就位")
     void contextLoadsWithoutAnyBusinessModule() {
@@ -74,5 +77,23 @@ class JobApplicationSmokeTest {
                 // 正是我们要的
             }
         }
+    }
+
+    /**
+     * <b>打进包里的默认值必须是「新任务一律为停」。</b>
+     *
+     * <p>这一条不测装配，测的是<b>没人配任何东西时会发生什么</b> ——
+     * 而那才是生产的常态。默认 false 的话，一次发版新增几个任务，
+     * 它们会按代码里的 cron 自己跑起来，没有任何人做过「开」这个决定。
+     *
+     * <p>2026-08-28 踩过一次：job.env 里写了 JOB_WORKER_START_DISABLED=true，
+     * 但 application.yml 里没有占位符引用它，那一行等于注释，
+     * 新任务照样带着 enabled=1 进来 —— <b>而这不会有任何报错</b>。
+     */
+    @Test
+    @DisplayName("★ 不配任何东西时，新任务首次进库是「停」")
+    void startDisabledDefaultsToSafeSide() {
+        assertTrue(props.isStartDisabled(),
+                "默认值决定的是「没人想起这件事」时会发生什么");
     }
 }

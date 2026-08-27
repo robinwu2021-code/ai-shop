@@ -20,6 +20,15 @@ shop:
       max-pool-size: 5
     worker:
       instance: ${JOB_WORKER_INSTANCE:job-1}
+      # 新任务首次进库一律为「停」，等运营在页面上一个一个打开。
+      #
+      # **默认 true，而不是 false。** 默认值决定的是「没人想起这件事」时会发生什么：
+      # 默认 false 的话，一次发版新增几个任务，它们会按代码里的 cron 自己跑起来，
+      # 而没有任何人做过「开」这个决定。2026-08-28 就是这么发生的 ——
+      # job.env 里写了 JOB_WORKER_START_DISABLED=true，但这里没有占位符引用它
+      # （Spring 认的是 SHOP_JOB_WORKER_START_DISABLED），于是那一行等于注释，
+      # 新任务照样带着 enabled=1 进来。
+      start-disabled: ${JOB_WORKER_START_DISABLED:true}
       poll-interval: 30s
       pool-size: 4
       # 走 127.0.0.1 不走域名：这条调用是内网的，不该经过 nginx，
