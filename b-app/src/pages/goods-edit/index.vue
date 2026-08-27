@@ -1568,6 +1568,30 @@ const moreFromCategory = computed(() =>
  * 不拦着他选，但也不把二十来个无关维度摆在眼前。
  */
 
+const moreOther = computed(() => {
+  /*
+   * **还要跟前面那批去重。** 通用池里的「包装」与类目绑定的「包装」是
+   * 两个不同的 templateNo，`unused()` 只挡「已经在用的」，挡不住这一对 ——
+   * 展开「更多」后会看到两个「＋ 包装」，点哪个都对，但看起来像出了错。
+   * 与判重同一条规矩：同名即同一件事。
+   */
+  const shown = new Set(moreFromCategory.value.map((d) => d.name.trim()));
+  const seen = new Set<string>();
+  return unused([
+    ...pickableDims.value.filter((d) => !d.categoryNo && d.scope === "PLATFORM"),
+    ...pickableDims.value.filter((d) => d.scope === "MERCHANT"),
+  ]).filter((d) => {
+    const n = d.name.trim();
+    if (shown.has(n) || seen.has(n)) return false;
+    seen.add(n);
+    return true;
+  });
+});
+
+/* ↑ 这一条 2026-08-27 从「十一、参数」搬回来：它算的是**还能加哪些规格维度**（模板里挂在 `pickDim` 那一排上），
+   与参数无关，只是当初落错了节。**分节标题说了假话就不如没有** ——上一轮已经为同样的事
+   把 `loadCategories`/`prunable` 搬回过一次。 */
+
 // ── 十一、参数 ──────────────────────────────────────────────────────────────
 //    不参与组合的属性（产地、材质）—— 与规格分开的理由见 propDims
 /*
@@ -1769,25 +1793,6 @@ function pickParam(dim: SpecTemplate, o: SpecOption) {
 }
 
 
-const moreOther = computed(() => {
-  /*
-   * **还要跟前面那批去重。** 通用池里的「包装」与类目绑定的「包装」是
-   * 两个不同的 templateNo，`unused()` 只挡「已经在用的」，挡不住这一对 ——
-   * 展开「更多」后会看到两个「＋ 包装」，点哪个都对，但看起来像出了错。
-   * 与判重同一条规矩：同名即同一件事。
-   */
-  const shown = new Set(moreFromCategory.value.map((d) => d.name.trim()));
-  const seen = new Set<string>();
-  return unused([
-    ...pickableDims.value.filter((d) => !d.categoryNo && d.scope === "PLATFORM"),
-    ...pickableDims.value.filter((d) => d.scope === "MERCHANT"),
-  ]).filter((d) => {
-    const n = d.name.trim();
-    if (shown.has(n) || seen.has(n)) return false;
-    seen.add(n);
-    return true;
-  });
-});
 
 
 /**

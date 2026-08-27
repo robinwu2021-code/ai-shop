@@ -1177,10 +1177,27 @@ def main() -> None:
           f"{cat['counts']['components']} 个组件 · "
           f"{len(cat['tokens']['radius'])} 档圆角 / {len(cat['tokens']['spacing'])} 档间距 / "
           f"{len(cat['tokens']['type'])} 档字号")
+    """
+    「定义了没人用」分两类，**报法不一样**：
+
+    · 积木 / 组件没人用 = 真欠账。它是为某个调用点做的，调用点没了它就该删 ——
+      `.sh-mt-*` 那一族就是照这条收成一档的（五档十个类里八个没人用）。
+    · **字阶档位没人用 = 允许**。字阶是一个闭合的集合，不是一张使用清单：
+      48rpx 在 tokens.ts 里是一档，`typography.test.ts` 也断言九个类齐全。
+      删掉 `.txt-hero` 等于把 40 与 60 之间挖空，而下一个要 48 的人只会手写一个。
+
+    两类混在一句话里报的后果是：真欠账被一条恒在的噪声盖住 ——
+    这一轮 `.txt-hero` 就一直挂在那儿，看久了整句话都不再有人读。
+    """
+    TYPE_TIERS = set(TYPE_CLASSES)
     unused = [b["class"] for b in cat["blocks"]
               if b["usage"]["b-app"] + b["usage"]["c-app"] == 0]
-    if unused:
-        print(f"  ⚠ 清单里有、代码里没人用：{', '.join(unused)}")
+    debt = [c for c in unused if c not in TYPE_TIERS]
+    tiers = [c for c in unused if c in TYPE_TIERS]
+    if debt:
+        print(f"  ⚠ 清单里有、代码里没人用：{', '.join(debt)}")
+    if tiers:
+        print(f"  · 字阶里暂时没有调用点的档位（允许，集合要闭合）：{', '.join(tiers)}")
     print(f"  B 端 {cat['counts']['pages']} 页扫过：{cat['counts']['gapKinds']} 类形态库里没有")
     for g in cat["gaps"]:
         if g["gap"]:
