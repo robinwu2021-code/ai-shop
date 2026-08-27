@@ -9,6 +9,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -43,10 +44,22 @@ public class GlobalExceptionHandler {
      * 实测撞上的是核销台的按码搜索（`/biz/pickup/verify/search` 不带 keyword），
      * 返回 500，日志里还挂一条 error 栈，看着像后端崩了。
      *
-     * <p>四种异常放在一起，是因为它们对调用方是同一件事：<b>你发的请求有问题</b>。
+     * <p>这些异常放在一起，是因为它们对调用方是同一件事：<b>你发的请求有问题</b>。
+     *
+     * <p><b>缺请求头是 2026-08-28 补进来的</b>：缺参数早就在列，缺请求头却不在，
+     * 于是 {@code @RequestHeader("Authorization")} 少一个头会掉进兜底那条
+     * 变成 10500「服务器内部错误」—— C 端的 {@code /mp/user/logout} 与
+     * {@code /mp/user/token/refresh} 实测就是这样。<b>客户端的错在监控里长成服务端故障</b>，
+     * 而真正的服务端故障就淹在里面。
+     *
+     * <p>只补 {@link MissingRequestHeaderException}，<b>不补它的父类
+     * {@code ServletRequestBindingException}</b>：那个父类还包含
+     * {@code MissingPathVariableException}，而路径变量缺失是**映射写错了**，
+     * 是货真价实的服务端 bug，500 才是对的。一把抓会把它一起洗白。
      */
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class,
             ConstraintViolationException.class, MissingServletRequestParameterException.class,
+            MissingRequestHeaderException.class,
             MethodArgumentTypeMismatchException.class, HttpMessageNotReadableException.class})
     public ApiResult<Void> onInvalid(Exception e) {
         // 预期内的调用方错误，不打 error 栈 —— 打了会把真正的告警淹掉

@@ -312,4 +312,25 @@ class MpEndpointAuthTest {
         });
         return out;
     }
+
+    @Test
+    @DisplayName("★ 缺必填请求头是 400 不是 500 —— 客户端的错不该在监控里长成服务端故障")
+    void missingRequiredHeaderIsBadRequestNotInternalError() throws Exception {
+        /*
+         * /mp/user/logout 与 /mp/user/token/refresh 的 @RequestHeader("Authorization")
+         * 是必填的。此前缺了会掉进兜底的 Exception 处理器 → 10500「服务器内部错误」。
+         *
+         * 判据是响应体里的 code：HTTP 状态被全局信封统一成 200，
+         * 只看状态码分不出「跑成了」和「炸了」。
+         */
+        for (String url : List.of("/mp/user/logout", "/mp/user/token/refresh")) {
+            String body = mvc().perform(MockMvcRequestBuilders.post(url)
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(body)
+                    .as("%s 缺 Authorization 头时回的应该是 10400，不是 10500", url)
+                    .contains("10400")
+                    .doesNotContain("10500");
+        }
+    }
 }
