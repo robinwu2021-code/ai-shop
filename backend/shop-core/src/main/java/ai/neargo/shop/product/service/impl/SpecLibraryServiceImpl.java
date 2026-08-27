@@ -144,7 +144,17 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         Overrides ov = overridesOf(merchantNo, specCat);
 
         List<SpecTemplateVO> out = new ArrayList<>();
+        /*
+         * **类目绑定这一圈处理过的维度**，不管它最后有没有进 `out`。
+         *
+         * 下面那圈（「他自己加进来的规格」）靠 `shown` 排重，而 `shown` 是从 `out` 里取的 ——
+         * 于是在这一圈被 `continue` 掉的维度会漏进下面那圈，**并且拿到的是全量值池**。
+         * 实测后果：商家把某个规格的档位删光保存，那个规格从「4 档」变成「49 档」。
+         * 他做的是删除，看到的是多出四十几档，报上来的话只会说「保存不成功」。
+         */
+        Set<String> handled = new java.util.LinkedHashSet<>();
         for (PrdCategorySpec b : binds) {
+            handled.add(b.getDimNo());
             PrdSpecDim dim = dims.get(b.getDimNo());
             if (dim == null) {
                 // 绑定指向一个已归档/不存在的维度：跳过而不是抛 —— 运营归档一个维度
@@ -204,7 +214,13 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
          */
         Set<String> shown = out.stream().map(SpecTemplateVO::templateNo).collect(Collectors.toSet());
         for (String dimNo : ov.addedDims()) {
-            if (shown.contains(dimNo)) {
+            /*
+             * `handled` 而不是 `shown`：**「上面处理过但没显示」与「上面根本没见过」是两回事。**
+             * 前者是类目绑定的维度（他的取舍已经在上面算完了，档位为空就是他要的结果），
+             * 后者才是他从别处挑进来的。只看 `shown` 的话，前者会被当成后者，
+             * 于是带着全量值池复活 —— 那正是「删完保存反而多出四十几档」的来路。
+             */
+            if (shown.contains(dimNo) || handled.contains(dimNo)) {
                 continue;
             }
             PrdSpecDim dim = DataScopeContext.executeWithoutScope(() ->
@@ -1048,7 +1064,24 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                     .filter(ValueOverrideCommand::enabled)
                     .map(ValueOverrideCommand::code)
                     .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
-            if (!vals.isEmpty()) {
+            /*
+             * ⚠️ **判据是「这个维度启不启用」，不是「有没有提交值」。**
+             *
+             * 这里原先写的是 `if (!vals.isEmpty())`，而它与上面那段注释自相矛盾：
+             * 注释说「提交上来的 values 是一份完整声明」，守卫却在「声明为空」时
+             * 把整段删除跳过了。后果正是那段注释想防的事，只是触发路径更绕一层：
+             *   1. 商家把某个规格的档位**删光**，保存 —— 这一次 vals 非空（全是 enabled=false），删除落库
+             *   2. 重新读回来，这个规格的档位是 0 条
+             *   3. 他接着做**任何一次**保存（哪怕只是拖了下顺序），这个规格就带着 `values: []` 上来
+             *   4. 守卫跳过 → 而 saveOverrides 一进来就 `purge` 清空了覆盖表
+             *      → 该落的 enabled=false 一行都没落 → **删掉的档位全部复活**
+             * 商家看到的是「我删了，保存了，它又回来了」，与「保存失败」难以区分。
+             *
+             * 不能一刀去掉守卫：`buildSpecOverride` 表达「移除这个规格」用的正是
+             * `{enabled:false, values:[]}`，那条不该给它的子集逐档落禁用行 ——
+             * 维度本身已经关掉了，再落一堆值级别的行只是噪声。
+             */
+            if (d.enabled()) {
                 for (String code : inSubset) {
                     if (!declared.contains(code)) {
                         PrdMerchantSpecOverride off = new PrdMerchantSpecOverride();

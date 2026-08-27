@@ -328,6 +328,70 @@ class CategoryTreeFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 一个档位都不留的声明 = 全去掉，不是「没说」—— 否则删掉的档位会自己回来")
+    void emptyValueDeclarationMeansAllRemoved() throws Exception {
+        String biz = merchant("12600167001", "档位删除测试店");
+
+        // 前提：平台给 CAT110 的 SD_WEIGHT 配了几档，商家默认全都拿得到
+        assertThat(optionCount(biz, "CAT110", "SD_WEIGHT"))
+                .as("前提不成立就说明种子变了，这条用例守不住任何东西")
+                .isEqualTo(4);
+
+        /*
+         * 商家把这个规格的档位**删光**。端上此时提交的正是「我用这个规格，
+         * 但一个档位都不用」——`values` 是空数组，而不是一串 enabled=false。
+         *
+         * 这不是构造出来的边界：`buildSpecOverride` 拿 `t.options` 拼 codes，
+         * 而删光之后读回来的 options 就是空的，于是**之后每一次保存**
+         * （哪怕只是拖了下顺序）都长这个样。
+         */
+        saveOverride(biz, "CAT110", "[{\"dimNo\":\"SD_WEIGHT\",\"enabled\":true,\"values\":[]}]");
+
+        /*
+         * `isNotPositive()`：0（规格还在、档位为空）与 -1（规格整个不显示）都算删除生效。
+         * **这两者的取舍是另一个待决**（见 `options.isEmpty() && SALE` 那条守卫）——
+         * 它写的是「运营配错了不该让商家看见空规格」，而商家自己删光是另一回事：
+         * 那时候消失反而让他找不回来。这条用例只守「删除有没有生效」，不替那个决定站队。
+         *
+         * 修复前这里是 **49** —— 不是 0 也不是 4，是平台全量值池：
+         * 档位全禁用 → 第一圈 `continue` → 没进 `shown` → 第二圈当成「他挑进来的」
+         * 用全量池复活。**商家做的是删除，看到的是多出四十几档。**
+         */
+        assertThat(optionCount(biz, "CAT110", "SD_WEIGHT"))
+                .as("空声明被当成了「没说」——「没提交」不能等于「跟平台走」")
+                .isNotPositive();
+
+        // 再存一次（模拟他接着调了别的东西）：仍然不许复活
+        saveOverride(biz, "CAT110", "[{\"dimNo\":\"SD_WEIGHT\",\"enabled\":true,\"values\":[]}]");
+        assertThat(optionCount(biz, "CAT110", "SD_WEIGHT"))
+                .as("第二次保存把删除弄丢了 —— saveOverrides 一进来就 purge，"
+                        + "该落的 enabled=false 没落，覆盖表就成了空白")
+                .isNotPositive();
+    }
+
+    private void saveOverride(String bizToken, String categoryNo, String dimsJson) throws Exception {
+        mvc().perform(post("/biz/spec-override/" + categoryNo)
+                        .header("Authorization", "Bearer " + bizToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dims\":" + dimsJson + "}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    /** 这个类目下某个维度还剩几个档位（商家视角，合并过覆盖） */
+    private int optionCount(String bizToken, String categoryNo, String dimNo) throws Exception {
+        String body = mvc().perform(get("/biz/spec-templates?categoryNo=" + categoryNo)
+                        .header("Authorization", "Bearer " + bizToken))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        for (JsonNode t : json.readTree(body).get("data")) {
+            if (dimNo.equals(t.path("templateNo").asString())) {
+                return t.path("options").size();
+            }
+        }
+        return -1;   // 维度整个不见了 —— 与「档位为 0」是两回事，别混成同一个断言
+    }
+
+    @Test
     @DisplayName("★ 归档的类目不出现在 C 端树里 —— 否则用户点进去是空列表")
     void archivedCategoryLeavesTheTree() throws Exception {
         String token = opsLogin();
