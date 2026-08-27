@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**83 个功能点**，其中 **21 个游客可用**；**2 个没有任何页面调用**。
+统计：**84 个功能点**，其中 **22 个游客可用**；**2 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -88,6 +88,7 @@
 | `pointRecords` | `GET /mp/points/records` | 是 | points | — |
 | `registerPushToken` | `POST /mp/push-token` | 是 | (stores) | — |
 | `unregisterPushToken` | `POST /mp/push-token/unregister` | 是 | (stores) | — |
+| `regions` | `GET /mp/regions` | 游客 | (components)/biz | — |
 | `reviewList` | `GET /mp/review` | 游客 | goods · merchant | — |
 | `createReview` | `POST /mp/review` | 是 | review-write | — |
 | `toggleReviewLike` | `POST /mp/review/:reviewNo/like` | 是 | goods · merchant | — |

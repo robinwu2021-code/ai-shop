@@ -121,7 +121,7 @@
 | C-2.2 | `POST /mp/user/address/:addressId/archive` 删除（软） | P0 | ✅ |
 | C-2.2 | `POST /mp/user/address/:addressId/default` 设为默认 | P0 | ✅ |
 | C-2.2 | `GET /mp/address/delivery-check` 配送范围校验（LBS） | P0 | ⬜ |
-| C-2.2 | `GET /mp/address/region-tree` 省市区树（可缓存） | P0 | ⬜ |
+| C-2.2 | `GET /mp/regions` 省市区逐级下发（原计划名 `/mp/address/region-tree`；与 `/ops/regions`、`/biz/regions` 同名对齐，且不是一次给整棵树） | P0 | ✅ |
 
 ### 2.3 商品与类目（C-3）· `svc-product`
 

@@ -9,6 +9,7 @@ import type { Address } from "@shared/types";
 import { chooseLocation } from "@shared/ports/location";
 import { confirm } from "@ai-shop/ui/prompt";
 import { isPhone, notBlank } from "@shared/utils/validate";
+import { isCompleteRegion, joinRegion, splitRegion } from "@shared/utils/region";
 
 const { t } = useI18n();
 
@@ -20,6 +21,9 @@ const draft = ref<Omit<Address, "addressId"> & { addressId?: string }>({
   name: "",
   phone: "",
   region: "",
+  province: "",
+  city: "",
+  district: "",
   detail: "",
   isDefault: false,
   tag: "",
@@ -45,10 +49,55 @@ async function pickOnMap() {
   const p = r.picked;
   draft.value.latE6 = Math.round(p.lat * 1e6);
   draft.value.lngE6 = Math.round(p.lng * 1e6);
-  // 地图给的 address 是「省市区 + 路名门牌」一整串，region 留给它，门牌与楼栋让用户自己补
-  if (p.address) draft.value.region = p.address.slice(0, 96);
+  /*
+   * 地图给的 address 是「省市区 + 路名门牌」一整串。
+   * **拆开存**：不拆的话 province/city/district 三列还是 null，
+   * 而地图选点本来是这条链路上信息最全的一次输入 —— 在这里丢掉最可惜。
+   */
+  if (p.address) {
+    const parts = splitRegion(p.address.slice(0, 96));
+    draft.value.province = parts.province;
+    draft.value.city = parts.city;
+    draft.value.district = parts.district;
+    // 拆不出省市区的（只有门牌的写法）保持原样，别把一整串塞进 region 又清空三列
+    draft.value.region = isCompleteRegion(parts) ? joinRegion(parts) : p.address.slice(0, 96);
+    if (!draft.value.detail.trim() && parts.rest.trim()) draft.value.detail = parts.rest.trim().slice(0, 60);
+  }
   if (!draft.value.detail.trim() && p.name) draft.value.detail = p.name.slice(0, 60);
 }
+
+const pickingRegion = ref(false);
+
+/** 选择器回来：三级都是**名字**，region 由它们拼出来，不再各写各的 */
+function onRegionPick(v: { province: string; city: string; district: string }) {
+  draft.value.province = v.province;
+  draft.value.city = v.city;
+  draft.value.district = v.district;
+  draft.value.region = joinRegion(v);
+  pickingRegion.value = false;
+}
+
+/**
+ * 手填那条路仍然留着（存量地址、区划表里没有的写法），但**填完要拆一次** ——
+ * 否则手填的地址三列依旧是空的，跟改造前没区别。
+ */
+function onRegionInput() {
+  const parts = splitRegion(draft.value.region);
+  draft.value.province = parts.province;
+  draft.value.city = parts.city;
+  draft.value.district = parts.district;
+}
+
+/**
+ * 手填的一串**拆不出省市区**时给一句提示。
+ *
+ * 刻意**不拦保存**：拆不动是常态（存量地址、只写小区门牌的写法），
+ * 拦了等于让一部分人存不了地址。但也不能一声不吭 ——
+ * 不吭声的话那三列静默为空，而按区派单会跳过这个人，谁都不知道为什么。
+ */
+const regionUnsplit = computed(
+  () => notBlank(draft.value.region) && !isCompleteRegion(draft.value),
+);
 
 const valid = computed(
   () =>
@@ -64,7 +113,10 @@ async function load() {
 }
 
 function openNew() {
-  draft.value = { name: "", phone: "", region: "", detail: "", isDefault: !list.value.length, tag: "", latE6: null, lngE6: null };
+  draft.value = {
+    name: "", phone: "", region: "", province: "", city: "", district: "",
+    detail: "", isDefault: !list.value.length, tag: "", latE6: null, lngE6: null,
+  };
   editing.value = true;
 }
 
@@ -148,11 +200,18 @@ onLoad((q) => {
           :placeholder="$t('address.phone')"
         />
         <view class="regionrow">
-          <input v-model="draft.region" class="field__input regionrow__in" :placeholder="$t('address.region')" />
+          <input
+            v-model="draft.region"
+            class="field__input regionrow__in"
+            :placeholder="$t('address.region')"
+            @blur="onRegionInput"
+          />
+          <text class="regionrow__pick" @tap="pickingRegion = true">{{ $t("address.regionSelect") }}</text>
           <text class="regionrow__pick" :class="{ 'is-ok': picked }" @tap="pickOnMap">
             {{ picked ? $t("address.repick") : $t("address.pick") }}
           </text>
         </view>
+        <text v-if="regionUnsplit" class="field__hint">{{ $t("address.regionIncomplete") }}</text>
         <input v-model="draft.detail" class="field__input" :placeholder="$t('address.detail')" />
         <input v-model="draft.tag" class="field__input" :placeholder="$t('address.tagPh')" />
 
@@ -165,6 +224,13 @@ onLoad((q) => {
           {{ $t("common.confirm") }}
         </view>
     </sh-sheet>
+
+    <biz-region-picker
+      :visible="pickingRegion"
+      :current="draft.region"
+      @close="pickingRegion = false"
+      @pick="onRegionPick"
+    ></biz-region-picker>
   </sh-scaffold>
 </template>
 

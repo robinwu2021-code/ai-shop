@@ -78,8 +78,15 @@ export interface SaveAddressReq {
   name: string;
   /** 收货人手机号 */
   phone: string;
-  /** 省市区 */
+  /** 省市区，拼好给人看的一串 */
   region: string;
+  /**
+   * 省 / 市 / 区县，分开的三个。后端 `SaveAddressReq` 一直收这三个字段，
+   * 端上一直没发 —— 于是 `usr_address` 那三列永远是 null（见 `Address` 的注释）
+   */
+  province?: string | null;
+  city?: string | null;
+  district?: string | null;
   /** 详细地址（街道门牌） */
   detail: string;
   /** 设为默认。置 true 会把原默认地址改为 false */

@@ -19,13 +19,22 @@ defineProps<{
   title: string;
   /** 副标题：一句话说清这个弹层里的东西是什么、代价在哪 */
   hint?: string;
+  /**
+   * 叠在**另一个弹层之上**（省市区选择器开在地址表单弹层上就是这个形态）。
+   *
+   * 不加这一档的话两层同 z-index，谁在上面取决于 DOM 顺序 ——
+   * 在 H5 上碰巧是对的，而一旦某一层落进了别的层叠上下文（transform、
+   * position:sticky 的祖先都会造一个），顺序就翻过来：
+   * 弹层开了、蒙层也在，但内容被压在下面，点哪儿都没反应，且**不报错**。
+   */
+  stacked?: boolean;
 }>();
 
 const emit = defineEmits<{ close: [] }>();
 </script>
 
 <template>
-  <view v-if="visible" class="sheet">
+  <view v-if="visible" class="sheet" :class="{ 'sheet--stacked': stacked }">
     <view class="sheet__mask" @tap="emit('close')" />
     <view class="sheet__panel">
       <view class="sheet__grip" />
@@ -44,6 +53,11 @@ const emit = defineEmits<{ close: [] }>();
   position: fixed;
   inset: 0;
   z-index: 100;
+}
+
+/* 比 sh-dialog（200）低一档：对话框永远该在最上面，它是要人立刻回答的那一个 */
+.sheet--stacked {
+  z-index: 150;
 }
 
 .sheet__mask {

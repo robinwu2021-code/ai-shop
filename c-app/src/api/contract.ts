@@ -43,6 +43,7 @@ import type {
   FulfillmentType,
   ReviewScores,
   PhoneCapable,
+  RegionNode,
   RegionOption,
 } from "@shared/types";
 
@@ -150,6 +151,8 @@ export interface ShopApi {
    * 把整棵树给用户挑，十有八九挑到一个一家店都没有的区。
    */
   openRegions(): Promise<RegionOption[]>;
+  /** @param parent 上级区划码；不传 = 取省级 */
+  regions(parent?: string): Promise<RegionNode[]>;
 
   // ---- 商品
   goodsList(q: GoodsQuery): Promise<PageResult<Goods>>;

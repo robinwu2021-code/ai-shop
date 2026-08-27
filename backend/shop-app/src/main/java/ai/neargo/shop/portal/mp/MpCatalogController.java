@@ -108,15 +108,29 @@ public class MpCatalogController {
      * 不该因为没登录就查不到 —— 那会让「先选地址再登录」这条路走不通。
      */
     @GetMapping("/mp/regions")
-    public List<RegionService.RegionVO> regions(@RequestParam(required = false) String parent) {
+    public List<MpRegionVO> regions(@RequestParam(required = false) String parent) {
         return regionService.children(parent, true).stream()
                 .filter(r -> !"STREET".equals(r.level()) && !"VILLAGE".equals(r.level()))
-                .map(r -> "DISTRICT".equals(r.level())
-                        ? new RegionService.RegionVO(r.regionCode(), r.parentCode(), r.level(),
-                                r.name(), r.enabled(), false, r.source(), r.pending(),
-                                r.auditStatus(), r.rejectReason(), r.latE6(), r.lngE6(), r.rural())
-                        : r)
+                // 区县这一级把 hasChild 压成 false（见方法注释：地址表没有街道那一列）
+                .map(r -> new MpRegionVO(r.regionCode(), r.parentCode(), r.level(), r.name(),
+                        !"DISTRICT".equals(r.level()) && Boolean.TRUE.equals(r.hasChild())))
                 .toList();
+    }
+
+    /**
+     * C 端看到的区划节点：**只有四个字段加一个 hasChild**。
+     *
+     * <p>不复用 {@code RegionService.RegionVO} 的理由不是洁癖。那个记录里有
+     * {@code source} / {@code pending} / {@code auditStatus} / {@code rejectReason} ——
+     * 区划提报的审核状态与**驳回理由**。而这个端点是免登录的：直接透传等于把
+     * 「谁提报了哪个区、为什么被驳回」发给任何一个打开小程序的人。
+     * 端上一个都用不到，也不会有人注意到它们在返回体里。
+     *
+     * <p>顺带把 {@code latE6/lngE6/rural} 也挡在外面：地址簿不需要区划的坐标，
+     * 而 62 万行村级数据的坐标补录是另一条线的事（见 BizRegionController）。
+     */
+    public record MpRegionVO(String regionCode, String parentCode, String level,
+                             String name, boolean hasChild) {
     }
 
     @GetMapping("/mp/community/{communityNo}")

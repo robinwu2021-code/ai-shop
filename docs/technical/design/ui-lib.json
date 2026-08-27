@@ -1115,7 +1115,7 @@
       },
       "usage": {
         "b-app": 6,
-        "c-app": 0
+        "c-app": 1
       }
     },
     {
@@ -1179,7 +1179,7 @@
       },
       "usage": {
         "b-app": 2,
-        "c-app": 0
+        "c-app": 1
       }
     }
   ],
@@ -1294,7 +1294,7 @@
       ],
       "usage": {
         "b-app": 37,
-        "c-app": 17
+        "c-app": 19
       },
       "note": "空态",
       "why": "抽出来不是因为重复，是**观感会漂**：曾在 27 个页面各写一份，padding 在 60/80/100rpx 之间随手取"
@@ -1499,15 +1499,16 @@
       "name": "sh-sheet",
       "file": "packages/ui/src/components/sh-sheet.vue",
       "scope": "跨端",
-      "lines": 101,
+      "lines": 115,
       "props": [
         "visible: boolean",
         "title: string",
-        "hint?: string"
+        "hint?: string",
+        "stacked?: boolean"
       ],
       "usage": {
         "b-app": 7,
-        "c-app": 2
+        "c-app": 3
       },
       "note": "底部弹层",
       "why": "不用 uni.showModal（字不归我们管）、不做页内展开（会把下文顶走）"
@@ -1572,7 +1573,7 @@
       ],
       "usage": {
         "b-app": 9,
-        "c-app": 8
+        "c-app": 9
       },
       "note": "筛选条",
       "why": "抽之前两端有两套实现（chip 横排 / 方块），同一个产品里两种筛选条"
@@ -1654,7 +1655,7 @@
       ],
       "usage": {
         "b-app": 1,
-        "c-app": 0
+        "c-app": 1
       },
       "note": "经营范围选择器",
       "why": "省市区 / 小区 / 村三级 + 提报。全项目最大的单文件组件"
@@ -2949,9 +2950,10 @@
         "sh-actionbar",
         "sh-empty",
         "sh-scaffold",
-        "sh-sheet"
+        "sh-sheet",
+        "biz-region-picker"
       ],
-      "libClassHits": 12,
+      "libClassHits": 13,
       "localSelectors": 20,
       "localCssLines": 91,
       "rolled": [

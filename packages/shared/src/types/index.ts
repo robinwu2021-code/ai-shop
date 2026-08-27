@@ -208,6 +208,28 @@ export interface PhoneCapable {
   capable: boolean;
 }
 
+/**
+ * 行政区划树上的一个节点（`/mp/regions`）。
+ *
+ * 与 {@link RegionOption} 是**两个问题的答案**，不要混用：
+ * `RegionOption` 答的是「我能在哪儿取货」（只列有已开通社区的区），
+ * 这个答的是「我家在哪儿」—— 没开通的区也要能选出来，人确实住在那儿。
+ */
+export interface RegionNode {
+  /** 国标码：省 2 位 / 市 4 位 / 区县 6 位 */
+  regionCode: string;
+  /** 上级码。省级为 null */
+  parentCode?: string | null;
+  /** `PROVINCE` | `CITY` | `DISTRICT`。地址簿只到区县，街道与村不下发 */
+  level: string;
+  name: string;
+  /**
+   * 还有没有下一级。**区县恒为 false** —— 地址表只有省市区三列，
+   * 让人点进街道再挑一个存不下去的东西，比不让他挑更糟。
+   */
+  hasChild: boolean;
+}
+
 export interface RegionOption {
   /** 区县级国标码（6 位）。社区可能挂在街道级，聚合时截到区县 */
   regionCode: string;
@@ -447,8 +469,21 @@ export interface Address {
   name: string;
   /** 收货人手机号 */
   phone: string;
-  /** 省市区 */
+  /** 省市区，拼好给人看的一串 */
   region: string;
+  /**
+   * 省 / 市 / 区县，**分开的三个**。
+   *
+   * 与 `region` 并存不是冗余：`region` 是展示用的一串（存量地址、地图回填都只有它），
+   * 这三列是**能拿来算的**那份 —— 按省算运费、按区派单、按市校经营范围。
+   * 后端 `usr_address` 一直有这三列，端上一直没填，于是那些规则全在 null 上求值，
+   * 一条都不命中，而页面上完全正常。
+   *
+   * 可能为空：存量地址是纯手填的，拆不出来。
+   */
+  province?: string | null;
+  city?: string | null;
+  district?: string | null;
   /** 详细地址（街道门牌） */
   detail: string;
   /** 是否默认地址。整个地址簿至多一条为 true */

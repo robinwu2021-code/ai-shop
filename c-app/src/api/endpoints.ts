@@ -114,6 +114,14 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
     auth: false,
     summary: "有已开通社区的区域清单",
   },
+  // 与上面那条是两个问题：这条答「我家在哪儿」，没开通的区也要能选出来。
+  // 免登录 —— 「先填地址、再登录下单」这条路要走得通
+  regions: {
+    method: "GET",
+    path: "/mp/regions",
+    auth: false,
+    summary: "行政区划（省市区三级，地址簿用）",
+  },
 
   // ---------------------------------------------------------------- 商品
   goodsList: { method: "GET", path: "/mp/goods", auth: false, summary: "商品列表" },
