@@ -60,7 +60,7 @@ async function submit() {
       <textarea v-model="desc" class="txt-sub ta" :placeholder="$t('request.descPh')" maxlength="200" />
 
       <view class="sh-row sh-row--between row sh-mt-md">
-        <text class="txt-sub row__k">{{ $t("request.expect") }}</text>
+        <text class="txt-sub row__k txt-ink">{{ $t("request.expect") }}</text>
         <view class="stepper sh-row">
           <view class="txt-body stepper__btn sh-center" @tap="step(-1)"><text>−</text></view>
           <text class="txt-strong stepper__num sh-num">{{ qty }}</text>
@@ -69,7 +69,7 @@ async function submit() {
       </view>
 
       <view class="sh-row sh-row--between row sh-mt-md">
-        <text class="txt-sub row__k">{{ $t("request.budget") }}</text>
+        <text class="txt-sub row__k txt-ink">{{ $t("request.budget") }}</text>
         <input
           maxlength="10"
           v-model="budget"
@@ -113,9 +113,6 @@ async function submit() {
 }
 .row {
   gap: 24rpx;
-}
-.row__k {
-  color: var(--sh-ink);
 }
 .row__input {
   flex: 1;

@@ -167,7 +167,7 @@ onShow(load);
 
     <!-- 门店范围。只有多店才出现 —— 单店商家看到这个切换只会疑惑 -->
     <view v-if="merchant.multiStore" class="scope sh-row sh-row--between" @tap="toggleScope">
-      <text class="txt-caption scope__cur">
+      <text class="txt-caption scope__cur txt-ink">
         {{ allStores ? $t("order.scopeAll") : merchant.currentStore?.name || $t("order.scopeCurrent") }}
       </text>
       <sh-go>{{ allStores ? $t("order.scopeToCurrent") : $t("order.scopeToAll") }}</sh-go>
@@ -207,9 +207,6 @@ onShow(load);
   padding: 16rpx 24rpx;
   background: var(--sh-faint);
   border-radius: 16rpx;
-}
-.scope__cur {
-  color: var(--sh-ink);
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */

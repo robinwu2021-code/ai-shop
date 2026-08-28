@@ -655,25 +655,25 @@ onMounted(async () => {
     <view v-if="amount" class="sh-card block">
       <view class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.goods") }}</text>
-        <text class="txt-caption amt__v sh-num">{{ money(amount.goodsMinor) }}</text>
+        <text class="txt-caption amt__v sh-num txt-ink">{{ money(amount.goodsMinor) }}</text>
       </view>
       <view class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.freight") }}</text>
-        <text class="txt-caption amt__v sh-num">
+        <text class="txt-caption amt__v sh-num txt-ink">
           {{ amount.freightMinor ? money(amount.freightMinor) : $t("confirm.free") }}
         </text>
       </view>
       <view v-if="amount.discountMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.discount") }}</text>
-        <text class="txt-caption amt__v amt__v--off sh-num">-{{ money(amount.discountMinor) }}</text>
+        <text class="txt-caption amt__v amt__v--off sh-num txt-ink">-{{ money(amount.discountMinor) }}</text>
       </view>
       <view v-if="amount.pointsDeductMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption sh-num">{{ $t("confirm.pointsDeduct", { n: amount.pointsUsed }) }}</text>
-        <text class="txt-caption amt__v amt__v--off sh-num">-{{ money(amount.pointsDeductMinor) }}</text>
+        <text class="txt-caption amt__v amt__v--off sh-num txt-ink">-{{ money(amount.pointsDeductMinor) }}</text>
       </view>
       <view v-if="amount.pointsEarn" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.pointsEarn") }}</text>
-        <text class="txt-caption amt__v amt__v--earn sh-num">+{{ amount.pointsEarn }}</text>
+        <text class="txt-caption amt__v amt__v--earn sh-num txt-ink">+{{ amount.pointsEarn }}</text>
       </view>
     </view>
 
@@ -813,9 +813,6 @@ onMounted(async () => {
   padding: 12rpx 0;
 }
 
-.amt__v {
-  color: var(--sh-ink);
-}
 .amt__v--off {
   color: var(--sh-danger);
 }

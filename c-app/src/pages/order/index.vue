@@ -238,21 +238,21 @@ onShow(load);
     <view class="sh-card block">
       <view class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.goods") }}</text>
-        <text class="txt-caption amt__v sh-num">{{ money(order.amount.goodsMinor) }}</text>
+        <text class="txt-caption amt__v sh-num txt-ink">{{ money(order.amount.goodsMinor) }}</text>
       </view>
       <view class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.freight") }}</text>
-        <text class="txt-caption amt__v sh-num">
+        <text class="txt-caption amt__v sh-num txt-ink">
           {{ order.amount.freightMinor ? money(order.amount.freightMinor) : $t("confirm.free") }}
         </text>
       </view>
       <view v-if="order.amount.discountMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.discount") }}</text>
-        <text class="txt-caption amt__v amt__v--off sh-num">-{{ money(order.amount.discountMinor) }}</text>
+        <text class="txt-caption amt__v amt__v--off sh-num txt-ink">-{{ money(order.amount.discountMinor) }}</text>
       </view>
       <view v-if="order.amount.weighAdjustMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("order.weighAdjust") }}</text>
-        <text class="txt-caption amt__v sh-num">{{ money(order.amount.weighAdjustMinor) }}</text>
+        <text class="txt-caption amt__v sh-num txt-ink">{{ money(order.amount.weighAdjustMinor) }}</text>
       </view>
       <view class="amt amt--total sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("order.paid") }}</text>
@@ -474,9 +474,6 @@ onShow(load);
   margin-top: 12rpx;
 }
 
-.amt__v {
-  color: var(--sh-ink);
-}
 .amt__v--off {
   color: var(--sh-danger);
 }

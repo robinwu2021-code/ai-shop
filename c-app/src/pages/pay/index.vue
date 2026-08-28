@@ -115,7 +115,7 @@ onUnmounted(() => clearInterval(timer));
         <view v-if="(order.subOrders?.length ?? 0) > 1" class="subs">
           <text class="txt-caption subs__title">{{ $t("pay.covers", { n: order.subOrders!.length }) }}</text>
           <view v-for="s in order.subOrders" :key="s.orderNo" class="subs__row sh-row sh-row--between">
-            <text class="txt-sub subs__name">{{ s.merchantName }}</text>
+            <text class="txt-sub subs__name txt-ink">{{ s.merchantName }}</text>
             <text class="txt-sub sh-num">{{ money(s.amount.payableMinor) }}</text>
           </view>
         </view>
@@ -201,9 +201,6 @@ onUnmounted(() => clearInterval(timer));
 }
 .subs__row {
   padding: 8rpx 0;
-}
-.subs__name {
-  color: var(--sh-ink);
 }
 
 .cd {

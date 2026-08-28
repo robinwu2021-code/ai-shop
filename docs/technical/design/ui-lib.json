@@ -695,6 +695,22 @@
       }
     },
     {
+      "class": ".txt-ink",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 6,
+        "c-app": 19
+      }
+    },
+    {
       "class": ".sh-muted",
       "group": "字阶",
       "when": "次要文字。**字号走密度变量**，B 端自动降到 24rpx",
@@ -2408,9 +2424,9 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 21,
-      "localSelectors": 7,
-      "localCssLines": 29,
+      "libClassHits": 22,
+      "localSelectors": 6,
+      "localCssLines": 26,
       "rolled": []
     },
     {
@@ -2631,9 +2647,9 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 42,
-      "localSelectors": 10,
-      "localCssLines": 38,
+      "libClassHits": 43,
+      "localSelectors": 9,
+      "localCssLines": 35,
       "rolled": []
     },
     {
@@ -2779,9 +2795,9 @@
         "sh-option",
         "sh-scaffold"
       ],
-      "libClassHits": 24,
-      "localSelectors": 8,
-      "localCssLines": 27,
+      "libClassHits": 25,
+      "localSelectors": 7,
+      "localCssLines": 24,
       "rolled": []
     },
     {
@@ -2829,9 +2845,9 @@
         "biz-region-picker",
         "biz-store-tag"
       ],
-      "libClassHits": 85,
-      "localSelectors": 27,
-      "localCssLines": 96,
+      "libClassHits": 88,
+      "localSelectors": 25,
+      "localCssLines": 90,
       "rolled": []
     },
     {
@@ -2897,9 +2913,9 @@
         "sh-switch",
         "biz-region-picker"
       ],
-      "libClassHits": 29,
-      "localSelectors": 14,
-      "localCssLines": 50,
+      "libClassHits": 30,
+      "localSelectors": 13,
+      "localCssLines": 47,
       "rolled": [
         {
           "id": "semcolor",
@@ -2921,9 +2937,9 @@
         "sh-scaffold",
         "sh-uploader"
       ],
-      "libClassHits": 26,
-      "localSelectors": 20,
-      "localCssLines": 90,
+      "libClassHits": 27,
+      "localSelectors": 19,
+      "localCssLines": 87,
       "rolled": []
     },
     {
@@ -3024,9 +3040,9 @@
         "sh-cover",
         "sh-scaffold"
       ],
-      "libClassHits": 32,
-      "localSelectors": 16,
-      "localCssLines": 68,
+      "libClassHits": 33,
+      "localSelectors": 15,
+      "localCssLines": 65,
       "rolled": []
     },
     {
@@ -3184,9 +3200,9 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 120,
-      "localSelectors": 36,
-      "localCssLines": 137,
+      "libClassHits": 124,
+      "localSelectors": 35,
+      "localCssLines": 134,
       "rolled": [
         {
           "id": "semcolor",
@@ -3207,9 +3223,9 @@
         "sh-scaffold",
         "sh-switch"
       ],
-      "libClassHits": 99,
-      "localSelectors": 31,
-      "localCssLines": 128,
+      "libClassHits": 104,
+      "localSelectors": 30,
+      "localCssLines": 125,
       "rolled": [
         {
           "id": "semcolor",
@@ -3251,9 +3267,9 @@
         "sh-actionbar",
         "sh-scaffold"
       ],
-      "libClassHits": 29,
-      "localSelectors": 27,
-      "localCssLines": 114,
+      "libClassHits": 30,
+      "localSelectors": 26,
+      "localCssLines": 111,
       "rolled": []
     },
     {
@@ -3289,9 +3305,9 @@
         "sh-rating",
         "sh-scaffold"
       ],
-      "libClassHits": 85,
-      "localSelectors": 26,
-      "localCssLines": 123,
+      "libClassHits": 89,
+      "localSelectors": 24,
+      "localCssLines": 117,
       "rolled": []
     },
     {
@@ -3303,9 +3319,9 @@
         "sh-actionbar",
         "sh-scaffold"
       ],
-      "libClassHits": 24,
-      "localSelectors": 11,
-      "localCssLines": 49,
+      "libClassHits": 26,
+      "localSelectors": 10,
+      "localCssLines": 46,
       "rolled": []
     },
     {
@@ -3372,7 +3388,7 @@
   ],
   "counts": {
     "tokens": 10,
-    "blocks": 59,
+    "blocks": 60,
     "components": 32,
     "pages": 90,
     "gapKinds": 0

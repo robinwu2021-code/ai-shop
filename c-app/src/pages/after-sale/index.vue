@@ -115,7 +115,7 @@ onLoad((q) => {
       <view class="sh-card block">
         <view v-for="(n, i) in order.timeline.slice(-3)" :key="i" class="node sh-row">
           <view class="node__dot" :class="{ 'is-last': i === order.timeline.slice(-3).length - 1 }" />
-          <text class="txt-caption node__label">{{ n.label }}</text>
+          <text class="txt-caption node__label txt-ink">{{ n.label }}</text>
         </view>
       </view>
 
@@ -287,8 +287,5 @@ onLoad((q) => {
 }
 .node__dot.is-last {
   background: var(--sh-primary);
-}
-.node__label {
-  color: var(--sh-ink);
 }
 </style>

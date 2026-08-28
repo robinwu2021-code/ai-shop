@@ -164,7 +164,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
           :selected="pickedNos.has(c.categoryNo)"
           @tap="toggle(c)"
         >
-          <text class="txt-sub opt__name">{{ c.name }}</text>
+          <text class="txt-sub opt__name txt-ink">{{ c.name }}</text>
           <!-- 有货的数量要显眼：撤架之前商家要看得见代价（有货就撤不掉） -->
           <text v-if="countOf(c.categoryNo)" class="txt-caption">
             {{ $t("storeCategories.goodsCount", { n: countOf(c.categoryNo) }) }}
@@ -243,10 +243,6 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
   /* 只留版面：描边、圆角、选中态都归 sh-option */
   gap: 8rpx;
   padding: 12rpx 24rpx;
-}
-
-.opt__name {
-  color: var(--sh-ink);
 }
 
 .row__stat {

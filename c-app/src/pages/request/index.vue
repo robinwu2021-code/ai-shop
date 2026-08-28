@@ -113,15 +113,15 @@ onShareAppMessage(() => {
       <view class="facts">
         <view class="fact sh-row sh-row--between sh-row--top">
           <text class="txt-caption">{{ $t("request.expect") }}</text>
-          <text class="txt-caption fact__v sh-num">{{ request.expectQty }}</text>
+          <text class="txt-caption fact__v sh-num txt-ink">{{ request.expectQty }}</text>
         </view>
         <view v-if="request.budgetMinor" class="fact sh-row sh-row--between sh-row--top">
           <text class="txt-caption">{{ $t("request.budget") }}</text>
-          <text class="txt-caption fact__v sh-num">{{ money(request.budgetMinor) }}</text>
+          <text class="txt-caption fact__v sh-num txt-ink">{{ money(request.budgetMinor) }}</text>
         </view>
         <view class="fact sh-row sh-row--between sh-row--top">
           <text class="txt-caption">{{ $t("request.deadline") }}</text>
-          <text class="txt-caption fact__v sh-num">{{ isoDate(request.expireAt) }}</text>
+          <text class="txt-caption fact__v sh-num txt-ink">{{ isoDate(request.expireAt) }}</text>
         </view>
       </view>
     </view>
@@ -133,7 +133,7 @@ onShareAppMessage(() => {
       <view class="members sh-wrap">
         <view v-for="(n, i) in request.neighbours" :key="i" class="member sh-row">
           <text class="txt-sub">{{ n.avatar }}</text>
-          <text class="txt-caption member__n">{{ n.nickname }}</text>
+          <text class="txt-caption member__n txt-ink">{{ n.nickname }}</text>
         </view>
       </view>
     </view>
@@ -289,9 +289,6 @@ onShareAppMessage(() => {
   padding: 12rpx 0;
 }
 
-.fact__v {
-  color: var(--sh-ink);
-}
 .block {
   margin-top: 20rpx;
 }
@@ -310,9 +307,6 @@ onShareAppMessage(() => {
   padding: 12rpx 24rpx;
 }
 
-.member__n {
-  color: var(--sh-ink);
-}
 .quote {
   margin-top: 24rpx;
   background: var(--sh-faint);

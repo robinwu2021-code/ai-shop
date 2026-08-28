@@ -520,6 +520,13 @@ ROLLED = [
     ("semcolor", "语义色自写",     None,
      r"^\s*\.[\w-]*(?:\.[\w-]+)?\s*\{\s*color:\s*var\(--sh-(?:danger|success|warning)\);?\s*\}",
      None, ".is-danger / .is-success / .is-warning"),
+    # 「小字号 + 正文色」。字阶把字号与颜色绑死（28rpx 以上 ink，sub/caption 灰），
+    # 而 14 处需要「caption 的字号 + 正文的颜色」—— 订单金额值、求团事实值、
+    # 售后节点名…… 字号由版面定，内容却是主信息，灰下去就跟旁边的标签分不出主次。
+    # 与 `.txt-bold` 是同一个约束的另一半（那个管字重，这个管颜色）。
+    ("inkover",  "正文色自写",     None,
+     r"^\s*\.[\w-]*(?:\.[\w-]+)?\s*\{\s*color:\s*var\(--sh-ink\);?\s*\}",
+     None, ".txt-ink"),
     ("disabled","禁用态自写",     None,
      r"^\s*\.is-disabled\s*\{",                                              None, ".is-disabled（全局）"),
     ("kv",      "键值行", None, r"\.(?:kv|rule|prob)\b[^{}]*\{[^}]*display:\s*flex", None, None),

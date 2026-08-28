@@ -123,7 +123,7 @@ onShareAppMessage(() => {
       <view class="members sh-wrap">
         <view v-for="(m, i) in group.members" :key="i" class="member sh-row">
           <text class="txt-body">{{ m.avatar }}</text>
-          <text class="txt-caption member__n">{{ m.nickname }}</text>
+          <text class="txt-caption member__n txt-ink">{{ m.nickname }}</text>
         </view>
       </view>
     </view>
@@ -209,10 +209,6 @@ onShareAppMessage(() => {
   background: var(--sh-faint);
   border-radius: 9999px;
   padding: 12rpx 24rpx;
-}
-
-.member__n {
-  color: var(--sh-ink);
 }
 
 .notice {

@@ -217,7 +217,7 @@ onLoad((q) => {
         <input maxlength="16" v-model="draft.tag" class="field__input" :placeholder="$t('address.tagPh')" />
 
         <view class="switchrow sh-row sh-row--between" @tap="draft.isDefault = !draft.isDefault">
-          <text class="txt-sub switchrow__label">{{ $t("address.asDefault") }}</text>
+          <text class="txt-sub switchrow__label txt-ink">{{ $t("address.asDefault") }}</text>
           <sh-switch :model-value="draft.isDefault"></sh-switch>
         </view>
 
@@ -284,9 +284,6 @@ onLoad((q) => {
 }
 .switchrow {
   margin-top: 28rpx;
-}
-.switchrow__label {
-  color: var(--sh-ink);
 }
 .sheet__save {
   margin-top: 36rpx;

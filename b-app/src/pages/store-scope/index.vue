@@ -491,16 +491,16 @@ onShow(() => {
           <view v-else class="rate" @tap.stop>
             <text class="sh-hint">{{ $t("store.subset.hint") }}</text>
             <view class="subset__opt sh-row sh-row--between" :class="{ 'is-on': subsetAll }" @tap="subsetAll = true">
-              <text class="txt-sub subset__t">{{ $t("store.subset.all") }}</text>
+              <text class="txt-sub subset__t txt-ink">{{ $t("store.subset.all") }}</text>
               <sh-icon v-if="subsetAll" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
             </view>
             <view class="subset__opt sh-row sh-row--between" :class="{ 'is-on': !subsetAll }" @tap="subsetAll = false">
-              <text class="txt-sub subset__t">{{ $t("store.subset.only") }}</text>
+              <text class="txt-sub subset__t txt-ink">{{ $t("store.subset.only") }}</text>
               <sh-icon v-if="!subsetAll" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
             </view>
             <view v-if="!subsetAll" class="subset__list">
               <view v-for="a in activeAreas" :key="a.areaNo || a.refCode" class="subset__row sh-row sh-row--between" @tap="toggleSubsetArea(a)">
-                <text class="txt-sub subset__name sh-fill">{{ splitName(a).main }}<text v-if="isWhole(a)" class="txt-caption"> {{ $t("store.whole") }}</text></text>
+                <text class="txt-sub subset__name sh-fill txt-ink">{{ splitName(a).main }}<text v-if="isWhole(a)" class="txt-caption"> {{ $t("store.whole") }}</text></text>
                 <sh-check :model-value="subsetPicked.includes(a.areaNo || '')"></sh-check>
               </view>
               <text v-if="!activeAreas.length" class="sh-hint">{{ $t("store.subset.noAreas") }}</text>
@@ -618,18 +618,12 @@ onShow(() => {
   padding: 14rpx 0;
   border-bottom: var(--sh-hairline);
 }
-.subset__t {
-  color: var(--sh-ink);
-}
 
 .subset__list {
   margin-top: 8rpx;
 }
 .subset__row {
   padding: 12rpx 0;
-}
-.subset__name {
-  color: var(--sh-ink);
 }
 
 /* 「去设置 / 管理 / 编辑」这类行内动作，形态与字号由 `sh-go` 给。
