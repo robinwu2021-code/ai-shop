@@ -283,17 +283,17 @@ onShow(load);
         全通过还挂一张绿卡，是每天都要划过去的噪音。
       -->
       <view v-for="b in blockers" :key="b.key" class="blocker" @tap="open(b.route)">
-        <view class="blocker__main">
-          <text class="blocker__t">{{ $t(`home.blocker.${b.key}`) }}</text>
-          <text class="blocker__d">{{ $t(`home.blockerHint.${b.key}`) }}</text>
+        <view class="sh-fill">
+          <text class="txt-strong blocker__t">{{ $t(`home.blocker.${b.key}`) }}</text>
+          <text class="txt-caption blocker__d">{{ $t(`home.blockerHint.${b.key}`) }}</text>
         </view>
-        <text class="blocker__go">{{ $t("home.blockerGo") }}</text>
+        <text class="txt-caption blocker__go">{{ $t("home.blockerGo") }}</text>
       </view>
 
       <view class="grid">
         <view v-for="c in cells" :key="c.key" class="sh-card grid__cell" @tap="open(c.route)">
-          <text class="grid__n sh-num" :class="{ 'is-zero': !c.n }">{{ c.n }}</text>
-          <text class="grid__label">{{ $t(`home.${c.key}`) }}</text>
+          <text class="txt-hero grid__n sh-num" :class="{ 'is-zero': !c.n }">{{ c.n }}</text>
+          <text class="txt-caption grid__label">{{ $t(`home.${c.key}`) }}</text>
         </view>
       </view>
 
@@ -329,9 +329,9 @@ onShow(load);
           </view>
         </view>
         <view class="inv__acts">
-          <view class="inv__act" @tap="open(ROUTES.purchaseEdit)">{{ $t("stock.entry.purchase") }}</view>
-          <view class="inv__act" @tap="open(ROUTES.stockCheck)">{{ $t("stock.entry.check") }}</view>
-          <view class="inv__act" @tap="open(ROUTES.stockDocs)">{{ $t("stock.entry.docs") }}</view>
+          <view class="txt-sub inv__act" @tap="open(ROUTES.purchaseEdit)">{{ $t("stock.entry.purchase") }}</view>
+          <view class="txt-sub inv__act" @tap="open(ROUTES.stockCheck)">{{ $t("stock.entry.check") }}</view>
+          <view class="txt-sub inv__act" @tap="open(ROUTES.stockDocs)">{{ $t("stock.entry.docs") }}</view>
         </view>
       </view>
 
@@ -339,15 +339,15 @@ onShow(load);
         <text class="txt-title">{{ $t("home.today") }}</text>
         <view class="stats__row">
           <view class="stats__item">
-            <text class="stats__v sh-num">{{ stats.todayOrders }}</text>
+            <text class="txt-title stats__v sh-num">{{ stats.todayOrders }}</text>
             <text class="sh-muted">{{ $t("home.orders") }}</text>
           </view>
           <view class="stats__item">
-            <text class="stats__v sh-num">{{ money(stats.todayGmvMinor, stats.currency) }}</text>
+            <text class="txt-title stats__v sh-num">{{ money(stats.todayGmvMinor, stats.currency) }}</text>
             <text class="sh-muted">{{ $t("home.gmv") }}</text>
           </view>
           <view class="stats__item">
-            <text class="stats__v sh-num">{{ stats.rating || "—" }}</text>
+            <text class="txt-title stats__v sh-num">{{ stats.rating || "—" }}</text>
             <text class="sh-muted">{{ $t("home.rating") }}</text>
           </view>
         </view>
@@ -402,7 +402,7 @@ onShow(load);
       <!-- 拆两页（方案 v3）：范围与送货是开店的两个决策；装修与获客是日常内容 -->
       <view v-if="merchant.can('biz:store')" class="sh-card entry entry--kv" @tap="open(ROUTES.storeNotice)">
         <text class="txt-title">{{ $t("home.noticeEntry") }}</text>
-        <text v-if="noticeValue" class="entry__v">{{ noticeValue }}</text>
+        <text v-if="noticeValue" class="txt-caption entry__v sh-fill">{{ noticeValue }}</text>
       </view>
 
       <view v-if="merchant.can('biz:store')" class="sh-card entry" @tap="open(ROUTES.storeScope)">
@@ -472,33 +472,23 @@ onShow(load);
   display: flex;
   align-items: center;
   gap: 16rpx;
-  margin-top: 14rpx;
+  margin-top: 16rpx;
   padding: 24rpx;
   border-radius: 32rpx;
   /* 真名是 --sh-warning-tint（此前拼成 --sh-warn-tint，恒走兜底的中性灰 ——
      「还不能收款」这类拦路提示整块退化成灰，看不出是警示） */
   background: var(--sh-warning-tint);
 }
-.blocker__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .blocker__t {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .blocker__d {
   display: block;
-  margin-top: 6rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
-  color: var(--sh-sub);
+  margin-top: 8rpx;
 }
 .blocker__go {
   flex-shrink: 0;
-  font-size: 24rpx;
   color: var(--sh-primary-text);
 }
 .grid {
@@ -518,10 +508,7 @@ onShow(load);
 }
 .grid__n {
   display: block;
-  font-size: 48rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
-  line-height: 1.2;
 }
 .grid__n.is-zero {
   color: var(--sh-faint);
@@ -529,8 +516,6 @@ onShow(load);
 .grid__label {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 /* 进销存卡：三个数 + 三个直达动作。与 .stats 同一套骨架，但多一行动作条 */
 .inv {
@@ -573,7 +558,6 @@ onShow(load);
   border-radius: 16rpx;
   background: var(--sh-bg);
   color: var(--sh-ink);
-  font-size: 26rpx;
 }
 
 .stats {
@@ -589,9 +573,6 @@ onShow(load);
 }
 .stats__v {
   display: block;
-  font-size: 34rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .owned {
   margin-bottom: 16rpx;
@@ -635,17 +616,13 @@ onShow(load);
   font-size: 40rpx;
   font-weight: 600;
   color: var(--sh-primary-text);
-  margin-bottom: 6rpx;
+  margin-bottom: 8rpx;
 }
 .fulfill__n.is-zero {
   color: var(--sh-sub);
 }
 .entry__v {
-  flex: 1;
-  min-width: 0;
   text-align: right;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
