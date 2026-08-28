@@ -2,6 +2,7 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.Realm;
+import ai.neargo.shop.auth.SubjectKind;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.trade.entity.OrdInvoiceRequest;
 import ai.neargo.shop.trade.entity.OrdOrder;
@@ -156,7 +157,7 @@ class InvoiceRequestFlowTest {
     }
 
     private void asBuyer(String userNo) {
-        var u = new LoginUser(Realm.CONSUMER, userNo, "测试买家",
+        var u = new LoginUser(Realm.CONSUMER, SubjectKind.USR, userNo, "测试买家",
                 List.of(), List.of(), null, null);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(u, null, List.of()));
