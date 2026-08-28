@@ -64,7 +64,22 @@ tail -20 /var/log/ai-shop/backup.log        # 看结果
 
 > 全平台的桶怎么划分、为什么只要三个，见 [cos-buckets.md](./cos-buckets.md)。
 >
-> 状态（2026-08-20）：**桶已建，但默认域名不能用来分发 APK。**
+> 状态（**2026-08-28 复验，结论未变**）：**桶已建、包已传，但默认域名不能用来分发 APK。**
+>
+> 复验命令（要从**公网出口**跑，不能在服务器上跑）：
+>
+> ```bash
+> curl -s https://hxmall-download-1301656997.cos.ap-guangzhou.myqcloud.com/latest.apk | head -c 200
+> # → <Code>DownloadForbidden</Code>
+> ```
+>
+> **上传不受这条限制** —— 挡的只有公网下载。所以包该传还是要传：
+> COS 是异地存档（服务器没了它还在），备案下来之后官网换一行直链即可，包不用重传。
+> 当前桶里有 `b-app/hxmall-merchant-0.4.32-159.apk`（版本存档）与 `latest.apk`（稳定键），
+> ETag 与本地 md5 逐字一致。
+>
+> 没装 `coscli` 也不必装 SDK：签名 v5 手写三十行就够，见本次会话用的
+> `cosput.py`（PUT 一个对象，打印 ETag 与本地 md5 供比对）。
 >
 > ## ⚠️ COS 默认域名禁止分发 APK / IPA
 >
