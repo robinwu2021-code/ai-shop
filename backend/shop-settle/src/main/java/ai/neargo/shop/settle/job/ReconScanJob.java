@@ -60,7 +60,11 @@ public class ReconScanJob implements JobHandler {
     public JobDeclaration reconscanDeclaration() {
         return new JobDeclaration("recon-scan", "对账自查",
                 "扫出平台账与渠道账对不上的流水：补回漏记的、关掉该关的，其余留待下轮",
-                "shop-settle", "0 */10 * * * *", true, 60, 540, true, true);
+                "shop-settle", "0 */10 * * * *", true,
+                // 锁 540 秒是刻意小于 10 分钟间隔的（真卡死时下一轮能接手）；
+                // 超时跟着它走，留 60 秒给锁兜底 —— 原先 60/540 差 9 倍，
+                // 意味着扫超过一分钟就记 TIMEOUT，而它其实还在跑
+                480, 540, true, true);
     }
 
     @Override

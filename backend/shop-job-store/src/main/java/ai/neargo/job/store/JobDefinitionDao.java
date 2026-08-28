@@ -119,16 +119,32 @@ public class JobDefinitionDao {
         }
     }
 
-    /** 只更新「只有代码知道」的列。**这个方法里出现 cron 或 enabled 就是 bug。** */
+    /**
+     * 只更新「只有代码知道」的列。**这个方法里出现 cron 或 enabled 就是 bug。**
+     *
+     * <h2>2026-08-28 补进来的四列：超时、持锁、手动触发、是否每轮记日志</h2>
+     * <p>它们此前<b>只在首次 INSERT 时写一次，之后谁都改不了</b>：代码改了不生效
+     * （不在这条 UPDATE 里），运营端也没有改它们的入口。于是生产上 11 个任务的
+     * {@code timeout_sec} 全是 60、{@code lock_at_most_sec} 从 180 到 1800 ——
+     * 那是第一次插入时的值，冻在那里，而没有任何地方会说改代码没用。
+     *
+     * <p><b>归代码而不归运营</b>，理由与 cron 恰好相反：「这个任务最长跑多久」
+     * 「要不要每轮记日志」是写这段逻辑的人才知道的事；而「几点跑」「开不开」
+     * 是运营的决定。分界线是<b>谁掌握判断所需的信息</b>，不是谁改起来方便。
+     */
     private int updateCodeOwnedColumns(String jobName, JobDeclaration d, String target) {
         return jdbc.sql("""
                         UPDATE job_definition
-                           SET display_name = :displayName,
-                               description  = :description,
-                               owner_module = :ownerModule,
-                               handler_name = :handlerName,
-                               target       = :target,
-                               missing      = 0
+                           SET display_name     = :displayName,
+                               description      = :description,
+                               owner_module     = :ownerModule,
+                               handler_name     = :handlerName,
+                               target           = :target,
+                               timeout_sec      = :timeoutSec,
+                               lock_at_most_sec = :lockAtMostSec,
+                               manual_trigger   = :manualTrigger,
+                               log_every_run    = :logEveryRun,
+                               missing          = 0
                          WHERE job_name = :jobName AND source = 'CODE'
                         """)
                 .param("displayName", d.displayName())
@@ -136,6 +152,10 @@ public class JobDefinitionDao {
                 .param("ownerModule", d.ownerModule())
                 .param("handlerName", d.handlerName())
                 .param("target", target)
+                .param("timeoutSec", d.timeoutSec())
+                .param("lockAtMostSec", d.lockAtMostSec())
+                .param("manualTrigger", d.manualTrigger() ? 1 : 0)
+                .param("logEveryRun", d.logEveryRun() ? 1 : 0)
                 .param("jobName", jobName)
                 .update();
     }

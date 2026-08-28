@@ -76,7 +76,10 @@ public class InventoryBackfillJob implements JobHandler {
     public JobDeclaration invbackfillDeclaration() {
         return new JobDeclaration("inv-backfill", "库存搬运与对差",
                 "把平台库存分批搬进进销存并逐条对差。对差不为零时不得切换真相源",
-                "shop-app", "0 */10 * * * *", true, 60, 1800, true, true);
+                "shop-app", "0 */10 * * * *", true,
+                // 锁原先 1800 秒 —— 比 10 分钟的间隔还长，一次卡死能挡住三轮。
+                // 收到 540，超时跟着它
+                480, 540, true, true);
     }
 
     @Override

@@ -70,7 +70,7 @@ class JobDefinitionDaoTest {
 
         JobDeclaration renamed = new JobDeclaration(
                 "plan-expiry", "套餐到期扫描（改名后）", "新的说明", "shop-settle",
-                "0 25 3 * * *", true, 60, 1800, true, true);
+                "0 25 3 * * *", true, 600, 900, true, true);
         dao.upsertFromCode("plan-expiry", renamed, "PLATFORM");
 
         JobDefinitionRow row = dao.findByName("plan-expiry");
@@ -136,5 +136,31 @@ class JobDefinitionDaoTest {
         dao.upsertFromCode("plan-expiry", DECL, "PLATFORM");
         dao.setEnabled("plan-expiry", false, "ops:li");
         assertTrue(dao.findSchedulable().isEmpty());
+    }
+
+    @Test
+    @DisplayName("★★★ 改了代码里的超时/持锁/日志开关，下一轮轮询要落到已存在的行上")
+    void codeOwnedNumbersAreUpdatedOnExistingRows() {
+        dao.upsertFromCode("j", new JobDeclaration("j", "名", "说明", "mod",
+                "0 0 3 * * *", true, 60, 180, true, true), "PLATFORM");
+
+        // 运营改了 cron —— 这一列归运营，下面的更新不能碰它
+        dao.updateCron("j", "0 30 4 * * *", "ops:zhang");
+
+        // 代码里把数字改了、日志关了，再轮询一轮
+        dao.upsertFromCode("j", new JobDeclaration("j", "名", "说明", "mod",
+                "0 0 3 * * *", true, 480, 540, true, false), "PLATFORM");
+
+        JobDefinitionRow r = dao.findByName("j");
+        /*
+         * 这四列此前**只在首次 INSERT 时写一次**：代码改了不生效（不在 UPDATE 里），
+         * 运营端也没有改它们的入口。生产上 11 个任务的 timeout_sec 全冻在 60，
+         * 而没有任何地方会说改代码没用。
+         */
+        assertEquals(480, r.timeoutSec(), "改了代码却没生效 —— 那正是修复前的形态");
+        assertEquals(540, r.lockAtMostSec());
+        assertFalse(r.logEveryRun(), "高频任务关掉全量日志，靠的就是这条更新");
+        // 而运营那半边不能被碰
+        assertEquals("0 30 4 * * *", r.cron(), "cron 归运营，代码不许覆盖");
     }
 }

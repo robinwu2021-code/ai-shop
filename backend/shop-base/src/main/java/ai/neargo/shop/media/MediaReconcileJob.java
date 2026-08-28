@@ -69,7 +69,8 @@ public class MediaReconcileJob implements JobHandler {
     public JobDeclaration mediareconcileDeclaration() {
         return new JobDeclaration("media-reconcile", "图片记账对账",
                 "把卡在 PENDING 的媒体行收拾掉：字节还在就补成 ACTIVE，字节没了就删行",
-                "shop-base", "0 5 * * * *", true, 60, 600, true, true);
+                "shop-base", "0 5 * * * *", true,
+                480, 600, true, true);
     }
 
     @Override

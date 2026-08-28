@@ -49,7 +49,11 @@ public class NotifyPushTaskJob implements JobHandler {
     public JobDeclaration notifypushtaskDeclaration() {
         return new JobDeclaration("notify-push-task", "定时推送下发",
                 "把到点的广播推送任务下发给通道。不跑的话运营配的定时推送永远不发出去",
-                "shop-core", "0 * * * * *", true, 60, 600, true, true);
+                "shop-core", "0 * * * * *", true,
+                50, 180,
+                true,
+                // 同 order-auto-close：每分钟的任务用稀疏日志
+                false);
     }
 
     @Override

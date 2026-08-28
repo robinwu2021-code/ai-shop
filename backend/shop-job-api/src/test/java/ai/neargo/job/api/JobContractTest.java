@@ -82,9 +82,9 @@ class JobContractTest {
     @DisplayName("声明里的非法值当场炸，不要等到跑起来才发现 cron 是空的")
     void declarationValidatesEagerly() {
         assertThrows(IllegalArgumentException.class, () ->
-                new JobDeclaration("h", "名", "d", "m", "", true, 60, 1800, true, true));
+                new JobDeclaration("h", "名", "d", "m", "", true, 60, 180, true, true));
         assertThrows(IllegalArgumentException.class, () ->
-                new JobDeclaration("h", "名", "d", "m", "0 0 3 * * *", true, 0, 1800, true, true));
+                new JobDeclaration("h", "名", "d", "m", "0 0 3 * * *", true, 0, 180, true, true));
         assertThrows(IllegalArgumentException.class, () ->
                 new JobDeclaration("h", "名", "d", "m", "0 0 3 * * *", true, 60, -1, true, true));
 
@@ -92,6 +92,15 @@ class JobContractTest {
                 "扫出已过期的商家增值包并收回权益", "shop-merchant", "0 25 3 * * *");
         assertEquals("增值包到期扫描", d.displayName());
         assertTrue(d.enabled());
-        assertEquals(1800, d.lockAtMostSec());
+        /*
+         * **原先这里钉的是 1800**，与 timeoutSec=60 配成一对 —— 而那一对正是
+         * 2026-08-28 复核查出来的问题源头：两个数字都在回答「这任务最长跑多久」，
+         * 却差了 30 倍。改成 600/900 之后 JobDeclaration 自己会拒绝那种组合，
+         * 所以这里不再钉死具体数字，只钉「两者自洽」这条不变量 ——
+         * 钉死数字的话，下次调整 daily() 又要改这里，而这个断言本身说不出为什么。
+         */
+        assertTrue(d.lockAtMostSec() >= d.timeoutSec()
+                        && d.lockAtMostSec() <= d.timeoutSec() * 4,
+                "daily() 给的超时与持锁必须自洽：" + d.timeoutSec() + " / " + d.lockAtMostSec());
     }
 }

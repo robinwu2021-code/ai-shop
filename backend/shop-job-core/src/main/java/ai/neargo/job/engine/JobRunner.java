@@ -71,6 +71,19 @@ public class JobRunner {
         if (outcome.status().countsAsFailure()) {
             log.warn("任务失败 job={} 用时={}ms error={}", def.jobName(), durationMs, outcome.error());
         }
+        if (nearTimeout(durationMs, def.timeoutSec())) {
+            /*
+             * **在开始超时之前就说。**
+             *
+             * timeout 是写声明的人对「这任务最长跑多久」的估计，而数据量会长。
+             * 等它真的超时才发现，现场是一连串 TIMEOUT（结果未知）——
+             * 而 TIMEOUT 不计入连续失败，页面上也不红，没有人会被提醒。
+             * 用掉一半预算就出声，那时改数字还来得及。
+             */
+            log.warn("任务离超时不远 job={} 用时={}ms 上限={}s —— "
+                            + "要么把 timeoutSec 调大，要么把任务拆小",
+                    def.jobName(), durationMs, def.timeoutSec());
+        }
     }
 
     /**
@@ -122,6 +135,11 @@ public class JobRunner {
         }
         String previous = logs.lastStatusOf(def.jobName());
         return previous == null || !JobStatus.SUCCESS.name().equals(previous);
+    }
+
+    /** 用掉超时预算的一半就算「不远」。**判据抽出来是为了能测** —— 埋在日志里的条件没人验得了。 */
+    static boolean nearTimeout(long durationMs, int timeoutSec) {
+        return timeoutSec > 0 && durationMs * 2 >= (long) timeoutSec * 1000;
     }
 
     /**

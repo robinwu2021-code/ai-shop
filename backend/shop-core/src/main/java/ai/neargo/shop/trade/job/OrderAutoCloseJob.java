@@ -70,7 +70,15 @@ public class OrderAutoCloseJob implements JobHandler {
     public JobDeclaration orderautocloseDeclaration() {
         return new JobDeclaration("order-auto-close", "订单超时自动关单",
                 "关掉超时未支付的订单并释放库存、券与积分。不跑的话库存被永久占住，那些货再也卖不出去",
-                "shop-core", "0 * * * * *", true, 60, 180, true, true);
+                "shop-core", "0 * * * * *", true,
+                // 超时 50 秒（< 60 秒的间隔）：跑过一分钟就该被下一轮的锁拦住，
+                // 而不是两轮叠在一起。锁 180 秒是崩溃恢复的上限，不是预期耗时
+                50, 180,
+                true,
+                // **每分钟的任务不落全量日志**：一天 1440 行，30 天保留下 4.3 万行，
+                // 而其中绝大多数是「又成功了」。稀疏日志只在状态变化或失败时写一行，
+                // 于是日志读起来是状态变迁史，不是流水账
+                false);
     }
 
     @Override

@@ -207,4 +207,15 @@ class JobRunnerTest {
                 d.ownerModule(), d.createdAt(), d.updatedAt(), d.updatedBy(),
                 d.triggerRequestedAt(), d.lastTriggeredAt());
     }
+
+    @Test
+    @DisplayName("★ 用掉一半超时预算就算「离超时不远」—— 等真超时才发现就晚了")
+    void nearTimeoutThreshold() {
+        // 60 秒上限：跑 29 秒还好，30 秒就该出声
+        assertFalse(JobRunner.nearTimeout(29_000, 60));
+        assertTrue(JobRunner.nearTimeout(30_000, 60));
+        assertTrue(JobRunner.nearTimeout(120_000, 60), "已经超了当然算");
+        // 边界：timeoutSec 非正时不判（配置坏了另有校验管，这里不该再抛一次）
+        assertFalse(JobRunner.nearTimeout(1_000, 0));
+    }
 }
