@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **153** 张表、**222** 条引用关系，分 **16** 个域。
+全库 **159** 张表、**228** 条引用关系，分 **16** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -13,8 +13,8 @@
 
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
-| 消费者账号 | `usr_*` | 6 | 11 |
-| 商家主体与门店 | `mch_*` | 22 | 11 |
+| 消费者账号 | `usr_*` | 8 | 12 |
+| 商家主体与门店 | `mch_*` | 24 | 11 |
 | 社区与自提点 | `cmt_*` | 3 | 8 |
 | 商品与类目 | `prd_*` | 21 | 7 |
 | 购物车 | `trd_*` | 1 | 0 |
@@ -30,11 +30,11 @@
 | 券与活动 | `pmt_*` | 8 | 0 |
 | 系统 | `sys_*` | 21 | 0 |
 
-> `usr` 被 11 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
+> `usr` 被 12 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
 
 ## 二、分域
 
-### 消费者账号 `usr_*`（6 张）
+### 消费者账号 `usr_*`（8 张）
 
 ![消费者账号表关系](../diagrams/db-usr.svg)
 
@@ -46,10 +46,12 @@
 | `usr_identity` | 用户登录凭证。一个人多条，新增来源只是多一行，不再改表 |
 | `usr_person` | 平台人档：这个自然人，以已验证的手机号为准 |
 | `usr_person_merge_log` | 人档合并留痕：合并不可逆 |
+| `usr_session` | C端会话。只存令牌与主体，身份由 usr_account 现读 |
+| `usr_login_log` | C端登录审计。保留 90 天。IP/UA 记这里不记会话表 |
 
 **跨域引用**：`usr_store_favorite.entity_no` → `mch_entity`、`usr_account.community_no` → `cmt_community`、`usr_account.pickup_no` → `cmt_pickup_point`、`usr_account.entity_no` → `mch_entity`
 
-### 商家主体与门店 `mch_*`（22 张）
+### 商家主体与门店 `mch_*`（24 张）
 
 ![商家主体与门店表关系](../diagrams/db-mch.svg)
 
@@ -77,8 +79,10 @@
 | `mch_channel_pickup` | 自提路×取货点（P1 启用）。本店地址刻意不落行：门店地址天然是取货地址，存两份是漂移的起点 |
 | `mch_channel_area` | SUBSET 收窄：某店某路只适用哪些范围项（P2 启用） |
 | `mch_appointment_slot` | 门店预约时段与名额 |
+| `mch_session` | B端会话。只存令牌与主体，身份由 mch_account 现读 |
+| `mch_login_log` | B端登录审计。保留 180 天 |
 
-**跨域引用**：`mch_entity_apply.user_no` → `usr_account`、`mch_entity_community.community_no` → `cmt_community`、`mch_account.user_no` → `usr_account`、`mch_store_category.category_no` → `prd_category`、`mch_channel_pickup.pickup_no` → `cmt_pickup_point`
+**跨域引用**：`mch_entity_apply.user_no` → `usr_account`、`mch_entity_community.community_no` → `cmt_community`、`mch_account.user_no` → `usr_account`、`mch_store_category.category_no` → `prd_category`、`mch_channel_pickup.pickup_no` → `cmt_pickup_point`、`mch_session.user_no` → `usr_account`、`mch_login_log.user_no` → `usr_account`
 
 ### 社区与自提点 `cmt_*`（3 张）
 

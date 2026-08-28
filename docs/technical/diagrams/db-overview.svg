@@ -8,10 +8,10 @@
 <text class="b" x="36" y="40">基础 · 被引用最多</text>
 <rect x="37.5" y="50" width="113" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="94" y="70" text-anchor="middle" font-size="13">消费者账号</text>
-<text class="s" x="94" y="85" text-anchor="middle">usr_* · 6 表</text>
+<text class="s" x="94" y="85" text-anchor="middle">usr_* · 8 表</text>
 <rect x="160.5" y="50" width="113" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="217" y="70" text-anchor="middle" font-size="13">商家主体与门店</text>
-<text class="s" x="217" y="85" text-anchor="middle">mch_* · 22 表</text>
+<text class="s" x="217" y="85" text-anchor="middle">mch_* · 24 表</text>
 <rect x="283.5" y="50" width="113" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="340" y="70" text-anchor="middle" font-size="13">社区与自提点</text>
 <text class="s" x="340" y="85" text-anchor="middle">cmt_* · 3 表</text>
