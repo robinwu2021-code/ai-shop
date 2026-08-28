@@ -43,7 +43,18 @@ public class TokenStoreConfig {
     /** 30 天：与 C 端「一次登录长期有效」的体感一致；运营端由前端主动登出控制。 */
     private static final Duration TTL = Duration.ofDays(30);
 
+    /**
+     * 「三端共用的那一个存储」的限定符。
+     *
+     * <p>分批切换时容器里会同时有两种存储：还没切的那些端用这一个，
+     * 切了的端各有一个 {@code DbTokenStore}。而门面 {@code RealmRoutingTokenStore}
+     * 自己也是 {@code TokenStore} 且带 {@code @Primary} —— 没有限定符的话，
+     * {@code DbSessionConfig} 去注入 {@code TokenStore} 会拿到<b>它自己</b>。
+     */
+    static final String SHARED = "sharedTokenStore";
+
     @Bean
+    @org.springframework.beans.factory.annotation.Qualifier(SHARED)
     @ConditionalOnProperty(name = "shop.auth.token-store", havingValue = "memory", matchIfMissing = true)
     TokenStore memoryTokenStore() {
         return new MemoryTokenStore(TTL);
@@ -61,6 +72,7 @@ public class TokenStoreConfig {
      * @param diskMb 磁盘上限，写满按 LRU 淘汰
      */
     @Bean
+    @org.springframework.beans.factory.annotation.Qualifier(SHARED)
     @ConditionalOnProperty(name = "shop.auth.token-store", havingValue = "ehcache")
     EhcacheTokenStore ehcacheTokenStore(
             ObjectMapper mapper,
@@ -70,6 +82,7 @@ public class TokenStoreConfig {
     }
 
     @Bean
+    @org.springframework.beans.factory.annotation.Qualifier(SHARED)
     @ConditionalOnProperty(name = "shop.auth.token-store", havingValue = "redis")
     TokenStore redisTokenStore(StringRedisTemplate redis, ObjectMapper mapper) {
         return new RedisTokenStore(redis, mapper, TTL);

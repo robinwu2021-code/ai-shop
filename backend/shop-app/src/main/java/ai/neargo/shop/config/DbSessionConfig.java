@@ -34,7 +34,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 会话进库的装配（{@code shop.auth.token-store=db}）。
+ * 会话进库的装配（{@code shop.auth.token-store=db}，或按端覆盖成 {@code db}）。
+ *
+ * <p><b>支持一端一端地切。</b>{@code shop.auth.token-store-by-realm.operator=db}
+ * 只把运营端搬进库，C 端与 B 端仍走原来那个共享存储 ——
+ * 于是会话外置可以先在十几个运营账号上跑一天，再推到全量用户。
+ * 判定见 {@link TokenStoreSelection}。
  *
  * <p><b>三个池各一套：DAO、两级缓存、身份加载器。</b>缓存**必须分开** ——
  * 共用一份等于把刚在存储层分开的边界，在内存里又合上了。
@@ -45,7 +50,7 @@ import java.util.concurrent.TimeUnit;
  * 见 {@link TokenStores} 的类注释。
  */
 @Configuration
-@ConditionalOnProperty(name = "shop.auth.token-store", havingValue = "db")
+@org.springframework.context.annotation.Conditional(TokenStoreSelection.AnyRealmUsesDb.class)
 public class DbSessionConfig {
 
     private static final Logger log = LoggerFactory.getLogger(DbSessionConfig.class);
@@ -57,20 +62,48 @@ public class DbSessionConfig {
             ConsumerIdentityLoader consumers,
             MerchantIdentityLoader merchants,
             OperatorIdentityLoader operators,
-            java.util.Map<Realm, LoginLogWriter> loginLogWriters) {
+            java.util.Map<Realm, LoginLogWriter> loginLogWriters,
+            org.springframework.core.env.Environment env,
+            @org.springframework.beans.factory.annotation.Qualifier(TokenStoreConfig.SHARED)
+            org.springframework.beans.factory.ObjectProvider<TokenStore> sharedStore) {
 
         Map<Realm, TokenStore> byRealm = new EnumMap<>(Realm.class);
-        byRealm.put(Realm.CONSUMER, store(authJdbcClient, Realm.CONSUMER, SessionProfiles.CONSUMER,
-                // ⚠️ 过渡期：C 端池里还装着 B 端会话，见 TransitionalConsumerIdentityLoader
-                new TransitionalConsumerIdentityLoader(consumers, merchants),
-                loginLogWriters.get(Realm.CONSUMER)));
-        byRealm.put(Realm.MERCHANT, store(authJdbcClient, Realm.MERCHANT, SessionProfiles.MERCHANT,
-                merchants, loginLogWriters.get(Realm.MERCHANT)));
-        byRealm.put(Realm.OPERATOR, store(authJdbcClient, Realm.OPERATOR, SessionProfiles.OPERATOR,
-                operators, loginLogWriters.get(Realm.OPERATOR)));
+        byRealm.put(Realm.CONSUMER, TokenStoreSelection.usesDb(env, Realm.CONSUMER)
+                ? store(authJdbcClient, Realm.CONSUMER, SessionProfiles.CONSUMER,
+                        // ⚠️ 过渡期：C 端池里还装着 B 端会话，见 TransitionalConsumerIdentityLoader
+                        new TransitionalConsumerIdentityLoader(consumers, merchants),
+                        loginLogWriters.get(Realm.CONSUMER))
+                : shared(sharedStore, Realm.CONSUMER, env));
+        byRealm.put(Realm.MERCHANT, TokenStoreSelection.usesDb(env, Realm.MERCHANT)
+                ? store(authJdbcClient, Realm.MERCHANT, SessionProfiles.MERCHANT,
+                        merchants, loginLogWriters.get(Realm.MERCHANT))
+                : shared(sharedStore, Realm.MERCHANT, env));
+        byRealm.put(Realm.OPERATOR, TokenStoreSelection.usesDb(env, Realm.OPERATOR)
+                ? store(authJdbcClient, Realm.OPERATOR, SessionProfiles.OPERATOR,
+                        operators, loginLogWriters.get(Realm.OPERATOR))
+                : shared(sharedStore, Realm.OPERATOR, env));
 
-        log.info("会话已改为进库（三池：consumer / merchant / operator）");
+        log.info("会话存储按端装配：{}", TokenStoreSelection.all(env));
         return new RealmRoutingTokenStore(byRealm);
+    }
+
+    /**
+     * 还没切的那些端，继续用原来那一个共享存储。
+     *
+     * <p>拿不到就<b>启动失败</b>，不回落到内存：回落的表现是「这一端的人
+     * 每次重启全部掉线」，而那和配置写错完全是两回事，现场分不出来。
+     */
+    private static TokenStore shared(
+            org.springframework.beans.factory.ObjectProvider<TokenStore> provider,
+            Realm realm, org.springframework.core.env.Environment env) {
+        TokenStore s = provider.getIfAvailable();
+        if (s == null) {
+            throw new IllegalStateException(
+                    "%s 端配的是 %s，但容器里没有对应的共享存储 bean —— 检查 %s"
+                            .formatted(realm, TokenStoreSelection.kindOf(env, realm),
+                                    TokenStoreSelection.GLOBAL));
+        }
+        return s;
     }
 
     private static DbTokenStore store(JdbcClient jdbc, Realm realm, SessionProfile p,
@@ -107,10 +140,17 @@ public class DbSessionConfig {
             RealmRoutingTokenStore routing,
             @Value("${shop.auth.revoke-poll-ms:5000}") long pollMs) {
 
-        List<DbTokenStore> stores = List.of(
-                (DbTokenStore) routing.of(Realm.CONSUMER),
-                (DbTokenStore) routing.of(Realm.MERCHANT),
-                (DbTokenStore) routing.of(Realm.OPERATOR));
+        /*
+         * **只轮询真的进了库的那些端。** 分批切换时另外两端还是共享存储，
+         * 它们没有「别的实例撤销了会话」这件事可传播 ——
+         * 无脑强转会在启动时 ClassCastException，而那条报错指向的是轮询器，
+         * 与真因（某一端还没切）隔着十万八千里。
+         */
+        List<DbTokenStore> stores = java.util.Arrays.stream(Realm.values())
+                .map(routing::of)
+                .filter(DbTokenStore.class::isInstance)
+                .map(DbTokenStore.class::cast)
+                .toList();
 
         ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "auth-revoke-poll");
