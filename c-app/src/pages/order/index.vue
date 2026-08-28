@@ -184,21 +184,21 @@ onShow(load);
   <sh-scaffold v-if="order" title-key="order.title">
     <!-- 码：待取货的用户主要就是来看这个 -->
     <view v-if="order.verifyCode && order.status !== 'COMPLETED'" class="sh-card codecard">
-      <text class="codecard__label">{{ $t("pay.verifyCode") }}</text>
-      <text class="codecard__v sh-num">{{ order.verifyCode }}</text>
-      <text class="codecard__hint">{{ $t("order.codeHint") }}</text>
+      <text class="txt-caption codecard__label">{{ $t("pay.verifyCode") }}</text>
+      <text class="txt-hero codecard__v sh-num">{{ order.verifyCode }}</text>
+      <text class="txt-caption codecard__hint">{{ $t("order.codeHint") }}</text>
     </view>
     <view v-if="order.redeemCode" class="sh-card codecard codecard--redeem">
-      <text class="codecard__label">{{ $t("pay.redeemCode") }}</text>
-      <text class="codecard__v sh-num">{{ order.redeemCode }}</text>
-      <text class="codecard__hint">
+      <text class="txt-caption codecard__label">{{ $t("pay.redeemCode") }}</text>
+      <text class="txt-hero codecard__v sh-num">{{ order.redeemCode }}</text>
+      <text class="txt-caption codecard__hint">
         {{ isVirtualOrCard ? $t("order.redeemHint") : "" }}
       </text>
     </view>
 
     <!-- 状态 + 时间线 -->
     <view class="sh-card block">
-      <text class="status" :class="`is-${order.status}`">
+      <text class="txt-title status" :class="`is-${order.status}`">
         {{ $t(`orderStatus.${order.status}`) }}
       </text>
 
@@ -206,8 +206,8 @@ onShow(load);
         <view v-for="(n, i) in order.timeline" :key="i" class="node">
           <view class="node__dot" :class="{ 'is-last': i === order.timeline.length - 1 }" />
           <view class="sh-fill">
-            <text class="node__label">{{ n.label }}</text>
-            <text class="node__at sh-num">{{ datetime(n.at) }}</text>
+            <text class="txt-sub node__label">{{ n.label }}</text>
+            <text class="txt-caption node__at sh-num">{{ datetime(n.at) }}</text>
           </view>
         </view>
       </view>
@@ -224,11 +224,11 @@ onShow(load);
       >
         <template #right>
           <view class="row__right">
-            <text v-if="it.isGift" class="sh-chip sh-chip--danger tiny">
+            <text v-if="it.isGift" class="txt-caption sh-chip sh-chip--danger tiny">
               {{ $t("promo.gift") }}
             </text>
-            <text v-else class="row__price sh-num">{{ money(it.price) }}</text>
-            <text class="row__qty sh-num">×{{ it.qty }}</text>
+            <text v-else class="txt-strong row__price sh-num">{{ money(it.price) }}</text>
+            <text class="txt-caption row__qty sh-num">×{{ it.qty }}</text>
           </view>
         </template>
       </biz-sku-row>
@@ -237,26 +237,26 @@ onShow(load);
     <!-- 金额 -->
     <view class="sh-card block">
       <view class="amt">
-        <text class="amt__k">{{ $t("confirm.goods") }}</text>
-        <text class="amt__v sh-num">{{ money(order.amount.goodsMinor) }}</text>
+        <text class="txt-caption">{{ $t("confirm.goods") }}</text>
+        <text class="txt-caption amt__v sh-num">{{ money(order.amount.goodsMinor) }}</text>
       </view>
       <view class="amt">
-        <text class="amt__k">{{ $t("confirm.freight") }}</text>
-        <text class="amt__v sh-num">
+        <text class="txt-caption">{{ $t("confirm.freight") }}</text>
+        <text class="txt-caption amt__v sh-num">
           {{ order.amount.freightMinor ? money(order.amount.freightMinor) : $t("confirm.free") }}
         </text>
       </view>
       <view v-if="order.amount.discountMinor" class="amt">
-        <text class="amt__k">{{ $t("confirm.discount") }}</text>
-        <text class="amt__v amt__v--off sh-num">-{{ money(order.amount.discountMinor) }}</text>
+        <text class="txt-caption">{{ $t("confirm.discount") }}</text>
+        <text class="txt-caption amt__v amt__v--off sh-num">-{{ money(order.amount.discountMinor) }}</text>
       </view>
       <view v-if="order.amount.weighAdjustMinor" class="amt">
-        <text class="amt__k">{{ $t("order.weighAdjust") }}</text>
-        <text class="amt__v sh-num">{{ money(order.amount.weighAdjustMinor) }}</text>
+        <text class="txt-caption">{{ $t("order.weighAdjust") }}</text>
+        <text class="txt-caption amt__v sh-num">{{ money(order.amount.weighAdjustMinor) }}</text>
       </view>
       <view class="amt amt--total">
-        <text class="amt__k">{{ $t("order.paid") }}</text>
-        <text class="amt__total sh-num">
+        <text class="txt-caption">{{ $t("order.paid") }}</text>
+        <text class="txt-price sh-num">
           {{ money(order.amount.paidMinor || order.amount.payableMinor) }}
         </text>
       </view>
@@ -266,7 +266,7 @@ onShow(load);
          购物车跨商家会拆成多笔子订单，一单只对应一家 —— 不说清楚，
          用户看到账单上出现陌生商户名会直接当成盗刷。 -->
     <view v-if="order.merchantName" class="sh-card block">
-      <text class="disclose">{{ $t("order.providedBy", { m: order.merchantName }) }}</text>
+      <text class="txt-sub disclose">{{ $t("order.providedBy", { m: order.merchantName }) }}</text>
       <text v-if="order.payGroupNo" class="sh-muted disclose__hint">
         {{ $t("order.splitHint") }}
       </text>
@@ -275,28 +275,28 @@ onShow(load);
     <!-- 履约信息 -->
     <view class="sh-card block">
       <view class="fact">
-        <text class="fact__k">{{ $t("goods.fulfillment") }}</text>
-        <text class="fact__v">{{ $t(`fulfillment.${order.fulfillment}`) }}</text>
+        <text class="txt-caption fact__k">{{ $t("goods.fulfillment") }}</text>
+        <text class="txt-caption fact__v">{{ $t(`fulfillment.${order.fulfillment}`) }}</text>
       </view>
       <view v-if="order.pickupName" class="fact">
-        <text class="fact__k">{{ $t("order.pickup") }}</text>
-        <text class="fact__v">{{ order.pickupName }}</text>
+        <text class="txt-caption fact__k">{{ $t("order.pickup") }}</text>
+        <text class="txt-caption fact__v">{{ order.pickupName }}</text>
       </view>
       <view v-if="order.appointmentAt" class="fact">
-        <text class="fact__k">{{ $t("order.appointment") }}</text>
-        <text class="fact__v sh-num">{{ datetime(order.appointmentAt) }}</text>
+        <text class="txt-caption fact__k">{{ $t("order.appointment") }}</text>
+        <text class="txt-caption fact__v sh-num">{{ datetime(order.appointmentAt) }}</text>
       </view>
       <view v-if="order.expressNo" class="fact">
-        <text class="fact__k">{{ $t("order.express") }}</text>
-        <text class="fact__v sh-num">{{ order.expressNo }}</text>
+        <text class="txt-caption fact__k">{{ $t("order.express") }}</text>
+        <text class="txt-caption fact__v sh-num">{{ order.expressNo }}</text>
       </view>
       <view class="fact">
-        <text class="fact__k">{{ $t("order.orderNo") }}</text>
-        <text class="fact__v sh-num">{{ order.orderNo }}</text>
+        <text class="txt-caption fact__k">{{ $t("order.orderNo") }}</text>
+        <text class="txt-caption fact__v sh-num">{{ order.orderNo }}</text>
       </view>
       <view class="fact">
-        <text class="fact__k">{{ $t("order.createdAt") }}</text>
-        <text class="fact__v sh-num">{{ datetime(order.createdAt) }}</text>
+        <text class="txt-caption fact__k">{{ $t("order.createdAt") }}</text>
+        <text class="txt-caption fact__v sh-num">{{ datetime(order.createdAt) }}</text>
       </view>
     </view>
 
@@ -305,13 +305,13 @@ onShow(load);
          （已完成的单照样能申请售后），此前 gate 在 order.status==='REFUNDING'
          上，而后端从不下发这个订单状态，整张卡片因此永远不显示 -->
     <view v-if="order.afterSale" class="sh-card as">
-      <text class="as__title">
+      <text class="txt-body as__title">
         {{ $t(`afterSale.status.${order.afterSale.status}`) }}
       </text>
       <text v-if="order.afterSale.merchantReply" class="as__reply">
         {{ $t("afterSale.merchantReply") }}{{ order.afterSale.merchantReply }}
       </text>
-      <text class="as__hint">{{ $t(`afterSale.statusHint.${order.afterSale.status}`) }}</text>
+      <text class="txt-caption as__hint">{{ $t(`afterSale.statusHint.${order.afterSale.status}`) }}</text>
       <view
         v-if="order.afterSale.status === 'REFUNDING' && order.afterSale.type === 'RETURN_REFUND' && !order.afterSale.returnExpressNo"
         class="sh-btn as__btn"
@@ -340,22 +340,22 @@ onShow(load);
     </view>
 
     <view class="ops">
-      <view v-if="order.status === 'WAIT_PAY'" class="sh-btn op" @tap="pay">
+      <view v-if="order.status === 'WAIT_PAY'" class="txt-sub sh-btn op" @tap="pay">
         {{ $t("orders.pay") }}
       </view>
-      <view v-if="canCancel" class="sh-btn sh-btn--muted op" @tap="cancel">
+      <view v-if="canCancel" class="txt-sub sh-btn sh-btn--muted op" @tap="cancel">
         {{ $t("order.cancel") }}
       </view>
-      <view v-if="canReview" class="sh-btn op" @tap="review">
+      <view v-if="canReview" class="txt-sub sh-btn op" @tap="review">
         {{ $t("review.writeTitle") }}
       </view>
-      <view v-if="canAfterSale" class="sh-btn sh-btn--soft op" @tap="afterSale">
+      <view v-if="canAfterSale" class="txt-sub sh-btn sh-btn--soft op" @tap="afterSale">
         {{ $t("order.afterSale") }}
       </view>
-      <view v-if="canInvoice" class="sh-btn sh-btn--soft op" @tap="applyInvoice">
+      <view v-if="canInvoice" class="txt-sub sh-btn sh-btn--soft op" @tap="applyInvoice">
         {{ invoice ? $t("invoice.reapply") : $t("invoice.apply") }}
       </view>
-      <view class="sh-btn sh-btn--muted op" @tap="buyAgain">{{ $t("order.buyAgain") }}</view>
+      <view class="txt-sub sh-btn sh-btn--muted op" @tap="buyAgain">{{ $t("order.buyAgain") }}</view>
     </view>
     <view class="spacer" />
   </sh-scaffold>
@@ -367,17 +367,11 @@ onShow(load);
 }
 .as__title {
   display: block;
-  font-size: 28rpx;
-  font-weight: 400;
-  color: var(--sh-ink);
 }
 .as__reply,
 .as__hint {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
-  margin-top: 10rpx;
+  margin-top: 8rpx;
 }
 .as__btn {
   margin-top: 24rpx;
@@ -385,14 +379,11 @@ onShow(load);
 
 .disclose {
   display: block;
-  font-size: 26rpx;
   color: var(--sh-ink);
-  line-height: 1.6;
 }
 .disclose__hint {
   display: block;
-  margin-top: 10rpx;
-  line-height: 1.6;
+  margin-top: 8rpx;
 }
 
 .codecard {
@@ -405,7 +396,6 @@ onShow(load);
 }
 .codecard__label {
   display: block;
-  font-size: 24rpx;
   color: var(--sh-primary-text);
 }
 .codecard--redeem .codecard__label {
@@ -413,25 +403,18 @@ onShow(load);
 }
 .codecard__v {
   display: block;
-  font-size: 48rpx;
-  font-weight: 600;
   letter-spacing: 8rpx;
-  color: var(--sh-ink);
-  margin-top: 14rpx;
+  margin-top: 16rpx;
 }
 .codecard__hint {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 14rpx;
+  margin-top: 16rpx;
 }
 .block {
   margin-top: 20rpx;
 }
 .status {
   display: block;
-  font-size: 34rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
 }
 .status.is-WAIT_PAY {
@@ -464,13 +447,10 @@ onShow(load);
 
 .node__label {
   display: block;
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
 .node__at {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 4rpx;
 }
 .row__right {
@@ -479,18 +459,12 @@ onShow(load);
 }
 .tiny {
   padding: 4rpx 14rpx;
-  font-size: 24rpx;
 }
 .row__price {
   display: block;
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .row__qty {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 4rpx;
 }
 .amt {
@@ -501,22 +475,14 @@ onShow(load);
 .amt--total {
   margin-top: 12rpx;
 }
-.amt__k {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
+
 .amt__v {
-  font-size: 24rpx;
   color: var(--sh-ink);
 }
 .amt__v--off {
   color: var(--sh-danger);
 }
-.amt__total {
-  font-size: 34rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
-}
+
 .fact {
   display: flex;
   justify-content: space-between;
@@ -524,12 +490,9 @@ onShow(load);
   padding: 12rpx 0;
 }
 .fact__k {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   flex-shrink: 0;
 }
 .fact__v {
-  font-size: 24rpx;
   color: var(--sh-ink);
   text-align: end;
 }
@@ -543,7 +506,6 @@ onShow(load);
   flex: 1 0 calc(50% - 16rpx);
   padding-top: 24rpx;
   padding-bottom: 24rpx;
-  font-size: 26rpx;
 }
 .spacer {
   height: 60rpx;

@@ -87,50 +87,50 @@ onShareAppMessage(() => {
       <view class="head">
         <sh-cover class="head__cover" :src="group.cover || GOODS_COVER_FALLBACK" @tap="openGoods"></sh-cover>
         <view class="sh-fill">
-          <text class="sh-h2">{{ group.title }}</text>
-          <text class="head__pickup">📍 {{ group.pickupName }}</text>
+          <text class="txt-title">{{ group.title }}</text>
+          <text class="txt-caption head__pickup">📍 {{ group.pickupName }}</text>
         </view>
       </view>
 
       <view class="price">
-        <text class="price__now sh-num">{{ money(group.groupPrice) }}</text>
-        <text v-if="off > 0" class="price__base sh-num">{{ money(group.basePrice) }}</text>
+        <text class="txt-hero sh-num">{{ money(group.groupPrice) }}</text>
+        <text v-if="off > 0" class="txt-sub price__base sh-num">{{ money(group.basePrice) }}</text>
         <text v-if="off > 0" class="sh-chip sh-chip--danger sh-num">-{{ off }}%</text>
       </view>
 
       <view class="cd">
-        <text class="cd__label">{{ $t("group.cutoff") }}</text>
-        <text class="cd__v sh-num">{{ countdown(group.expireAt - now) }}</text>
+        <text class="txt-caption cd__label">{{ $t("group.cutoff") }}</text>
+        <text class="txt-body cd__v sh-num">{{ countdown(group.expireAt - now) }}</text>
       </view>
     </view>
 
     <!-- 成团进度：单档，够人就成 -->
     <view class="sh-card block">
-      <text class="sh-h2">{{ $t("group.progress") }}</text>
+      <text class="txt-title">{{ $t("group.progress") }}</text>
       <text class="sh-muted tierhint">{{ $t("group.tierHint") }}</text>
 
       <view v-if="!group.reached" class="goal">
-        <text class="goal__text">{{ $t("group.needMore", { n: group.need }) }}</text>
+        <text class="txt-strong goal__text">{{ $t("group.needMore", { n: group.need }) }}</text>
       </view>
       <view v-else class="goal goal--max">
-        <text class="goal__text">{{ $t("group.done") }}</text>
+        <text class="txt-strong goal__text">{{ $t("group.done") }}</text>
       </view>
     </view>
 
     <!-- 参团邻居 -->
     <view class="sh-card block">
-      <text class="sh-h2">{{ $t("group.neighbours", { n: group.joinedCount }) }}</text>
+      <text class="txt-title">{{ $t("group.neighbours", { n: group.joinedCount }) }}</text>
       <view class="members">
         <view v-for="(m, i) in group.members" :key="i" class="member">
-          <text class="member__a">{{ m.avatar }}</text>
-          <text class="member__n">{{ m.nickname }}</text>
+          <text class="txt-body">{{ m.avatar }}</text>
+          <text class="txt-caption member__n">{{ m.nickname }}</text>
         </view>
       </view>
     </view>
 
     <!-- 不成团怎么办 —— 必须写清楚，这是用户敢下单的前提 -->
     <view class="sh-card block notice">
-      <text class="notice__text">{{ $t("group.fallback") }}</text>
+      <text class="txt-caption">{{ $t("group.fallback") }}</text>
     </view>
 
     <sh-actionbar :pad="180">
@@ -165,24 +165,16 @@ onShareAppMessage(() => {
 
 .head__pickup {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 10rpx;
+  margin-top: 8rpx;
 }
 .price {
   display: flex;
   align-items: baseline;
-  gap: 14rpx;
+  gap: 16rpx;
   margin-top: 28rpx;
 }
-.price__now {
-  font-size: 48rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
-}
+
 .price__base {
-  font-size: 26rpx;
-  color: var(--sh-sub);
   text-decoration: line-through;
 }
 .cd {
@@ -195,12 +187,9 @@ onShareAppMessage(() => {
   padding: 20rpx 26rpx;
 }
 .cd__label {
-  font-size: 24rpx;
   color: var(--sh-warning);
 }
 .cd__v {
-  font-size: 28rpx;
-  font-weight: 400;
   color: var(--sh-warning);
 }
 .block {
@@ -208,7 +197,7 @@ onShareAppMessage(() => {
 }
 .tierhint {
   display: block;
-  margin-top: 10rpx;
+  margin-top: 8rpx;
 }
 .goal {
   margin-top: 24rpx;
@@ -220,8 +209,6 @@ onShareAppMessage(() => {
   background: var(--sh-success-tint);
 }
 .goal__text {
-  font-size: 26rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
 }
 .goal--max .goal__text {
@@ -236,28 +223,18 @@ onShareAppMessage(() => {
 .member {
   display: flex;
   align-items: center;
-  gap: 10rpx;
+  gap: 8rpx;
   background: var(--sh-faint);
   border-radius: 9999px;
   padding: 12rpx 24rpx;
 }
-.member__a {
-  font-size: 28rpx;
-}
+
 .member__n {
-  font-size: 24rpx;
   color: var(--sh-ink);
 }
-.member__q {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
+
 .notice {
   background: var(--sh-faint);
 }
-.notice__text {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
-}
+
 </style>

@@ -26,12 +26,12 @@
       "autoPort": false
     },
     {
-      "_comment": "运营端后端。与 backend 是**两个实例**：/ops/** 的控制器标了 @Profile(\"ops\")，与 api 互斥，一个实例只能是其中一种。ops-web 的 .env.local 里 NEXT_PUBLIC_API_BASE 指的就是 8082 —— 不起它，运营端所有列表都是 ERR_CONNECTION_REFUSED，而控制台看不出是「后端没起」还是「起错 profile」。",
+      "_comment": "运营端后端。与 backend 是**两个实例**：/ops/** 的控制器标了 @Profile(\"ops\")，与 api 互斥，一个实例只能是其中一种。ops-web 的 .env.local 里 NEXT_PUBLIC_API_BASE 指的就是 8082 —— 不起它，运营端所有列表都是 ERR_CONNECTION_REFUSED，而控制台看不出是「后端没起」还是「起错 profile」。带上 shop.job.* 是因为 OpsJobController 挂着 @ConditionalOnProperty(shop.job.enabled)：不配的话「定时任务」那一页的每个接口都是 404，而菜单还在，看上去像页面写坏了。库用本地 ai_shop_job，表由 shop-app 自己的 Flyway 建。",
       "name": "backend-ops",
       "runtimeExecutable": "/bin/zsh",
       "runtimeArgs": [
         "-lc",
-        "set -a; . ./.env.local 2>/dev/null; for f in .env.*.local; do [ -f \"$f\" ] && . \"./$f\"; done; set +a; JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home mvn -o -f shop-app/pom.xml spring-boot:run -Dspring-boot.run.arguments='--server.port=8082 --spring.profiles.active=ops --shop.seed.enabled=true'"
+        "set -a; . ./.env.local 2>/dev/null; for f in .env.*.local; do [ -f \"$f\" ] && . \"./$f\"; done; set +a; JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home mvn -o -f shop-app/pom.xml spring-boot:run -Dspring-boot.run.arguments='--server.port=8082 --spring.profiles.active=ops --shop.seed.enabled=true --shop.job.enabled=true --shop.job.datasource.url=jdbc:mysql://127.0.0.1:3306/ai_shop_job?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8 --shop.job.datasource.username=shop --shop.job.datasource.password=shop --shop.job.internal-token=local-dev-only'"
       ],
       "cwd": "backend",
       "port": 8082,

@@ -104,8 +104,8 @@ onShow(load);
     <template v-if="tab === 'mine'">
       <view v-for="c in mineUsable" :key="c.userCouponNo" class="sh-card ticket">
         <view class="ticket__amount">
-          <text class="ticket__v sh-num">{{ c.benefitText }}</text>
-          <text class="ticket__cond sh-num">
+          <text class="txt-display ticket__v sh-num">{{ c.benefitText }}</text>
+          <text class="txt-caption ticket__cond sh-num">
             {{ c.minAmountMinor
               ? $t("coupon.threshold", { p: money(c.minAmountMinor) })
               : $t("coupon.noThreshold") }}
@@ -113,33 +113,33 @@ onShow(load);
         </view>
 
         <view class="sh-fill">
-          <text class="ticket__name">{{ c.title }}</text>
+          <text class="txt-strong ticket__name">{{ c.title }}</text>
           <!-- 到店券要说清「不能在结算时抵扣」，否则顾客会在收银台等着自动减 -->
-          <text v-if="c.redeemMode === 'STORE_CODE'" class="ticket__scope">
+          <text v-if="c.redeemMode === 'STORE_CODE'" class="txt-caption ticket__scope">
             {{ $t("coupon.storeOnly") }}
             <template v-if="c.timesTotal > 1">
               · {{ $t("coupon.remaining", { n: c.remaining, m: c.timesTotal }) }}
             </template>
           </text>
-          <text class="ticket__exp sh-num">{{ $t("coupon.until", { d: isoDate(c.expireAt) }) }}</text>
+          <text class="txt-caption ticket__exp sh-num">{{ $t("coupon.until", { d: isoDate(c.expireAt) }) }}</text>
         </view>
 
-        <view v-if="c.redeemCode" class="ticket__btn" @tap="showCode(c)">
+        <view v-if="c.redeemCode" class="txt-caption txt-bold ticket__btn" @tap="showCode(c)">
           {{ $t("coupon.showCode") }}
         </view>
-        <text v-else class="ticket__state ticket__state--ok">{{ $t("coupon.autoUse") }}</text>
+        <text v-else class="txt-caption ticket__state ticket__state--ok">{{ $t("coupon.autoUse") }}</text>
       </view>
 
       <!-- 过期/用完的折叠在下面，但**不删掉**：券包里少一张，用户会以为平台吞了它 -->
       <view v-for="c in mineDead" :key="c.userCouponNo" class="sh-card ticket is-expired">
         <view class="ticket__amount">
-          <text class="ticket__v sh-num">{{ c.benefitText }}</text>
+          <text class="txt-display ticket__v sh-num">{{ c.benefitText }}</text>
         </view>
         <view class="sh-fill">
-          <text class="ticket__name">{{ c.title }}</text>
-          <text class="ticket__exp sh-num">{{ $t("coupon.until", { d: isoDate(c.expireAt) }) }}</text>
+          <text class="txt-strong ticket__name">{{ c.title }}</text>
+          <text class="txt-caption ticket__exp sh-num">{{ $t("coupon.until", { d: isoDate(c.expireAt) }) }}</text>
         </view>
-        <text class="ticket__state">
+        <text class="txt-caption ticket__state">
           {{ c.remaining <= 0 ? $t("coupon.usedUp") : $t("coupon.expired") }}
         </text>
       </view>
@@ -153,8 +153,8 @@ onShow(load);
       :class="{ 'is-expired': expired(c) }"
     >
       <view class="ticket__amount">
-        <text class="ticket__v sh-num">{{ faceText(c) }}</text>
-        <text class="ticket__cond sh-num">
+        <text class="txt-display ticket__v sh-num">{{ faceText(c) }}</text>
+        <text class="txt-caption ticket__cond sh-num">
           {{ c.thresholdMinor
             ? $t("coupon.threshold", { p: money(c.thresholdMinor) })
             : $t("coupon.noThreshold") }}
@@ -162,21 +162,21 @@ onShow(load);
       </view>
 
       <view class="sh-fill">
-        <text class="ticket__name">{{ c.title }}</text>
-        <text class="ticket__scope">{{ c.scopeDesc }}</text>
-        <text class="ticket__exp sh-num">{{ $t("coupon.until", { d: isoDate(c.endAt) }) }}</text>
+        <text class="txt-strong ticket__name">{{ c.title }}</text>
+        <text class="txt-caption ticket__scope">{{ c.scopeDesc }}</text>
+        <text class="txt-caption ticket__exp sh-num">{{ $t("coupon.until", { d: isoDate(c.endAt) }) }}</text>
       </view>
 
       <view
         v-if="!c.received"
-        class="ticket__btn"
+        class="txt-caption txt-bold ticket__btn"
         :class="{ 'is-busy': busy === c.couponNo }"
         @tap="receive(c)"
       >
         {{ $t("coupon.receive") }}
       </view>
-      <text v-else-if="expired(c)" class="ticket__state">{{ $t("coupon.expired") }}</text>
-      <text v-else class="ticket__state ticket__state--ok">{{ $t("coupon.got") }}</text>
+      <text v-else-if="expired(c)" class="txt-caption ticket__state">{{ $t("coupon.expired") }}</text>
+      <text v-else class="txt-caption ticket__state ticket__state--ok">{{ $t("coupon.got") }}</text>
     </view>
 
     <sh-empty
@@ -208,35 +208,24 @@ onShow(load);
 }
 .ticket__v {
   display: block;
-  font-size: 40rpx;
-  font-weight: 600;
   color: var(--sh-danger);
-  line-height: 1.1;
 }
 .ticket__cond {
   display: block;
-  font-size: 24rpx;
   color: var(--sh-danger);
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 
 .ticket__name {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .ticket__scope {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 8rpx;
 }
 .ticket__exp {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 10rpx;
+  margin-top: 8rpx;
 }
 .ticket__btn {
   flex: 0 0 auto;
@@ -244,16 +233,12 @@ onShow(load);
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  font-size: 24rpx;
-  font-weight: 600;
 }
 .ticket__btn.is-busy {
   opacity: 0.5;
 }
 .ticket__state {
   flex: 0 0 auto;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .ticket__state--ok {
   color: var(--sh-primary-text);

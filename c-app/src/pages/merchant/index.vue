@@ -85,21 +85,21 @@ onShareAppMessage(() =>
         <text class="head__logo">{{ merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
         <view class="sh-fill">
           <view class="head__title">
-            <text class="sh-h2">{{ merchant.name }}</text>
+            <text class="txt-title">{{ merchant.name }}</text>
             <text
               v-if="merchant.verified"
-              class="sh-chip sh-chip--primary tiny"
+              class="txt-caption sh-chip sh-chip--primary tiny"
             >
               {{ $t("merchant.verified") }}
             </text>
           </view>
-          <text class="sh-chip tiny">{{
+          <text class="txt-caption sh-chip tiny">{{
             $t(`merchant.type.${merchant.type}`)
           }}</text>
         </view>
       </view>
 
-      <text class="head__desc">{{ merchant.desc }}</text>
+      <text class="txt-sub head__desc">{{ merchant.desc }}</text>
 
       <view class="tags">
         <!-- 经营范围排在自定义标签之前：它不是修饰词，是**这家店的货能不能卖给我**，
@@ -120,17 +120,17 @@ onShareAppMessage(() =>
             那是默认值，不是「大家都给了满分」。下面「基于 0 条评价」那句
             虽然自证了，但先看到的是大大的 5.0，人不会往下读。
           -->
-          <text v-if="merchant.ratingCount > 0" class="score__num sh-num">{{
+          <text v-if="merchant.ratingCount > 0" class="txt-hero score__num sh-num">{{
             merchant.rating.toFixed(1)
           }}</text>
-          <text v-else class="score__num score__num--none">{{ $t("merchant.noRating") }}</text>
+          <text v-else class="txt-hero txt-body score__num score__num--none">{{ $t("merchant.noRating") }}</text>
           <sh-rating
             v-if="merchant.ratingCount > 0"
             :value="merchant.rating"
             :size="24"
             :show-value="false"
           ></sh-rating>
-          <text class="score__basis sh-num">
+          <text class="txt-caption score__basis sh-num">
             {{
               $t("merchant.basis", {
                 r: merchant.ratingCount,
@@ -141,38 +141,38 @@ onShareAppMessage(() =>
         </view>
         <view class="score__dims">
           <view class="dim">
-            <text class="dim__v sh-num">{{
+            <text class="txt-body dim__v sh-num">{{
               merchant.scores.goods.toFixed(1)
             }}</text>
-            <text class="dim__k">{{ $t("merchant.dim.goods") }}</text>
+            <text class="txt-caption dim__k">{{ $t("merchant.dim.goods") }}</text>
           </view>
           <view class="dim">
-            <text class="dim__v sh-num">{{
+            <text class="txt-body dim__v sh-num">{{
               merchant.scores.service.toFixed(1)
             }}</text>
-            <text class="dim__k">{{ $t("merchant.dim.service") }}</text>
+            <text class="txt-caption dim__k">{{ $t("merchant.dim.service") }}</text>
           </view>
           <view class="dim">
-            <text class="dim__v sh-num">{{
+            <text class="txt-body dim__v sh-num">{{
               merchant.scores.speed.toFixed(1)
             }}</text>
-            <text class="dim__k">{{ $t("merchant.dim.speed") }}</text>
+            <text class="txt-caption dim__k">{{ $t("merchant.dim.speed") }}</text>
           </view>
         </view>
       </view>
 
       <view class="facts">
         <view v-if="merchant.address" class="fact">
-          <text class="fact__k">{{ $t("merchant.address") }}</text>
-          <text class="fact__v">{{ merchant.address }}</text>
+          <text class="txt-caption fact__k">{{ $t("merchant.address") }}</text>
+          <text class="txt-caption fact__v">{{ merchant.address }}</text>
         </view>
         <view v-if="merchant.openHours" class="fact">
-          <text class="fact__k">{{ $t("merchant.hours") }}</text>
-          <text class="fact__v sh-num">{{ merchant.openHours }}</text>
+          <text class="txt-caption fact__k">{{ $t("merchant.hours") }}</text>
+          <text class="txt-caption fact__v sh-num">{{ merchant.openHours }}</text>
         </view>
         <view class="fact">
-          <text class="fact__k">{{ $t("merchant.joined") }}</text>
-          <text class="fact__v sh-num">{{ isoDate(merchant.joinedAt) }}</text>
+          <text class="txt-caption fact__k">{{ $t("merchant.joined") }}</text>
+          <text class="txt-caption fact__v sh-num">{{ isoDate(merchant.joinedAt) }}</text>
         </view>
       </view>
     </view>
@@ -225,7 +225,6 @@ onShareAppMessage(() =>
 
 <style scoped>
 .score__num--none {
-  font-size: 28rpx;
   color: var(--sh-sub);
 }
 
@@ -249,17 +248,13 @@ onShareAppMessage(() =>
   display: flex;
   align-items: center;
   gap: 12rpx;
-  margin-bottom: 10rpx;
+  margin-bottom: 8rpx;
 }
 .tiny {
   padding: 4rpx 14rpx;
-  font-size: 24rpx;
 }
 .head__desc {
   display: block;
-  font-size: 26rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
   margin-top: 24rpx;
 }
 .tags {
@@ -275,22 +270,16 @@ onShareAppMessage(() =>
   margin-top: 28rpx;
   background: var(--sh-faint);
   border-radius: 32rpx;
-  padding: 26rpx;
+  padding: 28rpx;
 }
 .score__main {
   flex: 0 0 auto;
 }
 .score__num {
   display: block;
-  font-size: 48rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-  line-height: 1.1;
 }
 .score__basis {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 8rpx;
 }
 .score__dims {
@@ -303,14 +292,9 @@ onShareAppMessage(() =>
 }
 .dim__v {
   display: block;
-  font-size: 30rpx;
-  font-weight: 400;
-  color: var(--sh-ink);
 }
 .dim__k {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 4rpx;
 }
 .facts {
@@ -323,12 +307,9 @@ onShareAppMessage(() =>
   padding: 12rpx 0;
 }
 .fact__k {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   flex-shrink: 0;
 }
 .fact__v {
-  font-size: 24rpx;
   color: var(--sh-ink);
   text-align: end;
 }

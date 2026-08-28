@@ -117,7 +117,7 @@ onShow(() => {
 
       <!-- 发起团表单：商品 + 是否送到我家 -->
       <view v-if="creating" class="sh-card form">
-        <text class="sh-h2">{{ $t("groups.createGroup") }}</text>
+        <text class="txt-title">{{ $t("groups.createGroup") }}</text>
         <view class="chips">
           <text
             v-for="g in groupable"
@@ -133,7 +133,7 @@ onShow(() => {
         <view class="toggle" @tap="form.toMyHome = !form.toMyHome">
           <sh-check :model-value="form.toMyHome"></sh-check>
           <view class="toggle__main">
-            <text class="toggle__label">{{ $t("groupHost.toMyHome") }}</text>
+            <text class="txt-strong toggle__label">{{ $t("groupHost.toMyHome") }}</text>
             <text class="sh-muted">{{ $t("groupHost.toMyHomeHint") }}</text>
           </view>
         </view>
@@ -141,12 +141,12 @@ onShow(() => {
         <template v-if="form.toMyHome">
           <input maxlength="255" v-model="form.address" class="field__input" :placeholder="$t('groupHost.addressPh')" />
           <input maxlength="64" v-model="form.timeSlot" class="field__input" :placeholder="$t('groupHost.timeSlotPh')" />
-          <text class="privacy">{{ $t("groupHost.addressPrivacy") }}</text>
+          <text class="txt-caption privacy">{{ $t("groupHost.addressPrivacy") }}</text>
         </template>
 
         <view class="btns">
-          <text class="btn btn--ghost" @tap="creating = false">{{ $t("common.cancel") }}</text>
-          <text class="btn" @tap="submitCreate">{{ $t("groups.submitCreate") }}</text>
+          <text class="txt-strong btn btn--ghost" @tap="creating = false">{{ $t("common.cancel") }}</text>
+          <text class="txt-strong btn" @tap="submitCreate">{{ $t("groups.submitCreate") }}</text>
         </view>
       </view>
       <biz-group-card
@@ -167,14 +167,14 @@ onShow(() => {
         <view class="rq__head">
           <text class="rq__avatar">{{ r.initiatorAvatar }}</text>
           <view class="sh-fill">
-            <text class="rq__title">{{ r.title }}</text>
-            <text class="rq__by">
+            <text class="txt-strong rq__title">{{ r.title }}</text>
+            <text class="txt-caption rq__by">
               {{ $t("groups.startedBy", { name: r.initiatorNickname }) }} · {{ r.pickupName }}
             </text>
           </view>
         </view>
 
-        <text class="rq__desc">{{ r.desc }}</text>
+        <text class="txt-caption rq__desc">{{ r.desc }}</text>
 
         <view class="rq__meta">
           <text class="sh-chip sh-chip--primary sh-num">
@@ -226,9 +226,6 @@ onShow(() => {
 }
 .toggle__label {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 /* 只留纵向间距。此前这里高 84rpx，与 base.css 的 88rpx 差 2px ——
    88rpx ≈ 44pt 是点按目标的下限，缩到 84 省不出什么却贴着下限走 */
@@ -238,9 +235,6 @@ onShow(() => {
 .privacy {
   display: block;
   margin-top: 16rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
 }
 .btns {
   display: flex;
@@ -254,8 +248,6 @@ onShow(() => {
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  font-size: 28rpx;
-  font-weight: 600;
 }
 .btn--ghost {
   background: var(--sh-faint);
@@ -288,21 +280,13 @@ onShow(() => {
 
 .rq__title {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .rq__by {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 .rq__desc {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
   margin-top: 20rpx;
 }
 .rq__meta {

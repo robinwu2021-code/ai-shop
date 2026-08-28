@@ -204,7 +204,7 @@ onShow(() => {
     <view class="sh-card head" @tap="!user.isLogin && gotoLogin()">
       <text class="head__avatar">{{ user.user?.avatar || "🙂" }}</text>
       <view class="sh-fill">
-        <text class="head__name">
+        <text class="txt-title head__name">
           {{ user.isLogin ? user.user?.nickname : $t("me.login") }}
         </text>
         <!--
@@ -212,9 +212,9 @@ onShow(() => {
           用户不知道那一行为什么空着，更不知道能点。
           现在空着的时候直接说「去绑定」，它就是入口。
         -->
-        <text v-if="!user.isLogin" class="head__sub">{{ $t("me.loginHint") }}</text>
-        <text v-else-if="user.user?.phone" class="head__sub">{{ user.user.phone }}</text>
-        <text v-else class="head__sub head__sub--action" @tap.stop="phoneGate = true">
+        <text v-if="!user.isLogin" class="txt-caption head__sub">{{ $t("me.loginHint") }}</text>
+        <text v-else-if="user.user?.phone" class="txt-caption head__sub">{{ user.user.phone }}</text>
+        <text v-else class="txt-caption head__sub head__sub--action" @tap.stop="phoneGate = true">
           {{ $t("me.bindPhone") }}
         </text>
       </view>
@@ -222,89 +222,89 @@ onShow(() => {
 
     <view class="cells">
       <view class="cell" @tap="gotoCommunity">
-        <text class="cell__label">{{ $t("me.myCommunity") }}</text>
-        <text class="cell__value">{{ community.pickup?.name || $t("me.unset") }}</text>
+        <text class="txt-body cell__label">{{ $t("me.myCommunity") }}</text>
+        <text class="txt-sub cell__value">{{ community.pickup?.name || $t("me.unset") }}</text>
       </view>
       <view class="cell">
-        <text class="cell__label">{{ $t("me.myStores") }}</text>
-        <text class="cell__value">{{ community.hostName || "—" }}</text>
+        <text class="txt-body cell__label">{{ $t("me.myStores") }}</text>
+        <text class="txt-sub cell__value">{{ community.hostName || "—" }}</text>
       </view>
     </view>
 
     <!-- 交易：订单、券、地址 —— 买东西相关的都在这一组 -->
     <view class="cells">
       <view class="cell" @tap="gotoMessages">
-        <text class="cell__label">{{ $t("message.title") }}</text>
+        <text class="txt-body cell__label">{{ $t("message.title") }}</text>
         <!--
           未登录时**什么都不显示**。显示「已全部阅读」是在说一句假话：
           它暗示这个人有消息且都读过了，而他还没登录，平台根本不知道他是谁。
           与上面「我的常去店」未登录时显示「—」是同一个口径。
         -->
-        <text v-if="user.isLogin" class="cell__value sh-num">
+        <text v-if="user.isLogin" class="txt-sub cell__value sh-num">
           {{ unread ? $t("message.unread", { n: unread }) : $t("message.allRead") }}
         </text>
       </view>
       <view class="cell" @tap="gotoOrders">
-        <text class="cell__label">{{ $t("orders.title") }}</text>
-        <text class="cell__value">{{ $t("orders.entryHint") }}</text>
+        <text class="txt-body cell__label">{{ $t("orders.title") }}</text>
+        <text class="txt-sub cell__value">{{ $t("orders.entryHint") }}</text>
       </view>
       <view class="cell" @tap="gotoCoupons">
-        <text class="cell__label">{{ $t("coupon.title") }}</text>
-        <text class="cell__value">{{ $t("coupon.entryHint") }}</text>
+        <text class="txt-body cell__label">{{ $t("coupon.title") }}</text>
+        <text class="txt-sub cell__value">{{ $t("coupon.entryHint") }}</text>
       </view>
       <!-- 会员与消息：**退订入口必须在显眼处**，藏起来的开关等于没有 -->
       <view class="cell" @tap="gotoMemberships">
-        <text class="cell__label">{{ $t("myMembership.title") }}</text>
-        <text class="cell__value">{{ $t("myMembership.entryHint") }}</text>
+        <text class="txt-body cell__label">{{ $t("myMembership.title") }}</text>
+        <text class="txt-sub cell__value">{{ $t("myMembership.entryHint") }}</text>
       </view>
       <view v-if="FEATURES.cards" class="cell" @tap="gotoCards">
-        <text class="cell__label">{{ $t("cards.title") }}</text>
-        <text class="cell__value">{{ $t("cards.entryHint") }}</text>
+        <text class="txt-body cell__label">{{ $t("cards.title") }}</text>
+        <text class="txt-sub cell__value">{{ $t("cards.entryHint") }}</text>
       </view>
       <view class="cell" @tap="gotoAddress">
-        <text class="cell__label">{{ $t("address.title") }}</text>
-        <text class="cell__value">{{ $t("address.entryHint") }}</text>
+        <text class="txt-body cell__label">{{ $t("address.title") }}</text>
+        <text class="txt-sub cell__value">{{ $t("address.entryHint") }}</text>
       </view>
       <view v-if="FEATURES.points" class="cell" @tap="gotoPoints">
-        <text class="cell__label">{{ $t("points.title") }}</text>
-        <text class="cell__value sh-num">{{ $t("points.entryHint", { n: points }) }}</text>
+        <text class="txt-body cell__label">{{ $t("points.title") }}</text>
+        <text class="txt-sub cell__value sh-num">{{ $t("points.entryHint", { n: points }) }}</text>
       </view>
     </view>
 
     <!-- 邻里：团、买过的店、入驻 —— 与「人」相关的一组 -->
     <view class="cells">
       <view class="cell" @tap="gotoGroupHost">
-        <text class="cell__label">{{ $t("groupHost.title") }}</text>
-        <text class="cell__value">{{ $t("groupHost.entryHint") }}</text>
+        <text class="txt-body cell__label">{{ $t("groupHost.title") }}</text>
+        <text class="txt-sub cell__value">{{ $t("groupHost.entryHint") }}</text>
       </view>
       <view class="cell" @tap="gotoGroups">
-        <text class="cell__label">{{ $t("groups.title") }}</text>
-        <text class="cell__value">{{ $t("groups.entryHint") }}</text>
+        <text class="txt-body cell__label">{{ $t("groups.title") }}</text>
+        <text class="txt-sub cell__value">{{ $t("groups.entryHint") }}</text>
       </view>
       <view class="cell" @tap="gotoVisited">
-        <text class="cell__label">{{ $t("visited.title") }}</text>
-        <text class="cell__value">{{ $t("visited.hint") }}</text>
+        <text class="txt-body cell__label">{{ $t("visited.title") }}</text>
+        <text class="txt-sub cell__value">{{ $t("visited.hint") }}</text>
       </view>
       <view class="cell" @tap="applyMerchant">
-        <text class="cell__label">{{ $t("merchant.apply") }}</text>
-        <text class="cell__value">{{ applyStatusText }}</text>
+        <text class="txt-body cell__label">{{ $t("merchant.apply") }}</text>
+        <text class="txt-sub cell__value">{{ applyStatusText }}</text>
       </view>
     </view>
 
     <!-- 设置：与生意无关，放最后 -->
     <view class="cells">
       <view class="cell" @tap="themeVisible = true">
-        <text class="cell__label">{{ $t("me.appearance") }}</text>
-        <text class="cell__value">{{ $t("me.appearanceValue") }}</text>
+        <text class="txt-body cell__label">{{ $t("me.appearance") }}</text>
+        <text class="txt-sub cell__value">{{ $t("me.appearanceValue") }}</text>
       </view>
       <view class="cell">
-        <text class="cell__label">{{ $t("me.help") }}</text>
-        <text class="cell__value">{{ $t("me.helpValue") }}</text>
+        <text class="txt-body cell__label">{{ $t("me.help") }}</text>
+        <text class="txt-sub cell__value">{{ $t("me.helpValue") }}</text>
       </view>
       <!-- 此前**整个 c-app 没有退出登录入口** —— store 里的 logout() 是死代码。
            没有入口意味着共用设备上无法结束会话，而令牌在服务端一直有效 -->
       <view v-if="user.isLogin" class="cell" @tap="onLogout">
-        <text class="cell__label">{{ $t("me.logout") }}</text>
+        <text class="txt-body cell__label">{{ $t("me.logout") }}</text>
       </view>
     </view>
 
@@ -314,7 +314,7 @@ onShow(() => {
       微信要求有这个入口（上架审核会查），但不该让它看起来像个常用操作。
     -->
     <view v-if="user.isLogin" class="danger" @tap="onDeregister">
-      <text class="danger__text">{{ $t("me.deregister") }}</text>
+      <text class="txt-sub">{{ $t("me.deregister") }}</text>
     </view>
 
     <sh-theme-sheet v-model:visible="themeVisible"></sh-theme-sheet>
@@ -354,7 +354,7 @@ onShow(() => {
           </view>
         </view>
         <!-- 禁用要给理由：光变灰只会让人反复点它 -->
-        <text v-if="!subjectAllowed('NATURAL_PERSON')" class="blocked-tip">
+        <text v-if="!subjectAllowed('NATURAL_PERSON')" class="txt-caption blocked-tip">
           {{ $t("merchant.microBlocked") }}
         </text>
 
@@ -399,7 +399,6 @@ onShow(() => {
 .blocked-tip {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
   color: var(--sh-danger);
 }
 /* 与 address 逐字节相同的一份重写，现在都走 `.field__input`，只留纵向间距 */
@@ -427,15 +426,9 @@ onShow(() => {
 
 .head__name {
   display: block;
-  font-size: 34rpx;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--sh-ink);
 }
 .head__sub {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 8rpx;
 }
 /*
@@ -467,18 +460,11 @@ onShow(() => {
   padding: 24rpx;
   text-align: center;
 }
-.danger__text {
-  font-size: 26rpx;
-  color: var(--sh-sub);
-}
+
 .cell__label {
-  font-size: 28rpx;
-  color: var(--sh-ink);
   flex-shrink: 0;
 }
 .cell__value {
-  font-size: 26rpx;
-  color: var(--sh-sub);
   text-align: end;
   overflow: hidden;
   text-overflow: ellipsis;

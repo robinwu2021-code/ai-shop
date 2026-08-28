@@ -210,10 +210,10 @@ onShareAppMessage(() =>
     <view class="place">
       <view class="place__main sh-fill" @tap="gotoCommunity">
         <sh-icon name="pin" :size="26" color="var(--sh-primary)"></sh-icon>
-        <text class="place__name">
+        <text class="txt-body place__name">
           {{ community.pickup?.name || $t("home.choosePickup") }}
         </text>
-        <text class="place__sub sh-fill">
+        <text class="txt-caption place__sub sh-fill">
           {{
             community.pickup
               ? community.pickup.arrivalDesc
@@ -235,7 +235,7 @@ onShareAppMessage(() =>
          它是**限时的、要立刻决定的**，与下面可以慢慢逛的商品流不是一类。 -->
     <view v-if="groups.length" class="sh-block">
       <view class="sh-block__head">
-        <text class="sh-h2">{{ $t("home.groups") }}</text>
+        <text class="txt-title">{{ $t("home.groups") }}</text>
         <text class="sh-muted" @tap="gotoGroups">{{
           $t("home.groupsMore")
         }}</text>
@@ -252,7 +252,7 @@ onShareAppMessage(() =>
     <!-- 推荐商品：运营位。横滑窄卡，不与下面的主商品流抢版面 -->
     <view v-if="promoted.length" class="sh-block">
       <view class="sh-block__head">
-        <text class="sh-h2">{{ $t("home.promoted") }}</text>
+        <text class="txt-title">{{ $t("home.promoted") }}</text>
         <text class="sh-muted">{{ $t("home.promotedHint") }}</text>
       </view>
       <view class="freq">
@@ -263,9 +263,9 @@ onShareAppMessage(() =>
           @tap="openGoods(g)"
         >
           <sh-cover class="freq__cover" :src="g.cover || GOODS_COVER_FALLBACK"></sh-cover>
-          <text class="freq__title">{{ g.title }}</text>
+          <text class="txt-strong freq__title">{{ g.title }}</text>
           <view class="freq__foot">
-            <text class="freq__price sh-num">{{ money(g.price) }}</text>
+            <text class="txt-price freq__price sh-num">{{ money(g.price) }}</text>
             <view class="freq__add" @tap.stop="addToCart(g, $event)">
               <text class="freq__sign">＋</text>
             </view>
@@ -277,7 +277,7 @@ onShareAppMessage(() =>
     <!-- 社区在卖：首页主体。已在 goodsList 里按覆盖范围滤过 + 按距离排过 -->
     <view class="sh-block">
       <view class="sh-block__head">
-        <text class="sh-h2">{{ $t("home.communityFeed") }}</text>
+        <text class="txt-title">{{ $t("home.communityFeed") }}</text>
         <text class="sh-muted">
           {{ community.community?.name || $t("home.communityFeedHint") }}
         </text>
@@ -320,7 +320,7 @@ onShareAppMessage(() =>
 .place__main {
   display: flex;
   align-items: center;
-  gap: 10rpx;
+  gap: 8rpx;
 }
 /* 搜索缩成 icon 后要保住可点面积：40×40 的圆底，不是一个裸图标 */
 .place__search {
@@ -336,10 +336,6 @@ onShareAppMessage(() =>
   justify-content: center;
 }
 .place__name {
-  font-size: 28rpx;
-  font-weight: 400;
-  line-height: 1.5;
-  color: var(--sh-ink);
   /* 英文店名比中文长得多（Sunnyside Block 3 Point vs 阳光里 3 幢自提点）：
      原本 flex-shrink: 0 会让它独占整行、把右边的到货时间挤到只剩省略号。
      两边都可收缩，长的那个先让步。 */
@@ -350,8 +346,6 @@ onShareAppMessage(() =>
   white-space: nowrap;
 }
 .place__sub {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -392,10 +386,6 @@ onShareAppMessage(() =>
   -webkit-line-clamp: 2;
   margin-top: 12rpx;
   height: 80rpx;
-  font-size: 28rpx;
-  font-weight: 600;
-  line-height: 40rpx;
-  color: var(--sh-ink);
   overflow: hidden;
 }
 .freq__foot {
@@ -403,13 +393,9 @@ onShareAppMessage(() =>
   align-items: center;
   justify-content: space-between;
   gap: 8rpx;
-  margin-top: 10rpx;
+  margin-top: 8rpx;
 }
 .freq__price {
-  font-size: 30rpx;
-  font-weight: 700;
-  line-height: 1.3;
-  color: var(--sh-ink);
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;

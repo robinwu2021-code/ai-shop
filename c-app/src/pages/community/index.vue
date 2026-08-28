@@ -205,19 +205,19 @@ onLoad(load);
 
 <template>
   <sh-scaffold title-key="community.title">
-    <text v-if="locating" class="hint">{{ $t("community.locating") }}</text>
+    <text v-if="locating" class="txt-sub hint">{{ $t("community.locating") }}</text>
 
     <view v-else-if="failed" class="state">
-      <text class="state__title">{{ $t("community.failed") }}</text>
-      <text class="state__tip">{{ $t("community.failedTip") }}</text>
-      <view class="state__btn" @tap="load">
+      <text class="txt-body state__title">{{ $t("community.failed") }}</text>
+      <text class="txt-sub state__tip">{{ $t("community.failedTip") }}</text>
+      <view class="txt-body state__btn" @tap="load">
         <text>{{ $t("community.retry") }}</text>
       </view>
     </view>
 
     <!-- 第一步：选区域。只列有已开通社区的区，并把社区数摆在旁边 -->
     <view v-else-if="pickingRegion" class="rg">
-      <text class="rg__tip">{{ $t("common.pickRegion") }}</text>
+      <text class="txt-sub rg__tip">{{ $t("common.pickRegion") }}</text>
       <view
         v-for="r in community.regions"
         :key="r.regionCode"
@@ -225,8 +225,8 @@ onLoad(load);
         @tap="chooseRegion(r)"
       >
         <view class="rg__main">
-          <text class="rg__name">{{ r.name }}</text>
-          <text class="rg__city">{{ r.cityName }}</text>
+          <text class="txt-body">{{ r.name }}</text>
+          <text class="txt-caption rg__city">{{ r.cityName }}</text>
         </view>
         <text class="sh-chip">{{ $t("common.nCommunities", { n: r.communityCount }) }}</text>
       </view>
@@ -237,17 +237,17 @@ onLoad(load);
         走到这里 = 附近没有、**区域清单也是空的**（区域块在上面先命中）。
         那才是真的什么都没有：一个挂了区划的已开通社区都不存在。
       -->
-      <text class="state__title">{{ $t("community.empty") }}</text>
-      <text class="state__tip">{{ $t("community.emptyTip") }}</text>
-      <view class="state__btn" @tap="browseAll">
+      <text class="txt-body state__title">{{ $t("community.empty") }}</text>
+      <text class="txt-sub state__tip">{{ $t("community.emptyTip") }}</text>
+      <view class="txt-body state__btn" @tap="browseAll">
         <text>{{ $t("common.browseAll") }}</text>
       </view>
     </view>
 
-    <text v-else-if="showingAll" class="hint">{{ $t("common.allTip") }}</text>
-    <text v-else-if="!located" class="hint">{{ $t("common.noLocation") }}</text>
+    <text v-else-if="showingAll" class="txt-sub hint">{{ $t("common.allTip") }}</text>
+    <text v-else-if="!located" class="txt-sub hint">{{ $t("common.noLocation") }}</text>
 
-    <view v-if="region" class="rg__back" @tap="backToRegions">
+    <view v-if="region" class="txt-sub rg__back" @tap="backToRegions">
       <text>{{ region.cityName }} · {{ region.name }} · {{ $t("common.changeRegion") }}</text>
     </view>
 
@@ -255,13 +255,13 @@ onLoad(load);
       <input
         maxlength="32"
         v-model="keyword"
-        class="search__input"
+        class="txt-sub search__input"
         :placeholder="String($t('common.searchHint'))"
         confirm-type="search"
       />
     </view>
 
-    <text v-if="community.list.length && !shown.length" class="hint">
+    <text v-if="community.list.length && !shown.length" class="txt-sub hint">
       {{ $t("common.searchEmpty") }}
     </text>
 
@@ -271,8 +271,8 @@ onLoad(load);
         @tap="expanded = expanded === c.communityNo ? '' : c.communityNo"
       >
         <view class="sh-fill">
-          <text class="cm__name">{{ c.name }}</text>
-          <text class="cm__addr">{{ c.address }}</text>
+          <text class="txt-strong cm__name">{{ c.name }}</text>
+          <text class="txt-caption cm__addr">{{ c.address }}</text>
         </view>
         <text class="sh-chip">{{ distance(c.distance) }}</text>
       </view>
@@ -287,15 +287,15 @@ onLoad(load);
         >
           <text class="pk__avatar">{{ p.hostAvatar }}</text>
           <view class="sh-fill">
-            <text class="pk__name">{{ p.name }}</text>
-            <text class="pk__sub">
+            <text class="txt-strong pk__name">{{ p.name }}</text>
+            <text class="txt-caption pk__sub">
               {{ p.hostName }} · {{ p.openHours }} · {{ p.arrivalDesc }}
             </text>
-            <text v-if="p.address" class="pk__addr">{{ p.address }}</text>
+            <text v-if="p.address" class="txt-caption">{{ p.address }}</text>
           </view>
           <view class="pk__right">
-            <text class="pk__dist sh-num">{{ distance(p.distance) }}</text>
-            <text v-if="p.latE6 != null" class="pk__nav" @tap.stop="navTo(p)">{{ $t("community.navigate") }}</text>
+            <text class="txt-caption pk__dist sh-num">{{ distance(p.distance) }}</text>
+            <text v-if="p.latE6 != null" class="txt-caption pk__nav" @tap.stop="navTo(p)">{{ $t("community.navigate") }}</text>
           </view>
         </view>
       </view>
@@ -307,8 +307,6 @@ onLoad(load);
 .rg__tip {
   display: block;
   padding: 8rpx 0 24rpx;
-  font-size: 26rpx;
-  color: var(--sh-sub);
 }
 .rg__item {
   display: flex;
@@ -323,18 +321,12 @@ onLoad(load);
   display: flex;
   flex-direction: column;
 }
-.rg__name {
-  font-size: 30rpx;
-  color: var(--sh-ink);
-}
+
 .rg__city {
-  margin-top: 6rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
+  margin-top: 8rpx;
 }
 .rg__back {
   padding: 16rpx 0 24rpx;
-  font-size: 26rpx;
   color: var(--sh-primary-text);
 }
 .search {
@@ -345,7 +337,6 @@ onLoad(load);
   padding: 0 24rpx;
   border-radius: 24rpx;
   background: var(--sh-surface);
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
 .state {
@@ -354,15 +345,10 @@ onLoad(load);
 }
 .state__title {
   display: block;
-  font-size: 30rpx;
-  color: var(--sh-ink);
 }
 .state__tip {
   display: block;
   margin-top: 16rpx;
-  font-size: 26rpx;
-  line-height: 1.6;
-  color: var(--sh-sub);
 }
 .state__btn {
   display: inline-block;
@@ -370,14 +356,12 @@ onLoad(load);
   padding: 20rpx 56rpx;
   border-radius: 24rpx;
   background: var(--sh-primary);
-  color: #fff;
-  font-size: 28rpx;
+  /* 白字在 fresh 这类亮主色上只有 2.27 —— 前景必须按对比度算，走 token */
+  color: var(--sh-on-primary);
 }
 .hint {
   display: block;
   text-align: center;
-  color: var(--sh-sub);
-  font-size: 26rpx;
   padding: 28rpx 0;
 }
 /* 面色 / 圆角 / 内边距交给 `.sh-card` —— 此前这三行是把它照抄了一遍。
@@ -394,14 +378,9 @@ onLoad(load);
 
 .cm__name {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .cm__addr {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 8rpx;
 }
 /* 自提点：每个是独立浅色块，靠间距分隔，无分隔线 */
@@ -435,20 +414,12 @@ onLoad(load);
 
 .pk__name {
   display: block;
-  font-size: 28rpx;
-  color: var(--sh-ink);
-  font-weight: 600;
 }
 .pk__sub {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
-.pk__addr {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
+
 .pk__right {
   display: flex;
   flex-direction: column;
@@ -460,11 +431,8 @@ onLoad(load);
   border-radius: 999px;
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
-  font-size: 24rpx;
 }
 .pk__dist {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   flex-shrink: 0;
 }
 </style>

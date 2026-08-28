@@ -94,20 +94,20 @@ onLoad((q) => {
       <input
         maxlength="32"
         v-model="keyword"
-        class="searchbar__input sh-fill"
+        class="txt-body searchbar__input sh-fill"
         :placeholder="$t('search.placeholder')"
         confirm-type="search"
         focus
         @confirm="search()"
       />
-      <view class="searchbar__btn" @tap="search()">{{ $t("search.go") }}</view>
+      <view class="txt-strong searchbar__btn" @tap="search()">{{ $t("search.go") }}</view>
     </view>
 
     <!-- 搜索历史 -->
     <view v-if="!searched && history.length" class="sh-block">
       <view class="sh-block__head hist__head">
         <text class="sh-muted">{{ $t("search.history") }}</text>
-        <text class="hist__clear" @tap="clearHistory">{{
+        <text class="txt-caption hist__clear" @tap="clearHistory">{{
           $t("search.clear")
         }}</text>
       </view>
@@ -115,7 +115,7 @@ onLoad((q) => {
         <text
           v-for="h in history"
           :key="h"
-          class="sh-chip hist__item"
+          class="txt-caption sh-chip hist__item"
           @tap="search(h)"
         >
           {{ h }}
@@ -168,7 +168,7 @@ onLoad((q) => {
             :merchant="m"
             @tap="openMerchant(m)"
           ></biz-merchant-bar>
-          <text class="mcard__desc">{{ m.desc }}</text>
+          <text class="txt-caption mcard__desc">{{ m.desc }}</text>
           <view class="mcard__meta">
             <text class="sh-chip">{{ $t(`merchant.type.${m.type}`) }}</text>
             <text class="sh-chip sh-num">
@@ -205,8 +205,6 @@ onLoad((q) => {
   background: var(--sh-surface);
   border-radius: 9999px;
   padding: 24rpx 32rpx;
-  font-size: 28rpx;
-  color: var(--sh-ink);
 }
 .searchbar__btn {
   flex: 0 0 auto;
@@ -214,8 +212,6 @@ onLoad((q) => {
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  font-size: 28rpx;
-  font-weight: 600;
 }
 .block {
   margin-top: 24rpx;
@@ -226,20 +222,18 @@ onLoad((q) => {
   justify-content: space-between;
 }
 .hist__clear {
-  font-size: 24rpx;
   color: var(--sh-primary-text);
 }
 .hist__list {
   display: flex;
   flex-wrap: wrap;
-  gap: 14rpx;
+  gap: 16rpx;
   /* 块本身只管上下留白，横向由内容自己给 */
   padding: 0 26rpx;
   margin-top: 20rpx;
 }
 .hist__item {
   padding: 12rpx 26rpx;
-  font-size: 24rpx;
 }
 /* 商家结果在结果块内成行 —— 行与行之间靠内边距分隔，不再各自一张卡 */
 .mcard {
@@ -247,9 +241,6 @@ onLoad((q) => {
 }
 .mcard__desc {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
   margin-top: 20rpx;
 }
 .mcard__meta {

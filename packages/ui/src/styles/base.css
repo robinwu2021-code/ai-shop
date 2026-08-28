@@ -1023,27 +1023,7 @@ uni-page-wrapper[style*="--window-bottom"] {
   font-weight: 600;
 }
 
-/* ── 字阶的旧名。**只剩 C 端还在用（h1×3 / h2×27），B 端已清零** ──────────────
-   两条与 .txt-display / .txt-title **逐行相同**，不是「相近」是同值。
 
-   一档两个名字的代价不在样式，在清单：标准库表里 .txt-title 长期显示「引用 0」，
-   读起来像一档没人要的字号，而它其实是全项目用得最多的标题档 —— 只是都挂在
-   .sh-h2 名下。**清单说了假话，比清单缺一行更糟。**
-
-   为什么留着而不是一次删干净：C 端这一轮不动。等 C 端那 30 处改完，
-   这两条连同注释一起删掉，字阶就只剩一套名字。 */
-.sh-h1 {
-  font-size: 40rpx;
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--sh-ink);
-}
-.sh-h2 {
-  font-size: 34rpx;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--sh-ink);
-}
 /* 次要文字。**字号走变量**，理由与密度变量同源（见 .sh-card）：
    正文是 page 默认的 28rpx，而次要档若取 26rpx，两者只差 1px ——
    同一张卡里「商品名」与「下单时间」看着一样重，层级只能靠颜色撑。

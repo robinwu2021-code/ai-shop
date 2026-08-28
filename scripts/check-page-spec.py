@@ -19,9 +19,9 @@
 逐页才知道**先改哪一页**。而这份清单的用途正是排期。
 
 用法：
-  python3 scripts/check-page-spec.py            # 全量清单
+  python3 scripts/check-page-spec.py --app b-app   # 单端清单
   python3 scripts/check-page-spec.py --app b-app --top 20
-  python3 scripts/check-page-spec.py --check    # 只看总数与基线（给闸门用）
+  python3 scripts/check-page-spec.py --check       # 两端一起对基线（给闸门用）
 """
 import argparse
 import collections
@@ -46,7 +46,9 @@ NON_TEXT = re.compile(
     # 2026-08-28 补两类：`imgs__i` 是评价配图（emoji 占位，宽高钉死 110rpx），
     # `dimgs__wait` 是上传中的省略号，字号取 40 是**为了跟旁边的 sh-icon 一样大**
     # —— 两者的 font-size 撑的都是图，不是字
-    r"|imgs__|__wait\b)", re.I)
+    # `star` / `fav` 是评分与收藏的 emoji（库里的 sh-rating 只做展示，
+    # 打分要交互，页面自己画是对的）；`\bimg\b` 是 150rpx 的方形图占位
+    r"|imgs__|__wait\b|star|fav\b|\bimg\b)", re.I)
 
 KIND = ["字号自写", "字号越档", "字重自写", "字重越档", "行高自写", "圆角越档", "间距离格", "写死颜色"]
 
@@ -83,9 +85,18 @@ def scan(app: str):
             if v != 2 and v % 4 != 0:
                 c["间距离格"] += 1
                 detail["间距离格"].append(m.group(1))
-        for m in re.finditer(r":\s*(#[0-9a-fA-F]{3,8})\b", css):
-            c["写死颜色"] += 1
-            detail["写死颜色"].append(m.group(1))
+        # 颜色一律走 token，**只有一个语义例外**：`--sh-danger` 是固定的语义红
+        # （不随皮肤变），白字压它的取舍写在 base.css 的 `.sh-btn--danger-solid` 上。
+        # 判「同一条规则里有没有 danger 底」，不靠注释里的魔法标记 ——
+        # 上一版用标记，而扫描前先去了注释，标记自己被吃掉了。
+        for rm in re.finditer(r"\{([^}]*)\}", css):
+            rb = rm.group(1)
+            danger_bg = "var(--sh-danger)" in rb
+            for m in re.finditer(r":\s*(#[0-9a-fA-F]{3,8})\b", rb):
+                if danger_bg and m.group(1).lower() in ("#fff", "#ffffff"):
+                    continue
+                c["写死颜色"] += 1
+                detail["写死颜色"].append(m.group(1))
         c["行高自写"] = len(re.findall(r"line-height:", css))
         rows.append({"app": app, "page": f.parent.name, "file": str(f.relative_to(ROOT)),
                      "counts": c, "detail": {k: collections.Counter(v).most_common(4) for k, v in detail.items()},
@@ -95,11 +106,11 @@ def scan(app: str):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--app", default="b-app")
+    ap.add_argument("--app", default="both")
     ap.add_argument("--top", type=int, default=0)
     ap.add_argument("--check", action="store_true")
     a = ap.parse_args()
-    rows = scan(a.app)
+    rows = scan("b-app") + scan("c-app") if a.app == "both" else scan(a.app)
     tot = collections.Counter()
     for r in rows:
         tot.update(r["counts"])

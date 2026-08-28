@@ -55,12 +55,12 @@ onShow(load);
 
     <view v-for="m in list" :key="m.entityNo" class="sh-card card">
       <view class="card__main">
-        <text class="card__name">{{ m.entityName }}</text>
-        <text class="sh-muted card__d">
+        <text class="txt-strong card__name">{{ m.entityName }}</text>
+        <text class="txt-caption sh-muted card__d">
           {{ $t("myMembership.stat", { n: m.orderCount, m: money(m.totalSpentMinor) }) }}
           · {{ $t("myMembership.since", { d: isoDate(m.joinedAt) }) }}
         </text>
-        <text class="sh-muted card__d">
+        <text class="txt-caption sh-muted card__d">
           {{ m.reachOptOut ? $t("myMembership.off") : $t("myMembership.on") }}
         </text>
       </view>
@@ -93,13 +93,10 @@ onShow(load);
 }
 .card__name {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
 }
 .card__d {
   display: block;
-  margin-top: 6rpx;
-  font-size: 24rpx;
+  margin-top: 8rpx;
 }
 
 </style>

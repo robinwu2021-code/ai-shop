@@ -263,17 +263,17 @@ onShareAppMessage(() =>
       <sh-cover class="hero__emoji" :src="goods.cover"></sh-cover>
     </view>
     <view v-if="off" class="hero__wrap">
-      <text class="hero__off sh-num">-{{ off }}%</text>
+      <text class="txt-caption hero__off sh-num">-{{ off }}%</text>
     </view>
 
     <!-- 标题与价格 -->
     <view class="sh-card block">
-      <text class="sh-h1 title">{{ goods.title }}</text>
+      <text class="txt-display title">{{ goods.title }}</text>
       <text class="sh-muted sub">{{ goods.subtitle }}</text>
 
       <view class="price">
-        <text class="price__now sh-num">{{ money(sku?.price ?? goods.price) }}</text>
-        <text v-if="sku?.originPrice" class="price__was sh-num">
+        <text class="txt-hero sh-num">{{ money(sku?.price ?? goods.price) }}</text>
+        <text v-if="sku?.originPrice" class="txt-sub price__was sh-num">
           {{ money(sku.originPrice) }}
         </text>
       </view>
@@ -327,14 +327,14 @@ onShareAppMessage(() =>
             }"
             @tap="choose(gi, opt)"
           >
-            <text class="spec__name">{{ opt }}</text>
+            <text class="txt-bold">{{ opt }}</text>
           </view>
         </view>
       </view>
 
       <!-- 买赠：当前数量能拿几件赠品，实时算给用户看 -->
       <view v-if="promo" class="giftline">
-        <text class="giftline__text">
+        <text class="txt-caption giftline__text">
           {{ giftQty > 0
             ? $t("promo.willGift", { n: giftQty })
             : $t("promo.needMore", { n: promo.buyN - (qty % promo.buyN) }) }}
@@ -344,9 +344,9 @@ onShareAppMessage(() =>
       <view class="qty">
         <text class="sh-muted sh-num">{{ $t("goods.stock", { n: sku?.stock ?? 0 }) }}</text>
         <view class="stepper">
-          <view class="stepper__btn" @tap="stepQty(-1)"><text>−</text></view>
-          <text class="stepper__num sh-num">{{ qty }}</text>
-          <view class="stepper__btn" @tap="stepQty(1)"><text>＋</text></view>
+          <view class="txt-body stepper__btn" @tap="stepQty(-1)"><text>−</text></view>
+          <text class="txt-strong stepper__num sh-num">{{ qty }}</text>
+          <view class="txt-body stepper__btn" @tap="stepQty(1)"><text>＋</text></view>
         </view>
       </view>
     </view>
@@ -362,7 +362,7 @@ onShareAppMessage(() =>
           :class="{ 'sh-seg--on': slotDate === s.date }"
           @tap="((slotDate = s.date), (slotTime = ''))"
         >
-          <text class="date__text sh-num">{{ s.date.slice(5) }}</text>
+          <text class="txt-bold sh-num">{{ s.date.slice(5) }}</text>
         </view>
       </scroll-view>
 
@@ -375,13 +375,13 @@ onShareAppMessage(() =>
           :class="{ 'sh-seg--on': slotTime === tm.time, 'sh-seg--off': tm.left <= 0 }"
           @tap="tm.left > 0 && (slotTime = tm.time)"
         >
-          <text class="time__t sh-num">{{ tm.time }}</text>
-          <text class="time__left">{{ $t("goods.slotLeft", { n: tm.left }) }}</text>
+          <text class="txt-bold time__t sh-num">{{ tm.time }}</text>
+          <text class="txt-caption time__left">{{ $t("goods.slotLeft", { n: tm.left }) }}</text>
         </view>
       </view>
 
       <view class="notice notice--info">
-        <text class="notice__text">
+        <text class="txt-caption notice__text">
           {{ $t("goods.changeRule", { n: TRADE_RULES.appointmentChangeBeforeHours }) }}
         </text>
       </view>
@@ -390,14 +390,14 @@ onShareAppMessage(() =>
     <!-- 事实区 -->
     <view class="sh-card block">
       <view class="fact">
-        <text class="fact__label">{{ $t("goods.fulfillment") }}</text>
-        <text class="fact__value">
+        <text class="txt-sub fact__label">{{ $t("goods.fulfillment") }}</text>
+        <text class="txt-sub fact__value">
           {{ goods.fulfillments.map((x) => $t(`fulfillment.${x}`)).join(" · ") }}
         </text>
       </view>
       <view v-if="isFresh && goods.arrivalDesc" class="fact">
-        <text class="fact__label">{{ $t("goods.arrival") }}</text>
-        <text class="fact__value">{{ goods.arrivalDesc }}</text>
+        <text class="txt-sub fact__label">{{ $t("goods.arrival") }}</text>
+        <text class="txt-sub fact__value">{{ goods.arrivalDesc }}</text>
       </view>
       <!--
         **商品参数**（产地 / 保质期 / 材质…）。商家在建品页填的就是这些。
@@ -407,8 +407,8 @@ onShareAppMessage(() =>
         到货时间是同一类信息（「这货是什么样的」），分成两块只是把一件事拆散。
       -->
       <view v-for="p in goods.params ?? []" :key="p.dimNo" class="fact">
-        <text class="fact__label">{{ p.name || p.dimNo }}</text>
-        <text class="fact__value">{{ p.label }}</text>
+        <text class="txt-sub fact__label">{{ p.name || p.dimNo }}</text>
+        <text class="txt-sub fact__value">{{ p.label }}</text>
       </view>
       <!--
         旧的 `origin` 列：**参数里已经有产地就不再重复显示**。
@@ -417,31 +417,31 @@ onShareAppMessage(() =>
         存量商品（只有老列、没有参数）仍旧照常显示。
       -->
       <view v-if="isFresh && goods.origin && !hasOriginParam" class="fact">
-        <text class="fact__label">{{ $t("goods.origin") }}</text>
-        <text class="fact__value">{{ goods.origin }}</text>
+        <text class="txt-sub fact__label">{{ $t("goods.origin") }}</text>
+        <text class="txt-sub fact__value">{{ goods.origin }}</text>
       </view>
       <view v-if="isService && goods.storeName" class="fact">
-        <text class="fact__label">{{ $t("goods.store") }}</text>
-        <text class="fact__value">{{ goods.storeName }}</text>
+        <text class="txt-sub fact__label">{{ $t("goods.store") }}</text>
+        <text class="txt-sub fact__value">{{ goods.storeName }}</text>
       </view>
       <view v-if="isCard && goods.card" class="fact">
-        <text class="fact__label">{{ $t("goods.validity") }}</text>
-        <text class="fact__value sh-num">
+        <text class="txt-sub fact__label">{{ $t("goods.validity") }}</text>
+        <text class="txt-sub fact__value sh-num">
           {{ $t("goods.validDays", { n: goods.card.validDays }) }}
         </text>
       </view>
       <view class="fact">
-        <text class="fact__label">{{ $t("goods.limitLabel") }}</text>
-        <text class="fact__value">
+        <text class="txt-sub fact__label">{{ $t("goods.limitLabel") }}</text>
+        <text class="txt-sub fact__value">
           {{ goods.limitPerUser ? $t("goods.limit", { n: goods.limitPerUser }) : $t("goods.noLimit") }}
         </text>
       </view>
 
       <view v-if="goods.weighed" class="notice">
-        <text class="notice__text">{{ $t("goods.weighed") }}</text>
+        <text class="txt-caption notice__text">{{ $t("goods.weighed") }}</text>
       </view>
       <view v-if="isVirtual && goods.virtual" class="notice notice--info">
-        <text class="notice__text">{{ goods.virtual.deliverDesc }}</text>
+        <text class="txt-caption notice__text">{{ goods.virtual.deliverDesc }}</text>
       </view>
     </view>
 
@@ -455,8 +455,8 @@ onShareAppMessage(() =>
       两样都没有时整段不渲染，不拿一个空白区块占着详情页。
     -->
     <view v-if="goods.detail || goods.detailImages?.length" class="sh-card block">
-      <text class="sh-h2 dt__h">{{ $t("goods.detailTitle") }}</text>
-      <text v-if="goods.detail" class="dt__text">{{ goods.detail }}</text>
+      <text class="txt-title dt__h">{{ $t("goods.detailTitle") }}</text>
+      <text v-if="goods.detail" class="txt-body dt__text">{{ goods.detail }}</text>
       <!-- 长图按顺序全宽竖排。mode="widthFix" 是关键：不给的话
            1:3 的长图会被压进默认的 320×240 里 -->
       <image
@@ -471,7 +471,7 @@ onShareAppMessage(() =>
     <!-- 评价 -->
     <view class="sh-card block">
       <view class="rvhead">
-        <text class="sh-h2">{{ $t("review.title", { n: reviews.length }) }}</text>
+        <text class="txt-title">{{ $t("review.title", { n: reviews.length }) }}</text>
       </view>
       <biz-review
         v-for="r in reviews"
@@ -479,7 +479,7 @@ onShareAppMessage(() =>
         :review="r"
         @like="likeReview(r)"
       ></biz-review>
-      <text v-if="!reviews.length" class="rvempty">{{ $t("review.empty") }}</text>
+      <text v-if="!reviews.length" class="txt-caption rvempty">{{ $t("review.empty") }}</text>
     </view>
 
     <!-- 底部操作条。详情页不是 tab 页，没有底部菜单，
@@ -507,7 +507,7 @@ onShareAppMessage(() =>
         {{ soldOut ? $t("goods.soldOut") : $t("goods.addCart") }}
       </view>
       <view
-        class="sh-btn actionbar__buy sh-fill"
+        class="txt-sub sh-btn actionbar__buy sh-fill"
         :class="{ 'is-disabled': !buyable }"
         @tap="buyable && buyNow()"
       >
@@ -552,9 +552,8 @@ onShareAppMessage(() =>
   top: -412rpx;
   inset-inline-start: 28rpx;
   background: var(--sh-danger);
+  /* 危险色是固定的语义红（不随皮肤变），白字压它的取舍见 base.css 的 .sh-btn--danger-solid */
   color: #fff;
-  font-size: 24rpx;
-  font-weight: 400;
   padding: 8rpx 20rpx;
   border-radius: 9999px;
 }
@@ -566,7 +565,7 @@ onShareAppMessage(() =>
 }
 .sub {
   display: block;
-  margin-top: 10rpx;
+  margin-top: 8rpx;
 }
 .price {
   display: flex;
@@ -574,14 +573,8 @@ onShareAppMessage(() =>
   gap: 16rpx;
   margin-top: 28rpx;
 }
-.price__now {
-  font-size: 48rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
-}
+
 .price__was {
-  font-size: 26rpx;
-  color: var(--sh-sub);
   text-decoration: line-through;
 }
 .chips {
@@ -601,9 +594,6 @@ onShareAppMessage(() =>
 }
 /* 底色 / 圆角 / 选中实底都归 .sh-seg —— 那条「为什么不用 tint」的理由
    已经搬进 base.css，它不该只留在这一个页面里 */
-.spec__name {
-  font-weight: 600;
-}
 .giftline {
   margin-top: 28rpx;
   background: var(--sh-danger-tint);
@@ -611,9 +601,7 @@ onShareAppMessage(() =>
   padding: 20rpx 26rpx;
 }
 .giftline__text {
-  font-size: 24rpx;
   color: var(--sh-danger);
-  line-height: 1.5;
 }
 .qty {
   display: flex;
@@ -627,7 +615,7 @@ onShareAppMessage(() =>
   gap: 8rpx;
   background: var(--sh-faint);
   border-radius: 9999px;
-  padding: 6rpx;
+  padding: 8rpx;
 }
 .stepper__btn {
   width: 56rpx;
@@ -637,15 +625,10 @@ onShareAppMessage(() =>
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--sh-ink);
-  font-size: 30rpx;
 }
 .stepper__num {
   min-width: 56rpx;
   text-align: center;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .dates {
   white-space: nowrap;
@@ -655,9 +638,6 @@ onShareAppMessage(() =>
 .date {
   display: inline-block;
   margin-inline-end: 12rpx;
-}
-.date__text {
-  font-weight: 600;
 }
 .times-label {
   display: block;
@@ -674,7 +654,6 @@ onShareAppMessage(() =>
 }
 .time__t {
   display: block;
-  font-weight: 600;
 }
 /*
  * 「剩 3 位」是**次要档**，平时要比时刻淡一档 —— 所以它自己声明了 color，
@@ -683,8 +662,6 @@ onShareAppMessage(() =>
  */
 .time__left {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 2rpx;
 }
 .sh-seg--on .time__left {
@@ -698,12 +675,9 @@ onShareAppMessage(() =>
   padding: 18rpx 0;
 }
 .fact__label {
-  font-size: 26rpx;
-  color: var(--sh-sub);
   flex-shrink: 0;
 }
 .fact__value {
-  font-size: 26rpx;
   color: var(--sh-ink);
   text-align: end;
 }
@@ -717,9 +691,7 @@ onShareAppMessage(() =>
   background: var(--sh-primary-tint);
 }
 .notice__text {
-  font-size: 24rpx;
   color: var(--sh-warning);
-  line-height: 1.5;
 }
 .notice--info .notice__text {
   color: var(--sh-primary-text);
@@ -750,7 +722,6 @@ onShareAppMessage(() =>
 }
 .actionbar__add,
 .actionbar__buy {
-  font-size: 26rpx;
   padding: 26rpx 8rpx;
   white-space: nowrap;
   overflow: hidden;
@@ -766,8 +737,6 @@ onShareAppMessage(() =>
 .rvempty {
   display: block;
   text-align: center;
-  color: var(--sh-sub);
-  font-size: 24rpx;
   padding: 40rpx 0;
 }
 /* 图文详情：正文与长图 */
@@ -777,9 +746,6 @@ onShareAppMessage(() =>
 }
 .dt__text {
   display: block;
-  font-size: 28rpx;
-  line-height: 1.7;
-  color: var(--sh-ink);
   white-space: pre-wrap;
 }
 .dt__img {

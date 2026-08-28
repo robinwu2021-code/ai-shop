@@ -72,7 +72,7 @@ onShow(load);
 <template>
   <sh-scaffold title-key="tab.category" tab="category">
     <view class="searchentry" @tap="gotoSearch">
-      <text class="searchentry__text">{{ $t("search.placeholder") }}</text>
+      <text class="txt-sub">{{ $t("search.placeholder") }}</text>
     </view>
 
     <view class="sh-block">
@@ -115,8 +115,5 @@ onShow(load);
   padding: 24rpx 32rpx;
   margin-bottom: 24rpx;
 }
-.searchentry__text {
-  font-size: 26rpx;
-  color: var(--sh-sub);
-}
+
 </style>

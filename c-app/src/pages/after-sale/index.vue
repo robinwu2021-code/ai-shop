@@ -104,10 +104,10 @@ onLoad((q) => {
     <template v-if="submitted">
       <view class="sh-card done">
         <text class="done__icon">✓</text>
-        <text class="done__title">
+        <text class="txt-title done__title">
           {{ order.status === "REFUNDED" ? $t("afterSale.refunded") : $t("afterSale.applied") }}
         </text>
-        <text class="done__hint">
+        <text class="txt-caption done__hint">
           {{ order.status === "REFUNDED" ? $t("afterSale.refundedHint") : $t("afterSale.appliedHint") }}
         </text>
       </view>
@@ -115,7 +115,7 @@ onLoad((q) => {
       <view class="sh-card block">
         <view v-for="(n, i) in order.timeline.slice(-3)" :key="i" class="node">
           <view class="node__dot" :class="{ 'is-last': i === order.timeline.slice(-3).length - 1 }" />
-          <text class="node__label">{{ n.label }}</text>
+          <text class="txt-caption node__label">{{ n.label }}</text>
         </view>
       </view>
 
@@ -133,13 +133,13 @@ onLoad((q) => {
           :spec="it.spec"
         >
           <template #right>
-            <text class="row__price sh-num">{{ money(it.price) }}</text>
+            <text class="txt-strong row__price sh-num">{{ money(it.price) }}</text>
           </template>
         </biz-sku-row>
       </view>
 
       <view class="sh-card block">
-        <text class="sh-h2">{{ $t("afterSale.pickType") }}</text>
+        <text class="txt-title">{{ $t("afterSale.pickType") }}</text>
         <view class="types">
           <sh-option
             v-for="tp in TYPES"
@@ -148,14 +148,14 @@ onLoad((q) => {
             :selected="type === tp"
             @tap="type = tp"
           >
-            <text class="type__t">{{ typeText(tp) }}</text>
-            <text class="type__d">{{ typeText(tp, "Desc") }}</text>
+            <text class="txt-strong type__t">{{ typeText(tp) }}</text>
+            <text class="txt-caption type__d">{{ typeText(tp, "Desc") }}</text>
           </sh-option>
         </view>
       </view>
 
       <view class="sh-card block">
-        <text class="sh-h2">{{ $t("afterSale.pickReason") }}</text>
+        <text class="txt-title">{{ $t("afterSale.pickReason") }}</text>
         <view class="reasons">
           <view
             v-for="r in REASONS"
@@ -170,10 +170,10 @@ onLoad((q) => {
       </view>
 
       <view class="sh-card block">
-        <text class="sh-h2">{{ $t("afterSale.detail") }}</text>
+        <text class="txt-title">{{ $t("afterSale.detail") }}</text>
         <textarea
           v-model="detail"
-          class="ta"
+          class="txt-sub ta"
           :placeholder="$t('afterSale.detailPh')"
           maxlength="200"
         />
@@ -183,7 +183,7 @@ onLoad((q) => {
       </view>
 
       <view v-if="instantRefund" class="sh-card block notice">
-        <text class="notice__text">{{ $t("afterSale.instant") }}</text>
+        <text class="txt-caption notice__text">{{ $t("afterSale.instant") }}</text>
       </view>
 
       <sh-actionbar :pad="180">
@@ -200,9 +200,6 @@ onLoad((q) => {
   margin-top: 20rpx;
 }
 .row__price {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
   flex-shrink: 0;
 }
 .types {
@@ -216,15 +213,9 @@ onLoad((q) => {
 }
 .type__t {
   display: block;
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .type__d {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.5;
   margin-top: 8rpx;
 }
 .reasons {
@@ -240,7 +231,6 @@ onLoad((q) => {
   background: var(--sh-faint);
   border-radius: 24rpx;
   padding: 24rpx;
-  font-size: 26rpx;
   color: var(--sh-ink);
   margin-top: 20rpx;
 }
@@ -259,9 +249,7 @@ onLoad((q) => {
   background: var(--sh-primary-tint);
 }
 .notice__text {
-  font-size: 24rpx;
   color: var(--sh-primary-text);
-  line-height: 1.6;
 }
 .done {
   text-align: center;
@@ -282,17 +270,11 @@ onLoad((q) => {
 }
 .done__title {
   display: block;
-  font-size: 34rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
   margin-top: 24rpx;
 }
 .done__hint {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
-  margin-top: 14rpx;
+  margin-top: 16rpx;
 }
 .node {
   display: flex;
@@ -311,7 +293,6 @@ onLoad((q) => {
   background: var(--sh-primary);
 }
 .node__label {
-  font-size: 24rpx;
   color: var(--sh-ink);
 }
 </style>

@@ -149,9 +149,9 @@ fi
 if python3 "$GATE_WT/scripts/gen-ui-lib.py" >/dev/null 2>&1; then
   # 逐页体检：页面有没有照三份规范写（字阶 / 圆角与间距 / 颜色）。
   # 与上面那道「有件不用」是两件事：这道管的是「自己写了一行 font-size」。
-  if ! python3 "$GATE_WT/scripts/check-page-spec.py" --app b-app --check >/dev/null 2>&1; then
+  if ! python3 "$GATE_WT/scripts/check-page-spec.py" --check >/dev/null 2>&1; then
     echo "✗ 有页面没照规范写（字阶 / 圆角与间距 / 颜色）。看是哪一页："
-    echo "    python3 scripts/check-page-spec.py --app b-app --check"
+    echo "    python3 scripts/check-page-spec.py --check"
     echo "  清单：known-page-spec-debt.txt（只准变短）"
     exit 1
   fi

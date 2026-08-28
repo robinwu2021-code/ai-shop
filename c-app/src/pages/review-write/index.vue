@@ -110,13 +110,13 @@ onLoad((q) => {
         >
           ★
         </text>
-        <text class="stars__label">{{ $t(`review.star${rating}`) }}</text>
+        <text class="txt-caption stars__label">{{ $t(`review.star${rating}`) }}</text>
       </view>
 
       <!-- 三维度：不强制，动了才算细评。只看总分的商家永远不知道
            「东西没问题，是送得太慢」——而那正是他能改的部分 -->
       <view v-for="d in DIMS" :key="d.key" class="dim">
-        <text class="dim__label">{{ $t(d.labelKey) }}</text>
+        <text class="txt-sub">{{ $t(d.labelKey) }}</text>
         <view class="dim__stars">
           <text
             v-for="i in 5"
@@ -134,11 +134,11 @@ onLoad((q) => {
     <view class="sh-card block">
       <textarea
         v-model="content"
-        class="ta"
+        class="txt-sub ta"
         :placeholder="$t('review.contentPh')"
         maxlength="300"
       />
-      <text class="counter sh-num">{{ content.length }}/300</text>
+      <text class="txt-caption counter sh-num">{{ content.length }}/300</text>
 
       <text class="sh-muted imglabel">{{ $t("review.images") }}</text>
       <sh-uploader class="imgs" :list="images" :max="3" :w="160" @add="pickImages"></sh-uploader>
@@ -164,12 +164,9 @@ onLoad((q) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 18rpx;
+  margin-top: 16rpx;
 }
-.dim__label {
-  font-size: 26rpx;
-  color: var(--sh-sub);
-}
+
 .dim__stars {
   display: flex;
   gap: 8rpx;
@@ -194,8 +191,6 @@ onLoad((q) => {
   color: var(--sh-warning);
 }
 .stars__label {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-inline-start: 12rpx;
 }
 .block {
@@ -208,15 +203,12 @@ onLoad((q) => {
   background: var(--sh-faint);
   border-radius: 24rpx;
   padding: 24rpx;
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
 .counter {
   display: block;
   text-align: end;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 10rpx;
+  margin-top: 8rpx;
 }
 .imglabel {
   display: block;

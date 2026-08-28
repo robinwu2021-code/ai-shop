@@ -481,13 +481,13 @@ onMounted(async () => {
       放在页首而不是靠近提交按钮：买家的注意力在这一页从上往下走，
       放在底部他会先看完金额再看到「其实付不了」。
     -->
-    <view v-if="noPayMethod" class="cap cap--block">
+    <view v-if="noPayMethod" class="txt-sub cap cap--block">
       <text>{{ $t("confirm.capNoPayMethod") }}</text>
     </view>
-    <view v-if="quotaBlocked.length" class="cap cap--block">
+    <view v-if="quotaBlocked.length" class="txt-sub cap cap--block">
       <text>{{ $t("confirm.capQuotaBlocked", { names: quotaBlocked.map((m) => m.merchantName).join("、") }) }}</text>
     </view>
-    <view v-if="noInvoiceMerchants.length" class="cap cap--warn">
+    <view v-if="noInvoiceMerchants.length" class="txt-sub cap cap--warn">
       <text>{{ $t("confirm.capNoInvoice", { names: noInvoiceMerchants.map((m) => m.merchantName).join("、") }) }}</text>
     </view>
 
@@ -497,32 +497,32 @@ onMounted(async () => {
 
       <!-- 自提 -->
       <view v-if="needPickup" class="recv">
-        <text class="recv__title">{{ community.pickup?.name }}</text>
-        <text class="recv__sub">
+        <text class="txt-strong">{{ community.pickup?.name }}</text>
+        <text class="txt-caption recv__sub">
           {{ community.hostName }} · {{ community.pickup?.arrivalDesc }}
         </text>
-        <text class="recv__sub">{{ community.pickup?.address }}</text>
+        <text class="txt-caption recv__sub">{{ community.pickup?.address }}</text>
       </view>
 
       <!-- 送货上门 / 快递 -->
       <view v-else-if="needAddress" class="recv" @tap="gotoAddress">
         <template v-if="address">
           <view class="recv__row">
-            <text class="recv__title">{{ address.name }}</text>
-            <text class="recv__phone sh-num">{{ address.phone }}</text>
-            <text class="recv__more">{{ $t("confirm.change") }}</text>
+            <text class="txt-strong">{{ address.name }}</text>
+            <text class="txt-caption sh-num">{{ address.phone }}</text>
+            <text class="txt-caption recv__more">{{ $t("confirm.change") }}</text>
           </view>
-          <text class="recv__sub">{{ address.region }} {{ address.detail }}</text>
+          <text class="txt-caption recv__sub">{{ address.region }} {{ address.detail }}</text>
         </template>
         <view v-else class="recv__empty">
-          <text class="recv__empty-text">{{ $t("confirm.pickAddress") }}</text>
-          <text class="recv__more">{{ $t("confirm.add") }}</text>
+          <text class="txt-body recv__empty-text">{{ $t("confirm.pickAddress") }}</text>
+          <text class="txt-caption recv__more">{{ $t("confirm.add") }}</text>
         </view>
       </view>
 
       <!-- 到店核销 / 即时发放 -->
       <view v-else class="recv">
-        <text class="recv__title">{{ $t(`fulfillmentDesc.${fulfillment}`) }}</text>
+        <text class="txt-strong">{{ $t(`fulfillmentDesc.${fulfillment}`) }}</text>
       </view>
     </view>
 
@@ -532,13 +532,13 @@ onMounted(async () => {
     -->
     <view v-if="needAppointment" class="sh-card block recv" @tap="pickSlot">
       <view class="recv__row">
-        <text class="recv__title">{{ $t("confirm.appointmentSlot") }}</text>
-        <text class="recv__more">{{ appointmentAt ? $t("confirm.change") : $t("confirm.pick") }}</text>
+        <text class="txt-strong">{{ $t("confirm.appointmentSlot") }}</text>
+        <text class="txt-caption recv__more">{{ appointmentAt ? $t("confirm.change") : $t("confirm.pick") }}</text>
       </view>
-      <text v-if="appointmentAt" class="recv__sub sh-num">
+      <text v-if="appointmentAt" class="txt-caption recv__sub sh-num">
         {{ $t("confirm.appointmentAt", { t: datetime(appointmentAt) }) }}
       </text>
-      <text v-else class="recv__empty-text">{{ $t("confirm.pickSlotHint") }}</text>
+      <text v-else class="txt-body recv__empty-text">{{ $t("confirm.pickSlotHint") }}</text>
     </view>
 
     <!-- 商品 -->
@@ -549,7 +549,7 @@ onMounted(async () => {
       -->
       <template v-for="m in merchantSegments" :key="m.merchantNo">
         <view v-if="merchantSegments.length > 1" class="seg">
-          <text class="seg__name">{{ m.merchantName || $t("cart.unknownMerchant") }}</text>
+          <text class="txt-strong">{{ m.merchantName || $t("cart.unknownMerchant") }}</text>
         </view>
 
         <biz-sku-row
@@ -561,20 +561,20 @@ onMounted(async () => {
           size="lg"
         >
           <view class="row__foot">
-            <text class="row__price sh-num">{{ money(it.price) }}</text>
-            <text class="row__qty sh-num">×{{ it.qty }}</text>
+            <text class="txt-price sh-num">{{ money(it.price) }}</text>
+            <text class="txt-caption sh-num">×{{ it.qty }}</text>
           </view>
         </biz-sku-row>
       </template>
 
-      <text v-if="merchantSegments.length > 1" class="splitnote">
+      <text v-if="merchantSegments.length > 1" class="txt-caption splitnote">
         {{ $t("confirm.splitNote", { n: merchantSegments.length }) }}
       </text>
 
       <!-- 赠品：单独列出来，让用户在付款前就看见 -->
       <view v-for="g in gifts" :key="`gift-${g.skuNo}`" class="giftrow">
-        <text class="giftrow__tag">{{ $t("promo.gift") }}</text>
-        <text class="giftrow__text sh-num">
+        <text class="txt-caption giftrow__tag">{{ $t("promo.gift") }}</text>
+        <text class="txt-caption giftrow__text sh-num">
           {{ $t("promo.giftItem", { title: g.title, n: g.giftQty }) }}
         </text>
       </view>
@@ -594,8 +594,8 @@ onMounted(async () => {
           :class="{ 'is-on': payMode === m }"
           @tap="payMode = m"
         >
-          <text class="mode__t">{{ $t(`payMode.${m}`) }}</text>
-          <text class="mode__d">{{ $t(`payModeDesc.${m}`) }}</text>
+          <text class="txt-body mode__t">{{ $t(`payMode.${m}`) }}</text>
+          <text class="txt-caption mode__d">{{ $t(`payModeDesc.${m}`) }}</text>
         </view>
       </view>
       <!--
@@ -603,7 +603,7 @@ onMounted(async () => {
           · 平台不代收 —— 出纠纷时双方对这一点没有分歧
           · 平台券用不了 —— 而且要说**为什么**，否则看着像故障
       -->
-      <text v-if="payMode === PAY_MODE.OFFLINE" class="mode__note">
+      <text v-if="payMode === PAY_MODE.OFFLINE" class="txt-caption mode__note">
         {{ $t("confirm.offlineNoPlatformCoupon") }}
       </text>
     </view>
@@ -611,8 +611,8 @@ onMounted(async () => {
     <!-- 券 + 备注 -->
     <view class="sh-card block">
       <view class="cell" @tap="pickCoupon">
-        <text class="cell__k">{{ $t("confirm.coupon") }}</text>
-        <text class="cell__v" :class="{ 'is-on': !!coupon }">
+        <text class="txt-sub cell__k">{{ $t("confirm.coupon") }}</text>
+        <text class="txt-bold txt-caption cell__v" :class="{ 'is-on': !!coupon }">
           {{ coupon
             ? `${coupon.title} -${money(couponDiscount(coupon, goodsMinor))}`
             : usableCoupons.length
@@ -626,17 +626,17 @@ onMounted(async () => {
         class="cell"
         @tap="pointsBlockedReason ? undefined : (usePoints = !usePoints)"
       >
-        <text class="cell__k">{{ $t("confirm.points") }}</text>
+        <text class="txt-sub cell__k">{{ $t("confirm.points") }}</text>
         <view class="pointsline">
           <!--
             ⚠️ **不可用时也要显示余额，并说明原因** —— 不能静默把入口藏起来。
             用户知道自己有 500 分，界面上却没有抵扣入口，他会当成 bug 来投诉，
             而客服看不出是哪一条策略关掉的。
           -->
-          <text v-if="pointsBlockedReason" class="cell__v">
+          <text v-if="pointsBlockedReason" class="txt-bold txt-caption cell__v">
             {{ $t("confirm.pointsHave", { n: pointBalance }) }}　{{ pointsBlockedReason }}
           </text>
-          <text v-else class="cell__v" :class="{ 'is-on': usePoints && !!amount?.pointsUsed }">
+          <text v-else class="txt-bold txt-caption cell__v" :class="{ 'is-on': usePoints && !!amount?.pointsUsed }">
             {{ usePoints && amount?.pointsUsed
               ? $t("confirm.pointsUsed", { n: amount.pointsUsed, p: money(amount.pointsDeductMinor) })
               : $t("confirm.pointsHave", { n: pointBalance }) }}
@@ -646,44 +646,44 @@ onMounted(async () => {
       </view>
 
       <view class="cell">
-        <text class="cell__k">{{ $t("confirm.remark") }}</text>
-        <input maxlength="255" v-model="remark" class="cell__input" :placeholder="$t('confirm.remarkPh')" />
+        <text class="txt-sub cell__k">{{ $t("confirm.remark") }}</text>
+        <input maxlength="255" v-model="remark" class="txt-caption cell__input" :placeholder="$t('confirm.remarkPh')" />
       </view>
     </view>
 
     <!-- 金额明细 -->
     <view v-if="amount" class="sh-card block">
       <view class="amt">
-        <text class="amt__k">{{ $t("confirm.goods") }}</text>
-        <text class="amt__v sh-num">{{ money(amount.goodsMinor) }}</text>
+        <text class="txt-caption">{{ $t("confirm.goods") }}</text>
+        <text class="txt-caption amt__v sh-num">{{ money(amount.goodsMinor) }}</text>
       </view>
       <view class="amt">
-        <text class="amt__k">{{ $t("confirm.freight") }}</text>
-        <text class="amt__v sh-num">
+        <text class="txt-caption">{{ $t("confirm.freight") }}</text>
+        <text class="txt-caption amt__v sh-num">
           {{ amount.freightMinor ? money(amount.freightMinor) : $t("confirm.free") }}
         </text>
       </view>
       <view v-if="amount.discountMinor" class="amt">
-        <text class="amt__k">{{ $t("confirm.discount") }}</text>
-        <text class="amt__v amt__v--off sh-num">-{{ money(amount.discountMinor) }}</text>
+        <text class="txt-caption">{{ $t("confirm.discount") }}</text>
+        <text class="txt-caption amt__v amt__v--off sh-num">-{{ money(amount.discountMinor) }}</text>
       </view>
       <view v-if="amount.pointsDeductMinor" class="amt">
-        <text class="amt__k sh-num">{{ $t("confirm.pointsDeduct", { n: amount.pointsUsed }) }}</text>
-        <text class="amt__v amt__v--off sh-num">-{{ money(amount.pointsDeductMinor) }}</text>
+        <text class="txt-caption sh-num">{{ $t("confirm.pointsDeduct", { n: amount.pointsUsed }) }}</text>
+        <text class="txt-caption amt__v amt__v--off sh-num">-{{ money(amount.pointsDeductMinor) }}</text>
       </view>
       <view v-if="amount.pointsEarn" class="amt">
-        <text class="amt__k">{{ $t("confirm.pointsEarn") }}</text>
-        <text class="amt__v amt__v--earn sh-num">+{{ amount.pointsEarn }}</text>
+        <text class="txt-caption">{{ $t("confirm.pointsEarn") }}</text>
+        <text class="txt-caption amt__v amt__v--earn sh-num">+{{ amount.pointsEarn }}</text>
       </view>
     </view>
 
     <sh-actionbar pill="lead" :pad="200">
       <view class="sh-fill">
         <text class="sh-muted">{{ $t("confirm.payable") }}</text>
-        <text class="actionbar__total sh-num">{{ money(amount?.payableMinor ?? 0) }}</text>
+        <text class="txt-price actionbar__total sh-num">{{ money(amount?.payableMinor ?? 0) }}</text>
       </view>
       <view
-        class="sh-btn actionbar__btn"
+        class="txt-body sh-btn actionbar__btn"
         :class="{ 'is-disabled': !canSubmit }"
         @tap="submit"
       >
@@ -729,22 +729,14 @@ onMounted(async () => {
 }
 .mode__t {
   display: block;
-  font-size: 28rpx;
-  color: var(--sh-ink);
 }
 .mode__d {
   display: block;
-  margin-top: 6rpx;
-  font-size: 24rpx;
-  line-height: 1.4;
-  color: var(--sh-sub);
+  margin-top: 8rpx;
 }
 .mode__note {
   display: block;
   margin-top: 16rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
-  color: var(--sh-sub);
 }
 .recv {
   margin-top: 24rpx;
@@ -754,26 +746,14 @@ onMounted(async () => {
   align-items: baseline;
   gap: 16rpx;
 }
-.recv__title {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
-.recv__phone {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
+
 .recv__more {
   margin-inline-start: auto;
-  font-size: 24rpx;
   color: var(--sh-primary-text);
 }
 .recv__sub {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 10rpx;
-  line-height: 1.5;
+  margin-top: 8rpx;
 }
 .recv__empty {
   display: flex;
@@ -782,7 +762,6 @@ onMounted(async () => {
 }
 .recv__empty-text {
   flex: 1;
-  font-size: 28rpx;
   color: var(--sh-sub);
 }
 .seg {
@@ -790,17 +769,10 @@ onMounted(async () => {
   align-items: center;
   margin: 24rpx 0 8rpx;
 }
-.seg__name {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
+
 .splitnote {
   display: block;
   margin-top: 16rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.5;
 }
 .block {
   margin-top: 20rpx;
@@ -809,17 +781,9 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 18rpx;
+  margin-top: 16rpx;
 }
-.row__price {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
-}
-.row__qty {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
+
 .giftrow {
   display: flex;
   align-items: center;
@@ -830,13 +794,10 @@ onMounted(async () => {
   padding: 12rpx 18rpx;
 }
 .giftrow__tag {
-  font-size: 24rpx;
-  font-weight: 400;
   color: var(--sh-danger);
   flex-shrink: 0;
 }
 .giftrow__text {
-  font-size: 24rpx;
   color: var(--sh-danger);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -850,22 +811,17 @@ onMounted(async () => {
   padding: 20rpx 0;
 }
 .cell__k {
-  font-size: 26rpx;
   color: var(--sh-ink);
   flex-shrink: 0;
 }
 .cell__v {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   text-align: end;
 }
 .cell__v.is-on {
   color: var(--sh-danger);
-  font-weight: 600;
 }
 .cell__input {
   flex: 1;
-  font-size: 24rpx;
   color: var(--sh-ink);
   text-align: end;
 }
@@ -874,12 +830,8 @@ onMounted(async () => {
   justify-content: space-between;
   padding: 12rpx 0;
 }
-.amt__k {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
+
 .amt__v {
-  font-size: 24rpx;
   color: var(--sh-ink);
 }
 .amt__v--off {
@@ -896,15 +848,11 @@ onMounted(async () => {
 
 .actionbar__total {
   display: block;
-  font-size: 34rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
 }
 .actionbar__btn {
   flex: 0 0 auto;
   padding-left: 52rpx;
   padding-right: 52rpx;
-  font-size: 28rpx;
 }
 
 /* 能力提示：拦下的用醒目色，只是提醒的用弱一档 —— 两者的用户动作不同 */
@@ -912,8 +860,6 @@ onMounted(async () => {
   margin: 16rpx 24rpx;
   padding: 20rpx 24rpx;
   border-radius: 16rpx;
-  font-size: 26rpx;
-  line-height: 1.5;
 }
 /* 拦下的用 danger，只是提醒的用 warning —— 两者要求的用户动作不同 */
 .cap--block {

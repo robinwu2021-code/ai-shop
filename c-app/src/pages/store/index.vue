@@ -235,7 +235,7 @@ function navToStore() {
       要第一眼知道「店关了」而不是翻了半天才发现加不了购。
     -->
     <view v-if="closed" class="closed">
-      <text class="closed__text">{{ $t("store.closed") }}</text>
+      <text class="txt-sub">{{ $t("store.closed") }}</text>
     </view>
 
     <!-- 店招：登录用户看到的是「常买」优先，这里只占一行 -->
@@ -243,7 +243,7 @@ function navToStore() {
       <text class="store__logo">{{ data.merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
       <view class="sh-fill">
         <view class="store__row">
-          <text class="store__name">{{ data.merchant.name }}</text>
+          <text class="txt-title">{{ data.merchant.name }}</text>
           <text v-if="data.merchant.verified" class="sh-chip sh-chip--primary">
             {{ $t("merchant.verified") }}
           </text>
@@ -252,7 +252,7 @@ function navToStore() {
           <text class="sh-muted sh-fill">
             {{ data.store.openHours }} · {{ data.store.address }}
           </text>
-          <text v-if="data.store.latE6 != null" class="addr__nav" @tap="navToStore">
+          <text v-if="data.store.latE6 != null" class="txt-caption addr__nav" @tap="navToStore">
             {{ $t("community.navigate") }}
           </text>
         </view>
@@ -267,9 +267,9 @@ function navToStore() {
       **带更新时间**：一句没有时间的「今天到了新米」，既可能是今早写的、
       也可能是上个月忘了撤的 —— 分不出来就不会照着它跑一趟，而那正是这行字的用处。
     -->
-    <view v-if="data.store.announcement" class="notice">
+    <view v-if="data.store.announcement" class="txt-sub notice">
       <text>{{ data.store.announcement }}</text>
-      <text v-if="noticeAt" class="notice__at">{{ noticeAt }}</text>
+      <text v-if="noticeAt" class="txt-caption notice__at">{{ noticeAt }}</text>
     </view>
 
     <!-- 第一屏：我买过的。这是本页存在的理由 -->
@@ -288,7 +288,7 @@ function navToStore() {
       >
         <sh-cover class="freq__cover" :src="f.cover"></sh-cover>
         <view class="sh-fill" @tap="gotoGoods(f.goodsNo)">
-          <text class="freq__title">{{ f.title }}</text>
+          <text class="txt-strong freq__title">{{ f.title }}</text>
           <text class="sh-muted">{{ f.spec }}</text>
           <view class="freq__tags">
             <text v-if="f.times > 1" class="sh-chip">{{
@@ -303,8 +303,8 @@ function navToStore() {
           </view>
         </view>
         <view class="freq__buy">
-          <text class="freq__price sh-num">{{ money(f.price) }}</text>
-          <text class="add" @tap="addOne(f)">＋</text>
+          <text class="txt-price freq__price sh-num">{{ money(f.price) }}</text>
+          <text class="txt-body add" @tap="addOne(f)">＋</text>
         </view>
       </view>
 
@@ -322,7 +322,7 @@ function navToStore() {
       <input
         maxlength="32"
         v-model="keyword"
-        class="search"
+        class="txt-sub search"
         :placeholder="$t('store.searchPh')"
       />
 
@@ -333,7 +333,7 @@ function navToStore() {
       <scroll-view v-if="showShelves" class="cats" scroll-x>
         <view class="cats__row">
           <text
-            class="sh-chip cats__chip"
+            class="txt-bold sh-chip"
             :class="{ 'sh-chip--primary': !pickedCat }"
             @tap="pickedCat = ''"
           >
@@ -342,7 +342,7 @@ function navToStore() {
           <text
             v-for="c in shelves"
             :key="c.categoryNo"
-            class="sh-chip cats__chip"
+            class="txt-bold sh-chip"
             :class="{ 'sh-chip--primary': pickedCat === c.categoryNo }"
             @tap="pickedCat = pickedCat === c.categoryNo ? '' : c.categoryNo"
           >
@@ -383,9 +383,6 @@ function navToStore() {
   white-space: nowrap;
   flex-shrink: 0;
 }
-.cats__chip.sh-chip--primary {
-  font-weight: 600;
-}
 
 .addr {
   display: flex;
@@ -399,7 +396,6 @@ function navToStore() {
   border-radius: 999px;
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
-  font-size: 24rpx;
 }
 .closed {
   padding: 20rpx 24rpx;
@@ -407,10 +403,7 @@ function navToStore() {
   border-radius: 24rpx;
   background: var(--sh-faint);
 }
-.closed__text {
-  font-size: 26rpx;
-  color: var(--sh-sub);
-}
+
 .store {
   display: flex;
   align-items: center;
@@ -432,11 +425,7 @@ function navToStore() {
   align-items: center;
   gap: 12rpx;
 }
-.store__name {
-  font-size: 34rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
+
 .fav {
   font-size: 40rpx;
   color: var(--sh-sub);
@@ -447,7 +436,6 @@ function navToStore() {
 .notice__at {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
   opacity: 0.75;
 }
 .notice {
@@ -455,8 +443,6 @@ function navToStore() {
   border-radius: 24rpx;
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
-  font-size: 26rpx;
-  line-height: 1.6;
 }
 /* 排布由 .sh-block__head 给，这里只把右侧的「再来一单 / 计数」推到头 */
 /* 底和圆角由外层 .sh-block 给 —— 常买行在块内成行，不再各自一张卡 */
@@ -483,37 +469,28 @@ function navToStore() {
   /* 常买清单的行内商品名 —— 与购物车/订单里的商品行同类，用同一档
      （这里的 .freq 是**横向行**，不是首页那个同名的横滑窄卡） */
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--sh-ink);
 }
 .freq__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 10rpx;
-  margin-top: 10rpx;
+  gap: 8rpx;
+  margin-top: 8rpx;
 }
 .freq__buy {
   text-align: end;
 }
 .freq__price {
   display: block;
-  font-size: 30rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
 }
 .add {
   display: inline-block;
-  margin-top: 10rpx;
+  margin-top: 8rpx;
   width: 56rpx;
   height: 56rpx;
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  font-size: 30rpx;
   text-align: center;
-  line-height: 56rpx;
 }
 /* 履约说明在常买块内收尾：它解释的就是上面这些东西怎么送到 */
 .ship {
@@ -521,7 +498,6 @@ function navToStore() {
   padding: 20rpx 24rpx;
   border-radius: 24rpx;
   background: var(--sh-faint);
-  line-height: 1.6;
 }
 /* 搜索框在白块内，底要比块浅一档才看得出是个输入框 */
 .search {
@@ -529,7 +505,6 @@ function navToStore() {
   padding: 0 24rpx;
   border-radius: 24rpx;
   background: var(--sh-faint);
-  font-size: 26rpx;
   color: var(--sh-ink);
   margin: 0 26rpx 12rpx;
 }

@@ -541,7 +541,7 @@ ROLLED = [
 APPS = [("b-app", ROOT / "b-app/src/pages"), ("c-app", ROOT / "c-app/src/pages")]
 
 
-def block_is_container(css: str) -> bool:
+def block_is_container(css: str, tpl: str = "") -> bool:
     """这份样式里，至少有一条「白底 + 四角统一 lg 圆角」的规则是**容器**吗。
 
     容器 = 没有固有尺寸、不设字号。反例是输入控件（带 font-size）与
@@ -557,6 +557,19 @@ def block_is_container(css: str) -> bool:
         if re.search(r"(^|\s)font-size:", body):
             continue
         if re.search(r"(^|\s)width:", body) and re.search(r"(^|\s)height:", body):
+            continue
+        # **看它挂在什么元素上。** 2026-08-28 补的：`login` 的 `.login__field`
+        # 原本靠「自带 font-size」被排除，而字阶落地后字号交给了 `.txt-body`，
+        # 这条排除就失效了 —— 一个 `<input>` 于是被判成了卡片。
+        # 判据只读 CSS 时看不见这一点，所以把模板也给它：**挂在控件上的不是容器**。
+        cls = re.match(r"^[.&#]([\w-]+)", m.group(0))
+        if cls and tpl:
+            name = cls.group(1)
+            for em in re.finditer(r"<(input|textarea|button)\b[^>]*class=\"([^\"]*)\"", tpl):
+                if name in em.group(2).split():
+                    break
+            else:
+                return True
             continue
         return True
     return False
@@ -623,7 +636,7 @@ def read_pages(comps: list[dict], blocks: list[dict]) -> list[dict]:
               # （C 端两处：输入控件 `.login__field`、96×96 的 logo 方块 `.store__logo`）。
               # 写在这里而不是塞进正则：正则要表达「规则体里不许出现 X」得整块回溯，
               # 读起来没人看得懂，而这一条本来就只对一条规则成立。
-              if hit and rid == "blockdup" and not block_is_container(css):
+              if hit and rid == "blockdup" and not block_is_container(css, code):
                   hit = None
               # 「选中态自画」再过一道：命中的若**全都是列表行**，那不是 chip 欠账
               # （见 selected_is_chiplike 的说明；它们归 listrow 那条缺口）

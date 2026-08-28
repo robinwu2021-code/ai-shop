@@ -74,7 +74,7 @@ onShow(load);
     <!-- 1. 我买过的：真实消费过的关系，回购主路径，放最上面 -->
     <view v-if="visited.length" class="sh-block">
       <view class="sh-block__head">
-        <text class="sh-h2">{{ $t("shops.visited") }}</text>
+        <text class="txt-title">{{ $t("shops.visited") }}</text>
         <text class="sh-muted">{{ $t("shops.visitedHint") }}</text>
       </view>
       <view
@@ -102,7 +102,7 @@ onShow(load);
     <!-- 2. 平台推荐：运营位，给新店一个不看历史成绩的位置 -->
     <view v-if="promotedShown.length" class="sh-block">
       <view class="sh-block__head">
-        <text class="sh-h2">{{ $t("shops.promoted") }}</text>
+        <text class="txt-title">{{ $t("shops.promoted") }}</text>
         <text class="sh-muted">{{ $t("shops.promotedHint") }}</text>
       </view>
       <view
@@ -115,7 +115,7 @@ onShow(load);
           :merchant="m"
           @tap="open(m.merchantNo)"
         ></biz-merchant-bar>
-        <text class="desc">{{ m.desc }}</text>
+        <text class="txt-caption desc">{{ m.desc }}</text>
         <view class="meta">
           <text class="sh-chip">{{
             $t(`serviceScope.${m.serviceScope}`)
@@ -127,7 +127,7 @@ onShow(load);
     <!-- 3. 附近的：服务范围覆盖本社区，按距离。密排一点 —— 到这一档只需要认个脸 -->
     <view v-if="nearbyShown.length" class="sh-block">
       <view class="sh-block__head">
-        <text class="sh-h2">{{ $t("shops.nearby") }}</text>
+        <text class="txt-title">{{ $t("shops.nearby") }}</text>
         <text class="sh-muted">{{ $t("shops.nearbyHint") }}</text>
       </view>
       <view class="near">
@@ -139,10 +139,10 @@ onShow(load);
         >
           <text class="near__logo">{{ m.logo || MERCHANT_LOGO_FALLBACK }}</text>
           <view class="sh-fill">
-            <text class="near__name">{{ m.name }}</text>
-            <text class="near__desc">{{ m.desc }}</text>
+            <text class="txt-strong near__name">{{ m.name }}</text>
+            <text class="txt-caption near__desc">{{ m.desc }}</text>
           </view>
-          <text v-if="m.distance" class="near__dist sh-num">{{
+          <text v-if="m.distance" class="txt-caption near__dist sh-num">{{
             distance(m.distance)
           }}</text>
         </view>
@@ -153,7 +153,7 @@ onShow(load);
       v-if="loaded && !visited.length && !promoted.length && !nearby.length"
       class="empty"
     >
-      <text class="empty__text">{{ $t("shops.empty") }}</text>
+      <text class="txt-sub empty__text">{{ $t("shops.empty") }}</text>
       <view class="sh-btn empty__btn" @tap="goShopping">{{
         $t("visited.go")
       }}</view>
@@ -174,10 +174,7 @@ onShow(load);
 }
 .desc {
   display: block;
-  margin-top: 18rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
-  color: var(--sh-sub);
+  margin-top: 16rpx;
 }
 /* 附近的店：一行一家，密排 —— 这一档只是「附近还有谁」，不需要展开介绍 */
 /* 底和圆角由外层 .sh-block 给 —— 白底套白底只会多一圈看不见的边 */
@@ -204,9 +201,6 @@ onShow(load);
 
 .near__name {
   display: block;
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -214,16 +208,12 @@ onShow(load);
 .near__desc {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 .near__dist {
   flex-shrink: 0;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .empty {
   text-align: center;
@@ -231,8 +221,6 @@ onShow(load);
 }
 .empty__text {
   display: block;
-  color: var(--sh-sub);
-  font-size: 26rpx;
   margin-bottom: 40rpx;
 }
 .empty__btn {

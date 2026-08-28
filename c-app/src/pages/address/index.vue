@@ -161,21 +161,21 @@ onLoad((q) => {
   <sh-scaffold title-key="address.title">
     <view v-for="a in list" :key="a.addressId" class="sh-card card" @tap="pick(a)">
       <view class="card__head">
-        <text class="card__name">{{ a.name }}</text>
-        <text class="card__phone sh-num">{{ a.phone }}</text>
-        <text v-if="a.tag" class="sh-chip tiny">{{ a.tag }}</text>
-        <text v-if="a.isDefault" class="sh-chip sh-chip--primary tiny">
+        <text class="txt-strong">{{ a.name }}</text>
+        <text class="txt-caption sh-num">{{ a.phone }}</text>
+        <text v-if="a.tag" class="txt-caption sh-chip tiny">{{ a.tag }}</text>
+        <text v-if="a.isDefault" class="txt-caption sh-chip sh-chip--primary tiny">
           {{ $t("address.default") }}
         </text>
       </view>
-      <text class="card__addr">{{ a.region }} {{ a.detail }}</text>
+      <text class="txt-caption card__addr">{{ a.region }} {{ a.detail }}</text>
 
       <view class="card__ops">
-        <text v-if="!a.isDefault" class="op" @tap.stop="setDefault(a)">
+        <text v-if="!a.isDefault" class="txt-caption op" @tap.stop="setDefault(a)">
           {{ $t("address.setDefault") }}
         </text>
-        <text class="op" @tap.stop="openEdit(a)">{{ $t("address.edit") }}</text>
-        <text class="op op--danger" @tap.stop="remove(a)">{{ $t("address.remove") }}</text>
+        <text class="txt-caption op" @tap.stop="openEdit(a)">{{ $t("address.edit") }}</text>
+        <text class="txt-caption op op--danger" @tap.stop="remove(a)">{{ $t("address.remove") }}</text>
       </view>
     </view>
 
@@ -207,8 +207,8 @@ onLoad((q) => {
             :placeholder="$t('address.region')"
             @blur="onRegionInput"
           />
-          <text class="regionrow__pick" @tap="pickingRegion = true">{{ $t("address.regionSelect") }}</text>
-          <text class="regionrow__pick" :class="{ 'is-ok': picked }" @tap="pickOnMap">
+          <text class="txt-caption regionrow__pick" @tap="pickingRegion = true">{{ $t("address.regionSelect") }}</text>
+          <text class="txt-caption regionrow__pick" :class="{ 'is-ok': picked }" @tap="pickOnMap">
             {{ picked ? $t("address.repick") : $t("address.pick") }}
           </text>
         </view>
@@ -217,7 +217,7 @@ onLoad((q) => {
         <input maxlength="16" v-model="draft.tag" class="field__input" :placeholder="$t('address.tagPh')" />
 
         <view class="switchrow" @tap="draft.isDefault = !draft.isDefault">
-          <text class="switchrow__label">{{ $t("address.asDefault") }}</text>
+          <text class="txt-sub switchrow__label">{{ $t("address.asDefault") }}</text>
           <sh-switch :model-value="draft.isDefault"></sh-switch>
         </view>
 
@@ -247,8 +247,6 @@ onLoad((q) => {
   padding: 12rpx 20rpx;
   border-radius: 16rpx;
   background: var(--sh-faint);
-  color: var(--sh-sub);
-  font-size: 24rpx;
 }
 .regionrow__pick.is-ok {
   background: var(--sh-primary-tint);
@@ -263,25 +261,13 @@ onLoad((q) => {
   flex-wrap: wrap;
   gap: 12rpx;
 }
-.card__name {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
-.card__phone {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
+
 .tiny {
   padding: 4rpx 14rpx;
-  font-size: 24rpx;
 }
 .card__addr {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.55;
-  margin-top: 14rpx;
+  margin-top: 16rpx;
 }
 .card__ops {
   display: flex;
@@ -290,7 +276,6 @@ onLoad((q) => {
   margin-top: 20rpx;
 }
 .op {
-  font-size: 24rpx;
   color: var(--sh-primary-text);
 }
 .op--danger {
@@ -309,7 +294,6 @@ onLoad((q) => {
   margin-top: 28rpx;
 }
 .switchrow__label {
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
 .sheet__save {

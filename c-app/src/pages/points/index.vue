@@ -32,12 +32,12 @@ onShow(load);
   <sh-scaffold :title-key="'points.title'">
     <!-- 用户侧：单位是分 -->
     <view class="sh-card hero">
-      <text class="hero__label">{{ $t("points.balance") }}</text>
-      <text class="hero__v sh-num">{{ account?.balance ?? 0 }}</text>
-      <text class="hero__worth sh-num">{{ $t("points.worth", { p: money(worthMinor) }) }}</text>
+      <text class="txt-caption hero__label">{{ $t("points.balance") }}</text>
+      <text class="txt-hero hero__v sh-num">{{ account?.balance ?? 0 }}</text>
+      <text class="txt-caption hero__worth sh-num">{{ $t("points.worth", { p: money(worthMinor) }) }}</text>
 
       <!-- 待生效必须单独显示：合进余额的话，用户会看到「我有 500 分」却只能用 400 -->
-      <text v-if="account?.pendingBalance" class="hero__pending sh-num">
+      <text v-if="account?.pendingBalance" class="txt-caption hero__pending sh-num">
         {{ $t("points.pending", {
           n: account.pendingBalance,
           d: account.pendingActivateAt ? isoDate(account.pendingActivateAt) : "",
@@ -46,32 +46,32 @@ onShow(load);
 
       <view class="sums">
         <view class="sum">
-          <text class="sum__v sh-num">{{ account?.totalEarned ?? 0 }}</text>
-          <text class="sum__k">{{ $t("points.totalEarned") }}</text>
+          <text class="txt-body sum__v sh-num">{{ account?.totalEarned ?? 0 }}</text>
+          <text class="txt-caption sum__k">{{ $t("points.totalEarned") }}</text>
         </view>
         <view class="sum">
-          <text class="sum__v sh-num">{{ account?.totalUsed ?? 0 }}</text>
-          <text class="sum__k">{{ $t("points.totalUsed") }}</text>
+          <text class="txt-body sum__v sh-num">{{ account?.totalUsed ?? 0 }}</text>
+          <text class="txt-caption sum__k">{{ $t("points.totalUsed") }}</text>
         </view>
       </view>
     </view>
 
     <!-- 规则：积分能抵钱，规则必须写在明面上 -->
     <view class="sh-card block rules">
-      <text class="rules__title">{{ $t("points.rules") }}</text>
-      <text class="rules__t">
+      <text class="txt-caption txt-bold rules__title">{{ $t("points.rules") }}</text>
+      <text class="txt-caption rules__t">
         {{ $t("points.ruleRate", { n: POINTS.perMinor * 100 }) }}
       </text>
-      <text class="rules__t">
+      <text class="txt-caption rules__t">
         {{ $t("points.ruleCap", { n: Math.round(POINTS.maxDeductRatio * 100) }) }}
       </text>
-      <text class="rules__t">
+      <text class="txt-caption rules__t">
         {{ $t("points.ruleGrant") }}
       </text>
-      <text class="rules__t">
+      <text class="txt-caption rules__t">
         {{ $t("points.ruleExpire", { n: POINTS.inactiveDays }) }}
       </text>
-      <text v-if="account?.expiringSoon" class="rules__warn sh-num">
+      <text v-if="account?.expiringSoon" class="txt-caption rules__warn sh-num">
         {{ $t("points.expiring", {
           n: account.expiringSoon,
           d: account.expiringAt ? isoDate(account.expiringAt) : "",
@@ -81,17 +81,17 @@ onShow(load);
 
     <!-- 流水：带变动后余额，方便对账 -->
     <view class="sh-card block">
-      <text class="sh-h2">{{ $t("points.records") }}</text>
+      <text class="txt-title">{{ $t("points.records") }}</text>
       <view v-for="r in records" :key="r.recordNo" class="rec">
         <view class="sh-fill">
-          <text class="rec__title">{{ r.title }}</text>
-          <text class="rec__at sh-num">{{ datetime(r.at) }}</text>
+          <text class="txt-sub rec__title">{{ r.title }}</text>
+          <text class="txt-caption rec__at sh-num">{{ datetime(r.at) }}</text>
         </view>
         <view class="rec__right">
-          <text class="rec__v sh-num" :class="r.points > 0 ? 'is-in' : 'is-out'">
+          <text class="txt-body rec__v sh-num" :class="r.points > 0 ? 'is-in' : 'is-out'">
             {{ r.points > 0 ? "+" : "" }}{{ r.points }}
           </text>
-          <text class="rec__bal sh-num">{{ $t("points.after", { n: r.balanceAfter }) }}</text>
+          <text class="txt-caption rec__bal sh-num">{{ $t("points.after", { n: r.balanceAfter }) }}</text>
         </view>
       </view>
       <sh-empty bare v-if="!records.length" :text='$t("points.empty")'></sh-empty>
@@ -107,34 +107,24 @@ onShow(load);
 }
 .hero__label {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .hero__v {
   display: block;
-  font-size: 48rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-  line-height: 1.1;
   margin-top: 8rpx;
 }
 .hero__pending {
   display: block;
-  font-size: 24rpx;
   color: var(--sh-primary-text);
   margin-top: 8rpx;
 }
 .hero__off {
   display: block;
-  font-size: 24rpx;
   color: var(--sh-warning);
-  margin-top: 14rpx;
+  margin-top: 16rpx;
 }
 .hero__worth {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 10rpx;
+  margin-top: 8rpx;
 }
 .sums {
   display: flex;
@@ -145,55 +135,39 @@ onShow(load);
 }
 .sum__v {
   display: block;
-  font-size: 30rpx;
-  font-weight: 400;
-  color: var(--sh-ink);
 }
 .sum__k {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 .block {
   margin-top: 20rpx;
 }
 .rules__title {
   display: block;
-  font-size: 24rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-  margin-bottom: 14rpx;
+  margin-bottom: 16rpx;
 }
 .rules__t {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.75;
 }
 .rules__warn {
   display: block;
-  font-size: 24rpx;
   color: var(--sh-warning);
-  line-height: 1.75;
-  margin-top: 10rpx;
+  margin-top: 8rpx;
 }
 .rec {
   display: flex;
   align-items: center;
   gap: 24rpx;
-  margin-top: 26rpx;
+  margin-top: 28rpx;
 }
 
 .rec__title {
   display: block;
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
 .rec__at {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 4rpx;
 }
 .rec__right {
@@ -202,8 +176,6 @@ onShow(load);
 }
 .rec__v {
   display: block;
-  font-size: 30rpx;
-  font-weight: 400;
 }
 .rec__v.is-in {
   color: var(--sh-primary-text);
@@ -213,8 +185,6 @@ onShow(load);
 }
 .rec__bal {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 4rpx;
 }
 </style>

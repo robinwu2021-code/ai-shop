@@ -20,10 +20,10 @@ onLoad((q) => {
 <template>
   <sh-scaffold :title-key="doc?.titleKey || 'legal.privacy'">
     <view v-if="doc" class="doc">
-      <text class="doc__meta">{{ $t("legal.updatedAt", { d: doc.updatedAt }) }}</text>
+      <text class="txt-caption doc__meta">{{ $t("legal.updatedAt", { d: doc.updatedAt }) }}</text>
       <view v-for="s in doc.sections" :key="s.heading" class="sec">
-        <text class="sec__h sh-mb-sm">{{ s.heading }}</text>
-        <text v-for="(p, i) in s.body" :key="i" class="sec__p">{{ p }}</text>
+        <text class="txt-body sec__h sh-mb-sm">{{ s.heading }}</text>
+        <text v-for="(p, i) in s.body" :key="i" class="txt-sub sec__p">{{ p }}</text>
       </view>
     </view>
   </sh-scaffold>
@@ -36,8 +36,6 @@ onLoad((q) => {
 .doc__meta {
   display: block;
   margin-bottom: 32rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .sec {
   margin-bottom: 40rpx;
@@ -46,14 +44,9 @@ onLoad((q) => {
    那条判据要拦的：间距是版面的事，不该长在标题身上 */
 .sec__h {
   display: block;
-  font-size: 30rpx;
-  color: var(--sh-ink);
 }
 .sec__p {
   display: block;
   margin-bottom: 16rpx;
-  font-size: 26rpx;
-  line-height: 1.7;
-  color: var(--sh-sub);
 }
 </style>

@@ -106,7 +106,7 @@ async function doLogin(method: LoginMethod) {
 <template>
   <sh-scaffold title-key="login.submit">
     <view class="head">
-      <text class="sh-h1">{{ $t("login.title") }}</text>
+      <text class="txt-display">{{ $t("login.title") }}</text>
       <text class="sh-muted head__sub">{{ $t("login.sub") }}</text>
     </view>
 
@@ -136,14 +136,14 @@ async function doLogin(method: LoginMethod) {
       class="switch"
       @tap="showPhone = true"
     >
-      <text class="switch__text">{{ $t("login.orPhone") }}</text>
+      <text class="txt-sub switch__text">{{ $t("login.orPhone") }}</text>
     </view>
 
     <template v-if="phoneMethod && showPhone">
       <view class="form">
         <input
           v-model="phone"
-          class="login__field"
+          class="txt-body login__field"
           type="number"
           :placeholder="$t('login.phone')"
           maxlength="11"
@@ -151,12 +151,12 @@ async function doLogin(method: LoginMethod) {
         <view class="otp-row">
           <input
             v-model="otp"
-            class="login__field sh-fill"
+            class="txt-body login__field sh-fill"
             type="number"
             :placeholder="$t('login.otp')"
             maxlength="6"
           />
-          <text class="otp-row__send" :class="{ 'is-off': left > 0 }" @tap="sendOtp">
+          <text class="txt-sub otp-row__send" :class="{ 'is-off': left > 0 }" @tap="sendOtp">
             {{ left > 0 ? $t("login.resend", { s: left }) : $t("login.sendOtp") }}
           </text>
         </view>
@@ -171,18 +171,18 @@ async function doLogin(method: LoginMethod) {
       **协议必须能点开。** 原来这一行是纯文本，《用户协议》《隐私政策》点不动 ——
       而它是提审必查项：收集手机号与位置的小程序，用户要能读到那两份东西。
     -->
-    <view class="agree">
+    <view class="txt-caption agree">
       <text class="agree__text">{{ $t("login.agreePrefix") }}</text>
-      <text class="agree__link" @tap="openDoc('terms')">{{ $t("legal.terms") }}</text>
+      <text class="txt-caption agree__link" @tap="openDoc('terms')">{{ $t("legal.terms") }}</text>
       <text class="agree__text">{{ $t("login.agreeAnd") }}</text>
-      <text class="agree__link" @tap="openDoc('privacy')">{{ $t("legal.privacy") }}</text>
+      <text class="txt-caption agree__link" @tap="openDoc('privacy')">{{ $t("legal.privacy") }}</text>
     </view>
 
     <!--
       **给一条回去的路。** 到这一页的人多半是被 401 弹过来的，
       而商品、门店、团购本来就是游客可看的 —— 不给出口，登录就成了逛的前置条件。
     -->
-    <text class="browse" @tap="goBrowse">{{ $t("login.browseFirst") }}</text>
+    <text class="txt-sub browse" @tap="goBrowse">{{ $t("login.browseFirst") }}</text>
   </sh-scaffold>
 </template>
 
@@ -192,10 +192,7 @@ async function doLogin(method: LoginMethod) {
   text-align: center;
 }
 .agree__text,
-.agree__link {
-  font-size: 24rpx;
-  line-height: 1.6;
-}
+
 .agree__text {
   color: var(--sh-sub);
 }
@@ -206,8 +203,6 @@ async function doLogin(method: LoginMethod) {
   display: block;
   margin-top: 32rpx;
   text-align: center;
-  font-size: 26rpx;
-  color: var(--sh-sub);
 }
 
 .switch {
@@ -216,7 +211,6 @@ async function doLogin(method: LoginMethod) {
   text-align: center;
 }
 .switch__text {
-  font-size: 26rpx;
   color: var(--sh-primary-text);
 }
 
@@ -228,7 +222,6 @@ async function doLogin(method: LoginMethod) {
 
 .otp-row__send {
   flex-shrink: 0;
-  font-size: 26rpx;
   color: var(--sh-primary-text);
 }
 .otp-row__send.is-off {
@@ -244,7 +237,6 @@ async function doLogin(method: LoginMethod) {
 .divider {
   text-align: center;
   margin: 40rpx 0 0;
-  font-size: 24rpx;
 }
 
 .head {
@@ -270,8 +262,6 @@ async function doLogin(method: LoginMethod) {
   background: var(--sh-surface);
   border-radius: 32rpx;
   padding: 32rpx;
-  font-size: 30rpx;
-  color: var(--sh-ink);
 }
 .submit {
   margin-top: 32rpx;
@@ -282,9 +272,6 @@ async function doLogin(method: LoginMethod) {
 .agree {
   display: block;
   text-align: center;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 40rpx;
-  line-height: 1.6;
 }
 </style>

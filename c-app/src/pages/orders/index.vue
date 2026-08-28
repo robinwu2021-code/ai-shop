@@ -135,7 +135,7 @@ onShow(load);
 
     <view v-for="o in shown" :key="o.orderNo" class="sh-card card" @tap="open(o)">
       <view class="card__head">
-        <text class="card__pickup">
+        <text class="txt-caption card__pickup">
           {{ o.pickupName || $t(`fulfillment.${o.fulfillment}`) }}
         </text>
         <!--
@@ -143,7 +143,7 @@ onShow(load);
           自提说「已到自提点」、快递说「已发货」、预约说「待服务 · 明天 14:00」。
           由 orderView(状态, 履约, 信息) 决定，三端共用同一份映射。
         -->
-        <text class="card__status" :class="`is-${o.status}`">
+        <text class="txt-caption txt-bold card__status" :class="`is-${o.status}`">
           {{ statusText(o) }}
         </text>
       </view>
@@ -157,31 +157,31 @@ onShow(load);
       >
         <template #right>
           <view class="row__right">
-            <text v-if="it.isGift" class="sh-chip sh-chip--danger tiny">
+            <text v-if="it.isGift" class="txt-caption sh-chip sh-chip--danger tiny">
               {{ $t("promo.gift") }}
             </text>
-            <text v-else class="row__price sh-num">{{ money(it.price) }}</text>
-            <text class="row__qty sh-num">×{{ it.qty }}</text>
+            <text v-else class="txt-strong row__price sh-num">{{ money(it.price) }}</text>
+            <text class="txt-caption row__qty sh-num">×{{ it.qty }}</text>
           </view>
         </template>
       </biz-sku-row>
-      <text v-if="o.items.length > 3" class="more sh-num">
+      <text v-if="o.items.length > 3" class="txt-caption more sh-num">
         {{ $t("orders.moreItems", { n: o.items.length - 3 }) }}
       </text>
 
       <view class="card__foot">
-        <text class="card__time sh-num">{{ datetime(o.createdAt) }}</text>
-        <text class="card__total sh-num">
+        <text class="txt-caption sh-num">{{ datetime(o.createdAt) }}</text>
+        <text class="txt-price sh-num">
           {{ $t("orders.total", { p: money(o.amount.payableMinor) }) }}
         </text>
       </view>
 
       <view v-if="o.status === 'WAIT_PAY'" class="card__ops">
-        <view class="sh-btn card__pay" @tap.stop="pay(o)">{{ $t("orders.pay") }}</view>
+        <view class="txt-sub sh-btn card__pay" @tap.stop="pay(o)">{{ $t("orders.pay") }}</view>
       </view>
       <view v-else-if="o.verifyCode && o.status !== 'COMPLETED'" class="codeline">
-        <text class="codeline__label">{{ $t("pay.verifyCode") }}</text>
-        <text class="codeline__v sh-num">{{ o.verifyCode }}</text>
+        <text class="txt-caption codeline__label">{{ $t("pay.verifyCode") }}</text>
+        <text class="txt-body codeline__v sh-num">{{ o.verifyCode }}</text>
       </view>
     </view>
 
@@ -189,12 +189,12 @@ onShow(load);
       后端还有、这一页没拿到的。**宁可难看也要说** ——
       不说的表现是「我上个月那单不见了」，而用户会以为订单丢了。
     -->
-    <text v-if="hiddenCount > 0" class="hidden-note">
+    <text v-if="hiddenCount > 0" class="txt-caption hidden-note">
       {{ $t("orders.hiddenCount", { n: hiddenCount }) }}
     </text>
 
     <view v-if="loaded && !shown.length" class="empty">
-      <text class="empty__text">{{ $t("orders.empty") }}</text>
+      <text class="txt-sub empty__text">{{ $t("orders.empty") }}</text>
       <view class="sh-btn empty__btn" @tap="goShopping">{{ $t("visited.go") }}</view>
     </view>
   </sh-scaffold>
@@ -211,15 +211,11 @@ onShow(load);
   gap: 20rpx;
 }
 .card__pickup {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .card__status {
-  font-size: 24rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
   flex-shrink: 0;
 }
@@ -237,25 +233,17 @@ onShow(load);
 }
 .tiny {
   padding: 4rpx 14rpx;
-  font-size: 24rpx;
 }
 .row__price {
   display: block;
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .row__qty {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 4rpx;
 }
 .more {
   display: block;
   text-align: center;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 16rpx;
 }
 .card__foot {
@@ -264,15 +252,7 @@ onShow(load);
   justify-content: space-between;
   margin-top: 24rpx;
 }
-.card__time {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.card__total {
-  font-size: 26rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
-}
+
 .card__ops {
   display: flex;
   justify-content: flex-end;
@@ -280,7 +260,6 @@ onShow(load);
 }
 .card__pay {
   padding: 16rpx 48rpx;
-  font-size: 26rpx;
 }
 .codeline {
   display: flex;
@@ -292,19 +271,13 @@ onShow(load);
   padding: 16rpx 24rpx;
 }
 .codeline__label {
-  font-size: 24rpx;
   color: var(--sh-primary-text);
 }
 .codeline__v {
-  font-size: 30rpx;
-  font-weight: 400;
   letter-spacing: 3rpx;
-  color: var(--sh-ink);
 }
 .empty__text {
   display: block;
-  color: var(--sh-sub);
-  font-size: 26rpx;
   margin-bottom: 40rpx;
 }
 .empty__btn {
@@ -316,9 +289,6 @@ onShow(load);
   display: block;
   text-align: center;
   padding: 24rpx 32rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.5;
 }
 .empty {
   text-align: center;

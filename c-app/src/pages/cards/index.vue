@@ -33,27 +33,27 @@ onShow(load);
       <view class="card__head">
         <sh-cover class="card__cover" :src="c.cover"></sh-cover>
         <view class="sh-fill">
-          <text class="card__title">{{ c.title }}</text>
-          <text class="card__no sh-num">{{ c.cardNo }}</text>
+          <text class="txt-strong card__title">{{ c.title }}</text>
+          <text class="txt-caption card__no sh-num">{{ c.cardNo }}</text>
         </view>
       </view>
 
       <view class="card__value">
         <!-- 储值卡看余额，次卡看次数 —— 两种卡的「还剩多少」是不同的东西 -->
-        <text v-if="c.balanceMinor != null" class="card__v sh-num">
+        <text v-if="c.balanceMinor != null" class="txt-hero sh-num">
           {{ money(c.balanceMinor, c.currency) }}
         </text>
-        <text v-else-if="c.timesLeft != null" class="card__v sh-num">
+        <text v-else-if="c.timesLeft != null" class="txt-hero sh-num">
           {{ $t("cards.timesLeft", { n: c.timesLeft }) }}
         </text>
-        <text class="card__exp sh-num">
+        <text class="txt-caption sh-num">
           {{ expired(c) ? $t("cards.expired") : $t("cards.until", { d: isoDate(c.expireAt) }) }}
         </text>
       </view>
     </view>
 
     <view v-if="loaded && !cards.length" class="empty">
-      <text class="empty__text">{{ $t("cards.empty") }}</text>
+      <text class="txt-sub empty__text">{{ $t("cards.empty") }}</text>
       <view class="sh-btn empty__btn" @tap="goShopping">{{ $t("visited.go") }}</view>
     </view>
   </sh-scaffold>
@@ -88,18 +88,13 @@ onShow(load);
 
 .card__title {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .card__no {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 .card__value {
   display: flex;
@@ -108,19 +103,9 @@ onShow(load);
   gap: 20rpx;
   margin-top: 28rpx;
 }
-.card__v {
-  font-size: 48rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
-.card__exp {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
+
 .empty__text {
   display: block;
-  color: var(--sh-sub);
-  font-size: 26rpx;
   margin-bottom: 40rpx;
 }
 .empty__btn {

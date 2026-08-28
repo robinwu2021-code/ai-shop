@@ -104,8 +104,8 @@ onUnmounted(() => clearInterval(timer));
     <!-- 待支付 -->
     <template v-if="!paid">
       <view class="sh-card hero">
-        <text class="hero__amount sh-num">{{ money(order.amount.payableMinor) }}</text>
-        <text class="hero__label">{{ $t("pay.payable") }}</text>
+        <text class="txt-hero hero__amount sh-num">{{ money(order.amount.payableMinor) }}</text>
+        <text class="txt-caption hero__label">{{ $t("pay.payable") }}</text>
         <!--
           这次付款覆盖哪几笔单。**只有跨商家时才出现** —— 单商家时它等于把
           总额又抄了一遍，是噪音。
@@ -113,15 +113,15 @@ onUnmounted(() => clearInterval(timer));
           而拆单是这个问题里最容易意外的那部分。
         -->
         <view v-if="(order.subOrders?.length ?? 0) > 1" class="subs">
-          <text class="subs__title">{{ $t("pay.covers", { n: order.subOrders!.length }) }}</text>
+          <text class="txt-caption subs__title">{{ $t("pay.covers", { n: order.subOrders!.length }) }}</text>
           <view v-for="s in order.subOrders" :key="s.orderNo" class="subs__row">
-            <text class="subs__name">{{ s.merchantName }}</text>
-            <text class="subs__amount sh-num">{{ money(s.amount.payableMinor) }}</text>
+            <text class="txt-sub subs__name">{{ s.merchantName }}</text>
+            <text class="txt-sub sh-num">{{ money(s.amount.payableMinor) }}</text>
           </view>
         </view>
 
         <view v-if="order.payDeadlineAt" class="cd" :class="{ 'is-expired': expired }">
-          <text class="cd__text sh-num">
+          <text class="txt-bold cd__text sh-num">
             {{ expired
               ? $t("pay.expired")
               : $t("pay.remain", { t: countdown(order.payDeadlineAt - now) }) }}
@@ -132,8 +132,8 @@ onUnmounted(() => clearInterval(timer));
       <view class="sh-card block">
         <view class="method is-on">
           <text class="method__icon">💚</text>
-          <text class="method__name">{{ $t("pay.wechat") }}</text>
-          <text class="method__tick">✓</text>
+          <text class="txt-strong method__name">{{ $t("pay.wechat") }}</text>
+          <text class="txt-body method__tick">✓</text>
         </view>
       </view>
 
@@ -141,7 +141,7 @@ onUnmounted(() => clearInterval(timer));
         <view class="sh-btn" :class="{ 'is-disabled': paying || expired }" @tap="pay">
           {{ paying ? $t("pay.paying") : $t("pay.payNow") }}
         </view>
-        <text class="cancel" @tap="cancel">{{ $t("pay.cancel") }}</text>
+        <text class="txt-caption cancel" @tap="cancel">{{ $t("pay.cancel") }}</text>
       </sh-actionbar>
     </template>
 
@@ -149,23 +149,23 @@ onUnmounted(() => clearInterval(timer));
     <template v-else>
       <view class="sh-card done">
         <text class="done__icon">✓</text>
-        <text class="done__title">{{ $t("pay.done") }}</text>
-        <text class="done__hint">{{ $t(doneHintKey) }}</text>
+        <text class="txt-display done__title">{{ $t("pay.done") }}</text>
+        <text class="txt-caption done__hint">{{ $t(doneHintKey) }}</text>
 
         <!-- 各类码：自提码 / 核销码 / 兑换码 -->
         <view v-if="order.verifyCode" class="code">
-          <text class="code__label">{{ $t("pay.verifyCode") }}</text>
-          <text class="code__v sh-num">{{ order.verifyCode }}</text>
+          <text class="txt-caption code__label">{{ $t("pay.verifyCode") }}</text>
+          <text class="txt-hero code__v sh-num">{{ order.verifyCode }}</text>
         </view>
         <view v-if="order.redeemCode" class="code code--redeem">
-          <text class="code__label">{{ $t("pay.redeemCode") }}</text>
-          <text class="code__v sh-num">{{ order.redeemCode }}</text>
+          <text class="txt-caption code__label">{{ $t("pay.redeemCode") }}</text>
+          <text class="txt-hero code__v sh-num">{{ order.redeemCode }}</text>
         </view>
       </view>
 
       <sh-actionbar class="bar-center" :pad="220">
         <view class="sh-btn" @tap="gotoOrder">{{ $t("pay.viewOrder") }}</view>
-        <text class="cancel" @tap="gotoHome">{{ $t("pay.keepShopping") }}</text>
+        <text class="txt-caption cancel" @tap="gotoHome">{{ $t("pay.keepShopping") }}</text>
       </sh-actionbar>
     </template>
   </sh-scaffold>
@@ -185,14 +185,9 @@ onUnmounted(() => clearInterval(timer));
 }
 .hero__amount {
   display: block;
-  font-size: 48rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
 }
 .hero__label {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 12rpx;
 }
 .subs {
@@ -202,8 +197,6 @@ onUnmounted(() => clearInterval(timer));
 }
 .subs__title {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-bottom: 12rpx;
 }
 .subs__row {
@@ -213,13 +206,9 @@ onUnmounted(() => clearInterval(timer));
   padding: 8rpx 0;
 }
 .subs__name {
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
-.subs__amount {
-  font-size: 26rpx;
-  color: var(--sh-sub);
-}
+
 .cd {
   display: inline-block;
   margin-top: 28rpx;
@@ -231,9 +220,7 @@ onUnmounted(() => clearInterval(timer));
   background: var(--sh-danger-tint);
 }
 .cd__text {
-  font-size: 24rpx;
   color: var(--sh-warning);
-  font-weight: 600;
 }
 .cd.is-expired .cd__text {
   color: var(--sh-danger);
@@ -257,14 +244,9 @@ onUnmounted(() => clearInterval(timer));
 }
 .method__name {
   flex: 1;
-  font-size: 28rpx;
-  color: var(--sh-ink);
-  font-weight: 600;
 }
 .method__tick {
-  font-size: 30rpx;
   color: var(--sh-primary-text);
-  font-weight: 400;
 }
 .done {
   text-align: center;
@@ -285,16 +267,10 @@ onUnmounted(() => clearInterval(timer));
 }
 .done__title {
   display: block;
-  font-size: 40rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
   margin-top: 28rpx;
 }
 .done__hint {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
   margin-top: 16rpx;
 }
 .code {
@@ -308,7 +284,6 @@ onUnmounted(() => clearInterval(timer));
 }
 .code__label {
   display: block;
-  font-size: 24rpx;
   color: var(--sh-primary-text);
 }
 .code--redeem .code__label {
@@ -316,16 +291,11 @@ onUnmounted(() => clearInterval(timer));
 }
 .code__v {
   display: block;
-  font-size: 48rpx;
-  font-weight: 600;
   letter-spacing: 6rpx;
-  color: var(--sh-ink);
   margin-top: 12rpx;
 }
 .cancel {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 24rpx;
 }
 </style>

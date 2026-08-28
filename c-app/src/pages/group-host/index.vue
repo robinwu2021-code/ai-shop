@@ -88,7 +88,7 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="groupHost.title">
-    <text class="sh-h1">{{ $t("groupHost.title") }}</text>
+    <text class="txt-display">{{ $t("groupHost.title") }}</text>
 
     <sh-empty v-if="!hosting.length" :text='$t("groupHost.empty")'></sh-empty>
 
@@ -107,7 +107,7 @@ onShow(load);
 
       <view v-if="current" class="sh-card info">
         <view class="info__row" @tap="gotoGroup(current.groupNo)">
-          <text class="info__title">{{ current.title }}</text>
+          <text class="txt-body info__title">{{ current.title }}</text>
           <text class="sh-chip" :class="current.reached ? 'sh-chip--primary' : 'sh-chip--warning'">
             {{ current.reached ? $t("groupHost.reached") : $t("groupHost.need", { n: current.need }) }}
           </text>
@@ -118,7 +118,7 @@ onShow(load);
         <text class="sh-muted">
           {{ $t("groupHost.slot") }}{{ current.neighborPickup?.timeSlot }}
         </text>
-        <text class="free">{{ $t("groupHost.freeHint") }}</text>
+        <text class="txt-caption free">{{ $t("groupHost.freeHint") }}</text>
       </view>
 
       <!-- 批次签收：整批到货后点一次，参团邻居收到通知 -->
@@ -128,7 +128,7 @@ onShow(load);
 
       <!-- 轻核销：邻居来取货时逐单核掉 -->
       <view class="sh-card verify">
-        <text class="sh-h2">{{ $t("groupHost.verify") }}</text>
+        <text class="txt-title">{{ $t("groupHost.verify") }}</text>
         <view class="sh-row sh-mt-sm">
           <input
             maxlength="16"
@@ -138,13 +138,13 @@ onShow(load);
             confirm-type="done"
             @confirm="verify()"
           />
-          <text class="btn" @tap="verify()">{{ $t("groupHost.doVerify") }}</text>
+          <text class="txt-strong btn" @tap="verify()">{{ $t("groupHost.doVerify") }}</text>
         </view>
-        <text v-if="error" class="err">{{ error }}</text>
+        <text v-if="error" class="txt-caption err">{{ error }}</text>
       </view>
 
       <view class="list-head">
-        <text class="sh-h2">{{ $t("groupHost.waiting") }}</text>
+        <text class="txt-title">{{ $t("groupHost.waiting") }}</text>
         <text class="sh-muted sh-num">{{ waiting.length }}</text>
       </view>
 
@@ -152,10 +152,10 @@ onShow(load);
 
       <view v-for="o in waiting" :key="o.subOrderNo" class="sh-card row-item">
         <view class="sh-fill">
-          <text class="row-item__code sh-num">{{ o.verifyCode }}</text>
+          <text class="txt-title row-item__code sh-num">{{ o.verifyCode }}</text>
           <text class="sh-muted">{{ o.buyerNickname || "—" }} · {{ o.items.length }} 件</text>
         </view>
-        <text class="btn" @tap="verify(o.verifyCode)">{{ $t("groupHost.doVerify") }}</text>
+        <text class="txt-strong btn" @tap="verify(o.verifyCode)">{{ $t("groupHost.doVerify") }}</text>
       </view>
 
       <text class="tip sh-hint">{{ $t("groupHost.afterSaleHint") }}</text>
@@ -182,9 +182,6 @@ onShow(load);
 }
 .info__title {
   flex: 1;
-  font-size: 30rpx;
-  font-weight: 400;
-  color: var(--sh-ink);
 }
 .addr {
   display: block;
@@ -197,8 +194,6 @@ onShow(load);
   border-radius: 24rpx;
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
-  font-size: 24rpx;
-  line-height: 1.6;
 }
 .receive {
   margin-top: 24rpx;
@@ -218,8 +213,6 @@ onShow(load);
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  font-size: 26rpx;
-  font-weight: 600;
 }
 .err {
   display: block;
@@ -228,7 +221,6 @@ onShow(load);
   border-radius: 24rpx;
   background: var(--sh-danger-tint);
   color: var(--sh-danger);
-  font-size: 24rpx;
 }
 .list-head {
   display: flex;
@@ -245,10 +237,7 @@ onShow(load);
 
 .row-item__code {
   display: block;
-  font-size: 34rpx;
-  font-weight: 600;
   letter-spacing: 4rpx;
-  color: var(--sh-ink);
 }
 .tip {
   margin: 32rpx 8rpx;
