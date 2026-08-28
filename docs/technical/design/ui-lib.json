@@ -368,7 +368,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 75,
+        "b-app": 73,
         "c-app": 29
       }
     },
@@ -684,7 +684,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 226,
+        "b-app": 222,
         "c-app": 191
       }
     },
@@ -728,7 +728,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 4,
+        "b-app": 3,
         "c-app": 13
       }
     },
@@ -794,7 +794,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 112,
+        "b-app": 111,
         "c-app": 35
       }
     },
@@ -816,7 +816,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 81,
+        "b-app": 78,
         "c-app": 84
       }
     },
@@ -838,7 +838,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 96,
+        "b-app": 93,
         "c-app": 28
       }
     },
@@ -2092,10 +2092,18 @@
         "sh-scaffold",
         "biz-store-tag"
       ],
-      "libClassHits": 67,
-      "localSelectors": 37,
-      "localCssLines": 166,
-      "rolled": []
+      "libClassHits": 53,
+      "localSelectors": 38,
+      "localCssLines": 190,
+      "rolled": [
+        {
+          "id": "fill",
+          "label": "占满剩余自写",
+          "lib": ".sh-fill",
+          "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "b-app",
@@ -3215,7 +3223,18 @@
       "rolled": []
     }
   ],
-  "gaps": [],
+  "gaps": [
+    {
+      "id": "fill",
+      "label": "占满剩余自写",
+      "lib": ".sh-fill",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
+      "pages": [
+        "b-app/home"
+      ]
+    }
+  ],
   "counts": {
     "tokens": 10,
     "blocks": 55,
