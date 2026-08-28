@@ -70,14 +70,21 @@ export const site = {
      * 直出。用相对路径而不是绝对地址 —— 备案未过之前，商家多半从 `http://<IP>/` 进来，
      * 写死 https://www.hxmall.top 会让 IP 入口的下载跳到一个他打不开的地方。
      *
-     * **COS 现在用不了**：桶已建、包已传，但腾讯云禁止用 COS 默认域名向公网分发
-     * APK/IPA（`DownloadForbidden`），必须绑自定义域名，而大陆地域桶的自定义域名要备案。
-     * 从服务器上验会得到 200（内网不受限），**只有从公网出口验才看得到 403**。
-     * 备案下来、域名绑好后把这里换成直链即可，页面不用改。
+     * **COS 现在仍然用不了**（2026-08-28 从公网出口复验过，还是
+     * `DownloadForbidden`）：腾讯云禁止用 COS 默认域名向公网分发 APK/IPA，
+     * 必须绑自定义域名，而大陆地域桶的自定义域名要备案。
+     * 从服务器上验会得到 200（内网不受限），**只有从公网出口验才看得到 403** ——
+     * 只在服务器上验会得出「能下载」的错误结论。
+     *
+     * 包**已经同时传到 COS**（`hxmall-download-1301656997`：版本存档
+     * `b-app/hxmall-merchant-0.4.32-159.apk` + 稳定键 `latest.apk`，
+     * ETag 与本地 md5 一致）—— 上传不受那条限制，挡的只有公网下载。
+     * 所以备案下来、自定义域名绑好之后，这里换成 `latest.apk` 的直链即可，
+     * 包不用重传、页面不用改。
      */
-    merchantAndroid: "/dl/hxmall-merchant-0.1.0.apk",
+    merchantAndroid: "/dl/hxmall-merchant-0.4.32.apk",
     /** 商家端安卓包的版本号，跟着链接一起改 —— 页面上要让人看得出下的是哪一版 */
-    merchantAndroidVersion: "0.1.0",
+    merchantAndroidVersion: "0.4.32",
   },
 } as const;
 
