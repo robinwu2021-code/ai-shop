@@ -26,11 +26,15 @@
 | Android 命令行工具 | `/opt/homebrew/share/android-commandlinetools` | `local.properties` 指向它；`verify-apk.sh` 也读这个路径 |
 | 高德 Android Key | `b-app/.env.local` 的 `AMAP_KEY_ANDROID` | 注入逻辑在 `b-app/offline/amap-key.gradle`，工程里只有一行 `apply from:` |
 
-**`apply from:` 那一行必须在**（`simpleDemo/build.gradle` 末尾）：
+**这两行 `apply from:` 都必须在**（`simpleDemo/build.gradle` 末尾）：
 
 ```
 apply from: "/Users/robin/work/ai/ai-shop/b-app/offline/amap-key.gradle"
+apply from: "/Users/robin/work/ai/ai-shop/b-app/offline/version-alignment.gradle"
 ```
+
+第二行是 **versionCode 两处对齐**的构建时闸门（见下一节）。它挂在 `preBuild` 上，
+`assemble` / `bundle` 哪条路都绕不过；对不上就让构建失败，并把两个数字和该改哪两处打出来。
 
 把注入逻辑放仓库里、工程里只留一行，是因为**一行的缺失一眼看得出，几十行的逻辑丢了看不出** ——
 2026-08-22 到 08-28 这条注入断了六天没人发现，就是因为它当时整段写在工程里，
@@ -39,6 +43,14 @@ apply from: "/Users/robin/work/ai/ai-shop/b-app/offline/amap-key.gradle"
 ---
 
 ## 1. 抬版本号 —— **两处，缺一处就打出静默坏包**
+
+> 2026-08-28 起这一步有闸门兜底了（`b-app/offline/version-alignment.gradle`）：
+> 两处对不上就构建失败。**但闸门只在 `apply from:` 那行还在时才存在** ——
+> 离线工程重解压会把它清掉，所以上一节那两行要一起检查。
+>
+> 立这道闸的直接原因：仓库里本来就有 `verify-apk.sh`，里面本来就有「版本号」那一节，
+> 但它只打印不比对，而且**没有任何自动流程调用它**。当天一个 APK=159 / www=158 的包
+> 就这么发了出去，在测试真机上跑了两个多小时。**只能靠人记得跑的守卫等于没有守卫。**
 
 | 改哪 | 决定什么 |
 | --- | --- |
