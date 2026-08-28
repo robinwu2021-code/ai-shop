@@ -79,6 +79,19 @@ public class JobWorkerProperties {
     public void setLogPurgeBatch(int logPurgeBatch) { this.logPurgeBatch = logPurgeBatch; }
     public int getLogRetentionDays() { return logRetentionDays; }
     public void setLogRetentionDays(int logRetentionDays) { this.logRetentionDays = logRetentionDays; }
+    /**
+     * 这个 worker 负责哪些 target。**唯一真源** —— 此前这段判断在
+     * {@code JobSyncService} 里写了一份，而 {@code JobRegistry} 压根没判断，
+     * 于是「问谁要声明」与「排谁的期」用的是两套口径。
+     *
+     * <p>进程内形态没有 target 的概念（声明就在同一个进程里），用占位名 LOCAL。
+     * 不这么做的话按 target 过滤会一条都查不到，表现是「同步跑了、没报错、
+     * 一个任务都没排上」。
+     */
+    public java.util.Set<String> effectiveTargets() {
+        return targets.isEmpty() ? java.util.Set.of("LOCAL") : targets.keySet();
+    }
+
     public boolean isStartDisabled() { return startDisabled; }
     public void setStartDisabled(boolean startDisabled) { this.startDisabled = startDisabled; }
 }

@@ -102,9 +102,7 @@ public class JobSyncService {
          * 不这么做的话循环一次都不进，表现是「同步跑了、没报错、job_definition 还是空的」，
          * 而运营页面上什么都看不到。
          */
-        var targets = props.getTargets().isEmpty()
-                ? java.util.List.of("LOCAL") : props.getTargets().keySet();
-        for (String target : targets) {
+        for (String target : props.effectiveTargets()) {
             List<JobDeclaration> declarations;
             try {
                 declarations = source.fetch(target);
@@ -131,7 +129,8 @@ public class JobSyncService {
                 }
                 live.add(d.handlerName());
             }
-            int missing = definitions.markMissingExcept(live);
+            // **只标自己这个 target 下的** —— 不限定的话两个 worker 会互相标对方
+            int missing = definitions.markMissingExcept(live, java.util.Set.of(target));
             if (missing > 0) {
                 log.warn("{} 个任务在代码里已不存在，已标记（**没有删行**，静默消失比留着危险）", missing);
             }

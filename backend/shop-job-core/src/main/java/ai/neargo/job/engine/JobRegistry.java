@@ -41,6 +41,7 @@ public class JobRegistry {
     private final JobDefinitionDao definitions;
     private final JobRunDao runs;
     private final JobRunner runner;
+    private final JobWorkerProperties props;
 
     /** 已排上的任务：job_name → (当前用的 cron, future)。cron 一起存，才知道要不要重排。 */
     private final Map<String, Scheduled> scheduled = new ConcurrentHashMap<>();
@@ -48,11 +49,13 @@ public class JobRegistry {
     private record Scheduled(String cron, ScheduledFuture<?> future) {
     }
 
-    public JobRegistry(TaskScheduler scheduler, JobDefinitionDao definitions, JobRunDao runs, JobRunner runner) {
+    public JobRegistry(TaskScheduler scheduler, JobDefinitionDao definitions, JobRunDao runs,
+                       JobRunner runner, JobWorkerProperties props) {
         this.scheduler = scheduler;
         this.definitions = definitions;
         this.runs = runs;
         this.runner = runner;
+        this.props = props;
     }
 
     /**
@@ -61,7 +64,9 @@ public class JobRegistry {
      * @return 这一轮实际发生的变化，供日志与测试断言
      */
     public synchronized SyncReport sync() {
-        List<JobDefinitionRow> wanted = definitions.findSchedulable();
+        // **只排自己 target 下的任务**：排了别人的，每一轮都会因为解析不出地址
+        // 而回 UNREACHABLE，而那看起来像「业务系统挂了」
+        List<JobDefinitionRow> wanted = definitions.findSchedulable(props.effectiveTargets());
         Set<String> wantedNames = new HashSet<>();
         int added = 0, rescheduled = 0, removed = 0, invalid = 0;
 

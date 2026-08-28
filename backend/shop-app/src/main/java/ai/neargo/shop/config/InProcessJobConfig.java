@@ -112,8 +112,8 @@ public class InProcessJobConfig {
     @Bean
     JobRegistry inProcessJobRegistry(ThreadPoolTaskScheduler inProcessJobScheduler,
                                      JobDefinitionDao definitions, JobRunDao runs,
-                                     JobRunner inProcessJobRunner) {
-        return new JobRegistry(inProcessJobScheduler, definitions, runs, inProcessJobRunner);
+                                     JobRunner inProcessJobRunner, JobWorkerProperties props) {
+        return new JobRegistry(inProcessJobScheduler, definitions, runs, inProcessJobRunner, props);
     }
 
     @Bean

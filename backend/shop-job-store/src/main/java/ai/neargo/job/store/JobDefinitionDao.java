@@ -5,6 +5,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -65,9 +66,22 @@ public class JobDefinitionDao {
     }
 
     /** worker 注册用：只要开着的、且代码里还存在的。 */
-    public List<JobDefinitionRow> findSchedulable() {
+    /**
+     * 该由<b>我这个 worker</b> 排期的任务。
+     *
+     * <p><b>必须按 target 过滤。</b>不过滤的话，一个 worker 会把别的业务系统的任务
+     * 也排上，而它解析不出对方的地址 —— 每一轮都回 UNREACHABLE，而那看起来像
+     * 「业务系统挂了」。{@code target} 这一列存在的意义就是支持多个业务系统，
+     * 查询却把它无视掉，等于假设永远只有一个 worker。
+     */
+    public List<JobDefinitionRow> findSchedulable(Collection<String> targets) {
+        if (targets.isEmpty()) {
+            return List.of();
+        }
         return jdbc.sql("SELECT " + COLS + " FROM job_definition"
-                        + " WHERE enabled = 1 AND missing = 0 ORDER BY job_name")
+                        + " WHERE enabled = 1 AND missing = 0 AND target IN (:targets)"
+                        + " ORDER BY job_name")
+                .param("targets", targets)
                 .query(JobDefinitionDao::map).list();
     }
 
@@ -194,17 +208,30 @@ public class JobDefinitionDao {
      *
      * <p>只动 {@code source='CODE'} 的行 —— 运营自己建的任务与代码无关。
      */
-    public int markMissingExcept(List<String> liveHandlerNames) {
+    /**
+     * <p><b>只标自己这些 target 下的行。</b>不限定的话，两个 target 不同的 worker
+     * 会互相把对方的任务标成「代码里已不存在」—— 各自都只认识自己那份声明。
+     * 2026-08-28 生产上真的发生了：两个 worker 每 30 秒互标一次，
+     * 日志里同一条 WARN 无限重复，而<b>恒响的告警就是噪声掩体</b>。
+     */
+    public int markMissingExcept(List<String> liveHandlerNames, Collection<String> targets) {
+        if (targets.isEmpty()) {
+            return 0;
+        }
         if (liveHandlerNames.isEmpty()) {
-            return jdbc.sql("UPDATE job_definition SET missing = 1 WHERE source = 'CODE' AND missing = 0")
+            return jdbc.sql("UPDATE job_definition SET missing = 1"
+                            + " WHERE source = 'CODE' AND missing = 0 AND target IN (:targets)")
+                    .param("targets", targets)
                     .update();
         }
         return jdbc.sql("""
                         UPDATE job_definition SET missing = 1
                          WHERE source = 'CODE' AND missing = 0
+                           AND target IN (:targets)
                            AND handler_name NOT IN (:names)
                         """)
                 .param("names", liveHandlerNames)
+                .param("targets", targets)
                 .update();
     }
 

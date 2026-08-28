@@ -73,8 +73,8 @@ public class JobWorkerConfig {
 
     @Bean
     JobRegistry jobRegistry(ThreadPoolTaskScheduler jobTaskScheduler, JobDefinitionDao definitions,
-                            JobRunDao runs, JobRunner jobRunner) {
-        return new JobRegistry(jobTaskScheduler, definitions, runs, jobRunner);
+                            JobRunDao runs, JobRunner jobRunner, JobWorkerProperties props) {
+        return new JobRegistry(jobTaskScheduler, definitions, runs, jobRunner, props);
     }
 
     @Bean

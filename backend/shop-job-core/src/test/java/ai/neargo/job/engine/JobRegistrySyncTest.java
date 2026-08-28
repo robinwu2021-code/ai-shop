@@ -28,7 +28,7 @@ class JobRegistrySyncTest {
         biz = new WorkerTestFixture.FakeBusiness()
                 .returning(InvokeOutcome.of(JobStatus.SUCCESS, "好", null, 200));
         registry = new JobRegistry(scheduler, f.definitions, f.runs,
-                new JobRunner(biz, f.runs, f.logs, f.props));
+                new JobRunner(biz, f.runs, f.logs, f.props), f.props);
         sync = new JobSyncService(biz, f.definitions, registry, f.props);
     }
 

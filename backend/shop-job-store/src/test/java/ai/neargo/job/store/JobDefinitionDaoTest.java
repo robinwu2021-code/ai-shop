@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -15,6 +16,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * 它被违反时不会有任何声音，只会有人某天问「为什么它又变回三点了」。
  */
 class JobDefinitionDaoTest {
+
+    /** 这些用例只有一个 target。**按 target 过滤是 2026-08-28 补的** —— 见 DAO 上的注释。 */
+    private static final java.util.Set<String> PLATFORM = java.util.Set.of("PLATFORM");
 
     private JdbcClient jdbc;
     private JobDefinitionDao dao;
@@ -106,16 +110,16 @@ class JobDefinitionDaoTest {
         dao.upsertFromCode("plan-expiry", DECL, "PLATFORM");
         dao.upsertFromCode("recon-scan", JobDeclaration.daily(
                 "recon-scan", "对账自查", "d", "shop-settle", "0 */10 * * * *"), "PLATFORM");
-        assertEquals(2, dao.findSchedulable().size());
+        assertEquals(2, dao.findSchedulable(PLATFORM).size());
 
         // 下一版代码里只剩 recon-scan
-        int marked = dao.markMissingExcept(List.of("recon-scan"));
+        int marked = dao.markMissingExcept(List.of("recon-scan"), PLATFORM);
 
         assertEquals(1, marked);
         assertNotNull(dao.findByName("plan-expiry"), "静默消失比留着危险：运营会以为它还在跑");
         assertTrue(dao.findByName("plan-expiry").missing());
         assertEquals(List.of("recon-scan"),
-                dao.findSchedulable().stream().map(JobDefinitionRow::jobName).toList(),
+                dao.findSchedulable(PLATFORM).stream().map(JobDefinitionRow::jobName).toList(),
                 "标了 missing 就不该再被调度");
     }
 
@@ -123,7 +127,7 @@ class JobDefinitionDaoTest {
     @DisplayName("任务重新出现时，missing 要清掉")
     void reappearingJobClearsMissing() {
         dao.upsertFromCode("plan-expiry", DECL, "PLATFORM");
-        dao.markMissingExcept(List.of());
+        dao.markMissingExcept(List.of(), PLATFORM);
         assertTrue(dao.findByName("plan-expiry").missing());
 
         dao.upsertFromCode("plan-expiry", DECL, "PLATFORM");
@@ -135,7 +139,7 @@ class JobDefinitionDaoTest {
     void disabledJobsAreNotSchedulable() {
         dao.upsertFromCode("plan-expiry", DECL, "PLATFORM");
         dao.setEnabled("plan-expiry", false, "ops:li");
-        assertTrue(dao.findSchedulable().isEmpty());
+        assertTrue(dao.findSchedulable(PLATFORM).isEmpty());
     }
 
     @Test
@@ -162,5 +166,49 @@ class JobDefinitionDaoTest {
         assertFalse(r.logEveryRun(), "高频任务关掉全量日志，靠的就是这条更新");
         // 而运营那半边不能被碰
         assertEquals("0 30 4 * * *", r.cron(), "cron 归运营，代码不许覆盖");
+    }
+
+    @Test
+    @DisplayName("★★★ 两个 target 不同的 worker 不能互相把对方的任务标成「代码里已不存在」")
+    void workersOfDifferentTargetsDoNotFightOverMissing() {
+        JobDeclaration a = new JobDeclaration("only-in-platform", "甲", "d", "m",
+                "0 0 3 * * *", true, 600, 900, true, true);
+        JobDeclaration b = new JobDeclaration("only-in-local", "乙", "d", "m",
+                "0 0 4 * * *", true, 600, 900, true, true);
+        dao.upsertFromCode("only-in-platform", a, "PLATFORM");
+        dao.upsertFromCode("only-in-local", b, "LOCAL");
+
+        /*
+         * PLATFORM 那个 worker 轮询：它只认识自己那份声明。
+         * 不按 target 限定的话，它会把 LOCAL 的任务也标成 missing ——
+         * 而 LOCAL 那个 worker 下一轮又标回来。2026-08-28 生产上就是这样，
+         * 两边每 30 秒互标一次，日志里同一条 WARN 无限重复。
+         */
+        int marked = dao.markMissingExcept(List.of("only-in-platform"),
+                java.util.Set.of("PLATFORM"));
+
+        assertEquals(0, marked, "不该动别人 target 下的任何一行");
+        assertFalse(dao.findByName("only-in-local").missing(),
+                "LOCAL 的任务被 PLATFORM 的 worker 标成失联了 —— 那是修复前的形态");
+        assertFalse(dao.findByName("only-in-platform").missing());
+    }
+
+    @Test
+    @DisplayName("★★ 只排自己 target 下的任务 —— 排了别人的，每轮都会 UNREACHABLE")
+    void schedulableIsScopedToOwnTargets() {
+        dao.upsertFromCode("p1", new JobDeclaration("p1", "甲", "d", "m",
+                "0 0 3 * * *", true, 600, 900, true, true), "PLATFORM");
+        dao.upsertFromCode("l1", new JobDeclaration("l1", "乙", "d", "m",
+                "0 0 4 * * *", true, 600, 900, true, true), "LOCAL");
+
+        assertThat(dao.findSchedulable(java.util.Set.of("PLATFORM")))
+                .extracting(JobDefinitionRow::jobName)
+                .containsExactly("p1");
+        assertThat(dao.findSchedulable(java.util.Set.of("LOCAL")))
+                .extracting(JobDefinitionRow::jobName)
+                .containsExactly("l1");
+        assertThat(dao.findSchedulable(java.util.Set.of()))
+                .as("一个 target 都没有的 worker 什么都不该排")
+                .isEmpty();
     }
 }
