@@ -197,6 +197,41 @@ class StoreAndStaffFlowTest {
     }
 
     @Test
+    @DisplayName("★ 停用店员要当场断会话 —— 不是「下次登录时」")
+    void disablingStaffKicksTheirLiveSession() throws Exception {
+        /*
+         * **这条闸守的是一次无声失败**。
+         *
+         * 停用走的是 tokenStores.of(realm).revokeUser()。A7 把店员会话从 C 端池
+         * 挪到 B 端池之后，那一行还指着 C 端池 —— 于是它变成一次**空吊销**：
+         * 接口返回成功、状态确实改成 DISABLED、日志里什么都没有，
+         * 而被停用的人手里那个 token 继续能下单发货。
+         *
+         * 只断言 status=DISABLED 是不够的：那一版的 status 也是 DISABLED。
+         * 必须拿**他手里那个真令牌**再打一次，才分得出「停用了」和「以为停用了」。
+         */
+        String token = merchant("12600129030", "停用踢会话店");
+        String staffNo = addStaff(token, "13600009911");
+
+        String staffToken = TestLogin.merchantStaff(mvc(), json, otpStore, "13600009911");
+        /*
+         * 断言「不是 10401」而不是「等于 0」：新加的店员还没被授权到任何门店，
+         * 业务上本来就可能 403。这条测试问的是**会话认不认**，不是他有什么权限 ——
+         * 把权限掺进来，哪天授权默认值一变，这条闸就会红在毫不相干的地方。
+         */
+        mvc().perform(get("/biz/merchant/profile").header("Authorization", "Bearer " + staffToken))
+                .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(10401)));
+
+        mvc().perform(post("/biz/staff/" + staffNo + "/status").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"active\":false}"))
+                .andExpect(jsonPath("$.data.status").value("DISABLED"));
+
+        // 同一个令牌，停用之后必须立刻不认
+        mvc().perform(get("/biz/merchant/profile").header("Authorization", "Bearer " + staffToken))
+                .andExpect(jsonPath("$.code").value(10401));
+    }
+
+    @Test
     @DisplayName("★ 员工离职再回来是常事 —— 重复添加要重新启用，不是报「已存在」")
     void reAddReactivates() throws Exception {
         String token = merchant("12600129008", "员工测试店B");

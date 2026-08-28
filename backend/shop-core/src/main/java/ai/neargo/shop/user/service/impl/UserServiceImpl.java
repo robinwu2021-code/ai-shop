@@ -111,8 +111,15 @@ public class UserServiceImpl implements UserService {
                 .set(UsrAccount::getAppleSub, null)
                 .set(UsrAccount::getStatus, STATUS_DEREGISTERED));
 
-        // 踢掉所有在线会话：注销之后那些 token 不该还能用
+        /*
+         * 踢掉所有在线会话：注销之后那些 token 不该还能用。
+         *
+         * **两个池都要踢** —— A7 之后同一个 user_no 可能在 MERCHANT 池里也有会话
+         * （店主走 /biz/auth/login，主体就是 user_no）。只踢 C 端的话，
+         * 注销完账号还能从 B 端继续经营，而注销流程一路返回成功。
+         */
         tokenStores.of(ai.neargo.shop.auth.Realm.CONSUMER).revokeUser(user.getUserNo());
+        tokenStores.of(ai.neargo.shop.auth.Realm.MERCHANT).revokeUser(user.getUserNo());
         log.info("[用户] 账号已注销 userNo={}", user.getUserNo());
     }
 

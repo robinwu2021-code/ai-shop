@@ -223,6 +223,18 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
      * 在 token-store 还没切库的今天只有踢会话这一条路。
      */
     private void kicked(String mchAccountNo) {
+        /*
+         * **踢 MERCHANT 池，不是 CONSUMER 池。**
+         *
+         * A7 之前店员会话发的是 ctk_、落在 C 端池，所以这里写 CONSUMER 是对的。
+         * A7 把它改成 btk_ 之后，这一行**变成了一次空吊销** —— 不报错、不记日志，
+         * 「停用店员」照常返回成功，而那个人的 App 还能继续下单发货。
+         * 停用是安全动作，它失败时必须是显式的，而这一版的失败方式是彻底无声。
+         *
+         * 两个池都踢：一个人可能既是店员（MCH 主体）又用同号开过自己的店（USR 主体），
+         * 而 revokeUser 对不存在的主体是无害的空操作。
+         */
+        tokenStores.of(ai.neargo.shop.auth.Realm.MERCHANT).revokeUser(mchAccountNo);
         tokenStores.of(ai.neargo.shop.auth.Realm.CONSUMER).revokeUser(mchAccountNo);
     }
 
