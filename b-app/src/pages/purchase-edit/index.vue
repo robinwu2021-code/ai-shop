@@ -12,6 +12,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { StockBalance } from "@shared/types";
+import { uomLabel } from "@shared/utils/format";
 import { prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
@@ -161,7 +162,7 @@ onShow(load);
           <text class="txt-strong row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
           <view class="row__meta">
             <text class="sh-link sh-num" @tap="editQty(l)">
-              {{ $t("purchase.qtyN", { n: l.qty, uom: l.uom || "" }) }}
+              {{ $t("purchase.qtyN", { n: l.qty, uom: uomLabel(l.uom, t) }) }}
             </text>
             <text class="sh-link sh-num" @tap="editCost(l)">
               ¥{{ yuan(l.unitCostMinor) }}

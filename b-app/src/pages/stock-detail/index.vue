@@ -14,6 +14,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { StockItemDetail, StockLedgerRow } from "@shared/types";
+import { uomLabel } from "@shared/utils/format";
 import { prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
@@ -135,7 +136,7 @@ onShow(load);
           {{ $t("stockDetail.idLine", {
             barcode: detail.barcode || "—",
             code: detail.itemCode || "—",
-            uom: detail.baseUom || "—",
+            uom: uomLabel(detail.baseUom, t) || "—",
           }) }}
         </text>
       </view>

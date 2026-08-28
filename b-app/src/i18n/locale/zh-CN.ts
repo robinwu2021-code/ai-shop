@@ -1939,7 +1939,15 @@ entryHint: "谁在买 · 谁不来了",
     reservedN: "预留 {n}",
     empty: "这一栏没有要处理的 —— 空着是好事。",
     formulaHint: "可用 = 实存 − 预留。预留是别人下了单还没付钱的量，付了款才真扣。",
+    // 计量单位。后端 `inv_uom` 是一张字典表（V1 里种了 8 条），而
+    // `baseUom` 有两种来源：字典码（PIECE…）或平台商品上的自由文本（「袋」）。
+    // 认得的码翻成中文，认不得的原样显示 —— 别把商家自己写的单位吃掉。
+    uom: { PIECE: "件", BAG: "袋", BOX: "箱", BOTTLE: "瓶", PORTION: "份", JIN: "斤", KG: "公斤", G: "克" },
     reason: {
+      // INIT 是**搬运落的期初单**：老账搬进来那一笔。缺了它，库存明细上
+      // 每一行都会原样显示 `stock.reason.INIT` —— 2026-08-28 线上就是这样
+      INIT: "期初",
+      CHECK: "盘点",
       PURCHASE: "采购入库",
       RETURN: "退货入库",
       TRANSFER_IN: "调拨入",
@@ -2048,7 +2056,7 @@ entryHint: "谁在买 · 谁不来了",
     title: "调拨",
     from: "从",
     to: "到",
-    status: { DRAFT: "草稿", SHIPPED: "已发出", RECEIVED: "已收到" },
+    status: { DRAFT: "草稿", SHIPPED: "已发出", RECEIVED: "已收到", VOIDED: "已作废" },
     shippedAt: "{at} 发出 · 待收货",
     receivedAt: "{at} 已收到",
     notShipped: "还没发出——行在发出的那张出库单上，发出后才有。",
@@ -2078,7 +2086,10 @@ entryHint: "谁在买 · 谁不来了",
     purchased: "进",
     sold: "销",
     lost: "损（报损 + 盘亏）",
-    adjusted: "调",
+    // **写全括号里那几类**：它是一个兜底桶（退货入 / 盘盈 / 领用 / 调拨 / 期初 / 其它），
+    // 只写一个「调」的话，搬运当月商家会看到「调 +290」而问「我什么时候调了 290 件」——
+    // 那 290 是老账搬进来的期初，不是调拨。2026-08-28 线上截图就是这一幕。
+    adjusted: "调整（含期初 / 退货 / 盘盈 / 调拨）",
     closing: "期末",
     balanced: "账对得上",
     unbalanced: "账对不上——台账漏了一笔，别拿这张表去对账",

@@ -65,7 +65,26 @@ async function load() {
 }
 
 function nameOf(id?: string): string {
-  return locations.value.find((l) => l.locationId === id)?.name ?? (id ?? "");
+  const loc = locations.value.find((l) => l.locationId === id);
+  if (!loc) return id ?? "";
+  /*
+   * **门店库位的 name 是门店编号，不是门店名。**
+   *
+   * 库位是懒创建的，创建它的 `InventoryAclServiceImpl.locationIdOf` 只拿得到
+   * `storeNo`（进销存模块刻意不认识平台的门店表 —— 那是它能独立交付的前提），
+   * 于是 `name` 里存的是 `ST-M0001` 这样的编号。
+   * 2026-08-28 线上截图：调拨页的「从 / 到」写着
+   * `ST-M0001` 与 `ST202608151144350000684`，商家看不懂自己要往哪调。
+   *
+   * 显示名归端上解析：这里本来就有商家的门店列表，按 externalRef 对回去。
+   * 对不上（门店被删、或不是门店库位）就用库位自己的名字。
+   */
+  if (loc.kind === "STORE" && loc.externalRef) {
+    const store = merchant.allStores.find((s) => s.storeNo === loc.externalRef)
+      ?? merchant.stores.find((s) => s.storeNo === loc.externalRef);
+    if (store?.name) return store.name;
+  }
+  return loc.name || (id ?? "");
 }
 
 async function pickEnd(which: "from" | "to") {
