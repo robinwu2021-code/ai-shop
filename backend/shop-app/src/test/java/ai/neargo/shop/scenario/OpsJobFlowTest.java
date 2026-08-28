@@ -133,7 +133,7 @@ class OpsJobFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.triggerPending").value(true));
 
-        assertThat(definitions.findTriggerRequested())
+        assertThat(definitions.findTriggerRequested(java.util.Set.of("PLATFORM")))
                 .as("worker 下一轮轮询要能捡到它")
                 .anyMatch(d -> "demo-trigger".equals(d.jobName()));
     }

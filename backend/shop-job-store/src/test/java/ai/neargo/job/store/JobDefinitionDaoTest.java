@@ -211,4 +211,19 @@ class JobDefinitionDaoTest {
                 .as("一个 target 都没有的 worker 什么都不该排")
                 .isEmpty();
     }
+
+    @Test
+    @DisplayName("★★ 手动触发只被自己 target 的 worker 领走 —— 领错了这次触发就被吃掉")
+    void triggerRequestIsScopedToOwnTargets() {
+        dao.upsertFromCode("l1", new JobDeclaration("l1", "乙", "d", "m",
+                "0 0 4 * * *", true, 600, 900, true, true), "LOCAL");
+        assertTrue(dao.requestTrigger("l1", java.time.LocalDateTime.now(), "ops:zhang"));
+
+        assertThat(dao.findTriggerRequested(java.util.Set.of("PLATFORM")))
+                .as("PLATFORM 的 worker 领走 LOCAL 的请求 → 它跑不了，"
+                        + "但水位已推高，页面上「已排队」消失而任务根本没跑")
+                .isEmpty();
+        assertThat(dao.findTriggerRequested(java.util.Set.of("LOCAL")))
+                .extracting(JobDefinitionRow::jobName).containsExactly("l1");
+    }
 }

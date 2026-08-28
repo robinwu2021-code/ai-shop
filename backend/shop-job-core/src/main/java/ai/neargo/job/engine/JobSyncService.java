@@ -65,7 +65,7 @@ public class JobSyncService {
     private void runTriggerRequests() {
         List<JobDefinitionRow> pending;
         try {
-            pending = definitions.findTriggerRequested();
+            pending = definitions.findTriggerRequested(props.effectiveTargets());
         } catch (RuntimeException e) {
             log.warn("查手动触发请求失败，本轮跳过 异常={}", e.getClass().getSimpleName());
             return;

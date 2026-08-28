@@ -265,11 +265,22 @@ public class JobDefinitionDao {
      * <p>比的是两个时间戳而不是清一个布尔标志：清标志那一步失败或进程被杀，
      * 这个任务就会**每轮都跑一次**，直到有人发现。比大小是幂等的。
      */
-    public List<JobDefinitionRow> findTriggerRequested() {
+    /**
+     * <p><b>同样只看自己 target 下的。</b>不限定的后果比前两处更直接：
+     * 两个 worker 都会捞到同一条触发请求，谁先 {@link #markTriggered} 谁算受理 ——
+     * 而如果受理的那个跑不了（target 对不上、解析不出地址），
+     * <b>这一次触发就被吃掉了</b>：任务没跑，而页面上的「已排队」因为水位被推高
+     * 而消失，看起来像已经跑完了。
+     */
+    public List<JobDefinitionRow> findTriggerRequested(Collection<String> targets) {
+        if (targets.isEmpty()) {
+            return List.of();
+        }
         return jdbc.sql("SELECT " + COLS + " FROM job_definition"
                         + " WHERE trigger_requested_at IS NOT NULL"
                         + " AND (last_triggered_at IS NULL OR trigger_requested_at > last_triggered_at)"
-                        + " AND enabled = 1 AND missing = 0")
+                        + " AND enabled = 1 AND missing = 0 AND target IN (:targets)")
+                .param("targets", targets)
                 .query(JobDefinitionDao::map).list();
     }
 
