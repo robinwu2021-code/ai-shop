@@ -379,12 +379,12 @@ function PlanDefForm({ c, def, onSaved }: { c: Copy; def: PlanDef; onSaved: () =
           <Input type="number" min={0} value={trialDays} onChange={(e) => setTrialDays(e.target.value)} />
         </Field>
         <label className="flex items-center gap-2 txt-body">
-          <input type="checkbox" checked={crossStoreStats} onChange={(e) => setCross(e.target.checked)} />
+          <input className="focus-ring" type="checkbox" checked={crossStoreStats} onChange={(e) => setCross(e.target.checked)} />
           {c.plDefColCross}
         </label>
         {/* 停售只挡新授，**已订阅的照常用到到期** —— 那才是这个开关的语义 */}
         <label className="flex items-center gap-2 txt-body">
-          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+          <input className="focus-ring" type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
           {c.plDefColEnabled}
         </label>
         <Button loading={save.isPending} disabled={Number(storeQuota) < 1} onClick={askThenSave}>

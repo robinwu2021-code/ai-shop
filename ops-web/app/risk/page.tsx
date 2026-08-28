@@ -299,7 +299,7 @@ function RiskInner() {
                       <code className="txt-caption">{r}</code>
                       {/* 归因链路号能跳过去看「人是怎么进来的」—— 异常裂变的判断就靠它 */}
                       {r.startsWith("AT") && (
-                        <a className="ms-2 text-[var(--primary)] underline" href={`/growth?tab=traces&keyword=${r}`}>
+                        <a className="focus-ring ms-2 text-[var(--primary)] underline" href={`/growth?tab=traces&keyword=${r}`}>
                           {c.linkTrace}
                         </a>
                       )}

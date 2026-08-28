@@ -285,7 +285,7 @@ function IamInner() {
             disabled={move.isPending}
             // 阻止冒泡：这两个按钮长在树节点的 label 里，不拦的话点一下会连带勾选/展开
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); move.mutate({ kind, code, dir }); }}
-            className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+            className="focus-ring rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
           >
             {dir === "UP" ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
           </button>

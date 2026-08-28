@@ -251,7 +251,7 @@ function MarketingInner() {
           type="button"
           disabled={!canIssue}
           title={c.budgetTitle}
-          className="flex w-full items-center gap-2 rounded-field px-1 transition-colors hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
+          className="focus-ring flex w-full items-center gap-2 rounded-field px-1 transition-colors hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
           onClick={() => setBudgetEdit({ couponNo: r.couponNo, value: (r.budget / 100).toFixed(2) })}
         >
           {r.budget > 0 && (

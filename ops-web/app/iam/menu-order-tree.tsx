@@ -115,7 +115,7 @@ export function MenuOrderTree({
                     // 拖动进行中禁用：两条路径同时改会互相覆盖
                     disabled={busy || !!dragging}
                     onClick={() => onMove(parentKey, n.key, dir)}
-                    className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+                    className="focus-ring rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
                   >
                     {dir === "UP" ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
                   </button>

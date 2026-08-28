@@ -34,7 +34,7 @@ export function PhaseGuard({ children }: { children: React.ReactNode }) {
       </p>
       <Link
         href="/"
-        className="mt-5 rounded-field bg-secondary px-4 py-2 txt-strong text-foreground transition-colors hover:bg-accent"
+        className="focus-ring mt-5 rounded-field bg-secondary px-4 py-2 txt-strong text-foreground transition-colors hover:bg-accent"
       >
         {t("phase.backHome")}
       </Link>

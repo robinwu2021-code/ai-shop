@@ -280,7 +280,7 @@ function BindingEditor({ c, all, editing, onChange }: {
                                    bg-[var(--primary)] px-1 py-0.5 text-[12px] text-white">
                         <button type="button" title={c.csValMoveL} disabled={vi === 0}
                           onClick={() => moveVal(vi - 1)}
-                          className="px-0.5 leading-none opacity-70 hover:opacity-100
+                          className="focus-ring px-0.5 leading-none opacity-70 hover:opacity-100
                                      disabled:cursor-default disabled:opacity-25">‹</button>
                         <span className="px-0.5" title={c.csRenameHint}
                           onDoubleClick={() => {
@@ -300,11 +300,11 @@ function BindingEditor({ c, all, editing, onChange }: {
                         </span>
                         <button type="button" title={c.csValMoveR} disabled={vi === b.valueNos.length - 1}
                           onClick={() => moveVal(vi + 1)}
-                          className="px-0.5 leading-none opacity-70 hover:opacity-100
+                          className="focus-ring px-0.5 leading-none opacity-70 hover:opacity-100
                                      disabled:cursor-default disabled:opacity-25">›</button>
                         <button type="button" title={c.csValDrop}
                           onClick={() => setVals(b.valueNos.filter((x) => x !== vn))}
-                          className="ml-0.5 px-0.5 leading-none opacity-70 hover:opacity-100">×</button>
+                          className="focus-ring ml-0.5 px-0.5 leading-none opacity-70 hover:opacity-100">×</button>
                       </span>
                     );
                   })}
@@ -320,7 +320,7 @@ function BindingEditor({ c, all, editing, onChange }: {
                       <button key={v.valueNo} type="button"
                         onClick={() => onChange(picked.map((x) => x.dimNo === b.dimNo
                           ? { ...x, valueNos: [...x.valueNos, v.valueNo] } : x))}
-                        className="rounded-chip bg-muted px-2 py-0.5 text-[12px] text-muted-foreground
+                        className="focus-ring rounded-chip bg-muted px-2 py-0.5 text-[12px] text-muted-foreground
                                    hover:bg-border">
                         {v.label}
                       </button>
@@ -357,7 +357,7 @@ function BindingEditor({ c, all, editing, onChange }: {
                 primary: !sec.isProp && sale.length === 0,
                 required: false, valueNos: [], labels: {},
               }])}
-              className="inline-flex items-center gap-1.5 rounded-chip border border-border
+              className="focus-ring inline-flex items-center gap-1.5 rounded-chip border border-border
                          px-2.5 py-1 text-[12px] hover:bg-muted">
               {d.name}
               <Badge tone={d.universal ? "info" : "muted"}>

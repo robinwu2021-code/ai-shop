@@ -122,7 +122,7 @@ function MembersInner() {
   const memberCols: Column<OpsMember>[] = [
     { header: c.colMember,
       cell: (m) => (
-        <button className="text-left underline" onClick={() => { setPersonNo(m.personNo); setTab("persons"); }}>
+        <button className="focus-ring text-left underline" onClick={() => { setPersonNo(m.personNo); setTab("persons"); }}>
           ···{m.phoneTail ?? "----"}
           {m.status === "LEAD" && <Badge className="ml-2">{c.lead}</Badge>}
         </button>

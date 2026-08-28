@@ -486,7 +486,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
         <span className={r.level === 2 ? "pl-5" : ""}>
           <button
             type="button"
-            className="text-left hover:underline"
+            className="focus-ring text-left hover:underline"
             onClick={() => canEdit && setForm({
               categoryNo: r.categoryNo, name: r.name, i18nEn: r.i18n.en ?? "",
               parentNo: r.parentNo ?? "", template: r.template,
@@ -819,7 +819,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
                   key={t.categoryNo}
                   type="button"
                   onClick={() => setPreviewTop(t.categoryNo)}
-                  className={`rounded-field px-2.5 py-1 txt-caption ${
+                  className={`focus-ring rounded-field px-2.5 py-1 txt-caption ${
                     (previewTop || liveTops[0]?.categoryNo) === t.categoryNo
                       ? "bg-primary text-primary-foreground"
                       : "bg-secondary"

@@ -127,7 +127,7 @@ function LoginForm() {
             需要它的人此刻正被挡在门外，看不到任何菜单。
           */}
           <button type="button" onClick={() => setForgot(true)}
-                  className="mt-3 w-full txt-caption text-muted-foreground hover:text-foreground">
+                  className="focus-ring mt-3 w-full txt-caption text-muted-foreground hover:text-foreground">
             {t("login.forgot")}
           </button>
         </CardContent>

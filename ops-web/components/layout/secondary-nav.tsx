@@ -73,7 +73,7 @@ function LeafRow({ leaf, active }: { leaf: NavLeaf; active: boolean }) {
   return (
     <Link
       href={leaf.href}
-      className={cn(
+      className={cn("focus-ring", 
         "flex items-center rounded-field px-2.5 py-1.5 text-[13px] transition-colors",
         active ? "bg-accent font-medium text-[var(--primary)]" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
       )}

@@ -93,7 +93,7 @@ export function BuyerInvoiceTab({ c, canIssue }: { c: FinanceCopy; canIssue: boo
           return (
             <div className="flex items-center gap-1.5">
               <input
-                className="h-8 w-44 rounded-input border border-border bg-background px-1.5 text-[12px]"
+                className="focus-ring h-[calc(var(--ctl-h)-4px)] w-44 rounded-input border border-border bg-background px-1.5 text-[12px]"
                 placeholder={isIssue ? c.brInvoiceNoPlaceholder : c.brRejectPlaceholder}
                 value={text}
                 onChange={(e) => setText(e.target.value)}

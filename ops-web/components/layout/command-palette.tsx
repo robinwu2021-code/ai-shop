@@ -106,7 +106,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("nav.searchPlaceholder")}
-              className="min-w-0 flex-1 bg-transparent txt-body outline-none placeholder:text-muted-foreground"
+              className="focus-ring min-w-0 flex-1 bg-transparent txt-body outline-none placeholder:text-muted-foreground"
             />
             <kbd className="shrink-0 rounded-chip border border-border px-1.5 txt-caption text-muted-foreground">Esc</kbd>
           </div>
@@ -125,7 +125,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                   // 鼠标移上去就等于选中：否则键盘光标与鼠标悬停会同时高亮两行
                   onMouseMove={() => setCursor(i)}
                   onClick={() => go(e)}
-                  className={cn(
+                  className={cn("focus-ring", 
                     "flex w-full items-center gap-2 rounded-field px-2.5 py-2 text-start txt-body transition-colors",
                     i === cursor ? "bg-accent text-foreground" : "text-muted-foreground",
                   )}

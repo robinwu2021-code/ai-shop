@@ -81,7 +81,7 @@ export function ApplyTab({ c, canDecide }: { c: Copy; canDecide: boolean }) {
       header: c.colApplyName,
       cell: (a) => (
         <span className="flex items-center gap-2">
-          <button className="link" onClick={() => open(a)}>{a.name}</button>
+          <button className="focus-ring link" onClick={() => open(a)}>{a.name}</button>
           {/* 聚落模型：裁决的人要一眼看出这是村还是小区 —— 村多半带官方码可查重 */}
           <Badge tone={a.kind === "VILLAGE" ? "info" : "muted"}>
             {a.kind === "VILLAGE" ? c.apKindVillage : c.apKindEstate}

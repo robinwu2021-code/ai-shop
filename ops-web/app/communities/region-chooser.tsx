@@ -68,13 +68,13 @@ export function RegionChooser({
     <>
       {/* 面包屑：点任意一级回退到那一级重选 */}
       <div className="flex flex-wrap items-center gap-1 mb-3">
-        <button type="button" className="txt-caption underline" onClick={() => backTo(0)}>
+        <button type="button" className="focus-ring txt-caption underline" onClick={() => backTo(0)}>
           {c.regionRoot}
         </button>
         {chain.map((r, i) => (
           <span key={r.regionCode} className="txt-caption">
             <span className="mx-1 text-muted-foreground">/</span>
-            <button type="button" className="underline" onClick={() => backTo(i + 1)}>
+            <button type="button" className="focus-ring underline" onClick={() => backTo(i + 1)}>
               {r.name}
             </button>
           </span>

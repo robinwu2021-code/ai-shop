@@ -104,7 +104,7 @@ export function NotifyBell() {
         <button
           type="button"
           aria-label={t("bell.aria")}
-          className="relative rounded-field p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="focus-ring relative rounded-field p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <Bell className="size-4" />
           {unread > 0 && (
@@ -132,7 +132,7 @@ export function NotifyBell() {
               key={m.messageNo}
               type="button"
               onClick={() => void onItemClick(m)}
-              className="flex w-full items-start gap-2 border-b border-border px-3 py-2.5 text-start transition-colors last:border-b-0 hover:bg-accent"
+              className="focus-ring flex w-full items-start gap-2 border-b border-border px-3 py-2.5 text-start transition-colors last:border-b-0 hover:bg-accent"
             >
               <span
                 className={`mt-1.5 size-1.5 flex-shrink-0 rounded-chip ${m.read ? "bg-transparent" : "bg-destructive"}`}

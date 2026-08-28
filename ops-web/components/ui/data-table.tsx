@@ -39,7 +39,7 @@ export type SortDir = "asc" | "desc";
 /**
  * 行选择 checkbox（含半选态）。
  *
- * 原为就地实现的原生 `<input type=checkbox>`（靠 ref 副作用设 `indeterminate`），
+ * 原为就地实现的原生 `<input className="focus-ring" type=checkbox>`（靠 ref 副作用设 `indeterminate`），
  * 已上移为原语 `ui/checkbox.tsx`；这里只留「三态 boolean → CheckedState」的转接
  * 与 `stopPropagation`（行整体可点，勾选不该顺带打开详情）。
  */

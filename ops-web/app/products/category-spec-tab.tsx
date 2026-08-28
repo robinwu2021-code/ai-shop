@@ -86,7 +86,7 @@ export function CategorySpecTab({ c, canEdit }: { c: ProductsCopy; canEdit: bool
                 return (
                   <button key={key} type="button"
                     onClick={() => setOpenKey(openKey === key ? null : key)}
-                    className="inline-flex items-center gap-1.5 rounded-chip border border-border
+                    className="focus-ring inline-flex items-center gap-1.5 rounded-chip border border-border
                                px-2.5 py-1 text-[12px] leading-[1.5] hover:bg-muted">
                     <span className="font-semibold">{d.name}</span>
                     {d.primary && <Badge tone="default">{c.csPrimary}</Badge>}

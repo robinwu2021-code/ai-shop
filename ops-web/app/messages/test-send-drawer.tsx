@@ -331,7 +331,7 @@ export function TestSendDrawer({
                      placeholder={c.nlTestCaptchaPh} className="w-28" />
               {captcha.data && (
                 <button type="button" onClick={refreshCaptcha} title={c.nlTestRefresh}
-                        className="rounded-field border border-card-border">
+                        className="focus-ring rounded-field border border-card-border">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={`data:image/png;base64,${captcha.data.imageBase64}`}
                        alt={c.nlTestCaptcha} className="h-9" />

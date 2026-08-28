@@ -107,7 +107,7 @@ export function PayablesTab({ c, canEdit, canPay }: {
                 「银行慢了」还是「有人点早了」—— 与提现表不给人工 PAID 入口同一条规矩。
               */}
               <input
-                className="h-8 w-40 rounded-input border border-border bg-background px-1.5 text-[12px] font-mono"
+                className="focus-ring h-[calc(var(--ctl-h)-4px)] w-40 rounded-input border border-border bg-background px-1.5 text-[12px] font-mono"
                 placeholder={c.pyRefPlaceholder}
                 value={ref}
                 onChange={(e) => setRef(e.target.value)}
@@ -158,7 +158,7 @@ export function PayablesTab({ c, canEdit, canPay }: {
       <div className="mb-3 flex gap-1.5">
         {["", "PENDING_RECON", "CONFIRMED", "PAID"].map((s) => (
           <button key={s || "all"} type="button" onClick={() => setStatus(s)}
-            className={`rounded-chip border px-2.5 py-1 text-[12px] ${
+            className={`focus-ring rounded-chip border px-2.5 py-1 text-[12px] ${
               status === s ? "border-foreground bg-foreground text-background" : "border-border hover:bg-muted"
             }`}>
             {s ? (c[`payableStatus_${s}` as keyof FinanceCopy] ?? s) : c.all}

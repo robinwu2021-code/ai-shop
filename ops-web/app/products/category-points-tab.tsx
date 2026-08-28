@@ -79,7 +79,7 @@ export function CategoryPointsTab({ c, canEdit }: { c: ProductsCopy; canEdit: bo
         return (
           <div className="flex items-center gap-1.5">
             <select
-              className="h-8 rounded-input border border-border bg-background px-1.5 text-[12px]"
+              className="focus-ring h-[calc(var(--ctl-h)-4px)] rounded-input border border-border bg-background px-1.5 text-[12px]"
               value={mode}
               onChange={(e) => setMode(e.target.value as "FIXED" | "RATIO")}
             >
@@ -91,7 +91,7 @@ export function CategoryPointsTab({ c, canEdit }: { c: ProductsCopy; canEdit: bo
               不收小数是刻意的 —— 金额与比例一旦用浮点，对账时的分位差没人说得清。
             */}
             <input
-              className="h-8 w-20 rounded-input border border-border bg-background px-1.5 text-[12px] tabular-nums"
+              className="focus-ring h-[calc(var(--ctl-h)-4px)] w-20 rounded-input border border-border bg-background px-1.5 text-[12px] tabular-nums"
               inputMode="numeric"
               value={value}
               onChange={(e) => setValue(e.target.value.replace(/[^\d]/g, ""))}

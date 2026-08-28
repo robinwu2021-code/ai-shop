@@ -73,7 +73,7 @@ export function RegionTab({ c, canDecide }: { c: Copy; canDecide: boolean }) {
             <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>{c.rgCancel}</Button>
           </span>
         ) : r.hasChild ? (
-          <button className="link" onClick={() => setTrail([...trail, r])}>{r.name} ›</button>
+          <button className="focus-ring link" onClick={() => setTrail([...trail, r])}>{r.name} ›</button>
         ) : (
           <span>{r.name}</span>
         ),
@@ -108,11 +108,11 @@ export function RegionTab({ c, canDecide }: { c: Copy; canDecide: boolean }) {
     <>
       <Toolbar>
         <span className="flex flex-wrap items-center gap-1 text-sm">
-          <button className="link" onClick={() => setTrail([])}>{c.rgRoot}</button>
+          <button className="focus-ring link" onClick={() => setTrail([])}>{c.rgRoot}</button>
           {trail.map((x, i) => (
             <span key={x.regionCode}>
               {" / "}
-              <button className="link" onClick={() => setTrail(trail.slice(0, i + 1))}>{x.name}</button>
+              <button className="focus-ring link" onClick={() => setTrail(trail.slice(0, i + 1))}>{x.name}</button>
             </span>
           ))}
         </span>

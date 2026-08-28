@@ -33,7 +33,7 @@ export function ThemeSwitcher() {
         onClick={() => setOpen((o) => !o)}
         aria-label={t("theme.switch")}
         // 顶栏里的控件，与 LangSwitcher / Button 同高 —— 走密度 token 而不是字面值
-        className="flex h-[calc(var(--ctl-h)-4px)] items-center gap-1.5 rounded-field bg-secondary px-2.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        className="focus-ring flex h-[calc(var(--ctl-h)-4px)] items-center gap-1.5 rounded-field bg-secondary px-2.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       >
         <Palette className="size-4" />
         <span className="size-3.5 rounded-chip ring-1 ring-border" style={{ background: current.color }} />
@@ -53,7 +53,7 @@ export function ThemeSwitcher() {
                   title={themeLabel(t.key)}
                   aria-label={themeLabel(t.key)}
                   aria-pressed={active}
-                  className={cn(
+                  className={cn("focus-ring", 
                     // ring 必须用 --border 而不是写死 black/5：黑白灰皮肤的色卡本身
                     // 就是近黑，在暗色弹层上会整块隐形（实测只看得到 2 个色卡）。
                     "flex aspect-square items-center justify-center rounded-card ring-1 ring-border transition-transform hover:scale-105",
@@ -79,7 +79,7 @@ export function ThemeSwitcher() {
                   type="button"
                   aria-pressed={dark === key}
                   onClick={() => setDark(key)}
-                  className={segmentedItemClass(dark === key, "flex flex-1 items-center justify-center gap-1.5 py-1 text-xs")}
+                  className={"focus-ring " + (segmentedItemClass(dark === key, "flex flex-1 items-center justify-center gap-1.5 py-1 text-xs"))}
                 >
                   <Icon className="size-3.5" /> {label}
                 </button>

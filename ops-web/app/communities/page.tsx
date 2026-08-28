@@ -222,7 +222,7 @@ function CommunitiesInner() {
           <button
             type="button"
             disabled={!canEditPickup}
-            className="rounded-field px-1 tabular-nums transition-colors hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
+            className="focus-ring rounded-field px-1 tabular-nums transition-colors hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
             onClick={() => setFeeEditing({ pickupNo: p.pickupNo, value: String(p.serviceFeeRate) })}
           >
             {fmtRate(p.serviceFeeRate)}

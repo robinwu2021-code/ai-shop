@@ -101,7 +101,7 @@ export function SpecLibraryTab({ c, universal, canEdit }: {
       header: c.slColName,
       cell: (d) => (
         <div>
-          <button type="button" className="text-left font-semibold hover:underline"
+          <button type="button" className="focus-ring text-left font-semibold hover:underline"
             onClick={() => canEdit && setDimForm({
               dimNo: d.dimNo, code: d.code, name: d.name, valueType: d.valueType,
               unit: d.unit ?? "", usageType: d.usageType, sort: String(d.sort),
@@ -145,13 +145,13 @@ export function SpecLibraryTab({ c, universal, canEdit }: {
                   onPromote={() => promote.mutate(v.valueNo)} />
               ))}
               {d.values.length > 8 && (
-                <button type="button" className="text-[12px] text-[var(--primary)] hover:underline"
+                <button type="button" className="focus-ring text-[12px] text-[var(--primary)] hover:underline"
                   onClick={() => setOpenDim(open ? null : d.dimNo)}>
                   {open ? c.csCollapse : `+${d.values.length - 8}`}
                 </button>
               )}
               {canEdit && (
-                <button type="button" className="text-[12px] text-[var(--primary)] hover:underline"
+                <button type="button" className="focus-ring text-[12px] text-[var(--primary)] hover:underline"
                   onClick={() => setValueForm({
                     dimNo: d.dimNo, code: "", label: "", numericValue: "", aliases: "", sort: "100",
                   })}>
@@ -287,7 +287,7 @@ function ValueChip({ v, c, canEdit, onEdit, onPromote }: {
     <span className={`inline-flex items-center gap-1 rounded-chip px-2 py-0.5 text-[12px]
       ${v.status === "ARCHIVED" ? "opacity-45 line-through" : ""}
       ${mine ? "bg-warning-tint" : "bg-muted"}`}>
-      <button type="button" className="hover:underline" onClick={() => canEdit && onEdit()}>
+      <button type="button" className="focus-ring hover:underline" onClick={() => canEdit && onEdit()}>
         {v.label}
       </button>
       {v.numericValue != null && (
@@ -296,7 +296,7 @@ function ValueChip({ v, c, canEdit, onEdit, onPromote }: {
       <span className="font-mono text-[11px] text-muted-foreground">{v.code}</span>
       {mine && (
         // 商家自有值：用的店多了就该进公共值池 —— 提升只改 scope，编号不变，商品不用重建
-        <button type="button" className="text-[11px] text-[var(--primary)] hover:underline"
+        <button type="button" className="focus-ring text-[11px] text-[var(--primary)] hover:underline"
           title={c.slPromoteHint} onClick={onPromote}>
           {c.slPromote}
           {v.merchantCount > 0 && <span className="tabular-nums"> {v.merchantCount}</span>}

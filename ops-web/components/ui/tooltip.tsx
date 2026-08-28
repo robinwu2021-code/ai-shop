@@ -9,7 +9,7 @@
 //
 // 用法（render-prop：不额外包 DOM，避免破坏 flex 布局）：
 //   <Tooltip label="设备管理">
-//     {(p) => <Link {...p} href="/devices">…</Link>}
+//     {(p) => <Link className="focus-ring" {...p} href="/devices">…</Link>}
 //   </Tooltip>
 // label 为空/undefined 时完全透传，不挂任何事件（如图标栏展开态无需 tip）。
 import { useCallback, useEffect, useId, useRef, useState } from "react";

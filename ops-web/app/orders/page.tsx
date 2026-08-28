@@ -440,7 +440,7 @@ function OrdersInner() {
                       key={s.orderNo}
                       type="button"
                       onClick={() => setCurrent(s)}
-                      className="flex w-full items-center justify-between gap-3 rounded-field px-2 py-1 text-start transition-colors hover:bg-accent"
+                      className="focus-ring flex w-full items-center justify-between gap-3 rounded-field px-2 py-1 text-start transition-colors hover:bg-accent"
                     >
                       <span className="truncate">{s.merchantName}</span>
                       <span className="shrink-0 tabular-nums text-muted-foreground">{s.orderNo}</span>

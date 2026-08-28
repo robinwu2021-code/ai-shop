@@ -6,7 +6,7 @@
 // （注释写着「项目无 checkbox 原语」），含半选态。表格是全站唯一一处有复选框的地方，
 // 一旦批量操作/权限勾选/字段多选铺开，就会出现第二、第三份就地实现 —— 所以上移成原语。
 //
-// **为什么用 Radix 而不是原生 `<input type=checkbox>`**：原生控件的勾/半选标记由
+// **为什么用 Radix 而不是原生 `<input className="focus-ring" type=checkbox>`**：原生控件的勾/半选标记由
 // 系统绘制，只能用 `accent-color` 影响填充色，勾的粗细、圆角、半选那一横的长度全不可控，
 // 与「药丸 + 零描边 + 重字重」的形状语言对不上；半选态还必须走 ref 副作用（旧实现就是）。
 // Radix 把 checked / indeterminate 收成一个受控 `checked: boolean | "indeterminate"`，

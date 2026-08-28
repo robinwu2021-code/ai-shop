@@ -66,7 +66,7 @@ function RailItem({
             ref={ref}
             href={href}
             aria-label={label}
-            className={cn(base, active ? "bg-accent font-medium text-[var(--primary)]" : "text-sidebar-foreground hover:bg-accent/60 hover:text-foreground")}
+            className={cn("focus-ring", base, active ? "bg-accent font-medium text-[var(--primary)]" : "text-sidebar-foreground hover:bg-accent/60 hover:text-foreground")}
           >
             {inner}
           </Link>
@@ -120,7 +120,7 @@ export function Rail() {
         type="button"
         onClick={toggleRail}
         aria-label={railExpanded ? t("nav.collapse") : t("nav.expand")}
-        className="flex h-10 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
+        className="focus-ring flex h-[calc(var(--ctl-h)+4px)] items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
       >
         {railExpanded ? <Icons.ChevronsLeft className="size-4" /> : <Icons.ChevronsRight className="size-4" />}
       </button>

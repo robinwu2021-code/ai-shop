@@ -231,7 +231,7 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
                       </div>
                       <div className="mt-1 txt-caption tabular-nums">{q.code || "—"}</div>
                       {q.imageUrl && (
-                        <a href={q.imageUrl} target="_blank" rel="noreferrer">
+                        <a className="focus-ring" href={q.imageUrl} target="_blank" rel="noreferrer">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={q.imageUrl} alt={q.type} className="mt-2 w-full rounded" />
                         </a>
@@ -251,7 +251,7 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
                 <p className="txt-caption text-muted-foreground">{c.applyRawFilesHint}</p>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {current.licenses.map((url) => (
-                    <a key={url} href={url} target="_blank" rel="noreferrer" className="text-sm underline">
+                    <a key={url} href={url} target="_blank" rel="noreferrer" className="focus-ring text-sm underline">
                       {url.split("/").pop()}
                     </a>
                   ))}

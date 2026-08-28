@@ -90,7 +90,7 @@ export function PurchaseInvoiceTab({ c, canVerify }: { c: FinanceCopy; canVerify
             <div className="flex items-center gap-1.5">
               {/* 驳回原因必填 —— 原样回给商家，不写等于让人猜 */}
               <input
-                className="h-8 w-44 rounded-input border border-border bg-background px-1.5 text-[12px]"
+                className="focus-ring h-[calc(var(--ctl-h)-4px)] w-44 rounded-input border border-border bg-background px-1.5 text-[12px]"
                 placeholder={c.piRejectPlaceholder}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}

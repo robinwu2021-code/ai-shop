@@ -212,7 +212,7 @@ function GroupsInner() {
           <button
             type="button"
             disabled={!canAssign}
-            className="rounded-field px-1 tabular-nums transition-colors hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
+            className="focus-ring rounded-field px-1 tabular-nums transition-colors hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
             onClick={() => setPriceEdit({ quoteNo: q.quoteNo, value: (q.price / 100).toFixed(2), reason: "" })}
           >
             {money(q.price)}

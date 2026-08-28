@@ -83,7 +83,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         // relative：给绝对定位的 spinner 做定位上下文。
-        className={cn(buttonVariants({ variant, size, className }), "relative")}
+        className={cn("focus-ring", buttonVariants({ variant, size, className }), "relative")}
         disabled
         aria-busy="true"
         {...props}

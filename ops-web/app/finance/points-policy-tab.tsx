@@ -74,7 +74,7 @@ export function PointsPolicyTab({ c, canEdit }: { c: FinanceCopy; canEdit: boole
 
         <label className="flex items-start gap-2 text-[13px]">
           <input
-            type="checkbox" className="mt-1" disabled={!canEdit}
+            type="checkbox" className="focus-ring mt-1" disabled={!canEdit}
             checked={draft.offlineRedeem}
             onChange={(e) => setDraft({ ...draft, offlineRedeem: e.target.checked })}
           />
@@ -112,7 +112,7 @@ function Row({ label, hint, clients, picked, disabled, onToggle }: {
         {clients.map((v) => (
           <button
             key={v} type="button" disabled={disabled} onClick={() => onToggle(v)}
-            className={`rounded-chip border px-2.5 py-1 text-[12px] ${
+            className={`focus-ring rounded-chip border px-2.5 py-1 text-[12px] ${
               picked.includes(v)
                 ? "border-destructive bg-destructive-tint text-destructive-text"
                 : "border-border hover:bg-muted"

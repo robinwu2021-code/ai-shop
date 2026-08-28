@@ -57,7 +57,7 @@ function SearchTrigger({ onOpen }: { onOpen: () => void }) {
       type="button"
       onClick={onOpen}
       aria-label={t("nav.search")}
-      className="flex items-center gap-2 rounded-field px-2 py-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      className="focus-ring flex items-center gap-2 rounded-field px-2 py-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
     >
       <Search className="size-3.5" />
       <span className="max-sm:hidden">{t("nav.searchHint")}</span>
@@ -86,7 +86,7 @@ export function Header() {
           aria-label={t(panelCollapsed ? "nav.expandPanel" : "nav.collapsePanel")}
           title={t(panelCollapsed ? "nav.expandPanel" : "nav.collapsePanel")}
           aria-pressed={panelCollapsed}
-          className="-ms-2 hidden rounded-field p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:block"
+          className="focus-ring -ms-2 hidden rounded-field p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:block"
         >
           <PanelLeft className="size-4 rtl:-scale-x-100" />
         </button>
