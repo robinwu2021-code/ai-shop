@@ -1,7 +1,9 @@
 package ai.neargo.shop.auth.store;
 
 import ai.neargo.auth.store.AuthCache;
+import ai.neargo.auth.store.CompositeIdentityLoader;
 import ai.neargo.auth.store.IdentityLoader;
+import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.auth.store.LoginEvent;
 import ai.neargo.auth.store.LoginLogWriter;
 import ai.neargo.auth.store.RevokeReason;
@@ -67,7 +69,12 @@ public class DbTokenStore implements TokenStore {
     private volatile LocalDateTime revokeWatermark;
 
     /** 会话缓存的载荷。**只有两样** —— 身份不在这里，它随用户表变。 */
-    public record CachedSession(String userNo, LocalDateTime expiresAt, LocalDateTime lastSeenAt) {
+    /**
+     * @param subjectKind <b>必须一起缓存</b> —— 只缓存 userNo 的话，缓存命中那条路径
+     *                    就丢了「这个号去哪张表查」，分发器只能猜
+     */
+    public record CachedSession(String userNo, String subjectKind,
+                                LocalDateTime expiresAt, LocalDateTime lastSeenAt) {
     }
 
     public DbTokenStore(Realm realm, SessionProfile profile, SessionDao sessions,
@@ -103,7 +110,8 @@ public class DbTokenStore implements TokenStore {
         // subject_kind 跟着会话一起落库：**这个号该去哪张表查，不能靠号段形状猜**
         sessions.insert(TokenHash.of(token), user.userNo(),
                 user.subjectKind().name(), now, expiresAt);
-        sessionCache.put(TokenHash.of(token), new CachedSession(user.userNo(), expiresAt, now));
+        sessionCache.put(TokenHash.of(token),
+                new CachedSession(user.userNo(), user.subjectKind().name(), expiresAt, now));
         identityCache.put(user.userNo(), user);
         /*
          * **这里刻意不写 LOGIN。**
@@ -134,8 +142,8 @@ public class DbTokenStore implements TokenStore {
             if (row.isEmpty() || !row.get().isLive(now)) {
                 return Optional.empty();   // **不做负缓存**，见类注释
             }
-            cached = new CachedSession(row.get().userNo(), row.get().expiresAt(),
-                    row.get().lastSeenAt());
+            cached = new CachedSession(row.get().userNo(), row.get().subjectKind(),
+                    row.get().expiresAt(), row.get().lastSeenAt());
             sessionCache.put(hash, cached);
         }
         if (!cached.expiresAt().isAfter(now)) {
@@ -143,7 +151,19 @@ public class DbTokenStore implements TokenStore {
             return Optional.empty();
         }
         touchIfStale(hash, cached, now);
-        return identityOf(cached.userNo()).map(SessionData::of);
+        return identityOf(cached.userNo(), cached.subjectKind()).map(SessionData::of);
+    }
+
+    /** 会话行上的 kind 字符串 → 枚举。**认不出就返回 null**，由分发器拒绝，不猜。 */
+    private static SubjectKind kindOf(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        try {
+            return SubjectKind.valueOf(raw);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     /**
@@ -153,12 +173,19 @@ public class DbTokenStore implements TokenStore {
      * 而账号被停用时 {@link IdentityLoader} 返回空 —— 这让「停用后立即失效」
      * 多了一道保险，不必只依赖踢人那条路径。
      */
-    private Optional<LoginUser> identityOf(String userNo) {
+    private Optional<LoginUser> identityOf(String userNo, String subjectKind) {
         LoginUser cachedUser = identityCache.get(userNo);
         if (cachedUser != null) {
             return Optional.of(cachedUser);
         }
-        Optional<LoginUser> loaded = identities.load(userNo);
+        /*
+         * **带上 subjectKind 分发**：B 端池里同时装着店员（mch_account_no）
+         * 与还没开店的人（user_no）。认不出 kind 就返回空，不挨个试 ——
+         * 猜错的后果是把会话解析成另一个人。
+         */
+        Optional<LoginUser> loaded = identities instanceof CompositeIdentityLoader<LoginUser> c
+                ? c.load(userNo, kindOf(subjectKind))
+                : identities.load(userNo);
         if (loaded.isEmpty()) {
             // 令牌有效但用户查不到（数据清过、库不一致）。**不能给一个空身份放行** ——
             // 那是一个没有任何权限的幽灵身份在系统里游走：多数接口会把它挡住所以不报错，
@@ -180,7 +207,8 @@ public class DbTokenStore implements TokenStore {
             return;
         }
         sessions.touch(hash, now);
-        sessionCache.put(hash, new CachedSession(cached.userNo(), cached.expiresAt(), now));
+        sessionCache.put(hash, new CachedSession(cached.userNo(), cached.subjectKind(),
+                cached.expiresAt(), now));
     }
 
     /**

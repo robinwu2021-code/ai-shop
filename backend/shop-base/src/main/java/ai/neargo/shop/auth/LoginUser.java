@@ -1,5 +1,7 @@
 package ai.neargo.shop.auth;
 
+import ai.neargo.auth.store.SubjectKind;
+
 import ai.neargo.common.data.scope.DataScopeSpec;
 import ai.neargo.common.security.rbac.PermissionCarrier;
 

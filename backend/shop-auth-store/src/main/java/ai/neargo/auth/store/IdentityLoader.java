@@ -32,4 +32,18 @@ public interface IdentityLoader<T> {
      * @return 身份；账号不存在或不可用时为 {@link Optional#empty()}
      */
     Optional<T> load(String userNo);
+
+    /**
+     * 这个加载器认得哪一类主体。
+     *
+     * <p>只有 B 端池里同时装着两类（店员的 {@code mch_account_no}、
+     * 还没开店的人的 {@code user_no}），需要 {@link CompositeIdentityLoader} 按
+     * 会话行上的 {@code subject_kind} 分发。单一类的池直接返回自己那一类。
+     *
+     * <p>默认 {@link SubjectKind#USR} 是为了不惊动既有的 lambda 实现（测试里有几处）——
+     * <b>但生产上的三个加载器都显式覆写</b>，因为「默认对」和「说清楚」是两件事。
+     */
+    default SubjectKind kind() {
+        return SubjectKind.USR;
+    }
 }

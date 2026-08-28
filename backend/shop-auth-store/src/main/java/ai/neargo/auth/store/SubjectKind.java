@@ -1,11 +1,15 @@
-package ai.neargo.shop.auth;
+package ai.neargo.auth.store;
 
 /**
  * 会话主体的 id <b>属于哪张表</b>。
  *
  * <h2>它与 {@link Realm} 是两件事</h2>
- * <p>{@code Realm} 回答「这是哪个端的令牌」（决定前缀与会话表）；
+ * <p>{@code Realm}（在 shop-base）回答「这是哪个端的令牌」（决定前缀与会话表）；
  * {@code SubjectKind} 回答「{@code user_no} 这一列里的号该去哪张表查」。
+ *
+ * <p><b>它住在会话存储这一层而不是 shop-base</b>：{@code IdentityLoader} 要按它分发，
+ * 而那个 SPI 在这里；放在 shop-base 的话这一层看不见它，只能退回传字符串 ——
+ * 又变成约定。
  * 二者此前挤在 {@code LoginUser.realm} 一个字段里，而 B 端把它们撑开了：
  *
  * <ul>
