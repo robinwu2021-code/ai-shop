@@ -314,17 +314,17 @@ onShow(load);
         </view>
         <view class="inv__row">
           <view class="inv__item" @tap="open(ROUTES.stock)">
-            <text class="inv__v sh-num">{{ stockSummary.itemCount }}</text>
+            <text class="txt-display inv__v sh-num">{{ stockSummary.itemCount }}</text>
             <text class="sh-muted">{{ $t("home.inv.onSale") }}</text>
           </view>
           <view class="inv__item" @tap="open(ROUTES.stock)">
-            <text class="inv__v sh-num" :class="{ 'is-warn': stockSummary.shortageCount > 0 }">
+            <text class="txt-display inv__v sh-num" :class="{ 'is-warn': stockSummary.shortageCount > 0 }">
               {{ stockSummary.shortageCount }}
             </text>
             <text class="sh-muted">{{ $t("home.inv.shortage") }}</text>
           </view>
           <view class="inv__item" @tap="open(ROUTES.stock)">
-            <text class="inv__v sh-num">{{ stockSummary.staleCount }}</text>
+            <text class="txt-display inv__v sh-num">{{ stockSummary.staleCount }}</text>
             <text class="sh-muted">{{ $t("home.inv.stale") }}</text>
           </view>
         </view>
@@ -358,7 +358,7 @@ onShow(load);
       <view v-if="stats" class="sh-card owned">
         <view class="owned__row">
           <text class="txt-title">{{ $t("home.ownedTraffic") }}</text>
-          <text class="owned__v sh-num">{{ ownedRate }}</text>
+          <text class="txt-display owned__v sh-num">{{ ownedRate }}</text>
         </view>
         <text class="sh-muted">{{ $t("home.ownedTrafficHint") }}</text>
       </view>
@@ -389,11 +389,11 @@ onShow(load);
         <text class="txt-title fulfill__title">{{ $t("home.fulfillEntry") }}</text>
         <view class="fulfill__row">
           <view v-if="merchant.can('biz:receive')" class="fulfill__half" @tap="open(ROUTES.picking)">
-            <text class="fulfill__n sh-num" :class="{ 'is-zero': !todo?.toPick }">{{ todo?.toPick ?? 0 }}</text>
+            <text class="txt-display fulfill__n sh-num" :class="{ 'is-zero': !todo?.toPick }">{{ todo?.toPick ?? 0 }}</text>
             <text class="sh-muted">{{ $t("home.toPick") }}</text>
           </view>
           <view v-if="merchant.can('biz:verify')" class="fulfill__half" @tap="open(ROUTES.verify)">
-            <text class="fulfill__n sh-num" :class="{ 'is-zero': !todo?.toVerify }">{{ todo?.toVerify ?? 0 }}</text>
+            <text class="txt-display fulfill__n sh-num" :class="{ 'is-zero': !todo?.toVerify }">{{ todo?.toVerify ?? 0 }}</text>
             <text class="sh-muted">{{ $t("home.toVerify") }}</text>
           </view>
         </view>
@@ -536,9 +536,6 @@ onShow(load);
 }
 .inv__v {
   display: block;
-  font-size: 40rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 /* 缺货是唯一需要立刻动手的那个数，其余两个不抢眼 */
 .inv__v.is-warn {
@@ -585,8 +582,6 @@ onShow(load);
   margin-bottom: 12rpx;
 }
 .owned__v {
-  font-size: 40rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
 }
 /* 入口卡之间只留一条缝：这一列有 6+ 张卡，每张多 12rpx 就少露大半张 */
@@ -613,8 +608,6 @@ onShow(load);
 }
 .fulfill__n {
   display: block;
-  font-size: 40rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
   margin-bottom: 8rpx;
 }

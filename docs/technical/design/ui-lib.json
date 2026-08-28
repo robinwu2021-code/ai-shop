@@ -706,7 +706,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 29,
+        "b-app": 35,
         "c-app": 7
       }
     },
@@ -2092,9 +2092,9 @@
         "sh-scaffold",
         "biz-store-tag"
       ],
-      "libClassHits": 67,
+      "libClassHits": 73,
       "localSelectors": 37,
-      "localCssLines": 166,
+      "localCssLines": 159,
       "rolled": []
     },
     {
