@@ -166,7 +166,16 @@ L6 是这套模型的**存亡线**。历史上唯一一次给基础流加状态�
 
 ---
 
-# 八 · 与既有文档的关系
+# 八 · 图册（SVG，`docs/technical/diagrams/`）
+
+| 图 | 文件 | 一句话 |
+|---|---|---|
+| 零售 = 基础流 + ∅ | ![零售](../diagrams/workflow-retail.svg) `workflow-retail.svg` | 基础订单流本体：五段 + 售后独立状态机 |
+| 餐饮双轨 | ![餐饮](../diagrams/workflow-food.svg) `workflow-food.svg` | 台账轨在上、订单轨在下，四个同步点 ①下达 ②入厨 ③收款 ④结台 |
+| 服务业三轨 | ![美业](../diagrams/workflow-beauty.svg) `workflow-beauty.svg` | 预约轨占位、工单轨执行、订单**延迟诞生**于到店 |
+| **组合总图** | ![总图](../diagrams/workflow-composite.svg) `workflow-composite.svg` | 三行业挂在同一条基础流上：实线=同步 A1–A4，虚线=事件 A5 |
+
+# 九 · 与既有文档的关系
 
 本册是**组合规范**，不新增任何表或接口。餐饮/美业两份 TDD 的场景细节、
 订单域两册的 DDL 与 API 均不受影响；它们从此可按 §三 的六件事索引对读。
