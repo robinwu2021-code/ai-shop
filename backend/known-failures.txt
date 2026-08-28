@@ -7,6 +7,38 @@
 #
 # 修好一条删一行。删空的那天，把 .github/workflows/backend.yml 里的
 # 「只拦新增的失败」换成「必须全绿」。
+#
+# ─────────────────────────────────────────────────────────────────────────
+# 2026-08-28 重跑了这 56 条点名的 22 个测试类（298 跑 / 49 红），结论如下。
+# **不是 56 条独立的债，是三堆**：
+#
+#   35 条（71%）  错误码 70014「缺收货地址」
+#     ↑ 2026-08-15 立了 `requireReceiverWhenShipped` 这道闸（见
+#       OrderReceiverRequiredTest 的类注释：库里当时 55 张快递子单，有收货人的 0 张），
+#       而这些测试的下单夹具**至今还传 `"addressId":null`**。
+#       **闸是对的，测试没跟上** —— 逐个核过：闸只在 SHIPPED_FULFILLMENTS 时触发，
+#       自提单不受影响。
+#     ↑ 全部收敛到 **8 个辅助方法**，改这 8 处即可清掉 35 条：
+#         BizDashboardAndReviewFlowTest.orderAndComplete   12
+#         BizOrderFulfillFlowTest.prepare                  12
+#         ReviewStoreAttributionFlowTest.review             3
+#         OpsLogisticsFlowTest.expressOrder                 3
+#         BizRoleForbiddenFlowTest.placePaidOrder           2
+#         OpsDashboardRankingFlowTest.placeWithoutPaying    1
+#         OpsMerchantPlanFlowTest.placeAndPay               1
+#         TodoPickupScopeFlowTest.place                     1
+#     ↑ 改法照抄 StoreScopedVisibilityFlowTest:247（那个类已经改过）：
+#       下单前先 POST /mp/user/address（**收货人电话要用 13x** —— 测试登录号一律
+#       走 126「一眼假」号段，而 126 不是大陆号段，Phones.CN_MOBILE 会拒），
+#       再从返回的**整份地址列表**取 data[0].addressId 填进下单体。
+#     ⚠️ 别用正则批量插：这些辅助方法的下单语句跨多行、`.header(...)` 有的同行有的换行，
+#       按行号/邻近度插会插进 `String skuNo = ...` 语句中间（2026-08-28 试过，编译不过）。
+#
+#    3 条  EstateCacheBackfillFlowTest —— Spring 上下文起不来（一次失败后另两条跳过）
+#   11 条  其余各自独立（80007 / 10455 / 401 等）
+#
+#   另有 **7 条陈行**：清单里有、实测已绿。为什么先不删 —— 见文件末尾。
+# ─────────────────────────────────────────────────────────────────────────
 
 ai.neargo.shop.arch.ArchitectureTest.implsMustLiveInDedicatedPackage
 ai.neargo.shop.arch.ArchitectureTest.serviceMustBeInterface
@@ -64,3 +96,17 @@ ai.neargo.shop.scenario.ReviewStoreAttributionFlowTest.eachStoreKeepsItsOwnRatin
 ai.neargo.shop.scenario.ReviewStoreAttributionFlowTest.rejectingAReviewAlsoLowersTheStoreRating
 ai.neargo.shop.scenario.S3AdmissionRealPathTest.dailyCapCountsAcrossBuyers
 ai.neargo.shop.scenario.TodoPickupScopeFlowTest.shippingCountsStayOnStoreScope
+
+# ── 2026-08-28 实测已绿、但**暂不删**的 7 条 ────────────────────────────────
+# ai.neargo.shop.scenario.CategoryTreeFlowTest.passedNoticeTakesEffect
+# ai.neargo.shop.scenario.CategoryTreeFlowTest.profilePhoneIsMasked
+# ai.neargo.shop.scenario.CategoryTreeFlowTest.violationHasRealConsequences
+# ai.neargo.shop.scenario.CommunityApplyFlowTest.merchantAddedVillageStillNeedsReview
+# ai.neargo.shop.scenario.M9aOpsFlowTest.approvedMerchantIsVisibleToBuyers
+# ai.neargo.shop.scenario.M9aOpsFlowTest.opsFillsServiceScopeAtAudit
+# ai.neargo.shop.scenario.PushNotifyFlowTest.noDeviceIsNotAnError
+#
+# 为什么不直接删：这七条是**单独跑**这 22 个类时绿的，而这个仓库里
+# 「单独跑绿、全量红」是有前科的（共享种子被别的测试改了没还原）。
+# 删清单等于放开闸门，要在**一次全量**里确认它们绿之后再删。
+# 全量要 1100+ 个测试，这轮没跑 —— 谁下次跑全量，顺手把这七行删掉。
