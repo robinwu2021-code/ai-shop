@@ -21,6 +21,8 @@ public record SessionRow(
         Long id,
         String tokenHash,
         String userNo,
+        /** 上面那个号<b>属于哪张表</b>。见 {@code SubjectKind} —— 与「哪个池」是两件事。 */
+        String subjectKind,
         LocalDateTime issuedAt,
         LocalDateTime expiresAt,
         LocalDateTime lastSeenAt,

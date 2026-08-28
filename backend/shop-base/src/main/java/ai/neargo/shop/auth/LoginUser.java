@@ -12,7 +12,9 @@ import java.util.Set;
  *
  * <p>业务层只经 {@link SecurityUtils} 读它，<b>不直接碰 {@code SecurityContextHolder}</b>。
  *
- * @param realm     凭据池
+ * @param realm       凭据池（决定令牌前缀与会话表）
+ * @param subjectKind {@code userNo} 这一列里的号<b>属于哪张表</b> —— 与 realm 是两件事，
+ *                    见 {@link SubjectKind}
  * @param userNo    业务用户号（C 端 = userNo，运营端 = staffNo）
  * @param nickname  展示名
  * @param roles     运营端角色码；C 端为空
@@ -22,6 +24,7 @@ import java.util.Set;
  */
 public record LoginUser(
         Realm realm,
+        SubjectKind subjectKind,
         String userNo,
         String nickname,
         List<String> roles,
@@ -41,7 +44,7 @@ public record LoginUser(
      * 不换的话会出现「菜单按新角色画、判权按旧角色算」，而两边各自都说得通。
      */
     public LoginUser withRolesAndScope(List<String> newRoles, DataScopeSpec newScope) {
-        return new LoginUser(realm, userNo, nickname, newRoles, perms, tenantNo, newScope);
+        return new LoginUser(realm, subjectKind, userNo, nickname, newRoles, perms, tenantNo, newScope);
     }
 
     @Override
@@ -85,12 +88,12 @@ public record LoginUser(
     public static LoginUser operator(String staffNo, String realName,
                                      java.util.List<String> roles, java.util.List<String> perms,
                                      DataScopeSpec scope) {
-        return new LoginUser(Realm.OPERATOR, staffNo, realName, roles, perms, "MAIN",
+        return new LoginUser(Realm.OPERATOR, SubjectKind.OPS, staffNo, realName, roles, perms, "MAIN",
                 scope == null ? DataScopeSpec.ALL : scope);
     }
 
     public static LoginUser consumer(String userNo, String nickname) {
-        return new LoginUser(Realm.CONSUMER, userNo, nickname, List.of(), List.of(), "MAIN",
+        return new LoginUser(Realm.CONSUMER, SubjectKind.USR, userNo, nickname, List.of(), List.of(), "MAIN",
                 DataScopeSpec.of(ScopeDim.SELF, Set.of(userNo)));
     }
 
@@ -107,7 +110,25 @@ public record LoginUser(
      * 界面上看是数据串了，排查方向会完全跑偏。
      */
     public static LoginUser merchant(String mchAccountNo, String name) {
-        return new LoginUser(Realm.MERCHANT, mchAccountNo, name, List.of(), List.of(), "MAIN",
+        return new LoginUser(Realm.MERCHANT, SubjectKind.MCH, mchAccountNo, name,
+                List.of(), List.of(), "MAIN",
                 DataScopeSpec.of(ScopeDim.SELF, Set.of(mchAccountNo)));
+    }
+
+    /**
+     * B 端会话，但主体是<b>消费者账号</b>。
+     *
+     * <p>用在两种人身上：老板（他从 {@code /biz/auth/login} 走 C 端认证进来），
+     * 以及<b>还不是商家的人</b> —— 后者正是 A7 卡住的那个点：他要提交入驻申请，
+     * 而那时他没有任何 {@code mch_account}。
+     *
+     * <p><b>{@code btk_} 表示「这是 B 端的会话」，不表示「这个人是商家」。</b>
+     * 是不是商家由 {@code BizContext.merchantNo} 每请求现算 —— 它为空正是
+     * 「第一家店」的处境，{@code BizMerchantController} 已经按这个语义写好了。
+     */
+    public static LoginUser merchantByUser(String userNo, String nickname) {
+        return new LoginUser(Realm.MERCHANT, SubjectKind.USR, userNo, nickname,
+                List.of(), List.of(), "MAIN",
+                DataScopeSpec.of(ScopeDim.SELF, Set.of(userNo)));
     }
 }

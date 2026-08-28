@@ -33,13 +33,15 @@ public class SessionDao {
     }
 
     private static final String COLS =
-            "id, token_hash, user_no, issued_at, expires_at, last_seen_at, revoked_at, revoke_reason";
+            "id, token_hash, user_no, subject_kind, issued_at, expires_at, last_seen_at,"
+                    + " revoked_at, revoke_reason";
 
     private static SessionRow map(ResultSet rs, int rowNum) throws SQLException {
         return new SessionRow(
                 rs.getLong("id"),
                 rs.getString("token_hash"),
                 rs.getString("user_no"),
+                rs.getString("subject_kind"),
                 rs.getObject("issued_at", LocalDateTime.class),
                 rs.getObject("expires_at", LocalDateTime.class),
                 rs.getObject("last_seen_at", LocalDateTime.class),
@@ -47,11 +49,16 @@ public class SessionDao {
                 rs.getString("revoke_reason"));
     }
 
-    public void insert(String tokenHash, String userNo, LocalDateTime issuedAt, LocalDateTime expiresAt) {
+    /**
+     * @param subjectKind {@code userNo} 属于哪张表。**必传** —— 让它有默认值等于把
+     *                    「这个号该去哪查」重新变回约定，而那正是这一列要消灭的东西
+     */
+    public void insert(String tokenHash, String userNo, String subjectKind,
+                       LocalDateTime issuedAt, LocalDateTime expiresAt) {
         jdbc.sql(("INSERT INTO " + table
-                  + " (token_hash, user_no, issued_at, expires_at, last_seen_at)"
-                  + " VALUES (:h, :u, :i, :e, :i)"))
-                .param("h", tokenHash).param("u", userNo)
+                  + " (token_hash, user_no, subject_kind, issued_at, expires_at, last_seen_at)"
+                  + " VALUES (:h, :u, :k, :i, :e, :i)"))
+                .param("h", tokenHash).param("u", userNo).param("k", subjectKind)
                 .param("i", issuedAt).param("e", expiresAt)
                 .update();
     }

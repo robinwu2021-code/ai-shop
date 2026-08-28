@@ -100,7 +100,9 @@ public class DbTokenStore implements TokenStore {
         LocalDateTime now = LocalDateTime.now(clock);
         LocalDateTime expiresAt = now.plus(profile.sessionTtl());
 
-        sessions.insert(TokenHash.of(token), user.userNo(), now, expiresAt);
+        // subject_kind 跟着会话一起落库：**这个号该去哪张表查，不能靠号段形状猜**
+        sessions.insert(TokenHash.of(token), user.userNo(),
+                user.subjectKind().name(), now, expiresAt);
         sessionCache.put(TokenHash.of(token), new CachedSession(user.userNo(), expiresAt, now));
         identityCache.put(user.userNo(), user);
         /*

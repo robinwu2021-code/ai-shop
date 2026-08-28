@@ -3672,6 +3672,7 @@ CREATE TABLE IF NOT EXISTS usr_session
     last_seen_at  DATETIME,
     revoked_at    DATETIME,
     revoke_reason VARCHAR(32),
+    subject_kind VARCHAR(8) NOT NULL DEFAULT 'USR',
     PRIMARY KEY (id),
     CONSTRAINT uk_usr_session_token UNIQUE (token_hash)
 );
@@ -3699,6 +3700,7 @@ CREATE TABLE IF NOT EXISTS mch_session
     last_seen_at  DATETIME,
     revoked_at    DATETIME,
     revoke_reason VARCHAR(32),
+    subject_kind VARCHAR(8) NOT NULL DEFAULT 'USR',
     PRIMARY KEY (id),
     CONSTRAINT uk_mch_session_token UNIQUE (token_hash)
 );
@@ -3726,6 +3728,7 @@ CREATE TABLE IF NOT EXISTS ops_session
     last_seen_at  DATETIME,
     revoked_at    DATETIME,
     revoke_reason VARCHAR(32),
+    subject_kind VARCHAR(8) NOT NULL DEFAULT 'USR',
     PRIMARY KEY (id),
     CONSTRAINT uk_ops_session_token UNIQUE (token_hash)
 );

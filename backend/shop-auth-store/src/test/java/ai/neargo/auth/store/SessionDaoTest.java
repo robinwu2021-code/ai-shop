@@ -25,7 +25,7 @@ class SessionDaoTest {
 
     private String issue(String userNo, LocalDateTime expiresAt) {
         String hash = TokenHash.of("ctk_" + userNo + expiresAt);
-        dao.insert(hash, userNo, now, expiresAt);
+        dao.insert(hash, userNo, "USR", now, expiresAt);
         return hash;
     }
 
@@ -46,7 +46,7 @@ class SessionDaoTest {
     @DisplayName("★ 库里只有哈希，明文令牌不出现在任何列")
     void plaintextTokenNeverHitsTheDatabase() {
         String plain = "ctk_0123456789abcdef0123456789abcdef";
-        dao.insert(TokenHash.of(plain), "U1", now, now.plusDays(30));
+        dao.insert(TokenHash.of(plain), "U1", "USR", now, now.plusDays(30));
 
         String dump = jdbc.sql("SELECT token_hash || '|' || user_no || '|' || "
                         + "COALESCE(revoke_reason,'') FROM usr_session")
@@ -131,5 +131,30 @@ class SessionDaoTest {
         String hash = issue("U1", now.plusDays(30));
         dao.touch(hash, now.plusHours(2));
         assertEquals(now.plusHours(2), dao.findByHash(hash).orElseThrow().lastSeenAt());
+    }
+
+    @Test
+    @DisplayName("★★★ subject_kind 落库并取得回来 —— 它是「这个号去哪张表查」的唯一依据")
+    void subjectKindRoundTrips() {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 28, 19, 0);
+        dao.insert("h-mch", "SF-M0001", "MCH", now, now.plusDays(1));
+        dao.insert("h-usr", "U202608181350550001913", "USR", now, now.plusDays(1));
+
+        assertEquals("MCH", dao.findByHash("h-mch").orElseThrow().subjectKind());
+        assertEquals("USR", dao.findByHash("h-usr").orElseThrow().subjectKind());
+    }
+
+    @Test
+    @DisplayName("★ 同一张表里两种主体可以共存 —— B 端池就是这个形态")
+    void bothKindsCoexistInOnePool() {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 28, 19, 0);
+        // 店员（没有 C 端账号）与还没开店的人，会话都落在 B 端池里
+        dao.insert("h-a", "SF-M0002", "MCH", now, now.plusDays(1));
+        dao.insert("h-b", "U202608221744550003915", "USR", now, now.plusDays(1));
+
+        assertEquals("SF-M0002", dao.findByHash("h-a").orElseThrow().userNo());
+        assertEquals("MCH", dao.findByHash("h-a").orElseThrow().subjectKind());
+        assertEquals("USR", dao.findByHash("h-b").orElseThrow().subjectKind());
+        // 靠号段形状区分是不行的：那是数据长成这样，不是任何生成器保证的
     }
 }

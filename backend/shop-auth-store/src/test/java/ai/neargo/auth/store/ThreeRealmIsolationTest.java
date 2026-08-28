@@ -43,9 +43,9 @@ class ThreeRealmIsolationTest {
     void sameUserNoInThreePoolsNeverCollides() {
         // 最坏情况：三端的号段真的撞了 —— 分池之后它也只是三条无关的行
         String collided = "SAME-NO-0001";
-        consumer.insert(TokenHash.of("ctk_a"), collided, now, now.plusDays(30));
-        merchant.insert(TokenHash.of("btk_b"), collided, now, now.plusDays(30));
-        operator.insert(TokenHash.of("otk_c"), collided, now, now.plusDays(30));
+        consumer.insert(TokenHash.of("ctk_a"), collided, "USR", now, now.plusDays(30));
+        merchant.insert(TokenHash.of("btk_b"), collided, "USR", now, now.plusDays(30));
+        operator.insert(TokenHash.of("otk_c"), collided, "USR", now, now.plusDays(30));
 
         assertEquals(1, consumer.liveCountOf(collided, now));
         assertEquals(1, merchant.liveCountOf(collided, now));
@@ -62,9 +62,9 @@ class ThreeRealmIsolationTest {
     @DisplayName("★ 踢掉 C 端的人，不能顺手把同号的商家和运营也踢了")
     void revokeInOnePoolDoesNotTouchOthers() {
         String collided = "SAME-NO-0001";
-        consumer.insert(TokenHash.of("ctk_a"), collided, now, now.plusDays(30));
-        merchant.insert(TokenHash.of("btk_b"), collided, now, now.plusDays(30));
-        operator.insert(TokenHash.of("otk_c"), collided, now, now.plusDays(30));
+        consumer.insert(TokenHash.of("ctk_a"), collided, "USR", now, now.plusDays(30));
+        merchant.insert(TokenHash.of("btk_b"), collided, "USR", now, now.plusDays(30));
+        operator.insert(TokenHash.of("otk_c"), collided, "USR", now, now.plusDays(30));
 
         assertEquals(1, consumer.revokeByUser(collided, RevokeReason.DISABLED, now));
 
@@ -76,8 +76,8 @@ class ThreeRealmIsolationTest {
     @Test
     @DisplayName("撤销轮询各查各的表，不会互相污染")
     void revocationPollsAreIndependent() {
-        consumer.insert(TokenHash.of("ctk_a"), "U1", now, now.plusDays(30));
-        merchant.insert(TokenHash.of("btk_b"), "M1", now, now.plusDays(30));
+        consumer.insert(TokenHash.of("ctk_a"), "U1", "USR", now, now.plusDays(30));
+        merchant.insert(TokenHash.of("btk_b"), "M1", "USR", now, now.plusDays(30));
 
         consumer.revoke(TokenHash.of("ctk_a"), RevokeReason.LOGOUT, now);
 
