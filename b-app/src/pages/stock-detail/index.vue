@@ -232,7 +232,6 @@ onShow(load);
 }
 .head {
   display: block;
-  margin-bottom: 16rpx;
 }
 .led {
   display: flex;

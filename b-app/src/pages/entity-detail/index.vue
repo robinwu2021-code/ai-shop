@@ -163,9 +163,7 @@ function goPickStore() {
 </template>
 
 <style scoped>
-.head {
-  margin-top: 8rpx;
-}
+
 .head__name {
   display: block;
 }
@@ -173,9 +171,7 @@ function goPickStore() {
   display: block;
   margin-top: 8rpx;
 }
-.block {
-  margin-top: 16rpx;
-}
+
 
 .block__val {
   display: block;

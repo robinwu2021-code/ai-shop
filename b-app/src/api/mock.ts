@@ -4322,7 +4322,9 @@ function invLedger(): StockLedgerRow[] {
     { id: 8812344, itemId: "I1", itemName: "东北五常大米", docKind: "OUT", docNo: "CNT-24082601",
       reasonCode: "COUNT_LOSS", qtyDelta: -1, balanceAfter: 5, occurredAt: "2026-08-26T09:10:00", operator: "张伟" },
     { id: 8812343, itemId: "I1", itemName: "东北五常大米", docKind: "IN", docNo: "IN-24082502",
-      reasonCode: "PURCHASE", qtyDelta: 20, balanceAfter: 6, occurredAt: "2026-08-25T18:40:00", operator: "老板" },
+      // 6 而不是 20：这一行是最早的一笔，balanceAfter 是 6，
+      // 写 20 的话界面上算出「前 = −14」—— 库存不可能是负的，假数据要自洽
+      reasonCode: "PURCHASE", qtyDelta: 6, balanceAfter: 6, occurredAt: "2026-08-25T18:40:00", operator: "老板" },
   ];
 }
 

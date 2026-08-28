@@ -258,7 +258,6 @@ onShow(() => {
 <style scoped>
 .head {
   gap: 24rpx;
-  margin-bottom: 16rpx;
 }
 .head__logo {
   font-size: 64rpx;

@@ -163,11 +163,8 @@ onShow(load);
 .bar {
   display: flex;
   gap: 12rpx;
-  margin-bottom: 12rpx;
 }
-.group {
-  margin-top: 20rpx;
-}
+
 .group__t {
   color: var(--sh-sub);
 }

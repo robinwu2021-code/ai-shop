@@ -524,7 +524,6 @@ async function submit() {
 
 <style scoped>
 .rejected {
-  margin-bottom: 16rpx;
   background: var(--sh-danger-tint);
 }
 .reason {
@@ -555,7 +554,6 @@ async function submit() {
   display: block;
 }
 .status {
-  margin-bottom: 16rpx;
   background: var(--sh-warning-tint);
 }
 .field + .field {
@@ -613,7 +611,5 @@ async function submit() {
   margin-top: 16rpx;
   color: var(--sh-danger);
 }
-.submit {
-  margin-top: 28rpx;
-}
+
 </style>

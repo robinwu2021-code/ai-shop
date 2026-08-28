@@ -181,7 +181,7 @@ onShow(load);
   margin-top: 24rpx;
 }
 .list-head {
-  margin: 32rpx 8rpx 16rpx;
+  margin: 0 8rpx;
 }
 .row {
   gap: 20rpx;
@@ -210,6 +210,6 @@ onShow(load);
 
 }
 .tip {
-  margin: 32rpx 8rpx;
+  margin: 0 8rpx;
 }
 </style>

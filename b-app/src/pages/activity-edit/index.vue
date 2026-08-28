@@ -362,7 +362,6 @@ onLoad((q) => {
 <style scoped>
 .steps {
   gap: 8rpx;
-  margin-bottom: 16rpx;
 }
 .steps__i.is-done {
   color: var(--sh-primary-text);
@@ -418,7 +417,6 @@ onLoad((q) => {
 .nav {
   display: flex;
   gap: 16rpx;
-  margin-top: 24rpx;
 }
 .nav__b {
   flex: 1;

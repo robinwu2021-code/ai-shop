@@ -444,9 +444,7 @@ onShow(load);
 
 <style scoped>
 /* 只留上边距：gap 与下边距归 sh-tabs */
-.tabs {
-  margin-top: 16rpx;
-}
+
 .peek {
   margin-top: 20rpx;
   padding-top: 20rpx;
@@ -474,9 +472,7 @@ onShow(load);
   background: var(--sh-success-tint);
 }
 
-.overview {
-  margin-bottom: 16rpx;
-}
+
 
 .overview__grid {
   display: flex;
@@ -526,9 +522,7 @@ onShow(load);
   margin-top: 20rpx;
 }
 
-.entry {
-  margin: 24rpx 0;
-}
+
 .row {
   gap: 20rpx;
 }
@@ -565,7 +559,7 @@ onShow(load);
   /* 600 而不是 700：700 这个项目里只给价格留着，取货码靠字号和留白突出就够 */
 }
 .list-head {
-  margin: 32rpx 8rpx 16rpx;
+  margin: 0 8rpx;
 }
 .prep-hint {
   padding: 20rpx 24rpx;

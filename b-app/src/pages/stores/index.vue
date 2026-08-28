@@ -451,9 +451,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 /* `<text>` 默认 inline —— 不给 block，标题与这行说明会**挤在同一行**
    （「门店管理这里管有几家店…」），而 margin-top 对 inline 元素也不起作用。
    apply / login 两页早就是这么写的，payment / stores 漏了。 */
-.st {
-  margin-top: 16rpx;
-}
+
 .tags {
   display: flex;
   gap: 8rpx;
@@ -493,9 +491,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   margin-top: 20rpx;
 }
 
-.add {
-  margin-top: 24rpx;
-}
+
 .submit {
   margin-top: 28rpx;
 }

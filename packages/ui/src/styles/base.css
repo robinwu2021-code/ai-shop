@@ -153,6 +153,11 @@ html {
   /* 自定义底部菜单的高度（不含安全区）。悬浮条要压在它上面，靠这个变量对齐，
      不许各页面各写各的数字 —— 改菜单高度时只改这一处。 */
   --sh-tabbar-h: 124rpx;
+  /* 页面里**块与块之间**的那道缝。由 sh-scaffold 的 gap 统一给出 ——
+     此前没有任何人给（`.sh-block + .sh-block` 是 20rpx，`.sh-card` 之间没有），
+     于是一屏白卡连成一整块灰板。理由写在 sh-scaffold 的 `.sh-scaffold` 那段。
+     与 `--sh-pad-page` 同一族的版面常量，两端可各自覆盖密度。 */
+  --sh-gap-block: 20rpx;
   /* 自绘标题栏的高度（含状态栏）。**必须定义在这里** —— 它与 `--sh-tabbar-h`
      是同一类东西：版面常量，不是皮肤色。在组件的 scoped style 里定义过一版，
      `skin-vars` 当场拦下 —— 那道守卫只认皮肤块里的定义，而它拦的正是
@@ -674,9 +679,44 @@ uni-page-wrapper[style*="--window-bottom"] {
   padding: 24rpx 0;
   overflow: hidden;
 }
-.sh-block + .sh-block {
-  margin-top: 20rpx;
+/*
+ * 页面里**块与块之间**的那道缝。
+ *
+ * 此前没有任何人给：`.sh-block + .sh-block` 有 20rpx，而 `.sh-card` 之间
+ * 一条规则都没有 —— 全仓 238 处 `sh-card` 里只有 24 处手写了 `sh-mb-sm`，
+ * 其余全是贴着的，一屏白卡连成一整块灰板，看不出哪儿到哪儿是一件事。
+ * 进货页（供应商 / 日期 / 货品行 / 合计）与库存明细（统计 / 标识 / 库位 /
+ * 流水 / 原因）是最明显的两页。
+ *
+ * **为什么是 `> * + *` 的外边距，不是容器的 `gap`。**
+ * `gap` 要把 `.sh-scaffold` 改成 flex，而 flex 会**关掉相邻外边距的合并**：
+ * 页面自己写的那 128 条顶层 margin（b 端 85 条、c 端 43 条）会从「合并」
+ * 变成「相加」，两端加起来 60 多个页面的间距当场全变，而它们大多没人会去看。
+ * 走普通流的外边距则天然合并 —— 结果是 `max(20rpx, 页面自己的那个)`：
+ * 缺缝的补上，刻意留大的（`.sec { margin-top: 40rpx }` 那类分节留白）原样保留。
+ *
+ * 选择器写在这里而不是 sh-scaffold 的 scoped style 里：那些子节点是**页面**
+ * 通过插槽塞进来的，带的是页面的 scope id，组件的 scoped 规则匹配不到它们
+ * （要 `:slotted()`，而 uni 的编译链未必认）。
+ */
+.sh-scaffold > * + * {
+  margin-top: var(--sh-gap-block, 20rpx);
 }
+/*
+ * 顶层的 `<text>` 要当块看待。
+ *
+ * `<text>` 默认是 inline，而**行内元素的纵向外边距根本不生效** ——
+ * 于是「我的套餐」页那行 `.sec { margin: 28rpx 0 12rpx }` 的分节标题
+ * 实测紧贴在上一张卡下面 1px，页面里写着的 28rpx 一直没落地，且不报错。
+ * 这一条既让上面那条缝生效，也让页面自己写的留白终于算数。
+ */
+.sh-scaffold > text,
+.sh-scaffold > uni-text {
+  display: block;
+}
+
+/* `.sh-block + .sh-block` 那条 20rpx 已被上面这条覆盖（同值，且会合并），
+   删掉以免两处各写一个数、改的时候漏一个。 */
 /* 块内的横向留白由子元素给，块本身只管上下 —— 列表行要通铺到边才不显碎 */
 .sh-block__head {
   display: flex;

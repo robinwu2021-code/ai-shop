@@ -216,12 +216,10 @@ onShow(load);
 </template>
 
 <style scoped>
-.head {
-  margin-bottom: 20rpx;
-}
+
 .reporthint {
   display: block;
-  margin: 0 8rpx 20rpx;
+  margin: 0 8rpx;
 }
 .tabs .sh-chip {
   padding: 14rpx 28rpx;

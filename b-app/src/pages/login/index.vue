@@ -342,7 +342,7 @@ async function doLogin(method: LoginMethod) {
   margin-bottom: 0;
 }
 .agree {
-  margin: 32rpx 8rpx 0;
+  margin: 0 8rpx;
 }
 .agree__text {
   flex: 1;
@@ -351,6 +351,6 @@ async function doLogin(method: LoginMethod) {
   color: var(--sh-primary-text);
 }
 .tip {
-  margin: 24rpx 8rpx;
+  margin: 0 8rpx;
 }
 </style>

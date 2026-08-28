@@ -203,9 +203,7 @@ onShow(load);
 
 <style scoped>
 /* 七个入口的定宽网格。四列一行 —— 七条正好两行，一屏全可见 */
-.entries {
-  margin-bottom: 16rpx;
-}
+
 /*
  * 用 `sh-card` 而不是 `sh-chip`：**要和下面那排筛选 chip 分得开**。
  * 底色圆角由 sh-card 给，这里只管排布 —— 自己画一套药丸就又多一份要维护的皮。

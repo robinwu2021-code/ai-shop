@@ -245,9 +245,7 @@ onShow(load);
 </template>
 
 <style scoped>
-.ratecard {
-  margin-bottom: 16rpx;
-}
+
 .ratecard__row {
   margin-top: 16rpx;
 }
@@ -257,9 +255,7 @@ onShow(load);
   margin-top: 16rpx;
 }
 
-.points {
-  margin-top: 20rpx;
-}
+
 .points__row {
   margin-top: 16rpx;
 }
@@ -268,9 +264,7 @@ onShow(load);
   margin-top: 12rpx;
 }
 
-.bill {
-  margin-top: 16rpx;
-}
+
 
 .bill__amount {
   margin: 24rpx 0;
@@ -288,6 +282,6 @@ onShow(load);
   color: var(--sh-danger);
 }
 .tip {
-  margin: 24rpx 8rpx 0;
+  margin: 0 8rpx;
 }
 </style>

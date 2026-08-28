@@ -202,9 +202,7 @@ onShow(() => {
   height: 160rpx;
   margin-top: 12rpx;
 }
-.send {
-  margin-top: 24rpx;
-}
+
 .done {
   border: 2rpx solid var(--sh-success);
 }

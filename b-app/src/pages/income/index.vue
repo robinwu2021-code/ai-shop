@@ -100,7 +100,6 @@ onShow(() => {
 
 <style scoped>
 .scope {
-  margin-bottom: 12rpx;
   color: var(--sh-primary-text);
 }
 .amt {

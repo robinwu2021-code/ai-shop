@@ -110,14 +110,12 @@ function confirm() {
 
 <style scoped>
 .hint.center {
-  margin-top: 20rpx;
   text-align: center;
 }
 .list {
   display: flex;
   flex-direction: column;
   gap: 16rpx;
-  margin-top: 24rpx;
 }
 .group {
   display: flex;
@@ -157,9 +155,7 @@ function confirm() {
   display: block;
   margin-top: 4rpx;
 }
-.enter {
-  margin-top: 32rpx;
-}
+
 .enter.is-disabled {
   opacity: 0.5;
 }

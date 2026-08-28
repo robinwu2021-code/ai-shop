@@ -650,7 +650,6 @@ onShow(() => {
 .search {
   gap: 12rpx;
   padding: 0 24rpx;
-  margin-bottom: 16rpx;
   background: var(--sh-surface);
   border-radius: 16rpx;
 }
@@ -681,9 +680,7 @@ onShow(() => {
   color: var(--sh-warning);
   background: var(--sh-warning-tint);
 }
-.bar {
-  margin-bottom: 16rpx;
-}
+
 /*
  * 分栏横向可滚动（五个状态排不下）。作为 flex 子项，它默认按内容宽度撑开、
  * 溢出到「＋ 新建商品」底下，而且**因为自身盒子就等于内容宽度，反而滚不动** ——
@@ -696,7 +693,6 @@ onShow(() => {
 /* 类目 chip 横向滚动：一级类目将来可能有七八个，换行会把工具栏顶成两行 */
 .cats {
   white-space: nowrap;
-  margin-top: 12rpx;
 }
 .cats__row {
   display: inline-flex;

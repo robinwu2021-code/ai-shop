@@ -209,9 +209,7 @@ onShow(load);
   border-top: var(--sh-hairline);
   color: var(--sh-ink);
 }
-.save {
-  margin-top: 24rpx;
-}
+
 .del {
   margin-top: 16rpx;
   color: var(--sh-danger);

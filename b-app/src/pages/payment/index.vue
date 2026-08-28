@@ -214,9 +214,7 @@ async function refresh() {
 .blk {
   display: block;
 }
-.ch {
-  margin-top: 16rpx;
-}
+
 .badge {
   padding: 6rpx 18rpx;
   border-radius: 9999px;

@@ -347,7 +347,6 @@ onShow(load);
   background: var(--sh-surface);
   border-radius: 16rpx;
   padding: 24rpx;
-  margin-top: 16rpx;
 }
 
 .entry__d {
@@ -388,7 +387,7 @@ onShow(load);
   margin-top: 20rpx;
 }
 .tip {
-  margin: 32rpx 8rpx;
+  margin: 0 8rpx;
 }
 
 /* 假选择器：长得像输入框，点开是弹层。**这一页只有一处，所以修饰留在页内** ——

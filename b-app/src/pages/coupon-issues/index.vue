@@ -111,7 +111,6 @@ onShow(load);
 <style scoped>
 .fresh {
   border: 2rpx solid var(--sh-primary);
-  margin-bottom: 16rpx;
 }
 
 .reasons {

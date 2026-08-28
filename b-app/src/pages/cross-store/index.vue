@@ -328,14 +328,12 @@ onShow(load);
 <style scoped>
 .sub {
   display: block;
-  margin: 8rpx 0 24rpx;
 }
 /* 付费墙：用主色浅底而不是警示红 —— 这不是故障，是一次升档邀请 */
 .lock {
   padding: 24rpx;
   border-radius: 32rpx;
   background: var(--sh-primary-tint);
-  margin-bottom: 16rpx;
 }
 .lock__row {
   gap: 12rpx;
@@ -431,9 +429,7 @@ onShow(load);
   display: block;
   margin-top: 8rpx;
 }
-.rating {
-  margin-bottom: 16rpx;
-}
+
 .rating__hint {
   display: block;
   margin-top: 12rpx;
@@ -441,7 +437,6 @@ onShow(load);
 .windows {
   display: flex;
   gap: 12rpx;
-  margin-bottom: 16rpx;
 }
 .windows__i {
   padding: 12rpx 24rpx;

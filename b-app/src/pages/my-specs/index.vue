@@ -1133,7 +1133,6 @@ onShow(() => void load());
 }
 
 .cat {
-  margin-top: 24rpx;
   background: var(--sh-surface);
   border-radius: 24rpx;
   overflow: hidden;
@@ -1342,6 +1341,6 @@ onShow(() => void load());
 
 .foot {
   display: block;
-  margin: 28rpx 8rpx;
+  margin: 0 8rpx;
 }
 </style>

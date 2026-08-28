@@ -108,14 +108,12 @@ function addOne() {
 
 <style scoped>
 .hint.center {
-  margin-top: 20rpx;
   text-align: center;
 }
 .list {
   display: flex;
   flex-direction: column;
   gap: 16rpx;
-  margin-top: 24rpx;
 }
 .item {
   gap: 24rpx;
@@ -151,9 +149,7 @@ function addOne() {
 .dot.is-off {
   background: var(--sh-line);
 }
-.add {
-  margin-top: 32rpx;
-}
+
 .add.is-disabled {
   opacity: 0.5;
 }

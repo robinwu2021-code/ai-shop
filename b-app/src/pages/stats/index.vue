@@ -103,12 +103,8 @@ onShow(load);
 
 <style scoped>
 /* 跨店入口：与上面几张数据卡同宽同缘，排在最后 —— 先看本店，再想到比 */
-.cmp {
-  margin-top: 16rpx;
-}
-.block {
-  margin-top: 16rpx;
-}
+
+
 .pair {
   display: flex;
   margin-top: 16rpx;
@@ -120,7 +116,6 @@ onShow(load);
   display: block;
 }
 .owned {
-  margin-top: 16rpx;
   background: var(--sh-primary-tint);
 }
 .owned__v {

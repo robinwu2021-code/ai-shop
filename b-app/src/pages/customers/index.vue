@@ -288,11 +288,8 @@ onShow(load);
 <style scoped>
 .bar {
   gap: 12rpx;
-  margin-bottom: 12rpx;
 }
-.tagbar {
-  margin-top: 16rpx;
-}
+
 .settings {
   display: block;
   margin-top: 16rpx;
@@ -300,19 +297,15 @@ onShow(load);
 }
 .sub {
   display: block;
-  margin: 16rpx 0 0;
 }
 /* 未计入提示：主色浅底，不是警示红 —— 这不是故障，是一个需要解释的差额 */
 .notice {
-  margin-top: 12rpx;
   padding: 16rpx 20rpx;
   border-radius: 24rpx;
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
 }
-.search {
-  margin-top: 16rpx;
-}
+
 
 .row__head {
   gap: 12rpx;

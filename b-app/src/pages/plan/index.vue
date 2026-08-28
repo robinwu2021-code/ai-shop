@@ -215,7 +215,6 @@ onShow(load);
 }
 
 .banner {
-  margin-top: 20rpx;
   padding: 20rpx;
   border-radius: 16rpx;
   display: flex;
@@ -232,14 +231,10 @@ onShow(load);
   background: var(--sh-danger-tint);
 }
 
-.sec {
-  margin: 28rpx 0 12rpx;
-}
+
 /* 三档卡片之间要有缝。**此前一条外边距规则都没有** —— 三张 sh-card 上下相贴，
    看着像一整块被切了两刀，分不出「这是三个可比的档位」。用列表行基准 14rpx。 */
-.tier + .tier {
-  margin-top: 16rpx;
-}
+.tier + 
 .tier__head {
   gap: 12rpx;
   margin-bottom: 8rpx;
@@ -247,12 +242,9 @@ onShow(load);
 /* 34rpx/600 = 字阶的标题档（同 .txt-title）。原先的 32rpx 不在字阶上：
    与 34 只差 1px，分不出层级，却让「调整全局标题字号」这类改动漏掉这一处 */
 
-.act {
-  margin-top: 20rpx;
-}
+
 .act__hint {
   display: block;
-  margin-top: 20rpx;
   text-align: center;
 }
 .is-busy {

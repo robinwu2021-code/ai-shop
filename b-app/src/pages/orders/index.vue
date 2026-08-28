@@ -205,7 +205,6 @@ onShow(load);
 <style scoped>
 .scope {
   padding: 16rpx 24rpx;
-  margin-bottom: 16rpx;
   background: var(--sh-faint);
   border-radius: 16rpx;
 }

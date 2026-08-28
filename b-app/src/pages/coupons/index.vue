@@ -164,9 +164,7 @@ onShow(load);
 </template>
 
 <style scoped>
-.bar {
-  margin-bottom: 12rpx;
-}
+
 
 .item__head {
   gap: 12rpx;

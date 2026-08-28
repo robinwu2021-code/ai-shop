@@ -121,15 +121,12 @@ onShow(load);
   margin-top: 12rpx;
 }
 .notice {
-  margin-top: 16rpx;
   padding: 16rpx 20rpx;
   border-radius: 24rpx;
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
 }
-.go {
-  margin-top: 28rpx;
-}
+
 .go.is-off {
   background: var(--sh-faint);
   color: var(--sh-sub);

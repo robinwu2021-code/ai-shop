@@ -155,7 +155,7 @@ onShow(load);
 }
 
 .owner-note {
-  margin: 24rpx 8rpx;
+  margin: 0 8rpx;
 }
 .chips {
   margin-top: 16rpx;

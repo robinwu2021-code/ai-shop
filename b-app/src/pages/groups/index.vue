@@ -104,11 +104,11 @@ onShow(load);
 <style scoped>
 .intro {
   display: block;
-  margin: 12rpx 8rpx 0;
+  margin: 0 8rpx;
 }
 .sec {
   display: block;
-  margin: 40rpx 8rpx 16rpx;
+  margin: 0 8rpx;
 }
 
 .item__head {
@@ -160,6 +160,6 @@ onShow(load);
 
 }
 .tip {
-  margin: 32rpx 8rpx;
+  margin: 0 8rpx;
 }
 </style>

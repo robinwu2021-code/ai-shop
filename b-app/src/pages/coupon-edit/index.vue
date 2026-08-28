@@ -280,7 +280,5 @@ onLoad((q) => {
   margin-top: 8rpx;
   color: var(--sh-danger);
 }
-.save {
-  margin-top: 24rpx;
-}
+
 </style>

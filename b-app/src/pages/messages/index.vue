@@ -71,9 +71,7 @@ onShow(load);
 </template>
 
 <style scoped>
-.head {
-  margin-bottom: 16rpx;
-}
+
 
 .readall {
   flex-shrink: 0;
@@ -85,7 +83,6 @@ onShow(load);
 .msg {
   display: flex;
   gap: 16rpx;
-  margin-bottom: 16rpx;
 }
 .msg__dot {
   width: 14rpx;

@@ -215,14 +215,12 @@ onShow(load);
 </template>
 
 <style scoped>
-.bar {
-  margin: 20rpx 0;
-}
+
 .bar .field__input {
   flex: 1;
 }
 .tip {
-  margin: 20rpx 8rpx;
+  margin: 0 8rpx;
 }
 
 .row__top {
@@ -244,9 +242,7 @@ onShow(load);
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
 }
-.add {
-  margin-top: 24rpx;
-}
+
 
 .field {
   margin-top: 20rpx;
@@ -254,9 +250,7 @@ onShow(load);
 .save {
   margin-top: 28rpx;
 }
-.log {
-  margin-bottom: 16rpx;
-}
+
 
 .log__d {
   display: block;

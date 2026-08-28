@@ -462,7 +462,6 @@ onShow(load);
   margin-top: 28rpx;
 }
 .blocker {
-  margin-top: 16rpx;
   padding: 24rpx;
   border-radius: 32rpx;
   /* 真名是 --sh-warning-tint（此前拼成 --sh-warn-tint，恒走兜底的中性灰 ——
@@ -483,7 +482,6 @@ onShow(load);
 }
 .tiles {
   gap: 16rpx;
-  margin: 20rpx 0;
 }
 /* 面色与圆角交给 `.sh-card`。**内边距留在这里是有意的**：
    三列排布下格子只有 ~110px 宽，卡片档的 24rpx 会把两位数的数字挤到换行。
@@ -506,9 +504,7 @@ onShow(load);
   margin-top: 8rpx;
 }
 /* 进销存卡：三个数 + 三个直达动作。与 .stats 同一套骨架，但多一行动作条 */
-.inv {
-  margin-bottom: 16rpx;
-}
+
 .inv__row {
   display: flex;
   margin-top: 16rpx;
@@ -540,9 +536,7 @@ onShow(load);
   color: var(--sh-ink);
 }
 
-.stats {
-  margin-bottom: 16rpx;
-}
+
 .stats__row {
   display: flex;
   margin-top: 16rpx;
@@ -555,7 +549,6 @@ onShow(load);
   display: block;
 }
 .owned {
-  margin-bottom: 16rpx;
   background: var(--sh-primary-tint);
 }
 .owned__row {

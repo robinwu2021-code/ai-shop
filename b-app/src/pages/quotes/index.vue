@@ -154,7 +154,7 @@ onShow(load);
 <style scoped>
 .intro {
   display: block;
-  margin: 12rpx 8rpx 0;
+  margin: 0 8rpx;
 }
 
 .item__title {
