@@ -190,7 +190,7 @@ class DeliveryRadiusFlowTest {
 
     private void asBuyer() {
         var u = new ai.neargo.shop.auth.LoginUser(
-                ai.neargo.shop.auth.Realm.CONSUMER, ai.neargo.shop.auth.SubjectKind.USR, BUYER, "测试买家",
+                ai.neargo.shop.auth.Realm.CONSUMER, ai.neargo.auth.store.SubjectKind.USR, BUYER, "测试买家",
                 List.of(), List.of(), null, null);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(u, null, List.of()));

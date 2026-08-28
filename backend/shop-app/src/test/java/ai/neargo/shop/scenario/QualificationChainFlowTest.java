@@ -57,7 +57,7 @@ class QualificationChainFlowTest {
     @BeforeEach
     void asOperator() {
         var user = new ai.neargo.shop.auth.LoginUser(
-                ai.neargo.shop.auth.Realm.OPERATOR, ai.neargo.shop.auth.SubjectKind.OPS, "OPS_TEST", "测试运营",
+                ai.neargo.shop.auth.Realm.OPERATOR, ai.neargo.auth.store.SubjectKind.OPS, "OPS_TEST", "测试运营",
                 List.of("SUPER_ADMIN"), List.of("*"), null, null);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(user, null, List.of()));

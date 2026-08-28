@@ -2,7 +2,7 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.Realm;
-import ai.neargo.shop.auth.SubjectKind;
+import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.trade.entity.OrdInvoiceRequest;
 import ai.neargo.shop.trade.entity.OrdOrder;
