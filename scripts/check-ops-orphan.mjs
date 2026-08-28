@@ -31,10 +31,28 @@ const BASELINE = join(ROOT, "ops-web/known-orphan-endpoints.txt");
  */
 const norm = (p) => p.replace(/\$\{[^}]*\}/g, "*").replace(/\{[^}]*\}/g, "*").replace(/\/+$/, "");
 
+/**
+ * 走不了 https 层、但确实是出口的调用点。
+ *
+ * **只列具体文件，不放宽成整个 `lib/`** —— 那样注释里提到一句路径也会被当成
+ * 「有出口」，而这道闸的全部价值就在于它说的是真话。
+ *
+ * - `lib/stream.ts`：SSE 长连接。它用 `fetch` 而不是浏览器原生 `EventSource`，
+ *   因为后者不支持自定义请求头，而运营端的会话在头里。正是这个写法绕开了
+ *   只扫 https 目录的检测 —— `/ops/stream` 于是被报成「做了没入口」，
+ *   而 `app/jobs/page.tsx` 一直在用它。
+ */
+const EXTRA_CALL_SITES = ["ops-web/lib/stream.ts"];
+
 function calledPaths() {
   const out = new Set();
-  for (const f of readdirSync(HTTP_DIR)) {
-    const src = readFileSync(join(HTTP_DIR, f), "utf8");
+  const files = readdirSync(HTTP_DIR).map((f) => join(HTTP_DIR, f));
+  for (const rel of EXTRA_CALL_SITES) {
+    const abs = join(ROOT, rel);
+    if (existsSync(abs)) files.push(abs);
+  }
+  for (const f of files) {
+    const src = readFileSync(f, "utf8");
     // 模板串里带 ${} 的也要收 —— 它们正是带路径参数的那些
     for (const m of src.matchAll(/["`](\/ops\/[^"`\n]*)/g)) out.add(norm(m[1]));
   }
