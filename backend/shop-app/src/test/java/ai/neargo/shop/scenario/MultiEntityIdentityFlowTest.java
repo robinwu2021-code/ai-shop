@@ -74,7 +74,8 @@ class MultiEntityIdentityFlowTest {
         // 第二张执照：快速开店建一个占位主体（他名下第二门生意）
         String secondEntity = quickStart(token, "老王水果店");
         assertThat(secondEntity).isNotEqualTo(firstEntity);
-        token = login(phone);   // 成员关系变了，重新登录拿新作用域
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        token = TestLogin.merchantOwner(mvc(), json, otpStore, phone);   // 成员关系变了，重新登录拿新作用域
 
         String secondStore = defaultStoreNoOf(secondEntity);
         assertThat(secondStore).as("第二张执照名下应当自带一家默认店").isNotBlank();
@@ -145,7 +146,8 @@ class MultiEntityIdentityFlowTest {
         String token = merchant(phone, "分组·第一张");
         String firstEntity = merchantNoOf(token, null);
         String secondEntity = quickStart(token, "分组·第二张");
-        token = login(phone);
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        token = TestLogin.merchantOwner(mvc(), json, otpStore, phone);
 
         JsonNode groups = okData(token, "/biz/stores/mine");
         var entityNos = groups.valueStream()

@@ -261,7 +261,8 @@ class BizNotifyFlowTest {
         m.setOwnerUserNo(userNo);
         grantOwner(m.getEntityNo(), userNo);
         merchantMapper.updateById(m);
-        return ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, phone);
+        // A7：这个令牌是拿去打 /biz/** 的，必须是 btk_
+        return ai.neargo.shop.support.TestLogin.merchantOwner(mvc(), json, otpStore, phone);
     }
 
     /** 授予 B 端身份。**status 必须 ACTIVE**：受众解析（MerchantStaffPort）按它过滤。 */

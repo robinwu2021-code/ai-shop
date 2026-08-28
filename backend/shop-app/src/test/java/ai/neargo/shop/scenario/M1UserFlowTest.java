@@ -261,10 +261,16 @@ class M1UserFlowTest {
         // 常去店写上了
         mvc().perform(get("/mp/user/profile").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.data.merchantNo").value("M0001"));
-        // 但没有任何 B 端权限 —— 两个概念共用字段名的话，扫个店铺码就成了店主。
-        // （M4 实现 /biz/order 之前这里是 404；现在端点存在，判定落在作用域上）
+        /*
+         * 但没有任何 B 端权限 —— 两个概念共用字段名的话，扫个店铺码就成了店主。
+         *
+         * 判定从 10403 变成 **10401**：A7 之前 C 端令牌能过 /biz/** 的认证，
+         * 拦他的是空作用域（403）；A7 之后 C 端令牌连这条链的门都进不来。
+         * 换句话说这条闸变严了 —— 期望值往回改成 10403 的话，
+         * 等于把「C 端令牌又能进 B 端了」当成通过。
+         */
         mvc().perform(get("/biz/order").header("Authorization", "Bearer " + token))
-                .andExpect(jsonPath("$.code").value(10403));
+                .andExpect(jsonPath("$.code").value(10401));
     }
 
     @Test

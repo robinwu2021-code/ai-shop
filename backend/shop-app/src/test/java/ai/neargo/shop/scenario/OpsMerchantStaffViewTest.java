@@ -138,7 +138,9 @@ class OpsMerchantStaffViewTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"));
 
         String profile = mvc().perform(get("/biz/merchant/profile")
-                        .header("Authorization", "Bearer " + login(phone)))
+                        // A7：/biz/** 只认 btk_
+                        .header("Authorization", "Bearer "
+                                + TestLogin.merchantOwner(mvc(), json, otpStore, phone)))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(profile).get("data").get("merchantNo").asString();
     }

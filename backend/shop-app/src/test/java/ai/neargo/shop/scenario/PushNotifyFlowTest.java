@@ -163,7 +163,8 @@ class PushNotifyFlowTest {
         String firstUserNo = profileUserNo(first);
 
         // 同一台设备换人登录（B 端店员换班的真实形态）
-        String second = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "12700127407");
+        // A7：喂给 bindBiz（/biz/push-token），必须是 btk_
+        String second = ai.neargo.shop.support.TestLogin.merchantOwner(mvc(), json, otpStore, "12700127407");
         bindBiz(second, "cid-shared-1");
 
         // 前一个人名下已经没有这台设备了
@@ -295,7 +296,8 @@ class PushNotifyFlowTest {
         m.setOwnerUserNo(userNo);
         grantOwner(m.getEntityNo(), userNo);
         merchantMapper.updateById(m);
-        return ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, phone);
+        // A7：这个令牌是拿去打 /biz/** 的，必须是 btk_
+        return ai.neargo.shop.support.TestLogin.merchantOwner(mvc(), json, otpStore, phone);
     }
 
     private void grantOwner(String merchantNo, String userNo) {

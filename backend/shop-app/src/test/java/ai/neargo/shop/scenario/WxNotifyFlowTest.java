@@ -402,7 +402,8 @@ class WxNotifyFlowTest {
         m.setOwnerUserNo(userNo);
         grantOwner(m.getEntityNo(), userNo);
         merchantMapper.updateById(m);
-        return ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, phone);
+        // A7：这个令牌是拿去打 /biz/** 的，必须是 btk_
+        return ai.neargo.shop.support.TestLogin.merchantOwner(mvc(), json, otpStore, phone);
     }
 
     /** 授予 B 端身份：写一条 owner 成员行（幂等）。与 M8MessageFlowTest 同款。 */

@@ -35,10 +35,14 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
     /**
      * 踢会话用。
      *
-     * <p>⚠️ <b>过渡期取的是 {@code CONSUMER} 池</b>：B 端此刻仍签发 {@code ctk_}，
-     * 店员的会话装在 {@code usr_session} 里（主体是 {@code mch_account_no}）。
-     * A7（B 端改发 {@code btk_}）落地时，这里与 {@link #issueStaffSession} 一起改成
-     * {@code MERCHANT} —— 两处在同一个方法区里，改一个不会漏掉另一个。
+     * <p>A7 之后店员会话在 {@code MERCHANT} 池（{@code mch_session}，主体是
+     * {@code mch_account_no}），签发与吊销都取那个池。
+     *
+     * <p><b>这里原来写着一条「改一个不会漏掉另一个」的注释，然后还是漏了。</b>
+     * 理由值得记下来：签发在 {@code issueStaffSession}、吊销在 {@code kicked}，
+     * 两个方法隔着两百行，「同一个方法区」是当时的错觉。靠注释串联两处相隔的改动
+     * 是不管用的 —— 管用的是 {@code disablingStaffKicksTheirLiveSession} 那条测试，
+     * 它拿被停用者手里的真令牌再打一次，池错了当场就红。
      */
     private final ai.neargo.shop.auth.TokenStores tokenStores;
     private final MchStoreMapper storeMapper;

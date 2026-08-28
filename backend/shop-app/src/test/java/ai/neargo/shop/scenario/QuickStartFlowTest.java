@@ -137,7 +137,8 @@ class QuickStartFlowTest {
     @Test
     @DisplayName("★★ 连点两次只会有一家店 —— 不能建出两个永远补不齐的空壳")
     void quickStartIsIdempotent() throws Exception {
-        String token = login("12600160003");
+        // A7：quickStart 打 /biz/**，必须是 btk_
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600160003");
         String first = quickStart(token, "手抖点了两次的店");
         String second = quickStart(token, "手抖点了两次的店");
 

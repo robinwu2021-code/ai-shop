@@ -71,10 +71,10 @@ public class BizAuthController {
             /*
              * **记进 MERCHANT 池，而不是会话所在的 CONSUMER 池。**
              *
-             * 审计问的是「哪个端在被刷」，那与会话此刻存在哪里是两件事。
-             * 过渡期里成功登录会落在 usr_login_log（会话还在 C 端池），
-             * 失败落在 mch_login_log —— 分开看着别扭，但把 B 端的失败混进 C 端那张表，
-             * 「有人在刷商家登录」就再也看不出来了。A7 之后两者自然合到一处。
+             * 审计问的是「哪个端在被刷」，那与会话存在哪里是两件事。
+             * A7 之后成功与失败都落在 mch_login_log，两者合到了一处；
+             * 在此之前它们是分开的，因为把 B 端的失败混进 C 端那张表，
+             * 「有人在刷商家登录」就再也看不出来了。
              *
              * 只包住 authService.login 这一步：后面查商家档案失败不是登录失败。
              */
@@ -85,8 +85,6 @@ public class BizAuthController {
         }
         /*
          * **记进 MERCHANT 池** —— 与上面失败那一侧同一个池，理由见那段注释。
-         * 过渡期里会话仍在 C 端池（A7 之前 B 端发 ctk_），但审计问的是
-         * 「哪个端在被登录」，与会话此刻存在哪里是两件事。
          */
         auditor.succeeded(ai.neargo.shop.auth.Realm.MERCHANT, result.user().userNo());
 
