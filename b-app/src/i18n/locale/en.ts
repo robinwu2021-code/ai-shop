@@ -1765,7 +1765,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     addItem: "Add item",
     availableN: "Available {n}",
     qtyTitle: "How many {name} to move?",
-    qtyHint: "{n} available",
+    qtyHint: "Available {n}",
     qtyBad: "Enter a whole number between 1 and {n}",
     totalQty: "Total",
     inTransit: "In transit",
