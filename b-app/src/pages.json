@@ -12,367 +12,733 @@
     {
       "path": "pages/home/index",
       "style": {
-        "navigationBarTitleText": "工作台"
+        "navigationBarTitleText": "工作台",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/orders/index",
       "style": {
-        "navigationBarTitleText": "订单"
+        "navigationBarTitleText": "订单",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/goods-list/index",
       "style": {
-        "navigationBarTitleText": "商品"
+        "navigationBarTitleText": "商品",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/me/index",
       "style": {
-        "navigationBarTitleText": "我的"
+        "navigationBarTitleText": "我的",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/messages/index",
       "style": {
-        "navigationBarTitleText": "消息"
+        "navigationBarTitleText": "消息",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/login/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/apply/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/goods-edit/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/order/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/verify/index",
       "style": {
-        "navigationBarTitleText": "核销台"
+        "navigationBarTitleText": "核销台",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/picking/index",
       "style": {
-        "navigationBarTitleText": "分拣单"
+        "navigationBarTitleText": "分拣单",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/delivery/index",
       "style": {
-        "navigationBarTitleText": "商家自送"
+        "navigationBarTitleText": "商家自送",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/schedule/index",
       "style": {
-        "navigationBarTitleText": "预约排期"
+        "navigationBarTitleText": "预约排期",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/income/index",
       "style": {
-        "navigationBarTitleText": "我的收入"
+        "navigationBarTitleText": "我的收入",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/points/index",
       "style": {
-        "navigationBarTitleText": "积分"
+        "navigationBarTitleText": "积分",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/points-records/index",
       "style": {
-        "navigationBarTitleText": "发分明细"
+        "navigationBarTitleText": "发分明细",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/stores/index",
       "style": {
-        "navigationBarTitleText": "门店管理"
+        "navigationBarTitleText": "门店管理",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/store-categories/index",
       "style": {
-        "navigationBarTitleText": "类目与规格"
+        "navigationBarTitleText": "类目与规格",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/my-specs/index",
       "style": {
-        "navigationBarTitleText": "商品规格"
+        "navigationBarTitleText": "商品规格",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/sku-identity/index",
       "style": {
-        "navigationBarTitleText": "商品编码导入导出"
+        "navigationBarTitleText": "商品编码导入导出",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/qualifications/index",
       "style": {
-        "navigationBarTitleText": "资质证照"
+        "navigationBarTitleText": "资质证照",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/staff-detail/index",
       "style": {
-        "navigationBarTitleText": "员工详情"
+        "navigationBarTitleText": "员工详情",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/role-detail/index",
       "style": {
-        "navigationBarTitleText": "角色"
+        "navigationBarTitleText": "角色",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/staff/index",
       "style": {
-        "navigationBarTitleText": "员工"
+        "navigationBarTitleText": "员工",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/payment/index",
       "style": {
-        "navigationBarTitleText": "收款设置"
+        "navigationBarTitleText": "收款设置",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/store/index",
       "style": {
-        "navigationBarTitleText": "店铺设置"
+        "navigationBarTitleText": "店铺设置",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/store-notice/index",
       "style": {
-        "navigationBarTitleText": "公告"
+        "navigationBarTitleText": "公告",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/store-scope/index",
       "style": {
-        "navigationBarTitleText": "经营范围与送货"
+        "navigationBarTitleText": "经营范围与送货",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/store-pick/index",
       "style": {
-        "navigationBarTitleText": "选择门店"
+        "navigationBarTitleText": "选择门店",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/entities/index",
       "style": {
-        "navigationBarTitleText": "证照与账户"
+        "navigationBarTitleText": "证照与账户",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/entity-detail/index",
       "style": {
-        "navigationBarTitleText": "证照详情"
+        "navigationBarTitleText": "证照详情",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/after-sale/index",
       "style": {
-        "navigationBarTitleText": "售后处理"
+        "navigationBarTitleText": "售后处理",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/reviews/index",
       "style": {
-        "navigationBarTitleText": "评价与回复"
+        "navigationBarTitleText": "评价与回复",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/quotes/index",
       "style": {
-        "navigationBarTitleText": "邻里求团报价"
+        "navigationBarTitleText": "邻里求团报价",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/groups/index",
       "style": {
-        "navigationBarTitleText": "商家团"
+        "navigationBarTitleText": "商家团",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/settle/index",
       "style": {
-        "navigationBarTitleText": "结算单"
+        "navigationBarTitleText": "结算单",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/stats/index",
       "style": {
-        "navigationBarTitleText": "经营数据"
+        "navigationBarTitleText": "经营数据",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/cross-store/index",
       "style": {
-        "navigationBarTitleText": "跨店总览"
+        "navigationBarTitleText": "跨店总览",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/plan/index",
       "style": {
-        "navigationBarTitleText": "我的套餐"
+        "navigationBarTitleText": "我的套餐",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/marketing/index",
       "style": {
-        "navigationBarTitleText": "营销活动"
+        "navigationBarTitleText": "营销活动",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/customers/index",
       "style": {
-        "navigationBarTitleText": "会员"
+        "navigationBarTitleText": "会员",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/member-detail/index",
       "style": {
-        "navigationBarTitleText": "会员详情"
+        "navigationBarTitleText": "会员详情",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/member-add/index",
       "style": {
-        "navigationBarTitleText": "添加会员"
+        "navigationBarTitleText": "添加会员",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/member-tags/index",
       "style": {
-        "navigationBarTitleText": "标签"
+        "navigationBarTitleText": "标签",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/member-segments/index",
       "style": {
-        "navigationBarTitleText": "人群"
+        "navigationBarTitleText": "人群",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/member-settings/index",
       "style": {
-        "navigationBarTitleText": "会员设置"
+        "navigationBarTitleText": "会员设置",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/coupons/index",
       "style": {
-        "navigationBarTitleText": "优惠券"
+        "navigationBarTitleText": "优惠券",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/coupon-edit/index",
       "style": {
-        "navigationBarTitleText": "新建券"
+        "navigationBarTitleText": "新建券",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/coupon-issues/index",
       "style": {
-        "navigationBarTitleText": "发放记录"
+        "navigationBarTitleText": "发放记录",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/activities/index",
       "style": {
-        "navigationBarTitleText": "店铺活动"
+        "navigationBarTitleText": "店铺活动",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/activity-edit/index",
       "style": {
-        "navigationBarTitleText": "新建活动"
+        "navigationBarTitleText": "新建活动",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/member-reach/index",
       "style": {
-        "navigationBarTitleText": "给会员发消息"
+        "navigationBarTitleText": "给会员发消息",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/stock/index",
       "style": {
-        "navigationBarTitleText": "库存"
+        "navigationBarTitleText": "库存",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/stock-detail/index",
       "style": {
-        "navigationBarTitleText": "库存明细"
+        "navigationBarTitleText": "库存明细",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/stock-check/index",
       "style": {
-        "navigationBarTitleText": "盘点"
+        "navigationBarTitleText": "盘点",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/purchase-edit/index",
       "style": {
-        "navigationBarTitleText": "记一笔进货"
+        "navigationBarTitleText": "记一笔进货",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/stock-docs/index",
       "style": {
-        "navigationBarTitleText": "出入库单据"
+        "navigationBarTitleText": "出入库单据",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/stock-out/index",
       "style": {
-        "navigationBarTitleText": "报损出库"
+        "navigationBarTitleText": "报损出库",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/transfer/index",
       "style": {
-        "navigationBarTitleText": "调拨"
+        "navigationBarTitleText": "调拨",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/stock-report/index",
       "style": {
-        "navigationBarTitleText": "进销存报表"
+        "navigationBarTitleText": "进销存报表",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/locations/index",
       "style": {
-        "navigationBarTitleText": "库位与仓"
+        "navigationBarTitleText": "库位与仓",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     }
   ],
@@ -380,8 +746,12 @@
     "navigationBarTextStyle": "black",
     "navigationBarBackgroundColor": "#FFFFFF",
     "backgroundColor": "#ECEDEF",
-    "app-plus": { "navigationStyle": "custom" },
-    "h5": { "navigationStyle": "custom" },
+    "app-plus": {
+      "navigationStyle": "custom"
+    },
+    "h5": {
+      "navigationStyle": "custom"
+    },
     "rpxCalcMaxDeviceWidth": 600,
     "rpxCalcBaseDeviceWidth": 375
   },

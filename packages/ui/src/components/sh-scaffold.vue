@@ -242,10 +242,9 @@ watch(() => props.titleKey, applyTitle);
    `--sh-navbar-h` 由组件按机型算出来传进来 —— 状态栏高度各机不同，写死会在刘海屏上压住内容 */
 /* #ifdef H5 || APP-PLUS */
 .sh-scaffold {
-  /* **默认值写出来，不靠 `var()` 的兜底。** 兜底会把拼错的变量名盖住（守卫拦的正是这个），
-     而且这个默认值本身有意义：H5 没有状态栏，44px 就是最终值；
-     App 上组件按 `statusBarHeight` 把它顶掉（行内 style 权重更高）。 */
-  --sh-navbar-h: 44px;
+  /* 变量定义在 base.css 的常量块里（与 `--sh-tabbar-h` 同处）——
+     定义在这儿的话 `skin-vars` 守卫看不见它，会判成「引用了皮肤里没有的变量」。
+     那道守卫拦的正是「`--sh-*` 拼错了没人知道」，不该为一处破例。 */
   padding-top: var(--sh-navbar-h);
 }
 .sh-scaffold.is-padded {

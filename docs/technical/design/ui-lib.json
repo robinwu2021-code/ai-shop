@@ -368,7 +368,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 73,
+        "b-app": 75,
         "c-app": 29
       }
     },
@@ -684,7 +684,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 222,
+        "b-app": 226,
         "c-app": 191
       }
     },
@@ -728,7 +728,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 3,
+        "b-app": 4,
         "c-app": 13
       }
     },
@@ -794,7 +794,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 111,
+        "b-app": 112,
         "c-app": 35
       }
     },
@@ -816,7 +816,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 77,
+        "b-app": 81,
         "c-app": 84
       }
     },
@@ -838,7 +838,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 93,
+        "b-app": 96,
         "c-app": 28
       }
     },
@@ -1620,7 +1620,7 @@
       "name": "sh-scaffold",
       "file": "packages/ui/src/components/sh-scaffold.vue",
       "scope": "跨端",
-      "lines": 278,
+      "lines": 277,
       "props": [
         "padded?: boolean",
         "titleKey?: string",
@@ -2092,18 +2092,10 @@
         "sh-scaffold",
         "biz-store-tag"
       ],
-      "libClassHits": 53,
-      "localSelectors": 38,
-      "localCssLines": 190,
-      "rolled": [
-        {
-          "id": "fill",
-          "label": "占满剩余自写",
-          "lib": ".sh-fill",
-          "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
-          "gap": false
-        }
-      ]
+      "libClassHits": 67,
+      "localSelectors": 37,
+      "localCssLines": 166,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2577,9 +2569,9 @@
         "sh-stat",
         "sh-tabs"
       ],
-      "libClassHits": 17,
+      "libClassHits": 18,
       "localSelectors": 8,
-      "localCssLines": 40,
+      "localCssLines": 39,
       "rolled": []
     },
     {
@@ -3223,18 +3215,7 @@
       "rolled": []
     }
   ],
-  "gaps": [
-    {
-      "id": "fill",
-      "label": "占满剩余自写",
-      "lib": ".sh-fill",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
-      "pages": [
-        "b-app/home"
-      ]
-    }
-  ],
+  "gaps": [],
   "counts": {
     "tokens": 10,
     "blocks": 55,

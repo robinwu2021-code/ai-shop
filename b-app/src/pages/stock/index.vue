@@ -150,7 +150,7 @@ onShow(load);
       <text
         v-for="e in entries"
         :key="e.key"
-        class="sh-card entries__item"
+        class="txt-sub sh-card entries__item"
         @tap="go(e.route)"
       >
         {{ $t(`stock.entry.${e.key}`) }}
@@ -217,9 +217,9 @@ onShow(load);
   /* 四列：(100% − 三条 12rpx 缝) / 4 */
   width: calc((100% - 36rpx) / 4);
   box-sizing: border-box;
-  padding: 18rpx 0;
+  /* 20rpx 而不是 18：间距要落在 4rpx 网格上（check-page-spec） */
+  padding: 20rpx 0;
   text-align: center;
-  font-size: 26rpx;
 }
 
 .row__top {
