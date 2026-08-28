@@ -1,6 +1,7 @@
 package ai.neargo.shop.merchant.auth;
 
 import ai.neargo.auth.store.IdentityLoader;
+import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
@@ -43,5 +44,11 @@ public class MerchantIdentityLoader implements IdentityLoader<LoginUser> {
             return Optional.empty();
         }
         return Optional.of(LoginUser.merchant(account.getMchAccountNo(), account.getDisplayName()));
+    }
+
+    /** 这个加载器认 MCH 类主体。**显式写出来** —— 组合加载器按它分发。 */
+    @Override
+    public SubjectKind kind() {
+        return SubjectKind.MCH;
     }
 }

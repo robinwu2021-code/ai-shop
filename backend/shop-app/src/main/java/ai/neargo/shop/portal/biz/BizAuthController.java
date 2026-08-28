@@ -89,6 +89,25 @@ public class BizAuthController {
          * 「哪个端在被登录」，与会话此刻存在哪里是两件事。
          */
         auditor.succeeded(ai.neargo.shop.auth.Realm.MERCHANT, result.user().userNo());
+
+        /*
+         * **A7：换成 B 端令牌。**
+         *
+         * authService.login 顺带签了一个 ctk_（它是 C 端的认证实现，「登录即注册」
+         * 那一步也在里面，绕不开）。而这条链现在只认 btk_ —— 直接把 ctk_ 返回给
+         * b-app 的话，它下一个请求就是 401。
+         *
+         * 主体用 user_no（kind=USR）而不是 mch_account_no：**btk_ 表示「这是 B 端的
+         * 会话」，不表示「这个人是商家」**。还没开店的人正是走这一支 ——
+         * 他要去提交入驻申请，而那时他没有任何 mch_account。
+         *
+         * 顺手把那个 ctk_ 撤掉：留着就是一个没人用、却能通过 /mp/** 鉴权的会话，
+         * 而它的存在不会被任何地方记录成「这个人登录了 C 端」。
+         */
+        String bizToken = tokenStore.issue(ai.neargo.shop.auth.TokenStore.SessionData.of(
+                ai.neargo.shop.auth.LoginUser.merchantByUser(
+                        result.user().userNo(), result.user().nickname())));
+        tokenStore.revoke(result.token());
         // 手机号直接从登录结果取：此刻 SecurityContext 里还没有人
         // （过滤器跑在发 token 之前），去查 userService.profile() 只会拿到空
         String phone = result.user().phone();
@@ -119,16 +138,16 @@ public class BizAuthController {
          * 这正是「登录即注册」承诺的那一屏。
          */
         if (owner != null && !nz(owner.merchantNo()).isBlank()) {
-            return new MerchantLoginResp(result.token(), owner);
+            return new MerchantLoginResp(bizToken, owner);
         }
         if (rawPhone.isBlank()) {
             // 微信/Apple 登录拿不到手机号，判不了店员身份 —— 他要走这条路就得先补绑
-            return new MerchantLoginResp(result.token(), owner);
+            return new MerchantLoginResp(bizToken, owner);
         }
         return merchantStaffService.issueStaffSession(rawPhone)
                 .map(token -> new MerchantLoginResp(token,
                         merchantController.profileOf(principalOf(token), rawPhone)))
-                .orElseGet(() -> new MerchantLoginResp(result.token(), owner));
+                .orElseGet(() -> new MerchantLoginResp(bizToken, owner));
     }
 
     private static String nz(String s) {

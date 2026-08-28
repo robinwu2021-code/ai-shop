@@ -5,6 +5,7 @@ import ai.neargo.shop.auth.ApiAuthEntryPoint;
 import ai.neargo.shop.auth.BizContextFilter;
 import ai.neargo.shop.auth.BizIdentityResolver;
 import ai.neargo.shop.auth.ConsumerTokenAuthFilter;
+import ai.neargo.shop.auth.MerchantTokenAuthFilter;
 import ai.neargo.shop.auth.OperatorTokenAuthFilter;
 import ai.neargo.shop.auth.TokenStore;
 import org.springframework.beans.factory.ObjectProvider;
@@ -110,35 +111,62 @@ public class SecurityConfig {
     @Bean
     @Profile("api")
     @Order(1)
-    SecurityFilterChain consumerChain(HttpSecurity http, TokenStore tokenStore,
+    SecurityFilterChain merchantChain(HttpSecurity http, TokenStore tokenStore,
                                       ObjectProvider<BizIdentityResolver> resolver) throws Exception {
         return http
-                .securityMatcher("/mp/**", "/biz/**")
+                .securityMatcher("/biz/**")
                 .cors(c -> c.configurationSource(corsSource()))
                 .csrf(csrf -> csrf.disable())          // 无 cookie 会话，CSRF 不适用
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(reg -> reg
-                        // 登录接口本身当然不能要求已登录 —— 两条都是登录入口，写在最前面。
-                        // staff-login 是**员工独立登录**（App 路径）：他可能根本没有 C 端账号，
-                        // 要求先登录才能登录是个死循环
                         /*
                          * 登录前的三个动作都必须放行。**发验证码也在其中** ——
                          * 它此前漏在白名单外，于是商家点「获取验证码」拿到 401：
                          * 要先登录才能拿到登录用的验证码，谁也进不来。
                          * 而这条路径只有真的从登录页点一次才会走到。
+                         *
+                         * staff-login 是**员工独立登录**：他可能根本没有 C 端账号，
+                         * 要求先登录才能登录是个死循环。
                          */
                         .requestMatchers("/biz/auth/login", "/biz/auth/staff-login",
                                 "/biz/auth/otp/send").permitAll()
-                        // /biz/** 其余一律必须登录；具体作用域由 BizContext + DataScope 裁剪
-                        .requestMatchers("/biz/**").authenticated()
-                        // /mp/** 一律放行到业务层：游客能逛商品，但下单接口自己 requireUser()
-                        .anyRequest().permitAll())
-                .addFilterBefore(new ConsumerTokenAuthFilter(tokenStore),
+                        .anyRequest().authenticated())
+                /*
+                 * **只认 btk_（A7）。** 此前这条链与 /mp/** 合用一条，挂的是
+                 * ConsumerTokenAuthFilter —— 商家拿的是 C 端的 ctk_，于是
+                 * LoginUser.userNo 这一个字段里 C 端塞 usr_account.user_no、
+                 * B 端塞 mch_account.mch_account_no，靠号段恰好不撞。
+                 * 分链之后跨端令牌在第一道就被拒，不是靠约定。
+                 */
+                .addFilterBefore(new MerchantTokenAuthFilter(tokenStore),
                         UsernamePasswordAuthenticationFilter.class)
                 // BizContextFilter 必须在认证之后：它要用登录态去解析经营侧作用域
                 .addFilterAfter(new BizContextFilter(resolver.getIfAvailable(() -> BizIdentityResolver.NONE)),
-                        ConsumerTokenAuthFilter.class)
-                // 401 要带包体，且区分「没登录」与「登录过期」—— 见 ApiAuthEntryPoint
+                        MerchantTokenAuthFilter.class)
+                .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()))
+                .build();
+    }
+
+    /**
+     * C 端（{@code /mp/**}）：只认 {@code ctk_}。
+     *
+     * <p><b>整条链放行到业务层</b>：游客能逛商品、看门店主页，需要登录的端点
+     * 自己调 {@code SecurityUtils.currentUserNo()} 抛 401。
+     * 这是刻意的 —— 门店主页未登录不该 401，所以才有分开的
+     * {@code currentUserNoOrNull()}。哪些端点要登录由 {@code MpEndpointAuthTest} 逐条钉住。
+     */
+    @Bean
+    @Profile("api")
+    @Order(2)
+    SecurityFilterChain consumerChain(HttpSecurity http, TokenStore tokenStore) throws Exception {
+        return http
+                .securityMatcher("/mp/**")
+                .cors(c -> c.configurationSource(corsSource()))
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
+                .addFilterBefore(new ConsumerTokenAuthFilter(tokenStore),
+                        UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()))
                 .build();
     }
@@ -146,7 +174,7 @@ public class SecurityConfig {
     /** 运营端：全部需要登录 + RBAC。仅 ops 部署装配，且 ops 只在内网可达。 */
     @Bean
     @Profile("ops")
-    @Order(2)
+    @Order(3)
     SecurityFilterChain operatorChain(
             HttpSecurity http, TokenStore tokenStore,
             ObjectProvider<ai.neargo.shop.auth.LiveIdentityResolver> identityResolver) throws Exception {
@@ -171,7 +199,7 @@ public class SecurityConfig {
     /** 公共与回调：{@code /callback/**} 各自验签，不走 Bearer（[API 清单 §5.2]）。 */
     @Bean
     @Profile({"api", "ops"})
-    @Order(3)
+    @Order(4)
     SecurityFilterChain publicChain(HttpSecurity http) throws Exception {
         return http
                 // /uploads/** 是商品图：**游客必须能看**，否则未登录逛首页全是裂图。

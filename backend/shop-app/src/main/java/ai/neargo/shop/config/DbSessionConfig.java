@@ -3,6 +3,7 @@ package ai.neargo.shop.config;
 import ai.neargo.auth.store.AuthCache;
 import ai.neargo.auth.store.IdentityLoader;
 import ai.neargo.auth.store.LoginLogDao;
+import ai.neargo.auth.store.CompositeIdentityLoader;
 import ai.neargo.auth.store.LoginLogWriter;
 import ai.neargo.auth.store.SessionDao;
 import ai.neargo.auth.store.SessionProfile;
@@ -72,13 +73,22 @@ public class DbSessionConfig {
         Map<Realm, TokenStore> byRealm = new EnumMap<>(Realm.class);
         byRealm.put(Realm.CONSUMER, TokenStoreSelection.usesDb(env, Realm.CONSUMER)
                 ? store(authJdbcClient, Realm.CONSUMER, SessionProfiles.CONSUMER,
-                        // ⚠️ 过渡期：C 端池里还装着 B 端会话，见 TransitionalConsumerIdentityLoader
-                        new TransitionalConsumerIdentityLoader(consumers, merchants),
+                        // A7 之后 C 端池里只有 C 端会话，过渡期那个桥接器已删
+                        consumers,
                         loginLogWriters.get(Realm.CONSUMER))
                 : shared(sharedStore, Realm.CONSUMER, env));
         byRealm.put(Realm.MERCHANT, TokenStoreSelection.usesDb(env, Realm.MERCHANT)
                 ? store(authJdbcClient, Realm.MERCHANT, SessionProfiles.MERCHANT,
-                        merchants, loginLogWriters.get(Realm.MERCHANT))
+                        /*
+                         * **B 端池里装着两类主体**，按会话行上的 subject_kind 分发：
+                         *   MCH —— 店员从 /biz/auth/staff-login 进来，主体是 mch_account_no
+                         *   USR —— 老板与还没开店的人从 /biz/auth/login 进来，主体是 user_no
+                         * 生产实测 9 个商家账号里 8 个没有 usr_account，所以两类都得认。
+                         * 认不出 kind 时组合加载器返回空，不挨个试 —— 猜错就是把会话
+                         * 解析成另一个人。
+                         */
+                        new CompositeIdentityLoader<>(merchants, consumers),
+                        loginLogWriters.get(Realm.MERCHANT))
                 : shared(sharedStore, Realm.MERCHANT, env));
         byRealm.put(Realm.OPERATOR, TokenStoreSelection.usesDb(env, Realm.OPERATOR)
                 ? store(authJdbcClient, Realm.OPERATOR, SessionProfiles.OPERATOR,

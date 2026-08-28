@@ -99,8 +99,13 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
          * principal 用 mch_account_no：这个员工可能**根本没有 C 端账号**。
          * BizIdentityResolver 两条路径都认（user_no 或 mch_account_no）。
          */
+        /*
+         * **A7：签进 MERCHANT 池，主体是 mch_account_no（kind=MCH）。**
+         * 此前签的是 LoginUser.consumer(mchAccountNo, "") —— C 端令牌装着商家账号号，
+         * 靠号段恰好不撞。现在 subject_kind 把「这个号去哪张表查」写进了会话行。
+         */
         return java.util.Optional.of(tokenStore.issue(TokenStore.SessionData.of(
-                LoginUser.consumer(staff.getMchAccountNo(), ""))));
+                LoginUser.merchant(staff.getMchAccountNo(), staff.getDisplayName()))));
     }
 
     @Override

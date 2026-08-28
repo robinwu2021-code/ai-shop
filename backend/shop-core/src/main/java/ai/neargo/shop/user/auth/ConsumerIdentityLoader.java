@@ -1,6 +1,7 @@
 package ai.neargo.shop.user.auth;
 
 import ai.neargo.auth.store.IdentityLoader;
+import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.user.entity.UsrAccount;
 import ai.neargo.shop.user.mapper.UserMappers;
@@ -43,5 +44,11 @@ public class ConsumerIdentityLoader implements IdentityLoader<LoginUser> {
             return Optional.empty();
         }
         return Optional.of(LoginUser.consumer(user.getUserNo(), user.getNickname()));
+    }
+
+    /** 这个加载器认 USR 类主体。**显式写出来** —— 组合加载器按它分发。 */
+    @Override
+    public SubjectKind kind() {
+        return SubjectKind.USR;
     }
 }

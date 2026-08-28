@@ -1,6 +1,7 @@
 package ai.neargo.shop.platform.auth;
 
 import ai.neargo.auth.store.IdentityLoader;
+import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.LivePermResolver;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.platform.StaffScopes;
@@ -89,5 +90,11 @@ public class OperatorIdentityLoader implements IdentityLoader<LoginUser> {
                     staffNo, e.getClass().getSimpleName());
             return List.of();
         }
+    }
+
+    /** 这个加载器认 OPS 类主体。**显式写出来** —— 组合加载器按它分发。 */
+    @Override
+    public SubjectKind kind() {
+        return SubjectKind.OPS;
     }
 }
