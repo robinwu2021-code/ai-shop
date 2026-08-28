@@ -299,3 +299,4 @@ ArchUnit 行业包禁 import `ord_*` 实体（经 Core*Api）；存量订单回�
 | [TDD-餐饮包](./TDD-餐饮包-场景与工作流.md) | `fnb_payment` **作废** → 用 `ord_payment(ref_type=CHECK)`；「加价加料=独立订单行」**作废** → `ord_item_modifier`（已加注） |
 | [TDD-美业包](./TDD-美业包-场景与工作流.md) | `bty_payment` **作废** → `ord_payment(ref_type=WORK_ORDER)`（已加注） |
 | [核心能力清单](../reference/核心能力清单.md) | C 节后续补：收款流水 C6、收银台 C7（下轮统一回填） |
+| [订单域V2-设计规格书](./订单域V2-设计规格书.md) | **设计附件**：表结构终版、状态机、领域对象、Service、API、行业对标四张单 |
