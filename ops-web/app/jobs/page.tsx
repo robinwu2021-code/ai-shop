@@ -33,10 +33,11 @@ import { Drawer } from "@/components/ui/drawer";
 import { Notice } from "@/components/ui/notice";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useOpsStream } from "@/lib/use-ops-stream";
-import { cronText, relTime, oneLine } from "@/lib/job-format";
+import { cronText, relTime, oneLine, TEXT_KEY } from "@/lib/job-format";
 import { JOBS_COPY } from "./copy";
 
 const MANAGE = "system:job:manage";
+
 
 /**
  * 状态 → 颜色。**六个状态分两组**，颜色也照这个分：
@@ -97,11 +98,18 @@ export default function JobsPage() {
     missing: rows.filter((r) => r.missing).length,
   }), [rows]);
 
+  /*
+   * cronText / relTime 用的是短 key（`cron.dailyAt`），这里映到本页词条上。
+   *
+   * **写成显式表，不用正则拼**。第一版是
+   * `k.replace(/^(cron|rel)\./, …).replace(/^([a-z])/, 大写)`，
+   * 而 "cron." 换成 "Cron" 之后首字母已经是大写，第二个 replace 不生效 ——
+   * 拼出来的是 `jobsCroneveryNMinutes`，词条查不到，页面上直接显示原始 key。
+   * 这类错误编译期不报、类型也不管，只有真打开页面才看得见。
+   */
   const tc = (k: string, p?: Record<string, unknown>) => {
-    // cronText / relTime 用的是短 key，这里映到本页词条上
-    const key = `jobs${k.replace(/^(cron|rel)\./, (m) => (m === "cron." ? "Cron" : "Rel"))
-      .replace(/^([a-z])/, (m) => m.toUpperCase())}` as keyof typeof c;
-    let out = String(c[key] ?? k);
+    const key = TEXT_KEY[k];
+    let out = key ? String(c[key as keyof typeof c] ?? k) : k;
     for (const [a, b] of Object.entries(p ?? {})) out = out.replace(`{${a}}`, String(b));
     return out;
   };

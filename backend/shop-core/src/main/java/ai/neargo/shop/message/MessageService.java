@@ -57,6 +57,16 @@ public interface MessageService {
     /** 未读数。三端角标轮询用 —— 只 count，不拉列表。 */
     long unreadCount(String receiverType);
 
+    /**
+     * 指定收件人的未读数。
+     *
+     * <p><b>给拿不到安全上下文的调用方用</b>：服务端推送在一条定时线程里跑，
+     * 那里没有 SecurityContext，{@link #unreadCount(String)} 一进去就抛
+     * {@code UnauthorizedException} —— 而它表现出来只是「页面不更新」，
+     * 没有任何地方会说清原因。订阅那一刻把 receiverNo 记下来，之后按它查。
+     */
+    long unreadCountOf(String receiverType, String receiverNo);
+
     /** 订阅授权上报。同意与拒绝都记。 */
     void subscribe(List<String> templateIds, boolean accepted);
 

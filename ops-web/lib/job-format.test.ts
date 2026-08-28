@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cronText, relTime, oneLine } from "./job-format";
+import { cronText, relTime, oneLine, TEXT_KEY } from "./job-format";
 
 // 词条替身：把 key 与参数原样拼出来，这样断言看得见「翻成了哪一条」
 const t = (k: string, p?: Record<string, unknown>) =>
@@ -44,5 +44,30 @@ describe("oneLine", () => {
     expect(oneLine("a\n  b")).toBe("a b");
     expect(oneLine("x".repeat(80), 10)).toBe(`${"x".repeat(9)}…`);
     expect(oneLine(null)).toBe("");
+  });
+});
+
+describe("TEXT_KEY", () => {
+  // 把两个函数能产出的短 key 全枚举出来：每一种输入形状各取一个代表
+  const emitted = new Set<string>();
+  const spy = (k: string) => { emitted.add(k); return k; };
+
+  it("★★ 每个能产出的 key 都有对应词条 —— 少一条就是页面上显示原始 key", () => {
+    ["0 * * * * *", "0 */10 * * * *", "0 5 * * * *", "0 10 3 * * *"]
+      .forEach((c) => cronText(c, spy));
+    const now = Date.parse("2026-08-28T12:00:00");
+    ["2026-08-28T11:59:50", "2026-08-28T11:58:00", "2026-08-28T09:00:00",
+     "2026-08-28T12:00:10", "2026-08-28T12:05:00", "2026-08-28T15:00:00"]
+      .forEach((t) => relTime(t, spy, now));
+
+    const missing = [...emitted].filter((k) => !(k in TEXT_KEY));
+    expect(missing, `这些 key 没有词条：${missing.join(", ")}`).toEqual([]);
+  });
+
+  it("表里也不该有多余的 —— 多出来的说明函数改过而表没跟上", () => {
+    // everyNHours 目前没有任务在用，但形状支持，留着；其余都必须被上面那条覆盖到
+    const extra = Object.keys(TEXT_KEY)
+      .filter((k) => !emitted.has(k) && k !== "cron.everyNHours");
+    expect(extra, `表里这些 key 没有任何输入能产出：${extra.join(", ")}`).toEqual([]);
   });
 });

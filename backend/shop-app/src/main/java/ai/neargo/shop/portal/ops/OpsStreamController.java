@@ -3,9 +3,9 @@ package ai.neargo.shop.portal.ops;
 import ai.neargo.job.store.JobDefinitionDao;
 import ai.neargo.job.store.JobRunDao;
 import ai.neargo.job.store.JobRunRow;
+import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.message.MessageService;
 import ai.neargo.shop.message.entity.MsgMessage;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +46,14 @@ import java.util.stream.Collectors;
  * 是不可接受的（它会进 nginx 访问日志、进浏览器历史、进 Referer）。
  * 所以前端用 {@code fetch} + {@code ReadableStream} 自己读 SSE 帧。
  *
+ * <h2>推送线程里没有安全上下文</h2>
+ * <p>第一版直接调 {@code messageService.unreadCount(RECEIVER_OPS)}，而那个方法
+ * 内部用 {@code SecurityUtils.currentUserNo()} 按人过滤 —— 定时线程里没有
+ * SecurityContext，每一轮都抛 {@code UnauthorizedException}。
+ * <b>症状只是「页面不更新」</b>：连接正常、初次快照正常、之后再没有一帧，
+ * 而异常被兜底 catch 住只进了日志。所以订阅那一刻就把 {@code staffNo} 记在连接上，
+ * 之后按它查（{@code unreadCountOf}）。
+ *
  * <h2>单实例假设</h2>
  * <p>连接注册表在进程内存里。多实例部署时每个实例只推给连到自己的那些人 ——
  * 这恰好是对的（每个实例各自轮询各自推），不需要跨实例广播。
@@ -71,9 +79,23 @@ public class OpsStreamController {
     private final MessageService messages;
     private final ObjectProvider<JobDefinitionDao> jobDefs;
     private final ObjectProvider<JobRunDao> jobRuns;
-    private final ObjectMapper json;
+    /**
+     * 一条连接。**未读数按人算，所以每条连接各记各的水位** ——
+     * 共用一个 {@code lastUnread} 的话，A 的数字变了会把 B 的推送也一起触发，
+     * 而 B 收到的是 A 的数。
+     */
+    private static final class Client {
+        final SseEmitter emitter;
+        final String staffNo;
+        volatile long lastUnread = -1;
 
-    private final List<SseEmitter> clients = new CopyOnWriteArrayList<>();
+        Client(SseEmitter emitter, String staffNo) {
+            this.emitter = emitter;
+            this.staffNo = staffNo;
+        }
+    }
+
+    private final List<Client> clients = new CopyOnWriteArrayList<>();
     private final ScheduledExecutorService ticker =
             Executors.newSingleThreadScheduledExecutor(r -> {
                 Thread t = new Thread(r, "ops-stream");
@@ -81,19 +103,23 @@ public class OpsStreamController {
                 return t;
             });
 
-    /** 上一轮推出去的内容，用来判断「变了没有」。**不推没变的东西**是这套方案省下的全部开销。 */
-    private volatile String lastUnread = "";
-    private volatile String lastJobs = "";
+    /**
+     * 上一轮推出去的内容，用来判断「变了没有」。**不推没变的东西**是这套方案省下的全部开销。
+     *
+     * <p>存的是对象不是 JSON 字符串：{@code JobVO} 是 record，{@code equals} 现成的，
+     * 而序列化交给 Spring 的消息转换器 —— <b>那样 SSE 与 REST 端点的格式逐字节相同</b>。
+     * 自己 new 一个 ObjectMapper 的话，{@code LocalDateTime} 的写法就可能与
+     * {@code GET /ops/jobs} 不一致，页面上同一个字段会出现两种样子。
+     */
+    private volatile List<OpsJobController.JobVO> lastJobs;
     private volatile long lastSentAt;
 
     public OpsStreamController(MessageService messages,
                                ObjectProvider<JobDefinitionDao> jobDefs,
-                               ObjectProvider<JobRunDao> jobRuns,
-                               ObjectMapper json) {
+                               ObjectProvider<JobRunDao> jobRuns) {
         this.messages = messages;
         this.jobDefs = jobDefs;
         this.jobRuns = jobRuns;
-        this.json = json;
         ticker.scheduleWithFixedDelay(this::tick, TICK.toMillis(), TICK.toMillis(),
                 TimeUnit.MILLISECONDS);
     }
@@ -105,23 +131,28 @@ public class OpsStreamController {
      */
     @GetMapping(value = "/ops/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream() {
+        // **在这里取身份**：只有请求线程上有 SecurityContext
+        String staffNo = SecurityUtils.currentUserNo();
         SseEmitter emitter = new SseEmitter(EMITTER_TIMEOUT_MS);
-        emitter.onCompletion(() -> clients.remove(emitter));
-        emitter.onTimeout(() -> clients.remove(emitter));
-        emitter.onError(e -> clients.remove(emitter));
-        clients.add(emitter);
+        Client client = new Client(emitter, staffNo);
+        emitter.onCompletion(() -> clients.remove(client));
+        emitter.onTimeout(() -> clients.remove(client));
+        emitter.onError(e -> clients.remove(client));
+        clients.add(client);
         /*
          * **立刻推一次当前状态**，不等下一个 tick。
          * 不然页面打开后有最多 3 秒是空的，而用户会以为没加载出来。
          */
         try {
-            emitter.send(SseEmitter.event().name("unread").data(readUnread()));
-            String jobs = readJobs();
+            client.lastUnread = readUnread(staffNo);
+            emitter.send(SseEmitter.event().name("unread").data(client.lastUnread));
+            List<OpsJobController.JobVO> jobs = readJobs();
             if (jobs != null) {
-                emitter.send(SseEmitter.event().name("jobs").data(jobs));
+                emitter.send(SseEmitter.event().name("jobs")
+                        .data(jobs, MediaType.APPLICATION_JSON));
             }
         } catch (IOException | RuntimeException e) {
-            clients.remove(emitter);
+            clients.remove(client);
             emitter.completeWithError(e);
         }
         return emitter;
@@ -133,24 +164,28 @@ public class OpsStreamController {
             return;   // 没人看的时候一条 SQL 都不发
         }
         try {
-            String unread = readUnread();
-            String jobs = readJobs();
             boolean changed = false;
-            if (!unread.equals(lastUnread)) {
-                lastUnread = unread;
-                broadcast("unread", unread);
-                changed = true;
+            // 未读数按人算：每条连接各查各的，只推给数字变了的那一条
+            for (Client c : clients) {
+                long n = readUnread(c.staffNo);
+                if (n != c.lastUnread) {
+                    c.lastUnread = n;
+                    send(c, "unread", n, null);
+                    changed = true;
+                }
             }
+            // 任务快照三端共用，一次查、一次广播
+            List<OpsJobController.JobVO> jobs = readJobs();
             if (jobs != null && !jobs.equals(lastJobs)) {
                 lastJobs = jobs;
-                broadcast("jobs", jobs);
+                broadcast("jobs", jobs, MediaType.APPLICATION_JSON);
                 changed = true;
             }
             long now = System.currentTimeMillis();
             if (changed) {
                 lastSentAt = now;
             } else if (now - lastSentAt > HEARTBEAT.toMillis()) {
-                broadcast("ping", "1");
+                broadcast("ping", "1", null);
                 lastSentAt = now;
             }
         } catch (RuntimeException e) {
@@ -160,23 +195,29 @@ public class OpsStreamController {
         }
     }
 
-    private void broadcast(String event, String data) {
-        for (SseEmitter c : clients) {
-            try {
-                c.send(SseEmitter.event().name(event).data(data));
-            } catch (IOException | IllegalStateException e) {
-                // 对端关了页面。**这是常态，不是错误** —— 不打 WARN，否则日志会被刷满
-                clients.remove(c);
-            }
+    private void broadcast(String event, Object data, MediaType type) {
+        for (Client c : clients) {
+            send(c, event, data, type);
         }
     }
 
-    private String readUnread() {
-        return String.valueOf(messages.unreadCount(MsgMessage.RECEIVER_OPS));
+    private void send(Client c, String event, Object data, MediaType type) {
+        try {
+            c.emitter.send(type == null
+                    ? SseEmitter.event().name(event).data(data)
+                    : SseEmitter.event().name(event).data(data, type));
+        } catch (IOException | IllegalStateException e) {
+            // 对端关了页面。**这是常态，不是错误** —— 不打 WARN，否则日志会被刷满
+            clients.remove(c);
+        }
+    }
+
+    private long readUnread(String staffNo) {
+        return messages.unreadCountOf(MsgMessage.RECEIVER_OPS, staffNo);
     }
 
     /** 任务快照。{@code shop.job.enabled=false} 时返回 null —— 那种部署没有任务页。 */
-    private String readJobs() {
+    private List<OpsJobController.JobVO> readJobs() {
         JobDefinitionDao defs = jobDefs.getIfAvailable();
         JobRunDao runs = jobRuns.getIfAvailable();
         if (defs == null || runs == null) {
@@ -184,20 +225,15 @@ public class OpsStreamController {
         }
         Map<String, JobRunRow> byName = runs.findAll().stream()
                 .collect(Collectors.toMap(JobRunRow::jobName, r -> r, (a, b) -> a));
-        List<OpsJobController.JobVO> vos = defs.findAll().stream()
+        return defs.findAll().stream()
                 .map(d -> OpsJobController.JobVO.of(d, byName.get(d.jobName())))
                 .toList();
-        try {
-            return json.writeValueAsString(vos);
-        } catch (Exception e) {
-            throw new IllegalStateException("任务快照序列化失败", e);
-        }
     }
 
     @PreDestroy
     void shutdown() {
         ticker.shutdownNow();
-        clients.forEach(SseEmitter::complete);
+        clients.forEach(c -> c.emitter.complete());
         clients.clear();
     }
 }

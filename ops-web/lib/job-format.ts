@@ -65,3 +65,25 @@ export function oneLine(s: string | null | undefined, max = 64): string {
   const flat = s.replace(/\s+/g, " ").trim();
   return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
 }
+
+/**
+ * 短 key → 页面词条名。**穷举，且必须与 {@link cronText} / {@link relTime}
+ * 能产出的 key 一一对应。**
+ *
+ * 少一条的后果是页面上直接显示 `cron.dailyAt` 这种原始 key ——
+ * 编译期不报、类型也不管，只有真打开页面才看得见。
+ * `job-format.test.ts` 里那条 `每个能产出的 key 都有词条` 就是钉这个的。
+ */
+export const TEXT_KEY: Record<string, string> = {
+  "cron.everyMinute": "jobsCronEveryMinute",
+  "cron.everyNMinutes": "jobsCronEveryNMinutes",
+  "cron.hourlyAt": "jobsCronHourlyAt",
+  "cron.everyNHours": "jobsCronEveryNHours",
+  "cron.dailyAt": "jobsCronDailyAt",
+  "rel.justNow": "jobsRelJustNow",
+  "rel.soon": "jobsRelSoon",
+  "rel.minAgo": "jobsRelMinAgo",
+  "rel.hourAgo": "jobsRelHourAgo",
+  "rel.inMin": "jobsRelInMin",
+  "rel.inHour": "jobsRelInHour",
+};

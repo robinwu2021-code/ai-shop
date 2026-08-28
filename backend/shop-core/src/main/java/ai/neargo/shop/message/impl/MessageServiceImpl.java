@@ -207,9 +207,14 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public long unreadCount(String receiverType) {
+        return unreadCountOf(receiverType, SecurityUtils.currentUserNo());
+    }
+
+    @Override
+    public long unreadCountOf(String receiverType, String receiverNo) {
         return messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
                 .eq(MsgMessage::getReceiverType, receiverType)
-                .eq(MsgMessage::getReceiverNo, SecurityUtils.currentUserNo())
+                .eq(MsgMessage::getReceiverNo, receiverNo)
                 .eq(MsgMessage::getIsRead, false));
     }
 
