@@ -49,8 +49,36 @@ fi
 label=$(printf '%s\n' "$BADGING" | awk -F"'" '/^application-label:/{print $2; exit}')
 if [ "$label" = "虹选商家" ]; then ok "应用名：$label"; else bad "应用名是「$label」，应为「虹选商家」"; fi
 
-# 3. 版本号
+# 3. 版本号 —— **两处必须一致**，这一条此前只是把 badging 打印出来，没有比对
+#
+# APK manifest 的 versionCode 与包内 www/manifest.json 的 version.code 是**两个来源**：
+#   · 前者来自离线工程的 build.gradle，系统用它判断能不能覆盖安装；
+#   · 后者来自 b-app/src/manifest.json，DCloud 运行时用它判断要不要重新解压 www。
+# 只抬前者就会打出一个**静默坏包**：装得上、系统里版本号是新的、零报错，
+# 而运行时沿用手机上已解压的旧 www —— 新代码根本没上去。
+#
+# 2026-08-28 真机上抓到过一个：APK=159/0.4.32，包内 www=158/0.4.31。
+# 它已经装在测试机上跑了两个多小时，三边都没看出来（版本号显示的是新的）。
+# 那次是靠「设备上的 APK 与本地同名包 md5 不同」顺藤摸出来的，不是靠这个脚本 ——
+# 所以把这一条从「打印」改成「断言」。
 printf '%s\n' "$BADGING" | awk '/^package:/{print "  · " $0; exit}'
+
+apk_vc=$(printf '%s\n' "$BADGING" | awk -F"'" '/^package:/{for(i=1;i<=NF;i++) if($(i)~/versionCode=$/){print $(i+1); exit}}')
+www_json=$(unzip -p "$NEW" 'assets/apps/*/www/manifest.json' 2>/dev/null || true)
+if [ -z "$www_json" ]; then
+  bad "包里找不到 www/manifest.json —— assets 没打进去？"
+else
+  www_vc=$(printf '%s' "$www_json" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("version",{}).get("code",""))' 2>/dev/null || true)
+  if [ -z "$www_vc" ]; then
+    bad "www/manifest.json 里读不到 version.code"
+  elif [ "$apk_vc" != "$www_vc" ]; then
+    bad "versionCode 两处不一致：APK manifest=$apk_vc，包内 www=$www_vc
+       → 装上去系统显示 $apk_vc，实际跑的是 $www_vc 那一版的页面代码。
+       两处都要抬：离线工程 build.gradle 的 versionCode，和 b-app/src/manifest.json"
+  else
+    ok "versionCode 两处一致（$apk_vc）"
+  fi
+fi
 
 if [ -z "$OLD" ]; then
   echo
