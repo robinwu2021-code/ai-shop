@@ -140,7 +140,7 @@ Key 不进仓库：写在 `b-app/.env.local`（根 `.gitignore` 已挡）。
 | --- | --- | --- |
 | `AMAP_KEY_ANDROID` | Android SDK | `b-app/offline/amap-key.gradle` → `manifestPlaceholders` → AndroidManifest 的 `com.amap.api.v2.apikey` |
 | `AMAP_KEY_IOS` | iOS SDK | 还没有（iOS 离线打包链路未建） |
-| `VITE_AMAP_KEY_WEB` + `VITE_AMAP_SECURITY_JS_CODE` | Web 端 JS API | 还没有（H5 选点未接，见 `utils/geo.ts` 的降级说明） |
+| ~~b-app 的 Web 端 JS API~~ | — | **不申请**（2026-08-28 拍板：店主用 App，B 端 H5 只我们自己调试用；后果见 `utils/geo.ts`） |
 | `AMAP_WEB_KEY` | Web 服务 | 后端 `application.yml` 的 `amap-key`（在 `backend/.env.local`） |
 | `NEXT_PUBLIC_AMAP_JS_KEY` + `_SECURITY_CODE` | Web 端 JS API | `ops-web/lib/amap.ts`（在 `ops-web/.env.local`） |
 

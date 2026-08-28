@@ -3,7 +3,6 @@
 interface ImportMetaEnv {
   readonly VITE_USE_MOCK: string;
   readonly VITE_API_BASE: string;
-  readonly VITE_MAP_KEY: string;
   /** 本地存储命名空间（shc / shb）—— 两端同域时也不互串 */
   readonly VITE_APP_NS: string;
 }

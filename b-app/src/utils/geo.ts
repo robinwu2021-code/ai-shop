@@ -34,7 +34,9 @@ export async function locateWithFeedback(t: T): Promise<Coords | null> {
 }
 
 /**
- * 地图选点；这个端不支持（H5 没配 JS key）时退回定位一次，返回的 name/address 为空。
+ * 地图选点；这个端不支持时退回定位一次，返回的 name/address 为空。
+ * H5 就是那个不支持的端 —— **有意不配** JS API key（店主用 App，H5 只我们调试用），
+ * 见 ports/location.ts 与 b-app/.env.local.example。
  * 用户取消返回 null 且不提示 —— 取消不是错误。
  */
 export async function pickOnMap(t: T, init?: Coords | null): Promise<PickedLocation | null> {

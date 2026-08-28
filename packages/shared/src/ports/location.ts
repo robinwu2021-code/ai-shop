@@ -53,7 +53,9 @@ export type ChooseOutcome = { ok: true; picked: PickedLocation } | { ok: false; 
 
 /**
  * 地图选点：App 走高德原生选点页（搜索 + 拖图钉），小程序走微信自带。
- * H5 没配 JS API key，`uni.chooseLocation` 会直接 fail —— 返回 unsupported，调用方退回「定位一次」。
+ * H5 **不配** JS API key（2026-08-28 拍板：店主用 App，B 端 H5 只我们自己调试用），
+ * 于是 `uni.chooseLocation` 直接 fail —— 返回 unsupported，调用方退回「定位一次」。
+ * 这是决定，不是待办：别看见它就去申请 key，理由写在 b-app/.env.local.example 里。
  *
  * 为什么不用「定位一次」代替：商家多半是在店里填表，不是站在取货点上，
  * 「当前位置」≠「要标的那个点」，而 withinRadius / 导航全靠这个坐标。

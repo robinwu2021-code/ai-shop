@@ -9,7 +9,7 @@
     "usingComponents": true,
     "nvueStyleCompiler": "uni-app",
     "compilerVersion": 3,
-    "//geolocation": "App 端定位与地图走高德（离线包已带 AMap3DMap + map-amap/geolocation-amap/weex_amap aar）。运行时按这里的 sdkConfigs 选提供方；真实 key 不写在这——离线包读的是原生 AndroidManifest 的 com.amap.api.v2.apikey，由 gradle 从 b-app/.env.local 的 VITE_AMAP_KEY_ANDROID 注入。历史坑：声明 system 时只给 wgs84；不声明则运行时按高德→百度试、SDK 缺失时 logcat 只有一行 `AMapGeoManager exception`、uni.getLocation 静默失败。",
+    "//geolocation": "App 端定位与地图走高德（离线包已带 AMap3DMap + map-amap/geolocation-amap/weex_amap aar）。运行时按这里的 sdkConfigs 选提供方；真实 key 不写在这——离线包读的是原生 AndroidManifest 的 com.amap.api.v2.apikey，由 b-app/offline/amap-key.gradle 从 b-app/.env.local 的 AMAP_KEY_ANDROID 注入（注入逻辑在仓库里，离线工程只有一行 apply from——它上次就是写在仓库外才丢的）。历史坑：声明 system 时只给 wgs84；不声明则运行时按高德→百度试、SDK 缺失时 logcat 只有一行 `AMapGeoManager exception`、uni.getLocation 静默失败。",
     "modules": { "Geolocation": {}, "Maps": {} },
     "distribute": {
       "//packagename": "三端同一个标识（安卓包名 / iOS BundleId / 鸿蒙 bundleName）。上架后不可改",
