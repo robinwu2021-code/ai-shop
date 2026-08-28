@@ -1,0 +1,58 @@
+# 已知「资源段的单复数与本域约定不符」的端点。判据在
+# packages/shared/tests/api-path-naming.test.ts。
+#
+# ★ 为什么按**域**定约定，而不是全仓库一条规矩（2026-08-28 量出来的实况）：
+#
+#     前缀        单数   复数   复数占比
+#     /mp   C端     24     1       4%
+#     /biz  B端     27    29      51%      ← 真正的混乱在这里
+#     /ops  平台端   7   140      95%
+#
+# `/ops` 不是「140 条违规」，它内部是一致的 —— 只是与 2026-08-06 在 C 端量出来的
+# 那条「单数」规矩不同。把 140 条线上路径改成单数，收益是命名统一，
+# 代价是动后端控制器、SecurityConfig、权限矩阵与数据域注册表。**不做。**
+# 所以 `/ops` 的约定就写成复数，并同样立闸门（防止它反过来混进单数）。
+#
+# `/biz` 27:29 **没有多数派**，只能挑一个：跟它的同族 `/mp` 走单数
+# （同一套客户端、同一套契约生成器、同一种消费方式）。
+#
+# 清一条删一条。**只许变短。** 但也别为了变短去改线上路径 ——
+# 这张表的用途是**拦新增**，存量随各自模块重构时顺手带走。
+
+/biz/activities/{activityNo}  activities
+/biz/activities/{activityNo}/status  activities
+/biz/appointment-slots/{slotNo}/close  appointment-slots
+/biz/coupons/{couponNo}  coupons
+/biz/coupons/{couponNo}/issue  coupons
+/biz/coupons/{couponNo}/status  coupons
+/biz/inventory/counts/{no}  counts
+/biz/inventory/counts/{no}/lines  counts
+/biz/inventory/counts/{no}/post  counts
+/biz/inventory/inbounds/{no}  inbounds
+/biz/inventory/inbounds/{no}/post  inbounds
+/biz/inventory/inbounds/{no}/void  inbounds
+/biz/inventory/items/{itemId}  items
+/biz/inventory/locations/{id}/source  locations
+/biz/inventory/outbounds/{no}/post  outbounds
+/biz/inventory/outbounds/{no}/void  outbounds
+/biz/inventory/transfers/{no}  transfers
+/biz/inventory/transfers/{no}/receive  transfers
+/biz/inventory/transfers/{no}/ship  transfers
+/biz/member-segments/{segmentNo}/remove  member-segments
+/biz/member-tags/{tagNo}  member-tags
+/biz/member-tags/{tagNo}/merge  member-tags
+/biz/members/{memberNo}  members
+/biz/my-spec-dims/{dimNo}/archive  my-spec-dims
+/biz/my-spec-dims/{dimNo}/rename  my-spec-dims
+/biz/spec-dims/{dimNo}/values  spec-dims
+/biz/stores/{storeNo}/appointment-slots  stores
+/biz/stores/{storeNo}/fulfillment  stores
+/biz/stores/{storeNo}/fulfillment/{channel}/impact  stores
+/mp/my-memberships/{entityNo}/reach  my-memberships
+/ops/merchant/apply/{applyNo}/accept  apply
+/ops/merchant/apply/{applyNo}/audit  apply
+/ops/message/{no}/read  message
+/ops/notify-channels/registry/{channelNo}/enabled  registry
+/ops/orders/parent/{parentNo}  parent
+/ops/spu-std/{no}/archive  spu-std
+/ops/spu-std/{no}/unarchive  spu-std
