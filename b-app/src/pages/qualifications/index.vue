@@ -149,7 +149,7 @@ onShow(() => void load());
           <text class="txt-caption sh-muted">{{ q.qualNumber || "—" }}</text>
         </view>
         <!-- 有效期贴在右边：过期的证与没传是同一个后果（上架被拒），要一眼看得见 -->
-        <text class="txt-caption row__exp" :class="{ 'is-bad': q.status !== 'VALID', 'txt-bold': q.status !== 'VALID' }">
+        <text class="txt-caption row__exp" :class="{ 'is-danger': q.status !== 'VALID', 'txt-bold': q.status !== 'VALID' }">
           {{ expiryText(q.expireAt) }}
         </text>
       </view>
@@ -247,9 +247,6 @@ onShow(() => void load());
   flex: none;
 }
 /* 过期与撤销：与「没传」是同一个后果，用危险色而不是灰 */
-.row__exp.is-bad {
-  color: var(--sh-danger);
-}
 .adds {
   margin-top: 20rpx;
 }

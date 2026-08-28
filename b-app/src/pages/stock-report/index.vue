@@ -101,13 +101,13 @@ onShow(load);
             <text class="sh-num">{{ monthly.opening }}</text>
           </sh-kv>
           <sh-kv between :label="String($t('stockReport.purchased'))">
-            <text class="sh-num is-in">+{{ monthly.purchased }}</text>
+            <text class="sh-num is-success">+{{ monthly.purchased }}</text>
           </sh-kv>
           <sh-kv between :label="String($t('stockReport.sold'))">
-            <text class="sh-num is-out">−{{ monthly.sold }}</text>
+            <text class="sh-num is-danger">−{{ monthly.sold }}</text>
           </sh-kv>
           <sh-kv between :label="String($t('stockReport.lost'))">
-            <text class="sh-num is-out">−{{ monthly.lost }}</text>
+            <text class="sh-num is-danger">−{{ monthly.lost }}</text>
           </sh-kv>
           <sh-kv v-if="monthly.adjusted !== 0" between :label="String($t('stockReport.adjusted'))">
             <text class="sh-num">{{ monthly.adjusted > 0 ? `+${monthly.adjusted}` : monthly.adjusted }}</text>
@@ -120,7 +120,7 @@ onShow(load);
             **算不平要显眼**：它不是显示问题，是台账漏了一笔。
             显示成一句灰字的话，唯一会看见它的人是已经在找问题的人。
           -->
-          <view class="formula" :class="monthly.balanced ? 'is-ok' : 'is-bad'">
+          <view class="formula" :class="monthly.balanced ? 'is-success' : 'is-danger'">
             <text class="sh-num">{{ formula }}</text>
             <text>{{ monthly.balanced ? $t("stockReport.balanced") : $t("stockReport.unbalanced") }}</text>
           </view>
@@ -184,7 +184,7 @@ onShow(load);
           <text class="txt-price sh-num">¥{{ yuan(monthly.soldCostMinor) }}</text>
         </sh-kv>
         <sh-kv between :label="String($t('stockReport.lostCost'))">
-          <text class="sh-num is-out">¥{{ yuan(monthly.lostCostMinor) }}</text>
+          <text class="sh-num is-danger">¥{{ yuan(monthly.lostCostMinor) }}</text>
         </sh-kv>
         <text class="txt-caption note">{{ $t("stockReport.moneyHint") }}</text>
       </view>
@@ -205,18 +205,6 @@ onShow(load);
 }
 .formula > text {
   display: block;
-}
-.is-ok {
-  color: var(--sh-success);
-}
-.is-bad {
-  color: var(--sh-danger);
-}
-.is-in {
-  color: var(--sh-success);
-}
-.is-out {
-  color: var(--sh-danger);
 }
 /* 加了箭头就得横排 —— 不给 flex 的话箭头掉到名字下面自成一行 */
 .slow {

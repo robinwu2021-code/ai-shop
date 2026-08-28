@@ -476,7 +476,7 @@ async function submit() {
         <view v-for="(q, i) in qualItems" :key="i" class="qual">
           <view class="qual__head sh-row sh-row--between">
             <text class="txt-bold">{{ $t(`apply.qual${q.type}`) }}</text>
-            <text class="txt-caption qual__del" @tap="removeQual(i)">{{ $t("apply.qualRemove") }}</text>
+            <text class="txt-caption is-danger" @tap="removeQual(i)">{{ $t("apply.qualRemove") }}</text>
           </view>
           <input
             maxlength="64"
@@ -537,10 +537,6 @@ async function submit() {
   padding: 20rpx;
   border: var(--sh-hairline);
   border-radius: 16rpx;
-}
-
-.qual__del {
-  color: var(--sh-danger);
 }
 .qual__row { margin-top: 12rpx; }
 .qual__forever { gap: 8rpx; }

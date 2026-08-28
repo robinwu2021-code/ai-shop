@@ -318,7 +318,7 @@ onShow(load);
             <text class="sh-muted">{{ $t("home.inv.onSale") }}</text>
           </view>
           <view class="inv__item" @tap="open(ROUTES.stock)">
-            <text class="txt-display inv__v sh-num" :class="{ 'is-warn': stockSummary.shortageCount > 0 }">
+            <text class="txt-display inv__v sh-num" :class="{ 'is-danger': stockSummary.shortageCount > 0 }">
               {{ stockSummary.shortageCount }}
             </text>
             <text class="sh-muted">{{ $t("home.inv.shortage") }}</text>
@@ -517,9 +517,6 @@ onShow(load);
   display: block;
 }
 /* 缺货是唯一需要立刻动手的那个数，其余两个不抢眼 */
-.inv__v.is-warn {
-  color: var(--sh-danger);
-}
 .inv__acts {
   display: flex;
   gap: 12rpx;
@@ -535,7 +532,6 @@ onShow(load);
   background: var(--sh-bg);
   color: var(--sh-ink);
 }
-
 
 .stats__row {
   display: flex;

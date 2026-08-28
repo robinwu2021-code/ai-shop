@@ -2983,7 +2983,7 @@ async function save(thenSubmit = false) {
             maxlength="10"
             v-model="rows[0]!.costMajor"
             class="txt-body pr__v sh-num"
-            :class="{ 'is-bad': belowCost(rows[0]!) }"
+            :class="{ 'is-danger': belowCost(rows[0]!) }"
             type="digit"
           />
         </view>
@@ -2996,7 +2996,7 @@ async function save(thenSubmit = false) {
             maxlength="10"
             v-model="rows[0]!.originMajor"
             class="txt-body pr__v sh-num"
-            :class="{ 'is-bad': badOrigin(rows[0]!) }"
+            :class="{ 'is-danger': badOrigin(rows[0]!) }"
             type="digit"
           />
         </view>
@@ -3027,7 +3027,7 @@ async function save(thenSubmit = false) {
             v-else-if="priceField === 'cost'"
             v-model="r.costMajor"
             class="txt-body pr__v sh-num"
-            :class="{ 'is-bad': belowCost(r) }"
+            :class="{ 'is-danger': belowCost(r) }"
             type="digit"
           />
           <input
@@ -3035,7 +3035,7 @@ async function save(thenSubmit = false) {
             v-else-if="priceField === 'origin'"
             v-model="r.originMajor"
             class="txt-body pr__v sh-num"
-            :class="{ 'is-bad': badOrigin(r) }"
+            :class="{ 'is-danger': badOrigin(r) }"
             type="digit"
           />
           <input maxlength="6" v-else v-model="r.nominalGram" class="txt-body pr__v sh-num" type="number" />
@@ -3125,7 +3125,7 @@ async function save(thenSubmit = false) {
           maxlength="6"
           v-model="r.stock"
           class="txt-body pr__v pr__v--n sh-num"
-          :class="{ 'is-out': Number(r.stock) === 0 }"
+          :class="{ 'is-danger': Number(r.stock) === 0 }"
           type="number"
         />
         <view class="txt-body step sh-center" @tap="stepStock(r, 1)"><sh-icon name="plus" :size="26" color="var(--sh-sub)"></sh-icon></view>
@@ -3591,13 +3591,7 @@ async function save(thenSubmit = false) {
  * **随布局改版换过两次类名**（.row__input → .grp__v → .pr__v）。
  * 每次都要记得跟过来 —— 不跟的话库存 0 从此不再标红，而且不会有任何报错。
  */
-.pr__v.is-out {
-  color: var(--sh-danger);
-}
 /* 划线价填得比售价低时标红 —— 后端会拒，先在这一格说清是哪一行 */
-.is-bad {
-  color: var(--sh-danger);
-}
 /* 计数与标签同行右对齐：「已添加 2 / 9」比一句「最多 9 张」有用 */
 .imgs__n {
   flex-shrink: 0;

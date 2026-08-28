@@ -162,7 +162,7 @@ onShow(load);
 
     <view v-if="lines.length" class="sh-card hd sh-row sh-row--between">
       <text class="txt-strong">{{ $t("stockOut.totalQty") }}</text>
-      <text class="txt-display sh-num is-out">−{{ totalQty }}</text>
+      <text class="txt-display sh-num is-danger">−{{ totalQty }}</text>
     </view>
 
     <view class="sh-btn" :class="{ 'sh-btn--muted': !lines.length || busy }" @tap="post">
@@ -196,9 +196,6 @@ onShow(load);
 }
 .hint {
   padding: 0 4rpx;
-}
-.is-out {
-  color: var(--sh-danger);
 }
 .pick {
   padding: 20rpx 0;

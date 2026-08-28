@@ -231,7 +231,7 @@ onShow(load);
       -->
       <view class="sh-card">
         <sh-kv between :label="String($t('transfer.inTransit'))">
-          <text class="sh-num is-transit">
+          <text class="sh-num is-warning">
             {{ doc.status === "SHIPPED" ? doc.totalQty : 0 }}
           </text>
         </sh-kv>
@@ -323,9 +323,6 @@ onShow(load);
 }
 .hint {
   padding: 0 4rpx;
-}
-.is-transit {
-  color: var(--sh-warning);
 }
 .pick {
   padding: 20rpx 0;

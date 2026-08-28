@@ -176,7 +176,7 @@ function diffText(n: number): string {
 }
 function diffClass(n: number | null): string {
   if (n == null || n === 0) return "";
-  return n < 0 ? "is-loss" : "is-gain";
+  return n < 0 ? "is-danger" : "is-success";
 }
 
 /** 「08-26 09:02」。切片不解析 —— 后端发的是不带时区的 LocalDateTime */
@@ -328,11 +328,5 @@ function at(iso?: string): string {
 }
 .hint {
   padding: 0 4rpx;
-}
-.is-loss {
-  color: var(--sh-danger);
-}
-.is-gain {
-  color: var(--sh-success);
 }
 </style>

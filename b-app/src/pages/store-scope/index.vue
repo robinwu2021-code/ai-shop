@@ -439,7 +439,7 @@ onShow(() => {
         <view class="ch sh-row" :class="{ 'is-off': c.denied || c.locked }" @tap="toggleChannel(c.channel)">
           <view class="sh-fill">
             <text class="txt-strong ch__name">{{ $t(`channel.${c.channel}`) }}</text>
-            <text class="txt-caption ch__desc" :class="{ 'ch__desc--warn': c.locked }">{{ c.locked ? $t("store.channelLocked") : c.denied ? $t("store.channelDenied") : $t(`store.channelDesc.${c.channel}`) }}</text>
+            <text class="txt-caption ch__desc" :class="{ 'is-warning': c.locked }">{{ c.locked ? $t("store.channelLocked") : c.denied ? $t("store.channelDenied") : $t(`store.channelDesc.${c.channel}`) }}</text>
           </view>
           <sh-switch
             :model-value="c.enabled"
@@ -612,9 +612,6 @@ onShow(() => {
   padding-left: 20rpx;
 }
 .sum--warn .sum__t {
-  color: var(--sh-warning);
-}
-.ch__desc--warn {
   color: var(--sh-warning);
 }
 .subset__opt {

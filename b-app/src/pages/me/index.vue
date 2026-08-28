@@ -205,7 +205,7 @@ onShow(() => {
       -->
       <view v-if="merchant.can('biz:store:admin')" class="cell sh-row sh-row--between" @tap="go(ROUTES.plan)">
         <text class="txt-body cell__label">{{ $t("plan.meCell") }}</text>
-        <text v-if="plan" class="txt-caption cell__value" :class="{ 'cell__value--warn': quotaFull }">
+        <text v-if="plan" class="txt-caption cell__value" :class="{ 'is-warning': quotaFull }">
           {{ $t("plan.meSub", { name: plan.planName, used: plan.storeUsed, quota: plan.storeQuota }) }}
         </text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
@@ -247,7 +247,7 @@ onShow(() => {
     <!-- 退出登录单独一组：它与上面几项不是同类，紧挨着放容易误点 -->
     <view v-if="merchant.isLogin" class="cells">
       <view class="cell sh-row sh-row--between" @tap="logout">
-        <text class="txt-body cell__label cell__label--danger">{{ $t("me.logout") }}</text>
+        <text class="txt-body cell__label is-danger">{{ $t("me.logout") }}</text>
       </view>
     </view>
 
@@ -295,9 +295,6 @@ onShow(() => {
   text-align: end;
 }
 /* 退出登录用警示色：它是不可逆动作，和「查看结算单」不该长得一样 */
-.cell__label--danger {
-  color: var(--sh-danger);
-}
 .cell__badge {
   flex-shrink: 0;
 }
@@ -308,7 +305,4 @@ onShow(() => {
   text-overflow: ellipsis;
 }
 /* 额度用完：这一行的数字要看得出来不对劲，但不是报错 —— 他没做错任何事 */
-.cell__value--warn {
-  color: var(--sh-warning);
-}
 </style>

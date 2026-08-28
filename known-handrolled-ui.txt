@@ -68,3 +68,36 @@
 # 不再算「有件不用」。收窄后拿一个手画 chip 探过针，确认它仍然会报（不是变成恒绿）。
 #
 # 这条判据到此改了两次，两次砍掉的都是「选中时也铺主色、但根本不是 chip」的东西。
+
+# ── 2026-08-28 语义色收编：B 端 29 处已清零，C 端 14 处**先挂着** ──────────────
+#
+# 收编的是「只设一个 color，取 --sh-danger / success / warning」这类规则。
+# B 端收编前 29 处各写一份，而且**同一个红用了六个名字**：
+#   is-out / is-bad / is-loss / is-warn / row__bad / minus / led__out / tag--warn …
+# 绿有 is-in / is-gain / is-ok / led__in，橙有 is-transit / opt__gate / group__note。
+# 判据不认名字（认了永远追不上下一个新名字），只认「只改颜色 + 取语义 token」。
+#
+# C 端这 14 处**没有照搬**，因为有两个判断要先定，而 C 端界面这一轮没审：
+#
+#  ① 3 处会被父类权重压掉：`order`/`order-confirm` 的 `.amt__v--off` 撞 `.amt__v`、
+#     `address` 的 `.op--danger` 撞 `.op` —— 那些父类自己设了 color，是 scoped 的
+#     (0,2,0)，而库件 `.is-danger` 是全局 (0,1,0)，直接换会**静默变回原色**。
+#     （`.inline` 撞 UnoCSS 那次就是这么断的，见 check-page-spec.py 的「撞工具类」。）
+#
+#  ② `review-write` 的 `.star.is-on` 与 `store` 的 `.fav.is-on` 用的是 `--sh-warning`，
+#     但那是**星星/收藏的装饰色，不是告警状态**。收进语义件之后，
+#     哪天把告警色调成另一种橙，星星会跟着变 —— 同一个 token，两种意图。
+#     这一条得先定「装饰色要不要单独一档」，不该顺手一起收。
+#
+# 剩下 9 处是干净的（倒计时、赠品行、提示条、WAIT_PAY 状态），等 ①② 定了一起收。
+
+c-app/address semcolor
+c-app/goods semcolor
+c-app/group semcolor
+c-app/order semcolor
+c-app/order-confirm semcolor
+c-app/orders semcolor
+c-app/pay semcolor
+c-app/points semcolor
+c-app/review-write semcolor
+c-app/store semcolor

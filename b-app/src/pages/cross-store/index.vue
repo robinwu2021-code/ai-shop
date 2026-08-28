@@ -290,7 +290,7 @@ onShow(load);
             <text class="sh-muted">{{ $t("crossStore.repeatRate") }}</text>
           </view>
           <view class="metrics__i">
-            <text class="txt-title metrics__v sh-num" :class="{ 'is-warn': s.outOfStockSkus > 0 }">
+            <text class="txt-title metrics__v sh-num" :class="{ 'is-danger': s.outOfStockSkus > 0 }">
               {{ s.outOfStockSkus }}
             </text>
             <text class="sh-muted">{{ $t("crossStore.outOfStock") }}</text>
@@ -450,9 +450,6 @@ onShow(load);
 }
 .metrics__v {
   display: block;
-}
-.metrics__v.is-warn {
-  color: var(--sh-danger);
 }
 
 .note--tight {

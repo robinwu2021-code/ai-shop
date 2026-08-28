@@ -77,7 +77,7 @@ function confirm() {
       <!-- 分组头只在多证照时出现 -->
       <view v-if="grouped" class="group">
         <text class="txt-strong group__name">{{ g.entity?.name }}</text>
-        <text v-if="entityNote(g)" class="txt-caption group__note">{{ entityNote(g) }}</text>
+        <text v-if="entityNote(g)" class="txt-caption is-warning">{{ entityNote(g) }}</text>
       </view>
       <view
         v-for="s in g.stores"
@@ -131,9 +131,6 @@ function confirm() {
    它本该是一句提醒（这一组里有店打烊了），灰下去就跟旁边的说明文字一样重。
    皮肤变量守卫故意放行带兜底的写法（「拼错了也还有兜底」），
    而这恰恰是它看不见的那一类：**兜底把拼错的后果盖住了**。 */
-.group__note {
-  color: var(--sh-warning);
-}
 .item {
   gap: 24rpx;
   border: 4rpx solid transparent;

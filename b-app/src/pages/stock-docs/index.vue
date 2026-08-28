@@ -210,7 +210,7 @@ onShow(load);
             {{ d.subtitle ? `${d.subtitle} · ` : "" }}{{ at(d.occurredAt) }}
           </text>
         </view>
-        <text class="txt-strong sh-num row__qty" :class="d.totalQty < 0 ? 'is-out' : 'is-in'">
+        <text class="txt-strong sh-num row__qty" :class="d.totalQty < 0 ? 'is-danger' : 'is-success'">
           {{ d.totalQty > 0 ? `+${d.totalQty}` : d.totalQty }}
         </text>
       </view>
@@ -225,7 +225,7 @@ onShow(load);
         <text v-else-if="!lines.length" class="sh-muted">{{ $t("stockDocs.linesEmpty") }}</text>
         <view v-for="r in lines" :key="r.id" class="line sh-row" @tap="openItem(r)">
           <text class="sh-fill">{{ r.itemName }}</text>
-          <text class="sh-num" :class="r.qtyDelta < 0 ? 'is-out' : 'is-in'">
+          <text class="sh-num" :class="r.qtyDelta < 0 ? 'is-danger' : 'is-success'">
             {{ r.qtyDelta > 0 ? `+${r.qtyDelta}` : r.qtyDelta }}
           </text>
           <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
@@ -291,12 +291,6 @@ onShow(load);
 /* 数量单独占右侧一列，不再与状态叠在一起 */
 .row__qty {
   flex: none;
-}
-.is-in {
-  color: var(--sh-success);
-}
-.is-out {
-  color: var(--sh-danger);
 }
 /* 作废：chip 不着色，但把字划掉 —— 「已经没了」比「注意我」更要紧 */
 .is-void {

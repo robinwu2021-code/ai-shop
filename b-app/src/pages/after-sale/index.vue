@@ -137,7 +137,7 @@ onShow(load);
            退款金额这一行照样该出现，那是这一页最要紧的一个数。 -->
       <view class="item__amount sh-row sh-row--between sh-row--baseline">
         <text class="sh-muted">{{ $t("afterSale.refundAmount") }}</text>
-        <text class="txt-price sh-num amount">
+        <text class="txt-price sh-num is-danger">
           {{ money(r.as.refundMinor, r.order?.amount.currency) }}
         </text>
       </view>
@@ -250,9 +250,6 @@ onShow(load);
 }
 .item__amount {
   padding: 20rpx 0;
-}
-.amount {
-  color: var(--sh-danger);
 }
 /*
  * `align-items: center` 不是排版偏好，是**药丸按钮的前提**：

@@ -186,7 +186,7 @@ onShow(load);
           </view>
           <view class="led__end">
             <!-- 带符号显示：「2」与「−2」在窄列里差一个字符，加了号才不用回头看单据类型 -->
-            <text class="txt-strong sh-num" :class="r.qtyDelta < 0 ? 'led__out' : 'led__in'">
+            <text class="txt-strong sh-num" :class="r.qtyDelta < 0 ? 'is-danger' : 'is-success'">
               {{ r.qtyDelta > 0 ? `+${r.qtyDelta}` : r.qtyDelta }}
             </text>
             <text class="txt-caption sh-num">{{ before(r) }} → {{ r.balanceAfter }}</text>
@@ -258,12 +258,6 @@ onShow(load);
 /* 同 stock 页：<text> 默认 inline，不转 block 会挤成「−25 → 3」 */
 .led__end > text {
   display: block;
-}
-.led__in {
-  color: var(--sh-success);
-}
-.led__out {
-  color: var(--sh-danger);
 }
 .led__hint {
   display: block;

@@ -264,10 +264,10 @@ function pickPayment(s: Store, payMerchantNo?: string) {
             平台压的要补缴/升档，自己停的点一下启用就开。
             不分开的表现是店主反复点那个对降级店无效的「启用」。
           -->
-          <text v-if="s.planSuspended" class="txt-caption tag tag--warn">{{ $t("stores.planSuspended") }}</text>
+          <text v-if="s.planSuspended" class="txt-caption tag is-danger">{{ $t("stores.planSuspended") }}</text>
           <text v-else-if="s.status !== 'ACTIVE'" class="txt-caption tag">{{ $t("stores.disabled") }}</text>
           <!-- 收不了钱要显眼：店开着但钱进不来，是最容易被忽略的一种坏 -->
-          <text v-if="!s.payReady" class="txt-caption tag tag--warn">{{ $t("stores.payNotReady") }}</text>
+          <text v-if="!s.payReady" class="txt-caption tag is-danger">{{ $t("stores.payNotReady") }}</text>
         </view>
       </view>
 
@@ -465,9 +465,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
 }
-.tag--warn {
-  color: var(--sh-danger);
-}
 .addr,
 .meta {
   display: block;
@@ -490,7 +487,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 .field {
   margin-top: 20rpx;
 }
-
 
 .submit {
   margin-top: 28rpx;

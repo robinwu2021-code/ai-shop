@@ -508,6 +508,18 @@ ROLLED = [
     # 收编时发现 30 处里 7 处漏了 `min-width: 0`（长标题会顶出屏幕，短数据下测不出来）。
     ("fill",    "占满剩余自写",   None,
      r"^\s*\.[\w-]*\s*\{[^}]*flex:\s*1;[^}]*min-width:\s*0",                 None, ".sh-fill"),
+    # 语义色自写。**这一条判的是「规则体里只有一个 color，且取的是三个语义 token 之一」**
+    # —— 顶层 `.is-x` 与复合 `.parent.is-x` 都算（2026-08-28 只查顶层，漏掉了 5 处复合的）。
+    #
+    # 为什么要立：收编前 16 处各写一份，而且**同一个颜色用了六个名字** ——
+    # 红叫 is-out / is-bad / is-loss / is-warn，绿叫 is-in / is-gain / is-ok。
+    # 判据不认名字（认了就永远追不上下一个新名字），只认「只改颜色 + 取语义 token」。
+    #
+    # 不含 `--sh-sub` / `--sh-faint` / `--sh-primary-text`：那几个是「置灰」与「选中」，
+    # 是另外两族（各 6 处上下），形态还没盘清，盘清之前不该顺手一起收。
+    ("semcolor", "语义色自写",     None,
+     r"^\s*\.[\w-]*(?:\.[\w-]+)?\s*\{\s*color:\s*var\(--sh-(?:danger|success|warning)\);?\s*\}",
+     None, ".is-danger / .is-success / .is-warning"),
     ("disabled","禁用态自写",     None,
      r"^\s*\.is-disabled\s*\{",                                              None, ".is-disabled（全局）"),
     ("kv",      "键值行", None, r"\.(?:kv|rule|prob)\b[^{}]*\{[^}]*display:\s*flex", None, None),

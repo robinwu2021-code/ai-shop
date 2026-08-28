@@ -183,7 +183,7 @@ onShow(load);
           </view>
         </view>
         <view class="row__end">
-          <text class="txt-price sh-num" :class="{ 'row__bad': b.available <= 0 }">
+          <text class="txt-price sh-num" :class="{ 'is-danger': b.available <= 0 }">
             {{ b.available }}
           </text>
           <text class="txt-caption">{{ $t("stock.available") }}</text>
@@ -240,8 +240,5 @@ onShow(load);
 /* uni 的 <text> 默认是 inline —— 不转成 block，数字与「可用」会挤成「3可用」 */
 .row__end > text {
   display: block;
-}
-.row__bad {
-  color: var(--sh-danger);
 }
 </style>

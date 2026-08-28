@@ -220,11 +220,11 @@ onShow(load);
         </view>
         <view class="sh-row sh-row--between row">
           <text class="sh-muted">{{ $t("settle.commission") }}（{{ pct(b.commissionRate) }}）</text>
-          <text class="sh-num minus">-{{ money(b.commissionMinor) }}</text>
+          <text class="sh-num is-danger">-{{ money(b.commissionMinor) }}</text>
         </view>
         <view class="sh-row sh-row--between row">
           <text class="sh-muted">{{ $t("settle.fulfillFee") }}</text>
-          <text class="sh-num minus">-{{ money(b.serviceFeeMinor) }}</text>
+          <text class="sh-num is-danger">-{{ money(b.serviceFeeMinor) }}</text>
         </view>
         <!-- 多店商家必须看得见「哪家店挣的」和「打给哪个号」：
              只给其中一个，他就无法回答「河坊街店这个月的钱进了哪张卡」 -->
@@ -255,7 +255,6 @@ onShow(load);
   margin-top: 16rpx;
 }
 
-
 .points__row {
   margin-top: 16rpx;
 }
@@ -263,8 +262,6 @@ onShow(load);
   display: block;
   margin-top: 12rpx;
 }
-
-
 
 .bill__amount {
   margin: 24rpx 0;
@@ -277,9 +274,6 @@ onShow(load);
 }
 .row {
   padding: 16rpx 0;
-}
-.minus {
-  color: var(--sh-danger);
 }
 .tip {
   margin: 0 8rpx;

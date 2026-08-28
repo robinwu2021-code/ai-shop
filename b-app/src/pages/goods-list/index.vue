@@ -529,7 +529,7 @@ onShow(() => {
           <text class="txt-strong row__title">{{ g.title }}</text>
           <view class="row__meta">
             <text class="txt-strong row__price sh-num">{{ money(g.price) }}</text>
-            <text class="txt-sub row__stock sh-num" :class="{ 'is-out': stockOf(g) === 0, 'txt-bold': stockOf(g) === 0 }">
+            <text class="txt-sub row__stock sh-num" :class="{ 'is-danger': stockOf(g) === 0, 'txt-bold': stockOf(g) === 0 }">
               {{ $t("goods.stock") }} {{ stockOf(g) }}
             </text>
           </view>
@@ -549,7 +549,7 @@ onShow(() => {
           缺资质。放在状态那一列而不是标题旁边：它回答的是
           「这件货为什么上不了架」，属于状态，不是商品属性。
         -->
-        <text v-if="SHOW_CATEGORY_GATE && gateOf(g)" class="txt-caption reason reason--gate">
+        <text v-if="SHOW_CATEGORY_GATE && gateOf(g)" class="txt-caption reason is-warning">
           {{ $t("goods.gateRow") }}
         </text>
         <view class="row__btns sh-wrap">
@@ -671,9 +671,6 @@ onShow(() => {
   text-align: right;
 }
 /* 缺资质：用警示色而不是危险色 —— 商品本身没错，缺的是一张证 */
-.reason--gate {
-  color: var(--sh-warning);
-}
 .gate-sum {
   display: block;
   padding: 16rpx 24rpx;
@@ -756,9 +753,6 @@ onShow(() => {
 }
 
 /* 卖完了要一眼扫得到 —— 它是「今天要干的活」，而 0 和 180 现在长得一样 */
-.row__stock.is-out {
-  color: var(--sh-danger);
-}
 /* 状态：色点 + 文字，**无底色** —— 与动作按钮在形态上分开。
    原先它和「编辑/改库存」同样是灰底圆角：一屏六行、每行三个圆角块，
    人得逐个试才知道哪个能按。状态是状态，不是动作。 */

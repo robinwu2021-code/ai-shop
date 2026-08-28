@@ -173,7 +173,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
             没那张证的类目**先标出来**，别等他勾完一屏再报 70002 ——
             那句「缺少经营这一类的资质」既说不出缺哪张，也说不出去哪申请。
           -->
-          <text v-if="ungranted(c)" class="txt-caption opt__gate">{{ $t("storeCategories.needCert") }}</text>
+          <text v-if="ungranted(c)" class="txt-caption is-warning">{{ $t("storeCategories.needCert") }}</text>
         </sh-option>
       </view>
     </view>
@@ -247,10 +247,6 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
 
 .opt__name {
   color: var(--sh-ink);
-}
-
-.opt__gate {
-  color: var(--sh-warning);
 }
 
 .row__stat {
