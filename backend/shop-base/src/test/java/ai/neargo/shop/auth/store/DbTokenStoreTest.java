@@ -84,9 +84,13 @@ class DbTokenStoreTest {
      * 会话过期那条仍然用假时钟，因为那是**我们自己**用 {@code clock} 判的。
      */
     private DbTokenStore instanceWithLiveIdentity() {
+        return instanceWithLiveIdentity(Realm.CONSUMER);
+    }
+
+    private DbTokenStore instanceWithLiveIdentity(Realm poolRealm) {
         SessionProfile fast = new SessionProfile(
                 profile.poolName(), profile.sessionTable(), profile.loginLogTable(),
-                profile.tokenPrefix(), profile.sessionTtl(), profile.cacheTtl(),
+                poolRealm.tokenPrefix(), profile.sessionTtl(), profile.cacheTtl(),
                 Duration.ofMillis(1),          // 身份缓存立刻过期
                 profile.revokePoll(), profile.lastSeenThrottle(),
                 profile.asyncLoginLog(), profile.logRetentionDays());
@@ -98,8 +102,41 @@ class DbTokenStoreTest {
                 fast.identityTtl(), 1000);
         closeables.add(sc);
         closeables.add(ic);
-        return new DbTokenStore(Realm.CONSUMER, fast, new SessionDao(jdbc, fast),
+        return new DbTokenStore(poolRealm, fast, new SessionDao(jdbc, fast),
                 users, sc, ic, auditWriter(fast), clock);
+    }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("★★★ 身份重建后 realm 必须还是本池的 —— loader 不知道会话属于哪个端")
+    void reloadedIdentityKeepsPoolRealm() {
+        /*
+         * **这条守的是一次有潜伏期的线上故障。**
+         *
+         * A7 之后 B 端池里装着两类主体：店员（kind=MCH）和店主（kind=USR，主体是 user_no）。
+         * 店主那条按 kind 分发给 ConsumerIdentityLoader，而它无论谁来问都回
+         * LoginUser.consumer(...) —— realm=CONSUMER。于是：
+         *
+         *   登录那一刻   → 缓存里是 issue() 存进去的对象，realm=MERCHANT，一切正常
+         *   缓存失效之后 → 走 loader 重建，realm 变成 CONSUMER，/biz/** 当场 401
+         *
+         * 表现是「登录成功，用了半分钟突然掉线」，而日志里一条 WARN 都没有
+         * （不是孤儿会话，用户查得到）。2026-08-28 上线后靠真机才发现 ——
+         * 单测用内存 store 直接存对象、从不走 loader，这条路只在 token-store=db 下存在。
+         */
+        DbTokenStore store = instanceWithLiveIdentity(Realm.MERCHANT);
+        LoginUser owner = LoginUser.merchantByUser("U-OWNER-1", "老王");
+        String token = store.issue(TokenStore.SessionData.of(owner));
+
+        // 库里的身份由 loader 提供，而 loader 给的是 C 端形态 —— 这正是线上的情形
+        users.users.put("U-OWNER-1", LoginUser.consumer("U-OWNER-1", "老王"));
+
+        letIdentityCacheExpire();
+
+        LoginUser reloaded = store.get(token).orElseThrow().user();
+        org.assertj.core.api.Assertions.assertThat(reloaded.realm())
+                .as("重建出来的身份必须仍属于本池，否则 /biz/** 会在缓存失效后开始 401")
+                .isEqualTo(Realm.MERCHANT);
+        org.assertj.core.api.Assertions.assertThat(reloaded.userNo()).isEqualTo("U-OWNER-1");
     }
 
     private static void letIdentityCacheExpire() {

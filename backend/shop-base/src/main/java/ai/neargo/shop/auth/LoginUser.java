@@ -45,6 +45,22 @@ public record LoginUser(
      * 判权（{@code @perm.can}）读的就是这个对象的 {@code roles()} ——
      * 不换的话会出现「菜单按新角色画、判权按旧角色算」，而两边各自都说得通。
      */
+    /**
+     * 换成**这个池的 realm**。
+     *
+     * <p>身份是从 {@code IdentityLoader} 现读现算的，而 loader 只知道「这个号是谁」，
+     * 不知道「这条会话属于哪个端」—— {@code ConsumerIdentityLoader} 无论谁来问都回
+     * {@code CONSUMER}。于是 B 端池里一条 {@code subject_kind=USR} 的会话
+     * （店主：btk_ + user_no）被重建出来时会带上 CONSUMER，被 /biz/** 当场拒掉。
+     *
+     * <p><b>realm 的权威在池，不在 loader</b>：令牌前缀决定了它是哪个端的会话，
+     * 而这条会话能不能签进这个池，{@code DbTokenStore.issue} 已经校验过了。
+     */
+    public LoginUser withRealm(Realm newRealm) {
+        return newRealm == realm ? this
+                : new LoginUser(newRealm, subjectKind, userNo, nickname, roles, perms, tenantNo, dataScope);
+    }
+
     public LoginUser withRolesAndScope(List<String> newRoles, DataScopeSpec newScope) {
         return new LoginUser(realm, subjectKind, userNo, nickname, newRoles, perms, tenantNo, newScope);
     }

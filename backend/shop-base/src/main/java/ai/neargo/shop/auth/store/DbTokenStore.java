@@ -196,8 +196,22 @@ public class DbTokenStore implements TokenStore {
             audit(LoginEvent.ORPHAN_SESSION, userNo, "USER_NOT_FOUND", false);
             return Optional.empty();
         }
-        identityCache.put(userNo, loaded.get());
-        return loaded;
+        /*
+         * **盖上本池的 realm**。
+         *
+         * loader 只回答「这个号是谁」，不知道「这条会话属于哪个端」——
+         * ConsumerIdentityLoader 无论谁来问都回 CONSUMER。B 端池里店主那条
+         * （subject_kind=USR，主体是 user_no）于是被重建成 CONSUMER，
+         * 而 /biz/** 只认 MERCHANT，当场 401。
+         *
+         * 这个缺陷**只在 token-store=db 时出现**，而且有一段潜伏期：
+         * 签发那一刻的对象在 identityCache 里、realm 是对的，
+         * 缓存一失效才走到这里 —— 表现为「登录成功，用了半分钟突然掉线」。
+         * 2026-08-28 A7 上线后由真机验证发现。
+         */
+        LoginUser user = loaded.get().withRealm(realm);
+        identityCache.put(userNo, user);
+        return Optional.of(user);
     }
 
     /** {@code last_seen_at} 节流写回 —— 每请求写会把这张表变成全库写最频繁的表。 */
