@@ -1,0 +1,48 @@
+/*
+ * 把高德 Android SDK Key 注进离线包的 AndroidManifest。
+ *
+ * **为什么这段代码在仓库里，而离线工程只写一行 `apply from`：**
+ * 离线工程（DCloud Android SDK 的 HBuilder-Integrate-AS）在仓库外，网盘发布、
+ * 不受版本控制。2026-08-22 这段注入本来是直接写在它的 build.gradle 里的，
+ * 重解压一次 SDK 就被覆盖没了 —— 而三边都看不出来：文档还写着「已注入」、
+ * 构建照样成功、装机不报错，直到真机上定位报**错误码 7（KEY 鉴权失败）**。
+ * 2026-08-28 复核：机上装着的 149 与当天新打的 155，manifest 里都没有
+ * `com.amap.api.v2.apikey`，整个 APK 的 strings 里也搜不到那把 key。
+ *
+ * 一行的接线丢了一眼看得出，几十行的逻辑丢了看不出。所以逻辑留在这边。
+ *
+ * **key 为空时故意让构建失败**，不打一个静默坏掉的包 —— 坏包与好包在
+ * 界面上一模一样，要等到有人去点「定位」才发现，而那时已经发出去了。
+ *
+ * 变量名没有 `VITE_` 前缀是有意的：Vite 只把 `VITE_*` 注入**浏览器 bundle**，
+ * 而这把 key 的消费者是 Gradle 构建时，根本不经过 Vite。挂上 `VITE_` 等于
+ * 给「哪天有人 import.meta.env 一下就把 SDK key 打进 JS 产物」留了个门。
+ */
+// `.env.local` 就在这个脚本的上一级（`b-app/`）。用**脚本自身的位置**去找，
+// 不用相对 rootDir 猜 —— 离线工程在仓库外，两者之间隔着几层与本项目无关的目录，
+// 数 `..` 的写法换台机器就断，而断了的表现是「构建失败说找不到 key」，
+// 看着像 key 没配，其实是路径错。
+def envFile = project.hasProperty('shopEnvLocal')
+        ? file(project.shopEnvLocal)
+        : new File(buildscript.sourceFile.parentFile.parentFile, '.env.local')
+
+def readAmapKey = {
+    if (project.hasProperty('amapKeyAndroid')) return project.amapKeyAndroid
+    if (!envFile.exists()) return null
+    def line = envFile.readLines('UTF-8').find { it.trim().startsWith('AMAP_KEY_ANDROID=') }
+    return line ? line.split('=', 2)[1].trim() : null
+}
+
+def amapKey = readAmapKey()
+if (!amapKey) {
+    throw new GradleException(
+        "高德 Android Key 没读到，拒绝打包。\n" +
+        "  找的文件：${envFile}\n" +
+        "  要的那行：AMAP_KEY_ANDROID=<32位>\n" +
+        "  或者构建时给：-PamapKeyAndroid=<32位>；换机器可用 -PshopEnvLocal=<.env.local 路径>\n" +
+        "  为什么不让它过：没有 key 的包界面完全正常，只有定位会报错误码 7，" +
+        "发出去之后才会被发现。")
+}
+
+android.defaultConfig.manifestPlaceholders += [AMAP_KEY_ANDROID: amapKey]
+println "[amap] Android Key 已注入（${amapKey.length()} 位，尾号 ${amapKey.takeRight(4)}）"

@@ -133,10 +133,35 @@ SHA256: 2D:33:A1:46:12:BE:AF:22:E9:F7:DD:45:06:C9:8A:C0:3D:CA:41:18:78:5A:A9:2E:
 高德开放平台 → 应用管理 → 添加 Key，**按平台各一个**：Android 填包名 `top.hxmall.bapp` + §2 的 SHA1
 （可把 debug SHA1 用 `;` 一并填上），iOS 填 BundleID `top.hxmall.bapp`，H5/小程序另申请 Web 端 Key。
 
-Key 不进仓库：写在 `b-app/.env.local`（根 `.gitignore` 已挡）的
-`VITE_AMAP_KEY_ANDROID` / `VITE_AMAP_KEY_IOS` / `VITE_AMAP_KEY_WEB` / `VITE_AMAP_SECURITY_JS_CODE`。
-离线包侧 `simpleDemo/build.gradle` 读同一份文件，经 `manifestPlaceholders` 注入
-AndroidManifest 的 `com.amap.api.v2.apikey`（DCloud 的 Maps / Geolocation amap 实现都读这一个 meta）；
+Key 不进仓库：写在 `b-app/.env.local`（根 `.gitignore` 已挡）。
+**模板见 `b-app/.env.local.example`** —— 那份进仓库，是这几个变量唯一可校验的载体。
+
+| 变量 | 平台 | 谁读它 |
+| --- | --- | --- |
+| `AMAP_KEY_ANDROID` | Android SDK | `b-app/offline/amap-key.gradle` → `manifestPlaceholders` → AndroidManifest 的 `com.amap.api.v2.apikey` |
+| `AMAP_KEY_IOS` | iOS SDK | 还没有（iOS 离线打包链路未建） |
+| `VITE_AMAP_KEY_WEB` + `VITE_AMAP_SECURITY_JS_CODE` | Web 端 JS API | 还没有（H5 选点未接，见 `utils/geo.ts` 的降级说明） |
+| `AMAP_WEB_KEY` | Web 服务 | 后端 `application.yml` 的 `amap-key`（在 `backend/.env.local`） |
+| `NEXT_PUBLIC_AMAP_JS_KEY` + `_SECURITY_CODE` | Web 端 JS API | `ops-web/lib/amap.ts`（在 `ops-web/.env.local`） |
+
+**前两个没有 `VITE_` 前缀是有意的**：Vite 只把 `VITE_*` 注入浏览器 bundle，而 SDK key
+的消费者是 Gradle 构建时。挂上 `VITE_` 等于给「哪天有人 `import.meta.env` 一下就把
+SDK key 打进 JS 产物」留门。
+
+> ⚠️ **2026-08-22 到 08-28，这条注入实际上是断的。**
+> 当时那段代码直接写在离线工程的 `build.gradle` 里，而那个工程在仓库外
+>（DCloud 离线 SDK 目录、网盘发布、不受版本控制）—— 重解压一次就被覆盖没了。
+> 复核过两个包（机上装着的 149、当天新打的 155）：manifest 里都没有
+> `com.amap.api.v2.apikey`，整个 APK 的 strings 里也搜不到那把 key。
+> 而**三边都看不出来**：文档写着「已注入」、构建成功、装机不报错，
+> 只有真机点定位报错误码 7，文案还看不出是没配 key。
+>
+> 现在的做法：注入逻辑放在**仓库里**（`b-app/offline/amap-key.gradle`），
+> 离线工程只留一行 `apply from:` —— 一行的缺失一眼看得出，几十行的逻辑丢了看不出。
+> key 读不到时**构建直接失败**，不打一个静默坏掉的包。
+> 另有两道守卫：`b-app/offline/verify-apk.sh` 验产物里有没有这个 meta，
+> `packages/shared/tests/env-consumed.test.ts` 验「模板里声明的变量代码里有没有人读」。
+
 `b-app/src/manifest.json` 的 `sdkConfigs.geolocation.amap` / `maps.amap` 只负责选提供方，`appkey_*` 留空。
 
 Key 不对的表现：定位 fail 且原生错误码 **7（KEY 鉴权失败）**；地图白屏。
