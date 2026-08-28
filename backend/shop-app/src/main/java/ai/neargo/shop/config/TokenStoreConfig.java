@@ -6,6 +6,7 @@ import ai.neargo.shop.auth.store.EhcacheTokenStore;
 import ai.neargo.shop.auth.store.MemoryTokenStore;
 import ai.neargo.shop.auth.store.RedisTokenStore;
 import tools.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -54,7 +55,7 @@ public class TokenStoreConfig {
     static final String SHARED = "sharedTokenStore";
 
     @Bean
-    @org.springframework.beans.factory.annotation.Qualifier(SHARED)
+    @Qualifier(SHARED)
     @ConditionalOnProperty(name = "shop.auth.token-store", havingValue = "memory", matchIfMissing = true)
     TokenStore memoryTokenStore() {
         return new MemoryTokenStore(TTL);
@@ -72,7 +73,7 @@ public class TokenStoreConfig {
      * @param diskMb 磁盘上限，写满按 LRU 淘汰
      */
     @Bean
-    @org.springframework.beans.factory.annotation.Qualifier(SHARED)
+    @Qualifier(SHARED)
     @ConditionalOnProperty(name = "shop.auth.token-store", havingValue = "ehcache")
     EhcacheTokenStore ehcacheTokenStore(
             ObjectMapper mapper,
@@ -82,7 +83,7 @@ public class TokenStoreConfig {
     }
 
     @Bean
-    @org.springframework.beans.factory.annotation.Qualifier(SHARED)
+    @Qualifier(SHARED)
     @ConditionalOnProperty(name = "shop.auth.token-store", havingValue = "redis")
     TokenStore redisTokenStore(StringRedisTemplate redis, ObjectMapper mapper) {
         return new RedisTokenStore(redis, mapper, TTL);

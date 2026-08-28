@@ -17,7 +17,10 @@ import ai.neargo.shop.platform.auth.OperatorIdentityLoader;
 import ai.neargo.shop.user.auth.ConsumerIdentityLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.core.env.Environment;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -50,7 +53,7 @@ import java.util.concurrent.TimeUnit;
  * 见 {@link TokenStores} 的类注释。
  */
 @Configuration
-@org.springframework.context.annotation.Conditional(TokenStoreSelection.AnyRealmUsesDb.class)
+@Conditional(TokenStoreSelection.AnyRealmUsesDb.class)
 public class DbSessionConfig {
 
     private static final Logger log = LoggerFactory.getLogger(DbSessionConfig.class);
@@ -63,9 +66,8 @@ public class DbSessionConfig {
             MerchantIdentityLoader merchants,
             OperatorIdentityLoader operators,
             java.util.Map<Realm, LoginLogWriter> loginLogWriters,
-            org.springframework.core.env.Environment env,
-            @org.springframework.beans.factory.annotation.Qualifier(TokenStoreConfig.SHARED)
-            org.springframework.beans.factory.ObjectProvider<TokenStore> sharedStore) {
+            Environment env,
+            @Qualifier(TokenStoreConfig.SHARED) ObjectProvider<TokenStore> sharedStore) {
 
         Map<Realm, TokenStore> byRealm = new EnumMap<>(Realm.class);
         byRealm.put(Realm.CONSUMER, TokenStoreSelection.usesDb(env, Realm.CONSUMER)
@@ -93,9 +95,8 @@ public class DbSessionConfig {
      * <p>拿不到就<b>启动失败</b>，不回落到内存：回落的表现是「这一端的人
      * 每次重启全部掉线」，而那和配置写错完全是两回事，现场分不出来。
      */
-    private static TokenStore shared(
-            org.springframework.beans.factory.ObjectProvider<TokenStore> provider,
-            Realm realm, org.springframework.core.env.Environment env) {
+    private static TokenStore shared(ObjectProvider<TokenStore> provider,
+                                     Realm realm, Environment env) {
         TokenStore s = provider.getIfAvailable();
         if (s == null) {
             throw new IllegalStateException(
