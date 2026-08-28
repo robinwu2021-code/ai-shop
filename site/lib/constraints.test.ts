@@ -135,6 +135,32 @@ describe("site.config 的空占位", () => {
     "download.merchantAndroidVersion",
   ]);
 
+  /*
+   * 下载链接与它旁边那个版本号是**两个字段**，而页面上「Android 安装包 · 0.4.32」
+   * 这行字是后者拼出来的。只改一个的后果：按钮写着新版本，点下去下到旧包 ——
+   * 没有任何报错，且**只有真去点一次才看得出来**。
+   *
+   * 2026-08-28 出过一次更钝的版本：包打到了 0.4.32，官网那两个字段都还停在
+   * 8-20 的 0.1.0，八天里从官网下载的商家拿到的都是旧包。
+   * 那次是两个字段一起陈，这条守卫拦的是「改了一个忘了另一个」——
+   * `scripts/release-bapp-apk.sh` 两个一起写，手改才会漏。
+   */
+  it("★★ 下载链接里的版本号要与 merchantAndroidVersion 一致", () => {
+    const href = site.download.merchantAndroid;
+    const ver = site.download.merchantAndroidVersion;
+    if (!href) return; // 还没上架，空是允许的（在上面那份清单里）
+    const inHref = /(\d+\.\d+\.\d+)/.exec(href)?.[1];
+    expect(
+      inHref,
+      `下载链接 ${href} 里读不出版本号 —— 文件名要带版本（hxmall-merchant-X.Y.Z.apk），\n` +
+        "否则覆盖同名文件时，浏览器与 CDN 会把旧包缓存着当新包给出去",
+    ).toBeTruthy();
+    expect(
+      inHref,
+      `链接指的是 ${inHref}，而页面上写着 ${ver} —— 按钮写新版本、下到旧包，不报错`,
+    ).toBe(ver);
+  });
+
   it("空字段全部在已知清单里", () => {
     const empties: string[] = [];
     const walkCfg = (o: Record<string, unknown>, prefix = "") => {
