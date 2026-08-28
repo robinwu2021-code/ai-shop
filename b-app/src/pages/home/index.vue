@@ -359,11 +359,16 @@ onShow(load);
           </view>
         </view>
         <view class="inv__acts">
+          <!--
+            「收货 N」提亮：这三个快捷里它是唯一**有人在等**的 ——
+            其余两个什么时候点都行，它拖着就是货停在路上。
+            提亮走库件（主色 + 加重），不在页面里自己写一条 `.inv__act--on`。
+          -->
           <view
             v-for="a in invActs"
             :key="a.key"
             class="txt-sub inv__act"
-            :class="{ 'inv__act--on': a.key === 'receive' }"
+            :class="a.key === 'receive' ? 'txt-primary txt-bold' : 'txt-ink'"
             @tap="open(a.route)"
           >
             {{ a.label }}
@@ -393,7 +398,7 @@ onShow(load);
       <view v-if="stats" class="sh-card owned">
         <view class="owned__row sh-row sh-row--between sh-row--baseline">
           <text class="txt-title">{{ $t("home.ownedTraffic") }}</text>
-          <text class="txt-display owned__v sh-num">{{ ownedRate }}</text>
+          <text class="txt-display owned__v sh-num txt-primary">{{ ownedRate }}</text>
         </view>
         <text class="sh-muted">{{ $t("home.ownedTrafficHint") }}</text>
       </view>
@@ -560,19 +565,15 @@ onShow(load);
   padding-top: 20rpx;
   border-top: 2rpx solid var(--sh-line);
 }
+/* 只管版面。**颜色不在这里** —— 基类一旦设 color，
+   它就是 scoped 的 (0,2,0)，会压掉模板上挂的库件（.txt-primary 那类），
+   而症状是「类挂上了但颜色没变」，没有任何东西会报。 */
 .inv__act {
   flex: 1;
   text-align: center;
   padding: 14rpx 0;
   border-radius: 16rpx;
   background: var(--sh-bg);
-  color: var(--sh-ink);
-}
-/* 「收货 N」提亮：这三个快捷里它是唯一**有人在等**的 ——
-   其余两个什么时候点都行，它拖着就是货停在路上 */
-.inv__act--on {
-  color: var(--sh-primary-text);
-  font-weight: 600;
 }
 
 .stats__row {
@@ -591,9 +592,6 @@ onShow(load);
 }
 .owned__row {
   margin-bottom: 12rpx;
-}
-.owned__v {
-  color: var(--sh-primary-text);
 }
 /* 入口卡之间只留一条缝：这一列有 6+ 张卡，每张多 12rpx 就少露大半张 */
 .entry {
