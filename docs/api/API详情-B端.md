@@ -2198,6 +2198,7 @@ _无字段_
 | `itemCount` | `number` | 是 | — |
 | `shortageCount` | `number` | 是 | — |
 | `staleCount` | `number` | 是 | — |
+| `inTransitCount` | `number` | 是 | 待收货的调拨单数。**按单不按件** —— 收货是按单做的，给件数点不进任何一张单 |
 
 
 #### POST `/biz/inventory/transfers`
@@ -7099,6 +7100,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `itemCount` | `number` | 是 | — |
 | `shortageCount` | `number` | 是 | — |
 | `staleCount` | `number` | 是 | — |
+| `inTransitCount` | `number` | 是 | 待收货的调拨单数。**按单不按件** —— 收货是按单做的，给件数点不进任何一张单 |
 
 ### StockTransfer
 

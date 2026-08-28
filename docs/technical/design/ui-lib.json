@@ -674,7 +674,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 54,
+        "b-app": 52,
         "c-app": 19
       }
     },
@@ -690,7 +690,7 @@
         "font-weight": "600"
       },
       "usage": {
-        "b-app": 18,
+        "b-app": 19,
         "c-app": 13
       }
     },
@@ -706,8 +706,24 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 6,
+        "b-app": 7,
         "c-app": 19
+      }
+    },
+    {
+      "class": ".txt-primary",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "color": "var(--sh-primary-text)"
+      },
+      "px": {
+        "color": "var(--sh-primary-text)"
+      },
+      "usage": {
+        "b-app": 17,
+        "c-app": 17
       }
     },
     {
@@ -772,7 +788,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 224,
+        "b-app": 223,
         "c-app": 191
       }
     },
@@ -904,7 +920,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 81,
+        "b-app": 79,
         "c-app": 84
       }
     },
@@ -990,7 +1006,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 184,
+        "b-app": 183,
         "c-app": 63
       }
     },
@@ -1136,7 +1152,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 49,
+        "b-app": 51,
         "c-app": 1
       }
     },
@@ -1220,7 +1236,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 110,
+        "b-app": 109,
         "c-app": 57
       }
     },
@@ -1294,7 +1310,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 60,
+        "b-app": 59,
         "c-app": 23
       }
     },
@@ -1406,7 +1422,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 74,
+        "b-app": 73,
         "c-app": 0
       }
     },
@@ -1439,7 +1455,7 @@
         "pad?: number"
       ],
       "usage": {
-        "b-app": 7,
+        "b-app": 8,
         "c-app": 12
       },
       "note": "—",
@@ -1761,10 +1777,11 @@
       "name": "sh-stat",
       "file": "packages/ui/src/components/sh-stat.vue",
       "scope": "跨端",
-      "lines": 113,
+      "lines": 138,
       "props": [
         "items: readonly StatItem[]",
         "boxed?: boolean",
+        "panel?: boolean",
         "active?: string"
       ],
       "usage": {
@@ -1980,9 +1997,9 @@
         "sh-option",
         "sh-scaffold"
       ],
-      "libClassHits": 87,
-      "localSelectors": 16,
-      "localCssLines": 59,
+      "libClassHits": 88,
+      "localSelectors": 15,
+      "localCssLines": 56,
       "rolled": []
     },
     {
@@ -2099,9 +2116,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 46,
-      "localSelectors": 10,
-      "localCssLines": 31,
+      "libClassHits": 47,
+      "localSelectors": 9,
+      "localCssLines": 28,
       "rolled": []
     },
     {
@@ -2169,9 +2186,9 @@
         "sh-tabs",
         "biz-store-tag"
       ],
-      "libClassHits": 35,
-      "localSelectors": 27,
-      "localCssLines": 121,
+      "libClassHits": 36,
+      "localSelectors": 26,
+      "localCssLines": 118,
       "rolled": []
     },
     {
@@ -2199,9 +2216,9 @@
         "sh-scaffold",
         "biz-store-tag"
       ],
-      "libClassHits": 83,
-      "localSelectors": 32,
-      "localCssLines": 128,
+      "libClassHits": 85,
+      "localSelectors": 31,
+      "localCssLines": 124,
       "rolled": []
     },
     {
@@ -2212,9 +2229,9 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 40,
-      "localSelectors": 4,
-      "localCssLines": 12,
+      "libClassHits": 41,
+      "localSelectors": 3,
+      "localCssLines": 9,
       "rolled": []
     },
     {
@@ -2243,9 +2260,9 @@
         "sh-check",
         "sh-scaffold"
       ],
-      "libClassHits": 30,
-      "localSelectors": 19,
-      "localCssLines": 74,
+      "libClassHits": 31,
+      "localSelectors": 18,
+      "localCssLines": 71,
       "rolled": []
     },
     {
@@ -2314,9 +2331,9 @@
         "sh-scaffold",
         "sh-stat"
       ],
-      "libClassHits": 31,
-      "localSelectors": 7,
-      "localCssLines": 26,
+      "libClassHits": 32,
+      "localSelectors": 6,
+      "localCssLines": 23,
       "rolled": []
     },
     {
@@ -2328,9 +2345,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 19,
-      "localSelectors": 4,
-      "localCssLines": 16,
+      "libClassHits": 20,
+      "localSelectors": 3,
+      "localCssLines": 13,
       "rolled": []
     },
     {
@@ -2456,9 +2473,9 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 28,
-      "localSelectors": 8,
-      "localCssLines": 31,
+      "libClassHits": 30,
+      "localSelectors": 7,
+      "localCssLines": 28,
       "rolled": []
     },
     {
@@ -2546,9 +2563,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 47,
-      "localSelectors": 16,
-      "localCssLines": 64,
+      "libClassHits": 48,
+      "localSelectors": 15,
+      "localCssLines": 61,
       "rolled": []
     },
     {
@@ -2588,9 +2605,9 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 38,
-      "localSelectors": 4,
-      "localCssLines": 15,
+      "libClassHits": 39,
+      "localSelectors": 3,
+      "localCssLines": 12,
       "rolled": []
     },
     {
@@ -2662,9 +2679,9 @@
         "sh-rating",
         "sh-scaffold"
       ],
-      "libClassHits": 33,
-      "localSelectors": 9,
-      "localCssLines": 35,
+      "libClassHits": 34,
+      "localSelectors": 8,
+      "localCssLines": 32,
       "rolled": []
     },
     {
@@ -2673,14 +2690,15 @@
       "key": "b-app/stock",
       "file": "b-app/src/pages/stock/index.vue",
       "components": [
+        "sh-actionbar",
         "sh-empty",
         "sh-scaffold",
         "sh-stat",
         "sh-tabs"
       ],
       "libClassHits": 20,
-      "localSelectors": 6,
-      "localCssLines": 28,
+      "localSelectors": 9,
+      "localCssLines": 40,
       "rolled": []
     },
     {
@@ -2711,7 +2729,7 @@
         "sh-section",
         "sh-stat"
       ],
-      "libClassHits": 26,
+      "libClassHits": 21,
       "localSelectors": 10,
       "localCssLines": 39,
       "rolled": []
@@ -2779,9 +2797,9 @@
         "biz-store-tag",
         "biz-time-range"
       ],
-      "libClassHits": 31,
-      "localSelectors": 20,
-      "localCssLines": 91,
+      "libClassHits": 32,
+      "localSelectors": 19,
+      "localCssLines": 88,
       "rolled": []
     },
     {
@@ -2796,8 +2814,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 25,
-      "localSelectors": 7,
-      "localCssLines": 24,
+      "localSelectors": 6,
+      "localCssLines": 21,
       "rolled": []
     },
     {
@@ -2809,9 +2827,9 @@
         "sh-icon-btn",
         "sh-scaffold"
       ],
-      "libClassHits": 27,
-      "localSelectors": 16,
-      "localCssLines": 60,
+      "libClassHits": 28,
+      "localSelectors": 15,
+      "localCssLines": 57,
       "rolled": []
     },
     {
@@ -2895,9 +2913,9 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 85,
-      "localSelectors": 31,
-      "localCssLines": 123,
+      "libClassHits": 86,
+      "localSelectors": 30,
+      "localCssLines": 120,
       "rolled": []
     },
     {
@@ -2913,9 +2931,9 @@
         "sh-switch",
         "biz-region-picker"
       ],
-      "libClassHits": 30,
-      "localSelectors": 13,
-      "localCssLines": 47,
+      "libClassHits": 33,
+      "localSelectors": 12,
+      "localCssLines": 44,
       "rolled": [
         {
           "id": "semcolor",
@@ -2937,9 +2955,9 @@
         "sh-scaffold",
         "sh-uploader"
       ],
-      "libClassHits": 27,
-      "localSelectors": 19,
-      "localCssLines": 87,
+      "libClassHits": 28,
+      "localSelectors": 18,
+      "localCssLines": 84,
       "rolled": []
     },
     {
@@ -3009,9 +3027,9 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 38,
-      "localSelectors": 12,
-      "localCssLines": 51,
+      "libClassHits": 40,
+      "localSelectors": 11,
+      "localCssLines": 48,
       "rolled": []
     },
     {
@@ -3040,9 +3058,9 @@
         "sh-cover",
         "sh-scaffold"
       ],
-      "libClassHits": 33,
-      "localSelectors": 15,
-      "localCssLines": 65,
+      "libClassHits": 35,
+      "localSelectors": 14,
+      "localCssLines": 62,
       "rolled": []
     },
     {
@@ -3114,9 +3132,9 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 15,
-      "localSelectors": 18,
-      "localCssLines": 70,
+      "libClassHits": 18,
+      "localSelectors": 16,
+      "localCssLines": 64,
       "rolled": []
     },
     {
@@ -3129,9 +3147,9 @@
         "sh-sheet",
         "sh-theme-sheet"
       ],
-      "libClassHits": 87,
-      "localSelectors": 14,
-      "localCssLines": 66,
+      "libClassHits": 88,
+      "localSelectors": 13,
+      "localCssLines": 63,
       "rolled": []
     },
     {
@@ -3223,9 +3241,9 @@
         "sh-scaffold",
         "sh-switch"
       ],
-      "libClassHits": 104,
-      "localSelectors": 30,
-      "localCssLines": 125,
+      "libClassHits": 105,
+      "localSelectors": 29,
+      "localCssLines": 122,
       "rolled": [
         {
           "id": "semcolor",
@@ -3245,9 +3263,9 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 31,
-      "localSelectors": 21,
-      "localCssLines": 83,
+      "libClassHits": 32,
+      "localSelectors": 20,
+      "localCssLines": 80,
       "rolled": [
         {
           "id": "semcolor",
@@ -3267,9 +3285,9 @@
         "sh-actionbar",
         "sh-scaffold"
       ],
-      "libClassHits": 30,
-      "localSelectors": 26,
-      "localCssLines": 111,
+      "libClassHits": 31,
+      "localSelectors": 25,
+      "localCssLines": 108,
       "rolled": []
     },
     {
@@ -3281,18 +3299,10 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 34,
-      "localSelectors": 22,
-      "localCssLines": 84,
-      "rolled": [
-        {
-          "id": "semcolor",
-          "label": "语义色自写",
-          "lib": ".is-danger / .is-success / .is-warning",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "libClassHits": 35,
+      "localSelectors": 20,
+      "localCssLines": 78,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3349,9 +3359,9 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 21,
-      "localSelectors": 10,
-      "localCssLines": 40,
+      "libClassHits": 22,
+      "localSelectors": 9,
+      "localCssLines": 37,
       "rolled": []
     },
     {
@@ -3381,14 +3391,13 @@
         "c-app/address",
         "c-app/order",
         "c-app/order-confirm",
-        "c-app/orders",
-        "c-app/points"
+        "c-app/orders"
       ]
     }
   ],
   "counts": {
     "tokens": 10,
-    "blocks": 60,
+    "blocks": 61,
     "components": 32,
     "pages": 90,
     "gapKinds": 0

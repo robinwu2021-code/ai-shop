@@ -6137,10 +6137,14 @@ components:
           type: "number"
         staleCount: 
           type: "number"
+        inTransitCount: 
+          type: "number"
+          description: "待收货的调拨单数。**按单不按件** —— 收货是按单做的，给件数点不进任何一张单"
       required: 
         - "itemCount"
         - "shortageCount"
         - "staleCount"
+        - "inTransitCount"
       additionalProperties: false
       description: "库存总览的三个数（`SummaryVO`）。"
     StockBalance: 
