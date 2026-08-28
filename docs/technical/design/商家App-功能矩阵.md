@@ -35,19 +35,21 @@ CLAUDE.md 里写着「页面落地后从 `PROTOTYPES` 里删掉」，这四条�
 「无权访问」。其余 8 个（登录、入驻、工作台、我的、选择门店、消息、证照两屏）
 本来就该人人可进。
 
-**3. 11 个端点做完了，界面上到不了。** 其中三个是进销存的：
+**3. 11 个端点做完了，界面上到不了**（其中进销存那三个已补，见下表）：
 
 | 端点 | 是什么 | 缺口 |
 |---|---|---|
-| `PUT /biz/inventory/inbounds/:no` | 改入库单 | 无入口 |
-| `POST /biz/inventory/inbounds/:no/void` | **作废入库单** | 无入口 |
-| `POST /biz/inventory/outbounds/:no/void` | **作废出库单** | 无入口 |
+| `PUT /biz/inventory/inbounds/:no` | 改入库单 | 无入口（**有意的**：单据不可修改） |
+| `POST /biz/inventory/inbounds/:no/void` | 作废入库单 | ✅ 已补，在单据页展开区 |
+| `POST /biz/inventory/outbounds/:no/void` | 作废出库单 | ✅ 已补，同上 |
 
 设计文档写着「单据可作废，不可修改：已过账的只能整单作废重录」——
-**而界面上没有作废**。「按单查」那一屏能看到单，点不了作废。
-录错一张已过账的单，商家现在没有任何自助的补救办法。
+而界面上一直没有作废。**这一条已经补上**（单据页展开一张单后给「作废这张单」），
+所以剩下的 `PUT .../inbounds/:no` 不算缺口：单据本来就不该能改。
 
-其余 8 个：`mAddStaff`（加员工走的是别的路）、`mCustomers`、`mPatchMember`、
+其余 8 个仍然到不了：
+
+`mAddStaff`（加员工走的是别的路）、`mCustomers`、`mPatchMember`、
 `mTagMembers`、`mSaveSpecTemplate`、`mRenameSpecDim`、`mArchiveSpecDim`、
 `mSavePresale`（预售）。各自值不值得补，要按域判断，不在本文范围。
 
