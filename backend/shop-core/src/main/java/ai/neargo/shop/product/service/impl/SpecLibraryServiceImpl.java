@@ -128,9 +128,19 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
          */
         String specCat = specCategoryOf(categoryNo);
         List<PrdCategorySpec> binds = activeBindings(specCat);
-        if (binds.isEmpty()) {
-            return List.of();
-        }
+        /*
+         * ⚠️ **平台一条绑定都没有 ≠ 这一类没有规格。**
+         *
+         * 这里原先是 `if (binds.isEmpty()) return List.of();` —— 一个看着无害的短路，
+         * 它把下面那圈（`ov.addedDims()`，专门为「他自己加进来的规格」写的）
+         * 一起挡在了门外。症状：商家在一个平台没配过规格的类目里加了个自建规格，
+         * 点了保存，**它没有出现** —— 而「添加规格」那个面板还照样把它列为可选
+         * （pickable 另有来源，不走这条路），于是他会一加再加。
+         *
+         * 空绑定不需要短路：`dimsOf(空)` 与 `subsetsOf(无行)` 都返回空集合，
+         * 下面那圈 `for (PrdCategorySpec b : binds)` 自然零次 —— 走下去只多两次
+         * 必然为空的查询，换来「他加的规格能显示」。
+         */
         Map<String, PrdSpecDim> dims = dimsOf(binds.stream().map(PrdCategorySpec::getDimNo).toList());
         /*
          * 值子集也跟着走同一级：绑定从父类目继承来的话，子集还按子类目查会查到空，

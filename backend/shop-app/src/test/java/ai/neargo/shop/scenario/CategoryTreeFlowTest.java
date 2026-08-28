@@ -1374,6 +1374,66 @@ class CategoryTreeFlowTest {
                 .doesNotContain("特辣");
     }
 
+    @Test
+    @DisplayName("★★★ 平台没配规格的类目里，自建规格也要下发 —— 否则「建了它没出现」")
+    void merchantOwnDimShowsInCategoryWithoutPlatformBindings() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+
+        // **一条平台绑定都不给这个类目**，这正是本例要覆盖的那半边
+        String catBody = mvc().perform(post("/ops/categories")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"平台没配规格的类目\",\"parentNo\":\"CAT100\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String categoryNo = json.readTree(catBody).get("data").get("categoryNo").asString();
+
+        String biz = merchant("13700006789", "自建规格无绑定店");
+
+        String myDim = mvc().perform(post("/biz/spec-dims")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"捆扎方式\",\"usageType\":\"SALE\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String dimNo = json.readTree(myDim).get("data").get("templateNo").asString();
+
+        String vb = mvc().perform(post("/biz/spec-values")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dimNo\":\"" + dimNo + "\",\"label\":\"扎把\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String vCode = json.readTree(vb).get("data").get("code").asString();
+
+        // 把它用到这个类目上 —— 界面上就是「添加规格」里挑中它
+        mvc().perform(post("/biz/spec-override/" + categoryNo)
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dims\":[{\"dimNo\":\"" + dimNo + "\",\"enabled\":true,"
+                                + "\"label\":\"捆扎方式\",\"values\":[{\"code\":\"" + vCode
+                                + "\",\"enabled\":true}]}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        /*
+         * ⚠️ 缺陷：forCategory 一进门就 `if (binds.isEmpty()) return List.of();` ——
+         * 类目一条平台绑定都没有时，**连他自己加进来的规格一起被挡在门外**。
+         * 下面那圈（`ov.addedDims()`）本来就是为这件事写的，却永远走不到。
+         *
+         * 商家看到的是「我在这一类里加了个规格，点了保存，它没出现」——
+         * 而「添加规格」那个面板还照样把它列为可选（pickable 另有来源），
+         * 于是他会一加再加。
+         */
+        mvc().perform(get("/biz/spec-templates?categoryNo=" + categoryNo)
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].templateNo").value(dimNo))
+                .andExpect(jsonPath("$.data[0].scope").value("MERCHANT"))
+                .andExpect(jsonPath("$.data[0].name").value("捆扎方式"))
+                .andExpect(jsonPath("$.data[0].options.length()").value(1));
+    }
+
     private String newValue(String ops, String dimNo, String label) throws Exception {
         String b = mvc().perform(post("/ops/spec-values")
                         .header("Authorization", "Bearer " + ops)
