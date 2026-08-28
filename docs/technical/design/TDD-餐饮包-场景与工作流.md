@@ -585,16 +585,21 @@ CREATE TABLE fnb_order_item_ext (
 -- ⚠️ 不存菜名、不存单价、不存数量 —— 那三样在 ord_item 里已经是快照，回基座取。
 
 -- 商品 ← 基座 prd_goods（按门店，因为出品部门是门店的事）
+-- ⚠️ 只剩三列，且都是**引用行业自有对象**的 —— 其余全部用基座既有机制，
+-- 见 docs/technical/design/商品域-三行业一套接口.md：
+--   可否外卖 → fulfillments 里有没有 EXPRESS/MERCHANT_DELIVERY
+--   称重海鲜 → FRESH 段的 weighed / nominalGram
+--   沽清     → prd_store_stock 置 0
 CREATE TABLE fnb_goods_ext (
   store_no        VARCHAR(32) NOT NULL,
   goods_no        VARCHAR(32) NOT NULL,
-  dept_no         VARCHAR(32) NULL,              -- 出品部门 → 分单路由的依据
+  dept_no         VARCHAR(32) NULL,              -- 出品部门 → 分单路由的依据（要 JOIN，必须落列）
   modifier_group  VARCHAR(32) NULL,              -- 做法模板（免辣/加冰…）
-  takeout_allowed TINYINT NOT NULL DEFAULT 1,    -- 能不能外卖（火锅不能）
   serve_priority  VARCHAR(16) NULL,              -- 先上/后上/等叫
   PRIMARY KEY (store_no, goods_no)
 );
--- 缺行 = 无部门、可外卖、无做法模板。存量门店开餐饮包时一行都没有，照样能跑。
+-- 缺行 = 无部门、无做法模板、无上菜顺序。存量门店开餐饮包时一行都没有，照样能跑。
+-- 这三列通过基座的**商品分段扩展**（GoodsSegment）写入，**不新增行业商品接口**。
 
 -- 门店 ← 基座 mch_store
 CREATE TABLE fnb_store_config (

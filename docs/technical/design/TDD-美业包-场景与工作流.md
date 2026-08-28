@@ -95,7 +95,8 @@ c-app 选项目 → 选技师（可不指定）→ 选时段 → 付款或选到
 ## 2.1 服务时长与占用格数
 「面部护理 60 分钟」。
 
-- **落法**：`bty_goods_ext.duration_min` + 占位时按 `ceil(duration / slot_granularity)` **连占 N 个时段格**。
+- **落法**：**基座 `prd_goods.durationMin` 已经存在**（SERVICE 段），直接用，不新建列；
+  占位时按 `ceil(duration / slot_granularity)` **连占 N 个时段格**。
 - **为什么不把时长做成时段本身**：时段粒度是门店的排班配置（15/30 分钟一格），
   项目时长是商品属性。合并的话，改一次粒度所有项目都要重配。
 - **连占 N 格必须原子**：与 S7 的多资源同理，**要么全成要么全退**（§4.2）。
@@ -123,7 +124,8 @@ c-app 选项目 → 选技师（可不指定）→ 选时段 → 付款或选到
 选技师时先按技能过滤，再看排班，最后看时段余量。**三个条件缺一都会让客人约到做不了的师傅。**
 
 ## 2.6 上门的路途缓冲
-`bty_goods_ext.buffer_before_min` / `buffer_after_min`：占位时前后各多占几格。
+**基座 SERVICE 段扩两个字段** `bufferBeforeMin` / `bufferAfterMin`：占位时前后各多占几格。
+放基座不放美业包：上门服务都要缓冲，家政、维修同理 —— 见 [商品域-三行业一套接口](./商品域-三行业一套接口.md)。
 **缓冲进的是时段占用，不是订单时间** —— 客人看到的仍是 14:00，师傅的表上是 13:30–15:30。
 
 ## 2.7 客史档案
@@ -180,7 +182,8 @@ c-app 选项目 → 选技师（可不指定）→ 选时段 → 付款或选到
 | 动作 | 入口 | 落表 |
 |---|---|---|
 | 建项目、改名、改价、上下架 | **基座**（`/biz/goods/**`） | `prd_goods` / `prd_sku` / `prd_store_price` |
-| 配时长、缓冲、可上门、需要哪类资源 | **美业**（`/biz/x/beauty/project/{no}/ext`） | `bty_goods_ext` |
+| 配时长、缓冲、资源类型、是否必选技师 | **基座**（`/biz/goods/save` 的 SERVICE 段） | `prd_goods` —— **不是美业入口**，见 [商品域一套接口](./商品域-三行业一套接口.md) |
+| 可上门 | **基座** | `prd_goods.fulfillments` 含 `APPOINTMENT` |
 | 配谁能做（技能） | **基座**（`STAFF_PROFILE` 能力） | `mch_staff_skill` |
 | 建技师档案、等级 | **基座** | `mch_staff` |
 | 排班规则 | **基座**（`STAFF_SCHEDULE`） | `mch_schedule_rule` → 生成 `mch_appointment_slot` |
@@ -339,8 +342,11 @@ ord_order.payChannel    = TIMES_CARD / STORED_VALUE   ← sys_pay_channel 加行
 
 ## 6.2 读写不对称（沿用上一轮的结论）
 **写按主语分门；读允许美业提供聚合端点。**
-例：`GET /biz/x/beauty/project/list` 一次返回基座商品 + `bty_goods_ext` + 技能 + 今日可约余量，
+例：`GET /biz/x/beauty/project/list` 一次返回基座商品（含 SERVICE 段）+ 技能 + 今日可约余量，
 免掉前端三次请求自己拼。**写仍各归各的主语。**
+
+> 商品域是个例外，**连这个聚合读端点都可以不建**：基座 `GET /biz/goods/{no}` 本来就会把
+> 已注册段的值一并带出。美业没有段，所以它读到的就是完整的。
 
 ## 6.3 端点清单
 
@@ -367,7 +373,7 @@ POST   /work-order/{no}/item             加项
 PUT    /work-order/{no}/item/{id}/staff  换人（留痕）
 POST   /work-order/{no}/verify           核销 / 耗卡
 POST   /checkout/begin|pay|close         结账（可多工单合并收款）
-PUT    /project/{goodsNo}/ext            配时长/缓冲/可上门
+（配时长/缓冲/资源类型走基座 /biz/goods/save 的 SERVICE 段，**本包不提供项目维护端点**）
 GET    /customer/{memberNo}/profile      客史档案
 GET    /commission/list                  提成账
 
@@ -545,19 +551,10 @@ CREATE TABLE bty_commission_record (
 ## 8.2 B 类 · 基座表的美业附属表
 
 ```sql
--- 商品 ← 基座 prd_goods（按门店：时长与缓冲是门店的经营选择）
-CREATE TABLE bty_goods_ext (
-  store_no          VARCHAR(32) NOT NULL,
-  goods_no          VARCHAR(32) NOT NULL,
-  duration_min      INT NOT NULL DEFAULT 60,
-  buffer_before_min INT NOT NULL DEFAULT 0,
-  buffer_after_min  INT NOT NULL DEFAULT 0,
-  resource_type     VARCHAR(16) NULL,     -- STAFF / SEAT / ROOM，为空 = 只占技师
-  home_service      TINYINT NOT NULL DEFAULT 0,
-  need_staff_pick   TINYINT NOT NULL DEFAULT 1,   -- 是否必须选技师
-  PRIMARY KEY (store_no, goods_no)
-);
--- 缺行 = 60 分钟、无缓冲、只占技师、可不指定。存量门店一行都没有照样能跑。
+-- ⚠️ 原本这里有一张 bty_goods_ext（时长/缓冲/资源类型/是否必选技师/可上门）。
+-- **整张表已取消**：时长 prd_goods.durationMin 早就有；缓冲、资源类型、是否必选技师
+-- 上收基座 SERVICE 段；可上门用 fulfillments 里的 APPOINTMENT 表达。
+-- 美业在商品域零行业代码，见 docs/technical/design/商品域-三行业一套接口.md
 
 -- 订单 ← 基座 ord_order
 CREATE TABLE bty_order_ext (
@@ -606,7 +603,7 @@ CREATE TABLE bty_store_config (
 | 表 | 美业怎么用 |
 |---|---|
 | `ord_order` / `ord_sub_order` / `ord_item` | 钱、状态、行与金额的**唯一**真源 |
-| `prd_goods` / `prd_sku` / `prd_store_price` / `prd_sku_bundle` | 项目与疗程包 |
+| `prd_goods` / `prd_sku` / `prd_store_price` / `prd_sku_bundle` | 项目与疗程包；**服务时长与缓冲也在这里**（SERVICE 段） |
 | `mch_resource` / `mch_appointment_slot` / `mch_schedule_rule` | 资源、时段、排班 |
 | `mch_staff` / `mch_staff_skill` | 技师档案与技能 |
 | `mbr_member` / `mbr_asset_account` / `mbr_asset_txn` / `mbr_card` | 会员与卡、余次、储值 |
@@ -638,7 +635,7 @@ CREATE TABLE bty_store_config (
 | `SlotHold` | 一次占位的 N×M 明细，**回退的单位** |
 | `WorkOrder` | 工单聚合根。开始/换人/加项/完成/结账 |
 | `DaySchedule` | 今日排程读模型（技师 × 时段 × 预约/工单/请假）|
-| `ProjectView` | 项目读模型：基座商品 + `bty_goods_ext` + 技能 + 余量（§6.2 的聚合读）|
+| `ProjectView` | 项目读模型：基座商品（含 SERVICE 段）+ 技能 + 今日余量。**不含美业自有字段 —— 美业在商品域没有自有字段** |
 | `CheckoutBill` | 结账单，**从基座订单聚合，不落库** |
 | `CommissionEntry` | 一条提成计提 |
 
@@ -672,10 +669,9 @@ CANCELLED→ (终)
 # 十 · 服务（接口签名）
 
 ```java
-public interface ProjectService {                 // 项目的美业附属（不代理基座商品）
-    List<ProjectView> list(String storeNo, ProjectQuery q);   // 聚合读
-    void saveExt(String storeNo, String goodsNo, GoodsExtCmd cmd);
-}
+// ⚠️ 原本这里有一个 ProjectService（项目的美业附属读写）。
+// **已取消**：时长/缓冲/资源类型全部上收基座 SERVICE 段，美业在商品域零代码。
+// 项目列表若要带今日余量，由 ScheduleService 提供，不另立服务。
 
 public interface ScheduleService {
     DayScheduleVO day(String storeNo, LocalDate date);
