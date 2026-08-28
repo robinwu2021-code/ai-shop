@@ -54,7 +54,6 @@ function listOf(g: StoreCategorySpecs) {
 }
 const loading = ref(false);
 
-
 /**
  * 每个类目「还能加回来的」候选 —— **判据是「平台给这个类目配过、而你现在没有」**。
  *
@@ -743,7 +742,6 @@ async function pickDim(g: StoreCategorySpecs, picked: SpecTemplate) {
 const building = ref("");
 const buildName = ref("");
 
-
 /**
  * 自己建一个平台没有的规格 / 参数。
  *
@@ -799,8 +797,6 @@ async function resetOverride(g: StoreCategorySpecs) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
 }
-
-
 
 onShow(() => void load());
 </script>
@@ -858,7 +854,7 @@ onShow(() => void load());
           页内展开会把下面的规格整段顶走，而他改的时候正需要看着
           「这一类现在有哪几个」。
         -->
-        <view class="spec__head">
+        <view class="spec__head sh-row">
           <!--
             **拖动只认手柄这一格。** 事件此前挂在整行上，与它上面那句注释正好相反 ——
             于是点右边的齿轮或 ✕ 时手指微动几像素就变成一次拖动，
@@ -866,7 +862,7 @@ onShow(() => void load());
           -->
           <!-- size 的单位是 rpx（见 sh-icon）—— 原型里手柄 14px ≈ 28rpx -->
           <view
-            class="ic ic--grip"
+            class="ic ic--grip sh-center"
             @touchstart="onDragStart(g, t.templateNo, $event)"
             @touchmove.stop.prevent="onDragMove(g, $event)"
             @touchend="onDragEnd"
@@ -914,7 +910,7 @@ onShow(() => void load());
       -->
       <view v-if="(addable[g.categoryNo] || []).length && picking !== g.categoryNo" class="back">
         <text class="sh-muted back__t">{{ $t("mySpecs.addableHere") }}</text>
-        <view class="back__list">
+        <view class="back__list sh-wrap">
           <view
             v-for="p in addable[g.categoryNo]"
             :key="p.templateNo"
@@ -968,11 +964,11 @@ onShow(() => void load());
     >
       <!-- ① 挑一个平台现成的，或自己建 -->
       <template v-if="sheetStep === 'pick' && pickingCat">
-        <view v-if="pickCat.length" class="chips sheet-gap">
+        <view v-if="pickCat.length" class="chips sheet-gap sh-wrap">
           <text v-for="p in pickCat" :key="p.templateNo" class="sh-chip sh-chip--dashed"
                 @tap="pickDim(pickingCat, p)">＋ {{ p.name }}</text>
         </view>
-        <view v-if="showRest && pickRest.length" class="chips sheet-gap">
+        <view v-if="showRest && pickRest.length" class="chips sheet-gap sh-wrap">
           <text v-for="p in pickRest" :key="p.templateNo" class="sh-chip sh-chip--dashed"
                 @tap="pickDim(pickingCat, p)">＋ {{ p.name }}</text>
         </view>
@@ -987,7 +983,7 @@ onShow(() => void load());
 
         <!-- 自己建放最后：顺序即建议，先看平台有没有现成的 -->
         <view class="sheet-own">
-          <view class="picker__own-line">
+          <view class="picker__own-line sh-row sh-row--between sh-row--baseline">
             <text class="txt-strong picker__own-t">
               {{ $t(tab === "dims" ? "mySpecs.buildOwnDim" : "mySpecs.buildOwnProp") }}
             </text>
@@ -995,7 +991,7 @@ onShow(() => void load());
               {{ $t("mySpecs.quotaShort", { used: ownUsed, max: ownMax }) }}
             </text>
           </view>
-          <view class="build">
+          <view class="build sh-row">
             <input
               maxlength="64"
               v-model="buildName"
@@ -1022,7 +1018,7 @@ onShow(() => void load());
           chip 是横向换行的二维排列，「位移 ÷ 行高」在这里没有意义：
           同一行里左右挪一格与换到下一行，位移可能完全一样。
         -->
-        <view class="vals">
+        <view class="vals sh-wrap">
           <text
             v-for="(v, vi) in draft.values"
             :key="v.code"
@@ -1048,17 +1044,17 @@ onShow(() => void load());
         <!-- 平台还有的：点一下加进来 -->
         <view v-if="valCands.length" class="sheet-own">
           <text class="txt-body picker__own-t">{{ $t("mySpecs.pickHint") }}</text>
-          <view class="chips sheet-gap">
+          <view class="chips sheet-gap sh-wrap">
             <text v-for="o in valCands" :key="o.code || o.label" class="sh-chip sh-chip--dashed"
                   @tap="pickValue(o)">＋ {{ o.label }}</text>
           </view>
         </view>
 
         <view class="sheet-own">
-          <view class="picker__own-line">
+          <view class="picker__own-line sh-row sh-row--between sh-row--baseline">
             <text class="txt-strong picker__own-t">{{ ownValueWord }}</text>
           </view>
-          <view class="build">
+          <view class="build sh-row">
             <input
               maxlength="64"
               v-model="newVal"
@@ -1136,11 +1132,6 @@ onShow(() => void load());
   display: block;
   margin-bottom: 12rpx;
 }
-.back__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-}
 .cat__foot {
   display: block;
   padding: 18rpx 26rpx;
@@ -1161,9 +1152,6 @@ onShow(() => void load());
 
 /* 自建那一行：输入框 + 一个动作，与这一页其余部分同一套排版 */
 .build {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   padding-top: 12rpx;
 }
 
@@ -1171,18 +1159,10 @@ onShow(() => void load());
   flex: 1;
 }
 
-.picker__own-line {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
 .picker__empty {
   display: block;
 }
 .chips {
-  display: flex;
-  flex-wrap: wrap;
   gap: 16rpx;
 }
 
@@ -1233,8 +1213,6 @@ onShow(() => void load());
   100% { background-color: transparent; }
 }
 .spec__head {
-  display: flex;
-  align-items: center;
   gap: 8rpx;
 }
 .spec__name {
@@ -1271,9 +1249,6 @@ onShow(() => void load());
 
 /* 图标按钮：命中区 52rpx，图标 20rpx —— 手指够得着，眼睛不觉得挤 */
 .ic {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 52rpx;
   height: 52rpx;
   flex: none;
@@ -1300,8 +1275,6 @@ onShow(() => void load());
   background: var(--sh-surface);
 }
 .vals {
-  display: flex;
-  flex-wrap: wrap;
   gap: 16rpx;
   margin-top: 20rpx;
 }

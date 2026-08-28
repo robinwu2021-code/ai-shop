@@ -93,7 +93,7 @@ onShareAppMessage(() => {
   <sh-scaffold v-if="request">
     <!-- 需求本身 -->
     <view class="sh-card">
-      <view class="head">
+      <view class="head sh-row">
         <text class="head__avatar">{{ request.initiatorAvatar }}</text>
         <view class="sh-fill">
           <text class="txt-title">{{ request.title }}</text>
@@ -107,19 +107,19 @@ onShareAppMessage(() => {
       <text class="txt-sub desc">{{ request.desc }}</text>
 
       <view v-if="request.images.length" class="imgs">
-        <view v-for="(img, i) in request.images" :key="i" class="img">{{ img }}</view>
+        <view v-for="(img, i) in request.images" :key="i" class="img sh-center">{{ img }}</view>
       </view>
 
       <view class="facts">
-        <view class="fact">
+        <view class="fact sh-row sh-row--between sh-row--top">
           <text class="txt-caption">{{ $t("request.expect") }}</text>
           <text class="txt-caption fact__v sh-num">{{ request.expectQty }}</text>
         </view>
-        <view v-if="request.budgetMinor" class="fact">
+        <view v-if="request.budgetMinor" class="fact sh-row sh-row--between sh-row--top">
           <text class="txt-caption">{{ $t("request.budget") }}</text>
           <text class="txt-caption fact__v sh-num">{{ money(request.budgetMinor) }}</text>
         </view>
-        <view class="fact">
+        <view class="fact sh-row sh-row--between sh-row--top">
           <text class="txt-caption">{{ $t("request.deadline") }}</text>
           <text class="txt-caption fact__v sh-num">{{ isoDate(request.expireAt) }}</text>
         </view>
@@ -130,8 +130,8 @@ onShareAppMessage(() => {
     <view class="sh-card block">
       <text class="txt-title">{{ $t("request.neighbours", { n: request.interestedCount }) }}</text>
       <text class="sh-muted nothint">{{ $t("request.notOrder") }}</text>
-      <view class="members">
-        <view v-for="(n, i) in request.neighbours" :key="i" class="member">
+      <view class="members sh-wrap">
+        <view v-for="(n, i) in request.neighbours" :key="i" class="member sh-row">
           <text class="txt-sub">{{ n.avatar }}</text>
           <text class="txt-caption member__n">{{ n.nickname }}</text>
         </view>
@@ -144,10 +144,10 @@ onShareAppMessage(() => {
       <text class="sh-muted nothint">{{ $t("request.quoteHint") }}</text>
 
       <view v-for="(q, i) in request.quotes" :key="q.quoteNo" class="quote" :class="{ 'is-chosen': q.chosen }">
-        <view class="quote__head">
+        <view class="quote__head sh-row">
           <text class="quote__logo">{{ q.merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
           <view class="sh-fill">
-            <view class="quote__name-row">
+            <view class="quote__name-row sh-wrap">
               <text class="txt-strong quote__name">{{ q.merchant.name }}</text>
               <text v-if="i === 0 && request.quotes.length > 1" class="txt-caption sh-chip sh-chip--primary tiny">
                 {{ $t("request.lowest") }}
@@ -186,7 +186,7 @@ onShareAppMessage(() => {
 
         <text class="txt-caption quote__desc">{{ q.desc }}</text>
 
-        <view class="quote__meta">
+        <view class="quote__meta sh-wrap">
           <text class="sh-chip sh-num">{{ $t("request.minCount", { n: q.minCount }) }}</text>
           <text v-if="shortBy(q) > 0" class="sh-chip sh-chip--warning sh-num">
             {{ $t("request.shortBy", { n: shortBy(q) }) }}
@@ -217,7 +217,7 @@ onShareAppMessage(() => {
     <view v-if="request.status === 'LOCKED'" class="sh-card block matched">
       <text class="txt-title">{{ $t("request.matchedTitle") }}</text>
       <text class="sh-muted nothint">{{ $t("request.matchedHint") }}</text>
-      <view class="matched__row">
+      <view class="matched__row sh-row">
         <text class="txt-hero sh-num">{{ money(request.lockedPriceMinor ?? 0) }}</text>
         <text class="sh-chip sh-chip--primary sh-num">
           {{ $t("request.confirmedCount", { n: request.confirmedCount ?? 0, t: request.interestedCount }) }}
@@ -247,11 +247,8 @@ onShareAppMessage(() => {
 </template>
 
 <style scoped>
-
 .head {
-  display: flex;
   gap: 20rpx;
-  align-items: center;
 }
 .head__avatar {
   width: 84rpx;
@@ -283,17 +280,12 @@ onShareAppMessage(() => {
   height: 150rpx;
   border-radius: 24rpx;
   background: var(--sh-faint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-size: 48rpx;
 }
 .facts {
   margin-top: 24rpx;
 }
 .fact {
-  display: flex;
-  justify-content: space-between;
   padding: 12rpx 0;
 }
 
@@ -308,14 +300,10 @@ onShareAppMessage(() => {
   margin-top: 8rpx;
 }
 .members {
-  display: flex;
-  flex-wrap: wrap;
   gap: 16rpx;
   margin-top: 24rpx;
 }
 .member {
-  display: flex;
-  align-items: center;
   gap: 8rpx;
   background: var(--sh-faint);
   border-radius: 9999px;
@@ -334,11 +322,6 @@ onShareAppMessage(() => {
 .quote.is-chosen {
   background: var(--sh-primary-tint);
 }
-.quote__head {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
 .quote__logo {
   width: 68rpx;
   height: 68rpx;
@@ -353,8 +336,6 @@ onShareAppMessage(() => {
 /* 标签多的时候让它们换行，而不是把商家名挤成「邻…」——
    名字是这里最该看清的信息，标签可以下一行 */
 .quote__name-row {
-  display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8rpx;
   margin-bottom: 8rpx;
@@ -379,9 +360,6 @@ onShareAppMessage(() => {
   margin-top: 16rpx;
 }
 .quote__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 16rpx;
 }
 .quote__btn {
@@ -397,10 +375,7 @@ onShareAppMessage(() => {
 }
 
 .matched__row {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   margin-top: 24rpx;
 }
-
 </style>

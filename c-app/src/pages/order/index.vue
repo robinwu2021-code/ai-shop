@@ -236,25 +236,25 @@ onShow(load);
 
     <!-- 金额 -->
     <view class="sh-card block">
-      <view class="amt">
+      <view class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.goods") }}</text>
         <text class="txt-caption amt__v sh-num">{{ money(order.amount.goodsMinor) }}</text>
       </view>
-      <view class="amt">
+      <view class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.freight") }}</text>
         <text class="txt-caption amt__v sh-num">
           {{ order.amount.freightMinor ? money(order.amount.freightMinor) : $t("confirm.free") }}
         </text>
       </view>
-      <view v-if="order.amount.discountMinor" class="amt">
+      <view v-if="order.amount.discountMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.discount") }}</text>
         <text class="txt-caption amt__v amt__v--off sh-num">-{{ money(order.amount.discountMinor) }}</text>
       </view>
-      <view v-if="order.amount.weighAdjustMinor" class="amt">
+      <view v-if="order.amount.weighAdjustMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("order.weighAdjust") }}</text>
         <text class="txt-caption amt__v sh-num">{{ money(order.amount.weighAdjustMinor) }}</text>
       </view>
-      <view class="amt amt--total">
+      <view class="amt amt--total sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("order.paid") }}</text>
         <text class="txt-price sh-num">
           {{ money(order.amount.paidMinor || order.amount.payableMinor) }}
@@ -274,27 +274,27 @@ onShow(load);
 
     <!-- 履约信息 -->
     <view class="sh-card block">
-      <view class="fact">
+      <view class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("goods.fulfillment") }}</text>
         <text class="txt-caption fact__v">{{ $t(`fulfillment.${order.fulfillment}`) }}</text>
       </view>
-      <view v-if="order.pickupName" class="fact">
+      <view v-if="order.pickupName" class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.pickup") }}</text>
         <text class="txt-caption fact__v">{{ order.pickupName }}</text>
       </view>
-      <view v-if="order.appointmentAt" class="fact">
+      <view v-if="order.appointmentAt" class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.appointment") }}</text>
         <text class="txt-caption fact__v sh-num">{{ datetime(order.appointmentAt) }}</text>
       </view>
-      <view v-if="order.expressNo" class="fact">
+      <view v-if="order.expressNo" class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.express") }}</text>
         <text class="txt-caption fact__v sh-num">{{ order.expressNo }}</text>
       </view>
-      <view class="fact">
+      <view class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.orderNo") }}</text>
         <text class="txt-caption fact__v sh-num">{{ order.orderNo }}</text>
       </view>
-      <view class="fact">
+      <view class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.createdAt") }}</text>
         <text class="txt-caption fact__v sh-num">{{ datetime(order.createdAt) }}</text>
       </view>
@@ -339,7 +339,7 @@ onShow(load);
       <text v-if="invoice.rejectReason" class="sh-muted">{{ invoice.rejectReason }}</text>
     </view>
 
-    <view class="ops">
+    <view class="ops sh-wrap">
       <view v-if="order.status === 'WAIT_PAY'" class="txt-sub sh-btn op" @tap="pay">
         {{ $t("orders.pay") }}
       </view>
@@ -468,8 +468,6 @@ onShow(load);
   margin-top: 4rpx;
 }
 .amt {
-  display: flex;
-  justify-content: space-between;
   padding: 12rpx 0;
 }
 .amt--total {
@@ -484,8 +482,6 @@ onShow(load);
 }
 
 .fact {
-  display: flex;
-  justify-content: space-between;
   gap: 32rpx;
   padding: 12rpx 0;
 }
@@ -497,8 +493,6 @@ onShow(load);
   text-align: end;
 }
 .ops {
-  display: flex;
-  flex-wrap: wrap;
   gap: 16rpx;
   margin-top: 28rpx;
 }

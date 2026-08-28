@@ -69,19 +69,19 @@ onShow(() => cart.load());
           :spec="it.spec"
           size="lg"
         >
-          <view v-if="it.giftQty" class="giftrow">
+          <view v-if="it.giftQty" class="giftrow sh-row">
             <text class="txt-caption giftrow__tag">{{ $t("promo.gift") }}</text>
             <text class="txt-caption giftrow__text sh-num">
               {{ $t("promo.giftItem", { title: it.title, n: it.giftQty }) }}
             </text>
           </view>
 
-          <view class="row__foot">
+          <view class="row__foot sh-row sh-row--between">
             <text class="txt-price sh-num">{{ money(it.price) }}</text>
-            <view class="stepper">
-              <view class="txt-body stepper__btn" @tap="dec(it.skuNo, it.qty)"><text>−</text></view>
+            <view class="stepper sh-row">
+              <view class="txt-body stepper__btn sh-center" @tap="dec(it.skuNo, it.qty)"><text>−</text></view>
               <text class="txt-strong stepper__num sh-num">{{ it.qty }}</text>
-              <view class="txt-body stepper__btn" @tap="inc(it.skuNo, it.qty)"><text>＋</text></view>
+              <view class="txt-body stepper__btn sh-center" @tap="inc(it.skuNo, it.qty)"><text>＋</text></view>
             </view>
           </view>
         </biz-sku-row>
@@ -124,8 +124,6 @@ onShow(() => cart.load());
   margin-top: 16rpx;
 }
 .giftrow {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
   margin-top: 16rpx;
   background: var(--sh-danger-tint);
@@ -143,15 +141,10 @@ onShow(() => cart.load());
   white-space: nowrap;
 }
 .row__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-top: 20rpx;
 }
 
 .stepper {
-  display: flex;
-  align-items: center;
   gap: 8rpx;
   background: var(--sh-faint);
   border-radius: 9999px;
@@ -162,9 +155,6 @@ onShow(() => cart.load());
   height: 52rpx;
   border-radius: 9999px;
   background: var(--sh-surface);
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .stepper__num {
   min-width: 52rpx;

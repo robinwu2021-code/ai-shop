@@ -158,7 +158,7 @@ onShow(load);
       <text class="txt-title">{{ $t("staff.rolePermTitle") }}</text>
       <!-- 管员工的权限为什么不在这里，页面上直说 —— 不解释的话下一个人会以为是漏了 -->
       <text class="sh-muted sh-hint">{{ $t("staff.rolePermHint") }}</text>
-      <view class="chips">
+      <view class="chips sh-wrap">
         <text
           v-for="o in options"
           :key="o.code"
@@ -174,7 +174,7 @@ onShow(load);
       <view
         v-for="h in holders"
         :key="h.mchAccountNo"
-        class="txt-caption holder"
+        class="txt-caption holder sh-row sh-row--between"
         @tap="openStaff(h.mchAccountNo)"
       >
         <text>{{ h.displayName || h.loginPhone }}</text>
@@ -198,20 +198,13 @@ onShow(load);
 </template>
 
 <style scoped>
-
 .chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 20rpx;
 }
 .is-readonly {
   opacity: 0.85;
 }
 .holder {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 16rpx 0;
   border-top: var(--sh-hairline);
   color: var(--sh-ink);

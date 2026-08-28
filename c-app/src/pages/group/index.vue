@@ -84,8 +84,8 @@ onShareAppMessage(() => {
   <sh-scaffold v-if="group">
     <!-- 头部：当前价 + 自提点 -->
     <view class="sh-card">
-      <view class="head">
-        <sh-cover class="head__cover" :src="group.cover || GOODS_COVER_FALLBACK" @tap="openGoods"></sh-cover>
+      <view class="head sh-row">
+        <sh-cover class="head__cover sh-center" :src="group.cover || GOODS_COVER_FALLBACK" @tap="openGoods"></sh-cover>
         <view class="sh-fill">
           <text class="txt-title">{{ group.title }}</text>
           <text class="txt-caption head__pickup">📍 {{ group.pickupName }}</text>
@@ -98,7 +98,7 @@ onShareAppMessage(() => {
         <text v-if="off > 0" class="sh-chip sh-chip--danger sh-num">-{{ off }}%</text>
       </view>
 
-      <view class="cd">
+      <view class="cd sh-row sh-row--between">
         <text class="txt-caption cd__label">{{ $t("group.cutoff") }}</text>
         <text class="txt-body cd__v sh-num">{{ countdown(group.expireAt - now) }}</text>
       </view>
@@ -120,8 +120,8 @@ onShareAppMessage(() => {
     <!-- 参团邻居 -->
     <view class="sh-card block">
       <text class="txt-title">{{ $t("group.neighbours", { n: group.joinedCount }) }}</text>
-      <view class="members">
-        <view v-for="(m, i) in group.members" :key="i" class="member">
+      <view class="members sh-wrap">
+        <view v-for="(m, i) in group.members" :key="i" class="member sh-row">
           <text class="txt-body">{{ m.avatar }}</text>
           <text class="txt-caption member__n">{{ m.nickname }}</text>
         </view>
@@ -147,18 +147,13 @@ onShareAppMessage(() => {
 
 <style scoped>
 .head {
-  display: flex;
   gap: 24rpx;
-  align-items: center;
 }
 .head__cover {
   width: 130rpx;
   height: 130rpx;
   border-radius: 32rpx;
   background: var(--sh-primary-tint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-size: 64rpx;
   flex-shrink: 0;
 }
@@ -178,9 +173,6 @@ onShareAppMessage(() => {
   text-decoration: line-through;
 }
 .cd {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-top: 24rpx;
   background: var(--sh-warning-tint);
   border-radius: 24rpx;
@@ -215,14 +207,10 @@ onShareAppMessage(() => {
   color: var(--sh-success);
 }
 .members {
-  display: flex;
-  flex-wrap: wrap;
   gap: 16rpx;
   margin-top: 24rpx;
 }
 .member {
-  display: flex;
-  align-items: center;
   gap: 8rpx;
   background: var(--sh-faint);
   border-radius: 9999px;
@@ -236,5 +224,4 @@ onShareAppMessage(() => {
 .notice {
   background: var(--sh-faint);
 }
-
 </style>

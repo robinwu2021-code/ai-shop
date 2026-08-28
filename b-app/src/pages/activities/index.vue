@@ -120,7 +120,7 @@ onShow(load);
         </text>
 
         <view v-for="a in g.rows" :key="a.activityNo" class="sh-card sh-mt-xs">
-          <view class="item__head">
+          <view class="item__head sh-row">
             <text class="txt-strong">{{ a.name }}</text>
             <text v-if="a.endedReason" class="sh-chip">
               {{ $t(`activities.endedReason.${a.endedReason}`) }}
@@ -177,8 +177,6 @@ onShow(load);
 }
 
 .item__head {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
 }
 

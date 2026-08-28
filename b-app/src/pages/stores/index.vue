@@ -244,7 +244,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   run(() => api.mSetStorePayment(s.storeNo, payMerchantNo));
 }
 
-
 </script>
 
 <template>
@@ -255,7 +254,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
       同一屏里既摆今天又摆近 30 天，两个数会被读成互相矛盾。
     -->
     <view v-for="s in rows" :key="s.storeNo" class="sh-card st">
-      <view class="st__top">
+      <view class="st__top sh-row sh-row--between">
         <text class="txt-title">{{ s.name }}</text>
         <view class="tags">
           <text v-if="s.storeNo === merchant.storeNo" class="txt-caption tag tag--primary">{{ $t("stores.currentTag") }}</text>
@@ -312,7 +311,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
       <!-- 收款号：空 = 用主体默认号，这是常态不是缺配置 -->
       <view class="pay">
         <text class="txt-caption pay__label">{{ $t("stores.payment") }}</text>
-        <view class="pay__opts">
+        <view class="pay__opts sh-wrap">
           <text
             class="sh-chip"
             :class="{ 'sh-chip--primary': !s.payMerchantNo }"
@@ -397,7 +396,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
       -->
       <view v-if="merchant.multiEntity" class="field">
         <text class="field__label">{{ $t("stores.underEntity") }}</text>
-        <view class="picks">
+        <view class="picks sh-wrap">
           <sh-option
             v-for="g in merchant.entityGroups"
             :key="g.entity.entityNo"
@@ -430,9 +429,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 
 <style scoped>
 .picks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 12rpx;
 }
 .pick {
@@ -457,12 +453,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
    apply / login 两页早就是这么写的，payment / stores 漏了。 */
 .st {
   margin-top: 16rpx;
-}
-.st__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
 }
 .tags {
   display: flex;
@@ -492,9 +482,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   display: block;
 }
 .pay__opts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 12rpx;
 }
 .acts {

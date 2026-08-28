@@ -134,7 +134,7 @@ onShow(load);
     ></sh-tabs>
 
     <view v-for="o in shown" :key="o.orderNo" class="sh-card card" @tap="open(o)">
-      <view class="card__head">
+      <view class="card__head sh-row sh-row--between">
         <text class="txt-caption card__pickup">
           {{ o.pickupName || $t(`fulfillment.${o.fulfillment}`) }}
         </text>
@@ -169,7 +169,7 @@ onShow(load);
         {{ $t("orders.moreItems", { n: o.items.length - 3 }) }}
       </text>
 
-      <view class="card__foot">
+      <view class="card__foot sh-row sh-row--between">
         <text class="txt-caption sh-num">{{ datetime(o.createdAt) }}</text>
         <text class="txt-price sh-num">
           {{ $t("orders.total", { p: money(o.amount.payableMinor) }) }}
@@ -179,7 +179,7 @@ onShow(load);
       <view v-if="o.status === 'WAIT_PAY'" class="card__ops">
         <view class="txt-sub sh-btn card__pay" @tap.stop="pay(o)">{{ $t("orders.pay") }}</view>
       </view>
-      <view v-else-if="o.verifyCode && o.status !== 'COMPLETED'" class="codeline">
+      <view v-else-if="o.verifyCode && o.status !== 'COMPLETED'" class="codeline sh-row sh-row--between">
         <text class="txt-caption codeline__label">{{ $t("pay.verifyCode") }}</text>
         <text class="txt-body codeline__v sh-num">{{ o.verifyCode }}</text>
       </view>
@@ -205,9 +205,6 @@ onShow(load);
   margin-bottom: 20rpx;
 }
 .card__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 20rpx;
 }
 .card__pickup {
@@ -247,9 +244,6 @@ onShow(load);
   margin-top: 16rpx;
 }
 .card__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-top: 24rpx;
 }
 
@@ -262,9 +256,6 @@ onShow(load);
   padding: 16rpx 48rpx;
 }
 .codeline {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-top: 20rpx;
   background: var(--sh-primary-tint);
   border-radius: 24rpx;

@@ -224,7 +224,7 @@ async function doLogin(method: LoginMethod) {
         第三方登录后要补绑手机号才认得出他是谁 —— 这条路对店员是绕远，不是不通。）
       -->
       <template v-if="quickMethods.length">
-        <view class="divider">
+        <view class="divider sh-row">
           <text class="sh-muted">{{ $t("login.orQuick") }}</text>
         </view>
         <view
@@ -239,9 +239,8 @@ async function doLogin(method: LoginMethod) {
       </template>
     </view>
 
-
     <!-- 协议勾选：注册的合规前置，默认不勾 -->
-    <view class="agree" @tap="agreed = !agreed">
+    <view class="agree sh-row" @tap="agreed = !agreed">
       <sh-check :model-value="agreed"></sh-check>
       <text class="txt-caption agree__text">
         {{ $t("login.agreePrefix") }}
@@ -326,8 +325,6 @@ async function doLogin(method: LoginMethod) {
 }
 /* 卡内分隔：一条细线穿过「或使用快捷登录」，把两种方式分开又不割断 */
 .divider {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   margin: 40rpx 0 24rpx;
 }
@@ -345,9 +342,6 @@ async function doLogin(method: LoginMethod) {
   margin-bottom: 0;
 }
 .agree {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   margin: 32rpx 8rpx 0;
 }
 .agree__text {

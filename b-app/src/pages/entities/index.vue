@@ -107,7 +107,6 @@ function addOne() {
 </template>
 
 <style scoped>
-
 .hint.center {
   margin-top: 20rpx;
   text-align: center;

@@ -221,7 +221,7 @@ onLoad(load);
       <view
         v-for="r in community.regions"
         :key="r.regionCode"
-        class="rg__item"
+        class="rg__item sh-row sh-row--between"
         @tap="chooseRegion(r)"
       >
         <view class="rg__main">
@@ -267,7 +267,7 @@ onLoad(load);
 
     <view v-for="c in shown" :key="c.communityNo" class="sh-card cm">
       <view
-        class="cm__head"
+        class="cm__head sh-row"
         @tap="expanded = expanded === c.communityNo ? '' : c.communityNo"
       >
         <view class="sh-fill">
@@ -277,11 +277,11 @@ onLoad(load);
         <text class="sh-chip">{{ distance(c.distance) }}</text>
       </view>
 
-      <view v-if="expanded === c.communityNo" class="pk-list">
+      <view v-if="expanded === c.communityNo" class="pk-list sh-row">
         <view
           v-for="p in c.pickups"
           :key="p.pickupNo"
-          class="pk"
+          class="pk sh-row"
           :class="{ 'is-on': community.pickup?.pickupNo === p.pickupNo }"
           @tap="choose(c, p)"
         >
@@ -309,9 +309,6 @@ onLoad(load);
   padding: 8rpx 0 24rpx;
 }
 .rg__item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 28rpx 24rpx;
   margin-bottom: 16rpx;
   border-radius: 24rpx;
@@ -371,8 +368,6 @@ onLoad(load);
   margin-bottom: 20rpx;
 }
 .cm__head {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
 }
 
@@ -391,8 +386,6 @@ onLoad(load);
   gap: 12rpx;
 }
 .pk {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   background: var(--sh-faint);
   border-radius: 32rpx;

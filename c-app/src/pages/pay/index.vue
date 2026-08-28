@@ -114,7 +114,7 @@ onUnmounted(() => clearInterval(timer));
         -->
         <view v-if="(order.subOrders?.length ?? 0) > 1" class="subs">
           <text class="txt-caption subs__title">{{ $t("pay.covers", { n: order.subOrders!.length }) }}</text>
-          <view v-for="s in order.subOrders" :key="s.orderNo" class="subs__row">
+          <view v-for="s in order.subOrders" :key="s.orderNo" class="subs__row sh-row sh-row--between">
             <text class="txt-sub subs__name">{{ s.merchantName }}</text>
             <text class="txt-sub sh-num">{{ money(s.amount.payableMinor) }}</text>
           </view>
@@ -130,7 +130,7 @@ onUnmounted(() => clearInterval(timer));
       </view>
 
       <view class="sh-card block">
-        <view class="method is-on">
+        <view class="method is-on sh-row">
           <text class="method__icon">💚</text>
           <text class="txt-strong method__name">{{ $t("pay.wechat") }}</text>
           <text class="txt-body method__tick">✓</text>
@@ -200,9 +200,6 @@ onUnmounted(() => clearInterval(timer));
   margin-bottom: 12rpx;
 }
 .subs__row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   padding: 8rpx 0;
 }
 .subs__name {
@@ -229,8 +226,6 @@ onUnmounted(() => clearInterval(timer));
   margin-top: 20rpx;
 }
 .method {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   padding: 24rpx;
   border-radius: 24rpx;

@@ -67,7 +67,7 @@ onShow(load);
     <sh-empty v-if="!groups.length" :text='$t("groups.noRunning")'></sh-empty>
 
     <view v-for="g in groups" :key="g.groupNo" class="sh-card sh-mb-sm">
-      <view class="item__head">
+      <view class="item__head sh-row">
         <sh-cover class="item__cover" :src="g.cover"></sh-cover>
         <view class="sh-fill">
           <text class="txt-strong item__title">{{ g.title }}</text>
@@ -79,7 +79,7 @@ onShow(load);
         </view>
       </view>
 
-      <view class="progress">
+      <view class="progress sh-row">
         <text class="sh-chip" :class="g.reached ? 'sh-chip--primary' : 'sh-chip--warning'">
           {{ g.reached ? $t("groups.reached") : $t("groups.need", { n: g.need }) }}
         </text>
@@ -112,8 +112,6 @@ onShow(load);
 }
 
 .item__head {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
 }
 .item__cover {
@@ -140,8 +138,6 @@ onShow(load);
   text-decoration: line-through;
 }
 .progress {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   margin-top: 20rpx;
 }

@@ -100,7 +100,7 @@ onLoad((q) => {
       ></biz-sku-row>
 
       <!-- 星级：默认 5 星。默认 0 星会让人以为「必须选」，多一步操作 -->
-      <view class="stars">
+      <view class="stars sh-row">
         <text
           v-for="i in 5"
           :key="i"
@@ -115,7 +115,7 @@ onLoad((q) => {
 
       <!-- 三维度：不强制，动了才算细评。只看总分的商家永远不知道
            「东西没问题，是送得太慢」——而那正是他能改的部分 -->
-      <view v-for="d in DIMS" :key="d.key" class="dim">
+      <view v-for="d in DIMS" :key="d.key" class="dim sh-row sh-row--between">
         <text class="txt-sub">{{ $t(d.labelKey) }}</text>
         <view class="dim__stars">
           <text
@@ -161,9 +161,6 @@ onLoad((q) => {
 }
 
 .dim {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-top: 16rpx;
 }
 
@@ -176,8 +173,6 @@ onLoad((q) => {
 }
 
 .stars {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
   margin-top: 32rpx;
   direction: ltr;

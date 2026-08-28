@@ -329,7 +329,7 @@ async function submit() {
       -->
       <view class="field">
         <text class="field__label">{{ $t("apply.industry") }}</text>
-        <view class="chips">
+        <view class="chips sh-wrap">
           <text
             v-for="i in industries"
             :key="i.industry"
@@ -345,7 +345,7 @@ async function submit() {
 
       <view class="field">
         <text class="field__label">{{ $t("apply.subject") }}</text>
-        <view class="chips">
+        <view class="chips sh-wrap">
           <text
             v-for="s in subjectList"
             :key="s"
@@ -410,7 +410,7 @@ async function submit() {
       <sh-option
         v-for="sc in scopes"
         :key="sc"
-        class="scope"
+        class="scope sh-row"
         :selected="form.serviceScope === sc"
         @tap="pickScope(sc)"
       >
@@ -425,7 +425,7 @@ async function submit() {
       <!-- 只有「仅本社区」才需要选小区，其余两档选了也用不上 -->
       <view v-if="form.serviceScope === SERVICE_SCOPE.COMMUNITY" class="cms">
         <text class="field__label">{{ $t("store.scopeCommunities") }}</text>
-        <view class="cms__list">
+        <view class="cms__list sh-wrap">
           <text
             v-for="c in communities"
             :key="c.communityNo"
@@ -451,7 +451,7 @@ async function submit() {
 
     <!-- 自提点：小店既是供给方也是取货点（ADR-005 type=STORE） -->
     <view class="sh-card sh-mt-sm">
-      <view class="switch-row" @tap="form.asPickupPoint = !form.asPickupPoint">
+      <view class="switch-row sh-row" @tap="form.asPickupPoint = !form.asPickupPoint">
         <view class="switch-row__text">
           <text class="txt-title">{{ $t("apply.asPickup") }}</text>
           <text class="sh-hint">{{ $t("apply.asPickupHint") }}</text>
@@ -474,7 +474,7 @@ async function submit() {
         <text class="sh-hint">{{ $t("apply.licensesHint") }}</text>
 
         <view v-for="(q, i) in qualItems" :key="i" class="qual">
-          <view class="qual__head">
+          <view class="qual__head sh-row sh-row--between">
             <text class="txt-bold">{{ $t(`apply.qual${q.type}`) }}</text>
             <text class="txt-caption qual__del" @tap="removeQual(i)">{{ $t("apply.qualRemove") }}</text>
           </view>
@@ -484,8 +484,8 @@ async function submit() {
             class="sh-input"
             :placeholder="$t('apply.qualCode')"
           />
-          <view class="qual__row">
-            <view class="qual__forever" @tap="foreverFlags[i] = !foreverFlags[i]">
+          <view class="qual__row sh-row">
+            <view class="qual__forever sh-row" @tap="foreverFlags[i] = !foreverFlags[i]">
               <sh-check :model-value="foreverFlags[i]"></sh-check>
               <text>{{ $t("apply.qualForever") }}</text>
             </view>
@@ -539,13 +539,12 @@ async function submit() {
   border: var(--sh-hairline);
   border-radius: 16rpx;
 }
-.qual__head { display: flex; justify-content: space-between; align-items: center; }
 
 .qual__del {
   color: var(--sh-danger);
 }
-.qual__row { display: flex; align-items: center; gap: 16rpx; margin-top: 12rpx; }
-.qual__forever { display: flex; align-items: center; gap: 8rpx; }
+.qual__row { margin-top: 12rpx; }
+.qual__forever { gap: 8rpx; }
 .qual__date { flex: 1; }
 .qual__add { display: flex; gap: 24rpx; margin-top: 20rpx; color: var(--sh-primary-text); }
 
@@ -563,17 +562,13 @@ async function submit() {
   margin-top: 20rpx;
 }
 .chips {
-  display: flex;
   gap: 16rpx;
-  flex-wrap: wrap;
 }
 .chips .sh-chip {
   padding: 14rpx 28rpx;
 }
 
 .switch-row {
-  display: flex;
-  align-items: center;
   gap: 24rpx;
 }
 .switch-row__text {
@@ -591,8 +586,6 @@ async function submit() {
 /* 形态（描边 / 圆角 / 选中底色）由 `sh-option` 给 —— `member-settings` 的范围
    选择用的就是它，这里是同一件事漏收的一个。页面只留「名称与说明左、勾右」的排布。 */
 .scope {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   margin-top: 16rpx;
 }
@@ -611,8 +604,6 @@ async function submit() {
   margin-top: 20rpx;
 }
 .cms__list {
-  display: flex;
-  flex-wrap: wrap;
   gap: 16rpx;
   margin-top: 16rpx;
 }

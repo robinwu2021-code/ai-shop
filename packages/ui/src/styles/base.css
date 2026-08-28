@@ -807,9 +807,63 @@ uni-page-wrapper[style*="--window-bottom"] {
   align-items: center;
   gap: 16rpx;
 }
+/*
+ * 换行横排：一排装不下就折到下一行。标签组、筛选 chip 组、一排动作按钮。
+ *
+ * **45 处各写一份**（2026-08-28 数的），名字有 chips / acts / tags / cats /
+ * opts / basket / buyers… 二十来种，而形状只有一种。gap 取 **12rpx**
+ *（45 处里 28 处本来就是它 —— 与 `.sh-row` 的 16 不同是有道理的：
+ * 换行排里元素多且小，16 会让一行少放一个）。
+ *
+ * 与 `.sh-row` 的分工：`.sh-row` 是**一行内**的横排（图标 + 文字 + 右侧值，纵向居中），
+ * 这个是**会折行的一堆**（不纵向居中，因为每个元素高度一样）。
+ */
+.sh-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
 /* 左边说明、右边值或开关 */
 .sh-row--between {
   justify-content: space-between;
+}
+/*
+ * 两端对齐时按**基线**而不是垂直居中对齐。**26 处各写一份**（2026-08-28 数的）。
+ *
+ * 都是同一种行：左边一个标题、右边一个小字的动作或数值，两段字号不同
+ *（34 与 24 居多）。`center` 对齐的是**盒子中线**，字号不同 → 两段文字的基线
+ * 错开两三个像素，右边那段看着往下掉了一点。`baseline` 让它们坐在同一条线上。
+ *
+ * 所以「两端对齐」有两个版本，取哪个看**左右字号是否一样**：
+ * 一样 → `.sh-row--between`（55 处）；不一样 → 再加这个（26 处）。
+ */
+.sh-row--baseline {
+  align-items: baseline;
+}
+/*
+ * 两端对齐但**不**垂直居中。**7 处各写一份** —— `.fact` / `.amt` / `.fail`：
+ * 左边一个名字、右边一个值，两侧**同一个字阶**（txt-sub↔txt-sub、caption↔caption）。
+ *
+ * 为什么不用默认的 `.sh-row--between`：右边的值一长就折成两行，这时 `center`
+ * 会把左边的名字**推到两行的中间**，看着像它对着第二行。`flex-start` 让名字
+ * 始终贴着第一行 —— c-app/goods 那处作者自己就写了 `flex-start`，是同一个理由。
+ */
+.sh-row--top {
+  align-items: flex-start;
+}
+
+/*
+ * 内容摆正中间的方块。**7 处各写一份**（step / dimgs__add / qr__box /
+ * hero__item / stepper__btn / actionbar__icon / img）—— 都是先给死宽高再把
+ * 里面那一个东西（图标、序号、二维码、占位图）居中，只有尺寸和圆角不同。
+ *
+ * 只管居中，**不管尺寸** —— 宽高留在调用点，因为那才是各处真正不一样的地方。
+ */
+.sh-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 /*
  * 连排时行与行之间一条发丝线。

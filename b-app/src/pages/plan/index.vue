@@ -116,7 +116,7 @@ onShow(load);
     <template v-if="plan">
       <!-- 当前档位 -->
       <view class="sh-card cur">
-        <view class="cur__head">
+        <view class="cur__head sh-row">
           <text class="txt-display">{{ plan.planName }}</text>
           <text class="sh-chip" :class="statusTone">{{ $t(`plan.status${plan.status}`) }}</text>
         </view>
@@ -167,7 +167,7 @@ onShow(load);
       <!-- 三档对比 -->
       <text class="txt-title sec">{{ $t("plan.tiers") }}</text>
       <view v-for="tier in plan.tiers" :key="tier.planCode" class="sh-card tier">
-        <view class="tier__head">
+        <view class="tier__head sh-row">
           <text class="txt-title">{{ tier.name }}</text>
           <text v-if="tier.current" class="sh-chip sh-chip--primary">{{ $t("plan.tierCurrent") }}</text>
         </view>
@@ -201,8 +201,6 @@ onShow(load);
   margin-top: 16rpx;
 }
 .cur__head {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
 }
 .use {
@@ -243,8 +241,6 @@ onShow(load);
   margin-top: 16rpx;
 }
 .tier__head {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
   margin-bottom: 8rpx;
 }

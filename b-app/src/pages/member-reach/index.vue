@@ -143,7 +143,7 @@ onShow(() => {
             tone: plan.matched > plan.reachable ? 'warn' : undefined },
         ]"
       ></sh-stat>
-      <view v-if="plan.skips.length" class="reasons">
+      <view v-if="plan.skips.length" class="reasons sh-wrap">
         <text v-for="s in plan.skips" :key="s.reason" class="txt-caption reason">
           {{ $t(`reach.reason.${s.reason}`, { n: s.count }) }}
         </text>
@@ -167,7 +167,7 @@ onShow(() => {
     <!-- 结果：与发券结果页同一形状，商家看两处学一次 -->
     <view v-if="result" class="sh-card sh-mt-sm done">
       <text class="txt-strong">{{ $t("reach.doneTitle", { n: result.sent }) }}</text>
-      <view v-if="result.skips.length" class="reasons">
+      <view v-if="result.skips.length" class="reasons sh-wrap">
         <text v-for="s in result.skips" :key="s.reason" class="txt-caption reason">
           {{ $t(`reach.reason.${s.reason}`, { n: s.count }) }}
         </text>
@@ -191,9 +191,6 @@ onShow(() => {
   color: var(--sh-primary-text);
 }
 .reasons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 12rpx;
 }
 .reason {
@@ -211,5 +208,4 @@ onShow(() => {
 .done {
   border: 2rpx solid var(--sh-success);
 }
-
 </style>

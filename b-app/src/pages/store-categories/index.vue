@@ -151,7 +151,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
   <sh-scaffold title-key="storeCategories.title" :denied="!merchant.can('biz:store:admin')">
     <view v-for="top in tree" :key="top.categoryNo" class="sh-card sh-mt-md">
       <text class="txt-title">{{ top.name }}</text>
-      <view class="opts">
+      <view class="opts sh-wrap">
         <!--
           只列二级（平台类目就是两级）。一级是**分组标题，不是可选项** ——
           让它可选的话，「食品生鲜」这种大筐会成为最省事的选择，
@@ -160,7 +160,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
         <sh-option
           v-for="c in top.children ?? []"
           :key="c.categoryNo"
-          class="opt"
+          class="opt sh-row"
           :selected="pickedNos.has(c.categoryNo)"
           @tap="toggle(c)"
         >
@@ -217,7 +217,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
       合并入口那一轮只合了名字，`/pages/my-specs/index` 从此没有任何地方能进去。
       放在类目之后：规格是按本店摆出来的类目分组的，先有类目才谈得上规格。
     -->
-    <view v-if="merchant.can('biz:goods')" class="sh-card specs" @tap="goSpecs">
+    <view v-if="merchant.can('biz:goods')" class="sh-card specs sh-row sh-row--between" @tap="goSpecs">
       <text class="txt-title">{{ $t("storeCategories.specsEntry") }}</text>
       <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
     </view>
@@ -226,11 +226,6 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
 
 <style scoped>
 /* 规格入口：与类目卡同宽同缘 */
-.specs {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
 .head {
   padding: 24rpx 32rpx 8rpx;
 }
@@ -240,16 +235,12 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
 }
 
 .opts {
-  display: flex;
-  flex-wrap: wrap;
   gap: 16rpx;
   margin-top: 16rpx;
 }
 
 .opt {
   /* 只留版面：描边、圆角、选中态都归 sh-option */
-  display: flex;
-  align-items: center;
   gap: 8rpx;
   padding: 12rpx 24rpx;
 }

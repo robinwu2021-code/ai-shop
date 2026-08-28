@@ -124,7 +124,7 @@ onShow(load);
 
     <!-- ══════════ 员工 ══════════ -->
     <template v-if="tab === 'staff'">
-      <view class="bar">
+      <view class="bar sh-row">
         <input maxlength="32" v-model="keyword" class="field__input" :placeholder="$t('staff.search')" />
         <text
           class="sh-chip"
@@ -138,7 +138,7 @@ onShow(load);
       <!-- 一行四样：认人的、状态、他管什么、进详情。**其余全在详情页** -->
       <view v-for="s in visibleStaff" :key="s.mchAccountNo" class="sh-row sh-card sh-mb-sm" @tap="openStaff(s)">
         <view class="sh-fill">
-          <view class="row__top">
+          <view class="row__top sh-row">
             <text class="txt-strong">{{ nameOf(s) }}</text>
             <!-- 号码就是他的登录用户名：搜到人之后老板下一眼看的就是这个 -->
             <text v-if="s.displayName && s.loginPhone" class="txt-caption sh-num sh-muted">
@@ -180,7 +180,7 @@ onShow(load);
 
       <view v-for="r in roles" :key="r.roleCode" class="sh-row sh-card sh-mb-sm">
         <view class="sh-fill" @tap="openRole(r)">
-          <view class="row__top">
+          <view class="row__top sh-row">
             <text class="txt-strong">{{ r.name }}</text>
             <text v-if="r.builtin" class="txt-caption tag">{{ $t("staff.builtin") }}</text>
           </view>
@@ -203,7 +203,7 @@ onShow(load);
       <text class="sh-muted tip sh-hint">{{ $t("staff.logTip") }}</text>
       <sh-empty v-if="!logs.length" :text='$t("staff.logsEmpty")'></sh-empty>
       <view v-for="(l, i) in logs" :key="i" class="sh-card log">
-        <view class="log__head">
+        <view class="log__head sh-row sh-row--between sh-row--baseline">
           <text class="txt-caption sh-num">{{ datetime(l.at) }}</text>
           <text v-if="l.actor" class="sh-muted">{{ l.actor }}</text>
         </view>
@@ -216,9 +216,6 @@ onShow(load);
 
 <style scoped>
 .bar {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   margin: 20rpx 0;
 }
 .bar .field__input {
@@ -229,8 +226,6 @@ onShow(load);
 }
 
 .row__top {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
 }
 
@@ -261,11 +256,6 @@ onShow(load);
 }
 .log {
   margin-bottom: 16rpx;
-}
-.log__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
 }
 
 .log__d {

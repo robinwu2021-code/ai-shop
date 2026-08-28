@@ -514,8 +514,8 @@ onMounted(async () => {
           </view>
           <text class="txt-caption recv__sub">{{ address.region }} {{ address.detail }}</text>
         </template>
-        <view v-else class="recv__empty">
-          <text class="txt-body recv__empty-text">{{ $t("confirm.pickAddress") }}</text>
+        <view v-else class="recv__empty sh-row">
+          <text class="txt-body recv__empty-text sh-row">{{ $t("confirm.pickAddress") }}</text>
           <text class="txt-caption recv__more">{{ $t("confirm.add") }}</text>
         </view>
       </view>
@@ -538,7 +538,7 @@ onMounted(async () => {
       <text v-if="appointmentAt" class="txt-caption recv__sub sh-num">
         {{ $t("confirm.appointmentAt", { t: datetime(appointmentAt) }) }}
       </text>
-      <text v-else class="txt-body recv__empty-text">{{ $t("confirm.pickSlotHint") }}</text>
+      <text v-else class="txt-body recv__empty-text sh-row">{{ $t("confirm.pickSlotHint") }}</text>
     </view>
 
     <!-- 商品 -->
@@ -560,7 +560,7 @@ onMounted(async () => {
           :spec="it.spec"
           size="lg"
         >
-          <view class="row__foot">
+          <view class="row__foot sh-row sh-row--between">
             <text class="txt-price sh-num">{{ money(it.price) }}</text>
             <text class="txt-caption sh-num">×{{ it.qty }}</text>
           </view>
@@ -572,7 +572,7 @@ onMounted(async () => {
       </text>
 
       <!-- 赠品：单独列出来，让用户在付款前就看见 -->
-      <view v-for="g in gifts" :key="`gift-${g.skuNo}`" class="giftrow">
+      <view v-for="g in gifts" :key="`gift-${g.skuNo}`" class="giftrow sh-row">
         <text class="txt-caption giftrow__tag">{{ $t("promo.gift") }}</text>
         <text class="txt-caption giftrow__text sh-num">
           {{ $t("promo.giftItem", { title: g.title, n: g.giftQty }) }}
@@ -610,7 +610,7 @@ onMounted(async () => {
 
     <!-- 券 + 备注 -->
     <view class="sh-card block">
-      <view class="cell" @tap="pickCoupon">
+      <view class="cell sh-row sh-row--between" @tap="pickCoupon">
         <text class="txt-sub cell__k">{{ $t("confirm.coupon") }}</text>
         <text class="txt-bold txt-caption cell__v" :class="{ 'is-on': !!coupon }">
           {{ coupon
@@ -623,11 +623,11 @@ onMounted(async () => {
       <!-- 积分抵扣：上限是「券后金额」的固定比例，说清楚为什么抵不满 -->
       <view
         v-if="FEATURES.points && pointBalance > 0"
-        class="cell"
+        class="cell sh-row sh-row--between"
         @tap="pointsBlockedReason ? undefined : (usePoints = !usePoints)"
       >
         <text class="txt-sub cell__k">{{ $t("confirm.points") }}</text>
-        <view class="pointsline">
+        <view class="pointsline sh-row">
           <!--
             ⚠️ **不可用时也要显示余额，并说明原因** —— 不能静默把入口藏起来。
             用户知道自己有 500 分，界面上却没有抵扣入口，他会当成 bug 来投诉，
@@ -645,7 +645,7 @@ onMounted(async () => {
         </view>
       </view>
 
-      <view class="cell">
+      <view class="cell sh-row sh-row--between">
         <text class="txt-sub cell__k">{{ $t("confirm.remark") }}</text>
         <input maxlength="255" v-model="remark" class="txt-caption cell__input" :placeholder="$t('confirm.remarkPh')" />
       </view>
@@ -653,25 +653,25 @@ onMounted(async () => {
 
     <!-- 金额明细 -->
     <view v-if="amount" class="sh-card block">
-      <view class="amt">
+      <view class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.goods") }}</text>
         <text class="txt-caption amt__v sh-num">{{ money(amount.goodsMinor) }}</text>
       </view>
-      <view class="amt">
+      <view class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.freight") }}</text>
         <text class="txt-caption amt__v sh-num">
           {{ amount.freightMinor ? money(amount.freightMinor) : $t("confirm.free") }}
         </text>
       </view>
-      <view v-if="amount.discountMinor" class="amt">
+      <view v-if="amount.discountMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.discount") }}</text>
         <text class="txt-caption amt__v amt__v--off sh-num">-{{ money(amount.discountMinor) }}</text>
       </view>
-      <view v-if="amount.pointsDeductMinor" class="amt">
+      <view v-if="amount.pointsDeductMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption sh-num">{{ $t("confirm.pointsDeduct", { n: amount.pointsUsed }) }}</text>
         <text class="txt-caption amt__v amt__v--off sh-num">-{{ money(amount.pointsDeductMinor) }}</text>
       </view>
-      <view v-if="amount.pointsEarn" class="amt">
+      <view v-if="amount.pointsEarn" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.pointsEarn") }}</text>
         <text class="txt-caption amt__v amt__v--earn sh-num">+{{ amount.pointsEarn }}</text>
       </view>
@@ -755,11 +755,6 @@ onMounted(async () => {
   display: block;
   margin-top: 8rpx;
 }
-.recv__empty {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
 .recv__empty-text {
   flex: 1;
   color: var(--sh-sub);
@@ -778,15 +773,10 @@ onMounted(async () => {
   margin-top: 20rpx;
 }
 .row__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-top: 16rpx;
 }
 
 .giftrow {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
   margin-top: 16rpx;
   background: var(--sh-danger-tint);
@@ -804,9 +794,6 @@ onMounted(async () => {
   white-space: nowrap;
 }
 .cell {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 24rpx;
   padding: 20rpx 0;
 }
@@ -826,8 +813,6 @@ onMounted(async () => {
   text-align: end;
 }
 .amt {
-  display: flex;
-  justify-content: space-between;
   padding: 12rpx 0;
 }
 
@@ -839,11 +824,6 @@ onMounted(async () => {
 }
 .amt__v--earn {
   color: var(--sh-primary-text);
-}
-.pointsline {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
 }
 
 .actionbar__total {

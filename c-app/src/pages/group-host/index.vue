@@ -106,7 +106,7 @@ onShow(load);
       ></sh-tabs>
 
       <view v-if="current" class="sh-card info">
-        <view class="info__row" @tap="gotoGroup(current.groupNo)">
+        <view class="info__row sh-row sh-row--between" @tap="gotoGroup(current.groupNo)">
           <text class="txt-body info__title">{{ current.title }}</text>
           <text class="sh-chip" :class="current.reached ? 'sh-chip--primary' : 'sh-chip--warning'">
             {{ current.reached ? $t("groupHost.reached") : $t("groupHost.need", { n: current.need }) }}
@@ -143,14 +143,14 @@ onShow(load);
         <text v-if="error" class="txt-caption err">{{ error }}</text>
       </view>
 
-      <view class="list-head">
+      <view class="list-head sh-row sh-row--between sh-row--baseline">
         <text class="txt-title">{{ $t("groupHost.waiting") }}</text>
         <text class="sh-muted sh-num">{{ waiting.length }}</text>
       </view>
 
       <sh-empty v-if="!waiting.length" compact :text='$t("groupHost.noWaiting")'></sh-empty>
 
-      <view v-for="o in waiting" :key="o.subOrderNo" class="sh-card row-item">
+      <view v-for="o in waiting" :key="o.subOrderNo" class="sh-card row-item sh-row">
         <view class="sh-fill">
           <text class="txt-title row-item__code sh-num">{{ o.verifyCode }}</text>
           <text class="sh-muted">{{ o.buyerNickname || "—" }} · {{ o.items.length }} 件</text>
@@ -173,12 +173,6 @@ onShow(load);
 }
 .info {
   margin-top: 24rpx;
-}
-.info__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
 }
 .info__title {
   flex: 1;
@@ -223,14 +217,9 @@ onShow(load);
   color: var(--sh-danger);
 }
 .list-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   margin: 32rpx 8rpx 16rpx;
 }
 .row-item {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   margin-bottom: 16rpx;
 }

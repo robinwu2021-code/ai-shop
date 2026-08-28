@@ -254,12 +254,12 @@ onShareAppMessage(() =>
       只有一张时不套 swiper：一个滑不动的轮播还带着一个指示点，
       看着像坏了。
     -->
-    <swiper v-if="gallery.length > 1" class="hero" :indicator-dots="true" circular>
-      <swiper-item v-for="(img, i) in gallery" :key="img + i" class="hero__item">
+    <swiper v-if="gallery.length > 1" class="hero sh-center" :indicator-dots="true" circular>
+      <swiper-item v-for="(img, i) in gallery" :key="img + i" class="hero__item sh-center">
         <sh-cover class="hero__emoji" :src="img"></sh-cover>
       </swiper-item>
     </swiper>
-    <view v-else class="hero">
+    <view v-else class="hero sh-center">
       <sh-cover class="hero__emoji" :src="goods.cover"></sh-cover>
     </view>
     <view v-if="off" class="hero__wrap">
@@ -272,13 +272,13 @@ onShareAppMessage(() =>
       <text class="sh-muted sub">{{ goods.subtitle }}</text>
 
       <view class="price">
-        <text class="txt-hero sh-num">{{ money(sku?.price ?? goods.price) }}</text>
+        <text class="txt-hero sh-num sh-center">{{ money(sku?.price ?? goods.price) }}</text>
         <text v-if="sku?.originPrice" class="txt-sub price__was sh-num">
           {{ money(sku.originPrice) }}
         </text>
       </view>
 
-      <view class="chips">
+      <view class="chips sh-wrap">
         <text v-if="isFresh && !cutoffPassed" class="sh-chip sh-chip--warning">
           {{ $t("home.cutoffIn", { t: cutoffText }) }}
         </text>
@@ -316,7 +316,7 @@ onShareAppMessage(() =>
     <view class="sh-card block">
       <view v-for="(group, gi) in goods.specGroups" :key="group.name" class="specgroup">
         <text class="sh-muted">{{ group.name }}</text>
-        <view class="specs">
+        <view class="specs sh-wrap">
           <view
             v-for="opt in group.options"
             :key="opt"
@@ -341,12 +341,12 @@ onShareAppMessage(() =>
         </text>
       </view>
 
-      <view class="qty">
+      <view class="qty sh-row sh-row--between">
         <text class="sh-muted sh-num">{{ $t("goods.stock", { n: sku?.stock ?? 0 }) }}</text>
-        <view class="stepper">
-          <view class="txt-body stepper__btn" @tap="stepQty(-1)"><text>−</text></view>
+        <view class="stepper sh-row">
+          <view class="txt-body stepper__btn sh-center" @tap="stepQty(-1)"><text>−</text></view>
           <text class="txt-strong stepper__num sh-num">{{ qty }}</text>
-          <view class="txt-body stepper__btn" @tap="stepQty(1)"><text>＋</text></view>
+          <view class="txt-body stepper__btn sh-center" @tap="stepQty(1)"><text>＋</text></view>
         </view>
       </view>
     </view>
@@ -366,8 +366,8 @@ onShareAppMessage(() =>
         </view>
       </scroll-view>
 
-      <text class="sh-muted times-label">{{ $t("goods.pickTime") }}</text>
-      <view class="times">
+      <text class="sh-muted times-label sh-wrap">{{ $t("goods.pickTime") }}</text>
+      <view class="times sh-wrap">
         <view
           v-for="tm in times"
           :key="tm.time"
@@ -389,13 +389,13 @@ onShareAppMessage(() =>
 
     <!-- 事实区 -->
     <view class="sh-card block">
-      <view class="fact">
+      <view class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-sub fact__label">{{ $t("goods.fulfillment") }}</text>
         <text class="txt-sub fact__value">
           {{ goods.fulfillments.map((x) => $t(`fulfillment.${x}`)).join(" · ") }}
         </text>
       </view>
-      <view v-if="isFresh && goods.arrivalDesc" class="fact">
+      <view v-if="isFresh && goods.arrivalDesc" class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-sub fact__label">{{ $t("goods.arrival") }}</text>
         <text class="txt-sub fact__value">{{ goods.arrivalDesc }}</text>
       </view>
@@ -406,7 +406,7 @@ onShareAppMessage(() =>
         <p>接在既有的「事实区」里而不是另起一张卡：买家心里这些和履约方式、
         到货时间是同一类信息（「这货是什么样的」），分成两块只是把一件事拆散。
       -->
-      <view v-for="p in goods.params ?? []" :key="p.dimNo" class="fact">
+      <view v-for="p in goods.params ?? []" :key="p.dimNo" class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-sub fact__label">{{ p.name || p.dimNo }}</text>
         <text class="txt-sub fact__value">{{ p.label }}</text>
       </view>
@@ -416,21 +416,21 @@ onShareAppMessage(() =>
         早年填的「山东」—— 买家看到两个产地，而谁也说不清哪个算数。
         存量商品（只有老列、没有参数）仍旧照常显示。
       -->
-      <view v-if="isFresh && goods.origin && !hasOriginParam" class="fact">
+      <view v-if="isFresh && goods.origin && !hasOriginParam" class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-sub fact__label">{{ $t("goods.origin") }}</text>
         <text class="txt-sub fact__value">{{ goods.origin }}</text>
       </view>
-      <view v-if="isService && goods.storeName" class="fact">
+      <view v-if="isService && goods.storeName" class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-sub fact__label">{{ $t("goods.store") }}</text>
         <text class="txt-sub fact__value">{{ goods.storeName }}</text>
       </view>
-      <view v-if="isCard && goods.card" class="fact">
+      <view v-if="isCard && goods.card" class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-sub fact__label">{{ $t("goods.validity") }}</text>
         <text class="txt-sub fact__value sh-num">
           {{ $t("goods.validDays", { n: goods.card.validDays }) }}
         </text>
       </view>
-      <view class="fact">
+      <view class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-sub fact__label">{{ $t("goods.limitLabel") }}</text>
         <text class="txt-sub fact__value">
           {{ goods.limitPerUser ? $t("goods.limit", { n: goods.limitPerUser }) : $t("goods.noLimit") }}
@@ -485,12 +485,12 @@ onShareAppMessage(() =>
     <!-- 底部操作条。详情页不是 tab 页，没有底部菜单，
          所以购物车入口必须在这里给 —— 否则加完购没有任何落点与反馈。 -->
     <sh-actionbar pill="plain" :pad="220">
-      <view class="actionbar__icon" @tap="() => {}">
+      <view class="actionbar__icon sh-center" @tap="() => {}">
         <sh-icon name="share" :size="40" color="var(--sh-sub)"></sh-icon>
       </view>
 
       <view
-        class="actionbar__icon actionbar__cart"
+        class="actionbar__icon actionbar__cart sh-center"
         :class="{ 'is-bouncing': bouncing }"
         @tap="gotoCart"
       >
@@ -523,9 +523,6 @@ onShareAppMessage(() =>
   height: 440rpx;
   border-radius: 44rpx;
   background: var(--sh-primary-tint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 /* 原先只有字号 —— 那是给 emoji 写的。换成真图后没有可撑的尺寸，
    图会塌成 0 高；给满整块 hero，emoji 仍按字号居中显示。 */
@@ -535,11 +532,6 @@ onShareAppMessage(() =>
   border-radius: 44rpx;
   font-size: 200rpx;
   line-height: 1;
-}
-.hero__item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 /* 折扣标原先绝对定位在 hero 里；换成 swiper 之后它会跟着页面一起滑走，
    所以拎出来单独定位在轮播上方一层 */
@@ -578,17 +570,12 @@ onShareAppMessage(() =>
   text-decoration: line-through;
 }
 .chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 24rpx;
 }
 .specgroup + .specgroup {
   margin-top: 32rpx;
 }
 .specs {
-  display: flex;
-  flex-wrap: wrap;
   gap: 16rpx;
   margin-top: 16rpx;
 }
@@ -604,14 +591,9 @@ onShareAppMessage(() =>
   color: var(--sh-danger);
 }
 .qty {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-top: 32rpx;
 }
 .stepper {
-  display: flex;
-  align-items: center;
   gap: 8rpx;
   background: var(--sh-faint);
   border-radius: 9999px;
@@ -622,9 +604,6 @@ onShareAppMessage(() =>
   height: 56rpx;
   border-radius: 9999px;
   background: var(--sh-surface);
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .stepper__num {
   min-width: 56rpx;
@@ -644,8 +623,6 @@ onShareAppMessage(() =>
   margin-top: 32rpx;
 }
 .times {
-  display: flex;
-  flex-wrap: wrap;
   gap: 16rpx;
   margin-top: 16rpx;
 }
@@ -668,9 +645,6 @@ onShareAppMessage(() =>
   color: var(--sh-on-primary);
 }
 .fact {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
   gap: 32rpx;
   padding: 18rpx 0;
 }
@@ -703,9 +677,6 @@ onShareAppMessage(() =>
   height: 88rpx;
   border-radius: 9999px;
   background: var(--sh-faint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .actionbar__cart.is-bouncing {
   animation: shCartBounce 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);

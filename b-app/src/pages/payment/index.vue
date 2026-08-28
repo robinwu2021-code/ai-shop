@@ -128,7 +128,7 @@ async function refresh() {
     </view>
 
     <view v-for="p in list" :key="p.payChannel" class="sh-card ch">
-      <view class="ch__top">
+      <view class="ch__top sh-row sh-row--between">
         <text class="txt-title">{{ p.channelName }}</text>
         <!--
           状态一律照 canReceiveMoney 显示，不在端上比 applyStatus ——
@@ -216,11 +216,6 @@ async function refresh() {
 }
 .ch {
   margin-top: 16rpx;
-}
-.ch__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 .badge {
   padding: 6rpx 18rpx;

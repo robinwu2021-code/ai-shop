@@ -73,7 +73,7 @@ onShow(() => {
       </view>
 
       <view class="sh-card sh-mt-sm">
-        <view class="line" @tap="toggle">
+        <view class="line sh-row sh-row--between" @tap="toggle">
           <text class="txt-title">{{ $t("points.switch") }}</text>
           <sh-switch :model-value="account.enabled" :disabled="!!lockedReason"></sh-switch>
         </view>
@@ -92,7 +92,7 @@ onShow(() => {
         一个 0% 填充率的配置项不是「灵活」，是「没人用」。
       -->
       <view class="sh-card sh-mt-sm">
-        <view class="line">
+        <view class="line sh-row sh-row--between">
           <text class="txt-title">{{ $t("points.rule") }}</text>
           <text class="sh-chip">{{ $t("points.rulePlatform") }}</text>
         </view>
@@ -114,11 +114,6 @@ onShow(() => {
 .sub {
   display: block;
   margin-top: 8rpx;
-}
-.line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 .locked {
   display: block;

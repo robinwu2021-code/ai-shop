@@ -30,7 +30,7 @@ onShow(() => {
 <template>
   <sh-scaffold title-key="points.recordsTitle" :denied="!canView">
     <view class="sh-card">
-      <view class="line">
+      <view class="line sh-row sh-row--between sh-row--baseline">
         <text class="sh-muted">{{ $t("points.periodTotal") }}</text>
         <text class="txt-price sh-num">{{ money(total) }}</text>
       </view>
@@ -39,7 +39,7 @@ onShow(() => {
     <sh-empty v-if="!rows.length" :text="$t('points.recordsEmpty')" />
 
     <view v-for="r in rows" :key="r.settleNo" class="sh-card sh-mt-xs" :class="{ 'is-none': !r.points }">
-      <view class="line">
+      <view class="line sh-row sh-row--between sh-row--baseline">
         <text class="txt-sub sh-num">{{ r.subOrderNo }}</text>
         <!--
           发了分 → 显示费用金；没发 → 显示原因。
@@ -49,7 +49,7 @@ onShow(() => {
         <text v-if="r.points" class="sh-num">{{ money(r.feeMinor) }}</text>
         <text v-else class="sh-chip">{{ $t("points.notGranted") }}</text>
       </view>
-      <view class="line">
+      <view class="line sh-row sh-row--between sh-row--baseline">
         <text class="sh-muted">
           {{ r.points ? $t("points.granted", { n: r.points }) : $t("points.notGrantedWhy") }}
         </text>
@@ -60,12 +60,6 @@ onShow(() => {
 </template>
 
 <style scoped>
-.line {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16rpx;
-}
 .line + .line { margin-top: 8rpx; }
 
 /* 未发放那几条压低存在感：它们不是账，是解释 */

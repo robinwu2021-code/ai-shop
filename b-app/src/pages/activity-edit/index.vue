@@ -194,7 +194,7 @@ onLoad((q) => {
 <template>
   <sh-scaffold title-key="activityEdit.title" :denied="!merchant.can('biz:campaign')">
     <!-- 四步的进度：让他知道还剩几步，而不是面对一屏输入框 -->
-    <view class="steps">
+    <view class="steps sh-wrap">
       <text
         v-for="s in [1, 2, 3, 4]"
         :key="s"
@@ -228,7 +228,7 @@ onLoad((q) => {
     <!-- ② 优惠什么样 -->
     <view v-if="step === 2" class="sh-card">
       <text class="field__label">{{ $t("activityEdit.benefitQ") }}</text>
-      <view class="chips">
+      <view class="chips sh-wrap">
         <text
           v-for="b in ['CUT', 'PRICE', 'GIFT']"
           :key="b"
@@ -280,7 +280,7 @@ onLoad((q) => {
     <!-- ③ 什么时候有效 -->
     <view v-if="step === 3" class="sh-card">
       <text class="field__label">{{ $t("activityEdit.scheduleQ") }}</text>
-      <view class="chips">
+      <view class="chips sh-wrap">
         <text
           v-for="s in ['ONE_OFF', 'ALWAYS_ON', 'RECURRING']"
           :key="s"
@@ -296,7 +296,7 @@ onLoad((q) => {
       </view>
 
       <template v-if="form.scheduleType === 'RECURRING'">
-        <view class="week sh-mt-sm">
+        <view class="week sh-mt-sm sh-wrap">
           <text
             v-for="d in [1, 2, 3, 4, 5, 6, 7]"
             :key="d"
@@ -361,8 +361,6 @@ onLoad((q) => {
 
 <style scoped>
 .steps {
-  display: flex;
-  flex-wrap: wrap;
   gap: 8rpx;
   margin-bottom: 16rpx;
 }
@@ -380,14 +378,9 @@ onLoad((q) => {
   margin-top: 8rpx;
 }
 .chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 12rpx;
 }
 .week {
-  display: flex;
-  flex-wrap: wrap;
   gap: 8rpx;
 }
 

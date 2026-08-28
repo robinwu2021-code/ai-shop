@@ -166,7 +166,7 @@ onShow(load);
     ></sh-tabs>
 
     <!-- 门店范围。只有多店才出现 —— 单店商家看到这个切换只会疑惑 -->
-    <view v-if="merchant.multiStore" class="scope" @tap="toggleScope">
+    <view v-if="merchant.multiStore" class="scope sh-row sh-row--between" @tap="toggleScope">
       <text class="txt-caption scope__cur">
         {{ allStores ? $t("order.scopeAll") : merchant.currentStore?.name || $t("order.scopeCurrent") }}
       </text>
@@ -176,7 +176,7 @@ onShow(load);
     <sh-empty v-if="empty" :text='$t("order.empty")'></sh-empty>
 
     <view v-for="o in list" :key="o.orderNo" class="sh-card sh-mb-sm" @tap="open(o)">
-      <view class="row__head">
+      <view class="row__head sh-row sh-row--between">
         <text class="txt-caption sh-num">{{ o.orderNo }}</text>
         <!-- 行内显示的是**订单自己的状态**。原先拼的是 tab 的 key
              （`order.tab${PAID ? 'ToShip' : 'All'}`），于是除待发货外一律显示「全部」——
@@ -194,7 +194,7 @@ onShow(load);
         </view>
       </view>
 
-      <view class="row__foot">
+      <view class="row__foot sh-row sh-row--between sh-row--baseline">
         <text class="sh-muted">{{ datetime(o.createdAt) }}</text>
         <text class="txt-price sh-num">{{ money(o.amount.payableMinor, o.amount.currency) }}</text>
       </view>
@@ -204,9 +204,6 @@ onShow(load);
 
 <style scoped>
 .scope {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 16rpx 24rpx;
   margin-bottom: 16rpx;
   background: var(--sh-faint);
@@ -219,9 +216,6 @@ onShow(load);
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */
 
 .row__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-bottom: 20rpx;
 }
 
@@ -249,10 +243,6 @@ onShow(load);
   display: block;
 }
 .row__foot {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   margin-top: 12rpx;
 }
-
 </style>

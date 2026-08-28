@@ -30,7 +30,7 @@ onShow(load);
 <template>
   <sh-scaffold title-key="cards.title">
     <view v-for="c in cards" :key="c.cardNo" class="card" :class="{ 'is-expired': expired(c) }">
-      <view class="card__head">
+      <view class="card__head sh-row">
         <sh-cover class="card__cover" :src="c.cover"></sh-cover>
         <view class="sh-fill">
           <text class="txt-strong card__title">{{ c.title }}</text>
@@ -38,7 +38,7 @@ onShow(load);
         </view>
       </view>
 
-      <view class="card__value">
+      <view class="card__value sh-row sh-row--between sh-row--baseline">
         <!-- 储值卡看余额，次卡看次数 —— 两种卡的「还剩多少」是不同的东西 -->
         <text v-if="c.balanceMinor != null" class="txt-hero sh-num">
           {{ money(c.balanceMinor, c.currency) }}
@@ -71,8 +71,6 @@ onShow(load);
   opacity: 0.6;
 }
 .card__head {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
 }
 .card__cover {
@@ -97,9 +95,6 @@ onShow(load);
   margin-top: 8rpx;
 }
 .card__value {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   gap: 20rpx;
   margin-top: 28rpx;
 }

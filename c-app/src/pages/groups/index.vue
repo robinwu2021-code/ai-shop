@@ -118,7 +118,7 @@ onShow(() => {
       <!-- 发起团表单：商品 + 是否送到我家 -->
       <view v-if="creating" class="sh-card form">
         <text class="txt-title">{{ $t("groups.createGroup") }}</text>
-        <view class="chips">
+        <view class="chips sh-wrap">
           <text
             v-for="g in groupable"
             :key="g.goodsNo"
@@ -164,7 +164,7 @@ onShow(() => {
       <text class="hint sh-hint">{{ $t("groups.requestHint") }}</text>
 
       <view v-for="r in requests" :key="r.requestNo" class="sh-card rq" @tap="openRequest(r)">
-        <view class="rq__head">
+        <view class="rq__head sh-row">
           <text class="rq__avatar">{{ r.initiatorAvatar }}</text>
           <view class="sh-fill">
             <text class="txt-strong rq__title">{{ r.title }}</text>
@@ -176,7 +176,7 @@ onShow(() => {
 
         <text class="txt-caption rq__desc">{{ r.desc }}</text>
 
-        <view class="rq__meta">
+        <view class="rq__meta sh-wrap">
           <text class="sh-chip sh-chip--primary sh-num">
             {{ $t("groups.interested", { n: r.interestedCount }) }}
           </text>
@@ -210,9 +210,6 @@ onShow(() => {
   margin-bottom: 24rpx;
 }
 .chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin: 20rpx 0;
 }
 .toggle {
@@ -263,9 +260,7 @@ onShow(() => {
   margin-bottom: 20rpx;
 }
 .rq__head {
-  display: flex;
   gap: 20rpx;
-  align-items: center;
 }
 .rq__avatar {
   width: 72rpx;
@@ -290,9 +285,6 @@ onShow(() => {
   margin-top: 20rpx;
 }
 .rq__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 20rpx;
 }
 </style>

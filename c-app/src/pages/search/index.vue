@@ -90,7 +90,7 @@ onLoad((q) => {
 <template>
   <sh-scaffold title-key="search.title">
     <!-- 搜索框 -->
-    <view class="searchbar">
+    <view class="searchbar sh-row">
       <input
         maxlength="32"
         v-model="keyword"
@@ -111,7 +111,7 @@ onLoad((q) => {
           $t("search.clear")
         }}</text>
       </view>
-      <view class="hist__list">
+      <view class="hist__list sh-wrap">
         <text
           v-for="h in history"
           :key="h"
@@ -169,7 +169,7 @@ onLoad((q) => {
             @tap="openMerchant(m)"
           ></biz-merchant-bar>
           <text class="txt-caption mcard__desc">{{ m.desc }}</text>
-          <view class="mcard__meta">
+          <view class="mcard__meta sh-wrap">
             <text class="sh-chip">{{ $t(`merchant.type.${m.type}`) }}</text>
             <text class="sh-chip sh-num">
               {{ $t("merchant.goodsTab", { n: m.goodsCount }) }}
@@ -196,11 +196,6 @@ onLoad((q) => {
 </template>
 
 <style scoped>
-.searchbar {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
 .searchbar__input {
   background: var(--sh-surface);
   border-radius: 9999px;
@@ -225,8 +220,6 @@ onLoad((q) => {
   color: var(--sh-primary-text);
 }
 .hist__list {
-  display: flex;
-  flex-wrap: wrap;
   gap: 16rpx;
   /* 块本身只管上下留白，横向由内容自己给 */
   padding: 0 26rpx;
@@ -244,9 +237,6 @@ onLoad((q) => {
   margin-top: 20rpx;
 }
 .mcard__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 20rpx;
 }
 </style>

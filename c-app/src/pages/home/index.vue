@@ -207,8 +207,8 @@ onShareAppMessage(() =>
          原先反过来：自提点占一张比搜索框还高的大卡片，把最低频的东西放在了最显眼的位置。
          但**不能删**：自提点决定「东西送到哪、什么时候能拿」，下单前要一眼可确认，
          藏进「我的」会让人下完单才发现提错了点。 -->
-    <view class="place">
-      <view class="place__main sh-fill" @tap="gotoCommunity">
+    <view class="place sh-row">
+      <view class="place__main sh-fill sh-row" @tap="gotoCommunity">
         <sh-icon name="pin" :size="26" color="var(--sh-primary)"></sh-icon>
         <text class="txt-body place__name">
           {{ community.pickup?.name || $t("home.choosePickup") }}
@@ -224,7 +224,7 @@ onShareAppMessage(() =>
       <!-- 搜索收成一个 icon 并入这一行：一个社区只覆盖三五家店、几十上百个 SKU，
            用户翻两屏就看完了全部 —— 搜索远没到值一整行主视觉的程度。
            省下的那一行给「再来一单」，那才是这个场景下真正的高频动作。 -->
-      <view class="place__search" @tap="gotoSearch">
+      <view class="place__search sh-center" @tap="gotoSearch">
         <sh-icon name="search" :size="30" color="var(--sh-sub)"></sh-icon>
       </view>
     </view>
@@ -264,9 +264,9 @@ onShareAppMessage(() =>
         >
           <sh-cover class="freq__cover" :src="g.cover || GOODS_COVER_FALLBACK"></sh-cover>
           <text class="txt-strong freq__title">{{ g.title }}</text>
-          <view class="freq__foot">
+          <view class="freq__foot sh-row sh-row--between">
             <text class="txt-price freq__price sh-num">{{ money(g.price) }}</text>
-            <view class="freq__add" @tap.stop="addToCart(g, $event)">
+            <view class="freq__add sh-center" @tap.stop="addToCart(g, $event)">
               <text class="freq__sign">＋</text>
             </view>
           </view>
@@ -312,14 +312,9 @@ onShareAppMessage(() =>
 <style scoped>
 /* 自提点：一行搞定 —— 图标 + 名称 + 到货时间 + 右侧箭头（切换入口） */
 .place {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   padding: 4rpx 0 12rpx;
 }
 .place__main {
-  display: flex;
-  align-items: center;
   gap: 8rpx;
 }
 /* 搜索缩成 icon 后要保住可点面积：40×40 的圆底，不是一个裸图标 */
@@ -331,9 +326,6 @@ onShareAppMessage(() =>
   /* 可点区域要可见，但用**有色**而不是灰：同样一块底，
      主色浅调读作「这是个按钮」，灰读作「这儿有块脏东西」 */
   background: var(--sh-primary-tint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .place__name {
   /* 英文店名比中文长得多（Sunnyside Block 3 Point vs 阳光里 3 幢自提点）：
@@ -389,9 +381,6 @@ onShareAppMessage(() =>
   overflow: hidden;
 }
 .freq__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 8rpx;
   margin-top: 8rpx;
 }
@@ -408,9 +397,6 @@ onShareAppMessage(() =>
   border-radius: 9999px;
   /* 与商品卡的加购钮同色 —— 同一个动作在两处长得不一样，是没道理的 */
   background: var(--sh-primary-tint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .freq__sign {
   color: var(--sh-primary-text);

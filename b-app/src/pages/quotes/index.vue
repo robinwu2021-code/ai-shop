@@ -79,13 +79,13 @@ onShow(load);
     <sh-empty v-if="!list.length" :text='$t("quotes.empty")'></sh-empty>
 
     <view v-for="r in list" :key="r.requestNo" class="sh-card sh-mt-sm">
-      <view class="item__head">
+      <view class="item__head sh-row sh-row--between">
         <text class="txt-body item__title">{{ r.title }}</text>
         <text class="sh-chip sh-chip--primary">{{ $t("quotes.wanted", { n: r.interestedCount }) }}</text>
       </view>
       <text class="sh-muted item__desc">{{ r.desc }}</text>
 
-      <view class="meta">
+      <view class="meta sh-wrap">
         <text class="sh-muted">{{ $t("quotes.expectQty") }} {{ r.expectQty }}</text>
         <text v-if="r.budgetMinor" class="sh-muted sh-num">
           {{ $t("quotes.budget") }} {{ money(r.budgetMinor) }}
@@ -157,12 +157,6 @@ onShow(load);
   margin: 12rpx 8rpx 0;
 }
 
-.item__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-}
 .item__title {
   flex: 1;
 }
@@ -171,8 +165,6 @@ onShow(load);
   margin-top: 8rpx;
 }
 .meta {
-  display: flex;
-  flex-wrap: wrap;
   gap: 20rpx;
   margin-top: 16rpx;
 }
@@ -227,5 +219,4 @@ onShow(load);
 .act {
   margin-top: 24rpx;
 }
-
 </style>

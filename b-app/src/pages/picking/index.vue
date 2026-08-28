@@ -143,7 +143,7 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="picking.title" :denied="!merchant.can('biz:receive')">
-    <view class="head">
+    <view class="head sh-row sh-row--between sh-row--baseline">
       <text class="txt-display">{{ $t("picking.title") }}</text>
       <text class="sh-muted">{{ $t("picking.total", { n: totalQty }) }}</text>
     </view>
@@ -164,7 +164,7 @@ onShow(load);
     <!-- 按商品：分货用 -->
     <template v-if="view === 'goods'">
       <view v-for="r in rows" :key="r.skuNo" class="sh-card sh-mb-sm">
-        <view class="row__head">
+        <view class="row__head sh-row">
           <sh-cover class="row__cover" :src="r.cover"></sh-cover>
           <view class="sh-fill">
             <text class="txt-strong row__title">{{ r.title }}</text>
@@ -172,7 +172,7 @@ onShow(load);
           </view>
           <text class="txt-title row__qty sh-num">×{{ r.totalQty }}</text>
         </view>
-        <view class="buyers">
+        <view class="buyers sh-wrap">
           <text
             v-for="b in r.buyers"
             :key="b.orderNo"
@@ -188,7 +188,7 @@ onShow(load);
     <!-- 按用户：装袋用 -->
     <template v-else>
       <view v-for="b in byBuyer" :key="b.orderNo" class="sh-card sh-mb-sm">
-        <view class="row__head">
+        <view class="row__head sh-row">
           <view class="sh-fill">
             <text class="txt-strong row__title">{{ b.nickname }}</text>
             <text class="sh-muted sh-num">{{ b.orderNo }}</text>
@@ -197,7 +197,7 @@ onShow(load);
             ×{{ b.items.reduce((s, i) => s + i.qty, 0) }}
           </text>
         </view>
-        <view class="buyers">
+        <view class="buyers sh-wrap">
           <text v-for="(it, i) in b.items" :key="i" class="sh-chip">
             {{ it.title }} ×{{ it.qty }}
           </text>
@@ -217,9 +217,6 @@ onShow(load);
 
 <style scoped>
 .head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   margin-bottom: 20rpx;
 }
 .reporthint {
@@ -233,8 +230,6 @@ onShow(load);
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */
 
 .row__head {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
 }
 .row__cover {
@@ -254,9 +249,6 @@ onShow(load);
   color: var(--sh-primary-text);
 }
 .buyers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 20rpx;
 }
 .arrive {

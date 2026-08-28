@@ -127,7 +127,7 @@ onShow(load);
     <sh-empty v-if="!lines.length" :text="String($t('stockOut.noLines'))"></sh-empty>
 
     <view v-for="l in lines" :key="l.itemId" class="sh-card sh-mb-sm">
-      <view class="row__top">
+      <view class="row__top sh-row">
         <view class="sh-fill">
           <text class="txt-strong row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
           <text class="sh-muted sh-num">{{ $t("stockOut.availableN", { n: l.available }) }}</text>
@@ -143,7 +143,7 @@ onShow(load);
 
     <view class="sh-card">
       <text class="field__label">{{ $t("stockOut.reasonLabel") }}</text>
-      <view class="reasons">
+      <view class="reasons sh-wrap">
         <text
           v-for="r in REASONS"
           :key="r"
@@ -156,7 +156,7 @@ onShow(load);
       </view>
     </view>
 
-    <view v-if="lines.length" class="sh-card hd">
+    <view v-if="lines.length" class="sh-card hd sh-row sh-row--between">
       <text class="txt-strong">{{ $t("stockOut.totalQty") }}</text>
       <text class="txt-display sh-num is-out">−{{ totalQty }}</text>
     </view>
@@ -167,7 +167,7 @@ onShow(load);
     <text class="sh-hint hint">{{ $t("stockOut.costHint") }}</text>
 
     <sh-sheet :visible="showPick" :title="String($t('stockOut.addItem'))" @close="showPick = false">
-      <view v-for="b in pickable" :key="b.itemId" class="pick" @tap="addLine(b)">
+      <view v-for="b in pickable" :key="b.itemId" class="pick sh-row sh-row--between sh-row--baseline" @tap="addLine(b)">
         <text class="txt-body">{{ b.name }}{{ b.specText ? ` · ${b.specText}` : "" }}</text>
         <text class="sh-muted sh-num">{{ $t("stockOut.availableN", { n: b.available }) }}</text>
       </view>
@@ -176,11 +176,8 @@ onShow(load);
 </template>
 
 <style scoped>
-
 .row__top {
-  display: flex;
   gap: 20rpx;
-  align-items: center;
 }
 
 .row__title {
@@ -191,16 +188,6 @@ onShow(load);
   text-align: right;
   flex: none;
 }
-.hd {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.reasons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-}
 .hint {
   padding: 0 4rpx;
 }
@@ -208,9 +195,6 @@ onShow(load);
   color: var(--sh-danger);
 }
 .pick {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   padding: 20rpx 0;
 }
 </style>

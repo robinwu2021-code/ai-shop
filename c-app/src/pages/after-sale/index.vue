@@ -113,7 +113,7 @@ onLoad((q) => {
       </view>
 
       <view class="sh-card block">
-        <view v-for="(n, i) in order.timeline.slice(-3)" :key="i" class="node">
+        <view v-for="(n, i) in order.timeline.slice(-3)" :key="i" class="node sh-row">
           <view class="node__dot" :class="{ 'is-last': i === order.timeline.slice(-3).length - 1 }" />
           <text class="txt-caption node__label">{{ n.label }}</text>
         </view>
@@ -156,7 +156,7 @@ onLoad((q) => {
 
       <view class="sh-card block">
         <text class="txt-title">{{ $t("afterSale.pickReason") }}</text>
-        <view class="reasons">
+        <view class="reasons sh-wrap">
           <view
             v-for="r in REASONS"
             :key="r"
@@ -219,8 +219,6 @@ onLoad((q) => {
   margin-top: 8rpx;
 }
 .reasons {
-  display: flex;
-  flex-wrap: wrap;
   gap: 16rpx;
   margin-top: 24rpx;
 }
@@ -277,8 +275,6 @@ onLoad((q) => {
   margin-top: 16rpx;
 }
 .node {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   padding: 12rpx 0;
 }

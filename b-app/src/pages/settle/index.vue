@@ -122,11 +122,11 @@ onShow(load);
          就不会有动力把老客带进来 -->
     <view v-if="rate" class="sh-card ratecard">
       <text class="txt-title">{{ $t("settle.rateTitle") }}</text>
-      <view class="ratecard__row">
+      <view class="ratecard__row sh-row sh-row--between">
         <text class="sh-chip sh-chip--primary">{{ $t("order.trafficMERCHANT_OWNED") }}</text>
         <text class="txt-body sh-num">{{ pct(rate.merchantOwnedRate) }}</text>
       </view>
-      <view class="ratecard__row">
+      <view class="ratecard__row sh-row sh-row--between">
         <text class="sh-chip">{{ $t("order.trafficPLATFORM") }}</text>
         <text class="txt-body sh-num">{{ pct(rate.platformRate) }}</text>
       </view>
@@ -139,7 +139,7 @@ onShow(load);
       而不是「本店未开启」—— 后者会让商家去按一个他根本按不动的开关。
     -->
     <view v-if="points" class="sh-card points">
-      <view class="points__head">
+      <view class="points__head sh-row sh-row--between">
         <text class="txt-title">{{ $t("settle.pointsTitle") }}</text>
         <text
           v-if="!points.forced"
@@ -150,7 +150,7 @@ onShow(load);
         <!-- 平台按行业强制开的：显示状态但不给按，按了也没用 -->
         <text v-else class="sh-chip sh-chip--primary">{{ $t("settle.pointsForced") }}</text>
       </view>
-      <view class="points__row">
+      <view class="points__row sh-row sh-row--between sh-row--baseline">
         <text class="sh-muted">{{ $t("settle.pointsExpense", { period: points.period }) }}</text>
         <text class="txt-hero sh-num">{{ money(points.periodExpenseMinor) }}</text>
       </view>
@@ -200,7 +200,7 @@ onShow(load);
       而那些字段后端从来没有过：mock 下好看，连真后端整片空白。
     -->
     <view v-for="b in bills" :key="b.settleNo" class="sh-card bill">
-      <view class="bill__head">
+      <view class="bill__head sh-row sh-row--between">
         <text class="txt-strong sh-num">{{ monthDay(b.createdAt) }}</text>
         <text
           class="sh-chip"
@@ -208,7 +208,7 @@ onShow(load);
         >{{ $t(`settle.status${b.status}`) }}</text>
       </view>
 
-      <view class="bill__amount">
+      <view class="bill__amount sh-row sh-row--between sh-row--baseline">
         <text class="sh-muted">{{ $t("settle.net") }}</text>
         <text class="txt-hero sh-num">{{ money(b.netMinor) }}</text>
       </view>
@@ -249,9 +249,6 @@ onShow(load);
   margin-bottom: 16rpx;
 }
 .ratecard__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-top: 16rpx;
 }
 
@@ -263,15 +260,7 @@ onShow(load);
 .points {
   margin-top: 20rpx;
 }
-.points__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
 .points__row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   margin-top: 16rpx;
 }
 .points__note {
@@ -282,16 +271,8 @@ onShow(load);
 .bill {
   margin-top: 16rpx;
 }
-.bill__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
 
 .bill__amount {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   margin: 24rpx 0;
 }
 

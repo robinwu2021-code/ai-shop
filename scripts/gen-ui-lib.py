@@ -469,8 +469,19 @@ ROLLED = [
     # 之后它是**两件事**：21 处只有 `margin`（那是**列表项之间的缝**，不是行），
     # 16+5+3 处才是横排行。混成一条的后果是「41 页各造一份」这个数字既吓人又没法动手 ——
     # 你不知道该做一个什么件。拆开之后两个件都很小，见 base.css 的 .sh-list / .sh-row。
+    # 2026-08-28 **从判名字改成判声明**（第十六次，而这次是报**少**了）：
+    # 原来只认 `.row` / `.item` 两个名字，而同一个形状在 41 处用了二十来个别的名字
+    # （addr / card__head / cm__head / head / item__head / ends / inline …）。
+    # 判据只盯名字时，改名就能绕过去 —— 而没人是故意绕的，只是各写各的。
     ("listrow", "横排行",         None,
-     r"^\s*\.(?:row|item)\s*\{[^}]*display:\s*flex",                          "sh-row",   ".sh-row"),
+     r"^\s*\.[\w-]+\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*gap:",
+     "sh-row",   ".sh-row"),
+    ("rowbetween","两端对齐行",   None,
+     r"^\s*\.[\w-]+\s*\{[^}]*display:\s*flex;[^}]*justify-content:\s*space-between",
+     "sh-row",   ".sh-row + .sh-row--between"),
+    ("wraprow", "换行横排",       None,
+     r"^\s*\.[\w-]+\s*\{[^}]*display:\s*flex;[^}]*flex-wrap:\s*wrap",
+     "sh-wrap",  ".sh-wrap"),
     # 列表项各自挂 margin，且取值不在间距档上（档是 8/16/28/40/64）。
     # 判据 2026-08-28 收窄成**只看 margin**：上一版只要「.row/.item 规则里没有 display」
     # 就算，于是把 `.row { gap: 20rpx }` 这类**对 `.sh-row` 的局部覆盖**也算了进来 ——
@@ -575,7 +586,7 @@ def block_is_container(css: str, tpl: str = "") -> bool:
     return False
 
 
-def selected_is_chiplike(css: str) -> bool:
+def selected_is_chiplike(css: str, tpl: str = "") -> bool:
     """命中「选中态铺主色」的那些规则里，**至少有一个是 chip 形态**吗。
 
     这一条判据要报的是「库里有 `.sh-chip--primary` / `--solid`，页面却自己画了一份」。
@@ -589,6 +600,13 @@ def selected_is_chiplike(css: str) -> bool:
 
     列表行属于另一笔账：`listrow`（41 页各造一份，库里真的缺这个件）。
     在那个件做出来之前，这两处应当落在**那条缺口**下，而不是被算成「有件不用」。
+
+    2026-08-28 补 `tpl`：`.sh-row` 落地后，这两处的 `display: flex` 与
+    `align-items: center` **从页面 CSS 搬进了库件**，基态规则里只剩背景和内边距 ——
+    判据照旧只读 CSS，于是「它是列表行」这个事实凭空消失，两处又被报成 chip 欠账。
+    **信号换了地方，判据还在原地看**，与 `block_is_container` 当初那次一模一样：
+    收编本身让判据失明，而失明的表现是「修好的东西重新变红」，看着像回归。
+    所以横排与否要**两处都问**：CSS 里自己写的算，模板上挂了 `sh-row` 的也算。
     """
     for m in re.finditer(r"^\s*\.([a-zA-Z0-9_-]+)((?:\.[a-zA-Z0-9_-]+)*)\s*\{([^}]*)\}", css, re.M):
         cls, rest, body = m.group(1), m.group(2), m.group(3)
@@ -602,6 +620,11 @@ def selected_is_chiplike(css: str) -> bool:
         base = re.search(r"^\s*\.%s\s*\{([^}]*)\}" % re.escape(cls), css, re.M)
         base_body = base.group(1) if base else ""
         is_row = ("display: flex" in base_body and "align-items: center" in base_body)
+        if not is_row and tpl:
+            # 模板上 `class="pk sh-row"` —— 横排交给库件了，CSS 里当然看不见
+            is_row = bool(re.search(
+                r'class="[^"]*\b%s\b[^"]*\bsh-row\b' % re.escape(cls), tpl)) or bool(
+                re.search(r'class="[^"]*\bsh-row\b[^"]*\b%s\b' % re.escape(cls), tpl))
         if not is_row:
             return True
     return False
@@ -640,7 +663,7 @@ def read_pages(comps: list[dict], blocks: list[dict]) -> list[dict]:
                   hit = None
               # 「选中态自画」再过一道：命中的若**全都是列表行**，那不是 chip 欠账
               # （见 selected_is_chiplike 的说明；它们归 listrow 那条缺口）
-              if hit and rid == "segment" and not selected_is_chiplike(css):
+              if hit and rid == "segment" and not selected_is_chiplike(css, code):
                   hit = None
               if hit:
                   rolled.append({"id": rid, "label": label, "lib": lib,

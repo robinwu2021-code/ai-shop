@@ -82,7 +82,7 @@ onShow(load);
     <template v-if="staff">
       <!-- ① 认人 -->
       <view class="sh-card">
-        <view class="head">
+        <view class="head sh-row">
           <text class="txt-display">{{ nameOf(staff) }}</text>
           <text v-if="staff.isOwner" class="txt-caption tag tag--primary">{{ $t("staff.owner") }}</text>
           <text v-else-if="staff.status !== 'ACTIVE'" class="txt-caption tag">{{ $t("staff.disabled") }}</text>
@@ -103,7 +103,7 @@ onShow(load);
         <text class="sh-muted sh-hint">{{ $t("staff.grantHint") }}</text>
         <view v-for="st in stores" :key="st.storeNo" class="store">
           <text class="txt-strong">{{ st.name }}</text>
-          <view class="chips">
+          <view class="chips sh-wrap">
             <text
               v-for="r in grantable"
               :key="r.roleCode"
@@ -149,11 +149,6 @@ onShow(load);
 </template>
 
 <style scoped>
-.head {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
 .phone {
   display: block;
   margin-top: 8rpx;
@@ -163,9 +158,6 @@ onShow(load);
   margin: 24rpx 8rpx;
 }
 .chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 16rpx;
 }
 .store {

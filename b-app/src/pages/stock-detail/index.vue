@@ -191,7 +191,7 @@ onShow(load);
 
       <view class="sh-card">
         <text class="field__label">{{ $t("stockDetail.reasonLabel") }}</text>
-        <view class="reasons">
+        <view class="reasons sh-wrap">
           <text
             v-for="r in REASONS"
             :key="r"
@@ -260,10 +260,5 @@ onShow(load);
   display: block;
   text-align: center;
   padding: 16rpx 0;
-}
-.reasons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
 }
 </style>

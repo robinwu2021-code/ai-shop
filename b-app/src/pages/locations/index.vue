@@ -86,10 +86,10 @@ onShow(load);
     <sh-empty v-if="!loading && !rows.length" :text="String($t('locations.empty'))"></sh-empty>
 
     <view v-for="l in rows" :key="l.locationId" class="sh-card sh-mb-sm" @tap="setSource(l)">
-      <view class="row__top">
+      <view class="row__top sh-row">
         <view class="sh-fill">
           <text class="txt-strong row__title">{{ l.name }}</text>
-          <view class="row__meta">
+          <view class="row__meta sh-row">
             <text class="sh-chip" :class="kindClass(l.kind)">
               {{ $t(`locations.kind.${l.kind}`) }}
             </text>
@@ -133,20 +133,14 @@ onShow(load);
 </template>
 
 <style scoped>
-
 .row__top {
-  display: flex;
   gap: 20rpx;
-  align-items: center;
 }
 
 .row__title {
   display: block;
 }
 .row__meta {
-  display: flex;
-  gap: 16rpx;
-  align-items: center;
   margin-top: 8rpx;
 }
 .row__end {

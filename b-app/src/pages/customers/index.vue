@@ -163,7 +163,7 @@ onShow(load);
       顶部一行：门店切换（多店才有）+ 两个入口。
       录入与标签放在这里而不是详情里 —— 它们作用在**整份名单**上，不是某一个人身上。
     -->
-    <view class="bar">
+    <view class="bar sh-row">
       <text v-if="merchant.multiStore" class="sh-chip sh-chip--primary" @tap="pickStore">
         {{ storeNo ? storeName(storeNo) : $t("members.allStores") }} ▾
       </text>
@@ -216,7 +216,7 @@ onShow(load);
       标签筛选。**取交集**：点第二个标签是想收窄。
       筛出来之后可以直接存成人群 —— 条件在哪儿筛就在哪儿存。
     -->
-    <view v-if="tags.length" class="tagbar">
+    <view v-if="tags.length" class="tagbar sh-wrap">
       <text
         v-for="tg in tags"
         :key="tg.tagNo"
@@ -251,7 +251,7 @@ onShow(load);
 
     <view v-for="m in list" :key="m.memberNo" class="sh-row sh-card sh-mt-sm" @tap="open(m)">
       <view class="sh-fill">
-        <view class="row__head">
+        <view class="row__head sh-row">
           <text class="txt-strong">···{{ m.phoneTail || "----" }}</text>
           <text v-if="m.level" class="sh-chip" :class="levelClass(m.level)">
             {{ $t(`members.level.${m.level}`) }}
@@ -287,15 +287,10 @@ onShow(load);
 
 <style scoped>
 .bar {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
   margin-bottom: 12rpx;
 }
 .tagbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 16rpx;
 }
 .settings {
@@ -320,8 +315,6 @@ onShow(load);
 }
 
 .row__head {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
   margin-bottom: 8rpx;
 }
@@ -330,5 +323,4 @@ onShow(load);
 .row__main .sh-muted {
   display: block;
 }
-
 </style>

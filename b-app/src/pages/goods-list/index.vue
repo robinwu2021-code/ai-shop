@@ -443,7 +443,7 @@ onShow(() => {
 
       搜索排在最前，是因为商品一多，「找某一个」比「筛一批」高频得多。
     -->
-    <view class="search">
+    <view class="search sh-row">
       <input
         maxlength="32"
         class="txt-sub search__input"
@@ -456,7 +456,7 @@ onShow(() => {
         color="var(--sh-sub)" @tap="clearSearch"></sh-icon-btn>
     </view>
 
-    <view class="bar">
+    <view class="bar sh-row sh-row--between">
       <!-- 必须套一层容器：sh-tabs 是**多根组件**（v-if/v-else 两个根），
            Vue 3 下 class 无法透传到 fragment 根上，写在组件标签上会被静默丢弃 -->
       <view class="sh-fill">
@@ -523,7 +523,7 @@ onShow(() => {
       按钮多一个少一个都不再影响上面那行的可读性。
     -->
     <view v-for="g in list" :key="g.goodsNo" class="sh-card sh-mb-sm">
-      <view class="row__top">
+      <view class="row__top sh-row">
         <sh-cover class="row__cover" :src="g.cover"></sh-cover>
         <view class="sh-fill">
           <text class="txt-strong row__title">{{ g.title }}</text>
@@ -534,7 +534,7 @@ onShow(() => {
             </text>
           </view>
         </view>
-        <view class="state" :class="'state--' + stateOf(g)">
+        <view class="state sh-row" :class="'state--' + stateOf(g)">
           <text class="state__dot"></text>
           <text class="txt-caption state__txt">{{ $t(`goods.status${stateOf(g)}`) }}</text>
         </view>
@@ -552,7 +552,7 @@ onShow(() => {
         <text v-if="SHOW_CATEGORY_GATE && gateOf(g)" class="txt-caption reason reason--gate">
           {{ $t("goods.gateRow") }}
         </text>
-        <view class="row__btns">
+        <view class="row__btns sh-wrap">
           <!-- 编辑与上下架都会改价/改可见性 → biz:goods；改库存只是数量 → biz:stock。
                这条缝就是店员的权限边界：卖完了能马上改数，但改不了价 -->
           <text v-if="merchant.can('biz:goods')" class="txt-caption mini" @tap="edit(g)">
@@ -648,8 +648,6 @@ onShow(() => {
 <style scoped>
 /* 搜索：贴着筛选条，不套卡片 —— 它是这一页的工具，不是一条内容 */
 .search {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
   padding: 0 24rpx;
   margin-bottom: 16rpx;
@@ -684,9 +682,6 @@ onShow(() => {
   background: var(--sh-warning-tint);
 }
 .bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-bottom: 16rpx;
 }
 /*
@@ -726,9 +721,7 @@ onShow(() => {
 
 /* 上段：图 + 名/价 + 状态。状态贴右，名字吃掉中间所有剩余宽度 */
 .row__top {
-  display: flex;
   gap: 20rpx;
-  align-items: center;
 }
 .row__cover {
   font-size: 60rpx;
@@ -774,8 +767,6 @@ onShow(() => {
    原先它和「编辑/改库存」同样是灰底圆角：一屏六行、每行三个圆角块，
    人得逐个试才知道哪个能按。状态是状态，不是动作。 */
 .state {
-  display: flex;
-  align-items: center;
   gap: 8rpx;
   flex: none;
 }
@@ -807,10 +798,7 @@ onShow(() => {
 /* 按钮整宽一行、允许换行：四个按钮在 375 宽下正好排得下，
    五个（将来再加）就换行，而不是把上面那行挤没 */
 .row__btns {
-  display: flex;
-  flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 12rpx;
   margin-top: 16rpx;
 }
 .mini {

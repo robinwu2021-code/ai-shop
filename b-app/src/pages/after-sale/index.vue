@@ -113,11 +113,11 @@ onShow(load);
     <sh-empty v-if="!list.length" :text='$t("afterSale.empty")'></sh-empty>
 
     <view v-for="r in list" :key="r.as.afterSaleNo" class="sh-card sh-mt-sm">
-      <view class="item__head">
+      <view class="item__head sh-row sh-row--between sh-row--baseline">
         <text class="txt-body">{{ r.order?.buyerNickname || "—" }}</text>
         <text class="sh-muted">{{ datetime(r.as.updatedAt) }}</text>
       </view>
-      <view class="item__tags">
+      <view class="item__tags sh-row">
         <text class="sh-chip">{{ $t(`afterSale.type${asType(r)}`) }}</text>
         <text class="txt-caption sh-muted sh-num item__no">{{ r.as.subOrderNo }}</text>
       </view>
@@ -125,7 +125,7 @@ onShow(load);
         {{ $t("afterSale.buyerReason") }}{{ r.as.reason }}
       </text>
 
-      <view class="goods">
+      <view class="goods sh-wrap">
         <text v-for="it in r.order?.items || []" :key="it.skuNo" class="sh-chip">
           {{ it.title }} ×{{ it.qty }}
         </text>
@@ -135,7 +135,7 @@ onShow(load);
            一张子订单可以只退其中一件，也可以先后发起多次。
            也因此不再挂 `v-if="r.order"` —— 订单没匹配上时，
            退款金额这一行照样该出现，那是这一页最要紧的一个数。 -->
-      <view class="item__amount">
+      <view class="item__amount sh-row sh-row--between sh-row--baseline">
         <text class="sh-muted">{{ $t("afterSale.refundAmount") }}</text>
         <text class="txt-price sh-num amount">
           {{ money(r.as.refundMinor, r.order?.amount.currency) }}
@@ -149,7 +149,7 @@ onShow(load);
           :placeholder="$t('afterSale.reasonPh')"
           maxlength="80"
         />
-        <view class="btns">
+        <view class="btns sh-row">
           <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="rejecting = ''">{{ $t("common.cancel") }}</text>
           <text class="sh-btn sh-btn--sm sh-btn--danger-solid txt-strong btn" @tap="reject(r)">{{ $t("afterSale.confirmReject") }}</text>
         </view>
@@ -157,7 +157,7 @@ onShow(load);
 
       <!-- 按售后状态给动作。后端没有独立的「等寄回 / 已收货」两态：
            同意即 REFUNDING，是否已寄回看 returnExpressNo 有没有值 -->
-      <view v-else-if="asStatus(r) === 'APPLIED'" class="btns">
+      <view v-else-if="asStatus(r) === 'APPLIED'" class="btns sh-row">
         <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="rejecting = r.as.afterSaleNo">
           {{ $t("afterSale.reject") }}
         </text>
@@ -175,7 +175,7 @@ onShow(load);
 
       <view
         v-else-if="asStatus(r) === 'REFUNDING' && asType(r) === 'RETURN_REFUND'"
-        class="btns"
+        class="btns sh-row"
       >
         <view class="express sh-fill">
           <text class="sh-muted">{{ $t("afterSale.returnExpress") }}</text>
@@ -211,8 +211,6 @@ onShow(load);
 
 <style scoped>
 .item__tags {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
 }
 .reason {
@@ -243,26 +241,14 @@ onShow(load);
   display: block;
 }
 
-.item__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
 .item__no {
   display: block;
   margin-top: 4rpx;
 }
 .goods {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin: 20rpx 0;
 }
 .item__amount {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   padding: 20rpx 0;
 }
 .amount {
@@ -274,9 +260,6 @@ onShow(load);
  * 而 `border-radius: 9999px` 在被拉高的盒子上不再是药丸，是椭圆。
  */
 .btns {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   margin-top: 20rpx;
 }
 .btn {

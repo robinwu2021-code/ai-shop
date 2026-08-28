@@ -282,7 +282,7 @@ onShow(load);
         开张之后卡在哪，这里直说。**只在有问题时出现** ——
         全通过还挂一张绿卡，是每天都要划过去的噪音。
       -->
-      <view v-for="b in blockers" :key="b.key" class="blocker" @tap="open(b.route)">
+      <view v-for="b in blockers" :key="b.key" class="blocker sh-row" @tap="open(b.route)">
         <view class="sh-fill">
           <text class="txt-strong blocker__t">{{ $t(`home.blocker.${b.key}`) }}</text>
           <text class="txt-caption blocker__d">{{ $t(`home.blockerHint.${b.key}`) }}</text>
@@ -290,10 +290,10 @@ onShow(load);
         <text class="txt-caption blocker__go">{{ $t("home.blockerGo") }}</text>
       </view>
 
-      <view class="grid">
-        <view v-for="c in cells" :key="c.key" class="sh-card grid__cell" @tap="open(c.route)">
-          <text class="txt-hero grid__n sh-num" :class="{ 'is-zero': !c.n }">{{ c.n }}</text>
-          <text class="txt-caption grid__label">{{ $t(`home.${c.key}`) }}</text>
+      <view class="tiles sh-wrap">
+        <view v-for="c in cells" :key="c.key" class="sh-card tiles__cell" @tap="open(c.route)">
+          <text class="txt-hero tiles__n sh-num" :class="{ 'is-zero': !c.n }">{{ c.n }}</text>
+          <text class="txt-caption tiles__label">{{ $t(`home.${c.key}`) }}</text>
         </view>
       </view>
 
@@ -308,7 +308,7 @@ onShow(load);
         下面三个是他每天真正要做的动作，直达，不用先进库存页再找。
       -->
       <view v-if="stockSummary && merchant.can('biz:stock')" class="sh-card inv">
-        <view class="inv__head" @tap="open(ROUTES.stock)">
+        <view class="inv__head sh-row sh-row--between sh-row--baseline" @tap="open(ROUTES.stock)">
           <text class="txt-title">{{ $t("home.inv.title") }}</text>
           <sh-go :text="String($t('home.inv.all'))"></sh-go>
         </view>
@@ -353,10 +353,9 @@ onShow(load);
         </view>
       </view>
 
-
       <!-- 自带客流占比：这是商家最该关心的数字，它直接决定费率档（ADR-004 §6） -->
       <view v-if="stats" class="sh-card owned">
-        <view class="owned__row">
+        <view class="owned__row sh-row sh-row--between sh-row--baseline">
           <text class="txt-title">{{ $t("home.ownedTraffic") }}</text>
           <text class="txt-display owned__v sh-num">{{ ownedRate }}</text>
         </view>
@@ -400,7 +399,7 @@ onShow(load);
       </view>
 
       <!-- 拆两页（方案 v3）：范围与送货是开店的两个决策；装修与获客是日常内容 -->
-      <view v-if="merchant.can('biz:store')" class="sh-card entry entry--kv" @tap="open(ROUTES.storeNotice)">
+      <view v-if="merchant.can('biz:store')" class="sh-card entry entry--kv sh-row sh-row--between" @tap="open(ROUTES.storeNotice)">
         <text class="txt-title">{{ $t("home.noticeEntry") }}</text>
         <text v-if="noticeValue" class="txt-caption entry__v sh-fill">{{ noticeValue }}</text>
       </view>
@@ -439,12 +438,6 @@ onShow(load);
         <text class="sh-muted">{{ $t("home.skuIdentityEntryHint") }}</text>
       </view>
 
-
-
-
-
-
-
       <view v-if="merchant.can('biz:campaign')" class="sh-card entry" @tap="open(ROUTES.marketing)">
         <text class="txt-title">{{ $t("home.marketingEntry") }}</text>
       </view>
@@ -469,9 +462,6 @@ onShow(load);
   margin-top: 28rpx;
 }
 .blocker {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   margin-top: 16rpx;
   padding: 24rpx;
   border-radius: 32rpx;
@@ -491,40 +481,33 @@ onShow(load);
   flex-shrink: 0;
   color: var(--sh-primary-text);
 }
-.grid {
-  display: flex;
-  flex-wrap: wrap;
+.tiles {
   gap: 16rpx;
   margin: 20rpx 0;
 }
 /* 面色与圆角交给 `.sh-card`。**内边距留在这里是有意的**：
    三列排布下格子只有 ~110px 宽，卡片档的 24rpx 会把两位数的数字挤到换行。
    用积木 + 覆盖一条，比整张卡照抄一遍强 —— 覆盖的那条一眼看得出是特例。 */
-.grid__cell {
+.tiles__cell {
   flex: 1 1 calc(33.33% - 14rpx);
   min-width: calc(33.33% - 14rpx);
   padding: 20rpx 16rpx;
   text-align: center;
 }
-.grid__n {
+.tiles__n {
   display: block;
   color: var(--sh-primary-text);
 }
-.grid__n.is-zero {
+.tiles__n.is-zero {
   color: var(--sh-faint);
 }
-.grid__label {
+.tiles__label {
   display: block;
   margin-top: 8rpx;
 }
 /* 进销存卡：三个数 + 三个直达动作。与 .stats 同一套骨架，但多一行动作条 */
 .inv {
   margin-bottom: 16rpx;
-}
-.inv__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
 }
 .inv__row {
   display: flex;
@@ -576,9 +559,6 @@ onShow(load);
   background: var(--sh-primary-tint);
 }
 .owned__row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   margin-bottom: 12rpx;
 }
 .owned__v {
@@ -589,12 +569,6 @@ onShow(load);
   margin-bottom: 12rpx;
 }
 /* 带右值的入口：标题在左、现状在右。右边那句可能被挤，所以给它单独收缩 */
-.entry--kv {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-}
 .fulfill__title {
   display: block;
 }

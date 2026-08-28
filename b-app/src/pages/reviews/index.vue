@@ -95,7 +95,7 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="reviews.title" :denied="!merchant.can('biz:review')">
-    <view class="head">
+    <view class="head sh-row sh-row--between">
       <text class="txt-display">{{ $t("reviews.title") }}</text>
       <text v-if="pending" class="sh-chip sh-chip--warning">
         {{ $t("reviews.pending", { n: pending }) }}
@@ -105,7 +105,7 @@ onShow(load);
     <sh-empty v-if="!list.length" :text='$t("reviews.empty")'></sh-empty>
 
     <view v-for="r in sorted" :key="r.reviewNo" class="sh-card sh-mt-sm">
-      <view class="item__head">
+      <view class="item__head sh-row sh-row--between">
         <text class="txt-strong">{{ r.avatar }} {{ r.nickname }}</text>
         <!-- single-review：这是**某个人给的星数**，不是聚合评分，不需要 ratingCount 护栏 -->
         <sh-rating :value="r.rating" :size="24"></sh-rating>
@@ -208,18 +208,6 @@ onShow(load);
   display: flex;
   gap: 28rpx;
   margin-top: 16rpx;
-}
-
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.item__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 
 .item__meta {

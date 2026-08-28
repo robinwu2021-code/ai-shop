@@ -50,7 +50,22 @@ NON_TEXT = re.compile(
     # 打分要交互，页面自己画是对的）；`\bimg\b` 是 150rpx 的方形图占位
     r"|imgs__|__wait\b|star|fav\b|\bimg\b)", re.I)
 
-KIND = ["字号自写", "字号越档", "字重自写", "字重越档", "行高自写", "圆角越档", "间距离格", "写死颜色"]
+# 与 UnoCSS 工具类**同名**的页面类名。收编到 `.sh-row` / `.sh-wrap` / `.sh-center`
+# 之后，横排是靠**全局**的库件给的（权重 0-1-0），而页面自己的 scoped 规则是
+# 0-2-0 —— 原先页面写 `display: flex` 时，它稳压 UnoCSS 的 `.inline{display:inline}`；
+# 收编后 flex 来自库件，与 UnoCSS 打平，**后加载的赢**，于是横排静默失效。
+#
+# 2026-08-28 goods-edit 的 `.inline`（3 处）与 home 的 `.grid`（1 处）就是这样断的：
+# 类名、CSS、模板三边看着都对，vue-tsc 与自造件闸门全绿，**只有在浏览器里量
+# computed display 才看得见**。已改名成 `.fieldrow` / `.tiles`。
+#
+# 名单只列 UnoCSS 里**改 display / position 的单词工具类** —— 那些才会与库件抢同
+# 一个属性。`row` / `hero` 这类不是工具类，不必回避（当时一并查过，无全局同名规则）。
+UNO_COLLIDE = {"inline", "block", "flex", "grid", "table", "contents", "hidden",
+               "static", "fixed", "absolute", "relative", "sticky", "flow-root",
+               "inline-block", "inline-flex", "inline-grid", "inline-table"}
+
+KIND = ["字号自写", "字号越档", "字重自写", "字重越档", "行高自写", "圆角越档", "间距离格", "写死颜色", "撞工具类"]
 
 
 def scan(app: str):
@@ -98,6 +113,14 @@ def scan(app: str):
                 c["写死颜色"] += 1
                 detail["写死颜色"].append(m.group(1))
         c["行高自写"] = len(re.findall(r"line-height:", css))
+        # 撞 UnoCSS 工具类：只在**该元素同时挂着库件**时才算欠账 ——
+        # 页面自己写全 display 的老写法压得住工具类，不算错；断的是收编过的那些。
+        tpl = s[:s.index("<style")]
+        for m in re.finditer(r'class="([^"]*\bsh-(?:row|wrap|center)\b[^"]*)"', tpl):
+            for cls in m.group(1).split():
+                if cls in UNO_COLLIDE:
+                    c["撞工具类"] += 1
+                    detail["撞工具类"].append(cls)
         rows.append({"app": app, "page": f.parent.name, "file": str(f.relative_to(ROOT)),
                      "counts": c, "detail": {k: collections.Counter(v).most_common(4) for k, v in detail.items()},
                      "total": sum(c[k] for k in KIND)})
@@ -121,7 +144,8 @@ def main():
     RULE = {"字号自写": "应走 .txt-* / .sh-muted / .sh-hint", "字号越档": f"字阶只有 {len(TYPE)} 档",
             "字重自写": "应由字阶带出", "字重越档": "只有 400 / 600 / 700",
             "圆角越档": "只有 16/24/32/44rpx / full", "间距离格": "落在 4rpx 网格上（2rpx 发丝线除外）",
-            "写死颜色": "一律走 --sh-*", "行高自写": "字阶自带行高"}
+            "写死颜色": "一律走 --sh-*", "行高自写": "字阶自带行高",
+            "撞工具类": "库件靠全局类给横排，与 UnoCSS 同名会被后加载的压掉"}
     for k in KIND:
         print(f"| {k} | {tot[k]} | {RULE[k]} |")
     if a.check:

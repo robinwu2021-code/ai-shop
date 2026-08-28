@@ -109,25 +109,25 @@ onLoad((q) => {
   <sh-scaffold title-key="order.detail" :denied="!merchant.can('biz:order:view')">
     <template v-if="order">
       <view class="sh-card">
-        <view class="line">
+        <view class="line sh-row sh-row--between">
           <text class="sh-muted">{{ $t("order.no") }}</text>
           <text class="sh-num">{{ order.orderNo }}</text>
         </view>
-        <view class="line">
+        <view class="line sh-row sh-row--between">
           <text class="sh-muted">{{ $t("order.createdAt") }}</text>
           <text class="sh-num">{{ datetime(order.createdAt) }}</text>
         </view>
-        <view class="line">
+        <view class="line sh-row sh-row--between">
           <text class="sh-muted">{{ $t("order.fulfillment") }}</text>
           <!-- **不要直接渲染枚举**：店主看到的是「快递配送」，不是 EXPRESS。
                与权限码、角色码同一条规矩，这里是最后一处漏网的 -->
           <text>{{ $t(`fulfillmentLabel.${order.fulfillment}`) }}</text>
         </view>
-        <view class="line">
+        <view class="line sh-row sh-row--between">
           <text class="sh-muted">{{ $t("order.buyer") }}</text>
           <text>{{ order.buyerNickname || "—" }}</text>
         </view>
-        <view v-if="order.trafficSource" class="line">
+        <view v-if="order.trafficSource" class="line sh-row sh-row--between">
           <text class="sh-muted">{{ $t("home.ownedTraffic") }}</text>
           <text class="sh-chip sh-chip--primary">
             {{ $t(`order.traffic${order.trafficSource}`) }}
@@ -138,7 +138,7 @@ onLoad((q) => {
           手机号的脱敏程度后端已经按履约方式定好了，这里原样显示 ——
           端上再判一次就是第二套规则。
         -->
-        <view v-if="order.receiver?.address" class="line line--wrap">
+        <view v-if="order.receiver?.address" class="line line--wrap sh-row sh-row--between">
           <text class="sh-muted">{{ $t("order.receiver") }}</text>
           <view class="recv sh-fill">
             <text class="txt-body recv__who">
@@ -160,7 +160,7 @@ onLoad((q) => {
           </view>
           <text class="sh-num">{{ money(it.price, order.amount.currency) }}</text>
         </view>
-        <view class="line total">
+        <view class="line total sh-row sh-row--between">
           <text class="sh-muted">{{ $t("order.amount") }}</text>
           <text class="txt-title sh-num">
             {{ money(order.amount.payableMinor, order.amount.currency) }}
@@ -199,7 +199,7 @@ onLoad((q) => {
       </view>
 
       <view v-if="order.expressNo" class="sh-card sh-mt-sm">
-        <view class="line">
+        <view class="line sh-row sh-row--between">
           <text class="sh-muted">{{ $t("order.expressNo") }}</text>
           <text class="sh-num">{{ order.expressNo }}</text>
         </view>
@@ -235,9 +235,6 @@ onLoad((q) => {
 
 <style scoped>
 .line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 10rpx 0;
 }
 /* 地址是长文本，跟着基线对齐会把标签顶歪 */
@@ -290,5 +287,4 @@ onLoad((q) => {
   display: block;
   margin-top: 16rpx;
 }
-
 </style>

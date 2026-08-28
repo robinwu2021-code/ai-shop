@@ -1514,7 +1514,6 @@ function close() {
   color: var(--sh-ink);
 }
 
-
 /* 已选清单：标题栏右侧「展开」出来的那个浮层，误点很容易，要有个当场能删的地方 */
 .chosen {
   margin: 0 24rpx 16rpx;

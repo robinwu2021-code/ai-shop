@@ -211,7 +211,7 @@ function at(iso?: string): string {
       <sh-empty v-else-if="!visible.length" :text="String($t('stockCheck.searchEmpty'))"></sh-empty>
 
       <view v-for="b in visible" :key="b.itemId" class="sh-card sh-mb-sm" @tap="toggle(b.itemId)">
-        <view class="row__top">
+        <view class="row__top sh-row">
           <!-- 勾选由整行接管（点一行就选中），sh-check 只负责画 -->
           <sh-check :model-value="picked.includes(b.itemId)"></sh-check>
           <view class="sh-fill">
@@ -233,7 +233,7 @@ function at(iso?: string): string {
     <!-- ② 已开单：填实盘数 -->
     <template v-else>
       <view class="sh-card">
-        <view class="hd">
+        <view class="hd sh-row sh-row--between">
           <text class="txt-strong sh-num">{{ doc.countNo }}</text>
           <text class="sh-chip sh-chip--warning">{{ $t("stockCheck.counting") }}</text>
         </view>
@@ -241,10 +241,10 @@ function at(iso?: string): string {
       </view>
 
       <view v-for="l in doc.lines" :key="l.itemId" class="sh-card sh-mb-sm">
-        <view class="row__top">
+        <view class="row__top sh-row">
           <view class="sh-fill">
             <text class="txt-strong row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
-            <view class="row__meta">
+            <view class="row__meta sh-row">
               <text class="sh-muted sh-num">{{ $t("stockCheck.bookN", { n: l.bookQty }) }}</text>
               <text
                 v-if="(diff(l.itemId, l.bookQty) ?? 0) !== 0"
@@ -272,7 +272,7 @@ function at(iso?: string): string {
       <!-- 原因只在真有差异时才问 -->
       <view v-if="hasDiff" class="sh-card">
         <text class="field__label">{{ $t("stockCheck.reasonLabel") }}</text>
-        <view class="reasons">
+        <view class="reasons sh-wrap">
           <text
             v-for="r in REASONS"
             :key="r"
@@ -285,7 +285,7 @@ function at(iso?: string): string {
         </view>
       </view>
 
-      <view class="sh-card hd">
+      <view class="sh-card hd sh-row sh-row--between">
         <text class="txt-strong">{{ $t("stockCheck.totalDiff") }}</text>
         <text class="txt-display sh-num" :class="diffClass(totalDiff)">
           {{ diffText(totalDiff) }}
@@ -305,20 +305,14 @@ function at(iso?: string): string {
 </template>
 
 <style scoped>
-
 .row__top {
-  display: flex;
   gap: 20rpx;
-  align-items: center;
 }
 
 .row__title {
   display: block;
 }
 .row__meta {
-  display: flex;
-  gap: 16rpx;
-  align-items: center;
   margin-top: 8rpx;
 }
 .row__end {
@@ -330,16 +324,6 @@ function at(iso?: string): string {
   width: 144rpx;
   text-align: right;
   flex: none;
-}
-.hd {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.reasons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
 }
 .hint {
   padding: 0 4rpx;

@@ -62,7 +62,7 @@ onShow(() => {
         而底下是桩实现，那些钱一分都没动过，商家却以为收到了。
       -->
       <view v-if="sum.inFlightMinor > 0" class="sh-card sh-mt-sm hold">
-        <view class="line">
+        <view class="line sh-row sh-row--between sh-row--baseline">
           <text class="sh-muted">{{ $t("income.inFlight") }}</text>
           <text class="txt-price sh-num">{{ money(sum.inFlightMinor) }}</text>
         </view>
@@ -76,7 +76,7 @@ onShow(() => {
       </view>
 
       <view class="sh-card sh-mt-sm">
-        <view class="line">
+        <view class="line sh-row sh-row--between sh-row--baseline">
           <text class="sh-muted">{{ $t("income.pending") }}</text>
           <text class="txt-price sh-num">{{ money(sum.pendingMinor) }}</text>
         </view>
@@ -88,7 +88,7 @@ onShow(() => {
         不显示的话，他会以为平台还欠着这笔；混进「待结算」更糟。
       -->
       <view v-if="sum.offlineMinor > 0" class="sh-card sh-mt-sm">
-        <view class="line">
+        <view class="line sh-row sh-row--between sh-row--baseline">
           <text class="sh-muted">{{ $t("income.offline") }}</text>
           <text class="txt-price sh-num">{{ money(sum.offlineMinor) }}</text>
         </view>
@@ -106,11 +106,6 @@ onShow(() => {
 .amt {
   display: block;
   margin-top: 8rpx;
-}
-.line {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
 }
 /* 同一页上比 .amt 小一档的金额（在途/待结/线下），名字要说清它是钱 */
 

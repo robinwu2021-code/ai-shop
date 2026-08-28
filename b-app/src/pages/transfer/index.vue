@@ -180,7 +180,7 @@ onShow(load);
   <sh-scaffold title-key="transfer.title" :denied="!merchant.can('biz:stock')">
     <!-- ① 已有单：看状态、收货 -->
     <template v-if="doc">
-      <view class="sh-card ends">
+      <view class="sh-card ends sh-row">
         <view class="end">
           <text class="txt-caption">{{ $t("transfer.from") }}</text>
           <text class="txt-title">{{ doc.fromLocationName || doc.fromLocationId }}</text>
@@ -193,7 +193,7 @@ onShow(load);
       </view>
 
       <view class="sh-card">
-        <view class="hd">
+        <view class="hd sh-row sh-row--between">
           <text class="txt-strong sh-num">{{ doc.transferNo }}</text>
           <text
             class="sh-chip"
@@ -213,7 +213,7 @@ onShow(load);
       <sh-empty v-if="!doc.lines.length" :text="String($t('transfer.notShipped'))"></sh-empty>
 
       <view v-for="l in doc.lines" :key="l.itemId" class="sh-card sh-mb-sm">
-        <view class="row__top">
+        <view class="row__top sh-row">
           <view class="sh-fill">
             <text class="txt-strong row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
           </view>
@@ -258,7 +258,7 @@ onShow(load);
       <sh-empty v-if="!lines.length" :text="String($t('transfer.noLines'))"></sh-empty>
 
       <view v-for="l in lines" :key="l.itemId" class="sh-card sh-mb-sm">
-        <view class="row__top">
+        <view class="row__top sh-row">
           <view class="sh-fill">
             <text class="txt-strong row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
             <text class="sh-muted sh-num">{{ $t("transfer.availableN", { n: l.available }) }}</text>
@@ -269,7 +269,7 @@ onShow(load);
 
       <sh-add :text="String($t('transfer.addItem'))" @tap="showPick = true"></sh-add>
 
-      <view v-if="lines.length" class="sh-card hd">
+      <view v-if="lines.length" class="sh-card hd sh-row sh-row--between">
         <text class="txt-strong">{{ $t("transfer.totalQty") }}</text>
         <text class="txt-display sh-num">{{ totalQty }}</text>
       </view>
@@ -284,7 +284,7 @@ onShow(load);
         :title="String($t('transfer.addItem'))"
         @close="showPick = false"
       >
-        <view v-for="b in pickable" :key="b.itemId" class="pick" @tap="addLine(b)">
+        <view v-for="b in pickable" :key="b.itemId" class="pick sh-row sh-row--between sh-row--baseline" @tap="addLine(b)">
           <text class="txt-body">{{ b.name }}{{ b.specText ? ` · ${b.specText}` : "" }}</text>
           <text class="sh-muted sh-num">{{ $t("transfer.availableN", { n: b.available }) }}</text>
         </view>
@@ -295,8 +295,6 @@ onShow(load);
 
 <style scoped>
 .ends {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
 }
 .end {
@@ -310,9 +308,7 @@ onShow(load);
 }
 
 .row__top {
-  display: flex;
   gap: 20rpx;
-  align-items: center;
 }
 
 .row__title {
@@ -323,11 +319,6 @@ onShow(load);
   text-align: right;
   flex: none;
 }
-.hd {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
 .hint {
   padding: 0 4rpx;
 }
@@ -335,9 +326,6 @@ onShow(load);
   color: var(--sh-warning);
 }
 .pick {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   padding: 20rpx 0;
 }
 </style>

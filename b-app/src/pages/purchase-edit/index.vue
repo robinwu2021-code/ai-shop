@@ -157,7 +157,7 @@ onShow(load);
     <sh-empty v-if="!lines.length" :text="String($t('purchase.noLines'))"></sh-empty>
 
     <view v-for="l in lines" :key="l.itemId" class="sh-card sh-mb-sm">
-      <view class="row__top">
+      <view class="row__top sh-row">
         <view class="sh-fill">
           <text class="txt-strong row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
           <view class="row__meta">
@@ -180,7 +180,7 @@ onShow(load);
 
     <sh-add :text="String($t('purchase.addItem'))" @tap="showPick = true"></sh-add>
 
-    <view v-if="lines.length" class="sh-card hd">
+    <view v-if="lines.length" class="sh-card hd sh-row sh-row--between">
       <text class="txt-strong">{{ $t("purchase.total") }}</text>
       <text class="txt-price sh-num">¥{{ yuan(totalMinor) }}</text>
     </view>
@@ -203,7 +203,7 @@ onShow(load);
     <text class="sh-hint hint">{{ $t("purchase.postHint") }}</text>
 
     <sh-sheet :visible="showPick" :title="String($t('purchase.addItem'))" @close="showPick = false">
-      <view v-for="b in pickable" :key="b.itemId" class="pick" @tap="addLine(b)">
+      <view v-for="b in pickable" :key="b.itemId" class="pick sh-row sh-row--between sh-row--baseline" @tap="addLine(b)">
         <text class="txt-body">{{ b.name }}{{ b.specText ? ` · ${b.specText}` : "" }}</text>
         <text class="sh-muted sh-num">{{ $t("purchase.onHandN", { n: b.onHand }) }}</text>
       </view>
@@ -212,11 +212,8 @@ onShow(load);
 </template>
 
 <style scoped>
-
 .row__top {
-  display: flex;
   gap: 20rpx;
-  align-items: center;
 }
 
 .row__title {
@@ -234,11 +231,6 @@ onShow(load);
 .row__end > text {
   display: block;
 }
-.hd {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
 .btns {
   display: flex;
   gap: 20rpx;
@@ -251,9 +243,6 @@ onShow(load);
   padding: 0 4rpx;
 }
 .pick {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   padding: 20rpx 0;
 }
 </style>

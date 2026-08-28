@@ -235,7 +235,7 @@ onShow(load);
         maxlength="60"
       />
 
-      <view class="ttl">
+      <view class="ttl sh-row">
         <text
           v-for="o in TTL_OPTIONS"
           :key="o.key"
@@ -249,7 +249,7 @@ onShow(load);
       <!-- 同时发到：只有多店主体看得到。默认不勾 —— 见 alsoStoreNos 上的说明 -->
       <view v-if="BACKEND_READY && otherStores.length" class="also">
         <text class="txt-caption also__label">{{ $t("store.noticeAlso") }}</text>
-        <view class="also__opts">
+        <view class="also__opts sh-wrap">
           <text
             v-for="o in otherStores"
             :key="o.storeNo"
@@ -273,7 +273,7 @@ onShow(load);
       看不到它的话，商家读到的是「已发布」而店铺页上什么都没变。
     -->
     <view v-if="pending" class="sh-card sh-mt-md pend">
-      <view class="pend__top">
+      <view class="pend__top sh-row sh-row--between">
         <text class="txt-strong pend__tag">{{ $t("store.noticeAuditing") }}</text>
         <text class="txt-caption">{{ pendingAt }}</text>
       </view>
@@ -285,7 +285,7 @@ onShow(load);
     <view v-if="recent.length" class="sh-card sh-mt-md">
       <text class="txt-sub field__label">{{ $t("store.noticeRecent") }}</text>
       <view class="recent">
-        <view v-for="(r, i) in recent" :key="i" class="recent__row">
+        <view v-for="(r, i) in recent" :key="i" class="recent__row sh-row">
           <text class="txt-sub recent__i sh-fill" @tap="text = r">{{ r }}</text>
           <sh-icon-btn v-if="BACKEND_READY" name="close" @tap="dropRecent(r)"></sh-icon-btn>
         </view>
@@ -303,15 +303,10 @@ onShow(load);
   display: block;
 }
 .also__opts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 12rpx;
 }
 /* 有效期三档：分段小胶囊，选中靠主色底 —— 不做成按钮，它是「同一件事的三种时长」 */
 .ttl {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
   margin-top: 16rpx;
 }
@@ -336,11 +331,6 @@ onShow(load);
 .pend {
   background: var(--sh-primary-tint);
 }
-.pend__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
 .pend__tag {
   color: var(--sh-primary-text);
 }
@@ -364,8 +354,6 @@ onShow(load);
   gap: 12rpx;
 }
 .recent__row {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
 }
 .recent__i {

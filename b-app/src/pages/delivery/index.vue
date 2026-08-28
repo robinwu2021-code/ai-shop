@@ -138,7 +138,7 @@ onShow(load);
       <view class="sh-btn sh-btn--soft save" @tap="saveRule">{{ $t("common.save") }}</view>
     </view>
 
-    <view class="list-head">
+    <view class="list-head sh-row sh-row--between sh-row--baseline">
       <text class="txt-title">{{ $t("delivery.pending") }}</text>
       <text class="sh-muted sh-num">{{ pending.length }}</text>
     </view>
@@ -155,7 +155,7 @@ onShow(load);
         <text class="txt-strong row__buyer">{{ o.receiver?.name || o.buyerNickname || "—" }}</text>
         <text v-if="o.receiver?.address" class="txt-body row__addr">{{ o.receiver.address }}</text>
         <text v-else class="txt-body row__addr row__addr--none">{{ $t("delivery.noAddress") }}</text>
-        <view class="row__sub">
+        <view class="row__sub sh-row">
           <text class="sh-muted sh-num">{{ o.orderNo }}</text>
           <text v-if="o.receiver?.phone" class="txt-strong row__tel sh-num" @tap="call(o)">
             {{ o.receiver.phone }}
@@ -177,14 +177,10 @@ onShow(load);
 </template>
 
 <style scoped>
-
 .save {
   margin-top: 24rpx;
 }
 .list-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   margin: 32rpx 8rpx 16rpx;
 }
 .row {
@@ -202,9 +198,6 @@ onShow(load);
   color: var(--sh-sub);
 }
 .row__sub {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   margin-top: 8rpx;
 }
 .row__tel {

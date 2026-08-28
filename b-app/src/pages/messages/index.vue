@@ -44,7 +44,7 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="message.title">
-    <view class="head">
+    <view class="head sh-row">
       <sh-tabs
         class="sh-fill"
         :items="TABS.map((t) => ({ key: t.key, label: String($t(`message.tab.${t.key}`)) }))"
@@ -57,7 +57,7 @@ onShow(load);
     <view v-for="m in shown" :key="m.messageNo" class="sh-card msg" @tap="open(m)">
       <view class="msg__dot" :class="{ 'is-unread': !m.read }" />
       <view class="sh-fill">
-        <view class="msg__top">
+        <view class="msg__top sh-row sh-row--between sh-row--baseline">
           <text class="txt-body msg__title" :class="{ 'is-unread': !m.read }">{{ m.title }}</text>
           <text class="txt-caption msg__at sh-num">{{ datetime(m.at) }}</text>
         </view>
@@ -72,9 +72,6 @@ onShow(load);
 
 <style scoped>
 .head {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   margin-bottom: 16rpx;
 }
 
@@ -103,9 +100,6 @@ onShow(load);
 }
 
 .msg__top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   gap: 20rpx;
 }
 .msg__title {

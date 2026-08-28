@@ -92,7 +92,7 @@ onShow(load);
     <!-- 系统标签：只读。口径公开可查，但不给任何编辑入口 -->
     <view v-if="sys.length" class="sh-card">
       <text class="field__label">{{ $t("memberTags.system") }}</text>
-      <view class="tags">
+      <view class="tags sh-wrap">
         <text v-for="tg in sys" :key="tg.tagNo" class="sh-chip">
           {{ tg.name }} {{ tg.count }}
         </text>
@@ -131,11 +131,7 @@ onShow(load);
 </template>
 
 <style scoped>
-
 .tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 12rpx;
 }
 
@@ -158,5 +154,4 @@ onShow(load);
   gap: 24rpx;
   margin-top: 12rpx;
 }
-
 </style>

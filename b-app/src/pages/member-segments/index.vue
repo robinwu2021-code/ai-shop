@@ -102,7 +102,7 @@ onShow(load);
     <sh-empty v-if="!list.length" :text="String($t('memberSegments.empty'))"></sh-empty>
 
     <view v-for="sg in list" :key="sg.segmentNo" class="sh-card sh-mb-sm">
-      <view class="item__head">
+      <view class="item__head sh-row sh-row--between sh-row--baseline">
         <text class="txt-strong">{{ sg.name }}</text>
         <text class="txt-sub sh-num count">{{ $t("memberSegments.count", { n: sg.lastCount }) }}</text>
       </view>
@@ -124,13 +124,6 @@ onShow(load);
 </template>
 
 <style scoped>
-
-.item__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
 .count {
   color: var(--sh-primary-text);
 }
@@ -147,5 +140,4 @@ onShow(load);
   gap: 24rpx;
   margin-top: 16rpx;
 }
-
 </style>

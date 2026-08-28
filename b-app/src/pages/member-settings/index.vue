@@ -107,5 +107,4 @@ onShow(load);
 .row {
   gap: 24rpx;
 }
-
 </style>

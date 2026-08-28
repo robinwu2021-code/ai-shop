@@ -103,7 +103,7 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="coupons.title" :denied="!merchant.can('biz:campaign')">
-    <view class="bar">
+    <view class="bar sh-wrap">
       <text class="sh-chip sh-chip--primary" @tap="go('/pages/coupon-edit/index')">
         ＋ {{ $t("coupons.new") }}
       </text>
@@ -122,7 +122,7 @@ onShow(load);
     <sh-empty v-if="!list.length" :text="String($t('coupons.empty'))"></sh-empty>
 
     <view v-for="c in list" :key="c.couponNo" class="sh-card sh-mb-sm">
-      <view class="item__head">
+      <view class="item__head sh-row">
         <text class="txt-strong">{{ c.title }}</text>
         <text v-if="c.status !== 'ACTIVE'" class="sh-chip">
           {{ $t(`coupons.status.${c.status}`) }}
@@ -165,15 +165,10 @@ onShow(load);
 
 <style scoped>
 .bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-bottom: 12rpx;
 }
 
 .item__head {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
 }
 
@@ -196,5 +191,4 @@ onShow(load);
   gap: 24rpx;
   margin-top: 16rpx;
 }
-
 </style>

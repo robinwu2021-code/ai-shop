@@ -74,7 +74,7 @@ onShow(load);
 
       <!-- 自带客流：这个平台特有的经营指标，直接对应费率 -->
       <view class="sh-card owned">
-        <view class="owned__row">
+        <view class="owned__row sh-row sh-row--between sh-row--baseline">
           <text class="txt-title">{{ $t("stats.ownedTraffic") }}</text>
           <text class="txt-hero owned__v sh-num">{{ ownedPct }}%</text>
         </view>
@@ -85,7 +85,7 @@ onShow(load);
       </view>
 
       <view class="sh-card block">
-        <view class="rate">
+        <view class="rate sh-row sh-row--between">
           <text class="txt-title">{{ $t("stats.rating") }}</text>
           <!-- 零评价时不画星：给商家看一个凭空的 5.0，他会以为真有人评过 -->
           <sh-rating v-if="stats.ratingCount > 0" :value="stats.rating"></sh-rating>
@@ -94,7 +94,7 @@ onShow(load);
       </view>
     </template>
     <!-- 多店才有「比」这回事。一家店时这一行是纯噪音 -->
-    <view v-if="merchant.multiStore" class="sh-card cmp" @tap="goCompare">
+    <view v-if="merchant.multiStore" class="sh-card cmp sh-row sh-row--between" @tap="goCompare">
       <text class="txt-title">{{ $t("stats.compareEntry") }}</text>
       <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
     </view>
@@ -104,9 +104,6 @@ onShow(load);
 <style scoped>
 /* 跨店入口：与上面几张数据卡同宽同缘，排在最后 —— 先看本店，再想到比 */
 .cmp {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-top: 16rpx;
 }
 .block {
@@ -125,11 +122,6 @@ onShow(load);
 .owned {
   margin-top: 16rpx;
   background: var(--sh-primary-tint);
-}
-.owned__row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
 }
 .owned__v {
   color: var(--sh-primary-text);
@@ -151,9 +143,6 @@ onShow(load);
   display: block;
 }
 .rate {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-bottom: 12rpx;
 }
 </style>

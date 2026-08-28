@@ -115,5 +115,4 @@ onShow(load);
   padding: 24rpx 32rpx;
   margin-bottom: 24rpx;
 }
-
 </style>

@@ -74,7 +74,7 @@ onShow(load);
         ]"
       ></sh-stat>
 
-      <view v-if="latest.skipReasons.length" class="reasons">
+      <view v-if="latest.skipReasons.length" class="reasons sh-wrap">
         <text v-for="r in latest.skipReasons" :key="r.reason" class="txt-caption reason">
           {{ $t(`couponIssues.reason.${r.reason}`, { n: r.count }) }}
         </text>
@@ -87,7 +87,7 @@ onShow(load);
     <sh-empty v-if="!list.length" :text="String($t('couponIssues.empty'))"></sh-empty>
 
     <view v-for="b in list" :key="b.issueNo" class="sh-card sh-mb-sm">
-      <view class="item__head">
+      <view class="item__head sh-row sh-row--between sh-row--baseline">
         <text class="txt-strong">{{ couponTitle(b.couponNo) }}</text>
         <text class="sh-muted">{{ stamp(b.issuedAt) }}</text>
       </view>
@@ -97,7 +97,7 @@ onShow(load);
       <text class="txt-sub sh-num nums">
         {{ $t("couponIssues.line", { i: b.issued, s: b.skipped, a: money(b.amountMinor) }) }}
       </text>
-      <view v-if="b.skipReasons.length" class="reasons">
+      <view v-if="b.skipReasons.length" class="reasons sh-wrap">
         <text v-for="r in b.skipReasons" :key="r.reason" class="txt-caption reason">
           {{ $t(`couponIssues.reason.${r.reason}`, { n: r.count }) }}
         </text>
@@ -115,9 +115,6 @@ onShow(load);
 }
 
 .reasons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 12rpx;
 }
 .reason {
@@ -130,12 +127,6 @@ onShow(load);
   margin-top: 12rpx;
 }
 
-.item__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
 .seg {
   display: block;
   margin-top: 4rpx;
@@ -144,5 +135,4 @@ onShow(load);
   display: block;
   margin-top: 8rpx;
 }
-
 </style>

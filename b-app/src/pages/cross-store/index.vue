@@ -210,7 +210,7 @@ onShow(load);
       再往下看那些数字，顺序反了就会先把假数据当真。
     -->
     <view v-if="locked" class="lock">
-      <view class="lock__row">
+      <view class="lock__row sh-row">
         <text class="txt-caption lock__tag">{{ $t("crossStore.demoTag") }}</text>
         <text class="txt-strong">{{ $t("crossStore.lockTitle") }}</text>
       </view>
@@ -233,7 +233,7 @@ onShow(load);
         这一行必须把口径写在旁边，否则它看着像「默认店的评分」。
       -->
       <view class="sh-card rating">
-        <view class="rating__row">
+        <view class="rating__row sh-row sh-row--between">
           <text class="txt-title">{{ $t("crossStore.rating") }}</text>
           <template v-if="shownCompare.ratingCount">
             <sh-rating :value="shownCompare.rating"></sh-rating>
@@ -264,7 +264,7 @@ onShow(load);
         class="sh-card store"
         :class="{ 'is-demo': locked, 'is-best': s.storeNo === bestStoreNo }"
       >
-        <view class="store__head">
+        <view class="store__head sh-wrap">
           <text class="txt-strong">{{ s.storeName }}</text>
           <text v-if="s.isDefault" class="txt-caption sh-chip tag">{{ $t("crossStore.default") }}</text>
           <text v-if="s.status !== 'ACTIVE'" class="txt-caption sh-chip tag">
@@ -276,7 +276,7 @@ onShow(load);
           <text v-if="locked" class="txt-caption sh-chip tag tag--demo">{{ $t("crossStore.demoTag") }}</text>
         </view>
 
-        <view class="metrics">
+        <view class="metrics sh-wrap">
           <view class="metrics__i">
             <text class="txt-title metrics__v sh-num">{{ money(s.gmvMinor, shownCompare.currency) }}</text>
             <text class="sh-muted">{{ $t("crossStore.gmv") }}</text>
@@ -338,8 +338,6 @@ onShow(load);
   margin-bottom: 16rpx;
 }
 .lock__row {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
 }
 .lock__tag {
@@ -380,10 +378,7 @@ onShow(load);
   border: 2rpx solid var(--sh-primary);
 }
 .store__head {
-  display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 12rpx;
 }
 
 .tag {
@@ -439,11 +434,6 @@ onShow(load);
 .rating {
   margin-bottom: 16rpx;
 }
-.rating__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
 .rating__hint {
   display: block;
   margin-top: 12rpx;
@@ -457,8 +447,6 @@ onShow(load);
   padding: 12rpx 24rpx;
 }
 .metrics {
-  display: flex;
-  flex-wrap: wrap;
   margin-top: 20rpx;
 }
 .metrics__i {

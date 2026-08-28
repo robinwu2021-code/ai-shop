@@ -191,7 +191,7 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="marketing.title" :denied="!merchant.can('biz:campaign')">
-    <view class="head">
+    <view class="head sh-row sh-row--between">
       <text class="txt-display">{{ $t("marketing.title") }}</text>
       <text v-if="!editing" class="sh-link" @tap="startNew">{{ $t("marketing.create") }}</text>
     </view>
@@ -202,7 +202,7 @@ onShow(load);
       塞进活动表单里会让这一页变成两页拼起来的样子。
     -->
     <!-- 新模型的活动（P5）。老的四类活动还在下面，两套并存到旧表退场 -->
-    <view v-if="!editing" class="entry" @tap="goActivities">
+    <view v-if="!editing" class="entry sh-row sh-row--between" @tap="goActivities">
       <view class="entry__main">
         <text class="txt-strong">{{ $t("activities.title") }}</text>
         <text class="txt-caption sh-muted entry__d">{{ $t("marketing.activityEntryHint") }}</text>
@@ -210,7 +210,7 @@ onShow(load);
       <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
     </view>
 
-    <view v-if="!editing" class="entry" @tap="goCoupons">
+    <view v-if="!editing" class="entry sh-row sh-row--between" @tap="goCoupons">
       <view class="entry__main">
         <text class="txt-strong">{{ $t("coupons.title") }}</text>
         <text class="txt-caption sh-muted entry__d">{{ $t("marketing.couponEntryHint") }}</text>
@@ -222,7 +222,7 @@ onShow(load);
     <view v-if="editing" class="sh-card sh-mt-sm">
       <view class="field">
         <text class="field__label">{{ $t("marketing.type") }}</text>
-        <view class="chips">
+        <view class="chips sh-wrap">
           <text
             v-for="ty in TYPES"
             :key="ty"
@@ -252,7 +252,7 @@ onShow(load);
       -->
       <view v-if="need.store" class="field" @tap="pickStore">
         <text class="field__label">{{ $t("marketing.store") }}</text>
-        <view class="field__input field__input--pick">
+        <view class="field__input field__input--pick sh-row sh-row--between">
           <text>{{ storeName(form.storeNo) }}</text>
           <sh-icon name="chevronRight" :size="20" color="var(--sh-sub)"></sh-icon>
         </view>
@@ -286,7 +286,7 @@ onShow(load);
 
       <view v-if="need.goods" class="field">
         <text class="field__label">{{ $t("marketing.goods") }}</text>
-        <view class="chips">
+        <view class="chips sh-wrap">
           <text
             v-for="g in goods"
             :key="g.goodsNo"
@@ -309,7 +309,7 @@ onShow(load);
     <sh-empty v-if="!list.length && !editing" :text='$t("marketing.empty")'></sh-empty>
 
     <view v-for="c in list" :key="c.campaignNo" class="sh-card sh-mt-sm">
-      <view class="item__head">
+      <view class="item__head sh-row sh-row--between">
         <text class="txt-body item__name">{{ c.name }}</text>
         <text
           class="sh-chip"
@@ -326,7 +326,7 @@ onShow(load);
       <text v-if="merchant.multiStore" class="sh-muted item__sum">
         {{ $t("marketing.store") }}：{{ storeName(c.storeNo) }}
       </text>
-      <view class="item__meta">
+      <view class="item__meta sh-wrap">
         <text class="sh-muted sh-num">{{ monthDay(c.startAt) }} – {{ monthDay(c.endAt) }}</text>
         <text v-if="c.type === 'COUPON'" class="sh-muted sh-num">
           {{ $t("marketing.taken", { a: c.takenCount ?? 0, b: c.totalCount ?? 0 }) }}
@@ -344,9 +344,6 @@ onShow(load);
 
 <style scoped>
 .entry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   background: var(--sh-surface);
   border-radius: 16rpx;
   padding: 24rpx;
@@ -358,17 +355,6 @@ onShow(load);
   margin-top: 8rpx;
 }
 
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-}
 .chips .sh-chip {
   padding: 14rpx 24rpx;
 }
@@ -386,12 +372,6 @@ onShow(load);
   padding: 22rpx 0;
 }
 
-.item__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-}
 .item__name {
   flex: 1;
 }
@@ -400,8 +380,6 @@ onShow(load);
   margin-top: 8rpx;
 }
 .item__meta {
-  display: flex;
-  flex-wrap: wrap;
   gap: 20rpx;
   margin-top: 16rpx;
 }
@@ -419,9 +397,4 @@ onShow(load);
    此前箭头是贴在文本尾巴上的一个 `›` 字符：**字符不是图标** ——
    它跟着字体走（不同端字形不一样）、拿不到 sh-icon 的尺寸与颜色档，
    也没法只给它上色而不动文字。 */
-.field__input--pick {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
 </style>

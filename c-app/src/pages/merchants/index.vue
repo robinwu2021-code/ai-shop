@@ -87,7 +87,7 @@ onShow(load);
           :merchant="m"
           @tap="open(m.merchantNo)"
         ></biz-merchant-bar>
-        <view class="meta">
+        <view class="meta sh-wrap">
           <text class="sh-chip sh-num">{{
             $t("visited.orders", { n: m.orderCount })
           }}</text>
@@ -116,7 +116,7 @@ onShow(load);
           @tap="open(m.merchantNo)"
         ></biz-merchant-bar>
         <text class="txt-caption desc">{{ m.desc }}</text>
-        <view class="meta">
+        <view class="meta sh-wrap">
           <text class="sh-chip">{{
             $t(`serviceScope.${m.serviceScope}`)
           }}</text>
@@ -134,7 +134,7 @@ onShow(load);
         <view
           v-for="m in nearbyShown"
           :key="m.merchantNo"
-          class="near__i"
+          class="near__i sh-row"
           @tap="open(m.merchantNo)"
         >
           <text class="near__logo">{{ m.logo || MERCHANT_LOGO_FALLBACK }}</text>
@@ -167,9 +167,6 @@ onShow(load);
   padding: 20rpx 26rpx;
 }
 .meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 24rpx;
 }
 .desc {
@@ -183,8 +180,6 @@ onShow(load);
   flex-direction: column;
 }
 .near__i {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   padding: 22rpx 24rpx;
 }

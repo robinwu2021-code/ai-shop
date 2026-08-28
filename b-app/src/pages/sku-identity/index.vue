@@ -189,7 +189,7 @@ function arrow(from?: string | null, to?: string | null): string {
         <text class="txt-caption sh-muted prev__t">{{ $t("skuIdentity.previewTitle") }}</text>
         <view v-for="s in report.samples" :key="s.skuNo" class="row">
           <text class="txt-strong row__t">{{ s.goods }}<text v-if="s.spec" class="sh-muted"> · {{ s.spec }}</text></text>
-          <view class="row__cells">
+          <view class="row__cells sh-wrap">
             <text class="txt-caption">{{ $t("skuIdentity.barcode") }} {{ arrow(s.barcodeFrom, s.barcodeTo) }}</text>
             <text class="txt-caption">{{ $t("skuIdentity.code") }} {{ arrow(s.codeFrom, s.codeTo) }}</text>
             <text class="txt-caption">{{ $t("skuIdentity.unit") }} {{ arrow(s.unitFrom, s.unitTo) }}</text>
@@ -213,7 +213,6 @@ function arrow(from?: string | null, to?: string | null): string {
 </template>
 
 <style scoped>
-
 .act {
   padding: 10rpx 26rpx;
 }
@@ -273,8 +272,6 @@ function arrow(from?: string | null, to?: string | null): string {
 }
 
 .row__cells {
-  display: flex;
-  flex-wrap: wrap;
   gap: 8rpx 20rpx;
   margin-top: 8rpx;
 }

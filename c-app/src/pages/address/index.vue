@@ -160,7 +160,7 @@ onLoad((q) => {
 <template>
   <sh-scaffold title-key="address.title">
     <view v-for="a in list" :key="a.addressId" class="sh-card card" @tap="pick(a)">
-      <view class="card__head">
+      <view class="card__head sh-wrap">
         <text class="txt-strong">{{ a.name }}</text>
         <text class="txt-caption sh-num">{{ a.phone }}</text>
         <text v-if="a.tag" class="txt-caption sh-chip tiny">{{ a.tag }}</text>
@@ -199,7 +199,7 @@ onLoad((q) => {
           maxlength="11"
           :placeholder="$t('address.phone')"
         />
-        <view class="regionrow">
+        <view class="regionrow sh-row">
           <input
             maxlength="96"
             v-model="draft.region"
@@ -216,7 +216,7 @@ onLoad((q) => {
         <input maxlength="255" v-model="draft.detail" class="field__input" :placeholder="$t('address.detail')" />
         <input maxlength="16" v-model="draft.tag" class="field__input" :placeholder="$t('address.tagPh')" />
 
-        <view class="switchrow" @tap="draft.isDefault = !draft.isDefault">
+        <view class="switchrow sh-row sh-row--between" @tap="draft.isDefault = !draft.isDefault">
           <text class="txt-sub switchrow__label">{{ $t("address.asDefault") }}</text>
           <sh-switch :model-value="draft.isDefault"></sh-switch>
         </view>
@@ -237,8 +237,6 @@ onLoad((q) => {
 
 <style scoped>
 .regionrow {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
 }
 
@@ -256,10 +254,7 @@ onLoad((q) => {
   margin-bottom: 20rpx;
 }
 .card__head {
-  display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 12rpx;
 }
 
 .tiny {
@@ -288,9 +283,6 @@ onLoad((q) => {
   margin-top: 16rpx;
 }
 .switchrow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-top: 28rpx;
 }
 .switchrow__label {

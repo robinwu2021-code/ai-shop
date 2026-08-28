@@ -122,5 +122,4 @@ onLoad(async (q) => {
   padding-top: 12rpx;
   margin-top: 12rpx;
 }
-
 </style>

@@ -154,7 +154,7 @@ onShow(() => void load());
         </text>
       </view>
 
-      <view class="adds">
+      <view class="adds sh-wrap">
         <text v-for="x in TYPES" :key="x.type" class="sh-chip" @tap="startAdd(x.type)">
           ＋ {{ $t(x.labelKey) }}
         </text>
@@ -164,7 +164,7 @@ onShow(() => void load());
     <!-- 已解锁 -->
     <view v-if="unlocked.length" class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("qual.unlocked") }}</text>
-      <view class="cats">
+      <view class="cats sh-wrap">
         <text v-for="c in unlocked" :key="c.code" class="sh-chip sh-chip--primary">
           {{ (c.categoryNames ?? []).length ? (c.categoryNames ?? []).join("、") : c.name }}
         </text>
@@ -182,7 +182,7 @@ onShow(() => void load());
         商家会以为要先等平台核完才能上架，而他其实现在就能上。
       -->
       <text class="txt-title">{{ $t(merchant.categoryGateEnforced ? "qual.locked" : "qual.notGranted") }}</text>
-      <view v-for="c in locked" :key="c.code" class="lock">
+      <view v-for="c in locked" :key="c.code" class="lock sh-row">
         <view class="sh-fill">
           <text class="txt-sub lock__cats">
             {{ (c.categoryNames ?? []).length ? (c.categoryNames ?? []).join("、") : c.name }}
@@ -251,21 +251,12 @@ onShow(() => void load());
   color: var(--sh-danger);
 }
 .adds {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 20rpx;
 }
 .cats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 12rpx;
 }
 .lock {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   padding: 14rpx 0;
 }
 

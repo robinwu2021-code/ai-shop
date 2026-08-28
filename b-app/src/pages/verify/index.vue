@@ -344,7 +344,7 @@ onShow(load);
         <text v-if="!candidates.length" class="sh-muted">{{ $t("verify.searchEmpty") }}</text>
         <template v-else>
           <text class="txt-caption sh-muted cands__hint">{{ $t("verify.searchHint") }}</text>
-          <view v-for="c in candidates" :key="c.subOrderNo" class="cand">
+          <view v-for="c in candidates" :key="c.subOrderNo" class="cand sh-row">
             <view class="sh-fill">
               <text class="txt-bold txt-strong cand__code sh-num">{{ c.verifyCode }}</text>
               <text class="sh-muted">{{ c.buyerNickname || "—" }}</text>
@@ -375,7 +375,7 @@ onShow(load);
         {{ $t("verify.batchScan") }}
       </view>
 
-      <view v-if="basket.length" class="basket">
+      <view v-if="basket.length" class="basket sh-wrap">
         <view
           v-for="c in basket"
           :key="c"
@@ -398,7 +398,7 @@ onShow(load);
       <!-- 失败逐条回报：店主要知道是**哪几张**有问题，而不是「3 成功 2 失败」 -->
       <view v-if="batchResult" class="batch-result">
         <text class="ok">{{ $t("verify.batchOk", { n: batchResult.successCount }) }}</text>
-        <view v-for="f in batchResult.failed" :key="f.code" class="txt-caption fail">
+        <view v-for="f in batchResult.failed" :key="f.code" class="txt-caption fail sh-row sh-row--between sh-row--top">
           <text class="sh-num">{{ f.code }}</text>
           <text class="sh-muted">{{ f.reason }}</text>
         </view>
@@ -407,7 +407,7 @@ onShow(load);
       <text class="sh-link" @tap="exitBatch">{{ $t("verify.batchExit") }}</text>
     </view>
 
-    <view class="list-head">
+    <view class="list-head sh-row sh-row--between sh-row--baseline">
       <text class="txt-title">{{ $t("verify.waiting") }}</text>
       <text class="sh-muted sh-num">{{ waiting.length }}</text>
     </view>
@@ -418,7 +418,7 @@ onShow(load);
     -->
     <view
       v-if="!waiting.length && preparingCount && merchant.can('biz:receive')"
-      class="txt-sub prep-hint"
+      class="txt-sub prep-hint sh-row sh-row--between"
       @tap="goToPicking"
     >
       <text>{{ $t("picking.verifyPrepHint", { n: preparingCount }) }}</text>
@@ -429,7 +429,7 @@ onShow(load);
     <view
       v-for="o in waiting"
       :key="o.subOrderNo"
-      class="sh-card row-item"
+      class="sh-card row-item sh-row"
       :class="{ 'is-just': justDone === o.subOrderNo }"
     >
       <view class="sh-fill">
@@ -504,9 +504,6 @@ onShow(load);
 }
 
 .basket {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 20rpx;
 }
 .batch-submit {
@@ -521,9 +518,6 @@ onShow(load);
   color: var(--sh-primary-text);
 }
 .fail {
-  display: flex;
-  justify-content: space-between;
-  gap: 16rpx;
   margin-top: 8rpx;
   color: var(--sh-danger);
 }
@@ -561,8 +555,6 @@ onShow(load);
   margin-bottom: 12rpx;
 }
 .cand {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   padding: 16rpx 0;
   border-top: var(--sh-hairline);
@@ -573,16 +565,9 @@ onShow(load);
   /* 600 而不是 700：700 这个项目里只给价格留着，取货码靠字号和留白突出就够 */
 }
 .list-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   margin: 32rpx 8rpx 16rpx;
 }
 .prep-hint {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
   padding: 20rpx 24rpx;
   margin: 0 8rpx;
   border-radius: 16rpx;
@@ -592,8 +577,6 @@ onShow(load);
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */
 .row-item {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   margin-bottom: 8rpx;
 }

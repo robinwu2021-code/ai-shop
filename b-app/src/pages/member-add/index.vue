@@ -89,7 +89,7 @@ onShow(load);
       </view>
       <view v-if="mine.length" class="field">
         <text class="field__label">{{ $t("memberAdd.tags") }}</text>
-        <view class="tags">
+        <view class="tags sh-wrap">
           <text
             v-for="tg in mine"
             :key="tg.tagNo"
@@ -118,9 +118,6 @@ onShow(load);
   margin-top: 0;
 }
 .tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 12rpx;
 }
 .notice {

@@ -108,7 +108,6 @@ onShow(load);
 </template>
 
 <style scoped>
-
 .row__top {
   display: flex;
   gap: 20rpx;

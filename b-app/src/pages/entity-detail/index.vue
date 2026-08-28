@@ -107,7 +107,7 @@ function goPickStore() {
 
       <!-- 营业执照 -->
       <view class="sh-card block" @tap="editQuals">
-        <view class="block__row">
+        <view class="block__row sh-row sh-row--between">
           <text class="txt-strong">{{ $t("entityDetail.license") }}</text>
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
@@ -119,7 +119,7 @@ function goPickStore() {
 
       <!-- 收款账户 -->
       <view class="sh-card block" @tap="editPayment">
-        <view class="block__row">
+        <view class="block__row sh-row sh-row--between">
           <text class="txt-strong">{{ $t("entityDetail.payment") }}</text>
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
@@ -130,7 +130,7 @@ function goPickStore() {
 
       <!-- 其它资质 -->
       <view class="sh-card block" @tap="editQuals">
-        <view class="block__row">
+        <view class="block__row sh-row sh-row--between">
           <text class="txt-strong">{{ $t("entityDetail.quals") }}</text>
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
@@ -163,7 +163,6 @@ function goPickStore() {
 </template>
 
 <style scoped>
-
 .head {
   margin-top: 8rpx;
 }
@@ -176,11 +175,6 @@ function goPickStore() {
 }
 .block {
   margin-top: 16rpx;
-}
-.block__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 
 .block__val {

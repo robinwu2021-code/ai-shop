@@ -148,7 +148,7 @@ async function doLogin(method: LoginMethod) {
           :placeholder="$t('login.phone')"
           maxlength="11"
         />
-        <view class="otp-row">
+        <view class="otp-row sh-row">
           <input
             v-model="otp"
             class="txt-body login__field sh-fill"
@@ -212,12 +212,6 @@ async function doLogin(method: LoginMethod) {
 }
 .switch__text {
   color: var(--sh-primary-text);
-}
-
-.otp-row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
 }
 
 .otp-row__send {

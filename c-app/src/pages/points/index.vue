@@ -24,7 +24,6 @@ async function load() {
   records.value = r;
 }
 
-
 onShow(load);
 </script>
 
@@ -82,7 +81,7 @@ onShow(load);
     <!-- 流水：带变动后余额，方便对账 -->
     <view class="sh-card block">
       <text class="txt-title">{{ $t("points.records") }}</text>
-      <view v-for="r in records" :key="r.recordNo" class="rec">
+      <view v-for="r in records" :key="r.recordNo" class="rec sh-row">
         <view class="sh-fill">
           <text class="txt-sub rec__title">{{ r.title }}</text>
           <text class="txt-caption rec__at sh-num">{{ datetime(r.at) }}</text>
@@ -156,8 +155,6 @@ onShow(load);
   margin-top: 8rpx;
 }
 .rec {
-  display: flex;
-  align-items: center;
   gap: 24rpx;
   margin-top: 28rpx;
 }

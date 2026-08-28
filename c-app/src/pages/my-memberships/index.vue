@@ -53,7 +53,7 @@ onShow(load);
   <sh-scaffold title-key="myMembership.title">
     <sh-empty bare v-if="!list.length" :text="String($t('myMembership.empty'))"></sh-empty>
 
-    <view v-for="m in list" :key="m.entityNo" class="sh-card card">
+    <view v-for="m in list" :key="m.entityNo" class="sh-card card sh-row sh-row--between">
       <view class="card__main">
         <text class="txt-strong card__name">{{ m.entityName }}</text>
         <text class="txt-caption sh-muted card__d">
@@ -82,9 +82,6 @@ onShow(load);
    内边距因此从 28rpx 变成 C 端的密度档 32rpx（`--sh-pad-card` 没被 C 端覆盖），
    差 2px：**那正是密度变量存在的意义** —— 各页各写一个数，调密度时就得逐页找。 */
 .card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 24rpx;
   margin-bottom: 20rpx;
 }
@@ -98,5 +95,4 @@ onShow(load);
   display: block;
   margin-top: 8rpx;
 }
-
 </style>

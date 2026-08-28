@@ -217,9 +217,9 @@ onShow(() => {
 
       <view class="field">
         <text class="field__label">{{ $t("store.address") }}</text>
-        <view class="addr">
+        <view class="addr sh-row">
           <input v-model="form.address" class="field__input sh-fill" :maxlength="100" :placeholder="$t('store.addressPh')" />
-          <view v-if="geoAvailable" class="addr__locate" @tap="locateAddress">
+          <view v-if="geoAvailable" class="addr__locate sh-row" @tap="locateAddress">
             <sh-icon name="pin" :size="18" color="var(--sh-primary-text)"></sh-icon>
             <text class="txt-caption addr__t">{{ locating ? "…" : pinned ? $t("store.repinAddr") : $t("store.pickAddr") }}</text>
           </view>
@@ -238,13 +238,12 @@ onShow(() => {
       </view>
     </view>
 
-
     <!-- 获客工具：店铺码 + 分享文案合一卡。一期主获客路径的商家侧（ADR-004 决策 3） -->
     <view class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("store.tools") }}</text>
 
       <view class="qr">
-        <view class="qr__box">
+        <view class="qr__box sh-center">
           <image
             v-if="qrcode?.imageBase64"
             class="qr__img"
@@ -307,15 +306,11 @@ onShow(() => {
   margin-top: 12rpx;
 }
 .addr {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
 }
 
 .addr__locate {
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
   gap: 8rpx;
   height: 88rpx;
   padding: 0 20rpx;
@@ -337,9 +332,6 @@ onShow(() => {
 }
 .qr__box {
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 192rpx;
   height: 192rpx;
   border-radius: 24rpx;
@@ -399,15 +391,7 @@ onShow(() => {
 }
 
 /* 卡头：标题 + 右侧一句副标题。这一页此前没有这个块，两段文字会黏成一行 */
-.head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16rpx;
-  margin-bottom: 16rpx;
-}
 .head__sub {
   flex-shrink: 0;
 }
-
 </style>

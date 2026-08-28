@@ -90,7 +90,6 @@ interface Row {
   saleUnit: string;
 }
 
-
 // ── 一、货号与标准品 ────────────────────────────────────────────────────────
 //    从平台标准品填充，或自己起一个货号
 /** 空价格表：三个市场各一格 */
@@ -166,7 +165,6 @@ function detachStd() {
   stdNo.value = "";
   stdTitle.value = "";
 }
-
 
 // ── 二、商品图（状态） ──────────────────────────────────────────────────────
 //    cover 与 images 存储上分两个字段，界面上合成一组
@@ -637,7 +635,6 @@ function clearAutoSpec() {
   rebuild();
 }
 
-
 /** 按 categoryNo 还原选择路径（回显已有商品时用） */
 function findPath(nodes: Category[], target: string, trail: Category[] = []): Category[] {
   for (const n of nodes) {
@@ -728,7 +725,6 @@ async function genDetail() {
     generating.value = false;
   }
 }
-
 
 // ── 七、价格 · 成本 · 毛利 ────────────────────────────────────────────
 //    三个市场各一套价，毛利与低于成本的告警都在这
@@ -1173,7 +1169,6 @@ async function applyGuess(guess: GoodsGuess) {
   }
 }
 
-
 // ── 九、SKU 矩阵：重建与模板 ────────────────────────────────────────────
 //    规格组的笛卡尔积 → 行；套模板是它的入口
 function keyOf(values: string[]): string {
@@ -1326,8 +1321,6 @@ function applyTemplateWith(tpl: SpecTemplate, o: { code?: string; label: string 
   applyTemplate({ ...tpl, options: [o] });
 }
 
-
-
 // ── 十、规格维度 ────────────────────────────────────────────────────────────
 //    平台模板 / 商家自存 / 按类目推荐，三个来源
 /**
@@ -1432,7 +1425,6 @@ function primeMainGroup() {
   autoSpecNo.value = main.templateNo;
   rebuild();
 }
-
 
 /**
  * 取「还能加哪些维度」。
@@ -1792,9 +1784,6 @@ function pickParam(dim: SpecTemplate, o: SpecOption) {
   };
 }
 
-
-
-
 /**
  * 点一个档位填进去。**优先填进第一个空格子**，没有空格子才追加 ——
  * 否则自动建组留下的那个空输入框会一直杵在列表最上面，
@@ -1858,7 +1847,6 @@ function toggleOption(gi: number, o: SpecOption) {
   g.codes = all.filter((x) => next.has(x.label)).map((x) => x.code || undefined);
   rebuild();
 }
-
 
 // ── 十三、批量填充 ──────────────────────────────────────────────────────────
 //    价与库存拆成两个动作，理由见 applyBulkPrice
@@ -2071,7 +2059,6 @@ onLoad(async (q) => {
     };
   });
 });
-
 
 // ── 十四、保存 ──────────────────────────────────────────────────────────────
 //    存草稿 / 存并提交审核
@@ -2296,9 +2283,9 @@ async function save(thenSubmit = false) {
           识别本来就不准，把它包装成一件要商家判断的事，等于每建一个商品多一道判断题。
           换来的是把改的成本压到最低：右边那个 ✕ 一下清空，长名不用逐字删。
         -->
-        <view class="inline">
+        <view class="fieldrow sh-row">
           <input maxlength="64" v-model="title[lang]" class="field__input sh-fill" />
-          <sh-icon-btn v-if="title[lang]" class="inline__clear" name="close"
+          <sh-icon-btn v-if="title[lang]" class="fieldrow__clear" name="close"
             color="var(--sh-sub)" @tap="title[lang] = ''"></sh-icon-btn>
         </view>
         <!--
@@ -2309,7 +2296,7 @@ async function save(thenSubmit = false) {
           永远无效，而那类货是这个平台的一部分主力。
           现在它挨着名称（正是它要替你填的那一栏），搜不到就直接往下打字。
         -->
-        <view v-if="stdNo" class="std-on">
+        <view v-if="stdNo" class="std-on sh-row sh-row--between">
           <text class="txt-sub">{{ $t("goods.fromStd", { s: stdTitle || stdNo }) }}</text>
           <text class="txt-caption" @tap="detachStd">{{ $t("goods.detachStd") }}</text>
         </view>
@@ -2324,9 +2311,9 @@ async function save(thenSubmit = false) {
           <text class="txt-strong field__label">{{ $t("goods.subtitle") }}</text>
           <text class="sh-muted">{{ $t("goods.optional") }}</text>
         </view>
-        <view class="inline">
+        <view class="fieldrow sh-row">
           <input maxlength="64" v-model="subtitle[lang]" class="field__input sh-fill" />
-          <sh-icon-btn v-if="subtitle[lang]" class="inline__clear" name="close"
+          <sh-icon-btn v-if="subtitle[lang]" class="fieldrow__clear" name="close"
             color="var(--sh-sub)" @tap="subtitle[lang] = ''"></sh-icon-btn>
         </view>
       </view>
@@ -2403,7 +2390,7 @@ async function save(thenSubmit = false) {
           </text>
         </view>
         <view class="dimgs">
-          <view v-for="(img, i) in detailImages" :key="img + i" class="dimgs__row">
+          <view v-for="(img, i) in detailImages" :key="img + i" class="dimgs__row sh-row">
             <sh-cover class="dimgs__img" :src="img"></sh-cover>
             <text class="txt-caption dimgs__i">{{ i + 1 }}</text>
             <view class="dimgs__ops">
@@ -2414,7 +2401,7 @@ async function save(thenSubmit = false) {
           </view>
           <view
             v-if="detailImages.length < DETAIL_IMAGE_LIMIT"
-            class="dimgs__add"
+            class="dimgs__add sh-center"
             @tap="addDetailImages"
           >
             <text v-if="uploading" class="dimgs__wait">…</text>
@@ -2450,7 +2437,7 @@ async function save(thenSubmit = false) {
         -->
         <view v-if="recentCats.length" class="cat-lv">
           <text class="txt-caption cat-lv__t">{{ $t("goods.recentCats") }}</text>
-          <view class="cat-lv__opts">
+          <view class="cat-lv__opts sh-wrap">
             <text
               v-for="c in recentCats"
               :key="c.categoryNo"
@@ -2465,7 +2452,7 @@ async function save(thenSubmit = false) {
 
         <view class="cat-lv">
           <text class="txt-caption cat-lv__t">{{ $t("goods.categoryL1") }}</text>
-          <view class="cat-lv__opts">
+          <view class="cat-lv__opts sh-wrap">
             <text
               v-for="c in categoryTree"
               :key="c.categoryNo"
@@ -2481,7 +2468,7 @@ async function save(thenSubmit = false) {
         <!-- 二级只在选了一级之后出现：先摆一排空椅子只会让人以为加载失败 -->
         <view v-if="parentNo && children.length" class="cat-lv">
           <text class="txt-caption cat-lv__t">{{ $t("goods.categoryL2") }}</text>
-          <view class="cat-lv__opts">
+          <view class="cat-lv__opts sh-wrap">
             <text
               v-for="c in children"
               :key="c.categoryNo"
@@ -2520,7 +2507,7 @@ async function save(thenSubmit = false) {
       -->
       <view class="field">
         <text class="txt-strong field__label">{{ $t("goods.fulfillment") }} *</text>
-        <view class="chips">
+        <view class="chips sh-wrap">
           <!--
             **没开通的那一路置灰，不隐藏** —— 隐藏的话商家会以为平台不支持快递，
             而其实只是他自己没开。灰着并写明「未开」，右边给一条去开的路。
@@ -2548,7 +2535,7 @@ async function save(thenSubmit = false) {
         <text v-if="channelsState === 'loading'" class="sh-muted hint">
           {{ $t("goods.channelsLoading") }}
         </text>
-        <view v-else-if="channelsState === 'error'" class="inline">
+        <view v-else-if="channelsState === 'error'" class="fieldrow sh-row">
           <text class="sh-muted hint sh-fill">{{ $t("goods.channelsFailed") }}</text>
           <text class="sh-link" @tap="loadStoreChannels">{{ $t("common.retry") }}</text>
         </view>
@@ -2604,11 +2591,11 @@ async function save(thenSubmit = false) {
     <!-- 标准品搜索弹层。搜不到时给的是「直接自建」而不是一句「没找到」 -->
     <view v-if="showStd" class="cat-mask" @tap="showStd = false">
       <view class="cat-sheet" @tap.stop>
-        <view class="cat-sheet__bar">
+        <view class="cat-sheet__bar sh-row sh-row--between">
           <text class="txt-bold">{{ $t("goods.pickStd") }}</text>
           <sh-icon-btn name="close" @tap="showStd = false"></sh-icon-btn>
         </view>
-        <view class="std-search">
+        <view class="std-search sh-row">
           <input
             maxlength="32"
             v-model="stdKeyword"
@@ -2626,7 +2613,7 @@ async function save(thenSubmit = false) {
         <view
           v-for="t in stdResults"
           :key="t.stdNo"
-          class="cat-sheet__row"
+          class="cat-sheet__row sh-row sh-row--between"
           @tap="pickStd(t)"
         >
           <text>{{ t.title }}</text>
@@ -2673,7 +2660,7 @@ async function save(thenSubmit = false) {
         <p>本类目的排在前面（平台已经替这一类回答过「该按什么分」），
         通用与自建的收在「更多」后面 —— 它们跨类目通用，摆在眼前多半不对题。
       -->
-      <view v-if="moreFromCategory.length || moreOther.length" class="addbar">
+      <view v-if="moreFromCategory.length || moreOther.length" class="addbar sh-wrap">
         <text
           v-for="d in moreFromCategory"
           :key="d.templateNo"
@@ -2695,7 +2682,6 @@ async function save(thenSubmit = false) {
         >{{ showUniversalDims ? $t("goods.moreFold") : $t("goods.moreOther", { n: moreOther.length }) }}</text>
       </view>
 
-
       <!--
         **跟着品类走的推荐规格，直接摊开成 chip。**
 
@@ -2703,7 +2689,6 @@ async function save(thenSubmit = false) {
         才看得到 —— 而「规格名该填什么」正是此刻最难的一步。
         更要命的是 `prd_spec_template` 线上是空表，`v-if="templates.length"`
         永远为假，于是这个入口从上线到现在一次都没出现过（V174 补了种子数据）。
-
 
       <!-- 模板：点一下替代逐个手输。平台模板带 code，商家自存的只有文字 -->
       <!-- 维度选择面板：顺序即建议顺序，越靠前越该被选中 -->
@@ -2721,7 +2706,7 @@ async function save(thenSubmit = false) {
         那是恢复，不是新造。
       -->
       <view v-for="(g, gi) in groups" :key="gi" class="group">
-        <view class="group__head">
+        <view class="group__head sh-row">
           <text class="txt-strong group__name">{{ g.name }}</text>
           <sh-icon-btn name="close" @tap="removeGroup(gi)"></sh-icon-btn>
         </view>
@@ -2737,7 +2722,7 @@ async function save(thenSubmit = false) {
           **勾是「已选上，可以再点掉」的通用记号**，一眼就与单选分得开；
           而描边与加粗都不再需要 —— 字阶那条也写着 600 只给标题与按钮。
         -->
-        <view class="opts">
+        <view class="opts sh-wrap">
           <view
             v-for="o in allOptionsOf(gi)"
             :key="o.code || o.label"
@@ -2806,7 +2791,7 @@ async function save(thenSubmit = false) {
           <p>填的东西**落进规格库拿编号**（见 confirmParamValue），
           不是这件货身上的一个私有字符串：后者不参与筛选，也不参与跨店比较。
         -->
-        <view class="param__opts">
+        <view class="param__opts sh-wrap">
           <text
             v-for="o in d.options"
             :key="o.code || o.label"
@@ -2833,7 +2818,7 @@ async function save(thenSubmit = false) {
       :hint="$t('goods.addParamHint')"
       @close="addingParam = false; newParam = ''"
     >
-      <view class="build">
+      <view class="build sh-row">
         <input
           maxlength="64"
           v-model="newParam"
@@ -2853,7 +2838,7 @@ async function save(thenSubmit = false) {
       @close="closeParamValue"
     >
       <!-- 能加的在上：平台有、这一类还没有。虚线 = 点一下就加进来 -->
-      <view v-if="paramCands.length" class="param__opts">
+      <view v-if="paramCands.length" class="param__opts sh-wrap">
         <view
           v-for="o in paramCands"
           :key="o.code || o.label"
@@ -2872,7 +2857,7 @@ async function save(thenSubmit = false) {
       -->
       <template v-if="paramUsed.length">
         <text class="txt-strong param__own">{{ $t("goods.paramInUse") }}</text>
-        <view class="param__opts">
+        <view class="param__opts sh-wrap">
           <text
             v-for="o in paramUsed"
             :key="o.code || o.label"
@@ -2883,7 +2868,7 @@ async function save(thenSubmit = false) {
       </template>
       <!-- 自己填放最后：顺序即建议，先看平台有没有现成的 -->
       <text class="txt-strong param__own">{{ $t("goods.paramFillOwn") }}</text>
-      <view class="build">
+      <view class="build sh-row">
         <input
           maxlength="64"
           v-model="newParamValue"
@@ -2952,7 +2937,7 @@ async function save(thenSubmit = false) {
         顺带解决横向拥挤：「更多价格」展开时**纵向追加副字段**，不横向加列。
         375 宽下三列本来就要靠撤 placeholder 才塞得下。
       -->
-      <view v-if="multi && priceField === 'price'" class="bulk">
+      <view v-if="multi && priceField === 'price'" class="bulk sh-row">
         <input
           maxlength="10"
           v-model="bulk.price"
@@ -2963,7 +2948,7 @@ async function save(thenSubmit = false) {
         <text class="sh-link" @tap="applyBulkPrice">{{ $t("goods.applyAll") }}</text>
       </view>
       <!-- 成本多半各规格一个数，但「都填同一个」也常见（同一箱货拆规格卖） -->
-      <view v-if="multi && priceField === 'cost'" class="bulk">
+      <view v-if="multi && priceField === 'cost'" class="bulk sh-row">
         <input
           maxlength="10"
           v-model="bulk.cost"
@@ -2982,7 +2967,7 @@ async function save(thenSubmit = false) {
         扫一眼就知道这件货卖多少、进多少、划线多少。
       -->
       <template v-if="!multi">
-        <view class="pr">
+        <view class="pr sh-row">
           <text class="txt-sub pr__k sh-fill">{{ $t(priceLabel) }}</text>
           <text class="txt-sub pr__cur">￥</text>
           <input maxlength="10" v-model="rows[0]!.priceMajor[market]" class="txt-body pr__v sh-num" type="digit" />
@@ -2991,7 +2976,7 @@ async function save(thenSubmit = false) {
         <text v-if="marginOf(rows[0]!)" class="txt-caption pr__margin">
           {{ $t("goods.margin", { a: marginOf(rows[0]!)!.amount, r: marginOf(rows[0]!)!.rate }) }}
         </text>
-        <view class="pr">
+        <view class="pr sh-row">
           <text class="txt-sub pr__k sh-fill">{{ $t("goods.costPrice") }}</text>
           <text class="txt-sub pr__cur">￥</text>
           <input
@@ -3004,7 +2989,7 @@ async function save(thenSubmit = false) {
         </view>
         <text v-if="belowCost(rows[0]!)" class="txt-caption pr__warn">{{ $t("goods.belowCost") }}</text>
         <text class="sh-muted hint">{{ $t("goods.costHint") }}</text>
-        <view class="pr">
+        <view class="pr sh-row">
           <text class="txt-sub pr__k sh-fill">{{ $t("goods.originPrice") }}</text>
           <text class="txt-sub pr__cur">￥</text>
           <input
@@ -3015,7 +3000,7 @@ async function save(thenSubmit = false) {
             type="digit"
           />
         </view>
-        <view v-if="SHOW_FRESH_FIELDS && isFresh" class="pr">
+        <view v-if="SHOW_FRESH_FIELDS && isFresh" class="pr sh-row">
           <text class="txt-sub pr__k sh-fill">{{ $t("goods.nominalGram") }}</text>
           <text class="txt-sub pr__cur">g</text>
           <input maxlength="6" v-model="rows[0]!.nominalGram" class="txt-body pr__v sh-num" type="number" />
@@ -3027,7 +3012,7 @@ async function save(thenSubmit = false) {
         所以切的是「这一列看哪个字段」，任何时候都只有「一行一个规格、一个数字」。
       -->
       <template v-else>
-        <view v-for="(r, i) in rows" :key="i" class="pr">
+        <view v-for="(r, i) in rows" :key="i" class="pr sh-row">
           <text class="txt-sub pr__k sh-fill">{{ r.optionValues.join(" · ") }}</text>
           <text class="txt-sub pr__cur">{{ priceField === "gram" ? "g" : "￥" }}</text>
           <input
@@ -3117,7 +3102,7 @@ async function save(thenSubmit = false) {
       <text class="sh-muted hint">{{ $t("goods.stockHint") }}</text>
 
       <!-- 与价格卡同构：同样的分组、同样的规格名、同样的「统一填入」 -->
-      <view v-if="multi" class="bulk">
+      <view v-if="multi" class="bulk sh-row">
         <input
           maxlength="6"
           v-model="bulk.stock"
@@ -3128,13 +3113,13 @@ async function save(thenSubmit = false) {
         <text class="sh-link" @tap="applyBulkStock">{{ $t("goods.applyAll") }}</text>
       </view>
 
-      <view v-for="(r, i) in rows" :key="i" class="pr">
+      <view v-for="(r, i) in rows" :key="i" class="pr sh-row">
         <text class="txt-sub pr__k sh-fill">{{ multi ? r.optionValues.join(" · ") : $t("goods.stock") }}</text>
         <!--
           −／＋ 步进。**库存是每天都在动的数**，最常见的改动是「卖掉两袋」——
           点两下比调出键盘、全选、重打快得多。数字仍然可以直接键入。
         -->
-        <view class="txt-body step" @tap="stepStock(r, -1)"><sh-icon name="minus" :size="26" color="var(--sh-sub)"></sh-icon></view>
+        <view class="txt-body step sh-center" @tap="stepStock(r, -1)"><sh-icon name="minus" :size="26" color="var(--sh-sub)"></sh-icon></view>
         <!-- 库存 0 = 这个规格顾客买不到。多规格时最容易漏填的就是它 -->
         <input
           maxlength="6"
@@ -3143,14 +3128,14 @@ async function save(thenSubmit = false) {
           :class="{ 'is-out': Number(r.stock) === 0 }"
           type="number"
         />
-        <view class="txt-body step" @tap="stepStock(r, 1)"><sh-icon name="plus" :size="26" color="var(--sh-sub)"></sh-icon></view>
+        <view class="txt-body step sh-center" @tap="stepStock(r, 1)"><sh-icon name="plus" :size="26" color="var(--sh-sub)"></sh-icon></view>
       </view>
       <!-- 多店：改的是哪家店的库存必须写出来。主体总量与门店库存是两个数 -->
       <text v-if="merchant.multiStore" class="sh-muted hint">
         {{ $t("goods.stockStoreScope", { s: merchant.currentStore?.name || "" }) }}
       </text>
 
-      <view class="pr">
+      <view class="pr sh-row">
         <text class="txt-sub pr__k sh-fill">{{ $t("goods.limitPerUser") }}</text>
         <!-- 右侧留出 −／＋ 那两格的宽度，两行的输入框才在同一竖列上 -->
         <input maxlength="6" v-model="limitPerUser" class="txt-body pr__v pr__v--n pr__v--pad sh-num" type="number" />
@@ -3174,7 +3159,7 @@ async function save(thenSubmit = false) {
           @tap="rememberExternal(false)"
         >{{ $t("goods.specFold") }}</text>
       </sh-section>
-      <view v-if="!externalOn" class="askspec" @tap="rememberExternal(true)">
+      <view v-if="!externalOn" class="askspec sh-row" @tap="rememberExternal(true)">
         <text class="txt-strong sh-muted askspec__t">{{ $t("goods.extShow") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
@@ -3183,7 +3168,7 @@ async function save(thenSubmit = false) {
         <!-- 一行一个字段；多规格时每个规格一行，与价格卡同构 -->
         <view v-for="f in extFields" :key="f.key" class="codeblock">
           <text class="txt-strong codeblock__k">{{ $t(f.labelKey) }}</text>
-          <view v-for="(r, i) in rows" :key="i" class="pr">
+          <view v-for="(r, i) in rows" :key="i" class="pr sh-row">
             <text v-if="multi" class="txt-sub pr__k sh-fill">{{ r.optionValues.join(" · ") }}</text>
             <input
               maxlength="64"
@@ -3203,7 +3188,6 @@ async function save(thenSubmit = false) {
         </view>
       </template>
     </view>
-
 
     <!--
       差什么就说什么 —— 灰按钮只说明「不行」，不说明「下一步做什么」。
@@ -3248,9 +3232,6 @@ async function save(thenSubmit = false) {
   给足点击面积比省地方重要。
 */
 .askspec {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   padding: 18rpx 0 2rpx;
 }
 
@@ -3282,10 +3263,7 @@ async function save(thenSubmit = false) {
 */
 /* 档位缩进在规格名下：视觉上是「这个规格的档」，不是又一排并列的东西 */
 .opts {
-  display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 12rpx;
   margin-top: 16rpx;
   padding-left: 20rpx;
 }
@@ -3301,9 +3279,6 @@ async function save(thenSubmit = false) {
 
 /* 弹层里那一行输入：输入框吃满，保存压在右边 —— 与「商品规格和参数」那一页同形 */
 .build {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   margin-top: 20rpx;
 }
 
@@ -3334,10 +3309,7 @@ async function save(thenSubmit = false) {
   两者在形、色、位三个维度上都不一样。
 */
 .addbar {
-  display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 12rpx;
   padding-bottom: 16rpx;
   border-bottom: var(--sh-hairline);
   margin-bottom: 8rpx;
@@ -3382,9 +3354,6 @@ async function save(thenSubmit = false) {
 
 .param__opts {
   flex: 1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
 }
 
 /*
@@ -3467,26 +3436,15 @@ async function save(thenSubmit = false) {
   content: " ·";
   color: var(--sh-warning);
 }
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-}
 .chips .sh-chip {
   padding: 14rpx 24rpx;
 }
 /* 标准品入口：取用后是一枚可撤的徽标 */
 .std-on {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 20rpx 0;
 }
 
 .std-search {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   padding: 16rpx 24rpx;
 }
 .std-search .field__input {
@@ -3515,9 +3473,6 @@ async function save(thenSubmit = false) {
  * 两张卡长得一样，商家不需要在脑子里对齐行号。
  */
 .pr {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   margin-top: 12rpx;
 }
 .pr__k {
@@ -3572,23 +3527,18 @@ async function save(thenSubmit = false) {
 .step {
   width: 64rpx;
   height: 64rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border-radius: 16rpx;
   background: var(--sh-faint);
   color: var(--sh-sub);
   flex: none;
 }
 /* 一行里「输入框 + 一个小动作」的通用排布 */
-.inline {
-  display: flex;
-  align-items: center;
+.fieldrow {
   gap: 12rpx;
 }
 /* 清空键。尺寸与颜色由 `sh-icon-btn` 给（它自带 88rpx 点按区，
    此前是一个 26rpx 的 ✕ 字符，手指要瞄）。这里只留「不被压缩」。 */
-.inline__clear {
+.fieldrow__clear {
   flex: none;
 }
 /* 未开通的履约方式：灰着并可见，不隐藏 —— 隐藏会让人以为平台不支持 */
@@ -3601,11 +3551,6 @@ async function save(thenSubmit = false) {
   flex-direction: column;
   gap: 12rpx;
   margin-top: 12rpx;
-}
-.dimgs__row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
 }
 .dimgs__img {
   width: 96rpx;
@@ -3627,9 +3572,6 @@ async function save(thenSubmit = false) {
    没有框、没有底色、点按区只有字那么大。没人报，因为它仍然点得动。
    取值与 sh-uploader 的添加格一致（faint 底 + sm 圆角），尺寸跟这一列的图对齐。 */
 .dimgs__add {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 96rpx;
   height: 128rpx;
   border-radius: 16rpx;
@@ -3693,11 +3635,6 @@ async function save(thenSubmit = false) {
 .group {
   margin-top: 20rpx;
 }
-.group__head {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
 
 .del.small {
 
@@ -3706,8 +3643,6 @@ async function save(thenSubmit = false) {
 }
 
 .bulk {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
   margin: 20rpx 0;
 }
@@ -3738,17 +3673,11 @@ async function save(thenSubmit = false) {
   border-radius: 44rpx 44rpx 0 0;
 }
 .cat-sheet__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 24rpx;
   border-bottom: var(--sh-hairline);
 }
 
 .cat-sheet__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 28rpx 24rpx;
   border-bottom: var(--sh-hairline);
 }
@@ -3759,12 +3688,6 @@ async function save(thenSubmit = false) {
 .cat-lv__t {
   display: block;
   margin-bottom: 8rpx;
-}
-
-.cat-lv__opts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
 }
 
 /* 已选那一行：面包屑是**结果确认**，比候选项重一档 */

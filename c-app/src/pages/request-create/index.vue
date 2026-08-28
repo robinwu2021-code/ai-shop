@@ -61,10 +61,10 @@ async function submit() {
 
       <view class="sh-row sh-row--between row sh-mt-md">
         <text class="txt-sub row__k">{{ $t("request.expect") }}</text>
-        <view class="stepper">
-          <view class="txt-body stepper__btn" @tap="step(-1)"><text>−</text></view>
+        <view class="stepper sh-row">
+          <view class="txt-body stepper__btn sh-center" @tap="step(-1)"><text>−</text></view>
           <text class="txt-strong stepper__num sh-num">{{ qty }}</text>
-          <view class="txt-body stepper__btn" @tap="step(1)"><text>＋</text></view>
+          <view class="txt-body stepper__btn sh-center" @tap="step(1)"><text>＋</text></view>
         </view>
       </view>
 
@@ -123,8 +123,6 @@ async function submit() {
   color: var(--sh-ink);
 }
 .stepper {
-  display: flex;
-  align-items: center;
   gap: 8rpx;
   background: var(--sh-faint);
   border-radius: 9999px;
@@ -135,9 +133,6 @@ async function submit() {
   height: 56rpx;
   border-radius: 9999px;
   background: var(--sh-surface);
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .stepper__num {
   min-width: 56rpx;
@@ -149,5 +144,4 @@ async function submit() {
 .note {
   background: var(--sh-faint);
 }
-
 </style>

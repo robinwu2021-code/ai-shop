@@ -128,7 +128,7 @@ onShow(() => {
     <view class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("schedule.list") }}</text>
       <text v-if="!slots.length" class="sh-muted sh-hint">{{ $t("schedule.empty") }}</text>
-      <view v-for="s in slots" :key="s.slotNo" class="slot">
+      <view v-for="s in slots" :key="s.slotNo" class="slot sh-row">
         <view class="sh-fill">
           <text class="txt-body slot__when sh-num">{{ datetime(s.startAt) }}</text>
           <text class="sh-muted">{{ $t("schedule.booked", { b: s.booked, c: s.capacity }) }}</text>
@@ -146,15 +146,12 @@ onShow(() => {
 </template>
 
 <style scoped>
-
 .row__in {
   width: 120rpx;
   text-align: center;
 }
 
 .slot {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   padding: 18rpx 0;
   border-top: var(--sh-hairline);

@@ -239,16 +239,16 @@ function navToStore() {
     </view>
 
     <!-- 店招：登录用户看到的是「常买」优先，这里只占一行 -->
-    <view class="store">
+    <view class="store sh-row">
       <text class="store__logo">{{ data.merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
       <view class="sh-fill">
-        <view class="store__row">
+        <view class="store__row sh-row">
           <text class="txt-title">{{ data.merchant.name }}</text>
           <text v-if="data.merchant.verified" class="sh-chip sh-chip--primary">
             {{ $t("merchant.verified") }}
           </text>
         </view>
-        <view class="addr">
+        <view class="addr sh-row">
           <text class="sh-muted sh-fill">
             {{ data.store.openHours }} · {{ data.store.address }}
           </text>
@@ -283,14 +283,14 @@ function navToStore() {
       <view
         v-for="f in frequent"
         :key="f.skuNo"
-        class="freq"
+        class="freq sh-row"
         :class="{ 'is-off': f.invalid }"
       >
         <sh-cover class="freq__cover" :src="f.cover"></sh-cover>
         <view class="sh-fill" @tap="gotoGoods(f.goodsNo)">
           <text class="txt-strong freq__title">{{ f.title }}</text>
           <text class="sh-muted">{{ f.spec }}</text>
-          <view class="freq__tags">
+          <view class="freq__tags sh-wrap">
             <text v-if="f.times > 1" class="sh-chip">{{
               $t("store.times", { n: f.times })
             }}</text>
@@ -385,8 +385,6 @@ function navToStore() {
 }
 
 .addr {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
 }
 
@@ -405,8 +403,6 @@ function navToStore() {
 }
 
 .store {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   padding: 8rpx 0 24rpx;
 }
@@ -421,8 +417,6 @@ function navToStore() {
 }
 
 .store__row {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
 }
 
@@ -447,8 +441,6 @@ function navToStore() {
 /* 排布由 .sh-block__head 给，这里只把右侧的「再来一单 / 计数」推到头 */
 /* 底和圆角由外层 .sh-block 给 —— 常买行在块内成行，不再各自一张卡 */
 .freq {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   padding: 20rpx 26rpx;
 }
@@ -471,8 +463,6 @@ function navToStore() {
   display: block;
 }
 .freq__tags {
-  display: flex;
-  flex-wrap: wrap;
   gap: 8rpx;
   margin-top: 8rpx;
 }

@@ -391,7 +391,7 @@ onShow(() => {
 
     <!-- ① 经营范围（主体级） -->
     <view class="sh-card">
-      <view class="head">
+      <view class="head sh-row sh-row--between sh-row--baseline">
         <text class="txt-title">{{ $t("store.scope") }}</text>
         <text class="txt-caption head__sub">{{ $t("store.scopeAll") }}</text>
       </view>
@@ -431,12 +431,12 @@ onShow(() => {
 
     <!-- ② 送货方式（门店级，即点即存） -->
     <view v-if="fulfillment" class="sh-card sh-mt-sm">
-      <view class="head">
+      <view class="head sh-row sh-row--between sh-row--baseline">
         <text class="txt-title">{{ $t("store.fulfillCard") }}</text>
       </view>
 
       <template v-for="c in channelRows" :key="c.channel">
-        <view class="ch" :class="{ 'is-off': c.denied || c.locked }" @tap="toggleChannel(c.channel)">
+        <view class="ch sh-row" :class="{ 'is-off': c.denied || c.locked }" @tap="toggleChannel(c.channel)">
           <view class="sh-fill">
             <text class="txt-strong ch__name">{{ $t(`channel.${c.channel}`) }}</text>
             <text class="txt-caption ch__desc" :class="{ 'ch__desc--warn': c.locked }">{{ c.locked ? $t("store.channelLocked") : c.denied ? $t("store.channelDenied") : $t(`store.channelDesc.${c.channel}`) }}</text>
@@ -448,15 +448,15 @@ onShow(() => {
         </view>
 
         <!-- 开着的路：一行配置摘要 -->
-        <view v-if="c.enabled && c.channel === 'STORE_PICKUP'" class="sum" :class="{ 'sum--warn': !form.address }">
+        <view v-if="c.enabled && c.channel === 'STORE_PICKUP'" class="sum sh-row sh-row--between" :class="{ 'sum--warn': !form.address }">
           <text class="txt-caption sum__t sh-fill">{{ fullAddress ? $t("store.sumPickupAddr", { s: fullAddress }) : $t("store.sumNoAddress") }}</text>
           <sh-go class="sum__go" @tap.stop="goAddress">{{ $t("store.goAddress") }}</sh-go>
         </view>
-        <view v-if="c.enabled && c.channel === 'NEIGHBOR_PICKUP'" class="sum" :class="{ 'sum--warn': !neighborRefs.length && !form.address }">
+        <view v-if="c.enabled && c.channel === 'NEIGHBOR_PICKUP'" class="sum sh-row sh-row--between" :class="{ 'sum--warn': !neighborRefs.length && !form.address }">
           <text class="txt-caption sum__t sh-fill">{{ neighborSummary ? $t("store.pickup.sumRefs", { s: neighborSummary }) : (form.address ? $t("store.pickup.sumNone") : $t("store.pickup.sumNoneNoAddr")) }}</text>
           <sh-go class="sum__go" @tap.stop="pickupSheetOpen = true">{{ $t("store.pickup.manage") }}</sh-go>
         </view>
-        <view v-if="c.enabled && c.channel === 'MERCHANT_DELIVERY'" class="sum">
+        <view v-if="c.enabled && c.channel === 'MERCHANT_DELIVERY'" class="sum sh-row sh-row--between">
           <template v-if="!ruleOpen">
             <text class="txt-caption sum__t sh-fill">{{ deliverySummary || $t("store.sumDeliveryUnset") }}</text>
             <sh-go class="sum__go" @tap.stop="openRule">{{ $t("store.edit") }}</sh-go>
@@ -483,23 +483,23 @@ onShow(() => {
             </view>
           </view>
         </view>
-        <view v-if="c.enabled && c.channel === 'MERCHANT_DELIVERY'" class="sum">
+        <view v-if="c.enabled && c.channel === 'MERCHANT_DELIVERY'" class="sum sh-row sh-row--between">
           <template v-if="!subsetOpen">
             <text class="txt-caption sum__t sh-fill">{{ subsetSummary(c) }}</text>
             <sh-go class="sum__go" @tap.stop="openSubset(c)">{{ $t("store.subset.edit") }}</sh-go>
           </template>
           <view v-else class="rate" @tap.stop>
             <text class="sh-hint">{{ $t("store.subset.hint") }}</text>
-            <view class="subset__opt" :class="{ 'is-on': subsetAll }" @tap="subsetAll = true">
+            <view class="subset__opt sh-row sh-row--between" :class="{ 'is-on': subsetAll }" @tap="subsetAll = true">
               <text class="txt-sub subset__t">{{ $t("store.subset.all") }}</text>
               <sh-icon v-if="subsetAll" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
             </view>
-            <view class="subset__opt" :class="{ 'is-on': !subsetAll }" @tap="subsetAll = false">
+            <view class="subset__opt sh-row sh-row--between" :class="{ 'is-on': !subsetAll }" @tap="subsetAll = false">
               <text class="txt-sub subset__t">{{ $t("store.subset.only") }}</text>
               <sh-icon v-if="!subsetAll" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
             </view>
             <view v-if="!subsetAll" class="subset__list">
-              <view v-for="a in activeAreas" :key="a.areaNo || a.refCode" class="subset__row" @tap="toggleSubsetArea(a)">
+              <view v-for="a in activeAreas" :key="a.areaNo || a.refCode" class="subset__row sh-row sh-row--between" @tap="toggleSubsetArea(a)">
                 <text class="txt-sub subset__name sh-fill">{{ splitName(a).main }}<text v-if="isWhole(a)" class="txt-caption"> {{ $t("store.whole") }}</text></text>
                 <sh-check :model-value="subsetPicked.includes(a.areaNo || '')"></sh-check>
               </view>
@@ -511,7 +511,7 @@ onShow(() => {
             </view>
           </view>
         </view>
-        <view v-if="c.enabled && c.channel === 'EXPRESS'" class="sum">
+        <view v-if="c.enabled && c.channel === 'EXPRESS'" class="sum sh-row sh-row--between">
           <text class="txt-caption sum__t sh-fill">{{ $t("store.sumExpress") }}</text>
         </view>
       </template>
@@ -543,12 +543,6 @@ onShow(() => {
 </template>
 
 <style scoped>
-.head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16rpx;
-}
 .head__sub {
   flex-shrink: 0;
 }
@@ -583,8 +577,6 @@ onShow(() => {
 }
 /* 送货方式：紧凑开关行 */
 .ch {
-  display: flex;
-  align-items: center;
   gap: 24rpx;
   padding: 22rpx 0;
   border-bottom: var(--sh-hairline);
@@ -611,10 +603,6 @@ onShow(() => {
  * 缩进 24rpx 表达从属关系：它说的是上面那一路的事，不是并列的第五路。
  */
 .sum {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
   padding: 16rpx 0 16rpx 24rpx;
   border-bottom: var(--sh-hairline);
 }
@@ -630,9 +618,6 @@ onShow(() => {
   color: var(--sh-warning);
 }
 .subset__opt {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 14rpx 0;
   border-bottom: var(--sh-hairline);
 }
@@ -644,10 +629,6 @@ onShow(() => {
   margin-top: 8rpx;
 }
 .subset__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
   padding: 12rpx 0;
 }
 .subset__name {

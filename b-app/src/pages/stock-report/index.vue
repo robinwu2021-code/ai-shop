@@ -80,7 +80,7 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="stockReport.title" :denied="!merchant.can('biz:customer')">
-    <view class="sh-card hd">
+    <view class="sh-card hd sh-row sh-row--between">
       <text class="txt-strong">{{ $t("stockReport.month") }}</text>
       <text class="sh-link sh-num" @tap="pickMonth">{{ month }} ▾</text>
     </view>
@@ -182,11 +182,6 @@ onShow(load);
 </template>
 
 <style scoped>
-.hd {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
 .hd > view > text {
   display: block;
 }

@@ -146,7 +146,7 @@ onShow(load);
       一排是「去另一页」、一排是「改本页」，读不出区别。
       改成定宽网格：一屏全可见，四列一行自动换行，与筛选栏也不再撞脸。
     -->
-    <view class="entries">
+    <view class="entries sh-wrap">
       <text
         v-for="e in entries"
         :key="e.key"
@@ -162,7 +162,7 @@ onShow(load);
     <sh-empty v-if="!loading && !rows.length" :text="String($t('stock.empty'))"></sh-empty>
 
     <view v-for="b in rows" :key="b.itemId" class="sh-card sh-mb-sm" @tap="openItem(b)">
-      <view class="row__top">
+      <view class="row__top sh-row">
         <view class="sh-fill">
           <text class="txt-strong row__title">{{ b.name }}{{ b.specText ? ` · ${b.specText}` : "" }}</text>
           <view class="row__meta">
@@ -204,9 +204,6 @@ onShow(load);
 <style scoped>
 /* 七个入口的定宽网格。四列一行 —— 七条正好两行，一屏全可见 */
 .entries {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-bottom: 16rpx;
 }
 /*
@@ -223,9 +220,7 @@ onShow(load);
 }
 
 .row__top {
-  display: flex;
   gap: 20rpx;
-  align-items: center;
 }
 
 .row__title {

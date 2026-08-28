@@ -81,10 +81,10 @@ onShareAppMessage(() =>
   <sh-scaffold v-if="merchant">
     <!-- 商家头部 -->
     <view class="sh-card head">
-      <view class="head__top">
+      <view class="head__top sh-row">
         <text class="head__logo">{{ merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
         <view class="sh-fill">
-          <view class="head__title">
+          <view class="head__title sh-row">
             <text class="txt-title">{{ merchant.name }}</text>
             <text
               v-if="merchant.verified"
@@ -101,7 +101,7 @@ onShareAppMessage(() =>
 
       <text class="txt-sub head__desc">{{ merchant.desc }}</text>
 
-      <view class="tags">
+      <view class="tags sh-wrap">
         <!-- 经营范围排在自定义标签之前：它不是修饰词，是**这家店的货能不能卖给我**，
              和「已认证」一样属于下单前必须先看到的事实 -->
         <text class="sh-chip sh-chip--primary">
@@ -113,7 +113,7 @@ onShareAppMessage(() =>
       </view>
 
       <!-- 评分区：总分 + 分维度 + 依据 -->
-      <view class="score">
+      <view class="score sh-row">
         <view class="score__main">
           <!--
             **零评价时不给分数也不给星。** 后端对没人评过的商家回 5.0 ——
@@ -162,15 +162,15 @@ onShareAppMessage(() =>
       </view>
 
       <view class="facts">
-        <view v-if="merchant.address" class="fact">
+        <view v-if="merchant.address" class="fact sh-row sh-row--between sh-row--top">
           <text class="txt-caption fact__k">{{ $t("merchant.address") }}</text>
           <text class="txt-caption fact__v">{{ merchant.address }}</text>
         </view>
-        <view v-if="merchant.openHours" class="fact">
+        <view v-if="merchant.openHours" class="fact sh-row sh-row--between sh-row--top">
           <text class="txt-caption fact__k">{{ $t("merchant.hours") }}</text>
           <text class="txt-caption fact__v sh-num">{{ merchant.openHours }}</text>
         </view>
-        <view class="fact">
+        <view class="fact sh-row sh-row--between sh-row--top">
           <text class="txt-caption fact__k">{{ $t("merchant.joined") }}</text>
           <text class="txt-caption fact__v sh-num">{{ isoDate(merchant.joinedAt) }}</text>
         </view>
@@ -229,8 +229,6 @@ onShareAppMessage(() =>
 }
 
 .head__top {
-  display: flex;
-  align-items: center;
   gap: 24rpx;
 }
 .head__logo {
@@ -245,8 +243,6 @@ onShareAppMessage(() =>
 }
 
 .head__title {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
   margin-bottom: 8rpx;
 }
@@ -258,14 +254,9 @@ onShareAppMessage(() =>
   margin-top: 24rpx;
 }
 .tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 20rpx;
 }
 .score {
-  display: flex;
-  align-items: center;
   gap: 24rpx;
   margin-top: 28rpx;
   background: var(--sh-faint);
@@ -301,8 +292,6 @@ onShareAppMessage(() =>
   margin-top: 24rpx;
 }
 .fact {
-  display: flex;
-  justify-content: space-between;
   gap: 32rpx;
   padding: 12rpx 0;
 }
