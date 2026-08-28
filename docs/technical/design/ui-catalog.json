@@ -748,7 +748,7 @@
             {
               "app": "b-app",
               "route": "/pages/purchase-edit/index",
-              "title": "记一笔进货",
+              "title": "进货",
               "domain": "进销存",
               "tab": false,
               "status": "已实现",
@@ -759,7 +759,7 @@
             {
               "app": "b-app",
               "route": "/pages/stock-docs/index",
-              "title": "出入库单据",
+              "title": "单据",
               "domain": "进销存",
               "tab": false,
               "status": "已实现",
@@ -770,7 +770,7 @@
             {
               "app": "b-app",
               "route": "/pages/stock-out/index",
-              "title": "报损出库",
+              "title": "报损",
               "domain": "进销存",
               "tab": false,
               "status": "已实现",
@@ -792,7 +792,7 @@
             {
               "app": "b-app",
               "route": "/pages/stock-report/index",
-              "title": "进销存报表",
+              "title": "报表",
               "domain": "进销存",
               "tab": false,
               "status": "已实现",
@@ -803,7 +803,7 @@
             {
               "app": "b-app",
               "route": "/pages/locations/index",
-              "title": "库位与仓",
+              "title": "库位",
               "domain": "进销存",
               "tab": false,
               "status": "已实现",
