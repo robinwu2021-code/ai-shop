@@ -197,17 +197,24 @@ onShow(load);
       点下去毫无反应，比没有这枚按钮更让人困惑。
       存草稿常态就是 muted —— 它是次要动作，不该与「过账」争同一个视觉重量。
     -->
-    <view class="btns">
-      <view class="sh-btn sh-btn--muted sh-fill" @tap="save(false)">{{ $t("purchase.draft") }}</view>
-      <view
-        class="sh-btn flex14"
-        :class="{ 'sh-btn--muted': !lines.length || busy }"
-        @tap="save(true)"
-      >
-        {{ $t("purchase.post") }}
-      </view>
-    </view>
+    <!--
+      主动作贴底。进货单的行数没有上限（进一车货三十行是常态），
+      按钮跟在行列表后面的话，它会被推到很下面 —— 而它是这一页唯一的出口。
+      `sh-actionbar` 同时给条和占位块，两者高度不会再对不上。
+    -->
     <text class="sh-hint hint">{{ $t("purchase.postHint") }}</text>
+    <sh-actionbar :pad="200">
+      <view class="btns">
+        <view class="sh-btn sh-btn--muted sh-fill" @tap="save(false)">{{ $t("purchase.draft") }}</view>
+        <view
+          class="sh-btn flex14"
+          :class="{ 'sh-btn--muted': !lines.length || busy }"
+          @tap="save(true)"
+        >
+          {{ $t("purchase.post") }}
+        </view>
+      </view>
+    </sh-actionbar>
 
     <!-- 挑货走公共件：搜索、已选计数、已选置灰，四处判据一致 -->
     <biz-item-picker

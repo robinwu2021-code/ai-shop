@@ -222,13 +222,21 @@ function at(iso?: string): string {
         </view>
       </view>
 
-      <view
-        class="sh-btn"
-        :class="{ 'sh-btn--muted': !picked.length || busy }"
-        @tap="open"
-      >
-        {{ $t("stockCheck.start", { n: picked.length }) }}
-      </view>
+      <!--
+        ⚠️ 这两枚是**流程节点**，不是「随时可提交」：先「开始盘点」，
+        填完实盘数才「提交」。贴底之后它们一直在眼前，所以
+        **禁用态尤其要准** —— 没选货 / 没填数时是 muted，那是唯一的护栏。
+        （原来它们在流末，滚不到就点不到，等于多了一道物理护栏；现在没有了。）
+      -->
+      <sh-actionbar :pad="180">
+        <view
+          class="sh-btn"
+          :class="{ 'sh-btn--muted': !picked.length || busy }"
+          @tap="open"
+        >
+          {{ $t("stockCheck.start", { n: picked.length }) }}
+        </view>
+      </sh-actionbar>
     </template>
 
     <!-- ② 已开单：填实盘数 -->
@@ -293,14 +301,16 @@ function at(iso?: string): string {
         </text>
       </view>
 
-      <view
-        class="sh-btn"
-        :class="{ 'sh-btn--muted': !filledCount || busy }"
-        @tap="submit"
-      >
-        {{ $t("stockCheck.submit") }}
-      </view>
       <text class="sh-hint hint">{{ $t("stockCheck.postHint") }}</text>
+      <sh-actionbar :pad="200">
+        <view
+          class="sh-btn"
+          :class="{ 'sh-btn--muted': !filledCount || busy }"
+          @tap="submit"
+        >
+          {{ $t("stockCheck.submit") }}
+        </view>
+      </sh-actionbar>
     </template>
   </sh-scaffold>
 </template>

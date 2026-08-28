@@ -1423,7 +1423,7 @@
         "pad?: number"
       ],
       "usage": {
-        "b-app": 0,
+        "b-app": 7,
         "c-app": 12
       },
       "note": "—",
@@ -2434,6 +2434,7 @@
       "key": "b-app/picking",
       "file": "b-app/src/pages/picking/index.vue",
       "components": [
+        "sh-actionbar",
         "sh-cover",
         "sh-empty",
         "sh-scaffold",
@@ -2492,6 +2493,7 @@
       "key": "b-app/purchase-edit",
       "file": "b-app/src/pages/purchase-edit/index.vue",
       "components": [
+        "sh-actionbar",
         "sh-add",
         "sh-empty",
         "sh-kv",
@@ -2671,6 +2673,7 @@
       "key": "b-app/stock-check",
       "file": "b-app/src/pages/stock-check/index.vue",
       "components": [
+        "sh-actionbar",
         "sh-check",
         "sh-empty",
         "sh-scaffold"
@@ -2719,6 +2722,7 @@
       "key": "b-app/stock-out",
       "file": "b-app/src/pages/stock-out/index.vue",
       "components": [
+        "sh-actionbar",
         "sh-add",
         "sh-empty",
         "sh-kv",
@@ -2850,6 +2854,7 @@
       "key": "b-app/transfer",
       "file": "b-app/src/pages/transfer/index.vue",
       "components": [
+        "sh-actionbar",
         "sh-add",
         "sh-empty",
         "sh-go",

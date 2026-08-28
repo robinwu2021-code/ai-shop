@@ -238,9 +238,10 @@ onShow(load);
         <text class="txt-caption">{{ $t("transfer.conserveHint") }}</text>
       </view>
 
-      <view v-if="doc.status === 'SHIPPED'" class="sh-btn" @tap="receive">
-        {{ $t("transfer.receive") }}
-      </view>
+      <!-- 收货：单据详情一屏放不下时，这枚在最下面，而它是收货人唯一要点的东西 -->
+      <sh-actionbar v-if="doc.status === 'SHIPPED'" :pad="180">
+        <view class="sh-btn" @tap="receive">{{ $t("transfer.receive") }}</view>
+      </sh-actionbar>
     </template>
 
     <!-- ② 新建 -->
@@ -278,9 +279,12 @@ onShow(load);
         <text class="txt-display sh-num">{{ totalQty }}</text>
       </view>
 
-      <view class="sh-btn" :class="{ 'sh-btn--muted': !lines.length || busy }" @tap="ship">
-        {{ $t("transfer.ship") }}
-      </view>
+      <!-- 主动作贴底：调拨单的行数没有上限 -->
+      <sh-actionbar :pad="180">
+        <view class="sh-btn" :class="{ 'sh-btn--muted': !lines.length || busy }" @tap="ship">
+          {{ $t("transfer.ship") }}
+        </view>
+      </sh-actionbar>
 
       <biz-item-picker
         :visible="showPick"

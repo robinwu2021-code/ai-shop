@@ -205,13 +205,16 @@ onShow(load);
       </view>
     </template>
 
-    <view
-      v-if="preparing.length"
-      class="sh-btn arrive"
-      @tap="markAllArrived"
-    >
-      {{ $t("picking.markArrived", { n: preparing.length }) }}
-    </view>
+    <!--
+      主动作贴底。分拣单一屏放不下时，「全部标记到点」在最下面 ——
+      而分拣员是一边核对一边往下滚的，滚到底才发现按钮在那儿。
+      `v-if` 留在 sh-actionbar 上：没有待分拣时连占位块也不该占。
+    -->
+    <sh-actionbar v-if="preparing.length" :pad="180">
+      <view class="sh-btn arrive" @tap="markAllArrived">
+        {{ $t("picking.markArrived", { n: preparing.length }) }}
+      </view>
+    </sh-actionbar>
   </sh-scaffold>
 </template>
 

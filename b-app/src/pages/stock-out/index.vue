@@ -165,9 +165,12 @@ onShow(load);
       <text class="txt-display sh-num is-danger">−{{ totalQty }}</text>
     </view>
 
-    <view class="sh-btn" :class="{ 'sh-btn--muted': !lines.length || busy }" @tap="post">
-      {{ $t("stockOut.post") }}
-    </view>
+    <!-- 主动作贴底：报损单的行数没有上限，按钮跟在行后面会被推下去 -->
+    <sh-actionbar :pad="180">
+      <view class="sh-btn" :class="{ 'sh-btn--muted': !lines.length || busy }" @tap="post">
+        {{ $t("stockOut.post") }}
+      </view>
+    </sh-actionbar>
 
     <biz-item-picker
       :visible="showPick"
