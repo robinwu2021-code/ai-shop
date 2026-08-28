@@ -31,7 +31,7 @@ const props = withDefaults(
  * 修在这里而不是各调用点：`direction: rtl` 会把 flex 行整体镜像（图标从右边挪到左边），
  * 唯独 glyph 本身不翻 —— 那是每一个方向性图标都要处理一次的事，只该处理一次。
  */
-const DIRECTIONAL = new Set<IconName>(["chevronRight"]);
+const DIRECTIONAL = new Set<IconName>(["chevronRight", "chevronLeft"]);
 const directional = computed(() => DIRECTIONAL.has(props.name));
 
 const style = computed(() => {

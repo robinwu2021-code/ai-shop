@@ -838,7 +838,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 95,
+        "b-app": 96,
         "c-app": 28
       }
     },
@@ -1620,7 +1620,7 @@
       "name": "sh-scaffold",
       "file": "packages/ui/src/components/sh-scaffold.vue",
       "scope": "跨端",
-      "lines": 173,
+      "lines": 278,
       "props": [
         "padded?: boolean",
         "titleKey?: string",

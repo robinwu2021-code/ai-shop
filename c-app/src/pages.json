@@ -188,6 +188,8 @@
     "navigationBarTextStyle": "black",
     "navigationBarBackgroundColor": "#FFFFFF",
     "backgroundColor": "#ECEDEF",
+    "app-plus": { "navigationStyle": "custom" },
+    "h5": { "navigationStyle": "custom" },
     "rpxCalcMaxDeviceWidth": 600,
     "rpxCalcBaseDeviceWidth": 375
   },

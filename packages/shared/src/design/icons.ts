@@ -60,6 +60,10 @@ export const ICONS = {
   search: wrap('<circle cx="11" cy="11" r="6.4"/><path d="m16 16 4.2 4.2"/>'),
   pin: wrap('<path d="M12 21s6.5-6 6.5-10.5a6.5 6.5 0 1 0-13 0C5.5 15 12 21 12 21Z"/><circle cx="12" cy="10.5" r="2.4"/>'),
   chevronRight: wrap('<path d="m9.5 5.5 6.5 6.5-6.5 6.5"/>'),
+  /* 返回箭头。**由 chevronRight 镜像来**（x 轴对称：9.5↔14.5、+6.5↔-6.5），
+     不是手画的 —— 手画会差几个像素，而这两个箭头常常同屏出现（标题栏左上 vs 列表行右侧）。
+     它进 DIRECTIONAL 名单：阿语下要跟着翻。 */
+  chevronLeft: wrap('<path d="m14.5 5.5-6.5 6.5 6.5 6.5"/>'),
   /* 上下两个是 chevronRight 转置/翻转来的，顶点与线宽都跟着它 ——
      手画会差几个像素，同一屏里三个方向的箭头粗细不一样就很显眼。
      **它们不进 sh-icon 的 DIRECTIONAL 名单**：阿语要镜像的是左右，不是上下。 */

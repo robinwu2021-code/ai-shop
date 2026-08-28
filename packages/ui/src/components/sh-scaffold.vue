@@ -39,6 +39,43 @@ const app = useAppStore();
 
 const rootClass = computed(() => [...theme.rootClass, ...app.dirClass]);
 
+/*
+ * **自绘标题栏**（只在 H5 与 App 上）。
+ *
+ * 为什么要自绘：App 用的是**原生**标题栏，H5 用的是 uni 画的 HTML 栏 ——
+ * 字体、高度、返回箭头、按压反馈全不归我们管，两端因此长得不一样，
+ * 而这正是「打包后的 App 和 H5 有差距」里最后一处结构性差异。
+ * 自绘之后两端画的是同一段 HTML，用的是同一套字阶与皮肤变量。
+ *
+ * **小程序端不动**：那边右上角有胶囊按钮，自绘要精确避让它
+ *（`getMenuButtonBoundingClientRect`），而胶囊的位置各机型不同 ——
+ * 那是另一件事的风险，不该顺带做。所以 `navigationStyle: custom`
+ * 只写在 pages.json 的 `app-plus` 与 `h5` 两个平台段里。
+ */
+const statusBar = (() => {
+  try {
+    return uni.getSystemInfoSync().statusBarHeight ?? 0;
+  } catch {
+    return 0;
+  }
+})();
+
+/** 能返回 = 栈里不止一页。tab 页永远是栈底，不该有返回箭头 */
+const canBack = computed(() => {
+  if (props.tab) return false;
+  try {
+    return getCurrentPages().length > 1;
+  } catch {
+    return false;
+  }
+});
+
+const navTitle = computed(() => (props.titleKey ? String(t(props.titleKey)) : ""));
+
+function goBack() {
+  uni.navigateBack();
+}
+
 function applyTitle() {
   if (!props.titleKey) return;
   uni.setNavigationBarTitle({ title: String(t(props.titleKey)) });
@@ -64,7 +101,21 @@ watch(() => props.titleKey, applyTitle);
 
 <template>
   <view class="sh-root sh-frame" :class="rootClass">
-    <view class="sh-scaffold" :class="{ 'is-padded': padded, 'has-tabbar': !!tab }">
+    <!-- #ifdef H5 || APP-PLUS -->
+    <view class="navbar" :style="{ paddingTop: statusBar + 'px' }">
+      <view class="navbar__bar">
+        <view v-if="canBack" class="navbar__back" @tap="goBack">
+          <sh-icon name="chevronLeft" :size="34" color="var(--sh-ink)"></sh-icon>
+        </view>
+        <text class="txt-title navbar__title">{{ navTitle }}</text>
+      </view>
+    </view>
+    <!-- #endif -->
+    <view
+      class="sh-scaffold"
+      :class="{ 'is-padded': padded, 'has-tabbar': !!tab }"
+      :style="{ '--sh-navbar-h': statusBar + 44 + 'px' }"
+    >
       <view v-if="denied" class="sh-denied">
         <text class="sh-denied__t">{{ deniedText || $t("common.noPermTitle") }}</text>
         <text class="sh-denied__d">{{ $t("common.noPermHint") }}</text>
@@ -134,6 +185,46 @@ watch(() => props.titleKey, applyTitle);
     overscroll-behavior: contain;
   }
 }
+/*
+ * 自绘标题栏。**fixed 而不是随流** —— 窄屏上 `.sh-frame` 不是 fixed（原生页面滚动），
+ * 随流的话标题会跟着内容滚走；宽屏上 `.sh-frame` 带 transform，
+ * fixed 会以框为包含块，于是标题栏自动跟着窄栏收窄，不必另写一套。
+ * 高度 44px 取自 uni 自己那条 `.uni-page-head`，两端对齐。
+ */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--sh-surface);
+}
+.navbar__bar {
+  position: relative;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 返回键**绝对定位**：标题要在整条栏里居中，而不是在「返回键右边那段」里居中 ——
+   后者会让有返回键和没返回键的两页标题位置差半个箭头，翻页时看得出来 */
+.navbar__back {
+  position: absolute;
+  inset-inline-start: 8rpx;
+  width: 72rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 标题两端留出返回键的宽度，长标题才不会压到箭头上 */
+.navbar__title {
+  max-width: calc(100% - 176rpx);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .sh-scaffold {
   min-height: 100vh;
   box-sizing: border-box;
@@ -147,6 +238,20 @@ watch(() => props.titleKey, applyTitle);
   padding-right: var(--sh-pad-page, 28rpx);
   padding-top: var(--sh-pad-page, 28rpx);
 }
+/* 标题栏是 fixed 的，内容要留出等高的顶部空间（含状态栏）。
+   `--sh-navbar-h` 由组件按机型算出来传进来 —— 状态栏高度各机不同，写死会在刘海屏上压住内容 */
+/* #ifdef H5 || APP-PLUS */
+.sh-scaffold {
+  /* **默认值写出来，不靠 `var()` 的兜底。** 兜底会把拼错的变量名盖住（守卫拦的正是这个），
+     而且这个默认值本身有意义：H5 没有状态栏，44px 就是最终值；
+     App 上组件按 `statusBarHeight` 把它顶掉（行内 style 权重更高）。 */
+  --sh-navbar-h: 44px;
+  padding-top: var(--sh-navbar-h);
+}
+.sh-scaffold.is-padded {
+  padding-top: calc(var(--sh-navbar-h) + var(--sh-pad-page, 28rpx));
+}
+/* #endif */
 /* 自定义 tabBar 是 fixed 的，内容区要留出等高的底部空间 */
 .sh-scaffold.has-tabbar {
   padding-bottom: calc(var(--sh-tabbar-h) + 40rpx + env(safe-area-inset-bottom));
