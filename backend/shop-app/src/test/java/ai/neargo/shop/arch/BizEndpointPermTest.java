@@ -101,6 +101,8 @@ class BizEndpointPermTest {
         put("/biz/inventory/balances", BizPerms.STOCK);
         put("/biz/inventory/items/{itemId}", BizPerms.STOCK);
         put("/biz/inventory/ledger", BizPerms.STOCK);
+        // 开单时挑货。与 balances 同权：都是「看得见这家的货」
+        put("/biz/inventory/pickable", BizPerms.STOCK);
         // 界面上的「改数」，底下是一次单件盘点 —— 便捷端点，不是第二条改余额的路
         put("/biz/inventory/adjust", BizPerms.STOCK);
         put("/biz/inventory/counts", BizPerms.STOCK);
