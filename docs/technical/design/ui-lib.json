@@ -695,6 +695,22 @@
       }
     },
     {
+      "class": ".txt-faint",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "color": "var(--sh-faint)"
+      },
+      "px": {
+        "color": "var(--sh-faint)"
+      },
+      "usage": {
+        "b-app": 5,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".txt-ink",
       "group": "其它",
       "when": "—",
@@ -706,7 +722,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 7,
+        "b-app": 9,
         "c-app": 19
       }
     },
@@ -722,8 +738,24 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 17,
-        "c-app": 17
+        "b-app": 22,
+        "c-app": 18
+      }
+    },
+    {
+      "class": ".txt-quiet",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 7,
+        "c-app": 4
       }
     },
     {
@@ -1983,9 +2015,9 @@
         "sh-scaffold",
         "sh-stat"
       ],
-      "libClassHits": 16,
-      "localSelectors": 8,
-      "localCssLines": 33,
+      "libClassHits": 17,
+      "localSelectors": 7,
+      "localCssLines": 30,
       "rolled": []
     },
     {
@@ -2087,8 +2119,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 54,
-      "localSelectors": 30,
-      "localCssLines": 108,
+      "localSelectors": 28,
+      "localCssLines": 101,
       "rolled": []
     },
     {
@@ -2116,9 +2148,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 47,
-      "localSelectors": 9,
-      "localCssLines": 28,
+      "libClassHits": 48,
+      "localSelectors": 8,
+      "localCssLines": 25,
       "rolled": []
     },
     {
@@ -2145,9 +2177,9 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 29,
-      "localSelectors": 9,
-      "localCssLines": 35,
+      "libClassHits": 33,
+      "localSelectors": 8,
+      "localCssLines": 31,
       "rolled": []
     },
     {
@@ -2216,9 +2248,9 @@
         "sh-scaffold",
         "biz-store-tag"
       ],
-      "libClassHits": 85,
-      "localSelectors": 31,
-      "localCssLines": 124,
+      "libClassHits": 91,
+      "localSelectors": 29,
+      "localCssLines": 116,
       "rolled": []
     },
     {
@@ -2664,9 +2696,9 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 43,
-      "localSelectors": 9,
-      "localCssLines": 35,
+      "libClassHits": 44,
+      "localSelectors": 8,
+      "localCssLines": 32,
       "rolled": []
     },
     {
@@ -2841,9 +2873,9 @@
         "sh-check",
         "sh-scaffold"
       ],
-      "libClassHits": 12,
-      "localSelectors": 11,
-      "localCssLines": 40,
+      "libClassHits": 13,
+      "localSelectors": 10,
+      "localCssLines": 37,
       "rolled": []
     },
     {
@@ -2863,9 +2895,9 @@
         "biz-region-picker",
         "biz-store-tag"
       ],
-      "libClassHits": 88,
-      "localSelectors": 25,
-      "localCssLines": 90,
+      "libClassHits": 89,
+      "localSelectors": 24,
+      "localCssLines": 87,
       "rolled": []
     },
     {
@@ -2877,9 +2909,9 @@
         "sh-option",
         "sh-scaffold"
       ],
-      "libClassHits": 54,
-      "localSelectors": 22,
-      "localCssLines": 85,
+      "libClassHits": 58,
+      "localSelectors": 21,
+      "localCssLines": 81,
       "rolled": []
     },
     {
@@ -3132,9 +3164,9 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 18,
-      "localSelectors": 16,
-      "localCssLines": 64,
+      "libClassHits": 22,
+      "localSelectors": 14,
+      "localCssLines": 57,
       "rolled": []
     },
     {
@@ -3163,9 +3195,9 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 51,
-      "localSelectors": 19,
-      "localCssLines": 76,
+      "libClassHits": 52,
+      "localSelectors": 18,
+      "localCssLines": 73,
       "rolled": []
     },
     {
@@ -3228,6 +3260,13 @@
           "lib": ".is-danger / .is-success / .is-warning",
           "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
           "gap": false
+        },
+        {
+          "id": "quietover",
+          "label": "次要色自写",
+          "lib": ".txt-quiet（整段次要用 .sh-muted）",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
+          "gap": false
         }
       ]
     },
@@ -3272,6 +3311,13 @@
           "label": "语义色自写",
           "lib": ".is-danger / .is-success / .is-warning",
           "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
+          "gap": false
+        },
+        {
+          "id": "quietover",
+          "label": "次要色自写",
+          "lib": ".txt-quiet（整段次要用 .sh-muted）",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
           "gap": false
         }
       ]
@@ -3393,11 +3439,22 @@
         "c-app/order-confirm",
         "c-app/orders"
       ]
+    },
+    {
+      "id": "quietover",
+      "label": "次要色自写",
+      "lib": ".txt-quiet（整段次要用 .sh-muted）",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
+      "pages": [
+        "c-app/order",
+        "c-app/orders"
+      ]
     }
   ],
   "counts": {
     "tokens": 10,
-    "blocks": 61,
+    "blocks": 63,
     "components": 32,
     "pages": 90,
     "gapKinds": 0
