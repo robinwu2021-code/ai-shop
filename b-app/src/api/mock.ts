@@ -4186,7 +4186,8 @@ export const mockApi: MerchantApi = {
   async mInboundPost() {
     return delay(undefined);
   },
-  async mInboundVoid() {
+  async mInboundVoid(no) {
+    voidedDocs.add(no);
     return delay(undefined);
   },
 
@@ -4196,7 +4197,8 @@ export const mockApi: MerchantApi = {
   async mOutboundPost() {
     return delay(undefined);
   },
-  async mOutboundVoid() {
+  async mOutboundVoid(no) {
+    voidedDocs.add(no);
     return delay(undefined);
   },
 
@@ -4253,7 +4255,8 @@ export const mockApi: MerchantApi = {
     const all = invDocuments();
     const picked = q?.no ? all.filter((d) => d.docNo === q.no)
       : q?.kind ? all.filter((d) => d.kind === q.kind) : all;
-    return delay(picked.slice(0, q?.size ?? 50));
+    return delay(picked.slice(0, q?.size ?? 50)
+      .map((d) => (voidedDocs.has(d.docNo) ? { ...d, status: "VOIDED" } : d)));
   },
 
   async mStockMonthly(month) {
@@ -4327,6 +4330,10 @@ function invLedger(): StockLedgerRow[] {
       reasonCode: "PURCHASE", qtyDelta: 6, balanceAfter: 6, occurredAt: "2026-08-25T18:40:00", operator: "老板" },
   ];
 }
+
+/** mock 里作废过的单号。**要能看见结果** —— 空实现的话点完列表纹丝不动，
+ *  分不清是「没生效」还是「生效了但列表没刷」 */
+const voidedDocs = new Set<string>();
 
 function invDocuments(): StockDocument[] {
   return [

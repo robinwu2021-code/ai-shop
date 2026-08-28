@@ -61,14 +61,14 @@
 | 记一笔进货 | POST | `/biz/inventory/inbounds` | `mInboundCreate` | purchase-edit |
 | 改进货草稿 | PUT | `/biz/inventory/inbounds/:no` | `mInboundUpdate` | — |
 | 进货过账 | POST | `/biz/inventory/inbounds/:no/post` | `mInboundPost` | purchase-edit |
-| 作废入库单 | POST | `/biz/inventory/inbounds/:no/void` | `mInboundVoid` | — |
+| 作废入库单 | POST | `/biz/inventory/inbounds/:no/void` | `mInboundVoid` | stock-docs |
 | 单件库存明细 | GET | `/biz/inventory/items/:itemId` | `mStockItem` | stock-detail |
 | 库存变动明细 | GET | `/biz/inventory/ledger` | `mStockLedger` | stock-detail、stock-docs |
 | 库位与仓 | GET | `/biz/inventory/locations` | `mStockLocations` | locations、transfer |
 | 加一个仓 | POST | `/biz/inventory/locations` | `mWarehouseCreate` | locations |
 | 报损/领用出库 | POST | `/biz/inventory/outbounds` | `mOutboundCreate` | stock-out |
 | 出库过账 | POST | `/biz/inventory/outbounds/:no/post` | `mOutboundPost` | stock-out |
-| 作废出库单 | POST | `/biz/inventory/outbounds/:no/void` | `mOutboundVoid` | — |
+| 作废出库单 | POST | `/biz/inventory/outbounds/:no/void` | `mOutboundVoid` | stock-docs |
 | 可挑的货（含 0 库存，从物料出发） | GET | `/biz/inventory/pickable` | `mStockPickable` | purchase-edit、stock-check |
 | 库存总览三个数 | GET | `/biz/inventory/summary` | `mStockSummary` | home、stock |
 | 建调拨单 | POST | `/biz/inventory/transfers` | `mTransferCreate` | transfer |
@@ -412,8 +412,6 @@
 | 客户与复购（跨店总览在用） | `/biz/customers` | `mCustomers` | `biz:customer` |
 | 改截单与到货说明 | `/biz/goods/:goodsNo/presale` | `mSavePresale` | `biz:goods` |
 | 改进货草稿 | `/biz/inventory/inbounds/:no` | `mInboundUpdate` | `biz:stock` |
-| 作废入库单 | `/biz/inventory/inbounds/:no/void` | `mInboundVoid` | `biz:stock` |
-| 作废出库单 | `/biz/inventory/outbounds/:no/void` | `mOutboundVoid` | `biz:stock` |
 | 改备注 / 拉黑 | `/biz/members/{memberNo}` | `mPatchMember` | `biz:customer` |
 | 批量打标 / 去标 | `/biz/members/tags` | `mTagMembers` | `biz:customer` |
 | 停用/启用自建维度 | `/biz/my-spec-dims/{dimNo}/archive` | `mArchiveSpecDim` | `biz:goods` |

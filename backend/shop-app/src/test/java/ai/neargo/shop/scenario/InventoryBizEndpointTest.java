@@ -148,6 +148,44 @@ class InventoryBizEndpointTest {
     }
 
     @Test
+    @DisplayName("★★★ 作废：库存要退回去，且流水留痕 —— 这是「录错了怎么办」的唯一答案")
+    void voidingAPostedInboundPutsStockBack() throws Exception {
+        Shop s = shop();
+        int before = onHand(s, s.itemA);
+
+        String body = """
+                {"sourceType":"PURCHASE","supplierName":"老周粮油",
+                 "occurredAt":"2026-08-25T00:00:00",
+                 "lines":[{"itemId":"%s","qty":7,"uom":"袋","unitCostMinor":4200}]}
+                """.formatted(s.itemA);
+        String no = okText(post("/biz/inventory/inbounds").content(body), s.token);
+        ok(post("/biz/inventory/inbounds/" + no + "/post"), s.token);
+        assertThat(onHand(s, s.itemA)).isEqualTo(before + 7);
+
+        int rowsBefore = ok(get("/biz/inventory/ledger?itemId=" + s.itemA), s.token)
+                .get("entries").size();
+
+        ok(post("/biz/inventory/inbounds/" + no + "/void"), s.token);
+
+        /*
+         * 三条一起才算作废：数退回去、**流水多一行**（不是把原来那行删掉）、
+         * 单据留在列表里标成已作废。
+         *
+         * 只验第一条会漏掉最坏的一种实现：直接扣回余额而不写流水 ——
+         * 账面看着对，而「这 7 袋去哪了」从此答不出来，几个月后对账才发现。
+         */
+        assertThat(onHand(s, s.itemA))
+                .as("作废之后库存要回到这张单之前")
+                .isEqualTo(before);
+        assertThat(ok(get("/biz/inventory/ledger?itemId=" + s.itemA), s.token).get("entries").size())
+                .as("作废要**写一行反向流水**，不是抹掉原来那一行 —— 历史正是这些表存在的理由")
+                .isGreaterThan(rowsBefore);
+        assertThat(ok(get("/biz/inventory/documents?no=" + no), s.token).toString())
+                .as("单据不消失，标成已作废")
+                .contains("VOIDED");
+    }
+
+    @Test
     @DisplayName("★★★ 报损出库：b-app 的 body（purpose=SCRAP + reasonCode）")
     void scrapBodyFromBAppWorks() throws Exception {
         Shop s = shop();

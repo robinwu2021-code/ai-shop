@@ -12,6 +12,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { StockDocument, StockLedgerRow } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -122,6 +123,41 @@ async function open(d: StockDocument) {
   }
 }
 
+/**
+ * 能不能作废这一张。**只有出入库单能** —— 盘点与调拨后端没有作废端点
+ * （它们各自的详情页有自己的口子），在这里画一个点了报错的按钮更糟。
+ * 已作废的不再给：作废是幂等的，但按钮还在会让人以为没生效。
+ */
+function canVoid(d: StockDocument): boolean {
+  return (d.kind === "IN" || d.kind === "OUT") && d.status !== "VOIDED";
+}
+
+/**
+ * 作废。**这是「录错了怎么办」的唯一答案** —— 单据不可修改，
+ * 已过账的只能整单作废重录（作废会写一行反向流水，库存回到这张单之前）。
+ * 端点 08 月就做好了，而界面上一直没有入口，商家录错一张就卡死在那儿。
+ */
+async function voidDoc(d: StockDocument) {
+  const posted = d.status === "POSTED";
+  const ok = await confirm({
+    title: String(t("stockDocs.voidTitle")),
+    // 过账与草稿的后果不一样，别用同一句话糊过去：
+    // 草稿本来就没动库存，说「库存会退回」是吓人
+    hint: String(t(posted ? "stockDocs.voidHintPosted" : "stockDocs.voidHintDraft", { no: d.docNo })),
+    confirmText: String(t("stockDocs.voidConfirm")),
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    await (d.kind === "IN" ? api.mInboundVoid(d.docNo) : api.mOutboundVoid(d.docNo));
+    uni.showToast({ title: String(t("stockDocs.voided")), icon: "none" });
+    openedNo.value = "";
+    await load();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
 /** 回边：从一张单走到它动过的那件货 */
 function openItem(r: StockLedgerRow) {
   uni.navigateTo({ url: `/pages/stock-detail/index?itemId=${encodeURIComponent(r.itemId)}` });
@@ -194,6 +230,16 @@ onShow(load);
           </text>
           <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
         </view>
+
+        <!--
+          作废放在展开区里，不放在行上：**得先看见这张单动了哪几件货再决定**。
+          放在列表行上，一次误触就是一笔反向流水。
+        -->
+        <!-- 用原档不另造 `--danger`：这套皮肤的主色本来就是红，再加一个红档
+             区分不出来。危险感由确认框的 `danger: true` 承担（红实心确定键）。 -->
+        <text v-if="canVoid(d)" class="sh-link voidbtn" @tap="voidDoc(d)">
+          {{ $t("stockDocs.voidAction") }}
+        </text>
       </view>
     </view>
   </sh-scaffold>
@@ -216,6 +262,11 @@ onShow(load);
 }
 .line {
   padding: 12rpx 0;
+}
+.voidbtn {
+  display: block;
+  text-align: center;
+  padding: 16rpx 0 4rpx;
 }
 .line + .line {
   border-top: var(--sh-hairline-soft);

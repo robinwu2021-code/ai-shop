@@ -1120,7 +1120,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 48,
+        "b-app": 49,
         "c-app": 1
       }
     },
@@ -2708,9 +2708,9 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 24,
-      "localSelectors": 13,
-      "localCssLines": 47,
+      "libClassHits": 25,
+      "localSelectors": 14,
+      "localCssLines": 52,
       "rolled": []
     },
     {
