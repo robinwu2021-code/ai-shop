@@ -124,6 +124,11 @@ class MpEndpointAuthTest {
 
     /** 匿名访问回成功。游客可看。 */
     private static final Set<String> ANONYMOUS = Set.of(
+            "GET /mp/goods/{goodsNo}",
+            "GET /mp/merchant/{merchantNo}",
+            "GET /mp/merchant/{merchantNo}/score",
+            "GET /mp/pickup/{pickupNo}",
+            "GET /mp/store/{merchantNo}",
             "GET /mp/after-sale/reasons",
             "GET /mp/category/tree",
             "GET /mp/community",
@@ -152,8 +157,23 @@ class MpEndpointAuthTest {
     /**
      * 探测判不出的。**待办清单，不是许可。**
      *
-     * <p>它们回的是 404/400/500 —— 因为路径变量是假的、请求体是空的，
-     * 业务校验挡在了鉴权之前。要判定只能给一份真实的入参，那是逐条的活。
+     * <p>它们回的是 404/400 —— 业务校验挡在了鉴权之前，于是判不出要不要登录。
+     * <b>2026-08-28 用种子里的真号把 5 条判出来了</b>（商品、商家、商家评分、
+     * 自提点、门店主页，全部匿名可看），剩下这些各自卡在：
+     *
+     * <ul>
+     *   <li><b>缺种子数据</b>：团购、求团、小区详情 —— 测试库里没有对应的号，
+     *       给了假号就 404。要判定得先补种子。</li>
+     *   <li><b>缺合法请求体</b>：购物车、地址、评价、绑手机等写接口 ——
+     *       空 body 在参数校验就被挡下。</li>
+     *   <li><b>本来就是登录流程</b>：login / otp/send / phone/wx /
+     *       token/refresh —— 它们的存在就是为了让还没登录的人用。</li>
+     * </ul>
+     *
+     * <p><b>{@code GET /mp/group-buy/&#123;groupNo&#125;/orders} 单独说一句</b>：
+     * 它返回团里其他人的订单（买家昵称、核销码）。源码上它走
+     * {@code requireOwner} → {@code currentUserNo()}，用真实团号打过确实是 401 ——
+     * 但这里给不出真团号，所以留在这一桶里，<b>不是因为它没被保护</b>。
      *
      * <p>其中三条另有问题：{@code logout}、{@code token/refresh} 的
      * {@code @RequestHeader("Authorization")} 是必填的，缺了会被渲染成
@@ -161,18 +181,13 @@ class MpEndpointAuthTest {
      */
     private static final Set<String> UNDETERMINED = Set.of(
             "GET /mp/community/{communityNo}",   // 探测得到 200/code=10404
-            "GET /mp/goods/{goodsNo}",   // 探测得到 200/code=10404
             "GET /mp/goods/{goodsNo}/sku-price",   // 探测得到 200/code=10400
             "GET /mp/group-buy/{groupNo}",   // 探测得到 200/code=10404
             "GET /mp/group-buy/{groupNo}/orders",   // 探测得到 200/code=10404
             "GET /mp/group-request/{requestNo}",   // 探测得到 200/code=10404
-            "GET /mp/merchant/{merchantNo}",   // 探测得到 200/code=10404
-            "GET /mp/merchant/{merchantNo}/score",   // 探测得到 200/code=10404
-            "GET /mp/pickup/{pickupNo}",   // 探测得到 200/code=10404
             "GET /mp/points/deductible",   // 探测得到 200/code=10400
             "GET /mp/review",   // 探测得到 200/code=10400
             "GET /mp/store/by-code",   // 探测得到 200/code=10400
-            "GET /mp/store/{merchantNo}",   // 探测得到 200/code=10404
             "GET /mp/stores/{storeNo}/appointment-slots",   // 探测得到 200/code=10400
             "POST /mp/cart/add",   // 探测得到 200/code=10400
             "POST /mp/cart/update",   // 探测得到 200/code=10400
@@ -247,41 +262,85 @@ class MpEndpointAuthTest {
     }
 
     @Test
-    @DisplayName("★ 登记为「游客可看」的，匿名访问不能 401 —— 反向也要钉住")
+    @DisplayName("★ 登记为「游客可看」的，匿名访问必须真的成功 —— 不是「没被拒」而已")
     void anonymousEndpointsStayOpen() {
-        List<String> closed = new ArrayList<>();
+        List<String> broken = new ArrayList<>();
         for (String ep : ANONYMOUS) {
             if (ep.isEmpty()) {
                 continue;
             }
-            if (callAnonymously(ep) == 401) {
-                closed.add(ep);
+            /*
+             * **判据是业务码 0，不是「不等于 401」。**
+             *
+             * 只查 401 的话，一个回 404 的端点也算通过 —— 于是把
+             * {@link #SEED} 里的真号换回假占位符，这条用例照样绿，
+             * 而后续所有判定都建立在「资源不存在」这种无效响应上。
+             * 用成功码钉住，就等于同时钉住了「种子号还有效」。
+             */
+            String outcome = probeCode(ep);
+            if (!"200/0".equals(outcome)) {
+                broken.add(ep + " → " + outcome);
             }
         }
-        assertThat(closed)
+        assertThat(broken)
                 .as("""
-                        这些端点登记为游客可看，现在却要登录了：%s
+                        这些端点登记为游客可看，匿名访问却没有成功：%s
 
-                        门店主页、商品详情这类页面一旦 401，未登录用户看到的是一片空白，
-                        而那不会有任何报错。改成要登录是可以的 —— 但要顺手改这张表。"""
-                        .formatted(closed))
+                        401 = 改成要登录了（可以，但要顺手改这张表）；
+                        404/400 = 多半是 SEED 里的种子号失效了 —— 那会让整张表的判定失去依据。"""
+                        .formatted(broken))
                 .isEmpty();
+    }
+
+    /** 匿名打一次，回「HTTP 状态/业务码」。业务码取自响应体 —— 全局信封把状态统一成 200。 */
+    private String probeCode(String endpoint) {
+        String[] parts = endpoint.split(" ", 2);
+        String url = parts[1];
+        for (var e : SEED.entrySet()) {
+            url = url.replace("{" + e.getKey() + "}", e.getValue());
+        }
+        url = url.replaceAll("\\{[^}]+\\}", "PROBE1");
+        try {
+            var res = mvc().perform(MockMvcRequestBuilders.get(url)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andReturn().getResponse();
+            var m = java.util.regex.Pattern.compile("\"code\"\\s*:\\s*(-?\\d+)")
+                    .matcher(res.getContentAsString());
+            return res.getStatus() + "/" + (m.find() ? m.group(1) : "?");
+        } catch (Exception e) {
+            return "EX:" + e.getClass().getSimpleName();
+        }
     }
 
     @Test
     @DisplayName("待确认的那一桶只能变短，不能变长")
     void undeterminedMustNotGrow() {
-        // 28 条，2026-08-28 建表时的实测值。**这个数字只许往下走** ——
+        // 23 条。建表时是 28，用种子真号判出 5 条。**这个数字只许往下走** ——
         // 新端点往这个桶里一塞就等于绕过了整道闸
         assertThat(UNDETERMINED.size() - 1)
                 .as("判不出的端点变多了：新端点不能往这个桶里塞，它是待办不是许可")
-                .isLessThanOrEqualTo(28);
+                .isLessThanOrEqualTo(23);
     }
 
-    /** 不带令牌打一次，回状态码。路径变量用占位符 —— 判据是 401 与否，与资源存不存在无关。 */
+    /**
+     * 路径变量用<b>种子里真实存在的号</b>，不用占位符。
+     *
+     * <p>占位符会让业务校验（「没有这个商品」）挡在鉴权之前 ——
+     * 回的是 404 而不是 401，于是判不出这个端点到底要不要登录。
+     * 换成真号，请求能走到鉴权那一步，401 与否才是可信的判据。
+     */
+    private static final java.util.Map<String, String> SEED = java.util.Map.of(
+            "goodsNo", "G0001", "merchantNo", "M0001", "communityNo", "CM001",
+            "pickupNo", "PP0001", "storeNo", "ST-TEST", "skuNo", "SK0001");
+
+    /** 不带令牌打一次，回状态码。 */
     private int callAnonymously(String endpoint) {
         String[] parts = endpoint.split(" ", 2);
-        String url = parts[1].replaceAll("\\{[^}]+\\}", "PROBE1");
+        String url = parts[1];
+        for (var e : SEED.entrySet()) {
+            url = url.replace("{" + e.getKey() + "}", e.getValue());
+        }
+        url = url.replaceAll("\\{[^}]+\\}", "PROBE1");
         var req = switch (parts[0]) {
             case "POST" -> MockMvcRequestBuilders.post(url);
             case "PUT" -> MockMvcRequestBuilders.put(url);
@@ -294,6 +353,31 @@ class MpEndpointAuthTest {
                     .andReturn().getResponse().getStatus();
         } catch (Exception e) {
             return -1;
+        }
+    }
+
+    private String probeDetail(String endpoint) {
+        String[] parts = endpoint.split(" ", 2);
+        String url = parts[1];
+        for (var e : SEED.entrySet()) {
+            url = url.replace("{" + e.getKey() + "}", e.getValue());
+        }
+        url = url.replaceAll("\\{[^}]+\\}", "PROBE1");
+        var req = switch (parts[0]) {
+            case "POST" -> MockMvcRequestBuilders.post(url);
+            case "PUT" -> MockMvcRequestBuilders.put(url);
+            case "DELETE" -> MockMvcRequestBuilders.delete(url);
+            case "PATCH" -> MockMvcRequestBuilders.patch(url);
+            default -> MockMvcRequestBuilders.get(url);
+        };
+        try {
+            var res = mvc().perform(req.contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse();
+            var m = java.util.regex.Pattern.compile("\"code\"\\s*:\\s*(-?\\d+)")
+                    .matcher(res.getContentAsString());
+            return res.getStatus() + "/" + (m.find() ? m.group(1) : "?");
+        } catch (Exception e) {
+            return "EX";
         }
     }
 
