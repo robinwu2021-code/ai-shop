@@ -5,6 +5,30 @@ const zh = {
   jobsNotice:
     "这里列的是后台自己会跑的任务：关单、对账、到期扫描。它们不跑的时候不会报错——"
     + "订单不会关、库存不会释放、过期的商家照常接单，而没有任何地方会亮红灯。这一页就是那盏灯。",
+  // ── 概览条 ────────────────────────────────
+  jobsSumTotal: "共 {n} 个",
+  jobsSumOn: "{n} 个运行中",
+  jobsSumOff: "{n} 个已停",
+  jobsSumFailing: "{n} 个连败",
+  jobsSumMissing: "{n} 个失联",
+  jobsLive: "实时",
+  jobsLiveHint: "状态由服务端推送，不用刷新页面。",
+  jobsStale: "连接断了",
+  jobsStaleHint: "推送连接断了，正在重连。此刻页面上的状态可能不是最新的。",
+  // ── cron 说人话 ────────────────────────────
+  jobsCronEveryMinute: "每分钟",
+  jobsCronEveryNMinutes: "每 {n} 分钟",
+  jobsCronHourlyAt: "每小时 {m} 分",
+  jobsCronEveryNHours: "每 {n} 小时 {m} 分",
+  jobsCronDailyAt: "每天 {hm}",
+  // ── 相对时间 ───────────────────────────────
+  jobsRelJustNow: "刚刚",
+  jobsRelSoon: "即将",
+  jobsRelMinAgo: "{n} 分钟前",
+  jobsRelHourAgo: "{n} 小时前",
+  jobsRelInMin: "{n} 分钟后",
+  jobsRelInHour: "{n} 小时后",
+  jobsNextLabel: "下次",
   jobsNeverRan: "从未执行",
   jobsColName: "任务",
   jobsColCron: "频率",
@@ -41,6 +65,28 @@ const zh = {
 };
 
 const en: typeof zh = {
+  jobsSumTotal: "{n} total",
+  jobsSumOn: "{n} running",
+  jobsSumOff: "{n} stopped",
+  jobsSumFailing: "{n} failing",
+  jobsSumMissing: "{n} missing",
+  jobsLive: "Live",
+  jobsLiveHint: "Status is pushed from the server; no need to refresh.",
+  jobsStale: "Disconnected",
+  jobsStaleHint: "The live connection dropped and is reconnecting. What you see may be stale.",
+  jobsCronEveryMinute: "Every minute",
+  jobsCronEveryNMinutes: "Every {n} min",
+  jobsCronHourlyAt: "Hourly at :{m}",
+  jobsCronEveryNHours: "Every {n}h at :{m}",
+  jobsCronDailyAt: "Daily at {hm}",
+  jobsRelJustNow: "just now",
+  jobsRelSoon: "soon",
+  jobsRelMinAgo: "{n} min ago",
+  jobsRelHourAgo: "{n} h ago",
+  jobsRelInMin: "in {n} min",
+  jobsRelInHour: "in {n} h",
+  jobsNextLabel: "Next",
+
   jobsNotice:
     "These are the background jobs the platform runs on its own: closing orders, reconciliation, "
     + "expiry sweeps. When they stop, nothing raises an error — orders stay open, stock stays locked, "

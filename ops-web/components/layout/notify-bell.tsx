@@ -2,7 +2,9 @@
 
 // 顶栏铃铛（TDD-通知与消息推送 §二期）：运营自己的通知收件箱。
 //
-// 15s 轮询 unread-count —— 运营端是工作时段常开的桌面页面，轮询足够；
+// 未读数走**服务端推送**（/ops/stream 的 unread 事件），不再轮询。
+// 原先每 15 秒问一次：一个人开着页面一天 2000 多次请求，其中绝大多数拿回
+// 一模一样的数字。轮询并没有消失，只是挪到了服务端一个循环里，且只在变了时才推。
 // Web Push（浏览器关了也能达）是四期观察后再议的事。
 //
 // 浏览器桌面横幅：未读数**上涨**时弹一条（新工单/待审核/告警都值得把人从别的
@@ -13,12 +15,12 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { useOpsStream } from "@/lib/use-ops-stream";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Bell } from "lucide-react";
 import type { InboxMessage } from "@/lib/types";
 
-const POLL_MS = 15_000;
 const SHOWN = 10;
 
 function fmt(at: number): string {
@@ -36,28 +38,31 @@ export function NotifyBell() {
   const [items, setItems] = useState<InboxMessage[]>([]);
   const prevUnread = useRef(0);
 
-  const poll = useCallback(async () => {
-    try {
-      const n = await api.inboxUnread();
-      // 数字上涨 = 有新东西。弹桌面横幅把人从别的标签页拉回来；
-      // 具体内容不放进横幅 —— 桌面通知可能出现在投屏/共享屏幕上
-      if (n > prevUnread.current && typeof Notification !== "undefined"
-          && Notification.permission === "granted" && document.visibilityState !== "visible") {
-        new Notification(t("bell.desktopTitle"), { body: t("bell.desktopBody", { n }), tag: "ops-inbox" });
-      }
-      prevUnread.current = n;
-      setUnread(n);
-    } catch {
-      // 角标轮询失败保持旧值，下一轮自然重试 —— 弹错误只会骚扰人
+  const applyUnread = useCallback((n: number) => {
+    if (!Number.isFinite(n)) return;   // 帧坏了就当没收到，别把角标变成 NaN
+    // 数字上涨 = 有新东西。弹桌面横幅把人从别的标签页拉回来；
+    // 具体内容不放进横幅 —— 桌面通知可能出现在投屏/共享屏幕上
+    if (n > prevUnread.current && typeof Notification !== "undefined"
+        && Notification.permission === "granted" && document.visibilityState !== "visible") {
+      new Notification(t("bell.desktopTitle"), { body: t("bell.desktopBody", { n }), tag: "ops-inbox" });
     }
+    prevUnread.current = n;
+    setUnread(n);
   }, [t]);
 
-  useEffect(() => {
-    if (!loggedIn) return;
-    void poll();
-    const timer = setInterval(() => void poll(), POLL_MS);
-    return () => clearInterval(timer);
-  }, [loggedIn, poll]);
+  // 推送来的就是数字本身，不必再发一次请求去拿
+  useOpsStream("unread", (d) => applyUnread(Number(d)), loggedIn);
+
+  /*
+   * 标记已读之后主动拉一次。**这不是轮询** —— 它跟着用户的一次点击走。
+   * 只等推送的话，角标要过最多 3 秒才掉下去，而人刚点完「全部已读」
+   * 就盯着那个红点看，3 秒足够让他以为没生效、再点一次。
+   */
+  const refreshUnread = useCallback(async () => {
+    try {
+      applyUnread(await api.inboxUnread());
+    } catch { /* 推送下一轮会自然校正 */ }
+  }, [applyUnread]);
 
   async function onOpenChange(next: boolean) {
     setOpen(next);
@@ -78,7 +83,7 @@ export function NotifyBell() {
     if (!m.read) {
       try {
         await api.readInbox(m.messageNo);
-        await poll();
+        await refreshUnread();
       } catch { /* 已读失败不拦跳转 */ }
     }
     if (m.link) router.push(m.link);
@@ -87,8 +92,8 @@ export function NotifyBell() {
   async function onReadAll() {
     try {
       setItems((await api.readAllInbox()).slice(0, SHOWN));
-      await poll();
-    } catch { /* 下一轮轮询自然校正 */ }
+      await refreshUnread();
+    } catch { /* 推送会自然校正 */ }
   }
 
   if (!loggedIn) return null;
