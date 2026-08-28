@@ -156,9 +156,17 @@ SDK key 打进 JS 产物」留门。
 > 而**三边都看不出来**：文档写着「已注入」、构建成功、装机不报错，
 > 只有真机点定位报错误码 7，文案还看不出是没配 key。
 >
+> **2026-08-28 真机验证时又发现第二条缺失**：`com.amap.api.location.APSService`
+> 这个 service 在 149 与 158 两个包里**都没有**（一直缺着）。它与 key 的症状分得很开 ——
+> 少 key 是地图白屏 + 错误码 7；少 service 则**地图照常渲染**，只有 `AMapLocationClient`
+> 起不来，logcat 里一行 `Unable to start service … APSService: not found`。
+> 也就是说「地图能看」不足以说明定位这条链是通的。
+>
 > 现在的做法：注入逻辑放在**仓库里**（`b-app/offline/amap-key.gradle`），
 > 离线工程只留一行 `apply from:` —— 一行的缺失一眼看得出，几十行的逻辑丢了看不出。
-> key 读不到时**构建直接失败**，不打一个静默坏掉的包。
+> key 读不到时**构建直接失败**，不打一个静默坏掉的包；
+> AndroidManifest 里那两条声明（meta-data + service）同样在仓库外，
+> 所以那个脚本也把它们校一遍，缺了就失败并把该粘回去的原文打出来。
 > 另有两道守卫：`b-app/offline/verify-apk.sh` 验产物里有没有这个 meta，
 > `packages/shared/tests/env-consumed.test.ts` 验「模板里声明的变量代码里有没有人读」。
 

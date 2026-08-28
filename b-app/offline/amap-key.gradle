@@ -45,4 +45,34 @@ if (!amapKey) {
 }
 
 android.defaultConfig.manifestPlaceholders += [AMAP_KEY_ANDROID: amapKey]
-println "[amap] Android Key 已注入（${amapKey.length()} 位，尾号 ${amapKey.takeRight(4)}）"
+
+/*
+ * **AndroidManifest 里的那两条声明也在仓库外**，同样会被重解压清掉 ——
+ * 上面那段只保证「key 的值读得到」，读到了往哪填是 manifest 的事。
+ * 所以在这儿把它们也校一遍，缺了当场失败并把该粘回去的原文打出来。
+ *
+ * 两条各自的症状分得很开，别混：
+ *   · 少 meta-data  → 地图白屏、定位报错误码 7（KEY 鉴权失败）
+ *   · 少 service    → **地图照常渲染**，只有 AMapLocationClient 起不来，
+ *                     logcat 一行 `Unable to start service ... APSService: not found`
+ *     后者是 2026-08-28 真机验证时才看见的：149 与 158 两个包里都没有，一直缺着。
+ */
+def manifest = new File(project.projectDir, "src/main/AndroidManifest.xml").text
+def missing = []
+if (!manifest.contains("com.amap.api.v2.apikey")) {
+    missing << """        <meta-data
+            android:name="com.amap.api.v2.apikey"
+            android:value="\${AMAP_KEY_ANDROID}" />"""
+}
+if (!manifest.contains("com.amap.api.location.APSService")) {
+    missing << """        <service android:name="com.amap.api.location.APSService" />"""
+}
+if (missing) {
+    throw new GradleException(
+        "AndroidManifest 缺高德的声明，拒绝打包。\n" +
+        "  文件：${new File(project.projectDir, 'src/main/AndroidManifest.xml')}\n" +
+        "  把下面这些粘回 <application> 里：\n\n" + missing.join("\n\n") + "\n\n" +
+        "  （这个文件在仓库外，重解压 DCloud SDK 会覆盖它 —— 这道校验就是为此立的）")
+}
+
+println "[amap] Android Key 已注入（${amapKey.length()} 位，尾号 ${amapKey.takeRight(4)}）；manifest 两条声明齐全"
