@@ -82,7 +82,13 @@ public class StockQueryServiceImpl implements StockQueryService {
         List<BalanceVO> all = build(rows(ownerId, locationId));
         int shortage = (int) all.stream().filter(b -> b.flags().contains(FLAG_SHORTAGE)).count();
         int stale = (int) all.stream().filter(b -> b.flags().contains(FLAG_STALE)).count();
-        return new SummaryVO(all.size(), shortage, stale);
+        // 在途 = 已发出未收货的调拨单。**不按 locationId 过滤**：一张调拨单跨两个库位，
+        // 按当前库位筛会让「从别处发到我这儿」的单在收货方看不见 —— 而收货正是他要做的事
+        int inTransit = Math.toIntExact(transferMapper.selectCount(
+                Wrappers.<InvTransferOrder>lambdaQuery()
+                        .eq(InvTransferOrder::getOwnerId, ownerId)
+                        .eq(InvTransferOrder::getStatus, InvEnums.TransferStatus.SHIPPED)));
+        return new SummaryVO(all.size(), shortage, stale, inTransit);
     }
 
     @Override

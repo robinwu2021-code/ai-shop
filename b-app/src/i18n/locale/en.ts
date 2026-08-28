@@ -1617,6 +1617,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     statSku: "Listed SKUs",
     statShortage: "Out of stock",
     statStale: "Idle",
+    statTransit: "In transit",
     tabTodo: "Needs action",
     entry: { purchase: "Record purchase", check: "Count", out: "Scrap", docs: "Documents", transfer: "Transfer", report: "Report", locations: "Locations" },
     tabAll: "All",

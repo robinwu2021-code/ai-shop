@@ -1928,6 +1928,8 @@ entryHint: "谁在买 · 谁不来了",
     statSku: "在售 SKU",
     statShortage: "缺货",
     statStale: "滞销",
+    // 待收货的**调拨单数**，不是件数 —— 收货按单做，件数点不进任何一张单
+    statTransit: "在途",
     tabTodo: "要处理",
     entry: { purchase: "进货", check: "盘点", out: "报损", docs: "单据", transfer: "调拨", report: "报表", locations: "库位" },
     tabAll: "全部",

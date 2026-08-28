@@ -48,8 +48,19 @@ public final class InventoryVOs {
     public record LedgerPageVO(List<LedgerVO> entries, Long nextCursor) {
     }
 
-    /** 库存总览的三个数。 */
-    public record SummaryVO(int itemCount, int shortageCount, int staleCount) {
+    /**
+     * 库存总览的四个数。
+     *
+     * <p>{@code inTransitCount} 数的是<b>待收货的调拨单</b>，不是件数 ——
+     * 它对应的动作是「去收货」，而收货是<b>按单</b>做的。给件数的话，
+     * 看见 20 也不知道该点进哪一张单。
+     *
+     * <p>在途这一档此前没有位置：调拨发出后货既不在 A 也不在 B，
+     * 而总览三个数里没有它，只有翻单据才看得到 —— 它却是这四个数里
+     * <b>唯一一个有人在等</b>的。
+     */
+    public record SummaryVO(int itemCount, int shortageCount, int staleCount,
+                            int inTransitCount) {
     }
 
     /**

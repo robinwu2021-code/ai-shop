@@ -1615,6 +1615,7 @@ entryHint: "من يشتري · من توقف", total: "العملاء", repeatRa
     statSku: "أصناف معروضة",
     statShortage: "نفد",
     statStale: "راكد",
+    statTransit: "قيد النقل",
     tabTodo: "يحتاج إجراء",
     entry: { purchase: "تسجيل شراء", check: "جرد", out: "إتلاف", docs: "المستندات", transfer: "تحويل", report: "تقرير", locations: "المواقع" },
     tabAll: "الكل",

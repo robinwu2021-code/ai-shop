@@ -82,6 +82,12 @@ function pickFilter(key: string) {
 
 /** 点数字格筛选：再点一下回到「要处理」 —— 点了没有退路的筛选很容易困住人 */
 function pickStat(key: string) {
+  // 在途不是本页的筛选 —— 那批货既不在 A 也不在 B，列表里没有它。
+  // 点它该去单据页看那几张单，收货也在那儿
+  if (key === "transit") {
+    uni.navigateTo({ url: `${ROUTES.stockDocs}?kind=TRANSFER` });
+    return;
+  }
   if (key === "shortage") filter.value = filter.value === "todo" ? "all" : "todo";
   else filter.value = "todo";
   void load();
@@ -104,12 +110,31 @@ function idleDays(b: StockBalance): number | null {
  * 库位要 `biz:store:admin`。按本页判的话，店员会看到一道点进去就是
  * 「这页不该你看」的门 —— 那比没有门更让人困惑。
  */
-const entries = computed(() => [
+/**
+ * **写动作**：贴底悬浮条。它们是这一页的主动作 —— 与进货／盘点／报损／调拨
+ * 四页自己用 `sh-actionbar` 放主动作是同一个形态。
+ *
+ * 放到底下不是为了好看：看每天几十次、记一天一到三次，
+ * 「看」该占满整屏，「记」该落在拇指够得着的地方。
+ * 四条都点走整页（`navigateTo`），不开弹层 —— 所以条不会被自己的弹层压住。
+ */
+const actions = computed(() => [
   { key: "purchase", route: ROUTES.purchaseEdit, perm: "biz:stock" },
   { key: "check", route: ROUTES.stockCheck, perm: "biz:stock" },
   { key: "out", route: ROUTES.stockOut, perm: "biz:stock" },
-  { key: "docs", route: ROUTES.stockDocs, perm: "biz:stock" },
   { key: "transfer", route: ROUTES.transfer, perm: "biz:stock" },
+].filter((e) => merchant.can(e.perm)));
+
+/**
+ * **查与配**：收进总览卡里，细线之下。它们一周／一个月用一次，
+ * 与四个写动作等大等色地并排是把频率差两个数量级的东西摆成了同一档。
+ *
+ * 每一条按**它自己那一页的权限**判，不是按本页的：报表要 `biz:customer`、
+ * 库位要 `biz:store:admin`。按本页判的话，店员会看到一道点进去就是
+ * 「这页不该你看」的门 —— 那比没有门更让人困惑。
+ */
+const links = computed(() => [
+  { key: "docs", route: ROUTES.stockDocs, perm: "biz:stock" },
   { key: "report", route: ROUTES.stockReport, perm: "biz:customer" },
   { key: "locations", route: ROUTES.locations, perm: "biz:store:admin" },
 ].filter((e) => merchant.can(e.perm)));
@@ -127,34 +152,33 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="stock.title" :denied="!merchant.can('biz:stock')">
-    <sh-stat
-      boxed
-      :items="[
-        { key: 'sku', value: summary?.itemCount ?? '—', label: String($t('stock.statSku')) },
-        { key: 'shortage', value: summary?.shortageCount ?? '—', label: String($t('stock.statShortage')), tone: 'bad' },
-        { key: 'stale', value: summary?.staleCount ?? '—', label: String($t('stock.statStale')) },
-      ]"
-      @pick="pickStat"
-    ></sh-stat>
-
     <!--
-      这一块的其余五屏从这里进；每条按它自己那一页的权限判。
-
-      **不用横滚。** 原来是 `scroll-view scroll-x`，七条里永远有一条被切在屏幕外：
-      初始态最右的「库位与仓」只露半个字，滑到底最左的「记一笔进货」又只剩一个
-      「货」—— 最常用的那条反而滚没了。而且它与下面那排筛选 chip 长得一模一样，
-      一排是「去另一页」、一排是「改本页」，读不出区别。
-      改成定宽网格：一屏全可见，四列一行自动换行，与筛选栏也不再撞脸。
+      总览与去处**同一张卡**。原来是四个数四张卡、七个入口七张卡，
+      一屏读下来是一个十一格的网格 —— 分不出哪半边是数、哪半边是动作。
+      数是「一个面板的四个读数」，用 `panel` 一张卡分栏；去处收在细线之下，
+      与工作台那张「进销存」卡同构（细线 + 几个快捷）。
     -->
-    <view class="entries sh-wrap">
-      <text
-        v-for="e in entries"
-        :key="e.key"
-        class="txt-sub sh-card entries__item"
-        @tap="go(e.route)"
-      >
-        {{ $t(`stock.entry.${e.key}`) }}
-      </text>
+    <view class="sh-card ov">
+      <sh-stat
+        panel
+        :items="[
+          { key: 'sku', value: summary?.itemCount ?? '—', label: String($t('stock.statSku')) },
+          { key: 'shortage', value: summary?.shortageCount ?? '—', label: String($t('stock.statShortage')), tone: 'bad' },
+          { key: 'stale', value: summary?.staleCount ?? '—', label: String($t('stock.statStale')) },
+          { key: 'transit', value: summary?.inTransitCount ?? '—', label: String($t('stock.statTransit')), tone: 'warn' },
+        ]"
+        @pick="pickStat"
+      ></sh-stat>
+      <view v-if="links.length" class="ov__go">
+        <text
+          v-for="e in links"
+          :key="e.key"
+          class="sh-link ov__link"
+          @tap="go(e.route)"
+        >
+          {{ $t(`stock.entry.${e.key}`) }}
+        </text>
+      </view>
     </view>
 
     <sh-tabs :items="TABS" :active="filter" @change="pickFilter"></sh-tabs>
@@ -198,6 +222,21 @@ onShow(load);
     <view v-if="rows.length" class="sh-card">
       <text class="txt-caption">{{ $t("stock.formulaHint") }}</text>
     </view>
+
+    <!--
+      写动作贴底。`sh-actionbar` 自带占位块 —— **条是 fixed，CSS 量不到它的高**，
+      不留占位最后一行会被压住，而那不会报错、只是看不见。
+    -->
+    <sh-actionbar v-if="actions.length" pill="plain" :pad="140">
+      <text
+        v-for="e in actions"
+        :key="e.key"
+        class="txt-sub act"
+        @tap="go(e.route)"
+      >
+        {{ $t(`stock.entry.${e.key}`) }}
+      </text>
+    </sh-actionbar>
   </sh-scaffold>
 </template>
 
@@ -208,13 +247,27 @@ onShow(load);
  * 用 `sh-card` 而不是 `sh-chip`：**要和下面那排筛选 chip 分得开**。
  * 底色圆角由 sh-card 给，这里只管排布 —— 自己画一套药丸就又多一份要维护的皮。
  */
-.entries__item {
-  /* 四列：(100% − 三条 12rpx 缝) / 4 */
-  width: calc((100% - 36rpx) / 4);
-  box-sizing: border-box;
-  /* 20rpx 而不是 18：间距要落在 4rpx 网格上（check-page-spec） */
-  padding: 20rpx 0;
+/* 总览卡：`sh-stat panel` 自己不画底，底由这张卡给 */
+.ov {
+  padding-bottom: 0;
+}
+/* 去处那一行：细线之下、等距铺开，与工作台「进销存」卡同构 */
+.ov__go {
+  display: flex;
+  justify-content: space-around;
+  border-top: var(--sh-hairline-soft);
+  margin-top: 20rpx;
+}
+.ov__link {
+  padding: 20rpx 8rpx;
+}
+/* 悬浮条里的四个写动作。`plain` 档是「一排东西等距」，
+   条壳由 sh-actionbar 给，这里只管每一项 */
+.act {
+  flex: 1;
   text-align: center;
+  padding: 8rpx 0;
+  color: var(--sh-primary-text);
 }
 
 .row__top {

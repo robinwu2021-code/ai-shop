@@ -37,27 +37,41 @@ const props = withDefaults(
     items: readonly StatItem[];
     /** 每格带底色且可点（筛选入口）。默认纯展示 */
     boxed?: boolean;
+    /**
+     * **一张卡分栏**（`boxed` 是四张卡并排，这是第三档）。
+     *
+     * 为什么要这一档：库存页顶上四个数与下面四个入口原来都是等大白卡，
+     * 一屏读下来是一个八格网格，**分不出哪半边是数、哪半边是动作**。
+     * 数是「一个面板的四个读数」，本来就该在一张卡里、用竖细线分栏。
+     *
+     * 它自己不画底 —— 由调用方套一层 `sh-card`，好在同一张卡里
+     * 接着放别的东西（库存页在细线之下接了三个去处）。
+     */
+    panel?: boolean;
     /** boxed 时选中的那一格（对 item.key） */
     active?: string;
   }>(),
-  { boxed: false, active: "" },
+  { boxed: false, panel: false, active: "" },
 );
 
 const emit = defineEmits<{ (e: "pick", key: string): void }>();
 
 function tap(it: StatItem) {
-  if (!props.boxed || !it.key) return;
+  // **两档都可点**：判据只写 boxed 的话，新加的 panel 档视觉是对的、
+  // 点下去毫无反应，而且不报错 —— 加档时正是这么漏的一次
+  if (!(props.boxed || props.panel) || !it.key) return;
   emit("pick", it.key);
 }
 </script>
 
 <template>
-  <view class="st" :style="{ gridTemplateColumns: `repeat(${items.length}, 1fr)` }">
+  <view class="st" :class="{ 'st--panel': panel }"
+        :style="{ gridTemplateColumns: `repeat(${items.length}, 1fr)` }">
     <view
       v-for="(it, i) in items"
       :key="it.key || i"
       class="st__i"
-      :class="{ 'st__i--box': boxed, 'is-on': boxed && !!it.key && active === it.key }"
+      :class="{ 'st__i--box': boxed, 'is-on': (boxed || panel) && !!it.key && active === it.key }"
       @tap="tap(it)"
     >
       <text class="st__n sh-num" :class="it.tone ? `st__n--${it.tone}` : ''">{{ it.value }}</text>
@@ -73,6 +87,17 @@ function tap(it: StatItem) {
 }
 .st__i {
   text-align: center;
+}
+/* 一张卡分栏：**间距归零**，靠竖细线分 —— 有间距就又成了四块并排的东西 */
+.st--panel {
+  gap: 0;
+}
+.st--panel .st__i + .st__i {
+  border-left: var(--sh-hairline-soft);
+}
+/* 选中不换底色（那会把「一张卡」切开），只把数字提成主色 */
+.st--panel .st__i.is-on .st__n {
+  color: var(--sh-primary-text);
 }
 /* 可点那一种：格子要有「能点」的样子 */
 .st__i--box {

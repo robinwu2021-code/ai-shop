@@ -44,7 +44,11 @@ const TABS = computed(() => [
 ]);
 
 onLoad((q) => {
-  onlyNo.value = String((q as Record<string, string>)?.no ?? "");
+  const p = (q as Record<string, string>) ?? {};
+  onlyNo.value = String(p.no ?? "");
+  // 带 kind 进来的（库存页点「在途」→ 调拨）要**真的落到那个页签上**。
+  // 只跳不筛的话人会以为筛坏了 —— 而它不报错，列表照常显示全部
+  if (p.kind && TABS.value.some((t) => t.key === p.kind)) kind.value = String(p.kind);
 });
 
 async function load() {

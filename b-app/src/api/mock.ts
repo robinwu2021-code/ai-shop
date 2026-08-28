@@ -4122,7 +4122,7 @@ export const mockApi: MerchantApi = {
   // 种子刻意「不干净」：有缺货、有滞销、有预留。全绿的库存页看不出这一页是干什么的。
 
   async mStockSummary() {
-    return delay({ itemCount: 216, shortageCount: 6, staleCount: 12 });
+    return delay({ itemCount: 216, shortageCount: 6, staleCount: 12, inTransitCount: 1 });
   },
 
   async mStockBalances(q) {

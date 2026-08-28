@@ -4336,6 +4336,8 @@ export interface StockSummary {
   itemCount: number;
   shortageCount: number;
   staleCount: number;
+  /** 待收货的调拨单数。**按单不按件** —— 收货是按单做的，给件数点不进任何一张单 */
+  inTransitCount: number;
 }
 
 /** 一行库存（`BalanceVO`）。 */
