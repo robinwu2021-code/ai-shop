@@ -183,7 +183,8 @@ onLoad((q) => {
   line-height: 1;
 }
 .star.is-on {
-  color: var(--sh-warning);
+  /* 星标点亮色，不是告警色 —— 见 base.css 的 --sh-star */
+  color: var(--sh-star);
 }
 .stars__label {
   margin-inline-start: 12rpx;

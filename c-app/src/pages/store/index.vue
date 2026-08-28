@@ -425,7 +425,8 @@ function navToStore() {
   color: var(--sh-sub);
 }
 .fav.is-on {
-  color: var(--sh-warning);
+  /* 星标点亮色，不是告警色 —— 见 base.css 的 --sh-star */
+  color: var(--sh-star);
 }
 .notice__at {
   display: block;

@@ -612,7 +612,7 @@ onMounted(async () => {
     <view class="sh-card block">
       <view class="cell sh-row sh-row--between" @tap="pickCoupon">
         <text class="txt-sub cell__k">{{ $t("confirm.coupon") }}</text>
-        <text class="txt-bold txt-caption cell__v" :class="{ 'is-on': !!coupon }">
+        <text class="txt-bold txt-caption cell__v" :class="{ 'is-danger': !!coupon }">
           {{ coupon
             ? `${coupon.title} -${money(couponDiscount(coupon, goodsMinor))}`
             : usableCoupons.length
@@ -636,7 +636,7 @@ onMounted(async () => {
           <text v-if="pointsBlockedReason" class="txt-bold txt-caption cell__v">
             {{ $t("confirm.pointsHave", { n: pointBalance }) }}　{{ pointsBlockedReason }}
           </text>
-          <text v-else class="txt-bold txt-caption cell__v" :class="{ 'is-on': usePoints && !!amount?.pointsUsed }">
+          <text v-else class="txt-bold txt-caption cell__v" :class="{ 'is-danger': usePoints && !!amount?.pointsUsed }">
             {{ usePoints && amount?.pointsUsed
               ? $t("confirm.pointsUsed", { n: amount.pointsUsed, p: money(amount.pointsDeductMinor) })
               : $t("confirm.pointsHave", { n: pointBalance }) }}
@@ -803,9 +803,6 @@ onMounted(async () => {
 }
 .cell__v {
   text-align: end;
-}
-.cell__v.is-on {
-  color: var(--sh-danger);
 }
 .cell__input {
   flex: 1;

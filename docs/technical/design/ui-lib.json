@@ -3010,17 +3010,9 @@
         "sh-scaffold"
       ],
       "libClassHits": 121,
-      "localSelectors": 47,
-      "localCssLines": 192,
-      "rolled": [
-        {
-          "id": "semcolor",
-          "label": "语义色自写",
-          "lib": ".is-danger / .is-success / .is-warning",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "localSelectors": 45,
+      "localCssLines": 186,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3033,17 +3025,9 @@
         "sh-scaffold"
       ],
       "libClassHits": 32,
-      "localSelectors": 18,
-      "localCssLines": 74,
-      "rolled": [
-        {
-          "id": "semcolor",
-          "label": "语义色自写",
-          "lib": ".is-danger / .is-success / .is-warning",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "localSelectors": 16,
+      "localCssLines": 68,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3224,8 +3208,8 @@
         "sh-switch"
       ],
       "libClassHits": 99,
-      "localSelectors": 32,
-      "localCssLines": 131,
+      "localSelectors": 31,
+      "localCssLines": 128,
       "rolled": [
         {
           "id": "semcolor",
@@ -3268,17 +3252,9 @@
         "sh-scaffold"
       ],
       "libClassHits": 29,
-      "localSelectors": 28,
-      "localCssLines": 117,
-      "rolled": [
-        {
-          "id": "semcolor",
-          "label": "语义色自写",
-          "lib": ".is-danger / .is-success / .is-warning",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "localSelectors": 27,
+      "localCssLines": 114,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3345,15 +3321,7 @@
       "libClassHits": 14,
       "localSelectors": 13,
       "localCssLines": 53,
-      "rolled": [
-        {
-          "id": "semcolor",
-          "label": "语义色自写",
-          "lib": ".is-danger / .is-success / .is-warning",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3383,15 +3351,7 @@
       "libClassHits": 39,
       "localSelectors": 23,
       "localCssLines": 115,
-      "rolled": [
-        {
-          "id": "semcolor",
-          "label": "语义色自写",
-          "lib": ".is-danger / .is-success / .is-warning",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "rolled": []
     }
   ],
   "gaps": [
@@ -3403,15 +3363,10 @@
       "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
       "pages": [
         "c-app/address",
-        "c-app/goods",
-        "c-app/group",
         "c-app/order",
         "c-app/order-confirm",
         "c-app/orders",
-        "c-app/pay",
-        "c-app/points",
-        "c-app/review-write",
-        "c-app/store"
+        "c-app/points"
       ]
     }
   ],

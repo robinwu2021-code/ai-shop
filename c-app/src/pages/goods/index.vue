@@ -334,7 +334,7 @@ onShareAppMessage(() =>
 
       <!-- 买赠：当前数量能拿几件赠品，实时算给用户看 -->
       <view v-if="promo" class="giftline">
-        <text class="txt-caption giftline__text">
+        <text class="txt-caption giftline__text is-danger">
           {{ giftQty > 0
             ? $t("promo.willGift", { n: giftQty })
             : $t("promo.needMore", { n: promo.buyN - (qty % promo.buyN) }) }}
@@ -381,7 +381,7 @@ onShareAppMessage(() =>
       </view>
 
       <view class="notice notice--info">
-        <text class="txt-caption notice__text">
+        <text class="txt-caption notice__text is-warning">
           {{ $t("goods.changeRule", { n: TRADE_RULES.appointmentChangeBeforeHours }) }}
         </text>
       </view>
@@ -438,10 +438,10 @@ onShareAppMessage(() =>
       </view>
 
       <view v-if="goods.weighed" class="notice">
-        <text class="txt-caption notice__text">{{ $t("goods.weighed") }}</text>
+        <text class="txt-caption notice__text is-warning">{{ $t("goods.weighed") }}</text>
       </view>
       <view v-if="isVirtual && goods.virtual" class="notice notice--info">
-        <text class="txt-caption notice__text">{{ goods.virtual.deliverDesc }}</text>
+        <text class="txt-caption notice__text is-warning">{{ goods.virtual.deliverDesc }}</text>
       </view>
     </view>
 
@@ -587,9 +587,6 @@ onShareAppMessage(() =>
   border-radius: 24rpx;
   padding: 20rpx 26rpx;
 }
-.giftline__text {
-  color: var(--sh-danger);
-}
 .qty {
   margin-top: 32rpx;
 }
@@ -663,9 +660,6 @@ onShareAppMessage(() =>
 }
 .notice--info {
   background: var(--sh-primary-tint);
-}
-.notice__text {
-  color: var(--sh-warning);
 }
 .notice--info .notice__text {
   color: var(--sh-primary-text);

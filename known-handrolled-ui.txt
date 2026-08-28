@@ -89,15 +89,29 @@
 #     哪天把告警色调成另一种橙，星星会跟着变 —— 同一个 token，两种意图。
 #     这一条得先定「装饰色要不要单独一档」，不该顺手一起收。
 #
-# 剩下 9 处是干净的（倒计时、赠品行、提示条、WAIT_PAY 状态），等 ①② 定了一起收。
+# ── 后续（同日）：①② 都定了，14 处收掉 8 处，剩 5 页 ──────────────────────
+#
+# **② 装饰色定了：加 token，不加类。** `--sh-star`（星标点亮色）与 `--sh-warning`
+# 今天同值，但不是同一件事 —— 哪天把告警色调成另一种橙，星星不该跟着变。
+# review-write 的星、store 的收藏都改指 `--sh-star`，判据自然就不再命中它们。
+# 没有为这 2 处建库件：2 个调用点不值得，但值得给这个**意图**一个名字 ——
+# 否则以后有人会「顺手」改成 `.is-warning`，把星星和告警色绑死。
+#
+# **① 权重那 5 处：库件客观上替代不了，不是「有件不用」。**
+# 它们是 BEM 基类 + 修饰符（`.amt__v` 设 ink，`.amt__v--off` 覆盖成红），
+# 或复合状态（`.status` 设 primary-text，`.status.is-WAIT_PAY` 覆盖成橙）——
+# 基类本身设了 color，两者都是 scoped 的 (0,2,0)，而库件 `.is-danger` 是全局 (0,1,0)。
+# 换过去会**静默变回基类的颜色**（`.inline` 撞 UnoCSS 那次就是这么断的）。
+# 要收得先把基类的 color 也拿掉，而那是另一件事，得逐页看基类那个色是不是必需。
+#
+# points 的 `.rec__v.is-out` 是第六处，理由不同：它配对的 `.rec__v.is-in` 用的是
+# `--sh-primary-text`，不在语义三色里 —— **只换红的等于把一对拆一半，比不换更糟**。
+#
+# 已收掉的 8 处：group 的倒计时两处、pay 的倒计时、goods 的赠品行与提示条（3 个调用点）、
+# order-confirm 的优惠券/积分选中态（2 个调用点）、外加上面那两处装饰色改指 token。
 
 c-app/address semcolor
-c-app/goods semcolor
-c-app/group semcolor
 c-app/order semcolor
 c-app/order-confirm semcolor
 c-app/orders semcolor
-c-app/pay semcolor
 c-app/points semcolor
-c-app/review-write semcolor
-c-app/store semcolor

@@ -121,7 +121,7 @@ onUnmounted(() => clearInterval(timer));
         </view>
 
         <view v-if="order.payDeadlineAt" class="cd" :class="{ 'is-expired': expired }">
-          <text class="txt-bold cd__text sh-num">
+          <text class="txt-bold cd__text sh-num is-warning">
             {{ expired
               ? $t("pay.expired")
               : $t("pay.remain", { t: countdown(order.payDeadlineAt - now) }) }}
@@ -215,9 +215,6 @@ onUnmounted(() => clearInterval(timer));
 }
 .cd.is-expired {
   background: var(--sh-danger-tint);
-}
-.cd__text {
-  color: var(--sh-warning);
 }
 .cd.is-expired .cd__text {
   color: var(--sh-danger);

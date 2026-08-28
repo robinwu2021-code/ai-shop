@@ -99,8 +99,8 @@ onShareAppMessage(() => {
       </view>
 
       <view class="cd sh-row sh-row--between">
-        <text class="txt-caption cd__label">{{ $t("group.cutoff") }}</text>
-        <text class="txt-body cd__v sh-num">{{ countdown(group.expireAt - now) }}</text>
+        <text class="txt-caption cd__label is-warning">{{ $t("group.cutoff") }}</text>
+        <text class="txt-body cd__v sh-num is-warning">{{ countdown(group.expireAt - now) }}</text>
       </view>
     </view>
 
@@ -177,12 +177,6 @@ onShareAppMessage(() => {
   background: var(--sh-warning-tint);
   border-radius: 24rpx;
   padding: 20rpx 26rpx;
-}
-.cd__label {
-  color: var(--sh-warning);
-}
-.cd__v {
-  color: var(--sh-warning);
 }
 .block {
   margin-top: 20rpx;
