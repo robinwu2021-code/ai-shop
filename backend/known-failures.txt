@@ -30,26 +30,38 @@
 # 有的换行，按行号/邻近度算插入点会插进 `String skuNo = ...` 语句**中间**
 #（试过，编译不过，已回退重来）。逐个读、逐个改。
 #
-# ⚠️ **验证口径**：上面的 56 → 16 是**只跑这 22 个类**（298 跑）量出来的，
-# 不是全量。想跑全量时撞上同伴也在同一个 target/ 里跑 Maven（三个进程），
-# 结果不可信，已主动停掉自己那个。地址修复是自建自用、不依赖共享种子，
-# 跨测试干扰的风险低；但 SHIPPED 那 3 处断言**只过了编译，没实测**。
-# 谁下次跑全量，顺手核一下这两件事。
+# ⚠️ **56 → 22，不是 56 → 16。** 先报 16 是我数错了：surefire 的 `classname`
+# 在类上有 `@DisplayName` 时给的是**显示名**，我拿它去和这份清单里的 FQ 名比对，
+# 对不上就当成「已修好」删掉 —— 于是 CategoryTree / CommunityApply / M9aOps /
+# PushNotify / S3Admission 这 8 条明明还红着，却被我从清单里抹掉了。
+# pre-push 的全量闸当场把它们报成「新增失败」，才发现。
+#
+# **重建时按 FQ 类名匹配**（surefire 的报告文件名 `TEST-<FQCN>.xml` 才是权威来源，
+# 不受 @DisplayName 影响）。按显示名/简名归属是这个仓库反复栽的同一个跟头。
+#
+# 好的一面：那 3 处 SHIPPED 断言在**干净 HEAD 副本的全量**（1449 跑）里验证通过了，
+# `BizOrderFulfillFlowTest` 那两条已按闸门要求删除。
 # ─────────────────────────────────────────────────────────────────────────
 
 ai.neargo.shop.arch.ArchitectureTest.implsMustLiveInDedicatedPackage
 ai.neargo.shop.arch.ArchitectureTest.serviceMustBeInterface
 ai.neargo.shop.arch.ArchitectureTest.svcModulesMustNotDependOnEachOther
 ai.neargo.shop.arch.MediaRefCoverageTest.everyImageColumnIsClaimed
-ai.neargo.shop.scenario.BizOrderFulfillFlowTest.reshipSemantics
-ai.neargo.shop.scenario.BizOrderFulfillFlowTest.shipMovesToFulfilling
+ai.neargo.shop.scenario.CategoryTreeFlowTest.passedNoticeTakesEffect
+ai.neargo.shop.scenario.CategoryTreeFlowTest.profilePhoneIsMasked
+ai.neargo.shop.scenario.CategoryTreeFlowTest.violationHasRealConsequences
+ai.neargo.shop.scenario.CommunityApplyFlowTest.merchantAddedVillageStillNeedsReview
 ai.neargo.shop.scenario.EstateCacheBackfillFlowTest.backfillsMissingCoordsOnce
 ai.neargo.shop.scenario.EstateCacheBackfillFlowTest.doesNotOverwriteExistingCoords
 ai.neargo.shop.scenario.EstateCacheBackfillFlowTest.skipsBackfillForCommunityScopedKey
 ai.neargo.shop.scenario.M1UserFlowTest.otpCannotBeReplayed
 ai.neargo.shop.scenario.M2CatalogFlowTest.visitedMerchants
+ai.neargo.shop.scenario.M9aOpsFlowTest.approvedMerchantIsVisibleToBuyers
+ai.neargo.shop.scenario.M9aOpsFlowTest.opsFillsServiceScopeAtAudit
 ai.neargo.shop.scenario.OpsMerchantPlanFlowTest.downgradeDoesNotTouchExistingOrders
 ai.neargo.shop.scenario.OpsPermConfigFlowTest.superAdminHasEveryPoint
 ai.neargo.shop.scenario.OpsPlatformConfigFlowTest.featureFlagRollout
 ai.neargo.shop.scenario.OrderReceiverRequiredTest.pickupWithoutAddressStillWorks
 ai.neargo.shop.scenario.Phase1MasterDataTest.packagedFoodNeedsItsOwnAuthorization
+ai.neargo.shop.scenario.PushNotifyFlowTest.noDeviceIsNotAnError
+ai.neargo.shop.scenario.S3AdmissionRealPathTest.dailyCapCountsAcrossBuyers
