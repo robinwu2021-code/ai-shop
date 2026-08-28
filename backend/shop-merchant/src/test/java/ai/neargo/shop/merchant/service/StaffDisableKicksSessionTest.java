@@ -24,6 +24,7 @@ class StaffDisableKicksSessionTest {
 
     private MerchantMappers.MchAccountMapper staffMapper;
     private TokenStore consumerPool;
+    private TokenStore merchantPool;
     private TokenStores tokenStores;
     private MerchantStaffServiceImpl service;
 
@@ -31,8 +32,16 @@ class StaffDisableKicksSessionTest {
     void setUp() {
         staffMapper = mock(MerchantMappers.MchAccountMapper.class);
         consumerPool = mock(TokenStore.class);
+        merchantPool = mock(TokenStore.class);
         tokenStores = mock(TokenStores.class);
-        when(tokenStores.of(ArgumentMatchers.any())).thenReturn(consumerPool);
+        /*
+         * **两个池给两个不同的 mock。**
+         *
+         * 原来是 any() → 同一个 mock，于是「踢了哪个池」这件事在断言里根本分不出来 ——
+         * 而 A7 之后踢错池正是那个缺陷。同一个替身盖住了要测的那条差别。
+         */
+        when(tokenStores.of(Realm.CONSUMER)).thenReturn(consumerPool);
+        when(tokenStores.of(Realm.MERCHANT)).thenReturn(merchantPool);
 
         service = new MerchantStaffServiceImpl(
                 staffMapper, tokenStores,
@@ -63,6 +72,8 @@ class StaffDisableKicksSessionTest {
 
         service.setStatus("M0001", "SF-M0001-1", false);
 
+        // A7 之后会话在 B 端池，那一侧才是真正生效的一次
+        verify(merchantPool).revokeUser("SF-M0001-1");
         verify(consumerPool).revokeUser("SF-M0001-1");
     }
 
@@ -73,8 +84,9 @@ class StaffDisableKicksSessionTest {
 
         service.setStatus("M0001", "SF-M0001-1", false);
 
+        verify(merchantPool, never()).revokeUser("SF-M0001-2");
+        verify(merchantPool, times(1)).revokeUser(anyString());
         verify(consumerPool, never()).revokeUser("SF-M0001-2");
-        verify(consumerPool, times(1)).revokeUser(anyString());
     }
 
     @Test
@@ -84,17 +96,31 @@ class StaffDisableKicksSessionTest {
 
         service.setStatus("M0001", "SF-M0001-1", true);
 
+        verify(merchantPool, never()).revokeUser(anyString());
         verify(consumerPool, never()).revokeUser(anyString());
     }
 
     @Test
-    @DisplayName("★ 过渡期踢的是 C 端池 —— B 端此刻仍签发 ctk_，会话装在 usr_session 里")
-    void kicksTheConsumerPoolDuringTransition() {
+    @DisplayName("★★★ 必须踢 B 端池 —— 这条断言之前钉的是 C 端池，于是替坏掉的行为背了书")
+    void kicksTheMerchantPool() {
+        /*
+         * **这条测试原来叫 kicksTheConsumerPoolDuringTransition。**
+         *
+         * 它钉死了「过渡期踢 C 端池」。A7 把店员会话挪进 B 端池时，
+         * 生产代码那一行没跟着改 —— 而这条测试<b>照样是绿的</b>，
+         * 因为它验的正是那个已经过时的事实。停用从此变成一次空吊销，
+         * 接口返回成功、状态确实改了、日志里什么都没有，人还在线上。
+         *
+         * 记在这里的教训：钉「当前实现是什么」的断言，在实现该变的时候
+         * 不会提醒你，只会拦住你。要钉的是**不变量** ——
+         * 「被停用的人手里那个令牌必须失效」，而不是「调了哪个池」。
+         * 真正守住它的是 StoreAndStaffFlowTest#disablingStaffKicksTheirLiveSession：
+         * 那条拿真令牌复打一次，池错了当场就红。
+         */
         staffExists("SF-M0001-1", false);
 
         service.setStatus("M0001", "SF-M0001-1", false);
 
-        verify(tokenStores).of(Realm.CONSUMER);
-        verify(tokenStores, never()).of(Realm.MERCHANT);
+        verify(tokenStores).of(Realm.MERCHANT);
     }
 }
