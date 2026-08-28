@@ -145,7 +145,8 @@ class QuickStartFlowTest {
         assertThat(second).as("第二次返回的是同一个主体").isEqualTo(first);
         assertThat(entityMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
                 .<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
-                .eq(ai.neargo.shop.merchant.entity.MchEntity::getOwnerUserNo, userNoOf(token))))
+                .eq(ai.neargo.shop.merchant.entity.MchEntity::getOwnerUserNo,
+                        userNoOfPhone("12600160003"))))
                 .as("库里只有一个主体").isEqualTo(1L);
     }
 
@@ -431,7 +432,7 @@ class QuickStartFlowTest {
     void entityQuotaIsEnforced() throws Exception {
         // A7：这个令牌要打 /biz/**，必须是 btk_
         String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600160007");
-        String userNo = userNoOf(token);
+        String userNo = userNoOfPhone("12600160007");
 
         /*
          * 直接造 5 个 owner 成员行 + 主体 —— 走真实入驻链路要五轮「申请 → 审核」，
@@ -478,6 +479,11 @@ class QuickStartFlowTest {
         String body = mvc().perform(get("/biz/merchant/profile").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get("merchantNo").asString();
+    }
+
+    /** 按手机号取 user_no —— A7 之后 btk_ 打不了 /mp/user/profile，要用 C 端会话问。 */
+    private String userNoOfPhone(String phone) throws Exception {
+        return userNoOf(TestLogin.consumer(mvc(), json, otpStore, phone));
     }
 
     private String userNoOf(String token) throws Exception {

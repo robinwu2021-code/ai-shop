@@ -160,7 +160,7 @@ class PushNotifyFlowTest {
         String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "12700127405");
         String first = loginAsOwnerOf("M0001", "12700127406");
         bindBiz(first, "cid-shared-1");
-        String firstUserNo = profileUserNo(first);
+        String firstUserNo = userNoOfPhone("12700127406");
 
         // 同一台设备换人登录（B 端店员换班的真实形态）
         // A7：喂给 bindBiz（/biz/push-token），必须是 btk_
@@ -227,7 +227,7 @@ class PushNotifyFlowTest {
     void pushDevicesListsBoundDevicesMasked() throws Exception {
         String owner = loginAsOwnerOf("M0001", "12700127412");
         bindBiz(owner, "cid-pick-verify-01");
-        String userNo = profileUserNo(owner);
+        String userNo = userNoOfPhone("12700127412");
 
         List<ai.neargo.shop.message.notify.NotifyLogService.PushDeviceVO> devices =
                 notifyLogService.pushDevices(userNo);
@@ -255,6 +255,17 @@ class PushNotifyFlowTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"platform\":\"APP_ANDROID\",\"clientId\":\"" + clientId + "\"}"))
                 .andExpect(status().isOk());
+    }
+
+    /**
+     * 按手机号取 user_no。
+     *
+     * <p>A7 之后不能再拿 B 端令牌打 {@code /mp/user/profile} —— 那是 C 端的链路，
+     * btk_ 在那边是 401。要 user_no 就得用**那个人的 C 端会话**去问，
+     * 而「同一个人有两个端的会话」正是 A7 之后的常态。
+     */
+    private String userNoOfPhone(String phone) throws Exception {
+        return profileUserNo(ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, phone));
     }
 
     private String profileUserNo(String token) throws Exception {

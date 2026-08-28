@@ -59,7 +59,9 @@ class OpsMerchantStaffViewTest {
          * 老板的 `mch_account.login_phone` 本来就是空（他走 C 端账号登录），
          * 而客服要核对的正是店员用哪个号登录 —— 那才是这个面板的用途。
          */
-        mvc().perform(post("/biz/staff").header("Authorization", "Bearer " + login("12700270101"))
+        mvc().perform(post("/biz/staff").header("Authorization", "Bearer "
+                        // A7：/biz/** 只认 btk_
+                        + TestLogin.merchantOwner(mvc(), json, otpStore, "12700270101"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"loginPhone\":\"12700270111\",\"displayName\":\"小周\"}"));
 

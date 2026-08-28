@@ -226,9 +226,15 @@ class StoreAndStaffFlowTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"active\":false}"))
                 .andExpect(jsonPath("$.data.status").value("DISABLED"));
 
-        // 同一个令牌，停用之后必须立刻不认
+        /*
+         * 同一个令牌，停用之后必须立刻不认。
+         *
+         * 是 **10402（TOKEN_EXPIRED）而不是 10401**：会话被吊销了，端上据此静默重登；
+         * 10401 是「这个令牌不属于这条链」，端上要跳登录页。两者对端上是不同的动作，
+         * 所以这里钉死具体值 —— 变成 10401 说明吊销那条路没走到，是另一种毛病。
+         */
         mvc().perform(get("/biz/merchant/profile").header("Authorization", "Bearer " + staffToken))
-                .andExpect(jsonPath("$.code").value(10401));
+                .andExpect(jsonPath("$.code").value(10402));
     }
 
     @Test
