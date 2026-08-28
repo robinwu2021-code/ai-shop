@@ -242,11 +242,16 @@ onShow(load);
     <!-- ② 新建 -->
     <template v-else>
       <view class="sh-card">
+        <!--
+          用 `sh-go`（带 › 的那个件）而不是一段红字：**这两行是可以点开选的**，
+          而原来除了颜色没有任何提示 —— 商家看到「从：老张粮油店」，
+          读起来像一条只读信息，不像一个选择器。
+        -->
         <sh-kv between :label="String($t('transfer.from'))">
-          <text class="sh-link" @tap="pickEnd('from')">{{ nameOf(fromId) || "—" }}</text>
+          <sh-go :text="nameOf(fromId) || '—'" @tap="pickEnd('from')"></sh-go>
         </sh-kv>
         <sh-kv between :label="String($t('transfer.to'))">
-          <text class="sh-link" @tap="pickEnd('to')">{{ nameOf(toId) || "—" }}</text>
+          <sh-go :text="nameOf(toId) || '—'" @tap="pickEnd('to')"></sh-go>
         </sh-kv>
       </view>
 

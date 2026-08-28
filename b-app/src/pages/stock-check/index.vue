@@ -34,6 +34,33 @@ const busy = ref(false);
 const picking = ref<StockBalance[]>([]);
 const picked = ref<string[]>([]);
 
+/*
+ * **搜索与全选**（2026-08-28 补）。原来这一屏是一条一条往下滚：
+ * 一条卡片两行、一屏只放得下 8 条，而 `mStockBalances` 一次取 200 条 ——
+ * 真实商家几百个 SKU 时，「盘其中三件」要滚两屏去找。
+ *
+ * 只在端上过滤，不再往后端发请求：这一批本来就已经全在手里了。
+ */
+const keyword = ref("");
+
+const visible = computed(() => {
+  const k = keyword.value.trim().toLowerCase();
+  if (!k) return picking.value;
+  return picking.value.filter((b) =>
+    `${b.name} ${b.specText ?? ""}`.toLowerCase().includes(k));
+});
+
+/** 全选只作用在**当前筛出来的那些**上 —— 搜了「大米」却把全部 200 条选上，没人想要 */
+const allPicked = computed(() =>
+  visible.value.length > 0 && visible.value.every((b) => picked.value.includes(b.itemId)));
+
+function toggleAll() {
+  const ids = visible.value.map((b) => b.itemId);
+  picked.value = allPicked.value
+    ? picked.value.filter((x) => !ids.includes(x))
+    : [...new Set([...picked.value, ...ids])];
+}
+
 onLoad(async (q) => {
   countNo.value = String((q as Record<string, string>)?.no ?? "");
   if (countNo.value) await loadDoc();
@@ -165,9 +192,24 @@ function at(iso?: string): string {
         <text class="txt-caption">{{ $t("stockCheck.pickHint") }}</text>
       </view>
 
-      <sh-empty v-if="!picking.length" :text="String($t('stockCheck.pickEmpty'))"></sh-empty>
+      <view v-if="picking.length" class="sh-card sh-mb-sm">
+        <view class="sh-row">
+          <input
+            v-model="keyword"
+            class="field__input sh-fill"
+            :placeholder="String($t('stockCheck.searchPh'))"
+            confirm-type="search"
+          />
+          <text class="sh-link" @tap="toggleAll">
+            {{ allPicked ? $t("stockCheck.clearAll") : $t("stockCheck.pickAll") }}
+          </text>
+        </view>
+      </view>
 
-      <view v-for="b in picking" :key="b.itemId" class="sh-card sh-mb-sm" @tap="toggle(b.itemId)">
+      <sh-empty v-if="!picking.length" :text="String($t('stockCheck.pickEmpty'))"></sh-empty>
+      <sh-empty v-else-if="!visible.length" :text="String($t('stockCheck.searchEmpty'))"></sh-empty>
+
+      <view v-for="b in visible" :key="b.itemId" class="sh-card sh-mb-sm" @tap="toggle(b.itemId)">
         <view class="row__top">
           <!-- 勾选由整行接管（点一行就选中），sh-check 只负责画 -->
           <sh-check :model-value="picked.includes(b.itemId)"></sh-check>
