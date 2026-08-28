@@ -9,6 +9,41 @@ public final class ProductEvents {
     }
 
     /**
+     * SKU 建成或改过。消费方：进销存（把这个 SKU 放上账 —— 建物料与外部引用）。
+     *
+     * <p><b>为什么必须有这个事件</b>：商品域一个字都不认识进销存
+     *（`shop-core/product` 对进销存 ACL 的引用数为 0，这是「进销存可独立交付」的前提），
+     * 而两个域只在 `sku_no` 这一点连着。在 2026-08-28 之前接这一点的<b>只有搬运跑批</b> ——
+     * 于是建 SKU 不会建账，那个 SKU 在库存里根本不存在，看不到、盘不着、进不了货，
+     * <b>而任何地方都不会报错</b>。
+     *
+     * <p><b>载荷自带消费方所需字段，消费方不回查主表</b>（同 OrderEvents）——
+     * 回查就意味着进销存要认识 `prd_sku`，那正是这个事件要避免的事。
+     *
+     * @param title 商品标题。进销存那边的物料名用它，<b>不是 goodsNo</b> ——
+     *              曾经传的是货号，商家在库存清单上看到的是一列 `G0001`
+     * @param specText 规格文案，如「10斤装」
+     */
+    public record SkuUpserted(String skuNo, String entityNo, String goodsNo, String title,
+                              String specText, String barcode, String merchantSkuCode,
+                              String saleUnit) implements DomainEvent {
+        @Override
+        public String aggregateType() {
+            return "SKU";
+        }
+
+        @Override
+        public String aggregateId() {
+            return skuNo;
+        }
+
+        @Override
+        public String eventType() {
+            return "SKU_UPSERTED";
+        }
+    }
+
+    /**
      * 新评价发布。消费方：message（B 端提醒，B-N-3）。
      *
      * @param rating 1–5。消费方靠它区分「新评价」与「差评」（≤2 星）——

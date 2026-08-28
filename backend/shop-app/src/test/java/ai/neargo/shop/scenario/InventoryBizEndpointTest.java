@@ -63,6 +63,12 @@ class InventoryBizEndpointTest {
     private InventoryAclService acl;
     @Autowired
     private ai.neargo.shop.inventory.service.LocationService locations;
+    @Autowired
+    private ai.neargo.shop.event.OutboxDispatcher dispatcher;
+    @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
+    @Autowired
+    private ai.neargo.shop.inventory.service.StockQueryService query;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -215,6 +221,51 @@ class InventoryBizEndpointTest {
         assertThat(onHand(s, s.itemA))
                 .as("过账按差异走：当前 %d 加上差异 −3。覆盖成实盘数会把期间那笔卖出吃掉", book - 1)
                 .isEqualTo(book - 1 - 3);
+    }
+
+
+    @Test
+    @DisplayName("★★★ 建品就要上账 —— 否则那个 SKU 在库存里根本不存在，且不报错")
+    void newSkuLandsOnTheBooks() throws Exception {
+        /*
+         * **补的是一条断了的边**（2026-08-28）。两个域只在 `sku_no` 这一点连着，
+         * 而在此之前接这一点的**只有搬运跑批** —— `upsertItem` 全仓唯一的生产调用点
+         * 就在 `InventoryBackfillServiceImpl` 里。于是建 SKU 不会建账：
+         * 商家在库存里看不到那件货、盘不着、进不了货，**而任何地方都不会报错**。
+         * 跑批还要 worker profile，线上没有常驻调度。
+         */
+        String token = merchant("12600288001", "建品上账·粮油");
+        String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT110\",\"title\":\"东北五常大米\","
+                                + "\"subtitle\":\"测试\",\"cover\":\"🍚\",\"images\":[],"
+                                + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],"
+                                + "\"price\":5900,\"stock\":0,\"saleUnit\":\"袋\"}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+
+        String skuNo = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdSku::getGoodsNo, goodsNo))
+                        .get(0).getSkuNo());
+
+        // Outbox 是「只写库、异步投」，所以要推一把才看得到消费方的结果
+        dispatcher.dispatchPending();
+
+        assertThat(acl.itemIdOfSku(skuNo))
+                .as("建了 SKU 却没上账 —— 商家在库存里找不到这件货，而没有任何地方会报错")
+                .isNotNull();
+
+        /*
+         * **名字要是商品标题，不是货号。** 搬运曾经传 `goodsNo`，
+         * 于是库存清单上是一列 `G0001 · 10斤装`，商家认不出是什么货。
+         */
+        String ownerId = acl.ownerOfSku(skuNo);
+        assertThat(query.itemDetail(ownerId, acl.itemIdOfSku(skuNo)).name())
+                .as("物料名应当是商品标题")
+                .isEqualTo("东北五常大米");
     }
 
     @Test

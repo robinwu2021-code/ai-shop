@@ -101,6 +101,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private final ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper;
     /** 门店货架。商品域只用它回答两个问题：本店有没有这一类、把这一类加进去 */
     private final ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort;
+    /** 建成 SKU 之后往外发一条 —— 进销存靠它把这个 SKU 放上账。见 ProductEvents.SkuUpserted */
+    private final ai.neargo.shop.event.OutboxEventBus events;
     /** 门店级售价。**无行回退主体价**（与库存的「无行视为 0」相反，见 PrdStorePrice） */
     private final ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper;
     /** 规格库（V195）：类目级规格从这里来，SKU 的值编号也靠它反查 */
@@ -121,10 +123,12 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                     ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort,
                                     ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper,
                                     ai.neargo.shop.product.service.SpecLibraryService specLibrary,
+                                    ai.neargo.shop.event.OutboxEventBus events,
                                     ObjectMapper json) {
         this.specLibrary = specLibrary;
         this.storePriceMapper = storePriceMapper;
         this.storeCategoryPort = storeCategoryPort;
+        this.events = events;
         this.storeStockMapper = storeStockMapper;
         this.storeGoodsMapper = storeGoodsMapper;
         this.categoryService = categoryService;
@@ -697,7 +701,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         } else {
             DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
         }
-        saveSkus(merchantNo, g.getGoodsNo(), cmd.skus(), cmd.specGroups());
+        publishSkuUpserted(merchantNo, g,
+                saveSkus(merchantNo, g.getGoodsNo(), cmd.skus(), cmd.specGroups()));
         /*
          * **建品时把这一类自动加进本店货架**（TDD-品类约束全链路 §4.2）。
          *
@@ -840,8 +845,46 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * SKU 全量替换，但<b>保留原编号</b>：历史订单、购物车、库存锁都指向 skuNo，
      * 换编号等于让它们指向一个不存在的东西。
      */
-    private void saveSkus(String merchantNo, String goodsNo, List<Sku> skus,
+    /**
+     * 把「这个 SKU 建好了」告诉外面。**今天唯一的消费方是进销存**（建物料与外部引用）。
+     *
+     * <p><b>为什么不直接调进销存</b>：`shop-core/product` 对进销存 ACL 的引用数必须是 0 ——
+     * 那是「进销存可独立交付」的前提，也是架构守卫盯着的一条。走事件，两个模块仍然互不认识。
+     *
+     * <p><b>按 skuNo 去重</b>：SKU 行是 (skuNo × market) 的，而**库存不分市场**
+     *（货就那么多，卖到哪个市场都是同一批）。不去重的话一个 SKU 会发 N 条，
+     * N 是运营开了几个市场 —— 消费方幂等，不会出错，但那是白跑。
+     *
+     * <p>发的是 Outbox（只写库、由投递器异步投），所以**它不会拖慢建品**，
+     * 也不会因为进销存那边出问题而让建品失败。
+     */
+    private void publishSkuUpserted(String merchantNo, PrdGoods g, List<PrdSku> saved) {
+        if (saved.isEmpty()) {
+            return;
+        }
+        java.util.Set<String> sent = new java.util.HashSet<>();
+        for (PrdSku row : saved) {
+            /*
+             * **必须用落库那一行，不能用命令里的 Sku。** 新建时命令里
+             * `skuNo` 是空的 —— 它在 saveSkus 里才生成。用命令的话这个循环
+             * 一条都发不出去，而且不报错：SKU 建成了，账上没有它。
+             * 2026-08-28 第一版就是这么写的，被 newSkuLandsOnTheBooks 抓下来。
+             *
+             * **按 skuNo 去重**：SKU 行是 (skuNo × market) 的，而库存不分市场。
+             */
+            if (row.getSkuNo() == null || !sent.add(row.getSkuNo())) {
+                continue;
+            }
+            events.publish(new ai.neargo.shop.spi.product.ProductEvents.SkuUpserted(
+                    row.getSkuNo(), merchantNo, g.getGoodsNo(), g.getTitle(),
+                    row.getSpec(), row.getBarcode(), row.getMerchantSkuCode(), row.getSaleUnit()));
+        }
+    }
+
+    /** @return 本次真正落库的 SKU 行。**新建时 skuNo 是这里生成的**，命令里没有 */
+    private List<PrdSku> saveSkus(String merchantNo, String goodsNo, List<Sku> skus,
                           List<SpecGroup> groups) {
+        List<PrdSku> saved = new java.util.ArrayList<>();
         /*
          * **SKU 数量上限**。端上限制 3 个规格维度，但那是界面的事 ——
          * 接口层此前一条都不拦，3 维 × 各 8 个选项 = 512 行 × 3 市场可以直接灌进来，
@@ -952,6 +995,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 PrdSku toSave = row;
                 DataScopeContext.executeWithoutScope(() ->
                         fresh ? skuMapper.insert(toSave) : skuMapper.updateById(toSave));
+                saved.add(toSave);
                 kept.add(key);
             }
         }
@@ -982,9 +1026,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
         ensureStoreStockRows(merchantNo, keptSkuNos);
         // groups 已写在 goods 上，这里只用于生成 spec 文案，不再单独落库
-        if (groups == null) {
-            return;
-        }
+        return saved;
     }
 
     /** 一件商品最多几个规格组合。3×4×3=36 是端上摸得到的上界，留三倍余量 */
