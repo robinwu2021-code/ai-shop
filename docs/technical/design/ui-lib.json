@@ -412,7 +412,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 88,
+        "b-app": 86,
         "c-app": 6
       }
     },
@@ -756,7 +756,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 226,
+        "b-app": 224,
         "c-app": 191
       }
     },
@@ -2194,7 +2194,7 @@
         "sh-scaffold",
         "sh-section"
       ],
-      "libClassHits": 15,
+      "libClassHits": 14,
       "localSelectors": 7,
       "localCssLines": 22,
       "rolled": []
@@ -2688,7 +2688,7 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 13,
+      "libClassHits": 12,
       "localSelectors": 11,
       "localCssLines": 39,
       "rolled": []
@@ -2705,7 +2705,7 @@
         "sh-scaffold",
         "sh-sheet"
       ],
-      "libClassHits": 34,
+      "libClassHits": 33,
       "localSelectors": 6,
       "localCssLines": 20,
       "rolled": []
@@ -2837,7 +2837,7 @@
         "sh-scaffold",
         "sh-sheet"
       ],
-      "libClassHits": 51,
+      "libClassHits": 50,
       "localSelectors": 10,
       "localCssLines": 32,
       "rolled": []
