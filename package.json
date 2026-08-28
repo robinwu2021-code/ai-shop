@@ -42,6 +42,7 @@
     "check:enum-fields": "node scripts/check-enum-fields.mjs",
     "gen:perm-matrix": "node scripts/gen-perm-endpoint-matrix.mjs",
     "gen:industry-inventory": "node scripts/gen-industry-endpoint-inventory.mjs",
+    "check:v2-docs": "node scripts/check-v2-docs.mjs",
     "gen:biz-matrix": "node scripts/gen-biz-role-matrix.mjs && node scripts/gen-biz-feature-perm-matrix.mjs"
   },
   "engines": {
