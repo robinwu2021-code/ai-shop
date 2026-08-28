@@ -149,8 +149,8 @@ onShow(load);
     <view v-if="slow.length" class="sh-block">
       <sh-section pad :title="String($t('stockReport.slow'))"></sh-section>
       <view class="blk">
-        <view v-for="r in slow" :key="r.itemId" class="slow" @tap="openItem(r)">
-          <view class="slow__main">
+        <view v-for="r in slow" :key="r.itemId" class="slow sh-row" @tap="openItem(r)">
+          <view class="slow__main sh-fill">
             <text class="txt-body">{{ r.name }}{{ r.specText ? ` · ${r.specText}` : "" }}</text>
             <!--
               **金额只在有的时候画**：滞销榜后端不算金额（`costAmountMinor` 是 null），
@@ -220,14 +220,7 @@ onShow(load);
 }
 /* 加了箭头就得横排 —— 不给 flex 的话箭头掉到名字下面自成一行 */
 .slow {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   padding: 12rpx 0;
-}
-.slow__main {
-  flex: 1;
-  min-width: 0;
 }
 .note {
   display: block;

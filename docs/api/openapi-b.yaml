@@ -6230,6 +6230,11 @@ components:
       properties: 
         id: 
           type: "number"
+        itemId: 
+          type: "string"
+          description: "这一行动的是哪件货。**按单查靠它** —— 只给单号的话那一屏是一列没名字的数"
+        itemName: 
+          type: "string"
         docKind: 
           type: "string"
           enum: 
@@ -6249,6 +6254,8 @@ components:
           type: "string"
       required: 
         - "id"
+        - "itemId"
+        - "itemName"
         - "docKind"
         - "docNo"
         - "reasonCode"
@@ -12788,6 +12795,36 @@ paths:
     get: 
       operationId: "mStockBalances"
       summary: "库存列表（默认只给要处理的）"
+      tags: 
+        - "inventory"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/StockBalance"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/inventory/pickable": 
+    get: 
+      operationId: "mStockPickable"
+      summary: "可挑的货（含 0 库存，从物料出发）"
       tags: 
         - "inventory"
       security: 

@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 622 个接口**：后端已实现 511（82%）· 前端在调 563
+**合计 623 个接口**：后端已实现 511（82%）· 前端在调 564
 
 ---
 
@@ -201,7 +201,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **198** 个接口 ｜ 后端已实现 **167**（84%）｜ 前端在调 **198**
+共 **199** 个接口 ｜ 后端已实现 **167**（84%）｜ 前端在调 **199**
 
 ### activities（4）
 
@@ -373,7 +373,7 @@
 | GET | `/biz/groups` | 我的商家团 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/groups` | 开团 | `CreateGroupReq` | `GroupBuy` | 🔒 | ✅ | ✅ |
 
-### inventory（26）
+### inventory（27）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -396,6 +396,7 @@
 | POST | `/biz/inventory/outbounds` | 报损/领用出库 | — | `string` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/inventory/outbounds/{no}/post` | 出库过账 | — | — | 🔒 | ⬜ | ✅ |
 | POST | `/biz/inventory/outbounds/{no}/void` | 作废出库单 | — | — | 🔒 | ⬜ | ✅ |
+| GET | `/biz/inventory/pickable` | 可挑的货（含 0 库存，从物料出发） | — | `数组` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/inventory/report/monthly` | 进销存月报 | — | `StockMonthly` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/inventory/report/ranking` | 动销/滞销榜 | — | `数组` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/inventory/summary` | 库存总览三个数 | — | `StockSummary` | 🔒 | ⬜ | ✅ |

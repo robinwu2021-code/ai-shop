@@ -2137,6 +2137,17 @@ _无字段_
 类型：`any`
 
 
+#### GET `/biz/inventory/pickable`
+
+可挑的货（含 0 库存，从物料出发）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`StockBalance`](#stockbalance)\[\]
+
+
 #### GET `/biz/inventory/report/monthly`
 
 进销存月报　🔒
@@ -7026,6 +7037,8 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `id` | `number` | 是 | — |
+| `itemId` | `string` | 是 | 这一行动的是哪件货。**按单查靠它** —— 只给单号的话那一屏是一列没名字的数 |
+| `itemName` | `string` | 是 | — |
 | `docKind` | `IN` \| `OUT` | 是 | — |
 | `docNo` | `string` | 是 | — |
 | `reasonCode` | `string` | 是 | — |

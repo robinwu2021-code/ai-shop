@@ -142,7 +142,7 @@ onShow(load);
 
     <sh-empty v-if="!loading && !rows.length" :text="String($t('stockDocs.empty'))"></sh-empty>
 
-    <view v-for="d in rows" :key="d.docNo" class="sh-card sh-mb-sm">
+    <view v-for="d in rows" :key="d.docNo" class="sh-card">
       <view class="row__top" @tap="open(d)">
         <view class="sh-fill">
           <text class="txt-strong row__title">{{ $t(`stockDocs.kind.${d.kind}`) }}</text>
@@ -172,7 +172,7 @@ onShow(load);
         <text class="txt-caption lines__head">{{ $t("stockDocs.lines") }}</text>
         <text v-if="linesLoading" class="sh-muted">…</text>
         <text v-else-if="!lines.length" class="sh-muted">{{ $t("stockDocs.linesEmpty") }}</text>
-        <view v-for="r in lines" :key="r.id" class="line" @tap="openItem(r)">
+        <view v-for="r in lines" :key="r.id" class="line sh-row" @tap="openItem(r)">
           <text class="sh-fill">{{ r.itemName }}</text>
           <text class="sh-num" :class="r.qtyDelta < 0 ? 'is-out' : 'is-in'">
             {{ r.qtyDelta > 0 ? `+${r.qtyDelta}` : r.qtyDelta }}
@@ -185,9 +185,7 @@ onShow(load);
 </template>
 
 <style scoped>
-.only {
-  margin-bottom: 16rpx;
-}
+
 .hint {
   display: block;
   padding: 0 26rpx 12rpx;
@@ -202,9 +200,6 @@ onShow(load);
   margin-bottom: 4rpx;
 }
 .line {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   padding: 12rpx 0;
 }
 .line + .line {

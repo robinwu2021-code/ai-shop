@@ -254,6 +254,7 @@ const RESPONSE_TYPES = {
   mStockLedger: "StockLedgerPage",
   mStockLocations: "StockLocation[]",
   mStockMonthly: "StockMonthly",
+  mStockPickable: "StockBalance[]",
   mStockRanking: "StockRank[]",
   mStockSummary: "StockSummary",
   mStoreFulfillment: "StoreFulfillment",

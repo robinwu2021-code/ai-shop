@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 157 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 158 个受控功能点**
 （另有 28 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -21,7 +21,7 @@
 
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
-| `biz:stock` | `STOCK` | 改库存（含门店库存） | 26 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `biz:stock` | `STOCK` | 改库存（含门店库存） | 27 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 22 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 19 | ✅ | ✅ | — | — | — | — |
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 19 | ✅ | — | — | — | — | — |
@@ -52,7 +52,7 @@
 | 改库存 | POST | `/biz/goods/:goodsNo/stock` | `mSaveStock` | goods-list |
 | 改当前门店库存 | POST | `/biz/goods/:goodsNo/store-stock` | `mSaveStoreStock` | goods-list |
 | 直接改数（走盘点，落单落流水） | POST | `/biz/inventory/adjust` | `mStockAdjust` | stock-detail |
-| 库存列表（默认只给要处理的） | GET | `/biz/inventory/balances` | `mStockBalances` | purchase-edit、stock、stock-check、stock-out、transfer |
+| 库存列表（默认只给要处理的） | GET | `/biz/inventory/balances` | `mStockBalances` | stock、stock-out、transfer |
 | 开盘点单（锁账面数） | POST | `/biz/inventory/counts` | `mCountOpen` | stock-check |
 | 读回盘点单（含账面快照） | GET | `/biz/inventory/counts/:no` | `mCountDetail` | stock-check |
 | 填实盘数 | PUT | `/biz/inventory/counts/:no/lines` | `mCountFill` | stock-check |
@@ -63,12 +63,13 @@
 | 进货过账 | POST | `/biz/inventory/inbounds/:no/post` | `mInboundPost` | purchase-edit |
 | 作废入库单 | POST | `/biz/inventory/inbounds/:no/void` | `mInboundVoid` | — |
 | 单件库存明细 | GET | `/biz/inventory/items/:itemId` | `mStockItem` | stock-detail |
-| 库存变动明细 | GET | `/biz/inventory/ledger` | `mStockLedger` | stock-detail |
+| 库存变动明细 | GET | `/biz/inventory/ledger` | `mStockLedger` | stock-detail、stock-docs |
 | 库位与仓 | GET | `/biz/inventory/locations` | `mStockLocations` | locations、transfer |
 | 加一个仓 | POST | `/biz/inventory/locations` | `mWarehouseCreate` | locations |
 | 报损/领用出库 | POST | `/biz/inventory/outbounds` | `mOutboundCreate` | stock-out |
 | 出库过账 | POST | `/biz/inventory/outbounds/:no/post` | `mOutboundPost` | stock-out |
 | 作废出库单 | POST | `/biz/inventory/outbounds/:no/void` | `mOutboundVoid` | — |
+| 可挑的货（含 0 库存，从物料出发） | GET | `/biz/inventory/pickable` | `mStockPickable` | purchase-edit、stock-check |
 | 库存总览三个数 | GET | `/biz/inventory/summary` | `mStockSummary` | home、stock |
 | 建调拨单 | POST | `/biz/inventory/transfers` | `mTransferCreate` | transfer |
 | 读回调拨单 | GET | `/biz/inventory/transfers/:no` | `mTransferDetail` | transfer |

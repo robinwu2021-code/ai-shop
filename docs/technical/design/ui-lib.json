@@ -388,7 +388,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 76,
+        "b-app": 78,
         "c-app": 29
       }
     },
@@ -412,7 +412,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 86,
+        "b-app": 89,
         "c-app": 6
       }
     },
@@ -444,7 +444,7 @@
         "margin-bottom": "8px"
       },
       "usage": {
-        "b-app": 23,
+        "b-app": 1,
         "c-app": 1
       }
     },
@@ -512,7 +512,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 225,
+        "b-app": 226,
         "c-app": 111
       }
     },
@@ -528,7 +528,7 @@
         "align-items": "baseline"
       },
       "usage": {
-        "b-app": 28,
+        "b-app": 26,
         "c-app": 3
       }
     },
@@ -544,7 +544,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 108,
+        "b-app": 107,
         "c-app": 67
       }
     },
@@ -712,7 +712,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 259,
+        "b-app": 258,
         "c-app": 38
       }
     },
@@ -734,7 +734,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 67,
+        "b-app": 65,
         "c-app": 52
       }
     },
@@ -756,7 +756,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 224,
+        "b-app": 225,
         "c-app": 191
       }
     },
@@ -866,7 +866,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 112,
+        "b-app": 113,
         "c-app": 35
       }
     },
@@ -1120,7 +1120,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 46,
+        "b-app": 48,
         "c-app": 1
       }
     },
@@ -1174,7 +1174,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 186,
+        "b-app": 187,
         "c-app": 129
       }
     },
@@ -1368,7 +1368,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 92,
+        "b-app": 93,
         "c-app": 14
       }
     },
@@ -1521,7 +1521,7 @@
         "bare?: boolean"
       ],
       "usage": {
-        "b-app": 38,
+        "b-app": 39,
         "c-app": 19
       },
       "note": "空态",
@@ -1587,7 +1587,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 53,
+        "b-app": 56,
         "c-app": 4
       },
       "note": "单色图标",
@@ -1692,7 +1692,7 @@
       "name": "sh-scaffold",
       "file": "packages/ui/src/components/sh-scaffold.vue",
       "scope": "跨端",
-      "lines": 277,
+      "lines": 301,
       "props": [
         "padded?: boolean",
         "titleKey?: string",
@@ -1735,7 +1735,7 @@
         "stacked?: boolean"
       ],
       "usage": {
-        "b-app": 7,
+        "b-app": 5,
         "c-app": 3
       },
       "note": "底部弹层",
@@ -1854,6 +1854,25 @@
       },
       "note": "应用常驻层",
       "why": "B 端是空壳，但**不能删** —— sh-scaffold 无条件渲染它"
+    },
+    {
+      "name": "biz-item-picker",
+      "file": "b-app/src/components/biz/biz-item-picker.vue",
+      "scope": "B 端",
+      "lines": 112,
+      "props": [
+        "visible: boolean",
+        "title: string",
+        "items: StockBalance[]",
+        "picked?: string[]",
+        "qtyLabel?: (b: StockBalance) => string"
+      ],
+      "usage": {
+        "b-app": 3,
+        "c-app": 0
+      },
+      "note": "—",
+      "why": "—"
     },
     {
       "name": "biz-pickup-sheet",
@@ -2005,7 +2024,7 @@
         "sh-scaffold",
         "sh-stat"
       ],
-      "libClassHits": 21,
+      "libClassHits": 20,
       "localSelectors": 6,
       "localCssLines": 24,
       "rolled": []
@@ -2019,7 +2038,7 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 26,
+      "libClassHits": 25,
       "localSelectors": 6,
       "localCssLines": 25,
       "rolled": []
@@ -2064,7 +2083,7 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 46,
+      "libClassHits": 45,
       "localSelectors": 10,
       "localCssLines": 31,
       "rolled": []
@@ -2134,7 +2153,7 @@
         "sh-tabs",
         "biz-store-tag"
       ],
-      "libClassHits": 35,
+      "libClassHits": 34,
       "localSelectors": 30,
       "localCssLines": 132,
       "rolled": []
@@ -2149,7 +2168,7 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 30,
+      "libClassHits": 28,
       "localSelectors": 13,
       "localCssLines": 55,
       "rolled": []
@@ -2194,7 +2213,7 @@
         "sh-scaffold",
         "sh-section"
       ],
-      "libClassHits": 14,
+      "libClassHits": 13,
       "localSelectors": 7,
       "localCssLines": 22,
       "rolled": []
@@ -2293,7 +2312,7 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 19,
+      "libClassHits": 18,
       "localSelectors": 4,
       "localCssLines": 16,
       "rolled": []
@@ -2389,7 +2408,7 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 21,
+      "libClassHits": 20,
       "localSelectors": 7,
       "localCssLines": 30,
       "rolled": []
@@ -2420,7 +2439,7 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 28,
+      "libClassHits": 26,
       "localSelectors": 9,
       "localCssLines": 34,
       "rolled": []
@@ -2477,9 +2496,9 @@
         "sh-empty",
         "sh-kv",
         "sh-scaffold",
-        "sh-sheet"
+        "biz-item-picker"
       ],
-      "libClassHits": 38,
+      "libClassHits": 31,
       "localSelectors": 9,
       "localCssLines": 31,
       "rolled": []
@@ -2597,7 +2616,7 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 59,
+      "libClassHits": 57,
       "localSelectors": 13,
       "localCssLines": 45,
       "rolled": []
@@ -2641,9 +2660,9 @@
         "sh-stat",
         "sh-tabs"
       ],
-      "libClassHits": 20,
-      "localSelectors": 8,
-      "localCssLines": 34,
+      "libClassHits": 19,
+      "localSelectors": 7,
+      "localCssLines": 31,
       "rolled": []
     },
     {
@@ -2656,7 +2675,7 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 53,
+      "libClassHits": 50,
       "localSelectors": 8,
       "localCssLines": 28,
       "rolled": []
@@ -2673,9 +2692,9 @@
         "sh-section",
         "sh-stat"
       ],
-      "libClassHits": 24,
-      "localSelectors": 11,
-      "localCssLines": 42,
+      "libClassHits": 26,
+      "localSelectors": 12,
+      "localCssLines": 45,
       "rolled": []
     },
     {
@@ -2685,12 +2704,13 @@
       "file": "b-app/src/pages/stock-docs/index.vue",
       "components": [
         "sh-empty",
+        "sh-icon",
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 12,
-      "localSelectors": 11,
-      "localCssLines": 39,
+      "libClassHits": 23,
+      "localSelectors": 16,
+      "localCssLines": 58,
       "rolled": []
     },
     {
@@ -2703,9 +2723,9 @@
         "sh-empty",
         "sh-kv",
         "sh-scaffold",
-        "sh-sheet"
+        "biz-item-picker"
       ],
-      "libClassHits": 33,
+      "libClassHits": 26,
       "localSelectors": 6,
       "localCssLines": 20,
       "rolled": []
@@ -2717,11 +2737,12 @@
       "file": "b-app/src/pages/stock-report/index.vue",
       "components": [
         "sh-empty",
+        "sh-icon",
         "sh-kv",
         "sh-scaffold",
         "sh-section"
       ],
-      "libClassHits": 27,
+      "libClassHits": 29,
       "localSelectors": 11,
       "localCssLines": 35,
       "rolled": []
@@ -2835,9 +2856,9 @@
         "sh-icon",
         "sh-kv",
         "sh-scaffold",
-        "sh-sheet"
+        "biz-item-picker"
       ],
-      "libClassHits": 50,
+      "libClassHits": 42,
       "localSelectors": 10,
       "localCssLines": 32,
       "rolled": []
@@ -3292,7 +3313,7 @@
   "counts": {
     "tokens": 10,
     "blocks": 59,
-    "components": 31,
+    "components": 32,
     "pages": 90,
     "gapKinds": 0
   }
