@@ -177,6 +177,8 @@ export default {
       onSale: "在售",
       shortage: "缺货",
       stale: "滞销",
+      // 待收货的调拨单数。带数字是有意的：「收货」不说几张，人不知道值不值得现在去
+      receiveN: "收货 {n}",
     },
     quotable: "可报价",
     today: "今日",
@@ -1989,7 +1991,8 @@ entryHint: "谁在买 · 谁不来了",
     adjust: "盘这一件",
     adjustTitle: "盘这一件",
     adjustHintDialog: "账面 {n}。填实际点到的数量，差异由系统算。确定后生成一张盘点单",
-    adjustHint: "盘这一件会生成一张盘点单，并按下面的原因记一行流水",
+    adjustHint: "盘这一件会生成一张盘点单；点出来与账面不一样时，会再问一次原因",
+    reasonHint: "差 {n}。选一个原因 —— 自由文本汇总不出「这个月报损了多少」",
     adjustBadNumber: "填一个不小于 0 的整数",
   },
   stockCheck: {
@@ -2005,9 +2008,12 @@ entryHint: "谁在买 · 谁不来了",
     reasonRequired: "原因必填",
     reasonLabel: "差异原因",
     totalDiff: "合计差异",
-    submit: "提交并过账",
+    // 「过账盘点」而不是「提交并过账」：它与进货的「过账入库」、报损的「过账出库」
+    // 做的是同一件事（把草稿变成生效），不该比人家多两个字、多一个动词。
+    // 逐屏看时「提交并过账」毫无问题，四屏摆一排才刺眼 —— 见《进销存·界面清单》§1.1
+    submit: "过账盘点",
     postHint: "过账后：盘盈生成入库单，盘亏生成出库单",
-    confirmTitle: "提交并过账",
+    confirmTitle: "过账盘点？",
     confirmBody: "合计差异 {n}。过账后生成出入库单并更新库存，不可修改，只能整单作废重录",
     posted: "已过账",
   },

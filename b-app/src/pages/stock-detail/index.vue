@@ -15,7 +15,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { StockItemDetail, StockLedgerRow } from "@shared/types";
 import { uomLabel } from "@shared/utils/format";
-import { prompt } from "@ai-shop/ui/prompt";
+import { pick, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -26,9 +26,16 @@ const ledger = ref<StockLedgerRow[]>([]);
 const cursor = ref<number | null>(null);
 const loading = ref(false);
 
-/** 差异原因。**枚举不是自由文本** —— 与后端 `reason_code` 同一套 */
+/**
+ * 差异原因。**枚举不是自由文本** —— 与后端 `reason_code` 同一套。
+ *
+ * 它此前是页面上一张常驻的卡，还预选着「损坏」。而这一页九成的来访是**看**，
+ * 不是盘：那张卡每次都占一整屏格子，且只有点了「盘这一件」才用得上。
+ * 更糟的是预选 —— 真去盘的时候，人多半不会注意到底下已经替他选了一个。
+ * 现在挪进流程里，且**只在差异不为 0 时问**（这一页的注释本来就是这么写的，
+ * 只是界面没照做）。
+ */
 const REASONS = ["BROKEN", "EXPIRED", "GIFT", "OTHER"] as const;
-const reason = ref<(typeof REASONS)[number]>("BROKEN");
 
 onLoad((q) => {
   itemId.value = String((q as Record<string, string>)?.itemId ?? "");
@@ -80,12 +87,22 @@ async function adjust() {
     return;
   }
   const diff = counted - detail.value.onHand;
-  try {
-    await api.mStockAdjust({
-      itemId: itemId.value,
-      countedQty: counted,
-      reasonCode: diff === 0 ? undefined : reason.value,
+
+  // 有差异才问原因；取消就整件事作罢 —— 不要「原因没选就按默认记一笔」，
+  // 那会让月底的报损汇总里混进一堆没人选过的「损坏」
+  let reasonCode: string | undefined;
+  if (diff !== 0) {
+    const idx = await pick({
+      title: String(t("stockDetail.reasonLabel")),
+      hint: String(t("stockDetail.reasonHint", { n: diff > 0 ? `+${diff}` : String(diff) })),
+      items: REASONS.map((r) => String(t(`stock.reason.${r}`))),
     });
+    if (idx === null) return;
+    reasonCode = REASONS[idx];
+  }
+
+  try {
+    await api.mStockAdjust({ itemId: itemId.value, countedQty: counted, reasonCode });
     uni.showToast({ title: String(t("common.saved")), icon: "none" });
     await load();
   } catch (e) {
@@ -199,26 +216,12 @@ onShow(load);
         </view>
       </view>
 
-      <view class="sh-card">
-        <text class="field__label">{{ $t("stockDetail.reasonLabel") }}</text>
-        <view class="reasons sh-wrap">
-          <text
-            v-for="r in REASONS"
-            :key="r"
-            class="sh-chip"
-            :class="{ 'sh-chip--primary': reason === r }"
-            @tap="reason = r"
-          >
-            {{ $t(`stock.reason.${r}`) }}
-          </text>
-        </view>
-        <text class="sh-hint">{{ $t("stockDetail.adjustHint") }}</text>
-      </view>
-
       <!--
         改数是这一页唯一的写动作，放页尾整宽。**不做成导航栏右上角的小字** ——
         它会改库存并落一张单，而右上角那个位置在别的页面是「保存草稿」那种轻动作。
       -->
+      <!-- 说明跟着按钮走：原来它在「差异原因」那张卡里，卡撤了它不能跟着没 -->
+      <text class="sh-hint">{{ $t("stockDetail.adjustHint") }}</text>
       <view class="sh-btn" @tap="adjust">{{ $t("stockDetail.adjust") }}</view>
     </template>
   </sh-scaffold>

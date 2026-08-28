@@ -25,6 +25,36 @@ const todo = ref<MerchantTodo | null>(null);
  * 混进 todo 的话，他一进工作台 mTodo 被拒，连库存这道门也跟着没了。
  */
 const stockSummary = ref<StockSummary | null>(null);
+
+/**
+ * 进销存那张卡底下的三个快捷。**随状态变，不写死。**
+ *
+ * 原来永远是「进货 · 盘点 · 单据」—— 哪怕此刻有三批货在途等着收，
+ * 它也不会变，而那才是他现在要做的事。
+ *
+ * 规则：有在途就把「收货 N」顶到第一个（它是这些数里**唯一有人在等**的），
+ * 其余按固定序补满三个。**最多三个** —— 再多就成了第二个入口网格，
+ * 而这张卡的作用是「一眼看见状况 + 一步做最该做的事」，不是再摆一遍菜单。
+ *
+ * 「继续盘点」（有 COUNTING 的盘点单时）**没做**：后端总览里没有那个数，
+ * 要么再加一个字段、要么在这里多打一次接口。留着比编一个假的强。
+ */
+const invActs = computed(() => {
+  const n = stockSummary.value?.inTransitCount ?? 0;
+  const acts: { key: string; label: string; route: string }[] = [];
+  if (n > 0) {
+    acts.push({ key: "receive", label: String(t("home.inv.receiveN", { n })), route: `${ROUTES.stockDocs}?kind=TRANSFER` });
+  }
+  for (const [key, route] of [
+    ["purchase", ROUTES.purchaseEdit],
+    ["check", ROUTES.stockCheck],
+    ["docs", ROUTES.stockDocs],
+  ] as const) {
+    if (acts.length >= 3) break;
+    acts.push({ key, label: String(t(`stock.entry.${key}`)), route });
+  }
+  return acts;
+});
 const stats = ref<MerchantStats | null>(null);
 
 /*
@@ -329,9 +359,15 @@ onShow(load);
           </view>
         </view>
         <view class="inv__acts">
-          <view class="txt-sub inv__act" @tap="open(ROUTES.purchaseEdit)">{{ $t("stock.entry.purchase") }}</view>
-          <view class="txt-sub inv__act" @tap="open(ROUTES.stockCheck)">{{ $t("stock.entry.check") }}</view>
-          <view class="txt-sub inv__act" @tap="open(ROUTES.stockDocs)">{{ $t("stock.entry.docs") }}</view>
+          <view
+            v-for="a in invActs"
+            :key="a.key"
+            class="txt-sub inv__act"
+            :class="{ 'inv__act--on': a.key === 'receive' }"
+            @tap="open(a.route)"
+          >
+            {{ a.label }}
+          </view>
         </view>
       </view>
 
@@ -531,6 +567,12 @@ onShow(load);
   border-radius: 16rpx;
   background: var(--sh-bg);
   color: var(--sh-ink);
+}
+/* 「收货 N」提亮：这三个快捷里它是唯一**有人在等**的 ——
+   其余两个什么时候点都行，它拖着就是货停在路上 */
+.inv__act--on {
+  color: var(--sh-primary-text);
+  font-weight: 600;
 }
 
 .stats__row {
