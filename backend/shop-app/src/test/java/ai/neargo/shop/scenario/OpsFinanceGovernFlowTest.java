@@ -675,7 +675,8 @@ class OpsFinanceGovernFlowTest {
         mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
                 .header("Authorization", "Bearer " + TestLogin.admin(mvc(), json))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"));
-        return login(phone);
+        // A7：/biz/** 只认 btk_，这里必须换 B 端令牌
+        return TestLogin.merchantOwner(mvc(), json, otpStore, phone);
     }
 
     /** 财务岗账号 —— 用它而不是超管，顺带验证这批新码真的授给了 FINANCE 角色。 */

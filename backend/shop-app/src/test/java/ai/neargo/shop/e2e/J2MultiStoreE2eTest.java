@@ -128,7 +128,8 @@ class J2MultiStoreE2eTest extends E2eBase {
         body.put("communityNos", List.of("CM001"));
         String applyNo = post("/mp/merchant/apply", userToken, body).get("applyNo").asString();
         post("/ops/merchant/apply/" + applyNo + "/audit", opsToken, Map.of("approved", true));
-        return loginConsumer(phone);
+        // A7：/biz/** 只认 btk_
+        return loginMerchantOwner(phone);
     }
 
     private String putGoodsOnSale(String merchantToken, String opsToken, String title) {

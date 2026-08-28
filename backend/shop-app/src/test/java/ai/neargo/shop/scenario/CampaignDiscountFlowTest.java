@@ -555,7 +555,8 @@ class CampaignDiscountFlowTest {
                         .header("Authorization", "Bearer " + bd)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
                 .andExpect(jsonPath("$.code").value(0));
-        return login(phone);
+        // A7：/biz/** 只认 btk_，这里必须换 B 端令牌
+        return TestLogin.merchantOwner(mvc(), json, otpStore, phone);
     }
 
     private String opsLogin() throws Exception {

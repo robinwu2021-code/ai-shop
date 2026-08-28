@@ -116,7 +116,8 @@ class J4PaymentApplymentE2eTest extends E2eBase {
         String applyNo = post("/mp/merchant/apply", userToken, body).get("applyNo").asString();
         post("/ops/merchant/apply/" + applyNo + "/audit", opsToken, Map.of("approved", true));
         // 作用域在登录时解析，旧令牌上还没有商家身份
-        return loginConsumer(phone);
+        // A7：/biz/** 只认 btk_
+        return loginMerchantOwner(phone);
     }
 
     private LinkedHashMap<String, Object> submitBody(String account) {

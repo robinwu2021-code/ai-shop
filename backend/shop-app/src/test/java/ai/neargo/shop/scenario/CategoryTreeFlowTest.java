@@ -1035,7 +1035,8 @@ class CategoryTreeFlowTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
                 .andExpect(jsonPath("$.code").value(0));
         // 商家身份是登录时解析进 BizContext 的，旧 token 上还没有
-        return login(phone);
+        // A7：/biz/** 只认 btk_，这里必须换 B 端令牌
+        return TestLogin.merchantOwner(mvc(), json, otpStore, phone);
     }
 
     @Test

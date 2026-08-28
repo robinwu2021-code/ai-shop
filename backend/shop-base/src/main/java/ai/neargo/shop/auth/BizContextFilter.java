@@ -57,8 +57,22 @@ public class BizContextFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse resp, FilterChain chain)
             throws ServletException, IOException {
         try {
+            /*
+             * **判据是「这是不是 B 端会话」，不是「主体是哪张表的号」。**
+             *
+             * A7 之前这里写的是 isConsumer()：那时店主和店员拿的都是 ctk_
+             * （realm=CONSUMER，只是 subjectKind 一个 USR 一个 MCH），所以成立。
+             * A7 把两者都改发 btk_ 之后这个判据对谁都不成立 —— 认证过了、
+             * BizContext 却是空的，表现为**所有 /biz/** 一律 403**：
+             * 不是 401，看不出是登录问题；而 resolve 从没被调用过。
+             *
+             * 用 realm 判而不是干脆去掉：这条链虽然只挂在 /biz/**，
+             * 但「C 端会话不得建立经营作用域」是这一层要守的东西，
+             * 留着它，将来谁把过滤器挂到别处也不会静默放行。
+             * 两种主体号 resolve 都认（见 BizIdentityResolverImpl 的 user_no OR mch_account_no）。
+             */
             SecurityUtils.currentUser()
-                    .filter(LoginUser::isConsumer)
+                    .filter(u -> u.realm() == Realm.MERCHANT)
                     .ifPresent(u -> BizContext.set(withRequestedStore(
                             resolver.resolve(u.userNo(), req.getHeader(STORE_HEADER)), req)));
             chain.doFilter(req, resp);

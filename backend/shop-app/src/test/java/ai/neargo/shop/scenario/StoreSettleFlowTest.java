@@ -332,7 +332,8 @@ class StoreSettleFlowTest {
         mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
                 .header("Authorization", "Bearer " + opsLogin())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"));
-        return login(phone);
+        // A7：/biz/** 只认 btk_，这里必须换 B 端令牌
+        return TestLogin.merchantOwner(mvc(), json, otpStore, phone);
     }
 
     private String opsLogin() throws Exception {

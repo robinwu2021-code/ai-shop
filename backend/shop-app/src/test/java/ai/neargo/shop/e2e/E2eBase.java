@@ -200,6 +200,20 @@ public abstract class E2eBase {
         return data.get("token").asString();
     }
 
+    /**
+     * B 端店主登录 —— 发的是 <b>btk_</b>。
+     *
+     * <p>A7 之后 {@code /biz/**} 只认 B 端令牌，拿 {@link #loginConsumer} 的 ctk_ 打过去是 401。
+     */
+    protected String loginMerchantOwner(String phone) {
+        post("/biz/auth/otp/send", null, Map.of("phone", phone));
+        String code = otpStore.peek(phone).orElseThrow(
+                () -> new IllegalStateException("没拿到验证码，phone=" + phone));
+        var data = post("/biz/auth/login", null, new LinkedHashMap<>(Map.of(
+                "grantType", "PHONE_OTP", "principal", phone, "credential", code, "agreed", true)));
+        return data.get("token").asString();
+    }
+
     /** 员工登录（商家账号那条路，不建 C 端账号） */
     protected String loginStaff(String phone) {
         post("/mp/user/otp/send", null, Map.of("phone", phone));

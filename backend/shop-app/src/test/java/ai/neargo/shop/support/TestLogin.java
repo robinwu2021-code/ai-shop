@@ -79,6 +79,33 @@ public final class TestLogin {
         return operator(mvc, json, "admin", "admin123");
     }
 
+    /**
+     * B 端店主登录：发码 → 取码 → 换 <b>btk_</b>。
+     *
+     * <p>A7 之前测试是拿 {@link #consumer} 的 {@code ctk_} 直接打 {@code /biz/**} 的 ——
+     * 那时两端共用一个令牌前缀，能过。<b>A7 之后 {@code /biz/**} 只认 btk_</b>，
+     * 于是那 40 多个 helper 全部 401，而这恰恰是这次改动要消灭的那件事：
+     * C 端令牌不该能操作商家后台。
+     *
+     * <p>与 {@link #merchantStaff} 的区别：店员走 {@code /biz/auth/staff-login}
+     * （查 mch_staff），店主走 {@code /biz/auth/login}（就是 C 端那套账号体系，
+     * 但发 B 端令牌）—— 还没开店的人也走这一支。
+     *
+     * @return 形如 {@code btk_...} 的令牌
+     */
+    public static String merchantOwner(MockMvc mvc, ObjectMapper json, OtpStore otpStore, String phone)
+            throws Exception {
+        mvc.perform(post("/biz/auth/otp/send").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"phone\":\"" + phone + "\"}"));
+        String code = otpStore.peek(phone).orElseThrow(
+                () -> new AssertionError("没有为 " + phone + " 生成验证码 —— 发码那一步是不是被限流拦了？"));
+        String body = mvc.perform(post("/biz/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"grantType\":\"PHONE_OTP\",\"principal\":\"" + phone
+                                + "\",\"credential\":\"" + code + "\",\"agreed\":true}"))
+                .andReturn().getResponse().getContentAsString();
+        return token(json, body, "B 端店主登录");
+    }
+
     /** B 端店员登录（手机号 + 验证码，不需要 C 端账号）。 */
     public static String merchantStaff(MockMvc mvc, ObjectMapper json, OtpStore otpStore, String phone)
             throws Exception {
