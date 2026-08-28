@@ -49,6 +49,8 @@ const DOMAIN = {
   campaign: "营销与优惠券", campaigns: "营销与优惠券", marketing: "营销与优惠券",
   "group-buy": "拼团", "group-request": "拼团", groups: "拼团",
   points: "积分",
+  // 进销存自成一域：它是独立模块、独立库，端点前缀就是 /biz|/ops|/open 下的 inventory
+  inventory: "进销存",
   settle: "资金与结算", settlements: "资金与结算", finance: "资金与结算",
   payments: "资金与结算", "split-records": "资金与结算",
   "refund-split-backs": "资金与结算", "fee-rule": "资金与结算",
@@ -99,7 +101,14 @@ function readSpec(file) {
 
 /** 后端实现集合。目录清单与 gen-delivery-status.mjs 一致 —— 只扫 portal 会少算一大半 */
 function backendPaths() {
-  const dirs = ["shop-app", "shop-core", "shop-merchant", "shop-settle", "shop-channel"]
+  /*
+   * **shop-inventory 必须在这里**（2026-08-28 补）。少了它，26 个 B 端进销存端点
+   * 对扫描器就不存在 —— 矩阵报「B 端 0/26 🔴」，读的人会以为整个域一行没写，
+   * 而它已经上线在跑。这份矩阵唯一的结论来源是「哪一格是空的」，
+   * 而扫不到的模块产生的正是**假空**。
+   */
+  const dirs = ["shop-app", "shop-core", "shop-merchant", "shop-settle", "shop-channel",
+                "shop-inventory", "shop-notify"]
     .map((m) => join(ROOT, "backend", m, "src/main/java/ai/neargo/shop"))
     .filter(existsSync);
   const out = new Set();
