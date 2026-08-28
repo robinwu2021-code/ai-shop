@@ -270,7 +270,7 @@ class DbTokenStoreTest {
         assertTrue(b.get(probe).isEmpty(), "还没签发，当然认不出");
 
         // 现在把这个令牌真的写进库（模拟 A 实例完成登录）
-        new SessionDao(jdbc, profile).insert(TokenHash.of(probe), "U1",
+        new SessionDao(jdbc, profile).insert(TokenHash.of(probe), "U1", "USR",
                 java.time.LocalDateTime.now(clock), java.time.LocalDateTime.now(clock).plusDays(30));
 
         assertTrue(b.get(probe).isPresent(),
