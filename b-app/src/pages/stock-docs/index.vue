@@ -77,11 +77,19 @@ function showAll() {
  * 状态的色。**已过账用中性色而不是绿色** —— 绿在这一列会读成「好」，
  * 而已过账只是「生效了」；真正要人看一眼的是草稿（还没生效）与在途（还没到）。
  */
-function stateClass(status: string): string {
-  if (status === "DRAFT") return "is-draft";
-  if (status === "SHIPPED") return "is-transit";
+/**
+ * 单据状态 → 库里的 chip 变体。**与调拨页同一套**（那边 SHIPPED 用 warning、
+ * 到货用 primary）—— 此前这里是页面自己的四个 `.is-*` 裸色文字类，
+ * 于是同一个「单据状态」在两个页面上长得完全不一样。
+ *
+ * 草稿与作废都用「不着色」的默认 chip：它们不是要引起注意的态，
+ * 只是「还没生效」和「已经没了」。作废另外保留删除线（见样式）。
+ */
+function stateChip(status: string): string {
+  if (status === "SHIPPED" || status === "COUNTING") return "sh-chip--warning";
   if (status === "VOIDED") return "is-void";
-  return "is-done";
+  if (status === "DRAFT") return "";
+  return "sh-chip--primary";
 }
 
 /**
@@ -145,7 +153,19 @@ onShow(load);
     <view v-for="d in rows" :key="d.docNo" class="sh-card">
       <view class="row__top" @tap="open(d)">
         <view class="sh-fill">
-          <text class="txt-strong row__title">{{ $t(`stockDocs.kind.${d.kind}`) }}</text>
+          <!--
+            状态紧挨着类型，而不是压在右边的数量下面：它修饰的是**这张单**，
+            不是那个数。原来叠在右上角时，右列一小块里挤了两种颜色
+            （数量红/绿 + 状态灰/橙），而卡片右下角空着一大片。
+            用 `sh-chip` 而不是裸彩色文字，与调拨页的单据状态**同一种画法** ——
+            此前同一个「单据状态」两个页面各画各的。
+          -->
+          <view class="row__head sh-row">
+            <text class="txt-strong row__title">{{ $t(`stockDocs.kind.${d.kind}`) }}</text>
+            <text class="sh-chip" :class="stateChip(d.status)">
+              {{ $t(`stockDocs.status.${d.status}`) }}
+            </text>
+          </view>
           <view class="row__meta">
             <text class="sh-muted sh-num">{{ d.docNo }}</text>
             <text v-if="d.operator" class="sh-muted">{{ d.operator }}</text>
@@ -154,18 +174,13 @@ onShow(load);
             {{ d.subtitle ? `${d.subtitle} · ` : "" }}{{ at(d.occurredAt) }}
           </text>
         </view>
-        <view class="row__end">
-          <text class="txt-strong sh-num" :class="d.totalQty < 0 ? 'is-out' : 'is-in'">
-            {{ d.totalQty > 0 ? `+${d.totalQty}` : d.totalQty }}
-          </text>
-          <text class="txt-caption" :class="stateClass(d.status)">
-            {{ $t(`stockDocs.status.${d.status}`) }}
-          </text>
-        </view>
+        <text class="txt-strong sh-num row__qty" :class="d.totalQty < 0 ? 'is-out' : 'is-in'">
+          {{ d.totalQty > 0 ? `+${d.totalQty}` : d.totalQty }}
+        </text>
       </view>
 
       <!--
-        就地展开的单行。**每一行可点** —— 这是「按单查 → 按货查」那条回边：
+        就地展开的单行。**每一行可点** —— 这是「单据 → 库存明细」那条回边：
         看到一张单动了 3 件货，直接走到其中一件的库存明细。
       -->
       <view v-if="openedNo === d.docNo" class="lines">
@@ -219,12 +234,12 @@ onShow(load);
   gap: 20rpx;
   margin-top: 8rpx;
 }
-.row__end {
-  text-align: right;
-  flex: none;
+.row__head {
+  margin-bottom: 4rpx;
 }
-.row__end > text {
-  display: block;
+/* 数量单独占右侧一列，不再与状态叠在一起 */
+.row__qty {
+  flex: none;
 }
 .is-in {
   color: var(--sh-success);
@@ -232,17 +247,8 @@ onShow(load);
 .is-out {
   color: var(--sh-danger);
 }
-.is-draft {
-  color: var(--sh-sub);
-}
-.is-transit {
-  color: var(--sh-warning);
-}
+/* 作废：chip 不着色，但把字划掉 —— 「已经没了」比「注意我」更要紧 */
 .is-void {
-  color: var(--sh-sub);
   text-decoration: line-through;
-}
-.is-done {
-  color: var(--sh-sub);
 }
 </style>

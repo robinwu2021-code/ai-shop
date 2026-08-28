@@ -1711,7 +1711,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     picked: "{n} selected",
   },
   stockDocs: {
-    title: "By document",
+    title: "Documents",
     hint: "Movements by document. To see how one item changed, open it from Stock.",
     onlyOne: "Only {no}",
     showAll: "Show all",
