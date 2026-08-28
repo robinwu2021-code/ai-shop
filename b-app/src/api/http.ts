@@ -500,6 +500,7 @@ export const httpApi: MerchantApi = {
   // ---- 进销存（P-18）
   mStockSummary: () => http.get<StockSummary>(E.mStockSummary.path),
   mStockBalances: (q) => http.get<StockBalance[]>(E.mStockBalances.path, q),
+  mStockPickable: (q) => http.get<StockBalance[]>(E.mStockPickable.path, q),
   mStockItem: (itemId) => http.get<StockItemDetail>(buildPath(E.mStockItem.path, { itemId })),
   mStockLedger: (q) => http.get<StockLedgerPage>(E.mStockLedger.path, q),
   mStockAdjust: (req) => http.post<void>(E.mStockAdjust.path, req),

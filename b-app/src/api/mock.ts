@@ -4134,6 +4134,18 @@ export const mockApi: MerchantApi = {
     return delay(picked.slice(0, q?.size ?? 100));
   },
 
+  async mStockPickable(q) {
+    // 从物料出发：mock 里也要有一件 0 库存的，否则「挑不到新货」这个缺陷在 mock 上看不见
+    const k = (q?.q ?? "").trim();
+    const all = [...invBalances(), {
+      itemId: "IT-NEW", name: "新到的货（还没进过）", specText: "500g",
+      baseUom: "袋", onHand: 0, reserved: 0, available: 0,
+      safetyStock: 0, flags: [],
+    } as StockBalance];
+    const picked = k ? all.filter((b) => b.name.includes(k) || (b.specText ?? "").includes(k)) : all;
+    return delay(picked.slice(0, q?.size ?? 200));
+  },
+
   async mStockItem(itemId) {
     const b = invBalances().find((x) => x.itemId === itemId) ?? invBalances()[0]!;
     return delay({

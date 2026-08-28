@@ -266,6 +266,19 @@ class InventoryBizEndpointTest {
         assertThat(query.itemDetail(ownerId, acl.itemIdOfSku(skuNo)).name())
                 .as("物料名应当是商品标题")
                 .isEqualTo("东北五常大米");
+
+        /*
+         * **上了账还不够 —— 得挑得到。**
+         *
+         * 余额行是按需建的（`ensureBalanceRow`），一件从没进过货的物料没有那一行；
+         * 而挑货弹层此前读的是 `balances`，于是这件货在弹层里不存在，
+         * **商家没法给它记第一笔进货** —— 断边 ① 只解决了一半。
+         * 线上 2026-08-28 就有一件这样的：207 个物料、206 行余额。
+         */
+        String pick = ok(get("/biz/inventory/pickable?q=五常"), token).toString();
+        assertThat(pick)
+                .as("刚建的货（0 库存、没有余额行）必须挑得到，否则第一笔进货无从下手")
+                .contains(acl.itemIdOfSku(skuNo));
     }
 
     @Test

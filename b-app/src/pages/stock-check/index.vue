@@ -36,7 +36,7 @@ const picked = ref<string[]>([]);
 
 /*
  * **搜索与全选**（2026-08-28 补）。原来这一屏是一条一条往下滚：
- * 一条卡片两行、一屏只放得下 8 条，而 `mStockBalances` 一次取 200 条 ——
+ * 一条卡片两行、一屏只放得下 8 条，而 `mStockPickable` 一次取 200 条 ——
  * 真实商家几百个 SKU 时，「盘其中三件」要滚两屏去找。
  *
  * 只在端上过滤，不再往后端发请求：这一批本来就已经全在手里了。
@@ -83,7 +83,8 @@ async function loadDoc() {
 
 async function loadPick() {
   try {
-    picking.value = await api.mStockBalances({ filter: "all", size: 200 });
+    // 同上：盘点要能盘到账面为 0 的货（盘盈就是这种情况）
+    picking.value = await api.mStockPickable({ size: 200 });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }

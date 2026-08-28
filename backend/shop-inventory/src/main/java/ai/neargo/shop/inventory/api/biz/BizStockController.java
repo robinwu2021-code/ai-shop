@@ -67,6 +67,20 @@ public class BizStockController {
         return query.balances(owner(), location(), filter, Math.min(size, PAGE_MAX));
     }
 
+    /**
+     * 可挑的货 —— 开单时选货用。**与 balances 是两个问题**：
+     * 那一条问「我有多少」（读余额），这一条问「哪件货」（读物料）。
+     *
+     * <p>余额行按需建，一件从没进过货的物料没有那一行；从余额出发的话它不存在，
+     * 商家<b>没法给它记第一笔进货</b>。2026-08-28 线上就有一件：207 物料、206 行余额。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
+    @GetMapping("/biz/inventory/pickable")
+    public List<BalanceVO> pickable(@RequestParam(required = false) String q,
+                                    @RequestParam(defaultValue = "200") int size) {
+        return query.pickableItems(owner(), location(), q, Math.min(size, PAGE_MAX));
+    }
+
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/items/{itemId}")
     public ItemDetailVO item(@PathVariable String itemId) {

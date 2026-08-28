@@ -102,6 +102,45 @@ public class StockQueryServiceImpl implements StockQueryService {
     }
 
     @Override
+    public List<BalanceVO> pickableItems(String ownerId, String locationId, String keyword, int limit) {
+        /*
+         * **从物料出发。** 余额行按需建，一件从没进过货的物料没有那一行 ——
+         * 从余额出发的话它不存在，商家没法给它记第一笔进货。
+         */
+        String k = keyword == null ? "" : keyword.trim();
+        List<InvItem> items = itemMapper.selectList(Wrappers.<InvItem>lambdaQuery()
+                .eq(InvItem::getOwnerId, ownerId)
+                .eq(InvItem::getStatus, InvEnums.MasterStatus.ACTIVE)
+                .and(!k.isEmpty(), w -> w.like(InvItem::getName, k)
+                        .or().like(InvItem::getSpecText, k))
+                .orderByAsc(InvItem::getId)
+                .last("limit " + Math.max(1, limit)));
+        if (items.isEmpty()) {
+            return List.of();
+        }
+        List<String> ids = items.stream().map(InvItem::getItemId).toList();
+        Map<String, InvStockBalance> byItem = balanceMapper.selectList(
+                        Wrappers.<InvStockBalance>lambdaQuery()
+                                .eq(InvStockBalance::getOwnerId, ownerId)
+                                .eq(locationId != null, InvStockBalance::getLocationId, locationId)
+                                .in(InvStockBalance::getItemId, ids)).stream()
+                .collect(Collectors.toMap(InvStockBalance::getItemId, Function.identity(), (a, b) -> a));
+
+        List<BalanceVO> out = new ArrayList<>();
+        for (InvItem item : items) {
+            InvStockBalance b = byItem.get(item.getItemId());
+            int onHand = b == null ? 0 : b.getOnHand();
+            int reserved = b == null ? 0 : b.getReserved();
+            // **不带 flags**：缺货 / 滞销是「看库存」那一屏的判据，挑货不需要，
+            // 带上去会让弹层里冒出一堆红字，而商家此刻只是在找一件货
+            out.add(new BalanceVO(item.getItemId(), item.getName(), item.getSpecText(),
+                    item.getBaseUom(), onHand, reserved, onHand - reserved,
+                    item.getSafetyStock(), b == null ? null : b.getLastMovedAt(), List.of()));
+        }
+        return out;
+    }
+
+    @Override
     public ItemDetailVO itemDetail(String ownerId, String itemId) {
         InvItem item = itemMapper.selectOne(Wrappers.<InvItem>lambdaQuery()
                 .eq(InvItem::getOwnerId, ownerId).eq(InvItem::getItemId, itemId));

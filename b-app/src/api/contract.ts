@@ -1253,6 +1253,14 @@ export interface MerchantApi {
    *               商家打开这一页只为两件事：哪件断了、哪件压着
    */
   mStockBalances(q?: { filter?: string; size?: number }): Promise<StockBalance[]>;
+  /**
+   * 开单时挑货用。**与 `mStockBalances` 问的不是一件事**：
+   * 那一条问「我有多少」（读余额），这一条问「哪件货」（读物料）。
+   *
+   * 余额行是按需建的，一件从没进过货的物料没有那一行 —— 读余额的话它不存在，
+   * 于是**商家没法给它记第一笔进货**。进货、盘点两处必须走这一条。
+   */
+  mStockPickable(q?: { q?: string; size?: number }): Promise<StockBalance[]>;
   /** 单件明细：各库位分布 + 条码货号 */
   mStockItem(itemId: string): Promise<StockItemDetail>;
   /** 变动明细。每一行都带操作人、单据号、变动前后 —— 「昨天还有 20 袋今天剩 3 袋」从这里回答 */

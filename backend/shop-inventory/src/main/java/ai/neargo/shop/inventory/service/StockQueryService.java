@@ -20,6 +20,21 @@ public interface StockQueryService {
      */
     List<BalanceVO> balances(String ownerId, String locationId, String filter, int limit);
 
+    /**
+     * 可挑的货 —— **从物料出发，不从余额出发**。
+     *
+     * <p><b>为什么要与 {@link #balances} 分开</b>：那一条回答的是「我有多少」，
+     * 读 `inv_stock_balance`；而挑货问的是「哪件货」。余额行是**按需建**的
+     *（见 `StockPostingServiceImpl.ensureBalanceRow`），一件从没进过货的物料压根没有那一行 ——
+     * 于是它在挑货弹层里不存在，商家<b>没法给它记第一笔进货</b>。
+     * 2026-08-28 线上就有一件这样的：207 个物料、206 行余额。
+     *
+     * <p>没有余额行的返回 0，不是不返回。
+     *
+     * @param keyword 按名称或规格模糊匹配，null 或空则不筛
+     */
+    List<BalanceVO> pickableItems(String ownerId, String locationId, String keyword, int limit);
+
     ItemDetailVO itemDetail(String ownerId, String itemId);
 
     /** 变动明细。游标分页，{@code cursor} 传上一页最后一行的 {@code id}。 */

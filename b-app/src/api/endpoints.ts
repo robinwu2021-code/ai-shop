@@ -308,6 +308,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   // 端点表的解析器认那个位置，夹进去这条端点会静默不进 spec。
   mStockSummary: { method: "GET", path: "/biz/inventory/summary", auth: true, summary: "库存总览三个数" },
   mStockBalances: { method: "GET", path: "/biz/inventory/balances", auth: true, summary: "库存列表（默认只给要处理的）" },
+  mStockPickable: { method: "GET", path: "/biz/inventory/pickable", auth: true, summary: "可挑的货（含 0 库存，从物料出发）" },
   mStockItem: { method: "GET", path: "/biz/inventory/items/:itemId", auth: true, summary: "单件库存明细" },
   mStockLedger: { method: "GET", path: "/biz/inventory/ledger", auth: true, summary: "库存变动明细" },
   mStockAdjust: { method: "POST", path: "/biz/inventory/adjust", auth: true, summary: "直接改数（走盘点，落单落流水）" },

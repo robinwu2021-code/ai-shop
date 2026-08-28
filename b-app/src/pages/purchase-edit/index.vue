@@ -54,7 +54,9 @@ function yuan(minor: number): string {
 
 async function load() {
   try {
-    pickable.value = await api.mStockBalances({ filter: "all", size: 200 });
+    // **挑货读物料，不读余额。** 进货恰恰是给「还没有存货的货」记第一笔，
+    // 而余额行是按需建的 —— 读余额的话新货挑不到
+    pickable.value = await api.mStockPickable({ size: 200 });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
