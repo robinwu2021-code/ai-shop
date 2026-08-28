@@ -171,11 +171,11 @@ onLoad((q) => {
       <text class="txt-caption card__addr">{{ a.region }} {{ a.detail }}</text>
 
       <view class="card__ops">
-        <text v-if="!a.isDefault" class="txt-caption op" @tap.stop="setDefault(a)">
+        <text v-if="!a.isDefault" class="txt-caption op txt-primary" @tap.stop="setDefault(a)">
           {{ $t("address.setDefault") }}
         </text>
-        <text class="txt-caption op" @tap.stop="openEdit(a)">{{ $t("address.edit") }}</text>
-        <text class="txt-caption op op--danger" @tap.stop="remove(a)">{{ $t("address.remove") }}</text>
+        <text class="txt-caption op txt-primary" @tap.stop="openEdit(a)">{{ $t("address.edit") }}</text>
+        <text class="txt-caption op op--danger txt-primary" @tap.stop="remove(a)">{{ $t("address.remove") }}</text>
       </view>
     </view>
 
@@ -269,9 +269,6 @@ onLoad((q) => {
   justify-content: flex-end;
   gap: 32rpx;
   margin-top: 20rpx;
-}
-.op {
-  color: var(--sh-primary-text);
 }
 .op--danger {
   color: var(--sh-danger);

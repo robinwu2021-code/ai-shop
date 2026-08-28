@@ -527,6 +527,12 @@ ROLLED = [
     ("inkover",  "正文色自写",     None,
      r"^\s*\.[\w-]*(?:\.[\w-]+)?\s*\{\s*color:\s*var\(--sh-ink\);?\s*\}",
      None, ".txt-ink"),
+    # 「主色文字」。27 处各写一份 —— 强调数值、标记、可点动作。
+    # **不含 `.sh-link`**：那个件同时定了字号与字重（24rpx / 400，各有依据），
+    # 规则体不止一个 color，这条正则天然扫不到它。两者的分工写在 base.css 里。
+    ("primover", "主色文字自写",   None,
+     r"^\s*\.[\w-]*(?:\.[\w-]+)?\s*\{\s*color:\s*var\(--sh-primary-text\);?\s*\}",
+     None, ".txt-primary（可点的次要动作用 .sh-link）"),
     ("disabled","禁用态自写",     None,
      r"^\s*\.is-disabled\s*\{",                                              None, ".is-disabled（全局）"),
     ("kv",      "键值行", None, r"\.(?:kv|rule|prob)\b[^{}]*\{[^}]*display:\s*flex", None, None),

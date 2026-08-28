@@ -221,7 +221,7 @@ onShow(() => {
           <input v-model="form.address" class="field__input sh-fill" :maxlength="100" :placeholder="$t('store.addressPh')" />
           <view v-if="geoAvailable" class="addr__locate sh-row" @tap="locateAddress">
             <sh-icon name="pin" :size="18" color="var(--sh-primary-text)"></sh-icon>
-            <text class="txt-caption addr__t">{{ locating ? "…" : pinned ? $t("store.repinAddr") : $t("store.pickAddr") }}</text>
+            <text class="txt-caption addr__t txt-primary">{{ locating ? "…" : pinned ? $t("store.repinAddr") : $t("store.pickAddr") }}</text>
           </view>
         </view>
         <!--
@@ -316,9 +316,6 @@ onShow(() => {
   padding: 0 20rpx;
   border-radius: 24rpx;
   background: var(--sh-primary-tint);
-}
-.addr__t {
-  color: var(--sh-primary-text);
 }
 .mini {
   padding: 12rpx 24rpx;

@@ -244,7 +244,7 @@ async function doLogin(method: LoginMethod) {
       <sh-check :model-value="agreed"></sh-check>
       <text class="txt-caption agree__text">
         {{ $t("login.agreePrefix") }}
-        <text class="agree__link" @tap.stop="showAgreement">{{ $t("login.agreementTitle") }}</text>
+        <text class="agree__link txt-primary" @tap.stop="showAgreement">{{ $t("login.agreementTitle") }}</text>
       </text>
     </view>
 
@@ -346,9 +346,6 @@ async function doLogin(method: LoginMethod) {
 }
 .agree__text {
   flex: 1;
-}
-.agree__link {
-  color: var(--sh-primary-text);
 }
 .tip {
   margin: 0 8rpx;

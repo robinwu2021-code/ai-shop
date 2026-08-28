@@ -133,7 +133,7 @@ onUnmounted(() => clearInterval(timer));
         <view class="method is-on sh-row">
           <text class="method__icon">💚</text>
           <text class="txt-strong method__name">{{ $t("pay.wechat") }}</text>
-          <text class="txt-body method__tick">✓</text>
+          <text class="txt-body method__tick txt-primary">✓</text>
         </view>
       </view>
 
@@ -233,9 +233,6 @@ onUnmounted(() => clearInterval(timer));
 }
 .method__name {
   flex: 1;
-}
-.method__tick {
-  color: var(--sh-primary-text);
 }
 .done {
   text-align: center;

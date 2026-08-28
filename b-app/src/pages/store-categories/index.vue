@@ -206,7 +206,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
             </template>
           </text>
         </view>
-        <text class="txt-caption row__act" @tap.stop="rename(c)">{{ $t("storeCategories.rename") }}</text>
+        <text class="sh-link row__act" @tap.stop="rename(c)">{{ $t("storeCategories.rename") }}</text>
       </view>
     </view>
 
@@ -254,9 +254,4 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
   flex: 1;
 }
 
-.row__act {
-  /* primary-text 而不是 primary：主色是为「压白字的按钮底」调的，
-     当文字压在页面底上不足 AA —— 没有症状，只是弱视用户读不清 */
-  color: var(--sh-primary-text);
-}
 </style>

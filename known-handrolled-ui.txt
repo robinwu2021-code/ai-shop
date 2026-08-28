@@ -104,8 +104,13 @@
 # 换过去会**静默变回基类的颜色**（`.inline` 撞 UnoCSS 那次就是这么断的）。
 # 要收得先把基类的 color 也拿掉，而那是另一件事，得逐页看基类那个色是不是必需。
 #
-# points 的 `.rec__v.is-out` 是第六处，理由不同：它配对的 `.rec__v.is-in` 用的是
-# `--sh-primary-text`，不在语义三色里 —— **只换红的等于把一对拆一半，比不换更糟**。
+# ── 2026-08-29 后续：points 已整对收编，从清单里删掉 ────────────────────────
+# 当时留着它的理由是「配对的 `.rec__v.is-in` 用 --sh-primary-text，不在语义三色里，
+# 只换红的等于把一对拆一半」。这一轮补了 `.txt-primary`（主色的颜色修饰类），
+# 那一半有归宿了 —— 于是 `is-in → .txt-primary`、`is-out → .is-danger`，整对收掉。
+#
+# **留着一条「等另一半有归宿」的欠账是对的**：当时只收一半会让那对在源码里
+# 一个走库件、一个走页面类，比两个都走页面类更难看出它们是一对。
 #
 # 已收掉的 8 处：group 的倒计时两处、pay 的倒计时、goods 的赠品行与提示条（3 个调用点）、
 # order-confirm 的优惠券/积分选中态（2 个调用点）、外加上面那两处装饰色改指 token。
@@ -114,4 +119,3 @@ c-app/address semcolor
 c-app/order semcolor
 c-app/order-confirm semcolor
 c-app/orders semcolor
-c-app/points semcolor

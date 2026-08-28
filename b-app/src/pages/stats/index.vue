@@ -76,7 +76,7 @@ onShow(load);
       <view class="sh-card owned">
         <view class="owned__row sh-row sh-row--between sh-row--baseline">
           <text class="txt-title">{{ $t("stats.ownedTraffic") }}</text>
-          <text class="txt-hero owned__v sh-num">{{ ownedPct }}%</text>
+          <text class="txt-hero owned__v sh-num txt-primary">{{ ownedPct }}%</text>
         </view>
         <view class="bar">
           <view class="bar__fill" :style="{ width: `${ownedPct}%` }"></view>
@@ -104,7 +104,6 @@ onShow(load);
 <style scoped>
 /* 跨店入口：与上面几张数据卡同宽同缘，排在最后 —— 先看本店，再想到比 */
 
-
 .pair {
   display: flex;
   margin-top: 16rpx;
@@ -117,9 +116,6 @@ onShow(load);
 }
 .owned {
   background: var(--sh-primary-tint);
-}
-.owned__v {
-  color: var(--sh-primary-text);
 }
 .bar {
   height: 16rpx;

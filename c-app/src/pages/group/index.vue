@@ -110,10 +110,10 @@ onShareAppMessage(() => {
       <text class="sh-muted tierhint">{{ $t("group.tierHint") }}</text>
 
       <view v-if="!group.reached" class="goal">
-        <text class="txt-strong goal__text">{{ $t("group.needMore", { n: group.need }) }}</text>
+        <text class="txt-strong goal__text txt-primary">{{ $t("group.needMore", { n: group.need }) }}</text>
       </view>
       <view v-else class="goal goal--max">
-        <text class="txt-strong goal__text">{{ $t("group.done") }}</text>
+        <text class="txt-strong goal__text txt-primary">{{ $t("group.done") }}</text>
       </view>
     </view>
 
@@ -193,9 +193,6 @@ onShareAppMessage(() => {
 }
 .goal--max {
   background: var(--sh-success-tint);
-}
-.goal__text {
-  color: var(--sh-primary-text);
 }
 .goal--max .goal__text {
   color: var(--sh-success);

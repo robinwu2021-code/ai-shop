@@ -183,7 +183,7 @@ onLoad((q) => {
       </view>
 
       <view v-if="instantRefund" class="sh-card block notice">
-        <text class="txt-caption notice__text">{{ $t("afterSale.instant") }}</text>
+        <text class="txt-caption notice__text txt-primary">{{ $t("afterSale.instant") }}</text>
       </view>
 
       <sh-actionbar :pad="180">
@@ -245,9 +245,6 @@ onLoad((q) => {
 }
 .notice {
   background: var(--sh-primary-tint);
-}
-.notice__text {
-  color: var(--sh-primary-text);
 }
 .done {
   text-align: center;

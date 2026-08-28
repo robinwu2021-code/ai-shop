@@ -157,7 +157,7 @@ onShow(load);
         <text v-else class="txt-body row__addr row__addr--none">{{ $t("delivery.noAddress") }}</text>
         <view class="row__sub sh-row">
           <text class="sh-muted sh-num">{{ o.orderNo }}</text>
-          <text v-if="o.receiver?.phone" class="txt-strong row__tel sh-num" @tap="call(o)">
+          <text v-if="o.receiver?.phone" class="txt-strong row__tel sh-num txt-primary" @tap="call(o)">
             {{ o.receiver.phone }}
           </text>
         </view>
@@ -199,9 +199,6 @@ onShow(load);
 }
 .row__sub {
   margin-top: 8rpx;
-}
-.row__tel {
-  color: var(--sh-primary-text);
 }
 
 .btn {

@@ -274,7 +274,7 @@ onShow(load);
     -->
     <view v-if="pending" class="sh-card sh-mt-md pend">
       <view class="pend__top sh-row sh-row--between">
-        <text class="txt-strong pend__tag">{{ $t("store.noticeAuditing") }}</text>
+        <text class="txt-strong pend__tag txt-primary">{{ $t("store.noticeAuditing") }}</text>
         <text class="txt-caption">{{ pendingAt }}</text>
       </view>
       <text class="txt-body pend__text">{{ pending.content }}</text>
@@ -330,9 +330,6 @@ onShow(load);
 /* 审核中：主色浅底，不用警示红 —— 这不是错误，是还没轮到 */
 .pend {
   background: var(--sh-primary-tint);
-}
-.pend__tag {
-  color: var(--sh-primary-text);
 }
 
 .pend__text {

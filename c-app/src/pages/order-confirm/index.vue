@@ -673,7 +673,7 @@ onMounted(async () => {
       </view>
       <view v-if="amount.pointsEarn" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.pointsEarn") }}</text>
-        <text class="txt-caption amt__v amt__v--earn sh-num txt-ink">+{{ amount.pointsEarn }}</text>
+        <text class="txt-caption amt__v amt__v--earn sh-num txt-ink txt-primary">+{{ amount.pointsEarn }}</text>
       </view>
     </view>
 
@@ -815,9 +815,6 @@ onMounted(async () => {
 
 .amt__v--off {
   color: var(--sh-danger);
-}
-.amt__v--earn {
-  color: var(--sh-primary-text);
 }
 
 .actionbar__total {

@@ -87,7 +87,7 @@ onShow(load);
           <text class="txt-caption rec__at sh-num">{{ datetime(r.at) }}</text>
         </view>
         <view class="rec__right">
-          <text class="txt-body rec__v sh-num" :class="r.points > 0 ? 'is-in' : 'is-out'">
+          <text class="txt-body rec__v sh-num" :class="r.points > 0 ? 'txt-primary' : 'is-danger'">
             {{ r.points > 0 ? "+" : "" }}{{ r.points }}
           </text>
           <text class="txt-caption rec__bal sh-num">{{ $t("points.after", { n: r.balanceAfter }) }}</text>
@@ -173,12 +173,6 @@ onShow(load);
 }
 .rec__v {
   display: block;
-}
-.rec__v.is-in {
-  color: var(--sh-primary-text);
-}
-.rec__v.is-out {
-  color: var(--sh-danger);
 }
 .rec__bal {
   display: block;

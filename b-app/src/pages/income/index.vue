@@ -47,7 +47,7 @@ onShow(() => {
 <template>
   <sh-scaffold title-key="income.title" :denied="!canView">
     <template v-if="sum">
-      <view class="txt-sub scope" @tap="toggleScope">
+      <view class="txt-sub scope txt-primary" @tap="toggleScope">
         {{ allStores ? $t("income.scopeAll") : $t("income.scopeCurrent") }}
       </view>
 
@@ -99,9 +99,6 @@ onShow(() => {
 </template>
 
 <style scoped>
-.scope {
-  color: var(--sh-primary-text);
-}
 .amt {
   display: block;
   margin-top: 8rpx;

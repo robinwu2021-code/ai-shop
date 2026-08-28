@@ -170,7 +170,7 @@ onShow(load);
             <text class="txt-strong row__title">{{ r.title }}</text>
             <text class="sh-muted">{{ r.spec }}</text>
           </view>
-          <text class="txt-title row__qty sh-num">×{{ r.totalQty }}</text>
+          <text class="txt-title row__qty sh-num txt-primary">×{{ r.totalQty }}</text>
         </view>
         <view class="buyers sh-wrap">
           <text
@@ -193,7 +193,7 @@ onShow(load);
             <text class="txt-strong row__title">{{ b.nickname }}</text>
             <text class="sh-muted sh-num">{{ b.orderNo }}</text>
           </view>
-          <text class="txt-title row__qty sh-num">
+          <text class="txt-title row__qty sh-num txt-primary">
             ×{{ b.items.reduce((s, i) => s + i.qty, 0) }}
           </text>
         </view>
@@ -245,9 +245,6 @@ onShow(load);
 
 .row__title {
   display: block;
-}
-.row__qty {
-  color: var(--sh-primary-text);
 }
 .buyers {
   margin-top: 20rpx;

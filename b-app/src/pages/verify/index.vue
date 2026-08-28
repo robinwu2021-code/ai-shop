@@ -310,7 +310,7 @@ onShow(load);
       <text class="txt-strong">{{ overview.pickupName }}</text>
       <view class="overview__grid overview__grid--single">
         <view class="overview__i">
-          <text class="txt-display overview__n sh-num" :class="{ 'is-on': overview.pendingVerify }">
+          <text class="txt-display overview__n sh-num" :class="{ 'is-on txt-primary': overview.pendingVerify }">
             <!-- 用列表算，不用后端那个计数：两处各算一次就会出现
                  「总览说 1 单、下面说没有」，而这正是实测到的那一幕 -->
             {{ waiting.length }}
@@ -495,9 +495,6 @@ onShow(load);
   margin-bottom: 8rpx;
 }
 /* 有待核销才点亮 —— 全是灰的时候一眼就知道没活儿 */
-.overview__n.is-on {
-  color: var(--sh-primary-text);
-}
 
 .basket {
   margin-top: 20rpx;

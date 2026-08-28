@@ -214,7 +214,7 @@ onShow(() => {
         -->
         <text v-if="!user.isLogin" class="txt-caption head__sub">{{ $t("me.loginHint") }}</text>
         <text v-else-if="user.user?.phone" class="txt-caption head__sub">{{ user.user.phone }}</text>
-        <text v-else class="txt-caption head__sub head__sub--action" @tap.stop="phoneGate = true">
+        <text v-else class="txt-caption head__sub head__sub--action txt-primary" @tap.stop="phoneGate = true">
           {{ $t("me.bindPhone") }}
         </text>
       </view>
@@ -387,9 +387,6 @@ onShow(() => {
 </template>
 
 <style scoped>
-.head__sub--action {
-  color: var(--sh-primary-text);
-}
 
 .types {
   display: flex;

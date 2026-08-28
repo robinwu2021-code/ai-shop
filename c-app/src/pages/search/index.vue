@@ -107,7 +107,7 @@ onLoad((q) => {
     <view v-if="!searched && history.length" class="sh-block">
       <view class="sh-block__head hist__head">
         <text class="sh-muted">{{ $t("search.history") }}</text>
-        <text class="txt-caption hist__clear" @tap="clearHistory">{{
+        <text class="txt-caption hist__clear txt-primary" @tap="clearHistory">{{
           $t("search.clear")
         }}</text>
       </view>
@@ -215,9 +215,6 @@ onLoad((q) => {
 .hist__head {
   align-items: center;
   justify-content: space-between;
-}
-.hist__clear {
-  color: var(--sh-primary-text);
 }
 .hist__list {
   gap: 16rpx;

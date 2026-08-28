@@ -104,7 +104,7 @@ onShow(load);
     <view v-for="sg in list" :key="sg.segmentNo" class="sh-card sh-mb-sm">
       <view class="item__head sh-row sh-row--between sh-row--baseline">
         <text class="txt-strong">{{ sg.name }}</text>
-        <text class="txt-sub sh-num count">{{ $t("memberSegments.count", { n: sg.lastCount }) }}</text>
+        <text class="txt-sub sh-num count txt-primary">{{ $t("memberSegments.count", { n: sg.lastCount }) }}</text>
       </view>
       <text class="txt-caption sh-muted cond">{{ summary(sg) }}</text>
       <!-- 「算于」不是装饰：它是这份数字唯一的保质期标记 -->
@@ -124,9 +124,6 @@ onShow(load);
 </template>
 
 <style scoped>
-.count {
-  color: var(--sh-primary-text);
-}
 .cond {
   display: block;
   margin-top: 8rpx;

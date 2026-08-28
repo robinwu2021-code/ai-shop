@@ -127,7 +127,7 @@ onShow(load);
         <view v-if="c.redeemCode" class="txt-caption txt-bold ticket__btn" @tap="showCode(c)">
           {{ $t("coupon.showCode") }}
         </view>
-        <text v-else class="txt-caption ticket__state ticket__state--ok">{{ $t("coupon.autoUse") }}</text>
+        <text v-else class="txt-caption ticket__state ticket__state--ok txt-primary">{{ $t("coupon.autoUse") }}</text>
       </view>
 
       <!-- 过期/用完的折叠在下面，但**不删掉**：券包里少一张，用户会以为平台吞了它 -->
@@ -176,7 +176,7 @@ onShow(load);
         {{ $t("coupon.receive") }}
       </view>
       <text v-else-if="expired(c)" class="txt-caption ticket__state">{{ $t("coupon.expired") }}</text>
-      <text v-else class="txt-caption ticket__state ticket__state--ok">{{ $t("coupon.got") }}</text>
+      <text v-else class="txt-caption ticket__state ticket__state--ok txt-primary">{{ $t("coupon.got") }}</text>
     </view>
 
     <sh-empty
@@ -237,8 +237,5 @@ onShow(load);
 }
 .ticket__state {
   flex: 0 0 auto;
-}
-.ticket__state--ok {
-  color: var(--sh-primary-text);
 }
 </style>

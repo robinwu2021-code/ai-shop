@@ -136,7 +136,7 @@ async function doLogin(method: LoginMethod) {
       class="switch"
       @tap="showPhone = true"
     >
-      <text class="txt-sub switch__text">{{ $t("login.orPhone") }}</text>
+      <text class="txt-sub switch__text txt-primary">{{ $t("login.orPhone") }}</text>
     </view>
 
     <template v-if="phoneMethod && showPhone">
@@ -173,9 +173,9 @@ async function doLogin(method: LoginMethod) {
     -->
     <view class="txt-caption agree">
       <text class="agree__text">{{ $t("login.agreePrefix") }}</text>
-      <text class="txt-caption agree__link" @tap="openDoc('terms')">{{ $t("legal.terms") }}</text>
+      <text class="txt-caption agree__link txt-primary" @tap="openDoc('terms')">{{ $t("legal.terms") }}</text>
       <text class="agree__text">{{ $t("login.agreeAnd") }}</text>
-      <text class="txt-caption agree__link" @tap="openDoc('privacy')">{{ $t("legal.privacy") }}</text>
+      <text class="txt-caption agree__link txt-primary" @tap="openDoc('privacy')">{{ $t("legal.privacy") }}</text>
     </view>
 
     <!--
@@ -196,9 +196,6 @@ async function doLogin(method: LoginMethod) {
 .agree__text {
   color: var(--sh-sub);
 }
-.agree__link {
-  color: var(--sh-primary-text);
-}
 .browse {
   display: block;
   margin-top: 32rpx;
@@ -209,9 +206,6 @@ async function doLogin(method: LoginMethod) {
   margin: 32rpx 0 8rpx;
   padding: 16rpx;
   text-align: center;
-}
-.switch__text {
-  color: var(--sh-primary-text);
 }
 
 .otp-row__send {

@@ -104,7 +104,7 @@ onShow(load);
           <view class="sh-fill">
             <text class="txt-strong quote__name">
               {{ q.merchant.logo || MERCHANT_LOGO_FALLBACK }} {{ q.merchant.name }}
-              <text v-if="q.merchant.merchantNo === merchant.profile?.merchantNo" class="txt-caption mine-tag">
+              <text v-if="q.merchant.merchantNo === merchant.profile?.merchantNo" class="txt-caption mine-tag txt-primary">
                 {{ $t("quotes.mine") }}
               </text>
             </text>
@@ -185,9 +185,6 @@ onShow(load);
 
 .quote__name {
   display: block;
-}
-.mine-tag {
-  color: var(--sh-primary-text);
 }
 .raised {
   display: block;

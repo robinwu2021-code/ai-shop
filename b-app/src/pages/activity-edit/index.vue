@@ -199,7 +199,7 @@ onLoad((q) => {
         v-for="s in [1, 2, 3, 4]"
         :key="s"
         class="sh-chip steps__i"
-        :class="{ 'sh-chip--solid': step === s, 'is-done': step > s }"
+        :class="{ 'sh-chip--solid': step === s, 'is-done txt-primary': step > s }"
         @tap="step = s"
       >{{ s }}. {{ $t(`activityEdit.step${s}`) }}</text>
     </view>
@@ -362,9 +362,6 @@ onLoad((q) => {
 <style scoped>
 .steps {
   gap: 8rpx;
-}
-.steps__i.is-done {
-  color: var(--sh-primary-text);
 }
 .opts {
   margin-top: 12rpx;

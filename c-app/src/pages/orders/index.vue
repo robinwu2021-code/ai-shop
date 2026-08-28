@@ -180,7 +180,7 @@ onShow(load);
         <view class="txt-sub sh-btn card__pay" @tap.stop="pay(o)">{{ $t("orders.pay") }}</view>
       </view>
       <view v-else-if="o.verifyCode && o.status !== 'COMPLETED'" class="codeline sh-row sh-row--between">
-        <text class="txt-caption codeline__label">{{ $t("pay.verifyCode") }}</text>
+        <text class="txt-caption codeline__label txt-primary">{{ $t("pay.verifyCode") }}</text>
         <text class="txt-body codeline__v sh-num">{{ o.verifyCode }}</text>
       </view>
     </view>
@@ -260,9 +260,6 @@ onShow(load);
   background: var(--sh-primary-tint);
   border-radius: 24rpx;
   padding: 16rpx 24rpx;
-}
-.codeline__label {
-  color: var(--sh-primary-text);
 }
 .codeline__v {
   letter-spacing: 3rpx;
