@@ -178,9 +178,32 @@ class TodoPickupScopeFlowTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"goodsNo\":\"" + goodsNo + "\",\"skuNo\":\"" + skuNo + "\",\"qty\":1}"));
 
+        /*
+         * 快递单必须有收货地址（70014，2026-08-15 立的闸）；**自提单不需要**。
+         *
+         * 所以按履约方式决定要不要建，而不是一律建 —— 一律建的话，
+         * 「自提单没有地址也能下」这件事就再也测不出来了，
+         * 而那正是这道闸最容易被修宽的地方（见 OrderReceiverRequiredTest 的类注释）。
+         *
+         * 收货人电话用 13x：测试登录号走 126「一眼假」号段，Phones.CN_MOBILE 拒 126。
+         */
+        String finalBody = orderBody;
+        if (orderBody.contains("EXPRESS")) {
+            String addressId = json.readTree(mvc().perform(post("/mp/user/address")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"买家\",\"phone\":\"13600180013\",\"province\":\"浙江省\","
+                                    + "\"city\":\"杭州市\",\"district\":\"西湖区\",\"detail\":\"文三路 1 号\","
+                                    + "\"isDefault\":true,\"tag\":\"家\"}"))
+                    .andExpect(jsonPath("$.code").value(0))
+                    .andReturn().getResponse().getContentAsString())
+                    .get("data").get(0).get("addressId").asString();
+            finalBody = orderBody.substring(0, orderBody.length() - 1)
+                    + ",\"addressId\":\"" + addressId + "\"}";
+        }
         String body = mvc().perform(post("/mp/order").header("Authorization", "Bearer " + token)
                         .header("Idempotency-Key", "todo-scope-" + phone)
-                        .contentType(MediaType.APPLICATION_JSON).content(orderBody))
+                        .contentType(MediaType.APPLICATION_JSON).content(finalBody))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();

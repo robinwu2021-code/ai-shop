@@ -446,10 +446,22 @@ class BizRoleForbiddenFlowTest {
         String skuNo = json.readTree(mvc().perform(get("/mp/goods/" + goodsNo))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("skus").get(0).get("skuNo").asString();
+        // 快递单必须有收货地址（70014，2026-08-15 立的闸）。收货人电话用 13x ——
+        // 测试登录号走 126「一眼假」号段，而 Phones.CN_MOBILE 拒 126
+        String addressId = json.readTree(mvc().perform(post("/mp/user/address")
+                        .header("Authorization", "Bearer " + buyer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"买家\",\"phone\":\"13600180013\",\"province\":\"浙江省\","
+                                + "\"city\":\"杭州市\",\"district\":\"西湖区\",\"detail\":\"文三路 1 号\","
+                                + "\"isDefault\":true,\"tag\":\"家\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get(0).get("addressId").asString();
         String payOrderNo = json.readTree(mvc().perform(post("/mp/order")
                         .header("Authorization", "Bearer " + buyer)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"fulfillment\":\"EXPRESS\",\"addressId\":null,\"items\":[{\"goodsNo\":\""
+                        .content("{\"fulfillment\":\"EXPRESS\",\"addressId\":\"" + addressId
+                                + "\",\"items\":[{\"goodsNo\":\""
                                 + goodsNo + "\",\"skuNo\":\"" + skuNo + "\",\"qty\":1}]}"))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString())

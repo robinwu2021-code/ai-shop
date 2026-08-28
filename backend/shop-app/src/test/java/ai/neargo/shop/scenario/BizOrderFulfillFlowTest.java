@@ -63,11 +63,19 @@ class BizOrderFulfillFlowTest {
                         .content("{\"expressNo\":\"SF1234567890\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.status").value("SHIPPED"));
+                /*
+                 * 发货后的状态是 **FULFILLING**，不是 SHIPPED。
+                 *
+                 * `SHIPPED`（已发货）与 `ARRIVED`（已到自提点）曾是两个状态常量，
+                 * 后来被删掉了 —— 见 `OrderStatusView` 的类注释：它们是
+                 * 「状态 × 履约方式」那个乘法的**结果**，不是状态本身。
+                 * 这个方法自己的名字（shipMovesToFulfilling）早就跟上了，只有断言没跟上。
+                 */
+                .andExpect(jsonPath("$.data.status").value("FULFILLING"));
 
         mvc().perform(get("/biz/order/" + c.subOrderNo)
                         .header("Authorization", "Bearer " + c.merchantToken))
-                .andExpect(jsonPath("$.data.status").value("SHIPPED"));
+                .andExpect(jsonPath("$.data.status").value("FULFILLING"));
     }
 
     @Test
@@ -95,7 +103,8 @@ class BizOrderFulfillFlowTest {
          * 换单号：**允许**。填错单号必须能改，拒了商家只能打客服。
          * 但它会改掉买家看到的物流号，所以要留痕 —— 见时间线里那条「商家改快递单号」。
          */
-        ship(c, "YT123").andExpect(jsonPath("$.data.status").value("SHIPPED"));
+        // 同上：状态是 FULFILLING，SHIPPED 已不是状态常量
+        ship(c, "YT123").andExpect(jsonPath("$.data.status").value("FULFILLING"));
 
         String detail = mvc().perform(get("/biz/order/" + c.subOrderNo)
                         .header("Authorization", "Bearer " + c.merchantToken))
@@ -195,10 +204,29 @@ class BizOrderFulfillFlowTest {
         String skuNo = json.readTree(mvc().perform(get("/mp/goods/" + goodsNo))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("skus").get(0).get("skuNo").asString();
+        /*
+         * 快递单**必须有收货地址**（70014，2026-08-15 立的闸）。此前这里传
+         * `addressId:null`，闸立起来之后这条链路一直是红的 —— 是夹具没跟上，不是闸错了
+         * （闸只在 SHIPPED_FULFILLMENTS 时触发，自提单不受影响）。
+         *
+         * **收货人电话用 13x 而不是 buyerPhone**：测试登录号一律走 126 前缀
+         *（约定俗成的「一眼假」号段），而 126 不是大陆号段，`Phones.CN_MOBILE` 会拒。
+         * 收货人电话与账号手机号本来就是两个字段。
+         */
+        String addressId = json.readTree(mvc().perform(post("/mp/user/address")
+                        .header("Authorization", "Bearer " + buyer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"买家\",\"phone\":\"13600180013\",\"province\":\"浙江省\","
+                                + "\"city\":\"杭州市\",\"district\":\"西湖区\",\"detail\":\"文三路 1 号\","
+                                + "\"isDefault\":true,\"tag\":\"家\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString())
+                // 这个接口返回的是**整份地址列表**，不是刚存的那一条；买家只有这一条
+                .get("data").get(0).get("addressId").asString();
         String payOrderNo = json.readTree(mvc().perform(post("/mp/order")
                         .header("Authorization", "Bearer " + buyer)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"fulfillment\":\"EXPRESS\",\"addressId\":null,"
+                        .content("{\"fulfillment\":\"EXPRESS\",\"addressId\":\"" + addressId + "\","
                                 + "\"items\":[{\"goodsNo\":\"" + goodsNo + "\",\"skuNo\":\"" + skuNo
                                 + "\",\"qty\":1}]}"))
                 .andExpect(jsonPath("$.code").value(0))

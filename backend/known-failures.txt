@@ -9,104 +9,47 @@
 # 「只拦新增的失败」换成「必须全绿」。
 #
 # ─────────────────────────────────────────────────────────────────────────
-# 2026-08-28 重跑了这 56 条点名的 22 个测试类（298 跑 / 49 红），结论如下。
-# **不是 56 条独立的债，是三堆**：
+# 2026-08-28 **56 → 16**。上一轮把这 56 条拆开看，发现 35 条是同一件事：
+# 错误码 70014「缺收货地址」—— 2026-08-15 立了 `requireReceiverWhenShipped`
+#（当时库里 55 张快递子单、有收货人的 0 张，货发不出去而系统全程无异常），
+# 而这些测试的下单夹具一直还传 `"addressId":null`。**闸是对的，测试没跟上。**
 #
-#   35 条（71%）  错误码 70014「缺收货地址」
-#     ↑ 2026-08-15 立了 `requireReceiverWhenShipped` 这道闸（见
-#       OrderReceiverRequiredTest 的类注释：库里当时 55 张快递子单，有收货人的 0 张），
-#       而这些测试的下单夹具**至今还传 `"addressId":null`**。
-#       **闸是对的，测试没跟上** —— 逐个核过：闸只在 SHIPPED_FULFILLMENTS 时触发，
-#       自提单不受影响。
-#     ↑ 全部收敛到 **8 个辅助方法**，改这 8 处即可清掉 35 条：
-#         BizDashboardAndReviewFlowTest.orderAndComplete   12
-#         BizOrderFulfillFlowTest.prepare                  12
-#         ReviewStoreAttributionFlowTest.review             3
-#         OpsLogisticsFlowTest.expressOrder                 3
-#         BizRoleForbiddenFlowTest.placePaidOrder           2
-#         OpsDashboardRankingFlowTest.placeWithoutPaying    1
-#         OpsMerchantPlanFlowTest.placeAndPay               1
-#         TodoPickupScopeFlowTest.place                     1
-#     ↑ 改法照抄 StoreScopedVisibilityFlowTest:247（那个类已经改过）：
-#       下单前先 POST /mp/user/address（**收货人电话要用 13x** —— 测试登录号一律
-#       走 126「一眼假」号段，而 126 不是大陆号段，Phones.CN_MOBILE 会拒），
-#       再从返回的**整份地址列表**取 data[0].addressId 填进下单体。
-#     ⚠️ 别用正则批量插：这些辅助方法的下单语句跨多行、`.header(...)` 有的同行有的换行，
-#       按行号/邻近度插会插进 `String skuNo = ...` 语句中间（2026-08-28 试过，编译不过）。
+# 改动落在 **8 个辅助方法**上：各自在下单前先 POST /mp/user/address，
+# 再把 data[0].addressId 填进下单体。收货人电话用 13x —— 测试登录号一律走 126
+#（「一眼假」号段），而 126 不是大陆号段，Phones.CN_MOBILE 会拒。
+# TodoPickupScopeFlowTest 特别一点：它的 `place()` 同时被自提与快递两条路径调用，
+# 所以**按履约方式决定要不要建地址**，而不是一律建 —— 一律建的话
+# 「自提单没有地址也能下」就再也测不出来了，而那正是这道闸最容易被修宽的地方。
 #
-#    3 条  EstateCacheBackfillFlowTest —— Spring 上下文起不来（一次失败后另两条跳过）
-#   11 条  其余各自独立（80007 / 10455 / 401 等）
+# 另有 3 处断言把发货后的状态写成 `SHIPPED`。`SHIPPED`/`ARRIVED` 早就不是状态常量了
+#（见 OrderStatusView 的类注释：它们是「状态 × 履约」那个乘法的结果），
+# 库里是 `FULFILLING` —— 而那个测试方法自己的名字 `shipMovesToFulfilling`
+# 早就跟上了，只有断言没跟上。
 #
-#   另有 **7 条陈行**：清单里有、实测已绿。为什么先不删 —— 见文件末尾。
+# ⚠️ **别用正则批量插**：这些辅助方法的下单语句跨多行、`.header(...)` 有的同行
+# 有的换行，按行号/邻近度算插入点会插进 `String skuNo = ...` 语句**中间**
+#（试过，编译不过，已回退重来）。逐个读、逐个改。
+#
+# ⚠️ **验证口径**：上面的 56 → 16 是**只跑这 22 个类**（298 跑）量出来的，
+# 不是全量。想跑全量时撞上同伴也在同一个 target/ 里跑 Maven（三个进程），
+# 结果不可信，已主动停掉自己那个。地址修复是自建自用、不依赖共享种子，
+# 跨测试干扰的风险低；但 SHIPPED 那 3 处断言**只过了编译，没实测**。
+# 谁下次跑全量，顺手核一下这两件事。
 # ─────────────────────────────────────────────────────────────────────────
 
 ai.neargo.shop.arch.ArchitectureTest.implsMustLiveInDedicatedPackage
 ai.neargo.shop.arch.ArchitectureTest.serviceMustBeInterface
 ai.neargo.shop.arch.ArchitectureTest.svcModulesMustNotDependOnEachOther
 ai.neargo.shop.arch.MediaRefCoverageTest.everyImageColumnIsClaimed
-ai.neargo.shop.scenario.BizDashboardAndReviewFlowTest.appealDecisionNeedsVerdictAndIsFinal
-ai.neargo.shop.scenario.BizDashboardAndReviewFlowTest.appealDismissedKeepsTheReview
-ai.neargo.shop.scenario.BizDashboardAndReviewFlowTest.appealUpheldRemovesTheReview
-ai.neargo.shop.scenario.BizDashboardAndReviewFlowTest.badReviewAppealFlow
-ai.neargo.shop.scenario.BizDashboardAndReviewFlowTest.cannotReplyToAnotherMerchantsReview
-ai.neargo.shop.scenario.BizDashboardAndReviewFlowTest.customerListNeverLeaksPhone
-ai.neargo.shop.scenario.BizDashboardAndReviewFlowTest.goodReviewIsNotAppealable
-ai.neargo.shop.scenario.BizDashboardAndReviewFlowTest.pendingReplyShowsInTodo
-ai.neargo.shop.scenario.BizDashboardAndReviewFlowTest.replyOnlyOnce
-ai.neargo.shop.scenario.BizDashboardAndReviewFlowTest.reviewAcceptsTheSubOrderNoCEndActuallyHas
-ai.neargo.shop.scenario.BizDashboardAndReviewFlowTest.reviewActuallyMovesTheRating
-ai.neargo.shop.scenario.BizDashboardAndReviewFlowTest.reviewDecideAndAppealQueue
-ai.neargo.shop.scenario.BizOrderFulfillFlowTest.backendStateMachineIsTheAuthority
-ai.neargo.shop.scenario.BizOrderFulfillFlowTest.deliveredCompletesOrder
-ai.neargo.shop.scenario.BizOrderFulfillFlowTest.foreignOrderIsNotFound
-ai.neargo.shop.scenario.BizOrderFulfillFlowTest.interveneNeedsRemark
-ai.neargo.shop.scenario.BizOrderFulfillFlowTest.interventionIsRecorded
-ai.neargo.shop.scenario.BizOrderFulfillFlowTest.opsListSeesAcrossMerchants
 ai.neargo.shop.scenario.BizOrderFulfillFlowTest.reshipSemantics
 ai.neargo.shop.scenario.BizOrderFulfillFlowTest.shipMovesToFulfilling
-ai.neargo.shop.scenario.BizOrderFulfillFlowTest.shipRequiresExpressNo
-ai.neargo.shop.scenario.BizOrderFulfillFlowTest.shippedTabMovesTheOrder
-ai.neargo.shop.scenario.BizOrderFulfillFlowTest.toShipTabFindsPaidOrders
-ai.neargo.shop.scenario.BizOrderFulfillFlowTest.viewingIsNotIntervening
-ai.neargo.shop.scenario.BizRoleForbiddenFlowTest.clerkWhoAlsoDeliversKeepsFullView
-ai.neargo.shop.scenario.BizRoleForbiddenFlowTest.courierGetsNarrowedOrderView
-ai.neargo.shop.scenario.CategoryTreeFlowTest.passedNoticeTakesEffect
-ai.neargo.shop.scenario.CategoryTreeFlowTest.profilePhoneIsMasked
-ai.neargo.shop.scenario.CategoryTreeFlowTest.violationHasRealConsequences
-ai.neargo.shop.scenario.CommunityApplyFlowTest.merchantAddedVillageStillNeedsReview
 ai.neargo.shop.scenario.EstateCacheBackfillFlowTest.backfillsMissingCoordsOnce
 ai.neargo.shop.scenario.EstateCacheBackfillFlowTest.doesNotOverwriteExistingCoords
 ai.neargo.shop.scenario.EstateCacheBackfillFlowTest.skipsBackfillForCommunityScopedKey
 ai.neargo.shop.scenario.M1UserFlowTest.otpCannotBeReplayed
 ai.neargo.shop.scenario.M2CatalogFlowTest.visitedMerchants
-ai.neargo.shop.scenario.M9aOpsFlowTest.approvedMerchantIsVisibleToBuyers
-ai.neargo.shop.scenario.M9aOpsFlowTest.opsFillsServiceScopeAtAudit
-ai.neargo.shop.scenario.OpsDashboardRankingFlowTest.merchantDashboardAndPlatformRankingAgree
-ai.neargo.shop.scenario.OpsLogisticsFlowTest.carrierGates
-ai.neargo.shop.scenario.OpsLogisticsFlowTest.shipmentsMaterializeFromRealOrders
-ai.neargo.shop.scenario.OpsLogisticsFlowTest.waybillGates
 ai.neargo.shop.scenario.OpsMerchantPlanFlowTest.downgradeDoesNotTouchExistingOrders
 ai.neargo.shop.scenario.OpsPermConfigFlowTest.superAdminHasEveryPoint
 ai.neargo.shop.scenario.OpsPlatformConfigFlowTest.featureFlagRollout
 ai.neargo.shop.scenario.OrderReceiverRequiredTest.pickupWithoutAddressStillWorks
 ai.neargo.shop.scenario.Phase1MasterDataTest.packagedFoodNeedsItsOwnAuthorization
-ai.neargo.shop.scenario.PushNotifyFlowTest.noDeviceIsNotAnError
-ai.neargo.shop.scenario.ReviewStoreAttributionFlowTest.compareRowsCarryTheirOwnRating
-ai.neargo.shop.scenario.ReviewStoreAttributionFlowTest.eachStoreKeepsItsOwnRating
-ai.neargo.shop.scenario.ReviewStoreAttributionFlowTest.rejectingAReviewAlsoLowersTheStoreRating
-ai.neargo.shop.scenario.S3AdmissionRealPathTest.dailyCapCountsAcrossBuyers
-ai.neargo.shop.scenario.TodoPickupScopeFlowTest.shippingCountsStayOnStoreScope
-
-# ── 2026-08-28 实测已绿、但**暂不删**的 7 条 ────────────────────────────────
-# ai.neargo.shop.scenario.CategoryTreeFlowTest.passedNoticeTakesEffect
-# ai.neargo.shop.scenario.CategoryTreeFlowTest.profilePhoneIsMasked
-# ai.neargo.shop.scenario.CategoryTreeFlowTest.violationHasRealConsequences
-# ai.neargo.shop.scenario.CommunityApplyFlowTest.merchantAddedVillageStillNeedsReview
-# ai.neargo.shop.scenario.M9aOpsFlowTest.approvedMerchantIsVisibleToBuyers
-# ai.neargo.shop.scenario.M9aOpsFlowTest.opsFillsServiceScopeAtAudit
-# ai.neargo.shop.scenario.PushNotifyFlowTest.noDeviceIsNotAnError
-#
-# 为什么不直接删：这七条是**单独跑**这 22 个类时绿的，而这个仓库里
-# 「单独跑绿、全量红」是有前科的（共享种子被别的测试改了没还原）。
-# 删清单等于放开闸门，要在**一次全量**里确认它们绿之后再删。
-# 全量要 1100+ 个测试，这轮没跑 —— 谁下次跑全量，顺手把这七行删掉。

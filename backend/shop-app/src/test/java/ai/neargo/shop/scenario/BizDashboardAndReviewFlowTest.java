@@ -742,10 +742,28 @@ class BizDashboardAndReviewFlowTest {
                         .andReturn().getResponse().getContentAsString())
                 .get("data").get("skus").get(0).get("skuNo").asString();
 
+        /*
+         * 快递单**必须有收货地址**（70014，2026-08-15 立的闸）。此前这里根本没传
+         * addressId，闸立起来之后这条链路一直是红的 —— 夹具没跟上，不是闸错了。
+         * 收货人电话用 13x：测试登录号一律走 126（「一眼假」号段），
+         * 而 126 不是大陆号段，`Phones.CN_MOBILE` 会拒。
+         */
+        String addressId = json.readTree(mvc().perform(post("/mp/user/address")
+                        .header("Authorization", "Bearer " + buyer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"买家\",\"phone\":\"13600180013\",\"province\":\"浙江省\","
+                                + "\"city\":\"杭州市\",\"district\":\"西湖区\",\"detail\":\"文三路 1 号\","
+                                + "\"isDefault\":true,\"tag\":\"家\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString())
+                // 返回的是**整份地址列表**，不是刚存的那一条
+                .get("data").get(0).get("addressId").asString();
+
         String order = mvc().perform(post("/mp/order").header("Authorization", "Bearer " + buyer)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"items\":[{\"goodsNo\":\"" + goodsNo + "\",\"skuNo\":\"" + skuNo
-                                + "\",\"qty\":1}],\"fulfillment\":\"EXPRESS\"}"))
+                                + "\",\"qty\":1}],\"fulfillment\":\"EXPRESS\",\"addressId\":\""
+                                + addressId + "\"}"))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
         JsonNode data = json.readTree(order).get("data");
