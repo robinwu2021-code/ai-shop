@@ -1722,7 +1722,6 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
       RECEIVED: "Received",
     },
     empty: "No documents of this kind yet.",
-    saleHint: "A sale is a document too. \"Just decrement the stock\" does not exist here — when the accountant asks where 200 catties of rice went, you need a document to open, not a log line.",
   },
   stockOut: {
     title: "Scrap outbound",
@@ -1737,7 +1736,6 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     reasonLabel: "Reason",
     totalQty: "Total out",
     post: "Post outbound",
-    costHint: "An outbound carries cost, never a sale price — sale prices belong to sales, and the same item is priced differently per channel; putting one here creates a second source of truth.",
     posted: "Posted {no}",
   },
   transfer: {
@@ -1758,7 +1756,6 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     inTransit: "In transit",
     conserveHint: "While the goods are on the road the total stays exact — in transit is a real location, not \"temporarily missing\".",
     ship: "Ship",
-    twoDocsHint: "Two documents are always created, even for a ten-minute bike ride. Skip one and adding in-transit later means rewriting history.",
     shipped: "Shipped {no}",
     receive: "Confirm receipt",
     receiveTitle: "Confirm receipt",
@@ -1802,6 +1799,5 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     sourceTitle: "Shipping source",
     sourceBody: "Once a store has a shipping source, orders placed at that store draw down the source warehouse.",
     noRelay: "No relaying: a warehouse cannot point somewhere else in turn.",
-    warehouseHint: "A warehouse is a kind of location, not a kind of store — it has no shopfront, takes no payment, and never appears on the buyer side.",
   },
 };

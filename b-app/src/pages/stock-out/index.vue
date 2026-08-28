@@ -164,7 +164,6 @@ onShow(load);
     <view class="sh-btn" :class="{ 'sh-btn--muted': !lines.length || busy }" @tap="post">
       {{ $t("stockOut.post") }}
     </view>
-    <text class="sh-hint hint">{{ $t("stockOut.costHint") }}</text>
 
     <sh-sheet :visible="showPick" :title="String($t('stockOut.addItem'))" @close="showPick = false">
       <view v-for="b in pickable" :key="b.itemId" class="pick sh-row sh-row--between sh-row--baseline" @tap="addLine(b)">

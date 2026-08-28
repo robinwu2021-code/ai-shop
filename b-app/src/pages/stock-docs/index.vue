@@ -102,7 +102,6 @@ onShow(load);
     </view>
 
     <view v-if="rows.length" class="sh-card">
-      <text class="txt-caption">{{ $t("stockDocs.saleHint") }}</text>
     </view>
   </sh-scaffold>
 </template>

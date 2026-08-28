@@ -127,7 +127,6 @@ onShow(load);
     </view>
 
     <view class="sh-card">
-      <text class="txt-caption">{{ $t("locations.warehouseHint") }}</text>
     </view>
   </sh-scaffold>
 </template>
