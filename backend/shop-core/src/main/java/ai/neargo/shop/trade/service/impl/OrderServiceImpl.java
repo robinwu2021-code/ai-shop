@@ -883,7 +883,7 @@ public class OrderServiceImpl implements OrderService {
             sub.setStatus(next);
             // 核销码在支付成功后生成：未付款的订单不该有能核销的码。
             // 全局唯一由 uk_verify_code 兜底 —— 撞码时插入失败总比核销台扫出两单强
-            sub.setVerifyCode(newVerifyCode());
+            sub.setVerifyCode(newUnusedVerifyCode());
             subOrderMapper.updateById(sub);
             appendStatusLog(sub.getSubOrderNo(), next,
                     serviceLike ? "支付成功，凭码到店使用" : "支付成功，待备货",
@@ -1763,7 +1763,47 @@ public class OrderServiceImpl implements OrderService {
         statusLogMapper.insert(log);
     }
 
-    /** 6 位核销码。撞码由 uk_verify_code 兜底 —— 插入失败总比核销台扫出两单强。 */
+    /**
+     * 取一个**库里还没用过**的 6 位核销码。
+     *
+     * <p><b>为什么不能只靠唯一索引兜底</b>（原来就是这么写的）：撞号时那条
+     * {@code updateById} 会抛唯一约束冲突，而它跑在**支付回调**里 ——
+     * 后果不是「这个码换一个」，是<b>这一笔支付回调失败</b>，
+     * 子单停在待发码的状态、核销码是 null。用户已经付了钱。
+     *
+     * <p>而且这个索引是**全表、永久**的：历史订单的码一直占着号段，
+     * 订单越多越容易撞。2026-08-28 全量测试里就撞出来了 ——
+     * 一个共用的 H2 库累积上千条码之后，约 2/3 的跑次会撞一次，
+     * 每次砸中不同的用例，表现成一条「会飘的失败」，查了很久才落到这里。
+     * 生产上它同样成立，只是订单还少，没轮到。
+     *
+     * <p>所以先查后写、撞了换一个。索引<b>仍然保留</b>作最后兜底 ——
+     * 查与写之间有并发窗口，那时宁可失败也不能发出两个一样的码：
+     * 核销台扫出两单是比支付回调失败更坏的事。
+     *
+     * <p><b>试完仍然撞不出来就抛</b>，不静默用最后一个：那等于把一次必然的
+     * 唯一冲突推到下一行，而错误信息会指向毫不相干的地方。
+     * 真到了这一步，说明号段快用满了，该做的是把唯一性收窄到「未核销的单」
+     * 或按门店分段，而不是把重试次数调大。
+     */
+    private static final int VERIFY_CODE_TRIES = 8;
+
+    private String newUnusedVerifyCode() {
+        for (int i = 0; i < VERIFY_CODE_TRIES; i++) {
+            String code = newVerifyCode();
+            Long used = subOrderMapper.selectCount(Wrappers.<OrdSubOrder>lambdaQuery()
+                    .eq(OrdSubOrder::getVerifyCode, code));
+            if (used == null || used == 0L) {
+                return code;
+            }
+        }
+        throw new IllegalStateException(
+                "连续 %d 次都撞上已用的核销码 —— 号段接近用满，"
+                        .formatted(VERIFY_CODE_TRIES)
+                        + "该收窄唯一性范围（只对未核销的单唯一，或按门店分段），不是加大重试次数");
+    }
+
+    /** 6 位核销码。人要在核销台上念出来，所以不加长；唯一性由 {@link #newUnusedVerifyCode} 负责。 */
     private String newVerifyCode() {
         return "%06d".formatted(RANDOM.nextInt(1_000_000));
     }
