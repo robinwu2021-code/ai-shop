@@ -250,7 +250,8 @@ class MultiEntityIdentityFlowTest {
         String token = merchant(phone, "两张证照·第一张");
         String first = merchantNoOf(token, null);
         String second = quickStart(token, "两张证照·第二张");
-        token = login(phone);
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        token = TestLogin.merchantOwner(mvc(), json, otpStore, phone);
 
         // 给第二张证照传一张营业执照。**当前证照仍是第一张** —— 这正是这条参数存在的理由
         mvc().perform(post("/biz/qualifications/save").header("Authorization", "Bearer " + token)
@@ -310,7 +311,8 @@ class MultiEntityIdentityFlowTest {
         String token = merchant(phone, "建店·第一张");
         String first = merchantNoOf(token, null);
         String second = quickStart(token, "建店·第二张");
-        token = login(phone);
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        token = TestLogin.merchantOwner(mvc(), json, otpStore, phone);
 
         String body = mvc().perform(post("/biz/store/create").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

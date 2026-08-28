@@ -59,7 +59,8 @@ class M4FulfillmentFlowTest {
     @Test
     @DisplayName("普通用户没有经营侧作用域，/biz 一律 403（fail-closed）")
     void normalUserHasNoBizScope() throws Exception {
-        String token = login("13300133001");
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "13300133001");
         // 业务异常走契约包（HTTP 200 + code），只有认证失败才用 HTTP 401
         mvc().perform(get("/biz/context").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.code").value(10403));
@@ -492,7 +493,8 @@ class M4FulfillmentFlowTest {
     @Test
     @DisplayName("不承接自提点的人做不了到货登记（403）")
     void nonPickupOperatorCannotMarkArrived() throws Exception {
-        String plain = login("13300134030");
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String plain = TestLogin.merchantOwner(mvc(), json, otpStore, "13300134030");
         mvc().perform(post("/biz/pickup/arrived").header("Authorization", "Bearer " + plain)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"orderNos\":[\"SUB-NOPE\"]}"))
@@ -555,7 +557,8 @@ class M4FulfillmentFlowTest {
         grantOwner(m.getEntityNo(), userNo);
         merchantMapper.updateById(m);
         // 作用域在登录时解析，改完属主要重新登录一次才生效
-        return login(phone);
+        // A7：这个令牌是拿去打 /biz/** 的，必须是 btk_
+        return TestLogin.merchantOwner(mvc(), json, otpStore, phone);
     }
 
     private String userNoOf(String token) throws Exception {

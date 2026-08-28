@@ -488,7 +488,8 @@ class CategoryTreeFlowTest {
          * ★ 判据不是「接口返回 0」，是**商家当场就能上架带门槛的货**。
          * 分两步时这里会是 70002：通过通知已经发出，而他一件生鲜都上不了架。
          */
-        String token = TestLogin.consumer(mvc(), json, otpStore, phone);
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, phone);
         String goodsNo = saveGoods(token, "小油菜", "CAT110");
         approveGoods(goodsNo);
         mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")

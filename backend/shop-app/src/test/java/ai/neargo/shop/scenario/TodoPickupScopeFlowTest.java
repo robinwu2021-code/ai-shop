@@ -218,7 +218,8 @@ class TodoPickupScopeFlowTest {
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("userNo").asString();
         seedOwner(merchantNo, userNo);
-        return login(phone);
+        // A7：这个令牌是拿去打 /biz/** 的，必须是 btk_
+        return TestLogin.merchantOwner(mvc(), json, otpStore, phone);
     }
 
     @Autowired

@@ -164,7 +164,8 @@ class BizOrderFulfillFlowTest {
                         .header("Authorization", "Bearer " + bd)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
                 .andExpect(jsonPath("$.code").value(0));
-        String token = login(merchantPhone);
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, merchantPhone);
 
         String goodsNo = json.readTree(mvc().perform(post("/biz/goods/save")
                         .header("Authorization", "Bearer " + token)

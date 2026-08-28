@@ -76,7 +76,8 @@ class BizDashboardAndReviewFlowTest {
     @Test
     @DisplayName("不是商家的人打不开工作台（403，不是空对象）")
     void nonMerchantIsRejected() throws Exception {
-        String consumer = login("12600141009");
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String consumer = TestLogin.merchantOwner(mvc(), json, otpStore, "12600141009");
         mvc().perform(get("/biz/dashboard/todo").header("Authorization", "Bearer " + consumer))
                 .andExpect(jsonPath("$.code").value(10403));
     }

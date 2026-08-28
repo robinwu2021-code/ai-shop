@@ -499,7 +499,8 @@ class OpsFulfillmentFlowTest {
         grantOwner(m.getEntityNo(), userNo);
         merchantMapper.updateById(m);
         // 作用域在登录时解析，改完属主要重新登录一次才生效
-        return login(phone);
+        // A7：这个令牌是拿去打 /biz/** 的，必须是 btk_
+        return TestLogin.merchantOwner(mvc(), json, otpStore, phone);
     }
 
     private void grantOwner(String merchantNo, String userNo) {

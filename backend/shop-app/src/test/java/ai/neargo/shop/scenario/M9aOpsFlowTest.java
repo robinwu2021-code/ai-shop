@@ -352,7 +352,8 @@ class M9aOpsFlowTest {
                 .andExpect(jsonPath("$.code").value(0));
 
         // 审核通过 → 申请人获得商家身份（/biz 可用）
-        String refreshed = login("12600126010");
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String refreshed = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126010");
         mvc().perform(get("/biz/context").header("Authorization", "Bearer " + refreshed))
                 .andExpect(jsonPath("$.data.merchantNo").isNotEmpty());
     }
@@ -457,7 +458,8 @@ class M9aOpsFlowTest {
         String user = login(phone);
         String applyNo = applyMerchant(user, shopName);
         approve(opsLogin("bd", "bd123"), applyNo);
-        String token = login(phone);
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, phone);
         String saved = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT210\",\"title\":\"" + goodsTitle + "\",\"subtitle\":\"测试\","
@@ -511,7 +513,8 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("★ B 端入驻闭环：未申请 → 提交 → 受理 → 驳回 → 补料重提 → 通过")
     void bizOnboardingFullLoop() throws Exception {
-        String user = login("12600126040");
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String user = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126040");
         String bd = opsLogin("bd", "bd123");
 
         // ① 没申请过 —— 是 NONE，不是 404。让前端 catch 一个正常状态迟早出错
@@ -566,7 +569,8 @@ class M9aOpsFlowTest {
                         .content("{\"approved\":true}"))
                 .andExpect(jsonPath("$.code").value(0));
 
-        String refreshed = login("12600126040");
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String refreshed = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126040");
         mvc().perform(get("/biz/merchant/profile").header("Authorization", "Bearer " + refreshed))
                 .andExpect(jsonPath("$.data.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.data.merchantNo").isNotEmpty())
@@ -577,7 +581,8 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("入驻接口对「还不是商家的人」必须开放 —— 否则被驳回的人永远看不到原因")
     void applicantWithoutMerchantIsNotForbidden() throws Exception {
-        String user = login("12600126041");
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String user = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126041");
         // 同一个 token 打真正的经营接口应当 403，打入驻接口应当 200 —— 这正是差别所在
         mvc().perform(get("/biz/context").header("Authorization", "Bearer " + user))
                 .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
@@ -589,7 +594,8 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("没申请过时草稿返回空，不是 404（「没申请过」是正常状态）")
     void draftIsEmptyNotFound() throws Exception {
-        String user = login("12600126042");
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String user = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126042");
         mvc().perform(get("/biz/merchant/apply").header("Authorization", "Bearer " + user))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
@@ -669,7 +675,8 @@ class M9aOpsFlowTest {
     @Test
     @DisplayName("社区列表不依赖定位（商家选的是经营半径，不是他此刻站在哪儿）")
     void bizCommunitiesNeedNoLocation() throws Exception {
-        String user = login("12600126047");
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String user = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126047");
         mvc().perform(get("/biz/communities").header("Authorization", "Bearer " + user))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(org.hamcrest.Matchers.greaterThan(0)));
@@ -728,7 +735,8 @@ class M9aOpsFlowTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
                 .andExpect(jsonPath("$.code").value(0));
 
-        String refreshed = login("12600126052");
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String refreshed = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126052");
         mvc().perform(get("/biz/merchant/profile").header("Authorization", "Bearer " + refreshed))
                 .andExpect(jsonPath("$.data.status").value("ACTIVE"))
                 // ★ 这两项此前通过审核就消失了：行业是进件主体的判据，简介是 C 端门店页的内容
@@ -887,7 +895,8 @@ class M9aOpsFlowTest {
         mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
                 .header("Authorization", "Bearer " + bd)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"));
-        String refreshed = login(phone);
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String refreshed = TestLogin.merchantOwner(mvc(), json, otpStore, phone);
         String body = mvc().perform(get("/biz/merchant/profile")
                         .header("Authorization", "Bearer " + refreshed))
                 .andReturn().getResponse().getContentAsString();
@@ -916,7 +925,8 @@ class M9aOpsFlowTest {
                         .content("{\"approved\":true}"))
                 .andExpect(jsonPath("$.code").value(0));
         // 重新登录：商家身份是登录时解析进 BizContext 的，旧 token 上还没有
-        return login(phone);
+        // A7：这个令牌是拿去打 /biz/** 的，必须是 btk_
+        return TestLogin.merchantOwner(mvc(), json, otpStore, phone);
     }
 
 

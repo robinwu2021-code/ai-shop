@@ -198,7 +198,8 @@ class OfflinePayFlowTest {
     @Test
     @DisplayName("★★★ 买家调不到「确认收款」—— 让他能点等于让他自己宣布已付款")
     void buyerCannotConfirmOfflinePay() throws Exception {
-        String token = login("13400188002");
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "13400188002");
         addToCart(token, "G0001", "SK0001", 1);
         String orderNo = createOffline(token, "offline-buyer");
         String subOrderNo = subOrderNoOf(token, orderNo);

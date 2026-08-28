@@ -287,7 +287,8 @@ class M6cGroupFlowTest {
     void normalUserCannotQuote() throws Exception {
         String owner = login("12900129028");
         String requestNo = createRequest(owner, "求团：雨伞");
-        String normal = login("12900129029");
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String normal = TestLogin.merchantOwner(mvc(), json, otpStore, "12900129029");
 
         mvc().perform(post("/biz/group-request/" + requestNo + "/quote")
                         .header("Authorization", "Bearer " + normal)
@@ -468,7 +469,8 @@ class M6cGroupFlowTest {
         // V44 起 B 端身份来自 mch_account，不再是 owner_user_no —— 两处都要写
         grantOwner(m.getEntityNo(), json.readTree(body).get("data").get("userNo").asString());
         merchantMapper.updateById(m);
-        return login(phone);
+        // A7：这个令牌是拿去打 /biz/** 的，必须是 btk_
+        return TestLogin.merchantOwner(mvc(), json, otpStore, phone);
     }
 
     private String login(String phone) throws Exception {

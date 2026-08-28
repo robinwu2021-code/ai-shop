@@ -584,6 +584,36 @@ class M9bBizGoodsFlowTest {
     }
 
     @Test
+    @DisplayName("C 端令牌打不开商家后台 —— 而且要是 401，不是 403")
+    void consumerTokenIsRejectedByBizChain() throws Exception {
+        /*
+         * **A7 的闸**：ctk_ 不该能操作 /biz/**。
+         *
+         * 为什么连 401/403 都要断言死：A7 落地时 BizContextFilter 的判据漏改，
+         * 结果是所有人（含店主）都拿不到 BizContext —— 一律 403。403 看着像
+         * 「这个人没这个权限」，是业务判定；而真相是**整条链的登录态没建起来**。
+         * 那一版跑遍了全部单测都不红，只有场景测试打真链路才现形。
+         *
+         * 反过来也一样：如果哪天这里从 401 变成 403，说明 C 端令牌又能过认证了，
+         * 只是权限不够而已 —— 那是两回事，中间隔着一次越权。
+         */
+        /*
+         * 正向用 createGoods（而不是随便找个只读端点）：它要 BizContext 里有主体、
+         * 有 GOODS 权限，**这一步在漏改那一版是 403**。挑一个不需要作用域的端点
+         * 就会变成一条恒绿的闸 —— 恒绿的闸和没有闸是一回事。
+         */
+        String bizToken = merchant("12600127099", "换端测试店");
+        createGoods(bizToken, "换端测试商品");
+
+        // 同一条链，换成 C 端令牌：连认证都不该过 —— 是 401，不是「权限不够」的 403
+        String consumerToken = login("12600133900");
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + consumerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(goodsBody(null, "越权商品", 1000, 10)))
+                .andExpect(jsonPath("$.code").value(10401));
+    }
+
+    @Test
     @DisplayName("列表按状态筛选，且默认包含下架与审核中（看不到就不知道要改什么）")
     void listIncludesNonSellable() throws Exception {
         String token = merchant("12600127006", "商品测试店F");

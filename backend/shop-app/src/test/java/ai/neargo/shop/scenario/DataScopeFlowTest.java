@@ -77,7 +77,8 @@ class DataScopeFlowTest {
     @Test
     @DisplayName("非商家用户访问 /biz/** 一律 403（BizIdentityResolver fail-closed）")
     void nonMerchantIsRejectedFromBiz() throws Exception {
-        String token = login("13900139002");
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "13900139002");
         // M4 实现 /biz/order 之前这里断言的是 404（端点不存在）；
         // 端点存在之后，真正要守的是**作用域为空 → 403**
         mvc().perform(get("/biz/order").header("Authorization", "Bearer " + token))
