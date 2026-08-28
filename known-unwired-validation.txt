@@ -1,0 +1,40 @@
+# 已知「DTO 上有校验注解、方法参数却没有 @Valid」的欠账 —— 那些注解一次都没跑过。
+# 判据与说明在 packages/shared/tests/bean-validation-wired.test.ts。
+#
+# 键是「文件路径 类型名」，**不带行号** —— 行号会随无关改动漂移，
+# 而漂移会让清单在每次别人动这个文件时莫名其妙地红一次。
+#
+# ★ 为什么先挂清单而不是一次改完：接上 @Valid 会改变 **22 个线上端点的报错行为** ——
+# 现在传空串是走到下游才失败（或根本没失败），接上之后当场 400。
+# 这不是纯内部重构，得逐个看清调用方现在到底传什么。**先立闸门止血，再逐条清。**
+#
+# ★ 好消息是风险比预想小：这 22 处的约束**清一色是 @NotBlank，没有一个 @Pattern**。
+# 也就是说接上之后只会拒空值，不会因为格式变严把存量数据挡在外面。
+# 特别是 MpUserController 的 LoginReq / OtpReq（登录与发码链路）——
+# 它们只有 @NotBlank，所以「收紧手机号格式会不会把老用户锁在门外」那个问题
+# 在这里**还没被触发**：格式判据（Phones.CN_MOBILE）目前只加在写入口，没加在登录链路。
+#
+# 清一条就删一条。**只许变短。**
+
+backend/shop-core/src/main/java/ai/neargo/shop/trade/api/biz/BizAfterSaleController.java RejectReq
+backend/shop-core/src/main/java/ai/neargo/shop/trade/api/mp/MpTradeController.java CartAddReq
+backend/shop-core/src/main/java/ai/neargo/shop/trade/api/mp/MpTradeController.java CartUpdateReq
+backend/shop-core/src/main/java/ai/neargo/shop/trade/api/mp/MpTradeController.java ApplyAfterSaleReq
+backend/shop-core/src/main/java/ai/neargo/shop/trade/api/mp/MpTradeController.java ShipBackReq
+backend/shop-core/src/main/java/ai/neargo/shop/platform/api/ops/OpsPlatformController.java LoginReq
+backend/shop-core/src/main/java/ai/neargo/shop/platform/api/ops/OpsPlatformController.java ForgotReq
+backend/shop-core/src/main/java/ai/neargo/shop/platform/api/ops/OpsPlatformController.java ResetReq
+backend/shop-core/src/main/java/ai/neargo/shop/message/api/biz/BizPushTokenController.java RegisterReq
+backend/shop-core/src/main/java/ai/neargo/shop/message/api/mp/MpMessageController.java CreateTicketReq
+backend/shop-core/src/main/java/ai/neargo/shop/message/api/mp/MpPushTokenController.java RegisterReq
+backend/shop-core/src/main/java/ai/neargo/shop/message/api/ops/OpsNotifyLogController.java TestSendReq
+backend/shop-core/src/main/java/ai/neargo/shop/message/api/ops/OpsNotifyLogController.java PrecheckReq
+backend/shop-core/src/main/java/ai/neargo/shop/message/api/ops/OpsNotifyLogController.java TestInAppReq
+backend/shop-core/src/main/java/ai/neargo/shop/message/api/ops/OpsPushTaskController.java CreateReq
+backend/shop-core/src/main/java/ai/neargo/shop/user/api/mp/MpUserController.java LoginReq
+backend/shop-core/src/main/java/ai/neargo/shop/user/api/mp/MpUserController.java OtpReq
+backend/shop-core/src/main/java/ai/neargo/shop/user/api/mp/MpUserController.java BindCommunityReq
+backend/shop-core/src/main/java/ai/neargo/shop/user/api/mp/MpUserController.java BindPhoneReq
+backend/shop-core/src/main/java/ai/neargo/shop/product/api/mp/MpReviewController.java CreateReviewReq
+backend/shop-core/src/main/java/ai/neargo/shop/marketing/api/mp/MpGroupController.java CreateRequestReq
+backend/shop-core/src/main/java/ai/neargo/shop/marketing/api/mp/MpGroupController.java ChooseReq
