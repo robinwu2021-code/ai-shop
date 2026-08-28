@@ -139,10 +139,22 @@ export default function JobsPage() {
 
       {jobs.isLoading && <div className="text-sm text-muted-foreground">…</div>}
 
-      <div className="divide-y rounded-md border">
+      {/*
+        * 窄屏时**横向滚动，不是把列压没**。
+        *
+        * 第一版第一列写的是 minmax(0,1fr) —— 那个 0 是为了让 truncate 生效，
+        * 但它同时允许这一列一路缩到 0px。实测：容器 494px 而后三列固定占 580px，
+        * 于是名称列宽度真的成了 0，页面上第一列显示的是「频率」，
+        * **任务叫什么完全看不见**，而没有任何报错。
+        *
+        * 给它一个真实下限，整行给最小宽度，装不下就在这个容器里横滚 ——
+        * 页面本身不横滚，这是仓库里宽表格一贯的做法。
+        */}
+      <div className="overflow-x-auto rounded-md border">
+       <div className="divide-y min-w-[52rem]">
         {rows.map((r) => (
           <div key={r.jobName}
-               className="grid grid-cols-[minmax(0,1fr)_9rem_14rem_auto] items-center gap-3 px-3 py-2.5">
+               className="grid grid-cols-[minmax(16rem,1fr)_9rem_14rem_auto] items-center gap-3 px-3 py-2.5">
             {/* ① 名称 + 描述。两行封顶，描述截断 —— 这是行高一致的关键 */}
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -221,6 +233,7 @@ export default function JobsPage() {
             </div>
           </div>
         ))}
+       </div>
       </div>
 
       <Drawer open={!!logsOf} onOpenChange={(o) => !o && setLogsOf(null)}
