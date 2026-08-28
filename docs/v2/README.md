@@ -32,7 +32,7 @@
 
 ## 深层文档（本集之下的完整规格与分析）
 
-[商品域V2-设计规格书](../design/商品域V2-设计规格书.md) · [订单域V2-设计规格书](../design/订单域V2-设计规格书.md) ·
-[预约资源域V2-设计规格书](../design/预约资源域V2-设计规格书.md) · [组合模型](../design/TDD-基础订单流与行业工作流-组合模型.md) ·
-[场景手册（28 场景全量）](../design/三行业场景工作流手册.md) · [工作流领域模型](../design/TDD-工作流领域模型V2-状态与继承.md) ·
-判定数据：[三行业对比矩阵](../design/三行业接口与流程对比矩阵.md)（`npm run gen:industry-inventory` 可复算）
+[商品域V2-设计规格书](../technical/design/商品域V2-设计规格书.md) · [订单域V2-设计规格书](../technical/design/订单域V2-设计规格书.md) ·
+[预约资源域V2-设计规格书](../technical/design/预约资源域V2-设计规格书.md) · [组合模型](../technical/design/TDD-基础订单流与行业工作流-组合模型.md) ·
+[场景手册（28 场景全量）](../technical/design/三行业场景工作流手册.md) · [工作流领域模型](../technical/design/TDD-工作流领域模型V2-状态与继承.md) ·
+判定数据：[三行业对比矩阵](../technical/design/三行业接口与流程对比矩阵.md)（`npm run gen:industry-inventory` 可复算）
