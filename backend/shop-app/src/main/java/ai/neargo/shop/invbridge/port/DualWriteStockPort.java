@@ -3,6 +3,8 @@ package ai.neargo.shop.invbridge.port;
 import ai.neargo.shop.event.DomainEvent;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.product.port.StockPortImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ai.neargo.shop.spi.product.StockPort;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
@@ -46,6 +48,8 @@ import java.util.List;
 @ConditionalOnProperty(prefix = "shop.inventory", name = "stock-authority", havingValue = "DUAL")
 public class DualWriteStockPort implements StockPort {
 
+    private static final Logger log = LoggerFactory.getLogger(DualWriteStockPort.class);
+
     /** 聚合类型：与 {@code PlatformInventoryEventSink} 用同一个，平台侧按它分流 */
     private static final String AGGREGATE = "INVENTORY";
 
@@ -55,6 +59,18 @@ public class DualWriteStockPort implements StockPort {
     public DualWriteStockPort(StockPortImpl platform, OutboxEventBus bus) {
         this.platform = platform;
         this.bus = bus;
+        /*
+         * **开关生效了没有，要能在日志里看见。**
+         *
+         * 这一档只由一个环境变量决定（`shop.inventory.stock-authority`），
+         * 而它改的是**生产的写路径**。此前没有任何东西会说话：
+         * actuator 只开了 info / health，两个 DUAL 类一行日志都不打，
+         * 于是「配了」与「生效了」在外部无法区分 —— 打错一个字母、
+         * 环境文件没被读到、profile 不对，症状都是「一切照旧」，且零报错。
+         * 这正是 @Primary 抢数据源、Flyway 被静默关掉那一族的形态。
+         */
+        log.info("库存双写已启用：平台仍是真相源，进销存经 outbox 跟记一笔"
+                + "（stock-authority=DUAL）");
     }
 
     @Override
