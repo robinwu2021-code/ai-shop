@@ -322,7 +322,7 @@ onShow(load);
 
       <view class="tiles sh-wrap">
         <view v-for="c in cells" :key="c.key" class="sh-card tiles__cell" @tap="open(c.route)">
-          <text class="txt-hero tiles__n sh-num" :class="{ 'is-zero': !c.n }">{{ c.n }}</text>
+          <text class="txt-hero tiles__n sh-num" :class="c.n ? 'txt-primary' : 'txt-faint'">{{ c.n }}</text>
           <text class="txt-caption tiles__label">{{ $t(`home.${c.key}`) }}</text>
         </view>
       </view>
@@ -429,11 +429,11 @@ onShow(load);
         <text class="txt-title fulfill__title">{{ $t("home.fulfillEntry") }}</text>
         <view class="fulfill__row">
           <view v-if="merchant.can('biz:receive')" class="fulfill__half" @tap="open(ROUTES.picking)">
-            <text class="txt-display fulfill__n sh-num" :class="{ 'is-zero': !todo?.toPick }">{{ todo?.toPick ?? 0 }}</text>
+            <text class="txt-display fulfill__n sh-num" :class="todo?.toPick ? 'txt-primary' : 'txt-faint'">{{ todo?.toPick ?? 0 }}</text>
             <text class="sh-muted">{{ $t("home.toPick") }}</text>
           </view>
           <view v-if="merchant.can('biz:verify')" class="fulfill__half" @tap="open(ROUTES.verify)">
-            <text class="txt-display fulfill__n sh-num" :class="{ 'is-zero': !todo?.toVerify }">{{ todo?.toVerify ?? 0 }}</text>
+            <text class="txt-display fulfill__n sh-num" :class="todo?.toVerify ? 'txt-primary' : 'txt-faint'">{{ todo?.toVerify ?? 0 }}</text>
             <text class="sh-muted">{{ $t("home.toVerify") }}</text>
           </view>
         </view>
@@ -535,10 +535,6 @@ onShow(load);
 }
 .tiles__n {
   display: block;
-  color: var(--sh-primary-text);
-}
-.tiles__n.is-zero {
-  color: var(--sh-faint);
 }
 .tiles__label {
   display: block;
@@ -611,11 +607,7 @@ onShow(load);
 }
 .fulfill__n {
   display: block;
-  color: var(--sh-primary-text);
   margin-bottom: 8rpx;
-}
-.fulfill__n.is-zero {
-  color: var(--sh-sub);
 }
 .entry__v {
   text-align: right;

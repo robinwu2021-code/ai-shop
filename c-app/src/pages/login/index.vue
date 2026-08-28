@@ -156,7 +156,7 @@ async function doLogin(method: LoginMethod) {
             :placeholder="$t('login.otp')"
             maxlength="6"
           />
-          <text class="txt-sub otp-row__send" :class="{ 'is-off': left > 0 }" @tap="sendOtp">
+          <text class="txt-sub otp-row__send" :class="left > 0 ? 'txt-quiet' : 'txt-primary'" @tap="sendOtp">
             {{ left > 0 ? $t("login.resend", { s: left }) : $t("login.sendOtp") }}
           </text>
         </view>
@@ -172,9 +172,9 @@ async function doLogin(method: LoginMethod) {
       而它是提审必查项：收集手机号与位置的小程序，用户要能读到那两份东西。
     -->
     <view class="txt-caption agree">
-      <text class="agree__text">{{ $t("login.agreePrefix") }}</text>
+      <text class="agree__text txt-quiet">{{ $t("login.agreePrefix") }}</text>
       <text class="txt-caption agree__link txt-primary" @tap="openDoc('terms')">{{ $t("legal.terms") }}</text>
-      <text class="agree__text">{{ $t("login.agreeAnd") }}</text>
+      <text class="agree__text txt-quiet">{{ $t("login.agreeAnd") }}</text>
       <text class="txt-caption agree__link txt-primary" @tap="openDoc('privacy')">{{ $t("legal.privacy") }}</text>
     </view>
 
@@ -193,9 +193,6 @@ async function doLogin(method: LoginMethod) {
 }
 .agree__text,
 
-.agree__text {
-  color: var(--sh-sub);
-}
 .browse {
   display: block;
   margin-top: 32rpx;
@@ -210,10 +207,6 @@ async function doLogin(method: LoginMethod) {
 
 .otp-row__send {
   flex-shrink: 0;
-  color: var(--sh-primary-text);
-}
-.otp-row__send.is-off {
-  color: var(--sh-sub);
 }
 
 .quick {

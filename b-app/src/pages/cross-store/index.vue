@@ -418,13 +418,6 @@ onShow(load);
   flex: 1;
   text-align: center;
 }
-.todo__v {
-  display: block;
-  color: var(--sh-primary-text);
-}
-.todo__v.is-zero {
-  color: var(--sh-faint);
-}
 .todo__l {
   display: block;
   margin-top: 8rpx;

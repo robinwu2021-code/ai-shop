@@ -111,7 +111,7 @@ function goPickStore() {
           <text class="txt-strong">{{ $t("entityDetail.license") }}</text>
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
-        <text class="txt-sub block__val" :class="{ 'is-empty': !license }">
+        <text class="txt-sub block__val" :class="license ? 'txt-ink' : 'txt-quiet'">
           {{ license ? license.qualName : $t("entityDetail.licenseEmpty") }}
         </text>
         <text v-if="!license" class="sh-hint">{{ $t("entityDetail.licenseWhy") }}</text>
@@ -123,7 +123,7 @@ function goPickStore() {
           <text class="txt-strong">{{ $t("entityDetail.payment") }}</text>
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
-        <text class="txt-sub block__val" :class="{ 'is-empty': !payReady }">
+        <text class="txt-sub block__val" :class="payReady ? 'txt-ink' : 'txt-quiet'">
           {{ payReady ? $t("entityDetail.payReady") : $t("entityDetail.payNotReady") }}
         </text>
       </view>
@@ -172,14 +172,9 @@ function goPickStore() {
   margin-top: 8rpx;
 }
 
-
 .block__val {
   display: block;
   margin-top: 8rpx;
-  color: var(--sh-ink);
-}
-.block__val.is-empty {
-  color: var(--sh-sub);
 }
 .stores {
   display: flex;

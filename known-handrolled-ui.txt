@@ -119,3 +119,16 @@ c-app/address semcolor
 c-app/order semcolor
 c-app/order-confirm semcolor
 c-app/orders semcolor
+
+# ── 2026-08-29：颜色收编收尾，order / orders 各多一条 quietover ─────────────
+#
+# 这两页的状态色是**按状态名动态拼类名**的：`:class="`is-${o.status}`"`，
+# 于是 CSS 里有一串 `.card__status.is-WAIT_PAY` / `.is-REFUNDED` / …
+# 收进库件要先写一个「状态 → 库件类」的映射函数，把动态拼接换掉 ——
+# 那是改数据流，不是改样式，与本轮「把重复的颜色声明收进库」不是一件事。
+#
+# 而且这两页**本来就因为同一个成因挂着 semcolor**（基类 `.status` / `.card__status`
+# 自己设了 color，scoped 权重压得过库件）。两条一起解，别分两次动同一段代码。
+
+c-app/order quietover
+c-app/orders quietover

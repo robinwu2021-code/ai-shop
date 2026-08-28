@@ -76,7 +76,7 @@ function confirm() {
     <view v-for="g in groups" :key="g.entity?.entityNo || 'only'" class="list">
       <!-- 分组头只在多证照时出现 -->
       <view v-if="grouped" class="group">
-        <text class="txt-strong group__name">{{ g.entity?.name }}</text>
+        <text class="txt-strong group__name txt-quiet">{{ g.entity?.name }}</text>
         <text v-if="entityNote(g)" class="txt-caption is-warning">{{ entityNote(g) }}</text>
       </view>
       <view
@@ -122,9 +122,6 @@ function confirm() {
   align-items: baseline;
   gap: 12rpx;
   margin-top: 8rpx;
-}
-.group__name {
-  color: var(--sh-sub);
 }
 /* ⚠️ 此前写的是 `var(--sh-warn, var(--sh-sub))` —— **`--sh-warn` 这个变量不存在**
    （正名是 `--sh-warning`），于是这行字永远走兜底、渲染成普通灰。

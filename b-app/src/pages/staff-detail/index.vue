@@ -121,7 +121,7 @@ onShow(load);
         <text class="txt-title">{{ $t("staff.logs") }}</text>
         <text v-if="!logs.length" class="sh-muted sh-hint">{{ $t("staff.logsEmpty") }}</text>
         <view v-for="(l, i) in logs" :key="i" class="txt-caption log">
-          <text class="log__t sh-num">{{ datetime(l.at) }}</text>
+          <text class="log__t sh-num txt-quiet">{{ datetime(l.at) }}</text>
           <text class="log__d sh-fill txt-ink">{{ l.detail || l.action }}</text>
           <text v-if="l.actor" class="txt-caption sh-muted">{{ l.actor }}</text>
         </view>
@@ -180,9 +180,6 @@ onShow(load);
   gap: 16rpx;
   padding: 12rpx 0;
   border-top: var(--sh-hairline);
-}
-.log__t {
-  color: var(--sh-sub);
 }
 
 .danger .txt-title {

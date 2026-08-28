@@ -400,7 +400,7 @@ onShow(() => {
       <view v-if="areas.length" class="list">
         <view v-for="a in areas" :key="`${a.level}:${a.refCode}`" class="sh-row sh-row--divided item">
           <view class="sh-fill">
-            <text class="txt-strong item__name" :class="{ 'is-pending': areaPending(a) }">
+            <text class="txt-strong item__name" :class="{ 'txt-quiet': areaPending(a) }">
               {{ splitName(a).main }}<text v-if="isWhole(a)" class="txt-caption"> {{ $t("store.whole") }}</text>
             </text>
             <text v-if="splitName(a).path" class="txt-caption item__path">{{ splitName(a).path }}</text>
@@ -558,9 +558,6 @@ onShow(() => {
 
 .item__name {
   display: block;
-}
-.item__name.is-pending {
-  color: var(--sh-sub);
 }
 
 .item__path {

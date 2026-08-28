@@ -123,7 +123,7 @@ onShareAppMessage(() =>
           <text v-if="merchant.ratingCount > 0" class="txt-hero score__num sh-num">{{
             merchant.rating.toFixed(1)
           }}</text>
-          <text v-else class="txt-hero txt-body score__num score__num--none">{{ $t("merchant.noRating") }}</text>
+          <text v-else class="txt-hero txt-body score__num txt-quiet">{{ $t("merchant.noRating") }}</text>
           <sh-rating
             v-if="merchant.ratingCount > 0"
             :value="merchant.rating"
@@ -224,9 +224,6 @@ onShareAppMessage(() =>
 </template>
 
 <style scoped>
-.score__num--none {
-  color: var(--sh-sub);
-}
 
 .head__top {
   gap: 24rpx;

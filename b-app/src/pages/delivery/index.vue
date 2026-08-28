@@ -154,7 +154,7 @@ onShow(load);
         -->
         <text class="txt-strong row__buyer">{{ o.receiver?.name || o.buyerNickname || "—" }}</text>
         <text v-if="o.receiver?.address" class="txt-body row__addr">{{ o.receiver.address }}</text>
-        <text v-else class="txt-body row__addr row__addr--none">{{ $t("delivery.noAddress") }}</text>
+        <text v-else class="txt-body row__addr txt-quiet">{{ $t("delivery.noAddress") }}</text>
         <view class="row__sub sh-row">
           <text class="sh-muted sh-num">{{ o.orderNo }}</text>
           <text v-if="o.receiver?.phone" class="txt-strong row__tel sh-num txt-primary" @tap="call(o)">
@@ -193,9 +193,6 @@ onShow(load);
 .row__addr {
   display: block;
   margin-top: 4rpx;
-}
-.row__addr--none {
-  color: var(--sh-sub);
 }
 .row__sub {
   margin-top: 8rpx;

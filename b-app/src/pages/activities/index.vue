@@ -114,7 +114,7 @@ onShow(load);
       { key: 'ended', rows: ended },
     ]" :key="g.key">
       <view v-if="g.rows.length" class="group">
-        <text class="txt-strong group__t">{{ $t(`activities.group.${g.key}`, { n: g.rows.length }) }}</text>
+        <text class="txt-strong group__t txt-quiet">{{ $t(`activities.group.${g.key}`, { n: g.rows.length }) }}</text>
         <text v-if="g.key === 'idle'" class="txt-caption sh-muted group__d">
           {{ $t("activities.idleHint") }}
         </text>
@@ -165,9 +165,6 @@ onShow(load);
   gap: 12rpx;
 }
 
-.group__t {
-  color: var(--sh-sub);
-}
 .group__d {
   display: block;
   margin-top: 4rpx;

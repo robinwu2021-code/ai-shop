@@ -530,6 +530,14 @@ ROLLED = [
     # 「主色文字」。27 处各写一份 —— 强调数值、标记、可点动作。
     # **不含 `.sh-link`**：那个件同时定了字号与字重（24rpx / 400，各有依据），
     # 规则体不止一个 color，这条正则天然扫不到它。两者的分工写在 base.css 里。
+    # 「压成次要」与「零值转淡」。与上面三条同一个形状 —— 只设一个 color。
+    # 不含 `.sh-muted`：那个件同时定字号，规则体不止一个 color，天然扫不到。
+    ("quietover","次要色自写",     None,
+     r"^\s*\.[\w-]*(?:\.[\w-]+)?\s*\{\s*color:\s*var\(--sh-sub\);?\s*\}",
+     None, ".txt-quiet（整段次要用 .sh-muted）"),
+    ("faintover","零值色自写",     None,
+     r"^\s*\.[\w-]*(?:\.[\w-]+)?\s*\{\s*color:\s*var\(--sh-faint\);?\s*\}",
+     None, ".txt-faint"),
     ("primover", "主色文字自写",   None,
      r"^\s*\.[\w-]*(?:\.[\w-]+)?\s*\{\s*color:\s*var\(--sh-primary-text\);?\s*\}",
      None, ".txt-primary（可点的次要动作用 .sh-link）"),

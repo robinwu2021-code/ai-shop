@@ -288,13 +288,13 @@ function pickPayment(s: Store, payMerchantNo?: string) {
         </text>
         <view class="todo">
           <view class="todo__i">
-            <text class="txt-title todo__v sh-num" :class="{ 'is-zero': !s.stat.toShip }">
+            <text class="txt-title todo__v sh-num" :class="s.stat.toShip ? 'txt-primary' : 'txt-faint'">
               {{ s.stat.toShip }}
             </text>
             <text class="txt-caption todo__l">{{ $t("crossStore.toShip") }}</text>
           </view>
           <view class="todo__i">
-            <text class="txt-title todo__v sh-num" :class="{ 'is-zero': !s.stat.toDeliver }">
+            <text class="txt-title todo__v sh-num" :class="s.stat.toDeliver ? 'txt-primary' : 'txt-faint'">
               {{ s.stat.toDeliver }}
             </text>
             <text class="txt-caption todo__l">{{ $t("crossStore.toDeliver") }}</text>
@@ -515,10 +515,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 }
 .todo__v {
   display: block;
-  color: var(--sh-primary-text);
-}
-.todo__v.is-zero {
-  color: var(--sh-faint);
 }
 .todo__l {
   display: block;
