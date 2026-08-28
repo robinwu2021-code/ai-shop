@@ -105,7 +105,6 @@ onShow(load);
 .intro {
   display: block;
   margin: 12rpx 8rpx 0;
-  line-height: 1.6;
 }
 .sec {
   display: block;

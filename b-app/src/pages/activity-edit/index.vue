@@ -377,7 +377,7 @@ onLoad((q) => {
 }
 .opt__d {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 .chips {
   display: flex;

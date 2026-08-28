@@ -72,7 +72,7 @@ watch(
         :class="[tab.anchorClass, { 'is-bouncing': bouncing && shell.pulse?.value === tab.key }]"
       >
         <sh-icon :name="tab.iconName" :size="46"></sh-icon>
-        <text v-if="tab.badge" class="tabbar__badge sh-num">
+        <text v-if="tab.badge" class="sh-badge-count tabbar__badge sh-num">
           {{ tab.badge > 99 ? "99+" : tab.badge }}
         </text>
       </view>
@@ -139,14 +139,5 @@ watch(
   position: absolute;
   top: -8rpx;
   inset-inline-start: 26rpx;
-  min-width: 32rpx;
-  height: 32rpx;
-  padding: 0 8rpx;
-  border-radius: 9999px;
-  background: var(--sh-danger);
-  color: #fff;
-  font-size: 24rpx;
-  line-height: 32rpx;
-  text-align: center;
 }
 </style>

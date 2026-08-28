@@ -37,7 +37,17 @@ RADIUS = {v["rpx"] for v in LIB["tokens"]["radius"].values()}
 SPACE = {v["rpx"] for v in LIB["tokens"]["spacing"].values()}
 WEIGHT = {"400", "600", "700"}
 
-# 字阶自带行高，页面再写一遍就是覆盖它 —— 除非是多行文本块（那属于版面）
+# 与「文字排版」无关的选择器：emoji 当占位图时，字号就是**图的尺寸**，
+# 行高是像素盒高（`line-height: 76`）。豁免口径**照抄 typography.test.ts** ——
+# 那份的注释写着「把它们并进字阶，等于让『图多大』去迁就『字多大』」，
+# 两处判据用两套豁免，迟早对不上。
+NON_TEXT = re.compile(
+    r"(?:cover|icon|emoji|avatar|logo|badge__n|sign|grip|dot|__img\b|fly__|__ph\b"
+    # 2026-08-28 补两类：`imgs__i` 是评价配图（emoji 占位，宽高钉死 110rpx），
+    # `dimgs__wait` 是上传中的省略号，字号取 40 是**为了跟旁边的 sh-icon 一样大**
+    # —— 两者的 font-size 撑的都是图，不是字
+    r"|imgs__|__wait\b)", re.I)
+
 KIND = ["字号自写", "字号越档", "字重自写", "字重越档", "行高自写", "圆角越档", "间距离格", "写死颜色"]
 
 
@@ -50,6 +60,9 @@ def scan(app: str):
         css = re.sub(r"/\*.*?\*/", "", s[s.index("<style"):], flags=re.S)
         c = collections.Counter()
         detail = collections.defaultdict(list)
+        for sel, body in [(m.group(1), m.group(2)) for m in re.finditer(r"([^{}]+)\{([^}]*)\}", css)]:
+            if NON_TEXT.search(sel):
+                css = css.replace(sel + "{" + body + "}", "")
         for m in re.finditer(r"font-size:\s*([\d.]+rpx)", css):
             c["字号自写"] += 1
             if m.group(1) not in TYPE:
@@ -101,6 +114,19 @@ def main():
     for k in KIND:
         print(f"| {k} | {tot[k]} | {RULE[k]} |")
     if a.check:
+        base = {l.strip() for l in (ROOT / "known-page-spec-debt.txt").read_text(encoding="utf-8").splitlines()
+                if l.strip() and not l.startswith("#")}
+        dirty = {f"{r['app']}/{r['page']}" for r in rows if r["total"]}
+        new, fixed = sorted(dirty - base), sorted(base - dirty)
+        if new:
+            print("\n✗ 这些页面不照规范写（清单里没有）：\n  " + "\n  ".join(new))
+            print("  判据见本文件顶部；修法：字号/字重/行高交给字阶，间距上 4rpx 网格。")
+            return 1
+        if fixed:
+            print("\n✗ 这些页面已经合规了，把它们从 known-page-spec-debt.txt 里删掉：\n  " + "\n  ".join(fixed))
+            print("  留着的话，那一页将来又写歪也不会有人发现 —— 清单只准变短。")
+            return 1
+        print(f"\n✓ 与清单一致（欠账 {len(base)} 页）")
         return 0
     print(f"\n## 逐页（按欠账排序）\n")
     print("| 页 | 合计 | 字号自写/越档 | 字重自写/越档 | 圆角越档 | 间距离格 | 行高 | 写死色 |")

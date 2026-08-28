@@ -253,7 +253,6 @@ function arrow(from?: string | null, to?: string | null): string {
 }
 .prob .kv__k {
   color: var(--sh-danger);
-  font-weight: 600;
 }
 
 .prev {
@@ -277,7 +276,7 @@ function arrow(from?: string | null, to?: string | null): string {
   display: flex;
   flex-wrap: wrap;
   gap: 8rpx 20rpx;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 
 .foot {

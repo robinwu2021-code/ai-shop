@@ -323,13 +323,12 @@ onShow(load);
   display: flex;
   align-items: center;
   gap: 12rpx;
-  margin-bottom: 6rpx;
+  margin-bottom: 8rpx;
 }
 
 /* `<text>` 默认 inline —— 不给 block，「6 单 · ¥272」与「下过单 · 今天」会挤成一行 */
 .row__main .sh-muted {
   display: block;
-  line-height: 1.6;
 }
 
 </style>

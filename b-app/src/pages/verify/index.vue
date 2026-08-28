@@ -310,7 +310,7 @@ onShow(load);
       <text class="txt-strong">{{ overview.pickupName }}</text>
       <view class="overview__grid overview__grid--single">
         <view class="overview__i">
-          <text class="overview__n sh-num" :class="{ 'is-on': overview.pendingVerify }">
+          <text class="txt-display overview__n sh-num" :class="{ 'is-on': overview.pendingVerify }">
             <!-- 用列表算，不用后端那个计数：两处各算一次就会出现
                  「总览说 1 单、下面说没有」，而这正是实测到的那一幕 -->
             {{ waiting.length }}
@@ -346,7 +346,7 @@ onShow(load);
           <text class="txt-caption sh-muted cands__hint">{{ $t("verify.searchHint") }}</text>
           <view v-for="c in candidates" :key="c.subOrderNo" class="cand">
             <view class="sh-fill">
-              <text class="txt-strong cand__code sh-num">{{ c.verifyCode }}</text>
+              <text class="txt-bold txt-strong cand__code sh-num">{{ c.verifyCode }}</text>
               <text class="sh-muted">{{ c.buyerNickname || "—" }}</text>
             </view>
             <text class="sh-btn sh-btn--sm txt-strong btn" @tap="verifyCandidate(c)">{{ $t("verify.submit") }}</text>
@@ -457,12 +457,12 @@ onShow(load);
 }
 .peek__b {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
   color: var(--sh-primary-text);
 }
 .peek__d {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 .redeem {
   margin-top: 20rpx;
@@ -475,7 +475,7 @@ onShow(load);
 }
 
 .overview {
-  margin-bottom: 14rpx;
+  margin-bottom: 16rpx;
 }
 
 .overview__grid {
@@ -496,10 +496,7 @@ onShow(load);
 }
 .overview__n {
   display: block;
-  font-size: 40rpx;
-  font-weight: 600;
-  color: var(--sh-sub);
-  margin-bottom: 6rpx;
+  margin-bottom: 8rpx;
 }
 /* 有待核销才点亮 —— 全是灰的时候一眼就知道没活儿 */
 .overview__n.is-on {
@@ -521,15 +518,13 @@ onShow(load);
 }
 .batch-result .ok {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
 }
 .fail {
   display: flex;
   justify-content: space-between;
   gap: 16rpx;
-  margin-top: 10rpx;
+  margin-top: 8rpx;
   color: var(--sh-danger);
 }
 .sh-link {
@@ -576,7 +571,6 @@ onShow(load);
 .cand__code {
   display: block;
   /* 600 而不是 700：700 这个项目里只给价格留着，取货码靠字号和留白突出就够 */
-  font-weight: 600;
 }
 .list-head {
   display: flex;
@@ -601,7 +595,7 @@ onShow(load);
   display: flex;
   align-items: center;
   gap: 20rpx;
-  margin-bottom: 10rpx;
+  margin-bottom: 8rpx;
 }
 .row-item.is-just {
   background: var(--sh-success-tint);

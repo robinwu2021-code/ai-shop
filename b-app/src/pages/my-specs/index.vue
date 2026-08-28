@@ -875,7 +875,7 @@ onShow(() => void load());
             <sh-icon name="grip" :size="28" color="var(--sh-sub)" />
           </view>
           <!-- 虚线下划线：一眼看出这行字可以改，而不必再摆一个图标 -->
-          <text class="txt-strong spec__name" @tap.stop="startRename(g, t)">{{ t.name }}</text>
+          <text class="txt-bold txt-strong spec__name" @tap.stop="startRename(g, t)">{{ t.name }}</text>
           <!-- 自建的标出来：它不参与跨店比价，而那是看不见的差别 -->
           <text v-if="t.scope === 'MERCHANT'" class="txt-caption spec__own">{{ $t("mySpecs.own") }}</text>
           <view class="spec__spacer"></view>
@@ -1047,7 +1047,7 @@ onShow(() => void load());
 
         <!-- 平台还有的：点一下加进来 -->
         <view v-if="valCands.length" class="sheet-own">
-          <text class="txt-strong picker__own-t picker__own-t--quiet">{{ $t("mySpecs.pickHint") }}</text>
+          <text class="txt-body picker__own-t">{{ $t("mySpecs.pickHint") }}</text>
           <view class="chips sheet-gap">
             <text v-for="o in valCands" :key="o.code || o.label" class="sh-chip sh-chip--dashed"
                   @tap="pickValue(o)">＋ {{ o.label }}</text>
@@ -1183,7 +1183,7 @@ onShow(() => void load());
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 14rpx;
+  gap: 16rpx;
 }
 
 .picker__own-t {
@@ -1247,7 +1247,6 @@ onShow(() => void load());
   border-bottom: 1rpx dashed var(--sh-line);
   /* 一行里它是主角，用 400 会被下面那行档位拉成同一层。
      字阶只给 400/600/700 三档（守卫测住），所以取 600 而不是原型里的 500 */
-  font-weight: 600;
 }
 /* 自建的标出来 —— 它不参与跨店比价，而那是看不见的差别 */
 .spec__own {
@@ -1256,7 +1255,6 @@ onShow(() => void load());
   border-radius: 16rpx;
   background: var(--sh-faint);
   /* 20 不在字阶上；24 是最小的一档 */
-  font-size: 24rpx;
 }
 .spec__spacer {
   flex: 1;
@@ -1292,10 +1290,6 @@ onShow(() => void load());
 }
 
 /* 「平台还有这些」压得比「自己填」轻：前者是挑，后者要他动脑子起名 */
-.picker__own-t--quiet {
-  color: var(--sh-sub);
-  font-weight: 400;
-}
 
 .edit__input {
   width: 100%;
@@ -1308,7 +1302,7 @@ onShow(() => void load());
 .vals {
   display: flex;
   flex-wrap: wrap;
-  gap: 14rpx;
+  gap: 16rpx;
   margin-top: 20rpx;
 }
 .val {

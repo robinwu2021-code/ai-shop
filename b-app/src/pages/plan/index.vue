@@ -128,16 +128,16 @@ onShow(load);
         <!-- 用量两行。**分母是生效额度**（覆盖值优先），与建店那道闸同一个数 -->
         <view class="use">
           <view class="use__i">
-            <text class="use__v sh-num">{{ plan.storeUsed }}/{{ plan.storeQuota }}</text>
+            <text class="txt-display sh-num">{{ plan.storeUsed }}/{{ plan.storeQuota }}</text>
             <text class="sh-muted">{{ $t("plan.storeQuota") }}</text>
           </view>
           <view class="use__i">
-            <text class="use__v sh-num">{{ plan.staffUsed }}/{{ plan.staffQuota }}</text>
+            <text class="txt-display sh-num">{{ plan.staffUsed }}/{{ plan.staffQuota }}</text>
             <text class="sh-muted">{{ $t("plan.staffQuota") }}</text>
           </view>
           <view class="use__i">
             <sh-icon v-if="plan.crossStoreStats" name="check" :size="34" color="var(--sh-ink)"></sh-icon>
-            <text v-else class="use__v">—</text>
+            <text v-else class="txt-display">—</text>
             <text class="sh-muted">{{ $t("plan.crossStore") }}</text>
           </view>
         </view>
@@ -148,7 +148,7 @@ onShow(load);
         店主看到「即将到期」的第一反应是「我的店是不是已经关了」。
       -->
       <view v-if="plan.status === 'GRACE'" class="banner banner--warn">
-        <text class="banner__t">{{ $t("plan.graceTitle") }}</text>
+        <text class="txt-bold">{{ $t("plan.graceTitle") }}</text>
         <text class="txt-caption">{{ $t("plan.graceBody") }}</text>
       </view>
 
@@ -157,7 +157,7 @@ onShow(load);
         那几家店正在丢单，而它们在门店列表里与「店主自己停用的」长得一模一样。
       -->
       <view v-if="plan.suspendedStores.length" class="banner banner--danger">
-        <text class="banner__t">
+        <text class="txt-bold">
           {{ $t("plan.suspendedTitle", { n: plan.suspendedStores.length }) }}
         </text>
         <text class="txt-caption">{{ plan.suspendedStores.join("、") }}</text>
@@ -215,17 +215,14 @@ onShow(load);
   flex-direction: column;
   gap: 4rpx;
 }
-.use__v {
-  font-size: 40rpx;
-  font-weight: 600;
-}
+
 .banner {
   margin-top: 20rpx;
   padding: 20rpx;
   border-radius: 16rpx;
   display: flex;
   flex-direction: column;
-  gap: 6rpx;
+  gap: 8rpx;
 }
 /* 语义色的 tint 底（与 .sh-chip--warning/--danger 同一套）。
    **此前写的是 --sh-warning-bg / --sh-danger-bg，这两个变量不存在** ——
@@ -236,9 +233,6 @@ onShow(load);
 .banner--danger {
   background: var(--sh-danger-tint);
 }
-.banner__t {
-  font-weight: 600;
-}
 
 .sec {
   margin: 28rpx 0 12rpx;
@@ -246,13 +240,13 @@ onShow(load);
 /* 三档卡片之间要有缝。**此前一条外边距规则都没有** —— 三张 sh-card 上下相贴，
    看着像一整块被切了两刀，分不出「这是三个可比的档位」。用列表行基准 14rpx。 */
 .tier + .tier {
-  margin-top: 14rpx;
+  margin-top: 16rpx;
 }
 .tier__head {
   display: flex;
   align-items: center;
   gap: 12rpx;
-  margin-bottom: 6rpx;
+  margin-bottom: 8rpx;
 }
 /* 34rpx/600 = 字阶的标题档（同 .txt-title）。原先的 32rpx 不在字阶上：
    与 34 只差 1px，分不出层级，却让「调整全局标题字号」这类改动漏掉这一处 */

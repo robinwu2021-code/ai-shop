@@ -151,7 +151,7 @@ onShow(load);
         />
         <view class="btns">
           <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="rejecting = ''">{{ $t("common.cancel") }}</text>
-          <text class="sh-btn sh-btn--sm txt-strong btn btn--danger" @tap="reject(r)">{{ $t("afterSale.confirmReject") }}</text>
+          <text class="sh-btn sh-btn--sm sh-btn--danger-solid txt-strong btn" @tap="reject(r)">{{ $t("afterSale.confirmReject") }}</text>
         </view>
       </template>
 
@@ -296,10 +296,6 @@ onShow(load);
   padding-right: 24rpx;
 }
 
-.btn--danger {
-  background: var(--sh-danger);
-  color: #fff;
-}
 .tip {
   margin: 32rpx 8rpx;
 }

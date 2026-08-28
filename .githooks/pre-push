@@ -147,6 +147,15 @@ fi
 # 已知的 33 处欠账记在 known-handrolled-ui.txt，**只准变短**：
 # 修好了不删那一行，那个页面将来又自造起来也不会有人发现。
 if python3 "$GATE_WT/scripts/gen-ui-lib.py" >/dev/null 2>&1; then
+  # 逐页体检：页面有没有照三份规范写（字阶 / 圆角与间距 / 颜色）。
+  # 与上面那道「有件不用」是两件事：这道管的是「自己写了一行 font-size」。
+  if ! python3 "$GATE_WT/scripts/check-page-spec.py" --app b-app --check >/dev/null 2>&1; then
+    echo "✗ 有页面没照规范写（字阶 / 圆角与间距 / 颜色）。看是哪一页："
+    echo "    python3 scripts/check-page-spec.py --app b-app --check"
+    echo "  清单：known-page-spec-debt.txt（只准变短）"
+    exit 1
+  fi
+
   if ! node "$GATE_WT/scripts/check-handrolled-ui.mjs" --check --root="$GATE_WT"; then
     exit 1
   fi

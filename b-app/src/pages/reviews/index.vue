@@ -146,7 +146,7 @@ onShow(load);
       <!-- 申诉状态：提交后商家能看到进度与裁决说明。
            平台端 P-13.1 的裁决台早就建好了，此前缺的正是这个入口 —— 台子一直空转 -->
       <view v-if="r.appeal" class="appeal" :class="`is-${r.appeal.status}`">
-        <text class="appeal__label">{{ $t(`reviews.appeal${r.appeal.status}`) }}</text>
+        <text class="txt-caption txt-bold appeal__label">{{ $t(`reviews.appeal${r.appeal.status}`) }}</text>
         <text class="sh-muted">{{ r.appeal.verdict || $t("reviews.appealWaiting") }}</text>
       </view>
 
@@ -181,7 +181,7 @@ onShow(load);
 .dims {
   display: flex;
   gap: 16rpx;
-  margin-top: 10rpx;
+  margin-top: 8rpx;
 }
 .dims__i {
   background: var(--sh-faint);
@@ -189,7 +189,7 @@ onShow(load);
   border-radius: 9999px;
 }
 .appeal {
-  margin-top: 14rpx;
+  margin-top: 16rpx;
   padding: 16rpx 20rpx;
   border-radius: 24rpx;
   background: var(--sh-faint);
@@ -202,10 +202,7 @@ onShow(load);
 }
 .appeal__label {
   display: block;
-  font-size: 24rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-  margin-bottom: 6rpx;
+  margin-bottom: 8rpx;
 }
 .acts {
   display: flex;
@@ -227,7 +224,7 @@ onShow(load);
 
 .item__meta {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 .item__content {
   display: block;
@@ -255,7 +252,7 @@ onShow(load);
 }
 .reply__label {
   display: block;
-  margin-bottom: 6rpx;
+  margin-bottom: 8rpx;
 }
 .once {
   display: block;

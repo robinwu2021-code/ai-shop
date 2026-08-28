@@ -456,7 +456,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
    （「门店管理这里管有几家店…」），而 margin-top 对 inline 元素也不起作用。
    apply / login 两页早就是这么写的，payment / stores 漏了。 */
 .st {
-  margin-top: 14rpx;
+  margin-top: 16rpx;
 }
 .st__top {
   display: flex;
@@ -466,7 +466,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 }
 .tags {
   display: flex;
-  gap: 10rpx;
+  gap: 8rpx;
 }
 .tag {
   padding: 4rpx 14rpx;
@@ -483,7 +483,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 .addr,
 .meta {
   display: block;
-  margin-top: 10rpx;
+  margin-top: 8rpx;
 }
 .pay {
   margin-top: 20rpx;
@@ -543,6 +543,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 }
 .todo__l {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 </style>

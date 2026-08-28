@@ -113,7 +113,7 @@ onShow(() => {
 }
 .sub {
   display: block;
-  margin-top: 10rpx;
+  margin-top: 8rpx;
 }
 .line {
   display: flex;
@@ -122,7 +122,7 @@ onShow(() => {
 }
 .locked {
   display: block;
-  margin-top: 10rpx;
+  margin-top: 8rpx;
   color: var(--sh-primary-text);
 }
 </style>

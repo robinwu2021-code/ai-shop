@@ -529,7 +529,7 @@ onShow(() => {
           <text class="txt-strong row__title">{{ g.title }}</text>
           <view class="row__meta">
             <text class="txt-strong row__price sh-num">{{ money(g.price) }}</text>
-            <text class="txt-sub row__stock sh-num" :class="{ 'is-out': stockOf(g) === 0 }">
+            <text class="txt-sub row__stock sh-num" :class="{ 'is-out': stockOf(g) === 0, 'txt-bold': stockOf(g) === 0 }">
               {{ $t("goods.stock") }} {{ stockOf(g) }}
             </text>
           </view>
@@ -769,7 +769,6 @@ onShow(() => {
 /* 卖完了要一眼扫得到 —— 它是「今天要干的活」，而 0 和 180 现在长得一样 */
 .row__stock.is-out {
   color: var(--sh-danger);
-  font-weight: 600;
 }
 /* 状态：色点 + 文字，**无底色** —— 与动作按钮在形态上分开。
    原先它和「编辑/改库存」同样是灰底圆角：一屏六行、每行三个圆角块，

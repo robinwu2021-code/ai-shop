@@ -355,7 +355,7 @@ onShow(load);
 
 .entry__d {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 
 .head {
@@ -370,13 +370,11 @@ onShow(load);
   gap: 12rpx;
 }
 .chips .sh-chip {
-  font-size: 24rpx;
   padding: 14rpx 24rpx;
 }
 .hint {
   display: block;
   margin-top: 12rpx;
-  line-height: 1.6;
 }
 .btns {
   display: flex;
@@ -399,7 +397,7 @@ onShow(load);
 }
 .item__sum {
   display: block;
-  margin-top: 10rpx;
+  margin-top: 8rpx;
 }
 .item__meta {
   display: flex;

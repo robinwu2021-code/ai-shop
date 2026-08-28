@@ -475,7 +475,7 @@ async function submit() {
 
         <view v-for="(q, i) in qualItems" :key="i" class="qual">
           <view class="qual__head">
-            <text class="qual__type">{{ $t(`apply.qual${q.type}`) }}</text>
+            <text class="txt-bold">{{ $t(`apply.qual${q.type}`) }}</text>
             <text class="txt-caption qual__del" @tap="removeQual(i)">{{ $t("apply.qualRemove") }}</text>
           </view>
           <input
@@ -540,7 +540,7 @@ async function submit() {
   border-radius: 16rpx;
 }
 .qual__head { display: flex; justify-content: space-between; align-items: center; }
-.qual__type { font-weight: 600; }
+
 .qual__del {
   color: var(--sh-danger);
 }
@@ -568,7 +568,6 @@ async function submit() {
   flex-wrap: wrap;
 }
 .chips .sh-chip {
-  font-size: 24rpx;
   padding: 14rpx 28rpx;
 }
 
@@ -603,7 +602,7 @@ async function submit() {
 }
 .scope__desc {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 .scope__tick {
   flex-shrink: 0;
@@ -614,8 +613,8 @@ async function submit() {
 .cms__list {
   display: flex;
   flex-wrap: wrap;
-  gap: 14rpx;
-  margin-top: 14rpx;
+  gap: 16rpx;
+  margin-top: 16rpx;
 }
 
 .warn {

@@ -246,19 +246,18 @@ onShow(load);
 
 <style scoped>
 .ratecard {
-  margin-bottom: 14rpx;
+  margin-bottom: 16rpx;
 }
 .ratecard__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 14rpx;
+  margin-top: 16rpx;
 }
 
 .ratecard__note {
   display: block;
-  margin-top: 14rpx;
-  line-height: 1.6;
+  margin-top: 16rpx;
 }
 
 .points {
@@ -278,11 +277,10 @@ onShow(load);
 .points__note {
   display: block;
   margin-top: 12rpx;
-  line-height: 1.6;
 }
 
 .bill {
-  margin-top: 14rpx;
+  margin-top: 16rpx;
 }
 .bill__head {
   display: flex;

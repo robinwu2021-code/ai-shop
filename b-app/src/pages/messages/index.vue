@@ -123,6 +123,6 @@ onShow(load);
 /* 字号与颜色由 `sh-go` 给 */
 .msg__more {
   display: flex;
-  margin-top: 14rpx;
+  margin-top: 16rpx;
 }
 </style>

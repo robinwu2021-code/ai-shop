@@ -239,7 +239,7 @@ onShow(load);
 .led__meta {
   display: flex;
   gap: 20rpx;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 .led__end {
   text-align: right;

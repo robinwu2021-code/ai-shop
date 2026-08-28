@@ -2407,9 +2407,9 @@ async function save(thenSubmit = false) {
             <sh-cover class="dimgs__img" :src="img"></sh-cover>
             <text class="txt-caption dimgs__i">{{ i + 1 }}</text>
             <view class="dimgs__ops">
-              <view class="mini" @tap="moveDetailImage(i, -1)"><sh-icon name="chevronUp" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
-              <view class="mini" @tap="moveDetailImage(i, 1)"><sh-icon name="chevronDown" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
-              <view class="mini" @tap="removeDetailImage(i)"><sh-icon name="close" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
+              <view class="txt-caption txt-bold mini" @tap="moveDetailImage(i, -1)"><sh-icon name="chevronUp" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
+              <view class="txt-caption txt-bold mini" @tap="moveDetailImage(i, 1)"><sh-icon name="chevronDown" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
+              <view class="txt-caption txt-bold mini" @tap="removeDetailImage(i)"><sh-icon name="close" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
             </view>
           </view>
           <view
@@ -2605,7 +2605,7 @@ async function save(thenSubmit = false) {
     <view v-if="showStd" class="cat-mask" @tap="showStd = false">
       <view class="cat-sheet" @tap.stop>
         <view class="cat-sheet__bar">
-          <text class="cat-sheet__title">{{ $t("goods.pickStd") }}</text>
+          <text class="txt-bold">{{ $t("goods.pickStd") }}</text>
           <sh-icon-btn name="close" @tap="showStd = false"></sh-icon-btn>
         </view>
         <view class="std-search">
@@ -2616,7 +2616,7 @@ async function save(thenSubmit = false) {
             :placeholder="$t('goods.stdSearchPh')"
             @confirm="searchStd"
           />
-          <text class="mini" @tap="searchStd">{{ $t("common.search") }}</text>
+          <text class="txt-caption txt-bold mini" @tap="searchStd">{{ $t("common.search") }}</text>
         </view>
         <view v-if="!stdResults.length" class="cat-sheet__empty">
           <text class="sh-muted">
@@ -3351,7 +3351,7 @@ async function save(thenSubmit = false) {
 
 .codeblock__k {
   display: block;
-  margin-bottom: 6rpx;
+  margin-bottom: 8rpx;
 }
 
 /* 条码/货号/单位是文本，比金额格宽 */
@@ -3377,7 +3377,7 @@ async function save(thenSubmit = false) {
 .param__k {
   width: 140rpx;
   flex: none;
-  padding-top: 6rpx;
+  padding-top: 8rpx;
 }
 
 .param__opts {
@@ -3473,7 +3473,6 @@ async function save(thenSubmit = false) {
   gap: 12rpx;
 }
 .chips .sh-chip {
-  font-size: 24rpx;
   padding: 14rpx 24rpx;
 }
 /* 标准品入口：取用后是一枚可撤的徽标 */
@@ -3523,7 +3522,6 @@ async function save(thenSubmit = false) {
 }
 .pr__k {
   /* 标签吃掉剩余宽度，控件一律贴右 —— 一列数字对齐比标签对齐重要 */
-  font-size: 26rpx;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -3671,14 +3669,11 @@ async function save(thenSubmit = false) {
   border-radius: 16rpx;
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
-  font-size: 24rpx;
-  font-weight: 600;
   text-align: center;
 }
 .hint {
   display: block;
-  margin-top: 10rpx;
-  line-height: 1.6;
+  margin-top: 8rpx;
 }
 /* 差什么：**不是报错**（他还没做错任何事），所以用警示色不用危险色 */
 .acts {
@@ -3705,8 +3700,9 @@ async function save(thenSubmit = false) {
 }
 
 .del.small {
+
   width: 40rpx;
-  font-size: 24rpx;
+
 }
 
 .bulk {
@@ -3748,9 +3744,7 @@ async function save(thenSubmit = false) {
   padding: 24rpx;
   border-bottom: var(--sh-hairline);
 }
-.cat-sheet__title {
-  font-weight: 600;
-}
+
 .cat-sheet__row {
   display: flex;
   align-items: center;

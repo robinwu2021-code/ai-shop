@@ -236,7 +236,7 @@ onShow(load);
 
 .row__sub {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 
 .tag {

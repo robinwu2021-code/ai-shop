@@ -215,7 +215,7 @@ async function refresh() {
   display: block;
 }
 .ch {
-  margin-top: 14rpx;
+  margin-top: 16rpx;
 }
 .ch__top {
   display: flex;

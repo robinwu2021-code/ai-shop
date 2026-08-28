@@ -153,7 +153,6 @@ function confirm() {
 }
 .item__chip {
   margin-inline-start: 12rpx;
-  font-weight: 400;
 }
 .item__sub {
   display: block;

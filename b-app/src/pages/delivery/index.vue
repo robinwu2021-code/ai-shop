@@ -205,7 +205,7 @@ onShow(load);
   display: flex;
   align-items: center;
   gap: 16rpx;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 .row__tel {
   color: var(--sh-primary-text);

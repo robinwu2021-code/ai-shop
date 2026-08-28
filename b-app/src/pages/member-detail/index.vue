@@ -57,13 +57,13 @@ onLoad(async (q) => {
           {{ $t("memberDetail.firstStore", { s: storeName(data.member.firstStoreNo) }) }}
         </text>
         <sh-kv between :label="String($t('memberDetail.lifetime'))" class="txt-sub kv sh-mt-xs blk">
-          <text class="sh-num val">
+          <text class="txt-bold sh-num">
             {{ $t("members.stat", {
               n: data.member.orderCount, m: money(data.member.totalSpentMinor) }) }}
           </text>
         </sh-kv>
         <sh-kv between :label="String($t('memberDetail.d90'))" class="txt-sub kv">
-          <text class="sh-num val">{{ data.member.d90OrderCount }}</text>
+          <text class="txt-bold sh-num">{{ data.member.d90OrderCount }}</text>
         </sh-kv>
       </view>
 
@@ -75,7 +75,7 @@ onLoad(async (q) => {
             {{ storeName(s.storeNo) }}
             <text v-if="s.isFirstStore" class="sh-chip">{{ $t("memberDetail.firstTag") }}</text>
           </text>
-          <text class="sh-num val">
+          <text class="txt-bold sh-num">
             {{ $t("members.stat", { n: s.orderCount, m: money(s.totalSpentMinor) }) }}
           </text>
         </view>
@@ -121,9 +121,6 @@ onLoad(async (q) => {
   border-top: var(--sh-hairline-soft);
   padding-top: 12rpx;
   margin-top: 12rpx;
-}
-.val {
-  font-weight: 600;
 }
 
 </style>

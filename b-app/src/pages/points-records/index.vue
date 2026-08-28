@@ -66,7 +66,7 @@ onShow(() => {
   justify-content: space-between;
   gap: 16rpx;
 }
-.line + .line { margin-top: 6rpx; }
+.line + .line { margin-top: 8rpx; }
 
 /* 未发放那几条压低存在感：它们不是账，是解释 */
 .is-none { opacity: 0.72; }

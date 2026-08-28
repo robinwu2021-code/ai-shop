@@ -127,11 +127,10 @@ function addOne() {
 }
 .item__chip {
   margin-inline-start: 12rpx;
-  font-weight: 400;
 }
 .item__sub {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 .dot {
   display: inline-block;

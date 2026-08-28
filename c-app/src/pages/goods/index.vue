@@ -495,7 +495,7 @@ onShareAppMessage(() =>
         @tap="gotoCart"
       >
         <sh-icon name="cart" :size="40" color="var(--sh-sub)"></sh-icon>
-        <text v-if="cart.count" class="actionbar__badge sh-num">
+        <text v-if="cart.count" class="sh-badge-count actionbar__badge sh-num">
           {{ cart.count > 99 ? "99+" : cart.count }}
         </text>
       </view>
@@ -747,15 +747,6 @@ onShareAppMessage(() =>
   position: absolute;
   top: 8rpx;
   inset-inline-end: 8rpx;
-  min-width: 30rpx;
-  height: 30rpx;
-  padding: 0 6rpx;
-  border-radius: 9999px;
-  background: var(--sh-danger);
-  color: #fff;
-  font-size: 24rpx;
-  line-height: 30rpx;
-  text-align: center;
 }
 .actionbar__add,
 .actionbar__buy {

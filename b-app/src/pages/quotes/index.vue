@@ -155,7 +155,6 @@ onShow(load);
 .intro {
   display: block;
   margin: 12rpx 8rpx 0;
-  line-height: 1.6;
 }
 
 .item__head {
@@ -169,8 +168,7 @@ onShow(load);
 }
 .item__desc {
   display: block;
-  margin-top: 10rpx;
-  line-height: 1.6;
+  margin-top: 8rpx;
 }
 .meta {
   display: flex;
@@ -201,7 +199,7 @@ onShow(load);
 }
 .raised {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
   color: var(--sh-warning);
 }
 .breach {

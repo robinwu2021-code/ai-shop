@@ -165,10 +165,10 @@ async function doLogin(method: LoginMethod) {
         而它其实是这张表单的开关。
       -->
       <view v-if="pwdMethod" class="modes">
-        <text class="txt-body modes__i" :class="{ 'is-on': !byPwd }" @tap="switchMode(false)">
+        <text class="txt-body modes__i" :class="{ 'is-on': !byPwd, 'txt-bold': !byPwd }" @tap="switchMode(false)">
           {{ $t("login.byOtp") }}
         </text>
-        <text class="txt-body modes__i" :class="{ 'is-on': byPwd }" @tap="switchMode(true)">
+        <text class="txt-body modes__i" :class="{ 'is-on': byPwd, 'txt-bold': byPwd }" @tap="switchMode(true)">
           {{ $t("login.byPassword") }}
         </text>
       </view>
@@ -264,7 +264,6 @@ async function doLogin(method: LoginMethod) {
 }
 .blk {
   display: block;
-  line-height: 1.6;
 }
 
 /*
@@ -286,7 +285,6 @@ async function doLogin(method: LoginMethod) {
 }
 .modes__i.is-on {
   color: var(--sh-primary-text);
-  font-weight: 600;
   border-bottom-color: var(--sh-primary);
 }
 .pwd-tip {

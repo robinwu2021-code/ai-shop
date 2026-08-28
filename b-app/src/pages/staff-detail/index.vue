@@ -169,7 +169,7 @@ onShow(load);
   margin-top: 16rpx;
 }
 .store {
-  margin-top: 14rpx;
+  margin-top: 16rpx;
 }
 
 .tag {

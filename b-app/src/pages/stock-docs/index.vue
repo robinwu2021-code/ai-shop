@@ -121,7 +121,7 @@ onShow(load);
 .row__meta {
   display: flex;
   gap: 20rpx;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 .row__end {
   text-align: right;

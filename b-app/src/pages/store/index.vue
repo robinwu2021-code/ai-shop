@@ -316,7 +316,7 @@ onShow(() => {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 6rpx;
+  gap: 8rpx;
   height: 88rpx;
   padding: 0 20rpx;
   border-radius: 24rpx;

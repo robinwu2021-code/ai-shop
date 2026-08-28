@@ -225,10 +225,8 @@ onShow(load);
 .reporthint {
   display: block;
   margin: 0 8rpx 20rpx;
-  line-height: 1.6;
 }
 .tabs .sh-chip {
-  font-size: 24rpx;
   padding: 14rpx 28rpx;
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。

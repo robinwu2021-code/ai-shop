@@ -205,7 +205,6 @@ onShow(load);
 }
 .is-bad {
   color: var(--sh-danger);
-  font-weight: 600;
 }
 .is-in {
   color: var(--sh-success);

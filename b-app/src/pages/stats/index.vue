@@ -48,11 +48,11 @@ onShow(load);
         <text class="txt-title">{{ $t("stats.today") }}</text>
         <view class="pair">
           <view class="pair__i">
-            <text class="pair__v sh-num">{{ stats.todayOrders }}</text>
+            <text class="txt-display pair__v sh-num">{{ stats.todayOrders }}</text>
             <text class="sh-muted">{{ $t("stats.orders") }}</text>
           </view>
           <view class="pair__i">
-            <text class="pair__v sh-num">{{ money(stats.todayGmvMinor, stats.currency) }}</text>
+            <text class="txt-display pair__v sh-num">{{ money(stats.todayGmvMinor, stats.currency) }}</text>
             <text class="sh-muted">{{ $t("stats.gmv") }}</text>
           </view>
         </view>
@@ -62,11 +62,11 @@ onShow(load);
         <text class="txt-title">{{ $t("stats.month") }}</text>
         <view class="pair">
           <view class="pair__i">
-            <text class="pair__v sh-num">{{ stats.monthOrders }}</text>
+            <text class="txt-display pair__v sh-num">{{ stats.monthOrders }}</text>
             <text class="sh-muted">{{ $t("stats.orders") }}</text>
           </view>
           <view class="pair__i">
-            <text class="pair__v sh-num">{{ money(stats.monthGmvMinor, stats.currency) }}</text>
+            <text class="txt-display pair__v sh-num">{{ money(stats.monthGmvMinor, stats.currency) }}</text>
             <text class="sh-muted">{{ $t("stats.gmv") }}</text>
           </view>
         </view>
@@ -76,7 +76,7 @@ onShow(load);
       <view class="sh-card owned">
         <view class="owned__row">
           <text class="txt-title">{{ $t("stats.ownedTraffic") }}</text>
-          <text class="owned__v sh-num">{{ ownedPct }}%</text>
+          <text class="txt-hero owned__v sh-num">{{ ownedPct }}%</text>
         </view>
         <view class="bar">
           <view class="bar__fill" :style="{ width: `${ownedPct}%` }"></view>
@@ -107,7 +107,7 @@ onShow(load);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 14rpx;
+  margin-top: 16rpx;
 }
 .block {
   margin-top: 16rpx;
@@ -121,10 +121,6 @@ onShow(load);
 }
 .pair__v {
   display: block;
-  font-size: 40rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-  line-height: 1.2;
 }
 .owned {
   margin-top: 16rpx;
@@ -136,8 +132,6 @@ onShow(load);
   justify-content: space-between;
 }
 .owned__v {
-  font-size: 48rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
 }
 .bar {
@@ -155,7 +149,6 @@ onShow(load);
 }
 .hint {
   display: block;
-  line-height: 1.6;
 }
 .rate {
   display: flex;

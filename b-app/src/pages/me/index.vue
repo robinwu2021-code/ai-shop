@@ -220,7 +220,7 @@ onShow(() => {
       <!-- 消息：新订单/售后/评价的落点。红点数与 tabBar 角标同源（30s 轮询） -->
       <view v-if="merchant.isLogin" class="cell" @tap="go(ROUTES.messages)">
         <text class="txt-body cell__label">{{ $t("me.messages") }}</text>
-        <text v-if="unreadCount" class="txt-caption cell__badge sh-num">
+        <text v-if="unreadCount" class="sh-badge-count cell__badge sh-num">
           {{ unreadCount > 99 ? "99+" : unreadCount }}
         </text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
@@ -290,7 +290,7 @@ onShow(() => {
   align-items: center;
   justify-content: space-between;
   gap: 24rpx;
-  padding: 26rpx;
+  padding: 28rpx;
 }
 .cell__label {
   flex-shrink: 0;
@@ -306,15 +306,6 @@ onShow(() => {
 }
 .cell__badge {
   flex-shrink: 0;
-  min-width: 32rpx;
-  height: 32rpx;
-  padding: 0 8rpx;
-  border-radius: 9999px;
-  background: var(--sh-danger);
-  color: #fff;
-  /* 字阶最小档。20rpx 不在字阶上，且「99+」在小屏上本来就快挤不下了 */
-  font-size: 24rpx;
-  text-align: center;
 }
 .cell__value {
   min-width: 0;

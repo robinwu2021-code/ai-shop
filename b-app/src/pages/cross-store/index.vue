@@ -329,7 +329,6 @@ onShow(load);
 .sub {
   display: block;
   margin: 8rpx 0 24rpx;
-  line-height: 1.6;
 }
 /* 付费墙：用主色浅底而不是警示红 —— 这不是故障，是一次升档邀请 */
 .lock {
@@ -365,7 +364,7 @@ onShow(load);
   margin-top: 20rpx;
 }
 .store {
-  margin-bottom: 14rpx;
+  margin-bottom: 16rpx;
 }
 /*
  * 示例态的遮罩：**压低对比度而不是模糊**。
@@ -435,7 +434,7 @@ onShow(load);
 }
 .todo__l {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 .rating {
   margin-bottom: 16rpx;
@@ -448,7 +447,6 @@ onShow(load);
 .rating__hint {
   display: block;
   margin-top: 12rpx;
-  line-height: 1.6;
 }
 .windows {
   display: flex;
