@@ -107,6 +107,32 @@ class DbTokenStoreTest {
     }
 
     @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("★★ 店员那一支同样要盖 realm —— 两支都盖上，这条闸才算完整")
+    void reloadedStaffIdentityAlsoKeepsPoolRealm() {
+        /*
+         * B 端池里有两支：店员（kind=MCH，主体是 mch_account_no）与店主（kind=USR）。
+         * 店主那支的 loader 回 CONSUMER，是显性的坑；店员那支的 loader 本来就回
+         * MERCHANT，realm 恰好是对的 —— **恰好对，不等于被守着**。
+         *
+         * 把它一起钉上，是因为这一类缺陷的成因是「realm 由 loader 决定」，
+         * 而不是「某个 loader 写错了」。哪天有人给店员那支换个 loader 实现，
+         * 只有店主那条测试会红，而红的地方与改动毫不相干 —— 那种红最容易被改掉。
+         */
+        DbTokenStore store = instanceWithLiveIdentity(Realm.MERCHANT);
+        String token = store.issue(TokenStore.SessionData.of(
+                LoginUser.merchant("MA-STAFF-1", "小李")));
+        users.users.put("MA-STAFF-1", LoginUser.merchant("MA-STAFF-1", "小李"));
+
+        letIdentityCacheExpire();
+
+        LoginUser reloaded = store.get(token).orElseThrow().user();
+        org.assertj.core.api.Assertions.assertThat(reloaded.realm()).isEqualTo(Realm.MERCHANT);
+        org.assertj.core.api.Assertions.assertThat(reloaded.subjectKind())
+                .as("盖 realm 不能顺手把 subjectKind 也改了 —— 分发靠的就是它")
+                .isEqualTo(ai.neargo.auth.store.SubjectKind.MCH);
+    }
+
+    @org.junit.jupiter.api.Test
     @org.junit.jupiter.api.DisplayName("★★★ 身份重建后 realm 必须还是本池的 —— loader 不知道会话属于哪个端")
     void reloadedIdentityKeepsPoolRealm() {
         /*
