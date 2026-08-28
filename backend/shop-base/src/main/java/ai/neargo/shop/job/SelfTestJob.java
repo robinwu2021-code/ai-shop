@@ -29,15 +29,16 @@ import java.util.TreeMap;
  * runId 对得上说明是同一次调用，triggerType 说明是 cron 还是有人点的，
  * bizDate 和 params 说明调度器到底传了什么过来。
  *
- * <h2>它顺带暴露两处已知缺口</h2>
+ * <h2>它曾经暴露过两处缺口</h2>
  * <ul>
- *   <li>{@code params} 永远是 <b>{}</b>：{@code job_definition.params} 建了列、
- *       DAO 也读出来了，但 {@code JobRunner} 传下来的是写死的空 Map。
- *       配了不生效，而且不报错。</li>
- *   <li>{@code bizDate} 永远是<b>昨天</b>：对日结对账这是对的默认，
- *       但对每分钟跑的任务没有意义，手动补跑今天的账也做不到。</li>
+ *   <li>{@code params} 永远是 <b>{}</b> —— 列建了、DAO 也读了，而 {@code JobRunner}
+ *       传下来的是写死的空 Map。<b>2026-08-28 已修</b>：现在配了就能在回显里看见。</li>
+ *   <li>{@code bizDate} 永远是<b>昨天</b>。这是对的默认（日结对账算的是上一个自然日），
+ *       只是它此前长得像可配置 —— 已改名 {@code yesterdayAsBizDate()}，
+ *       真要按任务配得往 {@code job_definition} 加一列。</li>
  * </ul>
- * 这两条修好之前，自检输出里会一直看得见它们 —— <b>比写在文档里更难被忘掉</b>。
+ * <p>把这段留着是因为<b>回显本身仍然是那两条的活体检查</b>：
+ * 哪天 {@code params} 又断了，这一行会当场看得出来。
  *
  * <h2>默认 cron 是每天一次</h2>
  * <p>不设成每分钟：一个只用来自检的任务不该在日志表里占最大的那块。
@@ -82,7 +83,7 @@ public class SelfTestJob implements JobHandler {
         String detail = ("自检通过 · 收到 runId=%s · 触发=%s · 业务日期=%s · 参数=%s · 业务侧时刻=%s")
                 .formatted(in.runId(), in.type(),
                         in.bizDate() == null ? "(未传)" : in.bizDate(),
-                        params.isEmpty() ? "{}（JobRunner 尚未下传 job_definition.params）" : params,
+                        params.isEmpty() ? "{}（未配置）" : params,
                         LocalDateTime.now().format(TS));
         if (detail.length() > DETAIL_MAX) {
             detail = detail.substring(0, DETAIL_MAX - 3) + "...";

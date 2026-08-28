@@ -36,10 +36,13 @@ class SelfTestJobTest {
     }
 
     @Test
-    @DisplayName("参数为空时明说是 JobRunner 没下传 —— 而不是让人以为自己配错了")
+    @DisplayName("参数为空时明说「未配置」—— 不能再说「JobRunner 尚未下传」，那条已经修了")
     void emptyParamsSaysWhy() {
         JobResult r = job.run(new JobInvocation("r", TriggerType.CRON, null, Map.of()));
-        assertThat(r.detail()).contains("JobRunner 尚未下传");
+        // 措辞不是小事：生产日志里写着「尚未下传」，而下传早就接上了 ——
+        // 下一个看到它的人会去查一个不存在的缺陷
+        assertThat(r.detail()).contains("（未配置）");
+        assertThat(r.detail()).doesNotContain("尚未下传");
         assertThat(r.detail()).contains("(未传)");
     }
 
