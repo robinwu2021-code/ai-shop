@@ -226,4 +226,27 @@ class JobDefinitionDaoTest {
         assertThat(dao.findTriggerRequested(java.util.Set.of("LOCAL")))
                 .extracting(JobDefinitionRow::jobName).containsExactly("l1");
     }
+
+    @Test
+    @DisplayName("★★★ target 首次插入时认领，之后别的 worker 轮询不许改它")
+    void targetIsClaimedOnceNotRewrittenEveryPoll() {
+        JobDeclaration d = new JobDeclaration("shared", "共享的", "d", "m",
+                "0 0 3 * * *", true, 600, 900, true, true);
+        // 独立调度器先见到它
+        assertTrue(dao.upsertFromCode("shared", d, "PLATFORM"));
+        assertEquals("PLATFORM", dao.findByName("shared").target());
+
+        /*
+         * 另一个 worker（没配 targets，退到占位名 LOCAL）也声明了同一个 handler。
+         * 修复前它会把 target 改成 LOCAL，而独立调度器下一轮又改回 PLATFORM ——
+         * 2026-08-28 生产上 12 行就是这样每 30 秒来回翻的：翻到不属于自己那一侧时，
+         * 任务既排不上、手动触发也会被错误的 worker 领走，而没有任何报错。
+         */
+        assertFalse(dao.upsertFromCode("shared", d, "LOCAL"), "已存在，应当走更新而不是插入");
+
+        assertEquals("PLATFORM", dao.findByName("shared").target(),
+                "第一个见到这个 handler 的 worker 认领它 —— 之后改 target 必须是一次有意的动作");
+        // 而「只有代码知道」的那几列照常刷新
+        assertEquals("共享的", dao.findByName("shared").displayName());
+    }
 }

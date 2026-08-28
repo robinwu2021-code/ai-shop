@@ -119,7 +119,7 @@ public class JobDefinitionDao {
      */
     public boolean upsertFromCode(String jobName, JobDeclaration d, String target,
                                   boolean enabledOnFirstInsert) {
-        int updated = updateCodeOwnedColumns(jobName, d, target);
+        int updated = updateCodeOwnedColumns(jobName, d);
         if (updated > 0) {
             return false;
         }
@@ -128,7 +128,7 @@ public class JobDefinitionDao {
             return true;
         } catch (DuplicateKeyException e) {
             // 两个实例同时首启动。谁先插进去都行，本次改成更新即可。
-            updateCodeOwnedColumns(jobName, d, target);
+            updateCodeOwnedColumns(jobName, d);
             return false;
         }
     }
@@ -145,15 +145,31 @@ public class JobDefinitionDao {
      * <p><b>归代码而不归运营</b>，理由与 cron 恰好相反：「这个任务最长跑多久」
      * 「要不要每轮记日志」是写这段逻辑的人才知道的事；而「几点跑」「开不开」
      * 是运营的决定。分界线是<b>谁掌握判断所需的信息</b>，不是谁改起来方便。
+     *
+     * <h2>2026-08-28 从这里拿掉的一列：target</h2>
+     * <p>按同一条分界线，{@code target} 就不该在这儿 —— 它是「哪个业务系统提供这个
+     * handler」，属于<b>部署拓扑</b>，由 worker 的配置决定，代码根本不知道。
+     *
+     * <p>放在这里的后果当天就在生产上出现了：两个 worker 都声明同一批 handler
+     * （一个独立调度器 target=PLATFORM，一个手工起的进程没配 targets 退到 LOCAL），
+     * 于是每 30 秒各写各的，<b>12 行的 target 来回翻</b>。翻到不属于自己那一侧时，
+     * 任务既排不上、手动触发也会被错误的 worker 领走 —— 而没有任何报错。
+     *
+     * <p>现在只在 {@link #insertFromCode} 时写一次：<b>第一个见到这个 handler 的
+     * worker 认领它</b>。之后要改是一次有意的动作（改库或将来给运营端加入口），
+     * 而不是另一个 worker 轮询的副作用。
+     *
+     * <p>代价说清楚：handler 真的从一个业务系统挪到另一个时，旧 target 不会自动更新
+     * —— 表现是旧 worker 把它标成「代码里已不存在」，新 worker 看不见它。
+     * 那时需要人改一行。<b>比起悄悄来回翻，这个代价是划算的</b>：它至少看得见。
      */
-    private int updateCodeOwnedColumns(String jobName, JobDeclaration d, String target) {
+    private int updateCodeOwnedColumns(String jobName, JobDeclaration d) {
         return jdbc.sql("""
                         UPDATE job_definition
                            SET display_name     = :displayName,
                                description      = :description,
                                owner_module     = :ownerModule,
                                handler_name     = :handlerName,
-                               target           = :target,
                                timeout_sec      = :timeoutSec,
                                lock_at_most_sec = :lockAtMostSec,
                                manual_trigger   = :manualTrigger,
@@ -165,7 +181,6 @@ public class JobDefinitionDao {
                 .param("description", d.description())
                 .param("ownerModule", d.ownerModule())
                 .param("handlerName", d.handlerName())
-                .param("target", target)
                 .param("timeoutSec", d.timeoutSec())
                 .param("lockAtMostSec", d.lockAtMostSec())
                 .param("manualTrigger", d.manualTrigger() ? 1 : 0)
