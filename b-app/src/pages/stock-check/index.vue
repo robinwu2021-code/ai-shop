@@ -195,6 +195,7 @@ function at(iso?: string): string {
       <view v-if="picking.length" class="sh-card sh-mb-sm">
         <view class="sh-row">
           <input
+            maxlength="32"
             v-model="keyword"
             class="field__input sh-fill"
             :placeholder="String($t('stockCheck.searchPh'))"
