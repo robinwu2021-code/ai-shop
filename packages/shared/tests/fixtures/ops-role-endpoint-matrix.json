@@ -13,7 +13,8 @@
     "POST /ops/message/{messageNo}/read",
     "POST /ops/message/read-all",
     "GET /ops/message/unread-count",
-    "GET /ops/regions/resolve"
+    "GET /ops/regions/resolve",
+    "GET /ops/stream"
   ],
   "AUDITOR": [
     "POST /ops/auth/forgot",
@@ -62,7 +63,8 @@
     "POST /ops/skus/{skuNo}/audit",
     "POST /ops/skus/{skuNo}/force-off",
     "POST /ops/skus/{skuNo}/presale",
-    "GET /ops/skus/oversell"
+    "GET /ops/skus/oversell",
+    "GET /ops/stream"
   ],
   "BD": [
     "GET /ops/after-sales",
@@ -134,7 +136,8 @@
     "POST /ops/stores/{storeNo}/restore",
     "GET /ops/stores/{storeNo}/stats",
     "GET /ops/stores/audits",
-    "POST /ops/stores/audits/{auditNo}/decide"
+    "POST /ops/stores/audits/{auditNo}/decide",
+    "GET /ops/stream"
   ],
   "CAMPAIGN_OPS": [
     "GET /ops/after-sales",
@@ -198,7 +201,8 @@
     "GET /ops/promotion/activities",
     "POST /ops/promotion/activities/{activityNo}/stop",
     "GET /ops/promotion/coupons",
-    "GET /ops/regions/resolve"
+    "GET /ops/regions/resolve",
+    "GET /ops/stream"
   ],
   "COMMUNITY_OPS": [
     "GET /ops/after-sales",
@@ -268,7 +272,8 @@
     "GET /ops/service-scopes",
     "POST /ops/service-scopes/{scope}/enabled",
     "GET /ops/shipments",
-    "POST /ops/shipments/{shipmentNo}/waybill"
+    "POST /ops/shipments/{shipmentNo}/waybill",
+    "GET /ops/stream"
   ],
   "FINANCE": [
     "GET /ops/admission/deposits/{merchantNo}",
@@ -333,7 +338,8 @@
     "POST /ops/settle/fee-rules",
     "GET /ops/settle/fee-rules/effective",
     "GET /ops/settlements",
-    "GET /ops/split-records"
+    "GET /ops/split-records",
+    "GET /ops/stream"
   ],
   "GOODS_OPS": [
     "GET /ops/after-sales",
@@ -430,6 +436,7 @@
     "POST /ops/spu-std/{stdNo}/archive",
     "POST /ops/spu-std/{stdNo}/unarchive",
     "POST /ops/spu-std/bulk-status",
+    "GET /ops/stream",
     "GET /ops/topics",
     "POST /ops/topics",
     "POST /ops/topics/{topicNo}/archived",
@@ -465,7 +472,8 @@
     "GET /ops/risk-events",
     "POST /ops/risk-events/{eventNo}/decide",
     "GET /ops/risk-rules",
-    "POST /ops/risk-rules/{type}"
+    "POST /ops/risk-rules/{type}",
+    "GET /ops/stream"
   ],
   "SUPER_ADMIN": [
     "GET /ops/admission/deposits/{merchantNo}",
@@ -796,6 +804,7 @@
     "GET /ops/stores/{storeNo}/stats",
     "GET /ops/stores/audits",
     "POST /ops/stores/audits/{auditNo}/decide",
+    "GET /ops/stream",
     "GET /ops/tickets",
     "POST /ops/tickets/{ticketNo}/assign",
     "POST /ops/tickets/{ticketNo}/close",
@@ -875,6 +884,7 @@
     "POST /ops/reviews/{reviewNo}/decide",
     "GET /ops/scene-channel",
     "POST /ops/scene-channel/{scene}/{audience}/{channel}",
+    "GET /ops/stream",
     "GET /ops/tickets",
     "POST /ops/tickets/{ticketNo}/assign",
     "POST /ops/tickets/{ticketNo}/close",
@@ -917,6 +927,7 @@
     "PUT /ops/plan-defs/{planCode}",
     "GET /ops/rule-texts",
     "POST /ops/rule-texts",
-    "GET /ops/rule-texts/history"
+    "GET /ops/rule-texts/history",
+    "GET /ops/stream"
   ]
 }
