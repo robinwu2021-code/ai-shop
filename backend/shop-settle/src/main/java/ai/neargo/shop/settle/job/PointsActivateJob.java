@@ -79,7 +79,7 @@ public class PointsActivateJob {
      * <p>放在转正之后（00:20）而不是同一时刻：两者都要改账户余额，
      * 错开可以让「哪一步出的问题」在日志里一眼分得出来。
      */
-    @Scheduled(cron = "${shop.job.points-expire.cron:0 20 0 * * *}")
+    @Scheduled(cron = "${shop.job.points-expire.cron:0 35 0 * * *}")
     // **锁名与 activate 分开**：两者错开 15 分钟，共用一把锁的话，
     // activate 的 lockAtLeastFor 还没释放就轮到 expire，会被静默跳过一整天
     @SchedulerLock(name = "points-expire", lockAtLeastFor = "PT4M", lockAtMostFor = "PT30M")
@@ -154,17 +154,35 @@ public class PointsActivateJob {
      * 不会把一个本身是 List 的 bean 摊开。合着写编译过、启动也过，
      * 只是那两个任务**永远不会出现在注册表里**，而页面上什么都看不到。
      */
+    /**
+     * <h2>积分三连的先后是有依赖的，而调度器不知道</h2>
+     * <p>转正 → 清零 → 恒等式自检，三个任务必须按这个顺序、且互不重叠：
+     * 自检核的是「池子里的钱 = 流通的分 + 未兑付的分」，
+     * 而前两个任务正在改的就是等式两边。<b>在它们跑到一半时核对，会算出一个
+     * 不存在的差额</b> —— 而自检把失衡打成 error 并写着「为负是真实资金缺口」。
+     *
+     * <p><b>假警报的代价比漏报还大</b>：它出现几次之后，真的资金缺口来临时
+     * 没有人会再当回事。
+     *
+     * <p>现在靠的<b>只是时间间隔</b>（00:05 / 00:35 / 01:20，各留 30 与 45 分钟）。
+     * 原先是 00:05 / 00:20 / 00:40 —— 转正跑过 15 分钟，清零就压上来了。
+     * 间隔拉开是缓解不是修复：<b>正确的修法是调度器支持依赖（B 等 A 跑完）
+     * 或互斥组（三者共用一把锁）</b>，两者都是设计决策，不该在这里顺手加。
+     * 在那之前，谁要改这三个的 cron，先读完这段。
+     */
     @Bean
     public JobDeclaration pointsActivateDeclaration() {
         return JobDeclaration.daily("points-activate", "待生效积分转正",
-                "把过了售后期的待生效积分转成可用余额。不跑的话用户的分永远停在「待生效」",
+                "把过了售后期的待生效积分转成可用余额。不跑的话用户的分永远停在「待生效」。"
+                        + "⚠ 必须跑在「闲置积分清零」之前，且不能与它重叠",
                 "shop-settle", "0 5 0 * * *");
     }
 
     @Bean
     public JobDeclaration pointsExpireDeclaration() {
         return JobDeclaration.daily("points-expire", "闲置积分清零",
-                "把闲置满期的账户余额清空并计入平台收入。不跑的话积分池只增不减，对不平",
-                "shop-settle", "0 20 0 * * *");
+                "把闲置满期的账户余额清空并计入平台收入。不跑的话积分池只增不减，对不平。"
+                        + "⚠ 要在「待生效积分转正」跑完之后、「恒等式自检」之前",
+                "shop-settle", "0 35 0 * * *");
     }
 }

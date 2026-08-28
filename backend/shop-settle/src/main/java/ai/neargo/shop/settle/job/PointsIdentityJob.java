@@ -64,7 +64,7 @@ public class PointsIdentityJob implements JobHandler {
      * 报出来的失衡是假的 —— <b>而假告警比没有告警更糟</b>，
      * 它会让真的那次被当成又一次误报。
      */
-    @Scheduled(cron = "${shop.job.points-identity.cron:0 40 0 * * *}")
+    @Scheduled(cron = "${shop.job.points-identity.cron:0 20 1 * * *}")
     @SchedulerLock(name = "points-identity", lockAtLeastFor = "PT4M", lockAtMostFor = "PT30M")
     public void check() {
         // 触发器只负责「到点了」；任务体在 run() 里。J1 只搬不改
@@ -77,11 +77,17 @@ public class PointsIdentityJob implements JobHandler {
     }
 
     /** 声明。displayName 是运营页面直接显示的那句话 —— 不能是锁名。 */
+    /**
+     * <b>必须在转正与清零都结束之后跑。</b>它核的是等式两边，而那两个任务正在改
+     * 等式两边 —— 撞上就会算出一个不存在的差额，然后打成 error。
+     * 依赖关系与为什么现在只能靠时间间隔，见 {@code PointsActivateJob} 那段注释。
+     */
     @Bean
     public JobDeclaration pointsIdentityDeclaration() {
         return JobDeclaration.daily("points-identity", "积分恒等式自检",
-                "逐个市场核对「池子里的钱 = 流通的分 + 未兑付的分」。失衡为负是真实资金缺口",
-                "shop-settle", "0 40 0 * * *");
+                "逐个市场核对「池子里的钱 = 流通的分 + 未兑付的分」。失衡为负是真实资金缺口。"
+                        + "⚠ 必须等「转正」与「清零」都跑完，撞上会报出不存在的差额",
+                "shop-settle", "0 20 1 * * *");
     }
 
     @Override
