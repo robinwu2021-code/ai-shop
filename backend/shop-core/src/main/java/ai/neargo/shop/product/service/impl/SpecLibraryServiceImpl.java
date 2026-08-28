@@ -986,7 +986,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
          * 两种都要落行，而**与子集一致的不落** —— 那样运营给类目加了新档位，
          * 没动过手的商家自动获得它。
          */
-        Map<String, java.util.Set<String>> subsetCodes = subsetCodesOf(categoryNo);
+        Map<String, List<PrdCategorySpecValue>> subsets = subsetsOf(categoryNo);
 
         /*
          * **提交上来的 dims 是一份完整声明**：「这一类用哪几个规格」。
@@ -1018,6 +1018,11 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         int i = 0;
         for (OverrideCommand d : dims) {
             i += 10;
+            // 这一圈里有两处要它：判「改没改名」（平台原名）与算「默认可见」的档位。
+            // 取一次传下去 —— 取两次的话，两处对「这个维度是什么」可能给出不同答案
+            PrdSpecDim dimOf = DataScopeContext.executeWithoutScope(() ->
+                    dimMapper.selectOne(Wrappers.<PrdSpecDim>lambdaQuery()
+                            .eq(PrdSpecDim::getDimNo, d.dimNo()).last("limit 1")));
             /*
              * **只写与平台不同的那些。**顺序永远写（它整体是一份排列，
              * 少写一条就乱），但「启用且没改名」的维度不落行 ——
@@ -1042,10 +1047,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                  * 因为他们"覆盖"了一个自己从没动过的东西。
                  */
                 String label = notBlank(d.label()) ? d.label().trim() : null;
-                PrdSpecDim dim = DataScopeContext.executeWithoutScope(() ->
-                        dimMapper.selectOne(Wrappers.<PrdSpecDim>lambdaQuery()
-                                .eq(PrdSpecDim::getDimNo, d.dimNo()).last("limit 1")));
-                row.setLabelOverride(dim != null && dim.getName().equals(label) ? null : label);
+                row.setLabelOverride(dimOf != null && dimOf.getName().equals(label) ? null : label);
                 DataScopeContext.executeWithoutScope(() -> overrideMapper.insert(row));
             }
             /*
@@ -1057,7 +1059,31 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
              * 「在用的」），删掉的那档就悄悄回来了 —— 因为「没提交」被当成了「跟平台走」。
              * 判据放在后端，端上只说「我用哪几档」，说不漏。
              */
-            java.util.Set<String> inSubset = subsetCodes.getOrDefault(d.dimNo(), java.util.Set.of());
+            /*
+             * **「默认可见」的那些档位，判据必须与读侧同源。**
+             *
+             * 读侧的起点是 `optionsOf(merchantNo, dim, 类目子集)`：
+             * 类目子集 ＋ **他自建的取值**（那一段是无条件追加的）；
+             * 类目没绑这个维度时，起点是整个值池。
+             *
+             * ⚠️ 这里原先用的是 `subsetCodesOf(categoryNo)`，只有类目子集那一半，
+             * 于是「他没声明 ⇒ 要落禁用行」这条推理**在两类档位上推不出来**：
+             *   · 他自建的取值（`/biz/spec-values` 加的 750g）按定义不在类目子集里
+             *     → 一行禁用都不落 → 而 `purge` 已经把上一版的启用行清掉了
+             *     → 读侧 `optionsOf` 把 MERCHANT 作用域的值无条件追加回来
+             *   · 他自己加进来的维度（类目根本没绑，如自建的「辣度」）在 subsetCodes 里
+             *     连键都没有 → 候选集恒空 → **这个规格下的任何一档都删不掉**
+             * 两条的症状一样：删了、保存回 0，读回来它还在 —— 与「保存失败」难以区分，
+             * 所以报上来的话只会说「保存不成功」，而保存其实是成功的。
+             *
+             * 稀疏性没变：与默认一致的档位仍然不落行（下面那个 `declared` 判断），
+             * 所以运营给类目加了新档位，没动过手的商家照样自动获得它。
+             */
+            List<SpecTemplateVO.Option> visible = dimOf == null ? List.<SpecTemplateVO.Option>of()
+                    : optionsOf(merchantNo, dimOf, subsets.getOrDefault(d.dimNo(), List.of()));
+            java.util.Set<String> defaultVisible = visible.stream()
+                    .map(o -> o.code() == null ? "" : o.code())
+                    .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
             List<ValueOverrideCommand> vals = d.values() == null
                     ? List.<ValueOverrideCommand>of() : d.values();
             java.util.Set<String> declared = vals.stream()
@@ -1082,7 +1108,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
              * 维度本身已经关掉了，再落一堆值级别的行只是噪声。
              */
             if (d.enabled()) {
-                for (String code : inSubset) {
+                for (String code : defaultVisible) {
                     if (!declared.contains(code)) {
                         PrdMerchantSpecOverride off = new PrdMerchantSpecOverride();
                         off.setMerchantNo(merchantNo);
@@ -1118,31 +1144,6 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                 DataScopeContext.executeWithoutScope(() -> overrideMapper.insert(row));
             }
         }
-    }
-
-    /**
-     * 类目给每个维度裁的子集，按 <b>code</b> 索引（覆盖表用的就是 code）。
-     * 某个维度没有子集行 = 不裁剪，返回空集合，调用方按「全都默认开」处理。
-     */
-    private Map<String, java.util.Set<String>> subsetCodesOf(String categoryNo) {
-        Map<String, List<PrdCategorySpecValue>> subsets = subsetsOf(categoryNo);
-        if (subsets.isEmpty()) {
-            return Map.of();
-        }
-        // valueNo → code 要查值表：子集存的是 valueNo，而端上回传的是 code
-        Map<String, String> codeOf = DataScopeContext.executeWithoutScope(() ->
-                        valueMapper.selectList(Wrappers.<PrdSpecValue>lambdaQuery()
-                                .in(PrdSpecValue::getValueNo, subsets.values().stream()
-                                        .flatMap(List::stream)
-                                        .map(PrdCategorySpecValue::getValueNo).toList())))
-                .stream().collect(Collectors.toMap(PrdSpecValue::getValueNo, PrdSpecValue::getCode,
-                        (a, b) -> a));
-        Map<String, java.util.Set<String>> out = new LinkedHashMap<>();
-        subsets.forEach((dimNo, rows) -> out.put(dimNo, rows.stream()
-                .map(r -> codeOf.get(r.getValueNo()))
-                .filter(java.util.Objects::nonNull)
-                .collect(Collectors.toCollection(java.util.LinkedHashSet::new))));
-        return out;
     }
 
     private static boolean notBlank(String s) {

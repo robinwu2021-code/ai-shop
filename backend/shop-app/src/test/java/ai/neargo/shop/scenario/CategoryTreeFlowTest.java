@@ -1177,6 +1177,203 @@ class CategoryTreeFlowTest {
                 "本店停掉的档位不该再下发到建品页");
     }
 
+    @Test
+    @DisplayName("★★★ 删掉自建的那一档要能删掉 —— 保存成功、读回来它还在")
+    void merchantOwnValueCanBeRemoved() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+
+        String dimBody = mvc().perform(post("/ops/spec-dims")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"DROPOWN\",\"name\":\"删除专用份量\",\"valueType\":\"ENUM\","
+                                + "\"usageType\":\"SALE\",\"universal\":true}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String dimNo = json.readTree(dimBody).get("data").get("dimNo").asString();
+        String half = newValue(ops, dimNo, "500g");
+        String jin = newValue(ops, dimNo, "1斤");
+
+        String catBody = mvc().perform(post("/ops/categories")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"删除自建值专用\",\"parentNo\":\"CAT100\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String categoryNo = json.readTree(catBody).get("data").get("categoryNo").asString();
+
+        // 类目子集只给两档 —— 商家自建的那一档天然不在里面，这正是本例的要害
+        mvc().perform(post("/ops/category-specs/" + categoryNo)
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("[{\"dimNo\":\"" + dimNo + "\",\"primary\":true,\"required\":false,"
+                                + "\"valueNos\":[\"" + half + "\",\"" + jin + "\"],\"labels\":{}}]"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String biz = merchant("13700004321", "删除自建值店");
+
+        /*
+         * 商家自己加一档：平台没有 750g，他这袋就是 750g。
+         * **接住它的真 code**（自有值的码形如 M91029）—— 端上提交的就是这个，
+         * 拿标签当码去发的话，测的是一条真实链路上不存在的载荷。
+         */
+        String own = mvc().perform(post("/biz/spec-values")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dimNo\":\"" + dimNo + "\",\"label\":\"750g\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String ownCode = json.readTree(own).get("data").get("code").asString();
+
+        // 加完是三档
+        mvc().perform(get("/biz/spec-templates?categoryNo=" + categoryNo)
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data[0].options.length()").value(3));
+
+        /*
+         * 把自建的 750g 删掉：端上按契约声明「我用 500g 和 1斤」，
+         * 并显式带上 750g 的 enabled=false —— 这是 buildSpecOverride 真正发出去的载荷。
+         */
+        mvc().perform(post("/biz/spec-override/" + categoryNo)
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dims\":[{\"dimNo\":\"" + dimNo + "\",\"enabled\":true,"
+                                + "\"label\":\"删除专用份量\",\"values\":["
+                                + "{\"code\":\"500g\",\"enabled\":true},"
+                                + "{\"code\":\"1斤\",\"enabled\":true},"
+                                + "{\"code\":\"" + ownCode + "\",\"enabled\":false}]}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        /*
+         * ⚠️ 这里是缺陷：saveOverrides 的禁用行只从**类目子集**里推
+         * （`for (String code : inSubset)`），而商家自建的取值永远不在子集里 ——
+         * 于是一行禁用都没落，purge 又把上一版的启用行清掉了，
+         * 读侧 optionsOf 无条件把 MERCHANT 作用域的值追加回来。
+         * 商家看到的是「删了、保存了、它还在」。
+         */
+        String after = mvc().perform(get("/biz/spec-templates?categoryNo=" + categoryNo)
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(after)
+                .as("删掉的自建档位不该再下发 —— 它不在类目子集里，禁用行没人给它落")
+                .doesNotContain("750g");
+    }
+
+    @Test
+    @DisplayName("★★★ 自建规格下删档位也要能删 —— 类目没绑它，子集是空的")
+    void valueInMerchantOwnDimCanBeRemoved() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+
+        /*
+         * 类目要**至少有一条平台绑定**，否则 forCategory 一进门就 `binds.isEmpty()`
+         * 直接返回空 —— 那样连商家自建的规格都不下发。那是另一个缺陷
+         * （自建规格在「平台没配过规格的类目」里永远不显示），本例不测它，
+         * 所以先给类目绑一个平台维度把那条路让开。
+         */
+        String dimBody = mvc().perform(post("/ops/spec-dims")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"DROPOWNDIM\",\"name\":\"陪跑份量\",\"valueType\":\"ENUM\","
+                                + "\"usageType\":\"SALE\",\"universal\":true}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String platDim = json.readTree(dimBody).get("data").get("dimNo").asString();
+        String big = newValue(ops, platDim, "大袋");
+
+        String catBody = mvc().perform(post("/ops/categories")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"自建规格删档专用\",\"parentNo\":\"CAT100\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String categoryNo = json.readTree(catBody).get("data").get("categoryNo").asString();
+
+        mvc().perform(post("/ops/category-specs/" + categoryNo)
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("[{\"dimNo\":\"" + platDim + "\",\"primary\":true,\"required\":false,"
+                                + "\"valueNos\":[\"" + big + "\"],\"labels\":{}}]"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String biz = merchant("13700005678", "自建规格删档店");
+
+        // 商家自建一个规格（类目没绑它），再给它加三档
+        String myDim = mvc().perform(post("/biz/spec-dims")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"辣度\",\"usageType\":\"SALE\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        // 回的是 SpecTemplateVO —— dimNo 放在 templateNo 位上（契约如此）
+        String dimNo = json.readTree(myDim).get("data").get("templateNo").asString();
+
+        // 接住三档的真 code —— 自建值的码是算出来的（M96085 这种），不是标签
+        java.util.Map<String, String> code = new java.util.LinkedHashMap<>();
+        for (String lv : new String[]{"微辣", "中辣", "特辣"}) {
+            String vb = mvc().perform(post("/biz/spec-values")
+                            .header("Authorization", "Bearer " + biz)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"dimNo\":\"" + dimNo + "\",\"label\":\"" + lv + "\"}"))
+                    .andExpect(jsonPath("$.code").value(0))
+                    .andReturn().getResponse().getContentAsString();
+            code.put(lv, json.readTree(vb).get("data").get("code").asString());
+        }
+
+        String threeLevels = "{\"dimNo\":\"" + dimNo + "\",\"enabled\":true,\"label\":\"辣度\","
+                + "\"values\":[{\"code\":\"" + code.get("微辣") + "\",\"enabled\":true},"
+                + "{\"code\":\"" + code.get("中辣") + "\",\"enabled\":true},"
+                + "{\"code\":\"" + code.get("特辣") + "\",\"enabled\":true}]}";
+        String platPart = "{\"dimNo\":\"" + platDim + "\",\"enabled\":true,\"label\":\"陪跑份量\","
+                + "\"values\":[{\"code\":\"大袋\",\"enabled\":true}]}";
+
+        // 把自建规格用到这个类目上，三档全用
+        mvc().perform(post("/biz/spec-override/" + categoryNo)
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dims\":[" + platPart + "," + threeLevels + "]}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String before = mvc().perform(get("/biz/spec-templates?categoryNo=" + categoryNo)
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(before)
+                .as("三档都要先在，否则后面「删掉一档」测的不是删除")
+                .contains("微辣").contains("中辣").contains("特辣");
+
+        // 删掉「特辣」
+        mvc().perform(post("/biz/spec-override/" + categoryNo)
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dims\":[" + platPart + ",{\"dimNo\":\"" + dimNo + "\","
+                                + "\"enabled\":true,\"label\":\"辣度\",\"values\":["
+                                + "{\"code\":\"" + code.get("微辣") + "\",\"enabled\":true},"
+                                + "{\"code\":\"" + code.get("中辣") + "\",\"enabled\":true},"
+                                + "{\"code\":\"" + code.get("特辣") + "\",\"enabled\":false}]}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String after = mvc().perform(get("/biz/spec-templates?categoryNo=" + categoryNo)
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        /*
+         * **先证明这个断言不是空集赢的。**只写「不含特辣」的话，
+         * 自建规格整个没下发时它照样绿 —— 而那是另一个缺陷，不是这个。
+         */
+        org.assertj.core.api.Assertions.assertThat(after)
+                .as("自建规格本身要下发，否则下面那条「不含特辣」是空集赢的")
+                .contains("微辣").contains("中辣");
+        /*
+         * ⚠️ 同一个缺陷的第二条触发路径，而且更宽：类目根本没绑这个维度，
+         * `subsetCodesOf` 里连它的键都没有 → inSubset 恒为空 →
+         * **这个规格下的任何一档都删不掉**。
+         */
+        org.assertj.core.api.Assertions.assertThat(after)
+                .as("自建规格下删掉的档位不该再下发 —— 类目没绑它，子集是空的")
+                .doesNotContain("特辣");
+    }
+
     private String newValue(String ops, String dimNo, String label) throws Exception {
         String b = mvc().perform(post("/ops/spec-values")
                         .header("Authorization", "Bearer " + ops)

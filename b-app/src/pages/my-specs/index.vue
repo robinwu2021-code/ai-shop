@@ -307,8 +307,24 @@ function dropValue(code: string) {
   clearValTimer();
   valPending.value = -1;
   valDragFrom.value = -1;
+  const label = draft.value.labels[code] ?? code;
   draft.value.values = draft.value.values.filter((v) => v.code !== code);
   draft.value.dropped = [...draft.value.dropped, code];
+  /*
+   * **删掉的那一档回到下面的候选里** —— 与 `pickValue` 的「加进来就从候选摘掉」
+   * 互为反向。此前只有单向：加进来会从候选消失，删掉却不回去。
+   *
+   * <p>候选是**打开这一屏时算一次**（loadValCands），之后不再重算 ——
+   * 所以少了这一步，删错一档就没有回头路：他要么关掉弹层重开一次（那会丢掉
+   * 这一屏里其它没保存的调整），要么以为这一档被永久删掉了。
+   *
+   * <p>放在**最前面**：他刚删的那一档就在手指底下，点错了立刻点得回来。
+   * 按平台顺序插回去的话，档位一多就要在一排虚线 chip 里找自己刚删的那个，
+   * 而那正是最需要「一眼看见」的时刻。
+   */
+  if (!valCands.value.some((x) => (x.code ?? "") === code)) {
+    valCands.value = [{ code, label }, ...valCands.value];
+  }
 }
 
 /*
