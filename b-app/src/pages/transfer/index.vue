@@ -96,6 +96,10 @@ async function pickEnd(which: "from" | "to") {
   else toId.value = id;
 }
 
+function pickQty(b: StockBalance): string {
+  return String(t("transfer.availableN", { n: b.available }));
+}
+
 function addLine(b: StockBalance) {
   if (lines.value.some((l) => l.itemId === b.itemId)) return;
   lines.value = [...lines.value, {
@@ -278,16 +282,15 @@ onShow(load);
         {{ $t("transfer.ship") }}
       </view>
 
-      <sh-sheet
+      <biz-item-picker
         :visible="showPick"
         :title="String($t('transfer.addItem'))"
+        :items="pickable"
+        :picked="lines.map((l) => l.itemId)"
+        :qty-label="pickQty"
+        @pick="addLine"
         @close="showPick = false"
-      >
-        <view v-for="b in pickable" :key="b.itemId" class="pick sh-row sh-row--between sh-row--baseline" @tap="addLine(b)">
-          <text class="txt-body">{{ b.name }}{{ b.specText ? ` · ${b.specText}` : "" }}</text>
-          <text class="sh-muted sh-num">{{ $t("transfer.availableN", { n: b.available }) }}</text>
-        </view>
-      </sh-sheet>
+      ></biz-item-picker>
     </template>
   </sh-scaffold>
 </template>

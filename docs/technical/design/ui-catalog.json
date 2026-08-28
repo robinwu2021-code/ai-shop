@@ -759,7 +759,7 @@
             {
               "app": "b-app",
               "route": "/pages/stock-docs/index",
-              "title": "单据",
+              "title": "按单查",
               "domain": "进销存",
               "tab": false,
               "status": "已实现",

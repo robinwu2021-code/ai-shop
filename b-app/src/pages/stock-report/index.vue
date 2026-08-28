@@ -61,6 +61,14 @@ const formula = computed(() => {
   return `${m.opening} + ${m.purchased} − ${m.sold} − ${m.lost}${adj} = ${m.closing}`;
 });
 
+/**
+ * 回边：从榜单走到那件货。**此前榜单是死路** —— 看到「这件压了 90 天」，
+ * 想知道它怎么积起来的，得退回库存页自己找。
+ */
+function openItem(r: StockRank) {
+  uni.navigateTo({ url: `/pages/stock-detail/index?itemId=${encodeURIComponent(r.itemId)}` });
+}
+
 async function pickMonth() {
   // 只给最近 12 个月：更早的月份商家不会在手机上看，给了只是让列表变长
   const items: string[] = [];
@@ -130,8 +138,10 @@ onShow(load);
           :key="r.itemId"
           between
           :label="`${r.name}${r.specText ? ` · ${r.specText}` : ''}`"
+          @tap="openItem(r)"
         >
           <text class="txt-strong sh-num">{{ r.qty }}</text>
+          <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
         </sh-kv>
       </view>
     </view>
@@ -139,7 +149,7 @@ onShow(load);
     <view v-if="slow.length" class="sh-block">
       <sh-section pad :title="String($t('stockReport.slow'))"></sh-section>
       <view class="blk">
-        <view v-for="r in slow" :key="r.itemId" class="slow">
+        <view v-for="r in slow" :key="r.itemId" class="slow" @tap="openItem(r)">
           <view class="slow__main">
             <text class="txt-body">{{ r.name }}{{ r.specText ? ` · ${r.specText}` : "" }}</text>
             <!--
@@ -152,6 +162,7 @@ onShow(load);
                 : $t("stockReport.pressed", { n: r.qty, money: yuan(r.costAmountMinor) }) }}
             </text>
           </view>
+          <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
         </view>
       </view>
     </view>
@@ -207,8 +218,16 @@ onShow(load);
 .is-out {
   color: var(--sh-danger);
 }
+/* 加了箭头就得横排 —— 不给 flex 的话箭头掉到名字下面自成一行 */
 .slow {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
   padding: 12rpx 0;
+}
+.slow__main {
+  flex: 1;
+  min-width: 0;
 }
 .note {
   display: block;

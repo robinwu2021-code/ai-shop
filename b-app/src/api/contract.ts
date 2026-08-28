@@ -1264,7 +1264,7 @@ export interface MerchantApi {
   /** 单件明细：各库位分布 + 条码货号 */
   mStockItem(itemId: string): Promise<StockItemDetail>;
   /** 变动明细。每一行都带操作人、单据号、变动前后 —— 「昨天还有 20 袋今天剩 3 袋」从这里回答 */
-  mStockLedger(q?: { itemId?: string; cursor?: number; size?: number }): Promise<StockLedgerPage>;
+  mStockLedger(q?: { itemId?: string; docNo?: string; cursor?: number; size?: number }): Promise<StockLedgerPage>;
   /**
    * 直接改数（把实存改成点出来的数）。
    *
@@ -1302,7 +1302,7 @@ export interface MerchantApi {
   mTransferReceive(no: string): Promise<void>;
 
   /** 单据中心。`kind` 空=全部，否则 IN / OUT / COUNT / TRANSFER */
-  mStockDocuments(q?: { kind?: string; size?: number }): Promise<StockDocument[]>;
+  mStockDocuments(q?: { kind?: string; no?: string; size?: number }): Promise<StockDocument[]>;
   /** 月报。`month` 形如 2026-08 */
   mStockMonthly(month: string): Promise<StockMonthly>;
   /** 榜单。`type` fast 动销 / slow 滞销 */

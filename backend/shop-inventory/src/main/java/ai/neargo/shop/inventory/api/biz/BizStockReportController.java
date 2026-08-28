@@ -54,8 +54,9 @@ public class BizStockReportController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/documents")
     public List<DocumentVO> documents(@RequestParam(required = false) String kind,
+                                      @RequestParam(required = false) String no,
                                       @RequestParam(defaultValue = "30") int size) {
-        return query.documents(owner(), location(), kind, Math.min(size, PAGE_MAX));
+        return query.documents(owner(), location(), kind, no, Math.min(size, PAGE_MAX));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")

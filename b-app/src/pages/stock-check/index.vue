@@ -199,7 +199,7 @@ function at(iso?: string): string {
             maxlength="32"
             v-model="keyword"
             class="field__input sh-fill"
-            :placeholder="String($t('stockCheck.searchPh'))"
+            :placeholder="String($t('stockPick.searchPh'))"
             confirm-type="search"
           />
           <text class="sh-link" @tap="toggleAll">
@@ -209,7 +209,7 @@ function at(iso?: string): string {
       </view>
 
       <sh-empty v-if="!picking.length" :text="String($t('stockCheck.pickEmpty'))"></sh-empty>
-      <sh-empty v-else-if="!visible.length" :text="String($t('stockCheck.searchEmpty'))"></sh-empty>
+      <sh-empty v-else-if="!visible.length" :text="String($t('stockPick.empty'))"></sh-empty>
 
       <view v-for="b in visible" :key="b.itemId" class="sh-card sh-mb-sm" @tap="toggle(b.itemId)">
         <view class="row__top sh-row">

@@ -106,6 +106,14 @@ function at(iso: string): string {
   return iso.length >= 16 ? `${iso.slice(5, 16).replace("T", " ")}` : iso;
 }
 
+/**
+ * 回边：从一行流水走到它那张单。**此前这里是死胡同** ——
+ * 看到单号只能记住它，再回单据列表里自己翻。
+ */
+function openDoc(r: StockLedgerRow) {
+  uni.navigateTo({ url: `/pages/stock-docs/index?no=${encodeURIComponent(r.docNo)}` });
+}
+
 /** 变动前的数：`balanceAfter − qtyDelta`。界面上要写成「前 → 后」，只给一个数看不出发生了什么 */
 function before(r: StockLedgerRow): number {
   return r.balanceAfter - r.qtyDelta;
@@ -164,12 +172,14 @@ onShow(load);
         <sh-section pad :title="String($t('stockDetail.ledger'))"></sh-section>
         <view class="blk">
         <sh-empty v-if="!ledger.length" compact :text="String($t('stockDetail.ledgerEmpty'))"></sh-empty>
+        <text v-else class="sh-hint led__hint">{{ $t("stockDetail.ledgerHint") }}</text>
 
-        <view v-for="r in ledger" :key="r.id" class="led">
+        <view v-for="r in ledger" :key="r.id" class="led" @tap="openDoc(r)">
           <view class="sh-fill">
             <text class="txt-strong led__title">{{ $t(`stock.reason.${r.reasonCode}`) }}</text>
             <view class="led__meta">
-              <text class="sh-muted">{{ r.docNo }}</text>
+              <!-- 单号用链接色：这一行可点，而「可点」在密排的流水里得看得出来 -->
+              <text class="sh-link sh-num">{{ r.docNo }}</text>
               <text class="sh-muted">{{ r.operator || "—" }}</text>
             </view>
             <text class="txt-caption sh-num">{{ at(r.occurredAt) }}</text>
@@ -255,6 +265,10 @@ onShow(load);
 }
 .led__out {
   color: var(--sh-danger);
+}
+.led__hint {
+  display: block;
+  padding-bottom: 4rpx;
 }
 .led__more {
   display: block;

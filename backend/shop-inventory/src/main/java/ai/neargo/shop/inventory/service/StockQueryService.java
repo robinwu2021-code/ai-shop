@@ -38,7 +38,12 @@ public interface StockQueryService {
     ItemDetailVO itemDetail(String ownerId, String itemId);
 
     /** 变动明细。游标分页，{@code cursor} 传上一页最后一行的 {@code id}。 */
-    LedgerPageVO ledger(String ownerId, String itemId, String locationId, Long cursor, int size);
+    /**
+     * 台账。**两种问法共用一条**：给 itemId 是「这件货怎么变的」，
+     * 给 docNo 是「这张单动了哪几件货」—— 台账本来就是单据的行。
+     */
+    LedgerPageVO ledger(String ownerId, String itemId, String docNo, String locationId,
+                        Long cursor, int size);
 
     /**
      * 单据中心：入库 / 出库 / 盘点 / 调拨四类**合成一个列表**。
@@ -47,5 +52,5 @@ public interface StockQueryService {
      *
      * @param kind {@code IN} / {@code OUT} / {@code COUNT} / {@code TRANSFER}，空 = 全部
      */
-    List<DocumentVO> documents(String ownerId, String locationId, String kind, int limit);
+    List<DocumentVO> documents(String ownerId, String locationId, String kind, String docNo, int limit);
 }

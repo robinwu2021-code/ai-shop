@@ -4162,7 +4162,10 @@ export const mockApi: MerchantApi = {
 
   async mStockLedger(q) {
     const size = q?.size ?? 20;
-    const rows = invLedger().filter((r) => !q?.cursor || r.id < q.cursor).slice(0, size);
+    const rows = invLedger()
+      .filter((r) => (!q?.docNo || r.docNo === q.docNo) && (!q?.itemId || r.itemId === q.itemId))
+      .filter((r) => !q?.cursor || r.id < q.cursor)
+      .slice(0, size);
     const last = rows[rows.length - 1];
     return delay({
       entries: rows,
@@ -4248,7 +4251,9 @@ export const mockApi: MerchantApi = {
 
   async mStockDocuments(q) {
     const all = invDocuments();
-    return delay((q?.kind ? all.filter((d) => d.kind === q.kind) : all).slice(0, q?.size ?? 50));
+    const picked = q?.no ? all.filter((d) => d.docNo === q.no)
+      : q?.kind ? all.filter((d) => d.kind === q.kind) : all;
+    return delay(picked.slice(0, q?.size ?? 50));
   },
 
   async mStockMonthly(month) {
@@ -4309,12 +4314,15 @@ function invBalances(): StockBalance[] {
 
 function invLedger(): StockLedgerRow[] {
   return [
-    { id: 8812345, docKind: "OUT", docNo: "OUT-2408260031", reasonCode: "SALE",
-      qtyDelta: -2, balanceAfter: 3, occurredAt: "2026-08-26T14:22:00", operator: "系统" },
-    { id: 8812344, docKind: "OUT", docNo: "CNT-24082601", reasonCode: "COUNT_LOSS",
-      qtyDelta: -1, balanceAfter: 5, occurredAt: "2026-08-26T09:10:00", operator: "张伟" },
-    { id: 8812343, docKind: "IN", docNo: "IN-24082502", reasonCode: "PURCHASE",
-      qtyDelta: 20, balanceAfter: 6, occurredAt: "2026-08-25T18:40:00", operator: "老板" },
+    { id: 8812345, itemId: "I1", itemName: "东北五常大米", docKind: "OUT", docNo: "OUT-2408260031",
+      reasonCode: "SALE", qtyDelta: -2, balanceAfter: 3, occurredAt: "2026-08-26T14:22:00", operator: "系统" },
+    // 同一张单动两件货 —— 按单查那一屏要看得出这一点，一行的假数据看不出
+    { id: 8812346, itemId: "I4", itemName: "土鸡蛋", docKind: "OUT", docNo: "OUT-2408260031",
+      reasonCode: "SALE", qtyDelta: -1, balanceAfter: 48, occurredAt: "2026-08-26T14:22:00", operator: "系统" },
+    { id: 8812344, itemId: "I1", itemName: "东北五常大米", docKind: "OUT", docNo: "CNT-24082601",
+      reasonCode: "COUNT_LOSS", qtyDelta: -1, balanceAfter: 5, occurredAt: "2026-08-26T09:10:00", operator: "张伟" },
+    { id: 8812343, itemId: "I1", itemName: "东北五常大米", docKind: "IN", docNo: "IN-24082502",
+      reasonCode: "PURCHASE", qtyDelta: 20, balanceAfter: 6, occurredAt: "2026-08-25T18:40:00", operator: "老板" },
   ];
 }
 

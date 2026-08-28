@@ -4372,6 +4372,9 @@ export interface StockItemDetail {
 /** 台账一行（`LedgerVO`）。**不可变** —— 只有查看，没有编辑 */
 export interface StockLedgerRow {
   id: number;
+  /** 这一行动的是哪件货。**按单查靠它** —— 只给单号的话那一屏是一列没名字的数 */
+  itemId: string;
+  itemName: string;
   docKind: "IN" | "OUT";
   docNo: string;
   reasonCode: string;

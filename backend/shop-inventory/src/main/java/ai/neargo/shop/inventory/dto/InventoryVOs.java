@@ -35,7 +35,12 @@ public final class InventoryVOs {
     }
 
     /** 流水行。**游标是 id 不是时间** —— 时钟回拨会让时间游标漏行，而漏的那几行不会报错。 */
-    public record LedgerVO(long id, String docKind, String docNo, String reasonCode,
+    /**
+     * 台账一行。**带上 itemId / itemName** —— 按单查时这就是「这张单动了哪几件货」，
+     * 只给单号的话那一屏点进来是一列没有名字的数。
+     */
+    public record LedgerVO(long id, String itemId, String itemName,
+                           String docKind, String docNo, String reasonCode,
                            int qtyDelta, int balanceAfter,
                            LocalDateTime occurredAt, String operator) {
     }

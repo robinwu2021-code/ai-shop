@@ -167,16 +167,24 @@ public class StockQueryServiceImpl implements StockQueryService {
     }
 
     @Override
-    public LedgerPageVO ledger(String ownerId, String itemId, String locationId, Long cursor, int size) {
+    public LedgerPageVO ledger(String ownerId, String itemId, String docNo, String locationId, Long cursor, int size) {
         List<InvLedger> rows = ledgerMapper.selectList(Wrappers.<InvLedger>lambdaQuery()
                 .eq(InvLedger::getOwnerId, ownerId)
                 .eq(itemId != null, InvLedger::getItemId, itemId)
+                .eq(docNo != null && !docNo.isBlank(), InvLedger::getDocNo, docNo)
                 .eq(locationId != null, InvLedger::getLocationId, locationId)
                 // 游标按 id 倒序：时间会被回填、时钟会回拨，而 id 是单调的
                 .lt(cursor != null, InvLedger::getId, cursor)
                 .orderByDesc(InvLedger::getId)
                 .last("LIMIT " + size));
-        List<LedgerVO> out = rows.stream().map(e -> new LedgerVO(e.getId(), e.getDocKind(),
+        // 名字批量取：按单查时一张单十几行，逐行查等于十几趟
+        Map<String, String> names = rows.isEmpty() ? Map.of()
+                : itemMapper.selectList(Wrappers.<InvItem>lambdaQuery()
+                        .eq(InvItem::getOwnerId, ownerId)
+                        .in(InvItem::getItemId, rows.stream().map(InvLedger::getItemId).distinct().toList()))
+                .stream().collect(Collectors.toMap(InvItem::getItemId, InvItem::getName, (a, b) -> a));
+        List<LedgerVO> out = rows.stream().map(e -> new LedgerVO(e.getId(),
+                e.getItemId(), names.getOrDefault(e.getItemId(), e.getItemId()), e.getDocKind(),
                 e.getDocNo(), e.getReasonCode(), e.getQtyDelta(), e.getBalanceAfter(),
                 e.getOccurredAt(), e.getOperator())).toList();
         Long next = out.isEmpty() ? null : out.get(out.size() - 1).id();
@@ -184,11 +192,14 @@ public class StockQueryServiceImpl implements StockQueryService {
     }
 
     @Override
-    public List<DocumentVO> documents(String ownerId, String locationId, String kind, int limit) {
+    public List<DocumentVO> documents(String ownerId, String locationId, String kind, String docNo, int limit) {
+        // 单号定位：从台账那一行点过来的「看这张单」，一次只要一张
+        boolean hasNo = docNo != null && !docNo.isBlank();
         List<DocumentVO> out = new ArrayList<>();
         if (kind == null || "IN".equals(kind)) {
             for (InvInboundOrder h : inboundMapper.selectList(Wrappers.<InvInboundOrder>lambdaQuery()
                     .eq(InvInboundOrder::getOwnerId, ownerId)
+                    .eq(hasNo, InvInboundOrder::getInboundNo, docNo)
                     .eq(locationId != null, InvInboundOrder::getLocationId, locationId)
                     .orderByDesc(InvInboundOrder::getId).last("LIMIT " + limit))) {
                 // 差异字段收进 subtitle 由服务端拼：让端上按 kind 分四种拼法，
@@ -201,6 +212,7 @@ public class StockQueryServiceImpl implements StockQueryService {
         if (kind == null || "OUT".equals(kind)) {
             for (InvOutboundOrder h : outboundMapper.selectList(Wrappers.<InvOutboundOrder>lambdaQuery()
                     .eq(InvOutboundOrder::getOwnerId, ownerId)
+                    .eq(hasNo, InvOutboundOrder::getOutboundNo, docNo)
                     .eq(locationId != null, InvOutboundOrder::getLocationId, locationId)
                     .orderByDesc(InvOutboundOrder::getId).last("LIMIT " + limit))) {
                 out.add(new DocumentVO("OUT", h.getOutboundNo(), h.getStatus(),
@@ -211,6 +223,7 @@ public class StockQueryServiceImpl implements StockQueryService {
         if (kind == null || "COUNT".equals(kind)) {
             for (InvStockCount h : countMapper.selectList(Wrappers.<InvStockCount>lambdaQuery()
                     .eq(InvStockCount::getOwnerId, ownerId)
+                    .eq(hasNo, InvStockCount::getCountNo, docNo)
                     .eq(locationId != null, InvStockCount::getLocationId, locationId)
                     .orderByDesc(InvStockCount::getId).last("LIMIT " + limit))) {
                 out.add(new DocumentVO("COUNT", h.getCountNo(), h.getStatus(),
@@ -220,6 +233,7 @@ public class StockQueryServiceImpl implements StockQueryService {
         if (kind == null || "TRANSFER".equals(kind)) {
             for (InvTransferOrder h : transferMapper.selectList(Wrappers.<InvTransferOrder>lambdaQuery()
                     .eq(InvTransferOrder::getOwnerId, ownerId)
+                    .eq(hasNo, InvTransferOrder::getTransferNo, docNo)
                     .orderByDesc(InvTransferOrder::getId).last("LIMIT " + limit))) {
                 out.add(new DocumentVO("TRANSFER", h.getTransferNo(), h.getStatus(),
                         subtitle("调拨", h.getFromLocationId(), h.getToLocationId()),

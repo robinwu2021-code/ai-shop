@@ -42,19 +42,41 @@ describe("进销存表的写权", () => {
   /*
    * 第一道：谁拿着 inv_* 的 Mapper 还调了写方法。
    *
-   * 只看「导入了 inventory.mapper 的文件里有没有写调用」——粗，但它挡的是真问题：
-   * 一个 Service 顺手 `balanceMapper.applyDelta(...)` 把余额改了，
-   * 而流水那一行没人写。精确到变量级的分析要一个 Java 解析器，
-   * 而**这条守卫的价值在于它存在且会红**，不在于它有多精确。
+   * **绑到变量上，不是绑到文件上。** 原先的判据是「文件 import 了
+   * inventory.mapper，就把文件里所有写调用都算上」。作者写明了那是有意的粗，
+   * 理由是「价值在于它存在且会红」—— 而它后来就一直红着：
+   * `InventoryFlowTest` 既要读进销存的 mapper，又要 `goodsMapper.insert(...)`
+   * 造商品主数据，八行 `prd_*` 的写被算成了 `inv_*` 的越权。
+   *
+   * 恒红的闸门不警告任何人，它只是一层噪声掩体 —— 真有人去写 `inv_*` 的那天，
+   * 报错里会多出一行，混在本来就有的八行中间。
+   *
+   * 精确不需要 Java 解析器：从 import 里取出 inventory 的 mapper 类型名，
+   * 再找出声明成那些类型的变量名，只盯这些变量上的写调用。
    */
   it("★★★ shop-inventory 之外不许调 inv_* 的写方法 —— 绕过去的话账会悄悄不对", () => {
     const bad: string[] = [];
     for (const f of outsiders) {
       const src = readFileSync(f, "utf8");
       if (!src.includes("ai.neargo.shop.inventory.mapper")) continue;
+
+      // import ai.neargo.shop.inventory.mapper.InvItemMapper; → 类型名 InvItemMapper
+      const types = [...src.matchAll(/import\s+ai\.neargo\.shop\.inventory\.mapper\.(\w+)\s*;/g)]
+        .map((m) => m[1]!);
+      // 内部类写法：`import ...mapper.InventoryMappers;` 之后是 `InventoryMappers.InvItemMapper x`
+      const typeAlt = types.map((t) => `(?:\\w+\\.)?${t}`).join("|");
+      if (!typeAlt) continue;
+
+      // `private final InvItemMapper itemMapper;` / `InvItemMapper itemMapper = ...`
+      const vars = new Set(
+        [...src.matchAll(new RegExp(`(?:${typeAlt})\\s+(\\w+)\\s*[;=,)]`, "g"))].map((m) => m[1]!),
+      );
+      if (!vars.size) continue;
+      const onVar = new RegExp(`\\b(${[...vars].join("|")})${WRITE_CALLS.source}`);
+
       for (const [i, line] of src.split("\n").entries()) {
         if (line.trim().startsWith("*") || line.trim().startsWith("//")) continue;
-        if (WRITE_CALLS.test(line)) bad.push(`${rel(f)}:${i + 1}  ${line.trim()}`);
+        if (onVar.test(line)) bad.push(`${rel(f)}:${i + 1}  ${line.trim()}`);
       }
     }
     expect(

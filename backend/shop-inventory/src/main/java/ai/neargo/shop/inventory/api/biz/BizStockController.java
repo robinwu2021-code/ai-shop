@@ -90,9 +90,10 @@ public class BizStockController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/ledger")
     public LedgerPageVO ledger(@RequestParam(required = false) String itemId,
+                               @RequestParam(required = false) String docNo,
                                @RequestParam(required = false) Long cursor,
                                @RequestParam(defaultValue = "20") int size) {
-        return query.ledger(owner(), itemId, location(), cursor, Math.min(size, PAGE_MAX));
+        return query.ledger(owner(), itemId, docNo, location(), cursor, Math.min(size, PAGE_MAX));
     }
 
     /** 单件「改数」。界面上是一个按钮，底下是**开单 → 录一行 → 过账**。 */

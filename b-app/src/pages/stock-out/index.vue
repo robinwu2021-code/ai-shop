@@ -57,6 +57,10 @@ async function load() {
   }
 }
 
+function pickQty(b: StockBalance): string {
+  return String(t("stockOut.availableN", { n: b.available }));
+}
+
 function addLine(b: StockBalance) {
   if (lines.value.some((l) => l.itemId === b.itemId)) return;
   lines.value = [...lines.value, {
@@ -165,12 +169,15 @@ onShow(load);
       {{ $t("stockOut.post") }}
     </view>
 
-    <sh-sheet :visible="showPick" :title="String($t('stockOut.addItem'))" @close="showPick = false">
-      <view v-for="b in pickable" :key="b.itemId" class="pick sh-row sh-row--between sh-row--baseline" @tap="addLine(b)">
-        <text class="txt-body">{{ b.name }}{{ b.specText ? ` · ${b.specText}` : "" }}</text>
-        <text class="sh-muted sh-num">{{ $t("stockOut.availableN", { n: b.available }) }}</text>
-      </view>
-    </sh-sheet>
+    <biz-item-picker
+      :visible="showPick"
+      :title="String($t('stockOut.addItem'))"
+      :items="pickable"
+      :picked="lines.map((l) => l.itemId)"
+      :qty-label="pickQty"
+      @pick="addLine"
+      @close="showPick = false"
+    ></biz-item-picker>
   </sh-scaffold>
 </template>
 

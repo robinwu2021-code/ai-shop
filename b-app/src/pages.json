@@ -684,7 +684,7 @@
     {
       "path": "pages/stock-docs/index",
       "style": {
-        "navigationBarTitleText": "单据",
+        "navigationBarTitleText": "按单查",
         "app-plus": {
           "navigationStyle": "custom"
         },

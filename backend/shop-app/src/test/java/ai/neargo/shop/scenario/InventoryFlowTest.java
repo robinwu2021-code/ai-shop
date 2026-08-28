@@ -131,14 +131,14 @@ class InventoryFlowTest {
     void releaseLeavesNoLedger() {
         Fixture f = fixture();
         inbound.postDirectly(purchase(f, 10), "老板");
-        int before = query.ledger(f.owner, f.item, f.location, null, 50).entries().size();
+        int before = query.ledger(f.owner, f.item, null, f.location, null, 50).entries().size();
 
         reservations.reserve(f.owner, "SO-" + f.seq, List.of(
                 new ReservationService.Line(f.item, f.location, 4)), 900);
         reservations.release(f.owner, "SO-" + f.seq);
 
         assertThat(available(f)).isEqualTo(10);
-        assertThat(query.ledger(f.owner, f.item, f.location, null, 50).entries()).hasSize(before);
+        assertThat(query.ledger(f.owner, f.item, null, f.location, null, 50).entries()).hasSize(before);
     }
 
     @Test
@@ -211,13 +211,13 @@ class InventoryFlowTest {
     void voidWritesReverseLedger() {
         Fixture f = fixture();
         String no = inbound.postDirectly(purchase(f, 6), "老板");
-        int rowsBefore = query.ledger(f.owner, f.item, f.location, null, 50).entries().size();
+        int rowsBefore = query.ledger(f.owner, f.item, null, f.location, null, 50).entries().size();
 
         inbound.voidOrder(f.owner, no, "老板");
 
         assertThat(onHand(f)).isZero();
         // 原行还在，多出一行反向 —— 不是把那一行改掉或删掉
-        assertThat(query.ledger(f.owner, f.item, f.location, null, 50).entries())
+        assertThat(query.ledger(f.owner, f.item, null, f.location, null, 50).entries())
                 .hasSize(rowsBefore + 1);
     }
 

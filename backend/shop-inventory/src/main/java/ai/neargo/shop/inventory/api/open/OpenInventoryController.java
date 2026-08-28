@@ -87,7 +87,7 @@ public class OpenInventoryController {
                                @RequestParam(required = false) Long since,
                                @RequestParam(defaultValue = "100") int size) {
         String owner = credentials.ownerOf(key, secret, SCOPE_READ);
-        return query.ledger(owner, null, null, since, Math.min(size, PAGE_MAX));
+        return query.ledger(owner, null, null, null, since, Math.min(size, PAGE_MAX));
     }
 
     /**

@@ -298,6 +298,6 @@ class InventoryDualWriteTest {
     }
 
     private int ledgerSize(Fixture f) {
-        return query.ledger(f.owner, f.itemId, null, null, 100).entries().size();
+        return query.ledger(f.owner, f.itemId, null, null, null, 100).entries().size();
     }
 }

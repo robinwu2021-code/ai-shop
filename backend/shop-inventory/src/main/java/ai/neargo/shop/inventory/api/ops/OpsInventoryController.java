@@ -64,6 +64,6 @@ public class OpsInventoryController {
                                @RequestParam(required = false) String itemId,
                                @RequestParam(required = false) Long cursor,
                                @RequestParam(defaultValue = "50") int size) {
-        return query.ledger(acl.ownerIdOf(entityNo), itemId, null, cursor, Math.min(size, PAGE_MAX));
+        return query.ledger(acl.ownerIdOf(entityNo), itemId, null, null, cursor, Math.min(size, PAGE_MAX));
     }
 }

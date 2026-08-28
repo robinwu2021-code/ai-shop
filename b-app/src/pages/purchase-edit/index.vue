@@ -62,6 +62,11 @@ async function load() {
   }
 }
 
+/** 挑货弹层右侧那个数。**放 script 不放模板** —— 模板里的内联箭头推不出参数类型 */
+function pickQty(b: StockBalance): string {
+  return String(t("purchase.onHandN", { n: b.onHand }));
+}
+
 function addLine(b: StockBalance) {
   if (lines.value.some((l) => l.itemId === b.itemId)) return;
   lines.value = [...lines.value, {
@@ -204,12 +209,16 @@ onShow(load);
     </view>
     <text class="sh-hint hint">{{ $t("purchase.postHint") }}</text>
 
-    <sh-sheet :visible="showPick" :title="String($t('purchase.addItem'))" @close="showPick = false">
-      <view v-for="b in pickable" :key="b.itemId" class="pick sh-row sh-row--between sh-row--baseline" @tap="addLine(b)">
-        <text class="txt-body">{{ b.name }}{{ b.specText ? ` · ${b.specText}` : "" }}</text>
-        <text class="sh-muted sh-num">{{ $t("purchase.onHandN", { n: b.onHand }) }}</text>
-      </view>
-    </sh-sheet>
+    <!-- 挑货走公共件：搜索、已选计数、已选置灰，四处判据一致 -->
+    <biz-item-picker
+      :visible="showPick"
+      :title="String($t('purchase.addItem'))"
+      :items="pickable"
+      :picked="lines.map((l) => l.itemId)"
+      :qty-label="pickQty"
+      @pick="addLine"
+      @close="showPick = false"
+    ></biz-item-picker>
   </sh-scaffold>
 </template>
 
