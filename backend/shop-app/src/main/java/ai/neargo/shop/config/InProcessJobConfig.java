@@ -40,13 +40,37 @@ import java.util.List;
  * 第一次跑起来是**行为的净增加**，不是修复。先在业务实例内跑、看一周，
  * 再拆进程 —— 中间任何一步出问题都能只回退一层。
  *
- * <p><b>两个开关同时满足才启用</b>：{@code @Profile("worker")}
- * 与 {@code shop.job.enabled=true}。生产今天两个都不满足，所以这段代码一行都不执行。
+ * <p><b>三个开关同时满足才启用</b>：{@code @Profile("worker")}、
+ * {@code shop.job.enabled=true}，以及 {@code shop.job.registry.enabled}（默认 true）。
+ * 生产今天前两个都不满足，所以这段代码一行都不执行。
+ *
+ * <h2>第三个开关是 2026-08-28 加的：{@code shop.job.registry.enabled}</h2>
+ * <p>{@code shop.job.enabled} 此前一个人扛了三件事：
+ * <ol>
+ *   <li>任务体（各 {@code JobHandler} bean）存不存在</li>
+ *   <li>job 库的数据源与 DAO 装不装</li>
+ *   <li><b>本进程要不要参与调度</b> —— 也就是要不要写 {@code job_definition}、要不要排期</li>
+ * </ol>
+ *
+ * <p>三件事绑在一起，就没法表达「我只想跑其中一个任务，别碰共享的注册表」。
+ * 当天生产上真的需要这个：一个一次性的进销存搬运进程必须开
+ * {@code shop.job.enabled=true}（否则 {@code InventoryBackfillJob} 这个 bean
+ * 根本不存在），于是它<b>连带把进程内调度器也带了起来</b> —— 那个调度器没配
+ * {@code targets}，退到占位名 {@code LOCAL}，把生产 job 库 12 行的 {@code target}
+ * 每 30 秒覆写一次，独立调度器因此一个任务都排不上。
+ *
+ * <p>而当时唯一想得到的建议「加 {@code --shop.job.enabled=false}」是错的：
+ * 那会把它要跑的那个任务一起关掉。<b>能想到的唯一办法是错的，说明缺的是一个开关，
+ * 不是使用者不小心。</b>
+ *
+ * <p>拆开之后：一次性 worker 加 {@code --shop.job.registry.enabled=false}，
+ * 任务体照常有、{@code @Scheduled} 照常跑，只是不写共享注册表。
  */
 @Configuration
 @EnableConfigurationProperties(JobWorkerProperties.class)
 @Profile("worker")
 @ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "shop.job.registry.enabled", havingValue = "true", matchIfMissing = true)
 public class InProcessJobConfig {
 
     private static final Logger log = LoggerFactory.getLogger(InProcessJobConfig.class);
