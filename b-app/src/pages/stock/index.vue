@@ -4,6 +4,14 @@
 // 所以默认那一栏是「要处理」而不是「全部」。一屏 200 多个 SKU，按字母排等于没排：
 // 全部那一栏永远在，但它不该是第一眼看到的东西。
 //
+// **但「要处理」为空时要落到「全部」**（2026-08-28 补）。上面那半只在店里
+// 有问题时成立；店好好的时候 shortage 与 stale 都是 0，于是首屏是一句
+// 「空着是好事」加一屏空白 —— 而这家店其实有 17 个 SKU，一件都看不见。
+// 用户的原话是「在 b 端 app 上没看到入口」，看到的正是这一幕。
+//
+// 判据放在**数据回来之后**、且**只认第一次**：之后商家自己选了哪一栏就是哪一栏，
+// 不能因为他把缺货处理完了就把他的选择挪走。
+//
 // 三个数字即入口（`sh-stat` 的 boxed 那一档）：点「缺货」就按缺货筛。
 // 数字下面点不动的话，商家会去别处找筛选，而这一页并没有别处。
 import { computed, ref } from "vue";
@@ -21,8 +29,11 @@ const summary = ref<StockSummary | null>(null);
 const rows = ref<StockBalance[]>([]);
 const loading = ref(false);
 
-/** todo 要处理 · all 全部 · reserved 有预留。**todo 是默认**，理由见文件头 */
+/** todo 要处理 · all 全部 · reserved 有预留。**todo 是默认，但空了会落到 all**，理由见文件头 */
 const filter = ref<"todo" | "all" | "reserved">("todo");
+
+/** 只在第一次数据回来时纠正默认栏。**之后不再动** —— 见文件头 */
+const settled = ref(false);
 
 const TABS = computed(() => [
   { key: "todo", label: `${t("stock.tabTodo")} ${todoCount.value}` },
@@ -45,6 +56,18 @@ async function load() {
     ]);
     if (s) summary.value = s;
     rows.value = list;
+
+    /*
+     * 「要处理」空了就落到「全部」。**要重新取一次数** —— 上面那次取的是
+     * filter=todo 的结果（空的），直接改 filter 只会换个高亮，列表还是空的。
+     */
+    if (!settled.value) {
+      settled.value = true;
+      if (filter.value === "todo" && todoCount.value === 0) {
+        filter.value = "all";
+        rows.value = await api.mStockBalances({ filter: "all" });
+      }
+    }
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -114,17 +137,25 @@ onShow(load);
       @pick="pickStat"
     ></sh-stat>
 
-    <!-- 这一块的其余五屏从这里进；每条按它自己那一页的权限判 -->
-    <scroll-view scroll-x class="entries" :show-scrollbar="false">
+    <!--
+      这一块的其余五屏从这里进；每条按它自己那一页的权限判。
+
+      **不用横滚。** 原来是 `scroll-view scroll-x`，七条里永远有一条被切在屏幕外：
+      初始态最右的「库位与仓」只露半个字，滑到底最左的「记一笔进货」又只剩一个
+      「货」—— 最常用的那条反而滚没了。而且它与下面那排筛选 chip 长得一模一样，
+      一排是「去另一页」、一排是「改本页」，读不出区别。
+      改成定宽网格：一屏全可见，四列一行自动换行，与筛选栏也不再撞脸。
+    -->
+    <view class="entries">
       <text
         v-for="e in entries"
         :key="e.key"
-        class="sh-chip entries__item"
+        class="sh-card entries__item"
         @tap="go(e.route)"
       >
         {{ $t(`stock.entry.${e.key}`) }}
       </text>
-    </scroll-view>
+    </view>
 
     <sh-tabs :items="TABS" :active="filter" @change="pickFilter"></sh-tabs>
 
@@ -171,13 +202,24 @@ onShow(load);
 </template>
 
 <style scoped>
+/* 七个入口的定宽网格。四列一行 —— 七条正好两行，一屏全可见 */
 .entries {
-  white-space: nowrap;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
   margin-bottom: 16rpx;
 }
+/*
+ * 用 `sh-card` 而不是 `sh-chip`：**要和下面那排筛选 chip 分得开**。
+ * 底色圆角由 sh-card 给，这里只管排布 —— 自己画一套药丸就又多一份要维护的皮。
+ */
 .entries__item {
-  display: inline-block;
-  margin-right: 12rpx;
+  /* 四列：(100% − 三条 12rpx 缝) / 4 */
+  width: calc((100% - 36rpx) / 4);
+  box-sizing: border-box;
+  padding: 18rpx 0;
+  text-align: center;
+  font-size: 26rpx;
 }
 
 .row__top {
