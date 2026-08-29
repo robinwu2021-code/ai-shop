@@ -62,6 +62,24 @@
 # 试过挪进 port/，另一条当场变红 —— 已撤回。`port/` 下现有的都叫 `*PortImpl`，
 # 所以真要解得先定「GeoService 到底是 Service 还是 Port」，那是设计决定不是搬文件。
 #
+# ── 2026-08-29 第三轮：17 → 15，又两条「测试间互相踩」──────────────────────
+#
+# **① CommunityApplyFlowTest：区划号段撞车。** `330106` 这个号段被**五个测试类**
+# 共用，而各自都从 `...001` 开始自增 —— RegionFlowTest seed 了 330106001、
+# ServiceAreaFlowTest 用 002/003，这个类第一次调 `street()` 也生成 330106001，
+# 于是撞唯一键 `uk_sys_region_code`。基数抬到 330106500 并把「这一段归谁」写进注释。
+# 有意思的是那个类自己的注释写着「用自增而不是 nanoTime 取模，撞了报 DuplicateKey
+# 看着像业务问题」—— 它防住了类内撞号，没防住类与类之间。
+#
+# **② PushNotifyFlowTest：设备绑定不还原。** 六个用例共用商家 M0001，各自绑一台
+# 设备而**没有解绑接口**（端上没这个动作，后端也就没做）。订单推送是发给这家店的
+# **所有**已绑设备，于是「这家店没绑过设备」那条用例会收到前面用例留下的那台。
+# 加 `@BeforeEach clearPushTokens()`，与同文件已有的 drainOutbox / healSeeds 同一种做法。
+#
+# 这两条与上一轮的 EstateCache 是同一类：**单独跑绿、全量红，而报错指向的东西
+# 与真因毫不相干**（一个报 RegionMapper.insert 坏了，一个报推送路由错了）。
+# 到此这一类清了 3 组共 6 条 —— 每次的线索都是「先单独跑一遍看它是不是真的坏」。
+#
 # ⚠️ **别用正则批量插**：这些辅助方法的下单语句跨多行、`.header(...)` 有的同行
 # 有的换行，按行号/邻近度算插入点会插进 `String skuNo = ...` 语句**中间**
 #（试过，编译不过，已回退重来）。逐个读、逐个改。
@@ -85,7 +103,6 @@ ai.neargo.shop.arch.MediaRefCoverageTest.everyImageColumnIsClaimed
 ai.neargo.shop.scenario.CategoryTreeFlowTest.passedNoticeTakesEffect
 ai.neargo.shop.scenario.CategoryTreeFlowTest.profilePhoneIsMasked
 ai.neargo.shop.scenario.CategoryTreeFlowTest.violationHasRealConsequences
-ai.neargo.shop.scenario.CommunityApplyFlowTest.merchantAddedVillageStillNeedsReview
 ai.neargo.shop.scenario.M1UserFlowTest.otpCannotBeReplayed
 ai.neargo.shop.scenario.M2CatalogFlowTest.visitedMerchants
 ai.neargo.shop.scenario.M9aOpsFlowTest.approvedMerchantIsVisibleToBuyers
@@ -94,5 +111,4 @@ ai.neargo.shop.scenario.OpsPermConfigFlowTest.superAdminHasEveryPoint
 ai.neargo.shop.scenario.OpsPlatformConfigFlowTest.featureFlagRollout
 ai.neargo.shop.scenario.OrderReceiverRequiredTest.pickupWithoutAddressStillWorks
 ai.neargo.shop.scenario.Phase1MasterDataTest.packagedFoodNeedsItsOwnAuthorization
-ai.neargo.shop.scenario.PushNotifyFlowTest.noDeviceIsNotAnError
 ai.neargo.shop.scenario.S3AdmissionRealPathTest.dailyCapCountsAcrossBuyers

@@ -42,12 +42,27 @@ class CommunityApplyFlowTest {
      * 不造这一条的话所有「通过」路径都会撞 NOT_FOUND，
      * 而报错看起来像校验坏了，其实是测试数据缺了。
      */
-    /** 用自增而不是 nanoTime 取模：同一次运行里造几条就可能撞号，撞了报的是 DuplicateKey，看着像业务问题 */
+    /**
+     * 用自增而不是 nanoTime 取模：同一次运行里造几条就可能撞号，撞了报的是 DuplicateKey，
+     * 看着像业务问题。
+     *
+     * <p><b>基数从 330106000 抬到 330106500</b>：`330106` 这个区划号段被**五个测试类**
+     * 共用，而各自都从 `...001` 开始自增 —— `RegionFlowTest` seed 了 330106001、
+     * `ServiceAreaFlowTest` 用 330106002/003，这个类第一次调 `street()` 正好也生成
+     * 330106001，于是全量跑时撞唯一键 `uk_sys_region_code`。
+     *
+     * <p>症状是**单独跑绿、全量红**，而报错是 MyBatis 的
+     * `JdbcSQLIntegrityConstraintViolationException`，指向 RegionMapper.insert ——
+     * 看起来像区划写入坏了，与「谁先 seed 了同一个码」毫无关联。
+     * 500 这一段留出足够余量，也把「这一段归谁」写在了代码里。
+     */
+    private static final int CODE_BASE = 330106500;
+
     private static final java.util.concurrent.atomic.AtomicInteger SEQ =
             new java.util.concurrent.atomic.AtomicInteger();
 
     private String street() {
-        String code = String.valueOf(330106000 + SEQ.incrementAndGet());
+        String code = String.valueOf(CODE_BASE + SEQ.incrementAndGet());
         var r = new ai.neargo.shop.platform.entity.SysRegion();
         r.setRegionCode(code);
         r.setParentCode("330106");

@@ -67,6 +67,25 @@ class PushNotifyFlowTest {
     @Autowired
     private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
 
+    /**
+     * **每个用例开跑前清空推送令牌表。**
+     *
+     * <p>这个文件里六个用例共用商家 `M0001`，各自用不同手机号登录、各自绑一台设备，
+     * 而**没有解绑接口**（端上没有这个动作，所以后端也没做）。订单推送是发给
+     * **这家店的所有已绑设备**的，于是 `noDeviceIsNotAnError`（它的前提是「这家店
+     * 没绑过设备」）会收到前面用例留下的那台 —— 断言 `pushStub.sent()` 为空，
+     * 实际拿到 `Sent[clientId=cid-pick-verify-01, ...]`。
+     *
+     * <p>症状是**单独跑绿、全量红**，而且红的是哪一条取决于用例执行顺序 ——
+     * 报错说「期望空却有一条推送」，看着像推送路由错了，与「谁先绑了设备」毫无关联。
+     *
+     * <p>清表而不是逐个解绑：这张表在测试里本来就只有这些用例在写。
+     */
+    @BeforeEach
+    void clearPushTokens() {
+        tokenMapper.delete(Wrappers.<MsgPushToken>lambdaQuery().isNotNull(MsgPushToken::getId));
+    }
+
     @BeforeEach
     void drainOutbox() {
         for (int i = 0; i < 50 && dispatcher.pendingCount() > 0; i++) {
