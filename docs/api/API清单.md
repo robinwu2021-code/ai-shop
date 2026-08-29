@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 626 个接口**：后端已实现 511（82%）· 前端在调 564
+**合计 628 个接口**：后端已实现 513（82%）· 前端在调 566
 
 ---
 
@@ -689,7 +689,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **344** 个接口 ｜ 后端已实现 **262**（76%）｜ 前端在调 **282**
+共 **346** 个接口 ｜ 后端已实现 **264**（76%）｜ 前端在调 **284**
 
 ### aftersale（4）
 
@@ -761,10 +761,12 @@
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 
-### finance（27）
+### finance（29）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/finance/invoice-title` | 平台开票抬头 | — | `InvoiceTitle` | — | ✅ | ✅ |
+| POST | `/ops/finance/invoice-title` | 公司全称与税号必填 —— 缺了供应商开不出票，存下去只会让人以为已经配好了 | — | `InvoiceTitle` | — | ✅ | ✅ |
 | GET | `/ops/finance/invoices` | listInvoiceRequests | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/finance/invoices/{invoiceNo}/issue` | 开票 | — | `InvoiceRequest` | — | ✅ | ✅ |
 | POST | `/ops/finance/invoices/{invoiceNo}/reject` | rejectInvoice | — | `InvoiceRequest` | — | ✅ | ✅ |

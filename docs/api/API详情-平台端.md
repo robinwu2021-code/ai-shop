@@ -1243,6 +1243,48 @@ getDashboardTrend
 
 ### finance
 
+#### GET `/ops/finance/invoice-title`
+
+平台开票抬头
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`InvoiceTitle`](#invoicetitle)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `companyName` | `string` | 是 | 公司全称。**必填** |
+| `taxNo` | `string` | 是 | 纳税人识别号。**必填** |
+| `address` | `string` | 是 | 注册地址 |
+| `phone` | `string` | 是 | 注册电话 |
+| `bankAccount` | `string` | 是 | 开户行与账号 |
+
+
+#### POST `/ops/finance/invoice-title`
+
+公司全称与税号必填 —— 缺了供应商开不出票，存下去只会让人以为已经配好了
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`InvoiceTitle`](#invoicetitle)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `companyName` | `string` | 是 | 公司全称。**必填** |
+| `taxNo` | `string` | 是 | 纳税人识别号。**必填** |
+| `address` | `string` | 是 | 注册地址 |
+| `phone` | `string` | 是 | 注册电话 |
+| `bankAccount` | `string` | 是 | 开户行与账号 |
+
+
 #### GET `/ops/finance/invoices`
 
 listInvoiceRequests
@@ -8958,6 +9000,18 @@ KPI 卡（金额为最小货币单位整数）。
 | `decidedAt` | `string,null` | 否 | 处理时间。未处理为 null |
 | `remark` | `string,null` | 否 | 驳回原因。原样回商家 B 端 |
 
+### InvoiceTitle
+
+平台开票抬头（P0-11）。**供应商照着它给平台开票** —— 缺公司全称或税号，票就开不出来。 <p>五个字段都是字符串，后端存成一条扁平 JSON 配置（`finance.invoice-title`）； **默认值是五项全空而不是编一份假的** —— 空着能让人立刻发现「还没配」。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `companyName` | `string` | 是 | 公司全称。**必填** |
+| `taxNo` | `string` | 是 | 纳税人识别号。**必填** |
+| `address` | `string` | 是 | 注册地址 |
+| `phone` | `string` | 是 | 注册电话 |
+| `bankAccount` | `string` | 是 | 开户行与账号 |
+
 ### JobLogRow
 
 执行日志一行。
@@ -10270,8 +10324,6 @@ KPI 卡（金额为最小货币单位整数）。
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 
 ### TaxRule
-
-个税代扣规则（P-12.2.3）。 只对**个人主体**商家生效：个体户与企业自行申报，平台不代扣。 起征点以下不扣 —— 不设起征点会给每一笔几块钱的提现都产生一条扣税记录。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
