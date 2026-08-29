@@ -38,8 +38,24 @@ const camel = (s: string) =>
  * 删不掉说明还没做完。
  */
 const NO_ENTITY_YET: Record<string, string> = {
-  // 目前没有欠账 —— ful_batch 已在「按业务模块整理实体」时补齐（FulBatch）。
   // 新表如果一时来不及配实体，登记在这里并写清何时补，别让守卫红着过夜。
+  // （ful_batch 已在「按业务模块整理实体」时补齐 FulBatch。）
+  /*
+   * 裂变邀请台账。**这是真欠账，而且欠的不是一个实体，是整条链路。**
+   *
+   * <p>V121 建了表，`FissionService` 的注释也写着「发奖与新客判定挂在台账
+   * mkt_fission_invite 上，由 C 端注册/首单链路触发」—— 而**没有任何代码碰过它**。
+   *
+   * <p>连带的后果在运营端看得见：`MktFissionCampaign.invitedCount /
+   * convertedCount` 的注释说自己是「台账的聚合快照」，实际只在
+   * `FissionServiceImpl` 新建活动时 `set(0)`，**再没有一处递增**。
+   * 而 ops-web 的「邀请有礼」列表就渲染这两列 —— 运营看到的两个 0
+   * 不是「还没人参加」，是永远不会变。
+   *
+   * <p>补实体之前要先定「谁写台账」：C 端注册链路还是首单链路，
+   * 以及幂等键 uk_fission_invitee 怎么用。那是功能，不是补一个类。
+   */
+  mkt_fission_invite: "裂变邀请台账：表建了、写入链路从没建过，见上面注释；补实体前先定写入方",
 };
 
 /** 收集 backend 下所有 `@TableName("xxx")` 的实体，键是表名 */
@@ -120,7 +136,18 @@ describe("Java 实体与库表对齐", () => {
     // shedlock 进这里而不是 NO_ENTITY_YET：**它不是欠账，是框架自管表**。
     // 表结构由 ShedLock 硬编码（列名不能改），读写全在 JdbcTemplateLockProvider 内部，
     // 配一个实体反而会让人以为可以用它读锁状态 —— 而那样读到的是不带锁语义的快照。
-    const IGNORE = /^(flyway_schema_history|sys_idempotent|sys_outbox|shedlock)$/;
+    /*
+     * 会话与登录日志六张进这里而不是 NO_ENTITY_YET：**它们不是欠账，是有意不配实体**。
+     *
+     * <p>读写全在 `shop-auth-store` 的 SessionDao / LoginLogDao 里，用 `JdbcClient`
+     * 原生 SQL（按 token_hash 单点查、按 user_no 取登录史、GC 的 DELETE）。
+     * 配一个 MyBatis 实体的害处是实在的：数据域是 MyBatis-Plus 的拦截器，
+     * 有了实体这些表就会被它看见 —— 而它们恰恰不该被按业务归属过滤
+     * （撤销轮询与失败登录流按用途就是跨用户的）。
+     * 同 shedlock 那条：配实体反而会让人以为可以那样用它。
+     */
+    const IGNORE = new RegExp("^(flyway_schema_history|sys_idempotent|sys_outbox|shedlock"
+      + "|(usr|mch|ops)_(session|login_log))$");
     const naked = [...schema.keys()]
       .filter((t) => !IGNORE.test(t) && !entities.has(t) && !(t in NO_ENTITY_YET));
     expect(

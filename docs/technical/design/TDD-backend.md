@@ -22,7 +22,7 @@
 | 8 | 一期规模小（单城市、几百商家） | 业务现状 | **模块化单体起步**，不上微服务；但模块边界按可裂解画 |
 
 > ⚠️ 第 8 条是本架构最重要的取舍：**现在不拆微服务，但边界现在就要画对**。
-> powerbank 的做法（[ADR-017 单体与微服务双形态](../../../../powerbank/docs/technical/ADR/ADR-017-单体与微服务双形态部署.md)）是同一份 `svc-*` jar，
+> powerbank 的做法（见该仓库 `docs/technical/ADR/ADR-017-单体与微服务双形态部署.md`）是同一份 `svc-*` jar，
 > 单体启动模块依赖全部、微服务启动模块只依赖一个 —— 拆分是**改依赖列表**，不是重构代码。ai-shop 沿用。
 
 ---
@@ -449,8 +449,8 @@ CAS 更新 ful_pickup_task（乐观锁）→ 子单 COMPLETED
 - **参考工程 `powerbank/backend`**（技术栈与架构的直接来源，实施时对照抄）：
   - 模块骨架与依赖：`backend/pom.xml` · `backend/sharehub-app/pom.xml`（依赖清单与四个坑的注释）
   - 运行配置：`backend/sharehub-app/src/main/resources/application.yml`（autoconfigure exclude / Flyway / MP 配置）
-  - 分层口径：[后端三层架构梳理](../../../../powerbank/docs/technical/后端三层架构梳理.md) · [TDD-backend-layered-design](../../../../powerbank/docs/technical/TDD-backend-layered-design.md) · [代码结构](../../../../powerbank/docs/technical/代码结构.md)
-  - 决策：[ADR-017 单体与微服务双形态](../../../../powerbank/docs/technical/ADR/ADR-017-单体与微服务双形态部署.md) · [ADR-006 复用 neargo 基础框架](../../../../powerbank/docs/technical/ADR/ADR-006-复用neargo基础框架与依赖方式.md) · [ADR-015 权限模块化](../../../../powerbank/docs/technical/ADR/ADR-015-权限模块化与打包方式.md)
+  - 分层口径：`后端三层架构梳理`（powerbank 仓库 `docs/technical/后端三层架构梳理.md`） · `TDD-backend-layered-design`（powerbank 仓库 `docs/technical/TDD-backend-layered-design.md`） · `代码结构`（powerbank 仓库 `docs/technical/代码结构.md`）
+  - 决策：`ADR-017 单体与微服务双形态`（powerbank 仓库 `docs/technical/ADR/ADR-017-单体与微服务双形态部署.md`） · `ADR-006 复用 neargo 基础框架`（powerbank 仓库 `docs/technical/ADR/ADR-006-复用neargo基础框架与依赖方式.md`） · `ADR-015 权限模块化`（powerbank 仓库 `docs/technical/ADR/ADR-015-权限模块化与打包方式.md`）
   - 横切实现：`sharehub-common/auth/**`（双池 filter/context/TokenStore）· `common/event/**`（Outbox）· `common/crud/**`
 
 ---
