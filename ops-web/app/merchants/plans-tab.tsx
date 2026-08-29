@@ -231,7 +231,7 @@ function PlanDrawer({ c, row, defs, canGrant, onSaved }: {
           <div className="space-y-3">
             <FilterSelect
               aria-label={c.plGrantPlan} value={planCode} allLabel={c.plGrantPlan}
-              options={defs.filter((d) => d.enabled).map((d) => ({ value: d.planCode, label: `${d.name}（${d.storeQuota} 店）` }))}
+              options={defs.filter((d) => d.enabled).map((d) => ({ value: d.planCode, label: c.plDefOption.replace("{name}", d.name).replace("{quota}", String(d.storeQuota)) }))}
               onChange={setPlanCode}
             />
             <Input

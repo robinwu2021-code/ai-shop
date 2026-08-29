@@ -376,6 +376,9 @@ const zh = {
   plSourcePlan: "档位快照",
   plSourceOverride: "单独覆盖",
   plSourceConfig: "配置兜底",
+  // 套餐下拉的选项文案。「店」这个量词以前是硬编码在 plans-tab.tsx 里的 ——
+  // 页面切 EN 之后名字和数字是英文、量词还是中文。
+  plDefOption: "{name}（{quota} 店）",
   plQuotaFull: "额度已满",
   plExpireNone: "长期",
   plDowngradedAt: "降级于",
@@ -797,6 +800,7 @@ const en: typeof zh = {
   plSourcePlan: "Tier snapshot",
   plSourceOverride: "Per-merchant override",
   plSourceConfig: "Config fallback",
+  plDefOption: "{name} ({quota} stores)",
   plQuotaFull: "Quota full",
   plExpireNone: "No expiry",
   plDowngradedAt: "Downgraded at",

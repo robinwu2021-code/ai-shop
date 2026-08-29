@@ -26,6 +26,36 @@ const RADIUS_EXEMPT: string[] = [];
 
 const rel = (f: string) => f.slice(ROOT.length).replace(/^\/+/, "");
 
+/**
+ * 注释所在的行号集合（0 基）。
+ *
+ * <p>此前是**逐行**判断：`/^\s*(\/\/|\*|\/\*)/` 或 `l.includes("{/*")` ——
+ * 只认得块注释的**第一行**。多行 `{/* … *\/}` 里从第二行起既不以 `//` 开头、
+ * 也不含 `{/*`，于是被当成 JSX 文案扫了进来。
+ *
+ * <p>后果是这道闸报的是**假阳性**，而它的理由写着「页面不渲染 markdown，
+ * 会原样显示」—— 注释根本不会被渲染，压根不在射程内。假阳性比漏报更伤：
+ * 下一个人会去改注释的措辞来讨好闸门，而闸门本身错着。
+ */
+function commentLines(src: string): Set<number> {
+  const out = new Set<number>();
+  let inBlock = false;
+  src.split("\n").forEach((l, i) => {
+    if (inBlock) {
+      out.add(i);
+      if (l.includes("*/")) inBlock = false;
+      return;
+    }
+    if (/^\s*\/\//.test(l)) { out.add(i); return; }
+    const start = l.indexOf("{/*") >= 0 ? l.indexOf("{/*") : l.indexOf("/*");
+    if (start >= 0) {
+      out.add(i);
+      if (l.indexOf("*/", start) < 0) inBlock = true;
+    }
+  });
+  return out;
+}
+
 describe("设计 token 守卫", () => {
   it("components/ 不使用废弃的圆角类", () => {
     const offenders: string[] = [];
@@ -140,10 +170,11 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
     // 实测踩过两次：Notice 里写「只列**已签收**批次」，界面上就是带星号的。
     const offenders: string[] = [];
     for (const f of pageFiles()) {
-      const lines = readFileSync(f, "utf8").split("\n");
+      const src = readFileSync(f, "utf8");
+      const comments = commentLines(src);
+      const lines = src.split("\n");
       lines.forEach((l, i) => {
-        const isComment = /^\s*(\/\/|\*|\/\*)/.test(l) || l.includes("{/*");
-        if (!isComment && /\*\*[^*]+\*\*/.test(l)) {
+        if (!comments.has(i) && /\*\*[^*]+\*\*/.test(l)) {
           offenders.push(`${f.slice(ROOT.length).replace(/^\/+/, "")}:${i + 1}`);
         }
       });

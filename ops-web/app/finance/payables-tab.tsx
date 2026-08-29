@@ -44,7 +44,7 @@ export function PayablesTab({ c, canEdit, canPay }: {
 
   const confirm = useMutation({ mutationFn: api.confirmPayable, onSuccess: refresh });
   const noInvoice = useMutation({
-    mutationFn: (no: string) => api.markNoInvoice(no, "无票供应商"),
+    mutationFn: (no: string) => api.markNoInvoice(no, c.pyNoInvoiceReason),
     onSuccess: refresh,
   });
   const pay = useMutation({

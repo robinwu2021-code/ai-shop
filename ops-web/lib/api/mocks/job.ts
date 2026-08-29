@@ -1,6 +1,7 @@
 // 定时任务（P-17.1）的内存 mock。
 import type { JobLogRow, JobRow } from "@/lib/types";
 import type { JobApi } from "../contracts/job";
+import { notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
 /*
@@ -73,7 +74,9 @@ const logs: JobLogRow[] = [
 
 const find = (name: string) => {
   const row = rows.find((r) => r.jobName === name);
-  if (!row) throw new Error(`没有这个任务：${name}`);
+  // 与全站同一口径：错误提示也要跟着界面语言走 —— 页面切 EN 之后，
+  // 报错还是中文的话，用户最需要看懂的那句话恰恰看不懂
+  if (!row) notFound("任务", "Job", name);
   return row;
 };
 

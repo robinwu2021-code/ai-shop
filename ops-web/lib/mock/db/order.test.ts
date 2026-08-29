@@ -19,7 +19,11 @@ beforeEach(() => {
 describe("异常单队列（P-4.1.4）", () => {
   it("是实时算出来的视图 —— 订单一推进，它就不在队列里了", async () => {
     const before = await orderMock.listExceptionOrders({ size: 100 });
-    const stuck = before.records.find((e) => e.order.status === "SHIPPED");
+    // 状态用 FULFILLING，不是 SHIPPED —— 后者在状态模型统一那次就删掉了
+    // （它是「状态 × 履约方式」冒充状态）。下面那段注释当时改了，这一行漏了，
+    // 于是 find 永远返回 undefined，用例红在「样本里应有一条卡在配送中的单」上，
+    // 读起来像是**种子少了一条**，而种子一直是对的。
+    const stuck = before.records.find((e) => e.order.status === "FULFILLING");
     expect(stuck, "样本里应有一条卡在配送中的单").toBeTruthy();
 
     /*
@@ -78,7 +82,9 @@ describe("人工干预（P-4.1.4）", () => {
   it("留痕记下 from/to/操作人", async () => {
     await orderMock.interveneOrder({ orderNo: "SO2026080501", to: "COMPLETED", remark: "用户已取货，自提点漏扫码" });
     const log = await orderMock.listOrderInterventions("SO2026080501");
-    expect(log[0]).toMatchObject({ from: "ARRIVED", to: "COMPLETED", operator: "admin" });
+    // from 是 FULFILLING：自提的「已到点」与配送的「已发货」在库里是同一个状态，
+    // ARRIVED 只是自提这一侧的展示词，早已不是状态值
+    expect(log[0]).toMatchObject({ from: "FULFILLING", to: "COMPLETED", operator: "admin" });
   });
 });
 

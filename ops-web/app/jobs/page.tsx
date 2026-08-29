@@ -150,7 +150,7 @@ export default function JobsPage() {
         * 给它一个真实下限，整行给最小宽度，装不下就在这个容器里横滚 ——
         * 页面本身不横滚，这是仓库里宽表格一贯的做法。
         */}
-      <div className="overflow-x-auto rounded-md border">
+      <div className="overflow-x-auto rounded-card border">
        <div className="divide-y min-w-[52rem]">
         {rows.map((r) => (
           <div key={r.jobName}
@@ -159,7 +159,7 @@ export default function JobsPage() {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span aria-hidden
-                      className={`inline-block size-2 shrink-0 rounded-full ${dotClass(r)}`} />
+                      className={`inline-block size-2 shrink-0 rounded-chip ${dotClass(r)}`} />
                 <span className="truncate font-medium">{r.displayName}</span>
                 {r.missing && (
                   <Tooltip label={c.jobsMissingHint}>

@@ -148,6 +148,7 @@
 | `useEditableConfig(data, toForm)` | `lib/use-editable-config.ts` | 配置表单的 `form ?? 派生` 模式。`patch/set` **内部就是函数式更新**，写不出 stale closure |
 | `useCopy(COPY)` | `lib/use-copy.ts` | 页面正文的中英对照。文案表按页就近放 `app/xxx/copy.ts`，不塞进全站 catalog |
 | `useCan()` | `lib/use-can.ts` | 权限判定（`can` / `canModule` / `scopeOf` 的 React 侧入口） |
+| `useOpsStream(event, onData)` | `lib/use-ops-stream.ts` | 订阅服务端推送。**整页共用一条连接**（内部引用计数）—— 每个组件各开一条的话，后端看到的在线数是「打开的组件数」而不是「打开的人数」，而那个数会拿去判负载 |
 
 这四个都有守卫盯着（`lib/design-tokens.test.ts`），绕开就会红。
 
