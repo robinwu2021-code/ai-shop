@@ -115,11 +115,62 @@ if (existsSync(a4) && existsSync(caps)) {
   }
 }
 
+// ── 5. 设计 ⇄ 真实 schema ──────────────────────────────────
+// 判据取自生成物 schema-test.sql（主库全量）。它本身由 SchemaGeneratorTest 维护，
+// 所以这一类查的是「设计册说的」与「库里真有的」是否对得上，而不是两份文档互相对。
+const SCHEMA = join(ROOT, "backend/shop-app/src/test/resources/schema-test.sql");
+if (existsSync(SCHEMA)) {
+  const live = new Set(
+    [...read(SCHEMA).matchAll(/CREATE TABLE (?:IF NOT EXISTS )?`?([A-Za-z_]+)`?/gi)]
+      .map((m) => m[1].toLowerCase()),
+  );
+
+  // 规格书里标了「沿用」的表 —— 必须真在库里
+  // ⚠️ 两张清单列数不同：商品域「表|层|状态」中间隔 1 列，订单域「表|状态」隔 0 列。
+  // 反向验证连撞两次才定下 {0,1} —— 第一次写 {2}、第二次写 {1,2}，
+  // 两次订单域都整表漏检，而守卫「看起来是绿的」。这正是恒绿闸门的样子。
+  const CLAIM_ROW = (kw) => new RegExp(String.raw`\|\s*\`([a-z_]+)\`\s*\|(?:[^|\n]*\|){0,1}\s*(?:\*\*)?${kw}`, "g");
+  const REUSE_CLAIMS = [["docs/v2/15-商品订单数据表总册.md", CLAIM_ROW("沿用")]];
+  for (const [rel, re] of REUSE_CLAIMS) {
+    const f = join(ROOT, rel);
+    if (!existsSync(f)) continue;
+    for (const m of read(f).matchAll(re)) {
+      const t = m[1];
+      if (!live.has(t)) fail(f, `声称「沿用」的表 ${t} 在 schema-test.sql 里不存在（设计假设落空？表名写错？）`);
+    }
+  }
+
+  // 规格书里标了「新建」的表 —— 必须还不在库里（撞名会让迁移失败）
+  for (const [rel, re] of [["docs/v2/15-商品订单数据表总册.md", CLAIM_ROW("新建")]]) {
+    const f = join(ROOT, rel);
+    if (!existsSync(f)) continue;
+    for (const m of read(f).matchAll(re)) {
+      const t = m[1];
+      if (live.has(t)) fail(f, `标为「新建」的表 ${t} 库里已存在 —— 撞名，迁移会失败`);
+    }
+  }
+
+  // DDL 里 ALTER 的目标表必须存在（加列加到不存在的表上，迁移当场炸）
+  for (const rel of ["docs/technical/design/商品域V2-设计规格书.md",
+                     "docs/technical/design/订单域V2-设计规格书.md",
+                     "docs/v2/14-电子元器件行业规格.md"]) {
+    const f = join(ROOT, rel);
+    if (!existsSync(f)) continue;
+    for (const m of read(f).matchAll(/ALTER TABLE ([a-z_]+)/g)) {
+      const t = m[1];
+      // 本轮新建的表也可能被 ALTER（如批次改造 inv_*），只校验主库已知前缀
+      if (/^(prd|ord|cat|sell|mch|mbr|sys)_/.test(t) && !live.has(t) && !ALL_DEFINED.has(t)) {
+        fail(f, `ALTER TABLE ${t}：该表既不在库里也不在 V2 规格书 DDL 里`);
+      }
+    }
+  }
+}
+
 // ── 输出 ───────────────────────────────────────────────────
 if (errs.length) {
   console.error(`❌ V2 文档守卫：${errs.length} 处问题\n`);
   for (const e of errs) console.error("  " + e);
-  console.error("\n改文档后请同步：断链 / 表名 / 自称数字 / 能力码取值域。");
+  console.error("\n改文档后请同步：断链 / 表名 / 自称数字 / 能力码 / 设计与真实 schema 的一致性。");
   process.exit(1);
 }
-console.log(`✅ V2 文档守卫通过（${files.length} 份文档：断链 · 表名集合 · 自称数字 · 能力码）`);
+console.log(`✅ V2 文档守卫通过（${files.length} 份文档：断链 · 表名集合 · 自称数字 · 能力码 · 设计⇄真实 schema）`);
