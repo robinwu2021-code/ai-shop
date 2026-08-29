@@ -201,7 +201,7 @@ function arrow(from?: string | null, to?: string | null): string {
         <view
           class="sh-btn act--wide"
           :class="{ 'sh-btn--muted': busy || !checked || !report.willSet }"
-          @tap="confirm"
+          @tap="applyImport"
         >
           {{ $t("skuIdentity.apply", { n: report.willSet }) }}
         </view>
