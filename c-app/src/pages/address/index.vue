@@ -175,7 +175,7 @@ onLoad((q) => {
           {{ $t("address.setDefault") }}
         </text>
         <text class="txt-caption op txt-primary" @tap.stop="openEdit(a)">{{ $t("address.edit") }}</text>
-        <text class="txt-caption op op--danger txt-primary" @tap.stop="remove(a)">{{ $t("address.remove") }}</text>
+        <text class="txt-caption op is-danger" @tap.stop="remove(a)">{{ $t("address.remove") }}</text>
       </view>
     </view>
 
@@ -269,9 +269,6 @@ onLoad((q) => {
   justify-content: flex-end;
   gap: 32rpx;
   margin-top: 20rpx;
-}
-.op--danger {
-  color: var(--sh-danger);
 }
 /* 共用的 `.field__input`（88rpx 高 / md 圆角 / faint 底 / 30rpx）已经是这个形状 ——
    此前这里把它重写了一遍，而且字号写成 26rpx，比 base.css 的 30rpx 小两档。

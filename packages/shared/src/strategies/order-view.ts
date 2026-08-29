@@ -158,3 +158,20 @@ export function tabQuery(spec: OrderTabSpec): { status?: OrderStatus; fulfillmen
     ...(spec.shapes?.length ? { fulfillments: fulfillmentsOf(...spec.shapes) } : {}),
   };
 }
+
+/**
+ * 订单状态的**色调库件名**。返回的是 `@ai-shop/ui` 的全局类，页面直接绑上去。
+ *
+ * <p><b>为什么不写在页面的 scoped 样式里</b>：那样每个页面都要自己维护一份
+ * 「哪几个状态是灰的」，而 order 与 orders 两页此前正是各写了一遍。
+ * 更要命的是 scoped 选择器带 `[data-v-x]`，权重高于全局库件 ——
+ * 页面里留一条 `color`，库件那条就被压掉，而闸门看不出来。
+ *
+ * <p>三档：待付款是**要办的事**（warning）；已完成 / 已取消 / 已退款是
+ * **结束了的事**（quiet）；其余在进行中，用主色。
+ */
+export function statusTone(status: OrderStatus): string {
+  if (status === "WAIT_PAY" || status === "WAIT_OFFLINE_PAY") return "is-warning";
+  if (status === "COMPLETED" || status === "CANCELLED" || status === "REFUNDED") return "txt-quiet";
+  return "txt-primary";
+}

@@ -665,11 +665,11 @@ onMounted(async () => {
       </view>
       <view v-if="amount.discountMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.discount") }}</text>
-        <text class="txt-caption amt__v amt__v--off sh-num txt-ink">-{{ money(amount.discountMinor) }}</text>
+        <text class="txt-caption amt__v sh-num is-danger">-{{ money(amount.discountMinor) }}</text>
       </view>
       <view v-if="amount.pointsDeductMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption sh-num">{{ $t("confirm.pointsDeduct", { n: amount.pointsUsed }) }}</text>
-        <text class="txt-caption amt__v amt__v--off sh-num txt-ink">-{{ money(amount.pointsDeductMinor) }}</text>
+        <text class="txt-caption amt__v sh-num is-danger">-{{ money(amount.pointsDeductMinor) }}</text>
       </view>
       <view v-if="amount.pointsEarn" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.pointsEarn") }}</text>
@@ -813,9 +813,6 @@ onMounted(async () => {
   padding: 12rpx 0;
 }
 
-.amt__v--off {
-  color: var(--sh-danger);
-}
 
 .actionbar__total {
   display: block;

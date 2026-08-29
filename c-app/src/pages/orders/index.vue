@@ -13,6 +13,7 @@ import {
   orderView,
   tabQuery,
   type OrderTabSpec,
+  statusTone,
 } from "@shared/strategies/order-view";
 
 /**
@@ -143,7 +144,7 @@ onShow(load);
           自提说「已到自提点」、快递说「已发货」、预约说「待服务 · 明天 14:00」。
           由 orderView(状态, 履约, 信息) 决定，三端共用同一份映射。
         -->
-        <text class="txt-caption txt-bold card__status" :class="`is-${o.status}`">
+        <text class="txt-caption txt-bold card__status" :class="statusTone(o.status)">
           {{ statusText(o) }}
         </text>
       </view>
@@ -212,17 +213,10 @@ onShow(load);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 颜色交给库件（见 order 页同名说明）：scoped 权重高于全局 .is-*，
+   留在这里会把库件压掉 */
 .card__status {
-  color: var(--sh-primary-text);
   flex-shrink: 0;
-}
-.card__status.is-WAIT_PAY {
-  color: var(--sh-warning);
-}
-.card__status.is-COMPLETED,
-.card__status.is-CANCELLED,
-.card__status.is-REFUNDED {
-  color: var(--sh-sub);
 }
 .row__right {
   text-align: end;

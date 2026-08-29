@@ -723,7 +723,7 @@
       },
       "usage": {
         "b-app": 9,
-        "c-app": 19
+        "c-app": 16
       }
     },
     {
@@ -739,7 +739,7 @@
       },
       "usage": {
         "b-app": 23,
-        "c-app": 18
+        "c-app": 17
       }
     },
     {
@@ -2965,18 +2965,10 @@
         "sh-switch",
         "biz-region-picker"
       ],
-      "libClassHits": 33,
-      "localSelectors": 12,
-      "localCssLines": 44,
-      "rolled": [
-        {
-          "id": "semcolor",
-          "label": "语义色自写",
-          "lib": ".is-danger / .is-success / .is-warning",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "libClassHits": 32,
+      "localSelectors": 11,
+      "localCssLines": 41,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3252,25 +3244,10 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 124,
-      "localSelectors": 35,
-      "localCssLines": 134,
-      "rolled": [
-        {
-          "id": "semcolor",
-          "label": "语义色自写",
-          "lib": ".is-danger / .is-success / .is-warning",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-          "gap": false
-        },
-        {
-          "id": "quietover",
-          "label": "次要色自写",
-          "lib": ".txt-quiet（整段次要用 .sh-muted）",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "libClassHits": 123,
+      "localSelectors": 32,
+      "localCssLines": 122,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3282,18 +3259,10 @@
         "sh-scaffold",
         "sh-switch"
       ],
-      "libClassHits": 105,
-      "localSelectors": 29,
-      "localCssLines": 121,
-      "rolled": [
-        {
-          "id": "semcolor",
-          "label": "语义色自写",
-          "lib": ".is-danger / .is-success / .is-warning",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "libClassHits": 103,
+      "localSelectors": 28,
+      "localCssLines": 118,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3305,24 +3274,9 @@
         "sh-tabs"
       ],
       "libClassHits": 32,
-      "localSelectors": 20,
-      "localCssLines": 79,
-      "rolled": [
-        {
-          "id": "semcolor",
-          "label": "语义色自写",
-          "lib": ".is-danger / .is-success / .is-warning",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-          "gap": false
-        },
-        {
-          "id": "quietover",
-          "label": "次要色自写",
-          "lib": ".txt-quiet（整段次要用 .sh-muted）",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "localSelectors": 18,
+      "localCssLines": 70,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3428,32 +3382,7 @@
       "rolled": []
     }
   ],
-  "gaps": [
-    {
-      "id": "semcolor",
-      "label": "语义色自写",
-      "lib": ".is-danger / .is-success / .is-warning",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-      "pages": [
-        "c-app/address",
-        "c-app/order",
-        "c-app/order-confirm",
-        "c-app/orders"
-      ]
-    },
-    {
-      "id": "quietover",
-      "label": "次要色自写",
-      "lib": ".txt-quiet（整段次要用 .sh-muted）",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
-      "pages": [
-        "c-app/order",
-        "c-app/orders"
-      ]
-    }
-  ],
+  "gaps": [],
   "counts": {
     "tokens": 10,
     "blocks": 63,

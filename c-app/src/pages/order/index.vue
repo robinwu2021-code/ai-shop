@@ -2,6 +2,7 @@
 // 订单详情：码 → 状态时间线 → 商品 → 金额 → 履约信息 → 操作。
 // 码放最上面：待取货的用户打开订单，十有八九就是来看码的。
 import { computed, ref } from "vue";
+import { statusTone } from "@shared/strategies/order-view";
 import { useI18n } from "vue-i18n";
 import { onShow, onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
@@ -198,7 +199,7 @@ onShow(load);
 
     <!-- 状态 + 时间线 -->
     <view class="sh-card block">
-      <text class="txt-title status" :class="`is-${order.status}`">
+      <text class="txt-title status" :class="statusTone(order.status)">
         {{ $t(`orderStatus.${order.status}`) }}
       </text>
 
@@ -248,7 +249,7 @@ onShow(load);
       </view>
       <view v-if="order.amount.discountMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.discount") }}</text>
-        <text class="txt-caption amt__v amt__v--off sh-num txt-ink">-{{ money(order.amount.discountMinor) }}</text>
+        <text class="txt-caption amt__v sh-num is-danger">-{{ money(order.amount.discountMinor) }}</text>
       </view>
       <view v-if="order.amount.weighAdjustMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("order.weighAdjust") }}</text>
@@ -413,17 +414,11 @@ onShow(load);
 .block {
   margin-top: 20rpx;
 }
+/* 只留版面。**颜色交给库件**（.txt-primary / .is-warning / .txt-quiet，
+   由 statusTone 给）—— 页内 scoped 选择器带 [data-v-x]，权重比全局库件高，
+   这里留一条 color 就会把库件那条压掉，而闸门看不出来。 */
 .status {
   display: block;
-  color: var(--sh-primary-text);
-}
-.status.is-WAIT_PAY {
-  color: var(--sh-warning);
-}
-.status.is-COMPLETED,
-.status.is-CANCELLED,
-.status.is-REFUNDED {
-  color: var(--sh-sub);
 }
 .timeline {
   margin-top: 28rpx;
@@ -474,9 +469,6 @@ onShow(load);
   margin-top: 12rpx;
 }
 
-.amt__v--off {
-  color: var(--sh-danger);
-}
 
 .fact {
   gap: 32rpx;
