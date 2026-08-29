@@ -61,52 +61,26 @@ Java 单继承给不了，只能多层继承（组合爆炸）、接口默认方
 
 ## 2.2 于是模型是「一条浅继承线 + 若干组合件」
 
-```mermaid
-classDiagram
-  class Product {
-    <<abstract>>
-    +GoodsNo goodsNo
-    +CategoryNo categoryNo
-    +Title title
-    +SpecMatrix specs
-    +Attributes attributes
-    +FulfillmentPolicy fulfillment
-    +ModifierAttachment modifiers
-    +AvailabilityPolicy availability
-    +BundleDefinition bundle
-    +type() ProductType
-    +validate()
-  }
-  class StandardProduct
-  class FreshProduct {
-    +CatchWeight catchWeight
-    +Cutoff cutoff
-    +Origin origin
-  }
-  class ServiceProduct {
-    +LeadTime leadTime
-    +ResourceRequirement resource
-    +Caution caution
-  }
-  class VirtualProduct
-  class CardProduct
-  Product <|-- StandardProduct
-  Product <|-- FreshProduct
-  Product <|-- ServiceProduct
-  Product <|-- VirtualProduct
-  Product <|-- CardProduct
+> 用表格而非类图：mermaid 写错一个字符整张图静默不渲染（有闸）；
+> 而「一条浅继承线 + 若干组合件」本身就是两张表能说清的结构 —— 图反而把两者画成了同一种线。
 
-  class StoreListing {
-    +StoreNo storeNo
-    +GoodsNo goodsNo
-    +ListingStatus status
-    +PricingPolicy pricing
-    +SupplyPolicy supply
-    +ProductionPolicy production
-    +DisplayPlacement placement
-  }
-  Product "1" -- "0..*" StoreListing : 门店维度
-```
+**继承线（is-a，只允许一层）**
+
+| 类 | 判别值 | 独有字段 | 谁在用 |
+|---|---|---|---|
+| `Product`（abstract） | —— | `goodsNo` `categoryNo` `title` + 下方全部组合件 + `type()` `validate()` | 基类 |
+| `StandardProduct` | `NORMAL` | 无 | 零售日用品、**餐饮绝大多数菜品** |
+| `FreshProduct` | `FRESH` | `CatchWeight` · `Cutoff` · `Origin` | 零售生鲜、餐饮海鲜按斤 |
+| `ServiceProduct` | `SERVICE` | `LeadTime` · `ResourceRequirement` · `Caution` | 美业项目、家政维修 |
+| `VirtualProduct` | `VIRTUAL` | 无 | 线上服务 |
+| `CardProduct` | `CARD` | 无（卡定义在 Trait 表） | 储值卡、次卡 |
+
+**组合件（has-a，挂在基类上）**：`SpecMatrix` · `Attributes` · `FulfillmentPolicy` ·
+`ModifierAttachment` · `AvailabilityPolicy` · `BundleDefinition`。
+
+**另一个聚合**：`StoreListing`（`storeNo` + `goodsNo` + `ListingStatus` + `PricingPolicy` ·
+`SupplyPolicy` · `ProductionPolicy` · `DisplayPlacement`），与 `Product` 是 1─N（门店维度）——
+**分开的理由**：改价改库存每天几十次、改商品几周一次，合成一个聚合会让改价去抢商品那一行的锁。
 
 **`FreshProduct` 与 `ServiceProduct` 各自只多两三个字段，其余全在基类。**
 继承线只有一层，这是有意的 —— 深继承是下一个坑。

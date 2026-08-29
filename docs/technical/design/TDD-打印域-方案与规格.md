@@ -148,16 +148,17 @@ CREATE TABLE prn_job (
         printer 心跳超时 → 离线告警；critical 场景积压 N 分钟 → 升级告警
 ```
 
-```mermaid
-stateDiagram-v2
-  direction LR
-  PENDING --> SENT : vendor 受理
-  PENDING --> CANCELLED : 业务逆向撤未打（§十）
-  SENT --> DONE : 回执/回查确认
-  SENT --> FAILED : 回查判失败
-  PENDING --> FAILED : 重试超限
-  FAILED --> [*] : 终态·可补打（新任务 reprint_of）
-```
+> 用表格而非状态机图：本仓库为 mermaid 丢过图（写错一个字符整张图静默不渲染、不报错，`doc-standard.test.ts` 有闸）；
+> 且状态迁移表与代码里的 `Map<状态, Set<可达状态>>` 同形，逐行可核。
+
+| 从 | 可迁移到 | 触发 |
+|---|---|---|
+| `PENDING` | `SENT` · `CANCELLED` · `FAILED` | vendor 受理 / **业务逆向撤未打**（§十）/ 重试超限 |
+| `SENT` | `DONE` · `FAILED` | 回执或巡检回查确认 / 回查判失败 |
+| `FAILED` | —— | 终态，**可见可补打**（新任务 `reprint_of` 指向它） |
+| `DONE` | —— | 终态 |
+
+**无悬挂终局**（P8）：`SENT` 必被巡检 Job 按 `vendor_msg_id` 回查收敛 —— 宁可补打带标，不可悬空。
 
 ## 八 · 容错矩阵
 

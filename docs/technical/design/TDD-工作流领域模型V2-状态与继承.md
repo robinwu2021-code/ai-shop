@@ -50,14 +50,16 @@ V2 状态总清单 → 基础工作流抽象（Engagement）→ 行业工作流�
 
 ## 2.2 相位机（final，子类不可改）
 
-```mermaid
-stateDiagram-v2
-  direction LR
-  OPEN --> SETTLING : beginSettle（此后拒挂新单）
-  SETTLING --> OPEN : cancelSettle
-  SETTLING --> CLOSED : close（足额或全付）
-  OPEN --> VOIDED : void（仅限无已付订单）
-```
+> 用表格而非状态机图：本仓库为 mermaid 丢过图（写错一个字符整张图静默不渲染、不报错，`doc-standard.test.ts` 有闸）；
+> 且状态迁移表与代码里的 `Map<状态, Set<可达状态>>` 同形，逐行可核。
+
+| 从 | 可迁移到 | 守卫 |
+|---|---|---|
+| `OPEN` | `SETTLING` · `VOIDED` | 发起结算（**此后拒挂新单**）/ 作废（**仅限无已付订单**） |
+| `SETTLING` | `OPEN` · `CLOSED` | 取消结算退回 / 结清（**需收款足额或全部订单已付**） |
+| `CLOSED` `VOIDED` | —— | 终态 |
+
+**相位机与骨架方法 `final`** —— 子类不能加相位、不能加边、不能改守卫（受限继承三规之一）。
 
 ## 2.3 领域类（放 `shop-industry-spi`，零依赖 —— 行业包要继承它）
 
