@@ -5,7 +5,7 @@ import java.util.List;
 /** 社区与自提点治理（P-2.1 / P-2.2）。 */
 public interface CommunityAdminService {
 
-    List<CommunityVO> communities(String keyword, boolean showClosed);
+    List<CommunityVO> communities(String keyword, boolean showClosed, boolean showArchived);
 
     /**
      * 开城开关（P-2.1.2）。

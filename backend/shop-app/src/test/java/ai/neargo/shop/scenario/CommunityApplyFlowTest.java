@@ -169,7 +169,7 @@ class CommunityApplyFlowTest {
                 .doesNotContain(b.communityNo());
 
         // 名字要留下来，否则下一次地图联想拿「另一个名字苑」来查重又会建出一条
-        assertThat(adminService.communities(null, true).stream()
+        assertThat(adminService.communities(null, true, true).stream()
                 .filter(c -> c.communityNo().equals(a.communityNo())).findFirst().orElseThrow().name())
                 .isEqualTo("合并测试花园");
     }

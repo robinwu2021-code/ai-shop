@@ -378,10 +378,20 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
     }
 
     @Override
-    public List<CommunityVO> communities(String keyword, boolean showClosed) {
+    public List<CommunityVO> communities(String keyword, boolean showClosed, boolean showArchived) {
         var w = Wrappers.<CmtCommunity>lambdaQuery();
         if (!showClosed) {
             w.eq(CmtCommunity::getStatus, OPEN);
+        }
+        /*
+         * 归档的默认不出现，`showArchived=true` 才看得到 —— 与 /ops/coupons、
+         * /ops/categories 同一口径。
+         *
+         * <p>**这个开关不是可选项**：归档一旦真的生效，没有它运营就再也找不回
+         * 被归档的社区（列表看不到 → 点不了恢复）。那比「归档不生效」更糟。
+         */
+        if (!showArchived) {
+            w.isNull(CmtCommunity::getArchivedAt);
         }
         if (keyword != null && !keyword.isBlank()) {
             w.and(x -> x.like(CmtCommunity::getName, keyword)

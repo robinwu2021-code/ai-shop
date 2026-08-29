@@ -82,6 +82,8 @@ public class CommunityServiceImpl implements CommunityService {
          */
         Set<String> hit = communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
                         .eq(CmtCommunity::getStatus, "OPEN")
+                        // 归档的不进发现型列表（与自提点同一条规矩）
+                        .isNull(CmtCommunity::getArchivedAt)
                         .likeRight(CmtCommunity::getRegionCode, regionCode))
                 .stream().map(CmtCommunity::getCommunityNo).collect(Collectors.toSet());
         return list.stream().filter(v -> hit.contains(v.communityNo())).toList();
@@ -96,6 +98,7 @@ public class CommunityServiceImpl implements CommunityService {
     public List<RegionOptionVO> openRegions() {
         List<CmtCommunity> open = communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
                 .eq(CmtCommunity::getStatus, "OPEN")
+                .isNull(CmtCommunity::getArchivedAt)
                 .isNotNull(CmtCommunity::getRegionCode));
 
         // 区县码 → 社区数
@@ -141,7 +144,8 @@ public class CommunityServiceImpl implements CommunityService {
     @Override
     public List<CommunityVO> nearby(Integer latE6, Integer lngE6) {
         List<CmtCommunity> communities = communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
-                .eq(CmtCommunity::getStatus, "OPEN"));
+                .eq(CmtCommunity::getStatus, "OPEN")
+                .isNull(CmtCommunity::getArchivedAt));
         if (communities.isEmpty()) {
             return List.of();
         }

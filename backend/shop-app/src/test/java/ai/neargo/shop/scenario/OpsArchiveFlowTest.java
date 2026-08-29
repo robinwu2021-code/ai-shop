@@ -150,6 +150,42 @@ class OpsArchiveFlowTest {
                 .andExpect(jsonPath("$.code").value(0));
         mvc().perform(post("/ops/merchants/M0001/unarchive").header("Authorization", "Bearer " + ops))
                 .andExpect(jsonPath("$.code").value(0));
+
+        /*
+         * **社区这一条以前根本没跑。** 用例名写着「四个实体」，实际只有自提点与商家，
+         * 而且只断言 `code == 0` —— 那只证明端点回了成功，证明不了归档**发生了**。
+         *
+         * 社区正是那个不发生的：`cmt_community.archived_at` 建表就有，而实体一直缺
+         * 这个字段，于是没有任何一条查询过滤得了它 —— 写进去的时间戳没人读，
+         * 社区照旧出现在所有列表里。entity-alignment 守卫报的是「缺一列」，
+         * 实际缺的是整个归档语义。
+         */
+        assertThat(communityNos(ops, false)).as("前置：种子社区在默认列表里").contains("C0001");
+
+        mvc().perform(post("/ops/communities/C0001/archive").header("Authorization", "Bearer " + ops))
+                .andExpect(jsonPath("$.code").value(0));
+        assertThat(communityNos(ops, false))
+                .as("归档之后还在默认列表里 —— 那这个按钮什么也没做").doesNotContain("C0001");
+        assertThat(communityNos(ops, true))
+                .as("showArchived=true 也找不到的话，运营就再也恢复不了它了").contains("C0001");
+
+        mvc().perform(post("/ops/communities/C0001/unarchive").header("Authorization", "Bearer " + ops))
+                .andExpect(jsonPath("$.code").value(0));
+        assertThat(communityNos(ops, false)).as("恢复之后要回到默认列表").contains("C0001");
+    }
+
+    /** 运营端社区列表里的社区号。**这是共享种子，用完必须还原**（见上面的 unarchive）。 */
+    private java.util.List<String> communityNos(String ops, boolean showArchived) throws Exception {
+        String body = mvc().perform(get("/ops/communities")
+                        .header("Authorization", "Bearer " + ops)
+                        .param("showArchived", String.valueOf(showArchived))
+                        .param("size", "200"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        var out = new java.util.ArrayList<String>();
+        json.readTree(body).get("data").get("records")
+                .forEach(n -> out.add(n.get("communityNo").asString()));
+        return out;
     }
 
     // ---------------------------------------------------------------- 装配

@@ -108,4 +108,18 @@ public class CmtCommunity extends BaseEntity {
      * 而它看起来像「还没配」—— 一个默认值就能让整个社区静默失效。
      */
     private Integer fenceRadius;
+
+    /**
+     * 归档时间。<b>软删除标记</b> —— 有值即从发现型列表消失，业务数据全保留。
+     *
+     * <p>与 {@code status} <b>正交</b>（同 {@link CmtPickupPoint#archivedAt} 那条注释）：
+     * 暂停（CLOSED）的还在运营列表里等着被恢复，归档的从列表消失。
+     *
+     * <p>⚠️ 这一列**建表时就有，实体一直缺**。后果不是「读出 null」那么轻：
+     * 归档走 ArchiveService 的原生 SQL，写得进去；而没有这个字段，
+     * <b>没有任何一条查询过滤得了它</b> —— 于是运营端那个「归档社区」按钮
+     * 只写了一个没人读的时间戳，社区照旧出现在所有列表里，且不报错。
+     * entity-alignment 守卫报的是「缺一列」，实际缺的是整个归档语义。
+     */
+    private java.time.LocalDateTime archivedAt;
 }

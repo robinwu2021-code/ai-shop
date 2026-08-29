@@ -95,10 +95,12 @@ public class OpsCommunityController {
     public ai.neargo.shop.common.PageData<CommunityAdminService.CommunityVO> communities(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "false") boolean showClosed,
+            @RequestParam(defaultValue = "false") boolean showArchived,
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size) {
         // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
-        return ai.neargo.shop.common.PageData.ofAll(adminService.communities(keyword, showClosed), page, size);
+        return ai.neargo.shop.common.PageData.ofAll(
+                adminService.communities(keyword, showClosed, showArchived), page, size);
     }
 
     // ---------------------------------------------------------------- 商家提报的新社区（ADR-013 阶段三）
@@ -354,6 +356,20 @@ public class OpsCommunityController {
         String operator = ai.neargo.shop.auth.SecurityUtils.currentUserNo();
         archiveService.unarchive(ai.neargo.shop.archive.ArchiveService.Kind.COMMUNITY,
                 communityNo, operator);
-        return java.util.Map.of("communityNo", communityNo, "archivedAt", (Object) null);
+        /*
+         * ⚠️ **不能用 `Map.of`：它不接受 null 值，会当场 NPE。**
+         *
+         * <p>这一行此前就是 `Map.of(..., "archivedAt", (Object) null)` —— 也就是说
+         * 运营端「恢复社区」按钮**一点就 10500**，而且一直如此。没人发现是因为
+         * 那条名叫「四个实体的归档都通」的用例只跑了自提点与商家两个，
+         * 社区这一支从来没被调用过（而它的 DisplayName 说的是四个）。
+         *
+         * <p>`archivedAt` 这里必须是 null —— 它表达的正是「已经不归档了」。
+         * 换成空串或 0 都是在撒谎，端上会把它渲染成一个时间。
+         */
+        java.util.Map<String, Object> out = new java.util.HashMap<>();
+        out.put("communityNo", communityNo);
+        out.put("archivedAt", null);
+        return out;
     }
 }
