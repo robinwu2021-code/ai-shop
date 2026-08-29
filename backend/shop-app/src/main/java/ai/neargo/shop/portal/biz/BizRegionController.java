@@ -88,11 +88,11 @@ public class BizRegionController {
          * 精确比对永远不相等，这正是搜「景滑村」出两条的根因（PlaceNames 类注释里写了）。
          */
         java.util.Set<String> openedNames = communities.stream()
-                .map(c -> ai.neargo.shop.platform.PlaceNames.norm(c.name()))
+                .map(c -> ai.neargo.shop.common.PlaceNames.norm(c.name()))
                 .collect(java.util.stream.Collectors.toSet());
         List<VillageHit> villages = q.isEmpty() ? List.of()
                 : regionService.searchVillages(q, 20, latE6, lngE6).stream()
-                .filter(v -> !openedNames.contains(ai.neargo.shop.platform.PlaceNames.norm(v.name())))
+                .filter(v -> !openedNames.contains(ai.neargo.shop.common.PlaceNames.norm(v.name())))
                 .map(v -> new VillageHit(v.regionCode(), v.name(),
                         v.parentCode() == null ? "" : v.parentCode(),
                         v.parentCode() == null ? "" : pathOf.apply(v.parentCode()),

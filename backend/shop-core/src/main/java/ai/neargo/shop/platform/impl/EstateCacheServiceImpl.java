@@ -229,7 +229,7 @@ public class EstateCacheServiceImpl implements EstateCacheService {
 
     /** 与端上、与 from-map 查重同一套归一：「阳光花园」「阳光花园小区」是同一个地方（见 PlaceNames） */
     private static String norm(String s) {
-        return ai.neargo.shop.platform.PlaceNames.norm(s);
+        return ai.neargo.shop.common.PlaceNames.norm(s);
     }
 
     private List<Estate> parse(String payload) {

@@ -32,6 +32,36 @@
 # 是同一笔账：`SHIPPED`/`ARRIVED` 早就不是状态常量（见 OrderStatusView 的类注释）。
 # 实测该类 11 跑 0 红。
 #
+# ── 2026-08-29 第二轮：21 → 17，两个根因各带一串 ─────────────────────────
+#
+# **① EstateCacheBackfillFlowTest 那 3 条：不是它坏，是共享内存库被跑了两遍。**
+# 它用 `@MockitoBean` 替换 GeoService，于是是**第二个 Spring 上下文**；
+# 而 testcfg 的 `jdbc:h2:mem:shop;DB_CLOSE_DELAY=-1` 是进程内共享库 ——
+# 第二个上下文起来时把 schema-test.sql 在同一个库上再跑一遍，撞 sys_industry 主键
+#（那个脚本有 1607 条不幂等的 INSERT）。**单独跑绿、全量红**，而且那次失败会拖垮
+# 之后的上下文，报错指向的类与真因毫不相干。
+# 解法照抄仓库里已有的两处（application-openapi.yml / application-opsdb.yml）：
+# 给它一套独立的内存库（application-estatecache.yml），**不走「第二个上下文跳过
+# 初始化」那条路** —— 那会让绿依赖于「它不是第一个跑的」，而测试顺序不该是
+# 正确性的一部分。这两份 yml 的注释早把这件事写清楚了，只是没人想到这个类也踩了。
+#
+# **② serviceMustBeInterface：两个类补齐「接口 + impl/」。**
+# `MerchantChannelService` / `NotifyPushTaskService` 在 message.notify 下是具体类，
+# 而同目录的 NotifyChannelService / NotifyLogService 早就是接口 + impl/ —— 补的是
+# 同一套既有约定，不是新立规矩。
+#
+# ⚠️ **`svcModulesMustNotDependOnEachOther` 这条规则会藏违规。**
+# 它遍历域对、`.check()` 遇到第一个就抛，所以清单上那「1 条」其实是**一串**：
+# 修掉 community→platform（把纯静态工具 PlaceNames 挪进 common）之后，
+# 立刻露出 trade→product（4 次）。**修一条不会让它变绿，只会让它换一个名字继续红。**
+# 要清它得一次把所有域对都看一遍，而每一对都是「该抽 Port 还是该挪位置」的设计决定。
+#
+# ⚠️ **`implsMustLiveInDedicatedPackage` 与 `implsMustLiveInImplPackage` 在
+# GeoServiceImpl 上互相打架**：前者要求 Port 实现住 `..port..`，后者要求
+# `*ServiceImpl` 住 `..impl..`，而 `GeoService extends GeoPort` 让它同时是两者。
+# 试过挪进 port/，另一条当场变红 —— 已撤回。`port/` 下现有的都叫 `*PortImpl`，
+# 所以真要解得先定「GeoService 到底是 Service 还是 Port」，那是设计决定不是搬文件。
+#
 # ⚠️ **别用正则批量插**：这些辅助方法的下单语句跨多行、`.header(...)` 有的同行
 # 有的换行，按行号/邻近度算插入点会插进 `String skuNo = ...` 语句**中间**
 #（试过，编译不过，已回退重来）。逐个读、逐个改。
@@ -50,16 +80,12 @@
 # ─────────────────────────────────────────────────────────────────────────
 
 ai.neargo.shop.arch.ArchitectureTest.implsMustLiveInDedicatedPackage
-ai.neargo.shop.arch.ArchitectureTest.serviceMustBeInterface
 ai.neargo.shop.arch.ArchitectureTest.svcModulesMustNotDependOnEachOther
 ai.neargo.shop.arch.MediaRefCoverageTest.everyImageColumnIsClaimed
 ai.neargo.shop.scenario.CategoryTreeFlowTest.passedNoticeTakesEffect
 ai.neargo.shop.scenario.CategoryTreeFlowTest.profilePhoneIsMasked
 ai.neargo.shop.scenario.CategoryTreeFlowTest.violationHasRealConsequences
 ai.neargo.shop.scenario.CommunityApplyFlowTest.merchantAddedVillageStillNeedsReview
-ai.neargo.shop.scenario.EstateCacheBackfillFlowTest.backfillsMissingCoordsOnce
-ai.neargo.shop.scenario.EstateCacheBackfillFlowTest.doesNotOverwriteExistingCoords
-ai.neargo.shop.scenario.EstateCacheBackfillFlowTest.skipsBackfillForCommunityScopedKey
 ai.neargo.shop.scenario.M1UserFlowTest.otpCannotBeReplayed
 ai.neargo.shop.scenario.M2CatalogFlowTest.visitedMerchants
 ai.neargo.shop.scenario.M9aOpsFlowTest.approvedMerchantIsVisibleToBuyers

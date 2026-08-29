@@ -353,7 +353,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
     /** 委托共享的那份（见 PlaceNames）—— 这里此前独立一份，漏了「村委会」这个后缀，
      *  搜「景滑村」出两条的同一类问题在这条查重路径上也存在过 */
     private static String normalizeName(String s) {
-        return ai.neargo.shop.platform.PlaceNames.norm(s);
+        return ai.neargo.shop.common.PlaceNames.norm(s);
     }
 
     private ApplyVO toApplyVO(ai.neargo.shop.community.entity.CmtCommunityApply a) {

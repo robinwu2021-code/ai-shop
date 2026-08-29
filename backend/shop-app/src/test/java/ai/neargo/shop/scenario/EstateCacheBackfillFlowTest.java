@@ -30,7 +30,9 @@ import static org.mockito.Mockito.when;
  * 把这条分支单独跑一遍，不跟主套件混在一起，免得改动了主套件里「测试环境没有地图能力」这条假设。
  */
 @SpringBootTest
-@ActiveProfiles("test")
+// `estatecache` 给这个类一套独立的内存库：`@MockitoBean` 让它成为**第二个 Spring
+// 上下文**，共用内存库的话 schema-test.sql 会跑第二遍并撞主键（见那份 yml 的注释）
+@ActiveProfiles({"test", "estatecache"})
 class EstateCacheBackfillFlowTest {
 
     @Autowired
