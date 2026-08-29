@@ -103,6 +103,22 @@
 # 链路上每一环单看都对，再往下要动产品逻辑排查 —— 那超出「清测试欠账」的范围，
 # 留给知道这块业务的人。**别把它当成断言过期改掉**：它守的是真实敞口。
 #
+# ── 2026-08-29 第五轮：M9aOps 那 2 条 —— CM001 被挤爆了分页 ─────────────────
+#
+# 两条都是「审核通过后商家在 C 端真的可见」，查 `communityNo=CM001`。
+# 而 **CM001 被十几个测试类共用**（BizCrossStore / BizDashboard / BizOrderFulfill /
+# BizPlan / BizRoleForbidden / CategoryTree / CampaignDiscount / CertRecognize /
+# MerchantRole / InventoryBizEndpoint / MultiEntityIdentity / OpsFulfillment …），
+# 全量跑时这个社区里的商家早就超过一页。
+#
+# 那两条**原本就有防御**：注释写着「显式给 size：默认页大小下别的用例往 CM001 里
+# 多开几家店就会把它挤出第一页 —— 而那时这条断言报的是『商家不可见』，
+# 与真正的可见性缺陷长得一模一样」，并把 size 提到 100。当时够，现在不够了。
+#
+# **提 size 是在跟别人的增长赛跑**；改成各用各的社区号（CM-M9A-VISIBLE /
+# CM-M9A-FILLED）才是把这条依赖切断。CM001 没有种子行、就是个自由字符串，
+# 换一个不花任何代价。
+#
 # ⚠️ **别用正则批量插**：这些辅助方法的下单语句跨多行、`.header(...)` 有的同行
 # 有的换行，按行号/邻近度算插入点会插进 `String skuNo = ...` 语句**中间**
 #（试过，编译不过，已回退重来）。逐个读、逐个改。
@@ -127,8 +143,6 @@ ai.neargo.shop.scenario.CategoryTreeFlowTest.passedNoticeTakesEffect
 ai.neargo.shop.scenario.CategoryTreeFlowTest.profilePhoneIsMasked
 ai.neargo.shop.scenario.CategoryTreeFlowTest.violationHasRealConsequences
 ai.neargo.shop.scenario.M2CatalogFlowTest.visitedMerchants
-ai.neargo.shop.scenario.M9aOpsFlowTest.approvedMerchantIsVisibleToBuyers
-ai.neargo.shop.scenario.M9aOpsFlowTest.opsFillsServiceScopeAtAudit
 ai.neargo.shop.scenario.OpsPermConfigFlowTest.superAdminHasEveryPoint
 ai.neargo.shop.scenario.OpsPlatformConfigFlowTest.featureFlagRollout
 ai.neargo.shop.scenario.OrderReceiverRequiredTest.pickupWithoutAddressStillWorks

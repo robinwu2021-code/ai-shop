@@ -164,7 +164,8 @@ class M9aOpsFlowTest {
     @DisplayName("★ 审核通过后商家在 C 端真的可见（不只是接口 200）")
     void approvedMerchantIsVisibleToBuyers() throws Exception {
         String user = login("12600126031");
-        String applyNo = applyMerchant(user, "李婶菜摊");
+        // 专属社区号：CM001 被十几个测试类共用，全量跑时它里面的商家早就超过一页
+        String applyNo = applyMerchant(user, "李婶菜摊", "CM-M9A-VISIBLE");
         String bd = opsLogin("bd", "bd123");
 
         mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
@@ -178,7 +179,7 @@ class M9aOpsFlowTest {
          * 显式给 size：默认页大小下，别的用例往 CM001 里多开几家店就会把它挤出第一页 ——
          * 而那时这条断言报的是「商家不可见」，与真正的可见性缺陷长得一模一样。
          */
-        mvc().perform(get("/mp/merchant").param("communityNo", "CM001").param("size", "100"))
+        mvc().perform(get("/mp/merchant").param("communityNo", "CM-M9A-VISIBLE"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.records[?(@.name=='李婶菜摊')]").exists());
     }
@@ -223,13 +224,14 @@ class M9aOpsFlowTest {
         mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
                         .header("Authorization", "Bearer " + bd)
                         .contentType(MediaType.APPLICATION_JSON)
+                        // 专属社区号，理由同上：CM001 被十几个测试类共用
                         .content("{\"approved\":true,\"serviceScope\":\"COMMUNITY\","
-                                + "\"communityNos\":[\"CM001\"]}"))
+                                + "\"communityNos\":[\"CM-M9A-FILLED\"]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0));
 
         // ★ 补上了才会出现在 C 端按社区查商家的结果里
-        mvc().perform(get("/mp/merchant").param("communityNo", "CM001").param("size", "100"))
+        mvc().perform(get("/mp/merchant").param("communityNo", "CM-M9A-FILLED"))
                 .andExpect(jsonPath("$.data.records[?(@.name=='没填范围的店')]").exists());
     }
 
@@ -953,6 +955,21 @@ class M9aOpsFlowTest {
 
 
     private String applyMerchant(String userToken, String name) throws Exception {
+        return applyMerchant(userToken, name, "CM001");
+    }
+
+    /**
+     * 带社区号的重载。
+     *
+     * <p><b>为什么需要它</b>：两条「审核通过后 C 端真的可见」的用例原来查 CM001，
+     * 而**十几个测试类都往 CM001 开店**。它们各自跑绿，全量跑时这个社区里的商家
+     * 早就超过一页 —— 断言报的是「商家不可见」，与真正的可见性缺陷长得一模一样。
+     *
+     * <p>原来的防御是把 size 提到 100（注释里写着理由），当时够用，现在不够了。
+     * 提 size 是在跟别人的增长赛跑，换成**各用各的社区号**才是把这条依赖切断。
+     * CM001 没有种子行、就是个自由字符串，所以换一个不花任何代价。
+     */
+    private String applyMerchant(String userToken, String name, String communityNo) throws Exception {
         String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + userToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         // 覆盖社区在申请时就带上：审核通过要用它配可达范围（ADR-009），
@@ -960,7 +977,7 @@ class M9aOpsFlowTest {
                         .content("{\"name\":\"" + name + "\",\"subject\":\"INDIVIDUAL_BIZ\","
                                 + "\"contactName\":\"张三\",\"contactPhone\":\"13900000000\","
                                 + "\"category\":\"生鲜\",\"desc\":\"社区生鲜店\","
-                                + "\"serviceScope\":\"COMMUNITY\",\"communityNos\":[\"CM001\"],"
+                                + "\"serviceScope\":\"COMMUNITY\",\"communityNos\":[\"" + communityNo + "\"],"
                                 + "\"licenses\":[\"https://cdn/l.jpg\"]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
