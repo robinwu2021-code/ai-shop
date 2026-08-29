@@ -1756,7 +1756,7 @@
       "name": "sh-scaffold",
       "file": "packages/ui/src/components/sh-scaffold.vue",
       "scope": "跨端",
-      "lines": 277,
+      "lines": 276,
       "props": [
         "padded?: boolean",
         "titleKey?: string",
@@ -2045,7 +2045,7 @@
       ],
       "libClassHits": 55,
       "localSelectors": 14,
-      "localCssLines": 50,
+      "localCssLines": 49,
       "rolled": []
     },
     {
@@ -3005,7 +3005,7 @@
       ],
       "libClassHits": 16,
       "localSelectors": 10,
-      "localCssLines": 50,
+      "localCssLines": 49,
       "rolled": []
     },
     {
@@ -3020,7 +3020,7 @@
       ],
       "libClassHits": 26,
       "localSelectors": 12,
-      "localCssLines": 56,
+      "localCssLines": 55,
       "rolled": []
     },
     {
@@ -3212,7 +3212,7 @@
       ],
       "libClassHits": 29,
       "localSelectors": 12,
-      "localCssLines": 57,
+      "localCssLines": 56,
       "rolled": []
     },
     {
@@ -3284,7 +3284,7 @@
       ],
       "libClassHits": 105,
       "localSelectors": 29,
-      "localCssLines": 122,
+      "localCssLines": 121,
       "rolled": [
         {
           "id": "semcolor",
@@ -3306,7 +3306,7 @@
       ],
       "libClassHits": 32,
       "localSelectors": 20,
-      "localCssLines": 80,
+      "localCssLines": 79,
       "rolled": [
         {
           "id": "semcolor",
