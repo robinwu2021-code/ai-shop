@@ -412,7 +412,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 89,
+        "b-app": 90,
         "c-app": 6
       }
     },
@@ -2061,7 +2061,7 @@
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 80,
+      "libClassHits": 81,
       "localSelectors": 25,
       "localCssLines": 79,
       "rolled": []
