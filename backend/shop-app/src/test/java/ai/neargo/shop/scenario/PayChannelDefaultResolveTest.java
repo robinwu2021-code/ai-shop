@@ -3,6 +3,7 @@ package ai.neargo.shop.scenario;
 import ai.neargo.shop.platform.entity.SysPayChannel;
 import ai.neargo.shop.platform.mapper.PlatformMappers.PayChannelMapper;
 import ai.neargo.shop.spi.platform.MasterDataPort;
+import ai.neargo.common.data.scope.DataScopeContext;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -49,11 +50,34 @@ class PayChannelDefaultResolveTest {
 
     @AfterEach
     void restoreSeeds() {
-        channelMapper.selectList(Wrappers.emptyWrapper()).forEach(r -> {
-            r.setEnabled(true);
-            r.setMarkets("[\"CN\"]");
-            channelMapper.updateById(r);
+        /*
+         * **必须 executeWithoutScope。** 这几张表带数据域，直查会被过滤器改写 ——
+         * SELECT 读出空集、UPDATE 静默 0 行，于是「还原」这一步<b>什么都没干</b>，
+         * 而它不会报错。症状是本类单独跑绿、全量跑红，且红的是 StoreSettleFlowTest
+         * 这种与支付通道毫无关系的用例（它拿不到可用通道，报 70045）。
+         */
+        DataScopeContext.executeWithoutScope(() -> {
+            channelMapper.selectList(Wrappers.emptyWrapper()).forEach(r -> {
+                r.setEnabled(true);
+                r.setMarkets("[\"CN\"]");
+                channelMapper.updateById(r);
+            });
+            return null;
         });
+        /*
+         * **还原失败要当场变红。** 不断言的话，还原悄悄没生效 → 下一个测试类
+         * 拿不到可用通道 → 报错落在一个与支付通道毫无关系的用例上
+         * （实测就是 StoreSettleFlowTest 的 70045）。
+         * 让噪音落在制造它的那个类里，别让下一个人去考古。
+         */
+        List<SysPayChannel> after = DataScopeContext.executeWithoutScope(() ->
+                channelMapper.selectList(Wrappers.emptyWrapper()));
+        assertThat(after).as("还原之后必须还看得见通道行").isNotEmpty();
+        assertThat(after).allSatisfy(r -> {
+            assertThat(r.getEnabled()).as("通道 " + r.getPayChannel() + " 没被还原成启用").isTrue();
+            assertThat(r.getMarkets()).as("通道 " + r.getPayChannel() + " 的 markets 没被还原").isEqualTo("[\"CN\"]");
+        });
+
         // 自己造的行自己收拾：留在共享库里会让别的用例莫名其妙多出一个主体
         jdbc.update("DELETE FROM mch_payment_merchant WHERE entity_no = ?", ENTITY);
         jdbc.update("DELETE FROM mch_store WHERE entity_no = ?", ENTITY);
@@ -72,8 +96,8 @@ class PayChannelDefaultResolveTest {
     }
 
     private SysPayChannel row(String channel) {
-        return channelMapper.selectOne(Wrappers.<SysPayChannel>lambdaQuery()
-                .eq(SysPayChannel::getPayChannel, channel).last("LIMIT 1"));
+        return DataScopeContext.executeWithoutScope(() -> channelMapper.selectOne(Wrappers.<SysPayChannel>lambdaQuery()
+                .eq(SysPayChannel::getPayChannel, channel).last("LIMIT 1")));
     }
 
     @Test
@@ -85,7 +109,7 @@ class PayChannelDefaultResolveTest {
 
         SysPayChannel wechat = row("WECHAT");
         wechat.setEnabled(false);
-        channelMapper.updateById(wechat);
+        DataScopeContext.executeWithoutScope(() -> channelMapper.updateById(wechat));
 
         assertThat(masterData.enabledChannels("CN"))
                 .as("停用之后它就不该再被选中 —— 此前无论如何都是 WECHAT")
@@ -97,7 +121,7 @@ class PayChannelDefaultResolveTest {
     void marketsFiltersChannels() {
         SysPayChannel alipay = row("ALIPAY");
         alipay.setMarkets("[\"AE\"]");
-        channelMapper.updateById(alipay);
+        DataScopeContext.executeWithoutScope(() -> channelMapper.updateById(alipay));
 
         assertThat(masterData.enabledChannels("CN")).containsExactly("WECHAT");
         assertThat(masterData.enabledChannels("AE")).containsExactly("ALIPAY");
@@ -111,9 +135,10 @@ class PayChannelDefaultResolveTest {
          * 那一行会原样保留 ["CN"]，于是这个用例测的是「CN 的通道在 AE 不可见」——
          * 它会通过，但通过的原因与用例名毫无关系。写这个用例时就踩了一次。
          */
-        channelMapper.update(null, Wrappers.<SysPayChannel>lambdaUpdate()
-                .eq(SysPayChannel::getPayChannel, "WECHAT")
-                .set(SysPayChannel::getMarkets, null));
+        DataScopeContext.executeWithoutScope(() -> channelMapper.update(null,
+                Wrappers.<SysPayChannel>lambdaUpdate()
+                        .eq(SysPayChannel::getPayChannel, "WECHAT")
+                        .set(SysPayChannel::getMarkets, null)));
         assertThat(row("WECHAT").getMarkets()).as("先确认真的置空了").isNull();
 
         assertThat(masterData.enabledChannels("AE")).contains("WECHAT");
@@ -122,9 +147,12 @@ class PayChannelDefaultResolveTest {
     @Test
     @DisplayName("★★★ 一个通道都没有时返回空 —— 不许兜一个默认，兜底就是把钱发到没开户的通道")
     void noChannelReturnsEmptyNotFallback() {
-        channelMapper.selectList(Wrappers.emptyWrapper()).forEach(r -> {
-            r.setEnabled(false);
-            channelMapper.updateById(r);
+        DataScopeContext.executeWithoutScope(() -> {
+            channelMapper.selectList(Wrappers.emptyWrapper()).forEach(r -> {
+                r.setEnabled(false);
+                channelMapper.updateById(r);
+            });
+            return null;
         });
 
         List<String> available = masterData.enabledChannels("CN");
@@ -136,7 +164,7 @@ class PayChannelDefaultResolveTest {
     void marketMatchIsExact() {
         SysPayChannel wechat = row("WECHAT");
         wechat.setMarkets("[\"CNY\"]");
-        channelMapper.updateById(wechat);
+        DataScopeContext.executeWithoutScope(() -> channelMapper.updateById(wechat));
 
         assertThat(masterData.enabledChannels("CN"))
                 .as("CN 不该命中 CNY").doesNotContain("WECHAT");
@@ -148,7 +176,7 @@ class PayChannelDefaultResolveTest {
         // 只留支付宝可用
         SysPayChannel wechat = row("WECHAT");
         wechat.setEnabled(false);
-        channelMapper.updateById(wechat);
+        DataScopeContext.executeWithoutScope(() -> channelMapper.updateById(wechat));
         fixture("ALIPAY");
 
         var vo = paymentService.openForStore(ENTITY, STORE, null);

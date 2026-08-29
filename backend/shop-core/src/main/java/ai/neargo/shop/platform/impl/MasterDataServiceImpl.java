@@ -129,16 +129,25 @@ public class MasterDataServiceImpl implements MasterDataService {
      * {@code markets} 是一列 JSON 数组文本。**空按全市场可用** ——
      * 基线里所有行都是空的，按「空 = 都不可用」会让通道一夜之间全部消失。
      *
-     * <p>不引 JSON 解析：这一列只可能是 {@code ["CN"]} 这种形状，
-     * 而引一个解析器意味着解析失败时要决定「算可用还是不可用」——
-     * 那个决定比这个判断本身更容易出错。用包含判断，且**两边都加引号**，
-     * 免得 {@code "CN"} 命中 {@code ["CNY"]}。
+     * <p><b>不能用「包含 &quot;CN&quot;」来判。</b>两个方言存进去的字节不一样：
+     * 迁移里写的是 {@code '[\"CN\"]'}，MariaDB 会把 {@code \"} 解成 {@code "}，
+     * 存进去是 {@code ["CN"]}；而 H2 <b>不处理这种转义</b>，存进去带着反斜杠，
+     * 是 {@code [\"CN\"]}。于是「包含 {@code "CN"}」在生产成立、在测试永远不成立 ——
+     * 症状是本地全量测试里一个与通道毫无关系的用例报「没有可用支付通道」。
+     *
+     * <p>所以按 token 比：去掉 {@code []"\ } 与空白，按逗号切开逐个 equals。
+     * 顺带也就不会出现 {@code CN} 命中 {@code CNY} 那种前缀重名。
      */
     private static boolean marketAllowed(String markets, String market) {
         if (markets == null || markets.isBlank()) {
             return true;
         }
-        return markets.contains("\"" + market + "\"");
+        for (String token : markets.replaceAll("[\\[\\]\"\\\\\\s]", "").split(",")) {
+            if (token.equals(market)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<String> enabledScopesInOrder() {
