@@ -947,6 +947,16 @@ export const mockApi: MerchantApi = {
       name: payload.name,
       subject: payload.subject,
       status: "APPLYING",
+      /*
+       * **重提要把上一次的拒因清掉。**
+       *
+       * 真后端不会有这个残留：那边 rejectReason 取自**当前那张申请单**，
+       * 而重提是新建一张单（OpsServiceImpl#createApply），新单天然没有拒因。
+       * mock 只有一个 merchant 对象，不显式清就会一直带着上次的话 ——
+       * 页面此刻看不出来（驳回卡的判据是 status === 'REJECTED'），
+       * 但任何按「rejectReason 非空 = 被拒过」判断的地方都会误判。
+       */
+      rejectReason: undefined,
     };
     persist();
     return delay({ ...db.merchant });
