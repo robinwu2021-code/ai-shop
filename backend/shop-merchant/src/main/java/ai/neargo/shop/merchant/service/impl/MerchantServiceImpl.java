@@ -66,7 +66,13 @@ public class MerchantServiceImpl implements MerchantService {
         // 认证商家优先、再按销量：新入驻的小店不会因为没销量就永远排在最后一页
         q.orderByDesc(MchEntity::getVerified).orderByDesc(MchEntity::getSalesCount);
 
-        Page<MchEntity> result = merchantMapper.selectPage(Page.of(page, size), q);
+        // 绕过数据域，理由同下面 detail/score/visited 那一段：C 端会话是 SELF 维度，
+        // 而 mch_entity 只有 MERCHANT 锚点 —— 不绕的话**登录用户的商家列表是空的**，
+        // 而游客一切正常。这一处是 2026-08-29 第二轮才补上的：第一轮只看了
+        // detail/score/visited 三个方法，漏了列表，因为 promoted() 恰好是包好的，
+        // 扫一眼「这个类里有 executeWithoutScope」就以为都覆盖了。
+        Page<MchEntity> result = DataScopeContext.executeWithoutScope(
+                () -> merchantMapper.selectPage(Page.of(page, size), q));
         Map<String, MchStore> fronts = frontsOf(result.getRecords());
         return PageData.of(result.convert(m -> toVO(m, fronts)));
     }
@@ -111,7 +117,7 @@ public class MerchantServiceImpl implements MerchantService {
      */
     @Override
     public MerchantVO detail(String merchantNo) {
-        MchEntity m = DataScopeContext.executeWithoutScope(() -> one(merchantNo));
+        MchEntity m = one(merchantNo);
         if (m == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
@@ -120,7 +126,7 @@ public class MerchantServiceImpl implements MerchantService {
 
     @Override
     public ai.neargo.shop.merchant.dto.MerchantScoreVO score(String merchantNo) {
-        MchEntity m = DataScopeContext.executeWithoutScope(() -> one(merchantNo));
+        MchEntity m = one(merchantNo);
         if (m == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
@@ -162,7 +168,7 @@ public class MerchantServiceImpl implements MerchantService {
         }
         // 绕过数据域：店主查自己天经地义，而 B 端的数据域是按 entity_no 授权的，
         // 在「刚通过审核、授权还没生效」的那一瞬会把人自己挡在外面
-        MchEntity m = DataScopeContext.executeWithoutScope(() -> one(merchantNo));
+        MchEntity m = one(merchantNo);
         return m == null ? null : ai.neargo.shop.merchant.dto.MerchantAccountVO.of(m);
     }
 
@@ -196,9 +202,18 @@ public class MerchantServiceImpl implements MerchantService {
         return s == null ? "" : s;
     }
 
+    /**
+     * 按商家号取一行。<b>绕过数据域收在这里面</b>，不靠每个调用方记得包一层。
+     *
+     * <p>靠调用方记的写法脆在哪，这一轮实测过：三个调用方都老实包了，
+     * 而同一个类里的 {@code search()} 直接用 mapper、没经过这个方法，就漏了 ——
+     * 于是「登录之后商家列表是空的」。收进来之后，漏的可能性只剩「没走这个方法」，
+     * 而那是看得见的。
+     */
     private MchEntity one(String merchantNo) {
-        return merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
-                .eq(MchEntity::getEntityNo, merchantNo).last("limit 1"));
+        return DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
     }
 
     @SuppressWarnings("unchecked")
