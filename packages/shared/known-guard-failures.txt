@@ -12,12 +12,10 @@
 # 分诊与降账计划：docs/technical/design/守卫与闸门-问题与优化方案.md
 #
 data-scope-coverage.test.ts::数据域表册覆盖 ★★★ 带归属列的表要么登记、要么写明为什么不用（棘轮：只许降不许升） @<=63
-doc-standard.test.ts::文档规范 md 引用的 md 必须存在 —— 目录重整最容易碎的就是这个，而且不报错 @<=7
 doc-standard.test.ts::文档规范 technical 下每篇文档都出现在 README 索引里 —— 不在索引里的文档等于不存在 @<=71
 doc-standard.test.ts::文档规范 不使用 mermaid —— 写错一个字符整张图不显示，而且不报错 @<=12
 doc-standard.test.ts::文档规范 每张 svg 都有 title 与 desc —— 图之外要有能读的说明 @<=4
 doc-standard.test.ts::文档规范 没有状态行的文档不许再增加（基线只降不升） @<=41
-entity-alignment.test.ts::Java 实体与库表对齐 每张业务表都有实体，或已登记为「知道欠着」 @<=18
 enum-registry.test.ts::枚举登记表 G1 · 端上每个具名枚举都必须登记（新增枚举不能绕过雷达） @<=15
 enum-registry.test.ts::枚举登记表 G2 · STATUS 型枚举的取值必须取自 L1 状态词表，或已申报 @<=11
 enum-registry.test.ts::枚举登记表 规范 §D5 · 不允许在 interface 里内联字面量联合类型 @<=11
