@@ -567,9 +567,23 @@ public final class Perms {
             Map.entry("AUDITOR", List.of(COMMUNITY_READ, CONTENT_MATERIAL_AUDIT,
                     CONTENT_MATERIAL_READ, CONTENT_MATERIAL_UPDATE, PRODUCT_SKU_AUDIT,
                     PRODUCT_SKU_READ, REVIEW_AUDIT, REVIEW_READ, REVIEW_SCORE_READ,
-                    // 审计只要那张只读视图：哪些钥匙发出去过、谁在用、哪些已吊销。
-                    // **不给 inventory:credential:grant** —— 审计不发钥匙
-                    INVENTORY_CREDENTIAL_READ,
+                    // 进销存：V261 就把三页只读授给了审核员（与超管、商品运营同一套），
+                    // V271 又给了开放对接那一页。换命名空间时这两行必须跟上 ——
+                    // **少一行，库里有而代码里没有**，而 OpsPermConfigFlowTest
+                    // 逐条比对这两侧，差一个码就红。
+                    //
+                    // **不给 inventory:credential:grant** —— 审计看得到哪些钥匙发出去过、
+                    // 谁在用、哪些已吊销（那正是密钥泄露时第一个要打开的页面），但不发钥匙。
+                    INVENTORY_STOCK_READ, INVENTORY_CREDENTIAL_READ,
+                    /*
+                     * 台账与对账两页：审核员**本来就看得到**（库里 OPS_INVENTORY /
+                     * __TAB_LEDGER / __TAB_RECON 三个点一直挂在 AUDITOR 名下）。
+                     * 立命名空间那一笔把这三个点的 perm_code 从 product:sku:read
+                     * 改成了 inventory:stock:read，而这里只补了 credential:read ——
+                     * 于是库里给了、代码里没有：**菜单照常点得进去，接口 403**。
+                     * 那笔的说明写的是「商品运营与审核员的可达面不变」，这一行才让它成立。
+                     */
+                    INVENTORY_STOCK_READ,
                     REVIEW_SCORE_UPDATE)),
 
             Map.entry("FINANCE", List.of(AFTERSALE_REFUND_APPROVE, AFTERSALE_REFUND_READ,
