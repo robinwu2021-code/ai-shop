@@ -23,6 +23,7 @@ import type {
   GrantType,
   MerchantApplyReq,
   OrderStatus,
+  GoodsParam,
   StoreProfile,
 } from "@shared/types";
 import type { GoodsDraft } from "./contract";
@@ -156,6 +157,15 @@ export interface SaveGoodsReqBody {
   detailImages?: string[];
   /** 图文详情正文（纯文本）。**空串也要发** —— 后端「不传 = 不改」，删光了不发就删不掉 */
   detail?: string;
+  /**
+   * 商品参数（产地/保质期/材质…）。**整份覆盖，空数组也要发**。
+   *
+   * <p>此前这个字段**契约里没有、http.ts 也没发** —— 而编辑页一直在收集它
+   * （`goods-edit` 里那一栏和 `paramValues` 都在）。于是商家填完保存，
+   * 参数原地消失，且不报错：后端把 `params == null` 当「不改」，
+   * 所以旧值还在、新填的进不去、想删的删不掉。
+   */
+  params?: GoodsParam[];
   /** 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 */
   specGroups: GoodsDraft["specGroups"];
   /** 支持的履约方式；不传 = 不改（新建默认四种全支持） */

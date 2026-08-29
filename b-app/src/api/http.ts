@@ -284,6 +284,9 @@ export const httpApi: MerchantApi = {
       detailImages: payload.detailImages,
       // 图文详情：空串也要发 —— 后端「不传 = 不改」，删光了不发就删不掉
       detail: payload.detail,
+      // 商品参数：同上，**空数组也要发**。漏发这一行的代价是编辑页那一栏白填 ——
+      // 商家填完保存、参数原地消失，而页面、后端、日志都不报错
+      params: payload.params,
       specGroups: payload.specGroups,
       skus: payload.skus,
       // 溯源。不传 = 自建品 / 脱离标准品（后端据此清空 std_no）
