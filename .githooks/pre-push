@@ -90,6 +90,15 @@ if ! node "$GATE_WT/scripts/check-ops-orphan.mjs" --check; then
   exit 1
 fi
 
+# 词条与代码的**双向**对账。已有的 i18n-keys-exist 只管「用了但没有」，
+# 而且只走 .vue；这条把「有了但没人用」也盯上，并且扫 .ts。
+# 2026-08-29 全站盘点时一次清出 70 条死词条（goods-edit 规格 UI 重写留下的）。
+# 死词条不报错，害处在改稿时：分不清哪条还在生效，
+# 于是「改了半天线上没变」或者「以为改全了其实漏了在用的那条」。
+if ! node "$GATE_WT/scripts/check-i18n-orphan.mjs" --check; then
+  exit 1
+fi
+
 # Controller 粒度：一个类只装一个资源（阈值 3）。判据是**路径第一段的种数**，
 # 不是端点数 —— 按端点数定阈值会逼人把一个资源硬拆成两半来达标。
 # 由来：BizMerchantController 一个类 40 端点 / 1022 行 / 九个不相干的节，
