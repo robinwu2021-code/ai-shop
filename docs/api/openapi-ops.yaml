@@ -4860,6 +4860,32 @@ components:
         - "status"
         - "appliedAt"
       additionalProperties: false
+    InvoiceTitle: 
+      type: "object"
+      properties: 
+        companyName: 
+          type: "string"
+          description: "公司全称。**必填**"
+        taxNo: 
+          type: "string"
+          description: "纳税人识别号。**必填**"
+        address: 
+          type: "string"
+          description: "注册地址"
+        phone: 
+          type: "string"
+          description: "注册电话"
+        bankAccount: 
+          type: "string"
+          description: "开户行与账号"
+      required: 
+        - "companyName"
+        - "taxNo"
+        - "address"
+        - "phone"
+        - "bankAccount"
+      additionalProperties: false
+      description: "平台开票抬头（P0-11）。**供应商照着它给平台开票** —— 缺公司全称或税号，票就开不出来。\n\n<p>五个字段都是字符串，后端存成一条扁平 JSON 配置（`finance.invoice-title`）；\n**默认值是五项全空而不是编一份假的** —— 空着能让人立刻发现「还没配」。"
     TaxRule: 
       type: "object"
       properties: 
@@ -4881,7 +4907,6 @@ components:
         - "updatedAt"
         - "updatedBy"
       additionalProperties: false
-      description: "个税代扣规则（P-12.2.3）。\n\n只对**个人主体**商家生效：个体户与企业自行申报，平台不代扣。 起征点以下不扣 —— 不设起征点会给每一笔几块钱的提现都产生一条扣税记录。"
     PurchaseInvoice: 
       type: "object"
       properties: 
@@ -9613,6 +9638,63 @@ paths:
           required: true
           schema: 
             type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/finance/invoice-title": 
+    get: 
+      operationId: "getInvoiceTitle"
+      summary: "平台开票抬头"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/InvoiceTitle"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "saveInvoiceTitle"
+      summary: "公司全称与税号必填 —— 缺了供应商开不出票，存下去只会让人以为已经配好了"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/InvoiceTitle"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
       requestBody: 
         required: true
         content: 
