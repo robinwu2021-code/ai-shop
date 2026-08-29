@@ -7,6 +7,7 @@ import ai.neargo.shop.trade.dto.OrderVO;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import ai.neargo.shop.trade.service.CartService;
 import ai.neargo.shop.trade.service.OrderService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -47,12 +48,12 @@ public class MpTradeController {
     }
 
     @PostMapping("/mp/cart/add")
-    public List<CartItemVO> cartAdd(@RequestBody CartAddReq req) {
+    public List<CartItemVO> cartAdd(@RequestBody @Valid CartAddReq req) {
         return cartService.add(req.goodsNo(), req.skuNo(), req.qty());
     }
 
     @PostMapping("/mp/cart/update")
-    public List<CartItemVO> cartUpdate(@RequestBody CartUpdateReq req) {
+    public List<CartItemVO> cartUpdate(@RequestBody @Valid CartUpdateReq req) {
         return cartService.update(req.skuNo(), req.qty());
     }
 
@@ -135,7 +136,7 @@ public class MpTradeController {
 
     /** 售后是**子单粒度**：路径上的 orderNo 就是子单号（Q6）。 */
     @PostMapping("/mp/order/{orderNo}/after-sale")
-    public AfterSaleVO applyAfterSale(@PathVariable String orderNo, @RequestBody ApplyAfterSaleReq req) {
+    public AfterSaleVO applyAfterSale(@PathVariable String orderNo, @RequestBody @Valid ApplyAfterSaleReq req) {
         return afterSaleService.apply(orderNo, new AfterSaleService.ApplyCommand(
                 req.type(), req.reason(), req.images(), req.refundMinor()));
     }
@@ -161,7 +162,7 @@ public class MpTradeController {
     }
 
     @PostMapping("/mp/after-sale/{afterSaleNo}/ship")
-    public AfterSaleVO shipBack(@PathVariable String afterSaleNo, @RequestBody ShipBackReq req) {
+    public AfterSaleVO shipBack(@PathVariable String afterSaleNo, @RequestBody @Valid ShipBackReq req) {
         return afterSaleService.shipBack(afterSaleNo, req.expressCompany(), req.expressNo());
     }
 

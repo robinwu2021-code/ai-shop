@@ -28,18 +28,22 @@
 # 那些端上此刻传的是什么** —— 尤其 MpUserController 的 LoginReq / OtpReq，
 # 那是登录链路。
 
-backend/shop-core/src/main/java/ai/neargo/shop/trade/api/biz/BizAfterSaleController.java RejectReq
-backend/shop-core/src/main/java/ai/neargo/shop/trade/api/mp/MpTradeController.java CartAddReq
-backend/shop-core/src/main/java/ai/neargo/shop/trade/api/mp/MpTradeController.java CartUpdateReq
-backend/shop-core/src/main/java/ai/neargo/shop/trade/api/mp/MpTradeController.java ApplyAfterSaleReq
-backend/shop-core/src/main/java/ai/neargo/shop/trade/api/mp/MpTradeController.java ShipBackReq
-backend/shop-core/src/main/java/ai/neargo/shop/message/api/biz/BizPushTokenController.java RegisterReq
-backend/shop-core/src/main/java/ai/neargo/shop/message/api/mp/MpMessageController.java CreateTicketReq
-backend/shop-core/src/main/java/ai/neargo/shop/message/api/mp/MpPushTokenController.java RegisterReq
-backend/shop-core/src/main/java/ai/neargo/shop/user/api/mp/MpUserController.java LoginReq
-backend/shop-core/src/main/java/ai/neargo/shop/user/api/mp/MpUserController.java OtpReq
-backend/shop-core/src/main/java/ai/neargo/shop/user/api/mp/MpUserController.java BindCommunityReq
-backend/shop-core/src/main/java/ai/neargo/shop/user/api/mp/MpUserController.java BindPhoneReq
-backend/shop-core/src/main/java/ai/neargo/shop/product/api/mp/MpReviewController.java CreateReviewReq
-backend/shop-core/src/main/java/ai/neargo/shop/marketing/api/mp/MpGroupController.java CreateRequestReq
-backend/shop-core/src/main/java/ai/neargo/shop/marketing/api/mp/MpGroupController.java ChooseReq
+# ── 2026-08-29：剩下 15 条全接上了，清单清零 ─────────────────────────────
+# 逐条核过约束：**15 条清一色 @NotBlank，没有一个 @Pattern**，所以不存在
+# 「格式变严把存量数据挡在外面」。可选字段也确实没被标（LoginReq 的 credential /
+# merchantNo / inviterNo、ShipBackReq 的 expressCompany、CreateRequestReq 的
+# description 都是裸的），所以接上之后只会拒真正的空值。
+#
+# 最可疑的 BindCommunityReq.pickupNo 去端上核过：c-app 的 bind() 里 pickup 是必传
+# 参数，syncBinding 还有 `if (!this.pickup) return` 守着，不会传空。
+# 售后 reason 同理，永远是翻译过的标签。
+#
+# 真正的判据不是读 15 个客户端，是**跑 1471 条场景测试**：哪个调用方真在传空，
+# 它会点名。结果只点了一处，而且不是「传空」——
+#
+# ★ 接上 @Valid 会让校验跑在**鉴权之前**（参数解析早于控制器方法体里取当前用户，
+#   也早于 @PreAuthorize）。于是 MpEndpointAuthTest 的空 body 探针打到 5 个
+#   要登录的端点上，拿到的是 200 + 10400 而不是 401 —— 那条「唯一的实弹判据」
+#   就此失效，**而且是最坏的失效方式：它照旧绿着**。
+#   修的是探针（给能过校验的最小 body），不是判据。判据必须踩到被测的那一层。
+

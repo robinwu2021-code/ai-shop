@@ -7,6 +7,7 @@ import ai.neargo.shop.marketing.group.dto.GroupVOs.JoinResultVO;
 import ai.neargo.shop.marketing.group.dto.GroupVOs.QuoteRevisionVO;
 import ai.neargo.shop.marketing.group.dto.GroupVOs.QuoteVO;
 import ai.neargo.shop.marketing.group.dto.GroupVOs.RequestVO;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -99,7 +100,7 @@ public class MpGroupController {
     }
 
     @PostMapping("/mp/group-request")
-    public RequestVO createRequest(@RequestBody CreateRequestReq req) {
+    public RequestVO createRequest(@RequestBody @Valid CreateRequestReq req) {
         return groupService.createRequest(new GroupService.CreateRequestCommand(
                 req.title(), req.description(), req.images(),
                 req.expectCount() == null ? 1 : req.expectCount(),
@@ -122,7 +123,7 @@ public class MpGroupController {
     }
 
     @PostMapping("/mp/group-request/{requestNo}/choose")
-    public RequestVO choose(@PathVariable String requestNo, @RequestBody ChooseReq req) {
+    public RequestVO choose(@PathVariable String requestNo, @RequestBody @Valid ChooseReq req) {
         return groupService.choose(requestNo, req.quoteNo());
     }
 

@@ -2,6 +2,7 @@ package ai.neargo.shop.product.api.mp;
 
 import ai.neargo.shop.product.review.ReviewService;
 import ai.neargo.shop.product.review.dto.ReviewVO;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,7 +33,7 @@ public class MpReviewController {
     }
 
     @PostMapping("/mp/review")
-    public ReviewVO create(@RequestBody CreateReviewReq req) {
+    public ReviewVO create(@RequestBody @Valid CreateReviewReq req) {
         return reviewService.create(new ReviewService.CreateCommand(
                 req.orderNo(), req.goodsNo(), req.rating(), req.content(), req.images(),
                 req.scores() == null ? null : new ReviewService.Scores(

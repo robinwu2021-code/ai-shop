@@ -3,6 +3,7 @@ package ai.neargo.shop.message.api.mp;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.notify.PushTokenBinder;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.context.annotation.Profile;
 import org.springframework.validation.annotation.Validated;
@@ -28,7 +29,7 @@ public class MpPushTokenController {
     }
 
     @PostMapping("/mp/push-token")
-    public void register(@RequestBody RegisterReq req) {
+    public void register(@RequestBody @Valid RegisterReq req) {
         pushTokenBinder.register(MsgMessage.RECEIVER_USER, SecurityUtils.currentUserNo(),
                 req.platform(), req.provider(), req.clientId());
     }

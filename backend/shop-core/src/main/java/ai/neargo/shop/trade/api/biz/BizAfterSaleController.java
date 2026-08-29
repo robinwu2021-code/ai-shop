@@ -5,6 +5,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.trade.dto.AfterSaleVO;
 import ai.neargo.shop.trade.service.AfterSaleService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -59,7 +60,7 @@ public class BizAfterSaleController {
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
     @PostMapping("/biz/after-sale/{afterSaleNo}/reject")
-    public AfterSaleVO reject(@PathVariable String afterSaleNo, @RequestBody RejectReq req) {
+    public AfterSaleVO reject(@PathVariable String afterSaleNo, @RequestBody @Valid RejectReq req) {
         return afterSaleService.reject(BizContext.requireMerchantNo(), afterSaleNo, req.remark());
     }
 

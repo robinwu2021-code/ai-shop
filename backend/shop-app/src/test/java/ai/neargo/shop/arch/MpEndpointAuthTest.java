@@ -249,6 +249,8 @@ class MpEndpointAuthTest {
             }
             int status = callAnonymously(ep);
             if (status != 401) {
+                // 带上 HTTP 状态就够定位了：200 基本就是「被 @Valid 挡在鉴权之前」，
+                // 那时要补的是 PROBE_BODY，不是这条判据（理由见 PROBE_BODY 的注释）
                 leaked.add(ep + " → " + status);
             }
         }
@@ -349,12 +351,34 @@ class MpEndpointAuthTest {
             default -> MockMvcRequestBuilders.get(url);
         };
         try {
-            return mvc().perform(req.contentType(MediaType.APPLICATION_JSON).content("{}"))
+            return mvc().perform(req.contentType(MediaType.APPLICATION_JSON)
+                            .content(PROBE_BODY.getOrDefault(endpoint, "{}")))
                     .andReturn().getResponse().getStatus();
         } catch (Exception e) {
             return -1;
         }
     }
+
+    /**
+     * 探针 body：**要能过 `@Valid`**，否则这条实弹判据会被校验层挡在鉴权之前。
+     *
+     * <p>接上 `@Valid` 之后（2026-08-29），`@RequestBody` 的校验发生在**参数解析**阶段 ——
+     * 早于控制器方法体里那句取当前用户，也早于 `@PreAuthorize`。于是空 body `{}`
+     * 打到这几个端点上，回的是 200 + 10400「参数有误」，而不是 401。
+     *
+     * <p>那样这条用例就废了，而且是**最坏的废法**：它照旧绿着。一个真的丢了鉴权
+     * 那一步的端点，只要 DTO 上有一个 `@NotBlank`，空 body 就永远走不到鉴权，
+     * 于是「匿名被拒了」——拒它的是校验，不是登录。**判据必须踩到被测的那一层。**
+     *
+     * <p>所以这里给能过校验的最小 body。将来谁给这些 DTO 加了新的必填字段，
+     * 这条用例会红并把 10400 打出来 —— 那时补一个字段进来，不要改判据。
+     */
+    private static final java.util.Map<String, String> PROBE_BODY = java.util.Map.of(
+            "POST /mp/push-token", "{\"platform\":\"ANDROID\",\"clientId\":\"PROBE\"}",
+            "POST /mp/ticket", "{\"subject\":\"探针\",\"content\":\"探针\"}",
+            "POST /mp/order/{orderNo}/after-sale", "{\"type\":\"REFUND\",\"reason\":\"探针\"}",
+            "POST /mp/after-sale/{afterSaleNo}/ship", "{\"expressNo\":\"PROBE1\"}",
+            "POST /mp/group-request", "{\"title\":\"探针\"}");
 
     private String probeDetail(String endpoint) {
         String[] parts = endpoint.split(" ", 2);

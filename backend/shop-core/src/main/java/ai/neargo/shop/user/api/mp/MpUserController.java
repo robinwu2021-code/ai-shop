@@ -8,6 +8,7 @@ import ai.neargo.shop.user.dto.UserVO;
 import ai.neargo.shop.user.service.AddressService;
 import ai.neargo.shop.user.service.AuthService;
 import ai.neargo.shop.user.service.UserService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -49,7 +50,7 @@ public class MpUserController {
 
     /** 登录建户。游客端点。 */
     @PostMapping("/login")
-    public AuthService.LoginResult login(@RequestBody LoginReq req) {
+    public AuthService.LoginResult login(@RequestBody @Valid LoginReq req) {
         try {
             AuthService.LoginResult r = authService.login(new AuthService.LoginCommand(
                     req.grantType(), req.principal(), req.credential(),
@@ -75,7 +76,7 @@ public class MpUserController {
 
     /** 发验证码。返回体不含验证码 —— 这条别为了联调方便破例。 */
     @PostMapping("/otp/send")
-    public void sendOtp(@RequestBody OtpReq req) {
+    public void sendOtp(@RequestBody @Valid OtpReq req) {
         authService.sendOtp(req.phone());
     }
 
@@ -85,7 +86,7 @@ public class MpUserController {
     }
 
     @PostMapping("/community")
-    public UserVO bindCommunity(@RequestBody BindCommunityReq req) {
+    public UserVO bindCommunity(@RequestBody @Valid BindCommunityReq req) {
         return userService.bindCommunity(req.communityNo(), req.pickupNo());
     }
 
@@ -112,7 +113,7 @@ public class MpUserController {
     }
 
     @PostMapping("/phone/bind")
-    public UserVO bindPhone(@RequestBody BindPhoneReq req) {
+    public UserVO bindPhone(@RequestBody @Valid BindPhoneReq req) {
         return userService.bindPhone(req.phone(), req.code());
     }
 

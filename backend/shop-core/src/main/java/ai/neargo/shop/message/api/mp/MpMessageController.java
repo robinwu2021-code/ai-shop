@@ -5,6 +5,7 @@ import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.dto.MessageVOs.FaqVO;
 import ai.neargo.shop.message.dto.MessageVOs.MessageVO;
 import ai.neargo.shop.message.dto.MessageVOs.TicketVO;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -60,7 +61,7 @@ public class MpMessageController {
     }
 
     @PostMapping("/mp/ticket")
-    public TicketVO createTicket(@RequestBody CreateTicketReq req) {
+    public TicketVO createTicket(@RequestBody @Valid CreateTicketReq req) {
         return messageService.createTicket(req.subject(), req.content(), req.orderNo());
     }
 
