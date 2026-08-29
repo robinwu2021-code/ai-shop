@@ -8,6 +8,11 @@ import org.springframework.stereotype.Component;
 /**
  * 开发期的假网关：记日志、恒成功。
  *
+ * <p><b>它刻意不继承 {@code AbstractPayGateway}。</b>那个基类的骨架是
+ * 「能力位 → 构造报文 → HTTP → 解析回执」，而这个假网关<b>根本不发 HTTP</b>，
+ * 硬套进去要先造一个假的 ChannelClient —— 那时它测的就不再是「链路通不通」，
+ * 是「我造的假客户端返回了什么」。真通道的共性归基类，假网关是另一件东西。
+ *
  * <p><b>只在 {@code shop.pay.stub=true} 时装配</b>，默认不开 ——
  * 默认装配的话，真实现没接上时线上会「支付成功」而钱根本没动，
  * 而这个失败<b>没有任何症状</b>，要到对账日才发现。

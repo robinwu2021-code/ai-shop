@@ -1,6 +1,7 @@
 package ai.neargo.shop.channel.pay;
 
-import ai.neargo.shop.channel.pay.ChannelClient.ChannelException;
+import ai.neargo.shop.channel.pay.base.AbstractPayGateway;
+import ai.neargo.shop.spi.platform.MasterDataPort;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -20,12 +21,11 @@ import java.util.Map;
 // `${ENV:}` 在未配置时是空串，而 @ConditionalOnProperty 认为「键存在」即成立 ——
 // 于是网关会带着空凭据启动，直到第一次调用才失败
 @ConditionalOnProperty(name = "shop.pay.wechat.enabled", havingValue = "true")
-public class WechatPayGateway implements PayGateway {
+public class WechatPayGateway extends AbstractPayGateway {
 
-    private final ChannelClient client;
-
-    public WechatPayGateway(@Qualifier("wechatChannelClient") ChannelClient client) {
-        this.client = client;
+    public WechatPayGateway(@Qualifier("wechatChannelClient") ChannelClient client,
+                            MasterDataPort masterData) {
+        super(client, masterData);
     }
 
     @Override
@@ -34,7 +34,7 @@ public class WechatPayGateway implements PayGateway {
     }
 
     @Override
-    public Result subsidy(TxContext ctx, long amountMinor, String requestNo, String description) {
+    protected Call buildSubsidy(TxContext ctx, long amountMinor, String requestNo, String description) {
         // 时序硬约束：**订单支付成功并结算完成后、发起分账前**。
         // 早了通道拒绝；晚了分账基数不含补贴，商家少收而账面看不出来
         Map<String, Object> body = new LinkedHashMap<>();
@@ -43,22 +43,22 @@ public class WechatPayGateway implements PayGateway {
         body.put("amount", amountMinor);
         body.put("description", trim(description, 80));
         body.put("out_subsidy_no", requestNo);
-        return call(WechatApis.SUBSIDY_CREATE, body, "subsidy_id");
+        return new Call(WechatApis.SUBSIDY_CREATE, body, "subsidy_id");
     }
 
     @Override
-    public Result subsidyReturn(TxContext ctx, long amountMinor, String requestNo, String description) {
+    protected Call buildSubsidyReturn(TxContext ctx, long amountMinor, String requestNo, String description) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("sub_mchid", ctx.subMchId());
         body.put("subsidy_id", ctx.tradeNo());
         body.put("out_order_no", requestNo);
         body.put("amount", amountMinor);
         body.put("description", trim(description, 80));
-        return call(WechatApis.SUBSIDY_RETURN, body, "refund_id");
+        return new Call(WechatApis.SUBSIDY_RETURN, body, "refund_id");
     }
 
     @Override
-    public Result split(TxContext ctx, long amountMinor, String requestNo) {
+    protected Call buildSplit(TxContext ctx, long amountMinor, String requestNo) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("sub_mchid", ctx.subMchId());
         body.put("transaction_id", ctx.tradeNo());
@@ -69,11 +69,11 @@ public class WechatPayGateway implements PayGateway {
                 "amount", amountMinor,
                 "description", "平台服务费")));
         body.put("finish", false);
-        return call(WechatApis.PROFIT_SHARING, body, "order_id");
+        return new Call(WechatApis.PROFIT_SHARING, body, "order_id");
     }
 
     @Override
-    public Result splitReverse(TxContext ctx, long amountMinor, String requestNo) {
+    protected Call buildSplitReverse(TxContext ctx, long amountMinor, String requestNo) {
         // **部分回退**，不是全额回退再重分 —— 微信回退后不支持重新发起分账。
         // 支持多次，总额不超过原分账单分给该接收方的金额
         Map<String, Object> body = new LinkedHashMap<>();
@@ -82,11 +82,11 @@ public class WechatPayGateway implements PayGateway {
         body.put("out_return_no", requestNo);
         body.put("amount", amountMinor);
         body.put("description", "退款回退");
-        return call(WechatApis.PROFIT_SHARING_RETURN, body, "return_id");
+        return new Call(WechatApis.PROFIT_SHARING_RETURN, body, "return_id");
     }
 
     @Override
-    public Result refund(TxContext ctx, long amountMinor, String requestNo, String reason) {
+    protected Call buildRefund(TxContext ctx, long amountMinor, String requestNo, String reason) {
         // 单笔最多部分退款 50 次，多次需换退款单号（requestNo 已保证唯一），
         // 且两次调用间隔 >= 60 秒 —— 排队由调用方按 sys_pay_channel 的限额控制
         Map<String, Object> body = new LinkedHashMap<>();
@@ -98,7 +98,7 @@ public class WechatPayGateway implements PayGateway {
                 "refund", amountMinor,
                 "total", ctx.totalMinor(),
                 "currency", "CNY"));
-        return call(WechatApis.REFUND, body, "refund_id");
+        return new Call(WechatApis.REFUND, body, "refund_id");
     }
 
     // ---------------------------------------------------------------- 内部
@@ -134,26 +134,15 @@ public class WechatPayGateway implements PayGateway {
         }
     }
 
-    private Result call(String api, Map<String, Object> body, String idField) {
-        try {
-            Map<String, Object> resp = client.post(api, body);
-            Object id = resp.get(idField);
-            // 微信补差返回 result：SUCCESS / FAIL / REFUND。
-            // 只有 SUCCESS 才算成功 —— FAIL 当成功的话，分账会在余额不足时炸
-            Object result = resp.get("result");
-            if (result != null && !"SUCCESS".equals(result)) {
-                return Result.fatal(api + " 返回 result=" + result);
-            }
-            return id == null ? Result.fatal(api + " 未返回 " + idField) : Result.ok(String.valueOf(id));
-        } catch (ChannelException e) {
-            return e.isRetryable() ? Result.retry(e.getMessage()) : Result.fatal(e.getMessage());
-        }
+    /**
+     * 微信的成功判据：{@code result} 缺省或 {@code SUCCESS}。
+     * <b>FAIL 当成功的话，分账会在余额不足时炸</b>，而炸的时候补差已经发出去了。
+     */
+    @Override
+    protected String failureOf(String api, Map<String, Object> resp) {
+        Object result = resp.get("result");
+        return result != null && !"SUCCESS".equals(result)
+                ? api + " 返回 result=" + result : null;
     }
 
-    private static String trim(String s, int max) {
-        if (s == null) {
-            return "";
-        }
-        return s.length() <= max ? s : s.substring(0, max);
-    }
 }
