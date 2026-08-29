@@ -399,9 +399,22 @@ async function submit() {
         />
       </view>
 
+      <!--
+        **这一格是「他自己的说法」，不是审批结果。**
+
+        <p>库里是两列并存（MchEntityApply）：`category` 是商家写的（「食品」），
+        `categoryCodes` 是运营审核时批的权威码 —— 注释里写着为什么不合成一列：
+        「追溯要的恰恰是这两者的差：他说卖食品，我们批的是预包装食品」。
+
+        <p>问题出在**两处在商家眼里都叫「类目」**：他在这里填了「粮油副食」，
+        会以为经营范围就此定了；而真正决定他能上架什么的是运营批的那一套，
+        他要到「资质证照」页才看得见。等到上架被类目授权拦下时，
+        他记得自己「填过类目」—— 那通电话就是这么来的。
+      -->
       <view class="field">
         <text class="field__label">{{ $t("apply.category") }}</text>
         <input maxlength="64" v-model="form.category" class="field__input" :placeholder="$t('apply.categoryPh')" />
+        <text class="sh-hint">{{ $t("apply.categoryHint") }}</text>
       </view>
 
       <view class="field">
