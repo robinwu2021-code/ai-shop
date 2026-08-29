@@ -131,7 +131,7 @@
             {
               "app": "b-app",
               "route": "/pages/my-specs/index",
-              "title": "商品规格",
+              "title": "商品规格和参数",
               "domain": "商品",
               "tab": false,
               "status": "已实现",
@@ -502,7 +502,7 @@
             {
               "app": "b-app",
               "route": "/pages/quotes/index",
-              "title": "邻里求团报价",
+              "title": "求团报价",
               "domain": "团购与求团",
               "tab": false,
               "status": "已实现",
@@ -513,7 +513,7 @@
             {
               "app": "b-app",
               "route": "/pages/groups/index",
-              "title": "商家团",
+              "title": "团购",
               "domain": "团购与求团",
               "tab": false,
               "status": "已实现",
@@ -540,7 +540,7 @@
             {
               "app": "b-app",
               "route": "/pages/cross-store/index",
-              "title": "跨店总览",
+              "title": "跨店对比",
               "domain": "数据",
               "tab": false,
               "status": "已实现",

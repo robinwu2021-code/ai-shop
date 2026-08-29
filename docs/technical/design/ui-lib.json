@@ -492,7 +492,7 @@
         "margin-top": "4px"
       },
       "usage": {
-        "b-app": 28,
+        "b-app": 31,
         "c-app": 0
       }
     },
@@ -776,7 +776,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 255,
+        "b-app": 259,
         "c-app": 38
       }
     },
@@ -820,7 +820,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 224,
+        "b-app": 228,
         "c-app": 191
       }
     },
@@ -1781,7 +1781,7 @@
         "pad?: boolean"
       ],
       "usage": {
-        "b-app": 15,
+        "b-app": 18,
         "c-app": 2
       },
       "note": "卡内标题行",
@@ -2058,12 +2058,13 @@
         "sh-icon",
         "sh-option",
         "sh-scaffold",
+        "sh-section",
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 81,
-      "localSelectors": 25,
-      "localCssLines": 79,
+      "libClassHits": 92,
+      "localSelectors": 26,
+      "localCssLines": 82,
       "rolled": []
     },
     {
