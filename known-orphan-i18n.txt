@@ -3,40 +3,5 @@
 # 名单**只准变短**：接上入口或删掉之后，把那一行从这里删了；
 # 留着的话，将来它真被删掉也不会有人发现，而这份名单的价值全在「只准变短」。
 #
-# 2026-08-29：b-app 那 70 条已经删掉（goods-edit 规格 UI 重写后留下的一堆）。
-# 下面这 35 条是 c-app 的，属于另一个端的账，没有一并动 —— 谁在改 c-app 谁来清。
-c-app common.retry
-c-app home.visited
-c-app home.visitedN
-c-app home.visitedNone
-c-app home.switch
-c-app goods.spec
-c-app goods.share
-c-app theme.skin
-c-app store.myStores
-c-app store.myStoresHint
-c-app store.noStores
-c-app groupHost.address
-c-app groupHost.timeSlot
-c-app login.needPhone
-c-app merchant.applyDesc
-c-app visited.empty
-c-app group.section
-c-app group.sectionHint
-c-app group.initiator
-c-app group.maxTier
-c-app group.tiers
-c-app group.tierCount
-c-app group.reached
-c-app group.notReached
-c-app groups.create
-c-app confirm.capPickupOnly
-c-app points.expenseHint
-c-app points.periodExpense
-c-app points.disabled
-c-app points.merchantTitle
-c-app points.merchantEntry
-c-app points.received
-c-app points.totalReceived
-c-app points.totalSettled
-c-app points.ruleMerchant
+# 2026-08-29：清零。b-app 70 条、c-app 35 条都已删除。
+# 名单空着是正常状态 —— 新增一条没人引用的词条，闸门就会红。
