@@ -31,11 +31,34 @@ import java.nio.charset.StandardCharsets;
  */
 public class ApiAuthEntryPoint implements AuthenticationEntryPoint {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(ApiAuthEntryPoint.class);
+
     @Override
     public void commence(HttpServletRequest req, HttpServletResponse resp, AuthenticationException e)
             throws IOException {
         boolean expired = Boolean.TRUE.equals(req.getAttribute(ConsumerTokenAuthFilter.TOKEN_EXPIRED_ATTR));
         ErrorCode code = expired ? ErrorCode.TOKEN_EXPIRED : ErrorCode.UNAUTHORIZED;
+        /*
+         * **带了令牌却被拒才打日志。**
+         *
+         * 这一层此前一行日志都没有，而它恰恰是几件要紧的事的落点：
+         * 会话过期、令牌被吊销，以及<b>跨端令牌</b>（拿 `otk_` 打 `/biz`）——
+         * 后者是真正的越权尝试，而它在服务端一点痕迹都不留。
+         *
+         * 没带令牌的那一半不打：游客与探测器每天大量撞在这里，
+         * 全打会把上面那几条淹掉 —— 淹掉与不打是一回事。
+         *
+         * ⚠️ **只打「带了令牌」这个事实与前缀的三个字符，不打令牌本身**：
+         * 令牌进了日志就等于会话可被重放，而日志会被收集转发。
+         * 前缀（`ctk`/`btk`/`otk`）足以认出「哪一端的令牌打到了哪条链」，
+         * 而它不含任何可用于重放的信息。
+         */
+        String auth = req.getHeader("Authorization");
+        if (auth != null && auth.startsWith("Bearer ") && auth.length() > 11) {
+            log.warn("认证层拒绝 {} · {} {} · 令牌前缀 {}", code,
+                    req.getMethod(), req.getRequestURI(), auth.substring(7, 11));
+        }
 
         resp.setStatus(HttpStatus.UNAUTHORIZED.value());
         resp.setContentType(MediaType.APPLICATION_JSON_VALUE);

@@ -29,10 +29,32 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    /**
+     * 「把人挡在门外」的那几个码。
+     *
+     * <p><b>为什么只挑这四个升到 WARN</b>：业务异常绝大多数是预期内的
+     * （库存不足、券领完了、状态不对），全升会把日志淹掉然后没人再看 —— 那和不打是一回事。
+     * 而这四个的共同点是<b>有人被拒了，而他多半不知道为什么</b>，
+     * 且它们正是排查「这个账号怎么什么都看不到」时唯一的线索。
+     */
+    private static final java.util.Set<Integer> REJECTION_CODES = java.util.Set.of(
+            ErrorCode.UNAUTHORIZED.code(),        // 10401 没登录
+            ErrorCode.TOKEN_EXPIRED.code(),       // 10402 登录过期
+            ErrorCode.FORBIDDEN.code(),           // 10403 没权限 / 不在数据域里
+            ErrorCode.BIZ_ROLE_FORBIDDEN.code()); // 70006 B 端角色不够
+
     @ExceptionHandler(BizException.class)
     public ApiResult<Void> onBiz(BizException e) {
-        // 业务异常是预期内的，不打 error 栈，否则告警会被淹没
-        log.debug("biz error: {}", e.errorCode());
+        /*
+         * 业务异常是预期内的，不打 error 栈，否则告警会被淹没 ——
+         * **但「不要 error」不等于「不要可见」**，中间还有 WARN 这一档。
+         * 拒绝类走 WARN 并带上方法与路径；其余保持 debug。
+         */
+        if (REJECTION_CODES.contains(e.errorCode().code())) {
+            log.warn("拒绝 {} · {}", e.errorCode(), requestLine());
+        } else {
+            log.debug("biz error: {}", e.errorCode());
+        }
         return ApiResult.error(e.errorCode().code(), Messages.get(e.errorCode().msgKey(), e.args()));
     }
 
@@ -120,9 +142,16 @@ public class GlobalExceptionHandler {
         return e.getClass().getSimpleName();
     }
 
+    /**
+     * {@code @PreAuthorize} 拒绝。
+     *
+     * <p><b>必须带上路径。</b>此前这里打的是 {@code "access denied: " + e.getMessage()}，
+     * 而 Spring 给的 message 通常就是「Access is denied」—— 一行几乎零信息的 WARN，
+     * 回答不了唯一要问的那个问题：<b>哪个端点被拒了</b>。
+     */
     @ExceptionHandler(AccessDeniedException.class)
     public ApiResult<Void> onDenied(AccessDeniedException e) {
-        log.warn("access denied: {}", e.getMessage());
+        log.warn("判权拒绝 {} · {}", requestLine(), e.getMessage());
         return ApiResult.error(ErrorCode.FORBIDDEN.code(), Messages.get(ErrorCode.FORBIDDEN.msgKey()));
     }
 
@@ -141,7 +170,34 @@ public class GlobalExceptionHandler {
     public ApiResult<Void> onUnauthorized(UnauthorizedException e) {
         Boolean expired = currentRequestAttr(ConsumerTokenAuthFilter.TOKEN_EXPIRED_ATTR);
         ErrorCode code = Boolean.TRUE.equals(expired) ? ErrorCode.TOKEN_EXPIRED : ErrorCode.UNAUTHORIZED;
+        /*
+         * 只在**带了令牌却被拒**时打 WARN。没带令牌是常态（游客、探测器），
+         * 全打会把这行淹掉；而带了令牌被拒才是要查的那件事 ——
+         * 过期、被吊销、或者跨端令牌。
+         *
+         * ⚠️ **只打「带没带」，不打令牌本身**：令牌进了日志就等于会话可被重放，
+         * 而日志会被收集转发。同理不打用户号 —— 要按人排查有 LoginAuditor 那条线。
+         */
+        if (Boolean.TRUE.equals(expired)) {
+            log.warn("会话已失效 {} · {}", code, requestLine());
+        }
         return ApiResult.error(code.code(), Messages.get(code.msgKey()));
+    }
+
+    /**
+     * `METHOD /path` —— 拒绝类日志唯一要带的上下文。
+     *
+     * <p><b>刻意只有这两样</b>：不带 body、不带参数值、不带令牌、不带用户号。
+     * 这些请求里有手机号、地址、银行卡号，而日志会被收集转发 ——
+     * 一行「修复可观测性」的日志不该自己变成新的泄露口
+     * （同 {@code onInvalid} 那一支的取舍，见 InvalidRequestIsVisibleTest）。
+     */
+    private static String requestLine() {
+        var attrs = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        if (!(attrs instanceof org.springframework.web.context.request.ServletRequestAttributes sra)) {
+            return "(无请求上下文)";
+        }
+        return sra.getRequest().getMethod() + " " + sra.getRequest().getRequestURI();
     }
 
     /** 取当前请求上的属性。拿不到请求（异步线程、单测直调）时返回 null，不抛 */
