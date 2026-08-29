@@ -93,6 +93,8 @@ export default {
   apply: {
     title: "入驻申请",
     hint: "个人也可以先开张 —— 做起来之后平台帮你代办个体工商户，收款额度和税务一起解决。",
+    titleMore: "再加一张证照",
+    hintMore: "现在的店、商品和订单都不受影响。新证照过审后单独经营，收款也各走各的。",
     name: "店铺名称",
     subject: "主体类型",
     subjectNATURAL_PERSON: "个人经营者（无营业执照）",

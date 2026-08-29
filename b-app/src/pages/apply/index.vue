@@ -182,6 +182,14 @@ const licenseMissing = computed(
   () => needLicense.value && !qualItems.value.some((q) => q.type === "BUSINESS_LICENSE" && q.imageUrl),
 );
 
+/**
+ * 他已经在营业了 —— 这一趟是「再加一张证照」，不是第一次开店。
+ *
+ * <p>判据用主体状态而不是「有没有申请单」：驳回后重提也没有申请单，
+ * 但那仍然是第一次开店的那条路。
+ */
+const isMore = computed(() => merchant.profile?.status === "ACTIVE");
+
 onShow(async () => {
   // **不拿 profile.phone 预填**：那是脱敏后的登录号（138****8000），
   // 填进去看着像已填好，实际过不了 11 位校验，人只会盯着一个"填了的"框发愣。
@@ -313,10 +321,19 @@ async function submit() {
 </script>
 
 <template>
-  <sh-scaffold title-key="apply.title">
+  <sh-scaffold :title-key="isMore ? 'apply.titleMore' : 'apply.title'">
+    <!--
+      **同一张表服务两种人，开场白不能只写给其中一种。**
+
+      <p>第一次开店的人，与已经在营业、来「再加一张证照」的人
+      （证照与账户页 → 新增一张证照，走的就是这条路）看到的是同一页。
+      而此前页首那句「个人也可以先开张 —— 做起来之后平台帮你代办个体工商户」
+      是写给前者的：后者读到它，第一反应是「我已经有店了，这是要我重新注册？
+      会不会把现在的店覆盖掉？」—— 而这一页没有任何地方回答这个问题。
+    -->
     <view class="head">
-      <text class="txt-display">{{ $t("apply.title") }}</text>
-      <text class="sh-muted sh-mt-xs blk">{{ $t("apply.hint") }}</text>
+      <text class="txt-display">{{ isMore ? $t("apply.titleMore") : $t("apply.title") }}</text>
+      <text class="sh-muted sh-mt-xs blk">{{ isMore ? $t("apply.hintMore") : $t("apply.hint") }}</text>
     </view>
 
     <!-- 审核中/驳回：不重复渲染整张表，先把状态说清楚 -->

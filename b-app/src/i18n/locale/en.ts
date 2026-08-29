@@ -47,6 +47,8 @@ export default {
   apply: {
     title: "Shop application",
     hint: "Individuals can open first — once you grow, we handle the business registration for you.",
+    titleMore: "Add another licence",
+    hintMore: "Your current shop, products and orders are untouched. The new licence trades on its own, with its own payouts.",
     name: "Shop name",
     subject: "Legal form",
     subjectNATURAL_PERSON: "Individual seller (no licence)",
