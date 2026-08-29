@@ -60,20 +60,28 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const SHARED = join(ROOT, "packages/shared");
-const BASELINE = join(SHARED, "known-guard-failures.txt");
+
+/*
+ * 跑哪些工作区。**两个都要跑** ——
+ * ops-web 自己那 50 份测试此前一份都不在闸门里，与 packages/shared 那次是同一个形状：
+ * 写守卫的人以为写完就生效了。2026-08-29 把它们跑了一遍时是全绿的（664 条断言），
+ * 所以它的基线是空的 —— **空基线不是「没在管」，是「今天一条都不欠」**，
+ * 从此任何一条红都会挡住推送。
+ */
+const WORKSPACES = ["packages/shared", "ops-web"];
+const baselineOf = (ws) => join(ROOT, ws, "known-guard-failures.txt");
 
 /** 跑一遍，返回 `文件::用例全名` 的有序集合。 */
-function runGuards() {
+function runGuards(ws) {
     const out = join(mkdtempSync(join(tmpdir(), "guards-")), "res.json");
     try {
         execFileSync("npx", ["vitest", "run", "--reporter=json", `--outputFile=${out}`],
-            { cwd: SHARED, stdio: "pipe" });
+            { cwd: join(ROOT, ws), stdio: "pipe" });
     } catch {
         // vitest 有失败时退出码非 0 —— 那是预期，结果仍写在 JSON 里
     }
     if (!existsSync(out)) {
-        console.error("✗ vitest 没有产出结果文件 —— 多半是 node_modules 不在，或 vitest 本身炸了。\n"
+        console.error(`✗ ${ws}: vitest 没有产出结果文件 —— 多半是 node_modules 不在，或 vitest 本身炸了。\n`
             + "  这种情况**不能当成「没有失败」**，所以这里直接红。");
         process.exit(1);
     }
@@ -81,7 +89,7 @@ function runGuards() {
     const failed = new Map();
     let total = 0;
     for (const file of json.testResults ?? []) {
-        const name = file.name.split("/tests/").pop();
+        const name = file.name.split(`/${ws}/`).pop().replace(/^tests\//, "");
         for (const a of file.assertionResults ?? []) {
             total++;
             if (a.status === "failed") {
@@ -113,12 +121,13 @@ function magnitudeOf(messages) {
 }
 
 /** `file::name @<=N` → Map(name → N)。 */
-function readBaseline() {
-    if (!existsSync(BASELINE)) {
+function readBaseline(ws) {
+    const file = baselineOf(ws);
+    if (!existsSync(file)) {
         return new Map();
     }
     const out = new Map();
-    for (const raw of readFileSync(BASELINE, "utf8").split("\n")) {
+    for (const raw of readFileSync(file, "utf8").split("\n")) {
         const line = raw.trim();
         if (!line || line.startsWith("#")) {
             continue;
@@ -131,86 +140,76 @@ function readBaseline() {
     return out;
 }
 
-const { failed, total } = runGuards();
+/** 每个工作区的断言下界 —— 低于它说明守卫没被真正执行（见下方注释）。 */
+const MIN_ASSERTIONS = { "packages/shared": 150, "ops-web": 300 };
 
-/*
- * **对照量。** 一个用例都没跑到与「全部通过」在结果上一模一样 ——
- * 而前者恰恰是最该红的那种（依赖没装、目录改名、vitest 配置坏掉）。
- * 61 份守卫今天是 322 条断言，取一个远低于它、又远高于 0 的下界。
- */
-if (total < 150) {
-    console.error(`✗ 只跑到 ${total} 条断言 —— 守卫没被真正执行。`
-        + "这与「全部通过」长得一样，所以这里必须红。");
-    process.exit(1);
-}
+let blocked = false;
 
-if (process.argv.includes("--update")) {
+for (const ws of WORKSPACES) {
+    const { failed, total } = runGuards(ws);
+
     /*
-     * **别在脏工作区上冻基线。**
-     *
-     * 这个仓库常有多个会话同时在改。2026-08-29 我就这么翻过一次：`--update` 跑在
-     * 带着别人未提交改动的工作区上，把**别人的在建回归**（bean-validation-wired）
-     * 写进了我的清单 —— 那等于替他们把问题掩掉，而且掩在一个署着我名字的文件里。
-     *
-     * 只提醒不阻断：修完一批之后立刻重冻是正常操作，那时工作区本来就是脏的。
-     * 要紧的是**冻完看一眼 diff**，只留自己认得的行。
+     * **对照量。** 一个用例都没跑到与「全部通过」在结果上一模一样 ——
+     * 而前者恰恰是最该红的那种（依赖没装、目录改名、vitest 配置坏掉）。
+     * 取一个远低于今天的实测、又远高于 0 的下界。
      */
-    try {
-        const dirty = execFileSync("git", ["status", "--porcelain"], { cwd: ROOT })
-            .toString().trim();
-        if (dirty) {
-            console.warn("⚠ 工作区不干净 —— 冻出来的基线会包含**别人未提交的改动**。");
-            console.warn("  冻完务必 `git diff packages/shared/known-guard-failures.txt`，只留自己认得的行。\n");
-        }
-    } catch {
-        // 不在 git 仓库里就算了，这只是提醒
+    if (total < MIN_ASSERTIONS[ws]) {
+        console.error(`✗ ${ws}: 只跑到 ${total} 条断言 —— 守卫没被真正执行。`
+            + "这与「全部通过」长得一样，所以这里必须红。");
+        process.exit(1);
     }
 
-    const header = [
-        "# packages/shared/tests 里**已知红着**的守卫。",
-        "#",
-        "# 每行末尾的 `@<=N` 是**观测值**，不是「允许失败」：实测超过 N 就红。",
-        "# 这些断言里有相当一部分本身就是棘轮（「只降不升」），把它们记成",
-        "# 「允许失败」等于把一条正在收紧的规则关掉 —— 下一个人再加 100 条也没人知道，",
-        "# 而清单上有一行会让人以为「有人管着」。",
-        "#",
-        "# 生成：node scripts/check-shared-guards.mjs --update",
-        "# 闸门：node scripts/check-shared-guards.mjs --check（pre-push 会跑）",
-        "#",
-        "# 修好一条就删一行 —— 留着的害处是**那条守卫从此免检**。",
-        "# 分诊与降账计划：docs/technical/design/守卫与闸门-问题与优化方案.md",
-        "#",
-    ].join("\n");
-    const body = [...failed].map(([k, v]) => `${k} @<=${v}`).join("\n");
-    writeFileSync(BASELINE, `${header}\n${body}\n`, "utf8");
-    console.log(`已冻结基线：${failed.size} 条（共 ${total} 条断言）→ ${BASELINE}`);
-    process.exit(0);
+    if (process.argv.includes("--update")) {
+        const header = [
+            `# ${ws} 里**已知红着**的守卫。`,
+            "#",
+            "# 每行末尾的 `@<=N` 是**观测值**，不是「允许失败」：实测超过 N 就红。",
+            "# 这些断言里有相当一部分本身就是棘轮（「只降不升」），把它们记成",
+            "# 「允许失败」等于把一条正在收紧的规则关掉 —— 下一个人再加 100 条也没人知道，",
+            "# 而清单上有一行会让人以为「有人管着」。",
+            "#",
+            "# 生成：node scripts/check-shared-guards.mjs --update",
+            "# 闸门：node scripts/check-shared-guards.mjs --check（pre-push 会跑）",
+            "#",
+            "# 修好一条就删一行 —— 留着的害处是**那条守卫从此免检**。",
+            "# 分诊与降账计划：docs/technical/design/守卫与闸门-问题与优化方案.md",
+            "#",
+        ].join("\n");
+        const body = [...failed].map(([k, v]) => `${k} @<=${v}`).join("\n");
+        writeFileSync(baselineOf(ws), `${header}\n${body}\n`, "utf8");
+        console.log(`${ws}: 已冻结基线 ${failed.size} 条（共 ${total} 条断言）`);
+        continue;
+    }
+
+    const base = readBaseline(ws);
+    const added = [...failed.keys()].filter((k) => !base.has(k));
+    const grown = [...failed].filter(([k, v]) => base.has(k) && v > base.get(k));
+    const shrunk = [...failed].filter(([k, v]) => base.has(k) && v < base.get(k));
+    const fixed = [...base.keys()].filter((k) => !failed.has(k));
+
+    console.log(`  ${ws}：${total} 条断言 / ${failed.size} 红（基线 ${base.size} 条）`);
+
+    if (fixed.length || shrunk.length) {
+        console.log(`\n🎉 ${ws} 这些已经变好了，重新冻结一次（node scripts/check-shared-guards.mjs --update）：`);
+        fixed.forEach((f) => console.log(`    修好了  ${f}`));
+        shrunk.forEach(([k, v]) => console.log(`    ${base.get(k)} → ${v}  ${k}`));
+        console.log("  （清单只准变短 —— 不更新的话，下次涨回去也没人发现）");
+    }
+    if (grown.length) {
+        console.error(`\n✗ ${ws} 这些欠账**涨了**（棘轮只许降不许升）：`);
+        grown.forEach(([k, v]) => console.error(`    ${base.get(k)} → ${v}  ${k}`));
+        blocked = true;
+    }
+    if (added.length) {
+        console.error(`\n✗ ${ws} 新增了守卫失败，这些不在 known-guard-failures.txt 里：`);
+        added.forEach((f) => console.error(`    ${f}`));
+        blocked = true;
+    }
+    if (grown.length || added.length) {
+        console.error(`\n  本机重现：cd ${ws} && npx vitest run`);
+    }
 }
 
-const base = readBaseline();
-const added = [...failed.keys()].filter((k) => !base.has(k));
-const grown = [...failed].filter(([k, v]) => base.has(k) && v > base.get(k));
-const shrunk = [...failed].filter(([k, v]) => base.has(k) && v < base.get(k));
-const fixed = [...base.keys()].filter((k) => !failed.has(k));
-
-console.log(`  共享守卫 ${total} 条断言 / ${failed.size} 红（基线 ${base.size} 条）`);
-
-if (fixed.length || shrunk.length) {
-    console.log("\n🎉 这些已经变好了，重新冻结一次（node scripts/check-shared-guards.mjs --update）：");
-    fixed.forEach((f) => console.log(`    修好了  ${f}`));
-    shrunk.forEach(([k, v]) => console.log(`    ${base.get(k)} → ${v}  ${k}`));
-    console.log("  （清单只准变短 —— 不更新的话，下次涨回去也没人发现）");
-}
-
-if (grown.length) {
-    console.error("\n✗ 这些欠账**涨了**（棘轮只许降不许升）：");
-    grown.forEach(([k, v]) => console.error(`    ${base.get(k)} → ${v}  ${k}`));
-}
-if (added.length) {
-    console.error("\n✗ 新增了守卫失败，这些不在 known-guard-failures.txt 里：");
-    added.forEach((f) => console.error(`    ${f}`));
-}
-if (grown.length || added.length) {
-    console.error("\n  本机重现：cd packages/shared && npx vitest run");
+if (blocked) {
     process.exit(1);
 }
