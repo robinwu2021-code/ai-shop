@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -14,6 +15,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
  * 三端令牌的**六种交叉组合都必须被拒**。
@@ -70,7 +72,25 @@ class CrossRealmRejectionTest {
      * <b>与其把夹具改造到绿，不如把这条测试的主张收窄到它真能证明的那件事。</b>
      */
     private String merchantToken() throws Exception {
-        return TestLogin.merchantOwner(mvc(), json, otpStore, "13500135802");
+        String phone = "13500135802";
+        String user = TestLogin.consumer(mvc(), json, otpStore, phone);
+        String apply = mvc().perform(post("/mp/merchant/apply")
+                        .header("Authorization", "Bearer " + user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"跨端隔离测试店\",\"subject\":\"INDIVIDUAL_BIZ\","
+                                + "\"contactName\":\"张三\",\"contactPhone\":\"13900000000\","
+                                + "\"category\":\"食品\",\"serviceScope\":\"COMMUNITY\","
+                                + "\"communityNos\":[\"CM001\"]}"))
+                .andReturn().getResponse().getContentAsString();
+        String applyNo = json.readTree(apply).get("data").get("applyNo").asString();
+
+        mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
+                .header("Authorization", "Bearer " + TestLogin.admin(mvc(), json))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"approved\":true}"));
+
+        // 主体身份是登录那一刻解析进 BizContext 的，旧令牌上还没有
+        return TestLogin.merchantOwner(mvc(), json, otpStore, phone);
     }
 
     /** 运营端：{@code otk_}。 */
@@ -164,8 +184,20 @@ class CrossRealmRejectionTest {
          */
         assertThat(codeOf(MP, consumerToken())).as("ctk_ 打 /mp 应当通").isZero();
         assertThat(codeOf(OPS, operatorToken())).as("otk_ 打 /ops 应当通").isZero();
-        assertThat(codeOf(BIZ_SCOPED, merchantToken()))
-                .as("btk_ 打 /biz 必须过认证（可以因为没有店而 403，但不能是 401/402）")
-                .isNotIn(10401, 10402);
+        /*
+         * B 端这条**故意用 /biz/context 而不是 /biz/merchant/profile**：
+         * 后者不需要经营作用域，BizContextFilter 整个坏掉它照样返回 0 —— 验过。
+         * /biz/context 的返回体里就是解析出来的主体号，作用域没建起来就拿不到。
+         * **正向断言要挑一个「坏了会疼」的端点**，否则它证明的比看起来少。
+         */
+        String ctx = mvc().perform(get(BIZ_SCOPED)
+                        .header("Authorization", "Bearer " + merchantToken()))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(ctx).path("code").asInt(-1))
+                .as("btk_ 打 /biz 应当通：%s", ctx).isZero();
+        assertThat(json.readTree(ctx).path("data").path("merchantNo").asString(""))
+                .as("而且解析出了主体号 —— 只断言 code=0 的话，BizContextFilter "
+                        + "坏掉时这条照样绿：%s", ctx)
+                .isNotBlank();
     }
 }
