@@ -26,6 +26,29 @@
  *   · 基线里已经修好的 → 打印提示，**不拦**（与后端那道一致：清单只准变短，
  *     不删的话下次有人把它改回去也没人发现）
  *
+ * ## 基线记的是**量**，不是「允许失败」
+ *
+ * 第一版把 29 条一律记成「已知缺陷，容忍」。**那是错的**，另一条会话当天就指出来了：
+ * 这里面至少三条本身就是棘轮（`没有状态行的文档`、`README 索引`、`不使用 mermaid`），
+ * 它们的语义是「只降不升」。把它们冻成「允许失败」等于**把一条正在收紧的规则关掉** ——
+ * 下一个人再加 100 篇没状态行的文档，闸门一声不吭。
+ * 而且它伪装得比恒红更好：清单上有一行，看起来是「有人管着」。
+ *
+ * 所以每条基线都带一个**观测值** `@<=N`：
+ *   · 实测 > N  → 红（「棘轮又涨了：N → M」）
+ *   · 实测 < N  → 提示该重新冻结（清单只准变短）
+ *   · 不在清单  → 红（新增失败）
+ *
+ * N 从失败消息里抽，按可信度依次：
+ *   ① vitest 的结构化形状（`expected N to be less than or equal to M`、
+ *      `expected [ …(N) ] to deeply equal []`）—— 最可信，它是断言机制本身产生的
+ *   ② 守卫自己写的棘轮话术（`70 张（记录值 56）`）
+ *   ③ 兜底：消息里列了几项（缩进的非空行）
+ *
+ * ⚠️ ③ 有个已知的弱点：vitest 会把长列表截断，所以靠 ③ 取数的那几条，
+ * **欠账继续涨时它可能不动**。它挡得住「多冒出一类」，挡不住「同一类多几十条」。
+ * 取到 ① 的那些没有这个问题。
+ *
  * 用法：
  *     node scripts/check-shared-guards.mjs --check    # 闸门
  *     node scripts/check-shared-guards.mjs --update   # 重新冻结基线（修完一批后用）
@@ -55,26 +78,57 @@ function runGuards() {
         process.exit(1);
     }
     const json = JSON.parse(readFileSync(out, "utf8"));
-    const failed = [];
+    const failed = new Map();
     let total = 0;
     for (const file of json.testResults ?? []) {
         const name = file.name.split("/tests/").pop();
         for (const a of file.assertionResults ?? []) {
             total++;
             if (a.status === "failed") {
-                failed.push(`${name}::${a.fullName}`);
+                failed.set(`${name}::${a.fullName}`, magnitudeOf(a.failureMessages ?? []));
             }
         }
     }
-    return { failed: [...new Set(failed)].sort(), total };
+    return { failed: new Map([...failed].sort()), total };
 }
 
+/** 这条失败「有多大」—— 见文件头「基线记的是量」。 */
+function magnitudeOf(messages) {
+    const flat = messages.join("\n").replace(/\n/g, " ");
+    let m = /expected (\d+) to be less than or equal to \d+/.exec(flat);
+    if (m) {
+        return Number(m[1]);
+    }
+    m = /expected \[ …\((\d+)\) \] to deeply equal \[\]/.exec(flat);
+    if (m) {
+        return Number(m[1]);
+    }
+    m = /(\d+)\s*(?:张|个|篇|处)（(?:记录值|基线)\s*\d+）/.exec(flat);
+    if (m) {
+        return Number(m[1]);
+    }
+    // 兜底：消息里列了几项
+    const items = messages.join("\n").split("\n").filter((l) => /^\s{2,}\S/.test(l)).length;
+    return items || 1;
+}
+
+/** `file::name @<=N` → Map(name → N)。 */
 function readBaseline() {
     if (!existsSync(BASELINE)) {
-        return [];
+        return new Map();
     }
-    return readFileSync(BASELINE, "utf8").split("\n")
-        .map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
+    const out = new Map();
+    for (const raw of readFileSync(BASELINE, "utf8").split("\n")) {
+        const line = raw.trim();
+        if (!line || line.startsWith("#")) {
+            continue;
+        }
+        const m = /^(.*?)\s+@<=(\d+)$/.exec(line);
+        // 没写观测值的旧行按 0 处理 —— 那样它一定会红，逼人重新冻结一次，
+        // 而不是悄悄退化回「允许失败」
+        out.set(m ? m[1] : line, m ? Number(m[2]) : 0);
+    }
+    return out;
 }
 
 const { failed, total } = runGuards();
@@ -92,37 +146,50 @@ if (total < 150) {
 
 if (process.argv.includes("--update")) {
     const header = [
-        "# packages/shared/tests 里**已知红着**的守卫。只准变短，不准变长。",
+        "# packages/shared/tests 里**已知红着**的守卫。",
+        "#",
+        "# 每行末尾的 `@<=N` 是**观测值**，不是「允许失败」：实测超过 N 就红。",
+        "# 这些断言里有相当一部分本身就是棘轮（「只降不升」），把它们记成",
+        "# 「允许失败」等于把一条正在收紧的规则关掉 —— 下一个人再加 100 条也没人知道，",
+        "# 而清单上有一行会让人以为「有人管着」。",
         "#",
         "# 生成：node scripts/check-shared-guards.mjs --update",
         "# 闸门：node scripts/check-shared-guards.mjs --check（pre-push 会跑）",
         "#",
-        "# 为什么要有它：直接要求全绿会让闸门从第一天起恒红，而恒红的闸门等于没有闸门。",
         "# 修好一条就删一行 —— 留着的害处是**那条守卫从此免检**。",
+        "# 分诊与降账计划：docs/technical/design/守卫与闸门-问题与优化方案.md",
         "#",
     ].join("\n");
-    writeFileSync(BASELINE, `${header}\n${failed.join("\n")}\n`, "utf8");
-    console.log(`已冻结基线：${failed.length} 条（共 ${total} 条断言）→ ${BASELINE}`);
+    const body = [...failed].map(([k, v]) => `${k} @<=${v}`).join("\n");
+    writeFileSync(BASELINE, `${header}\n${body}\n`, "utf8");
+    console.log(`已冻结基线：${failed.size} 条（共 ${total} 条断言）→ ${BASELINE}`);
     process.exit(0);
 }
 
 const base = readBaseline();
-const baseSet = new Set(base);
-const nowSet = new Set(failed);
-const added = failed.filter((f) => !baseSet.has(f));
-const fixed = base.filter((f) => !nowSet.has(f));
+const added = [...failed.keys()].filter((k) => !base.has(k));
+const grown = [...failed].filter(([k, v]) => base.has(k) && v > base.get(k));
+const shrunk = [...failed].filter(([k, v]) => base.has(k) && v < base.get(k));
+const fixed = [...base.keys()].filter((k) => !failed.has(k));
 
-console.log(`  共享守卫 ${total} 条断言 / ${failed.length} 红（基线 ${base.length} 条）`);
+console.log(`  共享守卫 ${total} 条断言 / ${failed.size} 红（基线 ${base.size} 条）`);
 
-if (fixed.length) {
-    console.log("\n🎉 这几条已经修好了，请从 packages/shared/known-guard-failures.txt 里删掉：");
-    fixed.forEach((f) => console.log(`    ${f}`));
-    console.log("  （清单只准变短 —— 不删的话，下次有人把它改回去也没人发现）");
+if (fixed.length || shrunk.length) {
+    console.log("\n🎉 这些已经变好了，重新冻结一次（node scripts/check-shared-guards.mjs --update）：");
+    fixed.forEach((f) => console.log(`    修好了  ${f}`));
+    shrunk.forEach(([k, v]) => console.log(`    ${base.get(k)} → ${v}  ${k}`));
+    console.log("  （清单只准变短 —— 不更新的话，下次涨回去也没人发现）");
 }
 
+if (grown.length) {
+    console.error("\n✗ 这些欠账**涨了**（棘轮只许降不许升）：");
+    grown.forEach(([k, v]) => console.error(`    ${base.get(k)} → ${v}  ${k}`));
+}
 if (added.length) {
     console.error("\n✗ 新增了守卫失败，这些不在 known-guard-failures.txt 里：");
     added.forEach((f) => console.error(`    ${f}`));
+}
+if (grown.length || added.length) {
     console.error("\n  本机重现：cd packages/shared && npx vitest run");
     process.exit(1);
 }
