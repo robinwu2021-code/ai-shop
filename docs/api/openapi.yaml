@@ -3467,6 +3467,9 @@ components:
           items: 
             type: "string"
           description: "还缺哪些资料（settleAccount / licenses / settleAccountType）。空 = 资料齐了在等通道"
+        submitted: 
+          type: "boolean"
+          description: "**有没有真的发给通道过。**\n\n<p>没有它，`APPLYING` 同时表示两件相反的事：入驻通过时建的占位（商家还没填过 任何东西）与「已发给通道、在等回执」。都显示成「审核中」的话，新商家读到的是 球在平台，而球其实在他自己脚下 —— 这正是「不能收钱」最常卡死的一步。"
         appliedAt: 
           type: "number"
           description: "提交进件的时间。没提交过为空"
@@ -3482,6 +3485,7 @@ components:
         - "applyStatus"
         - "canReceiveMoney"
         - "missing"
+        - "submitted"
       additionalProperties: false
       description: "收款进件状态（每通道一条）。\n\n<p><b>它与入驻审核是两件事</b>：入驻过了店就能开、货能上架， 但通道没批就收不了钱。合成一个「入驻进度」，商家问「我能收钱了吗」就没法回答。"
     StoreCategory: 
