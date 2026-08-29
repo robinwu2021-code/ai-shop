@@ -46,6 +46,14 @@ function usedUiCodes(): Set<string> {
        * `\b` 挡住 `canModule(`：它的 `can` 后面跟的是字母不是括号。
        */
       for (const m of src.matchAll(/\b(?:allow|can)\(\s*"([^"]+)"\s*\)/g)) out.add(m[1]!);
+      /*
+       * **再加一条不依赖名字的判据。** 上面那条认的是「谁调的」，
+       * 而调用点叫 allow 还是 can 是随手起的名 —— 名字一变它就归零，
+       * 且归零的表现是绿的。这条认的是「长什么样」：三段式权限码字面量。
+       * 两条取并集，因为形状判据够不着两段式的历史码（category:manage）。
+       * 实测两者扫出的集合一致（56 个），所以它不是摆设，是同一件事的第二种问法。
+       */
+      for (const m of src.matchAll(/"([a-z]+:[a-z]+:[a-z]+)"/g)) out.add(m[1]!);
       // nav.ts 的叶子权限码是数据而非调用
       for (const m of src.matchAll(/\bperm:\s*"([^"]+)"/g)) out.add(m[1]!);
     }
@@ -61,7 +69,9 @@ function usedUiCodes(): Set<string> {
 
 describe("UI 权限码映射表", () => {
   it("解析没失效 —— 扫不到码时不能静默通过", () => {
-    expect(usedUiCodes().size, "一个 UI 码都没扫到，正则或目录变了？").toBeGreaterThan(20);
+    // 门槛原先是 20 —— 而正则只认 allow( 时也扫得到 20 个以上，于是它对
+    // 一半调用点全盲还一路绿着。**对照量设得太低，和没有几乎一样。**
+    expect(usedUiCodes().size, "扫到的 UI 码远少于预期，正则或目录变了？").toBeGreaterThan(45);
     expect(backendCodes().size, "一个后端码都没抽到，Perms.java 的写法变了？").toBeGreaterThan(8);
   });
 
