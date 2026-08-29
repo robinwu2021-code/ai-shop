@@ -30,13 +30,21 @@ const APPS = [
   { app: "c-app", prefix: "/mp", fn: "" },
 ];
 
-/** 端点名 → 路径 */
+/**
+ * 端点名 → `"METHOD 路径"`。
+ *
+ * **键里必须带方法。** 同一条路径上常常同时挂着 GET 与 POST
+ * （`/biz/inventory/locations`：GET 列库位、POST 建仓），两者返回类型完全不同。
+ * 只按路径建表的话，后解析到的那个会把前一个覆盖掉 —— 于是拿 POST 的
+ * `DocNoVO` 去比 GET 的契约，报出「locationId/name/kind 都没有」这种整片的假缺失。
+ * 与下面 {@link backendReturns} 里那条「同名 VO 撞包名」是同一种失效，只是换了个轴。
+ */
 function endpoints(app: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const m of read(`${app}/src/api/endpoints.ts`).matchAll(
-    /(\w+):\s*\{\s*method:\s*"(?:GET|POST)",\s*path:\s*"([^"]+)"/g,
+    /(\w+):\s*\{\s*method:\s*"(GET|POST)",\s*path:\s*"([^"]+)"/g,
   )) {
-    out[m[1]!] = m[2]!;
+    out[m[1]!] = `${m[2]!} ${m[3]!}`;
   }
   return out;
 }
@@ -91,9 +99,9 @@ function backendReturns(): Record<string, { ret: string; file: string; pkg?: str
   const out: Record<string, { ret: string; file: string; pkg?: string }> = {};
   for (const f of JAVA) {
     for (const m of read(f).matchAll(
-      /@(?:Get|Post)Mapping\((?:value\s*=\s*)?"([^"]+)"\)[\s\S]{0,400}?public\s+([\w.<>?, ]+?)\s+\w+\s*\(/g,
+      /@(Get|Post)Mapping\((?:value\s*=\s*)?"([^"]+)"\)[\s\S]{0,400}?public\s+([\w.<>?, ]+?)\s+\w+\s*\(/g,
     )) {
-      const inner = m[2]!
+      const inner = m[3]!
         .replace(/^(java\.util\.)?(List|PageData|Page)<(.*)>$/, "$3")
         .trim();
       /*
@@ -104,7 +112,7 @@ function backendReturns(): Record<string, { ret: string; file: string; pkg?: str
        * 而假消息比没消息更糟：它把真正缺的那几条盖在噪音底下。
        */
       const dot = inner.lastIndexOf(".");
-      out[m[1]!] = {
+      out[`${m[1]!.toUpperCase()} ${m[2]!}`] = {
         ret: dot < 0 ? inner : inner.slice(dot + 1),
         pkg: dot < 0 ? undefined : inner.slice(0, dot),
         file: f,

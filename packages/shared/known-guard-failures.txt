@@ -13,8 +13,6 @@
 #
 b-app-shared-state.test.ts::b-app 共享状态 ★★ 定义了 ensureXxx 就必须在 App.vue 里接上 —— 半截的守护比没有更糟 @<=10
 b-app-shared-state.test.ts::b-app 共享状态 ★★★ 被多页读取的状态，必须在 App.vue 上加载 —— 靠某一页加载 = 刷新即失效 @<=14
-biz-contract-fields.test.ts::'b-app' 契约字段（'/biz'） ★★ 后端发了而契约没声明的字段（棘轮：只许降不许升） @<=24
-biz-contract-fields.test.ts::'b-app' 契约字段（'/biz'） ★★★ 契约里的必填字段，后端 VO 必须真的有 —— 少一个就是屏幕上静默少一块 @<=15
 data-scope-coverage.test.ts::数据域表册覆盖 ★★★ 带归属列的表要么登记、要么写明为什么不用（棘轮：只许降不许升） @<=70
 doc-standard.test.ts::文档规范 md 引用的 md 必须存在 —— 目录重整最容易碎的就是这个，而且不报错 @<=7
 doc-standard.test.ts::文档规范 technical 下每篇文档都出现在 README 索引里 —— 不在索引里的文档等于不存在 @<=71
@@ -31,4 +29,3 @@ spec-completeness.test.ts::契约完整性 B 端：每个字段都有说明 @<=3
 spec-completeness.test.ts::契约完整性 C 端：每个字段都有说明 @<=358
 spec-completeness.test.ts::契约完整性 平台端：每个字段都有说明 @<=371
 spec-completeness.test.ts::契约完整性 领域模型对齐清单已生成且无未定性条目 @<=10
-wire-alignment.test.ts::请求体字段（B 端）：前端发的与后端收的必须一致 两边都定义了 body 的端点，字段名对得上 @<=13
