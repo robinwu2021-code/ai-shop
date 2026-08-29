@@ -81,12 +81,20 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   // 后端新增了同名码 Perms.FINANCE_WITHDRAW_APPROVE，且 V112 把 OPS_FINANCE_05
   // 的 perm_code 从 NULL 补上、授给 FINANCE。
   // ⚠️ 持有它不等于能打款：通过后落 APPROVED，出款是线下动作（B-12.5）
+  // 这两条漏登记：`can()` 对未登记的码返回 false，于是财务页的「登记付款」
+  // 与发票核验按钮**对谁都不显示**（含财务角色本人），且没有任何报错 ——
+  // 就是这张表注释里说的「按钮神秘消失」。两个码在 Perms.java 里一直都有。
+  "finance:payout:execute": "finance:payout:execute",
+  "finance:invoice:verify": "finance:invoice:verify",
   "finance:withdraw:approve": "finance:withdraw:approve",
   "risk:blacklist:update": "risk:blacklist:update",
   "risk:rule:update": "risk:rule:update",
   "content:material:audit": "content:material:audit",
   "content:material:update": "content:material:update",
-  "message:faq:update": UNIMPLEMENTED,
+  // FAQ 维护后端一直是有的（/ops/faqs 三条，判 message:ticket:handle），
+  // 只是没有独立的码 —— 映到覆盖它的那个，与上面「仍需翻译的四条」同一用法。
+  // 之前写 UNIMPLEMENTED：`can()` 先查映射后判通配，于是**超管也看不见这一页**。
+  "message:faq:update": "message:ticket:handle",
   "fulfillment:batch:read": "fulfillment:batch:read",
   "fulfillment:rule:update": "fulfillment:rule:update",
   "growth:attribution:read": "growth:attribution:read",
