@@ -6931,6 +6931,14 @@ SELECT 'OPS_PRODUCT__TAB_CATEGORY_SPEC', 'OPS_PRODUCT', '类目 × 规格', '规
 INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
 SELECT 'ACT__PRODUCT_SPEC_UPDATE', 'OPS_PRODUCT', '规格库维护', '规格', NULL, 'product:spec:update', 'product:spec:update', 'IMPLEMENTED', 1, 'P-3.4', 'ACTION', 63, NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__PRODUCT_SPEC_UPDATE');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', p.point_code, 'OPS', NOW(), NOW() FROM sys_function_point p
+ WHERE p.point_code IN ('OPS_PRODUCT__TAB_SPEC_COMMON','OPS_PRODUCT__TAB_SPEC_SPECIAL','OPS_PRODUCT__TAB_CATEGORY_SPEC','ACT__PRODUCT_SPEC_UPDATE')
+   AND NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code=p.point_code);
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'GOODS_OPS', p.point_code, 'OPS', NOW(), NOW() FROM sys_function_point p
+ WHERE p.point_code IN ('OPS_PRODUCT__TAB_SPEC_COMMON','OPS_PRODUCT__TAB_SPEC_SPECIAL','OPS_PRODUCT__TAB_CATEGORY_SPEC','ACT__PRODUCT_SPEC_UPDATE')
+   AND NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='GOODS_OPS' AND x.point_code=p.point_code);
 UPDATE sys_auth_code SET qual_type = 'BUSINESS_LICENSE'
  WHERE required_qualification LIKE '营业执照%';
 UPDATE sys_auth_code SET qual_type = 'FOOD_PERMIT'

@@ -267,7 +267,27 @@
 # 而 5949 行还有一句 UPDATE 把它改掉了。一条探针 20 秒，省掉的是一整轮错误方向。
 # ══════════════════════════════════════════════════════════════════════
 #
+#
+# ══════════════════════════════════════════════════════════════════════
+# 2026-08-29：superAdminHasEveryPoint —— 生成器把一类种子当回填丢了
+#
+# 超管在 H2 上拿到 153 个功能点而库里有 157。少的是哪四个，是打探针点名出来的：
+# 规格那组（TAB_SPEC_COMMON / TAB_SPEC_SPECIAL / TAB_CATEGORY_SPEC /
+# ACT__PRODUCT_SPEC_UPDATE）。生产不缺 —— V199 逐点授了超管与 GOODS_OPS。
+#
+# `gen-test-schema.py` 判「INSERT … SELECT 是回填、丢掉」，判据是「读没读第三张表」。
+# V199 那两条读了 sys_function_point，于是整段消失。但它**不是搬存量**：
+# 那张表是同一个迁移上面几行刚灌的，这里按一串**写死的点码**捞行建关联。
+#
+# 加了一条窄判据（两条同时成立才算种子）：带 NOT EXISTS 幂等闸，且每张非目标表
+# 都被 `IN ('..','..')` 这种**写死的键列表**框住。
+#
+# ⚠️ 第一版判据把 `alias.col = '常量'` 也算了进去，当场混进三条真回填
+# （按 status='PENDING' 搬审核单、按 deleted=0 搬优惠券、按 perm_code 给所有角色补点）——
+# 连 `CASE WHEN c.type = 'DISCOUNT'` 都撞上了那个正则。**是看着产物的 diff 发现的，
+# 不是看着测试变绿发现的**：那一版测试同样会绿。改判据必须逐条读新增了什么。
+# ══════════════════════════════════════════════════════════════════════
+#
 ai.neargo.shop.arch.ArchitectureTest.implsMustLiveInDedicatedPackage
 ai.neargo.shop.arch.ArchitectureTest.svcModulesMustNotDependOnEachOther
-ai.neargo.shop.scenario.OpsPermConfigFlowTest.superAdminHasEveryPoint
 ai.neargo.shop.scenario.S3AdmissionRealPathTest.dailyCapCountsAcrossBuyers

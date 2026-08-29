@@ -189,6 +189,11 @@ def replay(sql, tables, order, seeds, renames):
                 # 判据用「除目标表外不读任何表」，不用「长得像不像」：
                 # 回填语句一定要读别的表（那才是它存在的意义），种子一定不读。
                 seeds.append(stmt + ";")
+            elif _is_reentrant_seed(low):
+                # **可重入的派生授权也是种子** —— 判据与理由见 _is_reentrant_seed。
+                # 它读了第三张表，但那张表是同一个迁移刚灌好的，且这里按一串写死的
+                # 编码去捞行；数据源仍然是常量。丢掉它 = 权限点静默少几个。
+                seeds.append(stmt + ";")
             elif re.search(r"\bselect\b", low):
                 # **INSERT ... SELECT 是数据回填，不是种子。**
                 #
@@ -468,6 +473,63 @@ def _reads_only(low: str, stmt: str) -> bool:
     refs = re.findall(r"\b(?:from|join)\s+([\w.]+)", low)
     # 一个真表引用都没有（纯常量 SELECT）同样是种子 —— all([]) 为真，正是要的语义
     return all(r == target.group(1) for r in refs)
+
+
+def _is_reentrant_seed(low: str) -> bool:
+    """读了第三张表，但仍然是**种子**的那一类：可重入的派生授权。
+
+    形如（V199 / V72 里都有）::
+
+        INSERT INTO sys_role_point (...)
+        SELECT 'SUPER_ADMIN', p.point_code, 'OPS', NOW(), NOW()
+          FROM sys_function_point p
+         WHERE p.point_code IN ('A','B','C')
+           AND NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE ...);
+
+    它确实读了 `sys_function_point`，所以 :func:`_reads_only` 判它是回填、丢掉。
+    **但它不是搬运存量数据**：那张表是同一个迁移在上面几行刚灌进去的，
+    这里只是按一串**写死的点码**把行捞出来建关联 —— 数据源仍然是常量。
+
+    丢掉它的代价已经付过一次：V199 给 SUPER_ADMIN / GOODS_OPS 授的那四个规格功能点
+    整段消失，于是 H2 上超管拿到 153 个点而库里有 157，`superAdminHasEveryPoint` 长期
+    红着，报错是「expected 157 but was 153」—— 看起来像权限配置写漏了，
+    而生产（真跑 V199）一个都不少。
+
+    判据取**两条同时成立**，不看语句长得像不像：
+
+    1. 带 ``NOT EXISTS (SELECT`` 幂等闸 —— 回填不需要幂等，它是一次性的；
+    2. 每一张非目标表都被一个**常量键列表**框住（``IN ('..','..')`` 或 ``= '..'``）。
+       回填一定是**整表扫**（那才是它存在的意义：把存量搬过来），
+       一旦框到几个写死的编码上，它搬的就不是存量了。
+
+    两条缺一条就仍按回填丢掉 —— 宁可漏一条种子（红得明显），
+    不可放进一条回填（它读中间态列，重放到最终 schema 上炸在毫不相干的地方）。
+    """
+    if not re.search(r"not\s+exists\s*\(\s*select\b", low):
+        return False
+    target = re.match(r"insert\s+(?:ignore\s+)?into\s+([\w.]+)", low)
+    if not target:
+        return False
+    # 表引用连同别名一起取：别名是把「常量框」对应到具体那张表的唯一线索
+    others = [(t, a) for t, a in
+              re.findall(r"\b(?:from|join)\s+([\w.]+)\s+(?:as\s+)?(\w+)?", low)
+              if t != target.group(1) and t != "dual"]
+    if not others:
+        return False
+    for _table, alias in others:
+        if not alias:
+            return False
+        # 该别名的某一列被写死的字符串列表框住
+        # **只认 `IN ('..','..')` 这种写死的键列表。**
+        # 一开始我把 `alias.col = '常量'` 也算进来，结果三条真回填当场混了进去：
+        # 「按 status='PENDING' 搬审核单」「按 deleted=0 搬优惠券」「按
+        # perm_code='merchant:merchant:read' 给所有角色补点」——
+        # 它们都带 `= '字面量'`，可那是**过滤条件**，不是把范围框死到几行上；
+        # 连 `CASE WHEN c.type = 'DISCOUNT'` 都能撞上这个正则。
+        # 整表扫 + 一个条件 = 回填；写死的一串编码 = 种子。
+        if not re.search(r"\b" + re.escape(alias) + r"\.\w+\s+in\s*\(\s*'[^)]*\)", low):
+            return False
+    return True
 
 
 
