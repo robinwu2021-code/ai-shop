@@ -450,6 +450,11 @@ export const NEAREST_CODE = {
   // 改名要动的地方比接一条映射多得多），后端真有的是 system:param:update。
   // 此前 perm-map 里它标着 UNIMPLEMENTED，于是那一页对所有人只读、开关拨不动。
   "system:env:switch": "system:param:update",
+  // FAQ 维护没有独立端点：/ops/faqs 三条判的都是 message:ticket:handle。
+  // 此前 perm-map 里它标着 UNIMPLEMENTED，而 `can()` 先查映射后判通配 ——
+  // 于是**超管也看不见 FAQ 这一页**，同时库里那个功能点标着 NOT_IMPLEMENTED、
+  // 二级导航把它灰掉，两边一起把一个能用的页面关在了门外（V273 一并修）。
+  "message:faq:update": "message:ticket:handle",
 };
 
 /** 端点 → 码；命中不了返回 null（守卫会把它报出来） */
