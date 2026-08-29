@@ -22,10 +22,15 @@ import java.util.List;
  * 守卫拦的事。**一个谁也拿不到钥匙的开放接口，不叫做完了。**
  *
  * <h2>权限分两档，不是一档</h2>
- * 看列表用 {@code merchant:merchant:read}，签发与吊销用
- * {@code merchant:mode:update}。**发一把能读商家全部库存的钥匙，
- * 不该和「看一眼库存」同一个门槛** —— 前者是把数据交出平台，
- * 后者只是在平台内部看一眼。
+ * 看列表用 {@code product:sku:read}（与同一个 section 里另外三页一致），
+ * 签发与吊销用 {@code merchant:mode:update}。
+ * **发一把能读商家全部库存的钥匙，不该和「看一眼库存」同一个门槛** ——
+ * 前者是把数据交出平台，后者只是在平台内部看一眼。
+ *
+ * <p>看列表那一档**特意跟着 section 走**：`ops-web/lib/nav.ts` 里
+ * 进销存这个 section 的 {@code module} 是 `product`，而它是
+ * <b>权限码前缀</b>（canModule 按前缀过滤整段）。列表若挂 `merchant:*`，
+ * 结果是「能看见这个模块的人打不开这一页，能打开的人看不见这个模块」。
  *
  * <h2>没有「改」</h2>
  * 名字、范围、有效期都不能改：改了之后「这把钥匙当初是按什么发的」
@@ -47,7 +52,7 @@ public class OpsOpenCredentialController {
     }
 
     /** 某个商家发过哪些钥匙。**吊销过的也在列** —— 这一列要能回答「什么时候停的」 */
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_READ + "')")
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_SKU_READ + "')")
     @GetMapping("/ops/inventory/credentials")
     public List<OpenApiCredentialService.Listed> list(@RequestParam String entityNo) {
         return credentials.list(acl.ownerIdOf(entityNo));

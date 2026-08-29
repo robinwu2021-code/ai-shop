@@ -182,6 +182,11 @@ export const NAV: NavSection[] = [
       { href: "/inventory", label: "库存健康度", perm: "product:sku:read", group: "库存治理", matrix: "P-18.1", ready: true },
       { href: "/inventory?tab=ledger", label: "库存流水", perm: "product:sku:read", group: "库存治理", matrix: "P-18.2", ready: true },
       { href: "/inventory?tab=recon", label: "库存对差", perm: "product:sku:read", group: "切换判据", matrix: "P-18.3", ready: true },
+      // perm 用 product:sku:read（看列表那一档）而不是签发那个码：
+      // 这个 section 的 module 是 `product`，canModule 按**前缀**过滤整段 ——
+      // 挂 merchant:* 的话会变成「能看见这个模块的人打不开这一页」。
+      // 签发与吊销在后端另判 merchant:mode:update，界面上按钮点了会 403。
+      { href: "/inventory?tab=credentials", label: "开放对接", perm: "product:sku:read", group: "对外", matrix: "P-18.4", ready: true },
     ],
   },
 

@@ -7,8 +7,12 @@
 // Java 模块，将来要能单独交付 —— 在运营端把它塞进商品页的 tab 条里，
 // 等于在界面上先把这条边界抹掉，而抹掉之后没有人会记得它曾经存在。
 //
-// 三页全只读。运营改了商家的库存，「这个数是谁改的」就多了一个答案，
-// 而商家不会知道 —— 所以 `/ops/inventory/**` 一个写口都没有。
+// **库存本身全只读**。运营改了商家的库存，「这个数是谁改的」就多了一个答案，
+// 而商家不会知道。
+//
+// 第四页「开放对接」是唯一的写口，而它改的不是货、是**谁能读这些货** ——
+// 对方换了对接商、密钥泄露，处置只能在平台这边。所以它挂的是
+// `merchant:mode:update`（发钥匙），而看列表仍是 `product:sku:read`（跟着本 section 走）。
 import { Suspense } from "react";
 import { useCopy } from "@/lib/use-copy";
 import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
@@ -17,8 +21,9 @@ import { INVENTORY_COPY } from "./copy";
 import { HealthTab } from "./health-tab";
 import { LedgerTab } from "./ledger-tab";
 import { ReconTab } from "./recon-tab";
+import { CredentialsTab } from "./credentials-tab";
 
-const TAB_KEYS = ["health", "ledger", "recon"] as const;   // 顺序与 lib/nav.ts 的叶子一致
+const TAB_KEYS = ["health", "ledger", "recon", "credentials"] as const;   // 顺序与 lib/nav.ts 的叶子一致
 
 export default function InventoryPage() {
   return <Suspense fallback={null}><InventoryInner /></Suspense>;
@@ -36,6 +41,7 @@ function InventoryInner() {
       {tab === "health" && <HealthTab c={c} />}
       {tab === "ledger" && <LedgerTab c={c} />}
       {tab === "recon" && <ReconTab c={c} />}
+      {tab === "credentials" && <CredentialsTab c={c} />}
     </div>
   );
 }

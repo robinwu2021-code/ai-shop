@@ -1,9 +1,14 @@
 // 进销存（P-18）—— `/ops/inventory/**`。**独立模块**：与商品域不共契约文件，
 // 它将来要能单独交付。
-import type { InvBalanceRow, InvHealthRow, InvLedgerPage, InvReconReport } from "@/lib/types";
+import type { InvBalanceRow, InvHealthRow, InvLedgerPage, InvReconReport, InvCredential, InvCredentialIssued } from "@/lib/types";
 
 export interface InventoryApi {
-  // 三个都只读：运营不改商家库存 —— 改了之后「这个数是谁改的」就多一个答案，而商家不会知道。
+  // **库存本身仍然只读**：运营不改商家库存 —— 改了之后「这个数是谁改的」
+  // 就多一个答案，而商家不会知道。
+  //
+  // 开放对接的钥匙是**唯一的例外**，而它改的不是货、是**谁能读这些货**：
+  // 那本来就是平台该管的事（对方换了对接商、密钥泄露，处置只能在这儿）。
+  // 所以它挂的是 `merchant:mode:update` 而不是看库存那个码。
 
   /**
    * 库存健康度：负库存 / 零库存仍在架 / 长期未动销。
@@ -37,4 +42,18 @@ export interface InventoryApi {
    * 直接切等于「切换那天开始超卖」，而无从回溯是从哪一刻起的。
    */
   getInvRecon(q?: { limit?: number }): Promise<InvReconReport>;
+
+  /** 某个商家发过哪些开放对接的钥匙。**吊销过的也在列** */
+  listInvCredentials(q: { entityNo: string }): Promise<InvCredential[]>;
+
+  /**
+   * 签发。**返回体里的 `appSecret` 是它唯一一次明文出现** ——
+   * 这个响应关掉就再也拿不回来，只能吊销重发。界面必须让人当场复制走。
+   */
+  issueInvCredential(body: {
+    entityNo: string; name: string; scopes: string; expiresAt?: string | null;
+  }): Promise<InvCredentialIssued>;
+
+  /** 吊销。**发得出、收不回的钥匙是半截功能** */
+  revokeInvCredential(credentialId: string): Promise<void>;
 }

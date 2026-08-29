@@ -75,4 +75,31 @@ export const inventoryMock: InventoryApi = {
           platformQty: 20, inventoryQty: 20, platformHeld: 5, inventoryHeld: 0 },
       ],
     }),
+
+  /*
+   * 三把钥匙，**刻意各是一种状态**：一把在用、一把从没被用过、一把已吊销。
+   * 三把都 ACTIVE 的话，「lastUsedAt 空着该怎么显示」「吊销了长什么样」
+   * 这两件事在 mock 上永远看不见 —— 而它们正是这一屏要回答的。
+   */
+  listInvCredentials: async () => [
+    { credentialId: "CRED-0001", appKey: "ak_7f3c9e21", name: "某某 ERP（生产）",
+      scopes: "read,stock:sync", status: "ACTIVE",
+      expiresAt: "2027-01-31T00:00:00", lastUsedAt: "2026-08-29T09:12:00",
+      createdAt: "2026-06-01T10:00:00" },
+    { credentialId: "CRED-0002", appKey: "ak_2b8d0a55", name: "对接联调（临时）",
+      scopes: "read", status: "ACTIVE",
+      expiresAt: null, lastUsedAt: null, createdAt: "2026-08-20T15:30:00" },
+    { credentialId: "CRED-0003", appKey: "ak_91ee47c0", name: "老服务商（已换）",
+      scopes: "read", status: "REVOKED",
+      expiresAt: null, lastUsedAt: "2026-05-11T08:03:00", createdAt: "2026-02-14T09:00:00" },
+  ],
+
+  issueInvCredential: async () => ({
+    credentialId: "CRED-NEW",
+    appKey: "ak_" + Math.random().toString(16).slice(2, 10),
+    // mock 里也给一段像样的：太短的话，「这串要当场复制走」这件事在 mock 上不成立
+    appSecret: "sk_" + Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2),
+  }),
+
+  revokeInvCredential: async () => undefined,
 };

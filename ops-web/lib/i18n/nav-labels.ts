@@ -42,9 +42,11 @@ const OVERLAY: Record<string, Record<string, string>> = {
   进销存: { en: "Inventory" },
   库存治理: { en: "Stock governance" },
   切换判据: { en: "Cutover gate" },
+  对外: { en: "Outbound" },
   库存健康度: { en: "Stock health" },
   库存流水: { en: "Stock ledger" },
   库存对差: { en: "Stock reconciliation" },
+  开放对接: { en: "Open API keys" },
   // 以下七条是 V251 / V253 两轮菜单合入时漏补的译文，守卫一直红着 —— 恒红的守卫
   // 挡不住下一次漏登记，所以一并补上（只加行，不动既有行）。
   "类目 × 支付方式": { en: "Category × payment mode" },

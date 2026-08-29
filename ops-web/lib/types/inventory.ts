@@ -103,3 +103,32 @@ export interface InvReconDiff {
   /** 进销存侧的预留 */
   inventoryHeld: number;
 }
+
+/**
+ * 一把开放对接的钥匙。**没有 secret 字段，一个都没有。**
+ *
+ * 库里存的是哈希，明文只在签发那一刻的响应里出现一次。列表若带上它，
+ * 会让人以为丢了还能回来找 —— 而实际上只能吊销重发。
+ */
+export interface InvCredential {
+  credentialId: string;
+  appKey: string;
+  /** 给人看的：这把钥匙给了谁 */
+  name: string;
+  /** 逗号分隔：read / stock:sync */
+  scopes: string;
+  /** ACTIVE / REVOKED。**吊销不删行** —— 「什么时候停的」要查得到 */
+  status: string;
+  /** 空 = 不过期 */
+  expiresAt?: string | null;
+  /** 发现「这把钥匙半年没人用了」的唯一依据 */
+  lastUsedAt?: string | null;
+  createdAt?: string | null;
+}
+
+/** 签发的返回。**`appSecret` 这辈子只出现这一次** */
+export interface InvCredentialIssued {
+  credentialId: string;
+  appKey: string;
+  appSecret: string;
+}
