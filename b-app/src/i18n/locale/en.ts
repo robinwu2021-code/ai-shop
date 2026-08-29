@@ -1021,7 +1021,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     pointsDetail: "See details", pointsFold: "Hide details",
     pointsEmpty: "No issuing fees this period", pointsQty: "{n} pts",
     pointsOnTitle: "Enable store points",
-    pointsOnHint: "Orders will start earning points, and an issuing fee applies.",
+    pointsOnHint: "Once enabled, every order issues points by the rules and incurs an issuing fee.",
     pointsOffTitle: "Disable store points",
     pointsOffHint: "Future orders only — points already issued stay valid and fees already charged are not refunded.",
 

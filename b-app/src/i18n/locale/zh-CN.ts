@@ -1253,7 +1253,7 @@ export default {
     pointsEmpty: "本期暂无积分发放服务费",
     pointsQty: "{n} 分",
     pointsOnTitle: "开启本店积分",
-    pointsOnHint: "开启后每笔订单会按规则发分，并产生发分服务费。",
+    pointsOnHint: "开启后每笔订单按规则发放积分，并产生发放服务费。",
     pointsOffTitle: "关闭本店积分",
     pointsOffHint: "关闭只影响将来：已发出的分仍然有效，已扣的服务费不退。",
 
