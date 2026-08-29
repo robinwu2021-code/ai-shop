@@ -1651,7 +1651,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 56,
+        "b-app": 59,
         "c-app": 4
       },
       "note": "单色图标",
@@ -2063,8 +2063,8 @@
         "sh-uploader"
       ],
       "libClassHits": 92,
-      "localSelectors": 26,
-      "localCssLines": 82,
+      "localSelectors": 25,
+      "localCssLines": 79,
       "rolled": []
     },
     {
