@@ -363,6 +363,27 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
                 diffs.add(new Diff(entityNo, storeNo, skuNo,
                         platformQty, inventoryQty, platformHeld, inventoryHeld));
             }
+            /*
+             * **没搬过、但本来就不该搬的，算「跳过」不算「待搬」。**
+             *
+             * 写路径下面第一件事就是 `if (platformQty <= 0) return 0`
+             * （0 库存不落单，理由见那里）。而这里原来一律 return -1，
+             * 于是同一个 SKU 在写路径叫「跳过」、在只读对差里叫「待搬」——
+             * 两条路对同一件事给了两个答案。
+             *
+             * 后果不是数字难看，是**闸门恒红**：Report 的 clean 要求 pending==0，
+             * 而零库存是常态（每个新建 SKU 在第一次入库前都是 0），
+             * 于是「对差连续 N 天为零」这个 D2 判据**永远不可能成立**。
+             * 2026-08-29 inv-recon 上线首跑就撞上了：209 个 SKU、差异 0，
+             * 却因为 3 个零库存 SKU 报 FAILED。一道永远红的闸门与没有闸门等价。
+             *
+             * 只对 qty<=0 放行，**held>0 仍算待搬**：那说明有人占着货而进销存侧
+             * 一无所知，切过去那部分会重新可售。写路径此处也跳过（它只看 qty），
+             * 那是另一笔账，不在这次改动范围内 —— 但只读侧不能跟着一起漏报。
+             */
+            if (!already && platformQty <= 0 && platformHeld <= 0) {
+                return 0;
+            }
             return already ? 0 : -1;
         }
         if (platformQty <= 0) {

@@ -452,6 +452,85 @@ class InventoryFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 零库存 SKU 不算「待搬」—— 否则这道闸门永远红，等于没有闸门")
+    void zeroStockSkuDoesNotKeepTheGateRedForever() {
+        /*
+         * 写路径自己的规则是「0 库存不落单」（几百个从没进过货的 SKU 会产生
+         * 几百张「入 0 件」的期初单，对账上一点用都没有）。而只读对差原来一律
+         * 把「没搬过」记成 pending —— 同一件事，两条路给了两个答案。
+         *
+         * 后果不是数字难看，是**恒红**：clean 要求 pending==0，而零库存是常态
+         * （每个新建 SKU 在第一次入库前都是 0），于是「对差连续 N 天为零」
+         * 这个 D2 判据永远不可能成立。2026-08-29 inv-recon 上线首跑就撞上了：
+         * 209 个 SKU、差异 0，却因 3 个零库存 SKU 报 FAILED。
+         *
+         * held>0 仍然算待搬 —— 那说明有人占着货而进销存侧一无所知，
+         * 切过去那部分会重新可售。所以这里额外造一个 qty=0/held=3 的，
+         * 确认它没有被一起放行。
+         */
+        int seq = SEQ.incrementAndGet();
+        String zeroSku = "SKU-ZERO-" + seq;
+        String heldSku = "SKU-HELD-" + seq;
+
+        PrdSku zero = new PrdSku();
+        zero.setSkuNo(zeroSku);
+        zero.setGoodsNo("G-ZERO-" + seq);
+        zero.setEntityNo("E-ZERO-" + seq);
+        zero.setMarket("CN");
+        zero.setStock(0);
+        zero.setLockedStock(0);
+        zero.setPrice(1000L);
+
+        PrdSku held = new PrdSku();
+        held.setSkuNo(heldSku);
+        held.setGoodsNo("G-HELD-" + seq);
+        held.setEntityNo("E-HELD-" + seq);
+        held.setMarket("CN");
+        held.setStock(0);
+        held.setLockedStock(3);     // 占着货，进销存侧却不知道
+        held.setPrice(1000L);
+
+        /*
+         * **必须先建物料**：pending 有两条来路 —— 一条是「连物料都没有」
+         * （那时 continue，不看库存），一条是 moveOne 里「有物料但没搬过」。
+         * 生产上那 3 个零库存 SKU 是**有物料**的（209 个 SKU 对 209 条 item_ref），
+         * 走的是第二条。测试里直接 insert 一个裸 SKU 会走第一条 —— 那验的是另一件事。
+         */
+        acl.upsertItem(zero.getEntityNo(), zeroSku, "零库存米", "5斤装", null, null, "BAG");
+        acl.upsertItem(held.getEntityNo(), heldSku, "占货米", "5斤装", null, null, "BAG");
+
+        int baseline = backfill.diffOnly(5000).pending();
+        skuMapper.insert(zero);
+
+        try {
+            /*
+             * **判据用「前后差值」，不用「大于零」。**
+             * 只断言 pending>0 的话，没有修复时它同样成立（零库存那个也被算进去），
+             * 那条断言证明不了任何事 —— 今晚已经在别处栽过一次同样的坑。
+             */
+            int withZeroOnly = backfill.diffOnly(5000).pending();
+            assertThat(withZeroOnly)
+                    .as("插入一个 qty=0/held=0 的 SKU 之后 pending 不该增加 —— "
+                            + "增加就说明零库存被算成了待搬，闸门会永远红")
+                    .isEqualTo(baseline);
+
+            skuMapper.insert(held);
+            InventoryBackfillService.Report r = backfill.diffOnly(5000);
+
+            assertThat(r.pending())
+                    .as("qty=0/held=3 的必须算待搬 —— 有人占着货而进销存侧不知道，"
+                            + "切过去那部分会重新可售")
+                    .isEqualTo(withZeroOnly + 1);
+            assertThat(r.diffs())
+                    .as("零库存不是「差异」——两边都是 0")
+                    .noneMatch(d -> zeroSku.equals(d.skuNo()));
+        } finally {
+            skuMapper.delete(Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getSkuNo, zeroSku));
+            skuMapper.delete(Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getSkuNo, heldSku));
+        }
+    }
+
+    @Test
     @DisplayName("★★ 日快照可重跑 —— 派生数据，删光重算结果逐字相同")
     void snapshotIsRepeatable() {
         Fixture f = fixture();
