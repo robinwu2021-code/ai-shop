@@ -212,6 +212,61 @@ const ANCHOR_WAIVED: Record<string, string> = {
   "mch_fulfillment_channel:COMMUNITY":
     "同 mch_store：没有持社区域的角色能读商家履约配置（merchant:merchant:read 不在 COMMUNITY_OPS）。若将来开了，这里会变成空白页",
   "mch_fulfillment_channel:PICKUP": "同上：没有持自提点域的角色能读商家履约配置",
+
+  /*
+   * ── 会员 / 券 / 门店类目 / 门店价（2026-08-29，14 张 × 2 个维度）──
+   *
+   * 判据与 mch_entity/mch_store 那批**同一条**，且当天逐条核过：
+   * **没有任何角色同时持有「这些页面要的码」与「社区/自提点数据域」。**
+   *   · /ops/members、/ops/persons        要 member:*
+   *   · /ops/coupons、/ops/promotion/*    要 marketing:*
+   *   · /ops/skus、/ops/goods、/ops/categories 要 product:*
+   * 而 COMMUNITY_OPS 的 16 个码里 member / marketing / product **一个都没有**
+   * （BD / SUPPORT / ANALYST 同样没有）。超管走通配，StaffScopes 直接返回 ALL，
+   * 不进 fail-closed 这条路。
+   *
+   * **为什么不加冗余列**：会员与券都属于**经营主体**，而主体与社区是多对多
+   * （一个商家可在多个社区经营）—— 单列锚点表达不了，取其中一个的后果是
+   * 「另一个社区的运营看不到这批会员」，比整页空白更难发现。
+   * 这正是 mch_store 那次已经权衡过的同一道题（见上方那段）。
+   *
+   * ⚠️ **代价写在这里，不写就等于没豁免**：将来只要有一个角色同时拿到
+   * member:* / marketing:* / product:* 与社区（或自提点）数据域，
+   * 他打开会员、券、门店价这些页面就是**整页空白且不报错**，
+   * 而空白看起来像「这个片区没有数据」。到那天要回 TDD-运营端数据域接入 §6.1
+   * 的三个选项里重选，不是直接加列。
+   */
+  // 会员域：会员属于经营主体（entity_no），与社区/自提点无关
+  "mbr_member:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
+  "mbr_member:PICKUP": "同上：没有持自提点域的角色能打开",
+  "mbr_member_source:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
+  "mbr_member_source:PICKUP": "同上：没有持自提点域的角色能打开",
+  "mbr_member_store:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
+  "mbr_member_store:PICKUP": "同上：没有持自提点域的角色能打开",
+  "mbr_member_tag:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
+  "mbr_member_tag:PICKUP": "同上：没有持自提点域的角色能打开",
+  "mbr_segment:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
+  "mbr_segment:PICKUP": "同上：没有持自提点域的角色能打开",
+  "mbr_setting:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
+  "mbr_setting:PICKUP": "同上：没有持自提点域的角色能打开",
+  "mbr_tag:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
+  "mbr_tag:PICKUP": "同上：没有持自提点域的角色能打开",
+  "mbr_tag_merge_log:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
+  "mbr_tag_merge_log:PICKUP": "同上：没有持自提点域的角色能打开",
+  // 券与活动：券模板、发放记录、用户券都挂在主体上，平台券的主体为空
+  "pmt_apply:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
+  "pmt_apply:PICKUP": "同上：没有持自提点域的角色能打开",
+  "pmt_coupon:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
+  "pmt_coupon:PICKUP": "同上：没有持自提点域的角色能打开",
+  "pmt_coupon_issue:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
+  "pmt_coupon_issue:PICKUP": "同上：没有持自提点域的角色能打开",
+  "pmt_user_coupon:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
+  "pmt_user_coupon:PICKUP": "同上：没有持自提点域的角色能打开",
+  // 门店维度：类目与门店价挂门店（store_no），门店挂主体
+  "mch_store_category:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
+  "mch_store_category:PICKUP": "同上：没有持自提点域的角色能打开",
+  "prd_store_price:COMMUNITY": "没有持社区域的角色能打开这张表相关的页面（见上方那段判据）",
+  "prd_store_price:PICKUP": "同上：没有持自提点域的角色能打开",
 };
 
 // ────────────────────────────────────────────────── 静态扫描
@@ -268,8 +323,20 @@ function methodBodies(src: string): Map<string, string[]> {
 const classes = new Map<string, ClassInfo>();
 /** 接口/父类简名 → 实现类简名[] */
 const implOf = new Map<string, string[]>();
-/** Mapper 简名 → 实体简名 */
-const mapperEntity = new Map<string, string>();
+/**
+ * Mapper 简名 → 候选（实体简名 + 它所在的包）。
+ *
+ * **为什么是「候选」而不是一个值**：同名 Mapper 真的存在 ——
+ * `marketing.coupon.mapper.CouponMappers.CouponMapper` 绑 `MktCoupon`（`mkt_coupon`，未登记），
+ * `promotion.mapper.PromotionMappers.CouponMapper` 绑 `PmtCoupon`（`pmt_coupon`，已登记）。
+ * 按简名建映射会被后扫到的那个覆盖，于是 `CouponServiceImpl` 被报成碰了 `pmt_coupon` ——
+ * 而它一张 `pmt_*` 都没碰。**错的方向恰好是最坏那边**：把未登记表说成已登记，
+ * 于是报出一处并不存在的越权，照着它去改会把一个必要的绕过删掉。
+ * 2026-08-29 实测：10 条 G1 里有 3 条是这么来的。
+ */
+const mapperEntity = new Map<string, { entity: string; pkg: string }[]>();
+/** `类#字段` → 字段声明里写的全限定类型（只有用全限定名声明的才有） */
+const fieldPkg = new Map<string, string>();
 /** 实体简名 → 表名 */
 const entityTable = new Map<string, string>();
 
@@ -288,18 +355,62 @@ for (const f of javaFiles()) {
     }
   }
   const fields = new Map<string, string>();
-  // 类型可能带包名（`private final ai.neargo.x.FooService foo;`）—— 取简名
+  // 类型可能带包名（`private final ai.neargo.x.FooService foo;`）—— 取简名，
+  // **但把包前缀留下**：同名 Mapper 要靠它消歧，而这个仓库里真的有字段是
+  // 用全限定名声明的（CouponServiceImpl 的 issueMapper 就是），
+  // 那种写法在源文件里没有对应的 import，光看 import 消歧不了。
   for (const m of src.matchAll(
     /(?:private|protected|public)\s+(?:final\s+)?((?:\w+\.)*[A-Z][A-Za-z0-9_]*)(?:<[^;=]*>)?\s+(\w+)\s*[;=]/g)) {
     fields.set(m[2]!, m[1]!.split(".").pop()!);
+    if (m[1]!.includes(".")) {
+      fieldPkg.set(`${name}#${m[2]}`, m[1]!);
+    }
   }
   classes.set(name, { src, fields, methods: methodBodies(src) });
 
-  for (const m of src.matchAll(/interface\s+(\w+)\s+extends\s+BaseMapper<(\w+)>/g)) {
-    mapperEntity.set(m[1]!, m[2]!);
+  const pkg = (src.match(/^package\s+([\w.]+);/m) ?? [])[1] ?? "";
+  // `extends BaseMapper<...>` **可能换行、实体名可能带包**（CouponMappers.CouponIssueMapper
+  // 两样都占）。原来的单行 `<(\w+)>` 对它一个字都匹配不到 —— 于是那个 Mapper 根本没登记，
+  // 简名查找就落到了另一个同名的上，报出一张它从没碰过的表。
+  for (const m of src.matchAll(/interface\s+(\w+)\s+extends\s+BaseMapper<\s*((?:\w+\.)*\w+)\s*>/g)) {
+    const list = mapperEntity.get(m[1]!) ?? [];
+    list.push({ entity: m[2]!.split(".").pop()!, pkg });
+    mapperEntity.set(m[1]!, list);
   }
   const tn = src.match(/@TableName\("(\w+)"\)/);
   if (tn) entityTable.set(name, tn[1]!);
+}
+
+/**
+ * 这个简名的 Mapper 在**这个调用方**里指的是哪个实体。
+ *
+ * 只有一个候选就直接用；多个候选按调用方的 import 消歧；
+ * **消歧不了就返回 null（当成「不是 Mapper」继续往下走）** —— 不猜。
+ * 猜错的代价是不对称的：猜成已登记表 = 报一处假越权，而照着它改会删掉必要的绕过。
+ */
+function entityOfMapper(simple: string, importerSrc: string, fqn?: string): string | null {
+  const cands = mapperEntity.get(simple);
+  if (!cands?.length) {
+    return null;
+  }
+  if (cands.length === 1) {
+    return cands[0]!.entity;
+  }
+  // ① 字段就是用全限定名声明的 —— 最硬的判据
+  if (fqn) {
+    for (const c of cands) {
+      if (fqn.startsWith(`${c.pkg}.`)) {
+        return c.entity;
+      }
+    }
+  }
+  // ② 否则按调用方的 import
+  for (const c of cands) {
+    if (importerSrc.includes(`import ${c.pkg}.`)) {
+      return c.entity;
+    }
+  }
+  return null;
 }
 
 function resolveTypes(t: string): string[] {
@@ -317,8 +428,9 @@ function tablesIn(cls: string, region: string, depth = 0, seen = new Set<string>
   for (const m of region.matchAll(/(\w+)\.(\w+)\s*\(/g)) {
     const ft = c.fields.get(m[1]!);
     if (!ft) continue;
-    if (mapperEntity.has(ft)) {
-      const t = entityTable.get(mapperEntity.get(ft)!);
+    const mapped = entityOfMapper(ft, c.src, fieldPkg.get(`${cls}#${m[1]}`));
+    if (mapped) {
+      const t = entityTable.get(mapped);
       if (t) out.add(t);
       continue;
     }

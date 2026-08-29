@@ -31,7 +31,6 @@ enum-registry.test.ts::枚举登记表 规范 §D5 · 不允许在 interface 里
 message-placeholder.test.ts::带占位符的错误文案 ★★★ 抛这些码时必须带参数 —— 不带的话用户看到的是字面的 `{0}` @<=3
 ops-contract-fields.test.ts::ops-web 契约字段（必填数组） ★★ ops-web 声明为必填的数组字段，后端 VO 必须有 —— 否则 .length 直接抛异常 @<=11
 ops-data-scope.test.ts::运营端数据域接入 ★★★ G1 ops 查询端点不许绕过已注册表的数据域 —— 绕过了就是越权，而且不报错 @<=10
-ops-data-scope.test.ts::运营端数据域接入 ★★★ G3 每张已注册表都要为运营会话的三个维度备好锚点 —— 缺一个，那类运营整页空白且不报错 @<=15
 ops-endpoint-exists.test.ts::运营端端点存在性 ★★ 已经接通的要从清单里删掉 —— 否则清单几个月后就烂了 @<=4
 perm-doc-fresh.test.ts::权限配置文档的数据清单 ★★★ 必须与 gen-perm-seed.mjs 的产出一致 —— 不一致就是清单过期了 @<=13
 schema-lineage.test.ts::对账血缘 新出现的跨表同名业务键必须被分类 @<=17
