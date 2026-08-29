@@ -12,7 +12,6 @@
 # 分诊与降账计划：docs/technical/design/守卫与闸门-问题与优化方案.md
 #
 data-scope-coverage.test.ts::数据域表册覆盖 ★★★ 带归属列的表要么登记、要么写明为什么不用（棘轮：只许降不许升） @<=65
-doc-standard.test.ts::文档规范 technical 下每篇文档都出现在 README 索引里 —— 不在索引里的文档等于不存在 @<=71
 doc-standard.test.ts::文档规范 不使用 mermaid —— 写错一个字符整张图不显示，而且不报错 @<=12
 doc-standard.test.ts::文档规范 每张 svg 都有 title 与 desc —— 图之外要有能读的说明 @<=4
 doc-standard.test.ts::文档规范 没有状态行的文档不许再增加（基线只降不升） @<=41
