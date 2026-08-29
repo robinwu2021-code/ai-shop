@@ -27,6 +27,9 @@ export default {
     me: "我的",
   },
   home: {
+    // 同理：别借用 tab.home（那是底部菜单那一格的字）。
+    // 标题栏说品牌、菜单说位置，两者本来就不该是同一个词
+    title: "社区好物",
     noNearbyPickup: "你这一带还没开通自提点，可以先逛逛；下单自提时再选",
     noNearbyTitle: "这一带还没开通",
     pickManually: "手动选一个",
@@ -238,6 +241,11 @@ export default {
     updatedAt: "更新于 {d}",
   },
   login: {
+    // 标题栏那四个字。**三条各管各的，别互相借**：
+    //   navTitle 标题栏 · title 页内招呼语 · submit 提交按钮
+    // 此前标题栏借的是 submit（「登录 / 注册」），按钮改名会把标题一起改掉，
+    // 而那不报错；同一个块里已经有一个 title 了，插第二个只会被覆盖。
+    navTitle: "登录",
     sendOtp: "获取验证码",
     otpSent: "验证码已发送",
     phoneInvalid: "请填 11 位手机号",

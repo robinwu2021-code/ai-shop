@@ -104,7 +104,7 @@ async function doLogin(method: LoginMethod) {
 </script>
 
 <template>
-  <sh-scaffold title-key="login.submit">
+  <sh-scaffold title-key="login.navTitle">
     <view class="head">
       <text class="txt-display">{{ $t("login.title") }}</text>
       <text class="sh-muted head__sub">{{ $t("login.sub") }}</text>

@@ -228,7 +228,7 @@
     {
       "path": "pages/my-specs/index",
       "style": {
-        "navigationBarTitleText": "商品规格",
+        "navigationBarTitleText": "商品规格和参数",
         "app-plus": {
           "navigationStyle": "custom"
         },
@@ -408,7 +408,7 @@
     {
       "path": "pages/quotes/index",
       "style": {
-        "navigationBarTitleText": "邻里求团报价",
+        "navigationBarTitleText": "求团报价",
         "app-plus": {
           "navigationStyle": "custom"
         },
@@ -420,7 +420,7 @@
     {
       "path": "pages/groups/index",
       "style": {
-        "navigationBarTitleText": "商家团",
+        "navigationBarTitleText": "团购",
         "app-plus": {
           "navigationStyle": "custom"
         },
@@ -456,7 +456,7 @@
     {
       "path": "pages/cross-store/index",
       "style": {
-        "navigationBarTitleText": "跨店总览",
+        "navigationBarTitleText": "跨店对比",
         "app-plus": {
           "navigationStyle": "custom"
         },

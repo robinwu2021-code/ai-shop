@@ -99,13 +99,21 @@ def locale_map(app: str) -> dict[str, str]:
     return flat
 
 
-def scaffold_title(app: str, path: str, loc: dict[str, str]) -> str:
-    """页面标题多数写在 `<sh-scaffold title-key="x.y">` 上，pages.json 里是空的。"""
+def scaffold_title(app: str, path: str, loc: dict[str, str]) -> tuple[str, str]:
+    """页面标题多数写在 `<sh-scaffold title-key="x.y">` 上，pages.json 里是空的。
+
+    返回 `(词条 key, 译文)`。**key 也要带回来** —— 两边对不上时要能说出
+    该改哪一条，只说「不一致」的报错，人只会去把它跳过。
+    """
     vue = ROOT / app / "src" / f"{path}.vue"
     if not vue.exists():
-        return ""
+        return ("", "")
     m = re.search(r'title-key="([\w.]+)"', vue.read_text(encoding="utf-8"))
-    return loc.get(m.group(1), "") if m else ""
+    return (m.group(1), loc.get(m.group(1), "")) if m else ("", "")
+
+
+#: 标题两个真源对不上的地方。见 `read_uni` 里那段注释。
+TITLE_DRIFT: list[str] = []
 
 
 def read_uni(app: str) -> list[dict]:
@@ -115,11 +123,27 @@ def read_uni(app: str) -> list[dict]:
     out = []
     for p in data.get("pages", []):
         path = p["path"]
+        json_title = p.get("style", {}).get("navigationBarTitleText", "").strip()
+        key, key_title = scaffold_title(app, path, loc)
+        # 标题有**两个真源**：`pages.json` 的 navigationBarTitleText（切语言不会变，
+        # 但小程序/App 的原生标题栏读它）与 `<sh-scaffold title-key>` 指的词条。
+        #
+        # 此前这里是 `json_title or key_title` —— pages.json 赢，词条只兜底。
+        # 于是**改了词条没改 pages.json，清单安静地显示旧标题**，闸门照样绿。
+        # 2026-08-28「单据 ↔ 按单查」那次就是这么来回了一趟。
+        #
+        # 现在两边都有值且不一致就报红，并把该改的两处都说出来 ——
+        # 不选边（谁赢都会让另一处悄悄失效），而是逼人当场对齐。
+        if json_title and key_title and json_title != key_title:
+            TITLE_DRIFT.append(
+                f"{app}/{path}\n"
+                f"      pages.json  navigationBarTitleText = 「{json_title}」\n"
+                f"      词条        {key} = 「{key_title}」")
         out.append({
             "app": app,
             "route": "/" + path,
-            "title": (p.get("style", {}).get("navigationBarTitleText", "").strip()
-                      or scaffold_title(app, path, loc)
+            "title": (json_title
+                      or key_title
                       or FALLBACK_TITLES.get(app, {}).get(path)
                       or path.split("/")[1]),
             "domain": domain_of(path),
@@ -286,6 +310,19 @@ def main() -> None:
         })
 
     fresh = json.dumps(catalog, ensure_ascii=False, indent=2) + "\n"
+
+    # **两种模式都拦。** 生成一份已知是错的清单，与放它过闸门一样糟 ——
+    # 前者更糟一点：它会把错的标题写进产物，下一个人拿它去对齐。
+    if TITLE_DRIFT:
+        print("✗ 页面标题有两个真源，而它们对不上：", file=sys.stderr)
+        for d in TITLE_DRIFT:
+            print(f"    {d}", file=sys.stderr)
+        print("\n  两处都要改成同一个。改哪一边取决于你想要哪个名字 ——",
+              file=sys.stderr)
+        print("  但**只改一边不会报错**，只是原生标题栏与页内标题各说各的，",
+              file=sys.stderr)
+        print("  而清单会照着 pages.json 那一边写进产物。", file=sys.stderr)
+        sys.exit(1)
 
     if check:
         old = OUT_JSON.read_text(encoding="utf-8") if OUT_JSON.exists() else ""

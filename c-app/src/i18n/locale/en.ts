@@ -27,6 +27,7 @@ export default {
     me: "Me",
   },
   home: {
+    title: "Neighbourhood Picks",
     noNearbyPickup: "No pickup point near you yet — have a look around; pick one when you order",
     noNearbyTitle: "Not open here yet",
     pickManually: "Pick one",
@@ -216,6 +217,7 @@ export default {
     updatedAt: "Updated {d}",
   },
   login: {
+    navTitle: "Sign in",
     sendOtp: "Get code",
     otpSent: "Code sent",
     phoneInvalid: "Enter an 11-digit number",

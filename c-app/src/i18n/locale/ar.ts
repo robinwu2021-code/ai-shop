@@ -27,6 +27,7 @@ export default {
     me: "حسابي",
   },
   home: {
+    title: "مختارات الحي",
     noNearbyPickup: "لا توجد نقطة استلام قريبة بعد — تصفّح الآن واختر عند الطلب",
     noNearbyTitle: "غير متاح في منطقتك بعد",
     pickManually: "اختر واحدة",
@@ -216,6 +217,7 @@ export default {
     updatedAt: "آخر تحديث {d}",
   },
   login: {
+    navTitle: "تسجيل الدخول",
     sendOtp: "إرسال الرمز",
     otpSent: "أُرسل الرمز",
     phoneInvalid: "أدخل رقمًا من ١١ خانة",

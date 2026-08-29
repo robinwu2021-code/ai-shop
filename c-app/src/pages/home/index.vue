@@ -200,7 +200,7 @@ onShareAppMessage(() =>
 </script>
 
 <template>
-  <sh-scaffold title-key="tab.home" tab="home">
+  <sh-scaffold title-key="home.title" tab="home">
     <!-- 页头两行，按**使用频次**排序：
          · 自提点是「装一次、几个月不动」的设置 —— 收成一行小字，能看见、能切换即可
          · 搜索是每次打开都可能用的动作 —— 给它主视觉
