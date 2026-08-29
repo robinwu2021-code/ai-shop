@@ -38,8 +38,19 @@ public class OpsInvoiceRequestController {
         this.service = service;
     }
 
+    /*
+     * ⚠️ 这三个端点原来写的是 {@code hasAuthority(...)}，而运营端的认证过滤器
+     * **只塞 ROLE_OPERATOR 与 ROLE_<角色> 两类权威，从不把权限码塞成 authority**。
+     * 于是 hasAuthority('finance:invoice:read') 精确匹配一个根本不存在的权威 ——
+     * **对所有运营（包括超管）永远 403**，整个开票申请功能是死的，
+     * 而它编译通过、测试不报、页面上只表现为「点了没反应」。
+     *
+     * 运营端的判权入口只有 @perm.can / @perm.canAny（它们读的是每请求现算的权限码，
+     * 且认 * 与 module:* 通配）。2026-08-29 由 OpsEndpointPermTest 揪出，
+     * 那道闸现在会直接拒绝 hasAuthority 的写法。
+     */
     @GetMapping("/ops/invoice-requests")
-    @PreAuthorize("hasAuthority('" + Perms.FINANCE_INVOICE_READ + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_READ + "')")
     public List<InvoiceRequestService.InvoiceRequestVO> list(
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") int page,
@@ -48,14 +59,14 @@ public class OpsInvoiceRequestController {
     }
 
     @PostMapping("/ops/invoice-requests/{requestNo}/issued")
-    @PreAuthorize("hasAuthority('" + Perms.FINANCE_INVOICE_VERIFY + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_VERIFY + "')")
     public InvoiceRequestService.InvoiceRequestVO markIssued(
             @PathVariable String requestNo, @RequestBody IssuedReq req) {
         return service.markIssued(requestNo, req.invoiceNo(), SecurityUtils.currentUserNo());
     }
 
     @PostMapping("/ops/invoice-requests/{requestNo}/reject")
-    @PreAuthorize("hasAuthority('" + Perms.FINANCE_INVOICE_VERIFY + "')")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_VERIFY + "')")
     public InvoiceRequestService.InvoiceRequestVO reject(
             @PathVariable String requestNo, @RequestBody RejectReq req) {
         return service.reject(requestNo, req.reason(), SecurityUtils.currentUserNo());
