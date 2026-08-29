@@ -159,8 +159,24 @@ MariaDB 的 `JSON` 只是 `LONGTEXT COLLATE utf8mb4_bin` 的别名，每次都�
 随代码演进（后来加了 `templateNo`、`optionCodes`），而已写入的行不会跟着变，
 数据库也不报错 —— 于是「线上 198 件里只有 1 件带 templateNo」是靠人翻数据翻出来的。
 
-`JSON_SCHEMA_VALID()` **MariaDB 12.2 与 MySQL 8 都有**（已实测），
-挂成 `CHECK` 约束就能让数据库替我们守住形状：
+`JSON_SCHEMA_VALID()` MariaDB 与 MySQL 8 都有，挂成 `CHECK` 约束就能让数据库替我们守住形状：
+
+> ⚠️ **有版本下限，低于它是「静默给错答案」而不是报错。**
+> 本机 MariaDB **12.2.2** 上实测，`{"type":"array","items":{"type":"object"}}`
+> 校验 `[{"a":1}]` 返回 **0（判为不合法）**；而 `items:{"type":"string"}` 是对的 ——
+> 只有「对象数组」这一种形状错，**而那正是 `spec_groups` 的形状**。
+>
+> 这是 [MDEV-38033](https://jira.mariadb.org/browse/MDEV-38033)：
+> *"JSON_SCHEMA_VALID() is returning incorrect result with JSON having array of objects"*，
+> 状态 **Closed(Fixed)**，影响 12.1.1，**修复于 11.4.13 / 11.8.9 / 12.3.2**。
+>
+> **生产是 12.3.2，已经在修复版本上** —— 同一条 schema 在生产库上实测返回 **1**。
+> 所以这条建议成立，但要写明下限：**MariaDB ≥ 12.3.2（或 11.4.13 / 11.8.9）**。
+> 本机版本低于它的人跑这条约束会看到「所有数据都不合规」，
+> 而那不是数据的问题。切 MySQL 后要在目标版本上重验一次。
+>
+> 这件事本身也是个例子：我本机跑出来是「坏的」，生产跑出来是「好的」，
+> **只有查 Jira 才知道两者都对、差的是版本**。
 
 ```sql
 ALTER TABLE prd_goods ADD CONSTRAINT ck_goods_spec_groups
