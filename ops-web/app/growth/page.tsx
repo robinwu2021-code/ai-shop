@@ -135,7 +135,8 @@ function GrowthInner() {
 
   const traceColumns: Column<AttributionTrace>[] = [
     { header: c.colTraceNo, cell: (t) => t.traceNo, numeric: true, align: "start" },
-    { header: c.colUser, cell: (t) => t.userNickname },
+    // 昵称后端不下发，回落用户号 —— 空着一列比显示用户号更难查
+    { header: c.colUser, cell: (t) => t.userNickname ?? t.userNo },
     { header: c.colSource, cell: (t) => <StatusBadge map={sourceMap} value={t.source} /> },
     { header: c.colSourceRef, cell: (t) => t.sourceRef, className: "whitespace-normal", width: "16rem" },
     { header: c.colAttributedAt, cell: (t) => fmtTime(t.attributedAt) },
@@ -148,8 +149,8 @@ function GrowthInner() {
     {
       header: c.colRiskFlags,
       cell: (t) =>
-        t.riskSignals.length
-          ? <span className="flex flex-wrap gap-1">{t.riskSignals.map((s) => <Badge key={s} tone="danger">{s}</Badge>)}</span>
+        t.riskSignals?.length
+          ? <span className="flex flex-wrap gap-1">{t.riskSignals!.map((s) => <Badge key={s} tone="danger">{s}</Badge>)}</span>
           : <span className="text-muted-foreground">{c.none}</span>,
     },
   ];

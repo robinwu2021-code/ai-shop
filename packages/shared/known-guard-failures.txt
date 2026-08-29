@@ -21,7 +21,6 @@ entity-alignment.test.ts::Java 实体与库表对齐 每张业务表都有实体
 enum-registry.test.ts::枚举登记表 G1 · 端上每个具名枚举都必须登记（新增枚举不能绕过雷达） @<=15
 enum-registry.test.ts::枚举登记表 G2 · STATUS 型枚举的取值必须取自 L1 状态词表，或已申报 @<=11
 enum-registry.test.ts::枚举登记表 规范 §D5 · 不允许在 interface 里内联字面量联合类型 @<=11
-ops-contract-fields.test.ts::ops-web 契约字段（必填数组） ★★ ops-web 声明为必填的数组字段，后端 VO 必须有 —— 否则 .length 直接抛异常 @<=11
 spec-completeness.test.ts::契约完整性 B 端：每个字段都有说明 @<=374
 spec-completeness.test.ts::契约完整性 C 端：每个字段都有说明 @<=358
 spec-completeness.test.ts::契约完整性 平台端：每个字段都有说明 @<=371
