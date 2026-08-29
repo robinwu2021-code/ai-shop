@@ -120,7 +120,7 @@
             {
               "app": "b-app",
               "route": "/pages/store-categories/index",
-              "title": "类目与规格",
+              "title": "我的类目",
               "domain": "商品",
               "tab": false,
               "status": "已实现",
