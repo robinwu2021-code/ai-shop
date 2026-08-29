@@ -61,10 +61,63 @@ public class GlobalExceptionHandler {
             ConstraintViolationException.class, MissingServletRequestParameterException.class,
             MissingRequestHeaderException.class,
             MethodArgumentTypeMismatchException.class, HttpMessageNotReadableException.class})
-    public ApiResult<Void> onInvalid(Exception e) {
-        // 预期内的调用方错误，不打 error 栈 —— 打了会把真正的告警淹掉
-        log.debug("bad request: {}", e.getMessage());
+    public ApiResult<Void> onInvalid(Exception e, jakarta.servlet.http.HttpServletRequest req) {
+        /*
+         * **WARN，不是 DEBUG。** 生产跑在 INFO 上，打 debug 等于一行不打。
+         *
+         * <p>为什么这一行非有不可：入参被拒**在生产上是完全看不见的**。
+         * 业务错误一律 200 + 信封里的 code（见类注释），所以 nginx 的 access.log
+         * 里它是 200；而 app.log 此前只有这句 debug。2026-08-29 实测：
+         * 线上打出好几个 10400，`grep -c 10400 app.log` 是 **0**。
+         *
+         * <p>这在 15 个端点接上 `@Valid` 那天（945a089e）从「无所谓」变成「要命」——
+         * 那笔收紧了入参校验，而线上跑着的是**已经发出去的 App**。如果某个版本真在
+         * 传空值，链路会从「走到下游」变成「当场拒」，**而没有任何人会知道**。
+         * 「日志里没看到 400」这句话此前什么都不证明。
+         *
+         * <p>不打 error 栈的判断是对的（预期内的调用方错误，打 error 会把真告警淹掉），
+         * 但那是「不要 error」，不是「不要可见」。
+         *
+         * <p>⚠️ **只记路径与字段名，绝不记 body。** 这些请求体里有手机号、验证码、
+         * 收货地址 —— 把它们写进日志，等于把一份 PII 副本堆在磁盘上，
+         * 而它比数据库更难管（没有保留期、没有脱敏、谁都能 grep）。
+         */
+        log.warn("入参被拒 {} {} · {}", req.getMethod(), req.getRequestURI(), rejectedFields(e));
         return ApiResult.error(ErrorCode.BAD_REQUEST.code(), firstMessage(e));
+    }
+
+    /**
+     * 被拒的字段名（**只有名字，没有值**）。拿不到字段名时退回异常类型简名 ——
+     * 那也比一句「参数有误」有用：至少说得出是哪一类。
+     */
+    private static String rejectedFields(Exception e) {
+        java.util.List<org.springframework.validation.FieldError> errors = null;
+        if (e instanceof MethodArgumentNotValidException m) {
+            errors = m.getBindingResult().getFieldErrors();
+        } else if (e instanceof BindException b) {
+            errors = b.getFieldErrors();
+        }
+        if (errors != null && !errors.isEmpty()) {
+            /*
+             * 带上**约束名**（NotBlank / Size / Pattern…）而不只是字段名：
+             * 「phone 没传」与「phone 太长」是两件事，前者多半是端上少填了一个字段，
+             * 后者多半是有人在灌垃圾。只看字段名分不出来，而这两种的处置完全不同。
+             * getCode() 给的正是注解简名。
+             */
+            return errors.stream()
+                    .map(x -> x.getField() + "(" + x.getCode() + ")")
+                    .distinct().limit(10).collect(java.util.stream.Collectors.joining(","));
+        }
+        if (e instanceof MissingServletRequestParameterException m) {
+            return "缺少参数 " + m.getParameterName();
+        }
+        if (e instanceof MissingRequestHeaderException m) {
+            return "缺少请求头 " + m.getHeaderName();
+        }
+        if (e instanceof MethodArgumentTypeMismatchException m) {
+            return "类型不符 " + m.getName();
+        }
+        return e.getClass().getSimpleName();
     }
 
     @ExceptionHandler(AccessDeniedException.class)
