@@ -56,6 +56,49 @@ HEAD_SHA="$(git rev-parse --short HEAD)"
 HEAD_MSG="$(git log -1 --format=%s | cut -c1-60)"
 say "本次要上线的是 HEAD = $HEAD_SHA  $HEAD_MSG"
 
+# ── ⓪ 闸门验的那份，是不是就是要发的这份 ─────────────────────────────────
+#
+# **「验过的那份」与「发出去的那份」可以不是一份。**
+# 闸门跑四到六分钟，而这个目录常有多个会话在推 —— 跑完之后 HEAD 会前进，
+# 而这里建的是**当时的** HEAD。2026-08-29 真实发生过：闸门验 acf0679e，
+# 部署建 ea4d428a，中间多了两笔。那次无害（多出来的 backend 改动只是一个基线
+# 文本，不进 jar），但那是**人对了一眼**才知道的，而人对一眼是会累的。
+#
+# 同一天另一条会话踩的是这件事的**空间版本**：打 APK 时跑的构建命令读的是工作区
+# 而不是 HEAD，于是装到测试机上的是「打包那一刻的混合体」。
+# 时间上的漂与空间上的漂，同一句话：**验的那份 ≠ 发出去的那份。**
+#
+# 处理分两档，判据是「漂过来的提交有没有动 backend/」：
+#   · 没动 → jar 的行为与闸门验过的一致，打印一行说明就走（今天那次就是这一档）
+#   · 动了 → **拦下来**，列出是哪几笔，要显式 ALLOW_GATE_DRIFT=1 才继续
+# 只打印不拦的话，它就是又一条「打了一路没人看见」的警告 —— 这个仓库今天刚清掉两条那种。
+GATE_FILE="$(git rev-parse --git-dir)/gate-verified-sha"
+if [ -f "$GATE_FILE" ]; then
+    # 用 --short 归一化，**不要 cut -c1-7**：这个仓库的 --short 给的是 8 位，
+    # 截 7 位的话两边永远不相等，「闸门验的就是这一版」那条分支从此不会触发 ——
+    # 而它退化成的样子（落到漂移分支、恰好没有 backend 改动、打印一行「行为一致」）
+    # 看起来完全正常。写这段的时候就踩了一次。
+    GATE_SHA="$(git rev-parse --short "$(cat "$GATE_FILE")")"
+    if [ "$GATE_SHA" = "$HEAD_SHA" ]; then
+        ok "闸门验的就是这一版（$GATE_SHA）"
+    else
+        DRIFT="$(git log --oneline "$GATE_SHA..$HEAD_SHA" -- backend 2>/dev/null || true)"
+        if [ -z "$DRIFT" ]; then
+            say "闸门验的是 $GATE_SHA，本次构建 $HEAD_SHA —— 其间**没有 backend 改动**，jar 行为一致"
+        elif [ "${ALLOW_GATE_DRIFT:-}" = "1" ]; then
+            say "⚠ 闸门验的是 $GATE_SHA，而这几笔 backend 改动没被它验过（ALLOW_GATE_DRIFT=1 放行）："
+            echo "$DRIFT" | sed 's/^/    /'
+        else
+            printf '%s\n' "$DRIFT" | sed 's/^/    /' >&2
+            die "闸门验的是 $GATE_SHA，本次要建 $HEAD_SHA —— 上面这几笔 backend 改动**没被闸门验过**。
+  两条路：重跑一次 scripts/check-head-compiles.sh（推荐），
+  或者确认过它们无害之后 ALLOW_GATE_DRIFT=1 再跑本脚本。"
+        fi
+    fi
+else
+    say "没有闸门记录（$GATE_FILE 不存在）—— 跑过 check-head-compiles.sh 之后才会有"
+fi
+
 # ── ① 记下出发时线上是什么 ────────────────────────────────────────────────
 #
 # **并行部署会互相无声覆盖。** 2026-08-29 07:55 与 07:57，两个会话在两分钟内
