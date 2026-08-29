@@ -69,6 +69,10 @@ export const useServerMenu = create<ServerMenuState>()((set) => ({
             name: p.name,
             group: p.groupName ?? undefined,
             sort: p.sort,
+            // 后端没做的点**照样返回**（后端有意为之，见 PermConfigService 的注释），
+            // 由端上灰显不可点。不接这一行的话它和正常叶子长得一模一样，
+            // 点进去在生产上就是 404 —— 而开发走 mock，一切正常。
+            soon: p.backendStatus === "NOT_IMPLEMENTED",
           };
         }
       }

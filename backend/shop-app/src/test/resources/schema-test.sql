@@ -8081,3 +8081,8 @@ SELECT 'SUPER_ADMIN', 'ACT__INVENTORY_CREDENTIAL_GRANT', 'OPS', NOW(), NOW()
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x
                     WHERE x.role_code = 'SUPER_ADMIN'
                       AND x.point_code = 'ACT__INVENTORY_CREDENTIAL_GRANT');
+UPDATE sys_function_point
+SET backend_status = 'IMPLEMENTED',
+    updated_at     = NOW()
+WHERE point_code = 'OPS_MESSAGE__TAB_FAQ'
+  AND backend_status = 'NOT_IMPLEMENTED';

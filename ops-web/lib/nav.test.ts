@@ -458,6 +458,36 @@ describe("路由归属与面包屑", () => {
       expect(visibleTabKeys("/merchants", KEYS, ["*"], hrefs)).toEqual(["audit", "list"]);
     });
 
+    it("★★★ 后端说「未实现」的 tab 不出现在 tab 条上 —— 它在生产是个 404 入口", () => {
+      /*
+       * 服务端菜单**照样返回**后端没做的功能点，带 backendStatus=NOT_IMPLEMENTED
+       * （后端有意为之：藏起来运营就不知道平台规划了这个功能）。二级导航一直在
+       * 按它灰显 —— 而 tab 条没接，于是同一个入口菜单里灰着、页面里还能点。
+       *
+       * 点下去的后果只在生产显形：开发默认走 mock（那些接口在 mock 里都是好的），
+       * 而 build:prod 设了 NEXT_PUBLIC_USE_MOCK=0。
+       *
+       * 实测受影响的是 /marketing?tab={slots,member} 与 /stores?tab={qrcode,effect,template}
+       * ——「内容位、会员卡、店铺码、获客看板、主页模板」五个 tab，17 条接口后端都没有。
+       */
+      const nav = overlayNav(NAV, {
+        sections: {},
+        leaves: { "/merchants?tab=list": { soon: true } },
+      });
+      const hrefs = new Set(["/merchants", "/merchants?tab=list"]);
+      expect(visibleTabKeys("/merchants", KEYS, ["*"], hrefs, nav)).toEqual(["audit"]);
+      // 反向：不标 soon 时它是在的 —— 否则上面那条断言可能只是因为别的原因少了一项
+      expect(visibleTabKeys("/merchants", KEYS, ["*"], hrefs, NAV)).toEqual(["audit", "list"]);
+    });
+
+    it("★★ nav.ts 本地标的 soon 不会被服务端的「已实现」翻亮 —— 两个条件都要满足", () => {
+      // soon 取「或」：库里那一列讲后端有没有，nav.ts 那一处讲前端做没做
+      const nav = overlayNav(NAV, { sections: {}, leaves: { "/merchants?tab=list": {} } });
+      const leaf = nav.flatMap((x) => x.children ?? []).find((l) => l.href === "/merchants?tab=list");
+      const orig = NAV.flatMap((x) => x.children ?? []).find((l) => l.href === "/merchants?tab=list");
+      expect(leaf?.soon).toBe(orig?.soon);
+    });
+
     it("★★★ 全站遍历：tab 集合永远 ⊆ 菜单可见集合，且确实发生过收窄", () => {
       /*
        * 不手挑角色举例 —— 挑错了会写出假测试：第一版拿 MERCHANT_BD 当「没有封禁权」

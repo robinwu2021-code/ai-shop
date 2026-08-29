@@ -681,6 +681,19 @@ export interface NavOverlayEntry {
   group?: string;
   icon?: string;
   sort?: number;
+  /**
+   * 服务端说「后端还没做」（`backendStatus === "NOT_IMPLEMENTED"`）。
+   *
+   * <p>翻成前端已有的 {@link NavLeaf.soon}：**灰显、带「待建」徽章、不可点**。
+   * 这正是 `OpsPermConfigFlowTest.unimplementedPointsAreReturnedWithFlag` 里
+   * 写下的那条决定 ——「藏起来的话运营不知道平台规划了这个功能；可点则是死按钮；
+   * 渲染但禁用是第三条路」。后端一直照这条在返回，只是端上一直没接。
+   *
+   * <p>没接的后果只在生产显形：开发默认走 mock，那些页面有数据、点得动、不报错，
+   * 而 `build:prod` 把 `NEXT_PUBLIC_USE_MOCK` 关掉 —— 于是同一个入口在开发机上
+   * 一切正常，一上线就打到不存在的后端路径上 404。
+   */
+  soon?: boolean;
 }
 /**
  * **section 与 leaf 分两张表**，不能合成一张按 href 索引的扁平表。
@@ -745,7 +758,11 @@ export function overlayNav(nav: NavSection[], overlay: NavOverlay | undefined): 
     const ov = secOv[s.href];
     const children = s.children?.map((l) => {
       const lv = leafOv[l.href];
-      return lv ? { ...l, label: lv.name ?? l.label, group: lv.group ?? l.group } : l;
+      // soon 取「或」而不是覆盖：本地标了待建的，不该被服务端的 IMPLEMENTED 翻亮 ——
+      // 那一列讲的是后端有没有，nav.ts 那一处讲的是前端做没做，两个条件都要满足才可点
+      return lv
+        ? { ...l, label: lv.name ?? l.label, group: lv.group ?? l.group, soon: l.soon || lv.soon }
+        : l;
     });
     return {
       ...s,
@@ -829,6 +846,18 @@ export function visibleTabKeys(
     .map((key, i) => ({ key, leaf: leafForTab(nav, path, key, i) }))
     // 菜单里查无此条：交给守卫去红，不在运行时把它藏掉
     .filter(({ leaf }) => (leaf ? visible.has(leaf.href) : true))
+    /*
+     * **待建的叶子不出 tab 条。**
+     *
+     * 菜单里它要留着（灰显 + 「待建」徽章，让运营知道平台规划了这个功能），
+     * 但 tab 条上没有「灰显」这个位置 —— 一个渲染出来的 tab 就是一个能点的 tab，
+     * 点下去页面会去调一个后端还不存在的接口。开发看不出来（mock 里那些接口都好），
+     * 生产 `NEXT_PUBLIC_USE_MOCK=0`，于是同一个 tab 在开发机上正常、上线就 404。
+     *
+     * `soon` 的来源有两处，都要认：nav.ts 本地标的（前端还没做），
+     * 以及服务端菜单里 `backendStatus = NOT_IMPLEMENTED` 的点（后端还没做）。
+     */
+    .filter(({ leaf }) => !leaf?.soon)
     /*
      * **按菜单顺序出，不按页面 TAB_KEYS 的顺序**。
      *
