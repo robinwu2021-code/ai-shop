@@ -15,7 +15,6 @@ b-app-shared-state.test.ts::b-app 共享状态 ★★ 定义了 ensureXxx 就必
 b-app-shared-state.test.ts::b-app 共享状态 ★★★ 被多页读取的状态，必须在 App.vue 上加载 —— 靠某一页加载 = 刷新即失效 @<=14
 biz-contract-fields.test.ts::'b-app' 契约字段（'/biz'） ★★ 后端发了而契约没声明的字段（棘轮：只许降不许升） @<=24
 biz-contract-fields.test.ts::'b-app' 契约字段（'/biz'） ★★★ 契约里的必填字段，后端 VO 必须真的有 —— 少一个就是屏幕上静默少一块 @<=15
-biz-page-perm.test.ts::B 端页面门禁 ★★★ 页面门禁必须覆盖该页调用所需的权限码 —— 覆盖不到的必须写明为什么 @<=42
 data-scope-coverage.test.ts::数据域表册覆盖 ★★★ 带归属列的表要么登记、要么写明为什么不用（棘轮：只许降不许升） @<=70
 ddl-parsable.test.ts::建表 DDL 必须可解析 ★★★ 每张声明过的表，解析器都必须读得到 @<=2
 doc-standard.test.ts::文档规范 md 引用的 md 必须存在 —— 目录重整最容易碎的就是这个，而且不报错 @<=7

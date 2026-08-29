@@ -14,9 +14,19 @@ import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { ROUTES } from "@/shared/nav";
+import { useMerchantStore } from "@/stores/merchant";
 import type { EntityStores, MyQualifications, PaymentApplyment } from "@shared/types";
 
 const { t } = useI18n();
+
+/*
+ * 页面门禁（2026-08-29 补）。这一页只服务**老板** —— `biz:store:admin` 在
+ * BizPerms.ROLE_PERMS 里只发给 OWNER。此前这里一道门禁都没有：
+ * 店长、店员、理货员、配送员、客服都进得来，然后每个请求各拿一个 70006，
+ * 而页面把它渲染成「这里什么都没有」。**后端拒绝得对，前端把拒绝画成了空**。
+ */
+const merchant = useMerchantStore();
+const canView = computed(() => merchant.can("biz:store:admin"));
 const entityNo = ref("");
 const data = ref<EntityStores | null>(null);
 const quals = ref<MyQualifications | null>(null);
@@ -89,7 +99,7 @@ function goPickStore() {
 </script>
 
 <template>
-  <sh-scaffold title-key="entityDetail.title">
+  <sh-scaffold title-key="entityDetail.title" :denied="!canView">
     <view v-if="denied" class="sh-card">
       <text class="txt-display">{{ $t("entityDetail.denied") }}</text>
       <text class="sh-hint">{{ $t("entityDetail.deniedHint") }}</text>

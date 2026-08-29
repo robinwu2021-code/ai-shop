@@ -79,7 +79,23 @@ for (const dir of readdirSync(PAGES)) {
   if (!existsSync(d)) continue;
   let src = "";
   for (const f of readdirSync(d)) src += readFileSync(join(d, f), "utf8");
+  /*
+   * 页面门禁。**两种写法都要认**：
+   *   ① 内联   `:denied="!merchant.can('biz:order:view')"`
+   *   ② 走 computed  `:denied="!canView"` + `const canView = computed(() => merchant.can("biz:finance"))`
+   *
+   * 只认 ① 的后果不是漏报，是**大面积假报**：②那几页会被当成「根本没有门禁」，
+   * 于是每个角色都算进得来，页面里用到的每个码都成了「他打不通的请求」。
+   * 2026-08-29 实测：42 条冲突里有 19 条是这么来的（income / points /
+   * points-records / schedule 四页，它们的门禁一直都在）。
+   * 而假报的代价不只是噪声 —— 照着它去「补门禁」会给一个已经有门禁的页面再加一层。
+   */
   const gates = [...src.matchAll(/denied="!merchant\.can\('([^']+)'\)/g)].map((m) => m[1]);
+  for (const m of src.matchAll(/denied="!(\w+)"/g)) {
+    const via = new RegExp(`const\\s+${m[1]}\\s*=\\s*computed\\(\\(\\)\\s*=>\\s*merchant\\.can\\("([^"]+)"\\)`);
+    const hit = via.exec(src);
+    if (hit) gates.push(hit[1]);
+  }
   const calls = [...new Set([...src.matchAll(/api\.(\w+)/g)].map((m) => m[1]))].filter((c) => features.has(c));
   pages.push({ dir, gates, calls });
 }

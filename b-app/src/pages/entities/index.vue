@@ -16,9 +16,19 @@ import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { ROUTES } from "@/shared/nav";
+import { useMerchantStore } from "@/stores/merchant";
 import type { Entity } from "@shared/types";
 
 const { t } = useI18n();
+
+/*
+ * 页面门禁（2026-08-29 补）。这一页只服务**老板** —— `biz:store:admin` 在
+ * BizPerms.ROLE_PERMS 里只发给 OWNER。此前这里一道门禁都没有：
+ * 店长、店员、理货员、配送员、客服都进得来，然后每个请求各拿一个 70006，
+ * 而页面把它渲染成「这里什么都没有」。**后端拒绝得对，前端把拒绝画成了空**。
+ */
+const merchant = useMerchantStore();
+const canView = computed(() => merchant.can("biz:store:admin"));
 const rows = ref<Entity[]>([]);
 const loading = ref(false);
 const failed = ref(false);
@@ -75,7 +85,7 @@ function addOne() {
 </script>
 
 <template>
-  <sh-scaffold title-key="entities.title">
+  <sh-scaffold title-key="entities.title" :denied="!canView">
     <text class="txt-display">{{ $t("entities.heading") }}</text>
     <text class="sh-hint">{{ $t("entities.hint") }}</text>
 

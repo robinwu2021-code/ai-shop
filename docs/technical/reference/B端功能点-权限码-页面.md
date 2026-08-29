@@ -329,13 +329,13 @@
 | `cross-store` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `customers` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `delivery` | `biz:ship` | `biz:store`、`biz:order:view`、`biz:ship` | 老板、店长、店员、配送员 | 店员（缺 biz:store）　配送员（缺 biz:store） |
-| `entities` | **无** | `biz:store:admin` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:store:admin）　店员（缺 biz:store:admin）　理货员（缺 biz:store:admin）　配送员（缺 biz:store:admin）　客服（缺 biz:store:admin） |
-| `entity-detail` | **无** | `biz:store:admin`、`biz:store`、`biz:finance` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:store:admin、biz:finance）　店员（缺 biz:store:admin、biz:store、biz:finance）　理货员（缺 biz:store:admin、biz:store、biz:finance）　配送员（缺 biz:store:admin、biz:store、biz:finance）　客服（缺 biz:store:admin、biz:store、biz:finance） |
+| `entities` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
+| `entity-detail` | `biz:store:admin` | `biz:store:admin`、`biz:store`、`biz:finance` | 老板 | — |
 | `goods-edit` | `biz:goods` | `biz:goods`、`biz:store`、`biz:stock` | 老板、店长 | — |
 | `goods-list` | `biz:stock` | `biz:store`、`biz:stock`、`biz:goods` | 老板、店长、店员、理货员 | 店员（缺 biz:store、biz:goods）　理货员（缺 biz:store、biz:goods） |
 | `groups` | `biz:campaign` | `biz:campaign`、`biz:stock` | 老板、店长 | — |
 | `home` | **无** | `biz:customer`、`biz:finance`、`biz:store`、`biz:stock` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:finance）　店员（缺 biz:customer、biz:finance、biz:store）　理货员（缺 biz:customer、biz:finance、biz:store）　配送员（缺 biz:customer、biz:finance、biz:store、biz:stock）　客服（缺 biz:customer、biz:finance、biz:store、biz:stock） |
-| `income` | **无** | `biz:finance` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:finance）　店员（缺 biz:finance）　理货员（缺 biz:finance）　配送员（缺 biz:finance）　客服（缺 biz:finance） |
+| `income` | `biz:finance` | `biz:finance` | 老板 | — |
 | `locations` | `biz:store:admin` | `biz:stock`、`biz:store:admin` | 老板 | — |
 | `marketing` | `biz:campaign` | `biz:campaign`、`biz:stock` | 老板、店长 | — |
 | `me` | **无** | `biz:store:admin` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:store:admin）　店员（缺 biz:store:admin）　理货员（缺 biz:store:admin）　配送员（缺 biz:store:admin）　客服（缺 biz:store:admin） |
@@ -351,14 +351,14 @@
 | `payment` | `biz:finance` | `biz:finance` | 老板 | — |
 | `picking` | `biz:receive` | `biz:receive`、`biz:verify` | 老板、店长、店员、理货员 | 理货员（缺 biz:verify） |
 | `plan` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
-| `points` | **无** | `biz:finance` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:finance）　店员（缺 biz:finance）　理货员（缺 biz:finance）　配送员（缺 biz:finance）　客服（缺 biz:finance） |
-| `points-records` | **无** | `biz:finance` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:finance）　店员（缺 biz:finance）　理货员（缺 biz:finance）　配送员（缺 biz:finance）　客服（缺 biz:finance） |
+| `points` | `biz:finance` | `biz:finance` | 老板 | — |
+| `points-records` | `biz:finance` | `biz:finance` | 老板 | — |
 | `purchase-edit` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `qualifications` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `quotes` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `reviews` | `biz:review` | `biz:review` | 老板、店长、客服 | — |
 | `role-detail` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
-| `schedule` | **无** | `biz:store` | 老板、店长、店员、理货员、配送员、客服 | 店员（缺 biz:store）　理货员（缺 biz:store）　配送员（缺 biz:store）　客服（缺 biz:store） |
+| `schedule` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `settle` | `biz:finance` | `biz:finance` | 老板 | — |
 | `sku-identity` | `biz:goods` | `biz:goods` | 老板、店长 | — |
 | `staff` | `biz:store:admin` | `biz:store:admin` | 老板 | — |

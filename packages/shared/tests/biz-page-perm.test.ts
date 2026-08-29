@@ -68,6 +68,12 @@ const EXEMPT: Record<string, string> = {
     + "店员与理货员进得来这一页（门禁是 biz:stock），但货架不是他们的事，那一段对他们不画",
   "goods-list/biz:goods":
     "列表本身要 biz:stock（已是门禁）；新建/编辑/上下架三个按钮各自 v-if=can('biz:goods')",
+  "home/biz:stock":
+    "库存卡：调用点 `merchant.can(\"biz:stock\") ? api.mStockSummary().catch(() => null) : null`，"
+    + "卡片本身也 `v-if=\"stockSummary && merchant.can('biz:stock')\"` —— 客服与配送员两处都不画",
+  "order/biz:receive":
+    "「确认收到线下付款」那个按钮：canConfirmOfflinePay 里带 can('biz:receive')，"
+    + "客服与配送员看不到它，也就不会去调",
   "order/biz:ship":
     "详情页门禁是 biz:order:view；发货/送达按钮 canShip/canDeliver 里带 can('biz:ship')",
   "orders/biz:aftersale":
