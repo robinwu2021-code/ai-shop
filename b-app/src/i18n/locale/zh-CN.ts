@@ -16,6 +16,8 @@ export default {
     retry: "重试",
     saved: "已保存",
     sessionExpired: "登录已失效，请重新登录",
+    // 全局错误的兜底提示。不说堆栈：对商家没意义，且可能带门店名
+    unexpected: "出错了，请重试",
     comingSoon: "该功能将在后续版本上线",
     submit: "提交",
     all: "全部",

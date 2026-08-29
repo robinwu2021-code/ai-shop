@@ -4,6 +4,7 @@ import { createPersistedState } from "pinia-plugin-persistedstate";
 import { uniPersistStorage } from "@shared/ports/persist";
 import App from "./App.vue";
 import { i18n } from "./i18n";
+import { installErrorReporting } from "./shared/report-error";
 import "virtual:uno.css";
 
 export function createApp() {
@@ -17,5 +18,11 @@ export function createApp() {
   pinia.use(createPersistedState({ storage: uniPersistStorage }));
   app.use(pinia);
   app.use(i18n);
+  /*
+   * **错误上报要在最前面接**，别等某个页面自己 try/catch。
+   * 这个 App 此前一个处理器都没有：真机上整页空白而 logcat 零信号，
+   * 查不出根因是因为它拒绝报告（见 shared/report-error.ts）。
+   */
+  installErrorReporting(app);
   return { app, pinia };
 }
