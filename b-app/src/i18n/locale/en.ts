@@ -160,6 +160,7 @@ export default {
       problem: "Problems",
       line: "Line {n}",
       previewTitle: "Change preview",
+      blank: "empty",
       barcode: "Barcode",
       code: "SKU code",
       unit: "Unit",

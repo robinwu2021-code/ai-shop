@@ -160,6 +160,7 @@ export default {
       problem: "مشكلات",
       line: "السطر {n}",
       previewTitle: "معاينة (حتى ٢٠ صفًا)",
+      blank: "فارغ",
       barcode: "الباركود",
       code: "رقم الصنف",
       unit: "الوحدة",

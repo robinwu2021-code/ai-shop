@@ -92,7 +92,8 @@ function arrow(from?: string | null, to?: string | null): string {
   const f = from || "";
   const g = to || "";
   if (f === g) return f || "—";
-  return `${f || "空"} → ${g || "空"}`;
+  const blank = String(t("skuIdentity.blank"));
+  return `${f || blank} → ${g || blank}`;
 }
 </script>
 

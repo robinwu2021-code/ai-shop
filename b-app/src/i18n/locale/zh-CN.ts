@@ -240,6 +240,7 @@ export default {
       problem: "有问题",
       line: "第 {n} 行",
       previewTitle: "改动预览",
+      blank: "空",
       barcode: "条码",
       code: "货号",
       unit: "单位",
