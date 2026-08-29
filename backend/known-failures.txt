@@ -159,10 +159,6 @@
 #   · 那条 INSERT 的 19 列与建表列一一对得上，不是列错位；
 #   · 单独跑就红 —— **不是被别的测试踩**（与 CategoryTree / M9bBizGoods 组合跑，
 #     失败数不变）。
-# 所以卡在 `categoryTypeOf` 返回 null，即 `TEMPLATE_TO_TYPE` 没认出 template='STANDARD'。
-# 再往下要排产品的类目类型映射 —— 超出「清测试欠账」。留给知道这块的人，
-# **别改成期望 80007**：那等于承认「粮油类目建不了商品」。
-#
 # ⚠️ **别用正则批量插**：这些辅助方法的下单语句跨多行、`.header(...)` 有的同行
 # 有的换行，按行号/邻近度算插入点会插进 `String skuNo = ...` 语句**中间**
 #（试过，编译不过，已回退重来）。逐个读、逐个改。
@@ -251,8 +247,27 @@
 # 是不是别的用例也在用**。是就必须还原，且还原本身要断言。
 # ══════════════════════════════════════════════════════════════════════
 #
+#
+# ══════════════════════════════════════════════════════════════════════
+# 2026-08-29：packagedFoodNeedsItsOwnAuthorization —— 用例站在一个已经不存在的形态上
+#
+# ⚠️ 先更正我上一轮写在这里的推断：**「TEMPLATE_TO_TYPE 不认 STANDARD」是错的**，
+# 对照表第一行就是 STANDARD → NORMAL。那条推断是读代码读出来的，没有落到数据上。
+#
+# 真相是打一条临时探针问库里拿到的：CAT131 的 `archivedAt` 有值 —— 它是**归档态**。
+# 种子里有一句 `UPDATE prd_category SET status='ARCHIVED' WHERE level = 3`
+# （类目降二级那次，三级整批归档），CAT131 正是三级；同一份种子后面又把
+# PACKAGED_FOOD 这个门槛**移到了二级的 CAT130**。用例没跟着搬。
+#
+# 所以 80007「所选类目不存在」**是正确行为** —— 归档类目不能被新商品选中。
+# 报错读起来像「粮油类目建不了商品」，实际是用例指错了节点。改指 CAT130。
+#
+# 教训是老的那条：**读代码能给出假设，给不出结论。**「CAT131 在 schema-test.sql
+# 第 3856 行、status='ACTIVE'」这句话我上一轮是 grep 出来的 —— 文本确实在那儿，
+# 而 5949 行还有一句 UPDATE 把它改掉了。一条探针 20 秒，省掉的是一整轮错误方向。
+# ══════════════════════════════════════════════════════════════════════
+#
 ai.neargo.shop.arch.ArchitectureTest.implsMustLiveInDedicatedPackage
 ai.neargo.shop.arch.ArchitectureTest.svcModulesMustNotDependOnEachOther
 ai.neargo.shop.scenario.OpsPermConfigFlowTest.superAdminHasEveryPoint
-ai.neargo.shop.scenario.Phase1MasterDataTest.packagedFoodNeedsItsOwnAuthorization
 ai.neargo.shop.scenario.S3AdmissionRealPathTest.dailyCapCountsAcrossBuyers

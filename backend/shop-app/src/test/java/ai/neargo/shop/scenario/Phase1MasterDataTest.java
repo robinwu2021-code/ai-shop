@@ -189,7 +189,19 @@ class Phase1MasterDataTest {
     @DisplayName("★ 预包装食品是新门槛：没有 PACKAGED_FOOD 上不了架")
     void packagedFoodNeedsItsOwnAuthorization() throws Exception {
         String token = merchant("12600171004", "类目测试·粮油");
-        String goodsNo = saveGoods(token, "菜籽油 5L", "CAT131", "NORMAL");
+        /*
+         * **挂在 CAT130（预包装食品，二级），不是 CAT131（粮油调味，三级）。**
+         *
+         * 类目降二级那次，种子里有一句 `UPDATE prd_category SET status='ARCHIVED'
+         * WHERE level = 3` —— 三级类目整批归档，CAT131 在其中；同一份种子后面又把
+         * PACKAGED_FOOD 这个门槛**移到了二级的 CAT130** 上。这条用例没跟着搬，
+         * 一直指着搬走之前那个节点。
+         *
+         * 于是它拿到的是 80007「所选类目不存在」—— 而那正是**正确行为**：
+         * 归档类目不能被新商品选中。报错读起来像「粮油类目建不了商品」，
+         * 实际是这条用例站在了一个已经不存在的形态上。⚠️ 别把断言改成期望 80007。
+         */
+        String goodsNo = saveGoods(token, "菜籽油 5L", "CAT130", "NORMAL");
         approveGoods(goodsNo);
 
         assertThat(json.readTree(toggleOnSale(token, goodsNo)).get("code").asInt()).isEqualTo(70002);
