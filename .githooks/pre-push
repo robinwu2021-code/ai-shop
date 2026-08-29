@@ -63,6 +63,15 @@ if ! node "$GATE_WT/scripts/check-ops-contract.mjs" --check; then
   exit 1
 fi
 
+# 同一件事的另外两端。c-app / b-app 此前没有任何东西做这件事，失败方式不同
+# 但一样安静：两端的 http.ts 统一 catch，页面拿到空数组，**屏是空的但不报错**；
+# b-app 的 mFulfillmentImpact 干脆写着 `.catch(() => [])`，于是「关掉这条履约渠道
+# 会影响多少单」在线上恒为空，店主看到「影响 0 单」然后放心关掉。
+# 基线：app-known-missing-endpoints.txt，与运营端那份同一个棘轮。纯 python。
+if ! python3 "$GATE_WT/scripts/check-app-contract.py" --check; then
+  exit 1
+fi
+
 # 反向那一侧：**后端做了、运营端没有入口**。两个方向都要盯 ——
 # 「画了没后端」在切真后端时会 404，看得见；「做了没入口」不报任何错，
 # 它表现为「这个功能我们做过啊」，而运营点不到。

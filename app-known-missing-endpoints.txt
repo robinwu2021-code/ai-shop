@@ -1,0 +1,17 @@
+# c-app / b-app 在调、后端还没有的接口 —— 只准变短，不准变长。
+#
+# 立于 2026-08-29。与 ops-web/known-mock-endpoints.txt 同一个道理：
+# 要求全部补齐才让过会让闸门从第一天起恒红，而恒红的闸门等于没有闸门。
+# **补上一条就删一行**；删空的那天，把 check-app-contract.py 的棘轮换成「必须全绿」。
+#
+# ── C 端：我的卡包
+# 页面 c-app/src/pages/cards/index.vue 在调它。这一页同时还有第二个问题：
+# **pages.json 里注册了，但 app 里没有任何一处跳得过去**，只有直接输路由才到得了。
+# 所以「补后端」与「撤这一页」都是合理的收场，需要产品定。
+GET /mp/card/mine
+#
+# ── B 端：关掉一条履约渠道会影响多少单
+# 调用处 b-app/src/pages/store-scope/index.vue:176 写着 `.catch(() => [])`，
+# 于是这个提示在**线上恒为空、且看起来完全正常** —— 店主看到「影响 0 单」
+# 然后放心关掉渠道，而真实影响面从来没被算过。比缺一屏更值得先补。
+GET /biz/stores/*/fulfillment/*/impact

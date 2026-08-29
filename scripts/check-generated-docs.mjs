@@ -61,6 +61,7 @@ const GENERATORS = [
   ["scripts/gen-table-inventory.mjs", ["docs/technical/reference/数据库表清单.md"]],
   ["scripts/gen-c-feature-matrix.mjs", ["docs/technical/reference/C端功能点-登录态-页面.md"]],
   ["scripts/gen-backend-layers.mjs", ["docs/technical/reference/后端分层清单.md"]],
+  ["scripts/gen-perm-domain-matrix.py", ["docs/technical/reference/三端权限矩阵-按业务域.md"]],
   ["scripts/gen-ui-lib.py", ["docs/technical/design/ui-lib.json"]],
   /*
    * 三份界面规范。**必须是生成的**：这个仓库里有 170 份手写设计文档，
