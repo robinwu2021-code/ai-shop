@@ -145,6 +145,27 @@ if (total < 150) {
 }
 
 if (process.argv.includes("--update")) {
+    /*
+     * **别在脏工作区上冻基线。**
+     *
+     * 这个仓库常有多个会话同时在改。2026-08-29 我就这么翻过一次：`--update` 跑在
+     * 带着别人未提交改动的工作区上，把**别人的在建回归**（bean-validation-wired）
+     * 写进了我的清单 —— 那等于替他们把问题掩掉，而且掩在一个署着我名字的文件里。
+     *
+     * 只提醒不阻断：修完一批之后立刻重冻是正常操作，那时工作区本来就是脏的。
+     * 要紧的是**冻完看一眼 diff**，只留自己认得的行。
+     */
+    try {
+        const dirty = execFileSync("git", ["status", "--porcelain"], { cwd: ROOT })
+            .toString().trim();
+        if (dirty) {
+            console.warn("⚠ 工作区不干净 —— 冻出来的基线会包含**别人未提交的改动**。");
+            console.warn("  冻完务必 `git diff packages/shared/known-guard-failures.txt`，只留自己认得的行。\n");
+        }
+    } catch {
+        // 不在 git 仓库里就算了，这只是提醒
+    }
+
     const header = [
         "# packages/shared/tests 里**已知红着**的守卫。",
         "#",

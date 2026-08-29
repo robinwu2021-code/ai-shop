@@ -90,6 +90,62 @@ class OpsMemberScopeTest {
         assertThat(body).contains(g[1].substring(7));   // 后四位是给的
     }
 
+    /**
+     * 配了商家域的运营，会员列表只剩那一家。
+     *
+     * <p><b>这条是上面那条的对照面，两条必须同时成立。</b>上面用超管跑
+     * （通配 → {@code DataScopeSpec.ALL}），所以它证明不了数据域生效没有 ——
+     * 2026-08-29 之前 {@code OpsMemberServiceImpl} 整个类绕开数据域，
+     * 而那条断言照样绿：「给这个人配了只看某商家」在这一页上完全不生效，
+     * 界面上也没有任何线索。
+     *
+     * <p>所以这条钉的是：**把绕过加回去，它必须红**。
+     *
+     * <p>角色用 GOODS_OPS 而不是 SUPPORT —— 会员页要 {@code member:member:read}，
+     * 而 SUPPORT 没有这个码。拿客服来测会先被权限拦住，然后看起来像「数据域生效了」。
+     */
+    @Test
+    @DisplayName("★★★ 配了商家域的运营只看得到那一家的会员 —— 此前他看到的是全平台")
+    void scopedOperatorSeesOnlyOwnMerchantMembers() throws Exception {
+        String[] g = seedTwoMerchants();
+        int mine = seq;                      // seedTwoMerchants 用的那一批
+        String admin = TestLogin.admin(mvc(), json);
+        String scoped = staffScopedTo(admin, "M-OPS-A" + mine);
+
+        String body = mvc().perform(get("/ops/members?phoneTail=" + g[1].substring(7))
+                        .header("Authorization", "Bearer " + scoped))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).as("配了 M-OPS-A 的运营应当看得到自己这家的会员").contains("M-OPS-A" + mine);
+        assertThat(body)
+                .as("而 M-OPS-B 那条不该出现 —— 出现了就说明数据域被绕开了，"
+                        + "「只看某商家」这个配置在这一页上是个摆设：%s", body)
+                .doesNotContain("M-OPS-B" + mine);
+    }
+
+    /** 造一个只看某商家的运营账号。用一次性用户名，对「跑过一遍的库」自愈。 */
+    private String staffScopedTo(String adminToken, String merchantNo) throws Exception {
+        String username = "member-scope-" + Long.toString(System.nanoTime() % 1_000_000L)
+                + "@neargo.ai";
+        String body = mvc().perform(post("/ops/staffs")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"realName\":\"会员域验证\","
+                                + "\"roles\":[\"GOODS_OPS\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        var created = json.readTree(body).get("data");
+        String staffNo = created.get("staff").get("staffNo").asString();
+        String password = created.get("initialPassword").asString();
+        mvc().perform(post("/ops/staffs/" + staffNo + "/scope")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"merchantNo\":\"" + merchantNo + "\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+        return TestLogin.operator(mvc(), json, username, password);
+    }
+
     @Test
     @DisplayName("★★ 人档页把「一个人几家会员」串起来 —— 这正是人档存在的理由")
     void personShowsAllMemberships() throws Exception {

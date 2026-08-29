@@ -49,6 +49,47 @@ const OPS_DIMS = ["MERCHANT", "COMMUNITY", "PICKUP"] as const;
  * 不过写端点本来就不在 G1 的扫描范围里（G1 只看 GET），所以它们不必登记。
  */
 const SCOPE_BYPASS_OK: Record<string, string> = {
+  /*
+   * ── 2026-08-29 逐条处置的六处 ──
+   *
+   * 同批还有四处**去掉了绕过**（OpsMemberServiceImpl 的 members/person/reachStats、
+   * OpsPromotionServiceImpl#coupons）—— 那四处是 ops 专用口径，且它们碰的表
+   * （mbr_member / pmt_coupon）都登记了 MERCHANT 锚点，接上之后
+   * 「配了只看某商家」这件事才第一次真的生效。
+   */
+
+  // 进销存的三处：**平台完整性任务，按定义就是全量**。
+  // recon 尤其不能接 —— 接上等于「只对差一部分」，而对账的全部意义就是覆盖全量；
+  // 一个只覆盖一半的对账结果比没有更危险，它会让人以为对过了。
+  "InventoryHealthServiceImpl#merchantNameOf":
+    "健康度页取商家名填展示列。行级可见性由上一步的库存扫描决定，这里只是把 no 换成名字",
+  "InventoryHealthServiceImpl#onSaleSkus":
+    "平台库存健康度按定义跨商家：它回答的是「全平台有多少 SKU 的账对不上」",
+  "InventoryBackfillServiceImpl#doRun":
+    "库存对差/回填是平台完整性任务，必须全量。接上数据域 = 只对差一部分，"
+    + "而部分对账的结果会被当成「对过了」—— 比不对更危险",
+
+  // 与 B/C 端共用同一段代码的两处 —— 与 MerchantOrderServiceImpl#todo 同一形状：
+  // **不能只看 ops 一侧就把绕过去掉**，另一端的会话维度在这些表上没有锚点，
+  // 接上就是 1=0，症状是「商家看自己的东西是空的」。
+  "MerchantGoodsServiceImpl#storePriceOf":
+    "storeSkus 读的是 BizContext.currentStoreNo() —— 这是 B 端商家看自己门店价的路径。"
+    + "去掉绕过会把商家自己的门店价清空。归属由 currentStoreNo 保证；要接需先拆 ops 专用口径",
+  "StoreFulfillmentServiceImpl#rowsOf":
+    "DataScopeRegistration 里已写明：mch_fulfillment_channel 登记 MERCHANT 是给运营端看的，"
+    + "而可见性/下单闸/B 端配置的调用方是 C 端或 B 端会话，接上就是 1=0。归属由 requireStore 保证",
+
+  // 人档按定义就是跨商家的
+  "OpsMemberServiceImpl#person":
+    "人档回答的是「这个人在**哪些**商家有会员身份」（返回体里就是那张跨商家的 member 列表）。"
+    + "按商家裁一刀正好毁掉这一页要说的事。同类的还有 revealPhone —— 它先要求填理由再放行。"
+    + "⚠️ 同一个类里的 members / reachStats 已于 2026-08-29 接上数据域，别把这条当成类级豁免",
+
+  // 人群规则判断，不是列表查询
+  "MemberQueryPortImpl#judge":
+    "判「这个人符不符合这条人群规则」。它是**判定**不是列举 —— 输入的 userNo 已经由调用方"
+    + "圈定，这里再按数据域裁一次的效果是「符合的人被判成不符合」，把一次规则命中变成静默漏发",
+
   // ── 批① ord_sub_order 之后留下的 ──
   "MerchantOrderServiceImpl#toOpsVO":
     "按子单主键回捞主单（ord_order）补社区字段。行级可见性已由上一步的子单查询判定；"

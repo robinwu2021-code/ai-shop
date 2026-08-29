@@ -50,13 +50,23 @@ public class OpsPromotionServiceImpl implements OpsPromotionService {
 
     @Override
     public List<OpsCouponVO> coupons(String entityNo) {
-        // 跨商家看是这一页的定义 —— 运营会话的维度在 pmt_* 上找不到锚点，不绕就是空列表
-        return DataScopeContext.executeWithoutScope(() ->
-                couponMapper.selectList(Wrappers.<PmtCoupon>lambdaQuery()
-                                .eq(entityNo != null && !entityNo.isBlank(),
-                                        PmtCoupon::getEntityNo, entityNo)
-                                .orderByDesc(PmtCoupon::getId))
-                        .stream().map(this::vo).toList());
+        /*
+         * 接数据域（2026-08-29）。
+         *
+         * 此前这里写着「运营会话的维度在 pmt_* 上找不到锚点，不绕就是空列表」——
+         * **那句话已经不成立**：`pmt_coupon` 早已登记了 MERCHANT 锚点（entity_no）。
+         * 留着绕过的后果是「给这个运营配了只看某商家」在这一页上完全不生效，
+         * 而页面上没有任何线索说明这一点。
+         *
+         * COMMUNITY / PICKUP 两个维度确实在这张表上没有锚点（fail-closed → 空列表），
+         * 但没有任何角色同时持有社区/自提点数据域与 marketing:* —— 见
+         * ops-data-scope.test.ts 的 ANCHOR_WAIVED 那段判据。
+         */
+        return couponMapper.selectList(Wrappers.<PmtCoupon>lambdaQuery()
+                        .eq(entityNo != null && !entityNo.isBlank(),
+                                PmtCoupon::getEntityNo, entityNo)
+                        .orderByDesc(PmtCoupon::getId))
+                .stream().map(this::vo).toList();
     }
 
     @Override
