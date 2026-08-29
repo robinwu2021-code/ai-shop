@@ -172,21 +172,22 @@ export const NAV: NavSection[] = [
   // Java 模块，将来要能单独交付；在菜单里把它塞进商品页，等于在界面上先把这条
   // 边界抹掉 —— 而抹掉之后没有人会记得它曾经存在。
   //
-  // module 填 `product` 而不是 `inventory`：这个字段是**权限码前缀**（canModule 过滤），
-  // 三个端点判的都是 `product:sku:read`。填 `inventory` 的话没有任何 UI 码以它开头，
-  // canModule 会走「这个模块不受权限约束」那条分支返回 true —— 于是整个 section
-  // 对所有人可见，靠叶子逐条兜底。看着能用，但闸门已经空了一层。
+  // module 填 `inventory`（2026-08-29 改）。这个字段是**权限码前缀**，canModule
+  // 按它过滤整段。此前只能填 `product`，因为那时没有任何 `inventory:` 开头的码 ——
+  // 而填 `inventory` 会让 canModule 走「这个模块不受权限约束」那条分支返回 true，
+  // **整个 section 对所有人可见**，靠叶子逐条兜底：看着能用，闸门却空了一层。
+  // 现在 Perms 里有了 inventory:* 三个码（见 Perms.java 的进销存那一段），
+  // 前缀过滤才真的成立。
   {
-    key: "inventory", label: "进销存", icon: "Boxes", module: "product", href: "/inventory",
+    key: "inventory", label: "进销存", icon: "Boxes", module: "inventory", href: "/inventory",
     children: [
-      { href: "/inventory", label: "库存健康度", perm: "product:sku:read", group: "库存治理", matrix: "P-18.1", ready: true },
-      { href: "/inventory?tab=ledger", label: "库存流水", perm: "product:sku:read", group: "库存治理", matrix: "P-18.2", ready: true },
-      { href: "/inventory?tab=recon", label: "库存对差", perm: "product:sku:read", group: "切换判据", matrix: "P-18.3", ready: true },
-      // perm 用 product:sku:read（看列表那一档）而不是签发那个码：
-      // 这个 section 的 module 是 `product`，canModule 按**前缀**过滤整段 ——
-      // 挂 merchant:* 的话会变成「能看见这个模块的人打不开这一页」。
-      // 签发与吊销在后端另判 merchant:mode:update，界面上按钮点了会 403。
-      { href: "/inventory?tab=credentials", label: "开放对接", perm: "product:sku:read", group: "对外", matrix: "P-18.4", ready: true },
+      { href: "/inventory", label: "库存健康度", perm: "inventory:stock:read", group: "库存治理", matrix: "P-18.1", ready: true },
+      { href: "/inventory?tab=ledger", label: "库存流水", perm: "inventory:stock:read", group: "库存治理", matrix: "P-18.2", ready: true },
+      { href: "/inventory?tab=recon", label: "库存对差", perm: "inventory:stock:read", group: "切换判据", matrix: "P-18.3", ready: true },
+      // 页面可见判 inventory:credential:read（只读视图：哪些钥匙发过、谁在用、
+      // 哪些已吊销 —— 审计要看的正是这个）。签发与吊销另判
+      // inventory:credential:grant，按钮按它藏掉，不是画出来点了 403。
+      { href: "/inventory?tab=credentials", label: "开放对接", perm: "inventory:credential:read", group: "对外", matrix: "P-18.4", ready: true },
     ],
   },
 

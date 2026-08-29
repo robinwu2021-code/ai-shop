@@ -42,7 +42,7 @@ public class OpsInventoryHealthController {
     /**
      * @param kind null / ALL = 三类都要；NEGATIVE / ZERO_ON_SALE / STALE 只要一类
      */
-    @PreAuthorize("@perm.can('" + Perms.PRODUCT_SKU_READ + "')")
+    @PreAuthorize("@perm.can('" + Perms.INVENTORY_STOCK_READ + "')")
     @GetMapping("/ops/inventory/health")
     public List<HealthRow> health(@RequestParam(required = false) String kind,
                                   @RequestParam(defaultValue = "200") int limit) {

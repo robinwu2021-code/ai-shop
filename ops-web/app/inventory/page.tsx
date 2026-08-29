@@ -12,7 +12,8 @@
 //
 // 第四页「开放对接」是唯一的写口，而它改的不是货、是**谁能读这些货** ——
 // 对方换了对接商、密钥泄露，处置只能在平台这边。所以它挂的是
-// `merchant:mode:update`（发钥匙），而看列表仍是 `product:sku:read`（跟着本 section 走）。
+// `inventory:credential:grant`（发钥匙），而看列表判 `inventory:credential:read`
+// —— 只读那一档给审计，签发那一档只给超管。
 import { Suspense } from "react";
 import { useCopy } from "@/lib/use-copy";
 import { usePageTab, useNavTabs } from "@/lib/use-page-tab";

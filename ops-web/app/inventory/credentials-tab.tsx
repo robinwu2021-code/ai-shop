@@ -44,13 +44,21 @@ export function CredentialsTab({ c }: { c: InventoryCopy }) {
 
    *
 
-   * 这一屏的可见性跟着 section 走（`product:sku:read`），而两个写动作判的是
+   * 这一屏的可见性判 `inventory:credential:read`，而两个写动作判的是
 
-   * `merchant:mode:update` —— 两者的持有人并不重合：GOODS_OPS 与 AUDITOR
+   * `inventory:credential:grant` —— 两者的持有人并不重合：GOODS_OPS 与 AUDITOR
 
    * 有前者没有后者。不藏的结果是他们看得见「签发新钥匙」、点下去一片 403，
 
    * 而看的人只会认为功能坏了。
+
+   *
+
+   * （2026-08-29 前这两个码分别是 `product:sku:read` 与 `merchant:mode:update` ——
+
+   * 借来的。后者尤其错位：它的意思是「改商家经营模式」，而 BD 持有它，
+
+   * 于是 BD **事实上能发钥匙却看不见这一页**。见 Perms 的进销存那一段。）
 
    *
 
@@ -60,7 +68,7 @@ export function CredentialsTab({ c }: { c: InventoryCopy }) {
 
   const can = useCan();
 
-  const canIssue = can("merchant:mode:update");
+  const canIssue = can("inventory:credential:grant");
   const { confirm, dialog } = useConfirm();
 
   const list = useQuery({

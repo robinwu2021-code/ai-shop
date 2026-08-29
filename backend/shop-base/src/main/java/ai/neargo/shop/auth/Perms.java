@@ -364,6 +364,35 @@ public final class Perms {
     public static final String RISK_EVENT_READ = "risk:event:read";
     public static final String RISK_EVENT_HANDLE = "risk:event:handle";
 
+    /**
+     * 进销存（P-18）—— <b>平台的独立模块，所以有独立的命名空间</b>。
+     *
+     * <p>此前这 7 个 {@code /ops/inventory/**} 端点整体寄在别人名下：只读那几个挂
+     * {@link #PRODUCT_SKU_READ}，签发/吊销凭证挂 {@link #MERCHANT_MODE_UPDATE}。
+     * 两处都是**授权面比意图大**：
+     * <ul>
+     *   <li>授予商品运营看 SKU 的权，就一并授出了全平台库存台账与对账；</li>
+     *   <li>授予商家运营改经营模式的权，就一并授出了**给外部系统开 API 钥匙**的权力 ——
+     *       而 BD 恰好持有它，于是 BD 事实上能发钥匙，却<b>看不见那个页面</b>
+     *       （页面按 {@code product:sku:read} 可见，他没有）。
+     *       「能做但看不见」是最难查的一种错位。</li>
+     * </ul>
+     *
+     * <p>还有一处只有独立命名空间能修好：{@code ops-web/lib/nav.ts} 的
+     * {@code module} 字段是**权限码前缀**，{@code canModule} 按它过滤整段。
+     * 进销存那一段此前只能填 {@code product}（因为没有 {@code inventory:} 开头的码）——
+     * 填 {@code inventory} 的话 {@code canModule} 会走「这个模块不受权限约束」
+     * 那条分支返回 true，<b>整个 section 对所有人可见</b>，靠叶子逐条兜底。
+     * 有了这三个码，那一层空掉的闸门才补得回来。
+     *
+     * <p><b>读写分开</b>（权限码细化的第一条原则）：看数、看钥匙、发钥匙是三件事。
+     * 「有哪些钥匙发出去过、谁在用、哪些已吊销」是审计要看的，
+     * 而「再发一把」是只有超管该做的。
+     */
+    public static final String INVENTORY_STOCK_READ = "inventory:stock:read";
+    public static final String INVENTORY_CREDENTIAL_READ = "inventory:credential:read";
+    public static final String INVENTORY_CREDENTIAL_GRANT = "inventory:credential:grant";
+
     /** 黑名单与申诉。拉黑直接挡住一个人下单，与只读分开 */
     public static final String RISK_BLACKLIST_READ = "risk:blacklist:read";
     public static final String RISK_BLACKLIST_UPDATE = "risk:blacklist:update";
@@ -495,6 +524,10 @@ public final class Perms {
                     MARKETING_COUPON_READ, MARKETING_COUPON_UPDATE, ORDER_READ,
                     PRODUCT_CATEGORY_READ, PRODUCT_CATEGORY_UPDATE, PRODUCT_SKU_AUDIT,
                     PRODUCT_SKU_READ, PRODUCT_SPEC_READ, PRODUCT_SPEC_UPDATE,
+                    // 进销存：**保持今天的可达面不变** —— 这三页此前靠
+                    // product:sku:read 可见，换命名空间时若不补这两行，
+                    // 商品运营会在上线那一刻静默失去进销存，而没有任何东西会说
+                    INVENTORY_STOCK_READ, INVENTORY_CREDENTIAL_READ,
                     PRODUCT_STD_READ, PRODUCT_STD_UPDATE,
                     PRODUCT_TOPIC_READ, PRODUCT_TOPIC_UPDATE)),
 
@@ -534,6 +567,9 @@ public final class Perms {
             Map.entry("AUDITOR", List.of(COMMUNITY_READ, CONTENT_MATERIAL_AUDIT,
                     CONTENT_MATERIAL_READ, CONTENT_MATERIAL_UPDATE, PRODUCT_SKU_AUDIT,
                     PRODUCT_SKU_READ, REVIEW_AUDIT, REVIEW_READ, REVIEW_SCORE_READ,
+                    // 审计只要那张只读视图：哪些钥匙发出去过、谁在用、哪些已吊销。
+                    // **不给 inventory:credential:grant** —— 审计不发钥匙
+                    INVENTORY_CREDENTIAL_READ,
                     REVIEW_SCORE_UPDATE)),
 
             Map.entry("FINANCE", List.of(AFTERSALE_REFUND_APPROVE, AFTERSALE_REFUND_READ,

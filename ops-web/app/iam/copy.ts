@@ -19,6 +19,8 @@ const zh = {
 
   colName: "姓名",
   colUsername: "登录名",
+  seededBadge: "演示账号",
+  seededHint: "演示种子账号：口令是「登录名 + 123」，生产库里真实存在。请改口令或停用。",
   colRole: "角色",
   /** `{name}` 是员工姓名 */
   ariaRoleOf: "{name} 的角色",
@@ -191,6 +193,8 @@ const en: typeof zh = {
 
   colName: "Name",
   colUsername: "Username",
+  seededBadge: "Demo",
+  seededHint: "Seeded demo account — its password is \"<username>123\" and it exists in the production database. Change the password or disable it.",
   colRole: "Role",
   ariaRoleOf: "Role of {name}",
   confirmPromoteTitle: "Promote {name} to super admin",

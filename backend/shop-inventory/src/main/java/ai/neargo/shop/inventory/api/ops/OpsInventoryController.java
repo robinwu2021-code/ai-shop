@@ -49,7 +49,7 @@ public class OpsInventoryController {
      * 平台级那一个在 {@code shop-app} 的 {@code OpsInventoryHealthController}：
      * 它要同时读平台侧的「在架」与本域的余额，而<b>本域不认识平台的表</b>。
      */
-    @PreAuthorize("@perm.can('" + Perms.PRODUCT_SKU_READ + "')")
+    @PreAuthorize("@perm.can('" + Perms.INVENTORY_STOCK_READ + "')")
     @GetMapping("/ops/inventory/balances")
     public List<BalanceVO> balances(@RequestParam String entityNo,
                                   @RequestParam(defaultValue = "todo") String type,
@@ -58,7 +58,7 @@ public class OpsInventoryController {
     }
 
     /** 商家台账（**只读**）。客服回答「我的货怎么少了」时有据可查。 */
-    @PreAuthorize("@perm.can('" + Perms.PRODUCT_SKU_READ + "')")
+    @PreAuthorize("@perm.can('" + Perms.INVENTORY_STOCK_READ + "')")
     @GetMapping("/ops/inventory/ledger")
     public LedgerPageVO ledger(@RequestParam String entityNo,
                                @RequestParam(required = false) String itemId,

@@ -52,7 +52,7 @@ public class OpsOpenCredentialController {
     }
 
     /** 某个商家发过哪些钥匙。**吊销过的也在列** —— 这一列要能回答「什么时候停的」 */
-    @PreAuthorize("@perm.can('" + Perms.PRODUCT_SKU_READ + "')")
+    @PreAuthorize("@perm.can('" + Perms.INVENTORY_CREDENTIAL_READ + "')")
     @GetMapping("/ops/inventory/credentials")
     public List<OpenApiCredentialService.Listed> list(@RequestParam String entityNo) {
         return credentials.list(acl.ownerIdOf(entityNo));
@@ -62,7 +62,7 @@ public class OpsOpenCredentialController {
      * 签发。**返回体里的 secret 是它这辈子唯一一次明文出现** ——
      * 库里存的是哈希，这个响应关掉就再也拿不回来，只能吊销重发。
      */
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_MODE_UPDATE + "')")
+    @PreAuthorize("@perm.can('" + Perms.INVENTORY_CREDENTIAL_GRANT + "')")
     @PostMapping("/ops/inventory/credentials")
     public OpenApiCredentialService.Issued issue(@RequestBody IssueReq req) {
         return credentials.issue(acl.ownerIdOf(req.entityNo()), req.name(),
@@ -70,7 +70,7 @@ public class OpsOpenCredentialController {
     }
 
     /** 吊销。**发得出、收不回的钥匙是半截功能** */
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_MODE_UPDATE + "')")
+    @PreAuthorize("@perm.can('" + Perms.INVENTORY_CREDENTIAL_GRANT + "')")
     @PostMapping("/ops/inventory/credentials/{credentialId}/revoke")
     public void revoke(@PathVariable String credentialId) {
         credentials.revoke(credentialId);

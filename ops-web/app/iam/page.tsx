@@ -26,6 +26,7 @@ import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { isSeededAccount } from "@/lib/seeded-accounts";
 import { Drawer, Field } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input, Select } from "@/components/ui/input";
@@ -358,7 +359,25 @@ function IamInner() {
 
   const staffColumns: Column<Staff>[] = [
     { header: c.colName, cell: (s) => s.name },
-    { header: c.colUsername, cell: (s) => s.username },
+    {
+      header: c.colUsername,
+      /*
+       * **演示种子账号要认得出来。** DevSeeder 在 shop.seed.enabled=true 时灌 11 个
+       * 平台账号，口令是「登录名 + 123」—— 而生产的 shop-app.env 里这个开关是 true，
+       * 其中 admin 是 SUPER_ADMIN（perms: ["*"]）。
+       *
+       * 这里只标不改：处置要人来做（改口令 / 停用 / 删除），就在这一页上。
+       * 名单与 DevSeeder.java 的对账在 lib/seeded-accounts.test.ts。
+       */
+      cell: (s) => (
+        <span className="inline-flex items-center gap-1.5">
+          {s.username}
+          {isSeededAccount(s.username) && (
+            <Badge tone="danger" title={c.seededHint}>{c.seededBadge}</Badge>
+          )}
+        </span>
+      ),
+    },
     {
       header: c.colRole,
       /*

@@ -40,7 +40,7 @@ public class OpsInventoryReconController {
      * <p><b>{@code clean=true} 是切真相源的唯一判据</b>：连续 N 天为真才准切。
      * 直接切等于「切换那天开始超卖」，而无从回溯是从哪一刻起的。
      */
-    @PreAuthorize("@perm.can('" + Perms.PRODUCT_SKU_READ + "')")
+    @PreAuthorize("@perm.can('" + Perms.INVENTORY_STOCK_READ + "')")
     @GetMapping("/ops/inventory/recon")
     public Report recon(@RequestParam(defaultValue = "500") int limit) {
         return backfill.diffOnly(Math.min(limit, LIMIT_MAX));

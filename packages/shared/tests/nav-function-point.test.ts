@@ -29,21 +29,44 @@ function seededPoints() {
     //             ui_perm_code, perm_code, backend_status, ui_ready,
     //             matrix_code, point_type, sort, ...
     //
-    // **两种插入形式都要认**：裸 `VALUES (…)`，以及 `SELECT … FROM DUAL WHERE NOT EXISTS`
-    // 的可重入形式。后者是 V74 起的写法 —— 裸 VALUES 撞上 uk_point 就是 1062，
-    // 迁移重跑必炸。只认 VALUES 的话，新写法插入的功能点在这里**根本不存在**，
-    // 守卫就会把它报成「只在 nav 里」，指着一个已经补好的缺口喊缺。
-    for (const m of sql.matchAll(
-      /INSERT INTO sys_function_point \([^)]*\)\s*(?:VALUES \(|SELECT )('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), ('[^']*'|NULL), (\d+), ('[^']*'|NULL), ('[^']*'|NULL)/g,
-    )) {
-      const lit = (v: string) => (v === "NULL" ? null : v.slice(1, -1));
-      out.push({
-        pointCode: lit(m[1])!,
-        group: lit(m[4]),
-        href: lit(m[5]),
-        ui: lit(m[6]),
-        type: lit(m[11])!,
-      });
+    // **三种写法都要认**，每一种都真实出现过，而认漏一种的代价是一样的：
+    // 守卫指着一个**已经登记好**的菜单喊缺，照着它去补会插出重复行。
+    //   ① 裸 `VALUES (…)` 单行            —— V62 / V64 的写法
+    //   ② `SELECT … FROM DUAL WHERE NOT EXISTS` —— V74 起的可重入写法
+    //      （裸 VALUES 撞上 uk_point 就是 1062，迁移重跑必炸）
+    //   ③ **多行、多元组** `VALUES\n (…),\n (…),\n (…);` —— V261 / V271 的写法
+    //   ④ `INSERT IGNORE INTO`                —— V154 / V271 的写法
+    //
+    // 此前只认 ①②，且分隔符写死成一个空格：于是 ③ 里除第一行外全部消失，
+    // 连带 `INSERT INTO sys_function_point` 与列清单之间换行的那些也整条消失。
+    // 2026-08-29 实测：9 条「只在 nav 里」中有 4 条是这么来的假报。
+    //
+    // 所以这里不再用一条大正则啃整条语句，而是**先切出 INSERT 的值区，再逐元组扫**。
+    for (const head of sql.matchAll(/INSERT\s+(?:IGNORE\s+)?INTO sys_function_point\s*\([^)]*\)\s*(VALUES|SELECT)/g)) {
+      const from = head.index! + head[0].length;
+      const stmtEnd = sql.indexOf(";", from);
+      const payload = sql.slice(from, stmtEnd < 0 ? sql.length : stmtEnd);
+      // SELECT 形式只有一组值，且后面跟着 FROM DUAL WHERE …；截到 FROM 为止
+      const body = head[1] === "SELECT"
+        ? "(" + payload.slice(0, payload.search(/\bFROM\b/) < 0 ? payload.length
+                                : payload.search(/\bFROM\b/)) + ")"
+        : payload;
+      // **先把 NOW() 换掉再切元组**：它自带一对括号，不换的话
+      // `\(([^()]*)\)` 会先匹配上 `NOW()` 的那对，整条语句一个元组都切不出来。
+      // （守卫自己那条「一个功能点都没解析到」的对照量当场抓到了这个，
+      //   否则这次改动会让它静默地永远绿。）
+      for (const tuple of body.replace(/NOW\(\)/g, "NOW").matchAll(/\(([^()]*)\)/g)) {
+        const cells = tuple[1].split(",").map((c) => c.trim());
+        if (cells.length < 12) continue;   // 不是功能点那一组（列少了就不是）
+        const lit = (v: string) => (v === "NULL" ? null : v.replace(/^'|'$/g, ""));
+        out.push({
+          pointCode: lit(cells[0])!,
+          group: lit(cells[3]),
+          href: lit(cells[4]),
+          ui: lit(cells[5]),
+          type: lit(cells[10])!,
+        });
+      }
     }
   }
   return out;

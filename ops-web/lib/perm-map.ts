@@ -133,6 +133,15 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "merchant:category:read": "merchant:category:read",
   "merchant:admission:update": "merchant:admission:update",
   "merchant:fulfillment:update": "merchant:fulfillment:update",
+  /*
+   * 进销存（V272）。**不登记的后果这份文件已经记过两次**：后端有码、
+   * UI_PERM_MAP 没登记 → can() 一律判无权限，页面上什么也看不到且不报错。
+   * 这三个码是 2026-08-29 从 product:sku:read / merchant:mode:update 分出来的 ——
+   * 进销存是平台的独立模块，此前整段寄在别人名下（见 Perms.java 的进销存那一段）。
+   */
+  "inventory:stock:read": "inventory:stock:read",
+  "inventory:credential:read": "inventory:credential:read",
+  "inventory:credential:grant": "inventory:credential:grant",
   "order:order:read": "order:order:read",
   "order:pay:read": "order:order:read",
   "product:sku:read": "product:sku:read",

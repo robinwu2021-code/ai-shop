@@ -8035,3 +8035,41 @@ VALUES ('OPS_JOBS', 'OPS_JOBS', '任务与执行日志', '运行配置', '/jobs'
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 VALUES ('SUPER_ADMIN', 'OPS_JOBS', 'OPS', NOW(), NOW()),
        ('TECH_OPS', 'OPS_JOBS', 'OPS', NOW(), NOW());
+INSERT INTO sys_function_point
+    (point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+     backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+VALUES
+    ('OPS_INVENTORY__TAB_CREDENTIALS', 'OPS_INVENTORY', '开放对接', '对外',
+     '/inventory?tab=credentials', 'product:sku:read', 'product:sku:read',
+     'IMPLEMENTED', 1, 'P-18.4', 'MENU', 40, NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+VALUES
+    ('SUPER_ADMIN', 'OPS_INVENTORY__TAB_CREDENTIALS', 'OPS', NOW(), NOW()),
+    ('GOODS_OPS',   'OPS_INVENTORY__TAB_CREDENTIALS', 'OPS', NOW(), NOW()),
+    ('AUDITOR',     'OPS_INVENTORY__TAB_CREDENTIALS', 'OPS', NOW(), NOW());
+UPDATE sys_function_point
+SET backend_status = 'IMPLEMENTED',
+    perm_code      = 'inventory:stock:read',
+    ui_perm_code   = 'inventory:stock:read',
+    updated_at     = NOW()
+WHERE point_code IN ('OPS_INVENTORY', 'OPS_INVENTORY__TAB_LEDGER', 'OPS_INVENTORY__TAB_RECON');
+UPDATE sys_function_point
+SET perm_code    = 'inventory:credential:read',
+    ui_perm_code = 'inventory:credential:read',
+    updated_at   = NOW()
+WHERE point_code = 'OPS_INVENTORY__TAB_CREDENTIALS';
+INSERT INTO sys_function_point
+    (point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+     backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'ACT__INVENTORY_CREDENTIAL_GRANT', 'OPS_INVENTORY', 'inventory:credential:grant',
+       '页面内操作', NULL, 'inventory:credential:grant', 'inventory:credential:grant',
+       'IMPLEMENTED', 1, NULL, 'ACTION', 901, NOW(), NOW()
+  FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x
+                    WHERE x.point_code = 'ACT__INVENTORY_CREDENTIAL_GRANT');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__INVENTORY_CREDENTIAL_GRANT', 'OPS', NOW(), NOW()
+  FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x
+                    WHERE x.role_code = 'SUPER_ADMIN'
+                      AND x.point_code = 'ACT__INVENTORY_CREDENTIAL_GRANT');
