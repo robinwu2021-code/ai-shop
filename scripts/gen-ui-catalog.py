@@ -48,7 +48,12 @@ DOMAINS = [
 
 # 标题由页面在运行时设（商品名、订单号…），pages.json 与 scaffold 上都取不到
 FALLBACK_TITLES = {
-    "b-app": {"pages/goods-edit/index": "编辑商品"},
+    "b-app": {
+        "pages/goods-edit/index": "编辑商品",
+        # 同一页服务两种人：第一次开店（入驻申请）与已在营业的再加一张证照。
+        # 清单里记前者 —— 那是这一页的主用途，也是从工作台点进来时的那个名字。
+        "pages/apply/index": "入驻申请",
+    },
     "c-app": {
         "pages/goods/index": "商品详情", "pages/search/index": "搜索",
         "pages/pay/index": "收银台", "pages/orders/index": "我的订单",
