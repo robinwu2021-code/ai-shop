@@ -67,12 +67,14 @@ public class AttributionRuleServiceImpl implements AttributionRuleService {
          */
         if (priority == null || new LinkedHashSet<>(priority).size() != SOURCES.size()
                 || !SOURCES.containsAll(priority)) {
-            throw BizException.of(ErrorCode.ATTRIBUTION_PRIORITY_INVALID);
+            // 文案是「必须覆盖全部 {0} 个来源」—— 不传参，运营看到的就是字面的 {0}
+            throw BizException.of(ErrorCode.ATTRIBUTION_PRIORITY_INVALID, SOURCES.size());
         }
         Integer days = cmd.windowDays();
         // 0 等于悄悄关掉归因：全平台订单都变成平台客流，商家佣金翻倍而没人收到通知
         if (days == null || days < MIN_WINDOW || days > MAX_WINDOW) {
-            throw BizException.of(ErrorCode.ATTRIBUTION_WINDOW_INVALID);
+            // 文案是「需在 {0}–{1} 天之间」，两个参数都要给
+            throw BizException.of(ErrorCode.ATTRIBUTION_WINDOW_INVALID, MIN_WINDOW, MAX_WINDOW);
         }
         if (cmd.conflictPolicy() == null || !POLICIES.contains(cmd.conflictPolicy())) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

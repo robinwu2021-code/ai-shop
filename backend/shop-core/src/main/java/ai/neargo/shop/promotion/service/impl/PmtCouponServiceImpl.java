@@ -257,8 +257,14 @@ public class PmtCouponServiceImpl implements CouponService {
         }
 
         long budget = nz(c.getBudgetMinor());
-        if (budget > 0 && total != null && budget < (long) total * maxPerCoupon(c)) {
-            throw BizException.of(ErrorCode.COUPON_BUDGET_BELOW_EXPOSURE);
+        long exposure = (long) (total == null ? 0 : total) * maxPerCoupon(c);
+        if (budget > 0 && total != null && budget < exposure) {
+            /*
+             * 文案是「预算不能低于最大敞口（{0} 分）」—— 必须把敞口传进去。
+             * 不传的话运营看到的是字面的 `{0}`，而这条错误的全部价值就在那个数：
+             * 它告诉运营该把预算提到多少。没有它，这句话等于「不行，我不告诉你为什么」。
+             */
+            throw BizException.of(ErrorCode.COUPON_BUDGET_BELOW_EXPOSURE, exposure);
         }
     }
 

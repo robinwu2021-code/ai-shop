@@ -11,8 +11,6 @@
 # 修好一条就删一行 —— 留着的害处是**那条守卫从此免检**。
 # 分诊与降账计划：docs/technical/design/守卫与闸门-问题与优化方案.md
 #
-b-app-shared-state.test.ts::b-app 共享状态 ★★ 定义了 ensureXxx 就必须在 App.vue 里接上 —— 半截的守护比没有更糟 @<=10
-b-app-shared-state.test.ts::b-app 共享状态 ★★★ 被多页读取的状态，必须在 App.vue 上加载 —— 靠某一页加载 = 刷新即失效 @<=14
 data-scope-coverage.test.ts::数据域表册覆盖 ★★★ 带归属列的表要么登记、要么写明为什么不用（棘轮：只许降不许升） @<=70
 doc-standard.test.ts::文档规范 md 引用的 md 必须存在 —— 目录重整最容易碎的就是这个，而且不报错 @<=7
 doc-standard.test.ts::文档规范 technical 下每篇文档都出现在 README 索引里 —— 不在索引里的文档等于不存在 @<=71
@@ -23,7 +21,6 @@ entity-alignment.test.ts::Java 实体与库表对齐 每张业务表都有实体
 enum-registry.test.ts::枚举登记表 G1 · 端上每个具名枚举都必须登记（新增枚举不能绕过雷达） @<=15
 enum-registry.test.ts::枚举登记表 G2 · STATUS 型枚举的取值必须取自 L1 状态词表，或已申报 @<=11
 enum-registry.test.ts::枚举登记表 规范 §D5 · 不允许在 interface 里内联字面量联合类型 @<=11
-message-placeholder.test.ts::带占位符的错误文案 ★★★ 抛这些码时必须带参数 —— 不带的话用户看到的是字面的 `{0}` @<=3
 ops-contract-fields.test.ts::ops-web 契约字段（必填数组） ★★ ops-web 声明为必填的数组字段，后端 VO 必须有 —— 否则 .length 直接抛异常 @<=11
 spec-completeness.test.ts::契约完整性 B 端：每个字段都有说明 @<=374
 spec-completeness.test.ts::契约完整性 C 端：每个字段都有说明 @<=358

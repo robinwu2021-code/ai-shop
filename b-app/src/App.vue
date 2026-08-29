@@ -100,6 +100,16 @@ onLaunch(() => {
    * 好几处「能不能操作」看的是它 —— 没拉到的时候，求团报价页一个报价入口都没有。
    */
   void merchant.ensureProfile();
+  /*
+   * 证照分组（多证照）同理。**三个页面在读它**（me / store-pick / stores），
+   * 而加载动作此前一处都没挂 —— `ensureEntityGroups` 早就写好了，包括幂等去重，
+   * 只是没人调。
+   *
+   * 空值的表现不是报错，是**界面少一块**：`multiEntity` 由 `entityGroups.length > 1`
+   * 推出来，空数组时它恒为 false —— 于是多证照的商家刷新之后，
+   * 证照切换那一栏整条消失，而他手上确实有两张证照。
+   */
+  void merchant.ensureEntityGroups();
   // 演示态：先有店、再有会话、最后补单 —— 顺序反了的话补单时还不知道是哪家店
   if (USE_MOCK) {
     ensureDemoMerchant();
