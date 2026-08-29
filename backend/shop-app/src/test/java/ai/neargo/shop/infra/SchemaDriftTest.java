@@ -24,6 +24,29 @@ import static org.assertj.core.api.Assertions.assertThat;
  * —— 只改 MySQL 那份，测试仍然全绿，问题要到部署后才炸；只改 H2 那份更糟，测试绿着而生产根本没这列。
  *
  * <p>本测试比对两边的「表 → 列集合」，不一致就失败并指出差在哪。
+ *
+ * <h2>⚠️ 它比的是<b>列</b>，不比<b>值</b> —— 而值也会两边不一样</h2>
+ *
+ * <p>同一条 {@code INSERT} 灌进去的字面量，两个方言可能存成<b>不同的字节</b>：
+ *
+ * <pre>
+ * 迁移里写的     '[\"CN\"]'
+ * MariaDB 解转义  → 库里是  ["CN"]
+ * H2 不解转义     → 库里是  [\"CN\"]
+ * </pre>
+ *
+ * <p>后果是<b>方向相反</b>的判断：{@code markets.contains("\"CN\"")}
+ * <b>在生产成立、在测试永远不成立</b>。2026-08-29 真炸过一次 ——
+ * 症状是一个与支付通道毫无关系的用例报「没有可用支付通道」
+ * （{@code StoreSettleFlowTest} 两条红，真因在 {@code MasterDataServiceImpl.marketAllowed}）。
+ *
+ * <p><b>所以：拿 JSON / 文本列做「字符串包含」判断的代码，测试结论与生产可能相反。</b>
+ * 要比就按 token 比（去掉 {@code []"\ } 与空白后逐个 equals），别用 {@code contains}。
+ *
+ * <p>这条目前<b>没有闸门</b>。它与「MariaDB → MySQL 将来换库」是两条不同的轴：
+ * 那条有 {@code scripts/check-sql-portability.mjs}，而<b>这条（H2 测试 ↔ MariaDB 生产）
+ * 决定的是「今天的测试结论算不算数」</b>，现在只有这段注释。
+ * 立闸的方案见 {@code docs/technical/design/守卫与闸门-问题与优化方案.md} §2.1③ 与方案第 9 条。
  */
 class SchemaDriftTest {
 
