@@ -34,6 +34,12 @@ public class CoreMediaRefs implements MediaRefSource {
                  * 一张还没被任何商家取用过的标准品图会被判成孤儿回收掉，
                  * 而运营在标准品库里看到的是一个空图框，且查不出谁删的。
                  */
+                /*
+                 * 主题封面。漏了这一行的后果与下面 prd_goods.cover 那条注释写的是同一件事：
+                 * 回收扫描不把它算作引用，运营给主题换了封面之后，旧图会被判成孤儿收走 ——
+                 * 而主题页上那张图就此变成裂图，没有任何报错。
+                 */
+                of("prd_topic", "cover", "主题 · 封面图", "topic_no"),
                 of("prd_spu_std", "cover", "标准品 · 主图", "std_no"),
                 of("prd_spu_std", "images", "标准品 · 图集", "std_no"),
 

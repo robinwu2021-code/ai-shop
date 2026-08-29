@@ -140,6 +140,29 @@
 # 而是二选一：让 `rolePoints` 对 SUPER_ADMIN 展开通配，或者让种子由生成器产出。
 # 前者是产品行为改动，后者要给生成器加输出 —— 都超出「清测试欠账」。留给知道这块的人。
 #
+# ── 2026-08-29 第七轮：MediaRefCoverage 修好（顺带修掉一个真缺陷）──────────
+#
+# 报的四列里 **只有一列是真的**：`prd_topic.cover`（主题封面）没有任何
+# MediaRefSource 声明它 —— 后果与 CoreMediaRefs 里 prd_goods.cover 那条注释写的
+# 是同一件事：回收扫描不算它是引用，**运营给主题换了封面，旧图会被判成孤儿收走，
+# 主题页那张图就此变成裂图，没有任何报错**。已在 CoreMediaRefs 补上。
+#
+# 另外三列是被「注释里含『图』就算可疑」这条启发式扫进来的，逐个核过后加了豁免
+# 并各写了理由（判据要求豁免必须写理由，这条规矩是对的）：
+#   · `usr_address.region` —— 省市区整串，注释里的「图」出自「地图选点回填」
+#   · `msg_template.content` / `msg_ticket.content` —— 模板正文与工单正文，
+#     命中的是「长文本列名」那半条启发式，不是内容
+#
+# **Phase1MasterDataTest.packagedFoodNeedsItsOwnAuthorization 查到一半，没动。**
+# 它 saveGoods(CAT131) 拿到 80007 CATEGORY_NOT_FOUND。已排除的：
+#   · CAT131 在 schema-test.sql 里**存在**且 status='ACTIVE'（第 3856 行）；
+#   · 那条 INSERT 的 19 列与建表列一一对得上，不是列错位；
+#   · 单独跑就红 —— **不是被别的测试踩**（与 CategoryTree / M9bBizGoods 组合跑，
+#     失败数不变）。
+# 所以卡在 `categoryTypeOf` 返回 null，即 `TEMPLATE_TO_TYPE` 没认出 template='STANDARD'。
+# 再往下要排产品的类目类型映射 —— 超出「清测试欠账」。留给知道这块的人，
+# **别改成期望 80007**：那等于承认「粮油类目建不了商品」。
+#
 # ⚠️ **别用正则批量插**：这些辅助方法的下单语句跨多行、`.header(...)` 有的同行
 # 有的换行，按行号/邻近度算插入点会插进 `String skuNo = ...` 语句**中间**
 #（试过，编译不过，已回退重来）。逐个读、逐个改。
@@ -159,7 +182,6 @@
 
 ai.neargo.shop.arch.ArchitectureTest.implsMustLiveInDedicatedPackage
 ai.neargo.shop.arch.ArchitectureTest.svcModulesMustNotDependOnEachOther
-ai.neargo.shop.arch.MediaRefCoverageTest.everyImageColumnIsClaimed
 ai.neargo.shop.scenario.CategoryTreeFlowTest.passedNoticeTakesEffect
 ai.neargo.shop.scenario.CategoryTreeFlowTest.profilePhoneIsMasked
 ai.neargo.shop.scenario.CategoryTreeFlowTest.violationHasRealConsequences

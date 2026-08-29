@@ -56,7 +56,14 @@ class MediaRefCoverageTest {
     private static final Map<String, String> NOT_MEDIA = Map.of(
             "sys_function.icon", "菜单图标是前端内置图标名（如 shop / user），不是上传的文件",
             "mch_store_audit.kind", "枚举值 BANNER/NOTICE，注释里提到「店招图」只是在解释枚举含义",
-            "sys_media_asset.last_ref_desc", "记账表自己的人话描述列，内容是「商品 G0012 · 主图」这种标签");
+            "sys_media_asset.last_ref_desc", "记账表自己的人话描述列，内容是「商品 G0012 · 主图」这种标签",
+            // 下面三条都是被「注释里含『图』就算可疑」这条启发式扫进来的 ——
+            // 判据宁可多报也不漏报是对的，但这三列确实与上传资产无关。
+            "usr_address.region", "省市区整串（如「浙江省杭州市西湖区」）。注释里的「图」出自"
+                    + "「地图选点回填」—— 说的是这一串从哪来，不是说它装着一张图",
+            "msg_template.content", "通知模板正文，含 {占位符} 的纯文本；列名 content 命中的是"
+                    + "「长文本列」那半条启发式，不是图片",
+            "msg_ticket.content", "工单正文，用户打字写的一段话。同上，命中的是列名不是内容");
 
     private static final Pattern CREATE_TABLE =
             Pattern.compile("CREATE TABLE(?:\\s+IF NOT EXISTS)?\\s+([a-z_]+)", Pattern.CASE_INSENSITIVE);
