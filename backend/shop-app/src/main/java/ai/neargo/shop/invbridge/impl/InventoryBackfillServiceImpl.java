@@ -261,6 +261,14 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
                 itemId = acl.itemIdOfSku(sku.getSkuNo());
                 if (ownerId == null || itemId == null) {
                     pending += storeRows.isEmpty() ? 1 : storeRows.size();
+                    /*
+                     * **待搬必须能说出是哪一个。** Report 只带 pending 计数、不带身份，
+                     * 于是「哪几个、走的哪条分支」只能靠外部 SQL 反推 ——
+                     * 2026-08-29 为此反推了四轮仍对不上。先用日志补上身份，
+                     * 代价比改 Report 的 JSON 契约小得多。
+                     */
+                    log.warn("[对差] 待搬·无物料 sku={} owner={} item={} storeRows={}",
+                            sku.getSkuNo(), ownerId, itemId, storeRows.size());
                     continue;
                 }
             } else {
@@ -281,6 +289,10 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
                 moved += r == 1 ? 1 : 0;
                 skipped += r == 0 ? 1 : 0;
                 pending += r == -1 ? 1 : 0;
+                if (r == -1) {
+                    log.warn("[对差] 待搬·主体级 sku={} entity={} qty={} held={}",
+                            sku.getSkuNo(), entityNo, nz(sku.getStock()), nz(sku.getLockedStock()));
+                }
             } else {
                 for (PrdStoreStock st : storeRows) {
                     String locationId = dryRun ? null : acl.locationIdOf(entityNo, st.getStoreNo());
@@ -289,6 +301,11 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
                     moved += r == 1 ? 1 : 0;
                     skipped += r == 0 ? 1 : 0;
                     pending += r == -1 ? 1 : 0;
+                    if (r == -1) {
+                        log.warn("[对差] 待搬·门店级 sku={} store={} qty={} held={}",
+                                sku.getSkuNo(), st.getStoreNo(),
+                                nz(st.getStock()), nz(st.getLockedStock()));
+                    }
                 }
             }
         }
