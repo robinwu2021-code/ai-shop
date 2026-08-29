@@ -31,7 +31,7 @@ const rows = ref<StockBalance[]>([]);
 const loading = ref(false);
 
 /** todo 要处理 · all 全部 · reserved 有预留。**todo 是默认，但空了会落到 all**，理由见文件头 */
-const filter = ref<"todo" | "all" | "reserved">("todo");
+const filter = ref<"todo" | "all" | "reserved" | "shortage" | "stale">("todo");
 
 /** 只在第一次数据回来时纠正默认栏。**之后不再动** —— 见文件头 */
 const settled = ref(false);
@@ -82,6 +82,14 @@ function pickFilter(key: string) {
 }
 
 /** 点数字格筛选：再点一下回到「要处理」 —— 点了没有退路的筛选很容易困住人 */
+/**
+ * 点数字 = 精确筛到它自己。
+ *
+ * **此前它在说谎**：点「在售 SKU 204」给的是 18 条（要处理），
+ * 点「滞销」给出的列表里混着缺货 —— 数字说一个数，点下去给另一个，且不报错。
+ *
+ * 再点一次回到「全部」：点了没有退路的筛选很容易把人困住。
+ */
 function pickStat(key: string) {
   // 在途不是本页的筛选 —— 那批货既不在 A 也不在 B，列表里没有它。
   // 点它该去单据页看那几张单，收货也在那儿
@@ -89,10 +97,20 @@ function pickStat(key: string) {
     uni.navigateTo({ url: `${ROUTES.stockDocs}?kind=TRANSFER` });
     return;
   }
-  if (key === "shortage") filter.value = filter.value === "todo" ? "all" : "todo";
-  else filter.value = "todo";
+  const want = key === "sku" ? "all" : (key as "shortage" | "stale");
+  filter.value = filter.value === want ? "all" : want;
   void load();
 }
+
+/** 这一屏里有没有真的预留。没有的话「可用 = 实存 − 预留」那句解释不该占位置 */
+const hasReserved = computed(() => rows.value.some((b) => b.reserved > 0));
+
+/** 四个数里哪一个正被筛着。`sku` 对应「全部」—— 它就是「不筛」 */
+const activeStat = computed(() =>
+  filter.value === "all" ? "sku"
+    : filter.value === "shortage" || filter.value === "stale" ? filter.value
+    : "",
+);
 
 /** 滞销多少天。`lastMovedAt` 是后端给的最后动销时间，不在前端再算一遍 90 天的判据 */
 function idleDays(b: StockBalance): number | null {
@@ -177,6 +195,7 @@ onShow(load);
     <view class="sh-card ov">
       <sh-stat
         panel
+        :active="activeStat"
         :items="[
           { key: 'sku', value: summary?.itemCount ?? '—', label: String($t('stock.statSku')) },
           { key: 'shortage', value: summary?.shortageCount ?? '—', label: String($t('stock.statShortage')), tone: 'bad' },
@@ -250,8 +269,12 @@ onShow(load);
     <!--
       这句不是脚注。**「可用」是这一页唯一会被误读的数** ——
       商家看到实存 5 却只能卖 3 时，第一反应是系统算错了。
+
+      但它**只在真有预留时才需要解释**：一行预留都没有时，可用恒等于实存，
+      这张卡解释的是一个当天不存在的现象，而它每次都占一整张卡。
+      与刚从库存明细撤掉的那张「差异原因」是同一类 —— 常驻的说明等于没有说明。
     -->
-    <view v-if="rows.length" class="sh-card">
+    <view v-if="hasReserved" class="sh-card">
       <text class="txt-caption">{{ $t("stock.formulaHint") }}</text>
     </view>
 

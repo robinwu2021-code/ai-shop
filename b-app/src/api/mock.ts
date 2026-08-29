@@ -4130,8 +4130,12 @@ export const mockApi: MerchantApi = {
   async mStockBalances(q) {
     const all = invBalances();
     const filter = q?.filter ?? "todo";
+    // shortage / stale 是**精确的两档**：点「缺货 6」就该给这 6 条。
+    // mock 不认的话，前端这条在 mock 上验不到（会静静地落回 todo）
     const picked = filter === "all" ? all
       : filter === "reserved" ? all.filter((b) => b.reserved > 0)
+      : filter === "shortage" ? all.filter((b) => b.flags.includes("SHORTAGE"))
+      : filter === "stale" ? all.filter((b) => b.flags.includes("STALE"))
       : all.filter((b) => b.flags.length > 0);
     return delay(picked.slice(0, q?.size ?? 100));
   },

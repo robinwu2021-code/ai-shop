@@ -148,6 +148,58 @@ class InventoryBizEndpointTest {
     }
 
     @Test
+    @DisplayName("★★★ 点哪个数就给哪一档 —— 数字说一个数、点下去给另一个，不报错")
+    void statFiltersAreExact() throws Exception {
+        Shop s = shop();
+
+        /*
+         * **先造一件真的缺货**。不造的话下面两个循环跑零次，
+         * 而断言零次的测试是恒绿的 —— 撤掉后端那两档它照样过。
+         * （第一版就是这样：我撤掉 shortage/stale 两个 case，测试纹丝不动。）
+         */
+        String outBody = """
+                {"purpose":"SCRAP","reasonCode":"BROKEN","occurredAt":"2026-08-26T00:00:00",
+                 "lines":[{"itemId":"%s","qty":10,"uom":"袋"}]}
+                """.formatted(s.itemA);
+        String outNo = okText(post("/biz/inventory/outbounds").content(outBody), s.token);
+        ok(post("/biz/inventory/outbounds/" + outNo + "/post"), s.token);
+        assertThat(onHand(s, s.itemA)).as("先把它清成 0，它才会缺货").isEqualTo(0);
+
+        int all = ok(get("/biz/inventory/balances?filter=all&size=100"), s.token).size();
+        int shortage = ok(get("/biz/inventory/balances?filter=shortage&size=100"), s.token).size();
+        int stale = ok(get("/biz/inventory/balances?filter=stale&size=100"), s.token).size();
+        int todo = ok(get("/biz/inventory/balances?filter=todo&size=100"), s.token).size();
+
+        /*
+         * 界面上那四个数是可点的，点「缺货 6」就该给这 6 条。
+         * 此前 shortage / stale 这两个值后端根本不认，落到 default（todo，两者的并集）——
+         * 于是点「滞销」给出的列表里混着缺货，而**没有任何报错**：
+         * 返回 200、返回一列合法的货，只是不是他点的那一列。
+         */
+        assertThat(todo)
+                .as("要处理 = 缺货 ∪ 滞销，不该比两者之和还多")
+                .isLessThanOrEqualTo(shortage + stale);
+        assertThat(all)
+                .as("全部要至少和要处理一样多 —— 反过来说明 filter 没被认出来")
+                .isGreaterThanOrEqualTo(todo);
+
+        // **判据要能证伪**：这一列必须非空，否则下面的循环跑零次，等于什么都没验
+        assertThat(shortage).as("测试店里得真有缺货的货，否则下面的循环是空转").isGreaterThan(0);
+
+        // 精确档里不许混进另一档：缺货那一列每一条都得真的缺货
+        for (JsonNode b : ok(get("/biz/inventory/balances?filter=shortage&size=100"), s.token)) {
+            assertThat(b.get("flags").toString())
+                    .as("filter=shortage 却返回了不缺货的行：" + b.get("name").asText())
+                    .contains("SHORTAGE");
+        }
+        for (JsonNode b : ok(get("/biz/inventory/balances?filter=stale&size=100"), s.token)) {
+            assertThat(b.get("flags").toString())
+                    .as("filter=stale 却返回了不滞销的行：" + b.get("name").asText())
+                    .contains("STALE");
+        }
+    }
+
+    @Test
     @DisplayName("★★★ 作废：库存要退回去，且流水留痕 —— 这是「录错了怎么办」的唯一答案")
     void voidingAPostedInboundPutsStockBack() throws Exception {
         Shop s = shop();

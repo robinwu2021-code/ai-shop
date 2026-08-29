@@ -102,9 +102,18 @@ public class StockQueryServiceImpl implements StockQueryService {
     @Override
     public List<BalanceVO> balances(String ownerId, String locationId, String filter, int limit) {
         List<BalanceVO> all = build(rows(ownerId, locationId));
+        /*
+         * `shortage` / `stale` 是**精确的两档**，与 `todo`（两者的并集）分开。
+         *
+         * 端上那四个数是可点的：点「缺货 6」就该给这 6 条。此前它只能落到
+         * `todo`，于是点「滞销」给出的列表里混着缺货，点「在售 SKU 204」
+         * 给的是 18 条 —— **数字说一个数，点下去给另一个**，且不报错。
+         */
         List<BalanceVO> picked = switch (filter == null ? "todo" : filter) {
             case "all" -> all;
             case "reserved" -> all.stream().filter(b -> b.reserved() > 0).toList();
+            case "shortage" -> all.stream().filter(b -> b.flags().contains(FLAG_SHORTAGE)).toList();
+            case "stale" -> all.stream().filter(b -> b.flags().contains(FLAG_STALE)).toList();
             default -> all.stream().filter(b -> !b.flags().isEmpty()).toList();
         };
         // 缺货排在滞销前面：断货是「今天就要补」，滞销是「这周想想怎么清」
