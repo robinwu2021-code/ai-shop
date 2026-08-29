@@ -119,6 +119,15 @@ if ! gate_run node scripts/check-i18n-orphan.mjs --check; then
   exit 1
 fi
 
+# 写死左右的 CSS —— 阿语是 RTL，`direction: rtl` 管不到 padding-left /
+# border-left / text-align: right 这些物理方向属性，它们在阿语下原地不动。
+# 2026-08-29 一次清了 40 处（b-app 28 / packages/ui 3 / c-app 12）：
+# 数字列贴错边、强调竖杠留在错的一侧。**中英文下一切正常，闸门全绿** ——
+# 只有真把语言切成阿语逐屏看才发现，而没人会为了改一行样式去切阿语。
+if ! gate_run node scripts/check-rtl-physical.mjs --check; then
+  exit 1
+fi
+
 # Controller 粒度：一个类只装一个资源（阈值 3）。判据是**路径第一段的种数**，
 # 不是端点数 —— 按端点数定阈值会逼人把一个资源硬拆成两半来达标。
 # 由来：BizMerchantController 一个类 40 端点 / 1022 行 / 九个不相干的节，
