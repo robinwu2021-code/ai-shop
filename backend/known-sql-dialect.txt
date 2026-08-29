@@ -1,0 +1,65 @@
+# 已经写进历史迁移的方言依赖 —— **只准变短，不准变长**。
+#
+# 2026-08-28 拍板「将来一定会切到 MySQL」时的存量。这里的每一条都**改不得**：
+# 已应用的 Flyway 迁移动一个字符 checksum 就对不上，线上直接起不来。
+# 所以这份基线不是「待办清单」，是**止血线** —— 新写的 SQL 不许再进来。
+#
+# 历史那部分怎么收尾（不是靠改这些文件）：
+#   见 docs/technical/design/数据库可移植性-MariaDB到MySQL.md §3
+#   —— 排序规则用一条新的 ALTER 迁移统一转换，趁库还只有 253MB。
+#
+# 格式：<文件路径><TAB><规则 id>。行号故意不带 —— 带了的话，
+# 在文件里插一行注释就会让条目「变新」，那种闸门第二天就会被人绕过去。
+#
+# 看现状：node scripts/check-sql-portability.mjs
+
+backend/shop-app/src/main/resources/db/migration/V104__msg_push_token.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V10__mch_store_audit.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V131__fulfillment_shortage_report.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V132__fulfillment_shipment.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V133__fulfillment_freight_template.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V134__fulfillment_carrier.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V13__store_stock.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V152__media_asset.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V156__msg_scene_channel.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V158__notify_channel.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V15__store_goods.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V161__notify_push_task.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V166__spu_std.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V168__category_two_level.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V170__store_price.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V172__topic.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V18__store_role_multi.sql	drop-index-if-exists
+backend/shop-app/src/main/resources/db/migration/V1__baseline.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V21__coupon_budget.sql	alter-column-if-exists
+backend/shop-app/src/main/resources/db/migration/V222__usr_person.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V224__mbr_member.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V226__mbr_tag.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V230__mbr_segment.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V231__pmt_coupon.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V242__pmt_activity.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V243__mbr_reach_log.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V244__pay_mode_and_category_points.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V247__goods_pending_on_sale.sql	alter-column-if-exists
+backend/shop-app/src/main/resources/db/migration/V248__ops_wiring.sql	alter-column-if-exists
+backend/shop-app/src/main/resources/db/migration/V248__ops_wiring.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V249__appointment_slot.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V24__ops_archive.sql	alter-column-if-exists
+backend/shop-app/src/main/resources/db/migration/V250__goods_params.sql	alter-column-if-exists
+backend/shop-app/src/main/resources/db/migration/V252__sku_external_identity.sql	alter-column-if-exists
+backend/shop-app/src/main/resources/db/migration/V252__sku_external_identity.sql	create-index-if-not-exists
+backend/shop-app/src/main/resources/db/migration/V30__sys_region.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V33__service_area.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V36__community_apply.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V5__auth_code.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V60__ops_staff_scope.sql	alter-column-if-exists
+backend/shop-app/src/main/resources/db/migration/V63__recon_diff.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V68__mch_staff_log.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V69__sub_order_receiver_snapshot.sql	alter-column-if-exists
+backend/shop-app/src/main/resources/db/migration/V70__audit_log_detail.sql	alter-column-if-exists
+backend/shop-app/src/main/resources/db/migration/V71__mch_role.sql	alter-column-if-exists
+backend/shop-app/src/main/resources/db/migration/V71__mch_role.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V8__sys_setting.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V9__mch_violation.sql	uca1400-collation
+backend/shop-inventory/src/main/resources/db/inventory/V1__inventory_baseline.sql	uca1400-collation
+backend/shop-inventory/src/main/resources/db/inventory/V2__snapshot_and_open_api.sql	uca1400-collation

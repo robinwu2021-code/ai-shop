@@ -136,6 +136,15 @@ if ! gate_run node scripts/check-controller-cohesion.mjs --check; then
   exit 1
 fi
 
+# SQL 方言：新写的 SQL 必须 MariaDB 与 MySQL 8 都能跑。
+# 由来：2026-08-28 拍板「将来一定切 MySQL」，当天一审计发现 **160 张表全部**是
+# utf8mb4_uca1400_ai_ci —— MariaDB 11.4+ 独有，MySQL 上一张表都建不起来。
+# 已应用的迁移改不得（Flyway checksum），所以这道闸不修历史，只止血：
+# 历史 50 条进基线，只准变短。两个方向都查（MySQL 独有的今天就炸）。
+if ! gate_run node scripts/check-sql-portability.mjs --check; then
+  exit 1
+fi
+
 # 生成物有没有跟着源码走。**在本条之前只有界面清单有闸门**，
 # 其余五个生成器谁都不盯，于是一直在漂：2026-08-26 重跑一次，
 # API 清单 +51/−16、B 端功能点矩阵 +192/−69。
