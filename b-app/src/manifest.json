@@ -2,8 +2,8 @@
   "name": "邻里商家",
   "appid": "__UNI__59E912D",
   "description": "邻里购物平台 B 端（商家端）",
-  "versionName": "0.4.34",
-  "versionCode": "161",
+  "versionName": "0.4.35",
+  "versionCode": "162",
   "transformPx": false,
   "app-plus": {
     "usingComponents": true,
