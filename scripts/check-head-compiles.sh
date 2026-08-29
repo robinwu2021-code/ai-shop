@@ -155,4 +155,19 @@ rm -f "$LOG"   # 通过就不留垃圾；上面每条失败路径都保留它并
 # 才知道的 —— 而人对一眼是会累的。
 #
 # 写在 .git/ 下：天然不进版本库，且随仓库走（不会被别的 checkout 串味）。
-git rev-parse HEAD > "$(git rev-parse --git-dir)/gate-verified-sha"
+#
+# **第一行是 sha，第二行是「当时验了什么」。** 后者不是装饰：
+# 「verified」这个词的含义会随闸门演进而变 —— 半年后有人看到这个 sha，
+# 需要知道它当年代表的是「编过」还是「编过且测过」。一行字，省掉一次考古。
+# （读它的 deploy-backend.sh 只取第一行，加行不影响解析。）
+#
+# ⚠️ 这个文件是**本机**的。某笔 backend 改动若从别的 clone（云端会话、另一台机器）
+# 推上来，本机不会更新它 → 部署时会把那几笔算成「未验过」而拦下。
+# 那是**朝安全方向失效**，且有 ALLOW_GATE_DRIFT=1 的出口 —— 但值得知道
+# 会有这种「看起来莫名其妙被拦」的时刻。
+{
+    git rev-parse HEAD
+    printf '%s · 编译 + 全量 %s 跑 / %s 红（基线 %s 条）\n' \
+        "$(date '+%F %T')" "$TOTAL" \
+        "$(wc -l < "$NOW" | tr -d ' ')" "$(wc -l < "$BASE" | tr -d ' ')"
+} > "$(git rev-parse --git-dir)/gate-verified-sha"

@@ -78,9 +78,10 @@ if [ -f "$GATE_FILE" ]; then
     # 截 7 位的话两边永远不相等，「闸门验的就是这一版」那条分支从此不会触发 ——
     # 而它退化成的样子（落到漂移分支、恰好没有 backend 改动、打印一行「行为一致」）
     # 看起来完全正常。写这段的时候就踩了一次。
-    GATE_SHA="$(git rev-parse --short "$(cat "$GATE_FILE")")"
+    GATE_SHA="$(git rev-parse --short "$(head -1 "$GATE_FILE")")"
+    GATE_WHAT="$(sed -n '2p' "$GATE_FILE")"
     if [ "$GATE_SHA" = "$HEAD_SHA" ]; then
-        ok "闸门验的就是这一版（$GATE_SHA）"
+        ok "闸门验的就是这一版（$GATE_SHA）${GATE_WHAT:+ —— $GATE_WHAT}"
     else
         DRIFT="$(git log --oneline "$GATE_SHA..$HEAD_SHA" -- backend 2>/dev/null || true)"
         if [ -z "$DRIFT" ]; then
