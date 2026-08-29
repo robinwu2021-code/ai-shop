@@ -58,9 +58,17 @@ public final class InventoryVOs {
      * <p>在途这一档此前没有位置：调拨发出后货既不在 A 也不在 B，
      * 而总览三个数里没有它，只有翻单据才看得到 —— 它却是这四个数里
      * <b>唯一一个有人在等</b>的。
+     *
+     * <p>{@code openCountNo} 是<b>还开着的那张盘点单的单号</b>，没有就是 null。
+     * 给单号不给个数，理由与上面那条相同：**数出来的东西要点得进去**。
+     * 工作台的「继续盘点」要带着它跳（`stock-check?no=…`）——
+     * 不带的话那一页会开一张<b>新的</b>盘点单，而按钮上写着「继续」。
+     *
+     * <p>有多张开着时给<b>最近的一张</b>。这不是随手选的：盘点是当场做的事，
+     * 手上那张一定是刚开的；给最早的一张会让人回到一张已经忘了的单。
      */
     public record SummaryVO(int itemCount, int shortageCount, int staleCount,
-                            int inTransitCount) {
+                            int inTransitCount, String openCountNo) {
     }
 
     /**

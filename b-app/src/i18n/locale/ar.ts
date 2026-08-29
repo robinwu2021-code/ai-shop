@@ -105,7 +105,7 @@ export default {
     quickStartPh: "مثل: بقالة تشانغ",
     todo: "المهام", toShip: "بانتظار الشحن", toDeliver: "بانتظار التوصيل", toStock: "قيد التجهيز", toVerify: "بانتظار الاستلام", toPick: "بانتظار الفرز", afterSale: "ما بعد البيع", toReply: "بانتظار الرد", quotable: "بانتظار التسعير",
     inv: { title: "المخزون", all: "الكل", onSale: "متوفر", shortage: "نقص", stale: "راكد",
-      receiveN: "استلام {n}" },
+      receiveN: "استلام {n}", resumeCount: "متابعة الجرد" },
     today: "اليوم", orders: "الطلبات", gmv: "المبيعات", rating: "التقييم",
     ownedTraffic: "عملاؤك", ownedTrafficHint: "طلبات عملائك الخاصين برسوم أقل",
     fulfillEntry: "الاستلام والفرز",

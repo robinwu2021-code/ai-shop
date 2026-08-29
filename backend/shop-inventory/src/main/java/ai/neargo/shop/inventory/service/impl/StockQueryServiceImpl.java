@@ -88,7 +88,15 @@ public class StockQueryServiceImpl implements StockQueryService {
                 Wrappers.<InvTransferOrder>lambdaQuery()
                         .eq(InvTransferOrder::getOwnerId, ownerId)
                         .eq(InvTransferOrder::getStatus, InvEnums.TransferStatus.SHIPPED)));
-        return new SummaryVO(all.size(), shortage, stale, inTransit);
+        // 还开着的盘点单：给**最近的一张**。盘点是当场做的事，手上那张一定是刚开的
+        InvStockCount open = countMapper.selectOne(Wrappers.<InvStockCount>lambdaQuery()
+                .eq(InvStockCount::getOwnerId, ownerId)
+                .eq(locationId != null, InvStockCount::getLocationId, locationId)
+                .eq(InvStockCount::getStatus, "COUNTING")
+                .orderByDesc(InvStockCount::getId)
+                .last("LIMIT 1"));
+        return new SummaryVO(all.size(), shortage, stale, inTransit,
+                open == null ? null : open.getCountNo());
     }
 
     @Override

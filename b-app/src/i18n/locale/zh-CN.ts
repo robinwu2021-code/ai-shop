@@ -179,6 +179,7 @@ export default {
       stale: "滞销",
       // 待收货的调拨单数。带数字是有意的：「收货」不说几张，人不知道值不值得现在去
       receiveN: "收货 {n}",
+      resumeCount: "继续盘点",
     },
     quotable: "可报价",
     today: "今日",

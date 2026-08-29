@@ -36,14 +36,24 @@ const stockSummary = ref<StockSummary | null>(null);
  * 其余按固定序补满三个。**最多三个** —— 再多就成了第二个入口网格，
  * 而这张卡的作用是「一眼看见状况 + 一步做最该做的事」，不是再摆一遍菜单。
  *
- * 「继续盘点」（有 COUNTING 的盘点单时）**没做**：后端总览里没有那个数，
- * 要么再加一个字段、要么在这里多打一次接口。留着比编一个假的强。
+ * 两个提亮的（收货 / 继续盘点）都是**有人在等**的：一个是货停在路上，
+ * 一个是一张盘点单开着没收尾，账面还锁着。其余的什么时候点都行。
  */
 const invActs = computed(() => {
-  const n = stockSummary.value?.inTransitCount ?? 0;
-  const acts: { key: string; label: string; route: string }[] = [];
+  const sum = stockSummary.value;
+  const n = sum?.inTransitCount ?? 0;
+  const acts: { key: string; label: string; route: string; urgent?: boolean }[] = [];
   if (n > 0) {
-    acts.push({ key: "receive", label: String(t("home.inv.receiveN", { n })), route: `${ROUTES.stockDocs}?kind=TRANSFER` });
+    acts.push({ key: "receive", label: String(t("home.inv.receiveN", { n })), route: `${ROUTES.stockDocs}?kind=TRANSFER`, urgent: true });
+  }
+  // 还开着的盘点单：**带单号跳**，否则那一页会开一张新的，而按钮写着「继续」
+  if (sum?.openCountNo) {
+    acts.push({
+      key: "resume",
+      label: String(t("home.inv.resumeCount")),
+      route: `${ROUTES.stockCheck}?no=${encodeURIComponent(sum.openCountNo)}`,
+      urgent: true,
+    });
   }
   for (const [key, route] of [
     ["purchase", ROUTES.purchaseEdit],
@@ -360,15 +370,16 @@ onShow(load);
         </view>
         <view class="inv__acts">
           <!--
-            「收货 N」提亮：这三个快捷里它是唯一**有人在等**的 ——
-            其余两个什么时候点都行，它拖着就是货停在路上。
-            提亮走库件（主色 + 加重），不在页面里自己写一条 `.inv__act--on`。
+            提亮的是**有人在等**的那些：「收货 N」是货停在路上，
+            「继续盘点」是一张盘点单开着没收尾、账面还锁着。
+            其余的什么时候点都行。
+            提亮走库件（主色 + 加重），不在页面里自己写一条类。
           -->
           <view
             v-for="a in invActs"
             :key="a.key"
             class="txt-sub inv__act"
-            :class="a.key === 'receive' ? 'txt-primary txt-bold' : 'txt-ink'"
+            :class="a.urgent ? 'txt-primary txt-bold' : 'txt-ink'"
             @tap="open(a.route)"
           >
             {{ a.label }}

@@ -4338,6 +4338,12 @@ export interface StockSummary {
   staleCount: number;
   /** 待收货的调拨单数。**按单不按件** —— 收货是按单做的，给件数点不进任何一张单 */
   inTransitCount: number;
+  /**
+   * 还开着的那张盘点单的单号，没有就没有这个字段。
+   * **给单号不给个数**：工作台的「继续盘点」要带着它跳，
+   * 不带的话那一页会开一张**新的**盘点单，而按钮上写着「继续」。
+   */
+  openCountNo?: string | null;
 }
 
 /** 一行库存（`BalanceVO`）。 */

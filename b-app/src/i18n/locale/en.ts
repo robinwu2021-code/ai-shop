@@ -105,7 +105,7 @@ export default {
     quickStartPh: "e.g. Zhang's Grocery",
     todo: "To do", toShip: "To ship", toDeliver: "To deliver", toStock: "To prep", toVerify: "To redeem", toPick: "To pick", afterSale: "After-sales", toReply: "To reply", quotable: "To quote",
     inv: { title: "Inventory", all: "All", onSale: "In stock", shortage: "Low", stale: "Slow",
-      receiveN: "Receive {n}" },
+      receiveN: "Receive {n}", resumeCount: "Resume count" },
     today: "Today", orders: "Orders", gmv: "GMV", rating: "Rating",
     ownedTraffic: "Own customers", ownedTrafficHint: "Orders from your own customers carry a lower fee",
     fulfillEntry: "Redeem & pick",
