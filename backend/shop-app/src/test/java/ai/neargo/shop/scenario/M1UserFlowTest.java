@@ -284,8 +284,16 @@ class M1UserFlowTest {
 
         mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON).content(payload))
                 .andExpect(jsonPath("$.code").value(0));
+        /*
+         * 重放拿到的是 **10455 OTP_INVALID**，不是 10400。
+         *
+         * 这个码是**有意从 10400 里拆出来的**（见 ErrorCode 上那段注释）：
+         * 10400「请求参数有误」对用户的意思是「你传的东西不对，去检查参数」，
+         * 而验证码错该说的是「再看一眼短信」—— 同屏还出现过中英文混排。
+         * 断言当时没跟着改，于是这条一直红着。
+         */
         mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON).content(payload))
-                .andExpect(jsonPath("$.code").value(10400));
+                .andExpect(jsonPath("$.code").value(10455));
     }
 
     // ---------------------------------------------------------------- helpers

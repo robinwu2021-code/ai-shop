@@ -80,6 +80,29 @@
 # 与真因毫不相干**（一个报 RegionMapper.insert 坏了，一个报推送路由错了）。
 # 到此这一类清了 3 组共 6 条 —— 每次的线索都是「先单独跑一遍看它是不是真的坏」。
 #
+# ── 2026-08-29 第四轮：先按「单独跑」把 15 条分成两堆 ───────────────────────
+#
+# 单独跑**绿**（= 被别人踩）：CategoryTreeFlowTest(3) / M9aOpsFlowTest(2) /
+#   OrderReceiverRequiredTest(1)。其中 OrderReceiverRequired 报的是 70029
+#   **PICKUP_POINT_NOT_SERVED**，不是收货地址那道闸 —— **自提链路没有断**，
+#   是夹具的自提点掉出了服务范围。这一堆与已清的三组同类，等下一轮按同样办法查。
+#
+# 单独跑**也红**（= 自己坏）：M2CatalogFlowTest / S3AdmissionRealPathTest / M1UserFlowTest。
+#
+# **M1UserFlowTest.otpCannotBeReplayed 已修**：断言期望 10400，而验证码错现在是
+# **10455 OTP_INVALID** —— 那个码是有意从 10400 里拆出来的（ErrorCode 上写着理由：
+# 10400「请求参数有误」对用户的意思是「去检查参数」，而验证码错该说「再看一眼短信」）。
+# 断言当时没跟着改。
+#
+# **S3AdmissionRealPathTest.dailyCapCountsAcrossBuyers 查到一半，没动。**
+# 它守的是「日累计上限跨买家累加」，红着意味着可能有 100 倍敞口，所以逐层看了：
+#   · `AdmissionPortImpl.requireOrderAllowed` 的判断逻辑正确；
+#   · `OrderServiceImpl.paidAmountToday` **已经**用 `executeWithoutScope` 绕过数据域
+#     （注释把「不绕过就变成每买家一份」这个坑写得很清楚），查询条件也对；
+#   · `policyOf` 每次查库、无缓存，不是「改了策略没生效」。
+# 链路上每一环单看都对，再往下要动产品逻辑排查 —— 那超出「清测试欠账」的范围，
+# 留给知道这块业务的人。**别把它当成断言过期改掉**：它守的是真实敞口。
+#
 # ⚠️ **别用正则批量插**：这些辅助方法的下单语句跨多行、`.header(...)` 有的同行
 # 有的换行，按行号/邻近度算插入点会插进 `String skuNo = ...` 语句**中间**
 #（试过，编译不过，已回退重来）。逐个读、逐个改。
@@ -103,7 +126,6 @@ ai.neargo.shop.arch.MediaRefCoverageTest.everyImageColumnIsClaimed
 ai.neargo.shop.scenario.CategoryTreeFlowTest.passedNoticeTakesEffect
 ai.neargo.shop.scenario.CategoryTreeFlowTest.profilePhoneIsMasked
 ai.neargo.shop.scenario.CategoryTreeFlowTest.violationHasRealConsequences
-ai.neargo.shop.scenario.M1UserFlowTest.otpCannotBeReplayed
 ai.neargo.shop.scenario.M2CatalogFlowTest.visitedMerchants
 ai.neargo.shop.scenario.M9aOpsFlowTest.approvedMerchantIsVisibleToBuyers
 ai.neargo.shop.scenario.M9aOpsFlowTest.opsFillsServiceScopeAtAudit
