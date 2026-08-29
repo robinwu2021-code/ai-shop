@@ -147,29 +147,33 @@ fi
 # 它们拦的是「代码违不违反规范」，与上面那道生成物闸门（拦「清单说没说真话」）
 # 是两件事，别混。
 #
-# ⚠️ **ops-perm-matrix 是 2026-08-29 补进来的**：它此前不在这张清单里，
-# 于是它红了都没人知道 —— 实测发现时它确实是红的（/ops/stream 没登记）。
-# 同一天发现 tests/ops-data-scope.test.ts 也红着（自 8-25 起），
-# **那道暂时没挂**：挂一道红着的闸门等于把所有人挡在门外，
-# 而它红的原因是 mbr_*／券域的锚点欠账，要域内决定，不是这次能修的。
-# 见 docs/technical/design/认证与权限-实现复核.md §7。
+# ⚠️ **2026-08-29：这里从「手工枚举 18 份」改成「全部 61 份都跑」。**
+#
+# 改之前这是一张白名单，而写守卫的人以为写完就生效了 —— 「写了守卫」与「有闸门」
+# 是两件事。当天把没列进来的 43 份跑了一遍：**16 份红、28 条断言失败**，
+# 其中至少四条是**已经被突破的棘轮**（记录值写在代码里，实测早就越过去了）：
+#   · data-scope-coverage  56 → 70  带归属列却没登记数据域的表 = 那张表永远不过滤
+#   · biz-contract-fields  15 → 24  后端在发、B 端契约没接的字段
+#   · doc-standard         27 → 42  没有状态行的文档
+#   · ops-endpoint-exists  反向：已经接通了却还留在 KNOWN_GAPS 里的陈行
+# 一份守卫红着没人知道，与没有这份守卫是同一件事 —— 而它还额外骗人。
+#
+# 直接要求全绿会让闸门恒红，所以冻结那 28 条为基线（packages/shared/
+# known-guard-failures.txt），机制与 backend/known-failures.txt 完全一致：
+# 基线之外的新失败挡住推送，基线里修好的只提示不拦（清单只准变短）。
+# 分诊与降账计划见 docs/technical/design/守卫与闸门-问题与优化方案.md。
 #
 # 判据取自 $GATE_WT（HEAD 干净副本），与其它几道一致：**闸门要判的是
 # 「推出去的那份对不对」，不是谁的工作区**。跑 vitest 需要 node_modules，
 # 上面那段已经把主仓的软链过去了；没有就跳过并说明，不静默放行。
 if [ -d "$ROOT/node_modules" ]; then
-  if ! (cd "$GATE_WT/packages/shared" && npx vitest run \
-        tests/typography.test.ts tests/design-tokens.test.ts \
-        tests/skin-vars.test.ts tests/ui-package.test.ts \
-        tests/icon-chars.test.ts tests/i18n-parity.test.ts \
-        tests/i18n-keys-exist.test.ts tests/validate.test.ts tests/region.test.ts tests/input-bounds.test.ts tests/ops-ui-discipline.test.ts tests/env-consumed.test.ts tests/bean-validation-wired.test.ts tests/api-path-naming.test.ts tests/ops-tone-contrast.test.ts tests/ops-perm-matrix.test.ts tests/nav-function-point.test.ts >/dev/null 2>&1); then
-    echo "✗ 设计守卫红了（字阶 / 圆角 / 皮肤变量 / 令牌 / 字符当图标 / 三语词条 / 词条引用 / 输入校验 / 省市区拆分 / 输入上限 / 运营端纪律 / 环境变量接线 / 校验注解接线 / 端点命名 / 运营端色调对比度 / **运营端角色×端点矩阵** / **菜单↔功能点**）。看是哪一条："
-    echo "    cd packages/shared && npx vitest run tests/typography.test.ts tests/design-tokens.test.ts tests/skin-vars.test.ts tests/ui-package.test.ts tests/icon-chars.test.ts tests/i18n-parity.test.ts tests/i18n-keys-exist.test.ts tests/validate.test.ts tests/region.test.ts tests/input-bounds.test.ts tests/ops-ui-discipline.test.ts tests/env-consumed.test.ts tests/bean-validation-wired.test.ts tests/api-path-naming.test.ts tests/ops-tone-contrast.test.ts tests/ops-perm-matrix.test.ts tests/nav-function-point.test.ts"
+  if ! node "$GATE_WT/scripts/check-shared-guards.mjs" --check; then
+    echo "  本机重现：cd packages/shared && npx vitest run"
     echo "  判据取自 HEAD —— 工作区里没提交的改动不会让你被挡住。"
     exit 1
   fi
 else
-  echo "⚠ 跳过设计守卫：本机没有 node_modules（跑一次 npm i 就会启用）"
+  echo "⚠ 跳过共享守卫：本机没有 node_modules（跑一次 npm i 就会启用）"
 fi
 
 # 自造件棘轮：**新页面不许自造库里已经有的件**。

@@ -1,0 +1,37 @@
+# packages/shared/tests 里**已知红着**的守卫。只准变短，不准变长。
+#
+# 生成：node scripts/check-shared-guards.mjs --update
+# 闸门：node scripts/check-shared-guards.mjs --check（pre-push 会跑）
+#
+# 为什么要有它：直接要求全绿会让闸门从第一天起恒红，而恒红的闸门等于没有闸门。
+# 修好一条就删一行 —— 留着的害处是**那条守卫从此免检**。
+#
+b-app-shared-state.test.ts::b-app 共享状态 ★★ 定义了 ensureXxx 就必须在 App.vue 里接上 —— 半截的守护比没有更糟
+b-app-shared-state.test.ts::b-app 共享状态 ★★★ 被多页读取的状态，必须在 App.vue 上加载 —— 靠某一页加载 = 刷新即失效
+biz-contract-fields.test.ts::'b-app' 契约字段（'/biz'） ★★ 后端发了而契约没声明的字段（棘轮：只许降不许升）
+biz-contract-fields.test.ts::'b-app' 契约字段（'/biz'） ★★★ 契约里的必填字段，后端 VO 必须真的有 —— 少一个就是屏幕上静默少一块
+biz-page-perm.test.ts::B 端页面门禁 ★★★ 页面门禁必须覆盖该页调用所需的权限码 —— 覆盖不到的必须写明为什么
+data-scope-coverage.test.ts::数据域表册覆盖 ★★★ 带归属列的表要么登记、要么写明为什么不用（棘轮：只许降不许升）
+ddl-parsable.test.ts::建表 DDL 必须可解析 ★★★ 每张声明过的表，解析器都必须读得到
+doc-standard.test.ts::文档规范 md 引用的 md 必须存在 —— 目录重整最容易碎的就是这个，而且不报错
+doc-standard.test.ts::文档规范 technical 下每篇文档都出现在 README 索引里 —— 不在索引里的文档等于不存在
+doc-standard.test.ts::文档规范 不使用 mermaid —— 写错一个字符整张图不显示，而且不报错
+doc-standard.test.ts::文档规范 每张 svg 都有 title 与 desc —— 图之外要有能读的说明
+doc-standard.test.ts::文档规范 没有状态行的文档不许再增加（基线只降不升）
+entity-alignment.test.ts::Java 实体与库表对齐 实体不缺列 —— 少一个字段 MyBatis 不报错，只是**读不出那一列**
+entity-alignment.test.ts::Java 实体与库表对齐 每张业务表都有实体，或已登记为「知道欠着」
+enum-registry.test.ts::枚举登记表 G1 · 端上每个具名枚举都必须登记（新增枚举不能绕过雷达）
+enum-registry.test.ts::枚举登记表 G2 · STATUS 型枚举的取值必须取自 L1 状态词表，或已申报
+enum-registry.test.ts::枚举登记表 规范 §D5 · 不允许在 interface 里内联字面量联合类型
+message-placeholder.test.ts::带占位符的错误文案 ★★★ 抛这些码时必须带参数 —— 不带的话用户看到的是字面的 `{0}`
+ops-contract-fields.test.ts::ops-web 契约字段（必填数组） ★★ ops-web 声明为必填的数组字段，后端 VO 必须有 —— 否则 .length 直接抛异常
+ops-data-scope.test.ts::运营端数据域接入 ★★★ G1 ops 查询端点不许绕过已注册表的数据域 —— 绕过了就是越权，而且不报错
+ops-data-scope.test.ts::运营端数据域接入 ★★★ G3 每张已注册表都要为运营会话的三个维度备好锚点 —— 缺一个，那类运营整页空白且不报错
+ops-endpoint-exists.test.ts::运营端端点存在性 ★★ 已经接通的要从清单里删掉 —— 否则清单几个月后就烂了
+perm-doc-fresh.test.ts::权限配置文档的数据清单 ★★★ 必须与 gen-perm-seed.mjs 的产出一致 —— 不一致就是清单过期了
+schema-lineage.test.ts::对账血缘 新出现的跨表同名业务键必须被分类
+spec-completeness.test.ts::契约完整性 B 端：每个字段都有说明
+spec-completeness.test.ts::契约完整性 C 端：每个字段都有说明
+spec-completeness.test.ts::契约完整性 平台端：每个字段都有说明
+spec-completeness.test.ts::契约完整性 领域模型对齐清单已生成且无未定性条目
+wire-alignment.test.ts::请求体字段（B 端）：前端发的与后端收的必须一致 两边都定义了 body 的端点，字段名对得上

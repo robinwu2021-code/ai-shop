@@ -104,6 +104,22 @@ describe("文档规范", () => {
       const body = readFileSync(f, "utf8");
       for (const m of body.matchAll(/\]\((\.{1,2}\/[^)]+?\.md)(#[^)]*)?\)/g)) {
         const target = resolve(dirname(f), m[1]!);
+        /*
+         * **跑出仓库的链接一律算断**，不看磁盘上有没有。
+         *
+         * `docs/technical/design/TDD-backend.md` 里有两条
+         * `../../../../powerbank/docs/...` —— 在把 ai-shop 与 powerbank 并排放着的
+         * 机器上它们解析得到、这条断言是绿的；换一台机器、或者在 pre-push 的
+         * **HEAD 干净副本**（临时目录）里跑，同样两条就是红的。
+         *
+         * 一条结果取决于「你磁盘上还有什么别的项目」的断言，比没有断言更糟：
+         * 它在写的人那里永远绿，在闸门里永远红，于是两边都不相信它。
+         * 2026-08-29 把共享守卫改成默认全跑时就是被这两条挡住的。
+         */
+        if (!target.startsWith(`${ROOT}/`)) {
+          broken.push(`${rel(f)} → ${m[1]}（跑出仓库了，无法校验）`);
+          continue;
+        }
         if (!existsSync(target)) broken.push(`${rel(f)} → ${m[1]}`);
       }
     }
