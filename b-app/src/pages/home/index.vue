@@ -9,6 +9,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useI18n } from "vue-i18n";
 import { useMerchantStore } from "@/stores/merchant";
+import { urgentStockItems } from "@/shared/stock-urgent";
 import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
 import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
@@ -29,39 +30,27 @@ const stockSummary = ref<StockSummary | null>(null);
 /**
  * 进销存那张卡底下的三个快捷。**随状态变，不写死。**
  *
- * 原来永远是「进货 · 盘点 · 单据」—— 哪怕此刻有三批货在途等着收，
- * 它也不会变，而那才是他现在要做的事。
+ * 「有人在等」的那几项由 `urgentStockItems` 给 —— **与库存页共用一份**：
+ * 各算一份的下场今天演过（加「在途」只加了库存页、加「继续盘点」只加了工作台），
+ * 两边都不报错，只是各缺对方一半。
  *
- * 规则：有在途就把「收货 N」顶到第一个（它是这些数里**唯一有人在等**的），
- * 其余按固定序补满三个。**最多三个** —— 再多就成了第二个入口网格，
- * 而这张卡的作用是「一眼看见状况 + 一步做最该做的事」，不是再摆一遍菜单。
- *
- * 两个提亮的（收货 / 继续盘点）都是**有人在等**的：一个是货停在路上，
- * 一个是一张盘点单开着没收尾，账面还锁着。其余的什么时候点都行。
+ * 这里额外做的只有一件事：**用固定序补满三个**。工作台是「看一眼顺手做一件」的地方，
+ * 空着两格不如给他最常按的那个；库存页不补，那儿的写动作在贴底条里。
  */
 const invActs = computed(() => {
-  const sum = stockSummary.value;
-  const n = sum?.inTransitCount ?? 0;
-  const acts: { key: string; label: string; route: string; urgent?: boolean }[] = [];
-  if (n > 0) {
-    acts.push({ key: "receive", label: String(t("home.inv.receiveN", { n })), route: `${ROUTES.stockDocs}?kind=TRANSFER`, urgent: true });
-  }
-  // 还开着的盘点单：**带单号跳**，否则那一页会开一张新的，而按钮写着「继续」
-  if (sum?.openCountNo) {
-    acts.push({
-      key: "resume",
-      label: String(t("home.inv.resumeCount")),
-      route: `${ROUTES.stockCheck}?no=${encodeURIComponent(sum.openCountNo)}`,
-      urgent: true,
-    });
-  }
+  const acts = urgentStockItems(stockSummary.value).map((u) => ({
+    key: u.key,
+    label: String(t(u.labelKey, u.params ?? {})),
+    route: u.route,
+    urgent: true,
+  }));
   for (const [key, route] of [
     ["purchase", ROUTES.purchaseEdit],
     ["check", ROUTES.stockCheck],
     ["docs", ROUTES.stockDocs],
   ] as const) {
     if (acts.length >= 3) break;
-    acts.push({ key, label: String(t(`stock.entry.${key}`)), route });
+    acts.push({ key, label: String(t(`stock.entry.${key}`)), route, urgent: false });
   }
   return acts;
 });
@@ -352,22 +341,21 @@ onShow(load);
           <text class="txt-title">{{ $t("home.inv.title") }}</text>
           <sh-go :text="String($t('home.inv.all'))"></sh-go>
         </view>
-        <view class="inv__row">
-          <view class="inv__item" @tap="open(ROUTES.stock)">
-            <text class="txt-display inv__v sh-num">{{ stockSummary.itemCount }}</text>
-            <text class="sh-muted">{{ $t("home.inv.onSale") }}</text>
-          </view>
-          <view class="inv__item" @tap="open(ROUTES.stock)">
-            <text class="txt-display inv__v sh-num" :class="{ 'is-danger': stockSummary.shortageCount > 0 }">
-              {{ stockSummary.shortageCount }}
-            </text>
-            <text class="sh-muted">{{ $t("home.inv.shortage") }}</text>
-          </view>
-          <view class="inv__item" @tap="open(ROUTES.stock)">
-            <text class="txt-display inv__v sh-num">{{ stockSummary.staleCount }}</text>
-            <text class="sh-muted">{{ $t("home.inv.stale") }}</text>
-          </view>
-        </view>
+        <!--
+          **与库存页顶部逐字相同的那一块**：同样四个数、同一个库件、同样的顺序。
+          原来这里是手写的三等分，少一个「在途」—— 而那是四个数里唯一有人在等的，
+          偏偏缺在商家每天第一眼看的地方。手写一份的下场就是它不会跟着改。
+        -->
+        <sh-stat
+          panel
+          :items="[
+            { key: 'sku', value: stockSummary.itemCount, label: String($t('home.inv.onSale')) },
+            { key: 'shortage', value: stockSummary.shortageCount, label: String($t('home.inv.shortage')), tone: 'bad' },
+            { key: 'stale', value: stockSummary.staleCount, label: String($t('home.inv.stale')) },
+            { key: 'transit', value: stockSummary.inTransitCount, label: String($t('stock.statTransit')), tone: 'warn' },
+          ]"
+          @pick="open(ROUTES.stock)"
+        ></sh-stat>
         <view class="inv__acts">
           <!--
             提亮的是**有人在等**的那些：「收货 N」是货停在路上，
@@ -551,20 +539,10 @@ onShow(load);
   display: block;
   margin-top: 8rpx;
 }
-/* 进销存卡：三个数 + 三个直达动作。与 .stats 同一套骨架，但多一行动作条 */
-
-.inv__row {
-  display: flex;
-  margin-top: 16rpx;
-}
-.inv__item {
-  flex: 1;
-  text-align: center;
-}
-.inv__v {
-  display: block;
-}
-/* 缺货是唯一需要立刻动手的那个数，其余两个不抢眼 */
+/* 进销存卡：四个数 + 一行快捷。
+   四个数**不在这里画** —— 用库件 `sh-stat panel`，与库存页顶部是同一块东西。
+   原来这里有 .inv__row / .inv__item / .inv__v 三条自己画三等分的规则，
+   于是加「在途」时库存页跟上了、这里没有。删掉它们就不会再分叉。 */
 .inv__acts {
   display: flex;
   gap: 12rpx;

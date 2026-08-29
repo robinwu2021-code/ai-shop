@@ -19,6 +19,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
+import { urgentStockItems } from "@/shared/stock-urgent";
 import { ROUTES } from "@/shared/nav";
 import type { StockBalance, StockSummary } from "@shared/types";
 
@@ -133,6 +134,21 @@ const actions = computed(() => [
  * 库位要 `biz:store:admin`。按本页判的话，店员会看到一道点进去就是
  * 「这页不该你看」的门 —— 那比没有门更让人困惑。
  */
+/**
+ * 「有人在等」的那几项。**与工作台那张卡共用一份** —— 它们是同一块东西的
+ * 全文与前缀，各算一份的下场今天演过：两边各缺对方一半，且都不报错。
+ *
+ * 这一页**不补空位**：工作台会用「进货」把三格填满，那是「看一眼顺手做一件」；
+ * 这一页的写动作在贴底条里，再补一遍就是同一个入口出现两次。
+ */
+const urgent = computed(() =>
+  urgentStockItems(summary.value).map((u) => ({
+    key: u.key,
+    label: String(t(u.labelKey, u.params ?? {})),
+    route: u.route,
+  })),
+);
+
 const links = computed(() => [
   { key: "docs", route: ROUTES.stockDocs, perm: "biz:stock" },
   { key: "report", route: ROUTES.stockReport, perm: "biz:customer" },
@@ -169,6 +185,22 @@ onShow(load);
         ]"
         @pick="pickStat"
       ></sh-stat>
+      <!--
+        紧急项与工作台那张卡**同一个位置**：数下面、细线之下。
+        位置固定，人才会形成「有事就在那儿」的预期。
+        **只在真有事时出现** —— 没有在途、没有开着的盘点单时一行都不占。
+      -->
+      <view v-if="urgent.length" class="ov__go">
+        <text
+          v-for="u in urgent"
+          :key="u.key"
+          class="txt-primary txt-bold ov__link"
+          @tap="go(u.route)"
+        >
+          {{ u.label }}
+        </text>
+      </view>
+
       <view v-if="links.length" class="ov__go">
         <text
           v-for="e in links"
