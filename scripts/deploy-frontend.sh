@@ -20,7 +20,13 @@ case "$APP" in
     ops-web) BUILD_CMD='npm run build:prod'; OUT='out';           URL_PATH='/ops-web/' ;;
     c-app)   BUILD_CMD='npm run build:h5';   OUT='dist/build/h5'; URL_PATH='/c/' ;;
     b-app)   BUILD_CMD='H5_BASE=/b/ npm run build:h5'; OUT='dist/build/h5'; URL_PATH='/b/' ;;
-    *) echo "用法: $0 <ops-web|c-app|b-app>" >&2; exit 2 ;;
+    # 官网。**它此前只能手工发**，而手工发漏掉的恰恰是最后一步：
+    # 2026-08-28 包打好、装到测试机了，官网静静指着八天前的 0.1.0（5.7MB，真包 54MB），
+    # 从官网下载的商家八天里拿到的都是旧包，零报错。今天 0.4.35 又停了一整天。
+    # 构建要读 site/content/**.md 与 brand/logo/mark-red.svg，两者都在仓库里，
+    # 所以 worktree 副本自带；少任一个是构建期直接报错，不会静默出一个缺内容的站。
+    site)    BUILD_CMD='npm run build';         OUT='out';           URL_PATH='/' ;;
+    *) echo "用法: $0 <ops-web|c-app|b-app|site>" >&2; exit 2 ;;
 esac
 
 HOST="${HOST:-soukmind-tx}"
