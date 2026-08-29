@@ -96,9 +96,22 @@ public class MerchantServiceImpl implements MerchantService {
         return rows.stream().map(m -> toVO(m, fronts)).toList();
     }
 
+    /*
+     * ⚠️ **下面三个 C 端读都要绕过数据域**，理由是同一条：
+     *
+     * `mch_entity` 只登记了 MERCHANT 维度（归属列 entity_no），而 C 端会话的维度是
+     * SELF —— 见 LoginUser 里写死的 `DataScopeSpec.of(SELF, {userNo})`。锚点在这张表里
+     * 找不到时，拦截器是 **fail-closed**：拼出来的是 `1=0`，不是放行。
+     *
+     * 后果是**登录之后店铺页就打不开了**（10404 数据不存在），而游客能打开 ——
+     * 因为游客身上根本没有数据域。测试长期只测游客视角，所以这一层从没被触发过。
+     *
+     * 绕过是安全的：这三个接口给的都是商家的公开信息，本来就是给所有买家看的，
+     * 数据域在这里没有任何该守的东西。它守的是运营端的「谁能看到哪些商家」。
+     */
     @Override
     public MerchantVO detail(String merchantNo) {
-        MchEntity m = one(merchantNo);
+        MchEntity m = DataScopeContext.executeWithoutScope(() -> one(merchantNo));
         if (m == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
@@ -107,7 +120,7 @@ public class MerchantServiceImpl implements MerchantService {
 
     @Override
     public ai.neargo.shop.merchant.dto.MerchantScoreVO score(String merchantNo) {
-        MchEntity m = one(merchantNo);
+        MchEntity m = DataScopeContext.executeWithoutScope(() -> one(merchantNo));
         if (m == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
@@ -124,9 +137,10 @@ public class MerchantServiceImpl implements MerchantService {
         if (purchases.isEmpty()) {
             return List.of();
         }
-        Map<String, MchEntity> merchants = merchantMapper.selectList(Wrappers.<MchEntity>lambdaQuery()
+        Map<String, MchEntity> merchants = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectList(Wrappers.<MchEntity>lambdaQuery()
                         .in(MchEntity::getEntityNo,
-                                purchases.stream().map(p -> p.merchantNo()).toList())).stream()
+                                purchases.stream().map(p -> p.merchantNo()).toList()))).stream()
                 .collect(java.util.stream.Collectors.toMap(MchEntity::getEntityNo, m -> m, (a, b) -> a));
 
         // 商家可能已被封禁/删除，但用户确实买过 —— 跳过而不是返回空壳，

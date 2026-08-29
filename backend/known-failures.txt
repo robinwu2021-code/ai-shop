@@ -209,9 +209,28 @@
 # 表里落一行 `category.gate.enforce`，字典序在前，于是它红。改成按 key 找。
 # ══════════════════════════════════════════════════════════════════════
 #
+#
+# ══════════════════════════════════════════════════════════════════════
+# 2026-08-29：M2Catalog.visitedMerchants —— 又是一条线上缺陷，不是测试欠账
+#
+# `mch_entity` 只登记了 MERCHANT 维度（entity_no），而 C 端会话的维度是 SELF
+# （LoginUser 里写死的 `DataScopeSpec.of(SELF, {userNo})`）。锚点在这张表里找不到时，
+# 数据域拦截器是 **fail-closed** —— 拼出来的是 `1=0`，不是放行。
+#
+# 于是 MerchantServiceImpl 里三个 C 端读（detail / score / visited）对**登录用户**
+# 全部落空：店铺页 10404「数据不存在」，而**游客能正常打开**。
+#
+# 这一层为什么一直没被发现：这几条用例都是**游客视角**发的请求 —— 游客身上没有
+# 数据域，整个拦截器在测试里从头到尾没被触发过。已在 merchantDetail 里补了
+# 「登录着再看一遍」的断言，撤掉修复它立刻红（验过：expected 0 but was 10404）。
+#
+# 同类未查完：`mch_entity` 的读在 shop-merchant 下还有二十来处，绝大多数在
+# 运营/B 端 —— 那里数据域是**该起作用的**，误加豁免等于拆掉真授权。要逐个判定
+# 得顺着控制器追 C 端可达性，没做。别按 grep 批量加 executeWithoutScope。
+# ══════════════════════════════════════════════════════════════════════
+#
 ai.neargo.shop.arch.ArchitectureTest.implsMustLiveInDedicatedPackage
 ai.neargo.shop.arch.ArchitectureTest.svcModulesMustNotDependOnEachOther
-ai.neargo.shop.scenario.M2CatalogFlowTest.visitedMerchants
 ai.neargo.shop.scenario.OpsPermConfigFlowTest.superAdminHasEveryPoint
 ai.neargo.shop.scenario.OrderReceiverRequiredTest.pickupWithoutAddressStillWorks
 ai.neargo.shop.scenario.Phase1MasterDataTest.packagedFoodNeedsItsOwnAuthorization

@@ -194,6 +194,24 @@ class M2CatalogFlowTest {
 
         mvc().perform(get("/mp/merchant/M-NOT-EXIST"))
                 .andExpect(jsonPath("$.code").value(10404));
+
+        /*
+         * **登录着再看一遍。** 上面那两条是游客视角 —— 而游客身上没有数据域，
+         * 于是数据域这一层在这条用例里从头到尾没被触发过。
+         *
+         * 这不是洁癖：`mch_entity` 只登记了 MERCHANT 维度，而 C 端会话的维度是
+         * SELF（`LoginUser` 里写死的 `DataScopeSpec.of(SELF, {userNo})`）。
+         * 锚点找不到时拦截器是 **fail-closed**，拼出来的是 `1=0` ——
+         * 也就是说，**登录用户点开店铺页会拿到「数据不存在」，游客反而看得到**。
+         * 这条断言就是冲着那个方向去的。
+         */
+        String token = login("13500135009");
+        mvc().perform(get("/mp/merchant/M0001").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.merchantNo").value("M0001"));
+        mvc().perform(get("/mp/merchant/M0001/score").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.rating").isNumber());
     }
 
     @Test
