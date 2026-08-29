@@ -1037,6 +1037,7 @@ export const mockApi: MerchantApi = {
       // 明文不进本地库 —— mock 也照这条来，免得端上养成读明文的习惯
       settleAccountMasked: `****${tail}`,
       missing: [],
+      submitted: true,
       activatedAt: Date.now(),
     };
     persist();

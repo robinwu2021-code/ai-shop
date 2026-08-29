@@ -64,7 +64,19 @@ class MerchantPaymentFlowTest {
                 .andExpect(jsonPath("$.data[0].canReceiveMoney").value(false))
                 .andExpect(jsonPath("$.data[0].payMerchantNo").doesNotExist())
                 // 缺什么要说清楚：「还差结算账户」比「审核中」有用得多
-                .andExpect(jsonPath("$.data[0].missing[?(@=='settleAccount')]").exists());
+                .andExpect(jsonPath("$.data[0].missing[?(@=='settleAccount')]").exists())
+                /*
+                 * ★★ **占位态必须 submitted=false。**
+                 *
+                 * 入驻通过时建的占位与「已发给通道、在等回执」共用同一个 APPLYING，
+                 * 端上只能照状态串显示，于是新商家看到的是
+                 * 「审核中」+ 下面「还差结算账户」—— 他读成球在平台，于是坐等，
+                 * 而球其实在他自己脚下。这一步正是「不能收钱」最常卡死的地方。
+                 *
+                 * 有了这个布尔，端上把它显示成「待补资料」（提醒色），
+                 * 与「审核中」（安静的灰、他什么也做不了）分开。
+                 */
+                .andExpect(jsonPath("$.data[0].submitted").value(false));
     }
 
     @Test
@@ -94,6 +106,9 @@ class MerchantPaymentFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.applyStatus").value("ACTIVE"))
                 .andExpect(jsonPath("$.data.canReceiveMoney").value(true))
+                // 与占位态那条成对：发过通道的这一条 submitted 必须是 true，
+                // 否则「待补资料 / 审核中」两个显示会调过来
+                .andExpect(jsonPath("$.data.submitted").value(true))
                 .andReturn().getResponse().getContentAsString();
 
         var data = json.readTree(body).get("data");

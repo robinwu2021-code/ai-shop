@@ -2435,6 +2435,14 @@ export interface PaymentApplyment {
   rejectReason?: string;
   /** 还缺哪些资料（settleAccount / licenses / settleAccountType）。空 = 资料齐了在等通道 */
   missing: string[];
+  /**
+   * **有没有真的发给通道过。**
+   *
+   * <p>没有它，`APPLYING` 同时表示两件相反的事：入驻通过时建的占位（商家还没填过
+   * 任何东西）与「已发给通道、在等回执」。都显示成「审核中」的话，新商家读到的是
+   * 球在平台，而球其实在他自己脚下 —— 这正是「不能收钱」最常卡死的一步。
+   */
+  submitted: boolean;
   /** 提交进件的时间。没提交过为空 */
   appliedAt?: number;
   /** 通道开户完成的时间 —— 从这一刻起才真的能收钱 */

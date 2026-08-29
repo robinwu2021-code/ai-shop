@@ -136,6 +136,7 @@ export default {
     rejectedHint: "下面已回填你上次填的内容，改掉上面说的那一项再提交即可，不用重填。",
     resubmit: "修改并重新提交",
     required: "请把必填项填完",
+    requiredList: "还差：{s}",
   },
 
   home: {
@@ -857,6 +858,7 @@ export default {
       REJECTED: "已驳回",
       FROZEN: "已冻结",
     },
+    needInfo: "待补资料",
     missingTitle: "还差这些资料：",
     missing: {
       settleAccount: "结算账户（钱打到哪张卡）",

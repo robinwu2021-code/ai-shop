@@ -26,6 +26,24 @@ const submitting = ref(false);
 const current = computed(() => list.value[0] ?? null);
 const done = computed(() => current.value?.canReceiveMoney === true);
 
+/**
+ * 状态徽章分三种，判据是**球在谁那边**：
+ *   能收钱        → 「可以收款」
+ *   没发给通道过  → 「待补资料」（球在商家）
+ *   发过了        → 照后端状态（审核中 / 已驳回 / 已冻结）
+ */
+function badgeText(p: PaymentApplyment): string {
+  if (p.canReceiveMoney) return String(t("payment.ok"));
+  if (!p.submitted && p.applyStatus !== "REJECTED") return String(t("payment.needInfo"));
+  return String(t(`payment.status.${p.applyStatus}`));
+}
+
+function badgeTone(p: PaymentApplyment): string {
+  if (p.canReceiveMoney) return "is-ok";
+  // 待补资料要与「审核中」区分开：前者要他动手，后者只需要等
+  return !p.submitted && p.applyStatus !== "REJECTED" ? "is-todo" : "is-wait";
+}
+
 const form = ref({ settleAccount: "", contactName: "", contactPhone: "" });
 const licenses = ref<string[]>([]);
 const uploading = ref(false);
@@ -131,12 +149,18 @@ async function refresh() {
       <view class="ch__top sh-row sh-row--between">
         <text class="txt-title">{{ p.channelName }}</text>
         <!--
-          状态一律照 canReceiveMoney 显示，不在端上比 applyStatus ——
-          比错的表现是「显示能收钱但收不了」，要到第一笔订单才暴露
+          「能不能收钱」照 canReceiveMoney，不在端上比 applyStatus ——
+          比错的表现是「显示能收钱但收不了」，要到第一笔订单才暴露。
+
+          **收不了钱时还要再分一次：球在谁那边。**
+          入驻通过时后端建的进件占位也是 APPLYING，而那时商家一个字都没填过。
+          一律显示「审核中」的话，新商家看到的是
+          「审核中」+ 下面「还差结算账户」—— 他读成平台在审，
+          于是坐等；而这一步正是「不能收钱」最常卡死的地方。
+          判据是 submitted（发给通道过才有单号），不是 missing 是否为空 ——
+          资料填齐但还没点提交时，两者的答案不一样。
         -->
-        <text class="txt-caption badge" :class="p.canReceiveMoney ? 'is-ok' : 'is-wait'">
-          {{ p.canReceiveMoney ? $t("payment.ok") : $t(`payment.status.${p.applyStatus}`) }}
-        </text>
+        <text class="txt-caption badge" :class="badgeTone(p)">{{ badgeText(p) }}</text>
       </view>
 
       <!-- 驳回原因要显眼：不给原因，商家只会反复重提同一份资料 -->
@@ -226,6 +250,15 @@ async function refresh() {
 .badge.is-wait {
   background: var(--sh-faint);
   color: var(--sh-sub);
+}
+/*
+  待补资料：**要他动手，所以不能和「等着就行」长一个样。**
+  「审核中」用安静的灰（他什么也做不了），这一个用提醒色 ——
+  两者此前共用一个灰底，于是「该我了」和「等平台」在视觉上没有区别。
+*/
+.badge.is-todo {
+  background: var(--sh-warning-tint);
+  color: var(--sh-warning);
 }
 .reason {
   display: block;

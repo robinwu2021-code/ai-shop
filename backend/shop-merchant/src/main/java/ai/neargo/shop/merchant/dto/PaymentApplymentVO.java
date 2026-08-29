@@ -19,6 +19,15 @@ package ai.neargo.shop.merchant.dto;
  * @param settleAccountMasked 结算账号掩码。<b>明文永不回显</b>，包括给商家自己
  * @param rejectReason   驳回原因。驳回时必有 —— 没有原因商家只能反复重提
  * @param missing        还缺哪些资料（如 settleAccount / licenses）。空表示资料齐了在等通道
+ * @param submitted      <b>有没有真的发给通道过</b>（{@code channel_apply_no} 非空）。
+ *
+ *                       <p>没有这一个布尔，{@code APPLYING} 就同时表示两件相反的事：
+ *                       「入驻通过时建的占位，商家还没填过任何东西」与「已经发给通道、在等回执」。
+ *                       端上把它一律显示成「审核中」，于是新商家看到的是
+ *                       <b>「审核中」+「还差结算账户」</b> —— 他读成球在平台，
+ *                       而球其实在他自己脚下。而这正是「不能收钱」最常卡死的一步。
+ *
+ *                       <p>判据本来就在库里（提交过才有通道单号），只是没下发。
  * @param appliedAt      提交时间
  * @param activatedAt    开户完成时间
  * @param storeNo        这条进件是<b>为哪家门店</b>做的；<b>空 = 主体级默认号</b>。
@@ -29,6 +38,6 @@ public record PaymentApplymentVO(String payChannel, String channelName, String a
                                  boolean canReceiveMoney, String payMerchantNo,
                                  String subMchidMasked, String settleAccountType,
                                  String settleAccountMasked, String rejectReason,
-                                 java.util.List<String> missing,
+                                 java.util.List<String> missing, boolean submitted,
                                  Long appliedAt, Long activatedAt, String storeNo) {
 }

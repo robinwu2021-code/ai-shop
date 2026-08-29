@@ -127,14 +127,25 @@ const settleType = computed(() =>
 const scopeReady = computed(
   () => form.value.serviceScope !== SERVICE_SCOPE.COMMUNITY || form.value.communityNos.length > 0,
 );
-const canSubmit = computed(
-  () =>
-    notBlank(form.value.name) &&
-    notBlank(form.value.contactName) &&
-    // `!!x` 会把 `"   "` 当成填了；`/^\d{11}$/` 会把 `00000000000` 当成手机号
-    isPhone(form.value.contactPhone) &&
-    scopeReady.value,
-);
+/**
+ * 还差哪几项 —— **按页面从上到下的顺序**，因为他要照着这个顺序回去找。
+ *
+ * <p>此前这里只有一个布尔，点灰按钮弹一句「请把必填项填完」：
+ * 一屏十来个字段，他得自己一个个回头看。而建品页早就做到了
+ * 「待填写：价格（1 斤）」—— 同一个 app 两套标准，
+ * 而入驻是新商家第一次用，最不该在这儿让他猜。
+ */
+const missingFields = computed(() => {
+  const out: string[] = [];
+  if (!notBlank(form.value.name)) out.push(String(t("apply.name")));
+  if (!notBlank(form.value.contactName)) out.push(String(t("apply.contact")));
+  // `!!x` 会把 `"   "` 当成填了；`/^\d{11}$/` 会把 `00000000000` 当成手机号
+  if (!isPhone(form.value.contactPhone)) out.push(String(t("apply.phone")));
+  if (!scopeReady.value) out.push(String(t("store.scopeCommunities")));
+  return out;
+});
+
+const canSubmit = computed(() => missingFields.value.length === 0);
 
 /** 已上传的资质图（旧字段，仍然传 —— 后端两个都收，存量申请单靠它回看） */
 const licenses = ref<string[]>([]);
@@ -257,7 +268,8 @@ async function submit() {
     return;
   }
   if (!canSubmit.value) {
-    uni.showToast({ title: t("apply.required"), icon: "none" });
+    // 指名道姓，别让他自己在一屏字段里找
+    uni.showToast({ title: t("apply.requiredList", { s: missingFields.value.join("、") }), icon: "none" });
     return;
   }
   if (submitting.value) return;
@@ -516,6 +528,14 @@ async function submit() {
       </view>
     </view>
 
+    <!--
+      **差什么写在按钮上方，不等他点了才说。**
+      灰按钮 + 一句 toast 的组合要他先点一次才知道差什么，
+      而这一屏有十来个字段 —— 那一次点击换来的信息，本来就该一直在那儿。
+    -->
+    <text v-if="!canSubmit" class="txt-caption todo">
+      {{ $t("apply.requiredList", { s: missingFields.join("、") }) }}
+    </text>
     <view class="sh-btn submit" :class="{ 'sh-btn--muted': !canSubmit }" @tap="submit">
       {{ status === "REJECTED" ? $t("apply.resubmit") : $t("apply.submit") }}
     </view>
@@ -523,6 +543,13 @@ async function submit() {
 </template>
 
 <style scoped>
+/* 还差什么：贴在提交键上方，与建品页底部那行「待填写：…」同一个位置关系 */
+.todo {
+  display: block;
+  margin: 20rpx 8rpx 0;
+  color: var(--sh-warning);
+}
+
 .rejected {
   background: var(--sh-danger-tint);
 }

@@ -85,7 +85,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
         return new PaymentApplymentVO(virtual.getPayChannel(),
                 masterDataPort.channelName(virtual.getPayChannel()),
                 MchPaymentMerchant.NONE, false, null, null, null, null, null,
-                missingOf(virtual, null, null, null), null, null, "");
+                missingOf(virtual, null, null, null), false, null, null, "");
     }
 
     /** 主体 → 通道进件主体。与建商家、入驻校验走同一份主数据（ADR-002 §4） */
@@ -338,6 +338,13 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
                 row.getSettleAccountMasked(),
                 row.getRejectReason(),
                 missing,
+                /*
+                 * **提交过才算「审核中」。** 入驻通过时建的占位也是 APPLYING，
+                 * 但那时商家一个字都没填 —— 两件相反的事共用一个状态串，
+                 * 端上只能把它们都显示成「审核中」，而其中一件的球在商家自己脚下。
+                 * 通道单号是现成的判据：发出去过才有。
+                 */
+                row.getChannelApplyNo() != null && !row.getChannelApplyNo().isBlank(),
                 row.getAppliedAt(),
                 row.getActivatedAt(),
                 // 空串是库里的表示，端上用 null 更直白：「没有门店」而不是「门店叫空字符串」

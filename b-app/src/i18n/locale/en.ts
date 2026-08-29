@@ -87,6 +87,7 @@ export default {
     rejectedHint: "Your previous answers are filled in below — fix the item above and resubmit, no need to start over.",
     resubmit: "Edit and resubmit",
     required: "Please fill in the required fields",
+    requiredList: "Still needed: {s}",
   },
   home: {
     noticeNone: "Not posted",
@@ -676,6 +677,7 @@ export default {
       REJECTED: "Rejected",
       FROZEN: "Frozen",
     },
+    needInfo: "Needs your info",
     missingTitle: "Still missing:",
     missing: {
       settleAccount: "Settlement account (where the money lands)",

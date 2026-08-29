@@ -87,6 +87,7 @@ export default {
     rejectedHint: "بياناتك السابقة معبأة أدناه — صحّح البند أعلاه وأعد الإرسال دون البدء من جديد.",
     resubmit: "تعديل وإعادة الإرسال",
     required: "يرجى إكمال الحقول المطلوبة",
+    requiredList: "ما زال مطلوبًا: {s}",
   },
   home: {
     noticeNone: "غير منشور",
@@ -674,6 +675,7 @@ export default {
       REJECTED: "مرفوض",
       FROZEN: "مجمّد",
     },
+    needInfo: "بانتظار بياناتك",
     missingTitle: "ما زال ناقصًا:",
     missing: {
       settleAccount: "حساب التسوية (أين تصل الأموال)",

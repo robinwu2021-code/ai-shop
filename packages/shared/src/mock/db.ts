@@ -1423,6 +1423,12 @@ export const db = {
     applyStatus: "APPLYING",
     canReceiveMoney: false,
     missing: ["settleAccount"],
+    /*
+     * **入驻通过时建的占位：APPLYING 但没发给通道过。**
+     * 这正是新商家进来看到的那一屏，也是端上要把它显示成
+     * 「待补资料」而不是「审核中」的那一种（见 PaymentApplyment.submitted）。
+     */
+    submitted: false,
     appliedAt: 0,
   } as PaymentApplyment,
 
