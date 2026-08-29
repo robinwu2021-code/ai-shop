@@ -199,7 +199,20 @@ describe("ops-web 契约字段（必填数组）", () => {
     expect(pairs.length).toBeGreaterThan(5);
   });
 
-  it("★★ ops-web 声明为必填的数组字段，后端 VO 必须有 —— 否则 .length 直接抛异常", () => {
+  /*
+   * ⚠️ **显式给 30 秒**，与 `biz-contract-fields` 那两条同一个理由（那边写着，这边漏了）：
+   * 它逐个契约方法去后端源码里找返回类型并解析字段，单独跑 4 秒出头 ——
+   * 而全量是并发跑的，几十个文件抢 CPU 时轻易越过默认的 5 秒。
+   *
+   * 实测（2026-08-29）：单跑 4.4 秒连绿 6 次，全量 7.1 秒稳定超时。
+   * 于是它被冻进 known-guard-failures 当成「已知红着」—— 而它红的原因
+   * **与被测内容毫无关系，它的断言根本没跑完过**。
+   *
+   * 这比没有闸门更糟：清单上有一行让人以为「有人管着」，
+   * 而真的漏了一个必填数组那次，也会被当成同一条噪声划掉。
+   */
+  it("★★ ops-web 声明为必填的数组字段，后端 VO 必须有 —— 否则 .length 直接抛异常",
+    { timeout: 30_000 }, () => {
     const bad: string[] = [];
     for (const p of pairs) {
       const comps = javaComponents(p.be!.ret, p.be!.file);

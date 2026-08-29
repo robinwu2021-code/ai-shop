@@ -55,13 +55,49 @@ const EXEMPT: Record<string, string> = {
   // （已登记 MERCHANT）一起查，自己不当检索入口
   mch_channel_pickup: "自提路×取货点关联，从 channel 主表进入",
   mch_channel_area: "channel×范围项关联，从 channel 主表进入",
+  /*
+   * ── 2026-08-29：会话与登录日志六张 ──
+   *
+   * 豁免理由不是「不重要」，是**这个机制根本够不到它们**：
+   * 数据域是 MyBatis-Plus 的 `DataPermissionInterceptor`，只重写走 mapper 的 SQL。
+   * 这六张表**没有 Java 实体**，只被 `SessionDao` / `LoginLogDao` 用 `JdbcClient`
+   * 原生 SQL 访问（`WHERE token_hash = ?` / `WHERE user_no = ?` / GC 的 DELETE）。
+   * 登记它们**一行行为都不会变** —— 那种登记比不登记更坏：清单上多一条，
+   * 让人以为这张表已经被自动过滤保护着了。
+   *
+   * 而且它们本身就带着显式的 user_no 条件（查某人的会话/登录史），
+   * 唯一跨用户的两处是**按用途如此**：撤销轮询与失败登录流（风控要看爆破）。
+   */
+  usr_session: "无实体，只走 SessionDao 的原生 SQL（按 token_hash 单点查），拦截器够不到",
+  mch_session: "同 usr_session",
+  ops_session: "同 usr_session",
+  usr_login_log: "无实体，只走 LoginLogDao 原生 SQL；跨用户那一处是失败登录流，风控用途",
+  mch_login_log: "同 usr_login_log",
+  ops_login_log: "同 usr_login_log",
+  /*
+   * 幂等键。查询是 `WHERE idem_key = ? AND endpoint = ?` 的单点查，不是检索入口；
+   * user_no 是「谁发起的」而不是「谁的数据」。
+   *
+   * **登记它反而有害**：加上归属过滤之后，幂等查询在锚点对不上的会话里恒 miss ——
+   * 于是每一次重试都被当成新请求。重复下单比「看得见不该看见的」更贵。
+   */
+  sys_idempotent: "按 (idem_key, endpoint) 单点查；登记会让幂等恒 miss，重试变重复下单",
 };
 
 /** 迁移文件里每张表的列名（不依赖 DDL 解析器 —— 它自己另有守卫） */
 function tableColumns(): Map<string, Set<string>> {
   const out = new Map<string, Set<string>>();
   if (!existsSync(MIGRATION_DIR)) return out;
-  for (const f of readdirSync(MIGRATION_DIR).filter((x) => x.endsWith(".sql")).sort()) {
+  /*
+   * **按版本号排，不是按文件名排。** `.sort()` 是字典序：`V162` 会排在 `V97` 前面。
+   * 只解析 CREATE 时看不出来（一张表只建一次），而下面要重放改名/删表 ——
+   * 顺序错了就会「先把表改名，再去改一张已经不存在的表的列」。
+   */
+  const byVersion = readdirSync(MIGRATION_DIR)
+    .filter((x) => x.endsWith(".sql"))
+    .sort((a, b) => (Number(/^V(\d+)/.exec(a)?.[1] ?? 0) - Number(/^V(\d+)/.exec(b)?.[1] ?? 0))
+      || a.localeCompare(b));
+  for (const f of byVersion) {
     const src = readFileSync(join(MIGRATION_DIR, f), "utf8");
     for (const m of src.matchAll(
       /CREATE TABLE(?: IF NOT EXISTS)?\s+(\w+)\s*\(([\s\S]*?)\n\)\s*ENGINE/gi,
@@ -76,6 +112,39 @@ function tableColumns(): Map<string, Set<string>> {
       const t = m[1]!.toLowerCase();
       if (!out.has(t)) out.set(t, new Set());
       out.get(t)!.add(m[2]!.toLowerCase());
+    }
+    /*
+     * **改列名**（`ALTER TABLE t RENAME COLUMN a TO b`）。
+     * 不重放的话，这张表在模型里仍然带着那个**早就不存在的列名** ——
+     * 而归属列判定看的正是列名：V97 把 `msg_message.user_no` 改成了 `receiver_no`，
+     * 不重放就会一直按 `user_no` 把它报成「带归属列却没登记」。
+     */
+    for (const m of src.matchAll(
+      /ALTER TABLE\s+(\w+)\s+RENAME COLUMN\s+(\w+)\s+TO\s+(\w+)/gi,
+    )) {
+      const cols = out.get(m[1]!.toLowerCase());
+      if (cols?.delete(m[2]!.toLowerCase())) {
+        cols.add(m[3]!.toLowerCase());
+      }
+    }
+    /*
+     * **改表名**与**删表**。守卫此前两个都不认，于是它报的是**早已不存在的表**：
+     * V162 把 6 张 `msg_*` 改成了 `notify_*`，而清单里躺着 msg_message /
+     * msg_subscribe / msg_ticket 三条。
+     *
+     * 「报错了对象」和「漏报」一样坏 —— 下一个人会照着它去登记一张不存在的表，
+     * 而真正该登记的那张（改名之后的）从头到尾没被提起过。
+     */
+    for (const m of src.matchAll(/ALTER TABLE\s+(\w+)\s+RENAME TO\s+(\w+)/gi)) {
+      const from = m[1]!.toLowerCase();
+      const to = m[2]!.toLowerCase();
+      if (out.has(from)) {
+        out.set(to, out.get(from)!);
+        out.delete(from);
+      }
+    }
+    for (const m of src.matchAll(/DROP TABLE(?:\s+IF EXISTS)?\s+(\w+)/gi)) {
+      out.delete(m[1]!.toLowerCase());
     }
   }
   return out;
