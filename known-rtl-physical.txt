@@ -1,0 +1,13 @@
+# `.vue` 样式里写死左右的方向属性 —— 已知欠账。由 scripts/check-rtl-physical.mjs 读。
+#
+# 名单**只准变短**：改成逻辑属性之后，把那一行从这里删了。
+#
+# 2026-08-29 全站清了 40 处（b-app 28 / packages/ui 3 / c-app 12），只剩下面这一条。
+
+# 这一条是**居中写法，不是方向写法**：
+#   .tab__line { left: 50%; width: 44rpx; margin-left: -22rpx; }
+# `left: 50%` 与 `margin-left: -22rpx` 是配对的一对，把下划线钉在正中间。
+# 只把 margin 翻成逻辑属性、留着 left 是物理的，反而会把它推到一边去。
+# 要动就得连 left 一起换成 inset-inline-start —— 而居中这件事本来就与方向无关，
+# 两条都留物理属性是正确的。
+b-app/src/components/biz/biz-region-picker.vue margin-left

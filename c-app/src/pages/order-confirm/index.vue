@@ -822,8 +822,7 @@ onMounted(async () => {
 }
 .actionbar__btn {
   flex: 0 0 auto;
-  padding-left: 52rpx;
-  padding-right: 52rpx;
+  padding-inline: 52rpx;
 }
 
 /* 能力提示：拦下的用醒目色，只是提醒的用弱一档 —— 两者的用户动作不同 */

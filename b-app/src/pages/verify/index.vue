@@ -488,7 +488,7 @@ onShow(load);
 }
 .overview__grid--single .overview__i {
   flex: none;
-  text-align: left;
+  text-align: start;
 }
 .overview__n {
   display: block;

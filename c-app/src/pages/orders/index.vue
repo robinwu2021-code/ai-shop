@@ -270,8 +270,7 @@ onShow(load);
 }
 .empty__btn {
   display: inline-block;
-  padding-left: 60rpx;
-  padding-right: 60rpx;
+  padding-inline: 60rpx;
 }
 .hidden-note {
   display: block;

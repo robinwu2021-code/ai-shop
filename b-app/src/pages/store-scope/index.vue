@@ -603,10 +603,11 @@ onShow(() => {
   padding: 16rpx 0 16rpx 24rpx;
   border-bottom: var(--sh-hairline);
 }
-/* 缺配置是**状态**不是装饰：左侧一条竖杠 + 文字变色，不换整块底色 */
+/* 缺配置是**状态**不是装饰：起始侧一条竖杠 + 文字变色，不换整块底色。
+   用逻辑属性而不是 border-left —— 阿语下起始侧在右，写死 left 那条杠会留在错的一边 */
 .sum--warn {
-  border-left: 4rpx solid var(--sh-warning);
-  padding-left: 20rpx;
+  border-inline-start: 4rpx solid var(--sh-warning);
+  padding-inline-start: 20rpx;
 }
 .sum--warn .sum__t {
   color: var(--sh-warning);

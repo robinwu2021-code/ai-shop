@@ -243,7 +243,7 @@ onLoad((q) => {
   gap: 32rpx;
 }
 .recv {
-  text-align: right;
+  text-align: end;
 }
 .recv__who {
   display: block;

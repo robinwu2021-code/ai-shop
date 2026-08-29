@@ -105,8 +105,7 @@ onShow(load);
 }
 .empty__btn {
   display: inline-block;
-  padding-left: 60rpx;
-  padding-right: 60rpx;
+  padding-inline: 60rpx;
 }
 /* 带引导按钮的空态，保留页面自有结构 */
 .empty {

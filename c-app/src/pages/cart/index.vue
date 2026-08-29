@@ -167,8 +167,7 @@ onShow(() => cart.load());
 }
 .checkoutbar__btn {
   flex: 0 0 auto;
-  padding-left: 48rpx;
-  padding-right: 48rpx;
+  padding-inline: 48rpx;
 }
 /* 给悬浮结算条留出的滚动空间（菜单高度由 sh-scaffold 的 has-tabbar 另行留出） */
 </style>

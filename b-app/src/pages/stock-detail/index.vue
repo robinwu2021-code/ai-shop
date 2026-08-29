@@ -255,7 +255,7 @@ onShow(load);
   margin-top: 8rpx;
 }
 .led__end {
-  text-align: right;
+  text-align: end;
   flex: none;
 }
 /* 同 stock 页：<text> 默认 inline，不转 block 会挤成「−25 → 3」 */

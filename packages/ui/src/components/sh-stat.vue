@@ -93,7 +93,7 @@ function tap(it: StatItem) {
   gap: 0;
 }
 .st--panel .st__i + .st__i {
-  border-left: var(--sh-hairline-soft);
+  border-inline-start: var(--sh-hairline-soft);
 }
 /* 选中不换底色（那会把「一张卡」切开），只把数字提成主色 */
 .st--panel .st__i.is-on .st__n {

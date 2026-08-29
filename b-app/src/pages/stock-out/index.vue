@@ -194,7 +194,7 @@ onShow(load);
 }
 .qty {
   min-width: 72rpx;
-  text-align: right;
+  text-align: end;
   flex: none;
 }
 .hint {

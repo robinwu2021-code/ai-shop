@@ -342,7 +342,7 @@ onShow(load);
   margin-top: 8rpx;
 }
 .row__end {
-  text-align: right;
+  text-align: end;
   flex: none;
 }
 /* uni 的 <text> 默认是 inline —— 不转成 block，数字与「可用」会挤成「3可用」 */

@@ -599,7 +599,7 @@ onShow(load);
   margin-bottom: 8rpx;
 }
 .entry__v {
-  text-align: right;
+  text-align: end;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;

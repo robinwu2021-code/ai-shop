@@ -234,8 +234,7 @@ watch(() => props.titleKey, applyTitle);
 /* 页面边距。走变量的理由同 .sh-card（见 base.css）：两端密度诉求不同，
    默认 28rpx 保持 C 端原样，B 端在自己的 App.vue 里调紧 */
 .sh-scaffold.is-padded {
-  padding-left: var(--sh-pad-page, 28rpx);
-  padding-right: var(--sh-pad-page, 28rpx);
+  padding-inline: var(--sh-pad-page, 28rpx);
   padding-top: var(--sh-pad-page, 28rpx);
 }
 /* 标题栏是 fixed 的，内容要留出等高的顶部空间（含状态栏）。

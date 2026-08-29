@@ -3265,7 +3265,7 @@ async function save(thenSubmit = false) {
 .opts {
   align-items: center;
   margin-top: 16rpx;
-  padding-left: 20rpx;
+  padding-inline-start: 20rpx;
 }
 
 /* 弹层里「自己填」那一段的小标题 —— 与候选拉开，说明它是另一回事 */
@@ -3329,7 +3329,7 @@ async function save(thenSubmit = false) {
 /* 条码/货号/单位是文本，比金额格宽 */
 .pr__v--wide {
   width: 300rpx;
-  text-align: left;
+  text-align: start;
 }
 
 .more__manage {
@@ -3422,7 +3422,7 @@ async function save(thenSubmit = false) {
 .area-len {
   display: block;
   margin-top: 8rpx;
-  text-align: right;
+  text-align: end;
 }
 
 .langs {
@@ -3494,7 +3494,7 @@ async function save(thenSubmit = false) {
   padding: 0 20rpx;
   border-radius: 16rpx;
   background: var(--sh-faint);
-  text-align: right;
+  text-align: end;
 }
 /* 库存与限购是整数，比金额短一截 */
 .pr__v--n {
@@ -3512,13 +3512,13 @@ async function save(thenSubmit = false) {
 .pr__margin {
   display: block;
   margin-top: 8rpx;
-  text-align: right;
+  text-align: end;
   color: var(--sh-success);
 }
 .pr__warn {
   display: block;
   margin-top: 8rpx;
-  text-align: right;
+  text-align: end;
   color: var(--sh-warning);
 }
 /* 库存 −／＋：与输入框同高，形状上是按钮不是文字 */

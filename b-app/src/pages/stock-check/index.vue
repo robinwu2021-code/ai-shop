@@ -328,12 +328,12 @@ function at(iso?: string): string {
 }
 .row__end {
   min-width: 72rpx;
-  text-align: right;
+  text-align: end;
   flex: none;
 }
 .qty {
   width: 144rpx;
-  text-align: right;
+  text-align: end;
   flex: none;
 }
 .hint {

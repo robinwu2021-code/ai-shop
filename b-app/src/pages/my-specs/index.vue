@@ -1243,7 +1243,7 @@ onShow(() => void load());
 }
 /* 自建的标出来 —— 它不参与跨店比价，而那是看不见的差别 */
 .spec__own {
-  margin-left: 8rpx;
+  margin-inline-start: 8rpx;
   padding: 2rpx 10rpx;
   border-radius: 16rpx;
   background: var(--sh-faint);
@@ -1256,7 +1256,7 @@ onShow(() => void load());
 .spec__vals {
   display: block;
   margin-top: 4rpx;
-  padding-left: 52rpx;
+  padding-inline-start: 52rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1270,7 +1270,7 @@ onShow(() => void load());
 }
 .ic--grip {
   width: 40rpx;
-  margin-left: -10rpx;
+  margin-inline-start: -10rpx;
 }
 
 /* 这一屏在管什么，一句话 */
@@ -1324,7 +1324,7 @@ onShow(() => void load());
 
 /* 颜色与尺寸由 sh-icon 给 */
 .val__x {
-  margin-left: 8rpx;
+  margin-inline-start: 8rpx;
 }
 .edit__tip {
   display: block;

@@ -311,7 +311,7 @@ onShow(load);
   margin-top: 16rpx;
 }
 .ttl__at {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 /* 发布：没有改动时灰着 —— 按下去什么都不会发生的按钮不该长得能按 */
 .go {

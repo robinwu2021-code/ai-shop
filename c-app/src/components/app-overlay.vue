@@ -36,7 +36,7 @@ const style = computed(() => {
   z-index: 200;
   width: 72rpx;
   height: 72rpx;
-  margin-left: -36rpx;
+  margin-inline-start: -36rpx;
   margin-top: -36rpx;
   border-radius: 9999px;
   background: var(--sh-primary-tint);

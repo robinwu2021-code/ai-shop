@@ -200,7 +200,7 @@ const off = computed(() => {
   margin-top: 8rpx;
 }
 .card__self {
-  margin-right: 8rpx;
+  margin-inline-end: 8rpx;
   padding: 0 8rpx;
   border-radius: var(--sh-radius-sm, 16rpx);
   background: var(--sh-primary-tint);

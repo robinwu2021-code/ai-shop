@@ -668,7 +668,7 @@ onShow(() => {
 .reason {
   display: block;
   margin-top: 12rpx;
-  text-align: right;
+  text-align: end;
 }
 /* 缺资质：用警示色而不是危险色 —— 商品本身没错，缺的是一张证 */
 .gate-sum {

@@ -243,7 +243,7 @@ onShow(load);
   margin-top: 8rpx;
 }
 .row__end {
-  text-align: right;
+  text-align: end;
   flex: none;
 }
 .row__end > text {

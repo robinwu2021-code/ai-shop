@@ -272,8 +272,7 @@ onShow(load);
  */
 .btn--auto {
   flex: 0 0 auto;
-  padding-left: 24rpx;
-  padding-right: 24rpx;
+  padding-inline: 24rpx;
 }
 
 .tip {
