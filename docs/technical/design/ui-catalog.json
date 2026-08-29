@@ -131,7 +131,7 @@
             {
               "app": "b-app",
               "route": "/pages/my-specs/index",
-              "title": "商品规格和参数",
+              "title": "商品规格与参数",
               "domain": "商品",
               "tab": false,
               "status": "已实现",
@@ -360,7 +360,7 @@
             {
               "app": "b-app",
               "route": "/pages/income/index",
-              "title": "我的收入",
+              "title": "收入",
               "domain": "钱",
               "tab": false,
               "status": "已实现",
@@ -382,7 +382,7 @@
             {
               "app": "b-app",
               "route": "/pages/points-records/index",
-              "title": "发分明细",
+              "title": "积分发放明细",
               "domain": "钱",
               "tab": false,
               "status": "已实现",
@@ -415,7 +415,7 @@
             {
               "app": "b-app",
               "route": "/pages/plan/index",
-              "title": "我的套餐",
+              "title": "套餐",
               "domain": "钱",
               "tab": false,
               "status": "已实现",

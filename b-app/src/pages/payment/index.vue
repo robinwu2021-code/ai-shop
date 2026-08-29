@@ -196,7 +196,7 @@ async function refresh() {
 
       <view class="field">
         <text class="field__label">{{ $t("payment.contactName") }}</text>
-        <input maxlength="64" v-model="form.contactName" class="field__input" placeholder="张老板" />
+        <input maxlength="64" v-model="form.contactName" class="field__input" :placeholder="$t('payment.contactNamePh')" />
       </view>
 
       <view class="field">

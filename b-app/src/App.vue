@@ -8,11 +8,14 @@ import { useThemeStore } from "@ai-shop/ui/stores/theme";
 import { useAppStore } from "@ai-shop/ui/stores/app";
 import { useMarketStore } from "@ai-shop/ui/stores/market";
 import { useMerchantStore } from "@/stores/merchant";
+import { useI18n } from "vue-i18n";
 import { initFonts } from "@shared/ports/font";
 import { setForbiddenHandler, setUnauthorizedHandler } from "@shared/net/http-client";
 import { USE_MOCK } from "@/api";
 import { restoreDb } from "@shared/mock/db";
 import { ensureDemoMerchant, ensureDemoOrders } from "@/api/demo-orders";
+
+const { t } = useI18n();
 
 onLaunch(() => {
   // B 端外壳的角标只有一个：「我的」上的未读消息数（新订单/售后/评价的落点）。
@@ -47,7 +50,7 @@ onLaunch(() => {
    */
   setUnauthorizedHandler(() => {
     merchant.logout();
-    uni.showToast({ title: "登录已失效，请重新登录", icon: "none" });
+    uni.showToast({ title: String(t("common.sessionExpired")), icon: "none" });
     setTimeout(() => uni.reLaunch({ url: "/pages/login/index" }), 0);
   });
   /*

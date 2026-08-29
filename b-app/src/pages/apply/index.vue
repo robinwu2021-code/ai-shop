@@ -423,12 +423,12 @@ async function submit() {
 
       <view class="field">
         <text class="field__label">{{ $t("apply.name") }}</text>
-        <input maxlength="64" v-model="form.name" class="field__input" placeholder="张记粮油" />
+        <input maxlength="64" v-model="form.name" class="field__input" :placeholder="$t('apply.namePh')" />
       </view>
 
       <view class="field">
         <text class="field__label">{{ $t("apply.contact") }}</text>
-        <input maxlength="64" v-model="form.contactName" class="field__input" placeholder="张老板" />
+        <input maxlength="64" v-model="form.contactName" class="field__input" :placeholder="$t('apply.contactPh')" />
       </view>
 
       <view class="field">
@@ -462,7 +462,7 @@ async function submit() {
 
       <view class="field">
         <text class="field__label">{{ $t("apply.desc") }}</text>
-        <input maxlength="255" v-model="form.desc" class="field__input" placeholder="街角三十年老店" />
+        <input maxlength="255" v-model="form.desc" class="field__input" :placeholder="$t('apply.descPh')" />
       </view>
     </view>
 

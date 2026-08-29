@@ -30,7 +30,7 @@ function goLogin() {
 }
 
 function later() {
-  uni.showToast({ title: "该功能在后续批次交付", icon: "none" });
+  uni.showToast({ title: String(t("common.comingSoon")), icon: "none" });
 }
 
 /**
@@ -92,7 +92,7 @@ async function logout() {
   // 门店共用一台手机换班时，上一班的人不该继续收到这家店的订单推送
   await merchant.unbindPushDevice();
   merchant.logout();
-  uni.showToast({ title: "已退出", icon: "none" });
+  uni.showToast({ title: String(t("me.loggedOut")), icon: "none" });
 }
 
 onShow(() => {

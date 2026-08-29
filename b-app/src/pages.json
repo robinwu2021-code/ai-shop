@@ -168,7 +168,7 @@
     {
       "path": "pages/income/index",
       "style": {
-        "navigationBarTitleText": "我的收入",
+        "navigationBarTitleText": "收入",
         "app-plus": {
           "navigationStyle": "custom"
         },
@@ -192,7 +192,7 @@
     {
       "path": "pages/points-records/index",
       "style": {
-        "navigationBarTitleText": "发分明细",
+        "navigationBarTitleText": "积分发放明细",
         "app-plus": {
           "navigationStyle": "custom"
         },
@@ -228,7 +228,7 @@
     {
       "path": "pages/my-specs/index",
       "style": {
-        "navigationBarTitleText": "商品规格和参数",
+        "navigationBarTitleText": "商品规格与参数",
         "app-plus": {
           "navigationStyle": "custom"
         },
@@ -468,7 +468,7 @@
     {
       "path": "pages/plan/index",
       "style": {
-        "navigationBarTitleText": "我的套餐",
+        "navigationBarTitleText": "套餐",
         "app-plus": {
           "navigationStyle": "custom"
         },
