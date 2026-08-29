@@ -156,7 +156,7 @@ export default {
     noticeEntry: "公告",
     catalogEntry: "我的类目",
     catalogEntryHint: "经营类目与商品命名",
-    specsEntry: "商品规格",
+    specsEntry: "商品规格与参数",
     specsEntryHint: "各类目适用的规格",
     skuIdentityEntry: "商品编码导入导出",
     skuIdentityEntryHint: "条码 / 货号 / 单位，批量改",
@@ -617,7 +617,7 @@ export default {
 
     title: "积分",
 
-    periodExpense: "本期发分服务费",
+    periodExpense: "本期发放服务费",
 
     periodHint: "{p} · 结算时从货款里扣",
 
@@ -635,13 +635,13 @@ export default {
 
     ruleHint: "按类目统一设置，商家不单独配置。具体比例见平台公布的类目规则。",
 
-    records: "查看发分明细",
+    records: "查看发放明细",
 
     recordsTitle: "积分发放明细",
 
     periodTotal: "本期合计",
 
-    recordsEmpty: "本期还没有发分记录",
+    recordsEmpty: "本期暂无发放记录",
 
     granted: "发放 {n} 分",
 
@@ -830,7 +830,7 @@ export default {
       pending: "待审 {n}",
       total: "共 {n}",
     title: "类目与规格",
-    specsEntry: "商品规格",
+    specsEntry: "商品规格与参数",
     mine: "本店货架",
     empty: "还没摆货架。建一件商品，它的类目会自动加进来",
     rename: "改显示名",
@@ -1246,11 +1246,11 @@ export default {
     pointsOn: "已开启",
     pointsOff: "已关闭",
     pointsForced: "平台已开启",
-    pointsExpense: "{period} 发分服务费",
+    pointsExpense: "{period} 积分发放服务费",
     pointsHint: "顾客使用积分抵扣的金额由平台承担，商家仅支付发放服务费。",
     pointsDetail: "查看明细",
     pointsFold: "收起明细",
-    pointsEmpty: "本期还没有发分服务费",
+    pointsEmpty: "本期暂无积分发放服务费",
     pointsQty: "{n} 分",
     pointsOnTitle: "开启本店积分",
     pointsOnHint: "开启后每笔订单会按规则发分，并产生发分服务费。",
@@ -1824,7 +1824,7 @@ entryHint: "谁在买 · 谁不来了",
     stores: "门店管理",
     payment: "收款设置",
     staff: "员工",
-    income: "我的收入",
+    income: "收入",
     settle: "结算",
     stats: "经营数据",
     help: "商家帮助",

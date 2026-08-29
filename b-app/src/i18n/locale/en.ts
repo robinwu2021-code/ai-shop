@@ -108,7 +108,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     scopeEntry: "Coverage & delivery",
     noticeEntry: "Notice",
     catalogEntry: "My categories", catalogEntryHint: "Categories carried and how products are named",
-    specsEntry: "Product specs", specsEntryHint: "Options used by each category",
+    specsEntry: "Product options & attributes", specsEntryHint: "Options used by each category",
     skuIdentityEntry: "Product codes: import & export", skuIdentityEntryHint: "Barcode / SKU code / unit, in bulk",
     notMerchant: "No shop yet", notMerchantHint: "One form to open. No licence needed for individuals.",
     goApply: "Apply", auditing: "Under review. You can list products once approved.",
@@ -470,7 +470,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
 
     title: "Points",
 
-    periodExpense: "Points fee this period",
+    periodExpense: "Issuing fee this period",
 
     periodHint: "{p} · deducted at settlement",
 
@@ -488,7 +488,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
 
     ruleHint: "Set per category, not per merchant. See the published category rules for exact rates.",
 
-    records: "View fee details",
+    records: "View issuing details",
 
     recordsTitle: "Points issued",
 
@@ -660,7 +660,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
   storeCategories: {
       onSale: "{n} on sale", pending: "{n} pending", total: "{n} total",
     title: "Categories & specs",
-    specsEntry: "Product specs",
+    specsEntry: "Product options & attributes",
     mine: "On display",
     empty: "No shelves yet. Publish a product and its category shows up here.",
     rename: "Rename",
@@ -1016,7 +1016,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
   settle: {
     rateTitle: "Fee rates",
     pointsTitle: "Store points", pointsOn: "On", pointsOff: "Off", pointsForced: "On by platform",
-    pointsExpense: "{period} points service fee",
+    pointsExpense: "{period} points issuing fee",
     pointsHint: "The platform covers the amount customers offset with points; the merchant pays only the issuing fee.",
     pointsDetail: "See details", pointsFold: "Hide details",
     pointsEmpty: "No issuing fees this period", pointsQty: "{n} pts",
@@ -1539,7 +1539,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     stores: "Stores",
     payment: "Payouts",
     staff: "Staff",
-    income: "My income",
+    income: "Income",
     settle: "Settlement", stats: "Business data", help: "Merchant help", logout: "Sign out",
     notLogin: "Not signed in", notLoginHint: "Sign in to manage the shop",
     loggedOut: "Signed out",
