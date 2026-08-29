@@ -155,7 +155,7 @@ const canSubmit = computed(() => missingFields.value.length === 0);
  * 而那要滚到最底下才看得到。
  *
  * <p>不改成分步向导：那要拆表单、拆校验、拆提交，而这条链路正在线上跑着。
- * 加三个小标题 + 一个「✓」就够回答「还剩多少」—— 判据全部复用已有的那几个，
+ * 加三个小标题 + 一个对勾就够回答「还剩多少」—— 判据全部复用已有的那几个，
  * **不另立一份**（两份判据迟早会打架，而打架的表现是「明明填完了却交不了」）。
  */
 const sec1Done = computed(
@@ -373,9 +373,9 @@ async function submit() {
 
     <view class="sh-card">
       <sh-section :title="String($t('apply.sec1'))">
-        <text class="txt-caption" :class="sec1Done ? 'done' : 'sh-muted'">
-          {{ sec1Done ? "✓" : $t("apply.secTodo") }}
-        </text>
+        <!-- ✓ 用图标不用字符：字符在三端字体下大小与基线各不相同（守卫盯着这条） -->
+        <sh-icon v-if="sec1Done" name="check" :size="28" color="var(--sh-success)" />
+        <text v-else class="txt-caption sh-muted">{{ $t("apply.secTodo") }}</text>
       </sh-section>
       <!--
         行业排在主体之前：**它决定主体能不能选小微**（微信白名单按行业给）。
@@ -473,9 +473,9 @@ async function submit() {
     -->
     <view class="sh-card sh-mt-sm">
       <sh-section :title="String($t('apply.sec2'))">
-        <text class="txt-caption" :class="sec2Done ? 'done' : 'sh-muted'">
-          {{ sec2Done ? "✓" : $t("apply.secTodo") }}
-        </text>
+        <!-- ✓ 用图标不用字符：字符在三端字体下大小与基线各不相同（守卫盯着这条） -->
+        <sh-icon v-if="sec2Done" name="check" :size="28" color="var(--sh-success)" />
+        <text v-else class="txt-caption sh-muted">{{ $t("apply.secTodo") }}</text>
       </sh-section>
       <text class="txt-title sh-mt-xs">{{ $t("store.scope") }}</text>
       <text class="sh-hint">{{ $t("apply.scopeHint") }}</text>
@@ -535,9 +535,9 @@ async function submit() {
 
     <view class="sh-card sh-mt-sm">
       <sh-section :title="String($t('apply.sec3'))">
-        <text class="txt-caption" :class="sec3Done ? 'done' : 'sh-muted'">
-          {{ sec3Done ? "✓" : $t("apply.secTodo") }}
-        </text>
+        <!-- ✓ 用图标不用字符：字符在三端字体下大小与基线各不相同（守卫盯着这条） -->
+        <sh-icon v-if="sec3Done" name="check" :size="28" color="var(--sh-success)" />
+        <text v-else class="txt-caption sh-muted">{{ $t("apply.secTodo") }}</text>
       </sh-section>
       <text class="field__label sh-mt-xs">{{ $t("apply.settle") }}</text>
       <text class="txt-title">{{ $t(`apply.${settleType}`) }}</text>
@@ -609,11 +609,7 @@ async function submit() {
 </template>
 
 <style scoped>
-/* 这一段填完了 —— 只用一个 ✓，不给整张卡换色：四张卡一起变色是灯光秀，不是进度 */
-.done {
-  color: var(--sh-success, var(--sh-primary-text));
-}
-
+/* 这一段填完了 —— 只给一个对勾，不给整张卡换色：四张卡一起变色是灯光秀，不是进度 */
 /* 还差什么：贴在提交键上方，与建品页底部那行「待填写：…」同一个位置关系 */
 .todo {
   display: block;
