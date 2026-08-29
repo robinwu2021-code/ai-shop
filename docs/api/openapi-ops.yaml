@@ -4386,6 +4386,59 @@ components:
         - "platformHeld"
         - "inventoryHeld"
       additionalProperties: false
+    InvCredential: 
+      type: "object"
+      properties: 
+        credentialId: 
+          type: "string"
+        appKey: 
+          type: "string"
+        name: 
+          type: "string"
+          description: "给人看的：这把钥匙给了谁"
+        scopes: 
+          type: "string"
+          description: "逗号分隔：read / stock:sync"
+        status: 
+          type: "string"
+          description: "ACTIVE / REVOKED。**吊销不删行** —— 「什么时候停的」要查得到"
+        expiresAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "空 = 不过期"
+        lastUsedAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "发现「这把钥匙半年没人用了」的唯一依据"
+        createdAt: 
+          type: 
+            - "string"
+            - "null"
+      required: 
+        - "credentialId"
+        - "appKey"
+        - "name"
+        - "scopes"
+        - "status"
+      additionalProperties: false
+      description: "一把开放对接的钥匙。**没有 secret 字段，一个都没有。**\n\n库里存的是哈希，明文只在签发那一刻的响应里出现一次。列表若带上它， 会让人以为丢了还能回来找 —— 而实际上只能吊销重发。"
+    InvCredentialIssued: 
+      type: "object"
+      properties: 
+        credentialId: 
+          type: "string"
+        appKey: 
+          type: "string"
+        appSecret: 
+          type: "string"
+      required: 
+        - "credentialId"
+        - "appKey"
+        - "appSecret"
+      additionalProperties: false
+      description: "签发的返回。**`appSecret` 这辈子只出现这一次**"
     SettleStatus: 
       type: "string"
       enum: 
@@ -11402,6 +11455,104 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/inventory/credentials": 
+    get: 
+      operationId: "listInvCredentials"
+      summary: "某个商家发过哪些开放对接的钥匙"
+      tags: 
+        - "inventory"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/InvCredential"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "issueInvCredential"
+      summary: "签发"
+      tags: 
+        - "inventory"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/InvCredentialIssued"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/inventory/credentials/{credentialId}/revoke": 
+    post: 
+      operationId: "revokeInvCredential"
+      summary: "吊销"
+      tags: 
+        - "inventory"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "credentialId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/jobs": 
     get: 
       operationId: "listJobs"

@@ -2986,6 +2986,55 @@ _无字段_
 类型：[`InvBalanceRow`](#invbalancerow)\[\]
 
 
+#### GET `/ops/inventory/credentials`
+
+某个商家发过哪些开放对接的钥匙
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`InvCredential`](#invcredential)\[\]
+
+
+#### POST `/ops/inventory/credentials`
+
+签发
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`InvCredentialIssued`](#invcredentialissued)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `credentialId` | `string` | 是 | — |
+| `appKey` | `string` | 是 | — |
+| `appSecret` | `string` | 是 | — |
+
+
+#### POST `/ops/inventory/credentials/{credentialId}/revoke`
+
+吊销
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `credentialId` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### GET `/ops/inventory/health`
 
 库存健康度：负库存 / 零库存仍在架 / 长期未动销
@@ -8825,6 +8874,31 @@ KPI 卡（金额为最小货币单位整数）。
 | `safetyStock` | `number,null` | 否 | — |
 | `lastMovedAt` | `string,null` | 否 | — |
 | `flags` | `string`\[\] | 是 | SHORTAGE 缺货 · STALE 滞销。**空数组 = 这件没事** |
+
+### InvCredential
+
+一把开放对接的钥匙。**没有 secret 字段，一个都没有。** 库里存的是哈希，明文只在签发那一刻的响应里出现一次。列表若带上它， 会让人以为丢了还能回来找 —— 而实际上只能吊销重发。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `credentialId` | `string` | 是 | — |
+| `appKey` | `string` | 是 | — |
+| `name` | `string` | 是 | 给人看的：这把钥匙给了谁 |
+| `scopes` | `string` | 是 | 逗号分隔：read / stock:sync |
+| `status` | `string` | 是 | ACTIVE / REVOKED。**吊销不删行** —— 「什么时候停的」要查得到 |
+| `expiresAt` | `string,null` | 否 | 空 = 不过期 |
+| `lastUsedAt` | `string,null` | 否 | 发现「这把钥匙半年没人用了」的唯一依据 |
+| `createdAt` | `string,null` | 否 | — |
+
+### InvCredentialIssued
+
+签发的返回。**`appSecret` 这辈子只出现这一次**
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `credentialId` | `string` | 是 | — |
+| `appKey` | `string` | 是 | — |
+| `appSecret` | `string` | 是 | — |
 
 ### InvHealthRow
 

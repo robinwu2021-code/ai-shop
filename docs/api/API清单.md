@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 623 个接口**：后端已实现 511（82%）· 前端在调 564
+**合计 626 个接口**：后端已实现 511（82%）· 前端在调 564
 
 ---
 
@@ -689,7 +689,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **341** 个接口 ｜ 后端已实现 **262**（77%）｜ 前端在调 **282**
+共 **344** 个接口 ｜ 后端已实现 **262**（76%）｜ 前端在调 **282**
 
 ### aftersale（4）
 
@@ -860,11 +860,14 @@
 | POST | `/ops/staffs/{no}/roles` | 改角色（**多角色**） | — | `Staff` | — | ⬜ | ⬜ |
 | POST | `/ops/staffs/{no}/scope` | 数据域授权（P-1.1.3） | — | `Staff` | — | ⬜ | ⬜ |
 
-### inventory（4）
+### inventory（7）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/ops/inventory/balances` | **某一个商家**的库存待办（健康度页点进一行之后看的） | — | `数组` | — | ⬜ | ⬜ |
+| GET | `/ops/inventory/credentials` | 某个商家发过哪些开放对接的钥匙 | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/inventory/credentials` | 签发 | — | `InvCredentialIssued` | — | ⬜ | ⬜ |
+| POST | `/ops/inventory/credentials/{credentialId}/revoke` | 吊销 | — | `object` | — | ⬜ | ⬜ |
 | GET | `/ops/inventory/health` | 库存健康度：负库存 / 零库存仍在架 / 长期未动销 | — | `数组` | — | ✅ | ⬜ |
 | GET | `/ops/inventory/ledger` | 商家台账（只读） | — | `InvLedgerPage` | — | ⬜ | ⬜ |
 | GET | `/ops/inventory/recon` | 库存对差 | — | `InvReconReport` | — | ✅ | ⬜ |
