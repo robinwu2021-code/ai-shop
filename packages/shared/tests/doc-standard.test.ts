@@ -38,7 +38,14 @@ describe("文档规范", () => {
   it("不使用 mermaid —— 写错一个字符整张图不显示，而且不报错", () => {
     // 只认**行首**的围栏。规范自己要在表格里引用 `` ```mermaid `` 这个字面量
     // 来说明查的是什么，那是行内 code，不该被自己判死。
-    const bad = FILES.filter((f) => /^```mermaid/m.test(readFileSync(f, "utf8"))).map(rel);
+    //
+    // **一张图一项，不是一篇文档一项**（2026-08-29 修）：此前用 filter 数文件，
+    // 于是「往一篇已在名单里的文档再加八张图」棘轮一动不动 —— 而这条规则要防的
+    // 静默失效，风险是按**张**算的，不是按篇。改完基线语义随之从「6 篇」变为「16 张」。
+    const bad = FILES.flatMap((f) => {
+      const n = (readFileSync(f, "utf8").match(/^```mermaid/gm) ?? []).length;
+      return Array.from({ length: n }, (_, i) => `${rel(f)}#${i + 1}`);
+    });
     expect(bad).toEqual([]);
   });
 
