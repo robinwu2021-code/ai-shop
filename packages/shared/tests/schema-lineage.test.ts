@@ -137,6 +137,34 @@ const LINEAGE: Hop[] = [
  * 例如「发放方商家」`issuer_merchant_no` 指向 `usr_merchant.merchant_no`。
  */
 const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
+  /*
+   * ── 2026-08-29 补齐的十三个 ──
+   * 归属判据不是靠猜：**看哪张表把它建成了唯一键**（schema-test.sql 里逐个查过），
+   * 只有一张表建唯一键的就是它的主；两张都建的进 NAME_COLLISIONS。
+   */
+  // 商品：标准品库是全平台共享的，prd_goods 引用它
+  std_no: { table: "prd_spu_std" },
+  // 规格：维度与取值两级。七张表引用 dim_no，四张引用 value_no ——
+  // 类目规格、商家自定义规格、商家覆盖都挂在同一套维度上
+  dim_no: { table: "prd_spec_dim" },
+  value_no: { table: "prd_spec_value" },
+  topic_no: { table: "prd_topic" },
+  // 履约：运单与轨迹是一对多
+  shipment_no: { table: "ful_shipment" },
+  // 商家服务范围。mch_channel_area 引用它 —— 渠道覆盖哪些服务区
+  area_no: { table: "mch_service_area" },
+  // 人档与会员：**两级，别混**。person_no 是跨商家的人，member_no 是他在某一家的会员身份。
+  // 按名字把这两个当一个用，会把「这个人在 A 家的消费」算到 B 家头上
+  person_no: { table: "usr_person" },
+  member_no: { table: "mbr_member" },
+  tag_no: { table: "mbr_tag" },
+  segment_no: { table: "mbr_segment" },
+  // 营销（promotion 这一族）
+  activity_no: { table: "pmt_activity" },
+  fission_no: { table: "mkt_fission_campaign" },
+  // 推送任务。mbr_reach_log 引用它 —— 一次群发对应一条 task，多条 log
+  task_no: { table: "notify_push_task" },
+
   // 主体（全库重建后 merchant_no → entity_no；merchant 一词只留给支付语境）
   entity_no: { table: "mch_entity" },
   // 门店。**与 entity_no 是两级**：钱与信用挂主体，货与人挂门店 —— 按名字
@@ -190,6 +218,24 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  * 我们自己就连错过一次。
  */
 const NAME_COLLISIONS: Record<string, string> = {
+  batch_no:
+    "ful_batch 是**到货批次**（履约：一车货到自提点）；" +
+    "sys_media_purge_batch 是**媒体清理批次**（运维：一次对象存储回收）。\n" +
+    "  两族毫不相干，只是都叫「批次」。按名字 join 会把一次清理任务连到一车货上。",
+  user_coupon_no:
+    "mkt_user_coupon 与 pmt_user_coupon 是**两套并行的券模型**：\n" +
+    "  mkt_* 是 marketing 那一族（CouponServiceImpl 用它），" +
+    "pmt_* 是 promotion 那一族（OpsPromotionServiceImpl 用它）。\n" +
+    "  **只有 pmt_* 登记进了数据域**，mkt_* 没有 —— 所以按名字混用两族，" +
+    "除了连错行，还会让一半查询悄悄不受数据域约束。",
+  issue_no:
+    "同 user_coupon_no：mkt_coupon_issue 与 pmt_coupon_issue 各自建了唯一键，是两族。\n" +
+    "  pmt_user_coupon 里的 issue_no 指的是 pmt_coupon_issue —— 同族内是外键，跨族不是。",
+  tax_no:
+    "**它根本不是编号，是纳税人识别号这个业务值**（ord_invoice_request 开票抬头填的、" +
+    "stl_settle_invoice 结算发票上印的）。两张表都没给它建唯一键。\n" +
+    "  同一个纳税人识别号本来就该在多张表里重复出现，按它 join 得到的是笛卡尔积。",
+
   receiver_no:
     "notify_message 与 notify_push_token 都是「收件人编号」，但**都是多态的**：\n" +
     "  真正的含义由同表的 receiver_type 决定 —— USER 时是 usr_user.user_no，" +

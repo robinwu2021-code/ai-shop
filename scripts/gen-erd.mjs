@@ -67,6 +67,26 @@ const DOMAINS = [
  * 与 packages/shared/tests/schema-lineage.test.ts 的同名表保持一致（有断言校验）。
  */
 export const KEY_OWNERS = {
+  /*
+   * ── 2026-08-29 补齐的十三个 ──
+   * 与 packages/shared/tests/schema-lineage.test.ts 的 KEY_OWNERS **必须逐条相等**
+   * （那边有一条断言盯着，两份分叉会让 ER 图连错线）。
+   * 归属判据：看哪张表把它建成了唯一键，只有一张的就是它的主。
+   */
+  std_no: "prd_spu_std",
+  dim_no: "prd_spec_dim",
+  value_no: "prd_spec_value",
+  topic_no: "prd_topic",
+  shipment_no: "ful_shipment",
+  area_no: "mch_service_area",
+  // person_no 与 member_no 是两级：跨商家的人 vs 他在某一家的会员身份
+  person_no: "usr_person",
+  member_no: "mbr_member",
+  tag_no: "mbr_tag",
+  segment_no: "mbr_segment",
+  activity_no: "pmt_activity",
+  fission_no: "mkt_fission_campaign",
+  task_no: "notify_push_task",
   entity_no: "mch_entity",
   // 门店与商家账号。store_no 与 entity_no 是两级，别按名字互相 join
   store_no: "mch_store",
