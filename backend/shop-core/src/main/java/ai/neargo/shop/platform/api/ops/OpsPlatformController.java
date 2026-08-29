@@ -54,7 +54,7 @@ public class OpsPlatformController {
 
     /** 运营登录。唯一免鉴权的 /ops 端点。 */
     @PostMapping("/ops/auth/login")
-    public LoginResultVO login(@RequestBody LoginReq req) {
+    public LoginResultVO login(@jakarta.validation.Valid @RequestBody LoginReq req) {
         try {
             LoginResultVO r = opsService.login(req.username(), req.password());
             auditor.succeeded(ai.neargo.shop.auth.Realm.OPERATOR,
@@ -76,13 +76,13 @@ public class OpsPlatformController {
      * 区分开等于送了个账号探测器，而运营账号的价值远高于普通用户。
      */
     @PostMapping("/ops/auth/forgot")
-    public void forgot(@RequestBody ForgotReq req) {
+    public void forgot(@jakarta.validation.Valid @RequestBody ForgotReq req) {
         opsService.forgotPassword(req.username());
     }
 
     /** 用邮件里的重置码设新密码。免鉴权，安全性全靠那个一次性令牌。 */
     @PostMapping("/ops/auth/reset")
-    public void reset(@RequestBody ResetReq req) {
+    public void reset(@jakarta.validation.Valid @RequestBody ResetReq req) {
         opsService.resetPassword(req.token(), req.newPassword());
     }
 

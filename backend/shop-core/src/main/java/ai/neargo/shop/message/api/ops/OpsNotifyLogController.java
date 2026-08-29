@@ -198,7 +198,7 @@ public class OpsNotifyLogController {
      */
     @PostMapping("/ops/notify-logs/test-send")
     @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_UPDATE + "')")
-    public void testSend(@RequestBody TestSendReq req) {
+    public void testSend(@jakarta.validation.Valid @RequestBody TestSendReq req) {
         String operator = SecurityUtils.currentUserNo();
         notifyLogService.testSend(req.channel(), req.target(), req.level(),
                 new NotifyLogService.TestContent(req.subject(), req.body(), req.params()),
@@ -216,7 +216,7 @@ public class OpsNotifyLogController {
      */
     @PostMapping("/ops/notify-logs/precheck")
     @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_UPDATE + "')")
-    public void precheck(@RequestBody PrecheckReq req) {
+    public void precheck(@jakarta.validation.Valid @RequestBody PrecheckReq req) {
         notifyLogService.precheckTestTarget(req.channel(), req.target(), req.scene());
     }
 
@@ -232,7 +232,7 @@ public class OpsNotifyLogController {
      */
     @PostMapping("/ops/notify-logs/test-inapp")
     @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_UPDATE + "')")
-    public void testInApp(@RequestBody TestInAppReq req) {
+    public void testInApp(@jakarta.validation.Valid @RequestBody TestInAppReq req) {
         String operator = SecurityUtils.currentUserNo();
         notifyLogService.testInApp(req.receiverType(), req.receiverNo(), req.title(),
                 req.body(), req.link(), operator);

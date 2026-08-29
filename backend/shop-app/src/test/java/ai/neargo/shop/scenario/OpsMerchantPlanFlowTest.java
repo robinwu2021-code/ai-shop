@@ -329,7 +329,12 @@ class OpsMerchantPlanFlowTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"expressNo\":\"SF9900001\"}"))
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.status").value("SHIPPED"));
+                /*
+                 * 发货后是 **FULFILLING**，不是 SHIPPED。`SHIPPED` / `ARRIVED` 早就不是
+                 * 状态常量了（见 `OrderStatusView`：它们是「状态 × 履约」那个乘法的**结果**）。
+                 * 与 `BizOrderFulfillFlowTest` 里那两条是同一笔陈旧断言，一起清掉。
+                 */
+                .andExpect(jsonPath("$.data.status").value("FULFILLING"));
     }
 
     // ------------------------------------------------------------ 看板与权限

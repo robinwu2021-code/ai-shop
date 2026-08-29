@@ -66,7 +66,7 @@ public class OpsPushTaskController {
      */
     @PostMapping("/ops/push-tasks")
     @PreAuthorize("@perm.can('" + Perms.MESSAGE_TEMPLATE_UPDATE + "')")
-    public NotifyPushTask create(@RequestBody CreateReq req) {
+    public NotifyPushTask create(@jakarta.validation.Valid @RequestBody CreateReq req) {
         LocalDateTime at = req.scheduledAt() == null || req.scheduledAt().isBlank()
                 ? null : LocalDateTime.parse(req.scheduledAt());
         NotifyPushTask t = service.create(req.name(), req.audienceType(), req.title(),

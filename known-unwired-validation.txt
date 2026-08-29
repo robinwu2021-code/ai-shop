@@ -15,22 +15,27 @@
 # 在这里**还没被触发**：格式判据（Phones.CN_MOBILE）目前只加在写入口，没加在登录链路。
 #
 # 清一条就删一条。**只许变短。**
+#
+# ── 2026-08-29：ops 那 7 条已接（22 → 15）────────────────────────────────
+# 先清运营端是因为**调用方就是我们自己**（ops-web），而且它至今没上线
+# （见 ops-web-never-deployed）—— 接上 @Valid 之后传空串会当场 400，
+# 而唯一会传空串的调用方是我们的前端，改起来在同一个仓库里。
+# 七条的约束**清一色是 @NotBlank**，逐个核过：登录/找回/重置密码的用户名口令、
+# 通道试发的 channel/target、站内信试发的收件人与标题、推送任务的名称与文案。
+# 没有一个是 @Pattern，所以不存在「格式变严把存量挡在外面」的风险。
+#
+# 剩下的 15 条（biz 2 / mp 13）调用方是已发出去的 App，**改报错行为要先确认
+# 那些端上此刻传的是什么** —— 尤其 MpUserController 的 LoginReq / OtpReq，
+# 那是登录链路。
 
 backend/shop-core/src/main/java/ai/neargo/shop/trade/api/biz/BizAfterSaleController.java RejectReq
 backend/shop-core/src/main/java/ai/neargo/shop/trade/api/mp/MpTradeController.java CartAddReq
 backend/shop-core/src/main/java/ai/neargo/shop/trade/api/mp/MpTradeController.java CartUpdateReq
 backend/shop-core/src/main/java/ai/neargo/shop/trade/api/mp/MpTradeController.java ApplyAfterSaleReq
 backend/shop-core/src/main/java/ai/neargo/shop/trade/api/mp/MpTradeController.java ShipBackReq
-backend/shop-core/src/main/java/ai/neargo/shop/platform/api/ops/OpsPlatformController.java LoginReq
-backend/shop-core/src/main/java/ai/neargo/shop/platform/api/ops/OpsPlatformController.java ForgotReq
-backend/shop-core/src/main/java/ai/neargo/shop/platform/api/ops/OpsPlatformController.java ResetReq
 backend/shop-core/src/main/java/ai/neargo/shop/message/api/biz/BizPushTokenController.java RegisterReq
 backend/shop-core/src/main/java/ai/neargo/shop/message/api/mp/MpMessageController.java CreateTicketReq
 backend/shop-core/src/main/java/ai/neargo/shop/message/api/mp/MpPushTokenController.java RegisterReq
-backend/shop-core/src/main/java/ai/neargo/shop/message/api/ops/OpsNotifyLogController.java TestSendReq
-backend/shop-core/src/main/java/ai/neargo/shop/message/api/ops/OpsNotifyLogController.java PrecheckReq
-backend/shop-core/src/main/java/ai/neargo/shop/message/api/ops/OpsNotifyLogController.java TestInAppReq
-backend/shop-core/src/main/java/ai/neargo/shop/message/api/ops/OpsPushTaskController.java CreateReq
 backend/shop-core/src/main/java/ai/neargo/shop/user/api/mp/MpUserController.java LoginReq
 backend/shop-core/src/main/java/ai/neargo/shop/user/api/mp/MpUserController.java OtpReq
 backend/shop-core/src/main/java/ai/neargo/shop/user/api/mp/MpUserController.java BindCommunityReq

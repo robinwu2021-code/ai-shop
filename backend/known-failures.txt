@@ -26,6 +26,12 @@
 # 库里是 `FULFILLING` —— 而那个测试方法自己的名字 `shipMovesToFulfilling`
 # 早就跟上了，只有断言没跟上。
 #
+# ── 2026-08-29：又清一条陈旧断言（22 → 21）─────────────────────────────
+# `OpsMerchantPlanFlowTest.downgradeDoesNotTouchExistingOrders` 期望发货后是
+# `SHIPPED`，而库里是 `FULFILLING` —— 与 `BizOrderFulfillFlowTest` 那两条
+# 是同一笔账：`SHIPPED`/`ARRIVED` 早就不是状态常量（见 OrderStatusView 的类注释）。
+# 实测该类 11 跑 0 红。
+#
 # ⚠️ **别用正则批量插**：这些辅助方法的下单语句跨多行、`.header(...)` 有的同行
 # 有的换行，按行号/邻近度算插入点会插进 `String skuNo = ...` 语句**中间**
 #（试过，编译不过，已回退重来）。逐个读、逐个改。
@@ -58,7 +64,6 @@ ai.neargo.shop.scenario.M1UserFlowTest.otpCannotBeReplayed
 ai.neargo.shop.scenario.M2CatalogFlowTest.visitedMerchants
 ai.neargo.shop.scenario.M9aOpsFlowTest.approvedMerchantIsVisibleToBuyers
 ai.neargo.shop.scenario.M9aOpsFlowTest.opsFillsServiceScopeAtAudit
-ai.neargo.shop.scenario.OpsMerchantPlanFlowTest.downgradeDoesNotTouchExistingOrders
 ai.neargo.shop.scenario.OpsPermConfigFlowTest.superAdminHasEveryPoint
 ai.neargo.shop.scenario.OpsPlatformConfigFlowTest.featureFlagRollout
 ai.neargo.shop.scenario.OrderReceiverRequiredTest.pickupWithoutAddressStillWorks
