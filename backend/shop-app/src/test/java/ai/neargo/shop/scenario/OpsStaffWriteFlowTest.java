@@ -184,6 +184,32 @@ class OpsStaffWriteFlowTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.merchantNo").doesNotExist());
+
+        /*
+         * **回库里读一遍。** 上面那条断言看的是这次请求的返回体，而返回体是拿
+         * 内存里那个已经置空的对象拼的 —— 清空到底有没有落库，它一个字也证明不了。
+         *
+         * 这不是假想：MyBatis-Plus 的 updateById 默认跳过 null 字段，于是
+         * 「清空数据域」曾经生成一条不含这三列的 UPDATE，库里纹丝不动，
+         * 而运营看到的是「已恢复不限定」。上面那条断言全程是绿的。
+         *
+         * 代价是后面所有用 bd 读带数据域接口的用例都会拿到 10404「数据不存在」——
+         * 一个与数据域毫无字面关系的报错，而且只在本类先跑时才出现。
+         * CategoryTreeFlowTest 那三条就这么红了很久，看起来像门面审核坏了。
+         */
+        String reread = mvc().perform(get("/ops/staffs?page=1&size=200")
+                        .header("Authorization", "Bearer " + admin))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode bd = null;
+        for (JsonNode r : json.readTree(reread).get("data").get("records")) {
+            if (staffNo.equals(r.get("staffNo").asString())) {
+                bd = r;
+            }
+        }
+        org.assertj.core.api.Assertions.assertThat(bd).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(bd.get("merchantNo").isNull())
+                .as("清空数据域没落库：库里还留着 M0001，而返回体说已清空")
+                .isTrue();
     }
 
     // ---------------------------------------------------------------- 权限

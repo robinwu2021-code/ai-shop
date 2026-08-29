@@ -180,14 +180,39 @@
 # `BizOrderFulfillFlowTest` 那两条已按闸门要求删除。
 # ─────────────────────────────────────────────────────────────────────────
 
+#
+# ══════════════════════════════════════════════════════════════════════
+# 2026-08-29：**四条一起消失，根因是一个生产缺陷，不在测试里**
+#
+# CategoryTreeFlowTest 那三条（门面审核/脱敏/违规处置）报的是 10404「数据不存在」，
+# OpsPlatformConfigFlowTest 报的是「开关列表第一条不是 points」—— 四条看起来
+# 毫无关系，单独跑全绿，只在全量跑时红。
+#
+# 定位办法还是那一条：**先单独跑**（41 条全绿），再拿嫌疑类强制先跑
+# （`-Dsurefire.runOrder=reversealphabetical`）。一次就复现了 ——
+# 只要 OpsStaffWriteFlowTest 先跑，那三条必红，报错一字不差。
+#
+# 真因：`OpsServiceImpl.setStaffScope` 清空数据域用的是
+# `staff.setXxx(null)` + `updateById`，而 **MyBatis-Plus 默认跳过 null 字段**，
+# 生成的 UPDATE 里根本没有这三列 —— 库里一个字都没变。返回给前端的 VO 是拿
+# 内存对象拼的，于是运营点完「清空」，页面如实显示「不限定」，而这个人下一次
+# 请求现算出来的身份**仍然带着旧的限定**。
+#
+# 这是线上缺陷，不是测试问题：运营端「取消数据域限制」这个动作从来没生效过。
+# 已改成显式 `lambdaUpdate().set(...)`。
+#
+# 那条「还原」断言为什么放过了它：它看的是本次请求的返回体 —— 而返回体正是
+# 那个内存对象。已加一条**回库里读**的断言（撤掉修复它就红，验过）。
+#
+# OpsPlatformConfig 那条是另一件事，顺手一起修：`$.data[0].key` 断的是
+# 「points 排在第一条」，而它要验的是「保存后读得回来」。CategoryTree 会往同一张
+# 表里落一行 `category.gate.enforce`，字典序在前，于是它红。改成按 key 找。
+# ══════════════════════════════════════════════════════════════════════
+#
 ai.neargo.shop.arch.ArchitectureTest.implsMustLiveInDedicatedPackage
 ai.neargo.shop.arch.ArchitectureTest.svcModulesMustNotDependOnEachOther
-ai.neargo.shop.scenario.CategoryTreeFlowTest.passedNoticeTakesEffect
-ai.neargo.shop.scenario.CategoryTreeFlowTest.profilePhoneIsMasked
-ai.neargo.shop.scenario.CategoryTreeFlowTest.violationHasRealConsequences
 ai.neargo.shop.scenario.M2CatalogFlowTest.visitedMerchants
 ai.neargo.shop.scenario.OpsPermConfigFlowTest.superAdminHasEveryPoint
-ai.neargo.shop.scenario.OpsPlatformConfigFlowTest.featureFlagRollout
 ai.neargo.shop.scenario.OrderReceiverRequiredTest.pickupWithoutAddressStillWorks
 ai.neargo.shop.scenario.Phase1MasterDataTest.packagedFoodNeedsItsOwnAuthorization
 ai.neargo.shop.scenario.S3AdmissionRealPathTest.dailyCapCountsAcrossBuyers

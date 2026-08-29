@@ -1001,7 +1001,29 @@ public class OpsServiceImpl implements OpsService {
         staff.setMerchantNo(blankToNull(merchantNo));
         staff.setCommunityNo(blankToNull(communityNo));
         staff.setPickupNo(blankToNull(pickupNo));
-        staffMapper.updateById(staff);
+        /*
+         * **显式 set，不能用 updateById。** 这三列的常见写法就是「清空」——
+         * 把限定去掉、让这个人恢复全量。而 MyBatis-Plus 的 updateById 默认
+         * 跳过值为 null 的字段（FieldStrategy.NOT_NULL），于是清空这个动作
+         * 生成的 UPDATE 里根本没有这三列，**库里一个字都没变**。
+         *
+         * 而返回给前端的 VO 是从上面这个内存对象拼的，三个值确实是 null ——
+         * 所以运营点完「清空」，页面如实显示「不限定」，刷新也还是（读的是
+         * 同一个已被 invalidate 后重新加载的…不，读的是库）—— 下一次请求
+         * 现算出来的身份仍然带着旧的限定。这就是这段代码上面那条注释
+         * 「一个看着生效、实际没有的限制，比没有限制更危险」的另一面：
+         * 那里防的是配上去没生效，这里漏的是**取下来没生效**。
+         *
+         * 症状在测试里长这样：OpsStaffWriteFlowTest 给 bd 配了 M0001 之后
+         * 「还原」成不限定，断言看返回体、绿；而后面任何用 bd 读
+         * /ops/merchants/{no} 的用例全部拿到 10404 —— 报的是「数据不存在」，
+         * 与数据域毫无字面关系。CategoryTreeFlowTest 那三条就是这么红的。
+         */
+        staffMapper.update(null, Wrappers.<SysOpsStaff>lambdaUpdate()
+                .eq(SysOpsStaff::getId, staff.getId())
+                .set(SysOpsStaff::getMerchantNo, staff.getMerchantNo())
+                .set(SysOpsStaff::getCommunityNo, staff.getCommunityNo())
+                .set(SysOpsStaff::getPickupNo, staff.getPickupNo()));
         /*
          * **不再踢会话**（2026-08-13）：角色与数据域已经改成每请求现算
          * （`LiveIdentityResolver`），会话里只剩「他是谁」。改完清一次快照，

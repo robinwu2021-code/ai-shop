@@ -9,8 +9,10 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -108,9 +110,25 @@ class OpsPlatformConfigFlowTest {
         String admin = opsLogin("admin", "admin123");
         call("/ops/feature-flags/points", admin, "{\"enabled\":true,\"rolloutPercent\":101}", 10400);
         call("/ops/feature-flags/points", admin, "{\"enabled\":true,\"rolloutPercent\":30}", 0);
-        mvc().perform(get("/ops/feature-flags").header("Authorization", "Bearer " + admin))
-                .andExpect(jsonPath("$.data[0].key").value("points"))
-                .andExpect(jsonPath("$.data[0].rolloutPercent").value(30));
+        /*
+         * **按 key 找，不按下标取。** 从前这里写的是 `$.data[0]` —— 那断的是
+         * 「points 排在开关列表第一条」，而这条用例要验的是「保存后读得回来」。
+         * 两件事在只有一个开关时长得一模一样，多一个开关就分道扬镳：
+         * CategoryTreeFlowTest 会往同一张表里落一行 `category.gate.enforce`，
+         * 字典序排在 points 前面，于是这条用例在全量跑时红、单独跑时绿，
+         * 而报错说的是「expected points but was category.gate.enforce」——
+         * 听起来像开关存错了，其实开关一点没错。
+         */
+        String flags = mvc().perform(get("/ops/feature-flags").header("Authorization", "Bearer " + admin))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode points = null;
+        for (JsonNode f : json.readTree(flags).get("data")) {
+            if ("points".equals(f.get("key").asString())) {
+                points = f;
+            }
+        }
+        assertThat(points).as("保存过的开关必须出现在列表里").isNotNull();
+        assertThat(points.get("rolloutPercent").asInt()).isEqualTo(30);
     }
 
     // ---------------------------------------------------------------- 权限
