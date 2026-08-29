@@ -176,5 +176,8 @@
 |---|---|---|
 | `/mp|biz/x/food/**` | 桌码进店 · 台账购物车 · place · KDS 六动作 · settle 编排 · 沽清 | [餐饮包 TDD](../technical/design/TDD-餐饮包-场景与工作流.md) §6.4 |
 | `/mp|biz/x/beauty/**` | 预约建改核销 · 工单开始/换人/完成 · 耗卡 · 合并结账 | [美业包 TDD](../technical/design/TDD-美业包-场景与工作流.md) §6.3 |
+| `/mp|biz/x/elc/**` | BOM 解析匹配 · RFQ/Quote/议价版本 · 转单锁价（部分转单）· 报价 PDF | [14 册](./14-电子元器件行业规格.md) §七 |
+
+AR（基座新域）：`GET /biz/ar/receivables` · `POST /biz/ar/settlements` · `GET/PUT /ops/ar/credit-profiles/{m}`（额度调整单独权限码）。
 
 行业入口**只做编排**：钱经 `payments/settle`、单经 `place`、占位经 `bookings` —— 不代理基座读写（ADR-020）。
