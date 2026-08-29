@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { useCan } from "@/lib/use-can";
 import type { InventoryCopy } from "./copy";
 
 export function CredentialsTab({ c }: { c: InventoryCopy }) {
@@ -36,6 +37,30 @@ export function CredentialsTab({ c }: { c: InventoryCopy }) {
   const [copied, setCopied] = useState(false);
 
   const qc = useQueryClient();
+
+  /*
+
+   * **签发与吊销要按权限藏，看列表不用。**
+
+   *
+
+   * 这一屏的可见性跟着 section 走（`product:sku:read`），而两个写动作判的是
+
+   * `merchant:mode:update` —— 两者的持有人并不重合：GOODS_OPS 与 AUDITOR
+
+   * 有前者没有后者。不藏的结果是他们看得见「签发新钥匙」、点下去一片 403，
+
+   * 而看的人只会认为功能坏了。
+
+   *
+
+   * 藏掉之后他们仍看得到**有哪些钥匙发出去过** —— 那正是审计要看的东西。
+
+   */
+
+  const can = useCan();
+
+  const canIssue = can("merchant:mode:update");
   const { confirm, dialog } = useConfirm();
 
   const list = useQuery({
@@ -110,7 +135,7 @@ export function CredentialsTab({ c }: { c: InventoryCopy }) {
     {
       header: "",
       cell: (r) =>
-        r.status === "ACTIVE" ? (
+        r.status === "ACTIVE" && canIssue ? (
           <Button
             variant="ghost"
             size="sm"
@@ -151,9 +176,11 @@ export function CredentialsTab({ c }: { c: InventoryCopy }) {
           {c.invCredEntity}
         </Button>
         <div className="flex-1" />
-        <Button disabled={!entityNo} onClick={() => setDrawer(true)}>
-          {c.invCredIssue}
-        </Button>
+        {canIssue && (
+          <Button disabled={!entityNo} onClick={() => setDrawer(true)}>
+            {c.invCredIssue}
+          </Button>
+        )}
       </Toolbar>
 
       {entityNo && (

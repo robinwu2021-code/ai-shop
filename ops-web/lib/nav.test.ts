@@ -412,6 +412,43 @@ describe("路由归属与面包屑", () => {
     });
   });
 
+  /*
+   * ★★★ **nav.ts 的每个叶子，迁移里都要有对应的 sys_function_point 行。**
+   *
+   * 这条是 2026-08-29 那次静默失败换来的。「开放对接」上线之后页面、接口、
+   * 权限码全对，面包屑也认得它，而页签条上只有三个 —— 因为 tab 的可见性
+   * 除了判权，还要求 href 出现在**服务端菜单**里（visibleTabKeys 读
+   * serverHrefs），而运营端菜单以库为准，nav.ts 只是本地的一份说法。
+   *
+   * 关键在于它为什么没被任何一道闸门拦住：**mock 不读这张表**。
+   * 本地四个页签齐全、交互一路验通、tsc 与全部既有测试全绿，
+   * 而线上那一屏根本进不去。上面第 418 行那条验的是「过滤行为对不对」，
+   * 它一直是绿的 —— 代码确实正确地把这个 tab 藏掉了。
+   *
+   * ⚠️ **这是单向判据**：只证明 href 在迁移里出现过，不证明那一行现在还在
+   * （后续迁移可能 DELETE 掉它）。要做成双向得在测试里重放全部迁移，
+   * 代价远大于收益；而漏掉一行的表现是「菜单里进不去」，正是这条要挡的。
+   */
+  it("★★★ 每个叶子的 href 在迁移里有 sys_function_point 行 —— 没有的话线上菜单里根本不存在", () => {
+    const dir = join(ROOT, "../backend/shop-app/src/main/resources/db/migration");
+    // 去掉行注释再拼：href 写在注释里不算数（这条闸门自己就差点被注释喂假绿）
+    const sql = readdirSync(dir).filter((f) => f.endsWith(".sql"))
+      .map((f) => readFileSync(join(dir, f), "utf8").replace(/--[^\n]*/g, ""))
+      .join("\n");
+
+    const missing: string[] = [];
+    for (const s of NAV) {
+      if (s.soon) continue;                       // 未交付的域本来就还没有菜单行
+      for (const l of s.children ?? []) {
+        if (!l.ready) continue;                   // 没上的功能同理
+        if (!sql.includes(`'${l.href}'`)) missing.push(`${s.key} → ${l.href}（${l.label}）`);
+      }
+    }
+    expect(missing, `这些叶子在 db/migration 里找不到 sys_function_point 行。`
+      + `本地 mock 下看得见，接上真实后端就进不去 —— 补一条迁移。\n  `
+      + missing.join("\n  ")).toEqual([]);
+  });
+
   describe("tab 判权（visibleTabKeys）", () => {
     const KEYS = ["audit", "list", "categories", "admission", "verify", "credit", "ban"];
 
