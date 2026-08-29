@@ -4,6 +4,7 @@
     "POST /ops/auth/login",
     "GET /ops/auth/me",
     "POST /ops/auth/reset",
+    "GET /ops/captcha",
     "GET /ops/communities",
     "GET /ops/communities/applies",
     "GET /ops/communities/duplicates",
@@ -14,6 +15,7 @@
     "POST /ops/message/read-all",
     "GET /ops/message/unread-count",
     "GET /ops/regions/resolve",
+    "POST /ops/staffs/me/password",
     "GET /ops/stream"
   ],
   "AUDITOR": [
@@ -21,6 +23,7 @@
     "POST /ops/auth/login",
     "GET /ops/auth/me",
     "POST /ops/auth/reset",
+    "GET /ops/captcha",
     "GET /ops/communities",
     "GET /ops/communities/applies",
     "GET /ops/communities/duplicates",
@@ -65,6 +68,7 @@
     "POST /ops/skus/{skuNo}/force-off",
     "POST /ops/skus/{skuNo}/presale",
     "GET /ops/skus/oversell",
+    "POST /ops/staffs/me/password",
     "GET /ops/stream"
   ],
   "BD": [
@@ -76,6 +80,7 @@
     "POST /ops/auth/login",
     "GET /ops/auth/me",
     "POST /ops/auth/reset",
+    "GET /ops/captcha",
     "GET /ops/communities",
     "GET /ops/communities/applies",
     "GET /ops/communities/duplicates",
@@ -131,6 +136,7 @@
     "POST /ops/quotes/{quoteNo}/breach",
     "POST /ops/quotes/{quoteNo}/price",
     "GET /ops/regions/resolve",
+    "POST /ops/staffs/me/password",
     "GET /ops/stores",
     "GET /ops/stores/{storeNo}",
     "PUT /ops/stores/{storeNo}/business-mode",
@@ -156,6 +162,7 @@
     "POST /ops/campaigns/{campaignNo}/archive",
     "POST /ops/campaigns/{campaignNo}/toggle",
     "POST /ops/campaigns/{campaignNo}/unarchive",
+    "GET /ops/captcha",
     "GET /ops/communities",
     "GET /ops/communities/applies",
     "GET /ops/communities/duplicates",
@@ -205,6 +212,7 @@
     "POST /ops/promotion/activities/{activityNo}/stop",
     "GET /ops/promotion/coupons",
     "GET /ops/regions/resolve",
+    "POST /ops/staffs/me/password",
     "GET /ops/stream"
   ],
   "COMMUNITY_OPS": [
@@ -214,6 +222,7 @@
     "POST /ops/auth/login",
     "GET /ops/auth/me",
     "POST /ops/auth/reset",
+    "GET /ops/captcha",
     "GET /ops/communities",
     "POST /ops/communities/{communityNo}/archive",
     "POST /ops/communities/{communityNo}/fence",
@@ -276,6 +285,7 @@
     "POST /ops/service-scopes/{scope}/enabled",
     "GET /ops/shipments",
     "POST /ops/shipments/{shipmentNo}/waybill",
+    "POST /ops/staffs/me/password",
     "GET /ops/stream"
   ],
   "FINANCE": [
@@ -292,6 +302,7 @@
     "POST /ops/auth/login",
     "GET /ops/auth/me",
     "POST /ops/auth/reset",
+    "GET /ops/captcha",
     "GET /ops/dashboard/funnel",
     "GET /ops/dashboard/kpi",
     "GET /ops/dashboard/merchants",
@@ -342,6 +353,7 @@
     "GET /ops/settle/fee-rules/effective",
     "GET /ops/settlements",
     "GET /ops/split-records",
+    "POST /ops/staffs/me/password",
     "GET /ops/stream"
   ],
   "GOODS_OPS": [
@@ -358,6 +370,7 @@
     "POST /ops/campaigns/{campaignNo}/archive",
     "POST /ops/campaigns/{campaignNo}/toggle",
     "POST /ops/campaigns/{campaignNo}/unarchive",
+    "GET /ops/captcha",
     "GET /ops/categories",
     "POST /ops/categories",
     "POST /ops/categories/{categoryNo}/archive",
@@ -440,6 +453,7 @@
     "POST /ops/spu-std/{stdNo}/archive",
     "POST /ops/spu-std/{stdNo}/unarchive",
     "POST /ops/spu-std/bulk-status",
+    "POST /ops/staffs/me/password",
     "GET /ops/stream",
     "GET /ops/topics",
     "POST /ops/topics",
@@ -457,6 +471,7 @@
     "GET /ops/blacklists",
     "POST /ops/blacklists",
     "POST /ops/blacklists/{blackNo}/appeal",
+    "GET /ops/captcha",
     "GET /ops/dashboard/funnel",
     "GET /ops/dashboard/kpi",
     "GET /ops/dashboard/merchants",
@@ -477,6 +492,7 @@
     "POST /ops/risk-events/{eventNo}/decide",
     "GET /ops/risk-rules",
     "POST /ops/risk-rules/{type}",
+    "POST /ops/staffs/me/password",
     "GET /ops/stream"
   ],
   "SUPER_ADMIN": [
@@ -891,6 +907,7 @@
     "POST /ops/reviews/{reviewNo}/decide",
     "GET /ops/scene-channel",
     "POST /ops/scene-channel/{scene}/{audience}/{channel}",
+    "POST /ops/staffs/me/password",
     "GET /ops/stream",
     "GET /ops/tickets",
     "POST /ops/tickets/{ticketNo}/assign",
@@ -906,6 +923,7 @@
     "POST /ops/auth/login",
     "GET /ops/auth/me",
     "POST /ops/auth/reset",
+    "GET /ops/captcha",
     "GET /ops/feature-flags",
     "POST /ops/feature-flags/{key}",
     "GET /ops/jobs",
@@ -935,6 +953,7 @@
     "GET /ops/rule-texts",
     "POST /ops/rule-texts",
     "GET /ops/rule-texts/history",
+    "POST /ops/staffs/me/password",
     "GET /ops/stream"
   ]
 }

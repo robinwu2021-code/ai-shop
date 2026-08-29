@@ -47,6 +47,11 @@ export const PUBLIC = new Map([
   ["GET /ops/message/unread-count", "同上，且只返回一个整数，不含任何内容"],
   ["POST /ops/message/{messageNo}/read", "把**自己的**一条标为已读。改不到别人的：写入同样按 userNo 裁剪"],
   ["POST /ops/message/read-all", "同上，批量版"],
+  ["GET /ops/stream", "SSE 推送通道。**推什么由每条消息自己的权限决定** —— "
+    + "任务详情本来就要 system:job:read 才看得到；在连接这一层再挂一道，"
+    + "会让没有任务权限的人连不上流，连带丢掉未读数。"
+    + "（此前漏在这里：生成器每次都打警告然后退出 0，而它不在 pre-push 的清单里，"
+    + "于是这条警告打了一路没人看见）"],
 ]);
 
 /** 扫 /ops 端点 → 权限常量名 */
@@ -58,35 +63,48 @@ export function scanEndpoints(root = ROOT) {
   const out = [];
   for (const f of files) {
     const src = readFileSync(join(root, f), "utf8");
-    const re = /@(Get|Post|Put|Delete)Mapping\(\s*(?:value\s*=\s*)?"(\/ops[^"]*)"/g;
+    const re = /@(Get|Post|Put|Delete|Patch)Mapping\(\s*(?:value\s*=\s*)?"(\/ops[^"]*)"/g;
     const marks = [];
     for (let m; (m = re.exec(src)); ) marks.push({ i: m.index, method: m[1].toUpperCase(), path: m[2] });
-    // @PreAuthorize 的位置，**两种写法都要认**。
-    //
-    // 早先这里假定它一律写在 @XxxMapping **之后**，窗口从本 Mapping 开到下一个 Mapping。
-    // 可库里有几个文件写在**前面**（OpsSpuStdController、OpsMemberController、
-    // OpsPromotionController），于是那些文件里每个端点被安上了**下一个方法的权限码**，
-    // 而最后一个端点找不到注解 → 被报成「没判权」。
-    //
-    // 症状极难看出来：矩阵照常生成、条数对得上，只是某几格的答案是错的 ——
-    // 而这张表存在的全部意义就是回答「谁能访问什么」。
-    // （第一版反过来只往前找，扫出 28 个假的「无判权端点」，全是各文件的第一个端点。）
-    //
-    // 现在按**就近**配对：在「上一个 Mapping ~ 下一个 Mapping」这段里，
-    // 取离本 Mapping 字符距离最近的那个注解。写在前面时它紧挨着（几十个字符），
-    // 写在后面时更近（几个字符），而隔壁方法的那个总是隔着一整个方法体。
-    const pres = [...src.matchAll(/@PreAuthorize[^\n]*Perms\.(\w+)/g)]
-      .map((m) => ({ i: m.index, perm: m[1] }));
-    for (let k = 0; k < marks.length; k++) {
-      const lo = k > 0 ? marks[k - 1].i : -1;
-      const hi = k + 1 < marks.length ? marks[k + 1].i : src.length;
-      let best = null;
-      for (const pre of pres) {
-        if (pre.i <= lo || pre.i >= hi) continue;
-        const d = Math.abs(pre.i - marks[k].i);
-        if (best === null || d < best.d) best = { perm: pre.perm, d };
+    /*
+     * @PreAuthorize 的位置，**两种写法都要认**：库里多数写在 @XxxMapping 之后，
+     * 但 OpsSpuStdController / OpsMemberController / OpsPromotionController 写在前面。
+     *
+     * ⚠️ **此前按字符距离就近配对，那是错的，且错在最危险的方向上。**
+     * 一个**故意不挂注解**的端点，只要它的方法体够短，隔壁方法的注解就会离它更近 ——
+     * 于是它被安上邻居的权限码，在矩阵里显示成「需要某某权限」。
+     * 2026-08-29 实测被安错两条：
+     *   · `GET /ops/captcha`            → 被标成要 message:template:read（距离 783 字符）
+     *   · `POST /ops/staffs/me/password` → 被标成要 iam:staff:update（距离 293 字符）
+     * 两条都是**把敞开的端点报成有码**。而这张表存在的全部意义就是回答
+     * 「谁能访问什么」—— 报错方向朝着「看起来更安全」，是最不该出的那一种。
+     *
+     * 现在按**行窗口**配对，并且在两个方向上各自遇到边界就停：
+     *   · 另一个 Mapping   —— 那是隔壁端点的地盘
+     *   · 方法签名的收尾行 —— `) {` 之后就是方法体，注解不可能在里面
+     * 判据：换成这个规则之后，扫出的无码端点必须与
+     * OpsEndpointPermTest.ANY_OPERATOR 那 12 条**逐条相等**（见 main() 里的断言）。
+     */
+    const lines = src.split("\n");
+    const lineOf = (idx) => src.slice(0, idx).split("\n").length - 1;
+    const isBoundary = (l) => /@(Get|Post|Put|Delete|Patch)Mapping\(/.test(l)
+      || /\)\s*\{\s*$/.test(l);
+    for (const mk of marks) {
+      const at = lineOf(mk.i);
+      let perm = null;
+      for (let d = 0; d <= 6 && perm === null; d++) {
+        for (const j of d === 0 ? [at] : [at - d, at + d]) {
+          if (j < 0 || j >= lines.length) continue;
+          // 从 mapping 走到 j，中途撞到边界就不算同一个方法的注解
+          const [lo, hi] = j < at ? [j + 1, at] : [at + 1, j];
+          let blocked = false;
+          for (let k = lo; k < hi; k++) if (isBoundary(lines[k])) { blocked = true; break; }
+          if (blocked) continue;
+          const hit = /@PreAuthorize[^\n]*Perms\.(\w+)/.exec(lines[j]);
+          if (hit) { perm = hit[1]; break; }
+        }
       }
-      out.push({ method: marks[k].method, path: marks[k].path, perm: best ? best.perm : null });
+      out.push({ method: mk.method, path: mk.path, perm });
     }
   }
   out.sort((a, b) => `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`));
@@ -144,7 +162,28 @@ function main() {
   const unguarded = eps.filter((e) => !e.perm).map((e) => `${e.method} ${e.path}`);
   const unexpected = unguarded.filter((k) => !PUBLIC.has(k));
   if (unexpected.length) {
-    console.error("⚠️ 这些 /ops 端点没有 @PreAuthorize，也不在 PUBLIC 里：\n  " + unexpected.join("\n  "));
+    console.error("✗ 这些 /ops 端点没有 @PreAuthorize，也不在 PUBLIC 里：\n  " + unexpected.join("\n  "));
+    process.exitCode = 1;   // 此前只 console.error 然后退出 0 —— 警告打了一路没人看见
+  }
+
+  /*
+   * **同一件事不许有两份清单。** `OpsEndpointPermTest.ANY_OPERATOR` 是被
+   * Java 闸门强制对过账的那份（漏登记直接红），这里的 PUBLIC 是第二份 ——
+   * 两份一旦不一致，本文的「谁能访问什么」就有一格是错的。
+   * 2026-08-29 实测就差了一条（/ops/stream 只在 Java 那份里）。
+   */
+  const anyOperator = new Set(
+    [...readFileSync(join(ROOT,
+      "backend/shop-app/src/test/java/ai/neargo/shop/arch/OpsEndpointPermTest.java"), "utf8")
+      .matchAll(/Map\.entry\("(\/ops[^"]*)"/g)].map((m) => m[1]));
+  const pubPaths = new Set([...PUBLIC.keys()].map((k) => k.slice(k.indexOf(" ") + 1)));
+  const onlyJava = [...anyOperator].filter((p) => !pubPaths.has(p));
+  const onlyHere = [...pubPaths].filter((p) => !anyOperator.has(p));
+  if (onlyJava.length || onlyHere.length) {
+    console.error("✗ PUBLIC 与 OpsEndpointPermTest.ANY_OPERATOR 对不上："
+      + (onlyJava.length ? "\n  只在 Java 那份里：" + onlyJava.join(", ") : "")
+      + (onlyHere.length ? "\n  只在 PUBLIC 里：" + onlyHere.join(", ") : ""));
+    process.exitCode = 1;
   }
 
   const fixtures = join(ROOT, "packages/shared/tests/fixtures");

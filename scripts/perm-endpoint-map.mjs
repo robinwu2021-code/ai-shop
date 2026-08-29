@@ -134,9 +134,23 @@ export const RULES = [
   // 进销存的三个运营端只读口（健康度 / 台账 / 对差）。**归 product:sku:read
   // 而不是新造 product:stock:read**：三个 Controller 上的 @PreAuthorize 判的就是它，
   // 这里换个码等于让登记表描述一件与代码不符的事，而这张表正是「谁能访问什么」的判据。
-  // 只有 GET —— 进销存在运营端**没有写口**，这一行的窄正是它的意思：
-  // 运营改了商家的数，「这个数是谁改的」就多一个答案，而商家不会知道。
+  // 只读那几个只有 GET：**运营端不改商家的数** —— 改了的话
+  // 「这个数是谁改的」就多一个答案，而商家不会知道。
   ["GET", /^\/ops\/inventory(\/|$)/, "product:sku:read"],
+  /*
+   * 开放对接凭证的两个写口（2026-08-29）。**这是进销存在运营端的第一个写口** ——
+   * 上面那行注释此前写着「进销存在运营端没有写口」，加了这两个之后它就成了假话，
+   * 一并改掉。
+   *
+   * 归 `merchant:mode:update` 是照抄 Controller 上的 @PreAuthorize，
+   * 而不是这张表自己另拿一个主意 —— 登记表描述代码，不规定代码。
+   *
+   * ⚠️ 但那个码本身是**借来的**：发放/吊销凭证等于给外部系统开 API 钥匙，
+   * 与「改商家经营模式」不是一件事。授予商家运营岗改经营模式，
+   * 就一并授出了发凭证的权力，而这在权限配置界面上看不出来。
+   * 见 docs/technical/reference/三端权限矩阵-按业务域.md §4.2。
+   */
+  ["POST", /^\/ops\/inventory\/credentials(\/|$)/, "merchant:mode:update"],
   ["GET", /^\/ops\/categories/, "product:category:read"],
   ["*", /^\/ops\/categories/, "product:category:update"],
   // 规格模板（P-3.4）。**归类目维护面不归审核面**：模板按品类预置，
