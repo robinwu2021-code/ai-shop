@@ -2199,6 +2199,7 @@ _无字段_
 | `shortageCount` | `number` | 是 | — |
 | `staleCount` | `number` | 是 | — |
 | `inTransitCount` | `number` | 是 | 待收货的调拨单数。**按单不按件** —— 收货是按单做的，给件数点不进任何一张单 |
+| `openCountNo` | `string,null` | 否 | 还开着的那张盘点单的单号，没有就没有这个字段。 **给单号不给个数**：工作台的「继续盘点」要带着它跳， 不带的话那一页会开一张**新的**盘点单，而按钮上写着「继续」。 |
 
 
 #### POST `/biz/inventory/transfers`
@@ -7101,6 +7102,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `shortageCount` | `number` | 是 | — |
 | `staleCount` | `number` | 是 | — |
 | `inTransitCount` | `number` | 是 | 待收货的调拨单数。**按单不按件** —— 收货是按单做的，给件数点不进任何一张单 |
+| `openCountNo` | `string,null` | 否 | 还开着的那张盘点单的单号，没有就没有这个字段。 **给单号不给个数**：工作台的「继续盘点」要带着它跳， 不带的话那一页会开一张**新的**盘点单，而按钮上写着「继续」。 |
 
 ### StockTransfer
 
