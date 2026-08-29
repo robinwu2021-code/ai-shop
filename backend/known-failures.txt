@@ -229,9 +229,30 @@
 # 得顺着控制器追 C 端可达性，没做。别按 grep 批量加 executeWithoutScope。
 # ══════════════════════════════════════════════════════════════════════
 #
+#
+# ══════════════════════════════════════════════════════════════════════
+# 2026-08-29：pickupWithoutAddressStillWorks —— 一个用例把共享种子推进了死状态
+#
+# `CategoryTreeFlowTest.pickupHasMigratingState` 拿**种子点 PP0001** 验状态机：
+# ACTIVE → MIGRATING → （MIGRATING → ACTIVE 被拒，20004）→ SUSPENDED。
+# 验完就走了，PP0001 从此停用。
+#
+# 而 `allowedPickupNos` 只收 status=ACTIVE 的门店点，于是 ST-M0001 名下只剩 PP0002 ——
+# **集合非空、且不含 PP0001**，`requirePickupServed` 对后面每一单选 PP0001 的自提
+# 都判 70029 PICKUP_POINT_NOT_SERVED。
+#
+# 报错因此指向一个毫不相干的地方：那条用例断的是「自提单不需要收货地址」，
+# 而 70029 说的是「自提点不服务」—— 看起来像自提链路整个断了。单独跑一直绿。
+#
+# 修法是还原（SUSPENDED → ACTIVE 是状态机允许的，被禁的是 MIGRATING → ACTIVE，
+# 也就是这条用例刚验过的那一条）。撤掉还原立刻复现，验过。
+#
+# ⚠️ 这已经是本轮第三条「共享种子没还原」。判据很简单：**你动的这行数据，
+# 是不是别的用例也在用**。是就必须还原，且还原本身要断言。
+# ══════════════════════════════════════════════════════════════════════
+#
 ai.neargo.shop.arch.ArchitectureTest.implsMustLiveInDedicatedPackage
 ai.neargo.shop.arch.ArchitectureTest.svcModulesMustNotDependOnEachOther
 ai.neargo.shop.scenario.OpsPermConfigFlowTest.superAdminHasEveryPoint
-ai.neargo.shop.scenario.OrderReceiverRequiredTest.pickupWithoutAddressStillWorks
 ai.neargo.shop.scenario.Phase1MasterDataTest.packagedFoodNeedsItsOwnAuthorization
 ai.neargo.shop.scenario.S3AdmissionRealPathTest.dailyCapCountsAcrossBuyers

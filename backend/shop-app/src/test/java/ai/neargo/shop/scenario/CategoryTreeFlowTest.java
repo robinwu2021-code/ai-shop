@@ -931,7 +931,30 @@ class CategoryTreeFlowTest {
                 .andExpect(jsonPath("$.code").value(20004));
         mvc().perform(post("/ops/pickups/PP0001/status")
                 .header("Authorization", "Bearer " + ops)
-                .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"SUSPENDED\"}"));
+                .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"SUSPENDED\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        /*
+         * **还原成 ACTIVE。PP0001 是共享种子，不是这条用例的私产。**
+         *
+         * 不还原的代价一点都不小：`allowedPickupNos` 只收 status=ACTIVE 的门店点，
+         * 于是 PP0001 停用之后，ST-M0001 名下只剩 PP0002 —— 集合非空、且不含 PP0001，
+         * 后面**任何一单选 PP0001 的自提**都会被 `requirePickupServed` 判成
+         * 70029 PICKUP_POINT_NOT_SERVED。
+         *
+         * OrderReceiverRequiredTest.pickupWithoutAddressStillWorks 就是这么红的：
+         * 那条用例断的是「自提单不需要收货地址」，报错却说自提点不服务 ——
+         * 看起来像自提链路整个断了，其实是这里留了一个停用的种子点。
+         * 它单独跑一直是绿的，所以在欠账清单上挂了很久。
+         *
+         * SUSPENDED → ACTIVE 是状态机允许的（MIGRATING → ACTIVE 才是被禁的那条，
+         * 也就是上面刚验过的 20004），所以这里还得回去。
+         */
+        mvc().perform(post("/ops/pickups/PP0001/status")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"ACTIVE\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
     }
 
     @Test
