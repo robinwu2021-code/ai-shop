@@ -175,9 +175,34 @@ for (const ws of WORKSPACES) {
             "# 分诊与降账计划：docs/technical/design/守卫与闸门-问题与优化方案.md",
             "#",
         ].join("\n");
+        /*
+         * **冻高了是静默的。**
+         *
+         * 基线写大一点，闸门只是变松 —— 不红、不报错、看不出来。代价要等到某天
+         * 有人真的把欠账加到那个数以内，闸门说「够不着上限，通过」，
+         * 而那一刻没人会想到是几个月前一次**量具错误**留下的松扣。
+         * 它与本仓库其他闸门失效是同一个形状：错了不会说。
+         *
+         * 2026-08-29 差点发生：我拿一个没限行首的 grep 数出 17（真值 16），
+         * 若按它冻基线，那 6 篇文档里就多出一张图的免检额度，而且永远查不出来。
+         * 是动手改的人先自己重算了一遍才拦住。
+         *
+         * 所以这里把**变大的那些**单独打出来 —— 缩小不必说，变大要人看一眼。
+         */
+        const prev = readBaseline(ws);
+        const raised = [...failed].filter(([k, v]) => prev.has(k) && v > prev.get(k));
+        const brandNew = [...failed.keys()].filter((k) => !prev.has(k));
+
         const body = [...failed].map(([k, v]) => `${k} @<=${v}`).join("\n");
         writeFileSync(baselineOf(ws), `${header}\n${body}\n`, "utf8");
         console.log(`${ws}: 已冻结基线 ${failed.size} 条（共 ${total} 条断言）`);
+        if (raised.length || brandNew.length) {
+            console.warn(`⚠ ${ws}: 这次把闸门**调松**了，确认不是量具错了 ——`);
+            raised.forEach(([k, v]) => console.warn(`    ${prev.get(k)} → ${v}  ${k}`));
+            brandNew.forEach((k) => console.warn(`    新增一条免检  ${k}`));
+            console.warn("  「两条独立路径重算一遍，数字对不对得上」——"
+                + "见 docs/technical/design/守卫与闸门-问题与优化方案.md §2");
+        }
         continue;
     }
 
