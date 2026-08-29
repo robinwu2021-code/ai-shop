@@ -21,7 +21,6 @@ doc-standard.test.ts::文档规范 technical 下每篇文档都出现在 README 
 doc-standard.test.ts::文档规范 不使用 mermaid —— 写错一个字符整张图不显示，而且不报错 @<=12
 doc-standard.test.ts::文档规范 每张 svg 都有 title 与 desc —— 图之外要有能读的说明 @<=4
 doc-standard.test.ts::文档规范 没有状态行的文档不许再增加（基线只降不升） @<=41
-entity-alignment.test.ts::Java 实体与库表对齐 实体不缺列 —— 少一个字段 MyBatis 不报错，只是**读不出那一列** @<=11
 entity-alignment.test.ts::Java 实体与库表对齐 每张业务表都有实体，或已登记为「知道欠着」 @<=18
 enum-registry.test.ts::枚举登记表 G1 · 端上每个具名枚举都必须登记（新增枚举不能绕过雷达） @<=15
 enum-registry.test.ts::枚举登记表 G2 · STATUS 型枚举的取值必须取自 L1 状态词表，或已申报 @<=11
