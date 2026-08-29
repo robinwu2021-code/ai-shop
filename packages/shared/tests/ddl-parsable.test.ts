@@ -63,8 +63,19 @@ function declaredTables(): Map<string, string> {
     .sort((a, b) => versionOf(a) - versionOf(b));
   for (const f of files) {
     const src = readFileSync(join(dir, f), "utf8");
-    const re = /CREATE TABLE(?: IF NOT EXISTS)?\s+(\w+)|ALTER TABLE\s+(\w+)\s+RENAME TO\s+(\w+)/gi;
+    /*
+     * **DROP 也要认。** 迁移是历史不是快照：只收 CREATE 与 RENAME 的话，
+     * 一张后来被删掉的表会永远留在「声明过的表」里，而解析器在终态里读不到它 ——
+     * 于是守卫指着一张**已经不存在的表**喊「DDL 解析不了」，
+     * 而它给出的排查方向（「往上一个文件找收尾写错的那张」）会把人带到完全无关的地方。
+     * 2026-08-29 实测：两条失败都是这么来的（sys_job_def / sys_job_log 在 V262 已 DROP）。
+     */
+    const re = /CREATE TABLE(?: IF NOT EXISTS)?\s+(\w+)|ALTER TABLE\s+(\w+)\s+RENAME TO\s+(\w+)|DROP TABLE(?: IF EXISTS)?\s+(\w+)/gi;
     for (const m of src.matchAll(re)) {
+      if (m[4]) {
+        out.delete(m[4]);
+        continue;
+      }
       if (m[1]) {
         out.set(m[1], f);
         continue;

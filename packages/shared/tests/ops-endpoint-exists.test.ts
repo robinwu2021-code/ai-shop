@@ -32,7 +32,8 @@ const UNBUILT_DOMAINS = new Set([
   // risk-events / risk-rules / blacklists 已于 2026-08-13 接通（OpsRiskController，
   // V120），按棘轮规矩从这里删掉
   "audit-logs",
-  "faqs",
+  // faqs 已于 2026-08-29 接通（OpsMessageController 的三个 /ops/faqs 口，
+  // 判 message:ticket:handle），按棘轮规矩从这里删掉
   // 财务与清结算（finance 已开始实现，移到 KNOWN_GAPS 逐条登记）
   // refund-split-backs 已于 2026-08-13 接通（OpsRefundSplitBackController，
   // 读 + 执行两条都在），按棘轮规矩从这里删掉
@@ -43,7 +44,9 @@ const UNBUILT_DOMAINS = new Set([
   //（OpsGrowthController，V121，规则真正驱动引擎）
   // 营销的后期部分
   "marketing", "content-slots",
-  "push-tasks", "demands",
+  // push-tasks / demands 同批接通（2026-08-29 实测端点都在）。
+  // **留在这里的害处是它会让人以为这块还没做，从而绕开它另写一套** —— 那正是
+  // 这条断言存在的理由，而它自己已经红了一阵子没人看见（守卫不在闸门里）
   // 组织与权限：2026-08-12 roles 从这里移走 —— 角色配置接到了 /ops/perm/**，
   // 读写六条端点都真的存在。此前它是「页面有完整权限树和保存按钮、
   // 而 /ops/roles 是 404」，缺口诚实登记着，但对着屏幕的人不知道。
@@ -63,8 +66,6 @@ const KNOWN_GAPS: Record<string, string> = {
   // 社区是**刻意不做**：页面上那个按钮本来就禁用着，还带了正确的解释
   // 「该社区下仍有自提点，请先迁移或停用」—— 前置校验做在了正确的位置，
   // 补一个永远点不到的端点没有意义。
-  "POST /ops/communities/{x}/archive": "刻意不做：按钮本就禁用，前置校验在前端且正确",
-  "POST /ops/communities/{x}/unarchive": "同上",
 
   // 员工那三条写接口**已接通**（2026-08-11），按棘轮规矩从这里删掉。
   // 留一句在这里是因为它容易被误当成缺口再补一遍：
@@ -111,8 +112,6 @@ const KNOWN_GAPS: Record<string, string> = {
   // ── 其余零星 ──
   "POST /ops/groups/{x}/audit": "拼团审核（现只有 abort）",
   "POST /ops/groups/{x}/status": "改团状态（现只有 abort）",
-  "POST /ops/tickets/{x}/assign": "工单指派",
-  "POST /ops/tickets/{x}/proxy-actions": "工单里的代客操作",
   "POST /ops/after-sales/{x}/status": "改售后状态（现有 arbitrate 等具名动作）",
   "POST /ops/orders/proxy": "代客下单",
 };
