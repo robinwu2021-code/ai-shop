@@ -165,4 +165,10 @@ public interface MasterDataPort {
     record RegionSuggestion(String regionCode, String level, String name, String path,
                             String source, String detail) {
     }
+    /**
+     * 该市场下启用中的支付通道码，按注册顺序。空列表是合法结果 ——
+     * 调用方自己处理「一个都没有」，<b>不要在这里兜一个默认通道</b>。
+     */
+    java.util.List<String> enabledChannels(String market);
+
 }

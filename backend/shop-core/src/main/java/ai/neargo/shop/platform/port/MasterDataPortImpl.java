@@ -159,4 +159,9 @@ public class MasterDataPortImpl implements MasterDataPort {
     public String channelName(String payChannel) {
         return masterDataService.channelName(payChannel);
     }
+    @Override
+    public java.util.List<String> enabledChannels(String market) {
+        return masterDataService.enabledChannels(market);
+    }
+
 }

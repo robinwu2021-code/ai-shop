@@ -24,6 +24,9 @@ import java.util.List;
 @Service
 public class MasterDataServiceImpl implements MasterDataService {
 
+    /** 没有市场上下文时的默认市场。与全站其它地方的 HOME_MARKET 同值。 */
+    private static final String DEFAULT_MARKET = "CN";
+
     private final IndustryMapper industryMapper;
     private final MerchantSubjectMapper subjectMapper;
     private final PayChannelMapper channelMapper;
@@ -109,6 +112,35 @@ public class MasterDataServiceImpl implements MasterDataService {
         return enabledSubjectRows().stream().map(SysLegalForm::getLegalForm).toList();
     }
 
+    @Override
+    public List<String> enabledChannels(String market) {
+        String m = market == null || market.isBlank() ? DEFAULT_MARKET : market;
+        var rows = DataScopeContext.executeWithoutScope(() ->
+                channelMapper.selectList(Wrappers.<SysPayChannel>lambdaQuery()
+                        .eq(SysPayChannel::getEnabled, true)
+                        .orderByAsc(SysPayChannel::getId)));
+        return rows.stream()
+                .filter(r -> marketAllowed(r.getMarkets(), m))
+                .map(SysPayChannel::getPayChannel)
+                .toList();
+    }
+
+    /**
+     * {@code markets} 是一列 JSON 数组文本。**空按全市场可用** ——
+     * 基线里所有行都是空的，按「空 = 都不可用」会让通道一夜之间全部消失。
+     *
+     * <p>不引 JSON 解析：这一列只可能是 {@code ["CN"]} 这种形状，
+     * 而引一个解析器意味着解析失败时要决定「算可用还是不可用」——
+     * 那个决定比这个判断本身更容易出错。用包含判断，且**两边都加引号**，
+     * 免得 {@code "CN"} 命中 {@code ["CNY"]}。
+     */
+    private static boolean marketAllowed(String markets, String market) {
+        if (markets == null || markets.isBlank()) {
+            return true;
+        }
+        return markets.contains("\"" + market + "\"");
+    }
+
     private List<String> enabledScopesInOrder() {
         var enabled = serviceScopeService.enabledScopes();
         return ServiceScopeServiceImpl.ORDER.stream().filter(enabled::contains).toList();
@@ -153,8 +185,8 @@ public class MasterDataServiceImpl implements MasterDataService {
             return false;
         }
         var row = DataScopeContext.executeWithoutScope(() ->
-                channelMapper.selectOne(Wrappers.<ai.neargo.shop.platform.entity.SysPayChannel>lambdaQuery()
-                        .eq(ai.neargo.shop.platform.entity.SysPayChannel::getPayChannel, payChannel)
+                channelMapper.selectOne(Wrappers.<SysPayChannel>lambdaQuery()
+                        .eq(SysPayChannel::getPayChannel, payChannel)
                         .last("LIMIT 1")));
         // 查不到按 false：这个字段建出来就是为了拦截，而「查不到 = 支持」
         // 会让不具备补差能力的通道静默开出积分抵扣 —— 症状是商家账上少一笔钱
@@ -167,8 +199,8 @@ public class MasterDataServiceImpl implements MasterDataService {
             return payChannel;
         }
         var row = DataScopeContext.executeWithoutScope(() ->
-                channelMapper.selectOne(Wrappers.<ai.neargo.shop.platform.entity.SysPayChannel>lambdaQuery()
-                        .eq(ai.neargo.shop.platform.entity.SysPayChannel::getPayChannel, payChannel)
+                channelMapper.selectOne(Wrappers.<SysPayChannel>lambdaQuery()
+                        .eq(SysPayChannel::getPayChannel, payChannel)
                         .last("limit 1")));
         return row == null || row.getName() == null ? payChannel : row.getName();
     }

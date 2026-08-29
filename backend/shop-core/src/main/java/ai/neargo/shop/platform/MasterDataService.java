@@ -59,6 +59,21 @@ public interface MasterDataService {
     List<String> enabledSubjects();
 
     /**
+     * 该市场下启用中的支付通道码，按注册顺序返回。
+     *
+     * <p><b>判据是 {@code sys_pay_channel.enabled} × {@code markets}。</b>
+     * {@code markets} 这一列从基线起就在（注释写着「该通道在哪些市场可用，如 ["CN"]」），
+     * 但在此之前<b>没有任何地方读它</b> —— 于是「海外扩展点」只是一列数据。
+     *
+     * <p>{@code markets} 为空按<b>全市场可用</b>处理：存量行都是空的，
+     * 按「空 = 都不可用」会让所有通道一夜之间消失。
+     *
+     * <p><b>返回空列表是合法结果</b>，调用方必须自己处理 —— 不要在这里兜一个默认通道。
+     * 兜底等于「没有可用通道时静默走微信」，而那是把钱发到一个可能根本没开户的通道。
+     */
+    List<String> enabledChannels(String market);
+
+    /**
      * 校验经营范围（ADR-009 三档）。分两层，<b>顺序不能反</b>：
      *
      * <ol>

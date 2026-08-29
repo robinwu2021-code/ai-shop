@@ -170,8 +170,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
         if (store == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        String channel = payChannel == null || payChannel.isBlank()
-                ? MchPaymentMerchant.WECHAT : payChannel;
+        String channel = resolveChannel(payChannel);
         boolean exists = rows(merchantNo).stream()
                 .anyMatch(r -> channel.equals(r.getPayChannel())
                         && storeNo.equals(r.getStoreNo()));
@@ -275,6 +274,31 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
                     DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(p));
                     return p;
                 });
+    }
+
+    /**
+     * 没指定通道时该用哪个。
+     *
+     * <p><b>此前这里写死 {@code WECHAT}。</b>对只做支付宝的商家、以及将来任何非中国市场的
+     * 商家，那个默认都是错的 —— 而它错得没有声音：开出来的是一个商家根本没打算开的通道，
+     * 要到第一笔订单收不到钱才看得出来。
+     *
+     * <p>改成按 {@code sys_pay_channel} 里**启用且覆盖本市场**的通道取第一个。
+     * <b>一个都没有时明确报错，不回退到任何通道</b> —— 交易侧路由的注释早就立过这条规矩：
+     * 「回退等于把钱发到另一个通道的商户号，那是资金事故」。进件侧照抄。
+     *
+     * <p>市场暂取默认（主体上还没有市场字段）。<b>这一点写在这里而不是假装它按主体算</b>：
+     * 等主体有了市场，改的是这一行的入参，不是这套判断。
+     */
+    private String resolveChannel(String payChannel) {
+        if (payChannel != null && !payChannel.isBlank()) {
+            return payChannel;
+        }
+        List<String> available = masterDataPort.enabledChannels(null);
+        if (available.isEmpty()) {
+            throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
+        }
+        return available.get(0);
     }
 
     private MchPaymentMerchant require(String merchantNo, String payChannel, String storeNo) {
