@@ -131,8 +131,36 @@
                             <goal>repackage</goal>
                         </goals>
                     </execution>
+                    <!--
+                      build-info：把版本与构建时刻写进 META-INF/build-info.properties，
+                      Spring Boot 的 /actuator/info 会自动读它。
+                      **为什么需要**：线上跑的是哪个提交，此前从外面问不出来 ——
+                      2026-08-29 排查一个任务异常时为此反推了四轮，
+                      而部署脚本切软链与进程重启是两件事，文件名对不代表进程在跑它。
+                    -->
+                    <execution>
+                        <id>build-info</id>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                        <configuration>
+                            <additionalProperties>
+                                <!--
+                                  提交号由**部署脚本**用 -Dgit.sha= 传进来，不引额外插件
+                                  （git-commit-id 不在本机 ~/.m2，而构建是离线的）。
+                                  好处不只是省一个依赖：jar 文件名里的 SHA 与这里的 SHA
+                                  **来自同一个变量**，天然不可能对不上。
+                                  手工 mvn package 时它是 unknown —— 那也如实反映了
+                                  「这个包不是走部署流程出来的」。
+                                -->
+                                <gitSha>${git.sha}</gitSha>
+                            </additionalProperties>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
+
+
 
             <!--
               E2E 默认不跑：它依赖一个跑着的 MariaDB，没有数据库的机器上会红 ——
@@ -153,6 +181,7 @@
 
     <properties>
         <!-- 默认：跑全部非 e2e 的用例 -->
+        <git.sha>unknown</git.sha>
         <surefire.groups></surefire.groups>
         <surefire.excludedGroups>e2e</surefire.excludedGroups>
     </properties>

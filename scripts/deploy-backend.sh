@@ -6,6 +6,7 @@
 #   scripts/deploy-backend.sh            # 从当前 HEAD 打包并上线
 #   HOST=soukmind-tx scripts/deploy-backend.sh
 #   DRY=1 scripts/deploy-backend.sh      # 只打包与核对，不切软链、不重启
+#   scripts/deploy-backend.sh --rollback # 切回上一版并守到 health=200
 #
 # 这个脚本**不跑测试闸门** —— 那是 scripts/check-head-compiles.sh 的事，
 # 它慢（约 4 分钟），而部署有时是在闸门刚绿之后立刻做的。
@@ -24,6 +25,17 @@ cd "$ROOT"
 say()  { printf '\033[36m›\033[0m %s\n' "$1"; }
 ok()   { printf '  \033[32m✓\033[0m %s\n' "$1"; }
 die()  { printf '  \033[31m✗\033[0m %s\n' "$1" >&2; exit 1; }
+
+# **守到 health=200 才算完。** 2026-08-28 出过一次事故：重启后 health 一直是
+# 000，而我被新话题岔开就走了 —— 线上挂了六分钟没人知道，最后是同伴发现的。
+# 所以这一步不许提前返回，且部署与回滚两条路都走它。
+wait_healthy() {
+    ssh "$HOST" "for i in \$(seq 1 60); do
+            c=\$(curl -s -o /dev/null -w '%{http_code}' '$HEALTH');
+            [ \"\$c\" = '200' ] && { echo \"health=200（约 \$((i*3)) 秒）\"; exit 0; };
+            sleep 3;
+        done; echo \"health=\$c\"; exit 1"
+}
 
 # ── ⓪ JDK 21 ────────────────────────────────────────────────────────────
 #
@@ -55,19 +67,75 @@ say "本次要上线的是 HEAD = $HEAD_SHA  $HEAD_MSG"
 BEFORE="$(ssh -o ConnectTimeout=10 "$HOST" "readlink -f '$LINK' 2>/dev/null || echo none")"
 say "出发时线上：$(basename "$BEFORE")"
 
+# ── 回滚 ─────────────────────────────────────────────────────────────────
+#
+# 做成一条命令，而不是出事时让人照着提示拼 ssh —— 人在那个时刻最不该做的
+# 就是现场拼命令。目标取自服务器上的 deploy.log 倒数第二行。
+if [ "${1:-}" = "--rollback" ]; then
+    PREV="$(ssh "$HOST" "tail -n 2 '$REMOTE_DIR/deploy.log' 2>/dev/null | head -n 1 | awk '{print \$3}'")"
+    [ -n "$PREV" ] || die "deploy.log 里没有上一版可回退（它是 2026-08-29 才开始记的）"
+    ssh "$HOST" "test -f '$REMOTE_DIR/$PREV'" || die "上一版的包已经不在了：$PREV"
+    say "回滚到 $PREV"
+    ssh "$HOST" "sudo ln -sfn '$PREV' '$LINK' && sudo systemctl restart '$SERVICE'"
+    wait_healthy || die "回滚后没等到 health=200 —— 现在线上是挂的，看日志：
+    ssh $HOST 'sudo journalctl -u $SERVICE -n 80 --no-pager'"
+    ok "已回滚到 $PREV"
+    exit 0
+fi
+
+# ── 排队：服务器上的锁 ────────────────────────────────────────────────────
+#
+# 上面那两次「出发/切换前」比对只能**事后发现**冲突；锁是从根上避免并发。
+# 两个都留：锁挡住走脚本的人，比对挡住手动 ssh 的人 ——
+# 2026-08-29 那次覆盖恰恰是手动敲出来的，锁拦不住它。
+#
+# 抢不到时把持有者打出来，让人知道该去问谁，而不是干等或强行覆盖。
+LOCKDIR="$REMOTE_DIR/.deploy.lock"
+LOCK_OWNER="$(whoami)@$(hostname -s) pid=$$ 开始于 $(date '+%F %T')"
+#
+# **用 mkdir 而不是 flock。** flock 只在持有它的那条 ssh 命令存活期间有效，
+# 而我们的 ssh 立刻就返回 —— 锁会在获取的下一毫秒被释放，整个部署期间等于无锁。
+# 第一版就是这么写的，看着像有锁，实际一点用都没有。
+# mkdir 是原子的：目录已存在就失败，且它会一直在，直到我们显式删掉。
+if ! ssh "$HOST" "mkdir '$LOCKDIR' 2>/dev/null" ; then
+    HOLDER="$(ssh "$HOST" "cat '$LOCKDIR/owner' 2>/dev/null" || true)"
+    AGE="$(ssh "$HOST" "find '$LOCKDIR' -maxdepth 0 -mmin +30 2>/dev/null" || true)"
+    if [ -n "$AGE" ]; then
+        die "锁已存在且超过 30 分钟，多半是某次部署崩了没放锁：
+       持锁者：${HOLDER:-（未知）}
+    确认那个进程确实死了之后：ssh $HOST \"rm -rf '$LOCKDIR'\"
+    **不自动抢锁** —— 自动抢会把我们要防的那个并发又放回来。"
+    fi
+    die "有人正在部署，先别推：
+       持锁者：${HOLDER:-（未知）}
+    等他跑完再来。"
+fi
+ssh "$HOST" "echo '$LOCK_OWNER' > '$LOCKDIR/owner'" || true
+ok "已拿到部署锁"
+
+# **拿到锁的下一行就装 trap。** 中间隔着任何一步，那一步失败就会把锁漏在
+# 服务器上，而下一个人看到的是「有人正在部署」—— 一个不存在的人。
+WT=""
+release_lock() { ssh "$HOST" "rm -rf '$LOCKDIR'" >/dev/null 2>&1 || true; }
+cleanup() {
+    [ -n "$WT" ] && git worktree remove --force "$WT" >/dev/null 2>&1 || true
+    release_lock
+}
+trap cleanup EXIT
+
 # ── ② 从干净 HEAD 副本构建 ────────────────────────────────────────────────
 #
 # **不在主工作区打包。** 这个目录常有多个会话同时在改，主工作区里别人未提交的
 # 半成品会被一起烘进 jar 推上线，而 git status 里那些行看起来跟你毫无关系。
 WT="$(mktemp -d)/deploy-head"
-cleanup() { git worktree remove --force "$WT" >/dev/null 2>&1 || true; }
-trap cleanup EXIT
 git worktree add -q --detach "$WT" HEAD
 
 TS="$(date +%Y%m%d-%H%M)"
-JAR_NAME="shop-app-$TS.jar"
+# **名字里带上提交号。** 时间戳答不了「线上跑的是哪个提交」——
+# 2026-08-29 为这个问题反推了四轮。带上 SHA 之后 readlink 一眼就是答案。
+JAR_NAME="shop-app-$TS-$HEAD_SHA.jar"
 say "构建中（干净副本，约 2 分钟）…"
-( cd "$WT/backend" && mvn -o clean package -pl shop-app -am -DskipTests -q ) \
+( cd "$WT/backend" && mvn -o clean package -pl shop-app -am -DskipTests -q -Dgit.sha="$HEAD_SHA" ) \
     || die "构建失败"
 LOCAL_JAR="$WT/backend/shop-app/target/shop-app-0.1.0-SNAPSHOT.jar"
 [ -f "$LOCAL_JAR" ] || die "构建完了却找不到 jar：$LOCAL_JAR"
@@ -116,17 +184,40 @@ ssh "$HOST" "printf '%s  %s  %s  %s\n' \"\$(date '+%F %T')\" '$JAR_NAME' '$HEAD_
 say "重启 $SERVICE"
 ssh "$HOST" "sudo systemctl restart '$SERVICE'"
 
-if ssh "$HOST" "for i in \$(seq 1 60); do
-        c=\$(curl -s -o /dev/null -w '%{http_code}' '$HEALTH');
-        [ \"\$c\" = '200' ] && { echo \"health=200（约 \$((i*3)) 秒）\"; exit 0; };
-        sleep 3;
-    done; echo \"health=\$c\"; exit 1"; then
+if wait_healthy; then
     ok "起来了"
+    # ── **进程在跑的是不是我刚推的那个提交** ─────────────────────────────
+    #
+    # 切软链与「进程真的在跑它」是两件事：换了包没重启、或重启失败仍跑旧包，
+    # 这两种过去只能靠猜，而它们正是「我明明部署了怎么没生效」的两大来源。
+    # build.gitSha 与 jar 文件名里的 SHA 来自同一个变量，所以这条判据不会自欺。
+    LIVE_SHA="$(ssh "$HOST" "curl -s '${HEALTH%/health}/info'" \
+        | sed -n 's/.*"gitSha":"\([^"]*\)".*/\1/p')"
+    if [ "$LIVE_SHA" = "$HEAD_SHA" ]; then
+        ok "线上进程确认在跑 $HEAD_SHA"
+    else
+        die "包切过去了、health 也 200，但**进程在跑的不是这一版**：
+       期望 $HEAD_SHA
+       实际 ${LIVE_SHA:-（/actuator/info 里没有 gitSha —— 这个包不是走部署流程出来的）}
+    多半是重启没真的换进程。看：ssh $HOST 'sudo systemctl status $SERVICE'"
+    fi
 else
     die "没等到 health=200。**别走开** —— 现在线上是挂的。
     看日志：ssh $HOST 'sudo journalctl -u $SERVICE -n 80 --no-pager'
     要回滚：ssh $HOST \"sudo ln -sfn $(basename "$BEFORE") '$LINK' && sudo systemctl restart '$SERVICE'\""
 fi
+
+# ── ⑥ 保留策略 ───────────────────────────────────────────────────────────
+#
+# 每个包 86M，2026-08-29 时服务器上已堆了 13 个 / 2.8G。磁盘还宽裕，
+# 但没人会回头删。保留最近 5 个 **加上当前软链指向的那个**（即使它已排在
+# 5 名之外）—— 少了后半句，某次回滚到旧版之后下一次部署就会把脚下那个删掉。
+ssh "$HOST" "cd '$REMOTE_DIR' || exit 0
+    cur=\$(readlink shop-app.jar 2>/dev/null)
+    ls -1t shop-app-*.jar 2>/dev/null | tail -n +6 | while read -r f; do
+        [ \"\$f\" = \"\$cur\" ] && continue
+        sudo rm -f -- \"\$f\"
+    done" >/dev/null 2>&1 || true
 
 printf '\n\033[32m上线完成\033[0m  %s  ←  %s %s\n' "$JAR_NAME" "$HEAD_SHA" "$HEAD_MSG"
 printf '回滚：ssh %s "sudo ln -sfn %s %s && sudo systemctl restart %s"\n' \
