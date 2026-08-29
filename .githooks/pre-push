@@ -36,10 +36,30 @@ cleanup() { git worktree remove --force "$GATE_WT" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 git worktree add -q --detach "$GATE_WT" HEAD
 
+# 判据脚本一律经这个入口跑。
+#
+# **为什么需要它**：这个 hook 文件是从**工作区**读的（git 就是这么执行 hook 的），
+# 而它跑的判据在 `$GATE_WT`（HEAD 干净副本）里 —— 两边不同步的窗口真实存在。
+# 2026-08-29 撞过一次：有人改了 pre-push 指向一个新脚本、而那个脚本还没提交，
+# 于是 node 在副本里 MODULE_NOT_FOUND，**整条闸门是崩掉而不是变红** ——
+# 全员推不动，而报错里一个字都没提「你少提交了一个文件」。
+#
+# 缺脚本时跳过并说明，不静默放行（与 node_modules 那两处同一个处理）。
+gate_run() {
+  runner="$1"; script="$2"; shift 2
+  if [ ! -f "$GATE_WT/$script" ]; then
+    echo "⚠ 跳过 $script：HEAD 里没有这个脚本。"
+    echo "  多半是**改了 .githooks/pre-push、而脚本还没提交** —— hook 从工作区读、判据从 HEAD 跑。"
+    echo "  把那个脚本提交上就会自动启用。"
+    return 0
+  fi
+  "$runner" "$GATE_WT/$script" "$@"
+}
+
 # 界面清单闸门：清单是三端 UI 的唯一索引（docs/technical/design/ui-catalog.json），
 # 由 pages.json 与 nav.ts 生成。改了路由/标题/导航而没重跑生成器，这一条就红。
 # 纯 python、不需要依赖，所以在 worktree 里能直接跑（那里没有 node_modules）。
-if ! python3 "$GATE_WT/scripts/gen-ui-catalog.py" --check; then
+if ! gate_run python3 scripts/gen-ui-catalog.py --check; then
   echo "  ↑ 判据取自 HEAD。工作区里未提交的页面不会让你被挡住，也不会替别人放行。"
   exit 1
 fi
@@ -50,7 +70,7 @@ fi
 # 靠人比对四十份文档不可持续，所以查四类机器查得动的：断链 / 表名集合 /
 # 自称数字 / 能力码取值域。纯 node 内置模块，几十毫秒。
 # 查不动的（叙述矛盾、语义粒度）仍靠 review —— 它不假装能替代。
-if ! node "$GATE_WT/scripts/check-v2-docs.mjs"; then
+if ! gate_run node scripts/check-v2-docs.mjs; then
   echo "  ↑ 判据取自 HEAD。本机重现：node scripts/check-v2-docs.mjs"
   exit 1
 fi
@@ -59,7 +79,7 @@ fi
 # 在界面上看不出来 —— 页面有数据、点得动、不报错，一直到真连后端那天才集体爆出来。
 # 锁的是差集：已知欠账放行（ops-web/known-mock-endpoints.txt），新写的空接口拦下。
 # 只用 node 内置模块，同样不需要 node_modules。
-if ! node "$GATE_WT/scripts/check-ops-contract.mjs" --check; then
+if ! gate_run node scripts/check-ops-contract.mjs --check; then
   exit 1
 fi
 
@@ -68,7 +88,7 @@ fi
 # b-app 的 mFulfillmentImpact 干脆写着 `.catch(() => [])`，于是「关掉这条履约渠道
 # 会影响多少单」在线上恒为空，店主看到「影响 0 单」然后放心关掉。
 # 基线：app-known-missing-endpoints.txt，与运营端那份同一个棘轮。纯 python。
-if ! python3 "$GATE_WT/scripts/check-app-contract.py" --check; then
+if ! gate_run python3 scripts/check-app-contract.py --check; then
   exit 1
 fi
 
@@ -82,11 +102,11 @@ fi
 # sku-identity 装到真机才发现）。三次都不报错 —— 页面是好的、路由是对的、
 # 包也打进去了，只是点不到；而在 H5 上验页面时直接改 hash 进去，
 # 「有没有门」这件事从来不在验证路径上。
-if ! node "$GATE_WT/scripts/check-app-orphan.mjs" --check; then
+if ! gate_run node scripts/check-app-orphan.mjs --check; then
   exit 1
 fi
 
-if ! node "$GATE_WT/scripts/check-ops-orphan.mjs" --check; then
+if ! gate_run node scripts/check-ops-orphan.mjs --check; then
   exit 1
 fi
 
@@ -95,7 +115,7 @@ fi
 # 2026-08-29 全站盘点时一次清出 70 条死词条（goods-edit 规格 UI 重写留下的）。
 # 死词条不报错，害处在改稿时：分不清哪条还在生效，
 # 于是「改了半天线上没变」或者「以为改全了其实漏了在用的那条」。
-if ! node "$GATE_WT/scripts/check-i18n-orphan.mjs" --check; then
+if ! gate_run node scripts/check-i18n-orphan.mjs --check; then
   exit 1
 fi
 
@@ -103,7 +123,7 @@ fi
 # 不是端点数 —— 按端点数定阈值会逼人把一个资源硬拆成两半来达标。
 # 由来：BizMerchantController 一个类 40 端点 / 1022 行 / 九个不相干的节，
 # 而每个往里加的人都有一个局部合理的理由。这道闸就是补那一眼。
-if ! node "$GATE_WT/scripts/check-controller-cohesion.mjs" --check; then
+if ! gate_run node scripts/check-controller-cohesion.mjs --check; then
   exit 1
 fi
 
@@ -121,7 +141,7 @@ fi
 # 主仓没装依赖时跳过并说明，**不静默放行**：说不清自己有没有跑，比没跑更糟。
 if [ -d "$ROOT/node_modules" ]; then
   ln -sfn "$ROOT/node_modules" "$GATE_WT/node_modules"
-  if ! node "$GATE_WT/scripts/check-generated-docs.mjs" --check; then
+  if ! gate_run node scripts/check-generated-docs.mjs --check; then
     exit 1
   fi
 else
@@ -167,7 +187,7 @@ fi
 # 「推出去的那份对不对」，不是谁的工作区**。跑 vitest 需要 node_modules，
 # 上面那段已经把主仓的软链过去了；没有就跳过并说明，不静默放行。
 if [ -d "$ROOT/node_modules" ]; then
-  if ! node "$GATE_WT/scripts/check-shared-guards.mjs" --check; then
+  if ! gate_run node scripts/check-shared-guards.mjs --check; then
     echo "  本机重现：cd packages/shared && npx vitest run"
     echo "  判据取自 HEAD —— 工作区里没提交的改动不会让你被挡住。"
     exit 1
@@ -186,17 +206,17 @@ fi
 # 免得清单本身是陈的。纯 python，worktree 里不需要依赖。
 # 已知的 33 处欠账记在 known-handrolled-ui.txt，**只准变短**：
 # 修好了不删那一行，那个页面将来又自造起来也不会有人发现。
-if python3 "$GATE_WT/scripts/gen-ui-lib.py" >/dev/null 2>&1; then
+if gate_run python3 scripts/gen-ui-lib.py >/dev/null 2>&1; then
   # 逐页体检：页面有没有照三份规范写（字阶 / 圆角与间距 / 颜色）。
   # 与上面那道「有件不用」是两件事：这道管的是「自己写了一行 font-size」。
-  if ! python3 "$GATE_WT/scripts/check-page-spec.py" --check >/dev/null 2>&1; then
+  if ! gate_run python3 scripts/check-page-spec.py --check >/dev/null 2>&1; then
     echo "✗ 有页面没照规范写（字阶 / 圆角与间距 / 颜色）。看是哪一页："
     echo "    python3 scripts/check-page-spec.py --check"
     echo "  清单：known-page-spec-debt.txt（只准变短）"
     exit 1
   fi
 
-  if ! node "$GATE_WT/scripts/check-handrolled-ui.mjs" --check --root="$GATE_WT"; then
+  if ! gate_run node scripts/check-handrolled-ui.mjs --check --root="$GATE_WT"; then
     exit 1
   fi
 else
