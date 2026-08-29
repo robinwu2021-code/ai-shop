@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /** 凭证校验实现。 */
 @ConditionalOnInventory
@@ -90,6 +91,19 @@ public class OpenApiCredentialServiceImpl implements OpenApiCredentialService {
         credentialMapper.insert(row);
 
         return new Issued(row.getCredentialId(), key, secret);
+    }
+
+    @Override
+    public List<Listed> list(String ownerId) {
+        return credentialMapper.selectList(Wrappers.<InvOpenCredential>lambdaQuery()
+                        .eq(InvOpenCredential::getOwnerId, ownerId)
+                        // 新的在前：运营多数时候要看的是刚发的那一把
+                        .orderByDesc(InvOpenCredential::getId))
+                .stream()
+                .map(c -> new Listed(c.getCredentialId(), c.getAppKey(), c.getName(),
+                        c.getScopes(), c.getStatus(), c.getExpiresAt(),
+                        c.getLastUsedAt(), c.getCreatedAt()))
+                .toList();
     }
 
     @Override

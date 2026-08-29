@@ -185,6 +185,65 @@ class InventoryOpsEndpointTest {
         return new Fixture(entityNo, owner, location, item);
     }
 
+    @Test
+    @DisplayName("★★★ 开放对接的钥匙：发得出、列得到、能用、吊销后立刻失效")
+    void opsCanIssueAndRevokeOpenApiCredential() throws Exception {
+        int seq = SEQ.incrementAndGet();
+        String entityNo = "E-OPSCRED-" + seq;
+        acl.upsertItem(entityNo, "SKU-OPSCRED-" + seq, "东北大米", "5斤装", null, null, "袋");
+        String token = opsLogin();
+
+        /*
+         * **判据是「发出来的钥匙真的能用」，不是「接口返回 200」。**
+         *
+         * 这一屏此前完全不存在：三个 /open/v1 端点写完了、签发服务也在，
+         * 而唯一发得出钥匙的办法是直接往 inv_open_credential 里插 ——
+         * 那正是 inventory-write-ownership 守卫拦的事。
+         * 一个谁也拿不到钥匙的开放接口不叫做完了。
+         */
+        String issued = mvc().perform(post("/ops/inventory/credentials")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"entityNo\":\"" + entityNo + "\",\"name\":\"某某 ERP\","
+                                + "\"scopes\":\"read\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode d = json.readTree(issued).get("data");
+        String key = d.get("appKey").asString();
+        String secret = d.get("appSecret").asString();
+        String credentialId = d.get("credentialId").asString();
+        assertThat(secret)
+                .as("secret 必须在这一刻明文给出 —— 库里只有哈希，之后任何地方都拿不回来")
+                .isNotBlank();
+
+        // 列得到，且**不带 secret**：一个看起来能看到密钥的列表会让人以为丢了还能找回
+        String listed = mvc().perform(get("/ops/inventory/credentials?entityNo=" + entityNo)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(listed).as("刚发的那把要在列表里").contains(key);
+        assertThat(listed).as("列表里不许出现 secret 字段").doesNotContain("appSecret");
+
+        /*
+         * **「钥匙真能用」不在这里验，在 InventoryOpenApiTest。**
+         * `/open/v1/**` 挂的是 `@Profile("openapi")`（外部流量 QPS 不可控、
+         * 单独限流、可单独部署），运营端是 `ops` —— **生产上它们本就不在同一个实例里**。
+         * 我第一版在这个上下文里直接调 /open/v1，拿到 404 还以为是新控制器没注册，
+         * 一路查到 .m2 旧包上去了；实际是这个上下文根本不装那一面。
+         */
+
+        // 吊销之后再列，状态要变成 REVOKED。**发得出、收不回的钥匙是半截功能**
+        mvc().perform(post("/ops/inventory/credentials/" + credentialId + "/revoke")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+        String after = mvc().perform(get("/ops/inventory/credentials?entityNo=" + entityNo)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(after).as("吊销不删行 —— 「什么时候停的」要查得到").contains(key);
+        assertThat(after).as("状态要变成 REVOKED").contains("REVOKED");
+    }
+
     private String opsLogin() throws Exception {
         return opsLogin("admin", "admin123");
     }

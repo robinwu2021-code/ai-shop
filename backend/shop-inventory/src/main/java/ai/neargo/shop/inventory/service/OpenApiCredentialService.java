@@ -1,6 +1,7 @@
 package ai.neargo.shop.inventory.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Open API 凭证签发与校验。
@@ -46,7 +47,25 @@ public interface OpenApiCredentialService {
      */
     void revoke(String credentialId);
 
+    /**
+     * 某个业主发过哪些钥匙。**发得出、看不见等于发不出** ——
+     * 运营被问「他们那把还能用吗」时，没有这一条就只能进库里查。
+     *
+     * <p>吊销过的也返回：这一列要能回答「什么时候停的」，
+     * 而那正是「吊销不删行」的理由。
+     */
+    List<Listed> list(String ownerId);
+
     /** @param appSecret <b>明文，仅此一次</b>。库里只有哈希，之后任何地方都拿不回来 */
     record Issued(String credentialId, String appKey, String appSecret) {
+    }
+
+    /**
+     * 列表里的一行。**没有 secret，一个字段都不给** ——
+     * 库里只有哈希，而一个「看起来能看到密钥」的列表会让人以为丢了还能找回来。
+     */
+    record Listed(String credentialId, String appKey, String name, String scopes,
+                  String status, LocalDateTime expiresAt, LocalDateTime lastUsedAt,
+                  LocalDateTime createdAt) {
     }
 }
