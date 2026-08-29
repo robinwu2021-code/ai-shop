@@ -147,6 +147,26 @@ const missingFields = computed(() => {
 
 const canSubmit = computed(() => missingFields.value.length === 0);
 
+/*
+ * **三段各自「填完了没有」。**
+ *
+ * <p>这一页有十来个字段、四张卡，而卡上没有一个字说明它在回答什么问题 ——
+ * 于是它读起来是一条看不到头的长队。此前唯一的进度信号是提交键的灰不灰，
+ * 而那要滚到最底下才看得到。
+ *
+ * <p>不改成分步向导：那要拆表单、拆校验、拆提交，而这条链路正在线上跑着。
+ * 加三个小标题 + 一个「✓」就够回答「还剩多少」—— 判据全部复用已有的那几个，
+ * **不另立一份**（两份判据迟早会打架，而打架的表现是「明明填完了却交不了」）。
+ */
+const sec1Done = computed(
+  () => notBlank(form.value.name) && notBlank(form.value.contactName) && isPhone(form.value.contactPhone),
+);
+const sec2Done = computed(() => scopeReady.value);
+const sec3Done = computed(() => !licenseMissing.value);
+const secDoneCount = computed(
+  () => [sec1Done.value, sec2Done.value, sec3Done.value].filter(Boolean).length,
+);
+
 /** 已上传的资质图（旧字段，仍然传 —— 后端两个都收，存量申请单靠它回看） */
 const licenses = ref<string[]>([]);
 const uploading = ref(false);
@@ -334,6 +354,7 @@ async function submit() {
     <view class="head">
       <text class="txt-display">{{ isMore ? $t("apply.titleMore") : $t("apply.title") }}</text>
       <text class="sh-muted sh-mt-xs blk">{{ isMore ? $t("apply.hintMore") : $t("apply.hint") }}</text>
+      <text class="txt-caption sh-muted blk sh-mt-xs">{{ $t("apply.secProgress", { n: secDoneCount }) }}</text>
     </view>
 
     <!-- 审核中/驳回：不重复渲染整张表，先把状态说清楚 -->
@@ -351,6 +372,11 @@ async function submit() {
     </view>
 
     <view class="sh-card">
+      <sh-section :title="String($t('apply.sec1'))">
+        <text class="txt-caption" :class="sec1Done ? 'done' : 'sh-muted'">
+          {{ sec1Done ? "✓" : $t("apply.secTodo") }}
+        </text>
+      </sh-section>
       <!--
         行业排在主体之前：**它决定主体能不能选小微**（微信白名单按行业给）。
         顺序反了的话，人先挑了小微再选一个不允许小微的行业，
@@ -446,7 +472,12 @@ async function submit() {
       选小了整片小区都搜不到这家店。所以给后果说明，不只给三个单选。
     -->
     <view class="sh-card sh-mt-sm">
-      <text class="txt-title">{{ $t("store.scope") }}</text>
+      <sh-section :title="String($t('apply.sec2'))">
+        <text class="txt-caption" :class="sec2Done ? 'done' : 'sh-muted'">
+          {{ sec2Done ? "✓" : $t("apply.secTodo") }}
+        </text>
+      </sh-section>
+      <text class="txt-title sh-mt-xs">{{ $t("store.scope") }}</text>
       <text class="sh-hint">{{ $t("apply.scopeHint") }}</text>
 
       <sh-option
@@ -503,7 +534,12 @@ async function submit() {
     </view>
 
     <view class="sh-card sh-mt-sm">
-      <text class="field__label">{{ $t("apply.settle") }}</text>
+      <sh-section :title="String($t('apply.sec3'))">
+        <text class="txt-caption" :class="sec3Done ? 'done' : 'sh-muted'">
+          {{ sec3Done ? "✓" : $t("apply.secTodo") }}
+        </text>
+      </sh-section>
+      <text class="field__label sh-mt-xs">{{ $t("apply.settle") }}</text>
       <text class="txt-title">{{ $t(`apply.${settleType}`) }}</text>
       <text class="sh-hint">{{ $t("apply.settleHint") }}</text>
       <!-- 免执照档位：整块隐藏，换一句说明。对自然人要执照本来就是错的 -->
@@ -573,6 +609,11 @@ async function submit() {
 </template>
 
 <style scoped>
+/* 这一段填完了 —— 只用一个 ✓，不给整张卡换色：四张卡一起变色是灯光秀，不是进度 */
+.done {
+  color: var(--sh-success, var(--sh-primary-text));
+}
+
 /* 还差什么：贴在提交键上方，与建品页底部那行「待填写：…」同一个位置关系 */
 .todo {
   display: block;
