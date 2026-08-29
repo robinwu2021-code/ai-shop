@@ -5,7 +5,7 @@ export { merchants, applies, authCodes, violations , admissionPolicies, depositT
 export { orders, orderInterventions } from "./order";
 export { reconDiffs, closeRule } from "./payment";
 export { shipments, freightTemplates, carriers } from "./logistics";
-export { withdrawals, invoiceRequests, taxRule } from "./payout";
+export { withdrawals, invoiceRequests, taxRule, invoiceTitle } from "./payout";
 export { posts, rankings, questions } from "./ugc";
 export { kpi, trend, funnel, merchantRanking } from "./dashboard";
 export { communities, communityApplies, pickups, regions } from "./community";

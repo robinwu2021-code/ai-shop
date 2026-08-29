@@ -302,6 +302,17 @@ export const financeMock: FinanceApi = {
     return wait(iv, 400);
   },
 
+  getInvoiceTitle: async () => wait(db.invoiceTitle),
+
+  saveInvoiceTitle: async (v) => {
+    // **与后端同一条规则**：缺这两项供应商根本开不出票，存下去只会让人以为已经配好了。
+    // mock 放宽的话，开发时看着能存、接真后端才被 10400 拒 —— 那正是这一族缺陷的来源。
+    if (!v.companyName?.trim()) fail("公司全称必填", "The company name is required");
+    if (!v.taxNo?.trim()) fail("纳税人识别号必填", "The tax number is required");
+    Object.assign(db.invoiceTitle, v);
+    return wait(db.invoiceTitle, 400);
+  },
+
   getTaxRule: async () => wait(db.taxRule),
 
   saveTaxRule: async (v) => {

@@ -333,6 +333,26 @@ export interface InvoiceRequest {
  * 只对**个人主体**商家生效：个体户与企业自行申报，平台不代扣。
  * 起征点以下不扣 —— 不设起征点会给每一笔几块钱的提现都产生一条扣税记录。
  */
+/**
+ * 平台开票抬头（P0-11）。**供应商照着它给平台开票** ——
+ * 缺公司全称或税号，票就开不出来。
+ *
+ * <p>五个字段都是字符串，后端存成一条扁平 JSON 配置（`finance.invoice-title`）；
+ * **默认值是五项全空而不是编一份假的** —— 空着能让人立刻发现「还没配」。
+ */
+export interface InvoiceTitle {
+  /** 公司全称。**必填** */
+  companyName: string;
+  /** 纳税人识别号。**必填** */
+  taxNo: string;
+  /** 注册地址 */
+  address: string;
+  /** 注册电话 */
+  phone: string;
+  /** 开户行与账号 */
+  bankAccount: string;
+}
+
 export interface TaxRule {
   /** 起征点（分）：单期收入低于它不代扣 */
   threshold: number;

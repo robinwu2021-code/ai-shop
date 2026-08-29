@@ -80,6 +80,13 @@ function FinanceInner() {
   const canEditRate = allow("finance:rate:update");
   const canWithdraw = allow("finance:withdraw:approve");
   const canInvoice = allow("finance:invoice:read");
+  /*
+   * **读与写分开。** 这一屏上两处写口（个税规则 PUT、开票抬头 POST）后端判的都是
+   * `finance:invoice:verify`，而此前界面用 `finance:invoice:read` 决定保存键亮不亮 ——
+   * 于是只有读权限的人看到一枚**可点的保存键，点下去 403**。
+   * 与后端同一套判据，是这个仓库反复强调的那条：两处不同就会出现「按钮亮着、点了报错」。
+   */
+  const canInvoiceWrite = allow("finance:invoice:verify");
   const settleStatusMap = useSettleStatusMap();
   const trafficMap = useTrafficSourceMap();
 
@@ -266,7 +273,7 @@ function FinanceInner() {
         </>
       )}
 
-      {tab === "invoice" && <InvoiceTab c={c} canEdit={canInvoice} />}
+      {tab === "invoice" && <InvoiceTab c={c} canEdit={canInvoice} canWrite={canInvoiceWrite} />}
 
       {tab === "rates" && <FeeRuleTab c={c} canEdit={canEditRate} />}
       {/*

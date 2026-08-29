@@ -12,8 +12,6 @@
 # 自营应付 + 进项票 + 销项开票整条链后端已实现、运营端零入口，
 # 而这是今天唯一真能把钱付出去的路（第三方那条走分账，而分账网关是桩）。
 # 见 docs/requirements/PRD-商家资金到账与对账.md
-GET /ops/finance/invoice-title
-POST /ops/finance/invoice-title
 # ── 其余 5 条（非本域）──
 # 商家收款额度用尽时改不了
 PUT /ops/admission/pay-quota/{merchantNo}

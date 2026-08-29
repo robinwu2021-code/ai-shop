@@ -2,7 +2,7 @@
 import type {
   PurchaseInvoice,
   BuyerInvoiceRequest,
-  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, Page, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
+  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
 import type { PageQ, SettlementQ } from "../query";
 
 export interface FinanceApi {
@@ -127,6 +127,14 @@ export interface FinanceApi {
    */
   issueInvoice(v: { invoiceNo: string; serialNo: string }): Promise<InvoiceRequest>;
   rejectInvoice(v: { invoiceNo: string; reason: string }): Promise<InvoiceRequest>;
+
+  /**
+   * 平台开票抬头。后端一直有这两个端点（P0-11），**运营端此前没有入口** ——
+   * 于是「供应商开不出票」这件事在界面上无从处置。
+   */
+  getInvoiceTitle(): Promise<InvoiceTitle>;
+  /** 公司全称与税号必填 —— 缺了供应商开不出票，存下去只会让人以为已经配好了。 */
+  saveInvoiceTitle(v: InvoiceTitle): Promise<InvoiceTitle>;
 
   getTaxRule(): Promise<TaxRule>;
   /** 个税代扣规则。只对个人主体生效；税率上限与起征点见 lib/constants.ts。 */

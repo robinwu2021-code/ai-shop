@@ -43,6 +43,8 @@ export const financeHttp: FinanceApi = {
   listInvoiceRequests: (q) => client.get("/ops/finance/invoices", q),
   issueInvoice: (v) => client.post(`/ops/finance/invoices/${v.invoiceNo}/issue`, v),
   rejectInvoice: (v) => client.post(`/ops/finance/invoices/${v.invoiceNo}/reject`, v),
+  getInvoiceTitle: () => client.get("/ops/finance/invoice-title"),
+  saveInvoiceTitle: (v) => client.post("/ops/finance/invoice-title", v),
   getTaxRule: () => client.get("/ops/finance/tax-rule"),
   saveTaxRule: (v) => client.put("/ops/finance/tax-rule", v),
 };
