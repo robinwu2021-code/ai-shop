@@ -37,7 +37,15 @@ function usedUiCodes(): Set<string> {
       if (e.isDirectory()) { walk(p); continue; }
       if (!/\.tsx?$/.test(e.name) || e.name.endsWith(".test.ts")) continue;
       const src = readFileSync(p, "utf8");
-      for (const m of src.matchAll(/allow\(\s*"([^"]+)"\s*\)/g)) out.add(m[1]!);
+      /*
+       * **两种写法都要认。** 这条正则原先只写 `allow(` —— 那是 useCan 文档里
+       * 示例用的名字（`const allow = useCan()`），而真实代码里一半的调用点
+       * 写的是 `const can = useCan()`。于是闸门对每一个 `can(` 调用**全盲**。
+       * 2026-08-29 实测：放宽后立刻多捞出一个未登记的码，而它造成的正是
+       * 本文件开头警告的那件事 —— 按钮神秘消失，零报错。
+       * `\b` 挡住 `canModule(`：它的 `can` 后面跟的是字母不是括号。
+       */
+      for (const m of src.matchAll(/\b(?:allow|can)\(\s*"([^"]+)"\s*\)/g)) out.add(m[1]!);
       // nav.ts 的叶子权限码是数据而非调用
       for (const m of src.matchAll(/\bperm:\s*"([^"]+)"/g)) out.add(m[1]!);
     }

@@ -126,6 +126,8 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   // 门店经营模式（含无照自营风险表）。不登记的话 can() 一律判无权限 ——
   // 后端明明给了 BD 这个码，界面上却什么也看不到，且不报错
   "merchant:mode:read": "merchant:mode:read",
+  // 发放/吊销开放对接凭据（进销存「开放对接」的两个写动作）判的就是它
+  "merchant:mode:update": "merchant:mode:update",
   // 资质档案。同一个坑第二次：后端有码、UI_PERM_MAP 没登记 → can() 一律判无权限，
   // 页面上什么也看不到且不报错
   "merchant:category:read": "merchant:category:read",
