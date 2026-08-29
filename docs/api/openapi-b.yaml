@@ -6708,6 +6708,11 @@ components:
         detail: 
           type: "string"
           description: "图文详情正文（纯文本）。**空串也要发** —— 后端「不传 = 不改」，删光了不发就删不掉"
+        params: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/GoodsParam"
+          description: "商品参数（产地/保质期/材质…）。**整份覆盖，空数组也要发**。\n\n<p>此前这个字段**契约里没有、http.ts 也没发** —— 而编辑页一直在收集它 （`goods-edit` 里那一栏和 `paramValues` 都在）。于是商家填完保存， 参数原地消失，且不报错：后端把 `params == null` 当「不改」， 所以旧值还在、新填的进不去、想删的删不掉。"
         specGroups: 
           type: "array"
           items: 
