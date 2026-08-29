@@ -35,6 +35,17 @@ const OWNER_COLUMNS = [
   "community_no",
   "pickup_no",
   "store_no",
+  /*
+   * **`receiver_no` 也是归属列。** V97 把 `msg_message.user_no` 改成了这个名字
+   * （站内信的收件人），V162 又把表改名成 `notify_message`。
+   *
+   * <p>不认它的后果不是「多报一张」，是**少看见两张**：`notify_message`（9 处查询）
+   * 与 `notify_push_token` 是按人分的表，未登记，而这道闸从头到尾没提起过它们 ——
+   * 一张表在守卫的视野之外，比它红着更难被发现。
+   *
+   * <p>补上它记录值 63 → 65。**这是诚实的涨**：不是新欠了债，是原来就欠着、闸门看不见。
+   */
+  "receiver_no",
 ];
 
 /**
