@@ -250,6 +250,7 @@ const DERIVED = {
     expiringAt: "同上，取最近一批的到期时间",
     pendingActivateAt: "取最近一批未生效 EARN 行的 available_at，不落列",
   },
+  AppointmentSlot: { remaining: "capacity - booked —— 不落列，落了就要和每一次下单占位保持一致" },
   Community: {
     distance: "按用户当前位置实时算",
     originName: "origin_code 经区划字典取名（masterDataPort.regionNames）——"
@@ -512,11 +513,10 @@ const ENTITY_MAP = {
   MarketingCampaign: { table: "mkt_campaign", note: "四类活动统一一张表：它们只差「触发条件 + 优惠方式」" },
   SpecTemplate: { table: "prd_spec_template" },
 
-  // ── 2026-08-30 第三批：有同名表却一直没映射的 15 个 ──
+  // ── 2026-08-30 补映射：表一直都在，只是这里没写 ──
   //
-  // 它们的表一直都在，只是 ENTITY_MAP 里没写，于是被归进「契约有类型、库里无承载」，
-  // **字段级比对一次都没跑过**。
-  // ── 2026-08-30 第四批：名字与表名不同源，机器猜不出来的 ──
+  // 没写的后果不是「少一条记录」，是被归进「契约有类型、库里无承载」那一类，
+  // **字段级比对根本不启动** —— 清单看着在管，实际一个字段都没比。
   MerchantStaff: {
     table: "mch_account",
     note: "商家账号。**契约里叫 mchAccountNo 不叫 staffNo** —— staffNo 被平台运营占着，"
@@ -530,6 +530,12 @@ const ENTITY_MAP = {
   },
   PlanTier: { table: "sys_merchant_plan_def", note: "档位定义（配额与能力开关），见 MerchantPlan" },
   MemberSetting: { table: "mbr_setting" },
+  AppointmentSlot: {
+    table: "mch_appointment_slot",
+    note: "**闸 C 第一次跑就抓到的存量错**：它此前登记在 VIEW_TYPES 里写着"
+      + "「由容量配置实时算」—— 那句话在建表之前是对的，V 表建起来之后没人回来改，"
+      + "于是这个实体从报告里消失了，字段比对一次没跑过。列与契约几乎一一对应",
+  },
   MemberSegment: { table: "mbr_segment" },
   StoreActivity: { table: "pmt_activity" },
   MerchantSpecDim: { table: "prd_spec_dim" },
@@ -636,7 +642,6 @@ const VIEW_TYPES = {
   ShareKit: "由服务端按语言/市场实时生成，不存",
   MerchantCustomer: "ord_sub_order 按 (merchant_no, user_no) 的聚合",
   VisitedMerchant: "mch_entity + ord_sub_order 的聚合",
-  AppointmentSlot: "服务类商品的可约时段，由容量配置实时算",
   SpecGroup: "prd_goods.spec_groups JSON 列内的结构",
   SpecOption: "prd_goods.spec_groups JSON 列内的结构",
   Promotion: "营销活动在商品上的投影",
@@ -743,7 +748,7 @@ const opsSchemas = readSchemas("docs/api/openapi-ops.yaml");
 const isDto = (n) => /(Req|ReqBody|Query|Draft|Config|Rule|Texts)$/.test(n);
 const isMapped = (n) => /^(Partial[_<])?Record[_<]/.test(n);
 
-const findings = { missingCol: [], noTable: [], aliasUsed: [], internalOnly: [] };
+const findings = { missingCol: [], noTable: [], aliasUsed: [], internalOnly: [], suspectMap: [] };
 
 function compare(typeName, schema) {
   if (STRUCTURAL[typeName]) return null; // 单独成节，见「结构不匹配」
@@ -751,8 +756,22 @@ function compare(typeName, schema) {
   if (!map) return null;
   const t = tables.get(map.table);
   if (!t) {
-    findings.noTable.push({ type: typeName, reason: `映射到 \`${map.table}\`，但库里没有这张表` });
-    return null;
+    /*
+     * ── 闸 A：**当场炸，不写进报告** ──
+     *
+     * 上一版这里是往 noTable 里推一行，于是它混进「契约有类型、库里无承载」那一节，
+     * 看着像一条已知欠账。四个表名（usr_user / usr_merchant / usr_merchant_apply /
+     * msg_message）就是这么活下来的，而且**带着五个类型一起空转** ——
+     * 指向不存在的表时字段级比对根本不启动，清单却看着有在管。
+     *
+     * 一条指向不存在的表的映射不是欠账，是这张表本身错了。表被改名/删掉是常事，
+     * 改的人不会想到来更新这里 —— 所以要让下一次生成当场失败，而不是安静降级。
+     */
+    throw new Error(
+      `ENTITY_MAP.${typeName} 指向 \`${map.table}\`，但库里没有这张表。\n`
+      + "  表被改名或删掉了？去迁移里找 RENAME TO / DROP TABLE，把映射改到现名。\n"
+      + "  **别把它删掉了事** —— 删了这个类型就落进「库里无承载」，字段比对同样不跑。",
+    );
   }
   const cols = new Set(t.cols);
   const rows = [];
@@ -780,6 +799,37 @@ function compare(typeName, schema) {
     }
     rows.push({ field, col: null, kind: "missing" });
     findings.missingCol.push({ type: typeName, table: map.table, field });
+  }
+  /*
+   * ── 闸 B：**命中率过低 = 这条映射多半错了，而不是这张表缺列** ──
+   *
+   * 两种形状在上一版里被渲染成同一句「缺这些列」：
+   *   · 这张表确实少一两列        → 真欠账，该补列或改契约
+   *   · 映射挂到了另一张表        → 一串假缺口，照着做会去给不相干的表加列
+   *
+   * 今天两次都是后者，而且都是**按名字猜**的：
+   *   PaymentApplyment → pmt_apply（名字像收款进件，其实 pmt_ 是促销域的核销记录），12 个字段全不匹配
+   *   MemberTag        → mbr_member_tag（打标关联行，标签定义在 mbr_tag），3 个字段全不匹配
+   * 两次都是靠肉眼看出「怎么一个都对不上」才发现的。判据其实很粗：
+   * 一张表不会同时少掉大半个类型的字段。
+   *
+   * 阈值取「匹配（含别名/关联/推导）不足一半，且缺失多于 3 条」——
+   * 字段少的类型不触发，因为 2/3 不匹配也可能是真的。
+   *
+   * <p><b>它有个边界，别指望它兜底</b>：字段一旦被登记进 RELATION/DERIVED 就算命中，
+   * 于是**先映错、再把一堆字段登记成 join**，这道闸就不响了。
+   * 验过：把 PaymentApplyment 改回错的 `pmt_apply`，因为那些字段事后已经定性，它一声不吭。
+   *
+   * <p>所以它守的是「**新加一条映射、字段还没定性**」那一刻 —— 恰好是需要它的时刻，
+   * 也是今天两次映错发生的时刻。事后再改映射得靠人自己重新看一遍字段。
+   */
+  const matched = rows.filter((r) => r.kind !== "missing").length;
+  const missing = rows.length - matched;
+  if (missing > 3 && matched * 2 < rows.length) {
+    findings.suspectMap.push({
+      type: typeName, table: map.table, matched, total: rows.length,
+      missing: rows.filter((r) => r.kind === "missing").map((r) => r.field),
+    });
   }
   return { map, table: t, rows };
 }
@@ -988,6 +1038,55 @@ for (const t of unmappedTables.sort()) {
   md.push(`| \`${t}\` | ${tables.get(t).comment || "—"} |`);
 }
 md.push("");
+
+/*
+ * ── 闸 B（续）与闸 C：**写文件之前拦下来** ──
+ *
+ * 放在渲染之后是有意的：报告已经拼好，但不落盘 —— 否则一份带着错映射的清单
+ * 会先被提交，再被人拿去对齐。
+ */
+if (findings.suspectMap.length) {
+  const lines = findings.suspectMap.map(
+    (x) => `  ${x.type} → \`${x.table}\`：${x.total} 个字段只对上 ${x.matched} 个\n`
+      + `      对不上的：${x.missing.join(" ")}`,
+  );
+  throw new Error(
+    "这些映射**多半是错的**（不是这张表缺列）：\n" + lines.join("\n") + "\n\n"
+    + "  一张表不会同时少掉大半个类型的字段。先确认这个类型真的落在这张表上 ——\n"
+    + "  判据要来自**类型自己的注释或后端代码**，不是表名像。\n"
+    + "  确实是真缺口（整块功能没建列）的，把它挪进 NO_TABLE 并写清影响与处置。",
+  );
+}
+
+/*
+ * ── 闸 C：登记成聚合视图/无表的，若存在同名候选表，必须说明为什么不是它 ──
+ *
+ * 这一条挡的是最隐蔽的一种错：**登记成视图之后，那个类型就从报告里彻底消失** ——
+ * 不红、不列、没人复核。相比之下「没映射」至少还在阻塞清单里红着。
+ * 把一个有表的实体登记成视图，等于给它发了一张永久免检条子。
+ *
+ * 判据只用最保守的一条：类型名转 snake 之后，有表以它结尾（`MerchantCoupon`
+ * → `pmt_coupon`）。命中就要求 note 里提到那张表名 —— 写一句「不是它，因为…」即可，
+ * 不是禁止登记为视图。
+ */
+{
+  const tableNames = [...tables.keys()];
+  const bad = [];
+  for (const [name, desc] of Object.entries(VIEW_TYPES)) {
+    const s2 = snake(name);
+    const cand = tableNames.filter((t) => t.endsWith("_" + s2) || t === s2);
+    const text = String(desc);
+    const unexplained = cand.filter((t) => !text.includes(t));
+    if (unexplained.length) bad.push(`  ${name}：库里有 ${unexplained.join(" / ")}，而登记为聚合视图`);
+  }
+  if (bad.length) {
+    throw new Error(
+      "这些类型登记成了聚合视图，但库里存在同名表：\n" + bad.join("\n") + "\n\n"
+      + "  **登记成视图之后它会从报告里消失** —— 不红、不列、没人再复核。\n"
+      + "  要么改成 ENTITY_MAP 映射，要么在说明里点名那张表并写清为什么不是它。",
+    );
+  }
+}
 
 writeFileSync(OUT, md.join("\n"));
 console.log(`✅ ${OUT}`);
