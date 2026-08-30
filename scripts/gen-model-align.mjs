@@ -19,7 +19,7 @@
  * 用法：npm run gen:model-align
  */
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
-import { readColumnNames } from "./lib/ddl.mjs";
+import { readColumnNames, MIGRATION_DIR, INVENTORY_MIGRATION_DIR } from "./lib/ddl.mjs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
@@ -81,6 +81,18 @@ const COLUMN_ALIAS = {
   billNo: "settle_no",
   read: "is_read",
   addressId: "address_id",
+  /*
+   * 商家主体那次域重命名的下游：72 张表用 `entity_no`，契约仍叫 `merchantNo`。
+   * **不是抹平差异**，是记下同一件事的两个名字 —— 此前这 9 个字段被逐条报成
+   * 「契约有、库里没有列（阻塞）」，而它们一个都不缺，只是名字换过。
+   * 真正的阻塞项因此被淹在里面没人看见。
+   *
+   * <p>放全局是安全的：匹配顺序是**直接列名优先、别名兜底**，
+   * 所以仍在用旧列名 `merchant_no` 的那 4 张表（sys_ops_staff / mch_deposit /
+   * mch_deposit_txn / prd_merchant_spec_override）照旧走直接匹配，不会被覆盖。
+   */
+  merchantNo: "entity_no",
+  merchantName: "entity_name",
 };
 
 /**
@@ -95,7 +107,15 @@ const TYPE_ALIAS = {
   Coupon: { name: "title", discountMinor: "face_minor", expireAt: "end_at" },
   Goods: { desc: "description" },
   MerchantApplyReq: { subject: "merchant_type", phone: "contact_phone" },
+  // 入驻申请单的两条：subject 是主体档位（库里叫 legal_form），
+  // licenses 是结构化资质项（V79 起用 qualification_items，旧的 qualifications 是纯文本）
+  MerchantApplyStatus: { subject: "legal_form", licenses: "qualification_items" },
+  // 「商家类型」= 主体档位。契约的 MerchantType 就是 MerchantSubject 的别名
+  Merchant: { type: "legal_form" },
+  MerchantBrief: { type: "legal_form" },
   Quote: { minCount: "min_qty", desc: "note", priceMinor: "unit_price_minor" },
+  // 进货/出库单在库里是两张表，单号列各叫各的；契约收成一个 StockDocument
+  StockDocument: { docNo: "inbound_no" },
   QuoteRevision: { priceMinor: "to_price_minor" },
 };
 
@@ -105,9 +125,50 @@ const TYPE_ALIAS = {
  */
 const RELATION = {
   Community: { pickups: "cmt_pickup_point" },
+  // ── 2026-08-30 第二轮定性 ──
+  CartItem: {
+    merchantNo: "经 goods_no join prd_goods.entity_no —— 购物车行只存 sku，"
+      + "归属靠商品带出来。**这是有意的**：商品换了主体，历史购物车行不该跟着变",
+    merchantName: "同上，join prd_goods.store_name",
+  },
+  Sku: {
+    storePrice: "prd_store_price.price —— 门店价单独一张表。"
+      + "没设过价的店按主体价卖（与门店库存的回退方向相反：没设库存按 0 卖）",
+  },
+  AfterSale: { timeline: "ord_status_log —— 售后的状态流转与订单共用一张日志表" },
+  SpecTemplate: {
+    primary: "prd_category_spec.is_primary —— **主维度是「类目 × 模板」这条绑定的属性**，"
+      + "不是模板自身的属性：同一个模板绑到不同类目上，是不是主维度可以不一样",
+  },
   Category: { children: "prd_category 自关联（parent_no）" },
+  // ── 进销存：名字与明细都在别的表 ──
+  StockBalance: {
+    name: "join inv_item.name —— 余额表只存 item_id。**这是有意的**：货品改名不该重写余额行",
+    specText: "join inv_item.spec_text",
+    baseUom: "join inv_item.base_uom",
+  },
+  StockItemDetail: {
+    barcode: "inv_item_ref 里 ref_system=BARCODE 的那条 —— **一个物料可以有多个条码**"
+      + "（换包装还是同一件货），所以它是引用表的一行而不是 inv_item 上的一列。"
+      + "商家货号（ERP）走同一张表的另一个 ref_system",
+    onHand: "join inv_stock_balance.on_hand（按 location 汇总）",
+    reserved: "join inv_stock_balance.reserved",
+    byLocation: "inv_stock_balance 按库位的多行",
+  },
+  StockLedgerRow: { itemName: "join inv_item.name" },
+  StockCount: { lines: "inv_stock_count_line" },
+  StockCountLine: {
+    name: "join inv_item.name",
+    specText: "join inv_item.spec_text",
+    baseUom: "join inv_item.base_uom",
+  },
+  StockTransfer: {
+    fromLocationName: "join inv_location.name（from_location_id）",
+    toLocationName: "join inv_location.name（to_location_id）",
+    lines: "调拨明细 —— 调拨走的是「发货出库单 + 收货进货单」两张单的行，不另存一份",
+  },
   Goods: {
-    merchant: "usr_merchant",
+    merchant: "mch_entity",
     skus: "prd_sku",
     groupBuy: "mkt_group_buy",
     promotions: "营销活动在商品上的投影",
@@ -126,11 +187,16 @@ const RELATION = {
     idempotencyKey: "sys_idempotent（幂等键是基础设施表，不挂业务单）",
     currency: "ord_order.currency —— 一次支付一个币种，落在主订单上",
   },
-  GroupBuy: { merchant: "usr_merchant", members: "mkt_group_member", neighborPickup: "cmt_pickup_point" },
+  GroupBuy: { merchant: "mch_entity", members: "mkt_group_member", neighborPickup: "cmt_pickup_point" },
   GroupRequest: { quotes: "mkt_quote", neighbours: "mkt_request_interest" },
-  Quote: { merchant: "usr_merchant", revisions: "mkt_quote_revision" },
+  Quote: { merchant: "mch_entity", revisions: "mkt_quote_revision" },
   Review: { appeal: "rvw_appeal", scores: "本表的 score_* 三列" },
-  Merchant: { serviceCommunityNos: "usr_merchant_community" },
+  Merchant: {
+    serviceCommunityNos: "mch_entity_community",
+    address: "mch_store.address —— **主体没有地址，门店才有**。一个主体可以有多家店，"
+      + "契约上这一格给的是「主营门店」的地址",
+    openHours: "mch_store.open_hours —— 同上，营业时间挂门店",
+  },
 };
 
 /**
@@ -145,14 +211,36 @@ const DERIVED = {
     expiringAt: "同上，取最近一批的到期时间",
     pendingActivateAt: "取最近一批未生效 EARN 行的 available_at，不落列",
   },
-  Community: { distance: "按用户当前位置实时算" },
+  Community: {
+    distance: "按用户当前位置实时算",
+    originName: "origin_code 经区划字典取名（masterDataPort.regionNames）——"
+      + "**只存码不存名**：地名会变，存了名字就会有两份说法",
+    rural: "kind === VILLAGE。端上要的是个布尔（走不走农村那套文案与类目），"
+      + "库里存的是聚落类型，多一种聚落时布尔就不够用了",
+  },
+  MerchantBrief: { selfOperated: "同 Merchant.selfOperated" },
+  Sku: {
+    priceByMarket: "prd_sku 按 (goods_no, market) 是**多行**，聚成 map 下发。"
+      + "只在商家侧下发：编辑页按市场逐格填而保存是整份覆盖，"
+      + "拿不到整张表就只能回填当前市场那一格，于是改一次标题其余市场的价就被删了",
+  },
+  Category: {
+    qualifications: "requiredCode 经资质字典取名。**展示用，不是校验依据**"
+      + "（判据是 required_code）—— 但商家要看的恰恰是这一句人话",
+  },
   Pickup: {
     distance: "按用户当前位置实时算",
     hostMerchantNo: "由 owner_ref 解析（type=STORE 时指向 merchant_no）",
-    hostName: "join usr_merchant",
-    hostAvatar: "join usr_merchant",
+    hostName: "join mch_entity",
+    hostAvatar: "join mch_entity",
   },
-  Goods: { price: "SKU 最低价（表注释已写明价格不在本表）", originPrice: "同上" },
+  Goods: {
+    price: "SKU 最低价（表注释已写明价格不在本表）",
+    originPrice: "同上",
+    status: "on_sale + audit_status + pending_on_sale 三列合出来的展示态 ——"
+      + "**库里不能合**：审核与上架是两条线，合了「驳回」和「下架」就共用取值",
+    hasDraft: "prd_goods_draft 有没有行（不比内容 —— 保存时内容相同即删行）",
+  },
   CartItem: {
     title: "join prd_goods（购物车只存 goods_no/sku_no —— 加购到结算之间商品会改，存快照反而给用户看的是旧价）",
     cover: "join prd_goods",
@@ -165,6 +253,8 @@ const DERIVED = {
     giftLabel: "由买赠活动实时算",
   },
   Order: {
+    receiver: "receiver_name / receiver_phone / receiver_address 三列聚成对象",
+    subOrders: "本表自身。契约的 Order 是子单，主单视角下这一格是同主单的兄弟行",
     pickupName: "join cmt_pickup_point",
     redeemCode:
       "与 verifyCode 同列（verify_code）—— V6 注释写明「自提码/核销码/兑换码三态共用一个字段」。" +
@@ -184,12 +274,15 @@ const DERIVED = {
   GroupRequest: {
     pickupName: "join cmt_pickup_point",
     interested: "按当前用户查 mkt_request_interest",
-    initiatorNickname: "join usr_user（表存 owner_id）",
-    initiatorAvatar: "join usr_user",
+    initiatorNickname: "join usr_account（表存 owner_id）",
+    initiatorAvatar: "join usr_account",
     confirmedCount: "按 mkt_request_interest 的确认态计数",
     confirmed: "按当前用户算",
   },
-  Coupon: { received: "按当前用户查 mkt_user_coupon" },
+  Coupon: {
+    received: "按当前用户查 mkt_user_coupon",
+    remain: "total_count - received_count，不落列 —— 落了就要和领取动作保持一致",
+  },
   Quote: { locked: "由 chosen 推导 —— 选定即锁价（ADR-003），不需要独立列" },
   PickupPoint: {
     ownerType: "由 owner_ref 前缀解析（表把「谁承接」压成一列）",
@@ -197,8 +290,26 @@ const DERIVED = {
   },
   Merchant: {
     distance: "按用户当前社区实时算",
+    selfOperated: "mch_store.business_mode === SELF_OPERATED（MerchantQueryPort.MODE_SELF_OPERATED）"
+      + "—— 销售主体是谁挂在**门店**上，不在主体上",
     scores: "表已拆成 score_goods / score_service / score_speed 三列，契约收成一个对象",
   },
+  Supplier: {
+    fromPlatform: "platform_supplier_no 非空 —— 平台带下来的供应商与自己录的，"
+      + "商家能改的字段不一样",
+  },
+  StockBalance: {
+    available: "on_hand - reserved。**不落列**：落了就要和每一次预占保持一致，"
+      + "而预占是高频写，多一列就多一处会对不上的地方",
+    flags: "按健康规则实时判（负库存 / 零库存仍在架 / 长期未动销）",
+  },
+  StockItemDetail: { available: "同 StockBalance.available" },
+  StockDocument: {
+    kind: "由来源表决定：inv_inbound_order → IN，inv_outbound_order → OUT。"
+      + "**库里不存这一列** —— 存了就会出现「在进货单表里 kind=OUT」这种自相矛盾的行",
+    subtitle: "展示用的一句话（供应商名 / 用途 / 来源单号），按单据类型拼",
+  },
+  StockTransfer: { totalQty: "按明细行汇总" },
   Address: { region: "表已拆成 province / city / district 三列，契约拼成一个字符串" },
 };
 
@@ -252,8 +363,8 @@ const AUDIT_COLS = new Set([
  */
 const ENTITY_MAP = {
   MerchantApplyStatus: {
-    table: "usr_merchant_apply",
-    note: "入驻**审核**生命周期。与 `usr_merchant.status`（**经营**状态：ACTIVE/SUSPENDED）是两条线 —— 审核发生在商家还不存在时，封禁发生在商家已存在后，混成一个枚举两件事迟早互相踩",
+    table: "mch_entity_apply",
+    note: "入驻**审核**生命周期。与 `mch_entity.status`（**经营**状态：ACTIVE/SUSPENDED）是两条线 —— 审核发生在商家还不存在时，封禁发生在商家已存在后，混成一个枚举两件事迟早互相踩",
   },
   PointAccount: {
     table: "pts_user_account",
@@ -273,11 +384,11 @@ const ENTITY_MAP = {
   Sku: { table: "prd_sku" },
   Category: { table: "prd_category" },
   // ── 用户与商家
-  User: { table: "usr_user" },
+  User: { table: "usr_account" },
   Address: { table: "usr_address" },
-  Merchant: { table: "usr_merchant" },
-  MerchantBrief: { table: "usr_merchant", note: "同表的投影，商品卡上只带这几个字段" },
-  MerchantApplyReq: { table: "usr_merchant_apply" },
+  Merchant: { table: "mch_entity" },
+  MerchantBrief: { table: "mch_entity", note: "同表的投影，商品卡上只带这几个字段" },
+  MerchantApplyReq: { table: "mch_entity_apply" },
   // ── 社区与自提
   Community: { table: "cmt_community" },
   Pickup: { table: "cmt_pickup_point" },
@@ -294,11 +405,36 @@ const ENTITY_MAP = {
   Coupon: { table: "mkt_coupon" },
   MarketingCampaign: { table: "mkt_campaign", note: "四类活动统一一张表：它们只差「触发条件 + 优惠方式」" },
   SpecTemplate: { table: "prd_spec_template" },
+
+  // ── 2026-08-30 进销存这一批 ──
+  //
+  // 这些实体的表在**第二个库**（backend/shop-inventory/.../db/inventory），
+  // 而本文件此前只读平台那一条 Flyway 历史 —— 于是整个域被报成
+  // 「契约有类型、库里无承载（阻塞）」，**结论正好反了**：表都建好了。
+  // 20 条假阻塞把真的那几条淹掉，这正是这份清单最怕的形状。
+  StockBalance: { table: "inv_stock_balance" },
+  StockItemDetail: { table: "inv_item", note: "货品档 + 当前余额的投影" },
+  StockLedgerRow: { table: "inv_ledger" },
+  StockDocument: {
+    table: "inv_inbound_order",
+    note: "进货/出库单在库里是**两张表**（inv_inbound_order / inv_outbound_order），"
+      + "契约收成一个 StockDocument 靠 docKind 区分 —— 单据字段两边一致，分表是为了各自的行表",
+  },
+  StockCount: { table: "inv_stock_count" },
+  StockCountLine: { table: "inv_stock_count_line" },
+  StockTransfer: { table: "inv_transfer_order" },
+  StockLocation: { table: "inv_location" },
+  Supplier: { table: "inv_supplier" },
+  Carrier: {
+    table: "ful_carrier",
+    note: "**承运方归履约域维护，进销存只读** —— 跨库不能外键，"
+      + "所以调拨单存的是业务键 carrier，名字由端上回传快照",
+  },
   UserCard: { table: "mkt_user_coupon", note: "卡包与券共表：储值卡/次卡在 mkt_user_coupon 上用类型区分" },
   // ── 结算
   SettleBill: { table: "stl_bill" },
   // ── 消息
-  Message: { table: "msg_message" },
+  Message: { table: "notify_message" },
 };
 
 /**
@@ -307,7 +443,7 @@ const ENTITY_MAP = {
  * 而真正缺表的那几个就没人看见了。
  */
 const VIEW_TYPES = {
-  StoreHome: "usr_merchant + prd_goods + usr_store_favorite",
+  StoreHome: "mch_entity + prd_goods + usr_store_favorite",
   MerchantTodo: "ord_sub_order + ord_after_sale + mkt_request 的计数",
   MerchantStats: "ord_sub_order 的聚合",
   FrequentItem: "ord_item 按 (user_no, sku_no) 的频次聚合",
@@ -324,14 +460,14 @@ const VIEW_TYPES = {
   MerchantPointAccount:
     "pts_merchant_ledger 按 (merchant_no, period) 聚合 + 四级开关判定。" +
     "**不是表**：商家侧看的是钱与开关，不是余额（预付费模型，V22/V28）",
-  StoreProfile: "usr_merchant 的店主可编辑子集",
+  StoreProfile: "mch_entity 的店主可编辑子集",
   MerchantProfile:
-    "B 端登录态，跨四张表：usr_merchant（主体）+ usr_user（手机号，经 owner_user_no）" +
-    " + usr_merchant_apply（驳回原因）+ cmt_pickup_point（是否承接自提点）",
+    "B 端登录态，跨四张表：mch_entity（主体）+ usr_account（手机号，经 owner_user_no）" +
+    " + mch_entity_apply（驳回原因）+ cmt_pickup_point（是否承接自提点）",
   StoreQrcode: "由 merchant_no 实时生成，不存",
   ShareKit: "由服务端按语言/市场实时生成，不存",
   MerchantCustomer: "ord_sub_order 按 (merchant_no, user_no) 的聚合",
-  VisitedMerchant: "usr_merchant + ord_sub_order 的聚合",
+  VisitedMerchant: "mch_entity + ord_sub_order 的聚合",
   AppointmentSlot: "服务类商品的可约时段，由容量配置实时算",
   SpecGroup: "prd_goods.spec_groups JSON 列内的结构",
   SpecOption: "prd_goods.spec_groups JSON 列内的结构",
@@ -387,8 +523,8 @@ const THEMES = [
     why:
       "邻里购物最硬的约束是**商家有服务半径**：隔壁区的生鲜店送不到我的自提点。" +
       "`serviceScope` 决定这家店的货在 C 端能被谁看到，选错不是展示问题而是下单后提不了货。" +
-      "库里 `usr_merchant` 没有任何范围字段 —— 可见性过滤没有依据。",
-    action: "usr_merchant 补 service_scope / service_city_code，另建 usr_merchant_community 关联表",
+      "库里 `mch_entity` 没有任何范围字段 —— 可见性过滤没有依据。",
+    action: "mch_entity 补 service_scope / service_city_code，另建 mch_entity_community 关联表",
   },
   {
     title: "订单履约字段缺失（与已知契约漂移互为佐证）",
@@ -422,7 +558,16 @@ function assertNoDupKeys(name, src) {
 }
 
 // ---------------------------------------------------------------- 比对
-const tables = readColumnNames(ROOT);
+/*
+ * **两条 Flyway 历史都要读**。`INVENTORY_MIGRATION_DIR` 默认不进 `readSchema`，
+ * 那个默认对平台侧生成器（ER 图、表清单）是对的 —— 混进去会让它们凭空多出十几张表。
+ *
+ * 但本文件映射的是**契约实体**，而契约里有整整一批进销存实体
+ * （StockBalance / StockLedgerRow / Supplier / Carrier …）。不读第二个目录，
+ * 它们会被报成「契约有类型、库里无承载（阻塞）」——**结论正好反了**：
+ * 表都建好了，是这个生成器看不见。20 条假阻塞会把真的那几条淹掉。
+ */
+const tables = readColumnNames(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR]);
 const cSchemas = { ...readSchemas("docs/api/openapi.yaml"), ...readSchemas("docs/api/openapi-b.yaml") };
 const opsSchemas = readSchemas("docs/api/openapi-ops.yaml");
 
