@@ -112,6 +112,37 @@ export const feeRules: FeeRuleVersion[] = [
 ];
 
 /**
+ * 支付通道设置（后端 `sys_pay_channel` + `sys_pay_channel_rate`）。
+ *
+ * <b>ALIPAY 故意一条费率都不配</b>：「没配过费率」是真实存在的初始状态，
+ * 而页面在那一支要显示「未配置」而不是 0 —— mock 里两个通道都给上费率的话，
+ * 那一支永远走不到，而它正是运营第一次打开这一页看到的画面。
+ */
+export const payChannels: {
+  payChannel: string; name: string; enabled: boolean; markets: string | null;
+  currency: string | null; settleCycle: string | null; supportsSubsidy: boolean;
+  rates: {
+    rateNo: string; payChannel: string; payMethod: string; legalForm: string;
+    rateBp: number; minFeeMinor: number; effectiveFrom: number;
+    enabled?: boolean; remark?: string | null;
+  }[];
+}[] = [
+  {
+    payChannel: "WECHAT", name: "微信支付", enabled: true, markets: '["CN"]',
+    currency: "CNY", settleCycle: "T+1", supportsSubsidy: true,
+    rates: [
+      { rateNo: "PCR-INIT-WX", payChannel: "WECHAT", payMethod: "*", legalForm: "*",
+        rateBp: 38, minFeeMinor: 0, effectiveFrom: 0, enabled: true, remark: "标准费率 0.38%" },
+    ],
+  },
+  {
+    payChannel: "ALIPAY", name: "支付宝", enabled: true, markets: '["CN"]',
+    currency: "CNY", settleCycle: "T+1", supportsSubsidy: true,
+    rates: [],
+  },
+];
+
+/**
  * 进项票。**两种都要有**：抬头对得上的（能核验）与对不上的（不能核验，
  * 而界面要说清是这个原因）。只造能过的话，那条拦截分支永远看不见。
  */

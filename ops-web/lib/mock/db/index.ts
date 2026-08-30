@@ -16,7 +16,7 @@ export { reviews, reviewAppeals, scoreConfig } from "./review";
 export { afterSales, fastRefundRule } from "./aftersale";
 export { groupCampaigns, demandOrders, quotes } from "./group";
 export { categories, skus, goodsAudits, specTemplates, spuStds, topics, topicGoods } from "./product";
-export { settlements, splitRecords, feeRules, purchaseInvoices, buyerInvoiceRequests, SETTLE_FREEZE_DAYS } from "./finance";
+export { settlements, splitRecords, feeRules, payChannels, purchaseInvoices, buyerInvoiceRequests, SETTLE_FREEZE_DAYS } from "./finance";
 export { staffs, roleDefs, rolePoints, auditLogs } from "./iam";
 export { attributionRule, attributionTraces, fissionCampaigns } from "./growth";
 export { riskEvents, blacklists, riskRules } from "./risk";

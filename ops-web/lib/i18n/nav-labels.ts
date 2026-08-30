@@ -117,6 +117,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   结算单与分账: { en: "Settlements & splits" },
   分账明细: { en: "Split details" },
   分档费率与服务费: { en: "Rates & service fees" },
+  支付通道与费率: { en: "Channels & channel fees" },
   提现审批: { en: "Withdrawal approval" },
   发票与个税: { en: "Invoices & tax" },
 

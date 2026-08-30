@@ -47,4 +47,7 @@ export const financeHttp: FinanceApi = {
   saveInvoiceTitle: (v) => client.post("/ops/finance/invoice-title", v),
   getTaxRule: () => client.get("/ops/finance/tax-rule"),
   saveTaxRule: (v) => client.put("/ops/finance/tax-rule", v),
+  listPayChannels: () => client.get("/ops/settle/pay-channels"),
+  updatePayChannel: (channel, v) => client.put(`/ops/settle/pay-channels/${channel}`, v),
+  addPayChannelRate: (channel, v) => client.post(`/ops/settle/pay-channels/${channel}/rates`, v),
 };

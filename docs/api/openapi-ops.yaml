@@ -5083,6 +5083,91 @@ components:
         - "coverage"
       additionalProperties: false
       description: "一条对账轴的一轮结果。\n\n⚠️ **`coverage.note` 必须显示** —— 四条轴今天都只有 A 侧（我方自查）， 渠道账单、分账查询、银行流水三种外部数据都还没接。 不说的话，「今天没有差异」对四条轴都是假话。\n\n`error` 非空 = **这条轴今天没跑成**。它与「零差异」在页面上长得一样、 含义却完全相反，所以要单独标出来。"
+    PayChannelRateVersion: 
+      type: "object"
+      properties: 
+        rateNo: 
+          type: "string"
+        payChannel: 
+          type: "string"
+        payMethod: 
+          type: "string"
+          description: "`*` = 该通道全部支付方式"
+        legalForm: 
+          type: "string"
+          description: "`*` = 全部主体形态"
+        rateBp: 
+          type: "number"
+          description: "万分比。38 = 0.38%"
+        minFeeMinor: 
+          type: "number"
+          description: "单笔最低手续费（分）。0 = 无保底"
+        effectiveFrom: 
+          type: "number"
+          description: "生效时刻（毫秒）。**填未来时刻 = 预约生效**"
+        enabled: 
+          type: "boolean"
+        remark: 
+          type: 
+            - "string"
+            - "null"
+      required: 
+        - "rateNo"
+        - "payChannel"
+        - "payMethod"
+        - "legalForm"
+        - "rateBp"
+        - "minFeeMinor"
+        - "effectiveFrom"
+      additionalProperties: false
+      description: "通道费率的一个版本（后端 `sys_pay_channel_rate`）。"
+    PayChannelSetting: 
+      type: "object"
+      properties: 
+        payChannel: 
+          type: "string"
+        name: 
+          type: "string"
+        enabled: 
+          type: "boolean"
+        markets: 
+          type: 
+            - "string"
+            - "null"
+          description: "JSON 数组文本，如 `[\"CN\"]`。空 = 全市场可用"
+        currency: 
+          type: 
+            - "string"
+            - "null"
+        settleCycle: 
+          type: 
+            - "string"
+            - "null"
+        supportsSubsidy: 
+          type: "boolean"
+          description: "能否补差。**为 false 时该通道不开积分抵扣** —— 这是通道的事实，运营改不了"
+        currentRate: 
+          anyOf: 
+            - "$ref": "#/definitions/PayChannelRateVersion"
+            - type: "null"
+          description: "此刻生效的那一版；**一条都没配时为 null**，要显示成「未配置」而不是 0"
+        rates: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/PayChannelRateVersion"
+          description: "全部版本，按生效时间倒序"
+      required: 
+        - "payChannel"
+        - "name"
+        - "enabled"
+        - "markets"
+        - "currency"
+        - "settleCycle"
+        - "supportsSubsidy"
+        - "currentRate"
+        - "rates"
+      additionalProperties: false
+      description: "一个支付通道的设置与费率。"
     Staff: 
       type: "object"
       properties: 
@@ -9779,6 +9864,110 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/settle/pay-channels": 
+    get: 
+      operationId: "listPayChannels"
+      summary: "支付通道设置 + 每个通道的费率版本"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/PayChannelSetting"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/settle/pay-channels/{channel}": 
+    put: 
+      operationId: "updatePayChannel"
+      summary: "改通道的开关与结算属性"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PayChannelSetting"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "channel"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/settle/pay-channels/{channel}/rates": 
+    post: 
+      operationId: "addPayChannelRate"
+      summary: "加一版通道费率"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PayChannelRateVersion"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "channel"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       requestBody: 
         required: true
         content: 

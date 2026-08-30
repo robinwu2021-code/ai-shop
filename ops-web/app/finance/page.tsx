@@ -25,6 +25,7 @@ import { WithdrawTab } from "./withdraw-tab";
 import { InvoiceTab } from "./invoice-tab";
 // 费率单独成块：它与结算那几个 tab 只共用文案表，且形状是版本化的、与配置卡完全不同
 import { FeeRuleTab } from "./fee-rule-tab";
+import { PayChannelTab } from "./pay-channel-tab";
 import { PointsTab } from "./points-tab";
 import { PointsPolicyTab } from "./points-policy-tab";
 import { PayablesTab } from "./payables-tab";
@@ -46,7 +47,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof FINANCE_COPY)["zh"];
 const TAB_KEYS = ["settlements", "splits", "refund-back", "payables", "purchase-invoices",
-  "buyer-invoices", "rates", "points", "points-policy", "withdraw", "invoice"] as const;
+  "buyer-invoices", "rates", "pay-channels", "points", "points-policy", "withdraw", "invoice"] as const;
 
 const TRAFFIC_LABEL = (c: Copy): Record<TrafficSource, string> => ({
   MERCHANT_OWNED: c.trafficMerchantOwned,
@@ -201,7 +202,7 @@ function FinanceInner() {
     <div>
       <TabHeader tabs={tabs} value={tab} onChange={setTab} />
 
-      {tab !== "rates" && !canExecute && (
+      {tab !== "rates" && tab !== "pay-channels" && !canExecute && (
         <ReadOnlyNotice what={c.readOnlyWhat} perm="finance:settle:execute" note={c.readOnlyNote} className="mb-3" />
       )}
 
@@ -276,6 +277,8 @@ function FinanceInner() {
       {tab === "invoice" && <InvoiceTab c={c} canEdit={canInvoice} canWrite={canInvoiceWrite} />}
 
       {tab === "rates" && <FeeRuleTab c={c} canEdit={canEditRate} />}
+
+      {tab === "pay-channels" && <PayChannelTab c={c} canEdit={canEditRate} />}
       {/*
         自营应付那一整条。**后端十个端点早已实现，此前运营端零入口** ——
         而这是今天唯一真能把钱付出去的路（第三方走分账，而分账网关是桩）。

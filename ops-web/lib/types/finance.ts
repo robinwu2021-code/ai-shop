@@ -461,3 +461,38 @@ export interface ReconAxisReport {
   coverage: { complete: boolean; note: string };
   error?: string | null;
 }
+
+/** 通道费率的一个版本（后端 `sys_pay_channel_rate`）。 */
+export interface PayChannelRateVersion {
+  rateNo: string;
+  payChannel: string;
+  /** `*` = 该通道全部支付方式 */
+  payMethod: string;
+  /** `*` = 全部主体形态 */
+  legalForm: string;
+  /** 万分比。38 = 0.38% */
+  rateBp: number;
+  /** 单笔最低手续费（分）。0 = 无保底 */
+  minFeeMinor: number;
+  /** 生效时刻（毫秒）。**填未来时刻 = 预约生效** */
+  effectiveFrom: number;
+  enabled?: boolean;
+  remark?: string | null;
+}
+
+/** 一个支付通道的设置与费率。 */
+export interface PayChannelSetting {
+  payChannel: string;
+  name: string;
+  enabled: boolean;
+  /** JSON 数组文本，如 `["CN"]`。空 = 全市场可用 */
+  markets: string | null;
+  currency: string | null;
+  settleCycle: string | null;
+  /** 能否补差。**为 false 时该通道不开积分抵扣** —— 这是通道的事实，运营改不了 */
+  supportsSubsidy: boolean;
+  /** 此刻生效的那一版；**一条都没配时为 null**，要显示成「未配置」而不是 0 */
+  currentRate: PayChannelRateVersion | null;
+  /** 全部版本，按生效时间倒序 */
+  rates: PayChannelRateVersion[];
+}

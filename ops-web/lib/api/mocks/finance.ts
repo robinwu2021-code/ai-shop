@@ -322,4 +322,50 @@ export const financeMock: FinanceApi = {
     Object.assign(db.taxRule, v, { updatedAt: new Date().toISOString(), updatedBy: "admin" });
     return wait(db.taxRule, 400);
   },
+
+  /*
+   * 支付通道。**mock 里也要照后端的形状返回 `currentRate: null`** ——
+   * 「没配过费率」是真实存在的初始状态，mock 里塞一个数会让页面
+   * 永远走不到「未配置」那一支，而那正是运营第一次打开时看到的画面。
+   */
+  listPayChannels: async () => wait(db.payChannels.map(withCurrentRate)),
+
+  updatePayChannel: async (channel, v) => {
+    const row = db.payChannels.find((c) => c.payChannel === channel);
+    if (!row) fail("通道不存在", "Channel not found");
+    Object.assign(row, v);
+    return wait(withCurrentRate(row), 300);
+  },
+
+  addPayChannelRate: async (channel, v) => {
+    const row = db.payChannels.find((c) => c.payChannel === channel);
+    if (!row) fail("通道不存在", "Channel not found");
+    if (v.rateBp < 0 || v.rateBp > 10000) {
+      fail("万分比越界 —— 把 0.38% 写成 38 是最常见的那种错",
+        "Basis points out of range — writing 0.38% as 38 is the usual slip");
+    }
+    const rate = {
+      rateNo: `PCR${Date.now()}${Math.floor(Math.random() * 1000)}`,
+      payChannel: channel,
+      payMethod: v.payMethod || "*",
+      legalForm: v.legalForm || "*",
+      rateBp: v.rateBp,
+      minFeeMinor: v.minFeeMinor ?? 0,
+      effectiveFrom: v.effectiveFrom ?? Date.now(),
+      enabled: true,
+      remark: v.remark ?? null,
+    };
+    row.rates = [rate, ...row.rates];
+    return wait(rate, 300);
+  },
 };
+
+/** 此刻生效的那一版：精确优先于通配，与后端 `PayChannelRateServiceImpl` 同一套。 */
+function withCurrentRate(c: (typeof db.payChannels)[number]) {
+  const now = Date.now();
+  const usable = c.rates.filter((r) => r.enabled !== false && r.effectiveFrom <= now);
+  const pick = (pm: string, lf: string) =>
+    usable.filter((r) => r.payMethod === pm && r.legalForm === lf)
+      .sort((a, b) => b.effectiveFrom - a.effectiveFrom)[0] ?? null;
+  return { ...c, currentRate: pick("*", "*") };
+}

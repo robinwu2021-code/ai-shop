@@ -1915,6 +1915,77 @@ _无字段_
 _无字段_
 
 
+#### GET `/ops/settle/pay-channels`
+
+支付通道设置 + 每个通道的费率版本
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayChannelSetting`](#paychannelsetting)\[\]
+
+
+#### PUT `/ops/settle/pay-channels/{channel}`
+
+改通道的开关与结算属性
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `channel` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PayChannelSetting`](#paychannelsetting)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payChannel` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `enabled` | `boolean` | 是 | — |
+| `markets` | `string,null` | 是 | JSON 数组文本，如 `["CN"]`。空 = 全市场可用 |
+| `currency` | `string,null` | 是 | — |
+| `settleCycle` | `string,null` | 是 | — |
+| `supportsSubsidy` | `boolean` | 是 | 能否补差。**为 false 时该通道不开积分抵扣** —— 这是通道的事实，运营改不了 |
+| `currentRate` | [`#/definitions/PayChannelRateVersion`](#definitionspaychannelrateversion) \| `null` | 是 | 此刻生效的那一版；**一条都没配时为 null**，要显示成「未配置」而不是 0 |
+| `rates` | [`#/definitions/PayChannelRateVersion`](#definitionspaychannelrateversion)\[\] | 是 | 全部版本，按生效时间倒序 |
+
+
+#### POST `/ops/settle/pay-channels/{channel}/rates`
+
+加一版通道费率
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `channel` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PayChannelRateVersion`](#paychannelrateversion)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rateNo` | `string` | 是 | — |
+| `payChannel` | `string` | 是 | — |
+| `payMethod` | `string` | 是 | `*` = 该通道全部支付方式 |
+| `legalForm` | `string` | 是 | `*` = 全部主体形态 |
+| `rateBp` | `number` | 是 | 万分比。38 = 0.38% |
+| `minFeeMinor` | `number` | 是 | 单笔最低手续费（分）。0 = 无保底 |
+| `effectiveFrom` | `number` | 是 | 生效时刻（毫秒）。**填未来时刻 = 预约生效** |
+| `enabled` | `boolean` | 否 | — |
+| `remark` | `string,null` | 否 | — |
+
+
 #### GET `/ops/settlements`
 
 listSettlements
@@ -9650,6 +9721,38 @@ KPI 卡（金额为最小货币单位整数）。
 | `maxPostpone` | `number` | 是 | 顺延次数上限（action=POSTPONE 时有意义） |
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
+
+### PayChannelRateVersion
+
+通道费率的一个版本（后端 `sys_pay_channel_rate`）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rateNo` | `string` | 是 | — |
+| `payChannel` | `string` | 是 | — |
+| `payMethod` | `string` | 是 | `*` = 该通道全部支付方式 |
+| `legalForm` | `string` | 是 | `*` = 全部主体形态 |
+| `rateBp` | `number` | 是 | 万分比。38 = 0.38% |
+| `minFeeMinor` | `number` | 是 | 单笔最低手续费（分）。0 = 无保底 |
+| `effectiveFrom` | `number` | 是 | 生效时刻（毫秒）。**填未来时刻 = 预约生效** |
+| `enabled` | `boolean` | 否 | — |
+| `remark` | `string,null` | 否 | — |
+
+### PayChannelSetting
+
+一个支付通道的设置与费率。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payChannel` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `enabled` | `boolean` | 是 | — |
+| `markets` | `string,null` | 是 | JSON 数组文本，如 `["CN"]`。空 = 全市场可用 |
+| `currency` | `string,null` | 是 | — |
+| `settleCycle` | `string,null` | 是 | — |
+| `supportsSubsidy` | `boolean` | 是 | 能否补差。**为 false 时该通道不开积分抵扣** —— 这是通道的事实，运营改不了 |
+| `currentRate` | [`#/definitions/PayChannelRateVersion`](#definitionspaychannelrateversion) \| `null` | 是 | 此刻生效的那一版；**一条都没配时为 null**，要显示成「未配置」而不是 0 |
+| `rates` | [`#/definitions/PayChannelRateVersion`](#definitionspaychannelrateversion)\[\] | 是 | 全部版本，按生效时间倒序 |
 
 ### PickupPoint
 

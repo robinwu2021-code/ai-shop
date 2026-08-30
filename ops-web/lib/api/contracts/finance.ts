@@ -1,5 +1,5 @@
 // 覆盖范围：分账结算（P-12.1）与提现·发票·个税（P-12.2）。
-import type {
+import type { PayChannelSetting, PayChannelRateVersion,
   PurchaseInvoice,
   BuyerInvoiceRequest,
   ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
@@ -139,4 +139,30 @@ export interface FinanceApi {
   getTaxRule(): Promise<TaxRule>;
   /** 个税代扣规则。只对个人主体生效；税率上限与起征点见 lib/constants.ts。 */
   saveTaxRule(v: Pick<TaxRule, "threshold" | "rate">): Promise<TaxRule>;
+  /** 支付通道设置 + 每个通道的费率版本。 */
+  listPayChannels(): Promise<PayChannelSetting[]>;
+
+  /**
+   * 改通道的开关与结算属性。
+   *
+   * <b>能力位不在这里改</b> —— 支不支持补差、分账上限多少是通道自己的事实，
+   * 不是运营的选择；改错会让积分抵扣在一个做不到补差的通道上开出来，那是资金差错。
+   */
+  updatePayChannel(channel: string, v: {
+    enabled?: boolean;
+    markets?: string;
+    currency?: string;
+    settleCycle?: string;
+  }): Promise<PayChannelSetting>;
+
+  /** 加一版通道费率。**不改旧行**，与 `addFeeRule` 同一条规矩。 */
+  addPayChannelRate(channel: string, v: {
+    payMethod?: string;
+    legalForm?: string;
+    rateBp: number;
+    minFeeMinor?: number;
+    effectiveFrom?: number;
+    remark?: string;
+  }): Promise<PayChannelRateVersion>;
+
 }

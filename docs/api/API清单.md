@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 631 个接口**：后端已实现 516（82%）· 前端在调 569
+**合计 634 个接口**：后端已实现 519（82%）· 前端在调 572
 
 ---
 
@@ -689,7 +689,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **349** 个接口 ｜ 后端已实现 **267**（77%）｜ 前端在调 **287**
+共 **352** 个接口 ｜ 后端已实现 **270**（77%）｜ 前端在调 **290**
 
 ### aftersale（4）
 
@@ -761,7 +761,7 @@
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 
-### finance（29）
+### finance（32）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -792,6 +792,9 @@
 | GET | `/ops/settle/fee-rules` | 全部费率版本，含历史 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/settle/fee-rules` | 新增一个费率版本 | — | `FeeRuleVersion` | — | ✅ | ✅ |
 | GET | `/ops/settle/fee-rules/effective` | 某时刻实际生效的四格费率 | — | `EffectiveFeeRates` | — | ✅ | ✅ |
+| GET | `/ops/settle/pay-channels` | 支付通道设置 + 每个通道的费率版本 | — | `数组` | — | ✅ | ✅ |
+| PUT | `/ops/settle/pay-channels/{channel}` | 改通道的开关与结算属性 | — | `PayChannelSetting` | — | ✅ | ✅ |
+| POST | `/ops/settle/pay-channels/{channel}/rates` | 加一版通道费率 | — | `PayChannelRateVersion` | — | ✅ | ✅ |
 | GET | `/ops/settlements` | listSettlements | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/split-records` | listSplitRecords | — | `object` | — | ✅ | ✅ |
 
