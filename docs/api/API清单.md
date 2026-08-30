@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 628 个接口**：后端已实现 513（82%）· 前端在调 566
+**合计 631 个接口**：后端已实现 515（82%）· 前端在调 568
 
 ---
 
@@ -689,7 +689,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **346** 个接口 ｜ 后端已实现 **264**（76%）｜ 前端在调 **284**
+共 **349** 个接口 ｜ 后端已实现 **266**（76%）｜ 前端在调 **286**
 
 ### aftersale（4）
 
@@ -965,7 +965,7 @@
 | POST | `/ops/stores/{storeNo}/channels/{channel}/lock` | lockChannel | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/stores/{storeNo}/channels/{channel}/unlock` | unlockChannel | — | `object` | — | ✅ | ✅ |
 
-### message（34）
+### message（36）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -998,6 +998,8 @@
 | POST | `/ops/push-tasks` | 新建广播（N6） | — | `NotifyPushTask` | — | ✅ | ✅ |
 | POST | `/ops/push-tasks/{taskNo}/cancel` | 取消广播（仅 QUEUED 可取消） | — | `NotifyPushTask` | — | ✅ | ✅ |
 | GET | `/ops/push-tasks/estimate` | 预估触达：**建任务前**先看某人群当下覆盖多少人（N6b） | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/scene-channel` | 场景×通道矩阵 | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/scene-channel/{scene}/{audience}/{channel}` | 切换某一格 | — | `SceneChannelCell` | — | ✅ | ✅ |
 | GET | `/ops/tickets` | listTickets | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/tickets/{no}/assign` | 分派工单（P-14.2.1） | — | `Ticket` | — | ⬜ | ✅ |
 | POST | `/ops/tickets/{no}/close` | closeTicket | — | `Ticket` | — | ⬜ | ✅ |
@@ -1029,7 +1031,7 @@
 | POST | `/ops/payments/recon-diffs/{diffNo}/ignore` | 忽略一条差异（如渠道手续费导致的分位差） | — | `ReconDiff` | — | ✅ | ✅ |
 | POST | `/ops/payments/recon-diffs/{diffNo}/resolve` | 处置一条差异（P-4.2.1 / 4.2.2） | — | `ReconDiff` | — | ✅ | ✅ |
 
-### product（43）
+### product（44）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1044,6 +1046,7 @@
 | POST | `/ops/category-points/{categoryNo}` | `earnMode` 传 null = 清除这条规则，回到平台兜底 */ | — | `数组` | — | ✅ | ⬜ |
 | GET | `/ops/category-specs` | 类目 × 规格总览（规格库 V195） | — | `数组` | — | ✅ | ⬜ |
 | POST | `/ops/category-specs/{categoryNo}` | 整份替换一个类目的绑定 */ | — | `数组` | — | ✅ | ⬜ |
+| POST | `/ops/community-pool/resync${entityNo ? ` | 重建社区池（「这件商品出现在哪些社区」的派生索引） | — | `integer` | — | ⬜ | ⬜ |
 | GET | `/ops/goods` | 商品池：按商家/类目/关键词/状态筛，goods 粒度（每行一个商品，SKU 嵌在 `skus[]` 里） | — | `object` | — | ✅ | ⬜ |
 | GET | `/ops/goods/{goodsNo}` | 商品详情：三语文案、SKU 矩阵、规格组、驳回原因，审核抽屉读的就是它 | — | `GoodsDetail` | — | ✅ | ✅ |
 | POST | `/ops/goods/{goodsNo}/audit` | 审核商品 | — | `GoodsAudit` | — | ✅ | ✅ |

@@ -5783,6 +5783,34 @@ components:
         - "SENT"
         - "FAILED"
       description: "发送结果。**失败也记**——只记成功的话，这张表回答不了「他为什么没收到」。"
+    SceneChannelCell: 
+      type: "object"
+      properties: 
+        scene: 
+          type: "string"
+          description: "场景码（订单已支付、售后已受理…）"
+        audience: 
+          type: "string"
+          description: "受众：买家 / 商家 / 运营"
+        channel: 
+          type: "string"
+        enabled: 
+          type: "boolean"
+        pushLevel: 
+          type: "string"
+          description: "推送等级（App 推送用；其它通道为空）"
+        locked: 
+          type: "boolean"
+          description: "**恒锁定的格子**。站内信（INAPP）是事实记录，运营不可关 —— 后端会拒掉这一格的关闭请求，前端被绕过也兜得住，界面只是别让人白点。"
+      required: 
+        - "scene"
+        - "audience"
+        - "channel"
+        - "enabled"
+        - "pushLevel"
+        - "locked"
+      additionalProperties: false
+      description: "场景 × 受众 × 通道 的一格（P-14.1）。\n\n<p>「哪个事件走哪些通道」以前**硬编码在编排里** —— 后端把它做成了可配置， 而运营端此前没有入口，于是这份配置存在、能改，却没人看得见。"
     NotifyChannelRow: 
       type: "object"
       properties: 
@@ -5839,7 +5867,6 @@ components:
         - "missingCreds"
         - "locked"
       additionalProperties: false
-      description: "渠道注册表一行（触达推送中台 N2/N4）。一条 = 类型×供应商×接入范围×归属。 类型/供应商/接入范围/状态用 string（同 NotifyLog.bizType）：取值随后端演进， 端上不硬编码一份联合类型。"
     NotifyPushTask: 
       type: "object"
       properties: 
@@ -15213,6 +15240,82 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/scene-channel": 
+    get: 
+      operationId: "sceneChannels"
+      summary: "场景×通道矩阵"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/SceneChannelCell"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/scene-channel/{scene}/{audience}/{channel}": 
+    post: 
+      operationId: "setSceneChannel"
+      summary: "切换某一格"
+      tags: 
+        - "message"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/SceneChannelCell"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "scene"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+        - name: "audience"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+        - name: "channel"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/faqs": 
     get: 
       operationId: "listFaqs"
@@ -15887,6 +15990,38 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/community-pool/resync${entityNo ? ": 
+    post: 
+      operationId: "resyncCommunityPool"
+      summary: "重建社区池（「这件商品出现在哪些社区」的派生索引）"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "integer"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/goods/{goodsNo}/audit": 
     post: 
       operationId: "auditGoods"

@@ -5458,6 +5458,47 @@ _无字段_
 类型：`object`
 
 
+#### GET `/ops/scene-channel`
+
+场景×通道矩阵
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SceneChannelCell`](#scenechannelcell)\[\]
+
+
+#### POST `/ops/scene-channel/{scene}/{audience}/{channel}`
+
+切换某一格
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `scene` | path | `string` | 是 | — |
+| `audience` | path | `string` | 是 | — |
+| `channel` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`SceneChannelCell`](#scenechannelcell)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scene` | `string` | 是 | 场景码（订单已支付、售后已受理…） |
+| `audience` | `string` | 是 | 受众：买家 / 商家 / 运营 |
+| `channel` | `string` | 是 | — |
+| `enabled` | `boolean` | 是 | — |
+| `pushLevel` | `string` | 是 | 推送等级（App 推送用；其它通道为空） |
+| `locked` | `boolean` | 是 | **恒锁定的格子**。站内信（INAPP）是事实记录，运营不可关 —— 后端会拒掉这一格的关闭请求，前端被绕过也兜得住，界面只是别让人白点。 |
+
+
 #### GET `/ops/tickets`
 
 listTickets
@@ -6196,6 +6237,19 @@ _无字段_
 **出参**（`data`）
 
 类型：[`CategorySpec`](#categoryspec)\[\]
+
+
+#### POST `/ops/community-pool/resync${entityNo ? `
+
+重建社区池（「这件商品出现在哪些社区」的派生索引）
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`integer`
 
 
 #### GET `/ops/goods`
@@ -9429,8 +9483,6 @@ KPI 卡（金额为最小货币单位整数）。
 
 ### NotifyChannelRow
 
-渠道注册表一行（触达推送中台 N2/N4）。一条 = 类型×供应商×接入范围×归属。 类型/供应商/接入范围/状态用 string（同 NotifyLog.bizType）：取值随后端演进， 端上不硬编码一份联合类型。
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `channelNo` | `string` | 是 | 渠道编号（业务主键，启停用它） |
@@ -9979,6 +10031,19 @@ KPI 卡（金额为最小货币单位整数）。
 | `weighDiff` | `string` | 是 | 称重差价规则文案，生鲜订单展示 |
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
+
+### SceneChannelCell
+
+场景 × 受众 × 通道 的一格（P-14.1）。 <p>「哪个事件走哪些通道」以前**硬编码在编排里** —— 后端把它做成了可配置， 而运营端此前没有入口，于是这份配置存在、能改，却没人看得见。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scene` | `string` | 是 | 场景码（订单已支付、售后已受理…） |
+| `audience` | `string` | 是 | 受众：买家 / 商家 / 运营 |
+| `channel` | `string` | 是 | — |
+| `enabled` | `boolean` | 是 | — |
+| `pushLevel` | `string` | 是 | 推送等级（App 推送用；其它通道为空） |
+| `locked` | `boolean` | 是 | **恒锁定的格子**。站内信（INAPP）是事实记录，运营不可关 —— 后端会拒掉这一格的关闭请求，前端被绕过也兜得住，界面只是别让人白点。 |
 
 ### ScoreConfig
 
