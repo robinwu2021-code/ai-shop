@@ -98,7 +98,7 @@ import type {
   Qualification,
   QualificationSaveReq, MerchantSpecDim, StoreCategorySpecs, SpecOverride, SpecOption,
   // 进销存（P-18）
-  StockSummary, StockBalance, StockItemDetail, StockLedgerPage, StockDocument,
+  StockSummary, StockBalance, StockItemDetail, StockLedgerPage, StockDocument, Supplier,
   StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
   StockCount, StockTransfer,
   FulfillmentImpactItem,
@@ -799,7 +799,6 @@ export interface MerchantApi {
    */
   mPublishGoods(goodsNo: string): Promise<Goods>;
 
-
   /**
    * 只改截单与到货说明（生鲜）。<b>不触发重审、不下架</b> ——
    * 生鲜商家每天晚上定明天的截单，走 `mSaveGoods` 的话改一次等于停一天生意。
@@ -1322,6 +1321,12 @@ export interface MerchantApi {
    * 于是**商家没法给它记第一笔进货**。进货、盘点两处必须走这一条。
    */
   mStockPickable(q?: { q?: string; size?: number }): Promise<StockBalance[]>;
+
+  /** 供应商档案。**挑供应商传 activeOnly=true** —— 停用的不该出现在新单据里 */
+  mSuppliers(q?: { keyword?: string; activeOnly?: boolean }): Promise<Supplier[]>;
+  mSupplierCreate(body: { name: string; shortName?: string; contactName?: string; contactPhone?: string; remark?: string }): Promise<{ supplierNo: string }>;
+  mSupplierUpdate(no: string, body: { name?: string; shortName?: string; contactName?: string; contactPhone?: string; remark?: string }): Promise<void>;
+  mSupplierActive(no: string, body: { active: boolean }): Promise<void>;
   /** 单件明细：各库位分布 + 条码货号 */
   mStockItem(itemId: string): Promise<StockItemDetail>;
   /** 变动明细。每一行都带操作人、单据号、变动前后 —— 「昨天还有 20 袋今天剩 3 袋」从这里回答 */

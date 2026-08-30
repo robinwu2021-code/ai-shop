@@ -35,8 +35,14 @@ public interface InboundService {
      * @param occurredAt <b>业务发生时间，可回填</b>：商家周一补录上周五的进货，
      *                   报表按它归期 —— 按录入时间算会把上周的货算进本周
      */
+    /**
+     * @param supplierNo   指向 {@code inv_supplier}；可空（老单、或商家没建档就直接写了名字）
+     * @param supplierName <b>下单当时的名字快照</b>，与 {@code supplierNo} 并存不是冗余 ——
+     *                     供应商三个月后改名，历史单该显示当时那个名字
+     */
     record Draft(String ownerId, String locationId, String sourceType, String sourceRef,
-                 String supplierName, LocalDateTime occurredAt, String remark, List<Line> lines) {
+                 String supplierNo, String supplierName,
+                 LocalDateTime occurredAt, String remark, List<Line> lines) {
     }
 
     /** @param unitCostMinor 进货单价。{@code PURCHASE} <b>必填</b>：空的话最新进价会读到 null，毛利静默变成等于售价 */

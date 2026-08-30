@@ -3,6 +3,7 @@ export default {
     remove: "Remove", search: "Search", yes: "Yes", no: "No", back: "Back", confirm: "OK", cancel: "Cancel", done: "Done", save: "Save", loading: "Loading…", empty: "Nothing here yet", retry: "Retry", saved: "Saved", all: "All",
     sessionExpired: "Session expired, please sign in again",
     unexpected: "Something went wrong — please try again",
+    change: "Change",
     comingSoon: "This feature is coming in a later release",
     submit: "Submit",
     noPermTitle: "No access",
@@ -1670,7 +1671,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     title: "Record a purchase",
     supplier: "Supplier",
     supplierPh: "e.g. Old Zhou Grain & Oil",
-    supplierHint: "Just type it — no supplier records to maintain",
+    supplierHint: "Pick one, or type a name to create it",
     date: "Date",
     noLines: "No products added yet. To record yesterday's delivery, change the date above to yesterday.",
     addItem: "Add product",
@@ -1796,5 +1797,11 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     sourceTitle: "Shipping source",
     sourceBody: "Once a store has a shipping source, orders placed at that store draw down the source warehouse.",
     noRelay: "No relaying: a warehouse cannot point somewhere else in turn.",
+  },
+  supplier: {
+    pickTitle: "Pick a supplier",
+    searchPh: "Search by name or contact — or just type a new one",
+    createAs: "Create \u201C{name}\u201D",
+    empty: "No suppliers yet — type a name to create one",
   },
 };

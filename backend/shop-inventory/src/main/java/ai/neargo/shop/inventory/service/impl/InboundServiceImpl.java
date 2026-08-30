@@ -50,6 +50,7 @@ public class InboundServiceImpl implements InboundService {
         head.setLocationId(draft.locationId());
         head.setSourceType(draft.sourceType());
         head.setSourceRef(draft.sourceRef());
+        head.setSupplierNo(draft.supplierNo());
         head.setSupplierName(draft.supplierName());
         head.setStatus(InvEnums.DocStatus.DRAFT);
         head.setOccurredAt(draft.occurredAt() == null ? LocalDateTime.now() : draft.occurredAt());
@@ -70,6 +71,7 @@ public class InboundServiceImpl implements InboundService {
         }
         validate(draft);
         head.setLocationId(draft.locationId());
+        head.setSupplierNo(draft.supplierNo());
         head.setSupplierName(draft.supplierName());
         head.setOccurredAt(draft.occurredAt() == null ? head.getOccurredAt() : draft.occurredAt());
         head.setRemark(draft.remark());

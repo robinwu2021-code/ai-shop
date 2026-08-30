@@ -4362,6 +4362,26 @@ export interface StockSummary {
   openCountNo?: string | null;
 }
 
+/**
+ * 一家供应商（`SupplierVO`）。进货单指向的那个**稳定对象** ——
+ * 在它之前只有一个会漂的名字字符串。
+ */
+export interface Supplier {
+  supplierNo: string;
+  name: string;
+  shortName?: string | null;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  remark?: string | null;
+  /** ACTIVE 在用 · ARCHIVED 已停用。**停用不删除** —— 历史单据要指得回去 */
+  status: string;
+  /**
+   * 引用平台档案。**据此把名称与联系方式置灰** ——
+   * 不看这一位的话，商家会改了才发现改不动。
+   */
+  fromPlatform: boolean;
+}
+
 /** 一行库存（`BalanceVO`）。 */
 export interface StockBalance {
   itemId: string;

@@ -120,6 +120,7 @@ import type {
   CategoryType,
   SkuIdentityReport,
   StockBalance,
+  Supplier,
   StockLedgerRow,
   StockDocument,
   StockCount,
@@ -893,6 +894,16 @@ const mockSpecOverride = new Map<string, {
   dimNo: string; enabled: boolean; label?: string;
   values: { code: string; enabled: boolean }[];
 }[]>();
+
+/** 三条刻意各是一种状态（在用 / 平台档案 / 已停用）—— 见 mSuppliers 的注释 */
+const mockSuppliers: Supplier[] = [
+  { supplierNo: "SUP-M1", name: "老周粮油", shortName: "老周", contactName: "周老板",
+    contactPhone: "13800000001", remark: null, status: "ACTIVE", fromPlatform: false },
+  { supplierNo: "SUP-M2", name: "平台直供·中粮", shortName: "中粮", contactName: null,
+    contactPhone: null, remark: null, status: "ACTIVE", fromPlatform: true },
+  { supplierNo: "SUP-M3", name: "已经不合作的那家", shortName: null, contactName: null,
+    contactPhone: null, remark: null, status: "ARCHIVED", fromPlatform: false },
+];
 
 export const mockApi: MerchantApi = {
   // ---------------------------------------------------------------- 账号与入驻
@@ -4264,6 +4275,46 @@ export const mockApi: MerchantApi = {
     } as StockBalance];
     const picked = k ? all.filter((b) => b.name.includes(k) || (b.specText ?? "").includes(k)) : all;
     return delay(picked.slice(0, q?.size ?? 200));
+  },
+
+  /*
+   * 供应商 mock。**三条刻意各是一种状态**（在用 / 有联系人 / 已停用）——
+   * 三条都一样的话，「停用的不出现在挑供应商里」这条在 mock 上永远看不见。
+   */
+  async mSuppliers(q) {
+    const all = mockSuppliers;
+    const k = (q?.keyword ?? "").trim();
+    let out = q?.activeOnly === false ? all : all.filter((s) => s.status === "ACTIVE");
+    if (k) out = out.filter((s) => s.name.includes(k) || (s.contactName ?? "").includes(k));
+    return delay(out);
+  },
+
+  async mSupplierCreate(body) {
+    const name = (body.name ?? "").trim();
+    // 与后端同一条规矩：重名拒。mock 上放过去的话，端上那条「搜到同名就不给新建」
+    // 的分支永远走不到，而它正是最容易写错的一处
+    if (mockSuppliers.some((s) => s.name === name)) throw new Error("这家已经建过了");
+    const row = {
+      supplierNo: `SUP-M${mockSuppliers.length + 1}`, name,
+      shortName: null, contactName: body.contactName ?? null,
+      contactPhone: body.contactPhone ?? null, remark: body.remark ?? null,
+      status: "ACTIVE", fromPlatform: false,
+    } as Supplier;
+    mockSuppliers.push(row);
+    return delay({ supplierNo: row.supplierNo });
+  },
+
+  async mSupplierUpdate(no, body) {
+    const row = mockSuppliers.find((s) => s.supplierNo === no);
+    if (row && !row.fromPlatform && body.name) row.name = body.name;
+    if (row) row.remark = body.remark ?? row.remark;
+    return delay(undefined as void);
+  },
+
+  async mSupplierActive(no, body) {
+    const row = mockSuppliers.find((s) => s.supplierNo === no);
+    if (row) row.status = body.active ? "ACTIVE" : "ARCHIVED";
+    return delay(undefined as void);
   },
 
   async mStockItem(itemId) {

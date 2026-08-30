@@ -166,7 +166,8 @@ public class BizStockDocController {
     public record LineReq(String itemId, int qty, String uom, Long unitCostMinor) {
     }
 
-    public record InboundReq(String sourceType, String supplierName, LocalDateTime occurredAt,
+    public record InboundReq(String sourceType, String supplierNo, String supplierName,
+                            LocalDateTime occurredAt,
                              String remark, List<LineReq> lines) {
     }
 
@@ -186,7 +187,7 @@ public class BizStockDocController {
                 .map(l -> new InboundService.Line(l.itemId(), l.qty(), l.uom(), l.unitCostMinor()))
                 .toList();
         return new InboundService.Draft(owner(), location(), req.sourceType(), null,
-                req.supplierName(), req.occurredAt(), req.remark(), lines);
+                req.supplierNo(), req.supplierName(), req.occurredAt(), req.remark(), lines);
     }
 
     private String owner() {

@@ -14,6 +14,7 @@ import { useMerchantStore } from "@/stores/merchant";
 import type { StockBalance } from "@shared/types";
 import { uomLabel } from "@shared/utils/format";
 import { prompt } from "@ai-shop/ui/prompt";
+import type { Supplier } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -28,7 +29,17 @@ interface Line {
   unitCostMinor: number;
 }
 
-const supplier = ref("");
+/*
+ * 供应商从**自由输入**换成**从档案里选**。
+ * 名字会漂 —— 同一家三种写法，进货报表按名字聚合就成了三个供应商。
+ *
+ * `supplierName` 仍然发：它是**下单当时的名字快照**，供应商三个月后改名，
+ * 这张历史单该显示当时那个名字。两个字段并存不是冗余。
+ */
+const supplier = ref<Supplier | null>(null);
+const suppliers = ref<Supplier[]>([]);
+const showSupplier = ref(false);
+const supplierBusy = ref(false);
 const occurredAt = ref(today());
 const lines = ref<Line[]>([]);
 const busy = ref(false);
@@ -57,6 +68,8 @@ async function load() {
     // **挑货读物料，不读余额。** 进货恰恰是给「还没有存货的货」记第一笔，
     // 而余额行是按需建的 —— 读余额的话新货挑不到
     pickable.value = await api.mStockPickable({ size: 200 });
+    // 只要在用的：停用的不该出现在新单据里（管理页才传 activeOnly=false）
+    suppliers.value = await api.mSuppliers({ activeOnly: true });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
@@ -113,10 +126,38 @@ async function editCost(l: Line) {
   l.unitCostMinor = Math.round(n * 100);
 }
 
+/**
+ * 就地建档，建完直接选中 —— 商家来这儿是记进货，不该被赶去档案页再走回来。
+ *
+ * **重名交给后端拒（10409）**，端上不再自己判一次：两处各判一次迟早分岔，
+ * 而分岔的表现是「界面说能建，建出来报错」。弹层里搜到同名时本来就不给「新建」，
+ * 这里兜的是并发那一格。
+ */
+function onPickSupplier(s: Supplier) {
+  supplier.value = s;
+  showSupplier.value = false;
+}
+
+async function createSupplier(name: string) {
+  if (supplierBusy.value) return;
+  supplierBusy.value = true;
+  try {
+    const { supplierNo } = await api.mSupplierCreate({ name });
+    suppliers.value = await api.mSuppliers({ activeOnly: true });
+    supplier.value = suppliers.value.find((s) => s.supplierNo === supplierNo) ?? null;
+    showSupplier.value = false;
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    supplierBusy.value = false;
+  }
+}
+
 function draftReq() {
   return {
     sourceType: "PURCHASE",
-    supplierName: supplier.value || undefined,
+    supplierNo: supplier.value?.supplierNo,
+    supplierName: supplier.value?.name,
     occurredAt: `${occurredAt.value}T00:00:00`,
     lines: lines.value.map((l) => ({
       itemId: l.itemId, qty: l.qty, uom: l.uom, unitCostMinor: l.unitCostMinor,
@@ -149,7 +190,16 @@ onShow(load);
   <sh-scaffold title-key="purchase.title" :denied="!merchant.can('biz:stock')">
     <view class="sh-card">
       <text class="field__label">{{ $t("purchase.supplier") }}</text>
-      <input maxlength="64" v-model="supplier" class="field__input" :placeholder="String($t('purchase.supplierPh'))" />
+      <!--
+        从输入框换成选择器。**留一行显示当前选的是谁**，而不是把名字塞回输入框：
+        塞回去的话它看起来还能改，而改了不会生效（真正生效的是 supplierNo）。
+      -->
+      <view class="field__input sup-pick sh-row sh-row--between" @tap="showSupplier = true">
+        <text :class="supplier ? 'txt-body' : 'sh-muted'">
+          {{ supplier ? supplier.name : $t("purchase.supplierPh") }}
+        </text>
+        <text class="sh-muted">{{ $t("common.change") }}</text>
+      </view>
       <text class="sh-hint">{{ $t("purchase.supplierHint") }}</text>
     </view>
 
@@ -226,6 +276,16 @@ onShow(load);
       @pick="addLine"
       @close="showPick = false"
     ></biz-item-picker>
+
+    <biz-supplier-picker
+      :visible="showSupplier"
+      :items="suppliers"
+      :picked="supplier?.supplierNo"
+      :busy="supplierBusy"
+      @pick="onPickSupplier"
+      @create="createSupplier"
+      @close="showSupplier = false"
+    ></biz-supplier-picker>
   </sh-scaffold>
 </template>
 
