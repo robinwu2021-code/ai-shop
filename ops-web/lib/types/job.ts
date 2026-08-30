@@ -61,7 +61,7 @@ export interface JobRow {
 export interface JobLogRow {
   runId: string;
   jobName: string;
-  triggerType: "CRON" | "MANUAL" | "RETRY" | "BACKFILL";
+  triggerType: JobTriggerType;
   bizDate: string | null;
   startedAt: string;
   finishedAt: string | null;
@@ -72,3 +72,9 @@ export interface JobLogRow {
   workerInstance: string | null;
   httpStatus: number | null;
 }
+
+/**
+ * 这一轮是被什么触发的。**排障时第一个要看的就是它** ——
+ * 同一个任务，定时跑失败和人手动补跑失败，要找的人不是同一个。
+ */
+export type JobTriggerType = "CRON" | "MANUAL" | "RETRY" | "BACKFILL";

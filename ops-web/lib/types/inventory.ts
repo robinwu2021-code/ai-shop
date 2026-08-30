@@ -7,7 +7,7 @@
 /** 一条不健康的库存。`kind` 决定这一行要怎么念，也决定该找谁 */
 export interface InvHealthRow {
   /** NEGATIVE 负库存 · ZERO_ON_SALE 零库存仍在架 · STALE 长期未动销 */
-  kind: "NEGATIVE" | "ZERO_ON_SALE" | "STALE";
+  kind: InvHealthKind;
   entityNo: string;
   merchantName?: string;
   storeNo?: string;
@@ -44,7 +44,7 @@ export interface InvBalanceRow {
 /** 台账一行。**不可变** —— 这里永远只有查看，没有编辑 */
 export interface InvLedgerRow {
   id: number;
-  docKind: "IN" | "OUT";
+  docKind: InvDocKind;
   docNo: string;
   reasonCode: string;
   qtyDelta: number;
@@ -132,3 +132,11 @@ export interface InvCredentialIssued {
   appKey: string;
   appSecret: string;
 }
+
+// ── 2026-08-30：从 interface 里提出来的具名类型（内联联合对工具不可见）──
+
+/** 不健康库存的类型。**它决定这一行怎么念，也决定该找谁** */
+export type InvHealthKind = "NEGATIVE" | "ZERO_ON_SALE" | "STALE";
+
+/** 台账方向。IN 入库 / OUT 出库 —— 与 shared 的 StockDocKind 同义，归一属另一批 */
+export type InvDocKind = "IN" | "OUT";

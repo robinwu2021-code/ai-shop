@@ -163,7 +163,7 @@ export interface MediaReclaimable {
   assetKey: string;
   entityNo: string;
   storeNo: string;
-  bizType: "GOODS" | "QUAL" | "AFTERSALE";
+  bizType: MediaBizType;
   bytes: number;
   width?: number | null;
   height?: number | null;
@@ -180,7 +180,7 @@ export interface MediaPurgeBatch {
   operator: string;
   /** 发起时的显示名快照 —— 人离职改名之后这条记录还得说得清是谁 */
   operatorName?: string | null;
-  status: "QUEUED" | "RUNNING" | "DONE" | "PARTIAL";
+  status: MediaPurgeStatus;
   totalCount: number;
   totalBytes: number;
   purgedCount: number;
@@ -225,3 +225,14 @@ export interface MediaReclaimableQuery {
   page?: number;
   size?: number;
 }
+
+// ── 2026-08-30：从 interface 里提出来的具名类型（内联联合对工具不可见）──
+
+/** 这张图当初是为什么传的。运营靠它判断「这张能不能删」 */
+export type MediaBizType = "GOODS" | "QUAL" | "AFTERSALE";
+
+/**
+ * 清理批次的状态。**PARTIAL 不是失败** —— 部分对象删成功、部分没删掉
+ * （多半是已经不在了），归进 DONE 会让人以为清干净了，归进失败会让人重跑一遍。
+ */
+export type MediaPurgeStatus = "QUEUED" | "RUNNING" | "DONE" | "PARTIAL";

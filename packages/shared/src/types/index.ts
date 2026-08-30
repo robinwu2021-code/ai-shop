@@ -1454,8 +1454,7 @@ export interface AppointmentSlot {
   capacity: number;
   booked: number;
   remaining: number;
-  /** OPEN 可约 / CLOSED 停约。停约**不删行也不赶人** */
-  status: "OPEN" | "CLOSED";
+  status: SlotStatus;
 }
 
 export type OrderStatus =
@@ -4209,7 +4208,7 @@ export interface MerchantSpecDim {
    * 而「停用它会影响什么」问的恰恰是历史。
    */
   usedCount: number;
-  status: "ACTIVE" | "ARCHIVED";
+  status: SpecTemplateStatus;
   /** 已建 / 上限。摆出来，而不是等他建到第 11 个才被拒 */
   dimUsed: number;
   dimQuota: number;
@@ -4435,7 +4434,7 @@ export interface StockLedgerRow {
   /** 这一行动的是哪件货。**按单查靠它** —— 只给单号的话那一屏是一列没名字的数 */
   itemId: string;
   itemName: string;
-  docKind: "IN" | "OUT";
+  docKind: StockDocKind;
   docNo: string;
   reasonCode: string;
   qtyDelta: number;
@@ -4581,3 +4580,17 @@ export interface StockTransfer {
   totalQty: number;
   lines: { itemId: string; name: string; specText?: string; qty: number; uom?: string }[];
 }
+
+// ── 2026-08-30：从 interface 里提出来的三个具名类型 ──
+//
+// 内联的字面量联合**对所有工具不可见** —— 枚举登记表登记不到、三端对账对不到、
+// 改名时必漏一处。提取的成本是一行，漏掉的代价是一个筛不出东西的死分支。
+
+/** 预约时段状态。CLOSED 停约**不删行也不赶人** —— 已约的照常履约 */
+export type SlotStatus = "OPEN" | "CLOSED";
+
+/** 规格模板状态。ARCHIVED 归档后不再出现在选择器里，但历史商品的快照照旧 */
+export type SpecTemplateStatus = "ACTIVE" | "ARCHIVED";
+
+/** 库存台账的方向。IN 入库 / OUT 出库 —— 台账不可变，只有查看没有编辑 */
+export type StockDocKind = "IN" | "OUT";

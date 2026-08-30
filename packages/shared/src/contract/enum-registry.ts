@@ -147,7 +147,15 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "端上按微信三种登录场景拆成 WX_MINI/WX_PHONE/WX_OPEN，后端 AuthService 只有一个 GRANT_WECHAT_MP；PHONE_OTP 与 APPLE 两端一致。微信登录本身还没接（code2Session 是 TODO），接的时候两边一起定名" },
   { decl: "shared:MerchantStatus", dom: "core", shape: "STATUS", verdict: "RENAME",
     note: "→ MerchantWorkability。它是 B 端「我现在能不能干活」的合并视图，不是主体状态。P4 待确认（影响 B 端首页判断）",
-    words: ["NONE", "APPLYING", "REVIEWING"] },
+    // PENDING_LICENSE 申报为领域特有词，**不能改成 L1 的 PENDING**：
+    // 同一个枚举里已经有 APPLYING / REVIEWING 表示「在等审核」，
+    // 而这个词说的是反过来的一件事 —— 已经建好店、能进经营台干活，
+    // 只是还不能开张（买家看不到）。两者套用同一个 PENDING 会把
+    // 「等着别人审」和「自己还差一份材料」混成一件事。
+    //
+    // 它也是库里承重的取值（MchEntity.PENDING_LICENSE），
+    // BizIdentityResolverImpl 靠它放行占位主体进经营台 —— 改名要动迁移。
+    words: ["NONE", "APPLYING", "REVIEWING", "PENDING_LICENSE"] },
   { decl: "shared:MerchantTier", dom: "core", shape: "CLASS", verdict: "OK" },
   { decl: "shared:SubOrderStatus", dom: "trade", shape: "STATUS", verdict: "OK",
     note: "子单履约状态，与主单的 OrderStatus 分开：主单管钱、子单管货。"
@@ -412,4 +420,91 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "shared:ArrivalIssueKind", dom: "fulfillment", shape: "CLASS", verdict: "OK" },
   { decl: "ops-web:FunnelStep", dom: "dashboard", shape: "CLASS", verdict: "OK" },
   { decl: "ops-web:SectionLayout", dom: "store", shape: "CLASS", verdict: "OK" },
+
+  // ── 2026-08-30 补登记的 5 个 ──
+
+  { decl: "shared:LocationFailReason", dom: "ui", shape: "CLASS", verdict: "OK",
+    note: "端能力（定位）的失败分类，不是业务状态，取值刻意是小写的 denied/unavailable —— "
+      + "**分两类是因为端上的下一步不同**：denied 能引导去设置、再试就好；"
+      + "unavailable（高德 2/4/6、超时）引导也没用，只能退回手动填。"
+      + "合成一个「定位失败」会让前一种用户被推去做无用功" },
+
+  { decl: "shared:PlanStatus", dom: "merchant", shape: "STATUS", verdict: "DUP",
+    // GRACE / EXPIRED 都不在 L1：GRACE 是这条业务独有的一档（宽限期 7 天，能力全保留）——
+    // L1 里最近的 PAUSED 是「停了」，而宽限期恰恰是「没停」，套用会让人以为店已经被压了。
+    // EXPIRED 与 L1 的 ENDED/CLOSED 也不同：那两个是「正常结束」，这个是「该续没续」。
+    words: ["GRACE", "EXPIRED"],
+    note: "与 ops-web:PlanStatus **逐字相同**（ACTIVE/GRACE/EXPIRED），两处各定义了一份。"
+      + "归一到 shared 是对的，但要连 ops-web 的引用一起改，属独立一批" },
+
+  { decl: "ops-web:PlanStatus", dom: "merchant", shape: "STATUS", verdict: "DUP",
+    words: ["GRACE", "EXPIRED"],
+    note: "与 shared:PlanStatus 逐字相同，见那一条" },
+
+  { decl: "ops-web:PlanQuotaSource", dom: "merchant", shape: "CLASS", verdict: "OK",
+    note: "生效额度是哪来的：PLAN 档位快照 / OVERRIDE 单独谈的覆盖值 / CONFIG 兜底。"
+      + "**运营必须看得出这个数的来源**，否则「这家怎么是 5 家？」只能靠翻审计日志回答" },
+
+  // ── 2026-08-30：D5 提取出来的 11 个（此前内联在 interface 里，对工具不可见）──
+  //
+  // 内联的字面量联合登记不到、对账不到、改名必漏。提取是一行的成本，
+  // 漏掉的代价是一个筛不出东西的死分支（见 SubOrderStatus 那条的教训）。
+
+  { decl: "shared:SlotStatus", dom: "fulfillment", shape: "STATUS", verdict: "OK",
+    // OPEN 不在 L1：L1 的 ACTIVE 是「生效中」，而这里说的是「这一档还收不收人」。
+    // 一个 CLOSED 的时段仍然是生效的行 —— 已约的照常履约，只是不再接新的。
+    // 只申报 OPEN —— CLOSED 本来就在 L1 里，申报它是填错了（守卫当场抓到）
+    words: ["OPEN"],
+    note: "预约时段。停约**不删行也不赶人**，所以不能用 ENDED/CANCELLED" },
+
+  { decl: "shared:SpecTemplateStatus", dom: "core", shape: "STATUS", verdict: "OK",
+    // ARCHIVED 不在 L1，且不能换成 CLOSED/ENDED：归档的模板没有「结束」，
+    // 历史商品的规格快照照旧在用它，只是不再出现在选择器里。
+    words: ["ARCHIVED"],
+    note: "规格模板。停用它会影响什么，看的是按规格组名统计的 usedCount" },
+
+  { decl: "shared:StockDocKind", dom: "inventory", shape: "CLASS", verdict: "DUP",
+    note: "与 ops-web:InvDocKind 逐字相同（IN/OUT）。归一到 shared 是对的，"
+      + "但要连 ops-web 的引用一起改，属独立一批" },
+
+  { decl: "ops-web:SettlementKind", dom: "community", shape: "CLASS", verdict: "OK",
+    note: "小区 / 村。**裁决的人要一眼看出是哪种聚落** —— 两者的重复判据不一样"
+      + "（村有官方村码可比对，小区只能靠名字与坐标）" },
+
+  { decl: "ops-web:DuplicateReason", dom: "community", shape: "CLASS", verdict: "OK",
+    note: "判重依据：同名 / 坐标相近。摆出来运营才知道该不该合" },
+
+  { decl: "ops-web:RegionMatchSource", dom: "community", shape: "CLASS", verdict: "OK",
+    note: "行政区划是靠地址串匹配还是坐标反查定出来的。两者的可信度不同，要让人看见" },
+
+  { decl: "ops-web:InvHealthKind", dom: "inventory", shape: "CLASS", verdict: "OK",
+    note: "负库存 / 零库存仍在架 / 长期未动销。**它决定这一行怎么念，也决定该找谁**" },
+
+  { decl: "ops-web:InvDocKind", dom: "inventory", shape: "CLASS", verdict: "DUP",
+    note: "与 shared:StockDocKind 逐字相同，见那一条" },
+
+  { decl: "ops-web:JobTriggerType", dom: "platform", shape: "CLASS", verdict: "OK",
+    note: "定时 / 手动 / 重试 / 补数。**排障时第一个要看的就是它** —— "
+      + "同一个任务，定时跑失败和人手动补跑失败，要找的人不是同一个" },
+
+  { decl: "ops-web:MediaBizType", dom: "platform", shape: "CLASS", verdict: "OK",
+    note: "这张图当初为什么传的（商品 / 资质 / 售后）。运营靠它判断能不能删" },
+
+  { decl: "ops-web:MediaPurgeStatus", dom: "platform", shape: "STATUS", verdict: "OK",
+    // DONE 与 PARTIAL 都不在 L1。**PARTIAL 是这条链路的关键一档**：
+    // 部分对象没删掉（多半是已经不在了）—— 归进 DONE 会让人以为清干净了，
+    // 归进 FAILED 会让人把整批重跑一遍。L1 里没有能表达「一半」的词。
+    words: ["QUEUED", "DONE", "PARTIAL"],
+    note: "媒体清理批次。QUEUED 也不在 L1：L1 的 PENDING 是「等人处理」，"
+      + "这里是「等机器排到」，对运营的含义不同（前者要催人，后者只要等）" },
+
+  { decl: "ops-web:JobStatus", dom: "platform", shape: "STATUS", verdict: "OK",
+    // 四个词不在 L1，各有各的理由，而**分组比取值本身重要** —— 它决定页面提示人做什么：
+    //   SUCCESS   L1 没有「成功」这一档（PASSED/APPROVED 说的是审核过了，不是跑完了）
+    //   SKIPPED   锁没抢到，是正常的并发保护，**不是故障** —— 归进 FAILED 会天天误报
+    //   UNREACHABLE 调不通业务系统（多半正在发布），不是这个任务的问题
+    //   TIMEOUT   超时没回，**结果未知不等于失败**，业务侧多半还在跑
+    words: ["SUCCESS", "SKIPPED", "UNREACHABLE", "TIMEOUT"],
+    note: "与 sys_job_run.status 一致。这 17 个定时任务在生产上一次都没跑过"
+      + "（跑的是 api,ops 而任务全挂在 worker 上），这一页存在之前没人会发现" },
 ];

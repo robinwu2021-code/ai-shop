@@ -18,9 +18,6 @@
 doc-standard.test.ts::文档规范 不使用 mermaid —— 写错一个字符整张图不显示，而且不报错 @<=16
 doc-standard.test.ts::文档规范 每张 svg 都有 title 与 desc —— 图之外要有能读的说明 @<=4
 doc-standard.test.ts::文档规范 没有状态行的文档不许再增加（基线只降不升） @<=41
-enum-registry.test.ts::枚举登记表 G1 · 端上每个具名枚举都必须登记（新增枚举不能绕过雷达） @<=15
-enum-registry.test.ts::枚举登记表 G2 · STATUS 型枚举的取值必须取自 L1 状态词表，或已申报 @<=11
-enum-registry.test.ts::枚举登记表 规范 §D5 · 不允许在 interface 里内联字面量联合类型 @<=11
 spec-completeness.test.ts::契约完整性 B 端：每个字段都有说明 @<=374
 spec-completeness.test.ts::契约完整性 C 端：每个字段都有说明 @<=358
 spec-completeness.test.ts::契约完整性 平台端：每个字段都有说明 @<=371

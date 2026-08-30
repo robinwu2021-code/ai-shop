@@ -78,7 +78,22 @@ export function backendVocabulary() {
   const out = new Set();
   for (const f of walk(join(ROOT, "backend"), ".java")) {
     if (f.includes("/target/") || f.includes("/src/test/")) continue;
-    for (const m of readFileSync(f, "utf8").matchAll(/"([A-Z][A-Z0-9_]{2,})"/g)) {
+    const src = readFileSync(f, "utf8");
+    for (const m of src.matchAll(/"([A-Z][A-Z0-9_]{2,})"/g)) {
+      out.add(m[1]);
+    }
+    /*
+     * 上面那条要求**至少三个字符**，于是两个字母的取值永远扫不到 ——
+     * `InvEnums.DocKind.IN = "IN"` 明明在后端，对账却报「后端永远不会下发 IN」。
+     * 这个盲区此前看不见，因为 docKind 在端上是内联的字面量联合（D5），
+     * 内联的联合根本进不了对账。提取成具名类型的当天它就露出来了。
+     *
+     * **不放宽上面那条**：把通用扫描降到两个字符，会把 Java 源码里满地的
+     * `"ID"` `"OK"` `"NO"` 都收进「后端会下发的取值」，那是在给这道闸门放水 ——
+     * 它只会漏报，而漏报的形状正是这道闸要拦的东西。
+     * 这里改为额外精确扫一遍**常量声明**：声明出来的取值不论多短都算数。
+     */
+    for (const m of src.matchAll(/\bString\s+[A-Z][A-Z0-9_]*\s*=\s*"([A-Z][A-Z0-9_]*)"/g)) {
       out.add(m[1]);
     }
   }

@@ -35,7 +35,7 @@ export interface CommunityApply {
   /** 商家的补充说明：为什么要开这个点 */
   note?: string;
   /** ESTATE 小区 / VILLAGE 村。裁决的人要一眼看出这是哪种聚落 */
-  kind?: "ESTATE" | "VILLAGE";
+  kind?: SettlementKind;
   /** 关联的官方村码；非空 = 从词典选的，重复开通会被后端拦 */
   originCode?: string;
   /**
@@ -126,7 +126,7 @@ export interface NearbyCommunity {
 export interface CommunityDuplicate {
   left: Community;
   right: Community;
-  reason: "SAME_NAME" | "NEARBY";
+  reason: DuplicateReason;
   /** 两点直线距离（米）。有一方没坐标时为空 */
   distanceM?: number | null;
 }
@@ -137,7 +137,7 @@ export interface RegionSuggestion {
   name: string;
   /** 「广东省 / 深圳市 / 龙华区 / 福城街道」 */
   path: string;
-  source: "ADDRESS" | "COORDS";
+  source: RegionMatchSource;
   /** 依据：匹配到的地址片段，或「茜坑社区 · 320 米」 */
   detail: string;
 }
@@ -274,3 +274,14 @@ export interface PickupPoint extends Archivable {
   createdAt: string;
 }
 
+
+// ── 2026-08-30：从 interface 里提出来的具名类型（内联联合对工具不可见）──
+
+/** 聚落类型。裁决的人要一眼看出这是小区还是村 —— 两者的重复判据不一样 */
+export type SettlementKind = "ESTATE" | "VILLAGE";
+
+/** 判重的依据。SAME_NAME 同名 / NEARBY 坐标相近 —— 运营据此决定合不合 */
+export type DuplicateReason = "SAME_NAME" | "NEARBY";
+
+/** 行政区划是怎么定出来的。ADDRESS 靠地址串匹配 / COORDS 靠坐标反查 */
+export type RegionMatchSource = "ADDRESS" | "COORDS";
