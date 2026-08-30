@@ -2,11 +2,14 @@ package ai.neargo.shop.settle.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.settle.BillIdentity;
 import ai.neargo.shop.settle.SettleBatchService;
 import ai.neargo.shop.settle.SettleCycles;
 import ai.neargo.shop.settle.entity.StlBill;
+import ai.neargo.shop.settle.entity.StlReconDiff;
 import ai.neargo.shop.settle.entity.StlSettleBatch;
 import ai.neargo.shop.settle.mapper.SettleMappers.BillMapper;
+import ai.neargo.shop.settle.mapper.SettleMappers.ReconDiffMapper;
 import ai.neargo.shop.settle.mapper.SettleMappers.SettleBatchMapper;
 import ai.neargo.shop.spi.trade.SettleSourcePort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
@@ -30,11 +33,17 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     /** 一轮最多处理多少单 —— 防止第一次上线时一口气扫全量把库拖住 */
     private static final int SCAN_LIMIT = 500;
 
+    /** 单据轴：这一条差异说的是「单据自己的账不平」，与通道无关 */
+    private static final String AXIS_BILL = "BILL";
+
+    private static final String DIFF_UNBALANCED = "BILL_UNBALANCED";
+
     private final BillMapper billMapper;
     private final SettleBatchMapper batchMapper;
     private final SettleSourcePort sourcePort;
     private final MerchantQueryPort merchantQueryPort;
     private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
+    private final ReconDiffMapper diffMapper;
 
     /**
      * 售后期天数。<b>与积分转正用的是同一个数</b>（{@code shop.points.pending-days}）——
@@ -55,12 +64,14 @@ public class SettleBatchServiceImpl implements SettleBatchService {
 
     public SettleBatchServiceImpl(BillMapper billMapper, SettleBatchMapper batchMapper,
                                   SettleSourcePort sourcePort, MerchantQueryPort merchantQueryPort,
-                                  ai.neargo.shop.spi.platform.MasterDataPort masterDataPort) {
+                                  ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
+                                  ReconDiffMapper diffMapper) {
         this.billMapper = billMapper;
         this.batchMapper = batchMapper;
         this.sourcePort = sourcePort;
         this.merchantQueryPort = merchantQueryPort;
         this.masterDataPort = masterDataPort;
+        this.diffMapper = diffMapper;
     }
 
     // ---------------------------------------------------------------- ① 定 T2
@@ -126,6 +137,17 @@ public class SettleBatchServiceImpl implements SettleBatchService {
                         .last("LIMIT " + SCAN_LIMIT)));
         int collected = 0;
         for (StlBill bill : ready) {
+            /*
+             * ★ 门 1 在**入批之前**跑，不在截批时跑。
+             *
+             * 不平的单**根本不进批**：进了再剔出来的话，批次的合计已经算过一次，
+             * 而「算过又改」正是对账最难查的一类状态。
+             * 这也落实了「单据级差异只挂该单」—— 同批其他单照常走。
+             */
+            if (!BillIdentity.balanced(bill)) {
+                openIdentityDiff(bill);
+                continue;
+            }
             StlSettleBatch batch = openBatchFor(bill);
             if (batch == null) {
                 continue;
@@ -248,6 +270,53 @@ public class SettleBatchServiceImpl implements SettleBatchService {
             log.info("[settle-batch] 截批 {} 个", closed);
         }
         return closed;
+    }
+
+    /**
+     * 记一条<b>单据不平</b>的对账差异。
+     *
+     * <p><b>不自动修正。</b>差额来自哪一项是需要判断的问题 ——
+     * 是费率取错、服务费算错，还是手续费落错了承担方？
+     * 自动补平只会把问题藏起来，而账面从此看不出曾经不平过。
+     *
+     * <p>幂等：已有 PENDING 的同类差异就不再开 —— 这一单每一轮扫描都会被捞到，
+     * 不去重的话一天能生出几百条指向同一件事的待处置。
+     */
+    private void openIdentityDiff(StlBill bill) {
+        boolean exists = DataScopeContext.executeWithoutScope(() ->
+                diffMapper.selectCount(Wrappers.<StlReconDiff>lambdaQuery()
+                        .eq(StlReconDiff::getAxis, AXIS_BILL)
+                        .eq(StlReconDiff::getPaymentNo, bill.getSettleNo())
+                        .eq(StlReconDiff::getDiffType, DIFF_UNBALANCED)
+                        .eq(StlReconDiff::getStatus, "PENDING"))) > 0;
+        if (exists) {
+            return;
+        }
+        long gap = BillIdentity.gap(bill);
+        StlReconDiff d = new StlReconDiff();
+        d.setAxis(AXIS_BILL);
+        d.setDiffNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.RECON_DIFF));
+        d.setDiffType(DIFF_UNBALANCED);
+        // 用**发现日**而不是单据日：一笔卡了三天的单，运营要在今天这一页看到它
+        d.setBillDate(java.time.LocalDate.now().toString());
+        d.setSource("SELF_CHECK");
+        d.setOrderNo(bill.getOrderNo());
+        // 与 PayoutReconAxis 同一口径：单据轴的锚点是结算单号
+        d.setPaymentNo(bill.getSettleNo());
+        d.setPayChannel(bill.getPayChannel() == null || bill.getPayChannel().isBlank()
+                ? ai.neargo.shop.settle.service.recon.ReconAxis.CHANNEL_NA : bill.getPayChannel());
+        /*
+         * 两个金额都落：**平台侧记基数，通道侧记「各项之和」**。
+         * 只记差额的话，运营看到「差 3 分」还要自己回去把两边算一遍 ——
+         * 而这两个数正是他要对的那两个。
+         */
+        d.setPlatformAmountMinor(nz(bill.getGrossMinor()));
+        d.setChannelAmountMinor(nz(bill.getGrossMinor()) - gap);
+        d.setStatus("PENDING");
+        d.setTenantNo("MAIN");
+        d.setCreatedAt(java.time.LocalDateTime.now());
+        DataScopeContext.executeWithoutScope(() -> diffMapper.insert(d));
+        log.warn("[settle-batch] 单据不平，不入批：{} 差 {} 分", bill.getSettleNo(), gap);
     }
 
     private ZoneId zoneOf() {

@@ -54,6 +54,7 @@ class SettleBatchFlowTest {
             jdbc.update("DELETE FROM stl_settle_batch WHERE entity_no = ?", ENTITY);
             jdbc.update("DELETE FROM ord_status_log WHERE sub_order_no LIKE 'SUB-BATCH-%'");
             jdbc.update("DELETE FROM ord_after_sale WHERE sub_order_no LIKE 'SUB-BATCH-%'");
+            jdbc.update("DELETE FROM stl_recon_diff WHERE payment_no LIKE 'STL-BATCH-%'");
             return null;
         });
     }
@@ -240,6 +241,73 @@ class SettleBatchFlowTest {
      * 服务里那个 null 判断因此是纯防御（实体没落库时可能为 null），
      * 而真正会发生的是这一条。用 NULL 去测等于测了一个库不允许的状态。
      */
+    @Test
+    @DisplayName("★★★ 门 1：账不平的单**根本不进批**，并记一条差异 —— 进了再剔出来最难查")
+    void unbalancedBillNeverEntersBatch() {
+        long old = System.currentTimeMillis() - 30 * DAY;
+        StlBill bad = givenBill("bad", old, null);
+        // 把实得改大 3 分：基数 ≠ 佣金 + 服务费 + 积分费 + 手续费 + 实得
+        DataScopeContext.executeWithoutScope(() -> jdbc.update(
+                "UPDATE stl_bill SET net_minor = net_minor + 3 WHERE settle_no = ?", bad.getSettleNo()));
+        givenBill("good", old, null);
+
+        batchService.markSettleable();
+        batchService.collectIntoBatches();
+
+        assertThat(reload("STL-BATCH-bad").getBatchNo())
+                .as("不平的单不该入批")
+                .isNull();
+        assertThat(reload("STL-BATCH-good").getBatchNo())
+                .as("对照：同批其他单照常走 —— 单据级差异只挂该单，不卡住整批")
+                .isNotNull();
+
+        Integer diffs = DataScopeContext.executeWithoutScope(() -> jdbc.queryForObject(
+                "SELECT COUNT(*) FROM stl_recon_diff WHERE payment_no = ? AND status = 'PENDING'",
+                Integer.class, "STL-BATCH-bad"));
+        assertThat(diffs).as("要留下一条待处置，否则这单就静默消失了").isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("★★★ 差异幂等：连跑三轮只留一条 —— 不去重的话一天能生出几百条指向同一件事的")
+    void identityDiffIsIdempotent() {
+        long old = System.currentTimeMillis() - 30 * DAY;
+        StlBill bad = givenBill("dup", old, null);
+        DataScopeContext.executeWithoutScope(() -> jdbc.update(
+                "UPDATE stl_bill SET net_minor = net_minor + 3 WHERE settle_no = ?", bad.getSettleNo()));
+
+        batchService.markSettleable();
+        batchService.collectIntoBatches();
+        batchService.collectIntoBatches();
+        batchService.collectIntoBatches();
+
+        Integer diffs = DataScopeContext.executeWithoutScope(() -> jdbc.queryForObject(
+                "SELECT COUNT(*) FROM stl_recon_diff WHERE payment_no = ?",
+                Integer.class, "STL-BATCH-dup"));
+        assertThat(diffs).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("★★★ 手续费承担方是平台时**不算进等式** —— 算进去的话每张这样的单都会「不平」")
+    void platformBorneFeeIsNotInTheIdentity() {
+        long old = System.currentTimeMillis() - 30 * DAY;
+        StlBill b = givenBill("platfee", old, null);
+        /*
+         * 平台承担 20 分手续费：那笔钱没有从商家实得里扣，
+         * 所以等式左边不该有它。写错的话这单会被判成「不平」而永远不进批 ——
+         * 而账其实是对的。
+         */
+        DataScopeContext.executeWithoutScope(() -> jdbc.update(
+                "UPDATE stl_bill SET channel_fee_minor = 20, fee_bearer = 'PLATFORM'"
+                        + " WHERE settle_no = ?", b.getSettleNo()));
+
+        batchService.markSettleable();
+        batchService.collectIntoBatches();
+
+        assertThat(reload("STL-BATCH-platfee").getBatchNo())
+                .as("平台承担的手续费不进等式，这单是平的，该入批")
+                .isNotNull();
+    }
+
     @Test
     @DisplayName("★★ 通道为空的单不入批 —— 批按通道分，没有通道就不知道按谁的账期与冻结窗口算")
     void billWithoutChannelStaysOut() {
