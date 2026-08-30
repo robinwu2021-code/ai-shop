@@ -31,9 +31,34 @@ const pct = (bp: number) => `${(bp / 100).toFixed(2)}%`;
 /** `*` 是存储值，不该直接显示给人看。 */
 const anyLabel = (v: string) => (v === "*" ? "—" : v);
 
+/**
+ * 可用市场：库里存的是 JSON 串（`["CN"]`），**不能原样端上来**。
+ *
+ * 两件事都要说对：
+ *   · 空 / null = **全部市场**，不是「没有市场」—— 后端 `marketAllowed` 就是这么判的。
+ *     显示成「—」会让运营以为这个通道谁都用不了，而它其实是全开的。
+ *   · 有值时按市场名显示，`CN` 这种码只有做过这块的人认得。
+ */
+function marketsLabel(raw: string | null | undefined, names: Map<string, string>, all: string): string {
+  if (!raw || !raw.trim()) return all;
+  let codes: string[];
+  try {
+    const v = JSON.parse(raw);
+    codes = Array.isArray(v) ? v.map(String) : [String(v)];
+  } catch {
+    // 不是 JSON 就按逗号分隔兜一手：解析失败时显示原串也好过显示「全部」
+    codes = raw.split(",").map((x) => x.trim()).filter(Boolean);
+  }
+  if (!codes.length) return all;
+  return codes.map((code) => names.get(code) ?? code).join("、");
+}
+
 export function PayChannelTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean }) {
   const qc = useQueryClient();
   const channels = useQuery({ queryKey: ["pay-channels"], queryFn: () => api.listPayChannels() });
+  // 市场名的真源在系统设置那一页，这里只借来把 `CN` 翻成人话；取不到就回落成码
+  const markets = useQuery({ queryKey: ["markets"], queryFn: () => api.listMarkets() });
+  const marketNames = new Map((markets.data ?? []).map((m) => [m.code, m.name]));
 
   const [channel, setChannel] = useState("");
   const [payMethod, setPayMethod] = useState("");
@@ -84,7 +109,7 @@ export function PayChannelTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean
         ? <Badge tone="success">{c.pcEnabled}</Badge>
         : <Badge tone="muted">{c.pcDisabled}</Badge>),
     },
-    { header: c.pcColMarkets, cell: (r) => r.markets ?? "—" },
+    { header: c.pcColMarkets, cell: (r) => marketsLabel(r.markets, marketNames, c.pcAllMarkets) },
     { header: c.pcColCurrency, cell: (r) => r.currency ?? "—" },
     { header: c.pcColSettleCycle, cell: (r) => r.settleCycle ?? "—" },
     {
@@ -101,9 +126,14 @@ export function PayChannelTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean
     },
     {
       header: "",
+      /*
+       * 按钮上写的是**要做的事**，不是当前状态 —— 隔壁那一列已经在说状态了。
+       * 此前这里复用了状态词，于是「启用中」的那一行按钮写着「已停用」，
+       * 读起来像是在陈述，而它其实是个动作。
+       */
       cell: (r) => (canEdit ? (
         <Button variant="ghost" onClick={() => toggle.mutate(r)} disabled={toggle.isPending}>
-          {r.enabled ? c.pcDisabled : c.pcEnabled}
+          {r.enabled ? c.pcActionDisable : c.pcActionEnable}
         </Button>
       ) : null),
     },
@@ -136,8 +166,28 @@ export function PayChannelTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean
 
       <Notice tone="info">{c.pcNotice}</Notice>
 
-      <ConfigCard title={c.pcTitle}>
-        <DataTable columns={columns} rows={rows} rowKey={(r) => r.payChannel} loading={channels.isLoading} />
+      {/*
+        **表不进 ConfigCard**：那是 `max-w-2xl` 的表单卡片，7 列塞进 672px 之后
+        「当前费率」与那个开关按钮要横向滚动才看得到 —— 而它们正是这张表的重点。
+        与本页其它列表一致，表直接放在页面层级。
+      */}
+      <div>
+        {/*
+          `error` / `onRetry` / `empty` 与本页其它列表一样都要给：不给的话
+          接口 404 或 500 时这里是一张**空表**，看着像「还没有配过通道」——
+          而真相是这一页根本没拿到数据。mock 下永远看不到这个差别。
+        */}
+        <DataTable
+          /*
+           * `rows` 给 `channels.data` 而不是 `rows`（那个 `?? []`）——
+           * DataTable 判骨架用的是 `loading && !rows`，喂 `[]` 进去它就是真值，
+           * 于是**取数期间显示的是「还没有配置支付通道」**：一句关于事实的断言，
+           * 而那一刻我们其实什么都还不知道。取数慢或接口挂时最容易撞上。
+           */
+          columns={columns} rows={channels.data} rowKey={(r) => r.payChannel}
+          loading={channels.isLoading} error={channels.error}
+          onRetry={() => channels.refetch()} empty={c.pcEmpty}
+        />
         <p className="mt-2 text-xs text-muted-foreground">{c.pcDisableHint}</p>
         {rows.some((r) => !r.currentRate) && (
           <p className="mt-1 text-xs text-muted-foreground">{c.pcNoRateHint}</p>
@@ -145,7 +195,7 @@ export function PayChannelTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean
         {picked && !picked.supportsSubsidy && (
           <p className="mt-1 text-xs text-muted-foreground">{c.pcSubsidyNo}</p>
         )}
-      </ConfigCard>
+      </div>
 
       {canEdit && (
         <ConfigCard title={c.pcAddRateTitle}>
