@@ -131,12 +131,12 @@ function toEdit() {
           展示串（含烘焙后的规格文案），端上只排版不加工 —— 加工就是第二套烘焙。
         -->
         <view v-for="c in preview.changes" :key="c.field" class="diff">
-          <text class="txt-caption diff__label">{{ c.label }}</text>
+          <text class="txt-caption txt-quiet">{{ c.label }}</text>
           <view class="diff__vals">
             <text class="txt-sub diff__before">{{ c.before || "—" }}</text>
             <!-- sh-icon 而不是「→」字符：字符伪图标跟着系统字形走，RTL 也不会自己翻；
                  chevronRight 在 DIRECTIONAL 名单里，阿语下自动镜像 -->
-            <sh-icon name="chevronRight" :size="14" class="diff__arrow"></sh-icon>
+            <sh-icon name="chevronRight" :size="14" class="txt-quiet"></sh-icon>
             <text class="txt-sub diff__after">{{ c.after || "—" }}</text>
           </view>
         </view>
@@ -178,9 +178,6 @@ function toEdit() {
   padding: 14rpx 0;
   border-top: var(--sh-hairline-soft);
 }
-.diff__label {
-  color: var(--sh-sub);
-}
 .diff__vals {
   display: flex;
   align-items: baseline;
@@ -191,9 +188,6 @@ function toEdit() {
 /* 旧值划线弱化、新值常规 —— 眼睛先落在「将变成什么」上 */
 .diff__before {
   text-decoration: line-through;
-  color: var(--sh-sub);
-}
-.diff__arrow {
   color: var(--sh-sub);
 }
 .btns {

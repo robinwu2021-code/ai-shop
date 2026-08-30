@@ -558,7 +558,7 @@ onShow(() => {
         -->
         <text
           v-if="g.hasDraft && merchant.can('biz:goods')"
-          class="txt-caption reason draft-flag"
+          class="txt-caption reason is-warning"
           @tap="toPublish(g)"
         >
           {{ $t("goods.hasDraftRow") }}
@@ -688,10 +688,7 @@ onShow(() => {
   margin-top: 12rpx;
   text-align: end;
 }
-/* 未发布修改：警示色 —— 它不是错误，是「有事没做完」；可点，进发布确认页 */
-.draft-flag {
-  color: var(--sh-warning);
-}
+/* 未发布修改用 .is-warning（库件）：它不是错误，是「有事没做完」；可点，进发布确认页 */
 /* 缺资质：用警示色而不是危险色 —— 商品本身没错，缺的是一张证 */
 .gate-sum {
   display: block;
