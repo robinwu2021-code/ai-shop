@@ -341,10 +341,17 @@ export interface PublishPreview {
    */
   blocked: string[];
   /**
-   * 草稿基版过期：草稿建立之后线上被别人改过（运营强改/多端编辑）。
-   * true 时发布会被后端以 80018 拒 —— 端上先引导看差异再决定。
+   * 草稿基版过期：草稿建立之后线上被改过 —— 不止别人（运营强改/多端编辑），
+   * 也包括商家**自己**的上下架与改截单（线上 version 每次更新都增）。
+   * true 时发布要带 `confirmVersion = baseVersion` 才放行。
    */
   stale: boolean;
+  /**
+   * 此刻线上的 version。**冲突的出路靠它**：这份差异就是以这一版线上为基准算的，
+   * 商家看完点「已核对差异，仍要发布」，端上把它原样带回 `mPublishGoods` ——
+   * 对得上才放行；确认之后线上又变了照样拒（另一条出路是 `mDiscardGoodsDraft`）。
+   */
+  baseVersion: number;
 }
 
 /** 一行字段差异。`label` 给人看（服务端给中文名），`field` 给机器（title/spec/sku0…） */
@@ -794,10 +801,18 @@ export interface MerchantApi {
    * 发布草稿。审核关：**原子换版**，买家看到的从整份旧版直接变整份新版，
    * 没有「先下架再上架」的真空期；审核开：提交待审，**线上继续卖旧版**。
    *
-   * <p>草稿基版过期（线上被别人改过）时后端以 **80018** 拒 ——
-   * 端上引导先看差异再重新决定，不静默覆盖。
+   * <p>草稿基版过期时后端以 **80018** 拒。出路是 `confirmVersion`：
+   * 取自 `mPublishPreview` 的 `baseVersion`（商家看过以此刻线上为基准的差异），
+   * 原样带回即放行 —— 确认之后线上又变了照样拒，不存在静默覆盖。
+   * **确认发布不改在售态**：被运营强制下架过的商品，发完内容仍是下架的。
    */
-  mPublishGoods(goodsNo: string): Promise<Goods>;
+  mPublishGoods(goodsNo: string, confirmVersion?: number): Promise<Goods>;
+  /**
+   * 放弃草稿：草稿删除、线上一个字节不动 —— 冲突后的另一条出路
+   * （「以线上最新版为准重新编辑」），也是存了一版不想要的修改时的正常退路。
+   * <b>幂等</b>：重复点击不报错。
+   */
+  mDiscardGoodsDraft(goodsNo: string): Promise<Goods>;
 
   /**
    * 只改截单与到货说明（生鲜）。<b>不触发重审、不下架</b> ——

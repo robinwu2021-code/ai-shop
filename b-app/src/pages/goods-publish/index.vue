@@ -33,11 +33,16 @@ const preview = ref<PublishPreview | null>(null);
 const loading = ref(true);
 const publishing = ref(false);
 
+/*
+ * stale **不再禁用发布** —— 它换的是发布的语义：按钮变成「已核对差异，仍要发布」，
+ * 调用带上 preview.baseVersion（这份差异就是以那一版线上为基准算的）。
+ * 没有这条出路的话，商家自己下架再上架一次、生鲜每天改一次截单，
+ * 草稿就永久发不出去了。真正禁用发布的只有两件事：没有差异、有被拦的档位。
+ */
 const canPublish = computed(() =>
   !!preview.value
   && preview.value.changes.length > 0
-  && preview.value.blocked.length === 0
-  && !preview.value.stale);
+  && preview.value.blocked.length === 0);
 
 async function load() {
   loading.value = true;
@@ -67,10 +72,16 @@ onLoad((q) => {
 
 async function publish() {
   if (!canPublish.value || publishing.value) return;
-  if (!(await confirm({ title: t("goods.publishBtn"), hint: goodsTitle.value }))) return;
+  const stale = !!preview.value?.stale;
+  if (!(await confirm({
+    title: t(stale ? "goods.publishStaleBtn" : "goods.publishBtn"),
+    hint: goodsTitle.value,
+  }))) return;
   publishing.value = true;
   try {
-    const g = await api.mPublishGoods(goodsNo.value);
+    // stale 时带上差异所基于的那一版 —— 确认之后线上又变了，后端照样拒（80018 → 下面刷新差异）
+    const g = await api.mPublishGoods(
+      goodsNo.value, stale ? preview.value!.baseVersion : undefined);
     /*
      * 审核开与关走到这儿是两种结局：关 = 已换版（草稿删行，hasDraft=false）；
      * 开 = 提交待审、线上照卖旧版（草稿还在，hasDraft=true）。
@@ -96,6 +107,28 @@ async function publish() {
 
 function toEdit() {
   uni.redirectTo({ url: `${ROUTES.goodsEdit}?goodsNo=${goodsNo.value}` });
+}
+
+/**
+ * 放弃草稿 —— 冲突后的另一条出路（「以线上最新版为准重新编辑」），
+ * 也是存了一版不想要的修改时的正常退路。草稿删除不可恢复，所以要过确认框。
+ */
+async function discard() {
+  if (publishing.value) return;
+  if (!(await confirm({
+    title: t("goods.discardBtn"),
+    hint: t("goods.discardHint"),
+  }))) return;
+  publishing.value = true;
+  try {
+    await api.mDiscardGoodsDraft(goodsNo.value);
+    uni.showToast({ title: t("goods.discarded"), icon: "none" });
+    setTimeout(() => uni.navigateBack(), 1000);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    publishing.value = false;
+  }
 }
 </script>
 
@@ -146,13 +179,18 @@ function toEdit() {
         <view class="sh-btn sh-btn--soft sh-fill" @tap="toEdit">
           {{ $t("goods.edit") }}
         </view>
+        <!-- stale 时按钮就是确认动作本身：文案说清「你在对着此刻的线上版发布」 -->
         <view
           class="sh-btn sh-fill"
           :class="{ 'sh-btn--muted': !canPublish || publishing }"
           @tap="publish"
         >
-          {{ $t("goods.publishBtn") }}
+          {{ $t(preview.stale ? "goods.publishStaleBtn" : "goods.publishBtn") }}
         </view>
+      </view>
+      <!-- 第三条路：放弃草稿、以线上为准。弱化成文字链 —— 它是退路，不是并列选项 -->
+      <view class="discard-row">
+        <text class="txt-caption discard-link" @tap="discard">{{ $t("goods.discardBtn") }}</text>
       </view>
     </template>
   </sh-scaffold>
@@ -192,5 +230,13 @@ function toEdit() {
 }
 .btns {
   gap: 20rpx;
+}
+.discard-row {
+  text-align: center;
+  padding: 8rpx 0;
+}
+/* 危险色但不是按钮：草稿删除不可恢复，值得一个警示色；但它是退路，不抢主操作的视觉位 */
+.discard-link {
+  color: var(--sh-danger);
 }
 </style>

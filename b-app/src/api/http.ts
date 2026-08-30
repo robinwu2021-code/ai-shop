@@ -331,7 +331,12 @@ export const httpApi: MerchantApi = {
   },
   mPublishPreview: (goodsNo) =>
     http.get<PublishPreview>(buildPath(E.mPublishPreview.path, { goodsNo })),
-  mPublishGoods: (goodsNo) => http.post<Goods>(buildPath(E.mPublishGoods.path, { goodsNo })),
+  // confirmVersion 不传就不发 body：后端 @RequestBody(required=false)，正常发布无需确认
+  mPublishGoods: (goodsNo, confirmVersion) =>
+    http.post<Goods>(buildPath(E.mPublishGoods.path, { goodsNo }),
+      confirmVersion === undefined ? undefined : { confirmVersion }),
+  mDiscardGoodsDraft: (goodsNo) =>
+    http.post<Goods>(buildPath(E.mDiscardGoodsDraft.path, { goodsNo })),
   mSavePresale: (goodsNo, cutoffAt, arrivalDesc) =>
     http.post<Goods>(buildPath(E.mSavePresale.path, { goodsNo }), { cutoffAt, arrivalDesc }),
 

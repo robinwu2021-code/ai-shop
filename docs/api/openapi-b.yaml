@@ -9869,7 +9869,40 @@ paths:
   "/biz/goods/{goodsNo}/publish": 
     post: 
       operationId: "mPublishGoods"
-      summary: "发布草稿（原子换版）"
+      summary: "发布草稿（原子换版；冲突后带 confirmVersion）"
+      tags: 
+        - "goods"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "goodsNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Goods"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/goods/{goodsNo}/draft/discard": 
+    post: 
+      operationId: "mDiscardGoodsDraft"
+      summary: "放弃草稿（线上不动，幂等）"
       tags: 
         - "goods"
       security: 

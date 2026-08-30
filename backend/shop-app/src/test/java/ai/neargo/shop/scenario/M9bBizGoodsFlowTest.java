@@ -1593,6 +1593,121 @@ class M9bBizGoodsFlowTest {
         }
     }
 
+    @Test
+    @DisplayName("★★★ 冲突有出路：toggle 把基版推陈后，确认 baseVersion 可发布，瞎确认仍拒")
+    void staleDraftPublishableAfterConfirm() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+        mvc().perform(post("/ops/feature-flags/goods.audit").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":false,\"rolloutPercent\":0}"))
+                .andExpect(jsonPath("$.code").value(0));
+        try {
+            String goodsNo = onSaleGoodsWithDraft("12600199211", "冲突出路店");
+            /*
+             * 商家自己下架再上架 —— version 是 @Version 乐观锁，**每次 UPDATE 都增**。
+             * 生鲜每天改截单同理。没有确认出路的话，这一步就把草稿永久锁死了。
+             */
+            mvc().perform(post("/biz/goods/" + goodsNo + "/toggle").header("Authorization", "Bearer " + lastBiz)
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":false}"))
+                    .andExpect(jsonPath("$.code").value(0));
+            mvc().perform(post("/biz/goods/" + goodsNo + "/toggle").header("Authorization", "Bearer " + lastBiz)
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                    .andExpect(jsonPath("$.code").value(0));
+
+            // 不带确认：拒（这是原有防线，必须还在）
+            mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
+                            .header("Authorization", "Bearer " + lastBiz))
+                    .andExpect(jsonPath("$.code").value(80018));
+            // 预览：stale=true + 此刻线上的 baseVersion
+            String pv = mvc().perform(get("/biz/goods/" + goodsNo + "/publish-preview")
+                            .header("Authorization", "Bearer " + lastBiz))
+                    .andExpect(jsonPath("$.code").value(0))
+                    .andExpect(jsonPath("$.data.stale").value(true))
+                    .andReturn().getResponse().getContentAsString();
+            long base = json.readTree(pv).get("data").get("baseVersion").asLong();
+            // 瞎确认（错的版本号）：照样拒 —— 确认的意义是「看过以这一版为基准的差异」
+            mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
+                            .header("Authorization", "Bearer " + lastBiz)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"confirmVersion\":" + (base - 1) + "}"))
+                    .andExpect(jsonPath("$.code").value(80018));
+            // 带对的确认：放行，换版生效、商品仍在售
+            mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
+                            .header("Authorization", "Bearer " + lastBiz)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"confirmVersion\":" + base + "}"))
+                    .andExpect(jsonPath("$.code").value(0))
+                    .andExpect(jsonPath("$.data.title").value("新标题"))
+                    .andExpect(jsonPath("$.data.onSale").value(true));
+        } finally {
+            mvc().perform(post("/ops/feature-flags/goods.audit").header("Authorization", "Bearer " + ops)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"enabled\":true,\"rolloutPercent\":0}"))
+                    .andExpect(jsonPath("$.code").value(0));
+        }
+    }
+
+    @Test
+    @DisplayName("★★ 放弃草稿：线上不动、标识消失、幂等")
+    void discardDraftDropsChanges() throws Exception {
+        String goodsNo = onSaleGoodsWithDraft("12600199212", "放弃草稿店");
+        mvc().perform(post("/biz/goods/" + goodsNo + "/draft/discard")
+                        .header("Authorization", "Bearer " + lastBiz))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.hasDraft").value(false))
+                .andExpect(jsonPath("$.data.title").value("旧标题"));
+        // 草稿真没了 —— 不是标识骗人
+        mvc().perform(get("/biz/goods/" + goodsNo + "/draft")
+                        .header("Authorization", "Bearer " + lastBiz))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data").doesNotExist());
+        // 幂等：重复点「放弃」是常态，报错只会让商家以为没放弃成
+        mvc().perform(post("/biz/goods/" + goodsNo + "/draft/discard")
+                        .header("Authorization", "Bearer " + lastBiz))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
+    @DisplayName("★★★ 确认发布洗不掉处置：强制下架后确认发布，内容更新、商品仍下架")
+    void confirmedPublishKeepsOpsDelisting() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+        mvc().perform(post("/ops/feature-flags/goods.audit").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":false,\"rolloutPercent\":0}"))
+                .andExpect(jsonPath("$.code").value(0));
+        try {
+            String goodsNo = onSaleGoodsWithDraft("12600199213", "处置保全店");
+            // 运营强制下架（REJECTED + 下架 + version 增）—— 草稿随之 stale
+            mvc().perform(post("/ops/goods/" + goodsNo + "/force-off")
+                            .header("Authorization", "Bearer " + ops)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"reason\":\"处置保全测试\"}"))
+                    .andExpect(jsonPath("$.code").value(0));
+            String pv = mvc().perform(get("/biz/goods/" + goodsNo + "/publish-preview")
+                            .header("Authorization", "Bearer " + lastBiz))
+                    .andExpect(jsonPath("$.data.stale").value(true))
+                    .andReturn().getResponse().getContentAsString();
+            long base = json.readTree(pv).get("data").get("baseVersion").asLong();
+            /*
+             * 灵魂断言：确认发布**换的是内容，不是处置** —— 商品发完仍是下架的。
+             * 换版无脑置 onSale(true) 的话，商家两步点击就把强制下架洗掉了，
+             * 而运营那边不会收到任何信号。
+             */
+            mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
+                            .header("Authorization", "Bearer " + lastBiz)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"confirmVersion\":" + base + "}"))
+                    .andExpect(jsonPath("$.code").value(0))
+                    .andExpect(jsonPath("$.data.title").value("新标题"))
+                    .andExpect(jsonPath("$.data.onSale").value(false));
+        } finally {
+            mvc().perform(post("/ops/feature-flags/goods.audit").header("Authorization", "Bearer " + ops)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"enabled\":true,\"rolloutPercent\":0}"))
+                    .andExpect(jsonPath("$.code").value(0));
+        }
+    }
+
     private void approveGoods(String goodsNo) throws Exception {
         mvc().perform(post("/ops/goods/" + goodsNo + "/audit")
                         .header("Authorization", "Bearer " + opsLogin())

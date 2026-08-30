@@ -755,13 +755,18 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 放在 saveSkus 之后：编译要读的 SKU 快照这时才落库。
          */
         if (PUBLISHING.get() != null) {
-            // 换版收尾：编译 + 保持在售。失败（80017/乐观锁）整个发布事务回滚，线上停在完整旧版
+            /*
+             * 换版收尾：编译 + **保持进场时的在售态**（不是无脑置 true）。
+             * 正常路径商品本来在售，保持即在售；但运营强制下架之后商家走
+             * 「已核对差异，仍要发布」——内容可以更新，**商品不能被这次发布抬回架**，
+             * 处置的牙齿就是下架本身。要回架得他显式再点上架，那一步有自己的校验。
+             * 失败（80017/乐观锁）整个发布事务回滚，线上停在完整旧版。
+             */
             bakeForPublish(g);
             g.setAuditStatus(APPROVED);
-            g.setOnSale(true);
             g.setPendingOnSale(false);
             DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
-            syncPool(g, true);
+            syncPool(g, Boolean.TRUE.equals(g.getOnSale()));
             return toVO(g);
         }
         if (!stayDraft && !auditRequired()) {
@@ -890,7 +895,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
 
     @Override
     @Transactional
-    public GoodsVO publishDraft(String merchantNo, String goodsNo) {
+    public GoodsVO publishDraft(String merchantNo, String goodsNo, Long confirmVersion) {
         PrdGoods live = mine(merchantNo, goodsNo);
         PrdGoodsDraft draft = DataScopeContext.executeWithoutScope(() ->
                 draftMapper.selectOne(Wrappers.<PrdGoodsDraft>lambdaQuery()
@@ -900,12 +905,24 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         /*
-         * 冲突检查：草稿基于的那一版线上被人改过（运营强改/多端编辑）→ 拒。
+         * 冲突检查：草稿基于的那一版线上被人改过（运营强改/多端编辑，
+         * 也包括商家**自己**的 toggle / 改截单 —— version 每次 UPDATE 都增）→ 拒。
          * 静默覆盖的话，运营刚做的强制处置会被商家一次发布洗掉，而且双方都不知道。
+         *
+         * <p><b>出路</b>（没有出路的话，生鲜商家每天改截单就把自己的草稿锁死了）：
+         * 预览接口把此刻线上的 version 随差异一起下发；商家看过「以此刻线上为基准」
+         * 的完整 diff 后显式确认，端上原样带回 —— **对得上此刻的 version 才放行**，
+         * 确认之后线上又变了照样拒（等值比较天然做到）。另一条出路是 discardDraft。
          */
-        if (draft.getBaseVersion() != null
-                && !draft.getBaseVersion().equals(live.getVersion())) {
+        boolean stale = draft.getBaseVersion() != null
+                && !draft.getBaseVersion().equals(live.getVersion());
+        if (stale && !live.getVersion().equals(confirmVersion)) {
             throw BizException.of(ErrorCode.GOODS_DRAFT_STALE);
+        }
+        if (stale) {
+            // 确认过的冲突就地重新基线：审核开时草稿还要活到过审那一刻，
+            // 行上记录的「基于哪一版」应当反映商家确认过的这一版
+            draft.setBaseVersion(live.getVersion());
         }
         if (auditRequired()) {
             /*
@@ -920,6 +937,16 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             return toVO(live);
         }
         return swapFromDraft(live, draft);
+    }
+
+    @Override
+    @Transactional
+    public GoodsVO discardDraft(String merchantNo, String goodsNo) {
+        // mine() 先核归属 —— 草稿表只有 goods_no，不核的话拿别家的单号也删得掉
+        PrdGoods live = mine(merchantNo, goodsNo);
+        // 幂等：purge 对不存在的行是 0 行 no-op，重复点「放弃」不该报错
+        DataScopeContext.executeWithoutScope(() -> draftMapper.purge(live.getGoodsNo()));
+        return toVO(live);
     }
 
     @Override
@@ -997,7 +1024,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                     : null;
             diffRow(rows, "sku" + i, "第 " + (i + 1) + " 档", before, after);
         }
-        return new ai.neargo.shop.product.dto.PublishPreviewVO(rows, blocked, stale);
+        return new ai.neargo.shop.product.dto.PublishPreviewVO(rows, blocked, stale, live.getVersion());
     }
 
     private static void diffRow(List<ai.neargo.shop.product.dto.PublishPreviewVO.DiffRow> rows,

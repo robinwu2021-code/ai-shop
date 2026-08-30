@@ -196,10 +196,30 @@ public class BizGoodsController {
         return goodsService.publishPreview(BizContext.requireMerchantNo(), goodsNo);
     }
 
+    /**
+     * {@code confirmVersion}（可选）：冲突（80018）后的出路。取自 publish-preview
+     * 下发的 {@code baseVersion} —— 商家看过以此刻线上为基准的差异后显式确认，
+     * 端上原样带回。不带 = 正常发布，基版过期就拒。
+     */
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @PostMapping("/biz/goods/{goodsNo}/publish")
-    public GoodsVO publishDraft(@PathVariable String goodsNo) {
-        return goodsService.publishDraft(BizContext.requireMerchantNo(), goodsNo);
+    public GoodsVO publishDraft(@PathVariable String goodsNo,
+                                @RequestBody(required = false) PublishReq req) {
+        return goodsService.publishDraft(BizContext.requireMerchantNo(), goodsNo,
+                req == null ? null : req.confirmVersion());
+    }
+
+    public record PublishReq(Long confirmVersion) {
+    }
+
+    /**
+     * 放弃草稿 —— 冲突后的另一条出路（「以线上最新版为准重新编辑」），
+     * 也是商家存了一版不想要的修改时的正常退路。幂等；线上一个字节不动。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @PostMapping("/biz/goods/{goodsNo}/draft/discard")
+    public GoodsVO discardDraft(@PathVariable String goodsNo) {
+        return goodsService.discardDraft(BizContext.requireMerchantNo(), goodsNo);
     }
 
     /**

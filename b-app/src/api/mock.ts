@@ -2300,8 +2300,9 @@ export const mockApi: MerchantApi = {
       money(Math.min(...seed.skus.map((k) => k.price))),
       money(Math.min(...draft.skus.map((k) => k.price))),
     );
-    // mock 单人使用：没有「别人改过线上」，stale 恒 false；停用档拦截由后端演
-    return delay({ changes, blocked: [], stale: false } satisfies PublishPreview);
+    // mock 单人使用：没有「别人改过线上」，stale 恒 false、baseVersion 给个定值；
+    // 冲突确认那条链（80018 → 确认 → 放行）只有真后端演得了，场景测试守着
+    return delay({ changes, blocked: [], stale: false, baseVersion: 1 } satisfies PublishPreview);
   },
 
   async mPublishGoods(goodsNo) {
@@ -2319,6 +2320,13 @@ export const mockApi: MerchantApi = {
     } finally {
       publishingDraft = false;
     }
+    delete db.goodsDrafts[goodsNo];
+    persist();
+    return delay(withDraftFlag(toGoods(findGoodsSeed(goodsNo))));
+  },
+
+  async mDiscardGoodsDraft(goodsNo) {
+    // 幂等：没有草稿也不报错 —— 重复点「放弃」是常态，与真后端同一口径
     delete db.goodsDrafts[goodsNo];
     persist();
     return delay(withDraftFlag(toGoods(findGoodsSeed(goodsNo))));

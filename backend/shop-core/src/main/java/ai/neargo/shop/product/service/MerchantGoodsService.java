@@ -213,8 +213,22 @@ public interface MerchantGoodsService {
     /**
      * 发布草稿（双版本，TDD §3.3）。审核关：原子换版；审核开：提交待审、
      * 线上继续卖旧版。无草稿 → BAD_REQUEST；基版过期 → GOODS_DRAFT_STALE(80018)。
+     *
+     * <p>{@code confirmVersion}：冲突后的**唯一出路之一**（另一条是 {@link #discardDraft}）。
+     * 线上的 version 每次 UPDATE 都会增 —— 商家自己下架再上架、生鲜每天改一次截单，
+     * 都会让草稿基版过期；没有出路的话草稿从此永远发不出去。预览接口把**此刻线上的
+     * version** 随差异一起下发，商家在差异页看过「以此刻线上为基准」的完整 diff 后
+     * 显式确认，端上把那个数原样带回来 —— 对得上才放行；确认之后线上又变了照样拒。
+     * <b>确认发布不改变在售态</b>：运营强制下架过的商品，发完内容仍是下架的。
      */
-    GoodsVO publishDraft(String merchantNo, String goodsNo);
+    GoodsVO publishDraft(String merchantNo, String goodsNo, Long confirmVersion);
+
+    /**
+     * 放弃草稿：物理删草稿行，线上一个字节不动。冲突后的另一条出路 ——
+     * 「以线上最新版为准重新编辑」。<b>幂等</b>：没有草稿时直接返回线上版，
+     * 重复点击是常态，报错只会让商家以为没放弃成。
+     */
+    GoodsVO discardDraft(String merchantNo, String goodsNo);
 
     /** 发布预览：草稿 dry-run 烘焙后与线上的字段级差异（含会被拦的档位清单） */
     ai.neargo.shop.product.dto.PublishPreviewVO publishPreview(String merchantNo, String goodsNo);
