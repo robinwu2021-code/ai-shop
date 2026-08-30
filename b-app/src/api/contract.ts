@@ -419,6 +419,14 @@ export interface MerchantApi {
   /** 每通道一条。微信过了、支付宝还没过是正常状态，合并成一个会让人以为都没好 */
   /** @param entityNo 看哪张证照的进件，不传 = 当前证照 */
   mPayments(entityNo?: string): Promise<PaymentApplyment[]>;
+
+  /**
+   * 本店**能开的全部通道**，含还没开的（那几条 applyStatus=NONE）。
+   *
+   * 与 mPayments 的区别：那个只回答「已经开了的怎么样了」，
+   * 而商家问的第一个问题往往是「我还能开什么」。
+   */
+  mPayChannels(entityNo?: string): Promise<PaymentApplyment[]>;
   /** 结算账号明文只在这一次请求里存在：库里只留掩码，回显也只有掩码 */
   mSubmitPayment(payload: SubmitPaymentReq): Promise<PaymentApplyment>;
   /** 主动回查。留这个入口是因为**回调会丢**，丢了商家就永远停在「审核中」 */

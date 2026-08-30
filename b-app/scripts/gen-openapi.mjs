@@ -284,6 +284,7 @@ const RESPONSE_TYPES = {
   mApplyDraft: "MerchantApplyReq",
   mMasterData: "MasterData",
   mPayments: "PaymentApplyment[]",
+  mPayChannels: "PaymentApplyment[]",
   mSubmitPayment: "PaymentApplyment",
   mRefreshPayment: "PaymentApplyment",
   mStoreList: "Store[]",

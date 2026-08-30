@@ -147,6 +147,8 @@ export const httpApi: MerchantApi = {
 
   mPayments: (entityNo) =>
     http.get<PaymentApplyment[]>(E.mPayments.path, entityNo ? { entityNo } : undefined),
+  mPayChannels: (entityNo) =>
+    http.get<PaymentApplyment[]>(E.mPayChannels.path, entityNo ? { entityNo } : undefined),
   mSubmitPayment: (payload) =>
     http.post<PaymentApplyment>(E.mSubmitPayment.path, payload satisfies SubmitPaymentReq),
   mRefreshPayment: (payChannel) =>

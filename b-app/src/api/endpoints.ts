@@ -28,6 +28,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mMasterData: { method: "GET", path: "/common/master-data", auth: false, summary: "平台主数据（行业/主体/通道）" },
 
   mPayments: { method: "GET", path: "/biz/merchant/payment", auth: true, summary: "收款进件状态" },
+  mPayChannels: { method: "GET", path: "/biz/merchant/pay-channel", auth: true, summary: "本店能开的收款通道（含没开的）" },
   mSubmitPayment: { method: "POST", path: "/biz/merchant/payment", auth: true, summary: "补交资料并提交进件" },
   mRefreshPayment: {
     method: "POST",

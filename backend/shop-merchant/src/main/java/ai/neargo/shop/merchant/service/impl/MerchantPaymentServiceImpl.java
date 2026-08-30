@@ -75,11 +75,33 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
         return rows.stream().map(this::toVO).toList();
     }
 
+    /**
+     * 本主体能开的全部通道，含没开过的。
+     *
+     * <p>没开过的给一条 {@code NONE} 的占位而不是不返回 —— 页面按同一套状态机渲染，
+     * 不用为「没有这一行」另写一支。只看**主体级**那一行（storeNo 空）：
+     * 分店的收款行是另一件事，混进来会让「我能开什么」这一问变成一张长表。
+     */
+    @Override
+    public List<PaymentApplymentVO> availableChannels(String merchantNo) {
+        java.util.Map<String, MchPaymentMerchant> opened = rows(merchantNo).stream()
+                .filter(r -> r.getStoreNo() == null || r.getStoreNo().isEmpty())
+                .collect(java.util.stream.Collectors.toMap(MchPaymentMerchant::getPayChannel,
+                        r -> r, (a, b) -> a, java.util.LinkedHashMap::new));
+        return masterDataPort.enabledChannels(null).stream()
+                .map(ch -> opened.containsKey(ch) ? toVO(opened.get(ch)) : placeholder(merchantNo, ch))
+                .toList();
+    }
+
     /** 「还没进件」的占位：状态 NONE，缺什么按主体算 —— 与提交时同一套判断。 */
     private PaymentApplymentVO placeholder(String merchantNo) {
+        return placeholder(merchantNo, resolveChannel(null));
+    }
+
+    private PaymentApplymentVO placeholder(String merchantNo, String payChannel) {
         MchPaymentMerchant virtual = new MchPaymentMerchant();
         virtual.setEntityNo(merchantNo);
-        virtual.setPayChannel(MchPaymentMerchant.WECHAT);
+        virtual.setPayChannel(payChannel);
         virtual.setLegalForm(legalFormOf(merchantNo));
         virtual.setApplyStatus(MchPaymentMerchant.NONE);
         return new PaymentApplymentVO(virtual.getPayChannel(),

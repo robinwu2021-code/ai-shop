@@ -192,4 +192,32 @@ class PayChannelDefaultResolveTest {
                 Integer.class, ENTITY);
         assertThat(wechatRows).as("更不许顺手插一条微信的行").isZero();
     }
+
+    @Test
+    @DisplayName("★★★ 「我还能开什么」：没开过的通道也要给一行 NONE，不是不返回")
+    void availableChannelsIncludesUnopened() {
+        fixture("WECHAT");   // 只开了微信
+
+        var all = paymentService.availableChannels(ENTITY);
+
+        assertThat(all).extracting(v -> v.payChannel())
+                .as("两个启用中的通道都要在列表里").containsExactly("WECHAT", "ALIPAY");
+        assertThat(all).filteredOn(v -> "ALIPAY".equals(v.payChannel()))
+                .singleElement()
+                .satisfies(v -> assertThat(v.applyStatus())
+                        .as("没开过的给 NONE 占位 —— 不返回的话页面永远长不出「去开通支付宝」")
+                        .isEqualTo("NONE"));
+    }
+
+    @Test
+    @DisplayName("★★★ 停用的通道不出现在「能开什么」里 —— 让人去开一个已停用的通道是死路")
+    void availableChannelsSkipsDisabled() {
+        SysPayChannel alipay = row("ALIPAY");
+        alipay.setEnabled(false);
+        DataScopeContext.executeWithoutScope(() -> channelMapper.updateById(alipay));
+        fixture("WECHAT");
+
+        assertThat(paymentService.availableChannels(ENTITY))
+                .extracting(v -> v.payChannel()).containsExactly("WECHAT");
+    }
 }

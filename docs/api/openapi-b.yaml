@@ -7694,6 +7694,36 @@ paths:
           "application/json": 
             schema: 
               "$ref": "#/components/schemas/SubmitPaymentReq"
+  "/biz/merchant/pay-channel": 
+    get: 
+      operationId: "mPayChannels"
+      summary: "本店能开的收款通道（含没开的）"
+      tags: 
+        - "merchant"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/PaymentApplyment"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/merchant/payment/{payChannel}/refresh": 
     post: 
       operationId: "mRefreshPayment"

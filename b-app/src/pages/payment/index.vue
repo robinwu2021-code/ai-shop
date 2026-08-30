@@ -22,8 +22,15 @@ const list = ref<PaymentApplyment[]>([]);
 const loading = ref(false);
 const submitting = ref(false);
 
-/** 表单只在「还没开好户」时显示；开好了就没什么可填的 */
-const current = computed(() => list.value[0] ?? null);
+/**
+ * 当前在看哪个通道。
+ *
+ * <p><b>此前这一页写死取 `list[0]`</b>，于是后端明明按通道各一条返回，
+ * 页面永远只显示第一条 —— 商家开了支付宝也看不见，更没有地方去开第二个。
+ */
+const picked = ref("");
+const current = computed(() =>
+  list.value.find((p) => p.payChannel === picked.value) ?? list.value[0] ?? null);
 const done = computed(() => current.value?.canReceiveMoney === true);
 
 /**
@@ -34,12 +41,15 @@ const done = computed(() => current.value?.canReceiveMoney === true);
  */
 function badgeText(p: PaymentApplyment): string {
   if (p.canReceiveMoney) return String(t("payment.ok"));
+  // NONE = 这个通道商家一次都没申请过。归到「待补资料」会让人以为已经在办了
+  if (p.applyStatus === "NONE") return String(t("payment.notOpened"));
   if (!p.submitted && p.applyStatus !== "REJECTED") return String(t("payment.needInfo"));
   return String(t(`payment.status.${p.applyStatus}`));
 }
 
 function badgeTone(p: PaymentApplyment): string {
   if (p.canReceiveMoney) return "is-ok";
+  if (p.applyStatus === "NONE") return "is-none";
   // 待补资料要与「审核中」区分开：前者要他动手，后者只需要等
   return !p.submitted && p.applyStatus !== "REJECTED" ? "is-todo" : "is-wait";
 }
@@ -62,7 +72,12 @@ onShow(load);
 async function load() {
   loading.value = true;
   try {
-    list.value = await api.mPayments(entityNo.value || undefined);
+    /*
+     * 取「能开的全部通道」而不是「已开的」：没开过的那几条会带着
+     * applyStatus=NONE 回来，页面按同一套状态机渲染出「去开通」。
+     * 只取已开的话，这一页永远长不出第二个通道的入口。
+     */
+    list.value = await api.mPayChannels(entityNo.value || undefined);
   } catch {
     list.value = [];
   } finally {
@@ -125,6 +140,14 @@ async function submit() {
   }
 }
 
+/** 切到另一个通道：下面那张表单跟着换，已填的内容不带过去 */
+function pick(p: PaymentApplyment) {
+  if (picked.value === p.payChannel) return;
+  picked.value = p.payChannel;
+  form.value = { settleAccount: "", contactName: "", contactPhone: "" };
+  licenses.value = [];
+}
+
 /** 回调会丢，丢了商家就永远停在「审核中」—— 给他一个自己能按的按钮 */
 async function refresh() {
   if (!current.value) return;
@@ -145,7 +168,13 @@ async function refresh() {
       <text class="sh-muted sh-mt-xs blk">{{ $t("payment.hint") }}</text>
     </view>
 
-    <view v-for="p in list" :key="p.payChannel" class="sh-card ch">
+    <view
+      v-for="p in list"
+      :key="p.payChannel"
+      class="sh-card ch"
+      :class="{ 'is-picked': current && p.payChannel === current.payChannel }"
+      @tap="pick(p)"
+    >
       <view class="ch__top sh-row sh-row--between">
         <text class="txt-title">{{ p.channelName }}</text>
         <!--
@@ -170,6 +199,11 @@ async function refresh() {
         <text>{{ p.settleAccountMasked }}</text>
       </sh-kv>
 
+      <!-- 没开过的通道不列「还缺什么」：他还没决定要不要开，先给他一句能点的 -->
+      <text v-else-if="p.applyStatus === 'NONE'" class="txt-caption sh-muted">
+        {{ p.payChannel === current?.payChannel ? $t("payment.fillBelow") : $t("payment.tapToOpen") }}
+      </text>
+
       <!-- 还缺什么，逐条列出来。「还差结算账户」比「审核中」有用得多 -->
       <view v-else-if="p.missing.length" class="miss">
         <text class="txt-body miss__t">{{ $t("payment.missingTitle") }}</text>
@@ -179,7 +213,8 @@ async function refresh() {
 
     <!-- 已经能收钱就不再显示表单：重复进件会拿到新的商户号，历史分账仍指向旧号 -->
     <view v-if="current && !done" class="sh-card sh-mt-sm">
-      <text class="txt-title">{{ $t("payment.formTitle") }}</text>
+      <!-- 表单标题带上通道名：多通道下光写「开通收款」看不出在填哪一个 -->
+      <text class="txt-title">{{ $t("payment.formTitle") }}（{{ current.channelName }}）</text>
       <text class="sh-hint">{{ $t("payment.formHint") }}</text>
 
       <view class="field">
@@ -259,6 +294,20 @@ async function refresh() {
 .badge.is-todo {
   background: var(--sh-warning-tint);
   color: var(--sh-warning);
+}
+/*
+  未开通：**比「审核中」还要安静。**它既不需要他动手（还没决定要开），
+  也不是平台在处理 —— 用提醒色会把它抬到与「待补资料」同一优先级，
+  而商家真正该先看的是已经在办的那一个。
+*/
+.badge.is-none {
+  background: transparent;
+  border: 1rpx solid var(--sh-line);
+  color: var(--sh-sub);
+}
+/* 选中的通道要看得出来：多张卡片长得一样时，下面的表单在填哪一个全靠这一条 */
+.ch.is-picked {
+  border: 2rpx solid var(--sh-primary);
 }
 .reason {
   display: block;

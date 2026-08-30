@@ -803,6 +803,9 @@ export default {
       FROZEN: "已冻结",
     },
     needInfo: "待补资料",
+    notOpened: "未开通",
+    tapToOpen: "点此开通",
+    fillBelow: "在下方填写资料后提交",
     missingTitle: "还差这些资料：",
     missing: {
       settleAccount: "结算账户（钱打到哪张卡）",

@@ -30,6 +30,19 @@ public interface MerchantPaymentService {
     List<PaymentApplymentVO> list(String merchantNo);
 
     /**
+     * 本主体**能开的全部通道**，含还没开的。
+     *
+     * <p>与 {@link #list(String)} 的区别是那一条只回答「已经开了的怎么样了」——
+     * 而商家问的第一个问题往往是<b>「我还能开什么」</b>。
+     * 只给已开通的列表，页面就永远长不出「去开通支付宝」那个入口，
+     * 而后端明明支持多通道。
+     *
+     * <p>没开过的通道返回 {@code applyStatus=NONE} 的一行，
+     * <b>不是不返回</b> —— 页面按同一套状态机渲染，不用为「没有这一行」另写一支。
+     */
+    List<PaymentApplymentVO> availableChannels(String merchantNo);
+
+    /**
      * 补交资料并提交进件。
      *
      * <p><b>结算账号明文只在本次调用中存在</b>：传给通道，库里只留掩码

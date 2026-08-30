@@ -426,6 +426,23 @@ public class BizMerchantController {
     }
 
     /**
+     * 本店<b>能开的全部收款通道</b>，含还没开的。
+     *
+     * <p>与上面那条的区别是它只回答「已经开了的怎么样了」，
+     * 而商家问的第一个问题往往是<b>「我还能开什么」</b> ——
+     * 只给已开通的列表，页面就永远长不出「去开通支付宝」那个入口，
+     * 而后端明明支持多通道。
+     *
+     * <p>路径用<b>单数</b>：/biz 与 /mp 的资源段一律单数（复数是 /ops 的约定），
+     * 有守卫盯着。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
+    @GetMapping("/biz/merchant/pay-channel")
+    public List<PaymentApplymentVO> payChannels(@RequestParam(required = false) String entityNo) {
+        return paymentService.availableChannels(ownedEntity(entityNo));
+    }
+
+    /**
      * 补交资料并提交进件。
      *
      * <p>结算账号<b>明文只在这一次请求里存在</b>：转给通道，库里只留掩码，

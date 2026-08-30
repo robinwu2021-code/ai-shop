@@ -1025,6 +1025,26 @@ export const mockApi: MerchantApi = {
     return delay([{ ...db.payment }]);
   },
 
+  /*
+   * 能开的通道。**支付宝故意给一条 NONE**：「还没开通」是真实存在的状态，
+   * mock 里两个通道都给成已开通的话，页面上「去开通」那一支永远走不到 ——
+   * 而它正是商家第一次打开这一页要点的那个按钮。
+   */
+  async mPayChannels() {
+    return delay([
+      { ...db.payment },
+      {
+        payChannel: "ALIPAY",
+        channelName: "支付宝",
+        applyStatus: "NONE" as const,
+        canReceiveMoney: false,
+        missing: [],
+        submitted: false,
+        storeNo: "",
+      },
+    ]);
+  },
+
   async mSubmitPayment(payload) {
     if (payload.entityNo && payload.entityNo === db.secondEntity.entityNo) {
       // 第二张证照还没交执照，进件进不了 —— 与后端一致：没证照没法进件
