@@ -64,6 +64,30 @@ public interface MerchantPaymentService {
     PaymentApplymentVO refresh(String merchantNo, String payChannel, String storeNo);
 
     /**
+     * 扫一轮<b>还在审核中</b>的进件，主动去通道问结果。
+     *
+     * <p><b>为什么必须有它</b>：今天进件状态只有商家自己点「刷新」才会推进 ——
+     * 没有回调、没有轮询。商家不点，单子就一直显示「审核中」，
+     * 而通道那边可能三天前就批了。这不是体验问题：<b>他会以为平台没在办</b>。
+     *
+     * @param limit      一轮最多查多少条，防止第一次上线时把通道打满
+     * @param staleAfter 超过这个毫秒数还没出结果的，<b>单独计数并告警</b> ——
+     *                   通道审核一般一两天，卡更久说明这一单需要人去问，
+     *                   而不是继续等下一轮
+     */
+    PollResult pollApplying(int limit, long staleAfter);
+
+    /**
+     * @param scanned  本轮查了几条
+     * @param settled  查出结果的（ACTIVE 或 REJECTED）
+     * @param failed   查询本身失败的。<b>与「还没结果」分开计</b> ——
+     *                 前者是我方或通道出了问题，后者是正常等待
+     * @param stale    超期仍无结果的，要有人去问
+     */
+    record PollResult(int scanned, int settled, int failed, int stale) {
+    }
+
+    /**
      * 为某家门店<b>新开一次进件</b>，拿一个独立的收款号。
      *
      * <p>这是「分开结算」的入口。微信侧一个商户号只能绑一个结算账户 ——

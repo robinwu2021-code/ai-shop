@@ -1,6 +1,8 @@
 package ai.neargo.shop.merchant.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -34,6 +36,8 @@ import java.util.stream.Collectors;
  */
 @Service
 public class MerchantPaymentServiceImpl implements MerchantPaymentService {
+
+    private static final Logger log = LoggerFactory.getLogger(MerchantPaymentServiceImpl.class);
 
     private final MchPaymentMapper paymentMapper;
     private final MchEntityMapper merchantMapper;
@@ -248,6 +252,54 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
         }
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(row));
         return toVO(row);
+    }
+
+    @Override
+    public PollResult pollApplying(int limit, long staleAfter) {
+        List<MchPaymentMerchant> applying = DataScopeContext.executeWithoutScope(() ->
+                paymentMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<MchPaymentMerchant>lambdaQuery()
+                        .eq(MchPaymentMerchant::getApplyStatus, MchPaymentMerchant.APPLYING)
+                        .isNotNull(MchPaymentMerchant::getChannelApplyNo)
+                        // 最早提交的先查：卡最久的那一单最需要有人知道
+                        .orderByAsc(MchPaymentMerchant::getAppliedAt)
+                        .last("LIMIT " + Math.max(1, limit))));
+        long now = System.currentTimeMillis();
+        int settled = 0;
+        int failed = 0;
+        int stale = 0;
+        for (MchPaymentMerchant row : applying) {
+            if (row.getChannelApplyNo() == null || row.getChannelApplyNo().isBlank()) {
+                continue;
+            }
+            try {
+                /*
+                 * 复用 refresh 而不是把那段逻辑抄一遍：开户成功要生成收款号、
+                 * 只生成一次、要落 activatedAt —— 抄一遍迟早两边分岔，
+                 * 而分岔的表现是「手动刷新能开通、自动轮询开不通」。
+                 */
+                PaymentApplymentVO vo = refresh(row.getEntityNo(), row.getPayChannel(),
+                        row.getStoreNo());
+                if (!MchPaymentMerchant.APPLYING.equals(vo.applyStatus())) {
+                    settled++;
+                    continue;
+                }
+            } catch (RuntimeException e) {
+                /*
+                 * 单条失败不影响其余，但**要计数**：一条查不动是偶发，
+                 * 一批查不动是通道或凭据出了问题，而只 log 不计数的话没人会发现。
+                 */
+                failed++;
+                log.warn("[applyment-poll] 查进件失败 {} / {}：{}", row.getEntityNo(),
+                        row.getPayChannel(), e.toString());
+                continue;
+            }
+            Long appliedAt = row.getAppliedAt();
+            if (appliedAt != null && now - appliedAt > staleAfter) {
+                stale++;
+            }
+        }
+        return new PollResult(applying.size(), settled, failed, stale);
     }
 
     // ------------------------------------------------------------------ 内部
