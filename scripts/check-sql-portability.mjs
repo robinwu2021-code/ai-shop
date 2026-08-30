@@ -20,6 +20,7 @@
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { maskSqlNoise } from "./lib/sql-mask.mjs";
 
 const ROOT = join(fileURLToPath(import.meta.url), "../..");
 const BASELINE = join(ROOT, "backend/known-sql-dialect.txt");
@@ -129,7 +130,16 @@ function lineOf(src, idx) {
 
 const hits = [];
 for (const p of targets()) {
-  const src = readFileSync(p, "utf8");
+  /*
+   * **先把注释与字符串盖成空格**（等长，行号不变）。
+   *
+   * 不这么做的话，闸门会命中「注释里写出来的那个错误示例」——
+   * 而那正是这个仓库最该鼓励的写法：把「为什么不能这么写」写在离现场最近的地方。
+   * 2026-08-30 真实发生：有人改完排序规则仍然红，红在他解释这次改动的那段注释上。
+   *
+   * 这不是放宽 —— 被盖掉的每一段都不会被数据库执行。见 lib/sql-mask.mjs。
+   */
+  const src = maskSqlNoise(readFileSync(p, "utf8"));
   for (const r of RULES) {
     r.re.lastIndex = 0;
     let m;
