@@ -115,6 +115,53 @@ class OpsDataScopeFlowTest {
         }
     }
 
+    @Test
+    @DisplayName("★★★ 批① 提报队列按商家域收敛 —— 且**先断非空**，空列表才是这条链路最像成功的坏结局")
+    void applyQueueIsScopedByMerchant() throws Exception {
+        String admin = TestLogin.admin(mvc(), json);
+
+        /*
+         * 提报队列 `/ops/communities/applies` **不带商家参数** —— 它给的是全量待审，
+         * 所以它正是数据域该起作用的地方（`cmt_community_apply` 2026-08-30 才登记）。
+         *
+         * <p>对照另一条：`adminService.appliesOf(merchantNo)` 是**按参数过滤**的，
+         * 它验不到数据域 —— 拿它当验证会得到一个恒绿的假象。
+         */
+        /*
+         * **用例自己造数据**：测试库里 cmt_community_apply 没有种子。
+         * 造两家的各一条 —— 只造一家的话，「域内看得更少」会分不出
+         * 「过滤生效了」和「本来就只有这一条」。
+         */
+        adminService.submitApply("M0001", "数据域测试·甲小区", "甲路 1 号",
+                null, null, null, null, null, null);
+        adminService.submitApply("M0003", "数据域测试·乙小区", "乙路 1 号",
+                null, null, null, null, null, null);
+
+        int all = applyCount(admin, null);
+        /*
+         * **先断非空。** 测试库里 cmt_community_apply 没有种子，全靠用例自己造；
+         * 一条都没有的话，下面那句「域内运营看得更少」会因为 0 <= 0 恒真 ——
+         * 一条永远不会失败的断言比没有断言更坏。
+         */
+        assertThat(all).as("超管看到的提报队列是空的 —— 这条用例此刻什么也没验到").isGreaterThan(0);
+
+        // 配到一个不存在提报的商家上：域内应当看不到别人的单
+        var scoped = staffWithScope(admin, "ds-apply", "M0002", null, null);
+        assertThat(applyCount(scoped.token(), null))
+                .as("配了 M0002 域的运营看到了不属于他的提报 —— 数据域没生效")
+                .isLessThan(all);
+    }
+
+    private int applyCount(String token, String status) throws Exception {
+        String body = mvc().perform(get("/ops/communities/applies")
+                        .header("Authorization", "Bearer " + token)
+                        .param("status", status == null ? "ALL" : status)
+                        .param("size", "200"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("records").size();
+    }
+
     // ─────────────────────────────────────────────────────── ② 空 = 不限定（Q3）
 
     @Test
@@ -416,6 +463,9 @@ class OpsDataScopeFlowTest {
     private interface ThrowingRunnable {
         void run() throws Exception;
     }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.community.service.CommunityAdminService adminService;
 
     private record Staff(String staffNo, String token) {
     }

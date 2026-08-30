@@ -224,8 +224,18 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
             w.eq(ai.neargo.shop.community.entity.CmtCommunityApply::getStatus, status);
         }
         w.orderByDesc(ai.neargo.shop.community.entity.CmtCommunityApply::getId);
-        return DataScopeContext.executeWithoutScope(() -> applyMapper.selectList(w))
-                .stream().map(this::toApplyVO).toList();
+        /*
+         * **这一处不绕过数据域**（2026-08-30）。
+         *
+         * <p>它是运营端的**全量待审队列**（`/ops/communities/applies` 不带商家参数），
+         * 正是数据域该起作用的地方：配了商家域或社区域的运营，只该看见自己那部分。
+         * 此前包着 executeWithoutScope，于是 `cmt_community_apply` 登记了也没有任何效果 ——
+         * 「登记一张表」与「那张表真的被过滤」是两件事，中间隔着每一个读点的豁免。
+         *
+         * <p>对照 {@link #appliesOf(String)}：那条**按参数过滤**（商家查自己的），
+         * 它绕不绕过都一样 —— 拿它当验证会得到一个恒绿的假象。
+         */
+        return applyMapper.selectList(w).stream().map(this::toApplyVO).toList();
     }
 
     @Override

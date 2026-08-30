@@ -80,6 +80,36 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.PICKUP, "pickup_no",
                 ScopeDim.GROUP, "group_no"));
 
+        /*
+         * —— 数据域补登记 · 第一批（2026-08-30）——
+         *
+         * 选表的判据是**读点数**，不是业务重要性：登记一张表的风险与它的读点数成正比
+         * （每个没显式豁免的读点都是一个可能静默变空的功能）。所以先做读点最少的，
+         * 把闭环流程跑通，而不是先啃 cmt_community（17 处）那种。
+         *
+         * 三张各自的判定过程：
+         *
+         *   · ful_verify_log —— **只写不读**（PickupServiceImpl 只 insert，一处查询都没有）。
+         *     登记它行为完全不变，纯粹把「这张表有归属列且会被自动过滤」变成真的。
+         *   · cnt_post —— 三处读点全在 ContentServiceImpl，而它**只被 OpsContentController
+         *     消费**（种草内容的运营审核队列），C 端不读。所以登记对 C 端零影响，
+         *     而运营端正是该按社区裁的那一侧。
+         *   · cmt_community_apply —— 三处读点全在 CommunityAdminServiceImpl（运营端提报审核），
+         *     同上。
+         *
+         * 反向风险（配了域的运营看全空）由 ful_group_pickup 那条注释说的同一个机制兜着：
+         * 这三张的运营端读点本来就该按域裁，裁不到才是缺陷。
+         */
+        registry.register("ful_verify_log", Map.of(
+                ScopeDim.PICKUP, "pickup_no"));
+
+        registry.register("cnt_post", Map.of(
+                ScopeDim.COMMUNITY, "community_no"));
+
+        registry.register("cmt_community_apply", Map.of(
+                ScopeDim.MERCHANT, "entity_no",
+                ScopeDim.COMMUNITY, "community_no"));
+
         // —— 结算：钱的可见性最敏感，只有商家自己和平台财务 ——
         registry.register("stl_bill", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
