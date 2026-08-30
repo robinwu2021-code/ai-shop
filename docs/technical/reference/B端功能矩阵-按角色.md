@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 13 个权限点 × 162 个受控端点**。
+统计：**6 个角色 × 13 个权限点 × 165 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -16,7 +16,7 @@
 
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
-| `STOCK` | 改库存（含门店库存） | 27 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `STOCK` | 改库存（含门店库存） | 30 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 25 | ✅ | ✅ | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 19 | ✅ | ✅ | — | — | — | — |
 | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 19 | ✅ | — | — | — | — | — |
@@ -60,6 +60,9 @@
 - `/biz/inventory/outbounds/{no}/void`
 - `/biz/inventory/pickable`
 - `/biz/inventory/summary`
+- `/biz/inventory/suppliers`
+- `/biz/inventory/suppliers/{no}`
+- `/biz/inventory/suppliers/{no}/active`
 - `/biz/inventory/transfers`
 - `/biz/inventory/transfers/{no}`
 - `/biz/inventory/transfers/{no}/receive`

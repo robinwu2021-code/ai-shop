@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 162 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 165 个受控功能点**
 （另有 28 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -21,7 +21,7 @@
 
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
-| `biz:stock` | `STOCK` | 改库存（含门店库存） | 27 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `biz:stock` | `STOCK` | 改库存（含门店库存） | 30 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 25 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 19 | ✅ | ✅ | — | — | — | — |
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 19 | ✅ | — | — | — | — | — |
@@ -71,6 +71,10 @@
 | 作废出库单 | POST | `/biz/inventory/outbounds/:no/void` | `mOutboundVoid` | stock-docs |
 | 可挑的货（含 0 库存，从物料出发） | GET | `/biz/inventory/pickable` | `mStockPickable` | purchase-edit、stock-check |
 | 库存总览三个数 | GET | `/biz/inventory/summary` | `mStockSummary` | home、stock |
+| 供应商档案（挑供应商传 activeOnly=true） | GET | `/biz/inventory/suppliers` | `mSuppliers` | purchase-edit、suppliers |
+| 建供应商档案 | POST | `/biz/inventory/suppliers` | `mSupplierCreate` | purchase-edit、suppliers |
+| 改供应商档案（引用平台档案的只能改备注） | PUT | `/biz/inventory/suppliers/:no` | `mSupplierUpdate` | suppliers |
+| 停用 / 启用供应商 | POST | `/biz/inventory/suppliers/:no/active` | `mSupplierActive` | suppliers |
 | 建调拨单 | POST | `/biz/inventory/transfers` | `mTransferCreate` | transfer |
 | 读回调拨单 | GET | `/biz/inventory/transfers/:no` | `mTransferDetail` | transfer |
 | 调拨收货 | POST | `/biz/inventory/transfers/:no/receive` | `mTransferReceive` | transfer |
@@ -380,6 +384,7 @@
 | `store-notice` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `store-scope` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `stores` | `biz:store:admin` | `biz:finance`、`biz:store:admin`、`biz:customer` | 老板 | — |
+| `suppliers` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `transfer` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `verify` | `biz:verify` | `biz:verify` | 老板、店长、店员 | — |
 
