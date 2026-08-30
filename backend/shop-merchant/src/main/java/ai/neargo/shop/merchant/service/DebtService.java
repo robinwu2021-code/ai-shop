@@ -39,6 +39,22 @@ public interface DebtService {
      */
     long offset(String entityNo, long payableMinor, String batchNo);
 
+    /**
+     * <b>用保证金抵掉一部分欠款。人工触发，不自动。</b>
+     *
+     * <p>[ADR-022 §3.3] 定的：扣划保证金<b>必须人工</b> —— 动的是商家的本金，
+     * 而未经同意从保证金扣款的合规边界还没定（法务待确认）。
+     * 所以它不在追偿的自动链路上，是运营在后台按的一个动作。
+     *
+     * <p>⚠️ 本方案初稿把它写成了追偿的第一层（自动），与 ADR 打架；
+     * 2026-08-30 以 ADR 为准改过来了，方案文档已同步。
+     * <b>自动的那条链路上一分钱都不动商家的本金。</b>
+     *
+     * @param operator 谁按的。<b>必填</b> —— 动本金的操作没有操作人就没法追责
+     * @return 实际抵掉的金额（分）。不超过欠款余额，也不超过保证金可用余额
+     */
+    long offsetByDeposit(String entityNo, long amountMinor, String operator, String reason);
+
     /** 当前欠款余额（分）。没有账户返回 0 */
     long balanceOf(String entityNo);
 

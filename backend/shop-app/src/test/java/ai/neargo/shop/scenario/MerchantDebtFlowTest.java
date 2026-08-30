@@ -28,6 +28,8 @@ class MerchantDebtFlowTest {
     @Autowired
     private DebtService debtService;
     @Autowired
+    private ai.neargo.shop.merchant.service.AdmissionService admissionService;
+    @Autowired
     private JdbcTemplate jdbc;
 
     /** ⚠️ 欠款账户与流水都是全局表，留一条在库里会让别的用例的余额莫名其妙非零 */
@@ -36,6 +38,8 @@ class MerchantDebtFlowTest {
         DataScopeContext.executeWithoutScope(() -> {
             jdbc.update("DELETE FROM mch_debt_txn WHERE entity_no = ?", ENTITY);
             jdbc.update("DELETE FROM mch_debt WHERE entity_no = ?", ENTITY);
+            jdbc.update("DELETE FROM mch_deposit_txn WHERE merchant_no = ?", ENTITY);
+            jdbc.update("DELETE FROM mch_deposit WHERE merchant_no = ?", ENTITY);
             return null;
         });
     }
@@ -126,6 +130,60 @@ class MerchantDebtFlowTest {
         assertThat(replay)
                 .as("流水累加要等于余额，对不上就说明有一笔没落流水")
                 .isEqualTo(debtService.balanceOf(ENTITY));
+    }
+
+    @Test
+    @DisplayName("★★★ 保证金抵扣必须记操作人 —— 动的是商家本金，没有操作人就没法追责")
+    void depositOffsetRequiresOperator() {
+        debtService.incur(ENTITY, 5000, "REFUND", "AS-008", "退款追不回");
+
+        assertThatThrownBy(() -> debtService.offsetByDeposit(ENTITY, 1000, null, "抵扣"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> debtService.offsetByDeposit(ENTITY, 1000, "  ", "抵扣"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(debtService.balanceOf(ENTITY)).as("没扣成").isEqualTo(5000);
+    }
+
+    @Test
+    @DisplayName("★★★ 保证金抵扣不超过**可用**余额 —— 冻结中的那部分正被别的争议占着")
+    void depositOffsetRespectsFrozen() {
+        debtService.incur(ENTITY, 100000, "REFUND", "AS-009", "退款追不回");
+        admissionService.recordTxn(ENTITY, "PAY", 10000, "缴纳保证金", "test");
+        admissionService.recordTxn(ENTITY, "FREEZE", 8000, "理赔占用", "test");
+
+        /*
+         * ⚠️ 前提要在**动作之前**断言。
+         * 初稿把它放在 offsetByDeposit 之后，量到的是扣完之后的可用额（0），
+         * 于是这条用例红了 —— 而代码是对的。**前提断言测的是前提，不是结果。**
+         */
+        assertThat(admissionService.deposit(ENTITY).availableMinor())
+                .as("前提：可用 = 实缴 10000 - 占用 8000")
+                .isEqualTo(2000);
+
+        long took = debtService.offsetByDeposit(ENTITY, 100000, "ops-1", "抵扣欠款");
+
+        assertThat(took)
+                .as("只能抵可用的那 2000，拿冻结部分去抵等于同一笔钱赔两次")
+                .isEqualTo(2000);
+        assertThat(debtService.balanceOf(ENTITY)).isEqualTo(98000);
+    }
+
+    @Test
+    @DisplayName("★★ 两侧各留流水 —— 保证金侧 DEDUCT、欠款侧 DEPOSIT，从任一侧都能对回去")
+    void depositOffsetWritesBothLedgers() {
+        debtService.incur(ENTITY, 5000, "REFUND", "AS-010", "退款追不回");
+        admissionService.recordTxn(ENTITY, "PAY", 10000, "缴纳保证金", "test");
+
+        debtService.offsetByDeposit(ENTITY, 3000, "ops-2", "抵扣欠款");
+
+        assertThat(debtService.txns(ENTITY).get(0).txnType()).isEqualTo("DEPOSIT");
+        assertThat(debtService.txns(ENTITY).get(0).amountMinor()).as("偿还为负").isEqualTo(-3000);
+
+        Integer deductions = DataScopeContext.executeWithoutScope(() -> jdbc.queryForObject(
+                "SELECT COUNT(*) FROM mch_deposit_txn WHERE merchant_no = ? AND txn_type = 'DEDUCT'",
+                Integer.class, ENTITY));
+        assertThat(deductions).as("保证金侧也要有一条").isEqualTo(1);
+        assertThat(admissionService.deposit(ENTITY).paidMinor()).isEqualTo(7000);
     }
 
     @Test
