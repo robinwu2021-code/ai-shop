@@ -39,7 +39,7 @@ DOMAINS = [
     # 进销存（P-18）。**独立成一个域，不并进「商品」** —— 那边管的是
     # 「这件货长什么样、能不能卖」，这边管的是「现在有多少、是怎么变成这么多的」
     ("进销存", ["stock", "stock-detail", "stock-check", "purchase-edit", "stock-docs",
-                "stock-out", "transfer", "stock-report", "locations"]),
+                "stock-out", "transfer", "stock-report", "locations", "suppliers"]),
     ("账号与设置", ["login", "me", "apply", "staff", "staff-detail", "role-detail",
                     "settings", "address", "profile", "legal"]),
     ("消息与评价", ["messages", "reviews", "notice", "review-write"]),

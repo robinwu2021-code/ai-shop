@@ -742,6 +742,18 @@
       }
     },
     {
+      "path": "pages/suppliers/index",
+      "style": {
+        "navigationBarTitleText": "供应商",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/locations/index",
       "style": {
         "navigationBarTitleText": "库位",

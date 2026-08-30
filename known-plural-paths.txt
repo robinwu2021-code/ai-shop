@@ -66,3 +66,16 @@
 # 那一类（见本文件开头）—— 不该由「补一个运营端入口」这件事顺手决定。
 /ops/scene-channel/{scene}/{audience}/{channel}  scene-channel
 
+# ── 2026-08-30 · 进销存供应商（S2/S5）──────────────────────────────────
+#
+# /biz/inventory/suppliers/{no} 与 .../active。**没有改成单数**：
+# 进销存整个模块都是复数 —— inbounds / outbounds / counts / locations /
+# items / balances，本文件里已经登记了 13 条同域的。单独把 suppliers 改单数，
+# 它会成为模块里唯一那个，而**「同一件事在这儿长得不一样」比「不合约定」
+# 更容易让人写错**。要改就整模块一起改，不该由「新加一张供应商表」顺手决定。
+#
+# ⚠️ 同一个决定要登**两份**：这一份给 api-path-naming.test.ts，
+# 另一份 b-app/scripts/known-plural-paths.txt 给 gen-openapi.mjs。
+# 两份同名、都活着，而只登一份时另一份不会提醒你 —— 2026-08-30 实测栽过。
+/biz/inventory/suppliers/{no}  suppliers
+/biz/inventory/suppliers/{no}/active  suppliers

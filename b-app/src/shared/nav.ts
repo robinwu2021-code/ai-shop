@@ -53,6 +53,7 @@ export const ROUTES = {
   transfer: "/pages/transfer/index",
   stockReport: "/pages/stock-report/index",
   locations: "/pages/locations/index",
+  suppliers: "/pages/suppliers/index",
 } as const;
 
 /**

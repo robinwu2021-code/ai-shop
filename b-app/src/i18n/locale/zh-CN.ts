@@ -2137,4 +2137,23 @@ entryHint: "谁在买 · 谁不来了",
     createAs: "建为「{name}」",
     empty: "还没有供应商，输入名称即可建一个",
   },
+  suppliers: {
+    title: "供应商",
+    intro: "进货单指向这里的档案。改了名，历史单据仍显示当时那个名字。",
+    empty: "还没有供应商 —— 记进货时输入名称就能建",
+    add: "新建供应商",
+    addTitle: "新建供应商",
+    addPh: "如 老周粮油",
+    rename: "改名",
+    renameTitle: "改名",
+    archive: "停用",
+    restore: "启用",
+    archived: "已停用",
+    platform: "平台档案",
+    // 说清楚为什么改不动，而不是让他点了没反应
+    platformReadonly: "平台维护的档案，名称跟平台走",
+    archiveTitle: "停用「{name}」？",
+    // 停用不是删除 —— 这句要说全，否则商家以为账没了
+    archiveHint: "停用后记进货时挑不到它，历史单据不受影响。随时可以再启用。",
+  },
 };

@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 69,
+      "count": 70,
       "domains": [
         {
           "name": "工作台",
@@ -810,6 +810,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/stock-report/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/suppliers/index",
+              "title": "供应商",
+              "domain": "进销存",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/suppliers/index"
             },
             {
               "app": "b-app",
@@ -2946,5 +2957,5 @@
       ]
     }
   ],
-  "total": 237
+  "total": 238
 }

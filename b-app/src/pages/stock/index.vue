@@ -171,6 +171,8 @@ const links = computed(() => [
   { key: "docs", route: ROUTES.stockDocs, perm: "biz:stock" },
   { key: "report", route: ROUTES.stockReport, perm: "biz:customer" },
   { key: "locations", route: ROUTES.locations, perm: "biz:store:admin" },
+  // 供应商与进货同一个码：能记进货的人就该能建供应商
+  { key: "suppliers", route: ROUTES.suppliers, perm: "biz:stock" },
 ].filter((e) => merchant.can(e.perm)));
 
 function go(route: string) {
