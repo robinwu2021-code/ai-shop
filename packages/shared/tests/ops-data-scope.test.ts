@@ -67,6 +67,8 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
   // 由主查询决定，这一步不放大任何可见范围。与 toOpsVO 的回捞同一类。
   "MerchantGoodsServiceImpl#hasDraft":
     "按已授权 goodsNo 回捞草稿存在性布尔；行级可见性由上游主查询的数据域决定",
+  // #draftOf 不在这张表里：它只被 /biz 端点调用（编辑页读草稿），不在任何
+  // ops 查询路径上 —— G1 不扫它，登进来就是死条目。归属由 mine(merchantNo) 在代码里核
 
   "InventoryHealthServiceImpl#merchantNameOf":
     "健康度页取商家名填展示列。行级可见性由上一步的库存扫描决定，这里只是把 no 换成名字",

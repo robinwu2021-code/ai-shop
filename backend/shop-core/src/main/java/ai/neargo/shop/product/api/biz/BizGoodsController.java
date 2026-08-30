@@ -202,6 +202,17 @@ public class BizGoodsController {
         return goodsService.publishDraft(BizContext.requireMerchantNo(), goodsNo);
     }
 
+    /**
+     * 读草稿（双版本，编辑页回填用）。返回的就是保存时收进来的那份提交体镜像
+     * （{@code SaveCommand}），端上直接回填表单。<b>无草稿返回 {@code null}</b>
+     * （信封里 data 为 null）—— 对编辑页那是常态，读线上即可，不是错误。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @GetMapping("/biz/goods/{goodsNo}/draft")
+    public MerchantGoodsService.SaveCommand draft(@PathVariable String goodsNo) {
+        return goodsService.draftOf(BizContext.requireMerchantNo(), goodsNo);
+    }
+
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @PostMapping("/biz/goods/{goodsNo}/submit")
     public GoodsVO submit(@PathVariable String goodsNo) {

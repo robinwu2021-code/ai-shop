@@ -325,6 +325,36 @@ export interface GoodsDraft {
   };
 }
 
+/**
+ * 发布预览（双版本）：草稿经服务端 dry-run 烘焙后与线上的字段级差异。
+ *
+ * <p><b>diff 必须在服务端算</b>：烘焙规则只有服务端有 —— 端上比原始 payload
+ * 会漏掉「文案将随规格库刷新」这类变化（商家没碰规格，预览也要显示
+ * 「小罐 → 迷你罐」），而那正是发布前最该看见的。
+ */
+export interface PublishPreview {
+  /** 逐字段差异。空 = 草稿与线上一致（发布不会改变任何东西） */
+  changes: PublishDiffRow[];
+  /**
+   * 发布会被拦的档位清单（引用了已停用/已合并的规格档）。
+   * 让商家在点发布**之前**就看到 —— 非空时发布按钮应当禁用。
+   */
+  blocked: string[];
+  /**
+   * 草稿基版过期：草稿建立之后线上被别人改过（运营强改/多端编辑）。
+   * true 时发布会被后端以 80018 拒 —— 端上先引导看差异再决定。
+   */
+  stale: boolean;
+}
+
+/** 一行字段差异。`label` 给人看（服务端给中文名），`field` 给机器（title/spec/sku0…） */
+export interface PublishDiffRow {
+  field: string;
+  label: string;
+  before: string;
+  after: string;
+}
+
 import type {
   DescribeGoodsReq,
   PickupSelfBuildReq,
@@ -746,6 +776,29 @@ export interface MerchantApi {
    * <b>重复调用无副作用</b>。
    */
   mSubmitGoods(goodsNo: string): Promise<Goods>;
+
+  // ---- 双版本发布（V279）：在售商品的编辑落草稿、线上照卖，发布时原子换版
+
+  /**
+   * 读草稿内容（编辑页回填用）。返回的就是上次 `mSaveGoods` 发出去的那份 ——
+   * 后端存的是提交体镜像，不为草稿另发明一套形状。**无草稿返回 `null`**，
+   * 那是常态（编辑页转而读线上），不是错误。
+   */
+  mGoodsDraft(goodsNo: string): Promise<GoodsDraft | null>;
+  /**
+   * 发布预览：服务端把草稿 dry-run 烘焙后与线上做字段级 diff。
+   * 发布确认页用它展示「本次发布将改变……」清单；`blocked` 非空时禁用发布。
+   */
+  mPublishPreview(goodsNo: string): Promise<PublishPreview>;
+  /**
+   * 发布草稿。审核关：**原子换版**，买家看到的从整份旧版直接变整份新版，
+   * 没有「先下架再上架」的真空期；审核开：提交待审，**线上继续卖旧版**。
+   *
+   * <p>草稿基版过期（线上被别人改过）时后端以 **80018** 拒 ——
+   * 端上引导先看差异再重新决定，不静默覆盖。
+   */
+  mPublishGoods(goodsNo: string): Promise<Goods>;
+
 
   /**
    * 只改截单与到货说明（生鲜）。<b>不触发重审、不下架</b> ——

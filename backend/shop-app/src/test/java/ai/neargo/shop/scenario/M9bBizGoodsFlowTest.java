@@ -1558,6 +1558,41 @@ class M9bBizGoodsFlowTest {
         }
     }
 
+    @Test
+    @DisplayName("★★ 草稿回读：/draft 返回保存时的提交体镜像，发布后回 null")
+    void draftEndpointReturnsPayloadMirror() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+        mvc().perform(post("/ops/feature-flags/goods.audit").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":false,\"rolloutPercent\":0}"))
+                .andExpect(jsonPath("$.code").value(0));
+        try {
+            String goodsNo = onSaleGoodsWithDraft("12600199210", "草稿回读店");
+            /*
+             * 回读的是**提交体镜像**（SaveCommand），不是烘焙后的 VO ——
+             * 编辑页拿它直接回填表单：字段名与 /biz/goods/save 的请求体逐一对应。
+             */
+            mvc().perform(get("/biz/goods/" + goodsNo + "/draft")
+                            .header("Authorization", "Bearer " + lastBiz))
+                    .andExpect(jsonPath("$.code").value(0))
+                    .andExpect(jsonPath("$.data.title").value("新标题"))
+                    .andExpect(jsonPath("$.data.skus[0].price").value(800));
+            mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
+                            .header("Authorization", "Bearer " + lastBiz))
+                    .andExpect(jsonPath("$.code").value(0));
+            // 发布删了草稿行 —— 无草稿是常态不是错误：code 0、data null
+            mvc().perform(get("/biz/goods/" + goodsNo + "/draft")
+                            .header("Authorization", "Bearer " + lastBiz))
+                    .andExpect(jsonPath("$.code").value(0))
+                    .andExpect(jsonPath("$.data").doesNotExist());
+        } finally {
+            mvc().perform(post("/ops/feature-flags/goods.audit").header("Authorization", "Bearer " + ops)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"enabled\":true,\"rolloutPercent\":0}"))
+                    .andExpect(jsonPath("$.code").value(0));
+        }
+    }
+
     private void approveGoods(String goodsNo) throws Exception {
         mvc().perform(post("/ops/goods/" + goodsNo + "/audit")
                         .header("Authorization", "Bearer " + opsLogin())

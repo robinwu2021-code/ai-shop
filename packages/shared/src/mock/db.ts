@@ -1013,6 +1013,16 @@ export const db = {
   } as MerchantProfile,
 
   /**
+   * 商品发布草稿（双版本，V279）：goodsNo → 上次保存的编辑 payload。
+   *
+   * <p>**在售商品的编辑落在这里、种子不动** —— 与真后端 `prd_goods_draft`
+   * 同一条规矩：线上照卖旧版，发布时才换版。payload 形状是 b-app 的
+   * `GoodsDraft`（编辑缓冲、非契约），这里存 unknown、由 B 端 mock 自己收。
+   * C 端永远不读它 —— 买家看到的只有种子（= 线上版）。
+   */
+  goodsDrafts: {} as Record<string, unknown>,
+
+  /**
    * 手工录入的线索会员（P2）。
    *
    * <p>与订单聚合出来的那批分开存：那批是**派生**的（订单一变就重算），

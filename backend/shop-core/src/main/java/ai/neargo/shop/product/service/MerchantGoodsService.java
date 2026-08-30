@@ -219,6 +219,17 @@ public interface MerchantGoodsService {
     /** 发布预览：草稿 dry-run 烘焙后与线上的字段级差异（含会被拦的档位清单） */
     ai.neargo.shop.product.dto.PublishPreviewVO publishPreview(String merchantNo, String goodsNo);
 
+    /**
+     * 读草稿内容（双版本，编辑页回填用）。返回的就是保存时收进来的那份
+     * {@link SaveCommand} —— 它本来就是端上提交体的镜像，端上拿回去
+     * 直接回填表单，不用为草稿另发明一套形状。
+     *
+     * <p><b>无草稿或 payload 解析不了都返回 {@code null}</b>，不抛错：
+     * 「没有草稿」对编辑页是常态（读线上即可），解析失败则按没有处理
+     * （老 payload 结构演进后读不回来，让商家从线上版重新编辑，比 500 强）。
+     */
+    SaveCommand draftOf(String merchantNo, String goodsNo);
+
     GoodsVO submitForAudit(String merchantNo, String goodsNo);
 
     /**

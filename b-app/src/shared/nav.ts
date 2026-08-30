@@ -8,6 +8,7 @@ export const ROUTES = {
   login: "/pages/login/index",
   apply: "/pages/apply/index",
   goodsEdit: "/pages/goods-edit/index",
+  goodsPublish: "/pages/goods-publish/index",
   order: "/pages/order/index",
   verify: "/pages/verify/index",
   picking: "/pages/picking/index",

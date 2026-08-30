@@ -923,6 +923,26 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
+    public SaveCommand draftOf(String merchantNo, String goodsNo) {
+        // mine() 先把归属核了：草稿表只有 goods_no，不核的话拿别家的单号也读得到
+        PrdGoods live = mine(merchantNo, goodsNo);
+        PrdGoodsDraft draft = DataScopeContext.executeWithoutScope(() ->
+                draftMapper.selectOne(Wrappers.<PrdGoodsDraft>lambdaQuery()
+                        .eq(PrdGoodsDraft::getGoodsNo, live.getGoodsNo()).last("limit 1")));
+        if (draft == null) {
+            return null;
+        }
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(draft.getPayload(), SaveCommand.class);
+        } catch (Exception e) {
+            // 按没有草稿处理：让商家从线上版重新编辑。warn 点名，别静默
+            log.warn("[草稿] payload 解析失败，按无草稿返回：goods={}", goodsNo, e);
+            return null;
+        }
+    }
+
+    @Override
     public ai.neargo.shop.product.dto.PublishPreviewVO publishPreview(String merchantNo, String goodsNo) {
         PrdGoods live = mine(merchantNo, goodsNo);
         PrdGoodsDraft draft = DataScopeContext.executeWithoutScope(() ->

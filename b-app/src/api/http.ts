@@ -2,7 +2,7 @@
 // 迁移时这个文件基本不用改，改的是 .env 里的开关。
 import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS as E } from "./endpoints";
-import type { EstateList, GoodsDraft, GoodsGuess, MerchantApi } from "./contract";
+import type { EstateList, GoodsDraft, GoodsGuess, MerchantApi, PublishPreview } from "./contract";
 // 入参的 wire 契约。`satisfies` 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现（与 C 端同一套做法）
 import type {
@@ -126,7 +126,7 @@ import type {
   Qualification, MerchantSpecDim, StoreCategorySpecs, SpecOverride, SpecOption,
   StockSummary, StockBalance, StockItemDetail, StockLedgerPage, StockDocument,
   StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
-  StockCount, StockTransfer,
+  StockCount, StockTransfer, I18nText,
 } from "@shared/types";
 
 export const httpApi: MerchantApi = {
@@ -308,6 +308,30 @@ export const httpApi: MerchantApi = {
   mSaveStorePrice: (goodsNo, skuNo, price) =>
     http.post<Goods>(buildPath(E.mSaveStorePrice.path, { goodsNo }), { skuNo, price }),
   mSubmitGoods: (goodsNo) => http.post<Goods>(buildPath(E.mSubmitGoods.path, { goodsNo })),
+  /*
+   * 草稿回读：线上存的是 mSaveGoods 拍平后的那份（title 是基准语言字符串 +
+   * titleI18n 三语 map），这里做**逆转换**回页面的三语对象 —— 与 mSaveGoods
+   * 的拍平同一个边界：页面不该知道线上格式。老草稿缺 titleI18n 时回落单语。
+   */
+  mGoodsDraft: async (goodsNo) => {
+    const d = await http.get<SaveGoodsReqBody | null>(buildPath(E.mGoodsDraft.path, { goodsNo }));
+    if (!d) return null;
+    // I18nText 三键齐全：老草稿缺三语 map 时用基准语言兜底，缺译的语言留空
+    // （空 = 未翻译，与编辑页三格的初始态同义；渲染端按 R9 回落中文）
+    const langs = (base: string, m?: Record<string, string>): I18nText => ({
+      "zh-CN": m?.["zh-CN"] ?? base,
+      en: m?.en ?? "",
+      ar: m?.ar ?? "",
+    });
+    return {
+      ...d,
+      title: langs(d.title, d.titleI18n),
+      subtitle: langs(d.subtitle, d.subtitleI18n),
+    };
+  },
+  mPublishPreview: (goodsNo) =>
+    http.get<PublishPreview>(buildPath(E.mPublishPreview.path, { goodsNo })),
+  mPublishGoods: (goodsNo) => http.post<Goods>(buildPath(E.mPublishGoods.path, { goodsNo })),
   mSavePresale: (goodsNo, cutoffAt, arrivalDesc) =>
     http.post<Goods>(buildPath(E.mSavePresale.path, { goodsNo }), { cutoffAt, arrivalDesc }),
 

@@ -22,7 +22,7 @@ import type { GoodsGuess } from "@/api/contract";
 import { CATEGORY_TYPE, MARKETS, TEMPLATE_TO_TYPE } from "@shared/utils/constants";
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
 import { toMajor, toMinor } from "@shared/utils/money";
-import type { Category, CategoryType, CurrencyCode, MarketId, I18nText, GoodsParam, SpecOption, SpecTemplate, SpuStd, StoreCategory } from "@shared/types";
+import type { Category, CategoryType, CurrencyCode, Goods, MarketId, I18nText, GoodsParam, SpecOption, SpecTemplate, SpuStd, StoreCategory } from "@shared/types";
 import { confirm, pick } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
@@ -431,6 +431,14 @@ const detail = ref("");
  * 他一保存就自动回到待审，多给一个按钮只会让人以为不点就不用重审。
  */
 const isDraft = ref(true);
+/**
+ * 双版本（V279）：这件商品打开时**在售** —— 保存会落草稿、线上照卖旧版。
+ * 决定保存后的提示语（「已保存为草稿」而不是「已保存」，后者会让人以为
+ * 线上已经变了），也决定要不要给「查看差异并发布」入口。
+ */
+const wasOnSale = ref(false);
+/** 表单当前盖着一层草稿（进来时就有未发布修改）—— 顶部横幅的开关 */
+const editingDraft = ref(false);
 const categoryTree = ref<Category[]>([]);
 const categoryNo = ref("");
 /** **已选**的路径，[一级, 二级]；只选到一级也允许。面包屑与提交都取它 */
@@ -1940,8 +1948,15 @@ onLoad(async (q) => {
   goodsNo.value = q.goodsNo;
   // finally 而不是 try 包住整段：下面的回填全是同步赋值，中间不会渲染，
   // 而 `.finally` 让失败时也不会把页面永远卡在「读取中」
-  const [g] = await Promise.all([
+  const [g, draft] = await Promise.all([
     api.mGoodsDetail(q.goodsNo),
+    /*
+     * 草稿与详情**并行取**（双版本）：在售商品保存过的改动落在草稿里，
+     * 编辑页要接着上次改，而不是让他从线上版重改一遍 —— 那样一发布，
+     * 上次保存的东西就被这次的覆盖了，且不报错。
+     * 读失败按无草稿走（编辑线上版），别把整页卡死在一个次要请求上。
+     */
+    api.mGoodsDraft(q.goodsNo).catch(() => null),
     loadTemplates(),
     loadCategories(),
     loadStoreChannels(),
@@ -2058,7 +2073,109 @@ onLoad(async (q) => {
       saleUnit: k.saleUnit ?? "",
     };
   });
+  wasOnSale.value = !!g.onSale;
+  if (draft) applyDraft(draft, g);
 });
+
+/**
+ * 草稿覆盖到表单上（双版本）。**先按线上整份回填，再拿草稿盖一层** ——
+ * 草稿里「不传 = 不改」的字段（划线价/标称重/成本价、生鲜段）要露出线上的值，
+ * 单独从草稿回填会把商家没碰过的格子清空，而那正是保存时会写回去的东西。
+ *
+ * <p>草稿本来就是上次 `mSaveGoods` 的提交体镜像，所以这里就是 `save()`
+ * 那段映射的**逆向**：形状一一对应，只有价位（minor→major）与时间戳（ms→ISO）换个衣。
+ */
+function applyDraft(d: NonNullable<Awaited<ReturnType<typeof api.mGoodsDraft>>>, g: Goods) {
+  editingDraft.value = true;
+  title.value = { ...title.value, ...d.title };
+  subtitle.value = { ...subtitle.value, ...d.subtitle };
+  if (d.detail !== undefined) detail.value = d.detail;
+  if (d.cover !== undefined) cover.value = d.cover;
+  if (d.images !== undefined) images.value = [...d.images];
+  if (d.detailImages !== undefined) detailImages.value = [...d.detailImages];
+  if (d.params !== undefined) {
+    paramValues.value = Object.fromEntries(d.params.map((x) => [x.dimNo, x]));
+  }
+  // stdNo 无条件盖：草稿里不带 = 已脱离标准品（与「不改」语义相反，见契约）
+  stdNo.value = d.stdNo ?? "";
+  stdTitle.value = d.stdNo ?? "";
+  if (d.categoryNo && d.categoryNo !== categoryNo.value) {
+    categoryNo.value = d.categoryNo;
+    catPath.value = findPath(categoryTree.value, d.categoryNo);
+    // 形态跟着草稿的类目重推 —— 类目变了形态不跟，生鲜段/服务段就露错了区
+    const leaf = catPath.value[catPath.value.length - 1];
+    const inferred = leaf?.template ? TEMPLATE_TO_TYPE[leaf.template] : undefined;
+    if (inferred) type.value = inferred as CategoryType;
+  }
+  if (d.fulfillments !== undefined) fulfillments.value = d.fulfillments.slice(0, 1);
+  if (d.limitPerUser !== undefined) {
+    limitPerUser.value = d.limitPerUser ? String(d.limitPerUser) : "";
+  }
+  if (d.fresh) {
+    fresh.value = {
+      cutoffAt: d.fresh.cutoffAt ? new Date(d.fresh.cutoffAt).toISOString().slice(0, 16) : fresh.value.cutoffAt,
+      arrivalDesc: d.fresh.arrivalDesc ?? fresh.value.arrivalDesc,
+      weighed: d.fresh.weighed ?? fresh.value.weighed,
+      origin: d.fresh.origin ?? fresh.value.origin,
+    };
+  }
+  if (d.service) {
+    service.value = {
+      durationMin: d.service.durationMin ? String(d.service.durationMin) : service.value.durationMin,
+      storeName: d.service.storeName ?? service.value.storeName,
+    };
+  }
+  if (d.groupBuy) {
+    groupBuy.value = {
+      minCount: d.groupBuy.minCount ? String(d.groupBuy.minCount) : "",
+      price: d.groupBuy.price ? toMajor(d.groupBuy.price) : "",
+    };
+    groupBuyOpen.value = d.groupBuy.minCount !== undefined;
+  }
+  groups.value = d.specGroups.map((sg) => ({
+    name: sg.name,
+    options: [...sg.options],
+    codes: sg.optionCodes ? [...sg.optionCodes] : undefined,
+    templateNo: sg.templateNo,
+  }));
+  // 草稿定义新的 SKU 集；「留空 = 不改」的三个可选值按 skuNo 从线上补 ——
+  // 商家上次没碰划线价，这次表单里就该显示线上那个，存回去也还是它
+  const liveBySku = new Map(g.skus.map((k) => [k.skuNo, k]));
+  rows.value = d.skus.map((k) => {
+    const base = k.skuNo ? liveBySku.get(k.skuNo) : undefined;
+    const priceMajor = emptyPrices();
+    priceMajor[market.value] = toMajor(k.price);
+    for (const m of MARKET_CURRENCIES) {
+      const v = k.priceByMarket?.[m.id];
+      if (v != null) priceMajor[m.currency] = toMajor(v);
+    }
+    const orDefer = <T,>(mine: T | undefined, live: T | undefined) =>
+      mine !== undefined ? mine : live;
+    const origin0 = orDefer(k.originPrice, base?.originPrice);
+    const gram0 = orDefer(k.nominalGram, base?.nominalGram);
+    const cost0 = orDefer(k.costPrice, base?.costPrice);
+    return {
+      skuNo: k.skuNo,
+      optionValues: [...k.optionValues],
+      priceMajor,
+      stock: String(k.stock),
+      originMajor: origin0 ? toMajor(origin0) : "",
+      nominalGram: gram0 ? String(gram0) : "",
+      costMajor: cost0 ? toMajor(cost0) : "",
+      barcode: k.barcode ?? "",
+      merchantSkuCode: k.merchantSkuCode ?? "",
+      saleUnit: k.saleUnit ?? "",
+    };
+  });
+  if (rows.value.some((r) => r.barcode || r.merchantSkuCode || r.saleUnit)) {
+    externalOn.value = true;
+  }
+}
+
+/** 差异页（发布确认）。横幅上的入口 —— 发布是那一页上的决定，这里只带路 */
+function toPublishPage() {
+  uni.navigateTo({ url: `${ROUTES.goodsPublish}?goodsNo=${goodsNo.value}` });
+}
 
 // ── 十四、保存 ──────────────────────────────────────────────────────────────
 //    存草稿 / 存并提交审核
@@ -2185,8 +2302,15 @@ async function save(thenSubmit = false) {
     }
     // 记一笔类目：下次建品「最近用过」里就有它，一点就选中
     rememberCat();
-    uni.showToast({ title: t(thenSubmit ? "goods.submitted" : "common.saved"), icon: "none" });
-    setTimeout(() => uni.navigateBack(), 600);
+    /*
+     * 在售商品的保存**落的是草稿**（双版本）——「已保存」会让人以为线上已经变了，
+     * 而线上一个字节没动。提示语必须说清这一点，发布入口在列表徽标与差异页上。
+     */
+    uni.showToast({
+      title: t(thenSubmit ? "goods.submitted" : wasOnSale.value ? "goods.savedAsDraft" : "common.saved"),
+      icon: "none",
+    });
+    setTimeout(() => uni.navigateBack(), wasOnSale.value && !thenSubmit ? 1200 : 600);
   } catch (e) {
     /*
      * 后端对「勾了本店没开的送货方式」是**硬拒**（70013，方案 v4 的上架校验）。
@@ -2221,6 +2345,17 @@ async function save(thenSubmit = false) {
   >
     <!-- 页内不再重复标题：`sh-scaffold` 已用同一个 title-key 写进导航栏，
          页面顶部再画一遍 `txt-display` 是一字不差的重复，白占首屏一行 -->
+    <!--
+      双版本横幅：**当前编辑的是草稿，线上仍在售旧版**。
+      没有这行，商家会以为页面上这份就是买家看到的那份 —— 而两者可能已经
+      差了好几轮保存。右侧给「查看差异」直达发布确认页。
+    -->
+    <view v-if="editingDraft" class="draft-banner sh-row">
+      <text class="txt-caption sh-fill">{{ $t("goods.draftBanner") }}</text>
+      <text class="txt-caption draft-banner__link" @tap="toPublishPage">
+        {{ $t("goods.viewDiff") }}
+      </text>
+    </view>
     <view class="sh-card">
       <!--
         分区标题。此前**整页只有规格卡与 SKU 卡有标题**，前面 11 个字段组挤在
@@ -3226,6 +3361,20 @@ async function save(thenSubmit = false) {
 </template>
 
 <style scoped>
+/* 草稿横幅：警示色打底 —— 不是错误，是「页面这份 ≠ 买家那份」的常驻提醒。
+   块间距由外壳给（.sh-scaffold > * + *），这里不写纵向 margin */
+.draft-banner {
+  padding: 16rpx 24rpx;
+  border-radius: 16rpx;
+  color: var(--sh-warning);
+  background: var(--sh-warning-tint);
+}
+.draft-banner__link {
+  color: var(--sh-warning);
+  text-decoration: underline;
+  margin-inline-start: 16rpx;
+}
+
 /*
   「这件货要分档卖？」—— 收起态的整块。
   做成一行可点的问句而不是一个链接：它此刻是这一段唯一的操作，

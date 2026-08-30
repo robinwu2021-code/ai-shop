@@ -397,6 +397,11 @@ function edit(g?: Goods) {
   uni.navigateTo({ url: g ? `${ROUTES.goodsEdit}?goodsNo=${g.goodsNo}` : ROUTES.goodsEdit });
 }
 
+/** 徽标点进发布确认页：先看差异，发布是那一页上的决定，这里不直接发 */
+function toPublish(g: Goods) {
+  uni.navigateTo({ url: `${ROUTES.goodsPublish}?goodsNo=${g.goodsNo}` });
+}
+
 /** 总库存 = 各规格之和。单规格可就地改（editStock），多规格进编辑页逐个改 */
 function stockOf(g: Goods) {
   return g.skus.reduce((s, k) => s + k.stock, 0);
@@ -546,6 +551,19 @@ onShow(() => {
         -->
         <text v-if="g.auditReason" class="txt-caption reason">{{ g.auditReason }}</text>
         <!--
+          有未发布修改（双版本草稿）。**线上照卖旧版**，这行是提醒商家
+          「你保存过的改动还没生效」—— 点它进发布确认页看差异。
+          判据是草稿行存在（内容与线上相同时后端直接删行），所以它出现就意味着
+          发布会真的改变线上。只给有发布权的人：店员看得到货，发不了版。
+        -->
+        <text
+          v-if="g.hasDraft && merchant.can('biz:goods')"
+          class="txt-caption reason draft-flag"
+          @tap="toPublish(g)"
+        >
+          {{ $t("goods.hasDraftRow") }}
+        </text>
+        <!--
           缺资质。放在状态那一列而不是标题旁边：它回答的是
           「这件货为什么上不了架」，属于状态，不是商品属性。
         -->
@@ -669,6 +687,10 @@ onShow(() => {
   display: block;
   margin-top: 12rpx;
   text-align: end;
+}
+/* 未发布修改：警示色 —— 它不是错误，是「有事没做完」；可点，进发布确认页 */
+.draft-flag {
+  color: var(--sh-warning);
 }
 /* 缺资质：用警示色而不是危险色 —— 商品本身没错，缺的是一张证 */
 .gate-sum {

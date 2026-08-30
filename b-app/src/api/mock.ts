@@ -52,10 +52,22 @@ import { DELIVERY_SHAPE, fulfillmentsOf } from "@shared/strategies/order-view";
 const PICKUP_LIKE = new Set<string>(
   fulfillmentsOf(DELIVERY_SHAPE.SELF_PICKUP, DELIVERY_SHAPE.SELF_SERVE),
 );
-import type { GoodsDraft, MerchantApi } from "./contract";
+import type { GoodsDraft, MerchantApi, PublishPreview } from "./contract";
 
 /** 本店积分开关。mock 内存态，真实实现在 usr_merchant.points_enabled */
 let pointsEnabled = true;
+
+/**
+ * 发布重入标志（双版本）。mPublishGoods 复用 mSaveGoods 的整条落库路径 ——
+ * 置位期间保存**直写种子**而不是再落一份草稿。与真后端 `PUBLISHING`
+ * ThreadLocal 同一个手法：换版不另写第二套写入逻辑。
+ */
+let publishingDraft = false;
+
+/** 商家侧出口统一带上 hasDraft —— C 端的 toGoods 不带它（买家不消费编辑态） */
+function withDraftFlag(g: Goods): Goods {
+  return { ...g, hasDraft: !!db.goodsDrafts[g.goodsNo] };
+}
 
 /**
  * 发分服务费明细：一单一条，真实数据来自 `stl_bill.points_fee_minor`。
@@ -1967,11 +1979,12 @@ export const mockApi: MerchantApi = {
       }
       list = list.filter((g) => wanted.has(g.categoryNo));
     }
-    return delay(paginate(list, q.page, q.size));
+    // 商家侧要带 hasDraft：列表页「有未发布修改」徽标的数据源
+    return delay(paginate(list.map(withDraftFlag), q.page, q.size));
   },
 
   async mGoodsDetail(goodsNo) {
-    return delay(toGoods(findGoodsSeed(goodsNo)));
+    return delay(withDraftFlag(toGoods(findGoodsSeed(goodsNo))));
   },
 
   async mSaveGoods(payload) {
@@ -2124,6 +2137,19 @@ export const mockApi: MerchantApi = {
 
     if (payload.goodsNo) {
       const seed = findGoodsSeed(payload.goodsNo);
+      /*
+       * **在售商品的编辑落草稿、种子不动**（双版本，V279）—— 与真后端同一条规矩：
+       * 线上照卖旧版，发布时才换版。mock 不做的话，开发期看到的是「保存立刻改线上」，
+       * 而真后端从这版起不再是那样 —— 正是最难查的那类 mock/后端错配。
+       *
+       * 真后端还有一条「保存的内容与线上相同 → 删草稿行」（假标识防线）；
+       * mock 不逐字段比对，保守地留着草稿 —— 徽标多显示不会骗人，少显示才会。
+       */
+      if (seed.onSale && !publishingDraft) {
+        db.goodsDrafts[payload.goodsNo] = payload; // 顶部已深拷贝，存的不是页面活引用
+        persist();
+        return delay(withDraftFlag(toGoods(seed)));
+      }
       seed.title = fillI18n(payload.title);
       seed.subtitle = fillI18n(payload.subtitle);
       // 不传 = 不改，与 images 同一口径：无条件覆盖会让「只改标题」把详情清空
@@ -2228,6 +2254,63 @@ export const mockApi: MerchantApi = {
     if (seed.status === "DRAFT") seed.status = "PENDING";
     persist();
     return delay(toGoods(seed));
+  },
+
+  // ---- 双版本发布（V279）
+
+  async mGoodsDraft(goodsNo) {
+    // 无草稿回 null 是常态（编辑页转而读线上），与真后端同一口径
+    return delay((db.goodsDrafts[goodsNo] as GoodsDraft | undefined) ?? null);
+  },
+
+  async mPublishPreview(goodsNo) {
+    const draft = db.goodsDrafts[goodsNo] as GoodsDraft | undefined;
+    if (!draft) throw new Error("没有待发布的修改");
+    const seed = findGoodsSeed(goodsNo);
+    /*
+     * mock 只演**形状**：几行看得懂的字段级差异，让发布确认页有东西可渲染。
+     * 真 diff 在服务端 dry-run 烘焙后算 —— 「商家没碰规格、文案仍随规格库刷新」
+     * 那类差异只有后端算得出来（这正是 diff 不放端上的原因），mock 不假装会。
+     */
+    const changes: PublishPreview["changes"] = [];
+    const push = (field: string, label: string, before: string, after: string) => {
+      if (before !== after) changes.push({ field, label, before, after });
+    };
+    push("title", "标题", pick(seed.title), draft.title["zh-CN"] ?? "");
+    push("subtitle", "副标题", pick(seed.subtitle), draft.subtitle["zh-CN"] ?? "");
+    push("cover", "封面", seed.cover, draft.cover ?? "");
+    push(
+      "spec", "规格",
+      seed.specGroups.map((g) => `${pick(g.name)}（${g.options.map(pick).join(" / ")}）`).join("；"),
+      draft.specGroups.map((g) => `${g.name}（${g.options.join(" / ")}）`).join("；"),
+    );
+    push(
+      "price", "价格",
+      money(Math.min(...seed.skus.map((k) => k.price))),
+      money(Math.min(...draft.skus.map((k) => k.price))),
+    );
+    // mock 单人使用：没有「别人改过线上」，stale 恒 false；停用档拦截由后端演
+    return delay({ changes, blocked: [], stale: false } satisfies PublishPreview);
+  },
+
+  async mPublishGoods(goodsNo) {
+    const draft = db.goodsDrafts[goodsNo] as GoodsDraft | undefined;
+    if (!draft) throw new Error("没有待发布的修改");
+    /*
+     * 复用 mSaveGoods 的整条落库路径换版（重入标志见 publishingDraft）——
+     * 不另写第二套写入逻辑，与真后端 swapFromDraft 同一个手法。
+     * mock 不模拟审核开的那半（提交待审、线上继续卖旧版）：审核队列在运营端，
+     * b-app 的 mock 里没有那个视角，两态语义由后端场景测试守。
+     */
+    publishingDraft = true;
+    try {
+      await this.mSaveGoods(draft);
+    } finally {
+      publishingDraft = false;
+    }
+    delete db.goodsDrafts[goodsNo];
+    persist();
+    return delay(withDraftFlag(toGoods(findGoodsSeed(goodsNo))));
   },
 
   async mSavePresale(goodsNo, cutoffAt, arrivalDesc) {
