@@ -65,6 +65,16 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
+         * 商品草稿（V279，双版本）。商家私有数据，与 prd_goods 同一根轴。
+         * **登记时服务层的十处访问已全部显式豁免**（saveAsDraft/publishDraft/
+         * swapFromDraft/审核换版/hasDraft/preview —— 归属由上游 mine(merchantNo,goodsNo)
+         * 把关），所以这一行是纵深防御：将来谁绕过服务层直查这张表，
+         * 会被按商家过滤而不是全平台放行。
+         */
+        registry.register("prd_goods_draft", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
          * 履约任务表 `ful_pickup_task` 这里曾经登记着，而**这张表从来没有建过** ——
          * 没有迁移、没有实体、没有任何 Java 引用。登记一张不存在的表不报错
          * （没有查询会碰到它），坏处是它让人以为这块已经防住了。
