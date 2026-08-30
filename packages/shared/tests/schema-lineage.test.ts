@@ -271,6 +271,15 @@ const NAME_COLLISIONS: Record<string, string> = {
     "  没改名是因为两族在各自的域里都叫得通；登记在这里，是为了让下一个人先看到这句话。\n" +
     "  注意 notify_message → notify_template 这一跳**没有守卫** —— LINEAGE 只管资金账与积分账，" +
     "触达链路断了的后果（推送发不出去）不在这个文件的职责里。",
+  txn_no:
+    "mch_deposit_txn.txn_no 是保证金流水号（平台代管商家资金，将来要退还）；\n" +
+    "  mch_debt_txn.txn_no 是商家欠款流水号（平台垫付后向商家追偿）。\n" +
+    "  两者都是各自表的唯一业务键（各自建了 uk），资金方向相反 ——" +
+    "按名字 join 会把保证金扣款连到欠款追偿上，而两边都有值、不报错。",
+  source_no:
+    "mbr_member_source.source_no 是会员引荐来源码（记录「这个会员从哪个推广渠道来」，建了全局唯一键）；\n" +
+    "  mch_debt_txn.source_no 是欠款来源单号（指向售后单号或结算单号，可为空，由 source_type 决定含义）。\n" +
+    "  两者都是「来源」但完全不同义 —— 按名字 join 会把会员拉新来源连到商家欠款上。",
 };
 
 describe("对账血缘", () => {
