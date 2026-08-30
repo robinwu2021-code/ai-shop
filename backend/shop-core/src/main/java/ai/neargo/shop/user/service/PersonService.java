@@ -28,6 +28,15 @@ public interface PersonService {
     java.util.List<String> findByPhoneTail(String phoneTail);
 
     /**
+     * 解出完整手机号。解不开（记录建于密钥配置之前）返回 empty ——
+     * <b>不要返回空串</b>：调用方分不出「这个人没号」和「解密失败」，
+     * 而两者要给运营看的话完全不同。
+     *
+     * <p>只负责解，不判「该不该看」：理由校验与审计留在调用方，不同入口门槛不一样。
+     */
+    Optional<String> revealPhone(String personNo);
+
+    /**
      * 登录成功之后把账号绑到人档上。<b>三种情况，两种一步到位</b>：
      *
      * <ul>

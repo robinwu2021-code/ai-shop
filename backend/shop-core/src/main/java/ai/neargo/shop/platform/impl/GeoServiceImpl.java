@@ -3,6 +3,11 @@ package ai.neargo.shop.platform.impl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.platform.GeoService;
+// GeoService 不再 extends GeoPort（见其类注释），这三个记录类型要显式引入
+import ai.neargo.shop.spi.platform.GeoPort;
+import ai.neargo.shop.spi.platform.GeoPort.Geocode;
+import ai.neargo.shop.spi.platform.GeoPort.Reverse;
+import ai.neargo.shop.spi.platform.GeoPort.Tip;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
@@ -52,7 +57,7 @@ public class GeoServiceImpl implements GeoService {
 
     @Override
     public int[] toGcj02(int latE6, int lngE6, String coordSys) {
-        if (!available() || !WGS84.equalsIgnoreCase(coordSys)) {
+        if (!available() || !GeoPort.WGS84.equalsIgnoreCase(coordSys)) {
             return new int[]{latE6, lngE6};
         }
         JsonNode r = call("/assistant/coordinate/convert?coordsys=gps&locations=" + lnglat(latE6, lngE6));

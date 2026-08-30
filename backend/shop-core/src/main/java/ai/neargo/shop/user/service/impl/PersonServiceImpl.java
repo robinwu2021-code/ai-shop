@@ -115,6 +115,21 @@ public class PersonServiceImpl implements PersonService {
     }
 
     @Override
+    public Optional<String> revealPhone(String personNo) {
+        /*
+         * **绕过数据域**：人档按定义就是跨商家的 —— 一个人在几家店都可能有会员身份，
+         * 按商家裁一刀正好毁掉「查这个人是谁」这件事。归属由调用方的权限码保证。
+         */
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                        Optional.ofNullable(personMapper.selectOne(Wrappers.<UsrPerson>lambdaQuery()
+                                .eq(UsrPerson::getPersonNo, personNo).last("limit 1"))))
+                .map(UsrPerson::getPhoneEnc)
+                .map(crypto::decrypt)
+                // 解不开时返回 empty 而不是空串：调用方要能分出「没这个人」和「解不开」
+                .filter(x -> !x.isBlank());
+    }
+
+    @Override
     public Optional<UsrPerson> find(String personNo) {
         if (personNo == null || personNo.isBlank()) {
             return Optional.empty();

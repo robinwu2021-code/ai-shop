@@ -111,10 +111,24 @@ class ArchitectureTest {
 
     @Test
     @DisplayName("业务域之间不得互相依赖，跨域只走 spi 包的 Port/Event")
-    void svcModulesMustNotDependOnEachOther() {
-        String[] domains = DOMAINS;
-        for (String from : domains) {
-            for (String to : domains) {
+    void svcModulesMustNotDependOnEachOther() throws java.io.IOException {
+        /*
+         * ── 2026-08-30：从「一红到底」改成棘轮 ───────────────────────────────
+         *
+         * 原来是逐对 `rule.check()`，**第一对失败就抛**。于是：
+         *   · 看不到清单有多长 —— 报出来的永远只有字典序最靠前的那一对；
+         *   · 修好一对不会变绿，只会换一个名字继续红（今天修掉 trade→product，
+         *     立刻露出 member→user 9 处），修的人得不到任何正反馈；
+         *   · 而最贵的一条：**它常年红着，于是新的跨域依赖混进来时没有任何信号**。
+         *     `OrderServiceImpl` 直接注入 `product.service.PayModeService` 就是这么进来的。
+         *
+         * 恒红的闸门是噪声掩体，与没有闸门相比还额外骗人。所以改成：
+         * 收齐**所有**域对的违例 → 与冻结清单比 → 只拦新增，并且**陈行也要报**
+         * （修好了不删，那处依赖就永远免检 —— 与 known-* 那几个棘轮同一规矩）。
+         */
+        java.util.List<String> now = new java.util.ArrayList<>();
+        for (String from : DOMAINS) {
+            for (String to : DOMAINS) {
                 if (from.equals(to)) {
                     continue;
                 }
@@ -122,9 +136,57 @@ class ArchitectureTest {
                         .should().dependOnClassesThat().resideInAPackage("ai.neargo.shop." + to + "..")
                         .allowEmptyShould(true)
                         .because(from + " 域依赖 " + to + " 域会让它们无法独立拆分；改用 spi 包的 Port 或 Event");
-                rule.check(classes);
+                for (String d : rule.evaluate(classes).getFailureReport().getDetails()) {
+                    now.add(from + " -> " + to + "  " + stripSourceLocation(d));
+                }
             }
         }
+        java.util.List<String> current = now.stream().distinct().sorted().toList();
+
+        java.util.List<String> frozen = readBaseline(DOMAIN_DEPS_BASELINE);
+
+        java.util.List<String> added = current.stream().filter(x -> !frozen.contains(x)).toList();
+        java.util.List<String> stale = frozen.stream().filter(x -> !current.contains(x)).toList();
+
+        assertThat(added)
+                .as("**新增的跨域依赖**。跨域只走 spi 包的 Port 或 Event —— "
+                        + "直接注入另一个域的 Service 会让两个域长在一起，而且不报错。\n"
+                        + "  修法见 spi/product/PayModePort（trade→product 那条就是这么解的）：\n"
+                        + "  在 spi 里开一条最小能力，实现放本域的 .port 包里做薄转发。\n"
+                        + "  清单：" + DOMAIN_DEPS_BASELINE)
+                .isEmpty();
+
+        assertThat(stale)
+                .as("清单里这些依赖**已经不存在了，但没人删**。留着等于给那处依赖发了一张"
+                        + "永久免检的条子 —— 下次它以别的形式回来时不会有人知道。\n"
+                        + "  从 " + DOMAIN_DEPS_BASELINE + " 里删掉这些行。")
+                .isEmpty();
+    }
+
+    /** 冻结清单：**只许变短**。 */
+    private static final java.nio.file.Path DOMAIN_DEPS_BASELINE =
+            java.nio.file.Path.of("..", "known-domain-deps.txt");
+
+    /**
+     * 去掉 {@code in (Foo.java:123)} 这个尾巴。
+     *
+     * <p>不去掉的话，清单会被行号钉死：在被引用的文件里插一行注释就会让整条
+     * 「已知」失配，于是变成一条新增违例。**棘轮的键必须对无关改动免疫**，
+     * 否则它会因为噪声而被人整批重新生成，而重新生成就等于清零。
+     */
+    private static String stripSourceLocation(String detail) {
+        int i = detail.lastIndexOf(" in (");
+        return i < 0 ? detail : detail.substring(0, i);
+    }
+
+    private static java.util.List<String> readBaseline(java.nio.file.Path p) throws java.io.IOException {
+        if (!java.nio.file.Files.exists(p)) {
+            return java.util.List.of();
+        }
+        return java.nio.file.Files.readAllLines(p).stream()
+                .map(String::trim)
+                .filter(l -> !l.isEmpty() && !l.startsWith("#"))
+                .toList();
     }
 
     /**

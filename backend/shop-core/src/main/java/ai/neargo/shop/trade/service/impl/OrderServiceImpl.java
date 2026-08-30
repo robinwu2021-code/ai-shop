@@ -89,7 +89,12 @@ public class OrderServiceImpl implements OrderService {
      * 支付方式可用性的唯一判定入口（四层取交集）。
      * <b>别在本类里再判一遍</b> —— 结算页与商品详情页会因此各说各话。
      */
-    private final ai.neargo.shop.product.service.PayModeService payModeService;
+    /**
+     * 走 Port 而不是直接注入 {@code product.service.PayModeService} ——
+     * trade 域不认识 product 域的 Service。上一版是直接注入的，
+     * 而拦它的那条 ArchUnit 规则常年红着，于是**没有任何信号**就混了进来。
+     */
+    private final ai.neargo.shop.spi.product.PayModePort payModeService;
     private final CartItemMapper cartMapper;
     private final GoodsQueryPort goodsPort;
     private final StockPort stockPort;
@@ -117,7 +122,7 @@ public class OrderServiceImpl implements OrderService {
 
     public OrderServiceImpl(ai.neargo.shop.spi.user.AppointmentSlotPort appointmentSlotPort,
                             OrderMapper orderMapper, SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
-                            ai.neargo.shop.product.service.PayModeService payModeService,
+                            ai.neargo.shop.spi.product.PayModePort payModeService,
                             CartItemMapper cartMapper, GoodsQueryPort goodsPort, StockPort stockPort,
                             MerchantQueryPort merchantPort,
                             ai.neargo.shop.spi.user.MerchantAdminPort merchantAdminPort,
@@ -1455,7 +1460,7 @@ public class OrderServiceImpl implements OrderService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         if (PayModes.ONLINE.equals(payMode)) {
-            return payMode;   // 线上不受四层约束，见 PayModeService#availablePayModes
+            return payMode;   // 线上不受四层约束，见 PayModePort#availablePayModes
         }
         /*
          * 线下 × 履约方式：只有「当面能收到钱」的那几种。

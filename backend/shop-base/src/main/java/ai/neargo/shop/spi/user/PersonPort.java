@@ -46,6 +46,20 @@ public interface PersonPort {
      */
     java.util.List<String> findByPhoneTail(String phoneTail);
 
+    /**
+     * 解出这个人的<b>完整手机号</b>。解不开（记录建于密钥配置之前）返回 empty。
+     *
+     * <p>为什么这条要在 Port 上：调用方是 member 域的「查看完整号码」，
+     * 而**解密密钥属于 user 域** —— 上一版 member 域直接注入了
+     * {@code user.service.PhoneCrypto} 与 {@code UserMappers.PersonMapper}，
+     * 两个域就此长在一起，而拦它的架构规则常年红着、没给任何信号。
+     *
+     * <p><b>本方法只负责解号码，不负责判「该不该看」</b>：理由校验与审计留在调用方 ——
+     * 那是业务决定，不同调用方的门槛不一样。这里少写一句「顺手记审计」是有意的，
+     * 否则两处都记就会在审计表里出现成对的重复记录。
+     */
+    java.util.Optional<String> revealPhone(String personNo);
+
     record PersonView(String personNo, String phoneTail, String userNo) {
     }
 }

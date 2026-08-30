@@ -54,21 +54,15 @@ public class OpsMemberServiceImpl implements OpsMemberService {
     private final PersonPort personPort;
     private final MerchantQueryPort merchantPort;
     private final AuditLogPort auditLogPort;
-    private final ai.neargo.shop.user.service.PhoneCrypto phoneCrypto;
-    private final ai.neargo.shop.user.mapper.UserMappers.PersonMapper personMapper;
 
     public OpsMemberServiceImpl(MemberMapper memberMapper, ReachLogMapper reachMapper,
                                 PersonPort personPort, MerchantQueryPort merchantPort,
-                                AuditLogPort auditLogPort,
-                                ai.neargo.shop.user.service.PhoneCrypto phoneCrypto,
-                                ai.neargo.shop.user.mapper.UserMappers.PersonMapper personMapper) {
+                                AuditLogPort auditLogPort) {
         this.memberMapper = memberMapper;
         this.reachMapper = reachMapper;
         this.personPort = personPort;
         this.merchantPort = merchantPort;
         this.auditLogPort = auditLogPort;
-        this.phoneCrypto = phoneCrypto;
-        this.personMapper = personMapper;
     }
 
     @Override
@@ -115,28 +109,25 @@ public class OpsMemberServiceImpl implements OpsMemberService {
             // 看别人的手机号要说得出为什么。「查一下」这种理由等于没有理由
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        return DataScopeContext.executeWithoutScope(() -> {
-            var person = personMapper.selectOne(
-                    Wrappers.<ai.neargo.shop.user.entity.UsrPerson>lambdaQuery()
-                            .eq(ai.neargo.shop.user.entity.UsrPerson::getPersonNo, personNo)
-                            .last("limit 1"));
-            if (person == null) {
-                throw BizException.of(ErrorCode.NOT_FOUND);
-            }
-            String phone = phoneCrypto.decrypt(person.getPhoneEnc());
-            if (phone == null || phone.isBlank()) {
-                // 密文解不开：多半是这条记录建于密钥配置之前。**明说**，别返回一个空串
-                throw BizException.of(ErrorCode.NOT_FOUND);
-            }
-            /*
-             * **先写审计再返回**。反过来的话，写审计失败时号码已经给出去了，
-             * 而这条查看记录永远不存在 —— 事后追责会得出「没人看过」的结论。
-             */
-            auditLogPort.record("MEMBER_PHONE_REVEAL", personNo,
-                    "查看完整手机号，理由：" + reason.trim());
-            log.info("[member] {} 查看了人档 {} 的手机号，理由：{}", operatorNo, personNo, reason);
-            return phone;
-        });
+        /*
+         * 走 {@code PersonPort} 而不是自己解密：**解密密钥属于 user 域**。
+         * 上一版这里直接注入了 `PhoneCrypto` 与 `PersonMapper`，member 域因此
+         * 长在了 user 域上 —— 而拦它的架构规则常年红着，没给过任何信号。
+         *
+         * <p>「解不开」与「没这个人」在 Port 那边都归成 empty，这里一并报 NOT_FOUND：
+         * 对运营来说这两种情况的下一步动作是一样的（去核对是不是这个人），
+         * 而分开报会把一条内部实现细节（密钥换过）暴露到界面上。
+         */
+        String phone = personPort.revealPhone(personNo)
+                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        /*
+         * **先写审计再返回**。反过来的话，写审计失败时号码已经给出去了，
+         * 而这条查看记录永远不存在 —— 事后追责会得出「没人看过」的结论。
+         */
+        auditLogPort.record("MEMBER_PHONE_REVEAL", personNo,
+                "查看完整手机号，理由：" + reason.trim());
+        log.info("[member] {} 查看了人档 {} 的手机号，理由：{}", operatorNo, personNo, reason);
+        return phone;
     }
 
     @Override
