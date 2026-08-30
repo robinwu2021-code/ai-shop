@@ -56,3 +56,13 @@
 /ops/orders/parent/{parentNo}  parent
 /ops/spu-std/{no}/archive  spu-std
 /ops/spu-std/{no}/unarchive  spu-std
+
+# ── 2026-08-30 ──
+# 这条**不是新增的端点**：`/ops/scene-channel` 早在 e82647d84（msg_* → notify_* 重命名）
+# 就有了，一直没进扫描面 —— 因为它此前**没有运营端入口**，而判据只看端上调用到的端点。
+# 我给它接了入口（场景×通道矩阵），它才第一次被这道闸看见。
+#
+# 改成复数要动后端路径 + 权限矩阵 + 生成物，属于「存量随各自模块重构时顺手带走」
+# 那一类（见本文件开头）—— 不该由「补一个运营端入口」这件事顺手决定。
+/ops/scene-channel/{scene}/{audience}/{channel}  scene-channel
+

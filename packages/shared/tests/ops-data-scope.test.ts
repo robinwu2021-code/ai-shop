@@ -69,6 +69,21 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
     "库存对差/回填是平台完整性任务，必须全量。接上数据域 = 只对差一部分，"
     + "而部分对账的结果会被当成「对过了」—— 比不对更危险",
 
+  /*
+   * 商家查**自己的**社区提报（`/biz/community-applies`）。守卫按方法名把它挂到了
+   * ops 端点上，但它唯一的调用方是 `BizCommunityApplyController`，
+   * 而且入参就是 `BizContext.requireMerchantNo()` —— 归属由代码显式比对，不靠数据域。
+   *
+   * <p>这处绕过**必须留着**：B 端会话的维度是 SELF，而 cmt_community_apply
+   * 只有 MERCHANT / COMMUNITY 锚点 —— 不绕就 fail-closed 拼成 1=0，
+   * 商家打开「我的提报」是一片空白且不报错。
+   *
+   * <p>运营端那条全量队列（`applies(status)`）是另一个方法，2026-08-30 已经
+   * **去掉**了绕过 —— 那一条才是数据域该起作用的地方。
+   */
+  "CommunityAdminServiceImpl#appliesOf":
+    "B 端查自己的提报，入参就是当前商家号；B 端会话是 SELF 维度，不绕会 fail-closed",
+
   // 与 B/C 端共用同一段代码的两处 —— 与 MerchantOrderServiceImpl#todo 同一形状：
   // **不能只看 ops 一侧就把绕过去掉**，另一端的会话维度在这些表上没有锚点，
   // 接上就是 1=0，症状是「商家看自己的东西是空的」。
@@ -205,6 +220,30 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
  * 所以理由里必须写清楚**谁会看到空白**——这份清单要交给运营团队（TDD Q2）。
  */
 const ANCHOR_WAIVED: Record<string, string> = {
+  /*
+   * ── 2026-08-30 第一批登记（3 张）带来的锚点缺口 ──
+   *
+   * 三张表的共同点：它们的业务归属天然只有一到两个维度，另外那些维度上
+   * **本来就不存在对应的列**，加冗余列也无意义（一条种草内容不属于任何商家）。
+   */
+  "cnt_post:MERCHANT":
+    "种草内容属于社区，不属于任何商家 —— 表上没有 entity_no，加也无意义。"
+    + "**看到空白的是**：配了商家域的运营打开「内容审核」队列。"
+    + "而那个队列本来就不该按商家裁：一条社区内容的责任方是社区运营，不是某家店",
+  "cnt_post:PICKUP":
+    "同上：内容不挂自提点。**看到空白的是**配了自提点域的运营（通常是站长），"
+    + "而内容审核不在站长的职责里",
+  "ful_verify_log:MERCHANT":
+    "核销留痕挂自提点，不挂商家 —— 一次核销可能涉及多家店的货。"
+    + "**看到空白的是**配了商家域的运营，而这张表目前**只写不读**，没有任何页面读它",
+  "ful_verify_log:COMMUNITY":
+    "同上：核销发生在自提点，社区是自提点的上级，需要时经 cmt_pickup_point 关联。"
+    + "**看到空白的是**配了社区域的运营；同样，目前没有页面读它",
+  "cmt_community_apply:PICKUP":
+    "提报的是**新社区**，那一刻还没有自提点 —— 表上没有 pickup_no，也不可能有。"
+    + "**看到空白的是**配了自提点域的运营打开提报队列，"
+    + "而审核新社区是社区运营的活，不是站长的",
+
   "ord_order:MERCHANT":
     "主单跨商家（一次结算拆成多个商家的子单），没有单一 entity_no。"
     + "运营端不直接列主单，只经已授权子单按主键回捞 —— 见 SCOPE_BYPASS_OK 的 toOpsVO",
