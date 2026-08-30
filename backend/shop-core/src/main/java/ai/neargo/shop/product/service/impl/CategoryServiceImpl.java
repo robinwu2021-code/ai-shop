@@ -58,6 +58,13 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    /**
+     * 平台类目树，@Cacheable("categoryTree")：所有人读同一份、运营偶尔动一次 ——
+     * 缓存收益最高的一类。失效在 save/archive/unarchive 上（@CacheEvict allEntries），
+     * 30s TTL 只兜失效链路万一漏了。cache 名的常量在 shop-app 的 CacheConfig ——
+     * 这里写字面量是因为 core 不该反向依赖装配层。
+     */
+    @org.springframework.cache.annotation.Cacheable("categoryTree")
     public List<CategoryVO> tree() {
         // 一次查全量再在内存里建树：类目通常几十条，三次分层查询反而更慢
         List<PrdCategory> all = categoryMapper.selectList(Wrappers.<PrdCategory>lambdaQuery()
@@ -87,6 +94,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @org.springframework.cache.annotation.Cacheable(value = "categoryType", key = "#categoryNo")
     public String categoryTypeOf(String categoryNo) {
         if (categoryNo == null || categoryNo.isBlank()) {
             return null;
@@ -139,6 +147,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = {"categoryTree", "categoryType"}, allEntries = true)
     public OpsCategoryVO save(SaveCategoryCommand cmd) {
         if (cmd.name() == null || cmd.name().isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -197,6 +206,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = {"categoryTree", "categoryType"}, allEntries = true)
     public OpsCategoryVO archive(String categoryNo) {
         PrdCategory c = byNo(categoryNo);
 
@@ -248,6 +258,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = {"categoryTree", "categoryType"}, allEntries = true)
     public OpsCategoryVO unarchive(String categoryNo) {
         PrdCategory c = byNo(categoryNo);
         if (c.getParentNo() != null && !c.getParentNo().isBlank()) {
