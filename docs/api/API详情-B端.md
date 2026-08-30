@@ -7532,12 +7532,12 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `supplierNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `shortName` | `string,null` | 否 | — |
-| `contactName` | `string,null` | 否 | — |
-| `contactPhone` | `string,null` | 否 | — |
-| `remark` | `string,null` | 否 | — |
+| `supplierNo` | `string` | 是 | 档案编号 `SUP…`。**进货单存的是它，不是名字** —— 名字会改，指向不会 |
+| `name` | `string` | 是 | 全名。同一商家内唯一（后端 `uk_sup_name`），重名建档会被 10409 拒 |
+| `shortName` | `string,null` | 否 | 短名，单据列表上显示它 —— 长名换行会把一行撑成两行 |
+| `contactName` | `string,null` | 否 | 联系人。**只作记录**，不发通知：这一版没有给供应商推消息的通道 |
+| `contactPhone` | `string,null` | 否 | 联系电话。同上，给人打的，不参与任何自动流程 |
+| `remark` | `string,null` | 否 | 备注。**引用平台档案时这一列仍归商家写** —— 那是他自己的话 |
 | `status` | `string` | 是 | ACTIVE 在用 · ARCHIVED 已停用。**停用不删除** —— 历史单据要指得回去 |
 | `fromPlatform` | `boolean` | 是 | 引用平台档案。**据此把名称与联系方式置灰** —— 不看这一位的话，商家会改了才发现改不动。 |
 

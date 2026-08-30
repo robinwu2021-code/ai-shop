@@ -412,7 +412,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 90,
+        "b-app": 91,
         "c-app": 6
       }
     },
@@ -512,7 +512,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 231,
+        "b-app": 233,
         "c-app": 111
       }
     },
@@ -528,7 +528,7 @@
         "align-items": "baseline"
       },
       "usage": {
-        "b-app": 27,
+        "b-app": 28,
         "c-app": 3
       }
     },
@@ -544,7 +544,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 109,
+        "b-app": 110,
         "c-app": 67
       }
     },
@@ -776,7 +776,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 263,
+        "b-app": 266,
         "c-app": 38
       }
     },
@@ -930,7 +930,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 114,
+        "b-app": 115,
         "c-app": 35
       }
     },
@@ -1038,7 +1038,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 186,
+        "b-app": 187,
         "c-app": 63
       }
     },
@@ -1184,7 +1184,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 51,
+        "b-app": 53,
         "c-app": 1
       }
     },
@@ -1505,7 +1505,7 @@
         "small?: boolean"
       ],
       "usage": {
-        "b-app": 7,
+        "b-app": 8,
         "c-app": 0
       },
       "note": "＋ 加一项按钮",
@@ -1585,7 +1585,7 @@
         "bare?: boolean"
       ],
       "usage": {
-        "b-app": 40,
+        "b-app": 41,
         "c-app": 19
       },
       "note": "空态",
@@ -1765,7 +1765,7 @@
         "deniedText?: string"
       ],
       "usage": {
-        "b-app": 62,
+        "b-app": 63,
         "c-app": 29
       },
       "note": "页面外壳",
@@ -2967,6 +2967,21 @@
     },
     {
       "app": "b-app",
+      "page": "suppliers",
+      "key": "b-app/suppliers",
+      "file": "b-app/src/pages/suppliers/index.vue",
+      "components": [
+        "sh-add",
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 12,
+      "localSelectors": 2,
+      "localCssLines": 8,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
       "page": "transfer",
       "key": "b-app/transfer",
       "file": "b-app/src/pages/transfer/index.vue",
@@ -3457,7 +3472,7 @@
     "tokens": 10,
     "blocks": 63,
     "components": 33,
-    "pages": 91,
+    "pages": 92,
     "gapKinds": 0
   }
 }
