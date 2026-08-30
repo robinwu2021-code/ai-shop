@@ -659,6 +659,45 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public String legalFormOf(String merchantNo) {
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
+        // 查不到给 null，**不回落成某一档**：回落等于替这家认领了一个形态，
+        // 而它只有一个用途 —— 取费率。取错的表现是账目静默差几分钱
+        return m == null || m.getLegalForm() == null || m.getLegalForm().isBlank()
+                ? null : m.getLegalForm();
+    }
+
+    @Override
+    public String feeBearerOf(String merchantNo, String storeNo, String payChannel) {
+        /*
+         * 自己查而不复用 {@code resolvePayment}：**那个方法不按通道筛**。
+         * 单通道时代它每个 (主体,门店) 只对应一行，现在一家可以同时开微信和支付宝，
+         * 不带通道条件会随机拿到其中一行 —— 两个通道的费率承担方本来就可以不同。
+         */
+        MchPaymentMerchant row = DataScopeContext.executeWithoutScope(() -> {
+            if (storeNo != null && !storeNo.isBlank()) {
+                MchPaymentMerchant own = merchantPaymentMapper.selectOne(
+                        Wrappers.<MchPaymentMerchant>lambdaQuery()
+                                .eq(MchPaymentMerchant::getEntityNo, merchantNo)
+                                .eq(MchPaymentMerchant::getStoreNo, storeNo)
+                                .eq(MchPaymentMerchant::getPayChannel, payChannel)
+                                .last("LIMIT 1"));
+                if (own != null) {
+                    return own;
+                }
+            }
+            return merchantPaymentMapper.selectOne(Wrappers.<MchPaymentMerchant>lambdaQuery()
+                    .eq(MchPaymentMerchant::getEntityNo, merchantNo)
+                    .eq(MchPaymentMerchant::getStoreNo, MchPaymentMerchant.ENTITY_LEVEL)
+                    .eq(MchPaymentMerchant::getPayChannel, payChannel)
+                    .last("LIMIT 1"));
+        });
+        return row == null ? null : row.getFeeBearer();
+    }
+
+    @Override
     @Transactional
     public int saveQualifications(String merchantNo, java.util.List<QualificationItem> items) {
         if (items == null || items.isEmpty()) {

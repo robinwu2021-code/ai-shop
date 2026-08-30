@@ -202,6 +202,32 @@ public interface MerchantQueryPort {
      */
     String fundsModeOf(String merchantNo);
 
+    /**
+     * 该主体的<b>法律形态</b>：{@code MICRO} / {@code INDIVIDUAL} / {@code ENTERPRISE}。
+     *
+     * <p>结算侧要它只为一件事：<b>取通道费率</b> —— 费率是
+     * 「通道 × 支付方式 × 主体形态」三维的，少这一维的话，
+     * 运营配的「企业专属费率」永远取不到，而这种错不会报警，
+     * 只会让某一类商家一直按通用费率结算（与
+     * {@code PayChannelRateService.effective} 的匹配顺序注释同一个坑）。
+     *
+     * @return 查不到返回 {@code null} —— <b>不回落成某一档</b>。
+     *         回落等于替这家商户认领了一个它可能没有的形态，
+     *         而费率取错的表现是账目静默地差几分钱
+     */
+    String legalFormOf(String merchantNo);
+
+    /**
+     * 通道手续费<b>由谁承担</b>：{@code MERCHANT} / {@code PLATFORM}
+     * （{@code mch_payment_merchant.fee_bearer}）。
+     *
+     * <p>要落进结算单：手续费金额说明「收了多少」，这一列说明「从谁身上收的」。
+     * 只记金额的话，事后没人答得上「这笔是平台让的利还是商家自己出的」。
+     *
+     * @return 查不到返回 {@code null}；调用方决定用不用库里的默认档
+     */
+    String feeBearerOf(String merchantNo, String storeNo, String payChannel);
+
     /** 归集：用户付给平台户，平台是销售主体（代销）。**这条路径没有补差动作** */
     String FUNDS_AGGREGATED = "AGGREGATED";
     /** 直连：用户付给商家二级户，平台分账。**只有这条路径需要补差** */

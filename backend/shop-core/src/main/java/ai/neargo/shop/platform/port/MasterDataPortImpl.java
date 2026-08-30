@@ -17,11 +17,14 @@ public class MasterDataPortImpl implements MasterDataPort {
 
     private final MasterDataService masterDataService;
     private final ai.neargo.shop.platform.RegionService regionService;
+    private final ai.neargo.shop.platform.PayChannelRateService payChannelRateService;
 
     public MasterDataPortImpl(MasterDataService masterDataService,
-                              ai.neargo.shop.platform.RegionService regionService) {
+                              ai.neargo.shop.platform.RegionService regionService,
+                              ai.neargo.shop.platform.PayChannelRateService payChannelRateService) {
         this.masterDataService = masterDataService;
         this.regionService = regionService;
+        this.payChannelRateService = payChannelRateService;
     }
 
     @Override
@@ -162,6 +165,15 @@ public class MasterDataPortImpl implements MasterDataPort {
     @Override
     public java.util.List<String> enabledChannels(String market) {
         return masterDataService.enabledChannels(market);
+    }
+
+    @Override
+    public ChannelFeeRate channelFeeRate(String payChannel, String payMethod, String legalForm, long at) {
+        var r = payChannelRateService.effective(payChannel, payMethod, legalForm, at);
+        // null 原样透出去：没配过与配了 0 必须在结算单上长得不一样
+        return r == null ? null
+                : new ChannelFeeRate(r.getRateBp() == null ? 0 : r.getRateBp(),
+                        r.getMinFeeMinor() == null ? 0L : r.getMinFeeMinor(), r.getRateNo());
     }
 
 }

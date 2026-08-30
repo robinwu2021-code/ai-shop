@@ -171,4 +171,26 @@ public interface MasterDataPort {
      */
     java.util.List<String> enabledChannels(String market);
 
+    /**
+     * 该笔交易适用的<b>通道费率</b>（{@code sys_pay_channel_rate} 的生效版本）。
+     *
+     * <p>匹配顺序精确优先于通配，细节在 {@code PayChannelRateService.effective}。
+     *
+     * <p><b>一条都没配返回 {@code null}，这里不兜 0。</b>兜 0 与「这个通道免手续费」
+     * 在库里长得一模一样，而两者的账差着真金白银 —— 结算侧要能把
+     * 「没配过」和「配了 0」分开落库，否则事后没人说得清那笔手续费去哪了。
+     *
+     * @param payMethod 支付方式（JSAPI/H5/APP/NATIVE）；不区分传 {@code null}
+     * @param legalForm 主体形态（MICRO/INDIVIDUAL/ENTERPRISE）；不区分传 {@code null}
+     */
+    ChannelFeeRate channelFeeRate(String payChannel, String payMethod, String legalForm, long at);
+
+    /**
+     * @param rateBp       万分比快照 —— <b>要落进结算单</b>，费率会变而历史账不能跟着变
+     * @param minFeeMinor  单笔最低手续费（分）。0 = 不设下限
+     * @param rateNo       命中的那一版，出问题时能指着它说「当时按这版算的」
+     */
+    record ChannelFeeRate(int rateBp, long minFeeMinor, String rateNo) {
+    }
+
 }

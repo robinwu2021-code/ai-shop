@@ -80,6 +80,18 @@ public class StlBill extends BaseEntity {
      */
     public static final String OFFLINE_SETTLED = "OFFLINE_SETTLED";
 
+    /**
+     * 通道费率来源：标准档。
+     *
+     * <p>与「这一列为 null」是两件事：<b>null = 没配过费率</b>（不知道多少），
+     * {@code STANDARD} 且金额为 0 = 配了 0%（真的不收）。
+     * 兜成同一个值之后，事后没人能把这两种情况分开。
+     */
+    public static final String FEE_STANDARD = "STANDARD";
+
+    /** 优惠档。今天没有任何地方会写它 —— 真出现时应由费率版本自己标明，不在结算侧猜 */
+    public static final String FEE_PROMO = "PROMO";
+
     private String settleNo;
     private String subOrderNo;
     private String orderNo;

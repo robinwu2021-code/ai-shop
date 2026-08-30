@@ -89,6 +89,9 @@ class OfflineSettleFlowTest {
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
+    @Autowired
+    private ai.neargo.shop.platform.PayChannelRateService payChannelRateService;
+
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers
@@ -235,6 +238,128 @@ class OfflineSettleFlowTest {
         assertThat(settleService.splitLogCount(bill.getSettleNo(), "SPLIT"))
                 .as("一条分账日志都不该有")
                 .isZero();
+    }
+
+    /**
+     * 通道手续费的四列：<b>收了多少、按哪一版、什么来源、从谁身上收</b>。
+     *
+     * <p>这四列建表时就有，而**此前全库零写入** —— 运营端能配的
+     * {@code sys_pay_channel_rate} 也没有任何消费者。配了费率不影响任何一笔账，
+     * 运营却会以为改了就生效了。
+     */
+    @Test
+    @DisplayName("★★★ 通道手续费按**实付**算，不是按结算基数 —— 用 gross 会让手续费凭空变大")
+    void channelFeeIsBasedOnPaidAmountNotGross() throws Exception {
+        var rate = addWechatRate(60, 0L);
+        try {
+            String token = login("13400288011");
+            addToCart(token);
+            String payOrderNo = create(token, "settle-fee-1", "");
+            String subOrderNo = subOrderNoOf(token, payOrderNo);
+
+            /*
+             * 直接改子单的积分抵扣，**不跑整条积分链路**：这里要验的是
+             * 「基数取哪一个数」，而 gross = 实付 + 平台优惠 + 积分抵扣。
+             * 不制造这个差额的话，gross 与实付相等 ——
+             * 那样写出来的断言两种实现都能通过，**等于什么也没验**。
+             */
+            DataScopeContext.executeWithoutScope(() -> jdbc.update(
+                    "UPDATE ord_sub_order SET points_deduct_minor = 500 WHERE sub_order_no = ?",
+                    subOrderNo));
+            long paid = DataScopeContext.executeWithoutScope(() ->
+                    subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                            .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("LIMIT 1"))).getPayAmount();
+
+            DataScopeContext.executeWithoutScope(() -> {
+                orderService.markPaid(mainOrderNoOf(subOrderNo), "WECHAT", "TXN-settle-fee-1");
+                return null;
+            });
+            StlBill bill = requireBill(subOrderNo);
+
+            assertThat(bill.getGrossMinor())
+                    .as("前提：结算基数必须真的比实付大 500，否则下面那条分辨不出两种实现")
+                    .isEqualTo(paid + 500);
+            assertThat(bill.getChannelFeeMinor())
+                    .as("通道按真正流经它的那笔钱收费")
+                    .isEqualTo(paid * 60 / 10000);
+            assertThat(bill.getChannelFeeMinor())
+                    .as("按 gross 算会多收 —— 这一条就是两种实现的分水岭")
+                    .isNotEqualTo(bill.getGrossMinor() * 60 / 10000);
+            assertThat(bill.getChannelFeeRate())
+                    .as("费率快照：费率会变，历史账不能跟着变")
+                    .isEqualTo(60);
+            assertThat(bill.getChannelFeeSource()).isEqualTo(StlBill.FEE_STANDARD);
+            assertThat(bill.getFeeBearer())
+                    .as("只记金额不记承担方，事后答不上「这笔是平台让的还是商家出的」")
+                    .isNotBlank();
+        } finally {
+            dropRate(rate);
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 没配费率就留空 —— 兜 0 之后，「免手续费」与「没人配过」永远分不开")
+    void unconfiguredRateLeavesSourceNull() throws Exception {
+        StlBill bill = billOfOnlineOrder("13400288012", "settle-fee-2");
+
+        assertThat(bill.getChannelFeeSource())
+                .as("null 才表示「不知道多少」；写成 STANDARD 就是替它认领了一个 0%")
+                .isNull();
+        assertThat(bill.getChannelFeeMinor())
+                .as("金额是建表默认的 0，靠 source 为 null 才知道这个 0 不作数")
+                .isZero();
+        assertThat(bill.getFeeBearer())
+                .as("承担方来自进件档案，与费率配没配无关 —— 它仍然要落")
+                .isNotBlank();
+    }
+
+    @Test
+    @DisplayName("★★ 单笔最低手续费要压得住 —— 漏了它，小额单的手续费系统性偏低且每笔都「算得对」")
+    void minFeeFloorApplies() throws Exception {
+        var rate = addWechatRate(1, 99L);
+        try {
+            StlBill bill = billOfOnlineOrder("13400288013", "settle-fee-3");
+            assertThat(bill.getChannelFeeMinor())
+                    .as("1bp 按率算不足 99 分，该按最低值收")
+                    .isEqualTo(99L);
+            assertThat(bill.getGrossMinor() * 1 / 10000)
+                    .as("前提：按率算必须真的小于 99，否则这条用例什么也没验到")
+                    .isLessThan(99L);
+        } finally {
+            dropRate(rate);
+        }
+    }
+
+    @Test
+    @DisplayName("★★ 线下单不碰手续费四列 —— 钱从没进过通道，谈不上通道手续费")
+    void offlineBillHasNoChannelFee() throws Exception {
+        var rate = addWechatRate(60, 0L);
+        try {
+            StlBill bill = billOfOfflineOrder("13400288014", "settle-fee-4");
+            assertThat(bill.getChannelFeeMinor()).isZero();
+            assertThat(bill.getChannelFeeSource()).isNull();
+        } finally {
+            dropRate(rate);
+        }
+    }
+
+    /**
+     * ⚠️ <b>费率行必须删干净。</b>{@code sys_pay_channel_rate} 是全局表，
+     * 留一行 WECHAT 费率在库里，此后**所有**线上单都会带上手续费 ——
+     * 而别的用例的失败信息里不会有任何一个字提到费率。
+     */
+    private ai.neargo.shop.platform.entity.SysPayChannelRate addWechatRate(int bp, long minFee) {
+        var r = new ai.neargo.shop.platform.entity.SysPayChannelRate();
+        r.setPayChannel("WECHAT");
+        r.setRateBp(bp);
+        r.setMinFeeMinor(minFee);
+        r.setEffectiveFrom(1L);      // 早于任何一单，取的时候一定命中
+        return payChannelRateService.add(r);
+    }
+
+    private void dropRate(ai.neargo.shop.platform.entity.SysPayChannelRate r) {
+        DataScopeContext.executeWithoutScope(() -> jdbc.update(
+                "DELETE FROM sys_pay_channel_rate WHERE rate_no = ?", r.getRateNo()));
     }
 
     @Test

@@ -267,6 +267,7 @@ public class SettleServiceImpl implements SettleService {
              */
             bill.setBusinessMode(mode);
             boolean selfOperated = MerchantQueryPort.MODE_SELF_OPERATED.equals(mode);
+            applyChannelFee(bill, src, at);
             /*
              * 线下**压过经营模式**决定状态：两条既有链路（自营对账、第三方分账）
              * 描述的都是「平台手里这笔钱怎么流出去」，而线下压根没有这笔钱。
@@ -703,6 +704,51 @@ public class SettleServiceImpl implements SettleService {
         entry.setCreatedAt(LocalDateTime.now());
         DataScopeContext.executeWithoutScope(() -> splitLogMapper.insert(entry));
         return result.success();
+    }
+
+    /**
+     * 把<b>通道手续费</b>的四件事落进结算单：收了多少、按哪一版费率、什么来源、从谁身上收。
+     *
+     * <p><b>这四列此前全库零写入</b>（`stl_bill` 建表时就有，没有任何地方 set 过），
+     * 而运营端能配的 {@code sys_pay_channel_rate} 也没有任何消费者 ——
+     * 配了费率不影响任何一笔账，运营却会以为改了就生效了。这个方法把两头接上。
+     *
+     * <p><b>基数是实付金额，不是结算基数 {@code gross}。</b>
+     * 通道按真正流经它的那笔钱收费，而 {@code gross} 还加回了平台优惠与积分抵扣 ——
+     * 那两笔钱压根没从通道走过。用 gross 会让手续费凭空变大，且金额越大差得越多。
+     *
+     * <p><b>没配过费率就留空，不兜 0。</b>「没配过」与「配了 0%」在库里必须长得不一样：
+     * 兜 0 之后，事后没有任何人能回答「这笔手续费当时是免的，还是根本没人配」。
+     * 留空的表现是 {@code channel_fee_source} 为 null，而金额与费率是建表默认的 0。
+     *
+     * <p>线下（当面）收款直接返回：钱从没进过通道，谈不上通道手续费。
+     */
+    private void applyChannelFee(StlBill bill, SettleSourcePort.SettleSource src, long at) {
+        if (PayModes.OFFLINE.equals(src.payChannel()) || src.payChannel() == null) {
+            return;
+        }
+        var rate = masterDataPort.channelFeeRate(src.payChannel(), src.payScene(),
+                merchantQueryPort.legalFormOf(src.merchantNo()), at);
+        if (rate == null) {
+            /*
+             * 承担方仍然要落：它来自进件档案，与费率配没配无关。
+             * 只有它有值而金额是 0 时，读单据的人才看得出「知道该谁出，但不知道出多少」。
+             */
+            bill.setFeeBearer(merchantQueryPort.feeBearerOf(
+                    src.merchantNo(), src.storeNo(), src.payChannel()));
+            return;
+        }
+        /*
+         * 单笔最低手续费：通道普遍有这一档，小额单按率算出来不足最低值时按最低值收。
+         * 漏了它的表现是小额单的手续费系统性偏低，而单看任何一笔都「算得对」。
+         */
+        long byRate = src.payAmount() * rate.rateBp() / 10000;
+        bill.setChannelFeeMinor(Math.max(byRate, rate.minFeeMinor()));
+        bill.setChannelFeeRate(rate.rateBp());
+        // 今天只有一种来源。真出现优惠费率时，它该由费率版本自己标明，而不是在这里猜
+        bill.setChannelFeeSource(StlBill.FEE_STANDARD);
+        bill.setFeeBearer(merchantQueryPort.feeBearerOf(
+                src.merchantNo(), src.storeNo(), src.payChannel()));
     }
 
     private StlBill findBySubOrder(String subOrderNo) {
