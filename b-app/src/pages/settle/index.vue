@@ -302,7 +302,8 @@ onShow(load);
 }
 
 .batch__chip {
-  margin-left: 12rpx;
+  /* 逻辑属性：阿语下徽标要跟着翻到日期的另一侧，写死 left 它不会翻 */
+  margin-inline-start: 12rpx;
 }
 .batch__why {
   display: block;
