@@ -103,6 +103,14 @@ class BizEndpointPermTest {
         put("/biz/inventory/ledger", BizPerms.STOCK);
         // 开单时挑货。与 balances 同权：都是「看得见这家的货」
         put("/biz/inventory/pickable", BizPerms.STOCK);
+        /*
+         * 供应商档案（S2/S5）。**与进货同一个码，不新造** ——
+         * 建供应商与记一笔进货是同一件事的两半，分成两个码的结果是
+         * 「能记账但选不到供应商」。
+         */
+        put("/biz/inventory/suppliers", BizPerms.STOCK);
+        put("/biz/inventory/suppliers/{no}", BizPerms.STOCK);
+        put("/biz/inventory/suppliers/{no}/active", BizPerms.STOCK);
         // 界面上的「改数」，底下是一次单件盘点 —— 便捷端点，不是第二条改余额的路
         put("/biz/inventory/adjust", BizPerms.STOCK);
         put("/biz/inventory/counts", BizPerms.STOCK);
