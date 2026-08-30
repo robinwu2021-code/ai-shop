@@ -434,6 +434,25 @@ export interface MerchantDeposit {
   dailyAmountLimitMinor: number;
 }
 
+/**
+ * 一个收款号的额度。主体级一条 + 每个已进件门店一条。
+ *
+ * <p>**空列表 ≠ 额度为零**：空表示这家还没进过件，界面上必须画成两样东西 ——
+ * 读成「额度为零」的运营会去调大额度，而实际该做的是先走进件。
+ */
+export interface PayQuota {
+  /** 空串 = 主体级默认收款号 */
+  storeNo: string;
+  /** WECHAT / ALIPAY */
+  payChannel?: string | null;
+  /** 进件状态；未 ACTIVE 时额度设了也不生效 */
+  applyStatus?: string | null;
+  /** 上限（分）；**0 = 未设置，不拦**，不是「额度为零」 */
+  limitMinor: number;
+  /** 已用（分）。支付累加出来的事实，运营改不了 */
+  usedMinor: number;
+}
+
 export type DepositTxnType = "PAY" | "REFUND" | "FREEZE" | "UNFREEZE" | "DEDUCT";
 
 /** 保证金流水。**只有余额字段的账户是不可审计的** —— 说不清这笔钱什么时候少的、谁扣的。 */

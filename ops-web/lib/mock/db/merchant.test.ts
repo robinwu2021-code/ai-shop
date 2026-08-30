@@ -131,3 +131,33 @@ describe("门店级违规处置（STORE_OFFLINE，P-11.2）", () => {
     ).rejects.toThrow(/已被强制下线/);
   });
 });
+
+describe("收款额度", () => {
+  it("★ 种子里必须同时有「设过额度」「上限 0」「一条都没有」三种形态", async () => {
+    /*
+     * 这三种在界面上是**三句不同的话**，而它们最容易被画成同一句：
+     *   上限 5000 → ¥5,000.00
+     *   上限 0    → 「未设置（不拦）」，不是 ¥0.00 —— 读成后者的运营会去调大额度
+     *   一条没有  → 「还没有收款号，要先走进件」，也不是「额度为零」
+     * 种子里缺哪一种，那一条分支就永远没人看见过。
+     */
+    const m901 = await merchantMock.payQuotas("M901");
+    expect(m901.some((q) => q.limitMinor > 0)).toBe(true);
+    expect(m901.some((q) => q.limitMinor === 0)).toBe(true);
+    expect(await merchantMock.payQuotas("M903")).toEqual([]);
+  });
+
+  it("★ 没有收款号就设不了额度 —— 静默建一条会造出一个没进过件的收款号", async () => {
+    await expect(
+      merchantMock.setPayQuota({ merchantNo: "M903", quotaLimitMinor: 100_000 }),
+    ).rejects.toThrow(/收款号/);
+  });
+
+  it("只改上限，不动已用量 —— 用量是支付累加出来的事实", async () => {
+    const before = (await merchantMock.payQuotas("M901")).find((q) => q.storeNo === "")!;
+    await merchantMock.setPayQuota({ merchantNo: "M901", quotaLimitMinor: 900_000 });
+    const after = (await merchantMock.payQuotas("M901")).find((q) => q.storeNo === "")!;
+    expect(after.limitMinor).toBe(900_000);
+    expect(after.usedMinor).toBe(before.usedMinor);
+  });
+});

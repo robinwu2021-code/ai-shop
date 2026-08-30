@@ -13,8 +13,6 @@
 # 而这是今天唯一真能把钱付出去的路（第三方那条走分账，而分账网关是桩）。
 # 见 docs/requirements/PRD-商家资金到账与对账.md
 # ── 其余 5 条（非本域）──
-# 商家收款额度用尽时改不了
-PUT /ops/admission/pay-quota/{merchantNo}
 # 触达配置，属另一条线（shop-notify 那批）
 # 订单总览：运营端走的是别的入口，可能是重复能力，待确认后删或补
 GET /ops/order

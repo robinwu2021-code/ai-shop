@@ -603,6 +603,34 @@ components:
         - "dailyAmountLimitMinor"
       additionalProperties: false
       description: "商家保证金账户。**可用余额 = 实缴 − 冻结**，判「够不够」用可用而非实缴。"
+    PayQuota: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+          description: "空串 = 主体级默认收款号"
+        payChannel: 
+          type: 
+            - "string"
+            - "null"
+          description: "WECHAT / ALIPAY"
+        applyStatus: 
+          type: 
+            - "string"
+            - "null"
+          description: "进件状态；未 ACTIVE 时额度设了也不生效"
+        limitMinor: 
+          type: "number"
+          description: "上限（分）；**0 = 未设置，不拦**，不是「额度为零」"
+        usedMinor: 
+          type: "number"
+          description: "已用（分）。支付累加出来的事实，运营改不了"
+      required: 
+        - "storeNo"
+        - "limitMinor"
+        - "usedMinor"
+      additionalProperties: false
+      description: "一个收款号的额度。主体级一条 + 每个已进件门店一条。\n\n<p>**空列表 ≠ 额度为零**：空表示这家还没进过件，界面上必须画成两样东西 —— 读成「额度为零」的运营会去调大额度，而实际该做的是先走进件。"
     DepositTxnType: 
       type: "string"
       enum: 
@@ -13637,6 +13665,78 @@ paths:
           schema: 
             type: "string"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/admission/pay-quota/{merchantNo}": 
+    get: 
+      operationId: "payQuotas"
+      summary: "当前收款额度"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/PayQuota"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "merchantNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    put: 
+      operationId: "setPayQuota"
+      summary: "setPayQuota"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "merchantNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/admission/deposits/{merchantNo}/txns": 
     get: 
       operationId: "depositTxns"

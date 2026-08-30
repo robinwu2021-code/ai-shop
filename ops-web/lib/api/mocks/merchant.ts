@@ -174,6 +174,20 @@ export const merchantMock: MerchantApi = {
 
   depositTxns: async (merchantNo) => wait([...(db.depositTxns[merchantNo] ?? [])].reverse()),
 
+  payQuotas: async (merchantNo) => wait([...(db.payQuotas[merchantNo] ?? [])]),
+
+  setPayQuota: async ({ merchantNo, storeNo, quotaLimitMinor }) => {
+    const list = db.payQuotas[merchantNo];
+    // 没进过件就没有额度可设 —— 静默建一条会造出一个没进过件的收款号，
+    // 后端也是这么拒的（NOT_FOUND），mock 跟着拒才测得出界面上那条提示
+    const row = list?.find((x) => x.storeNo === (storeNo ?? ""));
+    if (!row) fail("该商家/门店还没有收款号", "No payment merchant for this store");
+    if (quotaLimitMinor < 0) fail("额度不能为负", "Quota must not be negative");
+    // 只改上限，不动已用量：用量是支付累加出来的事实
+    row!.limitMinor = quotaLimitMinor;
+    return wait(undefined, 400);
+  },
+
   addDepositTxn: async ({ merchantNo, txnType, amountMinor, reason }) => {
     const list = (db.depositTxns[merchantNo] ??= []);
     const paid = list.filter((t) => t.txnType !== "FREEZE" && t.txnType !== "UNFREEZE")

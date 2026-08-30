@@ -20,7 +20,7 @@ import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
 import { fmtTime, money } from "@/lib/utils";
-import type { AdmissionPolicy, DepositTxn, DepositTxnType, LegalForm, StoreMode } from "@/lib/types";
+import type { AdmissionPolicy, DepositTxn, DepositTxnType, LegalForm, PayQuota, StoreMode } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfigCard } from "@/components/ui/config-card";
@@ -90,6 +90,49 @@ export function AdmissionTab({ c }: { c: Copy }) {
       notify.success(c.adToastTxnAdded);
     },
   });
+
+  /*
+   * 收款额度：**写接口 2026-05 就有了，读接口一直没有**，于是这个入口一直没敢挂 ——
+   * 只让人往一个看不见当前值的框里填数，而填小了会把正常商家的货全拦下来。
+   * 读接口补上（GET /ops/admission/pay-quota/{merchantNo}）之后才有这一段。
+   */
+  const quotas = useQuery({
+    queryKey: ["pay-quotas", queried], queryFn: () => api.payQuotas(queried), enabled: !!queried,
+  });
+  const [quotaStore, setQuotaStore] = useState("");
+  const [quotaLimit, setQuotaLimit] = useState("");
+  const setQuota = useMutation({
+    mutationFn: () => api.setPayQuota({
+      merchantNo: queried,
+      storeNo: quotaStore || undefined,
+      // 界面按元收，接口按分 —— 两边单位不一致是这类字段最常见的一种错，
+      // 且错了不报：填 5000 想要 50 元，实际设成 5000 元
+      quotaLimitMinor: Math.round(Number(quotaLimit) * 100),
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pay-quotas", queried] });
+      setQuotaLimit("");
+      notify.success(c.adToastQuotaSaved);
+    },
+  });
+
+  const quotaColumns: Column<PayQuota>[] = [
+    {
+      header: c.adColPayAccount,
+      cell: (q) => (q.storeNo ? q.storeNo : <span className="text-muted-foreground">{c.adEntityLevel}</span>),
+    },
+    { header: c.adColChannel, cell: (q) => q.payChannel ?? "—" },
+    { header: c.adColApplyStatus, cell: (q) => q.applyStatus ?? "—" },
+    {
+      header: c.adColQuotaLimit,
+      // **0 不是「额度为零」而是「没设过」**，直接显示 0 会读成前者，
+      // 于是运营以为这家被限死了，去改一个本来就不生效的阈值
+      cell: (q) => (q.limitMinor === 0
+        ? <span className="text-muted-foreground">{c.adQuotaUnset}</span>
+        : money(q.limitMinor)),
+    },
+    { header: c.adColQuotaUsed, cell: (q) => money(q.usedMinor) },
+  ];
 
   /*
    * 资金路径与门店经营模式放在同一页，理由与「保证金/限额/限品类三样同页」一致：
@@ -269,6 +312,45 @@ export function AdmissionTab({ c }: { c: Copy }) {
               { value: "DIRECT", label: c.fundsDirect },
             ]}
           />
+        </div>
+      )}
+
+      {queried && (
+        <div>
+          <div className="mb-2 txt-strong">{c.adQuotaTitle}</div>
+          <p className="txt-caption text-muted-foreground mb-2">{c.adQuotaHint}</p>
+          <DataTable
+            columns={quotaColumns}
+            rows={quotas.data}
+            loading={quotas.isPending}
+            error={quotas.error}
+            onRetry={() => quotas.refetch()}
+            rowKey={(q) => q.storeNo || "__entity__"}
+            /* 空 = 还没进过件。**不能写成「暂无额度」**：那句话会把人引去调额度 */
+            empty={c.adQuotaNoAccount}
+          />
+          {/* 没有收款号时不给填框 —— 填了也只会拿到一个 404 */}
+          {!!quotas.data?.length && (
+            <div className="grid grid-cols-3 gap-3 mt-3 items-end">
+              <div className="space-y-1">
+                <Label>{c.adColPayAccount}</Label>
+                <FilterSelect
+                  aria-label={c.adColPayAccount} value={quotaStore}
+                  onChange={setQuotaStore}
+                  options={quotas.data.map((q) => ({
+                    value: q.storeNo, label: q.storeNo || c.adEntityLevel,
+                  }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ad-quota" required>{c.adQuotaFieldLimit}</Label>
+                <Input id="ad-quota" value={quotaLimit} onChange={(e) => setQuotaLimit(e.target.value)} />
+              </div>
+              <Button onClick={() => setQuota.mutate()} disabled={!quotaLimit || setQuota.isPending}>
+                {c.adQuotaSet}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

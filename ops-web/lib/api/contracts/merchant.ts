@@ -7,7 +7,7 @@ import type {
   MerchantPlanRow,
   PlanDef,
   PlanUpgradeSignal,
-  AdmissionPolicy, AuthCode, AuthCodeSetResult, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType, StoreFulfillmentRow } from "@/lib/types";
+  AdmissionPolicy, AuthCode, AuthCodeSetResult, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, PayQuota, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType, StoreFulfillmentRow } from "@/lib/types";
 import type { ApplyQ, MerchantQ } from "../query";
 
 export interface MerchantApi {
@@ -73,6 +73,10 @@ export interface MerchantApi {
   unlockChannel(storeNo: string, channel: string): Promise<void>;
 
   merchantDeposit(merchantNo: string): Promise<MerchantDeposit>;
+  /** 当前收款额度。空数组 = 还没进过件，与「额度为零」是两件事 */
+  payQuotas(merchantNo: string): Promise<PayQuota[]>;
+  /** @param storeNo 空 = 主体级；@param quotaLimitMinor 0 = 取消限制 */
+  setPayQuota(v: { merchantNo: string; storeNo?: string; quotaLimitMinor: number }): Promise<void>;
   depositTxns(merchantNo: string): Promise<DepositTxn[]>;
   /** @param amountMinor 有符号：缴纳为正、扣划为负 */
   addDepositTxn(v: { merchantNo: string; txnType: DepositTxnType; amountMinor: number; reason?: string }): Promise<void>;

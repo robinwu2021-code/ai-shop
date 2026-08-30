@@ -46,6 +46,28 @@ public interface AdmissionService {
      */
     void setPayQuotaLimit(String merchantNo, String storeNo, long quotaLimitMinor, String operator);
 
+    /**
+     * 这家商户当前的收款额度：主体级一条 + 每个已进件门店一条。
+     *
+     * <p><b>写接口先有、读接口后有，中间那段时间运营端不敢挂入口</b>——
+     * 只让人往一个看不见当前值的框里填数，而这个字段填小了会把正常商家的货全拦下来。
+     * 所以入口的前提是这条读接口，不是反过来。
+     *
+     * <p>返回空列表 = 这家还没进过件，<b>不是「额度为零」</b>：
+     * 两者在界面上必须画成不同的东西，否则运营会去「把额度调大」，
+     * 而实际该做的是先走进件。
+     */
+    List<PayQuotaVO> payQuotas(String merchantNo);
+
+    /**
+     * @param storeNo   空串 = 主体级默认收款号（与 {@code MchPaymentMerchant.ENTITY_LEVEL} 同一约定）
+     * @param limitMinor 上限；<b>0 = 未设置，不拦</b>，不是「额度为零」
+     * @param usedMinor  已用；支付累加出来的事实，运营改不了
+     */
+    record PayQuotaVO(String storeNo, String payChannel, String applyStatus,
+                      long limitMinor, long usedMinor) {
+    }
+
     record TxnVO(String txnNo, String txnType, long amountMinor, long balanceAfterMinor,
                  String reason, String operator, String createdAt) {
     }

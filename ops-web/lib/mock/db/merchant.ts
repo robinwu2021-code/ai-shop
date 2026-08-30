@@ -1,7 +1,7 @@
 // 商家域 mock 数据（P-11.1）。
 // 覆盖三种主体分层与全部审核状态，让列表页的筛选、徽标、空态在无后端时都能验到。
 import type { MerchantApply, Merchant, MerchantStaffRow } from "@/lib/types";
-import type { AdmissionPolicy, DepositTxn, StoreMode } from "@/lib/types";
+import type { AdmissionPolicy, DepositTxn, PayQuota, StoreMode } from "@/lib/types";
 
 // 时间用固定字符串而非 Date.now()：mock 数据每次刷新都变的话，截图对不上、测试也不稳。
 export const merchants: Merchant[] = [
@@ -136,6 +136,25 @@ export const admissionPolicies: AdmissionPolicy[] = [
     dailyAmountLimitMinor: 500_000, banQualifiedCategory: 1, enabled: 1,
     remark: "S3：几乎追不到人，平台是唯一被追的一方；三样同时生效" },
 ];
+
+/**
+ * 收款额度。种子刻意造出三种形态，它们在界面上必须看着不一样：
+ *   M901 主体级  已设 5000 元、用掉 300 元 —— 正常
+ *   M901 ST002   **上限 0 = 未设置**，不是「不能收款」
+ *   M903         **一条都没有 = 还没进过件**，与「额度为零」不是一回事
+ */
+export const payQuotas: Record<string, PayQuota[]> = {
+  M901: [
+    { storeNo: "", payChannel: "WECHAT", applyStatus: "ACTIVE",
+      limitMinor: 500_000, usedMinor: 30_000 },
+    { storeNo: "ST002", payChannel: "WECHAT", applyStatus: "ACTIVE",
+      limitMinor: 0, usedMinor: 12_000 },
+  ],
+  M902: [
+    { storeNo: "", payChannel: "ALIPAY", applyStatus: "REVIEWING",
+      limitMinor: 200_000, usedMinor: 0 },
+  ],
+};
 
 export const depositTxns: Record<string, DepositTxn[]> = {
   M901: [

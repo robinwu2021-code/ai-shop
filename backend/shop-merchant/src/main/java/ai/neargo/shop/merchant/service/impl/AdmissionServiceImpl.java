@@ -186,6 +186,19 @@ public class AdmissionServiceImpl implements AdmissionService {
         paymentMapper.updateById(pm);
     }
 
+    @Override
+    public List<PayQuotaVO> payQuotas(String merchantNo) {
+        return paymentMapper.selectList(Wrappers.<MchPaymentMerchant>lambdaQuery()
+                        .eq(MchPaymentMerchant::getEntityNo, merchantNo)
+                        .orderByAsc(MchPaymentMerchant::getStoreNo))
+                .stream()
+                .map(pm -> new PayQuotaVO(
+                        pm.getStoreNo() == null ? MchPaymentMerchant.ENTITY_LEVEL : pm.getStoreNo(),
+                        pm.getPayChannel(), pm.getApplyStatus(),
+                        orZero(pm.getQuotaLimitMinor()), orZero(pm.getQuotaUsedMinor())))
+                .toList();
+    }
+
     private Optional<MchDeposit> accountOf(String merchantNo) {
         return Optional.ofNullable(depositMapper.selectOne(Wrappers.<MchDeposit>lambdaQuery()
                 .eq(MchDeposit::getMerchantNo, merchantNo).last("LIMIT 1")));

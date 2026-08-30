@@ -5,6 +5,7 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.merchant.entity.MchAdmissionPolicy;
 import ai.neargo.shop.merchant.service.AdmissionService;
 import ai.neargo.shop.merchant.service.AdmissionService.DepositVO;
+import ai.neargo.shop.merchant.service.AdmissionService.PayQuotaVO;
 import ai.neargo.shop.merchant.service.AdmissionService.TxnVO;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import java.util.List;
@@ -75,6 +76,17 @@ public class OpsAdmissionController {
         admissionService.recordTxn(merchantNo, req.txnType(),
                 req.amountMinor() == null ? 0L : req.amountMinor(), req.reason(), operator);
         auditLogPort.record("DEPOSIT_TXN", merchantNo + ":" + req.txnType(), operator);
+    }
+
+    /**
+     * 读回当前额度 —— <b>写接口之前一直没有它，于是运营端不敢挂这个入口</b>。
+     *
+     * <p>空列表 = 还没进过件，与「额度为零」是两件事，端上要画成不同的东西。
+     */
+    @GetMapping("/ops/admission/pay-quota/{merchantNo}")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_ADMISSION_READ + "')")
+    public List<PayQuotaVO> payQuotas(@PathVariable String merchantNo) {
+        return admissionService.payQuotas(merchantNo);
     }
 
     /**
