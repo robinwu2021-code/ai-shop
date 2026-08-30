@@ -6239,7 +6239,7 @@ _无字段_
 类型：[`CategorySpec`](#categoryspec)\[\]
 
 
-#### POST `/ops/community-pool/resync${entityNo ? `
+#### POST `/ops/community-pool/resync`
 
 重建社区池（「这件商品出现在哪些社区」的派生索引）
 

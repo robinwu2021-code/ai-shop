@@ -33,12 +33,16 @@ export const productHttp: ProductApi = {
   // 后端这条收的是 @RequestParam（不是 body），而 client.post 只有 (path, data) 两个参数 ——
   // 所以 entityNo 拼进查询串。encodeURIComponent 不能省：商家号虽然目前是安全字符，
   // 但「目前是」不是判据。
-  // 路径写成**以字面量开头的模板串**，不要写成 `client.post(cond ? a : b)` ——
-  // gen-openapi 要能静态取出路径（它的正则要求 `client.post(` 后紧跟引号），
-  // 三元在前它就认不出，报「契约声明了但 http 实现里没有」。
-  // 这不是它的 bug：一个静态取不出路径的调用，本来也生成不出 openapi 条目。
+  /*
+   * 后端这条把参数收在 @RequestParam 上（不是 body），所以走 client.post 的第三个参数。
+   *
+   * ⚠️ **路径必须保持字面量**：拼成 "/ops/...?entityNo=" 的话，
+   * gen-openapi 与 check-ops-contract 会把带查询串的整串拿去比对后端注册的路径，
+   * 比不上就报「后端没有这个接口」。这不是闸门的 bug —— 静态取不出路径的调用，
+   * 本来也生成不出 openapi 条目。
+   */
   resyncCommunityPool: (entityNo) =>
-    client.post(`/ops/community-pool/resync${entityNo ? `?entityNo=${encodeURIComponent(entityNo)}` : ""}`),
+    client.post("/ops/community-pool/resync", undefined, entityNo ? { entityNo } : undefined),
   auditGoods: (goodsNo, approved, reason) =>
     client.post(`/ops/goods/${goodsNo}/audit`, { approved, reason }),
 

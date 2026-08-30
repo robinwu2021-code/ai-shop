@@ -119,7 +119,16 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const client = {
   get: <T>(path: string, q?: object) => req<T>(`${path}${qs(q)}`),
-  post: <T>(path: string, data?: unknown) => req<T>(path, { method: "POST", body: JSON.stringify(data ?? {}) }),
+  /**
+   * POST。第三个参数是**查询串** —— 后端有一批写操作把参数收在 `@RequestParam` 上
+   * 而不是 body（如 `/ops/community-pool/resync?entityNo=`）。
+   *
+   * <p>此前没有这个参数，于是唯一的写法是把 `?a=b` 拼进 path —— 那会让两道闸
+   * （`gen-openapi` 与 `check-ops-contract`）把带查询串的整串当成路径去比对后端注册，
+   * 比不上就报「后端没有这个接口」。**路径要保持字面量**，可变部分交给这里。
+   */
+  post: <T>(path: string, data?: unknown, q?: object) =>
+    req<T>(`${path}${qs(q)}`, { method: "POST", body: JSON.stringify(data ?? {}) }),
   put: <T>(path: string, data?: unknown) => req<T>(path, { method: "PUT", body: JSON.stringify(data ?? {}) }),
 };
 
