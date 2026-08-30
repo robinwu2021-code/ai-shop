@@ -80,6 +80,24 @@ const GENERATORS = [
    * 本次给 mock 补两条手机号拒绝规则时它就红了，靠的是我自己跑全量才看见。
    */
   ["scripts/gen-behaviour-spec.mjs", ["docs/api/后端验收清单.md"]],
+  /*
+   * H2 测试库的两份 schema。**它们此前完全无人看守** —— 而漏生成的症状
+   * 与真因毫不相干：2026-08-30 有人改完进销存 DDL 没重生成，
+   * 12 个测试全红在 `Column "supplier_no" not found`（表在、列不在），
+   * 没有任何东西指向「产物陈了」。
+   *
+   * 第三个元素是**命令行参数**，为这个生成器加的：
+   * `gen-test-schema.py [输出文件] [迁移源目录]`，不给参数只写平台那一份。
+   * 于是「跑了生成器」与「生成了我要的那份」是两件事 ——
+   * 有人跑了不带参数的那条，看到「wrote … 161 tables」以为好了，
+   * 而进销存那份一个字没变。**登记要按调用登记，不是按脚本登记。**
+   */
+  ["backend/scripts/gen-test-schema.py",
+   ["backend/shop-app/src/test/resources/schema-test.sql"]],
+  ["backend/scripts/gen-test-schema.py",
+   ["backend/shop-app/src/test/resources/db/inventory-h2/V1__inventory_baseline.sql"],
+   ["backend/shop-app/src/test/resources/db/inventory-h2/V1__inventory_baseline.sql",
+    "backend/shop-inventory/src/main/resources/db/inventory"]],
 ];
 
 const sha = (p) => (existsSync(p) ? createHash("sha1").update(readFileSync(p)).digest("hex") : "∅");
@@ -109,14 +127,16 @@ const restore = (p, buf) => {
 };
 
 const drifted = [];
-for (const [script, outputs] of GENERATORS) {
+for (const [script, outputs, argv = []] of GENERATORS) {
+  // 同一个脚本可以登记多次（不同参数产出不同的份），标签要分得开
+  const label = argv.length ? `${script} ${argv[0]}` : script;
   const paths = outputs.map((o) => join(ROOT, o));
   const kept = paths.map(snapshot);
   const before = paths.map(sha);
   try {
     // 生成器不限语言：UI 标准库是 python，其余是 node
     const runner = script.endsWith(".py") ? "python3" : "node";
-    execFileSync(runner, [join(ROOT, script)], { cwd: ROOT, stdio: "pipe" });
+    execFileSync(runner, [join(ROOT, script), ...argv], { cwd: ROOT, stdio: "pipe" });
   } catch (e) {
     paths.forEach((p, i) => restore(p, kept[i]));
     /*
@@ -131,7 +151,7 @@ for (const [script, outputs] of GENERATORS) {
     // 首行常是 `node:internal/...:301` 这种堆栈头 —— 挑真正说事的那一条
     const why = lines.find((l) => /Error:|ERR_[A-Z_]+|Cannot find/.test(l))
       ?? lines[0] ?? e.message.split("\n")[0];
-    console.error(`✗ ${script} 跑不起来：${why.trim()}`);
+    console.error(`✗ ${label} 跑不起来：${why.trim()}`);
     if (/ERR_MODULE_NOT_FOUND|Cannot find module/.test(why)) {
       console.error("  多半是这棵树里没有 node_modules（它不进 git）——");
       console.error("  裸 worktree 里跑不了这道闸门。pre-push 会把主仓的软链过去，手工跑要自己链。");
@@ -139,7 +159,25 @@ for (const [script, outputs] of GENERATORS) {
     process.exit(1);
   }
   outputs.forEach((o, i) => {
-    if (sha(paths[i]) !== before[i]) drifted.push(`${o}   ← ${script}`);
+    /*
+     * **先问「它存在吗」，再问「它变了吗」。**
+     *
+     * sha() 对缺失文件返回 `∅`，于是「跑前不存在、跑后也不存在」会比成相等 ——
+     * 一条永远绿的登记。这个坑本文件头部记着已经踩过一次
+     * （openapi-c.yaml 从来没存在过，白白列了很久），但当时只是删掉了那一行，
+     * 没有任何东西阻止它再来一次。现在阻止了。
+     *
+     * 它同时守住另一半：**生成器跑了、但没写出这份产物**。
+     * 那正是「跑了」与「跑到了」的差别，而缺参数、写错路径、
+     * 提前 return 都会长成这个样子，且全都退出码 0。
+     */
+    if (!existsSync(paths[i])) {
+      console.error(`✗ ${label} 跑完之后 ${o} 仍然不存在。`);
+      console.error("  要么这份产物的路径写错了（那这条登记从来没守住过任何东西），");
+      console.error("  要么生成器根本没写它 —— 缺参数 / 提前 return 都长这样，且退出码 0。");
+      process.exit(1);
+    }
+    if (sha(paths[i]) !== before[i]) drifted.push(`${o}   ← ${label}`);
   });
   // 判完立刻还原：这道闸门只回答「对不对」，不替谁改文件
   paths.forEach((p, i) => restore(p, kept[i]));

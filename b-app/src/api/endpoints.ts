@@ -133,6 +133,10 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   // 挂 biz:goods 而不是 biz:stock —— 改价是定价权，与补货不是一回事
   mSaveStorePrice: { method: "POST", path: "/biz/goods/:goodsNo/store-price", auth: true, summary: "改当前门店售价" },
   mSubmitGoods: { method: "POST", path: "/biz/goods/:goodsNo/submit", auth: true, summary: "提交审核（草稿→待审）" },
+  // 双版本发布（V279）：在售编辑落草稿线上照卖；发布=原子换版（审核开则线上继续卖旧版）
+  mGoodsDraft: { method: "GET", path: "/biz/goods/:goodsNo/draft", auth: true, summary: "读草稿（编辑页回填）" },
+  mPublishPreview: { method: "GET", path: "/biz/goods/:goodsNo/publish-preview", auth: true, summary: "发布预览（字段级差异）" },
+  mPublishGoods: { method: "POST", path: "/biz/goods/:goodsNo/publish", auth: true, summary: "发布草稿（原子换版）" },
   // 只改截单，**不触发重审** —— 走 save 的话生鲜商家改一次截单等于停一天生意
   mSavePresale: { method: "POST", path: "/biz/goods/:goodsNo/presale", auth: true, summary: "改截单与到货说明" },
 
