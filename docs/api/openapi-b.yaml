@@ -6158,6 +6158,20 @@ components:
         - "inTransitCount"
       additionalProperties: false
       description: "库存总览的三个数（`SummaryVO`）。"
+    Carrier: 
+      type: "object"
+      properties: 
+        carrier: 
+          type: "string"
+          description: "编号，如 `SF`。**调拨单存的就是它** —— 跨库不能外键，所以存对方的业务键"
+        name: 
+          type: "string"
+          description: "名字。选中后要**一起回传**给发货接口：进销存读不了主库，快照只能由端上带过去"
+      required: 
+        - "carrier"
+        - "name"
+      additionalProperties: false
+      description: "一家承运方（`CarrierVO`）。**归履约域维护，进销存只读**。"
     Supplier: 
       type: "object"
       properties: 
@@ -6555,6 +6569,12 @@ components:
           type: "string"
         receivedAt: 
           type: "string"
+        carrierName: 
+          type: "string"
+          description: "承运方名字快照。空 = 自己送或发货时没记 —— 不是「数据缺失」"
+        trackingNo: 
+          type: "string"
+          description: "运单号。与 carrierName 一起给收货方核对用"
         totalQty: 
           type: "number"
         lines: 
@@ -13737,6 +13757,36 @@ paths:
                   data: 
                     description: "无返回体（data 恒为 null）"
                     nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/fulfillment/carriers": 
+    get: 
+      operationId: "mCarriers"
+      summary: "承运方可选列表（只列启用的）"
+      tags: 
+        - "fulfillment"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/Carrier"
                 required: 
                   - "code"
                   - "msg"

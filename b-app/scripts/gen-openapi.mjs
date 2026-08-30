@@ -259,6 +259,7 @@ const RESPONSE_TYPES = {
   mSupplierCreate: "{ supplierNo: string }",
   mSupplierUpdate: "void",
   mSuppliers: "Supplier[]",
+  mCarriers: "Carrier[]",
   mStockRanking: "StockRank[]",
   mStockSummary: "StockSummary",
   mStoreFulfillment: "StoreFulfillment",
