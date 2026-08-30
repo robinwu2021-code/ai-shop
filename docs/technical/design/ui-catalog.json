@@ -1221,7 +1221,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 135,
+      "count": 136,
       "domains": [
         {
           "name": "经营看板",
@@ -2456,6 +2456,18 @@
             },
             {
               "app": "ops-web",
+              "route": "/messages?tab=routing",
+              "title": "场景与通道",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/messages?tab=routing"
+            },
+            {
+              "app": "ops-web",
               "route": "/messages?tab=notifyLog",
               "title": "发送记录",
               "domain": "消息与客服",
@@ -2911,5 +2923,5 @@
       ]
     }
   ],
-  "total": 234
+  "total": 235
 }
