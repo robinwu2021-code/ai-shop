@@ -152,8 +152,11 @@ public class BizStockDocController {
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers/{no}/ship")
-    public void ship(@PathVariable String no) {
-        transfers.ship(owner(), no, SecurityUtils.currentUserNo());
+    public void ship(@PathVariable String no, @RequestBody(required = false) ShipReq req) {
+        // 请求体可空：自己送、没记承运方也要发得出去 —— 强制填的话商家就学会乱填一个
+        ShipReq r = req == null ? new ShipReq(null, null, null) : req;
+        transfers.ship(owner(), no, r.carrierNo(), r.carrierName(), r.trackingNo(),
+                SecurityUtils.currentUserNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
@@ -164,6 +167,14 @@ public class BizStockDocController {
 
     // ── 请求体 ────────────────────────────────────────────────────────
     public record LineReq(String itemId, int qty, String uom, Long unitCostMinor) {
+    }
+
+    /**
+     * @param carrierName <b>端上带下来的名字快照</b>。承运方档案在主库，
+     *                    进销存读不了它 —— 让端上把选中那条的名字一起发过来，
+     *                    比在服务层做一次跨库查询干净得多。
+     */
+    public record ShipReq(String carrierNo, String carrierName, String trackingNo) {
     }
 
     public record InboundReq(String sourceType, String supplierNo, String supplierName,

@@ -17,7 +17,16 @@ public interface TransferService {
                   List<Line> lines, String operator);
 
     /** 发出：生成出库单，货从来源库位移到 TRANSIT。 */
-    void ship(String ownerId, String transferNo, String operator);
+/**
+     * 发货。
+     *
+     * @param carrierNo   承运方编号（主库 {@code ful_carrier}）；可空 —— 自己送就没有
+     * @param carrierName 发货当时的名字快照。<b>由调用方从承运方列表里带下来</b> ——
+     *                    进销存读不了主库，让它去查等于把跨库耦合塞进服务层
+     * @param trackingNo  运单号；可空
+     */
+    void ship(String ownerId, String transferNo, String carrierNo, String carrierName,
+              String trackingNo, String operator);
 
     /** 收到：生成入库单，货从 TRANSIT 移到目标库位。 */
     void receive(String ownerId, String transferNo, String operator);

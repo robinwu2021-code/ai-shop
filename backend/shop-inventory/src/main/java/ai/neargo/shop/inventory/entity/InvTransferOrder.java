@@ -32,6 +32,20 @@ public class InvTransferOrder extends InvMutableEntity {
 
     private LocalDateTime shippedAt;
 
+    /** 承运方编号，指向<b>主库</b>的 {@code ful_carrier}；空 = 自己送或没记 */
+    private String carrierNo;
+
+    /**
+     * 发货当时的承运方名字<b>快照</b>。
+     *
+     * <p>与 {@link #carrierNo} 并存不是冗余：进销存是独立库、跨库不能外键，
+     * 而且承运方三个月后改了名，这张历史单该显示当时那个名字。
+     */
+    private String carrierName;
+
+    /** 运单号。<b>值不是实体</b>，所以端上是输入框不是选择器 */
+    private String trackingNo;
+
     private LocalDateTime receivedAt;
 
     private String operator;

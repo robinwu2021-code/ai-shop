@@ -137,7 +137,8 @@ public class TransferServiceImpl implements TransferService {
 
     @Override
     @Transactional(transactionManager = "invTransactionManager")
-    public void ship(String ownerId, String transferNo, String operator) {
+    public void ship(String ownerId, String transferNo, String carrierNo, String carrierName,
+                     String trackingNo, String operator) {
         InvTransferOrder head = mine(ownerId, transferNo);
         if (!InvEnums.TransferStatus.DRAFT.equals(head.getStatus())) {
             return;   // 幂等
@@ -154,6 +155,14 @@ public class TransferServiceImpl implements TransferService {
 
         head.setStatus(InvEnums.TransferStatus.SHIPPED);
         head.setShippedAt(LocalDateTime.now());
+        /*
+         * 承运方三列一起写。**名字由调用方带下来，这里不去查** ——
+         * 它在主库的 ful_carrier 里，而进销存是独立数据源；
+         * 让服务层去查等于把跨库耦合塞进来，而它只是为了显示一个名字。
+         */
+        head.setCarrierNo(blankToNull(carrierNo));
+        head.setCarrierName(blankToNull(carrierName));
+        head.setTrackingNo(blankToNull(trackingNo));
         head.setUpdatedBy(operator);
         transferMapper.updateById(head);
     }
@@ -197,6 +206,11 @@ public class TransferServiceImpl implements TransferService {
             out.add(new InboundService.Line(r.getItemId(), r.getQty(), r.getUom(), r.getUnitCostMinor()));
         }
         return out;
+    }
+
+    /** 空白当没填 —— 端上没选承运方时发的是空串，存进去会让「有没有记」这件事分成两种写法 */
+    private static String blankToNull(String v) {
+        return v == null || v.isBlank() ? null : v;
     }
 
     private InvTransferOrder mine(String ownerId, String transferNo) {
