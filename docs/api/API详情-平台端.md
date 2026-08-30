@@ -6462,6 +6462,23 @@ _无字段_
 | `name` | `string` | 是 | — |
 
 
+#### GET `/ops/goods/{goodsNo}/draft-preview`
+
+待审草稿的字段级差异（双版本）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### POST `/ops/goods/{goodsNo}/force-off`
 
 平台强制下架（P-3.2.3），goods 粒度 = **撤销过审**：商品回到 `REJECTED`

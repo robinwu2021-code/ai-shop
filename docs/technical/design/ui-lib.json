@@ -2252,17 +2252,9 @@
         "sh-scaffold"
       ],
       "libClassHits": 26,
-      "localSelectors": 9,
-      "localCssLines": 38,
-      "rolled": [
-        {
-          "id": "semcolor",
-          "label": "语义色自写",
-          "lib": ".is-danger / .is-success / .is-warning",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "localSelectors": 8,
+      "localCssLines": 35,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -3438,18 +3430,7 @@
       "rolled": []
     }
   ],
-  "gaps": [
-    {
-      "id": "semcolor",
-      "label": "语义色自写",
-      "lib": ".is-danger / .is-success / .is-warning",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-      "pages": [
-        "b-app/goods-publish"
-      ]
-    }
-  ],
+  "gaps": [],
   "counts": {
     "tokens": 10,
     "blocks": 63,

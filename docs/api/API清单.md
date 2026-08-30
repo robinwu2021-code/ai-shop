@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 645 个接口**：后端已实现 526（82%）· 前端在调 583
+**合计 646 个接口**：后端已实现 527（82%）· 前端在调 584
 
 ---
 
@@ -698,7 +698,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **354** 个接口 ｜ 后端已实现 **272**（77%）｜ 前端在调 **292**
+共 **355** 个接口 ｜ 后端已实现 **273**（77%）｜ 前端在调 **293**
 
 ### aftersale（4）
 
@@ -1045,7 +1045,7 @@
 | POST | `/ops/payments/recon-diffs/{diffNo}/ignore` | 忽略一条差异（如渠道手续费导致的分位差） | — | `ReconDiff` | — | ✅ | ✅ |
 | POST | `/ops/payments/recon-diffs/{diffNo}/resolve` | 处置一条差异（P-4.2.1 / 4.2.2） | — | `ReconDiff` | — | ✅ | ✅ |
 
-### product（44）
+### product（45）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1064,6 +1064,7 @@
 | GET | `/ops/goods` | 商品池：按商家/类目/关键词/状态筛，goods 粒度（每行一个商品，SKU 嵌在 `skus[]` 里） | — | `object` | — | ✅ | ⬜ |
 | GET | `/ops/goods/{goodsNo}` | 商品详情：三语文案、SKU 矩阵、规格组、驳回原因，审核抽屉读的就是它 | — | `GoodsDetail` | — | ✅ | ✅ |
 | POST | `/ops/goods/{goodsNo}/audit` | 审核商品 | — | `GoodsAudit` | — | ✅ | ✅ |
+| GET | `/ops/goods/{goodsNo}/draft-preview` | 待审草稿的字段级差异（双版本） | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/goods/{goodsNo}/force-off` | 平台强制下架（P-3.2.3），goods 粒度 = **撤销过审**：商品回到 `REJECTED` | — | `GoodsDetail` | — | ✅ | ✅ |
 | GET | `/ops/goods/audit-queue` | 待审队列 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/skus` | sku 粒度全量查询 | — | `object` | — | ✅ | ⬜ |
