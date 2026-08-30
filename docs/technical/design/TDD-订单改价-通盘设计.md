@@ -233,10 +233,10 @@ ALTER TABLE ord_order ADD COLUMN supplement_of VARCHAR(32) NULL
 | 文档 | 改什么 |
 |---|---|
 | [电子元器件-需求梳理与方案分析](./电子元器件-需求梳理与方案分析.md) | §3.1 翻盘条件作废并指向本册；§六 待确认⑥ 关闭 |
-| [订单域V2-设计规格书](./订单域V2-设计规格书.md) · [v2/06](../../docs/v2/06-订单域规格.md) | 新表 `ord_adjustment`；`ord_order` 加 `supplement_of`；不变量补 A1–A7 |
-| [v2/07 状态与取值域](../../docs/v2/07-状态与取值域.md) | 取值域 `AdjustmentKinds` · `AdjustmentReasons` |
-| [v2/09 API 参考](../../docs/v2/09-API参考.md) | 调整端点与补款单 |
-| [v2/15 数据表总册](../../docs/v2/15-商品订单数据表总册.md) | 订单域 8 → 9 张；`ord_order` 加列 |
+| [订单域V2-设计规格书](./订单域V2-设计规格书.md) · [v2/06](../../v2/06-订单域规格.md) | 新表 `ord_adjustment`；`ord_order` 加 `supplement_of`；不变量补 A1–A7 |
+| [v2/07 状态与取值域](../../v2/07-状态与取值域.md) | 取值域 `AdjustmentKinds` · `AdjustmentReasons` |
+| [v2/09 API 参考](../../v2/09-API参考.md) | 调整端点与补款单 |
+| [v2/15 数据表总册](../../v2/15-商品订单数据表总册.md) | 订单域 8 → 9 张；`ord_order` 加列 |
 | [权限码扩容单](./权限码扩容单-V2.md) | 三个 `order:adjust:*` 码 |
 | [三行业场景工作流手册](./三行业场景工作流手册.md) | 各行业改价场景（F-d 免单、B-b 换项目、R-a 临时改价） |
 
