@@ -47,6 +47,7 @@
 
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
+| 承运方可选列表（只列启用的） | GET | `/biz/fulfillment/carriers` | `mCarriers` | transfer |
 | 商品列表 | GET | `/biz/goods` | `mGoodsList` | goods-list、groups、marketing |
 | 商品详情 | GET | `/biz/goods/:goodsNo` | `mGoodsDetail` | goods-edit、goods-publish |
 | 改库存 | POST | `/biz/goods/:goodsNo/stock` | `mSaveStock` | goods-list |
@@ -79,7 +80,6 @@
 | 读回调拨单 | GET | `/biz/inventory/transfers/:no` | `mTransferDetail` | transfer |
 | 调拨收货 | POST | `/biz/inventory/transfers/:no/receive` | `mTransferReceive` | transfer |
 | 调拨发出 | POST | `/biz/inventory/transfers/:no/ship` | `mTransferShip` | transfer |
-| —（b-app 未接） | — | `/biz/fulfillment/carriers` | — | — |
 
 ### `biz:goods`　建/改商品、上下架、规格模板、识图
 
@@ -400,7 +400,6 @@
 |---|---|---|
 | `/biz/deposit` | `biz:finance` | 老板 |
 | `/biz/deposit/txns` | `biz:finance` | 老板 |
-| `/biz/fulfillment/carriers` | `biz:stock` | 老板、店长、店员、理货员 |
 | `/biz/inventory/export` | `biz:customer` | 老板、店长 |
 | `/biz/merchant/payment/store/{}` | `biz:finance` | 老板 |
 | `/biz/qualifications/recognize` | `biz:store` | 老板、店长 |

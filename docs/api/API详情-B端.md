@@ -1056,6 +1056,19 @@ _无字段_
 | `stores` | [`Store`](#store)\[\] | 是 | — |
 
 
+### fulfillment
+
+#### GET `/biz/fulfillment/carriers`
+
+承运方可选列表（只列启用的）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Carrier`](#carrier)\[\]
+
+
 ### geo
 
 #### GET `/biz/geo/estates`
@@ -2501,6 +2514,8 @@ _无字段_
 | `toLocationName` | `string` | 否 | — |
 | `shippedAt` | `string` | 否 | — |
 | `receivedAt` | `string` | 否 | — |
+| `carrierName` | `string` | 否 | 承运方名字快照。空 = 自己送或发货时没记 —— 不是「数据缺失」 |
+| `trackingNo` | `string` | 否 | 运单号。与 carrierName 一起给收货方核对用 |
 | `totalQty` | `number` | 是 | — |
 | `lines` | `object`（见下）\[\] | 是 | — |
 
@@ -5254,6 +5269,15 @@ _无字段_
 | `timesTotal` | `number` | 否 | 次卡总次数；储值卡为空 |
 | `validDays` | `number` | 是 | 有效期天数 |
 
+### Carrier
+
+一家承运方（`CarrierVO`）。**归履约域维护，进销存只读**。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `carrier` | `string` | 是 | 编号，如 `SF`。**调拨单存的就是它** —— 跨库不能外键，所以存对方的业务键 |
+| `name` | `string` | 是 | 名字。选中后要**一起回传**给发货接口：进销存读不了主库，快照只能由端上带过去 |
+
 ### Category
 
 类目树节点（对齐后端 `CategoryVO`）。 <p>⚠️ **不要把它和 `CategoryType` 搞混** —— 那是五品类枚举 （NORMAL/FRESH/SERVICE/VIRTUAL/CARD），挂在商品上、由平台硬编码，决定履约与合规 （冷链、不发货、iOS 可售规则）。这里的类目树是运营可维护的数据，决定归类与经营准入。 两个维度正交，见 `docs/technical/类目树补齐方案.md`。 <p>这个类型此前声明了一个后端根本不返回的 `type` 字段，并写着「仅两级」—— 而后端一直是三级。没人用它，所以错了很久也没暴露。
@@ -7398,6 +7422,8 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `toLocationName` | `string` | 否 | — |
 | `shippedAt` | `string` | 否 | — |
 | `receivedAt` | `string` | 否 | — |
+| `carrierName` | `string` | 否 | 承运方名字快照。空 = 自己送或发货时没记 —— 不是「数据缺失」 |
+| `trackingNo` | `string` | 否 | 运单号。与 carrierName 一起给收货方核对用 |
 | `totalQty` | `number` | 是 | — |
 | `lines` | `object`（见下）\[\] | 是 | — |
 
