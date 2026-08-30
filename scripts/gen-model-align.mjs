@@ -119,6 +119,9 @@ const TYPE_ALIAS = {
   MemberSegment: { rule: "rule_json" },
   CouponIssueBatch: { planned: "planned_count", issued: "issued_count", skipped: "skipped_count" },
   StoreActivity: { maxExposureMinor: "budget_minor" },
+  OrderReceiver: { name: "receiver_name", phone: "receiver_phone", address: "receiver_address" },
+  QualificationItem: { type: "qual_type", code: "qual_number", issuer: "qual_name" },
+  MerchantCoupon: { maxExposureMinor: "budget_minor" },
   QuoteRevision: { priceMinor: "to_price_minor" },
 };
 
@@ -146,6 +149,24 @@ const RELATION = {
   Category: { children: "prd_category 自关联（parent_no）" },
   // ── 2026-08-30 第三批带出来的 join ──
   UserCoupon: { coupon: "join mkt_coupon —— 券模板快照，一张券和它的模板是两个对象" },
+  MerchantCoupon: { scopeRefs: "pmt_coupon_scope —— 限定到哪些商品/类目的多行" },
+  PickupOrder: { items: "ord_item —— 履约台要点清件数" },
+  GroupPickupOrder: { items: "ord_item" },
+  MyStoreCoupon: {
+    title: "join pmt_coupon.title —— 券包行只存 coupon_no",
+    redeemMode: "join pmt_coupon.redeem_mode",
+    minAmountMinor: "join pmt_coupon.min_amount_minor",
+    timesTotal: "join pmt_coupon.times_total",
+  },
+  AuthCodeInfo: {
+    categoryNames: "由**应用层**拼 —— 商家域不读商品域的类目（见 CategoryUsagePort）。"
+      + "商家看的是「食品经营许可证能解锁：肉禽蛋、乳制品、熟食卤味」，不是三个码",
+  },
+  PickupCandidate: { communityName: "join cmt_community.name" },
+  CouponRedeemView: {
+    title: "join pmt_coupon.title —— 券包行只存 coupon_no",
+    phoneTail: "join usr_person.phone_tail —— 店员要认得出是谁的券，但只给后四位",
+  },
   StoreFulfillmentChannel: {
     pickups: "mch_channel_pickup —— 这条渠道挂了哪些自提点",
     areaNos: "mch_channel_area —— 覆盖到哪些区划",
@@ -386,6 +407,28 @@ const DERIVED = {
     dimQuota: "配额上限，按档位取",
     valueQuota: "同上",
   },
+  CouponRedeemView: {
+    benefitText: "「减 3 元」「8.5 折」这种人话，由券模板的 benefit_mode/benefit_value 拼",
+    timesTotal: "券模板上的可核次数",
+    remaining: "timesTotal - times_used。**次卡看的就是这个数** —— 店员扫完直接扣的话，"
+      + "扫错一张没有回头路（线下核销不可撤销）",
+    redeemable: "按过期/用尽/撤销/门店不符/券已停用五种情况实时判",
+    reason: "不能核销时的原因码，与 redeemable 同一次判定给出",
+  },
+  PickupCandidate: { ownerStoreNo: "由 owner_ref 解析（type=STORE 时指向门店）" },
+  RegionNode: { hasChild: "按 parent_code 反查有没有下级 —— 落列的话每次增删下级都要回写父级" },
+  RegionOption: {
+    cityCode: "由 region_code 上溯到市级",
+    cityName: "同上，取市级节点的 name",
+    communityCount: "按 cmt_community 计数：这个区有几个已开通社区。**它就是这份选项的判据** ——"
+      + "为 0 的区不出现在「我能在哪儿取货」里",
+  },
+  PickupOrder: { buyerPhoneTail: "receiver_phone 的后四位 —— 履约台认人够用，不给完整号" },
+  MyStoreCoupon: {
+    benefitText: "由券模板的 benefit_mode/benefit_value 拼成人话",
+    remaining: "times_total - times_used。**次卡的全部意义就在这个数**",
+    usableNow: "按时间窗、门槛、剩余次数实时判",
+  },
   SpuStd: { categoryName: "join prd_category.name" },
   UserCoupon: {
     usableNow: "按券模板的时间窗与门槛实时判 —— **不落列**：落了就要有人定时刷，"
@@ -537,6 +580,7 @@ const ENTITY_MAP = {
       + "于是这个实体从报告里消失了，字段比对一次没跑过。列与契约几乎一一对应",
   },
   MemberSegment: { table: "mbr_segment" },
+
   StoreActivity: { table: "pmt_activity" },
   MerchantSpecDim: { table: "prd_spec_dim" },
   MasterDataIndustry: { table: "sys_industry" },
@@ -549,6 +593,55 @@ const ENTITY_MAP = {
       + "而在它之前这个实体根本没被比过",
   },
   CouponIssueBatch: { table: "pmt_coupon_issue" },
+
+  // ── 2026-08-30 第五批：有表，只是名字对不上 ──
+  //
+  // 判据一律取自**类型自己的注释或后端代码**，不是表名像 —— 今天两次映错都是看名字。
+  // 每条后面括号里是出处。
+  MerchantCoupon: {
+    table: "pmt_coupon",
+    note: "商家自己的券（新模型）。类型注释直接写着 `pmt_coupon`，并说明"
+      + "「`Coupon` 这个名字已经被老模型 mkt_coupon 占着，两者字段形状完全不同」",
+  },
+  MyStoreCoupon: {
+    table: "pmt_user_coupon",
+    note: "买家券包里商家发的那一张（新模型）。注释写「与老的 UserCoupon 并存到 P9，"
+      + "不能合并 —— 老形状里没有 redeemCode 也没有次卡的 remaining」",
+  },
+  CouponRedeemView: { table: "pmt_user_coupon", note: "到店核销「先看后核」里看的那一步，同表投影" },
+  MemberSourceItem: { table: "mbr_member_source" },
+  PickupRef: {
+    table: "cmt_pickup_point",
+    note: "门店引用的取货点。注释写「status 来自 cmt_pickup_point」",
+  },
+  PickupCandidate: { table: "cmt_pickup_point", note: "同表的筛选结果（范围内常驻点 + 本店自建点）" },
+  PickupOrder: {
+    table: "ord_sub_order",
+    note: "自提点履约台上的一单。注释写「**不是 Order**，字段按履约必需裁到最小」——"
+      + "裁剪投影仍是同一张表。此前端上把它当 Order 用，按 status 过滤过滤不出东西",
+  },
+  GroupPickupOrder: {
+    table: "ord_sub_order",
+    note: "本团待取的一单（发起人视角）。注释写「**不是 Order**」—— 契约此前把这条链路"
+      + "声明成返回 Order，而后端一直返回这个形状，页面读 orderNo 拿到 undefined",
+  },
+  OrderReceiver: {
+    table: "ord_sub_order",
+    note: "收件人。注释写「下单时固化在子订单上，**不是用户当前的地址簿条目**」",
+  },
+  RegionNode: {
+    table: "sys_region",
+    note: "「我家在哪儿」—— **没开通的区也要能选**。与 RegionOption 是同表的两种投影，"
+      + "注释写明「是两个问题的答案，不要混用」",
+  },
+  RegionOption: { table: "sys_region", note: "「我能在哪儿取货」—— 只列有已开通社区的区，见 RegionNode" },
+  QualificationItem: { table: "mch_qualification", note: "一份资质证件，结构化资质（V79）的一项" },
+  AuthCodeInfo: {
+    table: "sys_auth_code",
+    note: "门槛码字典的一条。`categoryNames` 由**应用层**拼 —— 商家域不读商品域的类目"
+      + "（见 CategoryUsagePort 的说明）",
+  },
+  MasterDataChannel: { table: "sys_pay_channel" },
 
   SpuStd: { table: "prd_spu_std" },
   InvoiceRequest: { table: "ord_invoice_request" },
@@ -617,6 +710,10 @@ const ENTITY_MAP = {
  * 而真正缺表的那几个就没人看见了。
  */
 const VIEW_TYPES = {
+  MemberDetail:
+    "mbr_member + mbr_member_store + mbr_member_source + mbr_tag —— **四份数据的合成**，"
+    + "四个字段全是嵌套对象。我一度把它当成 mbr_member 的投影，闸 B 当场报"
+    + "「4 个字段只对上 0 个」，判得对：投影会共享列名，合成不会",
   StoreHome: "mch_entity + prd_goods + usr_store_favorite",
   MerchantTodo: "ord_sub_order + ord_after_sale + mkt_request 的计数",
   MerchantStats: "ord_sub_order 的聚合",
