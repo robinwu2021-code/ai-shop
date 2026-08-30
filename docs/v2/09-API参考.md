@@ -116,6 +116,8 @@
 | `POST /mp/order` | 跨商家混合下单（**恒走基座**，cross=Y 否决项），报文 ⑥ |
 | `GET /mp/order/{no}` / `GET /biz/order/...` | 行含 modifiers 明细与 priceHit |
 | `POST /biz/order-items/{id}:metered` | 计量回写 `{actualQty}`，称重/计时共用；超允差返回需确认 |
+| `POST /biz/orders/{no}:adjust` | 改价：`{kind, reasonCode, reasonText?, amount, orderItemId?, newUnitPrice?, qtyFrom/To?, idemKey}`；**已付正向差额返回补款单号** |
+| `GET /biz/orders/{no}/adjustments` | 调整明细（审计与结算下钻） |
 
 **报文 ⑥ 下单（含选配）→ 响应（节选）**
 ```jsonc
