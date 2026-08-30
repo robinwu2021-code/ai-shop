@@ -111,6 +111,12 @@ class BizEndpointPermTest {
         put("/biz/inventory/suppliers", BizPerms.STOCK);
         put("/biz/inventory/suppliers/{no}", BizPerms.STOCK);
         put("/biz/inventory/suppliers/{no}/active", BizPerms.STOCK);
+        /*
+         * 承运方只读列表。**在履约域不在进销存**，但判的是进销存的码 ——
+         * 它存在的唯一理由是调拨发货时选「谁在运」，而调拨本身就判 STOCK。
+         * 单为它造一个码，只会多出一种「能调拨但选不到承运方」的角色。
+         */
+        put("/biz/fulfillment/carriers", BizPerms.STOCK);
         // 界面上的「改数」，底下是一次单件盘点 —— 便捷端点，不是第二条改余额的路
         put("/biz/inventory/adjust", BizPerms.STOCK);
         put("/biz/inventory/counts", BizPerms.STOCK);
