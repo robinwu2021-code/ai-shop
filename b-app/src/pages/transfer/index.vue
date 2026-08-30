@@ -433,6 +433,6 @@ onShow(load);
 
 .trf__ship {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 </style>
