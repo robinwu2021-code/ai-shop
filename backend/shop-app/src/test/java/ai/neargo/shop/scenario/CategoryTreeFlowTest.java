@@ -1479,10 +1479,18 @@ class CategoryTreeFlowTest {
         String dimNo = json.readTree(dimBody).get("data").get("dimNo").asString();
         String valueNo = newValue(ops, dimNo, "两斤半");
 
+        // CAT110 挂着资质闸，上架会被 70002 拦 —— 建一个无门槛类目，别把资质问题混进在用检查的用例
+        String catB = mvc().perform(post("/ops/categories").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"停用守卫类目\",\"parentNo\":\"CAT100\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String catNo = json.readTree(catB).get("data").get("categoryNo").asString();
+
         String biz = merchant("13700007890", "停用守卫店");
         String goodsBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"categoryNo\":\"CAT110\",\"title\":\"停用守卫测试\","
+                        .content("{\"categoryNo\":\"" + catNo + "\",\"title\":\"停用守卫测试\","
                                 + "\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
                                 + "\"specGroups\":[{\"name\":\"停用守卫份量\",\"templateNo\":\"" + dimNo
                                 + "\",\"options\":[\"两斤半\"]}],"
@@ -1506,15 +1514,25 @@ class CategoryTreeFlowTest {
                 .as("SKU 快照必须真的带上这个值编号 —— 在用检查查的就是它")
                 .contains(valueNo);
 
-        // ⚠️ 缺陷：现在这一步会成功（code=0），一个在用的档就这么静默停用了
+        // 草稿不挡停用（判据是 on_sale=1）—— 先过审并上架，才轮到在用检查说话
+        mvc().perform(post("/ops/goods/" + goodsNo + "/audit")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 在售商品在用 → 停用被拦
         mvc().perform(post("/ops/spec-values/" + valueNo + "/archive")
                         .header("Authorization", "Bearer " + ops))
                 .andExpect(jsonPath("$.code").value(80016));
 
-        // 商家把那一档从商品里拿掉（真实清场路径：重存商品，不再用这个规格）
+        // 商家把那一档从商品里拿掉（真实清场路径：重存商品 —— V247 会顺带自动下架送审）
         mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"CAT110\","
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"" + catNo + "\","
                                 + "\"title\":\"停用守卫测试\",\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
                                 + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":3}]}"))
                 .andExpect(jsonPath("$.code").value(0));
@@ -1528,6 +1546,14 @@ class CategoryTreeFlowTest {
     @Test
     @DisplayName("★★★ 停用一个在用的自建规格要被拦住 —— 判据是 spec_groups 里的维度引用")
     void archiveMerchantDimInUseIsRejected() throws Exception {
+        String opsB = opsLogin("admin", "admin123");
+        String catB2 = mvc().perform(post("/ops/categories").header("Authorization", "Bearer " + opsB)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"自建停用守卫类目\",\"parentNo\":\"CAT100\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String catNo2 = json.readTree(catB2).get("data").get("categoryNo").asString();
+
         String biz = merchant("13700008901", "自建停用守卫店");
 
         String dimBody = mvc().perform(post("/biz/spec-dims")
@@ -1545,7 +1571,7 @@ class CategoryTreeFlowTest {
 
         String goodsBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"categoryNo\":\"CAT110\",\"title\":\"自建守卫测试\","
+                        .content("{\"categoryNo\":\"" + catNo2 + "\",\"title\":\"自建守卫测试\","
                                 + "\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
                                 + "\"specGroups\":[{\"name\":\"守卫辣度\",\"templateNo\":\"" + dimNo
                                 + "\",\"options\":[\"微微辣\"]}],"
@@ -1554,7 +1580,17 @@ class CategoryTreeFlowTest {
                 .andReturn().getResponse().getContentAsString();
         String goodsNo = json.readTree(goodsBody).get("data").get("goodsNo").asString();
 
-        // ⚠️ 缺陷：现在这一步会成功 —— 商家能停用自己商品正在用的规格
+        // 草稿不挡停用 —— 先过审并上架
+        mvc().perform(post("/ops/goods/" + goodsNo + "/audit")
+                        .header("Authorization", "Bearer " + opsLogin("admin", "admin123"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 在售商品在用 → 停用被拦
         mvc().perform(post("/biz/my-spec-dims/" + dimNo + "/archive")
                         .header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -1564,7 +1600,7 @@ class CategoryTreeFlowTest {
         // 清场：商品不再用这个规格
         mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"CAT110\","
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"" + catNo2 + "\","
                                 + "\"title\":\"自建守卫测试\",\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
                                 + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":800,\"stock\":2}]}"))
                 .andExpect(jsonPath("$.code").value(0));

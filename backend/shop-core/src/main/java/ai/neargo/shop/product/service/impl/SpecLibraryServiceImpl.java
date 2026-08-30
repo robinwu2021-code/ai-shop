@@ -1282,15 +1282,43 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
      * <p>LIKE 是全表扫，可接受：archive 是一天个位数的低频动作。
      * 倒排表（二期）落地后改走索引查询 —— 这两处 LIKE 就是届时要删的记号。
      */
+    @Override
+    public boolean dimUsable(String dimNo) {
+        if (dimNo == null || dimNo.isBlank()) {
+            return false;
+        }
+        Long n = DataScopeContext.executeWithoutScope(() ->
+                dimMapper.selectCount(Wrappers.<PrdSpecDim>lambdaQuery()
+                        .eq(PrdSpecDim::getDimNo, dimNo)
+                        .eq(PrdSpecDim::getStatus, PrdSpecDim.ACTIVE)));
+        return n != null && n > 0;
+    }
+
     private void requireValueNotInUse(String valueNo) {
         String quoted = "\"" + valueNo + "\"";
-        Long inSku = DataScopeContext.executeWithoutScope(() ->
-                skuMapper.selectCount(Wrappers.<PrdSku>lambdaQuery()
-                        .like(PrdSku::getOptionValueNos, quoted)));
+        /*
+         * **只算在售（on_sale=1）**，草稿不锁规格库 —— 草稿里的失效引用由上架编译点
+         * （bakeForPublish，80017 逐条点名）拦，那边的提示比这边的拒绝对商家有用得多。
+         * SKU 行上没有 on_sale，先取引用它的 goodsNo 再回 goods 表按在售数。
+         */
+        List<String> skuGoods = DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
+                        .select(PrdSku::getGoodsNo)
+                        .like(PrdSku::getOptionValueNos, quoted)))
+                .stream().map(PrdSku::getGoodsNo).distinct().toList();
+        long n = 0;
+        if (!skuGoods.isEmpty()) {
+            Long c = DataScopeContext.executeWithoutScope(() ->
+                    goodsMapper.selectCount(Wrappers.<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                            .in(ai.neargo.shop.product.entity.PrdGoods::getGoodsNo, skuGoods)
+                            .eq(ai.neargo.shop.product.entity.PrdGoods::getOnSale, true)));
+            n += c == null ? 0 : c;
+        }
         Long inParams = DataScopeContext.executeWithoutScope(() ->
                 goodsMapper.selectCount(Wrappers.<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdGoods::getOnSale, true)
                         .like(ai.neargo.shop.product.entity.PrdGoods::getParams, quoted)));
-        long n = (inSku == null ? 0 : inSku) + (inParams == null ? 0 : inParams);
+        n += inParams == null ? 0 : inParams;
         if (n > 0) {
             throw BizException.of(ErrorCode.SPEC_IN_USE, n);
         }
@@ -1300,9 +1328,11 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         String quoted = "\"" + dimNo + "\"";
         Long inGoods = DataScopeContext.executeWithoutScope(() ->
                 goodsMapper.selectCount(Wrappers.<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
-                        .like(ai.neargo.shop.product.entity.PrdGoods::getSpecGroups, quoted)
-                        .or()
-                        .like(ai.neargo.shop.product.entity.PrdGoods::getParams, quoted)));
+                        .eq(ai.neargo.shop.product.entity.PrdGoods::getOnSale, true)
+                        .and(w -> w
+                                .like(ai.neargo.shop.product.entity.PrdGoods::getSpecGroups, quoted)
+                                .or()
+                                .like(ai.neargo.shop.product.entity.PrdGoods::getParams, quoted))));
         if (inGoods != null && inGoods > 0) {
             throw BizException.of(ErrorCode.SPEC_IN_USE, inGoods);
         }

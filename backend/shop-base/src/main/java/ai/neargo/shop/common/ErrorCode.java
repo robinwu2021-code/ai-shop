@@ -735,6 +735,12 @@ public enum ErrorCode {
     SPEC_IN_USE(80016, "err.spec.in_use"),
 
     /**
+     * 上架编译点：草稿引用的规格档位已停用/合并/不存在。
+     * {0} 是点名清单 —— 一次报全，不让商家改一个撞一个。
+     */
+    GOODS_SPEC_UNRESOLVED(80017, "err.goods.spec_unresolved"),
+
+    /**
      * 截单时间不早于到货时间（P-3.3.2）。
      *
      * <p>不复用 {@code BAD_REQUEST}：运营看到「参数有误」会去检查数字格式，

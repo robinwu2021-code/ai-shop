@@ -44,6 +44,9 @@ class M9bBizGoodsFlowTest {
     private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
 
     @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
+
+    @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
 
     private MockMvc mvc() {
@@ -1142,6 +1145,124 @@ class M9bBizGoodsFlowTest {
 
     private String opsLogin() throws Exception {
         return opsLogin("goods", "goods123");
+    }
+
+    @Test
+    @DisplayName("★★★ 上架是编译点：过期的平台文案要在上架时刷新进快照")
+    void publishRefreshesSnapshotFromSpecLibrary() throws Exception {
+        String ops = opsLogin();
+        String dimBody = mvc().perform(post("/ops/spec-dims").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"BAKEDIM\",\"name\":\"烘焙份量\",\"valueType\":\"ENUM\","
+                                + "\"usageType\":\"SALE\",\"universal\":true}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String dimNo = json.readTree(dimBody).get("data").get("dimNo").asString();
+        String vBody = mvc().perform(post("/ops/spec-values").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dimNo\":\"" + dimNo + "\",\"code\":\"BKBIG\",\"label\":\"大包\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String valueNo = json.readTree(vBody).get("data").get("valueNo").asString();
+
+        String biz = merchant("12600199201", "烘焙测试店");
+        String gBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT110\",\"title\":\"烘焙测试品\","
+                                + "\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
+                                + "\"specGroups\":[{\"name\":\"烘焙份量\",\"templateNo\":\"" + dimNo
+                                + "\",\"options\":[\"大包\"],\"optionCodes\":[\"BKBIG\"]}],"
+                                + "\"skus\":[{\"optionValues\":[\"大包\"],\"price\":600,\"stock\":4}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(gBody).get("data").get("goodsNo").asString();
+        approveGoods(goodsNo);
+
+        // 商品还没上架（草稿期），平台把这一档改叫「特大包」—— 快照此刻还是「大包」，正确
+        mvc().perform(post("/ops/spec-values").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"valueNo\":\"" + valueNo + "\",\"dimNo\":\"" + dimNo
+                                + "\",\"code\":\"BKBIG\",\"label\":\"特大包\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // ⚠️ 缺陷：toggle 现在只翻状态位，不重烘焙 —— 带着两周前的文案就上架了
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        ai.neargo.shop.product.entity.PrdGoods g =
+                ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                        goodsMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdGoods::getGoodsNo, goodsNo)));
+        assertThat(g.getSpecGroups())
+                .as("上架＝编译点：快照文案要刷成当前平台文案")
+                .contains("特大包");
+        var sku = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdSku::getGoodsNo, goodsNo))).get(0);
+        assertThat(sku.getOptionValues()).as("SKU 文案同步刷新").contains("特大包");
+        assertThat(sku.getOptionValueNos()).as("身份不变 —— 改的是文案").contains(valueNo);
+
+        // 幂等：快照没变的重复上架不该动 SKU —— 每次上架都写库的话 updated_at 全乱
+        var stamp = sku.getUpdatedAt();
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+        var again = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectById(sku.getId()));
+        assertThat(again.getUpdatedAt()).as("无变化的重复上架不写 SKU").isEqualTo(stamp);
+    }
+
+    @Test
+    @DisplayName("★★★ 草稿引用的档被停用 → 上架被拦且点名；草稿不挡停用")
+    void publishRejectsArchivedValueWithDetail() throws Exception {
+        String ops = opsLogin();
+        String dimBody = mvc().perform(post("/ops/spec-dims").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"BAKEGONE\",\"name\":\"停用烘焙份量\",\"valueType\":\"ENUM\","
+                                + "\"usageType\":\"SALE\",\"universal\":true}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String dimNo = json.readTree(dimBody).get("data").get("dimNo").asString();
+        String vBody = mvc().perform(post("/ops/spec-values").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dimNo\":\"" + dimNo + "\",\"code\":\"BKGONE\",\"label\":\"临期装\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String valueNo = json.readTree(vBody).get("data").get("valueNo").asString();
+
+        String biz = merchant("12600199202", "停用烘焙店");
+        String gBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT110\",\"title\":\"停用烘焙品\","
+                                + "\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
+                                + "\"specGroups\":[{\"name\":\"停用烘焙份量\",\"templateNo\":\"" + dimNo
+                                + "\",\"options\":[\"临期装\"],\"optionCodes\":[\"BKGONE\"]}],"
+                                + "\"skus\":[{\"optionValues\":[\"临期装\"],\"price\":300,\"stock\":2}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(gBody).get("data").get("goodsNo").asString();
+        approveGoods(goodsNo);
+
+        /*
+         * **草稿不挡停用**（在用检查收窄为 on_sale=1 之后）——
+         * 商品此刻没上架，运营停这一档要放行。失效引用改由上架校验拦。
+         */
+        mvc().perform(post("/ops/spec-values/" + valueNo + "/archive")
+                        .header("Authorization", "Bearer " + ops))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // ⚠️ 缺陷：现在 toggle 不做校验，带着已停用的档就上了架
+        String toggleBody = mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(toggleBody).get("code").asInt())
+                .as("上架必须被拦 —— 引用的档已停用").isEqualTo(80017);
+        assertThat(json.readTree(toggleBody).get("msg").asString())
+                .as("错误信息要点名哪一档，商家才知道改什么").contains("临期装");
     }
 
     private void approveGoods(String goodsNo) throws Exception {

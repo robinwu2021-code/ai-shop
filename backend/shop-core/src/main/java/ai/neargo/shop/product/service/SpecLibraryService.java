@@ -78,6 +78,14 @@ public interface SpecLibraryService {
      */
     Map<String, String> resolveValueNos(String merchantNo, String dimNo, List<String> labels);
 
+    /**
+     * 这个维度还能用吗（ACTIVE）。上架编译点用：快照里引用的维度可能
+     * 既不在类目绑定也不在商家覆盖里（建品页允许直接挑平台通用维度），
+     * 那条回落路径要能区分「没绑定」与「已停用」—— resolveValueNos 区分不了
+     * （停用的是维度时，它的值仍是 ACTIVE，照样解析得出）。
+     */
+    boolean dimUsable(String dimNo);
+
     /** 运营端：所有在售类目 × 它支持的规格（含未绑定的类目，那正是要看的） */
     List<CategorySpecVO> catalog();
 

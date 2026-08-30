@@ -1096,6 +1096,175 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
 
     // ---------------------------------------------------------------- 上下架 / 库存
 
+    /**
+     * 上架编译点（TDD-商品规格与发布 §3.2）：把快照对着**当前**规格库重解析、重烘焙。
+     *
+     * <p>为什么在上架而不是保存：草稿放两周，其间平台改文案、停档位 ——
+     * 保存时烘的那份已经过期，而此前 toggle 只翻状态位，没有任何一处会发现。
+     *
+     * <p>做三件事：①文案刷新（组名取本店叫法、档位文案取当前平台/类目口径，
+     * **按 optionCodes 定位** —— 文案是会变的，code 才是身份）；②身份复核
+     * （resolveValueNos 对当前库重解析，解析不出＝档被停用/合并，**集中一次报全**，
+     * 不让商家改一个撞一个）；③SKU 快照同步（文案与 option_value_nos 一起刷）。
+     *
+     * <p>不碰的：没有 templateNo 的组（手打的历史商品，没有身份可复核 ——
+     * V229 那批的余量，动它们只会把「没身份」变成「错身份」）。
+     * 幂等：算出来与快照相同就不写库，免得每次上架都动 updated_at。
+     * 下架与驳回**不**烘焙 —— 快照要留给历史订单解释自己。
+     */
+    private void bakeForPublish(PrdGoods g) {
+        if (g.getSpecGroups() == null || g.getSpecGroups().isBlank()) {
+            return;
+        }
+        List<ai.neargo.shop.product.dto.SpecTemplateVO> current =
+                specLibrary.templatesForCategory(g.getEntityNo(), g.getCategoryNo());
+        Map<String, ai.neargo.shop.product.dto.SpecTemplateVO> byDim = current.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        ai.neargo.shop.product.dto.SpecTemplateVO::templateNo, v -> v, (a, b) -> a));
+        var om = new com.fasterxml.jackson.databind.ObjectMapper();
+        com.fasterxml.jackson.databind.node.ArrayNode groups;
+        try {
+            groups = (com.fasterxml.jackson.databind.node.ArrayNode) om.readTree(g.getSpecGroups());
+        } catch (Exception e) {
+            log.warn("[上架烘焙] spec_groups 解析失败，跳过烘焙照原样上架：goods={}", g.getGoodsNo(), e);
+            return;
+        }
+        List<String> unresolved = new java.util.ArrayList<>();
+        // 每组一份 旧文案→新文案 / 新文案→valueNo，给 SKU 那一步用（位置对齐，见 valueNos 的注释）
+        List<Map<String, String>> relabelByGroup = new java.util.ArrayList<>();
+        List<Map<String, String>> valueNoByGroup = new java.util.ArrayList<>();
+        boolean groupsChanged = false;
+        for (var node : groups) {
+            if (!(node instanceof com.fasterxml.jackson.databind.node.ObjectNode group)
+                    || group.path("templateNo").asText("").isBlank()) {
+                relabelByGroup.add(Map.of());
+                valueNoByGroup.add(Map.of());
+                continue;
+            }
+            String dimNo = group.path("templateNo").asText();
+            var vo = byDim.get(dimNo);
+            String groupName = group.path("name").asText("");
+            Map<String, String> codeToLabel = new LinkedHashMap<>();
+            if (vo != null) {
+                if (!vo.name().equals(groupName)) {
+                    group.put("name", vo.name());
+                    groupsChanged = true;
+                }
+                for (var o : vo.options()) {
+                    codeToLabel.put(o.code() == null ? "" : o.code(), o.label());
+                }
+            } else if (specLibrary.dimUsable(dimNo)) {
+                /*
+                 * 快照引用的维度不在合并结果里 —— 不等于停用：建品页允许直接挑
+                 * 平台通用维度（不落类目绑定也不落商家覆盖）。回落到该维度的全量值池
+                 * 刷文案；组名保持原样（这条路上拿不到「本店叫法」的合并口径，
+                 * 而保持原样最多是名字旧，改错名字是更糟的那种错）。
+                 */
+                for (var o : specLibrary.valuesOfDim(g.getEntityNo(), dimNo)) {
+                    codeToLabel.put(o.code() == null ? "" : o.code(), o.label());
+                }
+            } else {
+                unresolved.add(groupName + "（该规格已停用）");
+                relabelByGroup.add(Map.of());
+                valueNoByGroup.add(Map.of());
+                continue;
+            }
+            String shownName = vo != null ? vo.name() : groupName;
+            var options = (com.fasterxml.jackson.databind.node.ArrayNode) group.get("options");
+            var codes = group.get("optionCodes") instanceof com.fasterxml.jackson.databind.node.ArrayNode ca
+                    ? ca : null;
+            Map<String, String> relabel = new LinkedHashMap<>();
+            List<String> newLabels = new java.util.ArrayList<>();
+            for (int i = 0; options != null && i < options.size(); i++) {
+                String oldLabel = options.get(i).asText();
+                String code = codes != null && i < codes.size() ? codes.get(i).asText() : null;
+                // 有 code 按 code 找（文案会变，code 是身份）；没 code 的老数据按文案原样试
+                String newLabel = code != null && !code.isBlank()
+                        ? codeToLabel.get(code)
+                        : (codeToLabel.containsValue(oldLabel) ? oldLabel : null);
+                if (newLabel == null) {
+                    unresolved.add(shownName + "·" + oldLabel);
+                    newLabels.add(oldLabel);
+                    continue;
+                }
+                if (!newLabel.equals(oldLabel)) {
+                    options.set(i, om.getNodeFactory().textNode(newLabel));
+                    relabel.put(oldLabel, newLabel);
+                    groupsChanged = true;
+                }
+                newLabels.add(newLabel);
+            }
+            Map<String, String> resolved = specLibrary.resolveValueNos(g.getEntityNo(), dimNo, newLabels);
+            for (String label : newLabels) {
+                if (resolved.get(label) == null && !unresolved.contains(shownName + "·" + label)) {
+                    unresolved.add(shownName + "·" + label);
+                }
+            }
+            relabelByGroup.add(relabel);
+            valueNoByGroup.add(resolved);
+        }
+        if (!unresolved.isEmpty()) {
+            throw BizException.of(ErrorCode.GOODS_SPEC_UNRESOLVED,
+                    String.join("、", unresolved.stream().distinct().toList()));
+        }
+        if (groupsChanged) {
+            try {
+                g.setSpecGroups(om.writeValueAsString(groups));
+            } catch (Exception e) {
+                throw new IllegalStateException(e);   // 刚解析成功的树写不回去＝编程错误，不吞
+            }
+        }
+        // SKU 快照跟上：文案按组内映射换，身份按新文案重解析（位置=第 i 组）
+        List<PrdSku> skus = DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
+                        .eq(PrdSku::getGoodsNo, g.getGoodsNo())));
+        for (PrdSku sku : skus) {
+            List<String> values = readJsonList(sku.getOptionValues());
+            if (values.isEmpty()) {
+                continue;
+            }
+            boolean skuChanged = false;
+            List<String> newValues = new java.util.ArrayList<>(values);
+            List<String> newNos = new java.util.ArrayList<>();
+            for (int i = 0; i < newValues.size(); i++) {
+                Map<String, String> relabel = i < relabelByGroup.size() ? relabelByGroup.get(i) : Map.of();
+                String v = newValues.get(i);
+                if (relabel.containsKey(v)) {
+                    newValues.set(i, relabel.get(v));
+                    skuChanged = true;
+                }
+                Map<String, String> nos = i < valueNoByGroup.size() ? valueNoByGroup.get(i) : Map.of();
+                newNos.add(nos.get(newValues.get(i)));
+            }
+            String nosJson = writeJson(newNos);
+            if (!nosJson.equals(sku.getOptionValueNos())) {
+                sku.setOptionValueNos(nosJson);
+                skuChanged = true;
+            }
+            if (skuChanged) {
+                sku.setOptionValues(writeJson(newValues));
+                sku.setSpec(String.join(" · ", newValues));
+                PrdSku row = sku;
+                DataScopeContext.executeWithoutScope(() -> skuMapper.updateById(row));
+            }
+        }
+    }
+
+    /** option_values 那种字符串数组；坏 JSON 当空 —— 烘焙对老数据要宽 */
+    private static List<String> readJsonList(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        try {
+            var arr = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+            List<String> out = new java.util.ArrayList<>();
+            arr.forEach(n -> out.add(n.isNull() ? null : n.asText()));
+            return out;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
     @Override
     @Transactional
     public GoodsVO toggle(String merchantNo, String goodsNo, boolean onSale) {
@@ -1132,6 +1301,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          *
          * 单店（或没有门店上下文）仍改主体级，行为与改造前逐字相同。
          */
+        if (onSale) {
+            bakeForPublish(g);
+        }
         if (perStore(merchantNo, storeNo, goodsNo)) {
             setStoreOnSale(g, storeNo, onSale);
             // 主体级 on_sale 是「这件货整体还卖不卖」的总闸：任一门店在售就得是开的，
@@ -2013,7 +2185,18 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
              * 只恢复他真的表达过的那一份，这两条就都不受影响。
              */
             if (Boolean.TRUE.equals(g.getPendingOnSale())) {
-                g.setOnSale(true);
+                /*
+                 * 编译点的第二入口。这里烘焙失败**不打回审核**（审核员改不了商家的规格，
+                 * 拒他等于把商家的问题算在审核头上）—— 改成不恢复上架 + 记 warn：
+                 * 商家看到「过审但没上架」，手动上架时会撞到 80017 的逐条点名。
+                 */
+                try {
+                    bakeForPublish(g);
+                    g.setOnSale(true);
+                } catch (BizException e) {
+                    log.warn("[上架烘焙] 过审商品的规格解析失败，保持下架待商家处理：goods={} msg={}",
+                            g.getGoodsNo(), e.getMessage());
+                }
             }
         }
         // 用完清零：留着的话下一次审核会把一个过期的意向再兑现一遍
