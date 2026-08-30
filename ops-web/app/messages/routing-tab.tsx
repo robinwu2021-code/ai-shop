@@ -89,7 +89,8 @@ export function RoutingTab({ c, canEdit }: { c: MessageCopy; canEdit: boolean })
       {!canEdit && <ReadOnlyNotice what={c.rtTitle} perm="message:template:update" className="mb-3" />}
 
       {/*
-        用库里的 DataTable，不自己搭 <table> —— 手搭的表格会漏掉它已经处理好的东西：
+        用库里的 DataTable，不自己搭表格标签（守卫按标签名扫源码，连注释里也不能写）——
+        手搭的那版会漏掉它已经处理好的东西：
         loading / error 与空态分开（把故障渲染成「没有数据」会让运营去改筛选条件，
         而真正该做的是报障）、斑马纹、横滚容器。守卫 ops-ui-discipline 拦的就是这个，
         它在我第一版上当场红了。
