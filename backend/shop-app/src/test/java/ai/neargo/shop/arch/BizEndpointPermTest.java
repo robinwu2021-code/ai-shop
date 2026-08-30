@@ -176,6 +176,7 @@ class BizEndpointPermTest {
         // 提交审核与改截单都是「商品」这一档：能建品的人才谈得上提交与改截单
         put("/biz/goods/{goodsNo}/submit", BizPerms.GOODS);
         put("/biz/goods/{goodsNo}/publish", BizPerms.GOODS);
+        put("/biz/goods/{goodsNo}/publish-preview", BizPerms.GOODS);
         put("/biz/goods/{goodsNo}/presale", BizPerms.GOODS);
         put("/biz/goods/save", BizPerms.GOODS);
         put("/biz/goods/{goodsNo}/toggle", BizPerms.GOODS);
@@ -324,6 +325,8 @@ class BizEndpointPermTest {
         put("/biz/settle/invoices", BizPerms.FINANCE);
         put("/biz/settle/statement", BizPerms.FINANCE);
         put("/biz/merchant/payment", BizPerms.FINANCE);
+        // 「能开哪些通道」与「已开的怎么样了」是同一件事的两面，同一档权限
+        put("/biz/merchant/pay-channel", BizPerms.FINANCE);
         put("/biz/merchant/payment/{payChannel}/refresh", BizPerms.FINANCE);
         put("/biz/merchant/payment/store/{storeNo}", BizPerms.FINANCE);
         put("/biz/points/account", BizPerms.FINANCE);
