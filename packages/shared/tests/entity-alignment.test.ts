@@ -55,7 +55,6 @@ const NO_ENTITY_YET: Record<string, string> = {
    * <p>补实体之前要先定「谁写台账」：C 端注册链路还是首单链路，
    * 以及幂等键 uk_fission_invitee 怎么用。那是功能，不是补一个类。
    */
-  mkt_fission_invite: "裂变邀请台账：表建了、写入链路从没建过，见上面注释；补实体前先定写入方",
 };
 
 /** 收集 backend 下所有 `@TableName("xxx")` 的实体，键是表名 */
