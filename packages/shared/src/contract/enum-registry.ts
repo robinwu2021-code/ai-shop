@@ -429,7 +429,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
       + "unavailable（高德 2/4/6、超时）引导也没用，只能退回手动填。"
       + "合成一个「定位失败」会让前一种用户被推去做无用功" },
 
-  { decl: "shared:PlanStatus", dom: "merchant", shape: "STATUS", verdict: "DUP",
+  { decl: "shared:PlanStatus", dom: "merchant", shape: "STATUS", verdict: "MERGE",
     // GRACE / EXPIRED 都不在 L1：GRACE 是这条业务独有的一档（宽限期 7 天，能力全保留）——
     // L1 里最近的 PAUSED 是「停了」，而宽限期恰恰是「没停」，套用会让人以为店已经被压了。
     // EXPIRED 与 L1 的 ENDED/CLOSED 也不同：那两个是「正常结束」，这个是「该续没续」。
@@ -437,7 +437,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "与 ops-web:PlanStatus **逐字相同**（ACTIVE/GRACE/EXPIRED），两处各定义了一份。"
       + "归一到 shared 是对的，但要连 ops-web 的引用一起改，属独立一批" },
 
-  { decl: "ops-web:PlanStatus", dom: "merchant", shape: "STATUS", verdict: "DUP",
+  { decl: "ops-web:PlanStatus", dom: "merchant", shape: "STATUS", verdict: "MERGE",
     words: ["GRACE", "EXPIRED"],
     note: "与 shared:PlanStatus 逐字相同，见那一条" },
 
@@ -463,7 +463,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     words: ["ARCHIVED"],
     note: "规格模板。停用它会影响什么，看的是按规格组名统计的 usedCount" },
 
-  { decl: "shared:StockDocKind", dom: "inventory", shape: "CLASS", verdict: "DUP",
+  { decl: "shared:StockDocKind", dom: "inventory", shape: "CLASS", verdict: "MERGE",
     note: "与 ops-web:InvDocKind 逐字相同（IN/OUT）。归一到 shared 是对的，"
       + "但要连 ops-web 的引用一起改，属独立一批" },
 
@@ -480,7 +480,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "ops-web:InvHealthKind", dom: "inventory", shape: "CLASS", verdict: "OK",
     note: "负库存 / 零库存仍在架 / 长期未动销。**它决定这一行怎么念，也决定该找谁**" },
 
-  { decl: "ops-web:InvDocKind", dom: "inventory", shape: "CLASS", verdict: "DUP",
+  { decl: "ops-web:InvDocKind", dom: "inventory", shape: "CLASS", verdict: "MERGE",
     note: "与 shared:StockDocKind 逐字相同，见那一条" },
 
   { decl: "ops-web:JobTriggerType", dom: "platform", shape: "CLASS", verdict: "OK",
