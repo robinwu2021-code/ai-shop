@@ -44,6 +44,39 @@ public final class ProductEvents {
     }
 
     /**
+     * 商品的上架状态变了。消费方：inventory（把它投影到物料上）。
+     *
+     * <p><b>为什么不塞进 {@link SkuUpserted}</b>：商家点「下架」时 SKU 内容一个字都没变，
+     * 那条事件根本不会发。上架状态是**独立的动作**，需要独立的信号。
+     *
+     * <p><b>发布点只有一个</b>：{@code MerchantGoodsServiceImpl.syncPool} ——
+     * 上下架有十个入口（手动上下架、平台强制下架、审核通过、店级开关、批量……），
+     * 逐个发必漏一个，而漏掉的那个会让物料上的标记停在上一个状态，
+     * <b>比没有标记更坏</b>：界面上明明写着「已下架」，商家却在店里看得到它。
+     * syncPool 是那十处的唯一汇聚点，且它的语义正是「这件货整体还卖不卖变了」。
+     *
+     * @param skuNos 这件商品名下的 SKU。<b>载荷自带，消费方不回查主表</b> ——
+     *               进销存那边认的是 skuNo，而它读不到 {@code prd_sku}
+     */
+    public record GoodsOnSaleChanged(String goodsNo, String entityNo, boolean onSale,
+                                     java.util.List<String> skuNos) implements DomainEvent {
+        @Override
+        public String aggregateType() {
+            return "GOODS";
+        }
+
+        @Override
+        public String aggregateId() {
+            return goodsNo;
+        }
+
+        @Override
+        public String eventType() {
+            return "GOODS_ON_SALE_CHANGED";
+        }
+    }
+
+    /**
      * 新评价发布。消费方：message（B 端提醒，B-N-3）。
      *
      * @param rating 1–5。消费方靠它区分「新评价」与「差评」（≤2 星）——

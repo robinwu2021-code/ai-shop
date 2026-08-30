@@ -36,6 +36,24 @@ public interface InventoryAclService {
                       String barcode, String merchantSkuCode, String saleUnit);
 
     /**
+     * 记下来源商品还在不在架上。<b>与 {@link #upsertItem} 分开是有意的</b>：
+     * 上架状态是商品状态的投影，而名字规格是商品内容的投影 ——
+     * 商品下架时名字规格一个字都不变，两者本来就不是同一件事。
+     *
+     * <p>为什么要记：线上量到 13 组同名同规格的货，挑货弹层里几行完全一样
+     *（同库位、库存也一样），商家挑哪一行都不知道挑的是什么。那几条对应的是
+     * 几个**真实存在**的同名商品，其中只有一个在架。
+     *
+     * <p>投影不过来的（还没 upsert 过）**什么也不做**，不建空壳 ——
+     * 一件没有名字的物料出现在清单里，比它不出现更难解释。
+     *
+     * @param onSale 在架传 {@code true}；下架传 {@code false}。
+     *               <b>不接受 null</b>：调用方不知道的时候就别调，
+     *               让那一列保持「还没同步过」，而不是写一个假的「在架」进去
+     */
+    void markItemOnSale(String entityNo, String skuNo, boolean onSale);
+
+    /**
      * 按平台 SKU 反查业主 —— <b>交易域手里只有 skuNo，没有主体号</b>。
      *
      * <p>走 {@code inv_item_ref}（{@code system=AISHOP}）反查：SKU 在平台内全局唯一，

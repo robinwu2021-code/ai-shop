@@ -53,6 +53,19 @@ public class InvItem extends InvMutableEntity {
     /** OWN 自有主数据 / SYNCED 从外部投影。**两种交付形态的唯一分叉点** */
     private String dataSource;
 
+    /**
+     * 来源商品还在不在架上：{@code 1} 在架 / {@code 0} 已下架 / {@code null} 还没同步过。
+     *
+     * <p><b>存在的理由是可分辨</b>：线上量到 13 组同名同规格的货，挑货弹层里几行
+     * 完全一样（同库位、库存也一样），商家挑哪一行都不知道挑的是什么。
+     * 追到主库发现那是几个真实存在的同名商品，其中只有一个在架 ——
+     * 标出「已下架」，至少在架那件能认出来。
+     *
+     * <p><b>{@code null} 不等于在架。</b> 存量物料都是 null，要等下一次商品变更
+     * 同步过来才有值。当成在架就是拿默认值冒充事实。
+     */
+    private Integer sourceOnSale;
+
     /** ACTIVE / ARCHIVED。归档不删流水 —— 历史账要能查 */
     private String status;
 

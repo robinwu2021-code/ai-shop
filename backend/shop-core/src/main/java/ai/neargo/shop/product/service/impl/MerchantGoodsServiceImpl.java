@@ -2128,7 +2128,36 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * 没有行的店视为未上架。改成「没有行就不卖」的话，存量商家（全部没有店级行）
      * 会在切口径当天从 C 端集体消失。
      */
+    /**
+     * 把上架状态送给进销存 —— 那边靠它在挑货弹层里标出「已下架」。
+     *
+     * <p><b>挂在 syncPool 里而不是各个入口</b>：上下架有十个调用点
+     *（手动、平台强制下架、审核通过、店级开关、批量……），逐个发必漏一个，
+     * 而漏掉的那个会让物料上的标记停在上一个状态 —— <b>那比没有标记更坏</b>。
+     * syncPool 是十处的唯一汇聚点，语义也正好是「这件货整体还卖不卖变了」。
+     *
+     * <p>没有 SKU 就不发：进销存那边认的是 skuNo，一条都没有的话这个事件
+     * 没有任何落点，发出去只是让 outbox 多一行永远没人消费的记录。
+     */
+    private void publishOnSaleChanged(PrdGoods g, boolean onSale) {
+        List<String> skuNos = DataScopeContext.executeWithoutScope(() ->
+                        skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
+                                .eq(PrdSku::getGoodsNo, g.getGoodsNo())))
+                .stream()
+                .map(PrdSku::getSkuNo)
+                .filter(java.util.Objects::nonNull)
+                // SKU 行是 (skuNo × market) 的，而库存不分市场 —— 与 publishSkuUpserted 同一条去重
+                .distinct()
+                .toList();
+        if (skuNos.isEmpty()) {
+            return;
+        }
+        events.publish(new ai.neargo.shop.spi.product.ProductEvents.GoodsOnSaleChanged(
+                g.getGoodsNo(), g.getEntityNo(), onSale, skuNos));
+    }
+
     private void syncPool(PrdGoods g, boolean onSale) {
+        publishOnSaleChanged(g, onSale);
         List<PrdCommunityPool> existing = DataScopeContext.executeWithoutScope(() ->
                 poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
                         .eq(PrdCommunityPool::getGoodsNo, g.getGoodsNo())));

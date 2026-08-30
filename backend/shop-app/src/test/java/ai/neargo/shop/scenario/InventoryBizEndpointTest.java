@@ -372,6 +372,46 @@ class InventoryBizEndpointTest {
     }
 
     @Test
+    @DisplayName("★★ 下架的货在挑货弹层里标得出来，而没同步过的不许被当成下架")
+    void offSaleItemsAreMarkedAndUnknownIsNotGuessed() throws Exception {
+        Shop s = shop();
+        String ownerId = acl.ownerOfSku(s.skuA);
+
+        /*
+         * **先验默认那一半。** `source_on_sale` 是 2026-08-30 才加的列，
+         * 存量物料全是 null。把 null 当成下架，就是给一整批还在正常卖的货
+         * 凭空贴上「已下架」—— 而商家没有任何办法看出那是假的。
+         */
+        assertThat(pickableFlagsOf(s, s.itemA))
+                .as("还没同步过上架状态的货，不许被标成已下架")
+                .doesNotContain("OFF_SALE");
+
+        acl.markItemOnSale(s.entityNo, s.skuA, false);
+        assertThat(pickableFlagsOf(s, s.itemA))
+                .as("下架之后要标出来 —— 线上有 13 组同名同规格的货，不标就分不出是哪一件")
+                .contains("OFF_SALE");
+
+        // 上回架要能回来：只加不减的标记会让商家永远看着一件在售的货写着「已下架」
+        acl.markItemOnSale(s.entityNo, s.skuA, true);
+        assertThat(pickableFlagsOf(s, s.itemA))
+                .as("重新上架后标记要消失")
+                .doesNotContain("OFF_SALE");
+    }
+
+    /** 从挑货接口里取某件货的 flags —— 验的是**端上真正读到的那一份**，不是服务层内部状态 */
+    private List<String> pickableFlagsOf(Shop s, String itemId) throws Exception {
+        JsonNode arr = ok(get("/biz/inventory/pickable"), s.token);
+        for (JsonNode n : arr) {
+            if (itemId.equals(n.path("itemId").asString())) {
+                List<String> out = new java.util.ArrayList<>();
+                n.path("flags").forEach(f -> out.add(f.asString()));
+                return out;
+            }
+        }
+        throw new AssertionError("挑货列表里没有 " + itemId + " —— 这件货挑不到，那是另一个缺陷");
+    }
+
+    @Test
     @DisplayName("★★★ 调拨整条链：发出 → 在途 → 收货，合计守恒")
     void transferChainFromBAppWorks() throws Exception {
         Shop s = shop();
@@ -541,7 +581,7 @@ class InventoryBizEndpointTest {
 
     // ------------------------------------------------------------------ 脚手架
 
-    private record Shop(String token, String entityNo, String location, String itemA) {
+    private record Shop(String token, String entityNo, String location, String itemA, String skuA) {
     }
 
     /**
@@ -574,7 +614,8 @@ class InventoryBizEndpointTest {
          */
         String location = locations.resolveStockLocation(
                 acl.ownerIdOf(entityNo), acl.locationIdOf(entityNo, storeNo));
-        String itemA = acl.upsertItem(entityNo, "SKU-BIZINV-" + seq, "东北大米", "5斤装",
+        String skuA = "SKU-BIZINV-" + seq;
+        String itemA = acl.upsertItem(entityNo, skuA, "东北大米", "5斤装",
                 "6901234567892", "LM-05", "袋");
         acl.upsertItem(entityNo, "SKU-BIZINV-B" + seq, "土鸡蛋", "30枚装", null, null, "箱");
         acl.upsertItem(entityNo, "SKU-BIZINV-C" + seq, "陈醋", "500ml", null, null, "瓶");
@@ -587,7 +628,7 @@ class InventoryBizEndpointTest {
                 """.formatted(itemA)), token);
         ok(post("/biz/inventory/inbounds/" + no + "/post"), token);
 
-        return new Shop(token, entityNo, location, itemA);
+        return new Shop(token, entityNo, location, itemA, skuA);
     }
 
     private int onHand(Shop s, String itemId) throws Exception {

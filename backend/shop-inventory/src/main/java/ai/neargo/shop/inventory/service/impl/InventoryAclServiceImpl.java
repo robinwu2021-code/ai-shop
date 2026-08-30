@@ -162,6 +162,30 @@ public class InventoryAclServiceImpl implements InventoryAclService {
         return item.getItemId();
     }
 
+    /**
+     * 只改一列，不碰名字规格 —— 商品下架时那些字段一个字都不变。
+     *
+     * <p><b>找不到就静静返回。</b> 商品的上架状态变了而它还没投影到进销存，
+     * 那是「还没同步」不是错误；这时候建一条空壳物料，只会让清单里
+     * 多出一件没有名字的货，而没有任何人能解释它是什么。
+     */
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public void markItemOnSale(String entityNo, String skuNo, boolean onSale) {
+        String ownerId = ownerIdOf(entityNo);
+        InvItemRef ref = findRef(ownerId, InvEnums.RefSystem.AISHOP, skuNo);
+        if (ref == null) {
+            return;
+        }
+        InvItem item = itemMapper.selectOne(Wrappers.<InvItem>lambdaQuery()
+                .eq(InvItem::getOwnerId, ownerId).eq(InvItem::getItemId, ref.getItemId()));
+        if (item == null) {
+            return;
+        }
+        item.setSourceOnSale(onSale ? 1 : 0);
+        itemMapper.updateById(item);
+    }
+
     // ────────────────────────────────────────────────────────────────────
 
     private boolean hasLedger(String ownerId, String itemId) {

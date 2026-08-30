@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS inv_item
     created_by         VARCHAR(64)  DEFAULT NULL,
     updated_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by         VARCHAR(64)  DEFAULT NULL,
+    source_on_sale TINYINT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_item UNIQUE (owner_id, item_id),
     CONSTRAINT uk_item_code UNIQUE (owner_id, item_code)

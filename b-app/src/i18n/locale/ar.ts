@@ -1595,6 +1595,7 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
     tab: { all: "الكل", TRADE: "الأعمال", MARKETING: "العروض", SYSTEM: "النظام" },
   },
   stock: {
+    offSale: "(مسحوب)",
     title: "المخزون",
     statSku: "أصناف معروضة",
     statShortage: "نفد",

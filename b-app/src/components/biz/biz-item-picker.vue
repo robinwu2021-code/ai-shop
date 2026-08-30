@@ -82,7 +82,15 @@ function isPicked(b: StockBalance): boolean {
       :class="{ 'pick--on': isPicked(b) }"
       @tap="emit('pick', b)"
     >
-      <text class="txt-body">{{ b.name }}{{ b.specText ? ` · ${b.specText}` : "" }}</text>
+      <!--
+        「已下架」跟在名字后面，不另起一行 —— 它是**这一行是哪件货**的一部分，
+        不是附加信息。线上有 13 组同名同规格的物料，弹层里几行完全一样
+        （同库位、库存也一样），不标出来商家挑哪一行都不知道自己挑的是什么。
+      -->
+      <text class="txt-body">
+        {{ b.name }}{{ b.specText ? ` · ${b.specText}` : "" }}
+        <text v-if="b.flags.includes('OFF_SALE')" class="sh-muted">{{ $t("stock.offSale") }}</text>
+      </text>
       <text class="sh-muted sh-num">
         {{ qtyLabel ? qtyLabel(b) : b.onHand }}
       </text>

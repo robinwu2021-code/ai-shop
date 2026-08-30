@@ -4518,6 +4518,19 @@ function invBalances(): StockBalance[] {
       onHand: 24, reserved: 0, available: 24, flags: ["STALE"], lastMovedAt: "2026-05-26T09:00:00" },
     { itemId: "I4", name: "土鸡蛋", specText: "30枚装", baseUom: "箱",
       onHand: 48, reserved: 0, available: 48, flags: [], lastMovedAt: "2026-08-25T18:40:00" },
+    /*
+     * **这两行是线上那个场景的复制品**：同名、同规格、同单位、**库存也一样**，
+     * 唯一的差别是其中一件的来源商品已经下架（线上量到 13 组这样的，
+     * 其中一组三行「金龙鱼调和油 5L · 5L　80」完全一样）。
+     *
+     * 不造这两行，「已下架」那个标记在 mock 上就永远看不见 —— 而它正是
+     * 这次要验的东西。同一条教训刚在调拨发货上吃过：替身太干净会盖住真缺陷。
+     */
+    { itemId: "I5", name: "金龙鱼调和油 5L", specText: "5L", baseUom: "桶",
+      onHand: 80, reserved: 0, available: 80, flags: [], lastMovedAt: "2026-08-27T18:11:00" },
+    { itemId: "I6", name: "金龙鱼调和油 5L", specText: "5L", baseUom: "桶",
+      onHand: 80, reserved: 0, available: 80, flags: ["OFF_SALE"],
+      lastMovedAt: "2026-08-27T18:11:00" },
   ];
 }
 

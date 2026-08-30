@@ -1597,6 +1597,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     tab: { all: "All", TRADE: "Business", MARKETING: "Offers", SYSTEM: "System" },
   },
   stock: {
+    offSale: "(delisted)",
     title: "Stock",
     statSku: "Listed SKUs",
     statShortage: "Out of stock",

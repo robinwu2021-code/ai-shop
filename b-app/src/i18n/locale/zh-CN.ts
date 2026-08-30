@@ -1898,6 +1898,7 @@ entryHint: "谁在买 · 谁不来了",
     tab: { all: "全部", TRADE: "经营", MARKETING: "活动", SYSTEM: "系统" },
   },
   stock: {
+    offSale: "（已下架）",
     title: "库存",
     statSku: "在售 SKU",
     statShortage: "缺货",

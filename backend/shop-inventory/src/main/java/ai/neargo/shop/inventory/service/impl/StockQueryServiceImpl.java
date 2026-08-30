@@ -50,6 +50,14 @@ public class StockQueryServiceImpl implements StockQueryService {
     private static final int STALE_DAYS = 90;
     private static final String FLAG_SHORTAGE = "SHORTAGE";
     private static final String FLAG_STALE = "STALE";
+    /**
+     * 来源商品已下架。<b>与另外两个 flag 不是一类</b>：那两个说的是库存健不健康，
+     * 这一个说的是「这一行是哪件货」—— 所以它是挑货弹层里唯一带出去的 flag。
+     *
+     * <p>只在 {@code source_on_sale = 0} 时加。<b>null 不算下架</b>：
+     * 那是「还没同步过」，给存量物料统统标上「已下架」等于凭空造事实。
+     */
+    private static final String FLAG_OFF_SALE = "OFF_SALE";
 
     private final BalanceMapper balanceMapper;
     private final ItemMapper itemMapper;
@@ -154,13 +162,30 @@ public class StockQueryServiceImpl implements StockQueryService {
             InvStockBalance b = byItem.get(item.getItemId());
             int onHand = b == null ? 0 : b.getOnHand();
             int reserved = b == null ? 0 : b.getReserved();
-            // **不带 flags**：缺货 / 滞销是「看库存」那一屏的判据，挑货不需要，
-            // 带上去会让弹层里冒出一堆红字，而商家此刻只是在找一件货
+            /*
+             * **只带 OFF_SALE 一个 flag。** 缺货 / 滞销是「看库存」那一屏的判据，
+             * 挑货不需要 —— 带上去会让弹层里冒出一堆红字，而商家此刻只是在找一件货。
+             *
+             * 而「已下架」是例外：它回答的不是「这件货健不健康」，是**「这一行是哪件货」**。
+             * 线上有 13 组同名同规格的物料，弹层里几行完全一样（同库位、库存也一样），
+             * 不标出来商家挑哪一行都不知道自己挑的是什么。
+             */
             out.add(new BalanceVO(item.getItemId(), item.getName(), item.getSpecText(),
                     item.getBaseUom(), onHand, reserved, onHand - reserved,
-                    item.getSafetyStock(), b == null ? null : b.getLastMovedAt(), List.of()));
+                    item.getSafetyStock(), b == null ? null : b.getLastMovedAt(),
+                    offSaleFlags(item)));
         }
         return out;
+    }
+
+    /**
+     * <b>{@code null} 不算下架。</b> 那一列是 2026-08-30 才加的，存量 209 件物料
+     * 全是 null —— 它们要等下一次商品上下架同步过来才有值。
+     * 把 null 当成下架，就是给一整批还在正常卖的货凭空贴上「已下架」。
+     */
+    private static List<String> offSaleFlags(InvItem item) {
+        return Integer.valueOf(0).equals(item.getSourceOnSale())
+                ? List.of(FLAG_OFF_SALE) : List.of();
     }
 
     @Override
@@ -313,6 +338,9 @@ public class StockQueryServiceImpl implements StockQueryService {
             if (b.getOnHand() > 0 && b.getLastMovedAt() != null
                     && b.getLastMovedAt().isBefore(staleBefore)) {
                 flags.add(FLAG_STALE);
+            }
+            if (item != null && Integer.valueOf(0).equals(item.getSourceOnSale())) {
+                flags.add(FLAG_OFF_SALE);
             }
             out.add(new BalanceVO(b.getItemId(),
                     item == null ? b.getItemId() : item.getName(),
