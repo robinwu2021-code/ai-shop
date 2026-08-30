@@ -1689,25 +1689,6 @@ CREATE TABLE IF NOT EXISTS prd_store_goods
     CONSTRAINT uk_store_goods UNIQUE (store_no,goods_no)
 );
 
-CREATE TABLE IF NOT EXISTS prd_goods_draft
-(
-    id BIGINT(20) NOT NULL AUTO_INCREMENT,
-    goods_no VARCHAR(64) NOT NULL,
-    entity_no VARCHAR(64) NOT NULL,
-    payload TEXT NOT NULL,
-    base_version BIGINT(20) DEFAULT NULL,
-    status VARCHAR(16) NOT NULL DEFAULT 'EDITING',
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    created_by VARCHAR(64) DEFAULT NULL,
-    updated_by VARCHAR(64) DEFAULT NULL,
-    version BIGINT(20) NOT NULL DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted TINYINT(4) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_goods_draft UNIQUE (goods_no)
-);
-
 CREATE TABLE IF NOT EXISTS notify_template
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
@@ -3789,6 +3770,25 @@ CREATE TABLE IF NOT EXISTS sys_pay_channel_rate
     PRIMARY KEY (id),
     CONSTRAINT uk_pcr_no UNIQUE (rate_no, tenant_no),
     CONSTRAINT uk_pcr_slot UNIQUE (pay_channel, pay_method, legal_form, effective_from, tenant_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_goods_draft
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    goods_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    payload TEXT NOT NULL,
+    base_version BIGINT DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'EDITING',
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_goods_draft UNIQUE (goods_no)
 );
 
 -- 种子数据
@@ -8133,15 +8133,6 @@ SET backend_status = 'IMPLEMENTED',
     updated_at     = NOW()
 WHERE point_code = 'OPS_MESSAGE__TAB_FAQ'
   AND backend_status = 'NOT_IMPLEMENTED';
-INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
-SELECT 'OPS_MESSAGE__TAB_ROUTING', 'OPS_MESSAGE', '场景与通道', '触达', '/messages?tab=routing', 'message:template:read', 'message:template:read', 'IMPLEMENTED', 1, 'P-14.1', 'MENU', 19, NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MESSAGE__TAB_ROUTING');
-INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
-SELECT 'SUPER_ADMIN', 'OPS_MESSAGE__TAB_ROUTING', 'OPS', NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MESSAGE__TAB_ROUTING');
-INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
-SELECT 'SUPPORT', 'OPS_MESSAGE__TAB_ROUTING', 'OPS', NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPPORT' AND x.point_code='OPS_MESSAGE__TAB_ROUTING');
 INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
 SELECT 'OPS_FINANCE__TAB_PAY_CHANNELS', 'OPS_FINANCE', '支付通道与费率', '费率', '/finance?tab=pay-channels', 'finance:rate:update', 'finance:rate:update', 'IMPLEMENTED', 1, 'P-12.1', 'MENU', 41, NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_FINANCE__TAB_PAY_CHANNELS');
