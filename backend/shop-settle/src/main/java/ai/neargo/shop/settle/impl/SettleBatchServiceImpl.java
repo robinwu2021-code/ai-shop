@@ -340,6 +340,93 @@ public class SettleBatchServiceImpl implements SettleBatchService {
         log.warn("[settle-batch] 单据不平，不入批：{} 差 {} 分", bill.getSettleNo(), gap);
     }
 
+    // ---------------------------------------------------------------- 查询与人工处置
+
+    @Override
+    public java.util.List<BatchVO> merchantBatches(String entityNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                        batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
+                                .eq(StlSettleBatch::getEntityNo, entityNo)
+                                .orderByDesc(StlSettleBatch::getId)))
+                .stream().map(SettleBatchServiceImpl::toVO).toList();
+    }
+
+    @Override
+    public java.util.List<BatchVO> opsBatches(String status, String entityNo) {
+        boolean byStatus = status != null && !status.isBlank();
+        boolean byEntity = entityNo != null && !entityNo.isBlank();
+        return DataScopeContext.executeWithoutScope(() ->
+                        batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
+                                .eq(byStatus, StlSettleBatch::getStatus, status)
+                                .eq(byEntity, StlSettleBatch::getEntityNo, entityNo)
+                                .orderByDesc(StlSettleBatch::getId)))
+                .stream().map(SettleBatchServiceImpl::toVO).toList();
+    }
+
+    @Override
+    @Transactional
+    public BatchVO release(String batchNo, String operator, String remark) {
+        return decide(batchNo, operator, remark, true);
+    }
+
+    @Override
+    @Transactional
+    public BatchVO hold(String batchNo, String operator, String reason) {
+        return decide(batchNo, operator, reason, false);
+    }
+
+    /**
+     * 人工处置。
+     *
+     * <p><b>放行与继续挂起都必须写原因</b>：事后要能回答「当时凭什么放的」。
+     * 而超时自动放行走的是另一条路（{@code decided_by = SYSTEM_TIMEOUT}），
+     * 与人工放行分开统计 —— 那个数持续大于零说明挂起时限比处置能力短。
+     */
+    private BatchVO decide(String batchNo, String operator, String remark, boolean pass) {
+        if (remark == null || remark.isBlank()) {
+            throw new IllegalArgumentException("放行与挂起都必须写原因");
+        }
+        StlSettleBatch batch = DataScopeContext.executeWithoutScope(() ->
+                batchMapper.selectOne(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(StlSettleBatch::getBatchNo, batchNo).last("LIMIT 1")));
+        if (batch == null) {
+            throw new IllegalArgumentException("批次不存在：" + batchNo);
+        }
+        /*
+         * 只有挂起中的批次能被人工处置。
+         * 已放行的再「放行」一次是无意义的，而已放行**之后**再挂起更危险 ——
+         * 钱已经在路上了，界面上却显示挂起，读的人会以为还拦得住。
+         */
+        if (!StlSettleBatch.BLOCKED.equals(batch.getStatus())
+                && !StlSettleBatch.RECONCILING.equals(batch.getStatus())) {
+            throw new IllegalArgumentException("只有挂起中的批次能人工处置，当前 " + batch.getStatus());
+        }
+        StlSettleBatch patch = new StlSettleBatch();
+        patch.setId(batch.getId());
+        patch.setStatus(pass ? StlSettleBatch.RECONCILED : StlSettleBatch.BLOCKED);
+        patch.setDecidedBy(operator);
+        patch.setDecideRemark(remark);
+        if (!pass) {
+            patch.setBlockedReason(remark);
+            patch.setBlockedAt(System.currentTimeMillis());
+        }
+        DataScopeContext.executeWithoutScope(() -> batchMapper.updateById(patch));
+        log.warn("[settle-batch] 批次 {} 被 {} {}：{}", batchNo, operator,
+                pass ? "放行" : "继续挂起", remark);
+        return toVO(DataScopeContext.executeWithoutScope(() ->
+                batchMapper.selectOne(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(StlSettleBatch::getBatchNo, batchNo).last("LIMIT 1"))));
+    }
+
+    private static BatchVO toVO(StlSettleBatch b) {
+        return new BatchVO(b.getBatchNo(), b.getEntityNo(), b.getPayChannel(), b.getSettleCycle(),
+                nz(b.getPeriodFrom()), nz(b.getDueAt()), b.getReleasedAt(), b.getFreezeExpireAt(),
+                b.getStatus(), b.getBillCount() == null ? 0 : b.getBillCount(),
+                nz(b.getGrossMinor()), nz(b.getNetMinor()), b.getReconScope(),
+                b.getBlockedReason(), b.getBlockedAt(), b.getBlockExpireAt(),
+                b.getDecidedBy(), b.getDecideRemark());
+    }
+
     private ZoneId zoneOf() {
         try {
             return ZoneId.of(zoneId);

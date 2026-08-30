@@ -42,7 +42,7 @@
 | GET | `/biz/settle/batch` 🆕 | **我的账期批次**：这一批什么时候放、卡在哪 | `biz:finance` |
 | GET | `/biz/settle/rate-card` | 费率卡 | `biz:finance` |
 | GET | `/biz/settle/statement` | 对账单 | `biz:finance` |
-| GET | `/biz/settle/debt` 🆕 | 欠款余额与流水 | `biz:finance` |
+| GET | `/biz/merchant/debt` 🆕 | 欠款余额与流水 | `biz:finance` |
 | POST | `/biz/settle/invoice` | 申请开票 | `biz:finance` |
 | GET | `/biz/settle/invoice` | 开票记录 | `biz:finance` |
 
@@ -51,6 +51,10 @@
 **① 结算单必须带「预计到账日」。**
 只给金额的话，商家拿它去对银行流水，对不上就来找客服，
 而客服看到的也只有一个金额。`settleableAt` / `dueAt` / `batchNo` 三个字段一起给。
+
+> ⚠️ **2026-08-30 修正**：欠款那条原本写的是 `/biz/settle/debt`，
+> 落地时改到了 `/biz/merchant/debt` —— 欠款表是 `mch_*`，属商家域，
+> 而 `shop-settle` 不依赖 `shop-merchant`（架构守卫拦）。路径跟着数据走，不跟着页面走。
 
 **② 批次挂起要给人话。**
 `GET /biz/settle/batch` 返回的 `blockedReason` 是**直接展示给商家的原话**，
@@ -74,14 +78,14 @@
 | GET | `/ops/split-records` | 分账指令流水 | `finance:settle:view` |
 | GET | `/ops/settle-batches` 🆕 | 账期批次列表 | `finance:settle:view` |
 | GET | `/ops/settle-batches/{batchNo}` 🆕 | 批次明细与三道门的结果 | `finance:settle:view` |
-| POST | `/ops/settle-batches/{batchNo}/release` 🆕 | **人工放行**（必须写原因） | `finance:settle:release` |
-| POST | `/ops/settle-batches/{batchNo}/hold` 🆕 | 继续挂起（必须写原因） | `finance:settle:release` |
+| POST | `/ops/settle-batches/{batchNo}/release` 🆕 | **人工放行**（必须写原因） | `finance:settle:execute` |
+| POST | `/ops/settle-batches/{batchNo}/hold` 🆕 | 继续挂起（必须写原因） | `finance:settle:execute` |
 | GET | `/ops/payables` | 自营应付账款 | `finance:payable:*` |
 | POST | `/ops/payables/{settleNo}/confirm` `.../paid` `.../no-invoice` | 对账 · 付款 · 无票标记 | `finance:payable:*` |
 | GET | `/ops/payments/recon-diffs` `/recon-axes` `/recon-coverage` | 对账差异 · 轴 · 覆盖面 | `finance:recon:*` |
 | POST | `/ops/payments/recon-diffs/{diffNo}/resolve` `/ignore` | 处置差异 | `finance:recon:*` |
-| GET | `/ops/debts` 🆕 | 欠款列表 | `finance:debt:view` |
-| POST | `/ops/debts/{entityNo}/deposit-offset` 🆕 | **保证金抵扣（人工）** | `finance:debt:deduct` |
+| GET | `/ops/debts/{entityNo}` 🆕 | 某商家的欠款与流水 | `finance:settle:read` |
+| POST | `/ops/debts/{entityNo}/deposit-offset` 🆕 | **保证金抵扣（人工）** | `finance:payout:execute` |
 | POST | `/ops/debts/{entityNo}/write-off` 🆕 | 核销（需审批） | `finance:debt:deduct` |
 | GET | `/ops/finance/withdrawals` · `/{no}/decide` | 提现审批（**过渡账本**） | `finance:withdraw:*` |
 | GET/POST | `/ops/finance/invoices` · `/purchase-invoices` | 发票 | `finance:invoice:*` |
@@ -169,7 +173,7 @@ POST /callback/applyment/{channel}  🆕   进件结果   ← 今天完全没有
 
 ## L4 · 六、待确认
 
-1. `/ops/settle-batches` 的权限码是新开一档（`finance:settle:release`）还是复用 `finance:rate:update`
+1. ~~`/ops/settle-batches` 的权限码~~ **已定**：读用 `finance:settle:read`、放行用 `finance:settle:execute`、保证金抵扣用 `finance:payout:execute`（那是真的动钱，与「看看谁欠着」不是一类）
 2. 分账回执与进件回调的**路径由通道定**，要等接入时确认
 3. 阶段 3 内部 HTTP 的认证方式（内部令牌 / mTLS）
 4. 破坏性改动的废弃期限（建议一个完整账期）

@@ -13,6 +13,7 @@ import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.settle.dto.RateCardVO;
 import ai.neargo.shop.settle.dto.SettleBillVO;
 import ai.neargo.shop.settle.entity.StlBill;
+import ai.neargo.shop.settle.entity.StlSettleBatch;
 import ai.neargo.shop.settle.entity.StlPointsPool;
 import ai.neargo.shop.settle.entity.StlFeeRule;
 import ai.neargo.shop.settle.entity.StlPurchaseInvoice;
@@ -64,6 +65,7 @@ public class SettleServiceImpl implements SettleService {
     private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
 
     private final BillMapper billMapper;
+    private final ai.neargo.shop.settle.mapper.SettleMappers.SettleBatchMapper batchMapper;
     private final SplitLogMapper splitLogMapper;
     private final SettleSourcePort sourcePort;
     private final SplitGateway gateway;
@@ -82,7 +84,9 @@ public class SettleServiceImpl implements SettleService {
                              ai.neargo.shop.spi.platform.SettingPort settingPort,
                              ai.neargo.shop.settle.service.FeeRuleService feeRuleService,
                              ai.neargo.shop.settle.PointsService pointsService,
-                             ai.neargo.shop.spi.platform.MasterDataPort masterDataPort) {
+                             ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
+                             ai.neargo.shop.settle.mapper.SettleMappers.SettleBatchMapper batchMapper) {
+        this.batchMapper = batchMapper;
         this.masterDataPort = masterDataPort;
         this.pointsService = pointsService;
         this.settingPort = settingPort;
@@ -622,13 +626,17 @@ public class SettleServiceImpl implements SettleService {
          */
         boolean scoped = storeNos != null && !storeNos.isEmpty()
                 && storeNos.stream().anyMatch(x -> x != null && !x.isBlank());
-        return DataScopeContext.executeWithoutScope(() ->
-                        billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
-                                .eq(StlBill::getEntityNo, merchantNo)
-                                .and(scoped, w -> w.in(StlBill::getStoreNo, storeNos)
-                                        .or().isNull(StlBill::getStoreNo))
-                                .orderByDesc(StlBill::getId))).stream()
-                .map(this::toVO).toList();
+        List<StlBill> bills = DataScopeContext.executeWithoutScope(() ->
+                billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                        .eq(StlBill::getEntityNo, merchantNo)
+                        .and(scoped, w -> w.in(StlBill::getStoreNo, storeNos)
+                                .or().isNull(StlBill::getStoreNo))
+                        .orderByDesc(StlBill::getId)));
+        // 批次一次查齐再拼：逐单查的话，一屏 20 单就是 20 次往返
+        var batches = batchesOf(bills);
+        return bills.stream()
+                .map(b -> toVO(b, batches.get(b.getBatchNo())))
+                .toList();
     }
 
     @Override
@@ -642,7 +650,7 @@ public class SettleServiceImpl implements SettleService {
             // 属主校验写进查询条件：settleNo 可猜，不能先查出来再比对
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        return toVO(bill);
+        return toVO(bill, batchesOf(List.of(bill)).get(bill.getBatchNo()));
     }
 
     @Override
@@ -1261,6 +1269,14 @@ public class SettleServiceImpl implements SettleService {
 
 
     private SettleBillVO toVO(StlBill b) {
+        return toVO(b, null);
+    }
+
+    /**
+     * @param batch 这一单所属批次；<b>由调用方一次查好传进来</b>，不在这里逐单查 ——
+     *              列表页一屏 20 单，逐单查就是 20 次往返，而同一批的单往往就那么几个批次
+     */
+    private SettleBillVO toVO(StlBill b, StlSettleBatch batch) {
         return new SettleBillVO(b.getSettleNo(), b.getSubOrderNo(), b.getOrderNo(), b.getEntityNo(),
                 nz(b.getGrossMinor()), nz(b.getCommissionMinor()), nz(b.getServiceFeeMinor()),
                 nz(b.getNetMinor()), b.getTrafficSource(), nzi(b.getCommissionRate()),
@@ -1269,7 +1285,35 @@ public class SettleServiceImpl implements SettleService {
                         : b.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
                 b.getSplitAt(), b.getStoreNo(), b.getPayMerchantNo(),
                 b.getBusinessMode(), b.getInvoiceStatus(), b.getPaymentRef(),
-                nz(b.getPointsFeeMinor()));
+                nz(b.getPointsFeeMinor()),
+                b.getSettleableAt(), batch == null ? null : batch.getDueAt(), b.getBatchNo(),
+                batch == null ? null : batch.getStatus(),
+                batch == null ? null : batch.getBlockedReason());
+    }
+
+    /** 一次把这批单涉及的批次查齐，避免列表页逐单查 */
+    private java.util.Map<String, StlSettleBatch> batchesOf(java.util.List<StlBill> bills) {
+        java.util.Set<String> nos = bills.stream().map(StlBill::getBatchNo)
+                .filter(n -> n != null && !n.isBlank())
+                .collect(java.util.stream.Collectors.toSet());
+        if (nos.isEmpty()) {
+            /*
+             * ⚠️ 必须是 HashMap，**不能是 Map.of()**。
+             * 大多数单还没入批，batchNo 是 null，调用方会 get(null) ——
+             * 而不可变 Map 对 null 键直接抛 NPE。
+             *
+             * 这个坑的表现极具迷惑性：全局信封把异常包成 200 + data:null，
+             * 于是「结算单列表」变成一个空列表，**没有任何错误**。
+             * 我就是这么让 M7SettleFlowTest 的 15 条一起红的。
+             */
+            return new java.util.HashMap<>();
+        }
+        return DataScopeContext.executeWithoutScope(() ->
+                        batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
+                                .in(StlSettleBatch::getBatchNo, nos)))
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(StlSettleBatch::getBatchNo, x -> x,
+                        (a, c) -> a, java.util.HashMap::new));
     }
 
     private static long nz(Long v) {

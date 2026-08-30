@@ -340,9 +340,13 @@ class BizEndpointPermTest {
         put("/biz/settle/invoice-title", BizPerms.FINANCE);
         put("/biz/settle/invoices", BizPerms.FINANCE);
         put("/biz/settle/statement", BizPerms.FINANCE);
+        // 账期批次：「这一批什么时候放、卡在哪」
+        put("/biz/settle/batch", BizPerms.FINANCE);
         put("/biz/merchant/payment", BizPerms.FINANCE);
         // 「能开哪些通道」与「已开的怎么样了」是同一件事的两面，同一档权限
         put("/biz/merchant/pay-channel", BizPerms.FINANCE);
+        // 欠款：商家要看得到「为什么欠、扣到哪了」，与看账同一档
+        put("/biz/merchant/debt", BizPerms.FINANCE);
         put("/biz/merchant/payment/{payChannel}/refresh", BizPerms.FINANCE);
         put("/biz/merchant/payment/store/{storeNo}", BizPerms.FINANCE);
         put("/biz/points/account", BizPerms.FINANCE);

@@ -68,8 +68,11 @@ public class BizMerchantController {
     private final MerchantAdminPort merchantAdminPort;
     /** 多证照：本次操作作用在哪张证照上，唯一判定点（见 {@code requireOwned}） */
     private final ai.neargo.shop.merchant.service.MerchantEntityService entityService;
+    /** 欠款：商家要看得到「为什么欠、扣到哪了」 */
+    private final ai.neargo.shop.merchant.service.DebtService debtService;
 
-    public BizMerchantController(MerchantService merchantService, OpsService opsService,
+    public BizMerchantController(ai.neargo.shop.merchant.service.DebtService debtService,
+                                 MerchantService merchantService, OpsService opsService,
                                  UserService userService, BizIdentityResolver identityResolver,
                                  MerchantStoreService storeService,
                                  MerchantPaymentService paymentService,
@@ -91,6 +94,7 @@ public class BizMerchantController {
         this.paymentService = paymentService;
         this.storeAdminService = storeAdminService;
         this.staffService = staffService;
+        this.debtService = debtService;
         this.merchantService = merchantService;
         this.opsService = opsService;
         this.userService = userService;
@@ -436,6 +440,28 @@ public class BizMerchantController {
      * <p>路径用<b>单数</b>：/biz 与 /mp 的资源段一律单数（复数是 /ops 的约定），
      * 有守卫盯着。
      */
+    /**
+     * 我的欠款：余额与流水。
+     *
+     * <p><b>商家必须看得到。</b>货款被扣了一部分而他不知道为什么，
+     * 第一反应是平台少给了钱 —— 而流水里每一笔都指得出源头与扣自哪一批。
+     *
+     * <p>放在<b>商家域</b>而不是结算域：欠款表是 {@code mch_*}，
+     * 而 shop-settle 不依赖 shop-merchant（架构守卫拦）。
+     * API 设计文档里原写的 {@code /biz/settle/debt} 已按这个事实改过。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
+    @GetMapping("/biz/merchant/debt")
+    public DebtVO debt() {
+        String no = ownedEntity(null);
+        return new DebtVO(debtService.balanceOf(no), debtService.txns(no));
+    }
+
+    /** @param balanceMinor 当前欠款（分）。0 = 没有欠款，端上不必显示这一块 */
+    public record DebtVO(long balanceMinor,
+                         List<ai.neargo.shop.merchant.service.DebtService.TxnVO> txns) {
+    }
+
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/merchant/pay-channel")
     public List<PaymentApplymentVO> payChannels(@RequestParam(required = false) String entityNo) {

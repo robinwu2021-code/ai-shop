@@ -43,4 +43,32 @@ public interface SettleBatchService {
      * @return 本轮截掉的批次数
      */
     int closeDueBatches();
+
+    /** 某商家的账期批次，倒序。<b>商家问的是「这一批什么时候放、卡在哪」</b> */
+    java.util.List<BatchVO> merchantBatches(String entityNo);
+
+    /** 平台端：全部批次，可按状态筛 */
+    java.util.List<BatchVO> opsBatches(String status, String entityNo);
+
+    /**
+     * 人工放行一批。
+     *
+     * @param remark <b>必填</b> —— 放行与继续挂起都要写原因，否则事后没人说得清当时凭什么放
+     */
+    BatchVO release(String batchNo, String operator, String remark);
+
+    /** 继续挂起。同样必须写原因 */
+    BatchVO hold(String batchNo, String operator, String reason);
+
+    /**
+     * @param reconScope    SELF_ONLY = 仅我方自查。<b>界面要如实标注</b>，
+     *                      不能显示成「已对账」—— 没有 B 侧时那是一句自证的话
+     * @param blockedReason 直接展示给商家的原话
+     */
+    record BatchVO(String batchNo, String entityNo, String payChannel, String settleCycle,
+                   long periodFrom, long dueAt, Long releasedAt, Long freezeExpireAt,
+                   String status, int billCount, long grossMinor, long netMinor,
+                   String reconScope, String blockedReason, Long blockedAt, Long blockExpireAt,
+                   String decidedBy, String decideRemark) {
+    }
 }

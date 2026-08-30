@@ -39,5 +39,27 @@ public record SettleBillVO(String settleNo,
                             * <p>此前它不在 VO 里，于是 B 端「本期积分支出」<b>永远是 0</b> ——
                             * 不是数字不对，是这个数根本没下发。
                             */
-                           long pointsFeeMinor) {
+                           long pointsFeeMinor,
+                           /**
+                            * T2 可结算时刻。空 = 还不可结算（未履约，或售后未闭环）。
+                            *
+                            * <p>与下面两个一起，回答商家问的第一个问题：<b>「这笔什么时候到」</b>。
+                            * 此前这一页只给金额，商家拿它去对银行流水，对不上就来找客服 ——
+                            * 而客服看到的也只有一个金额。
+                            */
+                           Long settleableAt,
+                           /** T3 应结日（本批的）。空 = 还没入批 */
+                           Long dueAt,
+                           /** 归属批次。空 = 还没入批；<b>「卡在哪」全靠它</b> */
+                           String batchNo,
+                           /**
+                            * 本批当前的状态（{@code StlSettleBatch} 的取值）。空 = 还没入批。
+                            *
+                            * <p>单据状态说「钱在哪」，批次状态说「流程走到哪」——
+                            * 商家两个都要看：单子还是 PENDING 但批次已 RECONCILED，
+                            * 说明就快放了；批次 BLOCKED 则要看 {@code batchBlockedReason}。
+                            */
+                           String batchStatus,
+                           /** 批次被挂起的原因，<b>直接展示给商家的原话</b>。空 = 没挂起 */
+                           String batchBlockedReason) {
 }

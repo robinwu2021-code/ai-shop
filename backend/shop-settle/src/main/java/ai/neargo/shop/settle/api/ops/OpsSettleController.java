@@ -9,6 +9,9 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -31,9 +34,54 @@ import org.springframework.web.bind.annotation.RestController;
 public class OpsSettleController {
 
     private final SettleService settleService;
+    private final ai.neargo.shop.settle.SettleBatchService batchService;
 
-    public OpsSettleController(SettleService settleService) {
+    public OpsSettleController(SettleService settleService,
+                               ai.neargo.shop.settle.SettleBatchService batchService) {
         this.settleService = settleService;
+        this.batchService = batchService;
+    }
+
+    /**
+     * 账期批次列表。<b>「这家的钱卡在哪一批」的入口。</b>
+     *
+     * <p>资源段用<b>复数</b>（/ops 的约定）。
+     *
+     * @param status 空 = 全部；{@code BLOCKED} 就是待处置队列
+     */
+    @GetMapping("/ops/settle-batches")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
+    public java.util.List<ai.neargo.shop.settle.SettleBatchService.BatchVO> batches(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String entityNo) {
+        return batchService.opsBatches(status, entityNo);
+    }
+
+    /**
+     * 人工放行一批。<b>必须写原因</b> —— 事后要能回答「当时凭什么放的」。
+     *
+     * <p>与超时自动放行（{@code decided_by = SYSTEM_TIMEOUT}）分开统计：
+     * 那个数持续大于零，说明挂起时限比运营的处置能力短，要调的是时限不是任务。
+     */
+    @PostMapping("/ops/settle-batches/{batchNo}/release")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
+    public ai.neargo.shop.settle.SettleBatchService.BatchVO releaseBatch(
+            @PathVariable String batchNo, @RequestBody DecideReq req) {
+        return batchService.release(batchNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo(),
+                req == null ? null : req.remark());
+    }
+
+    /** 继续挂起。同样必须写原因 */
+    @PostMapping("/ops/settle-batches/{batchNo}/hold")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
+    public ai.neargo.shop.settle.SettleBatchService.BatchVO holdBatch(
+            @PathVariable String batchNo, @RequestBody DecideReq req) {
+        return batchService.hold(batchNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo(),
+                req == null ? null : req.remark());
+    }
+
+    /** @param remark 放行或继续挂起的原因，<b>必填</b> */
+    public record DecideReq(String remark) {
     }
 
     /**

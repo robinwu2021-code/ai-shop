@@ -29,8 +29,11 @@ import java.util.List;
 public class BizSettleController {
 
     private final SettleService settleService;
+    private final ai.neargo.shop.settle.SettleBatchService batchService;
 
-    public BizSettleController(SettleService settleService) {
+    public BizSettleController(SettleService settleService,
+                               ai.neargo.shop.settle.SettleBatchService batchService) {
+        this.batchService = batchService;
         this.settleService = settleService;
     }
 
@@ -70,6 +73,25 @@ public class BizSettleController {
                 ? ctx.allowedStoresOrAll()
                 : java.util.List.of(ctx.currentStoreNo() == null ? "" : ctx.currentStoreNo());
         return settleService.incomeSummary(BizContext.requireMerchantNo(), scope);
+    }
+
+    /**
+     * 我的账期批次：<b>这一批什么时候放、卡在哪</b>。
+     *
+     * <p>与 {@code /bills} 的分工：那个按单看「这一笔多少钱」，
+     * 这个按批看「什么时候到」。商家问客服最多的是后者，而此前界面上答不出来。
+     *
+     * <p>路径用<b>单数</b>：/biz 的资源段一律单数（复数是 /ops 的约定），有守卫盯着。
+     */
+    /*
+     * 注：欠款那条接口**不在这里**，在 /biz/merchant/debt（shop-merchant）——
+     * 欠款表属于商家域，而 shop-settle 不依赖 shop-merchant（架构守卫拦）。
+     * API 设计文档里原写的 /biz/settle/debt 已按这个事实改过。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
+    @GetMapping("/biz/settle/batch")
+    public List<ai.neargo.shop.settle.SettleBatchService.BatchVO> batches() {
+        return batchService.merchantBatches(BizContext.requireMerchantNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
