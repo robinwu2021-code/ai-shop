@@ -507,6 +507,7 @@ export default {
     unpriced: "{s} 未定价，不在该市场售卖",
     missing: "待填写：{s}",
     saveTip: "保存后需平台审核，通过后在 C 端可见",
+    saveTipOnSale: "保存只存为草稿，线上照卖旧版；到「发布修改」里生效",
     secBasic: "商品信息",
     secCategory: "分类与履约",
     imagesCount: "已添加 {n} / {m}",

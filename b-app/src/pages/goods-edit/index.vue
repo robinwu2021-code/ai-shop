@@ -3356,7 +3356,11 @@ async function save(thenSubmit = false) {
         {{ $t("goods.saveAndSubmit") }}
       </view>
     </view>
-    <text class="tip sh-hint">{{ $t(isDraft ? "goods.draftTip" : "goods.saveTip") }}</text>
+    <!-- 在售商品的保存落草稿（双版本）——「保存后需平台审核」对它是假话：
+         保存这一步既不送审也不动线上，送不送审是发布那一步的事 -->
+    <text class="tip sh-hint">
+      {{ $t(isDraft ? "goods.draftTip" : wasOnSale ? "goods.saveTipOnSale" : "goods.saveTip") }}
+    </text>
   </sh-scaffold>
 </template>
 
