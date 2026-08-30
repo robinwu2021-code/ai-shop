@@ -63,29 +63,60 @@ function offenders(): string[] {
   return [...new Set(out)].sort();
 }
 
+/**
+ * ⚠️ **仓库里有两个 `known-plural-paths.txt`，同名但判据不同，登记一份不够。**
+ *
+ * | 清单 | 谁读它 | 判据 |
+ * |---|---|---|
+ * | `<仓库根>/known-plural-paths.txt` | 本文件 | 资源段单复数与**本域约定**不符（40 条） |
+ * | `b-app/scripts/known-plural-paths.txt` | `b-app/scripts/gen-openapi.mjs` | **复数资源名紧跟 id**（20 条） |
+ *
+ * 两份的条目互不包含 —— 它们不是同一份清单的两个副本，是两道不同的闸。
+ *
+ * <p>2026-08-30 真实代价：有人给 `/biz/inventory/suppliers/:no` 破例，
+ * 按 `gen-openapi` 的提示登进了 `b-app/scripts/` 那份，本文件这道闸仍然红，
+ * 而它当时只说「从 known-plural-paths.txt 里删掉」—— <b>没有目录，
+ * 而恰好有两个同名文件</b>。查的人会先怀疑闸门，再怀疑自己没保存。
+ *
+ * <p>下面每条提示都写全路径。**根治是把其中一份改名**（比如按判据叫
+ * `known-plural-with-id.txt`），但那要动 `gen-openapi.mjs` 的读取点，
+ * 当天那个文件正被别人编辑，共享工作区里同时写同一个文件会互相覆盖 ——
+ * 所以先补提示，改名留作单独一笔。
+ */
+const LIST = "known-plural-paths.txt";
+/** 提示里一律写全路径：同名文件有两个，只写文件名等于没说。 */
+const LIST_LABEL = `<仓库根>/${LIST}`;
+const OTHER_LIST = "b-app/scripts/known-plural-paths.txt（同名，另一道闸，判据是「复数+id」）";
+
 describe("端点路径：资源段的单复数按域一致", () => {
   it("★★ 新端点必须跟随本域的约定（/mp /biz 单数 · /ops 复数）", () => {
     const known = new Set(
-      readFileSync(join(ROOT, "known-plural-paths.txt"), "utf8")
+      readFileSync(join(ROOT, LIST), "utf8")
         .split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")),
     );
     const now = offenders();
     const fresh = now.filter((x) => !known.has(x));
     expect(
       fresh,
-      `这些新端点与本域约定不符（/mp /biz 要单数、/ops 要复数）：\n  ${fresh.join("\n  ")}`,
+      `这些新端点与本域约定不符（/mp /biz 要单数、/ops 要复数）：\n  ${fresh.join("\n  ")}\n`
+        + `\n  要破例就登记进 ${LIST_LABEL}（读它的是本文件 api-path-naming.test.ts）。`
+        + `\n  ⚠️ 另有一份 ${OTHER_LIST} —— 登记一份不够，两道闸各读各的。`,
     ).toEqual([]);
   });
 
   it("★ 清单只许变短 —— 修好了不删，那条路径就永远免检", () => {
     const known = [
       ...new Set(
-        readFileSync(join(ROOT, "known-plural-paths.txt"), "utf8")
+        readFileSync(join(ROOT, LIST), "utf8")
           .split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")),
       ),
     ];
     const now = new Set(offenders());
     const stale = known.filter((k) => !now.has(k)).sort();
-    expect(stale, `这几条已经改好了，从 known-plural-paths.txt 里删掉：\n  ${stale.join("\n  ")}`).toEqual([]);
+    expect(
+      stale,
+      `这几条已经改好了，从 ${LIST_LABEL} 里删掉：\n  ${stale.join("\n  ")}\n`
+        + `\n  ⚠️ 别删错文件：另有一份 ${OTHER_LIST}。`,
+    ).toEqual([]);
   });
 });
