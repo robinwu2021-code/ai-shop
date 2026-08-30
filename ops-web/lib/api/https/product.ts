@@ -45,6 +45,7 @@ export const productHttp: ProductApi = {
     client.post("/ops/community-pool/resync", undefined, entityNo ? { entityNo } : undefined),
   auditGoods: (goodsNo, approved, reason) =>
     client.post(`/ops/goods/${goodsNo}/audit`, { approved, reason }),
+  goodsDraftPreview: (goodsNo) => client.get(`/ops/goods/${goodsNo}/draft-preview`),
 
   /**
    * 后端 `/ops/categories` 早改成了 `{records,total,page,size}`（十个列表端点统一收口那次），

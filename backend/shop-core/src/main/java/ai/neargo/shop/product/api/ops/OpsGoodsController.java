@@ -93,6 +93,18 @@ public class OpsGoodsController {
     }
 
     /**
+     * 待审草稿的字段级差异（双版本）。审核开着时线上照卖旧版、详情给的也是旧版 ——
+     * 没有这份 diff，审核员批准的是一个自己从没看过的版本。与商家发布确认页
+     * **同一份 diff**（服务端同一段代码算的），两边看到的不可能不一致。
+     * 无待审草稿返回 null：新建提审等老链路审的是内容本身，那是常态。
+     */
+    @GetMapping("/ops/goods/{goodsNo}/draft-preview")
+    @PreAuthorize("@perm.can('" + Perms.PRODUCT_SKU_READ + "')")
+    public ai.neargo.shop.product.dto.PublishPreviewVO draftPreview(@PathVariable String goodsNo) {
+        return merchantGoodsService.draftPreviewForOps(goodsNo);
+    }
+
+    /**
      * 平台强制下架（P-3.2.3）= 撤销过审。原因必填 —— 它会出现在商家 B 端；
      * 商家改后走既有的重新提审链路回来。
      */

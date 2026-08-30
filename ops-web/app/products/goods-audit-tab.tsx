@@ -43,6 +43,17 @@ export function GoodsAuditTab({ c, canAudit }: { c: ProductsCopy; canAudit: bool
     },
   });
 
+  /*
+   * 待审草稿的字段级差异（双版本）。**没有这一段，审核员批准的是自己没看过的版本**：
+   * 审核开着时线上照卖旧版，详情抽屉里那份也是旧版 —— 真正要生效的是这份 diff。
+   * null = 老链路（新建提审等），审的是内容本身，这一段整个不渲染。
+   */
+  const draftPreview = useQuery({
+    queryKey: ["goods-draft-preview", current?.goodsNo],
+    queryFn: () => api.goodsDraftPreview(current!.goodsNo),
+    enabled: !!current,
+  });
+
   const columns: Column<GoodsAudit>[] = [
     { header: c.gaColNo, cell: (g) => g.goodsNo, numeric: true, align: "start" },
     { header: c.gaColTitle, cell: (g) => g.title },
@@ -133,6 +144,31 @@ export function GoodsAuditTab({ c, canAudit }: { c: ProductsCopy; canAudit: bool
                 <Notice tone="danger" className="mt-3">{c.gaRejectedTag}</Notice>
               )}
             </DrawerSection>
+
+            {draftPreview.data && (
+              <DrawerSection title={c.gaDraftSection}>
+                <Notice className="mb-3">{c.gaDraftHint}</Notice>
+                {draftPreview.data.blocked.length > 0 && (
+                  <Notice tone="warning" className="mb-3">
+                    {c.gaDraftBlocked}
+                    {draftPreview.data.blocked.join("、")}
+                  </Notice>
+                )}
+                <div className="space-y-2">
+                  {draftPreview.data.changes.map((r) => (
+                    <div key={r.field} className="text-sm">
+                      <span className="text-[var(--muted)]">{r.label}：</span>
+                      <span className="line-through text-[var(--muted)]">{r.before ?? "—"}</span>
+                      <span className="mx-1 text-[var(--muted)]">→</span>
+                      <span>{r.after ?? "—"}</span>
+                    </div>
+                  ))}
+                  {draftPreview.data.changes.length === 0 && (
+                    <p className="text-sm text-[var(--muted)]">{c.gaDraftNoChange}</p>
+                  )}
+                </div>
+              </DrawerSection>
+            )}
 
             {canAudit && (
               <DrawerSection title={c.gaSectionDecide}>

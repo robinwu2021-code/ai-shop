@@ -221,6 +221,28 @@ export const productMock: ProductApi = {
     return wait({ ...g });
   },
 
+  /*
+   * 草稿差异（双版本）。mock 只演两种形态：**队列第一件**给一份演示 diff
+   * （审核抽屉的「本次过审将生效的变更」在开发期要看得见长什么样），
+   * 其余返回 null（老链路的内容审核 —— 抽屉不渲染这一段，这条路也要能看见）。
+   * 真 diff 由服务端 dry-run 烘焙算，后端场景测试守着。
+   */
+  goodsDraftPreview: async (goodsNo) => {
+    // 队列只列 PENDING（见 listGoodsAuditQueue），演示 diff 挂在**队首那件**上
+    const first = db.goodsAudits.find((x) => x.status === "PENDING");
+    if (!first || first.goodsNo !== goodsNo) return wait(null);
+    return wait({
+      changes: [
+        { field: "title", label: "标题", before: first.title, after: `${first.title}（新版）` },
+        { field: "price", label: "价格", before: "¥29.90", after: "¥27.90" },
+        { field: "spec", label: "规格", before: "容量（3kg / 5kg）", after: "容量（3kg / 5kg / 10kg）" },
+      ],
+      blocked: [],
+      stale: false,
+      baseVersion: 1,
+    });
+  },
+
   listCategories: async (q = {}) =>
     wait(
       db.categories.filter((c) =>

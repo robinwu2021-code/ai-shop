@@ -351,6 +351,26 @@ export interface GoodsAudit {
 }
 
 /**
+ * 待审草稿的字段级差异（双版本，`GET /ops/goods/{goodsNo}/draft-preview`）。
+ *
+ * <p>审核开着时，队列里那件 AUDITING 商品**线上照卖旧版**，详情给的也是旧版 ——
+ * 没有这份 diff，审核员批准的是一个自己从没看过的版本。与商家发布确认页
+ * 出自服务端**同一段代码**，两边看到的不可能不一致。
+ *
+ * <p>接口对无草稿的商品返回 `null`（新建提审等老链路审的是内容本身）—— 常态不是错误。
+ */
+export interface GoodsDraftPreview {
+  /** 逐字段差异。label 是服务端给的中文名，界面只排版不加工 */
+  changes: { field: string; label: string; before: string | null; after: string | null }[];
+  /** 引用了已停用/已合并规格档的档位 —— 非空时「通过」会在换版时失败（80017） */
+  blocked: string[];
+  /** 草稿基版过期（商家确认后会重新基线）。审核侧只作提示，不拦动作 */
+  stale: boolean;
+  /** 差异所基于的线上 version（商家确认发布用；审核侧不消费） */
+  baseVersion: number;
+}
+
+/**
  * 商品详情（后端 `GoodsVO`，`GET /ops/goods/{goodsNo}`）。
  *
  * <p>**只声明运营端抽屉真的会读的字段** —— 后端那份 VO 是 C 端契约，

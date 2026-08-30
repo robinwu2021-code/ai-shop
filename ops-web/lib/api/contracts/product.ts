@@ -1,7 +1,7 @@
 // 覆盖范围：类目（P-3.1）、商品池（P-3.2）、库存与预售（P-3.3）。
 import type {
   CategoryPayMode,
-  CategoryPoints, GoodsAudit, GoodsDetail, Category, CategoryArchiveImpact, CategorySpec, CategorySpecBinding, SpecDim, SpecValue, Page, ProductGoods, Sku, SpecTemplate, SpuStd, Topic } from "@/lib/types";
+  CategoryPoints, GoodsAudit, GoodsDraftPreview, GoodsDetail, Category, CategoryArchiveImpact, CategorySpec, CategorySpecBinding, SpecDim, SpecValue, Page, ProductGoods, Sku, SpecTemplate, SpuStd, Topic } from "@/lib/types";
 import type { CategoryQ, SkuQ, SpecTemplateQ } from "../query";
 
 export interface ProductApi {
@@ -16,6 +16,12 @@ export interface ProductApi {
    *   而每一次重提都要占一次审核人力
    */
   auditGoods(goodsNo: string, approved: boolean, reason?: string): Promise<GoodsAudit>;
+  /**
+   * 待审草稿的字段级差异（双版本）。**审核抽屉必须显示它** ——
+   * 审核开着时线上照卖旧版，不看这份的话审核员批准的是自己没看过的版本。
+   * 无草稿（新建提审等老链路）返回 `null`，那是常态：审的是内容本身。
+   */
+  goodsDraftPreview(goodsNo: string): Promise<GoodsDraftPreview | null>;
   /**
    * 重建社区池（「这件商品出现在哪些社区」的派生索引）。
    *

@@ -1708,6 +1708,42 @@ class M9bBizGoodsFlowTest {
         }
     }
 
+    @Test
+    @DisplayName("★★★ 审核员不再盲批：draft-preview 给出待生效的字段级差异；无草稿回 null")
+    void opsSeesDraftDiffBeforeApproving() throws Exception {
+        // 审核开着（默认态）：提交发布 = 草稿 SUBMITTED、线上照卖旧版
+        String goodsNo = onSaleGoodsWithDraft("12600199214", "盲批终结店");
+        mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
+                        .header("Authorization", "Bearer " + lastBiz))
+                .andExpect(jsonPath("$.code").value(0));
+        /*
+         * 审核员看到的必须是**将要生效的变更**，不是线上旧版 ——
+         * 这份 diff 与商家发布确认页出自同一段代码（buildPreview），两边不可能不一致。
+         */
+        String body = mvc().perform(get("/ops/goods/" + goodsNo + "/draft-preview")
+                        .header("Authorization", "Bearer " + opsLogin()))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(body).contains("旧标题").contains("新标题");
+
+        // 老链路（新建提审，无草稿）：null 是常态 —— 审核员审的是内容本身
+        String biz2 = merchant("12600199215", "老链路对照店");
+        String g2 = json.readTree(mvc().perform(post("/biz/goods/save")
+                        .header("Authorization", "Bearer " + biz2)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT120\",\"title\":\"对照品\",\"subtitle\":\"t\","
+                                + "\"cover\":\"c\",\"images\":[],\"specGroups\":[],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":3}]}"))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("goodsNo").asString();
+        mvc().perform(post("/biz/goods/" + g2 + "/submit").header("Authorization", "Bearer " + biz2))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(get("/ops/goods/" + g2 + "/draft-preview")
+                        .header("Authorization", "Bearer " + opsLogin()))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
     private void approveGoods(String goodsNo) throws Exception {
         mvc().perform(post("/ops/goods/" + goodsNo + "/audit")
                         .header("Authorization", "Bearer " + opsLogin())

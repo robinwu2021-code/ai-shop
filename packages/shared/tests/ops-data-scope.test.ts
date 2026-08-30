@@ -67,6 +67,13 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
   // 由主查询决定，这一步不放大任何可见范围。与 toOpsVO 的回捞同一类。
   "MerchantGoodsServiceImpl#hasDraft":
     "按已授权 goodsNo 回捞草稿存在性布尔；行级可见性由上游主查询的数据域决定",
+  // 审核员草稿审阅视图（双版本）：主查询 requireByNoInScope 已过数据域，
+  // 下面两处只按核过的 goodsNo 点查草稿行与 SKU 行 —— 与 hasDraft 同一类回捞
+  "MerchantGoodsServiceImpl#draftPreviewForOps":
+    "按已授权 goodsNo 回捞待审草稿行；行级可见性由 requireByNoInScope 决定",
+  "MerchantGoodsServiceImpl#buildPreview":
+    "diff 需要线上 SKU 快照；goodsNo 来自已过数据域的主查询（商家侧是 mine、"
+    + "运营侧是 requireByNoInScope），这里不放大任何可见范围",
   // #draftOf 不在这张表里：它只被 /biz 端点调用（编辑页读草稿），不在任何
   // ops 查询路径上 —— G1 不扫它，登进来就是死条目。归属由 mine(merchantNo) 在代码里核
 

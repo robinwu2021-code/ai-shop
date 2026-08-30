@@ -978,6 +978,35 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (draft == null) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        return buildPreview(live, draft);
+    }
+
+    @Override
+    public ai.neargo.shop.product.dto.PublishPreviewVO draftPreviewForOps(String goodsNo) {
+        /*
+         * 审核员的草稿审阅视图（双版本欠口）：审核开着时，队列里那件 AUDITING 商品
+         * **线上照卖旧版**，detailForOps 给的也是旧版 —— 不看这份 diff 的话，
+         * 审核员批准的是一个自己从没看过的版本。
+         *
+         * <p>requireByNoInScope 先过数据域：配了商家域的审核员只看得到自己负责那几家。
+         * 只认 SUBMITTED —— 过审那一刻换版的就是它（EDITING 是商家还没交的草稿，
+         * 不该被审、更不该被剧透）。没有草稿返回 null：新建提审等老链路走的是
+         * 「审内容本身」，那条路上没有 diff 可看，是常态不是错误。
+         */
+        PrdGoods live = requireByNoInScope(goodsNo);
+        PrdGoodsDraft draft = DataScopeContext.executeWithoutScope(() ->
+                draftMapper.selectOne(Wrappers.<PrdGoodsDraft>lambdaQuery()
+                        .eq(PrdGoodsDraft::getGoodsNo, live.getGoodsNo())
+                        .eq(PrdGoodsDraft::getStatus, PrdGoodsDraft.SUBMITTED)
+                        .last("limit 1")));
+        if (draft == null) {
+            return null;
+        }
+        return buildPreview(live, draft);
+    }
+
+    /** 草稿 vs 线上的字段级 diff。商家发布确认页与运营审核抽屉共用 —— 两边看的必须是同一份 */
+    private ai.neargo.shop.product.dto.PublishPreviewVO buildPreview(PrdGoods live, PrdGoodsDraft draft) {
         SaveCommand cmd;
         try {
             cmd = new com.fasterxml.jackson.databind.ObjectMapper()
@@ -1010,7 +1039,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         // SKU：按位次比价格与库存 —— 档位文案差异已含在「规格」一行里
         List<PrdSku> liveSkus = DataScopeContext.executeWithoutScope(() ->
                 skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
-                        .eq(PrdSku::getGoodsNo, goodsNo)
+                        .eq(PrdSku::getGoodsNo, live.getGoodsNo())
                         .orderByAsc(PrdSku::getId)));
         List<Sku> cmdSkus = cmd.skus() == null ? List.of() : cmd.skus();
         int n = Math.max(liveSkus.size(), cmdSkus.size());

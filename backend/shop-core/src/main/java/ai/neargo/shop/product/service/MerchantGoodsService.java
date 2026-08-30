@@ -234,6 +234,13 @@ public interface MerchantGoodsService {
     ai.neargo.shop.product.dto.PublishPreviewVO publishPreview(String merchantNo, String goodsNo);
 
     /**
+     * 审核员的草稿审阅视图：与商家发布确认页**同一份 diff**（buildPreview 共用）——
+     * 审核开着时线上照卖旧版，不看这份的话审核员批准的是自己没看过的版本。
+     * 只认 SUBMITTED；无草稿返回 {@code null}（老链路的内容审核，常态）。
+     */
+    ai.neargo.shop.product.dto.PublishPreviewVO draftPreviewForOps(String goodsNo);
+
+    /**
      * 读草稿内容（双版本，编辑页回填用）。返回的就是保存时收进来的那份
      * {@link SaveCommand} —— 它本来就是端上提交体的镜像，端上拿回去
      * 直接回填表单，不用为草稿另发明一套形状。

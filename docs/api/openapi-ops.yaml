@@ -3921,6 +3921,51 @@ components:
         - "type"
       additionalProperties: false
       description: "待审商品（后端 `prd_goods`，**goods 粒度不是 sku 粒度**）。\n\n<p>与本文件里 `Sku` 的差别：审核判的是「这件商品能不能卖」—— 标题、图、类目、资质都在 goods 上；sku 只是规格与价格。 拿 sku 粒度去审，同一件商品会被审好几遍。"
+    GoodsDraftPreview: 
+      type: "object"
+      properties: 
+        changes: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              field: 
+                type: "string"
+              label: 
+                type: "string"
+              before: 
+                type: 
+                  - "string"
+                  - "null"
+              after: 
+                type: 
+                  - "string"
+                  - "null"
+            required: 
+              - "field"
+              - "label"
+              - "before"
+              - "after"
+            additionalProperties: false
+          description: "逐字段差异。label 是服务端给的中文名，界面只排版不加工"
+        blocked: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "引用了已停用/已合并规格档的档位 —— 非空时「通过」会在换版时失败（80017）"
+        stale: 
+          type: "boolean"
+          description: "草稿基版过期（商家确认后会重新基线）。审核侧只作提示，不拦动作"
+        baseVersion: 
+          type: "number"
+          description: "差异所基于的线上 version（商家确认发布用；审核侧不消费）"
+      required: 
+        - "changes"
+        - "blocked"
+        - "stale"
+        - "baseVersion"
+      additionalProperties: false
+      description: "待审草稿的字段级差异（双版本，`GET /ops/goods/{goodsNo}/draft-preview`）。\n\n<p>审核开着时，队列里那件 AUDITING 商品**线上照卖旧版**，详情给的也是旧版 —— 没有这份 diff，审核员批准的是一个自己从没看过的版本。与商家发布确认页 出自服务端**同一段代码**，两边看到的不可能不一致。\n\n<p>接口对无草稿的商品返回 `null`（新建提审等老链路审的是内容本身）—— 常态不是错误。"
     GoodsDetail: 
       type: "object"
       properties: 
@@ -16360,6 +16405,38 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/goods/{goodsNo}/draft-preview": 
+    get: 
+      operationId: "goodsDraftPreview"
+      summary: "待审草稿的字段级差异（双版本）"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "goodsNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/categories": 
     get: 
       operationId: "listCategories"
