@@ -141,6 +141,27 @@ const RELATION = {
       + "不是模板自身的属性：同一个模板绑到不同类目上，是不是主维度可以不一样",
   },
   Category: { children: "prd_category 自关联（parent_no）" },
+  // ── 2026-08-30 第三批带出来的 join ──
+  UserCoupon: { coupon: "join mkt_coupon —— 券模板快照，一张券和它的模板是两个对象" },
+  StoreCategory: {
+    platformName: "join prd_category.name —— 平台类目的原名。"
+      + "**与 display_name 分开**：商家改了叫法之后，运营仍要认得出这是哪个平台类目",
+  },
+  StoreRole: { storeName: "join mch_store.announcement/name" },
+  StaffLog: {
+    actor: "join mch_account（actor_account_no）—— 日志只存账号，名字会改",
+    targetName: "join mch_account（target_account_no）",
+    storeName: "join mch_store（store_no）",
+  },
+  ServiceArea: { name: "join sys_region.name（ref_code）—— 区划名不落列，地名会变" },
+  CommunityApply: {
+    merchantName: "join mch_entity.name",
+    regionPath: "由 sys_region 逐级上溯拼出来",
+  },
+  Member: {
+    phoneTail: "join usr_person.phone_tail —— **会员挂人档**，号码不在会员表里。"
+      + "永远只有后四位：需要完整号的只有平台申诉处置，那条路要理由与审计",
+  },
   // ── 进销存：名字与明细都在别的表 ──
   StockBalance: {
     name: "join inv_item.name —— 余额表只存 item_id。**这是有意的**：货品改名不该重写余额行",
@@ -310,6 +331,37 @@ const DERIVED = {
     subtitle: "展示用的一句话（供应商名 / 用途 / 来源单号），按单据类型拼",
   },
   StockTransfer: { totalQty: "按明细行汇总" },
+  SpuStd: { categoryName: "join prd_category.name" },
+  UserCoupon: {
+    usableNow: "按券模板的时间窗与门槛实时判 —— **不落列**：落了就要有人定时刷，"
+      + "而刷不动的那一刻用户看到的是一张「可用」的过期券",
+  },
+  StoreCategory: {
+    name: "display_name（商家自己的叫法）—— 没设过时回落平台类目名",
+    goodsCount: "按 prd_goods 计数",
+    onSaleCount: "按 prd_goods.on_sale 计数",
+    pendingCount: "按 prd_goods.audit_status 计数",
+  },
+  Entity: {
+    storeCount: "按 mch_store 计数",
+    isPrimary: "当前登录人在这个主体下是不是主账号 —— **随会话变**，不是主体的属性",
+    canManage: "由当前会话的角色判，同上",
+  },
+  Store: {
+    payReady: "由 mch_payment_merchant 的进件状态判 —— 门店能不能收钱不是门店表的事",
+    staffCount: "按 mch_account 计数",
+  },
+  StaffLog: { at: "created_at —— 日志的「发生时刻」就是落库时刻，不另存一列" },
+  Region: {
+    hasChild: "按 parent_code 反查有没有下级 —— 落列的话每次增删下级都要回写父级",
+    pending: "audit_status 是待审 —— 提报上来的村/小区要审，字典里的不用",
+  },
+  MemberTag: { count: "按 mbr_member_tag 计数 —— 标签定义表上不落用量，打标是高频写" },
+  SpecOverride: {
+    label: "label_override，没设过时回落平台维度名",
+    values: "prd_merchant_spec_override 按 (category_no, dim_no) 的多行聚成数组",
+  },
+  Member: { daysSinceLast: "按 last_order_at 与今天实时算" },
   Address: { region: "表已拆成 province / city / district 三列，契约拼成一个字符串" },
 };
 
@@ -405,6 +457,40 @@ const ENTITY_MAP = {
   Coupon: { table: "mkt_coupon" },
   MarketingCampaign: { table: "mkt_campaign", note: "四类活动统一一张表：它们只差「触发条件 + 优惠方式」" },
   SpecTemplate: { table: "prd_spec_template" },
+
+  // ── 2026-08-30 第三批：有同名表却一直没映射的 15 个 ──
+  //
+  // 它们的表一直都在，只是 ENTITY_MAP 里没写，于是被归进「契约有类型、库里无承载」，
+  // **字段级比对一次都没跑过**。
+  SpuStd: { table: "prd_spu_std" },
+  InvoiceRequest: { table: "ord_invoice_request" },
+  UserCoupon: {
+    table: "mkt_user_coupon",
+    note: "**映射到老模型是有意的**：契约描述的就是老模型（`Coupon` 的字段别名"
+      + "指向 mkt_coupon 的 face_minor/discount_rate）。后端 P4 已搬到 pmt_*"
+      + "（V232 回填，pmt 用量 72 处 vs mkt 42 处），**契约还没跟上** —— "
+      + "这是一条真欠账，但改映射会凭空造出一批假缺口，要连契约一起改，属独立一批",
+  },
+  Qualification: { table: "mch_qualification" },
+  StoreCategory: { table: "mch_store_category" },
+  Entity: { table: "mch_entity", note: "运营端叫 Entity，C/B 端契约叫 Merchant —— 同一张表两个名字" },
+  Store: { table: "mch_store" },
+  StoreRole: { table: "mch_store_role" },
+  StaffLog: { table: "mch_staff_log" },
+  ServiceArea: { table: "mch_service_area" },
+  CommunityApply: { table: "cmt_community_apply" },
+  Region: { table: "sys_region" },
+  Member: { table: "mbr_member", note: "会员挂**人档**不挂账号（person_no）—— 换手机号不换会员" },
+  MemberTag: {
+    table: "mbr_tag",
+    note: "**标签的定义表**。`mbr_member_tag` 是「谁被打了哪个标」的关联表 —— "
+      + "第一版我映到了后者，于是 name/status 全被报成缺列",
+  },
+  SpecOverride: {
+    table: "prd_merchant_spec_override",
+    note: "**仍在用旧列名 merchant_no** —— 全局别名 merchantNo→entity_no 不影响它，"
+      + "匹配是直接列名优先",
+  },
 
   // ── 2026-08-30 进销存这一批 ──
   //
