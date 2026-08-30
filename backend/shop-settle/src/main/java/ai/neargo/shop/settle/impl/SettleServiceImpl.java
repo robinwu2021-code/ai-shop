@@ -1044,11 +1044,16 @@ public class SettleServiceImpl implements SettleService {
 
     @Override
     public List<PurchaseInvoiceVO> opsInvoices(String status) {
-        return DataScopeContext.executeWithoutScope(() ->
-                        purchaseInvoiceMapper.selectList(Wrappers.<StlPurchaseInvoice>lambdaQuery()
-                                .eq(status != null && !status.isBlank(),
-                                        StlPurchaseInvoice::getStatus, status)
-                                .orderByDesc(StlPurchaseInvoice::getId)))
+        /*
+         * **不绕过**：运营端的全量进项票队列，数据域该在这里起作用。
+         * 与上面的 `myInvoices(merchantNo)` 是一对照 —— 那一条按参数过滤、
+         * 跑在 B 端会话（SELF 维度）里，不绕就 fail-closed 变空白，所以它保留绕过。
+         * 两条读同一张表，绕不绕的判据是**归属由谁保证**，不是「哪个更方便」。
+         */
+        return purchaseInvoiceMapper.selectList(Wrappers.<StlPurchaseInvoice>lambdaQuery()
+                        .eq(status != null && !status.isBlank(),
+                                StlPurchaseInvoice::getStatus, status)
+                        .orderByDesc(StlPurchaseInvoice::getId))
                 .stream().map(this::toVO).toList();
     }
 

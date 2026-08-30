@@ -110,6 +110,18 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
    * `mch_fulfillment_channel`，两张表都登记了 MERCHANT 维度、照样被裁 ——
    * 绕过只影响准入矩阵的 S 轴（主体档位），配了商家域的运营看别家仍然是空列表。
    */
+  /*
+   * 商家查**自己的**进项票。守卫按方法名把它挂到 ops 端点上，但它的入参就是
+   * 当前商家号，归属由参数保证。**这处绕过必须留着**：B 端会话是 SELF 维度，
+   * 而 stl_purchase_invoice 只有 MERCHANT 锚点，不绕就 fail-closed 拼成 1=0,
+   * 商家打开「我的进项票」是一片空白且不报错。
+   *
+   * <p>同一张表上的 `opsInvoices(status)` 是全量队列，2026-08-30 已经**去掉**绕过 ——
+   * 那一条才是数据域该起作用的地方。与 CommunityAdminServiceImpl 那一对同形。
+   */
+  "SettleServiceImpl#myInvoices":
+    "B 端查自己的进项票，入参就是当前商家号；B 端会话是 SELF 维度，不绕会 fail-closed",
+
   "AdmissionPortImpl#merchantOf":
     "查主体档位；主调用方是买家会话（SELF），不绕过四道准入闸全部静默失效",
 
@@ -252,6 +264,27 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
  * 所以理由里必须写清楚**谁会看到空白**——这份清单要交给运营团队（TDD Q2）。
  */
 const ANCHOR_WAIVED: Record<string, string> = {
+  /*
+   * ── 2026-08-30 第二批登记（结算域 3 张）带来的锚点缺口 ──
+   *
+   * 三张表都只有 entity_no 一个归属列：一张提现单、一张发票属于**某个商家**，
+   * 不属于任何社区或自提点 —— 加冗余列也没有意义，因为那两个维度上不存在
+   * 「这张发票归哪个片区」这个事实。
+   */
+  "stl_withdraw:COMMUNITY":
+    "提现单属于商家，不属于片区。**看到空白的是**：配了社区域的运营打开提现队列。"
+    + "而提现审批是财务的活，社区运营本来就不该有 finance:withdraw:approve",
+  "stl_withdraw:PICKUP":
+    "同上，自提点运营者更不该出现在提现队列里",
+  "stl_purchase_invoice:COMMUNITY":
+    "进项票属于商家。**看到空白的是**：配了社区域的运营打开进项票队列",
+  "stl_purchase_invoice:PICKUP":
+    "同上",
+  "stl_settle_invoice:COMMUNITY":
+    "销项票属于商家。**看到空白的是**：配了社区域的运营打开开票队列",
+  "stl_settle_invoice:PICKUP":
+    "同上",
+
   /*
    * ── 2026-08-30 第一批登记（3 张）带来的锚点缺口 ──
    *

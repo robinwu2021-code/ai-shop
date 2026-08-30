@@ -147,6 +147,31 @@ public class DataScopeRegistration implements DataScopeRegistrar {
         registry.register("mch_entity", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
 
+        /*
+         * ── 2026-08-30 第二批：结算域的三张「运营端队列」表 ──
+         *
+         * 挑这三张的判据与第一批一致：**运营端有一条全量列表读它**。
+         * 那正是这道守卫说的症状 ——「只配了某商家域的财务打开提现队列，
+         * 看到的是全平台的申请」，而且不报错。
+         *
+         * 三张都只有 entity_no 一个归属列，所以只登记 MERCHANT。
+         * COMMUNITY / PICKUP 两个维度在这些表上没有锚点，缺口写进
+         * packages/shared 的 ANCHOR_WAIVED 并注明谁会看到空白。
+         *
+         * <p><b>登记本身不产生任何效果，除非同时把 ops 队列上的
+         * `executeWithoutScope` 去掉</b> —— 第一批在 cmt_community_apply 上
+         * 就是这么白干了一轮：登记完测试照样红，因为读它的那句被绕过包着。
+         * 本批的三处去绕过与登记在同一个提交里。
+         */
+        registry.register("stl_withdraw", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        registry.register("stl_purchase_invoice", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        registry.register("stl_settle_invoice", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
         registry.register("mch_store", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
 

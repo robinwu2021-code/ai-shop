@@ -64,8 +64,12 @@ public class WithdrawServiceImpl implements WithdrawService {
         }
         // 先到先审：手工处理时顺序就是公平性
         w.orderByAsc(StlWithdraw::getId);
-        var pg = DataScopeContext.executeWithoutScope(() ->
-                withdrawMapper.selectPage(new Page<>(p, s), w));
+        /*
+         * **不绕过数据域**：这是运营端的全量提现队列，正是数据域要起作用的地方。
+         * 绕过的话，配了商家域的财务打开它会看到全平台的申请 —— 不报错，
+         * 而下一步就是审批打款。stl_withdraw 已登记 MERCHANT → entity_no。
+         */
+        var pg = withdrawMapper.selectPage(new Page<>(p, s), w);
         return PageData.of(pg.getRecords().stream().map(WithdrawServiceImpl::toVO).toList(),
                 pg.getTotal(), p, s);
     }
@@ -73,9 +77,13 @@ public class WithdrawServiceImpl implements WithdrawService {
     @Override
     @Transactional
     public WithdrawVO decide(String withdrawNo, boolean pass, String remark, String operatorNo) {
-        StlWithdraw w = DataScopeContext.executeWithoutScope(() ->
-                withdrawMapper.selectOne(Wrappers.<StlWithdraw>lambdaQuery()
-                        .eq(StlWithdraw::getWithdrawNo, withdrawNo).last("limit 1")));
+        /*
+         * 审批也走数据域：**看不见的单不该批得动**。域外的单在这里查不到，
+         * 于是落到下面的 NOT_FOUND —— 与「列表里看不到」是同一个答案，
+         * 而不是「列表看不到但知道单号就能批」。
+         */
+        StlWithdraw w = withdrawMapper.selectOne(Wrappers.<StlWithdraw>lambdaQuery()
+                .eq(StlWithdraw::getWithdrawNo, withdrawNo).last("limit 1"));
         if (w == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }

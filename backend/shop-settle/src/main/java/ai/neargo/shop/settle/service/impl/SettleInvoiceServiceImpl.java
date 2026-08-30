@@ -37,7 +37,8 @@ public class SettleInvoiceServiceImpl implements SettleInvoiceService {
         }
         // 先到先开：手工开票时顺序就是公平性
         w.orderByAsc(StlSettleInvoice::getId);
-        var pg = DataScopeContext.executeWithoutScope(() -> mapper.selectPage(new Page<>(p, s), w));
+        // 运营端全量开票队列 —— 不绕过（stl_settle_invoice 已登记 MERCHANT → entity_no）
+        var pg = mapper.selectPage(new Page<>(p, s), w);
         return PageData.of(pg.getRecords().stream().map(SettleInvoiceServiceImpl::toVO).toList(),
                 pg.getTotal(), p, s);
     }

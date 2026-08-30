@@ -1,6 +1,8 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.OtpStore;
+import ai.neargo.shop.settle.entity.StlWithdraw;
+import ai.neargo.shop.settle.mapper.SettleMappers.WithdrawMapper;
 import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -67,6 +69,9 @@ class OpsDataScopeFlowTest {
 
     @Autowired
     private OtpStore otpStore;
+
+    @Autowired
+    private WithdrawMapper withdrawMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -150,6 +155,86 @@ class OpsDataScopeFlowTest {
         assertThat(applyCount(scoped.token(), null))
                 .as("配了 M0002 域的运营看到了不属于他的提报 —— 数据域没生效")
                 .isLessThan(all);
+    }
+
+    @Test
+    @DisplayName("★★★ 批② 提现队列按商家域收敛 —— 并且「看不见的单批不动」")
+    void withdrawQueueIsScopedByMerchant() throws Exception {
+        String admin = TestLogin.admin(mvc(), json);
+
+        /*
+         * `stl_withdraw` 今天没有生产者（B 端申请入口不在本批），测试库里也没有种子，
+         * 所以用例自己造 —— 而且**必须造两家**：只造一家的话，
+         * 「域内看得更少」分不出「过滤生效了」和「本来就只有这一条」。
+         */
+        String mine = seedWithdraw("M0002", "数据域测试·域内");
+        seedWithdraw(OUTSIDE_MERCHANT, "数据域测试·域外");
+
+        int all = withdrawCount(admin);
+        // **先断非零对照**：0 的话下面那句 0 <= 0 恒真，一条永不失败的断言比没有更坏
+        assertThat(all).as("超管看到的提现队列是空的 —— 这条用例此刻什么也没验到")
+                .isGreaterThan(1);
+
+        var scoped = staffWithScope(admin, "ds-withdraw", "FINANCE", "M0002", null, null);
+        int seen = withdrawCount(scoped.token());
+        assertThat(seen)
+                .as("配了 M0002 域的财务看到了别家的提现申请 —— 而下一步就是审批打款")
+                .isLessThan(all);
+        assertThat(seen).as("域内那一张也看不到 —— 多半是 stl_withdraw 少了锚点、拼成了 1=0")
+                .isGreaterThan(0);
+
+        /*
+         * **审批也要走数据域**。否则会变成「列表里看不到，但知道单号就能批」——
+         * 那不是限制，那是障眼法。域外的单在这里查不到，落到 NOT_FOUND，
+         * 与「列表里看不到」是同一个答案。
+         */
+        /*
+         * 域外那一张挂在 **M0002 之外、但本身完全批得动**的商家上。
+         * 一开始我用的是 M0003 —— 那张单即使被看见也会因为
+         * `merchantPort.find(...).orElseThrow(NOT_FOUND)` 抛同一个错误码，
+         * 于是断言**在两种情况下都绿**：消融掉数据域它照样通过。
+         * 假绿比没有断言更坏，因为它会被当成「这条已经验过了」。
+         */
+        String outsider = seedWithdraw(OUTSIDE_MERCHANT, "数据域测试·域外二");
+        mvc().perform(post("/ops/finance/withdrawals/" + outsider + "/decide")
+                        .header("Authorization", "Bearer " + scoped.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pass\":true}"))
+                .andExpect(jsonPath("$.code").value(
+                        ai.neargo.shop.common.ErrorCode.NOT_FOUND.code()));
+
+        // 域内那一张仍然批得动 —— 否则上面那条只证明了「谁都批不动」
+        mvc().perform(post("/ops/finance/withdrawals/" + mine + "/decide")
+                        .header("Authorization", "Bearer " + scoped.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pass\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    /** 域外商家。挑它的条件是「被看见就一定批得动」—— 见 withdrawQueueIsScopedByMerchant 里的注释。 */
+    private static final String OUTSIDE_MERCHANT = "M0001";
+
+    private String seedWithdraw(String entityNo, String name) {
+        StlWithdraw w = new StlWithdraw();
+        w.setWithdrawNo("WD-DS-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        w.setEntityNo(entityNo);
+        w.setMerchantName(name);
+        w.setAmountMinor(10_000L);
+        w.setAvailableBalanceMinor(100_000L);
+        w.setBankAccountMasked("****8821");
+        w.setStatus(StlWithdraw.PENDING);
+        w.setAppliedAt(System.currentTimeMillis());
+        withdrawMapper.insert(w);
+        return w.getWithdrawNo();
+    }
+
+    private int withdrawCount(String token) throws Exception {
+        String body = mvc().perform(get("/ops/finance/withdrawals")
+                        .header("Authorization", "Bearer " + token)
+                        .param("size", "200"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("records").size();
     }
 
     private int applyCount(String token, String status) throws Exception {
