@@ -35,6 +35,9 @@ export const messageHttp: MessageApi = {
   inboxUnread: () => client.get("/ops/message/unread-count"),
   readInbox: (no) => client.post(`/ops/message/${no}/read`),
   readAllInbox: () => client.post("/ops/message/read-all"),
+  sceneChannels: () => client.get("/ops/scene-channel"),
+  setSceneChannel: (v) =>
+    client.post(`/ops/scene-channel/${v.scene}/${v.audience}/${v.channel}`, { enabled: v.enabled }),
   listFaqs: (q) => client.get("/ops/faqs", q),
   saveFaq: (v) => client.post("/ops/faqs", v),
   setFaqPublished: (no, published) => client.post(`/ops/faqs/${no}/published`, { published }),

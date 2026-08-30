@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { MESSAGES_COPY } from "./copy";
+import { RoutingTab } from "./routing-tab";
 import { NotifyLogTab } from "./notify-log-tab";
 import { BroadcastTab } from "./broadcast-tab";
 import { ChannelTab } from "./channel-tab";
@@ -48,7 +49,7 @@ type Copy = (typeof MESSAGES_COPY)["zh"];
  * 通道那个叫 "apppush" —— 两个 push 并存迟早被人当成一回事。
  */
 const TAB_KEYS = ["overview", "sms", "mail", "wxsub", "apppush", "inapp",
-                  "tickets", "faq", "notifyLog", "broadcast"] as const;
+                  "tickets", "faq", "notifyLog", "broadcast", "routing"] as const;
 
 export default function MessagesPage() {
   return <Suspense fallback={null}><MessagesInner /></Suspense>;
@@ -216,6 +217,7 @@ function MessagesInner() {
     <div>
       <TabHeader tabs={tabs} value={tab} onChange={setTab} />
 
+      {tab === "routing" && <RoutingTab c={c} canEdit={allow("message:template:update")} />}
       {tab === "inapp" && (
         <div className="space-y-4">
           {/* D2：站内信的模拟发送后端一直就绪（/ops/notify-logs/test-inapp），

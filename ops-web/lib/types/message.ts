@@ -205,6 +205,28 @@ export type NotifyStatus = "SENT" | "FAILED";
  * 类型/供应商/接入范围/状态用 string（同 NotifyLog.bizType）：取值随后端演进，
  * 端上不硬编码一份联合类型。
  */
+/**
+ * 场景 × 受众 × 通道 的一格（P-14.1）。
+ *
+ * <p>「哪个事件走哪些通道」以前**硬编码在编排里** —— 后端把它做成了可配置，
+ * 而运营端此前没有入口，于是这份配置存在、能改，却没人看得见。
+ */
+export interface SceneChannelCell {
+  /** 场景码（订单已支付、售后已受理…） */
+  scene: string;
+  /** 受众：买家 / 商家 / 运营 */
+  audience: string;
+  channel: string;
+  enabled: boolean;
+  /** 推送等级（App 推送用；其它通道为空） */
+  pushLevel: string;
+  /**
+   * **恒锁定的格子**。站内信（INAPP）是事实记录，运营不可关 ——
+   * 后端会拒掉这一格的关闭请求，前端被绕过也兜得住，界面只是别让人白点。
+   */
+  locked: boolean;
+}
+
 export interface NotifyChannelRow {
   /** 渠道编号（业务主键，启停用它） */
   channelNo: string;

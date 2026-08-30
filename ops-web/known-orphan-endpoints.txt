@@ -16,8 +16,6 @@
 # 商家收款额度用尽时改不了
 PUT /ops/admission/pay-quota/{merchantNo}
 # 触达配置，属另一条线（shop-notify 那批）
-GET /ops/scene-channel
-POST /ops/scene-channel/{scene}/{audience}/{channel}
 # 订单总览：运营端走的是别的入口，可能是重复能力，待确认后删或补
 GET /ops/order
 # 社区池重算，运维动作，可能本来就不该有界面

@@ -127,6 +127,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
 
   消息与客服: { en: "Messaging & support" },
   通道总览: { en: "Channel overview" },
+  场景与通道: { en: "Scenes & channels" },
   短信: { en: "SMS" },
   邮件: { en: "Email" },
   微信订阅消息: { en: "WeChat subscribe" },

@@ -1,8 +1,17 @@
 // 覆盖范围：消息触达（P-14.1）与客服（P-14.2）。
-import type { Captcha, FaqEntry, InAppLog, InboxMessage, MsgTemplate, NotifyChannel, NotifyChannelHealth, NotifyChannelRow, NotifyLog, NotifyPushTask, NotifyQuota, Page, PushDevice, Ticket, WxTemplates } from "@/lib/types";
+import type { Captcha, FaqEntry, InAppLog, InboxMessage, MsgTemplate, NotifyChannel, NotifyChannelHealth, NotifyChannelRow, NotifyLog, NotifyPushTask, NotifyQuota, Page, PushDevice, SceneChannelCell, Ticket, WxTemplates } from "@/lib/types";
 import type { PageQ, TicketQ } from "../query";
 
 export interface MessageApi {
+  /** 场景×通道矩阵。后端一直有，运营端此前没有入口 */
+  sceneChannels(): Promise<SceneChannelCell[]>;
+  /**
+   * 切换某一格。**INAPP 会被后端拒绝** —— 站内信是事实记录，
+   * 界面上那一行本来就该是禁用的，这里只是不指望前端拦得住。
+   */
+  setSceneChannel(v: { scene: string; audience: string; channel: string; enabled: boolean }):
+    Promise<SceneChannelCell>;
+
   listMsgTemplates(q?: PageQ): Promise<Page<MsgTemplate>>;
   setTemplateEnabled(templateNo: string, enabled: boolean): Promise<MsgTemplate>;
 

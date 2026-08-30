@@ -346,6 +346,7 @@ export const NAV: NavSection[] = [
       { href: "/messages?tab=wxsub", label: "微信订阅消息", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
       { href: "/messages?tab=apppush", label: "App 推送", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
       { href: "/messages?tab=inapp", label: "站内信模板", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
+      { href: "/messages?tab=routing", label: "场景与通道", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
       { href: "/messages?tab=notifyLog", label: "发送记录", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
       { href: "/messages?tab=broadcast", label: "营销广播", perm: "message:template:read", group: "触达", matrix: "P-14.1", ready: true },
       { href: "/messages?tab=tickets", label: "客服工单与代客留痕", perm: "message:ticket:read", group: "客服", matrix: "P-14.2", ready: true },

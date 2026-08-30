@@ -1202,6 +1202,8 @@ CREATE TABLE IF NOT EXISTS sys_pay_channel
     max_partial_refunds INT(11) NOT NULL DEFAULT 0,
     refund_interval_seconds INT(11) NOT NULL DEFAULT 0,
     max_split_rate INT(11) NOT NULL DEFAULT 10000,
+    currency VARCHAR(8) NOT NULL DEFAULT 'CNY',
+    settle_cycle VARCHAR(16) NOT NULL DEFAULT 'T+1',
     PRIMARY KEY (id),
     CONSTRAINT uk_sys_pay_channel UNIQUE (pay_channel)
 );
@@ -3744,6 +3746,30 @@ CREATE TABLE IF NOT EXISTS ops_login_log
     client_ip  VARCHAR(64),
     user_agent VARCHAR(255),
     PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS sys_pay_channel_rate
+(
+    id             BIGINT(20)   NOT NULL AUTO_INCREMENT,
+    rate_no        VARCHAR(64)  NOT NULL,
+    pay_channel    VARCHAR(16)  NOT NULL,
+    pay_method     VARCHAR(16)  NOT NULL DEFAULT '*',
+    legal_form     VARCHAR(16)  NOT NULL DEFAULT '*',
+    rate_bp        INT(11)      NOT NULL DEFAULT 0,
+    min_fee_minor  BIGINT(20)   NOT NULL DEFAULT 0,
+    effective_from BIGINT(20)   NOT NULL,
+    enabled        TINYINT(4)   NOT NULL DEFAULT 1,
+    remark         VARCHAR(255) DEFAULT NULL,
+    tenant_no      VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at     DATETIME     NOT NULL,
+    created_by     VARCHAR(64)  DEFAULT NULL,
+    updated_at     DATETIME     NOT NULL,
+    updated_by     VARCHAR(64)  DEFAULT NULL,
+    version        BIGINT(20)   NOT NULL DEFAULT 0,
+    deleted        TINYINT(4)   NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pcr_no UNIQUE (rate_no, tenant_no),
+    CONSTRAINT uk_pcr_slot UNIQUE (pay_channel, pay_method, legal_form, effective_from, tenant_no)
 );
 
 -- 种子数据
@@ -8088,3 +8114,12 @@ SET backend_status = 'IMPLEMENTED',
     updated_at     = NOW()
 WHERE point_code = 'OPS_MESSAGE__TAB_FAQ'
   AND backend_status = 'NOT_IMPLEMENTED';
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MESSAGE__TAB_ROUTING', 'OPS_MESSAGE', '场景与通道', '触达', '/messages?tab=routing', 'message:template:read', 'message:template:read', 'IMPLEMENTED', 1, 'P-14.1', 'MENU', 19, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MESSAGE__TAB_ROUTING');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MESSAGE__TAB_ROUTING', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MESSAGE__TAB_ROUTING');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPPORT', 'OPS_MESSAGE__TAB_ROUTING', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPPORT' AND x.point_code='OPS_MESSAGE__TAB_ROUTING');

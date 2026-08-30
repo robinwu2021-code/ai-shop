@@ -268,6 +268,22 @@ export const messageMock: MessageApi = {
     return wait([...inbox]);
   },
 
+  sceneChannels: async () => wait(db.sceneChannels),
+
+  setSceneChannel: async (v) => {
+    const cell = db.sceneChannels.find(
+      (x) => x.scene === v.scene && x.audience === v.audience && x.channel === v.channel);
+    if (!cell) notFound("场景通道配置", "Scene channel", `${v.scene}/${v.audience}/${v.channel}`);
+    // **与后端同一条规则**：站内信是事实记录，不给关。界面上那一行本来就禁用，
+    // 这里兜的是「前端被绕过」—— mock 放行的话，这条规则在开发时等于不存在，
+    // 而它恰恰是这一屏唯一一条不能靠界面保证的约束。
+    if (cell!.locked && !v.enabled) {
+      fail("站内信是事实记录，不能关闭", "In-app messages are a record of fact and cannot be turned off");
+    }
+    cell!.enabled = v.enabled;
+    return wait(cell!, 300);
+  },
+
   listFaqs: (q = {}) =>
     wait(db.paginate(db.faqs, q.page, q.size, (f) => db.kwHit(q.keyword, f.faqNo, f.question, f.answer, f.category))),
 
