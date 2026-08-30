@@ -30,7 +30,20 @@ CREATE TABLE IF NOT EXISTS inv_supplier
     UNIQUE KEY uk_sup_no (owner_id, supplier_no),
     UNIQUE KEY uk_sup_name (owner_id, name),
     KEY idx_sup_status (owner_id, status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='供应商档案：进货单指向的那个稳定对象';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci COMMENT='供应商档案：进货单指向的那个稳定对象';
+
+-- ⚠️ **这张表的排序规则与旁边 19 张不一样，是有意的。**
+-- 2026-08-28 拍板将来切 MySQL，而旁边那 19 张用的 UCA 14.0.0 排序规则是 MariaDB 11.4+ 独有，
+-- MySQL 上一张表都建不起来（`check-sql-portability.mjs` 的第一条规则就是它）。
+-- 历史 160 张进了基线（已应用的迁移改一个字符
+-- Flyway checksum 就对不上），新写的必须可移植 —— 见
+-- docs/technical/design/数据库可移植性-MariaDB到MySQL.md
+--
+-- **代价要知道**：`inv_supplier.supplier_no` 与 `inv_inbound_order.supplier_no`
+-- 现在是两种排序规则。**列对列比较**（SQL JOIN）会撞 Illegal mix of collations；
+-- 而字面量比较（`WHERE supplier_no = ?`）不受影响。
+-- 本域现有做法是**在 Java 里批量取名字、不写 JOIN**（见 StockQueryServiceImpl
+-- 取 itemName 那一段），所以今天不会碰上。**要写 JOIN 的人先读这一段。**
 
 -- uk_sup_name 是这张表存在的理由，不是顺手加的索引：
 -- 同一商家不许有两个同名供应商，否则漂移只是从「单据上的名字」换到「档案里的名字」
