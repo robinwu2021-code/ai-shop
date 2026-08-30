@@ -776,7 +776,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 266,
+        "b-app": 267,
         "c-app": 38
       }
     },
@@ -1924,7 +1924,7 @@
       "name": "biz-item-picker",
       "file": "b-app/src/components/biz/biz-item-picker.vue",
       "scope": "B 端",
-      "lines": 112,
+      "lines": 120,
       "props": [
         "visible: boolean",
         "title: string",
