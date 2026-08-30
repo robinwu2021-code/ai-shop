@@ -811,7 +811,104 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         }
 
         // ③ 改写 SKU 快照：不改的话那批商品仍指向退役编号，聚合时各算各的
-        return rewriteSnapshots(from, intoValueNo);
+        int rewritten = rewriteSnapshots(from, intoValueNo);
+        /*
+         * ④ 商品侧的两处身份一起换：spec_groups 按 code、params 按 valueNo+code。
+         * **文案（options / label）一字不动** —— 改写的是身份，不是买家看到的东西。
+         *
+         * 只做 ③ 的话，SKU 指向新编号、规格组仍带退役值的 code，而商家覆盖
+         * （applyToValues）恰恰按 code 索引 —— 他设过的本店叫法/排序/移除全部失配，
+         * 表现为「我设置过的怎么没了」。参数那侧更直接：valueNo 指向 MERGED 的行。
+         */
+        java.util.Map<String, String> codeMap = new java.util.HashMap<>();
+        for (PrdSpecValue v : losers) {
+            codeMap.put(v.getCode(), keep.getCode());
+        }
+        rewriteGoodsSnapshots(java.util.Set.copyOf(from), intoValueNo, codeMap, keep.getDimNo());
+        return rewritten;
+    }
+
+    /**
+     * 把商品快照（spec_groups 的 optionCodes、params 的 valueNo/code）里的
+     * 退役身份换成保留值的。
+     *
+     * <p><b>含已删商品</b> —— 历史订单的聚合也要指向存活编号，这一点与在用检查
+     * （只算未删）方向相反：那边问的是「拦不拦停用」，这边问的是「历史还认不认得自己」。
+     *
+     * <p>逐元素 equals，不做字符串替换（前缀撞车，与 {@link #rewriteSnapshots} 同一条理由）。
+     * 只碰 {@code templateNo == dimNo} 的组 —— 别的维度里可能有同名 code
+     * （code 只在维度内唯一）。解析不动的行跳过并点名记 warn，
+     * 别让一件 V229 时代的老商品把整个合并炸掉，但也绝不静默吞。
+     */
+    private void rewriteGoodsSnapshots(java.util.Set<String> oldNos, String intoNo,
+                                       java.util.Map<String, String> codeMap, String dimNo) {
+        var goods = DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectList(Wrappers.<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                        .and(w -> {
+                            for (String no : oldNos) {
+                                w.like(ai.neargo.shop.product.entity.PrdGoods::getParams, "\"" + no + "\"").or();
+                            }
+                            for (String code : codeMap.keySet()) {
+                                w.like(ai.neargo.shop.product.entity.PrdGoods::getSpecGroups, "\"" + code + "\"").or();
+                            }
+                            w.like(ai.neargo.shop.product.entity.PrdGoods::getSpecGroups, "\"" + dimNo + "\"");
+                        })));
+        var om = new com.fasterxml.jackson.databind.ObjectMapper();
+        for (var g : goods) {
+            boolean changed = false;
+            try {
+                if (g.getSpecGroups() != null && !g.getSpecGroups().isBlank()) {
+                    var arr = (com.fasterxml.jackson.databind.node.ArrayNode) om.readTree(g.getSpecGroups());
+                    for (var group : arr) {
+                        var tpl = group.get("templateNo");
+                        if (tpl == null || !dimNo.equals(tpl.asText())) {
+                            continue;   // 别的维度可能有同名 code，不碰
+                        }
+                        var codes = group.get("optionCodes");
+                        if (codes instanceof com.fasterxml.jackson.databind.node.ArrayNode ca) {
+                            for (int i = 0; i < ca.size(); i++) {
+                                String c = ca.get(i).asText();
+                                if (codeMap.containsKey(c)) {
+                                    ca.set(i, om.getNodeFactory().textNode(codeMap.get(c)));
+                                    changed = true;
+                                }
+                            }
+                        }
+                    }
+                    if (changed) {
+                        g.setSpecGroups(om.writeValueAsString(arr));
+                    }
+                }
+                if (g.getParams() != null && !g.getParams().isBlank()) {
+                    var arr = (com.fasterxml.jackson.databind.node.ArrayNode) om.readTree(g.getParams());
+                    boolean pChanged = false;
+                    for (var param : arr) {
+                        var vn = param.get("valueNo");
+                        if (vn != null && oldNos.contains(vn.asText())
+                                && param instanceof com.fasterxml.jackson.databind.node.ObjectNode po) {
+                            po.put("valueNo", intoNo);
+                            var c = po.get("code");
+                            if (c != null && codeMap.containsKey(c.asText())) {
+                                po.put("code", codeMap.get(c.asText()));
+                            }
+                            pChanged = true;
+                        }
+                    }
+                    if (pChanged) {
+                        g.setParams(om.writeValueAsString(arr));
+                        changed = true;
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("[规格合并] 商品快照解析失败，跳过（该商品的身份仍指向退役编号，需人工处理）：goods={}",
+                        g.getGoodsNo(), e);
+                continue;
+            }
+            if (changed) {
+                ai.neargo.shop.product.entity.PrdGoods row = g;
+                DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(row));
+            }
+        }
     }
 
     /**
@@ -829,10 +926,17 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         int n = 0;
         for (PrdSku sku : rows) {
             List<String> nos = readAliases(sku.getOptionValueNos());
-            if (nos.stream().noneMatch(olds::contains)) {
+            /*
+             * ⚠️ 数组里的 **null 是合法元素**（valueNos()：「归不了一的位置是 null」——
+             * 商家手打的档位没有平台编号）。而 Set.copyOf 的不可变集对 contains(null)
+             * 直接抛 NPE —— 于是库里只要有一个带手打档的 SKU，**所有合并都 500**。
+             * 单跑测试撞不到（库里恰好没有那种行），三个类连跑才炸出来。
+             */
+            if (nos.stream().noneMatch(x -> x != null && olds.contains(x))) {
                 continue;
             }
-            List<String> next = nos.stream().map(x -> olds.contains(x) ? into : x).toList();
+            List<String> next = nos.stream()
+                    .map(x -> x != null && olds.contains(x) ? into : x).toList();
             sku.setOptionValueNos(writeAliases(next));
             DataScopeContext.executeWithoutScope(() -> skuMapper.updateById(sku));
             n++;

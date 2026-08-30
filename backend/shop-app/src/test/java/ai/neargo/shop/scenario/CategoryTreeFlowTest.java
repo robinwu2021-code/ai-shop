@@ -75,6 +75,9 @@ class CategoryTreeFlowTest {
     @Autowired
     private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
 
+    @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
+
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -1571,6 +1574,72 @@ class CategoryTreeFlowTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"archived\":true}"))
                 .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
+    @DisplayName("★★★ 合并规格值要改写全部三处身份 —— 现在只改 SKU，商家覆盖与参数会失配")
+    void mergeRewritesAllThreeIdentityHomes() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+        String dimBody = mvc().perform(post("/ops/spec-dims")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"MERGEHOME\",\"name\":\"合并守卫份量\",\"valueType\":\"ENUM\","
+                                + "\"usageType\":\"SALE\",\"universal\":true}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String dimNo = json.readTree(dimBody).get("data").get("dimNo").asString();
+        String loserNo = newValue(ops, dimNo, "红盒");     // code=label；故意选**不带数量语义**的文案 ——
+        // 「二斤」「一千克」这类会被 SpecNormalizer 按归一量（1000g）判成同一档，
+        // 撞车检测直接返回已有值，测试里两个值就并成了一个（第一版真踩了）
+        String keepNo = newValue(ops, dimNo, "蓝盒");    // code=蓝盒
+
+        String biz = merchant("13700009012", "合并守卫店");
+        String goodsBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT110\",\"title\":\"合并守卫测试\","
+                                + "\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
+                                // 端上会带 optionCodes（建品页从模板得来）—— 三处身份之一
+                                + "\"specGroups\":[{\"name\":\"合并守卫份量\",\"templateNo\":\"" + dimNo
+                                + "\",\"options\":[\"红盒\"],\"optionCodes\":[\"红盒\"]}],"
+                                // 参数带 valueNo+code —— 三处身份之三
+                                + "\"params\":[{\"dimNo\":\"" + dimNo + "\",\"name\":\"份量参数\","
+                                + "\"valueNo\":\"" + loserNo + "\",\"code\":\"红盒\",\"label\":\"红盒\"}],"
+                                + "\"skus\":[{\"optionValues\":[\"红盒\"],\"price\":900,\"stock\":5}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(goodsBody).get("data").get("goodsNo").asString();
+
+        mvc().perform(post("/ops/spec-values/merge").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"intoValueNo\":\"" + keepNo + "\",\"fromValueNos\":[\"" + loserNo + "\"]}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        ai.neargo.shop.product.entity.PrdGoods g =
+                ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                        goodsMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdGoods::getGoodsNo, goodsNo)));
+        java.util.List<ai.neargo.shop.product.entity.PrdSku> skus =
+                ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                        skuMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdSku::getGoodsNo, goodsNo)));
+
+        // 身份一：SKU 快照（现状就会改，这条是防退化）
+        org.assertj.core.api.Assertions.assertThat(skus.get(0).getOptionValueNos())
+                .as("SKU 身份该指向存活编号").contains(keepNo).doesNotContain(loserNo);
+        // 身份二：规格组的 optionCodes —— ⚠️ 现在不改，这条先红
+        org.assertj.core.api.Assertions.assertThat(g.getSpecGroups())
+                .as("规格组的 optionCodes 该换成保留值的 code —— 商家覆盖按 code 索引，不换全失配")
+                .contains("蓝盒");
+        // 身份三：params 的 valueNo —— ⚠️ 现在不改，这条也在防
+        org.assertj.core.api.Assertions.assertThat(g.getParams())
+                .as("参数的 valueNo 不该再指向退役编号").contains(keepNo).doesNotContain(loserNo);
+        // 文案是快照，一字不动 —— 防把改写做过头
+        org.assertj.core.api.Assertions.assertThat(g.getSpecGroups())
+                .as("options 文案是买家看到的东西，合并改的是身份不是文案").contains("红盒");
+        org.assertj.core.api.Assertions.assertThat(skus.get(0).getOptionValues())
+                .as("SKU 文案快照同理").contains("红盒");
     }
 
     private String newValue(String ops, String dimNo, String label) throws Exception {
