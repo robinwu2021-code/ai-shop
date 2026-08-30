@@ -185,7 +185,8 @@ function toEdit() {
   display: flex;
   align-items: baseline;
   gap: 12rpx;
-  margin-top: 6rpx;
+  /* 4rpx 网格上取 8 而不是 4：横向 gap 是 12rpx，纵向再紧到 4 会贴上 */
+  margin-top: 8rpx;
 }
 /* 旧值划线弱化、新值常规 —— 眼睛先落在「将变成什么」上 */
 .diff__before {
