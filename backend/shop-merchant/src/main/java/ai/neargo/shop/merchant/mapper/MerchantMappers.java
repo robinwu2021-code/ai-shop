@@ -146,6 +146,12 @@ public final class MerchantMappers {
             extends BaseMapper<ai.neargo.shop.merchant.entity.MchAdmissionPolicy> {
     }
 
+    public interface DebtMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchDebt> {
+    }
+
+    public interface DebtTxnMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchDebtTxn> {
+    }
+
     public interface DepositMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchDeposit> {
     }
 

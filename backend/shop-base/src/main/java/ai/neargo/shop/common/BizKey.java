@@ -108,6 +108,8 @@ public final class BizKey {
     public static final String RECON_DIFF = "RD";
     /** 保证金流水 */
     public static final String DEPOSIT_TXN = "DP";
+    /** 欠款流水。与保证金流水分开：两者方向相反，混号会让对账时分不清 */
+    public static final String DEBT_TXN = "DBT";
     /** 积分流水 */
     public static final String POINTS_LEDGER = "PL";
     /** 积分资金池流水 */

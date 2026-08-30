@@ -3828,6 +3828,50 @@ CREATE TABLE IF NOT EXISTS stl_settle_batch
     CONSTRAINT uk_stl_batch_period UNIQUE (entity_no, pay_channel, period_from, tenant_no, deleted)
 );
 
+CREATE TABLE IF NOT EXISTS mch_debt
+(
+    id                   BIGINT(20)  NOT NULL AUTO_INCREMENT,
+    entity_no            VARCHAR(64) NOT NULL,
+    balance_minor        BIGINT(20)  NOT NULL DEFAULT 0,
+    total_incurred_minor BIGINT(20)  NOT NULL DEFAULT 0,
+    total_repaid_minor   BIGINT(20)  NOT NULL DEFAULT 0,
+    last_incurred_at     BIGINT(20)  DEFAULT NULL,
+    tenant_no            VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at           DATETIME    NOT NULL,
+    created_by           VARCHAR(64) DEFAULT NULL,
+    updated_at           DATETIME    NOT NULL,
+    updated_by           VARCHAR(64) DEFAULT NULL,
+    version              BIGINT(20)  NOT NULL DEFAULT 0,
+    deleted              TINYINT(4)  NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_debt_entity UNIQUE (entity_no, tenant_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_debt_txn
+(
+    id                  BIGINT(20)   NOT NULL AUTO_INCREMENT,
+    txn_no              VARCHAR(64)  NOT NULL,
+    entity_no           VARCHAR(64)  NOT NULL,
+    txn_type            VARCHAR(16)  NOT NULL,
+    amount_minor        BIGINT(20)   NOT NULL,
+    balance_after_minor BIGINT(20)   NOT NULL,
+    source_type         VARCHAR(16)  DEFAULT NULL,
+    source_no           VARCHAR(64)  DEFAULT NULL,
+    batch_no            VARCHAR(64)  DEFAULT NULL,
+    reason              VARCHAR(512) DEFAULT NULL,
+    operator            VARCHAR(64)  DEFAULT NULL,
+    tenant_no           VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at          DATETIME     NOT NULL,
+    created_by          VARCHAR(64)  DEFAULT NULL,
+    updated_at          DATETIME     NOT NULL,
+    updated_by          VARCHAR(64)  DEFAULT NULL,
+    version             BIGINT(20)   NOT NULL DEFAULT 0,
+    deleted             TINYINT(4)   NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_debt_txn_no UNIQUE (txn_no, tenant_no),
+    CONSTRAINT uk_mch_debt_txn_source UNIQUE (entity_no, source_type, source_no, tenant_no, deleted)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
