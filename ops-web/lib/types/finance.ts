@@ -464,7 +464,9 @@ export interface ReconAxisReport {
 
 /** 通道费率的一个版本（后端 `sys_pay_channel_rate`）。 */
 export interface PayChannelRateVersion {
+  /** 规则版本号 */
   rateNo: string;
+  /** 通道码，与 sys_pay_channel 同值域 */
   payChannel: string;
   /** `*` = 该通道全部支付方式 */
   payMethod: string;
@@ -476,18 +478,25 @@ export interface PayChannelRateVersion {
   minFeeMinor: number;
   /** 生效时刻（毫秒）。**填未来时刻 = 预约生效** */
   effectiveFrom: number;
+  /** 停用的版本不参与取值。停用最新版 = 回退到上一版 */
   enabled?: boolean;
+  /** 为什么调这一次 —— 回查时这句话比数字更有用 */
   remark?: string | null;
 }
 
 /** 一个支付通道的设置与费率。 */
 export interface PayChannelSetting {
+  /** 通道码，如 WECHAT / ALIPAY */
   payChannel: string;
+  /** 展示名 */
   name: string;
+  /** 停用只影响**新进件与新下单**，已开通的商户与在途的单不受影响 */
   enabled: boolean;
   /** JSON 数组文本，如 `["CN"]`。空 = 全市场可用 */
   markets: string | null;
+  /** 结算币种，如 CNY */
   currency: string | null;
+  /** 通道结算周期，如 T+1。展示与对账预期用 */
   settleCycle: string | null;
   /** 能否补差。**为 false 时该通道不开积分抵扣** —— 这是通道的事实，运营改不了 */
   supportsSubsidy: boolean;

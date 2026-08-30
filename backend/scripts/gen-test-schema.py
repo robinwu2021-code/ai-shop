@@ -61,6 +61,7 @@ def main():
     tables = {}   # name -> list[str] 列/约束定义，保持顺序
     order = []
     seeds = []    # INSERT 种子数据，原样保留
+    altered = set()  # 被 ALTER 加过列的表 —— 只有它们的种子要钉列名
     renames = {}  # 旧表名 -> 新表名（ALTER ... RENAME TO）。种子里的旧名要按它回填
 
     # **按版本号数字排序**，不是字典序。字典序把 V15 排在 V2 前面，
@@ -69,7 +70,7 @@ def main():
     # 缺的列只有等某个测试恰好用到它才会暴露，而多数测试用不到。
     for f in sorted(src_dir.glob("V*.sql"),
                     key=lambda p: int(re.match(r"V(\d+)", p.name).group(1))):
-        replay(f.read_text(), tables, order, seeds, renames)
+        replay(f.read_text(), tables, order, seeds, renames, altered)
 
     out = [HEADER]
     for name in order:
@@ -78,7 +79,14 @@ def main():
     if seeds:
         # 种子里的旧表名回填成改名后的新名（见 alter_table 里 RENAME TO 那段）
         fixed = []
-        for stmt in seeds:
+        for table, snap, stmt in seeds:
+            if table in altered:
+                cols = _column_names(snap)
+                if cols:
+                    stmt = re.sub(r"^(INSERT\s+INTO\s+\w+)\s+VALUES\b",
+                                  lambda mm: f"{mm.group(1)} ({', '.join(cols)}) VALUES",
+                                  stmt, count=1, flags=re.S | re.I)
+            stmt = stmt + ";"
             for old, new in renames.items():
                 stmt = re.sub(rf"\b{re.escape(old)}\b", new, stmt)
             fixed.append(stmt)
@@ -136,7 +144,17 @@ def _column_names(cols):
     return out
 
 
-def _pin_columns(stmt, tables):
+def _snapshot(stmt, tables):
+    """把这条种子和它**此刻**的列快照绑在一起，等重放完再决定要不要钉列名。
+
+    <b>不能在收集时就决定</b>：V2 的种子先落，而给这张表加列的 ALTER 在 V274 ——
+    收集那一刻还不知道它将来会被加列。也不能用最终列去钉：那时的值只有旧列那么多。
+    """
+    m = re.match(r"^(INSERT\s+INTO\s+(\w+))\s+VALUES\b", stmt, re.S | re.I)
+    return (m.group(2) if m else None, list(tables.get(m.group(2), [])) if m else [], stmt)
+
+
+def _pin_columns(stmt, tables, altered):
     """把 `INSERT INTO t VALUES (...)` 补成 `INSERT INTO t (col, ...) VALUES (...)`。
 
     **为什么必须补**：种子是按原样收集、最后统一重放的，而它们跑在**最终**表结构上。
@@ -152,13 +170,18 @@ def _pin_columns(stmt, tables):
     if not m:
         return stmt
     head, table, rest = m.group(1), m.group(2), m.group(3)
+    # **只动被 ALTER 加过列的表。** 全量改写会把每一条种子的形状都换掉，
+    # 而有测试是按位置解析这些种子的（channel-subject-code 就读 sys_legal_form）——
+    # 一次「更整齐」的改写让一条毫不相干的守卫红了。改窄到真正需要的那几张表。
+    if table not in altered:
+        return stmt
     cols = _column_names(tables.get(table, []))
     if not cols:
         return stmt
     return f"{head} ({', '.join(cols)}) VALUES{rest}"
 
 
-def replay(sql, tables, order, seeds, renames):
+def replay(sql, tables, order, seeds, renames, altered):
     # 逐语句切分（本项目的迁移脚本里没有存储过程，分号切分是安全的）
     for stmt in [s.strip() for s in strip_comments(sql).split(";") if s.strip()]:
         if not stmt:
@@ -167,7 +190,7 @@ def replay(sql, tables, order, seeds, renames):
         if low.startswith("create table"):
             create_table(stmt, tables, order)
         elif low.startswith("alter table"):
-            alter_table(stmt, tables, order, renames)
+            alter_table(stmt, tables, order, renames, altered)
         elif low.startswith("create unique index"):
             create_unique_index(stmt, tables)
         elif low.startswith("drop table"):
@@ -190,7 +213,7 @@ def replay(sql, tables, order, seeds, renames):
             if re.search(r"\b(join|select)\b", low):
                 pass
             else:
-                seeds.append(_pin_columns(stmt, tables) + ";")
+                seeds.append(_snapshot(stmt, tables))
         elif low.startswith("insert ignore into"):
             # `INSERT IGNORE` 是可重入写法（V72/V74 用它灌权限点与授权），
             # 但 **H2 不认这个 MySQL 关键字**。语义上它就是种子 INSERT，
@@ -199,7 +222,7 @@ def replay(sql, tables, order, seeds, renames):
             if re.search(r"\bselect\b", low):
                 pass
             else:
-                seeds.append(_pin_columns(stmt_h2, tables) + ";")
+                seeds.append(_snapshot(stmt_h2, tables))
         elif low.startswith("insert into"):
             # 用正则而不是 `" select " in low`：回填语句里 SELECT 常常另起一行，
             # 而 low 是原样文本 —— 子串判断会漏掉带换行的写法，然后把回填当种子抄进测试库
@@ -210,7 +233,7 @@ def replay(sql, tables, order, seeds, renames):
                 # 只有 82 个功能点而代码期望 104，OpsPermConfigFlowTest 直接红，
                 # 而报错看起来像「权限配置写错了」，与生成器毫无关系。
                 # H2 跑在 MODE=MySQL 下，认识 FROM DUAL。
-                seeds.append(stmt + ";")
+                seeds.append((None, [], stmt))
             elif _reads_only(low, stmt):
                 # **常量派生表也是种子**，与上面 FROM DUAL 同一条理由 ——
                 # 数据源是 `FROM (SELECT … UNION ALL …) t`，不读任何存量表；
@@ -223,12 +246,12 @@ def replay(sql, tables, order, seeds, renames):
                 #
                 # 判据用「除目标表外不读任何表」，不用「长得像不像」：
                 # 回填语句一定要读别的表（那才是它存在的意义），种子一定不读。
-                seeds.append(stmt + ";")
+                seeds.append((None, [], stmt))
             elif _is_reentrant_seed(low):
                 # **可重入的派生授权也是种子** —— 判据与理由见 _is_reentrant_seed。
                 # 它读了第三张表，但那张表是同一个迁移刚灌好的，且这里按一串写死的
                 # 编码去捞行；数据源仍然是常量。丢掉它 = 权限点静默少几个。
-                seeds.append(stmt + ";")
+                seeds.append((None, [], stmt))
             elif re.search(r"\bselect\b", low):
                 # **INSERT ... SELECT 是数据回填，不是种子。**
                 #
@@ -240,7 +263,7 @@ def replay(sql, tables, order, seeds, renames):
                 pass
             else:
                 # 种子数据：H2 建表脚本里保留，测试要用到（如端×品类可售规则的 25 行）
-                seeds.append(_pin_columns(stmt, tables) + ";")
+                seeds.append(_snapshot(stmt, tables))
         elif low.startswith("create temporary table") or low.startswith("drop temporary table"):
             # **临时表是迁移过程中的草稿纸，不是结构的一部分。**
             #
@@ -300,7 +323,7 @@ def create_table(stmt, tables, order):
         order.append(name)
 
 
-def alter_table(stmt, tables, order, renames):
+def alter_table(stmt, tables, order, renames, altered):
     m = re.match(r"ALTER TABLE\s+(\w+)\s+(.*)", stmt, re.S | re.I)
     if not m:
         return
@@ -339,7 +362,8 @@ def alter_table(stmt, tables, order, renames):
     # 「area_no VARCHAR(64) NOT NULL, ADD UNIQUE KEY ...」这样的列行，H2 建表即语法错。
     # 而报错指向的是一个毫不相干的 Controller（上下文起不来），根因在这里。
     for one in _split_actions(action):
-        _apply_action(table, one, cols)
+        if _apply_action(table, one, cols):
+            altered.add(table)
 
 
 def _split_actions(action):
@@ -370,6 +394,7 @@ def _split_actions(action):
 
 
 def _apply_action(table, action, cols):
+    """返回 True 表示这次动作**加了列** —— 加过列的表，种子要钉列名。"""
 
     rename = re.match(r"RENAME COLUMN\s+(\w+)\s+TO\s+(\w+)", action, re.I)
     if rename:
@@ -433,7 +458,7 @@ def _apply_action(table, action, cols):
         idx = next((i for i, c in enumerate(cols)
                     if re.match(r"^\s*(CONSTRAINT|PRIMARY\s+KEY|UNIQUE)\b", c, re.I)), len(cols))
         cols.insert(idx, "    " + col)
-        return
+        return True
 
     # ALTER 里的唯一键增删。**必须实现，不能靠「反正 H2 用不上索引」糊过去** ——
     # 唯一键不是索引，它是约束：漏掉一次 DROP + ADD，测试库就停在旧的键上，

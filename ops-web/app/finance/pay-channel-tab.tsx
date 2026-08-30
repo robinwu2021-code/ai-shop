@@ -17,6 +17,7 @@ import type { PayChannelSetting, PayChannelRateVersion } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfigCard } from "@/components/ui/config-card";
+import { FilterSelect } from "@/components/ui/filter-select";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -151,15 +152,12 @@ export function PayChannelTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label>{c.pcFieldChannel}</Label>
-              <select
-                className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+              {/* 用库件而不是裸 select：控件高走 var(--ctl-h)、焦点环由库件给 —— 自己搭的那个两样都没有 */}
+              <FilterSelect
                 value={current}
-                onChange={(e) => setChannel(e.target.value)}
-              >
-                {rows.map((r) => (
-                  <option key={r.payChannel} value={r.payChannel}>{r.name || r.payChannel}</option>
-                ))}
-              </select>
+                onChange={setChannel}
+                options={rows.map((r) => ({ value: r.payChannel, label: r.name || r.payChannel }))}
+              />
             </div>
             <div>
               <Label>{c.frFieldRate}</Label>

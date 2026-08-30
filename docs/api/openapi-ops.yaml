@@ -188,8 +188,10 @@ components:
       properties: 
         type: 
           "$ref": "#/definitions/QualificationType"
+          description: "资质类型，如营业执照 / 食品经营许可证"
         code: 
           type: "string"
+          description: "证照编号，与证面一致"
         imageUrl: 
           type: "string"
         expireAt: 
@@ -5088,8 +5090,10 @@ components:
       properties: 
         rateNo: 
           type: "string"
+          description: "规则版本号"
         payChannel: 
           type: "string"
+          description: "通道码，与 sys_pay_channel 同值域"
         payMethod: 
           type: "string"
           description: "`*` = 该通道全部支付方式"
@@ -5107,10 +5111,12 @@ components:
           description: "生效时刻（毫秒）。**填未来时刻 = 预约生效**"
         enabled: 
           type: "boolean"
+          description: "停用的版本不参与取值。停用最新版 = 回退到上一版"
         remark: 
           type: 
             - "string"
             - "null"
+          description: "为什么调这一次 —— 回查时这句话比数字更有用"
       required: 
         - "rateNo"
         - "payChannel"
@@ -5126,10 +5132,13 @@ components:
       properties: 
         payChannel: 
           type: "string"
+          description: "通道码，如 WECHAT / ALIPAY"
         name: 
           type: "string"
+          description: "展示名"
         enabled: 
           type: "boolean"
+          description: "停用只影响**新进件与新下单**，已开通的商户与在途的单不受影响"
         markets: 
           type: 
             - "string"
@@ -5139,10 +5148,12 @@ components:
           type: 
             - "string"
             - "null"
+          description: "结算币种，如 CNY"
         settleCycle: 
           type: 
             - "string"
             - "null"
+          description: "通道结算周期，如 T+1。展示与对账预期用"
         supportsSubsidy: 
           type: "boolean"
           description: "能否补差。**为 false 时该通道不开积分抵扣** —— 这是通道的事实，运营改不了"

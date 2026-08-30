@@ -1946,12 +1946,12 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `payChannel` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `enabled` | `boolean` | 是 | — |
+| `payChannel` | `string` | 是 | 通道码，如 WECHAT / ALIPAY |
+| `name` | `string` | 是 | 展示名 |
+| `enabled` | `boolean` | 是 | 停用只影响**新进件与新下单**，已开通的商户与在途的单不受影响 |
 | `markets` | `string,null` | 是 | JSON 数组文本，如 `["CN"]`。空 = 全市场可用 |
-| `currency` | `string,null` | 是 | — |
-| `settleCycle` | `string,null` | 是 | — |
+| `currency` | `string,null` | 是 | 结算币种，如 CNY |
+| `settleCycle` | `string,null` | 是 | 通道结算周期，如 T+1。展示与对账预期用 |
 | `supportsSubsidy` | `boolean` | 是 | 能否补差。**为 false 时该通道不开积分抵扣** —— 这是通道的事实，运营改不了 |
 | `currentRate` | [`#/definitions/PayChannelRateVersion`](#definitionspaychannelrateversion) \| `null` | 是 | 此刻生效的那一版；**一条都没配时为 null**，要显示成「未配置」而不是 0 |
 | `rates` | [`#/definitions/PayChannelRateVersion`](#definitionspaychannelrateversion)\[\] | 是 | 全部版本，按生效时间倒序 |
@@ -1975,15 +1975,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `rateNo` | `string` | 是 | — |
-| `payChannel` | `string` | 是 | — |
+| `rateNo` | `string` | 是 | 规则版本号 |
+| `payChannel` | `string` | 是 | 通道码，与 sys_pay_channel 同值域 |
 | `payMethod` | `string` | 是 | `*` = 该通道全部支付方式 |
 | `legalForm` | `string` | 是 | `*` = 全部主体形态 |
 | `rateBp` | `number` | 是 | 万分比。38 = 0.38% |
 | `minFeeMinor` | `number` | 是 | 单笔最低手续费（分）。0 = 无保底 |
 | `effectiveFrom` | `number` | 是 | 生效时刻（毫秒）。**填未来时刻 = 预约生效** |
-| `enabled` | `boolean` | 否 | — |
-| `remark` | `string,null` | 否 | — |
+| `enabled` | `boolean` | 否 | 停用的版本不参与取值。停用最新版 = 回退到上一版 |
+| `remark` | `string,null` | 否 | 为什么调这一次 —— 回查时这句话比数字更有用 |
 
 
 #### GET `/ops/settlements`
@@ -9728,15 +9728,15 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `rateNo` | `string` | 是 | — |
-| `payChannel` | `string` | 是 | — |
+| `rateNo` | `string` | 是 | 规则版本号 |
+| `payChannel` | `string` | 是 | 通道码，与 sys_pay_channel 同值域 |
 | `payMethod` | `string` | 是 | `*` = 该通道全部支付方式 |
 | `legalForm` | `string` | 是 | `*` = 全部主体形态 |
 | `rateBp` | `number` | 是 | 万分比。38 = 0.38% |
 | `minFeeMinor` | `number` | 是 | 单笔最低手续费（分）。0 = 无保底 |
 | `effectiveFrom` | `number` | 是 | 生效时刻（毫秒）。**填未来时刻 = 预约生效** |
-| `enabled` | `boolean` | 否 | — |
-| `remark` | `string,null` | 否 | — |
+| `enabled` | `boolean` | 否 | 停用的版本不参与取值。停用最新版 = 回退到上一版 |
+| `remark` | `string,null` | 否 | 为什么调这一次 —— 回查时这句话比数字更有用 |
 
 ### PayChannelSetting
 
@@ -9744,12 +9744,12 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `payChannel` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `enabled` | `boolean` | 是 | — |
+| `payChannel` | `string` | 是 | 通道码，如 WECHAT / ALIPAY |
+| `name` | `string` | 是 | 展示名 |
+| `enabled` | `boolean` | 是 | 停用只影响**新进件与新下单**，已开通的商户与在途的单不受影响 |
 | `markets` | `string,null` | 是 | JSON 数组文本，如 `["CN"]`。空 = 全市场可用 |
-| `currency` | `string,null` | 是 | — |
-| `settleCycle` | `string,null` | 是 | — |
+| `currency` | `string,null` | 是 | 结算币种，如 CNY |
+| `settleCycle` | `string,null` | 是 | 通道结算周期，如 T+1。展示与对账预期用 |
 | `supportsSubsidy` | `boolean` | 是 | 能否补差。**为 false 时该通道不开积分抵扣** —— 这是通道的事实，运营改不了 |
 | `currentRate` | [`#/definitions/PayChannelRateVersion`](#definitionspaychannelrateversion) \| `null` | 是 | 此刻生效的那一版；**一条都没配时为 null**，要显示成「未配置」而不是 0 |
 | `rates` | [`#/definitions/PayChannelRateVersion`](#definitionspaychannelrateversion)\[\] | 是 | 全部版本，按生效时间倒序 |

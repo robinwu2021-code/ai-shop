@@ -295,6 +295,10 @@ export const RULES = [
   ["*", /^\/ops\/payments\/recon/, "finance:recon:resolve"],
   ["GET", /^\/ops\/settle\/fee-rules/, "finance:rate:read"],
   ["*", /^\/ops\/settle\/fee-rules/, "finance:rate:update"],
+  // 通道费率与佣金费率是两笔钱，但**看与改的门槛相同** ——
+  // 能调佣金的人就是能调通道费率的人，分成两个码只会多一层没人配的开关
+  ["GET", /^\/ops\/settle\/pay-channels/, "finance:rate:read"],
+  ["*", /^\/ops\/settle\/pay-channels/, "finance:rate:update"],
 
   // ── 评价 ───────────────────────────────────────────────────────────────
   ["GET", /^\/ops\/review-score-config/, "review:score:read"],

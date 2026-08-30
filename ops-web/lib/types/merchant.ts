@@ -144,7 +144,9 @@ export type QualificationType = "BUSINESS_LICENSE" | "FOOD_PERMIT" | "FOOD_WORKS
 
 /** 申请单上提交的一条结构化资质。`expireAt` 为 null = 长期有效 */
 export interface QualificationItem {
+  /** 资质类型，如营业执照 / 食品经营许可证 */
   type: QualificationType;
+  /** 证照编号，与证面一致 */
   code: string;
   imageUrl: string;
   expireAt: number | null;
