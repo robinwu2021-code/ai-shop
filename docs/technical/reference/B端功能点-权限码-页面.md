@@ -229,7 +229,7 @@
 
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
-| 收款进件状态 | GET | `/biz/merchant/payment` | `mPayments` | entity-detail、home、payment、stores |
+| 收款进件状态 | GET | `/biz/merchant/payment` | `mPayments` | entity-detail、home、stores |
 | 补交资料并提交进件 | POST | `/biz/merchant/payment` | `mSubmitPayment` | payment |
 | 回查进件结果 | POST | `/biz/merchant/payment/:payChannel/refresh` | `mRefreshPayment` | payment |
 | 本期发分服务费与开关状态 | GET | `/biz/points/account` | `mPointsAccount` | points、settle |

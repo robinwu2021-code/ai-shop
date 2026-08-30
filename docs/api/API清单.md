@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 634 个接口**：后端已实现 519（82%）· 前端在调 572
+**合计 635 个接口**：后端已实现 520（82%）· 前端在调 573
 
 ---
 
@@ -201,7 +201,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **199** 个接口 ｜ 后端已实现 **167**（84%）｜ 前端在调 **199**
+共 **200** 个接口 ｜ 后端已实现 **168**（84%）｜ 前端在调 **200**
 
 ### activities（4）
 
@@ -448,12 +448,13 @@
 | GET | `/biz/members/stats` | 四层人数与未计入买家 | — | `MemberStats` | 🔒 | ✅ | ✅ |
 | POST | `/biz/members/tags` | 批量打标 / 去标 | — | — | 🔒 | ✅ | ✅ |
 
-### merchant（7）
+### merchant（8）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | POST | `/biz/merchant/apply` | 提交入驻申请 | `MerchantApplyReqBody` | `MerchantProfile` | 🔒 | ✅ | ✅ |
 | GET | `/biz/merchant/apply` | 上次入驻申请 | — | `MerchantApplyReq` | 🔒 | ✅ | ✅ |
+| GET | `/biz/merchant/pay-channel` | 本店能开的收款通道（含没开的） | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/biz/merchant/payment` | 收款进件状态 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/merchant/payment` | 补交资料并提交进件 | `SubmitPaymentReq` | `PaymentApplyment` | 🔒 | ✅ | ✅ |
 | POST | `/biz/merchant/payment/{payChannel}/refresh` | 回查进件结果 | — | `PaymentApplyment` | 🔒 | ✅ | ✅ |

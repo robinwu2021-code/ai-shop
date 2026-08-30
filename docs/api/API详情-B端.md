@@ -2703,6 +2703,17 @@ _无字段_
 | `industry` | `string` | 否 | 行业（`sys_industry.industry`）。 **它决定这家店能不能以小微主体进件** —— 微信的小微白名单是按行业给的， 也是 `points_forced` 默认值的来源。 后端一直在收、库里一直有这一列，但契约没登记、端也没传， 于是 `mch_entity.industry` 恒空：进件时才发现主体类型选错了， 而那时商家已经开完店、上完架。 |
 
 
+#### GET `/biz/merchant/pay-channel`
+
+本店能开的收款通道（含没开的）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PaymentApplyment`](#paymentapplyment)\[\]
+
+
 #### GET `/biz/merchant/payment`
 
 收款进件状态　🔒
