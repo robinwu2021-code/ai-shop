@@ -347,7 +347,7 @@ _无字段_
 | `regionCode` | `string` | 否 | 商家选的区划，**只是建议**：最终以裁决时填的为准 |
 | `regionPath` | `string` | 否 | 区划整条路径名。「北山街道」全国有好几个，光末级判断不了是不是同一个地方 |
 | `note` | `string` | 否 | 商家的补充说明：为什么要开这个点 |
-| `kind` | `ESTATE` \| `VILLAGE` | 否 | ESTATE 小区 / VILLAGE 村。裁决的人要一眼看出这是哪种聚落 |
+| `kind` | [`#/definitions/SettlementKind`](#definitionssettlementkind) | 否 | ESTATE 小区 / VILLAGE 村。裁决的人要一眼看出这是哪种聚落 |
 | `originCode` | `string` | 否 | 关联的官方村码；非空 = 从词典选的，重复开通会被后端拦 |
 | `located` | `boolean` | 否 | 带没带定位。**没带的要显眼** —— 通过后聚落没有坐标， 买家用定位永远找不到它，运营得先补坐标再通过。 |
 | `latE6` | `number,null` | 否 | 商家提报时带的坐标（gcj02，E6）。**要看得见具体值** —— 只给一个「有/无」，落点偏到隔壁区也照样显示「有定位」，判不出对错。 |
@@ -8737,7 +8737,7 @@ _无字段_
 | `regionCode` | `string` | 否 | 商家选的区划，**只是建议**：最终以裁决时填的为准 |
 | `regionPath` | `string` | 否 | 区划整条路径名。「北山街道」全国有好几个，光末级判断不了是不是同一个地方 |
 | `note` | `string` | 否 | 商家的补充说明：为什么要开这个点 |
-| `kind` | `ESTATE` \| `VILLAGE` | 否 | ESTATE 小区 / VILLAGE 村。裁决的人要一眼看出这是哪种聚落 |
+| `kind` | [`#/definitions/SettlementKind`](#definitionssettlementkind) | 否 | ESTATE 小区 / VILLAGE 村。裁决的人要一眼看出这是哪种聚落 |
 | `originCode` | `string` | 否 | 关联的官方村码；非空 = 从词典选的，重复开通会被后端拦 |
 | `located` | `boolean` | 否 | 带没带定位。**没带的要显眼** —— 通过后聚落没有坐标， 买家用定位永远找不到它，运营得先补坐标再通过。 |
 | `latE6` | `number,null` | 否 | 商家提报时带的坐标（gcj02，E6）。**要看得见具体值** —— 只给一个「有/无」，落点偏到隔壁区也照样显示「有定位」，判不出对错。 |
@@ -8757,7 +8757,7 @@ _无字段_
 |---|---|:---:|---|
 | `left` | [`#/definitions/Community`](#definitionscommunity) | 是 | — |
 | `right` | [`#/definitions/Community`](#definitionscommunity) | 是 | — |
-| `reason` | `SAME_NAME` \| `NEARBY` | 是 | — |
+| `reason` | [`#/definitions/DuplicateReason`](#definitionsduplicatereason) | 是 | — |
 | `distanceM` | `number,null` | 否 | 两点直线距离（米）。有一方没坐标时为空 |
 
 ### ContentSlot
@@ -9125,7 +9125,7 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `kind` | `NEGATIVE` \| `ZERO_ON_SALE` \| `STALE` | 是 | NEGATIVE 负库存 · ZERO_ON_SALE 零库存仍在架 · STALE 长期未动销 |
+| `kind` | [`#/definitions/InvHealthKind`](#definitionsinvhealthkind) | 是 | NEGATIVE 负库存 · ZERO_ON_SALE 零库存仍在架 · STALE 长期未动销 |
 | `entityNo` | `string` | 是 | — |
 | `merchantName` | `string` | 否 | — |
 | `storeNo` | `string` | 否 | — |
@@ -9196,7 +9196,7 @@ KPI 卡（金额为最小货币单位整数）。
 |---|---|:---:|---|
 | `runId` | `string` | 是 | — |
 | `jobName` | `string` | 是 | — |
-| `triggerType` | `CRON` \| `MANUAL` \| `RETRY` \| `BACKFILL` | 是 | — |
+| `triggerType` | [`#/definitions/JobTriggerType`](#definitionsjobtriggertype) | 是 | — |
 | `bizDate` | `string,null` | 是 | — |
 | `startedAt` | `string` | 是 | — |
 | `finishedAt` | `string,null` | 是 | — |
@@ -9308,7 +9308,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `batchNo` | `string` | 是 | — |
 | `operator` | `string` | 是 | — |
 | `operatorName` | `string,null` | 否 | 发起时的显示名快照 —— 人离职改名之后这条记录还得说得清是谁 |
-| `status` | `QUEUED` \| `RUNNING` \| `DONE` \| `PARTIAL` | 是 | — |
+| `status` | [`#/definitions/MediaPurgeStatus`](#definitionsmediapurgestatus) | 是 | — |
 | `totalCount` | `number` | 是 | — |
 | `totalBytes` | `number` | 是 | — |
 | `purgedCount` | `number` | 是 | — |
@@ -9334,7 +9334,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `assetKey` | `string` | 是 | — |
 | `entityNo` | `string` | 是 | — |
 | `storeNo` | `string` | 是 | — |
-| `bizType` | `GOODS` \| `QUAL` \| `AFTERSALE` | 是 | — |
+| `bizType` | [`#/definitions/MediaBizType`](#definitionsmediabiztype) | 是 | — |
 | `bytes` | `number` | 是 | — |
 | `width` | `number,null` | 否 | — |
 | `height` | `number,null` | 否 | — |
@@ -10107,7 +10107,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `level` | `string` | 是 | — |
 | `name` | `string` | 是 | — |
 | `path` | `string` | 是 | 「广东省 / 深圳市 / 龙华区 / 福城街道」 |
-| `source` | `ADDRESS` \| `COORDS` | 是 | — |
+| `source` | [`#/definitions/RegionMatchSource`](#definitionsregionmatchsource) | 是 | — |
 | `detail` | `string` | 是 | 依据：匹配到的地址片段，或「茜坑社区 · 320 米」 |
 
 ### Review

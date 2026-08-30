@@ -371,7 +371,7 @@
 | `capacity` | `number` | 是 | — |
 | `booked` | `number` | 是 | — |
 | `remaining` | `number` | 是 | — |
-| `status` | `OPEN` \| `CLOSED` | 是 | OPEN 可约 / CLOSED 停约。停约**不删行也不赶人** |
+| `status` | [`SlotStatus`](#slotstatus) | 是 | — |
 
 
 ### auth
@@ -4964,7 +4964,7 @@ _无字段_
 | `capacity` | `number` | 是 | — |
 | `booked` | `number` | 是 | — |
 | `remaining` | `number` | 是 | — |
-| `status` | `OPEN` \| `CLOSED` | 是 | OPEN 可约 / CLOSED 停约。停约**不删行也不赶人** |
+| `status` | [`SlotStatus`](#slotstatus) | 是 | — |
 
 
 #### GET `/biz/stores/{storeNo}/fulfillment`
@@ -5162,7 +5162,7 @@ _无字段_
 | `capacity` | `number` | 是 | — |
 | `booked` | `number` | 是 | — |
 | `remaining` | `number` | 是 | — |
-| `status` | `OPEN` \| `CLOSED` | 是 | OPEN 可约 / CLOSED 停约。停约**不删行也不赶人** |
+| `status` | [`SlotStatus`](#slotstatus) | 是 | — |
 
 ### AreaLevel
 
@@ -6173,7 +6173,7 @@ _无字段_
 | `name` | `string` | 是 | — |
 | `valueCount` | `number` | 是 | 这个维度下的取值数（含平台档位 + 自己加的） |
 | `usedCount` | `number` | 是 | 用在几件商品上。**按规格组名统计** —— 存量商品的规格快照里只有名字， 没有维度编号（那个字段是后加的），按编号统计的话老商品一件都算不进来， 而「停用它会影响什么」问的恰恰是历史。 |
-| `status` | `ACTIVE` \| `ARCHIVED` | 是 | — |
+| `status` | [`SpecTemplateStatus`](#spectemplatestatus) | 是 | — |
 | `dimUsed` | `number` | 是 | 已建 / 上限。摆出来，而不是等他建到第 11 个才被拒 |
 | `dimQuota` | `number` | 是 | — |
 | `valueQuota` | `number` | 是 | — |
@@ -7117,6 +7117,15 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `unitFrom` | `string,null` | 否 | — |
 | `unitTo` | `string,null` | 否 | — |
 
+### SlotStatus
+
+预约时段状态。CLOSED 停约**不删行也不赶人** —— 已约的照常履约
+
+枚举取值：
+
+- `OPEN`
+- `CLOSED`
+
 ### SpecGroup
 
 规格维度，例：{ name: "重量", options: ["约5斤", "约10斤"] }
@@ -7169,6 +7178,15 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 - `PLATFORM`
 - `MERCHANT`
+
+### SpecTemplateStatus
+
+规格模板状态。ARCHIVED 归档后不再出现在选择器里，但历史商品的快照照旧
+
+枚举取值：
+
+- `ACTIVE`
+- `ARCHIVED`
 
 ### SpecValueAdded
 
@@ -7288,6 +7306,15 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `diffQty` | `number,null` | 否 | — |
 | `reasonCode` | `string` | 否 | — |
 
+### StockDocKind
+
+库存台账的方向。IN 入库 / OUT 出库 —— 台账不可变，只有查看没有编辑
+
+枚举取值：
+
+- `IN`
+- `OUT`
+
 ### StockDocument
 
 单据中心的一行（`DocumentVO`）。四类单据长得不一样，下发的是它们的交集
@@ -7345,7 +7372,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `id` | `number` | 是 | — |
 | `itemId` | `string` | 是 | 这一行动的是哪件货。**按单查靠它** —— 只给单号的话那一屏是一列没名字的数 |
 | `itemName` | `string` | 是 | — |
-| `docKind` | `IN` \| `OUT` | 是 | — |
+| `docKind` | [`StockDocKind`](#stockdockind) | 是 | — |
 | `docNo` | `string` | 是 | — |
 | `reasonCode` | `string` | 是 | — |
 | `qtyDelta` | `number` | 是 | — |
