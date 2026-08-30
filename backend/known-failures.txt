@@ -94,6 +94,24 @@
 # 10400「请求参数有误」对用户的意思是「去检查参数」，而验证码错该说「再看一眼短信」）。
 # 断言当时没跟着改。
 #
+# ── 2026-08-30 S3 日累计那条：结论是错的，真因在别处 ─────────────────────────
+#
+# 下面那段推理每一步都对，**唯独第一句问错了问题**。它问「日累计为什么不累加」，
+# 而真相是**整条准入判断根本没进去**：`AdmissionPortImpl.policyOf` 要先查主体，
+# 而 `mch_entity` 登记的是 MERCHANT 维度（entity_no）—— 下单跑在**买家会话**里
+# （SELF 维度），买家在这张表上没有锚点，拦截器 fail-closed 拼成 `1=0`，
+# 查不到主体 → 返回 empty → `requireOrderAllowed` 第一行就 return。
+# 单笔限额、日累计上限、限品类、保证金**四道闸在真实下单链路上一道都没跑**，
+# 零异常、零日志。
+#
+# 为什么排查绕了这么久：**兄弟用例 `uncategorizedGoodsStillGated` 是绿的** ——
+# 它直接调 `admissionPort`，没有买家会话，于是那道闸在它眼里一直好好的。
+# 「替身太干净会盖住真缺陷」的又一例，只不过这次的替身是「不带会话地直接调 Port」。
+#
+# 修在 `AdmissionPortImpl.merchantOf`（新增私有方法，绕过收在一处）。
+# 消融验过：去掉绕过当场变红。另补了 `singleOrderLimitFiresOnRealPath`，
+# 因为只测日累计的话，另外三道照样可以静默失效。
+#
 # **S3AdmissionRealPathTest.dailyCapCountsAcrossBuyers 查到一半，没动。**
 # 它守的是「日累计上限跨买家累加」，红着意味着可能有 100 倍敞口，所以逐层看了：
 #   · `AdmissionPortImpl.requireOrderAllowed` 的判断逻辑正确；
@@ -290,4 +308,3 @@
 #
 ai.neargo.shop.arch.ArchitectureTest.implsMustLiveInDedicatedPackage
 ai.neargo.shop.arch.ArchitectureTest.svcModulesMustNotDependOnEachOther
-ai.neargo.shop.scenario.S3AdmissionRealPathTest.dailyCapCountsAcrossBuyers

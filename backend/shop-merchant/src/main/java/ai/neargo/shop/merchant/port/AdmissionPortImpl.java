@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.port;
 
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.entity.MchAdmissionPolicy;
@@ -178,8 +179,7 @@ public class AdmissionPortImpl implements AdmissionPort {
 
     /** S 轴：1=企业 2=个体户 3=小微；认不出返回 0。 */
     private int riskOf(String merchantNo) {
-        MchEntity m = merchantMapper.selectOne(
-                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1"));
+        MchEntity m = merchantOf(merchantNo);
         if (m == null) {
             return 0;
         }
@@ -234,8 +234,7 @@ public class AdmissionPortImpl implements AdmissionPort {
         if (merchantNo == null || merchantNo.isBlank()) {
             return Optional.empty();
         }
-        MchEntity m = merchantMapper.selectOne(
-                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1"));
+        MchEntity m = merchantOf(merchantNo);
         if (m == null || m.getLegalForm() == null || m.getLegalForm().isBlank()) {
             return Optional.empty();
         }
@@ -244,6 +243,30 @@ public class AdmissionPortImpl implements AdmissionPort {
                         .eq(MchAdmissionPolicy::getLegalForm, m.getLegalForm())
                         .last("LIMIT 1"));
         return p != null && p.active() ? Optional.of(p) : Optional.empty();
+    }
+
+    /**
+     * 查主体 —— <b>必须绕过数据域</b>。
+     *
+     * <p>{@code mch_entity} 登记的是 MERCHANT 维度（entity_no），而本类的调用方
+     * 绝大多数是**下单请求，跑在买家会话里**（SELF 维度）。买家在这张表上没有锚点，
+     * 拦截器是 fail-closed 的，于是 SQL 被拼成 {@code 1=0}：查不到主体，
+     * {@code policyOf} 返回 empty，{@code requireOrderAllowed} 第一行就 return ——
+     * <b>单笔限额、日累计上限、限品类、保证金四道闸在真实下单链路上一道都没跑</b>，
+     * 而且全程零异常、零日志。
+     *
+     * <p>这里问的是「这个商家是什么主体」，与谁在买无关，所以绕过是对的，
+     * 不是为了让测试变绿而放宽。绕过收在这一个方法里而不是散在各调用点：
+     * 散着写的话，下一个加查询的人会忘，而忘了不报错。
+     *
+     * <p>发现经过：{@code S3AdmissionRealPathTest.dailyCapCountsAcrossBuyers} 红了很久，
+     * 一直被读成「日累计上限没跨买家累加」——那个结论是错的，
+     * 累加的代码（{@code OrderServiceImpl.paidAmountToday}）本来就绕过了数据域，也确实算对了。
+     * 真正的原因是**整条准入判断根本没进去**。
+     */
+    private MchEntity merchantOf(String merchantNo) {
+        return DataScopeContext.executeWithoutScope(() -> merchantMapper.selectOne(
+                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
     }
 
     /** 可用余额 = 实缴 − 冻结；没开户按 0 算，等价于「一分没缴」。 */

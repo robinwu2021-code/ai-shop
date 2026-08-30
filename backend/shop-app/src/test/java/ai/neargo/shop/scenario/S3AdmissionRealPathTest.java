@@ -99,6 +99,43 @@ class S3AdmissionRealPathTest {
     }
 
     @Test
+    @DisplayName("★★ 单笔限额在真实下单链路上要真的拦 —— 它与日累计死于同一个原因")
+    void singleOrderLimitFiresOnRealPath() throws Exception {
+        MchEntity seed = merchant(SEED_MERCHANT);
+        String originalForm = seed.getLegalForm();
+        MchAdmissionPolicy original = snapshotMicroPolicy();
+
+        try {
+            seed.setLegalForm(MICRO);
+            merchantMapper.updateById(seed);
+
+            /*
+             * **先要一个不设限的对照**：这一单必须过。
+             * 少了它，下面那条断言在「下单因为别的原因失败」时也会绿 ——
+             * 而这个用例的全部价值就在于分清「被限额拦下」与「根本没走到限额」。
+             */
+            setMicroLimits(0L, 0L);
+            String control = placeOrderRaw(login("13100139003"), "s3-single-ok");
+            assertThat(json.readTree(control).get("code").asInt())
+                    .as("不设限时这一单要能下成，返回体：%s", control).isZero();
+            long amount = json.readTree(control).get("data").get("amount").get("payableMinor").asLong();
+
+            // 限额压到单价以下，同样的一单必须被拦
+            setMicroLimits(amount - 1, 0L);
+            String body = placeOrderRaw(login("13100139004"), "s3-single-blocked");
+            assertThat(json.readTree(body).get("code").asInt())
+                    .as("单笔限额在买家会话里同样要生效 —— 它与日累计上限死于同一个原因："
+                            + "mch_entity 是 MERCHANT 维度，买家没有锚点，"
+                            + "fail-closed 查不到主体，整条准入判断直接 return")
+                    .isEqualTo(ErrorCode.ORDER_LIMIT_EXCEEDED.code());
+        } finally {
+            seed.setLegalForm(originalForm);
+            merchantMapper.updateById(seed);
+            restoreMicroPolicy(original);
+        }
+    }
+
+    @Test
     @DisplayName("★★ 日累计跨买家累加：A 下过一单后，B 的同额单必须被 70011 拦下")
     void dailyCapCountsAcrossBuyers() throws Exception {
         MchEntity seed = merchant(SEED_MERCHANT);
@@ -121,6 +158,7 @@ class S3AdmissionRealPathTest {
              * 0 + paid < 1.5×paid，那一单就会被放行，断言随之失败。
              */
             setMicroLimits(0L, paid + paid / 2);
+
 
             String buyerB = login("13100139002");
             String body = placeOrderRaw(buyerB, "s3-real-b");
@@ -145,9 +183,17 @@ class S3AdmissionRealPathTest {
         String payOrderNo = data.get("payOrderNo").asString();
         long amount = data.get("amount").get("payableMinor").asLong();
 
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idemKey
-                        + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
+        /*
+         * **回调的返回值必须断言**。验签失败时它只回 "FAIL" 且 HTTP 200 ——
+         * 丢掉返回值的话，「这一单其实没付成」会一路静默下去：子单停在 WAIT_PAY，
+         * 当日成交额算出来是 0，于是买家 B 那一单被放行，
+         * 症状伪装成「日累计上限跨买家不累加」这个完全不相干的结论。
+         */
+        String ack = mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idemKey
+                                + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(ack).as("支付回调要真的成功，否则这一单不计入当日成交额").contains("SUCCESS");
         return amount;
     }
 
