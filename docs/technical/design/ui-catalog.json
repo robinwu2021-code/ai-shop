@@ -1243,7 +1243,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 137,
+      "count": 139,
       "domains": [
         {
           "name": "经营看板",
@@ -2328,6 +2328,30 @@
             },
             {
               "app": "ops-web",
+              "route": "/finance?tab=settle-batches",
+              "title": "账期批次与放款",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/finance?tab=settle-batches"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=debts",
+              "title": "商家欠款",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/finance?tab=debts"
+            },
+            {
+              "app": "ops-web",
               "route": "/finance?tab=withdraw",
               "title": "提现审批",
               "domain": "结算与资金",
@@ -2957,5 +2981,5 @@
       ]
     }
   ],
-  "total": 238
+  "total": 240
 }
