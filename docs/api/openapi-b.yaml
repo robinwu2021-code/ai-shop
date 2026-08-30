@@ -2021,11 +2021,7 @@ components:
         remaining: 
           type: "number"
         status: 
-          type: "string"
-          enum: 
-            - "OPEN"
-            - "CLOSED"
-          description: "OPEN 可约 / CLOSED 停约。停约**不删行也不赶人**"
+          "$ref": "#/components/schemas/SlotStatus"
       required: 
         - "slotNo"
         - "storeNo"
@@ -2036,6 +2032,12 @@ components:
         - "remaining"
         - "status"
       additionalProperties: false
+    SlotStatus: 
+      type: "string"
+      enum: 
+        - "OPEN"
+        - "CLOSED"
+      description: "预约时段状态。CLOSED 停约**不删行也不赶人** —— 已约的照常履约"
     OrderStatus: 
       type: "string"
       enum: 
@@ -6107,10 +6109,7 @@ components:
           type: "number"
           description: "用在几件商品上。**按规格组名统计** —— 存量商品的规格快照里只有名字， 没有维度编号（那个字段是后加的），按编号统计的话老商品一件都算不进来， 而「停用它会影响什么」问的恰恰是历史。"
         status: 
-          type: "string"
-          enum: 
-            - "ACTIVE"
-            - "ARCHIVED"
+          "$ref": "#/components/schemas/SpecTemplateStatus"
         dimUsed: 
           type: "number"
           description: "已建 / 上限。摆出来，而不是等他建到第 11 个才被拒"
@@ -6134,6 +6133,12 @@ components:
         - "values"
       additionalProperties: false
       description: "「我的规格」里的一条自建维度。\n\n<p>与  {@link  SpecTemplate }  的差别是**视角**：那个回答「建品时能挑什么」， 这个回答「我拥有什么、能改什么、动它会影响多少」。"
+    SpecTemplateStatus: 
+      type: "string"
+      enum: 
+        - "ACTIVE"
+        - "ARCHIVED"
+      description: "规格模板状态。ARCHIVED 归档后不再出现在选择器里，但历史商品的快照照旧"
     StockSummary: 
       type: "object"
       properties: 
@@ -6308,10 +6313,7 @@ components:
         itemName: 
           type: "string"
         docKind: 
-          type: "string"
-          enum: 
-            - "IN"
-            - "OUT"
+          "$ref": "#/components/schemas/StockDocKind"
         docNo: 
           type: "string"
         reasonCode: 
@@ -6336,6 +6338,12 @@ components:
         - "occurredAt"
       additionalProperties: false
       description: "台账一行（`LedgerVO`）。**不可变** —— 只有查看，没有编辑"
+    StockDocKind: 
+      type: "string"
+      enum: 
+        - "IN"
+        - "OUT"
+      description: "库存台账的方向。IN 入库 / OUT 出库 —— 台账不可变，只有查看没有编辑"
     StockLedgerPage: 
       type: "object"
       properties: 

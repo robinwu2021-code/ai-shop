@@ -1409,10 +1409,7 @@ components:
           type: "string"
           description: "商家的补充说明：为什么要开这个点"
         kind: 
-          type: "string"
-          enum: 
-            - "ESTATE"
-            - "VILLAGE"
+          "$ref": "#/definitions/SettlementKind"
           description: "ESTATE 小区 / VILLAGE 村。裁决的人要一眼看出这是哪种聚落"
         originCode: 
           type: "string"
@@ -1459,6 +1456,12 @@ components:
         - "submittedAt"
       additionalProperties: false
       description: "商家提报的新社区（ADR-013 阶段三）。\n\n**它不是社区**：审过之后平台才建出来，`communityNo` 这时才有值。 待审的小区不在任何选点列表里 —— 进了主表就会出现在用户面前，而点进去什么都没有。"
+    SettlementKind: 
+      type: "string"
+      enum: 
+        - "ESTATE"
+        - "VILLAGE"
+      description: "聚落类型。裁决的人要一眼看出这是小区还是村 —— 两者的重复判据不一样"
     Community: 
       type: "object"
       properties: 
@@ -1540,10 +1543,7 @@ components:
         right: 
           "$ref": "#/definitions/Community"
         reason: 
-          type: "string"
-          enum: 
-            - "SAME_NAME"
-            - "NEARBY"
+          "$ref": "#/definitions/DuplicateReason"
         distanceM: 
           type: 
             - "number"
@@ -1555,6 +1555,12 @@ components:
         - "reason"
       additionalProperties: false
       description: "疑似重复的一对聚落。\n\n`reason` 是**判据不是结论**：SAME_NAME 归一名相同、NEARBY 坐标很近且名字相似。 两条都可能是误报（同一条街道里真有「一期」「二期」两个小区）， 所以界面上给的是「合并」按钮而不是自动合并 —— 合并会改一批商家的可见范围， 错了要一条条捞回来。"
+    DuplicateReason: 
+      type: "string"
+      enum: 
+        - "SAME_NAME"
+        - "NEARBY"
+      description: "判重的依据。SAME_NAME 同名 / NEARBY 坐标相近 —— 运营据此决定合不合"
     RegionSuggestion: 
       type: "object"
       properties: 
@@ -1568,10 +1574,7 @@ components:
           type: "string"
           description: "「广东省 / 深圳市 / 龙华区 / 福城街道」"
         source: 
-          type: "string"
-          enum: 
-            - "ADDRESS"
-            - "COORDS"
+          "$ref": "#/definitions/RegionMatchSource"
         detail: 
           type: "string"
           description: "依据：匹配到的地址片段，或「茜坑社区 · 320 米」"
@@ -1583,6 +1586,12 @@ components:
         - "source"
         - "detail"
       additionalProperties: false
+    RegionMatchSource: 
+      type: "string"
+      enum: 
+        - "ADDRESS"
+        - "COORDS"
+      description: "行政区划是怎么定出来的。ADDRESS 靠地址串匹配 / COORDS 靠坐标反查"
     Region: 
       type: "object"
       properties: 
@@ -4279,11 +4288,7 @@ components:
       type: "object"
       properties: 
         kind: 
-          type: "string"
-          enum: 
-            - "NEGATIVE"
-            - "ZERO_ON_SALE"
-            - "STALE"
+          "$ref": "#/definitions/InvHealthKind"
           description: "NEGATIVE 负库存 · ZERO_ON_SALE 零库存仍在架 · STALE 长期未动销"
         entityNo: 
           type: "string"
@@ -4316,6 +4321,13 @@ components:
         - "available"
       additionalProperties: false
       description: "一条不健康的库存。`kind` 决定这一行要怎么念，也决定该找谁"
+    InvHealthKind: 
+      type: "string"
+      enum: 
+        - "NEGATIVE"
+        - "ZERO_ON_SALE"
+        - "STALE"
+      description: "不健康库存的类型。**它决定这一行怎么念，也决定该找谁**"
     InvBalanceRow: 
       type: "object"
       properties: 
@@ -4361,10 +4373,7 @@ components:
         id: 
           type: "number"
         docKind: 
-          type: "string"
-          enum: 
-            - "IN"
-            - "OUT"
+          "$ref": "#/definitions/InvDocKind"
         docNo: 
           type: "string"
         reasonCode: 
@@ -4389,6 +4398,12 @@ components:
         - "occurredAt"
       additionalProperties: false
       description: "台账一行。**不可变** —— 这里永远只有查看，没有编辑"
+    InvDocKind: 
+      type: "string"
+      enum: 
+        - "IN"
+        - "OUT"
+      description: "台账方向。IN 入库 / OUT 出库 —— 与 shared 的 StockDocKind 同义，归一属另一批"
     InvLedgerPage: 
       type: "object"
       properties: 
@@ -6694,11 +6709,7 @@ components:
         storeNo: 
           type: "string"
         bizType: 
-          type: "string"
-          enum: 
-            - "GOODS"
-            - "QUAL"
-            - "AFTERSALE"
+          "$ref": "#/definitions/MediaBizType"
         bytes: 
           type: "number"
         width: 
@@ -6736,6 +6747,13 @@ components:
         - "status"
       additionalProperties: false
       description: "待回收的一行。`reason` 是这一列的全部意义 —— 运营靠它判断「这张能不能删」。"
+    MediaBizType: 
+      type: "string"
+      enum: 
+        - "GOODS"
+        - "QUAL"
+        - "AFTERSALE"
+      description: "这张图当初是为什么传的。运营靠它判断「这张能不能删」"
     MediaPurgeBatch: 
       type: "object"
       properties: 
@@ -6749,12 +6767,7 @@ components:
             - "null"
           description: "发起时的显示名快照 —— 人离职改名之后这条记录还得说得清是谁"
         status: 
-          type: "string"
-          enum: 
-            - "QUEUED"
-            - "RUNNING"
-            - "DONE"
-            - "PARTIAL"
+          "$ref": "#/definitions/MediaPurgeStatus"
         totalCount: 
           type: "number"
         totalBytes: 
@@ -6784,6 +6797,14 @@ components:
         - "purgedCount"
         - "failedCount"
       additionalProperties: false
+    MediaPurgeStatus: 
+      type: "string"
+      enum: 
+        - "QUEUED"
+        - "RUNNING"
+        - "DONE"
+        - "PARTIAL"
+      description: "清理批次的状态。**PARTIAL 不是失败** —— 部分对象删成功、部分没删掉 （多半是已经不在了），归进 DONE 会让人以为清干净了，归进失败会让人重跑一遍。"
     MediaBatchDetail: 
       type: "object"
       properties: 
@@ -6971,12 +6992,7 @@ components:
         jobName: 
           type: "string"
         triggerType: 
-          type: "string"
-          enum: 
-            - "CRON"
-            - "MANUAL"
-            - "RETRY"
-            - "BACKFILL"
+          "$ref": "#/definitions/JobTriggerType"
         bizDate: 
           type: 
             - "string"
@@ -7024,6 +7040,14 @@ components:
         - "httpStatus"
       additionalProperties: false
       description: "执行日志一行。"
+    JobTriggerType: 
+      type: "string"
+      enum: 
+        - "CRON"
+        - "MANUAL"
+        - "RETRY"
+        - "BACKFILL"
+      description: "这一轮是被什么触发的。**排障时第一个要看的就是它** —— 同一个任务，定时跑失败和人手动补跑失败，要找的人不是同一个。"
     OpsMember: 
       type: "object"
       properties: 
