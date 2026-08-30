@@ -211,6 +211,7 @@
 
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
+| 我的欠款与流水 | GET | `/biz/merchant/debt` | `mMyDebt` | income |
 | 本店能开的收款通道（含没开的） | GET | `/biz/merchant/pay-channel` | `mPayChannels` | payment |
 | 收款进件状态 | GET | `/biz/merchant/payment` | `mPayments` | entity-detail、home、stores |
 | 补交资料并提交进件 | POST | `/biz/merchant/payment` | `mSubmitPayment` | payment |
@@ -218,6 +219,7 @@
 | 本期发分服务费与开关状态 | GET | `/biz/points/account` | `mPointsAccount` | points、settle |
 | 发分服务费明细（按单） | GET | `/biz/points/records` | `mPointsRecords` | points-records、settle |
 | 开/关本店积分 | POST | `/biz/points/toggle` | `mPointsToggle` | points、settle |
+| 我的账期批次 | GET | `/biz/settle/batch` | `mSettleBatches` | income |
 | 结算单列表 | GET | `/biz/settle/bills` | `mSettleList` | settle |
 | 收入按状态汇总 | GET | `/biz/settle/income` | `mIncomeSummary` | income |
 | 费率卡 | GET | `/biz/settle/rate-card` | `mRateCard` | settle |
@@ -225,8 +227,6 @@
 | —（b-app 未接） | — | `/biz/settle/invoice-title` | — | — |
 | —（b-app 未接） | — | `/biz/settle/invoices` | — | — |
 | —（b-app 未接） | — | `/biz/settle/statement` | — | — |
-| —（b-app 未接） | — | `/biz/settle/batch` | — | — |
-| —（b-app 未接） | — | `/biz/merchant/debt` | — | — |
 | —（b-app 未接） | — | `/biz/merchant/payment/store/{}` | — | — |
 | —（b-app 未接） | — | `/biz/deposit` | — | — |
 | —（b-app 未接） | — | `/biz/deposit/txns` | — | — |
@@ -403,11 +403,9 @@
 | `/biz/deposit` | `biz:finance` | 老板 |
 | `/biz/deposit/txns` | `biz:finance` | 老板 |
 | `/biz/inventory/export` | `biz:customer` | 老板、店长 |
-| `/biz/merchant/debt` | `biz:finance` | 老板 |
 | `/biz/merchant/payment/store/{}` | `biz:finance` | 老板 |
 | `/biz/qualifications/recognize` | `biz:store` | 老板、店长 |
 | `/biz/quote/{}/revise` | `biz:campaign` | 老板、店长 |
-| `/biz/settle/batch` | `biz:finance` | 老板 |
 | `/biz/settle/bills/{}` | `biz:finance` | 老板 |
 | `/biz/settle/invoice-title` | `biz:finance` | 老板 |
 | `/biz/settle/invoices` | `biz:finance` | 老板 |

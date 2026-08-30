@@ -1261,9 +1261,9 @@ getDashboardTrend
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `entityNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | 欠款主体号 |
 | `balanceMinor` | `number` | 是 | 当前欠款（分），恒 >= 0。0 = 没有欠款 |
-| `txns` | [`#/definitions/DebtTxn`](#definitionsdebttxn)\[\] | 是 | — |
+| `txns` | [`#/definitions/DebtTxn`](#definitionsdebttxn)\[\] | 是 | 流水，时间倒序。**余额从流水推得出来**，两者对不上时信流水 |
 
 
 #### POST `/ops/debts/{entityNo}/deposit-offset`
@@ -1284,9 +1284,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `entityNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | 欠款主体号 |
 | `balanceMinor` | `number` | 是 | 当前欠款（分），恒 >= 0。0 = 没有欠款 |
-| `txns` | [`#/definitions/DebtTxn`](#definitionsdebttxn)\[\] | 是 | — |
+| `txns` | [`#/definitions/DebtTxn`](#definitionsdebttxn)\[\] | 是 | 流水，时间倒序。**余额从流水推得出来**，两者对不上时信流水 |
 
 
 #### GET `/ops/finance/invoice-title`
@@ -1939,24 +1939,24 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `batchNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `payChannel` | `string` | 是 | — |
+| `batchNo` | `string` | 是 | 批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话 |
+| `entityNo` | `string` | 是 | 收款主体号 |
+| `payChannel` | `string` | 是 | 支付通道码。**不同通道账期不同，所以不能合批** |
 | `settleCycle` | `string` | 是 | 本批采用的账期规则快照，如 T+1 / WEEKLY |
-| `periodFrom` | `number` | 是 | — |
+| `periodFrom` | `number` | 是 | 本批的收单起始时刻。与 dueAt 一起界定「这批装的是哪几天的单」 |
 | `dueAt` | `number` | 是 | T3 应结日 |
 | `releasedAt` | `number,null` | 是 | 实际放行时刻。与 dueAt 分开才答得出「晚了几天」 |
 | `freezeExpireAt` | `number,null` | 是 | Tmax：通道冻结窗口到期时刻。**为 null 表示还判不了** —— 冻结窗口的天数还没有书面口径，此时不该按一个猜的数报警 |
 | `status` | [`#/definitions/SettleBatchStatus`](#definitionssettlebatchstatus) | 是 | DRAFT / COLLECTED / RECONCILING / BLOCKED / RECONCILED / RELEASED |
-| `billCount` | `number` | 是 | — |
-| `grossMinor` | `number` | 是 | — |
-| `netMinor` | `number` | 是 | — |
-| `reconScope` | `SELF_ONLY` \| `BOTH` | 是 | 对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**， 不能显示成「已对账」—— 没有对方账单时那是一句自证的话 |
+| `billCount` | `number` | 是 | 本批单据数 |
+| `grossMinor` | `number` | 是 | 本批结算基数合计（分） |
+| `netMinor` | `number` | 是 | 本批应放款合计（分）。**放行时按这个数下发** |
+| `reconScope` | [`#/definitions/ReconScope`](#definitionsreconscope) | 是 | 对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**， 不能显示成「已对账」—— 没有对方账单时那是一句自证的话 |
 | `blockedReason` | `string,null` | 是 | 挂起原因，**直接展示给商家的原话**（含具体数字与阈值） |
-| `blockedAt` | `number,null` | 是 | — |
+| `blockedAt` | `number,null` | 是 | 挂起时刻。与 blockExpireAt 一起才看得出「还剩多久自动放行」 |
 | `blockExpireAt` | `number,null` | 是 | 挂起时限。超时自动放行并告警 —— 没有时限的挂起等于永久冻结 |
 | `decidedBy` | `string,null` | 是 | 人工放行者；**SYSTEM_TIMEOUT = 超时自动放行**，要单独看 |
-| `decideRemark` | `string,null` | 是 | — |
+| `decideRemark` | `string,null` | 是 | 处置时写的原因。**事后要能回答「当时凭什么放的」**，而那句话只有此刻的人写得出来 |
 
 
 #### POST `/ops/settle-batches/{batchNo}/release`
@@ -1977,24 +1977,24 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `batchNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `payChannel` | `string` | 是 | — |
+| `batchNo` | `string` | 是 | 批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话 |
+| `entityNo` | `string` | 是 | 收款主体号 |
+| `payChannel` | `string` | 是 | 支付通道码。**不同通道账期不同，所以不能合批** |
 | `settleCycle` | `string` | 是 | 本批采用的账期规则快照，如 T+1 / WEEKLY |
-| `periodFrom` | `number` | 是 | — |
+| `periodFrom` | `number` | 是 | 本批的收单起始时刻。与 dueAt 一起界定「这批装的是哪几天的单」 |
 | `dueAt` | `number` | 是 | T3 应结日 |
 | `releasedAt` | `number,null` | 是 | 实际放行时刻。与 dueAt 分开才答得出「晚了几天」 |
 | `freezeExpireAt` | `number,null` | 是 | Tmax：通道冻结窗口到期时刻。**为 null 表示还判不了** —— 冻结窗口的天数还没有书面口径，此时不该按一个猜的数报警 |
 | `status` | [`#/definitions/SettleBatchStatus`](#definitionssettlebatchstatus) | 是 | DRAFT / COLLECTED / RECONCILING / BLOCKED / RECONCILED / RELEASED |
-| `billCount` | `number` | 是 | — |
-| `grossMinor` | `number` | 是 | — |
-| `netMinor` | `number` | 是 | — |
-| `reconScope` | `SELF_ONLY` \| `BOTH` | 是 | 对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**， 不能显示成「已对账」—— 没有对方账单时那是一句自证的话 |
+| `billCount` | `number` | 是 | 本批单据数 |
+| `grossMinor` | `number` | 是 | 本批结算基数合计（分） |
+| `netMinor` | `number` | 是 | 本批应放款合计（分）。**放行时按这个数下发** |
+| `reconScope` | [`#/definitions/ReconScope`](#definitionsreconscope) | 是 | 对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**， 不能显示成「已对账」—— 没有对方账单时那是一句自证的话 |
 | `blockedReason` | `string,null` | 是 | 挂起原因，**直接展示给商家的原话**（含具体数字与阈值） |
-| `blockedAt` | `number,null` | 是 | — |
+| `blockedAt` | `number,null` | 是 | 挂起时刻。与 blockExpireAt 一起才看得出「还剩多久自动放行」 |
 | `blockExpireAt` | `number,null` | 是 | 挂起时限。超时自动放行并告警 —— 没有时限的挂起等于永久冻结 |
 | `decidedBy` | `string,null` | 是 | 人工放行者；**SYSTEM_TIMEOUT = 超时自动放行**，要单独看 |
-| `decideRemark` | `string,null` | 是 | — |
+| `decideRemark` | `string,null` | 是 | 处置时写的原因。**事后要能回答「当时凭什么放的」**，而那句话只有此刻的人写得出来 |
 
 
 #### GET `/ops/settle/fee-rules`
@@ -9600,9 +9600,9 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `entityNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | 欠款主体号 |
 | `balanceMinor` | `number` | 是 | 当前欠款（分），恒 >= 0。0 = 没有欠款 |
-| `txns` | [`#/definitions/DebtTxn`](#definitionsdebttxn)\[\] | 是 | — |
+| `txns` | [`#/definitions/DebtTxn`](#definitionsdebttxn)\[\] | 是 | 流水，时间倒序。**余额从流水推得出来**，两者对不上时信流水 |
 
 ### MerchantDeposit
 
@@ -10386,24 +10386,24 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `batchNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `payChannel` | `string` | 是 | — |
+| `batchNo` | `string` | 是 | 批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话 |
+| `entityNo` | `string` | 是 | 收款主体号 |
+| `payChannel` | `string` | 是 | 支付通道码。**不同通道账期不同，所以不能合批** |
 | `settleCycle` | `string` | 是 | 本批采用的账期规则快照，如 T+1 / WEEKLY |
-| `periodFrom` | `number` | 是 | — |
+| `periodFrom` | `number` | 是 | 本批的收单起始时刻。与 dueAt 一起界定「这批装的是哪几天的单」 |
 | `dueAt` | `number` | 是 | T3 应结日 |
 | `releasedAt` | `number,null` | 是 | 实际放行时刻。与 dueAt 分开才答得出「晚了几天」 |
 | `freezeExpireAt` | `number,null` | 是 | Tmax：通道冻结窗口到期时刻。**为 null 表示还判不了** —— 冻结窗口的天数还没有书面口径，此时不该按一个猜的数报警 |
 | `status` | [`#/definitions/SettleBatchStatus`](#definitionssettlebatchstatus) | 是 | DRAFT / COLLECTED / RECONCILING / BLOCKED / RECONCILED / RELEASED |
-| `billCount` | `number` | 是 | — |
-| `grossMinor` | `number` | 是 | — |
-| `netMinor` | `number` | 是 | — |
-| `reconScope` | `SELF_ONLY` \| `BOTH` | 是 | 对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**， 不能显示成「已对账」—— 没有对方账单时那是一句自证的话 |
+| `billCount` | `number` | 是 | 本批单据数 |
+| `grossMinor` | `number` | 是 | 本批结算基数合计（分） |
+| `netMinor` | `number` | 是 | 本批应放款合计（分）。**放行时按这个数下发** |
+| `reconScope` | [`#/definitions/ReconScope`](#definitionsreconscope) | 是 | 对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**， 不能显示成「已对账」—— 没有对方账单时那是一句自证的话 |
 | `blockedReason` | `string,null` | 是 | 挂起原因，**直接展示给商家的原话**（含具体数字与阈值） |
-| `blockedAt` | `number,null` | 是 | — |
+| `blockedAt` | `number,null` | 是 | 挂起时刻。与 blockExpireAt 一起才看得出「还剩多久自动放行」 |
 | `blockExpireAt` | `number,null` | 是 | 挂起时限。超时自动放行并告警 —— 没有时限的挂起等于永久冻结 |
 | `decidedBy` | `string,null` | 是 | 人工放行者；**SYSTEM_TIMEOUT = 超时自动放行**，要单独看 |
-| `decideRemark` | `string,null` | 是 | — |
+| `decideRemark` | `string,null` | 是 | 处置时写的原因。**事后要能回答「当时凭什么放的」**，而那句话只有此刻的人写得出来 |
 
 ### Settlement
 

@@ -96,6 +96,8 @@ function pointsAccount() {
 }
 import type { StaffLogRow } from "@shared/mock/db";
 import type {
+  MyDebt,
+  MySettleBatch,
   SettleBill,
   AppointmentSlot,
   ActivityConflict,
@@ -379,6 +381,76 @@ function belongsToMerchant(o: Order, merchantNo: string): boolean {
       return false;
     }
   });
+}
+
+// ------------------------------------------------ 账期（T2 / T3）
+//
+// 账期的两个时刻在 mock 里也要**分开算**，因为它们回答的不是同一个问题：
+//   T2 可结算 = 履约完成 + 售后期，说的是「这笔钱不会再被退回去了」；
+//   T3 应结日 = T2 之后按账期规则落到的那一天的**零点**，说的是「哪天放」。
+// 合成一个数的话，「售后期还没过」和「账期还没到」在界面上就成了同一句话，
+// 而商家能自己解决的只有前者（催买家确认收货）。
+
+/** mock 售后期：7 天。真值由后端按类目给，端上不自己算 */
+const AFTER_SALE_MS = 7 * 86_400_000;
+
+/** T+1 应结日 = 可结算次日**零点**（与后端 SettleCycles.dueAt 同口径） */
+function dueOf(settleableAt: number): number {
+  const d = new Date(settleableAt + 86_400_000);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+/**
+ * 批次号只由应结日决定。**结算单上的批次号与账期页的必须是同一个** ——
+ * 各算各的话，商家从单子上抄下批次号在账期页里搜不到。
+ */
+function batchNoOf(dueAt: number): string {
+  /*
+   * **按本地日期拼，不能用 toISOString** —— 应结日是本地零点，
+   * 转 UTC 后退到前一天，于是界面上「08-04 应结」配着一个 …0803 的批次号。
+   * 商家会以为自己看错了行，客服照着号也查不到。第一次看页面就撞见了。
+   */
+  const d = new Date(dueAt);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `STB${d.getFullYear()}${mm}${dd}`;
+}
+
+/**
+ * 批次状态**只由应结日推**，不看数组下标。
+ *
+ * 下标法（「第一批算挂起」）在两个接口里会给出不同答案：
+ * 结算单列表和账期列表筛的单子不一样，同一批在两页上就成了两个状态 ——
+ * 而商家看到的是「结算单说已放款，账期页说挂起」。
+ *
+ * 规则：还没到期 = 收单中；刚到期那一批 = 挂起（**这条渲染路径要有人看过**）；
+ * 更早的 = 已放款。
+ */
+function batchStateOf(dueAt: number, now = Date.now()): {
+  status: MySettleBatch["status"];
+  blockedReason?: string;
+  blockExpireAt?: number;
+  releasedAt?: number;
+} {
+  if (dueAt > now) return { status: "DRAFT" };
+  /*
+   * 挂起窗口取 7 天而不是 1 天：T+1 的应结日落在**零点**，
+   * 「刚过期一天以内」这个窗口在一天里绝大多数时刻都是空的 ——
+   * 于是挂起这条渲染路径在 mock 下几乎永远看不到，
+   * 而它恰恰是这一页唯一需要商家看懂的状态。
+   */
+  if (dueAt > now - 7 * 86_400_000) {
+    return {
+      status: "BLOCKED",
+      // 挂起原因**带具体数字与阈值**：只说「风控拦截」的话，商家除了打客服没有别的动作
+      blockedReason: "本批退款率 12.5%（近 7 天），高于 10% 的复核线，已转人工复核。",
+      // 时限不能落在过去：显示一个已经过去的「自动放行时刻」而批次还挂着，
+      // 是页面上自相矛盾的一句话
+      blockExpireAt: Math.max(dueAt + 2 * 86_400_000, now + 86_400_000),
+    };
+  }
+  return { status: "RELEASED", releasedAt: dueAt + 3_600_000 };
 }
 
 function myGoods(): Goods[] {
@@ -4097,12 +4169,89 @@ export const mockApi: MerchantApi = {
             status: o.status === "REFUNDED" ? ("REVERSED" as const) : ("SPLIT" as const),
             createdAt: o.createdAt,
             splitAt: o.status === "REFUNDED" ? undefined : o.createdAt,
+            /*
+             * T2 可结算 = 完成 + 售后期。**退款单不给可结算时刻** ——
+             * 给了的话页面会显示一个「预计到账日」，而那笔钱不会到。
+             */
+            settleableAt: o.status === "REFUNDED" ? undefined : o.createdAt + AFTER_SALE_MS,
+            dueAt: o.status === "REFUNDED" ? undefined : dueOf(o.createdAt + AFTER_SALE_MS),
+            batchNo: o.status === "REFUNDED" ? undefined : batchNoOf(dueOf(o.createdAt + AFTER_SALE_MS)),
+            batchStatus: o.status === "REFUNDED"
+              ? undefined
+              : batchStateOf(dueOf(o.createdAt + AFTER_SALE_MS)).status,
+            batchBlockedReason: o.status === "REFUNDED"
+              ? undefined
+              : batchStateOf(dueOf(o.createdAt + AFTER_SALE_MS)).blockedReason,
             storeNo: home?.storeNo,
             // 门店没单独配号就走主体默认号 —— 那就是合并结算
             payMerchantNo: home?.payMerchantNo ?? "PM-MOCK-ENTITY",
           };
         }),
     );
+  },
+
+  /**
+   * 我的账期批次。**从 mSettleList 的结果推**，与收入汇总同一个理由 ——
+   * 两处口径不同的话，「这一批 3 笔」点进去只有 2 笔，
+   * 而商家会认为少给了一笔钱，不会认为是界面在骗人。
+   *
+   * 第一批固定造成 BLOCKED：**挂起是这一页唯一需要商家看懂的状态**，
+   * 而它在真实数据里很稀少 —— mock 里不造，这条渲染路径就永远没人看过。
+   */
+  async mSettleBatches() {
+    const bills = await this.mSettleList(true);
+    const byDue = new Map<number, SettleBill[]>();
+    for (const b of bills) {
+      if (!b.dueAt) continue;
+      const group = byDue.get(b.dueAt);
+      if (group) group.push(b);
+      else byDue.set(b.dueAt, [b]);
+    }
+    return delay(
+      [...byDue.keys()].sort((a, c) => a - c).map((due): MySettleBatch => {
+        const group = byDue.get(due)!;
+        return {
+          batchNo: batchNoOf(due),
+          payChannel: "WECHAT",
+          settleCycle: "T1",
+          dueAt: due,
+          billCount: group.length,
+          netMinor: group.reduce((n, b) => n + b.netMinor, 0),
+          ...batchStateOf(due),
+        };
+      }),
+    );
+  },
+
+  /**
+   * 我的欠款。**默认 0** —— 绝大多数商家从没欠过，
+   * mock 里长期造一笔欠款会让每个人都以为这一块总是显示的，
+   * 于是「余额为 0 时整块不出现」这条分支从来没被看过。
+   *
+   * 余额**从流水推**，不另写一个数：两处对不上的时候，
+   * 商家信的是余额，而能解释的是流水。
+   */
+  async mMyDebt(): Promise<MyDebt> {
+    /** 改成 true 看有欠款时的样子 */
+    const OWE: boolean = false;
+    const now = Date.now();
+    const txns: MyDebt["txns"] = OWE
+      ? [
+          {
+            txnNo: "DT0001", txnType: "INCUR", amountMinor: 3200, balanceAfterMinor: 3200,
+            sourceType: "REFUND", sourceNo: "RF20260801001",
+            reason: "退款时这笔货款已经放出，先记欠款", at: now - 3 * 86_400_000,
+          },
+          {
+            txnNo: "DT0002", txnType: "OFFSET", amountMinor: -2000, balanceAfterMinor: 1200,
+            batchNo: "STB20260810", reason: "从本批货款中抵扣", at: now - 86_400_000,
+          },
+        ]
+      : [];
+    return delay({
+      balanceMinor: txns.length ? txns[txns.length - 1]!.balanceAfterMinor : 0,
+      txns,
+    });
   },
 
   // ---------------------------------------------------------------- 到货异常

@@ -249,6 +249,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
 
   mRateCard: { method: "GET", path: "/biz/settle/rate-card", auth: true, summary: "费率卡" },
   mSettleList: { method: "GET", path: "/biz/settle/bills", auth: true, summary: "结算单列表" },
+  mSettleBatches: { method: "GET", path: "/biz/settle/batch", auth: true, summary: "我的账期批次" },
+  mMyDebt: { method: "GET", path: "/biz/merchant/debt", auth: true, summary: "我的欠款与流水" },
   mReportShortage: { method: "POST", path: "/biz/pickup/:orderNo/report", auth: true, summary: "破损短少上报" },
 
   // ---------------------------------------------------------------- 积分（B-11.x）

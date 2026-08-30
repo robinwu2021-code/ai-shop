@@ -607,6 +607,12 @@ export default {
   },
 
   income: {
+    batchTitle: "我的账期",
+    batchHint: "同一天应结的单子合成一批放款；批次里的钱在放行前不会到账",
+    batchBills: "{n} 笔",
+    batchExpire: "{d} 前未处理将自动放行",
+    debt: "欠平台",
+    debtHint: "退款时货款已经放出的部分，会从后续货款里自动抵扣",
 
     title: "收入",
 
@@ -1266,6 +1272,15 @@ export default {
     rules: "成团单位是自提点；单档成团，不做阶梯价；不成团不作废，按原价照常发货。",
   },
   settle: {
+    dueAt: "预计到账",
+    notSettleable: "售后期结束后确定",
+    batchNo: "所属批次",
+    batchStatusDRAFT: "收单中",
+    batchStatusCOLLECTED: "已截批",
+    batchStatusRECONCILING: "对账中",
+    batchStatusBLOCKED: "已挂起",
+    batchStatusRECONCILED: "待放款",
+    batchStatusRELEASED: "已放款",
     rateTitle: "费率说明",
     pointsTitle: "本店积分",
     pointsOn: "已开启",

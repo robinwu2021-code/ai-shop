@@ -5272,15 +5272,19 @@ components:
       properties: 
         batchNo: 
           type: "string"
+          description: "批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话"
         entityNo: 
           type: "string"
+          description: "收款主体号"
         payChannel: 
           type: "string"
+          description: "支付通道码。**不同通道账期不同，所以不能合批**"
         settleCycle: 
           type: "string"
           description: "本批采用的账期规则快照，如 T+1 / WEEKLY"
         periodFrom: 
           type: "number"
+          description: "本批的收单起始时刻。与 dueAt 一起界定「这批装的是哪几天的单」"
         dueAt: 
           type: "number"
           description: "T3 应结日"
@@ -5299,15 +5303,15 @@ components:
           description: "DRAFT / COLLECTED / RECONCILING / BLOCKED / RECONCILED / RELEASED"
         billCount: 
           type: "number"
+          description: "本批单据数"
         grossMinor: 
           type: "number"
+          description: "本批结算基数合计（分）"
         netMinor: 
           type: "number"
+          description: "本批应放款合计（分）。**放行时按这个数下发**"
         reconScope: 
-          type: "string"
-          enum: 
-            - "SELF_ONLY"
-            - "BOTH"
+          "$ref": "#/definitions/ReconScope"
           description: "对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**， 不能显示成「已对账」—— 没有对方账单时那是一句自证的话"
         blockedReason: 
           type: 
@@ -5318,6 +5322,7 @@ components:
           type: 
             - "number"
             - "null"
+          description: "挂起时刻。与 blockExpireAt 一起才看得出「还剩多久自动放行」"
         blockExpireAt: 
           type: 
             - "number"
@@ -5332,6 +5337,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "处置时写的原因。**事后要能回答「当时凭什么放的」**，而那句话只有此刻的人写得出来"
       required: 
         - "batchNo"
         - "entityNo"
@@ -5362,11 +5368,18 @@ components:
         - "BLOCKED"
         - "RECONCILED"
         - "RELEASED"
+    ReconScope: 
+      type: "string"
+      enum: 
+        - "SELF_ONLY"
+        - "BOTH"
+      description: "对账覆盖面。<b>SELF_ONLY 不等于「对完了」</b> —— 它只是我方账内自洽，通道账单还没比过。界面要如实标注， 显示成「已对账」是一句自证的话。"
     MerchantDebt: 
       type: "object"
       properties: 
         entityNo: 
           type: "string"
+          description: "欠款主体号"
         balanceMinor: 
           type: "number"
           description: "当前欠款（分），恒 >= 0。0 = 没有欠款"
@@ -5374,6 +5387,7 @@ components:
           type: "array"
           items: 
             "$ref": "#/definitions/DebtTxn"
+          description: "流水，时间倒序。**余额从流水推得出来**，两者对不上时信流水"
       required: 
         - "entityNo"
         - "balanceMinor"
@@ -5385,14 +5399,10 @@ components:
       properties: 
         txnNo: 
           type: "string"
+          description: "流水号"
         txnType: 
-          type: "string"
-          enum: 
-            - "INCUR"
-            - "OFFSET"
-            - "DEPOSIT"
-            - "WRITE_OFF"
-          description: "INCUR 产生 / OFFSET 货款抵扣 / DEPOSIT 保证金抵扣 / WRITE_OFF 核销"
+          "$ref": "#/definitions/DebtTxnType"
+          description: "这一笔是怎么来的"
         amountMinor: 
           type: "number"
           description: "**有符号**：产生为正、偿还为负。靠 txnType 推方向等于把方向表达两遍"
@@ -5403,6 +5413,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "源单类型，如 REFUND。空 = 存量数据"
         sourceNo: 
           type: 
             - "string"
@@ -5417,8 +5428,10 @@ components:
           type: 
             - "string"
             - "null"
+          description: "记这一笔的理由，**给人看的原话**"
         at: 
           type: "number"
+          description: "发生时刻（毫秒）"
       required: 
         - "txnNo"
         - "txnType"
@@ -5430,6 +5443,14 @@ components:
         - "reason"
         - "at"
       additionalProperties: false
+    DebtTxnType: 
+      type: "string"
+      enum: 
+        - "INCUR"
+        - "OFFSET"
+        - "DEPOSIT"
+        - "WRITE_OFF"
+      description: "欠款流水类型。<b>方向不由它推</b> —— amountMinor 自带符号，靠类型再推一次方向等于把同一件事表达两遍， 而两处迟早会不一致。"
     Staff: 
       type: "object"
       properties: 

@@ -412,7 +412,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 92,
+        "b-app": 93,
         "c-app": 6
       }
     },
@@ -476,7 +476,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 83,
+        "b-app": 85,
         "c-app": 3
       }
     },
@@ -512,7 +512,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 234,
+        "b-app": 241,
         "c-app": 111
       }
     },
@@ -528,7 +528,7 @@
         "align-items": "baseline"
       },
       "usage": {
-        "b-app": 28,
+        "b-app": 30,
         "c-app": 3
       }
     },
@@ -544,7 +544,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 110,
+        "b-app": 115,
         "c-app": 67
       }
     },
@@ -776,7 +776,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 267,
+        "b-app": 276,
         "c-app": 38
       }
     },
@@ -820,7 +820,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 238,
+        "b-app": 245,
         "c-app": 191
       }
     },
@@ -908,7 +908,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 12,
+        "b-app": 14,
         "c-app": 9
       }
     },
@@ -974,7 +974,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 96,
+        "b-app": 97,
         "c-app": 28
       }
     },
@@ -1038,7 +1038,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 187,
+        "b-app": 189,
         "c-app": 63
       }
     },
@@ -1238,7 +1238,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 184,
+        "b-app": 191,
         "c-app": 129
       }
     },
@@ -1268,7 +1268,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 109,
+        "b-app": 111,
         "c-app": 57
       }
     },
@@ -2295,9 +2295,9 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 41,
-      "localSelectors": 3,
-      "localCssLines": 9,
+      "libClassHits": 76,
+      "localSelectors": 6,
+      "localCssLines": 18,
       "rolled": []
     },
     {
@@ -2686,9 +2686,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 73,
-      "localSelectors": 8,
-      "localCssLines": 28,
+      "libClassHits": 85,
+      "localSelectors": 10,
+      "localCssLines": 34,
       "rolled": []
     },
     {

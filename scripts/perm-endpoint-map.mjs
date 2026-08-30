@@ -300,6 +300,15 @@ export const RULES = [
   ["GET", /^\/ops\/settle\/pay-channels/, "finance:rate:read"],
   ["*", /^\/ops\/settle\/pay-channels/, "finance:rate:update"],
 
+  // 账期批次。**看与放不是同一档**：能看结算单的人就该看得到钱卡在哪一批
+  // （否则客服答不上「为什么还没到」），但放行是一次真的动钱。
+  ["GET", /^\/ops\/settle-batches/, "finance:settle:read"],
+  ["*", /^\/ops\/settle-batches/, "finance:settle:execute"],
+  // 商家欠款。抵扣动的是商家的**本金**（保证金），比放行更重一档 ——
+  // 用 payout:execute 而不是 settle:execute
+  ["GET", /^\/ops\/debts/, "finance:settle:read"],
+  ["*", /^\/ops\/debts/, "finance:payout:execute"],
+
   // ── 评价 ───────────────────────────────────────────────────────────────
   ["GET", /^\/ops\/review-score-config/, "review:score:read"],
   ["POST", /^\/ops\/review-score-config/, "review:score:update"],

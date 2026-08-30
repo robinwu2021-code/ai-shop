@@ -92,6 +92,8 @@ import type {
   OrderStatus,
   VerifyBatchResult,
   PickupOverview,
+  MyDebt,
+  MySettleBatch,
   RateCard,
   StoreFulfillment,
   MyQualifications,
@@ -1275,6 +1277,16 @@ export interface MerchantApi {
   mSettleList(allStores?: boolean): Promise<SettleBill[]>;
   /** 费率卡（后端已实现）。把费率讲清楚是「自带客流零佣金」能起作用的前提 */
   mRateCard(): Promise<RateCard>;
+  /**
+   * 我的账期批次。**商家问的第一个问题是「什么时候到」** ——
+   * 结算单只答得出「多少钱」，答不出「哪天」，那一半靠这个接口。
+   */
+  mSettleBatches(): Promise<MySettleBatch[]>;
+  /**
+   * 我的欠款与流水。**大多数商家永远是 0** ——
+   * 端上按余额决定这一块显不显示，不要无条件占一屏。
+   */
+  mMyDebt(): Promise<MyDebt>;
 
   // ---- 到货异常上报（B-10.4.2）
   /** 破损 / 短少上报。下游是售后责任判定（平台 / 供货商家 / 自提点商家，M4 待定） */

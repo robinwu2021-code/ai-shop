@@ -2981,6 +2981,22 @@ _无字段_
 | `industry` | `string` | 否 | 行业（`sys_industry.industry`）。 **它决定这家店能不能以小微主体进件** —— 微信的小微白名单是按行业给的， 也是 `points_forced` 默认值的来源。 后端一直在收、库里一直有这一列，但契约没登记、端也没传， 于是 `mch_entity.industry` 恒空：进件时才发现主体类型选错了， 而那时商家已经开完店、上完架。 |
 
 
+#### GET `/biz/merchant/debt`
+
+我的欠款与流水　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MyDebt`](#mydebt)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `balanceMinor` | `number` | 是 | 当前欠款（分）。**0 = 没有欠款，整块不显示** —— 绝大多数商家从没欠过 |
+| `txns` | [`MyDebtTxn`](#mydebttxn)\[\] | 是 | 流水，时间倒序。**余额从流水推得出来**，对不上时信流水 |
+
+
 #### GET `/biz/merchant/pay-channel`
 
 本店能开的收款通道（含没开的）　🔒
@@ -4117,6 +4133,17 @@ _无字段_
 
 
 ### settle
+
+#### GET `/biz/settle/batch`
+
+我的账期批次　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MySettleBatch`](#mysettlebatch)\[\]
+
 
 #### GET `/biz/settle/bills`
 
@@ -5476,6 +5503,17 @@ _无字段_
 - `USD`
 - `AED`
 
+### DebtTxnType
+
+欠款流水类型。**方向不由它推** —— amountMinor 自带符号。 与 ops-web 的 DebtTxnType 同名同值：两处声明，取值必须一起改。
+
+枚举取值：
+
+- `INCUR`
+- `OFFSET`
+- `DEPOSIT`
+- `WRITE_OFF`
+
 ### DeliveryRule
 
 商家自送规则（ADR-005 §5：不做骑手系统，只有范围与门槛）
@@ -6274,6 +6312,29 @@ _无字段_
 - `MARKETING`
 - `SYSTEM`
 
+### MyDebt
+
+我的欠款。 ⚠️ **与保证金方向相反**：保证金是商家自己的钱，欠款是欠平台的。 端上不要把两者放在一起算成一个「账户余额」。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `balanceMinor` | `number` | 是 | 当前欠款（分）。**0 = 没有欠款，整块不显示** —— 绝大多数商家从没欠过 |
+| `txns` | [`MyDebtTxn`](#mydebttxn)\[\] | 是 | 流水，时间倒序。**余额从流水推得出来**，对不上时信流水 |
+
+### MyDebtTxn
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `txnNo` | `string` | 是 | 流水号 |
+| `txnType` | [`DebtTxnType`](#debttxntype) | 是 | INCUR 产生 / OFFSET 货款抵扣 / DEPOSIT 保证金抵扣 / WRITE_OFF 核销 |
+| `amountMinor` | `number` | 是 | **有符号**：产生为正、偿还为负 |
+| `balanceAfterMinor` | `number` | 是 | 这一笔之后的欠款余额 |
+| `sourceType` | `string` | 否 | 源单类型，如 REFUND |
+| `sourceNo` | `string` | 否 | 源单号 —— 商家问「为什么欠」，答案在这里 |
+| `batchNo` | `string` | 否 | 从哪一批扣的 —— 商家问「扣哪了」，答案在这里 |
+| `reason` | `string` | 否 | 记这一笔的理由，**给商家看的原话** |
+| `at` | `number` | 是 | 发生时刻（毫秒） |
+
 ### MyQualifications
 
 「我的资质」这一页要的三份数据。
@@ -6283,6 +6344,23 @@ _无字段_
 | `items` | [`Qualification`](#qualification)\[\] | 是 | — |
 | `grantedCodes` | `string`\[\] | 是 | 已获授权的类目码。端上据此把「已解锁 / 待授权」标出来 |
 | `catalog` | [`AuthCodeInfo`](#authcodeinfo)\[\] | 是 | — |
+
+### MySettleBatch
+
+我的账期批次。**商家问的是「这一批什么时候放、卡在哪」**。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `batchNo` | `string` | 是 | 批次号。**与结算单上的批次号是同一个** —— 商家照着单子来问的就是它 |
+| `payChannel` | `string` | 是 | 支付通道码。**不同通道账期不同，所以不合批** |
+| `settleCycle` | `string` | 是 | 本批采用的账期规则，如 T+1 / WEEKLY |
+| `dueAt` | `number` | 是 | T3 应结日 |
+| `releasedAt` | `number` | 否 | 实际放行时刻。空 = 还没放 |
+| `status` | [`SettleBatchStatus`](#settlebatchstatus) | 是 | 本批走到哪一步 |
+| `billCount` | `number` | 是 | 本批装了几笔 |
+| `netMinor` | `number` | 是 | 本批应放款合计（分） |
+| `blockedReason` | `string` | 否 | 挂起原因，**原话展示**（含具体数字与阈值），不要在端上再拼一遍 |
+| `blockExpireAt` | `number` | 否 | 超时未处置将自动放行的时刻 |
 
 ### Order
 
@@ -6993,6 +7071,19 @@ _无字段_
 - `PERSONAL_BANK_CARD`
 - `MERCHANT_ID`
 
+### SettleBatchStatus
+
+账期批次状态。DRAFT 收单中 · COLLECTED 已截批 · RECONCILING 对账中 · BLOCKED 已挂起 · RECONCILED 待放款 · RELEASED 已放款
+
+枚举取值：
+
+- `DRAFT`
+- `COLLECTED`
+- `RECONCILING`
+- `BLOCKED`
+- `RECONCILED`
+- `RELEASED`
+
 ### SettleBill
 
 结算流水。**一个子订单一行**（ADR-002 §5），不是周期账单。 > 2026-08-11 更正：这个类型此前描述的是一套「周期账单」（`billNo` / `periodStart` > / `orderCount` / `settledMinor`），而后端 `/biz/settle/bills` 从来返回的都是 > 按子单一行的分账流水。**字段一个都对不上**，页面靠 mock 才看起来是好的 —— > 连真后端会整片 undefined。与本轮反复撞到的「单看任一端都完整，断在两端之间」同形状。
@@ -7014,6 +7105,11 @@ _无字段_
 | `splitAt` | `number` | 否 | 分账完成时间；没分完为空 |
 | `storeNo` | `string` | 否 | 这笔钱是**哪家店**挣的（统计维度）。空 = 存量主体级流水。 它**不决定钱打给谁** —— 打给谁看 `payMerchantNo`。 两家店可以共用一个收款号（合并结算），也可以各配各的（分开结算）。 |
 | `payMerchantNo` | `string` | 否 | 这笔钱打给**哪个收款号**（结算维度，生成时快照）。空 = 当时进件还没走完 |
+| `settleableAt` | `number` | 否 | T2 可结算时刻。**空 = 还不可结算**（未履约，或售后未闭环），不是「立刻可结」。 与下面三个一起回答商家问的第一个问题：**「这笔什么时候到」**。 此前这一页只给金额，商家拿它去对银行流水，对不上就来找客服 —— 而客服看到的也只有一个金额。 |
+| `dueAt` | `number` | 否 | T3 应结日（本批的）。空 = 还没入批 |
+| `batchNo` | `string` | 否 | 归属批次。空 = 还没入批 |
+| `batchStatus` | [`SettleBatchStatus`](#settlebatchstatus) | 否 | 本批当前状态。空 = 还没入批。 **单据状态说「钱在哪」，批次状态说「流程走到哪」** —— 两个都要看： 单子还是 PENDING 但批次已 RECONCILED，说明就快放了。 |
+| `batchBlockedReason` | `string` | 否 | 批次被挂起的原因，**直接展示给商家的原话**。空 = 没挂起 |
 
 ### SettleBillStatus
 

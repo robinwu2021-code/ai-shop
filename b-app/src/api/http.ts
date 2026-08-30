@@ -116,6 +116,8 @@ import type {
   LoginReq,
   VerifyBatchResult,
   PickupOverview,
+  MyDebt,
+  MySettleBatch,
   RateCard,
   StoreFulfillment,
   GeoReverseResult,
@@ -507,6 +509,8 @@ export const httpApi: MerchantApi = {
   mSettleList: (allStores) =>
     http.get<SettleBill[]>(E.mSettleList.path, allStores ? { allStores: true } : undefined),
   mRateCard: () => http.get<RateCard>(E.mRateCard.path),
+  mSettleBatches: () => http.get<MySettleBatch[]>(E.mSettleBatches.path),
+  mMyDebt: () => http.get<MyDebt>(E.mMyDebt.path),
   mReportShortage: (subOrderNo, payload) =>
     http.post<PickupOrder>(buildPath(E.mReportShortage.path, { orderNo: subOrderNo }), {
       ...payload,

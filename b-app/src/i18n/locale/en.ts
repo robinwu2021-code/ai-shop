@@ -459,6 +459,12 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
   },
 
   income: {
+    batchTitle: "My settlement cycle",
+    batchHint: "Bills due on the same day are released as one batch; the money does not arrive before the batch is released",
+    batchBills: "{n} bills",
+    batchExpire: "Auto-releases on {d} if not handled",
+    debt: "Owed to platform",
+    debtHint: "Refunds paid out after settlement are deducted from your later proceeds",
 
     title: "Income",
 
@@ -1038,6 +1044,15 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     rules: "Groups form per pickup point; single tier, no ladder pricing; if it does not fill, it still ships at the normal price.",
   },
   settle: {
+    dueAt: "Expected payout",
+    notSettleable: "Set once the returns window closes",
+    batchNo: "Batch",
+    batchStatusDRAFT: "Collecting",
+    batchStatusCOLLECTED: "Closed",
+    batchStatusRECONCILING: "Reconciling",
+    batchStatusBLOCKED: "On hold",
+    batchStatusRECONCILED: "Ready to release",
+    batchStatusRELEASED: "Released",
     rateTitle: "Fee rates",
     pointsTitle: "Store points", pointsOn: "On", pointsOff: "Off", pointsForced: "On by platform",
     pointsExpense: "{period} points issuing fee",

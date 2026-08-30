@@ -513,11 +513,15 @@ export interface PayChannelSetting {
  * 所以这一页回答的是「这家的钱卡在哪一批」，而不是「这一笔多少钱」。
  */
 export interface SettleBatch {
+  /** 批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话 */
   batchNo: string;
+  /** 收款主体号 */
   entityNo: string;
+  /** 支付通道码。**不同通道账期不同，所以不能合批** */
   payChannel: string;
   /** 本批采用的账期规则快照，如 T+1 / WEEKLY */
   settleCycle: string;
+  /** 本批的收单起始时刻。与 dueAt 一起界定「这批装的是哪几天的单」 */
   periodFrom: number;
   /** T3 应结日 */
   dueAt: number;
@@ -530,23 +534,37 @@ export interface SettleBatch {
   freezeExpireAt: number | null;
   /** DRAFT / COLLECTED / RECONCILING / BLOCKED / RECONCILED / RELEASED */
   status: SettleBatchStatus;
+  /** 本批单据数 */
   billCount: number;
+  /** 本批结算基数合计（分） */
   grossMinor: number;
+  /** 本批应放款合计（分）。**放行时按这个数下发** */
   netMinor: number;
   /**
    * 对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**，
    * 不能显示成「已对账」—— 没有对方账单时那是一句自证的话
    */
-  reconScope: "SELF_ONLY" | "BOTH";
+  reconScope: ReconScope;
   /** 挂起原因，**直接展示给商家的原话**（含具体数字与阈值） */
   blockedReason: string | null;
+  /** 挂起时刻。与 blockExpireAt 一起才看得出「还剩多久自动放行」 */
   blockedAt: number | null;
   /** 挂起时限。超时自动放行并告警 —— 没有时限的挂起等于永久冻结 */
   blockExpireAt: number | null;
   /** 人工放行者；**SYSTEM_TIMEOUT = 超时自动放行**，要单独看 */
   decidedBy: string | null;
+  /** 处置时写的原因。**事后要能回答「当时凭什么放的」**，而那句话只有此刻的人写得出来 */
   decideRemark: string | null;
 }
+
+/**
+ * 对账覆盖面。<b>SELF_ONLY 不等于「对完了」</b> ——
+ * 它只是我方账内自洽，通道账单还没比过。界面要如实标注，
+ * 显示成「已对账」是一句自证的话。
+ */
+export type ReconScope =
+  | "SELF_ONLY"      // 只做了 A 侧：我方账内自洽
+  | "BOTH";          // A + B 两侧：与通道账单也比过了
 
 export type SettleBatchStatus =
   | "DRAFT"          // 开批，正在收单
@@ -563,25 +581,42 @@ export type SettleBatchStatus =
  * 欠款是商家欠平台的。两者不能合成一个数看。
  */
 export interface MerchantDebt {
+  /** 欠款主体号 */
   entityNo: string;
   /** 当前欠款（分），恒 >= 0。0 = 没有欠款 */
   balanceMinor: number;
+  /** 流水，时间倒序。**余额从流水推得出来**，两者对不上时信流水 */
   txns: DebtTxn[];
 }
 
 export interface DebtTxn {
+  /** 流水号 */
   txnNo: string;
-  /** INCUR 产生 / OFFSET 货款抵扣 / DEPOSIT 保证金抵扣 / WRITE_OFF 核销 */
-  txnType: "INCUR" | "OFFSET" | "DEPOSIT" | "WRITE_OFF";
+  /** 这一笔是怎么来的 */
+  txnType: DebtTxnType;
   /** **有符号**：产生为正、偿还为负。靠 txnType 推方向等于把方向表达两遍 */
   amountMinor: number;
   /** 变动后余额。对账时逐笔回放用 */
   balanceAfterMinor: number;
+  /** 源单类型，如 REFUND。空 = 存量数据 */
   sourceType: string | null;
   /** 源单号。**指不出源头的欠款没法向商家解释** */
   sourceNo: string | null;
   /** OFFSET 时记从哪一批扣的 */
   batchNo: string | null;
+  /** 记这一笔的理由，**给人看的原话** */
   reason: string | null;
+  /** 发生时刻（毫秒） */
   at: number;
 }
+
+/**
+ * 欠款流水类型。<b>方向不由它推</b> ——
+ * amountMinor 自带符号，靠类型再推一次方向等于把同一件事表达两遍，
+ * 而两处迟早会不一致。
+ */
+export type DebtTxnType =
+  | "INCUR"          // 产生：退款追偿追不回来，先记在账上
+  | "OFFSET"         // 货款抵扣（自动）
+  | "DEPOSIT"        // 保证金抵扣（人工，ADR-022 §3.3）
+  | "WRITE_OFF";     // 核销（需审批）

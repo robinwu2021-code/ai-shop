@@ -459,6 +459,12 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
   },
 
   income: {
+    batchTitle: "دورة التسوية",
+    batchHint: "تُجمع الفواتير المستحقة في اليوم نفسه في دفعة واحدة؛ لا يصل المبلغ قبل الإفراج عن الدفعة",
+    batchBills: "{n} فاتورة",
+    batchExpire: "سيتم الإفراج تلقائيًا في {d} إن لم تُعالج",
+    debt: "مستحق للمنصة",
+    debtHint: "المبالغ المستردة بعد التسوية تُخصم من مستحقاتك اللاحقة",
 
     title: "الدخل",
 
@@ -1036,6 +1042,15 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     rules: "التجميع لكل نقطة استلام، وبمستوى واحد بلا أسعار تصاعدية، وإن لم يكتمل يُشحن بالسعر العادي.",
   },
   settle: {
+    dueAt: "موعد الوصول المتوقع",
+    notSettleable: "يُحدَّد بعد انتهاء مهلة الإرجاع",
+    batchNo: "الدفعة",
+    batchStatusDRAFT: "قيد التجميع",
+    batchStatusCOLLECTED: "أُغلقت",
+    batchStatusRECONCILING: "قيد المطابقة",
+    batchStatusBLOCKED: "معلّقة",
+    batchStatusRECONCILED: "جاهزة للإفراج",
+    batchStatusRELEASED: "تم الإفراج",
     rateTitle: "الرسوم",
     pointsTitle: "نقاط المتجر", pointsOn: "مفعّلة", pointsOff: "متوقفة", pointsForced: "مفعّلة من المنصة",
     pointsExpense: "رسوم إصدار النقاط {period}",

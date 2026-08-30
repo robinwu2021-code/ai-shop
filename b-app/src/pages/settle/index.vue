@@ -54,6 +54,17 @@ const SCOPES = [
 
 const multiStore = computed(() => merchant.multiStore);
 
+/**
+ * 批次状态的色调判据是**「球在谁那边」**，不是状态好不好听：
+ * BLOCKED 要商家知道（警告色），RELEASED 是好消息（主色），其余都是过程态（默认）。
+ * 全都上色等于都没上色。
+ */
+function batchTone(st: string) {
+  if (st === "BLOCKED") return "sh-chip--warning";
+  if (st === "RELEASED") return "sh-chip--primary";
+  return "";
+}
+
 /** 万分比 → 百分数。后端存的是万分比整数（2% = 200），直接显示会变成 200% */
 const pct = (bp: number) => `${(bp / 100).toFixed(bp % 100 === 0 ? 0 : 2)}%`;
 
@@ -226,6 +237,33 @@ onShow(load);
           <text class="sh-muted">{{ $t("settle.fulfillFee") }}</text>
           <text class="sh-num is-danger">-{{ money(b.serviceFeeMinor) }}</text>
         </view>
+        <!--
+          **「什么时候到」和「多少钱」是两个问题**，这一页此前只答了后一个。
+          商家拿一个金额去对银行流水，对不上就来找客服，
+          而客服看到的也只有同一个金额 —— 那通电话谁都答不上来。
+
+          三档说的是三件不同的事，不能合成一句：
+            没有 settleableAt = 售后期还没过（**这个他能自己推进**：催买家确认收货）；
+            有应结日 = 哪天放（等着就行）；
+            批次挂起 = 卡住了，原因照抄后端原话（含数字与阈值）。
+        -->
+        <view class="sh-row sh-row--between row">
+          <text class="sh-muted">{{ $t("settle.dueAt") }}</text>
+          <text v-if="b.dueAt" class="sh-num">{{ monthDay(b.dueAt) }}</text>
+          <text v-else class="sh-muted">{{ $t("settle.notSettleable") }}</text>
+        </view>
+        <view v-if="b.batchStatus" class="sh-row sh-row--between row">
+          <text class="sh-muted">{{ $t("settle.batchNo") }}</text>
+          <view class="sh-row">
+            <text class="sh-num">{{ b.batchNo }}</text>
+            <text class="sh-chip batch__chip" :class="batchTone(b.batchStatus)">
+              {{ $t(`settle.batchStatus${b.batchStatus}`) }}
+            </text>
+          </view>
+        </view>
+        <text v-if="b.batchBlockedReason" class="sh-hint row batch__why">
+          {{ b.batchBlockedReason }}
+        </text>
         <!-- 多店商家必须看得见「哪家店挣的」和「打给哪个号」：
              只给其中一个，他就无法回答「河坊街店这个月的钱进了哪张卡」 -->
         <view v-if="multiStore" class="sh-row sh-row--between row">
@@ -261,6 +299,13 @@ onShow(load);
 .points__note {
   display: block;
   margin-top: 12rpx;
+}
+
+.batch__chip {
+  margin-left: 12rpx;
+}
+.batch__why {
+  display: block;
 }
 
 .bill__amount {

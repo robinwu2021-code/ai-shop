@@ -385,6 +385,8 @@ const RESPONSE_TYPES = {
   mSettleList: "SettleBill[]",
   mBizScope: "BizScope",
   mRateCard: "RateCard",
+  mSettleBatches: "MySettleBatch[]",
+  mMyDebt: "MyDebt",
   mPointsAccount: "MerchantPointAccount",
   mPointsRecords: "MerchantPointsRecord[]",
   mPointsToggle: "MerchantPointAccount",

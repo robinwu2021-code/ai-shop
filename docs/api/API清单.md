@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 652 个接口**：后端已实现 533（82%）· 前端在调 590
+**合计 654 个接口**：后端已实现 535（82%）· 前端在调 592
 
 ---
 
@@ -201,7 +201,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **209** 个接口 ｜ 后端已实现 **173**（83%）｜ 前端在调 **209**
+共 **211** 个接口 ｜ 后端已实现 **175**（83%）｜ 前端在调 **211**
 
 ### activities（4）
 
@@ -462,12 +462,13 @@
 | GET | `/biz/members/stats` | 四层人数与未计入买家 | — | `MemberStats` | 🔒 | ✅ | ✅ |
 | POST | `/biz/members/tags` | 批量打标 / 去标 | — | — | 🔒 | ✅ | ✅ |
 
-### merchant（8）
+### merchant（9）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | POST | `/biz/merchant/apply` | 提交入驻申请 | `MerchantApplyReqBody` | `MerchantProfile` | 🔒 | ✅ | ✅ |
 | GET | `/biz/merchant/apply` | 上次入驻申请 | — | `MerchantApplyReq` | 🔒 | ✅ | ✅ |
+| GET | `/biz/merchant/debt` | 我的欠款与流水 | — | `MyDebt` | 🔒 | ✅ | ✅ |
 | GET | `/biz/merchant/pay-channel` | 本店能开的收款通道（含没开的） | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/biz/merchant/payment` | 收款进件状态 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/merchant/payment` | 补交资料并提交进件 | `SubmitPaymentReq` | `PaymentApplyment` | 🔒 | ✅ | ✅ |
@@ -594,10 +595,11 @@
 | GET | `/biz/roles` | 角色列表（预置 + 自定义） | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/roles` | 建自定义角色 | — | `MerchantRole` | 🔒 | ✅ | ✅ |
 
-### settle（3）
+### settle（4）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/settle/batch` | 我的账期批次 | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/biz/settle/bills` | 结算单列表 | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/biz/settle/income` | 收入按状态汇总 | — | `IncomeSummary` | 🔒 | ✅ | ✅ |
 | GET | `/biz/settle/rate-card` | 费率卡 | — | `RateCard` | 🔒 | ✅ | ✅ |

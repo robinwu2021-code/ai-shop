@@ -700,6 +700,15 @@ const ENTITY_MAP = {
   UserCard: { table: "mkt_user_coupon", note: "卡包与券共表：储值卡/次卡在 mkt_user_coupon 上用类型区分" },
   // ── 结算
   SettleBill: { table: "stl_bill" },
+  SettleBatch: { table: "stl_settle_batch" },
+  MySettleBatch: {
+    table: "stl_settle_batch",
+    note: "B 端视角的同一张表。**字段是平台端 SettleBatch 的子集** —— 商家看不到 decidedBy / decideRemark / reconScope 这些内部处置痕迹，但看得到 blockedReason（那句话本来就是写给他的）",
+  },
+  MerchantDebt: { table: "mch_debt" },
+  MyDebt: { table: "mch_debt", note: "B 端视角的同一张表" },
+  DebtTxn: { table: "mch_debt_txn" },
+  MyDebtTxn: { table: "mch_debt_txn", note: "B 端视角的同一张表" },
   // ── 消息
   Message: { table: "notify_message" },
 };
