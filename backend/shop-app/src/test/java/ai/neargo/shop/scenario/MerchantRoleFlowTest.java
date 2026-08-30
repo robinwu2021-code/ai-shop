@@ -52,6 +52,21 @@ class MerchantRoleFlowTest {
     // ---------------------------------------------------------------- 边界
 
     @Test
+    @DisplayName("perms 数组里夹 null 要拒成 400 —— 此前 Set.copyOf 直接 NPE 变 500")
+    void nullPermIsBadRequestNot500() throws Exception {
+        String owner = merchant("12700270002", "空码测试店");
+        /*
+         * JSON 里 ["a", null] 是合法数组，而 Set.copyOf 见到 null 元素直接 NPE。
+         * 这个端点的注释自己写着「端点是公开的，绕过界面直接发请求是最容易想到的事」——
+         * 所以这条是可达的，表现是 500（看起来像系统坏了）而不是 400（你发的东西不对）。
+         */
+        mvc().perform(post("/biz/roles").header("Authorization", "Bearer " + owner)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"坏数组\",\"perms\":[\"biz:order:view\",null]}"))
+                .andExpect(jsonPath("$.code").value(10400));
+    }
+
+    @Test
     @DisplayName("★★★ 自定义角色不得包含 biz:store:admin —— 放开自定义时唯一不能放开的那条")
     void cannotGrantStoreAdminViaCustomRole() throws Exception {
         String owner = merchant("12700270001", "提权测试店");

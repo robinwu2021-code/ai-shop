@@ -116,6 +116,14 @@ public class MerchantRoleServiceImpl implements MerchantRoleService {
             // 一个权限都没有的角色是个陷阱：授出去等于没授，而老板以为授了
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        /*
+         * JSON 数组里 ["a", null] 是合法输入，而 Set.copyOf 见到 null 元素直接 NPE ——
+         * 表现是 500（像系统坏了）而不是 400（你发的东西不对）。
+         * 本方法头上自己写着「端点是公开的」，所以这条是真可达的，不是防御性洁癖。
+         */
+        if (perms.stream().anyMatch(java.util.Objects::isNull)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         Set<String> codes = Set.copyOf(perms);
         if (codes.contains(BizPerms.STORE_ADMIN) || codes.contains("*")) {
             /*
