@@ -15,9 +15,27 @@ import org.springframework.stereotype.Component;
 public class AttributionPortImpl implements AttributionPort {
 
     private final AttributionService attributionService;
+    private final ai.neargo.shop.marketing.attribution.FissionInviteService fissionInviteService;
 
-    public AttributionPortImpl(AttributionService attributionService) {
+    public AttributionPortImpl(
+            AttributionService attributionService,
+            ai.neargo.shop.marketing.attribution.FissionInviteService fissionInviteService) {
         this.attributionService = attributionService;
+        this.fissionInviteService = fissionInviteService;
+    }
+
+    /**
+     * 首单回填。**吞掉异常**：这是统计口径，不是交易的一部分 ——
+     * 让一次营销统计失败去回滚一笔已经收了钱的订单，代价方向完全反了。
+     */
+    @Override
+    public void onFirstOrder(String userNo, String orderNo) {
+        try {
+            fissionInviteService.onFirstOrder(userNo, orderNo);
+        } catch (RuntimeException e) {
+            org.slf4j.LoggerFactory.getLogger(AttributionPortImpl.class)
+                    .warn("[裂变] 首单回填失败 user={} order={}：{}", userNo, orderNo, e.toString());
+        }
     }
 
     @Override

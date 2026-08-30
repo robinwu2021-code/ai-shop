@@ -346,6 +346,49 @@ class OpsGrowthFlowTest {
         return value == null ? "null" : "\"" + value + "\"";
     }
 
+    @Test
+    @DisplayName("★★★ 邀请落台账、非新客不发奖、重复邀请只算一次 —— 运营端那两列不再恒为 0")
+    void fissionLedgerIsActuallyWritten() throws Exception {
+        String ops = opsLogin();
+        String couponNo = createCoupon(ops, "邀请有礼券");
+        String fissionNo = data(saveFissionRaw(ops, null, "老带新·台账", couponNo, 1, 1))
+                .get("fissionNo").asString();
+        setFissionEnabled(ops, fissionNo, true);
+
+        String inviterToken = login("13500177001");
+        String inviterNo = userNoOf(inviterToken);
+
+        /*
+         * **前置断言**：这两列此前恒为 0 —— 不是「还没人参加」，是从来没人写过台账。
+         * 先钉住 0，后面那个「变成 1」才说明是这次邀请造成的。
+         */
+        assertThat(fissionOf(ops, fissionNo, false).get("invitedCount").asInt()).isZero();
+
+        registerInvitedBy("13500177002", inviterNo);
+        assertThat(fissionOf(ops, fissionNo, false).get("invitedCount").asInt())
+                .as("邀请落地之后，运营端的累计邀请必须真的变成 1").isEqualTo(1);
+        assertThat(fissionOf(ops, fissionNo, false).get("convertedCount").asInt())
+                .as("还没下单，转化数不该跟着涨 —— 两列并列才看得出活动有没有用").isZero();
+
+        /*
+         * **重复邀请只算一次。** 同一个被邀请人再登录一次不该再落一行 ——
+         * 靠 uk_fission_invitee 兜底。没有这一条，一个人反复登录就能把邀请数刷上去。
+         */
+        registerInvitedBy("13500177002", inviterNo);
+        assertThat(fissionOf(ops, fissionNo, false).get("invitedCount").asInt())
+                .as("同一个人被邀两次只能算一次").isEqualTo(1);
+
+        /*
+         * **自己邀自己不落行。** 它不是「非新客」那一类（那类要落行让运营看得见），
+         * 是压根不成立的一次邀请。
+         */
+        String selfPhone = "13500177003";
+        String selfToken = login(selfPhone);
+        registerInvitedBy(selfPhone, userNoOf(selfToken));
+        assertThat(fissionOf(ops, fissionNo, false).get("invitedCount").asInt())
+                .as("自己邀自己不该进台账").isEqualTo(1);
+    }
+
     private String createCoupon(String ops, String title) throws Exception {
         String body = mvc().perform(post("/ops/coupons").header("Authorization", "Bearer " + ops)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -496,5 +539,22 @@ class OpsGrowthFlowTest {
 
     private String login(String phone) throws Exception {
         return TestLogin.consumer(mvc(), json, otpStore, phone);
+    }
+
+    /**
+     * 带邀请人注册。与 {@code TestLogin.consumer} 同一条链路，只多传 `inviterNo` ——
+     * 那个字段一直在契约里、端上也一直在传，而后端**接收后直接丢掉**（2026-08-30 修）。
+     */
+    private String registerInvitedBy(String phone, String inviterNo) throws Exception {
+        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"phone\":\"" + phone + "\"}"));
+        String code = otpStore.peek(phone).orElseThrow(
+                () -> new AssertionError("没有为 " + phone + " 生成验证码"));
+        mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"grantType\":\"PHONE_OTP\",\"principal\":\"" + phone
+                                + "\",\"credential\":\"" + code + "\",\"inviterNo\":\"" + inviterNo
+                                + "\",\"agreed\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+        return phone;
     }
 }

@@ -20,6 +20,10 @@ public final class AttributionMappers {
             extends BaseMapper<ai.neargo.shop.marketing.attribution.entity.MktAttributionRule> {
     }
 
+    public interface FissionInviteMapper
+            extends BaseMapper<ai.neargo.shop.marketing.attribution.entity.MktFissionInvite> {
+    }
+
     public interface FissionCampaignMapper
             extends BaseMapper<ai.neargo.shop.marketing.attribution.entity.MktFissionCampaign> {
     }

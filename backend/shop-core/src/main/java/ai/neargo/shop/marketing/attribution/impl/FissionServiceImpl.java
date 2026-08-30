@@ -22,10 +22,16 @@ public class FissionServiceImpl implements FissionService {
 
     private final FissionCampaignMapper campaignMapper;
     private final CouponMapper couponMapper;
+    private final ai.neargo.shop.marketing.attribution.mapper.AttributionMappers.FissionInviteMapper
+            inviteMapper;
 
-    public FissionServiceImpl(FissionCampaignMapper campaignMapper, CouponMapper couponMapper) {
+    public FissionServiceImpl(
+            FissionCampaignMapper campaignMapper, CouponMapper couponMapper,
+            ai.neargo.shop.marketing.attribution.mapper.AttributionMappers.FissionInviteMapper
+                    inviteMapper) {
         this.campaignMapper = campaignMapper;
         this.couponMapper = couponMapper;
+        this.inviteMapper = inviteMapper;
     }
 
     @Override
@@ -34,7 +40,7 @@ public class FissionServiceImpl implements FissionService {
                 .eq(enabledOnly, MktFissionCampaign::getEnabled, true)
                 .orderByDesc(MktFissionCampaign::getId);
         return DataScopeContext.executeWithoutScope(() -> campaignMapper.selectList(w))
-                .stream().map(FissionServiceImpl::toVO).toList();
+                .stream().map(this::toVO).toList();
     }
 
     @Override
@@ -115,12 +121,36 @@ public class FissionServiceImpl implements FissionService {
         return row;
     }
 
-    private static CampaignVO toVO(MktFissionCampaign c) {
+    private CampaignVO toVO(MktFissionCampaign c) {
+        /*
+         * **两个计数从台账现算，不读实体上那两列。**
+         *
+         * <p>实体上的 invitedCount / convertedCount 注释写着自己是「台账的聚合快照」，
+         * 而实际只在新建活动时 set(0)、**再没有一处递增** —— 运营端「邀请有礼」
+         * 那两列因此恒为 0，而 0 既像「还没人参加」又像「坏了」。
+         *
+         * <p>不改成「每处写台账时递增快照」的理由：那会留下第二个真源，
+         * 漏更新一处就长期偏差，并发还要加锁；而实体注释自己都写着
+         * 「真值以台账为准，对不上时以台账重算」—— 那就别留那个会对不上的东西。
+         * 活动是几十条级别，两次 COUNT 换「永远不会错」很划算。
+         */
+        long invited = countInvites(c.getFissionNo(), false);
+        long converted = countInvites(c.getFissionNo(), true);
         return new CampaignVO(c.getFissionNo(), c.getName(), c.getRewardType(), c.getCouponNo(),
                 nz(c.getInviterCount()), nz(c.getInviteeCount()),
                 Boolean.TRUE.equals(c.getEnabled()),
-                nz(c.getInvitedCount()), nz(c.getConvertedCount()),
+                (int) invited, (int) converted,
                 IsoTime.toIso(c.getCreatedAt()));
+    }
+
+    /** 台账计数。{@code convertedOnly} = 只数已回填首单的（= 转化）。 */
+    private long countInvites(String fissionNo, boolean convertedOnly) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                inviteMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.marketing.attribution.entity.MktFissionInvite>lambdaQuery()
+                        .eq(ai.neargo.shop.marketing.attribution.entity.MktFissionInvite::getFissionNo, fissionNo)
+                        .isNotNull(convertedOnly,
+                                ai.neargo.shop.marketing.attribution.entity.MktFissionInvite::getOrderNo)));
     }
 
     private static int nz(Integer v) {

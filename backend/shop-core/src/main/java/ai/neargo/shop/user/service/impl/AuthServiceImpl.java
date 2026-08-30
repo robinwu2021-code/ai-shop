@@ -90,6 +90,8 @@ public class AuthServiceImpl implements AuthService {
     /** 平台人档（P0）。登录成功后把账号绑到「这个自然人」上 —— 会员挂的是它，不是账号 */
     private final ai.neargo.shop.user.service.PersonService personService;
 
+    private final ai.neargo.shop.spi.marketing.FissionPort fissionPort;
+
     public AuthServiceImpl(UserMapper userMapper, IdentityMapper identityMapper,
                            TokenStore tokenStore, OtpStore otpStore,
                            OtpSendGuard sendGuard,
@@ -99,7 +101,8 @@ public class AuthServiceImpl implements AuthService {
                            ai.neargo.shop.common.ratelimit.RateLimiter rateLimiter,
                            ai.neargo.shop.user.service.PersonService personService,
                            @org.springframework.beans.factory.annotation.Value(
-                                   "${shop.auth.otp.fixed:}") String fixedOtp) {
+                                   "${shop.auth.otp.fixed:}") String fixedOtp,
+                           ai.neargo.shop.spi.marketing.FissionPort fissionPort) {
         this.userMapper = userMapper;
         this.identityMapper = identityMapper;
         this.tokenStore = tokenStore;
@@ -111,6 +114,7 @@ public class AuthServiceImpl implements AuthService {
         this.rateLimiter = rateLimiter;
         this.personService = personService;
         this.fixedOtp = fixedOtp;
+        this.fissionPort = fissionPort;
         if (usingFixedOtp()) {
             /*
              * ERROR 而不是 WARN：这条要在日志里**一眼扎出来**。
@@ -512,7 +516,30 @@ public class AuthServiceImpl implements AuthService {
         user.setStatus("NORMAL");
         user.setEntityNo(cmd.merchantNo());
         userMapper.insert(user);
+        /*
+         * ★ 邀请落台账。**只在这里调** —— 这一支才是「新账号」；
+         * 老用户再次登录不算邀请，否则同一个人靠反复登录就能把邀请数刷上去。
+         *
+         * <p>`cmd.inviterNo()` 此前**被接收后直接丢掉**：LoginReq 一直带着它、
+         * 端上一直在传，而这个类里一次都没用过 —— 于是裂变台账一行都没有，
+         * 运营端「邀请有礼」的两列恒为 0。
+         *
+         * <p>只传手机号**后四位**（B12：完整号码永远不出 UserQueryPort）。
+         */
+        /*
+         * deviceId 传 null：`LoginCommand` 里**没有这个字段**，端上也没在传。
+         * 不在这里发明一个 —— 新客判定会因此只用 PHONE 因子，
+         * 而那正是「配了哪些因子就用哪些」的正确降级：宁可少判一个维度，
+         * 不可拿一个编出来的值去判。要用 DEVICE 因子，得先让端上把设备号送上来。
+         */
+        fissionPort.onRegister(cmd.inviterNo(), user.getUserNo(), null, phoneTailOf(cmd));
         return user;
+    }
+
+    /** 手机号后四位；不是手机号登录时为 null。**完整号码不外传** */
+    private static String phoneTailOf(LoginCommand cmd) {
+        String p = cmd.principal();
+        return p == null || p.length() < 4 ? null : p.substring(p.length() - 4);
     }
 
     /**

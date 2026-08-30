@@ -67,7 +67,21 @@ public class CouponServiceImpl implements CouponService {
     @Override
     @Transactional
     public UserCouponVO receive(String couponNo) {
-        String userNo = SecurityUtils.currentUserNo();
+        return grantTo(SecurityUtils.currentUserNo(), couponNo);
+    }
+
+    /**
+     * 发一张券给**指定的人**。
+     *
+     * <p>与 {@link #receive} 走**同一套**判定（有效期 / 限领 / 原子扣库存）——
+     * 抽出来只是因为发放对象不再是「当前会话那个人」：邀请有礼要把奖励发给邀请人，
+     * 而那一刻的会话是被邀请人。
+     *
+     * <p>复制一份库存逻辑到调用方是这里唯一真正危险的做法：超发是查不回来的钱。
+     */
+    @Override
+    @Transactional
+    public UserCouponVO grantTo(String userNo, String couponNo) {
         MktCoupon coupon = template(couponNo);
 
         long now = System.currentTimeMillis();

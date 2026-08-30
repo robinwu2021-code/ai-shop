@@ -13,6 +13,15 @@ public interface CouponService {
 
     UserCouponVO receive(String couponNo);
 
+    /**
+     * 发一张券给指定的人（不是当前会话那个人）。
+     *
+     * <p>用在邀请有礼这类「奖励发给第三方」的场景：触发那一刻的会话是被邀请人，
+     * 而奖励要发给邀请人。判定与 {@link #receive} 完全一致 ——
+     * 有效期、每人限领、原子扣库存一条都不少。
+     */
+    UserCouponVO grantTo(String userNo, String couponNo);
+
     List<UserCouponVO> mine();
 
     /**
