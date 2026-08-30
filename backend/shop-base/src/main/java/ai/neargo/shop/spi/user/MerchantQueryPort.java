@@ -228,6 +228,17 @@ public interface MerchantQueryPort {
      */
     String feeBearerOf(String merchantNo, String storeNo, String payChannel);
 
+    /**
+     * 这个主体在这个通道的<b>账期</b>（{@code mch_payment_merchant.settle_cycle}）。
+     *
+     * <p>账期是「主体 × 通道」二维的：一家同时开微信和支付宝，两边可以不同。
+     *
+     * @return 查不到返回 {@code null} —— 调用方与通道那一档取更短的，
+     *         而 {@code SettleCycles} 把空当成最短的 T+1。<b>不在这里兜</b>：
+     *         兜一个默认值会让「没配过」和「配成 T+1」在调用方看来一样
+     */
+    String settleCycleOf(String merchantNo, String storeNo, String payChannel);
+
     /** 归集：用户付给平台户，平台是销售主体（代销）。**这条路径没有补差动作** */
     String FUNDS_AGGREGATED = "AGGREGATED";
     /** 直连：用户付给商家二级户，平台分账。**只有这条路径需要补差** */

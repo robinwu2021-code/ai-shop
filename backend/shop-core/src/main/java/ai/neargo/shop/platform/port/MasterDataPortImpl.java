@@ -168,6 +168,11 @@ public class MasterDataPortImpl implements MasterDataPort {
     }
 
     @Override
+    public String channelSettleCycle(String payChannel) {
+        return masterDataService.channelSettleCycle(payChannel);
+    }
+
+    @Override
     public ChannelFeeRate channelFeeRate(String payChannel, String payMethod, String legalForm, long at) {
         var r = payChannelRateService.effective(payChannel, payMethod, legalForm, at);
         // null 原样透出去：没配过与配了 0 必须在结算单上长得不一样

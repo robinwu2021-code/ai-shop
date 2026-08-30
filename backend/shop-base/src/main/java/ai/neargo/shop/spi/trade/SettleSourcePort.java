@@ -13,6 +13,31 @@ public interface SettleSourcePort {
     List<SettleSource> settleSourcesOf(String orderNo);
 
     /**
+     * 这些子单<b>可结算了没有</b>：履约完成时刻，以及售后有没有闭环。
+     *
+     * <p><b>由结算域点名问，而不是让它去扫订单表</b>：谁还没定 T2，
+     * 结算域自己最清楚（{@code settleable_at} 为空的那些），
+     * 而「这单什么时候履约完的」「售后闭没闭环」只有交易域答得上。
+     * 反过来做（结算域扫 {@code ord_*}）会被架构守卫拦下，
+     * 而且会把「哪些单该算」这个判断复制到两个域里。
+     *
+     * <p>返回里<b>不含</b>查不到的子单 —— 调用方据此知道「这单还没完成」，
+     * 而不是收到一个含糊的 0。
+     *
+     * @param subOrderNos 点名要问的子单；空集合返回空列表
+     */
+    List<SettleReadiness> settleReadiness(java.util.Collection<String> subOrderNos);
+
+    /**
+     * @param completedAt   履约完成时刻（毫秒）。<b>取状态流水里进 COMPLETED 那一刻</b>，
+     *                      不是子单的更新时间 —— 后者会被任何一次无关改动推后
+     * @param afterSaleOpen 有没有<b>未闭环</b>的售后。为 true 时这单不进批：
+     *                      售后没闭环就解冻，等于把争议中的钱先给了一方
+     */
+    record SettleReadiness(String subOrderNo, long completedAt, boolean afterSaleOpen) {
+    }
+
+    /**
      * @param payAmount        用户实付（已扣所有优惠）
      * @param discountPlatform 平台出资的优惠 —— 结算时补回给商家
      * @param discountMerchant 商家出资的优惠 —— 商家自己让的利，不补

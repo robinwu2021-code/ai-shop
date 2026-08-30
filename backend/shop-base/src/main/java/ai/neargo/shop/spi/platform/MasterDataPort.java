@@ -186,6 +186,16 @@ public interface MasterDataPort {
     ChannelFeeRate channelFeeRate(String payChannel, String payMethod, String legalForm, long at);
 
     /**
+     * 这个通道<b>支持的账期</b>（{@code sys_pay_channel.settle_cycle}）。
+     *
+     * <p>它是主体账期的<b>上限</b>：通道只支持 T+1 而主体配了月结的话，
+     * 按月结发出去的指令会在通道侧被拒 —— 而拒绝理由不会说「因为你配了月结」。
+     *
+     * @return 查不到返回 {@code null}；调用方取两者更短的那个
+     */
+    String channelSettleCycle(String payChannel);
+
+    /**
      * @param rateBp       万分比快照 —— <b>要落进结算单</b>，费率会变而历史账不能跟着变
      * @param minFeeMinor  单笔最低手续费（分）。0 = 不设下限
      * @param rateNo       命中的那一版，出问题时能指着它说「当时按这版算的」

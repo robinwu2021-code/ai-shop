@@ -55,6 +55,12 @@ public interface MasterDataService {
     /** 支付通道展示名。查不到返回通道码本身 —— 页面宁可显示 WECHAT 也不要显示空白 */
     String channelName(String payChannel);
 
+    /**
+     * 这个通道支持的账期（{@code sys_pay_channel.settle_cycle}）。
+     * 它是主体账期的<b>上限</b>；查不到返回 {@code null}，不兜默认值。
+     */
+    String channelSettleCycle(String payChannel);
+
     /** 启用中的主体类型码。 */
     List<String> enabledSubjects();
 

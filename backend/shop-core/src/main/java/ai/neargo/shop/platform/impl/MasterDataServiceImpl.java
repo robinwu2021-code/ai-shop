@@ -214,6 +214,21 @@ public class MasterDataServiceImpl implements MasterDataService {
         return row == null || row.getName() == null ? payChannel : row.getName();
     }
 
+    @Override
+    public String channelSettleCycle(String payChannel) {
+        if (payChannel == null || payChannel.isBlank()) {
+            return null;
+        }
+        var row = DataScopeContext.executeWithoutScope(() ->
+                channelMapper.selectOne(Wrappers.<SysPayChannel>lambdaQuery()
+                        .eq(SysPayChannel::getPayChannel, payChannel)
+                        .last("limit 1")));
+        // 查不到给 null 不兜 T+1：兜了之后「没配过」与「配成 T+1」在调用方看来一样，
+        // 而这两者在排查「为什么这家的钱等这么久」时是完全不同的答案
+        return row == null || row.getSettleCycle() == null || row.getSettleCycle().isBlank()
+                ? null : row.getSettleCycle();
+    }
+
     private SysLegalForm row(String subjectType) {
         if (subjectType == null || subjectType.isBlank()) {
             return null;

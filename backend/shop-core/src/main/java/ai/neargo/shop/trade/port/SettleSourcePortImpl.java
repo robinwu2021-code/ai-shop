@@ -7,6 +7,10 @@ import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
+import ai.neargo.shop.trade.entity.OrdAfterSale;
+import ai.neargo.shop.trade.entity.OrdStatusLog;
+import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
+import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
@@ -21,12 +25,65 @@ public class SettleSourcePortImpl implements SettleSourcePort {
     private final SubOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
     private final OrderMapper orderMapper;
+    private final StatusLogMapper statusLogMapper;
+    private final AfterSaleMapper afterSaleMapper;
 
     public SettleSourcePortImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
-                                OrderMapper orderMapper) {
+                                OrderMapper orderMapper, StatusLogMapper statusLogMapper,
+                                AfterSaleMapper afterSaleMapper) {
         this.subOrderMapper = subOrderMapper;
         this.itemMapper = itemMapper;
         this.orderMapper = orderMapper;
+        this.statusLogMapper = statusLogMapper;
+        this.afterSaleMapper = afterSaleMapper;
+    }
+
+    /**
+     * 未闭环的售后状态。<b>列「进行中」而不是列「已结束」</b>：
+     * 将来加一个新状态时，漏登记的后果是「它被当成已闭环」——
+     * 那会让一单争议中的钱照常放出去。反过来漏登记只是多等一轮，
+     * 而多等一轮是安全的。
+     */
+    private static final java.util.Set<String> AFTER_SALE_OPEN = java.util.Set.of(
+            OrdAfterSale.APPLIED, OrdAfterSale.REFUNDING, OrdAfterSale.ARBITRATING);
+
+    @Override
+    public List<SettleReadiness> settleReadiness(java.util.Collection<String> subOrderNos) {
+        if (subOrderNos == null || subOrderNos.isEmpty()) {
+            return List.of();
+        }
+        /*
+         * 完成时刻取**状态流水**里进 COMPLETED 那一刻，不取子单的 updated_at ——
+         * 后者会被任何一次无关改动（补个备注、改个地址）推后，
+         * 而 T2 一推后，整批的应结日跟着往后挪，商家的钱莫名其妙晚到。
+         */
+        Map<String, Long> completedAt = DataScopeContext.executeWithoutScope(() ->
+                        statusLogMapper.selectList(Wrappers.<OrdStatusLog>lambdaQuery()
+                                .in(OrdStatusLog::getSubOrderNo, subOrderNos)
+                                .eq(OrdStatusLog::getStatus, OrdSubOrder.COMPLETED)))
+                .stream()
+                // 同一子单可能有多条（重复流转），取**最早**那次完成：售后期从第一次完成起算
+                .collect(Collectors.toMap(OrdStatusLog::getSubOrderNo, OrdStatusLog::getAt,
+                        (a, b) -> a == null ? b : b == null ? a : Math.min(a, b)));
+
+        java.util.Set<String> openAfterSale = DataScopeContext.executeWithoutScope(() ->
+                        afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
+                                .in(OrdAfterSale::getSubOrderNo, subOrderNos)
+                                .in(OrdAfterSale::getStatus, AFTER_SALE_OPEN)))
+                .stream()
+                .map(OrdAfterSale::getSubOrderNo)
+                .collect(Collectors.toSet());
+
+        List<SettleReadiness> out = new java.util.ArrayList<>();
+        for (String no : subOrderNos) {
+            Long at = completedAt.get(no);
+            if (at == null) {
+                // 还没完成 —— **不返回**，让调用方看见「这单不在结果里」而不是收到一个 0
+                continue;
+            }
+            out.add(new SettleReadiness(no, at, openAfterSale.contains(no)));
+        }
+        return out;
     }
 
     @Override
