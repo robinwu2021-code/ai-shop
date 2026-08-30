@@ -4367,11 +4367,17 @@ export interface StockSummary {
  * 在它之前只有一个会漂的名字字符串。
  */
 export interface Supplier {
+  /** 档案编号 `SUP…`。**进货单存的是它，不是名字** —— 名字会改，指向不会 */
   supplierNo: string;
+  /** 全名。同一商家内唯一（后端 `uk_sup_name`），重名建档会被 10409 拒 */
   name: string;
+  /** 短名，单据列表上显示它 —— 长名换行会把一行撑成两行 */
   shortName?: string | null;
+  /** 联系人。**只作记录**，不发通知：这一版没有给供应商推消息的通道 */
   contactName?: string | null;
+  /** 联系电话。同上，给人打的，不参与任何自动流程 */
   contactPhone?: string | null;
+  /** 备注。**引用平台档案时这一列仍归商家写** —— 那是他自己的话 */
   remark?: string | null;
   /** ACTIVE 在用 · ARCHIVED 已停用。**停用不删除** —— 历史单据要指得回去 */
   status: string;

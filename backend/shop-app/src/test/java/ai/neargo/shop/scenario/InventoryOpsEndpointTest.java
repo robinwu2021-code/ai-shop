@@ -180,7 +180,7 @@ class InventoryOpsEndpointTest {
         String item = acl.upsertItem(entityNo, "SKU-OPSINV-" + seq, "测试米", "5斤装",
                 null, null, "BAG");
         inbound.postDirectly(new InboundService.Draft(owner, location,
-                InvEnums.InboundSource.PURCHASE, null, "老周粮油", LocalDateTime.now(), null,
+                InvEnums.InboundSource.PURCHASE, null, null, "老周粮油", LocalDateTime.now(), null,
                 List.of(new InboundService.Line(item, 7, "BAG", 4200L))), "老板");
         return new Fixture(entityNo, owner, location, item);
     }

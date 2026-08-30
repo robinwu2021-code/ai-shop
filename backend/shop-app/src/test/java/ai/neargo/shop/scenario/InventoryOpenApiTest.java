@@ -175,7 +175,7 @@ class InventoryOpenApiTest {
         String itemId = acl.upsertItem(entityNo, "SKU-OPENINV-" + seq, "东北大米", "5斤装",
                 "690123456789" + (seq % 10), "LM-" + seq, "袋");
         inbound.postDirectly(new InboundService.Draft(owner, location,
-                InvEnums.InboundSource.PURCHASE, null, "老周粮油", LocalDateTime.now(), null,
+                InvEnums.InboundSource.PURCHASE, null, null, "老周粮油", LocalDateTime.now(), null,
                 List.of(new InboundService.Line(itemId, 10, "袋", 4200L))), "老板");
 
         /*

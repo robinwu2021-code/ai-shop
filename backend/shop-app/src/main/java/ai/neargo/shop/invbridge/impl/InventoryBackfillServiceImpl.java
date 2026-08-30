@@ -410,7 +410,8 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
         }
         inbound.postDirectly(new InboundService.Draft(
                 ownerId, locationId, InvEnums.InboundSource.INIT, sourceRef,
-                null, LocalDateTime.now(), "存量搬运",
+                // 存量搬运：那批货是平台侧既有库存，没有供应商
+                null, null, LocalDateTime.now(), "存量搬运",
                 List.of(new InboundService.Line(itemId, platformQty, null, null))), "SYSTEM");
         return 1;
     }

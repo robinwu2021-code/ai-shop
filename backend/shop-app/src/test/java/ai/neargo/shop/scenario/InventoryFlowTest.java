@@ -198,7 +198,8 @@ class InventoryFlowTest {
 
         String no = transfers.create(f.owner, f.location, to,
                 List.of(new TransferService.Line(f.item, 8)), "老板");
-        transfers.ship(f.owner, no, "老板");
+        // 这条用例验的是「合计一件不差」，与承运方无关 —— 三个新参数传 null
+        transfers.ship(f.owner, no, null, null, null, "老板");
         // 发出之后、收到之前：来源少了 8，在途多了 8，**合计一件不差**
         assertThat(totalOf(f.owner, f.item)).isEqualTo(total);
 
@@ -600,7 +601,7 @@ class InventoryFlowTest {
 
     private InboundService.Draft purchase(Fixture f, int qty) {
         return new InboundService.Draft(f.owner, f.location, InvEnums.InboundSource.PURCHASE,
-                null, "老周粮油", LocalDateTime.now(), null,
+                null, null, "老周粮油", LocalDateTime.now(), null,
                 List.of(new InboundService.Line(f.item, qty, "BAG", 4200L)));
     }
 
