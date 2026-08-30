@@ -754,7 +754,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 7,
+        "b-app": 9,
         "c-app": 4
       }
     },
@@ -2238,17 +2238,9 @@
         "biz-store-tag"
       ],
       "libClassHits": 37,
-      "localSelectors": 27,
-      "localCssLines": 121,
-      "rolled": [
-        {
-          "id": "semcolor",
-          "label": "语义色自写",
-          "lib": ".is-danger / .is-success / .is-warning",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "localSelectors": 26,
+      "localCssLines": 118,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -2259,18 +2251,10 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 23,
-      "localSelectors": 9,
-      "localCssLines": 37,
-      "rolled": [
-        {
-          "id": "quietover",
-          "label": "次要色自写",
-          "lib": ".txt-quiet（整段次要用 .sh-muted）",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "libClassHits": 25,
+      "localSelectors": 7,
+      "localCssLines": 31,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -3446,28 +3430,7 @@
       "rolled": []
     }
   ],
-  "gaps": [
-    {
-      "id": "semcolor",
-      "label": "语义色自写",
-      "lib": ".is-danger / .is-success / .is-warning",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-      "pages": [
-        "b-app/goods-list"
-      ]
-    },
-    {
-      "id": "quietover",
-      "label": "次要色自写",
-      "lib": ".txt-quiet（整段次要用 .sh-muted）",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
-      "pages": [
-        "b-app/goods-publish"
-      ]
-    }
-  ],
+  "gaps": [],
   "counts": {
     "tokens": 10,
     "blocks": 63,
