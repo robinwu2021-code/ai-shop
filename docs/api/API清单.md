@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 647 个接口**：后端已实现 528（82%）· 前端在调 585
+**合计 652 个接口**：后端已实现 533（82%）· 前端在调 590
 
 ---
 
@@ -704,7 +704,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **355** 个接口 ｜ 后端已实现 **273**（77%）｜ 前端在调 **293**
+共 **360** 个接口 ｜ 后端已实现 **278**（77%）｜ 前端在调 **298**
 
 ### aftersale（4）
 
@@ -776,10 +776,12 @@
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 
-### finance（32）
+### finance（37）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/debts/{entityNo}` | 某商家的欠款余额与流水 */ | — | `MerchantDebt` | — | ✅ | ✅ |
+| POST | `/ops/debts/{entityNo}/deposit-offset` | 用保证金抵掉一部分欠款 | — | `MerchantDebt` | — | ✅ | ✅ |
 | GET | `/ops/finance/invoice-title` | 平台开票抬头 | — | `InvoiceTitle` | — | ✅ | ✅ |
 | POST | `/ops/finance/invoice-title` | 公司全称与税号必填 —— 缺了供应商开不出票，存下去只会让人以为已经配好了 | — | `InvoiceTitle` | — | ✅ | ✅ |
 | GET | `/ops/finance/invoices` | listInvoiceRequests | — | `object` | — | ✅ | ✅ |
@@ -804,6 +806,9 @@
 | POST | `/ops/purchase-invoices/{invoiceNo}/verify` | verifyPurchaseInvoice | — | `PurchaseInvoice` | — | ✅ | ⬜ |
 | GET | `/ops/refund-split-backs` | 待回退分账的售后单（P-12.1.5 / E4）：售后裁决打的 `refundSplitPending` 标记 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/refund-split-backs/{asNo}/execute` | 执行退款回退分账，**执行后清除该售后单的标记**，否则队列永远消不掉 | — | `AfterSale` | — | ⬜ | ✅ |
+| GET | `/ops/settle-batches` | 账期批次列表 | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/settle-batches/{batchNo}/hold` | 继续挂起 | — | `SettleBatch` | — | ✅ | ✅ |
+| POST | `/ops/settle-batches/{batchNo}/release` | 人工放行一批 | — | `SettleBatch` | — | ✅ | ✅ |
 | GET | `/ops/settle/fee-rules` | 全部费率版本，含历史 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/settle/fee-rules` | 新增一个费率版本 | — | `FeeRuleVersion` | — | ✅ | ✅ |
 | GET | `/ops/settle/fee-rules/effective` | 某时刻实际生效的四格费率 | — | `EffectiveFeeRates` | — | ✅ | ✅ |

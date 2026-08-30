@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 167 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 169 个受控功能点**
 （另有 28 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -26,8 +26,8 @@
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 19 | ✅ | ✅ | — | — | — | — |
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 19 | ✅ | — | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 18 | ✅ | ✅ | — | — | — | — |
+| `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 18 | ✅ | — | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 16 | ✅ | ✅ | — | — | — | — |
-| `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 16 | ✅ | — | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 4 | ✅ | ✅ | — | — | — | ✅ |
@@ -205,6 +205,32 @@
 | 批量打标 / 去标 | POST | `/biz/members/tags` | `mTagMembers` | — |
 | —（b-app 未接） | — | `/biz/inventory/export` | — | — |
 
+### `biz:finance`　结算账单、费率卡、收款进件、积分开关
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 本店能开的收款通道（含没开的） | GET | `/biz/merchant/pay-channel` | `mPayChannels` | payment |
+| 收款进件状态 | GET | `/biz/merchant/payment` | `mPayments` | entity-detail、home、stores |
+| 补交资料并提交进件 | POST | `/biz/merchant/payment` | `mSubmitPayment` | payment |
+| 回查进件结果 | POST | `/biz/merchant/payment/:payChannel/refresh` | `mRefreshPayment` | payment |
+| 本期发分服务费与开关状态 | GET | `/biz/points/account` | `mPointsAccount` | points、settle |
+| 发分服务费明细（按单） | GET | `/biz/points/records` | `mPointsRecords` | points-records、settle |
+| 开/关本店积分 | POST | `/biz/points/toggle` | `mPointsToggle` | points、settle |
+| 结算单列表 | GET | `/biz/settle/bills` | `mSettleList` | settle |
+| 收入按状态汇总 | GET | `/biz/settle/income` | `mIncomeSummary` | income |
+| 费率卡 | GET | `/biz/settle/rate-card` | `mRateCard` | settle |
+| —（b-app 未接） | — | `/biz/settle/bills/{}` | — | — |
+| —（b-app 未接） | — | `/biz/settle/invoice-title` | — | — |
+| —（b-app 未接） | — | `/biz/settle/invoices` | — | — |
+| —（b-app 未接） | — | `/biz/settle/statement` | — | — |
+| —（b-app 未接） | — | `/biz/settle/batch` | — | — |
+| —（b-app 未接） | — | `/biz/merchant/debt` | — | — |
+| —（b-app 未接） | — | `/biz/merchant/payment/store/{}` | — | — |
+| —（b-app 未接） | — | `/biz/deposit` | — | — |
+| —（b-app 未接） | — | `/biz/deposit/txns` | — | — |
+
 ### `biz:campaign`　营销活动、开团、报价
 
 **可用角色**：老板、店长
@@ -231,30 +257,6 @@
 | 开团 | POST | `/biz/groups` | `mCreateGroup` | groups |
 | 群发（会打扰真实用户） | POST | `/biz/member-reach/send` | `mSendReach` | member-reach |
 | —（b-app 未接） | — | `/biz/quote/{}/revise` | — | — |
-
-### `biz:finance`　结算账单、费率卡、收款进件、积分开关
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 本店能开的收款通道（含没开的） | GET | `/biz/merchant/pay-channel` | `mPayChannels` | payment |
-| 收款进件状态 | GET | `/biz/merchant/payment` | `mPayments` | entity-detail、home、stores |
-| 补交资料并提交进件 | POST | `/biz/merchant/payment` | `mSubmitPayment` | payment |
-| 回查进件结果 | POST | `/biz/merchant/payment/:payChannel/refresh` | `mRefreshPayment` | payment |
-| 本期发分服务费与开关状态 | GET | `/biz/points/account` | `mPointsAccount` | points、settle |
-| 发分服务费明细（按单） | GET | `/biz/points/records` | `mPointsRecords` | points-records、settle |
-| 开/关本店积分 | POST | `/biz/points/toggle` | `mPointsToggle` | points、settle |
-| 结算单列表 | GET | `/biz/settle/bills` | `mSettleList` | settle |
-| 收入按状态汇总 | GET | `/biz/settle/income` | `mIncomeSummary` | income |
-| 费率卡 | GET | `/biz/settle/rate-card` | `mRateCard` | settle |
-| —（b-app 未接） | — | `/biz/settle/bills/{}` | — | — |
-| —（b-app 未接） | — | `/biz/settle/invoice-title` | — | — |
-| —（b-app 未接） | — | `/biz/settle/invoices` | — | — |
-| —（b-app 未接） | — | `/biz/settle/statement` | — | — |
-| —（b-app 未接） | — | `/biz/merchant/payment/store/{}` | — | — |
-| —（b-app 未接） | — | `/biz/deposit` | — | — |
-| —（b-app 未接） | — | `/biz/deposit/txns` | — | — |
 
 ### `biz:verify`　核销、批量核销、按码搜索
 
@@ -401,9 +403,11 @@
 | `/biz/deposit` | `biz:finance` | 老板 |
 | `/biz/deposit/txns` | `biz:finance` | 老板 |
 | `/biz/inventory/export` | `biz:customer` | 老板、店长 |
+| `/biz/merchant/debt` | `biz:finance` | 老板 |
 | `/biz/merchant/payment/store/{}` | `biz:finance` | 老板 |
 | `/biz/qualifications/recognize` | `biz:store` | 老板、店长 |
 | `/biz/quote/{}/revise` | `biz:campaign` | 老板、店长 |
+| `/biz/settle/batch` | `biz:finance` | 老板 |
 | `/biz/settle/bills/{}` | `biz:finance` | 老板 |
 | `/biz/settle/invoice-title` | `biz:finance` | 老板 |
 | `/biz/settle/invoices` | `biz:finance` | 老板 |

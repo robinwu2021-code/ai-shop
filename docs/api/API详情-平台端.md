@@ -1243,6 +1243,52 @@ getDashboardTrend
 
 ### finance
 
+#### GET `/ops/debts/{entityNo}`
+
+某商家的欠款余额与流水 */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `entityNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`MerchantDebt`](#merchantdebt)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 是 | — |
+| `balanceMinor` | `number` | 是 | 当前欠款（分），恒 >= 0。0 = 没有欠款 |
+| `txns` | [`#/definitions/DebtTxn`](#definitionsdebttxn)\[\] | 是 | — |
+
+
+#### POST `/ops/debts/{entityNo}/deposit-offset`
+
+用保证金抵掉一部分欠款
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `entityNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MerchantDebt`](#merchantdebt)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 是 | — |
+| `balanceMinor` | `number` | 是 | 当前欠款（分），恒 >= 0。0 = 没有欠款 |
+| `txns` | [`#/definitions/DebtTxn`](#definitionsdebttxn)\[\] | 是 | — |
+
+
 #### GET `/ops/finance/invoice-title`
 
 平台开票抬头
@@ -1860,6 +1906,95 @@ _无字段_
 | `verdict` | `string` | 否 | 裁决说明：用户与商家都会看到 |
 | `refundSplitPending` | `boolean` | 否 | E4 退款回退分账待办：finance 域「退款回退分账」mock 队列专用字段， 真实后端未接（见上方说明），售后本身的裁决流程不读写它。 |
 | `createdAt` | `string` | 是 | 售后发起时间 |
+
+
+#### GET `/ops/settle-batches`
+
+账期批次列表
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SettleBatch`](#settlebatch)\[\]
+
+
+#### POST `/ops/settle-batches/{batchNo}/hold`
+
+继续挂起
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `batchNo` | path | `string` | 是 | 到货批次号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`SettleBatch`](#settlebatch)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `batchNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `payChannel` | `string` | 是 | — |
+| `settleCycle` | `string` | 是 | 本批采用的账期规则快照，如 T+1 / WEEKLY |
+| `periodFrom` | `number` | 是 | — |
+| `dueAt` | `number` | 是 | T3 应结日 |
+| `releasedAt` | `number,null` | 是 | 实际放行时刻。与 dueAt 分开才答得出「晚了几天」 |
+| `freezeExpireAt` | `number,null` | 是 | Tmax：通道冻结窗口到期时刻。**为 null 表示还判不了** —— 冻结窗口的天数还没有书面口径，此时不该按一个猜的数报警 |
+| `status` | [`#/definitions/SettleBatchStatus`](#definitionssettlebatchstatus) | 是 | DRAFT / COLLECTED / RECONCILING / BLOCKED / RECONCILED / RELEASED |
+| `billCount` | `number` | 是 | — |
+| `grossMinor` | `number` | 是 | — |
+| `netMinor` | `number` | 是 | — |
+| `reconScope` | `SELF_ONLY` \| `BOTH` | 是 | 对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**， 不能显示成「已对账」—— 没有对方账单时那是一句自证的话 |
+| `blockedReason` | `string,null` | 是 | 挂起原因，**直接展示给商家的原话**（含具体数字与阈值） |
+| `blockedAt` | `number,null` | 是 | — |
+| `blockExpireAt` | `number,null` | 是 | 挂起时限。超时自动放行并告警 —— 没有时限的挂起等于永久冻结 |
+| `decidedBy` | `string,null` | 是 | 人工放行者；**SYSTEM_TIMEOUT = 超时自动放行**，要单独看 |
+| `decideRemark` | `string,null` | 是 | — |
+
+
+#### POST `/ops/settle-batches/{batchNo}/release`
+
+人工放行一批
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `batchNo` | path | `string` | 是 | 到货批次号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`SettleBatch`](#settlebatch)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `batchNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `payChannel` | `string` | 是 | — |
+| `settleCycle` | `string` | 是 | 本批采用的账期规则快照，如 T+1 / WEEKLY |
+| `periodFrom` | `number` | 是 | — |
+| `dueAt` | `number` | 是 | T3 应结日 |
+| `releasedAt` | `number,null` | 是 | 实际放行时刻。与 dueAt 分开才答得出「晚了几天」 |
+| `freezeExpireAt` | `number,null` | 是 | Tmax：通道冻结窗口到期时刻。**为 null 表示还判不了** —— 冻结窗口的天数还没有书面口径，此时不该按一个猜的数报警 |
+| `status` | [`#/definitions/SettleBatchStatus`](#definitionssettlebatchstatus) | 是 | DRAFT / COLLECTED / RECONCILING / BLOCKED / RECONCILED / RELEASED |
+| `billCount` | `number` | 是 | — |
+| `grossMinor` | `number` | 是 | — |
+| `netMinor` | `number` | 是 | — |
+| `reconScope` | `SELF_ONLY` \| `BOTH` | 是 | 对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**， 不能显示成「已对账」—— 没有对方账单时那是一句自证的话 |
+| `blockedReason` | `string,null` | 是 | 挂起原因，**直接展示给商家的原话**（含具体数字与阈值） |
+| `blockedAt` | `number,null` | 是 | — |
+| `blockExpireAt` | `number,null` | 是 | 挂起时限。超时自动放行并告警 —— 没有时限的挂起等于永久冻结 |
+| `decidedBy` | `string,null` | 是 | 人工放行者；**SYSTEM_TIMEOUT = 超时自动放行**，要单独看 |
+| `decideRemark` | `string,null` | 是 | — |
 
 
 #### GET `/ops/settle/fee-rules`
@@ -9459,6 +9594,16 @@ KPI 卡（金额为最小货币单位整数）。
 | `endAt` | `number` | 是 | 结束时间（毫秒时间戳） |
 | `goodsNos` | `string`\[\] \| `null` | 否 | 参与的商品号。**列表上只显示条数**，明细进详情看 |
 
+### MerchantDebt
+
+商家欠款：退款追不回来时先记在账上，从后续货款里扣。 ⚠️ **与保证金方向相反**：保证金是商家的钱（平台代管、将来要退还）， 欠款是商家欠平台的。两者不能合成一个数看。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 是 | — |
+| `balanceMinor` | `number` | 是 | 当前欠款（分），恒 >= 0。0 = 没有欠款 |
+| `txns` | [`#/definitions/DebtTxn`](#definitionsdebttxn)\[\] | 是 | — |
+
 ### MerchantDeposit
 
 商家保证金账户。**可用余额 = 实缴 − 冻结**，判「够不够」用可用而非实缴。
@@ -10234,6 +10379,31 @@ KPI 卡（金额为最小货币单位整数）。
 | `scope` | `string` | 是 | COMMUNITY / CITY / PLATFORM |
 | `enabled` | `boolean` | 是 | 这一期是否开放这一档。关掉**不影响已经是这一档的存量商家**，只是不能再选 |
 | `merchantCount` | `number` | 是 | 当前在用的商家数。不带计数的开关是盲操作 |
+
+### SettleBatch
+
+账期批次：<b>一个主体、一个通道、一个账期，一批</b>。 <p>批次管「能不能放」，单据管「放得成不成」—— 所以这一页回答的是「这家的钱卡在哪一批」，而不是「这一笔多少钱」。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `batchNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `payChannel` | `string` | 是 | — |
+| `settleCycle` | `string` | 是 | 本批采用的账期规则快照，如 T+1 / WEEKLY |
+| `periodFrom` | `number` | 是 | — |
+| `dueAt` | `number` | 是 | T3 应结日 |
+| `releasedAt` | `number,null` | 是 | 实际放行时刻。与 dueAt 分开才答得出「晚了几天」 |
+| `freezeExpireAt` | `number,null` | 是 | Tmax：通道冻结窗口到期时刻。**为 null 表示还判不了** —— 冻结窗口的天数还没有书面口径，此时不该按一个猜的数报警 |
+| `status` | [`#/definitions/SettleBatchStatus`](#definitionssettlebatchstatus) | 是 | DRAFT / COLLECTED / RECONCILING / BLOCKED / RECONCILED / RELEASED |
+| `billCount` | `number` | 是 | — |
+| `grossMinor` | `number` | 是 | — |
+| `netMinor` | `number` | 是 | — |
+| `reconScope` | `SELF_ONLY` \| `BOTH` | 是 | 对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**， 不能显示成「已对账」—— 没有对方账单时那是一句自证的话 |
+| `blockedReason` | `string,null` | 是 | 挂起原因，**直接展示给商家的原话**（含具体数字与阈值） |
+| `blockedAt` | `number,null` | 是 | — |
+| `blockExpireAt` | `number,null` | 是 | 挂起时限。超时自动放行并告警 —— 没有时限的挂起等于永久冻结 |
+| `decidedBy` | `string,null` | 是 | 人工放行者；**SYSTEM_TIMEOUT = 超时自动放行**，要单独看 |
+| `decideRemark` | `string,null` | 是 | — |
 
 ### Settlement
 
