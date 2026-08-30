@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 68,
+      "count": 69,
       "domains": [
         {
           "name": "工作台",
@@ -242,6 +242,17 @@
         {
           "name": "其它",
           "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/goods-publish/index",
+              "title": "发布修改",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/goods-publish/index"
+            },
             {
               "app": "b-app",
               "route": "/pages/schedule/index",
@@ -2935,5 +2946,5 @@
       ]
     }
   ],
-  "total": 236
+  "total": 237
 }
