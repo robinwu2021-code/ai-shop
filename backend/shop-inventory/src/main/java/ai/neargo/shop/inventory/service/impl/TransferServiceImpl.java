@@ -101,7 +101,8 @@ public class TransferServiceImpl implements TransferService {
         return new InventoryVOs.TransferVO(head.getTransferNo(), head.getStatus(),
                 head.getFromLocationId(), names.get(head.getFromLocationId()),
                 head.getToLocationId(), names.get(head.getToLocationId()),
-                head.getShippedAt(), head.getReceivedAt(), total, lines);
+                head.getShippedAt(), head.getReceivedAt(),
+                head.getCarrierName(), head.getTrackingNo(), total, lines);
     }
 
     @Override

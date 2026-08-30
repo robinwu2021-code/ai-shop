@@ -121,6 +121,7 @@ import type {
   SkuIdentityReport,
   StockBalance,
   Supplier,
+  Carrier,
   StockLedgerRow,
   StockDocument,
   StockCount,
@@ -4418,12 +4419,38 @@ export const mockApi: MerchantApi = {
       fromLocationId: "L3", fromLocationName: "城西仓",
       toLocationId: "L1", toLocationName: "文三路店",
       shippedAt: "2026-08-26T07:30:00",
+      // 发过货的单回读那次填的；没发过的用一条既有的示例值
+      ...(shipped.get(no) ?? { carrierName: "顺丰速运", trackingNo: "SF1234567890" }),
       totalQty: 20,
       lines: [{ itemId: "I1", name: "东北大米", specText: "5斤装", qty: 20, uom: "袋" }],
     } satisfies StockTransfer);
   },
 
-  async mTransferShip() {
+  /*
+   * **三条里一条 enabled=false**（与线上一致：SF/JD 启用、YTO 停用）。
+   * 三条都启用的话，「只列启用的」这条判据在 mock 上永远看不见 ——
+   * 而它正是最容易漏的：停用的承运方被选中，那张单指向一个已经不合作的公司。
+   */
+  async mCarriers() {
+    return delay([
+      { carrier: "SF", name: "顺丰速运" },
+      { carrier: "JD", name: "京东物流" },
+    ] as Carrier[]);
+  },
+
+  /*
+   * **记下来，让 mTransferDetail 读得到。**
+   *
+   * 原先这一口直接吞掉参数返回 undefined，于是 mock 上「发了一次货 →
+   * 单据上看得到承运方与运单号」这条闭环**永远验不了** —— 而它正是 S4 的判据。
+   * 一个只收不吐的替身会把「只写不读」的缺陷盖住，那正是这次真实发生的事：
+   * 后端把三列写进了库，VO 里却一个都没下发。
+   */
+  async mTransferShip(no, body) {
+    shipped.set(no, {
+      carrierName: body?.carrierName,
+      trackingNo: body?.trackingNo,
+    });
     return delay(undefined);
   },
   async mTransferReceive() {
@@ -4513,6 +4540,8 @@ function invLedger(): StockLedgerRow[] {
 /** mock 里作废过的单号。**要能看见结果** —— 空实现的话点完列表纹丝不动，
  *  分不清是「没生效」还是「生效了但列表没刷」 */
 const voidedDocs = new Set<string>();
+/** 调拨发货信息。**进程内，刷新即失** —— 替身不是数据库，够验一条闭环即可 */
+const shipped = new Map<string, { carrierName?: string; trackingNo?: string }>();
 
 function invDocuments(): StockDocument[] {
   return [

@@ -25,6 +25,22 @@ let lastToastAt = 0;
 let lastMessage = "";
 let lastMessageAt = 0;
 
+/**
+ * **只掐提示、不掐记录**的一批。
+ *
+ * 目前一条：`setNavigationBarColor:fail page not found` —— uni 运行时自己在冷启动时
+ * 发的一个未捕获拒绝（应用代码里没有任何一处调这个 API，全仓搜过）。
+ * 2026-08-30 实测：H5 打开工作台首页**每次必现一条**。
+ *
+ * 于是刚接上错误上报的那天，商家一开 App 就会看到「出错了，请重试」——
+ * 而没有任何东西真的坏了。**假警报比不报警更坏**：它教会人忽略这句话，
+ * 等到工作台真的整页空白那天，那句提示已经没人看了。
+ *
+ * 但**痕迹仍然要留**：它进存储、进 console，只是不弹。
+ * 不留的话，将来这条噪声背后真的藏了别的问题，就再也查不到了。
+ */
+const SILENT_MESSAGES = [/setNavigationBar\w+:fail page not found/];
+
 const KEY = "shbm_last_errors";
 const MAX = 20;
 
@@ -99,7 +115,8 @@ export function reportError(err: unknown, where = "unknown"): void {
      * 而它可能带门店名。要看细节的走 recentErrors()。
      */
     const now = Date.now();
-    if (now - lastToastAt > 5000) {
+    const silent = SILENT_MESSAGES.some((re) => re.test(msg));
+    if (!silent && now - lastToastAt > 5000) {
       lastToastAt = now;
       /*
        * `i18n.global.t` 的类型是 legacy 与 composition 两种签名的联合，

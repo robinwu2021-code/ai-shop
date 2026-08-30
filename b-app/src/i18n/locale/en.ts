@@ -1740,6 +1740,10 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     posted: "Posted {no}",
   },
   transfer: {
+    shipTitle: "Shipping details",
+    shipHint: "Carrier and tracking number are both optional — leave blank if you deliver it yourself",
+    trackingPh: "Tracking number (optional)",
+    shipConfirm: "Ship it",
     title: "Transfer",
     from: "From",
     to: "To",

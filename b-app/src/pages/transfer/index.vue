@@ -11,7 +11,7 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
-import type { StockBalance, StockLocation, StockTransfer } from "@shared/types";
+import type { Carrier, StockBalance, StockLocation, StockTransfer } from "@shared/types";
 import { confirm, pick, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
@@ -127,12 +127,43 @@ async function editQty(l: Line) {
 const totalQty = computed(() => lines.value.reduce((s, l) => s + l.qty, 0));
 
 /** 建单并发出。**两步都调** —— 单据要有，在途也要有 */
-async function ship() {
+/*
+ * 发货信息：承运方（选）+ 运单号（输）。
+ *
+ * **两者都可空** —— 自己拉一趟货过去也要发得出去。强制填的话商家就学会
+ * 乱填一个，那比空着更坏：空着至少诚实地说「没记」。
+ *
+ * 承运方的**名字要一起回传**：进销存是独立库，读不了主库的 ful_carrier，
+ * 那个名字快照只能由端上带过去（见方案 §三②）。
+ */
+const carriers = ref<Carrier[]>([]);
+const pickedCarrier = ref<Carrier | null>(null);
+const trackingNo = ref("");
+const showShip = ref(false);
+
+async function loadCarriers() {
+  try {
+    carriers.value = await api.mCarriers();
+  } catch {
+    // 拿不到就让它空着：发货不该因为承运方列表挂了而做不成
+    carriers.value = [];
+  }
+}
+
+/** 点「发出」先弹这一层，填完再真的发 */
+function openShip() {
   if (!lines.value.length || busy.value) return;
   if (fromId.value === toId.value) {
     uni.showToast({ title: String(t("transfer.sameEnds")), icon: "none" });
     return;
   }
+  if (!carriers.value.length) void loadCarriers();
+  showShip.value = true;
+}
+
+async function ship() {
+  if (!lines.value.length || busy.value) return;
+  showShip.value = false;
   busy.value = true;
   try {
     const no = await api.mTransferCreate({
@@ -140,7 +171,11 @@ async function ship() {
       toLocationId: toId.value,
       lines: lines.value.map((l) => ({ itemId: l.itemId, qty: l.qty })),
     });
-    await api.mTransferShip(no);
+    await api.mTransferShip(no, {
+      carrierNo: pickedCarrier.value?.carrier,
+      carrierName: pickedCarrier.value?.name,
+      trackingNo: trackingNo.value.trim() || undefined,
+    });
     transferNo.value = no;
     await load();
     uni.showToast({ title: String(t("transfer.shipped", { no })), icon: "none" });
@@ -210,6 +245,14 @@ onShow(load);
           {{ doc.status === "SHIPPED"
             ? $t("transfer.shippedAt", { at: at(doc.shippedAt) })
             : $t("transfer.receivedAt", { at: at(doc.receivedAt) }) }}
+        </text>
+
+        <!--
+          承运方与运单号。**两者都空就整行不出** —— 自己送的单据上挂一句
+          「承运方：—」只是噪声；而收货方真正要核对的是有值的那一行。
+        -->
+        <text v-if="doc.carrierName || doc.trackingNo" class="txt-caption trf__ship">
+          {{ [doc.carrierName, doc.trackingNo].filter(Boolean).join(" · ") }}
         </text>
       </view>
 
@@ -281,7 +324,7 @@ onShow(load);
 
       <!-- 主动作贴底：调拨单的行数没有上限 -->
       <sh-actionbar :pad="180">
-        <view class="sh-btn" :class="{ 'sh-btn--muted': !lines.length || busy }" @tap="ship">
+        <view class="sh-btn" :class="{ 'sh-btn--muted': !lines.length || busy }" @tap="openShip">
           {{ $t("transfer.ship") }}
         </view>
       </sh-actionbar>
@@ -296,6 +339,37 @@ onShow(load);
         @close="showPick = false"
       ></biz-item-picker>
     </template>
+
+    <!--
+      发货信息。**两项都可空** —— 自己送也要发得出去（见 openShip 的注释）。
+      承运方是选的（它是实体），运单号是输的（它是一串码，没有可选列表）。
+    -->
+    <sh-sheet :visible="showShip" :title="String($t('transfer.shipTitle'))" @close="showShip = false">
+      <text class="sh-hint">{{ $t("transfer.shipHint") }}</text>
+
+      <view class="carriers sh-row">
+        <text
+          v-for="c in carriers"
+          :key="c.carrier"
+          class="carrier"
+          :class="{ 'carrier--on': pickedCarrier?.carrier === c.carrier }"
+          @tap="pickedCarrier = pickedCarrier?.carrier === c.carrier ? null : c"
+        >
+          {{ c.name }}
+        </text>
+      </view>
+
+      <input
+        v-model="trackingNo"
+        class="field__input ship__no"
+        :placeholder="String($t('transfer.trackingPh'))"
+        :maxlength="64"
+      />
+
+      <view class="sh-btn" :class="{ 'sh-btn--muted': busy }" @tap="ship">
+        {{ busy ? $t("common.loading") : $t("transfer.shipConfirm") }}
+      </view>
+    </sh-sheet>
   </sh-scaffold>
 </template>
 
@@ -330,5 +404,35 @@ onShow(load);
 }
 .pick {
   padding: 20rpx 0;
+}
+
+.carriers {
+  gap: 20rpx;
+  flex-wrap: wrap;
+  margin-bottom: 20rpx;
+}
+
+.carrier {
+  padding: 12rpx 28rpx;
+  border-radius: 9999px;
+  /* 未选中那枚：`--sh-faint` 是真实存在的浅底 token。
+     写 `--sh-fill` 会静默失效 —— 背景透明，两枚按钮看不出边界（闸门当场抓到） */
+  background: var(--sh-faint);
+  color: var(--sh-sub);
+}
+
+/* 选中那一枚：走 primary-text 不走 primary —— 后者是块面色，用在文字上对比度不够 */
+.carrier--on {
+  background: var(--sh-primary-tint);
+  color: var(--sh-primary-text);
+}
+
+.ship__no {
+  margin-bottom: 24rpx;
+}
+
+.trf__ship {
+  display: block;
+  margin-top: 6rpx;
 }
 </style>

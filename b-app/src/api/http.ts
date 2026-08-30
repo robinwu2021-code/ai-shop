@@ -124,7 +124,7 @@ import type {
   RegionSearchResult,
   MyQualifications,
   Qualification, MerchantSpecDim, StoreCategorySpecs, SpecOverride, SpecOption,
-  StockSummary, StockBalance, StockItemDetail, StockLedgerPage, StockDocument, Supplier,
+  StockSummary, StockBalance, StockItemDetail, StockLedgerPage, StockDocument, Supplier, Carrier,
   StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
   StockCount, StockTransfer, I18nText,
 } from "@shared/types";
@@ -573,7 +573,8 @@ export const httpApi: MerchantApi = {
   mTransferCreate: (req) =>
     http.post<{ no: string }>(E.mTransferCreate.path, req).then((r) => r.no),
   mTransferDetail: (no) => http.get<StockTransfer>(buildPath(E.mTransferDetail.path, { no })),
-  mTransferShip: (no) => http.post<void>(buildPath(E.mTransferShip.path, { no })),
+  mTransferShip: (no, body) => http.post<void>(buildPath(E.mTransferShip.path, { no }), body),
+  mCarriers: () => http.get<Carrier[]>(E.mCarriers.path),
   mTransferReceive: (no) => http.post<void>(buildPath(E.mTransferReceive.path, { no })),
 
   mStockDocuments: (q) => http.get<StockDocument[]>(E.mStockDocuments.path, q),

@@ -98,7 +98,7 @@ import type {
   Qualification,
   QualificationSaveReq, MerchantSpecDim, StoreCategorySpecs, SpecOverride, SpecOption,
   // 进销存（P-18）
-  StockSummary, StockBalance, StockItemDetail, StockLedgerPage, StockDocument, Supplier,
+  StockSummary, StockBalance, StockItemDetail, StockLedgerPage, StockDocument, Supplier, Carrier,
   StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
   StockCount, StockTransfer,
   FulfillmentImpactItem,
@@ -1379,7 +1379,16 @@ export interface MerchantApi {
   mTransferCreate(req: { fromLocationId: string; toLocationId: string; lines: StockLineReq[] }): Promise<string>;
   /** 读回一张调拨单。**草稿态没有行**（行在发出的那张出库单上），不是空单 */
   mTransferDetail(no: string): Promise<StockTransfer>;
-  mTransferShip(no: string): Promise<void>;
+  /**
+   * 调拨发出。
+   *
+   * @param body **整个可空** —— 自己送、没记承运方也要发得出去；
+   *             强制填的话商家就学会乱填一个，那比空着更坏
+   */
+  mTransferShip(no: string, body?: { carrierNo?: string; carrierName?: string; trackingNo?: string }): Promise<void>;
+
+  /** 承运方可选列表。只列启用的 —— 停用的选了会指向一个已经不合作的公司 */
+  mCarriers(): Promise<Carrier[]>;
   mTransferReceive(no: string): Promise<void>;
 
   /** 单据中心。`kind` 空=全部，否则 IN / OUT / COUNT / TRANSFER */

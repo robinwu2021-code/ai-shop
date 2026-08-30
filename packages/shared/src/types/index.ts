@@ -4363,6 +4363,16 @@ export interface StockSummary {
 }
 
 /**
+ * 一家承运方（`CarrierVO`）。**归履约域维护，进销存只读**。
+ */
+export interface Carrier {
+  /** 编号，如 `SF`。**调拨单存的就是它** —— 跨库不能外键，所以存对方的业务键 */
+  carrier: string;
+  /** 名字。选中后要**一起回传**给发货接口：进销存读不了主库，快照只能由端上带过去 */
+  name: string;
+}
+
+/**
  * 一家供应商（`SupplierVO`）。进货单指向的那个**稳定对象** ——
  * 在它之前只有一个会漂的名字字符串。
  */
@@ -4564,6 +4574,10 @@ export interface StockTransfer {
   toLocationName?: string;
   shippedAt?: string;
   receivedAt?: string;
+  /** 承运方名字快照。空 = 自己送或发货时没记 —— 不是「数据缺失」 */
+  carrierName?: string;
+  /** 运单号。与 carrierName 一起给收货方核对用 */
+  trackingNo?: string;
   totalQty: number;
   lines: { itemId: string; name: string; specText?: string; qty: number; uom?: string }[];
 }

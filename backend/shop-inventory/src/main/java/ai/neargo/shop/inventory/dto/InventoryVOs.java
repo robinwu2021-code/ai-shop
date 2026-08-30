@@ -132,11 +132,18 @@ public final class InventoryVOs {
      *
      * <p>行取自<b>发出那张出库单</b>（调拨不另建行表）—— 还没发出时没有行，
      * 这一点在界面上要说清楚，否则草稿态的调拨单看起来像「空单」。
+     *
+     * @param carrierName 承运方名字快照，可空（自己送或没记）。
+     *                    <b>不下发 {@code carrierNo}</b>：端上拿它没有用处 ——
+     *                    它是给报表按承运方聚合的，而单据要显示的是名字
+     * @param trackingNo  运单号，可空。<b>它与 carrierName 一起构成收货方的核对依据</b> ——
+     *                    只存不下发的话，那两列写进库里也没有人看得见
      */
     public record TransferVO(String transferNo, String status,
                              String fromLocationId, String fromLocationName,
                              String toLocationId, String toLocationName,
                              LocalDateTime shippedAt, LocalDateTime receivedAt,
+                             String carrierName, String trackingNo,
                              int totalQty, List<TransferLineVO> lines) {
     }
 
