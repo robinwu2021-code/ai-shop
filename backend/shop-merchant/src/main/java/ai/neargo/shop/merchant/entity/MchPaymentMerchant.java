@@ -149,6 +149,18 @@ public class MchPaymentMerchant extends BaseEntity {
      * 两家都要求先分账回退，而回退要求接收方已开启该功能（接收方为个人的一律不支持）。
      * 不记这一位的失败时点是最糟的那个：用户申请退款、商家已同意，调通道才失败。
      */
+    /**
+     * 本主体在本通道的<b>账期</b>：T+1 / T+N / WEEKLY / SEMI_MONTHLY / MONTHLY。
+     *
+     * <p>放在进件档案上而不是 {@code mch_entity}：账期天然是<b>主体 × 通道</b>二维的 ——
+     * 一家同时开微信和支付宝，两边的账期可以不同。
+     *
+     * <p><b>上限受 {@code sys_pay_channel.settle_cycle} 约束，取更短的那个。</b>
+     * 反过来（按主体配的更长）会让指令在通道侧被拒，而拒绝理由不会说
+     * 「因为你配了月结」。
+     */
+    private String settleCycle;
+
     private Boolean splitReversible;
 
     /** 授权开启时间。在此之前成交且已分账的单同样退不了 —— 排查时要看这个时点。 */

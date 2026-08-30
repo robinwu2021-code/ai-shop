@@ -221,6 +221,17 @@ public class StlBill extends BaseEntity {
     /** 付款凭证号（网银流水号）。自营专用；空 = 尚未付款。 */
     private String paymentRef;
 
+    /**
+     * T2 可结算时刻 = 履约完成 + 售后期。
+     *
+     * <p><b>为空 = 还不可结算</b>（未履约，或售后未闭环），不是「立刻可结」——
+     * 兜成 0 的话这单会在第一轮扫描就进批，而那时售后可能还开着。
+     */
+    private Long settleableAt;
+
+    /** 归属账期批次。为空 = 还没入批；查「这单卡在哪」全靠它 */
+    private String batchNo;
+
     /** 财务登记的付款时间。与 {@code splitAt} 分开——那是分账时间，两条轨道不共用。 */
     private Long paidAt;
 

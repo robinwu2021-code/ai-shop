@@ -978,6 +978,8 @@ CREATE TABLE IF NOT EXISTS stl_bill
     points_cost_minor BIGINT(20) NOT NULL DEFAULT 0,
     waived_commission_minor BIGINT NOT NULL DEFAULT 0,
     split_confirmed_at BIGINT DEFAULT NULL,
+    settleable_at BIGINT(20) DEFAULT NULL,
+    batch_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_settle_no UNIQUE (settle_no),
     CONSTRAINT uk_sub_order UNIQUE (sub_order_no)
@@ -1410,6 +1412,7 @@ CREATE TABLE IF NOT EXISTS mch_payment_merchant
     quota_limit_minor BIGINT(20) NOT NULL DEFAULT 0,
     quota_used_minor BIGINT(20) NOT NULL DEFAULT 0,
     quota_period VARCHAR(16) DEFAULT NULL,
+    settle_cycle VARCHAR(16) NOT NULL DEFAULT 'T+1',
     CONSTRAINT uk_mp_entity_channel_store UNIQUE (entity_no,pay_channel,store_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_mp_pay_merchant_no UNIQUE (pay_merchant_no)
@@ -3789,6 +3792,40 @@ CREATE TABLE IF NOT EXISTS prd_goods_draft
     deleted TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_goods_draft UNIQUE (goods_no)
+);
+
+CREATE TABLE IF NOT EXISTS stl_settle_batch
+(
+    id               BIGINT(20)   NOT NULL AUTO_INCREMENT,
+    batch_no         VARCHAR(64)  NOT NULL,
+    entity_no        VARCHAR(64)  NOT NULL,
+    pay_channel      VARCHAR(16)  NOT NULL,
+    settle_cycle     VARCHAR(16)  NOT NULL DEFAULT 'T+1',
+    period_from      BIGINT(20)   NOT NULL,
+    period_to        BIGINT(20)   NOT NULL,
+    due_at           BIGINT(20)   NOT NULL,
+    released_at      BIGINT(20)   DEFAULT NULL,
+    freeze_expire_at BIGINT(20)   DEFAULT NULL,
+    status           VARCHAR(24)  NOT NULL DEFAULT 'DRAFT',
+    bill_count       INT(11)      NOT NULL DEFAULT 0,
+    gross_minor      BIGINT(20)   NOT NULL DEFAULT 0,
+    net_minor        BIGINT(20)   NOT NULL DEFAULT 0,
+    recon_scope      VARCHAR(16)  NOT NULL DEFAULT 'SELF_ONLY',
+    blocked_reason   VARCHAR(512) DEFAULT NULL,
+    blocked_at       BIGINT(20)   DEFAULT NULL,
+    block_expire_at  BIGINT(20)   DEFAULT NULL,
+    decided_by       VARCHAR(64)  DEFAULT NULL,
+    decide_remark    VARCHAR(512) DEFAULT NULL,
+    tenant_no        VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at       DATETIME     NOT NULL,
+    created_by       VARCHAR(64)  DEFAULT NULL,
+    updated_at       DATETIME     NOT NULL,
+    updated_by       VARCHAR(64)  DEFAULT NULL,
+    version          BIGINT(20)   NOT NULL DEFAULT 0,
+    deleted          TINYINT(4)   NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_stl_batch_no UNIQUE (batch_no, tenant_no),
+    CONSTRAINT uk_stl_batch_period UNIQUE (entity_no, pay_channel, period_from, tenant_no, deleted)
 );
 
 -- 种子数据
