@@ -343,6 +343,104 @@ class OfflineSettleFlowTest {
         }
     }
 
+    @Test
+    @DisplayName("★★★ 佣金基数扣完手续费再抽 —— 按原价抽，每笔多收几分，累积起来对不上账")
+    void commissionBaseExcludesChannelFee() throws Exception {
+        var rate = addWechatRate(200, 0L);          // 2%，让手续费大到肉眼可辨
+        try {
+            StlBill bill = billOfOnlineOrder("13400288015", "settle-fee-5");
+
+            assertThat(bill.getChannelFeeMinor())
+                    .as("前提：手续费必须真的大于 0，否则下面两条分辨不出基数用了哪个")
+                    .isPositive();
+            assertThat(bill.getCommissionMinor())
+                    .as("基数 = gross - 手续费")
+                    .isEqualTo((bill.getGrossMinor() - bill.getChannelFeeMinor()) * SEED_RATE_BP / 10000);
+            assertThat(bill.getCommissionMinor())
+                    .as("按 gross 原价抽会更多 —— 这一条就是红线 6 改没改的分水岭")
+                    .isLessThan(bill.getGrossMinor() * SEED_RATE_BP / 10000);
+        } finally {
+            dropRate(rate);
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 商家承担的手续费要从实得里扣 —— 只记不扣，等于账上有一笔谁都不出的费用")
+    void merchantBorneFeeIsDeductedFromNet() throws Exception {
+        var rate = addWechatRate(200, 0L);
+        String payNo = givenApplyment("MERCHANT");
+        try {
+            StlBill bill = billOfOnlineOrder("13400288016", "settle-fee-6");
+
+            assertThat(bill.getFeeBearer())
+                    .as("前提：这一单解析到的承担方确实是商家")
+                    .isEqualTo("MERCHANT");
+            assertThat(bill.getChannelFeeMinor())
+                    .as("前提：手续费必须非 0，否则下一条在「扣与不扣」之间分辨不出来")
+                    .isPositive();
+            assertThat(bill.getNetMinor())
+                    .as("实得 = 基数 - 佣金 - 服务费 - 积分费 - 他自己承担的手续费")
+                    .isEqualTo(bill.getGrossMinor() - bill.getCommissionMinor()
+                            - bill.getServiceFeeMinor() - bill.getPointsFeeMinor()
+                            - bill.getChannelFeeMinor());
+        } finally {
+            dropApplyment(payNo);
+            dropRate(rate);
+        }
+    }
+
+    /**
+     * <b>写这条用例时被建表默认值骗过一次，值得留个记号。</b>
+     *
+     * <p>{@code stl_bill.fee_bearer} 是 {@code NOT NULL DEFAULT 'MERCHANT'}，
+     * 而 MyBatis-Plus 插入时会跳过 null 字段 —— 于是「没解析到承担方」落库之后
+     * 长得和「商家承担」一模一样。上一版用例断言「承担方是 MERCHANT」是<b>通过的</b>，
+     * 而那时代码一个字都没解析到，实得也根本没扣。
+     * 现在解析不到时显式写 {@code UNKNOWN}，两种情况才分得开。
+     */
+    @Test
+    @DisplayName("★★★ 没进件时落 UNKNOWN 且不扣 —— 不知道不等于商家出，猜错就是少付给他钱")
+    void unknownBearerIsExplicitAndDeductsNothing() throws Exception {
+        var rate = addWechatRate(200, 0L);
+        try {
+            StlBill bill = billOfOnlineOrder("13400288017", "settle-fee-7");
+
+            assertThat(bill.getFeeBearer())
+                    .as("种子商家没有进件档案 —— 落 MERCHANT 就是替他认领了这笔费用")
+                    .isEqualTo("UNKNOWN");
+            assertThat(bill.getChannelFeeMinor())
+                    .as("费用照记：不知道谁出，不代表没这笔")
+                    .isPositive();
+            assertThat(bill.getNetMinor())
+                    .as("承担方未知就不从实得里扣")
+                    .isEqualTo(bill.getGrossMinor() - bill.getCommissionMinor()
+                            - bill.getServiceFeeMinor() - bill.getPointsFeeMinor());
+        } finally {
+            dropRate(rate);
+        }
+    }
+
+    /**
+     * 临时给种子商家建一条主体级进件档案。
+     *
+     * <p>⚠️ <b>用完必须删。</b>它一旦留在库里，此后所有线上单的实得都会少掉一笔手续费，
+     * 而别的用例的失败信息里不会有任何一个字提到「承担方」。
+     */
+    private String givenApplyment(String bearer) {
+        String no = "PM-FEE-TEST";
+        DataScopeContext.executeWithoutScope(() -> jdbc.update(
+                "INSERT INTO mch_payment_merchant (pay_merchant_no, entity_no, store_no, pay_channel,"
+                        + " apply_status, fee_bearer, tenant_no, created_at, updated_at, version, deleted)"
+                        + " VALUES (?, ?, '', 'WECHAT', 'ACTIVE', ?, 'MAIN', CURRENT_TIMESTAMP,"
+                        + " CURRENT_TIMESTAMP, 0, 0)", no, SEED_ENTITY, bearer));
+        return no;
+    }
+
+    private void dropApplyment(String payMerchantNo) {
+        DataScopeContext.executeWithoutScope(() -> jdbc.update(
+                "DELETE FROM mch_payment_merchant WHERE pay_merchant_no = ?", payMerchantNo));
+    }
+
     /**
      * ⚠️ <b>费率行必须删干净。</b>{@code sys_pay_channel_rate} 是全局表，
      * 留一行 WECHAT 费率在库里，此后**所有**线上单都会带上手续费 ——

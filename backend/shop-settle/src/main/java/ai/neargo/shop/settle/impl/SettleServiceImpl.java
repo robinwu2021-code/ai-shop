@@ -181,7 +181,18 @@ public class SettleServiceImpl implements SettleService {
              * 而漏改的那一处**没有任何地方会报错**：报表照出，数目悄悄不对。
              */
             boolean offline = PayModes.OFFLINE.equals(src.payChannel());
-            long ruleCommission = gross * rate / 10000;
+            /*
+             * ★ 通道手续费要**先算出来**：佣金基数扣的就是它。
+             *
+             * 《收款与分账-总体逻辑》§六红线 6：佣金基数 = 扣完支付手续费后的金额，
+             * 不是订单原价。按原价抽的话每笔多收几分，累积起来对不上账。
+             * 线下单的手续费恒为 0，所以这条对它没有影响。
+             *
+             * <b>只对新单生效</b>（2026-08-30 拍板）：这里是生成时一次性算定并落快照，
+             * 存量单不会被重算 —— 历史账保持与当初真的打出去的钱一致。
+             */
+            ChannelFee fee = channelFeeOf(src, at);
+            long ruleCommission = (gross - fee.minor()) * rate / 10000;
             long commission = offline ? 0L : ruleCommission;
 
             StlBill bill = new StlBill();
@@ -219,7 +230,23 @@ public class SettleServiceImpl implements SettleService {
              */
             long pointsFee = src.pointsFeeMinor();
             bill.setPointsFeeMinor(pointsFee);
-            bill.setNetMinor(gross - commission - serviceFee - pointsFee);
+            /*
+             * ★ 商家实得要减掉**他自己承担的**那部分通道手续费。
+             *
+             * 记了金额却不从任何人的钱里扣，等于账上有一笔谁都不出的费用。
+             * 判据是进件档案上的 fee_bearer，不是资金路径 ——
+             * 资金路径只决定这笔钱**由谁物理扣走**（归集是平台代垫后扣回，
+             * 直连是通道直接从二级户扣），而「谁最终承担」是签约时谈定的。
+             * 按资金路径判的话，直连商家会被扣两次：通道扣一次、我们再算一次。
+             *
+             * 承担方为空（还没进件）时**不扣** —— 猜一个方向就是替他做主，
+             * 而这个方向上猜错等于少付给他钱。
+             */
+            bill.setNetMinor(gross - commission - serviceFee - pointsFee - fee.borneByMerchant());
+            bill.setChannelFeeMinor(fee.minor());
+            bill.setChannelFeeRate(fee.rateBp());
+            bill.setChannelFeeSource(fee.source());
+            bill.setFeeBearer(fee.bearer());
             bill.setTrafficSource(src.trafficSource());
             bill.setCommissionRate(rate);
             /*
@@ -267,7 +294,6 @@ public class SettleServiceImpl implements SettleService {
              */
             bill.setBusinessMode(mode);
             boolean selfOperated = MerchantQueryPort.MODE_SELF_OPERATED.equals(mode);
-            applyChannelFee(bill, src, at);
             /*
              * 线下**压过经营模式**决定状态：两条既有链路（自营对账、第三方分账）
              * 描述的都是「平台手里这笔钱怎么流出去」，而线下压根没有这笔钱。
@@ -707,48 +733,84 @@ public class SettleServiceImpl implements SettleService {
     }
 
     /**
-     * 把<b>通道手续费</b>的四件事落进结算单：收了多少、按哪一版费率、什么来源、从谁身上收。
+     * 这一笔的<b>通道手续费</b>：收多少、按哪一版、什么来源、从谁身上收。
      *
-     * <p><b>这四列此前全库零写入</b>（`stl_bill` 建表时就有，没有任何地方 set 过），
-     * 而运营端能配的 {@code sys_pay_channel_rate} 也没有任何消费者 ——
-     * 配了费率不影响任何一笔账，运营却会以为改了就生效了。这个方法把两头接上。
+     * <p>{@code stl_bill} 的这四列建表时就有，而**此前全库零写入**；运营端能配的
+     * {@code sys_pay_channel_rate} 也没有任何消费者 —— 配了费率不影响任何一笔账，
+     * 运营却会以为改了就生效了。这个方法把两头接上。
      *
      * <p><b>基数是实付金额，不是结算基数 {@code gross}。</b>
-     * 通道按真正流经它的那笔钱收费，而 {@code gross} 还加回了平台优惠与积分抵扣 ——
-     * 那两笔钱压根没从通道走过。用 gross 会让手续费凭空变大，且金额越大差得越多。
+     * 通道按真正流经它的那笔钱收费，而 gross 还加回了平台优惠与积分抵扣 ——
+     * 那两笔钱压根没从通道走过。用 gross 会让手续费凭空变大，金额越大差得越多。
      *
      * <p><b>没配过费率就留空，不兜 0。</b>「没配过」与「配了 0%」在库里必须长得不一样：
      * 兜 0 之后，事后没有任何人能回答「这笔手续费当时是免的，还是根本没人配」。
-     * 留空的表现是 {@code channel_fee_source} 为 null，而金额与费率是建表默认的 0。
      *
-     * <p>线下（当面）收款直接返回：钱从没进过通道，谈不上通道手续费。
+     * <p>线下（当面）收款返回空值：钱从没进过通道，谈不上通道手续费。
      */
-    private void applyChannelFee(StlBill bill, SettleSourcePort.SettleSource src, long at) {
-        if (PayModes.OFFLINE.equals(src.payChannel()) || src.payChannel() == null) {
-            return;
+    private ChannelFee channelFeeOf(SettleSourcePort.SettleSource src, long at) {
+        if (src.payChannel() == null || PayModes.OFFLINE.equals(src.payChannel())) {
+            return ChannelFee.none();
         }
+        String resolved = merchantQueryPort.feeBearerOf(src.merchantNo(), src.storeNo(), src.payChannel());
+        String bearer = resolved == null || resolved.isBlank() ? MchFeeBearer.UNKNOWN : resolved;
         var rate = masterDataPort.channelFeeRate(src.payChannel(), src.payScene(),
                 merchantQueryPort.legalFormOf(src.merchantNo()), at);
         if (rate == null) {
             /*
              * 承担方仍然要落：它来自进件档案，与费率配没配无关。
-             * 只有它有值而金额是 0 时，读单据的人才看得出「知道该谁出，但不知道出多少」。
+             * 只有它有值而 source 为 null 时，读单据的人才看得出
+             * 「知道该谁出，但不知道出多少」—— 而那正是今天的真实状态。
              */
-            bill.setFeeBearer(merchantQueryPort.feeBearerOf(
-                    src.merchantNo(), src.storeNo(), src.payChannel()));
-            return;
+            return new ChannelFee(0L, 0, null, bearer);
         }
         /*
-         * 单笔最低手续费：通道普遍有这一档，小额单按率算出来不足最低值时按最低值收。
+         * 单笔最低手续费：通道普遍有这一档，小额单按率算不足最低值时按最低值收。
          * 漏了它的表现是小额单的手续费系统性偏低，而单看任何一笔都「算得对」。
          */
         long byRate = src.payAmount() * rate.rateBp() / 10000;
-        bill.setChannelFeeMinor(Math.max(byRate, rate.minFeeMinor()));
-        bill.setChannelFeeRate(rate.rateBp());
-        // 今天只有一种来源。真出现优惠费率时，它该由费率版本自己标明，而不是在这里猜
-        bill.setChannelFeeSource(StlBill.FEE_STANDARD);
-        bill.setFeeBearer(merchantQueryPort.feeBearerOf(
-                src.merchantNo(), src.storeNo(), src.payChannel()));
+        // 今天只有一种来源。真出现优惠费率时该由费率版本自己标明，不在这里猜
+        return new ChannelFee(Math.max(byRate, rate.minFeeMinor()), rate.rateBp(),
+                StlBill.FEE_STANDARD, bearer);
+    }
+
+    /**
+     * @param bearer {@code MERCHANT} 时这笔钱由商家出，要从他的实得里扣掉；
+     *               {@code PLATFORM} / {@code UNKNOWN} 则不扣 —— <b>不知道不等于商家出</b>，
+     *               猜一个方向就是替他做主，而这个方向上猜错等于少付给他钱
+     */
+    private record ChannelFee(long minor, int rateBp, String source, String bearer) {
+        /** 线下单：{@code bearer} 也留 null —— 没有通道，就没有「谁承担通道费」这个问题 */
+        static ChannelFee none() {
+            return new ChannelFee(0L, 0, null, null);
+        }
+
+        /** 从商家实得里扣掉的部分。承担方不是商家（含未知）时为 0 */
+        long borneByMerchant() {
+            return MchFeeBearer.MERCHANT.equals(bearer) ? minor : 0L;
+        }
+    }
+
+    /** {@code mch_payment_merchant.fee_bearer} 的取值。 */
+    private static final class MchFeeBearer {
+        static final String MERCHANT = "MERCHANT";
+
+        /**
+         * <b>还没进件，我们不知道谁承担。</b>
+         *
+         * <p>要有这个显式值，是因为 {@code stl_bill.fee_bearer} 是
+         * {@code NOT NULL DEFAULT 'MERCHANT'} —— 传 null 进去被 MyBatis-Plus 跳过，
+         * 落库变成建表默认的 {@code MERCHANT}，于是**「不知道」在单据上长得和
+         * 「商家承担」一模一样**。写这条用例时正是被它骗过：断言
+         * 「承担方是 MERCHANT」通过了，而代码其实一个字都没解析到。
+         *
+         * <p>与 {@code channel_fee_source} 为 null 是同一条规矩的两处应用：
+         * 不知道就要说不知道，兜一个看着合理的默认值是账目上最难查的一类错。
+         */
+        static final String UNKNOWN = "UNKNOWN";
+
+        private MchFeeBearer() {
+        }
     }
 
     private StlBill findBySubOrder(String subOrderNo) {
