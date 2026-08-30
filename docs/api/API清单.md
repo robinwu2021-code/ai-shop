@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 635 个接口**：后端已实现 520（82%）· 前端在调 573
+**合计 637 个接口**：后端已实现 522（82%）· 前端在调 575
 
 ---
 
@@ -690,7 +690,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **352** 个接口 ｜ 后端已实现 **270**（77%）｜ 前端在调 **290**
+共 **354** 个接口 ｜ 后端已实现 **272**（77%）｜ 前端在调 **292**
 
 ### aftersale（4）
 
@@ -929,13 +929,15 @@
 | POST | `/ops/promotion/activities/{activityNo}/stop` | 强制停止一个活动 | — | `OpsPromoActivity` | — | ✅ | ✅ |
 | GET | `/ops/promotion/coupons` | 全平台券（新模型）：归属、敞口、异常标记 */ | — | `数组` | — | ✅ | ✅ |
 
-### merchant（35）
+### merchant（37）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/ops/admission/deposits/{merchantNo}` | merchantDeposit | — | `MerchantDeposit` | — | ✅ | ✅ |
 | GET | `/ops/admission/deposits/{merchantNo}/txns` | depositTxns | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/admission/deposits/{merchantNo}/txns` | addDepositTxn | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/admission/pay-quota/{merchantNo}` | 当前收款额度 | — | `数组` | — | ✅ | ✅ |
+| PUT | `/ops/admission/pay-quota/{merchantNo}` | setPayQuota | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/admission/policies` | 三档准入策略 | — | `数组` | — | ✅ | ✅ |
 | PUT | `/ops/admission/policies/{legalForm}` | updateAdmissionPolicy | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/merchant-plans` | 到期与降级看板 | — | `object` | — | ✅ | ✅ |

@@ -4234,6 +4234,40 @@ _无字段_
 类型：`object`
 
 
+#### GET `/ops/admission/pay-quota/{merchantNo}`
+
+当前收款额度
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+**出参**（`data`）
+
+类型：[`PayQuota`](#payquota)\[\]
+
+
+#### PUT `/ops/admission/pay-quota/{merchantNo}`
+
+setPayQuota
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### GET `/ops/admission/policies`
 
 三档准入策略
@@ -9753,6 +9787,18 @@ KPI 卡（金额为最小货币单位整数）。
 | `supportsSubsidy` | `boolean` | 是 | 能否补差。**为 false 时该通道不开积分抵扣** —— 这是通道的事实，运营改不了 |
 | `currentRate` | [`#/definitions/PayChannelRateVersion`](#definitionspaychannelrateversion) \| `null` | 是 | 此刻生效的那一版；**一条都没配时为 null**，要显示成「未配置」而不是 0 |
 | `rates` | [`#/definitions/PayChannelRateVersion`](#definitionspaychannelrateversion)\[\] | 是 | 全部版本，按生效时间倒序 |
+
+### PayQuota
+
+一个收款号的额度。主体级一条 + 每个已进件门店一条。 <p>**空列表 ≠ 额度为零**：空表示这家还没进过件，界面上必须画成两样东西 —— 读成「额度为零」的运营会去调大额度，而实际该做的是先走进件。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 空串 = 主体级默认收款号 |
+| `payChannel` | `string,null` | 否 | WECHAT / ALIPAY |
+| `applyStatus` | `string,null` | 否 | 进件状态；未 ACTIVE 时额度设了也不生效 |
+| `limitMinor` | `number` | 是 | 上限（分）；**0 = 未设置，不拦**，不是「额度为零」 |
+| `usedMinor` | `number` | 是 | 已用（分）。支付累加出来的事实，运营改不了 |
 
 ### PickupPoint
 
