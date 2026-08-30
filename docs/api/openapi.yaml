@@ -1724,6 +1724,9 @@ components:
         stdNo: 
           type: "string"
           description: "引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。**\n\n<p>必须下发：编辑页保存是整份覆盖，拿不到它就等于\n**打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。"
+        hasDraft: 
+          type: "boolean"
+          description: "有未发布的修改（双版本草稿，V279）。**只有商家侧 `/biz/goods` 下发**， C 端与运营端恒空 —— 它是商家的编辑态提示，买家与审核队列都不消费它。\n\n<p>判据是**草稿行存在与否**，不比内容：保存的内容与线上相同时后端直接删行， 所以 true 一定意味着「发布会改变线上」。列表页据此挂「有未发布修改」徽标。"
       required: 
         - "goodsNo"
         - "title"
@@ -6156,6 +6159,42 @@ components:
         - "inTransitCount"
       additionalProperties: false
       description: "库存总览的三个数（`SummaryVO`）。"
+    Supplier: 
+      type: "object"
+      properties: 
+        supplierNo: 
+          type: "string"
+        name: 
+          type: "string"
+        shortName: 
+          type: 
+            - "string"
+            - "null"
+        contactName: 
+          type: 
+            - "string"
+            - "null"
+        contactPhone: 
+          type: 
+            - "string"
+            - "null"
+        remark: 
+          type: 
+            - "string"
+            - "null"
+        status: 
+          type: "string"
+          description: "ACTIVE 在用 · ARCHIVED 已停用。**停用不删除** —— 历史单据要指得回去"
+        fromPlatform: 
+          type: "boolean"
+          description: "引用平台档案。**据此把名称与联系方式置灰** —— 不看这一位的话，商家会改了才发现改不动。"
+      required: 
+        - "supplierNo"
+        - "name"
+        - "status"
+        - "fromPlatform"
+      additionalProperties: false
+      description: "一家供应商（`SupplierVO`）。进货单指向的那个**稳定对象** —— 在它之前只有一个会漂的名字字符串。"
     StockBalance: 
       type: "object"
       properties: 

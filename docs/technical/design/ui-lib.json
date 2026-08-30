@@ -388,7 +388,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 78,
+        "b-app": 81,
         "c-app": 29
       }
     },
@@ -444,7 +444,7 @@
         "margin-bottom": "8px"
       },
       "usage": {
-        "b-app": 22,
+        "b-app": 26,
         "c-app": 1
       }
     },
@@ -512,7 +512,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 227,
+        "b-app": 231,
         "c-app": 111
       }
     },
@@ -528,7 +528,7 @@
         "align-items": "baseline"
       },
       "usage": {
-        "b-app": 26,
+        "b-app": 27,
         "c-app": 3
       }
     },
@@ -544,7 +544,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 107,
+        "b-app": 109,
         "c-app": 67
       }
     },
@@ -776,7 +776,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 260,
+        "b-app": 263,
         "c-app": 38
       }
     },
@@ -798,7 +798,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 65,
+        "b-app": 67,
         "c-app": 52
       }
     },
@@ -820,7 +820,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 229,
+        "b-app": 236,
         "c-app": 191
       }
     },
@@ -930,7 +930,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 113,
+        "b-app": 114,
         "c-app": 35
       }
     },
@@ -952,7 +952,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 79,
+        "b-app": 83,
         "c-app": 84
       }
     },
@@ -1038,7 +1038,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 183,
+        "b-app": 186,
         "c-app": 63
       }
     },
@@ -1070,7 +1070,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 106,
+        "b-app": 109,
         "c-app": 36
       }
     },
@@ -1128,7 +1128,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 27,
+        "b-app": 28,
         "c-app": 2
       }
     },
@@ -1164,7 +1164,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 24,
+        "b-app": 25,
         "c-app": 7
       }
     },
@@ -1432,7 +1432,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 93,
+        "b-app": 94,
         "c-app": 14
       }
     },
@@ -1585,7 +1585,7 @@
         "bare?: boolean"
       ],
       "usage": {
-        "b-app": 39,
+        "b-app": 40,
         "c-app": 19
       },
       "note": "空态",
@@ -1651,7 +1651,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 59,
+        "b-app": 60,
         "c-app": 4
       },
       "note": "单色图标",
@@ -1765,7 +1765,7 @@
         "deniedText?: string"
       ],
       "usage": {
-        "b-app": 61,
+        "b-app": 62,
         "c-app": 29
       },
       "note": "页面外壳",
@@ -1799,7 +1799,7 @@
         "stacked?: boolean"
       ],
       "usage": {
-        "b-app": 5,
+        "b-app": 6,
         "c-app": 3
       },
       "note": "底部弹层",
@@ -1986,6 +1986,24 @@
       },
       "note": "当前门店胶囊",
       "why": "可点 = 门店管理入口；readonly = 只说清这屏属于哪家店"
+    },
+    {
+      "name": "biz-supplier-picker",
+      "file": "b-app/src/components/biz/biz-supplier-picker.vue",
+      "scope": "B 端",
+      "lines": 134,
+      "props": [
+        "visible: boolean",
+        "items: Supplier[]",
+        "picked?: string",
+        "busy?: boolean"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0
+      },
+      "note": "—",
+      "why": "—"
     },
     {
       "name": "biz-time-range",
@@ -2199,9 +2217,9 @@
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 276,
-      "localSelectors": 68,
-      "localCssLines": 301,
+      "libClassHits": 280,
+      "localSelectors": 70,
+      "localCssLines": 312,
       "rolled": []
     },
     {
@@ -2219,10 +2237,40 @@
         "sh-tabs",
         "biz-store-tag"
       ],
-      "libClassHits": 36,
-      "localSelectors": 26,
-      "localCssLines": 118,
-      "rolled": []
+      "libClassHits": 37,
+      "localSelectors": 27,
+      "localCssLines": 121,
+      "rolled": [
+        {
+          "id": "semcolor",
+          "label": "语义色自写",
+          "lib": ".is-danger / .is-success / .is-warning",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "b-app",
+      "page": "goods-publish",
+      "key": "b-app/goods-publish",
+      "file": "b-app/src/pages/goods-publish/index.vue",
+      "components": [
+        "sh-icon",
+        "sh-scaffold"
+      ],
+      "libClassHits": 23,
+      "localSelectors": 9,
+      "localCssLines": 37,
+      "rolled": [
+        {
+          "id": "quietover",
+          "label": "次要色自写",
+          "lib": ".txt-quiet（整段次要用 .sh-muted）",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "b-app",
@@ -2565,9 +2613,10 @@
         "sh-empty",
         "sh-kv",
         "sh-scaffold",
-        "biz-item-picker"
+        "biz-item-picker",
+        "biz-supplier-picker"
       ],
-      "libClassHits": 32,
+      "libClassHits": 37,
       "localSelectors": 9,
       "localCssLines": 31,
       "rolled": []
@@ -3382,12 +3431,33 @@
       "rolled": []
     }
   ],
-  "gaps": [],
+  "gaps": [
+    {
+      "id": "semcolor",
+      "label": "语义色自写",
+      "lib": ".is-danger / .is-success / .is-warning",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
+      "pages": [
+        "b-app/goods-list"
+      ]
+    },
+    {
+      "id": "quietover",
+      "label": "次要色自写",
+      "lib": ".txt-quiet（整段次要用 .sh-muted）",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
+      "pages": [
+        "b-app/goods-publish"
+      ]
+    }
+  ],
   "counts": {
     "tokens": 10,
     "blocks": 63,
-    "components": 32,
-    "pages": 90,
+    "components": 33,
+    "pages": 91,
     "gapKinds": 0
   }
 }

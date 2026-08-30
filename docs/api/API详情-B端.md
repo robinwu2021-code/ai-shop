@@ -1189,6 +1189,7 @@ _无字段_
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
 | `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
+| `hasDraft` | `boolean` | 否 | 有未发布的修改（双版本草稿，V279）。**只有商家侧 `/biz/goods` 下发**， C 端与运营端恒空 —— 它是商家的编辑态提示，买家与审核队列都不消费它。 <p>判据是**草稿行存在与否**，不比内容：保存的内容与线上相同时后端直接删行， 所以 true 一定意味着「发布会改变线上」。列表页据此挂「有未发布修改」徽标。 |
 
 `groupBuy` 的字段：
 
@@ -1196,6 +1197,66 @@ _无字段_
 |---|---|:---:|---|
 | `minCount` | `number` | 是 | — |
 | `price` | `number` | 是 | — |
+
+
+#### GET `/biz/goods/{goodsNo}/draft`
+
+读草稿（编辑页回填）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+**出参**（`data`）
+
+类型：[`SaveGoodsReqBody`](#savegoodsreqbody)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 否 | 商品单号。新建时不传，编辑时必传 |
+| `title` | `string` | 是 | 基准语言（zh-CN）的标题。后端按 Accept-Language 下发时的兜底 |
+| `subtitle` | `string` | 是 | 基准语言（zh-CN）的副标题/卖点 |
+| `titleI18n` | [`Record_string_string`](#record_string_string) | 是 | 标题的三语原文，键是 Lang。缺译的语言按 R9 回落展示中文 |
+| `subtitleI18n` | [`Record_string_string`](#record_string_string) | 是 | 副标题的三语原文，同上 |
+| `categoryNo` | `string` | 是 | 类目单号。**必填，且是唯一的分类输入** —— 商品形态（生鲜要截单、服务不发货、iOS 可售规则）由它派生，请求体里不再有 `type`。 |
+| `cover` | `string` | 否 | 封面图 URL（来自 mUploadImage）。漏传的话 C 端列表里是一块留白，且不报错 |
+| `images` | `string`\[\] | 否 | 详情轮播图 |
+| `detailImages` | `string`\[\] | 否 | 详情区长图。**空数组也要发** —— 与 images 同一口径，不发就删不掉 |
+| `detail` | `string` | 否 | 图文详情正文（纯文本）。**空串也要发** —— 后端「不传 = 不改」，删光了不发就删不掉 |
+| `params` | [`GoodsParam`](#goodsparam)\[\] | 否 | 商品参数（产地/保质期/材质…）。**整份覆盖，空数组也要发**。 <p>此前这个字段**契约里没有、http.ts 也没发** —— 而编辑页一直在收集它 （`goods-edit` 里那一栏和 `paramValues` 都在）。于是商家填完保存， 参数原地消失，且不报错：后端把 `params == null` 当「不改」， 所以旧值还在、新填的进不去、想删的删不掉。 |
+| `specGroups` | [`SpecGroupDraft`](#specgroupdraft)\[\] | 是 | 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 |
+| `fulfillments` | `string`\[\] | 否 | 支持的履约方式；不传 = 不改（新建默认四种全支持） |
+| `skus` | [`SkuDraft`](#skudraft)\[\] | 是 | SKU 列表。单规格商品也有且仅有一条 |
+| `limitPerUser` | `number` | 否 | 每人限购，0 = 不限。不传 = 不改 |
+| `fresh` | `object`（见下） | 否 | 生鲜段：截单 / 到货描述 / 是否按实称 / 产地。不传 = 不改 |
+| `service` | `object`（见下） | 否 | 服务段：时长 / 可核销门店。不传 = 不改 |
+| `groupBuy` | `object`（见下） | 否 | 拼团档：起团人数 + 团价，要么都给要么都不给 |
+| `stdNo` | `string` | 否 | 引用的平台标准品。传了它，服务端会用标准品的 categoryNo 与 optionCode **覆盖**请求里的值；不传 = 自建品 / 脱离标准品。 |
+
+`fresh` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `cutoffAt` | `number` | 否 | 当天几点前下单（毫秒时间戳）。与「到点」是两件事：截单管下单，到点管到货 |
+| `arrivalDesc` | `string` | 否 | 预计到货描述，如「次日 17:00 前到点」 |
+| `weighed` | `boolean` | 否 | 是否按实称多退少补 |
+| `origin` | `string` | 否 | 产地 |
+
+`service` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `durationMin` | `number` | 否 | 服务时长（分钟） |
+| `storeName` | `string` | 否 | 可核销门店名 |
+
+`groupBuy` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `minCount` | `number` | 否 | 起团人数，最小 2 —— 一个人不叫团 |
+| `price` | `number` | 否 | 团购价（最小货币单位） |
 
 
 #### POST `/biz/goods/{goodsNo}/presale`
@@ -1252,6 +1313,7 @@ _无字段_
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
 | `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
+| `hasDraft` | `boolean` | 否 | 有未发布的修改（双版本草稿，V279）。**只有商家侧 `/biz/goods` 下发**， C 端与运营端恒空 —— 它是商家的编辑态提示，买家与审核队列都不消费它。 <p>判据是**草稿行存在与否**，不比内容：保存的内容与线上相同时后端直接删行， 所以 true 一定意味着「发布会改变线上」。列表页据此挂「有未发布修改」徽标。 |
 
 `groupBuy` 的字段：
 
@@ -1259,6 +1321,85 @@ _无字段_
 |---|---|:---:|---|
 | `minCount` | `number` | 是 | — |
 | `price` | `number` | 是 | — |
+
+
+#### POST `/biz/goods/{goodsNo}/publish`
+
+发布草稿（原子换版）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+**出参**（`data`）
+
+类型：[`Goods`](#goods)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `title` | `string` | 是 | 商品标题 |
+| `subtitle` | `string` | 是 | 副标题/卖点一句话 |
+| `cover` | `string` | 是 | 封面图 URL。列表页用这一张 |
+| `images` | `string`\[\] | 是 | 详情轮播图 URL 列表 |
+| `detailImages` | `string`\[\] | 否 | 图文详情区的长图，按顺序全宽竖排。 **与 `images` 分开**：轮播是详情页顶部的方图、可左右滑；这些是正文下方的长图、 竖着一张接一张。合成一个数组之后端上只能靠宽高比猜哪几张该轮播 —— 猜错就是 一张 1:3 的长图被塞进方形轮播里。 |
+| `params` | [`GoodsParam`](#goodsparam)\[\] | 否 | **商品参数**（产地 / 保质期 / 材质…）—— 规格库里 `usage_type=PROP` 的那批。 <p>与 `specGroups` 形状相近、语义相反：那个的每一项都会进笛卡尔积生成 SKU， 这个一项也不进。买家不用挑，只是看；筛选靠 `code` / `valueNo`。 |
+| `type` | [`CategoryType`](#categorytype) | 是 | 商品形态，与所属类目的 type 一致。决定详情页用哪套字段 |
+| `categoryNo` | `string` | 是 | 所属类目 |
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 所属商家 —— 商品与服务都要展示商家信息 |
+| `rating` | `number` | 否 | 本商品的评分与评价数（区别于商家整体评分） |
+| `ratingCount` | `number` | 否 | 本商品的评价条数 |
+| `price` | `number` | 是 | 展示价（最小货币单位），取各 SKU 最低价 |
+| `originPrice` | `number` | 否 | 划线价（最小货币单位） |
+| `fulfillments` | [`FulfillmentType`](#fulfillmenttype)\[\] | 是 | 支持的履约方式。**数组**：同一商品可以既自提又快递，下单时由用户选 |
+| `specGroups` | [`SpecGroup`](#specgroup)\[\] | 是 | 规格维度定义；单规格商品也有一组 |
+| `skus` | [`Sku`](#sku)\[\] | 是 | SKU 列表。单规格商品也有且仅有一条 |
+| `sales` | `number` | 是 | 累计销量，展示用 |
+| `cutoffAt` | `number` | 否 | FRESH：预售截单时间戳 |
+| `arrivalDesc` | `string` | 否 | FRESH：预计到货描述 |
+| `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
+| `origin` | `string` | 否 | FRESH：产地 |
+| `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `storeName` | `string` | 否 | SERVICE：可核销门店 |
+| `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
+| `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
+| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
+| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
+| `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
+| `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
+| `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
+| `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
+| `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
+| `hasDraft` | `boolean` | 否 | 有未发布的修改（双版本草稿，V279）。**只有商家侧 `/biz/goods` 下发**， C 端与运营端恒空 —— 它是商家的编辑态提示，买家与审核队列都不消费它。 <p>判据是**草稿行存在与否**，不比内容：保存的内容与线上相同时后端直接删行， 所以 true 一定意味着「发布会改变线上」。列表页据此挂「有未发布修改」徽标。 |
+
+`groupBuy` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `minCount` | `number` | 是 | — |
+| `price` | `number` | 是 | — |
+
+
+#### GET `/biz/goods/{goodsNo}/publish-preview`
+
+发布预览（字段级差异）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+**出参**（`data`）
+
+类型：[`PublishPreview`](#publishpreview)
 
 
 #### POST `/biz/goods/{goodsNo}/stock`
@@ -1322,6 +1463,7 @@ _无字段_
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
 | `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
+| `hasDraft` | `boolean` | 否 | 有未发布的修改（双版本草稿，V279）。**只有商家侧 `/biz/goods` 下发**， C 端与运营端恒空 —— 它是商家的编辑态提示，买家与审核队列都不消费它。 <p>判据是**草稿行存在与否**，不比内容：保存的内容与线上相同时后端直接删行， 所以 true 一定意味着「发布会改变线上」。列表页据此挂「有未发布修改」徽标。 |
 
 `groupBuy` 的字段：
 
@@ -1385,6 +1527,7 @@ _无字段_
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
 | `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
+| `hasDraft` | `boolean` | 否 | 有未发布的修改（双版本草稿，V279）。**只有商家侧 `/biz/goods` 下发**， C 端与运营端恒空 —— 它是商家的编辑态提示，买家与审核队列都不消费它。 <p>判据是**草稿行存在与否**，不比内容：保存的内容与线上相同时后端直接删行， 所以 true 一定意味着「发布会改变线上」。列表页据此挂「有未发布修改」徽标。 |
 
 `groupBuy` 的字段：
 
@@ -1448,6 +1591,7 @@ _无字段_
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
 | `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
+| `hasDraft` | `boolean` | 否 | 有未发布的修改（双版本草稿，V279）。**只有商家侧 `/biz/goods` 下发**， C 端与运营端恒空 —— 它是商家的编辑态提示，买家与审核队列都不消费它。 <p>判据是**草稿行存在与否**，不比内容：保存的内容与线上相同时后端直接删行， 所以 true 一定意味着「发布会改变线上」。列表页据此挂「有未发布修改」徽标。 |
 
 `groupBuy` 的字段：
 
@@ -1511,6 +1655,7 @@ _无字段_
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
 | `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
+| `hasDraft` | `boolean` | 否 | 有未发布的修改（双版本草稿，V279）。**只有商家侧 `/biz/goods` 下发**， C 端与运营端恒空 —— 它是商家的编辑态提示，买家与审核队列都不消费它。 <p>判据是**草稿行存在与否**，不比内容：保存的内容与线上相同时后端直接删行， 所以 true 一定意味着「发布会改变线上」。列表页据此挂「有未发布修改」徽标。 |
 
 `groupBuy` 的字段：
 
@@ -1580,6 +1725,7 @@ _无字段_
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
 | `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
+| `hasDraft` | `boolean` | 否 | 有未发布的修改（双版本草稿，V279）。**只有商家侧 `/biz/goods` 下发**， C 端与运营端恒空 —— 它是商家的编辑态提示，买家与审核队列都不消费它。 <p>判据是**草稿行存在与否**，不比内容：保存的内容与线上相同时后端直接删行， 所以 true 一定意味着「发布会改变线上」。列表页据此挂「有未发布修改」徽标。 |
 
 `groupBuy` 的字段：
 
@@ -1714,6 +1860,7 @@ _无字段_
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
 | `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
+| `hasDraft` | `boolean` | 否 | 有未发布的修改（双版本草稿，V279）。**只有商家侧 `/biz/goods` 下发**， C 端与运营端恒空 —— 它是商家的编辑态提示，买家与审核队列都不消费它。 <p>判据是**草稿行存在与否**，不比内容：保存的内容与线上相同时后端直接删行， 所以 true 一定意味着「发布会改变线上」。列表页据此挂「有未发布修改」徽标。 |
 
 `groupBuy` 的字段：
 
@@ -2201,6 +2348,58 @@ _无字段_
 | `staleCount` | `number` | 是 | — |
 | `inTransitCount` | `number` | 是 | 待收货的调拨单数。**按单不按件** —— 收货是按单做的，给件数点不进任何一张单 |
 | `openCountNo` | `string,null` | 否 | 还开着的那张盘点单的单号，没有就没有这个字段。 **给单号不给个数**：工作台的「继续盘点」要带着它跳， 不带的话那一页会开一张**新的**盘点单，而按钮上写着「继续」。 |
+
+
+#### GET `/biz/inventory/suppliers`
+
+供应商档案（挑供应商传 activeOnly=true）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Supplier`](#supplier)\[\]
+
+
+#### POST `/biz/inventory/suppliers`
+
+建供应商档案　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`{ supplierNo: string }`](#suppliernostring)
+
+
+#### PUT `/biz/inventory/suppliers/{no}`
+
+改供应商档案（引用平台档案的只能改备注）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+**出参**（`data`）
+
+类型：`any`
+
+
+#### POST `/biz/inventory/suppliers/{no}/active`
+
+停用 / 启用供应商　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+**出参**（`data`）
+
+类型：`any`
 
 
 #### POST `/biz/inventory/transfers`
@@ -5326,6 +5525,7 @@ _无字段_
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
 | `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
+| `hasDraft` | `boolean` | 否 | 有未发布的修改（双版本草稿，V279）。**只有商家侧 `/biz/goods` 下发**， C 端与运营端恒空 —— 它是商家的编辑态提示，买家与审核队列都不消费它。 <p>判据是**草稿行存在与否**，不比内容：保存的内容与线上相同时后端直接删行， 所以 true 一定意味着「发布会改变线上」。列表页据此挂「有未发布修改」徽标。 |
 
 `groupBuy` 的字段：
 
@@ -7325,6 +7525,21 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `contactPhone` | `string` | 否 | 进件联系电话 |
 | `storeNo` | `string` | 否 | 为**哪家门店**进件；不传 = 主体级默认号（单店永远走这条）。 传它就是在走「分开结算」：微信侧一个商户号只能绑一个结算账户， 两家店各收各的钱，就得进件两次拿两个号。 |
 | `entityNo` | `string` | 否 | 给哪张证照进件，可空 = 当前证照。多证照的老板在证照详情页进来时会带上它 |
+
+### Supplier
+
+一家供应商（`SupplierVO`）。进货单指向的那个**稳定对象** —— 在它之前只有一个会漂的名字字符串。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `supplierNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `shortName` | `string,null` | 否 | — |
+| `contactName` | `string,null` | 否 | — |
+| `contactPhone` | `string,null` | 否 | — |
+| `remark` | `string,null` | 否 | — |
+| `status` | `string` | 是 | ACTIVE 在用 · ARCHIVED 已停用。**停用不删除** —— 历史单据要指得回去 |
+| `fromPlatform` | `boolean` | 是 | 引用平台档案。**据此把名称与联系方式置灰** —— 不看这一位的话，商家会改了才发现改不动。 |
 
 ### ToggleCampaignReq
 

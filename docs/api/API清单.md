@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 635 个接口**：后端已实现 520（82%）· 前端在调 573
+**合计 642 个接口**：后端已实现 523（81%）· 前端在调 580
 
 ---
 
@@ -201,7 +201,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **200** 个接口 ｜ 后端已实现 **168**（84%）｜ 前端在调 **200**
+共 **207** 个接口 ｜ 后端已实现 **171**（83%）｜ 前端在调 **207**
 
 ### activities（4）
 
@@ -343,13 +343,16 @@
 | GET | `/biz/geo/reverse` | 坐标转地址（门店地址定位） | — | `GeoReverseResult` | 🔒 | ✅ | ✅ |
 | GET | `/biz/geo/tips` | 地点输入提示（提报小区按名搜 POI） | — | `数组` | 🔒 | ✅ | ✅ |
 
-### goods（11）
+### goods（14）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/goods` | 商品列表 | — | `object` | 🔒 | ✅ | ✅ |
 | GET | `/biz/goods/{goodsNo}` | 商品详情 | — | `Goods` | 🔒 | ✅ | ✅ |
+| GET | `/biz/goods/{goodsNo}/draft` | 读草稿（编辑页回填） | — | `SaveGoodsReqBody` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/presale` | 改截单与到货说明 | — | `Goods` | 🔒 | ✅ | ✅ |
+| POST | `/biz/goods/{goodsNo}/publish` | 发布草稿（原子换版） | — | `Goods` | 🔒 | ✅ | ✅ |
+| GET | `/biz/goods/{goodsNo}/publish-preview` | 发布预览（字段级差异） | — | `PublishPreview` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/stock` | 改库存 | `SaveStockReq` | `Goods` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/store-price` | 改当前门店售价 | — | `Goods` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/store-stock` | 改当前门店库存 | — | `Goods` | 🔒 | ✅ | ✅ |
@@ -373,7 +376,7 @@
 | GET | `/biz/groups` | 我的商家团 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/groups` | 开团 | `CreateGroupReq` | `GroupBuy` | 🔒 | ✅ | ✅ |
 
-### inventory（27）
+### inventory（31）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -400,6 +403,10 @@
 | GET | `/biz/inventory/report/monthly` | 进销存月报 | — | `StockMonthly` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/inventory/report/ranking` | 动销/滞销榜 | — | `数组` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/inventory/summary` | 库存总览三个数 | — | `StockSummary` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/inventory/suppliers` | 供应商档案（挑供应商传 activeOnly=true） | — | `数组` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/inventory/suppliers` | 建供应商档案 | — | — | 🔒 | ⬜ | ✅ |
+| PUT | `/biz/inventory/suppliers/{no}` | 改供应商档案（引用平台档案的只能改备注） | — | — | 🔒 | ⬜ | ✅ |
+| POST | `/biz/inventory/suppliers/{no}/active` | 停用 / 启用供应商 | — | — | 🔒 | ⬜ | ✅ |
 | POST | `/biz/inventory/transfers` | 建调拨单 | — | `string` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/inventory/transfers/{no}` | 读回调拨单 | — | `StockTransfer` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/inventory/transfers/{no}/receive` | 调拨收货 | — | — | 🔒 | ⬜ | ✅ |
