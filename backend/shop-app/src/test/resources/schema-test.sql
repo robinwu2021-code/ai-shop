@@ -8115,15 +8115,6 @@ SET backend_status = 'IMPLEMENTED',
 WHERE point_code = 'OPS_MESSAGE__TAB_FAQ'
   AND backend_status = 'NOT_IMPLEMENTED';
 INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
-SELECT 'OPS_FINANCE__TAB_PAY_CHANNELS', 'OPS_FINANCE', '支付通道与费率', '费率', '/finance?tab=pay-channels', 'finance:rate:update', 'finance:rate:update', 'IMPLEMENTED', 1, 'P-12.1', 'MENU', 41, NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_FINANCE__TAB_PAY_CHANNELS');
-INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
-SELECT 'SUPER_ADMIN', 'OPS_FINANCE__TAB_PAY_CHANNELS', 'OPS', NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_FINANCE__TAB_PAY_CHANNELS');
-INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
-SELECT 'FINANCE', 'OPS_FINANCE__TAB_PAY_CHANNELS', 'OPS', NOW(), NOW() FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='FINANCE' AND x.point_code='OPS_FINANCE__TAB_PAY_CHANNELS');
-INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
 SELECT 'OPS_MESSAGE__TAB_ROUTING', 'OPS_MESSAGE', '场景与通道', '触达', '/messages?tab=routing', 'message:template:read', 'message:template:read', 'IMPLEMENTED', 1, 'P-14.1', 'MENU', 19, NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MESSAGE__TAB_ROUTING');
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
@@ -8132,3 +8123,12 @@ SELECT 'SUPER_ADMIN', 'OPS_MESSAGE__TAB_ROUTING', 'OPS', NOW(), NOW() FROM DUAL
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'SUPPORT', 'OPS_MESSAGE__TAB_ROUTING', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPPORT' AND x.point_code='OPS_MESSAGE__TAB_ROUTING');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_FINANCE__TAB_PAY_CHANNELS', 'OPS_FINANCE', '支付通道与费率', '费率', '/finance?tab=pay-channels', 'finance:rate:update', 'finance:rate:update', 'IMPLEMENTED', 1, 'P-12.1', 'MENU', 41, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_FINANCE__TAB_PAY_CHANNELS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_FINANCE__TAB_PAY_CHANNELS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_FINANCE__TAB_PAY_CHANNELS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'FINANCE', 'OPS_FINANCE__TAB_PAY_CHANNELS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='FINANCE' AND x.point_code='OPS_FINANCE__TAB_PAY_CHANNELS');
