@@ -239,6 +239,25 @@ public interface MerchantQueryPort {
      */
     String settleCycleOf(String merchantNo, String storeNo, String payChannel);
 
+    /**
+     * 资金风控要的两个<b>主库</b>事实：保证金可用额与欠款余额。
+     *
+     * <p>一次取齐而不是两个方法：它们总是一起被问（判「这一批放出去安不安全」），
+     * 分两次就是两次跨域调用 —— 而支付域独立成服务之后，那是两次跨进程往返。
+     *
+     * <p>查不到一律给 0，<b>不给 null</b>：这两个数进的是算式（集中度 = 批额 / 保证金），
+     * null 会让调用方到处判空，而判漏一处就是一次空指针。
+     */
+    FundRiskFacts fundRiskFacts(String merchantNo);
+
+    /**
+     * @param depositAvailableMinor 保证金<b>可用</b>额（实缴 − 理赔占用）。
+     *                              用可用而不是实缴：冻结中的那部分正被别的争议占着
+     * @param debtBalanceMinor      当前欠款余额
+     */
+    record FundRiskFacts(long depositAvailableMinor, long debtBalanceMinor) {
+    }
+
     /** 归集：用户付给平台户，平台是销售主体（代销）。**这条路径没有补差动作** */
     String FUNDS_AGGREGATED = "AGGREGATED";
     /** 直连：用户付给商家二级户，平台分账。**只有这条路径需要补差** */

@@ -17,6 +17,10 @@ public final class SettleMappers {
     private SettleMappers() {
     }
 
+    public interface RiskShadowLogMapper
+            extends BaseMapper<ai.neargo.shop.settle.entity.PayRiskShadowLog> {
+    }
+
     public interface SettleBatchMapper
             extends BaseMapper<ai.neargo.shop.settle.entity.StlSettleBatch> {
     }

@@ -44,6 +44,7 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     private final MerchantQueryPort merchantQueryPort;
     private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
     private final ReconDiffMapper diffMapper;
+    private final ai.neargo.shop.settle.risk.FundRiskService fundRiskService;
 
     /**
      * 售后期天数。<b>与积分转正用的是同一个数</b>（{@code shop.points.pending-days}）——
@@ -65,13 +66,15 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     public SettleBatchServiceImpl(BillMapper billMapper, SettleBatchMapper batchMapper,
                                   SettleSourcePort sourcePort, MerchantQueryPort merchantQueryPort,
                                   ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
-                                  ReconDiffMapper diffMapper) {
+                                  ReconDiffMapper diffMapper,
+                                  ai.neargo.shop.settle.risk.FundRiskService fundRiskService) {
         this.billMapper = billMapper;
         this.batchMapper = batchMapper;
         this.sourcePort = sourcePort;
         this.merchantQueryPort = merchantQueryPort;
         this.masterDataPort = masterDataPort;
         this.diffMapper = diffMapper;
+        this.fundRiskService = fundRiskService;
     }
 
     // ---------------------------------------------------------------- ① 定 T2
@@ -264,6 +267,24 @@ public class SettleBatchServiceImpl implements SettleBatchService {
              * 盯 Tmax 的那个任务据此知道「还不能判」，而不是按一个猜的数报警。
              */
             DataScopeContext.executeWithoutScope(() -> batchMapper.updateById(patch));
+            /*
+             * ★ 风控判定放在**截批之后**，因为它要用本批的合计数（集中度 = 批额 / 保证金）——
+             * 收单期间那个数还在变。
+             *
+             * **今天是影子模式**（shop.risk.fund.shadow 默认 true）：只记录会拦谁，
+             * 不真的把批次挂起。真拦的接线点在放行那一步，而放行还没建 ——
+             * 所以现在先让判定跑起来、把数据攒下来，等定了阈值再接。
+             * 失败不影响截批：风控挂了不该让整条结算链路停。
+             */
+            try {
+                patch.setNetMinor(net);
+                patch.setEntityNo(batch.getEntityNo());
+                patch.setBatchNo(batch.getBatchNo());
+                fundRiskService.decide(patch);
+            } catch (RuntimeException e) {
+                log.warn("[settle-batch] 批次 {} 的风控判定失败（不影响截批）：{}",
+                        batch.getBatchNo(), e.toString());
+            }
             closed++;
         }
         if (closed > 0) {

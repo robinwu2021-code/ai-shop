@@ -3872,6 +3872,31 @@ CREATE TABLE IF NOT EXISTS mch_debt_txn
     CONSTRAINT uk_mch_debt_txn_source UNIQUE (entity_no, source_type, source_no, tenant_no, deleted)
 );
 
+CREATE TABLE IF NOT EXISTS pay_risk_shadow_log
+(
+    id             BIGINT(20)   NOT NULL AUTO_INCREMENT,
+    log_no         VARCHAR(64)  NOT NULL,
+    entity_no      VARCHAR(64)  NOT NULL,
+    batch_no       VARCHAR(64)  NOT NULL,
+    verdict        VARCHAR(16)  NOT NULL,
+    hit_rules      VARCHAR(255) DEFAULT NULL,
+    explain_text   VARCHAR(512) DEFAULT NULL,
+    would_hold_minor BIGINT(20) NOT NULL DEFAULT 0,
+    refund_rate_bp INT(11)      NOT NULL DEFAULT 0,
+    debt_minor     BIGINT(20)   NOT NULL DEFAULT 0,
+    deposit_minor  BIGINT(20)   NOT NULL DEFAULT 0,
+    tenant_no      VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at     DATETIME     NOT NULL,
+    created_by     VARCHAR(64)  DEFAULT NULL,
+    updated_at     DATETIME     NOT NULL,
+    updated_by     VARCHAR(64)  DEFAULT NULL,
+    version        BIGINT(20)   NOT NULL DEFAULT 0,
+    deleted        TINYINT(4)   NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_risk_shadow_no UNIQUE (log_no, tenant_no),
+    CONSTRAINT uk_risk_shadow_batch UNIQUE (batch_no, tenant_no, deleted)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

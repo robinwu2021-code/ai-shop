@@ -68,6 +68,16 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper staffMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
     private final ai.neargo.shop.merchant.service.MerchantAuthCodeService authCodeService;
+    /*
+     * 保证金与欠款用 ObjectProvider 懒取，与上面的 storeShelfPort 同一个理由：
+     * DebtServiceImpl 依赖 AdmissionService，而准入那一侧又要问商家主档 ——
+     * 构造期直接注入会绕成环，而环的报错信息（BeanCurrentlyInCreation）
+     * 完全看不出是这两个类。
+     */
+    private final org.springframework.beans.factory.ObjectProvider<
+            ai.neargo.shop.merchant.service.AdmissionService> admissionServiceProvider;
+    private final org.springframework.beans.factory.ObjectProvider<
+            ai.neargo.shop.merchant.service.DebtService> debtServiceProvider;
     private final tools.jackson.databind.ObjectMapper json;
     /** 主体激活时建 FREE 订阅行（V150）—— 与 ensureDefaultStore 同一类动作 */
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper entityPlanMapper;
@@ -111,7 +121,13 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.FulfillmentChannelMapper fulfillmentChannelMapper,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper,
                             ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort,
-                            ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper) {
+                            ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper,
+                            org.springframework.beans.factory.ObjectProvider<
+                                    ai.neargo.shop.merchant.service.AdmissionService> admissionServiceProvider,
+                            org.springframework.beans.factory.ObjectProvider<
+                                    ai.neargo.shop.merchant.service.DebtService> debtServiceProvider) {
+        this.admissionServiceProvider = admissionServiceProvider;
+        this.debtServiceProvider = debtServiceProvider;
         this.fulfillmentChannelMapper = fulfillmentChannelMapper;
         this.channelPickupMapper = channelPickupMapper;
         this.pickupQueryPort = pickupQueryPort;
@@ -667,6 +683,27 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         // 而它只有一个用途 —— 取费率。取错的表现是账目静默差几分钱
         return m == null || m.getLegalForm() == null || m.getLegalForm().isBlank()
                 ? null : m.getLegalForm();
+    }
+
+    @Override
+    public FundRiskFacts fundRiskFacts(String merchantNo) {
+        long deposit = 0L;
+        long debt = 0L;
+        try {
+            var admission = admissionServiceProvider.getIfAvailable();
+            deposit = admission == null ? 0L
+                    : Math.max(admission.deposit(merchantNo).availableMinor(), 0L);
+        } catch (RuntimeException e) {
+            // 没有保证金账户是常态（大多数商家没缴过），不是错误 —— 按 0 算
+            deposit = 0L;
+        }
+        try {
+            var debtSvc = debtServiceProvider.getIfAvailable();
+            debt = debtSvc == null ? 0L : debtSvc.balanceOf(merchantNo);
+        } catch (RuntimeException e) {
+            debt = 0L;
+        }
+        return new FundRiskFacts(deposit, debt);
     }
 
     @Override

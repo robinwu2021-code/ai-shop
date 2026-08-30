@@ -106,6 +106,8 @@ public final class BizKey {
     public static final String PAY_MERCHANT = "PM";
     /** 对账差异单 */
     public static final String RECON_DIFF = "RD";
+    /** 资金风控影子期日志 */
+    public static final String RISK_SHADOW = "RSK";
     /** 保证金流水 */
     public static final String DEPOSIT_TXN = "DP";
     /** 欠款流水。与保证金流水分开：两者方向相反，混号会让对账时分不清 */
