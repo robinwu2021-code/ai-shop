@@ -97,6 +97,22 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
    * <p>运营端那条全量队列（`applies(status)`）是另一个方法，2026-08-30 已经
    * **去掉**了绕过 —— 那一条才是数据域该起作用的地方。
    */
+  /*
+   * 准入判断要先查主体「是什么档位」。**这处绕过是修一个真缺陷，不是放宽**：
+   * `mch_entity` 是 MERCHANT 维度，而 `requireOrderAllowed` 的主调用方是
+   * **下单请求，跑在买家会话里**（SELF 维度）——买家在这张表上没有锚点，
+   * fail-closed 拼成 1=0，查不到主体就直接 return，于是单笔限额 / 日累计上限 /
+   * 限品类 / 保证金四道闸在真实下单链路上一道都没跑，零异常零日志。
+   * 见 S3AdmissionRealPathTest 与 backend/known-failures.txt 里那段复盘。
+   *
+   * <p>ops 侧也会走到它（`GET /ops/merchants/{merchantNo}/fulfillment`）。
+   * **那一侧不构成越权**：该端点真正返回的门店数据来自 `mch_store` /
+   * `mch_fulfillment_channel`，两张表都登记了 MERCHANT 维度、照样被裁 ——
+   * 绕过只影响准入矩阵的 S 轴（主体档位），配了商家域的运营看别家仍然是空列表。
+   */
+  "AdmissionPortImpl#merchantOf":
+    "查主体档位；主调用方是买家会话（SELF），不绕过四道准入闸全部静默失效",
+
   "CommunityAdminServiceImpl#appliesOf":
     "B 端查自己的提报，入参就是当前商家号；B 端会话是 SELF 维度，不绕会 fail-closed",
 
