@@ -32,7 +32,15 @@ public class InvTransferOrder extends InvMutableEntity {
 
     private LocalDateTime shippedAt;
 
-    /** 承运方编号，指向<b>主库</b>的 {@code ful_carrier}；空 = 自己送或没记 */
+    /**
+     * 承运方编号；空 = 自己送或没记。
+     *
+     * <p><b>取值是主库 {@code ful_carrier.carrier}</b>（{@code SF} / {@code JD} 这类），
+     * 不是那张表的自增 id —— 列名叫 {@code carrier_no} 只是本域的命名习惯。
+     * 跨库不能外键，所以这里存的是对方的业务键。
+     *
+     * <p>可选列表走 {@code GET /biz/fulfillment/carriers}（只列启用的）。
+     */
     private String carrierNo;
 
     /**
