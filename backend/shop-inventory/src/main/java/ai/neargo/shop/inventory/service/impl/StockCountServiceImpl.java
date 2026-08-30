@@ -173,7 +173,8 @@ public class StockCountServiceImpl implements StockCountService {
         if (!gains.isEmpty()) {
             head.setGainInboundNo(inbound.postDirectly(new InboundService.Draft(
                     ownerId, head.getLocationId(), InvEnums.InboundSource.COUNT_GAIN, countNo,
-                    null, LocalDateTime.now(), null, gains), operator));
+                    // 盘盈：货本来就在架上，没有来处
+                    null, null, LocalDateTime.now(), null, gains), operator));
         }
         if (!losses.isEmpty()) {
             head.setLossOutboundNo(outbound.postDirectly(new OutboundService.Draft(

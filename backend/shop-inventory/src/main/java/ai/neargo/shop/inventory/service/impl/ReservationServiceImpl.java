@@ -171,7 +171,8 @@ public class ReservationServiceImpl implements ReservationService {
         }
         return inbound.postDirectly(new InboundService.Draft(
                 ownerId, lines.get(0).locationId(), InvEnums.InboundSource.RETURN, afterSaleNo,
-                null, LocalDateTime.now(), null, inLines), operator);
+                // 系统自开的退货入库：没有供应商，supplierNo / supplierName 都是 null
+                null, null, LocalDateTime.now(), null, inLines), operator);
     }
 
     @Override

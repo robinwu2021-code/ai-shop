@@ -149,7 +149,8 @@ public class TransferServiceImpl implements TransferService {
         String transit = locations.transitLocation(ownerId);
         inbound.postDirectly(new InboundService.Draft(
                 ownerId, transit, InvEnums.InboundSource.TRANSFER_IN, transferNo,
-                null, LocalDateTime.now(), null, linesOf(head.getShippedOutboundNo())), operator);
+                // 调拨在途：来处是自己的另一个库位，不是供应商
+                null, null, LocalDateTime.now(), null, linesOf(head.getShippedOutboundNo())), operator);
 
         head.setStatus(InvEnums.TransferStatus.SHIPPED);
         head.setShippedAt(LocalDateTime.now());
@@ -179,7 +180,7 @@ public class TransferServiceImpl implements TransferService {
                 null, null, LocalDateTime.now(), null, outLines), operator);
         String inboundNo = inbound.postDirectly(new InboundService.Draft(
                 ownerId, head.getToLocationId(), InvEnums.InboundSource.TRANSFER_IN, transferNo,
-                null, LocalDateTime.now(), null, lines), operator);
+                null, null, LocalDateTime.now(), null, lines), operator);
 
         head.setStatus(InvEnums.TransferStatus.RECEIVED);
         head.setReceivedAt(LocalDateTime.now());
