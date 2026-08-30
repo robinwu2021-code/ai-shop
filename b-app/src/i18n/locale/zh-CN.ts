@@ -431,8 +431,6 @@ export default {
     published: "已发布，买家看到的已是新版",
     publishedPending: "已提交审核，线上仍在售旧版，过审后自动换新",
     publishConflict: "线上已变化，发布被拦。差异已刷新，请再核对",
-    diffBefore: "线上",
-    diffAfter: "发布后",
     editTitle: "编辑商品",
     createTitle: "新建商品",
     name: "商品名称",

@@ -27,7 +27,7 @@ DOMAINS = [
     ("工作台", ["home"]),
     ("订单与履约", ["orders", "order", "verify", "picking", "delivery", "after-sale",
                      "cart", "checkout", "pay", "order-confirm"]),
-    ("商品", ["goods", "goods-list", "goods-edit", "goods-detail", "search", "category", "my-specs", "store-categories"]),
+    ("商品", ["goods", "goods-list", "goods-edit", "goods-publish", "goods-detail", "search", "category", "my-specs", "store-categories"]),
     ("门店", ["stores", "store", "store-notice", "store-scope", "store-pick", "qualifications"]),
     ("会员与营销", ["customers", "marketing", "coupons", "member", "cards", "members",
                     "member-detail",

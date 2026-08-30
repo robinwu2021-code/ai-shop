@@ -119,6 +119,17 @@
             },
             {
               "app": "b-app",
+              "route": "/pages/goods-publish/index",
+              "title": "发布修改",
+              "domain": "商品",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/goods-publish/index"
+            },
+            {
+              "app": "b-app",
               "route": "/pages/store-categories/index",
               "title": "我的类目",
               "domain": "商品",
@@ -242,17 +253,6 @@
         {
           "name": "其它",
           "pages": [
-            {
-              "app": "b-app",
-              "route": "/pages/goods-publish/index",
-              "title": "发布修改",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/goods-publish/index"
-            },
             {
               "app": "b-app",
               "route": "/pages/schedule/index",
