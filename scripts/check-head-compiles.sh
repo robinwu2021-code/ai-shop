@@ -43,8 +43,16 @@ WT="$(mktemp -d "${TMPDIR:-/tmp}/head-compiles.XXXXXX")"
 cleanup() { git -C "$ROOT" worktree remove --force "$WT" >/dev/null 2>&1 || rm -rf "$WT"; }
 trap cleanup EXIT
 
-echo "→ 从 $REF 拉一份干净副本：$WT"
-git -C "$ROOT" worktree add -f --detach "$WT" "$REF" >/dev/null
+# **在这里定住提交号，不要等跑完再问一次 HEAD。**
+# 全量要跑四到六分钟，而这个目录常有多个会话在提交 —— 跑完时的 HEAD
+# 很可能已经不是被验的那一个。2026-08-30 实测：验的是 1d2cff5d，
+# 记下来的是 5b56fce8。而这条记录的唯一用途就是让部署脚本判断
+# 「发出去的那份是不是验过的那份」，记错等于把整道防护废掉，
+# **且废掉的样子看起来完全正常**（部署照打「就是这一版」）。
+VERIFIED_SHA="$(git -C "$ROOT" rev-parse "$REF")"
+
+echo "→ 从 $REF（$VERIFIED_SHA）拉一份干净副本：$WT"
+git -C "$ROOT" worktree add -f --detach "$WT" "$VERIFIED_SHA" >/dev/null
 
 # JDK 21：显式指定，别赌 shell 里 JAVA_HOME 是什么
 for c in /opt/homebrew/opt/openjdk@21 /usr/lib/jvm/java-21-openjdk "$(/usr/libexec/java_home -v 21 2>/dev/null || true)"; do
@@ -166,7 +174,7 @@ rm -f "$LOG"   # 通过就不留垃圾；上面每条失败路径都保留它并
 # 那是**朝安全方向失效**，且有 ALLOW_GATE_DRIFT=1 的出口 —— 但值得知道
 # 会有这种「看起来莫名其妙被拦」的时刻。
 {
-    git rev-parse HEAD
+    printf '%s\n' "$VERIFIED_SHA"
     printf '%s · 编译 + 全量 %s 跑 / %s 红（基线 %s 条）\n' \
         "$(date '+%F %T')" "$TOTAL" \
         "$(wc -l < "$NOW" | tr -d ' ')" "$(wc -l < "$BASE" | tr -d ' ')"
