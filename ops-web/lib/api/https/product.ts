@@ -30,6 +30,13 @@ interface BackendGoods {
 
 export const productHttp: ProductApi = {
   listGoodsAuditQueue: (q) => client.get("/ops/goods/audit-queue", q),
+  // 后端这条收的是 @RequestParam（不是 body），而 client.post 只有 (path, data) 两个参数 ——
+  // 所以 entityNo 拼进查询串。encodeURIComponent 不能省：商家号虽然目前是安全字符，
+  // 但「目前是」不是判据。
+  resyncCommunityPool: (entityNo) =>
+    client.post(entityNo
+      ? `/ops/community-pool/resync?entityNo=${encodeURIComponent(entityNo)}`
+      : "/ops/community-pool/resync"),
   auditGoods: (goodsNo, approved, reason) =>
     client.post(`/ops/goods/${goodsNo}/audit`, { approved, reason }),
 

@@ -19,4 +19,3 @@ PUT /ops/admission/pay-quota/{merchantNo}
 # 订单总览：运营端走的是别的入口，可能是重复能力，待确认后删或补
 GET /ops/order
 # 社区池重算，运维动作，可能本来就不该有界面
-POST /ops/community-pool/resync

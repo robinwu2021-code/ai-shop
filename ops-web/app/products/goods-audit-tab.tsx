@@ -16,6 +16,7 @@ import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer"
 import { Pagination } from "@/components/ui/misc";
 import { Notice } from "@/components/ui/notice";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ProductsCopy } from "./copy";
@@ -63,10 +64,39 @@ export function GoodsAuditTab({ c, canAudit }: { c: ProductsCopy; canAudit: bool
     },
   ];
 
+  /*
+   * 社区池重建。放在审核这一屏而不是单开一个 tab：后端挂的就是
+   * `product:sku:audit`（「能决定一件商品能不能卖的人，才该能重算它出现在哪儿」），
+   * 而它的触发场景也正是审核/客服在处理的那类问题。
+   */
+  const [resyncScope, setResyncScope] = useState("");
+  const resync = useMutation({
+    mutationFn: () => api.resyncCommunityPool(resyncScope.trim() || undefined),
+    onSuccess: (n) => notify.success(
+      n > 0 ? c.rsDone.replace("{n}", String(n)) : c.rsDoneZero),
+  });
+
   return (
     <>
       {!canAudit && (
         <Notice tone="warning" className="mb-3">{c.gaReadOnly}</Notice>
+      )}
+
+      {canAudit && (
+        <div className="mb-4 rounded-card border p-3">
+          <div className="mb-2 font-medium">{c.rsTitle}</div>
+          <Notice className="mb-3">{c.rsNotice}</Notice>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="rs-scope">{c.rsScope}</Label>
+              <Input id="rs-scope" className="w-64" placeholder={c.rsPlaceholder}
+                value={resyncScope} onChange={(e) => setResyncScope(e.target.value)} />
+            </div>
+            <Button disabled={resync.isPending} onClick={() => resync.mutate()}>
+              {resync.isPending ? c.rsRunning : c.rsRun}
+            </Button>
+          </div>
+        </div>
       )}
 
       <DataTable

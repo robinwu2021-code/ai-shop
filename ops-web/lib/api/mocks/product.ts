@@ -200,6 +200,17 @@ export const productMock: ProductApi = {
     // 队列只给待审的：已处理的属于历史，混在待办里会让人重复审
     wait(db.paginate(db.goodsAudits, q.page, q.size, (g) => g.status === "PENDING")),
 
+  resyncCommunityPool: async (entityNo) => {
+    /*
+     * 返回**真的重建了几件** —— 按主体过滤时只数那家的商品，不传就数全部。
+     *
+     * <p>mock 这里恒返 0 的话，界面上「重建了 N 件」永远是 0，而 0 恰好也是
+     * 「跑了但没有需要改的」的合法结果 —— 于是开发时根本看不出这个数有没有接对。
+     */
+    const n = db.skus.filter((x) => !entityNo || x.merchantNo === entityNo).length;
+    return wait(n, 600);
+  },
+
   auditGoods: async (goodsNo, approved, reason) => {
     const g = db.goodsAudits.find((x) => x.goodsNo === goodsNo);
     if (!g) notFound("商品", "Goods", goodsNo);
