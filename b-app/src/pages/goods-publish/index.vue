@@ -188,9 +188,10 @@ async function discard() {
           {{ $t(preview.stale ? "goods.publishStaleBtn" : "goods.publishBtn") }}
         </view>
       </view>
-      <!-- 第三条路：放弃草稿、以线上为准。弱化成文字链 —— 它是退路，不是并列选项 -->
+      <!-- 第三条路：放弃草稿、以线上为准。弱化成文字链 —— 它是退路，不是并列选项。
+           危险色走库件 .is-danger（语义色不自写）：删除不可恢复，值得警示色 -->
       <view class="discard-row">
-        <text class="txt-caption discard-link" @tap="discard">{{ $t("goods.discardBtn") }}</text>
+        <text class="txt-caption is-danger" @tap="discard">{{ $t("goods.discardBtn") }}</text>
       </view>
     </template>
   </sh-scaffold>
@@ -234,9 +235,5 @@ async function discard() {
 .discard-row {
   text-align: center;
   padding: 8rpx 0;
-}
-/* 危险色但不是按钮：草稿删除不可恢复，值得一个警示色；但它是退路，不抢主操作的视觉位 */
-.discard-link {
-  color: var(--sh-danger);
 }
 </style>
