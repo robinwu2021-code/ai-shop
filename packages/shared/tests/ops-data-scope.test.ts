@@ -61,6 +61,13 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
   // 进销存的三处：**平台完整性任务，按定义就是全量**。
   // recon 尤其不能接 —— 接上等于「只对差一部分」，而对账的全部意义就是覆盖全量；
   // 一个只覆盖一半的对账结果比没有更危险，它会让人以为对过了。
+  // 双版本（V279）：审核队列/详情随行的「有无草稿」布尔。
+  // **按已授权主键回捞**：goodsNo 来自上一步已过数据域的主查询（auditQueue 的
+  // 商品列表本身接域），这里只按那个 goodsNo 点查一行布尔 —— 行级可见性
+  // 由主查询决定，这一步不放大任何可见范围。与 toOpsVO 的回捞同一类。
+  "MerchantGoodsServiceImpl#hasDraft":
+    "按已授权 goodsNo 回捞草稿存在性布尔；行级可见性由上游主查询的数据域决定",
+
   "InventoryHealthServiceImpl#merchantNameOf":
     "健康度页取商家名填展示列。行级可见性由上一步的库存扫描决定，这里只是把 no 换成名字",
   "InventoryHealthServiceImpl#onSaleSkus":
@@ -254,6 +261,12 @@ const ANCHOR_WAIVED: Record<string, string> = {
     + "代价：配了社区域的运营打开商品池是空白。批③ 要正面解决，现在 prd_goods 上的 ops 查询"
     + "仍全部绕过数据域（SCOPE_BYPASS_OK），所以这条暂时不产生实际影响",
   "prd_goods:PICKUP": "同上：商品不属于自提点",
+
+  // 草稿挂在商品上、商品挂在商家上 —— 两个维度的豁免理由与 prd_goods 同源。
+  // 代价同样写明：配了社区/自提点域的运营查草稿表是空白（fail-closed）——
+  // 而草稿本来就不是那两类运营的对象（它是商家的编辑缓冲）。
+  "prd_goods_draft:COMMUNITY": "草稿属于商家（entity_no），不属于社区 —— 与 prd_goods 同源",
+  "prd_goods_draft:PICKUP": "同上：草稿不属于自提点",
 
   // prd_sku 于 2026-08-21 补登记（商品域优化清单 P2-4）：此前它**根本没注册**，
   // 于是不带过滤条件的 `GET /ops/skus` 是全平台可见，配了商家域的运营也一样。

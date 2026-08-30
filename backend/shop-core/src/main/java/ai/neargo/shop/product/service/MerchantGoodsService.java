@@ -216,6 +216,9 @@ public interface MerchantGoodsService {
      */
     GoodsVO publishDraft(String merchantNo, String goodsNo);
 
+    /** 发布预览：草稿 dry-run 烘焙后与线上的字段级差异（含会被拦的档位清单） */
+    ai.neargo.shop.product.dto.PublishPreviewVO publishPreview(String merchantNo, String goodsNo);
+
     GoodsVO submitForAudit(String merchantNo, String goodsNo);
 
     /**

@@ -856,6 +856,14 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * 续改同一份草稿不刷新它：刷新了的话，中途别人改过线上这件事就被洗掉了，
      * 发布时的冲突检查（对比线上 updated_at）会放过一次该拦的覆盖。
      */
+    /** 「有未发布修改」标识的判据：草稿行存在与否，不比内容（保存时内容相同即删行） */
+    private Boolean hasDraft(String goodsNo) {
+        Long n = DataScopeContext.executeWithoutScope(() ->
+                draftMapper.selectCount(Wrappers.<PrdGoodsDraft>lambdaQuery()
+                        .eq(PrdGoodsDraft::getGoodsNo, goodsNo)));
+        return n != null && n > 0;
+    }
+
     private GoodsVO saveAsDraft(PrdGoods live, SaveCommand cmd) {
         String payload = writeJson(cmd);
         PrdGoodsDraft row = DataScopeContext.executeWithoutScope(() ->
@@ -912,6 +920,118 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             return toVO(live);
         }
         return swapFromDraft(live, draft);
+    }
+
+    @Override
+    public ai.neargo.shop.product.dto.PublishPreviewVO publishPreview(String merchantNo, String goodsNo) {
+        PrdGoods live = mine(merchantNo, goodsNo);
+        PrdGoodsDraft draft = DataScopeContext.executeWithoutScope(() ->
+                draftMapper.selectOne(Wrappers.<PrdGoodsDraft>lambdaQuery()
+                        .eq(PrdGoodsDraft::getGoodsNo, goodsNo).last("limit 1")));
+        if (draft == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        SaveCommand cmd;
+        try {
+            cmd = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(draft.getPayload(), SaveCommand.class);
+        } catch (Exception e) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        boolean stale = draft.getBaseVersion() != null
+                && !draft.getBaseVersion().equals(live.getVersion());
+
+        // dry-run 烘焙草稿的规格 —— 与真发布同一套规则（bakeSpecs），否则预览会说谎
+        String draftGroupsJson = writeSpecGroups(cmd.specGroups());
+        List<String> blocked = List.of();
+        String bakedGroups = draftGroupsJson;
+        if (draftGroupsJson != null && !draftGroupsJson.isBlank()) {
+            BakedSpecs baked = bakeSpecs(live.getEntityNo(), cmd.categoryNo(), draftGroupsJson);
+            if (baked != null) {
+                blocked = baked.unresolved().stream().distinct().toList();
+                bakedGroups = baked.specGroupsJson();
+            }
+        }
+
+        List<ai.neargo.shop.product.dto.PublishPreviewVO.DiffRow> rows = new java.util.ArrayList<>();
+        diffRow(rows, "title", "标题", live.getTitle(), cmd.title());
+        diffRow(rows, "subtitle", "副标题", live.getSubtitle(), cmd.subtitle());
+        diffRow(rows, "cover", "封面", live.getCover(), cmd.cover());
+        diffRow(rows, "spec", "规格", renderGroups(live.getSpecGroups()), renderGroups(bakedGroups));
+        diffRow(rows, "params", "参数", renderParams(live.getParams()),
+                cmd.params() == null ? renderParams(live.getParams()) : renderParams(writeJson(cmd.params())));
+        // SKU：按位次比价格与库存 —— 档位文案差异已含在「规格」一行里
+        List<PrdSku> liveSkus = DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
+                        .eq(PrdSku::getGoodsNo, goodsNo)
+                        .orderByAsc(PrdSku::getId)));
+        List<Sku> cmdSkus = cmd.skus() == null ? List.of() : cmd.skus();
+        int n = Math.max(liveSkus.size(), cmdSkus.size());
+        for (int i = 0; i < n; i++) {
+            String before = i < liveSkus.size()
+                    ? liveSkus.get(i).getSpec() + " ¥" + liveSkus.get(i).getPrice() + " 库存" + liveSkus.get(i).getStock()
+                    : null;
+            String after = i < cmdSkus.size()
+                    ? String.join(" · ", cmdSkus.get(i).optionValues() == null ? List.of() : cmdSkus.get(i).optionValues())
+                      + " ¥" + cmdSkus.get(i).price() + " 库存" + cmdSkus.get(i).stock()
+                    : null;
+            diffRow(rows, "sku" + i, "第 " + (i + 1) + " 档", before, after);
+        }
+        return new ai.neargo.shop.product.dto.PublishPreviewVO(rows, blocked, stale);
+    }
+
+    private static void diffRow(List<ai.neargo.shop.product.dto.PublishPreviewVO.DiffRow> rows,
+                                String field, String label, String before, String after) {
+        if (java.util.Objects.equals(before, after)) {
+            return;
+        }
+        rows.add(new ai.neargo.shop.product.dto.PublishPreviewVO.DiffRow(field, label, before, after));
+    }
+
+    /** spec_groups JSON → 「组名: 档1/档2」的一行文本，够对比用 —— 预览是给人扫一眼的，不是契约 */
+    private static String renderGroups(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            var arr = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+            StringBuilder sb = new StringBuilder();
+            for (var g : arr) {
+                if (sb.length() > 0) {
+                    sb.append("；");
+                }
+                sb.append(g.path("name").asText()).append(": ");
+                var opts = g.path("options");
+                for (int i = 0; i < opts.size(); i++) {
+                    if (i > 0) {
+                        sb.append("/");
+                    }
+                    sb.append(opts.get(i).asText());
+                }
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return json;
+        }
+    }
+
+    private static String renderParams(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            var arr = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+            StringBuilder sb = new StringBuilder();
+            for (var pnode : arr) {
+                if (sb.length() > 0) {
+                    sb.append("；");
+                }
+                sb.append(pnode.path("name").asText()).append(": ").append(pnode.path("label").asText());
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return json;
+        }
     }
 
     /**
@@ -1270,25 +1390,33 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         return switchPort.bool("goods.audit", true);
     }
 
-    private void bakeForPublish(PrdGoods g) {
-        if (g.getSpecGroups() == null || g.getSpecGroups().isBlank()) {
-            return;
-        }
+    /** 编译的纯计算结果 —— bakeForPublish（落库）与 publishPreview（dry-run）共用 */
+    record BakedSpecs(String specGroupsJson, boolean changed,
+                      List<Map<String, String>> relabelByGroup,
+                      List<Map<String, String>> valueNoByGroup,
+                      List<String> unresolved) {
+    }
+
+    /**
+     * 对着**当前**规格库重解析+重烘焙一份 spec_groups（不碰任何数据库行）。
+     * 语义细节见 bakeForPublish 的注释 —— 这里只是把「算」从「写」里抽出来，
+     * 让发布前的差异预览能用同一套规则 dry-run：预览与真发布算出不同结果，
+     * 比没有预览更糟。
+     */
+    private BakedSpecs bakeSpecs(String entityNo, String categoryNo, String specGroupsJson) {
         List<ai.neargo.shop.product.dto.SpecTemplateVO> current =
-                specLibrary.templatesForCategory(g.getEntityNo(), g.getCategoryNo());
+                specLibrary.templatesForCategory(entityNo, categoryNo);
         Map<String, ai.neargo.shop.product.dto.SpecTemplateVO> byDim = current.stream()
                 .collect(java.util.stream.Collectors.toMap(
                         ai.neargo.shop.product.dto.SpecTemplateVO::templateNo, v -> v, (a, b) -> a));
         var om = new com.fasterxml.jackson.databind.ObjectMapper();
         com.fasterxml.jackson.databind.node.ArrayNode groups;
         try {
-            groups = (com.fasterxml.jackson.databind.node.ArrayNode) om.readTree(g.getSpecGroups());
+            groups = (com.fasterxml.jackson.databind.node.ArrayNode) om.readTree(specGroupsJson);
         } catch (Exception e) {
-            log.warn("[上架烘焙] spec_groups 解析失败，跳过烘焙照原样上架：goods={}", g.getGoodsNo(), e);
-            return;
+            return null;   // 解析不动的老快照：调用方按「跳过烘焙」处理
         }
         List<String> unresolved = new java.util.ArrayList<>();
-        // 每组一份 旧文案→新文案 / 新文案→valueNo，给 SKU 那一步用（位置对齐，见 valueNos 的注释）
         List<Map<String, String>> relabelByGroup = new java.util.ArrayList<>();
         List<Map<String, String>> valueNoByGroup = new java.util.ArrayList<>();
         boolean groupsChanged = false;
@@ -1318,7 +1446,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                  * 刷文案；组名保持原样（这条路上拿不到「本店叫法」的合并口径，
                  * 而保持原样最多是名字旧，改错名字是更糟的那种错）。
                  */
-                for (var o : specLibrary.valuesOfDim(g.getEntityNo(), dimNo)) {
+                for (var o : specLibrary.valuesOfDim(entityNo, dimNo)) {
                     codeToLabel.put(o.code() == null ? "" : o.code(), o.label());
                 }
             } else {
@@ -1352,7 +1480,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 }
                 newLabels.add(newLabel);
             }
-            Map<String, String> resolved = specLibrary.resolveValueNos(g.getEntityNo(), dimNo, newLabels);
+            Map<String, String> resolved = specLibrary.resolveValueNos(entityNo, dimNo, newLabels);
             for (String label : newLabels) {
                 if (resolved.get(label) == null && !unresolved.contains(shownName + "·" + label)) {
                     unresolved.add(shownName + "·" + label);
@@ -1361,17 +1489,35 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             relabelByGroup.add(relabel);
             valueNoByGroup.add(resolved);
         }
-        if (!unresolved.isEmpty()) {
-            throw BizException.of(ErrorCode.GOODS_SPEC_UNRESOLVED,
-                    String.join("、", unresolved.stream().distinct().toList()));
-        }
+        String outJson = specGroupsJson;
         if (groupsChanged) {
             try {
-                g.setSpecGroups(om.writeValueAsString(groups));
+                outJson = om.writeValueAsString(groups);
             } catch (Exception e) {
                 throw new IllegalStateException(e);   // 刚解析成功的树写不回去＝编程错误，不吞
             }
         }
+        return new BakedSpecs(outJson, groupsChanged, relabelByGroup, valueNoByGroup, unresolved);
+    }
+
+    private void bakeForPublish(PrdGoods g) {
+        if (g.getSpecGroups() == null || g.getSpecGroups().isBlank()) {
+            return;
+        }
+        BakedSpecs baked = bakeSpecs(g.getEntityNo(), g.getCategoryNo(), g.getSpecGroups());
+        if (baked == null) {
+            log.warn("[上架烘焙] spec_groups 解析失败，跳过烘焙照原样上架：goods={}", g.getGoodsNo());
+            return;
+        }
+        if (!baked.unresolved().isEmpty()) {
+            throw BizException.of(ErrorCode.GOODS_SPEC_UNRESOLVED,
+                    String.join("、", baked.unresolved().stream().distinct().toList()));
+        }
+        if (baked.changed()) {
+            g.setSpecGroups(baked.specGroupsJson());
+        }
+        List<Map<String, String>> relabelByGroup = baked.relabelByGroup();
+        List<Map<String, String>> valueNoByGroup = baked.valueNoByGroup();
         // SKU 快照跟上：文案按组内映射换，身份按新文案重解析（位置=第 i 组）
         List<PrdSku> skus = DataScopeContext.executeWithoutScope(() ->
                 skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
@@ -1627,7 +1773,14 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 g.getAuditReason(),
                 GoodsServiceImpl.groupBuyConf(g),
                 // 商家侧回显：不回显的话「打开编辑页再保存一次就把参数清空了」
-                readParams(g.getParams()));
+                readParams(g.getParams()),
+                /*
+                 * ops 视角不带 hasDraft：它是商家的编辑态提示，审核队列不消费它；
+                 * 而且这里查的话会豁免一张已注册表（G1 守卫拦的正是这个）——
+                 * 配了「只看某商家」的运营不该有任何一条绕过域的查询。
+                 * 审核员要看的「待审草稿内容」另有入口（步骤 4 的欠口，见工单）。
+                 */
+                null);
     }
 
     /**
@@ -2703,7 +2856,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 // 「可开团的商品」那一栏就是按它筛的
                 GoodsServiceImpl.groupBuyConf(g),
                 // 商家侧回显：不回显的话「打开编辑页再保存一次就把参数清空了」
-                readParams(g.getParams()));
+                readParams(g.getParams()),
+                hasDraft(g.getGoodsNo()));
     }
 
     /**

@@ -186,6 +186,16 @@ public class BizGoodsController {
      * 发布草稿（双版本）。审核关：原子换版，买家看到的从整份旧版直接变整份新版；
      * 审核开：提交待审，**线上继续卖旧版**。80018=草稿基版过期（先看差异再重提）。
      */
+    /**
+     * 发布预览：草稿 dry-run 烘焙后与线上的字段级差异。diff 在服务端算 ——
+     * 端上比原始 payload 会漏「文案将随规格库刷新」，而那正是发布前最该看见的。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @GetMapping("/biz/goods/{goodsNo}/publish-preview")
+    public ai.neargo.shop.product.dto.PublishPreviewVO publishPreview(@PathVariable String goodsNo) {
+        return goodsService.publishPreview(BizContext.requireMerchantNo(), goodsNo);
+    }
+
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @PostMapping("/biz/goods/{goodsNo}/publish")
     public GoodsVO publishDraft(@PathVariable String goodsNo) {

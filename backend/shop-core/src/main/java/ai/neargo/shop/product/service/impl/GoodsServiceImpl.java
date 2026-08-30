@@ -313,7 +313,8 @@ public class GoodsServiceImpl implements GoodsService {
                 // 驳回原因也是店主和平台之间的事
                 null,
                 groupBuyConf(g),
-                readParams(g.getParams()));
+                readParams(g.getParams()),
+                null);
     }
 
     /**

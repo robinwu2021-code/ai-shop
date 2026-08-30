@@ -101,7 +101,12 @@ public record GoodsVO(String goodsNo,
                        * 买家侧原样展示；商家侧编辑页靠它回显 ——
                        * 不回显的话，「打开编辑页再保存一次就把参数清空了」。
                        */
-                      List<GoodsParamVO> params) {
+                      List<GoodsParamVO> params,
+                      /**
+                       * 有未发布的草稿修改（双版本）。**只在 B 端商家视角下发，其余为 null** ——
+                       * 买家不需要知道商家改没改到一半，与 {@code status} 同一条规矩。
+                       */
+                      Boolean hasDraft) {
 
     /** 一条商品参数。量纲型（功率、净重）平台不枚举值，那时只有 label */
     /**

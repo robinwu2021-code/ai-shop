@@ -1469,6 +1469,95 @@ class M9bBizGoodsFlowTest {
         assertThat(live.getOnSale()).as("换版后仍在售").isTrue();
     }
 
+    @Test
+    @DisplayName("★★★ 发布预览：字段差异 + 「文案将随规格库刷新」都要在服务端算出来")
+    void previewShowsFieldDiffAndLibraryRefresh() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+        // 平台维度 + 一档，商家建品用上（快照文案 = 当时的「小罐」）
+        String dimBody = mvc().perform(post("/ops/spec-dims").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"PREVDIM\",\"name\":\"预览份量\",\"valueType\":\"ENUM\","
+                                + "\"usageType\":\"SALE\",\"universal\":true}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String dimNo = json.readTree(dimBody).get("data").get("dimNo").asString();
+        String vBody = mvc().perform(post("/ops/spec-values").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dimNo\":\"" + dimNo + "\",\"code\":\"PVSMALL\",\"label\":\"小罐\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String valueNo = json.readTree(vBody).get("data").get("valueNo").asString();
+
+        String biz = merchant("12600199208", "预览测试店");
+        String gBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT120\",\"title\":\"预览旧标题\","
+                                + "\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
+                                + "\"specGroups\":[{\"name\":\"预览份量\",\"templateNo\":\"" + dimNo
+                                + "\",\"options\":[\"小罐\"],\"optionCodes\":[\"PVSMALL\"]}],"
+                                + "\"skus\":[{\"optionValues\":[\"小罐\"],\"price\":900,\"stock\":9}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(gBody).get("data").get("goodsNo").asString();
+        approveGoods(goodsNo);
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 草稿只改标题；同期平台把「小罐」改叫「迷你罐」—— 商家没碰规格
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"CAT120\","
+                                + "\"title\":\"预览新标题\",\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
+                                + "\"specGroups\":[{\"name\":\"预览份量\",\"templateNo\":\"" + dimNo
+                                + "\",\"options\":[\"小罐\"],\"optionCodes\":[\"PVSMALL\"]}],"
+                                + "\"skus\":[{\"optionValues\":[\"小罐\"],\"price\":900,\"stock\":9}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(post("/ops/spec-values").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"valueNo\":\"" + valueNo + "\",\"dimNo\":\"" + dimNo
+                                + "\",\"code\":\"PVSMALL\",\"label\":\"迷你罐\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String body = mvc().perform(get("/biz/goods/" + goodsNo + "/publish-preview")
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        // 字段差异：标题行
+        assertThat(body).contains("预览旧标题").contains("预览新标题");
+        /*
+         * 灵魂断言：**商家没碰规格，预览也要显示「小罐 → 迷你罐」** ——
+         * 发布是编译点，文案会随规格库刷新；这条差异只有服务端 dry-run 烘焙
+         * 才算得出来，端上比原始 payload 永远看不见它。
+         */
+        assertThat(body).contains("迷你罐");
+    }
+
+    @Test
+    @DisplayName("★★ hasDraft 标识：有草稿 true，发布后回 false")
+    void hasDraftFlagFollowsDraftLifecycle() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+        mvc().perform(post("/ops/feature-flags/goods.audit").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":false,\"rolloutPercent\":0}"))
+                .andExpect(jsonPath("$.code").value(0));
+        try {
+            String goodsNo = onSaleGoodsWithDraft("12600199209", "标识测试店");
+            mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + lastBiz))
+                    .andExpect(jsonPath("$.data.hasDraft").value(true));
+            mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
+                            .header("Authorization", "Bearer " + lastBiz))
+                    .andExpect(jsonPath("$.code").value(0));
+            mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + lastBiz))
+                    .andExpect(jsonPath("$.data.hasDraft").value(false));
+        } finally {
+            mvc().perform(post("/ops/feature-flags/goods.audit").header("Authorization", "Bearer " + ops)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"enabled\":true,\"rolloutPercent\":0}"))
+                    .andExpect(jsonPath("$.code").value(0));
+        }
+    }
+
     private void approveGoods(String goodsNo) throws Exception {
         mvc().perform(post("/ops/goods/" + goodsNo + "/audit")
                         .header("Authorization", "Bearer " + opsLogin())
