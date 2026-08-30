@@ -94,7 +94,7 @@ export function AdmissionTab({ c }: { c: Copy }) {
   /*
    * 收款额度：**写接口 2026-05 就有了，读接口一直没有**，于是这个入口一直没敢挂 ——
    * 只让人往一个看不见当前值的框里填数，而填小了会把正常商家的货全拦下来。
-   * 读接口补上（GET /ops/admission/pay-quota/{merchantNo}）之后才有这一段。
+   * 读接口补上（GET /ops/admission/pay-quotas/{merchantNo}）之后才有这一段。
    */
   const quotas = useQuery({
     queryKey: ["pay-quotas", queried], queryFn: () => api.payQuotas(queried), enabled: !!queried,

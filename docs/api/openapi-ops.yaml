@@ -13665,7 +13665,7 @@ paths:
           schema: 
             type: "string"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/admission/pay-quota/{merchantNo}": 
+  "/ops/admission/pay-quotas/{merchantNo}": 
     get: 
       operationId: "payQuotas"
       summary: "当前收款额度"

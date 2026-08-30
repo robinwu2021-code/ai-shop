@@ -943,8 +943,8 @@
 | GET | `/ops/admission/deposits/{merchantNo}` | merchantDeposit | — | `MerchantDeposit` | — | ✅ | ✅ |
 | GET | `/ops/admission/deposits/{merchantNo}/txns` | depositTxns | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/admission/deposits/{merchantNo}/txns` | addDepositTxn | — | `object` | — | ✅ | ✅ |
-| GET | `/ops/admission/pay-quota/{merchantNo}` | 当前收款额度 | — | `数组` | — | ✅ | ✅ |
-| PUT | `/ops/admission/pay-quota/{merchantNo}` | 设置收款额度上限 | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/admission/pay-quotas/{merchantNo}` | 当前收款额度 | — | `数组` | — | ✅ | ✅ |
+| PUT | `/ops/admission/pay-quotas/{merchantNo}` | 设置收款额度上限 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/admission/policies` | 三档准入策略 | — | `数组` | — | ✅ | ✅ |
 | PUT | `/ops/admission/policies/{legalForm}` | updateAdmissionPolicy | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/merchant-plans` | 到期与降级看板 | — | `object` | — | ✅ | ✅ |

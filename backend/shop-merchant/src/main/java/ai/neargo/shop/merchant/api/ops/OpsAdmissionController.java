@@ -83,7 +83,7 @@ public class OpsAdmissionController {
      *
      * <p>空列表 = 还没进过件，与「额度为零」是两件事，端上要画成不同的东西。
      */
-    @GetMapping("/ops/admission/pay-quota/{merchantNo}")
+    @GetMapping("/ops/admission/pay-quotas/{merchantNo}")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_ADMISSION_READ + "')")
     public List<PayQuotaVO> payQuotas(@PathVariable String merchantNo) {
         return admissionService.payQuotas(merchantNo);
@@ -96,7 +96,9 @@ public class OpsAdmissionController {
      * 因为写一个猜的数比不写更危险 —— 它会让人以为这件事已经核对过了。
      * 填错方向的后果不对称：填大了等于没设，填小了会把正常商家的货全拦下来。
      */
-    @PutMapping("/ops/admission/pay-quota/{merchantNo}")
+    // 2026-08-30 由 pay-quota 改为复数：/ops 域的资源段一律复数（ADR-007），
+    // 单数那版是零调用方的孤儿端点、运营端也从没上过线，改名不影响任何人
+    @PutMapping("/ops/admission/pay-quotas/{merchantNo}")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_ADMISSION_UPDATE + "')")
     public void setPayQuota(@PathVariable String merchantNo, @RequestBody QuotaReq req) {
         String operator = SecurityUtils.currentUserNo();

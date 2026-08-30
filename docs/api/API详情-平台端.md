@@ -4234,7 +4234,7 @@ _无字段_
 类型：`object`
 
 
-#### GET `/ops/admission/pay-quota/{merchantNo}`
+#### GET `/ops/admission/pay-quotas/{merchantNo}`
 
 当前收款额度
 
@@ -4251,7 +4251,7 @@ _无字段_
 类型：[`PayQuota`](#payquota)\[\]
 
 
-#### PUT `/ops/admission/pay-quota/{merchantNo}`
+#### PUT `/ops/admission/pay-quotas/{merchantNo}`
 
 设置收款额度上限
 

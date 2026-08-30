@@ -21,8 +21,8 @@ export const merchantHttp: MerchantApi = {
   admissionPolicies: () => client.get("/ops/admission/policies"),
   updateAdmissionPolicy: (v) => client.put(`/ops/admission/policies/${v.legalForm}`, v),
   merchantDeposit: (merchantNo) => client.get(`/ops/admission/deposits/${merchantNo}`),
-  payQuotas: (merchantNo) => client.get(`/ops/admission/pay-quota/${merchantNo}`),
-  setPayQuota: (v) => client.put(`/ops/admission/pay-quota/${v.merchantNo}`, v),
+  payQuotas: (merchantNo) => client.get(`/ops/admission/pay-quotas/${merchantNo}`),
+  setPayQuota: (v) => client.put(`/ops/admission/pay-quotas/${v.merchantNo}`, v),
   depositTxns: (merchantNo) => client.get(`/ops/admission/deposits/${merchantNo}/txns`),
   addDepositTxn: (v) => client.post(`/ops/admission/deposits/${v.merchantNo}/txns`, v),
 
