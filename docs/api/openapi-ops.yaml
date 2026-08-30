@@ -15990,7 +15990,7 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/community-pool/resync${entityNo ? ": 
+  "/ops/community-pool/resync": 
     post: 
       operationId: "resyncCommunityPool"
       summary: "重建社区池（「这件商品出现在哪些社区」的派生索引）"

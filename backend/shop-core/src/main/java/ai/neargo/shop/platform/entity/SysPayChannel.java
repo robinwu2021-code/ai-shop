@@ -72,4 +72,15 @@ public class SysPayChannel extends BaseEntity {
      * <b>调过头的表现是分账被通道拒绝</b> —— 而那时订单已经付过款了。
      */
     private Integer maxSplitRate;
+    /**
+     * 结算币种。V274 加列。
+     *
+     * <p>加了列不补这个字段的话，那一列**永远读出 null** —— 而它有 DEFAULT，
+     * 库里其实有值。这种不一致不会报错，只会让页面显示空白。
+     */
+    private String currency;
+
+    /** 通道结算周期（T+1 之类），展示与对账预期用。V274 加列。 */
+    private String settleCycle;
+
 }

@@ -123,6 +123,41 @@ def strip_comments(sql):
     return "\n".join(out)
 
 
+def _column_names(cols):
+    """建表体里挑出真正的列名（跳过 PRIMARY KEY / CONSTRAINT 那几行）。"""
+    out = []
+    for line in cols:
+        t = line.strip()
+        if re.match(r"^(PRIMARY KEY|CONSTRAINT|UNIQUE|KEY|INDEX)\b", t, re.I):
+            continue
+        m = re.match(r"^(\w+)\s", t)
+        if m:
+            out.append(m.group(1))
+    return out
+
+
+def _pin_columns(stmt, tables):
+    """把 `INSERT INTO t VALUES (...)` 补成 `INSERT INTO t (col, ...) VALUES (...)`。
+
+    **为什么必须补**：种子是按原样收集、最后统一重放的，而它们跑在**最终**表结构上。
+    只要有一条 ALTER 给这张表加过列，位置式 INSERT 的列数就对不上，
+    H2 直接报 `Column count does not match` —— 而真跑时的症状是
+    「Spring 上下文起不来」，报错指向一个毫不相干的 Controller。
+    2026-08-30 V274 给 sys_pay_channel 加两列时撞上，这是这个脚本的第三个盲点。
+
+    补的是**这一刻**的列（重放到这条 INSERT 时的表结构），不是最终列 ——
+    补最终列同样对不上，因为那时的值只有旧列那么多。
+    """
+    m = re.match(r"^(INSERT\s+INTO\s+(\w+))\s+VALUES\b(.*)$", stmt, re.S | re.I)
+    if not m:
+        return stmt
+    head, table, rest = m.group(1), m.group(2), m.group(3)
+    cols = _column_names(tables.get(table, []))
+    if not cols:
+        return stmt
+    return f"{head} ({', '.join(cols)}) VALUES{rest}"
+
+
 def replay(sql, tables, order, seeds, renames):
     # 逐语句切分（本项目的迁移脚本里没有存储过程，分号切分是安全的）
     for stmt in [s.strip() for s in strip_comments(sql).split(";") if s.strip()]:
@@ -155,7 +190,7 @@ def replay(sql, tables, order, seeds, renames):
             if re.search(r"\b(join|select)\b", low):
                 pass
             else:
-                seeds.append(stmt + ";")
+                seeds.append(_pin_columns(stmt, tables) + ";")
         elif low.startswith("insert ignore into"):
             # `INSERT IGNORE` 是可重入写法（V72/V74 用它灌权限点与授权），
             # 但 **H2 不认这个 MySQL 关键字**。语义上它就是种子 INSERT，
@@ -164,7 +199,7 @@ def replay(sql, tables, order, seeds, renames):
             if re.search(r"\bselect\b", low):
                 pass
             else:
-                seeds.append(stmt_h2 + ";")
+                seeds.append(_pin_columns(stmt_h2, tables) + ";")
         elif low.startswith("insert into"):
             # 用正则而不是 `" select " in low`：回填语句里 SELECT 常常另起一行，
             # 而 low 是原样文本 —— 子串判断会漏掉带换行的写法，然后把回填当种子抄进测试库
@@ -205,7 +240,7 @@ def replay(sql, tables, order, seeds, renames):
                 pass
             else:
                 # 种子数据：H2 建表脚本里保留，测试要用到（如端×品类可售规则的 25 行）
-                seeds.append(stmt + ";")
+                seeds.append(_pin_columns(stmt, tables) + ";")
         elif low.startswith("create temporary table") or low.startswith("drop temporary table"):
             # **临时表是迁移过程中的草稿纸，不是结构的一部分。**
             #

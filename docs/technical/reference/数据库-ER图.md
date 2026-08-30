@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **159** 张表、**228** 条引用关系，分 **16** 个域。
+全库 **160** 张表、**255** 条引用关系，分 **16** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -13,7 +13,7 @@
 
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
-| 消费者账号 | `usr_*` | 8 | 12 |
+| 消费者账号 | `usr_*` | 8 | 13 |
 | 商家主体与门店 | `mch_*` | 24 | 11 |
 | 社区与自提点 | `cmt_*` | 3 | 8 |
 | 商品与类目 | `prd_*` | 21 | 7 |
@@ -26,11 +26,11 @@
 | 评价 | `rvw_*` | 3 | 0 |
 | 消息与客服 | `msg_*` | 1 | 0 |
 | 内容 | `cnt_*` | 4 | 0 |
-| 会员 | `mbr_*` | 9 | 0 |
-| 券与活动 | `pmt_*` | 8 | 0 |
-| 系统 | `sys_*` | 21 | 0 |
+| 会员 | `mbr_*` | 9 | 1 |
+| 券与活动 | `pmt_*` | 8 | 1 |
+| 系统 | `sys_*` | 22 | 0 |
 
-> `usr` 被 12 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
+> `usr` 被 13 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
 
 ## 二、分域
 
@@ -270,7 +270,7 @@
 | `mbr_segment` | 人群：发券、活动受众、触达共用同一份条件 |
 | `mbr_reach_log` | 触达记录：频次闸查它，效果也算它 |
 
-**跨域引用**：`mbr_setting.entity_no` → `mch_entity`、`mbr_member.entity_no` → `mch_entity`、`mbr_member_store.entity_no` → `mch_entity`、`mbr_member_store.store_no` → `mch_store`、`mbr_member_source.entity_no` → `mch_entity`、`mbr_member_source.store_no` → `mch_store`、`mbr_tag.entity_no` → `mch_entity`、`mbr_member_tag.entity_no` → `mch_entity`、`mbr_tag_merge_log.entity_no` → `mch_entity`、`mbr_segment.entity_no` → `mch_entity`、`mbr_reach_log.entity_no` → `mch_entity`
+**跨域引用**：`mbr_setting.entity_no` → `mch_entity`、`mbr_member.entity_no` → `mch_entity`、`mbr_member.person_no` → `usr_person`、`mbr_member_store.entity_no` → `mch_entity`、`mbr_member_store.store_no` → `mch_store`、`mbr_member_source.entity_no` → `mch_entity`、`mbr_member_source.store_no` → `mch_store`、`mbr_member_source.activity_no` → `pmt_activity`、`mbr_tag.entity_no` → `mch_entity`、`mbr_member_tag.entity_no` → `mch_entity`、`mbr_tag_merge_log.entity_no` → `mch_entity`、`mbr_segment.entity_no` → `mch_entity`、`mbr_reach_log.entity_no` → `mch_entity`、`mbr_reach_log.task_no` → `notify_push_task`
 
 ### 券与活动 `pmt_*`（8 张）
 
@@ -287,9 +287,9 @@
 | `pmt_activity_audience` | 活动受众：一行都没有 = 对所有人生效 |
 | `pmt_activity_goods` | 活动作用范围。用表不用 TEXT：要反查「这个商品在哪些活动里」 |
 
-**跨域引用**：`pmt_coupon.coupon_no` → `mkt_coupon`、`pmt_coupon.entity_no` → `mch_entity`、`pmt_coupon_scope.coupon_no` → `mkt_coupon`、`pmt_user_coupon.coupon_no` → `mkt_coupon`、`pmt_user_coupon.user_no` → `usr_account`、`pmt_user_coupon.entity_no` → `mch_entity`、`pmt_user_coupon.order_no` → `ord_order`、`pmt_coupon_issue.coupon_no` → `mkt_coupon`、`pmt_coupon_issue.entity_no` → `mch_entity`、`pmt_apply.user_no` → `usr_account`、`pmt_apply.entity_no` → `mch_entity`、`pmt_apply.store_no` → `mch_store`、`pmt_apply.order_no` → `ord_order`、`pmt_apply.sub_order_no` → `ord_sub_order`、`pmt_activity.entity_no` → `mch_entity`、`pmt_activity.store_no` → `mch_store`、`pmt_activity_audience.entity_no` → `mch_entity`、`pmt_activity_goods.entity_no` → `mch_entity`
+**跨域引用**：`pmt_coupon.coupon_no` → `mkt_coupon`、`pmt_coupon.entity_no` → `mch_entity`、`pmt_coupon_scope.coupon_no` → `mkt_coupon`、`pmt_user_coupon.coupon_no` → `mkt_coupon`、`pmt_user_coupon.user_no` → `usr_account`、`pmt_user_coupon.entity_no` → `mch_entity`、`pmt_user_coupon.order_no` → `ord_order`、`pmt_coupon_issue.coupon_no` → `mkt_coupon`、`pmt_coupon_issue.entity_no` → `mch_entity`、`pmt_coupon_issue.segment_no` → `mbr_segment`、`pmt_apply.user_no` → `usr_account`、`pmt_apply.entity_no` → `mch_entity`、`pmt_apply.store_no` → `mch_store`、`pmt_apply.order_no` → `ord_order`、`pmt_apply.sub_order_no` → `ord_sub_order`、`pmt_activity.entity_no` → `mch_entity`、`pmt_activity.store_no` → `mch_store`、`pmt_activity_audience.entity_no` → `mch_entity`、`pmt_activity_goods.entity_no` → `mch_entity`
 
-### 系统 `sys_*`（21 张）
+### 系统 `sys_*`（22 张）
 
 ![系统表关系](../diagrams/db-sys.svg)
 
@@ -316,6 +316,7 @@
 | `sys_merchant_plan_def` | 增值包档位定义 |
 | `sys_media_asset` | 图片资产记账：空间统计与回收清单的唯一依据 |
 | `sys_media_purge_batch` | 图片回收批次：一次人工确认对应一行 |
+| `sys_pay_channel_rate` | 通道费率：通道 × 支付方式 × 主体形态，按生效时间分版本 |
 
 **跨域引用**：`sys_idempotent.user_no` → `usr_account`、`sys_ops_staff.merchant_no` → `mch_entity`、`sys_ops_staff.community_no` → `cmt_community`、`sys_ops_staff.pickup_no` → `cmt_pickup_point`、`sys_role.entity_no` → `mch_entity`、`sys_role_point.entity_no` → `mch_entity`、`sys_media_asset.entity_no` → `mch_entity`、`sys_media_asset.store_no` → `mch_store`
 

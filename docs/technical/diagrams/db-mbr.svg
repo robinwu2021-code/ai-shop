@@ -4,7 +4,12 @@
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
 <style>.n{font-weight:500;fill:#161A21}.s{font-size:11px;fill:#5A6472}
 .l{font-size:10.5px;fill:#5A6472;paint-order:stroke;stroke:#F7F9FB;stroke-width:3.5;stroke-linejoin:round}.b{font-size:11px;fill:#5A6472;letter-spacing:.1em}
-.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}</style></defs>
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}</style></defs><path class="ar" d="M100 262 L100 92 L340 92 L340 77" marker-end="url(#a)"/>
+<path class="ar" d="M260 262 L260 104 L340 104 L340 77" marker-end="url(#a)"/>
+<path class="ar" d="M420 262 L420 116 L340 116 L340 77" marker-end="url(#a)"/>
+<path class="ar" d="M420 262 L420 92 L532 92 L532 77" marker-end="url(#a)"/>
+<path class="ar" d="M580 262 L580 104 L340 104 L340 77" marker-end="url(#a)"/>
+<path class="ar" d="M580 262 L580 208 L436 208 L436 193" marker-end="url(#a)"/>
 <rect x="63" y="30" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="148" y="50" text-anchor="middle" font-size="13">mbr_setting</text>
 <text class="s" x="148" y="65" text-anchor="middle">会员经营口径：按主体还是按门…</text>
@@ -12,24 +17,29 @@
 <text class="n" x="340" y="50" text-anchor="middle" font-size="13">mbr_member</text>
 <text class="s" x="340" y="65" text-anchor="middle">会员：一个人与一家主体的关系</text>
 <rect x="447" y="30" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="532" y="50" text-anchor="middle" font-size="13">mbr_member_store</text>
-<text class="s" x="532" y="65" text-anchor="middle">会员在某家门店的往来与分层。…</text>
-<rect x="63" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="148" y="166" text-anchor="middle" font-size="13">mbr_member_source</text>
-<text class="s" x="148" y="181" text-anchor="middle">会员来源明细：哪家店、哪条链…</text>
-<rect x="255" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="340" y="166" text-anchor="middle" font-size="13">mbr_tag</text>
-<text class="s" x="340" y="181" text-anchor="middle">标签字典：tag_no 不可变、nam…</text>
-<rect x="447" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="532" y="166" text-anchor="middle" font-size="13">mbr_member_tag</text>
-<text class="s" x="532" y="181" text-anchor="middle">会员标签关系：只存标签号，文…</text>
-<rect x="63" y="262" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="148" y="282" text-anchor="middle" font-size="13">mbr_tag_merge_log</text>
-<text class="s" x="148" y="297" text-anchor="middle">标签合并留痕：合并不可逆</text>
-<rect x="255" y="262" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="340" y="282" text-anchor="middle" font-size="13">mbr_segment</text>
-<text class="s" x="340" y="297" text-anchor="middle">人群：发券、活动受众、触达共用…</text>
-<rect x="447" y="262" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="532" y="282" text-anchor="middle" font-size="13">mbr_reach_log</text>
-<text class="s" x="532" y="297" text-anchor="middle">触达记录：频次闸查它，效果也…</text>
-</svg>
+<text class="n" x="532" y="50" text-anchor="middle" font-size="13">mbr_tag</text>
+<text class="s" x="532" y="65" text-anchor="middle">标签字典：tag_no 不可变、nam…</text>
+<rect x="159" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="244" y="166" text-anchor="middle" font-size="13">mbr_tag_merge_log</text>
+<text class="s" x="244" y="181" text-anchor="middle">标签合并留痕：合并不可逆</text>
+<rect x="351" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="436" y="166" text-anchor="middle" font-size="13">mbr_segment</text>
+<text class="s" x="436" y="181" text-anchor="middle">人群：发券、活动受众、触达共用…</text>
+<rect x="31" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="100" y="282" text-anchor="middle" font-size="13">mbr_member_store</text>
+<text class="s" x="100" y="297" text-anchor="middle">会员在某家门店的往来…</text>
+<rect x="191" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="260" y="282" text-anchor="middle" font-size="13">mbr_member_source</text>
+<text class="s" x="260" y="297" text-anchor="middle">会员来源明细：哪家店、…</text>
+<rect x="351" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="420" y="282" text-anchor="middle" font-size="13">mbr_member_tag</text>
+<text class="s" x="420" y="297" text-anchor="middle">会员标签关系：只存标签…</text>
+<rect x="511" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="580" y="282" text-anchor="middle" font-size="13">mbr_reach_log</text>
+<text class="s" x="580" y="297" text-anchor="middle">触达记录：频次闸查它，…</text>
+<text class="l" x="220" y="88" text-anchor="middle">member_no</text>
+<text class="l" x="300" y="100" text-anchor="middle">member_no</text>
+<text class="l" x="380" y="112" text-anchor="middle">member_no</text>
+<text class="l" x="476" y="88" text-anchor="middle">tag_no</text>
+<text class="l" x="460" y="100" text-anchor="middle">member_no</text>
+<text class="l" x="508" y="204" text-anchor="middle">segment_no</text></svg>

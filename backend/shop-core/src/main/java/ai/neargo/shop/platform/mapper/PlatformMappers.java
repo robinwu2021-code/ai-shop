@@ -30,6 +30,10 @@ public final class PlatformMappers {
     public interface PayChannelMapper extends BaseMapper<SysPayChannel> {
     }
 
+    /** 通道费率版本表（V274）。 */
+    public interface PayChannelRateMapper extends BaseMapper<ai.neargo.shop.platform.entity.SysPayChannelRate> {
+    }
+
     public interface IndustryMapper extends BaseMapper<SysIndustry> {
     }
 

@@ -31,6 +31,7 @@
 <path class="ar" d="M420 726 L420 116 L100 116 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M580 726 L580 556 L340 556 L340 541" marker-end="url(#a)"/>
 <path class="ar" d="M244 842 L244 556 L340 556 L340 541" marker-end="url(#a)"/>
+<path class="ar" d="M244 842 L244 440 L148 440 L148 425" marker-end="url(#a)"/>
 <path class="ar" d="M436 842 L436 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M436 842 L436 568 L340 568 L340 541" marker-end="url(#a)"/>
 <rect x="31" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
@@ -132,5 +133,6 @@
 <text class="l" x="260" y="112" text-anchor="middle">entity_no</text>
 <text class="l" x="460" y="552" text-anchor="middle">store_no</text>
 <text class="l" x="292" y="552" text-anchor="middle">store_no</text>
+<text class="l" x="196" y="436" text-anchor="middle">area_no</text>
 <text class="l" x="268" y="88" text-anchor="middle">entity_no</text>
 <text class="l" x="388" y="564" text-anchor="middle">store_no</text></svg>
