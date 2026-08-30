@@ -11,6 +11,11 @@
 # 不该由一个文档生成器顺手决定。
 #
 # 一行一个 `端点键<TAB>路径`。修好一条就删一行。
+#
+# 2026-08-30 新增 mSupplierUpdate / mSupplierActive：**进销存整个模块都是复数**
+# （inbounds / outbounds / counts / locations / items / balances，本表已登记 13 条）。
+# 单独把 suppliers 改成单数，它会成为模块里唯一那个 —— 而「同一件事在这儿长得
+# 不一样」比「不合 ADR-007」更容易让人写错。要改就整模块一起改，不是一条一条改。
 mAppointmentSlots	/biz/stores/:storeNo/appointment-slots
 mCountDetail	/biz/inventory/counts/:no
 mCountFill	/biz/inventory/counts/:no/lines
@@ -26,6 +31,8 @@ mOutboundVoid	/biz/inventory/outbounds/:no/void
 mSaveStoreFulfillment	/biz/stores/:storeNo/fulfillment
 mStockItem	/biz/inventory/items/:itemId
 mStoreFulfillment	/biz/stores/:storeNo/fulfillment
+mSupplierActive	/biz/inventory/suppliers/:no/active
+mSupplierUpdate	/biz/inventory/suppliers/:no
 mTransferDetail	/biz/inventory/transfers/:no
 mTransferReceive	/biz/inventory/transfers/:no/receive
 mTransferShip	/biz/inventory/transfers/:no/ship
