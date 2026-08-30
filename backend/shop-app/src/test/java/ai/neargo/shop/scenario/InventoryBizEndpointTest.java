@@ -476,6 +476,69 @@ class InventoryBizEndpointTest {
         assertThat(false).as("门店库位应当还在").isTrue();
     }
 
+    // ── 供应商档案（S2）────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("★★★ 同一商家不许有两个同名供应商 —— 这条不成立，整张表就白建了")
+    void duplicateSupplierNameIsRejected() throws Exception {
+        Shop s = shop();
+
+        String no = ok(post("/biz/inventory/suppliers")
+                .content("{\"name\":\"老周粮油\",\"contactName\":\"周老板\"}"), s.token)
+                .get("supplierNo").asString();
+        assertThat(no).startsWith("SUP");
+
+        /*
+         * 建这张表的理由就是「名字会漂」。要是同名能建第二条，
+         * 漂移只是从「单据上的名字」换到「档案里的名字」继续长 —— 一样对不上账。
+         */
+        String dup = mvc().perform(post("/biz/inventory/suppliers")
+                        .header("Authorization", "Bearer " + s.token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"老周粮油\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(dup).get("code").asInt())
+                .as("重名必须被拒（10409 CONFLICT）；放过去这张表就白建了")
+                .isEqualTo(10409);
+
+        /*
+         * **前后空格也算同一家。** 不 trim 的话「老周粮油 」建得成，
+         * 而它在列表里与「老周粮油」长得一模一样 —— 商家分辨不出，报表却分成两行。
+         */
+        String pad = mvc().perform(post("/biz/inventory/suppliers")
+                        .header("Authorization", "Bearer " + s.token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"  老周粮油  \"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(pad).get("code").asInt())
+                .as("带空格的同名也要被拒 —— 否则列表里两行长得一样")
+                .isEqualTo(10409);
+
+        // 对照量：确实只建成了一条，而不是「两条都没建成」那种假绿
+        assertThat(ok(get("/biz/inventory/suppliers"), s.token).size())
+                .as("应当恰好一条")
+                .isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("★★ 停用之后挑不到，但管理页仍看得见 —— 两向都要验")
+    void archivedSupplierDisappearsFromPickerButStaysInAdmin() throws Exception {
+        Shop s = shop();
+        String no = ok(post("/biz/inventory/suppliers")
+                .content("{\"name\":\"要停用的那家\"}"), s.token).get("supplierNo").asString();
+
+        ok(post("/biz/inventory/suppliers/" + no + "/active").content("{\"active\":false}"), s.token);
+
+        assertThat(ok(get("/biz/inventory/suppliers?activeOnly=true"), s.token).size())
+                .as("挑供应商时不该出现停用的")
+                .isZero();
+        assertThat(ok(get("/biz/inventory/suppliers?activeOnly=false"), s.token).size())
+                .as("管理页要看得见它，否则没法再启用回来")
+                .isEqualTo(1);
+    }
+
     // ------------------------------------------------------------------ 脚手架
 
     private record Shop(String token, String entityNo, String location, String itemA) {
