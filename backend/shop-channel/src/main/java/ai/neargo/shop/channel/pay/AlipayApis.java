@@ -58,6 +58,15 @@ public final class AlipayApis {
     public static final String SUB_MERCHANT_CREATE = "ant.merchant.expand.indirect.zft.create";
 
     /**
+     * 二级商户进件**结果查询**。
+     *
+     * <p>与创建是两个接口名 —— 进件是异步的，提交只拿到申请单号。
+     * 把两者写成一个「带参数的创建」是常见的错，症状是重复提交出一个新的二级商户号，
+     * 而历史订单的分账仍指向旧号。
+     */
+    public static final String SUB_MERCHANT_QUERY = "ant.merchant.expand.indirect.zft.order.query";
+
+    /**
      * 营销补差 —— <b>推断为「反向的分账」，尚未确认</b>。
      *
      * <p>依据三条：
