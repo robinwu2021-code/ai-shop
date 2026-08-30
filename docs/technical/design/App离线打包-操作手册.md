@@ -16,11 +16,38 @@
 
 ---
 
+## 先看这个：整条链路已经有一条命令
+
+```bash
+b-app/offline/build-apk.sh                      # 打包 + 强制体检
+b-app/offline/build-apk.sh --install <真机序列号>  # 再装机自检
+```
+
+它把下面 §1–§6 全串起来了，并且**先认工程**（§0）：路径在、应用名是「虹选商家」、
+两行 `apply from:` 接线在、keystore 与 JDK 在 —— 缺一样就停，**不自作主张去解压**。
+
+立这一道的原因：2026-08-30 有人（我）凭「工程被清掉就重新解压」那句话，
+把 SDK 压缩包解压到 /tmp 打了一份，结果是**厂商默认工程** —— 应用名
+`HBuilder-SimpleDemo-AS`、无高德 key、四个原生库一个都没有，产物 30M（真包 55M），
+而 gradle 一路 BUILD SUCCESSFUL。关键在于：§0 之外的那两道构建期闸门
+（`amap-key.gradle` / `version-alignment.gradle`）**是靠离线工程里那两行
+`apply from:` 接进来的**，用错工程时它们不是失败，是**根本没跑**。
+
+已配好的工程一直在 `~/Downloads/最新版/5.24/**sdk/**` 下 —— `sdk` 是目录，
+与同名 `.zip` 并列，`ls` 到 zip 就以为工程没了。
+
+脚本还把**版本号收成单一真源**：只改 `b-app/src/manifest.json`（在仓库里、可 review），
+离线工程 gradle 那处由脚本同步。§1 的「两处一起抬」不再需要人记着。
+
+下面各节是这条命令每一步在做什么，出问题时照着排查。
+
+---
+
 ## 0. 前置（一次性，已经配好就跳过）
 
 | 东西 | 在哪 | 备注 |
 | --- | --- | --- |
-| 离线 SDK 工程 | `~/Downloads/最新版/5.24/sdk/Android-SDK@5.24.82669_20260813/HBuilder-Integrate-AS` | 压缩包在同级目录，**工程被清掉就重新解压**，不用重新下载 |
+| 离线 SDK 工程 | `~/Downloads/最新版/5.24/**sdk/**Android-SDK@5.24.82669_20260813/HBuilder-Integrate-AS` | **别重解压**：`sdk` 是目录，与同名 .zip 并列，ls 到 zip 容易误以为工程没了。工程**真的**不见了才解压那个 zip —— 解出来是厂商默认工程，应用名/图标/高德 key/各 aar 全要重配 |
 | 离线 AppKey | `simpleDemo` 的 AndroidManifest（`dcloud_appkey`） | 丢了能从旧包取回，命令见 §5 的 `AAPT` 那一行 |
 | 签名 keystore | `~/keys/hxmall-release.jks` | 密码在 `android-shell/signing/keystore.properties`（未跟踪） |
 | Android 命令行工具 | `/opt/homebrew/share/android-commandlinetools` | `local.properties` 指向它；`verify-apk.sh` 也读这个路径 |
@@ -206,3 +233,5 @@ adb -s <序列号> shell 'curl -s --max-time 12 http://106.55.27.246/actuator/he
 | 装上叫「HBuilder」、图标是小机器人 | 重解压 SDK 覆盖了应用名与图标 —— §5 会拦住 |
 | 装不上，提示签名冲突 | 机上装的是 `android-shell` 那个预览壳（同包名），先卸载 |
 | 弹「不匹配的版本可能造成应用异常」 | App 资源的编译器版本与离线 SDK 不一致，要对齐 `@dcloudio/*` 版本重编 |
+| 包只有 30M（真包 55M）、装上叫 HBuilder | 用了重解压出来的厂商默认工程 —— `build-apk.sh` 的 §0 会拦住 |
+| 定位报错误码 7，而体检脚本说 key 在 | 体检的是产物，构建期两道闸门却没跑（工程里少了 `apply from:` 两行）|
