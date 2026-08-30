@@ -1,5 +1,5 @@
 // 覆盖范围：分账结算（P-12.1）与提现·发票·个税（P-12.2）。
-import type { PayChannelSetting, PayChannelRateVersion,
+import type { PayChannelSetting, PayChannelRateVersion, SettleBatch, MerchantDebt,
   PurchaseInvoice,
   BuyerInvoiceRequest,
   ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
@@ -154,6 +154,41 @@ export interface FinanceApi {
     currency?: string;
     settleCycle?: string;
   }): Promise<PayChannelSetting>;
+
+  // ── 账期批次（P-12.1）。**批次管「能不能放」，单据管「放得成不成」**
+
+  /**
+   * 账期批次列表。
+   *
+   * @param status 空 = 全部；`BLOCKED` 就是**待处置队列** —— 这一页最常用的筛选
+   */
+  listSettleBatches(q?: { status?: string; entityNo?: string }): Promise<SettleBatch[]>;
+
+  /**
+   * 人工放行一批。
+   *
+   * ⚠️ `remark` **必填**：事后要能回答「当时凭什么放的」。
+   * 与超时自动放行（`decidedBy = SYSTEM_TIMEOUT`）分开统计 ——
+   * 那个数持续大于零说明挂起时限比处置能力短，要调的是时限不是任务。
+   */
+  releaseSettleBatch(batchNo: string, remark: string): Promise<SettleBatch>;
+
+  /** 继续挂起。同样必须写原因 */
+  holdSettleBatch(batchNo: string, remark: string): Promise<SettleBatch>;
+
+  // ── 商家欠款（Z4 追偿第二层）
+
+  /** 某商家的欠款余额与流水 */
+  merchantDebt(entityNo: string): Promise<MerchantDebt>;
+
+  /**
+   * 用保证金抵掉一部分欠款。**人工动作，不自动**（ADR-022 §3.3）——
+   * 动的是商家的**本金**，而未经同意扣款的合规边界还没定。
+   *
+   * 实际抵扣两头封顶：不超过欠款余额，也不超过保证金**可用**额
+   * （冻结中的那部分正被别的争议占着）。
+   */
+  offsetDebtByDeposit(entityNo: string, amountMinor: number, reason: string): Promise<MerchantDebt>;
 
   /** 加一版通道费率。**不改旧行**，与 `addFeeRule` 同一条规矩。 */
   addPayChannelRate(channel: string, v: {

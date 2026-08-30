@@ -1,3 +1,4 @@
+import type { SettleBatch, MerchantDebt } from "@/lib/types";
 // 结算与资金 mock（P-12）。覆盖五种状态与两类失败（可重试 / 已超时），
 // 否则「重试上限」与「超时兜底」两条规则在页面上验不到。
 import type { BuyerInvoiceRequest, FeeRuleVersion, PurchaseInvoice, Settlement, SplitLog } from "@/lib/types";
@@ -184,3 +185,80 @@ export const buyerInvoiceRequests: BuyerInvoiceRequest[] = [
     createdAt: 1_755_993_600_000,
   },
 ];
+
+/**
+ * 账期批次。
+ *
+ * **四条各是一种真实形态，缺一条界面上就有一支走不到**：
+ * 收单中 / 待放行 / 挂起（风控命中）/ 已放行。
+ * 只造「正常」的那一种，「挂起后要写原因才能放行」那条路永远点不到。
+ */
+export const settleBatches: SettleBatch[] = [
+  {
+    batchNo: "STB20260830000001", entityNo: "M0001", payChannel: "WECHAT",
+    settleCycle: "T+1", periodFrom: 1_788_019_200_000, dueAt: 1_788_019_200_000,
+    releasedAt: null, freezeExpireAt: null,
+    status: "DRAFT", billCount: 0, grossMinor: 0, netMinor: 0,
+    reconScope: "SELF_ONLY",
+    blockedReason: null, blockedAt: null, blockExpireAt: null,
+    decidedBy: null, decideRemark: null,
+  },
+  {
+    batchNo: "STB20260829000002", entityNo: "M0001", payChannel: "WECHAT",
+    settleCycle: "T+1", periodFrom: 1_787_932_800_000, dueAt: 1_787_932_800_000,
+    releasedAt: null, freezeExpireAt: null,
+    status: "RECONCILED", billCount: 12, grossMinor: 68_400, netMinor: 64_980,
+    reconScope: "SELF_ONLY",
+    blockedReason: null, blockedAt: null, blockExpireAt: null,
+    decidedBy: null, decideRemark: null,
+  },
+  {
+    /* 风控命中：原话里带着具体数字与阈值 —— 说不清的提示，商家读完还是要找客服 */
+    batchNo: "STB20260829000003", entityNo: "M0002", payChannel: "WECHAT",
+    settleCycle: "WEEKLY", periodFrom: 1_787_932_800_000, dueAt: 1_787_932_800_000,
+    releasedAt: null, freezeExpireAt: null,
+    status: "BLOCKED", billCount: 31, grossMinor: 324_000, netMinor: 307_800,
+    reconScope: "SELF_ONLY",
+    blockedReason: "近 7 天退款率 32.10%（阈值 20.00%），本批转人工复核",
+    blockedAt: 1_787_932_800_000, blockExpireAt: 1_788_192_000_000,
+    decidedBy: null, decideRemark: null,
+  },
+  {
+    batchNo: "STB20260828000004", entityNo: "M0001", payChannel: "WECHAT",
+    settleCycle: "T+1", periodFrom: 1_787_846_400_000, dueAt: 1_787_846_400_000,
+    releasedAt: 1_787_850_000_000, freezeExpireAt: null,
+    status: "RELEASED", billCount: 8, grossMinor: 41_600, netMinor: 39_520,
+    reconScope: "SELF_ONLY",
+    blockedReason: null, blockedAt: null, blockExpireAt: null,
+    decidedBy: null, decideRemark: null,
+  },
+];
+
+/**
+ * 商家欠款。
+ *
+ * **M0002 有欠款、M0001 没有** —— 两种都要有：
+ * 全都造成有欠款的话，「这家没欠过」那一支（空态）永远看不到，
+ * 而那是绝大多数商家的真实状态。
+ */
+export const merchantDebts: Record<string, MerchantDebt> = {
+  M0001: { entityNo: "M0001", balanceMinor: 0, txns: [] },
+  M0002: {
+    entityNo: "M0002", balanceMinor: 12_800,
+    txns: [
+      {
+        txnNo: "DBT20260829000002", txnType: "OFFSET",
+        // 有符号：偿还为负
+        amountMinor: -3_200, balanceAfterMinor: 12_800,
+        sourceType: null, sourceNo: null, batchNo: "STB20260828000004",
+        reason: "从批次 STB20260828000004 的货款中抵扣", at: 1_787_850_000_000,
+      },
+      {
+        txnNo: "DBT20260828000001", txnType: "INCUR",
+        amountMinor: 16_000, balanceAfterMinor: 16_000,
+        sourceType: "REFUND", sourceNo: "AS20260828000117", batchNo: null,
+        reason: "买家已收货后退款，分账已解冻且商家已提走", at: 1_787_835_600_000,
+      },
+    ],
+  },
+};

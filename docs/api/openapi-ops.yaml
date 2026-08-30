@@ -5267,6 +5267,169 @@ components:
         - "rates"
       additionalProperties: false
       description: "一个支付通道的设置与费率。"
+    SettleBatch: 
+      type: "object"
+      properties: 
+        batchNo: 
+          type: "string"
+        entityNo: 
+          type: "string"
+        payChannel: 
+          type: "string"
+        settleCycle: 
+          type: "string"
+          description: "本批采用的账期规则快照，如 T+1 / WEEKLY"
+        periodFrom: 
+          type: "number"
+        dueAt: 
+          type: "number"
+          description: "T3 应结日"
+        releasedAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "实际放行时刻。与 dueAt 分开才答得出「晚了几天」"
+        freezeExpireAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "Tmax：通道冻结窗口到期时刻。**为 null 表示还判不了** —— 冻结窗口的天数还没有书面口径，此时不该按一个猜的数报警"
+        status: 
+          "$ref": "#/definitions/SettleBatchStatus"
+          description: "DRAFT / COLLECTED / RECONCILING / BLOCKED / RECONCILED / RELEASED"
+        billCount: 
+          type: "number"
+        grossMinor: 
+          type: "number"
+        netMinor: 
+          type: "number"
+        reconScope: 
+          type: "string"
+          enum: 
+            - "SELF_ONLY"
+            - "BOTH"
+          description: "对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**， 不能显示成「已对账」—— 没有对方账单时那是一句自证的话"
+        blockedReason: 
+          type: 
+            - "string"
+            - "null"
+          description: "挂起原因，**直接展示给商家的原话**（含具体数字与阈值）"
+        blockedAt: 
+          type: 
+            - "number"
+            - "null"
+        blockExpireAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "挂起时限。超时自动放行并告警 —— 没有时限的挂起等于永久冻结"
+        decidedBy: 
+          type: 
+            - "string"
+            - "null"
+          description: "人工放行者；**SYSTEM_TIMEOUT = 超时自动放行**，要单独看"
+        decideRemark: 
+          type: 
+            - "string"
+            - "null"
+      required: 
+        - "batchNo"
+        - "entityNo"
+        - "payChannel"
+        - "settleCycle"
+        - "periodFrom"
+        - "dueAt"
+        - "releasedAt"
+        - "freezeExpireAt"
+        - "status"
+        - "billCount"
+        - "grossMinor"
+        - "netMinor"
+        - "reconScope"
+        - "blockedReason"
+        - "blockedAt"
+        - "blockExpireAt"
+        - "decidedBy"
+        - "decideRemark"
+      additionalProperties: false
+      description: "账期批次：<b>一个主体、一个通道、一个账期，一批</b>。\n\n<p>批次管「能不能放」，单据管「放得成不成」—— 所以这一页回答的是「这家的钱卡在哪一批」，而不是「这一笔多少钱」。"
+    SettleBatchStatus: 
+      type: "string"
+      enum: 
+        - "DRAFT"
+        - "COLLECTED"
+        - "RECONCILING"
+        - "BLOCKED"
+        - "RECONCILED"
+        - "RELEASED"
+    MerchantDebt: 
+      type: "object"
+      properties: 
+        entityNo: 
+          type: "string"
+        balanceMinor: 
+          type: "number"
+          description: "当前欠款（分），恒 >= 0。0 = 没有欠款"
+        txns: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/DebtTxn"
+      required: 
+        - "entityNo"
+        - "balanceMinor"
+        - "txns"
+      additionalProperties: false
+      description: "商家欠款：退款追不回来时先记在账上，从后续货款里扣。\n\n⚠️ **与保证金方向相反**：保证金是商家的钱（平台代管、将来要退还）， 欠款是商家欠平台的。两者不能合成一个数看。"
+    DebtTxn: 
+      type: "object"
+      properties: 
+        txnNo: 
+          type: "string"
+        txnType: 
+          type: "string"
+          enum: 
+            - "INCUR"
+            - "OFFSET"
+            - "DEPOSIT"
+            - "WRITE_OFF"
+          description: "INCUR 产生 / OFFSET 货款抵扣 / DEPOSIT 保证金抵扣 / WRITE_OFF 核销"
+        amountMinor: 
+          type: "number"
+          description: "**有符号**：产生为正、偿还为负。靠 txnType 推方向等于把方向表达两遍"
+        balanceAfterMinor: 
+          type: "number"
+          description: "变动后余额。对账时逐笔回放用"
+        sourceType: 
+          type: 
+            - "string"
+            - "null"
+        sourceNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "源单号。**指不出源头的欠款没法向商家解释**"
+        batchNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "OFFSET 时记从哪一批扣的"
+        reason: 
+          type: 
+            - "string"
+            - "null"
+        at: 
+          type: "number"
+      required: 
+        - "txnNo"
+        - "txnType"
+        - "amountMinor"
+        - "balanceAfterMinor"
+        - "sourceType"
+        - "sourceNo"
+        - "batchNo"
+        - "reason"
+        - "at"
+      additionalProperties: false
     Staff: 
       type: "object"
       properties: 
@@ -10072,6 +10235,180 @@ paths:
                   - "data"
       parameters: 
         - name: "channel"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/settle-batches": 
+    get: 
+      operationId: "listSettleBatches"
+      summary: "账期批次列表"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/SettleBatch"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/settle-batches/{batchNo}/release": 
+    post: 
+      operationId: "releaseSettleBatch"
+      summary: "人工放行一批"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/SettleBatch"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "batchNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/settle-batches/{batchNo}/hold": 
+    post: 
+      operationId: "holdSettleBatch"
+      summary: "继续挂起"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/SettleBatch"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "batchNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/debts/{entityNo}": 
+    get: 
+      operationId: "merchantDebt"
+      summary: "某商家的欠款余额与流水 */"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MerchantDebt"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "entityNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/debts/{entityNo}/deposit-offset": 
+    post: 
+      operationId: "offsetDebtByDeposit"
+      summary: "用保证金抵掉一部分欠款"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MerchantDebt"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "entityNo"
           in: "path"
           required: true
           schema: 

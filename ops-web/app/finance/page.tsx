@@ -26,6 +26,8 @@ import { InvoiceTab } from "./invoice-tab";
 // 费率单独成块：它与结算那几个 tab 只共用文案表，且形状是版本化的、与配置卡完全不同
 import { FeeRuleTab } from "./fee-rule-tab";
 import { PayChannelTab } from "./pay-channel-tab";
+import { SettleBatchTab } from "./settle-batch-tab";
+import { DebtTab } from "./debt-tab";
 import { PointsTab } from "./points-tab";
 import { PointsPolicyTab } from "./points-policy-tab";
 import { PayablesTab } from "./payables-tab";
@@ -46,8 +48,9 @@ import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof FINANCE_COPY)["zh"];
-const TAB_KEYS = ["settlements", "splits", "refund-back", "payables", "purchase-invoices",
-  "buyer-invoices", "rates", "pay-channels", "points", "points-policy", "withdraw", "invoice"] as const;
+const TAB_KEYS = ["settlements", "settle-batches", "splits", "refund-back", "payables",
+  "purchase-invoices", "buyer-invoices", "rates", "pay-channels", "debts",
+  "points", "points-policy", "withdraw", "invoice"] as const;
 
 const TRAFFIC_LABEL = (c: Copy): Record<TrafficSource, string> => ({
   MERCHANT_OWNED: c.trafficMerchantOwned,
@@ -79,6 +82,8 @@ function FinanceInner() {
 
   const canExecute = allow("finance:settle:execute");
   const canEditRate = allow("finance:rate:update");
+  /* 保证金抵扣动的是商家本金，与「看看谁欠着」不是一类权限 */
+  const canPayout = allow("finance:payout:execute");
   const canWithdraw = allow("finance:withdraw:approve");
   const canInvoice = allow("finance:invoice:read");
   /*
@@ -202,7 +207,8 @@ function FinanceInner() {
     <div>
       <TabHeader tabs={tabs} value={tab} onChange={setTab} />
 
-      {tab !== "rates" && tab !== "pay-channels" && !canExecute && (
+      {tab !== "rates" && tab !== "pay-channels" && tab !== "settle-batches"
+        && tab !== "debts" && !canExecute && (
         <ReadOnlyNotice what={c.readOnlyWhat} perm="finance:settle:execute" note={c.readOnlyNote} className="mb-3" />
       )}
 
@@ -279,6 +285,8 @@ function FinanceInner() {
       {tab === "rates" && <FeeRuleTab c={c} canEdit={canEditRate} />}
 
       {tab === "pay-channels" && <PayChannelTab c={c} canEdit={canEditRate} />}
+      {tab === "settle-batches" && <SettleBatchTab c={c} canExecute={canExecute} />}
+      {tab === "debts" && <DebtTab c={c} canExecute={canPayout} />}
       {/*
         自营应付那一整条。**后端十个端点早已实现，此前运营端零入口** ——
         而这是今天唯一真能把钱付出去的路（第三方走分账，而分账网关是桩）。

@@ -505,3 +505,83 @@ export interface PayChannelSetting {
   /** 全部版本，按生效时间倒序 */
   rates: PayChannelRateVersion[];
 }
+
+/**
+ * 账期批次：<b>一个主体、一个通道、一个账期，一批</b>。
+ *
+ * <p>批次管「能不能放」，单据管「放得成不成」——
+ * 所以这一页回答的是「这家的钱卡在哪一批」，而不是「这一笔多少钱」。
+ */
+export interface SettleBatch {
+  batchNo: string;
+  entityNo: string;
+  payChannel: string;
+  /** 本批采用的账期规则快照，如 T+1 / WEEKLY */
+  settleCycle: string;
+  periodFrom: number;
+  /** T3 应结日 */
+  dueAt: number;
+  /** 实际放行时刻。与 dueAt 分开才答得出「晚了几天」 */
+  releasedAt: number | null;
+  /**
+   * Tmax：通道冻结窗口到期时刻。**为 null 表示还判不了** ——
+   * 冻结窗口的天数还没有书面口径，此时不该按一个猜的数报警
+   */
+  freezeExpireAt: number | null;
+  /** DRAFT / COLLECTED / RECONCILING / BLOCKED / RECONCILED / RELEASED */
+  status: SettleBatchStatus;
+  billCount: number;
+  grossMinor: number;
+  netMinor: number;
+  /**
+   * 对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**，
+   * 不能显示成「已对账」—— 没有对方账单时那是一句自证的话
+   */
+  reconScope: "SELF_ONLY" | "BOTH";
+  /** 挂起原因，**直接展示给商家的原话**（含具体数字与阈值） */
+  blockedReason: string | null;
+  blockedAt: number | null;
+  /** 挂起时限。超时自动放行并告警 —— 没有时限的挂起等于永久冻结 */
+  blockExpireAt: number | null;
+  /** 人工放行者；**SYSTEM_TIMEOUT = 超时自动放行**，要单独看 */
+  decidedBy: string | null;
+  decideRemark: string | null;
+}
+
+export type SettleBatchStatus =
+  | "DRAFT"          // 开批，正在收单
+  | "COLLECTED"      // 截批，本批不再接新单
+  | "RECONCILING"    // 三道对账门在跑
+  | "BLOCKED"        // 有未处置差异或风控命中，整批挂起
+  | "RECONCILED"     // 全过，可放行
+  | "RELEASED";      // 已逐单下发指令
+
+/**
+ * 商家欠款：退款追不回来时先记在账上，从后续货款里扣。
+ *
+ * ⚠️ **与保证金方向相反**：保证金是商家的钱（平台代管、将来要退还），
+ * 欠款是商家欠平台的。两者不能合成一个数看。
+ */
+export interface MerchantDebt {
+  entityNo: string;
+  /** 当前欠款（分），恒 >= 0。0 = 没有欠款 */
+  balanceMinor: number;
+  txns: DebtTxn[];
+}
+
+export interface DebtTxn {
+  txnNo: string;
+  /** INCUR 产生 / OFFSET 货款抵扣 / DEPOSIT 保证金抵扣 / WRITE_OFF 核销 */
+  txnType: "INCUR" | "OFFSET" | "DEPOSIT" | "WRITE_OFF";
+  /** **有符号**：产生为正、偿还为负。靠 txnType 推方向等于把方向表达两遍 */
+  amountMinor: number;
+  /** 变动后余额。对账时逐笔回放用 */
+  balanceAfterMinor: number;
+  sourceType: string | null;
+  /** 源单号。**指不出源头的欠款没法向商家解释** */
+  sourceNo: string | null;
+  /** OFFSET 时记从哪一批扣的 */
+  batchNo: string | null;
+  reason: string | null;
+  at: number;
+}

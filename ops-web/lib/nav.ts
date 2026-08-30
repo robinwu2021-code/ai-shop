@@ -312,6 +312,8 @@ export const NAV: NavSection[] = [
       // 与上一条是**两笔钱**：那条是平台向商家收的佣金，这条是通道向我们收的手续费。
       // 合成一条的话，改了佣金的人会以为通道费率也跟着变了。
       { href: "/finance?tab=pay-channels", label: "支付通道与费率", perm: "finance:rate:update", group: "费率", matrix: "P-12.1", ready: true },
+      { href: "/finance?tab=settle-batches", label: "账期批次与放款", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
+      { href: "/finance?tab=debts", label: "商家欠款", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
       { href: "/finance?tab=withdraw", label: "提现审批", perm: "finance:withdraw:approve", group: "提现与税", matrix: "P-12.2", phase: 2, ready: true },
       { href: "/finance?tab=invoice", label: "发票与个税", perm: "finance:invoice:read", group: "提现与税", matrix: "P-12.2", phase: 2, ready: true },
     ],

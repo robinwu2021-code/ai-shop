@@ -50,4 +50,12 @@ export const financeHttp: FinanceApi = {
   listPayChannels: () => client.get("/ops/settle/pay-channels"),
   updatePayChannel: (channel, v) => client.put(`/ops/settle/pay-channels/${channel}`, v),
   addPayChannelRate: (channel, v) => client.post(`/ops/settle/pay-channels/${channel}/rates`, v),
+  listSettleBatches: (q) => client.get("/ops/settle-batches", q),
+  releaseSettleBatch: (batchNo, remark) =>
+    client.post(`/ops/settle-batches/${batchNo}/release`, { remark }),
+  holdSettleBatch: (batchNo, remark) =>
+    client.post(`/ops/settle-batches/${batchNo}/hold`, { remark }),
+  merchantDebt: (entityNo) => client.get(`/ops/debts/${entityNo}`),
+  offsetDebtByDeposit: (entityNo, amountMinor, reason) =>
+    client.post(`/ops/debts/${entityNo}/deposit-offset`, { amountMinor, reason }),
 };

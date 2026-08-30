@@ -330,6 +330,64 @@ export const financeMock: FinanceApi = {
    */
   listPayChannels: async () => wait(db.payChannels.map(withCurrentRate)),
 
+  // ── 账期批次
+  listSettleBatches: async (q = {}) =>
+    wait(db.settleBatches.filter((b) =>
+      db.eqHit(q.status, b.status) && db.eqHit(q.entityNo, b.entityNo))),
+
+  releaseSettleBatch: async (batchNo, remark) => {
+    const b = db.settleBatches.find((x) => x.batchNo === batchNo);
+    if (!b) notFound("批次", "Batch", batchNo);
+    /*
+     * mock 也走「必须写原因」这条规则：恒成功的 mock 会让端上
+     * 「不写原因就点不动」那段界面永远走不到 —— 而那正是这个动作最要紧的约束。
+     */
+    if (!remark || !remark.trim()) fail("放行必须写原因", "A reason is required");
+    // 只有挂起中的能人工处置：已放行的再挂起最危险 —— 钱已经在路上，界面却显示挂起
+    if (b.status !== "BLOCKED" && b.status !== "RECONCILING") {
+      fail(`只有挂起中的批次能人工处置，当前 ${b.status}`,
+        `Only blocked batches can be decided, now ${b.status}`);
+    }
+    b.status = "RECONCILED";
+    b.decidedBy = "admin";
+    b.decideRemark = remark;
+    return wait({ ...b });
+  },
+
+  holdSettleBatch: async (batchNo, remark) => {
+    const b = db.settleBatches.find((x) => x.batchNo === batchNo);
+    if (!b) notFound("批次", "Batch", batchNo);
+    if (!remark || !remark.trim()) fail("继续挂起必须写原因", "A reason is required");
+    b.status = "BLOCKED";
+    b.blockedReason = remark;
+    b.blockedAt = Date.now();
+    b.decidedBy = "admin";
+    b.decideRemark = remark;
+    return wait({ ...b });
+  },
+
+  // ── 商家欠款
+  merchantDebt: async (entityNo) =>
+    wait(db.merchantDebts[entityNo]
+      ?? { entityNo, balanceMinor: 0, txns: [] }),
+
+  offsetDebtByDeposit: async (entityNo, amountMinor, reason) => {
+    const d = db.merchantDebts[entityNo];
+    if (!d || d.balanceMinor <= 0) fail("这家没有待抵扣的欠款", "No outstanding debt");
+    // 两头封顶，与后端一致：不超过欠款，也不超过保证金可用额（mock 里假设可用 5000）
+    const available = 5_000;
+    const take = Math.min(d.balanceMinor, amountMinor, available);
+    if (take <= 0) fail("保证金可用额不足", "Deposit balance is insufficient");
+    d.balanceMinor -= take;
+    d.txns.unshift({
+      txnNo: `DBT-MOCK-${d.txns.length + 1}`, txnType: "DEPOSIT",
+      amountMinor: -take, balanceAfterMinor: d.balanceMinor,
+      sourceType: null, sourceNo: null, batchNo: null,
+      reason: `${reason || "保证金抵扣"}（操作人 admin）`, at: Date.now(),
+    });
+    return wait({ ...d });
+  },
+
   updatePayChannel: async (channel, v) => {
     const row = db.payChannels.find((c) => c.payChannel === channel);
     if (!row) fail("通道不存在", "Channel not found");
