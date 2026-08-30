@@ -75,7 +75,11 @@ export interface MerchantApi {
   merchantDeposit(merchantNo: string): Promise<MerchantDeposit>;
   /** 当前收款额度。空数组 = 还没进过件，与「额度为零」是两件事 */
   payQuotas(merchantNo: string): Promise<PayQuota[]>;
-  /** @param storeNo 空 = 主体级；@param quotaLimitMinor 0 = 取消限制 */
+  /**
+   * 设置收款额度上限。只改上限，**不动已用量** —— 用量是支付累加出来的事实。
+   *
+   * @param storeNo 空 = 主体级；@param quotaLimitMinor 0 = 取消限制（不是「额度为零」）
+   */
   setPayQuota(v: { merchantNo: string; storeNo?: string; quotaLimitMinor: number }): Promise<void>;
   depositTxns(merchantNo: string): Promise<DepositTxn[]>;
   /** @param amountMinor 有符号：缴纳为正、扣划为负 */

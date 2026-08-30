@@ -13701,7 +13701,7 @@ paths:
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
     put: 
       operationId: "setPayQuota"
-      summary: "setPayQuota"
+      summary: "设置收款额度上限"
       tags: 
         - "merchant"
       responses: 
