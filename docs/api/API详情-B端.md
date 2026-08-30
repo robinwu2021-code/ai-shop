@@ -1259,6 +1259,70 @@ _无字段_
 | `price` | `number` | 否 | 团购价（最小货币单位） |
 
 
+#### POST `/biz/goods/{goodsNo}/draft/discard`
+
+放弃草稿（线上不动，幂等）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+**出参**（`data`）
+
+类型：[`Goods`](#goods)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `title` | `string` | 是 | 商品标题 |
+| `subtitle` | `string` | 是 | 副标题/卖点一句话 |
+| `cover` | `string` | 是 | 封面图 URL。列表页用这一张 |
+| `images` | `string`\[\] | 是 | 详情轮播图 URL 列表 |
+| `detailImages` | `string`\[\] | 否 | 图文详情区的长图，按顺序全宽竖排。 **与 `images` 分开**：轮播是详情页顶部的方图、可左右滑；这些是正文下方的长图、 竖着一张接一张。合成一个数组之后端上只能靠宽高比猜哪几张该轮播 —— 猜错就是 一张 1:3 的长图被塞进方形轮播里。 |
+| `params` | [`GoodsParam`](#goodsparam)\[\] | 否 | **商品参数**（产地 / 保质期 / 材质…）—— 规格库里 `usage_type=PROP` 的那批。 <p>与 `specGroups` 形状相近、语义相反：那个的每一项都会进笛卡尔积生成 SKU， 这个一项也不进。买家不用挑，只是看；筛选靠 `code` / `valueNo`。 |
+| `type` | [`CategoryType`](#categorytype) | 是 | 商品形态，与所属类目的 type 一致。决定详情页用哪套字段 |
+| `categoryNo` | `string` | 是 | 所属类目 |
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 所属商家 —— 商品与服务都要展示商家信息 |
+| `rating` | `number` | 否 | 本商品的评分与评价数（区别于商家整体评分） |
+| `ratingCount` | `number` | 否 | 本商品的评价条数 |
+| `price` | `number` | 是 | 展示价（最小货币单位），取各 SKU 最低价 |
+| `originPrice` | `number` | 否 | 划线价（最小货币单位） |
+| `fulfillments` | [`FulfillmentType`](#fulfillmenttype)\[\] | 是 | 支持的履约方式。**数组**：同一商品可以既自提又快递，下单时由用户选 |
+| `specGroups` | [`SpecGroup`](#specgroup)\[\] | 是 | 规格维度定义；单规格商品也有一组 |
+| `skus` | [`Sku`](#sku)\[\] | 是 | SKU 列表。单规格商品也有且仅有一条 |
+| `sales` | `number` | 是 | 累计销量，展示用 |
+| `cutoffAt` | `number` | 否 | FRESH：预售截单时间戳 |
+| `arrivalDesc` | `string` | 否 | FRESH：预计到货描述 |
+| `weighed` | `boolean` | 否 | FRESH：是否按实称多退少补 |
+| `origin` | `string` | 否 | FRESH：产地 |
+| `durationMin` | `number` | 否 | SERVICE：服务时长（分钟） |
+| `storeName` | `string` | 否 | SERVICE：可核销门店 |
+| `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
+| `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
+| `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
+| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
+| `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
+| `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
+| `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
+| `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
+| `stdNo` | `string` | 否 | 引用的平台标准品；空 = 自建品。**只有商家侧与运营端下发，C 端恒空。** <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于 **打开编辑页再保存一次就自动脱离了标准品** —— 商品从此不再被收敛， 而界面上没有任何变化。与 `titleI18n` / `priceByMarket` 是同一个形状的故障。 |
+| `hasDraft` | `boolean` | 否 | 有未发布的修改（双版本草稿，V279）。**只有商家侧 `/biz/goods` 下发**， C 端与运营端恒空 —— 它是商家的编辑态提示，买家与审核队列都不消费它。 <p>判据是**草稿行存在与否**，不比内容：保存的内容与线上相同时后端直接删行， 所以 true 一定意味着「发布会改变线上」。列表页据此挂「有未发布修改」徽标。 |
+
+`groupBuy` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `minCount` | `number` | 是 | — |
+| `price` | `number` | 是 | — |
+
+
 #### POST `/biz/goods/{goodsNo}/presale`
 
 改截单与到货说明　🔒
@@ -1325,7 +1389,7 @@ _无字段_
 
 #### POST `/biz/goods/{goodsNo}/publish`
 
-发布草稿（原子换版）　🔒
+发布草稿（原子换版；冲突后带 confirmVersion）　🔒
 
 **入参**
 

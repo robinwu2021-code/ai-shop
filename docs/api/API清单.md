@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 644 个接口**：后端已实现 525（82%）· 前端在调 582
+**合计 645 个接口**：后端已实现 526（82%）· 前端在调 583
 
 ---
 
@@ -201,7 +201,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **207** 个接口 ｜ 后端已实现 **171**（83%）｜ 前端在调 **207**
+共 **208** 个接口 ｜ 后端已实现 **172**（83%）｜ 前端在调 **208**
 
 ### activities（4）
 
@@ -343,15 +343,16 @@
 | GET | `/biz/geo/reverse` | 坐标转地址（门店地址定位） | — | `GeoReverseResult` | 🔒 | ✅ | ✅ |
 | GET | `/biz/geo/tips` | 地点输入提示（提报小区按名搜 POI） | — | `数组` | 🔒 | ✅ | ✅ |
 
-### goods（14）
+### goods（15）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/goods` | 商品列表 | — | `object` | 🔒 | ✅ | ✅ |
 | GET | `/biz/goods/{goodsNo}` | 商品详情 | — | `Goods` | 🔒 | ✅ | ✅ |
 | GET | `/biz/goods/{goodsNo}/draft` | 读草稿（编辑页回填） | — | `SaveGoodsReqBody` | 🔒 | ✅ | ✅ |
+| POST | `/biz/goods/{goodsNo}/draft/discard` | 放弃草稿（线上不动，幂等） | — | `Goods` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/presale` | 改截单与到货说明 | — | `Goods` | 🔒 | ✅ | ✅ |
-| POST | `/biz/goods/{goodsNo}/publish` | 发布草稿（原子换版） | — | `Goods` | 🔒 | ✅ | ✅ |
+| POST | `/biz/goods/{goodsNo}/publish` | 发布草稿（原子换版；冲突后带 confirmVersion） | — | `Goods` | 🔒 | ✅ | ✅ |
 | GET | `/biz/goods/{goodsNo}/publish-preview` | 发布预览（字段级差异） | — | `PublishPreview` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/stock` | 改库存 | `SaveStockReq` | `Goods` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/store-price` | 改当前门店售价 | — | `Goods` | 🔒 | ✅ | ✅ |

@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 165 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 166 个受控功能点**
 （另有 28 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -22,7 +22,7 @@
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 30 | ✅ | ✅ | ✅ | ✅ | — | — |
-| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 25 | ✅ | ✅ | — | — | — | — |
+| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 26 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 19 | ✅ | ✅ | — | — | — | — |
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 19 | ✅ | — | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 18 | ✅ | ✅ | — | — | — | — |
@@ -87,8 +87,9 @@
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
 | 读草稿（编辑页回填） | GET | `/biz/goods/:goodsNo/draft` | `mGoodsDraft` | goods-edit |
+| 放弃草稿（线上不动，幂等） | POST | `/biz/goods/:goodsNo/draft/discard` | `mDiscardGoodsDraft` | goods-publish |
 | 改截单与到货说明 | POST | `/biz/goods/:goodsNo/presale` | `mSavePresale` | — |
-| 发布草稿（原子换版） | POST | `/biz/goods/:goodsNo/publish` | `mPublishGoods` | goods-publish |
+| 发布草稿（原子换版；冲突后带 confirmVersion） | POST | `/biz/goods/:goodsNo/publish` | `mPublishGoods` | goods-publish |
 | 发布预览（字段级差异） | GET | `/biz/goods/:goodsNo/publish-preview` | `mPublishPreview` | goods-publish |
 | 改当前门店售价 | POST | `/biz/goods/:goodsNo/store-price` | `mSaveStorePrice` | goods-list |
 | 提交审核（草稿→待审） | POST | `/biz/goods/:goodsNo/submit` | `mSubmitGoods` | goods-edit、goods-list |

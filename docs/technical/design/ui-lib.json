@@ -820,7 +820,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 236,
+        "b-app": 237,
         "c-app": 191
       }
     },
@@ -2251,10 +2251,18 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 25,
-      "localSelectors": 7,
-      "localCssLines": 31,
-      "rolled": []
+      "libClassHits": 26,
+      "localSelectors": 9,
+      "localCssLines": 38,
+      "rolled": [
+        {
+          "id": "semcolor",
+          "label": "语义色自写",
+          "lib": ".is-danger / .is-success / .is-warning",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "b-app",
@@ -3430,7 +3438,18 @@
       "rolled": []
     }
   ],
-  "gaps": [],
+  "gaps": [
+    {
+      "id": "semcolor",
+      "label": "语义色自写",
+      "lib": ".is-danger / .is-success / .is-warning",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
+      "pages": [
+        "b-app/goods-publish"
+      ]
+    }
+  ],
   "counts": {
     "tokens": 10,
     "blocks": 63,
