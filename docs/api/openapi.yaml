@@ -2023,6 +2023,7 @@ components:
           type: "number"
         status: 
           "$ref": "#/components/schemas/SlotStatus"
+          description: "OPEN 可约 / CLOSED 停约。停约**不删行也不赶人**"
       required: 
         - "slotNo"
         - "storeNo"
@@ -6111,6 +6112,7 @@ components:
           description: "用在几件商品上。**按规格组名统计** —— 存量商品的规格快照里只有名字， 没有维度编号（那个字段是后加的），按编号统计的话老商品一件都算不进来， 而「停用它会影响什么」问的恰恰是历史。"
         status: 
           "$ref": "#/components/schemas/SpecTemplateStatus"
+          description: "ACTIVE 在用 / ARCHIVED 已归档（不再出现在选择器里，历史商品的快照照旧）"
         dimUsed: 
           type: "number"
           description: "已建 / 上限。摆出来，而不是等他建到第 11 个才被拒"
@@ -6315,6 +6317,7 @@ components:
           type: "string"
         docKind: 
           "$ref": "#/components/schemas/StockDocKind"
+          description: "IN 入库 / OUT 出库"
         docNo: 
           type: "string"
         reasonCode: 

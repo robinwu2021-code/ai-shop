@@ -371,7 +371,7 @@
 | `capacity` | `number` | 是 | — |
 | `booked` | `number` | 是 | — |
 | `remaining` | `number` | 是 | — |
-| `status` | [`SlotStatus`](#slotstatus) | 是 | — |
+| `status` | [`SlotStatus`](#slotstatus) | 是 | OPEN 可约 / CLOSED 停约。停约**不删行也不赶人** |
 
 
 ### auth
@@ -4964,7 +4964,7 @@ _无字段_
 | `capacity` | `number` | 是 | — |
 | `booked` | `number` | 是 | — |
 | `remaining` | `number` | 是 | — |
-| `status` | [`SlotStatus`](#slotstatus) | 是 | — |
+| `status` | [`SlotStatus`](#slotstatus) | 是 | OPEN 可约 / CLOSED 停约。停约**不删行也不赶人** |
 
 
 #### GET `/biz/stores/{storeNo}/fulfillment`
@@ -5162,7 +5162,7 @@ _无字段_
 | `capacity` | `number` | 是 | — |
 | `booked` | `number` | 是 | — |
 | `remaining` | `number` | 是 | — |
-| `status` | [`SlotStatus`](#slotstatus) | 是 | — |
+| `status` | [`SlotStatus`](#slotstatus) | 是 | OPEN 可约 / CLOSED 停约。停约**不删行也不赶人** |
 
 ### AreaLevel
 
@@ -6173,7 +6173,7 @@ _无字段_
 | `name` | `string` | 是 | — |
 | `valueCount` | `number` | 是 | 这个维度下的取值数（含平台档位 + 自己加的） |
 | `usedCount` | `number` | 是 | 用在几件商品上。**按规格组名统计** —— 存量商品的规格快照里只有名字， 没有维度编号（那个字段是后加的），按编号统计的话老商品一件都算不进来， 而「停用它会影响什么」问的恰恰是历史。 |
-| `status` | [`SpecTemplateStatus`](#spectemplatestatus) | 是 | — |
+| `status` | [`SpecTemplateStatus`](#spectemplatestatus) | 是 | ACTIVE 在用 / ARCHIVED 已归档（不再出现在选择器里，历史商品的快照照旧） |
 | `dimUsed` | `number` | 是 | 已建 / 上限。摆出来，而不是等他建到第 11 个才被拒 |
 | `dimQuota` | `number` | 是 | — |
 | `valueQuota` | `number` | 是 | — |
@@ -7372,7 +7372,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `id` | `number` | 是 | — |
 | `itemId` | `string` | 是 | 这一行动的是哪件货。**按单查靠它** —— 只给单号的话那一屏是一列没名字的数 |
 | `itemName` | `string` | 是 | — |
-| `docKind` | [`StockDocKind`](#stockdockind) | 是 | — |
+| `docKind` | [`StockDocKind`](#stockdockind) | 是 | IN 入库 / OUT 出库 |
 | `docNo` | `string` | 是 | — |
 | `reasonCode` | `string` | 是 | — |
 | `qtyDelta` | `number` | 是 | — |

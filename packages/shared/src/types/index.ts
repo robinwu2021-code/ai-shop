@@ -1454,6 +1454,7 @@ export interface AppointmentSlot {
   capacity: number;
   booked: number;
   remaining: number;
+  /** OPEN 可约 / CLOSED 停约。停约**不删行也不赶人** */
   status: SlotStatus;
 }
 
@@ -4208,6 +4209,7 @@ export interface MerchantSpecDim {
    * 而「停用它会影响什么」问的恰恰是历史。
    */
   usedCount: number;
+  /** ACTIVE 在用 / ARCHIVED 已归档（不再出现在选择器里，历史商品的快照照旧） */
   status: SpecTemplateStatus;
   /** 已建 / 上限。摆出来，而不是等他建到第 11 个才被拒 */
   dimUsed: number;
@@ -4434,6 +4436,7 @@ export interface StockLedgerRow {
   /** 这一行动的是哪件货。**按单查靠它** —— 只给单号的话那一屏是一列没名字的数 */
   itemId: string;
   itemName: string;
+  /** IN 入库 / OUT 出库 */
   docKind: StockDocKind;
   docNo: string;
   reasonCode: string;
