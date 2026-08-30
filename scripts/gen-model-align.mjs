@@ -116,6 +116,9 @@ const TYPE_ALIAS = {
   Quote: { minCount: "min_qty", desc: "note", priceMinor: "unit_price_minor" },
   // 进货/出库单在库里是两张表，单号列各叫各的；契约收成一个 StockDocument
   StockDocument: { docNo: "inbound_no" },
+  MemberSegment: { rule: "rule_json" },
+  CouponIssueBatch: { planned: "planned_count", issued: "issued_count", skipped: "skipped_count" },
+  StoreActivity: { maxExposureMinor: "budget_minor" },
   QuoteRevision: { priceMinor: "to_price_minor" },
 };
 
@@ -143,6 +146,21 @@ const RELATION = {
   Category: { children: "prd_category 自关联（parent_no）" },
   // ── 2026-08-30 第三批带出来的 join ──
   UserCoupon: { coupon: "join mkt_coupon —— 券模板快照，一张券和它的模板是两个对象" },
+  StoreFulfillmentChannel: {
+    pickups: "mch_channel_pickup —— 这条渠道挂了哪些自提点",
+    areaNos: "mch_channel_area —— 覆盖到哪些区划",
+  },
+  StoreFulfillment: { channels: "mch_fulfillment_channel 的多行（一个门店多条渠道）" },
+  MerchantStaff: { roles: "mch_store_role —— 一人可在多店多角色，权限取并集" },
+  MerchantPlan: {
+    planName: "join sys_merchant_plan_def.name —— **订阅行只存 plan_code**："
+      + "运营改了档位显示名，已卖出去的订阅要跟着变",
+    tiers: "sys_merchant_plan_def 全表 —— 升级页要摆出所有档位",
+    trialTier: "join sys_merchant_plan_def（试用档）",
+    trialDays: "join sys_merchant_plan_def.trial_days",
+  },
+  StoreActivity: { audiences: "pmt_activity_audience", goodsNos: "pmt_activity_goods" },
+  MerchantSpecDim: { values: "prd_spec_value 的多行" },
   StoreCategory: {
     platformName: "join prd_category.name —— 平台类目的原名。"
       + "**与 display_name 分开**：商家改了叫法之后，运营仍要认得出这是哪个平台类目",
@@ -331,6 +349,42 @@ const DERIVED = {
     subtitle: "展示用的一句话（供应商名 / 用途 / 来源单号），按单据类型拼",
   },
   StockTransfer: { totalQty: "按明细行汇总" },
+  StoreFulfillmentChannel: {
+    denied: "由准入矩阵实时判（S 轴 × T 轴）—— 不是配置，是「这个主体准不准用这条渠道」",
+    locked: "由运营处置状态判 —— 锁着时商家侧置灰不可自行打开",
+    templateNo: "运费模板在 ful_freight_template，渠道行只存引用（此处未落列，走另一条查询）",
+  },
+  MasterDataIndustry: { microAllowed: "由准入矩阵判：小微在这个行业准不准做" },
+  PaymentApplyment: {
+    channelName: "pay_channel 的显示名，字典取",
+    canReceiveMoney: "apply_status=ACTIVE 且有 sub_mchid —— **两个条件缺一不可**，"
+      + "进件过了但没拿到子商户号照样收不了钱",
+    subMchidMasked: "sub_mchid 打码后下发 —— 完整值只在服务端用",
+    missing: "按当前主体档位倒推还差哪几份材料",
+    submitted: "channel_apply_no 非空",
+  },
+  MerchantRole: {
+    permLabels: "权限码的人话名，字典取 —— **别拿 code 给店主看**",
+    usedBy: "按 mch_store_role 计数：这个角色有几个人在用。删角色前要知道影响面",
+  },
+  MerchantPlan: {
+    storeUsed: "按 mch_store 计数",
+    staffUsed: "按 mch_account 计数",
+    suspendedStores: "超配额被压下的门店 —— 降档时按规则算出来，不落列",
+  },
+  PlanTier: { current: "与当前订阅的 plan_code 比 —— **随会话变**，不是档位定义的属性" },
+  StoreActivity: {
+    quotaLeft: "quota - quota_used",
+    liveNow: "按 status 与时间窗实时判 —— 落列就要有人定时刷，刷不动时页面会说谎",
+  },
+  CouponIssueBatch: { skipReasons: "skip_detail 里的明细聚成分类计数" },
+  MerchantSpecDim: {
+    valueCount: "按 prd_spec_value 计数",
+    usedCount: "**按规格组名统计**用在几件商品上 —— 存量商品的快照里只有名字没有维度编号",
+    dimUsed: "已建维度数",
+    dimQuota: "配额上限，按档位取",
+    valueQuota: "同上",
+  },
   SpuStd: { categoryName: "join prd_category.name" },
   UserCoupon: {
     usableNow: "按券模板的时间窗与门槛实时判 —— **不落列**：落了就要有人定时刷，"
@@ -462,6 +516,34 @@ const ENTITY_MAP = {
   //
   // 它们的表一直都在，只是 ENTITY_MAP 里没写，于是被归进「契约有类型、库里无承载」，
   // **字段级比对一次都没跑过**。
+  // ── 2026-08-30 第四批：名字与表名不同源，机器猜不出来的 ──
+  MerchantStaff: {
+    table: "mch_account",
+    note: "商家账号。**契约里叫 mchAccountNo 不叫 staffNo** —— staffNo 被平台运营占着，"
+      + "两者是不同的人（sys_ops_staff 才是运营）",
+  },
+  MerchantRole: { table: "mch_role", note: "商家自定义角色。mch_store_role 是「谁在哪家店是什么角色」的授权行" },
+  MerchantPlan: {
+    table: "mch_entity_plan",
+    note: "**订阅行**（这家店买了哪一档、什么时候到期）。档位的定义在 sys_merchant_plan_def"
+      + " —— 两者分开是因为改档位定义不该改已卖出去的订阅",
+  },
+  PlanTier: { table: "sys_merchant_plan_def", note: "档位定义（配额与能力开关），见 MerchantPlan" },
+  MemberSetting: { table: "mbr_setting" },
+  MemberSegment: { table: "mbr_segment" },
+  StoreActivity: { table: "pmt_activity" },
+  MerchantSpecDim: { table: "prd_spec_dim" },
+  MasterDataIndustry: { table: "sys_industry" },
+  StoreFulfillment: { table: "mch_fulfillment_channel" },
+  StoreFulfillmentChannel: { table: "mch_fulfillment_channel", note: "同表的单行投影" },
+  PaymentApplyment: {
+    table: "mch_payment_merchant",
+    note: "收款进件。**第一版我映到了 `pmt_apply`** —— 名字像，其实是促销域的核销记录"
+      + "（pmt_ = promotion），12 个字段全对不上。字段级比对当场把这个错映射抓了出来，"
+      + "而在它之前这个实体根本没被比过",
+  },
+  CouponIssueBatch: { table: "pmt_coupon_issue" },
+
   SpuStd: { table: "prd_spu_std" },
   InvoiceRequest: { table: "ord_invoice_request" },
   UserCoupon: {
