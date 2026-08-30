@@ -105,14 +105,24 @@ public class MediaScanner {
         boolean abnormal = total > 0 && (double) reclaimable / total > abnormalRatio;
         if (abnormal) {
             /*
-             * 这个比例多半意味着某个 MediaRefSource 漏了一列 —— 那一列引用的图会集体进清单。
              * 不自动做任何事（本来也不会自动删），只是把它喊出来，
              * 并让运营端置顶红条、禁用批量回收：先查为什么，而不是照删。
+             *
+             * **提示语要先指向解析，再指向声明。** 上一版只写了「检查是不是有图片列
+             * 没登记进 MediaRefSource」—— 2026-08-30 真出事那次，登记是齐的、
+             * MediaRefCoverageTest 全绿，坏的是 MediaKeys 抠不出 COS 形态的地址。
+             * 照着那句提示查会一路查到「声明没问题」，然后很自然地得出
+             * 「阈值定太保守了」，去调高它 —— 而那一下是不可逆的。
+             * 一条把人引向错误结论的提示，比没有提示更糟。
              */
             log.warn("图片扫描异常：{} / {} 被判为可回收（{}%），超过阈值 {}%。"
-                            + "先检查是不是有图片列没登记进 MediaRefSource",
+                            + "本轮抠出的引用只有 {} 条 —— 若这个数接近 0，"
+                            + "先查 MediaKeys 认不认得出当前 provider 的地址形态"
+                            + "（2026-08-30 就是这里：切 COS 后一个都抠不出）；"
+                            + "引用数正常才去查是不是有图片列没登记进 MediaRefSource。"
+                            + "**在查清楚之前不要调高阈值** —— 它是这里唯一的保险",
                     reclaimable, total, Math.round(reclaimable * 100.0 / total),
-                    Math.round(abnormalRatio * 100));
+                    Math.round(abnormalRatio * 100), referenced.size());
         }
         log.info("图片扫描完成：共 {} 张，引用中 {}，本轮新进清单 {}，救回 {}",
                 total, referenced.size(), marked, rescued);
