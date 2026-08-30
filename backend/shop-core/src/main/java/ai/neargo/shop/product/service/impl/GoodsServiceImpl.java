@@ -129,7 +129,9 @@ public class GoodsServiceImpl implements GoodsService {
             w.eq(PrdGoods::getCategoryNo, q.categoryNo());
         }
         if (q.keyword() != null && !q.keyword().isBlank()) {
-            // S1 用 like 前缀索引；商品量上来后换 ES（GoodsService 接口不变）
+            // 两边通配 %kw%，**任何索引都用不上**（前缀索引只服务 likeRight）——
+            // 每次搜索都是全表扫。380 行免费；商品量上来后换 ES，GoodsService 接口不变。
+            // 别把这条改成「有索引兜底」：它没有，写成有会让 ES 的紧迫性被低估
             w.and(x -> x.like(PrdGoods::getTitle, q.keyword()).or().like(PrdGoods::getSubtitle, q.keyword()));
         }
         w.orderByDesc(PrdGoods::getSales);
@@ -141,10 +143,14 @@ public class GoodsServiceImpl implements GoodsService {
             return PageData.empty(q.page(), q.size());
         }
 
-        Map<String, List<PrdSku>> skus = loadSkus(page.getRecords().stream().map(PrdGoods::getGoodsNo).toList());
+        List<String> nos = page.getRecords().stream().map(PrdGoods::getGoodsNo).toList();
+        Map<String, List<PrdSku>> skus = loadSkus(nos);
+        // 批量拿一次闪购价，与 promoted()/detailAll() 同一个形状。
+        // 此前在 map 里逐行调（List.of(单个)），20 行/页 = 20 次跨域调用
+        var flash = campaignPort.flashPrices(nos);
         List<GoodsVO> records = page.getRecords().stream()
                 .map(g -> toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of()),
-                        campaignPort.flashPrices(List.of(g.getGoodsNo())).get(g.getGoodsNo())))
+                        flash.get(g.getGoodsNo())))
                 .toList();
         return PageData.of(records, page.getTotal(), page.getCurrent(), page.getSize());
     }
