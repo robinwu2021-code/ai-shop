@@ -725,6 +725,16 @@ public enum ErrorCode {
     APPOINTMENT_SLOT_UNAVAILABLE(80015, "err.appointment.slot_unavailable"),
 
     /**
+     * 停用/归档一个还有商品在用的规格值或维度。
+     *
+     * <p>不拦的话是静默降级：商家下次保存那件商品，resolveValueNos 查不到
+     * 已停用的值（valuesOf 只取 ACTIVE），option_value_nos 对应位落 null ——
+     * 跨店聚合从此漏掉这件商品，而界面上什么都看不出来。
+     * 消息带件数（{0}），让操作的人知道要先清场多少件。
+     */
+    SPEC_IN_USE(80016, "err.spec.in_use"),
+
+    /**
      * 截单时间不早于到货时间（P-3.3.2）。
      *
      * <p>不复用 {@code BAD_REQUEST}：运营看到「参数有误」会去检查数字格式，

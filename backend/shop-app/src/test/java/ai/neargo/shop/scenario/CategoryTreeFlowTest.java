@@ -72,6 +72,9 @@ class CategoryTreeFlowTest {
     @Autowired
     private ai.neargo.shop.product.mapper.ProductMappers.CategoryMapper categoryMapper;
 
+    @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
+
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -1457,6 +1460,117 @@ class CategoryTreeFlowTest {
                 .andExpect(jsonPath("$.data[0].scope").value("MERCHANT"))
                 .andExpect(jsonPath("$.data[0].name").value("捆扎方式"))
                 .andExpect(jsonPath("$.data[0].options.length()").value(1));
+    }
+
+    @Test
+    @DisplayName("★★★ 停用一个在用的规格值要被拦住 —— 现在能静默停用，商家下次保存商品就掉聚合")
+    void archiveValueInUseIsRejected() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+        String dimBody = mvc().perform(post("/ops/spec-dims")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"ARCHGUARD\",\"name\":\"停用守卫份量\",\"valueType\":\"ENUM\","
+                                + "\"usageType\":\"SALE\",\"universal\":true}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String dimNo = json.readTree(dimBody).get("data").get("dimNo").asString();
+        String valueNo = newValue(ops, dimNo, "两斤半");
+
+        String biz = merchant("13700007890", "停用守卫店");
+        String goodsBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT110\",\"title\":\"停用守卫测试\","
+                                + "\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
+                                + "\"specGroups\":[{\"name\":\"停用守卫份量\",\"templateNo\":\"" + dimNo
+                                + "\",\"options\":[\"两斤半\"]}],"
+                                + "\"skus\":[{\"optionValues\":[\"两斤半\"],\"price\":500,\"stock\":3}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(goodsBody).get("data").get("goodsNo").asString();
+
+        /*
+         * **先证明「在用」真的成立**，否则下面的拦截断言是空集赢的：
+         * 万一 resolveValueNos 没解出编号（快照里没有 valueNo），
+         * 在用检查根本没东西可查，测试绿得毫无意义。
+         */
+        java.util.List<ai.neargo.shop.product.entity.PrdSku> rows =
+                ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                        skuMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdSku::getGoodsNo, goodsNo)));
+        org.assertj.core.api.Assertions.assertThat(rows).isNotEmpty();
+        org.assertj.core.api.Assertions.assertThat(rows.get(0).getOptionValueNos())
+                .as("SKU 快照必须真的带上这个值编号 —— 在用检查查的就是它")
+                .contains(valueNo);
+
+        // ⚠️ 缺陷：现在这一步会成功（code=0），一个在用的档就这么静默停用了
+        mvc().perform(post("/ops/spec-values/" + valueNo + "/archive")
+                        .header("Authorization", "Bearer " + ops))
+                .andExpect(jsonPath("$.code").value(80016));
+
+        // 商家把那一档从商品里拿掉（真实清场路径：重存商品，不再用这个规格）
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"CAT110\","
+                                + "\"title\":\"停用守卫测试\",\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
+                                + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":3}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 没人用了，停用放行
+        mvc().perform(post("/ops/spec-values/" + valueNo + "/archive")
+                        .header("Authorization", "Bearer " + ops))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
+    @DisplayName("★★★ 停用一个在用的自建规格要被拦住 —— 判据是 spec_groups 里的维度引用")
+    void archiveMerchantDimInUseIsRejected() throws Exception {
+        String biz = merchant("13700008901", "自建停用守卫店");
+
+        String dimBody = mvc().perform(post("/biz/spec-dims")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"守卫辣度\",\"usageType\":\"SALE\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String dimNo = json.readTree(dimBody).get("data").get("templateNo").asString();
+
+        mvc().perform(post("/biz/spec-values").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dimNo\":\"" + dimNo + "\",\"label\":\"微微辣\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String goodsBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT110\",\"title\":\"自建守卫测试\","
+                                + "\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
+                                + "\"specGroups\":[{\"name\":\"守卫辣度\",\"templateNo\":\"" + dimNo
+                                + "\",\"options\":[\"微微辣\"]}],"
+                                + "\"skus\":[{\"optionValues\":[\"微微辣\"],\"price\":800,\"stock\":2}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(goodsBody).get("data").get("goodsNo").asString();
+
+        // ⚠️ 缺陷：现在这一步会成功 —— 商家能停用自己商品正在用的规格
+        mvc().perform(post("/biz/my-spec-dims/" + dimNo + "/archive")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"archived\":true}"))
+                .andExpect(jsonPath("$.code").value(80016));
+
+        // 清场：商品不再用这个规格
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"CAT110\","
+                                + "\"title\":\"自建守卫测试\",\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
+                                + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":800,\"stock\":2}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        mvc().perform(post("/biz/my-spec-dims/" + dimNo + "/archive")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"archived\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
     }
 
     private String newValue(String ops, String dimNo, String label) throws Exception {

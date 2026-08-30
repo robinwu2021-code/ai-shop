@@ -696,6 +696,9 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         if (row == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        if (archived) {
+            requireDimNotInUse(dimNo);
+        }
         row.setStatus(archived ? PrdSpecDim.ARCHIVED : PrdSpecDim.ACTIVE);
         DataScopeContext.executeWithoutScope(() -> dimMapper.updateById(row));
         return toDimVO(row, List.of(), 0);
@@ -751,6 +754,9 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     @Transactional
     public SpecValueVO archiveValue(String valueNo, boolean archived) {
         PrdSpecValue row = mustValue(valueNo);
+        if (archived) {
+            requireValueNotInUse(valueNo);
+        }
         row.setStatus(archived ? PrdSpecDim.ARCHIVED : PrdSpecDim.ACTIVE);
         DataScopeContext.executeWithoutScope(() -> valueMapper.updateById(row));
         return toValueVO(row);
@@ -1156,6 +1162,48 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
         }
     }
 
+    /**
+     * 停用前先问「谁在用」。**只挡停用，不挡恢复**（调用方只在 archived=true 时进来）。
+     *
+     * <p>判据是「带引号的编号出现在快照里」：值编号在 option_value_nos 数组里带引号
+     * （["SV_X","SV_Y"]），LIKE '%"SV_X"%' 因引号封边不会误命中前缀相近的编号
+     * （SV_COUNT_C1 与 C12 那个坑，见设计 §3.7）。维度同理匹配 spec_groups/params
+     * 里带引号的 dimNo —— **故意不带 "templateNo": 这个键名**：V229 回填的行
+     * 键后有空格（"templateNo": "SD_X"），Jackson 写的没有，带键名两种格式必漏一种。
+     *
+     * <p>只算 deleted=0 的行（@TableLogic 自动加）—— 已删商品的快照不该拦住停用。
+     * ⚠️ 编译点（工单步骤 6）落地后收窄为 on_sale=1：草稿不锁规格库，
+     * 失效引用改由上架校验拦。
+     *
+     * <p>LIKE 是全表扫，可接受：archive 是一天个位数的低频动作。
+     * 倒排表（二期）落地后改走索引查询 —— 这两处 LIKE 就是届时要删的记号。
+     */
+    private void requireValueNotInUse(String valueNo) {
+        String quoted = "\"" + valueNo + "\"";
+        Long inSku = DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectCount(Wrappers.<PrdSku>lambdaQuery()
+                        .like(PrdSku::getOptionValueNos, quoted)));
+        Long inParams = DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectCount(Wrappers.<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                        .like(ai.neargo.shop.product.entity.PrdGoods::getParams, quoted)));
+        long n = (inSku == null ? 0 : inSku) + (inParams == null ? 0 : inParams);
+        if (n > 0) {
+            throw BizException.of(ErrorCode.SPEC_IN_USE, n);
+        }
+    }
+
+    private void requireDimNotInUse(String dimNo) {
+        String quoted = "\"" + dimNo + "\"";
+        Long inGoods = DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectCount(Wrappers.<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                        .like(ai.neargo.shop.product.entity.PrdGoods::getSpecGroups, quoted)
+                        .or()
+                        .like(ai.neargo.shop.product.entity.PrdGoods::getParams, quoted)));
+        if (inGoods != null && inGoods > 0) {
+            throw BizException.of(ErrorCode.SPEC_IN_USE, inGoods);
+        }
+    }
+
     private static boolean notBlank(String s) {
         return s != null && !s.isBlank();
     }
@@ -1294,6 +1342,9 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
     @Transactional
     public SpecDimVO archiveMerchantDim(String merchantNo, String dimNo, boolean archived) {
         PrdSpecDim dim = requireMine(merchantNo, dimNo);
+        if (archived) {
+            requireDimNotInUse(dimNo);
+        }
         dim.setStatus(archived ? PrdSpecDim.ARCHIVED : PrdSpecDim.ACTIVE);
         DataScopeContext.executeWithoutScope(() -> dimMapper.updateById(dim));
         return toDimVO(dim, List.of(), 0);
