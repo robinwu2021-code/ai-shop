@@ -59,7 +59,9 @@ public class PlatformConfigServiceImpl implements PlatformConfigService {
      */
     private static final String DEFAULT_FLAGS = """
             [{"key":"category.gate.enforce","name":"类目资质校验",\
-            "enabled":false,"rolloutPercent":0,"updatedAt":null}]""";
+            "enabled":false,"rolloutPercent":0,"updatedAt":null},\
+            {"key":"goods.audit","name":"商品上架审核",\
+            "enabled":true,"rolloutPercent":0,"updatedAt":null}]""";
 
     private static final String DEFAULT_RULE_TEXTS =
             "{\"refund\":\"\",\"pickup\":\"\",\"weighDiff\":\"\",\"version\":0}";

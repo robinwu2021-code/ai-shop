@@ -716,6 +716,25 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (ctxStore != null && !ctxStore.isBlank()) {
             storeCategoryPort.ensure(merchantNo, ctxStore, g.getCategoryNo());
         }
+        /*
+         * 免审直通（goods.audit=off）：编辑已过审商品那条路（stayDraft=false，
+         * 正常要 AUDITING 等人）改成当场编译过审，pendingOnSale 立刻兑现 ——
+         * 商家改个错别字不用再等一轮审。编译失败（80017）抛给他本人，
+         * 整个 save 事务回滚，线上停在改动前的完整旧版。
+         * 放在 saveSkus 之后：编译要读的 SKU 快照这时才落库。
+         */
+        if (!stayDraft && !auditRequired()) {
+            bakeForPublish(g);
+            g.setAuditStatus(APPROVED);
+            if (Boolean.TRUE.equals(g.getPendingOnSale())) {
+                g.setOnSale(true);
+            }
+            g.setPendingOnSale(false);
+            log.info("[免审] goods.audit=off，保存即过审：goods={} merchant={}", g.getGoodsNo(), merchantNo);
+            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+            syncPool(g, Boolean.TRUE.equals(g.getOnSale()));
+            return toVO(g);
+        }
         // 改动后强制下架，池要跟着撤 —— 否则改成别的东西之后，旧条目还挂在买家的社区列表里
         syncPool(g, false);
         return toVO(g);
@@ -1112,6 +1131,15 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * 幂等：算出来与快照相同就不写库，免得每次上架都动 updated_at。
      * 下架与驳回**不**烘焙 —— 快照要留给历史订单解释自己。
      */
+    /**
+     * 商品上架要不要人审（goods.audit 开关，PRD-商品规格与发布 §3.2）。
+     * **默认开** —— 开关行不存在时行为与从前逐字相同；关掉的只是人审，
+     * 编译点校验（bakeForPublish）与强制下架照常有效。
+     */
+    private boolean auditRequired() {
+        return switchPort.bool("goods.audit", true);
+    }
+
     private void bakeForPublish(PrdGoods g) {
         if (g.getSpecGroups() == null || g.getSpecGroups().isBlank()) {
             return;
@@ -1977,6 +2005,19 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 端上重复点击是常态，一个「状态不允许」只会让商家以为提交失败又点一次。
          */
         if (DRAFT.equals(g.getAuditStatus())) {
+            if (!auditRequired()) {
+                // 免审：提交即编译上架。编译失败（80017）直接抛给商家 ——
+                // 他就在屏幕前，逐条点名比留一个「审核中」的假状态有用
+                bakeForPublish(g);
+                g.setAuditStatus(APPROVED);
+                g.setOnSale(true);
+                g.setPendingOnSale(false);
+                log.info("[免审] goods.audit=off，提交即过审上架：goods={} merchant={}",
+                        g.getGoodsNo(), merchantNo);
+                DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+                syncPool(g, true);
+                return toVO(g);
+            }
             g.setAuditStatus(AUDITING);
             /*
              * **提交审核就是「我要卖它」**，把意向记下（V247）。

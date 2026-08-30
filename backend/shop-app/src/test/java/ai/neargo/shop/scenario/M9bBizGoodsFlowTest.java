@@ -1265,6 +1265,46 @@ class M9bBizGoodsFlowTest {
                 .as("错误信息要点名哪一档，商家才知道改什么").contains("临期装");
     }
 
+    @Test
+    @DisplayName("★★★ 审核开关关着：提交即过审上架，不进运营队列；校验照跑")
+    void auditSwitchOffPublishesWithoutOps() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+        // 关掉 goods.audit。**结尾必须恢复**（finally）—— 开关存在共享库里，
+        // 不还原的话后面跑的所有审核用例全被静默改成免审（shared-seed 那条老坑）
+        mvc().perform(post("/ops/feature-flags/goods.audit").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":false,\"rolloutPercent\":0}"))
+                .andExpect(jsonPath("$.code").value(0));
+        try {
+            String biz = merchant("12600199203", "免审测试店");
+            String gBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"categoryNo\":\"CAT120\",\"title\":\"免审测试品\","
+                                    + "\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
+                                    + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":700,\"stock\":3}]}"))
+                    .andExpect(jsonPath("$.code").value(0))
+                    .andReturn().getResponse().getContentAsString();
+            String goodsNo = json.readTree(gBody).get("data").get("goodsNo").asString();
+
+            // ⚠️ 现在这里红：提交后停在 AUDITING 等运营，而开关关着本不该有人审
+            mvc().perform(post("/biz/goods/" + goodsNo + "/submit")
+                            .header("Authorization", "Bearer " + biz))
+                    .andExpect(jsonPath("$.code").value(0))
+                    .andExpect(jsonPath("$.data.status").value("ON_SALE"));
+
+            // 免审免的是人审，不是治理：强制下架照常有效
+            mvc().perform(post("/ops/goods/" + goodsNo + "/force-off").header("Authorization", "Bearer " + ops)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"reason\":\"测试\"}"))
+                    .andExpect(jsonPath("$.code").value(0));
+        } finally {
+            mvc().perform(post("/ops/feature-flags/goods.audit").header("Authorization", "Bearer " + ops)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"enabled\":true,\"rolloutPercent\":0}"))
+                    .andExpect(jsonPath("$.code").value(0));
+        }
+    }
+
     private void approveGoods(String goodsNo) throws Exception {
         mvc().perform(post("/ops/goods/" + goodsNo + "/audit")
                         .header("Authorization", "Bearer " + opsLogin())
