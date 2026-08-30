@@ -182,6 +182,16 @@ public class BizGoodsController {
      * <p>此前是「保存即提审」，商家填一半点保存就进了运营的待审队列。
      * 重复点击无副作用 —— 已在审的再点一次不该报错。
      */
+    /**
+     * 发布草稿（双版本）。审核关：原子换版，买家看到的从整份旧版直接变整份新版；
+     * 审核开：提交待审，**线上继续卖旧版**。80018=草稿基版过期（先看差异再重提）。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @PostMapping("/biz/goods/{goodsNo}/publish")
+    public GoodsVO publishDraft(@PathVariable String goodsNo) {
+        return goodsService.publishDraft(BizContext.requireMerchantNo(), goodsNo);
+    }
+
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @PostMapping("/biz/goods/{goodsNo}/submit")
     public GoodsVO submit(@PathVariable String goodsNo) {

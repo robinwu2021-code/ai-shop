@@ -175,6 +175,7 @@ class BizEndpointPermTest {
         put("/biz/goods/{goodsNo}/store-price", BizPerms.GOODS);
         // 提交审核与改截单都是「商品」这一档：能建品的人才谈得上提交与改截单
         put("/biz/goods/{goodsNo}/submit", BizPerms.GOODS);
+        put("/biz/goods/{goodsNo}/publish", BizPerms.GOODS);
         put("/biz/goods/{goodsNo}/presale", BizPerms.GOODS);
         put("/biz/goods/save", BizPerms.GOODS);
         put("/biz/goods/{goodsNo}/toggle", BizPerms.GOODS);

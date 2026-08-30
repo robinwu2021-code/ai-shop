@@ -1689,6 +1689,25 @@ CREATE TABLE IF NOT EXISTS prd_store_goods
     CONSTRAINT uk_store_goods UNIQUE (store_no,goods_no)
 );
 
+CREATE TABLE IF NOT EXISTS prd_goods_draft
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    goods_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    payload TEXT NOT NULL,
+    base_version BIGINT(20) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'EDITING',
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_goods_draft UNIQUE (goods_no)
+);
+
 CREATE TABLE IF NOT EXISTS notify_template
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,

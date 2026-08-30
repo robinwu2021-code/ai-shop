@@ -740,6 +740,9 @@ public enum ErrorCode {
      */
     GOODS_SPEC_UNRESOLVED(80017, "err.goods.spec_unresolved"),
 
+    /** 草稿基于的线上版本已被别人改过（多端编辑/运营强改）。拒并引导先看差异，不静默覆盖 */
+    GOODS_DRAFT_STALE(80018, "err.goods.draft_stale"),
+
     /**
      * 截单时间不早于到货时间（P-3.3.2）。
      *

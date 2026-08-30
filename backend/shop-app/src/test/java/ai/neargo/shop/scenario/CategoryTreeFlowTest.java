@@ -1529,12 +1529,13 @@ class CategoryTreeFlowTest {
                         .header("Authorization", "Bearer " + ops))
                 .andExpect(jsonPath("$.code").value(80016));
 
-        // 商家把那一档从商品里拿掉（真实清场路径：重存商品 —— V247 会顺带自动下架送审）
-        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"" + catNo + "\","
-                                + "\"title\":\"停用守卫测试\",\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
-                                + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":3}]}"))
+        /*
+         * 清场：双版本之后，在售商品的重存只落草稿（线上还引用着那一档），
+         * 所以真实清场路径是**先下架** —— 下架商品不再挡停用（判据 on_sale=1）。
+         */
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":false}"))
                 .andExpect(jsonPath("$.code").value(0));
 
         // 没人用了，停用放行
@@ -1597,12 +1598,10 @@ class CategoryTreeFlowTest {
                         .content("{\"archived\":true}"))
                 .andExpect(jsonPath("$.code").value(80016));
 
-        // 清场：商品不再用这个规格
-        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"" + catNo2 + "\","
-                                + "\"title\":\"自建守卫测试\",\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
-                                + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":800,\"stock\":2}]}"))
+        // 清场：先下架（双版本后在售重存只落草稿，线上还引用着 —— 见值级那条的注释）
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":false}"))
                 .andExpect(jsonPath("$.code").value(0));
 
         mvc().perform(post("/biz/my-spec-dims/" + dimNo + "/archive")

@@ -97,6 +97,15 @@ public final class ProductMappers {
             extends BaseMapper<ai.neargo.shop.product.entity.PrdCategoryPoints> {
     }
 
+    public interface GoodsDraftMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdGoodsDraft> {
+        /**
+         * 物理删（发布成功 / 内容与线上相同 / 商家丢弃草稿）。
+         * 不用逻辑删：uk_goods_draft(goods_no) 不含 deleted，软删会挡住重建 —— V195 的坑。
+         */
+        @org.apache.ibatis.annotations.Delete("DELETE FROM prd_goods_draft WHERE goods_no = #{goodsNo}")
+        int purge(@org.apache.ibatis.annotations.Param("goodsNo") String goodsNo);
+    }
+
     public interface SkuMapper extends BaseMapper<PrdSku> {
 
         /**

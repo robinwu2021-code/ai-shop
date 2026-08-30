@@ -47,6 +47,9 @@ class M9bBizGoodsFlowTest {
     private ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
 
     @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.GoodsDraftMapper draftMapper;
+
+    @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
 
     private MockMvc mvc() {
@@ -284,12 +287,28 @@ class M9bBizGoodsFlowTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
                 .andExpect(jsonPath("$.data.status").value("ON_SALE"));
 
-        // ★ 改标题 → 回到待审（PENDING）且强制下架
+        /*
+         * ★ 语义在双版本落地时（2026-08-30，PRD-商品规格与发布 §3.1）**有意变更**：
+         * V247 的「改标题 → 强制下架送审」换成「改动落草稿，线上照卖旧版」——
+         * 审核期间线上是空的那个代价，正是双版本要消掉的。
+         * 本用例从钉 V247 改成钉新语义：保存后仍在售、线上标题不变。
+         */
         mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(goodsBody(goodsNo, "进口红酒", 39900, 5)))
-                .andExpect(jsonPath("$.data.status").value("PENDING"))
-                .andExpect(jsonPath("$.data.onSale").value(false));
+                .andExpect(jsonPath("$.data.status").value("ON_SALE"))
+                .andExpect(jsonPath("$.data.onSale").value(true))
+                .andExpect(jsonPath("$.data.title").value("白菜"));
+
+        // 发布（默认审核开）→ 线上仍旧版；过审 → 换版
+        mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.title").value("白菜"));
+        approveGoods(goodsNo);
+        mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.title").value("进口红酒"))
+                .andExpect(jsonPath("$.data.onSale").value(true));
     }
 
     /**
@@ -1303,6 +1322,151 @@ class M9bBizGoodsFlowTest {
                             .content("{\"enabled\":true,\"rolloutPercent\":0}"))
                     .andExpect(jsonPath("$.code").value(0));
         }
+    }
+
+    @Test
+    @DisplayName("★★★ 双版本：编辑在售商品只落草稿，线上照卖旧版")
+    void savingOnSaleGoodsKeepsItSelling() throws Exception {
+        String biz = merchant("12600199204", "双版本测试店");
+        String gBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT120\",\"title\":\"旧标题\","
+                                + "\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
+                                + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":800,\"stock\":6}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(gBody).get("data").get("goodsNo").asString();
+        approveGoods(goodsNo);
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // ⚠️ 现状（V247）：这一步会把商品自动下架送审 —— 改个标题，审核期间线上是空的
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"CAT120\","
+                                + "\"title\":\"新标题\",\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
+                                + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":800,\"stock\":6}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("ON_SALE"));
+
+        ai.neargo.shop.product.entity.PrdGoods live =
+                ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                        goodsMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdGoods::getGoodsNo, goodsNo)));
+        assertThat(live.getTitle()).as("线上一个字节不动 —— 买家看到的还是旧版").isEqualTo("旧标题");
+        assertThat(live.getOnSale()).as("商品仍在架").isTrue();
+
+        var draft = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                draftMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.product.entity.PrdGoodsDraft>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdGoodsDraft::getGoodsNo, goodsNo)));
+        assertThat(draft).as("改动落进草稿行 —— 它就是「有未发布修改」标识的判据").isNotNull();
+        assertThat(draft.getPayload()).contains("新标题");
+    }
+
+    /** 建一件在售商品并给它落一份「新标题」草稿，返回 goodsNo —— 步骤 3 三条用例共用 */
+    private String onSaleGoodsWithDraft(String phone, String shop) throws Exception {
+        String biz = merchant(phone, shop);
+        String gBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT120\",\"title\":\"旧标题\","
+                                + "\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
+                                + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":800,\"stock\":6}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(gBody).get("data").get("goodsNo").asString();
+        approveGoods(goodsNo);
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"CAT120\","
+                                + "\"title\":\"新标题\",\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
+                                + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":800,\"stock\":6}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+        this.lastBiz = biz;
+        return goodsNo;
+    }
+
+    private String lastBiz;
+
+    @Test
+    @DisplayName("★★★ 双版本：审核关着，发布=原子换版（线上换新版、草稿删行）")
+    void publishSwapsAtomicallyWhenAuditOff() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+        mvc().perform(post("/ops/feature-flags/goods.audit").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":false,\"rolloutPercent\":0}"))
+                .andExpect(jsonPath("$.code").value(0));
+        try {
+            String goodsNo = onSaleGoodsWithDraft("12600199205", "换版测试店");
+            mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
+                            .header("Authorization", "Bearer " + lastBiz))
+                    .andExpect(jsonPath("$.code").value(0))
+                    .andExpect(jsonPath("$.data.status").value("ON_SALE"))
+                    .andExpect(jsonPath("$.data.title").value("新标题"));
+
+            ai.neargo.shop.product.entity.PrdGoods live =
+                    ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                            goodsMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                    .<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                                    .eq(ai.neargo.shop.product.entity.PrdGoods::getGoodsNo, goodsNo)));
+            assertThat(live.getTitle()).isEqualTo("新标题");
+            assertThat(live.getOnSale()).as("换版不经过下架真空期").isTrue();
+            var draft = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                    draftMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                            .<ai.neargo.shop.product.entity.PrdGoodsDraft>lambdaQuery()
+                            .eq(ai.neargo.shop.product.entity.PrdGoodsDraft::getGoodsNo, goodsNo)));
+            assertThat(draft).as("发布成功即删草稿行 —— 标识跟着消失").isNull();
+        } finally {
+            mvc().perform(post("/ops/feature-flags/goods.audit").header("Authorization", "Bearer " + ops)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"enabled\":true,\"rolloutPercent\":0}"))
+                    .andExpect(jsonPath("$.code").value(0));
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 双版本：草稿基版过期 → 发布被拒，不静默覆盖")
+    void publishStaleDraftRejected() throws Exception {
+        String goodsNo = onSaleGoodsWithDraft("12600199206", "冲突测试店");
+        // 中途运营强改了线上（强制下架会动 prd_goods 行 → updated_at 变）
+        mvc().perform(post("/ops/goods/" + goodsNo + "/force-off")
+                        .header("Authorization", "Bearer " + opsLogin())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"抽查\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
+                        .header("Authorization", "Bearer " + lastBiz))
+                .andExpect(jsonPath("$.code").value(80018));
+    }
+
+    @Test
+    @DisplayName("★★★ 双版本：审核开着，提交后线上继续卖旧版；过审换版")
+    void publishWithAuditKeepsOldVersionSelling() throws Exception {
+        String goodsNo = onSaleGoodsWithDraft("12600199207", "审核换版店");
+        // 提交发布（默认审核开）——线上不动、继续卖旧版
+        mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
+                        .header("Authorization", "Bearer " + lastBiz))
+                .andExpect(jsonPath("$.code").value(0));
+        ai.neargo.shop.product.entity.PrdGoods live =
+                ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                        goodsMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdGoods::getGoodsNo, goodsNo)));
+        assertThat(live.getTitle()).as("审核期间线上继续卖旧版 —— 双版本的全部意义").isEqualTo("旧标题");
+        assertThat(live.getOnSale()).isTrue();
+
+        approveGoods(goodsNo);
+        live = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdGoods::getGoodsNo, goodsNo)));
+        assertThat(live.getTitle()).as("过审即换版").isEqualTo("新标题");
+        assertThat(live.getOnSale()).as("换版后仍在售").isTrue();
     }
 
     private void approveGoods(String goodsNo) throws Exception {

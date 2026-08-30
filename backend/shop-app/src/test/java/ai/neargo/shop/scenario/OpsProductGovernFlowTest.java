@@ -581,27 +581,35 @@ class OpsProductGovernFlowTest {
         String biz = merchant("12600400110", "改字不掉架店");
         String goodsNo = listedGoods(biz, 10);
 
-        // 只改标题 —— 保存会把它送回重审并下架（这一步是对的，审核期间不该在卖）
+        /*
+         * 语义在双版本落地时（2026-08-30，PRD §3.1）**有意变更**：
+         * 此前钉的是 V247「改字→下架送审→过审回架」，它保证的其实是
+         * 「商家改个错别字不至于把货永久下架」。双版本把这个保证做得更好 ——
+         * **压根不下架**：改动落草稿，线上照卖；发布→过审→换版，全程在售。
+         * 本用例改钉新语义，保护的还是同一件事：错别字不该让货掉架。
+         */
         mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"CAT210\","
                                 + "\"title\":\"商品治理测试品（改过错别字）\",\"type\":\"NORMAL\","
                                 + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":10}]}"))
                 .andExpect(jsonPath("$.code").value(0));
+        // 改动全程不掉架
         mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + biz))
-                .andExpect(jsonPath("$.data.onSale").value(false));
+                .andExpect(jsonPath("$.data.onSale").value(true));
 
+        mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(0));
         mvc().perform(post("/ops/goods/" + goodsNo + "/audit")
                         .header("Authorization", "Bearer " + opsLogin())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
                 .andExpect(jsonPath("$.code").value(0));
 
-        /*
-         * **过审后必须回到在售。** 少了这一步，商家改个错别字就把自己的货下架了 ——
-         * 而列表里它写着「已过审」，看不出还差一步，直到他发现这件货再也没有单。
-         */
+        // 过审换版：新标题上线，仍在售
         mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + biz))
-                .andExpect(jsonPath("$.data.onSale").value(true));
+                .andExpect(jsonPath("$.data.onSale").value(true))
+                .andExpect(jsonPath("$.data.title").value("商品治理测试品（改过错别字）"));
     }
 
     @Test

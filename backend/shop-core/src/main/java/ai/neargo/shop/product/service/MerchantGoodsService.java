@@ -210,6 +210,12 @@ public interface MerchantGoodsService {
      * <p>已经在审、已过审、已驳回的商品调它<b>无副作用</b>（幂等）：
      * 端上重复点击是常态，报错只会让商家以为提交失败。
      */
+    /**
+     * 发布草稿（双版本，TDD §3.3）。审核关：原子换版；审核开：提交待审、
+     * 线上继续卖旧版。无草稿 → BAD_REQUEST；基版过期 → GOODS_DRAFT_STALE(80018)。
+     */
+    GoodsVO publishDraft(String merchantNo, String goodsNo);
+
     GoodsVO submitForAudit(String merchantNo, String goodsNo);
 
     /**
