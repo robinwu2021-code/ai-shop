@@ -191,6 +191,7 @@ CREATE TABLE IF NOT EXISTS inv_inbound_order
     created_by       VARCHAR(64)  DEFAULT NULL,
     updated_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by       VARCHAR(64)  DEFAULT NULL,
+    supplier_no VARCHAR(32) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_inbound UNIQUE (owner_id, inbound_no)
 );
@@ -383,6 +384,27 @@ CREATE TABLE IF NOT EXISTS inv_open_credential
     PRIMARY KEY (id),
     CONSTRAINT uk_credential UNIQUE (credential_id),
     CONSTRAINT uk_app_key UNIQUE (app_key)
+);
+
+CREATE TABLE IF NOT EXISTS inv_supplier
+(
+    id                   BIGINT       NOT NULL AUTO_INCREMENT,
+    supplier_no          VARCHAR(32)  NOT NULL,
+    owner_id             VARCHAR(32)  NOT NULL,
+    platform_supplier_no VARCHAR(32)  DEFAULT NULL,
+    name                 VARCHAR(128) NOT NULL,
+    short_name           VARCHAR(32)  DEFAULT NULL,
+    contact_name         VARCHAR(64)  DEFAULT NULL,
+    contact_phone        VARCHAR(32)  DEFAULT NULL,
+    status               VARCHAR(16)  NOT NULL DEFAULT 'ACTIVE',
+    remark               VARCHAR(255) DEFAULT NULL,
+    created_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by           VARCHAR(64)  DEFAULT NULL,
+    updated_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by           VARCHAR(64)  DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sup_no UNIQUE (owner_id, supplier_no),
+    CONSTRAINT uk_sup_name UNIQUE (owner_id, name)
 );
 
 -- 种子数据

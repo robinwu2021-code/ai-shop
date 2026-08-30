@@ -28,6 +28,14 @@ public class InvInboundOrder extends InvMutableEntity {
     /** 仅 PURCHASE。**自由文本，不建供应商档案** —— 小店的供应商是微信里那个人 */
     private String supplierName;
 
+    /**
+     * 指向 {@link InvSupplier}；空 = 老单或未建档，此时以 {@link #supplierName} 为准。
+     *
+     * <p><b>两列并存不是冗余。</b> {@code supplierName} 是**下单当时的名字快照**：
+     * 供应商三个月后改了名，历史单该显示当时那个名字，而不是跟着变。
+     */
+    private String supplierNo;
+
     /** DRAFT / POSTED / VOIDED。只有 POSTED 改余额 */
     private String status;
 

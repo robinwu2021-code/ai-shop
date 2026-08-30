@@ -6,6 +6,7 @@ import ai.neargo.shop.inventory.entity.InvItem;
 import ai.neargo.shop.inventory.entity.InvItemRef;
 import ai.neargo.shop.inventory.entity.InvLedger;
 import ai.neargo.shop.inventory.entity.InvLocation;
+import ai.neargo.shop.inventory.entity.InvSupplier;
 import ai.neargo.shop.inventory.entity.InvOutboundLine;
 import ai.neargo.shop.inventory.entity.InvOutboundOrder;
 import ai.neargo.shop.inventory.entity.InvDailySnapshot;
@@ -49,6 +50,13 @@ public final class InventoryMappers {
     }
 
     public interface ItemMapper extends BaseMapper<InvItem> {
+    }
+
+    /**
+     * 供应商档案。**每个查询都要显式带 ownerId** —— 进销存不走平台 DataScope，
+     * 漏一处就是跨商家泄露，而它不会报错。
+     */
+    public interface SupplierMapper extends BaseMapper<InvSupplier> {
     }
 
     /** 外部引用。一个物料可有多个条码，但**一个条码不能指向两个物料**（唯一键管这条）。 */
