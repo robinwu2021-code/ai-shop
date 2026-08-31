@@ -295,6 +295,18 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          */
         registry.register("mbr_reach_log", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 违规处置记录。判据与前两批一致：**运营端有一条全量队列读它**
+         * （`GET /ops/merchants/violations`，merchantNo 可空 = 全平台）。
+         * 配了商家域的运营打开处置台，此前看到的是全平台的处置记录 ——
+         * 而这一页上有商家名、门店名与处置理由，是**跨商家的经营信息**。
+         *
+         * 登记 MERCHANT + PICKUP：`store_no` 在这张表上，
+         * 但门店与自提点是两个概念，PICKUP 维度上没有锚点 —— 见 ANCHOR_WAIVED。
+         */
+        registry.register("mch_violation", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
         registry.register("pmt_user_coupon", Map.of(
                 ScopeDim.SELF, "user_no",
                 ScopeDim.MERCHANT, "entity_no"));

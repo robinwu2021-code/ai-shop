@@ -286,7 +286,13 @@ const ANCHOR_WAIVED: Record<string, string> = {
    * 两张表都只有 entity_no：一场活动、一条触达属于**某个商家**，不属于片区或自提点。
    * 加冗余列也没有意义 —— 那两个维度上不存在「这场活动归哪个片区」这个事实。
    */
-  "pmt_activity:COMMUNITY":
+  "mch_violation:COMMUNITY":
+    "违规处置属于商家。**看到空白的是**：配了社区域的运营打开处置台。"
+    + "而处置是 BD 的活（merchant:merchant:read 只在 BD 角色上），社区运营进不了这一页",
+  "mch_violation:PICKUP":
+    "同上。表上虽有 store_no，但**门店与自提点是两个概念** —— "
+    + "一个自提点可以承接多家商家的货，拿 store_no 当 pickup 锚点会裁出错的集合",
+    "pmt_activity:COMMUNITY":
     "活动属于商家，不属于片区。**看到空白的是**：配了社区域的运营打开全平台活动页。"
     + "而那一页是 CAMPAIGN_OPS 的活，社区运营本来就不该有 marketing:*",
   "pmt_activity:PICKUP":

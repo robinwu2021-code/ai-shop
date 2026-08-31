@@ -205,7 +205,14 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             w.eq(MchViolation::getEntityNo, merchantNo);
         }
         w.orderByDesc(MchViolation::getId);
-        List<MchViolation> rows = DataScopeContext.executeWithoutScope(() -> violationMapper.selectList(w));
+        /*
+         * **不绕过**：这是运营端的全量处置队列（merchantNo 可空 = 全平台），
+         * 正是数据域该起作用的地方。这一页上有商家名、门店名与处置理由 ——
+         * 跨商家的经营信息，配了商家域的人不该看到别家的。
+         *
+         * `merchantNo` 参数照旧：它是运营主动筛某一家，与数据域是两回事。
+         */
+        List<MchViolation> rows = violationMapper.selectList(w);
         return rows.stream().map(v -> new ViolationVO(v.getViolationNo(), v.getEntityNo(),
                 nameOf(v.getEntityNo()), v.getStoreNo(), v.getType(), v.getAction(), v.getDetail(),
                 v.getOperatorNo(), v.getAt() == null ? 0L : v.getAt())).toList();
