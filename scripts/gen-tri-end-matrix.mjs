@@ -107,7 +107,7 @@ function backendPaths() {
    * 而它已经上线在跑。这份矩阵唯一的结论来源是「哪一格是空的」，
    * 而扫不到的模块产生的正是**假空**。
    */
-  const dirs = ["shop-app", "shop-core", "shop-merchant", "shop-settle", "shop-channel",
+  const dirs = ["shop-app", "shop-core", "shop-merchant", "pay/pay-domain", "shop-channel",
                 "shop-inventory", "shop-notify"]
     .map((m) => join(ROOT, "backend", m, "src/main/java/ai/neargo/shop"))
     .filter(existsSync);

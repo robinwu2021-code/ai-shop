@@ -1,12 +1,12 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.BizKey;
-import ai.neargo.shop.settle.SettleService;
-import ai.neargo.shop.settle.entity.StlBill;
-import ai.neargo.shop.settle.entity.StlSplitLog;
-import ai.neargo.shop.settle.mapper.SettleMappers.BillMapper;
+import ai.neargo.shop.pay.SettleService;
+import ai.neargo.shop.pay.entity.StlBill;
+import ai.neargo.shop.pay.entity.StlSplitLog;
+import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
-import ai.neargo.shop.settle.StubSplitGateway;
+import ai.neargo.shop.pay.StubSplitGateway;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

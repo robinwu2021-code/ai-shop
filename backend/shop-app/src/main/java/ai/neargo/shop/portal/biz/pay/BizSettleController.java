@@ -3,11 +3,11 @@ package ai.neargo.shop.portal.biz.pay;
 import ai.neargo.shop.auth.BizPerms;
 import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
-import ai.neargo.shop.settle.SettleService;
-import ai.neargo.shop.settle.dto.PurchaseInvoiceVO;
-import ai.neargo.shop.settle.dto.StatementVO;
-import ai.neargo.shop.settle.dto.RateCardVO;
-import ai.neargo.shop.settle.dto.SettleBillVO;
+import ai.neargo.shop.pay.SettleService;
+import ai.neargo.shop.pay.dto.PurchaseInvoiceVO;
+import ai.neargo.shop.pay.dto.StatementVO;
+import ai.neargo.shop.pay.dto.RateCardVO;
+import ai.neargo.shop.pay.dto.SettleBillVO;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -29,10 +29,10 @@ import java.util.List;
 public class BizSettleController {
 
     private final SettleService settleService;
-    private final ai.neargo.shop.settle.SettleBatchService batchService;
+    private final ai.neargo.shop.pay.SettleBatchService batchService;
 
     public BizSettleController(SettleService settleService,
-                               ai.neargo.shop.settle.SettleBatchService batchService) {
+                               ai.neargo.shop.pay.SettleBatchService batchService) {
         this.batchService = batchService;
         this.settleService = settleService;
     }
@@ -90,7 +90,7 @@ public class BizSettleController {
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/batch")
-    public List<ai.neargo.shop.settle.SettleBatchService.BatchVO> batches() {
+    public List<ai.neargo.shop.pay.SettleBatchService.BatchVO> batches() {
         return batchService.merchantBatches(BizContext.requireMerchantNo());
     }
 

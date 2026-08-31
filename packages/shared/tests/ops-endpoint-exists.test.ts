@@ -160,7 +160,7 @@ function backendEndpoints(): Set<string> {
       }
     }
   };
-  for (const m of ["shop-app", "shop-core", "shop-merchant", "shop-settle", "shop-channel"]) {
+  for (const m of ["shop-app", "shop-core", "shop-merchant", "pay/pay-domain", "shop-channel"]) {
     walk(join(ROOT, "backend", m, "src/main/java/ai/neargo/shop"));
   }
   return out;

@@ -33,7 +33,7 @@ const rows: JobRow[] = [
   {
     jobName: "recon-scan", displayName: "对账自查",
     description: "扫出平台账与渠道账对不上的流水",
-    ownerModule: "shop-settle", cron: "0 */10 * * * *", enabled: true, missing: false,
+    ownerModule: "pay-domain", cron: "0 */10 * * * *", enabled: true, missing: false,
     manualTrigger: true, lastRunAt: "2026-08-27T14:20:00", lastStatus: "FAILED",
     durationMs: 3120, detail: "自查 128 笔（补回 0 · 关单 0 · 留待 3）",
     error: "SQLTimeoutException", consecutiveFailures: 3, runCount: 412,

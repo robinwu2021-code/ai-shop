@@ -29,7 +29,7 @@ function backendPaths() {
    * 只扫 portal 会让「后端已实现」少算 100 多条 —— 报告照常输出，
    * 看起来像后端突然退化，实际是这个生成器瞎了。
    */
-  const dirs = ["shop-app", "shop-core", "shop-merchant", "shop-settle", "shop-channel"]
+  const dirs = ["shop-app", "shop-core", "shop-merchant", "pay/pay-domain", "shop-channel"]
     .map((m) => path.join(ROOT, "backend", m, "src/main/java/ai/neargo/shop"))
     .filter((d) => fs.existsSync(d));
   const out = new Set();

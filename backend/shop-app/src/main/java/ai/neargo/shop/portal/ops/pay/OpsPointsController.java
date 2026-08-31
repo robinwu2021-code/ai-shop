@@ -1,8 +1,8 @@
 package ai.neargo.shop.portal.ops.pay;
 
 import ai.neargo.shop.auth.Perms;
-import ai.neargo.shop.settle.PointsService;
-import ai.neargo.shop.settle.dto.PointsVOs.PointsOverviewVO;
+import ai.neargo.shop.pay.PointsService;
+import ai.neargo.shop.pay.dto.PointsVOs.PointsOverviewVO;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;

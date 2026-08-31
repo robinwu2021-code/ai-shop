@@ -1,13 +1,13 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.settle.SettleService;
-import ai.neargo.shop.settle.entity.StlPayment;
-import ai.neargo.shop.settle.entity.StlSettleInvoice;
-import ai.neargo.shop.settle.entity.StlSplitLog;
-import ai.neargo.shop.settle.entity.StlWithdraw;
-import ai.neargo.shop.settle.mapper.SettleMappers.PaymentMapper;
-import ai.neargo.shop.settle.mapper.SettleMappers.SettleInvoiceMapper;
-import ai.neargo.shop.settle.mapper.SettleMappers.WithdrawMapper;
+import ai.neargo.shop.pay.SettleService;
+import ai.neargo.shop.pay.entity.StlPayment;
+import ai.neargo.shop.pay.entity.StlSettleInvoice;
+import ai.neargo.shop.pay.entity.StlSplitLog;
+import ai.neargo.shop.pay.entity.StlWithdraw;
+import ai.neargo.shop.pay.mapper.SettleMappers.PaymentMapper;
+import ai.neargo.shop.pay.mapper.SettleMappers.SettleInvoiceMapper;
+import ai.neargo.shop.pay.mapper.SettleMappers.WithdrawMapper;
 import ai.neargo.shop.support.TestLogin;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.AfterEach;

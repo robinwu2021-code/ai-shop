@@ -26,7 +26,7 @@ const ROOT = join(import.meta.dirname, "../../..");
  * @param portal `mp` | `biz` | `ops` —— 按端分组，与包名末段一致
  */
 function controllerFiles(portal: string): string[] {
-  const roots = ["shop-app", "shop-core", "shop-merchant", "shop-settle", "shop-channel"]
+  const roots = ["shop-app", "shop-core", "shop-merchant", "pay/pay-domain", "shop-channel"]
     .map((m) => join(ROOT, "backend", m, "src/main/java"))
     .filter((d) => existsSync(d));
   const out: string[] = [];

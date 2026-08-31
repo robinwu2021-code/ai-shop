@@ -4,7 +4,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PayScenes;
 import ai.neargo.shop.payclient.PointsPolicyAppService;
-import ai.neargo.shop.settle.PointsService.ClientPointsPolicy;
+import ai.neargo.shop.pay.PointsService.ClientPointsPolicy;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.spi.platform.SettingPort;
 import org.springframework.stereotype.Service;

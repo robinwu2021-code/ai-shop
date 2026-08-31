@@ -48,13 +48,16 @@ class PayHasNoControllerTest {
     /**
      * 支付域今天的位置。
      *
-     * <p>C2 还没改包名（`ai.neargo.shop.settle` → `ai.neargo.shop.pay`），
-     * 所以这里先盯 `shop-settle`。**改名时这一行要跟着改** ——
-     * 不改的话它会变成一个恒真的断言（扫一个不存在的目录），
-     * 而恒真的闸门比没有闸门更糟：它让人以为有防线。
-     * 下面那条「目录必须存在」的断言就是防这个的。
+     * <p><b>2026-08-31 · C2b 改名之后跟着改了这一行。</b>
+     * 上一版写着「改名时这一行要跟着改 —— 不改的话它会变成一个恒真的断言
+     * （扫一个不存在的目录），而恒真的闸门比没有闸门更糟」，
+     * 并配了下面那条「目录必须存在」的对照量。
+     *
+     * <p><b>那条对照量当场生效了</b>：改名后第一次跑，它报的就是
+     * 「shop-settle 的源码目录不在了 —— 支付域改名或搬家了？」
+     * 而不是安静地扫一个空目录然后通过。
      */
-    private static final String PAY_MODULE = "shop-settle";
+    private static final String PAY_MODULE = "pay/pay-domain";
 
     /** 支付域对外唯一允许的 HTTP 表面。回调也在其中（2026-08-31 定：回调直接进 pay） */
     private static final List<String> ALLOWED = List.of("/internal", "/callback");

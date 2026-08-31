@@ -3,7 +3,7 @@ package ai.neargo.shop.portal.ops.pay;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.payclient.PointsPolicyAppService;
-import ai.neargo.shop.settle.PointsService.ClientPointsPolicy;
+import ai.neargo.shop.pay.PointsService.ClientPointsPolicy;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;

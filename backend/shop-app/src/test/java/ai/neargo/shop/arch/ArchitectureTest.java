@@ -45,7 +45,10 @@ class ArchitectureTest {
      */
     private static final String[] DOMAINS = {
             "user", "merchant", "community", "product", "trade",
-            "fulfillment", "marketing", "settle", "message", "platform",
+            "fulfillment", "marketing",
+            // pay：支付域（原 settle）。2026-08-31 C2b 改名 ——
+            // 它将来是独立服务，包名先行一步，模块目录也搬到了 backend/pay/
+            "pay", "message", "platform",
             // member：会员（人 × 主体的关系，mbr_*）。**方向是单向的** ——
             // 营销问会员「他是不是熟客」，会员不问营销；登记进来这条方向才有东西守着
             "member",

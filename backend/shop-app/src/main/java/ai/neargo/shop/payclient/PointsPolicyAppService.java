@@ -1,6 +1,6 @@
 package ai.neargo.shop.payclient;
 
-import ai.neargo.shop.settle.PointsService.ClientPointsPolicy;
+import ai.neargo.shop.pay.PointsService.ClientPointsPolicy;
 
 /**
  * 端积分策略 —— <b>主应用侧 app service 层的第一个样本</b>。

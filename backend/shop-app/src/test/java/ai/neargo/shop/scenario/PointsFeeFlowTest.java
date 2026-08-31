@@ -1,9 +1,9 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.settle.PointsService;
-import ai.neargo.shop.settle.entity.StlPointsPool;
-import ai.neargo.shop.settle.mapper.SettleMappers.PointsPoolMapper;
+import ai.neargo.shop.pay.PointsService;
+import ai.neargo.shop.pay.entity.StlPointsPool;
+import ai.neargo.shop.pay.mapper.SettleMappers.PointsPoolMapper;
 import ai.neargo.shop.spi.settle.PointsPort;
 import ai.neargo.shop.spi.trade.SettleSourcePort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;

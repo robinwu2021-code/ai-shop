@@ -1,11 +1,11 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.BizKey;
-import ai.neargo.shop.settle.StubSplitGateway;
-import ai.neargo.shop.settle.entity.StlBill;
-import ai.neargo.shop.settle.entity.StlSplitLog;
-import ai.neargo.shop.settle.mapper.SettleMappers.BillMapper;
-import ai.neargo.shop.settle.SettleService;
+import ai.neargo.shop.pay.StubSplitGateway;
+import ai.neargo.shop.pay.entity.StlBill;
+import ai.neargo.shop.pay.entity.StlSplitLog;
+import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
+import ai.neargo.shop.pay.SettleService;
 import ai.neargo.shop.spi.trade.SettleSourcePort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
@@ -192,7 +192,7 @@ class PointsSubsidyFlowTest {
     }
 
     @Autowired
-    private ai.neargo.shop.settle.mapper.SettleMappers.SplitLogMapper splitLogMapper;
+    private ai.neargo.shop.pay.mapper.SettleMappers.SplitLogMapper splitLogMapper;
 
     private java.util.List<StlSplitLog> billLogs(String settleNo) {
         return splitLogMapper.selectList(Wrappers.<StlSplitLog>lambdaQuery()

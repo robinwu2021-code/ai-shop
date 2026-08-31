@@ -1,8 +1,8 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.settle.entity.StlPayment;
-import ai.neargo.shop.settle.entity.StlReconDiff;
-import ai.neargo.shop.settle.service.ReconService;
+import ai.neargo.shop.pay.entity.StlPayment;
+import ai.neargo.shop.pay.entity.StlReconDiff;
+import ai.neargo.shop.pay.service.ReconService;
 import ai.neargo.shop.spi.pay.PayQueryPort;
 import ai.neargo.shop.support.port.FakePayQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -41,10 +41,10 @@ class ReconFlowTest {
     private FakePayQueryPort fakeQuery;
 
     @Autowired
-    private ai.neargo.shop.settle.mapper.SettleMappers.PaymentMapper paymentMapper;
+    private ai.neargo.shop.pay.mapper.SettleMappers.PaymentMapper paymentMapper;
 
     @Autowired
-    private ai.neargo.shop.settle.mapper.SettleMappers.ReconDiffMapper diffMapper;
+    private ai.neargo.shop.pay.mapper.SettleMappers.ReconDiffMapper diffMapper;
 
     private static int seq = 0;
 

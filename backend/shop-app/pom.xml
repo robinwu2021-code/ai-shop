@@ -53,7 +53,7 @@
         </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-settle</artifactId>
+            <artifactId>pay-domain</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

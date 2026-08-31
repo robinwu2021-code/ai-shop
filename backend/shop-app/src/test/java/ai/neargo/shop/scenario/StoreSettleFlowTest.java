@@ -183,13 +183,13 @@ class StoreSettleFlowTest {
     }
 
     @Autowired
-    private ai.neargo.shop.settle.mapper.SettleMappers.BillMapper billMapper;
+    private ai.neargo.shop.pay.mapper.SettleMappers.BillMapper billMapper;
 
     private void clearStoreOn(String settleNo) {
         ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
             var row = billMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                    .<ai.neargo.shop.settle.entity.StlBill>lambdaQuery()
-                    .eq(ai.neargo.shop.settle.entity.StlBill::getSettleNo, settleNo));
+                    .<ai.neargo.shop.pay.entity.StlBill>lambdaQuery()
+                    .eq(ai.neargo.shop.pay.entity.StlBill::getSettleNo, settleNo));
             row.setStoreNo(null);
             return billMapper.updateById(row);
         });

@@ -6,7 +6,7 @@ import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponMapper;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.entity.MchStore;
-import ai.neargo.shop.settle.entity.StlBill;
+import ai.neargo.shop.pay.entity.StlBill;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -59,13 +59,13 @@ class M7SettleFlowTest {
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
 
     @Autowired
-    private ai.neargo.shop.settle.mapper.SettleMappers.BillMapper billMapper;
+    private ai.neargo.shop.pay.mapper.SettleMappers.BillMapper billMapper;
 
     @Autowired
     private CouponMapper couponMapper;
 
     @Autowired
-    private ai.neargo.shop.settle.SettleService settleService;
+    private ai.neargo.shop.pay.SettleService settleService;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)

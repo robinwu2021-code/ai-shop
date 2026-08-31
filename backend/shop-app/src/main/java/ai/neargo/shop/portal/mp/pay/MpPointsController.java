@@ -1,10 +1,10 @@
 package ai.neargo.shop.portal.mp.pay;
 
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.settle.PointsService;
-import ai.neargo.shop.settle.dto.PointsVOs.PointAccountVO;
-import ai.neargo.shop.settle.dto.PointsVOs.PointRecordVO;
-import ai.neargo.shop.settle.dto.PointsVOs.PointsDeductibleVO;
+import ai.neargo.shop.pay.PointsService;
+import ai.neargo.shop.pay.dto.PointsVOs.PointAccountVO;
+import ai.neargo.shop.pay.dto.PointsVOs.PointRecordVO;
+import ai.neargo.shop.pay.dto.PointsVOs.PointsDeductibleVO;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;

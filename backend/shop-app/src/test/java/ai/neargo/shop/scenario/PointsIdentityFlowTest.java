@@ -1,11 +1,11 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.settle.PointsService;
-import ai.neargo.shop.settle.entity.PtsUserAccount;
-import ai.neargo.shop.settle.entity.PtsUserLedger;
-import ai.neargo.shop.settle.entity.StlPointsPool;
-import ai.neargo.shop.settle.mapper.SettleMappers.PointsAccountMapper;
-import ai.neargo.shop.settle.mapper.SettleMappers.PointsLedgerMapper;
+import ai.neargo.shop.pay.PointsService;
+import ai.neargo.shop.pay.entity.PtsUserAccount;
+import ai.neargo.shop.pay.entity.PtsUserLedger;
+import ai.neargo.shop.pay.entity.StlPointsPool;
+import ai.neargo.shop.pay.mapper.SettleMappers.PointsAccountMapper;
+import ai.neargo.shop.pay.mapper.SettleMappers.PointsLedgerMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,8 +1,8 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.settle.PointsService;
-import ai.neargo.shop.settle.entity.StlPointsPool;
-import ai.neargo.shop.settle.mapper.SettleMappers.PointsPoolMapper;
+import ai.neargo.shop.pay.PointsService;
+import ai.neargo.shop.pay.entity.StlPointsPool;
+import ai.neargo.shop.pay.mapper.SettleMappers.PointsPoolMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

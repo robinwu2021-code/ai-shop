@@ -2,7 +2,7 @@ package ai.neargo.shop.portal.ops.pay;
 
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.settle.service.ReconService;
+import ai.neargo.shop.pay.service.ReconService;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.auth.SecurityUtils;
 import org.springframework.context.annotation.Profile;

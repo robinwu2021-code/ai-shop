@@ -3,9 +3,9 @@ package ai.neargo.shop.scenario;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.event.AfterCommit;
 import ai.neargo.shop.idem.EventIdempotency;
-import ai.neargo.shop.settle.entity.StlBill;
-import ai.neargo.shop.settle.mapper.SettleMappers;
-import ai.neargo.shop.settle.service.FundInvariantService;
+import ai.neargo.shop.pay.entity.StlBill;
+import ai.neargo.shop.pay.mapper.SettleMappers;
+import ai.neargo.shop.pay.service.FundInvariantService;
 import ai.neargo.shop.spi.settle.PointsPort;
 import ai.neargo.shop.spi.trade.SettleSourcePort;
 import ai.neargo.shop.trade.service.AfterSaleService;
@@ -437,8 +437,8 @@ class FundInvariantFlowTest {
          * <p>「留下来」在这里是**正确结果**：它证明两边用的是不同的事务管理器，
          * 也就是拆分之后的真实语义。今天（同一个事务管理器）这条会红。
          *
-         * <p>没有这一条，SettleDataSourceConfig 就只是一段看起来对的配置：
-         * 哪天有人给 settleDataSource 加上 @Primary、或者把 settle 从
+         * <p>没有这一条，PayDataSourceConfig 就只是一段看起来对的配置：
+         * 哪天有人给 payDataSource 加上 @Primary、或者把 settle 从
          * MybatisPlusConfig 的排除列表里拿掉，**库是同一个所以什么都不会报** ——
          * 查询照常能跑，只是隔离静默失效，要等拆库那天才炸。
          */

@@ -1,10 +1,10 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.settle.SettleBatchService;
-import ai.neargo.shop.settle.entity.StlBill;
-import ai.neargo.shop.settle.entity.StlSettleBatch;
-import ai.neargo.shop.settle.mapper.SettleMappers;
+import ai.neargo.shop.pay.SettleBatchService;
+import ai.neargo.shop.pay.entity.StlBill;
+import ai.neargo.shop.pay.entity.StlSettleBatch;
+import ai.neargo.shop.pay.mapper.SettleMappers;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;

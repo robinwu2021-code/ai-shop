@@ -2,9 +2,9 @@ package ai.neargo.shop.portal.ops.pay;
 
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.settle.SettleService;
-import ai.neargo.shop.settle.dto.PurchaseInvoiceVO;
-import ai.neargo.shop.settle.dto.SettleBillVO;
+import ai.neargo.shop.pay.SettleService;
+import ai.neargo.shop.pay.dto.PurchaseInvoiceVO;
+import ai.neargo.shop.pay.dto.SettleBillVO;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;

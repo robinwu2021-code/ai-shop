@@ -2,8 +2,8 @@ package ai.neargo.shop.portal.ops.pay;
 
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.settle.entity.StlFeeRule;
-import ai.neargo.shop.settle.service.FeeRuleService;
+import ai.neargo.shop.pay.entity.StlFeeRule;
+import ai.neargo.shop.pay.service.FeeRuleService;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import java.util.List;
 import java.util.Map;

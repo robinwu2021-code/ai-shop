@@ -1,9 +1,9 @@
 package ai.neargo.shop.portal.ops.pay;
 
 import ai.neargo.shop.auth.Perms;
-import ai.neargo.shop.settle.SettleService;
-import ai.neargo.shop.settle.SettleService.SplitLogVO;
-import ai.neargo.shop.settle.dto.SettleBillVO;
+import ai.neargo.shop.pay.SettleService;
+import ai.neargo.shop.pay.SettleService.SplitLogVO;
+import ai.neargo.shop.pay.dto.SettleBillVO;
 import java.util.List;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -34,10 +34,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class OpsSettleController {
 
     private final SettleService settleService;
-    private final ai.neargo.shop.settle.SettleBatchService batchService;
+    private final ai.neargo.shop.pay.SettleBatchService batchService;
 
     public OpsSettleController(SettleService settleService,
-                               ai.neargo.shop.settle.SettleBatchService batchService) {
+                               ai.neargo.shop.pay.SettleBatchService batchService) {
         this.settleService = settleService;
         this.batchService = batchService;
     }
@@ -51,7 +51,7 @@ public class OpsSettleController {
      */
     @GetMapping("/ops/settle-batches")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
-    public java.util.List<ai.neargo.shop.settle.SettleBatchService.BatchVO> batches(
+    public java.util.List<ai.neargo.shop.pay.SettleBatchService.BatchVO> batches(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String entityNo) {
         return batchService.opsBatches(status, entityNo);
@@ -65,7 +65,7 @@ public class OpsSettleController {
      */
     @PostMapping("/ops/settle-batches/{batchNo}/release")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
-    public ai.neargo.shop.settle.SettleBatchService.BatchVO releaseBatch(
+    public ai.neargo.shop.pay.SettleBatchService.BatchVO releaseBatch(
             @PathVariable String batchNo, @RequestBody DecideReq req) {
         return batchService.release(batchNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo(),
                 req == null ? null : req.remark());
@@ -74,7 +74,7 @@ public class OpsSettleController {
     /** 继续挂起。同样必须写原因 */
     @PostMapping("/ops/settle-batches/{batchNo}/hold")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
-    public ai.neargo.shop.settle.SettleBatchService.BatchVO holdBatch(
+    public ai.neargo.shop.pay.SettleBatchService.BatchVO holdBatch(
             @PathVariable String batchNo, @RequestBody DecideReq req) {
         return batchService.hold(batchNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo(),
                 req == null ? null : req.remark());

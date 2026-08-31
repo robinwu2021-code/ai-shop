@@ -85,11 +85,11 @@ class M5AfterSaleFlowTest {
     private MchEntityMapper merchantMapper;
 
     @Autowired
-    private ai.neargo.shop.settle.SettleService settleService;
+    private ai.neargo.shop.pay.SettleService settleService;
 
     /** M7 之后 SettlePort 是真实实现；失败注入下沉到**注定被替换的**通道桩上。 */
     @Autowired
-    private ai.neargo.shop.settle.StubSplitGateway splitGateway;
+    private ai.neargo.shop.pay.StubSplitGateway splitGateway;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)

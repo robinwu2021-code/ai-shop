@@ -1,8 +1,8 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.settle.entity.StlFeeRule;
-import ai.neargo.shop.settle.service.FeeRuleService;
+import ai.neargo.shop.pay.entity.StlFeeRule;
+import ai.neargo.shop.pay.service.FeeRuleService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -125,7 +125,7 @@ class FeeRuleFlowTest {
 
     /** 停用一个版本。走 Service 没有停用入口（费率只增不改），测试里直接改库。 */
     @Autowired
-    private ai.neargo.shop.settle.mapper.SettleMappers.FeeRuleMapper feeRuleMapper;
+    private ai.neargo.shop.pay.mapper.SettleMappers.FeeRuleMapper feeRuleMapper;
 
     private void disable(String ruleNo) {
         var row = feeRuleMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
