@@ -268,14 +268,22 @@ public class CouponServiceImpl implements CouponService {
     @Override
     public List<ai.neargo.shop.marketing.coupon.dto.OpsCouponVO> opsCoupons(String status,
                                                                             boolean showArchived) {
-        // executeWithoutScope：平台视角要跨商家。不解除数据域的话，
-        // 运营看到的永远是空列表 —— 而且不报错
-        return DataScopeContext.executeWithoutScope(() ->
-                couponMapper.selectList(Wrappers.<MktCoupon>lambdaQuery()
+        /*
+         * **不绕过**（2026-08-31，mkt_coupon 登记数据域时一并接上）。
+         *
+         * 上一版这里写着「平台视角要跨商家。不解除数据域的话，运营看到的永远是空列表」——
+         * **那句话在这张表还没登记时是对的**：未登记 = 拦截器不动这条 SQL，
+         * 无所谓解不解除；而一旦登记，`entity_no` 就是锚点，配了商家域的运营
+         * 看到的正是他该看到的那些，不是空列表。
+         *
+         * 换句话说，那句注释描述的是一个**不成立的担心**，而它的结论
+         * 恰好挡住了真正该做的事 —— 没配数据域的运营照旧看全平台（空 = 不限定）。
+         */
+        return couponMapper.selectList(Wrappers.<MktCoupon>lambdaQuery()
                         .eq(status != null && !status.isBlank(), MktCoupon::getStatus, status)
                         // 已归档的默认不出现 —— 否则「归档」这个动作在页面上看不出效果
                         .isNull(!showArchived, MktCoupon::getArchivedAt)
-                        .orderByDesc(MktCoupon::getId))).stream()
+                        .orderByDesc(MktCoupon::getId)).stream()
                 .map(this::toOpsVO).toList();
     }
 

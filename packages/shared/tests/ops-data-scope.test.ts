@@ -152,7 +152,19 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
    * 那一条是运营端的全量列表，2026-08-31 已经**去掉**绕过。
    * 同一张表两处查询，绕不绕的判据是**归属由谁保证**，不是哪个更方便。
    */
-  "ActivityPricingServiceImpl#liveByGoods":
+  /*
+   * 秒杀价：这些商品此刻有没有在跑的限时活动。**与 ActivityPricingServiceImpl#liveByGoods
+   * 是同一个形状** —— 算价跑在买家会话（SELF 维度），而 `mkt_campaign` 只有 MERCHANT 锚点，
+   * 不绕就 fail-closed，症状是**商品页上的秒杀价静默消失**：价格照常显示、只是没打折。
+   *
+   * <p>守卫把它挂到三个 ops 端点上（商品详情/审核队列/专题商品），
+   * 是因为那几页也要显示当前价 —— 同一段算价代码，两拨调用方。
+   * 归属由入参的 goodsNo 保证。
+   */
+  "CampaignPortImpl#flashPrices":
+    "算价链路，跑在买家会话（SELF）；不绕商品页的秒杀价会静默消失",
+
+    "ActivityPricingServiceImpl#liveByGoods":
     "算价链路，跑在买家会话（SELF）；归属由入参的 goodsNo 保证，不绕商品页的活动价会静默消失",
 
   /*
@@ -375,6 +387,10 @@ const ANCHOR_WAIVED: Record<string, string> = {
     + "而那和 V137 给子单加列是同一种代价，值不值得看仲裁台会不会按片区分工",
   "ord_after_sale:PICKUP":
     "同上。自提点运营者不做售后仲裁 —— 那需要 aftersale:ticket:read",
+    "mkt_coupon:COMMUNITY": "券属于商家，不属于片区。**看到空白的是**：配了社区域的运营打开券治理页",
+  "mkt_coupon:PICKUP": "同上",
+  "mkt_campaign:COMMUNITY": "活动属于商家，不属于片区",
+  "mkt_campaign:PICKUP": "同上",
     "mkt_group_buy:COMMUNITY":
     "拼团挂商家与自提点，不挂片区。**看到空白的是**：配了社区域的运营打开拼团治理页",
   "mkt_quote:COMMUNITY": "报价属于商家，不属于片区",
@@ -979,8 +995,6 @@ describe("运营端数据域接入", () => {
     mch_account: "待判 —— 商家员工（/ops/merchants/{no}/staff）",
     mch_entity_plan: "待判 —— 增值包订阅（/ops/merchant-plans）",
     mch_store_role: "待判 —— 门店授权（同上）",
-    mkt_campaign: "待判 —— 营销活动（/ops/campaigns）",
-    mkt_coupon: "待判 —— 平台券（/ops/coupons）",
     mkt_coupon_issue: "待判 —— 发券批次（/ops/coupon-issues）",
     mkt_request: "待判 —— 需求单（/ops/demands、/ops/quotes）",
     mkt_request_interest: "待判 —— 需求意向（/ops/demands）",

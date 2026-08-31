@@ -398,6 +398,24 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          */
         registry.register("mkt_quote", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 平台券与营销活动。运营端两条全量队列此前都被绕过包着，
+         * 而 `opsCoupons` 那句注释值得记下来：
+         *
+         *     「平台视角要跨商家。不解除数据域的话，运营看到的永远是空列表」
+         *
+         * **那句话在这张表还没登记时是对的** —— 未登记 = 拦截器不动这条 SQL。
+         * 一旦登记，entity_no 就是锚点，配了商家域的运营看到的正是他该看到的；
+         * 没配数据域的照旧看全平台（空 = 不限定）。
+         * 它描述的是一个不成立的担心，而结论恰好挡住了真正该做的事。
+         *
+         * <p>C 端领券中心（`center()`）的绕过必须留着：那是给买家看的公共列表。
+         */
+        registry.register("mkt_coupon", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mkt_campaign", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
         registry.register("mkt_group_buy", Map.of(
                 ScopeDim.MERCHANT, "entity_no",
                 ScopeDim.PICKUP, "pickup_no"));

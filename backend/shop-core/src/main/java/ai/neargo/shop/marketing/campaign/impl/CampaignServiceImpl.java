@@ -289,12 +289,12 @@ public class CampaignServiceImpl implements CampaignService {
 
     @Override
     public List<CampaignVO> opsCampaigns(String status, boolean showArchived) {
-        return DataScopeContext.executeWithoutScope(() ->
-                campaignMapper.selectList(Wrappers.<MktCampaign>lambdaQuery()
+        // 不绕过：运营端的全量活动队列，理由同 CouponServiceImpl#opsCoupons
+        return campaignMapper.selectList(Wrappers.<MktCampaign>lambdaQuery()
                         .eq(status != null && !status.isBlank(), MktCampaign::getStatus, status)
                         // 已归档的默认不出现 —— 否则「归档」这个动作在页面上看不出效果
                         .isNull(!showArchived, MktCampaign::getArchivedAt)
-                        .orderByDesc(MktCampaign::getId))).stream()
+                        .orderByDesc(MktCampaign::getId)).stream()
                 .map(this::toVO).toList();
     }
 
