@@ -2,8 +2,8 @@ package ai.neargo.shop.portal.biz.pay;
 
 import ai.neargo.shop.auth.BizPerms;
 import org.springframework.security.access.prepost.PreAuthorize;
-import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.pay.SettleService;
+import ai.neargo.shop.payclient.BizSettleAppService;
 import ai.neargo.shop.pay.dto.PurchaseInvoiceVO;
 import ai.neargo.shop.pay.dto.StatementVO;
 import ai.neargo.shop.pay.dto.RateCardVO;
@@ -28,13 +28,10 @@ import java.util.List;
 @RestController
 public class BizSettleController {
 
-    private final SettleService settleService;
-    private final ai.neargo.shop.pay.SettleBatchService batchService;
+    private final BizSettleAppService app;
 
-    public BizSettleController(SettleService settleService,
-                               ai.neargo.shop.pay.SettleBatchService batchService) {
-        this.batchService = batchService;
-        this.settleService = settleService;
+    public BizSettleController(BizSettleAppService app) {
+        this.app = app;
     }
 
     /**
@@ -52,11 +49,7 @@ public class BizSettleController {
     @GetMapping("/biz/settle/bills")
     public List<SettleBillVO> bills(
             @RequestParam(required = false) Boolean allStores) {
-        var ctx = BizContext.current();
-        java.util.Collection<String> scope = Boolean.TRUE.equals(allStores)
-                ? ctx.allowedStoresOrAll()
-                : java.util.List.of(ctx.currentStoreNo() == null ? "" : ctx.currentStoreNo());
-        return settleService.merchantBills(BizContext.requireMerchantNo(), scope);
+        return app.bills(allStores);
     }
 
     /**
@@ -68,11 +61,7 @@ public class BizSettleController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/income")
     public SettleService.IncomeSummaryVO income(@RequestParam(required = false) Boolean allStores) {
-        var ctx = BizContext.current();
-        java.util.Collection<String> scope = Boolean.TRUE.equals(allStores)
-                ? ctx.allowedStoresOrAll()
-                : java.util.List.of(ctx.currentStoreNo() == null ? "" : ctx.currentStoreNo());
-        return settleService.incomeSummary(BizContext.requireMerchantNo(), scope);
+        return app.income(allStores);
     }
 
     /**
@@ -91,19 +80,19 @@ public class BizSettleController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/batch")
     public List<ai.neargo.shop.pay.SettleBatchService.BatchVO> batches() {
-        return batchService.merchantBatches(BizContext.requireMerchantNo());
+        return app.batches();
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/bills/{settleNo}")
     public SettleBillVO bill(@PathVariable String settleNo) {
-        return settleService.merchantBill(BizContext.requireMerchantNo(), settleNo);
+        return app.bill(settleNo);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/rate-card")
     public RateCardVO rateCard() {
-        return settleService.rateCard();
+        return app.rateCard();
     }
     // ---------------------------------------------------------------- 进项票（自营，P0-10）
 
@@ -114,7 +103,7 @@ public class BizSettleController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/invoice-title")
     public java.util.Map<String, String> invoiceTitle() {
-        return settleService.platformInvoiceTitle();
+        return app.invoiceTitle();
     }
 
     /**
@@ -124,7 +113,7 @@ public class BizSettleController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @PostMapping("/biz/settle/invoices")
     public PurchaseInvoiceVO submitInvoice(@RequestBody SubmitInvoiceReq req) {
-        return settleService.submitInvoice(BizContext.requireMerchantNo(),
+        return app.submitInvoice(
                 new SettleService.SubmitInvoiceCommand(req.period(), req.invoiceCode(),
                         req.invoiceNumber(), req.invoiceType(), req.titleName(), req.titleTaxNo(),
                         req.amountMinor() == null ? 0L : req.amountMinor(),
@@ -137,7 +126,7 @@ public class BizSettleController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/invoices")
     public List<PurchaseInvoiceVO> myInvoices() {
-        return settleService.myInvoices(BizContext.requireMerchantNo());
+        return app.myInvoices();
     }
 
     /**
@@ -155,7 +144,7 @@ public class BizSettleController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/statement")
     public StatementVO statement(@RequestParam(required = false) String period) {
-        return settleService.statement(BizContext.requireMerchantNo(), period);
+        return app.statement(period);
     }
 
     /**

@@ -182,6 +182,71 @@ class StoreSettleFlowTest {
                 .isNotEmpty();
     }
 
+    /**
+     * <b>门店收窄真的收窄了。</b>
+     *
+     * <p>2026-08-31 补。此前这段逻辑（默认当前门店、{@code allStores=true} 才看全部）
+     * 在 controller 里逐字写了两遍，而<b>一条测试都没有守着它</b> ——
+     * 把它整段改成「永远返回全部门店」，56 条相关测试一条都不红。
+     *
+     * <p>它失效时不抛异常、不返 403：<b>店员打开收入页，看到的是别家店的钱，
+     * 页面照常渲染。</b>越权在这里不是异常路径，是「多返回了几行」，
+     * 所以必须由一条能证伪的断言盯着 —— 上面那次消融就是它的对照量。
+     *
+     * <p>判据取「两个方向都要成立」：不传参时看不见别家店的流水（收窄生效），
+     * 传 {@code allStores=true} 时看得见（收窄不是把结果写死成空）。
+     * 只断言前者的话，把实现改成「永远返回空」也能通过。
+     */
+    @Test
+    @DisplayName("★★★ 门店收窄：站在 B 店只看得到 B 店的钱，allStores=true 才看得到 A 店的")
+    void storeScopeActuallyNarrows() throws Exception {
+        String biz = merchant("12600210070", "收窄判据店");
+        activatePayment(biz, null);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "收窄判据·分店");
+
+        // 在 A 店下一单 —— 商品挂在默认门店，流水的 store_no 就是 A
+        String goodsNo = listedGoods(biz, 5);
+        String skuNo = firstSku(goodsNo);
+        assertThat(buy("13000210070", goodsNo, skuNo, 1, "sett-scope")).isZero();
+
+        assertThat(billsOfStore(biz, storeA))
+                .as("站在 A 店，A 店的流水当然看得到 —— 这条先立住，"
+                        + "否则下面「B 店看不到」可能只是因为压根没生成流水")
+                .isNotEmpty();
+
+        assertThat(billsOfStore(biz, storeB))
+                .as("站在 B 店却看到了 A 店的流水 —— 这就是越权，"
+                        + "而页面上没有任何线索说明这一点")
+                .isEmpty();
+
+        assertThat(billsOfStore(biz, storeB, true))
+                .as("allStores=true 要看得到全部授权门店的流水 —— "
+                        + "少了这一条，把收窄实现成「永远返回空」也能过上一条")
+                .isNotEmpty();
+    }
+
+    private java.util.List<tools.jackson.databind.JsonNode> billsOfStore(
+            String token, String storeNo) throws Exception {
+        return billsOfStore(token, storeNo, false);
+    }
+
+    /** 带 {@code X-Store-No} 走真实 HTTP —— 收窄发生在过滤器 + app service，测替身量不到 */
+    private java.util.List<tools.jackson.databind.JsonNode> billsOfStore(
+            String token, String storeNo, boolean allStores) throws Exception {
+        var req = get("/biz/settle/bills" + (allStores ? "?allStores=true" : ""))
+                .header("Authorization", "Bearer " + token)
+                .header("X-Store-No", storeNo);
+        String body = mvc().perform(req).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        java.util.List<tools.jackson.databind.JsonNode> out = new java.util.ArrayList<>();
+        for (var n : json.readTree(body).get("data")) {
+            out.add(n);
+        }
+        return out;
+    }
+
     @Autowired
     private ai.neargo.shop.pay.mapper.SettleMappers.BillMapper billMapper;
 
