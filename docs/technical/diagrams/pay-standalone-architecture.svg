@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1060" height="880" viewBox="0 0 1060 880" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>方案二：支付独立服务 —— 三端、服务、模块分层与依赖</title>
+<desc>三端（C 端消费者、B 端商家、运营端）经 nginx 分流：支付相关路径转发到 pay-svc，其余到主应用。pay-svc 与主应用是两个进程两个库，共享的只有会话表（DbTokenStore）与两个内部口（判权回查、域间调用）。通道回调路径不变，由 nginx 转发进 pay-svc，不重新报备。别的域只依赖 pay-api 的 Port，embedded 与 remote 两种形态换的是装哪个实现，调用方一行不改。</desc>
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<marker id="arb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#7FA2CC" stroke-width="1.6" stroke-linecap="round"/></marker>
+<style>
+.n{font-size:12.5px;font-weight:600;fill:#161A21}
+.t{font-size:10.5px;fill:#5A6472}
+.em{font-weight:700;fill:#161A21}
+.b{font-size:11px;fill:#8A94A2;letter-spacing:.12em}
+.l{font-size:9.5px;fill:#5A6472;paint-order:stroke;stroke:#fff;stroke-width:3.5;stroke-linejoin:round}
+.lb{font-size:9.5px;fill:#4A7CB0;paint-order:stroke;stroke:#fff;stroke-width:3.5;stroke-linejoin:round}
+.box{fill:#fff;stroke:#D8DEE6;stroke-width:1.2}
+.unit{fill:#FBFCFD;stroke:#B9C2CE;stroke-width:1.6}
+.pay{fill:#EEF4FC;stroke:#7FA2CC;stroke-width:1.6}
+.key{fill:#F2F8F4;stroke:#7FB894;stroke-width:1.4}
+.warn{fill:#FDF6EC;stroke:#E0B27A;stroke-width:1.2}
+.infra{fill:#F5F6F8;stroke:#C6CDD8;stroke-width:1.2}
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}
+.arb{stroke:#7FA2CC;stroke-width:1.6;fill:none}
+.zone{fill:none;stroke:#DDE2E9;stroke-width:1.2;stroke-dasharray:5 4}
+.zt{font-size:10px;fill:#A6AEBB;letter-spacing:.1em}
+</style></defs>
+
+<text class="b" x="24" y="26">① 三端 —— 支付跨全部四条鉴权链</text>
+
+<rect class="box" x="24" y="36" width="238" height="76" rx="7"/>
+<text class="n" x="38" y="56">C 端消费者　/mp/**</text>
+<text class="t" x="38" y="74">小程序 · App · H5</text>
+<text class="t" x="38" y="91">无 RBAC，只有属主鉴权</text>
+<text class="t" x="38" y="106">支付端点 1 个，<tspan class="em">还是桩</tspan></text>
+
+<rect class="box" x="278" y="36" width="238" height="76" rx="7"/>
+<text class="n" x="292" y="56">B 端商家　/biz/**</text>
+<text class="t" x="292" y="74">App（H5 仅调试用）</text>
+<text class="t" x="292" y="91">@perm.canBiz　按当前门店的角色</text>
+<text class="t" x="292" y="106">支付端点 9 个</text>
+
+<rect class="box" x="532" y="36" width="238" height="76" rx="7"/>
+<text class="n" x="546" y="56">运营端　/ops/**</text>
+<text class="t" x="546" y="74">ops-web（内网）</text>
+<text class="t" x="546" y="91">@perm.can　LivePermResolver 现算</text>
+<text class="t" x="546" y="106">支付端点 13 组</text>
+
+<rect class="box warn" x="786" y="36" width="250" height="76" rx="7"/>
+<text class="n" x="800" y="56">支付通道　/callback/**</text>
+<text class="t" x="800" y="74">微信 · 支付宝</text>
+<text class="t" x="800" y="91">permitAll + <tspan class="em">验签</tspan>，不是 token</text>
+<text class="t" x="800" y="106">回调 URL 不变，不重新报备</text>
+
+<rect class="infra" x="24" y="136" width="1012" height="44" rx="7"/>
+<text class="n" x="38" y="156">nginx　—— 按路径分流</text>
+<text class="t" x="38" y="172">/mp/order/*/pay · /biz/settle/** · /biz/merchant/{payment,debt} · /ops/{settle*,payments,debts,payables,points} · /callback/pay/** → :8083　｜　其余 → :8081</text>
+
+<path class="ar" marker-end="url(#ar)" d="M143 112 L143 136"/>
+<path class="ar" marker-end="url(#ar)" d="M397 112 L397 136"/>
+<path class="ar" marker-end="url(#ar)" d="M651 112 L651 136"/>
+<path class="ar" marker-end="url(#ar)" d="M911 112 L911 136"/>
+
+<line x1="24" y1="200" x2="1036" y2="200" stroke="#E6EAF0" stroke-width="1"/>
+<text class="b" x="24" y="226">② 两个进程 —— 发布互不打断，这是拆分的首要驱动力</text>
+
+<rect class="unit" x="24" y="238" width="490" height="290" rx="8"/>
+<text class="n" x="40" y="260">ai-shop.service　:8081　profiles=api,ops</text>
+
+<rect class="box" x="40" y="272" width="458" height="40" rx="6"/>
+<text class="n" x="54" y="290">web 层　三端控制器 + 四条 SecurityFilterChain</text>
+<text class="t" x="54" y="305">shop-base-web · shop-base-auth</text>
+
+<rect class="box" x="40" y="320" width="458" height="56" rx="6"/>
+<text class="n" x="54" y="338">业务域　core · merchant · settle · channel · inventory · notify</text>
+<text class="t" x="54" y="355">下单要发起支付时，只认 pay-api 的 PayPort ——</text>
+<text class="t" x="54" y="370"><tspan class="em">它不知道钱在哪个进程里跑</tspan></text>
+
+<rect class="pay" x="40" y="384" width="458" height="40" rx="6"/>
+<text class="n" x="54" y="402">RemotePayClient　implements PayPort</text>
+<text class="t" x="54" y="418">shop.pay.mode=remote 时装它；embedded 时装 LocalPayAdapter</text>
+
+<rect class="box" x="40" y="432" width="458" height="40" rx="6"/>
+<text class="n" x="54" y="450">shop-app-base　= 内核 + web + auth + store-mybatis</text>
+<text class="t" x="54" y="466">现有模块的依赖，代码零改动</text>
+
+<rect class="key" x="40" y="480" width="458" height="36" rx="6"/>
+<text class="n" x="54" y="498">/internal/perm/resolve　判权回查口</text>
+<text class="t" x="54" y="512">共享密钥 · 绑内网 · 不建 BizContext（照 JobHandlerEndpoint 四条硬要求）</text>
+
+<rect class="pay" x="546" y="238" width="490" height="290" rx="8"/>
+<text class="n" x="562" y="260">ai-shop-pay.service　:8083　【新】</text>
+
+<rect class="box" x="562" y="272" width="458" height="40" rx="6"/>
+<text class="n" x="576" y="290">pay-web　支付的三端控制器 + 回调控制器</text>
+<text class="t" x="576" y="305">复用 shop-base-auth 的同一套 filter —— 令牌格式与主应用完全一致</text>
+
+<rect class="box" x="562" y="320" width="458" height="56" rx="6"/>
+<text class="n" x="576" y="338">pay-domain　结算 · 分账 · 对账 · 提现 · 进件 · 费率 · 积分</text>
+<text class="t" x="576" y="355">pay-channel（通道适配）· pay-risk（资金风控）</text>
+<text class="t" x="576" y="370"><tspan class="em">别的域永远不直接读它的表</tspan> —— ArchUnit 从阶段 1 起强制</text>
+
+<rect class="box" x="562" y="384" width="458" height="40" rx="6"/>
+<text class="n" x="576" y="402">pay-api　契约 + Port + DTO · 零实现</text>
+<text class="t" x="576" y="418">主应用依赖的就是这一个 jar</text>
+
+<rect class="box" x="562" y="432" width="458" height="40" rx="6"/>
+<text class="n" x="576" y="450">shop-base（内核）+ shop-base-web + shop-base-auth</text>
+<text class="t" x="576" y="466">+ shop-store-data-aot　—— 构建产物里没有 mybatis-*.jar</text>
+
+<rect class="key" x="562" y="480" width="458" height="36" rx="6"/>
+<text class="n" x="576" y="498">RemoteLivePermResolver</text>
+<text class="t" x="576" y="512">回查失败返回 null → PermChecker 回落会话快照（宁可旧权限，不要全员失权）</text>
+
+<path class="arb" marker-end="url(#arb)" d="M498 404 L562 404"/>
+<text class="lb" x="530" y="396" text-anchor="middle">HTTP</text>
+<path class="arb" marker-end="url(#arb)" d="M562 498 L498 498"/>
+<text class="lb" x="530" y="490" text-anchor="middle">回查</text>
+
+<line x1="24" y1="548" x2="1036" y2="548" stroke="#E6EAF0" stroke-width="1"/>
+<text class="b" x="24" y="574">③ 数据 —— 独立账号只授权一个 schema，这是技术保证不是自觉</text>
+
+<rect class="infra" x="24" y="586" width="240" height="76" rx="7"/>
+<text class="n" x="38" y="606">ai_shop　平台库</text>
+<text class="t" x="38" y="624">业务全表 + shedlock</text>
+<text class="t" x="38" y="641">+ sys_role_point（判权配置）</text>
+
+<rect class="key" x="278" y="586" width="240" height="76" rx="7"/>
+<text class="n" x="292" y="606">会话表　两个进程都读</text>
+<text class="t" x="292" y="624">shop-auth-store · DbTokenStore</text>
+<text class="t" x="292" y="641"><tspan class="em">阶段 3 的硬前置</tspan>，见下</text>
+
+<rect class="infra" x="532" y="586" width="240" height="76" rx="7"/>
+<text class="n" x="546" y="606">ai_shop_job</text>
+<text class="t" x="546" y="624">调度器自己的库</text>
+<text class="t" x="546" y="641">已上线</text>
+
+<rect class="pay" x="786" y="586" width="250" height="76" rx="7"/>
+<text class="n" x="800" y="606">ai_shop_pay　【新】</text>
+<text class="t" x="800" y="624">15 张表 · 独立账号</text>
+<text class="t" x="800" y="641">业务进程连都连不上</text>
+
+<path class="ar" marker-end="url(#ar)" d="M144 586 L144 528"/>
+<path class="ar" marker-end="url(#ar)" d="M340 586 L200 528"/>
+<path class="ar" marker-end="url(#ar)" d="M440 586 L700 528"/>
+<path class="ar" marker-end="url(#ar)" d="M911 586 L880 528"/>
+
+<rect class="warn" x="24" y="684" width="1012" height="80" rx="7"/>
+<text class="n" x="40" y="704">拆进程之前必须先做完的一件事：会话外置</text>
+<text class="t" x="40" y="723">token-store 默认 memory（进程内），线上没有覆盖它的地方。pay-svc 一旦独立成进程，三端的令牌它一个也验不了 ——</text>
+<text class="t" x="40" y="740">表现是支付接口全 401、其它接口正常。出路已经建好：shop-auth-store 的 DbTokenStore，按端分批切（operator → merchant → consumer）。</text>
+<text class="t" x="40" y="757">它顺带解决另一件事：今天部署覆盖 jar 会把全部会话清空，全员掉线。</text>
+
+<text class="l" x="24" y="794">方案一（内嵌）是<tspan class="em">默认形态</tspan>，不是过渡态：shop.pay.mode=embedded，pay 的控制器与 domain 随主应用装配，同库，走 store-mybatis。</text>
+<text class="l" x="24" y="814">两种形态换的只是「装哪个 PayPort 实现」和「连哪个库」，调用方一行不改 —— 如果调用方需要知道支付在哪跑，那就不是两种形态，是两套代码。</text>
+<text class="l" x="24" y="834">同机部署解决「发布不打断」，不解决「机器挂了」。后者要另说，别把这张图当高可用方案。</text>
+<text class="l" x="24" y="854">C 端支付今天还是桩 —— 在它上线之前拆，比之后拆便宜得多。</text>
+</svg>

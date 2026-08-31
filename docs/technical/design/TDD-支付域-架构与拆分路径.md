@@ -192,6 +192,27 @@ shop.pay.enabled = false（业务侧）/ true（pay-svc）
 
 ## L3 · 四、部署形态
 
+> **2026-08-31 补充：支付域有两种形态，不是一种。**
+>
+> | | 方案一 · 内嵌（**默认**） | 方案二 · 独立 |
+> |---|---|---|
+> | 进程 | 与 `ai-shop.service` 同一个 | `ai-shop-pay.service`（:8083） |
+> | 库 | 主库 `ai_shop` | 独立库 `ai_shop_pay` |
+> | 持久层 | `shop-store-mybatis` | `shop-store-data-aot` |
+> | 域间调用 | `PayPort` → `LocalPayAdapter` | `PayPort` → `RemotePayClient`（HTTP） |
+> | 开关 | `shop.pay.mode=embedded` | `shop.pay.mode=remote` |
+>
+> **调用方一行不改** —— 换的只是装哪个 `PayPort` 实现。
+> 如果调用方需要知道支付在哪跑，那就不是「两种形态」而是「两套代码」，
+> 而两套代码里一定有一套没人测。
+>
+> 内嵌是**默认值，不是过渡态**：它就是生产今天跑的形态。
+> 反过来说，独立形态是「默认关闭的那一半」，**必须有自己的集成测试** ——
+> 只测默认值的话，上线那天才发现装不起来。
+>
+> 详见 [TDD-基础包分层与支付双形态 §三](./TDD-基础包分层与支付双形态.md)
+> 与 [方案二架构图](../diagrams/pay-standalone-architecture.svg)。
+
 ```
 同一台机器
 ├── ai-shop.service       SPRING_PROFILES_ACTIVE=api,ops    :8081   今天就有
