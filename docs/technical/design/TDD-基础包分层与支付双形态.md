@@ -146,7 +146,7 @@ inventory / notify）与 `shop-app` 只改 pom 里的一行 `<artifactId>`。
 |---|---|---|
 | 进程 | 与 `ai-shop.service` 同一个 | `ai-shop-pay.service`（:8083） |
 | 库 | 主库 `ai_shop` | 独立库 `ai_shop_pay`（独立账号，只授权这一个 schema） |
-| 持久层 | `shop-store-mybatis`（沿用现有 `stl_*` 代码） | `shop-store-data-aot` |
+| 持久层 | **两种形态相同：Spring Data JDBC**（见下方修订） | 同左 |
 | 三端怎么到达 | 主应用直接装配 pay 的控制器 | nginx 按路径分流 / 主应用反代 |
 | 域间调用 | `PayPort` → **本地实现** | `PayPort` → **HTTP 客户端** |
 | 开关 | `shop.pay.mode=embedded`（默认） | `shop.pay.mode=remote` |
@@ -154,6 +154,12 @@ inventory / notify）与 `shop-app` 只改 pom 里的一行 `<artifactId>`。
 **默认必须是 `embedded`。** 记忆里那条「默认关闭的那一半没人测」在这里要反过来用：
 默认值就是生产今天跑的形态，独立形态是显式打开的那一半，
 所以**独立形态的装配必须有自己的集成测试**，不能只靠「上线那天试试」。
+
+> **展开到可实施的版本在 [TDD-支付域 · 双形态部署与装配](./TDD-支付域-双形态部署与装配.md)** ——
+> 那份文档修订了本节的一条：**pay 自己的持久层只有一套（Spring Data JDBC），
+> 两种形态都用它**。两套 repository 实现里没有生产流量的那一套会先腐烂，
+> 切换那天它不是「另一个实现」，是「一份没人跑过的代码」。
+> `shop-store-mybatis` / `shop-store-data-aot` 的分包改为只管**横切件**（幂等 / Outbox）。
 
 ### 3.2 别的域怎么调支付 —— 只认 Port，不知道钱在哪跑
 
