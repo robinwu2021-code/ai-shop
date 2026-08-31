@@ -122,6 +122,22 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
   "SettleServiceImpl#myInvoices":
     "B 端查自己的进项票，入参就是当前商家号；B 端会话是 SELF 维度，不绕会 fail-closed",
 
+  /*
+   * 算价：这件商品此刻在哪些活动里。**跑在买家会话（SELF 维度）**，
+   * 而 `pmt_activity` 只有 MERCHANT 锚点 —— 不绕就 fail-closed 拼成 1=0，
+   * 症状是**商品页上的活动价静默消失**，价格照常显示、只是没打折，
+   * 而没有任何一处会报错。
+   *
+   * <p>归属由查询条件保证：入参是一组 goodsNo，先按商品反查活动，
+   * 拿到的活动天然就是这些商品所属商家的。
+   *
+   * <p>与同一张表上的 `OpsPromotionServiceImpl#activities` 是一对照 ——
+   * 那一条是运营端的全量列表，2026-08-31 已经**去掉**绕过。
+   * 同一张表两处查询，绕不绕的判据是**归属由谁保证**，不是哪个更方便。
+   */
+  "ActivityPricingServiceImpl#liveByGoods":
+    "算价链路，跑在买家会话（SELF）；归属由入参的 goodsNo 保证，不绕商品页的活动价会静默消失",
+
   "AdmissionPortImpl#merchantOf":
     "查主体档位；主调用方是买家会话（SELF），不绕过四道准入闸全部静默失效",
 
@@ -264,6 +280,24 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
  * 所以理由里必须写清楚**谁会看到空白**——这份清单要交给运营团队（TDD Q2）。
  */
 const ANCHOR_WAIVED: Record<string, string> = {
+  /*
+   * ── 2026-08-31 第三批登记（pmt_activity / mbr_reach_log）带来的锚点缺口 ──
+   *
+   * 两张表都只有 entity_no：一场活动、一条触达属于**某个商家**，不属于片区或自提点。
+   * 加冗余列也没有意义 —— 那两个维度上不存在「这场活动归哪个片区」这个事实。
+   */
+  "pmt_activity:COMMUNITY":
+    "活动属于商家，不属于片区。**看到空白的是**：配了社区域的运营打开全平台活动页。"
+    + "而那一页是 CAMPAIGN_OPS 的活，社区运营本来就不该有 marketing:*",
+  "pmt_activity:PICKUP":
+    "同上，自提点运营者更不该出现在活动治理页里",
+  "mbr_reach_log:COMMUNITY":
+    "触达流水属于商家。**看到空白的是**：配了社区域的运营打开触达健康度。"
+    + "**注意这一页的空白比别处更值得提** —— 它同一行里还有会员数（mbr_member 有 MERCHANT 锚点），"
+    + "所以缺口的表现不是整页空，而是「有会员数、发送条数是 0」，看着像「这家没发过」",
+  "mbr_reach_log:PICKUP":
+    "同上",
+
   /*
    * ── 2026-08-30 第二批登记（结算域 3 张）带来的锚点缺口 ──
    *

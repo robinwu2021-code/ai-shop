@@ -264,6 +264,37 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          * 因此**不登记**：它从不作为检索入口，总是随券模板一起查。
          */
         registry.register("pmt_coupon", Map.of(ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * ── 2026-08-31 第三批：活动跟上券 ──
+         *
+         * `pmt_activity` 与 `pmt_coupon` **在同一个 Service 的相邻两个方法里**，
+         * 券 2026-08-29 接上了数据域，活动没有 —— 于是「给这个运营配了只看某商家」
+         * 在券那一页生效、在活动那一页不生效，而两页长得一样。
+         * 这种不一致比整体都没接更难发现：人会从其中一页得出「已经接了」的结论。
+         *
+         * `pmt_activity_audience` / `pmt_activity_goods` 不登记：它们挂在 activity_no 上，
+         * 从不作为检索入口，总是随活动一起查 —— 与 pmt_coupon_scope 同一个理由。
+         */
+        registry.register("pmt_activity", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 触达流水。**登记它今天不改变任何可见行为，这一点要写清楚**。
+         *
+         * 我一开始以为触达健康度那一页会漏：每行是「这家商家发了多少条 / 有多少会员 /
+         * 多少人退订」，而 `mbr_member` 2026-08-29 就登记了、这张表没有。
+         * 写了用例、消融验证 —— **没变红**。查下去才明白：那一页的行是按
+         * `mbr_member` 分组生成的，`sent` 只是按商家号取值，域外商家根本不会出现一行。
+         * 取不到，也就漏不出去。
+         *
+         * 那为什么还登记：**这张表按归属该被裁，而今天恰好只有一个读它的地方**。
+         * 等下一个人加一条「按时间列全部触达」的查询时，登记在这里就已经生效了 ——
+         * 而那时他不会想到来补。**这是唯一一处「登记但当下无效果」是对的情形**：
+         * 前提是没有绕过要一起去掉（有的话不去掉就是白登记，见 cmt_community_apply 那一轮）。
+         */
+        registry.register("mbr_reach_log", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
         registry.register("pmt_user_coupon", Map.of(
                 ScopeDim.SELF, "user_no",
                 ScopeDim.MERCHANT, "entity_no"));

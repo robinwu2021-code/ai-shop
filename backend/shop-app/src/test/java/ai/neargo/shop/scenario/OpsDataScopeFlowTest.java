@@ -1,6 +1,8 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.OtpStore;
+import ai.neargo.shop.promotion.entity.PmtActivity;
+import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityMapper;
 import ai.neargo.shop.settle.entity.StlWithdraw;
 import ai.neargo.shop.settle.mapper.SettleMappers.WithdrawMapper;
 import ai.neargo.shop.support.TestLogin;
@@ -72,6 +74,9 @@ class OpsDataScopeFlowTest {
 
     @Autowired
     private WithdrawMapper withdrawMapper;
+
+    @Autowired
+    private ActivityMapper activityMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -213,6 +218,65 @@ class OpsDataScopeFlowTest {
 
     /** 域外商家。挑它的条件是「被看见就一定批得动」—— 见 withdrawQueueIsScopedByMerchant 里的注释。 */
     private static final String OUTSIDE_MERCHANT = "M0001";
+
+    @Test
+    @DisplayName("★★★ 批③ 促销活动按商家域收敛 —— 券早就接上了，活动这页一直没有")
+    void activityListIsScopedByMerchant() throws Exception {
+        String admin = TestLogin.admin(mvc(), json);
+
+        /*
+         * `pmt_coupon` 2026-08-29 就接上了数据域，而**紧挨着的 activities 一直绕着**。
+         * 两个方法在同一个 Service 里、两页长得一样 —— 于是从券那一页会得出
+         * 「已经接了」的结论。这种不一致比整体都没接更难发现，所以单独钉一颗钉子。
+         */
+        seedActivity("M0002", "数据域测试·域内活动");
+        seedActivity(OUTSIDE_MERCHANT, "数据域测试·域外活动");
+
+        int all = activityCount(admin, null);
+        // **先断非零对照**：0 的话下面那句 0 <= 0 恒真
+        assertThat(all).as("超管看到的活动列表是空的 —— 这条用例此刻什么也没验到")
+                .isGreaterThan(1);
+
+        var scoped = staffWithScope(admin, "ds-activity", "CAMPAIGN_OPS", "M0002", null, null);
+        int seen = activityCount(scoped.token(), null);
+        assertThat(seen).as("配了 M0002 域的运营看到了别家的活动 —— 数据域没生效")
+                .isLessThan(all);
+        assertThat(seen).as("域内那一场也看不到 —— 多半是 pmt_activity 少了锚点、拼成了 1=0")
+                .isGreaterThan(0);
+
+        /*
+         * **筛选参数与数据域是两回事**，一起验：参数答「我现在想看哪一家」，
+         * 数据域答「你能看到哪些」。域外的商家号即使显式传进来也要看不到 ——
+         * 否则「知道商家号就能绕过」，那不是限制。
+         */
+        assertThat(activityCount(scoped.token(), OUTSIDE_MERCHANT))
+                .as("显式传域外商家号还能查到 —— 数据域被筛选参数绕过了")
+                .isZero();
+    }
+
+    private void seedActivity(String entityNo, String name) {
+        PmtActivity a = new PmtActivity();
+        a.setActivityNo("ACT-DS-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        a.setEntityNo(entityNo);
+        a.setName(name);
+        a.setTriggerType("NONE");
+        a.setBenefitType("CUT");
+        a.setBenefitAmountMinor(100L);
+        a.setScheduleType("ALWAYS_ON");
+        a.setStatus(PmtActivity.RUNNING);
+        activityMapper.insert(a);
+    }
+
+    private int activityCount(String token, String entityNo) throws Exception {
+        var req = get("/ops/promotion/activities").header("Authorization", "Bearer " + token);
+        if (entityNo != null) {
+            req = req.param("entityNo", entityNo);
+        }
+        String body = mvc().perform(req)
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").size();
+    }
 
     private String seedWithdraw(String entityNo, String name) {
         StlWithdraw w = new StlWithdraw();

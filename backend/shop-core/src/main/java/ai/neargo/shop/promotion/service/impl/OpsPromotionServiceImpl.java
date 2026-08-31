@@ -71,12 +71,19 @@ public class OpsPromotionServiceImpl implements OpsPromotionService {
 
     @Override
     public List<OpsActivityVO> activities(String entityNo) {
-        return DataScopeContext.executeWithoutScope(() ->
-                activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
-                                .eq(entityNo != null && !entityNo.isBlank(),
-                                        PmtActivity::getEntityNo, entityNo)
-                                .orderByDesc(PmtActivity::getId))
-                        .stream().map(this::vo).toList());
+        /*
+         * 接数据域（2026-08-31）—— 与上面的 `coupons` 同一个理由，只是晚了两天。
+         * 两个方法紧挨着、两页长得一样，而券那页已经生效、活动这页没有：
+         * **人会从其中一页得出「已经接了」的结论**，这比整体都没接更难发现。
+         *
+         * `entityNo` 参数仍然保留：它是运营主动筛某一家，与数据域是两回事
+         * （数据域答「你能看到哪些」，参数答「你现在想看哪一家」）。
+         */
+        return activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
+                        .eq(entityNo != null && !entityNo.isBlank(),
+                                PmtActivity::getEntityNo, entityNo)
+                        .orderByDesc(PmtActivity::getId))
+                .stream().map(this::vo).toList();
     }
 
     @Override
@@ -87,6 +94,11 @@ public class OpsPromotionServiceImpl implements OpsPromotionService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         return DataScopeContext.executeWithoutScope(() -> {
+            /*
+             * **停活动这一处保留绕过**，与列表不同：它后面要写 pmt_activity_goods
+             * 与审计，而那两张表上没有 MERCHANT 锚点 —— 半接不接会让停到一半失败。
+             * 归属由上面 `activities` 那一页保证：看不到的活动，运营拿不到它的单号。
+             */
             PmtActivity a = activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
                     .eq(PmtActivity::getActivityNo, activityNo).last("limit 1"));
             if (a == null) {
