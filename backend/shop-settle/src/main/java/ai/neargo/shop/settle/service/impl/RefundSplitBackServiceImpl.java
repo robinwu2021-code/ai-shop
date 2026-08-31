@@ -59,7 +59,7 @@ public class RefundSplitBackServiceImpl implements RefundSplitBackService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public RefundSplitBackVO execute(String afterSaleNo, String operatorNo) {
         RefundSplitBackPort.PendingBack target = backPort.pendingSplitBacks().stream()
                 .filter(c -> c.afterSaleNo().equals(afterSaleNo))

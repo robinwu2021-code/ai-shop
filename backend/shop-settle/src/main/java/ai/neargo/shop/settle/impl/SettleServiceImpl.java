@@ -137,7 +137,7 @@ public class SettleServiceImpl implements SettleService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public int generateForOrder(String orderNo) {
         int created = 0;
         /*
@@ -366,7 +366,7 @@ public class SettleServiceImpl implements SettleService {
      * 开一个人工入口等于允许在钱没到账时把单子做平。
      */
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public boolean confirmSplit(String settleNo, String channelRef) {
         StlBill bill = require(settleNo);
         if (StlBill.SPLIT_CONFIRMED.equals(bill.getStatus())) {
@@ -408,7 +408,7 @@ public class SettleServiceImpl implements SettleService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public void executeSplit(String settleNo) {
         StlBill bill = require(settleNo);
         if (StlBill.SPLIT.equals(bill.getStatus())
@@ -511,7 +511,7 @@ public class SettleServiceImpl implements SettleService {
     // ---------------------------------------------------------------- SettlePort（退款链路）
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public boolean reverseSplit(String subOrderNo) {
         StlBill bill = findBySubOrder(subOrderNo);
         if (bill == null) {
@@ -903,7 +903,7 @@ public class SettleServiceImpl implements SettleService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public SettleBillVO confirmRecon(String settleNo, String operatorNo) {
         StlBill b = requireSelfOperated(settleNo);
         if (StlBill.CONFIRMED.equals(b.getStatus()) || StlBill.PAID.equals(b.getStatus())) {
@@ -918,7 +918,7 @@ public class SettleServiceImpl implements SettleService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public SettleBillVO markPaid(String settleNo, String paymentRef, String operatorNo) {
         if (paymentRef == null || paymentRef.isBlank()) {
             // 没有凭证号的「已付」等于没记：事后对不上银行流水，也说不清是谁付的
@@ -959,7 +959,7 @@ public class SettleServiceImpl implements SettleService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public SettleBillVO markNoInvoice(String settleNo, String reason, String operatorNo) {
         if (reason == null || reason.isBlank()) {
             // 无票是要付出税务代价的（这笔支出不能列支），得说得出为什么
@@ -995,7 +995,7 @@ public class SettleServiceImpl implements SettleService {
     // ---------------------------------------------------------------- 进项票（P0-8/10）
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public PurchaseInvoiceVO submitInvoice(String merchantNo, SubmitInvoiceCommand cmd) {
         if (cmd.invoiceNumber() == null || cmd.invoiceNumber().isBlank()
                 || cmd.titleName() == null || cmd.titleName().isBlank()
@@ -1066,7 +1066,7 @@ public class SettleServiceImpl implements SettleService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public PurchaseInvoiceVO verifyInvoice(String invoiceNo, String operatorNo) {
         StlPurchaseInvoice inv = requireInvoice(invoiceNo);
         if (StlPurchaseInvoice.VERIFIED.equals(inv.getStatus())) {
@@ -1091,7 +1091,7 @@ public class SettleServiceImpl implements SettleService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public PurchaseInvoiceVO rejectInvoice(String invoiceNo, String reason, String operatorNo) {
         if (reason == null || reason.isBlank()) {
             // 供应商得知道是抬头错了、金额不符还是影像看不清，否则只能反复试

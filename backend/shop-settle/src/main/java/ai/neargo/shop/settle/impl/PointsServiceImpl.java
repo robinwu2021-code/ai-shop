@@ -205,7 +205,7 @@ public class PointsServiceImpl implements PointsService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public MerchantPointAccountVO toggleMerchant(String merchantNo, boolean enabled) {
         // 关闭只影响将来：**不动已发出的分，也不退已扣的服务费** ——
         // 否则关一次开关就是一次资金事故
@@ -470,7 +470,7 @@ public class PointsServiceImpl implements PointsService {
     private static final String USE_CONFIRMED = "CONFIRMED";
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public DeductResult deductOnPlace(String userNo, long wantPoints, List<DeductTarget> targets,
                                      String payMode, String clientType) {
         if (wantPoints <= 0 || targets == null || targets.isEmpty()) {
@@ -570,7 +570,7 @@ public class PointsServiceImpl implements PointsService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public int confirmDeduction(String subOrderNo) {
         PtsUserLedger use = ledgerMapper.selectOne(Wrappers.<PtsUserLedger>lambdaQuery()
                 .eq(PtsUserLedger::getSubOrderNo, subOrderNo)
@@ -602,7 +602,7 @@ public class PointsServiceImpl implements PointsService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public void reverse(String subOrderNo, String reason) {
         PtsUserLedger use = ledgerMapper.selectOne(Wrappers.<PtsUserLedger>lambdaQuery()
                 .eq(PtsUserLedger::getSubOrderNo, subOrderNo)
@@ -639,7 +639,7 @@ public class PointsServiceImpl implements PointsService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public void recordPoolFlow(String poolType, long amountMinor, String entityNo,
                                String refNo, String payChannel, String market) {
         if (amountMinor <= 0) {
@@ -683,7 +683,7 @@ public class PointsServiceImpl implements PointsService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public int expireIdleAccounts() {
         long now = System.currentTimeMillis();
         List<PtsUserAccount> idle = DataScopeContext.executeWithoutScope(() ->
@@ -730,7 +730,7 @@ public class PointsServiceImpl implements PointsService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public int activateDuePoints() {
         long now = System.currentTimeMillis();
         /*
@@ -771,7 +771,7 @@ public class PointsServiceImpl implements PointsService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public ai.neargo.shop.spi.settle.PointsPort.GrantResult grantOnPay(
             String userNo, String merchantNo,
             java.util.List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> lines, String subOrderNo) {

@@ -218,7 +218,7 @@ public class ReconServiceImpl implements ReconService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public ReconDiffVO decide(String diffNo, boolean ignore, String resolution, String operatorNo) {
         if (resolution == null || resolution.isBlank()) {
             // 没有结论的「已处理」等于没处理：下个月对账时没人知道当初为什么放过它

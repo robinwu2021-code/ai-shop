@@ -75,7 +75,7 @@ public class WithdrawServiceImpl implements WithdrawService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public WithdrawVO decide(String withdrawNo, boolean pass, String remark, String operatorNo) {
         /*
          * 审批也走数据域：**看不见的单不该批得动**。域外的单在这里查不到，

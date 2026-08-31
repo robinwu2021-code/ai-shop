@@ -80,7 +80,7 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     // ---------------------------------------------------------------- ① 定 T2
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public int markSettleable() {
         List<StlBill> pending = DataScopeContext.executeWithoutScope(() ->
                 billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
@@ -130,7 +130,7 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     // ---------------------------------------------------------------- ② 入批
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public int collectIntoBatches() {
         List<StlBill> ready = DataScopeContext.executeWithoutScope(() ->
                 billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
@@ -222,7 +222,7 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     // ---------------------------------------------------------------- ③ 截批
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public int closeDueBatches() {
         long now = System.currentTimeMillis();
         List<StlSettleBatch> due = DataScopeContext.executeWithoutScope(() ->
@@ -364,13 +364,13 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public BatchVO release(String batchNo, String operator, String remark) {
         return decide(batchNo, operator, remark, true);
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public BatchVO hold(String batchNo, String operator, String reason) {
         return decide(batchNo, operator, reason, false);
     }

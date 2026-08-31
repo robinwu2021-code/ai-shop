@@ -40,8 +40,20 @@ import java.util.List;
         // 挑到进销存那个（刻意不装拦截器）的表现是运行到某一行才炸。
         // 见 PlatformDataSourceConfig 的类注释。
         sqlSessionFactoryRef = "sqlSessionFactory",
+        /*
+         * 两个域走各自的 SqlSessionFactory，所以都要从全局扫描里排除：
+         *   inventory —— 另一个库（InventoryDataSourceConfig）
+         *   settle    —— 同一个库但**独立的事务管理器**（SettleDataSourceConfig），
+         *                目的是让跨域事务在物理上写不出来
+         *
+         * 漏掉哪一个，那个域的 Mapper 都会被注册到平台工厂上。
+         * inventory 漏了会报「表不存在」；**settle 漏了什么都不会报** ——
+         * 库是同一个，查询照常能跑，只是事务隔离静默失效，
+         * 而那要等拆库那天才炸。
+         */
         excludeFilters = @ComponentScan.Filter(
-                type = FilterType.REGEX, pattern = "ai\\.neargo\\.shop\\.inventory\\..*"))
+                type = FilterType.REGEX,
+                pattern = "ai\\.neargo\\.shop\\.(inventory|settle)\\..*"))
 /*
  * 第二个 @MapperScan：**不继承 BaseMapper 的 Mapper**。
  *

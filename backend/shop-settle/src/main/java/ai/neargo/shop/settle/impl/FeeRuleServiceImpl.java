@@ -66,7 +66,7 @@ public class FeeRuleServiceImpl implements FeeRuleService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public StlFeeRule addRule(String businessMode, String trafficSource, int rateBp,
                               long effectiveFrom, String remark, String operator) {
         if (businessMode == null || businessMode.isBlank()

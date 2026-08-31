@@ -69,6 +69,7 @@ class FundInvariantFlowTest {
     void cleanUp() {
         DataScopeContext.executeWithoutScope(() -> {
             jdbc.update("DELETE FROM stl_bill WHERE sub_order_no LIKE 'SUB-INV-%'");
+            jdbc.update("DELETE FROM ord_order WHERE order_no LIKE 'SO-INV-TX'");
             jdbc.update("DELETE FROM ord_sub_order WHERE sub_order_no LIKE 'SUB-INV-%'");
             jdbc.update("DELETE FROM ord_order WHERE order_no LIKE 'SO-INV-%'");
             jdbc.update("DELETE FROM ord_after_sale WHERE sub_order_no LIKE 'SUB-INV-%'");
@@ -383,6 +384,61 @@ class FundInvariantFlowTest {
          * 用户站在收银台前，眼看着已经算好的抵扣消失。
          */
         assertThat(refundLedgerCount("SUB-INV-WAIT")).as("等支付的单，积分正当地占着").isZero();
+    }
+
+    @Test
+    @DisplayName("★★★ 跨域事务写不出来 —— 业务回滚了，支付域那一边不跟着回滚")
+    void crossDomainTransactionIsImpossible() {
+        long now = System.currentTimeMillis();
+        String settleNo = "STL-INV-TX";
+
+        /*
+         * 这一条断言的是**我们做不到某件事**，所以它的形状与别的测试相反：
+         * 在业务事务里同时写业务表与支付域的表，然后回滚 ——
+         * 断言业务表回滚了，而支付域那一行**留下来了**。
+         *
+         * <p>「留下来」在这里是**正确结果**：它证明两边用的是不同的事务管理器，
+         * 也就是拆分之后的真实语义。今天（同一个事务管理器）这条会红。
+         *
+         * <p>没有这一条，SettleDataSourceConfig 就只是一段看起来对的配置：
+         * 哪天有人给 settleDataSource 加上 @Primary、或者把 settle 从
+         * MybatisPlusConfig 的排除列表里拿掉，**库是同一个所以什么都不会报** ——
+         * 查询照常能跑，只是隔离静默失效，要等拆库那天才炸。
+         */
+        try {
+            txTemplate.executeWithoutResult(status -> {
+                jdbc.update("INSERT INTO ord_order (order_no, user_no, status, pay_amount,"
+                        + " tenant_no, created_at, updated_at, version, deleted)"
+                        + " VALUES ('SO-INV-TX', ?, 'PAID', 1000, 'MAIN',"
+                        + " CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0)", USER);
+
+                StlBill b = new StlBill();
+                b.setSettleNo(settleNo);
+                b.setSubOrderNo("SUB-INV-TX");
+                b.setOrderNo("SO-INV-TX");
+                b.setEntityNo(ENTITY);
+                b.setGrossMinor(1000L);
+                b.setNetMinor(1000L);
+                b.setStatus(StlBill.PENDING);
+                b.setAccruedAt(now);
+                DataScopeContext.executeWithoutScope(() -> billMapper.insert(b));
+
+                status.setRollbackOnly();
+            });
+        } catch (RuntimeException ignored) {
+            // 回滚本身可能抛，与本条断言无关
+        }
+
+        assertThat(orderExists("SO-INV-TX"))
+                .as("对照量：业务表确实回滚了 —— 否则下面那句证明不了任何事").isFalse();
+        assertThat(billsOf("SUB-INV-TX"))
+                .as("支付域用的是自己的事务管理器，业务回滚带不走它").hasSize(1);
+    }
+
+    private boolean orderExists(String orderNo) {
+        Integer n = DataScopeContext.executeWithoutScope(() -> jdbc.queryForObject(
+                "SELECT COUNT(*) FROM ord_order WHERE order_no = ?", Integer.class, orderNo));
+        return n != null && n > 0;
     }
 
     /** 造一条预占中的用分流水（USE / PENDING）—— 那正是「已经从余额里扣走」的状态 */

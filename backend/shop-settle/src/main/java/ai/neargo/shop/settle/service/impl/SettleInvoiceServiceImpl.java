@@ -44,7 +44,7 @@ public class SettleInvoiceServiceImpl implements SettleInvoiceService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public SettleInvoiceVO issue(String invoiceNo, String serialNo, String operatorNo) {
         StlSettleInvoice iv = require(invoiceNo);
         // 重复开票就是重复虚开 —— 不做幂等早退，要让点第二次的人看见「已处理」
@@ -74,7 +74,7 @@ public class SettleInvoiceServiceImpl implements SettleInvoiceService {
     }
 
     @Override
-    @Transactional
+    @Transactional("settleTxManager")
     public SettleInvoiceVO reject(String invoiceNo, String reason, String operatorNo) {
         StlSettleInvoice iv = require(invoiceNo);
         if (!StlSettleInvoice.PENDING.equals(iv.getStatus())) {
