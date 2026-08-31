@@ -689,6 +689,23 @@ class OpsDataScopeFlowTest {
     /**
      * 指定角色的版本。**商品页要 {@code product:sku:read}，而 SUPPORT 没有这个码** ——
      * 拿客服去测商品域的数据域，会先被权限拦住，然后看起来像「数据域生效了」。
+     *
+     * <p><b>这里要填后端的角色码，不是运营端界面上的那套</b>。两套并存是有意的
+     * 历史遗留，`ops-web/lib/perm-map.test.ts` 里有别名表在对它们，三对异名同义：
+     *
+     * <pre>
+     *   后端（这里填这个）   运营端界面
+     *   BD                  MERCHANT_BD
+     *   GOODS_OPS           PRODUCT_OPS
+     *   SUPPORT             CS
+     * </pre>
+     *
+     * 其余七个（ANALYST / AUDITOR / CAMPAIGN_OPS / COMMUNITY_OPS / FINANCE /
+     * RISK / TECH_OPS）两边同名。填错的表现是建员工时 <b>10421 STAFF_ROLE_UNKNOWN</b>，
+     * 而不是「这个人没权限」—— 认出这个码能省一轮排查。
+     *
+     * <p>填了个存在但缺权限码的角色更难认：请求会拿到 <b>10403</b>，
+     * 看起来像「数据域把他挡住了」。角色的权限码见 {@code Perms.ROLE_PERMS}。
      */
     private Staff staffWithScope(String adminToken, String username, String role,
                                  String merchantNo, String communityNo, String pickupNo)
