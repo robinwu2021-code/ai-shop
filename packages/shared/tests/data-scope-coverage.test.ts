@@ -134,6 +134,29 @@ const EXEMPT: Record<string, string> = {
    */
   sys_media_asset: "MediaScanner 是平台完整性任务，要扫全量；登记会让「部分对账」被当成对过了",
 
+  /*
+   * ── 站内信与推送令牌：**归属列存的是「收件人」，不是「归谁管」** ──
+   *
+   * `receiver_no` 装的是**用户号**：买家是买家的 user_no，商家员工是
+   * `staffUserNos(entityNo, roles)` 返回的员工用户号（NotificationConsumer#fanOutToStaff）。
+   * 两类收件人共用一个命名空间，而且**里面没有商家号**。
+   *
+   * 于是两个维度都接不上：
+   *   MERCHANT —— 表上没有 entity_no，接不了；从 receiver_no 反查商家要 join 员工表，
+   *               而数据域的锚点必须是本表上的一列（V137 给子单加冗余列就是这个原因）。
+   *   SELF     —— 语义是「这条记录属于当前登录的人」，可运营看的是**别人**收到的信；
+   *               接上去等于「运营只看得到发给自己的站内信」，那一页就废了。
+   *
+   * <p>要接的话得像 V137 那样在表上冗余一列 entity_no（发给商家员工时填上，
+   * 发给买家时留空）—— 那是一次迁移加一处写入路径的改动，不是补一行 register。
+   * 值不值得取决于「站内信记录页会不会按商家分工看」，今天没有这个需求。
+   *
+   * <p>`notify_push_token` 同理，而且更极端：它是设备令牌表，
+   * 一个人换手机就多一行，按商家裁没有任何意义。
+   */
+  notify_message: "receiver_no 是收件人用户号（买家与商家员工共用命名空间），表上没有商家号；SELF 会让运营只看得到发给自己的",
+  notify_push_token: "同上，且它是设备令牌表 —— 按商家裁没有意义",
+
   // 日志/流水类：归属列是「谁干的」而不是「谁的数据」，运营查审计本就要跨主体看
   sys_op_log: "运营操作审计，跨主体查是它的用途",
   mch_staff_log: "商家员工授权审计，同上",
@@ -296,7 +319,7 @@ describe("数据域表册覆盖", () => {
      * 挑它们的判据是「运营端有一条全量列表读它」，而**登记的同时去掉了那三条
      * 队列上的 executeWithoutScope** —— 只登记不去绕过是第一批白干过的那一轮。
      */
-    const PENDING = 48;
+    const PENDING = 46;
 
     expect(
       missing.length,
