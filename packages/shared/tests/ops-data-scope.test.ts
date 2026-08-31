@@ -375,6 +375,11 @@ const ANCHOR_WAIVED: Record<string, string> = {
     + "而那和 V137 给子单加列是同一种代价，值不值得看仲裁台会不会按片区分工",
   "ord_after_sale:PICKUP":
     "同上。自提点运营者不做售后仲裁 —— 那需要 aftersale:ticket:read",
+    "mkt_group_buy:COMMUNITY":
+    "拼团挂商家与自提点，不挂片区。**看到空白的是**：配了社区域的运营打开拼团治理页",
+  "mkt_quote:COMMUNITY": "报价属于商家，不属于片区",
+  "mkt_quote:PICKUP":
+    "报价是商家对需求单的应答，与自提点无关 —— 需求单那一头才有 pickup_no",
     "stl_settle_batch:COMMUNITY":
     "账期批次属于商家。**看到空白的是**：配了社区域的运营打开放款队列。"
     + "而放款是财务的活（finance:settle:*），社区运营没有这个码",
@@ -977,8 +982,6 @@ describe("运营端数据域接入", () => {
     mkt_campaign: "待判 —— 营销活动（/ops/campaigns）",
     mkt_coupon: "待判 —— 平台券（/ops/coupons）",
     mkt_coupon_issue: "待判 —— 发券批次（/ops/coupon-issues）",
-    mkt_group_buy: "待判 —— 拼团（/ops/groups）",
-    mkt_quote: "待判 —— 报价（/ops/quotes）",
     mkt_request: "待判 —— 需求单（/ops/demands、/ops/quotes）",
     mkt_request_interest: "待判 —— 需求意向（/ops/demands）",
     notify_ticket: "待判 —— 工单（/ops/tickets）",

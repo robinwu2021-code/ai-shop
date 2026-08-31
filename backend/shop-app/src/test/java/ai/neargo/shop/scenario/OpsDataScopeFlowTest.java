@@ -2,6 +2,8 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.OtpStore;
 import ai.neargo.shop.merchant.entity.MchViolation;
+import ai.neargo.shop.marketing.group.entity.MktGroupBuy;
+import ai.neargo.shop.marketing.group.mapper.GroupMappers.GroupBuyMapper;
 import ai.neargo.shop.product.review.entity.RvwReview;
 import ai.neargo.shop.product.review.mapper.ReviewMappers.ReviewMapper;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
@@ -92,6 +94,9 @@ class OpsDataScopeFlowTest {
 
     @Autowired
     private ReviewMapper reviewMapper;
+
+    @Autowired
+    private GroupBuyMapper groupBuyMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -345,6 +350,57 @@ class OpsDataScopeFlowTest {
         assertThat(reviewCount(scoped.token(), OUTSIDE_MERCHANT))
                 .as("显式传域外商家号还能查到 —— 数据域被筛选参数绕过了")
                 .isZero();
+    }
+
+    @Test
+    @DisplayName("★★★ 批③ 拼团队列按商家域收敛 —— 一个共用的绕过包装把两拨调用方一起豁免了")
+    void groupQueueIsScopedByMerchant() throws Exception {
+        String admin = TestLogin.admin(mvc(), json);
+
+        /*
+         * 这一张的形状与前几张不同，值得单独钉：`GroupServiceImpl` 有一个自建的
+         * `scoped()` 包装，注释写着「团购与求团是**公共内容**，分享出去的链接要能打开」——
+         * 那句话对 C 端成立。但运营端的全量拼团队列也走同一个包装，
+         * 于是 **C 端的理由把运营端一起豁免了**，而两拨调用方在代码里长得一模一样。
+         */
+        seedGroupBuy("M0002", "数据域测试·域内拼团");
+        seedGroupBuy(OUTSIDE_MERCHANT, "数据域测试·域外拼团");
+
+        int all = groupCount(admin);
+        assertThat(all).as("超管看到的拼团队列是空的 —— 这条用例此刻什么也没验到")
+                .isGreaterThan(1);
+
+        var scoped = staffWithScope(admin, "ds-group", "CAMPAIGN_OPS", "M0002", null, null);
+        int seen = groupCount(scoped.token());
+        assertThat(seen)
+                .as("配了 M0002 域的运营看到了别家的拼团 —— 这一页上有商家名")
+                .isLessThan(all);
+        assertThat(seen).as("域内那一条也看不到 —— 多半是 mkt_group_buy 少了锚点、拼成了 1=0")
+                .isGreaterThan(0);
+    }
+
+    private void seedGroupBuy(String entityNo, String title) {
+        MktGroupBuy g = new MktGroupBuy();
+        g.setGroupNo("GB-DS-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        g.setInitiatorUserNo("U-DS-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        g.setGoodsNo("G0001");
+        g.setEntityNo(entityNo);
+        g.setTitle(title);
+        g.setGroupPriceMinor(100L);
+        g.setOriginPriceMinor(200L);
+        g.setMinCount(2);
+        g.setJoinedCount(1);
+        g.setEndAt(System.currentTimeMillis() + 86_400_000L);
+        g.setStatus("OPEN");
+        groupBuyMapper.insert(g);
+    }
+
+    private int groupCount(String token) throws Exception {
+        String body = mvc().perform(get("/ops/groups")
+                        .header("Authorization", "Bearer " + token).param("size", "200"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("records").size();
     }
 
     private void seedReview(String entityNo, String content) {

@@ -386,6 +386,23 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
+         * 拼团与报价。运营端的全量队列（`/ops/groups`、`/ops/quotes`）此前走的是
+         * `GroupServiceImpl` 里一个**自建的 `scoped()` 包装** —— 它的注释写着
+         * 「团购与求团是公共内容，分享出去的链接要能打开」，那句话对 C 端成立，
+         * 但**运营治理页也走同一个包装**，于是 C 端的理由把运营端一起豁免了。
+         * 两拨调用方在代码里长得一模一样，这是这一轮见过最难看出来的一种。
+         * ops 那两条已改成不走 scoped()，C 端照旧。
+         *
+         * <p>`mkt_group_buy` 连 PICKUP 一起登记 —— 它有 pickup_no（邻里自提团）。
+         * 这是本轮第一张三个维度里能填上两个的表。
+         */
+        registry.register("mkt_quote", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mkt_group_buy", Map.of(
+                ScopeDim.MERCHANT, "entity_no",
+                ScopeDim.PICKUP, "pickup_no"));
+
+        /*
          * 售后单。运营端的平台仲裁工单池（`GET /ops/after-sales`）是一条全量列表，
          * merchantNo 可空 —— 而这一页上有**商家名与买家昵称**，是跨商家的信息。
          *

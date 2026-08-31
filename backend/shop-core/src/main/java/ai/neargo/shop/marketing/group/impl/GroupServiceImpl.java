@@ -665,9 +665,10 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     public List<OpsGroupVOs.OpsQuoteVO> opsQuotes(String status) {
-        var rows = scoped(() -> quoteMapper.selectList(Wrappers.<MktQuote>lambdaQuery()
+        // 不用 scoped()：运营端的全量报价队列，理由同 opsGroups
+        var rows = quoteMapper.selectList(Wrappers.<MktQuote>lambdaQuery()
                 .eq(status != null && !status.isBlank(), MktQuote::getStatus, status)
-                .orderByDesc(MktQuote::getId)));
+                .orderByDesc(MktQuote::getId));
         /*
          * 需求标题一次批量取，不在循环里逐条查 —— 报价列表按需求聚集，
          * 逐条查会对同一个 request_no 查很多遍。
@@ -768,9 +769,16 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     public List<OpsGroupVOs.OpsGroupVO> opsGroups(String status) {
-        return scoped(() -> groupBuyMapper.selectList(Wrappers.<MktGroupBuy>lambdaQuery()
+        /*
+         * **不用 scoped()**：这是运营端的全量拼团队列，这一页上有商家名。
+         * `scoped()` 那句注释（「团购是公共内容，分享链接要能打开」）对 C 端成立，
+         * 对运营治理页不成立 —— **同一个包装被两拨调用方共用，
+         * 于是 C 端的理由把运营端也一起豁免了**。
+         * C 端那几处照旧走 scoped()。
+         */
+        return groupBuyMapper.selectList(Wrappers.<MktGroupBuy>lambdaQuery()
                 .eq(status != null && !status.isBlank(), MktGroupBuy::getStatus, status)
-                .orderByDesc(MktGroupBuy::getId))).stream()
+                .orderByDesc(MktGroupBuy::getId)).stream()
                 .map(g -> new OpsGroupVOs.OpsGroupVO(
                         g.getGroupNo(), g.getEntityNo(), merchantNameOf(g.getEntityNo()),
                         g.getTitle(), nz(g.getOriginPriceMinor()), nz(g.getGroupPriceMinor()),
