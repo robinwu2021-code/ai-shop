@@ -194,42 +194,61 @@ export interface SpecTemplate extends Archivable {
  * 混在一张表里，改的人不知道自己动了多大范围。
  */
 export interface SpecDim {
+  /** 维度号 */
   dimNo: string;
   /** 语义码 COLOR / WEIGHT。值编号与 optionCode 都以它为前缀，**改码等于换一根聚合轴** */
   code: string;
+  /** 维度名（「颜色」「净重」） */
   name: string;
   /** ENUM 枚举 / QUANT 数值+单位。QUANT 的值必须有归一量 */
   valueType: string;
+  /** 单位。QUANT 型必填，ENUM 型为空 */
   unit?: string | null;
   /** SALE 进 SKU 笛卡尔积 / PROP 只是描述 */
   usageType: string;
+  /** 通用维度：所有类目都能用 */
   universal: boolean;
+  /** `PLATFORM` 平台的 / `MERCHANT` 商家自建的 */
   scope: string;
+  /** 哪家商家的票 */
   entityNo?: string | null;
+  /** 排序权重 */
   sort: number;
+  /** 状态 */
   status: string;
+  /** 这个维度下有几个取值 */
   valueCount: number;
   /** 被几个类目绑着 —— 归档前要知道自己在动多大范围 */
   inUse: number;
+  /** 取值列表 */
   values: SpecValue[];
 }
 
 /** 规格值。**有编号有归一量**，才谈得上聚合、排序与比价。 */
 export interface SpecValue {
+  /** 取值编号 */
   valueNo: string;
+  /** 维度号 */
   dimNo: string;
+  /** 语义码 */
   code: string;
+  /** 显示名 */
   label: string;
   /** 归一量：500g / 半斤 / 0.5kg 都是 500 */
   numericValue?: number | null;
+  /** 归一量的单位。与 numericValue 一起才有意义 */
   numericUnit?: string | null;
   /** 别名：识别、搜索与自动归一用 */
   aliases: string[];
   /** PLATFORM / MERCHANT。商家自有值挂在平台维度下，仍在同一根轴上 */
   scope: string;
+  /** 哪家商家的票 */
   entityNo?: string | null;
+  /** 排序权重 */
   sort: number;
+  /** 状态 */
   status: string;
+  /** 多少个商家在用这个值 —— 停用前要知道影响面 */
   merchantCount: number;
 }
 

@@ -8,14 +8,23 @@
 export interface InvHealthRow {
   /** NEGATIVE 负库存 · ZERO_ON_SALE 零库存仍在架 · STALE 长期未动销 */
   kind: InvHealthKind;
+  /** 哪家商家的票 */
   entityNo: string;
+  /** 商家名 */
   merchantName?: string;
+  /** 门店号 */
   storeNo?: string;
+  /** 物料号（进销存自己的编号） */
   itemId: string;
+  /** 货品名 */
   itemName: string;
+  /** 规格描述。人读的，不参与匹配 */
   specText?: string;
+  /** 实存 */
   onHand: number;
+  /** 预留：下了单还没付钱的量 */
   reserved: number;
+  /** 可用 = 实存 − 预留 */
   available: number;
   /** STALE 才有：多少天没动过 */
   idleDays?: number;
@@ -28,14 +37,23 @@ export interface InvHealthRow {
  * 这边必须先知道看哪个商家。两者共用过同一个路径名，代价是运营端照着名字接错。
  */
 export interface InvBalanceRow {
+  /** 物料号（进销存自己的编号） */
   itemId: string;
+  /** 维度名（「颜色」「净重」） */
   name: string;
+  /** 规格描述。人读的，不参与匹配 */
   specText?: string;
+  /** 基本计量单位。**所有数量以它为准** */
   baseUom?: string;
+  /** 实存 */
   onHand: number;
+  /** 预留：下了单还没付钱的量 */
   reserved: number;
+  /** 可用 = 实存 − 预留 */
   available: number;
+  /** 安全库存。低于它算缺货，0 = 不设 */
   safetyStock?: number | null;
+  /** 最后一次动过的时间。滞销判据 */
   lastMovedAt?: string | null;
   /** SHORTAGE 缺货 · STALE 滞销。**空数组 = 这件没事** */
   flags: string[];
@@ -43,14 +61,23 @@ export interface InvBalanceRow {
 
 /** 台账一行。**不可变** —— 这里永远只有查看，没有编辑 */
 export interface InvLedgerRow {
+  /** 行号。台账不可变，它只用来分页定位 */
   id: number;
+  /** `IN` 入库 / `OUT` 出库 */
   docKind: InvDocKind;
+  /** 单号 */
   docNo: string;
+  /** 变动原因码 */
   reasonCode: string;
+  /** 变动量。**有符号**：入库为正、出库为负 */
   qtyDelta: number;
+  /** 这一行之后的结存。台账靠它自证连续，断一行就看得出来 */
   balanceAfter: number;
+  /** 单位成本（分） */
   unitCostMinor?: number;
+  /** 业务发生时刻。**不是落库时刻** */
   occurredAt: string;
+  /** 经手人 */
   operator?: string;
 }
 
@@ -61,14 +88,18 @@ export interface InvLedgerRow {
  * 那样在同一毫秒有多笔时会漏行，而漏的那几行不会有任何报错。
  */
 export interface InvLedgerPage {
+  /** 本页的台账行 */
   entries: InvLedgerRow[];
   /** null = 没有下一页 */
   nextCursor?: number | null;
 }
 
 export interface InvReconReport {
+  /** 扫了多少个 SKU */
   scannedSkus: number;
+  /** 本轮搬动了多少条 */
   moved: number;
+  /** 跳过多少个 */
   skipped: number;
   /**
    * 扫到了但**还没搬**的。**它必须是 0 才准切真相源** ——
@@ -81,12 +112,16 @@ export interface InvReconReport {
   pending: number;
   /** 没有差异**且**没有待搬的。两者缺一都不算干净 */
   clean: boolean;
+  /** 对不上的行 */
   diffs: InvReconDiff[];
 }
 
 export interface InvReconDiff {
+  /** 哪家商家的票 */
   entityNo: string;
+  /** 门店号 */
   storeNo?: string;
+  /** 商城侧的 SKU 号 */
   skuNo: string;
   /** 平台侧的实存（prd_sku / prd_store_stock） */
   platformQty: number;
@@ -111,7 +146,9 @@ export interface InvReconDiff {
  * 会让人以为丢了还能回来找 —— 而实际上只能吊销重发。
  */
 export interface InvCredential {
+  /** 凭据号 */
   credentialId: string;
+  /** 开放接口的调用方标识 */
   appKey: string;
   /** 给人看的：这把钥匙给了谁 */
   name: string;
@@ -123,13 +160,17 @@ export interface InvCredential {
   expiresAt?: string | null;
   /** 发现「这把钥匙半年没人用了」的唯一依据 */
   lastUsedAt?: string | null;
+  /** 申请时刻 */
   createdAt?: string | null;
 }
 
 /** 签发的返回。**`appSecret` 这辈子只出现这一次** */
 export interface InvCredentialIssued {
+  /** 凭据号 */
   credentialId: string;
+  /** 开放接口的调用方标识 */
   appKey: string;
+  /** 密钥。**只在签发那一次返回**，之后取不回来 */
   appSecret: string;
 }
 

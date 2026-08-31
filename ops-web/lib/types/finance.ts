@@ -372,23 +372,35 @@ export interface TaxRule {
  * 只会去问开票的人，而对方也不知道。
  */
 export interface PurchaseInvoice {
+  /** 平台侧的进项票记录号（不是发票上印的号） */
   invoiceNo: string;
+  /** 哪家商家的票 */
   entityNo: string;
   /** 所属账期 yyyyMM */
   period: string;
+  /** 发票代码，票面左上那一串 */
   invoiceCode: string;
+  /** 发票号码，票面右上那一串。**与 invoiceNo 不是一回事** */
   invoiceNumber: string;
+  /** 票种：专票 / 普票 / 电子票 */
   invoiceType: string;
+  /** 票面抬头 */
   titleName: string;
+  /** 票面税号 */
   titleTaxNo: string;
+  /** 价税合计（分） */
   amountMinor: number;
+  /** 其中税额（分） */
   taxAmountMinor: number;
   /** 万分比 */
   taxRate: number;
+  /** 开票日期 */
   invoiceDate?: number | null;
+  /** 票面影像。核验要看原件 */
   imageUrl?: string | null;
   /** PENDING / SUBMITTED / VERIFIED / REJECTED */
   status: string;
+  /** 驳回原因。**要原样回商家** —— 只说「不通过」他不知道该补什么 */
   rejectReason?: string | null;
   /** 抬头与主体名是否一致。**后端算，端上不重算** —— 两处判会走岔 */
   titleMatched: boolean;
@@ -410,20 +422,29 @@ export interface PurchaseInvoice {
  * 前两个此前已有类型，本类型是补的 —— 它按订单走（`orderNo`），前两个按主体/账期走。
  */
 export interface BuyerInvoiceRequest {
+  /** 开票申请号 */
   requestNo: string;
+  /** 针对哪一单 */
   orderNo: string;
   /** PERSONAL / COMPANY */
   titleType: string;
+  /** 抬头 */
   title: string;
+  /** 税号。单位抬头必填 */
   taxNo?: string | null;
+  /** 发到哪个邮箱。电子票唯一的交付方式 */
   email?: string | null;
+  /** 价税合计（分） */
   amountMinor: number;
   /** PENDING / ISSUED / REJECTED */
   status: string;
   /** 已开出的发票号 */
   invoiceNo?: string | null;
+  /** 开出来的时刻。空 = 还没开 */
   issuedAt?: number | null;
+  /** 驳回原因。**要原样回商家** —— 只说「不通过」他不知道该补什么 */
   rejectReason?: string | null;
+  /** 申请时刻 */
   createdAt?: number | null;
 }
 

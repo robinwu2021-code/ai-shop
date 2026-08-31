@@ -160,43 +160,67 @@ export interface MediaStoreUsage {
 
 /** 待回收的一行。`reason` 是这一列的全部意义 —— 运营靠它判断「这张能不能删」。 */
 export interface MediaReclaimable {
+  /** 对象存储里的键。**删的就是它** —— 删错一张图，引用它的页面从此是破图 */
   assetKey: string;
+  /** 上传方商家 */
   entityNo: string;
+  /** 上传方门店 */
   storeNo: string;
   bizType: MediaBizType;
+  /** 占用字节数。回收的价值全在这个数上 */
   bytes: number;
+  /** 像素宽 */
   width?: number | null;
+  /** 像素高 */
   height?: number | null;
+  /** 上传人 */
   uploadedBy?: string | null;
+  /** 上传时刻 */
   createdAt?: string | null;
+  /** 被标记为可回收的时刻。**与 createdAt 分开**：刚失去引用就删，容易删掉正在编辑的东西 */
   markedAt?: string | null;
   /** 「从未被引用」或「曾被『商品 G0012 · 主图』引用，… 后失去引用」 */
   reason: string;
+  /** 状态 */
   status: string;
 }
 
 export interface MediaPurgeBatch {
+  /** 批次号 */
   batchNo: string;
+  /** 发起人账号 */
   operator: string;
   /** 发起时的显示名快照 —— 人离职改名之后这条记录还得说得清是谁 */
   operatorName?: string | null;
+  /** 状态 */
   status: MediaPurgeStatus;
+  /** 这一批有多少张 */
   totalCount: number;
+  /** 这一批合计多少字节 */
   totalBytes: number;
+  /** 真删掉了多少张 */
   purgedCount: number;
+  /** 删失败多少张。**多半是已经不在了** —— 所以整批的结局是 PARTIAL 而不是 FAILED */
   failedCount: number;
+  /** 开始时刻 */
   startedAt?: string | null;
+  /** 结束时刻。空 = 还在跑 */
   finishedAt?: string | null;
+  /** 上传时刻 */
   createdAt?: string | null;
 }
 
 export interface MediaBatchDetail {
+  /** 批次本身 */
   batch: MediaPurgeBatch;
+  /** 这一批里的每一张 */
   items: MediaReclaimable[];
 }
 
 export interface MediaScanResult {
+  /** 扫到多少张 */
   total: number;
+  /** 其中仍被引用的 */
   referenced: number;
   marked: number;
   rescued: number;

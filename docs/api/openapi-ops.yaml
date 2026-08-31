@@ -3640,11 +3640,13 @@ components:
       properties: 
         dimNo: 
           type: "string"
+          description: "维度号"
         code: 
           type: "string"
           description: "语义码 COLOR / WEIGHT。值编号与 optionCode 都以它为前缀，**改码等于换一根聚合轴**"
         name: 
           type: "string"
+          description: "维度名（「颜色」「净重」）"
         valueType: 
           type: "string"
           description: "ENUM 枚举 / QUANT 数值+单位。QUANT 的值必须有归一量"
@@ -3652,23 +3654,30 @@ components:
           type: 
             - "string"
             - "null"
+          description: "单位。QUANT 型必填，ENUM 型为空"
         usageType: 
           type: "string"
           description: "SALE 进 SKU 笛卡尔积 / PROP 只是描述"
         universal: 
           type: "boolean"
+          description: "通用维度：所有类目都能用"
         scope: 
           type: "string"
+          description: "`PLATFORM` 平台的 / `MERCHANT` 商家自建的"
         entityNo: 
           type: 
             - "string"
             - "null"
+          description: "哪家商家的票"
         sort: 
           type: "number"
+          description: "排序权重"
         status: 
           type: "string"
+          description: "状态"
         valueCount: 
           type: "number"
+          description: "这个维度下有几个取值"
         inUse: 
           type: "number"
           description: "被几个类目绑着 —— 归档前要知道自己在动多大范围"
@@ -3676,6 +3685,7 @@ components:
           type: "array"
           items: 
             "$ref": "#/definitions/SpecValue"
+          description: "取值列表"
       required: 
         - "dimNo"
         - "code"
@@ -3696,12 +3706,16 @@ components:
       properties: 
         valueNo: 
           type: "string"
+          description: "取值编号"
         dimNo: 
           type: "string"
+          description: "维度号"
         code: 
           type: "string"
+          description: "语义码"
         label: 
           type: "string"
+          description: "显示名"
         numericValue: 
           type: 
             - "number"
@@ -3711,6 +3725,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "归一量的单位。与 numericValue 一起才有意义"
         aliases: 
           type: "array"
           items: 
@@ -3723,12 +3738,16 @@ components:
           type: 
             - "string"
             - "null"
+          description: "哪家商家的票"
         sort: 
           type: "number"
+          description: "排序权重"
         status: 
           type: "string"
+          description: "状态"
         merchantCount: 
           type: "number"
+          description: "多少个商家在用这个值 —— 停用前要知道影响面"
       required: 
         - "valueNo"
         - "dimNo"
@@ -4292,22 +4311,31 @@ components:
           description: "NEGATIVE 负库存 · ZERO_ON_SALE 零库存仍在架 · STALE 长期未动销"
         entityNo: 
           type: "string"
+          description: "哪家商家的票"
         merchantName: 
           type: "string"
+          description: "商家名"
         storeNo: 
           type: "string"
+          description: "门店号"
         itemId: 
           type: "string"
+          description: "物料号（进销存自己的编号）"
         itemName: 
           type: "string"
+          description: "货品名"
         specText: 
           type: "string"
+          description: "规格描述。人读的，不参与匹配"
         onHand: 
           type: "number"
+          description: "实存"
         reserved: 
           type: "number"
+          description: "预留：下了单还没付钱的量"
         available: 
           type: "number"
+          description: "可用 = 实存 − 预留"
         idleDays: 
           type: "number"
           description: "STALE 才有：多少天没动过"
@@ -4333,26 +4361,35 @@ components:
       properties: 
         itemId: 
           type: "string"
+          description: "物料号（进销存自己的编号）"
         name: 
           type: "string"
+          description: "维度名（「颜色」「净重」）"
         specText: 
           type: "string"
+          description: "规格描述。人读的，不参与匹配"
         baseUom: 
           type: "string"
+          description: "基本计量单位。**所有数量以它为准**"
         onHand: 
           type: "number"
+          description: "实存"
         reserved: 
           type: "number"
+          description: "预留：下了单还没付钱的量"
         available: 
           type: "number"
+          description: "可用 = 实存 − 预留"
         safetyStock: 
           type: 
             - "number"
             - "null"
+          description: "安全库存。低于它算缺货，0 = 不设"
         lastMovedAt: 
           type: 
             - "string"
             - "null"
+          description: "最后一次动过的时间。滞销判据"
         flags: 
           type: "array"
           items: 
@@ -4372,22 +4409,31 @@ components:
       properties: 
         id: 
           type: "number"
+          description: "行号。台账不可变，它只用来分页定位"
         docKind: 
           "$ref": "#/definitions/InvDocKind"
+          description: "`IN` 入库 / `OUT` 出库"
         docNo: 
           type: "string"
+          description: "单号"
         reasonCode: 
           type: "string"
+          description: "变动原因码"
         qtyDelta: 
           type: "number"
+          description: "变动量。**有符号**：入库为正、出库为负"
         balanceAfter: 
           type: "number"
+          description: "这一行之后的结存。台账靠它自证连续，断一行就看得出来"
         unitCostMinor: 
           type: "number"
+          description: "单位成本（分）"
         occurredAt: 
           type: "string"
+          description: "业务发生时刻。**不是落库时刻**"
         operator: 
           type: "string"
+          description: "经手人"
       required: 
         - "id"
         - "docKind"
@@ -4411,6 +4457,7 @@ components:
           type: "array"
           items: 
             "$ref": "#/definitions/InvLedgerRow"
+          description: "本页的台账行"
         nextCursor: 
           type: 
             - "number"
@@ -4425,10 +4472,13 @@ components:
       properties: 
         scannedSkus: 
           type: "number"
+          description: "扫了多少个 SKU"
         moved: 
           type: "number"
+          description: "本轮搬动了多少条"
         skipped: 
           type: "number"
+          description: "跳过多少个"
         pending: 
           type: "number"
           description: "扫到了但**还没搬**的。**它必须是 0 才准切真相源** —— 没搬的那些在进销存侧余额是 0，切过去就是「全都卖不了」。\n\n这一列原本不存在：`moveOne` 只算不写时故意不把没搬过的算成差异， `doRun` 又把它们计成既不 moved 也不 skipped，于是它们在报告里一个字都不出现， 而 `clean` 只看 diffs —— 闸门守着一个它没在看的东西。"
@@ -4439,6 +4489,7 @@ components:
           type: "array"
           items: 
             "$ref": "#/definitions/InvReconDiff"
+          description: "对不上的行"
       required: 
         - "scannedSkus"
         - "moved"
@@ -4452,10 +4503,13 @@ components:
       properties: 
         entityNo: 
           type: "string"
+          description: "哪家商家的票"
         storeNo: 
           type: "string"
+          description: "门店号"
         skuNo: 
           type: "string"
+          description: "商城侧的 SKU 号"
         platformQty: 
           type: "number"
           description: "平台侧的实存（prd_sku / prd_store_stock）"
@@ -4481,8 +4535,10 @@ components:
       properties: 
         credentialId: 
           type: "string"
+          description: "凭据号"
         appKey: 
           type: "string"
+          description: "开放接口的调用方标识"
         name: 
           type: "string"
           description: "给人看的：这把钥匙给了谁"
@@ -4506,6 +4562,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "申请时刻"
       required: 
         - "credentialId"
         - "appKey"
@@ -4519,10 +4576,13 @@ components:
       properties: 
         credentialId: 
           type: "string"
+          description: "凭据号"
         appKey: 
           type: "string"
+          description: "开放接口的调用方标识"
         appSecret: 
           type: "string"
+          description: "密钥。**只在签发那一次返回**，之后取不回来"
       required: 
         - "credentialId"
         - "appKey"
@@ -5002,25 +5062,34 @@ components:
       properties: 
         invoiceNo: 
           type: "string"
+          description: "平台侧的进项票记录号（不是发票上印的号）"
         entityNo: 
           type: "string"
+          description: "哪家商家的票"
         period: 
           type: "string"
           description: "所属账期 yyyyMM"
         invoiceCode: 
           type: "string"
+          description: "发票代码，票面左上那一串"
         invoiceNumber: 
           type: "string"
+          description: "发票号码，票面右上那一串。**与 invoiceNo 不是一回事**"
         invoiceType: 
           type: "string"
+          description: "票种：专票 / 普票 / 电子票"
         titleName: 
           type: "string"
+          description: "票面抬头"
         titleTaxNo: 
           type: "string"
+          description: "票面税号"
         amountMinor: 
           type: "number"
+          description: "价税合计（分）"
         taxAmountMinor: 
           type: "number"
+          description: "其中税额（分）"
         taxRate: 
           type: "number"
           description: "万分比"
@@ -5028,10 +5097,12 @@ components:
           type: 
             - "number"
             - "null"
+          description: "开票日期"
         imageUrl: 
           type: 
             - "string"
             - "null"
+          description: "票面影像。核验要看原件"
         status: 
           type: "string"
           description: "PENDING / SUBMITTED / VERIFIED / REJECTED"
@@ -5039,6 +5110,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "驳回原因。**要原样回商家** —— 只说「不通过」他不知道该补什么"
         titleMatched: 
           type: "boolean"
           description: "抬头与主体名是否一致。**后端算，端上不重算** —— 两处判会走岔"
@@ -5069,23 +5141,29 @@ components:
       properties: 
         requestNo: 
           type: "string"
+          description: "开票申请号"
         orderNo: 
           type: "string"
+          description: "针对哪一单"
         titleType: 
           type: "string"
           description: "PERSONAL / COMPANY"
         title: 
           type: "string"
+          description: "抬头"
         taxNo: 
           type: 
             - "string"
             - "null"
+          description: "税号。单位抬头必填"
         email: 
           type: 
             - "string"
             - "null"
+          description: "发到哪个邮箱。电子票唯一的交付方式"
         amountMinor: 
           type: "number"
+          description: "价税合计（分）"
         status: 
           type: "string"
           description: "PENDING / ISSUED / REJECTED"
@@ -5098,14 +5176,17 @@ components:
           type: 
             - "number"
             - "null"
+          description: "开出来的时刻。空 = 还没开"
         rejectReason: 
           type: 
             - "string"
             - "null"
+          description: "驳回原因。**要原样回商家** —— 只说「不通过」他不知道该补什么"
         createdAt: 
           type: 
             - "number"
             - "null"
+          description: "申请时刻"
       required: 
         - "requestNo"
         - "orderNo"
@@ -6888,39 +6969,49 @@ components:
       properties: 
         assetKey: 
           type: "string"
+          description: "对象存储里的键。**删的就是它** —— 删错一张图，引用它的页面从此是破图"
         entityNo: 
           type: "string"
+          description: "上传方商家"
         storeNo: 
           type: "string"
+          description: "上传方门店"
         bizType: 
           "$ref": "#/definitions/MediaBizType"
         bytes: 
           type: "number"
+          description: "占用字节数。回收的价值全在这个数上"
         width: 
           type: 
             - "number"
             - "null"
+          description: "像素宽"
         height: 
           type: 
             - "number"
             - "null"
+          description: "像素高"
         uploadedBy: 
           type: 
             - "string"
             - "null"
+          description: "上传人"
         createdAt: 
           type: 
             - "string"
             - "null"
+          description: "上传时刻"
         markedAt: 
           type: 
             - "string"
             - "null"
+          description: "被标记为可回收的时刻。**与 createdAt 分开**：刚失去引用就删，容易删掉正在编辑的东西"
         reason: 
           type: "string"
           description: "「从未被引用」或「曾被『商品 G0012 · 主图』引用，… 后失去引用」"
         status: 
           type: "string"
+          description: "状态"
       required: 
         - "assetKey"
         - "entityNo"
@@ -6943,8 +7034,10 @@ components:
       properties: 
         batchNo: 
           type: "string"
+          description: "批次号"
         operator: 
           type: "string"
+          description: "发起人账号"
         operatorName: 
           type: 
             - "string"
@@ -6952,26 +7045,34 @@ components:
           description: "发起时的显示名快照 —— 人离职改名之后这条记录还得说得清是谁"
         status: 
           "$ref": "#/definitions/MediaPurgeStatus"
+          description: "状态"
         totalCount: 
           type: "number"
+          description: "这一批有多少张"
         totalBytes: 
           type: "number"
+          description: "这一批合计多少字节"
         purgedCount: 
           type: "number"
+          description: "真删掉了多少张"
         failedCount: 
           type: "number"
+          description: "删失败多少张。**多半是已经不在了** —— 所以整批的结局是 PARTIAL 而不是 FAILED"
         startedAt: 
           type: 
             - "string"
             - "null"
+          description: "开始时刻"
         finishedAt: 
           type: 
             - "string"
             - "null"
+          description: "结束时刻。空 = 还在跑"
         createdAt: 
           type: 
             - "string"
             - "null"
+          description: "上传时刻"
       required: 
         - "batchNo"
         - "operator"
@@ -6994,10 +7095,12 @@ components:
       properties: 
         batch: 
           "$ref": "#/definitions/MediaPurgeBatch"
+          description: "批次本身"
         items: 
           type: "array"
           items: 
             "$ref": "#/definitions/MediaReclaimable"
+          description: "这一批里的每一张"
       required: 
         - "batch"
         - "items"
@@ -7007,8 +7110,10 @@ components:
       properties: 
         total: 
           type: "number"
+          description: "扫到多少张"
         referenced: 
           type: "number"
+          description: "其中仍被引用的"
         marked: 
           type: "number"
         rescued: 
@@ -7085,6 +7190,7 @@ components:
       properties: 
         jobName: 
           type: "string"
+          description: "任务的锁名（与 shedlock 同一个键）。**页面不显示它**，显示 displayName"
         displayName: 
           type: "string"
           description: "给人看的中文名。**页面显示这个，不显示 jobName** —— 运营看不懂锁名"
@@ -7092,14 +7198,18 @@ components:
           type: 
             - "string"
             - "null"
+          description: "这个任务做什么，运营看的一句话"
         ownerModule: 
           type: 
             - "string"
             - "null"
+          description: "归哪个模块。出问题时据此找人"
         cron: 
           type: "string"
+          description: "排期表达式"
         enabled: 
           type: "boolean"
+          description: "开着没有。关掉的任务不会被调度器捡起来"
         missing: 
           type: "boolean"
           description: "代码里已经没有这个任务了。**不删行是有意的**：静默消失比留着危险"
@@ -7115,10 +7225,12 @@ components:
           anyOf: 
             - "$ref": "#/definitions/JobStatus"
             - type: "null"
+          description: "上一轮的结局"
         durationMs: 
           type: 
             - "number"
             - "null"
+          description: "耗时（毫秒）"
         detail: 
           type: 
             - "string"
@@ -7128,17 +7240,21 @@ components:
           type: 
             - "string"
             - "null"
+          description: "错误信息。**与 detail 分开**：detail 是业务说的话，这里是异常"
         consecutiveFailures: 
           type: "number"
           description: "**只统计 FAILED**；SKIPPED / TIMEOUT / UNREACHABLE 都不算 —— 否则告警会在一切正常时响"
         runCount: 
           type: "number"
+          description: "累计执行轮次"
         nextRunAt: 
           type: 
             - "string"
             - "null"
+          description: "下一次预计执行时刻。任务停用或已消失时为空"
         running: 
           type: "boolean"
+          description: "此刻正在跑"
         triggerPending: 
           type: "boolean"
           description: "点过「立即执行」但调度器还没捡起来。没有这一格的话，点完页面毫无反应"
@@ -7146,6 +7262,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "上次改配置的人"
       required: 
         - "jobName"
         - "displayName"
@@ -7173,42 +7290,53 @@ components:
       properties: 
         runId: 
           type: "string"
+          description: "这一轮的编号"
         jobName: 
           type: "string"
+          description: "任务的锁名（与 shedlock 同一个键）。**页面不显示它**，显示 displayName"
         triggerType: 
           "$ref": "#/definitions/JobTriggerType"
         bizDate: 
           type: 
             - "string"
             - "null"
+          description: "业务日期。**补数跑的是历史某一天，与执行时刻不是一回事**"
         startedAt: 
           type: "string"
+          description: "开始时刻"
         finishedAt: 
           type: 
             - "string"
             - "null"
+          description: "结束时刻。空 = 还没回（可能仍在跑，也可能超时了）"
         durationMs: 
           type: 
             - "number"
             - "null"
+          description: "耗时（毫秒）"
         status: 
           "$ref": "#/definitions/JobStatus"
+          description: "这一轮的结局"
         detail: 
           type: 
             - "string"
             - "null"
+          description: "业务写的一句人话：「关闭 12 单，释放库存 34 件」"
         error: 
           type: 
             - "string"
             - "null"
+          description: "错误信息。**与 detail 分开**：detail 是业务说的话，这里是异常"
         workerInstance: 
           type: 
             - "string"
             - "null"
+          description: "哪个实例跑的。**多实例抢锁时排障靠它** —— 只有一台在跑不等于只有一台部署"
         httpStatus: 
           type: 
             - "number"
             - "null"
+          description: "调用业务系统时的 HTTP 状态。UNREACHABLE 时看它区分「没连上」与「连上了但报错」"
       required: 
         - "runId"
         - "jobName"
@@ -7237,32 +7365,44 @@ components:
       properties: 
         memberNo: 
           type: "string"
+          description: "会员号（某商家下的一条会员关系）"
         personNo: 
           type: "string"
+          description: "平台人档号。**一份人档串起几家商家的会员关系** —— 跨商家查同一个人靠它"
         phoneTail: 
           type: 
             - "string"
             - "null"
+          description: "手机号后四位。**只有后四位** —— 要完整号得走 revealMemberPhone：单独权限码、必填理由、每次留痕"
         entityNo: 
           type: "string"
+          description: "所属商家"
         entityName: 
           type: "string"
+          description: "商家名"
         status: 
           type: "string"
+          description: "状态"
         source: 
           type: "string"
+          description: "这个会员是怎么来的"
         level: 
           type: 
             - "string"
             - "null"
+          description: "会员等级。空 = 商家没开分层"
         orderCount: 
           type: "number"
+          description: "累计下单数"
         totalSpentMinor: 
           type: "number"
+          description: "累计消费（分）"
         reachOptOut: 
           type: "boolean"
+          description: "已退订。**退订的人不进任何受众** —— 运营排查「怎么没收到」第一个看它"
         joinedAt: 
           type: "number"
+          description: "成为会员的时刻"
       required: 
         - "memberNo"
         - "personNo"
@@ -7336,40 +7476,53 @@ components:
       properties: 
         couponNo: 
           type: "string"
+          description: "券模板号"
         entityNo: 
           type: "string"
+          description: "所属商家"
         entityName: 
           type: "string"
+          description: "商家名"
         title: 
           type: "string"
+          description: "券名"
         benefitMode: 
           type: "string"
+          description: "`CASH` 减固定金额 / `PERCENT` 打折 / `GIFT` 换赠品 / `TIMES` 次卡"
         benefitValue: 
           type: "number"
+          description: "优惠力度。含义**跟着 benefitMode 变**：CASH 是分、PERCENT 是万分比、TIMES 是次数"
         benefitCapMinor: 
           type: 
             - "number"
             - "null"
+          description: "折扣券封顶（分）。空 = 不封顶 —— 与 UNLIMITED 一起出现时敞口无上限"
         totalCount: 
           type: 
             - "number"
             - "null"
+          description: "总发行量。空 = 不限量"
         receivedCount: 
           type: "number"
+          description: "已领取数"
         budgetMinor: 
           type: 
             - "number"
             - "null"
+          description: "预算上限（分）。空 = 不限"
         maxExposureMinor: 
           type: 
             - "number"
             - "null"
+          description: "最大敞口 = 限量 × 单张优惠。**这一页真正要看的数** —— 不限量时它算不出来"
         status: 
           type: "string"
+          description: "状态"
         flags: 
           type: "array"
           items: 
             type: "string"
+          description: "风险标记。商家自己看不出来 —— 他只看得到他那一张，跨商家排在一起才看得见"
       required: 
         - "couponNo"
         - "entityNo"
@@ -7391,42 +7544,57 @@ components:
       properties: 
         activityNo: 
           type: "string"
+          description: "活动号"
         entityNo: 
           type: "string"
+          description: "所属商家"
         entityName: 
           type: "string"
+          description: "商家名"
         name: 
           type: "string"
+          description: "活动名"
         triggerType: 
           type: "string"
+          description: "触发条件：满额 / 满件 / 命中商品 / 无条件"
         benefitType: 
           type: "string"
+          description: "优惠方式：减钱 / 改单价 / 送商品 / 发券"
         scheduleType: 
           type: "string"
+          description: "排期：短期 / 长期 / 周期"
         quota: 
           type: 
             - "number"
             - "null"
+          description: "限量。空 = 不限量"
         quotaUsed: 
           type: "number"
+          description: "已用掉的限量"
         budgetMinor: 
           type: 
             - "number"
             - "null"
+          description: "预算上限（分）。空 = 不限"
         budgetUsedMinor: 
           type: "number"
+          description: "已花掉的预算（分）"
         audienceCount: 
           type: "number"
+          description: "定向人数。**0 表示对所有人生效**，不是「谁也不发」"
         status: 
           type: "string"
+          description: "状态"
         endedReason: 
           type: 
             - "string"
             - "null"
+          description: "为什么停的：到期 / 限量用尽 / 预算用尽 / 人工停。商家问「怎么停了」要有答案"
         flags: 
           type: "array"
           items: 
             type: "string"
+          description: "风险标记。商家自己看不出来 —— 他只看得到他那一张，跨商家排在一起才看得见"
       required: 
         - "activityNo"
         - "entityNo"

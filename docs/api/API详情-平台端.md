@@ -1541,18 +1541,18 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `requestNo` | `string` | 是 | — |
-| `orderNo` | `string` | 是 | — |
+| `requestNo` | `string` | 是 | 开票申请号 |
+| `orderNo` | `string` | 是 | 针对哪一单 |
 | `titleType` | `string` | 是 | PERSONAL / COMPANY |
-| `title` | `string` | 是 | — |
-| `taxNo` | `string,null` | 否 | — |
-| `email` | `string,null` | 否 | — |
-| `amountMinor` | `number` | 是 | — |
+| `title` | `string` | 是 | 抬头 |
+| `taxNo` | `string,null` | 否 | 税号。单位抬头必填 |
+| `email` | `string,null` | 否 | 发到哪个邮箱。电子票唯一的交付方式 |
+| `amountMinor` | `number` | 是 | 价税合计（分） |
 | `status` | `string` | 是 | PENDING / ISSUED / REJECTED |
 | `invoiceNo` | `string,null` | 否 | 已开出的发票号 |
-| `issuedAt` | `number,null` | 否 | — |
-| `rejectReason` | `string,null` | 否 | — |
-| `createdAt` | `number,null` | 否 | — |
+| `issuedAt` | `number,null` | 否 | 开出来的时刻。空 = 还没开 |
+| `rejectReason` | `string,null` | 否 | 驳回原因。**要原样回商家** —— 只说「不通过」他不知道该补什么 |
+| `createdAt` | `number,null` | 否 | 申请时刻 |
 
 
 #### POST `/ops/invoice-requests/{requestNo}/reject`
@@ -1573,18 +1573,18 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `requestNo` | `string` | 是 | — |
-| `orderNo` | `string` | 是 | — |
+| `requestNo` | `string` | 是 | 开票申请号 |
+| `orderNo` | `string` | 是 | 针对哪一单 |
 | `titleType` | `string` | 是 | PERSONAL / COMPANY |
-| `title` | `string` | 是 | — |
-| `taxNo` | `string,null` | 否 | — |
-| `email` | `string,null` | 否 | — |
-| `amountMinor` | `number` | 是 | — |
+| `title` | `string` | 是 | 抬头 |
+| `taxNo` | `string,null` | 否 | 税号。单位抬头必填 |
+| `email` | `string,null` | 否 | 发到哪个邮箱。电子票唯一的交付方式 |
+| `amountMinor` | `number` | 是 | 价税合计（分） |
 | `status` | `string` | 是 | PENDING / ISSUED / REJECTED |
 | `invoiceNo` | `string,null` | 否 | 已开出的发票号 |
-| `issuedAt` | `number,null` | 否 | — |
-| `rejectReason` | `string,null` | 否 | — |
-| `createdAt` | `number,null` | 否 | — |
+| `issuedAt` | `number,null` | 否 | 开出来的时刻。空 = 还没开 |
+| `rejectReason` | `string,null` | 否 | 驳回原因。**要原样回商家** —— 只说「不通过」他不知道该补什么 |
+| `createdAt` | `number,null` | 否 | 申请时刻 |
 
 
 #### GET `/ops/payables`
@@ -1803,21 +1803,21 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `invoiceNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
+| `invoiceNo` | `string` | 是 | 平台侧的进项票记录号（不是发票上印的号） |
+| `entityNo` | `string` | 是 | 哪家商家的票 |
 | `period` | `string` | 是 | 所属账期 yyyyMM |
-| `invoiceCode` | `string` | 是 | — |
-| `invoiceNumber` | `string` | 是 | — |
-| `invoiceType` | `string` | 是 | — |
-| `titleName` | `string` | 是 | — |
-| `titleTaxNo` | `string` | 是 | — |
-| `amountMinor` | `number` | 是 | — |
-| `taxAmountMinor` | `number` | 是 | — |
+| `invoiceCode` | `string` | 是 | 发票代码，票面左上那一串 |
+| `invoiceNumber` | `string` | 是 | 发票号码，票面右上那一串。**与 invoiceNo 不是一回事** |
+| `invoiceType` | `string` | 是 | 票种：专票 / 普票 / 电子票 |
+| `titleName` | `string` | 是 | 票面抬头 |
+| `titleTaxNo` | `string` | 是 | 票面税号 |
+| `amountMinor` | `number` | 是 | 价税合计（分） |
+| `taxAmountMinor` | `number` | 是 | 其中税额（分） |
 | `taxRate` | `number` | 是 | 万分比 |
-| `invoiceDate` | `number,null` | 否 | — |
-| `imageUrl` | `string,null` | 否 | — |
+| `invoiceDate` | `number,null` | 否 | 开票日期 |
+| `imageUrl` | `string,null` | 否 | 票面影像。核验要看原件 |
 | `status` | `string` | 是 | PENDING / SUBMITTED / VERIFIED / REJECTED |
-| `rejectReason` | `string,null` | 否 | — |
+| `rejectReason` | `string,null` | 否 | 驳回原因。**要原样回商家** —— 只说「不通过」他不知道该补什么 |
 | `titleMatched` | `boolean` | 是 | 抬头与主体名是否一致。**后端算，端上不重算** —— 两处判会走岔 |
 | `settleNos` | `string`\[\] | 是 | 这张票覆盖了哪些结算单 |
 
@@ -1840,21 +1840,21 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `invoiceNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
+| `invoiceNo` | `string` | 是 | 平台侧的进项票记录号（不是发票上印的号） |
+| `entityNo` | `string` | 是 | 哪家商家的票 |
 | `period` | `string` | 是 | 所属账期 yyyyMM |
-| `invoiceCode` | `string` | 是 | — |
-| `invoiceNumber` | `string` | 是 | — |
-| `invoiceType` | `string` | 是 | — |
-| `titleName` | `string` | 是 | — |
-| `titleTaxNo` | `string` | 是 | — |
-| `amountMinor` | `number` | 是 | — |
-| `taxAmountMinor` | `number` | 是 | — |
+| `invoiceCode` | `string` | 是 | 发票代码，票面左上那一串 |
+| `invoiceNumber` | `string` | 是 | 发票号码，票面右上那一串。**与 invoiceNo 不是一回事** |
+| `invoiceType` | `string` | 是 | 票种：专票 / 普票 / 电子票 |
+| `titleName` | `string` | 是 | 票面抬头 |
+| `titleTaxNo` | `string` | 是 | 票面税号 |
+| `amountMinor` | `number` | 是 | 价税合计（分） |
+| `taxAmountMinor` | `number` | 是 | 其中税额（分） |
 | `taxRate` | `number` | 是 | 万分比 |
-| `invoiceDate` | `number,null` | 否 | — |
-| `imageUrl` | `string,null` | 否 | — |
+| `invoiceDate` | `number,null` | 否 | 开票日期 |
+| `imageUrl` | `string,null` | 否 | 票面影像。核验要看原件 |
 | `status` | `string` | 是 | PENDING / SUBMITTED / VERIFIED / REJECTED |
-| `rejectReason` | `string,null` | 否 | — |
+| `rejectReason` | `string,null` | 否 | 驳回原因。**要原样回商家** —— 只说「不通过」他不知道该补什么 |
 | `titleMatched` | `boolean` | 是 | 抬头与主体名是否一致。**后端算，端上不重算** —— 两处判会走岔 |
 | `settleNos` | `string`\[\] | 是 | 这张票覆盖了哪些结算单 |
 
@@ -3261,9 +3261,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `credentialId` | `string` | 是 | — |
-| `appKey` | `string` | 是 | — |
-| `appSecret` | `string` | 是 | — |
+| `credentialId` | `string` | 是 | 凭据号 |
+| `appKey` | `string` | 是 | 开放接口的调用方标识 |
+| `appSecret` | `string` | 是 | 密钥。**只在签发那一次返回**，之后取不回来 |
 
 
 #### POST `/ops/inventory/credentials/{credentialId}/revoke`
@@ -3310,7 +3310,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `entries` | [`#/definitions/InvLedgerRow`](#definitionsinvledgerrow)\[\] | 是 | — |
+| `entries` | [`#/definitions/InvLedgerRow`](#definitionsinvledgerrow)\[\] | 是 | 本页的台账行 |
 | `nextCursor` | `number,null` | 否 | null = 没有下一页 |
 
 
@@ -3328,12 +3328,12 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `scannedSkus` | `number` | 是 | — |
-| `moved` | `number` | 是 | — |
-| `skipped` | `number` | 是 | — |
+| `scannedSkus` | `number` | 是 | 扫了多少个 SKU |
+| `moved` | `number` | 是 | 本轮搬动了多少条 |
+| `skipped` | `number` | 是 | 跳过多少个 |
 | `pending` | `number` | 是 | 扫到了但**还没搬**的。**它必须是 0 才准切真相源** —— 没搬的那些在进销存侧余额是 0，切过去就是「全都卖不了」。 这一列原本不存在：`moveOne` 只算不写时故意不把没搬过的算成差异， `doRun` 又把它们计成既不 moved 也不 skipped，于是它们在报告里一个字都不出现， 而 `clean` 只看 diffs —— 闸门守着一个它没在看的东西。 |
 | `clean` | `boolean` | 是 | 没有差异**且**没有待搬的。两者缺一都不算干净 |
-| `diffs` | [`#/definitions/InvReconDiff`](#definitionsinvrecondiff)\[\] | 是 | — |
+| `diffs` | [`#/definitions/InvReconDiff`](#definitionsinvrecondiff)\[\] | 是 | 对不上的行 |
 
 
 ### job
@@ -3365,25 +3365,25 @@ getJob
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `jobName` | `string` | 是 | — |
+| `jobName` | `string` | 是 | 任务的锁名（与 shedlock 同一个键）。**页面不显示它**，显示 displayName |
 | `displayName` | `string` | 是 | 给人看的中文名。**页面显示这个，不显示 jobName** —— 运营看不懂锁名 |
-| `description` | `string,null` | 是 | — |
-| `ownerModule` | `string,null` | 是 | — |
-| `cron` | `string` | 是 | — |
-| `enabled` | `boolean` | 是 | — |
+| `description` | `string,null` | 是 | 这个任务做什么，运营看的一句话 |
+| `ownerModule` | `string,null` | 是 | 归哪个模块。出问题时据此找人 |
+| `cron` | `string` | 是 | 排期表达式 |
+| `enabled` | `boolean` | 是 | 开着没有。关掉的任务不会被调度器捡起来 |
 | `missing` | `boolean` | 是 | 代码里已经没有这个任务了。**不删行是有意的**：静默消失比留着危险 |
 | `manualTrigger` | `boolean` | 是 | 页面上显不显示「立即执行」。秒级任务给 false —— 它们本来就一直在跑 |
 | `lastRunAt` | `string,null` | 是 | `null` = **从未执行**。这是今天 17 个任务的普遍状态，要显示成一句话而不是空白 |
-| `lastStatus` | [`#/definitions/JobStatus`](#definitionsjobstatus) \| `null` | 是 | — |
-| `durationMs` | `number,null` | 是 | — |
+| `lastStatus` | [`#/definitions/JobStatus`](#definitionsjobstatus) \| `null` | 是 | 上一轮的结局 |
+| `durationMs` | `number,null` | 是 | 耗时（毫秒） |
 | `detail` | `string,null` | 是 | 业务写的一句人话：「关闭 12 单，释放库存 34 件」。运营唯一能看懂的东西 |
-| `error` | `string,null` | 是 | — |
+| `error` | `string,null` | 是 | 错误信息。**与 detail 分开**：detail 是业务说的话，这里是异常 |
 | `consecutiveFailures` | `number` | 是 | **只统计 FAILED**；SKIPPED / TIMEOUT / UNREACHABLE 都不算 —— 否则告警会在一切正常时响 |
-| `runCount` | `number` | 是 | — |
-| `nextRunAt` | `string,null` | 是 | — |
-| `running` | `boolean` | 是 | — |
+| `runCount` | `number` | 是 | 累计执行轮次 |
+| `nextRunAt` | `string,null` | 是 | 下一次预计执行时刻。任务停用或已消失时为空 |
+| `running` | `boolean` | 是 | 此刻正在跑 |
 | `triggerPending` | `boolean` | 是 | 点过「立即执行」但调度器还没捡起来。没有这一格的话，点完页面毫无反应 |
-| `updatedBy` | `string,null` | 是 | — |
+| `updatedBy` | `string,null` | 是 | 上次改配置的人 |
 
 
 #### PUT `/ops/jobs/${encodeURIComponent(name)}/cron`
@@ -3400,25 +3400,25 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `jobName` | `string` | 是 | — |
+| `jobName` | `string` | 是 | 任务的锁名（与 shedlock 同一个键）。**页面不显示它**，显示 displayName |
 | `displayName` | `string` | 是 | 给人看的中文名。**页面显示这个，不显示 jobName** —— 运营看不懂锁名 |
-| `description` | `string,null` | 是 | — |
-| `ownerModule` | `string,null` | 是 | — |
-| `cron` | `string` | 是 | — |
-| `enabled` | `boolean` | 是 | — |
+| `description` | `string,null` | 是 | 这个任务做什么，运营看的一句话 |
+| `ownerModule` | `string,null` | 是 | 归哪个模块。出问题时据此找人 |
+| `cron` | `string` | 是 | 排期表达式 |
+| `enabled` | `boolean` | 是 | 开着没有。关掉的任务不会被调度器捡起来 |
 | `missing` | `boolean` | 是 | 代码里已经没有这个任务了。**不删行是有意的**：静默消失比留着危险 |
 | `manualTrigger` | `boolean` | 是 | 页面上显不显示「立即执行」。秒级任务给 false —— 它们本来就一直在跑 |
 | `lastRunAt` | `string,null` | 是 | `null` = **从未执行**。这是今天 17 个任务的普遍状态，要显示成一句话而不是空白 |
-| `lastStatus` | [`#/definitions/JobStatus`](#definitionsjobstatus) \| `null` | 是 | — |
-| `durationMs` | `number,null` | 是 | — |
+| `lastStatus` | [`#/definitions/JobStatus`](#definitionsjobstatus) \| `null` | 是 | 上一轮的结局 |
+| `durationMs` | `number,null` | 是 | 耗时（毫秒） |
 | `detail` | `string,null` | 是 | 业务写的一句人话：「关闭 12 单，释放库存 34 件」。运营唯一能看懂的东西 |
-| `error` | `string,null` | 是 | — |
+| `error` | `string,null` | 是 | 错误信息。**与 detail 分开**：detail 是业务说的话，这里是异常 |
 | `consecutiveFailures` | `number` | 是 | **只统计 FAILED**；SKIPPED / TIMEOUT / UNREACHABLE 都不算 —— 否则告警会在一切正常时响 |
-| `runCount` | `number` | 是 | — |
-| `nextRunAt` | `string,null` | 是 | — |
-| `running` | `boolean` | 是 | — |
+| `runCount` | `number` | 是 | 累计执行轮次 |
+| `nextRunAt` | `string,null` | 是 | 下一次预计执行时刻。任务停用或已消失时为空 |
+| `running` | `boolean` | 是 | 此刻正在跑 |
 | `triggerPending` | `boolean` | 是 | 点过「立即执行」但调度器还没捡起来。没有这一格的话，点完页面毫无反应 |
-| `updatedBy` | `string,null` | 是 | — |
+| `updatedBy` | `string,null` | 是 | 上次改配置的人 |
 
 
 #### POST `/ops/jobs/${encodeURIComponent(name)}/disable`
@@ -3435,25 +3435,25 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `jobName` | `string` | 是 | — |
+| `jobName` | `string` | 是 | 任务的锁名（与 shedlock 同一个键）。**页面不显示它**，显示 displayName |
 | `displayName` | `string` | 是 | 给人看的中文名。**页面显示这个，不显示 jobName** —— 运营看不懂锁名 |
-| `description` | `string,null` | 是 | — |
-| `ownerModule` | `string,null` | 是 | — |
-| `cron` | `string` | 是 | — |
-| `enabled` | `boolean` | 是 | — |
+| `description` | `string,null` | 是 | 这个任务做什么，运营看的一句话 |
+| `ownerModule` | `string,null` | 是 | 归哪个模块。出问题时据此找人 |
+| `cron` | `string` | 是 | 排期表达式 |
+| `enabled` | `boolean` | 是 | 开着没有。关掉的任务不会被调度器捡起来 |
 | `missing` | `boolean` | 是 | 代码里已经没有这个任务了。**不删行是有意的**：静默消失比留着危险 |
 | `manualTrigger` | `boolean` | 是 | 页面上显不显示「立即执行」。秒级任务给 false —— 它们本来就一直在跑 |
 | `lastRunAt` | `string,null` | 是 | `null` = **从未执行**。这是今天 17 个任务的普遍状态，要显示成一句话而不是空白 |
-| `lastStatus` | [`#/definitions/JobStatus`](#definitionsjobstatus) \| `null` | 是 | — |
-| `durationMs` | `number,null` | 是 | — |
+| `lastStatus` | [`#/definitions/JobStatus`](#definitionsjobstatus) \| `null` | 是 | 上一轮的结局 |
+| `durationMs` | `number,null` | 是 | 耗时（毫秒） |
 | `detail` | `string,null` | 是 | 业务写的一句人话：「关闭 12 单，释放库存 34 件」。运营唯一能看懂的东西 |
-| `error` | `string,null` | 是 | — |
+| `error` | `string,null` | 是 | 错误信息。**与 detail 分开**：detail 是业务说的话，这里是异常 |
 | `consecutiveFailures` | `number` | 是 | **只统计 FAILED**；SKIPPED / TIMEOUT / UNREACHABLE 都不算 —— 否则告警会在一切正常时响 |
-| `runCount` | `number` | 是 | — |
-| `nextRunAt` | `string,null` | 是 | — |
-| `running` | `boolean` | 是 | — |
+| `runCount` | `number` | 是 | 累计执行轮次 |
+| `nextRunAt` | `string,null` | 是 | 下一次预计执行时刻。任务停用或已消失时为空 |
+| `running` | `boolean` | 是 | 此刻正在跑 |
 | `triggerPending` | `boolean` | 是 | 点过「立即执行」但调度器还没捡起来。没有这一格的话，点完页面毫无反应 |
-| `updatedBy` | `string,null` | 是 | — |
+| `updatedBy` | `string,null` | 是 | 上次改配置的人 |
 
 
 #### POST `/ops/jobs/${encodeURIComponent(name)}/enable`
@@ -3470,25 +3470,25 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `jobName` | `string` | 是 | — |
+| `jobName` | `string` | 是 | 任务的锁名（与 shedlock 同一个键）。**页面不显示它**，显示 displayName |
 | `displayName` | `string` | 是 | 给人看的中文名。**页面显示这个，不显示 jobName** —— 运营看不懂锁名 |
-| `description` | `string,null` | 是 | — |
-| `ownerModule` | `string,null` | 是 | — |
-| `cron` | `string` | 是 | — |
-| `enabled` | `boolean` | 是 | — |
+| `description` | `string,null` | 是 | 这个任务做什么，运营看的一句话 |
+| `ownerModule` | `string,null` | 是 | 归哪个模块。出问题时据此找人 |
+| `cron` | `string` | 是 | 排期表达式 |
+| `enabled` | `boolean` | 是 | 开着没有。关掉的任务不会被调度器捡起来 |
 | `missing` | `boolean` | 是 | 代码里已经没有这个任务了。**不删行是有意的**：静默消失比留着危险 |
 | `manualTrigger` | `boolean` | 是 | 页面上显不显示「立即执行」。秒级任务给 false —— 它们本来就一直在跑 |
 | `lastRunAt` | `string,null` | 是 | `null` = **从未执行**。这是今天 17 个任务的普遍状态，要显示成一句话而不是空白 |
-| `lastStatus` | [`#/definitions/JobStatus`](#definitionsjobstatus) \| `null` | 是 | — |
-| `durationMs` | `number,null` | 是 | — |
+| `lastStatus` | [`#/definitions/JobStatus`](#definitionsjobstatus) \| `null` | 是 | 上一轮的结局 |
+| `durationMs` | `number,null` | 是 | 耗时（毫秒） |
 | `detail` | `string,null` | 是 | 业务写的一句人话：「关闭 12 单，释放库存 34 件」。运营唯一能看懂的东西 |
-| `error` | `string,null` | 是 | — |
+| `error` | `string,null` | 是 | 错误信息。**与 detail 分开**：detail 是业务说的话，这里是异常 |
 | `consecutiveFailures` | `number` | 是 | **只统计 FAILED**；SKIPPED / TIMEOUT / UNREACHABLE 都不算 —— 否则告警会在一切正常时响 |
-| `runCount` | `number` | 是 | — |
-| `nextRunAt` | `string,null` | 是 | — |
-| `running` | `boolean` | 是 | — |
+| `runCount` | `number` | 是 | 累计执行轮次 |
+| `nextRunAt` | `string,null` | 是 | 下一次预计执行时刻。任务停用或已消失时为空 |
+| `running` | `boolean` | 是 | 此刻正在跑 |
 | `triggerPending` | `boolean` | 是 | 点过「立即执行」但调度器还没捡起来。没有这一格的话，点完页面毫无反应 |
-| `updatedBy` | `string,null` | 是 | — |
+| `updatedBy` | `string,null` | 是 | 上次改配置的人 |
 
 
 #### POST `/ops/jobs/${encodeURIComponent(name)}/trigger`
@@ -3505,25 +3505,25 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `jobName` | `string` | 是 | — |
+| `jobName` | `string` | 是 | 任务的锁名（与 shedlock 同一个键）。**页面不显示它**，显示 displayName |
 | `displayName` | `string` | 是 | 给人看的中文名。**页面显示这个，不显示 jobName** —— 运营看不懂锁名 |
-| `description` | `string,null` | 是 | — |
-| `ownerModule` | `string,null` | 是 | — |
-| `cron` | `string` | 是 | — |
-| `enabled` | `boolean` | 是 | — |
+| `description` | `string,null` | 是 | 这个任务做什么，运营看的一句话 |
+| `ownerModule` | `string,null` | 是 | 归哪个模块。出问题时据此找人 |
+| `cron` | `string` | 是 | 排期表达式 |
+| `enabled` | `boolean` | 是 | 开着没有。关掉的任务不会被调度器捡起来 |
 | `missing` | `boolean` | 是 | 代码里已经没有这个任务了。**不删行是有意的**：静默消失比留着危险 |
 | `manualTrigger` | `boolean` | 是 | 页面上显不显示「立即执行」。秒级任务给 false —— 它们本来就一直在跑 |
 | `lastRunAt` | `string,null` | 是 | `null` = **从未执行**。这是今天 17 个任务的普遍状态，要显示成一句话而不是空白 |
-| `lastStatus` | [`#/definitions/JobStatus`](#definitionsjobstatus) \| `null` | 是 | — |
-| `durationMs` | `number,null` | 是 | — |
+| `lastStatus` | [`#/definitions/JobStatus`](#definitionsjobstatus) \| `null` | 是 | 上一轮的结局 |
+| `durationMs` | `number,null` | 是 | 耗时（毫秒） |
 | `detail` | `string,null` | 是 | 业务写的一句人话：「关闭 12 单，释放库存 34 件」。运营唯一能看懂的东西 |
-| `error` | `string,null` | 是 | — |
+| `error` | `string,null` | 是 | 错误信息。**与 detail 分开**：detail 是业务说的话，这里是异常 |
 | `consecutiveFailures` | `number` | 是 | **只统计 FAILED**；SKIPPED / TIMEOUT / UNREACHABLE 都不算 —— 否则告警会在一切正常时响 |
-| `runCount` | `number` | 是 | — |
-| `nextRunAt` | `string,null` | 是 | — |
-| `running` | `boolean` | 是 | — |
+| `runCount` | `number` | 是 | 累计执行轮次 |
+| `nextRunAt` | `string,null` | 是 | 下一次预计执行时刻。任务停用或已消失时为空 |
+| `running` | `boolean` | 是 | 此刻正在跑 |
 | `triggerPending` | `boolean` | 是 | 点过「立即执行」但调度器还没捡起来。没有这一格的话，点完页面毫无反应 |
-| `updatedBy` | `string,null` | 是 | — |
+| `updatedBy` | `string,null` | 是 | 上次改配置的人 |
 
 
 #### GET `/ops/jobs/${encodeURIComponent(q.name)}/logs`
@@ -4275,21 +4275,21 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `activityNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `entityName` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `triggerType` | `string` | 是 | — |
-| `benefitType` | `string` | 是 | — |
-| `scheduleType` | `string` | 是 | — |
-| `quota` | `number,null` | 是 | — |
-| `quotaUsed` | `number` | 是 | — |
-| `budgetMinor` | `number,null` | 是 | — |
-| `budgetUsedMinor` | `number` | 是 | — |
-| `audienceCount` | `number` | 是 | — |
-| `status` | `string` | 是 | — |
-| `endedReason` | `string,null` | 是 | — |
-| `flags` | `string`\[\] | 是 | — |
+| `activityNo` | `string` | 是 | 活动号 |
+| `entityNo` | `string` | 是 | 所属商家 |
+| `entityName` | `string` | 是 | 商家名 |
+| `name` | `string` | 是 | 活动名 |
+| `triggerType` | `string` | 是 | 触发条件：满额 / 满件 / 命中商品 / 无条件 |
+| `benefitType` | `string` | 是 | 优惠方式：减钱 / 改单价 / 送商品 / 发券 |
+| `scheduleType` | `string` | 是 | 排期：短期 / 长期 / 周期 |
+| `quota` | `number,null` | 是 | 限量。空 = 不限量 |
+| `quotaUsed` | `number` | 是 | 已用掉的限量 |
+| `budgetMinor` | `number,null` | 是 | 预算上限（分）。空 = 不限 |
+| `budgetUsedMinor` | `number` | 是 | 已花掉的预算（分） |
+| `audienceCount` | `number` | 是 | 定向人数。**0 表示对所有人生效**，不是「谁也不发」 |
+| `status` | `string` | 是 | 状态 |
+| `endedReason` | `string,null` | 是 | 为什么停的：到期 / 限量用尽 / 预算用尽 / 人工停。商家问「怎么停了」要有答案 |
+| `flags` | `string`\[\] | 是 | 风险标记。商家自己看不出来 —— 他只看得到他那一张，跨商家排在一起才看得见 |
 
 
 #### GET `/ops/promotion/coupons`
@@ -6849,20 +6849,20 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `dimNo` | `string` | 是 | — |
+| `dimNo` | `string` | 是 | 维度号 |
 | `code` | `string` | 是 | 语义码 COLOR / WEIGHT。值编号与 optionCode 都以它为前缀，**改码等于换一根聚合轴** |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 维度名（「颜色」「净重」） |
 | `valueType` | `string` | 是 | ENUM 枚举 / QUANT 数值+单位。QUANT 的值必须有归一量 |
-| `unit` | `string,null` | 否 | — |
+| `unit` | `string,null` | 否 | 单位。QUANT 型必填，ENUM 型为空 |
 | `usageType` | `string` | 是 | SALE 进 SKU 笛卡尔积 / PROP 只是描述 |
-| `universal` | `boolean` | 是 | — |
-| `scope` | `string` | 是 | — |
-| `entityNo` | `string,null` | 否 | — |
-| `sort` | `number` | 是 | — |
-| `status` | `string` | 是 | — |
-| `valueCount` | `number` | 是 | — |
+| `universal` | `boolean` | 是 | 通用维度：所有类目都能用 |
+| `scope` | `string` | 是 | `PLATFORM` 平台的 / `MERCHANT` 商家自建的 |
+| `entityNo` | `string,null` | 否 | 哪家商家的票 |
+| `sort` | `number` | 是 | 排序权重 |
+| `status` | `string` | 是 | 状态 |
+| `valueCount` | `number` | 是 | 这个维度下有几个取值 |
 | `inUse` | `number` | 是 | 被几个类目绑着 —— 归档前要知道自己在动多大范围 |
-| `values` | [`#/definitions/SpecValue`](#definitionsspecvalue)\[\] | 是 | — |
+| `values` | [`#/definitions/SpecValue`](#definitionsspecvalue)\[\] | 是 | 取值列表 |
 
 
 #### POST `/ops/spec-dims/{no}/archive`
@@ -6883,20 +6883,20 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `dimNo` | `string` | 是 | — |
+| `dimNo` | `string` | 是 | 维度号 |
 | `code` | `string` | 是 | 语义码 COLOR / WEIGHT。值编号与 optionCode 都以它为前缀，**改码等于换一根聚合轴** |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 维度名（「颜色」「净重」） |
 | `valueType` | `string` | 是 | ENUM 枚举 / QUANT 数值+单位。QUANT 的值必须有归一量 |
-| `unit` | `string,null` | 否 | — |
+| `unit` | `string,null` | 否 | 单位。QUANT 型必填，ENUM 型为空 |
 | `usageType` | `string` | 是 | SALE 进 SKU 笛卡尔积 / PROP 只是描述 |
-| `universal` | `boolean` | 是 | — |
-| `scope` | `string` | 是 | — |
-| `entityNo` | `string,null` | 否 | — |
-| `sort` | `number` | 是 | — |
-| `status` | `string` | 是 | — |
-| `valueCount` | `number` | 是 | — |
+| `universal` | `boolean` | 是 | 通用维度：所有类目都能用 |
+| `scope` | `string` | 是 | `PLATFORM` 平台的 / `MERCHANT` 商家自建的 |
+| `entityNo` | `string,null` | 否 | 哪家商家的票 |
+| `sort` | `number` | 是 | 排序权重 |
+| `status` | `string` | 是 | 状态 |
+| `valueCount` | `number` | 是 | 这个维度下有几个取值 |
 | `inUse` | `number` | 是 | 被几个类目绑着 —— 归档前要知道自己在动多大范围 |
-| `values` | [`#/definitions/SpecValue`](#definitionsspecvalue)\[\] | 是 | — |
+| `values` | [`#/definitions/SpecValue`](#definitionsspecvalue)\[\] | 是 | 取值列表 |
 
 
 #### POST `/ops/spec-dims/{no}/unarchive`
@@ -6917,20 +6917,20 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `dimNo` | `string` | 是 | — |
+| `dimNo` | `string` | 是 | 维度号 |
 | `code` | `string` | 是 | 语义码 COLOR / WEIGHT。值编号与 optionCode 都以它为前缀，**改码等于换一根聚合轴** |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 维度名（「颜色」「净重」） |
 | `valueType` | `string` | 是 | ENUM 枚举 / QUANT 数值+单位。QUANT 的值必须有归一量 |
-| `unit` | `string,null` | 否 | — |
+| `unit` | `string,null` | 否 | 单位。QUANT 型必填，ENUM 型为空 |
 | `usageType` | `string` | 是 | SALE 进 SKU 笛卡尔积 / PROP 只是描述 |
-| `universal` | `boolean` | 是 | — |
-| `scope` | `string` | 是 | — |
-| `entityNo` | `string,null` | 否 | — |
-| `sort` | `number` | 是 | — |
-| `status` | `string` | 是 | — |
-| `valueCount` | `number` | 是 | — |
+| `universal` | `boolean` | 是 | 通用维度：所有类目都能用 |
+| `scope` | `string` | 是 | `PLATFORM` 平台的 / `MERCHANT` 商家自建的 |
+| `entityNo` | `string,null` | 否 | 哪家商家的票 |
+| `sort` | `number` | 是 | 排序权重 |
+| `status` | `string` | 是 | 状态 |
+| `valueCount` | `number` | 是 | 这个维度下有几个取值 |
 | `inUse` | `number` | 是 | 被几个类目绑着 —— 归档前要知道自己在动多大范围 |
-| `values` | [`#/definitions/SpecValue`](#definitionsspecvalue)\[\] | 是 | — |
+| `values` | [`#/definitions/SpecValue`](#definitionsspecvalue)\[\] | 是 | 取值列表 |
 
 
 #### GET `/ops/spec-templates`
@@ -7044,18 +7044,18 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `valueNo` | `string` | 是 | — |
-| `dimNo` | `string` | 是 | — |
-| `code` | `string` | 是 | — |
-| `label` | `string` | 是 | — |
+| `valueNo` | `string` | 是 | 取值编号 |
+| `dimNo` | `string` | 是 | 维度号 |
+| `code` | `string` | 是 | 语义码 |
+| `label` | `string` | 是 | 显示名 |
 | `numericValue` | `number,null` | 否 | 归一量：500g / 半斤 / 0.5kg 都是 500 |
-| `numericUnit` | `string,null` | 否 | — |
+| `numericUnit` | `string,null` | 否 | 归一量的单位。与 numericValue 一起才有意义 |
 | `aliases` | `string`\[\] | 是 | 别名：识别、搜索与自动归一用 |
 | `scope` | `string` | 是 | PLATFORM / MERCHANT。商家自有值挂在平台维度下，仍在同一根轴上 |
-| `entityNo` | `string,null` | 否 | — |
-| `sort` | `number` | 是 | — |
-| `status` | `string` | 是 | — |
-| `merchantCount` | `number` | 是 | — |
+| `entityNo` | `string,null` | 否 | 哪家商家的票 |
+| `sort` | `number` | 是 | 排序权重 |
+| `status` | `string` | 是 | 状态 |
+| `merchantCount` | `number` | 是 | 多少个商家在用这个值 —— 停用前要知道影响面 |
 
 
 #### POST `/ops/spec-values/{no}/archive`
@@ -7076,18 +7076,18 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `valueNo` | `string` | 是 | — |
-| `dimNo` | `string` | 是 | — |
-| `code` | `string` | 是 | — |
-| `label` | `string` | 是 | — |
+| `valueNo` | `string` | 是 | 取值编号 |
+| `dimNo` | `string` | 是 | 维度号 |
+| `code` | `string` | 是 | 语义码 |
+| `label` | `string` | 是 | 显示名 |
 | `numericValue` | `number,null` | 否 | 归一量：500g / 半斤 / 0.5kg 都是 500 |
-| `numericUnit` | `string,null` | 否 | — |
+| `numericUnit` | `string,null` | 否 | 归一量的单位。与 numericValue 一起才有意义 |
 | `aliases` | `string`\[\] | 是 | 别名：识别、搜索与自动归一用 |
 | `scope` | `string` | 是 | PLATFORM / MERCHANT。商家自有值挂在平台维度下，仍在同一根轴上 |
-| `entityNo` | `string,null` | 否 | — |
-| `sort` | `number` | 是 | — |
-| `status` | `string` | 是 | — |
-| `merchantCount` | `number` | 是 | — |
+| `entityNo` | `string,null` | 否 | 哪家商家的票 |
+| `sort` | `number` | 是 | 排序权重 |
+| `status` | `string` | 是 | 状态 |
+| `merchantCount` | `number` | 是 | 多少个商家在用这个值 —— 停用前要知道影响面 |
 
 
 #### POST `/ops/spec-values/{no}/promote`
@@ -7108,18 +7108,18 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `valueNo` | `string` | 是 | — |
-| `dimNo` | `string` | 是 | — |
-| `code` | `string` | 是 | — |
-| `label` | `string` | 是 | — |
+| `valueNo` | `string` | 是 | 取值编号 |
+| `dimNo` | `string` | 是 | 维度号 |
+| `code` | `string` | 是 | 语义码 |
+| `label` | `string` | 是 | 显示名 |
 | `numericValue` | `number,null` | 否 | 归一量：500g / 半斤 / 0.5kg 都是 500 |
-| `numericUnit` | `string,null` | 否 | — |
+| `numericUnit` | `string,null` | 否 | 归一量的单位。与 numericValue 一起才有意义 |
 | `aliases` | `string`\[\] | 是 | 别名：识别、搜索与自动归一用 |
 | `scope` | `string` | 是 | PLATFORM / MERCHANT。商家自有值挂在平台维度下，仍在同一根轴上 |
-| `entityNo` | `string,null` | 否 | — |
-| `sort` | `number` | 是 | — |
-| `status` | `string` | 是 | — |
-| `merchantCount` | `number` | 是 | — |
+| `entityNo` | `string,null` | 否 | 哪家商家的票 |
+| `sort` | `number` | 是 | 排序权重 |
+| `status` | `string` | 是 | 状态 |
+| `merchantCount` | `number` | 是 | 多少个商家在用这个值 —— 停用前要知道影响面 |
 
 
 #### POST `/ops/spec-values/{no}/unarchive`
@@ -7140,18 +7140,18 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `valueNo` | `string` | 是 | — |
-| `dimNo` | `string` | 是 | — |
-| `code` | `string` | 是 | — |
-| `label` | `string` | 是 | — |
+| `valueNo` | `string` | 是 | 取值编号 |
+| `dimNo` | `string` | 是 | 维度号 |
+| `code` | `string` | 是 | 语义码 |
+| `label` | `string` | 是 | 显示名 |
 | `numericValue` | `number,null` | 否 | 归一量：500g / 半斤 / 0.5kg 都是 500 |
-| `numericUnit` | `string,null` | 否 | — |
+| `numericUnit` | `string,null` | 否 | 归一量的单位。与 numericValue 一起才有意义 |
 | `aliases` | `string`\[\] | 是 | 别名：识别、搜索与自动归一用 |
 | `scope` | `string` | 是 | PLATFORM / MERCHANT。商家自有值挂在平台维度下，仍在同一根轴上 |
-| `entityNo` | `string,null` | 否 | — |
-| `sort` | `number` | 是 | — |
-| `status` | `string` | 是 | — |
-| `merchantCount` | `number` | 是 | — |
+| `entityNo` | `string,null` | 否 | 哪家商家的票 |
+| `sort` | `number` | 是 | 排序权重 |
+| `status` | `string` | 是 | 状态 |
+| `merchantCount` | `number` | 是 | 多少个商家在用这个值 —— 停用前要知道影响面 |
 
 
 #### GET `/ops/spu-std`
@@ -8363,8 +8363,8 @@ getMediaBatch
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `batch` | [`#/definitions/MediaPurgeBatch`](#definitionsmediapurgebatch) | 是 | — |
-| `items` | [`#/definitions/MediaReclaimable`](#definitionsmediareclaimable)\[\] | 是 | — |
+| `batch` | [`#/definitions/MediaPurgeBatch`](#definitionsmediapurgebatch) | 是 | 批次本身 |
+| `items` | [`#/definitions/MediaReclaimable`](#definitionsmediareclaimable)\[\] | 是 | 这一批里的每一张 |
 
 
 #### GET `/ops/media/overview`
@@ -8456,8 +8456,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `total` | `number` | 是 | — |
-| `referenced` | `number` | 是 | — |
+| `total` | `number` | 是 | 扫到多少张 |
+| `referenced` | `number` | 是 | 其中仍被引用的 |
 | `marked` | `number` | 是 | — |
 | `rescued` | `number` | 是 | — |
 | `abnormal` | `boolean` | 是 | — |
@@ -8718,18 +8718,18 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `requestNo` | `string` | 是 | — |
-| `orderNo` | `string` | 是 | — |
+| `requestNo` | `string` | 是 | 开票申请号 |
+| `orderNo` | `string` | 是 | 针对哪一单 |
 | `titleType` | `string` | 是 | PERSONAL / COMPANY |
-| `title` | `string` | 是 | — |
-| `taxNo` | `string,null` | 否 | — |
-| `email` | `string,null` | 否 | — |
-| `amountMinor` | `number` | 是 | — |
+| `title` | `string` | 是 | 抬头 |
+| `taxNo` | `string,null` | 否 | 税号。单位抬头必填 |
+| `email` | `string,null` | 否 | 发到哪个邮箱。电子票唯一的交付方式 |
+| `amountMinor` | `number` | 是 | 价税合计（分） |
 | `status` | `string` | 是 | PENDING / ISSUED / REJECTED |
 | `invoiceNo` | `string,null` | 否 | 已开出的发票号 |
-| `issuedAt` | `number,null` | 否 | — |
-| `rejectReason` | `string,null` | 否 | — |
-| `createdAt` | `number,null` | 否 | — |
+| `issuedAt` | `number,null` | 否 | 开出来的时刻。空 = 还没开 |
+| `rejectReason` | `string,null` | 否 | 驳回原因。**要原样回商家** —— 只说「不通过」他不知道该补什么 |
+| `createdAt` | `number,null` | 否 | 申请时刻 |
 
 ### Captcha
 
@@ -9218,15 +9218,15 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `itemId` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `specText` | `string` | 否 | — |
-| `baseUom` | `string` | 否 | — |
-| `onHand` | `number` | 是 | — |
-| `reserved` | `number` | 是 | — |
-| `available` | `number` | 是 | — |
-| `safetyStock` | `number,null` | 否 | — |
-| `lastMovedAt` | `string,null` | 否 | — |
+| `itemId` | `string` | 是 | 物料号（进销存自己的编号） |
+| `name` | `string` | 是 | 维度名（「颜色」「净重」） |
+| `specText` | `string` | 否 | 规格描述。人读的，不参与匹配 |
+| `baseUom` | `string` | 否 | 基本计量单位。**所有数量以它为准** |
+| `onHand` | `number` | 是 | 实存 |
+| `reserved` | `number` | 是 | 预留：下了单还没付钱的量 |
+| `available` | `number` | 是 | 可用 = 实存 − 预留 |
+| `safetyStock` | `number,null` | 否 | 安全库存。低于它算缺货，0 = 不设 |
+| `lastMovedAt` | `string,null` | 否 | 最后一次动过的时间。滞销判据 |
 | `flags` | `string`\[\] | 是 | SHORTAGE 缺货 · STALE 滞销。**空数组 = 这件没事** |
 
 ### InvCredential
@@ -9235,14 +9235,14 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `credentialId` | `string` | 是 | — |
-| `appKey` | `string` | 是 | — |
+| `credentialId` | `string` | 是 | 凭据号 |
+| `appKey` | `string` | 是 | 开放接口的调用方标识 |
 | `name` | `string` | 是 | 给人看的：这把钥匙给了谁 |
 | `scopes` | `string` | 是 | 逗号分隔：read / stock:sync |
 | `status` | `string` | 是 | ACTIVE / REVOKED。**吊销不删行** —— 「什么时候停的」要查得到 |
 | `expiresAt` | `string,null` | 否 | 空 = 不过期 |
 | `lastUsedAt` | `string,null` | 否 | 发现「这把钥匙半年没人用了」的唯一依据 |
-| `createdAt` | `string,null` | 否 | — |
+| `createdAt` | `string,null` | 否 | 申请时刻 |
 
 ### InvCredentialIssued
 
@@ -9250,9 +9250,9 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `credentialId` | `string` | 是 | — |
-| `appKey` | `string` | 是 | — |
-| `appSecret` | `string` | 是 | — |
+| `credentialId` | `string` | 是 | 凭据号 |
+| `appKey` | `string` | 是 | 开放接口的调用方标识 |
+| `appSecret` | `string` | 是 | 密钥。**只在签发那一次返回**，之后取不回来 |
 
 ### InvHealthRow
 
@@ -9261,15 +9261,15 @@ KPI 卡（金额为最小货币单位整数）。
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `kind` | [`#/definitions/InvHealthKind`](#definitionsinvhealthkind) | 是 | NEGATIVE 负库存 · ZERO_ON_SALE 零库存仍在架 · STALE 长期未动销 |
-| `entityNo` | `string` | 是 | — |
-| `merchantName` | `string` | 否 | — |
-| `storeNo` | `string` | 否 | — |
-| `itemId` | `string` | 是 | — |
-| `itemName` | `string` | 是 | — |
-| `specText` | `string` | 否 | — |
-| `onHand` | `number` | 是 | — |
-| `reserved` | `number` | 是 | — |
-| `available` | `number` | 是 | — |
+| `entityNo` | `string` | 是 | 哪家商家的票 |
+| `merchantName` | `string` | 否 | 商家名 |
+| `storeNo` | `string` | 否 | 门店号 |
+| `itemId` | `string` | 是 | 物料号（进销存自己的编号） |
+| `itemName` | `string` | 是 | 货品名 |
+| `specText` | `string` | 否 | 规格描述。人读的，不参与匹配 |
+| `onHand` | `number` | 是 | 实存 |
+| `reserved` | `number` | 是 | 预留：下了单还没付钱的量 |
+| `available` | `number` | 是 | 可用 = 实存 − 预留 |
 | `idleDays` | `number` | 否 | STALE 才有：多少天没动过 |
 
 ### InvLedgerPage
@@ -9278,19 +9278,19 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `entries` | [`#/definitions/InvLedgerRow`](#definitionsinvledgerrow)\[\] | 是 | — |
+| `entries` | [`#/definitions/InvLedgerRow`](#definitionsinvledgerrow)\[\] | 是 | 本页的台账行 |
 | `nextCursor` | `number,null` | 否 | null = 没有下一页 |
 
 ### InvReconReport
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `scannedSkus` | `number` | 是 | — |
-| `moved` | `number` | 是 | — |
-| `skipped` | `number` | 是 | — |
+| `scannedSkus` | `number` | 是 | 扫了多少个 SKU |
+| `moved` | `number` | 是 | 本轮搬动了多少条 |
+| `skipped` | `number` | 是 | 跳过多少个 |
 | `pending` | `number` | 是 | 扫到了但**还没搬**的。**它必须是 0 才准切真相源** —— 没搬的那些在进销存侧余额是 0，切过去就是「全都卖不了」。 这一列原本不存在：`moveOne` 只算不写时故意不把没搬过的算成差异， `doRun` 又把它们计成既不 moved 也不 skipped，于是它们在报告里一个字都不出现， 而 `clean` 只看 diffs —— 闸门守着一个它没在看的东西。 |
 | `clean` | `boolean` | 是 | 没有差异**且**没有待搬的。两者缺一都不算干净 |
-| `diffs` | [`#/definitions/InvReconDiff`](#definitionsinvrecondiff)\[\] | 是 | — |
+| `diffs` | [`#/definitions/InvReconDiff`](#definitionsinvrecondiff)\[\] | 是 | 对不上的行 |
 
 ### InvoiceRequest
 
@@ -9329,18 +9329,18 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `runId` | `string` | 是 | — |
-| `jobName` | `string` | 是 | — |
+| `runId` | `string` | 是 | 这一轮的编号 |
+| `jobName` | `string` | 是 | 任务的锁名（与 shedlock 同一个键）。**页面不显示它**，显示 displayName |
 | `triggerType` | [`#/definitions/JobTriggerType`](#definitionsjobtriggertype) | 是 | — |
-| `bizDate` | `string,null` | 是 | — |
-| `startedAt` | `string` | 是 | — |
-| `finishedAt` | `string,null` | 是 | — |
-| `durationMs` | `number,null` | 是 | — |
-| `status` | [`#/definitions/JobStatus`](#definitionsjobstatus) | 是 | — |
-| `detail` | `string,null` | 是 | — |
-| `error` | `string,null` | 是 | — |
-| `workerInstance` | `string,null` | 是 | — |
-| `httpStatus` | `number,null` | 是 | — |
+| `bizDate` | `string,null` | 是 | 业务日期。**补数跑的是历史某一天，与执行时刻不是一回事** |
+| `startedAt` | `string` | 是 | 开始时刻 |
+| `finishedAt` | `string,null` | 是 | 结束时刻。空 = 还没回（可能仍在跑，也可能超时了） |
+| `durationMs` | `number,null` | 是 | 耗时（毫秒） |
+| `status` | [`#/definitions/JobStatus`](#definitionsjobstatus) | 是 | 这一轮的结局 |
+| `detail` | `string,null` | 是 | 业务写的一句人话：「关闭 12 单，释放库存 34 件」 |
+| `error` | `string,null` | 是 | 错误信息。**与 detail 分开**：detail 是业务说的话，这里是异常 |
+| `workerInstance` | `string,null` | 是 | 哪个实例跑的。**多实例抢锁时排障靠它** —— 只有一台在跑不等于只有一台部署 |
+| `httpStatus` | `number,null` | 是 | 调用业务系统时的 HTTP 状态。UNREACHABLE 时看它区分「没连上」与「连上了但报错」 |
 
 ### JobRow
 
@@ -9348,25 +9348,25 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `jobName` | `string` | 是 | — |
+| `jobName` | `string` | 是 | 任务的锁名（与 shedlock 同一个键）。**页面不显示它**，显示 displayName |
 | `displayName` | `string` | 是 | 给人看的中文名。**页面显示这个，不显示 jobName** —— 运营看不懂锁名 |
-| `description` | `string,null` | 是 | — |
-| `ownerModule` | `string,null` | 是 | — |
-| `cron` | `string` | 是 | — |
-| `enabled` | `boolean` | 是 | — |
+| `description` | `string,null` | 是 | 这个任务做什么，运营看的一句话 |
+| `ownerModule` | `string,null` | 是 | 归哪个模块。出问题时据此找人 |
+| `cron` | `string` | 是 | 排期表达式 |
+| `enabled` | `boolean` | 是 | 开着没有。关掉的任务不会被调度器捡起来 |
 | `missing` | `boolean` | 是 | 代码里已经没有这个任务了。**不删行是有意的**：静默消失比留着危险 |
 | `manualTrigger` | `boolean` | 是 | 页面上显不显示「立即执行」。秒级任务给 false —— 它们本来就一直在跑 |
 | `lastRunAt` | `string,null` | 是 | `null` = **从未执行**。这是今天 17 个任务的普遍状态，要显示成一句话而不是空白 |
-| `lastStatus` | [`#/definitions/JobStatus`](#definitionsjobstatus) \| `null` | 是 | — |
-| `durationMs` | `number,null` | 是 | — |
+| `lastStatus` | [`#/definitions/JobStatus`](#definitionsjobstatus) \| `null` | 是 | 上一轮的结局 |
+| `durationMs` | `number,null` | 是 | 耗时（毫秒） |
 | `detail` | `string,null` | 是 | 业务写的一句人话：「关闭 12 单，释放库存 34 件」。运营唯一能看懂的东西 |
-| `error` | `string,null` | 是 | — |
+| `error` | `string,null` | 是 | 错误信息。**与 detail 分开**：detail 是业务说的话，这里是异常 |
 | `consecutiveFailures` | `number` | 是 | **只统计 FAILED**；SKIPPED / TIMEOUT / UNREACHABLE 都不算 —— 否则告警会在一切正常时响 |
-| `runCount` | `number` | 是 | — |
-| `nextRunAt` | `string,null` | 是 | — |
-| `running` | `boolean` | 是 | — |
+| `runCount` | `number` | 是 | 累计执行轮次 |
+| `nextRunAt` | `string,null` | 是 | 下一次预计执行时刻。任务停用或已消失时为空 |
+| `running` | `boolean` | 是 | 此刻正在跑 |
 | `triggerPending` | `boolean` | 是 | 点过「立即执行」但调度器还没捡起来。没有这一格的话，点完页面毫无反应 |
-| `updatedBy` | `string,null` | 是 | — |
+| `updatedBy` | `string,null` | 是 | 上次改配置的人 |
 
 ### LoginResp
 
@@ -9419,8 +9419,8 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `batch` | [`#/definitions/MediaPurgeBatch`](#definitionsmediapurgebatch) | 是 | — |
-| `items` | [`#/definitions/MediaReclaimable`](#definitionsmediareclaimable)\[\] | 是 | — |
+| `batch` | [`#/definitions/MediaPurgeBatch`](#definitionsmediapurgebatch) | 是 | 批次本身 |
+| `items` | [`#/definitions/MediaReclaimable`](#definitionsmediareclaimable)\[\] | 是 | 这一批里的每一张 |
 
 ### MediaOverview
 
@@ -9440,17 +9440,17 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `batchNo` | `string` | 是 | — |
-| `operator` | `string` | 是 | — |
+| `batchNo` | `string` | 是 | 批次号 |
+| `operator` | `string` | 是 | 发起人账号 |
 | `operatorName` | `string,null` | 否 | 发起时的显示名快照 —— 人离职改名之后这条记录还得说得清是谁 |
-| `status` | [`#/definitions/MediaPurgeStatus`](#definitionsmediapurgestatus) | 是 | — |
-| `totalCount` | `number` | 是 | — |
-| `totalBytes` | `number` | 是 | — |
-| `purgedCount` | `number` | 是 | — |
-| `failedCount` | `number` | 是 | — |
-| `startedAt` | `string,null` | 否 | — |
-| `finishedAt` | `string,null` | 否 | — |
-| `createdAt` | `string,null` | 否 | — |
+| `status` | [`#/definitions/MediaPurgeStatus`](#definitionsmediapurgestatus) | 是 | 状态 |
+| `totalCount` | `number` | 是 | 这一批有多少张 |
+| `totalBytes` | `number` | 是 | 这一批合计多少字节 |
+| `purgedCount` | `number` | 是 | 真删掉了多少张 |
+| `failedCount` | `number` | 是 | 删失败多少张。**多半是已经不在了** —— 所以整批的结局是 PARTIAL 而不是 FAILED |
+| `startedAt` | `string,null` | 否 | 开始时刻 |
+| `finishedAt` | `string,null` | 否 | 结束时刻。空 = 还在跑 |
+| `createdAt` | `string,null` | 否 | 上传时刻 |
 
 ### MediaPurgePreview
 
@@ -9466,25 +9466,25 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `assetKey` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `storeNo` | `string` | 是 | — |
+| `assetKey` | `string` | 是 | 对象存储里的键。**删的就是它** —— 删错一张图，引用它的页面从此是破图 |
+| `entityNo` | `string` | 是 | 上传方商家 |
+| `storeNo` | `string` | 是 | 上传方门店 |
 | `bizType` | [`#/definitions/MediaBizType`](#definitionsmediabiztype) | 是 | — |
-| `bytes` | `number` | 是 | — |
-| `width` | `number,null` | 否 | — |
-| `height` | `number,null` | 否 | — |
-| `uploadedBy` | `string,null` | 否 | — |
-| `createdAt` | `string,null` | 否 | — |
-| `markedAt` | `string,null` | 否 | — |
+| `bytes` | `number` | 是 | 占用字节数。回收的价值全在这个数上 |
+| `width` | `number,null` | 否 | 像素宽 |
+| `height` | `number,null` | 否 | 像素高 |
+| `uploadedBy` | `string,null` | 否 | 上传人 |
+| `createdAt` | `string,null` | 否 | 上传时刻 |
+| `markedAt` | `string,null` | 否 | 被标记为可回收的时刻。**与 createdAt 分开**：刚失去引用就删，容易删掉正在编辑的东西 |
 | `reason` | `string` | 是 | 「从未被引用」或「曾被『商品 G0012 · 主图』引用，… 后失去引用」 |
-| `status` | `string` | 是 | — |
+| `status` | `string` | 是 | 状态 |
 
 ### MediaScanResult
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `total` | `number` | 是 | — |
-| `referenced` | `number` | 是 | — |
+| `total` | `number` | 是 | 扫到多少张 |
+| `referenced` | `number` | 是 | 其中仍被引用的 |
 | `marked` | `number` | 是 | — |
 | `rescued` | `number` | 是 | — |
 | `abnormal` | `boolean` | 是 | — |
@@ -9829,21 +9829,21 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `activityNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `entityName` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `triggerType` | `string` | 是 | — |
-| `benefitType` | `string` | 是 | — |
-| `scheduleType` | `string` | 是 | — |
-| `quota` | `number,null` | 是 | — |
-| `quotaUsed` | `number` | 是 | — |
-| `budgetMinor` | `number,null` | 是 | — |
-| `budgetUsedMinor` | `number` | 是 | — |
-| `audienceCount` | `number` | 是 | — |
-| `status` | `string` | 是 | — |
-| `endedReason` | `string,null` | 是 | — |
-| `flags` | `string`\[\] | 是 | — |
+| `activityNo` | `string` | 是 | 活动号 |
+| `entityNo` | `string` | 是 | 所属商家 |
+| `entityName` | `string` | 是 | 商家名 |
+| `name` | `string` | 是 | 活动名 |
+| `triggerType` | `string` | 是 | 触发条件：满额 / 满件 / 命中商品 / 无条件 |
+| `benefitType` | `string` | 是 | 优惠方式：减钱 / 改单价 / 送商品 / 发券 |
+| `scheduleType` | `string` | 是 | 排期：短期 / 长期 / 周期 |
+| `quota` | `number,null` | 是 | 限量。空 = 不限量 |
+| `quotaUsed` | `number` | 是 | 已用掉的限量 |
+| `budgetMinor` | `number,null` | 是 | 预算上限（分）。空 = 不限 |
+| `budgetUsedMinor` | `number` | 是 | 已花掉的预算（分） |
+| `audienceCount` | `number` | 是 | 定向人数。**0 表示对所有人生效**，不是「谁也不发」 |
+| `status` | `string` | 是 | 状态 |
+| `endedReason` | `string,null` | 是 | 为什么停的：到期 / 限量用尽 / 预算用尽 / 人工停。商家问「怎么停了」要有答案 |
+| `flags` | `string`\[\] | 是 | 风险标记。商家自己看不出来 —— 他只看得到他那一张，跨商家排在一起才看得见 |
 
 ### OpsPromoCoupon
 
@@ -9851,19 +9851,19 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `couponNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `entityName` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
-| `benefitMode` | `string` | 是 | — |
-| `benefitValue` | `number` | 是 | — |
-| `benefitCapMinor` | `number,null` | 是 | — |
-| `totalCount` | `number,null` | 是 | — |
-| `receivedCount` | `number` | 是 | — |
-| `budgetMinor` | `number,null` | 是 | — |
-| `maxExposureMinor` | `number,null` | 是 | — |
-| `status` | `string` | 是 | — |
-| `flags` | `string`\[\] | 是 | — |
+| `couponNo` | `string` | 是 | 券模板号 |
+| `entityNo` | `string` | 是 | 所属商家 |
+| `entityName` | `string` | 是 | 商家名 |
+| `title` | `string` | 是 | 券名 |
+| `benefitMode` | `string` | 是 | `CASH` 减固定金额 / `PERCENT` 打折 / `GIFT` 换赠品 / `TIMES` 次卡 |
+| `benefitValue` | `number` | 是 | 优惠力度。含义**跟着 benefitMode 变**：CASH 是分、PERCENT 是万分比、TIMES 是次数 |
+| `benefitCapMinor` | `number,null` | 是 | 折扣券封顶（分）。空 = 不封顶 —— 与 UNLIMITED 一起出现时敞口无上限 |
+| `totalCount` | `number,null` | 是 | 总发行量。空 = 不限量 |
+| `receivedCount` | `number` | 是 | 已领取数 |
+| `budgetMinor` | `number,null` | 是 | 预算上限（分）。空 = 不限 |
+| `maxExposureMinor` | `number,null` | 是 | 最大敞口 = 限量 × 单张优惠。**这一页真正要看的数** —— 不限量时它算不出来 |
+| `status` | `string` | 是 | 状态 |
+| `flags` | `string`\[\] | 是 | 风险标记。商家自己看不出来 —— 他只看得到他那一张，跨商家排在一起才看得见 |
 
 ### Order
 
@@ -10067,21 +10067,21 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `invoiceNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
+| `invoiceNo` | `string` | 是 | 平台侧的进项票记录号（不是发票上印的号） |
+| `entityNo` | `string` | 是 | 哪家商家的票 |
 | `period` | `string` | 是 | 所属账期 yyyyMM |
-| `invoiceCode` | `string` | 是 | — |
-| `invoiceNumber` | `string` | 是 | — |
-| `invoiceType` | `string` | 是 | — |
-| `titleName` | `string` | 是 | — |
-| `titleTaxNo` | `string` | 是 | — |
-| `amountMinor` | `number` | 是 | — |
-| `taxAmountMinor` | `number` | 是 | — |
+| `invoiceCode` | `string` | 是 | 发票代码，票面左上那一串 |
+| `invoiceNumber` | `string` | 是 | 发票号码，票面右上那一串。**与 invoiceNo 不是一回事** |
+| `invoiceType` | `string` | 是 | 票种：专票 / 普票 / 电子票 |
+| `titleName` | `string` | 是 | 票面抬头 |
+| `titleTaxNo` | `string` | 是 | 票面税号 |
+| `amountMinor` | `number` | 是 | 价税合计（分） |
+| `taxAmountMinor` | `number` | 是 | 其中税额（分） |
 | `taxRate` | `number` | 是 | 万分比 |
-| `invoiceDate` | `number,null` | 否 | — |
-| `imageUrl` | `string,null` | 否 | — |
+| `invoiceDate` | `number,null` | 否 | 开票日期 |
+| `imageUrl` | `string,null` | 否 | 票面影像。核验要看原件 |
 | `status` | `string` | 是 | PENDING / SUBMITTED / VERIFIED / REJECTED |
-| `rejectReason` | `string,null` | 否 | — |
+| `rejectReason` | `string,null` | 否 | 驳回原因。**要原样回商家** —— 只说「不通过」他不知道该补什么 |
 | `titleMatched` | `boolean` | 是 | 抬头与主体名是否一致。**后端算，端上不重算** —— 两处判会走岔 |
 | `settleNos` | `string`\[\] | 是 | 这张票覆盖了哪些结算单 |
 
@@ -10483,20 +10483,20 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `dimNo` | `string` | 是 | — |
+| `dimNo` | `string` | 是 | 维度号 |
 | `code` | `string` | 是 | 语义码 COLOR / WEIGHT。值编号与 optionCode 都以它为前缀，**改码等于换一根聚合轴** |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 维度名（「颜色」「净重」） |
 | `valueType` | `string` | 是 | ENUM 枚举 / QUANT 数值+单位。QUANT 的值必须有归一量 |
-| `unit` | `string,null` | 否 | — |
+| `unit` | `string,null` | 否 | 单位。QUANT 型必填，ENUM 型为空 |
 | `usageType` | `string` | 是 | SALE 进 SKU 笛卡尔积 / PROP 只是描述 |
-| `universal` | `boolean` | 是 | — |
-| `scope` | `string` | 是 | — |
-| `entityNo` | `string,null` | 否 | — |
-| `sort` | `number` | 是 | — |
-| `status` | `string` | 是 | — |
-| `valueCount` | `number` | 是 | — |
+| `universal` | `boolean` | 是 | 通用维度：所有类目都能用 |
+| `scope` | `string` | 是 | `PLATFORM` 平台的 / `MERCHANT` 商家自建的 |
+| `entityNo` | `string,null` | 否 | 哪家商家的票 |
+| `sort` | `number` | 是 | 排序权重 |
+| `status` | `string` | 是 | 状态 |
+| `valueCount` | `number` | 是 | 这个维度下有几个取值 |
 | `inUse` | `number` | 是 | 被几个类目绑着 —— 归档前要知道自己在动多大范围 |
-| `values` | [`#/definitions/SpecValue`](#definitionsspecvalue)\[\] | 是 | — |
+| `values` | [`#/definitions/SpecValue`](#definitionsspecvalue)\[\] | 是 | 取值列表 |
 
 ### SpecTemplate
 
@@ -10518,18 +10518,18 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `valueNo` | `string` | 是 | — |
-| `dimNo` | `string` | 是 | — |
-| `code` | `string` | 是 | — |
-| `label` | `string` | 是 | — |
+| `valueNo` | `string` | 是 | 取值编号 |
+| `dimNo` | `string` | 是 | 维度号 |
+| `code` | `string` | 是 | 语义码 |
+| `label` | `string` | 是 | 显示名 |
 | `numericValue` | `number,null` | 否 | 归一量：500g / 半斤 / 0.5kg 都是 500 |
-| `numericUnit` | `string,null` | 否 | — |
+| `numericUnit` | `string,null` | 否 | 归一量的单位。与 numericValue 一起才有意义 |
 | `aliases` | `string`\[\] | 是 | 别名：识别、搜索与自动归一用 |
 | `scope` | `string` | 是 | PLATFORM / MERCHANT。商家自有值挂在平台维度下，仍在同一根轴上 |
-| `entityNo` | `string,null` | 否 | — |
-| `sort` | `number` | 是 | — |
-| `status` | `string` | 是 | — |
-| `merchantCount` | `number` | 是 | — |
+| `entityNo` | `string,null` | 否 | 哪家商家的票 |
+| `sort` | `number` | 是 | 排序权重 |
+| `status` | `string` | 是 | 状态 |
+| `merchantCount` | `number` | 是 | 多少个商家在用这个值 —— 停用前要知道影响面 |
 
 ### SplitLog
 
