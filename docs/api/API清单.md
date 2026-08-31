@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 654 个接口**：后端已实现 535（82%）· 前端在调 592
+**合计 654 个接口**：后端已实现 571（87%）· 前端在调 592
 
 ---
 
@@ -201,7 +201,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **211** 个接口 ｜ 后端已实现 **175**（83%）｜ 前端在调 **211**
+共 **211** 个接口 ｜ 后端已实现 **206**（98%）｜ 前端在调 **211**
 
 ### activities（4）
 
@@ -387,37 +387,37 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| POST | `/biz/inventory/adjust` | 直接改数（走盘点，落单落流水） | — | — | 🔒 | ⬜ | ✅ |
-| GET | `/biz/inventory/balances` | 库存列表（默认只给要处理的） | — | `数组` | 🔒 | ⬜ | ✅ |
-| POST | `/biz/inventory/counts` | 开盘点单（锁账面数） | — | `string` | 🔒 | ⬜ | ✅ |
-| GET | `/biz/inventory/counts/{no}` | 读回盘点单（含账面快照） | — | `StockCount` | 🔒 | ⬜ | ✅ |
-| PUT | `/biz/inventory/counts/{no}/lines` | 填实盘数 | — | — | 🔒 | ⬜ | ✅ |
-| POST | `/biz/inventory/counts/{no}/post` | 盘点过账 | — | — | 🔒 | ⬜ | ✅ |
-| GET | `/biz/inventory/documents` | 出入库单据 | — | `数组` | 🔒 | ⬜ | ✅ |
-| POST | `/biz/inventory/inbounds` | 记一笔进货 | — | `string` | 🔒 | ⬜ | ✅ |
-| PUT | `/biz/inventory/inbounds/{no}` | 改进货草稿 | — | — | 🔒 | ⬜ | ✅ |
-| POST | `/biz/inventory/inbounds/{no}/post` | 进货过账 | — | — | 🔒 | ⬜ | ✅ |
-| POST | `/biz/inventory/inbounds/{no}/void` | 作废入库单 | — | — | 🔒 | ⬜ | ✅ |
-| GET | `/biz/inventory/items/{itemId}` | 单件库存明细 | — | `StockItemDetail` | 🔒 | ⬜ | ✅ |
-| GET | `/biz/inventory/ledger` | 库存变动明细 | — | `StockLedgerPage` | 🔒 | ⬜ | ✅ |
-| GET | `/biz/inventory/locations` | 库位与仓 | — | `数组` | 🔒 | ⬜ | ✅ |
-| POST | `/biz/inventory/locations` | 加一个仓 | — | `string` | 🔒 | ⬜ | ✅ |
-| PUT | `/biz/inventory/locations/{id}/source` | 设发货源 | — | — | 🔒 | ⬜ | ✅ |
-| POST | `/biz/inventory/outbounds` | 报损/领用出库 | — | `string` | 🔒 | ⬜ | ✅ |
-| POST | `/biz/inventory/outbounds/{no}/post` | 出库过账 | — | — | 🔒 | ⬜ | ✅ |
-| POST | `/biz/inventory/outbounds/{no}/void` | 作废出库单 | — | — | 🔒 | ⬜ | ✅ |
-| GET | `/biz/inventory/pickable` | 可挑的货（含 0 库存，从物料出发） | — | `数组` | 🔒 | ⬜ | ✅ |
-| GET | `/biz/inventory/report/monthly` | 进销存月报 | — | `StockMonthly` | 🔒 | ⬜ | ✅ |
-| GET | `/biz/inventory/report/ranking` | 动销/滞销榜 | — | `数组` | 🔒 | ⬜ | ✅ |
-| GET | `/biz/inventory/summary` | 库存总览三个数 | — | `StockSummary` | 🔒 | ⬜ | ✅ |
-| GET | `/biz/inventory/suppliers` | 供应商档案（挑供应商传 activeOnly=true） | — | `数组` | 🔒 | ⬜ | ✅ |
-| POST | `/biz/inventory/suppliers` | 建供应商档案 | — | — | 🔒 | ⬜ | ✅ |
-| PUT | `/biz/inventory/suppliers/{no}` | 改供应商档案（引用平台档案的只能改备注） | — | — | 🔒 | ⬜ | ✅ |
-| POST | `/biz/inventory/suppliers/{no}/active` | 停用 / 启用供应商 | — | — | 🔒 | ⬜ | ✅ |
-| POST | `/biz/inventory/transfers` | 建调拨单 | — | `string` | 🔒 | ⬜ | ✅ |
-| GET | `/biz/inventory/transfers/{no}` | 读回调拨单 | — | `StockTransfer` | 🔒 | ⬜ | ✅ |
-| POST | `/biz/inventory/transfers/{no}/receive` | 调拨收货 | — | — | 🔒 | ⬜ | ✅ |
-| POST | `/biz/inventory/transfers/{no}/ship` | 调拨发出 | — | — | 🔒 | ⬜ | ✅ |
+| POST | `/biz/inventory/adjust` | 直接改数（走盘点，落单落流水） | — | — | 🔒 | ✅ | ✅ |
+| GET | `/biz/inventory/balances` | 库存列表（默认只给要处理的） | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/inventory/counts` | 开盘点单（锁账面数） | — | `string` | 🔒 | ✅ | ✅ |
+| GET | `/biz/inventory/counts/{no}` | 读回盘点单（含账面快照） | — | `StockCount` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/inventory/counts/{no}/lines` | 填实盘数 | — | — | 🔒 | ✅ | ✅ |
+| POST | `/biz/inventory/counts/{no}/post` | 盘点过账 | — | — | 🔒 | ✅ | ✅ |
+| GET | `/biz/inventory/documents` | 出入库单据 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/inventory/inbounds` | 记一笔进货 | — | `string` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/inventory/inbounds/{no}` | 改进货草稿 | — | — | 🔒 | ✅ | ✅ |
+| POST | `/biz/inventory/inbounds/{no}/post` | 进货过账 | — | — | 🔒 | ✅ | ✅ |
+| POST | `/biz/inventory/inbounds/{no}/void` | 作废入库单 | — | — | 🔒 | ✅ | ✅ |
+| GET | `/biz/inventory/items/{itemId}` | 单件库存明细 | — | `StockItemDetail` | 🔒 | ✅ | ✅ |
+| GET | `/biz/inventory/ledger` | 库存变动明细 | — | `StockLedgerPage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/inventory/locations` | 库位与仓 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/inventory/locations` | 加一个仓 | — | `string` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/inventory/locations/{id}/source` | 设发货源 | — | — | 🔒 | ✅ | ✅ |
+| POST | `/biz/inventory/outbounds` | 报损/领用出库 | — | `string` | 🔒 | ✅ | ✅ |
+| POST | `/biz/inventory/outbounds/{no}/post` | 出库过账 | — | — | 🔒 | ✅ | ✅ |
+| POST | `/biz/inventory/outbounds/{no}/void` | 作废出库单 | — | — | 🔒 | ✅ | ✅ |
+| GET | `/biz/inventory/pickable` | 可挑的货（含 0 库存，从物料出发） | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/inventory/report/monthly` | 进销存月报 | — | `StockMonthly` | 🔒 | ✅ | ✅ |
+| GET | `/biz/inventory/report/ranking` | 动销/滞销榜 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/inventory/summary` | 库存总览三个数 | — | `StockSummary` | 🔒 | ✅ | ✅ |
+| GET | `/biz/inventory/suppliers` | 供应商档案（挑供应商传 activeOnly=true） | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/inventory/suppliers` | 建供应商档案 | — | — | 🔒 | ✅ | ✅ |
+| PUT | `/biz/inventory/suppliers/{no}` | 改供应商档案（引用平台档案的只能改备注） | — | — | 🔒 | ✅ | ✅ |
+| POST | `/biz/inventory/suppliers/{no}/active` | 停用 / 启用供应商 | — | — | 🔒 | ✅ | ✅ |
+| POST | `/biz/inventory/transfers` | 建调拨单 | — | `string` | 🔒 | ✅ | ✅ |
+| GET | `/biz/inventory/transfers/{no}` | 读回调拨单 | — | `StockTransfer` | 🔒 | ✅ | ✅ |
+| POST | `/biz/inventory/transfers/{no}/receive` | 调拨收货 | — | — | 🔒 | ✅ | ✅ |
+| POST | `/biz/inventory/transfers/{no}/ship` | 调拨发出 | — | — | 🔒 | ✅ | ✅ |
 
 ### member-reach（2）
 
@@ -706,7 +706,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **360** 个接口 ｜ 后端已实现 **278**（77%）｜ 前端在调 **298**
+共 **360** 个接口 ｜ 后端已实现 **283**（79%）｜ 前端在调 **298**
 
 ### aftersale（4）
 
@@ -891,12 +891,12 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/ops/inventory/balances` | **某一个商家**的库存待办（健康度页点进一行之后看的） | — | `数组` | — | ⬜ | ⬜ |
-| GET | `/ops/inventory/credentials` | 某个商家发过哪些开放对接的钥匙 | — | `数组` | — | ⬜ | ⬜ |
-| POST | `/ops/inventory/credentials` | 签发 | — | `InvCredentialIssued` | — | ⬜ | ⬜ |
-| POST | `/ops/inventory/credentials/{credentialId}/revoke` | 吊销 | — | `object` | — | ⬜ | ⬜ |
+| GET | `/ops/inventory/balances` | **某一个商家**的库存待办（健康度页点进一行之后看的） | — | `数组` | — | ✅ | ⬜ |
+| GET | `/ops/inventory/credentials` | 某个商家发过哪些开放对接的钥匙 | — | `数组` | — | ✅ | ⬜ |
+| POST | `/ops/inventory/credentials` | 签发 | — | `InvCredentialIssued` | — | ✅ | ⬜ |
+| POST | `/ops/inventory/credentials/{credentialId}/revoke` | 吊销 | — | `object` | — | ✅ | ⬜ |
 | GET | `/ops/inventory/health` | 库存健康度：负库存 / 零库存仍在架 / 长期未动销 | — | `数组` | — | ✅ | ⬜ |
-| GET | `/ops/inventory/ledger` | 商家台账（只读） | — | `InvLedgerPage` | — | ⬜ | ⬜ |
+| GET | `/ops/inventory/ledger` | 商家台账（只读） | — | `InvLedgerPage` | — | ✅ | ⬜ |
 | GET | `/ops/inventory/recon` | 库存对差 | — | `InvReconReport` | — | ✅ | ⬜ |
 
 ### job（7）
