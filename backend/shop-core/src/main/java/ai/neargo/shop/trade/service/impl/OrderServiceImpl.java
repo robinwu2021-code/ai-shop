@@ -18,6 +18,7 @@ import ai.neargo.shop.spi.trade.OrderEvents;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.event.AfterCommit;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.common.PayModes;
@@ -959,8 +960,24 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // 结算单与支付状态同事务生成（理由见 SettlePort#generateForOrder）
-        settlePort.generateForOrder(orderNo);
+        /*
+         * 结算单**在支付状态提交之后**生成。
+         *
+         * <p>此前它写在事务中段，靠「同生共死」保证一致 —— 那在单体里成立，
+         * 但支付域独立成进程后就没有共享事务了。而这里的顺序尤其要紧：
+         * 它后面还有事件发布与子单循环，**任何一处抛异常，今天会把结算单一起回滚，
+         * 而独立之后会留下一条对不上任何单的账**（凭空多出来的钱，删账不可逆）。
+         *
+         * <p>推到提交之后，两种失败方向就都是安全的：
+         * 业务回滚 → 这一步根本没执行；业务提交而这一步失败 → 资金巡检 I1
+         * 每小时扫「已支付却无结算单」并自动补（generateForOrder 幂等）。
+         *
+         * <p>窗口从「毫秒」变成「投递延迟」，通常是秒级。可接受的理由有三条：
+         * 用户已经付完款、看不到这一步；商家的「待结算」本来就有账期（T+1 起）；
+         * 而 I1 超过一小时会告警。
+         */
+        AfterCommit.run("生成结算单 orderNo=" + orderNo,
+                () -> settlePort.generateForOrder(orderNo));
 
         eventBus.publish(new OrderEvents.OrderPaid(orderNo, order.getUserNo(),
                 order.getPayAmount(), payChannel));

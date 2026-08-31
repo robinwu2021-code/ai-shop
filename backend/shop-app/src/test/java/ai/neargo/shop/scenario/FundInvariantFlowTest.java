@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.event.AfterCommit;
 import ai.neargo.shop.idem.EventIdempotency;
 import ai.neargo.shop.settle.entity.StlBill;
 import ai.neargo.shop.settle.mapper.SettleMappers;
@@ -53,6 +54,8 @@ class FundInvariantFlowTest {
     private SettleMappers.BillMapper billMapper;
     @Autowired
     private JdbcTemplate jdbc;
+    @Autowired
+    private org.springframework.transaction.support.TransactionTemplate txTemplate;
 
     /**
      * ⚠️ <b>造的数据必须删干净。</b>订单、结算单、售后都是全局表 ——
@@ -201,6 +204,54 @@ class FundInvariantFlowTest {
         assertThat(sourcePort.notPaidAmong(List.of("SUB-INV-NOT-EXIST")))
                 .as("库里根本没有的子单，比状态不对更严重，必须报出来")
                 .contains("SUB-INV-NOT-EXIST");
+    }
+
+    @Test
+    @DisplayName("跨域写推迟到提交之后 · 业务回滚时对面一个字都没写")
+    void crossDomainWriteNeverRunsOnRollback() {
+        AtomicInteger ran = new AtomicInteger();
+
+        /*
+         * 这一条断言的是**我们做不到某件事**：业务事务回滚时，
+         * 推迟的跨域动作根本没有被执行过。
+         *
+         * 它测的是 AfterCommit 这个机制本身。**「调用点真的用了它」是另一回事**，
+         * 由 CrossDomainWriteConventionTest 那道源码闸门看着 ——
+         * 有人把 AfterCommit.run(...) 换回直连的话，本条照样绿，那条会红。
+         * 两条缺一不可：机制对不代表用上了，用上了不代表机制对。
+         */
+        try {
+            txTemplate.executeWithoutResult(status -> {
+                AfterCommit.run("test", ran::incrementAndGet);
+                assertThat(ran.get()).as("提交之前不该执行").isZero();
+                status.setRollbackOnly();
+            });
+        } catch (RuntimeException ignored) {
+            // 回滚本身可能抛，与本条断言无关
+        }
+        assertThat(ran.get()).as("业务回滚了，跨域动作一次都不该跑").isZero();
+
+        // 反向对照：正常提交时它必须真的跑 —— 否则上面那句「0 次」毫无意义
+        txTemplate.executeWithoutResult(status -> AfterCommit.run("test", ran::incrementAndGet));
+        assertThat(ran.get()).as("提交之后必须执行").isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("跨域写失败不能把已经提交的业务变成失败")
+    void crossDomainFailureDoesNotFailTheCaller() {
+        /*
+         * 到 afterCommit 这一步业务事务已经提交了。往上抛的话，
+         * 支付回调看到的是失败 → 通道重发 → markPaid 幂等直接返回 →
+         * **那个动作再也不会被执行，而异常每次都抛**。
+         * 症状是「回调一直报错、订单却是好的」，排查方向会指向回调链路。
+         *
+         * 所以它必须被吞掉并打 error，由不变式巡检补做。
+         */
+        txTemplate.executeWithoutResult(status ->
+                AfterCommit.run("test-boom", () -> {
+                    throw new IllegalStateException("对面挂了");
+                }));
+        // 没有异常传出来就是这条断言的全部内容 —— 走到这里即通过
     }
 
     private List<StlBill> billsOf(String subOrderNo) {
