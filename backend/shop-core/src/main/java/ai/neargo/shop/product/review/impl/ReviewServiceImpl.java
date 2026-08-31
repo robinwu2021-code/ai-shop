@@ -384,12 +384,20 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     public List<OpsReviewVO> opsList(String status, String merchantNo, String keyword) {
-        List<RvwReview> rows = DataScopeContext.executeWithoutScope(() ->
-                reviewMapper.selectList(Wrappers.<RvwReview>lambdaQuery()
-                        .eq(!isBlank(status), RvwReview::getStatus, status)
-                        .eq(!isBlank(merchantNo), RvwReview::getEntityNo, merchantNo)
-                        .like(!isBlank(keyword), RvwReview::getContent, keyword)
-                        .orderByDesc(RvwReview::getId)));
+        /*
+         * **不绕过**：运营端的全量评价队列（merchantNo 可空），
+         * 这一页上有评价原文与商家名，下一步动作是删评价。
+         * `merchantNo` 参数是运营主动筛某一家，与数据域是两回事。
+         *
+         * 与上面 C 端那条 `list()` 的分别：那条要给游客看，必须绕；
+         * 这条是运营治理，正是数据域该起作用的地方。同一张表两条查询，
+         * 判据是**归属由谁保证**。
+         */
+        List<RvwReview> rows = reviewMapper.selectList(Wrappers.<RvwReview>lambdaQuery()
+                .eq(!isBlank(status), RvwReview::getStatus, status)
+                .eq(!isBlank(merchantNo), RvwReview::getEntityNo, merchantNo)
+                .like(!isBlank(keyword), RvwReview::getContent, keyword)
+                .orderByDesc(RvwReview::getId));
         return rows.stream().map(this::toOpsVO).toList();
     }
 
@@ -417,10 +425,10 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     public List<OpsAppealVO> appeals(String status) {
-        List<RvwAppeal> rows = DataScopeContext.executeWithoutScope(() ->
-                appealMapper.selectList(Wrappers.<RvwAppeal>lambdaQuery()
-                        .eq(!isBlank(status), RvwAppeal::getStatus, status)
-                        .orderByDesc(RvwAppeal::getId)));
+        // 不绕过：运营端的全量申诉队列，与上面的评价队列同一个理由
+        List<RvwAppeal> rows = appealMapper.selectList(Wrappers.<RvwAppeal>lambdaQuery()
+                .eq(!isBlank(status), RvwAppeal::getStatus, status)
+                .orderByDesc(RvwAppeal::getId));
         return rows.stream().map(this::toAppealVO).toList();
     }
 

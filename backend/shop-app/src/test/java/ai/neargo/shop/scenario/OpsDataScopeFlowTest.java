@@ -2,6 +2,8 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.OtpStore;
 import ai.neargo.shop.merchant.entity.MchViolation;
+import ai.neargo.shop.product.review.entity.RvwReview;
+import ai.neargo.shop.product.review.mapper.ReviewMappers.ReviewMapper;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.ViolationMapper;
@@ -87,6 +89,9 @@ class OpsDataScopeFlowTest {
 
     @Autowired
     private AfterSaleMapper afterSaleMapper;
+
+    @Autowired
+    private ReviewMapper reviewMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -314,6 +319,58 @@ class OpsDataScopeFlowTest {
         assertThat(afterSaleCount(scoped.token(), OUTSIDE_MERCHANT))
                 .as("显式传域外商家号还能查到 —— 数据域被筛选参数绕过了")
                 .isZero();
+    }
+
+    @Test
+    @DisplayName("★★★ 批③ 评价治理队列按商家域收敛 —— 下一步动作是删评价")
+    void reviewQueueIsScopedByMerchant() throws Exception {
+        String admin = TestLogin.admin(mvc(), json);
+
+        seedReview("M0002", "数据域测试·域内评价");
+        seedReview(OUTSIDE_MERCHANT, "数据域测试·域外评价");
+
+        int all = reviewCount(admin, null);
+        assertThat(all).as("超管看到的评价队列是空的 —— 这条用例此刻什么也没验到")
+                .isGreaterThan(1);
+
+        var scoped = staffWithScope(admin, "ds-review", "M0002", null, null);
+        int seen = reviewCount(scoped.token(), null);
+        assertThat(seen)
+                .as("配了 M0002 域的运营看到了别家的评价 —— 这一页有评价原文与商家名，"
+                        + "而下一步动作是删评价")
+                .isLessThan(all);
+        assertThat(seen).as("域内那一条也看不到 —— 多半是 rvw_review 少了锚点、拼成了 1=0")
+                .isGreaterThan(0);
+
+        assertThat(reviewCount(scoped.token(), OUTSIDE_MERCHANT))
+                .as("显式传域外商家号还能查到 —— 数据域被筛选参数绕过了")
+                .isZero();
+    }
+
+    private void seedReview(String entityNo, String content) {
+        RvwReview r = new RvwReview();
+        r.setReviewNo("RV-DS-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        r.setSubOrderNo("SUB-DS-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        r.setOrderNo("ORD-DS-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        r.setGoodsNo("G0001");
+        r.setEntityNo(entityNo);
+        r.setUserNo("U-DS-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        r.setRating(5);
+        r.setContent(content);
+        r.setStatus("PASSED");
+        reviewMapper.insert(r);
+    }
+
+    private int reviewCount(String token, String merchantNo) throws Exception {
+        var req = get("/ops/reviews").header("Authorization", "Bearer " + token)
+                .param("size", "200");
+        if (merchantNo != null) {
+            req = req.param("merchantNo", merchantNo);
+        }
+        String body = mvc().perform(req)
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("records").size();
     }
 
     private void seedAfterSale(String entityNo, String reason) {

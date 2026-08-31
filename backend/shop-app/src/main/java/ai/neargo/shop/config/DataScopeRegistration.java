@@ -339,6 +339,24 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
+         * 评价与申诉。运营端两条**全量队列**（`/ops/reviews`、`/ops/review-appeals`，
+         * merchantNo 可空）此前都被绕过包着 —— 而这两页上有评价原文、商家名与申诉理由，
+         * 下一步动作是删评价或驳回申诉。
+         *
+         * <p>C 端那条 `list(goodsNo, merchantNo)` 的绕过**必须留着**，
+         * 它自己的注释写明了理由：「评价对游客可见（看评价才有下单动机）」——
+         * 游客没有会话，登录买家是 SELF 维度，两者在这张表上都没有锚点。
+         *
+         * <p>`rvw_appeal` 只有 entity_no：申诉是商家提的，买家不参与。
+         */
+        registry.register("rvw_review", Map.of(
+                ScopeDim.MERCHANT, "entity_no",
+                ScopeDim.SELF, "user_no"));
+
+        registry.register("rvw_appeal", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
          * 售后单。运营端的平台仲裁工单池（`GET /ops/after-sales`）是一条全量列表，
          * merchantNo 可空 —— 而这一页上有**商家名与买家昵称**，是跨商家的信息。
          *

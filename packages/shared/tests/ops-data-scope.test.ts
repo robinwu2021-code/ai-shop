@@ -177,7 +177,21 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
    * 运营拿别家的号去查要查不到 —— 而这里 ops 入口本身就有 requireInScope 在挡。
    * 两个机制守同一件事，绕过去掉会打断 B 端，留着不影响 ops 的归属保证。
    */
-  "MerchantGovernServiceImpl#qualifications":
+  /*
+   * 评价的 C 端读路径：`list()` 与它里面的 `appealsOf()`。**绕过必须留着** ——
+   * 那条方法自己的注释写着「评价对游客可见（看评价才有下单动机）」：
+   * 游客没有会话，登录买家是 SELF 维度，而 `rvw_appeal` 只有 MERCHANT 锚点。
+   *
+   * <p>守卫把它挂到 `GET /ops/reviews` 上，是因为 ops 那条队列与 C 端这条
+   * **在同一个类里**、解析时被一并追到。ops 队列本身（`opsList`）
+   * 2026-08-31 已经去掉绕过。
+   */
+  "ReviewServiceImpl#list":
+    "C 端评价列表，给游客看；游客无会话、买家是 SELF，不绕商品页看不到评价",
+  "ReviewServiceImpl#appealsOf":
+    "同上，随 C 端评价一起带出申诉状态",
+
+    "MerchantGovernServiceImpl#qualifications":
     "ops 与 B 端共用的资质列表；B 端是 SELF 维度，不绕商家看自己的资质是空的",
 
     "MerchantGovernServiceImpl#toVO":
@@ -347,6 +361,11 @@ const ANCHOR_WAIVED: Record<string, string> = {
     + "而那和 V137 给子单加列是同一种代价，值不值得看仲裁台会不会按片区分工",
   "ord_after_sale:PICKUP":
     "同上。自提点运营者不做售后仲裁 —— 那需要 aftersale:ticket:read",
+    "rvw_review:COMMUNITY":
+    "评价属于商家，不属于片区。**看到空白的是**：配了社区域的运营打开评价治理页",
+  "rvw_review:PICKUP": "同上",
+  "rvw_appeal:COMMUNITY": "申诉是商家提的，同上",
+  "rvw_appeal:PICKUP": "同上",
     "mch_qualification:COMMUNITY":
     "资质属于商家，不属于片区。**看到空白的是**：配了社区域的运营打开资质档案。"
     + "而资质审核要 merchant:qualification:*，社区运营没有这个码",
@@ -947,12 +966,15 @@ describe("运营端数据域接入", () => {
     prd_store_goods: "待判 —— 门店商品（/ops/goods）",
     prd_store_stock: "待判 —— 门店库存（/ops/goods、/ops/inventory/recon）",
     pts_user_account: "待判 —— 积分账户（/ops/points/overview）",
-    rvw_appeal: "待判 —— 评价申诉（/ops/review-appeals）",
-    rvw_review: "待判 —— 评价治理（/ops/reviews）",
     stl_points_pool: "待判 —— 积分池（/ops/points/overview）",
     stl_settle_batch: "待判 —— 账期批次（/ops/settle-batches）",
 
-    mkt_attribution_log:
+    rvw_review_like:
+      "评价点赞。只有 user_no，且**只在 C 端读**（看评价时标出「我赞过」）——"
+      + "它被挂到 /ops/reviews 上是因为与 C 端那条在同一个类里、解析时一并追到。"
+      + "按商家裁没有意义：一条点赞属于点赞的那个人",
+
+        mkt_attribution_log:
       "归因留痕。**注意：它确实有一条 ops 读**（/ops/attribution-traces）—— "
       + "我先前判成「全仓只有写」是错的，G4 把它揪了出来。"
       + "但归因链路的意义就是跨商家看「这个人是谁带来的」，按商家裁会把链路截断",
