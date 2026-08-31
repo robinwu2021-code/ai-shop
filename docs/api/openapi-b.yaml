@@ -5336,8 +5336,10 @@ components:
       properties: 
         activityNo: 
           type: "string"
+          description: "活动号"
         name: 
           type: "string"
+          description: "活动名。商家自己起，出现在活动列表与冲突提示里"
         goal: 
           type: 
             - "string"
@@ -5347,6 +5349,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "限定到某一家门店。空 = 主体下所有门店"
         triggerType: 
           type: "string"
           description: "`NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品"
@@ -5354,10 +5357,12 @@ components:
           type: 
             - "number"
             - "null"
+          description: "满额门槛（分）。triggerType=AMOUNT 时用"
         triggerQty: 
           type: 
             - "number"
             - "null"
+          description: "满件门槛。triggerType=QTY 时用"
         benefitType: 
           type: "string"
           description: "`CUT` 减钱 / `PRICE` 改单价 / `GIFT` 送商品 / `COUPON` 发券"
@@ -5365,14 +5370,17 @@ components:
           type: 
             - "number"
             - "null"
+          description: "优惠金额（分）。CUT 是减多少，PRICE 是改成多少"
         benefitQty: 
           type: 
             - "number"
             - "null"
+          description: "赠品件数。benefitType=GIFT 时用"
         benefitRef: 
           type: 
             - "string"
             - "null"
+          description: "赠品商品号或券号，随 benefitType 变"
         scheduleType: 
           type: "string"
           description: "`ONE_OFF` 短期 / `ALWAYS_ON` 长期 / `RECURRING` 周期"
@@ -5380,10 +5388,12 @@ components:
           type: 
             - "number"
             - "null"
+          description: "开始时刻（毫秒）"
         endAt: 
           type: 
             - "number"
             - "null"
+          description: "结束时刻（毫秒）"
         scheduleRule: 
           type: 
             - "string"
@@ -5393,18 +5403,23 @@ components:
           type: 
             - "number"
             - "null"
+          description: "限量：这个活动最多优惠多少单。空 = 不限量"
         quotaUsed: 
           type: "number"
+          description: "已用掉的限量"
         quotaLeft: 
           type: 
             - "number"
             - "null"
+          description: "还剩多少 = quota - quotaUsed。不限量时为空"
         budgetMinor: 
           type: 
             - "number"
             - "null"
+          description: "预算上限（分）。空 = 不限 —— 用尽后自动停，已享受的不回收"
         budgetUsedMinor: 
           type: "number"
+          description: "已花掉的预算（分）"
         maxExposureMinor: 
           type: 
             - "number"
@@ -5428,6 +5443,7 @@ components:
           type: "array"
           items: 
             type: "string"
+          description: "参与的商品。空 = 全店商品都参与"
         status: 
           type: "string"
           description: "`DRAFT` / `RUNNING` / `PAUSED` / `ENDED`"
@@ -5458,62 +5474,79 @@ components:
       properties: 
         activityNo: 
           type: "string"
+          description: "活动号。**为空 = 新建**；传了就是改这一个"
         name: 
           type: "string"
+          description: "活动名。商家自己起，出现在活动列表与冲突提示里"
         goal: 
           type: 
             - "string"
             - "null"
+          description: "`ACQUIRE` 拉新 / `WAKEUP` 唤回 / `CLEAR` 清库存 / `BASKET` 提客单。只影响建的时候的默认值"
         storeNo: 
           type: 
             - "string"
             - "null"
+          description: "限定到某一家门店。空 = 主体下所有门店"
         triggerType: 
           type: "string"
+          description: "`NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品"
         triggerAmountMinor: 
           type: 
             - "number"
             - "null"
+          description: "满额门槛（分）。triggerType=AMOUNT 时用"
         triggerQty: 
           type: 
             - "number"
             - "null"
+          description: "满件门槛。triggerType=QTY 时用"
         benefitType: 
           type: "string"
+          description: "`CUT` 减钱 / `PRICE` 改单价 / `GIFT` 送商品 / `COUPON` 发券"
         benefitAmountMinor: 
           type: 
             - "number"
             - "null"
+          description: "优惠金额（分）。CUT 是减多少，PRICE 是改成多少"
         benefitQty: 
           type: 
             - "number"
             - "null"
+          description: "赠品件数。benefitType=GIFT 时用"
         benefitRef: 
           type: 
             - "string"
             - "null"
+          description: "赠品商品号或券号，随 benefitType 变"
         scheduleType: 
           type: "string"
+          description: "`ONE_OFF` 短期 / `ALWAYS_ON` 长期 / `RECURRING` 周期"
         startAt: 
           type: 
             - "number"
             - "null"
+          description: "开始时刻（毫秒）"
         endAt: 
           type: 
             - "number"
             - "null"
+          description: "结束时刻（毫秒）"
         scheduleRule: 
           type: 
             - "string"
             - "null"
+          description: "RECURRING 的 JSON：`{\"weekdays\":[3],\"from\":\"08:00\",\"to\":\"20:00\"}`"
         quota: 
           type: 
             - "number"
             - "null"
+          description: "限量：这个活动最多优惠多少单。空 = 不限量"
         budgetMinor: 
           type: 
             - "number"
             - "null"
+          description: "预算上限（分）。空 = 不限 —— 用尽后自动停，已享受的不回收"
         audiences: 
           type: "array"
           items: 
@@ -5527,10 +5560,12 @@ components:
               - "type"
               - "value"
             additionalProperties: false
+          description: "定向到哪些人。**空数组 = 对所有人生效**，不是「谁也不发」"
         goodsNos: 
           type: "array"
           items: 
             type: "string"
+          description: "参与的商品。空 = 全店商品都参与"
       required: 
         - "name"
         - "benefitType"
@@ -5559,8 +5594,10 @@ components:
       properties: 
         couponNo: 
           type: "string"
+          description: "券模板号 —— 一张券和它的模板是两个对象"
         title: 
           type: "string"
+          description: "券名，买家在券包里看到的就是它"
         benefitMode: 
           type: "string"
           description: "`CASH` 现金 / `PERCENT` 折扣 / `GIFT` 兑换 / `FREE_SHIP` 免运费"
@@ -5581,10 +5618,12 @@ components:
           type: 
             - "number"
             - "null"
+          description: "用券门槛：订单满多少分。空 = 无门槛"
         minQty: 
           type: 
             - "number"
             - "null"
+          description: "用券门槛：订单满几件。与 minAmountMinor **同时生效**，不是二选一"
         scopeType: 
           type: "string"
           description: "`ALL` / `STORE` / `CATEGORY` / `GOODS`。**下单抵扣的券只能是前两种**"
@@ -5592,10 +5631,12 @@ components:
           type: "array"
           items: 
             type: "string"
+          description: "限定到哪些类目号或商品号，随 scopeType 变"
         scopeDesc: 
           type: 
             - "string"
             - "null"
+          description: "适用范围的**文案**。⚠️ 只是给人看的一句话，**不是校验依据** —— 判的是 scopeType/scopeRefs"
         validityMode: 
           type: "string"
           description: "`ABSOLUTE` 固定起止 / `RELATIVE` 领取后 N 天"
@@ -5603,14 +5644,17 @@ components:
           type: 
             - "number"
             - "null"
+          description: "生效时刻（毫秒）。FIXED 用"
         endAt: 
           type: 
             - "number"
             - "null"
+          description: "失效时刻（毫秒）。FIXED 用"
         validDays: 
           type: 
             - "number"
             - "null"
+          description: "领取后有效天数。RELATIVE 用"
         issueMode: 
           type: "string"
           description: "`CENTER` 领券中心 / `TARGETED` 定向发 / `ACTIVITY` 活动发"
@@ -5662,68 +5706,89 @@ components:
       properties: 
         couponNo: 
           type: "string"
+          description: "券号。**新建时不传** —— 传了就是改这一张"
         title: 
           type: "string"
+          description: "券名，买家在券包里看到的就是它"
         benefitMode: 
           type: "string"
+          description: "`CASH` 减固定金额 / `PERCENT` 打折 / `GIFT` 换赠品 / `TIMES` 次卡"
         benefitValue: 
           type: "number"
+          description: "优惠力度。含义**跟着 benefitMode 变**：CASH 是分、PERCENT 是万分比、TIMES 是次数"
         benefitCapMinor: 
           type: 
             - "number"
             - "null"
+          description: "折扣券的封顶金额（分）。空 = 不封顶 —— 打折券不封顶时一张大单能吃掉整月预算"
         benefitRef: 
           type: 
             - "string"
             - "null"
+          description: "赠品/次卡指向的对象（商品号）。只有 GIFT 与 TIMES 用得上"
         minAmountMinor: 
           type: 
             - "number"
             - "null"
+          description: "用券门槛：订单满多少分。空 = 无门槛"
         minQty: 
           type: 
             - "number"
             - "null"
+          description: "用券门槛：订单满几件。与 minAmountMinor **同时生效**，不是二选一"
         scopeType: 
           type: "string"
+          description: "`ALL` 全店 / `CATEGORY` 限类目 / `GOODS` 限商品"
         scopeRefs: 
           type: "array"
           items: 
             type: "string"
+          description: "限定到哪些类目号或商品号，随 scopeType 变"
         scopeDesc: 
           type: 
             - "string"
             - "null"
+          description: "适用范围的**文案**。\n\n⚠️ 它只是给人看的一句话，**不是校验依据** —— 老券的「仅限粮油类」从来没进过判定， 判的一直是 scopeType/scopeRefs。搬新模型时特意没把它当规则搬，否则存量券会突然变严。"
         validityMode: 
           type: "string"
+          description: "`FIXED` 固定起止时间 / `RELATIVE` 领取后 N 天内有效"
         startAt: 
           type: 
             - "number"
             - "null"
+          description: "生效时刻（毫秒）。FIXED 用"
         endAt: 
           type: 
             - "number"
             - "null"
+          description: "失效时刻（毫秒）。FIXED 用"
         validDays: 
           type: 
             - "number"
             - "null"
+          description: "领取后有效天数。RELATIVE 用 —— 定向发放常用它，避免「发出去就快过期」"
         issueMode: 
           type: "string"
+          description: "`PUBLIC` 买家自己领 / `TARGETED` 只能由商家定向发"
         redeemMode: 
           type: "string"
+          description: "`ONLINE` 下单抵扣 / `STORE` 到店出示码核销。**到店券没有码就出示不了**"
         timesTotal: 
           type: "number"
+          description: "一张券可核几次。次卡看这个数，普通券恒为 1"
         totalCount: 
           type: 
             - "number"
             - "null"
+          description: "总发行量。空 = 不限量 —— 不限量的券没有「发完」这个状态"
         perUserLimit: 
           type: "number"
+          description: "每人最多领几张"
         budgetMinor: 
           type: 
             - "number"
             - "null"
+          description: "预算上限（分）。空 = 不限。用尽后停发，已发出去的不受影响"
       required: 
         - "title"
         - "benefitMode"
@@ -5735,12 +5800,15 @@ components:
       properties: 
         issueNo: 
           type: "string"
+          description: "这一批发放的编号"
         couponNo: 
           type: "string"
+          description: "券模板号 —— 一张券和它的模板是两个对象"
         segmentNo: 
           type: 
             - "string"
             - "null"
+          description: "发给哪个人群。空 = 手动挑的人"
         planned: 
           type: "number"
           description: "人群此刻命中多少人"
@@ -5764,12 +5832,15 @@ components:
           description: "`UNREACHABLE` 还没注册或已退订 / `ALREADY_HAS` 到每人上限 / `SOLD_OUT` 券发完"
         amountMinor: 
           type: "number"
+          description: "这一批券的面额合计（分）—— 商家据此估敞口"
         operatorNo: 
           type: 
             - "string"
             - "null"
+          description: "谁发的"
         issuedAt: 
           type: "number"
+          description: "发放时刻（毫秒）"
       required: 
         - "issueNo"
         - "couponNo"
@@ -5786,10 +5857,13 @@ components:
       properties: 
         userCouponNo: 
           type: "string"
+          description: "这个人手里那一张的编号"
         couponNo: 
           type: "string"
+          description: "券模板号 —— 一张券和它的模板是两个对象"
         title: 
           type: "string"
+          description: "券名，买家在券包里看到的就是它"
         benefitText: 
           type: "string"
           description: "「减 3 元」「8.5 折」「凭券兑换」这种人话，后端拼好"
@@ -5797,6 +5871,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "发这张券的商家"
         redeemMode: 
           type: "string"
           description: "`ORDER` 下单抵扣 / `STORE_CODE` 到店出示"
@@ -5809,19 +5884,25 @@ components:
           type: 
             - "number"
             - "null"
+          description: "用券门槛：订单满多少分。空 = 无门槛"
         timesTotal: 
           type: "number"
+          description: "一张券可核几次。次卡看这个数，普通券恒为 1"
         timesUsed: 
           type: "number"
+          description: "已核销次数"
         remaining: 
           type: "number"
           description: "次卡还剩几次"
         expireAt: 
           type: "number"
+          description: "过期时刻（毫秒）"
         status: 
           type: "string"
+          description: "`UNUSED` / `USED` / `EXPIRED` / `REVOKED`"
         usableNow: 
           type: "boolean"
+          description: "此刻能不能用。按时间窗、门槛、剩余次数实时判 —— 不落库，落了就要有人定时刷"
       required: 
         - "userCouponNo"
         - "couponNo"
@@ -5841,10 +5922,13 @@ components:
       properties: 
         userCouponNo: 
           type: "string"
+          description: "这个人手里那一张的编号"
         couponNo: 
           type: "string"
+          description: "券模板号 —— 一张券和它的模板是两个对象"
         title: 
           type: "string"
+          description: "券名，买家在券包里看到的就是它"
         benefitText: 
           type: "string"
           description: "「减 3 元」「8.5 折」「兑换」这种人话，后端拼好"
@@ -5852,17 +5936,22 @@ components:
           type: 
             - "string"
             - "null"
+          description: "持券人手机号后四位。店员认人够用，**永远不给完整号**"
         expireAt: 
           type: "number"
+          description: "过期时刻（毫秒）"
         timesTotal: 
           type: "number"
+          description: "一张券可核几次。次卡看这个数，普通券恒为 1"
         timesUsed: 
           type: "number"
+          description: "已核销次数"
         remaining: 
           type: "number"
           description: "还能核几次。次卡看这个数"
         redeemable: 
           type: "boolean"
+          description: "此刻能不能核。不能时看 reason"
         reason: 
           type: 
             - "string"

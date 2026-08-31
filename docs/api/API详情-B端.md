@@ -47,29 +47,29 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `activityNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `activityNo` | `string` | 是 | 活动号 |
+| `name` | `string` | 是 | 活动名。商家自己起，出现在活动列表与冲突提示里 |
 | `goal` | `string,null` | 否 | `ACQUIRE` 拉新 / `WAKEUP` 唤回 / `CLEAR` 清库存 / `BASKET` 提客单。只影响建的时候的默认值 |
-| `storeNo` | `string,null` | 否 | — |
+| `storeNo` | `string,null` | 否 | 限定到某一家门店。空 = 主体下所有门店 |
 | `triggerType` | `string` | 是 | `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 |
-| `triggerAmountMinor` | `number,null` | 否 | — |
-| `triggerQty` | `number,null` | 否 | — |
+| `triggerAmountMinor` | `number,null` | 否 | 满额门槛（分）。triggerType=AMOUNT 时用 |
+| `triggerQty` | `number,null` | 否 | 满件门槛。triggerType=QTY 时用 |
 | `benefitType` | `string` | 是 | `CUT` 减钱 / `PRICE` 改单价 / `GIFT` 送商品 / `COUPON` 发券 |
-| `benefitAmountMinor` | `number,null` | 否 | — |
-| `benefitQty` | `number,null` | 否 | — |
-| `benefitRef` | `string,null` | 否 | — |
+| `benefitAmountMinor` | `number,null` | 否 | 优惠金额（分）。CUT 是减多少，PRICE 是改成多少 |
+| `benefitQty` | `number,null` | 否 | 赠品件数。benefitType=GIFT 时用 |
+| `benefitRef` | `string,null` | 否 | 赠品商品号或券号，随 benefitType 变 |
 | `scheduleType` | `string` | 是 | `ONE_OFF` 短期 / `ALWAYS_ON` 长期 / `RECURRING` 周期 |
-| `startAt` | `number,null` | 否 | — |
-| `endAt` | `number,null` | 否 | — |
+| `startAt` | `number,null` | 否 | 开始时刻（毫秒） |
+| `endAt` | `number,null` | 否 | 结束时刻（毫秒） |
 | `scheduleRule` | `string,null` | 否 | RECURRING 的 JSON：`{"weekdays":[3],"from":"08:00","to":"20:00"}` |
-| `quota` | `number,null` | 否 | — |
-| `quotaUsed` | `number` | 是 | — |
-| `quotaLeft` | `number,null` | 否 | — |
-| `budgetMinor` | `number,null` | 否 | — |
-| `budgetUsedMinor` | `number` | 是 | — |
+| `quota` | `number,null` | 否 | 限量：这个活动最多优惠多少单。空 = 不限量 |
+| `quotaUsed` | `number` | 是 | 已用掉的限量 |
+| `quotaLeft` | `number,null` | 否 | 还剩多少 = quota - quotaUsed。不限量时为空 |
+| `budgetMinor` | `number,null` | 否 | 预算上限（分）。空 = 不限 —— 用尽后自动停，已享受的不回收 |
+| `budgetUsedMinor` | `number` | 是 | 已花掉的预算（分） |
 | `maxExposureMinor` | `number,null` | 否 | 最大敞口 = 限量 × 单次优惠。建活动页要显示它 |
 | `audiences` | `object`（见下）\[\] | 是 | 空数组 = **对所有人生效**。老活动迁过来就是这个状态 |
-| `goodsNos` | `string`\[\] | 是 | — |
+| `goodsNos` | `string`\[\] | 是 | 参与的商品。空 = 全店商品都参与 |
 | `status` | `string` | 是 | `DRAFT` / `RUNNING` / `PAUSED` / `ENDED` |
 | `endedReason` | `string,null` | 否 | `EXPIRED` / `QUOTA` / `BUDGET` / `MANUAL`。商家问「怎么停了」要有答案 |
 | `liveNow` | `boolean` | 是 | 此刻是不是真的在生效。**与 status 分开**：周期活动在非时段里 status 仍是 RUNNING， 而商家问的是「现在减不减」。 |
@@ -94,29 +94,29 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `activityNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `activityNo` | `string` | 是 | 活动号 |
+| `name` | `string` | 是 | 活动名。商家自己起，出现在活动列表与冲突提示里 |
 | `goal` | `string,null` | 否 | `ACQUIRE` 拉新 / `WAKEUP` 唤回 / `CLEAR` 清库存 / `BASKET` 提客单。只影响建的时候的默认值 |
-| `storeNo` | `string,null` | 否 | — |
+| `storeNo` | `string,null` | 否 | 限定到某一家门店。空 = 主体下所有门店 |
 | `triggerType` | `string` | 是 | `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 |
-| `triggerAmountMinor` | `number,null` | 否 | — |
-| `triggerQty` | `number,null` | 否 | — |
+| `triggerAmountMinor` | `number,null` | 否 | 满额门槛（分）。triggerType=AMOUNT 时用 |
+| `triggerQty` | `number,null` | 否 | 满件门槛。triggerType=QTY 时用 |
 | `benefitType` | `string` | 是 | `CUT` 减钱 / `PRICE` 改单价 / `GIFT` 送商品 / `COUPON` 发券 |
-| `benefitAmountMinor` | `number,null` | 否 | — |
-| `benefitQty` | `number,null` | 否 | — |
-| `benefitRef` | `string,null` | 否 | — |
+| `benefitAmountMinor` | `number,null` | 否 | 优惠金额（分）。CUT 是减多少，PRICE 是改成多少 |
+| `benefitQty` | `number,null` | 否 | 赠品件数。benefitType=GIFT 时用 |
+| `benefitRef` | `string,null` | 否 | 赠品商品号或券号，随 benefitType 变 |
 | `scheduleType` | `string` | 是 | `ONE_OFF` 短期 / `ALWAYS_ON` 长期 / `RECURRING` 周期 |
-| `startAt` | `number,null` | 否 | — |
-| `endAt` | `number,null` | 否 | — |
+| `startAt` | `number,null` | 否 | 开始时刻（毫秒） |
+| `endAt` | `number,null` | 否 | 结束时刻（毫秒） |
 | `scheduleRule` | `string,null` | 否 | RECURRING 的 JSON：`{"weekdays":[3],"from":"08:00","to":"20:00"}` |
-| `quota` | `number,null` | 否 | — |
-| `quotaUsed` | `number` | 是 | — |
-| `quotaLeft` | `number,null` | 否 | — |
-| `budgetMinor` | `number,null` | 否 | — |
-| `budgetUsedMinor` | `number` | 是 | — |
+| `quota` | `number,null` | 否 | 限量：这个活动最多优惠多少单。空 = 不限量 |
+| `quotaUsed` | `number` | 是 | 已用掉的限量 |
+| `quotaLeft` | `number,null` | 否 | 还剩多少 = quota - quotaUsed。不限量时为空 |
+| `budgetMinor` | `number,null` | 否 | 预算上限（分）。空 = 不限 —— 用尽后自动停，已享受的不回收 |
+| `budgetUsedMinor` | `number` | 是 | 已花掉的预算（分） |
 | `maxExposureMinor` | `number,null` | 否 | 最大敞口 = 限量 × 单次优惠。建活动页要显示它 |
 | `audiences` | `object`（见下）\[\] | 是 | 空数组 = **对所有人生效**。老活动迁过来就是这个状态 |
-| `goodsNos` | `string`\[\] | 是 | — |
+| `goodsNos` | `string`\[\] | 是 | 参与的商品。空 = 全店商品都参与 |
 | `status` | `string` | 是 | `DRAFT` / `RUNNING` / `PAUSED` / `ENDED` |
 | `endedReason` | `string,null` | 否 | `EXPIRED` / `QUOTA` / `BUDGET` / `MANUAL`。商家问「怎么停了」要有答案 |
 | `liveNow` | `boolean` | 是 | 此刻是不是真的在生效。**与 status 分开**：周期活动在非时段里 status 仍是 RUNNING， 而商家问的是「现在减不减」。 |
@@ -141,29 +141,29 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `activityNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `activityNo` | `string` | 是 | 活动号 |
+| `name` | `string` | 是 | 活动名。商家自己起，出现在活动列表与冲突提示里 |
 | `goal` | `string,null` | 否 | `ACQUIRE` 拉新 / `WAKEUP` 唤回 / `CLEAR` 清库存 / `BASKET` 提客单。只影响建的时候的默认值 |
-| `storeNo` | `string,null` | 否 | — |
+| `storeNo` | `string,null` | 否 | 限定到某一家门店。空 = 主体下所有门店 |
 | `triggerType` | `string` | 是 | `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 |
-| `triggerAmountMinor` | `number,null` | 否 | — |
-| `triggerQty` | `number,null` | 否 | — |
+| `triggerAmountMinor` | `number,null` | 否 | 满额门槛（分）。triggerType=AMOUNT 时用 |
+| `triggerQty` | `number,null` | 否 | 满件门槛。triggerType=QTY 时用 |
 | `benefitType` | `string` | 是 | `CUT` 减钱 / `PRICE` 改单价 / `GIFT` 送商品 / `COUPON` 发券 |
-| `benefitAmountMinor` | `number,null` | 否 | — |
-| `benefitQty` | `number,null` | 否 | — |
-| `benefitRef` | `string,null` | 否 | — |
+| `benefitAmountMinor` | `number,null` | 否 | 优惠金额（分）。CUT 是减多少，PRICE 是改成多少 |
+| `benefitQty` | `number,null` | 否 | 赠品件数。benefitType=GIFT 时用 |
+| `benefitRef` | `string,null` | 否 | 赠品商品号或券号，随 benefitType 变 |
 | `scheduleType` | `string` | 是 | `ONE_OFF` 短期 / `ALWAYS_ON` 长期 / `RECURRING` 周期 |
-| `startAt` | `number,null` | 否 | — |
-| `endAt` | `number,null` | 否 | — |
+| `startAt` | `number,null` | 否 | 开始时刻（毫秒） |
+| `endAt` | `number,null` | 否 | 结束时刻（毫秒） |
 | `scheduleRule` | `string,null` | 否 | RECURRING 的 JSON：`{"weekdays":[3],"from":"08:00","to":"20:00"}` |
-| `quota` | `number,null` | 否 | — |
-| `quotaUsed` | `number` | 是 | — |
-| `quotaLeft` | `number,null` | 否 | — |
-| `budgetMinor` | `number,null` | 否 | — |
-| `budgetUsedMinor` | `number` | 是 | — |
+| `quota` | `number,null` | 否 | 限量：这个活动最多优惠多少单。空 = 不限量 |
+| `quotaUsed` | `number` | 是 | 已用掉的限量 |
+| `quotaLeft` | `number,null` | 否 | 还剩多少 = quota - quotaUsed。不限量时为空 |
+| `budgetMinor` | `number,null` | 否 | 预算上限（分）。空 = 不限 —— 用尽后自动停，已享受的不回收 |
+| `budgetUsedMinor` | `number` | 是 | 已花掉的预算（分） |
 | `maxExposureMinor` | `number,null` | 否 | 最大敞口 = 限量 × 单次优惠。建活动页要显示它 |
 | `audiences` | `object`（见下）\[\] | 是 | 空数组 = **对所有人生效**。老活动迁过来就是这个状态 |
-| `goodsNos` | `string`\[\] | 是 | — |
+| `goodsNos` | `string`\[\] | 是 | 参与的商品。空 = 全店商品都参与 |
 | `status` | `string` | 是 | `DRAFT` / `RUNNING` / `PAUSED` / `ENDED` |
 | `endedReason` | `string,null` | 否 | `EXPIRED` / `QUOTA` / `BUDGET` / `MANUAL`。商家问「怎么停了」要有答案 |
 | `liveNow` | `boolean` | 是 | 此刻是不是真的在生效。**与 status 分开**：周期活动在非时段里 status 仍是 RUNNING， 而商家问的是「现在减不减」。 |
@@ -708,16 +708,16 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `userCouponNo` | `string` | 是 | — |
-| `couponNo` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
+| `userCouponNo` | `string` | 是 | 这个人手里那一张的编号 |
+| `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
+| `title` | `string` | 是 | 券名，买家在券包里看到的就是它 |
 | `benefitText` | `string` | 是 | 「减 3 元」「8.5 折」「兑换」这种人话，后端拼好 |
-| `phoneTail` | `string,null` | 否 | — |
-| `expireAt` | `number` | 是 | — |
-| `timesTotal` | `number` | 是 | — |
-| `timesUsed` | `number` | 是 | — |
+| `phoneTail` | `string,null` | 否 | 持券人手机号后四位。店员认人够用，**永远不给完整号** |
+| `expireAt` | `number` | 是 | 过期时刻（毫秒） |
+| `timesTotal` | `number` | 是 | 一张券可核几次。次卡看这个数，普通券恒为 1 |
+| `timesUsed` | `number` | 是 | 已核销次数 |
 | `remaining` | `number` | 是 | 还能核几次。次卡看这个数 |
-| `redeemable` | `boolean` | 是 | — |
+| `redeemable` | `boolean` | 是 | 此刻能不能核。不能时看 reason |
 | `reason` | `string,null` | 否 | 不能核销时的原因码：`EXPIRED` / `USED_UP` / `REVOKED` / `NOT_STORE_CODE` / `COUPON_INACTIVE` |
 
 
@@ -746,21 +746,21 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `couponNo` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
+| `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
+| `title` | `string` | 是 | 券名，买家在券包里看到的就是它 |
 | `benefitMode` | `string` | 是 | `CASH` 现金 / `PERCENT` 折扣 / `GIFT` 兑换 / `FREE_SHIP` 免运费 |
 | `benefitValue` | `number` | 是 | CASH = 面额（分）；PERCENT = **万分比**，8500 表示八五折（顾客付 85%） |
 | `benefitCapMinor` | `number,null` | 否 | 折扣封顶（分）。PERCENT 必填 —— 不封顶的敞口随订单金额无限放大 |
 | `benefitRef` | `string,null` | 否 | GIFT 兑换哪件商品 |
-| `minAmountMinor` | `number,null` | 否 | — |
-| `minQty` | `number,null` | 否 | — |
+| `minAmountMinor` | `number,null` | 否 | 用券门槛：订单满多少分。空 = 无门槛 |
+| `minQty` | `number,null` | 否 | 用券门槛：订单满几件。与 minAmountMinor **同时生效**，不是二选一 |
 | `scopeType` | `string` | 是 | `ALL` / `STORE` / `CATEGORY` / `GOODS`。**下单抵扣的券只能是前两种** |
-| `scopeRefs` | `string`\[\] | 是 | — |
-| `scopeDesc` | `string,null` | 否 | — |
+| `scopeRefs` | `string`\[\] | 是 | 限定到哪些类目号或商品号，随 scopeType 变 |
+| `scopeDesc` | `string,null` | 否 | 适用范围的**文案**。⚠️ 只是给人看的一句话，**不是校验依据** —— 判的是 scopeType/scopeRefs |
 | `validityMode` | `string` | 是 | `ABSOLUTE` 固定起止 / `RELATIVE` 领取后 N 天 |
-| `startAt` | `number,null` | 否 | — |
-| `endAt` | `number,null` | 否 | — |
-| `validDays` | `number,null` | 否 | — |
+| `startAt` | `number,null` | 否 | 生效时刻（毫秒）。FIXED 用 |
+| `endAt` | `number,null` | 否 | 失效时刻（毫秒）。FIXED 用 |
+| `validDays` | `number,null` | 否 | 领取后有效天数。RELATIVE 用 |
 | `issueMode` | `string` | 是 | `CENTER` 领券中心 / `TARGETED` 定向发 / `ACTIVITY` 活动发 |
 | `redeemMode` | `string` | 是 | `ORDER` 下单抵扣 / `STORE_CODE` 到店出示核销 |
 | `timesTotal` | `number` | 是 | 一张能用几次。>1 就是次卡（豆浆 5 杯） |
@@ -784,21 +784,21 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `couponNo` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
+| `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
+| `title` | `string` | 是 | 券名，买家在券包里看到的就是它 |
 | `benefitMode` | `string` | 是 | `CASH` 现金 / `PERCENT` 折扣 / `GIFT` 兑换 / `FREE_SHIP` 免运费 |
 | `benefitValue` | `number` | 是 | CASH = 面额（分）；PERCENT = **万分比**，8500 表示八五折（顾客付 85%） |
 | `benefitCapMinor` | `number,null` | 否 | 折扣封顶（分）。PERCENT 必填 —— 不封顶的敞口随订单金额无限放大 |
 | `benefitRef` | `string,null` | 否 | GIFT 兑换哪件商品 |
-| `minAmountMinor` | `number,null` | 否 | — |
-| `minQty` | `number,null` | 否 | — |
+| `minAmountMinor` | `number,null` | 否 | 用券门槛：订单满多少分。空 = 无门槛 |
+| `minQty` | `number,null` | 否 | 用券门槛：订单满几件。与 minAmountMinor **同时生效**，不是二选一 |
 | `scopeType` | `string` | 是 | `ALL` / `STORE` / `CATEGORY` / `GOODS`。**下单抵扣的券只能是前两种** |
-| `scopeRefs` | `string`\[\] | 是 | — |
-| `scopeDesc` | `string,null` | 否 | — |
+| `scopeRefs` | `string`\[\] | 是 | 限定到哪些类目号或商品号，随 scopeType 变 |
+| `scopeDesc` | `string,null` | 否 | 适用范围的**文案**。⚠️ 只是给人看的一句话，**不是校验依据** —— 判的是 scopeType/scopeRefs |
 | `validityMode` | `string` | 是 | `ABSOLUTE` 固定起止 / `RELATIVE` 领取后 N 天 |
-| `startAt` | `number,null` | 否 | — |
-| `endAt` | `number,null` | 否 | — |
-| `validDays` | `number,null` | 否 | — |
+| `startAt` | `number,null` | 否 | 生效时刻（毫秒）。FIXED 用 |
+| `endAt` | `number,null` | 否 | 失效时刻（毫秒）。FIXED 用 |
+| `validDays` | `number,null` | 否 | 领取后有效天数。RELATIVE 用 |
 | `issueMode` | `string` | 是 | `CENTER` 领券中心 / `TARGETED` 定向发 / `ACTIVITY` 活动发 |
 | `redeemMode` | `string` | 是 | `ORDER` 下单抵扣 / `STORE_CODE` 到店出示核销 |
 | `timesTotal` | `number` | 是 | 一张能用几次。>1 就是次卡（豆浆 5 杯） |
@@ -822,16 +822,16 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `issueNo` | `string` | 是 | — |
-| `couponNo` | `string` | 是 | — |
-| `segmentNo` | `string,null` | 否 | — |
+| `issueNo` | `string` | 是 | 这一批发放的编号 |
+| `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
+| `segmentNo` | `string,null` | 否 | 发给哪个人群。空 = 手动挑的人 |
 | `planned` | `number` | 是 | 人群此刻命中多少人 |
 | `issued` | `number` | 是 | — |
 | `skipped` | `number` | 是 | — |
 | `skipReasons` | `object`（见下）\[\] | 是 | `UNREACHABLE` 还没注册或已退订 / `ALREADY_HAS` 到每人上限 / `SOLD_OUT` 券发完 |
-| `amountMinor` | `number` | 是 | — |
-| `operatorNo` | `string,null` | 否 | — |
-| `issuedAt` | `number` | 是 | — |
+| `amountMinor` | `number` | 是 | 这一批券的面额合计（分）—— 商家据此估敞口 |
+| `operatorNo` | `string,null` | 否 | 谁发的 |
+| `issuedAt` | `number` | 是 | 发放时刻（毫秒） |
 
 `skipReasons[]` 的字段：
 
@@ -853,21 +853,21 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `couponNo` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
+| `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
+| `title` | `string` | 是 | 券名，买家在券包里看到的就是它 |
 | `benefitMode` | `string` | 是 | `CASH` 现金 / `PERCENT` 折扣 / `GIFT` 兑换 / `FREE_SHIP` 免运费 |
 | `benefitValue` | `number` | 是 | CASH = 面额（分）；PERCENT = **万分比**，8500 表示八五折（顾客付 85%） |
 | `benefitCapMinor` | `number,null` | 否 | 折扣封顶（分）。PERCENT 必填 —— 不封顶的敞口随订单金额无限放大 |
 | `benefitRef` | `string,null` | 否 | GIFT 兑换哪件商品 |
-| `minAmountMinor` | `number,null` | 否 | — |
-| `minQty` | `number,null` | 否 | — |
+| `minAmountMinor` | `number,null` | 否 | 用券门槛：订单满多少分。空 = 无门槛 |
+| `minQty` | `number,null` | 否 | 用券门槛：订单满几件。与 minAmountMinor **同时生效**，不是二选一 |
 | `scopeType` | `string` | 是 | `ALL` / `STORE` / `CATEGORY` / `GOODS`。**下单抵扣的券只能是前两种** |
-| `scopeRefs` | `string`\[\] | 是 | — |
-| `scopeDesc` | `string,null` | 否 | — |
+| `scopeRefs` | `string`\[\] | 是 | 限定到哪些类目号或商品号，随 scopeType 变 |
+| `scopeDesc` | `string,null` | 否 | 适用范围的**文案**。⚠️ 只是给人看的一句话，**不是校验依据** —— 判的是 scopeType/scopeRefs |
 | `validityMode` | `string` | 是 | `ABSOLUTE` 固定起止 / `RELATIVE` 领取后 N 天 |
-| `startAt` | `number,null` | 否 | — |
-| `endAt` | `number,null` | 否 | — |
-| `validDays` | `number,null` | 否 | — |
+| `startAt` | `number,null` | 否 | 生效时刻（毫秒）。FIXED 用 |
+| `endAt` | `number,null` | 否 | 失效时刻（毫秒）。FIXED 用 |
+| `validDays` | `number,null` | 否 | 领取后有效天数。RELATIVE 用 |
 | `issueMode` | `string` | 是 | `CENTER` 领券中心 / `TARGETED` 定向发 / `ACTIVITY` 活动发 |
 | `redeemMode` | `string` | 是 | `ORDER` 下单抵扣 / `STORE_CODE` 到店出示核销 |
 | `timesTotal` | `number` | 是 | 一张能用几次。>1 就是次卡（豆浆 5 杯） |
@@ -5383,16 +5383,16 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `issueNo` | `string` | 是 | — |
-| `couponNo` | `string` | 是 | — |
-| `segmentNo` | `string,null` | 否 | — |
+| `issueNo` | `string` | 是 | 这一批发放的编号 |
+| `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
+| `segmentNo` | `string,null` | 否 | 发给哪个人群。空 = 手动挑的人 |
 | `planned` | `number` | 是 | 人群此刻命中多少人 |
 | `issued` | `number` | 是 | — |
 | `skipped` | `number` | 是 | — |
 | `skipReasons` | `object`（见下）\[\] | 是 | `UNREACHABLE` 还没注册或已退订 / `ALREADY_HAS` 到每人上限 / `SOLD_OUT` 券发完 |
-| `amountMinor` | `number` | 是 | — |
-| `operatorNo` | `string,null` | 否 | — |
-| `issuedAt` | `number` | 是 | — |
+| `amountMinor` | `number` | 是 | 这一批券的面额合计（分）—— 商家据此估敞口 |
+| `operatorNo` | `string,null` | 否 | 谁发的 |
+| `issuedAt` | `number` | 是 | 发放时刻（毫秒） |
 
 `skipReasons[]` 的字段：
 
@@ -5419,16 +5419,16 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `userCouponNo` | `string` | 是 | — |
-| `couponNo` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
+| `userCouponNo` | `string` | 是 | 这个人手里那一张的编号 |
+| `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
+| `title` | `string` | 是 | 券名，买家在券包里看到的就是它 |
 | `benefitText` | `string` | 是 | 「减 3 元」「8.5 折」「兑换」这种人话，后端拼好 |
-| `phoneTail` | `string,null` | 否 | — |
-| `expireAt` | `number` | 是 | — |
-| `timesTotal` | `number` | 是 | — |
-| `timesUsed` | `number` | 是 | — |
+| `phoneTail` | `string,null` | 否 | 持券人手机号后四位。店员认人够用，**永远不给完整号** |
+| `expireAt` | `number` | 是 | 过期时刻（毫秒） |
+| `timesTotal` | `number` | 是 | 一张券可核几次。次卡看这个数，普通券恒为 1 |
+| `timesUsed` | `number` | 是 | 已核销次数 |
 | `remaining` | `number` | 是 | 还能核几次。次卡看这个数 |
-| `redeemable` | `boolean` | 是 | — |
+| `redeemable` | `boolean` | 是 | 此刻能不能核。不能时看 reason |
 | `reason` | `string,null` | 否 | 不能核销时的原因码：`EXPIRED` / `USED_UP` / `REVOKED` / `NOT_STORE_CODE` / `COUPON_INACTIVE` |
 
 ### CreateGroupReq
@@ -6068,21 +6068,21 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `couponNo` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
+| `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
+| `title` | `string` | 是 | 券名，买家在券包里看到的就是它 |
 | `benefitMode` | `string` | 是 | `CASH` 现金 / `PERCENT` 折扣 / `GIFT` 兑换 / `FREE_SHIP` 免运费 |
 | `benefitValue` | `number` | 是 | CASH = 面额（分）；PERCENT = **万分比**，8500 表示八五折（顾客付 85%） |
 | `benefitCapMinor` | `number,null` | 否 | 折扣封顶（分）。PERCENT 必填 —— 不封顶的敞口随订单金额无限放大 |
 | `benefitRef` | `string,null` | 否 | GIFT 兑换哪件商品 |
-| `minAmountMinor` | `number,null` | 否 | — |
-| `minQty` | `number,null` | 否 | — |
+| `minAmountMinor` | `number,null` | 否 | 用券门槛：订单满多少分。空 = 无门槛 |
+| `minQty` | `number,null` | 否 | 用券门槛：订单满几件。与 minAmountMinor **同时生效**，不是二选一 |
 | `scopeType` | `string` | 是 | `ALL` / `STORE` / `CATEGORY` / `GOODS`。**下单抵扣的券只能是前两种** |
-| `scopeRefs` | `string`\[\] | 是 | — |
-| `scopeDesc` | `string,null` | 否 | — |
+| `scopeRefs` | `string`\[\] | 是 | 限定到哪些类目号或商品号，随 scopeType 变 |
+| `scopeDesc` | `string,null` | 否 | 适用范围的**文案**。⚠️ 只是给人看的一句话，**不是校验依据** —— 判的是 scopeType/scopeRefs |
 | `validityMode` | `string` | 是 | `ABSOLUTE` 固定起止 / `RELATIVE` 领取后 N 天 |
-| `startAt` | `number,null` | 否 | — |
-| `endAt` | `number,null` | 否 | — |
-| `validDays` | `number,null` | 否 | — |
+| `startAt` | `number,null` | 否 | 生效时刻（毫秒）。FIXED 用 |
+| `endAt` | `number,null` | 否 | 失效时刻（毫秒）。FIXED 用 |
+| `validDays` | `number,null` | 否 | 领取后有效天数。RELATIVE 用 |
 | `issueMode` | `string` | 是 | `CENTER` 领券中心 / `TARGETED` 定向发 / `ACTIVITY` 活动发 |
 | `redeemMode` | `string` | 是 | `ORDER` 下单抵扣 / `STORE_CODE` 到店出示核销 |
 | `timesTotal` | `number` | 是 | 一张能用几次。>1 就是次卡（豆浆 5 杯） |
@@ -7582,29 +7582,29 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `activityNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `activityNo` | `string` | 是 | 活动号 |
+| `name` | `string` | 是 | 活动名。商家自己起，出现在活动列表与冲突提示里 |
 | `goal` | `string,null` | 否 | `ACQUIRE` 拉新 / `WAKEUP` 唤回 / `CLEAR` 清库存 / `BASKET` 提客单。只影响建的时候的默认值 |
-| `storeNo` | `string,null` | 否 | — |
+| `storeNo` | `string,null` | 否 | 限定到某一家门店。空 = 主体下所有门店 |
 | `triggerType` | `string` | 是 | `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 |
-| `triggerAmountMinor` | `number,null` | 否 | — |
-| `triggerQty` | `number,null` | 否 | — |
+| `triggerAmountMinor` | `number,null` | 否 | 满额门槛（分）。triggerType=AMOUNT 时用 |
+| `triggerQty` | `number,null` | 否 | 满件门槛。triggerType=QTY 时用 |
 | `benefitType` | `string` | 是 | `CUT` 减钱 / `PRICE` 改单价 / `GIFT` 送商品 / `COUPON` 发券 |
-| `benefitAmountMinor` | `number,null` | 否 | — |
-| `benefitQty` | `number,null` | 否 | — |
-| `benefitRef` | `string,null` | 否 | — |
+| `benefitAmountMinor` | `number,null` | 否 | 优惠金额（分）。CUT 是减多少，PRICE 是改成多少 |
+| `benefitQty` | `number,null` | 否 | 赠品件数。benefitType=GIFT 时用 |
+| `benefitRef` | `string,null` | 否 | 赠品商品号或券号，随 benefitType 变 |
 | `scheduleType` | `string` | 是 | `ONE_OFF` 短期 / `ALWAYS_ON` 长期 / `RECURRING` 周期 |
-| `startAt` | `number,null` | 否 | — |
-| `endAt` | `number,null` | 否 | — |
+| `startAt` | `number,null` | 否 | 开始时刻（毫秒） |
+| `endAt` | `number,null` | 否 | 结束时刻（毫秒） |
 | `scheduleRule` | `string,null` | 否 | RECURRING 的 JSON：`{"weekdays":[3],"from":"08:00","to":"20:00"}` |
-| `quota` | `number,null` | 否 | — |
-| `quotaUsed` | `number` | 是 | — |
-| `quotaLeft` | `number,null` | 否 | — |
-| `budgetMinor` | `number,null` | 否 | — |
-| `budgetUsedMinor` | `number` | 是 | — |
+| `quota` | `number,null` | 否 | 限量：这个活动最多优惠多少单。空 = 不限量 |
+| `quotaUsed` | `number` | 是 | 已用掉的限量 |
+| `quotaLeft` | `number,null` | 否 | 还剩多少 = quota - quotaUsed。不限量时为空 |
+| `budgetMinor` | `number,null` | 否 | 预算上限（分）。空 = 不限 —— 用尽后自动停，已享受的不回收 |
+| `budgetUsedMinor` | `number` | 是 | 已花掉的预算（分） |
 | `maxExposureMinor` | `number,null` | 否 | 最大敞口 = 限量 × 单次优惠。建活动页要显示它 |
 | `audiences` | `object`（见下）\[\] | 是 | 空数组 = **对所有人生效**。老活动迁过来就是这个状态 |
-| `goodsNos` | `string`\[\] | 是 | — |
+| `goodsNos` | `string`\[\] | 是 | 参与的商品。空 = 全店商品都参与 |
 | `status` | `string` | 是 | `DRAFT` / `RUNNING` / `PAUSED` / `ENDED` |
 | `endedReason` | `string,null` | 否 | `EXPIRED` / `QUOTA` / `BUDGET` / `MANUAL`。商家问「怎么停了」要有答案 |
 | `liveNow` | `boolean` | 是 | 此刻是不是真的在生效。**与 status 分开**：周期活动在非时段里 status 仍是 RUNNING， 而商家问的是「现在减不减」。 |

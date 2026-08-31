@@ -3865,35 +3865,51 @@ export interface MyMembership {
  * 满减 = AMOUNT × CUT，限时特价 = GOODS × PRICE，买赠 = QTY × GIFT，发券 = NONE × COUPON。
  */
 export interface StoreActivity {
+  /** 活动号 */
   activityNo: string;
+  /** 活动名。商家自己起，出现在活动列表与冲突提示里 */
   name: string;
   /** `ACQUIRE` 拉新 / `WAKEUP` 唤回 / `CLEAR` 清库存 / `BASKET` 提客单。只影响建的时候的默认值 */
   goal?: string | null;
+  /** 限定到某一家门店。空 = 主体下所有门店 */
   storeNo?: string | null;
   /** `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 */
   triggerType: string;
+  /** 满额门槛（分）。triggerType=AMOUNT 时用 */
   triggerAmountMinor?: number | null;
+  /** 满件门槛。triggerType=QTY 时用 */
   triggerQty?: number | null;
   /** `CUT` 减钱 / `PRICE` 改单价 / `GIFT` 送商品 / `COUPON` 发券 */
   benefitType: string;
+  /** 优惠金额（分）。CUT 是减多少，PRICE 是改成多少 */
   benefitAmountMinor?: number | null;
+  /** 赠品件数。benefitType=GIFT 时用 */
   benefitQty?: number | null;
+  /** 赠品商品号或券号，随 benefitType 变 */
   benefitRef?: string | null;
   /** `ONE_OFF` 短期 / `ALWAYS_ON` 长期 / `RECURRING` 周期 */
   scheduleType: string;
+  /** 开始时刻（毫秒） */
   startAt?: number | null;
+  /** 结束时刻（毫秒） */
   endAt?: number | null;
   /** RECURRING 的 JSON：`{"weekdays":[3],"from":"08:00","to":"20:00"}` */
   scheduleRule?: string | null;
+  /** 限量：这个活动最多优惠多少单。空 = 不限量 */
   quota?: number | null;
+  /** 已用掉的限量 */
   quotaUsed: number;
+  /** 还剩多少 = quota - quotaUsed。不限量时为空 */
   quotaLeft?: number | null;
+  /** 预算上限（分）。空 = 不限 —— 用尽后自动停，已享受的不回收 */
   budgetMinor?: number | null;
+  /** 已花掉的预算（分） */
   budgetUsedMinor: number;
   /** 最大敞口 = 限量 × 单次优惠。建活动页要显示它 */
   maxExposureMinor?: number | null;
   /** 空数组 = **对所有人生效**。老活动迁过来就是这个状态 */
   audiences: Array<{ type: string; value: string }>;
+  /** 参与的商品。空 = 全店商品都参与 */
   goodsNos: string[];
   /** `DRAFT` / `RUNNING` / `PAUSED` / `ENDED` */
   status: string;
@@ -3908,24 +3924,43 @@ export interface StoreActivity {
 
 /** 建活动入参。`activityNo` 为空 = 新建 */
 export interface StoreActivityDraft {
+  /** 活动号。**为空 = 新建**；传了就是改这一个 */
   activityNo?: string;
+  /** 活动名。商家自己起，出现在活动列表与冲突提示里 */
   name: string;
+  /** `ACQUIRE` 拉新 / `WAKEUP` 唤回 / `CLEAR` 清库存 / `BASKET` 提客单。只影响建的时候的默认值 */
   goal?: string | null;
+  /** 限定到某一家门店。空 = 主体下所有门店 */
   storeNo?: string | null;
+  /** `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 */
   triggerType?: string;
+  /** 满额门槛（分）。triggerType=AMOUNT 时用 */
   triggerAmountMinor?: number | null;
+  /** 满件门槛。triggerType=QTY 时用 */
   triggerQty?: number | null;
+  /** `CUT` 减钱 / `PRICE` 改单价 / `GIFT` 送商品 / `COUPON` 发券 */
   benefitType: string;
+  /** 优惠金额（分）。CUT 是减多少，PRICE 是改成多少 */
   benefitAmountMinor?: number | null;
+  /** 赠品件数。benefitType=GIFT 时用 */
   benefitQty?: number | null;
+  /** 赠品商品号或券号，随 benefitType 变 */
   benefitRef?: string | null;
+  /** `ONE_OFF` 短期 / `ALWAYS_ON` 长期 / `RECURRING` 周期 */
   scheduleType?: string;
+  /** 开始时刻（毫秒） */
   startAt?: number | null;
+  /** 结束时刻（毫秒） */
   endAt?: number | null;
+  /** RECURRING 的 JSON：`{"weekdays":[3],"from":"08:00","to":"20:00"}` */
   scheduleRule?: string | null;
+  /** 限量：这个活动最多优惠多少单。空 = 不限量 */
   quota?: number | null;
+  /** 预算上限（分）。空 = 不限 —— 用尽后自动停，已享受的不回收 */
   budgetMinor?: number | null;
+  /** 定向到哪些人。**空数组 = 对所有人生效**，不是「谁也不发」 */
   audiences?: Array<{ type: string; value: string }>;
+  /** 参与的商品。空 = 全店商品都参与 */
   goodsNos?: string[];
 }
 
@@ -3950,7 +3985,9 @@ export interface ActivityConflict {
  * 就要改一次算价。
  */
 export interface MerchantCoupon {
+  /** 券模板号 —— 一张券和它的模板是两个对象 */
   couponNo: string;
+  /** 券名，买家在券包里看到的就是它 */
   title: string;
   /** `CASH` 现金 / `PERCENT` 折扣 / `GIFT` 兑换 / `FREE_SHIP` 免运费 */
   benefitMode: string;
@@ -3960,16 +3997,23 @@ export interface MerchantCoupon {
   benefitCapMinor?: number | null;
   /** GIFT 兑换哪件商品 */
   benefitRef?: string | null;
+  /** 用券门槛：订单满多少分。空 = 无门槛 */
   minAmountMinor?: number | null;
+  /** 用券门槛：订单满几件。与 minAmountMinor **同时生效**，不是二选一 */
   minQty?: number | null;
   /** `ALL` / `STORE` / `CATEGORY` / `GOODS`。**下单抵扣的券只能是前两种** */
   scopeType: string;
+  /** 限定到哪些类目号或商品号，随 scopeType 变 */
   scopeRefs: string[];
+  /** 适用范围的**文案**。⚠️ 只是给人看的一句话，**不是校验依据** —— 判的是 scopeType/scopeRefs */
   scopeDesc?: string | null;
   /** `ABSOLUTE` 固定起止 / `RELATIVE` 领取后 N 天 */
   validityMode: string;
+  /** 生效时刻（毫秒）。FIXED 用 */
   startAt?: number | null;
+  /** 失效时刻（毫秒）。FIXED 用 */
   endAt?: number | null;
+  /** 领取后有效天数。RELATIVE 用 */
   validDays?: number | null;
   /** `CENTER` 领券中心 / `TARGETED` 定向发 / `ACTIVITY` 活动发 */
   issueMode: string;
@@ -3994,26 +4038,52 @@ export interface MerchantCoupon {
 
 /** 建券入参。`couponNo` 为空 = 新建 */
 export interface MerchantCouponDraft {
+  /** 券号。**新建时不传** —— 传了就是改这一张 */
   couponNo?: string;
+  /** 券名，买家在券包里看到的就是它 */
   title: string;
+  /** `CASH` 减固定金额 / `PERCENT` 打折 / `GIFT` 换赠品 / `TIMES` 次卡 */
   benefitMode: string;
+  /** 优惠力度。含义**跟着 benefitMode 变**：CASH 是分、PERCENT 是万分比、TIMES 是次数 */
   benefitValue: number;
+  /** 折扣券的封顶金额（分）。空 = 不封顶 —— 打折券不封顶时一张大单能吃掉整月预算 */
   benefitCapMinor?: number | null;
+  /** 赠品/次卡指向的对象（商品号）。只有 GIFT 与 TIMES 用得上 */
   benefitRef?: string | null;
+  /** 用券门槛：订单满多少分。空 = 无门槛 */
   minAmountMinor?: number | null;
+  /** 用券门槛：订单满几件。与 minAmountMinor **同时生效**，不是二选一 */
   minQty?: number | null;
+  /** `ALL` 全店 / `CATEGORY` 限类目 / `GOODS` 限商品 */
   scopeType?: string;
+  /** 限定到哪些类目号或商品号，随 scopeType 变 */
   scopeRefs?: string[];
+  /**
+   * 适用范围的**文案**。
+   *
+   * ⚠️ 它只是给人看的一句话，**不是校验依据** —— 老券的「仅限粮油类」从来没进过判定，
+   * 判的一直是 scopeType/scopeRefs。搬新模型时特意没把它当规则搬，否则存量券会突然变严。
+   */
   scopeDesc?: string | null;
+  /** `FIXED` 固定起止时间 / `RELATIVE` 领取后 N 天内有效 */
   validityMode?: string;
+  /** 生效时刻（毫秒）。FIXED 用 */
   startAt?: number | null;
+  /** 失效时刻（毫秒）。FIXED 用 */
   endAt?: number | null;
+  /** 领取后有效天数。RELATIVE 用 —— 定向发放常用它，避免「发出去就快过期」 */
   validDays?: number | null;
+  /** `PUBLIC` 买家自己领 / `TARGETED` 只能由商家定向发 */
   issueMode?: string;
+  /** `ONLINE` 下单抵扣 / `STORE` 到店出示码核销。**到店券没有码就出示不了** */
   redeemMode?: string;
+  /** 一张券可核几次。次卡看这个数，普通券恒为 1 */
   timesTotal?: number;
+  /** 总发行量。空 = 不限量 —— 不限量的券没有「发完」这个状态 */
   totalCount?: number | null;
+  /** 每人最多领几张 */
   perUserLimit?: number;
+  /** 预算上限（分）。空 = 不限。用尽后停发，已发出去的不受影响 */
   budgetMinor?: number | null;
 }
 
@@ -4024,8 +4094,11 @@ export interface MerchantCouponDraft {
  * 实发 25 张，只说「发放成功」的话，他会以为发出去 37 张 —— 直到某个顾客说没收到。
  */
 export interface CouponIssueBatch {
+  /** 这一批发放的编号 */
   issueNo: string;
+  /** 券模板号 —— 一张券和它的模板是两个对象 */
   couponNo: string;
+  /** 发给哪个人群。空 = 手动挑的人 */
   segmentNo?: string | null;
   /** 人群此刻命中多少人 */
   planned: number;
@@ -4033,8 +4106,11 @@ export interface CouponIssueBatch {
   skipped: number;
   /** `UNREACHABLE` 还没注册或已退订 / `ALREADY_HAS` 到每人上限 / `SOLD_OUT` 券发完 */
   skipReasons: Array<{ reason: string; count: number }>;
+  /** 这一批券的面额合计（分）—— 商家据此估敞口 */
   amountMinor: number;
+  /** 谁发的 */
   operatorNo?: string | null;
+  /** 发放时刻（毫秒） */
   issuedAt: number;
 }
 
@@ -4046,23 +4122,33 @@ export interface CouponIssueBatch {
  * 到店券没有码就出示不了，次卡不显示剩余次数就等于一次性券。
  */
 export interface MyStoreCoupon {
+  /** 这个人手里那一张的编号 */
   userCouponNo: string;
+  /** 券模板号 —— 一张券和它的模板是两个对象 */
   couponNo: string;
+  /** 券名，买家在券包里看到的就是它 */
   title: string;
   /** 「减 3 元」「8.5 折」「凭券兑换」这种人话，后端拼好 */
   benefitText: string;
+  /** 发这张券的商家 */
   entityNo?: string | null;
   /** `ORDER` 下单抵扣 / `STORE_CODE` 到店出示 */
   redeemMode: string;
   /** 到店出示的码。**只有 STORE_CODE 券有** —— 别给下单券显示码 */
   redeemCode?: string | null;
+  /** 用券门槛：订单满多少分。空 = 无门槛 */
   minAmountMinor?: number | null;
+  /** 一张券可核几次。次卡看这个数，普通券恒为 1 */
   timesTotal: number;
+  /** 已核销次数 */
   timesUsed: number;
   /** 次卡还剩几次 */
   remaining: number;
+  /** 过期时刻（毫秒） */
   expireAt: number;
+  /** `UNUSED` / `USED` / `EXPIRED` / `REVOKED` */
   status: string;
+  /** 此刻能不能用。按时间窗、门槛、剩余次数实时判 —— 不落库，落了就要有人定时刷 */
   usableNow: boolean;
 }
 
@@ -4073,17 +4159,25 @@ export interface MyStoreCoupon {
  * 扫完直接扣的话，扫错一张没有回头路（**线下核销不可撤销**）。
  */
 export interface CouponRedeemView {
+  /** 这个人手里那一张的编号 */
   userCouponNo: string;
+  /** 券模板号 —— 一张券和它的模板是两个对象 */
   couponNo: string;
+  /** 券名，买家在券包里看到的就是它 */
   title: string;
   /** 「减 3 元」「8.5 折」「兑换」这种人话，后端拼好 */
   benefitText: string;
+  /** 持券人手机号后四位。店员认人够用，**永远不给完整号** */
   phoneTail?: string | null;
+  /** 过期时刻（毫秒） */
   expireAt: number;
+  /** 一张券可核几次。次卡看这个数，普通券恒为 1 */
   timesTotal: number;
+  /** 已核销次数 */
   timesUsed: number;
   /** 还能核几次。次卡看这个数 */
   remaining: number;
+  /** 此刻能不能核。不能时看 reason */
   redeemable: boolean;
   /** 不能核销时的原因码：`EXPIRED` / `USED_UP` / `REVOKED` / `NOT_STORE_CODE` / `COUPON_INACTIVE` */
   reason?: string | null;

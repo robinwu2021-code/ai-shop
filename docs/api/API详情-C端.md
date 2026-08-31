@@ -2935,20 +2935,20 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `userCouponNo` | `string` | 是 | — |
-| `couponNo` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
+| `userCouponNo` | `string` | 是 | 这个人手里那一张的编号 |
+| `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
+| `title` | `string` | 是 | 券名，买家在券包里看到的就是它 |
 | `benefitText` | `string` | 是 | 「减 3 元」「8.5 折」「凭券兑换」这种人话，后端拼好 |
-| `entityNo` | `string,null` | 否 | — |
+| `entityNo` | `string,null` | 否 | 发这张券的商家 |
 | `redeemMode` | `string` | 是 | `ORDER` 下单抵扣 / `STORE_CODE` 到店出示 |
 | `redeemCode` | `string,null` | 否 | 到店出示的码。**只有 STORE_CODE 券有** —— 别给下单券显示码 |
-| `minAmountMinor` | `number,null` | 否 | — |
-| `timesTotal` | `number` | 是 | — |
-| `timesUsed` | `number` | 是 | — |
+| `minAmountMinor` | `number,null` | 否 | 用券门槛：订单满多少分。空 = 无门槛 |
+| `timesTotal` | `number` | 是 | 一张券可核几次。次卡看这个数，普通券恒为 1 |
+| `timesUsed` | `number` | 是 | 已核销次数 |
 | `remaining` | `number` | 是 | 次卡还剩几次 |
-| `expireAt` | `number` | 是 | — |
-| `status` | `string` | 是 | — |
-| `usableNow` | `boolean` | 是 | — |
+| `expireAt` | `number` | 是 | 过期时刻（毫秒） |
+| `status` | `string` | 是 | `UNUSED` / `USED` / `EXPIRED` / `REVOKED` |
+| `usableNow` | `boolean` | 是 | 此刻能不能用。按时间窗、门槛、剩余次数实时判 —— 不落库，落了就要有人定时刷 |
 
 ### Order
 
