@@ -309,6 +309,23 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
+         * 收款进件。**这一张的收益与前几张不同，写清楚免得下一个人误解**：
+         * 读它的两条 ops 端点都是 `/{merchantNo}` 形式（进件详情、收款额度），
+         * **没有全量队列** —— 所以登记它挡的不是「打开页面看到全平台」，
+         * 而是「**知道商家号、手敲 URL 也查不到域外的**」。
+         *
+         * 收益有限但不是零：与提现/违规那几张的用例里第三条断言同一件事 ——
+         * 筛选参数（或路径参数）不该能绕过数据域，否则「知道单号就能查」，那不是限制。
+         *
+         * <p>三处必须保留的绕过，都已在 SCOPE_BYPASS_OK 里或本就跑在非运营会话：
+         *   MerchantPortImpl 的算价/能力查询 —— 买家会话（SELF），不绕商品页付不了款
+         *   MerchantPaymentServiceImpl#rows —— B 端商家看自己的进件，SELF 无锚点
+         *   ensurePayment —— 建店时的写前检查，此刻还没有会话
+         */
+        registry.register("mch_payment_merchant", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
          * 售后单。运营端的平台仲裁工单池（`GET /ops/after-sales`）是一条全量列表，
          * merchantNo 可空 —— 而这一页上有**商家名与买家昵称**，是跨商家的信息。
          *
