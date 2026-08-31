@@ -2,6 +2,8 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.OtpStore;
 import ai.neargo.shop.merchant.entity.MchViolation;
+import ai.neargo.shop.trade.entity.OrdAfterSale;
+import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.ViolationMapper;
 import ai.neargo.shop.promotion.entity.PmtActivity;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityMapper;
@@ -82,6 +84,9 @@ class OpsDataScopeFlowTest {
 
     @Autowired
     private ViolationMapper violationMapper;
+
+    @Autowired
+    private AfterSaleMapper afterSaleMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -283,6 +288,58 @@ class OpsDataScopeFlowTest {
         assertThat(violationCount(scoped.token(), OUTSIDE_MERCHANT))
                 .as("显式传域外商家号还能查到 —— 数据域被筛选参数绕过了")
                 .isZero();
+    }
+
+    @Test
+    @DisplayName("★★★ 批③ 平台仲裁工单池按商家域收敛 —— 下一步动作是裁决赔付")
+    void afterSaleQueueIsScopedByMerchant() throws Exception {
+        String admin = TestLogin.admin(mvc(), json);
+
+        seedAfterSale("M0002", "数据域测试·域内工单");
+        seedAfterSale(OUTSIDE_MERCHANT, "数据域测试·域外工单");
+
+        int all = afterSaleCount(admin, null);
+        assertThat(all).as("超管看到的工单池是空的 —— 这条用例此刻什么也没验到")
+                .isGreaterThan(1);
+
+        var scoped = staffWithScope(admin, "ds-aftersale", "CAMPAIGN_OPS", "M0002", null, null);
+        int seen = afterSaleCount(scoped.token(), null);
+        assertThat(seen)
+                .as("配了 M0002 域的运营看到了别家的售后工单 —— 这一页有商家名与买家昵称，"
+                        + "而下一步动作是裁决赔付")
+                .isLessThan(all);
+        assertThat(seen).as("域内那一条也看不到 —— 多半是 ord_after_sale 少了锚点、拼成了 1=0")
+                .isGreaterThan(0);
+
+        assertThat(afterSaleCount(scoped.token(), OUTSIDE_MERCHANT))
+                .as("显式传域外商家号还能查到 —— 数据域被筛选参数绕过了")
+                .isZero();
+    }
+
+    private void seedAfterSale(String entityNo, String reason) {
+        OrdAfterSale a = new OrdAfterSale();
+        a.setAfterSaleNo("AS-DS-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        a.setSubOrderNo("SUB-DS-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        a.setOrderNo("ORD-DS-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        a.setUserNo("U-DS-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        a.setEntityNo(entityNo);
+        a.setType("REFUND");
+        a.setStatus("PENDING");
+        a.setReason(reason);
+        a.setRefundMinor(100L);
+        afterSaleMapper.insert(a);
+    }
+
+    private int afterSaleCount(String token, String merchantNo) throws Exception {
+        var req = get("/ops/after-sales").header("Authorization", "Bearer " + token)
+                .param("size", "200");
+        if (merchantNo != null) {
+            req = req.param("merchantNo", merchantNo);
+        }
+        String body = mvc().perform(req)
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("records").size();
     }
 
     private void seedViolation(String entityNo, String detail) {

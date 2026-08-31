@@ -307,6 +307,24 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          */
         registry.register("mch_violation", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 售后单。运营端的平台仲裁工单池（`GET /ops/after-sales`）是一条全量列表，
+         * merchantNo 可空 —— 而这一页上有**商家名与买家昵称**，是跨商家的信息。
+         *
+         * <p><b>另外三处读它的 Port 早就显式绕过了</b>，登记不影响它们：
+         *   RefundSplitBackPortImpl —— 注释写明「售后单的属主是买家，运营看的是全量」
+         *   SettleSourcePortImpl    —— 结算取数，判「这单还有没有未了的售后」
+         *   TradeStatsPortImpl      —— 跨主体统计
+         * 这一点是先查过再登记的：上一张（sys_media_asset）就是没查漏了
+         * MediaScanner 那条必须全量的路径，登记后 5 条红。
+         *
+         * <p>SELF → user_no 一并登记：售后单的属主本来就是买家，
+         * C 端「我的售后」靠它，而那条路今天走的是按 user_no 过滤的查询。
+         */
+        registry.register("ord_after_sale", Map.of(
+                ScopeDim.MERCHANT, "entity_no",
+                ScopeDim.SELF, "user_no"));
         registry.register("pmt_user_coupon", Map.of(
                 ScopeDim.SELF, "user_no",
                 ScopeDim.MERCHANT, "entity_no"));

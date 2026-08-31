@@ -523,8 +523,12 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             w.eq(OrdAfterSale::getEntityNo, merchantNo);
         }
         w.orderByDesc(OrdAfterSale::getId);
-        return DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectList(w))
-                .stream().map(this::opsDetailOf).toList();
+        /*
+         * **不绕过**：这是平台仲裁的全量工单池（merchantNo 可空），
+         * 正是数据域该起作用的地方。这一页上有商家名与买家昵称 ——
+         * 配了商家域的运营不该看到别家的工单，而下一步动作是裁决赔付。
+         */
+        return afterSaleMapper.selectList(w).stream().map(this::opsDetailOf).toList();
     }
 
     /**

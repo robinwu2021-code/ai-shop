@@ -60,15 +60,20 @@ public class RefundSplitBackPortImpl implements RefundSplitBackPort {
          *    货还没回来。只按状态取，财务会在货没收到时就把钱退出去。
          * ③ split_reversed 不为真 —— 已回退过的单再点一次不是它需要的动作
          *
-         * executeWithoutScope：售后单的属主是买家，运营看的是全量。
+         * **不绕过**（2026-08-31，ord_after_sale 登记数据域时一并接上）：
+         * 这是财务的分账回退队列，与提现审批同一个形状 —— 下一步动作是把钱退回去，
+         * 配了商家域的财务不该看到别家的单。
+         *
+         * 上一版这里写着「售后单的属主是买家，运营看的是全量」—— 前半句是对的
+         * （所以 SELF 锚点是 user_no），但后半句不成立：**运营的可见范围由数据域决定，
+         * 不由这张表的属主决定**。两件事被那一句话合成了一件。
          */
-        List<OrdAfterSale> rows = DataScopeContext.executeWithoutScope(() ->
-                afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
-                        .eq(OrdAfterSale::getStatus, OrdAfterSale.REFUNDING)
-                        .isNotNull(OrdAfterSale::getLiability)
-                        .and(w -> w.isNull(OrdAfterSale::getSplitReversed)
-                                .or().eq(OrdAfterSale::getSplitReversed, false))
-                        .orderByAsc(OrdAfterSale::getId)));
+        List<OrdAfterSale> rows = afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
+                .eq(OrdAfterSale::getStatus, OrdAfterSale.REFUNDING)
+                .isNotNull(OrdAfterSale::getLiability)
+                .and(w -> w.isNull(OrdAfterSale::getSplitReversed)
+                        .or().eq(OrdAfterSale::getSplitReversed, false))
+                .orderByAsc(OrdAfterSale::getId));
         if (rows.isEmpty()) {
             return List.of();
         }

@@ -296,7 +296,7 @@ describe("数据域表册覆盖", () => {
      * 挑它们的判据是「运营端有一条全量列表读它」，而**登记的同时去掉了那三条
      * 队列上的 executeWithoutScope** —— 只登记不去绕过是第一批白干过的那一轮。
      */
-    const PENDING = 49;
+    const PENDING = 48;
 
     expect(
       missing.length,

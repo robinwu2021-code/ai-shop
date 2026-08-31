@@ -286,7 +286,14 @@ const ANCHOR_WAIVED: Record<string, string> = {
    * 两张表都只有 entity_no：一场活动、一条触达属于**某个商家**，不属于片区或自提点。
    * 加冗余列也没有意义 —— 那两个维度上不存在「这场活动归哪个片区」这个事实。
    */
-  "mch_violation:COMMUNITY":
+  "ord_after_sale:COMMUNITY":
+    "售后单挂在子单上，而社区在子单上（ord_sub_order 有冗余的 community_no）——"
+    + "售后表本身没有。**看到空白的是**：配了社区域的运营打开平台仲裁工单池。"
+    + "要接的话得在 ord_after_sale 上再冗余一列 community_no，"
+    + "而那和 V137 给子单加列是同一种代价，值不值得看仲裁台会不会按片区分工",
+  "ord_after_sale:PICKUP":
+    "同上。自提点运营者不做售后仲裁 —— 那需要 aftersale:ticket:read",
+    "mch_violation:COMMUNITY":
     "违规处置属于商家。**看到空白的是**：配了社区域的运营打开处置台。"
     + "而处置是 BD 的活（merchant:merchant:read 只在 BD 角色上），社区运营进不了这一页",
   "mch_violation:PICKUP":

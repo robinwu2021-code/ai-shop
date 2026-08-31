@@ -77,9 +77,10 @@ public class TradeStatsPortImpl implements TradeStatsPort {
 
     @Override
     public long openAfterSaleCount() {
-        return DataScopeContext.executeWithoutScope(() ->
-                afterSaleMapper.selectCount(Wrappers.<OrdAfterSale>lambdaQuery()
-                        .in(OrdAfterSale::getStatus, OPEN_AFTER_SALE)));
+        // 不绕过：与看板上其它几个数（走 ord_sub_order，本就不绕）同一口径。
+        // 详见 merchantTotals 里那段注释
+        return afterSaleMapper.selectCount(Wrappers.<OrdAfterSale>lambdaQuery()
+                .in(OrdAfterSale::getStatus, OPEN_AFTER_SALE));
     }
 
     @Override
@@ -153,9 +154,18 @@ public class TradeStatsPortImpl implements TradeStatsPort {
          * **不按 from 过滤售后**：一单可能这个月成交、下个月才售后，
          * 按成交窗口去截售后会让「卖得多赔得也多」的商家看起来很干净。
          */
-        Map<String, Long> afterSales = DataScopeContext.executeWithoutScope(() ->
-                        afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
-                                .in(OrdAfterSale::getEntityNo, byMerchant.keySet())))
+        /*
+         * **不绕过**（2026-08-31，ord_after_sale 登记数据域时一并接上）：
+         * 同一块看板上的订单数走的是不绕过的查询、已经被裁，
+         * 售后数如果绕过就成了「**自己域内的订单数**配上**全平台的售后数**」——
+         * 两个数出自不同口径而拼在同一行，比整块都不裁更难发现：它看起来是个正常的数。
+         *
+         * 这里其实也不会放大范围：`byMerchant.keySet()` 本身就来自那条裁过的订单查询。
+         * 去掉绕过是为了**让口径显式一致**，而不是依赖「上游恰好已经裁过」这个巧合。
+         */
+        Map<String, Long> afterSales = afterSaleMapper.selectList(
+                        Wrappers.<OrdAfterSale>lambdaQuery()
+                                .in(OrdAfterSale::getEntityNo, byMerchant.keySet()))
                 .stream()
                 .collect(java.util.stream.Collectors.groupingBy(
                         OrdAfterSale::getEntityNo, java.util.stream.Collectors.counting()));
