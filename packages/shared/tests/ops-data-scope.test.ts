@@ -27,7 +27,20 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "../../..");
 const BACKEND = join(ROOT, "backend");
-const MODULES = ["shop-app", "shop-core", "shop-merchant", "shop-settle", "shop-channel", "shop-base"];
+/**
+ * 要扫的后端模块。**从磁盘发现，不写死清单** ——
+ *
+ * 上一版是硬编码的六个名字。模块改名或新增时它只会**少扫一个模块**，
+ * 而少扫不报错：这几道闸（G1/G4）都是「找出违规」型的，扫不到的东西
+ * 恰好表现为「没有违规」。2026-08-31 差点撞上：并行会话正在把
+ * `shop-settle` 改名成 `pay/pay-domain`，改完之后结算域的绕过点与未登记读
+ * 会从这几条闸门的视野里整片消失，而闸门全绿。
+ *
+ * 兜底判据在「解析没失效」那条用例里：类数少于 300 就报。
+ */
+const MODULES = readdirSync(BACKEND, { withFileTypes: true })
+  .filter((d) => d.isDirectory() && existsSync(join(BACKEND, d.name, "src/main/java")))
+  .map((d) => d.name);
 const REGISTRATION = join(
   BACKEND, "shop-app/src/main/java/ai/neargo/shop/config/DataScopeRegistration.java");
 const SCHEMA = join(BACKEND, "shop-app/src/test/resources/schema-test.sql");
