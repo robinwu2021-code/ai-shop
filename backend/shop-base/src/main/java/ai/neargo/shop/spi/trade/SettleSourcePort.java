@@ -79,6 +79,21 @@ public interface SettleSourcePort {
     int clearPointsGranted(java.util.Collection<String> subOrderNos);
 
     /**
+     * 这批子单里<b>已经不可能再成交</b>的（不变式 I6 的判据）。
+     *
+     * <p>两类都算：<b>库里根本没有这个子单</b>（下单事务回滚了，而积分已经扣走），
+     * 以及<b>状态是 CANCELLED</b>（取消链路走过了，但退分那一步没做成）。
+     *
+     * <p>它服务的是「预占的积分要还回去」：下单扣分是<b>唯一的前置动作</b> ——
+     * 它必须发生在订单落库之前（要先知道抵扣多少才能算实付），
+     * 所以顺序怎么排都救不了它，<b>只能靠补偿</b>。
+     *
+     * <p><b>不含 WAIT_PAY</b>：那种单还在等支付，积分正当地占着。
+     * 把它算进来会让用户在收银台前眼睁睁看着抵扣消失。
+     */
+    List<String> subOrdersNotAlive(java.util.Collection<String> subOrderNos);
+
+    /**
      * @param subOrderNo 子单号
      * @param orderNo    主单号 —— 补生成结算单是按主单做的（{@code generateForOrder}）
      * @param paidAt     支付时刻，用来算「漏了多久」

@@ -36,6 +36,45 @@ public interface FundInvariantService {
     ScanResult scan(long since, int limit);
 
     /**
+     * 释放<b>预占了积分、而订单已经不可能成交</b>的那些（不变式 I6）。
+     *
+     * <h2>为什么它是必需的，而不是「顺手加的兜底」</h2>
+     * 下单扣积分是七处跨域调用里<b>唯一的前置动作</b> ——
+     * 它必须发生在订单落库之前（要先知道抵扣多少才能算实付）。
+     * 支付域独立之后，扣分与建单不再是一个事务，而<b>两个顺序都错</b>：
+     *
+     * <pre>
+     * 扣分 → 建单     扣成功、建失败  →  用户的分白扣了
+     * 建单 → 扣分     建成功、扣失败  →  用户白拿了优惠
+     * </pre>
+     *
+     * 前面几处都能靠「推迟到提交之后」解决，这一处不能 ——
+     * <b>只能靠补偿</b>。而补偿的两半，仓库里其实已经有了一半：
+     * {@code pts_user_ledger.status} 本来就是 PENDING（预占）/ CONFIRMED / REVERSED
+     * 三态，注释里写着「预占，此时池子还没付给收单方（订单可能取消）」，
+     * {@code reverse} 就是取消那一半，且幂等。
+     *
+     * <p><b>缺的一直是「没人触发取消」</b>：下单事务回滚时，那条 PENDING 就永远留在那里，
+     * 而用户的分已经从 balance 里扣走了。今天扫不出来，也没有任何地方会提起它。
+     *
+     * <p>顺带堵住另一个口子：取消订单的退分改成「提交后执行」之后，
+     * 那一步失败也会留下 PENDING —— 这里一并释放。
+     *
+     * @param olderThan 只处理这个时刻之前预占的。留出的时间是给正常链路的：
+     *                  刚下单的那一瞬间订单可能还没落库，此时释放会把好单的分退掉
+     * @param limit     单轮上限
+     */
+    ReleaseResult releaseDeadHolds(long olderThan, int limit);
+
+    /**
+     * @param scanned  扫了几条预占中的流水（对照量）
+     * @param dead     其中订单已经不可能成交的
+     * @param released 实际退回了几条
+     */
+    record ReleaseResult(int scanned, int dead, int released) {
+    }
+
+    /**
      * @param scannedPaid    扫了几个已支付子单（I1 的对照量）
      * @param missingBill    其中没有结算单的 —— <b>可以自动补</b>，{@code generateForOrder} 幂等
      * @param repairedBill   实际补出来几张

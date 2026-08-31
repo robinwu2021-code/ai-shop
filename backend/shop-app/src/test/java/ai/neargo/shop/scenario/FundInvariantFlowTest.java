@@ -74,6 +74,7 @@ class FundInvariantFlowTest {
             jdbc.update("DELETE FROM ord_after_sale WHERE sub_order_no LIKE 'SUB-INV-%'");
             jdbc.update("DELETE FROM sys_event_consumed WHERE event_no LIKE 'EV-INV-%'");
             jdbc.update("DELETE FROM pts_user_ledger WHERE sub_order_no LIKE 'SUB-INV-%'");
+            jdbc.update("DELETE FROM pts_user_account WHERE user_no = 'U-INV'");
             return null;
         });
     }
@@ -350,6 +351,49 @@ class FundInvariantFlowTest {
          */
         pointsPort.reverse(SUB, "测试重复退分");
         assertThat(refundLedgerCount(SUB)).as("重复退不能退两次").isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("I6 · 下单回滚后预占的积分要还回去，而等支付的单不能动")
+    void deadHoldsAreReleasedButWaitPayIsNot() {
+        long now = System.currentTimeMillis();
+        // ① 孤儿预占：只有 USE 流水，**没有对应的子单** —— 下单事务回滚就是这个样子
+        givenPendingUse("SUB-INV-DEAD", "PL-INV-D");
+        // ② 等支付的单：子单存在且状态 WAIT_PAY，积分正当地占着
+        givenPendingUse("SUB-INV-WAIT", "PL-INV-W");
+        DataScopeContext.executeWithoutScope(() -> jdbc.update(
+                "INSERT INTO ord_sub_order (sub_order_no, order_no, user_no, entity_no,"
+                        + " status, pay_amount, tenant_no, created_at, updated_at, version, deleted)"
+                        + " VALUES ('SUB-INV-WAIT', ?, ?, ?, 'WAIT_PAY', 1000, 'MAIN',"
+                        + " CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0)", ORDER, USER, ENTITY));
+
+        assertThat(refundLedgerCount("SUB-INV-DEAD")).as("前置：还没退过").isZero();
+        assertThat(refundLedgerCount("SUB-INV-WAIT")).as("前置：还没退过").isZero();
+
+        FundInvariantService.ReleaseResult r = invariants.releaseDeadHolds(now + 60_000L, 500);
+
+        // 对照量：真的扫到预占流水了 —— 否则「释放 0 条」什么都不说明
+        assertThat(r.scanned()).as("一条预占都没扫到，下面的断言就毫无意义").isPositive();
+        assertThat(r.released()).as("孤儿预占要被释放").isPositive();
+        assertThat(refundLedgerCount("SUB-INV-DEAD")).as("没有子单的那条，分要还回去").isEqualTo(1);
+
+        /*
+         * **反向对照，也是这一条最要紧的断言**：等支付的单不能动。
+         * 判据写成「不是成交态」的话它会被一起释放 —— 而那意味着
+         * 用户站在收银台前，眼看着已经算好的抵扣消失。
+         */
+        assertThat(refundLedgerCount("SUB-INV-WAIT")).as("等支付的单，积分正当地占着").isZero();
+    }
+
+    /** 造一条预占中的用分流水（USE / PENDING）—— 那正是「已经从余额里扣走」的状态 */
+    private void givenPendingUse(String subOrderNo, String ledgerNo) {
+        DataScopeContext.executeWithoutScope(() -> jdbc.update(
+                "INSERT INTO pts_user_ledger (ledger_no, user_no, biz_type, points,"
+                        + " balance_after, sub_order_no, status, tenant_no,"
+                        + " created_at, updated_at, version, deleted)"
+                        + " VALUES (?, ?, 'USE', -20, 0, ?, 'PENDING', 'MAIN',"
+                        + " CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0)",
+                ledgerNo, USER, subOrderNo));
     }
 
     private int refundLedgerCount(String subOrderNo) {

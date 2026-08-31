@@ -26,15 +26,18 @@ public class FundInvariantServiceImpl implements FundInvariantService {
     private final SettleMappers.PointsLedgerMapper ledgerMapper;
     private final SettleSourcePort sourcePort;
     private final SettleService settleService;
+    private final ai.neargo.shop.settle.PointsService pointsService;
 
     public FundInvariantServiceImpl(BillMapper billMapper,
                                     SettleMappers.PointsLedgerMapper ledgerMapper,
                                     SettleSourcePort sourcePort,
-                                    SettleService settleService) {
+                                    SettleService settleService,
+                                    ai.neargo.shop.settle.PointsService pointsService) {
         this.billMapper = billMapper;
         this.ledgerMapper = ledgerMapper;
         this.sourcePort = sourcePort;
         this.settleService = settleService;
+        this.pointsService = pointsService;
     }
 
     @Override
@@ -123,6 +126,45 @@ public class FundInvariantServiceImpl implements FundInvariantService {
         return new ScanResult(paid.size(), missing.size(), repaired,
                 bills.size(), orphan.size(), oldestMissingAt,
                 granted.size(), noLedger.size(), cleared);
+    }
+
+    @Override
+    public ReleaseResult releaseDeadHolds(long olderThan, int limit) {
+        java.time.LocalDateTime cutoff = java.time.LocalDateTime.ofInstant(
+                java.time.Instant.ofEpochMilli(olderThan), java.time.ZoneId.systemDefault());
+        List<PtsUserLedger> holds = DataScopeContext.executeWithoutScope(() ->
+                ledgerMapper.selectList(Wrappers.<PtsUserLedger>lambdaQuery()
+                        .eq(PtsUserLedger::getBizType, PtsUserLedger.USE)
+                        .eq(PtsUserLedger::getStatus, PtsUserLedger.PENDING)
+                        .lt(PtsUserLedger::getCreatedAt, cutoff)
+                        .orderByAsc(PtsUserLedger::getCreatedAt)
+                        .last("limit " + Math.max(1, limit))));
+        if (holds.isEmpty()) {
+            return new ReleaseResult(0, 0, 0);
+        }
+        List<String> dead = sourcePort.subOrdersNotAlive(
+                holds.stream().map(PtsUserLedger::getSubOrderNo).distinct().toList());
+
+        int released = 0;
+        for (String subOrderNo : dead) {
+            /*
+             * 逐条独立 try：一条退不掉不能把整轮带走。
+             * {@code reverse} 幂等且只认 PENDING —— 与正常取消链路并发跑到同一条上，
+             * 先到的那次生效，后到的静默返回。
+             */
+            try {
+                pointsService.reverse(subOrderNo, "订单未成交，释放预占的积分");
+                released++;
+            } catch (RuntimeException e) {
+                log.warn("[fund-invariant] I6 释放失败 subOrderNo={}：{}", subOrderNo, e.getMessage());
+            }
+        }
+        if (!dead.isEmpty()) {
+            log.warn("[fund-invariant] **I6 释放 {} 条预占积分**（扫 {} 条）—— "
+                            + "这些单的积分已经扣走而订单不可能成交；持续不为零要查下单链路",
+                    released, holds.size());
+        }
+        return new ReleaseResult(holds.size(), dead.size(), released);
     }
 
     /** 这批子单里**已经有发分流水**的。一次查回来，不逐个 exists */

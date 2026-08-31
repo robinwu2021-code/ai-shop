@@ -56,6 +56,17 @@ public class FundInvariantJob implements JobHandler {
     @Value("${shop.job.fund-invariant.limit:2000}")
     private int limit;
 
+    /**
+     * 预占的积分多久没等到订单就算死。
+     *
+     * <p>给 15 分钟不是保守，是**避开正常链路**：下单与扣分在同一个请求里，
+     * 正常情况下秒级就有订单。但收银台上还有「等支付」那一段 ——
+     * 那种单的状态是 WAIT_PAY，判据里已经把它排除了，所以这个数只要覆盖
+     * 「下单事务本身」的耗时。太短会误伤正在建的单。
+     */
+    @Value("${shop.job.fund-invariant.hold-minutes:15}")
+    private int holdMinutes;
+
     /** 缺结算单超过这个时长就升级为 error —— 秒级窗口是设计，小时级就是故障 */
     @Value("${shop.job.fund-invariant.alert-after-minutes:60}")
     private int alertAfterMinutes;
@@ -96,10 +107,14 @@ public class FundInvariantJob implements JobHandler {
          * 这里把它单独报出来，而不是混进「一切正常」。
          */
         if (!r.scannedAnything()) {
-            log.warn("[fund-invariant] **一行都没扫到**（回看 {} 小时）—— "
+            log.warn("[fund-invariant] **I1–I3 一行都没扫到**（回看 {} 小时）—— "
                     + "这与「没有违反」长得一样，但通常意味着查询条件或时间窗有问题",
                     lookbackHours);
-            return JobResult.ok("一行都没扫到（回看 %d 小时）".formatted(lookbackHours));
+            /*
+             * **不在这里 return。** I6 走的是另一个时间窗（分钟级），
+             * 提前返回会让「I1–I3 没数据」把 I6 一起带走 ——
+             * 而 I6 释放的是用户已经被扣走的分，最不该被别的检查的空转连累。
+             */
         }
 
         if (r.orphanBill() > 0) {
@@ -119,14 +134,28 @@ public class FundInvariantJob implements JobHandler {
             }
         }
 
+        /*
+         * I6 与上面三条分开跑，因为**时间窗不同**：I1–I3 回看 26 小时，
+         * 而预占的积分只需要等几分钟就能判死 —— 订单落库是同一个请求里的事。
+         * 用同一个窗口的话，刚回滚的那批要等一整天才还给用户。
+         */
+        FundInvariantService.ReleaseResult rel = invariants.releaseDeadHolds(
+                System.currentTimeMillis() - holdMinutes * 60_000L, limit);
+        if (rel.dead() > 0) {
+            log.warn("[fund-invariant] I6 释放预占积分 {}/{}（扫 {} 条）",
+                    rel.released(), rel.dead(), rel.scanned());
+        }
+
         if (r.grantedNoLedger() > 0) {
             log.error("[fund-invariant] I3 违反 {} 条：标记说发过积分而没有流水，"
                     + "已清标记 {} 行 —— 下一轮会重发", r.grantedNoLedger(), r.clearedFlags());
         }
 
-        return JobResult.ok("已付子单 %d（缺 %d · 补 %d）· 结算单 %d（对不上 %d）· 已发分 %d（无流水 %d · 清 %d）"
+        return JobResult.ok(("已付子单 %d（缺 %d · 补 %d）· 结算单 %d（对不上 %d）"
+                + "· 已发分 %d（无流水 %d · 清 %d）· 预占 %d（已死 %d · 释放 %d）")
                 .formatted(r.scannedPaid(), r.missingBill(), r.repairedBill(),
                         r.scannedBills(), r.orphanBill(),
-                        r.scannedGranted(), r.grantedNoLedger(), r.clearedFlags()));
+                        r.scannedGranted(), r.grantedNoLedger(), r.clearedFlags(),
+                        rel.scanned(), rel.dead(), rel.released()));
     }
 }

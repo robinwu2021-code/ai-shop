@@ -184,6 +184,34 @@ public class SettleSourcePortImpl implements SettleSourcePort {
         });
     }
 
+    /**
+     * 不变式 I6 的判据：这批子单里已经不可能再成交的。
+     *
+     * <p>与 {@link #notPaidAmong} 刻意分开：那一个问的是「是不是成交态」
+     * （WAIT_PAY 也算不是），这一个问的是「还有没有希望」——
+     * WAIT_PAY 有希望，所以不在里面。两个判据看着相似，
+     * 合成一个的话，等支付的单会被当成死单，用户在收银台前眼看着抵扣消失。
+     */
+    @Override
+    public List<String> subOrdersNotAlive(java.util.Collection<String> subOrderNos) {
+        if (subOrderNos == null || subOrderNos.isEmpty()) {
+            return List.of();
+        }
+        List<OrdSubOrder> found = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .in(OrdSubOrder::getSubOrderNo, subOrderNos)));
+        Map<String, String> statusOf = found.stream()
+                .collect(Collectors.toMap(OrdSubOrder::getSubOrderNo, OrdSubOrder::getStatus,
+                        (a, b) -> a));
+        return subOrderNos.stream()
+                .filter(no -> {
+                    String status = statusOf.get(no);
+                    // 查不到 = 下单事务回滚了而积分已经扣走 —— 这一类最该还
+                    return status == null || OrdSubOrder.CANCELLED.equals(status);
+                })
+                .toList();
+    }
+
     @Override
     public List<SettleSource> settleSourcesOf(String orderNo) {
         List<OrdSubOrder> subs = DataScopeContext.executeWithoutScope(() ->
