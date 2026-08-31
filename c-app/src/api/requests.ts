@@ -53,12 +53,15 @@ export interface LoginReqBody {
 
 /** 绑定手机号（验证码）。号码要以**字符串**传 —— 见 phone-gate.vue 里那段注释 */
 export interface BindPhoneReq {
+  /** 手机号 */
   phone: string;
+  /** 短信/微信下发的验证码 */
   code: string;
 }
 
 /** 微信一键授权：端上只拿得到 code，换号在后端做 */
 export interface WxPhoneReq {
+  /** 短信/微信下发的验证码 */
   code: string;
 }
 
@@ -85,7 +88,9 @@ export interface SaveAddressReq {
    * 端上一直没发 —— 于是 `usr_address` 那三列永远是 null（见 `Address` 的注释）
    */
   province?: string | null;
+  /** 市 */
   city?: string | null;
+  /** 区/县 */
   district?: string | null;
   /** 详细地址（街道门牌） */
   detail: string;

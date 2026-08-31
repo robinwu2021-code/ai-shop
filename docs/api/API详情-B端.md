@@ -2127,12 +2127,12 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `countNo` | `string` | 是 | — |
+| `countNo` | `string` | 是 | 盘点单号 |
 | `status` | `string` | 是 | COUNTING 进行中 / POSTED 已过账 |
-| `locationId` | `string` | 否 | — |
-| `startedAt` | `string` | 否 | — |
-| `operator` | `string` | 否 | — |
-| `lines` | [`StockCountLine`](#stockcountline)\[\] | 是 | — |
+| `locationId` | `string` | 否 | 库位号 |
+| `startedAt` | `string` | 否 | 开始盘点的时刻 |
+| `operator` | `string` | 否 | 经手人 |
+| `lines` | [`StockCountLine`](#stockcountline)\[\] | 是 | 明细行 |
 
 
 #### PUT `/biz/inventory/counts/{no}/lines`
@@ -2248,16 +2248,16 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `itemId` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `specText` | `string` | 否 | — |
-| `baseUom` | `string` | 否 | — |
-| `barcode` | `string` | 否 | — |
-| `itemCode` | `string` | 否 | — |
-| `onHand` | `number` | 是 | — |
-| `reserved` | `number` | 是 | — |
-| `available` | `number` | 是 | — |
-| `byLocation` | `object`（见下）\[\] | 是 | — |
+| `itemId` | `string` | 是 | 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 |
+| `name` | `string` | 是 | 货品名 |
+| `specText` | `string` | 否 | 规格描述（「10斤装」）。人读的，不参与匹配 |
+| `baseUom` | `string` | 否 | 基本计量单位（个/斤/箱）。**所有数量都以它为准**，收货填别的单位要先换算 |
+| `barcode` | `string` | 否 | 条码。**一个物料可以有多个**（换包装还是同一件货），这里给主条码 |
+| `itemCode` | `string` | 否 | 商家自己的货号，对接 ERP 用 |
+| `onHand` | `number` | 是 | 实存 |
+| `reserved` | `number` | 是 | 预留：别人下了单还没付钱的量 |
+| `available` | `number` | 是 | 可用 = 实存 − 预留 |
+| `byLocation` | `object`（见下）\[\] | 是 | 在各库位的分布。总数与上面的 onHand 一致，对不上就是有库位没登记 |
 
 `byLocation[]` 的字段：
 
@@ -2280,8 +2280,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `entries` | [`StockLedgerRow`](#stockledgerrow)\[\] | 是 | — |
-| `nextCursor` | `number,null` | 否 | — |
+| `entries` | [`StockLedgerRow`](#stockledgerrow)\[\] | 是 | 本页的台账行 |
+| `nextCursor` | `number,null` | 否 | 下一页游标。**由服务端给**，前端不要自己拿最后一行的 id 推 |
 
 
 #### GET `/biz/inventory/locations`
@@ -2385,13 +2385,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `month` | `string` | 是 | — |
-| `opening` | `number` | 是 | — |
-| `purchased` | `number` | 是 | — |
-| `sold` | `number` | 是 | — |
-| `lost` | `number` | 是 | — |
-| `adjusted` | `number` | 是 | — |
-| `closing` | `number` | 是 | — |
+| `month` | `string` | 是 | 月份（`2026-08`） |
+| `opening` | `number` | 是 | 期初结存 |
+| `purchased` | `number` | 是 | 本月进货 |
+| `sold` | `number` | 是 | 本月销售 |
+| `lost` | `number` | 是 | 本月报损 |
+| `adjusted` | `number` | 是 | 本月盘盈盘亏。**有符号** |
+| `closing` | `number` | 是 | 期末结存。界面上要能看出 期初 + 进 − 销 − 损 ± 调 = 期末 |
 | `balanced` | `boolean` | 是 | 算式对不对得上。**对不上要显眼**，那说明台账漏了一笔 |
 | `soldCostMinor` | `number` | 是 | 本月销售出库的成本合计（分）。**按每一笔当时的单位成本累加**， 不是「销量 × 当前成本价」—— 后者在进价波动时会把上个月的账算成今天的价。 **这不是毛利。** 毛利 = 收入 − 成本，而收入不在进销存域： 出库单只带成本、不带售价（同一件货不同渠道价不一样，写进来就有了第二个真源）。 要毛利得由知道收入的那一侧拿这个数去减。 |
 | `lostCostMinor` | `number` | 是 | 本月报损 + 盘亏的成本合计（分）—— 「这个月亏了多少钱」那个数 |
@@ -2420,9 +2420,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `itemCount` | `number` | 是 | — |
-| `shortageCount` | `number` | 是 | — |
-| `staleCount` | `number` | 是 | — |
+| `itemCount` | `number` | 是 | 在管货品数 |
+| `shortageCount` | `number` | 是 | 缺货件数（低于安全库存） |
+| `staleCount` | `number` | 是 | 滞销件数（长期未动销） |
 | `inTransitCount` | `number` | 是 | 待收货的调拨单数。**按单不按件** —— 收货是按单做的，给件数点不进任何一张单 |
 | `openCountNo` | `string,null` | 否 | 还开着的那张盘点单的单号，没有就没有这个字段。 **给单号不给个数**：工作台的「继续盘点」要带着它跳， 不带的话那一页会开一张**新的**盘点单，而按钮上写着「继续」。 |
 
@@ -2506,18 +2506,18 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `transferNo` | `string` | 是 | — |
+| `transferNo` | `string` | 是 | 调拨单号 |
 | `status` | `string` | 是 | DRAFT 草稿 / SHIPPED 已发出 / RECEIVED 已收到 |
-| `fromLocationId` | `string` | 否 | — |
-| `fromLocationName` | `string` | 否 | — |
-| `toLocationId` | `string` | 否 | — |
-| `toLocationName` | `string` | 否 | — |
-| `shippedAt` | `string` | 否 | — |
-| `receivedAt` | `string` | 否 | — |
+| `fromLocationId` | `string` | 否 | 调出库位 |
+| `fromLocationName` | `string` | 否 | 调出库位名 |
+| `toLocationId` | `string` | 否 | 调入库位 |
+| `toLocationName` | `string` | 否 | 调入库位名 |
+| `shippedAt` | `string` | 否 | 发货时刻。空 = 还没发 |
+| `receivedAt` | `string` | 否 | 收货时刻。空 = 在途 —— **在途的货两头都不算实存** |
 | `carrierName` | `string` | 否 | 承运方名字快照。空 = 自己送或发货时没记 —— 不是「数据缺失」 |
 | `trackingNo` | `string` | 否 | 运单号。与 carrierName 一起给收货方核对用 |
-| `totalQty` | `number` | 是 | — |
-| `lines` | `object`（见下）\[\] | 是 | — |
+| `totalQty` | `number` | 是 | 本单合计数量，按明细行汇总 |
+| `lines` | `object`（见下）\[\] | 是 | 明细行 |
 
 `lines[]` 的字段：
 
@@ -7365,14 +7365,14 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `itemId` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `specText` | `string` | 否 | — |
-| `baseUom` | `string` | 否 | — |
-| `onHand` | `number` | 是 | — |
-| `reserved` | `number` | 是 | — |
+| `itemId` | `string` | 是 | 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 |
+| `name` | `string` | 是 | 货品名 |
+| `specText` | `string` | 否 | 规格描述（「10斤装」）。人读的，不参与匹配 |
+| `baseUom` | `string` | 否 | 基本计量单位（个/斤/箱）。**所有数量都以它为准**，收货填别的单位要先换算 |
+| `onHand` | `number` | 是 | 实存 |
+| `reserved` | `number` | 是 | 预留：别人下了单还没付钱的量 |
 | `available` | `number` | 是 | 可用 = 实存 − 预留。预留是别人下了单还没付钱的量，付了款才真扣 |
-| `safetyStock` | `number` | 否 | — |
+| `safetyStock` | `number` | 否 | 安全库存。低于它算缺货 —— 0 表示不设 |
 | `lastMovedAt` | `string` | 否 | 最后一次动过的时间；滞销判据 |
 | `flags` | `string`\[\] | 是 | SHORTAGE 缺货 · STALE 滞销。**空数组 = 这件没事** |
 
@@ -7382,25 +7382,25 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `countNo` | `string` | 是 | — |
+| `countNo` | `string` | 是 | 盘点单号 |
 | `status` | `string` | 是 | COUNTING 进行中 / POSTED 已过账 |
-| `locationId` | `string` | 否 | — |
-| `startedAt` | `string` | 否 | — |
-| `operator` | `string` | 否 | — |
-| `lines` | [`StockCountLine`](#stockcountline)\[\] | 是 | — |
+| `locationId` | `string` | 否 | 库位号 |
+| `startedAt` | `string` | 否 | 开始盘点的时刻 |
+| `operator` | `string` | 否 | 经手人 |
+| `lines` | [`StockCountLine`](#stockcountline)\[\] | 是 | 明细行 |
 
 ### StockCountLine
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `itemId` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `specText` | `string` | 否 | — |
-| `baseUom` | `string` | 否 | — |
-| `bookQty` | `number` | 是 | — |
+| `itemId` | `string` | 是 | 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 |
+| `name` | `string` | 是 | 货品名 |
+| `specText` | `string` | 否 | 规格描述（「10斤装」）。人读的，不参与匹配 |
+| `baseUom` | `string` | 否 | 基本计量单位（个/斤/箱）。**所有数量都以它为准**，收货填别的单位要先换算 |
+| `bookQty` | `number` | 是 | 账面数：系统认为有多少 |
 | `countedQty` | `number,null` | 否 | 还没填时是 null，**不是 0** —— 0 的意思是「盘了，一件不差」 |
-| `diffQty` | `number,null` | 否 | — |
-| `reasonCode` | `string` | 否 | — |
+| `diffQty` | `number,null` | 否 | 差异 = 实盘 − 账面。**正负都要能填**：多了和少了是两种问题 |
+| `reasonCode` | `string` | 否 | 变动原因码。**盘点差异不为 0 时必填** —— 说不出原因的调整事后查不了账 |
 
 ### StockDocKind
 
@@ -7418,12 +7418,12 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `kind` | `string` | 是 | IN 入库 · OUT 出库 · COUNT 盘点 · TRANSFER 调拨 |
-| `docNo` | `string` | 是 | — |
+| `docNo` | `string` | 是 | 单号 |
 | `status` | `string` | 是 | DRAFT / POSTED / VOIDED，调拨还有 SHIPPED / RECEIVED |
 | `subtitle` | `string` | 否 | 「订单 SO-88213」「来自 CNT-24082601」这类一句话出处 |
-| `totalQty` | `number` | 是 | — |
-| `occurredAt` | `string` | 是 | — |
-| `operator` | `string` | 否 | — |
+| `totalQty` | `number` | 是 | 本单合计数量，按明细行汇总 |
+| `occurredAt` | `string` | 是 | 业务发生时刻。**不是落库时刻** —— 补录昨天的进货，这里是昨天 |
+| `operator` | `string` | 否 | 经手人 |
 
 ### StockItemDetail
 
@@ -7431,16 +7431,16 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `itemId` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `specText` | `string` | 否 | — |
-| `baseUom` | `string` | 否 | — |
-| `barcode` | `string` | 否 | — |
-| `itemCode` | `string` | 否 | — |
-| `onHand` | `number` | 是 | — |
-| `reserved` | `number` | 是 | — |
-| `available` | `number` | 是 | — |
-| `byLocation` | `object`（见下）\[\] | 是 | — |
+| `itemId` | `string` | 是 | 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 |
+| `name` | `string` | 是 | 货品名 |
+| `specText` | `string` | 否 | 规格描述（「10斤装」）。人读的，不参与匹配 |
+| `baseUom` | `string` | 否 | 基本计量单位（个/斤/箱）。**所有数量都以它为准**，收货填别的单位要先换算 |
+| `barcode` | `string` | 否 | 条码。**一个物料可以有多个**（换包装还是同一件货），这里给主条码 |
+| `itemCode` | `string` | 否 | 商家自己的货号，对接 ERP 用 |
+| `onHand` | `number` | 是 | 实存 |
+| `reserved` | `number` | 是 | 预留：别人下了单还没付钱的量 |
+| `available` | `number` | 是 | 可用 = 实存 − 预留 |
+| `byLocation` | `object`（见下）\[\] | 是 | 在各库位的分布。总数与上面的 onHand 一致，对不上就是有库位没登记 |
 
 `byLocation[]` 的字段：
 
@@ -7456,8 +7456,8 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `entries` | [`StockLedgerRow`](#stockledgerrow)\[\] | 是 | — |
-| `nextCursor` | `number,null` | 否 | — |
+| `entries` | [`StockLedgerRow`](#stockledgerrow)\[\] | 是 | 本页的台账行 |
+| `nextCursor` | `number,null` | 否 | 下一页游标。**由服务端给**，前端不要自己拿最后一行的 id 推 |
 
 ### StockLedgerRow
 
@@ -7465,16 +7465,16 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `id` | `number` | 是 | — |
+| `id` | `number` | 是 | 行号。台账不可变，它只用来分页定位 |
 | `itemId` | `string` | 是 | 这一行动的是哪件货。**按单查靠它** —— 只给单号的话那一屏是一列没名字的数 |
-| `itemName` | `string` | 是 | — |
+| `itemName` | `string` | 是 | 货品名。台账只存 item_id，名字是 join 出来的 —— 只给单号的话那一屏是一列没名字的数 |
 | `docKind` | [`StockDocKind`](#stockdockind) | 是 | IN 入库 / OUT 出库 |
-| `docNo` | `string` | 是 | — |
-| `reasonCode` | `string` | 是 | — |
-| `qtyDelta` | `number` | 是 | — |
-| `balanceAfter` | `number` | 是 | — |
-| `occurredAt` | `string` | 是 | — |
-| `operator` | `string` | 否 | — |
+| `docNo` | `string` | 是 | 单号 |
+| `reasonCode` | `string` | 是 | 变动原因码。**盘点差异不为 0 时必填** —— 说不出原因的调整事后查不了账 |
+| `qtyDelta` | `number` | 是 | 本行的变动量。**有符号**：入库为正、出库为负 |
+| `balanceAfter` | `number` | 是 | 这一行之后的结存。台账靠它自证连续，断一行就能看出来 |
+| `occurredAt` | `string` | 是 | 业务发生时刻。**不是落库时刻** —— 补录昨天的进货，这里是昨天 |
+| `operator` | `string` | 否 | 经手人 |
 
 ### StockLocation
 
@@ -7482,13 +7482,13 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `locationId` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `locationId` | `string` | 是 | 库位号 |
+| `name` | `string` | 是 | 货品名 |
 | `kind` | `string` | 是 | STORE 门店 · WAREHOUSE 仓 · TRANSIT 在途（系统的，不可删） |
 | `externalRef` | `string` | 否 | 门店库位对应的 storeNo |
 | `sourceLocationId` | `string` | 否 | 发货源：设了之后这家店下单扣的是源仓的库存。**不允许接力** |
-| `isDefault` | `number` | 否 | — |
-| `status` | `string` | 否 | — |
+| `isDefault` | `number` | 否 | 默认库位。一个主体**恰好一个** —— 它是「没指定库位时进哪儿」的答案 |
+| `status` | `string` | 否 | 状态 |
 
 ### StockMonthly
 
@@ -7496,13 +7496,13 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `month` | `string` | 是 | — |
-| `opening` | `number` | 是 | — |
-| `purchased` | `number` | 是 | — |
-| `sold` | `number` | 是 | — |
-| `lost` | `number` | 是 | — |
-| `adjusted` | `number` | 是 | — |
-| `closing` | `number` | 是 | — |
+| `month` | `string` | 是 | 月份（`2026-08`） |
+| `opening` | `number` | 是 | 期初结存 |
+| `purchased` | `number` | 是 | 本月进货 |
+| `sold` | `number` | 是 | 本月销售 |
+| `lost` | `number` | 是 | 本月报损 |
+| `adjusted` | `number` | 是 | 本月盘盈盘亏。**有符号** |
+| `closing` | `number` | 是 | 期末结存。界面上要能看出 期初 + 进 − 销 − 损 ± 调 = 期末 |
 | `balanced` | `boolean` | 是 | 算式对不对得上。**对不上要显眼**，那说明台账漏了一笔 |
 | `soldCostMinor` | `number` | 是 | 本月销售出库的成本合计（分）。**按每一笔当时的单位成本累加**， 不是「销量 × 当前成本价」—— 后者在进价波动时会把上个月的账算成今天的价。 **这不是毛利。** 毛利 = 收入 − 成本，而收入不在进销存域： 出库单只带成本、不带售价（同一件货不同渠道价不一样，写进来就有了第二个真源）。 要毛利得由知道收入的那一侧拿这个数去减。 |
 | `lostCostMinor` | `number` | 是 | 本月报损 + 盘亏的成本合计（分）—— 「这个月亏了多少钱」那个数 |
@@ -7513,10 +7513,10 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `itemId` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `specText` | `string` | 否 | — |
-| `qty` | `number` | 是 | — |
+| `itemId` | `string` | 是 | 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 |
+| `name` | `string` | 是 | 货品名 |
+| `specText` | `string` | 否 | 规格描述（「10斤装」）。人读的，不参与匹配 |
+| `qty` | `number` | 是 | 数量。⚠️ **两种榜含义不同**：动销榜是销量，滞销榜是库存量 |
 | `costAmountMinor` | `number,null` | 否 | 金额（分）。**滞销榜不算这个数，会是 `null`** —— 后端没配 `NON_NULL`，null 是照常下发的，所以类型要允许它。 兜底成 0 会让人以为这批货不值钱，而它恰恰是压着钱的那批。 |
 
 ### StockSummary
@@ -7525,9 +7525,9 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `itemCount` | `number` | 是 | — |
-| `shortageCount` | `number` | 是 | — |
-| `staleCount` | `number` | 是 | — |
+| `itemCount` | `number` | 是 | 在管货品数 |
+| `shortageCount` | `number` | 是 | 缺货件数（低于安全库存） |
+| `staleCount` | `number` | 是 | 滞销件数（长期未动销） |
 | `inTransitCount` | `number` | 是 | 待收货的调拨单数。**按单不按件** —— 收货是按单做的，给件数点不进任何一张单 |
 | `openCountNo` | `string,null` | 否 | 还开着的那张盘点单的单号，没有就没有这个字段。 **给单号不给个数**：工作台的「继续盘点」要带着它跳， 不带的话那一页会开一张**新的**盘点单，而按钮上写着「继续」。 |
 
@@ -7537,18 +7537,18 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `transferNo` | `string` | 是 | — |
+| `transferNo` | `string` | 是 | 调拨单号 |
 | `status` | `string` | 是 | DRAFT 草稿 / SHIPPED 已发出 / RECEIVED 已收到 |
-| `fromLocationId` | `string` | 否 | — |
-| `fromLocationName` | `string` | 否 | — |
-| `toLocationId` | `string` | 否 | — |
-| `toLocationName` | `string` | 否 | — |
-| `shippedAt` | `string` | 否 | — |
-| `receivedAt` | `string` | 否 | — |
+| `fromLocationId` | `string` | 否 | 调出库位 |
+| `fromLocationName` | `string` | 否 | 调出库位名 |
+| `toLocationId` | `string` | 否 | 调入库位 |
+| `toLocationName` | `string` | 否 | 调入库位名 |
+| `shippedAt` | `string` | 否 | 发货时刻。空 = 还没发 |
+| `receivedAt` | `string` | 否 | 收货时刻。空 = 在途 —— **在途的货两头都不算实存** |
 | `carrierName` | `string` | 否 | 承运方名字快照。空 = 自己送或发货时没记 —— 不是「数据缺失」 |
 | `trackingNo` | `string` | 否 | 运单号。与 carrierName 一起给收货方核对用 |
-| `totalQty` | `number` | 是 | — |
-| `lines` | `object`（见下）\[\] | 是 | — |
+| `totalQty` | `number` | 是 | 本单合计数量，按明细行汇总 |
+| `lines` | `object`（见下）\[\] | 是 | 明细行 |
 
 `lines[]` 的字段：
 

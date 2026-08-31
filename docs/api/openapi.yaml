@@ -2256,13 +2256,16 @@ components:
       properties: 
         requestNo: 
           type: "string"
+          description: "开票申请号"
         orderNo: 
           type: "string"
           description: "按**主单**申请，不按子单 —— 消费者眼里那是一次购买，票也该是一张"
         titleType: 
           "$ref": "#/components/schemas/InvoiceTitleType"
+          description: "`PERSONAL` 个人 / `COMPANY` 单位。单位抬头必须有税号"
         title: 
           type: "string"
+          description: "发票抬头"
         taxNo: 
           type: "string"
           description: "单位抬头必填"
@@ -2274,15 +2277,19 @@ components:
           description: "开票金额快照。**不实时读订单** —— 退款会改订单金额，已开的票不会跟着变"
         status: 
           "$ref": "#/components/schemas/InvoiceRequestStatus"
+          description: "状态"
         invoiceNo: 
           type: "string"
+          description: "发票号。开出来之后才有"
         issuedAt: 
           type: "number"
+          description: "开票时刻。空 = 还没开"
         rejectReason: 
           type: "string"
           description: "驳回原因。不写原因的驳回等于让消费者再猜一遍"
         createdAt: 
           type: "number"
+          description: "申请时刻"
       required: 
         - "requestNo"
         - "orderNo"
@@ -3218,18 +3225,24 @@ components:
       properties: 
         qualNo: 
           type: "string"
+          description: "资质记录号。**为空 = 新增**"
         qualType: 
           "$ref": "#/components/schemas/QualificationType"
+          description: "证件类型。**BUSINESS_LICENSE 是入驻校验的判据** —— 需要执照的档位必须含它"
         qualName: 
           type: "string"
+          description: "证件名（「食品经营许可证」）。展示用"
         qualNumber: 
           type: "string"
+          description: "证件编号，证上印的那一串"
         imageUrl: 
           type: "string"
+          description: "图片地址"
         expireAt: 
           type: 
             - "number"
             - "null"
+          description: "到期时刻（毫秒）。**到期前要提醒** —— 证件过期而没人发现，那家店会在某天突然卖不了货"
         entityNo: 
           type: "string"
           description: "传给哪张证照，可空 = 当前证照。多证照的老板从证照详情页进来时会带上它"
@@ -6365,10 +6378,13 @@ components:
       properties: 
         itemCount: 
           type: "number"
+          description: "在管货品数"
         shortageCount: 
           type: "number"
+          description: "缺货件数（低于安全库存）"
         staleCount: 
           type: "number"
+          description: "滞销件数（长期未动销）"
         inTransitCount: 
           type: "number"
           description: "待收货的调拨单数。**按单不按件** —— 收货是按单做的，给件数点不进任何一张单"
@@ -6445,21 +6461,28 @@ components:
       properties: 
         itemId: 
           type: "string"
+          description: "物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键"
         name: 
           type: "string"
+          description: "货品名"
         specText: 
           type: "string"
+          description: "规格描述（「10斤装」）。人读的，不参与匹配"
         baseUom: 
           type: "string"
+          description: "基本计量单位（个/斤/箱）。**所有数量都以它为准**，收货填别的单位要先换算"
         onHand: 
           type: "number"
+          description: "实存"
         reserved: 
           type: "number"
+          description: "预留：别人下了单还没付钱的量"
         available: 
           type: "number"
           description: "可用 = 实存 − 预留。预留是别人下了单还没付钱的量，付了款才真扣"
         safetyStock: 
           type: "number"
+          description: "安全库存。低于它算缺货 —— 0 表示不设"
         lastMovedAt: 
           type: "string"
           description: "最后一次动过的时间；滞销判据"
@@ -6482,22 +6505,31 @@ components:
       properties: 
         itemId: 
           type: "string"
+          description: "物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键"
         name: 
           type: "string"
+          description: "货品名"
         specText: 
           type: "string"
+          description: "规格描述（「10斤装」）。人读的，不参与匹配"
         baseUom: 
           type: "string"
+          description: "基本计量单位（个/斤/箱）。**所有数量都以它为准**，收货填别的单位要先换算"
         barcode: 
           type: "string"
+          description: "条码。**一个物料可以有多个**（换包装还是同一件货），这里给主条码"
         itemCode: 
           type: "string"
+          description: "商家自己的货号，对接 ERP 用"
         onHand: 
           type: "number"
+          description: "实存"
         reserved: 
           type: "number"
+          description: "预留：别人下了单还没付钱的量"
         available: 
           type: "number"
+          description: "可用 = 实存 − 预留"
         byLocation: 
           type: "array"
           items: 
@@ -6514,6 +6546,7 @@ components:
               - "locationName"
               - "onHand"
             additionalProperties: false
+          description: "在各库位的分布。总数与上面的 onHand 一致，对不上就是有库位没登记"
       required: 
         - "itemId"
         - "name"
@@ -6528,26 +6561,34 @@ components:
       properties: 
         id: 
           type: "number"
+          description: "行号。台账不可变，它只用来分页定位"
         itemId: 
           type: "string"
           description: "这一行动的是哪件货。**按单查靠它** —— 只给单号的话那一屏是一列没名字的数"
         itemName: 
           type: "string"
+          description: "货品名。台账只存 item_id，名字是 join 出来的 —— 只给单号的话那一屏是一列没名字的数"
         docKind: 
           "$ref": "#/components/schemas/StockDocKind"
           description: "IN 入库 / OUT 出库"
         docNo: 
           type: "string"
+          description: "单号"
         reasonCode: 
           type: "string"
+          description: "变动原因码。**盘点差异不为 0 时必填** —— 说不出原因的调整事后查不了账"
         qtyDelta: 
           type: "number"
+          description: "本行的变动量。**有符号**：入库为正、出库为负"
         balanceAfter: 
           type: "number"
+          description: "这一行之后的结存。台账靠它自证连续，断一行就能看出来"
         occurredAt: 
           type: "string"
+          description: "业务发生时刻。**不是落库时刻** —— 补录昨天的进货，这里是昨天"
         operator: 
           type: "string"
+          description: "经手人"
       required: 
         - "id"
         - "itemId"
@@ -6573,10 +6614,12 @@ components:
           type: "array"
           items: 
             "$ref": "#/components/schemas/StockLedgerRow"
+          description: "本页的台账行"
         nextCursor: 
           type: 
             - "number"
             - "null"
+          description: "下一页游标。**由服务端给**，前端不要自己拿最后一行的 id 推"
       required: 
         - "entries"
       additionalProperties: false
@@ -6589,6 +6632,7 @@ components:
           description: "IN 入库 · OUT 出库 · COUNT 盘点 · TRANSFER 调拨"
         docNo: 
           type: "string"
+          description: "单号"
         status: 
           type: "string"
           description: "DRAFT / POSTED / VOIDED，调拨还有 SHIPPED / RECEIVED"
@@ -6597,10 +6641,13 @@ components:
           description: "「订单 SO-88213」「来自 CNT-24082601」这类一句话出处"
         totalQty: 
           type: "number"
+          description: "本单合计数量，按明细行汇总"
         occurredAt: 
           type: "string"
+          description: "业务发生时刻。**不是落库时刻** —— 补录昨天的进货，这里是昨天"
         operator: 
           type: "string"
+          description: "经手人"
       required: 
         - "kind"
         - "docNo"
@@ -6614,18 +6661,25 @@ components:
       properties: 
         month: 
           type: "string"
+          description: "月份（`2026-08`）"
         opening: 
           type: "number"
+          description: "期初结存"
         purchased: 
           type: "number"
+          description: "本月进货"
         sold: 
           type: "number"
+          description: "本月销售"
         lost: 
           type: "number"
+          description: "本月报损"
         adjusted: 
           type: "number"
+          description: "本月盘盈盘亏。**有符号**"
         closing: 
           type: "number"
+          description: "期末结存。界面上要能看出 期初 + 进 − 销 − 损 ± 调 = 期末"
         balanced: 
           type: "boolean"
           description: "算式对不对得上。**对不上要显眼**，那说明台账漏了一笔"
@@ -6653,12 +6707,16 @@ components:
       properties: 
         itemId: 
           type: "string"
+          description: "物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键"
         name: 
           type: "string"
+          description: "货品名"
         specText: 
           type: "string"
+          description: "规格描述（「10斤装」）。人读的，不参与匹配"
         qty: 
           type: "number"
+          description: "数量。⚠️ **两种榜含义不同**：动销榜是销量，滞销榜是库存量"
         costAmountMinor: 
           type: 
             - "number"
@@ -6675,8 +6733,10 @@ components:
       properties: 
         locationId: 
           type: "string"
+          description: "库位号"
         name: 
           type: "string"
+          description: "货品名"
         kind: 
           type: "string"
           description: "STORE 门店 · WAREHOUSE 仓 · TRANSIT 在途（系统的，不可删）"
@@ -6688,8 +6748,10 @@ components:
           description: "发货源：设了之后这家店下单扣的是源仓的库存。**不允许接力**"
         isDefault: 
           type: "number"
+          description: "默认库位。一个主体**恰好一个** —— 它是「没指定库位时进哪儿」的答案"
         status: 
           type: "string"
+          description: "状态"
       required: 
         - "locationId"
         - "name"
@@ -6701,12 +6763,16 @@ components:
       properties: 
         itemId: 
           type: "string"
+          description: "物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键"
         qty: 
           type: "number"
+          description: "数量。⚠️ **两种榜含义不同**：动销榜是销量，滞销榜是库存量"
         uom: 
           type: "string"
+          description: "本行使用的计量单位，与 baseUom 不同时后端换算"
         unitCostMinor: 
           type: "number"
+          description: "单位成本（分）。空 = 沿用上一次的进价"
       required: 
         - "itemId"
         - "qty"
@@ -6717,10 +6783,13 @@ components:
       properties: 
         itemId: 
           type: "string"
+          description: "物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键"
         countedQty: 
           type: "number"
+          description: "实盘数：人数出来多少"
         reasonCode: 
           type: "string"
+          description: "变动原因码。**盘点差异不为 0 时必填** —— 说不出原因的调整事后查不了账"
       required: 
         - "itemId"
         - "countedQty"
@@ -6731,19 +6800,24 @@ components:
       properties: 
         countNo: 
           type: "string"
+          description: "盘点单号"
         status: 
           type: "string"
           description: "COUNTING 进行中 / POSTED 已过账"
         locationId: 
           type: "string"
+          description: "库位号"
         startedAt: 
           type: "string"
+          description: "开始盘点的时刻"
         operator: 
           type: "string"
+          description: "经手人"
         lines: 
           type: "array"
           items: 
             "$ref": "#/components/schemas/StockCountLine"
+          description: "明细行"
       required: 
         - "countNo"
         - "status"
@@ -6755,14 +6829,19 @@ components:
       properties: 
         itemId: 
           type: "string"
+          description: "物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键"
         name: 
           type: "string"
+          description: "货品名"
         specText: 
           type: "string"
+          description: "规格描述（「10斤装」）。人读的，不参与匹配"
         baseUom: 
           type: "string"
+          description: "基本计量单位（个/斤/箱）。**所有数量都以它为准**，收货填别的单位要先换算"
         bookQty: 
           type: "number"
+          description: "账面数：系统认为有多少"
         countedQty: 
           type: 
             - "number"
@@ -6772,8 +6851,10 @@ components:
           type: 
             - "number"
             - "null"
+          description: "差异 = 实盘 − 账面。**正负都要能填**：多了和少了是两种问题"
         reasonCode: 
           type: "string"
+          description: "变动原因码。**盘点差异不为 0 时必填** —— 说不出原因的调整事后查不了账"
       required: 
         - "itemId"
         - "name"
@@ -6784,21 +6865,28 @@ components:
       properties: 
         transferNo: 
           type: "string"
+          description: "调拨单号"
         status: 
           type: "string"
           description: "DRAFT 草稿 / SHIPPED 已发出 / RECEIVED 已收到"
         fromLocationId: 
           type: "string"
+          description: "调出库位"
         fromLocationName: 
           type: "string"
+          description: "调出库位名"
         toLocationId: 
           type: "string"
+          description: "调入库位"
         toLocationName: 
           type: "string"
+          description: "调入库位名"
         shippedAt: 
           type: "string"
+          description: "发货时刻。空 = 还没发"
         receivedAt: 
           type: "string"
+          description: "收货时刻。空 = 在途 —— **在途的货两头都不算实存**"
         carrierName: 
           type: "string"
           description: "承运方名字快照。空 = 自己送或发货时没记 —— 不是「数据缺失」"
@@ -6807,6 +6895,7 @@ components:
           description: "运单号。与 carrierName 一起给收货方核对用"
         totalQty: 
           type: "number"
+          description: "本单合计数量，按明细行汇总"
         lines: 
           type: "array"
           items: 
@@ -6827,6 +6916,7 @@ components:
               - "name"
               - "qty"
             additionalProperties: false
+          description: "明细行"
       required: 
         - "transferNo"
         - "status"
@@ -6862,8 +6952,10 @@ components:
       properties: 
         phone: 
           type: "string"
+          description: "手机号"
         code: 
           type: "string"
+          description: "短信/微信下发的验证码"
       required: 
         - "phone"
         - "code"
@@ -6874,6 +6966,7 @@ components:
       properties: 
         code: 
           type: "string"
+          description: "短信/微信下发的验证码"
       required: 
         - "code"
       additionalProperties: false
@@ -6915,10 +7008,12 @@ components:
           type: 
             - "string"
             - "null"
+          description: "市"
         district: 
           type: 
             - "string"
             - "null"
+          description: "区/县"
         detail: 
           type: "string"
           description: "详细地址（街道门牌）"

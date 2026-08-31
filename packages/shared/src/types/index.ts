@@ -1650,10 +1650,13 @@ export type InvoiceTitleType = "PERSONAL" | "COMPANY";
  * 这是**销项**（平台开给消费者，决定归集资金模式成不成立）。
  */
 export interface InvoiceRequest {
+  /** 开票申请号 */
   requestNo: string;
   /** 按**主单**申请，不按子单 —— 消费者眼里那是一次购买，票也该是一张 */
   orderNo: string;
+  /** `PERSONAL` 个人 / `COMPANY` 单位。单位抬头必须有税号 */
   titleType: InvoiceTitleType;
+  /** 发票抬头 */
   title: string;
   /** 单位抬头必填 */
   taxNo?: string;
@@ -1661,11 +1664,15 @@ export interface InvoiceRequest {
   email: string;
   /** 开票金额快照。**不实时读订单** —— 退款会改订单金额，已开的票不会跟着变 */
   amountMinor: number;
+  /** 状态 */
   status: InvoiceRequestStatus;
+  /** 发票号。开出来之后才有 */
   invoiceNo?: string;
+  /** 开票时刻。空 = 还没开 */
   issuedAt?: number;
   /** 驳回原因。不写原因的驳回等于让消费者再猜一遍 */
   rejectReason?: string;
+  /** 申请时刻 */
   createdAt?: number;
 }
 
@@ -2262,11 +2269,17 @@ export interface Qualification {
 
 /** 传一张证。`qualNo` 为空即新建 */
 export interface QualificationSaveReq {
+  /** 资质记录号。**为空 = 新增** */
   qualNo?: string;
+  /** 证件类型。**BUSINESS_LICENSE 是入驻校验的判据** —— 需要执照的档位必须含它 */
   qualType: QualificationType;
+  /** 证件名（「食品经营许可证」）。展示用 */
   qualName: string;
+  /** 证件编号，证上印的那一串 */
   qualNumber?: string;
+  /** 图片地址 */
   imageUrl?: string;
+  /** 到期时刻（毫秒）。**到期前要提醒** —— 证件过期而没人发现，那家店会在某天突然卖不了货 */
   expireAt?: number | null;
   /** 传给哪张证照，可空 = 当前证照。多证照的老板从证照详情页进来时会带上它 */
   entityNo?: string;
@@ -4544,8 +4557,11 @@ export interface AfterSale {
 
 /** 库存总览的三个数（`SummaryVO`）。 */
 export interface StockSummary {
+  /** 在管货品数 */
   itemCount: number;
+  /** 缺货件数（低于安全库存） */
   shortageCount: number;
+  /** 滞销件数（长期未动销） */
   staleCount: number;
   /** 待收货的调拨单数。**按单不按件** —— 收货是按单做的，给件数点不进任何一张单 */
   inTransitCount: number;
@@ -4595,14 +4611,21 @@ export interface Supplier {
 
 /** 一行库存（`BalanceVO`）。 */
 export interface StockBalance {
+  /** 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 */
   itemId: string;
+  /** 货品名 */
   name: string;
+  /** 规格描述（「10斤装」）。人读的，不参与匹配 */
   specText?: string;
+  /** 基本计量单位（个/斤/箱）。**所有数量都以它为准**，收货填别的单位要先换算 */
   baseUom?: string;
+  /** 实存 */
   onHand: number;
+  /** 预留：别人下了单还没付钱的量 */
   reserved: number;
   /** 可用 = 实存 − 预留。预留是别人下了单还没付钱的量，付了款才真扣 */
   available: number;
+  /** 安全库存。低于它算缺货 —— 0 表示不设 */
   safetyStock?: number;
   /** 最后一次动过的时间；滞销判据 */
   lastMovedAt?: string;
@@ -4612,37 +4635,57 @@ export interface StockBalance {
 
 /** 某个物料在各库位的分布（`ItemDetailVO`）。 */
 export interface StockItemDetail {
+  /** 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 */
   itemId: string;
+  /** 货品名 */
   name: string;
+  /** 规格描述（「10斤装」）。人读的，不参与匹配 */
   specText?: string;
+  /** 基本计量单位（个/斤/箱）。**所有数量都以它为准**，收货填别的单位要先换算 */
   baseUom?: string;
+  /** 条码。**一个物料可以有多个**（换包装还是同一件货），这里给主条码 */
   barcode?: string;
+  /** 商家自己的货号，对接 ERP 用 */
   itemCode?: string;
+  /** 实存 */
   onHand: number;
+  /** 预留：别人下了单还没付钱的量 */
   reserved: number;
+  /** 可用 = 实存 − 预留 */
   available: number;
+  /** 在各库位的分布。总数与上面的 onHand 一致，对不上就是有库位没登记 */
   byLocation: { locationId: string; locationName: string; onHand: number }[];
 }
 
 /** 台账一行（`LedgerVO`）。**不可变** —— 只有查看，没有编辑 */
 export interface StockLedgerRow {
+  /** 行号。台账不可变，它只用来分页定位 */
   id: number;
   /** 这一行动的是哪件货。**按单查靠它** —— 只给单号的话那一屏是一列没名字的数 */
   itemId: string;
+  /** 货品名。台账只存 item_id，名字是 join 出来的 —— 只给单号的话那一屏是一列没名字的数 */
   itemName: string;
   /** IN 入库 / OUT 出库 */
   docKind: StockDocKind;
+  /** 单号 */
   docNo: string;
+  /** 变动原因码。**盘点差异不为 0 时必填** —— 说不出原因的调整事后查不了账 */
   reasonCode: string;
+  /** 本行的变动量。**有符号**：入库为正、出库为负 */
   qtyDelta: number;
+  /** 这一行之后的结存。台账靠它自证连续，断一行就能看出来 */
   balanceAfter: number;
+  /** 业务发生时刻。**不是落库时刻** —— 补录昨天的进货，这里是昨天 */
   occurredAt: string;
+  /** 经手人 */
   operator?: string;
 }
 
 /** 台账一页（`LedgerPageVO`）。游标由服务端给，前端不要自己拿最后一行的 id 推 */
 export interface StockLedgerPage {
+  /** 本页的台账行 */
   entries: StockLedgerRow[];
+  /** 下一页游标。**由服务端给**，前端不要自己拿最后一行的 id 推 */
   nextCursor?: number | null;
 }
 
@@ -4650,24 +4693,35 @@ export interface StockLedgerPage {
 export interface StockDocument {
   /** IN 入库 · OUT 出库 · COUNT 盘点 · TRANSFER 调拨 */
   kind: string;
+  /** 单号 */
   docNo: string;
   /** DRAFT / POSTED / VOIDED，调拨还有 SHIPPED / RECEIVED */
   status: string;
   /** 「订单 SO-88213」「来自 CNT-24082601」这类一句话出处 */
   subtitle?: string;
+  /** 本单合计数量，按明细行汇总 */
   totalQty: number;
+  /** 业务发生时刻。**不是落库时刻** —— 补录昨天的进货，这里是昨天 */
   occurredAt: string;
+  /** 经手人 */
   operator?: string;
 }
 
 /** 进销存月报（`MonthlyVO`）。界面上要能看出 期初 + 进 − 销 − 损 ± 调 = 期末 */
 export interface StockMonthly {
+  /** 月份（`2026-08`） */
   month: string;
+  /** 期初结存 */
   opening: number;
+  /** 本月进货 */
   purchased: number;
+  /** 本月销售 */
   sold: number;
+  /** 本月报损 */
   lost: number;
+  /** 本月盘盈盘亏。**有符号** */
   adjusted: number;
+  /** 期末结存。界面上要能看出 期初 + 进 − 销 − 损 ± 调 = 期末 */
   closing: number;
   /** 算式对不对得上。**对不上要显眼**，那说明台账漏了一笔 */
   balanced: boolean;
@@ -4691,9 +4745,13 @@ export interface StockMonthly {
  *   同一个字段两种意思不是好设计，但那是后端已有的形状 —— 端上照它读，不自己改名。
  */
 export interface StockRank {
+  /** 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 */
   itemId: string;
+  /** 货品名 */
   name: string;
+  /** 规格描述（「10斤装」）。人读的，不参与匹配 */
   specText?: string;
+  /** 数量。⚠️ **两种榜含义不同**：动销榜是销量，滞销榜是库存量 */
   qty: number;
   /**
    * 金额（分）。**滞销榜不算这个数，会是 `null`** ——
@@ -4705,7 +4763,9 @@ export interface StockRank {
 
 /** 库位（`InvLocation`）。**仓是一种库位，不是一种门店** */
 export interface StockLocation {
+  /** 库位号 */
   locationId: string;
+  /** 货品名 */
   name: string;
   /** STORE 门店 · WAREHOUSE 仓 · TRANSIT 在途（系统的，不可删） */
   kind: string;
@@ -4713,22 +4773,31 @@ export interface StockLocation {
   externalRef?: string;
   /** 发货源：设了之后这家店下单扣的是源仓的库存。**不允许接力** */
   sourceLocationId?: string;
+  /** 默认库位。一个主体**恰好一个** —— 它是「没指定库位时进哪儿」的答案 */
   isDefault?: number;
+  /** 状态 */
   status?: string;
 }
 
 /** 单据行（`LineReq`）。`unitCostMinor` 只有入库要 */
 export interface StockLineReq {
+  /** 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 */
   itemId: string;
+  /** 数量。⚠️ **两种榜含义不同**：动销榜是销量，滞销榜是库存量 */
   qty: number;
+  /** 本行使用的计量单位，与 baseUom 不同时后端换算 */
   uom?: string;
+  /** 单位成本（分）。空 = 沿用上一次的进价 */
   unitCostMinor?: number;
 }
 
 /** 盘点填数（`StockCountService.Filled`）。差异不为 0 时 `reasonCode` 必填 */
 export interface StockCountFilled {
+  /** 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 */
   itemId: string;
+  /** 实盘数：人数出来多少 */
   countedQty: number;
+  /** 变动原因码。**盘点差异不为 0 时必填** —— 说不出原因的调整事后查不了账 */
   reasonCode?: string;
 }
 
@@ -4738,43 +4807,64 @@ export interface StockCountFilled {
  * 中间卖掉的量会被算成盘亏，而那是一笔凭空出现的损失。
  */
 export interface StockCount {
+  /** 盘点单号 */
   countNo: string;
   /** COUNTING 进行中 / POSTED 已过账 */
   status: string;
+  /** 库位号 */
   locationId?: string;
+  /** 开始盘点的时刻 */
   startedAt?: string;
+  /** 经手人 */
   operator?: string;
+  /** 明细行 */
   lines: StockCountLine[];
 }
 
 export interface StockCountLine {
+  /** 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 */
   itemId: string;
+  /** 货品名 */
   name: string;
+  /** 规格描述（「10斤装」）。人读的，不参与匹配 */
   specText?: string;
+  /** 基本计量单位（个/斤/箱）。**所有数量都以它为准**，收货填别的单位要先换算 */
   baseUom?: string;
+  /** 账面数：系统认为有多少 */
   bookQty: number;
   /** 还没填时是 null，**不是 0** —— 0 的意思是「盘了，一件不差」 */
   countedQty?: number | null;
+  /** 差异 = 实盘 − 账面。**正负都要能填**：多了和少了是两种问题 */
   diffQty?: number | null;
+  /** 变动原因码。**盘点差异不为 0 时必填** —— 说不出原因的调整事后查不了账 */
   reasonCode?: string;
 }
 
 /** 一张调拨单（`TransferVO`）。**草稿态没有行**（行在发出的那张出库单上），不是空单 */
 export interface StockTransfer {
+  /** 调拨单号 */
   transferNo: string;
   /** DRAFT 草稿 / SHIPPED 已发出 / RECEIVED 已收到 */
   status: string;
+  /** 调出库位 */
   fromLocationId?: string;
+  /** 调出库位名 */
   fromLocationName?: string;
+  /** 调入库位 */
   toLocationId?: string;
+  /** 调入库位名 */
   toLocationName?: string;
+  /** 发货时刻。空 = 还没发 */
   shippedAt?: string;
+  /** 收货时刻。空 = 在途 —— **在途的货两头都不算实存** */
   receivedAt?: string;
   /** 承运方名字快照。空 = 自己送或发货时没记 —— 不是「数据缺失」 */
   carrierName?: string;
   /** 运单号。与 carrierName 一起给收货方核对用 */
   trackingNo?: string;
+  /** 本单合计数量，按明细行汇总 */
   totalQty: number;
+  /** 明细行 */
   lines: { itemId: string; name: string; specText?: string; qty: number; uom?: string }[];
 }
 

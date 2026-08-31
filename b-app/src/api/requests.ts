@@ -32,8 +32,11 @@ import type { GoodsDraft } from "./contract";
 
 /** 开一个时段。容量必须 ≥ 1 —— 0 等于开了个约不上的档，而它在列表里看着正常 */
 export interface AppointmentSlotOpenReq {
+  /** 开始时刻（毫秒） */
   startAt: number;
+  /** 结束时刻（毫秒） */
   endAt: number;
+  /** 这一档能约几个人 */
   capacity: number;
 }
 
@@ -57,11 +60,15 @@ export interface StoreFulfillmentSaveReq {
 
 /** 商家自建自提点（P1）。坐标必填：没坐标的点买家用定位永远找不到 */
 export interface PickupSelfBuildReq {
+  /** 门店号 */
   storeNo: string;
+  /** 名称 */
   name: string;
+  /** 地址 */
   address: string;
   latE6: number;
   lngE6: number;
+  /** 营业时间，人读的一行字 */
   openHours?: string;
   /** 不传 = 按坐标就近归到已开通社区 */
   communityNo?: string;
@@ -209,10 +216,13 @@ export interface UploadImageReq {
  * 写出来更泛，但总比让商家对着空白框强。
  */
 export interface DescribeGoodsReq {
+  /** 图片地址 */
   imageUrl?: string;
   /** 商品名。必须有，否则模型只能瞎编 */
   title: string;
+  /** 副标题 */
   subtitle?: string;
+  /** 类目号 */
   categoryNo?: string;
 }
 
@@ -432,7 +442,9 @@ export interface SubmitPaymentReq {
  * 重复由后端三道闸挡（村码 / 同街道归一名 / 坐标 150 米内），撞上返回既有那条。
  */
 export interface OpenFromMapReq {
+  /** 名称 */
   name: string;
+  /** 地址 */
   address?: string;
   latE6: number;
   lngE6: number;
@@ -521,8 +533,11 @@ export interface StockInboundReq {
   sourceType: string;
   /** 供应商**随手填的一行字，不建档案** —— 小店的供应商是微信里那个人 */
   supplierName?: string;
+  /** 业务发生时刻。**不是录入时刻** —— 昨天进的货今天补录，账要落在昨天 */
   occurredAt?: string;
+  /** 备注 */
   remark?: string;
+  /** 明细行。空数组会被拒 —— 一张没有行的单据落库之后没人能解释它是什么 */
   lines: StockLineReq[];
 }
 
@@ -532,7 +547,10 @@ export interface StockOutboundReq {
   purpose: string;
   /** SCRAP 必填：BROKEN 损坏 / EXPIRED 过期 / GIFT 赠送 / OTHER。**枚举不是自由文本** */
   reasonCode?: string;
+  /** 业务发生时刻。**不是录入时刻** —— 昨天进的货今天补录，账要落在昨天 */
   occurredAt?: string;
+  /** 备注 */
   remark?: string;
+  /** 明细行。空数组会被拒 —— 一张没有行的单据落库之后没人能解释它是什么 */
   lines: StockLineReq[];
 }

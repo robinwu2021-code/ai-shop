@@ -941,18 +941,18 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `requestNo` | `string` | 是 | — |
+| `requestNo` | `string` | 是 | 开票申请号 |
 | `orderNo` | `string` | 是 | 按**主单**申请，不按子单 —— 消费者眼里那是一次购买，票也该是一张 |
-| `titleType` | [`InvoiceTitleType`](#invoicetitletype) | 是 | — |
-| `title` | `string` | 是 | — |
+| `titleType` | [`InvoiceTitleType`](#invoicetitletype) | 是 | `PERSONAL` 个人 / `COMPANY` 单位。单位抬头必须有税号 |
+| `title` | `string` | 是 | 发票抬头 |
 | `taxNo` | `string` | 否 | 单位抬头必填 |
 | `email` | `string` | 是 | 电子票只能发到这里，填错就是开了也收不到 |
 | `amountMinor` | `number` | 是 | 开票金额快照。**不实时读订单** —— 退款会改订单金额，已开的票不会跟着变 |
-| `status` | [`InvoiceRequestStatus`](#invoicerequeststatus) | 是 | — |
-| `invoiceNo` | `string` | 否 | — |
-| `issuedAt` | `number` | 否 | — |
+| `status` | [`InvoiceRequestStatus`](#invoicerequeststatus) | 是 | 状态 |
+| `invoiceNo` | `string` | 否 | 发票号。开出来之后才有 |
+| `issuedAt` | `number` | 否 | 开票时刻。空 = 还没开 |
 | `rejectReason` | `string` | 否 | 驳回原因。不写原因的驳回等于让消费者再猜一遍 |
-| `createdAt` | `number` | 否 | — |
+| `createdAt` | `number` | 否 | 申请时刻 |
 
 
 #### GET `/mp/invoice/mine`
@@ -982,18 +982,18 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `requestNo` | `string` | 是 | — |
+| `requestNo` | `string` | 是 | 开票申请号 |
 | `orderNo` | `string` | 是 | 按**主单**申请，不按子单 —— 消费者眼里那是一次购买，票也该是一张 |
-| `titleType` | [`InvoiceTitleType`](#invoicetitletype) | 是 | — |
-| `title` | `string` | 是 | — |
+| `titleType` | [`InvoiceTitleType`](#invoicetitletype) | 是 | `PERSONAL` 个人 / `COMPANY` 单位。单位抬头必须有税号 |
+| `title` | `string` | 是 | 发票抬头 |
 | `taxNo` | `string` | 否 | 单位抬头必填 |
 | `email` | `string` | 是 | 电子票只能发到这里，填错就是开了也收不到 |
 | `amountMinor` | `number` | 是 | 开票金额快照。**不实时读订单** —— 退款会改订单金额，已开的票不会跟着变 |
-| `status` | [`InvoiceRequestStatus`](#invoicerequeststatus) | 是 | — |
-| `invoiceNo` | `string` | 否 | — |
-| `issuedAt` | `number` | 否 | — |
+| `status` | [`InvoiceRequestStatus`](#invoicerequeststatus) | 是 | 状态 |
+| `invoiceNo` | `string` | 否 | 发票号。开出来之后才有 |
+| `issuedAt` | `number` | 否 | 开票时刻。空 = 还没开 |
 | `rejectReason` | `string` | 否 | 驳回原因。不写原因的驳回等于让消费者再猜一遍 |
-| `createdAt` | `number` | 否 | — |
+| `createdAt` | `number` | 否 | 申请时刻 |
 
 
 ### master-data
@@ -1898,8 +1898,8 @@
 | `phone` | `string` | 是 | 收货人手机号 |
 | `region` | `string` | 是 | 省市区，拼好给人看的一串 |
 | `province` | `string,null` | 否 | 省 / 市 / 区县，分开的三个。后端 `SaveAddressReq` 一直收这三个字段， 端上一直没发 —— 于是 `usr_address` 那三列永远是 null（见 `Address` 的注释） |
-| `city` | `string,null` | 否 | — |
-| `district` | `string,null` | 否 | — |
+| `city` | `string,null` | 否 | 市 |
+| `district` | `string,null` | 否 | 区/县 |
 | `detail` | `string` | 是 | 详细地址（街道门牌） |
 | `isDefault` | `boolean` | 是 | 设为默认。置 true 会把原默认地址改为 false |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
@@ -2038,8 +2038,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `phone` | `string` | 是 | — |
-| `code` | `string` | 是 | — |
+| `phone` | `string` | 是 | 手机号 |
+| `code` | `string` | 是 | 短信/微信下发的验证码 |
 
 **出参**（`data`）
 
@@ -2081,7 +2081,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `code` | `string` | 是 | — |
+| `code` | `string` | 是 | 短信/微信下发的验证码 |
 
 **出参**（`data`）
 
@@ -2243,8 +2243,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `phone` | `string` | 是 | — |
-| `code` | `string` | 是 | — |
+| `phone` | `string` | 是 | 手机号 |
+| `code` | `string` | 是 | 短信/微信下发的验证码 |
 
 ### CardSpec
 
@@ -2672,18 +2672,18 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `requestNo` | `string` | 是 | — |
+| `requestNo` | `string` | 是 | 开票申请号 |
 | `orderNo` | `string` | 是 | 按**主单**申请，不按子单 —— 消费者眼里那是一次购买，票也该是一张 |
-| `titleType` | [`InvoiceTitleType`](#invoicetitletype) | 是 | — |
-| `title` | `string` | 是 | — |
+| `titleType` | [`InvoiceTitleType`](#invoicetitletype) | 是 | `PERSONAL` 个人 / `COMPANY` 单位。单位抬头必须有税号 |
+| `title` | `string` | 是 | 发票抬头 |
 | `taxNo` | `string` | 否 | 单位抬头必填 |
 | `email` | `string` | 是 | 电子票只能发到这里，填错就是开了也收不到 |
 | `amountMinor` | `number` | 是 | 开票金额快照。**不实时读订单** —— 退款会改订单金额，已开的票不会跟着变 |
-| `status` | [`InvoiceRequestStatus`](#invoicerequeststatus) | 是 | — |
-| `invoiceNo` | `string` | 否 | — |
-| `issuedAt` | `number` | 否 | — |
+| `status` | [`InvoiceRequestStatus`](#invoicerequeststatus) | 是 | 状态 |
+| `invoiceNo` | `string` | 否 | 发票号。开出来之后才有 |
+| `issuedAt` | `number` | 否 | 开票时刻。空 = 还没开 |
 | `rejectReason` | `string` | 否 | 驳回原因。不写原因的驳回等于让消费者再猜一遍 |
-| `createdAt` | `number` | 否 | — |
+| `createdAt` | `number` | 否 | 申请时刻 |
 
 ### InvoiceRequestStatus
 
@@ -3340,8 +3340,8 @@
 | `phone` | `string` | 是 | 收货人手机号 |
 | `region` | `string` | 是 | 省市区，拼好给人看的一串 |
 | `province` | `string,null` | 否 | 省 / 市 / 区县，分开的三个。后端 `SaveAddressReq` 一直收这三个字段， 端上一直没发 —— 于是 `usr_address` 那三列永远是 null（见 `Address` 的注释） |
-| `city` | `string,null` | 否 | — |
-| `district` | `string,null` | 否 | — |
+| `city` | `string,null` | 否 | 市 |
+| `district` | `string,null` | 否 | 区/县 |
 | `detail` | `string` | 是 | 详细地址（街道门牌） |
 | `isDefault` | `boolean` | 是 | 设为默认。置 true 会把原默认地址改为 false |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
@@ -3512,4 +3512,4 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `code` | `string` | 是 | — |
+| `code` | `string` | 是 | 短信/微信下发的验证码 |
