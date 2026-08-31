@@ -150,6 +150,7 @@ const RELATION = {
   // ── 2026-08-30 第三批带出来的 join ──
   UserCoupon: { coupon: "join mkt_coupon —— 券模板快照，一张券和它的模板是两个对象" },
   MerchantCoupon: { scopeRefs: "pmt_coupon_scope —— 限定到哪些商品/类目的多行" },
+  MyDebt: { txns: "mch_debt_txn —— 欠款账户上不存流水，流水是另一张表的多行" },
   PickupOrder: { items: "ord_item —— 履约台要点清件数" },
   GroupPickupOrder: { items: "ord_item" },
   MyStoreCoupon: {
@@ -416,6 +417,7 @@ const DERIVED = {
     reason: "不能核销时的原因码，与 redeemable 同一次判定给出",
   },
   PickupCandidate: { ownerStoreNo: "由 owner_ref 解析（type=STORE 时指向门店）" },
+  MyDebtTxn: { at: "created_at —— 流水的「发生时刻」就是落库时刻，不另存一列" },
   RegionNode: { hasChild: "按 parent_code 反查有没有下级 —— 落列的话每次增删下级都要回写父级" },
   RegionOption: {
     cityCode: "由 region_code 上溯到市级",
@@ -580,6 +582,11 @@ const ENTITY_MAP = {
       + "于是这个实体从报告里消失了，字段比对一次没跑过。列与契约几乎一一对应",
   },
   MemberSegment: { table: "mbr_segment" },
+  MemberStoreStat: {
+    table: "mbr_member_store",
+    note: "他在某一家门店的往来。**单店主体没有这一段** —— 只有一家店时"
+      + "「按店拆」和「总数」是同一个数，多摆一遍只会让人以为哪里对不上",
+  },
 
   StoreActivity: { table: "pmt_activity" },
   MerchantSpecDim: { table: "prd_spec_dim" },
@@ -719,6 +726,100 @@ const ENTITY_MAP = {
  * 而真正缺表的那几个就没人看见了。
  */
 const VIEW_TYPES = {
+  // ── 2026-08-30 第三步：剩下的 41 个逐条写清由哪些表拼 ──
+  //
+  // 分成两类，两类的「为什么没有表」理由不同：
+  //   · **动作的返回值**：它描述的是一次调用的结果，不是一个持久的对象。
+  //     落表的是那次动作的日志/流水，形状与它无关。
+  //   · **聚合视图**：由多张表拼出来，落成表就要有人保持一致，而那份一致
+  //     迟早会对不上 —— 报告里每一条「不落列」的理由都写在具体那一条上。
+
+  // 一、端能力与外部服务的返回值（不经过库）
+  GeoReverseResult: "高德逆地理的返回，后端代理转发 —— **不落库**：地名与门牌会变，"
+    + "存下来就会有两份说法。没配 Web 服务 key 时返回空，端上当没有这个功能",
+  GeoTip: "高德 inputtips 的返回，同上。提报小区时按名搜 POI，选中就带上坐标 ——"
+    + "否则坐标只能是「提交那一刻商家站的地方」，多半不在那个小区里",
+  PhoneCapable: "微信一键取手机号当前可不可用。**由后端说了算**：它取决于小程序认证状态"
+    + "与通道开关，端上判不出来；写死在端上的话，认证下来之后还要再发一次版",
+  Poster: "封面图/店名/价格/小程序码合成的一张 PNG，服务端现合成后 base64 返回",
+
+  // 二、试算与预览（还没发生的事，没有落库的对象）
+  FulfillmentImpactItem: "关掉某条履约路会影响到的商品 —— 处置**之前**的预览，"
+    + "由 prd_goods.fulfillments 与门店渠道配置现算",
+  OrderPreview: "下单前的试算。后端返的是完整 OrderVO，契约只声明端上要用的那部分 ——"
+    + "声明全套会让每次后端加字段都得改端上类型",
+  ReachPlan: "群发试算：命中多少人、其中能真收到的有多少、其余为什么发不出。"
+    + "**skips 必须显示**：商家选了 30 个人实发 8 个，只说「发送成功」他会以为 30 个都收到了",
+  MemberSegmentPreview: "人群试算（mbr_member + 规则）。两个数都要显示 —— 只显示 count 的话，"
+    + "商家在人群页看到 120、发放页发出 96，会以为发漏了",
+  MemberMergePreview: "合并标签的影响面（mbr_member_tag 的计数）。**先给商家看再让他按** —— 合并不可逆",
+  SkuIdentityReport: "商品编码批量导入的试算/结果。四个数各回答一件事 ——"
+    + "少了「没变化」那一格，商家会把「改了 3 行」读成「另外 197 行失败了」",
+
+  // 三、动作的结果（落库的是流水，不是这个形状）
+  VerifyResult: "核销结果。⚠️ **失败也是 HTTP 200 + code:0**，靠 success 判 ——"
+    + "b-app 此前只看有没有抛异常，于是任何一次失败都走进成功分支，界面说「核销成功」而货没核掉",
+  ReachResult: "群发执行结果（落库的是 mbr_reach_log 的多行）",
+  CouponRedeemResult: "核销结果。`duplicated` 为真 = 店员连点了两下（3 秒窗口内），"
+    + "不是第二次核销 —— 报错会让他以为没成功，于是再按一次",
+  SpecValueAdded: "新加规格取值的返回值。命名是为了它能进契约 ——"
+    + "匿名结构在规格生成器那边引用不到，只能落成一个空 object",
+  StockCountFilled: "盘点填数的入参/回执（写进 inv_stock_count_line）",
+
+  // 四、跨表聚合
+  RegionSearchResult: "sys_region + cmt_community + 村表的跨级搜索结果 ——"
+    + "区划命中带从省到父级的路径，聚落命中带所在街道路径",
+  AppointmentDaySlots: "mch_appointment_slot 按天分组的**展示结构**。"
+    + "与 AppointmentSlot 不是一回事：那个是排期的一行（有 slotNo，下单占的是它）",
+  GoodsParam: "prd_goods.params + prd_spec_value —— `valueNo` 是平台值池里的编号，"
+    + "有它才参与筛选与跨店比较；量纲型（功率、净重）平台不枚举值，那时只有 label",
+  IncomeSummary: "stl_bill 按状态分组求和。⚠️ **四个数是四种状态，不是四个口袋** ——"
+    + "它们加起来等于全部结算单。此前只显示一个「商家实得」，读起来像已到手",
+  MyQualifications: "mch_qualification + sys_auth_code + prd_category 三份数据合成",
+  MasterData: "sys_industry + 主体档位 + sys_pay_channel 的快照。**合成一个响应**是因为"
+    + "它们在同一屏上被同时用到（选行业 → 过滤可选主体 → 主体决定要不要传执照），"
+    + "分三次请求会出现「行业回来了、主体还没回来」的中间态，那时表单不知道该不该禁用",
+  MasterDataSubject: "主体档位一项。**库里没有 sys_subject 表** —— 档位是写死在代码里的风险规范"
+    + "（见 AdmissionPortImpl 的准入矩阵注释：改它意味着平台愿意承担的责任变了，"
+    + "该走代码评审而不是后台表单）",
+  EntityStores: "mch_entity + mch_store 按证照分组。**分组而不是拍平**：两家店同名是常事"
+    + "（「文三路店」在两张执照下各有一家），拍平之后点哪个都不知道进了哪张证照，"
+    + "而进错的表现是「商品怎么全没了」",
+  StoreFront: "mch_store 的买家可见子集（公告/营业时间/地址/坐标）",
+  StoreShelf: "mch_store_category + prd_goods 计数。count 直接显示，省得买家点进去数",
+  StoreCategorySpecs: "mch_store_category + prd_spec_dim + prd_spec_value ——"
+    + "按货架类目给而不是给平台全部通用维度：一家只卖蔬菜和肉的店，看到「尺码」「口径」是纯噪音",
+  MemberStats: "mbr_member 按分层计数 + 两个提醒数。`unlinkedBuyers` 要显示在页面顶部 ——"
+    + "商家一定会拿订单数与会员数对，对不上时他的第一反应是数据丢了，先说比等他问强",
+  MyMembership: "mbr_member + mch_entity（C 端视角）。这一页是发消息功能的前提："
+    + "顾客要能看到**谁在给他发消息**并且能关掉",
+  ActivityConflict: "pmt_activity_goods 的冲突查询结果：这件商品已经在另一个还在跑的活动里",
+  CrossStoreRow: "mch_store + ord_sub_order 的按店聚合。**没有单的门店也占一行（全零）** ——"
+    + "一家今天还没开张的店从总览里不见了，店主的第一反应是「我的店呢」。零是一个答案，缺席不是",
+  CrossStoreOverview: "CrossStoreRow 的集合。**只有门店维度的三项待办** —— 待核销与待分拣"
+    + "后端刻意不给：那两个数是**自提点**维度且不限商家（一个自提点承接多家商家的货）",
+  CrossStoreCompareRow: "同 CrossStoreRow，窗口内的销售额/订单/复购/缺货。"
+    + "⚠️ 这里没有评分，它在 CrossStoreCompare 上，是主体级的",
+  CrossStoreCompare: "CrossStoreCompareRow 的集合 + 主体级评分",
+  StockSummary: "inv_stock_balance + inv_item 的三个数（货品数/缺货/滞销）+ 未完盘点单号。"
+    + "`openCountNo` 给「继续盘点」跳转用 —— 不带的话那一页会开一张**新的**盘点单，"
+    + "而按钮上写着「继续」",
+  StockLedgerPage: "inv_ledger 的一页 + 游标。**游标由服务端给**，前端不要自己拿最后一行的 id 推",
+  StockMonthly: "inv_daily_snapshot 按月汇总。界面上要能看出 期初 + 进 − 销 − 损 ± 调 = 期末",
+  StockRank: "inv_daily_snapshot 的排序结果。⚠️ `qty` 两种榜含义不同：动销榜是**销量**，"
+    + "滞销榜是**库存量** —— 同一个字段两种意思不是好设计，但那是后端已有的形状",
+
+  // 五、随会话变的能力视图（落表就错了：它们不是对象的属性，是「此刻这个人能做什么」）
+  BizScope: "mch_account + mch_store_role + mch_entity_plan 的合成：**我在当前门店能做什么**。"
+    + "切门店由 X-Store-No 决定 —— 角色跟着门店走，同一个人可能在 A 店是店长、B 店是店员",
+  CheckoutCapability: "mch_payment_merchant + 准入矩阵：这一车货能不能开票、能用哪些支付方式、"
+    + "额度还够不够。与 OrderPreview 分开是有意的：preview 答「多少钱」，这个答「付得了吗」——"
+    + "三件事的共同后果都是**付款那一刻才炸**",
+  MerchantCapability: "同上，按商家拆开的一行",
+  PermOption: "权限码字典的一项。**不能让端上「把预置角色的权限并起来」当选项**："
+    + "那个并集少一条 —— biz:finance 只有老板有，于是后端明明收这个码，界面上却勾不到，"
+    + "看起来像功能没做",
+
   MemberDetail:
     "mbr_member + mbr_member_store + mbr_member_source + mbr_tag —— **四份数据的合成**，"
     + "四个字段全是嵌套对象。我一度把它当成 mbr_member 的投影，闸 B 当场报"

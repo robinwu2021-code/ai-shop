@@ -21,4 +21,3 @@ doc-standard.test.ts::文档规范 没有状态行的文档不许再增加（基
 spec-completeness.test.ts::契约完整性 B 端：每个字段都有说明 @<=372
 spec-completeness.test.ts::契约完整性 C 端：每个字段都有说明 @<=356
 spec-completeness.test.ts::契约完整性 平台端：每个字段都有说明 @<=361
-spec-completeness.test.ts::契约完整性 领域模型对齐清单已生成且无未定性条目 @<=10
