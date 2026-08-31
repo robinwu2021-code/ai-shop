@@ -91,6 +91,49 @@ const EXEMPT: Record<string, string> = {
   mkt_attribution: "只有 find(userNo) 一处读，按用户号取一行；没有列表就没有可裁的集合",
   mkt_attribution_log: "留痕表，全仓只有写、一处 select 都没有",
 
+  /*
+   * ── 2026-08-31：权限解析自己读的两张 —— **登记它们是循环依赖** ──
+   *
+   * `RolePermResolver` 读这两张表算出「这个角色有哪些权限码」，
+   * 而**数据域是在同一次登录里、由同一份角色算出来的**（LiveIdentityResolver）。
+   * 读角色表的那一刻，这个人的 DataScopeSpec 还不存在。
+   *
+   * 而且它们本来也不该按主体裁：角色定义是平台级的配置，
+   * 「配了商家域的运营看到的角色列表变少」没有任何意义。
+   * entity_no 那一列是给**商家自定义角色**用的（mch_role 才是商家侧那张），
+   * 这两张的 OPS 侧行 entity_no 恒空。
+   */
+  sys_role: "权限解析器自己读它算角色权限，而数据域由同一份角色算出来 —— 循环依赖",
+  sys_role_point: "同上，RolePermResolver 的另一半",
+
+  /*
+   * ── 门店公告审核：**旧队列，已经不再收新记录** ──
+   *
+   * `MerchantStoreServiceImpl` 里写着：服务范围改走 mch_service_area 之后，
+   * 旧的待审队列（kind=SERVICE_AREA）不会再有新行。今天只剩公告（NOTICE）走它，
+   * 而公告审核队列在运营端没有入口 —— 一处 selectList 都扫不到读的路径。
+   *
+   * 什么时候回来改：公告审核在运营端有页面的那天。
+   */
+  mch_store_audit: "门店公告/服务范围的旧待审队列，运营端无入口，读路径扫不到",
+
+  /*
+   * ── 媒体资产：**我登记过一次，被测试打回来了** ──
+   *
+   * 判据看着全都符合：运营端有「可回收清单」这条全量列表，读它的几处一处绕过都没有，
+   * 表上有 entity_no。登记之后 MediaScanFlowTest 立刻 4 红、MediaUploadFlowTest 1 红。
+   *
+   * 原因是 `MediaScanner.scan()` **是平台完整性任务**：它要扫全量才能判断
+   * 哪些图已经没人引用了。裁掉一部分 = 只对账一部分，而**部分对账的结果会被当成
+   * 「对过了」** —— 比不对账更危险（与 InventoryBackfillServiceImpl 在
+   * SCOPE_BYPASS_OK 里的理由是同一条）。
+   *
+   * 要接的话不是登记整张表，而是**把运营端那条可回收列表单独接上**
+   * （给它一条带数据域的查询，扫描器那条保持全量）—— 那是另一个改动，
+   * 不是补一行 register。
+   */
+  sys_media_asset: "MediaScanner 是平台完整性任务，要扫全量；登记会让「部分对账」被当成对过了",
+
   // 日志/流水类：归属列是「谁干的」而不是「谁的数据」，运营查审计本就要跨主体看
   sys_op_log: "运营操作审计，跨主体查是它的用途",
   mch_staff_log: "商家员工授权审计，同上",
@@ -253,7 +296,7 @@ describe("数据域表册覆盖", () => {
      * 挑它们的判据是「运营端有一条全量列表读它」，而**登记的同时去掉了那三条
      * 队列上的 executeWithoutScope** —— 只登记不去绕过是第一批白干过的那一轮。
      */
-    const PENDING = 53;
+    const PENDING = 49;
 
     expect(
       missing.length,
