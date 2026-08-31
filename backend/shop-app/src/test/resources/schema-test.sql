@@ -3897,6 +3897,16 @@ CREATE TABLE IF NOT EXISTS pay_risk_shadow_log
     CONSTRAINT uk_risk_shadow_batch UNIQUE (batch_no, tenant_no, deleted)
 );
 
+CREATE TABLE IF NOT EXISTS sys_event_consumed
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    event_no VARCHAR(64) NOT NULL,
+    handler VARCHAR(128) NOT NULL,
+    consumed_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_event_handler UNIQUE (event_no,handler)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

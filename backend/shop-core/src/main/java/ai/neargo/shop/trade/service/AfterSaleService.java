@@ -82,4 +82,26 @@ public interface AfterSaleService {
      *         （后者是 {@code SPLIT_EXPIRED}，此时<b>退款不会发生</b>）
      */
     void resumeRefund(String afterSaleNo, String operatorNo);
+
+    /**
+     * 卡在 {@code REFUNDING} 的售后单号（不变式 I5）。
+     *
+     * <p><b>为什么需要它</b>：{@code doRefund} 的顺序注释写着「① 回退分账，
+     * 失败就停在 REFUNDING 等重试」—— 而在此之前<b>没有任何东西在重试</b>：
+     * <pre>{@code
+     * grep -rln "REFUNDING" shop-*(SLASH)src/main/java | grep -i "job|retry"   # 空
+     * }</pre>
+     * 于是「等重试」实际是「等到有人发现」，而发现它的通常是用户 ——
+     * 他只知道钱没回来。这条与支付域拆分无关，是<b>今天就欠着的账</b>。
+     *
+     * <p><b>这里只查不做</b>：续跑要逐条走 {@link #resumeRefund}（它有事务），
+     * 而<b>自调用不走代理</b> —— 在本类里循环调它，那个 {@code @Transactional}
+     * 一条都不生效，表现是「退款做了一半」而没有任何报错。
+     * 所以循环放在 {@code RefundRetryJob} 里，它拿到的是代理。
+     *
+     * @param stuckBefore 只取这个时刻之前更新过的。留出的这段时间是给正常链路的：
+     *                    刚进 REFUNDING 的单可能正被同步流程处理，插进去会撞在同一笔上
+     * @param limit       单轮上限。**超出的留待下一轮** —— 积压很多时一次全跑会把退款通道打满
+     */
+    java.util.List<String> stuckRefundNos(long stuckBefore, int limit);
 }

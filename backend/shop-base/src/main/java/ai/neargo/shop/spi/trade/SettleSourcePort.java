@@ -29,6 +29,38 @@ public interface SettleSourcePort {
     List<SettleReadiness> settleReadiness(java.util.Collection<String> subOrderNos);
 
     /**
+     * 这段时间里<b>已支付</b>的子单（不变式 I1 的左边）。
+     *
+     * <p>结算域拿它去比「每个 PAID 子单都有 stl_bill 吗」。
+     * <b>这是唯一一条不依赖消息、只看事实的检查</b> ——
+     * Outbox 投递失败、消费者有 bug、甚至 Outbox 那一行本身没写成功，
+     * 都躲不过它。
+     *
+     * @param since 起始时刻（毫秒）
+     * @param limit 单轮上限
+     */
+    List<PaidSubOrder> paidSubOrdersSince(long since, int limit);
+
+    /**
+     * 这批子单里<b>不是已支付状态</b>的（不变式 I2 的右边）。
+     *
+     * <p>结算域拿它去比「每张 stl_bill 都对得上一个已支付子单吗」。
+     * 对不上的<b>只告警不自动删</b> —— 删账是不可逆动作。
+     *
+     * <p>返回的是「异常的那些」而不是「正常的那些」：直接返回差集，
+     * 调用方不用再做一次减法 —— 那次减法写反的话，报出来的会是完全相反的一批单。
+     */
+    List<String> notPaidAmong(java.util.Collection<String> subOrderNos);
+
+    /**
+     * @param subOrderNo 子单号
+     * @param orderNo    主单号 —— 补生成结算单是按主单做的（{@code generateForOrder}）
+     * @param paidAt     支付时刻，用来算「漏了多久」
+     */
+    record PaidSubOrder(String subOrderNo, String orderNo, long paidAt) {
+    }
+
+    /**
      * @param completedAt   履约完成时刻（毫秒）。<b>取状态流水里进 COMPLETED 那一刻</b>，
      *                      不是子单的更新时间 —— 后者会被任何一次无关改动推后
      * @param afterSaleOpen 有没有<b>未闭环</b>的售后。为 true 时这单不进批：

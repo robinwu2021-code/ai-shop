@@ -86,6 +86,70 @@ public class SettleSourcePortImpl implements SettleSourcePort {
         return out;
     }
 
+    /**
+     * 不变式 I1 的左边：这段时间里已支付的子单。
+     *
+     * <p><b>用 {@code TRANSACTED} 而不是 {@code PAID}</b>：退款单在支付那一刻
+     * 也生成过结算单（之后才回退），所以「REFUNDED 但没有结算单」同样是违反。
+     * 用 {@code PAID}（不含 REFUNDED）会把这一类<b>静默漏掉</b> ——
+     * 而漏掉的恰好是钱已经动过两次的那些单。
+     */
+    @Override
+    public List<PaidSubOrder> paidSubOrdersSince(long since, int limit) {
+        List<OrdOrder> orders = DataScopeContext.executeWithoutScope(() ->
+                orderMapper.selectList(Wrappers.<OrdOrder>lambdaQuery()
+                        .ge(OrdOrder::getPaidAt, since)
+                        .isNotNull(OrdOrder::getPaidAt)
+                        .orderByAsc(OrdOrder::getPaidAt)
+                        .last("limit " + Math.max(1, limit))));
+        if (orders.isEmpty()) {
+            return List.of();
+        }
+        Map<String, Long> paidAtOf = orders.stream()
+                .collect(Collectors.toMap(OrdOrder::getOrderNo, OrdOrder::getPaidAt, (a, b) -> a));
+        List<OrdSubOrder> subs = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .in(OrdSubOrder::getOrderNo, paidAtOf.keySet())
+                        .in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED)));
+        return subs.stream()
+                .map(x -> new PaidSubOrder(x.getSubOrderNo(), x.getOrderNo(),
+                        paidAtOf.getOrDefault(x.getOrderNo(), 0L)))
+                .toList();
+    }
+
+    /**
+     * 不变式 I2 的右边：这批子单里**不是成交态**的那些。
+     *
+     * <p><b>查不到的也算异常</b>：子单号在 stl_bill 上而库里根本没有这个子单，
+     * 比状态不对更严重 —— 它意味着账挂在一个不存在的单上。
+     * 把「查不到」当成正常会让最严重的那一类静默消失。
+     */
+    @Override
+    public List<String> notPaidAmong(java.util.Collection<String> subOrderNos) {
+        if (subOrderNos == null || subOrderNos.isEmpty()) {
+            return List.of();
+        }
+        List<OrdSubOrder> found = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .in(OrdSubOrder::getSubOrderNo, subOrderNos)));
+        Map<String, String> statusOf = found.stream()
+                .collect(Collectors.toMap(OrdSubOrder::getSubOrderNo, OrdSubOrder::getStatus,
+                        (a, b) -> a));
+        return subOrderNos.stream()
+                /*
+                 * **先判 null 再 contains。** TRANSACTED 是 Set.of(...)，
+                 * 不可变集合对 null 键直接抛 NPE —— 而 null 恰好是这里最该报出来的那种
+                 * （子单号在 stl_bill 上，库里却根本没有这个单）。
+                 * 写成 `!TRANSACTED.contains(statusOf.get(no))` 的话，
+                 * 整个巡检会在遇到第一条孤儿账时炸掉，而不是把它报出来。
+                 */
+                .filter(no -> {
+                    String status = statusOf.get(no);
+                    return status == null || !OrdSubOrder.TRANSACTED.contains(status);
+                })
+                .toList();
+    }
+
     @Override
     public List<SettleSource> settleSourcesOf(String orderNo) {
         List<OrdSubOrder> subs = DataScopeContext.executeWithoutScope(() ->

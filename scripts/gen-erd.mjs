@@ -77,6 +77,8 @@ export const KEY_OWNERS = {
   dim_no: "prd_spec_dim",
   value_no: "prd_spec_value",
   topic_no: "prd_topic",
+  // 事件号：sys_outbox 是主，sys_event_consumed（事件级幂等）引用它
+  event_no: "sys_outbox",
   shipment_no: "ful_shipment",
   area_no: "mch_service_area",
   // person_no 与 member_no 是两级：跨商家的人 vs 他在某一家的会员身份

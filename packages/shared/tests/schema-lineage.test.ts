@@ -149,6 +149,13 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
   dim_no: { table: "prd_spec_dim" },
   value_no: { table: "prd_spec_value" },
   topic_no: { table: "prd_topic" },
+  /*
+   * 事件号：sys_outbox 是主（它建的唯一键），sys_event_consumed 引用它。
+   * 两张表是 Outbox 的一体两面 —— 前者记「发了什么」，后者记「谁处理过」。
+   * **不是同名不同义**：按 event_no join 这两张表是正确用法，
+   * 也正是排查「这个事件到底有没有被消费」时要做的第一件事。
+   */
+  event_no: { table: "sys_outbox" },
   // 履约：运单与轨迹是一对多
   shipment_no: { table: "ful_shipment" },
   // 商家服务范围。mch_channel_area 引用它 —— 渠道覆盖哪些服务区

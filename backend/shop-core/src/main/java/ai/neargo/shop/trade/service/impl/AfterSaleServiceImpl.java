@@ -584,6 +584,31 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     /**
+     * 卡住的退款单（不变式 I5）。**只查不做** —— 续跑要逐条走
+     * {@link #resumeRefund}，而自调用不走代理，循环放在 {@code RefundRetryJob} 里。
+     *
+     * <p><b>不加 {@code @Transactional}</b>：它只读，且返回的单号会被逐条
+     * 独立提交地处置 —— 包成一个事务的话，一条失败会把已经退成功的那几条一起回滚。
+     */
+    @Override
+    public List<String> stuckRefundNos(long stuckBefore, int limit) {
+        LocalDateTime cutoff = LocalDateTime.ofInstant(
+                java.time.Instant.ofEpochMilli(stuckBefore), java.time.ZoneId.systemDefault());
+        /*
+         * **不带数据域**：这是系统巡检，不是某个运营在看列表。
+         * 带上的话 worker 里没有 BizContext，查出来的是空集 ——
+         * 而空集与「没有卡住的单」在结果上一模一样。
+         */
+        return DataScopeContext.executeWithoutScope(() ->
+                afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
+                                .eq(OrdAfterSale::getStatus, OrdAfterSale.REFUNDING)
+                                .lt(OrdAfterSale::getUpdatedAt, cutoff)
+                                .orderByAsc(OrdAfterSale::getUpdatedAt)
+                                .last("limit " + Math.max(1, limit)))
+                        .stream().map(OrdAfterSale::getAfterSaleNo).toList());
+    }
+
+    /**
      * 退款回退分账队列的收尾（P-12.1.5 / E4）。
      *
      * <p>刻意<b>只有三行</b>：查单、校状态、进 {@link #doRefund}。
