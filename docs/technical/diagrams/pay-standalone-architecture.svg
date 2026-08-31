@@ -46,12 +46,12 @@
 <rect class="box warn" x="786" y="38" width="250" height="62" rx="7"/>
 <text class="n" x="800" y="58">支付通道　/callback/**</text>
 <text class="t" x="800" y="76">微信 · 支付宝 · 聚合网关</text>
-<text class="t" x="800" y="92">验签，不是用户请求</text>
+<text class="t" x="800" y="92"><tspan class="em">直接进 pay :8083</tspan>，不经主应用</text>
 
 <path class="ar" marker-end="url(#ar)" d="M143 100 L143 128"/>
 <path class="ar" marker-end="url(#ar)" d="M397 100 L397 128"/>
 <path class="ar" marker-end="url(#ar)" d="M651 100 L651 128"/>
-<path class="ar" marker-end="url(#ar)" d="M911 100 L911 128"/>
+<path class="ar" marker-end="url(#ar)" d="M911 100 L911 118 L862 118 L862 184"/>
 
 <line x1="24" y1="146" x2="1036" y2="146" stroke="#E6EAF0" stroke-width="1"/>
 <text class="b" x="24" y="172">② 主应用 —— 唯一的 HTTP 入口，身份问题在这里全部解决完</text>
@@ -88,8 +88,8 @@
 <text class="t" x="718" y="272">不判权限、不解析数据域</text>
 
 <rect class="key" x="704" y="296" width="316" height="54" rx="6"/>
-<text class="n" x="718" y="316">/internal/**　唯一的 HTTP 表面</text>
-<text class="t" x="718" y="334">共享密钥 · 绑内网 · 不建 BizContext</text>
+<text class="n" x="718" y="316">/internal/** + /callback/pay/**</text>
+<text class="t" x="718" y="334">前者共享密钥绑内网；后者验签，是唯一的公网入口</text>
 
 <rect class="box" x="704" y="358" width="316" height="60" rx="6"/>
 <text class="n" x="718" y="378">pay-domain · pay-store</text>
@@ -118,8 +118,8 @@
 <text class="t" x="40" y="699">但显式传参的<tspan class="em">失败方向更安全</tspan>：拦截器漏装是静默全量（越权且不报错，本仓库刚在结算表上验过一次），</text>
 <text class="t" x="40" y="715">显式传参漏传是空集或编译不过。前者要靠人发现，后者当场就停。</text>
 
-<text class="l" x="24" y="748">通道回调也留在主应用：验签要用通道密钥，而密钥的存放与轮换今天在主应用侧。主应用验完签把结果转给 pay 的 /internal。</text>
-<text class="l" x="24" y="768">⚠️ 那一跳是本方案第一个要评审的点：回调是改账的入口，主应用挂着时它会失败 —— 通道重发 + 幂等能兜住，但与「pay 独立可用」有张力。</text>
+<text class="l" x="24" y="748">通道回调直接进 pay（2026-08-31 定）：验签与回查是通道侧的事，跟着 pay 走 —— 这条链因此<tspan class="em">不依赖主应用可用</tspan>，而它恰好最不该依赖别人（钱已经付了，通道在等 ack）。</text>
+<text class="l" x="24" y="768">于是有唯一一处 pay → 主应用 的方向：写完 stl_payment 后同步调 /internal/order/paid 让订单转 PAID，失败落 Outbox，再不行由不变式 I8 每小时兜底。</text>
 <text class="l" x="24" y="788">形态 A（内嵌）下 pay-internal 是多余的：主应用直接注入 LocalPayAdapter，没有理由为了自己调自己而起一个内网端点。</text>
 <text class="l" x="24" y="808">灰度粒度也变了：早先按 nginx 路径切，现在按 PayPort 的方法切 —— 更细，回滚是改一个配置项，不是改反向代理。</text>
 </svg>
