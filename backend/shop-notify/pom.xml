@@ -33,6 +33,11 @@
             <artifactId>shop-store-mybatis</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-base-auth</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!--
           邮件：直接用 jakarta.mail + angus（不引 spring-boot-starter-mail），

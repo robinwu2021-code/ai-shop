@@ -259,7 +259,7 @@ class OpsEndpointPermTest {
 
     private static Set<String> declaredPermConstants() throws IOException {
         Path perms = Path.of("..").toRealPath()
-                .resolve("shop-base/src/main/java/ai/neargo/shop/auth/Perms.java");
+                .resolve("shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java");
         Set<String> out = new TreeSet<>();
         Matcher m = Pattern.compile("String\\s+([A-Z_0-9]+)\\s*=")
                 .matcher(Files.readString(perms));

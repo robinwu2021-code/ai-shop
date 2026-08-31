@@ -199,7 +199,7 @@ class PermSeedParityE2eTest extends E2eBase {
      * 与 {@code gen-perm-seed.mjs} / {@code BizEndpointPermTest} 同一手法。
      */
     private Map<String, Set<String>> grantsFromCode() {
-        String src = readRepoFile("backend/shop-base/src/main/java/ai/neargo/shop/auth/Perms.java");
+        String src = readRepoFile("backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java");
         Map<String, String> consts = new HashMap<>();
         Matcher c = Pattern.compile("String\\s+([A-Z_]+)\\s*=\\s*\"([^\"]+)\"").matcher(src);
         while (c.find()) {

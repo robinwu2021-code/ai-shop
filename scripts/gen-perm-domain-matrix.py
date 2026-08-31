@@ -72,7 +72,7 @@ REQ_P0 = {  # 域 → (C, B, 平台)
     "15": (0, 1, 1), "16": (0, 1, 1), "17": (1, 1, 1), "18": (0, 1, 1),
 }
 
-BASE = ROOT / "backend/shop-base/src/main/java/ai/neargo/shop/auth"
+BASE = ROOT / "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth"
 
 
 def literals(path: Path) -> dict[str, str]:

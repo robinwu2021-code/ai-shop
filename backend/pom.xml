@@ -46,6 +46,8 @@
         <module>shop-base</module>
         <!-- 持久层的 MyBatis 实现。**排在 shop-base 之后、业务域之前** —— 它依赖前者、被后者依赖 -->
         <module>shop-store-mybatis</module>
+        <!-- 鉴权与 web 接入。层序：内核 ← auth ← web -->
+        <module>shop-base-auth</module>
         <!-- 领域服务实现（jar，不可独立启动） -->
         <!-- 核心域合并为一个工程：模块数 = 未来可能的部署单元数，域数 = 包数 -->
         <module>shop-core</module>

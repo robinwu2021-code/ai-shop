@@ -23,7 +23,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "../../..");
-const BIZ_PERMS = join(ROOT, "backend/shop-base/src/main/java/ai/neargo/shop/auth/BizPerms.java");
+const BIZ_PERMS = join(ROOT, "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BizPerms.java");
 const SEED = join(ROOT, "backend/shop-app/src/main/resources/db/migration/V71__mch_role.sql");
 
 /** `BizPerms.ROLE_PERMS`：角色码 → 权限码集合 */

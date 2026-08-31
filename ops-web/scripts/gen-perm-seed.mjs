@@ -20,7 +20,7 @@ const AT = (rel) => new URL(rel, import.meta.url);
 const nav = readFileSync(AT('../lib/nav.ts'), 'utf8');
 const pmSrc = readFileSync(AT('../lib/perm-map.ts'), 'utf8');
 const permsJava = readFileSync(
-  AT('../../backend/shop-base/src/main/java/ai/neargo/shop/auth/Perms.java'), 'utf8');
+  AT('../../backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java'), 'utf8');
 
 /**
  * href → **稳定的** point_code。

@@ -27,9 +27,14 @@
         判据不是「用没用到」而是「进没进 classpath」—— 那正是 AOT 的判据。
     -->
     <dependencies>
+        <!--
+            依赖 auth 而不只是内核：AuditMetaObjectHandler 要知道**当前是谁**
+            才能填 created_by / updated_by，JobSupport 与归档要 DataScopeContext。
+            所以层序是 **内核 ← auth ← store**，而不是三者平级。
+        -->
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-base</artifactId>
+            <artifactId>shop-base-auth</artifactId>
             <version>${project.version}</version>
         </dependency>
 

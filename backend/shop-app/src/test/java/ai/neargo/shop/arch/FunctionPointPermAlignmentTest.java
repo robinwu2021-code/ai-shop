@@ -161,7 +161,7 @@ class FunctionPointPermAlignmentTest {
     /** {@code Perms} 的常量名 → 字面量。 */
     private static Map<String, String> permLiterals() throws IOException {
         Path perms = Path.of("..").toRealPath()
-                .resolve("shop-base/src/main/java/ai/neargo/shop/auth/Perms.java");
+                .resolve("shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java");
         Map<String, String> out = new TreeMap<>();
         Matcher m = Pattern.compile("String\\s+([A-Z_0-9]+)\\s*=\\s*\"([^\"]+)\"")
                 .matcher(Files.readString(perms));

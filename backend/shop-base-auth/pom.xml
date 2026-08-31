@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>shop-base-auth</artifactId>
+    <packaging>jar</packaging>
+    <description>鉴权与 web 接入：三端令牌过滤器 · SecurityUtils · 权限判定 · 全局信封与异常</description>
+
+    <!--
+        **它存在的理由与 shop-store-mybatis 是同一条**：把 shop-base 变回干净内核。
+
+        抽出 shop-store-mybatis 之后 shop-base 的源码里一个 com.baomidou 都没有了，
+        但**依赖树里还有 11 处** —— neargo-common-data（数据域引擎）传递带进来的，
+        而用它的正是 auth 包（LoginUser / AbstractTokenAuthFilter / LiveIdentityResolver）。
+        判据是「进没进 classpath」，不是「源码里有没有 import」。
+
+        层序：**内核 ← auth ← （将来的 web）**。
+        设计文档里一度写成 auth 依赖 web，那是反的：GlobalExceptionHandler 引用 auth，
+        auth 引用 common。所以 web 那几个文件这一轮跟着 auth 走 ——
+        它们与 auth 之间有真实依赖，硬拆会造出一个循环。
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-base</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+                    <groupId>ai.neargo</groupId>
+                    <artifactId>neargo-common-security</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>ai.neargo</groupId>
+                    <artifactId>neargo-common-data</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-web</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-security</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-data-redis</artifactId>
+                </dependency>
+        <!-- 鉴权持久层：会话与登录日志的表访问。它不依赖 shop-base（无环） -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-auth-store</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-auth-store</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

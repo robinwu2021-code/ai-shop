@@ -21,7 +21,7 @@ import { codeOf } from "./perm-endpoint-map.mjs";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const PERMS_JAVA = join(ROOT, "backend/shop-base/src/main/java/ai/neargo/shop/auth/Perms.java");
+const PERMS_JAVA = join(ROOT, "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java");
 
 /**
  * 有意不挂 @PreAuthorize 的端点。**改这个清单要说明理由** ——
@@ -113,7 +113,7 @@ export function scanEndpoints(root = ROOT) {
 
 /** Perms.java → { codes: 常量名→码, roles: 角色→常量名[] | "*" } */
 export function parsePerms(root = ROOT) {
-  const src = readFileSync(join(root, "backend/shop-base/src/main/java/ai/neargo/shop/auth/Perms.java"), "utf8");
+  const src = readFileSync(join(root, "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java"), "utf8");
   const codes = new Map();
   for (const m of src.matchAll(/public static final String (\w+) = "([^"]+)";/g)) codes.set(m[1], m[2]);
 

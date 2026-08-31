@@ -19,7 +19,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "../../..");
-const BIZ_PERMS = join(ROOT, "backend/shop-base/src/main/java/ai/neargo/shop/auth/BizPerms.java");
+const BIZ_PERMS = join(ROOT, "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BizPerms.java");
 const LOCALES = ["zh-CN", "en", "ar"] as const;
 
 const javaSrc = readFileSync(BIZ_PERMS, "utf8");

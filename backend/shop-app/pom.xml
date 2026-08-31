@@ -34,6 +34,11 @@
             <artifactId>shop-store-mybatis</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-base-auth</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- ★ 这段依赖列表就是「形态」：单体聚合全部 svc；将来出 shop-app-trade 只留 trade 那几个 -->
         <dependency>

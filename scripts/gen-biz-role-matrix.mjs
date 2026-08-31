@@ -13,7 +13,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const PERMS = join(ROOT, "backend/shop-base/src/main/java/ai/neargo/shop/auth/BizPerms.java");
+const PERMS = join(ROOT, "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BizPerms.java");
 const TEST = join(ROOT, "backend/shop-app/src/test/java/ai/neargo/shop/arch/BizEndpointPermTest.java");
 const OUT = join(ROOT, "docs/technical/reference/B端功能矩阵-按角色.md");
 

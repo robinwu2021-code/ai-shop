@@ -259,7 +259,7 @@ describe("路由归属与面包屑", () => {
     }
 
     const permsJava = readFileSync(
-      join(ROOT, "../backend/shop-base/src/main/java/ai/neargo/shop/auth/Perms.java"), "utf8");
+      join(ROOT, "../backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java"), "utf8");
     const consts: Record<string, string> = {};
     for (const m of permsJava.matchAll(/String\s+([A-Z_]+)\s*=\s*"([^"]+)"/g)) consts[m[1]] = m[2];
     const block = permsJava.slice(permsJava.indexOf("ROLE_PERMS = Map."));

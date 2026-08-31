@@ -60,7 +60,7 @@ class LoginAuditWiringTest {
     @DisplayName("★ 签发处不许再写 LOGIN —— 切 db 之后那会变成重复记录")
     void tokenStoreMustNotWriteLoginEvent() throws IOException {
         Path store = BACKEND.resolve(
-                "shop-base/src/main/java/ai/neargo/shop/auth/store/DbTokenStore.java");
+                "shop-base-auth/src/main/java/ai/neargo/shop/auth/store/DbTokenStore.java");
         String text = Files.readString(store);
         assertThat(text)
                 .as("LOGIN 由 LoginAuditor 在业务层记；这里再记一次，切 db 之后每次登录会有两行")

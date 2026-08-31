@@ -16,7 +16,7 @@ import { UI_PERM_MAP, UNIMPLEMENTED } from "./perm-map";
 import { BACKEND_ROLE_PERMS, can } from "./permissions";
 
 const ROOT = join(import.meta.dirname, "../..");
-const PERMS_JAVA = join(ROOT, "backend/shop-base/src/main/java/ai/neargo/shop/auth/Perms.java");
+const PERMS_JAVA = join(ROOT, "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java");
 
 /** 从 Java 源码抽后端权限码常量 —— 与 BizEndpointPermTest 同一手法 */
 function backendCodes(): Set<string> {
