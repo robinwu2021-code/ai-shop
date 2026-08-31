@@ -279,6 +279,15 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
  * ⚠️ 每加一条，都等于承认「配了这个维度的运营账号打开这张表相关的页面是空白」。
  * 所以理由里必须写清楚**谁会看到空白**——这份清单要交给运营团队（TDD Q2）。
  */
+/**
+ * 归属列 —— 与 `data-scope-coverage.test.ts` 的 `OWNER_COLUMNS` 同一份口径。
+ * 两处都要认 `receiver_no`：站内信把收件人存在这一列上（V97 起）。
+ */
+const OWNER_COLUMNS = [
+  "entity_no", "merchant_no", "user_no",
+  "community_no", "pickup_no", "store_no", "receiver_no",
+];
+
 const ANCHOR_WAIVED: Record<string, string> = {
   /*
    * ── 2026-08-31 第三批登记（pmt_activity / mbr_reach_log）带来的锚点缺口 ──
@@ -788,6 +797,143 @@ describe("运营端数据域接入", () => {
       "这些登记项已经不成立了：要么方法没了/改名了，要么它绕过的表不再注册，\n"
       + "  要么它已经接上数据域、或已经不在任何 ops 查询的路径上 —— 从 SCOPE_BYPASS_OK 删掉。\n"
       + "  留着会让下一个人以为这块还没接，从而绕开它另做一套。",
+    ).toEqual([]);
+  });
+
+  /*
+   * ── G4 的清单：运营端读得到、但**有意不登记**的表 ──
+   *
+   * 每条都要写清**为什么不该登记**，而不是「还没登记」。两者的差别是实的：
+   * 「还没」意味着将来该补，下一个人会重做一遍同样的排查；
+   * 「不该」是一个结论，带着它成立的条件。
+   *
+   * 已经出现过的几种理由（按这一轮排查的顺序）：
+   *   · 没有列表 —— 读法只会是「按主键取一行」，没有可裁的集合
+   *   · 必须全量 —— 平台完整性任务（对账/扫描），裁一部分会被当成「对过了」
+   *   · 循环依赖 —— 数据域由它算出来（角色表）
+   *   · 归属列答的不是同一个问题 —— receiver_no 是收件人，不是「归谁管」
+   *   · 接上会打断 C 端 —— 买家会话在这张表上没有锚点，fail-closed 变空白
+   */
+  const OPS_READS_UNREGISTERED_OK: Record<string, string> = {
+    // ── 这一轮（2026-08-31）已经逐张判过的，理由与 data-scope-coverage 的 EXEMPT 同源 ──
+    cmt_community:
+      "COMMUNITY 维度自己的锚点表。登记会让**登录买家**的社区列表与详情变空"
+      + "（探针验过：ConsumerScopeParityTest 报「游客有数据，登录是空的」）——"
+      + "而「我能在哪儿取货」是下单的前置",
+    cmt_pickup_point: "同上，取货点跟着社区走",
+    mch_entity_apply:
+      "审核通过**之前商家还不存在**，entity_no 只在「无证照先开店」那一支被预填；"
+      + "登记会让审核队列对配了商家域的人一条都匹配不上",
+    mch_store_audit: "门店公告/服务范围的旧待审队列，那一支已不再收新记录",
+    notify_message:
+      "receiver_no 是**收件人用户号**（买家与商家员工共用命名空间），表上没有商家号；"
+      + "SELF 会变成「运营只看得到发给自己的站内信」",
+    notify_push_token: "同上，且它是设备令牌表 —— 按商家裁没有意义",
+    sys_media_asset:
+      "MediaScanner.scan() 是平台完整性任务要扫全量；**登记过一次，5 条测试红**",
+    // ── 关联/子表：不当检索入口，总是随主表一起查（与 EXEMPT 里同一批理由）──
+    mch_channel_pickup: "自提路×取货点关联，从 mch_fulfillment_channel 主表进入",
+    mch_channel_area: "channel×范围项关联，同上",
+    mch_entity_community: "主体×社区关联，从主表进入",
+    prd_topic_goods: "专题×商品关联，从专题进入",
+    prd_spec_value: "规格取值，总是随 prd_spec_dim 一起查",
+
+    // ── 权限解析自己读的：数据域由它算出来，登记是循环依赖 ──
+    sys_role: "RolePermResolver 读它算角色权限，而数据域由同一份角色算出 —— 循环依赖",
+    sys_role_point: "同上",
+    sys_ops_staff:
+      "运营员工表。**它是数据域的来源**（merchant_no/community_no/pickup_no 三列就存在这里），"
+      + "登记它等于让「我能看到哪些运营账号」依赖「我的数据域」，而后者正由它算出",
+
+    // ── 人档与账号：跨商家是它们的用途 ──
+    usr_person:
+      "人档按定义就是跨商家的 —— 它回答「这个人在哪些商家有会员身份」，按商家裁一刀正好毁掉这一页",
+    usr_account:
+      "账号表。运营查人（/ops/refund-split-backs 回捞买家昵称）要跨主体；"
+      + "而 SELF 语义是「当前登录的人」，接上等于运营只查得到自己",
+
+    /*
+     * ── ⏳ 待判（29 张，2026-08-31 由 G4 首次报出）──
+     *
+     * **这一段与上面几组不同：上面是「不该登记」的结论，这一段是「还没判」。**
+     * 冻在这里是为了让 G4 立刻能上岗拦新增，而不是把它挂成一条恒红的闸门 ——
+     * 恒红等于没有闸门，这一轮拆掉的就是那个。
+     *
+     * 每条判完之后：登记进 DataScopeRegistration（并去掉那条查询上的
+     * executeWithoutScope），或者把这一行的「待判」换成不该登记的理由。
+     * **两种都是把这一行改掉，不是留着。**
+     *
+     * 判的顺序建议按「这一页的下一步动作有多重」：收款进件与资质档案排在前面
+     * （它们决定一家店能不能收钱、能不能卖），评价治理次之。
+     *
+     * ⚠️ 登记之前先跑一遍相关测试，并且**把 ConsumerScopeParityTest 固定加上** ——
+     * 按名字挑测试等于按自己的猜想挑判据：社区那次我选的三个模式
+     * 一个都匹配不到它，41 条全绿，差点写下「登记是安全的」这个相反的结论。
+     */
+    ful_batch: "待判 —— 履约批次（/ops/fulfillment/batches、/sorting）",
+    ful_shortage_report: "待判 —— 缺货上报（/ops/fulfillment/sorting）",
+    mch_account: "待判 —— 商家员工（/ops/merchants/{no}/staff）",
+    mch_debt: "待判 —— 商家欠款（/ops/debts/{entityNo}）",
+    mch_debt_txn: "待判 —— 欠款流水（同上）",
+    mch_deposit: "待判 —— 保证金账户（/ops/admission/deposits/{no}）",
+    mch_deposit_txn: "待判 —— 保证金流水（同上 /txns）",
+    mch_entity_plan: "待判 —— 增值包订阅（/ops/merchant-plans）",
+    mch_payment_merchant: "待判 —— 收款进件（/ops/admission/pay-quotas、/ops/merchants/{no}）",
+    mch_qualification: "待判 —— 资质档案（/ops/merchants/{no}/qualifications）",
+    mch_store_role: "待判 —— 门店授权（同上）",
+    mkt_campaign: "待判 —— 营销活动（/ops/campaigns）",
+    mkt_coupon: "待判 —— 平台券（/ops/coupons）",
+    mkt_coupon_issue: "待判 —— 发券批次（/ops/coupon-issues）",
+    mkt_group_buy: "待判 —— 拼团（/ops/groups）",
+    mkt_quote: "待判 —— 报价（/ops/quotes）",
+    mkt_request: "待判 —— 需求单（/ops/demands、/ops/quotes）",
+    mkt_request_interest: "待判 —— 需求意向（/ops/demands）",
+    notify_ticket: "待判 —— 工单（/ops/tickets）",
+    ord_invoice_request: "待判 —— 买家开票申请（/ops/invoice-requests）",
+    prd_spec_dim: "待判 —— 规格维度（/ops/spec-dims、/ops/category-specs）",
+    prd_spec_template: "待判 —— 规格模板（/ops/spec-templates）",
+    prd_store_goods: "待判 —— 门店商品（/ops/goods）",
+    prd_store_stock: "待判 —— 门店库存（/ops/goods、/ops/inventory/recon）",
+    pts_user_account: "待判 —— 积分账户（/ops/points/overview）",
+    rvw_appeal: "待判 —— 评价申诉（/ops/review-appeals）",
+    rvw_review: "待判 —— 评价治理（/ops/reviews）",
+    stl_points_pool: "待判 —— 积分池（/ops/points/overview）",
+    stl_settle_batch: "待判 —— 账期批次（/ops/settle-batches）",
+
+    mkt_attribution_log:
+      "归因留痕。**注意：它确实有一条 ops 读**（/ops/attribution-traces）—— "
+      + "我先前判成「全仓只有写」是错的，G4 把它揪了出来。"
+      + "但归因链路的意义就是跨商家看「这个人是谁带来的」，按商家裁会把链路截断",
+  };
+
+  it("★★★ G4 ops 查询读到的表要么登记数据域，要么写明为什么不该登记", () => {
+    const offenders: string[] = [];
+    for (const e of gets) {
+      const c = classes.get(e.cls);
+      for (const body of c?.methods.get(e.method) ?? []) {
+        for (const t of tablesIn(e.cls, body)) {
+          if (registered.has(t) || !schema.has(t)) continue;
+          if (t in OPS_READS_UNREGISTERED_OK) continue;
+          // 没有归属列的表（字典、配置、菜单）本来就不该按主体裁
+          if (!OWNER_COLUMNS.some((o) => schema.get(t)!.has(o))) continue;
+          offenders.push(`${t} ← ${e.verb} ${e.path}`);
+        }
+      }
+    }
+    expect(
+      [...new Set(offenders)].sort(),
+      "这些表**有归属列、被运营端查询读到、却没有登记数据域** —— \n"
+      + "  给运营配的「只看某商家/某片区」对这些页面完全不生效，\n"
+      + "  而页面正常渲染、没有报错：他看到的比该看到的多，且不知道。\n"
+      + "  \n"
+      + "  这条与覆盖率闸（data-scope-coverage）的分工：那条问「这张表带不带归属列」，\n"
+      + "  **这条问「运营端到底读不读它」** —— 后者才是越权真正发生的地方。\n"
+      + "  \n"
+      + "  两条路：登记进 DataScopeRegistration（登记的同时要去掉那条查询上的\n"
+      + "  executeWithoutScope，否则登记不产生任何效果）；\n"
+      + "  或者写进 OPS_READS_UNREGISTERED_OK 并说明**为什么不该登记**。\n"
+      + "  ⚠️ 登记之前先跑一遍相关测试 —— 判据符合不等于该登记：\n"
+      + "  sys_media_asset 三条判据全符合，登记后 5 条红（MediaScanner 必须扫全量）。",
     ).toEqual([]);
   });
 
