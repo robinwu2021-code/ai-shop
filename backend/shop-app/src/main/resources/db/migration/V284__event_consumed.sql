@@ -27,4 +27,20 @@ CREATE TABLE IF NOT EXISTS sys_event_consumed
     -- 清理用。**没有过期时间列**是有意的：事件幂等记录的保留期由清理任务决定，
     -- 写一个 expire_at 进去等于让写入方猜「这条要留多久」，而它不知道
     KEY idx_event_consumed_at (consumed_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='事件级幂等：一个事件在一个消费者上只生效一次';
+) COMMENT='事件级幂等：一个事件在一个消费者上只生效一次';
+
+-- **不写 ENGINE / CHARSET / COLLATE**，跟随库默认 —— 与 V280/281/282 同一写法。
+--
+-- 两个理由，第二个更要紧：
+--
+-- (1) utf8mb4_uca1400_ai_ci 是 MariaDB 11.4+ 独有的，MySQL 没有这个名字。
+--     baseline 里 110 张表都这么写（历史欠账，已在 SQL 方言闸门的清单里），
+--     新表不该再加一条。
+--
+-- (2) **换成 utf8mb4_unicode_520_ci 会引入另一个问题**：本表的 event_no 与
+--     sys_outbox.event_no 是同一个键（血缘表里登记了归属），排查
+--     「这个事件到底有没有被消费」时第一件事就是按它 join 两张表。
+--     两张表排序规则不同的话，那个 join 在 MySQL/MariaDB 上直接报
+--     Illegal mix of collations —— 而 H2 根本不解析 COLLATE，本地全绿、连真库才炸。
+--
+-- 跟随库默认就没有这个问题：它与 sys_outbox 在同一个库里，拿到的是同一个规则。
