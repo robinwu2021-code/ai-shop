@@ -1,4 +1,4 @@
-package ai.neargo.shop.settle.api.mp;
+package ai.neargo.shop.portal.mp.pay;
 
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.settle.PointsService;

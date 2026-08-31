@@ -1,4 +1,4 @@
-package ai.neargo.shop.settle.api.biz;
+package ai.neargo.shop.portal.biz.pay;
 
 import ai.neargo.shop.auth.BizPerms;
 import org.springframework.security.access.prepost.PreAuthorize;

@@ -445,6 +445,11 @@ class ArchitectureTest {
     void topLevelPackagesMustBeRegistered() {
         // 非业务域的顶层包：横切基础设施与装配层，各有专门规则管，不进 DOMAINS
         List<String> infra = List.of("common", "spi", "auth", "event", "idem", "portal", "config", "arch",
+                // payclient：controller 与支付域之间的那一层（app service）。
+                // **不是业务域**：它没有自己的表，做的是「解析数据域 → 校验 → 调支付域 → 拼 VO」。
+                // 支付域拆分后 controller 只做 HTTP 的事，业务动作落在这里；
+                // 见 TDD-支付域-双形态部署与装配 §三.3b。
+                "payclient",
                 // channel：外部通道适配（支付/进件/登录凭证）。不是业务域——
                 // 它没有自己的表，只把外部协议翻译成 spi 的接口。见 domainsMustNotTouchChannel。
                 "channel",

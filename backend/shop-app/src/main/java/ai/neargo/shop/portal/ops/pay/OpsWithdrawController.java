@@ -1,4 +1,4 @@
-package ai.neargo.shop.settle.api.ops;
+package ai.neargo.shop.portal.ops.pay;
 
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
