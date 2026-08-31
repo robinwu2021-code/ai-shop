@@ -16,7 +16,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * 资金不变式巡检（I1 / I2）—— <b>三层保证里的第三层</b>。
+ * 资金不变式巡检（I1 / I2 / I3）—— <b>三层保证里的第三层</b>。
  *
  * <p>它不看消息、不看重试次数，只看事实：「这个子单是已支付的，它有没有结算单？」
  * Outbox 投递失败、消费者有 bug、甚至 Outbox 那一行本身没写成功，都躲不过它。
@@ -26,6 +26,10 @@ import org.springframework.stereotype.Component;
  * <ul>
  *   <li><b>I1 自动补</b> —— 补生成结算单是幂等且只增不减的动作，自动执行安全；</li>
  *   <li><b>I2 只告警</b> —— 删账不可逆，而成因不止一种（含「巡检自己算错了窗口」）。</li>
+ *   <li><b>I3 清标记</b> —— 标记说发过积分而没有流水时，把标记改回未发。
+ *       方向安全：用户一分没拿到，而 {@code grantOnPay} 的幂等原本就是靠这个标记，
+ *       不清掉它永远重发不了。<b>反方向（有流水而标记为假）刻意不动</b> ——
+ *       那说明多发了一次，补标记等于把它盖掉，而分还在用户手里。</li>
  * </ul>
  *
  * <p>凡是「自动修复」的，都要能证明它幂等且方向安全。证不了的就只报不动。
@@ -75,7 +79,8 @@ public class FundInvariantJob implements JobHandler {
     @Bean
     public JobDeclaration fundInvariantDeclaration() {
         return new JobDeclaration("fund-invariant", "资金不变式巡检",
-                "比对「已支付的单」与「结算单」两边：缺的自动补出来，多出来的只报不动（删账不可逆）",
+                "比对「已支付的单」与「结算单」两边：缺的自动补出来，多出来的只报不动（删账不可逆）；"
+                        + "顺带查「标记说发过积分而没有流水」，把标记清掉让下一轮重发",
                 "shop-settle", "0 20 * * * *", true,
                 2700, 3000, true, true);
     }
@@ -114,8 +119,14 @@ public class FundInvariantJob implements JobHandler {
             }
         }
 
-        return JobResult.ok("已付子单 %d（缺 %d · 补 %d）· 结算单 %d（对不上 %d）"
+        if (r.grantedNoLedger() > 0) {
+            log.error("[fund-invariant] I3 违反 {} 条：标记说发过积分而没有流水，"
+                    + "已清标记 {} 行 —— 下一轮会重发", r.grantedNoLedger(), r.clearedFlags());
+        }
+
+        return JobResult.ok("已付子单 %d（缺 %d · 补 %d）· 结算单 %d（对不上 %d）· 已发分 %d（无流水 %d · 清 %d）"
                 .formatted(r.scannedPaid(), r.missingBill(), r.repairedBill(),
-                        r.scannedBills(), r.orphanBill()));
+                        r.scannedBills(), r.orphanBill(),
+                        r.scannedGranted(), r.grantedNoLedger(), r.clearedFlags()));
     }
 }

@@ -41,9 +41,9 @@ class CrossDomainWriteConventionTest {
      * <b>已经改成「提交后执行」的调用</b>：文件 → 必须被 {@code AfterCommit} 包住的表达式。
      * 改回直连的话这一检当场红。
      */
-    private static final Map<String, String> DEFERRED = Map.of(
+    private static final Map<String, List<String>> DEFERRED = Map.of(
             "shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java",
-            "settlePort.generateForOrder");
+            List.of("settlePort.generateForOrder", "grantPointsAfterPay"));
 
     /**
      * <b>还没改的六处</b>，按方向分类（见 TDD-支付域拆分-最终一致性与补偿 §二）：
@@ -51,7 +51,6 @@ class CrossDomainWriteConventionTest {
      * <ul>
      *   <li>{@code pointsPort.deduct}（下单扣分）—— <b>前置</b>，唯一不能用 Outbox 的一处，
      *       要改预扣 + 确认 + 超时释放；</li>
-     *   <li>{@code pointsPort.grant}（支付发分）—— 后置，等 I3 不变式先落地；</li>
      *   <li>{@code pointsPort.reverse} ×2（取消 / 超时关单）—— 补偿，同样走延后；</li>
      *   <li>{@code settlePort.reverseSplit} / {@code settlePort.refund}（退款两步）——
      *       <b>有序，刻意不改</b>：它们今天已经是最终一致性的形状
@@ -62,7 +61,7 @@ class CrossDomainWriteConventionTest {
      * 所以这个清单不是「要清零」，而是「不许变长」。
      */
     private static final List<String> REMAINING = List.of(
-            "pointsPort.deduct", "pointsPort.grant", "pointsPort.reverse",
+            "pointsPort.deduct", "pointsPort.reverse",
             "settlePort.reverseSplit", "settlePort.refund");
 
     /**
@@ -93,20 +92,32 @@ class CrossDomainWriteConventionTest {
     @DisplayName("★★★ 已经延后的跨域写不许改回直连 —— 改回去在单体里看不出任何问题")
     void deferredWritesStayDeferred() throws IOException {
         List<String> violations = new ArrayList<>();
-        for (Map.Entry<String, String> e : DEFERRED.entrySet()) {
+        for (Map.Entry<String, List<String>> e : DEFERRED.entrySet()) {
             String src = stripComments(
                     Files.readString(BACKEND.resolve(e.getKey()), StandardCharsets.UTF_8));
-            String call = e.getValue();
-            int hits = 0;
-            for (int at = src.indexOf(call); at >= 0; at = src.indexOf(call, at + 1)) {
-                hits++;
-                if (!statementAround(src, at).contains("AfterCommit")) {
-                    violations.add(e.getKey() + " → " + call);
+            for (String call : e.getValue()) {
+                int hits = 0;
+                for (int at = src.indexOf(call); at >= 0; at = src.indexOf(call, at + 1)) {
+                    String stmt = statementAround(src, at);
+                    /*
+                     * **方法声明那一处要跳过。** 被延后的动作常常抽成一个私有方法
+                     * （grantPointsAfterPay 就是），于是名字会命中两次：定义与调用。
+                     * 定义那一处当然不在 AfterCommit 的语句里 —— 不跳过的话
+                     * 闸门会对着正确的代码报错，而错报比漏报更快被人把整条闸门关掉。
+                     */
+                    if (stmt.contains("void ") || stmt.contains("private ")
+                            || stmt.contains("public ")) {
+                        continue;
+                    }
+                    hits++;
+                    if (!stmt.contains("AfterCommit")) {
+                        violations.add(e.getKey() + " → " + call);
+                    }
                 }
+                // 对照量：调用被改名或删掉时，这一检会静默变成恒真
+                assertThat(hits).as("%s 里一处 %s 都没找到 —— 调用被改名了？", e.getKey(), call)
+                        .isPositive();
             }
-            // 对照量：调用被改名或删掉时，这一检会静默变成恒真
-            assertThat(hits).as("%s 里一处 %s 都没找到 —— 调用被改名了？", e.getKey(), call)
-                    .isPositive();
         }
         assertThat(violations)
                 .as("这些跨域写又变回「和业务同事务」了：\n  %s\n"

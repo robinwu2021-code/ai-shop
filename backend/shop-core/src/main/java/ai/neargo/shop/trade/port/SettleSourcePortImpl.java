@@ -150,6 +150,40 @@ public class SettleSourcePortImpl implements SettleSourcePort {
                 .toList();
     }
 
+    /** 不变式 I3 的左边：这段时间里标着「已发过积分」的子单 */
+    @Override
+    public List<String> pointsGrantedSince(long since, int limit) {
+        return paidSubOrdersSince(since, limit).stream()
+                .map(PaidSubOrder::subOrderNo)
+                .filter(no -> {
+                    OrdSubOrder sub = DataScopeContext.executeWithoutScope(() ->
+                            subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                                    .eq(OrdSubOrder::getSubOrderNo, no).last("limit 1")));
+                    return sub != null && Boolean.TRUE.equals(sub.getPointsGranted());
+                })
+                .toList();
+    }
+
+    /**
+     * 把标记改回未发，让下一轮重发。
+     *
+     * <p><b>用 update 而不是先查后改</b>：这条修复动作可能与正常的发分链路
+     * 并发跑到同一行上，先查后改会把中间那次写覆盖掉。
+     */
+    @Override
+    public int clearPointsGranted(java.util.Collection<String> subOrderNos) {
+        if (subOrderNos == null || subOrderNos.isEmpty()) {
+            return 0;
+        }
+        return DataScopeContext.executeWithoutScope(() -> {
+            OrdSubOrder patch = new OrdSubOrder();
+            patch.setPointsGranted(false);
+            return subOrderMapper.update(patch, Wrappers.<OrdSubOrder>lambdaUpdate()
+                    .in(OrdSubOrder::getSubOrderNo, subOrderNos)
+                    .eq(OrdSubOrder::getPointsGranted, true));
+        });
+    }
+
     @Override
     public List<SettleSource> settleSourcesOf(String orderNo) {
         List<OrdSubOrder> subs = DataScopeContext.executeWithoutScope(() ->

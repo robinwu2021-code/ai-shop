@@ -2,7 +2,9 @@ package ai.neargo.shop.settle.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.settle.SettleService;
+import ai.neargo.shop.settle.entity.PtsUserLedger;
 import ai.neargo.shop.settle.entity.StlBill;
+import ai.neargo.shop.settle.mapper.SettleMappers;
 import ai.neargo.shop.settle.mapper.SettleMappers.BillMapper;
 import ai.neargo.shop.settle.service.FundInvariantService;
 import ai.neargo.shop.spi.trade.SettleSourcePort;
@@ -21,12 +23,16 @@ public class FundInvariantServiceImpl implements FundInvariantService {
     private static final Logger log = LoggerFactory.getLogger(FundInvariantServiceImpl.class);
 
     private final BillMapper billMapper;
+    private final SettleMappers.PointsLedgerMapper ledgerMapper;
     private final SettleSourcePort sourcePort;
     private final SettleService settleService;
 
-    public FundInvariantServiceImpl(BillMapper billMapper, SettleSourcePort sourcePort,
+    public FundInvariantServiceImpl(BillMapper billMapper,
+                                    SettleMappers.PointsLedgerMapper ledgerMapper,
+                                    SettleSourcePort sourcePort,
                                     SettleService settleService) {
         this.billMapper = billMapper;
+        this.ledgerMapper = ledgerMapper;
         this.sourcePort = sourcePort;
         this.settleService = settleService;
     }
@@ -91,8 +97,42 @@ public class FundInvariantServiceImpl implements FundInvariantService {
                     orphan.size(), orphan.subList(0, Math.min(5, orphan.size())));
         }
 
+        // ── I3：标着「已发过积分」的子单必有发分流水
+        List<String> granted = sourcePort.pointsGrantedSince(since, limit);
+        // 先把「有流水的」一次查回来 —— 写在 filter 里就是每个元素查一次库
+        Set<String> earned = granted.isEmpty() ? Set.of() : earnedSubOrderNos(granted);
+        List<String> noLedger = granted.stream().filter(no -> !earned.contains(no)).toList();
+
+        /*
+         * **把标记改回未发，让下一轮重发。**
+         *
+         * 这一条能自动修，是因为方向安全：标记为真而没有流水，说明用户一分没拿到，
+         * 而 grantOnPay 的幂等**就是靠这个标记** —— 不清掉的话它永远重发不了。
+         * 清掉之后最坏是多发一次，而那由 canEarn 与流水唯一性挡着。
+         *
+         * <p><b>反方向（有流水而标记为假）刻意不动</b>：那说明发分那边多跑了一次，
+         * 补上标记等于把多发的一次盖掉，而账上那笔分还在用户手里 —— 要人看。
+         */
+        int cleared = noLedger.isEmpty() ? 0 : sourcePort.clearPointsGranted(noLedger);
+        if (!noLedger.isEmpty()) {
+            log.error("[fund-invariant] **I3 违反 {} 条**：标记说发过积分而没有流水，"
+                            + "已把标记改回未发（{} 行），下一轮会重发。样本：{}",
+                    noLedger.size(), cleared, noLedger.subList(0, Math.min(5, noLedger.size())));
+        }
+
         return new ScanResult(paid.size(), missing.size(), repaired,
-                bills.size(), orphan.size(), oldestMissingAt);
+                bills.size(), orphan.size(), oldestMissingAt,
+                granted.size(), noLedger.size(), cleared);
+    }
+
+    /** 这批子单里**已经有发分流水**的。一次查回来，不逐个 exists */
+    private Set<String> earnedSubOrderNos(List<String> subOrderNos) {
+        List<PtsUserLedger> rows = DataScopeContext.executeWithoutScope(() ->
+                ledgerMapper.selectList(Wrappers.<PtsUserLedger>lambdaQuery()
+                        .eq(PtsUserLedger::getBizType, PtsUserLedger.EARN)
+                        .in(PtsUserLedger::getSubOrderNo, subOrderNos)));
+        return rows.stream().map(PtsUserLedger::getSubOrderNo)
+                .collect(java.util.stream.Collectors.toSet());
     }
 
     /** 这批子单里**已经有结算单**的。一次查回来，不逐个 exists —— 那是 N 次往返 */

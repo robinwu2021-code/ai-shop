@@ -43,9 +43,14 @@ public interface FundInvariantService {
      * @param orphanBill     其中对不上已支付子单的 —— <b>只告警，绝不自动删</b>
      * @param oldestMissingAt 最早那笔缺结算单的支付时刻；没有返回 0。
      *                        它回答的是「漏了多久」，而那决定要不要现在叫人
+     * @param scannedGranted 扫了几个标着「已发过积分」的子单（I3 的对照量）
+     * @param grantedNoLedger 其中<b>没有发分流水</b>的 —— 标记说发过而用户一分没拿到，
+     *                        且标记本身会挡住重试（{@code grantOnPay} 的幂等就是靠它）
+     * @param clearedFlags   把标记改回未发的行数，改完下一轮就能重发
      */
     record ScanResult(int scannedPaid, int missingBill, int repairedBill,
-                      int scannedBills, int orphanBill, long oldestMissingAt) {
+                      int scannedBills, int orphanBill, long oldestMissingAt,
+                      int scannedGranted, int grantedNoLedger, int clearedFlags) {
 
         /**
          * 有没有真的扫到东西。

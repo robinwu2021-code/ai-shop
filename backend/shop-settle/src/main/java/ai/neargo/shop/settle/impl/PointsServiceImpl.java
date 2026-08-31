@@ -775,6 +775,33 @@ public class PointsServiceImpl implements PointsService {
     public ai.neargo.shop.spi.settle.PointsPort.GrantResult grantOnPay(
             String userNo, String merchantNo,
             java.util.List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> lines, String subOrderNo) {
+        /*
+         * **自己的幂等，不再只靠调用方的 ord_sub_order.points_granted 标记。**
+         *
+         * 那个标记与流水由**两个不同的事务**写：标记跟着订单走，流水跟着积分走。
+         * 发分推迟到订单事务提交之后（AfterCommit）之后，两者之间就有了一个真实窗口：
+         * 流水写成了而标记没写上 → 重试进来时标记还是 false → **同一个子单发两次分**。
+         *
+         * 有了这一条，重试是安全的：已经有 EARN 流水就直接返回既有结果，
+         * 于是「不变式巡检把标记清掉让它重发」这条修复路径也不会多发。
+         *
+         * <p>返回值要与首次一致（分数与费用金），否则调用方写回子单的
+         * points_fee_minor 会与流水对不上，而那笔费用金是结算时真的要扣的钱。
+         *
+         * <p><b>放在最前面，在「商家开没开积分」之前</b>：已经发出去的分是既成事实，
+         * 商家事后关掉积分不该让它查不回来。放在后面的话，那种情况下重试会返回
+         * {@code none()} → 调用方什么都不写 → 标记停在 false 而流水在，
+         * 落进「有流水而标记为假」那一类 —— 而那一类<b>刻意不自动修</b>，要人看。
+         */
+        PtsUserLedger existing = DataScopeContext.executeWithoutScope(() ->
+                ledgerMapper.selectOne(Wrappers.<PtsUserLedger>lambdaQuery()
+                        .eq(PtsUserLedger::getSubOrderNo, subOrderNo)
+                        .eq(PtsUserLedger::getBizType, BIZ_EARN)
+                        .last("limit 1")));
+        if (existing != null) {
+            long p = existing.getPoints() == null ? 0L : existing.getPoints();
+            return new ai.neargo.shop.spi.settle.PointsPort.GrantResult(p, config().toMinor(p));
+        }
         if (lines == null || lines.isEmpty() || pointsDenyReason(merchantNo) != null) {
             return ai.neargo.shop.spi.settle.PointsPort.GrantResult.none();
         }

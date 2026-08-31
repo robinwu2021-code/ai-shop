@@ -6,6 +6,7 @@ import ai.neargo.shop.idem.EventIdempotency;
 import ai.neargo.shop.settle.entity.StlBill;
 import ai.neargo.shop.settle.mapper.SettleMappers;
 import ai.neargo.shop.settle.service.FundInvariantService;
+import ai.neargo.shop.spi.settle.PointsPort;
 import ai.neargo.shop.spi.trade.SettleSourcePort;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -51,6 +52,8 @@ class FundInvariantFlowTest {
     @Autowired
     private EventIdempotency events;
     @Autowired
+    private PointsPort pointsPort;
+    @Autowired
     private SettleMappers.BillMapper billMapper;
     @Autowired
     private JdbcTemplate jdbc;
@@ -70,6 +73,7 @@ class FundInvariantFlowTest {
             jdbc.update("DELETE FROM ord_order WHERE order_no LIKE 'SO-INV-%'");
             jdbc.update("DELETE FROM ord_after_sale WHERE sub_order_no LIKE 'SUB-INV-%'");
             jdbc.update("DELETE FROM sys_event_consumed WHERE event_no LIKE 'EV-INV-%'");
+            jdbc.update("DELETE FROM pts_user_ledger WHERE sub_order_no LIKE 'SUB-INV-%'");
             return null;
         });
     }
@@ -252,6 +256,82 @@ class FundInvariantFlowTest {
                     throw new IllegalStateException("对面挂了");
                 }));
         // 没有异常传出来就是这条断言的全部内容 —— 走到这里即通过
+    }
+
+    @Test
+    @DisplayName("I3 · 标记说发过积分而没有流水 —— 把标记清掉，让下一轮能重发")
+    void grantedFlagWithoutLedgerIsCleared() {
+        long paidAt = System.currentTimeMillis() - 3_600_000L;
+        givenPaidOrder(paidAt);
+        // 造出那个不一致：标记为真，而 pts_user_ledger 里一条 EARN 都没有
+        DataScopeContext.executeWithoutScope(() -> jdbc.update(
+                "UPDATE ord_sub_order SET points_granted = 1 WHERE sub_order_no = ?", SUB));
+
+        assertThat(grantedFlagOf(SUB)).as("前置：标记确实被设成了已发").isTrue();
+        assertThat(earnLedgerCount(SUB)).as("前置：确实没有发分流水").isZero();
+
+        FundInvariantService.ScanResult r = invariants.scan(paidAt - 60_000L, 500);
+
+        assertThat(r.scannedGranted()).as("对照量：标着已发的那一侧真的扫到了").isPositive();
+        assertThat(r.grantedNoLedger()).as("这条应当被算作 I3 违反").isPositive();
+        assertThat(r.clearedFlags()).as("修复动作要真的落库").isPositive();
+        /*
+         * **最要紧的一条**：标记被清回 false。
+         * grantOnPay 的幂等原本就是靠这个标记 —— 不清掉的话它永远重发不了，
+         * 而用户一分都没拿到，且没有任何地方会再提起这件事。
+         */
+        assertThat(grantedFlagOf(SUB)).as("标记要被改回未发，下一轮才能重发").isFalse();
+    }
+
+    @Test
+    @DisplayName("发分自己按流水幂等 —— 不再只靠调用方的标记")
+    void grantIsIdempotentByLedger() {
+        long now = System.currentTimeMillis();
+        givenPaidOrder(now - 60_000L);
+        DataScopeContext.executeWithoutScope(() -> jdbc.update(
+                "INSERT INTO pts_user_ledger (ledger_no, user_no, biz_type, points,"
+                        + " balance_after, sub_order_no, status, tenant_no,"
+                        + " created_at, updated_at, version, deleted)"
+                        + " VALUES ('PL-INV-1', ?, 'EARN', 12, 0, ?, 'PENDING', 'MAIN',"
+                        + " CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0)", USER, SUB));
+
+        assertThat(earnLedgerCount(SUB)).as("前置：已经有一条发分流水").isEqualTo(1);
+
+        /*
+         * 再调一次发分。**标记是 false**（模拟「流水写成了、标记没写上」那一刻），
+         * 此前这种情况会再发一次 —— 而那个窗口恰恰是把发分推迟到提交之后才出现的。
+         */
+        var again = pointsPort.grant(USER, ENTITY, List.of(
+                new PointsPort.EarnLine("G-INV", "C-INV", 1000L)), SUB);
+
+        /*
+         * **判据是返回值，不是流水条数。**
+         *
+         * 「流水还是 1 条」这句话看着对，其实什么都不证明：这个夹具里的商家
+         * 并不存在，grant 走到 pointsDenyReason 也会返回 none() 而不写任何流水 ——
+         * 于是把幂等整段关掉，那句断言照样绿（实测过一次，正是这样）。
+         *
+         * 返回值能区分两者：幂等命中时返回既有流水的分数（12），
+         * 没命中时一路走到 none()（0）。而返回值本身也是要紧的 ——
+         * 调用方拿它写回子单的 points_fee_minor，那笔钱结算时真的要扣。
+         */
+        assertThat(again.points())
+                .as("幂等命中时要返回既有流水的分数，而不是 none()").isEqualTo(12L);
+        assertThat(earnLedgerCount(SUB)).as("同一个子单不能有第二条发分流水").isEqualTo(1);
+    }
+
+    private boolean grantedFlagOf(String subOrderNo) {
+        Integer v = DataScopeContext.executeWithoutScope(() -> jdbc.queryForObject(
+                "SELECT points_granted FROM ord_sub_order WHERE sub_order_no = ?",
+                Integer.class, subOrderNo));
+        return v != null && v == 1;
+    }
+
+    private int earnLedgerCount(String subOrderNo) {
+        Integer n = DataScopeContext.executeWithoutScope(() -> jdbc.queryForObject(
+                "SELECT COUNT(*) FROM pts_user_ledger WHERE sub_order_no = ? AND biz_type = 'EARN'",
+                Integer.class, subOrderNo));
+        return n == null ? 0 : n;
     }
 
     private List<StlBill> billsOf(String subOrderNo) {

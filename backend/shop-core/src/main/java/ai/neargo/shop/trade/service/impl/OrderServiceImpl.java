@@ -940,23 +940,23 @@ public class OrderServiceImpl implements OrderService {
                     sub.getPayAmount() == null ? 0L : sub.getPayAmount());
 
             if (!Boolean.TRUE.equals(sub.getPointsGranted())) {
-                long base = sub.getPayAmount() == null ? 0L
+                /*
+                 * 发积分**在支付状态提交之后**做，与生成结算单同一条理由：
+                 * 支付域独立成进程后就没有共享事务了，而这里后面还有事件发布 ——
+                 * 中间任何一处抛异常，今天会把积分一起回滚，独立之后会留下
+                 * 「用户拿到了分、而订单回滚了」。
+                 *
+                 * <p>推到提交之后，两种失败方向都是安全的：业务回滚 → 根本没发；
+                 * 业务提交而发分失败 → 用户这次没拿到分，标记也没写上，
+                 * <b>而 grantOnPay 现在自己按 EARN 流水幂等</b>，重试不会多发。
+                 */
+                final String subNo = sub.getSubOrderNo();
+                final String userNo = order.getUserNo();
+                final String entityNo = sub.getEntityNo();
+                final long base = sub.getPayAmount() == null ? 0L
                         : sub.getPayAmount() - (sub.getFreightAmount() == null ? 0L : sub.getFreightAmount());
-                var g = pointsPort.grant(order.getUserNo(), sub.getEntityNo(),
-                        earnLines(sub.getSubOrderNo(), base), sub.getSubOrderNo());
-                if (g.points() > 0) {
-                    sub.setPointsGranted(true);
-                    /*
-                     * 费用金落在子单上，**结算时才真的扣**（发分即付，从货款里出）。
-                     *
-                     * 此前这一列全库零写入 —— 于是 stl_bill 也拿不到值，
-                     * B 端「本期积分支出」永远是 0，而池子只出不进：
-                     * 用户花分时 MERCHANT_PAY 出账，发分时却没有对应的入账，
-                     * 恒等式 2 会随发放量单调失衡。
-                     */
-                    sub.setPointsFeeMinor(g.feeMinor());
-                    subOrderMapper.updateById(sub);
-                }
+                AfterCommit.run("发放积分 subOrderNo=" + subNo,
+                        () -> grantPointsAfterPay(subNo, userNo, entityNo, base));
             }
         }
 
@@ -987,6 +987,40 @@ public class OrderServiceImpl implements OrderService {
                     sub.getEntityNo(), sub.getStoreNo(), order.getUserNo(),
                     sub.getPayAmount() == null ? 0L : sub.getPayAmount()));
         }
+    }
+
+    /**
+     * 支付提交后发放积分，并把结果写回子单。
+     *
+     * <p><b>重新读一次子单</b>，不用外面那个对象：那是提交之前读出来的，
+     * 而这里已经在事务之外 —— 拿旧对象 updateById 会把它当时的全部字段
+     * 原样写回去，覆盖掉这中间别处（比如履约）刚改的列。
+     *
+     * <p>失败不上抛：调用方是 {@link AfterCommit}，它会记 error。
+     * 用户这次没拿到分而标记也没写上，重试由 {@code grantOnPay} 自己的
+     * 流水幂等保证不会多发。
+     */
+    private void grantPointsAfterPay(String subOrderNo, String userNo, String entityNo, long base) {
+        var g = pointsPort.grant(userNo, entityNo, earnLines(subOrderNo, base), subOrderNo);
+        if (g.points() <= 0) {
+            return;
+        }
+        OrdSubOrder fresh = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("limit 1"));
+        if (fresh == null) {
+            return;
+        }
+        fresh.setPointsGranted(true);
+        /*
+         * 费用金落在子单上，**结算时才真的扣**（发分即付，从货款里出）。
+         *
+         * 此前这一列全库零写入 —— 于是 stl_bill 也拿不到值，
+         * B 端「本期积分支出」永远是 0，而池子只出不进：
+         * 用户花分时 MERCHANT_PAY 出账，发分时却没有对应的入账，
+         * 恒等式 2 会随发放量单调失衡。
+         */
+        fresh.setPointsFeeMinor(g.feeMinor());
+        subOrderMapper.updateById(fresh);
     }
 
     // ---------------------------------------------------------------- 查询与取消
