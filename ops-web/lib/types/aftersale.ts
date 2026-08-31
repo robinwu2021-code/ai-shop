@@ -44,8 +44,11 @@ export type Liability = "PLATFORM" | "MERCHANT" | "PICKUP";
  * M4 有结论、这两块真正接上后端之后再把类型收紧。
  */
 export interface LiabilityShare {
+  /** 平台 */
   platform: number;
+  /** 商家承担的份额 */
   merchant: number;
+  /** 自提点承担的份额 */
   pickup: number;
 }
 

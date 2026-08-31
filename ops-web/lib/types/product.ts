@@ -147,11 +147,15 @@ export interface ProductGoods {
  * 不要为了复用一个类型就在这里塞几个"这次数据源永远给不出来"的字段。
  */
 export interface GoodsSkuRow {
+  /** SKU 号 */
   skuNo: string;
+  /** 这条 SKU 的规格取值组合 */
   optionValues: string[];
+  /** 规格描述，人读的 */
   spec?: string;
   /** 按市场分别定价（分）。缺某个市场 = 没这个市场的价，不是 0 元 */
   prices: Partial<Record<Market, number>>;
+  /** 可售库存 */
   stock: number;
   /**
    * 门店投影（列表查询带 `storeNo` 时才有值）：该店的可用库存。
@@ -185,6 +189,7 @@ export interface SpecTemplate extends Archivable {
   name: string;
   /** 选项。整体替换，不做逐项 diff */
   options: SpecTemplateOption[];
+  /** 创建时刻 */
   createdAt?: string;
 }
 
@@ -254,9 +259,13 @@ export interface SpecValue {
 
 /** 类目绑定的整份替换体。顺序即排序，主维度只能有一个 */
 export interface CategorySpecBinding {
+  /** 规格维度号 */
   dimNo: string;
+  /** `SALE` 进 SKU 笛卡尔积 / `PROP` 只是描述 */
   usageType?: string | null;
+  /** 主维度：建品选完类目自动预填的就是它 */
   primary: boolean;
+  /** 必填：不选它就建不了品 */
   required: boolean;
   /** 这一类目开放的取值；空 = 不裁剪 */
   valueNos: string[];
@@ -271,7 +280,9 @@ export interface CategorySpecBinding {
  * 资质链路没接上），拦住他并不能让那批商品消失。界面把后果说清楚，由他决定。
  */
 export interface CategoryArchiveImpact {
+  /** 这个类目下有几件商品 */
   goodsCount: number;
+  /** 其中在架几件。**归档前要看** —— 在架的会一起下架 */
   onSaleCount: number;
   /** 还开着的子类目数。**大于 0 时后端仍会拒** —— 会冒出渲染不出来的孤儿节点 */
   activeChildren: number;
@@ -285,24 +296,31 @@ export interface CategoryArchiveImpact {
  * 手打的选项没有 code，跨店聚合就此断掉。
  */
 export interface CategorySpec {
+  /** 类目号 */
   categoryNo: string;
+  /** 类目名 */
   categoryName: string;
   /** 一级类目名，用来分组 */
   parentName: string;
+  /** 类目形态 */
   categoryType?: CategoryTemplate | null;
   /** 已绑维度数。0 就是缺口 */
   dimCount: number;
+  /** 这个类目能用的规格维度 */
   dims: CategorySpecDim[];
 }
 
 /** 类目下的一个规格维度。 */
 export interface CategorySpecDim {
+  /** 规格维度号 */
   dimNo: string;
   /** 语义码 COLOR / WEIGHT。值编号与 optionCode 都以它为前缀 */
   code: string;
+  /** 名称 */
   name: string;
   /** ENUM 枚举 / QUANT 数值+单位 */
   valueType: string;
+  /** 单位 */
   unit?: string | null;
   /** SALE 进 SKU 笛卡尔积 / PROP 只是描述，不生成规格 */
   usage: string;
@@ -310,18 +328,23 @@ export interface CategorySpecDim {
   universal: boolean;
   /** 主维度：商家建品选完类目，自动预填的就是它。每个类目至多一个 */
   primary: boolean;
+  /** 有几个取值 */
   valueCount: number;
+  /** 取值列表 */
   values: CategorySpecValue[];
 }
 
 /** 维度下的一个取值。 */
 export interface CategorySpecValue {
+  /** 规格取值号 */
   valueNo: string;
+  /** 码值 */
   code: string;
   /** 该类目下的展示文案，可能被类目级换名换过（500g → 约1斤） */
   label: string;
   /** 归一量：500g / 半斤 / 0.5kg 都是 500。排序与同规格比价靠它 */
   numericValue?: number | null;
+  /** 归一量的单位。与 numericValue 一起才有意义 */
   numericUnit?: string | null;
 }
 
@@ -474,15 +497,19 @@ export interface GoodsDetailSku {
  * 活动回答「打几折」，主题只回答「这周首页摆什么」。
  */
 export interface Topic {
+  /** 专题号 */
   topicNo: string;
+  /** 标题 */
   title: string;
   /** 一句话说明，如「7 点前送到」。空 = 不展示副标题 */
   subtitle?: string;
+  /** 封面图 */
   cover?: string;
   /** 首页排序，小的在前 */
   sort: number;
   /** 生效起止（毫秒）。**都可空 = 常设专题** —— 填一个假的结束时间会让它某天悄悄消失 */
   startAt?: number;
+  /** 结束时刻 */
   endAt?: number;
   /** ACTIVE / ARCHIVED。归档不删：分享出去的海报还指着它 */
   status?: string;
@@ -491,19 +518,27 @@ export interface Topic {
 }
 
 export interface SpuStd extends Archivable {
+  /** 标准品号 */
   stdNo: string;
   /** 所属类目。商家取用后**改不掉**（服务端覆盖）：类目决定形态 */
   categoryNo: string;
+  /** 类目名 */
   categoryName?: string;
+  /** 标题 */
   title: string;
+  /** 标题的多语言版本 */
   titleI18n?: Record<string, string>;
+  /** 副标题 */
   subtitle?: string;
+  /** 封面图 */
   cover?: string;
+  /** 图集 */
   images?: string[];
   /** 每个选项都必须带 `optionCode` —— 这是标准品存在的唯一理由 */
   specGroups: { name: string; options: string[]; optionCodes?: string[]; templateNo?: string }[];
   /** 别名/品牌/俗称，空格分隔。商家搜「洋芋」也要能命中标题是「土豆」的那条 */
   keywords?: string;
+  /** 状态 */
   status?: string;
   /** 被引用次数。只服务排序与去重判断，不参与任何校验 */
   refCount?: number;
@@ -526,9 +561,13 @@ export interface SpuStd extends Archivable {
  * 上线当天得先把 57 个类目全配一遍才有人下得了单。
  */
 export interface CategoryPayMode {
+  /** 类目号 */
   categoryNo: string;
+  /** 类目名 */
   categoryName: string;
+  /** 父类目名。**同名子类目很常见**，只给自己的名字分不清是哪个 */
   parentName: string;
+  /** 这个类目准不准线下付。**默认放行** —— 没有行即不限制 */
   offlineAllowed: boolean;
   /** 是否**显式配过**。与 offlineAllowed 分开：没配过也是允许，但两者含义不同 */
   configured: boolean;
@@ -542,11 +581,15 @@ export interface CategoryPayMode {
  * 不用浮点 —— 金额与比例一旦用 double，对账时的分位差没人说得清。
  */
 export interface CategoryPoints {
+  /** 类目号 */
   categoryNo: string;
+  /** 类目名 */
   categoryName: string;
+  /** 父类目名。**同名子类目很常见**，只给自己的名字分不清是哪个 */
   parentName: string;
   /** FIXED 定额 / RATIO 按成交额比例；**空 = 没配**，走平台兜底 */
   earnMode: "FIXED" | "RATIO" | null;
+  /** 发分比例（万分比） */
   earnValue: number | null;
 }
 

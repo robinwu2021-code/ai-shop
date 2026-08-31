@@ -66,14 +66,17 @@ export interface FunnelRow {
  * 大盘回答「平台整体怎么样」，运营下一句必然是「哪几家在拉高、哪几家在拖后腿」。
  */
 export interface MerchantRankRow {
+  /** 商家主体号 */
   merchantNo: string;
   /** 商家名。**必须有** —— 只给编号的话运营还要再查一次「这家是谁」 */
   merchantName: string;
   /** 成交额（最小货币单位整数） */
   gmv: number;
+  /** 订单数 */
   orderCount: number;
   /** 客单价（最小货币单位整数） */
   avgOrderValue: number;
+  /** 售后单数 */
   afterSaleCount: number;
   /** 售后率 0–1。与 GMV 并列才看得出「卖得多」是不是「赔得也多」 */
   afterSaleRate: number;

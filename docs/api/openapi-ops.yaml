@@ -194,12 +194,15 @@ components:
           description: "证照编号，与证面一致"
         imageUrl: 
           type: "string"
+          description: "图片地址"
         expireAt: 
           type: 
             - "number"
             - "null"
+          description: "到期时刻"
         issuer: 
           type: "string"
+          description: "发证机关"
       required: 
         - "type"
         - "code"
@@ -212,17 +215,22 @@ components:
       properties: 
         qualNo: 
           type: "string"
+          description: "资质记录号"
         entityNo: 
           type: "string"
+          description: "所属商家"
         qualType: 
           type: "string"
+          description: "证件类型"
         qualName: 
           type: "string"
           description: "证件名。**要与 sys_auth_code.required_qualification 同一套字面量** —— 类目授权按名字比对"
         qualNumber: 
           type: "string"
+          description: "证件编号，证上印的那一串"
         imageUrl: 
           type: "string"
+          description: "图片地址"
         expireAt: 
           type: 
             - "number"
@@ -413,12 +421,15 @@ components:
       properties: 
         storeNo: 
           type: "string"
+          description: "门店号"
         storeName: 
           type: 
             - "string"
             - "null"
+          description: "门店名"
         storeStatus: 
           type: "string"
+          description: "门店状态"
         channels: 
           type: "array"
           items: 
@@ -451,6 +462,7 @@ components:
               - "enabled"
               - "denied"
             additionalProperties: false
+          description: "这家店开了哪几条履约渠道"
       required: 
         - "storeNo"
         - "storeName"
@@ -498,17 +510,22 @@ components:
       properties: 
         merchantNo: 
           type: "string"
+          description: "商家主体号"
         merchantName: 
           type: "string"
+          description: "商家名"
         legalForm: 
           type: "string"
           description: "主体档位（免执照的那一档）"
         storeNo: 
           type: "string"
+          description: "门店号"
         storeName: 
           type: "string"
+          description: "门店名"
         businessMode: 
           type: "string"
+          description: "销售主体是谁：自营 / 第三方"
         settledBills: 
           type: "number"
           description: "已产生的自营结算单数。**0 表示「查过了，没有」** —— 与「还没查」在界面上要分开"
@@ -740,32 +757,41 @@ components:
       properties: 
         merchantNo: 
           type: "string"
+          description: "商家主体号"
         merchantName: 
           type: "string"
+          description: "商家名"
         planCode: 
           type: "string"
+          description: "档位码。**文案用 name/planName，不要按 code 自己映射** —— 运营改了名端上不会跟着变"
         storeQuota: 
           type: "number"
           description: "生效额度（覆盖值优先于快照）。与 storeUsed 一起显示成 2/3"
         staffQuota: 
           type: "number"
+          description: "员工数配额"
         storeUsed: 
           type: "number"
           description: "已用门店数。**只数 ACTIVE**，与建店时那道额度闸同一口径"
         staffUsed: 
           type: "number"
+          description: "已用员工数"
         crossStoreStats: 
           type: "boolean"
+          description: "这一档给不给跨店统计"
         status: 
           "$ref": "#/definitions/PlanStatus"
+          description: "状态"
         startAt: 
           type: 
             - "number"
             - "null"
+          description: "生效时刻"
         expireAt: 
           type: 
             - "number"
             - "null"
+          description: "到期时刻"
         grantedBy: 
           type: 
             - "string"
@@ -773,6 +799,7 @@ components:
           description: "PLATFORM（运营授予）/ SELF（一期没有这条路）"
         trialUsed: 
           type: "boolean"
+          description: "试用额度用过了"
         downgradedAt: 
           type: 
             - "number"
@@ -780,6 +807,7 @@ components:
           description: "降级发生的时间。非空 = 已经压过店了（扫描靠它保证幂等）"
         quotaSource: 
           "$ref": "#/definitions/PlanQuotaSource"
+          description: "生效额度是哪来的。**运营必须看得出来** —— 否则「这家怎么是 5 家」只能翻审计日志"
       required: 
         - "merchantNo"
         - "merchantName"
@@ -799,18 +827,25 @@ components:
       properties: 
         planCode: 
           type: "string"
+          description: "档位码。**文案用 name/planName，不要按 code 自己映射** —— 运营改了名端上不会跟着变"
         name: 
           type: "string"
+          description: "名称"
         storeQuota: 
           type: "number"
+          description: "门店数配额"
         staffQuota: 
           type: "number"
+          description: "员工数配额"
         crossStoreStats: 
           type: "boolean"
+          description: "这一档给不给跨店统计"
         trialDays: 
           type: "number"
+          description: "试用天数。0 = 这一档不提供试用"
         enabled: 
           type: "boolean"
+          description: "启用中"
         subscriberCount: 
           type: "number"
           description: "当前有几家在用这一档。\n\n**改定义的人必须看得到这个数** —— 它是「只影响之后新订阅的人」那句话的具体量。 不给这个数，改档位的人只能凭感觉判断影响面。"
@@ -830,16 +865,20 @@ components:
       properties: 
         ownerUserNo: 
           type: "string"
+          description: "店主的用户号。要联系他升档时用"
         entityNos: 
           type: "array"
           items: 
             type: "string"
+          description: "命中的商家号"
         entityNames: 
           type: "array"
           items: 
             type: "string"
+          description: "命中的商家名"
         entityCount: 
           type: "number"
+          description: "命中几家"
       required: 
         - "ownerUserNo"
         - "entityNos"
@@ -1260,6 +1299,7 @@ components:
       properties: 
         merchantNo: 
           type: "string"
+          description: "商家主体号"
         merchantName: 
           type: "string"
           description: "商家名。**必须有** —— 只给编号的话运营还要再查一次「这家是谁」"
@@ -1268,11 +1308,13 @@ components:
           description: "成交额（最小货币单位整数）"
         orderCount: 
           type: "number"
+          description: "订单数"
         avgOrderValue: 
           type: "number"
           description: "客单价（最小货币单位整数）"
         afterSaleCount: 
           type: "number"
+          description: "售后单数"
         afterSaleRate: 
           type: "number"
           description: "售后率 0–1。与 GMV 并列才看得出「卖得多」是不是「赔得也多」"
@@ -1426,6 +1468,7 @@ components:
           type: 
             - "number"
             - "null"
+          description: "经度 ×1e6（gcj02）"
         fallbackLatE6: 
           type: 
             - "number"
@@ -1435,6 +1478,7 @@ components:
           type: 
             - "number"
             - "null"
+          description: "兜底经度：商家没选点时用提交那一刻的位置。**多半不在那个小区里**，裁决要留意"
         status: 
           "$ref": "#/definitions/CommunityApplyStatus"
           description: "待审 / 已建社区 / 已驳回。**只有 PENDING 能裁**：裁完就是终态，再裁一次意味着同一条提报有两个结论"
@@ -1515,17 +1559,22 @@ components:
       properties: 
         communityNo: 
           type: "string"
+          description: "社区号"
         name: 
           type: "string"
+          description: "名称"
         latE6: 
           type: "number"
+          description: "纬度 ×1e6（gcj02）"
         lngE6: 
           type: "number"
+          description: "经度 ×1e6（gcj02）"
         distanceM: 
           type: "number"
           description: "距提报坐标的直线距离（米）"
         regionPath: 
           type: "string"
+          description: "「广东省 / 深圳市 / 龙华区 / 福城街道」"
       required: 
         - "communityNo"
         - "name"
@@ -1540,10 +1589,13 @@ components:
       properties: 
         left: 
           "$ref": "#/definitions/Community"
+          description: "疑似重复的一方"
         right: 
           "$ref": "#/definitions/Community"
+          description: "另一方"
         reason: 
           "$ref": "#/definitions/DuplicateReason"
+          description: "原因"
         distanceM: 
           type: 
             - "number"
@@ -1566,15 +1618,19 @@ components:
       properties: 
         regionCode: 
           type: "string"
+          description: "国标区划码"
         level: 
           type: "string"
+          description: "层级"
         name: 
           type: "string"
+          description: "名称"
         path: 
           type: "string"
           description: "「广东省 / 深圳市 / 龙华区 / 福城街道」"
         source: 
           "$ref": "#/definitions/RegionMatchSource"
+          description: "来源"
         detail: 
           type: "string"
           description: "依据：匹配到的地址片段，或「茜坑社区 · 320 米」"
@@ -1712,6 +1768,7 @@ components:
           type: 
             - "number"
             - "null"
+          description: "经度 ×1e6（gcj02）"
         rejectReason: 
           type: 
             - "string"
@@ -2556,8 +2613,10 @@ components:
           description: "为空 = 新建"
         name: 
           type: "string"
+          description: "名称"
         type: 
           "$ref": "#/definitions/CouponBuildableType"
+          description: "类型"
         faceMinor: 
           type: "number"
           description: "FULL_CUT 必填"
@@ -2569,17 +2628,22 @@ components:
           description: "DISCOUNT 必填 >0 —— 取消「0=不封顶」"
         threshold: 
           type: "number"
+          description: "用券门槛（分）。0 = 无门槛"
         totalCount: 
           type: "number"
+          description: "总发行量。空 = 不限量"
         perUserLimit: 
           type: "number"
+          description: "每人最多领几张"
         budget: 
           type: "number"
           description: "0 或不填 = 不限；非零时必须 ≥ 敞口，否则服务端拒绝"
         validFrom: 
           type: "number"
+          description: "生效时刻"
         validTo: 
           type: "number"
+          description: "失效时刻"
       required: 
         - "name"
         - "type"
@@ -2997,6 +3061,7 @@ components:
           description: "被申诉那条评价的星级与正文。\n\n**裁决台必须显示它们** —— 要判断「这条差评是不是恶意的」， 而屏幕上只有单号和商家自己写的申诉理由的话，裁的是一面之词。"
         reviewContent: 
           type: "string"
+          description: "被申诉的那条评价原文。**不带上它，审的人要跳去另一页**"
         reason: 
           type: "string"
           description: "商家的申诉理由"
@@ -3086,10 +3151,13 @@ components:
       properties: 
         platform: 
           type: "number"
+          description: "平台"
         merchant: 
           type: "number"
+          description: "商家承担的份额"
         pickup: 
           type: "number"
+          description: "自提点承担的份额"
       required: 
         - "platform"
         - "merchant"
@@ -3562,17 +3630,21 @@ components:
       properties: 
         skuNo: 
           type: "string"
+          description: "SKU 号"
         optionValues: 
           type: "array"
           items: 
             type: "string"
+          description: "这条 SKU 的规格取值组合"
         spec: 
           type: "string"
+          description: "规格描述，人读的"
         prices: 
           "$ref": "#/definitions/Partial%3CRecord%3CMarket%2Cnumber%3E%3E"
           description: "按市场分别定价（分）。缺某个市场 = 没这个市场的价，不是 0 元"
         stock: 
           type: "number"
+          description: "可售库存"
         storeStock: 
           type: 
             - "number"
@@ -3614,6 +3686,7 @@ components:
           description: "选项。整体替换，不做逐项 diff"
         createdAt: 
           type: "string"
+          description: "创建时刻"
       required: 
         - "templateNo"
         - "scope"
@@ -3765,14 +3838,18 @@ components:
       properties: 
         dimNo: 
           type: "string"
+          description: "规格维度号"
         usageType: 
           type: 
             - "string"
             - "null"
+          description: "`SALE` 进 SKU 笛卡尔积 / `PROP` 只是描述"
         primary: 
           type: "boolean"
+          description: "主维度：建品选完类目自动预填的就是它"
         required: 
           type: "boolean"
+          description: "必填：不选它就建不了品"
         valueNos: 
           type: "array"
           items: 
@@ -3798,8 +3875,10 @@ components:
       properties: 
         goodsCount: 
           type: "number"
+          description: "这个类目下有几件商品"
         onSaleCount: 
           type: "number"
+          description: "其中在架几件。**归档前要看** —— 在架的会一起下架"
         activeChildren: 
           type: "number"
           description: "还开着的子类目数。**大于 0 时后端仍会拒** —— 会冒出渲染不出来的孤儿节点"
@@ -3814,8 +3893,10 @@ components:
       properties: 
         categoryNo: 
           type: "string"
+          description: "类目号"
         categoryName: 
           type: "string"
+          description: "类目名"
         parentName: 
           type: "string"
           description: "一级类目名，用来分组"
@@ -3823,6 +3904,7 @@ components:
           anyOf: 
             - "$ref": "#/definitions/CategoryTemplate"
             - type: "null"
+          description: "类目形态"
         dimCount: 
           type: "number"
           description: "已绑维度数。0 就是缺口"
@@ -3830,6 +3912,7 @@ components:
           type: "array"
           items: 
             "$ref": "#/definitions/CategorySpecDim"
+          description: "这个类目能用的规格维度"
       required: 
         - "categoryNo"
         - "categoryName"
@@ -3843,11 +3926,13 @@ components:
       properties: 
         dimNo: 
           type: "string"
+          description: "规格维度号"
         code: 
           type: "string"
           description: "语义码 COLOR / WEIGHT。值编号与 optionCode 都以它为前缀"
         name: 
           type: "string"
+          description: "名称"
         valueType: 
           type: "string"
           description: "ENUM 枚举 / QUANT 数值+单位"
@@ -3855,6 +3940,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "单位"
         usage: 
           type: "string"
           description: "SALE 进 SKU 笛卡尔积 / PROP 只是描述，不生成规格"
@@ -3866,10 +3952,12 @@ components:
           description: "主维度：商家建品选完类目，自动预填的就是它。每个类目至多一个"
         valueCount: 
           type: "number"
+          description: "有几个取值"
         values: 
           type: "array"
           items: 
             "$ref": "#/definitions/CategorySpecValue"
+          description: "取值列表"
       required: 
         - "dimNo"
         - "code"
@@ -3887,8 +3975,10 @@ components:
       properties: 
         valueNo: 
           type: "string"
+          description: "规格取值号"
         code: 
           type: "string"
+          description: "码值"
         label: 
           type: "string"
           description: "该类目下的展示文案，可能被类目级换名换过（500g → 约1斤）"
@@ -3901,6 +3991,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "归一量的单位。与 numericValue 一起才有意义"
       required: 
         - "valueNo"
         - "code"
@@ -4132,13 +4223,16 @@ components:
       properties: 
         topicNo: 
           type: "string"
+          description: "专题号"
         title: 
           type: "string"
+          description: "标题"
         subtitle: 
           type: "string"
           description: "一句话说明，如「7 点前送到」。空 = 不展示副标题"
         cover: 
           type: "string"
+          description: "封面图"
         sort: 
           type: "number"
           description: "首页排序，小的在前"
@@ -4147,6 +4241,7 @@ components:
           description: "生效起止（毫秒）。**都可空 = 常设专题** —— 填一个假的结束时间会让它某天悄悄消失"
         endAt: 
           type: "number"
+          description: "结束时刻"
         status: 
           type: "string"
           description: "ACTIVE / ARCHIVED。归档不删：分享出去的海报还指着它"
@@ -4170,23 +4265,30 @@ components:
           description: "归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。"
         stdNo: 
           type: "string"
+          description: "标准品号"
         categoryNo: 
           type: "string"
           description: "所属类目。商家取用后**改不掉**（服务端覆盖）：类目决定形态"
         categoryName: 
           type: "string"
+          description: "类目名"
         title: 
           type: "string"
+          description: "标题"
         titleI18n: 
           "$ref": "#/definitions/Record%3Cstring%2Cstring%3E"
+          description: "标题的多语言版本"
         subtitle: 
           type: "string"
+          description: "副标题"
         cover: 
           type: "string"
+          description: "封面图"
         images: 
           type: "array"
           items: 
             type: "string"
+          description: "图集"
         specGroups: 
           type: "array"
           items: 
@@ -4214,6 +4316,7 @@ components:
           description: "别名/品牌/俗称，空格分隔。商家搜「洋芋」也要能命中标题是「土豆」的那条"
         status: 
           type: "string"
+          description: "状态"
         refCount: 
           type: "number"
           description: "被引用次数。只服务排序与去重判断，不参与任何校验"
@@ -4234,12 +4337,16 @@ components:
       properties: 
         categoryNo: 
           type: "string"
+          description: "类目号"
         categoryName: 
           type: "string"
+          description: "类目名"
         parentName: 
           type: "string"
+          description: "父类目名。**同名子类目很常见**，只给自己的名字分不清是哪个"
         offlineAllowed: 
           type: "boolean"
+          description: "这个类目准不准线下付。**默认放行** —— 没有行即不限制"
         configured: 
           type: "boolean"
           description: "是否**显式配过**。与 offlineAllowed 分开：没配过也是允许，但两者含义不同"
@@ -4256,10 +4363,13 @@ components:
       properties: 
         categoryNo: 
           type: "string"
+          description: "类目号"
         categoryName: 
           type: "string"
+          description: "类目名"
         parentName: 
           type: "string"
+          description: "父类目名。**同名子类目很常见**，只给自己的名字分不清是哪个"
         earnMode: 
           type: 
             - "string"
@@ -4273,6 +4383,7 @@ components:
           type: 
             - "number"
             - "null"
+          description: "发分比例（万分比）"
       required: 
         - "categoryNo"
         - "categoryName"
@@ -4633,10 +4744,13 @@ components:
       properties: 
         market: 
           type: "string"
+          description: "市场"
         payChannel: 
           type: "string"
+          description: "支付通道"
         balanceMinor: 
           type: "number"
+          description: "池子余额（分）"
       required: 
         - "market"
         - "payChannel"
@@ -5204,6 +5318,7 @@ components:
           description: "渠道账单是否已接入。false 时 note 必须显示给运营"
         note: 
           type: "string"
+          description: "说明"
       required: 
         - "channelBillConnected"
         - "note"
@@ -5234,6 +5349,7 @@ components:
                 - "deferred"
               additionalProperties: false
             - type: "null"
+          description: "结论"
         coverage: 
           type: "object"
           properties: 
@@ -5245,10 +5361,12 @@ components:
             - "complete"
             - "note"
           additionalProperties: false
+          description: "覆盖率"
         error: 
           type: 
             - "string"
             - "null"
+          description: "错误信息"
       required: 
         - "axis"
         - "coverage"
@@ -6096,6 +6214,7 @@ components:
       properties: 
         channel: 
           "$ref": "#/definitions/NotifyChannel"
+          description: "通道"
         stub: 
           type: "boolean"
           description: "走桩：不真发，只记日志"
@@ -6118,6 +6237,7 @@ components:
               - "present"
               - "required"
             additionalProperties: false
+          description: "这条通道的凭据配没配全。**没配全就发不出**，而症状是「发送成功」后没人收到"
         params: 
           type: "array"
           items: 
@@ -6134,8 +6254,10 @@ components:
           description: "非密业务参数，可回显（模板号、endpoint 这类本就印在短信里的东西）"
         todaySent: 
           type: "number"
+          description: "今天发了多少条"
         todayFailed: 
           type: "number"
+          description: "今天失败多少条"
       required: 
         - "channel"
         - "stub"
@@ -6151,8 +6273,10 @@ components:
       properties: 
         orderArrived: 
           type: "string"
+          description: "「订单已送达」用的微信模板 id"
         refunded: 
           type: "string"
+          description: "「退款成功」用的微信模板 id"
       required: 
         - "orderArrived"
         - "refunded"
@@ -6170,20 +6294,27 @@ components:
       properties: 
         messageNo: 
           type: "string"
+          description: "消息号"
         type: 
           "$ref": "#/definitions/InboxMessageType"
+          description: "类型"
         title: 
           type: "string"
+          description: "标题"
         body: 
           type: "string"
+          description: "正文"
         link: 
           type: 
             - "string"
             - "null"
+          description: "点开跳哪儿。空 = 只是一条通知，点不动"
         read: 
           type: "boolean"
+          description: "已读"
         at: 
           type: "number"
+          description: "发生时刻"
       required: 
         - "messageNo"
         - "type"
@@ -6198,6 +6329,7 @@ components:
       properties: 
         messageNo: 
           type: "string"
+          description: "消息号"
         receiverType: 
           type: "string"
           description: "USER / STAFF / OPS"
@@ -6206,16 +6338,21 @@ components:
           description: "收件人编号。**不掩码**：它是平台内部标识（userNo），不是手机号邮箱"
         type: 
           "$ref": "#/definitions/InboxMessageType"
+          description: "类型"
         title: 
           type: "string"
+          description: "标题"
         templateNo: 
           type: 
             - "string"
             - "null"
+          description: "模板号"
         read: 
           type: "boolean"
+          description: "已读"
         at: 
           type: "number"
+          description: "发生时刻"
       required: 
         - "messageNo"
         - "receiverType"
@@ -6243,8 +6380,10 @@ components:
           description: "受众：买家 / 商家 / 运营"
         channel: 
           type: "string"
+          description: "通道"
         enabled: 
           type: "boolean"
+          description: "启用中"
         pushLevel: 
           type: "string"
           description: "推送等级（App 推送用；其它通道为空）"
@@ -6333,8 +6472,10 @@ components:
           description: "下发通道，一期仅 PUSH"
         title: 
           type: "string"
+          description: "标题"
         body: 
           type: "string"
+          description: "正文"
         link: 
           type: 
             - "string"
@@ -6358,6 +6499,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "结束时刻。空 = 还在发"
       required: 
         - "taskNo"
         - "name"
@@ -6375,8 +6517,10 @@ components:
       properties: 
         notifyNo: 
           type: "string"
+          description: "触达记录号"
         channel: 
           "$ref": "#/definitions/NotifyChannel"
+          description: "通道"
         provider: 
           type: 
             - "string"
@@ -6387,6 +6531,7 @@ components:
           description: "OTP / OPS_INIT_PASSWORD / OPS_RESET_PASSWORD / TEST"
         target: 
           type: "string"
+          description: "发给谁。**已脱敏** —— 这张表运营都看得到"
         templateCode: 
           type: 
             - "string"
@@ -6394,6 +6539,7 @@ components:
           description: "短信是阿里云模板号；邮件是主题"
         status: 
           "$ref": "#/definitions/NotifyStatus"
+          description: "状态"
         error: 
           type: 
             - "string"
@@ -6408,8 +6554,10 @@ components:
           type: 
             - "string"
             - "null"
+          description: "谁发的（人工触达时）"
         createdAt: 
           type: "string"
+          description: "创建时刻"
       required: 
         - "notifyNo"
         - "channel"
@@ -6423,8 +6571,10 @@ components:
       properties: 
         captchaId: 
           type: "string"
+          description: "验证码会话号，校验时要带回来"
         imageBase64: 
           type: "string"
+          description: "图形验证码的图，base64"
       required: 
         - "captchaId"
         - "imageBase64"
@@ -6435,16 +6585,22 @@ components:
       properties: 
         receiverType: 
           type: "string"
+          description: "收件人类型：买家 / 商家"
         platform: 
           type: "string"
+          description: "平台"
         provider: 
           type: "string"
+          description: "厂商通道（华为/小米/…）。**真机稳不稳看它** —— 走不了厂商通道就只能靠自建长连"
         clientId: 
           type: "string"
+          description: "个推的 CID。**推送真正寻址靠它**，不是设备号"
         clientIdMask: 
           type: "string"
+          description: "打码后的 CID，列表里显示这个"
         updatedAt: 
           type: "string"
+          description: "更新时刻"
       required: 
         - "receiverType"
         - "platform"
@@ -6920,16 +7076,22 @@ components:
       properties: 
         totalBytes: 
           type: "number"
+          description: "合计字节数"
         totalCount: 
           type: "number"
+          description: "总发行量。空 = 不限量"
         activeBytes: 
           type: "number"
+          description: "在用的字节数"
         activeCount: 
           type: "number"
+          description: "在用的对象数"
         reclaimableBytes: 
           type: "number"
+          description: "可回收的字节数"
         reclaimableCount: 
           type: "number"
+          description: "可回收的对象数"
         abnormal: 
           type: "boolean"
           description: "可回收占比 > 50%。多半是有图片列没登记进 MediaRefSource —— 先查，别照删"
@@ -6951,12 +7113,16 @@ components:
           description: "`_ENTITY` = 主体级（证件，以及门店维度出现之前的存量图）"
         entityNo: 
           type: "string"
+          description: "所属商家"
         count: 
           type: "number"
+          description: "数量"
         activeBytes: 
           type: "number"
+          description: "在用的字节数"
         reclaimableBytes: 
           type: "number"
+          description: "可回收的字节数"
       required: 
         - "storeNo"
         - "entityNo"
@@ -6978,6 +7144,7 @@ components:
           description: "上传方门店"
         bizType: 
           "$ref": "#/definitions/MediaBizType"
+          description: "这张图当初是为什么传的。运营靠它判断能不能删"
         bytes: 
           type: "number"
           description: "占用字节数。回收的价值全在这个数上"
@@ -7116,10 +7283,13 @@ components:
           description: "其中仍被引用的"
         marked: 
           type: "number"
+          description: "本轮标记为可回收的"
         rescued: 
           type: "number"
+          description: "本轮被救回的（重新有引用了）"
         abnormal: 
           type: "boolean"
+          description: "异常对象数"
       required: 
         - "total"
         - "referenced"
@@ -7132,12 +7302,15 @@ components:
       properties: 
         count: 
           type: "number"
+          description: "数量"
         bytes: 
           type: "number"
+          description: "占用字节数"
         sample: 
           type: "array"
           items: 
             type: "string"
+          description: "抽样：**先给人看几张再让他按** —— 清理不可逆"
       required: 
         - "count"
         - "bytes"
@@ -7148,10 +7321,13 @@ components:
       properties: 
         scanned: 
           type: "number"
+          description: "扫了多少个对象"
         inserted: 
           type: "number"
+          description: "补录了多少条"
         skipped: 
           type: "number"
+          description: "跳过多少个"
       required: 
         - "scanned"
         - "inserted"
@@ -7162,17 +7338,22 @@ components:
       properties: 
         entityNo: 
           type: "string"
+          description: "所属商家"
         storeNo: 
           type: "string"
+          description: "门店号"
         includeQual: 
           type: "boolean"
+          description: "把资质影像也算进来。**默认不算** —— 证照删了商家要重新上传，代价比省下的空间大"
         neverUsed: 
           type: "boolean"
           description: "true 只看「从未被引用」，false 只看「被替换掉的」，不传都要"
         page: 
           type: "number"
+          description: "页码"
         size: 
           type: "number"
+          description: "每页条数"
       additionalProperties: false
       description: "待回收清单的筛选。`includeQual` 默认 false —— 证件留存期是法务口径。"
     JobStatus: 
@@ -7296,6 +7477,7 @@ components:
           description: "任务的锁名（与 shedlock 同一个键）。**页面不显示它**，显示 displayName"
         triggerType: 
           "$ref": "#/definitions/JobTriggerType"
+          description: "这一轮是被什么触发的。**排障第一个看它** —— 定时跑失败和人手动补跑失败要找的人不同"
         bizDate: 
           type: 
             - "string"
@@ -7423,22 +7605,27 @@ components:
       properties: 
         personNo: 
           type: "string"
+          description: "平台人档号"
         phoneTail: 
           type: 
             - "string"
             - "null"
+          description: "手机号后四位。**永远不给完整号**"
         userNo: 
           type: 
             - "string"
             - "null"
+          description: "用户号"
         memberships: 
           type: "array"
           items: 
             "$ref": "#/definitions/OpsMember"
+          description: "他在各商家的会员关系。**一份人档串起几家** —— 这正是人档存在的理由"
         merges: 
           type: "array"
           items: 
             type: "string"
+          description: "合并过的人档号。合并不可逆，留痕是唯一的回溯手段"
       required: 
         - "personNo"
         - "phoneTail"
@@ -7452,16 +7639,22 @@ components:
       properties: 
         entityNo: 
           type: "string"
+          description: "所属商家"
         entityName: 
           type: "string"
+          description: "商家名"
         sent: 
           type: "number"
+          description: "发出多少条"
         members: 
           type: "number"
+          description: "覆盖多少会员"
         optOut: 
           type: "number"
+          description: "其中退订多少人"
         optOutRate: 
           type: "number"
+          description: "退订率。**这条线唯一的健康指标** —— 发得多不是成绩，发到有人关掉才是问题"
       required: 
         - "entityNo"
         - "entityName"

@@ -75,6 +75,7 @@ export interface JobLogRow {
   runId: string;
   /** 任务的锁名（与 shedlock 同一个键）。**页面不显示它**，显示 displayName */
   jobName: string;
+  /** 这一轮是被什么触发的。**排障第一个看它** —— 定时跑失败和人手动补跑失败要找的人不同 */
   triggerType: JobTriggerType;
   /** 业务日期。**补数跑的是历史某一天，与执行时刻不是一回事** */
   bizDate: string | null;

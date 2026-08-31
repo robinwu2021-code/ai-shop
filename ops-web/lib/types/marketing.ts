@@ -80,7 +80,9 @@ export interface Coupon extends Archivable {
 export interface CouponSaveReq {
   /** 为空 = 新建 */
   couponNo?: string;
+  /** 名称 */
   name: string;
+  /** 类型 */
   type: CouponBuildableType;
   /** FULL_CUT 必填 */
   faceMinor?: number;
@@ -88,12 +90,17 @@ export interface CouponSaveReq {
   discountRate?: number;
   /** DISCOUNT 必填 >0 —— 取消「0=不封顶」 */
   maxDiscountMinor?: number;
+  /** 用券门槛（分）。0 = 无门槛 */
   threshold?: number;
+  /** 总发行量。空 = 不限量 */
   totalCount: number;
+  /** 每人最多领几张 */
   perUserLimit?: number;
   /** 0 或不填 = 不限；非零时必须 ≥ 敞口，否则服务端拒绝 */
   budget?: number;
+  /** 生效时刻 */
   validFrom: number;
+  /** 失效时刻 */
   validTo: number;
 }
 

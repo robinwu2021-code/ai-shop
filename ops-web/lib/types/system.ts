@@ -139,11 +139,17 @@ export interface ServiceScopeConfig {
 
 /** 顶部四张卡。`abnormal` 为真时页面置顶红条并禁用批量回收。 */
 export interface MediaOverview {
+  /** 合计字节数 */
   totalBytes: number;
+  /** 总发行量。空 = 不限量 */
   totalCount: number;
+  /** 在用的字节数 */
   activeBytes: number;
+  /** 在用的对象数 */
   activeCount: number;
+  /** 可回收的字节数 */
   reclaimableBytes: number;
+  /** 可回收的对象数 */
   reclaimableCount: number;
   /** 可回收占比 > 50%。多半是有图片列没登记进 MediaRefSource —— 先查，别照删 */
   abnormal: boolean;
@@ -152,9 +158,13 @@ export interface MediaOverview {
 export interface MediaStoreUsage {
   /** `_ENTITY` = 主体级（证件，以及门店维度出现之前的存量图） */
   storeNo: string;
+  /** 所属商家 */
   entityNo: string;
+  /** 数量 */
   count: number;
+  /** 在用的字节数 */
   activeBytes: number;
+  /** 可回收的字节数 */
   reclaimableBytes: number;
 }
 
@@ -166,6 +176,7 @@ export interface MediaReclaimable {
   entityNo: string;
   /** 上传方门店 */
   storeNo: string;
+  /** 这张图当初是为什么传的。运营靠它判断能不能删 */
   bizType: MediaBizType;
   /** 占用字节数。回收的价值全在这个数上 */
   bytes: number;
@@ -222,31 +233,45 @@ export interface MediaScanResult {
   total: number;
   /** 其中仍被引用的 */
   referenced: number;
+  /** 本轮标记为可回收的 */
   marked: number;
+  /** 本轮被救回的（重新有引用了） */
   rescued: number;
+  /** 异常对象数 */
   abnormal: boolean;
 }
 
 export interface MediaPurgePreview {
+  /** 数量 */
   count: number;
+  /** 占用字节数 */
   bytes: number;
+  /** 抽样：**先给人看几张再让他按** —— 清理不可逆 */
   sample: string[];
 }
 
 export interface MediaBackfillResult {
+  /** 扫了多少个对象 */
   scanned: number;
+  /** 补录了多少条 */
   inserted: number;
+  /** 跳过多少个 */
   skipped: number;
 }
 
 /** 待回收清单的筛选。`includeQual` 默认 false —— 证件留存期是法务口径。 */
 export interface MediaReclaimableQuery {
+  /** 所属商家 */
   entityNo?: string;
+  /** 门店号 */
   storeNo?: string;
+  /** 把资质影像也算进来。**默认不算** —— 证照删了商家要重新上传，代价比省下的空间大 */
   includeQual?: boolean;
   /** true 只看「从未被引用」，false 只看「被替换掉的」，不传都要 */
   neverUsed?: boolean;
+  /** 页码 */
   page?: number;
+  /** 每页条数 */
   size?: number;
 }
 

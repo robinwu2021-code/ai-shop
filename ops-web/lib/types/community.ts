@@ -48,12 +48,14 @@ export interface CommunityApply {
    * 只给一个「有/无」，落点偏到隔壁区也照样显示「有定位」，判不出对错。
    */
   latE6?: number | null;
+  /** 经度 ×1e6（gcj02） */
   lngE6?: number | null;
   /**
    * 官方村码在区划表里的坐标（高德批量补录）。没带定位时后端通过这条提报会自动用它兜底 ——
    * 两个都空，才是真的「通过后无坐标、买家搜不到」。
    */
   fallbackLatE6?: number | null;
+  /** 兜底经度：商家没选点时用提交那一刻的位置。**多半不在那个小区里**，裁决要留意 */
   fallbackLngE6?: number | null;
   /** 待审 / 已建社区 / 已驳回。**只有 PENDING 能裁**：裁完就是终态，再裁一次意味着同一条提报有两个结论 */
   status: CommunityApplyStatus;
@@ -106,12 +108,17 @@ export interface Community extends Archivable {
  */
 /** 附近已开通的聚落。裁决查重用：名字不同、位置只差 50 米的两条，靠文字比对看不出来 */
 export interface NearbyCommunity {
+  /** 社区号 */
   communityNo: string;
+  /** 名称 */
   name: string;
+  /** 纬度 ×1e6（gcj02） */
   latE6: number;
+  /** 经度 ×1e6（gcj02） */
   lngE6: number;
   /** 距提报坐标的直线距离（米） */
   distanceM: number;
+  /** 「广东省 / 深圳市 / 龙华区 / 福城街道」 */
   regionPath: string;
 }
 
@@ -124,19 +131,26 @@ export interface NearbyCommunity {
  * 错了要一条条捞回来。
  */
 export interface CommunityDuplicate {
+  /** 疑似重复的一方 */
   left: Community;
+  /** 另一方 */
   right: Community;
+  /** 原因 */
   reason: DuplicateReason;
   /** 两点直线距离（米）。有一方没坐标时为空 */
   distanceM?: number | null;
 }
 
 export interface RegionSuggestion {
+  /** 国标区划码 */
   regionCode: string;
+  /** 层级 */
   level: string;
+  /** 名称 */
   name: string;
   /** 「广东省 / 深圳市 / 龙华区 / 福城街道」 */
   path: string;
+  /** 来源 */
   source: RegionMatchSource;
   /** 依据：匹配到的地址片段，或「茜坑社区 · 320 米」 */
   detail: string;
@@ -237,6 +251,7 @@ export interface PickupPoint extends Archivable {
   status: PickupStatus;
   /** 坐标（E6）。审自建点时要看：没坐标的点买家用定位找不到 */
   latE6?: number | null;
+  /** 经度 ×1e6（gcj02） */
   lngE6?: number | null;
   /** 驳回理由，只有 REJECTED 有值 */
   rejectReason?: string | null;

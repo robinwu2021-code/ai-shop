@@ -142,21 +142,27 @@ export type NotifyChannel = "SMS" | "MAIL" | "WXSUB" | "PUSH";
  * 泄漏一次就是全平台可群发。要改密钥去改环境变量并重启，不在这个页面上改。
  */
 export interface NotifyChannelHealth {
+  /** 通道 */
   channel: NotifyChannel;
   /** 走桩：不真发，只记日志 */
   stub: boolean;
   /** 真实通道已启用（!stub） */
   enabled: boolean;
+  /** 这条通道的凭据配没配全。**没配全就发不出**，而症状是「发送成功」后没人收到 */
   credentials: { envVar: string; present: boolean; required: boolean }[];
   /** 非密业务参数，可回显（模板号、endpoint 这类本就印在短信里的东西） */
   params: { key: string; value: string }[];
+  /** 今天发了多少条 */
   todaySent: number;
+  /** 今天失败多少条 */
   todayFailed: number;
 }
 
 /** 微信订阅消息的模板号映射。**唯一一项开放到运营端的通道参数**（模板号不是凭据）。 */
 export interface WxTemplates {
+  /** 「订单已送达」用的微信模板 id */
   orderArrived: string;
+  /** 「退款成功」用的微信模板 id */
   refunded: string;
 }
 
@@ -169,12 +175,19 @@ export type InboxMessageType = "TRADE" | "MARKETING" | "SYSTEM";
  * 那个是**平台发给用户**的触达留痕。
  */
 export interface InboxMessage {
+  /** 消息号 */
   messageNo: string;
+  /** 类型 */
   type: InboxMessageType;
+  /** 标题 */
   title: string;
+  /** 正文 */
   body: string;
+  /** 点开跳哪儿。空 = 只是一条通知，点不动 */
   link?: string | null;
+  /** 已读 */
   read: boolean;
+  /** 发生时刻 */
   at: number;
 }
 
@@ -185,15 +198,21 @@ export interface InboxMessage {
  * 这正是它与 NotifyLog 不能合成一张表的原因。
  */
 export interface InAppLog {
+  /** 消息号 */
   messageNo: string;
   /** USER / STAFF / OPS */
   receiverType: string;
   /** 收件人编号。**不掩码**：它是平台内部标识（userNo），不是手机号邮箱 */
   receiverNo: string;
+  /** 类型 */
   type: InboxMessageType;
+  /** 标题 */
   title: string;
+  /** 模板号 */
   templateNo?: string | null;
+  /** 已读 */
   read: boolean;
+  /** 发生时刻 */
   at: number;
 }
 
@@ -216,7 +235,9 @@ export interface SceneChannelCell {
   scene: string;
   /** 受众：买家 / 商家 / 运营 */
   audience: string;
+  /** 通道 */
   channel: string;
+  /** 启用中 */
   enabled: boolean;
   /** 推送等级（App 推送用；其它通道为空） */
   pushLevel: string;
@@ -267,7 +288,9 @@ export interface NotifyPushTask {
   audienceType: string;
   /** 下发通道，一期仅 PUSH */
   channel: string;
+  /** 标题 */
   title: string;
+  /** 正文 */
   body: string;
   /** 点开落点，可空 */
   link?: string | null;
@@ -279,31 +302,40 @@ export interface NotifyPushTask {
   estimatedCount: number;
   /** 实际发出条数 */
   sentCount: number;
+  /** 结束时刻。空 = 还在发 */
   finishedAt?: string | null;
 }
 
 export interface NotifyLog {
+  /** 触达记录号 */
   notifyNo: string;
+  /** 通道 */
   channel: NotifyChannel;
   /** 供应商 ALI/SMTP/WECHAT/GETUI/FCM/APNS（N3）；旧行与单供应商推出为空 */
   provider?: string | null;
   /** OTP / OPS_INIT_PASSWORD / OPS_RESET_PASSWORD / TEST */
   bizType: string;
+  /** 发给谁。**已脱敏** —— 这张表运营都看得到 */
   target: string;
   /** 短信是阿里云模板号；邮件是主题 */
   templateCode?: string | null;
+  /** 状态 */
   status: NotifyStatus;
   /** 失败时通道返回的原文。**排查第一眼看它** */
   error?: string | null;
   /** 阿里云 BizId / 邮件 Message-ID */
   providerMsgId?: string | null;
+  /** 谁发的（人工触达时） */
   operatorNo?: string | null;
+  /** 创建时刻 */
   createdAt: string;
 }
 
 /** 图形验证码挑战。`imageBase64` 不带 data: 前缀，端上自己拼 */
 export interface Captcha {
+  /** 验证码会话号，校验时要带回来 */
   captchaId: string;
+  /** 图形验证码的图，base64 */
   imageBase64: string;
 }
 
@@ -312,10 +344,16 @@ export interface Captcha {
  * `clientId` 是原始设备标识，发送时回传；`clientIdMask` 只用于展示。
  */
 export interface PushDevice {
+  /** 收件人类型：买家 / 商家 */
   receiverType: string;
+  /** 平台 */
   platform: string;
+  /** 厂商通道（华为/小米/…）。**真机稳不稳看它** —— 走不了厂商通道就只能靠自建长连 */
   provider: string;
+  /** 个推的 CID。**推送真正寻址靠它**，不是设备号 */
   clientId: string;
+  /** 打码后的 CID，列表里显示这个 */
   clientIdMask: string;
+  /** 更新时刻 */
   updatedAt?: string;
 }

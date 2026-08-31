@@ -148,19 +148,27 @@ export interface QualificationItem {
   type: QualificationType;
   /** 证照编号，与证面一致 */
   code: string;
+  /** 图片地址 */
   imageUrl: string;
+  /** 到期时刻 */
   expireAt: number | null;
+  /** 发证机关 */
   issuer?: string;
 }
 
 /** 主体档案上**已登记**的一条资质（mch_qualification）。上架闸门读的就是它 */
 export interface Qualification {
+  /** 资质记录号 */
   qualNo: string;
+  /** 所属商家 */
   entityNo: string;
+  /** 证件类型 */
   qualType: string;
   /** 证件名。**要与 sys_auth_code.required_qualification 同一套字面量** —— 类目授权按名字比对 */
   qualName: string;
+  /** 证件编号，证上印的那一串 */
   qualNumber?: string;
+  /** 图片地址 */
   imageUrl?: string;
   /** null = 长期有效。与「已过期」是两回事，扫描任务不碰它 */
   expireAt?: number | null;
@@ -323,9 +331,13 @@ import type { BusinessMode } from "./finance";
  * channel 值域 = STORE_PICKUP / NEIGHBOR_PICKUP / MERCHANT_DELIVERY / EXPRESS。
  */
 export interface StoreFulfillmentRow {
+  /** 门店号 */
   storeNo: string;
+  /** 门店名 */
   storeName: string | null;
+  /** 门店状态 */
   storeStatus: string;
+  /** 这家店开了哪几条履约渠道 */
   channels: Array<{
     channel: string;
     enabled: boolean;
@@ -366,12 +378,17 @@ export interface StoreMode {
  * 是**现状盘点**。
  */
 export interface ModeRisk {
+  /** 商家主体号 */
   merchantNo: string;
+  /** 商家名 */
   merchantName: string;
   /** 主体档位（免执照的那一档） */
   legalForm: string;
+  /** 门店号 */
   storeNo: string;
+  /** 门店名 */
   storeName: string;
+  /** 销售主体是谁：自营 / 第三方 */
   businessMode: string;
   /** 已产生的自营结算单数。**0 表示「查过了，没有」** —— 与「还没查」在界面上要分开 */
   settledBills: number;
@@ -522,35 +539,53 @@ export type PlanQuotaSource =
 
 /** 到期看板的一行（`GET /ops/merchant-plans`）。 */
 export interface MerchantPlanRow {
+  /** 商家主体号 */
   merchantNo: string;
+  /** 商家名 */
   merchantName: string;
+  /** 档位码。**文案用 name/planName，不要按 code 自己映射** —— 运营改了名端上不会跟着变 */
   planCode: string;
   /** 生效额度（覆盖值优先于快照）。与 storeUsed 一起显示成 2/3 */
   storeQuota: number;
+  /** 员工数配额 */
   staffQuota: number;
   /** 已用门店数。**只数 ACTIVE**，与建店时那道额度闸同一口径 */
   storeUsed: number;
+  /** 已用员工数 */
   staffUsed: number;
+  /** 这一档给不给跨店统计 */
   crossStoreStats: boolean;
+  /** 状态 */
   status: PlanStatus;
+  /** 生效时刻 */
   startAt?: number | null;
+  /** 到期时刻 */
   expireAt?: number | null;
   /** PLATFORM（运营授予）/ SELF（一期没有这条路） */
   grantedBy?: string | null;
+  /** 试用额度用过了 */
   trialUsed: boolean;
   /** 降级发生的时间。非空 = 已经压过店了（扫描靠它保证幂等） */
   downgradedAt?: number | null;
+  /** 生效额度是哪来的。**运营必须看得出来** —— 否则「这家怎么是 5 家」只能翻审计日志 */
   quotaSource: PlanQuotaSource;
 }
 
 /** 档位定义（`GET /ops/plan-defs`）。 */
 export interface PlanDef {
+  /** 档位码。**文案用 name/planName，不要按 code 自己映射** —— 运营改了名端上不会跟着变 */
   planCode: string;
+  /** 名称 */
   name: string;
+  /** 门店数配额 */
   storeQuota: number;
+  /** 员工数配额 */
   staffQuota: number;
+  /** 这一档给不给跨店统计 */
   crossStoreStats: boolean;
+  /** 试用天数。0 = 这一档不提供试用 */
   trialDays: number;
+  /** 启用中 */
   enabled: boolean;
   /**
    * 当前有几家在用这一档。
@@ -569,8 +604,12 @@ export interface PlanDef {
  * 所以这里只给 owner 号，销售拿它去后台查人。
  */
 export interface PlanUpgradeSignal {
+  /** 店主的用户号。要联系他升档时用 */
   ownerUserNo: string;
+  /** 命中的商家号 */
   entityNos: string[];
+  /** 命中的商家名 */
   entityNames: string[];
+  /** 命中几家 */
   entityCount: number;
 }

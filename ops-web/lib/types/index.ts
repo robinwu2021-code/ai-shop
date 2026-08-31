@@ -57,10 +57,15 @@ export interface OpsMember {
 
 /** 人档：一份人档串起几家商家的会员关系 —— 这正是它存在的理由 */
 export interface OpsPerson {
+  /** 平台人档号 */
   personNo: string;
+  /** 手机号后四位。**永远不给完整号** */
   phoneTail: string | null;
+  /** 用户号 */
   userNo: string | null;
+  /** 他在各商家的会员关系。**一份人档串起几家** —— 这正是人档存在的理由 */
   memberships: OpsMember[];
+  /** 合并过的人档号。合并不可逆，留痕是唯一的回溯手段 */
   merges: string[];
 }
 
@@ -71,11 +76,17 @@ export interface OpsPerson {
  * 发到有人关掉才是问题。列表按它倒序。
  */
 export interface ReachStat {
+  /** 所属商家 */
   entityNo: string;
+  /** 商家名 */
   entityName: string;
+  /** 发出多少条 */
   sent: number;
+  /** 覆盖多少会员 */
   members: number;
+  /** 其中退订多少人 */
   optOut: number;
+  /** 退订率。**这条线唯一的健康指标** —— 发得多不是成绩，发到有人关掉才是问题 */
   optOutRate: number;
 }
 

@@ -92,8 +92,11 @@ export interface PointsOverview {
 }
 
 export interface PoolByChannel {
+  /** 市场 */
   market: string;
+  /** 支付通道 */
   payChannel: string;
+  /** 池子余额（分） */
   balanceMinor: number;
 }
 
@@ -462,6 +465,7 @@ export interface BuyerInvoiceRequest {
 export interface ReconCoverage {
   /** 渠道账单是否已接入。false 时 note 必须显示给运营 */
   channelBillConnected: boolean;
+  /** 说明 */
   note: string;
 }
 
@@ -478,8 +482,11 @@ export interface ReconCoverage {
 export interface ReconAxisReport {
   /** PAYMENT 收款 / SPLIT 分账 / PAYOUT 出款 / POINTS_POOL 积分池 */
   axis: string;
+  /** 结论 */
   outcome?: { scanned: number; resolved: number; opened: number; deferred: number } | null;
+  /** 覆盖率 */
   coverage: { complete: boolean; note: string };
+  /** 错误信息 */
   error?: string | null;
 }
 

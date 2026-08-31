@@ -63,6 +63,7 @@ export interface ReviewAppeal {
    * 而屏幕上只有单号和商家自己写的申诉理由的话，裁的是一面之词。
    */
   reviewRating: number;
+  /** 被申诉的那条评价原文。**不带上它，审的人要跳去另一页** */
   reviewContent: string;
   /** 商家的申诉理由 */
   reason: string;
