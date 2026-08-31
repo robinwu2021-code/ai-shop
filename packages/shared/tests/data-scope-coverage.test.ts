@@ -157,6 +157,32 @@ const EXEMPT: Record<string, string> = {
   notify_message: "receiver_no 是收件人用户号（买家与商家员工共用命名空间），表上没有商家号；SELF 会让运营只看得到发给自己的",
   notify_push_token: "同上，且它是设备令牌表 —— 按商家裁没有意义",
 
+  /*
+   * ── 社区表：**登记它会让登录买家的社区列表变空** ──
+   *
+   * `cmt_community` 是 COMMUNITY 维度自己的锚点表（其余四张已登记的表都指向它）。
+   * 2026-08-31 拿探针验过：登记之后 `ConsumerScopeParityTest` 立刻红，
+   * 报的是「登录之后反而看不到东西」——
+   *
+   *     /mp/community                → 游客有数据，登录是空的
+   *     /mp/community/nearby?...     → 游客有数据，登录是空的
+   *     /mp/community/C0001          → 游客 code=0，登录 code=10404
+   *
+   * 原因：买家会话是 SELF 维度，这张表上只有 community_no（COMMUNITY 维度的锚点），
+   * SELF 没有锚点 → fail-closed 拼成 1=0。而**「我能在哪儿取货」是买家下单的前置**，
+   * 变空之后他连社区都选不了。
+   *
+   * <p>要接的话得给 C 端那四处读（openRegions / nearby / detail / 搜索）
+   * 各加 executeWithoutScope，再登记 —— 一次改四处调用点，而**漏一处的表现是
+   * 买家侧某一屏静默变空**，代价与收益不成比例：运营治理页多看见几个社区，
+   * 换的是买家可能选不了社区。
+   *
+   * <p>什么时候回来改：社区治理真的需要按片区分工时。届时先把这四处包好、
+   * 跑 ConsumerScopeParityTest 确认游客与登录一致，再登记。
+   */
+  cmt_community: "COMMUNITY 维度自己的锚点表；登记会让登录买家的社区列表与详情变空（探针验过）",
+  cmt_pickup_point: "同上，取货点跟着社区走 —— 买家选不了社区就更谈不上选取货点",
+
   // 日志/流水类：归属列是「谁干的」而不是「谁的数据」，运营查审计本就要跨主体看
   sys_op_log: "运营操作审计，跨主体查是它的用途",
   mch_staff_log: "商家员工授权审计，同上",
@@ -319,7 +345,7 @@ describe("数据域表册覆盖", () => {
      * 挑它们的判据是「运营端有一条全量列表读它」，而**登记的同时去掉了那三条
      * 队列上的 executeWithoutScope** —— 只登记不去绕过是第一批白干过的那一轮。
      */
-    const PENDING = 46;
+    const PENDING = 44;
 
     expect(
       missing.length,
