@@ -83,10 +83,10 @@ backend/
 │                             依赖：仅 spring-context（为了 @Component 等注解）
 │
 ├── shop-base-web/          【新】ApiResponseWrapper · GlobalExceptionHandler
-│                             依赖：shop-base + spring-boot-starter-web
+│                             依赖：shop-base-auth + spring-boot-starter-web
 │
 ├── shop-base-auth/         【新】三端 filter · SecurityUtils · TokenStore · PermChecker
-│                             依赖：shop-base-web + security + shop-auth-store
+│                             依赖：shop-base + security + shop-auth-store + neargo-common-data
 │
 ├── shop-store-mybatis/     【新】BaseEntity · AuditMetaObjectHandler · *Mapper
 │                             + 幂等 / Outbox / 媒体 / 归档的 **MyBatis 实现**
@@ -99,6 +99,22 @@ backend/
                               = shop-base + -web + -auth + shop-store-mybatis
                               现有 6 个业务模块把 `shop-base` 换成它，**代码零改动**
 ```
+
+> **2026-08-31 实施时的两处修正：**
+>
+> **① 层序写反了。** 上面原来写的是「`shop-base-auth` 依赖 `shop-base-web`」。
+> 实际相反：`GlobalExceptionHandler`（web）引用 `auth`，而 `auth` 引用 `common` ——
+> 所以是 **内核 ← auth ← web**。上面的依赖行已按实际改过。
+>
+> **② `shop-base` 去掉 MyBatis 编译依赖还不够。** 抽出 `shop-store-mybatis`
+> 之后源码里一个 `com.baomidou` 都没有了，但**依赖树里还有 11 处** ——
+> `neargo-common-data`（数据域引擎）传递带进来的，而 `auth` 包在用它。
+>
+> 所以「shop-base 干净」这件事**要等 auth 也抽出去才成立**。
+> 我一度以为已经成了，因为看的是源码 import 而不是依赖树 ——
+> **而判据是「进没进 classpath」，那正是 §3.5 的原话**。
+> 发现它靠的是一个正对照：三个模块的 mybatis 计数都是 0，
+> 而 `shop-store-mybatis` 必须不为零，那个 0 暴露了量具（`-q` 把树本身吞了）。
 
 **包名一个都不改。** `ai.neargo.shop.common.ApiResult` 还在原来的包里，
 只是换了一个 jar。现有 6 个业务模块（core / merchant / settle / channel /
