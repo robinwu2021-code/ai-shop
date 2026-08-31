@@ -147,7 +147,23 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
    *
    * <p>归属由入口保证：ops 侧走 `requireInScope(merchantNo)`，B 端走 BizContext。
    */
-  "MerchantGovernServiceImpl#toVO":
+  /*
+   * 资质列表。**ops 与 B 端共用**（`BizMerchantController:312` 也调它），
+   * 与同一个类里的 `toVO` 同一形状 —— B 端会话是 SELF 维度，
+   * `mch_qualification` 只有 MERCHANT 锚点，不绕的话**商家打开自己的资质档案是空的**，
+   * 而他明明传过证。
+   *
+   * <p>归属由入参保证：ops 侧 `merchantNo` 来自路径且走过 requireInScope，
+   * B 端来自 BizContext。
+   *
+   * <p>**这条与「路径参数不该绕过数据域」不冲突**：那句话说的是
+   * 运营拿别家的号去查要查不到 —— 而这里 ops 入口本身就有 requireInScope 在挡。
+   * 两个机制守同一件事，绕过去掉会打断 B 端，留着不影响 ops 的归属保证。
+   */
+  "MerchantGovernServiceImpl#qualifications":
+    "ops 与 B 端共用的资质列表；B 端是 SELF 维度，不绕商家看自己的资质是空的",
+
+    "MerchantGovernServiceImpl#toVO":
     "ops 与 B 端共用的商家详情；B 端会话是 SELF 维度，不绕「能不能收钱」恒为否",
 
   "AdmissionPortImpl#merchantOf":
@@ -314,6 +330,10 @@ const ANCHOR_WAIVED: Record<string, string> = {
     + "而那和 V137 给子单加列是同一种代价，值不值得看仲裁台会不会按片区分工",
   "ord_after_sale:PICKUP":
     "同上。自提点运营者不做售后仲裁 —— 那需要 aftersale:ticket:read",
+    "mch_qualification:COMMUNITY":
+    "资质属于商家，不属于片区。**看到空白的是**：配了社区域的运营打开资质档案。"
+    + "而资质审核要 merchant:qualification:*，社区运营没有这个码",
+  "mch_qualification:PICKUP": "同上",
     "mch_payment_merchant:COMMUNITY":
     "收款进件属于商家，不属于片区。**看到空白的是**：配了社区域的运营打开商家进件页。"
     + "而进件审核要 merchant:admission:read，社区运营没有这个码",
@@ -895,7 +915,6 @@ describe("运营端数据域接入", () => {
     mch_deposit: "待判 —— 保证金账户（/ops/admission/deposits/{no}）",
     mch_deposit_txn: "待判 —— 保证金流水（同上 /txns）",
     mch_entity_plan: "待判 —— 增值包订阅（/ops/merchant-plans）",
-    mch_qualification: "待判 —— 资质档案（/ops/merchants/{no}/qualifications）",
     mch_store_role: "待判 —— 门店授权（同上）",
     mkt_campaign: "待判 —— 营销活动（/ops/campaigns）",
     mkt_coupon: "待判 —— 平台券（/ops/coupons）",
