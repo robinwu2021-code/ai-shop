@@ -30,7 +30,9 @@ export type FulfillmentReach = (typeof FULFILLMENT_REACH)[keyof typeof FULFILLME
  * MERCHANT_DELIVERY / EXPRESS —— 服务类两值是商品属性，不出现在这里。
  */
 export interface StoreFulfillmentChannel {
+  /** 履约渠道（快递 / 到店自提 / 邻里自提 / 商家自送 / 上门预约） */
   channel: FulfillmentType;
+  /** 开着没有。**关掉意味着这条路从此不接新单**，已有的单照常履约 */
   enabled: boolean;
   /** 准入矩阵不允许（按主体类型）。端上置灰＋原因，不隐藏 */
   denied: boolean;
@@ -48,7 +50,9 @@ export interface StoreFulfillmentChannel {
 
 /** 逆地理编码结果（P2）：recommend 是带楼盘/门牌的人话版 */
 export interface GeoReverseResult {
+  /** 带楼盘/门牌的人话版地址。**端上填这个** */
   recommend: string;
+  /** 地址 */
   address: string;
 }
 
@@ -58,21 +62,31 @@ export interface GeoReverseResult {
  * 后端没配 Web 服务 key 时返回空数组，端上就当没有这个功能。
  */
 export interface GeoTip {
+  /** 名称 */
   name: string;
+  /** 地址 */
   address?: string | null;
+  /** 国标 6 位区县码，与 sys_region 同口径 */
   adcode?: string | null;
   /** 有些提示（纯地名、公交线）没坐标，这种不值得选 */
   latE6?: number | null;
+  /** 经度 ×1e6。**全站坐标一律 gcj02** */
   lngE6?: number | null;
+  /** 高德 POI 类目码 */
   typecode?: string | null;
 }
 
 /** 门店引用的取货点。status 来自 cmt_pickup_point：只有 ACTIVE 参与买家侧 */
 export interface PickupRef {
+  /** 取货点号 */
   pickupNo: string;
+  /** 名称 */
   name: string;
+  /** 地址 */
   address?: string | null;
+  /** 类型 */
   type: PickupPointType;
+  /** 状态 */
   status: string;
 }
 
@@ -83,35 +97,49 @@ export interface PickupRef {
  * 那边引用不到，只能落成一个空 object —— 后端照着实现就得自己猜返回什么。
  */
 export interface FulfillmentImpactItem {
+  /** 商品号 */
   goodsNo: string;
+  /** 标题 */
   title: string;
 }
 
 /** 新加的规格取值（商家自建维度）。同上：命名是为了它能进契约 */
 export interface SpecValueAdded {
+  /** 平台值池里的编号。**有它才参与筛选与跨店比较** */
   valueNo: string;
+  /** 码值 */
   code: string;
+  /** 显示名 */
   label: string;
 }
 
 /** 门店可引用的取货点候选（P1）：范围内的常驻点 + 本店自建的点 */
 export interface PickupCandidate {
+  /** 取货点号 */
   pickupNo: string;
+  /** 名称 */
   name: string;
+  /** 地址 */
   address?: string | null;
+  /** 类型 */
   type: PickupPointType;
   /** ACTIVE / PENDING / REJECTED …；本店自建的 PENDING 点可引用，别家的不行 */
   status: string;
+  /** 所在社区号 */
   communityNo: string;
+  /** 所在社区名 */
   communityName?: string | null;
   /** STORE 点的承接门店；= 本店即「我自建的」 */
   ownerStoreNo?: string | null;
+  /** 被驳回的原因。**要原样回商家** —— 不写等于让人猜 */
   rejectReason?: string | null;
 }
 
 /** 跨级搜索（P1）：区划命中带从省到父级的路径，聚落命中带所在街道路径 */
 export interface RegionSearchResult {
+  /** 命中的行政区划，带从省到父级的路径 */
   regions: Array<{ regionCode: string; level: string; name: string; path: string }>;
+  /** 命中的社区 */
   communities: Array<{
     communityNo: string; name: string; regionCode?: string | null; path: string;
     /** ESTATE 小区 / VILLAGE 村。判「这一条底下还有没有下一级」用它，名字这时已经是口语名了 */
@@ -149,6 +177,7 @@ export interface RegionSearchResult {
 }
 
 export interface StoreFulfillment {
+  /** 门店号 */
   storeNo: string;
   /** 固定四行，顺序即开关顺序 —— 服务端补缺，端上不用自己造 */
   channels: StoreFulfillmentChannel[];
@@ -240,6 +269,7 @@ export interface RegionNode {
   parentCode?: string | null;
   /** `PROVINCE` | `CITY` | `DISTRICT`。地址簿只到区县，街道与村不下发 */
   level: string;
+  /** 名称 */
   name: string;
   /**
    * 还有没有下一级。**区县恒为 false** —— 地址表只有省市区三列，
@@ -299,6 +329,7 @@ export interface Community {
   rural?: boolean;
   /** 官方村名录批量补录过的坐标，可能为空 */
   latE6?: number | null;
+  /** 经度 ×1e6。**全站坐标一律 gcj02** */
   lngE6?: number | null;
 }
 
@@ -326,6 +357,7 @@ export interface Pickup {
    * 买家要拿着它导航过去，没有就只能显示地址文本。
    */
   latE6?: number | null;
+  /** 经度 ×1e6。**全站坐标一律 gcj02** */
   lngE6?: number | null;
 }
 
@@ -500,7 +532,9 @@ export interface Address {
    * 可能为空：存量地址是纯手填的，拆不出来。
    */
   province?: string | null;
+  /** 市 */
   city?: string | null;
+  /** 区/县 */
   district?: string | null;
   /** 详细地址（街道门牌） */
   detail: string;
@@ -513,6 +547,7 @@ export interface Address {
    * 商家的「自送半径」要拿它跟门店坐标算距离，没有坐标那条规则就永远算不出结果。
    */
   latE6?: number | null;
+  /** 经度 ×1e6。**全站坐标一律 gcj02** */
   lngE6?: number | null;
 }
 
@@ -853,20 +888,27 @@ export interface Category {
  * 由服务端强制以标准品为准** —— 能改掉的话，标准品就退化成一个填表助手。
  */
 export interface SpuStd {
+  /** 标准品号 */
   stdNo: string;
   /** 所属类目。取用后**改不掉**：类目决定形态（生鲜要截单、服务不发货） */
   categoryNo: string;
   /** 类目名，展示用 */
   categoryName?: string;
+  /** 标题 */
   title: string;
+  /** 标题的多语言版本 */
   titleI18n?: Record<string, string>;
+  /** 副标题 */
   subtitle?: string;
+  /** 封面图 */
   cover?: string;
+  /** 图集 */
   images?: string[];
   /** 每个选项都带 `optionCode` —— 跨店可比靠的就是它 */
   specGroups: SpecGroup[];
   /** 别名/品牌/俗称，搜索用。端上可以不展示 */
   keywords?: string;
+  /** 状态 */
   status?: string;
   /** 被引用次数，只给运营排序用 */
   refCount?: number;
@@ -1129,6 +1171,7 @@ export interface Goods {
    * 别拿一个空白区块占着详情页。
    */
   detail?: string;
+  /** 状态 */
   status?: GoodsStatus;
   /**
    * 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。
@@ -1441,18 +1484,26 @@ export interface IncomeSummary {
   pendingMinor: number;
   /** 当面收款：**他早就拿到了**，无需结算 */
   offlineMinor: number;
+  /** 在途的结算单数。金额之外还要给条数 —— 一笔大的和十笔小的，商家的处理方式不同 */
   inFlightCount: number;
   /** 最早一笔在途的发起时刻。**「卡了多久」是商家真正想问的** */
   oldestInFlightAt?: number | null;
 }
 
 export interface AppointmentSlot {
+  /** 时段号。**下单占的是它** */
   slotNo: string;
+  /** 门店号 */
   storeNo: string;
+  /** 开始时刻（毫秒） */
   startAt: number;
+  /** 结束时刻（毫秒） */
   endAt: number;
+  /** 这一档能约几个人 */
   capacity: number;
+  /** 已约人数 */
   booked: number;
+  /** 还能核几次 */
   remaining: number;
   /** OPEN 可约 / CLOSED 停约。停约**不删行也不赶人** */
   status: SlotStatus;
@@ -1800,6 +1851,7 @@ export interface UserCard {
  * 页面恰好不读返回值（领完重拉列表），所以没人撞上；但契约说的是假话。
  */
 export interface UserCoupon {
+  /** 这个人手里那一张的编号 */
   userCouponNo: string;
   /** 券模板快照 */
   coupon: Coupon;
@@ -1807,7 +1859,9 @@ export interface UserCoupon {
   status: string;
   /** 当前这笔订单能不能用它 —— 由服务端算，端上不要自己判门槛 */
   usableNow: boolean;
+  /** 领取时刻 */
   receivedAt: number;
+  /** 核销/使用时刻。空 = 还没用 */
   usedAt?: number;
 }
 
@@ -1840,6 +1894,7 @@ export interface Coupon {
   couponNo: string;
   /** 券名，如「满 50 减 5」 */
   title: string;
+  /** 类型 */
   type: CouponType;
   /** 满减面额（最小货币单位）。`DISCOUNT` 券为 0 */
   faceMinor: number;
@@ -1849,16 +1904,19 @@ export interface Coupon {
   thresholdMinor: number;
   /** 折扣券封顶（最小货币单位）。仅 `DISCOUNT` 有意义 */
   maxDiscountMinor: number;
+  /** 谁出这笔钱：平台 / 商家。**结算口径不同** */
   funder: CouponFunder;
   /** 商家券的归属商家；平台券为空 */
   merchantNo: string;
   /** 可领取/可用的时间窗 */
   startAt: number;
+  /** 结束时刻（毫秒） */
   endAt: number;
   /** 剩余可领数量 */
   remain: number;
   /** 当前用户是否已领取。列表页据此显示「领取」还是「去使用」 */
   received: boolean;
+  /** 状态 */
   status: CouponStatus;
   /** 适用范围文案，如「仅限张记粮油店」。展示用，实际校验在服务端 */
   scopeDesc: string;
@@ -2236,6 +2294,7 @@ export interface QualificationItem {
   type: QualificationType;
   /** 证照编号 */
   code: string;
+  /** 证件照地址 */
   imageUrl: string;
   /**
    * 有效期截止（毫秒）。**长期有效传 `null`** ——
@@ -2243,6 +2302,7 @@ export interface QualificationItem {
    * 后者当成永不过期，两种都错且都不报错。
    */
   expireAt: number | null;
+  /** 发证机关 */
   issuer?: string;
 }
 
@@ -2253,13 +2313,17 @@ export interface QualificationItem {
  * 这个是**已经登记在案的**（有编号、有状态、能被上架校验读到）。
  */
 export interface Qualification {
+  /** 资质记录号 */
   qualNo: string;
   /** 归属主体。端上其实用不到（只会看自己的），但后端在发 —— 声明出来免得契约守卫把它算成缺口 */
   entityNo?: string;
+  /** 证件类型。**BUSINESS_LICENSE 是入驻校验的判据** */
   qualType: QualificationType;
   /** 证件名，如「食品经营许可证」。上架校验拿它与类目门槛的文案比对 */
   qualName: string;
+  /** 证件编号，证上印的那一串 */
   qualNumber?: string | null;
+  /** 证件照地址 */
   imageUrl?: string | null;
   /** 有效期截止（毫秒）。**空 = 长期有效**，与「已过期」是两回事 */
   expireAt?: number | null;
@@ -2293,20 +2357,25 @@ export interface QualificationSaveReq {
  * 而不是三个码。
  */
 export interface AuthCodeInfo {
+  /** 码值 */
   code: string;
+  /** 名称 */
   name: string;
   /** 给人读的一句话，如「食品经营许可证」。空 = 这一类不需要证 */
   requiredQualification?: string | null;
   /** 机器判的类型，与 {@link QualificationType} 同值域。空 = 无需证件 */
   qualType?: QualificationType | null;
+  /** 这个码能解锁的类目名。**由应用层拼** —— 商家看的是「食品经营许可证能解锁：肉禽蛋、乳制品」，不是三个码 */
   categoryNames: string[];
 }
 
 /** 「我的资质」这一页要的三份数据。 */
 export interface MyQualifications {
+  /** 我已经有的资质 */
   items: Qualification[];
   /** 已获授权的类目码。端上据此把「已解锁 / 待授权」标出来 */
   grantedCodes: string[];
+  /** 平台的门槛码字典：哪些码要哪一类证 */
   catalog: AuthCodeInfo[];
 }
 
@@ -2516,6 +2585,7 @@ export interface StoreCategory {
  * 老板不认识「主体」「实体」这两个词。
  */
 export interface Entity {
+  /** 商家主体号 */
   entityNo: string;
   /**
    * 执照上的名称。**待补证照时它是老板随手填的店名**——
@@ -2546,7 +2616,9 @@ export interface Entity {
  * 拍平之后点哪个都不知道进了哪张证照，而进错的表现是「商品怎么全没了」。
  */
 export interface EntityStores {
+  /** 所属主体（一张证照） */
   entity: Entity;
+  /** 这张证照下我能进的门店 */
   stores: Store[];
 }
 
@@ -3076,10 +3148,15 @@ export interface MerchantPlan {
 
 /** 档位对比的一行。 */
 export interface PlanTier {
+  /** 档位码。**文案用 planName，不要按 code 自己映射** —— 运营改了名端上不会跟着变 */
   planCode: string;
+  /** 名称 */
   name: string;
+  /** 门店数配额 */
   storeQuota: number;
+  /** 员工数配额 */
   staffQuota: number;
+  /** 这一档给不给跨店统计 */
   crossStoreStats: boolean;
   /** 0 = 这一档不提供试用 */
   trialDays: number;
@@ -3160,6 +3237,7 @@ export interface StoreProfile {
    * 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。
    */
   latE6?: number | null;
+  /** 经度 ×1e6。**全站坐标一律 gcj02** */
   lngE6?: number | null;
 }
 
@@ -3293,6 +3371,7 @@ export interface CommunityApplyReq {
    * 没有坐标的聚落买家用定位永远找不到。拿不到权限时可空，不阻塞提报。
    */
   latE6?: number;
+  /** 经度 ×1e6。**全站坐标一律 gcj02** */
   lngE6?: number;
 }
 
@@ -3310,6 +3389,7 @@ export interface Region {
    * 端上据此决定是直接用，还是临时去地图上搜一次。
    */
   latE6?: number | null;
+  /** 经度 ×1e6。**全站坐标一律 gcj02** */
   lngE6?: number | null;
   /** 本级名称，**不含上级**（「西湖区」不是「杭州市 / 西湖区」）。要整条路径的地方自己拼 */
   name: string;
@@ -3502,10 +3582,13 @@ export interface CampaignDraft {
 export interface GroupPickupOrder {
   /** 子订单号（`SUB…`）—— 这条链路上的「一单」就是一张子订单 */
   subOrderNo: string;
+  /** 买家昵称。自提点认人靠它 */
   buyerNickname: string;
   /** 核销码。**只有发起人看得到**，参团者看自己那一单即可 */
   verifyCode: string;
+  /** 状态 */
   status: OrderStatus;
+  /** 明细行 */
   items: { goodsNo: string; title: string; spec: string; qty: number }[];
 }
 
@@ -3529,13 +3612,17 @@ export interface StoreFront {
    * 买家侧据此决定「导航到这里」显不显示：没坐标的导航按钮点了只会打开一片空白。
    */
   latE6?: number | null;
+  /** 经度 ×1e6。**全站坐标一律 gcj02** */
   lngE6?: number | null;
 }
 
 /** 店铺页上的一类。`count` 直接显示，省得买家点进去数 */
 export interface StoreShelf {
+  /** 类目号 */
   categoryNo: string;
+  /** 名称 */
   name: string;
+  /** 这一类下有几件在架。直接显示，省得买家点进去数 */
   count: number;
 }
 
@@ -3746,6 +3833,7 @@ export interface PickupPoint {
  * 客户页升级为会员页之后，前者只剩跨店总览还在用。
  */
 export interface Member {
+  /** 会员号 */
   memberNo: string;
   /** 平台人档号。会员挂人不挂账号 —— 商家看不到，但详情页要用它取来源轨迹 */
   personNo: string;
@@ -3759,14 +3847,21 @@ export interface Member {
   level?: string | null;
   /** 他从哪家门店进来的 */
   firstStoreNo?: string | null;
+  /** 累计下单数 */
   orderCount: number;
+  /** 累计消费（分） */
   totalSpentMinor: number;
+  /** 近 90 天下单数。**分层判据用它而不是累计** —— 三年前买过十次的人今天是沉睡客 */
   d90OrderCount: number;
+  /** 上次下单时刻。空 = 从没下过单（线索会员） */
   lastOrderAt?: number | null;
+  /** 距上次下单多少天。按 lastOrderAt 与今天实时算 */
   daysSinceLast?: number | null;
   /** 买家关掉了这家店的消息。商家看得到状态，看不到原因 */
   reachOptOut: boolean;
+  /** 商家写的备注。**只有商家自己看得到** */
   remark?: string | null;
+  /** 成为会员的时刻 */
   joinedAt: number;
 }
 
@@ -3777,12 +3872,17 @@ export interface Member {
  * 对不上时他的第一反应是数据丢了。**先说，比等他问强。**
  */
 export interface MemberStats {
+  /** 新客数 */
   newCount: number;
+  /** 回头客数 */
   regularCount: number;
+  /** 忠实客数 */
   loyalCount: number;
+  /** 沉睡客数 */
   sleepingCount: number;
   /** 可触达人数（排除线索、拉黑、已退订） */
   reachable: number;
+  /** 本月新增会员 */
   newThisMonth: number;
   /** 未绑手机号、因此没计进会员的买家数 */
   unlinkedBuyers: number;
@@ -3790,30 +3890,48 @@ export interface MemberStats {
 
 /** 他在某一家门店的往来。单店主体没有这一段 */
 export interface MemberStoreStat {
+  /** 发生在哪家店 */
   storeNo: string;
+  /** 累计下单数 */
   orderCount: number;
+  /** 累计消费（分） */
   totalSpentMinor: number;
+  /** 上次下单时刻。空 = 从没下过单（线索会员） */
   lastOrderAt?: number | null;
+  /** 他是从这家店进来的 */
   isFirstStore: boolean;
 }
 
 /** 一次来源。**谁发的链接**要写出来，否则分享激励没法结算，商家也不知道该谢谁 */
 export interface MemberSourceItem {
+  /** 这一次是怎么来的（扫码 / 分享 / 商家录入 / 活动） */
   sourceType: string;
+  /** 发生在哪家店 */
   storeNo?: string | null;
+  /** 分享链接号 */
   linkNo?: string | null;
+  /** **谁发的链接**。不写出来的话分享激励没法结算，商家也不知道该谢谁 */
   inviterUserNo?: string | null;
+  /** 分享人的身份（顾客 / 店员）—— 结算口径不同 */
   inviterRole?: string | null;
+  /** 商家录入时的经手人 */
   operatorNo?: string | null;
+  /** 来自哪个活动 */
   activityNo?: string | null;
+  /** 是不是首次进店。首次那一条决定了这个会员算谁带来的 */
   isFirst: boolean;
+  /** 发生时刻 */
   occurredAt: number;
 }
 
 export interface MemberDetail {
+  /** 会员本身 */
   member: Member;
+  /** 他在各门店的往来。单店主体没有这一段 */
   stores: MemberStoreStat[];
+  /** 来源轨迹：他是怎么来的 */
   sources: MemberSourceItem[];
+  /** 身上的标签 */
   tags: MemberTag[];
 }
 
@@ -3824,7 +3942,9 @@ export interface MemberDetail {
  * 允许改名之后两个商家对同一个词会有两种理解，按它筛出来的人群从此不可比。
  */
 export interface MemberTag {
+  /** 标签号 */
   tagNo: string;
+  /** 人群名 */
   name: string;
   /** `SYS` 系统算的（只读）/ `MCH` 商家自己的 */
   tagType: string;
@@ -3842,15 +3962,22 @@ export interface MemberTag {
  * 原因码：`TOO_SOON` 最近发过 / `OPT_OUT` 已退订 / `LEAD` 线索会员 / `NO_ACCOUNT` 还没注册。
  */
 export interface ReachPlan {
+  /** 条件命中多少人 */
   matched: number;
+  /** 其中**能真正收到东西**的有多少（线索会员与已退订的人进不了受众）。只显示 count 的话，商家在人群页看到 120、发放页发出 96，会以为发漏了 */
   reachable: number;
+  /** 发不出去的人按原因分类。**必须显示** —— 商家选了 30 个人实发 8 个，只说「发送成功」他会以为 30 个都收到了 */
   skips: Array<{ reason: string; count: number }>;
 }
 
 export interface ReachResult {
+  /** 这次群发的任务号 */
   taskNo: string;
+  /** 实际发出多少条 */
   sent: number;
+  /** 跳过多少人 */
   skipped: number;
+  /** 发不出去的人按原因分类。**必须显示** —— 商家选了 30 个人实发 8 个，只说「发送成功」他会以为 30 个都收到了 */
   skips: Array<{ reason: string; count: number }>;
 }
 
@@ -3860,13 +3987,19 @@ export interface ReachResult {
  * @remarks 这一页是发消息功能的前提：顾客要能看到**谁在给他发消息**并且能关掉。
  */
 export interface MyMembership {
+  /** 哪家商家 */
   entityNo: string;
+  /** 商家名 */
   entityName: string;
+  /** 会员等级 */
   level?: string | null;
+  /** 累计下单数 */
   orderCount: number;
+  /** 累计消费（分） */
   totalSpentMinor: number;
   /** 我关掉了这家店的消息没有。**只有本人能改** */
   reachOptOut: boolean;
+  /** 成为会员的时刻 */
   joinedAt: number;
 }
 
@@ -3979,9 +4112,13 @@ export interface StoreActivityDraft {
 
 /** 冲突提示：这件商品已经在另一个还在跑的活动里 */
 export interface ActivityConflict {
+  /** 商品号 */
   goodsNo: string;
+  /** 活动号 */
   activityNo: string;
+  /** 活动名 */
   activityName: string;
+  /** 优惠方式 */
   benefitType: string;
 }
 
@@ -4036,8 +4173,11 @@ export interface MerchantCoupon {
   timesTotal: number;
   /** 发行量。空 = 不限（只有定向发放允许） */
   totalCount?: number | null;
+  /** 已领取数 */
   receivedCount: number;
+  /** 每人最多领几张 */
   perUserLimit: number;
+  /** 预算上限（分）。空 = 不限 */
   budgetMinor?: number | null;
   /**
    * 最大敞口 = 发行量 × 单张最大优惠。
@@ -4115,7 +4255,9 @@ export interface CouponIssueBatch {
   segmentNo?: string | null;
   /** 人群此刻命中多少人 */
   planned: number;
+  /** 实发多少张 */
   issued: number;
+  /** 跳过多少人 */
   skipped: number;
   /** `UNREACHABLE` 还没注册或已退订 / `ALREADY_HAS` 到每人上限 / `SOLD_OUT` 券发完 */
   skipReasons: Array<{ reason: string; count: number }>;
@@ -4204,10 +4346,15 @@ export interface CouponRedeemView {
  * 报错会让他以为没成功，于是再按一次。
  */
 export interface CouponRedeemResult {
+  /** 这个人手里那一张的编号 */
   userCouponNo: string;
+  /** 已核销次数 */
   timesUsed: number;
+  /** 还能核几次 */
   remaining: number;
+  /** 次数用尽 */
   usedUp: boolean;
+  /** 为真 = 店员**连点了两下**（3 秒窗口内），不是第二次核销 —— 报错会让他以为没成功，于是再按一次 */
   duplicated: boolean;
 }
 
@@ -4233,25 +4380,37 @@ export interface MemberSetting {
  * `lastCount` 只是「上次算于 countedAt 时」的展示值 —— 发券与触达前会当场重算。
  */
 export interface MemberSegment {
+  /** 人群号 */
   segmentNo: string;
+  /** 人群名 */
   name: string;
   /** 限定门店。空 = 全主体 */
   scopeStoreNo?: string | null;
+  /** 筛选条件。存的是 JSON —— 条件会长，拆成列的话每加一个维度都要改表 */
   rule: MemberSegmentRule;
+  /** 上次算出来命中多少人 */
   lastCount: number;
+  /** 上次算的时刻。**人群是快照不是实时** —— 中间新来的人不在里面 */
   countedAt?: number | null;
 }
 
 /** 人群条件。**只存号**（标签号/门店号）—— 标签改名之后条件还得成立 */
 export interface MemberSegmentRule {
+  /** 会员等级 */
   level?: string | null;
+  /** 来源类型 */
   source?: string | null;
+  /** 状态 */
   status?: string | null;
   /** **取交集**：选两个标签是「都要满足」。界面上写「同时含以下标签」 */
   tagNos?: string[];
+  /** 上次下单**早于**这个时刻。用来筛沉睡客 */
   lastOrderBefore?: number | null;
+  /** 上次下单**晚于**这个时刻。用来筛活跃客 */
   lastOrderAfter?: number | null;
+  /** 累计消费下限（分）。空 = 不限 */
   spentMin?: number | null;
+  /** 累计消费上限（分）。空 = 不限 */
   spentMax?: number | null;
 }
 
@@ -4263,7 +4422,9 @@ export interface MemberSegmentRule {
  * 只显示 count 的话，商家在人群页看到 120、发放页发出 96，他会以为发漏了。
  */
 export interface MemberSegmentPreview {
+  /** 条件命中多少人 */
   count: number;
+  /** 其中**能真正收到东西**的有多少（线索会员与已退订的人进不了受众）。只显示 count 的话，商家在人群页看到 120、发放页发出 96，会以为发漏了 */
   reachable: number;
 }
 
@@ -4271,9 +4432,11 @@ export interface MemberSegmentPreview {
  * 合并标签的影响面。**先给商家看这几个数，再让他按** —— 合并不可逆。
  */
 export interface MemberMergePreview {
+  /** 会被改到的会员数 */
   affectedMembers: number;
   /** 两个标签都有的人。合并后只保留一条 */
   bothTagged: number;
+  /** 引用了这个标签的活动数。**合并前要看** —— 合并不可逆，而活动的受众条件会跟着变 */
   referencedActivities: number;
   /** false = 这只是试算，没有落库 */
   applied: boolean;
@@ -4332,6 +4495,7 @@ export interface SkuIdentityReport {
   willSet: number;
   /** 匹配上了但三列都没变的行数 */
   noChange: number;
+  /** 有问题的行：认不出货号、值不合法。**要能逐行看** —— 只给个数商家不知道改哪一行 */
   problems: { line: number; reason: string }[];
   /** 前几行的前后对照，让他确认「改的是不是我想的那些」 */
   samples: {
@@ -4364,6 +4528,7 @@ export interface SkuIdentityReport {
  * 这样运营给类目加了新维度，没动过手的商家会自动获得它。
  */
 export interface SpecOverride {
+  /** 规格维度号 */
   dimNo: string;
   /** false = 本店不用它。移除掉的在界面上收在下面，能加回来 */
   enabled: boolean;
@@ -4385,6 +4550,7 @@ export interface SpecOverride {
  * <p>`dims` 可能是空的 —— 那是运营还没给这个类目配规格，**商家看得见才问得出来**。
  */
 export interface StoreCategorySpecs {
+  /** 类目号 */
   categoryNo: string;
   /** 店主改过名的用店主的叫法（「好菜」而不是「蔬菜」）—— 这一页是给他看的 */
   categoryName: string;
@@ -4406,7 +4572,9 @@ export interface StoreCategorySpecs {
  * 这个回答「我拥有什么、能改什么、动它会影响多少」。
  */
 export interface MerchantSpecDim {
+  /** 规格维度号 */
   dimNo: string;
+  /** 名称 */
   name: string;
   /** 这个维度下的取值数（含平台档位 + 自己加的） */
   valueCount: number;
@@ -4420,8 +4588,11 @@ export interface MerchantSpecDim {
   status: SpecTemplateStatus;
   /** 已建 / 上限。摆出来，而不是等他建到第 11 个才被拒 */
   dimUsed: number;
+  /** 维度配额上限，按档位取 */
   dimQuota: number;
+  /** 取值配额上限 */
   valueQuota: number;
+  /** 这个维度下的取值 */
   values: SpecOption[];
 }
 

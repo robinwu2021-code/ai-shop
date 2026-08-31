@@ -66,7 +66,9 @@ export interface PickupSelfBuildReq {
   name: string;
   /** 地址 */
   address: string;
+  /** 纬度 ×1e6，同上 */
   latE6: number;
+  /** 经度 ×1e6。**全站坐标一律 gcj02** */
   lngE6: number;
   /** 营业时间，人读的一行字 */
   openHours?: string;
@@ -446,7 +448,9 @@ export interface OpenFromMapReq {
   name: string;
   /** 地址 */
   address?: string;
+  /** 纬度 ×1e6，同上 */
   latE6: number;
+  /** 经度 ×1e6。**全站坐标一律 gcj02** */
   lngE6: number;
   /** 端上已知的街道码（9 位），只在服务端逆地理不可用时兜底 */
   streetCode?: string;

@@ -285,18 +285,18 @@
 |---|---|:---:|---|
 | `couponNo` | `string` | 是 | 券单号 |
 | `title` | `string` | 是 | 券名，如「满 50 减 5」 |
-| `type` | [`CouponType`](#coupontype) | 是 | — |
+| `type` | [`CouponType`](#coupontype) | 是 | 类型 |
 | `faceMinor` | `number` | 是 | 满减面额（最小货币单位）。`DISCOUNT` 券为 0 |
 | `discountRate` | `number` | 是 | 折扣**万分比**，8500 = 八五折。`FULL_CUT` 券为 0 |
 | `thresholdMinor` | `number` | 是 | 使用门槛（最小货币单位）。0 表示无门槛 |
 | `maxDiscountMinor` | `number` | 是 | 折扣券封顶（最小货币单位）。仅 `DISCOUNT` 有意义 |
-| `funder` | [`CouponFunder`](#couponfunder) | 是 | — |
+| `funder` | [`CouponFunder`](#couponfunder) | 是 | 谁出这笔钱：平台 / 商家。**结算口径不同** |
 | `merchantNo` | `string` | 是 | 商家券的归属商家；平台券为空 |
 | `startAt` | `number` | 是 | 可领取/可用的时间窗 |
-| `endAt` | `number` | 是 | — |
+| `endAt` | `number` | 是 | 结束时刻（毫秒） |
 | `remain` | `number` | 是 | 剩余可领数量 |
 | `received` | `boolean` | 是 | 当前用户是否已领取。列表页据此显示「领取」还是「去使用」 |
-| `status` | [`CouponStatus`](#couponstatus) | 是 | — |
+| `status` | [`CouponStatus`](#couponstatus) | 是 | 状态 |
 | `scopeDesc` | `string` | 是 | 适用范围文案，如「仅限张记粮油店」。展示用，实际校验在服务端 |
 
 
@@ -379,7 +379,7 @@
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
 | `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
@@ -1904,7 +1904,7 @@
 | `isDefault` | `boolean` | 是 | 设为默认。置 true 会把原默认地址改为 false |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
 | `latE6` | `number,null` | 否 | 地图选点给的坐标（gcj02，E6）；不传 = 不改 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
 
 **出参**（`data`）
 
@@ -2132,13 +2132,13 @@
 | `phone` | `string` | 是 | 收货人手机号 |
 | `region` | `string` | 是 | 省市区，拼好给人看的一串 |
 | `province` | `string,null` | 否 | 省 / 市 / 区县，**分开的三个**。 与 `region` 并存不是冗余：`region` 是展示用的一串（存量地址、地图回填都只有它）， 这三列是**能拿来算的**那份 —— 按省算运费、按区派单、按市校经营范围。 后端 `usr_address` 一直有这三列，端上一直没填，于是那些规则全在 null 上求值， 一条都不命中，而页面上完全正常。 可能为空：存量地址是纯手填的，拆不出来。 |
-| `city` | `string,null` | 否 | — |
-| `district` | `string,null` | 否 | — |
+| `city` | `string,null` | 否 | 市 |
+| `district` | `string,null` | 否 | 区/县 |
 | `detail` | `string` | 是 | 详细地址（街道门牌） |
 | `isDefault` | `boolean` | 是 | 是否默认地址。整个地址簿至多一条为 true |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
 | `latE6` | `number,null` | 否 | 收货点坐标（gcj02，E6）。地图选点回填；**可能为空** —— 存量地址是纯手填的。 商家的「自送半径」要拿它跟门店坐标算距离，没有坐标那条规则就永远算不出结果。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
 
 ### AfterSale
 
@@ -2339,7 +2339,7 @@
 | `originName` | `string,null` | 否 | `originCode` 对应的原始官方名（「景滑村委会」，未清理）——仅供展示/追溯， 判「是不是村委会」不要解析它，用下面的 `rural` 字段（服务端存的，不是端上猜的）。 |
 | `rural` | `boolean` | 否 | 是不是村委会（`sys_region.rural`，经 origin_code 反查）。只对 kind=VILLAGE 有意义： 村委会到此为止、不再下钻；居委会/社区还能再挑具体小区。 |
 | `latE6` | `number,null` | 否 | 官方村名录批量补录过的坐标，可能为空 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
 
 ### Coupon
 
@@ -2349,18 +2349,18 @@
 |---|---|:---:|---|
 | `couponNo` | `string` | 是 | 券单号 |
 | `title` | `string` | 是 | 券名，如「满 50 减 5」 |
-| `type` | [`CouponType`](#coupontype) | 是 | — |
+| `type` | [`CouponType`](#coupontype) | 是 | 类型 |
 | `faceMinor` | `number` | 是 | 满减面额（最小货币单位）。`DISCOUNT` 券为 0 |
 | `discountRate` | `number` | 是 | 折扣**万分比**，8500 = 八五折。`FULL_CUT` 券为 0 |
 | `thresholdMinor` | `number` | 是 | 使用门槛（最小货币单位）。0 表示无门槛 |
 | `maxDiscountMinor` | `number` | 是 | 折扣券封顶（最小货币单位）。仅 `DISCOUNT` 有意义 |
-| `funder` | [`CouponFunder`](#couponfunder) | 是 | — |
+| `funder` | [`CouponFunder`](#couponfunder) | 是 | 谁出这笔钱：平台 / 商家。**结算口径不同** |
 | `merchantNo` | `string` | 是 | 商家券的归属商家；平台券为空 |
 | `startAt` | `number` | 是 | 可领取/可用的时间窗 |
-| `endAt` | `number` | 是 | — |
+| `endAt` | `number` | 是 | 结束时刻（毫秒） |
 | `remain` | `number` | 是 | 剩余可领数量 |
 | `received` | `boolean` | 是 | 当前用户是否已领取。列表页据此显示「领取」还是「去使用」 |
-| `status` | [`CouponStatus`](#couponstatus) | 是 | — |
+| `status` | [`CouponStatus`](#couponstatus) | 是 | 状态 |
 | `scopeDesc` | `string` | 是 | 适用范围文案，如「仅限张记粮油店」。展示用，实际校验在服务端 |
 
 ### CouponFunder
@@ -2527,7 +2527,7 @@
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
 | `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
@@ -2921,13 +2921,13 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `entityNo` | `string` | 是 | — |
-| `entityName` | `string` | 是 | — |
-| `level` | `string,null` | 否 | — |
-| `orderCount` | `number` | 是 | — |
-| `totalSpentMinor` | `number` | 是 | — |
+| `entityNo` | `string` | 是 | 哪家商家 |
+| `entityName` | `string` | 是 | 商家名 |
+| `level` | `string,null` | 否 | 会员等级 |
+| `orderCount` | `number` | 是 | 累计下单数 |
+| `totalSpentMinor` | `number` | 是 | 累计消费（分） |
 | `reachOptOut` | `boolean` | 是 | 我关掉了这家店的消息没有。**只有本人能改** |
-| `joinedAt` | `number` | 是 | — |
+| `joinedAt` | `number` | 是 | 成为会员的时刻 |
 
 ### MyStoreCoupon
 
@@ -3075,7 +3075,7 @@
 | `openHours` | `string` | 是 | 营业时间文案，如 `08:00-21:00`。展示用，不参与计算 |
 | `arrivalDesc` | `string` | 是 | 到货时间说明，如「次日 18:00 后到」。影响用户选不选这个点 |
 | `latE6` | `number,null` | 否 | 取货点坐标（gcj02，E6）。**可能为空** —— 存量点是手填地址建的。 买家要拿着它导航过去，没有就只能显示地址文本。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
 
 ### PickupFeeMode
 
@@ -3199,9 +3199,9 @@
 |---|---|:---:|---|
 | `type` | [`QualificationType`](#qualificationtype) | 是 | 资质类型码 |
 | `code` | `string` | 是 | 证照编号 |
-| `imageUrl` | `string` | 是 | — |
+| `imageUrl` | `string` | 是 | 证件照地址 |
 | `expireAt` | `number,null` | 是 | 有效期截止（毫秒）。**长期有效传 `null`** —— 不要用 0 或一个很大的数字冒充：过期扫描会把前者当成已过期、 后者当成永不过期，两种都错且都不报错。 |
-| `issuer` | `string` | 否 | — |
+| `issuer` | `string` | 否 | 发证机关 |
 
 ### QualificationType
 
@@ -3257,7 +3257,7 @@
 | `regionCode` | `string` | 是 | 国标码：省 2 位 / 市 4 位 / 区县 6 位 |
 | `parentCode` | `string,null` | 否 | 上级码。省级为 null |
 | `level` | `string` | 是 | `PROVINCE` \| `CITY` \| `DISTRICT`。地址簿只到区县，街道与村不下发 |
-| `name` | `string` | 是 | — |
+| `name` | `string` | 是 | 名称 |
 | `hasChild` | `boolean` | 是 | 还有没有下一级。**区县恒为 false** —— 地址表只有省市区三列， 让人点进街道再挑一个存不下去的东西，比不让他挑更糟。 |
 
 ### RegionOption
@@ -3346,7 +3346,7 @@
 | `isDefault` | `boolean` | 是 | 设为默认。置 true 会把原默认地址改为 false |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
 | `latE6` | `number,null` | 否 | 地图选点给的坐标（gcj02，E6）；不传 = 不改 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
 
 ### ServiceScope
 
@@ -3403,7 +3403,7 @@
 | `openHours` | `string` | 是 | 营业时间文案，店主自填 |
 | `address` | `string` | 是 | 店铺地址，店主自填 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。**可能为空** —— 商家没在地图上标过点。 买家侧据此决定「导航到这里」显不显示：没坐标的导航按钮点了只会打开一片空白。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
 
 ### StoreHome
 
@@ -3422,9 +3422,9 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `categoryNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `count` | `number` | 是 | — |
+| `categoryNo` | `string` | 是 | 类目号 |
+| `name` | `string` | 是 | 名称 |
+| `count` | `number` | 是 | 这一类下有几件在架。直接显示，省得买家点进去数 |
 
 ### TrafficSource
 

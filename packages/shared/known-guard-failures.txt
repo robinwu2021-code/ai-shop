@@ -18,6 +18,4 @@
 doc-standard.test.ts::文档规范 不使用 mermaid —— 写错一个字符整张图不显示，而且不报错 @<=16
 doc-standard.test.ts::文档规范 每张 svg 都有 title 与 desc —— 图之外要有能读的说明 @<=4
 doc-standard.test.ts::文档规范 没有状态行的文档不许再增加（基线只降不升） @<=41
-spec-completeness.test.ts::契约完整性 B 端：每个字段都有说明 @<=175
-spec-completeness.test.ts::契约完整性 C 端：每个字段都有说明 @<=172
 spec-completeness.test.ts::契约完整性 平台端：每个字段都有说明 @<=361

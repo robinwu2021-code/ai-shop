@@ -364,13 +364,13 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `slotNo` | `string` | 是 | — |
-| `storeNo` | `string` | 是 | — |
-| `startAt` | `number` | 是 | — |
-| `endAt` | `number` | 是 | — |
-| `capacity` | `number` | 是 | — |
-| `booked` | `number` | 是 | — |
-| `remaining` | `number` | 是 | — |
+| `slotNo` | `string` | 是 | 时段号。**下单占的是它** |
+| `storeNo` | `string` | 是 | 门店号 |
+| `startAt` | `number` | 是 | 开始时刻（毫秒） |
+| `endAt` | `number` | 是 | 结束时刻（毫秒） |
+| `capacity` | `number` | 是 | 这一档能约几个人 |
+| `booked` | `number` | 是 | 已约人数 |
+| `remaining` | `number` | 是 | 还能核几次 |
 | `status` | [`SlotStatus`](#slotstatus) | 是 | OPEN 可约 / CLOSED 停约。停约**不删行也不赶人** |
 
 
@@ -633,7 +633,7 @@ _无字段_
 | `originName` | `string,null` | 否 | `originCode` 对应的原始官方名（「景滑村委会」，未清理）——仅供展示/追溯， 判「是不是村委会」不要解析它，用下面的 `rural` 字段（服务端存的，不是端上猜的）。 |
 | `rural` | `boolean` | 否 | 是不是村委会（`sys_region.rural`，经 origin_code 反查）。只对 kind=VILLAGE 有意义： 村委会到此为止、不再下钻；居委会/社区还能再挑具体小区。 |
 | `latE6` | `number,null` | 否 | 官方村名录批量补录过的坐标，可能为空 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
 
 
 ### context
@@ -689,11 +689,11 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `userCouponNo` | `string` | 是 | — |
-| `timesUsed` | `number` | 是 | — |
-| `remaining` | `number` | 是 | — |
-| `usedUp` | `boolean` | 是 | — |
-| `duplicated` | `boolean` | 是 | — |
+| `userCouponNo` | `string` | 是 | 这个人手里那一张的编号 |
+| `timesUsed` | `number` | 是 | 已核销次数 |
+| `remaining` | `number` | 是 | 还能核几次 |
+| `usedUp` | `boolean` | 是 | 次数用尽 |
+| `duplicated` | `boolean` | 是 | 为真 = 店员**连点了两下**（3 秒窗口内），不是第二次核销 —— 报错会让他以为没成功，于是再按一次 |
 
 
 #### GET `/biz/coupon-redeem/{code}`
@@ -765,9 +765,9 @@ _无字段_
 | `redeemMode` | `string` | 是 | `ORDER` 下单抵扣 / `STORE_CODE` 到店出示核销 |
 | `timesTotal` | `number` | 是 | 一张能用几次。>1 就是次卡（豆浆 5 杯） |
 | `totalCount` | `number,null` | 否 | 发行量。空 = 不限（只有定向发放允许） |
-| `receivedCount` | `number` | 是 | — |
-| `perUserLimit` | `number` | 是 | — |
-| `budgetMinor` | `number,null` | 否 | — |
+| `receivedCount` | `number` | 是 | 已领取数 |
+| `perUserLimit` | `number` | 是 | 每人最多领几张 |
+| `budgetMinor` | `number,null` | 否 | 预算上限（分）。空 = 不限 |
 | `maxExposureMinor` | `number,null` | 否 | 最大敞口 = 发行量 × 单张最大优惠。 **建券页要显示它** —— 商家填「1000 张 × 20 元」时心里想的是「发 1000 张」， 不是「最多赔两万」。 |
 | `status` | `string` | 是 | `ACTIVE` / `PAUSED` 暂停发放（已领的不受影响）/ `ENDED` |
 
@@ -803,9 +803,9 @@ _无字段_
 | `redeemMode` | `string` | 是 | `ORDER` 下单抵扣 / `STORE_CODE` 到店出示核销 |
 | `timesTotal` | `number` | 是 | 一张能用几次。>1 就是次卡（豆浆 5 杯） |
 | `totalCount` | `number,null` | 否 | 发行量。空 = 不限（只有定向发放允许） |
-| `receivedCount` | `number` | 是 | — |
-| `perUserLimit` | `number` | 是 | — |
-| `budgetMinor` | `number,null` | 否 | — |
+| `receivedCount` | `number` | 是 | 已领取数 |
+| `perUserLimit` | `number` | 是 | 每人最多领几张 |
+| `budgetMinor` | `number,null` | 否 | 预算上限（分）。空 = 不限 |
 | `maxExposureMinor` | `number,null` | 否 | 最大敞口 = 发行量 × 单张最大优惠。 **建券页要显示它** —— 商家填「1000 张 × 20 元」时心里想的是「发 1000 张」， 不是「最多赔两万」。 |
 | `status` | `string` | 是 | `ACTIVE` / `PAUSED` 暂停发放（已领的不受影响）/ `ENDED` |
 
@@ -826,8 +826,8 @@ _无字段_
 | `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
 | `segmentNo` | `string,null` | 否 | 发给哪个人群。空 = 手动挑的人 |
 | `planned` | `number` | 是 | 人群此刻命中多少人 |
-| `issued` | `number` | 是 | — |
-| `skipped` | `number` | 是 | — |
+| `issued` | `number` | 是 | 实发多少张 |
+| `skipped` | `number` | 是 | 跳过多少人 |
 | `skipReasons` | `object`（见下）\[\] | 是 | `UNREACHABLE` 还没注册或已退订 / `ALREADY_HAS` 到每人上限 / `SOLD_OUT` 券发完 |
 | `amountMinor` | `number` | 是 | 这一批券的面额合计（分）—— 商家据此估敞口 |
 | `operatorNo` | `string,null` | 否 | 谁发的 |
@@ -872,9 +872,9 @@ _无字段_
 | `redeemMode` | `string` | 是 | `ORDER` 下单抵扣 / `STORE_CODE` 到店出示核销 |
 | `timesTotal` | `number` | 是 | 一张能用几次。>1 就是次卡（豆浆 5 杯） |
 | `totalCount` | `number,null` | 否 | 发行量。空 = 不限（只有定向发放允许） |
-| `receivedCount` | `number` | 是 | — |
-| `perUserLimit` | `number` | 是 | — |
-| `budgetMinor` | `number,null` | 否 | — |
+| `receivedCount` | `number` | 是 | 已领取数 |
+| `perUserLimit` | `number` | 是 | 每人最多领几张 |
+| `budgetMinor` | `number,null` | 否 | 预算上限（分）。空 = 不限 |
 | `maxExposureMinor` | `number,null` | 否 | 最大敞口 = 发行量 × 单张最大优惠。 **建券页要显示它** —— 商家填「1000 张 × 20 元」时心里想的是「发 1000 张」， 不是「最多赔两万」。 |
 | `status` | `string` | 是 | `ACTIVE` / `PAUSED` 暂停发放（已领的不受影响）/ `ENDED` |
 
@@ -1052,8 +1052,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `entity` | [`Entity`](#entity) | 是 | — |
-| `stores` | [`Store`](#store)\[\] | 是 | — |
+| `entity` | [`Entity`](#entity) | 是 | 所属主体（一张证照） |
+| `stores` | [`Store`](#store)\[\] | 是 | 这张证照下我能进的门店 |
 
 
 ### fulfillment
@@ -1105,8 +1105,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `recommend` | `string` | 是 | — |
-| `address` | `string` | 是 | — |
+| `recommend` | `string` | 是 | 带楼盘/门牌的人话版地址。**端上填这个** |
+| `address` | `string` | 是 | 地址 |
 
 
 #### GET `/biz/geo/tips`
@@ -1197,7 +1197,7 @@ _无字段_
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
 | `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
@@ -1321,7 +1321,7 @@ _无字段_
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
 | `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
@@ -1385,7 +1385,7 @@ _无字段_
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
 | `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
@@ -1449,7 +1449,7 @@ _无字段_
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
 | `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
@@ -1535,7 +1535,7 @@ _无字段_
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
 | `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
@@ -1599,7 +1599,7 @@ _无字段_
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
 | `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
@@ -1663,7 +1663,7 @@ _无字段_
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
 | `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
@@ -1727,7 +1727,7 @@ _无字段_
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
 | `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
@@ -1797,7 +1797,7 @@ _无字段_
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
 | `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
@@ -1932,7 +1932,7 @@ _无字段_
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
 | `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
@@ -2594,9 +2594,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `matched` | `number` | 是 | — |
-| `reachable` | `number` | 是 | — |
-| `skips` | `object`（见下）\[\] | 是 | — |
+| `matched` | `number` | 是 | 条件命中多少人 |
+| `reachable` | `number` | 是 | 其中**能真正收到东西**的有多少（线索会员与已退订的人进不了受众）。只显示 count 的话，商家在人群页看到 120、发放页发出 96，会以为发漏了 |
+| `skips` | `object`（见下）\[\] | 是 | 发不出去的人按原因分类。**必须显示** —— 商家选了 30 个人实发 8 个，只说「发送成功」他会以为 30 个都收到了 |
 
 `skips[]` 的字段：
 
@@ -2618,10 +2618,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `taskNo` | `string` | 是 | — |
-| `sent` | `number` | 是 | — |
-| `skipped` | `number` | 是 | — |
-| `skips` | `object`（见下）\[\] | 是 | — |
+| `taskNo` | `string` | 是 | 这次群发的任务号 |
+| `sent` | `number` | 是 | 实际发出多少条 |
+| `skipped` | `number` | 是 | 跳过多少人 |
+| `skips` | `object`（见下）\[\] | 是 | 发不出去的人按原因分类。**必须显示** —— 商家选了 30 个人实发 8 个，只说「发送成功」他会以为 30 个都收到了 |
 
 `skips[]` 的字段：
 
@@ -2656,12 +2656,12 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `segmentNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `segmentNo` | `string` | 是 | 人群号 |
+| `name` | `string` | 是 | 人群名 |
 | `scopeStoreNo` | `string,null` | 否 | 限定门店。空 = 全主体 |
-| `rule` | [`MemberSegmentRule`](#membersegmentrule) | 是 | — |
-| `lastCount` | `number` | 是 | — |
-| `countedAt` | `number,null` | 否 | — |
+| `rule` | [`MemberSegmentRule`](#membersegmentrule) | 是 | 筛选条件。存的是 JSON —— 条件会长，拆成列的话每加一个维度都要改表 |
+| `lastCount` | `number` | 是 | 上次算出来命中多少人 |
+| `countedAt` | `number,null` | 否 | 上次算的时刻。**人群是快照不是实时** —— 中间新来的人不在里面 |
 
 
 #### POST `/biz/member-segments/{segmentNo}/remove`
@@ -2687,8 +2687,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `count` | `number` | 是 | — |
-| `reachable` | `number` | 是 | — |
+| `count` | `number` | 是 | 条件命中多少人 |
+| `reachable` | `number` | 是 | 其中**能真正收到东西**的有多少（线索会员与已退订的人进不了受众）。只显示 count 的话，商家在人群页看到 120、发放页发出 96，会以为发漏了 |
 
 
 ### member-settings
@@ -2750,8 +2750,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `tagNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `tagNo` | `string` | 是 | 标签号 |
+| `name` | `string` | 是 | 人群名 |
 | `tagType` | `string` | 是 | `SYS` 系统算的（只读）/ `MCH` 商家自己的 |
 | `status` | `string` | 是 | `ACTIVE` / `DISABLED` 停用（老的还在、新的打不上）/ `MERGED` 已并入别的标签 |
 | `count` | `number` | 是 | 打了多少人。服务端 COUNT 出来的，不是冗余列 |
@@ -2769,8 +2769,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `tagNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `tagNo` | `string` | 是 | 标签号 |
+| `name` | `string` | 是 | 人群名 |
 | `tagType` | `string` | 是 | `SYS` 系统算的（只读）/ `MCH` 商家自己的 |
 | `status` | `string` | 是 | `ACTIVE` / `DISABLED` 停用（老的还在、新的打不上）/ `MERGED` 已并入别的标签 |
 | `count` | `number` | 是 | 打了多少人。服务端 COUNT 出来的，不是冗余列 |
@@ -2788,9 +2788,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `affectedMembers` | `number` | 是 | — |
+| `affectedMembers` | `number` | 是 | 会被改到的会员数 |
 | `bothTagged` | `number` | 是 | 两个标签都有的人。合并后只保留一条 |
-| `referencedActivities` | `number` | 是 | — |
+| `referencedActivities` | `number` | 是 | 引用了这个标签的活动数。**合并前要看** —— 合并不可逆，而活动的受众条件会跟着变 |
 | `applied` | `boolean` | 是 | false = 这只是试算，没有落库 |
 
 
@@ -2826,21 +2826,21 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `memberNo` | `string` | 是 | — |
+| `memberNo` | `string` | 是 | 会员号 |
 | `personNo` | `string` | 是 | 平台人档号。会员挂人不挂账号 —— 商家看不到，但详情页要用它取来源轨迹 |
 | `phoneTail` | `string,null` | 否 | 手机号后四位。**永远不会有完整号** —— 需要它的只有平台申诉处置 |
 | `status` | `string` | 是 | `LEAD` 线索（商家录的、本人还没注册，不可触达）/ `ACTIVE` / `BLOCKED` |
 | `source` | `string` | 是 | 首次来源 `ORDER`/`SHARE`/`SCAN`/`MANUAL`/`FAVORITE`/`SEARCH` |
 | `level` | `string,null` | 否 | `NEW`/`REGULAR`/`LOYAL`/`SLEEPING`。按主体还是按门店算，取决于主体的经营口径 |
 | `firstStoreNo` | `string,null` | 否 | 他从哪家门店进来的 |
-| `orderCount` | `number` | 是 | — |
-| `totalSpentMinor` | `number` | 是 | — |
-| `d90OrderCount` | `number` | 是 | — |
-| `lastOrderAt` | `number,null` | 否 | — |
-| `daysSinceLast` | `number,null` | 否 | — |
+| `orderCount` | `number` | 是 | 累计下单数 |
+| `totalSpentMinor` | `number` | 是 | 累计消费（分） |
+| `d90OrderCount` | `number` | 是 | 近 90 天下单数。**分层判据用它而不是累计** —— 三年前买过十次的人今天是沉睡客 |
+| `lastOrderAt` | `number,null` | 否 | 上次下单时刻。空 = 从没下过单（线索会员） |
+| `daysSinceLast` | `number,null` | 否 | 距上次下单多少天。按 lastOrderAt 与今天实时算 |
 | `reachOptOut` | `boolean` | 是 | 买家关掉了这家店的消息。商家看得到状态，看不到原因 |
-| `remark` | `string,null` | 否 | — |
-| `joinedAt` | `number` | 是 | — |
+| `remark` | `string,null` | 否 | 商家写的备注。**只有商家自己看得到** |
+| `joinedAt` | `number` | 是 | 成为会员的时刻 |
 
 
 #### GET `/biz/members/{memberNo}`
@@ -2855,10 +2855,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `member` | [`Member`](#member) | 是 | — |
-| `stores` | [`MemberStoreStat`](#memberstorestat)\[\] | 是 | — |
-| `sources` | [`MemberSourceItem`](#membersourceitem)\[\] | 是 | — |
-| `tags` | [`MemberTag`](#membertag)\[\] | 是 | — |
+| `member` | [`Member`](#member) | 是 | 会员本身 |
+| `stores` | [`MemberStoreStat`](#memberstorestat)\[\] | 是 | 他在各门店的往来。单店主体没有这一段 |
+| `sources` | [`MemberSourceItem`](#membersourceitem)\[\] | 是 | 来源轨迹：他是怎么来的 |
+| `tags` | [`MemberTag`](#membertag)\[\] | 是 | 身上的标签 |
 
 
 #### PUT `/biz/members/{memberNo}`
@@ -2873,21 +2873,21 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `memberNo` | `string` | 是 | — |
+| `memberNo` | `string` | 是 | 会员号 |
 | `personNo` | `string` | 是 | 平台人档号。会员挂人不挂账号 —— 商家看不到，但详情页要用它取来源轨迹 |
 | `phoneTail` | `string,null` | 否 | 手机号后四位。**永远不会有完整号** —— 需要它的只有平台申诉处置 |
 | `status` | `string` | 是 | `LEAD` 线索（商家录的、本人还没注册，不可触达）/ `ACTIVE` / `BLOCKED` |
 | `source` | `string` | 是 | 首次来源 `ORDER`/`SHARE`/`SCAN`/`MANUAL`/`FAVORITE`/`SEARCH` |
 | `level` | `string,null` | 否 | `NEW`/`REGULAR`/`LOYAL`/`SLEEPING`。按主体还是按门店算，取决于主体的经营口径 |
 | `firstStoreNo` | `string,null` | 否 | 他从哪家门店进来的 |
-| `orderCount` | `number` | 是 | — |
-| `totalSpentMinor` | `number` | 是 | — |
-| `d90OrderCount` | `number` | 是 | — |
-| `lastOrderAt` | `number,null` | 否 | — |
-| `daysSinceLast` | `number,null` | 否 | — |
+| `orderCount` | `number` | 是 | 累计下单数 |
+| `totalSpentMinor` | `number` | 是 | 累计消费（分） |
+| `d90OrderCount` | `number` | 是 | 近 90 天下单数。**分层判据用它而不是累计** —— 三年前买过十次的人今天是沉睡客 |
+| `lastOrderAt` | `number,null` | 否 | 上次下单时刻。空 = 从没下过单（线索会员） |
+| `daysSinceLast` | `number,null` | 否 | 距上次下单多少天。按 lastOrderAt 与今天实时算 |
 | `reachOptOut` | `boolean` | 是 | 买家关掉了这家店的消息。商家看得到状态，看不到原因 |
-| `remark` | `string,null` | 否 | — |
-| `joinedAt` | `number` | 是 | — |
+| `remark` | `string,null` | 否 | 商家写的备注。**只有商家自己看得到** |
+| `joinedAt` | `number` | 是 | 成为会员的时刻 |
 
 
 #### GET `/biz/members/stats`
@@ -2902,12 +2902,12 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `newCount` | `number` | 是 | — |
-| `regularCount` | `number` | 是 | — |
-| `loyalCount` | `number` | 是 | — |
-| `sleepingCount` | `number` | 是 | — |
+| `newCount` | `number` | 是 | 新客数 |
+| `regularCount` | `number` | 是 | 回头客数 |
+| `loyalCount` | `number` | 是 | 忠实客数 |
+| `sleepingCount` | `number` | 是 | 沉睡客数 |
 | `reachable` | `number` | 是 | 可触达人数（排除线索、拉黑、已退订） |
-| `newThisMonth` | `number` | 是 | — |
+| `newThisMonth` | `number` | 是 | 本月新增会员 |
 | `unlinkedBuyers` | `number` | 是 | 未绑手机号、因此没计进会员的买家数 |
 
 
@@ -3666,15 +3666,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `pickupNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `address` | `string,null` | 否 | — |
-| `type` | [`PickupPointType`](#pickuppointtype) | 是 | — |
+| `pickupNo` | `string` | 是 | 取货点号 |
+| `name` | `string` | 是 | 名称 |
+| `address` | `string,null` | 否 | 地址 |
+| `type` | [`PickupPointType`](#pickuppointtype) | 是 | 类型 |
 | `status` | `string` | 是 | ACTIVE / PENDING / REJECTED …；本店自建的 PENDING 点可引用，别家的不行 |
-| `communityNo` | `string` | 是 | — |
-| `communityName` | `string,null` | 否 | — |
+| `communityNo` | `string` | 是 | 所在社区号 |
+| `communityName` | `string,null` | 否 | 所在社区名 |
 | `ownerStoreNo` | `string,null` | 否 | STORE 点的承接门店；= 本店即「我自建的」 |
-| `rejectReason` | `string,null` | 否 | — |
+| `rejectReason` | `string,null` | 否 | 被驳回的原因。**要原样回商家** —— 不写等于让人猜 |
 
 
 #### GET `/biz/pickup-points/candidates`
@@ -3837,9 +3837,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `items` | [`Qualification`](#qualification)\[\] | 是 | — |
+| `items` | [`Qualification`](#qualification)\[\] | 是 | 我已经有的资质 |
 | `grantedCodes` | `string`\[\] | 是 | 已获授权的类目码。端上据此把「已解锁 / 待授权」标出来 |
-| `catalog` | [`AuthCodeInfo`](#authcodeinfo)\[\] | 是 | — |
+| `catalog` | [`AuthCodeInfo`](#authcodeinfo)\[\] | 是 | 平台的门槛码字典：哪些码要哪一类证 |
 
 
 #### POST `/biz/qualifications/save`
@@ -3854,12 +3854,12 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `qualNo` | `string` | 是 | — |
+| `qualNo` | `string` | 是 | 资质记录号 |
 | `entityNo` | `string` | 否 | 归属主体。端上其实用不到（只会看自己的），但后端在发 —— 声明出来免得契约守卫把它算成缺口 |
-| `qualType` | [`QualificationType`](#qualificationtype) | 是 | — |
+| `qualType` | [`QualificationType`](#qualificationtype) | 是 | 证件类型。**BUSINESS_LICENSE 是入驻校验的判据** |
 | `qualName` | `string` | 是 | 证件名，如「食品经营许可证」。上架校验拿它与类目门槛的文案比对 |
-| `qualNumber` | `string,null` | 否 | — |
-| `imageUrl` | `string,null` | 否 | — |
+| `qualNumber` | `string,null` | 否 | 证件编号，证上印的那一串 |
+| `imageUrl` | `string,null` | 否 | 证件照地址 |
 | `expireAt` | `number,null` | 否 | 有效期截止（毫秒）。**空 = 长期有效**，与「已过期」是两回事 |
 | `status` | `string` | 是 | VALID / EXPIRED / REVOKED |
 
@@ -3900,8 +3900,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `regions` | `object`（见下）\[\] | 是 | — |
-| `communities` | `object`（见下）\[\] | 是 | — |
+| `regions` | `object`（见下）\[\] | 是 | 命中的行政区划，带从省到父级的路径 |
+| `communities` | `object`（见下）\[\] | 是 | 命中的社区 |
 | `villages` | `object`（见下）\[\] | 否 | 还没开通的**官方村**（第五级名录）。已开通的那些走 `communities`（能直接勾）， 这里只出没开通的 —— 同一个地方不该在两组里各出现一次。 官方村提报即开通，所以端上点一条就能直接用。 |
 | `places` | [`GeoTip`](#geotip)\[\] | 否 | 地图上的地点（v5）。**只在库里没有村/小区命中时才有值** —— 服务端先查库， 库里没有才现问高德；App 不用再自己调原生 SDK 兜底了。 |
 
@@ -4172,7 +4172,7 @@ _无字段_
 | `inFlightMinor` | `number` | 是 | 已发起、等通道确认。**此前它混在「已到账」里**，而底下是桩 |
 | `pendingMinor` | `number` | 是 | 待结算 |
 | `offlineMinor` | `number` | 是 | 当面收款：**他早就拿到了**，无需结算 |
-| `inFlightCount` | `number` | 是 | — |
+| `inFlightCount` | `number` | 是 | 在途的结算单数。金额之外还要给条数 —— 一笔大的和十笔小的，商家的处理方式不同 |
 | `oldestInFlightAt` | `number,null` | 否 | 最早一笔在途的发起时刻。**「卡了多久」是商家真正想问的** |
 
 
@@ -4221,7 +4221,7 @@ _无字段_
 | `total` | `number` | 是 | 数据行数，不含表头 |
 | `willSet` | `number` | 是 | 会真正写下去的行数 |
 | `noChange` | `number` | 是 | 匹配上了但三列都没变的行数 |
-| `problems` | `object`（见下）\[\] | 是 | — |
+| `problems` | `object`（见下）\[\] | 是 | 有问题的行：认不出货号、值不合法。**要能逐行看** —— 只给个数商家不知道改哪一行 |
 | `samples` | `object`（见下）\[\] | 是 | 前几行的前后对照，让他确认「改的是不是我想的那些」 |
 
 `problems[]` 的字段：
@@ -4261,7 +4261,7 @@ _无字段_
 | `total` | `number` | 是 | 数据行数，不含表头 |
 | `willSet` | `number` | 是 | 会真正写下去的行数 |
 | `noChange` | `number` | 是 | 匹配上了但三列都没变的行数 |
-| `problems` | `object`（见下）\[\] | 是 | — |
+| `problems` | `object`（见下）\[\] | 是 | 有问题的行：认不出货号、值不合法。**要能逐行看** —— 只给个数商家不知道改哪一行 |
 | `samples` | `object`（见下）\[\] | 是 | 前几行的前后对照，让他确认「改的是不是我想的那些」 |
 
 `problems[]` 的字段：
@@ -4419,9 +4419,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `valueNo` | `string` | 是 | — |
-| `code` | `string` | 是 | — |
-| `label` | `string` | 是 | — |
+| `valueNo` | `string` | 是 | 平台值池里的编号。**有它才参与筛选与跨店比较** |
+| `code` | `string` | 是 | 码值 |
+| `label` | `string` | 是 | 显示名 |
 
 
 ### spu-std
@@ -4578,7 +4578,7 @@ _无字段_
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
 
 
 #### POST `/biz/store`
@@ -4611,7 +4611,7 @@ _无字段_
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
 
 
 #### GET `/biz/store/{storeNo}/categories`
@@ -4807,7 +4807,7 @@ _无字段_
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
 
 
 #### POST `/biz/store/announcement/recent/remove`
@@ -4836,7 +4836,7 @@ _无字段_
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
 
 
 #### POST `/biz/store/create`
@@ -4984,13 +4984,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `slotNo` | `string` | 是 | — |
-| `storeNo` | `string` | 是 | — |
-| `startAt` | `number` | 是 | — |
-| `endAt` | `number` | 是 | — |
-| `capacity` | `number` | 是 | — |
-| `booked` | `number` | 是 | — |
-| `remaining` | `number` | 是 | — |
+| `slotNo` | `string` | 是 | 时段号。**下单占的是它** |
+| `storeNo` | `string` | 是 | 门店号 |
+| `startAt` | `number` | 是 | 开始时刻（毫秒） |
+| `endAt` | `number` | 是 | 结束时刻（毫秒） |
+| `capacity` | `number` | 是 | 这一档能约几个人 |
+| `booked` | `number` | 是 | 已约人数 |
+| `remaining` | `number` | 是 | 还能核几次 |
 | `status` | [`SlotStatus`](#slotstatus) | 是 | OPEN 可约 / CLOSED 停约。停约**不删行也不赶人** |
 
 
@@ -5010,7 +5010,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | 门店号 |
 | `channels` | [`StoreFulfillmentChannel`](#storefulfillmentchannel)\[\] | 是 | 固定四行，顺序即开关顺序 —— 服务端补缺，端上不用自己造 |
 
 
@@ -5030,7 +5030,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | 门店号 |
 | `channels` | [`StoreFulfillmentChannel`](#storefulfillmentchannel)\[\] | 是 | 固定四行，顺序即开关顺序 —— 服务端补缺，端上不用自己造 |
 
 
@@ -5090,10 +5090,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `goodsNo` | `string` | 是 | — |
-| `activityNo` | `string` | 是 | — |
-| `activityName` | `string` | 是 | — |
-| `benefitType` | `string` | 是 | — |
+| `goodsNo` | `string` | 是 | 商品号 |
+| `activityNo` | `string` | 是 | 活动号 |
+| `activityName` | `string` | 是 | 活动名 |
+| `benefitType` | `string` | 是 | 优惠方式 |
 
 ### AddStaffReq
 
@@ -5182,13 +5182,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `slotNo` | `string` | 是 | — |
-| `storeNo` | `string` | 是 | — |
-| `startAt` | `number` | 是 | — |
-| `endAt` | `number` | 是 | — |
-| `capacity` | `number` | 是 | — |
-| `booked` | `number` | 是 | — |
-| `remaining` | `number` | 是 | — |
+| `slotNo` | `string` | 是 | 时段号。**下单占的是它** |
+| `storeNo` | `string` | 是 | 门店号 |
+| `startAt` | `number` | 是 | 开始时刻（毫秒） |
+| `endAt` | `number` | 是 | 结束时刻（毫秒） |
+| `capacity` | `number` | 是 | 这一档能约几个人 |
+| `booked` | `number` | 是 | 已约人数 |
+| `remaining` | `number` | 是 | 还能核几次 |
 | `status` | [`SlotStatus`](#slotstatus) | 是 | OPEN 可约 / CLOSED 停约。停约**不删行也不赶人** |
 
 ### AreaLevel
@@ -5223,11 +5223,11 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `code` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `code` | `string` | 是 | 码值 |
+| `name` | `string` | 是 | 名称 |
 | `requiredQualification` | `string,null` | 否 | 给人读的一句话，如「食品经营许可证」。空 = 这一类不需要证 |
 | `qualType` | [`QualificationType`](#qualificationtype) \| `null` | 否 | 机器判的类型，与  {@link  QualificationType }  同值域。空 = 无需证件 |
-| `categoryNames` | `string`\[\] | 是 | — |
+| `categoryNames` | `string`\[\] | 是 | 这个码能解锁的类目名。**由应用层拼** —— 商家看的是「食品经营许可证能解锁：肉禽蛋、乳制品」，不是三个码 |
 
 ### BizScope
 
@@ -5348,7 +5348,7 @@ _无字段_
 | `originName` | `string,null` | 否 | `originCode` 对应的原始官方名（「景滑村委会」，未清理）——仅供展示/追溯， 判「是不是村委会」不要解析它，用下面的 `rural` 字段（服务端存的，不是端上猜的）。 |
 | `rural` | `boolean` | 否 | 是不是村委会（`sys_region.rural`，经 origin_code 反查）。只对 kind=VILLAGE 有意义： 村委会到此为止、不再下钻；居委会/社区还能再挑具体小区。 |
 | `latE6` | `number,null` | 否 | 官方村名录批量补录过的坐标，可能为空 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
 
 ### CommunityApply
 
@@ -5387,8 +5387,8 @@ _无字段_
 | `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
 | `segmentNo` | `string,null` | 否 | 发给哪个人群。空 = 手动挑的人 |
 | `planned` | `number` | 是 | 人群此刻命中多少人 |
-| `issued` | `number` | 是 | — |
-| `skipped` | `number` | 是 | — |
+| `issued` | `number` | 是 | 实发多少张 |
+| `skipped` | `number` | 是 | 跳过多少人 |
 | `skipReasons` | `object`（见下）\[\] | 是 | `UNREACHABLE` 还没注册或已退订 / `ALREADY_HAS` 到每人上限 / `SOLD_OUT` 券发完 |
 | `amountMinor` | `number` | 是 | 这一批券的面额合计（分）—— 商家据此估敞口 |
 | `operatorNo` | `string,null` | 否 | 谁发的 |
@@ -5407,11 +5407,11 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `userCouponNo` | `string` | 是 | — |
-| `timesUsed` | `number` | 是 | — |
-| `remaining` | `number` | 是 | — |
-| `usedUp` | `boolean` | 是 | — |
-| `duplicated` | `boolean` | 是 | — |
+| `userCouponNo` | `string` | 是 | 这个人手里那一张的编号 |
+| `timesUsed` | `number` | 是 | 已核销次数 |
+| `remaining` | `number` | 是 | 还能核几次 |
+| `usedUp` | `boolean` | 是 | 次数用尽 |
+| `duplicated` | `boolean` | 是 | 为真 = 店员**连点了两下**（3 秒窗口内），不是第二次核销 —— 报错会让他以为没成功，于是再按一次 |
 
 ### CouponRedeemView
 
@@ -5531,7 +5531,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `entityNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | 商家主体号 |
 | `name` | `string` | 是 | 执照上的名称。**待补证照时它是老板随手填的店名**—— 补齐执照、审核通过后被执照上的正式名称覆盖 |
 | `status` | [`MerchantStatus`](#merchantstatus) | 是 | ACTIVE 营业中 / PENDING_LICENSE 待补证照 / SUSPENDED、BANNED 已停业。 **端上照它给下一步**：待补证照给「去补执照」，已停业给客服入口 |
 | `verified` | `boolean` | 是 | 平台已认证。待补证照恒为 false —— 这个标是审核给的，不能自己开店就带上 |
@@ -5546,8 +5546,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `entity` | [`Entity`](#entity) | 是 | — |
-| `stores` | [`Store`](#store)\[\] | 是 | — |
+| `entity` | [`Entity`](#entity) | 是 | 所属主体（一张证照） |
+| `stores` | [`Store`](#store)\[\] | 是 | 这张证照下我能进的门店 |
 
 ### FulfillmentImpactItem
 
@@ -5555,8 +5555,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `goodsNo` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
+| `goodsNo` | `string` | 是 | 商品号 |
+| `title` | `string` | 是 | 标题 |
 
 ### FulfillmentReach
 
@@ -5593,8 +5593,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `recommend` | `string` | 是 | — |
-| `address` | `string` | 是 | — |
+| `recommend` | `string` | 是 | 带楼盘/门牌的人话版地址。**端上填这个** |
+| `address` | `string` | 是 | 地址 |
 
 ### GeoTip
 
@@ -5602,12 +5602,12 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `name` | `string` | 是 | — |
-| `address` | `string,null` | 否 | — |
-| `adcode` | `string,null` | 否 | — |
+| `name` | `string` | 是 | 名称 |
+| `address` | `string,null` | 否 | 地址 |
+| `adcode` | `string,null` | 否 | 国标 6 位区县码，与 sys_region 同口径 |
 | `latE6` | `number,null` | 否 | 有些提示（纯地名、公交线）没坐标，这种不值得选 |
-| `lngE6` | `number,null` | 否 | — |
-| `typecode` | `string,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
+| `typecode` | `string,null` | 否 | 高德 POI 类目码 |
 
 ### Goods
 
@@ -5646,7 +5646,7 @@ _无字段_
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
-| `status` | [`GoodsStatus`](#goodsstatus) | 否 | — |
+| `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
 | `auditReason` | `string` | 否 | 最近一次驳回 / 平台强制下架的原因（**只在商家侧与运营端下发，C 端恒空**）。 **没有它，商家面对 `REJECTED` 只能猜要改什么** —— 审计日志只有运营看得到。 平台强制下架时后端会带「平台强制下架」前缀，商家据此知道是自己被驳 还是被平台下的。过审时清空。 ⚠️ 后端 `GoodsVO` 一直在发它，`MerchantGoodsService` 的注释甚至写着 「它会出现在商家 B 端（`auditReason`）」—— 而端上从没声明这个字段。 那句注释描述的是一件**从未发生过**的事。 |
 | `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语标题原文，**只有商家侧 `/biz/goods/{no}` 下发**。 编辑页按语言逐格填，而保存是整份覆盖 —— 拿不到原文就只能回填当前那一格， 于是用中文改一次，英文与阿语就被清空了。**这个故障不报错**： C 端缺译文时回落中文，看起来一切正常。 |
 | `subtitleI18n` | [`Record_string_string`](#record_string_string) | 否 | 三语副标题原文，同 `titleI18n` |
@@ -5811,7 +5811,7 @@ _无字段_
 | `inFlightMinor` | `number` | 是 | 已发起、等通道确认。**此前它混在「已到账」里**，而底下是桩 |
 | `pendingMinor` | `number` | 是 | 待结算 |
 | `offlineMinor` | `number` | 是 | 当面收款：**他早就拿到了**，无需结算 |
-| `inFlightCount` | `number` | 是 | — |
+| `inFlightCount` | `number` | 是 | 在途的结算单数。金额之外还要给条数 —— 一笔大的和十笔小的，商家的处理方式不同 |
 | `oldestInFlightAt` | `number,null` | 否 | 最早一笔在途的发起时刻。**「卡了多久」是商家真正想问的** |
 
 ### MarkArrivedReq
@@ -5887,30 +5887,30 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `memberNo` | `string` | 是 | — |
+| `memberNo` | `string` | 是 | 会员号 |
 | `personNo` | `string` | 是 | 平台人档号。会员挂人不挂账号 —— 商家看不到，但详情页要用它取来源轨迹 |
 | `phoneTail` | `string,null` | 否 | 手机号后四位。**永远不会有完整号** —— 需要它的只有平台申诉处置 |
 | `status` | `string` | 是 | `LEAD` 线索（商家录的、本人还没注册，不可触达）/ `ACTIVE` / `BLOCKED` |
 | `source` | `string` | 是 | 首次来源 `ORDER`/`SHARE`/`SCAN`/`MANUAL`/`FAVORITE`/`SEARCH` |
 | `level` | `string,null` | 否 | `NEW`/`REGULAR`/`LOYAL`/`SLEEPING`。按主体还是按门店算，取决于主体的经营口径 |
 | `firstStoreNo` | `string,null` | 否 | 他从哪家门店进来的 |
-| `orderCount` | `number` | 是 | — |
-| `totalSpentMinor` | `number` | 是 | — |
-| `d90OrderCount` | `number` | 是 | — |
-| `lastOrderAt` | `number,null` | 否 | — |
-| `daysSinceLast` | `number,null` | 否 | — |
+| `orderCount` | `number` | 是 | 累计下单数 |
+| `totalSpentMinor` | `number` | 是 | 累计消费（分） |
+| `d90OrderCount` | `number` | 是 | 近 90 天下单数。**分层判据用它而不是累计** —— 三年前买过十次的人今天是沉睡客 |
+| `lastOrderAt` | `number,null` | 否 | 上次下单时刻。空 = 从没下过单（线索会员） |
+| `daysSinceLast` | `number,null` | 否 | 距上次下单多少天。按 lastOrderAt 与今天实时算 |
 | `reachOptOut` | `boolean` | 是 | 买家关掉了这家店的消息。商家看得到状态，看不到原因 |
-| `remark` | `string,null` | 否 | — |
-| `joinedAt` | `number` | 是 | — |
+| `remark` | `string,null` | 否 | 商家写的备注。**只有商家自己看得到** |
+| `joinedAt` | `number` | 是 | 成为会员的时刻 |
 
 ### MemberDetail
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `member` | [`Member`](#member) | 是 | — |
-| `stores` | [`MemberStoreStat`](#memberstorestat)\[\] | 是 | — |
-| `sources` | [`MemberSourceItem`](#membersourceitem)\[\] | 是 | — |
-| `tags` | [`MemberTag`](#membertag)\[\] | 是 | — |
+| `member` | [`Member`](#member) | 是 | 会员本身 |
+| `stores` | [`MemberStoreStat`](#memberstorestat)\[\] | 是 | 他在各门店的往来。单店主体没有这一段 |
+| `sources` | [`MemberSourceItem`](#membersourceitem)\[\] | 是 | 来源轨迹：他是怎么来的 |
+| `tags` | [`MemberTag`](#membertag)\[\] | 是 | 身上的标签 |
 
 ### MemberMergePreview
 
@@ -5918,9 +5918,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `affectedMembers` | `number` | 是 | — |
+| `affectedMembers` | `number` | 是 | 会被改到的会员数 |
 | `bothTagged` | `number` | 是 | 两个标签都有的人。合并后只保留一条 |
-| `referencedActivities` | `number` | 是 | — |
+| `referencedActivities` | `number` | 是 | 引用了这个标签的活动数。**合并前要看** —— 合并不可逆，而活动的受众条件会跟着变 |
 | `applied` | `boolean` | 是 | false = 这只是试算，没有落库 |
 
 ### MemberSegment
@@ -5929,12 +5929,12 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `segmentNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `segmentNo` | `string` | 是 | 人群号 |
+| `name` | `string` | 是 | 人群名 |
 | `scopeStoreNo` | `string,null` | 否 | 限定门店。空 = 全主体 |
-| `rule` | [`MemberSegmentRule`](#membersegmentrule) | 是 | — |
-| `lastCount` | `number` | 是 | — |
-| `countedAt` | `number,null` | 否 | — |
+| `rule` | [`MemberSegmentRule`](#membersegmentrule) | 是 | 筛选条件。存的是 JSON —— 条件会长，拆成列的话每加一个维度都要改表 |
+| `lastCount` | `number` | 是 | 上次算出来命中多少人 |
+| `countedAt` | `number,null` | 否 | 上次算的时刻。**人群是快照不是实时** —— 中间新来的人不在里面 |
 
 ### MemberSegmentPreview
 
@@ -5942,8 +5942,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `count` | `number` | 是 | — |
-| `reachable` | `number` | 是 | — |
+| `count` | `number` | 是 | 条件命中多少人 |
+| `reachable` | `number` | 是 | 其中**能真正收到东西**的有多少（线索会员与已退订的人进不了受众）。只显示 count 的话，商家在人群页看到 120、发放页发出 96，会以为发漏了 |
 
 ### MemberSegmentRule
 
@@ -5951,14 +5951,14 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `level` | `string,null` | 否 | — |
-| `source` | `string,null` | 否 | — |
-| `status` | `string,null` | 否 | — |
+| `level` | `string,null` | 否 | 会员等级 |
+| `source` | `string,null` | 否 | 来源类型 |
+| `status` | `string,null` | 否 | 状态 |
 | `tagNos` | `string`\[\] | 否 | **取交集**：选两个标签是「都要满足」。界面上写「同时含以下标签」 |
-| `lastOrderBefore` | `number,null` | 否 | — |
-| `lastOrderAfter` | `number,null` | 否 | — |
-| `spentMin` | `number,null` | 否 | — |
-| `spentMax` | `number,null` | 否 | — |
+| `lastOrderBefore` | `number,null` | 否 | 上次下单**早于**这个时刻。用来筛沉睡客 |
+| `lastOrderAfter` | `number,null` | 否 | 上次下单**晚于**这个时刻。用来筛活跃客 |
+| `spentMin` | `number,null` | 否 | 累计消费下限（分）。空 = 不限 |
+| `spentMax` | `number,null` | 否 | 累计消费上限（分）。空 = 不限 |
 
 ### MemberSetting
 
@@ -5975,15 +5975,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `sourceType` | `string` | 是 | — |
-| `storeNo` | `string,null` | 否 | — |
-| `linkNo` | `string,null` | 否 | — |
-| `inviterUserNo` | `string,null` | 否 | — |
-| `inviterRole` | `string,null` | 否 | — |
-| `operatorNo` | `string,null` | 否 | — |
-| `activityNo` | `string,null` | 否 | — |
-| `isFirst` | `boolean` | 是 | — |
-| `occurredAt` | `number` | 是 | — |
+| `sourceType` | `string` | 是 | 这一次是怎么来的（扫码 / 分享 / 商家录入 / 活动） |
+| `storeNo` | `string,null` | 否 | 发生在哪家店 |
+| `linkNo` | `string,null` | 否 | 分享链接号 |
+| `inviterUserNo` | `string,null` | 否 | **谁发的链接**。不写出来的话分享激励没法结算，商家也不知道该谢谁 |
+| `inviterRole` | `string,null` | 否 | 分享人的身份（顾客 / 店员）—— 结算口径不同 |
+| `operatorNo` | `string,null` | 否 | 商家录入时的经手人 |
+| `activityNo` | `string,null` | 否 | 来自哪个活动 |
+| `isFirst` | `boolean` | 是 | 是不是首次进店。首次那一条决定了这个会员算谁带来的 |
+| `occurredAt` | `number` | 是 | 发生时刻 |
 
 ### MemberStats
 
@@ -5991,12 +5991,12 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `newCount` | `number` | 是 | — |
-| `regularCount` | `number` | 是 | — |
-| `loyalCount` | `number` | 是 | — |
-| `sleepingCount` | `number` | 是 | — |
+| `newCount` | `number` | 是 | 新客数 |
+| `regularCount` | `number` | 是 | 回头客数 |
+| `loyalCount` | `number` | 是 | 忠实客数 |
+| `sleepingCount` | `number` | 是 | 沉睡客数 |
 | `reachable` | `number` | 是 | 可触达人数（排除线索、拉黑、已退订） |
-| `newThisMonth` | `number` | 是 | — |
+| `newThisMonth` | `number` | 是 | 本月新增会员 |
 | `unlinkedBuyers` | `number` | 是 | 未绑手机号、因此没计进会员的买家数 |
 
 ### MemberStoreStat
@@ -6005,11 +6005,11 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
-| `orderCount` | `number` | 是 | — |
-| `totalSpentMinor` | `number` | 是 | — |
-| `lastOrderAt` | `number,null` | 否 | — |
-| `isFirstStore` | `boolean` | 是 | — |
+| `storeNo` | `string` | 是 | 发生在哪家店 |
+| `orderCount` | `number` | 是 | 累计下单数 |
+| `totalSpentMinor` | `number` | 是 | 累计消费（分） |
+| `lastOrderAt` | `number,null` | 否 | 上次下单时刻。空 = 从没下过单（线索会员） |
+| `isFirstStore` | `boolean` | 是 | 他是从这家店进来的 |
 
 ### MemberTag
 
@@ -6017,8 +6017,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `tagNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `tagNo` | `string` | 是 | 标签号 |
+| `name` | `string` | 是 | 人群名 |
 | `tagType` | `string` | 是 | `SYS` 系统算的（只读）/ `MCH` 商家自己的 |
 | `status` | `string` | 是 | `ACTIVE` / `DISABLED` 停用（老的还在、新的打不上）/ `MERGED` 已并入别的标签 |
 | `count` | `number` | 是 | 打了多少人。服务端 COUNT 出来的，不是冗余列 |
@@ -6087,9 +6087,9 @@ _无字段_
 | `redeemMode` | `string` | 是 | `ORDER` 下单抵扣 / `STORE_CODE` 到店出示核销 |
 | `timesTotal` | `number` | 是 | 一张能用几次。>1 就是次卡（豆浆 5 杯） |
 | `totalCount` | `number,null` | 否 | 发行量。空 = 不限（只有定向发放允许） |
-| `receivedCount` | `number` | 是 | — |
-| `perUserLimit` | `number` | 是 | — |
-| `budgetMinor` | `number,null` | 否 | — |
+| `receivedCount` | `number` | 是 | 已领取数 |
+| `perUserLimit` | `number` | 是 | 每人最多领几张 |
+| `budgetMinor` | `number,null` | 否 | 预算上限（分）。空 = 不限 |
 | `maxExposureMinor` | `number,null` | 否 | 最大敞口 = 发行量 × 单张最大优惠。 **建券页要显示它** —— 商家填「1000 张 × 20 元」时心里想的是「发 1000 张」， 不是「最多赔两万」。 |
 | `status` | `string` | 是 | `ACTIVE` / `PAUSED` 暂停发放（已领的不受影响）/ `ENDED` |
 
@@ -6207,15 +6207,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `dimNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `dimNo` | `string` | 是 | 规格维度号 |
+| `name` | `string` | 是 | 名称 |
 | `valueCount` | `number` | 是 | 这个维度下的取值数（含平台档位 + 自己加的） |
 | `usedCount` | `number` | 是 | 用在几件商品上。**按规格组名统计** —— 存量商品的规格快照里只有名字， 没有维度编号（那个字段是后加的），按编号统计的话老商品一件都算不进来， 而「停用它会影响什么」问的恰恰是历史。 |
 | `status` | [`SpecTemplateStatus`](#spectemplatestatus) | 是 | ACTIVE 在用 / ARCHIVED 已归档（不再出现在选择器里，历史商品的快照照旧） |
 | `dimUsed` | `number` | 是 | 已建 / 上限。摆出来，而不是等他建到第 11 个才被拒 |
-| `dimQuota` | `number` | 是 | — |
-| `valueQuota` | `number` | 是 | — |
-| `values` | [`SpecOption`](#specoption)\[\] | 是 | — |
+| `dimQuota` | `number` | 是 | 维度配额上限，按档位取 |
+| `valueQuota` | `number` | 是 | 取值配额上限 |
+| `values` | [`SpecOption`](#specoption)\[\] | 是 | 这个维度下的取值 |
 
 ### MerchantStaff
 
@@ -6341,9 +6341,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `items` | [`Qualification`](#qualification)\[\] | 是 | — |
+| `items` | [`Qualification`](#qualification)\[\] | 是 | 我已经有的资质 |
 | `grantedCodes` | `string`\[\] | 是 | 已获授权的类目码。端上据此把「已解锁 / 待授权」标出来 |
-| `catalog` | [`AuthCodeInfo`](#authcodeinfo)\[\] | 是 | — |
+| `catalog` | [`AuthCodeInfo`](#authcodeinfo)\[\] | 是 | 平台的门槛码字典：哪些码要哪一类证 |
 
 ### MySettleBatch
 
@@ -6542,7 +6542,7 @@ _无字段_
 | `openHours` | `string` | 是 | 营业时间文案，如 `08:00-21:00`。展示用，不参与计算 |
 | `arrivalDesc` | `string` | 是 | 到货时间说明，如「次日 18:00 后到」。影响用户选不选这个点 |
 | `latE6` | `number,null` | 否 | 取货点坐标（gcj02，E6）。**可能为空** —— 存量点是手填地址建的。 买家要拿着它导航过去，没有就只能显示地址文本。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
 
 ### PickupCandidate
 
@@ -6550,15 +6550,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `pickupNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `address` | `string,null` | 否 | — |
-| `type` | [`PickupPointType`](#pickuppointtype) | 是 | — |
+| `pickupNo` | `string` | 是 | 取货点号 |
+| `name` | `string` | 是 | 名称 |
+| `address` | `string,null` | 否 | 地址 |
+| `type` | [`PickupPointType`](#pickuppointtype) | 是 | 类型 |
 | `status` | `string` | 是 | ACTIVE / PENDING / REJECTED …；本店自建的 PENDING 点可引用，别家的不行 |
-| `communityNo` | `string` | 是 | — |
-| `communityName` | `string,null` | 否 | — |
+| `communityNo` | `string` | 是 | 所在社区号 |
+| `communityName` | `string,null` | 否 | 所在社区名 |
 | `ownerStoreNo` | `string,null` | 否 | STORE 点的承接门店；= 本店即「我自建的」 |
-| `rejectReason` | `string,null` | 否 | — |
+| `rejectReason` | `string,null` | 否 | 被驳回的原因。**要原样回商家** —— 不写等于让人猜 |
 
 ### PickupFeeMode
 
@@ -6625,11 +6625,11 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `pickupNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `address` | `string,null` | 否 | — |
-| `type` | [`PickupPointType`](#pickuppointtype) | 是 | — |
-| `status` | `string` | 是 | — |
+| `pickupNo` | `string` | 是 | 取货点号 |
+| `name` | `string` | 是 | 名称 |
+| `address` | `string,null` | 否 | 地址 |
+| `type` | [`PickupPointType`](#pickuppointtype) | 是 | 类型 |
+| `status` | `string` | 是 | 状态 |
 
 ### PickupScope
 
@@ -6656,11 +6656,11 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `planCode` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `storeQuota` | `number` | 是 | — |
-| `staffQuota` | `number` | 是 | — |
-| `crossStoreStats` | `boolean` | 是 | — |
+| `planCode` | `string` | 是 | 档位码。**文案用 planName，不要按 code 自己映射** —— 运营改了名端上不会跟着变 |
+| `name` | `string` | 是 | 名称 |
+| `storeQuota` | `number` | 是 | 门店数配额 |
+| `staffQuota` | `number` | 是 | 员工数配额 |
+| `crossStoreStats` | `boolean` | 是 | 这一档给不给跨店统计 |
 | `trialDays` | `number` | 是 | 0 = 这一档不提供试用 |
 | `current` | `boolean` | 是 | 是不是他现在用的那一档 |
 
@@ -6690,12 +6690,12 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `qualNo` | `string` | 是 | — |
+| `qualNo` | `string` | 是 | 资质记录号 |
 | `entityNo` | `string` | 否 | 归属主体。端上其实用不到（只会看自己的），但后端在发 —— 声明出来免得契约守卫把它算成缺口 |
-| `qualType` | [`QualificationType`](#qualificationtype) | 是 | — |
+| `qualType` | [`QualificationType`](#qualificationtype) | 是 | 证件类型。**BUSINESS_LICENSE 是入驻校验的判据** |
 | `qualName` | `string` | 是 | 证件名，如「食品经营许可证」。上架校验拿它与类目门槛的文案比对 |
-| `qualNumber` | `string,null` | 否 | — |
-| `imageUrl` | `string,null` | 否 | — |
+| `qualNumber` | `string,null` | 否 | 证件编号，证上印的那一串 |
+| `imageUrl` | `string,null` | 否 | 证件照地址 |
 | `expireAt` | `number,null` | 否 | 有效期截止（毫秒）。**空 = 长期有效**，与「已过期」是两回事 |
 | `status` | `string` | 是 | VALID / EXPIRED / REVOKED |
 
@@ -6705,9 +6705,9 @@ _无字段_
 |---|---|:---:|---|
 | `type` | [`QualificationType`](#qualificationtype) | 是 | 资质类型码 |
 | `code` | `string` | 是 | 证照编号 |
-| `imageUrl` | `string` | 是 | — |
+| `imageUrl` | `string` | 是 | 证件照地址 |
 | `expireAt` | `number,null` | 是 | 有效期截止（毫秒）。**长期有效传 `null`** —— 不要用 0 或一个很大的数字冒充：过期扫描会把前者当成已过期、 后者当成永不过期，两种都错且都不报错。 |
-| `issuer` | `string` | 否 | — |
+| `issuer` | `string` | 否 | 发证机关 |
 
 ### QualificationType
 
@@ -6773,9 +6773,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `matched` | `number` | 是 | — |
-| `reachable` | `number` | 是 | — |
-| `skips` | `object`（见下）\[\] | 是 | — |
+| `matched` | `number` | 是 | 条件命中多少人 |
+| `reachable` | `number` | 是 | 其中**能真正收到东西**的有多少（线索会员与已退订的人进不了受众）。只显示 count 的话，商家在人群页看到 120、发放页发出 96，会以为发漏了 |
+| `skips` | `object`（见下）\[\] | 是 | 发不出去的人按原因分类。**必须显示** —— 商家选了 30 个人实发 8 个，只说「发送成功」他会以为 30 个都收到了 |
 
 `skips[]` 的字段：
 
@@ -6788,10 +6788,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `taskNo` | `string` | 是 | — |
-| `sent` | `number` | 是 | — |
-| `skipped` | `number` | 是 | — |
-| `skips` | `object`（见下）\[\] | 是 | — |
+| `taskNo` | `string` | 是 | 这次群发的任务号 |
+| `sent` | `number` | 是 | 实际发出多少条 |
+| `skipped` | `number` | 是 | 跳过多少人 |
+| `skips` | `object`（见下）\[\] | 是 | 发不出去的人按原因分类。**必须显示** —— 商家选了 30 个人实发 8 个，只说「发送成功」他会以为 30 个都收到了 |
 
 `skips[]` 的字段：
 
@@ -6828,7 +6828,7 @@ _无字段_
 | `parentCode` | `string` | 否 | 上级区划码。省级为空 —— 逐级选择器据此判断自己在不在顶层 |
 | `level` | `string` | 是 | PROVINCE / CITY / DISTRICT / STREET / VILLAGE（村委会·居委会，第五级） |
 | `latE6` | `number,null` | 否 | 中心点（gcj02，E6）。**可能为空** —— 全国 62 万条村级里只有批量补录命中的那部分有坐标， 端上据此决定是直接用，还是临时去地图上搜一次。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
 | `name` | `string` | 是 | 本级名称，**不含上级**（「西湖区」不是「杭州市 / 西湖区」）。要整条路径的地方自己拼 |
 | `enabled` | `boolean` | 是 | 是否启用。B 端只会拿到启用的 —— 停用的区划是运营的维护对象，不该出现在商家的选择器里 |
 | `hasChild` | `boolean` | 是 | 下面还有没有下级。端上据此决定「还要不要再往下选一层」，而不是点进去才发现是空的 |
@@ -6844,8 +6844,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `regions` | `object`（见下）\[\] | 是 | — |
-| `communities` | `object`（见下）\[\] | 是 | — |
+| `regions` | `object`（见下）\[\] | 是 | 命中的行政区划，带从省到父级的路径 |
+| `communities` | `object`（见下）\[\] | 是 | 命中的社区 |
 | `villages` | `object`（见下）\[\] | 否 | 还没开通的**官方村**（第五级名录）。已开通的那些走 `communities`（能直接勾）， 这里只出没开通的 —— 同一个地方不该在两组里各出现一次。 官方村提报即开通，所以端上点一条就能直接用。 |
 | `places` | [`GeoTip`](#geotip)\[\] | 否 | 地图上的地点（v5）。**只在库里没有村/小区命中时才有值** —— 服务端先查库， 库里没有才现问高德；App 不用再自己调原生 SDK 兜底了。 |
 
@@ -7189,7 +7189,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `total` | `number` | 是 | 数据行数，不含表头 |
 | `willSet` | `number` | 是 | 会真正写下去的行数 |
 | `noChange` | `number` | 是 | 匹配上了但三列都没变的行数 |
-| `problems` | `object`（见下）\[\] | 是 | — |
+| `problems` | `object`（见下）\[\] | 是 | 有问题的行：认不出货号、值不合法。**要能逐行看** —— 只给个数商家不知道改哪一行 |
 | `samples` | `object`（见下）\[\] | 是 | 前几行的前后对照，让他确认「改的是不是我想的那些」 |
 
 `problems[]` 的字段：
@@ -7290,9 +7290,9 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `valueNo` | `string` | 是 | — |
-| `code` | `string` | 是 | — |
-| `label` | `string` | 是 | — |
+| `valueNo` | `string` | 是 | 平台值池里的编号。**有它才参与筛选与跨店比较** |
+| `code` | `string` | 是 | 码值 |
+| `label` | `string` | 是 | 显示名 |
 
 ### SpuStd
 
@@ -7300,17 +7300,17 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `stdNo` | `string` | 是 | — |
+| `stdNo` | `string` | 是 | 标准品号 |
 | `categoryNo` | `string` | 是 | 所属类目。取用后**改不掉**：类目决定形态（生鲜要截单、服务不发货） |
 | `categoryName` | `string` | 否 | 类目名，展示用 |
-| `title` | `string` | 是 | — |
-| `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | — |
-| `subtitle` | `string` | 否 | — |
-| `cover` | `string` | 否 | — |
-| `images` | `string`\[\] | 否 | — |
+| `title` | `string` | 是 | 标题 |
+| `titleI18n` | [`Record_string_string`](#record_string_string) | 否 | 标题的多语言版本 |
+| `subtitle` | `string` | 否 | 副标题 |
+| `cover` | `string` | 否 | 封面图 |
+| `images` | `string`\[\] | 否 | 图集 |
 | `specGroups` | [`SpecGroup`](#specgroup)\[\] | 是 | 每个选项都带 `optionCode` —— 跨店可比靠的就是它 |
 | `keywords` | `string` | 否 | 别名/品牌/俗称，搜索用。端上可以不展示 |
-| `status` | `string` | 否 | — |
+| `status` | `string` | 否 | 状态 |
 | `refCount` | `number` | 否 | 被引用次数，只给运营排序用 |
 | `barcode` | `string` | 否 | 商品条码。**空是常态** —— 生鲜、现做熟食、服务本来就没有条码 |
 | `source` | `string` | 否 | 出处：`OPS` 运营手录 / `OFF` 从 Open Food Facts 导入。 众包来的那批全是待审状态，运营靠它把「还没人看过的」与「自己录的」分开审。 |
@@ -7637,7 +7637,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `categoryNo` | `string` | 是 | — |
+| `categoryNo` | `string` | 是 | 类目号 |
 | `categoryName` | `string` | 是 | 店主改过名的用店主的叫法（「好菜」而不是「蔬菜」）—— 这一页是给他看的 |
 | `dims` | [`SpecTemplate`](#spectemplate)\[\] | 是 | 销售规格：买家要挑一档，每档单独定价、单独算库存 |
 | `props` | [`SpecTemplate`](#spectemplate)\[\] | 否 | 商品参数：只描述，不分 SKU、不影响价格与库存。 <p>与 `dims` 并排而不是合成一列加个字段：它们在界面上是两块， 合成一列端上每处都要先过滤，而漏过滤一次就是「产地」被当成规格。 |
@@ -7655,7 +7655,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | 门店号 |
 | `channels` | [`StoreFulfillmentChannel`](#storefulfillmentchannel)\[\] | 是 | 固定四行，顺序即开关顺序 —— 服务端补缺，端上不用自己造 |
 
 ### StoreFulfillmentChannel
@@ -7664,8 +7664,8 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `channel` | [`FulfillmentType`](#fulfillmenttype) | 是 | — |
-| `enabled` | `boolean` | 是 | — |
+| `channel` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约渠道（快递 / 到店自提 / 邻里自提 / 商家自送 / 上门预约） |
+| `enabled` | `boolean` | 是 | 开着没有。**关掉意味着这条路从此不接新单**，已有的单照常履约 |
 | `denied` | `boolean` | 是 | 准入矩阵不允许（按主体类型）。端上置灰＋原因，不隐藏 |
 | `templateNo` | `string,null` | 否 | 仅 EXPRESS：运费模板号；空 = 平台默认模板 |
 | `pickups` | [`PickupRef`](#pickupref)\[\] | 否 | 仅 NEIGHBOR_PICKUP（P1）：已引用的取货点，含 PENDING 的自建点（商家要看到「审核中」） |
@@ -7693,7 +7693,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `fulfillmentReach` | [`FulfillmentReach`](#fulfillmentreach) | 否 | 履约能力（ADR-013 阶段二）。**只说「怎么送到你手上」**，送得到哪儿看  {@link  serviceAreas } 。 与上面两个 `@deprecated` 字段的关系：新旧两套并存期间，端上**只传一套** —— 传了 `serviceAreas` 就走新模型，后端不再看 `serviceScope`。 |
 | `serviceAreas` | [`ServiceArea`](#servicearea)\[\] | 否 | 地理覆盖项，可跨粒度组合（三个小区 + 一个区）。 **空的含义由 `fulfillmentReach` 决定**，这是这个字段最容易踩的地方： PICKUP 空 = 谁也看不到（没配自提点就没法履约）； ONSITE / SHIPPING 空 = 不限。同一个空数组两种意思，所以别拿它判「有没有设置过」。 |
 | `latE6` | `number,null` | 否 | 门店坐标（gcj02，E6）。地图选点回填；买家侧「门店自取」导航与候选取货点排距离靠它。 不传 = 这次不改；老版本端上不知道这个字段，后端不能把缺省当成清空。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度 ×1e6。**全站坐标一律 gcj02** |
 
 ### StoreQrcode
 

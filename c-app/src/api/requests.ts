@@ -100,6 +100,7 @@ export interface SaveAddressReq {
   tag?: string;
   /** 地图选点给的坐标（gcj02，E6）；不传 = 不改 */
   latE6?: number | null;
+  /** 经度 ×1e6。**全站坐标一律 gcj02** */
   lngE6?: number | null;
 }
 
