@@ -320,6 +320,45 @@ class FundInvariantFlowTest {
         assertThat(earnLedgerCount(SUB)).as("同一个子单不能有第二条发分流水").isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("退分的幂等在数据里，不在标记上 —— 所以推迟到事务之外是安全的")
+    void reverseIsIdempotentByLedgerState() {
+        long now = System.currentTimeMillis();
+        givenPaidOrder(now - 60_000L);
+        // 造一条「已用积分」的流水：退分认的就是它
+        DataScopeContext.executeWithoutScope(() -> jdbc.update(
+                "INSERT INTO pts_user_ledger (ledger_no, user_no, biz_type, points,"
+                        + " balance_after, sub_order_no, status, tenant_no,"
+                        + " created_at, updated_at, version, deleted)"
+                        + " VALUES ('PL-INV-U', ?, 'USE', -20, 0, ?, 'PENDING', 'MAIN',"
+                        + " CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0)", USER, SUB));
+
+        assertThat(refundLedgerCount(SUB)).as("前置：还没有退分流水").isZero();
+
+        pointsPort.reverse(SUB, "测试退分");
+        assertThat(refundLedgerCount(SUB))
+                .as("第一次要真的退 —— 没有这句，下面「还是 1 条」什么都不证明").isEqualTo(1);
+
+        /*
+         * 再退一次。推迟到事务之外意味着**重试会真的发生**（AfterCommit 失败后由巡检补做、
+         * 或者同一条链路被重放），所以这一条必须成立。
+         *
+         * 它靠的不是调用方的任何标记，而是 USE 流水自己的状态：
+         * 第一次把它从 PENDING 翻成 REVERSED，第二次就找不到了。
+         * <b>这正是 grant 与 reverse 的关键差别</b> —— grant 的幂等原本挂在
+         * ord_sub_order.points_granted 上，移出事务就失效，所以那一处要先补流水幂等。
+         */
+        pointsPort.reverse(SUB, "测试重复退分");
+        assertThat(refundLedgerCount(SUB)).as("重复退不能退两次").isEqualTo(1);
+    }
+
+    private int refundLedgerCount(String subOrderNo) {
+        Integer n = DataScopeContext.executeWithoutScope(() -> jdbc.queryForObject(
+                "SELECT COUNT(*) FROM pts_user_ledger WHERE sub_order_no = ? AND biz_type = 'REFUND'",
+                Integer.class, subOrderNo));
+        return n == null ? 0 : n;
+    }
+
     private boolean grantedFlagOf(String subOrderNo) {
         Integer v = DataScopeContext.executeWithoutScope(() -> jdbc.queryForObject(
                 "SELECT points_granted FROM ord_sub_order WHERE sub_order_no = ?",

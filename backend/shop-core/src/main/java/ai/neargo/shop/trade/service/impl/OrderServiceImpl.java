@@ -1103,10 +1103,19 @@ public class OrderServiceImpl implements OrderService {
         }
         stockPort.release(order.getOrderNo());
         couponPort.release(order.getOrderNo());
-        // 积分按子单退。券是整单一张、积分是每个子单一条 ——
-        // 所以这里逐个子单退，而不是像券那样传 orderNo
+        /*
+         * 积分按子单退。券是整单一张、积分是每个子单一条 ——
+         * 所以这里逐个子单退，而不是像券那样传 orderNo。
+         *
+         * <p><b>推迟到提交之后</b>：退分是跨域写，理由与生成结算单、发放积分同一条。
+         * 这一处推迟起来最省心 —— {@code reverse} 的幂等<b>在数据本身</b>：
+         * 它只认状态为 PENDING 的 USE 流水，翻成 REVERSED 之后第二次进来就找不到了。
+         * 不像 {@code grant} 那样靠调用方事务里的标记，所以移出事务不会让幂等失效。
+         */
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
-            pointsPort.reverse(sub.getSubOrderNo(), "订单已取消");
+            final String subNo = sub.getSubOrderNo();
+            AfterCommit.run("退回积分 subOrderNo=" + subNo,
+                    () -> pointsPort.reverse(subNo, "订单已取消"));
             // 名额还回去。幂等标记在子单上 —— 与超时关闭那条路同时到达也只还一次
             releaseAppointmentSlot(sub);
         }
@@ -1151,9 +1160,12 @@ public class OrderServiceImpl implements OrderService {
         // 幂等：release 只作用于 LOCKED 的锁定行，重复跑不会把库存加两遍
         stockPort.release(order.getOrderNo());
         couponPort.release(order.getOrderNo());
-        // 同上，积分逐子单退。reverse 只认 PENDING 的 USE 流水，重复跑不会退两次
+        // 同上，积分逐子单退，并同样推迟到提交之后。
+        // reverse 只认 PENDING 的 USE 流水，重复跑不会退两次 —— 幂等在数据里，不在标记上
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
-            pointsPort.reverse(sub.getSubOrderNo(), reason + "，订单关闭");
+            final String subNo = sub.getSubOrderNo();
+            AfterCommit.run("退回积分 subOrderNo=" + subNo,
+                    () -> pointsPort.reverse(subNo, reason + "，订单关闭"));
             releaseAppointmentSlot(sub);
         }
     }

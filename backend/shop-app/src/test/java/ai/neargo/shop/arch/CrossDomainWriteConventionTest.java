@@ -43,7 +43,8 @@ class CrossDomainWriteConventionTest {
      */
     private static final Map<String, List<String>> DEFERRED = Map.of(
             "shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java",
-            List.of("settlePort.generateForOrder", "grantPointsAfterPay"));
+            List.of("settlePort.generateForOrder", "grantPointsAfterPay",
+                    "pointsPort.reverse"));
 
     /**
      * <b>还没改的六处</b>，按方向分类（见 TDD-支付域拆分-最终一致性与补偿 §二）：
@@ -51,7 +52,6 @@ class CrossDomainWriteConventionTest {
      * <ul>
      *   <li>{@code pointsPort.deduct}（下单扣分）—— <b>前置</b>，唯一不能用 Outbox 的一处，
      *       要改预扣 + 确认 + 超时释放；</li>
-     *   <li>{@code pointsPort.reverse} ×2（取消 / 超时关单）—— 补偿，同样走延后；</li>
      *   <li>{@code settlePort.reverseSplit} / {@code settlePort.refund}（退款两步）——
      *       <b>有序，刻意不改</b>：它们今天已经是最终一致性的形状
      *       （REFUNDING + 失败就停不往下走），拆进程后一个字都不用动。</li>
@@ -61,7 +61,7 @@ class CrossDomainWriteConventionTest {
      * 所以这个清单不是「要清零」，而是「不许变长」。
      */
     private static final List<String> REMAINING = List.of(
-            "pointsPort.deduct", "pointsPort.reverse",
+            "pointsPort.deduct",
             "settlePort.reverseSplit", "settlePort.refund");
 
     /**
