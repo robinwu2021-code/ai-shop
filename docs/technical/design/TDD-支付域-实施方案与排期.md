@@ -209,7 +209,8 @@ pay 侧的账（`stl_payment`）已经落成了。回 FAIL 让通道重推，
 
 | 步 | 内容 | 依赖 | 停在这里的价值 |
 |---:|---|---|---|
-| **C2** | `shop-settle` → `backend/pay/pay-{api,domain,store,channel,risk,job}`，**12 个 controller 搬到主应用侧** | C1 | 依赖收敛完成；ArchUnit 能强制「pay 里没有 controller」 |
+| **C2** | `shop-settle` → `backend/pay/pay-domain`，**12 个 controller 搬到主应用侧** | C1 | ✅ 已完成。依赖收敛；ArchUnit 强制「pay 里没有 controller」 |
+| ~~**C2c**~~ | 拆 `pay-{api,domain,store,channel,risk,job}` + 持久层换 Data JDBC | — | **推后到 C4 之后**（2026-08-31 定）。先跑通业务，再换持久层 —— 换持久层丢的是隐式行为，业务还在变时同时改两样，出问题分不清哪边。见 §C2c |
 | **C3** | 主应用侧新增 pay app service 层 + 7 个接口的 `Local*Adapter` | C2 | 形态 A 完整可用，且数据域收窄有唯一落点 |
 | **C4** | `Remote*Client` + `pay-svc` 产物（只含 `/internal`） | C3 | 两种形态都装得起来，**不接流量** |
 | **D1** | `shop.pay.mode=remote` 灰度：按 `PayPort` 方法逐个切 | C4 | 独立形态验证过 |
@@ -243,6 +244,72 @@ pay 侧的账（`stl_payment`）已经落成了。回 FAIL 让通道重推，
 > （4 个 Java 测试、2 个 shared 守卫、5 个生成器、2 个 ops-web 守卫）。
 > 这一次范围更大，**先跑一遍 `grep -rl "shop-settle/src"` 把清单列出来**，
 > 不要等闸门一条条报。
+
+### C2c · 模块切分与 MyBatis 切换 —— **推后到业务跑通之后**（2026-08-31 定）
+
+原计划在 C2 里一次做完「拆六个模块 + 持久层换掉 MyBatis」。**拆开了。**
+先把业务跑通（C3/C4），再回来切持久层。
+
+理由是失败方式不同：换持久层丢掉的是**隐式行为**（下面三条），
+它们不报错、不影响编译，症状要等到某条路径被真实数据走到才出现。
+在业务还在变的时候同时改这两样，出了问题分不清是哪一边。
+
+已经先做掉的两件（不依赖持久层选型）：
+
+- `pay-domain` 摘掉多余的 `shop-base-auth` 依赖（源码 0 处用到，依赖树里 auth 归零）；
+- 接口层去持久化：`FeeRuleService` 返回 `FeeRuleVO` 而不是 `StlFeeRule`，
+  并加了闸门扫 service 接口与 dto。**这一步与选型无关**，
+  接口层干净是「调用方不被迫依赖 MyBatis」的前提，换不换实现都要做。
+
+#### 选型结论：Spring Data JDBC 为主 + `JdbcClient` 兜底
+
+量出来的用法分布（`pay-domain`，2026-08-31）：
+
+| 类型 | 处数 | 切走后怎么写 |
+|---|---|---|
+| 单表 CRUD + 条件查询 | 113 | Data JDBC repository / 派生查询 |
+| 条件式原子更新（CAS） | 4 | 手写 SQL，`@Query` + `@Modifying` |
+| XML 映射 | 0 | — |
+
+**不用纯手写 JDBC SQL**：那是把 113 处的方言风险从框架手里接到自己手里。
+Data JDBC 的 CRUD 由 dialect 生成，MariaDB 与 MySQL 的 dialect 差异极小。
+真正要逐条复核方言的只有那 4 条 CAS 更新（`pts_user_account` 的
+扣减/退回/发放/转正，靠 `balance >= #{points}` + 影响行数当闸）——
+这类**任何 ORM 的派生查询都表达不了**，Data JDBC 也一样，必须手写。
+
+一个包袱不用背：pay 的 entity 里 **0 处用 `version`**，乐观锁用不上。
+
+#### 切换前必须先立的两道闸门
+
+切走 MyBatis 会**静默**丢掉三样隐式行为。第三样是等价替换（审计填充
+`MetaObjectHandler` → `@CreatedDate`/`@CreatedBy` + `AuditorAware`），
+前两样必须先有闸门盯着，否则失效时没有任何症状：
+
+1. **`@TableLogic` 逻辑删除**——Data JDBC 没有对应物。
+   113 处查询每条都要显式带 `deleted = 0`，漏一条就是查出已删数据，且不报错。
+   → 闸门：扫 pay 的每条查询是否显式带 `deleted = 0`。
+2. **数据域拦截器**——`neargo-common-data` 是 MyBatis interceptor，切走即失效。
+   而 `stl_bill`、`stl_withdraw`、`stl_purchase_invoice`、`stl_settle_invoice`、
+   `stl_settle_batch` **5 张表已经注册在数据域里**。
+   → 闸门：这 5 张表的每条读路径在主应用侧收窄过。
+
+   这与「pay 无 controller、主应用传收窄后的条件」的设计本来一致——
+   收窄该在主应用做完。但它是个**语义变更**：得显式确认每条路径，
+   不能继续靠拦截器悄悄兜着。漏收窄 = 看到全量 + 零报错，
+   与 2026-08-31 评价域报出的那三条是同一种失效方式。
+
+**顺序**：两道闸门绿了，再换实现。那时换的是实现，不是同时换实现和语义。
+
+#### 与 MariaDB → MySQL 是两笔账
+
+顺带量到的，**记在这里但不属于支付域**：迁移文件里有
+**110 处 `utf8mb4_uca1400_ai_ci`**。这是 MariaDB 10.10+ 私有的 UCA 14.0.0
+排序规则，**MySQL 里没有这个名字** —— 切 MySQL 那天这 110 处建表语句
+一条都跑不起来（启动即失败，不是静默错）。
+
+它跟 mapper 用什么写完全无关。V284 就是撞上这个才把
+`ENGINE/CHARSET/COLLATE` 整段去掉、跟随库默认 —— 那个做法对，
+新迁移都该照办。存量 110 处跨全域，要单独立项。
 
 ### C3 · pay app service 层
 
