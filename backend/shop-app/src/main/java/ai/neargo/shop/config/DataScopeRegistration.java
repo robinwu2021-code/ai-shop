@@ -357,6 +357,35 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
+         * 账期批次。运营端的放款队列（`GET /ops/settle-batches`，status/entityNo 都可空
+         * = 全平台）此前被绕过包着 —— 而**下一步动作是放款**，与提现审批同一档。
+         *
+         * <p>三处绕过保留，都不在运营会话里：
+         *   `closeDueBatches` —— 定时截批，扫全平台到期的批次
+         *   `merchantBatches(entityNo)` —— B 端商家看自己的账期，SELF 无锚点
+         *   `SettleServiceImpl` 里那处 —— 结算过账，跑在无会话的链路上
+         */
+        registry.register("stl_settle_batch", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 保证金与欠款这四张。读它们的 ops 端点都是 `/{merchantNo}` 形式，
+         * 没有全量队列 —— 与收款进件同形：登记挡的是「知道商家号也查不到域外的」。
+         *
+         * <p>⚠️ **保证金两张用的是旧列名 `merchant_no`**，欠款两张是 `entity_no`。
+         * 别照着上下几行抄 —— 抄错的表现是 fail-closed 拼成 1=0，
+         * 运营打开保证金页一片空白，而不会有任何报错。
+         */
+        registry.register("mch_deposit", Map.of(
+                ScopeDim.MERCHANT, "merchant_no"));
+        registry.register("mch_deposit_txn", Map.of(
+                ScopeDim.MERCHANT, "merchant_no"));
+        registry.register("mch_debt", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mch_debt_txn", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
          * 售后单。运营端的平台仲裁工单池（`GET /ops/after-sales`）是一条全量列表，
          * merchantNo 可空 —— 而这一页上有**商家名与买家昵称**，是跨商家的信息。
          *

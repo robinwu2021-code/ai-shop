@@ -186,7 +186,21 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
    * **在同一个类里**、解析时被一并追到。ops 队列本身（`opsList`）
    * 2026-08-31 已经去掉绕过。
    */
-  "ReviewServiceImpl#list":
+  /*
+   * 欠款余额与流水。**ops 与 B 端共用**（`BizMerchantController:457` 也调它们，
+   * 商家在工作台看自己欠平台多少）—— B 端会话是 SELF 维度，
+   * `mch_debt` 只有 MERCHANT 锚点，不绕的话**商家看自己的欠款是 0**，
+   * 而他实际上欠着钱。这比看不见更糟：他会以为已经结清了。
+   *
+   * <p>归属由入参保证：ops 侧 entityNo 来自路径，B 端来自 BizContext。
+   * 与 `MerchantGovernServiceImpl#qualifications` 同一形状。
+   */
+  "DebtServiceImpl#accountOf":
+    "ops 与 B 端共用的欠款余额；B 端是 SELF 维度，不绕商家看自己的欠款是 0",
+  "DebtServiceImpl#txns":
+    "同上，欠款流水",
+
+    "ReviewServiceImpl#list":
     "C 端评价列表，给游客看；游客无会话、买家是 SELF，不绕商品页看不到评价",
   "ReviewServiceImpl#appealsOf":
     "同上，随 C 端评价一起带出申诉状态",
@@ -361,6 +375,18 @@ const ANCHOR_WAIVED: Record<string, string> = {
     + "而那和 V137 给子单加列是同一种代价，值不值得看仲裁台会不会按片区分工",
   "ord_after_sale:PICKUP":
     "同上。自提点运营者不做售后仲裁 —— 那需要 aftersale:ticket:read",
+    "stl_settle_batch:COMMUNITY":
+    "账期批次属于商家。**看到空白的是**：配了社区域的运营打开放款队列。"
+    + "而放款是财务的活（finance:settle:*），社区运营没有这个码",
+  "stl_settle_batch:PICKUP": "同上",
+  "mch_deposit:COMMUNITY": "保证金属于商家，不属于片区",
+  "mch_deposit:PICKUP": "同上",
+  "mch_deposit_txn:COMMUNITY": "同上",
+  "mch_deposit_txn:PICKUP": "同上",
+  "mch_debt:COMMUNITY": "欠款属于商家，不属于片区",
+  "mch_debt:PICKUP": "同上",
+  "mch_debt_txn:COMMUNITY": "同上",
+  "mch_debt_txn:PICKUP": "同上",
     "rvw_review:COMMUNITY":
     "评价属于商家，不属于片区。**看到空白的是**：配了社区域的运营打开评价治理页",
   "rvw_review:PICKUP": "同上",
@@ -946,10 +972,6 @@ describe("运营端数据域接入", () => {
     ful_batch: "待判 —— 履约批次（/ops/fulfillment/batches、/sorting）",
     ful_shortage_report: "待判 —— 缺货上报（/ops/fulfillment/sorting）",
     mch_account: "待判 —— 商家员工（/ops/merchants/{no}/staff）",
-    mch_debt: "待判 —— 商家欠款（/ops/debts/{entityNo}）",
-    mch_debt_txn: "待判 —— 欠款流水（同上）",
-    mch_deposit: "待判 —— 保证金账户（/ops/admission/deposits/{no}）",
-    mch_deposit_txn: "待判 —— 保证金流水（同上 /txns）",
     mch_entity_plan: "待判 —— 增值包订阅（/ops/merchant-plans）",
     mch_store_role: "待判 —— 门店授权（同上）",
     mkt_campaign: "待判 —— 营销活动（/ops/campaigns）",
@@ -967,7 +989,6 @@ describe("运营端数据域接入", () => {
     prd_store_stock: "待判 —— 门店库存（/ops/goods、/ops/inventory/recon）",
     pts_user_account: "待判 —— 积分账户（/ops/points/overview）",
     stl_points_pool: "待判 —— 积分池（/ops/points/overview）",
-    stl_settle_batch: "待判 —— 账期批次（/ops/settle-batches）",
 
     rvw_review_like:
       "评价点赞。只有 user_no，且**只在 C 端读**（看评价时标出「我赞过」）——"

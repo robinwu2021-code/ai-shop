@@ -238,7 +238,20 @@ function tableColumns(): Map<string, Set<string>> {
   for (const f of byVersion) {
     const src = readFileSync(join(MIGRATION_DIR, f), "utf8");
     for (const m of src.matchAll(
-      /CREATE TABLE(?: IF NOT EXISTS)?\s+(\w+)\s*\(([\s\S]*?)\n\)\s*ENGINE/gi,
+      /*
+       * 收尾认三种：`) ENGINE=...`、`) COMMENT='...'`、以及光秃秃的 `);`。
+       *
+       * **上一版只认 ENGINE，于是 7 个迁移文件建的表整张不在视野里** ——
+       * 而它们恰恰是按我们自己推荐的写法建的：SQL 方言闸门 2026-08-31 起
+       * 建议「删掉整条 ENGINE/CHARSET/COLLATE，跟随库默认」（见 check-sql-portability.mjs）。
+       * 于是这道闸门与那道闸门互相拆台，而两边都不报错：
+       * 少扫的表不会出现在缺失名单里，PENDING 看着一直很正常。
+       *
+       * 撞上的方式：给 stl_settle_batch / mch_deposit / mch_debt 那几张登记数据域之后
+       * PENDING 一动不动 —— 数字对不上才查出来。**如果我没同时盯着这个数，
+       * 它会一直安静下去。**
+       */
+      /CREATE TABLE(?: IF NOT EXISTS)?\s+(\w+)\s*\(([\s\S]*?)\n\)\s*(?:ENGINE|COMMENT|;)/gi,
     )) {
       const cols = new Set<string>(
         [...m[2]!.matchAll(/^\s{4}(\w+)\s+\w/gm)].map((c) => c[1]!.toLowerCase()),
@@ -345,7 +358,17 @@ describe("数据域表册覆盖", () => {
      * 挑它们的判据是「运营端有一条全量列表读它」，而**登记的同时去掉了那三条
      * 队列上的 executeWithoutScope** —— 只登记不去绕过是第一批白干过的那一轮。
      */
-    const PENDING = 40;
+    /*
+     * ── 2026-08-31：40 → 41，**这是诚实的涨** ──
+     *
+     * 不是新欠了债，是量具修准了：上一版的建表正则只认 `) ENGINE` 收尾，
+     * 而 7 个迁移文件按我们自己推荐的写法（跟随库默认，`) COMMENT='...';`）建表 ——
+     * 它们建的表整张不在这道闸门的视野里。
+     *
+     * 同期我给 stl_settle_batch / mch_deposit / mch_debt 那五张登记了数据域，
+     * PENDING 却一动不动 —— **数字对不上才查出来**。
+     */
+    const PENDING = 41;
 
     expect(
       missing.length,

@@ -355,11 +355,15 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     public java.util.List<BatchVO> opsBatches(String status, String entityNo) {
         boolean byStatus = status != null && !status.isBlank();
         boolean byEntity = entityNo != null && !entityNo.isBlank();
-        return DataScopeContext.executeWithoutScope(() ->
-                        batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
-                                .eq(byStatus, StlSettleBatch::getStatus, status)
-                                .eq(byEntity, StlSettleBatch::getEntityNo, entityNo)
-                                .orderByDesc(StlSettleBatch::getId)))
+        /*
+         * **不绕过**：这是运营端的全量放款队列（status/entityNo 都可空），
+         * 下一步动作是放款 —— 与提现审批同一档。配了商家域的财务不该看到别家的批次。
+         * `entityNo` 参数是运营主动筛某一家，与数据域是两回事。
+         */
+        return batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(byStatus, StlSettleBatch::getStatus, status)
+                        .eq(byEntity, StlSettleBatch::getEntityNo, entityNo)
+                        .orderByDesc(StlSettleBatch::getId))
                 .stream().map(SettleBatchServiceImpl::toVO).toList();
     }
 
