@@ -326,6 +326,19 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
+         * 资质档案。与收款进件同形：读它的 ops 端点是 `/{merchantNo}/qualifications`，
+         * 没有全量队列 —— 登记挡的是「知道商家号也查不到域外的」。
+         *
+         * <p>三处绕过保留，它们跑在**没有运营会话**的路径上，或与 B 端共用：
+         *   MerchantPayPortImpl —— 准入判定「这家有没有这类证」，下单/上架链路
+         *   MerchantPortImpl    —— 审核时的重复写入检查（此刻还没落库）
+         *   MerchantGovernServiceImpl#qualifications —— ops 与 B 端共用，
+         *     不绕的话商家打开自己的资质档案是空的（见 SCOPE_BYPASS_OK）
+         */
+        registry.register("mch_qualification", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
          * 售后单。运营端的平台仲裁工单池（`GET /ops/after-sales`）是一条全量列表，
          * merchantNo 可空 —— 而这一页上有**商家名与买家昵称**，是跨商家的信息。
          *
