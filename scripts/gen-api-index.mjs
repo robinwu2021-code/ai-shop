@@ -16,6 +16,7 @@
 import { readFileSync, writeFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { backendModules, assertScanScope } from "./lib/backend-modules.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs/api/API清单.md");
@@ -108,7 +109,7 @@ function backendRoutes() {
    * 看起来像后端退化了一半，实际是这个扫描器瞎了。
    * gen-delivery-status.mjs 与 api-align.py 用的是同一套目录清单，三者必须一致。
    */
-  const dirs = ["shop-app", "shop-core", "shop-merchant", "pay/pay-domain", "shop-channel"]
+  const dirs = assertScanScope(backendModules(join(ROOT, "backend")))
     .map((m) => join(ROOT, "backend", m, "src/main/java/ai/neargo/shop"))
     .filter((d) => existsSync(d));
   const out = new Set();

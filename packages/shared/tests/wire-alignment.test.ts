@@ -13,6 +13,7 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { backendModules } from "./backend-modules";
 
 const ROOT = join(import.meta.dirname, "../../..");
 /**
@@ -26,7 +27,7 @@ const ROOT = join(import.meta.dirname, "../../..");
  * @param portal `mp` | `biz` | `ops` —— 按端分组，与包名末段一致
  */
 function controllerFiles(portal: string): string[] {
-  const roots = ["shop-app", "shop-core", "shop-merchant", "pay/pay-domain", "shop-channel"]
+  const roots = backendModules(join(ROOT, "backend"))
     .map((m) => join(ROOT, "backend", m, "src/main/java"))
     .filter((d) => existsSync(d));
   const out: string[] = [];

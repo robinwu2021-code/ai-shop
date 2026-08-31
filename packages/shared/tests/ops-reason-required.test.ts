@@ -14,6 +14,7 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { backendModules } from "./backend-modules";
 
 const ROOT = join(import.meta.dirname, "../../..");
 
@@ -28,7 +29,7 @@ function controllerSources(): { path: string; src: string }[] {
       else if (e.name.endsWith("Controller.java")) out.push({ path: p, src: readFileSync(p, "utf8") });
     }
   };
-  for (const m of ["shop-app", "shop-core", "shop-merchant", "pay/pay-domain", "shop-channel"]) {
+  for (const m of backendModules(join(ROOT, "backend"))) {
     walk(join(ROOT, "backend", m, "src/main/java/ai/neargo/shop"));
   }
   return out;

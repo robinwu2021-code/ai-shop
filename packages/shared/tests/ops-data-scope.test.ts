@@ -24,10 +24,27 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { backendModules } from "./backend-modules";
 
 const ROOT = join(import.meta.dirname, "../../..");
 const BACKEND = join(ROOT, "backend");
-const MODULES = ["shop-app", "shop-core", "shop-merchant", "pay/pay-domain", "shop-channel", "shop-base"];
+const MODULES = backendModules(BACKEND);
+
+/*
+ * **扫描面的对照量。** 这几条闸门多半是「找出违规」型的 ——
+ * 扫不到的东西恰好表现为「没有违规」，于是漏扫与全绿长得一模一样。
+ *
+ * 硬编码清单会漏（模块改名），只看一层的自动发现也会漏
+ * （backend/pay/pay-domain 是嵌套的）—— **「自动发现」不天然等于「发现得全」，
+ * 它只是把硬编码换成了另一条假设**。所以这里把假设写成断言：
+ * 支付域与主应用必须在里面，且总数不能突然缩水。
+ */
+if (!MODULES.includes("pay/pay-domain") || !MODULES.includes("shop-app") || MODULES.length < 10) {
+  throw new Error(
+    `后端模块扫描面不对：${MODULES.length} 个 [${MODULES.join(", ")}]。\n` +
+    "  期望至少 10 个、且含 shop-app 与 pay/pay-domain。\n" +
+    "  少扫在这几条闸门上不会报错 —— 它表现为「没有违规」，所以这里当场抛。");
+}
 const REGISTRATION = join(
   BACKEND, "shop-app/src/main/java/ai/neargo/shop/config/DataScopeRegistration.java");
 const SCHEMA = join(BACKEND, "shop-app/src/test/resources/schema-test.sql");

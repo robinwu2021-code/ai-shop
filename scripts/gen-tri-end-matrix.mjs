@@ -15,6 +15,7 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { backendModules, assertScanScope } from "./lib/backend-modules.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs/technical/reference/三端功能点矩阵.md");
@@ -107,8 +108,7 @@ function backendPaths() {
    * 而它已经上线在跑。这份矩阵唯一的结论来源是「哪一格是空的」，
    * 而扫不到的模块产生的正是**假空**。
    */
-  const dirs = ["shop-app", "shop-core", "shop-merchant", "pay/pay-domain", "shop-channel",
-                "shop-inventory", "shop-notify"]
+  const dirs = assertScanScope(backendModules(join(ROOT, "backend")))
     .map((m) => join(ROOT, "backend", m, "src/main/java/ai/neargo/shop"))
     .filter(existsSync);
   const out = new Set();

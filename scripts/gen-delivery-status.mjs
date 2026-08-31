@@ -12,6 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { backendModules, assertScanScope } from "./lib/backend-modules.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DOC = path.join(ROOT, "docs/technical/archive/三端全栈对齐清单.md");
@@ -29,7 +30,7 @@ function backendPaths() {
    * 只扫 portal 会让「后端已实现」少算 100 多条 —— 报告照常输出，
    * 看起来像后端突然退化，实际是这个生成器瞎了。
    */
-  const dirs = ["shop-app", "shop-core", "shop-merchant", "pay/pay-domain", "shop-channel"]
+  const dirs = assertScanScope(backendModules(path.join(ROOT, "backend")))
     .map((m) => path.join(ROOT, "backend", m, "src/main/java/ai/neargo/shop"))
     .filter((d) => fs.existsSync(d));
   const out = new Set();
