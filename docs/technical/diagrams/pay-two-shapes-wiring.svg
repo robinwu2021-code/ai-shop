@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1060" height="820" viewBox="0 0 1060 820" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
-<title>支付双形态的装配差异：内嵌与独立之间只差打包和一个开关</title>
-<desc>形态 A 内嵌与形态 B 独立部署的装配对照。两种形态共用同一份 pay-domain、pay-store、pay-web 代码；差异只允许出现在 Maven 打包与 shop.pay.mode 一个开关上。关键规矩：内嵌形态下 pay 也用独立的 DataSource 与 TransactionManager（即使指向同一个库），让跨域事务在物理上写不出来，这样两种形态语义相同。形态 B 下主应用只留 pay-api，若保留 pay-web 则 nginx 少配一条规则会静默走到连不上 pay 库的那份，返回空列表而不是 404。</desc>
+<title>支付双形态的装配差异：支付域两种形态下都没有 controller</title>
+<desc>形态 A 内嵌与形态 B 独立部署的装配对照。两种形态共用同一份 pay-domain、pay-store 代码；差异只允许出现在 Maven 打包与 shop.pay.mode 一个开关上。关键规矩一：内嵌形态下 pay 也用独立的 DataSource 与 TransactionManager（即使指向同一个库），让跨域事务在物理上写不出来，这样两种形态语义相同。关键规矩二：支付域两种形态下都没有 controller，三端 controller 与鉴权判权数据域全部留在主应用，pay 只暴露 /internal 内部口，因此它不依赖鉴权模块，也就不带 MyBatis。形态切换只改主应用注入的是 LocalPayAdapter 还是 RemotePayClient，nginx 一条规则都不用改。</desc>
 <defs>
 <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
@@ -39,7 +39,7 @@
 <text class="n" x="54" y="159">LocalPayAdapter　implements PayPort</text>
 
 <rect class="same" x="40" y="180" width="458" height="52" rx="6"/>
-<text class="n" x="54" y="200">pay-web · pay-domain · pay-store · pay-job</text>
+<text class="n" x="54" y="200">pay-domain · pay-store · pay-job（无 controller）</text>
 <text class="t" x="54" y="219">与右边<tspan class="em">逐字节相同</tspan>的代码</text>
 
 <rect class="warn" x="40" y="240" width="458" height="58" rx="6"/>
@@ -64,11 +64,11 @@
 
 <rect class="stop" x="566" y="180" width="202" height="118" rx="6"/>
 <text class="n" x="580" y="200">只留 pay-api</text>
-<text class="t" x="580" y="219">pay-web 不在这里 ——</text>
-<text class="t" x="580" y="236">留着的话同一路径</text>
-<text class="t" x="580" y="253">两个进程都有控制器，</text>
-<text class="t" x="580" y="270">nginx 少配一条就走到</text>
-<text class="t" x="580" y="287">连不上 pay 库的那份</text>
+<text class="t" x="580" y="219">pay 的实现不在这里 ——</text>
+<text class="t" x="580" y="236">但 controller 在，</text>
+<text class="t" x="580" y="253">只是背后换成了</text>
+<text class="t" x="580" y="270">RemotePayClient —— 所以</text>
+<text class="t" x="580" y="287">nginx 一条规则都不用改</text>
 
 <rect class="box" x="566" y="306" width="202" height="42" rx="6"/>
 <text class="t" x="580" y="325">classpath：只有</text>
@@ -79,11 +79,11 @@
 <text class="t" x="822" y="76">自己的进程 · 自己的库</text>
 
 <rect class="box" x="820" y="88" width="202" height="42" rx="6"/>
-<text class="n" x="834" y="107">自己的四条鉴权链</text>
-<text class="t" x="834" y="123">shop-base-auth 共用一份</text>
+<text class="n" x="834" y="107">没有 controller</text>
+<text class="t" x="834" y="123">不鉴权、不读会话、不判权</text>
 
 <rect class="same" x="820" y="138" width="202" height="160" rx="6"/>
-<text class="n" x="834" y="158">pay-web</text>
+<text class="n" x="834" y="158">pay-internal</text>
 <text class="n" x="834" y="178">pay-domain</text>
 <text class="n" x="834" y="198">pay-store</text>
 <text class="n" x="834" y="218">pay-job</text>
@@ -108,7 +108,7 @@
 
 <rect class="box" x="536" y="424" width="500" height="76" rx="7"/>
 <text class="n" x="552" y="444">② 一个开关　shop.pay.mode</text>
-<text class="t" x="552" y="463">配在主应用侧，管两件事：装 Local 还是 Remote 的 PayPort，装不装 pay-web。</text>
+<text class="t" x="552" y="463">配在主应用侧，只管一件事：注入 LocalPayAdapter 还是 RemotePayClient。</text>
 <text class="t" x="552" y="480">matchIfMissing=true —— 不配就是内嵌，也就是生产今天的样子</text>
 
 <rect class="warn" x="24" y="514" width="1012" height="62" rx="7"/>

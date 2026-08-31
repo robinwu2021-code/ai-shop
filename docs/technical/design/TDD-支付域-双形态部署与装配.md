@@ -20,6 +20,31 @@
 只要有一处业务代码知道「我现在是哪种形态」，那就不是两种形态，而是两套代码 ——
 而两套代码里一定有一套没人测。
 
+## L1 · 最要紧的一条：**支付域没有 controller**
+
+> **2026-08-31 定。** 本文早先的版本给 pay 设计了 `pay-web`：三端控制器 +
+> 自己的四条鉴权链 + 自己的 `DbTokenStore` + 远程判权。**那是错的**，现在改掉。
+
+支付域<b>不对任何前端暴露 HTTP</b> —— 不给 C 端、不给 B 端，**运营端也不给**。
+它唯一的 HTTP 表面是 `/internal/**`：共享密钥、绑内网、**不认任何用户身份**。
+
+三端的 controller 全部留在主应用，鉴权、判权、数据域也全部在主应用做完，
+传给 pay 的是**已经收窄过的查询条件**（比如「这几个 entityNo」），
+而不是「当前用户是谁，你自己去查他能看什么」。
+
+**这一条同时解决四件事：**
+
+| 早先的问题 | 现在 |
+|---|---|
+| pay-svc 要三条鉴权链 → 依赖 `shop-base-auth` → 依赖数据域引擎 → **必然带 MyBatis**，AOT 收益打折（见 [ADR-021 §3.5](../ADR/ADR-021-支付域独立为服务与独立库.md) 的实测） | pay 不鉴权 → **不依赖 auth → 不带 MyBatis → AOT 成立** |
+| 会话外置（`token-store` 切 db）是拆分的**硬前置**，要按端分三批观察 | pay 根本不验令牌，**这条前置消失了** |
+| 判权要么跨库读 `sys_role_point`、要么远程回查主应用 | 判权只在主应用发生，pay 不知道有「权限」这回事 |
+| 同一路径在两个进程都有 controller，nginx 少配一条就静默走错 | **只有一个进程有 controller**，nginx 不需要按路径分流支付 |
+
+代价也要说清楚：**支付相关的读要多一跳**（主应用 → pay），
+而且数据域从「SQL 拦截器自动加 where」变成「显式传参」。
+后者其实更安全 —— 拦截器漏装是**静默全量**，显式传参漏传是空集或编译不过。
+
 ---
 
 ## L2 · 一、三条不可破的规矩
@@ -86,7 +111,7 @@ backend/pay/
 ├── pay-store        Spring Data JDBC repository 实现 · 数据源 · Flyway(db/pay)
 ├── pay-channel      通道适配（微信 / 支付宝 / Xendit / HyperPay ...）
 ├── pay-risk         资金风控
-├── pay-web          三端控制器 + 回调控制器 + 内部口
+├── pay-internal     **唯一的 HTTP 表面**：/internal/** 内部口（共享密钥，不认用户身份）
 └── pay-job          四个定时任务的 JobHandler
 ```
 
@@ -96,18 +121,19 @@ backend/pay/
 |---|:---:|:---:|:---:|
 | `pay-api` | ✅ | ✅ | ✅ **只有它** |
 | `pay-domain` `pay-store` `pay-channel` `pay-risk` | ✅ | ✅ | ❌ |
-| `pay-web` | ✅ | ✅ | ❌ |
+| `pay-internal`（只有 /internal，无用户 controller） | ❌ 用不上 | ✅ | ❌ |
 | `pay-job` | ✅ | ✅ | ❌ |
 | `shop-base`（内核） | ✅ | ✅ | ✅ |
-| `shop-base-web` `shop-base-auth` | ✅ | ✅ | ✅ |
+| `shop-base-auth` | ✅ | **❌ pay 不鉴权**（这正是它能躲开 MyBatis 的原因） | ✅ |
 | `shop-store-mybatis` | ✅（业务域用） | ❌ | ✅ |
 | `shop-store-data-aot` | ✅（pay 用） | ✅ | ❌ |
 | 业务域六个模块 | ✅ | ❌ | ✅ |
 
-> **形态 B 下主应用只留 `pay-api`。** 这一条不能省：
-> 如果主应用还带着 `pay-web`，那么 `/biz/settle/**` 在两个进程里都有控制器，
-> **nginx 少配一条规则就会静默走到主应用那份** —— 而它连不上 pay 库，
-> 表现是「查结算单返回空列表」，不是 404。空列表是个合法响应，没人会去查 nginx。
+> **形态 A 下 `pay-internal` 是多余的**：主应用直接注入 `LocalPayAdapter`，
+> 没有理由为了自己调自己而起一个 HTTP 口。装上它反而多一个内网端点要看守。
+>
+> **形态 B 下主应用只留 `pay-api`** —— 它是接口与 DTO，没有实现。
+> 主应用的三端 controller 照旧在，只是背后从 `LocalPayAdapter` 换成 `RemotePayClient`。
 
 ---
 
@@ -180,33 +206,79 @@ public class PayPortConfig {
 
 `shop-core` 的下单代码一行不改 —— 它注入的一直是 `PayPort`。
 
-### 3. web 层装不装
+### 3. controller 在哪：**全部在主应用，一个都不在 pay**
 
-```java
-@Configuration
-@ConditionalOnProperty(name = "shop.pay.mode", havingValue = "embedded", matchIfMissing = true)
-@ComponentScan("ai.neargo.pay.web")
-class EmbeddedPayWebConfig { }
+三端的支付相关 controller（`/ops/settle-batches`、`/biz/settle/**`、
+`/mp/order/:no/pay` …）**两种形态下都在主应用**，位置一行不动。
+形态切换只改它们背后注入的是 `LocalPayAdapter` 还是 `RemotePayClient`。
+
+于是形态 B 下 nginx **不需要为支付配任何分流规则** —— 对外仍然只有一个 :8081。
+早先那版设计要按路径把 `/biz/settle/**` 之类切到 :8083，
+而「少配一条就静默走到连不上 pay 库的那份、返回空列表而不是 404」正是它的固有风险。
+现在那个风险不存在了，因为**只有一个进程有 controller**。
+
+### 3b. 主应用侧的 pay service —— controller 与 `PayPort` 之间的那一层
+
+controller 不直接调 `PayPort`，中间隔一层**主应用自己的 service**：
+
+```
+主应用 controller
+   └─ PaySettleAppService（主模块，接口 + Impl —— 与本仓库其它 Service 同一形状）
+        ├─ 解析数据域 → 收窄成 visibleEntityNos
+        ├─ 校验入参、拼装 VO、i18n
+        └─ payPort.xxx(收窄后的条件)          ← 唯一与支付域接触的地方
+             ├─ embedded → LocalPayAdapter
+             └─ remote   → RemotePayClient
 ```
 
-形态 B 的主应用里 `pay-web` 根本不在 classpath 上（见 §二的打包矩阵），
-这个开关只是**第二道保险**：万一有人把依赖留下了，开关也会拦住。
+**为什么不让 controller 直接调 `PayPort`**，三条理由，第三条最实际：
 
-`pay-svc` 那边不需要开关 —— 它就是为了跑 `pay-web` 存在的。
+1. **`PayPort` 是域间契约，不该长成端上的形状。** 直接调的话，
+   `PayPort` 会慢慢被塞进分页壳、VO、i18n 文案 —— 而那些是端的事。
+   隔一层之后 `PayPort` 只谈资金语义，端要什么在这一层拼。
+2. **数据域收窄要有唯一落点。** 「把当前运营能看的 entityNo 解析出来」这件事
+   如果散在每个 controller 里，漏一处就是越权，而且不报错。
+   放在这一层，配一条闸门盯着「`PayPort` 的方法只许被这一层调用」。
+3. **形态切换的影响面收敛到一个包。** remote 形态下要处理超时、重试、
+   部分失败的语义（HTTP 超时但对方已执行），这些**不该出现在 controller 里**，
+   也不该出现在 `PayPort` 的契约里 —— 它们是这一层的事。
 
-**控制器本身两种形态完全相同**，因为它只依赖 `shop-base-auth` 的
-`SecurityUtils` / `PermChecker`，而那两个在两种形态里是同一个类。
+> **它放在哪**：随支付相关 controller 走。今天 `OpsSettleController` /
+> `BizSettleController` 在 `shop-settle` 里 —— 拆分时它们连同这一层
+> 一起搬到主应用侧（`shop-app` 或一个新的 `shop-pay-client` 模块），
+> 而 `pay-*` 那边一个 controller 都不留。
+>
+> **闸门**：`pay/**` 里不许出现 `RestController`；
+> `PayPort` 的方法只许被 `..payclient..` 包调用。
+> 两条都是源码级的，与 `CrossDomainWriteConventionTest` 同一形状。
 
-### 4. 鉴权链
+### 4. 鉴权：pay 不参与
 
-形态 B 的 `pay-svc` 要自己起四条 `SecurityFilterChain`（`/biz` `/mp` `/ops` `/callback`）。
-**这套装配从 `shop-app` 的 `SecurityConfig` 抽到 `shop-base-auth` 里成为一个可复用的
-`@AutoConfiguration`**，两边共用 —— 抄一份过去的话，
-两边的 `permitAll` 列表迟早不一致，而不一致的方向可能是「支付服务上多放行了一条」。
+`pay-svc` **不起 `SecurityFilterChain`，不验令牌，不判权限，不解析数据域**。
+它唯一的入口是 `/internal/**`，用共享密钥，照 `JobHandlerEndpoint` 的四条硬要求：
+绑内网 · 共享密钥不是用户令牌 · 不建 `BizContext` · 密钥没配一律 401（而不是端点消失）。
 
-前置条件（**必须先做完**）：`token-store` 从 `memory` 切到 `db`。
-默认值是进程内内存，`pay-svc` 独立后一个令牌也验不了。
-详见 [TDD-基础包分层与支付双形态 §3.3](./TDD-基础包分层与支付双形态.md)。
+**主应用把身份问题全部解决完再调 pay**：
+
+```java
+// 主应用的 OpsSettleController —— 位置不变，鉴权不变
+@GetMapping("/ops/settle-batches")
+@PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
+public List<SettleBatchVO> batches(...) {
+    List<String> visible = dataScope.visibleEntityNos();   // 数据域在这里解析完
+    return payPort.settleBatches(visible, status);          // 传给 pay 的是收窄后的条件
+}
+```
+
+<b>数据域从「SQL 拦截器自动加 where」变成「显式传参」</b>，这一点值得单独说：
+拦截器漏装是**静默全量**（越权且不报错，本仓库刚在结算表上验过一次），
+显式传参漏传是空集或编译不过。**后者的失败方向是安全的。**
+
+> **两条随之消失的前置条件：**
+> 会话外置（`token-store` 切 db）不再是拆分的前置 —— pay 根本不读会话；
+> 判权也不需要跨库读 `sys_role_point` 或远程回查。
+> 会话外置本身仍然值得做（今天部署覆盖 jar 会清空全部会话），
+> 但它**不再挡着支付域拆分**。
 
 ### 5. 横切件（幂等 / Outbox）
 
@@ -253,9 +325,22 @@ shop.job.targets: { main: "http://127.0.0.1:8081", pay: "http://127.0.0.1:8083" 
 ### 7. 通道回调
 
 路径**不变**：`/callback/pay/channel/{channel}`（permitAll + 验签）。
-通道侧配的回调 URL 改一次要重新报备，所以不动它，由 nginx 决定进哪个进程。
+通道侧配的回调 URL 改一次要重新报备，所以它不能动。
 
-控制器随 `pay-web` 走：形态 A 在主应用里，形态 B 在 `pay-svc` 里。
+**控制器留在主应用**，与其它 controller 同一条原则。主应用验完签之后
+把结果转给 pay 的 `/internal`：
+
+```
+通道 → :8081 /callback/pay/channel/{ch}  →  验签  →  payPort.channelCallback(verified)
+```
+
+> **为什么验签也留在主应用**：验签要用通道密钥，而密钥的存放与轮换今天在主应用侧。
+> 把验签挪进 pay 会多一处要管密钥的地方，而这一步没有任何收益 ——
+> 回调不是用户请求，它没有会话问题，留在主应用不产生「多一跳鉴权」的成本。
+>
+> ⚠️ **代价要认**：回调是**改账的入口**，而它现在从主应用转一手进 pay。
+> 主应用挂着时回调会失败 —— 通道会重发，而 `channelCallback` 必须幂等（本来就是）。
+> 这与「pay 独立可用」有张力，是本方案第一个要评审的点（§十）。
 
 ---
 
@@ -268,7 +353,7 @@ shop.job.targets: { main: "http://127.0.0.1:8081", pay: "http://127.0.0.1:8083" 
 | `shop.pay.client.base-url` | — | `http://127.0.0.1:8083` | — |
 | `shop.pay.client.token` | — | 共享密钥 | 同左（校验用） |
 | `shop.pay.client.timeout` | — | `3s` / 读 `10s` | — |
-| `shop.auth.token-store` | `db`（前置改造后） | `db` | `db` |
+| `shop.auth.token-store` | 不相干 | 不相干 | **pay 不读会话**，这一项对它没有意义 |
 | `shop.job.targets.pay` | — | — | 由 worker 侧配 |
 
 **`shop.pay.client.*` 在形态 A 下必须不配**：配了也不会被读（bean 都没装），
@@ -286,9 +371,9 @@ shop.job.targets: { main: "http://127.0.0.1:8081", pay: "http://127.0.0.1:8083" 
 3. **幂等键的生成规则** —— 形态 B 下 HTTP 超时是常态，
    「超时但对方已执行」只能靠幂等收敛。形态 A 下几乎不会超时，
    所以**形态 A 的测试必须显式造重放**，否则这条永远测不到。
-4. **权限判定** —— `@perm.can` / `@perm.canBiz` 两边同一套；
-   形态 B 下 `LivePermResolver` 换成远程实现，但**契约不变**
-   （解析不到返回 `null` → 回落会话快照）。
+4. **权限判定** —— **只在主应用发生**，两种形态完全相同（controller 没搬家）。
+   pay 侧没有权限概念，所以这一条不存在"两边一致"的问题 ——
+   <b>这正是「pay 不做 controller」最直接的好处</b>。
 5. **金额与币种口径** —— 见 [多区域通道](./TDD-支付域-多区域通道.md)。
 
 ---
@@ -324,15 +409,20 @@ void 同一组资金链路在两种形态下行为一致(String mode) { ... }
 
 | 步 | 动作 | 验证 |
 |---:|---|---|
-| 0 | **会话外置**：`token-store` 切 `db`，按 operator → merchant → consumer 分三批 | 每批观察一天 |
-| 1 | pay 建独立数据源（URL 仍指主库）+ 独立事务管理器 | §六 第 3 条负面对照转绿 |
+| 1 | pay 建独立数据源（URL 仍指主库）+ 独立事务管理器 | §六 第 3 条负面对照转绿 · **2026-08-31 已完成**（`SettleDataSourceConfig`） |
 | 2 | 迁移目录切到 `db/pay/`，历史表 `pay_flyway_history` | 平台自己的迁移仍在跑（对着进销存那个 A/B 验一次） |
-| 3 | 建 `pay-svc` 产物，本地起起来，**不接流量** | AOT 产物断言 + jar 里无 `mybatis-*.jar` |
-| 4 | nginx 把**一条只读路径**（`GET /biz/settle/batch`）切到 :8083 | 对比两个进程的返回是否逐字节一致 |
-| 5 | 逐步切其余只读路径 | 同上 |
-| 6 | 切写路径（放款、进件、回调） | 幂等重放测试 |
-| 7 | 主应用去掉 pay-* 依赖，只留 `pay-api`，`shop.pay.mode=remote` | 装配测试第 2 条 |
+| 3 | 建 `pay-svc` 产物（只含 `/internal`），本地起起来，**不接流量** | AOT 产物断言 + **jar 里无 `mybatis-*.jar`**（现在这条真的能成立了） |
+| 4 | `shop.pay.mode=remote`，主应用的 `PayPort` 换成 `RemotePayClient` | 装配测试；**一条只读 Port 方法先切**，比对两种实现返回是否逐字节一致 |
+| 5 | 逐步切其余只读 Port 方法 | 同上 |
+| 6 | 切写路径（放款、进件、回调转发） | 幂等重放测试 |
+| 7 | 主应用去掉 pay-domain/store/channel/risk 依赖，只留 `pay-api` | 装配测试第 2 条 |
 | 8 | 切库：URL 指向 `ai_shop_pay`，数据迁移 | 独立账号连不上主库 |
+
+> **原来的第 0 步（会话外置）删掉了** —— pay 不读会话，它不再是前置。
+> 会话外置本身仍值得做（今天部署覆盖 jar 会清空全部会话），但那是另一件事。
+>
+> **灰度粒度也变了**：早先按 nginx 路径切，现在按 **`PayPort` 的方法**切 ——
+> 更细，且不需要动 nginx。回滚是改一个配置项，不是改反向代理。
 
 **回滚**：第 3–6 步任何一步失败，nginx 把路径切回 :8081 即可 ——
 主应用此时**还带着完整的 pay**，是个能立即接管的热备。
@@ -365,13 +455,21 @@ void 同一组资金链路在两种形态下行为一致(String mode) { ... }
 | 形态 A 下 pay 复用平台数据源 | 跨域事务当场可写，规矩一失效，且切库时幂等表被留下、重放保护静默失效 |
 | 用 `@Profile` 而不是 `@ConditionalOnProperty` | profile 是**部署形态**的表达，而这里要表达的是**一个功能的装配方式**。混用会让 `api,ops,pay` 这样的组合越来越难推理 —— [生产 profile 组合没测过](./TDD-支付域-架构与拆分路径.md) 那条教训就在这条线上 |
 | 先拆库再拆进程 | 拆库不可轻易回滚（§七 第 8 步），而拆进程可以（改一行 nginx）。**先做可回滚的那件** |
+| **pay 自带三端 controller 与鉴权链**（本文早先的设计） | 它把 pay 拖进了 `shop-base-auth` → 数据域引擎 → **MyBatis**，AOT 那半个理由当场没了；还额外要求会话外置作为前置、要求判权跨服务、要求 nginx 按路径分流（少配一条就静默走错）。**换成「pay 无 controller」之后这四个问题一起消失** |
 | 主应用保留 pay-web 作为「热备」 | 听起来稳，实际是 §二 那个陷阱：nginx 少配一条就静默走到连不上 pay 库的那份，返回空列表而不是报错。热备靠的是**回滚流程**，不是留两份都活着的控制器 |
 
 ---
 
 ## L4 · 十、待确认
 
-1. **`pay-svc` 与主应用同机还是分机**。同机解决「发布不打断」，不解决「机器挂了」。
+1. **通道回调经主应用转发这一跳**（§三.7）。回调是改账的入口，
+   主应用挂着时它会失败 —— 通道重发 + 幂等能兜住，但这与「pay 独立可用」有张力。
+   另一条路是让回调直接进 pay（它不是用户请求，没有会话问题），代价是通道密钥
+   要在 pay 侧也有一份。**这是本方案最需要评审的一点。**
+2. **`PayPort` 的方法粒度与数据域参数的形状**：主应用把「可见的 entityNo 列表」
+   传给 pay，列表可能很长（超管是全量）。要不要允许传一个「不限」的哨兵值？
+   传了之后 pay 侧怎么保证它不被误用成「跳过过滤」？
+3. **`pay-svc` 与主应用同机还是分机**。同机解决「发布不打断」，不解决「机器挂了」。
    本文按同机写（与 job 一致）；分机的话 §八 第 4 条的时钟要单独处理。
 2. **只读路径灰度的粒度**：按路径切（本文）还是按商家灰度？
    按商家更细，但要在 nginx 之上加一层路由，复杂度不小。
