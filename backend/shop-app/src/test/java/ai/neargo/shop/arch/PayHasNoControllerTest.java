@@ -109,6 +109,87 @@ class PayHasNoControllerTest {
                 .isEmpty();
     }
 
+    /**
+     * 支付域<b>接口层</b>（service 接口与 dto）不许出现持久化类型。
+     *
+     * <p>与上一条是同一件事的另一半：controller 决定「谁能调进来」，
+     * 接口签名决定「调进来要带上什么」。签名里出现一个带 {@code @TableName}
+     * 的 entity，主应用就必须为了调这个方法而依赖 MyBatis ——
+     * 独立形态下那份客户端也一样，于是 AOT 又不成立了。
+     *
+     * <p><b>2026-08-31 抓到一处</b>：{@code FeeRuleService.rules()} 返回
+     * {@code List<StlFeeRule>}，而这个 entity 一路发到了运营端。
+     * 顺带暴露的是第二件事：它继承 {@code BaseEntity}，于是
+     * {@code tenantNo}、{@code deleted}、{@code version} 一直随响应发出去 ——
+     * 前端从没声明过它们，也没人知道它们在那儿。
+     * 改成 {@code FeeRuleVO} 之后前端要的 9 个字段一个不少，多出来的三个没了。
+     */
+    @Test
+    @DisplayName("★★ 支付域的服务接口与 DTO 里不许出现 entity / MyBatis —— 泄漏一处，调用方就被迫带上持久化框架")
+    void payApiSurfaceHasNoPersistenceTypes() throws IOException {
+        Path api = BACKEND.resolve(PAY_MODULE + "/src/main/java/ai/neargo/shop/pay");
+        assertThat(Files.isDirectory(api))
+                .as("%s 的接口层目录不在了 —— 支付域搬家了？否则这条闸门从此恒真", PAY_MODULE)
+                .isTrue();
+
+        List<String> offenders = new ArrayList<>();
+        int scanned = 0;
+        try (Stream<Path> files = Files.walk(api)) {
+            for (Path f : files.filter(p -> p.toString().endsWith(".java")).toList()) {
+                String rel = api.relativize(f).toString();
+                /*
+                 * 只看接口层：service/ 下的接口本身（impl 是子包，不算）与 dto/。
+                 * impl、entity、mapper 当然会用 MyBatis —— 它们是持久层，
+                 * 拆 pay-store 时才轮到它们。
+                 */
+                boolean isApi = (rel.startsWith("service/") && !rel.startsWith("service/impl/")
+                        && !rel.startsWith("service/recon/"))
+                        || rel.startsWith("dto/");
+                if (!isApi) {
+                    continue;
+                }
+                scanned++;
+                String text = Files.readString(f, StandardCharsets.UTF_8);
+                if (text.contains("ai.neargo.shop.pay.entity.") || text.contains("com.baomidou.")) {
+                    offenders.add(rel);
+                }
+            }
+        }
+
+        assertThat(scanned)
+                .as("接口层一个文件都没扫到 —— 目录结构变了？少扫在这条闸门上"
+                        + "表现为「没有违规」，与全绿一模一样")
+                .isPositive();
+
+        /*
+         * **正对照：尺子本身要能量出东西。** 同一把判据在 impl/ 下必须命中 ——
+         * 不然「接口层零泄漏」也可能只是因为这个判据什么都匹配不到
+         * （比如哪天 import 写法变了、或换成了全限定名）。
+         */
+        Path impl = api.resolve("impl");
+        int implHits = 0;
+        try (Stream<Path> files = Files.walk(impl)) {
+            for (Path f : files.filter(p -> p.toString().endsWith(".java")).toList()) {
+                String text = Files.readString(f, StandardCharsets.UTF_8);
+                if (text.contains("ai.neargo.shop.pay.entity.") || text.contains("com.baomidou.")) {
+                    implHits++;
+                }
+            }
+        }
+        assertThat(implHits)
+                .as("判据在 impl/ 下一处都没命中 —— 那「接口层干净」多半是判据失效，不是真干净")
+                .isPositive();
+
+        assertThat(offenders)
+                .as("这些支付域接口/DTO 里出现了 entity 或 MyBatis 类型：\n  %s\n"
+                        + "  后果不是编译错，是**调用方被迫依赖 MyBatis** ——\n"
+                        + "  主应用今天本来就有，所以今天没有任何症状；\n"
+                        + "  独立形态下那份客户端也要带上，AOT 随之失效。\n"
+                        + "  改法：加一个 dto 下的 record，impl 里做映射（照 FeeRuleVO）。\n"
+                        + "  → 见 TDD-支付域-双形态部署与装配 §L1、ADR-021 §3.5。", offenders)
+                .isEmpty();
+    }
+
     @Test
     @DisplayName("★★ 支付相关的 controller 确实在主应用侧 —— 否则上一条会变成恒真")
     void payControllersLiveInTheMainApp() throws IOException {

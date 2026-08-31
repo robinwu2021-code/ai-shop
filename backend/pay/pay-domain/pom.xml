@@ -26,11 +26,6 @@
             <artifactId>shop-store-mybatis</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-base-auth</artifactId>
-            <version>${project.version}</version>
-        </dependency>
     </dependencies>
 
 </project>

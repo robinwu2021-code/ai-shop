@@ -1,6 +1,6 @@
 package ai.neargo.shop.pay.service;
 
-import ai.neargo.shop.pay.entity.StlFeeRule;
+import ai.neargo.shop.pay.dto.FeeRuleVO;
 import java.util.List;
 
 /**
@@ -30,7 +30,7 @@ public interface FeeRuleService {
     java.util.Map<String, Integer> effectiveRates(long atMillis);
 
     /** 全部规则（含历史版本），按格与生效时间排。运营要能看见「什么时候调过、调成什么」。 */
-    List<StlFeeRule> rules();
+    List<FeeRuleVO> rules();
 
     /**
      * 新增一个费率版本。
@@ -38,6 +38,6 @@ public interface FeeRuleService {
      * <p><b>只增不改</b>：调费率是插新行，旧行永久保留。
      * 允许 {@code effectiveFrom} 为未来时刻，那就是预约生效。
      */
-    StlFeeRule addRule(String businessMode, String trafficSource, int rateBp,
+    FeeRuleVO addRule(String businessMode, String trafficSource, int rateBp,
                        long effectiveFrom, String remark, String operator);
 }

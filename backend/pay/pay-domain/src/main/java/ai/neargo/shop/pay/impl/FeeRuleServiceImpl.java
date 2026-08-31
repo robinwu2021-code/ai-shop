@@ -3,6 +3,7 @@ package ai.neargo.shop.pay.impl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.pay.dto.FeeRuleVO;
 import ai.neargo.shop.pay.entity.StlFeeRule;
 import ai.neargo.shop.pay.mapper.SettleMappers.FeeRuleMapper;
 import ai.neargo.shop.pay.service.FeeRuleService;
@@ -58,16 +59,17 @@ public class FeeRuleServiceImpl implements FeeRuleService {
     }
 
     @Override
-    public List<StlFeeRule> rules() {
+    public List<FeeRuleVO> rules() {
         return feeRuleMapper.selectList(Wrappers.<StlFeeRule>lambdaQuery()
                 .orderByAsc(StlFeeRule::getBusinessMode)
                 .orderByAsc(StlFeeRule::getTrafficSource)
-                .orderByDesc(StlFeeRule::getEffectiveFrom));
+                .orderByDesc(StlFeeRule::getEffectiveFrom))
+                .stream().map(FeeRuleServiceImpl::toVO).toList();
     }
 
     @Override
     @Transactional("payTxManager")
-    public StlFeeRule addRule(String businessMode, String trafficSource, int rateBp,
+    public FeeRuleVO addRule(String businessMode, String trafficSource, int rateBp,
                               long effectiveFrom, String remark, String operator) {
         if (businessMode == null || businessMode.isBlank()
                 || trafficSource == null || trafficSource.isBlank()) {
@@ -94,7 +96,17 @@ public class FeeRuleServiceImpl implements FeeRuleService {
         rule.setRemark(remark);
         rule.setCreatedBy(operator);
         feeRuleMapper.insert(rule);
-        return rule;
+        return toVO(rule);
+    }
+
+    /**
+     * entity → VO。**只搬 9 个字段**，`BaseEntity` 上的 `tenantNo`/`deleted`/`version`
+     * 不在其中 —— 此前它们是随 entity 一起发出去的，没人要，也没人知道。
+     */
+    private static FeeRuleVO toVO(StlFeeRule r) {
+        return new FeeRuleVO(r.getRuleNo(), r.getBusinessMode(), r.getTrafficSource(),
+                r.getRateBp(), r.getEffectiveFrom(), r.getEnabled(), r.getRemark(),
+                r.getCreatedAt(), r.getCreatedBy());
     }
 
     private static String key(String businessMode, String trafficSource) {

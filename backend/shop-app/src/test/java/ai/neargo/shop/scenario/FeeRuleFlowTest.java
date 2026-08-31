@@ -94,7 +94,7 @@ class FeeRuleFlowTest {
          * 若实现里把停用版本「直接跳过」，命中的就会是更早的某一版 ——
          * 只调过一次时看不出区别，调过三次时结果完全不同。
          */
-        disable(v2.getRuleNo());
+        disable(v2.ruleNo());
         assertThat(feeRuleService.rateOf(THIRD_PARTY, StlFeeRule.MERCHANT_OWNED, t1 + 15))
                 .as("停用第二版后，t1+15 这一刻应当落回初始版")
                 .isZero();
