@@ -1,11 +1,9 @@
 package ai.neargo.shop.portal.ops.pay;
 
 import ai.neargo.shop.auth.Perms;
-import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.pay.SettleService;
 import ai.neargo.shop.pay.dto.PurchaseInvoiceVO;
 import ai.neargo.shop.pay.dto.SettleBillVO;
-import ai.neargo.shop.spi.platform.AuditLogPort;
+import ai.neargo.shop.payclient.OpsPayableAppService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -35,12 +33,10 @@ import java.util.List;
 @Validated
 public class OpsPayableController {
 
-    private final SettleService settleService;
-    private final AuditLogPort auditLogPort;
+    private final OpsPayableAppService app;
 
-    public OpsPayableController(SettleService settleService, AuditLogPort auditLogPort) {
-        this.settleService = settleService;
-        this.auditLogPort = auditLogPort;
+    public OpsPayableController(OpsPayableAppService app) {
+        this.app = app;
     }
 
     /**
@@ -51,17 +47,14 @@ public class OpsPayableController {
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
     public List<SettleBillVO> list(@RequestParam(required = false) String status,
                                    @RequestParam(required = false) String entityNo) {
-        return settleService.opsPayables(status, entityNo);
+        return app.list(status, entityNo);
     }
 
     /** 对账确认。确认的含义是「双方认这个数」，之后金额不该再变。 */
     @PostMapping("/ops/payables/{settleNo}/confirm")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
     public SettleBillVO confirm(@PathVariable String settleNo) {
-        String operator = SecurityUtils.currentUserNo();
-        SettleBillVO vo = settleService.confirmRecon(settleNo, operator);
-        auditLogPort.record("PAYABLE_CONFIRM", settleNo, "对账确认，应付 " + vo.netMinor() + " 分");
-        return vo;
+        return app.confirm(settleNo);
     }
 
     /**
@@ -72,12 +65,7 @@ public class OpsPayableController {
     @PostMapping("/ops/payables/{settleNo}/paid")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_PAYOUT_EXECUTE + "')")
     public SettleBillVO paid(@PathVariable String settleNo, @RequestBody PaidReq req) {
-        String operator = SecurityUtils.currentUserNo();
-        SettleBillVO vo = settleService.markPaid(settleNo, req.paymentRef(), operator);
-        // 钱出账的登记必须留痕：事后追责靠的就是「谁在什么时候登记了哪张凭证」
-        auditLogPort.record("PAYABLE_PAID", settleNo,
-                "凭证 " + req.paymentRef() + "｜金额 " + vo.netMinor() + " 分");
-        return vo;
+        return app.markPaid(settleNo, req.paymentRef());
     }
 
     /**
@@ -90,10 +78,7 @@ public class OpsPayableController {
     @PostMapping("/ops/payables/{settleNo}/no-invoice")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_VERIFY + "')")
     public SettleBillVO noInvoice(@PathVariable String settleNo, @RequestBody NoInvoiceReq req) {
-        String operator = SecurityUtils.currentUserNo();
-        SettleBillVO vo = settleService.markNoInvoice(settleNo, req.reason(), operator);
-        auditLogPort.record("PAYABLE_NO_INVOICE", settleNo, req.reason());
-        return vo;
+        return app.markNoInvoice(settleNo, req.reason());
     }
 
     // ---------------------------------------------------------------- 进项票核验（P0-8）
@@ -102,7 +87,7 @@ public class OpsPayableController {
     @GetMapping("/ops/purchase-invoices")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_READ + "')")
     public List<PurchaseInvoiceVO> invoices(@RequestParam(required = false) String status) {
-        return settleService.opsInvoices(status);
+        return app.invoices(status);
     }
 
     /**
@@ -114,21 +99,14 @@ public class OpsPayableController {
     @PostMapping("/ops/purchase-invoices/{invoiceNo}/verify")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_VERIFY + "')")
     public PurchaseInvoiceVO verify(@PathVariable String invoiceNo) {
-        String operator = SecurityUtils.currentUserNo();
-        PurchaseInvoiceVO vo = settleService.verifyInvoice(invoiceNo, operator);
-        auditLogPort.record("INVOICE_VERIFY", invoiceNo,
-                "核验通过｜" + vo.titleName() + "｜" + vo.amountMinor() + " 分");
-        return vo;
+        return app.verifyInvoice(invoiceNo);
     }
 
     /** 驳回。原因必填——供应商得知道是抬头错了、金额不符还是影像看不清。 */
     @PostMapping("/ops/purchase-invoices/{invoiceNo}/reject")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_VERIFY + "')")
     public PurchaseInvoiceVO reject(@PathVariable String invoiceNo, @RequestBody RejectReq req) {
-        String operator = SecurityUtils.currentUserNo();
-        PurchaseInvoiceVO vo = settleService.rejectInvoice(invoiceNo, req.reason(), operator);
-        auditLogPort.record("INVOICE_REJECT", invoiceNo, req.reason());
-        return vo;
+        return app.rejectInvoice(invoiceNo, req.reason());
     }
 
     // ---------------------------------------------------------------- 平台开票信息（P0-11）
@@ -136,7 +114,7 @@ public class OpsPayableController {
     @GetMapping("/ops/finance/invoice-title")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_READ + "')")
     public java.util.Map<String, String> invoiceTitle() {
-        return settleService.platformInvoiceTitle();
+        return app.invoiceTitle();
     }
 
     /** 公司全称与税号必填——缺了这两项供应商开不出票，存下去只会让人以为已经配好了。 */
@@ -144,9 +122,7 @@ public class OpsPayableController {
     @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_VERIFY + "')")
     public java.util.Map<String, String> saveInvoiceTitle(
             @RequestBody java.util.Map<String, String> fields) {
-        var saved = settleService.savePlatformInvoiceTitle(fields, SecurityUtils.currentUserNo());
-        auditLogPort.record("INVOICE_TITLE", "finance.invoice-title", saved.get("companyName"));
-        return saved;
+        return app.saveInvoiceTitle(fields);
     }
 
     public record RejectReq(String reason) {
