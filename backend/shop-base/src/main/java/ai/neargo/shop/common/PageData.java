@@ -1,20 +1,21 @@
 package ai.neargo.shop.common;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-
 import java.util.List;
 
 /**
  * 分页包 {@code {records, total, page, size}}（与 c-app 契约一致，见 {@link ApiResult} 的说明）。
  *
  * <p>字段名刻意与 MyBatis-Plus {@code IPage} 的 {@code records} 对齐，
- * 这样 {@link #of(IPage)} 是一次直译，不需要在每个 Service 里手抄四个字段。
+ * 这样从 {@code IPage} 转过来是一次直译，不需要在每个 Service 里手抄四个字段。
+ *
+ * <p><b>那个直译方法不在这里，在 {@code MybatisPages.of(IPage)}</b>
+ * （{@code shop-store-mybatis}）。它原本是本记录的一个静态工厂 ——
+ * <b>一个纯粹的分页契约，被一个静态方法钉在了 MyBatis 上</b>：
+ * 想用 {@code PageData} 就得把 MyBatis 装进 classpath。
+ * 全仓 32 处 {@code PageData.of(}，其中传 {@code IPage} 的只有个位数，
+ * 而那一个方法让 job 与将来的 pay 连错误码都用不上。
  */
 public record PageData<T>(List<T> records, long total, long page, long size) {
-
-    public static <T> PageData<T> of(IPage<T> p) {
-        return new PageData<>(p.getRecords(), p.getTotal(), p.getCurrent(), p.getSize());
-    }
 
     public static <T> PageData<T> of(List<T> records, long total, long page, long size) {
         return new PageData<>(records, total, page, size);

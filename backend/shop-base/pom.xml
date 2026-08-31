@@ -46,20 +46,17 @@
             <artifactId>neargo-common-data</artifactId>
         </dependency>
 
-        <!-- ⚠️ Boot4 starter 不传递 extension（分页/乐观锁拦截器在里面），必须显式引；
-             jsqlparser 是 DataScopeHandler 拼 where 的依赖（TDD-backend §2.1-2）。 -->
-        <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-extension</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-jsqlparser</artifactId>
-        </dependency>
+        <!--
+            **这里刻意没有 mybatis-plus。** 它搬到 shop-store-mybatis 去了。
+
+            此前它是编译依赖，于是「想用 ErrorCode」和「必须把 MyBatis 装进 classpath」
+            被绑成了一件事 —— 而本模块 159 个文件里有 113 个连 org.springframework
+            都没有。为了躲那 22 个绑 MyBatis 的，job 与将来的 pay 把 71% 的零框架代码
+            也一起躲掉了，代价是错误码各写一套（而错误码是三端契约的一部分）。
+
+            加回来之前先想清楚：**判据不是「用没用到」而是「进没进 classpath」**，
+            那正是 AOT 的判据，也是 ADR-021 §3.5 担心的那件「没有任何报错」的事。
+        -->
 
         <dependency>
             <groupId>org.springframework.boot</groupId>

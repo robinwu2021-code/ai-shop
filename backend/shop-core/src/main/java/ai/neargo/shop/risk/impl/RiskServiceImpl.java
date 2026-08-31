@@ -4,6 +4,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.IsoTime;
+import ai.neargo.shop.common.MybatisPages;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.risk.RiskService;
 import ai.neargo.shop.risk.dto.BlacklistVO;
@@ -66,7 +67,7 @@ public class RiskServiceImpl implements RiskService {
                 // 按字典序不成立，所以显式排 status 再排 id —— 至少同状态内是新的在前）
                 .orderByDesc(RiskEvent::getId);
         Page<RiskEvent> p = eventMapper.selectPage(new Page<>(page, size), q);
-        return PageData.of(p.convert(RiskServiceImpl::toEventVO));
+        return MybatisPages.of(p.convert(RiskServiceImpl::toEventVO));
     }
 
     @Override
@@ -111,7 +112,7 @@ public class RiskServiceImpl implements RiskService {
                         .or().like(RiskBlacklist::getReason, keyword))
                 .orderByDesc(RiskBlacklist::getId);
         Page<RiskBlacklist> p = blacklistMapper.selectPage(new Page<>(page, size), q);
-        return PageData.of(p.convert(RiskServiceImpl::toBlacklistVO));
+        return MybatisPages.of(p.convert(RiskServiceImpl::toBlacklistVO));
     }
 
     @Override

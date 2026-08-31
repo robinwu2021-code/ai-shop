@@ -508,7 +508,7 @@ public class MessageServiceImpl implements MessageService {
                 .orderByDesc(MsgMessage::getId);
         // 平台侧运维视图，没有数据域概念；走库分页，这张表会一直涨
         return DataScopeContext.executeWithoutScope(() ->
-                ai.neargo.shop.common.PageData.of(
+                ai.neargo.shop.common.MybatisPages.of(
                         messageMapper.selectPage(
                                 com.baomidou.mybatisplus.extension.plugins.pagination.Page
                                         .of(page, size), q)

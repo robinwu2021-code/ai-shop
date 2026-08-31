@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>shop-store-mybatis</artifactId>
+    <packaging>jar</packaging>
+    <description>持久层 · MyBatis-Plus 实现：BaseEntity 与横切件（幂等 / Outbox / 媒体 / 归档）的落库</description>
+
+    <!--
+        **它存在的唯一理由：把 MyBatis 从 shop-base 里请出去。**
+
+        此前 shop-base 把 mybatis-plus 当编译依赖，于是「想用 ErrorCode」
+        和「必须把 MyBatis 装进 classpath」被绑成了一件事 —— 而 shop-base 里
+        159 个文件中有 113 个连 org.springframework 都没有。
+        为了躲那 22 个绑 MyBatis 的，job 与将来的 pay 把 71% 的零框架代码
+        也一起躲掉了，代价是错误码各写一套（而错误码是三端契约的一部分）。
+
+        分包之后：shop-base 是干净内核，谁要 MyBatis 谁依赖这一个。
+        判据不是「用没用到」而是「进没进 classpath」—— 那正是 AOT 的判据。
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-base</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Boot4 starter 不传递 extension（分页/乐观锁拦截器在里面），必须显式引；
+             jsqlparser 是 DataScopeHandler 拼 where 的依赖 -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-extension</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+        </dependency>
+    </dependencies>
+</project>

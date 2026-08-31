@@ -7,6 +7,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.MybatisPages;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.entity.MsgPushToken;
@@ -81,7 +82,7 @@ public class NotifyPushTaskServiceImpl implements NotifyPushTaskService {
                 .eq(status != null && !status.isBlank(), NotifyPushTask::getStatus, status)
                 .orderByDesc(NotifyPushTask::getId);
         return DataScopeContext.executeWithoutScope(
-                () -> PageData.of(taskMapper.selectPage(Page.of(page, size), q)));
+                () -> MybatisPages.of(taskMapper.selectPage(Page.of(page, size), q)));
     }
 
     /** 取消。**只有 QUEUED 能取消** —— 已在下发或已完成的拦不住了。 */

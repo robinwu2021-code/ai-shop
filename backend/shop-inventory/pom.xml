@@ -21,6 +21,11 @@
             <artifactId>shop-base</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-store-mybatis</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- 迁移自己带：独立交付时不能要求客户先装一个 ai_shop，
              也就不能指望 shop-app 帮它跑迁移 -->
         <dependency>

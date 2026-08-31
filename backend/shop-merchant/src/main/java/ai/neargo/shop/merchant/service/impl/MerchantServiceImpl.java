@@ -6,6 +6,7 @@ import ai.neargo.shop.merchant.service.MerchantService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.MybatisPages;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.merchant.dto.MerchantVO;
 import ai.neargo.shop.merchant.entity.MchEntity;
@@ -74,7 +75,7 @@ public class MerchantServiceImpl implements MerchantService {
         Page<MchEntity> result = DataScopeContext.executeWithoutScope(
                 () -> merchantMapper.selectPage(Page.of(page, size), q));
         Map<String, MchStore> fronts = frontsOf(result.getRecords());
-        return PageData.of(result.convert(m -> toVO(m, fronts)));
+        return MybatisPages.of(result.convert(m -> toVO(m, fronts)));
     }
 
     @Override

@@ -3,6 +3,7 @@ package ai.neargo.shop.message.notify.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.MybatisPages;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.common.captcha.CaptchaService;
 import ai.neargo.shop.common.ratelimit.RateLimiter;
@@ -97,7 +98,7 @@ public class NotifyLogServiceImpl implements NotifyLogService {
         // **走库分页而不是全捞进内存**：这张表只增不删（发送记录长期保留是明确决定），
         // 每翻一页就把全表读进 JVM 的话，撑不到第一次真正需要查它的时候
         return DataScopeContext.executeWithoutScope(
-                () -> PageData.of(mapper.selectPage(Page.of(page, size), q)));
+                () -> MybatisPages.of(mapper.selectPage(Page.of(page, size), q)));
     }
 
     /**
