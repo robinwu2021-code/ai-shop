@@ -37,7 +37,27 @@ const RULES = [
     re: /utf8mb4_uca1400[a-z0-9_]*/gi,
     side: "MariaDB",
     why: "MariaDB 11.4+ 独有的 UCA 14.0.0 排序规则，MySQL 没有这个名字",
-    fix: "改用 utf8mb4_unicode_520_ci（MariaDB 与 MySQL 8 都有）",
+    /*
+     * **首选是删掉整条 ENGINE/CHARSET/COLLATE，跟随库默认** ——
+     * 而不是换一个两边都有的名字。
+     *
+     * 2026-08-31 真实发生（V284__event_consumed）：按上一版的建议改成
+     * utf8mb4_unicode_520_ci，方言问题确实没了，却引入了一个更难查的：
+     * 那张表的 event_no 与 baseline 建的 `sys_outbox.event_no` 是同一个键，
+     * 排查「这个事件有没有被消费」第一件事就是按它 join 两张表 ——
+     * 而 sys_outbox 是 uca1400。两张表规则不同 → **Illegal mix of collations**，
+     * 且 **H2 根本不解析 COLLATE，本地全绿、连真库才炸**。
+     *
+     * 跟随默认时新表与老表在同一个库里，拿到的是同一个规则，join 不会炸；
+     * 将来整库切 MySQL 也只需要改库的默认值一处。
+     * 先例：V280 / V281 / V282 本来就只以 `) COMMENT='...';` 收尾。
+     *
+     * ⚠️ 改文件之前先确认这条迁移**还没在任何一台库上应用过** ——
+     * 应用过的话 Flyway checksum 会锁死，改文件那台库就起不来，只能另发一条 ALTER。
+     */
+    fix: "**删掉整条 ENGINE/CHARSET/COLLATE，跟随库默认**（见 V280/281/282）——"
+      + "同库内与已有表 join 的列尤其如此。确实要显式指定（比如这张表将来会独立成库）"
+      + "才用 utf8mb4_unicode_520_ci，并确认与它 join 的表用的是同一个",
   },
   {
     id: "create-index-if-not-exists",
@@ -102,7 +122,9 @@ const RULES = [
     re: /utf8mb4_0900[a-z0-9_]*/gi,
     side: "MySQL",
     why: "MySQL 8 独有的 UCA 9.0.0 排序规则，MariaDB 没有",
-    fix: "改用 utf8mb4_unicode_520_ci",
+    fix: "同 uca1400-collation：**首选删掉整条跟随库默认**，"
+      + "换成 utf8mb4_unicode_520_ci 是退路 —— 与已有表 join 时规则不一致会报"
+      + "Illegal mix of collations，而 H2 不解析 COLLATE，本地测不出来",
   },
 ];
 
