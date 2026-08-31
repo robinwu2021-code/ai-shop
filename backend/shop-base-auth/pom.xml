@@ -66,5 +66,23 @@
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
+
+        <!--
+            DbTokenStoreTest 建内存库跑真 SQL，要驱动。
+
+            **这一条是 C1 搬家漏掉的**：测试文件从 shop-base 搬到这里时，
+            它在 shop-base 那边的 h2（test 作用域）没跟着走 ——
+            于是 shop-base 留着一个没人用的 h2，而这里有测试却没有驱动。
+            表现是 ClassNotFoundException: org.h2.Driver，14 条全错，
+            **而错误里没有一个字提到「搬家漏了依赖」**。
+
+            ⚠️ 单独跑 `-pl shop-base-auth` 时未必红 —— 差别在 `-am` 的聚合依赖树。
+            所以搬测试文件时要连它的 test 依赖一起看，别等某一次全量才撞上。
+        -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>
