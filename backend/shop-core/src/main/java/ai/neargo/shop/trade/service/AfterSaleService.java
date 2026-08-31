@@ -104,4 +104,26 @@ public interface AfterSaleService {
      * @param limit       单轮上限。**超出的留待下一轮** —— 积压很多时一次全跑会把退款通道打满
      */
     java.util.List<String> stuckRefundNos(long stuckBefore, int limit);
+
+    /**
+     * 已经退款、而<b>分账没有回退</b>的售后单（不变式 I4）。
+     *
+     * <h2>它是这批不变式里唯一修不了的一条</h2>
+     * 别的几条都能自动补：缺结算单就补生成、标记与流水不符就清标记、
+     * 预占没了主就退回去。这一条<b>不能</b> —— 钱已经退给买家了，
+     * 而商家那一侧的分账没收回来，差额是实打实的损失。
+     *
+     * <p>能做的只有两件：<b>告警</b>，以及让它出现在人的待办里。
+     * 自动「补一次 reverseSplit」听起来对，其实危险：
+     * 走到这一步说明第一次回退失败过，而失败的原因通常是
+     * <b>分账已过期</b>（通道那边不接受了）—— 那时再调一次只会再失败一次，
+     * 而日志里多出一行「已重试」会让人以为有人在处理。
+     *
+     * <p>{@code doRefund} 的顺序（① 回退分账失败就停，绝不往下走）保证这一类很罕见。
+     * <b>所以它一旦不为零就该有人看</b>，而不是等它攒够一批。
+     *
+     * @param since 只看这个时刻之后退款的
+     * @param limit 单轮上限
+     */
+    java.util.List<String> refundedWithoutSplitReversal(long since, int limit);
 }

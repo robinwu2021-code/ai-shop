@@ -73,6 +73,7 @@ class FundInvariantFlowTest {
             jdbc.update("DELETE FROM ord_sub_order WHERE sub_order_no LIKE 'SUB-INV-%'");
             jdbc.update("DELETE FROM ord_order WHERE order_no LIKE 'SO-INV-%'");
             jdbc.update("DELETE FROM ord_after_sale WHERE sub_order_no LIKE 'SUB-INV-%'");
+            jdbc.update("DELETE FROM ord_after_sale WHERE after_sale_no LIKE 'AS-INV-%'");
             jdbc.update("DELETE FROM sys_event_consumed WHERE event_no LIKE 'EV-INV-%'");
             jdbc.update("DELETE FROM pts_user_ledger WHERE sub_order_no LIKE 'SUB-INV-%'");
             jdbc.update("DELETE FROM pts_user_account WHERE user_no = 'U-INV'");
@@ -166,6 +167,42 @@ class FundInvariantFlowTest {
          */
         List<String> tooNew = afterSaleService.stuckRefundNos(now - 120 * 60_000L, 100);
         assertThat(tooNew).as("时间窗要真的起作用，不能无条件全捞").doesNotContain("AS-INV-1");
+    }
+
+    @Test
+    @DisplayName("I4 · 已退款而分账没回退要报出来，且 null 与 false 一样算没回退")
+    void refundedWithoutSplitReversalIsReported() {
+        long now = System.currentTimeMillis();
+        // ① 没回退过 —— 这一条就是 I4 要报的
+        givenRefunded("AS-INV-BAD", 0, now - 3_600_000L);
+        // ② 正常回退过的，不该被报
+        givenRefunded("AS-INV-OK", 1, now - 3_600_000L);
+        // ③ 超出回看窗口的，也不该被报 —— 否则窗口参数形同虚设
+        givenRefunded("AS-INV-OLD", 0, now - 30L * 86_400_000L);
+
+        List<String> bad = afterSaleService.refundedWithoutSplitReversal(now - 86_400_000L, 100);
+
+        assertThat(bad).as("已退款而分账没回退的要报出来").contains("AS-INV-BAD");
+        assertThat(bad).as("正常回退过的不该被报进来").doesNotContain("AS-INV-OK");
+        assertThat(bad).as("窗口外的不该被报 —— 否则那个参数没起作用").doesNotContain("AS-INV-OLD");
+    }
+
+    /**
+     * 造一条已退款的售后单。
+     *
+     * <p>{@code split_reversed} 是 {@code TINYINT NOT NULL DEFAULT 0} ——
+     * <b>库里不可能有 null</b>。第一版这里传 null 想模拟「存量数据」，
+     * 被 {@code NULL not allowed} 当场证伪，实现里那个 isNull 分支也随之删掉了。
+     */
+    private void givenRefunded(String no, int splitReversed, long refundedAt) {
+        DataScopeContext.executeWithoutScope(() -> jdbc.update(
+                "INSERT INTO ord_after_sale (after_sale_no, order_no, sub_order_no,"
+                        + " user_no, entity_no, type, reason, status, refund_minor,"
+                        + " split_reversed, refunded_at,"
+                        + " tenant_no, created_at, updated_at, version, deleted)"
+                        + " VALUES (?, ?, ?, ?, ?, 'REFUND_ONLY', '测试', 'REFUNDED', 100,"
+                        + " ?, ?, 'MAIN', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0)",
+                no, ORDER, SUB, USER, ENTITY, splitReversed, refundedAt));
     }
 
     @Test

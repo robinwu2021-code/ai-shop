@@ -613,6 +613,30 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     /**
+     * 不变式 I4：已退款而分账没回退的。<b>只查不修</b> —— 理由见接口注释。
+     *
+     * <p><b>只判 {@code = false}，不判 null。</b> 第一版写的是
+     * {@code isNull(...).or().eq(..., false)}，理由是「存量数据可能是 null」——
+     * 而那是想当然：{@code ord_after_sale.split_reversed} 在 baseline 里就是
+     * {@code TINYINT NOT NULL DEFAULT 0}，库里不可能有 null。
+     * 测试第一次跑就用 {@code NULL not allowed} 把这个前提证伪了。
+     *
+     * <p>留着那个分支的害处不是慢，是<b>它会让下一个人以为这一列可能为空</b>，
+     * 于是照着在别处也写一遍防御 —— 而防御的是一个不存在的情况。
+     */
+    @Override
+    public List<String> refundedWithoutSplitReversal(long since, int limit) {
+        return DataScopeContext.executeWithoutScope(() ->
+                afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
+                                .eq(OrdAfterSale::getStatus, OrdAfterSale.REFUNDED)
+                                .ge(OrdAfterSale::getRefundedAt, since)
+                                .eq(OrdAfterSale::getSplitReversed, false)
+                                .orderByAsc(OrdAfterSale::getRefundedAt)
+                                .last("limit " + Math.max(1, limit)))
+                        .stream().map(OrdAfterSale::getAfterSaleNo).toList());
+    }
+
+    /**
      * 退款回退分账队列的收尾（P-12.1.5 / E4）。
      *
      * <p>刻意<b>只有三行</b>：查单、校状态、进 {@link #doRefund}。

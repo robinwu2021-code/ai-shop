@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * 卡住的退款单续跑（不变式 I5）。
+ * 卡住的退款单续跑（I5）+ 已退款而分账未回退的告警（I4）。
  *
  * <h2>为什么这个任务此前不存在</h2>
  * {@code AfterSaleServiceImpl#doRefund} 的顺序注释写着：
@@ -62,6 +62,16 @@ public class RefundRetryJob implements JobHandler {
     @Value("${shop.job.refund-retry.stuck-minutes:30}")
     private int stuckMinutes;
 
+    /**
+     * I4 的回看窗口。
+     *
+     * <p>比续跑的窗口长得多（天 vs 分钟），因为它不是要处理什么 ——
+     * 它是<b>让人看见一个本该为零的数</b>。窗口太短的话，
+     * 昨天出的那一条今天就不见了，而它并没有被解决。
+     */
+    @Value("${shop.job.refund-retry.i4-lookback-hours:72}")
+    private int i4LookbackHours;
+
     /** 单轮上限。**积压很多时一次全跑会把退款通道打满**，超出的留待下一轮 */
     @Value("${shop.job.refund-retry.limit:200}")
     private int limit;
@@ -86,18 +96,47 @@ public class RefundRetryJob implements JobHandler {
     @Bean
     public JobDeclaration refundRetryDeclaration() {
         return new JobDeclaration("refund-retry", "退款续跑",
-                "把卡在「退款中」的售后单接着往下走：先回退分账，再退款。分账仍回退不了的留待下一轮",
+                "把卡在「退款中」的售后单接着往下走：先回退分账，再退款；分账仍回退不了的留待下一轮。"
+                        + "顺带报「已退款而分账没回退」的单 —— 那一类修不了，只能人工追",
                 "shop-core", "0 */10 * * * *", true,
                 480, 540, true, true);
     }
 
     @Override
     public JobResult run(JobInvocation invocation) {
-        long cutoff = System.currentTimeMillis() - stuckMinutes * 60_000L;
+        long now = System.currentTimeMillis();
+
+        /*
+         * I4 先查再续跑，顺序是有意的：
+         * 续跑会把单子推到 REFUNDED，如果它这一轮里回退分账仍然失败，
+         * **那条新的违反要等下一轮才被看见**。先查一遍，报的是上一轮之前就存在的，
+         * 与「这一轮刚制造出来的」分得开 —— 否则告警数字会跟着重试节奏抖。
+         */
+        List<String> unreversed = afterSaleService.refundedWithoutSplitReversal(
+                now - i4LookbackHours * 3_600_000L, limit);
+        if (!unreversed.isEmpty()) {
+            /*
+             * **这一条修不了，所以只报。** 钱已经退给买家、分账没收回来，
+             * 差额是实打实的损失。自动补一次 reverseSplit 听起来对，其实危险：
+             * 走到这一步说明第一次就失败过，而原因通常是分账已过期 ——
+             * 再调只会再失败，而日志里那行「已重试」会让人以为有人在处理。
+             */
+            log.error("[refund-retry] **I4 违反 {} 条**：已退款而分账没回退，"
+                            + "钱追不回来，需人工处置（不自动重试）。样本：{}",
+                    unreversed.size(), unreversed.subList(0, Math.min(5, unreversed.size())));
+        }
+
+        long cutoff = now - stuckMinutes * 60_000L;
         List<String> stuck = afterSaleService.stuckRefundNos(cutoff, limit);
         if (stuck.isEmpty()) {
-            // detail 保持 null：JobSupport 用它区分「跑了但没事」与「跑了并做了事」
-            return JobResult.ok(null);
+            /*
+             * 没有卡住的单时 detail 仍要带上 I4 —— 它与续跑是两件事。
+             * 早先这里直接 return null（JobSupport 用它区分「跑了但没事」），
+             * 而那会让 I4 的违反数**在没有卡单的日子里整个消失**，
+             * 恰好是最平静、最没人看日志的那些天。
+             */
+            return JobResult.ok(unreversed.isEmpty() ? null
+                    : "无卡单；**I4 违反 %d 条**（已退款而分账未回退）".formatted(unreversed.size()));
         }
 
         int advanced = 0;
@@ -128,7 +167,7 @@ public class RefundRetryJob implements JobHandler {
          * 「没有卡住的单」与「查询条件写错、一笔都没扫到」长得一模一样，
          * 而后者才是最该查的那种。
          */
-        return JobResult.ok("扫 %d 笔（推进 %d · 仍卡住 %d）"
-                .formatted(stuck.size(), advanced, stillStuck));
+        return JobResult.ok("扫 %d 笔（推进 %d · 仍卡住 %d）· I4 违反 %d"
+                .formatted(stuck.size(), advanced, stillStuck, unreversed.size()));
     }
 }
