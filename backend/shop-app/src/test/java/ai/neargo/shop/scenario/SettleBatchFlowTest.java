@@ -15,6 +15,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 账期批次的前半段：定 T2 → 入批 → 截批。
@@ -156,6 +159,102 @@ class SettleBatchFlowTest {
         assertThat(reload("STL-BATCH-idem").getSettleableAt())
                 .as("重算会让 T2 漂移，而 T2 一动应结日跟着动")
                 .isEqualTo(first);
+    }
+
+    /**
+     * 人工处置的四条判据。
+     *
+     * <p><b>2026-08-31 补 —— 此前这条路径一条测试都没有。</b>
+     * 它是运营手动放款的入口（「这一批钱现在放出去」），而三处失败此前抛的是
+     * {@code IllegalArgumentException}：{@code GlobalExceptionHandler} 里没有它的
+     * handler，会落到兜底的 {@code onAny}，于是<b>运营忘了写原因，
+     * 界面上显示「系统开小差」（10500），监控里多一条 unhandled error</b> ——
+     * 操作失误被算成服务端故障，两边都看不出真正发生了什么。
+     *
+     * <p>顺带记一个事实：ops-web 的 https 层有 releaseSettleBatch / holdSettleBatch，
+     * <b>但界面里没有任何地方调它们</b>。这条链路今天没有真实用户会走到 ——
+     * 所以它更需要测试，而不是更不需要：没人点意味着坏了也没人报。
+     */
+    @Test
+    @DisplayName("★★★ 人工放行：不写原因要被拒成「参数错」而不是「系统开小差」")
+    void manualDecideRejectsBlankRemark() {
+        String batchNo = givenBlockedBatch("decide-blank");
+
+        assertThatThrownBy(() -> batchService.release(batchNo, "OPS", null))
+                .as("不写原因必须拒 —— 事后要能回答「当时凭什么放的」")
+                .isInstanceOf(BizException.class)
+                .extracting(e -> ((BizException) e).errorCode())
+                .isEqualTo(ErrorCode.REASON_REQUIRED);
+
+        assertThatThrownBy(() -> batchService.release(batchNo, "OPS", "   "))
+                .as("空白串与 null 同等对待 —— 否则敲一个空格就绕过去了")
+                .isInstanceOf(BizException.class);
+
+        assertThat(reloadBatch(batchNo).getStatus())
+                .as("被拒之后状态不能变 —— 变了就是「拒绝了但钱还是放了」")
+                .isEqualTo(StlSettleBatch.BLOCKED);
+    }
+
+    @Test
+    @DisplayName("★★ 人工处置的另外两条失败：批次不存在 = NOT_FOUND，状态不对 = CONFLICT")
+    void manualDecideRejectsUnknownAndWrongStatus() {
+        assertThatThrownBy(() -> batchService.release("STL-BATCH-NOPE", "OPS", "放"))
+                .isInstanceOf(BizException.class)
+                .extracting(e -> ((BizException) e).errorCode())
+                .isEqualTo(ErrorCode.NOT_FOUND);
+
+        long old = System.currentTimeMillis() - 30 * DAY;
+        givenBill("draft-1", old, null);
+        batchService.markSettleable();
+        batchService.collectIntoBatches();
+        String draft = reload("STL-BATCH-draft-1").getBatchNo();
+
+        assertThatThrownBy(() -> batchService.release(draft, "OPS", "放"))
+                .as("DRAFT 的批还没截批，放行它等于把还在收单的钱放出去")
+                .isInstanceOf(BizException.class)
+                .extracting(e -> ((BizException) e).errorCode())
+                .isEqualTo(ErrorCode.CONFLICT);
+    }
+
+    @Test
+    @DisplayName("★★★ 放行成功：状态变、**放行人与原因落库** —— 事后追责就靠这两列")
+    void manualReleaseRecordsWhoAndWhy() {
+        String batchNo = givenBlockedBatch("decide-ok");
+
+        var vo = batchService.release(batchNo, "OPS-7", "已人工核对流水，放");
+
+        assertThat(vo.status()).isEqualTo(StlSettleBatch.RECONCILED);
+        var row = reloadBatch(batchNo);
+        assertThat(row.getDecidedBy())
+                .as("没有放行人这一列，事后只知道「钱放了」，不知道是谁放的")
+                .isEqualTo("OPS-7");
+        assertThat(row.getDecideRemark()).isEqualTo("已人工核对流水，放");
+        assertThat(row.getDecidedBy())
+                .as("人工放行不能被记成超时自动放行 —— 两者要分开统计")
+                .isNotEqualTo(StlSettleBatch.SYSTEM_TIMEOUT);
+    }
+
+    /** 造一个挂起中的批次：只有 BLOCKED / RECONCILING 才允许人工处置 */
+    private String givenBlockedBatch(String key) {
+        long old = System.currentTimeMillis() - 30 * DAY;
+        givenBill(key, old, null);
+        batchService.markSettleable();
+        batchService.collectIntoBatches();
+        batchService.closeDueBatches();
+        String batchNo = reload("STL-BATCH-" + key).getBatchNo();
+        DataScopeContext.executeWithoutScope(() -> {
+            StlSettleBatch patch = new StlSettleBatch();
+            patch.setId(reloadBatch(batchNo).getId());
+            patch.setStatus(StlSettleBatch.BLOCKED);
+            return batchMapper.updateById(patch);
+        });
+        return batchNo;
+    }
+
+    private StlSettleBatch reloadBatch(String batchNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                batchMapper.selectOne(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(StlSettleBatch::getBatchNo, batchNo).last("LIMIT 1")));
     }
 
     @Test

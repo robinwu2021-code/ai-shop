@@ -24,6 +24,8 @@ import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 
 @Service
 public class SettleBatchServiceImpl implements SettleBatchService {
@@ -383,18 +385,25 @@ public class SettleBatchServiceImpl implements SettleBatchService {
      * 人工处置。
      *
      * <p><b>放行与继续挂起都必须写原因</b>：事后要能回答「当时凭什么放的」。
+     *
+     * <p>三处失败都抛 {@code BizException} 而不是 {@code IllegalArgumentException}
+     * （2026-08-31 改）。后者在 {@code GlobalExceptionHandler} 里没有对应的 handler，
+     * 会落到兜底的 {@code onAny} —— 于是运营忘了写原因，界面上显示的是
+     * <b>「系统开小差」（10500）</b>，而监控里多出一条 {@code unhandled error}：
+     * <b>运营的操作失误被算成了服务端故障</b>，两边都看不出真正发生了什么。
+     * 支付域其余 43 处都用 BizException，这 3 处是偏离。
      * 而超时自动放行走的是另一条路（{@code decided_by = SYSTEM_TIMEOUT}），
      * 与人工放行分开统计 —— 那个数持续大于零说明挂起时限比处置能力短。
      */
     private BatchVO decide(String batchNo, String operator, String remark, boolean pass) {
         if (remark == null || remark.isBlank()) {
-            throw new IllegalArgumentException("放行与挂起都必须写原因");
+            throw BizException.of(ErrorCode.REASON_REQUIRED);
         }
         StlSettleBatch batch = DataScopeContext.executeWithoutScope(() ->
                 batchMapper.selectOne(Wrappers.<StlSettleBatch>lambdaQuery()
                         .eq(StlSettleBatch::getBatchNo, batchNo).last("LIMIT 1")));
         if (batch == null) {
-            throw new IllegalArgumentException("批次不存在：" + batchNo);
+            throw BizException.of(ErrorCode.NOT_FOUND);
         }
         /*
          * 只有挂起中的批次能被人工处置。
@@ -403,7 +412,7 @@ public class SettleBatchServiceImpl implements SettleBatchService {
          */
         if (!StlSettleBatch.BLOCKED.equals(batch.getStatus())
                 && !StlSettleBatch.RECONCILING.equals(batch.getStatus())) {
-            throw new IllegalArgumentException("只有挂起中的批次能人工处置，当前 " + batch.getStatus());
+            throw BizException.of(ErrorCode.CONFLICT);
         }
         StlSettleBatch patch = new StlSettleBatch();
         patch.setId(batch.getId());
