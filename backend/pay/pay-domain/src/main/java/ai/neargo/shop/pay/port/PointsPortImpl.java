@@ -47,7 +47,8 @@ public class PointsPortImpl implements PointsPort {
 
     @Override
     public GrantResult grant(String userNo, String merchantNo,
-                             java.util.List<EarnLine> lines, String subOrderNo) {
-        return pointsService.grantOnPay(userNo, merchantNo, lines, subOrderNo);
+                             java.util.List<EarnLine> lines, String subOrderNo,
+                             String payChannel, String payScene) {
+        return pointsService.grantOnPay(userNo, merchantNo, lines, subOrderNo, payChannel, payScene);
     }
 }

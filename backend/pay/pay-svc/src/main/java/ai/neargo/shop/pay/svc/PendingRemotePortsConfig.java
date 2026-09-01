@@ -37,8 +37,6 @@ public class PendingRemotePortsConfig {
         ai.neargo.shop.spi.user.MerchantQueryPort.class,        // 6 个文件在用
         ai.neargo.shop.spi.platform.SettingPort.class,          // 3
         ai.neargo.shop.spi.trade.SettleSourcePort.class,        // 3
-        ai.neargo.shop.spi.platform.MasterDataPort.class,       // 2
-        ai.neargo.shop.spi.trade.OrderSceneQueryPort.class,     // 2
         ai.neargo.shop.spi.pay.PayQueryPort.class,              // 1
         ai.neargo.shop.spi.product.PointsRulePort.class,        // 1
         ai.neargo.shop.spi.trade.OrderRepairPort.class,         // 1

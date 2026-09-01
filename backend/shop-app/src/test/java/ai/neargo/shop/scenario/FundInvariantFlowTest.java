@@ -340,8 +340,10 @@ class FundInvariantFlowTest {
          * 再调一次发分。**标记是 false**（模拟「流水写成了、标记没写上」那一刻），
          * 此前这种情况会再发一次 —— 而那个窗口恰恰是把发分推迟到提交之后才出现的。
          */
+        // 通道与场景由调用方传（2026-09-01）：这条用例验的是幂等，不是端策略，
+        // 所以给一个正常放行的组合
         var again = pointsPort.grant(USER, ENTITY, List.of(
-                new PointsPort.EarnLine("G-INV", "C-INV", 1000L)), SUB);
+                new PointsPort.EarnLine("G-INV", "C-INV", 1000L)), SUB, "WECHAT", null);
 
         /*
          * **判据是返回值，不是流水条数。**

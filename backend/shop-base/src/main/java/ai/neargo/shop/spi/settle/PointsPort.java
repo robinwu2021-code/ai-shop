@@ -60,7 +60,16 @@ public interface PointsPort {
      * @param lines 按行拆开的计分输入 —— 规则按类目配，而一个子单可以跨多个类目
      * @return 实际发放的分数，0 = 商家未开启或基数太小
      */
-    GrantResult grant(String userNo, String merchantNo, List<EarnLine> lines, String subOrderNo);
+    /**
+     * @param payChannel 支付通道（{@code OFFLINE} 不发分）
+     * @param payScene   支付场景（端）
+     *
+     * <p>两个都<b>由调用方传入</b>（2026-09-01 改）：它们是支付那一刻的事实，
+     * trade 侧本来就拿着。此前支付域反向查订单域拿这两个值 ——
+     * 而按「pay 只解决 pay 的核心问题」，那条反向依赖不该存在。
+     */
+    GrantResult grant(String userNo, String merchantNo, List<EarnLine> lines, String subOrderNo,
+                      String payChannel, String payScene);
 
     /**
      * 一行商品的计分输入。

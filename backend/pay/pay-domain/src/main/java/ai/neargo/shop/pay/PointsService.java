@@ -210,9 +210,15 @@ public interface PointsService {
     void recordPoolFlow(String poolType, long amountMinor, String entityNo,
                         String refNo, String payChannel, String market);
 
+    /**
+     * @param payChannel 支付通道、{@code payScene} 支付场景 —— <b>由调用方传入</b>。
+     *                   理由见 {@link #canEarn}：pay 不回查订单域，
+     *                   也不能读自己的 stl_bill（那时它还不存在）
+     */
     ai.neargo.shop.spi.settle.PointsPort.GrantResult grantOnPay(
             String userNo, String merchantNo,
-            java.util.List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> lines, String subOrderNo);
+            java.util.List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> lines, String subOrderNo,
+            String payChannel, String payScene);
 
     // ------------------------------------------------------------ 端开关
 
@@ -236,7 +242,21 @@ public interface PointsService {
      * {@link ai.neargo.shop.spi.trade.OrderSceneQueryPort} ——
      * 没有端这个参数，「读了当前端」这个错就没有地方可写。
      */
-    PointsAvailability canEarn(String subOrderNo);
+    /**
+     * @param payChannel 订单的支付通道（{@code OFFLINE} 不发积分）
+     * @param payScene   订单的支付场景（端），用于「哪些端不发积分」的策略
+     *
+     * <p><b>两个都由调用方传进来，pay 不回查订单</b>（2026-09-01 改）。
+     * 此前经 {@code OrderSceneQueryPort} 反向问订单域 ——
+     * 而按「pay 只解决 pay 的核心问题」，这两个值是**支付那一刻的事实**，
+     * 调用方本来就拿着（{@code payChannel} 是 markPaid 的参数，
+     * {@code payScene} 在 ord_order 上）。
+     *
+     * <p>也不能改成读 pay 自己的 {@code stl_bill} —— <b>时序不允许</b>：
+     * 积分发放的 AfterCommit 注册在生成结算单之前，那一刻 stl_bill 还不存在。
+     * （这一条是核实出来的，不是推断：见 OrderServiceImpl 的 973 与 994 行。）
+     */
+    PointsAvailability canEarn(String subOrderNo, String payChannel, String payScene);
 
     /**
      * 一次端策略判定的结果。

@@ -970,8 +970,9 @@ public class OrderServiceImpl implements OrderService {
                 final String entityNo = sub.getEntityNo();
                 final long base = sub.getPayAmount() == null ? 0L
                         : sub.getPayAmount() - (sub.getFreightAmount() == null ? 0L : sub.getFreightAmount());
+                final String scene = order.getPayScene();
                 AfterCommit.run("发放积分 subOrderNo=" + subNo,
-                        () -> grantPointsAfterPay(subNo, userNo, entityNo, base));
+                        () -> grantPointsAfterPay(subNo, userNo, entityNo, base, payChannel, scene));
             }
         }
 
@@ -1015,8 +1016,15 @@ public class OrderServiceImpl implements OrderService {
      * 用户这次没拿到分而标记也没写上，重试由 {@code grantOnPay} 自己的
      * 流水幂等保证不会多发。
      */
-    private void grantPointsAfterPay(String subOrderNo, String userNo, String entityNo, long base) {
-        var g = pointsPort.grant(userNo, entityNo, earnLines(subOrderNo, base), subOrderNo);
+    private void grantPointsAfterPay(String subOrderNo, String userNo, String entityNo, long base,
+                                     String payChannel, String payScene) {
+        /*
+         * 通道与场景**传进去**，不让支付域回查订单（2026-09-01）。
+         * 它们是支付那一刻的事实，这边本来就拿着：payChannel 是 markPaid 的参数，
+         * payScene 在 ord_order 上。
+         */
+        var g = pointsPort.grant(userNo, entityNo, earnLines(subOrderNo, base), subOrderNo,
+                payChannel, payScene);
         if (g.points() <= 0) {
             return;
         }

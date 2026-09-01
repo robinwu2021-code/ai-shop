@@ -169,13 +169,13 @@ class PointsClientSwitchFlowTest {
          * 整条链路上没有任何 HTTP 请求头，所以「读当前端」的实现在这里会读到 null，
          * 从而放行；只有真的读了订单快照才拦得住。
          */
-        PointsPort.GrantResult r = pointsPort.grant(user, MERCHANT,
+        PointsPort.GrantResult r = grantBySnapshot(user, MERCHANT,
                 List.of(new PointsPort.EarnLine("G0001", null, 10_000L)), subOrderNo);
 
         assertThat(r.points())
                 .as("读当前端的实现会在这里发出分来 —— 这条用例存在的全部意义")
                 .isZero();
-        assertThat(pointsService.canEarn(subOrderNo).reason()).isNotBlank();
+        assertThat(canEarnBySnapshot(subOrderNo).reason()).isNotBlank();
     }
 
     @Test
@@ -185,7 +185,7 @@ class PointsClientSwitchFlowTest {
         String user = "U-PCS-2";
         String subOrderNo = orderPaidFrom(user, PayScenes.H5);
 
-        PointsPort.GrantResult r = pointsPort.grant(user, MERCHANT,
+        PointsPort.GrantResult r = grantBySnapshot(user, MERCHANT,
                 List.of(new PointsPort.EarnLine("G0001", null, 10_000L)), subOrderNo);
 
         assertThat(r.points()).isPositive();
@@ -198,7 +198,7 @@ class PointsClientSwitchFlowTest {
         String user = "U-PCS-3";
         String subOrderNo = orderPaidFrom(user, null);
 
-        assertThat(pointsService.canEarn(subOrderNo).allowed())
+        assertThat(canEarnBySnapshot(subOrderNo).allowed())
                 .as("按允许名单实现的话，这里会把存量单全部拦掉，而且是静默的")
                 .isTrue();
     }
@@ -208,7 +208,7 @@ class PointsClientSwitchFlowTest {
     void closingSwitchDoesNotClawBackGrantedPoints() throws Exception {
         String user = "U-PCS-4";
         String subOrderNo = orderPaidFrom(user, PayScenes.MP_WECHAT);
-        PointsPort.GrantResult granted = pointsPort.grant(user, MERCHANT,
+        PointsPort.GrantResult granted = grantBySnapshot(user, MERCHANT,
                 List.of(new PointsPort.EarnLine("G0001", null, 10_000L)), subOrderNo);
         assertThat(granted.points()).isPositive();
 
@@ -227,7 +227,7 @@ class PointsClientSwitchFlowTest {
         String user = "U-PCS-9";
         String subOrderNo = paidOrderWith(user, PayScenes.MP_WECHAT, PayModes.OFFLINE);
 
-        var r = pointsPort.grant(user, MERCHANT,
+        var r = grantBySnapshot(user, MERCHANT,
                 List.of(new PointsPort.EarnLine("G0001", null, 10_000L)), subOrderNo);
 
         assertThat(r.points())
@@ -236,7 +236,7 @@ class PointsClientSwitchFlowTest {
         assertThat(r.feeMinor())
                 .as("**费用金也必须是 0**：只挡分不挡费的话，池子反而多收了一笔没有对价的钱")
                 .isZero();
-        assertThat(pointsService.canEarn(subOrderNo).reason())
+        assertThat(canEarnBySnapshot(subOrderNo).reason())
                 .as("要说得出原因，否则商家问「为什么这单没发分」没人答得上来")
                 .isNotBlank();
     }
@@ -247,7 +247,7 @@ class PointsClientSwitchFlowTest {
         String user = "U-PCS-10";
         String subOrderNo = paidOrderWith(user, PayScenes.MP_WECHAT, "WECHAT");
 
-        assertThat(pointsPort.grant(user, MERCHANT,
+        assertThat(grantBySnapshot(user, MERCHANT,
                 List.of(new PointsPort.EarnLine("G0001", null, 10_000L)), subOrderNo).points())
                 .isPositive();
     }
@@ -378,6 +378,40 @@ class PointsClientSwitchFlowTest {
      * <p>直接建表数据而不是走下单接口：这几条用例要验的是<b>发分那一刻读了哪里的端</b>，
      * 把整条下单链路拉进来的话，任何一处不相干的改动都会让它们红。
      */
+    /**
+     * 按<b>订单快照</b>发放 —— 生产调用方（{@code OrderServiceImpl.markPaid}）传的正是这两个。
+     *
+     * <p>2026-09-01 之前 pay 自己回查订单域拿 scene/channel，这些用例验的是
+     * 「它读的是订单快照而不是当前请求」。改成参数传入之后那个责任移到了调用方，
+     * 所以这里也照调用方的样子读快照 —— <b>用例验的策略没变</b>：
+     * 某个端／线下单该不该发分。
+     *
+     * <p>「调用方传的确实是快照而不是当前请求」由走完整支付链路的用例保证
+     * （见 pointsFollowOrderSnapshotNotCurrentRequest）。
+     */
+    private PointsPort.GrantResult grantBySnapshot(String userNo, String merchantNo,
+                                                   java.util.List<PointsPort.EarnLine> lines,
+                                                   String subOrderNo) {
+        var snap = orderSnapshotOf(subOrderNo);
+        return pointsPort.grant(userNo, merchantNo, lines, subOrderNo, snap[0], snap[1]);
+    }
+
+    private ai.neargo.shop.pay.PointsService.PointsAvailability canEarnBySnapshot(String subOrderNo) {
+        var snap = orderSnapshotOf(subOrderNo);
+        return pointsService.canEarn(subOrderNo, snap[0], snap[1]);
+    }
+
+    /** @return {payChannel, payScene} */
+    private String[] orderSnapshotOf(String subOrderNo) {
+        // 这个类的 helper 造单时 subOrderNo = "SUB-" + orderNo（见 paidOrderWith）
+        String orderNo = subOrderNo.startsWith("SUB-") ? subOrderNo.substring(4) : subOrderNo;
+        return DataScopeContext.executeWithoutScope(() -> {
+            var o = orderMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<OrdOrder>lambdaQuery().eq(OrdOrder::getOrderNo, orderNo));
+            return new String[]{o.getPayChannel(), o.getPayScene()};
+        });
+    }
+
     private String orderPaidFrom(String userNo, String scene) {
         return paidOrderWith(userNo, scene, "WECHAT");
     }

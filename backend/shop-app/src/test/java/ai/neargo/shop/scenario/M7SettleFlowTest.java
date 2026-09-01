@@ -532,6 +532,10 @@ class M7SettleFlowTest {
     @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
 
+
+
+
+
     private String buyAndPay(String token, String goodsNo, String skuNo,
                              String userCouponNo, String idemKey) throws Exception {
         mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)

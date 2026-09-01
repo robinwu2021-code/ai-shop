@@ -68,7 +68,6 @@ public class PointsServiceImpl implements PointsService {
     private final MerchantQueryPort merchantQuery;
     private final MerchantAdminPort merchantAdmin;
     private final SettingPort settingPort;
-    private final ai.neargo.shop.spi.trade.OrderSceneQueryPort orderSceneQueryPort;
     private final ObjectMapper json = new ObjectMapper();
 
     public PointsServiceImpl(PointsAccountMapper accountMapper,
@@ -78,8 +77,7 @@ public class PointsServiceImpl implements PointsService {
                              MerchantQueryPort merchantQuery,
                              MerchantAdminPort merchantAdmin,
                              SettingPort settingPort,
-                             ai.neargo.shop.spi.product.PointsRulePort pointsRulePort,
-                             ai.neargo.shop.spi.trade.OrderSceneQueryPort orderSceneQueryPort) {
+                             ai.neargo.shop.spi.product.PointsRulePort pointsRulePort) {
         this.pointsRulePort = pointsRulePort;
         this.accountMapper = accountMapper;
         this.ledgerMapper = ledgerMapper;
@@ -88,7 +86,6 @@ public class PointsServiceImpl implements PointsService {
         this.merchantQuery = merchantQuery;
         this.merchantAdmin = merchantAdmin;
         this.settingPort = settingPort;
-        this.orderSceneQueryPort = orderSceneQueryPort;
     }
 
     /**
@@ -371,7 +368,7 @@ public class PointsServiceImpl implements PointsService {
     }
 
     @Override
-    public PointsAvailability canEarn(String subOrderNo) {
+    public PointsAvailability canEarn(String subOrderNo, String payChannel, String payScene) {
         /*
          * ⚠️ **线下（当面）收款的单不发积分**，这不是策略开关，是一条算得清的账。
          *
@@ -387,7 +384,7 @@ public class PointsServiceImpl implements PointsService {
          * 不做成开关是刻意的：做成开关就会有人打开它，而打开它没有对应的收款机制。
          * 要支持的话得先有「按商家挂应收、下次线上结算净出来」那一套，那是另一件事。
          */
-        if (PayModes.OFFLINE.equals(orderSceneQueryPort.payChannelOfSubOrder(subOrderNo))) {
+        if (PayModes.OFFLINE.equals(payChannel)) {
             return PointsAvailability.no("当面付款的订单不发放积分");
         }
         /*
@@ -398,7 +395,7 @@ public class PointsServiceImpl implements PointsService {
          * 读当前端会让「这单发不发积分」取决于谁在哪个端点的确认、
          * 甚至取决于是不是定时任务跑的 —— 不可复现也无法对账。
          */
-        String scene = PayScenes.normalize(orderSceneQueryPort.paySceneOfSubOrder(subOrderNo));
+        String scene = PayScenes.normalize(payScene);
         if (scene != null && policy().earnDeny().contains(scene)) {
             return PointsAvailability.no("当前端暂不发放积分");
         }
@@ -774,7 +771,8 @@ public class PointsServiceImpl implements PointsService {
     @Transactional("payTxManager")
     public ai.neargo.shop.spi.settle.PointsPort.GrantResult grantOnPay(
             String userNo, String merchantNo,
-            java.util.List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> lines, String subOrderNo) {
+            java.util.List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> lines, String subOrderNo,
+            String payChannel, String payScene) {
         /*
          * **自己的幂等，不再只靠调用方的 ord_sub_order.points_granted 标记。**
          *
@@ -811,7 +809,7 @@ public class PointsServiceImpl implements PointsService {
          *
          * 位置在商家开关之后：那一道更便宜，也更常命中。
          */
-        if (!canEarn(subOrderNo).allowed()) {
+        if (!canEarn(subOrderNo, payChannel, payScene).allowed()) {
             return ai.neargo.shop.spi.settle.PointsPort.GrantResult.none();
         }
         PointsConfig cfg = config();
