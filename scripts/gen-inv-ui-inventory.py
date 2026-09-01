@@ -5,12 +5,24 @@
 **为什么要生成不要手写**：手写的清单第二天就与代码不一致，而它长得依然像真的。
 这份随时重跑就能对差 —— 判据是「跑一遍，输出没变」。
 
+**但「随时能重跑」不等于有人跑。** 2026-08-28 到 09-02 之间没人跑过，
+于是清单一直在说旧话：漏了整整一屏（供应商），外加「货品→商品」、
+调拨发货三项、进货的供应商选择器。**没有闸门的生成器等于手写的**，
+只是多了一份「它是生成的所以准」的错觉。`--check` 就是补这一道。
+
     python3 scripts/gen-inv-ui-inventory.py            # 打印
     python3 scripts/gen-inv-ui-inventory.py --md       # 生成文档那几张表
+    python3 scripts/gen-inv-ui-inventory.py --check    # 只校验（pre-push 会跑）
 
 分类靠**最近的那个开标签**，不靠往前扫一大段：扫 260 字符会把上一行的
 sh-empty 算到这一行头上（第一版就把「点一行看那张单」判成了空态）。"""
-import json, re, sys, io
+import json, re, sys, io, pathlib
+
+# 路径一律从仓库根算起，**不吃当前工作目录**。
+# pre-push 的闸门是这么跑的：`python3 $GATE_WT/scripts/xxx.py`，
+# 进程的 cwd 却是各人的工作区 —— cwd 相对路径会让闸门读工作区、判 HEAD 的脚本，
+# 于是「判的是推出去的那份」这条规矩当场失效，而且不报错。
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 # **加页面时这里也要加**：这份列表是写死的，漏一页的症状是清单少一节而
 # 「跑一遍输出没变」照样成立 —— 闸门绿着，清单却不完整。suppliers 就这么漏过一轮。
@@ -50,14 +62,14 @@ def get(d, dotted):
         cur = cur[p]
     return cur if isinstance(cur, str) else None
 
-LOC = load_locale("b-app/src/i18n/locale/zh-CN.ts")
+LOC = load_locale(ROOT / "b-app/src/i18n/locale/zh-CN.ts")
 
 def template(src):
     i = src.find("<template>"); j = src.rfind("</template>")
     return src[i:j] if i >= 0 else ""
 
 def rows(page):
-    src = open(f"b-app/src/pages/{page}/index.vue", encoding="utf-8").read()
+    src = open(ROOT / f"b-app/src/pages/{page}/index.vue", encoding="utf-8").read()
     tpl = template(src)
     out = []
     tk = re.search(r'title-key="([^"]+)"', src)
@@ -117,16 +129,53 @@ TITLES = {"stock":"库存","stock-detail":"库存明细","stock-docs":"单据",
           "transfer":"调拨","stock-report":"报表","suppliers":"供应商",
           "locations":"库位"}
 
+DOC = ROOT / "docs/technical/design/进销存-界面清单.md"
+
+
+def section(p):
+    """一屏的 markdown 小节。--md 与 --check 共用它 —— 两边各拼一次的话，
+    改了格式就会变成「生成器改了、闸门还按老格式比」，而那种红看不出真因。"""
+    out = [f"### {TITLES[p]} · `{p}`", "", "| 类别 | 词条 | 中文 |", "|---|---|---|"]
+    for kind, key, zh in rows(p):
+        z = (zh or "").replace("|", "\\|")
+        out.append(f"| {kind} | `{key}` | {z} |")
+    return "\n".join(out)
+
+
+def check():
+    """文档里那几张表必须与现在生成出来的一字不差。
+
+    **逐屏比，不整段比**：整段比只能说「不一样」，而读的人要知道是哪一屏动了。
+    另外先断言文档确实含有本域的小节 —— 文档被改名或小节被删光时，
+    「一处都没比到」不该判成绿。"""
+    try:
+        doc = open(DOC, encoding="utf-8").read()
+    except FileNotFoundError:
+        print(f"✗ 找不到 {DOC} —— 清单被移动或改名了？闸门不能因此放行")
+        return 1
+
+    stale = [p for p in PAGES if section(p) not in doc]
+    if not stale:
+        print(f"✓ 进销存界面清单是最新的（{len(PAGES)} 屏）")
+        return 0
+
+    print(f"✗ 界面清单与代码对不上：{len(stale)} / {len(PAGES)} 屏")
+    for p in stale:
+        head = f"### {TITLES[p]} · `{p}`"
+        print(f"  · {TITLES[p]}（{p}）{'—— 文档里根本没有这一屏' if head not in doc else ''}")
+    print("  重新生成：python3 scripts/gen-inv-ui-inventory.py --md，"
+          "把输出替换掉《界面清单》的「逐项」那一节")
+    return 1
+
+
 if __name__ == "__main__":
+    if "--check" in sys.argv:
+        sys.exit(check())
     md = "--md" in sys.argv
     for p in PAGES:
         if md:
-            print(f"\n### {TITLES[p]} · `{p}`\n")
-            print("| 类别 | 词条 | 中文 |")
-            print("|---|---|---|")
-            for kind, key, zh in rows(p):
-                z = (zh or "").replace("|", "\\|")
-                print(f"| {kind} | `{key}` | {z} |")
+            print()
+            print(section(p))
         else:
             print(f"\n=== {p} ===")
             for kind, key, zh in rows(p):

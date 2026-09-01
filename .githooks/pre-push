@@ -64,6 +64,18 @@ if ! gate_run python3 scripts/gen-ui-catalog.py --check; then
   exit 1
 fi
 
+# 进销存界面清单闸门：上面那道看的是「有哪些页面」，这道看的是**那些页面上写了什么字**
+# （docs/technical/design/进销存-界面清单.md 的逐项表，从 .vue 与词条现抽）。
+#
+# 为什么单挂一道：那份清单自称「生成的，判据是跑一遍输出没变」，而**没有任何东西在跑它**。
+# 2026-08-28 → 09-02 之间它漏了整整一屏（供应商），外加十余处旧文案，
+# 期间上面那道 ui-catalog 闸门一直是绿的 —— 两把尺量的不是同一个东西。
+# 纯 python、几十毫秒，同样不需要 node_modules。
+if ! gate_run python3 scripts/gen-inv-ui-inventory.py --check; then
+  echo "  ↑ 判据取自 HEAD。本机重现：python3 scripts/gen-inv-ui-inventory.py --check"
+  exit 1
+fi
+
 # V2 文档守卫：那套文档里同一事实被写了两遍的地方不少（术语层、能力码、状态、
 # 表名、自称数字）。一次人工 review 抓到过一处实质漂移 —— 可售时段的关系表
 # 在对齐清单里挂 goods、在规格书里挂 listing，**表名不同只是表面，粒度错了才是缺陷**。

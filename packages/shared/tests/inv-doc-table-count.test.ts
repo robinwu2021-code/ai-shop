@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 
 /*
@@ -60,5 +61,47 @@ describe("进销存文档 × 迁移", () => {
     const missing = [...real].filter((t) => !listed.has(t)).sort();
     const extra = [...listed].filter((t) => !real.has(t)).sort();
     expect({ missing, extra }).toEqual({ missing: [], extra: [] });
+  });
+
+  /*
+   * 上面三条只看《数据库表结构》那一份 —— 而那个数字**会被抄走**。
+   * 2026-09-02 实况：那份文档与迁移都是 20 张，`docs/technical/README.md`
+   * 的索引行却还写着「独立库 **19 张** `inv_` 表」，而闸门全绿：
+   * 它的正则是 `N 张表`，索引里的写法是「19 张** `inv_` 表」，中间隔着别的字，
+   * **两把尺量的不是同一处**。
+   *
+   * 所以这一条不点名文件，扫 docs/ 下全部 .md：谁抄了这个数，谁就要跟着改。
+   */
+  it("★★★ docs/ 里任何一处「N 张 inv_ 表」都必须等于迁移里真实的张数", () => {
+    const real = tablesInMigrations().size;
+    // **`-z` 不是可选的**：`git ls-files` 默认会把中文路径整条加引号并转义成
+    // 八进制（docs/ 下几乎全是中文文件名），拿那个字符串去 open 必然 ENOENT。
+    const files = execFileSync("git", ["ls-files", "-z", "docs"], {
+      cwd: ROOT,
+      encoding: "utf8",
+    })
+      .split("\0")
+      .filter((f) => f.endsWith(".md"));
+
+    const hits: { file: string; claim: number }[] = [];
+    for (const f of files) {
+      // 划掉的不算。`~~17 张 inv_ 表~~` 是**引用一个已被超过的旧数字**
+      // （「与既有文档的差异」那一类小节整节都在做这件事），不是在断言今天是几张。
+      // 不给这条出口的话，如实记录历史的文档会被判红，而唯一的修法是删掉历史。
+      const text = readFileSync(join(ROOT, f), "utf8").replace(/~~[\s\S]*?~~/g, "");
+      for (const m of text.matchAll(/(\d+)\s*张\*{0,2}\s*`?inv_`?\s*表/g)) {
+        hits.push({ file: f, claim: Number(m[1]) });
+      }
+    }
+
+    // 扫描面自己的断言：一处都抽不到 = 正则失效，而那会让这一条空跑成绿。
+    expect(hits.length, "docs/ 里一处「N 张 inv_ 表」都没抽到？先怀疑正则，不要怀疑文档").toBeGreaterThan(0);
+
+    const wrong = hits.filter((h) => h.claim !== real);
+    expect(
+      wrong.map((h) => `${h.file}: ${h.claim} 张`),
+      `迁移里是 ${real} 张。上面这些地方抄了一个旧数字 —— ` +
+        `自称数字会被直接引用到下一份文档、下一次汇报里。`,
+    ).toEqual([]);
   });
 });
