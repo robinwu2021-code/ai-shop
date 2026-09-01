@@ -1,6 +1,9 @@
 package ai.neargo.shop.pay.svc;
 
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.pay.dto.FeeRuleVO;
+import ai.neargo.shop.pay.dto.FinanceVOs.SettleInvoiceVO;
+import ai.neargo.shop.pay.service.SettleInvoiceService;
 import ai.neargo.shop.pay.service.FeeRuleService;
 import java.util.List;
 import java.util.Map;
@@ -8,6 +11,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -43,11 +49,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class InternalPayEndpoint {
 
     private final FeeRuleService feeRuleService;
+    private final SettleInvoiceService invoiceService;
     private final String token;
 
     public InternalPayEndpoint(FeeRuleService feeRuleService,
+                               SettleInvoiceService invoiceService,
                                @Value("${shop.services.internal-token:}") String token) {
         this.feeRuleService = feeRuleService;
+        this.invoiceService = invoiceService;
         this.token = token;
     }
 
@@ -76,6 +85,72 @@ public class InternalPayEndpoint {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         return ResponseEntity.ok(feeRuleService.effectiveRates(at));
+    }
+
+    // ──────────────────────────────────────────── 商家结算发票（P-12.2.4）
+
+    /** 开票申请列表 */
+    @GetMapping("/internal/pay/settle-invoices")
+    public ResponseEntity<PageData<SettleInvoiceVO>> invoices(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @RequestHeader(value = "X-Internal-Token", required = false) String given) {
+        if (!authorized(given)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(invoiceService.list(status, keyword, page, size));
+    }
+
+    /**
+     * 开票。<b>写操作，而且切得动</b> —— 与费率的 addRule 不同。
+     *
+     * <p>它有状态机保护：只能从 {@code PENDING} 开票，重复调第二次是 {@code CONFLICT}
+     * （那是有意的，源码注释写着「重复开票就是重复虚开，不做幂等早退，
+     * 要让点第二次的人看见『已处理』」）。
+     *
+     * <p>所以远程化的风险不是「数据错」而是「状态不明」：
+     * 超时后运营不知道成没成，他手动点第二次会看到 CONFLICT，
+     * 再去列表里一看就知道已经开了。<b>前提是调用链上没有自动重试</b> ——
+     * {@code InternalClient} 刻意不做重试，就是为了这类操作。
+     *
+     * <p>对比 {@code addRule}：那是「插新行」，重试会多出一版费率，
+     * 而两版都在历史里、事后分不清哪次是重试。所以那个至今没切。
+     */
+    @PostMapping("/internal/pay/settle-invoices/{invoiceNo}/issue")
+    public ResponseEntity<SettleInvoiceVO> issue(
+            @PathVariable String invoiceNo,
+            @RequestBody IssueReq req,
+            @RequestHeader(value = "X-Internal-Token", required = false) String given) {
+        if (!authorized(given)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(
+                invoiceService.issue(invoiceNo, req.serialNo(), req.operatorNo()));
+    }
+
+    /** 驳回。同样靠状态机防重复 */
+    @PostMapping("/internal/pay/settle-invoices/{invoiceNo}/reject")
+    public ResponseEntity<SettleInvoiceVO> reject(
+            @PathVariable String invoiceNo,
+            @RequestBody RejectReq req,
+            @RequestHeader(value = "X-Internal-Token", required = false) String given) {
+        if (!authorized(given)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(
+                invoiceService.reject(invoiceNo, req.reason(), req.operatorNo()));
+    }
+
+    /**
+     * @param operatorNo 操作人由<b>主应用</b>解析后传进来 ——
+     *                   支付域不认用户身份，这条链路上没有会话
+     */
+    public record IssueReq(String serialNo, String operatorNo) {
+    }
+
+    public record RejectReq(String reason, String operatorNo) {
     }
 
     /** 密钥没配时**一律拒绝** —— 「没配就不校验」等于这个口对任何人开放，且没有症状 */
