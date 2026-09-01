@@ -99,10 +99,17 @@ public class DispatchServiceImpl implements DispatchService {
 
         ensureRows(live, directory);
 
-        List<FulBatch> rows = DataScopeContext.executeWithoutScope(() ->
-                batchMapper.selectList(Wrappers.<FulBatch>lambdaQuery()
-                        .in(!directory.isEmpty(), FulBatch::getPickupNo, directory.keySet())
-                        .orderByDesc(FulBatch::getArriveDate).orderByDesc(FulBatch::getId)));
+        /*
+         * **不绕过**（2026-08-31，ful_batch 登记 PICKUP 维度时一并接上）：
+         * 配了自提点域的运营打开到货批次页，看到的该是自己那几个点的批次。
+         *
+         * 上游 `directory` 来自 `cmt_pickup_point`（**那张判为不该登记** ——
+         * 登记会打断买家选社区），所以这条链路上游没有被裁，
+         * 这一处的裁剪是真起作用的，不是「反正上游已经裁过」。
+         */
+        List<FulBatch> rows = batchMapper.selectList(Wrappers.<FulBatch>lambdaQuery()
+                .in(!directory.isEmpty(), FulBatch::getPickupNo, directory.keySet())
+                .orderByDesc(FulBatch::getArriveDate).orderByDesc(FulBatch::getId));
 
         List<ArrivalBatchVO> out = new ArrayList<>();
         for (FulBatch b : rows) {

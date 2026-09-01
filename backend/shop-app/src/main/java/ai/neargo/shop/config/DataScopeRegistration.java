@@ -416,6 +416,19 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
         registry.register("mkt_campaign", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 到货批次与缺货上报。**这是本轮唯一一组按 PICKUP 维度登记的表** ——
+         * 前面几批的锚点都是 entity_no，而自提点运营者看的是「我这几个点今天到什么货」。
+         *
+         * <p>`ful_batch` 的 ops 查询已改成不绕过。`ful_shortage_report` 那处
+         * （`shortageBySku`）按 pickupNos 反查，集合来自已经裁过的批次 ——
+         * 登记它是为了防住将来直接按时间列缺货上报的查询。
+         */
+        registry.register("ful_batch", Map.of(
+                ScopeDim.PICKUP, "pickup_no"));
+        registry.register("ful_shortage_report", Map.of(
+                ScopeDim.PICKUP, "pickup_no"));
         registry.register("mkt_group_buy", Map.of(
                 ScopeDim.MERCHANT, "entity_no",
                 ScopeDim.PICKUP, "pickup_no"));

@@ -161,7 +161,24 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
    * 是因为那几页也要显示当前价 —— 同一段算价代码，两拨调用方。
    * 归属由入参的 goodsNo 保证。
    */
-  "CampaignPortImpl#flashPrices":
+  /*
+   * 到货批次的两处：**都不是「决定行级可见性」的那一次查询**。
+   *
+   * `ensureRows` 是**写前的幂等检查**（按 pickup_no + arrive_date 先查后建）——
+   * 裁了它会查不到已存在的行，于是重复建，而 batch_no 的唯一键会把错误
+   * 推迟到插入那一刻。归属由它的入参 `directory` 保证，那是裁过的集合。
+   *
+   * `sorting` 与 `shortageBySku` 同理：入参都是已经裁过的 pickupNos。
+   * 真正决定可见性的是 `batches()` 那一条，2026-08-31 已改成不绕过。
+   */
+  "DispatchServiceImpl#ensureRows":
+    "写前幂等检查，裁了会重复建行；归属由入参 directory 保证",
+  "DispatchServiceImpl#sorting":
+    "分拣页，入参 pickupNos 来自已裁过的集合",
+  "DispatchServiceImpl#shortageBySku":
+    "同上，按 pickupNos 反查缺货上报",
+
+    "CampaignPortImpl#flashPrices":
     "算价链路，跑在买家会话（SELF）；不绕商品页的秒杀价会静默消失",
 
     "ActivityPricingServiceImpl#liveByGoods":
@@ -387,6 +404,14 @@ const ANCHOR_WAIVED: Record<string, string> = {
     + "而那和 V137 给子单加列是同一种代价，值不值得看仲裁台会不会按片区分工",
   "ord_after_sale:PICKUP":
     "同上。自提点运营者不做售后仲裁 —— 那需要 aftersale:ticket:read",
+    "ful_batch:COMMUNITY":
+    "到货批次挂自提点，不挂片区。**看到空白的是**：配了社区域的运营打开到货批次页。"
+    + "自提点与社区是多对一，但表上只有 pickup_no —— 要接得冗余一列 community_no",
+  "ful_batch:MERCHANT":
+    "一个批次里装着多家商家的货 —— **按商家裁会把同一批拆散**，"
+    + "而分拣是按点按天做的，拆散之后那一页就没有意义了",
+  "ful_shortage_report:COMMUNITY": "同 ful_batch",
+  "ful_shortage_report:MERCHANT": "同上，缺货上报跟着批次走",
     "mkt_coupon:COMMUNITY": "券属于商家，不属于片区。**看到空白的是**：配了社区域的运营打开券治理页",
   "mkt_coupon:PICKUP": "同上",
   "mkt_campaign:COMMUNITY": "活动属于商家，不属于片区",
@@ -990,8 +1015,6 @@ describe("运营端数据域接入", () => {
      * 按名字挑测试等于按自己的猜想挑判据：社区那次我选的三个模式
      * 一个都匹配不到它，41 条全绿，差点写下「登记是安全的」这个相反的结论。
      */
-    ful_batch: "待判 —— 履约批次（/ops/fulfillment/batches、/sorting）",
-    ful_shortage_report: "待判 —— 缺货上报（/ops/fulfillment/sorting）",
     mch_account: "待判 —— 商家员工（/ops/merchants/{no}/staff）",
     mch_entity_plan: "待判 —— 增值包订阅（/ops/merchant-plans）",
     mch_store_role: "待判 —— 门店授权（同上）",
@@ -1021,7 +1044,25 @@ describe("运营端数据域接入", () => {
      * **代价与收益不成比例**，与 mbr_reach_log 那条「登记但当下无效果」不同 ——
      * 这里不是没效果，是有负效果。
      */
-    prd_store_goods: "商品池的归属由主表 prd_goods 保证；这张只在门店投影里按 skuNo 反查",
+    /*
+     * ── 积分两张：**它们是一道恒等式的两边，裁一边等式就不成立** ──
+     *
+     * `PointsServiceImpl#overview` 把「流通中的积分」（pts_user_account）与
+     * 「池子里的钱」（stl_points_pool）摆在一起，方法里的注释写明了为什么：
+     *「分开看的话，失衡要等到有人主动比对才会发现」。
+     *
+     * 按商家裁会让两边取自不同的集合 —— 而**恒等式对不上时，
+     * 人会先怀疑账错了，而不是怀疑自己只看到了一部分**。
+     * 这比看不见更糟，与 sys_media_asset（MediaScanner 必须扫全量）同族，
+     * 但后果更直接：那边是漏删图，这边是误判资金失衡。
+     *
+     * <p>而且它们本来就不按商家分：pts_user_account 的归属是**用户**，
+     * stl_points_pool 按 (market, payChannel) 记账 —— 商家维度在这里没有意义。
+     */
+    pts_user_account: "积分恒等式的一边（流通量），归属是用户不是商家；裁一边会让对账误判失衡",
+    stl_points_pool: "恒等式的另一边（池子），按 market×payChannel 记账",
+
+        prd_store_goods: "商品池的归属由主表 prd_goods 保证；这张只在门店投影里按 skuNo 反查",
     prd_store_stock: "同上",
 
         prd_spec_dim: "运营端只查 scope=PLATFORM，而平台维度的 entity_no 为空；登记会让规格库整页空白",
@@ -1033,8 +1074,6 @@ describe("运营端数据域接入", () => {
     mkt_request_interest: "待判 —— 需求意向（/ops/demands）",
     notify_ticket: "待判 —— 工单（/ops/tickets）",
     ord_invoice_request: "待判 —— 买家开票申请（/ops/invoice-requests）",
-    pts_user_account: "待判 —— 积分账户（/ops/points/overview）",
-    stl_points_pool: "待判 —— 积分池（/ops/points/overview）",
 
     rvw_review_like:
       "评价点赞。只有 user_no，且**只在 C 端读**（看评价时标出「我赞过」）——"
