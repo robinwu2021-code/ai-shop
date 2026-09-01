@@ -25,8 +25,16 @@ const errs = [];
 const fail = (file, msg) => errs.push(`${relative(ROOT, file)}: ${msg}`);
 const read = (p) => readFileSync(p, "utf8");
 
-/** 纳入守卫的文件：v2 全集 + V2 工作流产出的深层册（按文件名特征挑，不扫历史文档） */
-const V2_DEEP = /^(TDD-(商品域|订单域|预约资源域|会员资产域|打印域|工作流领域模型|基础订单流|行业包|基座与行业应用|前端方案)|商品域V2|订单域V2|预约资源域V2|会员资产域V2|shop-industry-spi|能力开关A4|迁移与兼容手册|三行业场景|结算域-V2|库存域-V2|服务人员-收尾|SKU与规格库|权限码扩容单)/;
+/**
+ * 纳入守卫的文件：v2 全集 + V2 工作流产出的深层册（按文件名特征挑，不扫历史文档）。
+ *
+ * ⚠️ **这是白名单，漏一个域＝那个域的文档从没被守过，而闸门照样报绿。**
+ * 支付域的 11 份文档就这样在名单外待了一整轮 —— 加进来时零红，
+ * 也就是说这段时间它们「没有违规」这件事，从来没有被验证过，
+ * 只是没有人去看。加新域的设计册时**先把前缀加到这里**。
+ * 下面 MIN_FILES 那条断言守的就是这个。
+ */
+const V2_DEEP = /^(TDD-(支付域|商品域|订单域|预约资源域|会员资产域|打印域|工作流领域模型|基础订单流|行业包|基座与行业应用|前端方案)|商品域V2|订单域V2|预约资源域V2|会员资产域V2|shop-industry-spi|能力开关A4|迁移与兼容手册|三行业场景|结算域-V2|库存域-V2|服务人员-收尾|SKU与规格库|权限码扩容单)/;
 const files = [
   ...readdirSync(join(ROOT, "docs/v2")).filter((f) => f.endsWith(".md")).map((f) => join(ROOT, "docs/v2", f)),
   ...readdirSync(join(ROOT, "docs/technical/design")).filter((f) => f.endsWith(".md") && V2_DEEP.test(f))
@@ -34,6 +42,24 @@ const files = [
   join(ROOT, "docs/technical/reference/商品域-多行业对齐清单.md"),
   join(ROOT, "docs/technical/reference/核心能力清单.md"),
 ];
+
+/*
+ * **扫描面本身要有个下限。**
+ *
+ * 这个闸门是「找出违规」型的：扫得少 → 找不到违规 → 报绿。
+ * 名单被改窄（重构正则、挪目录、手滑删一项）时，它不会喊，
+ * 只会安静地少扫几十份文档然后打一个勾。
+ *
+ * 所以钉一个下限。数字取当前份数往下留一点余量：
+ * 删几份旧文档不该让闸门红，而**一次少掉十几份一定是名单出了事**。
+ */
+const MIN_FILES = 50;
+if (files.length < MIN_FILES) {
+  console.error(`✗ 只扫到 ${files.length} 份文档，少于下限 ${MIN_FILES} —— ` +
+    "多半是 V2_DEEP 白名单被改窄了，或者 docs/v2 目录挪了位置。\n" +
+    "  这个闸门是「找出违规」型的：扫不到就报绿，所以少扫比误报危险。");
+  process.exit(1);
+}
 
 // ── 1. 断链 ────────────────────────────────────────────────
 for (const f of files) {
