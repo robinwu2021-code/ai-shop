@@ -60,13 +60,17 @@ class ReconFlowTest {
 
     /** 造一笔 25 分钟前发起、至今停在 PENDING 的收款 */
     private StlPayment stalePayment() {
+        return stalePayment("WECHAT");
+    }
+
+    private StlPayment stalePayment(String channel) {
         StlPayment p = new StlPayment();
         p.setPaymentNo("PY-RECON-" + (++seq));
         p.setDirection(StlPayment.PAY);
         p.setStatus(StlPayment.PENDING);
         p.setOrderNo("OD-RECON-" + seq);
         p.setOutTradeNo("OUT-RECON-" + seq);
-        p.setPayChannel("WECHAT");
+        p.setPayChannel(channel);
         p.setUserNo("U-RECON");
         p.setAmountMinor(9900L);
         p.setCreatedAt(LocalDateTime.now().minusMinutes(25));
@@ -179,5 +183,52 @@ class ReconFlowTest {
         assertThat(c.channelBillConnected()).isFalse();
         // 这句话直接显示给运营，不能是空的
         assertThat(c.note()).contains("渠道账单未接入");
+    }
+
+    @Test
+    @DisplayName("★★★ 一家通道查不通、另一家正常 —— 总数里看不出来，而处置完全相反")
+    void oneBlindChannelIsCallableOut() {
+        StlPayment wx = stalePayment("WECHAT");
+        StlPayment ali = stalePayment("ALIPAY");
+        // 微信查不通（凭据过期 / 出口 IP 变了 / 对方维护）；支付宝说「没有这笔」，可以安全关单
+        fakeQuery.answerFor("WECHAT", new PayQueryPort.Result(false, false, false, 0, null));
+        fakeQuery.answerFor("ALIPAY", new PayQueryPort.Result(true, false, false, 0, null));
+
+        var r = paymentRecon.scan(System.currentTimeMillis());
+
+        var wxSlice = r.byChannel().stream()
+                .filter(s -> s.payChannel().equals("WECHAT")).findFirst().orElseThrow();
+        var aliSlice = r.byChannel().stream()
+                .filter(s -> s.payChannel().equals("ALIPAY")).findFirst().orElseThrow();
+
+        // 这一条是加按渠道分解的全部理由：微信整个判不了，支付宝没事
+        assertThat(wxSlice.allDeferred())
+                .as("微信这一轮每一笔都判不了，却报不出来 —— 那就是「几笔在路上」与"
+                        + "「这家通道查不通」分不开，而后者要人立刻去看")
+                .isTrue();
+        assertThat(aliSlice.allDeferred()).isFalse();
+        assertThat(aliSlice.closed()).isPositive();
+
+        // 总数仍然对得上分解 —— 对不上的话两个口径会各说各话
+        assertThat(r.byChannel()).extracting(
+                        ai.neargo.shop.paybridge.PaymentReconReconciler.ChannelSlice::scanned)
+                .isNotEmpty();
+        assertThat(r.byChannel().stream().mapToInt(
+                ai.neargo.shop.paybridge.PaymentReconReconciler.ChannelSlice::scanned).sum())
+                .isEqualTo(r.scanned());
+        assertThat(r.byChannel().stream().mapToInt(
+                ai.neargo.shop.paybridge.PaymentReconReconciler.ChannelSlice::deferred).sum())
+                .isEqualTo(r.deferred());
+
+        assertThat(wx.getPaymentNo()).isNotEqualTo(ali.getPaymentNo());
+    }
+
+    @Test
+    @DisplayName("★★ 没扫到单的渠道不算「全判不了」—— 否则每天报一次假警")
+    void emptyChannelIsNotBlind() {
+        var empty = new ai.neargo.shop.paybridge.PaymentReconReconciler
+                .ChannelSlice("WECHAT", 0, 0, 0, 0);
+
+        assertThat(empty.allDeferred()).isFalse();
     }
 }

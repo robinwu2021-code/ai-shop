@@ -28,8 +28,21 @@ public class FakePayQueryPort implements PayQueryPort {
 
     private final List<String> asked = new ArrayList<>();
 
+    /** 按通道分别作答。<b>比 {@link #answer} 优先</b> —— 用来造「一家挂了、一家正常」 */
+    private final java.util.Map<String, Result> byChannel = new java.util.HashMap<>();
+
     public void answer(Result r) {
         this.next = r;
+    }
+
+    /**
+     * 只让这个通道这么答，其余仍走 {@link #answer}。
+     *
+     * <p>对账要按渠道看，而「一家查不通、另一家正常」是那件事唯一能证伪的场景 ——
+     * 两家都正常或都挂掉时，按不按渠道分解出来的数字长得一样。
+     */
+    public void answerFor(String payChannel, Result r) {
+        byChannel.put(payChannel, r);
     }
 
     public List<String> asked() {
@@ -38,12 +51,13 @@ public class FakePayQueryPort implements PayQueryPort {
 
     public void reset() {
         asked.clear();
+        byChannel.clear();
         next = new Result(true, false, false, 0, null);
     }
 
     @Override
     public Result query(String payChannel, String outTradeNo) {
         asked.add(outTradeNo);
-        return next;
+        return byChannel.getOrDefault(payChannel, next);
     }
 }

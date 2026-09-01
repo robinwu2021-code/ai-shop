@@ -86,7 +86,17 @@ public class ReconScanJob implements JobHandler {
                             + "补回不为零说明支付回调漏了单，要查回调链路",
                     r.scanned(), r.repaired(), r.closed(), r.deferred());
         }
-        return JobResult.ok("自查 %d 笔（补回 %d · 关单 %d · 留待 %d）"
-                .formatted(r.scanned(), r.repaired(), r.closed(), r.deferred()));
+        /*
+         * **有渠道整个判不了就写进 detail**，不要只留在日志里：
+         * detail 是运营在任务页面直接看到的那句话，而日志要有人想起来去翻。
+         * 「这家通道查不通」正是需要当天有人看见的那种。
+         */
+        String blind = r.byChannel().stream()
+                .filter(PaymentReconReconciler.ChannelSlice::allDeferred)
+                .map(sl -> "%s %d 笔全判不了".formatted(sl.payChannel(), sl.scanned()))
+                .collect(java.util.stream.Collectors.joining("；"));
+        return JobResult.ok("自查 %d 笔（补回 %d · 关单 %d · 留待 %d）%s"
+                .formatted(r.scanned(), r.repaired(), r.closed(), r.deferred(),
+                        blind.isEmpty() ? "" : " ⚠️ " + blind));
     }
 }
