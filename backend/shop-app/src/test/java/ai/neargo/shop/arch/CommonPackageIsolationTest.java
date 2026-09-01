@@ -103,6 +103,8 @@ class CommonPackageIsolationTest {
                     .filter(f -> f.toString().endsWith(".java"))
                     .filter(f -> !f.toString().contains("/test/") && !f.toString().contains("/target/"))
                     .filter(f -> !f.toString().contains("/portal/internal/"))
+                    // pay-svc 是**另一个应用**，信封在那边压根没注册 —— 理由在下面当场验
+                    .filter(f -> !f.toString().contains("/pay/pay-svc/"))
                     .filter(f -> {
                         try {
                             return Files.readString(f).contains("Mapping(\"/internal");
@@ -122,5 +124,38 @@ class CommonPackageIsolationTest {
                             + "任务声明变成一条条空记录。")
                     .isEmpty();
         }
+    }
+
+    /**
+     * 上一条给 pay-svc 开了口子，<b>这条守的是开口子的理由</b>。
+     *
+     * <p>理由只有一句：{@code ApiResponseWrapper} 在 {@code ai.neargo.shop.common}，
+     * 而 pay-svc 的组件扫描只覆盖 {@code ai.neargo.shop.pay} —— 那个 advice
+     * <b>在 pay-svc 里根本没被注册成 bean</b>，所以没有信封可套。
+     *
+     * <p>这个前提很脆：谁把 pay-svc 的 {@code scanBasePackages} 放宽到
+     * {@code ai.neargo.shop}（一个很自然的「让它也能用公共组件」的改动），
+     * 免检就同时失效 —— 而症状是 fee-rules 拉回来一串全 null 的费率，
+     * 不报错。所以不写成注释，写成断言。
+     */
+    @Test
+    @DisplayName("★★ pay-svc 免检的前提 —— 它的扫描范围不能覆盖信封所在的包")
+    void paySvcDoesNotScanTheEnvelopePackage() throws IOException {
+        Path app = Path.of("..", "pay", "pay-svc", "src", "main", "java",
+                "ai", "neargo", "shop", "pay", "svc", "PayApplication.java");
+        assertThat(app).as("pay-svc 的启动类挪了位置，这条断言就在验空气").exists();
+
+        String src = Files.readString(app);
+        assertThat(src)
+                .as("PayApplication 的 scanBasePackages 必须仍是 ai.neargo.shop.pay。"
+                        + "放宽到 ai.neargo.shop 会把 ApiResponseWrapper 一起扫进来，"
+                        + "而它会给 /internal/pay/** 的返回值套上 {code,msg,data} 信封 —— "
+                        + "调用方按自己的契约解析，不报错，只是每个字段都是 null。")
+                .contains("scanBasePackages = \"ai.neargo.shop.pay\"");
+
+        // 反向控制量：这个包名确实是信封所在的包，不是我随口写的一个字符串
+        Path wrapper = Path.of("..", "shop-base-auth", "src", "main", "java",
+                "ai", "neargo", "shop", "common", "ApiResponseWrapper.java");
+        assertThat(wrapper).as("信封挪了包，上面那条推理就不成立了，要重新算一次").exists();
     }
 }

@@ -31,8 +31,18 @@ import ai.neargo.shop.spi.settle.SettlePort;
  */
 public interface PaymentLedgerService {
 
-    /** 发起支付，落一行 PENDING。已有同号的直接返回，不新增 */
-    void open(SettlePort.PaymentOpen cmd);
+    /**
+     * 发起支付，落一行 PENDING。
+     *
+     * <p><b>幂等的粒度是「这个订单有没有未终态的收款」</b>，不是「这个单号有没有落过」：
+     * 用户在收银台点两次「去支付」应当复用同一笔（否则通道那边多出一个未支付单），
+     * 而<b>前一笔失败或关闭之后重试，必须换新的 out_trade_no</b> ——
+     * 通道要求商户订单号唯一，关掉的号不能复用。
+     *
+     * @return 实际使用的 {@code out_trade_no}：复用时是已有那笔的，新建时是新生成的。
+     *         <b>调用方要拿它去向通道下单</b>，而不是用自己传进来的那个
+     */
+    String open(SettlePort.PaymentOpen cmd);
 
     /**
      * 收款成功，转 SUCCESS。
@@ -40,6 +50,10 @@ public interface PaymentLedgerService {
      * <p>找不到对应的 PENDING 行时<b>补一行 SUCCESS</b>，而不是抛错：
      * 存量订单（这个功能上线之前发起的）根本没有起点行，
      * 而它们的回调照样会到 —— 那时抛错等于让通道一直重推一笔永远处理不了的单。
+     *
+     * @return 这笔钱付的是哪个订单。<b>调用方拿它去推订单状态</b> ——
+     *         回调里的商户单号可能带重试后缀（{@code -2}、{@code -3}），
+     *         直接拿去查订单会查不到
      */
-    void settle(SettlePort.PaymentSettled cmd);
+    String settle(SettlePort.PaymentSettled cmd);
 }

@@ -25,28 +25,96 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
 
     @Override
     @Transactional("payTxManager")
-    public void open(SettlePort.PaymentOpen cmd) {
-        StlPayment existing = byOutTradeNo(cmd.outTradeNo());
-        if (existing != null) {
-            return;   // 幂等：用户在收银台反复点「去支付」，多一行就多一笔「掉单」
+    public String open(SettlePort.PaymentOpen cmd) {
+        /*
+         * **幂等的粒度是「这个订单有没有未终态的收款」**，不是「这个单号落过没有」。
+         *
+         * 用户在收银台点两次「去支付」应当复用同一笔 ——
+         * 否则通道那边多出一个未支付单，而对账会把它当成掉单。
+         * 而前一笔失败或关闭之后重试，走的是**新的 out_trade_no**：
+         * 通道要求商户订单号唯一，关掉的号不能复用。
+         */
+        StlPayment open = openPaymentOf(cmd.orderNo());
+        if (open != null) {
+            return open.getOutTradeNo();
         }
+        /*
+         * **商户单号 = 订单号 + 尝试序号**（第一次就是订单号本身）。
+         *
+         * 为什么要能变：通道要求商户订单号唯一，而一笔单**关掉之后重试必须换新号** ——
+         * 用订单号当商户单号且永不变的话，那笔订单再也下不了第二次单，
+         * 症状是「点了没反应」，而查订单状态一切正常。
+         *
+         * 为什么第一次仍用订单号本身，而不是完全独立生成：
+         * 独立生成会让「回调里拿到的号」与订单号彻底脱钩，
+         * 而整条链路上有很多处默认两者相等。加后缀既拿到了「可以换号」，
+         * 又让最常见的那条路径一个字都不用改 —— 这是**先量了影响面才改的**：
+         * 完全独立那版让 20 多个测试类同时变红，而它们测的是业务链路，
+         * 不是支付细节。
+         *
+         * 后缀从 -2 起：`ORD123`、`ORD123-2`、`ORD123-3`……
+         * 用户报障时报的仍是自己看得到的订单号，客服按前缀就能找全这几次尝试。
+         */
+        long attempts = countPayAttempts(cmd.orderNo());
+        String outTradeNo = attempts == 0 ? cmd.orderNo() : cmd.orderNo() + "-" + (attempts + 1);
         StlPayment p = new StlPayment();
         p.setPaymentNo(BizKey.next(BizKey.PAYMENT));
         p.setDirection(StlPayment.PAY);
         p.setStatus(StlPayment.PENDING);
-        p.setOutTradeNo(cmd.outTradeNo());
+        p.setOutTradeNo(outTradeNo);
         p.setOrderNo(cmd.orderNo());
         p.setUserNo(cmd.userNo());
         p.setEntityNo(cmd.entityNo());
         p.setPayChannel(cmd.payChannel());
         p.setAmountMinor(cmd.amountMinor());
         DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(p));
+        return outTradeNo;
+    }
+
+    /** 这个订单已经向通道下过几次单 —— 决定下一个商户单号的后缀 */
+    private long countPayAttempts(String orderNo) {
+        return DataScopeContext.executeWithoutScope(() -> paymentMapper.selectCount(
+                Wrappers.<StlPayment>lambdaQuery()
+                        .eq(StlPayment::getDirection, StlPayment.PAY)
+                        .eq(StlPayment::getOrderNo, orderNo)));
+    }
+
+    /** 这个订单未终态（INIT / PENDING）的收款 —— 有就复用，没有才开新的 */
+    private StlPayment openPaymentOf(String orderNo) {
+        return DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                Wrappers.<StlPayment>lambdaQuery()
+                        .eq(StlPayment::getDirection, StlPayment.PAY)
+                        .eq(StlPayment::getOrderNo, orderNo)
+                        .in(StlPayment::getStatus, StlPayment.INIT, StlPayment.PENDING)
+                        .orderByDesc(StlPayment::getId)
+                        .last("LIMIT 1")));
     }
 
     @Override
     @Transactional("payTxManager")
-    public void settle(SettlePort.PaymentSettled cmd) {
+    public String settle(SettlePort.PaymentSettled cmd) {
         StlPayment existing = byOutTradeNo(cmd.outTradeNo());
+        if (existing == null) {
+            /*
+             * **按订单号回退认领一次。**
+             *
+             * 2026-09-01 之前 out_trade_no 就是订单号，所以调用方传订单号是对的；
+             * 独立之后真通道回传的一定是我方给它的 out_trade_no，走上面那条就找到了。
+             *
+             * 回退这条留给两种情况：**存量在途的单**（发起于改动之前），
+             * 以及 stub 通道 —— 它是开发期的假通道，调用方手上常常只有订单号。
+             *
+             * <b>生产上真通道走到这里即异常</b>，所以记 WARN 而不是静默 ——
+             * 它意味着通道回传了一个我方没发出去过的单号。
+             */
+            StlPayment byOrder = openPaymentOf(cmd.outTradeNo());
+            if (byOrder != null) {
+                log.warn("[payment-ledger] 按 out_trade_no 认领不到，按订单号找到了 —— "
+                        + "传入 {}（存量在途单或 stub 通道；真通道走到这里即异常）",
+                        cmd.outTradeNo());
+                existing = byOrder;
+            }
+        }
         if (existing == null) {
             /*
              * 没有起点行。**正常链路不会走到这里** —— 端上必须先调
@@ -61,8 +129,20 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
              * 这笔钱确实收到了。缺的这一行是存量的历史问题，随窗口过去自己消失。
              */
             log.warn("[payment-ledger] {} 没有发起行，跳过记账 —— "
-                    + "存量单（本功能上线前发起）。订单状态不受影响", cmd.outTradeNo());
-            return;
+                    + "存量单（本功能上线前发起），或调用方跳过了发起。订单状态不受影响",
+                    cmd.outTradeNo());
+            /*
+             * **把传入值当订单号返回**，让订单状态照常推进。
+             *
+             * 这笔钱确实收到了 —— 返回 null 让回调 ackFail 的话，通道会一直重推，
+             * 而重推多少次都不会有发起行。用户付了钱而订单一直不动，
+             * 比「缺一行流水」严重得多。
+             *
+             * 这条能成立是因为**第一次发起的商户单号就是订单号本身**
+             * （见 open 里的后缀规则）。重试单（带 -2 后缀）走不到这里 ——
+             * 它一定有发起行，否则那个号根本不会存在。
+             */
+            return cmd.outTradeNo();
         }
         if (StlPayment.SUCCESS.equals(existing.getStatus())) {
             /*
@@ -70,7 +150,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
              * 覆盖的话对账查到的成功时刻会随每次重推往后跳，
              * 而那个时刻是「钱什么时候到的」的唯一依据。
              */
-            return;
+            return existing.getOrderNo();
         }
         StlPayment patch = new StlPayment();
         patch.setId(existing.getId());
@@ -84,6 +164,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
          */
         patch.setAmountMinor(cmd.amountMinor());
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
+        return existing.getOrderNo();
     }
 
     private StlPayment byOutTradeNo(String outTradeNo) {

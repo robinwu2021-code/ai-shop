@@ -56,10 +56,24 @@ public class PayCallbackController {
          * 多通道那个，测试当场红在「一笔成功支付都没扫到」——
          * 因为今天真正在用的是这个 stub 入口。
          */
-        settlePort.settlePayment(new SettlePort.PaymentSettled(
+        String orderNo = settlePort.settlePayment(new SettlePort.PaymentSettled(
                 body.outTradeNo(), "STUB", body.transactionId(), 0L, System.currentTimeMillis()));
 
-        orderService.markPaid(body.outTradeNo(), "STUB", body.transactionId());
+        /*
+         * **订单号由支付域给**，不要把 outTradeNo 当订单号用。
+         *
+         * 2026-09-01 起商户单号是「订单号 + 尝试序号」：第一次仍等于订单号，
+         * 而**重试单带 -2、-3 后缀**。直接拿它去 markPaid，
+         * 重试付成功的那些单会查不到订单 —— 而报错指向「订单不存在」，
+         * 离真因隔了一层。只在重试路径上错，是最难在测试里撞见的那种。
+         */
+        if (orderNo == null) {
+            // 这笔钱认领不了：流水里没有这个单号。回 FAIL 让通道重推，同时留下线索
+            log.error("[callback] 收到无法认领的收款 outTradeNo={} —— 支付流水里没有这个单号",
+                    body.outTradeNo());
+            return "FAIL";
+        }
+        orderService.markPaid(orderNo, "STUB", body.transactionId());
         return "SUCCESS";
     }
 

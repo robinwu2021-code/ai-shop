@@ -40,7 +40,11 @@ public interface SettlePort {
      *
      * @param outTradeNo 我方单号，也是回调回来时的关联键
      */
-    void openPayment(PaymentOpen cmd);
+    /**
+     * @return 实际使用的 {@code out_trade_no} —— <b>调用方要拿它去向通道下单</b>，
+     *         而不是用自己传进来的那个。复用未终态的收款时返回已有那笔的单号。
+     */
+    String openPayment(PaymentOpen cmd);
 
     /**
      * 一笔收款<b>成功了</b>（{@code stl_payment} 转 SUCCESS）。
@@ -54,17 +58,35 @@ public interface SettlePort {
      * <p><b>幂等</b>：通道会重推，同一个 {@code outTradeNo} 重复调不产生第二行、
      * 也不覆盖已有的成功时刻。
      */
-    void settlePayment(PaymentSettled cmd);
+    /**
+     * @return 这笔收款关联的<b>订单号</b>。
+     *
+     * <p><b>为什么由这里返回，而不是让回调自己解析</b>：
+     * {@code out_trade_no} 是我方给通道的商户订单号，
+     * 2026-09-01 起它<b>独立于订单号生成</b>（同一笔订单支付失败后重试
+     * 必须换新号 —— 通道要求商户订单号唯一，而关掉的单不能复用）。
+     * 于是「这个通道单号对应哪个订单」只有支付域答得上来。
+     *
+     * <p>找不到对应流水时返回 {@code null} —— 调用方要把它当成
+     * 「这笔钱认领不了」，而不是当成某个订单付成功了。
+     */
+    String settlePayment(PaymentSettled cmd);
 
     /**
-     * @param outTradeNo  我方单号（今天等于订单号）
+     * <p><b>这里没有 out_trade_no</b>：商户单号由支付域生成并<b>回传</b>
+     * （见 {@link #openPayment} 的返回值）。2026-09-01 之前调用方传一个进来，
+     * 而改成支付域自己生成之后那个入参就再没被读过 ——
+     * <b>一个被静默丢掉的参数，比没有这个参数危险得多</b>：
+     * 调用方会以为自己指定了单号，而实际用的是另一个，两边对不上的时候
+     * 没有任何地方会报错。所以直接删掉，让编译器说话。
+     *
      * @param orderNo     订单号
      * @param userNo      付款人
      * @param entityNo    收款主体。可为空 —— 多商家的单在这一层还没拆开
      * @param payChannel  通道
      * @param amountMinor 应付金额（分）
      */
-    record PaymentOpen(String outTradeNo, String orderNo, String userNo, String entityNo,
+    record PaymentOpen(String orderNo, String userNo, String entityNo,
                        String payChannel, long amountMinor) {
     }
 

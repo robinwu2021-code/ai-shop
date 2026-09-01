@@ -55,13 +55,13 @@ public class SettlePortImpl implements SettlePort {
     }
 
     @Override
-    public void openPayment(PaymentOpen cmd) {
-        paymentLedger.open(cmd);
+    public String openPayment(PaymentOpen cmd) {
+        return paymentLedger.open(cmd);
     }
 
     @Override
-    public void settlePayment(PaymentSettled cmd) {
-        paymentLedger.settle(cmd);
+    public String settlePayment(PaymentSettled cmd) {
+        return paymentLedger.settle(cmd);
     }
 
 

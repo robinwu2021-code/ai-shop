@@ -117,11 +117,20 @@ public class ChannelPayCallbackController {
          *
          * 这一步抛异常就 ackFail 让通道重推：钱的账没落下，不能认。
          */
-        settlePort.settlePayment(new SettlePort.PaymentSettled(
+        String orderNo = settlePort.settlePayment(new SettlePort.PaymentSettled(
                 String.valueOf(outTradeNo), channel, r.tradeNo(),
                 r.amountMinor(), System.currentTimeMillis()));
 
-        orderService.markPaid(String.valueOf(outTradeNo), channel, r.tradeNo());
+        /*
+         * **订单号由支付域给**：商户单号是「订单号 + 尝试序号」，
+         * 重试单带 -2、-3 后缀，直接拿去 markPaid 会查不到订单。
+         */
+        if (orderNo == null) {
+            log.error("[callback] {} 收到无法认领的收款 outTradeNo={} —— 流水里没有这个单号",
+                    channel, outTradeNo);
+            return v.ackFail();
+        }
+        orderService.markPaid(orderNo, channel, r.tradeNo());
         log.info("[callback] {} 支付成功入账：{}（通道单号 {}，{} 分）",
                 channel, outTradeNo, r.tradeNo(), r.amountMinor());
         return v.ackOk();

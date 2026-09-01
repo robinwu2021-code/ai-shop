@@ -852,13 +852,23 @@ public class OrderServiceImpl implements OrderService {
          * 用户手上有一个能付的凭据，而我方一无所知 —— 那笔钱进来后没有任何东西认领它。
          * 幂等在支付域侧按 out_trade_no 做，用户反复点不会多出行。
          */
-        settlePort.openPayment(new SettlePort.PaymentOpen(
-                orderNo, orderNo, order.getUserNo(), null, "STUB",
+        /*
+         * **商户单号由支付域给**（2026-09-01 改）：它独立于订单号 ——
+         * 一笔订单支付失败后重试必须换新号，通道要求商户订单号唯一，
+         * 而关掉的号不能复用。用订单号当商户单号的话，
+         * 那笔订单永远只能向通道下一次单，症状是「点了没反应」。
+         *
+         * 复用未终态的收款时返回的是已有那笔的号 ——
+         * 用户在收银台点两次不会在通道那边多出一个未支付单。
+         */
+        String outTradeNo = settlePort.openPayment(new SettlePort.PaymentOpen(
+                orderNo, order.getUserNo(), null, "STUB",
                 order.getPayAmount() == null ? 0L : order.getPayAmount()));
 
         // S2 是 stub 通道：返回的参数结构与微信 JSAPI 一致，S4 换真通道时端上不用改
         return new PayResult(orderNo, "STUB", Map.of(
-                "prepayId", "stub_" + orderNo,
+                "prepayId", "stub_" + outTradeNo,
+                "outTradeNo", outTradeNo,
                 "amount", String.valueOf(order.getPayAmount())));
     }
 
