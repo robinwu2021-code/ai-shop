@@ -48,7 +48,32 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     /**
-     * 允许跨源的来源。<b>本地开发的三个端口 + 生产同源</b>。
+     * 生产站点的来源。<b>浏览器发的每一个 POST/fetch 都带 Origin，同源也带</b> ——
+     * 所以「运营端和后端同域，不用配 CORS」是个误解，而它的代价是全线 403。
+     *
+     * <h2>2026-09-01：线上运营端从来就没能登录过</h2>
+     * 这个列表里此前只有 localhost 的开发端口，一条生产域名都没有 ——
+     * 而上面那句注释写着「本地开发的三个端口 <b>+ 生产同源</b>」，
+     * <b>注释里的那一半从来不存在</b>。
+     *
+     * <p>症状是「登录提示无权限」：nginx 日志里 {@code POST /ops/auth/login → 403}，
+     * 响应体 {@code Invalid CORS request}，请求<b>在到达登录逻辑之前就被拦了</b>，
+     * 所以 {@code ops_login_log} 里一条记录都没有 —— 查判权、查角色、查权限点全是好的。
+     *
+     * <p>而后端直连（{@code curl localhost:8081}）一直是 200：
+     * <b>curl 不带 Origin，也不受同源策略约束。</b>
+     * 这件事只有真的用浏览器打才会暴露，与本类下面那条
+     * 「E2E-2 是 Node 脚本，一路绿灯」是同一个盲区。
+     *
+     * <p>写进<b>默认值</b>而不是只留配置项：默认值缺了的表现是静默 403，
+     * 与「配置项漏配」是同一类失效 —— 这个仓库只服务这一个站点，
+     * 域名是已知固定的（nginx 配置里也写死了），没有理由让它可漏。
+     */
+    private static final java.util.List<String> PROD_ORIGINS = java.util.List.of(
+            "https://www.hxmall.top", "https://hxmall.top");
+
+    /**
+     * 本地开发的来源。
      *
      * <p>为什么必须有它：三个前端都是独立起的（uni-app dev / next dev），
      * 与后端天然跨源。此前后端**一条 CORS 头都没有** —— 预检因为 Spring Security
@@ -77,10 +102,26 @@ public class SecurityConfig {
             "http://localhost:5176", "http://127.0.0.1:5176",
             "http://localhost:5177", "http://127.0.0.1:5177");
 
+    /** 额外来源，逗号分隔。换域名或加二级域名时不必改代码 */
+    @org.springframework.beans.factory.annotation.Value("${shop.cors.extra-origins:}")
+    private String extraOrigins = "";
+
     @Bean
     org.springframework.web.cors.CorsConfigurationSource corsSource() {
         var cfg = new org.springframework.web.cors.CorsConfiguration();
-        cfg.setAllowedOrigins(ALLOWED_ORIGINS);
+        /*
+         * 开发端口 + 生产域名 + 额外配置的（`shop.cors.extra-origins`，逗号分隔）。
+         * 第三项留给将来换域名或加二级域名时**不必改代码**，
+         * 但生产域名本身在上面写死了 —— 靠配置的那一半会被漏掉，这次就是。
+         */
+        var origins = new java.util.ArrayList<>(ALLOWED_ORIGINS);
+        origins.addAll(PROD_ORIGINS);
+        for (String extra : extraOrigins.split(",")) {
+            if (!extra.isBlank()) {
+                origins.add(extra.trim());
+            }
+        }
+        cfg.setAllowedOrigins(origins);
         cfg.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         /*
          * 请求头放开为 `*`。
