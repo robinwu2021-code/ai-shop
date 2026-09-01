@@ -183,4 +183,16 @@ public class MchEntity extends BaseEntity {
      * 归档的从列表消失。挤进同一列的话，「暂停后归档」会丢掉其中一个状态。
      */
     private java.time.LocalDateTime archivedAt;
+
+    /**
+     * 经营市场（V288）。决定<b>可选支付渠道、结算币种、账期时区</b>。
+     *
+     * <p>挂在主体而不是门店：一个主体在两个市场经营要开两个主体 ——
+     * 与「收款进件按主体」同一条口径。
+     *
+     * <p>此前不存在，两处「取可用通道」都传 null 按默认市场算，
+     * <b>台湾商家与大陆商家看到同一份通道列表</b>。
+     * 通道侧的按市场筛选早就实现了，缺的一直只是这个输入。
+     */
+    private String market;
 }

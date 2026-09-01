@@ -218,6 +218,18 @@ public interface MerchantQueryPort {
     String legalFormOf(String merchantNo);
 
     /**
+     * 这家主体在哪个市场经营。
+     *
+     * <p><b>取可用支付渠道要用它</b>：渠道按市场打标签，
+     * 传 null 的话一律按默认市场算 —— 台湾商家会看到只在大陆可用的渠道，
+     * 点进去进件必然被拒，而拒的理由是英文码。
+     *
+     * @return 市场码；查不到返回 {@code null}，<b>不兜底成 CN</b> ——
+     *         兜底会让「没配过」与「配成大陆」在调用方看来一样
+     */
+    String marketOf(String merchantNo);
+
+    /**
      * 通道手续费<b>由谁承担</b>：{@code MERCHANT} / {@code PLATFORM}
      * （{@code mch_payment_merchant.fee_bearer}）。
      *

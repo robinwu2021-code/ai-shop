@@ -67,4 +67,25 @@ public interface BizSettleAppService {
 
     /** 对账单。**这是凭证不是报表** —— 小微没有发票、没有对公流水 */
     StatementVO statement(String period);
+
+    /**
+     * 我能提多少 + 我的提现记录。
+     *
+     * <p>两个数一起给：只给「可提余额」的话，商家看不到上一笔在审的，
+     * 会以为钱少了一截；只给记录的话他得自己算还能提多少。
+     */
+    WithdrawPageVO myWithdraws();
+
+    /** 申请提现。金额单位为分 */
+    ai.neargo.shop.pay.dto.FinanceVOs.WithdrawVO applyWithdraw(long amountMinor);
+
+    /**
+     * @param withdrawableMinor 现在能提多少（已到账结算款 − 在途提现）
+     * @param minAmountMinor    单笔下限。**端上要用它禁用按钮**，
+     *                          不然商家点了才知道太少
+     * @param records           历史申请，倒序
+     */
+    record WithdrawPageVO(long withdrawableMinor, long minAmountMinor,
+                          List<ai.neargo.shop.pay.dto.FinanceVOs.WithdrawVO> records) {
+    }
 }

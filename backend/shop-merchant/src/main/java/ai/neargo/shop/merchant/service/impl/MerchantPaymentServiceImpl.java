@@ -97,14 +97,22 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
                 .filter(r -> r.getStoreNo() == null || r.getStoreNo().isEmpty())
                 .collect(java.util.stream.Collectors.toMap(MchPaymentMerchant::getPayChannel,
                         r -> r, (a, b) -> a, java.util.LinkedHashMap::new));
-        return payChannelMasterPort.enabledChannels(null).stream()
+        /*
+         * **按本商家的市场筛**（V288）。此前传的是 null —— 一律按默认市场算，
+         * 于是台湾商家与大陆商家看到同一份渠道列表，
+         * 点进去进件必然被通道拒，而拒的理由是一串英文码。
+         *
+         * 市场取不到时仍传 null（等于按默认市场），不抛错：
+         * 存量主体还没有这个字段的值，而「看不到渠道」比「看到多余的渠道」更糟。
+         */
+        return payChannelMasterPort.enabledChannels(marketOf(merchantNo)).stream()
                 .map(ch -> opened.containsKey(ch) ? toVO(opened.get(ch)) : placeholder(merchantNo, ch))
                 .toList();
     }
 
     /** 「还没进件」的占位：状态 NONE，缺什么按主体算 —— 与提交时同一套判断。 */
     private PaymentApplymentVO placeholder(String merchantNo) {
-        return placeholder(merchantNo, resolveChannel(null));
+        return placeholder(merchantNo, resolveChannel(merchantNo, null));
     }
 
     private PaymentApplymentVO placeholder(String merchantNo, String payChannel) {
@@ -201,7 +209,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
         if (store == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        String channel = resolveChannel(payChannel);
+        String channel = resolveChannel(merchantNo, payChannel);
         boolean exists = rows(merchantNo).stream()
                 .anyMatch(r -> channel.equals(r.getPayChannel())
                         && storeNo.equals(r.getStoreNo()));
@@ -369,11 +377,11 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
      * <p>市场暂取默认（主体上还没有市场字段）。<b>这一点写在这里而不是假装它按主体算</b>：
      * 等主体有了市场，改的是这一行的入参，不是这套判断。
      */
-    private String resolveChannel(String payChannel) {
+    private String resolveChannel(String merchantNo, String payChannel) {
         if (payChannel != null && !payChannel.isBlank()) {
             return payChannel;
         }
-        List<String> available = payChannelMasterPort.enabledChannels(null);
+        List<String> available = payChannelMasterPort.enabledChannels(marketOf(merchantNo));
         if (available.isEmpty()) {
             throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
         }
@@ -457,5 +465,24 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
     /** 只留尾四位。口径与手机号/地址共用 {@link Masks} —— 三份实现就是三种口径。 */
     private String mask(String raw) {
         return Masks.tail(raw);
+    }
+
+    /**
+     * 这家主体在哪个市场（V288）。
+     *
+     * <p>直接查表而不是注入 {@code MerchantQueryPort}：那个 Port 的实现
+     * 就在本模块，注进来是同模块内绕一圈，且给循环依赖留了口子。
+     *
+     * <p>查不到返回 {@code null} —— 传给 {@code enabledChannels} 等于
+     * 「按默认市场算」。存量主体还没有这个字段的值，
+     * 而<b>「看不到任何渠道」比「看到多余的渠道」更糟</b>：
+     * 前者让商家完全走不下去，后者最多在进件时被通道拒。
+     */
+    private String marketOf(String merchantNo) {
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
+        return m == null || m.getMarket() == null || m.getMarket().isBlank()
+                ? null : m.getMarket();
     }
 }

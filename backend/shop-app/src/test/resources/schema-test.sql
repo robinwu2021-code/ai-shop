@@ -1325,6 +1325,7 @@ CREATE TABLE IF NOT EXISTS mch_entity
     biz_qualification VARCHAR(16) NOT NULL DEFAULT 'UNREGISTERED',
     exempt_type VARCHAR(24) DEFAULT NULL,
     acode_base64 MEDIUMTEXT NULL,
+    market VARCHAR(8) NOT NULL DEFAULT 'CN',
     PRIMARY KEY (id),
     CONSTRAINT uk_entity_no UNIQUE (entity_no),
     CONSTRAINT uk_store_code UNIQUE (store_code)
@@ -8328,3 +8329,13 @@ SELECT 'FINANCE', 'OPS_FINANCE__TAB_SETTLE_BATCHES', 'OPS', NOW(), NOW() FROM DU
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'FINANCE', 'OPS_FINANCE__TAB_DEBTS', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='FINANCE' AND x.point_code='OPS_FINANCE__TAB_DEBTS');
+INSERT INTO sys_pay_channel
+    (id, pay_channel, name, enabled, supports_subsidy, supports_split, supports_payout,
+     pay_methods, markets, currency, settle_cycle, max_partial_refunds,
+     refund_interval_seconds, max_split_rate, tenant_no,
+     created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+    (3, 'TEST', '测试渠道', 0, 1, 1, 1,
+     'TEST_PAY', NULL, 'CNY', 'T1', 20,
+     0, 3000, 'MAIN',
+     '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0);

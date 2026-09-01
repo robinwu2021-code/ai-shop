@@ -59,6 +59,20 @@ class PayChannelDefaultResolveTest {
          */
         DataScopeContext.executeWithoutScope(() -> {
             channelMapper.selectList(Wrappers.emptyWrapper()).forEach(r -> {
+                /*
+                 * **跳过测试渠道**（V288 种的 TEST）。
+                 *
+                 * 这段还原的意图是「把本类用到的渠道恢复成启用」，
+                 * 而它写成了「把库里所有渠道都启用」—— 两者在只有
+                 * WECHAT/ALIPAY 两条时结果一样，<b>加了第三条就不一样了</b>：
+                 * 本类的 containsExactly("WECHAT") 会因为多出一条 TEST 而红。
+                 *
+                 * TEST 渠道默认 enabled=0 是刻意的（不能有一条假通道
+                 * 出现在真实渠道列表里），这里不该把它打开。
+                 */
+                if ("TEST".equals(r.getPayChannel())) {
+                    return;
+                }
                 r.setEnabled(true);
                 r.setMarkets("[\"CN\"]");
                 channelMapper.updateById(r);
@@ -74,10 +88,23 @@ class PayChannelDefaultResolveTest {
         List<SysPayChannel> after = DataScopeContext.executeWithoutScope(() ->
                 channelMapper.selectList(Wrappers.emptyWrapper()));
         assertThat(after).as("还原之后必须还看得见通道行").isNotEmpty();
-        assertThat(after).allSatisfy(r -> {
+        /*
+         * 自检也要认那个例外，否则「跳过 TEST」与「所有通道都得是启用」
+         * 两句话互相打架 —— 而打架的表现是这一条自检把整个类染红，
+         * 报错说「TEST 没被还原成启用」，<b>而它本来就不该被启用</b>。
+         */
+        assertThat(after.stream().filter(r -> !"TEST".equals(r.getPayChannel())).toList())
+                .as("除测试渠道外，还原之后必须还看得见通道行").isNotEmpty();
+        after.stream().filter(r -> !"TEST".equals(r.getPayChannel())).forEach(r -> {
             assertThat(r.getEnabled()).as("通道 " + r.getPayChannel() + " 没被还原成启用").isTrue();
             assertThat(r.getMarkets()).as("通道 " + r.getPayChannel() + " 的 markets 没被还原").isEqualTo("[\"CN\"]");
         });
+        // 测试渠道反过来：它必须**保持关闭**。开着的话真实渠道列表里会多一条假通道
+        after.stream().filter(r -> "TEST".equals(r.getPayChannel())).forEach(r ->
+                assertThat(r.getEnabled())
+                        .as("测试渠道被谁打开了 —— 它默认关是刻意的，"
+                                + "开着会让 availableChannels 多返回一条假通道")
+                        .isFalse());
 
         // 自己造的行自己收拾：留在共享库里会让别的用例莫名其妙多出一个主体
         jdbc.update("DELETE FROM mch_payment_merchant WHERE entity_no = ?", ENTITY);

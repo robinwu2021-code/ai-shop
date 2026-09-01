@@ -161,4 +161,33 @@ public class BizSettleController {
                                    Long invoiceDate, String imageUrl) {
     }
 
+
+    /**
+     * 我的提现：可提余额 + 下限 + 历史记录。
+     *
+     * <p><b>这条与下面的申请一起，是提现功能的第一次落地</b> ——
+     * 此前提现单在生产代码里从没被创建过，运营端的审批页永远是空的。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
+    @GetMapping("/biz/settle/withdraw")
+    public ai.neargo.shop.payclient.BizSettleAppService.WithdrawPageVO withdraws() {
+        return app.myWithdraws();
+    }
+
+    /**
+     * 申请提现。
+     *
+     * <p><b>金额单位是分</b>，与全站契约一致（浮点不进钱的接口）。
+     * 三道校验在 service 层：金额下限、可提余额、唯一在途单 ——
+     * 放在这里的话，将来多一个入口（运营代申请）就会漏掉。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
+    @PostMapping("/biz/settle/withdraw")
+    public ai.neargo.shop.pay.dto.FinanceVOs.WithdrawVO applyWithdraw(@RequestBody ApplyWithdrawReq req) {
+        return app.applyWithdraw(req.amountMinor());
+    }
+
+    /** @param amountMinor 申请金额（分） */
+    public record ApplyWithdrawReq(long amountMinor) {
+    }
 }

@@ -675,6 +675,17 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public String marketOf(String merchantNo) {
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
+        // 查不到给 null，**不兜成 CN**：兜了之后「这家还没建」与「这家在大陆」
+        // 在调用方看来一样，而前者该报错、后者该正常出一份大陆的渠道列表
+        return m == null || m.getMarket() == null || m.getMarket().isBlank()
+                ? null : m.getMarket();
+    }
+
+    @Override
     public String legalFormOf(String merchantNo) {
         MchEntity m = DataScopeContext.executeWithoutScope(() ->
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()

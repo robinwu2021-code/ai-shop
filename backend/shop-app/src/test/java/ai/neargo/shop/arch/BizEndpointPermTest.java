@@ -332,6 +332,8 @@ class BizEndpointPermTest {
         put("/biz/role/{roleCode}/delete", BizPerms.STORE_ADMIN);
 
         // ---- 钱 ----
+        // 提现（V288 新增）：与结算同一把权限 —— 能看账的才能提钱
+        put("/biz/settle/withdraw", BizPerms.FINANCE);
         put("/biz/settle/bills", BizPerms.FINANCE);
         put("/biz/settle/income", BizPerms.FINANCE);
         put("/biz/settle/bills/{settleNo}", BizPerms.FINANCE);

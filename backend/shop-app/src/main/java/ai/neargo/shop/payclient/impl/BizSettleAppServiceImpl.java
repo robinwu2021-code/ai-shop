@@ -18,8 +18,11 @@ public class BizSettleAppServiceImpl implements BizSettleAppService {
 
     private final SettleService settleService;
     private final SettleBatchService batchService;
+    private final ai.neargo.shop.pay.service.WithdrawService withdrawService;
 
-    public BizSettleAppServiceImpl(SettleService settleService, SettleBatchService batchService) {
+    public BizSettleAppServiceImpl(SettleService settleService, SettleBatchService batchService,
+                                   ai.neargo.shop.pay.service.WithdrawService withdrawService) {
+        this.withdrawService = withdrawService;
         this.settleService = settleService;
         this.batchService = batchService;
     }
@@ -85,5 +88,29 @@ public class BizSettleAppServiceImpl implements BizSettleAppService {
     @Override
     public StatementVO statement(String period) {
         return settleService.statement(BizContext.requireMerchantNo(), period);
+    }
+
+    @Override
+    public WithdrawPageVO myWithdraws() {
+        String me = BizContext.requireMerchantNo();
+        /*
+         * 复用运营端的 list 再按自己筛，而不是新写一个查询。
+         *
+         * <b>提现单没有门店维度</b>：钱结到主体，不结到店。
+         * 所以这里不走 storeScope —— 走了的话多店商家会看不到自己的提现单。
+         */
+        var all = withdrawService.list(null, me, 1, 200).records().stream()
+                .filter(w -> me.equals(w.merchantNo()))
+                .toList();
+        return new WithdrawPageVO(withdrawService.withdrawableMinor(me),
+                ai.neargo.shop.pay.entity.StlWithdraw.MIN_AMOUNT_MINOR, all);
+    }
+
+    @Override
+    public ai.neargo.shop.pay.dto.FinanceVOs.WithdrawVO applyWithdraw(long amountMinor) {
+        String me = BizContext.requireMerchantNo();
+        // 操作人记主体号：B 端的提现申请是「这家商家提的」，
+        // 具体是店里哪个员工点的按钮由审计日志另行记录，不进资金单据
+        return withdrawService.apply(me, amountMinor, me);
     }
 }

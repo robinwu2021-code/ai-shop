@@ -6,6 +6,8 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.pay.dto.FinanceVOs.TaxRuleVO;
 import ai.neargo.shop.pay.dto.FinanceVOs.WithdrawVO;
+import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.pay.entity.StlBill;
 import ai.neargo.shop.pay.entity.StlWithdraw;
 import ai.neargo.shop.pay.mapper.SettleMappers.WithdrawMapper;
 import ai.neargo.shop.pay.service.WithdrawService;
@@ -13,13 +15,18 @@ import ai.neargo.shop.pay.setting.PaySettingService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 /** {@link WithdrawService} 实现。见接口注释：**只审批留痕，不打款**。 */
 @Service
 public class WithdrawServiceImpl implements WithdrawService {
+
+    private static final Logger log = LoggerFactory.getLogger(WithdrawServiceImpl.class);
 
     /**
      * 个税规则的参数键与缺省值。
@@ -38,17 +45,96 @@ public class WithdrawServiceImpl implements WithdrawService {
     public static final long MAX_RATE_BP = 4500L;
 
     private final WithdrawMapper withdrawMapper;
+    /** 算可提余额要它：已到账的结算款 */
+    private final ai.neargo.shop.pay.mapper.SettleMappers.BillMapper billMapper;
     private final MerchantQueryPort merchantPort;
     /** 支付域自己的设置（2026-09-01 从 sys_setting 搬过来，见 V285） */
     private final PaySettingService paySettings;
     private final ObjectMapper json;
 
-    public WithdrawServiceImpl(WithdrawMapper withdrawMapper, MerchantQueryPort merchantPort,
+    public WithdrawServiceImpl(WithdrawMapper withdrawMapper,
+                               ai.neargo.shop.pay.mapper.SettleMappers.BillMapper billMapper,
+                               MerchantQueryPort merchantPort,
                                PaySettingService paySettings, ObjectMapper json) {
         this.withdrawMapper = withdrawMapper;
+        this.billMapper = billMapper;
         this.merchantPort = merchantPort;
         this.paySettings = paySettings;
         this.json = json;
+    }
+
+    @Override
+    @Transactional("payTxManager")
+    public WithdrawVO apply(String entityNo, long amountMinor, String operatorNo) {
+        if (amountMinor < StlWithdraw.MIN_AMOUNT_MINOR) {
+            // 低于下限：渠道手续费比本金还贵
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        /*
+         * **先拦「已有在途单」，再拦「余额不足」。**
+         *
+         * 两条会同时命中（在途的那笔已经从可提余额里扣掉了），
+         * 而它们给出的错误信息完全不同：「你还有一笔在审核」让商家知道去等，
+         * 「余额不足」让他以为钱不见了。<b>顺序决定他看到哪一句。</b>
+         */
+        boolean pending = DataScopeContext.executeWithoutScope(() ->
+                withdrawMapper.selectCount(Wrappers.<StlWithdraw>lambdaQuery()
+                        .eq(StlWithdraw::getEntityNo, entityNo)
+                        .in(StlWithdraw::getStatus, StlWithdraw.PENDING, StlWithdraw.APPROVED))) > 0;
+        if (pending) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "还有一笔提现在处理中，完成后才能再提");
+        }
+        long can = withdrawableMinor(entityNo);
+        if (amountMinor > can) {
+            throw new BizException(ErrorCode.BAD_REQUEST,
+                    "可提金额不足：当前可提 " + (can / 100) + " 元");
+        }
+
+        StlWithdraw w = new StlWithdraw();
+        w.setWithdrawNo(BizKey.next(BizKey.WITHDRAW));
+        w.setEntityNo(entityNo);
+        w.setMerchantName(merchantPort.find(entityNo).map(MerchantQueryPort.MerchantBrief::merchantName).orElse(null));
+        w.setAmountMinor(amountMinor);
+        /*
+         * **可提余额快照。**申请那一刻的数，不是审批时再算一次。
+         *
+         * 审批可能隔几天，那时余额早变了。运营要判断的是
+         * 「他申请时确实有这么多」，而不是「现在还有没有」——
+         * 后者会让一笔合规的申请因为商家又下了单而被拒。
+         */
+        w.setAvailableBalanceMinor(can);
+        w.setStatus(StlWithdraw.PENDING);
+        w.setAppliedAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> withdrawMapper.insert(w));
+        log.info("[withdraw] {} 申请提现 {} 分（可提 {}）", entityNo, amountMinor, can);
+        return toVO(w);
+    }
+
+    @Override
+    public long withdrawableMinor(String entityNo) {
+        /*
+         * 可提 = 已到账的结算款 − 在途/已完成的提现。
+         *
+         * 「已到账」只认 SPLIT_CONFIRMED 与 PAID 两个终态 ——
+         * <b>SPLIT（已发起、等回执）不算</b>：那笔钱还在路上，
+         * 算进去的话商家能提走一笔尚未确认到账的钱。
+         *
+         * 减的那一边包含 PENDING/APPROVED/PAID 三种：
+         * 待审的也要减，否则连点两次就能把同一笔钱申请两遍，
+         * 而两张单各自看都是合规的。
+         */
+        long received = DataScopeContext.executeWithoutScope(() ->
+                billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                        .eq(StlBill::getEntityNo, entityNo)
+                        .in(StlBill::getStatus, StlBill.SPLIT_CONFIRMED, StlBill.PAID)))
+                .stream().mapToLong(b -> b.getNetMinor() == null ? 0L : b.getNetMinor()).sum();
+        long taken = DataScopeContext.executeWithoutScope(() ->
+                withdrawMapper.selectList(Wrappers.<StlWithdraw>lambdaQuery()
+                        .eq(StlWithdraw::getEntityNo, entityNo)
+                        .in(StlWithdraw::getStatus, StlWithdraw.PENDING,
+                                StlWithdraw.APPROVED, StlWithdraw.PAID)))
+                .stream().mapToLong(w -> w.getAmountMinor() == null ? 0L : w.getAmountMinor()).sum();
+        return Math.max(0L, received - taken);
     }
 
     @Override

@@ -67,9 +67,7 @@ class TableHasProducerTest {
 
     static {
         // 已核实：有意让范围
-        NO_PRODUCER.put("stl_withdraw",
-                "B 端提现申请入口未做，是有意让范围（TDD-运营端财务补齐 §五 T5）。"
-                        + "本批只做运营侧审批，场景测试用 mapper 直接种数据");
+        // stl_withdraw 已于 2026-09-02（V288）落地 B 端申请入口，从本表移除 —— 闸门自己报的陈行
         NO_PRODUCER.put("stl_settle_invoice",
                 "同上 —— 商家申请结算发票的入口未做，运营侧的开票/驳回先落地");
         // 未核实：这条闸门立起来时就在库里，归属由各域自己填
