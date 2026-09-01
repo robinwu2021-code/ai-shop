@@ -1,6 +1,7 @@
 package ai.neargo.shop.pay.port;
 
 import ai.neargo.shop.pay.SettleService;
+import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.spi.settle.SettlePort;
 import org.springframework.stereotype.Component;
 
@@ -25,9 +26,21 @@ import org.springframework.stereotype.Component;
 public class SettlePortImpl implements SettlePort {
 
     private final SettleService settleService;
+    private final PaymentLedgerService paymentLedger;
 
-    public SettlePortImpl(SettleService settleService) {
+    public SettlePortImpl(SettleService settleService, PaymentLedgerService paymentLedger) {
         this.settleService = settleService;
+        this.paymentLedger = paymentLedger;
+    }
+
+    @Override
+    public void openPayment(PaymentOpen cmd) {
+        paymentLedger.open(cmd);
+    }
+
+    @Override
+    public void settlePayment(PaymentSettled cmd) {
+        paymentLedger.settle(cmd);
     }
 
     @Override

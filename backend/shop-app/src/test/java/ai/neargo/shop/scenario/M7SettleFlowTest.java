@@ -111,13 +111,11 @@ class M7SettleFlowTest {
         String payOrderNo = buyAndPay(token, "G0002", "SK0003", null, "m7-i8");
 
         /*
-         * **支付流水要自己造。** 2026-09-01 查明：生产代码里没有一处写 stl_payment ——
-         * 回调只调 orderService.markPaid，那张表从 V1 建起就是空的。
-         * 所以这里造的不是「测试替身」，是**这条链路本该产生、而今天没有产生的那行数据**。
-         * 前提补上之前，I8 在生产上会被自己的对照量报成「扫到 0 笔」，那是对的。
+         * **不造流水** —— 走完 buyAndPay 之后 stl_payment 里本来就该有一行 SUCCESS。
+         * 这是这条测试的第二重作用：把替身撤掉之后它仍然绿，
+         * 才说明真实链路确实在写这张表。造一行进去的话，
+         * 「链路没写」和「链路写了」在这条测试上长得一模一样。
          */
-        givenSuccessPayment(payOrderNo);
-
         // 把订单打回「待支付」—— 支付流水不动，于是两边就不一致了
         int rolled = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
             var o = orderMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
@@ -143,12 +141,56 @@ class M7SettleFlowTest {
                 .isEqualTo(ai.neargo.shop.trade.entity.OrdOrder.PAID);
     }
 
+    /**
+     * 收款对账轴现在真的有东西可查了。
+     *
+     * <p><b>这条是「补写 stl_payment」那次改动的价值判据。</b>
+     * 在那之前，{@code stl_payment} 是一张没人写的表，
+     * 而收款轴查的正是「停在 PENDING 的收款」——
+     * 于是它每轮报「没有差异」，<b>而它本该发现的就是掉单</b>。
+     * ReconFlowTest 那几条是绿的，因为它们自己插数据：
+     * 逻辑被验证过，而真实链路根本不产生这种数据。
+     *
+     * <p>这里走真实链路：发起支付、<b>不回调</b>（模拟用户付了但回调没到，
+     * 或者压根没付完），然后把时钟推到滞留窗口之后再扫。
+     */
+    @Test
+    @DisplayName("★★★ 发起了支付却没有回调的单，对账轴要扫得到 —— 这是掉单唯一的发现方式")
+    void reconAxisFindsPaymentsStuckAfterOpen() throws Exception {
+        String token = login("12800128097");
+        mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"goodsNo\":\"G0002\",\"skuNo\":\"SK0003\",\"qty\":1}"));
+        String body = mvc().perform(post("/mp/order").header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", "m7-stuck")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String orderNo = json.readTree(body).get("data").get("payOrderNo").asString();
+
+        // 发起支付 —— 到此为止，不回调
+        mvc().perform(post("/mp/order/" + orderNo + "/pay")
+                .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 时钟推到滞留窗口之后（默认 20 分钟，给足 2 小时）
+        var r = reconService.scan(System.currentTimeMillis() + 2 * 3_600_000L);
+
+        assertThat(r.scanned())
+                .as("发起了支付却没回调的单必须被扫到 —— 补写 stl_payment 之前，"
+                        + "这个数永远是 0，而那时它报的是「没有差异」")
+                .isPositive();
+    }
+
+    @Autowired
+    private ai.neargo.shop.pay.service.ReconService reconService;
+
     @Test
     @DisplayName("★★ I8 不会去动本来就没问题的单 —— 否则「补了几个」这个数永远等于扫描数")
     void invariantI8LeavesHealthyOrdersAlone() throws Exception {
         String token = login("12800128098");
-        String payOrderNo = buyAndPay(token, "G0002", "SK0003", null, "m7-i8-clean");
-        givenSuccessPayment(payOrderNo);
+        buyAndPay(token, "G0002", "SK0003", null, "m7-i8-clean");
 
         var r = reconciler.reconcile(0L, 100);
 
@@ -159,22 +201,6 @@ class M7SettleFlowTest {
                 .as("所有订单都已是 PAID，一个都不该补。这个数要是等于 scanned，"
                         + "多半是判据的粒度错了（拿子单的方法去比主单）")
                 .isZero();
-    }
-
-    /** 造一笔成功的收款流水，指向这个订单 */
-    private void givenSuccessPayment(String orderNo) {
-        var p = new ai.neargo.shop.pay.entity.StlPayment();
-        p.setPaymentNo("PY-I8-" + orderNo);
-        p.setDirection(ai.neargo.shop.pay.entity.StlPayment.PAY);
-        p.setStatus(ai.neargo.shop.pay.entity.StlPayment.SUCCESS);
-        p.setOrderNo(orderNo);
-        p.setOutTradeNo("OUT-I8-" + orderNo);
-        p.setPayChannel("WECHAT");
-        p.setUserNo("U-I8");
-        p.setAmountMinor(6980L);
-        p.setSucceededAt(System.currentTimeMillis());
-        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
-                () -> paymentMapper.insert(p));
     }
 
     @Autowired
@@ -520,6 +546,15 @@ class M7SettleFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
+
+        /*
+         * **先发起支付，再回调** —— 真实端上就是这个顺序：
+         * 必须先拿到支付参数才付得成，而那一步会在 stl_payment 落一行 PENDING。
+         * 少了这一步，回调进来时没有起点行，测的就不是真实链路了。
+         */
+        mvc().perform(post("/mp/order/" + payOrderNo + "/pay")
+                .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0));
 
         mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idemKey

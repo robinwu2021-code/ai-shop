@@ -841,6 +841,21 @@ public class OrderServiceImpl implements OrderService {
         if (order.getPayDeadlineAt() != null && order.getPayDeadlineAt() < System.currentTimeMillis()) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
+        /*
+         * **先在支付域记一行「发起了」，再把参数给端上。**
+         *
+         * 没有这一行的话，「用户付了钱而我方没收到回调」在库里没有任何痕迹 ——
+         * 收款对账轴查的正是「停在 PENDING 的收款」，没有起点就没有可查的对象。
+         * 2026-09-01 之前这一行不存在，于是那条轴每轮都报「没有差异」。
+         *
+         * 放在返回参数**之前**：先给参数再记账的话，两者之间进程挂掉，
+         * 用户手上有一个能付的凭据，而我方一无所知 —— 那笔钱进来后没有任何东西认领它。
+         * 幂等在支付域侧按 out_trade_no 做，用户反复点不会多出行。
+         */
+        settlePort.openPayment(new SettlePort.PaymentOpen(
+                orderNo, orderNo, order.getUserNo(), null, "STUB",
+                order.getPayAmount() == null ? 0L : order.getPayAmount()));
+
         // S2 是 stub 通道：返回的参数结构与微信 JSAPI 一致，S4 换真通道时端上不用改
         return new PayResult(orderNo, "STUB", Map.of(
                 "prepayId", "stub_" + orderNo,

@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import ai.neargo.shop.spi.settle.SettlePort;
 
 /**
  * 真通道的支付回调。**不走 Bearer**，靠验签。
@@ -46,14 +47,17 @@ public class ChannelPayCallbackController {
     private final Map<String, ChannelCallbackVerifier> verifiers;
     private final PayQueryPort payQuery;
     private final OrderService orderService;
+    private final SettlePort settlePort;
 
     public ChannelPayCallbackController(List<ChannelCallbackVerifier> verifierList,
                                         PayQueryPort payQuery,
-                                        OrderService orderService) {
+                                        OrderService orderService,
+                                        SettlePort settlePort) {
         this.verifiers = verifierList.stream()
                 .collect(Collectors.toMap(ChannelCallbackVerifier::payChannel, Function.identity()));
         this.payQuery = payQuery;
         this.orderService = orderService;
+        this.settlePort = settlePort;
     }
 
     @PostMapping("/pay/channel/{channel}")
@@ -102,6 +106,20 @@ public class ChannelPayCallbackController {
             log.warn("[callback] {} 回调说已支付、回查说未支付，按未支付处理：{}", channel, outTradeNo);
             return v.ackFail();
         }
+
+        /*
+         * **支付域的账先落，再改订单状态。**顺序不可交换：
+         * 支付成功这件事的权威在支付域（它对着通道回执），订单状态是下游投影。
+         *
+         * 反过来的话，一旦记账这步失败，库里就是「订单说付了、而支付域没有这笔钱」——
+         * 那比反过来严重得多：反过来（钱记了、订单没转）有 I8 每小时兜底，
+         * 而「订单付了、支付域没有」没有任何东西能发现。
+         *
+         * 这一步抛异常就 ackFail 让通道重推：钱的账没落下，不能认。
+         */
+        settlePort.settlePayment(new SettlePort.PaymentSettled(
+                String.valueOf(outTradeNo), channel, r.tradeNo(),
+                r.amountMinor(), System.currentTimeMillis()));
 
         orderService.markPaid(String.valueOf(outTradeNo), channel, r.tradeNo());
         log.info("[callback] {} 支付成功入账：{}（通道单号 {}，{} 分）",

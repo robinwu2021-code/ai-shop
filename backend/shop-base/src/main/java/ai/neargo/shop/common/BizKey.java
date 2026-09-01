@@ -85,6 +85,8 @@ public final class BizKey {
     public static final String INVOICE_REQUEST = "INV";
     /** 费率规则版本 */
     public static final String FEE_RULE = "FR";
+    /** 收款流水（stl_payment）。与结算单 STL 分开：那是「该给商家多少」，这是「用户付了多少」 */
+    public static final String PAYMENT = "PY";
     public static final String EVENT = "EVT";
     /** 短信/邮件发送记录 */
     public static final String NOTIFY_LOG = "NL";

@@ -486,7 +486,15 @@ class ArchitectureTest {
                 // sessionjob：会话与登录日志的清理任务。它是**鉴权基础设施**，不是业务域 ——
                 // 只碰 usr_session/mch_session/ops_session 与三张登录日志表，
                 // 一张业务表都不认识
-                "sessionjob");
+                "sessionjob",
+                // paybridge：支付域与订单域之间的**跨域巡检**（不变式 I8）。
+                // 与 invbridge 同一个理由：它必须同时认识两边 ——
+                // 拉支付域的成功流水，比订单状态，不一致就补一次 markPaid。
+                //
+                // **不是业务域**：没有自己的表，也没有自己的规则。
+                // 放进 pay 会让支付域依赖主应用可用（而「回调直接进 pay」的初衷正是不要这个依赖），
+                // 放进 trade 会让订单域知道支付域的内部账。装配层是它唯一正确的位置。
+                "paybridge");
         List<String> known = new ArrayList<>(infra);
         known.addAll(List.of(DOMAINS));
 
