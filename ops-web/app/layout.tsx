@@ -3,6 +3,7 @@ import { IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { AppShell } from "@/components/layout/app-shell";
+import { IS_MOCK } from "@/lib/api";
 
 // 字族：IBM Plex Sans（拉丁）+ IBM Plex Sans SC（中文，见下）。
 // IBM Plex 是为技术界面设计的中性无衬线，数字辨识度高（0/O、1/l 分得开），
@@ -46,6 +47,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+SC:wght@400;500;600;700&display=swap"
         />
+        {/*
+          * **这份产物连的是真后端还是 mock，从外面要看得出来。**
+          *
+          * 2026-09-01：线上运营端跑了两天 mock 而没人知道 ——
+          * 部署文档里写着 `NEXT_PUBLIC_USE_MOCK=0`，那次构建漏了它，
+          * 而漏掉的表现是「登录提示无权限」：请求根本没发给后端，
+          * 后端日志里一条记录都没有，于是查了半天判权、角色、权限点，
+          * 全都是好的。
+          *
+          * 默认值是 mock（`!== "0"`），所以**漏配等于回到 mock** ——
+          * 这种默认最需要一个能从外面探到的标记：
+          * 部署后 `curl -s <url> | grep x-api-mode` 一眼就能看出来。
+          */}
+        <meta name="x-api-mode" content={IS_MOCK ? "mock" : "http"} />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
       <body>

@@ -197,6 +197,24 @@ ssh soukmind-tx 'cd /opt/build/ai-shop && \
   sudo rsync -a --delete b-app/dist/build/h5/   /var/www/ai-shop/b-app/'
 ```
 
+### ⚠️ 发完必须验一句：运营端连的是真后端还是 mock
+
+```bash
+ssh soukmind-tx 'curl -sk -H "Host: www.hxmall.top" https://localhost/ops-web/ | grep -o "x-api-mode\" content=\"[a-z]*"'
+# 期望 http；若是 mock，就是构建漏了 NEXT_PUBLIC_USE_MOCK=0 —— **重新构建，别只重发**
+```
+
+**为什么单列一步**：`NEXT_PUBLIC_USE_MOCK` 的默认值是 mock（`!== "0"`），
+所以**漏配不会报错，只会静默退回 mock**。
+
+2026-09-01 就是这么踩的：线上运营端跑了两天 mock 没人发现，
+症状是「admin 登录提示无权限」—— 而请求根本没发给后端，
+`ops_login_log` 里一条记录都没有。查判权、查角色、查权限点，全是好的。
+
+上面那条构建命令**一直写着 `NEXT_PUBLIC_USE_MOCK=0`**，那次部署还是漏了 ——
+所以这里不再靠「记得照着敲」，而是发完探一下产物。
+标记由 `ops-web/app/layout.tsx` 输出，随构建固化在 HTML 里。
+
 ### 官网接管根路径（2026-08-19）
 
 `/` 从 C 端 H5 换成官网，C 端移到 `/c/`。**这会动到已经发出去的链接**，两条退路都做了：
