@@ -118,6 +118,30 @@ if (existsSync(spi)) {
   const want = claim?.[1] ? Number(claim[1]) : 12; // 「十二个」写死在册名里
   if (apis !== want) fail(spi, `自称 ${want} 个 Core*Api，实际列出 ${apis} 个`);
 }
+/*
+ * 支付域领域模型：**自称的对象数必须等于实际列出的**。
+ *
+ * 加这一条是因为写那份文档时这个数字连错三次（11 / 13 / 23 / 26 都写过），
+ * 每次都是手数漏了一两行 —— 而<b>一个自己都数不对的清单，
+ * 读的人凭什么信它是全的</b>。清单的价值全在「说的是真话」。
+ *
+ * 判据：九个分群表格里第一列加粗的那些行 = 对象。
+ * 用 {1,} 而不是精确列数：分群表格是三列，将来加一列不该让它变红。
+ */
+const dm = join(ROOT, "docs/technical/design/TDD-支付域-领域模型（需求层）.md");
+if (existsSync(dm)) {
+  const src = read(dm);
+  const listed = new Set([...src.matchAll(/^\| \*\*([^*|]+)\*\* \|/gm)].map((m) => m[1].trim()));
+  const claim = src.match(/合计 (\d+) 个领域对象/);
+  if (!claim) {
+    fail(dm, "找不到「合计 N 个领域对象」那句 —— 判据靠它，改写法要同步改这里");
+  } else if (listed.size !== Number(claim[1])) {
+    fail(dm, `自称 ${claim[1]} 个领域对象，实际列出 ${listed.size} 个`);
+  }
+  // 扫描面断言：这份文档少说也有二十来个对象，扫出个位数一定是正则失配
+  if (listed.size < 20) fail(dm, `只解析出 ${listed.size} 个对象行 —— 多半是表格写法变了，正则失配`);
+}
+
 const scen = join(ROOT, "docs/technical/design/三行业场景工作流手册.md");
 if (existsSync(scen)) {
   const src = read(scen);
