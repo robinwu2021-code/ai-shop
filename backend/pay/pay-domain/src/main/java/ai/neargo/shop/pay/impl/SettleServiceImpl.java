@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import ai.neargo.shop.pay.setting.PaySettingService;
 
 /**
  * 结算与分账（ADR-002）。**M7 起取代 {@code SettlePortStub}**。
@@ -81,14 +82,15 @@ public class SettleServiceImpl implements SettleService {
     /** 解析「这笔钱打给哪个收款号」—— 门店配的号 ?? 主体默认号，口径只有那一处 */
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
     private final ai.neargo.shop.pay.mapper.SettleMappers.PurchaseInvoiceMapper purchaseInvoiceMapper;
-    private final ai.neargo.shop.spi.platform.SettingPort settingPort;
+    /** 支付域自己的设置（2026-09-01 从 sys_setting 搬过来，见 V285） */
+    private final PaySettingService paySettings;
 
     public SettleServiceImpl(BillMapper billMapper, SplitLogMapper splitLogMapper,
                              SettleSourcePort sourcePort, SplitGateway gateway,
                              PickupQueryPort pickupPort,
                              ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort,
                              ai.neargo.shop.pay.mapper.SettleMappers.PurchaseInvoiceMapper purchaseInvoiceMapper,
-                             ai.neargo.shop.spi.platform.SettingPort settingPort,
+                             PaySettingService paySettings,
                              ai.neargo.shop.pay.service.FeeRuleService feeRuleService,
                              ai.neargo.shop.pay.PointsService pointsService,
                              PayChannelMasterService channelMaster,
@@ -98,7 +100,7 @@ public class SettleServiceImpl implements SettleService {
         this.channelMaster = channelMaster;
         this.channelRates = channelRates;
         this.pointsService = pointsService;
-        this.settingPort = settingPort;
+        this.paySettings = paySettings;
         this.feeRuleService = feeRuleService;
         this.purchaseInvoiceMapper = purchaseInvoiceMapper;
         this.billMapper = billMapper;
@@ -1179,7 +1181,7 @@ public class SettleServiceImpl implements SettleService {
 
     @Override
     public java.util.Map<String, String> platformInvoiceTitle() {
-        return parseFlatJson(settingPort.get(TITLE_KEY, TITLE_DEFAULT));
+        return parseFlatJson(paySettings.get(TITLE_KEY, TITLE_DEFAULT));
     }
 
     @Override
@@ -1197,7 +1199,7 @@ public class SettleServiceImpl implements SettleService {
             sb.append(sb.length() > 1 ? "," : "").append('"').append(k).append("\":\"")
                     .append(v == null ? "" : v.replace("\"", "")).append('"');
         }
-        settingPort.put(TITLE_KEY, sb.append("}").toString(), operatorNo);
+        paySettings.put(TITLE_KEY, sb.append("}").toString(), operatorNo);
         return platformInvoiceTitle();
     }
 

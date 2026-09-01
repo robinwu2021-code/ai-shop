@@ -3907,6 +3907,23 @@ CREATE TABLE IF NOT EXISTS sys_event_consumed
     CONSTRAINT uk_event_handler UNIQUE (event_no,handler)
 );
 
+CREATE TABLE IF NOT EXISTS pay_setting
+(
+    id            BIGINT       NOT NULL AUTO_INCREMENT,
+    setting_key   VARCHAR(64)  NOT NULL,
+    setting_value TEXT         NOT NULL,
+    remark        VARCHAR(255) DEFAULT NULL,
+    tenant_no     VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by    VARCHAR(64)  DEFAULT NULL,
+    updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by    VARCHAR(64)  DEFAULT NULL,
+    version       BIGINT       NOT NULL DEFAULT 0,
+    deleted       TINYINT      NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_setting_key UNIQUE (tenant_no, setting_key)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

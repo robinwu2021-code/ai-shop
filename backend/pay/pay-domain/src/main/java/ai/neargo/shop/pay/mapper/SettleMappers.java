@@ -55,6 +55,10 @@ public final class SettleMappers {
     public interface ReconDiffMapper extends BaseMapper<ai.neargo.shop.pay.entity.StlReconDiff> {
     }
 
+    /** 支付域设置（V285）。归 pay —— D2 拆库时跟着走 */
+    public interface PaySettingMapper extends BaseMapper<ai.neargo.shop.pay.entity.PaySetting> {
+    }
+
     public interface PaymentMapper extends BaseMapper<StlPayment> {
     }
 

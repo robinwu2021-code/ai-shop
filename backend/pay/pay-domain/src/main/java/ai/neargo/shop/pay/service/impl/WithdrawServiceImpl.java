@@ -9,7 +9,7 @@ import ai.neargo.shop.pay.dto.FinanceVOs.WithdrawVO;
 import ai.neargo.shop.pay.entity.StlWithdraw;
 import ai.neargo.shop.pay.mapper.SettleMappers.WithdrawMapper;
 import ai.neargo.shop.pay.service.WithdrawService;
-import ai.neargo.shop.spi.platform.SettingPort;
+import ai.neargo.shop.pay.setting.PaySettingService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -39,14 +39,15 @@ public class WithdrawServiceImpl implements WithdrawService {
 
     private final WithdrawMapper withdrawMapper;
     private final MerchantQueryPort merchantPort;
-    private final SettingPort settingPort;
+    /** 支付域自己的设置（2026-09-01 从 sys_setting 搬过来，见 V285） */
+    private final PaySettingService paySettings;
     private final ObjectMapper json;
 
     public WithdrawServiceImpl(WithdrawMapper withdrawMapper, MerchantQueryPort merchantPort,
-                               SettingPort settingPort, ObjectMapper json) {
+                               PaySettingService paySettings, ObjectMapper json) {
         this.withdrawMapper = withdrawMapper;
         this.merchantPort = merchantPort;
-        this.settingPort = settingPort;
+        this.paySettings = paySettings;
         this.json = json;
     }
 
@@ -142,7 +143,7 @@ public class WithdrawServiceImpl implements WithdrawService {
 
     @Override
     public TaxRuleVO taxRule() {
-        return json.readValue(settingPort.get(TAX_RULE_KEY, TAX_RULE_DEFAULT), TaxRuleVO.class);
+        return json.readValue(paySettings.get(TAX_RULE_KEY, TAX_RULE_DEFAULT), TaxRuleVO.class);
     }
 
     @Override
@@ -159,7 +160,7 @@ public class WithdrawServiceImpl implements WithdrawService {
          */
         TaxRuleVO saved = new TaxRuleVO(threshold, rate,
                 java.time.Instant.now().toString(), operatorNo);
-        settingPort.put(TAX_RULE_KEY, json.writeValueAsString(saved), operatorNo);
+        paySettings.put(TAX_RULE_KEY, json.writeValueAsString(saved), operatorNo);
         return saved;
     }
 

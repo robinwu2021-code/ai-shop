@@ -20,7 +20,7 @@ import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
 import ai.neargo.shop.pay.mapper.SettleMappers.PointsAccountMapper;
 import ai.neargo.shop.pay.mapper.SettleMappers.PointsLedgerMapper;
 import ai.neargo.shop.pay.mapper.SettleMappers.PointsPoolMapper;
-import ai.neargo.shop.spi.platform.SettingPort;
+import ai.neargo.shop.pay.setting.PaySettingService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import tools.jackson.databind.ObjectMapper;
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -65,7 +65,8 @@ public class PointsServiceImpl implements PointsService {
     private final PointsPoolMapper poolMapper;
     private final BillMapper billMapper;
     private final MerchantQueryPort merchantQuery;
-    private final SettingPort settingPort;
+    /** 支付域自己的设置（2026-09-01 从 sys_setting 搬过来，见 V285） */
+    private final PaySettingService paySettings;
     private final ObjectMapper json = new ObjectMapper();
 
     public PointsServiceImpl(PointsAccountMapper accountMapper,
@@ -73,7 +74,7 @@ public class PointsServiceImpl implements PointsService {
                              PointsPoolMapper poolMapper,
                              BillMapper billMapper,
                              MerchantQueryPort merchantQuery,
-                             SettingPort settingPort,
+                             PaySettingService paySettings,
                              ai.neargo.shop.spi.product.PointsRulePort pointsRulePort) {
         this.pointsRulePort = pointsRulePort;
         this.accountMapper = accountMapper;
@@ -81,7 +82,7 @@ public class PointsServiceImpl implements PointsService {
         this.poolMapper = poolMapper;
         this.billMapper = billMapper;
         this.merchantQuery = merchantQuery;
-        this.settingPort = settingPort;
+        this.paySettings = paySettings;
     }
 
     /**
@@ -92,7 +93,7 @@ public class PointsServiceImpl implements PointsService {
      */
     private PointsConfig config() {
         try {
-            return json.readValue(settingPort.get(PointsConfig.KEY, PointsConfig.DEFAULT_JSON),
+            return json.readValue(paySettings.get(PointsConfig.KEY, PointsConfig.DEFAULT_JSON),
                     PointsConfig.class);
         } catch (Exception e) {
             return defaultConfig();
@@ -397,7 +398,7 @@ public class PointsServiceImpl implements PointsService {
     private ClientPointsPolicy policy() {
         try {
             ClientPointsPolicy p = json.readValue(
-                    settingPort.get(POLICY_KEY, POLICY_DEFAULT), ClientPointsPolicy.class);
+                    paySettings.get(POLICY_KEY, POLICY_DEFAULT), ClientPointsPolicy.class);
             return new ClientPointsPolicy(
                     p.earnDeny() == null ? List.of() : p.earnDeny(),
                     p.redeemDeny() == null ? List.of() : p.redeemDeny(),
