@@ -3,10 +3,11 @@
 import type { Api } from "./contract";
 import { mockApi } from "./mock";
 import { httpApi } from "./http";
+import { IS_MOCK } from "../api-mode";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "0";
-
-export const api: Api = USE_MOCK ? mockApi : httpApi;
-export const IS_MOCK = USE_MOCK;
+export const api: Api = IS_MOCK ? mockApi : httpApi;
+// 判据只有一份，在 lib/api-mode.ts —— 根 layout 也要读它（见那里的注释）。
+// 这里转出去，是为了既有的 `import { IS_MOCK } from "@/lib/api"` 不用改。
+export { IS_MOCK } from "../api-mode";
 export type { Api } from "./contract";
 export * from "./contract";

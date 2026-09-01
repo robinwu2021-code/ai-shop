@@ -3,7 +3,7 @@ import { IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { AppShell } from "@/components/layout/app-shell";
-import { IS_MOCK } from "@/lib/api";
+import { API_MODE } from "@/lib/api-mode";
 
 // 字族：IBM Plex Sans（拉丁）+ IBM Plex Sans SC（中文，见下）。
 // IBM Plex 是为技术界面设计的中性无衬线，数字辨识度高（0/O、1/l 分得开），
@@ -60,7 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           * 这种默认最需要一个能从外面探到的标记：
           * 部署后 `curl -s <url> | grep x-api-mode` 一眼就能看出来。
           */}
-        <meta name="x-api-mode" content={IS_MOCK ? "mock" : "http"} />
+        <meta name="x-api-mode" content={API_MODE} />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
       <body>
