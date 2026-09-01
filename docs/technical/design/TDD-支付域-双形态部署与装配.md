@@ -94,10 +94,10 @@
 ### 规矩三：形态差异只允许出现在两个地方
 
 1. **Maven 打包**：`pay-svc` 这个产物包含什么。
-2. **一个开关**：`shop.pay.mode = embedded | remote`（配在**主应用**侧）。
+2. **一个开关**：`shop.pay.deployment = embedded | remote`（配在**主应用**侧）。
 
 除此之外，任何 `if (mode == ...)` 出现在业务代码里都算破坏。
-ArchUnit 加一条：`pay/**` 里不许出现对 `shop.pay.mode` 的读取。
+ArchUnit 加一条：`pay/**` 里不许出现对 `shop.pay.deployment` 的读取。
 
 ---
 
@@ -193,11 +193,11 @@ public interface PayPort {
 public class PayPortConfig {
 
     @Bean
-    @ConditionalOnProperty(name = "shop.pay.mode", havingValue = "embedded", matchIfMissing = true)
+    @ConditionalOnProperty(name = "shop.pay.deployment", havingValue = "embedded", matchIfMissing = true)
     PayPort localPayAdapter(PaySettleService svc) { return new LocalPayAdapter(svc); }
 
     @Bean
-    @ConditionalOnProperty(name = "shop.pay.mode", havingValue = "remote")
+    @ConditionalOnProperty(name = "shop.pay.deployment", havingValue = "remote")
     PayPort remotePayClient(PayClientProperties p) { return new RemotePayClient(p); }
 }
 ```
@@ -350,7 +350,7 @@ shop.job.targets: { main: "http://127.0.0.1:8081", pay: "http://127.0.0.1:8083" 
 
 | key | 形态 A | 形态 B（主应用） | 形态 B（pay-svc） |
 |---|---|---|---|
-| `shop.pay.mode` | `embedded`（或不配） | `remote` | — |
+| `shop.pay.deployment` | `embedded`（或不配） | `remote` | — |
 | `shop.pay.datasource.url` | 主库 | — | pay 库 |
 | `shop.pay.client.base-url` | — | `http://127.0.0.1:8083` | — |
 | `shop.pay.client.token` | — | 共享密钥 | 同左（校验用） |
@@ -414,7 +414,7 @@ void 同一组资金链路在两种形态下行为一致(String mode) { ... }
 | 1 | pay 建独立数据源（URL 仍指主库）+ 独立事务管理器 | §六 第 3 条负面对照转绿 · **2026-08-31 已完成**（`SettleDataSourceConfig`） |
 | 2 | 迁移目录切到 `db/pay/`，历史表 `pay_flyway_history` | 平台自己的迁移仍在跑（对着进销存那个 A/B 验一次） |
 | 3 | 建 `pay-svc` 产物（只含 `/internal`），本地起起来，**不接流量** | AOT 产物断言 + **jar 里无 `mybatis-*.jar`**（现在这条真的能成立了） |
-| 4 | `shop.pay.mode=remote`，主应用的 `PayPort` 换成 `RemotePayClient` | 装配测试；**一条只读 Port 方法先切**，比对两种实现返回是否逐字节一致 |
+| 4 | `shop.pay.deployment=standalone`，主应用的 `PayPort` 换成 `RemotePayClient` | 装配测试；**一条只读 Port 方法先切**，比对两种实现返回是否逐字节一致 |
 | 5 | 逐步切其余只读 Port 方法 | 同上 |
 | 6 | 切写路径（放款、进件、回调转发） | 幂等重放测试 |
 | 7 | 主应用去掉 pay-domain/store/channel/risk 依赖，只留 `pay-api` | 装配测试第 2 条 |

@@ -250,7 +250,7 @@ Outbox 的语义是「业务已成，后续必达」。而扣积分发生在订�
 |---:|---|---|
 | C1 | `shop-base` 去 MyBatis，拆 `-web` / `-auth` / `shop-store-*` | 见[基础包分层](./TDD-基础包分层与支付双形态.md) |
 | C2 | `shop-settle` → `backend/pay/pay-{api,domain,store,channel,risk,web,job}` | **纯搬家**：域边界已经干净（见下） |
-| C3 | `PayPort` + `LocalPayAdapter` + `RemotePayClient` + `shop.pay.mode` | 装配测试两种形态 |
+| C3 | `PayPort` + `LocalPayAdapter` + `RemotePayClient` + `shop.pay.deployment` | 装配测试两种形态 |
 | C4 | `pay-svc` 产物 + AOT 断言 + jar 内无 `mybatis-*.jar` | 本地起起来，不接流量 |
 
 > **C2 比预想的便宜。** 量过了：

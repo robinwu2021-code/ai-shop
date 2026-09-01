@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1060" height="820" viewBox="0 0 1060 820" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
 <title>支付双形态的装配差异：支付域两种形态下都没有 controller</title>
-<desc>形态 A 内嵌与形态 B 独立部署的装配对照。两种形态共用同一份 pay-domain、pay-store 代码；差异只允许出现在 Maven 打包与 shop.pay.mode 一个开关上。关键规矩一：内嵌形态下 pay 也用独立的 DataSource 与 TransactionManager（即使指向同一个库），让跨域事务在物理上写不出来，这样两种形态语义相同。关键规矩二：支付域两种形态下都没有 controller，三端 controller 与鉴权判权数据域全部留在主应用，pay 只暴露 /internal 内部口，因此它不依赖鉴权模块，也就不带 MyBatis。形态切换只改主应用注入的是 LocalPayAdapter 还是 RemotePayClient，nginx 一条规则都不用改。</desc>
+<desc>形态 A 内嵌与形态 B 独立部署的装配对照。两种形态共用同一份 pay-domain、pay-store 代码；差异只允许出现在 Maven 打包与 shop.pay.deployment 一个开关上。关键规矩一：内嵌形态下 pay 也用独立的 DataSource 与 TransactionManager（即使指向同一个库），让跨域事务在物理上写不出来，这样两种形态语义相同。关键规矩二：支付域两种形态下都没有 controller，三端 controller 与鉴权判权数据域全部留在主应用，pay 只暴露 /internal 内部口，因此它不依赖鉴权模块，也就不带 MyBatis。形态切换只改主应用注入的是 LocalPayAdapter 还是 RemotePayClient，nginx 一条规则都不用改。</desc>
 <defs>
 <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
@@ -29,7 +29,7 @@
 
 <rect class="unit" x="24" y="38" width="490" height="326" rx="8"/>
 <text class="n" x="40" y="60">ai-shop.jar　:8081</text>
-<text class="t" x="40" y="76">shop.pay.mode = embedded（或不配）</text>
+<text class="t" x="40" y="76">shop.pay.deployment = embedded（或不配）</text>
 
 <rect class="box" x="40" y="88" width="458" height="42" rx="6"/>
 <text class="n" x="54" y="107">业务域　core · merchant · settle · channel …</text>
@@ -53,7 +53,7 @@
 
 <rect class="unit" x="552" y="38" width="230" height="326" rx="8"/>
 <text class="n" x="568" y="60">ai-shop.jar　:8081</text>
-<text class="t" x="568" y="76">shop.pay.mode = remote</text>
+<text class="t" x="568" y="76">shop.pay.deployment = standalone</text>
 
 <rect class="box" x="566" y="88" width="202" height="42" rx="6"/>
 <text class="n" x="580" y="107">业务域</text>
@@ -107,12 +107,12 @@
 <text class="t" x="40" y="480">AOT 的判据本来就是「进没进 classpath」，不是「用没用到」</text>
 
 <rect class="box" x="536" y="424" width="500" height="76" rx="7"/>
-<text class="n" x="552" y="444">② 一个开关　shop.pay.mode</text>
+<text class="n" x="552" y="444">② 一个开关　shop.pay.deployment</text>
 <text class="t" x="552" y="463">配在主应用侧，只管一件事：注入 LocalPayAdapter 还是 RemotePayClient。</text>
 <text class="t" x="552" y="480">matchIfMissing=true —— 不配就是内嵌，也就是生产今天的样子</text>
 
 <rect class="warn" x="24" y="514" width="1012" height="62" rx="7"/>
-<text class="n" x="40" y="534">ArchUnit：pay/** 里不许读 shop.pay.mode</text>
+<text class="n" x="40" y="534">ArchUnit：pay/** 里不许读 shop.pay.deployment</text>
 <text class="t" x="40" y="553">只要有一处业务代码知道「我现在是哪种形态」，那就不是两种形态，而是两套代码 ——</text>
 <text class="t" x="40" y="569">而两套代码里一定有一套没人测。</text>
 

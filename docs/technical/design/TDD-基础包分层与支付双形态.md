@@ -165,7 +165,7 @@ inventory / notify）与 `shop-app` 只改 pom 里的一行 `<artifactId>`。
 | 持久层 | **两种形态相同：Spring Data JDBC**（见下方修订） | 同左 |
 | 三端怎么到达 | 主应用直接装配 pay 的控制器 | nginx 按路径分流 / 主应用反代 |
 | 域间调用 | `PayPort` → **本地实现** | `PayPort` → **HTTP 客户端** |
-| 开关 | `shop.pay.mode=embedded`（默认） | `shop.pay.mode=remote` |
+| 开关 | `shop.pay.deployment=embedded`（默认） | `shop.pay.deployment=standalone` |
 
 **默认必须是 `embedded`。** 记忆里那条「默认关闭的那一半没人测」在这里要反过来用：
 默认值就是生产今天跑的形态，独立形态是显式打开的那一半，
@@ -273,7 +273,7 @@ permitAll + 验签（`ChannelCallbackVerifier`）。它是**改账的入口**，
 | 4 | `shop-job` 改依赖 `shop-base`（拿到统一错误码） | job 的 worker 测试全绿；**jar 里不含 mybatis** |
 | 5 | 建 `shop-store-data-aot`（先只做幂等 + Outbox） | 新模块自己的测试 + **AOT 产物断言** |
 | 6 | `pay-*` 依赖 `shop-base` + `shop-store-data-aot` | ArchUnit：`pay/**` 不依赖 `shop-app-base` |
-| 7 | `shop.pay.mode` 双形态装配 | **两种形态各跑一遍同一组集成测试** |
+| 7 | `shop.pay.deployment` 双形态装配 | **两种形态各跑一遍同一组集成测试** |
 
 **第 1–3 步是纯搬家**：包名不变、逻辑不变、6 个模块各改一行 pom。
 可以独立提交、独立回滚，不与支付域的任何决定绑在一起。
@@ -292,7 +292,7 @@ permitAll + 验签（`ChannelCallbackVerifier`）。它是**改账的入口**，
    > 而 ADR-021 §3.5 担心的正是「进了 classpath 且没有报错」这件事，
    > 只有第 3 条真正测到它。
 
-4. **双形态各跑一遍** —— `shop.pay.mode` 的两个值各有一组集成测试。
+4. **双形态各跑一遍** —— `shop.pay.deployment` 的两个值各有一组集成测试。
    只测默认值的话，独立形态就是「默认关闭的那一半」，上线才炸。
 
 ---

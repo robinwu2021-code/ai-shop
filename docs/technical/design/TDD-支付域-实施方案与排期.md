@@ -211,9 +211,9 @@ pay 侧的账（`stl_payment`）已经落成了。回 FAIL 让通道重推，
 |---:|---|---|---|
 | **C2** | `shop-settle` → `backend/pay/pay-domain`，**12 个 controller 搬到主应用侧** | C1 | ✅ 已完成。依赖收敛；ArchUnit 强制「pay 里没有 controller」 |
 | ~~**C2c**~~ | 拆 `pay-{api,domain,store,channel,risk,job}` + 持久层换 Data JDBC | — | **推后到 C4 之后**（2026-08-31 定）。先跑通业务，再换持久层 —— 换持久层丢的是隐式行为，业务还在变时同时改两样，出问题分不清哪边。见 §C2c |
-| **C3** | 主应用侧新增 pay app service 层 + 7 个接口的 `Local*Adapter` | C2 | 形态 A 完整可用，且数据域收窄有唯一落点 |
+| **C3** | 主应用侧 pay app service 层（8 个有业务逻辑的 controller 归位） | C2 | ✅ 已完成。留痕与门店收窄各有一道能证伪的闸门 |
 | **C4** | `Remote*Client` + `pay-svc` 产物（只含 `/internal`） | C3 | 两种形态都装得起来，**不接流量** |
-| **D1** | `shop.pay.mode=remote` 灰度：按 `PayPort` 方法逐个切 | C4 | 独立形态验证过 |
+| **D1** | `shop.pay.deployment=standalone` 灰度：按 `PayPort` 方法逐个切 | C4 | 独立形态验证过 |
 | **D2** | 切库：`db/pay` 独立迁移 + 独立账号 | D1 | 终点。**第一个不可轻易回退的步骤** |
 
 ---
@@ -326,15 +326,63 @@ public interface PaySettleAppService {
 
 **验收：**
 
-| 闸门 | 判据 |
-|---|---|
-| ArchUnit | `pay-api` 的接口**只许被 `..payclient..` 包调用** —— controller 不许直连 |
-| 单元测试 | 每个 app service 的数据域解析：造一个只配了 M0002 域的运营，断言传给 pay 的 `entityNos` **只有 M0002** |
-| **阴性对照** | 把数据域解析注释掉 → 上面那条必须红 |
+#### ✅ 已完成（2026-09-01）
 
-> 第二条是这一步的核心。数据域从「SQL 拦截器自动加」变成「显式传」之后，
-> **每个 app service 方法都是一个可能漏的地方** —— 所以每个都要有那条断言，
-> 而不是抽一个公共方法就算完。
+12 个支付相关 controller 里，**有业务逻辑的 8 个**归位到 `shop-app/payclient`：
+BizSettle、OpsPayable、OpsRecon、OpsSettleInvoice、OpsWithdraw、OpsFeeRule、
+OpsRefundSplitBack、PointsPolicy。
+
+| 闸门 | 判据 | 状态 |
+|---|---|---|
+| `PayAuditTrailTest` | 拿到操作人的方法必须留痕 | ✅ 三次消融验过 |
+| `StoreSettleFlowTest#storeScopeActuallyNarrows` | B 端门店收窄两个方向都能证伪 | ✅ 双向消融验过 |
+| `PayHasNoControllerTest` | 支付域无 controller / 接口层无持久化 / 不读形态开关 | ✅ 逐条消融验过 |
+
+搬的过程中量出来的两件事（都已修）：
+
+- **门店收窄从来没有测试守着**。把它整段改成「永远返回全部门店」，
+  56 条相关测试一条都不红。而它失效时不抛异常、不返 403 ——
+  店员打开收入页看到的是别家店的钱，页面照常渲染。
+- 人工放行的三处失败抛 `IllegalArgumentException`，落到兜底 handler ——
+  运营忘写原因，界面显示「系统开小差」，监控里多一条 unhandled error。
+
+#### 两条原定验收改掉了，理由记在这里
+
+**一、「ArchUnit：pay 的接口只许被 `..payclient..` 调用」——不立。**
+
+剩下 4 个 controller（BizPoints / MpPoints / OpsPoints / OpsSettle）是纯转发，
+一行调用、没有收窄也没有留痕。给它们套一层没有内容的 app service，
+只是把一行挪到另一个文件里；而立这条闸门就要为它们登记 4 条豁免，
+**而豁免清单会腐烂** —— 它下面那句「为什么可以例外」很快就不再是真的。
+
+这条闸门本来要防的是「controller 里重新长出业务逻辑」，
+而那件事已经有两道闸门在管（`controllersMustNotTouchMappers`、`PayAuditTrail`）。
+再加一条按包名判断的，防的不是问题本身，是问题的一种形状。
+
+**二、「每个 app service 方法的数据域断言 + 阴性对照」——推后到收窄真的变成显式传参那天。**
+
+原文写的前提是「数据域从 SQL 拦截器自动加，变成显式传」。**今天还没到那一步**：
+运营端的收窄仍由 `neargo-common-data` 的 MyBatis 拦截器兜着，
+5 张 `stl_*` 表都注册在数据域里，`ops-data-scope` 的 G1/G3/G4 是绿的。
+
+真正需要逐方法断言的时刻是 §C2c 换持久层那天 —— 拦截器随 MyBatis 一起走掉，
+那时每个方法都是一个可能漏的地方。所以这条验收挪到 C2c 的前置闸门里，
+与「每条查询显式带 `deleted = 0`」并列。**在那之前逐方法加断言，
+断的是拦截器的行为，不是 app service 的行为** —— 测的不是要测的那件事。
+
+#### 形态开关定名：`shop.pay.deployment`，不是 `shop.pay.mode`
+
+代码里已经有 68 处 `payMode`，那是**订单的支付方式**（ONLINE / OFFLINE），
+与部署形态毫无关系。两者同名的话，将来 grep 这个开关会命中一大片无关代码 ——
+而这种噪声最终的效果是没人再去 grep 它。
+
+取值 `embedded | standalone`（描述支付域怎么部署），不用 `remote`
+（那描述的是客户端怎么调，是同一件事的另一头）。
+
+开关本身 C4 才落地，但**「支付域里不许读它」的闸门今天就立了** ——
+等某个人第一次在支付域里写下这行代码时，他会当场知道这条路是封死的，
+而不是等到切形态那天才发现。这条闸门今天扫不到任何东西，
+所以它自己带了对照量（扫到的文件数必须为正），并做过一次消融。
 
 ### C4 · Remote 实现与 pay-svc 产物
 

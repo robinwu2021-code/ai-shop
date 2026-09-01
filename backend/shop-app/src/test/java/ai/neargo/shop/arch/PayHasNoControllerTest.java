@@ -190,6 +190,56 @@ class PayHasNoControllerTest {
                 .isEmpty();
     }
 
+    /**
+     * 支付域里不许出现形态开关。
+     *
+     * <p>只要有一处业务代码知道「我现在是内嵌还是独立」，那就不是两种形态，
+     * <b>而是两套代码 —— 而两套代码里一定有一套没人测</b>。
+     * 形态差异只允许出现在两个地方：Maven 打包（产物里有什么）
+     * 与主应用侧的一个开关（注入 Local 还是 Remote）。
+     *
+     * <p>这条闸门今天扫不到任何东西 —— 开关本身还没落地（C4 才引入）。
+     * 那正是立它的时机：<b>等某个人第一次在支付域里写下这行代码时，
+     * 他会当场知道这条路是封死的</b>，而不是等到切形态那天才发现。
+     * 对照量放在下面：文件数必须为正，否则「没找到违规」就只是「没在找」。
+     *
+     * <p>配置键叫 {@code shop.pay.deployment} 而不是 {@code shop.pay.mode}
+     * （2026-09-01 定名）：代码里已经有 68 处 {@code payMode}，
+     * 那是订单的支付方式（ONLINE / OFFLINE），跟部署形态毫无关系。
+     * 两者同名的话，将来 grep 这个开关会命中一大片无关代码 ——
+     * 而这种噪声最终的效果是没人再去 grep 它。
+     */
+    @Test
+    @DisplayName("★★ 支付域里不许读形态开关 —— 业务代码一旦知道自己是哪种形态，那就是两套代码")
+    void payDomainDoesNotKnowItsOwnDeploymentShape() throws IOException {
+        Path src = BACKEND.resolve(PAY_MODULE + "/src/main/java");
+        assertThat(Files.isDirectory(src))
+                .as("%s 的源码目录不在了 —— 支付域搬家了？否则这条闸门从此恒真", PAY_MODULE)
+                .isTrue();
+
+        List<String> offenders = new ArrayList<>();
+        int scanned = 0;
+        try (Stream<Path> files = Files.walk(src)) {
+            for (Path f : files.filter(p -> p.toString().endsWith(".java")).toList()) {
+                scanned++;
+                String text = Files.readString(f, StandardCharsets.UTF_8);
+                if (text.contains("shop.pay.deployment") || text.contains("PayDeployment")) {
+                    offenders.add(src.relativize(f).toString());
+                }
+            }
+        }
+
+        assertThat(scanned).as("一个 java 文件都没扫到 —— 路径写错了？").isPositive();
+
+        assertThat(offenders)
+                .as("支付域里读到了形态开关：\n  %s\n"
+                        + "  支付域必须<b>不知道</b>自己跑在哪种形态里。\n"
+                        + "  需要按形态分叉的东西，分叉点在主应用侧（注入 Local 还是 Remote）\n"
+                        + "  或者在 Maven 打包（产物里放不放这个模块），不在业务代码里。\n"
+                        + "  → 见 TDD-支付域-双形态部署与装配。", offenders)
+                .isEmpty();
+    }
+
     @Test
     @DisplayName("★★ 支付相关的 controller 确实在主应用侧 —— 否则上一条会变成恒真")
     void payControllersLiveInTheMainApp() throws IOException {

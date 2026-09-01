@@ -204,7 +204,7 @@ shop.pay.enabled = false（业务侧）/ true（pay-svc）
 > | 库 | 主库 `ai_shop` | 独立库 `ai_shop_pay` |
 > | 持久层 | `shop-store-mybatis` | `shop-store-data-aot` |
 > | 域间调用 | `PayPort` → `LocalPayAdapter` | `PayPort` → `RemotePayClient`（HTTP） |
-> | 开关 | `shop.pay.mode=embedded` | `shop.pay.mode=remote` |
+> | 开关 | `shop.pay.deployment=embedded` | `shop.pay.deployment=standalone` |
 >
 > **调用方一行不改** —— 换的只是装哪个 `PayPort` 实现。
 > 如果调用方需要知道支付在哪跑，那就不是「两种形态」而是「两套代码」，
