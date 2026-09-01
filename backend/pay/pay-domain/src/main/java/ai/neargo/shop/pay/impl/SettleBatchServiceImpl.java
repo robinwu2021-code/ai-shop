@@ -191,10 +191,22 @@ public class SettleBatchServiceImpl implements SettleBatchService {
                 channelMaster.settleCycle(channel));
         long dueAt = SettleCycles.dueAt(bill.getSettleableAt(), cycle, zoneOf());
 
+        /*
+         * **币种进分批键**（V287）。一批是「一起放款的单位」，
+         * 而不同币种的钱不能放在一起 —— 台币的单混进人民币批里，
+         * 合计数会把 100 台币当成 100 元加进去，<b>不报错，只是数字不对</b>。
+         *
+         * 单币种下这一条不改变任何行为（所有单都是 CNY，还是同一批），
+         * 它是<b>接第二个市场之前必须先成立的前提</b>。
+         */
+        String currency = bill.getCurrency() == null || bill.getCurrency().isBlank()
+                ? DEFAULT_CURRENCY : bill.getCurrency();
+
         StlSettleBatch exist = DataScopeContext.executeWithoutScope(() ->
                 batchMapper.selectOne(Wrappers.<StlSettleBatch>lambdaQuery()
                         .eq(StlSettleBatch::getEntityNo, bill.getEntityNo())
                         .eq(StlSettleBatch::getPayChannel, channel)
+                        .eq(StlSettleBatch::getCurrency, currency)
                         .eq(StlSettleBatch::getPeriodFrom, dueAt)
                         .last("LIMIT 1")));
         if (exist != null) {
@@ -209,6 +221,7 @@ public class SettleBatchServiceImpl implements SettleBatchService {
         batch.setBatchNo(BizKey.next(BizKey.SETTLE_BATCH));
         batch.setEntityNo(bill.getEntityNo());
         batch.setPayChannel(channel);
+        batch.setCurrency(currency);
         batch.setSettleCycle(cycle);
         // 区间键就是应结日：同一个应结日的单归一批
         batch.setPeriodFrom(dueAt);
@@ -246,10 +259,33 @@ public class SettleBatchServiceImpl implements SettleBatchService {
              */
             long gross = 0;
             long net = 0;
+            int counted = 0;
             Long earliest = null;
             for (StlBill b : bills) {
+                /*
+                 * **合计之前先确认是同一种钱。**
+                 *
+                 * 开批时已经按币种分了（见 openBatchFor），走到这里应当恒为真 ——
+                 * 而正因为「应当恒为真」，它一旦不真就没有任何地方会说话：
+                 * 加法照做，合计数照出，只是把 100 台币当成了 100 元。
+                 *
+                 * 所以在这里挡一次并<b>跳过那一单</b>，而不是让它污染合计。
+                 * 跳过会让这一批的合计与明细对不上，那正是希望被看见的 ——
+                 * 混进来一单错币种，比合计少算一单严重得多。
+                 */
+                String bc = b.getCurrency() == null || b.getCurrency().isBlank()
+                        ? DEFAULT_CURRENCY : b.getCurrency();
+                String batchCur = batch.getCurrency() == null || batch.getCurrency().isBlank()
+                        ? DEFAULT_CURRENCY : batch.getCurrency();
+                if (!bc.equals(batchCur)) {
+                    log.error("[settle-batch] 批次 {}（{}）里混进了 {} 的结算单 {} —— "
+                                    + "**已跳过，不计入合计**。开批时按币种分批的那一步失效了，要查",
+                            batch.getBatchNo(), batchCur, bc, b.getSettleNo());
+                    continue;
+                }
                 gross += nz(b.getGrossMinor());
                 net += nz(b.getNetMinor());
+                counted++;
                 Long accrued = b.getAccruedAt();
                 if (accrued != null && (earliest == null || accrued < earliest)) {
                     earliest = accrued;
@@ -258,7 +294,15 @@ public class SettleBatchServiceImpl implements SettleBatchService {
             StlSettleBatch patch = new StlSettleBatch();
             patch.setId(batch.getId());
             patch.setStatus(StlSettleBatch.COLLECTED);
-            patch.setBillCount(bills.size());
+            /*
+             * **单数用「真的算进去的」而不是「查出来的」。**
+             *
+             * 上面跳过了错币种的单，如果这里还用 bills.size()，
+             * 合计与单数就对不上 —— 而下一个人看到「3 单合计只有 2 单的钱」，
+             * 第一反应是「漏算了一单」，会去查加法，
+             * 而真因在币种。<b>两个数要讲同一个故事。</b>
+             */
+            patch.setBillCount(counted);
             patch.setGrossMinor(gross);
             patch.setNetMinor(net);
             /*
@@ -451,6 +495,9 @@ public class SettleBatchServiceImpl implements SettleBatchService {
             return ZoneId.of("Asia/Shanghai");
         }
     }
+
+    /** 兜底记账币种。与 SettleServiceImpl 同值 —— 结算单没有币种时按它算 */
+    private static final String DEFAULT_CURRENCY = "CNY";
 
     private static long nz(Long v) {
         return v == null ? 0L : v;

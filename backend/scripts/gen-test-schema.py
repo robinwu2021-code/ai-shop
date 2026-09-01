@@ -276,9 +276,26 @@ def replay(sql, tables, order, seeds, renames, altered):
             # 之前这里没有这一支，V72 一进来整个生成器就 SystemExit ——
             # 报错说「不认识的语句」，而真正该说的是「这类语句本来就不该进 schema」。
             pass
-        elif low.startswith("create index") or low.startswith("drop index"):
-            # 普通索引 H2 测试用不上；DROP INDEX 同理（约束由 CREATE UNIQUE INDEX 重建）
+        elif low.startswith("create index"):
+            # 普通索引 H2 测试用不上
             pass
+        elif low.startswith("drop index"):
+            # 普通索引忽略即可 —— 但**唯一约束不行**。
+            #
+            # 这里原本一律 pass，注释写着「约束由 CREATE UNIQUE INDEX 重建」。
+            # 那句话只说对了一半：新的确实会被重建，而<b>旧的没有被删掉</b>。
+            # 于是 `DROP INDEX uk_x ON t` + `CREATE UNIQUE INDEX uk_x ON t (…)`
+            # 这组「改一道唯一键」的标准写法，产出的是**两条同名 CONSTRAINT**，
+            # H2 建表当场报错 —— 而错误信息指向的是某个毫不相干的测试类。
+            #
+            # 2026-09-02 给批次唯一键加币种时撞上。
+            di = re.match(r"DROP INDEX\s+(\w+)\s+ON\s+(\w+)", stmt, re.I)
+            if di:
+                idx, tbl = di.group(1), di.group(2)
+                cols = tables.get(tbl)
+                if cols is not None:
+                    cols[:] = [c for c in cols
+                               if not re.match(rf"^\s*CONSTRAINT\s+{idx}\b", c, re.I)]
         else:
             # **不认识的语句必须炸，不能静默跳过。**
             # 这个脚本此前只认 CREATE TABLE 与部分 ALTER，DROP TABLE / DROP COLUMN

@@ -233,6 +233,7 @@ public class SettleServiceImpl implements SettleService {
              */
             bill.setPayChannel(src.payChannel());
             bill.setPayScene(src.payScene());
+            bill.setCurrency(currencyOf(src.payChannel()));
             /*
              * ★ 发分费用金：**单独一列，不并进 serviceFeeMinor**。
              *
@@ -1327,6 +1328,41 @@ public class SettleServiceImpl implements SettleService {
                 .stream()
                 .collect(java.util.stream.Collectors.toMap(StlSettleBatch::getBatchNo, x -> x,
                         (a, c) -> a, java.util.HashMap::new));
+    }
+
+    /** 平台默认记账币种。**只在通道没有配币种时兜底** —— 见 {@link #currencyOf} */
+    private static final String DEFAULT_CURRENCY = "CNY";
+
+    /**
+     * 这笔账记什么币种。
+     *
+     * <p><b>从通道取，不从「当前市场」取</b>：钱是通过哪个通道收的，
+     * 就该记成那个通道的币种。而「当前市场」是请求上下文的东西 ——
+     * 补发的历史回调、后台批量重算，那时的上下文与下单时不是一回事。
+     *
+     * <p>两种取不到的情况刻意区别对待：
+     * <ul>
+     *   <li><b>线下收款</b>（没有通道）—— 正常，用默认币种，不告警；</li>
+     *   <li><b>有通道而通道没配币种</b> —— <b>配置漏了</b>，记 WARN。
+     *       静默回落到人民币的话，接第二个市场那天所有账都会悄悄记成 CNY，
+     *       而这件事要到对账对不上才被发现。</li>
+     * </ul>
+     */
+    private String currencyOf(String payChannel) {
+        if (payChannel == null || payChannel.isBlank() || PayModes.OFFLINE.equals(payChannel)) {
+            return DEFAULT_CURRENCY;
+        }
+        String c = channelMaster.find(payChannel)
+                .map(ai.neargo.shop.pay.channel.entity.SysPayChannel::getCurrency)
+                .filter(v -> v != null && !v.isBlank())
+                .orElse(null);
+        if (c == null) {
+            log.warn("[settle] 通道 {} 没有配记账币种，本单按 {} 记 —— "
+                    + "接第二个市场前必须补上，否则所有账会悄悄记成人民币",
+                    payChannel, DEFAULT_CURRENCY);
+            return DEFAULT_CURRENCY;
+        }
+        return c;
     }
 
     private static long nz(Long v) {

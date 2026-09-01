@@ -122,4 +122,18 @@ public class StlSettleBatch extends BaseEntity {
 
     /** 人工放行/继续挂起<b>都必须写原因</b> */
     private String decideRemark;
+
+    /**
+     * 记账币种（V287）。<b>决定这个金额能不能与别的相加。</b>
+     *
+     * <p>补这一列与多区域无关，单币种下它也是对的 ——
+     * 只是没有第二个币种时看不出错，而错的形状是
+     * 「把 100 台币当成 100 人民币加进合计」，不报错、只是数字不对。
+     *
+     * <p><b>写入路径必须显式赋值</b>，不能靠 DEFAULT 活着：
+     * 靠默认值的列在第二个币种出现时会静默地全部写成人民币。
+     * {@code stl_payment.currency} 就是活例子 —— 那一列 V1 就有，
+     * 而生产代码里没有任何一处给它赋值。
+     */
+    private String currency;
 }
