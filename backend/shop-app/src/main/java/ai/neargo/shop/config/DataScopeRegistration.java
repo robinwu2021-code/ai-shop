@@ -429,6 +429,16 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.PICKUP, "pickup_no"));
         registry.register("ful_shortage_report", Map.of(
                 ScopeDim.PICKUP, "pickup_no"));
+
+        /*
+         * 增值包订阅。运营端的到期看板（`/ops/merchant-plans`，filter/keyword 都可空）
+         * 是全量队列 —— 配了商家域的运营该只看到自己那几家的订阅与到期情况。
+         *
+         * <p>其余读点（`ofMerchant` 等）按 entityNo 单条取，且 B 端也走，
+         * 保留绕过。
+         */
+        registry.register("mch_entity_plan", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
         registry.register("mkt_group_buy", Map.of(
                 ScopeDim.MERCHANT, "entity_no",
                 ScopeDim.PICKUP, "pickup_no"));

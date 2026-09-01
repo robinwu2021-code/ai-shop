@@ -171,7 +171,21 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
    * `sorting` 与 `shortageBySku` 同理：入参都是已经裁过的 pickupNos。
    * 真正决定可见性的是 `batches()` 那一条，2026-08-31 已改成不绕过。
    */
-  "DispatchServiceImpl#ensureRows":
+  /*
+   * 档位定义页里那个「这一档有几家在用」的计数。**必须全量**：
+   * 它是「改这条定义会影响多少人」的具体量（PlanDef.subscriberCount 的注释写着
+   *「改定义的人必须看得到这个数」）。裁了它，改档位的人会**基于一个偏小的影响面
+   * 做决定** —— 而那个数看起来完全正常。
+   *
+   * <p>与积分恒等式、媒体对账同族：**统计量被裁之后不会变空，只会变小**，
+   * 而变小的数字不会引起怀疑。
+   *
+   * <p>真正决定行级可见性的是 `search()`（到期看板），2026-08-31 已改成不绕过。
+   */
+  "MerchantPlanServiceImpl#defs":
+    "档位定义页的「有几家在用」计数，必须全量 —— 裁了会让改定义的人低估影响面",
+
+    "DispatchServiceImpl#ensureRows":
     "写前幂等检查，裁了会重复建行；归属由入参 directory 保证",
   "DispatchServiceImpl#sorting":
     "分拣页，入参 pickupNos 来自已裁过的集合",
@@ -404,6 +418,8 @@ const ANCHOR_WAIVED: Record<string, string> = {
     + "而那和 V137 给子单加列是同一种代价，值不值得看仲裁台会不会按片区分工",
   "ord_after_sale:PICKUP":
     "同上。自提点运营者不做售后仲裁 —— 那需要 aftersale:ticket:read",
+    "mch_entity_plan:COMMUNITY": "增值包订阅属于商家，不属于片区",
+  "mch_entity_plan:PICKUP": "同上",
     "ful_batch:COMMUNITY":
     "到货批次挂自提点，不挂片区。**看到空白的是**：配了社区域的运营打开到货批次页。"
     + "自提点与社区是多对一，但表上只有 pickup_no —— 要接得冗余一列 community_no",
@@ -1015,9 +1031,6 @@ describe("运营端数据域接入", () => {
      * 按名字挑测试等于按自己的猜想挑判据：社区那次我选的三个模式
      * 一个都匹配不到它，41 条全绿，差点写下「登记是安全的」这个相反的结论。
      */
-    mch_account: "待判 —— 商家员工（/ops/merchants/{no}/staff）",
-    mch_entity_plan: "待判 —— 增值包订阅（/ops/merchant-plans）",
-    mch_store_role: "待判 —— 门店授权（同上）",
     /*
      * ── 规格库两张：**运营端管的是平台字典，按商家裁会让它整页空白** ──
      *
@@ -1059,7 +1072,48 @@ describe("运营端数据域接入", () => {
      * <p>而且它们本来就不按商家分：pts_user_account 的归属是**用户**，
      * stl_points_pool 按 (market, payChannel) 记账 —— 商家维度在这里没有意义。
      */
-    pts_user_account: "积分恒等式的一边（流通量），归属是用户不是商家；裁一边会让对账误判失衡",
+    /*
+     * ── 最后六张：**归属列答不了「归哪个商家管」** ──
+     *
+     * `ord_invoice_request`（买家开票申请）与 `notify_ticket`（工单）只有 user_no：
+     * 提申请的是**买家**，而运营看的是别人的申请。SELF 接上去等于
+     *「运营只看得到自己提的开票申请」，那两页就废了 —— 与 notify_message 同一形状。
+     * 要接得冗余一列 entity_no（开票是针对某一单的，单上有商家），
+     * 是一次迁移加一处写入路径，值不值得看开票会不会按商家分工。
+     *
+     * `mkt_request`（需求单）只有 pickup_no 与 group_no —— 求团是**买家发起**的，
+     * 商家来应答（应答在 mkt_quote 上，那张已登记 MERCHANT）。
+     * PICKUP 维度理论上能接，但 `opsDemands` 那条注释写着「需求单无商家数据域」，
+     * 而运营端求团治理页今天不按自提点分工。
+     * `mkt_request_interest`（意向）只有 user_no，跟着需求单走。
+     *
+     * `mch_store_role`（门店授权）只有 store_no —— **数据域的三个维度里没有 STORE**。
+     * 要接得先回答「门店要不要成为第四个维度」，那是设计决定不是补一行。
+     * 它的读点也都按 mchAccountNo 反查，集合来自已裁过的账号。
+     *
+     * `mch_account`（商家员工）有 entity_no，但读它的 `list(merchantNo)`
+     * **ops 与 B 端共用**（商家自己看员工），且按参数过滤 —— 与
+     * MerchantGovernServiceImpl#qualifications 同一形状：登记后要再加一处绕过，
+     * 而 ops 侧的归属本就由 requireInScope 保证。
+     */
+    /*
+     * 发券批次。只有 user_no（定向发给谁），**没有商家号** ——
+     * 而 `issues(couponNo)` 按券号查，**券本身已登记 MERCHANT**：
+     * 运营看不到的券，也就拿不到它的券号。归属由上一步保证。
+     *
+     * 与 prd_store_goods 那两张同一形状：登记不改变可见集合，
+     * 只会多一处 fail-closed 的机会（发券动作也读它，跑在写路径上）。
+     */
+    mkt_coupon_issue: "只有 user_no；按 couponNo 查，而券已登记 MERCHANT，归属由上一步保证",
+
+        ord_invoice_request: "只有 user_no，提申请的是买家；SELF 会让运营只看到自己提的",
+    notify_ticket: "同上，工单是买家提的",
+    mkt_request: "求团由买家发起，只有 pickup_no/group_no；商家的应答在 mkt_quote（已登记）",
+    mkt_request_interest: "只有 user_no，跟着需求单走",
+    mch_store_role: "只有 store_no，而数据域三个维度里没有 STORE —— 要接先做设计决定",
+    mch_account: "list(merchantNo) 是 ops 与 B 端共用且按参数过滤；ops 侧归属由 requireInScope 保证",
+
+        pts_user_account: "积分恒等式的一边（流通量），归属是用户不是商家；裁一边会让对账误判失衡",
     stl_points_pool: "恒等式的另一边（池子），按 market×payChannel 记账",
 
         prd_store_goods: "商品池的归属由主表 prd_goods 保证；这张只在门店投影里按 skuNo 反查",
@@ -1069,12 +1123,7 @@ describe("运营端数据域接入", () => {
     prd_spec_value: "同上，取值随维度一起查",
     prd_spec_template: "同上，模板也分平台/商家两种 scope",
 
-        mkt_coupon_issue: "待判 —— 发券批次（/ops/coupon-issues）",
-    mkt_request: "待判 —— 需求单（/ops/demands、/ops/quotes）",
-    mkt_request_interest: "待判 —— 需求意向（/ops/demands）",
-    notify_ticket: "待判 —— 工单（/ops/tickets）",
-    ord_invoice_request: "待判 —— 买家开票申请（/ops/invoice-requests）",
-
+    
     rvw_review_like:
       "评价点赞。只有 user_no，且**只在 C 端读**（看评价时标出「我赞过」）——"
       + "它被挂到 /ops/reviews 上是因为与 C 端那条在同一个类里、解析时一并追到。"

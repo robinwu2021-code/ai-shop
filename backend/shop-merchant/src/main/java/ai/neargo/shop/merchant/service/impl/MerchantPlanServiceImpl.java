@@ -153,7 +153,12 @@ public class MerchantPlanServiceImpl implements MerchantPlanService {
         }
         w.orderByAsc(MchEntityPlan::getExpireAt).orderByDesc(MchEntityPlan::getId);
 
-        List<MchEntityPlan> rows = DataScopeContext.executeWithoutScope(() -> planMapper.selectList(w));
+        /*
+         * **不绕过**（2026-08-31，mch_entity_plan 登记数据域时一并接上）：
+         * 这是运营端的全量到期看板（filter/keyword 都可空），
+         * 配了商家域的运营该只看到自己那几家的订阅与到期情况。
+         */
+        List<MchEntityPlan> rows = planMapper.selectList(w);
         List<PlanRowVO> all = rows.stream().map(this::toRow)
                 // 关键字筛在内存里做：主体名在另一张表，而订阅总数是几百这个量级
                 .filter(r -> keyword == null || keyword.isBlank()
