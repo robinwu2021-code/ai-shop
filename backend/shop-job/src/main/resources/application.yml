@@ -31,7 +31,10 @@ shop:
       start-disabled: ${JOB_WORKER_START_DISABLED:true}
       poll-interval: 30s
       pool-size: 4
-      # 走 127.0.0.1 不走域名：这条调用是内网的，不该经过 nginx，
+      # **不走公网域名**：这条调用是内网的，不该经过 nginx。
+      # 生产上填内部名称（platform.svc.internal，见 ADR-023）——
+      # 名称而不是 IP，是为了换机器那天只改一处 /etc/hosts。
+      # 这里的默认值是**开发机**用的：开发机没有也不该有 .internal 映射。
       # 也不该受公网证书与备案的影响
       targets:
         PLATFORM: ${JOB_TARGET_PLATFORM:http://127.0.0.1:8081}

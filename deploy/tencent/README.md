@@ -197,6 +197,24 @@ ssh soukmind-tx 'cd /opt/build/ai-shop && \
   sudo rsync -a --delete b-app/dist/build/h5/   /var/www/ai-shop/b-app/'
 ```
 
+### ⚠️ 发完必须验一句：生产 env 里不许有 IP 字面量
+
+```bash
+ssh soukmind-tx 'sudo grep -hoE "(jdbc:mysql://|http://)[0-9]{1,3}(\.[0-9]{1,3}){3}" \
+  /opt/ai-shop/shop-app.env /opt/ai-shop-job/job.env'
+# 期望：**没有输出**。有输出就是有人又写了 IP。
+```
+
+内部地址一律用名称（`db.svc.internal` / `platform.svc.internal` / `pay.svc.internal`），
+映射在服务器 `/etc/hosts` 里 —— **换 IP 那天只改那一处**，
+各服务的配置与代码都不动（见 [ADR-023](../../docs/technical/ADR/ADR-023-服务发现先不装中间件.md)）。
+
+**为什么要单列一步检查**：仓库里的默认值仍是 `127.0.0.1`（那是给开发机的），
+所以生产漏配某一项时会静默退回 IP —— 而在单机上它恰好能工作，
+**漏配要等到换 IP 那天才暴露**，那时的症状是「某个服务连不上，而别的都好」。
+
+加新服务时：先在 `/etc/hosts` 加一行，再在 env 里用名称。
+
 ### ⚠️ 发完必须验一句：运营端连的是真后端还是 mock
 
 ```bash

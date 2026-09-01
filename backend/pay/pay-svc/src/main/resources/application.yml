@@ -8,6 +8,8 @@ spring:
   datasource:
     # 今天仍指向主库 —— 独立进程与独立库是两件事，后者是 D2（唯一不可轻易回退的一步）。
     # 先分进程、后分库：这个顺序让「跨域事务写不出来」这件事在切库之前就已经成立。
+    # 默认值是**开发机**用的。生产填 db.svc.internal（名称不是 IP，见 ADR-023）——
+    # 换机器那天只改一处 /etc/hosts，各服务配置与代码都不动。
     url: ${PAY_DB_URL:jdbc:mysql://127.0.0.1:3306/ai_shop?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
     username: ${PAY_DB_USER:}
     password: ${PAY_DB_PASSWORD:}
