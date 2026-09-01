@@ -20,6 +20,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * 三条过滤器链 —— **越权防线的第 ① 道**（TDD-backend §5.2）。
@@ -103,7 +104,7 @@ public class SecurityConfig {
             "http://localhost:5177", "http://127.0.0.1:5177");
 
     /** 额外来源，逗号分隔。换域名或加二级域名时不必改代码 */
-    @org.springframework.beans.factory.annotation.Value("${shop.cors.extra-origins:}")
+    @Value("${shop.cors.extra-origins:}")
     private String extraOrigins = "";
 
     @Bean

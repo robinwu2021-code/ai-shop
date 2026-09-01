@@ -56,6 +56,11 @@ public class InternalClient {
         this.locator = locator;
     }
 
+    /** 只读调用。与 {@link #post} 共用同一套失败分类与密钥校验 */
+    public Result get(String service, String path, int timeoutSec) {
+        return send(service, path, timeoutSec, null);
+    }
+
     /**
      * @param service    服务名（{@link ServiceName}）
      * @param path       以 {@code /} 开头，例如 {@code /internal/order/paid}
@@ -63,6 +68,11 @@ public class InternalClient {
      * @param timeoutSec 读超时
      */
     public Result post(String service, String path, String jsonBody, int timeoutSec) {
+        return send(service, path, timeoutSec, jsonBody);
+    }
+
+    /** @param jsonBody 为 {@code null} 走 GET，否则 POST */
+    private Result send(String service, String path, int timeoutSec, String jsonBody) {
         var base = locator.baseUrlOf(service);
         if (base.isEmpty()) {
             /*
@@ -75,12 +85,13 @@ public class InternalClient {
             return new Result(Outcome.NOT_CONFIGURED, 0, null,
                     "shop.services.internal-token 没配 —— 内部调用一律拒绝");
         }
-        HttpRequest req = HttpRequest.newBuilder(URI.create(base.get() + path))
+        var builder = HttpRequest.newBuilder(URI.create(base.get() + path))
                 .header("Content-Type", "application/json")
                 .header(TOKEN_HEADER, token)
-                .timeout(Duration.ofSeconds(timeoutSec))
-                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-                .build();
+                .timeout(Duration.ofSeconds(timeoutSec));
+        HttpRequest req = (jsonBody == null
+                ? builder.GET()
+                : builder.POST(HttpRequest.BodyPublishers.ofString(jsonBody))).build();
         try {
             HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
             if (res.statusCode() >= 200 && res.statusCode() < 300) {

@@ -494,7 +494,11 @@ class ArchitectureTest {
                 // **不是业务域**：没有自己的表，也没有自己的规则。
                 // 放进 pay 会让支付域依赖主应用可用（而「回调直接进 pay」的初衷正是不要这个依赖），
                 // 放进 trade 会让订单域知道支付域的内部账。装配层是它唯一正确的位置。
-                "paybridge");
+                "paybridge",
+                // svc：进程之间怎么找到对方、怎么调（ServiceLocator + InternalClient）。
+                // **不是业务域**：它不认识任何业务概念，只认识「服务名 → 地址」。
+                // 三个进程共用一份，所以住在 shop-base 里；见 ADR-023。
+                "svc");
         List<String> known = new ArrayList<>(infra);
         known.addAll(List.of(DOMAINS));
 
