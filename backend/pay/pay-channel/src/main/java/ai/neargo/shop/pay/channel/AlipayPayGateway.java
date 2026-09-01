@@ -35,8 +35,9 @@ public class AlipayPayGateway extends AbstractPayGateway {
 
     public AlipayPayGateway(@Qualifier("alipayChannelClient") ChannelClient client,
                             PayChannelMasterService channelMaster,
+                            ChannelMessageRecorder recorder,
                             @Value("${shop.pay.alipay.platform-account:}") String platformAccount) {
-        super(client, channelMaster);
+        super(client, channelMaster, recorder);
         this.platformAccount = platformAccount;
     }
 

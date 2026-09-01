@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.mapper;
 
+import ai.neargo.shop.pay.channel.entity.StlChannelMessage;
 import ai.neargo.shop.pay.channel.entity.SysPayChannel;
 import ai.neargo.shop.pay.channel.entity.SysPayChannelRate;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -34,5 +35,10 @@ public final class ChannelMappers {
 
     /** 通道费率版本表（V274）。只增不改 */
     public interface PayChannelRateMapper extends BaseMapper<SysPayChannelRate> {
+    }
+
+    /** 渠道报文表（V286）。只增不改，按保留期清理 */
+    public interface ChannelMessageMapper
+            extends BaseMapper<StlChannelMessage> {
     }
 }

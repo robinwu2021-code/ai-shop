@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.api.callback;
 
 import ai.neargo.shop.spi.pay.ChannelCallbackVerifier;
+import ai.neargo.shop.spi.pay.PayMessagePort;
 import ai.neargo.shop.spi.pay.PayQueryPort;
 import ai.neargo.shop.trade.service.OrderService;
 import org.slf4j.Logger;
@@ -48,16 +49,19 @@ public class ChannelPayCallbackController {
     private final PayQueryPort payQuery;
     private final OrderService orderService;
     private final SettlePort settlePort;
+    private final PayMessagePort payMessage;
 
     public ChannelPayCallbackController(List<ChannelCallbackVerifier> verifierList,
                                         PayQueryPort payQuery,
                                         OrderService orderService,
-                                        SettlePort settlePort) {
+                                        SettlePort settlePort,
+                                        PayMessagePort payMessage) {
         this.verifiers = verifierList.stream()
                 .collect(Collectors.toMap(ChannelCallbackVerifier::payChannel, Function.identity()));
         this.payQuery = payQuery;
         this.orderService = orderService;
         this.settlePort = settlePort;
+        this.payMessage = payMessage;
     }
 
     @PostMapping("/pay/channel/{channel}")
@@ -69,21 +73,39 @@ public class ChannelPayCallbackController {
             /*
              * 没接这个通道就当没这个端点。**不要回「通道未接入」** ——
              * 那等于告诉扫端点的人「这里认得 WECHAT，只是没开」。
+             *
+             * 这一条**不落报文**：通道名来自路径，不落库就没有「往未知通道名里
+             * 灌报文」这条放大路径。扫端点的痕迹属于访问日志，不属于支付账。
              */
             log.warn("[callback] 未知通道 {}", channel);
             return "FAIL";
         }
 
+        /*
+         * **报文先落，再处理。**独立事务，且落库失败不影响下面任何一步。
+         *
+         * 顺序反过来（处理完了再记）丢掉的正是最该留的那几次 ——
+         * 下面有四条 return FAIL 的路径（验签失败、缺字段、回查失败、
+         * 回查说没付），每一条今天都只有一行 log.warn，
+         * 而通道那边会一直重推。运营问「它到底推了什么过来」时没人答得上。
+         */
+        String msgNo = payMessage.callbackReceived(
+                channel, "/callback/pay/channel/" + channel, headers, rawBody);
+
         Map<String, Object> payload = v.verify(headers, rawBody);
         if (payload == null) {
             // 验签失败不透露原因 —— 这个端点公网可达，回原因等于免费给个调试器
             log.warn("[callback] {} 验签失败", channel);
+            payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED,
+                    "验签失败", null, null, null);
             return v.ackFail();
         }
 
         Object outTradeNo = payload.get("out_trade_no");
         if (outTradeNo == null) {
             log.warn("[callback] {} 报文缺 out_trade_no", channel);
+            payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED,
+                    "报文缺 out_trade_no", null, null, payload);
             return v.ackFail();
         }
 
@@ -95,6 +117,8 @@ public class ChannelPayCallbackController {
         PayQueryPort.Result r = payQuery.query(channel, String.valueOf(outTradeNo));
         if (!r.ok()) {
             log.warn("[callback] {} 回查失败，回 FAIL 让通道重推：{}", channel, outTradeNo);
+            payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED,
+                    "回查失败（通道查询没答上来）", String.valueOf(outTradeNo), null, payload);
             return v.ackFail();
         }
         if (!r.paid()) {
@@ -104,6 +128,9 @@ public class ChannelPayCallbackController {
              * 当成已支付会给一笔没付的单发货。
              */
             log.warn("[callback] {} 回调说已支付、回查说未支付，按未支付处理：{}", channel, outTradeNo);
+            payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED,
+                    "回调说已支付、回查说未支付 —— 这两句话不能都对",
+                    String.valueOf(outTradeNo), null, payload);
             return v.ackFail();
         }
 
@@ -128,9 +155,14 @@ public class ChannelPayCallbackController {
         if (orderNo == null) {
             log.error("[callback] {} 收到无法认领的收款 outTradeNo={} —— 流水里没有这个单号",
                     channel, outTradeNo);
+            payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED,
+                    "流水里没有这个商户单号 —— 通道回传了一个我方没发出去过的号",
+                    String.valueOf(outTradeNo), null, payload);
             return v.ackFail();
         }
         orderService.markPaid(orderNo, channel, r.tradeNo());
+        payMessage.callbackSettled(msgNo, PayMessagePort.ACCEPTED, null,
+                String.valueOf(outTradeNo), null, payload);
         log.info("[callback] {} 支付成功入账：{}（通道单号 {}，{} 分）",
                 channel, outTradeNo, r.tradeNo(), r.amountMinor());
         return v.ackOk();

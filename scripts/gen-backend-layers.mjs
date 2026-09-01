@@ -112,8 +112,21 @@ const svc = names("Service");
 const ports = names("Port");
 
 const noImpl = [...svc].filter((s) => !implemented.has(s)).sort();
+/*
+ * **这一条以前也在按命名猜**（`XxxServiceImpl` 找得到 `XxxService` 就算数），
+ * 与上面那段注释说的正好相反 —— 它是收敛那轮漏改的一条。
+ *
+ * 误报的来源是「接口不在 `service/` 包里就不算 Service」：
+ * `PayChannelRateService` 在 `master/`、`OpsPayChannelAppService` 在 `payclient/`，
+ * 两个接口都真实存在，却双双被报成「没有接口」。
+ * 而这张表的读者会照着去「修」一个不存在的问题 ——
+ * <b>一个报假违规的清单，训练的是「这张表不用看」</b>。
+ *
+ * 改成看这个类的 implements 子句里有没有东西：真正的
+ * 「impl 没有对应接口」是一个什么都不实现的 `XxxServiceImpl`。
+ */
 const noIface = rows.filter((r) => r.kind === "Impl" && r.name.endsWith("ServiceImpl")
-  && !svc.has(r.name.replace(/Impl$/, ""))).map((r) => r.name).sort();
+  && !/\bclass\s+\w+[^{]*?\bimplements\b/s.test(r.src)).map((r) => r.name).sort();
 const portNoImpl = [...ports].filter((p) => !implemented.has(p)).sort();
 const badPrefix = rows.filter((r) => r.kind === "Controller" && r.prefix === "?").map((r) => r.name).sort();
 
@@ -154,8 +167,6 @@ for (const [t, list] of [["Service 无实现", noImpl], ["impl 无接口", noIfa
 }
 L.push("");
 L.push("> **已查过、不是缺陷的几条**（判据的边界，不是代码的问题）：");
-L.push("> - `PmtCouponServiceImpl` 实现的是 `CouponService`（新旧两套券模型并存期，");
-L.push(">   impl 带 `Pmt` 前缀区分）—— 按同名匹配必然报出来。");
 L.push("> - `CommonMetaController` 走 `/common/master-data`：**三端共用的主数据，故意不带端前缀**。");
 L.push("> - `OpenInventoryController` 走 `/open/v1/**`：**给商家自己的 ERP / 收银系统用的第四个面**，");
 L.push(">   独立的 `@Profile(\"openapi\")` —— 外部流量 QPS 不可控、要单独限流、要独立故障域。");

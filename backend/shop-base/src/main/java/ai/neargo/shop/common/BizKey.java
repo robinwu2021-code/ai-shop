@@ -87,6 +87,8 @@ public final class BizKey {
     public static final String FEE_RULE = "FR";
     /** 收款流水（stl_payment）。与结算单 STL 分开：那是「该给商家多少」，这是「用户付了多少」 */
     public static final String PAYMENT = "PY";
+    /** 渠道报文（stl_channel_message，V286）。发送与回调共用一个前缀 —— 靠 msg_type 分 */
+    public static final String CHANNEL_MESSAGE = "CM";
     public static final String EVENT = "EVT";
     /** 短信/邮件发送记录 */
     public static final String NOTIFY_LOG = "NL";

@@ -3924,6 +3924,30 @@ CREATE TABLE IF NOT EXISTS pay_setting
     CONSTRAINT uk_pay_setting_key UNIQUE (tenant_no, setting_key)
 );
 
+CREATE TABLE IF NOT EXISTS stl_channel_message
+(
+    id           BIGINT       NOT NULL AUTO_INCREMENT,
+    message_no   VARCHAR(40)  NOT NULL,
+    pay_channel  VARCHAR(32)  NOT NULL,
+    msg_type     VARCHAR(16)  NOT NULL,
+    api          VARCHAR(128) NOT NULL,
+    biz_no       VARCHAR(64)  DEFAULT NULL,
+    payment_no   VARCHAR(40)  DEFAULT NULL,
+    outcome      VARCHAR(24)  NOT NULL,
+    reason       VARCHAR(255) DEFAULT NULL,
+    payload      TEXT         DEFAULT NULL,
+    headers      TEXT         DEFAULT NULL,
+    tenant_no    VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by   VARCHAR(64)  DEFAULT NULL,
+    updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by   VARCHAR(64)  DEFAULT NULL,
+    version      BIGINT       NOT NULL DEFAULT 0,
+    deleted      TINYINT      NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_channel_message_no UNIQUE (message_no)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

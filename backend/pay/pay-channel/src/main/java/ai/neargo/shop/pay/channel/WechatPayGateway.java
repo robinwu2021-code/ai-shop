@@ -24,8 +24,9 @@ import java.util.Map;
 public class WechatPayGateway extends AbstractPayGateway {
 
     public WechatPayGateway(@Qualifier("wechatChannelClient") ChannelClient client,
-                            PayChannelMasterService channelMaster) {
-        super(client, channelMaster);
+                            PayChannelMasterService channelMaster,
+                            ChannelMessageRecorder recorder) {
+        super(client, channelMaster, recorder);
     }
 
     @Override

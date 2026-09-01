@@ -1,6 +1,7 @@
 package ai.neargo.shop.pay.channel.base;
 
 import ai.neargo.shop.pay.channel.ChannelClient;
+import ai.neargo.shop.pay.channel.ChannelMessageRecorder;
 import ai.neargo.shop.pay.channel.ChannelClient.ChannelException;
 import ai.neargo.shop.pay.channel.PayGateway;
 import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
@@ -64,7 +65,20 @@ public abstract class AbstractPayGateway implements PayGateway {
     /** 通道属性。2026-09-01 起同模块直调，不再经 MasterDataPort 反向问主应用 */
     protected final PayChannelMasterService channelMaster;
 
-    protected AbstractPayGateway(ChannelClient client, PayChannelMasterService channelMaster) {
+    /**
+     * 报文落库（V286）。<b>必填</b>。
+     *
+     * <p>本来给它留了个「可以为 null」的两参构造，想着单测方便 ——
+     * 但没有任何测试直接 new 过这两个网关（它们是 Spring bean），
+     * 而那个口子留下的是一条<b>静默失效路径</b>：
+     * 谁哪天走了两参那条，资金动作就一条报文都不落，且没有任何地方会说一句。
+     * 便利是想象出来的，代价是真的。
+     */
+    private final ChannelMessageRecorder recorder;
+
+    protected AbstractPayGateway(ChannelClient client, PayChannelMasterService channelMaster,
+                                 ChannelMessageRecorder recorder) {
+        this.recorder = recorder;
         this.client = client;
         this.channelMaster = channelMaster;
     }
@@ -155,12 +169,14 @@ public abstract class AbstractPayGateway implements PayGateway {
             if (failure != null) {
                 log.warn("[pay] {} {} 失败：{}（单号 {}，金额 {} 分）",
                         payChannel(), op.label(), failure, requestNo, amountMinor);
+                recorder.sent(payChannel(), c.api(), requestNo, false, failure, c.body());
                 return Result.fatal(failure);
             }
             Object id = idOf(c, resp);
             if (id == null) {
                 String msg = c.api() + " 未返回 " + c.idField();
                 log.warn("[pay] {} {} 回执缺字段：{}（单号 {}）", payChannel(), op.label(), msg, requestNo);
+                recorder.sent(payChannel(), c.api(), requestNo, false, msg, c.body());
                 return Result.fatal(msg);
             }
             /*
@@ -170,10 +186,18 @@ public abstract class AbstractPayGateway implements PayGateway {
              */
             log.info("[pay] {} {} 成功：单号 {}，金额 {} 分，通道单号 {}",
                     payChannel(), op.label(), requestNo, amountMinor, id);
+            recorder.sent(payChannel(), c.api(), requestNo, true, null, c.body());
             return Result.ok(String.valueOf(id));
         } catch (ChannelException e) {
             log.warn("[pay] {} {} 异常：{}（单号 {}，可重试 {}）",
                     payChannel(), op.label(), e.getMessage(), requestNo, e.isRetryable());
+            /*
+             * **异常路径也要落。**这条是四条里最该有报文的：
+             * 「发出去了没有」在这里是真的不知道 —— 超时可能是通道已经收了。
+             * 日志里那一行会随日志滚掉，而对账那天要问的正是这一笔。
+             */
+            recorder.sent(payChannel(), c.api(), requestNo, false,
+                    e.getMessage() + (e.isRetryable() ? "（可重试）" : "（不可重试）"), c.body());
             return e.isRetryable() ? Result.retry(e.getMessage()) : Result.fatal(e.getMessage());
         }
     }

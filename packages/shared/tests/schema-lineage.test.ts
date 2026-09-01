@@ -225,6 +225,11 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  * 我们自己就连错过一次。
  */
 const NAME_COLLISIONS: Record<string, string> = {
+  message_no:
+    "stl_channel_message 是**渠道报文**（支付：通道推给我方的回调、我方发给通道的调用）；" +
+    "notify_message 是**站内消息**（通知：发给用户看的那条）。\n" +
+    "  两族毫不相干，只是都叫「消息」。按名字 join 会把一条支付回调连到某个用户的收件箱上，" +
+    "而两边都有 message_no 且都非空 —— 连错了不会报错，只会安静地少几行或多几行。",
   batch_no:
     "ful_batch 是**到货批次**（履约：一车货到自提点）；" +
     "sys_media_purge_batch 是**媒体清理批次**（运维：一次对象存储回收）。\n" +

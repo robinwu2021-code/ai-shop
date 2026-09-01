@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.api.callback;
 
+import ai.neargo.shop.spi.pay.PayMessagePort;
 import ai.neargo.shop.trade.service.OrderService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 import ai.neargo.shop.spi.settle.SettlePort;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * 支付回调（[API 清单 §5.2]）。**不走 Bearer**，靠验签。
@@ -29,22 +33,38 @@ public class PayCallbackController {
 
     private final OrderService orderService;
     private final SettlePort settlePort;
+    private final PayMessagePort payMessage;
 
     /** stub 通道的共享密钥。生产用真实验签，这个属性届时删除。 */
     @Value("${shop.pay.stub-secret:stub-secret}")
     private String stubSecret;
 
     public PayCallbackController(OrderService orderService,
-                                 SettlePort settlePort) {
+                                 SettlePort settlePort,
+                                 PayMessagePort payMessage) {
         this.orderService = orderService;
         this.settlePort = settlePort;
+        this.payMessage = payMessage;
     }
 
     @PostMapping("/pay/stub")
     public String stubPaid(@RequestBody StubCallback body) {
+        /*
+         * **报文先落，再处理**（与 ChannelPayCallbackController 同一套顺序）。
+         * 独立事务：下面记账失败要回滚业务，而报文必须留下 ——
+         * 处理失败的那一次，恰恰是最需要报文的那一次。
+         *
+         * 这个入口拿到的是**已经绑好的对象**而不是原始串（stub 是开发期通道，
+         * 没有真通道那套签名头），所以直接按字段存，不走未验签报文那条路。
+         */
+        String msgNo = payMessage.callbackReceived("STUB", "/callback/pay/stub",
+                Map.of(), null);
+
         if (!verify(body)) {
             // 验签失败只回 FAIL，不透露原因 —— 回调端点是公网可达的
             log.warn("pay callback verify failed: {}", body.outTradeNo());
+            payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED, "验签失败",
+                    body.outTradeNo(), null, fields(body));
             return "FAIL";
         }
         /*
@@ -71,10 +91,27 @@ public class PayCallbackController {
             // 这笔钱认领不了：流水里没有这个单号。回 FAIL 让通道重推，同时留下线索
             log.error("[callback] 收到无法认领的收款 outTradeNo={} —— 支付流水里没有这个单号",
                     body.outTradeNo());
+            payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED,
+                    "流水里没有这个商户单号", body.outTradeNo(), null, fields(body));
             return "FAIL";
         }
         orderService.markPaid(orderNo, "STUB", body.transactionId());
+        payMessage.callbackSettled(msgNo, PayMessagePort.ACCEPTED, null,
+                body.outTradeNo(), null, fields(body));
         return "SUCCESS";
+    }
+
+    /**
+     * 落进报文表的字段。
+     *
+     * <p><b>不含 sign</b>：{@code PayloadMasker} 按键名遮，{@code sign} 本来就会被遮掉 ——
+     * 这里不放进来是第二道，理由是「不该出库的东西最好一开始就没进过管道」。
+     */
+    private static Map<String, Object> fields(StubCallback body) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("outTradeNo", body.outTradeNo());
+        m.put("transactionId", body.transactionId());
+        return m;
     }
 
     private boolean verify(StubCallback body) {
