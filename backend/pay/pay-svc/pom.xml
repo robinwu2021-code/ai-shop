@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>pay-svc</artifactId>
+    <packaging>jar</packaging>
+    <description>支付域 · 独立部署形态（形态 B）。不接前端流量，只暴露 /internal 与 /callback</description>
+
+    <!-- ⚠️ **这个模块的依赖清单就是它的定义。**
+
+         **不引任何业务模块**（shop-core / shop-merchant / shop-inventory / …）——
+         那正是这件事的全部要点。支付域需要业务侧的东西时走 Port，
+         而 Port 在独立形态下的实现是 HTTP 客户端，不是把业务模块编译进来。
+
+         **不引 shop-base-auth**：支付域没有 controller、不认用户身份
+         （见 PayHasNoControllerTest 的类注释）。/internal 走共享密钥，
+         /callback 走通道验签，两者都不需要鉴权链。
+
+         **今天还带着 MyBatis**（经 pay-domain → shop-store-mybatis）。
+         那是 C2c 的事，按 2026-09-01 的决定推后到业务跑通之后 ——
+         在此之前这个产物起得来、但 AOT 不成立。 -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>pay-domain</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

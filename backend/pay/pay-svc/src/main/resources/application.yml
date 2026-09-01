@@ -1,0 +1,28 @@
+# 支付域独立形态（形态 B）。**不接前端流量。**
+server:
+  port: ${PAY_SVC_PORT:8083}
+
+spring:
+  application:
+    name: pay-svc
+  datasource:
+    # 今天仍指向主库 —— 独立进程与独立库是两件事，后者是 D2（唯一不可轻易回退的一步）。
+    # 先分进程、后分库：这个顺序让「跨域事务写不出来」这件事在切库之前就已经成立。
+    url: ${PAY_DB_URL:jdbc:mysql://127.0.0.1:3306/ai_shop?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${PAY_DB_USER:}
+    password: ${PAY_DB_PASSWORD:}
+  # Flyway 关掉：迁移由主应用统一跑。
+  # **两个进程都开 Flyway 会互相等锁，且谁先起谁决定版本** ——
+  # 而这个进程今天连的还是主库。
+  flyway:
+    enabled: false
+
+shop:
+  pay:
+    # 这个进程自己不读这个开关（有闸门盯着：PayHasNoControllerTest）。
+    # 形态由**主应用侧**决定注入 Local 还是 Remote。
+    deployment: standalone
+
+logging:
+  level:
+    ai.neargo.shop.pay: INFO

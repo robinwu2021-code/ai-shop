@@ -54,6 +54,8 @@
         <!-- 独立成工程的两个域：变更节奏与外部依赖都与核心域不同，最可能先拆微服务 -->
         <module>shop-merchant</module>
         <module>pay/pay-domain</module>
+        <!-- 独立部署形态（形态 B）。今天装得起来但不接流量 —— 见 PayApplication 的类注释 -->
+        <module>pay/pay-svc</module>
         <!-- 进销存：**独立数据源与独立迁移历史**（db/inventory），将来可独立交付。
              与 settle/merchant 同级的理由不同 —— 那两个是「变更节奏不同」，
              这个是「数据边界不同」：它的表不在 ai_shop 里 -->

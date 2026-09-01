@@ -436,6 +436,78 @@ OpsRefundSplitBack、PointsPolicy。
 
 ### C4 · Remote 实现与 pay-svc 产物
 
+#### ✅ 第一步已完成（2026-09-01）：产物起得来了
+
+`backend/pay/pay-svc` 建好并**真的启动过**：支付域第一次在
+一个不含任何业务模块的进程里装配起来，对外应答 404（而不是拒绝连接）。
+
+照的是 `shop-job` 的先例 —— 这个仓库已经独立部署过一个进程：
+独立 jar、独立库、通过 `/internal` 与主应用对话。
+**但有一处抄不了**：job 是无状态调度器，它的库只存任务记录；
+支付域存的是钱的账，与订单、结算强关联。「独立进程」可以照抄，
+「独立库」（D2）是另一回事。
+
+#### 启动过程暴露的三件事，都不在原计划里
+
+**一、`shop-store-mybatis` 把整条鉴权链拖了进来。**
+
+```
+pay-domain → shop-store-mybatis → shop-base-auth → neargo-common-security
+                                                   → spring-security-config
+```
+
+于是 Spring Boot 自动配了一套「所有请求都要认证」，
+**第一次启动时任何请求都是 401 且响应体为空**。
+
+要紧的是：今天早些时候摘掉了 `pay-domain` 对 `shop-base-auth` 的
+**直接**依赖，还验过「依赖树里 auth 归零」—— <b>那次验的是 pay-domain
+自己的树，而这条是从存储层传递进来的</b>。**摘直接依赖不等于树干净。**
+
+`shop-store-mybatis` 依赖 auth 是有意的（`AuditMetaObjectHandler` 要知道
+「当前是谁」才能填 `created_by`，层序是 内核 ← auth ← store）。
+所以这不是 bug，是**真实的设计张力**：独立形态下 pay 不认用户身份，
+而它的存储层需要 auth 填审计字段。
+
+- 现在：`PayApplication` 上显式排掉五条自动配置（Boot 自带两条 + 私有三条）；
+- **真正的解法在 C2c**：换持久层时把 `store → auth` 改成
+  `store → 一个「当前操作者」的小抽象`，独立形态下注入系统账号。
+
+**二、11 个业务侧 Port 需要远程实现 —— 这就是 C4 的主体工作量。**
+
+从 pay-domain 源码里量出来的（按用量排）：
+
+| Port | 用量 |
+|---|---|
+| `MerchantQueryPort` | 6 个文件 |
+| `SettingPort` / `SettleSourcePort` | 各 3 |
+| `MasterDataPort` / `OrderSceneQueryPort` | 各 2 |
+| `PayQueryPort` `PointsRulePort` `OrderRepairPort` `RefundSplitBackPort` `MerchantAdminPort` `PickupQueryPort` | 各 1 |
+
+它们现在由 `PendingRemotePortsConfig` 里的**调用即抛**桩顶着。
+桩必须抛，不能返回 null 或空集：返回空的话进程看起来能跑，
+而它算出来的每一笔账都是错的 ——「没有商家信息」会被当成
+「这个商家没有配置」，「查不到订单」会被当成「订单不存在」，两者都不报错。
+
+**那个类空了，C4 就完成了。**
+
+另外三个 Port（`PointsPort` / `SelfOperatedExposurePort` / `SettlePort`）
+不在此列：那是支付域**提供给别人**的，独立之后它们变成这个进程的 `/internal` 入口。
+
+**三、装配所需的每一样都要在独立形态里重新声明一次。**
+`@MapperScan` 就是第一个 —— 主应用的那份在 `shop-app` 的配置类上，
+而这个进程刻意不引 `shop-app`。这类东西设计文档里一条都没有，
+只有真的启动一次才会知道。
+
+#### 还差什么才能接流量
+
+产物起得来 ≠ 能用。**今天它装得起来但不接流量**，这是这一步的定义。
+接流量还需要：11 个 Port 的远程实现、`/internal` 端点、通道密钥与验签、
+以及主应用侧的 `Remote*Client` 与 `shop.pay.deployment` 开关。
+
+---
+
+### C4 · 原计划（下面是搬家前写的）
+
 **验收：**
 
 | 闸门 | 判据 |
