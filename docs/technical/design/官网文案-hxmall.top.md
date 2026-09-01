@@ -357,7 +357,7 @@
 顾客        下载 App · 微信小程序
 关于        隐私政策 · 用户协议 · 联系我们 hello@hxmall.top
 
-© 2026 深圳虹选科技有限公司 · 【粤ICP备XXXXXXXX号-X】
+© 2026 深圳市虹选科技有限公司 · 【粤ICP备XXXXXXXX号-X】
 ```
 
 > 备案号仍是 `site.config.ts` 里的空占位，由 `constraints.test.ts` 拦着不许漏进生产构建。

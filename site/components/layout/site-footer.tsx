@@ -71,7 +71,28 @@ export function SiteFooter() {
         {/* 法律主体必须是全称，不能用品牌名代替（见视觉设计方案 §4.3） */}
         <div className="flex flex-wrap gap-5 border-t border-line py-5 pb-10 text-[13px] text-muted">
           <span>© 2026 {site.legal.company}</span>
-          <span>{site.legal.icp || "粤ICP备XXXXXXXX号-X（待补）"}</span>
+          {/* 备案号**必须可点**到工信部查询页 —— 只写号不给链接不合规 */}
+          <a
+            href={site.legal.icpUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-brand"
+          >
+            {site.legal.icp}
+          </a>
+          {/* 公安联网备案：拿到「粤公网安备 …号」才渲染。
+              只有 32 位数据码时不渲染 —— 页面上没有可读的备案号，挂了等于没挂，
+              反而给人「已经挂好了」的错觉。 */}
+          {site.legal.policeNo && (
+            <a
+              href={`https://beian.mps.gov.cn/#/query/webSearch?code=${site.legal.policeCode}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-brand"
+            >
+              {site.legal.policeNo}
+            </a>
+          )}
           <span>{site.domain}</span>
           <span>
             {site.legal.parentBrand}（{site.legal.parentDomain}）旗下业务

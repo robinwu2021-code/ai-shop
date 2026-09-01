@@ -40,8 +40,22 @@ export const site = {
 
   /** 法律主体 —— 页脚、隐私政策、用户协议、App 关于页必须出现全称，不能用品牌名代替 */
   legal: {
-    company: "深圳虹选科技有限公司",
-    icp: "", // TODO: 备案下来后填，格式 粤ICP备XXXXXXXX号-X
+    company: "深圳市虹选科技有限公司",
+    /**
+     * **网站**备案号（`-3`），不是主体号。
+     * 主体号是 `粤ICP备2026126517号`，其下每个网站各有一个 `-N` 后缀；
+     * hxmall.top 分到 -3。页脚必须挂网站号 —— 挂主体号在多站之后就对不上了。
+     */
+    icp: "粤ICP备2026126517号-3",
+    icpUrl: "https://beian.miit.gov.cn/",
+
+    /**
+     * 公安联网备案。要显示的是**「粤公网安备 XXXXXXXXXXXXXX号」这行文字**，
+     * 32 位的数据码只用来拼查询链接 —— 光有码没有号，页面上就没有可读的备案信息，
+     * 属于挂了等于没挂。
+     */
+    policeCode: "a63e3531bd9d12a157d76f84c28762c6",
+    policeNo: "", // TODO: 「粤公网安备 …号」那串数字，公安备案通过的回执上有
     parentBrand: "虹选科技",
     parentDomain: "hxtech.top",
   },

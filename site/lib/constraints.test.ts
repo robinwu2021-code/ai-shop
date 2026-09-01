@@ -126,7 +126,8 @@ describe("site.config 的空占位", () => {
    * 新加一个字段忘了填，这里会红 —— 而不是等到线上出现一个空白页脚。
    */
   const KNOWN_EMPTY = new Set([
-    "legal.icp",
+    // legal.icp 已于 2026-08-21 备案通过填上，从清单里移除 —— 它再空就是回退
+    "legal.policeNo",
     "contact.salesWechatQr",
     "download.consumerAppStore",
     "download.consumerAndroid",
