@@ -39,9 +39,7 @@ public class PendingRemotePortsConfig {
         ai.neargo.shop.spi.trade.SettleSourcePort.class,        // 3
         ai.neargo.shop.spi.pay.PayQueryPort.class,              // 1
         ai.neargo.shop.spi.product.PointsRulePort.class,        // 1
-        ai.neargo.shop.spi.trade.OrderRepairPort.class,         // 1
         ai.neargo.shop.spi.trade.RefundSplitBackPort.class,     // 1
-        ai.neargo.shop.spi.user.MerchantAdminPort.class,        // 1
         ai.neargo.shop.spi.user.PickupQueryPort.class,          // 1
     };
 

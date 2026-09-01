@@ -4,6 +4,7 @@ import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.pay.PointsService;
+import ai.neargo.shop.payclient.BizPointsAppService;
 import ai.neargo.shop.pay.dto.PointsVOs.MerchantPointAccountVO;
 import ai.neargo.shop.pay.dto.PointsVOs.MerchantPointsRecordVO;
 import org.springframework.validation.annotation.Validated;
@@ -36,9 +37,12 @@ import java.util.List;
 public class BizPointsController {
 
     private final PointsService pointsService;
+    /** 开关的编排跨两个域，所以在 app service 层（2026-09-01） */
+    private final BizPointsAppService app;
 
-    public BizPointsController(PointsService pointsService) {
+    public BizPointsController(PointsService pointsService, BizPointsAppService app) {
         this.pointsService = pointsService;
+        this.app = app;
     }
 
     /** 本期发分服务费与开关状态。 */
@@ -67,7 +71,7 @@ public class BizPointsController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @PostMapping("/toggle")
     public MerchantPointAccountVO toggle(@RequestBody ToggleReq req) {
-        return pointsService.toggleMerchant(BizContext.requireMerchantNo(), req.enabled());
+        return app.toggleMerchant(BizContext.requireMerchantNo(), req.enabled());
     }
 
     public record ToggleReq(Boolean enabled) {

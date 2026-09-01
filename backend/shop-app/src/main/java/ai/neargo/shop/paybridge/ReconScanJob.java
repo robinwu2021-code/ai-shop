@@ -1,4 +1,4 @@
-package ai.neargo.shop.pay.job;
+package ai.neargo.shop.paybridge;
 
 import org.springframework.context.annotation.Bean;
 import ai.neargo.job.api.JobDeclaration;
@@ -6,7 +6,7 @@ import ai.neargo.job.api.JobHandler;
 import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
-import ai.neargo.shop.pay.service.ReconService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -31,11 +31,11 @@ public class ReconScanJob implements JobHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ReconScanJob.class);
 
-    private final ReconService reconService;
+    private final PaymentReconReconciler recon;
     private final JobSupport jobs;
 
-    public ReconScanJob(ReconService reconService, JobSupport jobs) {
-        this.reconService = reconService;
+    public ReconScanJob(PaymentReconReconciler recon, JobSupport jobs) {
+        this.recon = recon;
         this.jobs = jobs;
     }
 
@@ -60,7 +60,7 @@ public class ReconScanJob implements JobHandler {
     public JobDeclaration reconscanDeclaration() {
         return new JobDeclaration("recon-scan", "对账自查",
                 "扫出平台账与渠道账对不上的流水：补回漏记的、关掉该关的，其余留待下轮",
-                "pay-domain", "0 */10 * * * *", true,
+                "shop-app", "0 */10 * * * *", true,
                 // 锁 540 秒是刻意小于 10 分钟间隔的（真卡死时下一轮能接手）；
                 // 超时跟着它走，留 60 秒给锁兜底 —— 原先 60/540 差 9 倍，
                 // 意味着扫超过一分钟就记 TIMEOUT，而它其实还在跑
@@ -69,7 +69,7 @@ public class ReconScanJob implements JobHandler {
 
     @Override
     public JobResult run(JobInvocation invocation) {
-        ReconService.ScanResult r = reconService.scan(System.currentTimeMillis());
+        PaymentReconReconciler.Result r = recon.scan(System.currentTimeMillis());
         if (r.scanned() == 0) {
             // **detail 保持 null**，不要改成「无可处理项」之类的话。
             // JobSupport 用它区分「跑了但没事」与「跑了并做了事」，

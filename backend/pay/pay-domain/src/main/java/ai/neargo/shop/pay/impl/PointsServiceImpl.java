@@ -20,7 +20,6 @@ import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
 import ai.neargo.shop.pay.mapper.SettleMappers.PointsAccountMapper;
 import ai.neargo.shop.pay.mapper.SettleMappers.PointsLedgerMapper;
 import ai.neargo.shop.pay.mapper.SettleMappers.PointsPoolMapper;
-import ai.neargo.shop.spi.user.MerchantAdminPort;
 import ai.neargo.shop.spi.platform.SettingPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import tools.jackson.databind.ObjectMapper;
@@ -66,7 +65,6 @@ public class PointsServiceImpl implements PointsService {
     private final PointsPoolMapper poolMapper;
     private final BillMapper billMapper;
     private final MerchantQueryPort merchantQuery;
-    private final MerchantAdminPort merchantAdmin;
     private final SettingPort settingPort;
     private final ObjectMapper json = new ObjectMapper();
 
@@ -75,7 +73,6 @@ public class PointsServiceImpl implements PointsService {
                              PointsPoolMapper poolMapper,
                              BillMapper billMapper,
                              MerchantQueryPort merchantQuery,
-                             MerchantAdminPort merchantAdmin,
                              SettingPort settingPort,
                              ai.neargo.shop.spi.product.PointsRulePort pointsRulePort) {
         this.pointsRulePort = pointsRulePort;
@@ -84,7 +81,6 @@ public class PointsServiceImpl implements PointsService {
         this.poolMapper = poolMapper;
         this.billMapper = billMapper;
         this.merchantQuery = merchantQuery;
-        this.merchantAdmin = merchantAdmin;
         this.settingPort = settingPort;
     }
 
@@ -201,14 +197,6 @@ public class PointsServiceImpl implements PointsService {
         return out;
     }
 
-    @Override
-    @Transactional("payTxManager")
-    public MerchantPointAccountVO toggleMerchant(String merchantNo, boolean enabled) {
-        // 关闭只影响将来：**不动已发出的分，也不退已扣的服务费** ——
-        // 否则关一次开关就是一次资金事故
-        merchantAdmin.setPointsEnabled(merchantNo, enabled);
-        return merchantAccount(merchantNo);
-    }
 
     /**
      * 一行该发多少分。<b>规则从 product 域取，兜底在本域</b>。

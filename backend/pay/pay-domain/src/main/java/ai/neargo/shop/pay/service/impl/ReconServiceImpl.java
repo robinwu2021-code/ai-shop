@@ -9,7 +9,6 @@ import ai.neargo.shop.pay.mapper.SettleMappers;
 import ai.neargo.shop.pay.service.ReconService;
 import ai.neargo.shop.pay.service.recon.ReconAxis;
 import ai.neargo.shop.spi.pay.PayQueryPort;
-import ai.neargo.shop.spi.trade.OrderRepairPort;
 import ai.neargo.common.data.scope.DataScopeContext;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
@@ -50,7 +49,6 @@ public class ReconServiceImpl implements ReconService {
      * 新增一条轴只要加一个 @Component，不用改这里。
      */
     private final org.springframework.beans.factory.ObjectProvider<ReconAxis> axes;
-    private final OrderRepairPort orderRepairPort;
 
     /**
      * 多久算「超时未终态」。
@@ -63,13 +61,11 @@ public class ReconServiceImpl implements ReconService {
     public ReconServiceImpl(SettleMappers.PaymentMapper paymentMapper,
                             SettleMappers.ReconDiffMapper diffMapper,
                             PayQueryPort payQueryPort,
-                            OrderRepairPort orderRepairPort,
                             org.springframework.beans.factory.ObjectProvider<ReconAxis> axes,
                             @Value("${shop.recon.stale-minutes:20}") int staleMinutes) {
         this.paymentMapper = paymentMapper;
         this.diffMapper = diffMapper;
         this.payQueryPort = payQueryPort;
-        this.orderRepairPort = orderRepairPort;
         this.axes = axes;
         this.staleMinutes = staleMinutes;
     }
@@ -101,7 +97,7 @@ public class ReconServiceImpl implements ReconService {
     }
 
     @Override
-    public ScanResult scan(long now) {
+    public List<ReconService.Finding> checkStalePayments(long now) {
         long cutoff = now - staleMinutes * 60_000L;
         List<StlPayment> stale = DataScopeContext.executeWithoutScope(() ->
                 paymentMapper.selectList(Wrappers.<StlPayment>lambdaQuery()
@@ -110,69 +106,33 @@ public class ReconServiceImpl implements ReconService {
                         .le(StlPayment::getCreatedAt,
                                 java.time.LocalDateTime.ofInstant(
                                         Instant.ofEpochMilli(cutoff), ZoneId.systemDefault()))));
-
-        int repaired = 0;
-        int closed = 0;
-        int deferred = 0;
         String day = DAY.format(Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()));
 
-        for (StlPayment p : stale) {
+        return stale.stream().map(p -> {
             PayQueryPort.Result r = payQueryPort.query(p.getPayChannel(), p.getOutTradeNo());
-            if (!r.ok()) {
-                /*
-                 * 查询失败：**什么都不做**。
-                 *
-                 * 当成「通道没有这笔」去关单的话，一笔已付的单会被关掉 ——
-                 * 用户的钱在通道那边，而我方订单已关闭，只能退款并道歉。
-                 * 留到下一轮再查是唯一安全的选择。
-                 */
-                deferred++;
-                continue;
-            }
-            if (r.paid()) {
-                /*
-                 * 通道说已付 —— 走**原本的支付成功链路**，不在这里补状态。
-                 * 自己写一段「把 status 改成 SUCCESS」会漏掉发券、积分、通知、
-                 * 结算单生成里的某一个，而漏掉哪个要等用户来问才知道。
-                 */
-                String note;
-                try {
-                    orderRepairPort.markPaid(p.getOrderNo(), p.getPayChannel(), r.tradeNo());
-                    repaired++;
-                    note = "自查发现通道已支付，已补回支付成功链路（通道单号 " + r.tradeNo() + "）";
-                } catch (RuntimeException e) {
-                    /*
-                     * 补回失败**不能让整轮扫描炸掉**：一笔补不回来，后面几百笔就都不查了。
-                     *
-                     * 而且这种单恰恰**最需要被记下来** —— 通道收了钱，而我方连订单都推不动
-                     * （订单不存在、或已经被关掉）。这是要人去处理的，不是重试能解决的。
-                     */
-                    deferred++;
-                    note = "通道已支付但补回失败（" + e.getMessage() + "）—— 通道单号 "
-                            + r.tradeNo() + "，需人工核对订单 " + p.getOrderNo();
-                    log.warn("[recon] 补回失败 payment={} order={}：{}",
-                            p.getPaymentNo(), p.getOrderNo(), e.toString());
-                }
-                recordDiff(day, p, r, StlReconDiff.PLATFORM_ONLY, note);
-                if (r.amountMinor() > 0 && p.getAmountMinor() != null
-                        && r.amountMinor() != p.getAmountMinor()) {
-                    // 金额不符要单独记一条：补回支付不代表账对上了
-                    recordDiff(day, p, r, StlReconDiff.AMOUNT_DIFF,
-                            "通道 " + r.amountMinor() + " 与我方 " + p.getAmountMinor() + " 不符");
-                }
-            } else if (!r.found()) {
-                // 通道根本没有这笔 = 我方发起失败，可以安全关单
-                orderRepairPort.closeUnpaid(p.getOrderNo());
-                closed++;
-            } else {
-                // 通道有这笔但没付：正常的用户放弃，交给关单任务，不算差异
-                deferred++;
-            }
-        }
-        log.info("[recon] 自查 {} 笔：补回 {} · 关单 {} · 留待下轮 {}",
-                stale.size(), repaired, closed, deferred);
-        return new ScanResult(stale.size(), repaired, closed, deferred);
+            return new ReconService.Finding(p.getPaymentNo(), p.getOrderNo(), p.getPayChannel(),
+                    p.getOutTradeNo(), p.getAmountMinor(),
+                    r.ok() && r.paid(), r.ok() && !r.paid() && !r.found(), !r.ok(),
+                    r.amountMinor(), r.tradeNo(), day);
+        }).toList();
     }
+
+    @Override
+    public void recordFinding(ReconService.Finding f, String diffType, String note) {
+        StlPayment p = DataScopeContext.executeWithoutScope(() ->
+                paymentMapper.selectOne(Wrappers.<StlPayment>lambdaQuery()
+                        .eq(StlPayment::getPaymentNo, f.paymentNo()).last("LIMIT 1")));
+        if (p == null) {
+            // 流水在这中间被处理掉了 —— 差异行没有依附对象，记了也无从回溯
+            log.warn("[recon] 记差异时找不到流水 paymentNo={}", f.paymentNo());
+            return;
+        }
+        recordDiff(f.day(), p,
+                new PayQueryPort.Result(true, f.paidOnChannel(), !f.notFound(),
+                        f.channelAmountMinor(), f.channelTradeNo()),
+                diffType, note);
+    }
+
 
     /**
      * 落一条差异。

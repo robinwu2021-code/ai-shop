@@ -33,15 +33,25 @@ public class PaymentReconAxis implements ReconAxis {
 
     @Override
     public ScanOutcome scan(long now) {
-        ReconService.ScanResult r = reconService.scan(now);
         /*
-         * 字段对位：`closed`（通道说没有这笔、可以安全关单）算作 resolved ——
-         * 它和 `repaired` 一样是**当场收口**，差别只在收口的方向。
-         * 而 `deferred`（查询本身失败）单独留着：把它算进任何一边，
-         * 都会让「今天有多少条判不了」这个数消失，而那正是要盯的。
+         * **这条轴只报「发现了什么」，不报「修了多少」**（2026-09-01 改）。
+         *
+         * 处置（补回支付成功链路 / 关单）搬到了主应用侧
+         * （{@code shop-app/paybridge/PaymentReconReconciler}）——
+         * 那是订单域的动作，而按「pay 只解决 pay 的核心问题」，
+         * 支付域不该反向调订单域。
+         *
+         * 于是 {@code resolved} 恒为 0，这不是退化而是<b>更诚实</b>：
+         * 一条对账轴声称自己「解决了 N 条」，而实际解决动作在另一个进程里，
+         * 那个数迟早与事实对不上。处置数由 recon-scan 任务自己报。
          */
-        return new ScanOutcome(r.scanned(), r.repaired() + r.closed(), 0, r.deferred());
+        var findings = reconService.checkStalePayments(now);
+        int deferred = (int) findings.stream()
+                .filter(ReconService.Finding::queryFailed)
+                .count();
+        return new ScanOutcome(findings.size(), 0, 0, deferred);
     }
+
 
     @Override
     public Coverage coverage() {

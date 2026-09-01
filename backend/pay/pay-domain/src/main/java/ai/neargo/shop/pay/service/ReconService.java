@@ -34,7 +34,50 @@ public interface ReconService {
      * @param now 判定基准时间（毫秒）。参数化是为了让测试不必真等 15 分钟
      * @return 本轮的处理计数
      */
-    ScanResult scan(long now);
+    /**
+     * 自查一轮：把滞留的收款拿去<b>向通道核对</b>，返回核对结果。
+     *
+     * <p><b>只核对，不改订单</b>（2026-09-01 改）。向通道查单是支付域的核心能力，
+     * 而「把订单推回正轨」是订单域的动作 —— 此前它经 {@code OrderRepairPort}
+     * 反向调订单域，那条依赖按「pay 只解决 pay 的核心问题」不该存在。
+     *
+     * <p><b>对账的产出是「差异」，不是「修复」。</b>
+     * 修复动作由主应用侧的巡检执行（{@code shop-app/paybridge}），
+     * 与 I1–I3/I6 在同一层 —— 它们都是「pay 说了什么，trade 该做什么」。
+     *
+     * @return 每笔滞留收款的核对结果；调用方据此决定补支付、关单还是留到下一轮
+     */
+    List<Finding> checkStalePayments(long now);
+
+    /**
+     * 把一条核对结果记成差异行。
+     *
+     * <p>与 {@link #checkStalePayments} 分开，是因为<b>差异的描述取决于处置结果</b>：
+     * 「已补回」与「补回失败，需人工核对」是两条不同的记录，
+     * 而处置在主应用侧做完才知道。
+     *
+     * @param note 处置结果的说明，原样落到差异行上
+     */
+    void recordFinding(Finding finding, String diffType, String note);
+
+    /**
+     * 一笔滞留收款的核对结果。
+     *
+     * @param paidOnChannel 通道说已付 —— 调用方要走<b>原本的支付成功链路</b>补回，
+     *                      而不是自己写一段「把 status 改成 SUCCESS」：
+     *                      那会漏掉发券、积分、通知、结算单里的某一个，
+     *                      而漏掉哪个要等用户来问才知道
+     * @param notFound      通道根本没有这笔 = 我方发起失败，可以安全关单
+     * @param queryFailed   查询本身失败 —— <b>什么都不做</b>，留到下一轮。
+     *                      当成「通道没有这笔」去关单的话，一笔已付的单会被关掉，
+     *                      而用户的钱在通道那边
+     */
+    record Finding(String paymentNo, String orderNo, String payChannel, String outTradeNo,
+                   Long ourAmountMinor, boolean paidOnChannel, boolean notFound,
+                   boolean queryFailed, long channelAmountMinor, String channelTradeNo,
+                   String day) {
+    }
+
 
     /** 差异列表（运营端）。{@code status} 为空给全部 */
     List<ReconDiffVO> diffs(String status);
@@ -63,8 +106,6 @@ public interface ReconService {
      * @param closed   通道确认没有这笔、已关单的
      * @param deferred 查询失败、留到下一轮的（<b>不关单</b>）
      */
-    record ScanResult(int scanned, int repaired, int closed, int deferred) {
-    }
 
     /**
      * @param channelBillConnected 渠道账单是否已接入。false 时下面那句话要显示给运营

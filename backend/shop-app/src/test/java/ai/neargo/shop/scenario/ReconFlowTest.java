@@ -35,7 +35,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ReconFlowTest {
 
     @Autowired
-    private ReconService reconService;
+    /** 处置（补支付/关单）搬到 paybridge（2026-09-01）—— pay 只核对与记差异 */
+    private ai.neargo.shop.paybridge.PaymentReconReconciler paymentRecon;
+
+    @Autowired
+    /** 裁决与覆盖范围仍在 pay：差异是 pay 自己的账 */
+    private ai.neargo.shop.pay.service.ReconService reconService;
 
     @Autowired
     private FakePayQueryPort fakeQuery;
@@ -80,7 +85,7 @@ class ReconFlowTest {
         StlPayment p = stalePayment();
         fakeQuery.answer(new PayQueryPort.Result(false, false, false, 0, null));
 
-        var r = reconService.scan(System.currentTimeMillis());
+        var r = paymentRecon.scan(System.currentTimeMillis());
 
         assertThat(fakeQuery.asked()).contains(p.getOutTradeNo());
         assertThat(r.closed()).isZero();
@@ -96,7 +101,7 @@ class ReconFlowTest {
         StlPayment p = stalePayment();
         fakeQuery.answer(new PayQueryPort.Result(true, false, false, 0, null));
 
-        var r = reconService.scan(System.currentTimeMillis());
+        var r = paymentRecon.scan(System.currentTimeMillis());
 
         assertThat(r.closed()).isPositive();
         assertThat(fakeQuery.asked()).contains(p.getOutTradeNo());
@@ -108,7 +113,7 @@ class ReconFlowTest {
         StlPayment p = stalePayment();
         fakeQuery.answer(new PayQueryPort.Result(true, false, true, 0, null));
 
-        var r = reconService.scan(System.currentTimeMillis());
+        var r = paymentRecon.scan(System.currentTimeMillis());
 
         assertThat(r.closed()).isZero();
         assertThat(diffsOf(p.getPaymentNo())).isEmpty();
@@ -121,7 +126,7 @@ class ReconFlowTest {
         // 通道说 100.00，我方记的是 99.00 —— 两条差异：掉单 + 金额不符
         fakeQuery.answer(new PayQueryPort.Result(true, true, true, 10000L, "WX-TX-1"));
 
-        reconService.scan(System.currentTimeMillis());
+        paymentRecon.scan(System.currentTimeMillis());
 
         assertThat(diffsOf(p.getPaymentNo()))
                 .extracting(StlReconDiff::getDiffType)
@@ -137,9 +142,9 @@ class ReconFlowTest {
         StlPayment p = stalePayment();
         fakeQuery.answer(new PayQueryPort.Result(true, true, true, 9900L, "WX-TX-2"));
 
-        reconService.scan(System.currentTimeMillis());
-        reconService.scan(System.currentTimeMillis());
-        reconService.scan(System.currentTimeMillis());
+        paymentRecon.scan(System.currentTimeMillis());
+        paymentRecon.scan(System.currentTimeMillis());
+        paymentRecon.scan(System.currentTimeMillis());
 
         assertThat(diffsOf(p.getPaymentNo())).hasSize(1);
     }
@@ -149,7 +154,7 @@ class ReconFlowTest {
     void decideRequiresResolution() {
         StlPayment p = stalePayment();
         fakeQuery.answer(new PayQueryPort.Result(true, true, true, 9900L, "WX-TX-3"));
-        reconService.scan(System.currentTimeMillis());
+        paymentRecon.scan(System.currentTimeMillis());
         String diffNo = diffsOf(p.getPaymentNo()).getFirst().getDiffNo();
 
         assertThat(org.junit.jupiter.api.Assertions.assertThrows(

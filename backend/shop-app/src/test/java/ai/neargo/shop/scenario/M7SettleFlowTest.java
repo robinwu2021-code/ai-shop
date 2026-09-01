@@ -175,7 +175,7 @@ class M7SettleFlowTest {
                 .andExpect(jsonPath("$.code").value(0));
 
         // 时钟推到滞留窗口之后（默认 20 分钟，给足 2 小时）
-        var r = reconService.scan(System.currentTimeMillis() + 2 * 3_600_000L);
+        var r = paymentRecon.scan(System.currentTimeMillis() + 2 * 3_600_000L);
 
         assertThat(r.scanned())
                 .as("发起了支付却没回调的单必须被扫到 —— 补写 stl_payment 之前，"
@@ -184,7 +184,11 @@ class M7SettleFlowTest {
     }
 
     @Autowired
-    private ai.neargo.shop.pay.service.ReconService reconService;
+    /*
+     * 2026-09-01：收款自查的处置搬到 paybridge —— pay 只回答「通道说这笔付了没」，
+     * 「把订单推回正轨」是订单域的动作。
+     */
+    private ai.neargo.shop.paybridge.PaymentReconReconciler paymentRecon;
 
     @Test
     @DisplayName("★★ I8 不会去动本来就没问题的单 —— 否则「补了几个」这个数永远等于扫描数")

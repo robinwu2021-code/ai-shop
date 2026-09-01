@@ -49,7 +49,6 @@ public interface PointsService {
      * <p><b>关闭只影响将来</b> —— 已发出的分仍有效、已扣的服务费不退，
      * 否则关一次开关就是一次资金事故。
      */
-    MerchantPointAccountVO toggleMerchant(String merchantNo, boolean enabled);
 
     /** 平台总览：流通中的积分与池子余额摆在一起 —— 恒等式 2 的两边。 */
     PointsOverviewVO overview(String market);
