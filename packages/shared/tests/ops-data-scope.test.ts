@@ -995,15 +995,44 @@ describe("运营端数据域接入", () => {
     mch_account: "待判 —— 商家员工（/ops/merchants/{no}/staff）",
     mch_entity_plan: "待判 —— 增值包订阅（/ops/merchant-plans）",
     mch_store_role: "待判 —— 门店授权（同上）",
-    mkt_coupon_issue: "待判 —— 发券批次（/ops/coupon-issues）",
+    /*
+     * ── 规格库两张：**运营端管的是平台字典，按商家裁会让它整页空白** ──
+     *
+     * `listDims` 只查 `scope = PLATFORM` —— 而平台维度的 `entity_no` 是空的。
+     * 登记 MERCHANT 之后，配了商家域的运营打开规格库看到的是零条；
+     * 而这一页的用途恰恰是「改一条通用维度、全站生效」。
+     *
+     * `entity_no` 那一列是给**商家自建维度**用的（scope=MERCHANT），
+     * 它只在 B 端建品的选择器里出现，那条查询按 merchantNo 参数过滤，
+     * 归属由参数保证。
+     *
+     * <p>与 sys_role 那两张是同一族：**归属列存在，但这张表的主用途是平台级配置**。
+     */
+    /*
+     * ── 门店商品与门店库存：**归属已由主表那一步保证** ──
+     *
+     * `/ops/goods`（商品池）的主查询走 `prd_goods`，**那张表已经登记且没有绕过**
+     * （`listForOps` 与 `auditQueue` 都是裸查询，后者的注释还特意写了
+     *「批③ 的核心就是这一行的缺席」）。这两张表只在拼门店投影时被读到，
+     * 而且都是 `in(skuNo, ...)` 反查 —— skuNo 来自已经裁过的那批商品。
+     *
+     * 登记它们不会改变可见集合，只会多两处 fail-closed 的机会：
+     * B 端建品链路也读这两张（跑在 SELF 维度），登记后要再加两处绕过。
+     * **代价与收益不成比例**，与 mbr_reach_log 那条「登记但当下无效果」不同 ——
+     * 这里不是没效果，是有负效果。
+     */
+    prd_store_goods: "商品池的归属由主表 prd_goods 保证；这张只在门店投影里按 skuNo 反查",
+    prd_store_stock: "同上",
+
+        prd_spec_dim: "运营端只查 scope=PLATFORM，而平台维度的 entity_no 为空；登记会让规格库整页空白",
+    prd_spec_value: "同上，取值随维度一起查",
+    prd_spec_template: "同上，模板也分平台/商家两种 scope",
+
+        mkt_coupon_issue: "待判 —— 发券批次（/ops/coupon-issues）",
     mkt_request: "待判 —— 需求单（/ops/demands、/ops/quotes）",
     mkt_request_interest: "待判 —— 需求意向（/ops/demands）",
     notify_ticket: "待判 —— 工单（/ops/tickets）",
     ord_invoice_request: "待判 —— 买家开票申请（/ops/invoice-requests）",
-    prd_spec_dim: "待判 —— 规格维度（/ops/spec-dims、/ops/category-specs）",
-    prd_spec_template: "待判 —— 规格模板（/ops/spec-templates）",
-    prd_store_goods: "待判 —— 门店商品（/ops/goods）",
-    prd_store_stock: "待判 —— 门店库存（/ops/goods、/ops/inventory/recon）",
     pts_user_account: "待判 —— 积分账户（/ops/points/overview）",
     stl_points_pool: "待判 —— 积分池（/ops/points/overview）",
 
