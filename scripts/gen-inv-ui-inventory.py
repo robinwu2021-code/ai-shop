@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""进销存九屏的界面清单：从 .vue 里按模板顺序抽标题 / 页签 / 字段 / 按钮，
+"""进销存十屏的界面清单：从 .vue 里按模板顺序抽标题 / 页签 / 字段 / 按钮，
 再回 zh-CN.ts 取中文。
 
 **为什么要生成不要手写**：手写的清单第二天就与代码不一致，而它长得依然像真的。
@@ -12,8 +12,10 @@
 sh-empty 算到这一行头上（第一版就把「点一行看那张单」判成了空态）。"""
 import json, re, sys, io
 
+# **加页面时这里也要加**：这份列表是写死的，漏一页的症状是清单少一节而
+# 「跑一遍输出没变」照样成立 —— 闸门绿着，清单却不完整。suppliers 就这么漏过一轮。
 PAGES = ["stock","stock-detail","stock-docs","purchase-edit","stock-check",
-         "stock-out","transfer","stock-report","locations"]
+         "stock-out","transfer","stock-report","suppliers","locations"]
 
 # ── 词条表：把 zh-CN.ts 当近似 JSON 读 ──
 def load_locale(path):
@@ -112,7 +114,8 @@ def rows(page):
 
 TITLES = {"stock":"库存","stock-detail":"库存明细","stock-docs":"单据",
           "purchase-edit":"进货","stock-check":"盘点","stock-out":"报损",
-          "transfer":"调拨","stock-report":"报表","locations":"库位"}
+          "transfer":"调拨","stock-report":"报表","suppliers":"供应商",
+          "locations":"库位"}
 
 if __name__ == "__main__":
     md = "--md" in sys.argv
