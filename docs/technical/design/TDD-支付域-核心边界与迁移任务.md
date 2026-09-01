@@ -65,6 +65,45 @@ channelSettleCycle   通道的结算周期
 
 ## B · 调用方本来就知道（9 处）→ 参数传入 + 快照
 
+### ⚠️ 2026-09-01 修正：B1 的分类不成立，M10 也不必要
+
+原文把六个商家属性归为「调用方本来就知道」。**核实下来不成立**：
+
+- `shop-core` **不依赖** `shop-merchant`，`SettleSourcePortImpl` 里也没有
+  `MerchantQueryPort` —— <b>trade 拿不到商家属性</b>。
+  让它去查等于给 trade 新加一条对 merchant 的依赖，
+  那只是把跨域调用挪了个地方，不是消除。
+
+另一个方向的核实（问「商户信息是否就该在支付服务」时做的）：
+
+- 六个属性里，`payMerchantNo` / `feeBearer` / `settleCycle` 来自
+  `mch_payment_merchant`（进件表），而那张表整张都是支付的语言 ——
+  没有一列是商家档案。按归属该跟 pay 走。
+- **但它有 97 处引用、5 个服务在用**（进件、准入、治理、门店管理、Port），
+  整表搬迁还会造成 `shop-merchant → pay` 的依赖，要再造一个 spi Port。
+
+**而这件事最后不必做**，因为查到了一个更要紧的事实：
+
+> **`stl_bill` 上已经有 4 个快照列**：`feeBearer`、`payMerchantNo`、
+> `businessMode`、`fundsMode`。
+
+快照机制本来就在，只是这些值是「结算时读一次商家表再落库」。
+拆库之后唯一的跨库点是 `generateForOrder` 那一次读 ——
+**而那一次读的结果本来就要落成快照**。
+
+所以正确的做法既不是「trade 传进来」，也不是「把进件表搬进 pay」，而是：
+
+> **把 `generateForOrder` 的编排搬到 `paybridge`** ——
+> 那一层同时够得着 trade 与 merchant，由它组装好「子单构成 + 商家属性快照」
+> 一次传给 pay。pay 从此不查任何业务表。
+
+这与 I1–I3/I6/I8 的形状一致：<b>跨域编排属于两边之上的那一层</b>。
+
+**代价要认**：`generateForOrder` 在支付成功的 AfterCommit 里，
+是<b>资金主链路</b>。改它要单独评审，不与别的改动混在一起。
+
+---
+
 ### B1 六个商家属性（`MerchantQueryPort`）
 
 ```
