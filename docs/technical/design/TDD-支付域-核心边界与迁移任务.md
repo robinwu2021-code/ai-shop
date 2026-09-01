@@ -202,7 +202,9 @@ orderSceneQueryPort.payChannelOfSubOrder
 | **M6** | `setPointsEnabled` 的编排搬到主应用 | `MerchantAdminPort`（1） | 纯搬家 |
 | **M7** | 商家属性改快照传入（六个） | `MerchantQueryPort`（6） | **唯一涉及数据正确性** |
 | **M8** | 订单构成改参数传入 | `SettleSourcePort`（1） | 依赖 M7 |
-| **M9** | 积分规则、风控事实改参数传入 | `PointsRulePort` 等（2） | 纯搬家 |
+| **M9a** | 积分规则改参数传入 | `PointsRulePort`（1） | **已完成 2026-09-01** |
+| **M9b** | ~~风控事实改参数传入~~ | `MerchantQueryPort.fundRiskFacts`（1） | **分类不成立，见下** |
+| **M11** | 保证金与欠款四张表搬进 pay 库 | `fundRiskFacts`（1） | 取代 M9b，**比 M9 整体还大** |
 
 **M1–M6、M9 是纯搬家，不改业务语义**，可以逐个做、逐个验、逐个回滚。
 **M7 是唯一涉及数据正确性的一步**（快照 vs 实时查），
@@ -210,6 +212,26 @@ orderSceneQueryPort.payChannelOfSubOrder
 
 全部做完之后，pay 与主应用之间**只剩一个方向**：
 支付成功后回调订单（今天是 `PaymentLedger` + I8 的形状）。
+
+### ⚠️ 2026-09-01 修正：M9b 的分类不成立（与 B1 同一类错）
+
+M9b 原本归在「B · 调用方本来就知道 → 参数传入」。**但它没有调用方。**
+
+`fundRiskFacts` 的调用点在 `FundRiskServiceImpl.factsOf`，
+而那是 `SettleBatchServiceImpl` **截批**时调的 —— 一条 pay 内部的定时任务链路。
+没有任何外部调用方站在那儿，可以把保证金与欠款「传进来」。
+
+那这两个数该归谁？看它们存在哪儿：`mch_deposit` / `mch_deposit_txn` /
+`mch_debt` / `mch_debt_txn` —— **带流水表的账户**。
+按「pay 管钱」，保证金账户与欠款账户本来就该在 pay 库，
+这与 M1/M2「数据存错了地方」是同一类，不是「参数传入」。
+
+**但那是四张表 + 入驻链路 + 运营端的一次搬家，比 M9 整体还大**，
+另立 M11，不塞进 M9 硬凑。在 M11 之前，`fundRiskFacts` 这条反向依赖
+**保留且承认它存在** —— 装作它不在，比它在更糟。
+
+（M9a 已完成：积分规则由 trade 侧查好随 `EarnLine` 传入，
+pay 从此不认识 `spi.product` 的任何类型，有反射守卫钉着。）
 
 ## 二·补 · 领域模型的三条要求（P1–P3，2026-09-01 已落地）
 

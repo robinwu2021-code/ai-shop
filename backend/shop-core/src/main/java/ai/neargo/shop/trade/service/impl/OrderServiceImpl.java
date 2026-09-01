@@ -106,6 +106,14 @@ public class OrderServiceImpl implements OrderService {
     /** 店铺活动的自动优惠（满减）。此前 mkt_campaign 没有任何消费方 */
     private final CampaignPort campaignPort;
     private final PointsPort pointsPort;
+    /**
+     * 「这一行配了什么积分规则」（product 域）。
+     *
+     * <p>M9（2026-09-01）之前这个 Port 是<b>支付域</b>在调 —— 支付域反过来问商品配置。
+     * 现在由这边查好、随 {@code EarnLine} 传进去：规则是下单那一刻的事实，
+     * 而下单链路本来就在这儿。
+     */
+    private final ai.neargo.shop.spi.product.PointsRulePort pointsRulePort;
     private final SettlePort settlePort;
     private final StatusLogMapper statusLogMapper;
     private final PickupQueryPort pickupPort;
@@ -129,6 +137,7 @@ public class OrderServiceImpl implements OrderService {
                             ai.neargo.shop.spi.user.MerchantAdminPort merchantAdminPort,
                             AttributionPort attributionPort,
                             CouponPort couponPort, CampaignPort campaignPort, PointsPort pointsPort,
+                            ai.neargo.shop.spi.product.PointsRulePort pointsRulePort,
                             SettlePort settlePort,
                             StatusLogMapper statusLogMapper,
                             PickupQueryPort pickupPort,
@@ -154,6 +163,7 @@ public class OrderServiceImpl implements OrderService {
         this.attributionPort = attributionPort;
         this.couponPort = couponPort;
         this.pointsPort = pointsPort;
+        this.pointsRulePort = pointsRulePort;
         this.campaignPort = campaignPort;
         this.settlePort = settlePort;
         this.statusLogMapper = statusLogMapper;
@@ -1950,12 +1960,19 @@ public class OrderServiceImpl implements OrderService {
             long share = i == biggest ? 0 : base * nz(it.getAmount()) / total;
             allocated += share;
             out.add(new ai.neargo.shop.spi.settle.PointsPort.EarnLine(
-                    it.getGoodsNo(), it.getCategoryNo(), share));
+                    it.getGoodsNo(), it.getCategoryNo(), share,
+                    ruleOf(it.getGoodsNo(), it.getCategoryNo())));
         }
         OrdItem big = items.get(biggest);
         out.set(biggest, new ai.neargo.shop.spi.settle.PointsPort.EarnLine(
-                big.getGoodsNo(), big.getCategoryNo(), base - allocated));
+                big.getGoodsNo(), big.getCategoryNo(), base - allocated,
+                ruleOf(big.getGoodsNo(), big.getCategoryNo())));
         return out;
+    }
+
+    /** 见 {@link PointsRuleHandoff} —— 转换单独成类是因为它是这条链上唯一会静默出错的一步 */
+    private ai.neargo.shop.spi.settle.PointsPort.EarnRule ruleOf(String goodsNo, String categoryNo) {
+        return PointsRuleHandoff.toPayRule(pointsRulePort.ruleFor(goodsNo, categoryNo));
     }
 
     private static long nz(Long v) {

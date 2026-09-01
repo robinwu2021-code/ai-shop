@@ -84,8 +84,42 @@ public interface PointsPort {
      * @param baseMinor 这一行分到的计分基数。由调用方按行金额比例分摊子单基数，
      *                  <b>各行之和必须等于子单基数</b>（分摊余数补给最大的一行）
      */
-    record EarnLine(String goodsNo, String categoryNo, long baseMinor) {
+    /**
+     * @param goodsNo    商品号。<b>规则已经在 {@code rule} 里了</b>，这个只用于流水与排查
+     * @param categoryNo 下单时快照的二级类目。同上
+     * @param baseMinor  这一行的计分基数（分）
+     * @param rule       这一行适用的积分规则。<b>{@code null} 表示两层都没配</b>，
+     *                   支付域据此落到平台兜底比例。
+     *                   <p>⚠️ <b>{@code null} 与 {@code EarnRule(FIXED, 0)} 是两件事</b>：
+     *                   后者是「明确配了 0 分」（储值卡就是这么配的），要如实发 0。
+     *                   把两者混为一谈，储值卡会拿到兜底的非 0 值 ——
+     *                   这是多层配置最常见的那个 bug，而它在这个 record 上又出现一次机会。
+     */
+    record EarnLine(String goodsNo, String categoryNo, long baseMinor, EarnRule rule) {
     }
+
+    /**
+     * 积分规则。<b>与 {@code spi.product.PointsRulePort.EarnRule} 字段相同，刻意不复用。</b>
+     *
+     * <p>复用那个的话，支付域就要 import product 域的类型 ——
+     * 而 M9 这一步的全部目的是让支付域不认识 product。
+     * 编译期还连着的依赖不算断，只是看不见了。
+     *
+     * <p>代价是调用方（trade）要做一次转换。那一次转换是<b>有名字的地方</b>：
+     * 「配了 0」与「没配」的区分正是在那里最容易丢，而它现在有一行断言守着。
+     *
+     * @param mode  {@link #FIXED} / {@link #RATIO}
+     * @param value FIXED 时是分；RATIO 时是万分比（千分之一 = 10）。
+     *              <b>整数，不用浮点</b> —— 金额与比例一旦用 double，
+     *              对账时的分位差没人说得清
+     */
+    record EarnRule(String mode, long value) {
+    }
+
+    /** 定额（分） */
+    String FIXED = "FIXED";
+    /** 按成交额比例，值是<b>万分比</b> */
+    String RATIO = "RATIO";
 
     /**
      * @param points   实际发放的分数

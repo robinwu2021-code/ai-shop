@@ -17,6 +17,7 @@ import ai.neargo.shop.pay.entity.PtsUserLedger;
 import ai.neargo.shop.pay.entity.StlBill;
 import ai.neargo.shop.pay.entity.StlPointsPool;
 import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
+import ai.neargo.shop.spi.settle.PointsPort;
 import ai.neargo.shop.pay.mapper.SettleMappers.PointsAccountMapper;
 import ai.neargo.shop.pay.mapper.SettleMappers.PointsLedgerMapper;
 import ai.neargo.shop.pay.mapper.SettleMappers.PointsPoolMapper;
@@ -55,12 +56,6 @@ public class PointsServiceImpl implements PointsService {
 
 
     private final PointsAccountMapper accountMapper;
-    /**
-     * 「配了什么规则」的唯一来源（product 域）。
-     * <b>别在本类里再实现一遍那个优先级</b> —— 守卫测试会拦。
-     * 本类只负责「没配时用平台兜底」与「把规则换算成分」。
-     */
-    private final ai.neargo.shop.spi.product.PointsRulePort pointsRulePort;
     private final PointsLedgerMapper ledgerMapper;
     private final PointsPoolMapper poolMapper;
     private final BillMapper billMapper;
@@ -74,9 +69,7 @@ public class PointsServiceImpl implements PointsService {
                              PointsPoolMapper poolMapper,
                              BillMapper billMapper,
                              MerchantQueryPort merchantQuery,
-                             PaySettingService paySettings,
-                             ai.neargo.shop.spi.product.PointsRulePort pointsRulePort) {
-        this.pointsRulePort = pointsRulePort;
+                             PaySettingService paySettings) {
         this.accountMapper = accountMapper;
         this.ledgerMapper = ledgerMapper;
         this.poolMapper = poolMapper;
@@ -210,12 +203,16 @@ public class PointsServiceImpl implements PointsService {
         if (line.baseMinor() <= 0) {
             return 0;
         }
-        var rule = pointsRulePort.ruleFor(line.goodsNo(), line.categoryNo());
-        if (rule.isEmpty()) {
+        /*
+         * **规则由调用方传进来**（2026-09-01 · M9），支付域不回查 product。
+         * 它是「这一行配了什么」，下单那一刻就确定了，
+         * 而支付域没有任何理由去问一次商品配置 —— 那是反着的依赖。
+         */
+        var r = line.rule();
+        if (r == null) {
             return cfg.earnFor(line.baseMinor());
         }
-        var r = rule.get();
-        if (ai.neargo.shop.spi.product.PointsRulePort.FIXED.equals(r.mode())) {
+        if (PointsPort.FIXED.equals(r.mode())) {
             return Math.max(0, r.value());
         }
         // 万分比：**整数运算**，不用浮点 —— 对账时的分位差没人说得清

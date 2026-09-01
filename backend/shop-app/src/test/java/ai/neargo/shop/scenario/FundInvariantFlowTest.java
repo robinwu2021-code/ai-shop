@@ -348,7 +348,7 @@ class FundInvariantFlowTest {
         // 通道与场景由调用方传（2026-09-01）：这条用例验的是幂等，不是端策略，
         // 所以给一个正常放行的组合
         var again = pointsPort.grant(USER, ENTITY, List.of(
-                new PointsPort.EarnLine("G-INV", "C-INV", 1000L)), SUB, "WECHAT", null);
+                new PointsPort.EarnLine("G-INV", "C-INV", 1000L, null)), SUB, "WECHAT", null);
 
         /*
          * **判据是返回值，不是流水条数。**

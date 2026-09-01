@@ -171,7 +171,7 @@ class PointsClientSwitchFlowTest {
          * 从而放行；只有真的读了订单快照才拦得住。
          */
         PointsPort.GrantResult r = grantBySnapshot(user, MERCHANT,
-                List.of(new PointsPort.EarnLine("G0001", null, 10_000L)), subOrderNo);
+                List.of(new PointsPort.EarnLine("G0001", null, 10_000L, null)), subOrderNo);
 
         assertThat(r.points())
                 .as("读当前端的实现会在这里发出分来 —— 这条用例存在的全部意义")
@@ -187,7 +187,7 @@ class PointsClientSwitchFlowTest {
         String subOrderNo = orderPaidFrom(user, PayScenes.H5);
 
         PointsPort.GrantResult r = grantBySnapshot(user, MERCHANT,
-                List.of(new PointsPort.EarnLine("G0001", null, 10_000L)), subOrderNo);
+                List.of(new PointsPort.EarnLine("G0001", null, 10_000L, null)), subOrderNo);
 
         assertThat(r.points()).isPositive();
     }
@@ -210,7 +210,7 @@ class PointsClientSwitchFlowTest {
         String user = "U-PCS-4";
         String subOrderNo = orderPaidFrom(user, PayScenes.MP_WECHAT);
         PointsPort.GrantResult granted = grantBySnapshot(user, MERCHANT,
-                List.of(new PointsPort.EarnLine("G0001", null, 10_000L)), subOrderNo);
+                List.of(new PointsPort.EarnLine("G0001", null, 10_000L, null)), subOrderNo);
         assertThat(granted.points()).isPositive();
 
         denyEarn(PayScenes.MP_WECHAT);
@@ -229,7 +229,7 @@ class PointsClientSwitchFlowTest {
         String subOrderNo = paidOrderWith(user, PayScenes.MP_WECHAT, PayModes.OFFLINE);
 
         var r = grantBySnapshot(user, MERCHANT,
-                List.of(new PointsPort.EarnLine("G0001", null, 10_000L)), subOrderNo);
+                List.of(new PointsPort.EarnLine("G0001", null, 10_000L, null)), subOrderNo);
 
         assertThat(r.points())
                 .as("线上靠分账扣费用金，自营从应付货款里净出来 —— 线下两条路都没有")
@@ -249,7 +249,7 @@ class PointsClientSwitchFlowTest {
         String subOrderNo = paidOrderWith(user, PayScenes.MP_WECHAT, "WECHAT");
 
         assertThat(grantBySnapshot(user, MERCHANT,
-                List.of(new PointsPort.EarnLine("G0001", null, 10_000L)), subOrderNo).points())
+                List.of(new PointsPort.EarnLine("G0001", null, 10_000L, null)), subOrderNo).points())
                 .isPositive();
     }
 
