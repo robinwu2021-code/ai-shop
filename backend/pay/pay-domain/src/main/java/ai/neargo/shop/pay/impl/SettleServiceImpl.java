@@ -149,7 +149,7 @@ public class SettleServiceImpl implements SettleService {
 
     @Override
     @Transactional("payTxManager")
-    public int generateForOrder(String orderNo) {
+    public int generateForOrder(String orderNo, List<SettleService.SettleInput> inputs) {
         int created = 0;
         /*
          * 费率一次取齐，不逐子单查库：一张订单跨 N 个商家就是 N 张结算单，
@@ -159,7 +159,8 @@ public class SettleServiceImpl implements SettleService {
         long at = System.currentTimeMillis();
         var rates = feeRuleService.effectiveRates(at);
 
-        for (SettleSourcePort.SettleSource src : sourcePort.settleSourcesOf(orderNo)) {
+        for (SettleService.SettleInput in : inputs) {
+            SettleSourcePort.SettleSource src = in.source();
             // 一个子单只能有一张结算单：重复生成 = 重复分账 = 给商家多打钱。
             // 靠先查再插 + DB 唯一索引双保险（事件重投时两条路径都可能撞上）
             if (findBySubOrder(src.subOrderNo()) != null) {
@@ -169,7 +170,7 @@ public class SettleServiceImpl implements SettleService {
              * 经营模式要在算费率之前拿到 —— 费率是「经营模式 × 流量来源」二维的。
              * 它同时还决定这张单走哪条状态机（见下方快照那段）。
              */
-            String mode = merchantQueryPort.businessModeOf(src.merchantNo(), src.storeNo());
+            String mode = in.businessMode();
             int rate = rates.getOrDefault(mode + "|" + normalizedSource(src.trafficSource()), 0);
 
             /*
@@ -206,7 +207,7 @@ public class SettleServiceImpl implements SettleService {
              * <b>只对新单生效</b>（2026-08-30 拍板）：这里是生成时一次性算定并落快照，
              * 存量单不会被重算 —— 历史账保持与当初真的打出去的钱一致。
              */
-            ChannelFee fee = channelFeeOf(src, at);
+            ChannelFee fee = channelFeeOf(in, at);
             long ruleCommission = (gross - fee.minor()) * rate / 10000;
             long commission = offline ? 0L : ruleCommission;
 
@@ -278,7 +279,7 @@ public class SettleServiceImpl implements SettleService {
              *
              * 落快照的理由不变：积分规则会变，「这单当初补了多少」必须能原样查回来。
              */
-            String fundsMode = merchantQueryPort.fundsModeOf(src.merchantNo());
+            String fundsMode = in.fundsMode();
             bill.setFundsMode(fundsMode);
             if (MerchantQueryPort.FUNDS_DIRECT.equals(fundsMode)) {
                 bill.setSubsidyMinor(src.pointsDeductMinor());
@@ -299,7 +300,7 @@ public class SettleServiceImpl implements SettleService {
              */
             bill.setStoreNo(src.storeNo());
             bill.setPayMerchantNo(
-                    merchantQueryPort.payMerchantNoOf(src.merchantNo(), src.storeNo()).orElse(null));
+                    in.payMerchantNo());
             /*
              * 经营模式快照。它决定这张单走哪条状态机：
              *   自营   PENDING_RECON → CONFIRMED → PAID（对账 → 确认 → 财务付款）
@@ -767,14 +768,15 @@ public class SettleServiceImpl implements SettleService {
      *
      * <p>线下（当面）收款返回空值：钱从没进过通道，谈不上通道手续费。
      */
-    private ChannelFee channelFeeOf(SettleSourcePort.SettleSource src, long at) {
+    private ChannelFee channelFeeOf(SettleService.SettleInput in, long at) {
+        SettleSourcePort.SettleSource src = in.source();
         if (src.payChannel() == null || PayModes.OFFLINE.equals(src.payChannel())) {
             return ChannelFee.none();
         }
-        String resolved = merchantQueryPort.feeBearerOf(src.merchantNo(), src.storeNo(), src.payChannel());
+        String resolved = in.feeBearer();
         String bearer = resolved == null || resolved.isBlank() ? MchFeeBearer.UNKNOWN : resolved;
         var rate = channelRates.effective(src.payChannel(), src.payScene(),
-                merchantQueryPort.legalFormOf(src.merchantNo()), at);
+                in.legalForm(), at);
         if (rate == null) {
             /*
              * 承担方仍然要落：它来自进件档案，与费率配没配无关。

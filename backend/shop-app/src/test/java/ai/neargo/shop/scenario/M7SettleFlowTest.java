@@ -190,6 +190,9 @@ class M7SettleFlowTest {
      */
     private ai.neargo.shop.paybridge.PaymentReconReconciler paymentRecon;
 
+    @Autowired
+    private ai.neargo.shop.paybridge.SettleGenerationOrchestrator settleOrchestrator;
+
     @Test
     @DisplayName("★★ I8 不会去动本来就没问题的单 —— 否则「补了几个」这个数永远等于扫描数")
     void invariantI8LeavesHealthyOrdersAlone() throws Exception {
@@ -390,9 +393,15 @@ class M7SettleFlowTest {
         String token = login("12800128024");
         String payOrderNo = buyAndPay(token, "G0002", "SK0003", null, "m7-once");
 
-        // 重复触发生成（模拟 OrderPaid 事件重投）
-        settleService.generateForOrder(payOrderNo);
-        settleService.generateForOrder(payOrderNo);
+        /*
+         * 重复触发生成（模拟 OrderPaid 事件重投）。
+         * 走**编排器**而不是 settleService —— 2026-09-01 起组装
+         * 「子单构成 + 商家属性快照」是 paybridge 的事，
+         * 而真实链路（SettlePort.generateForOrder）走的正是它。
+         * 直接调 settleService 的话，测的是一条生产上不存在的路径。
+         */
+        settleOrchestrator.generateForOrder(payOrderNo);
+        settleOrchestrator.generateForOrder(payOrderNo);
 
         String biz = loginAsOwnerOf("M0001", "12800128025");
         String body = mvc().perform(get("/biz/settle/bills").header("Authorization", "Bearer " + biz))

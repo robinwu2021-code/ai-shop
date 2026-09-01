@@ -6,12 +6,55 @@ import ai.neargo.shop.pay.dto.RateCardVO;
 import ai.neargo.shop.pay.dto.SettleBillVO;
 
 import java.util.List;
+import ai.neargo.shop.spi.trade.SettleSourcePort;
 
 /** 结算与分账（[API 清单 §3.10 / §4.12]）。 */
 public interface SettleService {
 
     /** 支付成功后按子单生成结算单。**幂等**：事件重投不会重复生成。 */
-    int generateForOrder(String orderNo);
+
+    /**
+     * 生成结算单 —— <b>输入由调用方组装好，pay 不查任何业务表</b>。
+     *
+     * <h2>为什么改成这样（2026-09-01）</h2>
+     * 此前它只收一个订单号，然后自己去查：子单构成（{@code SettleSourcePort}）、
+     * 五个商家属性（{@code MerchantQueryPort}）—— 两条都是<b>反向依赖</b>，
+     * 而按「除回调外不做反向依赖，pay 只解决 pay 的核心问题」它们不该存在。
+     *
+     * <p>组装放在 {@code shop-app/paybridge}：<b>那一层同时够得着 trade 与 merchant</b>。
+     * 不放在 trade 侧，是因为 {@code shop-core} 并不依赖 {@code shop-merchant} ——
+     * 让它去查商家属性只是把跨域调用挪个地方，不是消除。
+     *
+     * <h2>五个商家属性为什么是「快照」而不是「参数」</h2>
+     * 它们本来就要落到结算单上（{@code stl_bill} 上已有 {@code feeBearer} /
+     * {@code payMerchantNo} / {@code businessMode} / {@code fundsMode} 四列）——
+     * 结算单要回答的是<b>「当时按什么算的」</b>，而实时查商家表回答的是
+     * 「现在是什么」。商家改了收款号，历史结算单不该跟着变
+     * （{@code StoreSettleFlowTest} 里有一条测试守着这件事）。
+     *
+     * <p>所以这次改动<b>顺带把拆库时的跨库热路径也解决了</b>：
+     * 结算之后的动作（分账、提现）读的都是 stl_bill 上的快照，不再回查商家库。
+     *
+     * @return 生成了几张结算单。<b>幂等</b>：已有的不重复生成
+     */
+    int generateForOrder(String orderNo, java.util.List<SettleInput> inputs);
+
+    /**
+     * 一个子单的结算输入：子单构成 + 那一刻的商家属性快照。
+     *
+     * @param businessMode   经营模式（自营 / 第三方）—— 决定记账口径与对账轨道
+     * @param payMerchantNo  收款商户号。<b>可为空</b>：没进件的商家也要能出结算单，
+     *                       否则那笔账就没人记了 —— 空的表现是「知道该给谁，但打不出去」
+     * @param legalForm      主体形态。通道费率按它分档
+     * @param fundsMode      资金模式
+     * @param feeBearer      手续费承担方。<b>与费率配没配无关</b> ——
+     *                       它来自进件档案，只有它有值而费率为空时，
+     *                       读单据的人才看得出「知道该谁出，但不知道出多少」
+     */
+    record SettleInput(SettleSourcePort.SettleSource source, String businessMode,
+                       String payMerchantNo, String legalForm, String fundsMode,
+                       String feeBearer) {
+    }
 
     /**
      * <b>通道回执确认分账已到账。</b>把 {@code SPLIT} 推到终态 {@code SPLIT_CONFIRMED}。
