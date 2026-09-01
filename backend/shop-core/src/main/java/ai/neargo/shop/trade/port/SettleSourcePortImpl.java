@@ -150,6 +150,40 @@ public class SettleSourcePortImpl implements SettleSourcePort {
                 .toList();
     }
 
+    /**
+     * I8 的右边。<b>判据就是「不等于 PAID」</b> ——
+     * 主单只有五个状态（WAIT_PAY / PAID / WAIT_OFFLINE_PAY / CANCELLED / CLOSED），
+     * 发货、完成那些在子单上，所以这里不需要一张「PAID 之后有哪些状态」的清单。
+     * <b>那种清单是会腐烂的</b>：加一个新状态而忘了往清单里补，
+     * 表现就是那批订单被当成「没付」，然后每轮都去补一次。
+     *
+     * <p>CANCELLED / CLOSED 也照样报出来，而且它们比 WAIT_PAY 更该有人看：
+     * <b>支付域收到了钱，而订单已经取消了。</b>
+     * 自动补会被状态机拒绝（调用方接住并计入 failed），这是对的 ——
+     * 那种单要人去决定是退款还是恢复，不是机器能定的。
+     *
+     * <p>查不到的订单号同样算「没付」：支付域有一笔账指向库里不存在的订单，
+     * 比「没转 PAID」更该有人看。
+     */
+    @Override
+    public List<String> notPaidOrders(java.util.Collection<String> orderNos) {
+        if (orderNos == null || orderNos.isEmpty()) {
+            return List.of();
+        }
+        List<OrdOrder> found = DataScopeContext.executeWithoutScope(() ->
+                orderMapper.selectList(Wrappers.<OrdOrder>lambdaQuery()
+                        .in(OrdOrder::getOrderNo, orderNos)));
+        Map<String, String> statusOf = found.stream()
+                .collect(Collectors.toMap(OrdOrder::getOrderNo, OrdOrder::getStatus, (a, b) -> a));
+        return orderNos.stream()
+                // 先判 null 再比，理由同 notPaidAmong
+                .filter(no -> {
+                    String status = statusOf.get(no);
+                    return status == null || !OrdOrder.PAID.equals(status);
+                })
+                .toList();
+    }
+
     /** 不变式 I3 的左边：这段时间里标着「已发过积分」的子单 */
     @Override
     public List<String> pointsGrantedSince(long since, int limit) {

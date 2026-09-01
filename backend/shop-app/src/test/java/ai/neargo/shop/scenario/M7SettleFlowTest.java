@@ -93,6 +93,106 @@ class M7SettleFlowTest {
         assertThat(payOrderNo).isNotBlank();
     }
 
+    /**
+     * 不变式 I8：支付域收到了钱，订单就必须是已支付。
+     *
+     * <p><b>模拟的是「回调丢了」</b>：先走完整链路付成功（于是 stl_payment 有一笔
+     * SUCCESS），再把订单状态改回 WAIT_PAY —— 这正是那条链三层保证<b>全部</b>
+     * 失效之后库里的样子（同步调用没成、Outbox 那行也没写成）。
+     *
+     * <p>它对应的用户投诉是「我付了钱，订单还显示待支付」。
+     * 客服在后台看到的也是「未支付」，没有任何线索说明钱已经到了 ——
+     * 所以这一层不能靠人发现，必须有任务去比。
+     */
+    @Test
+    @DisplayName("★★★ I8：支付流水成功而订单没转已支付时，巡检要能自己补回来")
+    void invariantI8RepairsOrderStuckInWaitPay() throws Exception {
+        String token = login("12800128099");
+        String payOrderNo = buyAndPay(token, "G0002", "SK0003", null, "m7-i8");
+
+        /*
+         * **支付流水要自己造。** 2026-09-01 查明：生产代码里没有一处写 stl_payment ——
+         * 回调只调 orderService.markPaid，那张表从 V1 建起就是空的。
+         * 所以这里造的不是「测试替身」，是**这条链路本该产生、而今天没有产生的那行数据**。
+         * 前提补上之前，I8 在生产上会被自己的对照量报成「扫到 0 笔」，那是对的。
+         */
+        givenSuccessPayment(payOrderNo);
+
+        // 把订单打回「待支付」—— 支付流水不动，于是两边就不一致了
+        int rolled = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
+            var o = orderMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
+                    .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, payOrderNo));
+            o.setStatus(ai.neargo.shop.trade.entity.OrdOrder.WAIT_PAY);
+            return orderMapper.updateById(o);
+        });
+        assertThat(rolled)
+                .as("前置没造成功的话，下面「补回来了」就是句空话 —— 它本来就是 PAID")
+                .isEqualTo(1);
+        assertThat(statusOf(payOrderNo)).isEqualTo(ai.neargo.shop.trade.entity.OrdOrder.WAIT_PAY);
+
+        var r = reconciler.reconcile(0L, 100);
+
+        assertThat(r.scanned())
+                .as("一笔成功支付都没扫到 —— 那「没有不一致」只是「没有在看」")
+                .isPositive();
+        assertThat(r.repaired()).as("这一笔就是不一致的那笔").isPositive();
+        assertThat(r.failed()).isZero();
+        assertThat(statusOf(payOrderNo))
+                .as("补完之后订单必须回到已支付 —— 这才是用户看得到的那件事")
+                .isEqualTo(ai.neargo.shop.trade.entity.OrdOrder.PAID);
+    }
+
+    @Test
+    @DisplayName("★★ I8 不会去动本来就没问题的单 —— 否则「补了几个」这个数永远等于扫描数")
+    void invariantI8LeavesHealthyOrdersAlone() throws Exception {
+        String token = login("12800128098");
+        String payOrderNo = buyAndPay(token, "G0002", "SK0003", null, "m7-i8-clean");
+        givenSuccessPayment(payOrderNo);
+
+        var r = reconciler.reconcile(0L, 100);
+
+        assertThat(r.scanned())
+                .as("对照量：确实扫到了成功支付，否则下面那条 0 不说明任何问题")
+                .isPositive();
+        assertThat(r.repaired())
+                .as("所有订单都已是 PAID，一个都不该补。这个数要是等于 scanned，"
+                        + "多半是判据的粒度错了（拿子单的方法去比主单）")
+                .isZero();
+    }
+
+    /** 造一笔成功的收款流水，指向这个订单 */
+    private void givenSuccessPayment(String orderNo) {
+        var p = new ai.neargo.shop.pay.entity.StlPayment();
+        p.setPaymentNo("PY-I8-" + orderNo);
+        p.setDirection(ai.neargo.shop.pay.entity.StlPayment.PAY);
+        p.setStatus(ai.neargo.shop.pay.entity.StlPayment.SUCCESS);
+        p.setOrderNo(orderNo);
+        p.setOutTradeNo("OUT-I8-" + orderNo);
+        p.setPayChannel("WECHAT");
+        p.setUserNo("U-I8");
+        p.setAmountMinor(6980L);
+        p.setSucceededAt(System.currentTimeMillis());
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                () -> paymentMapper.insert(p));
+    }
+
+    @Autowired
+    private ai.neargo.shop.pay.mapper.SettleMappers.PaymentMapper paymentMapper;
+
+    private String statusOf(String orderNo) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                orderMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
+                        .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, orderNo))).getStatus();
+    }
+
+    @Autowired
+    private ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper;
+
+    @Autowired
+    private ai.neargo.shop.paybridge.OrderPaidReconciler reconciler;
+
     @Test
     @DisplayName("★ 平台券的钱要给商家：gross = 实付 + 平台补贴")
     void platformCouponIsReimbursedToMerchant() throws Exception {

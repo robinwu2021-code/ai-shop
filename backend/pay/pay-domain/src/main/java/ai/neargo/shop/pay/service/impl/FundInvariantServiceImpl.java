@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.SettleService;
 import ai.neargo.shop.pay.entity.PtsUserLedger;
 import ai.neargo.shop.pay.entity.StlBill;
+import ai.neargo.shop.pay.entity.StlPayment;
 import ai.neargo.shop.pay.mapper.SettleMappers;
 import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
 import ai.neargo.shop.pay.service.FundInvariantService;
@@ -23,6 +24,7 @@ public class FundInvariantServiceImpl implements FundInvariantService {
     private static final Logger log = LoggerFactory.getLogger(FundInvariantServiceImpl.class);
 
     private final BillMapper billMapper;
+    private final SettleMappers.PaymentMapper paymentMapper;
     private final SettleMappers.PointsLedgerMapper ledgerMapper;
     private final SettleSourcePort sourcePort;
     private final SettleService settleService;
@@ -32,12 +34,37 @@ public class FundInvariantServiceImpl implements FundInvariantService {
                                     SettleMappers.PointsLedgerMapper ledgerMapper,
                                     SettleSourcePort sourcePort,
                                     SettleService settleService,
-                                    ai.neargo.shop.pay.PointsService pointsService) {
+                                    ai.neargo.shop.pay.PointsService pointsService,
+                                    SettleMappers.PaymentMapper paymentMapper) {
         this.billMapper = billMapper;
+        this.paymentMapper = paymentMapper;
         this.ledgerMapper = ledgerMapper;
         this.sourcePort = sourcePort;
         this.settleService = settleService;
         this.pointsService = pointsService;
+    }
+
+    /**
+     * 只读，且<b>只挑有订单号的</b>。
+     *
+     * <p>提现（PAYOUT）、补贴（SUBSIDY）这类流水的 {@code orderNo} 是空的 ——
+     * 它们成功与订单状态无关，混进来会让 I8 每轮都在比对一批永远对不上的东西，
+     * 而那种噪声最后的效果是没人再看这个任务的结果。
+     */
+    @Override
+    public List<SuccessPayment> successPaymentsSince(long since, int limit) {
+        return DataScopeContext.executeWithoutScope(() -> paymentMapper.selectList(
+                        Wrappers.<StlPayment>lambdaQuery()
+                                .eq(StlPayment::getDirection, StlPayment.PAY)
+                                .eq(StlPayment::getStatus, StlPayment.SUCCESS)
+                                .isNotNull(StlPayment::getOrderNo)
+                                .ge(StlPayment::getSucceededAt, since)
+                                .orderByAsc(StlPayment::getSucceededAt)
+                                .last("LIMIT " + limit)))
+                .stream()
+                .map(p -> new SuccessPayment(p.getPaymentNo(), p.getOrderNo(),
+                        p.getSucceededAt() == null ? 0L : p.getSucceededAt()))
+                .toList();
     }
 
     @Override

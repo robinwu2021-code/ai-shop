@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.service;
 
+import java.util.List;
 /**
  * 资金不变式巡检 —— <b>第三层保证</b>。
  *
@@ -34,6 +35,31 @@ public interface FundInvariantService {
      * @param limit 单轮上限
      */
     ScanResult scan(long since, int limit);
+
+    /**
+     * <b>付成功了的那些账</b>（不变式 I8 的左边）。
+     *
+     * <p>这是支付域对外说的一句话：<b>「我这边收到了这些钱」</b>。
+     * 谁拿去跟订单状态比、比出来怎么补，都不是支付域的事 ——
+     * I8 的巡检跑在主应用侧，方向是<b>主应用主动来拉</b>。
+     *
+     * <p>方向刻意不反过来（pay 去查订单、发现没 PAID 就调主应用补）：
+     * 那样支付域的巡检就依赖主应用可用，而<b>「回调直接进 pay」的初衷
+     * 恰恰是让收款这条链不依赖主应用</b>。一个只读的查询接口是它该露的全部。
+     *
+     * @param since 只看这个时刻之后成功的。不扫全量 —— 理由同 {@link #scan}
+     * @param limit 单轮上限
+     */
+    List<SuccessPayment> successPaymentsSince(long since, int limit);
+
+    /**
+     * @param paymentNo 支付流水号
+     * @param orderNo   这笔钱付的是哪个订单。**可能为空** ——
+     *                  提现、补贴这类流水没有订单，调用方要自己滤掉
+     * @param paidAt    通道回执的成功时刻
+     */
+    record SuccessPayment(String paymentNo, String orderNo, long paidAt) {
+    }
 
     /**
      * 释放<b>预占了积分、而订单已经不可能成交</b>的那些（不变式 I6）。
