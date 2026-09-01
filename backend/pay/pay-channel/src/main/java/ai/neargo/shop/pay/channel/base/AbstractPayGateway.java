@@ -3,7 +3,7 @@ package ai.neargo.shop.pay.channel.base;
 import ai.neargo.shop.pay.channel.ChannelClient;
 import ai.neargo.shop.pay.channel.ChannelClient.ChannelException;
 import ai.neargo.shop.pay.channel.PayGateway;
-import ai.neargo.shop.spi.platform.MasterDataPort;
+import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,11 +61,12 @@ public abstract class AbstractPayGateway implements PayGateway {
     }
 
     protected final ChannelClient client;
-    private final MasterDataPort masterData;
+    /** 通道属性。2026-09-01 起同模块直调，不再经 MasterDataPort 反向问主应用 */
+    protected final PayChannelMasterService channelMaster;
 
-    protected AbstractPayGateway(ChannelClient client, MasterDataPort masterData) {
+    protected AbstractPayGateway(ChannelClient client, PayChannelMasterService channelMaster) {
         this.client = client;
-        this.masterData = masterData;
+        this.channelMaster = channelMaster;
     }
 
     // ------------------------------------------------------------ 模板方法
@@ -186,7 +187,7 @@ public abstract class AbstractPayGateway implements PayGateway {
      * <b>要拦更多的时候，加在这里，不要加在子类里。</b>
      */
     private String capabilityDenial(Op op) {
-        if (op == Op.SUBSIDY && !masterData.supportsSubsidy(payChannel())) {
+        if (op == Op.SUBSIDY && !channelMaster.supportsSubsidy(payChannel())) {
             return payChannel() + " 不支持补差（sys_pay_channel.supports_subsidy=0）";
         }
         return null;

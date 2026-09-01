@@ -1,6 +1,6 @@
-package ai.neargo.shop.platform;
+package ai.neargo.shop.pay.channel.master;
 
-import ai.neargo.shop.platform.entity.SysPayChannelRate;
+import ai.neargo.shop.pay.channel.entity.SysPayChannelRate;
 
 import java.util.List;
 
@@ -22,7 +22,19 @@ public interface PayChannelRateService {
      * @return 命中的那一版；<b>一条都没配返回 null</b>，调用方自己决定怎么办 ——
      *         这里不兜 0，兜 0 等于悄悄按「零手续费」算账
      */
-    SysPayChannelRate effective(String payChannel, String payMethod, String legalForm, long at);
+    ChannelFeeRate effective(String payChannel, String payMethod, String legalForm, long at);
+
+    /**
+     * 生效费率的三个数。<b>不返回 entity</b>：{@code SysPayChannelRate} 带
+     * {@code @TableName}，把它放进接口签名会让调用方绑上持久化框架 ——
+     * 与 {@code FeeRuleService} 换 {@code FeeRuleVO} 是同一条理由
+     * （见 PayHasNoControllerTest 的第三条闸门）。
+     *
+     * @param rateNo 版本号。<b>要落到结算单上</b> —— 事后回答「这笔按哪一版算的」
+     *               靠的就是它，而只记一个费率数字答不了这个问题
+     */
+    record ChannelFeeRate(int rateBp, long minFeeMinor, String rateNo) {
+    }
 
     /** 某通道的全部版本，按生效时间倒序 —— 运营页要看「现在是哪一版、下一版什么时候生效」。 */
     List<SysPayChannelRate> history(String payChannel);

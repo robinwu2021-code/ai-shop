@@ -9,16 +9,15 @@ import ai.neargo.shop.platform.ServiceScopeService;
 import ai.neargo.shop.platform.dto.MasterDataVO;
 import ai.neargo.shop.platform.entity.SysIndustry;
 import ai.neargo.shop.platform.entity.SysLegalForm;
-import ai.neargo.shop.platform.entity.SysPayChannel;
 import ai.neargo.shop.platform.mapper.PlatformMappers.IndustryMapper;
 import ai.neargo.shop.platform.mapper.PlatformMappers.MerchantSubjectMapper;
-import ai.neargo.shop.platform.mapper.PlatformMappers.PayChannelMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import ai.neargo.shop.spi.pay.PayChannelMasterPort;
 
 /** {@link MasterDataService} 实现。跨域调用见 {@code platform.port.MasterDataPortImpl}。 */
 @Service
@@ -29,18 +28,19 @@ public class MasterDataServiceImpl implements MasterDataService {
 
     private final IndustryMapper industryMapper;
     private final MerchantSubjectMapper subjectMapper;
-    private final PayChannelMapper channelMapper;
     private final ObjectMapper json;
+    /** 通道属性归 pay 之后，这边只能通过 spi 拿 */
+    private final PayChannelMasterPort payChannelMasterPort;
     /** 经营范围的启用白名单归它管 —— 一期开哪几档是运营的决定，不该发版 */
     private final ServiceScopeService serviceScopeService;
 
     public MasterDataServiceImpl(IndustryMapper industryMapper, MerchantSubjectMapper subjectMapper,
-                                 PayChannelMapper channelMapper, ObjectMapper json,
+                                 ObjectMapper json, PayChannelMasterPort payChannelMasterPort,
                                  ServiceScopeService serviceScopeService) {
         this.industryMapper = industryMapper;
         this.subjectMapper = subjectMapper;
-        this.channelMapper = channelMapper;
         this.json = json;
+        this.payChannelMasterPort = payChannelMasterPort;
         this.serviceScopeService = serviceScopeService;
     }
 
@@ -50,9 +50,12 @@ public class MasterDataServiceImpl implements MasterDataService {
                 industryMapper.selectList(Wrappers.<SysIndustry>lambdaQuery()
                         .eq(SysIndustry::getEnabled, true).orderByAsc(SysIndustry::getSort)));
         List<SysLegalForm> subjects = enabledSubjectRows();
-        List<SysPayChannel> channels = DataScopeContext.executeWithoutScope(() ->
-                channelMapper.selectList(Wrappers.<SysPayChannel>lambdaQuery()
-                        .eq(SysPayChannel::getEnabled, true)));
+        /*
+         * 通道走 spi 拿：2026-09-01 通道属性搬进 pay 之后，平台主数据不再直接读那张表
+         * （见 TDD-支付域-核心边界与迁移任务 §A2）。方向是 **业务域 → pay**，
+         * 与「业务域 0 处 import pay」的原则一致 —— 这里 import 的是 spi 接口。
+         */
+        var channels = payChannelMasterPort.enabledBriefs(null);
 
         return new MasterDataVO(
                 industries.stream().map(i -> new MasterDataVO.Industry(
@@ -67,8 +70,7 @@ public class MasterDataServiceImpl implements MasterDataService {
                         Boolean.TRUE.equals(s.getIndustryGated()),
                         s.getSettleAccountType())).toList(),
                 channels.stream().map(c -> new MasterDataVO.Channel(
-                        c.getPayChannel(), c.getName(), Boolean.TRUE.equals(c.getEnabled()),
-                        readList(c.getPayMethods()))).toList(),
+                        c.payChannel(), c.name(), c.enabled(), c.payMethods())).toList(),
                 /*
                  * 按 ServiceScopeServiceImpl.ORDER 的顺序输出启用的那几档 ——
                  * 顺序是产品定义（按履约半径从小到大，与 ADR-009 的叙述一致），
@@ -112,18 +114,6 @@ public class MasterDataServiceImpl implements MasterDataService {
         return enabledSubjectRows().stream().map(SysLegalForm::getLegalForm).toList();
     }
 
-    @Override
-    public List<String> enabledChannels(String market) {
-        String m = market == null || market.isBlank() ? DEFAULT_MARKET : market;
-        var rows = DataScopeContext.executeWithoutScope(() ->
-                channelMapper.selectList(Wrappers.<SysPayChannel>lambdaQuery()
-                        .eq(SysPayChannel::getEnabled, true)
-                        .orderByAsc(SysPayChannel::getId)));
-        return rows.stream()
-                .filter(r -> marketAllowed(r.getMarkets(), m))
-                .map(SysPayChannel::getPayChannel)
-                .toList();
-    }
 
     /**
      * {@code markets} 是一列 JSON 数组文本。**空按全市场可用** ——
@@ -188,46 +178,8 @@ public class MasterDataServiceImpl implements MasterDataService {
         return row == null ? null : row.getSettleAccountType();
     }
 
-    @Override
-    public boolean supportsSubsidy(String payChannel) {
-        if (payChannel == null || payChannel.isBlank()) {
-            return false;
-        }
-        var row = DataScopeContext.executeWithoutScope(() ->
-                channelMapper.selectOne(Wrappers.<SysPayChannel>lambdaQuery()
-                        .eq(SysPayChannel::getPayChannel, payChannel)
-                        .last("LIMIT 1")));
-        // 查不到按 false：这个字段建出来就是为了拦截，而「查不到 = 支持」
-        // 会让不具备补差能力的通道静默开出积分抵扣 —— 症状是商家账上少一笔钱
-        return row != null && Boolean.TRUE.equals(row.getSupportsSubsidy());
-    }
 
-    @Override
-    public String channelName(String payChannel) {
-        if (payChannel == null || payChannel.isBlank()) {
-            return payChannel;
-        }
-        var row = DataScopeContext.executeWithoutScope(() ->
-                channelMapper.selectOne(Wrappers.<SysPayChannel>lambdaQuery()
-                        .eq(SysPayChannel::getPayChannel, payChannel)
-                        .last("limit 1")));
-        return row == null || row.getName() == null ? payChannel : row.getName();
-    }
 
-    @Override
-    public String channelSettleCycle(String payChannel) {
-        if (payChannel == null || payChannel.isBlank()) {
-            return null;
-        }
-        var row = DataScopeContext.executeWithoutScope(() ->
-                channelMapper.selectOne(Wrappers.<SysPayChannel>lambdaQuery()
-                        .eq(SysPayChannel::getPayChannel, payChannel)
-                        .last("limit 1")));
-        // 查不到给 null 不兜 T+1：兜了之后「没配过」与「配成 T+1」在调用方看来一样，
-        // 而这两者在排查「为什么这家的钱等这么久」时是完全不同的答案
-        return row == null || row.getSettleCycle() == null || row.getSettleCycle().isBlank()
-                ? null : row.getSettleCycle();
-    }
 
     private SysLegalForm row(String subjectType) {
         if (subjectType == null || subjectType.isBlank()) {

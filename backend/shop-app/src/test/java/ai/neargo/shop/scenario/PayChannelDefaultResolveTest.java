@@ -1,7 +1,7 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.platform.entity.SysPayChannel;
-import ai.neargo.shop.platform.mapper.PlatformMappers.PayChannelMapper;
+import ai.neargo.shop.pay.channel.entity.SysPayChannel;
+import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelMapper;
 import ai.neargo.shop.spi.platform.MasterDataPort;
 import ai.neargo.common.data.scope.DataScopeContext;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -37,7 +37,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PayChannelDefaultResolveTest {
 
     @Autowired
-    private MasterDataPort masterData;
+    /** 通道属性 2026-09-01 归 pay，这里改用 PayChannelMasterPort */
+    private ai.neargo.shop.spi.pay.PayChannelMasterPort masterData;
     @Autowired
     private PayChannelMapper channelMapper;
     @Autowired

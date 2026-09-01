@@ -1,7 +1,7 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.platform.PayChannelRateService;
-import ai.neargo.shop.platform.entity.SysPayChannelRate;
+import ai.neargo.shop.pay.channel.master.PayChannelRateService;
+import ai.neargo.shop.pay.channel.entity.SysPayChannelRate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,9 +47,9 @@ class PayChannelRateFlowTest {
         add(ch, "*", "*", 38, 1_000L);
         add(ch, "*", "*", 60, 5_000L);
 
-        assertThat(rates.effective(ch, "*", "*", 3_000L).getRateBp())
+        assertThat(rates.effective(ch, "*", "*", 3_000L).rateBp())
                 .as("3000 这一刻只有第一版生效").isEqualTo(38);
-        assertThat(rates.effective(ch, "*", "*", 9_000L).getRateBp())
+        assertThat(rates.effective(ch, "*", "*", 9_000L).rateBp())
                 .as("调完之后取新版").isEqualTo(60);
         assertThat(rates.effective(ch, "*", "*", 500L))
                 .as("第一版生效之前，没有任何一版").isNull();
@@ -62,9 +62,9 @@ class PayChannelRateFlowTest {
         add(ch, "*", "*", 38, 1_000L);
         add(ch, "JSAPI", "ENTERPRISE", 20, 1_000L);
 
-        assertThat(rates.effective(ch, "JSAPI", "ENTERPRISE", 2_000L).getRateBp())
+        assertThat(rates.effective(ch, "JSAPI", "ENTERPRISE", 2_000L).rateBp())
                 .as("两维都精确命中").isEqualTo(20);
-        assertThat(rates.effective(ch, "JSAPI", "MICRO", 2_000L).getRateBp())
+        assertThat(rates.effective(ch, "JSAPI", "MICRO", 2_000L).rateBp())
                 .as("主体形态没有专属版，回落通配").isEqualTo(38);
     }
 
@@ -76,7 +76,7 @@ class PayChannelRateFlowTest {
         add(ch, "*", "*", 38, now - 1000);
         add(ch, "*", "*", 25, now + 86_400_000L);
 
-        assertThat(rates.effective(ch, "*", "*", now).getRateBp())
+        assertThat(rates.effective(ch, "*", "*", now).rateBp())
                 .as("明天才生效的那一版，今天不能用").isEqualTo(38);
         assertThat(rates.history(ch)).as("但它要在列表里看得见").hasSize(2);
     }

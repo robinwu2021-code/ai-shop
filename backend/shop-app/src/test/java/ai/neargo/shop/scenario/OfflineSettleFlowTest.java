@@ -90,7 +90,7 @@ class OfflineSettleFlowTest {
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     @Autowired
-    private ai.neargo.shop.platform.PayChannelRateService payChannelRateService;
+    private ai.neargo.shop.pay.channel.master.PayChannelRateService payChannelRateService;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -446,8 +446,8 @@ class OfflineSettleFlowTest {
      * 留一行 WECHAT 费率在库里，此后**所有**线上单都会带上手续费 ——
      * 而别的用例的失败信息里不会有任何一个字提到费率。
      */
-    private ai.neargo.shop.platform.entity.SysPayChannelRate addWechatRate(int bp, long minFee) {
-        var r = new ai.neargo.shop.platform.entity.SysPayChannelRate();
+    private ai.neargo.shop.pay.channel.entity.SysPayChannelRate addWechatRate(int bp, long minFee) {
+        var r = new ai.neargo.shop.pay.channel.entity.SysPayChannelRate();
         r.setPayChannel("WECHAT");
         r.setRateBp(bp);
         r.setMinFeeMinor(minFee);
@@ -455,7 +455,7 @@ class OfflineSettleFlowTest {
         return payChannelRateService.add(r);
     }
 
-    private void dropRate(ai.neargo.shop.platform.entity.SysPayChannelRate r) {
+    private void dropRate(ai.neargo.shop.pay.channel.entity.SysPayChannelRate r) {
         DataScopeContext.executeWithoutScope(() -> jdbc.update(
                 "DELETE FROM sys_pay_channel_rate WHERE rate_no = ?", r.getRateNo()));
     }

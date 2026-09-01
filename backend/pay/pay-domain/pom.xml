@@ -26,6 +26,14 @@
             <artifactId>shop-store-mybatis</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 通道主数据与通道适配。2026-09-01：通道属性从 platform 搬进 pay 之后，
+             结算要用的 supportsSubsidy / channelFeeRate / settleCycle 都在这里 ——
+             **不再经 MasterDataPort 反向问主应用**（见 TDD-支付域-核心边界与迁移任务 §A2）。 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>pay-channel</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
 </project>

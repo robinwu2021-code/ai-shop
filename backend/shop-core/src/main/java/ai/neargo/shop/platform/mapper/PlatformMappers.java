@@ -3,7 +3,6 @@ package ai.neargo.shop.platform.mapper;
 import ai.neargo.shop.platform.entity.SysAuditLog;
 import ai.neargo.shop.platform.entity.SysChannelCategoryRule;
 import ai.neargo.shop.platform.entity.SysIndustry;
-import ai.neargo.shop.platform.entity.SysPayChannel;
 import ai.neargo.shop.platform.entity.SysOpsStaff;
 import ai.neargo.shop.platform.entity.MchEntityApply;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -27,12 +26,10 @@ public final class PlatformMappers {
     public interface ChannelCategoryRuleMapper extends BaseMapper<SysChannelCategoryRule> {
     }
 
-    public interface PayChannelMapper extends BaseMapper<SysPayChannel> {
-    }
-
-    /** 通道费率版本表（V274）。 */
-    public interface PayChannelRateMapper extends BaseMapper<ai.neargo.shop.platform.entity.SysPayChannelRate> {
-    }
+    /*
+     * 通道与通道费率的 mapper 2026-09-01 搬到 pay-channel 了 ——
+     * 通道属性是支付域的知识（见 TDD-支付域-核心边界与迁移任务 §A2）。
+     */
 
     public interface IndustryMapper extends BaseMapper<SysIndustry> {
     }

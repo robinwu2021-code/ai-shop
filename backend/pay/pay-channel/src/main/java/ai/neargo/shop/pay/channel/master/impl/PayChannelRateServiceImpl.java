@@ -1,16 +1,17 @@
-package ai.neargo.shop.platform.impl;
+package ai.neargo.shop.pay.channel.master.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.platform.PayChannelRateService;
-import ai.neargo.shop.platform.entity.SysPayChannelRate;
-import ai.neargo.shop.platform.mapper.PlatformMappers.PayChannelRateMapper;
+
+import ai.neargo.shop.pay.channel.entity.SysPayChannelRate;
+import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelRateMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
 import java.util.List;
+import ai.neargo.shop.pay.channel.master.PayChannelRateService;
 
 @Service
 public class PayChannelRateServiceImpl implements PayChannelRateService {
@@ -22,7 +23,7 @@ public class PayChannelRateServiceImpl implements PayChannelRateService {
     }
 
     @Override
-    public SysPayChannelRate effective(String payChannel, String payMethod, String legalForm, long at) {
+    public PayChannelRateService.ChannelFeeRate effective(String payChannel, String payMethod, String legalForm, long at) {
         List<SysPayChannelRate> rows = DataScopeContext.executeWithoutScope(() ->
                 mapper.selectList(Wrappers.<SysPayChannelRate>lambdaQuery()
                         .eq(SysPayChannelRate::getPayChannel, payChannel)
@@ -37,7 +38,7 @@ public class PayChannelRateServiceImpl implements PayChannelRateService {
             for (String lf : new String[]{legalForm, SysPayChannelRate.ANY}) {
                 SysPayChannelRate hit = pick(rows, pm, lf);
                 if (hit != null) {
-                    return hit;
+                    return toRate(hit);
                 }
             }
         }
@@ -45,6 +46,14 @@ public class PayChannelRateServiceImpl implements PayChannelRateService {
     }
 
     /** 同一格里取<b>生效时间最晚</b>的那一版 —— 版本表里同一格会有多条。 */
+    /** entity → 三个数。null 字段按 0，与搬家前 MasterDataPortImpl 里的处理逐字一致 */
+    private static PayChannelRateService.ChannelFeeRate toRate(SysPayChannelRate r) {
+        return new PayChannelRateService.ChannelFeeRate(
+                r.getRateBp() == null ? 0 : r.getRateBp(),
+                r.getMinFeeMinor() == null ? 0L : r.getMinFeeMinor(),
+                r.getRateNo());
+    }
+
     private static SysPayChannelRate pick(List<SysPayChannelRate> rows, String payMethod, String legalForm) {
         if (payMethod == null || legalForm == null) {
             return null;

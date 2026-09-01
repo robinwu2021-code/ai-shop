@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
 
 /**
  * 支付宝直付通网关。接口坐标见 {@link AlipayApis}。
@@ -33,9 +34,9 @@ public class AlipayPayGateway extends AbstractPayGateway {
     private final String platformAccount;
 
     public AlipayPayGateway(@Qualifier("alipayChannelClient") ChannelClient client,
-                            ai.neargo.shop.spi.platform.MasterDataPort masterData,
+                            PayChannelMasterService channelMaster,
                             @Value("${shop.pay.alipay.platform-account:}") String platformAccount) {
-        super(client, masterData);
+        super(client, channelMaster);
         this.platformAccount = platformAccount;
     }
 

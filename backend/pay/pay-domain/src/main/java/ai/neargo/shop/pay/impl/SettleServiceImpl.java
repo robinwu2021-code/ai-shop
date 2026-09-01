@@ -4,6 +4,8 @@ import ai.neargo.shop.pay.SettleService;
 import ai.neargo.shop.pay.SplitGateway;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
+import ai.neargo.shop.pay.channel.master.PayChannelRateService;
 import ai.neargo.shop.spi.trade.SettleSourcePort;
 import ai.neargo.shop.spi.user.PickupQueryPort;
 import ai.neargo.shop.common.BizException;
@@ -62,7 +64,12 @@ public class SettleServiceImpl implements SettleService {
     /** 积分池入账 —— 池子的记账口径归积分域，结算侧只在发生时调它 */
     private final ai.neargo.shop.pay.PointsService pointsService;
     /** 通道能力（能否补差）—— 判在结算侧，因为下单时通道还没定 */
-    private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
+    /*
+     * 通道属性与通道费率 —— 2026-09-01 起直接调 pay-channel，不再经 MasterDataPort。
+     * 那条反向依赖（pay 去问主应用「这个通道支不支持补贴」）随通道主数据搬家一起消失了。
+     */
+    private final PayChannelMasterService channelMaster;
+    private final PayChannelRateService channelRates;
 
     private final BillMapper billMapper;
     private final ai.neargo.shop.pay.mapper.SettleMappers.SettleBatchMapper batchMapper;
@@ -84,10 +91,12 @@ public class SettleServiceImpl implements SettleService {
                              ai.neargo.shop.spi.platform.SettingPort settingPort,
                              ai.neargo.shop.pay.service.FeeRuleService feeRuleService,
                              ai.neargo.shop.pay.PointsService pointsService,
-                             ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
+                             PayChannelMasterService channelMaster,
+                             PayChannelRateService channelRates,
                              ai.neargo.shop.pay.mapper.SettleMappers.SettleBatchMapper batchMapper) {
         this.batchMapper = batchMapper;
-        this.masterDataPort = masterDataPort;
+        this.channelMaster = channelMaster;
+        this.channelRates = channelRates;
         this.pointsService = pointsService;
         this.settingPort = settingPort;
         this.feeRuleService = feeRuleService;
@@ -466,7 +475,7 @@ public class SettleServiceImpl implements SettleService {
          * 判在这里而不是扣分那一刻：**下单时通道还没定**（markPaid 才有），
          * 那时判等于拿一个还不存在的事实做判断。
          */
-        if (nz(bill.getSubsidyMinor()) > 0 && !masterDataPort.supportsSubsidy(bill.getPayChannel())) {
+        if (nz(bill.getSubsidyMinor()) > 0 && !channelMaster.supportsSubsidy(bill.getPayChannel())) {
             bill.setStatus(StlBill.MANUAL);
             bill.setLastError("通道不支持积分补差，需人工处理：" + bill.getPayChannel());
             update(bill);
@@ -762,7 +771,7 @@ public class SettleServiceImpl implements SettleService {
         }
         String resolved = merchantQueryPort.feeBearerOf(src.merchantNo(), src.storeNo(), src.payChannel());
         String bearer = resolved == null || resolved.isBlank() ? MchFeeBearer.UNKNOWN : resolved;
-        var rate = masterDataPort.channelFeeRate(src.payChannel(), src.payScene(),
+        var rate = channelRates.effective(src.payChannel(), src.payScene(),
                 merchantQueryPort.legalFormOf(src.merchantNo()), at);
         if (rate == null) {
             /*

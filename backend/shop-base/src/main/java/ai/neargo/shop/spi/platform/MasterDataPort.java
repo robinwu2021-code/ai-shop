@@ -43,28 +43,7 @@ public interface MasterDataPort {
      */
     boolean needLicense(String subjectType);
 
-    /**
-     * 该通道能否**补差**（{@code sys_pay_channel.supports_subsidy}）。
-     *
-     * <p>积分抵扣要求平台在分账前把差额补进二级商户账户，否则商家收到的钱
-     * 与订单金额对不上。<b>只在直连路径上有意义</b> —— 归集路径不发起补差。
-     *
-     * <p><b>查不到返回 false</b>：这个字段建出来就是为了拦截，
-     * 而「查不到 = 支持」会让不具备补差能力的通道静默开出积分抵扣，
-     * 症状是商家账上少一笔钱，且没有任何一处报错。
-     */
-    boolean supportsSubsidy(String payChannel);
 
-    /**
-     * 支付通道的展示名（{@code sys_pay_channel.name}）。
-     *
-     * <p>放在这里而不是让端上写死一份：通道改名（"微信支付" → "微信收付通"）时
-     * 三端各改一次必然漏一处，而漏掉的那处会长期显示一个不存在的名字。
-     *
-     * @return 查不到时返回通道码本身，<b>不返回 null</b> —— 页面上宁可显示 WECHAT，
-     *         也不要显示一个空白的支付方式
-     */
-    String channelName(String payChannel);
 
     /**
      * 校验经营范围：先值域（ADR-009 三档），后启用白名单（{@code sys_setting}）。
@@ -165,35 +144,8 @@ public interface MasterDataPort {
     record RegionSuggestion(String regionCode, String level, String name, String path,
                             String source, String detail) {
     }
-    /**
-     * 该市场下启用中的支付通道码，按注册顺序。空列表是合法结果 ——
-     * 调用方自己处理「一个都没有」，<b>不要在这里兜一个默认通道</b>。
-     */
-    java.util.List<String> enabledChannels(String market);
 
-    /**
-     * 该笔交易适用的<b>通道费率</b>（{@code sys_pay_channel_rate} 的生效版本）。
-     *
-     * <p>匹配顺序精确优先于通配，细节在 {@code PayChannelRateService.effective}。
-     *
-     * <p><b>一条都没配返回 {@code null}，这里不兜 0。</b>兜 0 与「这个通道免手续费」
-     * 在库里长得一模一样，而两者的账差着真金白银 —— 结算侧要能把
-     * 「没配过」和「配了 0」分开落库，否则事后没人说得清那笔手续费去哪了。
-     *
-     * @param payMethod 支付方式（JSAPI/H5/APP/NATIVE）；不区分传 {@code null}
-     * @param legalForm 主体形态（MICRO/INDIVIDUAL/ENTERPRISE）；不区分传 {@code null}
-     */
-    ChannelFeeRate channelFeeRate(String payChannel, String payMethod, String legalForm, long at);
 
-    /**
-     * 这个通道<b>支持的账期</b>（{@code sys_pay_channel.settle_cycle}）。
-     *
-     * <p>它是主体账期的<b>上限</b>：通道只支持 T+1 而主体配了月结的话，
-     * 按月结发出去的指令会在通道侧被拒 —— 而拒绝理由不会说「因为你配了月结」。
-     *
-     * @return 查不到返回 {@code null}；调用方取两者更短的那个
-     */
-    String channelSettleCycle(String payChannel);
 
     /**
      * @param rateBp       万分比快照 —— <b>要落进结算单</b>，费率会变而历史账不能跟着变

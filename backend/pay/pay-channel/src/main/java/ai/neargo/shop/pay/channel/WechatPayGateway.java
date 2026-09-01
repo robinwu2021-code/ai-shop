@@ -1,7 +1,7 @@
 package ai.neargo.shop.pay.channel;
 
 import ai.neargo.shop.pay.channel.base.AbstractPayGateway;
-import ai.neargo.shop.spi.platform.MasterDataPort;
+import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -24,8 +24,8 @@ import java.util.Map;
 public class WechatPayGateway extends AbstractPayGateway {
 
     public WechatPayGateway(@Qualifier("wechatChannelClient") ChannelClient client,
-                            MasterDataPort masterData) {
-        super(client, masterData);
+                            PayChannelMasterService channelMaster) {
+        super(client, channelMaster);
     }
 
     @Override

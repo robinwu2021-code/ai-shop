@@ -8,6 +8,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Masks;
 import ai.neargo.shop.spi.pay.PayApplymentGateway;
+import ai.neargo.shop.spi.pay.PayChannelMasterPort;
 import ai.neargo.shop.spi.platform.MasterDataPort;
 import ai.neargo.shop.merchant.dto.PaymentApplymentVO;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
@@ -42,6 +43,8 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
     private final MchPaymentMapper paymentMapper;
     private final MchEntityMapper merchantMapper;
     private final MasterDataPort masterDataPort;
+    /** 通道主数据。2026-09-01 从 MasterDataPort 拆出来 —— 通道属性归 pay（见 ADR-023 那条原则） */
+    private final PayChannelMasterPort payChannelMasterPort;
     /** 每通道一个实现；开发期是 STUB 一个顶俩 */
     private final Map<String, PayApplymentGateway> gateways;
     /** 为门店开进件时校验归属 —— 不是本主体的店一律 404 */
@@ -49,11 +52,13 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
 
     public MerchantPaymentServiceImpl(MchPaymentMapper paymentMapper, MchEntityMapper merchantMapper,
                                       MasterDataPort masterDataPort,
+                                      PayChannelMasterPort payChannelMasterPort,
                                       ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
                                       List<PayApplymentGateway> gatewayList) {
         this.paymentMapper = paymentMapper;
         this.merchantMapper = merchantMapper;
         this.masterDataPort = masterDataPort;
+        this.payChannelMasterPort = payChannelMasterPort;
         this.storeMapper = storeMapper;
         this.gateways = gatewayList.stream()
                 .collect(Collectors.toMap(PayApplymentGateway::payChannel, Function.identity()));
@@ -92,7 +97,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
                 .filter(r -> r.getStoreNo() == null || r.getStoreNo().isEmpty())
                 .collect(java.util.stream.Collectors.toMap(MchPaymentMerchant::getPayChannel,
                         r -> r, (a, b) -> a, java.util.LinkedHashMap::new));
-        return masterDataPort.enabledChannels(null).stream()
+        return payChannelMasterPort.enabledChannels(null).stream()
                 .map(ch -> opened.containsKey(ch) ? toVO(opened.get(ch)) : placeholder(merchantNo, ch))
                 .toList();
     }
@@ -109,7 +114,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
         virtual.setLegalForm(legalFormOf(merchantNo));
         virtual.setApplyStatus(MchPaymentMerchant.NONE);
         return new PaymentApplymentVO(virtual.getPayChannel(),
-                masterDataPort.channelName(virtual.getPayChannel()),
+                payChannelMasterPort.channelName(virtual.getPayChannel()),
                 MchPaymentMerchant.NONE, false, null, null, null, null, null,
                 missingOf(virtual, null, null, null), false, null, null, "");
     }
@@ -368,7 +373,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
         if (payChannel != null && !payChannel.isBlank()) {
             return payChannel;
         }
-        List<String> available = masterDataPort.enabledChannels(null);
+        List<String> available = payChannelMasterPort.enabledChannels(null);
         if (available.isEmpty()) {
             throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
         }
@@ -427,7 +432,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
                 : missingOf(row, row.getSettleAccountType(), row.getSettleAccountMasked(), null);
         return new PaymentApplymentVO(
                 row.getPayChannel(),
-                masterDataPort.channelName(row.getPayChannel()),
+                payChannelMasterPort.channelName(row.getPayChannel()),
                 row.getApplyStatus(),
                 active,
                 row.getPayMerchantNo(),

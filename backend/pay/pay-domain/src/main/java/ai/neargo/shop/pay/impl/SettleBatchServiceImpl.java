@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
 
 @Service
 public class SettleBatchServiceImpl implements SettleBatchService {
@@ -44,7 +45,8 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     private final SettleBatchMapper batchMapper;
     private final SettleSourcePort sourcePort;
     private final MerchantQueryPort merchantQueryPort;
-    private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
+    /** 通道结算周期。2026-09-01 起直接调 pay-channel，不再经 MasterDataPort */
+    private final PayChannelMasterService channelMaster;
     private final ReconDiffMapper diffMapper;
     private final ai.neargo.shop.pay.risk.FundRiskService fundRiskService;
 
@@ -67,14 +69,14 @@ public class SettleBatchServiceImpl implements SettleBatchService {
 
     public SettleBatchServiceImpl(BillMapper billMapper, SettleBatchMapper batchMapper,
                                   SettleSourcePort sourcePort, MerchantQueryPort merchantQueryPort,
-                                  ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
+                                  PayChannelMasterService channelMaster,
                                   ReconDiffMapper diffMapper,
                                   ai.neargo.shop.pay.risk.FundRiskService fundRiskService) {
         this.billMapper = billMapper;
         this.batchMapper = batchMapper;
         this.sourcePort = sourcePort;
         this.merchantQueryPort = merchantQueryPort;
-        this.masterDataPort = masterDataPort;
+        this.channelMaster = channelMaster;
         this.diffMapper = diffMapper;
         this.fundRiskService = fundRiskService;
     }
@@ -186,7 +188,7 @@ public class SettleBatchServiceImpl implements SettleBatchService {
         }
         String cycle = SettleCycles.shorter(
                 merchantQueryPort.settleCycleOf(bill.getEntityNo(), bill.getStoreNo(), channel),
-                masterDataPort.channelSettleCycle(channel));
+                channelMaster.settleCycle(channel));
         long dueAt = SettleCycles.dueAt(bill.getSettleableAt(), cycle, zoneOf());
 
         StlSettleBatch exist = DataScopeContext.executeWithoutScope(() ->
