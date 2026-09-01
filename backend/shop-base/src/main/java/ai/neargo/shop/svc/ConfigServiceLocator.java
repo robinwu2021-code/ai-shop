@@ -28,12 +28,31 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "shop.services")
 public class ConfigServiceLocator implements ServiceLocator {
 
-    /** 服务名 → 基址。**键区分大小写**，用 {@link ServiceName} 里的常量 */
+    /**
+     * 服务名 → 基址。
+     *
+     * <p><b>查找大小写不敏感</b>，这不是宽容，是必须的：
+     * 环境变量 {@code SHOP_SERVICES_TARGETS_PAY} 经 Spring 的 relaxed binding
+     * 进到 Map 里，键是 <b>小写的 {@code pay}</b>，而调用方按
+     * {@link ServiceName#PAY}（大写）查 —— 对不上。
+     *
+     * <p>2026-09-01 生产上就是这么失败的：本地测试用的是命令行参数
+     * {@code --shop.services.targets.PAY}（保留大小写）所以一路绿灯，
+     * 换成环境变量的生产环境第一次调用就 NOT_CONFIGURED。
+     * <b>本地与生产的配置注入方式不同，而这个差异只在 Map 类型上暴露</b>。
+     */
     private final Map<String, String> targets = new LinkedHashMap<>();
 
     @Override
     public Optional<String> baseUrlOf(String service) {
         String raw = targets.get(service);
+        if (raw == null) {
+            // 大小写不敏感地再找一遍 —— 环境变量注入的键是小写的
+            raw = targets.entrySet().stream()
+                    .filter(e -> e.getKey().equalsIgnoreCase(service))
+                    .map(Map.Entry::getValue)
+                    .findFirst().orElse(null);
+        }
         if (raw == null || raw.isBlank()) {
             return Optional.empty();
         }

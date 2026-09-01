@@ -35,6 +35,28 @@ class ServiceLocatorTest {
     }
 
     @Test
+    @DisplayName("★★★ 环境变量注入的键是小写的 —— 按大写常量查必须也能找到")
+    void lookupIsCaseInsensitiveBecauseEnvVarsArriveLowercased() {
+        /*
+         * 环境变量 SHOP_SERVICES_TARGETS_PAY 经 Spring 的 relaxed binding
+         * 进到 Map 里，键是**小写的 pay**，而调用方按 ServiceName.PAY 查。
+         *
+         * 2026-09-01 生产上就是这么失败的：本地用命令行参数
+         * --shop.services.targets.PAY（保留大小写）一路绿灯，
+         * 换成环境变量的生产环境第一次调用就 NOT_CONFIGURED。
+         * **本地与生产的配置注入方式不同，而这个差异只在 Map 类型上暴露。**
+         */
+        var locator = locatorWith("pay", "http://pay.svc.internal:8083");
+
+        assertThat(locator.baseUrlOf(ServiceName.PAY))
+                .as("键是小写 pay、按大写 PAY 查 —— 这正是生产环境的形状")
+                .contains("http://pay.svc.internal:8083");
+        assertThat(locator.baseUrlOf("PLATFORM"))
+                .as("对照量：确实没配的还是要返回空，不能因为放宽了大小写就什么都找得到")
+                .isEmpty();
+    }
+
+    @Test
     @DisplayName("★★ 尾斜杠统一去掉 —— 两边都留斜杠会拼出 //internal，在有些反代下 404 且很难看出来")
     void trailingSlashIsStripped() {
         assertThat(locatorWith(ServiceName.PAY, "http://127.0.0.1:8083/").baseUrlOf(ServiceName.PAY))
