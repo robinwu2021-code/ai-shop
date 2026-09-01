@@ -1,11 +1,11 @@
-package ai.neargo.shop.pay.job;
+package ai.neargo.shop.paybridge;
 
 import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.job.api.JobHandler;
 import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
-import ai.neargo.shop.pay.service.FundInvariantService;
+
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +16,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * 资金不变式巡检（I1 / I2 / I3）—— <b>三层保证里的第三层</b>。
+ * 资金不变式巡检（I1 / I2 / I3 / I6）—— <b>三层保证里的第三层</b>。
+ *
+ * <p>2026-09-01 从 pay-domain 搬到主应用侧：这几条都是**跨域比对**
+ * （拿 pay 的账去比 trade 的单），而跨域比对属于两边之上的那一层。
+ * 判断与修复在 {@link FundInvariantReconciler}，pay 侧只回答「我这边有哪些账」。
  *
  * <p>它不看消息、不看重试次数，只看事实：「这个子单是已支付的，它有没有结算单？」
  * Outbox 投递失败、消费者有 bug、甚至 Outbox 那一行本身没写成功，都躲不过它。
@@ -40,7 +44,7 @@ public class FundInvariantJob implements JobHandler {
 
     private static final Logger log = LoggerFactory.getLogger(FundInvariantJob.class);
 
-    private final FundInvariantService invariants;
+    private final FundInvariantReconciler invariants;
     private final JobSupport jobs;
 
     /**
@@ -71,7 +75,7 @@ public class FundInvariantJob implements JobHandler {
     @Value("${shop.job.fund-invariant.alert-after-minutes:60}")
     private int alertAfterMinutes;
 
-    public FundInvariantJob(FundInvariantService invariants, JobSupport jobs) {
+    public FundInvariantJob(FundInvariantReconciler invariants, JobSupport jobs) {
         this.invariants = invariants;
         this.jobs = jobs;
     }
@@ -92,14 +96,14 @@ public class FundInvariantJob implements JobHandler {
         return new JobDeclaration("fund-invariant", "资金不变式巡检",
                 "比对「已支付的单」与「结算单」两边：缺的自动补出来，多出来的只报不动（删账不可逆）；"
                         + "顺带查「标记说发过积分而没有流水」，把标记清掉让下一轮重发",
-                "pay-domain", "0 20 * * * *", true,
+                "shop-app", "0 20 * * * *", true,
                 2700, 3000, true, true);
     }
 
     @Override
     public JobResult run(JobInvocation invocation) {
         long since = System.currentTimeMillis() - lookbackHours * 3_600_000L;
-        FundInvariantService.ScanResult r = invariants.scan(since, limit);
+        FundInvariantReconciler.Result r = invariants.scan(since, limit);
 
         /*
          * **对照量先判。**「违反 0 条」与「一行都没扫到」在结果上一模一样，
@@ -139,7 +143,7 @@ public class FundInvariantJob implements JobHandler {
          * 而预占的积分只需要等几分钟就能判死 —— 订单落库是同一个请求里的事。
          * 用同一个窗口的话，刚回滚的那批要等一整天才还给用户。
          */
-        FundInvariantService.ReleaseResult rel = invariants.releaseDeadHolds(
+        FundInvariantReconciler.ReleaseResult rel = invariants.releaseDeadHolds(
                 System.currentTimeMillis() - holdMinutes * 60_000L, limit);
         if (rel.dead() > 0) {
             log.warn("[fund-invariant] I6 释放预占积分 {}/{}（扫 {} 条）",

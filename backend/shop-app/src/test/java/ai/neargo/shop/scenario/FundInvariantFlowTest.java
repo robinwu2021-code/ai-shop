@@ -5,7 +5,7 @@ import ai.neargo.shop.event.AfterCommit;
 import ai.neargo.shop.idem.EventIdempotency;
 import ai.neargo.shop.pay.entity.StlBill;
 import ai.neargo.shop.pay.mapper.SettleMappers;
-import ai.neargo.shop.pay.service.FundInvariantService;
+import ai.neargo.shop.paybridge.FundInvariantReconciler;
 import ai.neargo.shop.spi.settle.PointsPort;
 import ai.neargo.shop.spi.trade.SettleSourcePort;
 import ai.neargo.shop.trade.service.AfterSaleService;
@@ -44,7 +44,12 @@ class FundInvariantFlowTest {
     private static final String USER = "U-INV";
 
     @Autowired
-    private FundInvariantService invariants;
+    /*
+     * 2026-09-01：I1–I3/I6 从 pay-domain 搬到 shop-app/paybridge ——
+     * 它们都是跨域比对（拿 pay 的账比 trade 的单），而跨域比对不属于任何一边。
+     * pay 侧只剩「我这边有哪些账」的只读查询。
+     */
+    private FundInvariantReconciler invariants;
     @Autowired
     private SettleSourcePort sourcePort;
     @Autowired
@@ -105,7 +110,7 @@ class FundInvariantFlowTest {
         // 前置断言：确实没有结算单。少了这句，下面「发现了 1 条」也可能是别的单带来的
         assertThat(billsOf(SUB)).as("造数据时不该有结算单").isEmpty();
 
-        FundInvariantService.ScanResult r = invariants.scan(paidAt - 60_000L, 500);
+        FundInvariantReconciler.Result r = invariants.scan(paidAt - 60_000L, 500);
 
         // 对照量：真的扫到东西了 —— 否则「发现 0 条违反」毫无意义
         assertThat(r.scannedAnything()).as("一行都没扫到，这个断言就不说明任何问题").isTrue();
@@ -131,7 +136,7 @@ class FundInvariantFlowTest {
 
         assertThat(billsOf(SUB)).as("前置：孤儿结算单已经造进去了").hasSize(1);
 
-        FundInvariantService.ScanResult r = invariants.scan(now - 3_600_000L, 500);
+        FundInvariantReconciler.Result r = invariants.scan(now - 3_600_000L, 500);
 
         assertThat(r.scannedBills()).as("对照量：结算单那一侧真的扫到了").isPositive();
         assertThat(r.orphanBill()).as("这张结算单对不上任何已支付子单").isPositive();
@@ -309,7 +314,7 @@ class FundInvariantFlowTest {
         assertThat(grantedFlagOf(SUB)).as("前置：标记确实被设成了已发").isTrue();
         assertThat(earnLedgerCount(SUB)).as("前置：确实没有发分流水").isZero();
 
-        FundInvariantService.ScanResult r = invariants.scan(paidAt - 60_000L, 500);
+        FundInvariantReconciler.Result r = invariants.scan(paidAt - 60_000L, 500);
 
         assertThat(r.scannedGranted()).as("对照量：标着已发的那一侧真的扫到了").isPositive();
         assertThat(r.grantedNoLedger()).as("这条应当被算作 I3 违反").isPositive();
@@ -410,7 +415,7 @@ class FundInvariantFlowTest {
         assertThat(refundLedgerCount("SUB-INV-DEAD")).as("前置：还没退过").isZero();
         assertThat(refundLedgerCount("SUB-INV-WAIT")).as("前置：还没退过").isZero();
 
-        FundInvariantService.ReleaseResult r = invariants.releaseDeadHolds(now + 60_000L, 500);
+        FundInvariantReconciler.ReleaseResult r = invariants.releaseDeadHolds(now + 60_000L, 500);
 
         // 对照量：真的扫到预占流水了 —— 否则「释放 0 条」什么都不说明
         assertThat(r.scanned()).as("一条预占都没扫到，下面的断言就毫无意义").isPositive();

@@ -27,14 +27,30 @@ import java.util.List;
  */
 public interface FundInvariantService {
 
+    // ────────────────────────────── pay 这边有哪些账（只读，给跨域巡检用）
+
     /**
-     * 扫一轮。
+     * 这批子单里<b>已经有结算单</b>的。
      *
-     * @param since 只看这个时刻之后支付的单。**不扫全量** —— 全量扫一次要几分钟，
-     *              而这个任务每小时跑一次；漏掉的历史单由更长周期的一轮补
-     * @param limit 单轮上限
+     * <p>跨域巡检（I1）拿它与「已支付子单」比：差集就是缺结算单的那些。
+     * <b>比对与修复在主应用侧</b>（{@code shop-app/paybridge}），
+     * 这里只回答「pay 这边有什么」—— 与 {@link #successPaymentsSince} 同一条理由：
+     * 跨域比对天然属于两边之上的那一层，不属于任何一边。
      */
-    ScanResult scan(long since, int limit);
+    java.util.Set<String> subOrdersWithBill(java.util.Collection<String> subOrderNos);
+
+    /**
+     * 这批子单里<b>已经有发分流水</b>的。跨域巡检（I3）拿它与
+     * 「标着已发积分的子单」比：差集就是标记为真而没有流水的那些。
+     */
+    java.util.Set<String> subOrdersWithEarnLedger(java.util.Collection<String> subOrderNos);
+
+    /**
+     * 某段时间内新增的结算单的子单号。跨域巡检（I2）拿它去问 trade
+     * 「这些子单付了没」—— 对不上的是孤儿账。
+     */
+    List<String> billSubOrderNosSince(long since, int limit);
+
 
     /**
      * <b>付成功了的那些账</b>（不变式 I8 的左边）。
@@ -62,70 +78,11 @@ public interface FundInvariantService {
     }
 
     /**
-     * 释放<b>预占了积分、而订单已经不可能成交</b>的那些（不变式 I6）。
+     * 滞留的积分预占（USE + PENDING 且早于 {@code olderThan}）的子单号。
      *
-     * <h2>为什么它是必需的，而不是「顺手加的兜底」</h2>
-     * 下单扣积分是七处跨域调用里<b>唯一的前置动作</b> ——
-     * 它必须发生在订单落库之前（要先知道抵扣多少才能算实付）。
-     * 支付域独立之后，扣分与建单不再是一个事务，而<b>两个顺序都错</b>：
-     *
-     * <pre>
-     * 扣分 → 建单     扣成功、建失败  →  用户的分白扣了
-     * 建单 → 扣分     建成功、扣失败  →  用户白拿了优惠
-     * </pre>
-     *
-     * 前面几处都能靠「推迟到提交之后」解决，这一处不能 ——
-     * <b>只能靠补偿</b>。而补偿的两半，仓库里其实已经有了一半：
-     * {@code pts_user_ledger.status} 本来就是 PENDING（预占）/ CONFIRMED / REVERSED
-     * 三态，注释里写着「预占，此时池子还没付给收单方（订单可能取消）」，
-     * {@code reverse} 就是取消那一半，且幂等。
-     *
-     * <p><b>缺的一直是「没人触发取消」</b>：下单事务回滚时，那条 PENDING 就永远留在那里，
-     * 而用户的分已经从 balance 里扣走了。今天扫不出来，也没有任何地方会提起它。
-     *
-     * <p>顺带堵住另一个口子：取消订单的退分改成「提交后执行」之后，
-     * 那一步失败也会留下 PENDING —— 这里一并释放。
-     *
-     * @param olderThan 只处理这个时刻之前预占的。留出的时间是给正常链路的：
-     *                  刚下单的那一瞬间订单可能还没落库，此时释放会把好单的分退掉
-     * @param limit     单轮上限
+     * <p>跨域巡检（I6）拿它去问 trade「这些子单还活着吗」，
+     * 死掉的那些再调 {@code PointsService.reverse} 释放。
+     * <b>「还活着吗」是订单域的问题，所以判断不在这边</b>。
      */
-    ReleaseResult releaseDeadHolds(long olderThan, int limit);
-
-    /**
-     * @param scanned  扫了几条预占中的流水（对照量）
-     * @param dead     其中订单已经不可能成交的
-     * @param released 实际退回了几条
-     */
-    record ReleaseResult(int scanned, int dead, int released) {
-    }
-
-    /**
-     * @param scannedPaid    扫了几个已支付子单（I1 的对照量）
-     * @param missingBill    其中没有结算单的 —— <b>可以自动补</b>，{@code generateForOrder} 幂等
-     * @param repairedBill   实际补出来几张
-     * @param scannedBills   扫了几张结算单（I2 的对照量）
-     * @param orphanBill     其中对不上已支付子单的 —— <b>只告警，绝不自动删</b>
-     * @param oldestMissingAt 最早那笔缺结算单的支付时刻；没有返回 0。
-     *                        它回答的是「漏了多久」，而那决定要不要现在叫人
-     * @param scannedGranted 扫了几个标着「已发过积分」的子单（I3 的对照量）
-     * @param grantedNoLedger 其中<b>没有发分流水</b>的 —— 标记说发过而用户一分没拿到，
-     *                        且标记本身会挡住重试（{@code grantOnPay} 的幂等就是靠它）
-     * @param clearedFlags   把标记改回未发的行数，改完下一轮就能重发
-     */
-    record ScanResult(int scannedPaid, int missingBill, int repairedBill,
-                      int scannedBills, int orphanBill, long oldestMissingAt,
-                      int scannedGranted, int grantedNoLedger, int clearedFlags) {
-
-        /**
-         * 有没有真的扫到东西。
-         *
-         * <p><b>「违反 0 条」与「一行都没扫到」在结果上一模一样</b>，
-         * 而后者才是最该查的那种（查询条件写错、索引没走上、时间窗算反）。
-         * 任何一处报告这个结果的地方都要先看它。
-         */
-        public boolean scannedAnything() {
-            return scannedPaid > 0 || scannedBills > 0;
-        }
-    }
+    List<String> pendingHoldSubOrders(long olderThan, int limit);
 }
