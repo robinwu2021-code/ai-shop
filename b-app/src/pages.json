@@ -454,6 +454,12 @@
       }
     },
     {
+      "path": "pages/withdraw/index",
+      "style": {
+        "navigationBarTitleText": "提现"
+      }
+    },
+    {
       "path": "pages/stats/index",
       "style": {
         "navigationBarTitleText": "经营数据",

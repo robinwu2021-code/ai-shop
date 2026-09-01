@@ -101,15 +101,70 @@ export function PayChannelTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean
     },
   });
 
+  /**
+   * 改渠道的可用区域。
+   *
+   * <b>为什么是一个 prompt 而不是多选框</b>：市场清单是运营在系统设置里维护的，
+   * 这里做成多选就要跟着那份清单同步 —— 而两处不同步的表现是
+   * 「新开的市场在这儿选不到」，运营会以为是后端没支持。
+   * 先用一个能看到当前值、能直接改的输入框把链路打通，
+   * 等市场变成主数据表（见 TDD-支付域-数据库设计（目标态））再换成多选。
+   *
+   * 空字符串 = **所有市场可用**，与后端 marketAllowed 的语义一致；
+   * 提示语里写明这一点，否则运营会以为清空等于「谁都不能用」。
+   */
+  const editMarkets = useMutation({
+    mutationFn: ({ row, markets }: { row: PayChannelSetting; markets: string }) =>
+      api.updatePayChannel(row.payChannel, { markets }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pay-channels"] });
+      notify.success(c.pcToastUpdated);
+    },
+  });
+
+  function promptMarkets(row: PayChannelSetting) {
+    const current = row.markets ?? "";
+    const next = window.prompt(c.pcMarketsPrompt, current);
+    if (next === null || next === current) return;
+    editMarkets.mutate({ row, markets: next });
+  }
+
   const columns: Column<PayChannelSetting>[] = [
-    { header: c.pcColChannel, cell: (r) => r.name || r.payChannel },
+    {
+      header: c.pcColChannel,
+      /*
+       * **测试渠道要一眼能认出来。**它是一条真的通道记录（进件、下单、
+       * 回调、结算都按真通道走，只有与银行之间那一段是假的），
+       * 所以它在这张表里长得和微信支付一模一样 ——
+       * 而运营一旦把它开给真实商家，那些订单的钱一分都收不到，
+       * 且系统每一步都「成功」。
+       */
+      cell: (r) => (r.payChannel === "TEST" ? (
+        <span className="flex items-center gap-2">
+          {r.name || r.payChannel}
+          <Badge tone="warning">{c.pcTestChannelTag}</Badge>
+        </span>
+      ) : (r.name || r.payChannel)),
+    },
     {
       header: c.pcColState,
       cell: (r) => (r.enabled
         ? <Badge tone="success">{c.pcEnabled}</Badge>
         : <Badge tone="muted">{c.pcDisabled}</Badge>),
     },
-    { header: c.pcColMarkets, cell: (r) => marketsLabel(r.markets, marketNames, c.pcAllMarkets) },
+    {
+      header: c.pcColMarkets,
+      cell: (r) => (canEdit ? (
+        <button
+          type="button"
+          className="underline underline-offset-2 hover:opacity-70"
+          onClick={() => promptMarkets(r)}
+          title={c.pcMarketsEditHint}
+        >
+          {marketsLabel(r.markets, marketNames, c.pcAllMarkets)}
+        </button>
+      ) : marketsLabel(r.markets, marketNames, c.pcAllMarkets)),
+    },
     { header: c.pcColCurrency, cell: (r) => r.currency ?? "—" },
     { header: c.pcColSettleCycle, cell: (r) => r.settleCycle ?? "—" },
     {

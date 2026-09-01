@@ -2,7 +2,8 @@
 // 迁移时这个文件基本不用改，改的是 .env 里的开关。
 import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS as E } from "./endpoints";
-import type { EstateList, GoodsDraft, GoodsGuess, MerchantApi, PublishPreview } from "./contract";
+import type { EstateList, GoodsDraft, GoodsGuess, MerchantApi, PublishPreview,
+  WithdrawPage, WithdrawRecord } from "./contract";
 // 入参的 wire 契约。`satisfies` 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现（与 C 端同一套做法）
 import type {
@@ -410,6 +411,9 @@ export const httpApi: MerchantApi = {
   mVerifySearch: (keyword) =>
     http.get<PickupOrder[]>(E.mVerifySearch.path, { keyword }),
 
+  mWithdrawPage: () => http.get<WithdrawPage>(E.mWithdrawPage.path),
+  mApplyWithdraw: (amountMinor: number) =>
+    http.post<WithdrawRecord>(E.mApplyWithdraw.path, { amountMinor }),
   mAfterSaleList: () => http.get<AfterSale[]>(E.mAfterSaleList.path),
   mApproveAfterSale: (afterSaleNo, reply) =>
     http.post<AfterSale>(buildPath(E.mApproveAfterSale.path, { afterSaleNo }), {

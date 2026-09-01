@@ -108,6 +108,27 @@ import type {
 } from "@shared/types";
 
 /** 拍照识别的结果。全部是**建议值**，店主可改可弃 */
+export interface WithdrawPage {
+  /** 现在能提多少（分）= 已到账结算款 − 在途提现 */
+  withdrawableMinor: number;
+  /** 单笔下限（分）。低于它渠道手续费比本金还贵 */
+  minAmountMinor: number;
+  records: WithdrawRecord[];
+}
+
+export interface WithdrawRecord {
+  withdrawNo: string;
+  /** 分 */
+  amount: number;
+  /** 申请那一刻的可提余额快照 —— 运营据此判断，不是「现在还有多少」 */
+  availableBalance: number;
+  /** PENDING / APPROVED / REJECTED / PAID / FAILED */
+  status: string;
+  appliedAt: string;
+  decidedAt: string | null;
+  remark: string | null;
+}
+
 export interface GoodsGuess {
   title: string;
   /** 一句话卖点。模型从包装上的广告语里提取，店主可改可弃 */
@@ -1060,6 +1081,16 @@ export interface MerchantApi {
    * 待处理售后。**返回售后单，不是订单** —— 后端 /biz/after-sale 给的是
    * List<AfterSaleVO>，端上此前把它类型成 Order[]，形状根本对不上。
    */
+  /**
+   * 我的提现：能提多少 + 下限 + 历史记录。
+   *
+   * <b>三个数一起给</b>：只给可提余额的话，商家看不到上一笔在审的，
+   * 会以为钱少了一截；没有下限的话他点了才知道太少。
+   */
+  mWithdrawPage(): Promise<WithdrawPage>;
+  /** 申请提现。**金额单位是分** —— 与全站契约一致，浮点不进钱的接口 */
+  mApplyWithdraw(amountMinor: number): Promise<WithdrawRecord>;
+
   mAfterSaleList(): Promise<AfterSale[]>;
   /** 同意：仅退款直接退；退货退款要等收货后才退（见 mConfirmReturn） */
   mApproveAfterSale(afterSaleNo: string, reply: string): Promise<AfterSale>;

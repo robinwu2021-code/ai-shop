@@ -191,6 +191,11 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
     summary: "按取货码片段搜单",
   },
 
+  // 提现（V288）。**读与写分开两条**：读给出「能提多少 + 下限 + 记录」，
+  // 写只接一个金额 —— 让端上没法把「可提余额」当成入参传回去。
+  mWithdrawPage: { method: "GET", path: "/biz/settle/withdraw", auth: true, summary: "我的提现" },
+  mApplyWithdraw: { method: "POST", path: "/biz/settle/withdraw", auth: true, summary: "申请提现" },
+
   mAfterSaleList: { method: "GET", path: "/biz/after-sale", auth: true, summary: "待处理售后" },
   // 同意与驳回是**两个动词、两条路径**，不是一个布尔参数 ——
   // 与后端一致，也让「谁被调用了」在日志与权限里能分开看
