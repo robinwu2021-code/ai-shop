@@ -33,10 +33,20 @@ public class PendingRemotePortsConfig {
      * 还缺远程实现的 Port。**顺序按 pay-domain 里的用量排**，
      * 前面的先做收益最大。
      */
+    /*
+     * ⚠️ **这张表会锈。**
+     *
+     * 每当某个 Port 在 pay 这一侧有了本地实现（比如 M1 把通道主数据搬进来时
+     * pay-channel 就带上了 PayQueryPortImpl），这里的桩就<b>多余了</b> ——
+     * 而多余的表现不是「没人用」，是<b>两个 bean 撞在一起，pay-svc 起不来</b>：
+     * 「required a single bean, but 2 were found」。
+     *
+     * 2026-09-02 加启动冒烟时撞到 PayQueryPort 这一条。
+     * 加/删 pay 侧实现之后，要回来看一眼这张表。
+     */
     private static final Class<?>[] PENDING = {
         ai.neargo.shop.spi.user.MerchantQueryPort.class,        // 6 个文件在用
         ai.neargo.shop.spi.trade.SettleSourcePort.class,        // 3
-        ai.neargo.shop.spi.pay.PayQueryPort.class,              // 1
         ai.neargo.shop.spi.trade.RefundSplitBackPort.class,     // 1
         ai.neargo.shop.spi.user.PickupQueryPort.class,          // 1
     };
@@ -60,8 +70,30 @@ public class PendingRemotePortsConfig {
     private static Object stub(Class<?> port) {
         return Proxy.newProxyInstance(port.getClassLoader(), new Class<?>[]{port},
                 (proxy, method, args) -> {
-                    if ("toString".equals(method.getName())) {
+                    /*
+                     * **Object 的三个方法必须放行。**
+                     *
+                     * 原本只放行了 toString，而 Spring 在把 bean 放进容器、
+                     * 做依赖比较、建代理链时会调 equals 与 hashCode ——
+                     * 于是这个「调用即抛」的桩<b>在容器自己用它的时候就炸了</b>，
+                     * 表现是 pay-svc 起不来，报错说
+                     * 「PayQueryPort.equals 还没有远程实现」。
+                     *
+                     * 那句话本身是对的，只是它不该拦 equals：
+                     * equals 不是这个 Port 的业务方法，它是 Object 的。
+                     *
+                     * 2026-09-02 加 pay-svc 启动冒烟时第一次跑就抓到 ——
+                     * 而在此之前它一直「装得起来」这句话没有任何东西验过。
+                     */
+                    String name = method.getName();
+                    if ("toString".equals(name)) {
                         return "PendingRemotePort(" + port.getSimpleName() + ")";
+                    }
+                    if ("equals".equals(name) && args != null && args.length == 1) {
+                        return proxy == args[0];
+                    }
+                    if ("hashCode".equals(name)) {
+                        return System.identityHashCode(proxy);
                     }
                     throw new UnsupportedOperationException(
                             "支付域独立形态下 " + port.getSimpleName() + "." + method.getName()
