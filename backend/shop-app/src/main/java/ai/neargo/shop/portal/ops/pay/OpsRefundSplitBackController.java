@@ -1,10 +1,9 @@
 package ai.neargo.shop.portal.ops.pay;
 
 import ai.neargo.shop.auth.Perms;
-import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.pay.dto.FinanceVOs.RefundSplitBackVO;
 import ai.neargo.shop.pay.service.RefundSplitBackService;
-import ai.neargo.shop.spi.platform.AuditLogPort;
+import ai.neargo.shop.payclient.OpsRefundSplitBackAppService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -35,18 +34,16 @@ import java.util.List;
 @Validated
 public class OpsRefundSplitBackController {
 
-    private final RefundSplitBackService service;
-    private final AuditLogPort auditLogPort;
+    private final OpsRefundSplitBackAppService app;
 
-    public OpsRefundSplitBackController(RefundSplitBackService service, AuditLogPort auditLogPort) {
-        this.service = service;
-        this.auditLogPort = auditLogPort;
+    public OpsRefundSplitBackController(OpsRefundSplitBackAppService app) {
+        this.app = app;
     }
 
     @GetMapping("/ops/refund-split-backs")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
     public List<RefundSplitBackVO> pending() {
-        return service.pending();
+        return app.pending();
     }
 
     /**
@@ -58,10 +55,6 @@ public class OpsRefundSplitBackController {
     @PostMapping("/ops/refund-split-backs/{afterSaleNo}/execute")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
     public RefundSplitBackVO execute(@PathVariable String afterSaleNo) {
-        String operator = SecurityUtils.currentUserNo();
-        RefundSplitBackVO vo = service.execute(afterSaleNo, operator);
-        auditLogPort.record("REFUND_SPLIT_BACK", afterSaleNo,
-                "回退分账并退款 " + vo.refundMinor() + " 分", true);
-        return vo;
+        return app.execute(afterSaleNo);
     }
 }

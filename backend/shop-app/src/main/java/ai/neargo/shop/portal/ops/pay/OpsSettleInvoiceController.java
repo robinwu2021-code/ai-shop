@@ -1,11 +1,10 @@
 package ai.neargo.shop.portal.ops.pay;
 
 import ai.neargo.shop.auth.Perms;
-import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.pay.dto.FinanceVOs.SettleInvoiceVO;
 import ai.neargo.shop.pay.service.SettleInvoiceService;
-import ai.neargo.shop.spi.platform.AuditLogPort;
+import ai.neargo.shop.payclient.OpsSettleInvoiceAppService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -29,13 +28,10 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 public class OpsSettleInvoiceController {
 
-    private final SettleInvoiceService invoiceService;
-    private final AuditLogPort auditLogPort;
+    private final OpsSettleInvoiceAppService app;
 
-    public OpsSettleInvoiceController(SettleInvoiceService invoiceService,
-                                      AuditLogPort auditLogPort) {
-        this.invoiceService = invoiceService;
-        this.auditLogPort = auditLogPort;
+    public OpsSettleInvoiceController(OpsSettleInvoiceAppService app) {
+        this.app = app;
     }
 
     /** 返回 {@code PageData}：运营端列表页按 {@code {records,total}} 渲染。 */
@@ -45,27 +41,20 @@ public class OpsSettleInvoiceController {
                                           @RequestParam(required = false) String keyword,
                                           @RequestParam(defaultValue = "1") long page,
                                           @RequestParam(defaultValue = "20") long size) {
-        return invoiceService.list(status, keyword, page, size);
+        return app.list(status, keyword, page, size);
     }
 
     /** 开票。三道校验防的都是虚开，见 {@link SettleInvoiceService#issue}。 */
     @PostMapping("/ops/finance/invoices/{invoiceNo}/issue")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_VERIFY + "')")
     public SettleInvoiceVO issue(@PathVariable String invoiceNo, @RequestBody IssueReq req) {
-        String operator = SecurityUtils.currentUserNo();
-        SettleInvoiceVO vo = invoiceService.issue(invoiceNo, req.serialNo(), operator);
-        // 手工开票必须留痕，否则事后查不到是谁开的
-        auditLogPort.record("SETTLE_INVOICE_ISSUE", invoiceNo, "流水号 " + vo.serialNo(), true);
-        return vo;
+        return app.issue(invoiceNo, req.serialNo());
     }
 
     @PostMapping("/ops/finance/invoices/{invoiceNo}/reject")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_VERIFY + "')")
     public SettleInvoiceVO reject(@PathVariable String invoiceNo, @RequestBody RejectReq req) {
-        String operator = SecurityUtils.currentUserNo();
-        SettleInvoiceVO vo = invoiceService.reject(invoiceNo, req.reason(), operator);
-        auditLogPort.record("SETTLE_INVOICE_REJECT", invoiceNo, req.reason());
-        return vo;
+        return app.reject(invoiceNo, req.reason());
     }
 
     /** @param serialNo 发票流水号，必填 —— 没有它的「已开票」等于没开 */

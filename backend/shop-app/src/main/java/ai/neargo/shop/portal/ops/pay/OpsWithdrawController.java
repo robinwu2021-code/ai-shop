@@ -1,12 +1,11 @@
 package ai.neargo.shop.portal.ops.pay;
 
 import ai.neargo.shop.auth.Perms;
-import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.pay.dto.FinanceVOs.TaxRuleVO;
 import ai.neargo.shop.pay.dto.FinanceVOs.WithdrawVO;
 import ai.neargo.shop.pay.service.WithdrawService;
-import ai.neargo.shop.spi.platform.AuditLogPort;
+import ai.neargo.shop.payclient.OpsWithdrawAppService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -33,12 +32,10 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 public class OpsWithdrawController {
 
-    private final WithdrawService withdrawService;
-    private final AuditLogPort auditLogPort;
+    private final OpsWithdrawAppService app;
 
-    public OpsWithdrawController(WithdrawService withdrawService, AuditLogPort auditLogPort) {
-        this.withdrawService = withdrawService;
-        this.auditLogPort = auditLogPort;
+    public OpsWithdrawController(OpsWithdrawAppService app) {
+        this.app = app;
     }
 
     /**
@@ -53,7 +50,7 @@ public class OpsWithdrawController {
                                      @RequestParam(required = false) String keyword,
                                      @RequestParam(defaultValue = "1") long page,
                                      @RequestParam(defaultValue = "20") long size) {
-        return withdrawService.list(status, keyword, page, size);
+        return app.list(status, keyword, page, size);
     }
 
     /**
@@ -63,19 +60,13 @@ public class OpsWithdrawController {
     @PostMapping("/ops/finance/withdrawals/{withdrawNo}/decide")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_WITHDRAW_APPROVE + "')")
     public WithdrawVO decide(@PathVariable String withdrawNo, @RequestBody DecideReq req) {
-        String operator = SecurityUtils.currentUserNo();
-        boolean pass = Boolean.TRUE.equals(req.pass());
-        WithdrawVO vo = withdrawService.decide(withdrawNo, pass, req.remark(), operator);
-        // 动的是真金白银，必须能追到是谁在什么时候批的
-        auditLogPort.record("WITHDRAW_DECIDE", withdrawNo,
-                (pass ? "通过" : "驳回") + "｜" + (req.remark() == null ? "" : req.remark()), true);
-        return vo;
+        return app.decide(withdrawNo, req.pass(), req.remark());
     }
 
     @GetMapping("/ops/finance/tax-rule")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_READ + "')")
     public TaxRuleVO taxRule() {
-        return withdrawService.taxRule();
+        return app.taxRule();
     }
 
     /**
@@ -86,13 +77,7 @@ public class OpsWithdrawController {
     @PutMapping("/ops/finance/tax-rule")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_VERIFY + "')")
     public TaxRuleVO saveTaxRule(@RequestBody TaxRuleReq req) {
-        String operator = SecurityUtils.currentUserNo();
-        TaxRuleVO vo = withdrawService.saveTaxRule(
-                req.threshold() == null ? 0L : req.threshold(),
-                req.rate() == null ? 0L : req.rate(), operator);
-        auditLogPort.record("TAX_RULE_SAVE", "finance.tax-rule",
-                "起征点 %d 分｜税率 %d 万分比".formatted(vo.threshold(), vo.rate()), true);
-        return vo;
+        return app.saveTaxRule(req.threshold(), req.rate());
     }
 
     /**

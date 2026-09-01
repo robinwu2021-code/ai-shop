@@ -3,8 +3,7 @@ package ai.neargo.shop.portal.ops.pay;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.pay.service.ReconService;
-import ai.neargo.shop.spi.platform.AuditLogPort;
-import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.payclient.OpsReconAppService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -30,12 +29,10 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 public class OpsReconController {
 
-    private final ReconService reconService;
-    private final AuditLogPort auditLogPort;
+    private final OpsReconAppService app;
 
-    public OpsReconController(ReconService reconService, AuditLogPort auditLogPort) {
-        this.reconService = reconService;
-        this.auditLogPort = auditLogPort;
+    public OpsReconController(OpsReconAppService app) {
+        this.app = app;
     }
 
     /** 差异列表。默认给待处置的 —— 这是个队列，历史是次要视图 */
@@ -44,7 +41,7 @@ public class OpsReconController {
     public PageData<ReconService.ReconDiffVO> diffs(@RequestParam(required = false) String status,
                                                     @RequestParam(defaultValue = "1") long page,
                                                     @RequestParam(defaultValue = "20") long size) {
-        return PageData.ofAll(reconService.diffs(status), page, size);
+        return app.diffs(status, page, size);
     }
 
     /**
@@ -66,13 +63,13 @@ public class OpsReconController {
     @GetMapping("/ops/payments/recon-axes")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_RECON_READ + "')")
     public java.util.List<ReconService.AxisReport> axes() {
-        return reconService.scanAllAxes(System.currentTimeMillis());
+        return app.axes();
     }
 
     @GetMapping("/ops/payments/recon-coverage")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_RECON_READ + "')")
     public ReconService.Coverage coverage() {
-        return reconService.coverage();
+        return app.coverage();
     }
 
     /** 已处置。结论必填，且原样留在单据上 */
@@ -80,10 +77,7 @@ public class OpsReconController {
     @PreAuthorize("@perm.can('" + Perms.FINANCE_RECON_RESOLVE + "')")
     public ReconService.ReconDiffVO resolve(@PathVariable String diffNo,
                                             @RequestBody DecideReq req) {
-        var vo = reconService.decide(diffNo, false, req.resolution(), SecurityUtils.currentUserNo());
-        // 钱的事必须能追到是谁在什么时候下的结论
-        auditLogPort.record("RECON_RESOLVE", diffNo, req.resolution());
-        return vo;
+        return app.resolve(diffNo, req.resolution());
     }
 
     /** 忽略：认定不是问题。<b>同样必须写理由</b> —— 下个月再对账时没人记得为什么放过它 */
@@ -91,9 +85,7 @@ public class OpsReconController {
     @PreAuthorize("@perm.can('" + Perms.FINANCE_RECON_RESOLVE + "')")
     public ReconService.ReconDiffVO ignore(@PathVariable String diffNo,
                                            @RequestBody DecideReq req) {
-        var vo = reconService.decide(diffNo, true, req.resolution(), SecurityUtils.currentUserNo());
-        auditLogPort.record("RECON_IGNORE", diffNo, req.resolution());
-        return vo;
+        return app.ignore(diffNo, req.resolution());
     }
 
     public record DecideReq(String resolution) {

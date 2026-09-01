@@ -1,10 +1,8 @@
 package ai.neargo.shop.portal.ops.pay;
 
 import ai.neargo.shop.auth.Perms;
-import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.pay.dto.FeeRuleVO;
-import ai.neargo.shop.pay.service.FeeRuleService;
-import ai.neargo.shop.spi.platform.AuditLogPort;
+import ai.neargo.shop.payclient.OpsFeeRuleAppService;
 import java.util.List;
 import java.util.Map;
 import org.springframework.context.annotation.Profile;
@@ -28,19 +26,17 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 public class OpsFeeRuleController {
 
-    private final FeeRuleService feeRuleService;
-    private final AuditLogPort auditLogPort;
+    private final OpsFeeRuleAppService app;
 
-    public OpsFeeRuleController(FeeRuleService feeRuleService, AuditLogPort auditLogPort) {
-        this.feeRuleService = feeRuleService;
-        this.auditLogPort = auditLogPort;
+    public OpsFeeRuleController(OpsFeeRuleAppService app) {
+        this.app = app;
     }
 
     /** 全部版本，含历史。运营要能看见「什么时候调过、调成什么、为什么调」。 */
     @GetMapping("/ops/settle/fee-rules")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_RATE_READ + "')")
     public List<FeeRuleVO> rules() {
-        return feeRuleService.rules();
+        return app.rules();
     }
 
     /**
@@ -52,19 +48,14 @@ public class OpsFeeRuleController {
     @GetMapping("/ops/settle/fee-rules/effective")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_RATE_READ + "')")
     public Map<String, Integer> effective(@RequestParam(required = false) Long at) {
-        return feeRuleService.effectiveRates(at == null ? System.currentTimeMillis() : at);
+        return app.effectiveRates(at);
     }
 
     @PostMapping("/ops/settle/fee-rules")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_RATE_UPDATE + "')")
     public FeeRuleVO add(@RequestBody AddReq req) {
-        String operator = SecurityUtils.currentUserNo();
-        long from = req.effectiveFrom() == null ? System.currentTimeMillis() : req.effectiveFrom();
-        FeeRuleVO rule = feeRuleService.addRule(req.businessMode(), req.trafficSource(),
-                req.rateBp() == null ? 0 : req.rateBp(), from, req.remark(), operator);
-        auditLogPort.record("FEE_RULE_ADD",
-                req.businessMode() + "/" + req.trafficSource() + "=" + req.rateBp(), operator);
-        return rule;
+        return app.add(req.businessMode(), req.trafficSource(), req.rateBp(),
+                req.effectiveFrom(), req.remark());
     }
 
     /**
