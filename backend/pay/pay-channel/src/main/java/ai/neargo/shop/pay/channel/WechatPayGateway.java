@@ -1,6 +1,6 @@
-package ai.neargo.shop.channel.pay;
+package ai.neargo.shop.pay.channel;
 
-import ai.neargo.shop.channel.pay.base.AbstractPayGateway;
+import ai.neargo.shop.pay.channel.base.AbstractPayGateway;
 import ai.neargo.shop.spi.platform.MasterDataPort;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

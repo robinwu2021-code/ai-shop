@@ -1,4 +1,4 @@
-package ai.neargo.shop.channel.pay.verify;
+package ai.neargo.shop.pay.channel.verify;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

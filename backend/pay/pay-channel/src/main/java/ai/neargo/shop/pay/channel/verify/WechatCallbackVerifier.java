@@ -1,4 +1,4 @@
-package ai.neargo.shop.channel.pay.verify;
+package ai.neargo.shop.pay.channel.verify;
 
 import ai.neargo.shop.spi.pay.ChannelCallbackVerifier;
 import org.slf4j.Logger;

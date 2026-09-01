@@ -1,4 +1,4 @@
-package ai.neargo.shop.channel.pay;
+package ai.neargo.shop.pay.channel;
 
 /**
  * 支付宝直付通的接口坐标。2026-08 核对。

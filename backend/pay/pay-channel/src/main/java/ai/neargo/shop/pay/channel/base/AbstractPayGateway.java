@@ -1,8 +1,8 @@
-package ai.neargo.shop.channel.pay.base;
+package ai.neargo.shop.pay.channel.base;
 
-import ai.neargo.shop.channel.pay.ChannelClient;
-import ai.neargo.shop.channel.pay.ChannelClient.ChannelException;
-import ai.neargo.shop.channel.pay.PayGateway;
+import ai.neargo.shop.pay.channel.ChannelClient;
+import ai.neargo.shop.pay.channel.ChannelClient.ChannelException;
+import ai.neargo.shop.pay.channel.PayGateway;
 import ai.neargo.shop.spi.platform.MasterDataPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

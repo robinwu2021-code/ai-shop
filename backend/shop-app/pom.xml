@@ -66,6 +66,15 @@
             <artifactId>shop-channel</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 支付通道适配（2026-09-01 从 shop-channel 拆出）。
+             **内嵌形态必须显式依赖它**：shop-app 不直接 import 这些类，
+             只通过 spi 接口拿到 —— 所以少了这条依赖**编译照样过**，
+             而运行时 PayQueryPort / 验签器 / 各 Gateway 的 bean 全部消失。 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>pay-channel</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
             <artifactId>shop-notify</artifactId>

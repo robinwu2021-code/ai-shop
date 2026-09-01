@@ -1,4 +1,4 @@
-package ai.neargo.shop.channel.pay;
+package ai.neargo.shop.pay.channel;
 
 /**
  * 微信支付电商收付通的接口坐标（APIv3）。2026-08 核对自官方文档中心。

@@ -1,7 +1,7 @@
-package ai.neargo.shop.channel.port;
+package ai.neargo.shop.pay.channel.port;
 
-import ai.neargo.shop.channel.pay.PayGateway;
-import ai.neargo.shop.channel.pay.PayGatewayRouter;
+import ai.neargo.shop.pay.channel.PayGateway;
+import ai.neargo.shop.pay.channel.PayGatewayRouter;
 
 import ai.neargo.shop.spi.pay.PayQueryPort;
 import org.springframework.stereotype.Component;

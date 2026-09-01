@@ -34,6 +34,12 @@
             <artifactId>pay-domain</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 通道适配。独立形态下回调验签与向通道查单都在这个进程里做 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>pay-channel</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>

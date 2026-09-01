@@ -1,4 +1,4 @@
-package ai.neargo.shop.channel.pay;
+package ai.neargo.shop.pay.channel;
 
 import ai.neargo.shop.spi.pay.PayApplymentGateway;
 import org.junit.jupiter.api.DisplayName;
@@ -143,7 +143,7 @@ class ApplymentGatewayTest {
             }
         };
         var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(
-                "ai.neargo.shop.channel.pay.base.AbstractApplymentGateway");
+                "ai.neargo.shop.pay.channel.base.AbstractApplymentGateway");
         appender.start();
         logger.addAppender(appender);
         try {

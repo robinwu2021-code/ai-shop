@@ -1,6 +1,6 @@
-package ai.neargo.shop.channel.pay;
+package ai.neargo.shop.pay.channel;
 
-import ai.neargo.shop.channel.pay.base.AbstractApplymentGateway;
+import ai.neargo.shop.pay.channel.base.AbstractApplymentGateway;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;

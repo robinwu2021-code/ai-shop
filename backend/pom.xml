@@ -53,6 +53,8 @@
         <module>shop-core</module>
         <!-- 独立成工程的两个域：变更节奏与外部依赖都与核心域不同，最可能先拆微服务 -->
         <module>shop-merchant</module>
+        <!-- 支付通道适配。2026-09-01 从 shop-channel 拆出 —— 通道是支付域的核心能力 -->
+        <module>pay/pay-channel</module>
         <module>pay/pay-domain</module>
         <!-- 独立部署形态（形态 B）。今天装得起来但不接流量 —— 见 PayApplication 的类注释 -->
         <module>pay/pay-svc</module>
