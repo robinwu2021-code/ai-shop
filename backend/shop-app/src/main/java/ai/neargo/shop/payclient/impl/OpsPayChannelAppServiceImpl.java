@@ -8,12 +8,34 @@ import ai.neargo.shop.pay.channel.master.PayChannelRateService;
 import ai.neargo.shop.payclient.OpsPayChannelAppService;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import java.util.List;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
-/** 内嵌实现。独立形态的远程实现待 M1 之后单独做 —— 那时它与费率、发票同形状 */
+/**
+ * 通道主数据的运营端实现。<b>两种部署形态都装配它。</b>
+ *
+ * <h2>2026-09-02：这里曾经挂着 embedded 条件，把生产打挂了</h2>
+ * 原来的写法是
+ * {@code @ConditionalOnProperty(name = "shop.pay.deployment", havingValue = "embedded")}，
+ * 注释写着「独立形态的远程实现待 M1 之后单独做」——
+ * <b>而那个远程实现始终没做，生产的值又正好是 standalone</b>。
+ * 于是上线那一刻这个 bean 不装配，而 {@code OpsPayChannelController} 要它，
+ * Spring 上下文起不来，服务反复重启，只能回滚。
+ *
+ * <p><b>本地 1632 个测试全绿</b> —— 因为 {@code matchIfMissing = true}
+ * 让测试跑的是 embedded 那一半，而生产跑的是另一半。
+ * 那句注释本身就是缺陷的自白：明知远程实现还没有，却仍然加了条件，
+ * 等于<b>主动把 standalone 那一半变成「没有任何 bean」</b>。
+ *
+ * <p><b>为什么摘掉条件是安全的</b>：D2 切库还没做，
+ * 两种形态今天共用同一个库，standalone 下直连通道主数据表完全可行。
+ * 等 pay-svc 真有了 {@code /internal/pay/pay-channels} 与配套的
+ * {@code RemoteOpsPayChannelAppService}，再把条件加回来 ——
+ * <b>那时是「两个实现二选一」，而不是现在的「一个实现或没有」</b>。
+ *
+ * <p>同类问题由 {@code PayDeploymentModePairingTest} 拦：
+ * 标了 embedded 的实现必须有 standalone 的对应物。
+ */
 @Service
-@ConditionalOnProperty(name = "shop.pay.deployment", havingValue = "embedded", matchIfMissing = true)
 public class OpsPayChannelAppServiceImpl implements OpsPayChannelAppService {
 
     private final PayChannelMasterService master;
