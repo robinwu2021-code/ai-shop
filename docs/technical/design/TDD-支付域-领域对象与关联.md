@@ -9,15 +9,21 @@
 
 ## L1 · 定位
 
-**支付域有哪些领域对象、它们之间是什么关系、各自的状态机。**
+**整条资金链上有哪些领域对象、它们之间是什么关系、各自的状态机。**
 
-两条写法上的规矩：
+**范围从主体与进件开始**，不是从支付流水开始。
+第一版只覆盖了 `stl_*` 那一段，把进件档案划成「属于商家域」排除掉了 ——
+那是错的：<b>「谁能收钱」和「钱打给谁」是这条链的前两环</b>，
+它们决定了后面每一笔流水存不存在、进谁的账。
+
+三条写法上的规矩：
 
 1. **领域对象 ≠ 表。**「账户 + 流水」是<b>同一个对象的两面</b>，
    不是两个对象 —— 账户是当前值，流水是它怎么变成这个值的。
-   按表数会数出 22 张，按对象数是 <b>13 个</b>（§二 逐个列了，可以自己数）。
-2. **写现状，不写愿望。**下面每一处「今天没有」都是 2026-09-01
-   当场验过的，不是估计。三个空洞见 §五。
+2. **按资金主线排，不按模块排。**一笔钱从「这家店能不能收」走到
+   「钱到了商家账上」，中间经过哪些对象，就按那个顺序列。
+3. **写现状，不写愿望。**每一处「今天没有」都是 2026-09-01
+   当场验过的，不是估计 —— 包括两处我先猜错、查了才改过来的。
 
 ---
 
@@ -49,10 +55,59 @@
 
 ---
 
-## L2 · 二、13 个领域对象
+## L2 · 一·五、资金主线：一笔钱要经过的六环
+
+```
+ ① 谁能收钱          ② 钱打给谁         ③ 买家付钱
+ 入驻申请 → 主体      收款进件档案        支付流水 → 渠道报文
+ 资质 → 门店          （主体级/门店级）    ↑ 额度在这里拦
+ 准入策略（保证金·限额）  ↓                 ↓
+        ↓            通道侧商户号         ④ 商家该收多少
+ 违规 → 处置          payMerchantNo       结算单 → 分账流水
+                                              ↓
+ ⑥ 钱出去                              ⑤ 账平不平
+ 账期批次 → 放款      ←──────────       对账差异 · 不变式巡检
+ 提现单（不打款）                        积分账户 ⇄ 积分池
+```
+
+**每一环都能独立地把后面全挡住**，而症状各不相同：
+主体没通过 → 商家看不到入口；没进件 → 下单时通道未接入；
+额度用尽 → 支付被拒；没有结算单 → 钱收了但商家看不到；
+批次不放行 → 钱在平台账上不动。<b>排查资金问题时按这六环倒着走</b>。
+
+---
+
+## L2 · 二、22 个领域对象
 
 按**谁的钱**分四组。分组不是分类癖：<b>组内可以互相引用，跨组只能通过号引用</b>，
 D2 拆库时这条决定哪些表能一起搬。
+
+### 组 O · 谁能收钱（准入与身份）
+
+一笔钱能不能收，先由这一组决定。**它们不在 `stl_*` 里，但都是资金对象**。
+
+| 对象 | 表 | 状态机 / 关键字段 | 说明 |
+|---|---|---|---|
+| **O1 入驻申请** `EntityApply` | `mch_entity_apply` | `PENDING→REVIEWING→APPROVED/REJECTED` | 资金链的第 0 步。没通过就没有主体 |
+| **O2 商家主体** `Entity` | `mch_entity` | `PENDING_LICENSE→ACTIVE`；`legal_form`、`breach_count` | **`legal_form` 是资金档位的钥匙**：它决定准入策略、通道费率分档、进件材料 |
+| **O3 资质证照** `Qualification` | `mch_qualification` | `VALID/EXPIRED/REVOKED` | 结构化存证件与有效期。**过期会影响能不能卖**，因而间接影响能不能收钱 |
+| **O4 门店** `Store` | `mch_store` | `ACTIVE/READONLY/SUSPENDED`；挂 `pay_merchant_no` | 门店可以有自己的收款商户号 —— 见 O4⇄P1 那条线 |
+| **O5 准入策略** `AdmissionPolicy` | `mch_admission_policy` | 按 `legal_form` 档位：`required_deposit_minor`、`single_order_limit_minor`、`daily_amount_limit_minor` | **平台无仓、不碰货，法律上却是销售主体** —— 这个缺口只能用准入和钱去补，这张表就是那个「钱」 |
+| **O6 增值包订阅** `EntityPlan` | `mch_entity_plan` | `FREE/PRO/CHAIN` × `ACTIVE/GRACE/EXPIRED`；`BY_SELF_PAID/BY_PLATFORM/BY_TRIAL` | 商家向平台付的钱那条线。额度是**快照**，改档位定义不影响存量 |
+| **O7 违规记录** `Violation` | `mch_violation` | `BREACH/SUSPEND/STORE_OFFLINE` | 事实在这里，结论在 `mch_entity.breach_count`。只有计数器的话，申诉时说不清也减不回去 |
+
+### 组 P · 钱打给谁（进件）
+
+| 对象 | 表 | 状态机 / 关键字段 | 说明 |
+|---|---|---|---|
+| **P1 收款进件档案** `PaymentMerchant` | `mch_payment_merchant` | `APPLYING→ACTIVE/REJECTED/FROZEN`<br>`legal_form`: `MICRO/INDIVIDUAL/ENTERPRISE` | 一行 = (主体 × 通道 × 门店?)。`store_no` 为 `ENTITY_LEVEL` 时是主体级。产出 `pay_merchant_no`（通道侧商户号）与 `channel_apply_no` |
+| **P2 收款额度** `PayQuota` | 同表的 `quota_limit_minor` / `quota_used_minor` / `quota_period` | 按**自然年**累计（微信对小微的口径） | 挂在进件档案上而不是主体上：主体级一条 + 每个已进件门店一条。<b>用量由支付成功时累加</b>（`OrderServiceImpl` → `accruePayQuota`），运营只能改上限、改不了用量 —— 让人能改用量等于让人可以把账做平 |
+
+> **P2 我先猜它「设了限额但从没累加」，查完是错的** —— 累加在
+> `MerchantPortImpl.accruePayQuota`，由 `OrderServiceImpl:974` 在支付成功时调，
+> 还有 `MicroPayCapabilityFlowTest` 在测。写下来是因为
+> 「字段在而没人写」这个模式在这个仓库里出现过太多次（见 §五），
+> <b>而正因为它常见，更要每次都查而不是套模板</b>。
 
 ### 组 A · 买家付的钱
 
@@ -87,14 +142,51 @@ D2 拆库时这条决定哪些表能一起搬。
 | **D2 积分资金池** `PointsPool` | `stl_points_pool` | 预付费模型的钱那一侧 |
 | **D3 商家资金账户** `MerchantFund` | `mch_deposit`+`_txn`、`mch_debt`+`_txn` | 保证金与欠款。**两个账户，四张表** |
 
-> 13 个对象共占 19 张表；另外 3 张见下。19 + 3 = 22，与库里的支付域表数对得上。
-
-> 另有三张不是领域对象：`mch_payment_merchant`（进件档案，属于商家域）、
-> `pay_setting`（支付域设置）、`pay_risk_shadow_log`（风控影子日志）。
+> **对得上吗**：22 个对象占 27 张表（P2 与 P1 同表，只是那张表上的三列）。
+> 另有两张在资金链上而不是领域对象：`pay_setting`（支付域设置）、
+> `pay_risk_shadow_log`（风控影子日志）。
+>
+> 商家域还有 14 张表（员工、角色、会话、履约渠道、服务范围、门店审核……）
+> **不在资金链上**，故不在此列 —— 它们与「钱怎么流」无关。
 
 ---
 
 ## L2 · 三、关联全图
+
+**上半段 · 从主体到收款商户号**
+
+```
+  O1 入驻申请 mch_entity_apply
+   PENDING→REVIEWING→APPROVED/REJECTED
+        │ 通过后开出主体
+        ▼
+  O2 主体 mch_entity ──────────── legal_form ──────┐
+   PENDING_LICENSE→ACTIVE                          │ 决定档位
+   breach_count ◄── O7 违规 mch_violation          ▼
+        │                                  O5 准入策略 mch_admission_policy
+        │ entity_no                          应缴保证金 · 单笔限额 · 日累计限额
+        ├──→ O3 资质 mch_qualification              │
+        │     VALID/EXPIRED/REVOKED                │ 应缴额
+        ├──→ O6 增值包 mch_entity_plan               ▼
+        │     FREE/PRO/CHAIN                 D3 保证金 mch_deposit(+_txn)
+        │                                      paid / frozen / available
+        ▼
+  O4 门店 mch_store ──── pay_merchant_no ──┐
+   ACTIVE/READONLY/SUSPENDED               │ 门店可以有自己的商户号
+        │                                  │
+        └──────────┬───────────────────────┘
+                   ▼
+  P1 收款进件档案 mch_payment_merchant
+   (主体 × 通道 × 门店|ENTITY_LEVEL)
+   APPLYING→ACTIVE/REJECTED/FROZEN
+   → pay_merchant_no（通道侧商户号）· channel_apply_no
+        │
+        └─ P2 收款额度：quota_limit / quota_used / quota_period（按自然年）
+              ▲ 支付成功时累加（OrderServiceImpl → accruePayQuota）
+              ▼ 下单前检查：超限则拒付
+```
+
+**下半段 · 从收款到放款**
 
 ```
                         ┌──────────────── 通道主数据 (C3) ────────────────┐
@@ -150,6 +242,22 @@ D2 拆库时这条决定哪些表能一起搬。
   │  恒等式：流通中的积分 ≡ 池子里的钱                  │
   └──────────────────────────────────────────────────┘
 ```
+
+**两段之间的接缝**：`pay_merchant_no`。
+上半段产出它，下半段每一笔流水与结算单都带着它 ——
+<b>「这笔钱进了谁的账」这个问题，答案只在这一个字段上</b>。
+
+⚠️ `stl_bill` 与 `mch_store` **各存一份，而且刻意不互相推导**。
+写这份文档时我先把它当成隐患（「两处不一致 = 钱进错商户」），
+查代码才发现<b>是设计意图</b>：两家店可以共用一个收款号（合并结算）、
+也可以各配各的（分开结算），谁也决定不了谁。
+而结算单上那一份是**下单那一刻的快照** —— 与经营模式快照同一条口径：
+门店事后改配置，不该把未结的历史账一起改掉。
+
+所以正确的说法是：<b>结算单上的收款号是历史事实，门店上的是当前配置，
+两者不同是正常的</b>。真正该守的不是「两者相等」，
+而是「解析不出收款号时账单照常生成、发起打款那一步挡下来」——
+那一条代码里已经有了。
 
 ---
 
