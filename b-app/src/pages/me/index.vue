@@ -39,6 +39,29 @@ const headActive = computed(() => (merchant.multiStore
   ? merchant.currentStore?.status === "ACTIVE"
   : merchant.isActive));
 
+/**
+ * 头部这一格点得动吗。
+ *
+ * <p><b>与 `biz-store-tag` 的可点形态同一条判据</b>：多店的人点进去是「切换」，
+ * 单店但能管门店的人点进去是「管理」（在那里开第二家）。
+ * 只给多店的话，单店老板点这一格没有任何反应 —— 而它长得就像可以点。
+ */
+const storeEntry = computed(() => merchant.multiStore || merchant.can("biz:store:admin"));
+
+const storeEntryKey = computed(() => (merchant.multiStore
+  ? "storePick.switch" : "storePick.manage"));
+
+/**
+ * 写成具名方法，不写内联三元。
+ *
+ * <p>这一页其它每一行都是 `@tap="go(...)"` —— 唯独这一格曾经是
+ * `@tap="multiStore ? go(...) : undefined"`。同一个页面里两种写法，
+ * 出问题时第一反应不会是「这一行的写法不一样」。
+ */
+function onHeadTap() {
+  if (storeEntry.value) go(ROUTES.stores);
+}
+
 const headStatusKey = computed(() => (merchant.multiStore
   ? (merchant.currentStore?.status === "ACTIVE" ? "me.statusACTIVE" : "storePick.entityClosed")
   : statusKey.value));
@@ -153,7 +176,7 @@ onShow(() => {
       整格可点 = 切店入口。切店此前只在工作台有一个入口，而人找「换一家店」
       第一个翻的就是「我的」。
     -->
-    <view v-else class="sh-card head sh-row" @tap="merchant.multiStore ? go(ROUTES.stores) : undefined">
+    <view v-else class="sh-card head sh-row" @tap="onHeadTap">
       <text class="head__logo">{{ merchant.profile?.logo || MERCHANT_LOGO_FALLBACK }}</text>
       <view class="sh-fill">
         <text class="txt-title">{{ headTitle }}</text>
@@ -162,7 +185,7 @@ onShow(() => {
           {{ $t(headStatusKey) }}
         </text>
       </view>
-      <text v-if="merchant.multiStore" class="sh-muted">{{ $t("me.switchStore") }} ›</text>
+      <text v-if="storeEntry" class="sh-muted">{{ $t(storeEntryKey) }} ›</text>
     </view>
 
     <!--
