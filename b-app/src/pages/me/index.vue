@@ -21,6 +21,28 @@ const quotaFull = computed(() => !!plan.value && plan.value.storeUsed >= plan.va
 
 const statusKey = computed(() => `me.status${merchant.profile?.status ?? "NONE"}`);
 
+/**
+ * 头部这一格：**多店看门店，单店看主体**。
+ *
+ * <p>单店时两者是同一件事，把主体名换成门店名只会让人以为改错了地方；
+ * 多店时它们是两件事，而人在这一页找的是「我现在在哪家店」。
+ */
+const headTitle = computed(() => (merchant.multiStore
+  ? merchant.currentStore?.name || t("storePick.current")
+  : merchant.profile?.name || t("me.store")));
+
+/** 第二行是主体名（证照抬头）—— 门店挂在它下面，藏掉的话对不上账 */
+const headSub = computed(() => merchant.profile?.name ?? "");
+
+/** 多店时状态看**这家店**：停用的店与「主体正常营业」是两回事 */
+const headActive = computed(() => (merchant.multiStore
+  ? merchant.currentStore?.status === "ACTIVE"
+  : merchant.isActive));
+
+const headStatusKey = computed(() => (merchant.multiStore
+  ? (merchant.currentStore?.status === "ACTIVE" ? "me.statusACTIVE" : "storePick.entityClosed")
+  : statusKey.value));
+
 function go(url: string) {
   uni.navigateTo({ url });
 }
@@ -97,6 +119,13 @@ async function logout() {
 
 onShow(() => {
   void merchant.loadProfile().catch(() => null);
+  /*
+   * 门店列表：头部那一格靠它判「是不是多店」。
+   * **不拉的话 `stores` 是空的 → multiStore 为 false → 头部退回主体名**，
+   * 而那正是店主报的「我的页没有跟着切店变」——
+   * 同一个坑 `ensureStores` 的注释里记着（刷新在商品页时也是这样）。
+   */
+  void merchant.ensureStores().catch(() => null);
   // 名下有几张证照 —— 决定「证照与账户」这一行出不出现
   void merchant.ensureEntityGroups();
   void loadPlan();
@@ -113,14 +142,27 @@ onShow(() => {
       <text class="sh-muted">{{ $t("me.notLoginHint") }}</text>
     </view>
 
-    <view v-else class="sh-card head sh-row">
+    <!--
+      **多店时这里以「当前门店」为主。**
+
+      店主报上来的原话是「『我的』页面登录的门店信息没有根据门店切换」——
+      这一格原先显示的是**主体名**（证照抬头），它按定义不随切店变，
+      于是多店店主在这一页读到的是「我还在上一家店」。主体名没有消失，
+      它退到第二行：那两个名字是两件事，藏掉任何一个都会让人对不上账。
+
+      整格可点 = 切店入口。切店此前只在工作台有一个入口，而人找「换一家店」
+      第一个翻的就是「我的」。
+    -->
+    <view v-else class="sh-card head sh-row" @tap="merchant.multiStore ? go(ROUTES.stores) : undefined">
       <text class="head__logo">{{ merchant.profile?.logo || MERCHANT_LOGO_FALLBACK }}</text>
       <view class="sh-fill">
-        <text class="txt-title">{{ merchant.profile?.name || $t("me.store") }}</text>
-        <text class="sh-chip" :class="merchant.isActive ? 'sh-chip--primary' : 'sh-chip--warning'">
-          {{ $t(statusKey) }}
+        <text class="txt-title">{{ headTitle }}</text>
+        <text v-if="merchant.multiStore" class="sh-muted head__sub">{{ headSub }}</text>
+        <text class="sh-chip" :class="headActive ? 'sh-chip--primary' : 'sh-chip--warning'">
+          {{ $t(headStatusKey) }}
         </text>
       </view>
+      <text v-if="merchant.multiStore" class="sh-muted">{{ $t("me.switchStore") }} ›</text>
     </view>
 
     <!--
@@ -265,6 +307,11 @@ onShow(() => {
 <style scoped>
 .head {
   gap: 24rpx;
+}
+/* 主体名压一档：它是归属信息，不该与门店名抢同一个视觉层级 */
+.head__sub {
+  display: block;
+  margin: 4rpx 0;
 }
 .head__logo {
   font-size: 64rpx;

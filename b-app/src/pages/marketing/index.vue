@@ -186,7 +186,15 @@ function summary(c: MarketingCampaign): string {
   return t("marketing.sumBuyGift", { n: c.buyN ?? 0, m: c.giftM ?? 0 });
 }
 
-onShow(load);
+onShow(() => {
+  void load();
+  /*
+   * 门店列表：页内那个门店选择器靠它判多店。不拉的话 `stores` 是空的 →
+   * `multiStore` 为 false → **选择器整条消失**，而数据仍按某一家店取 ——
+   * 界面上没有一个字说是哪家（`ensureStores` 的注释里记着同一个坑）。
+   */
+  void merchant.ensureStores().catch(() => null);
+});
 </script>
 
 <template>

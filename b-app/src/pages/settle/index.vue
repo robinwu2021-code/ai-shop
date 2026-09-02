@@ -126,7 +126,15 @@ function go(url: string) {
   uni.navigateTo({ url });
 }
 
-onShow(load);
+onShow(() => {
+  void load();
+  /*
+   * 门店列表：页内那个「按门店 / 全部门店」的作用域切换靠它判多店。
+   * 不拉的话整条消失，而账还是按某一家店的范围出的 ——
+   * 钱的口径没写出来，比数字本身更容易吵起来。
+   */
+  void merchant.ensureStores().catch(() => null);
+});
 </script>
 
 <template>

@@ -135,6 +135,31 @@ describe("B 端门店维度", () => {
     ).toEqual([]);
   });
 
+  it("★★★ 页面自己读当前门店的，必须自己 ensureStores —— 不拉的话门店提示整条消失", () => {
+    /*
+     * `multiStore` / `currentStore` 都从 `stores` 算。页面不拉这份列表时它是空的：
+     * multiStore 变 false → 门店那一行**整条不渲染**，而请求照样带着 X-Store-No。
+     * 表现就是店主报的那句「没跟着切换」：他看的是某一家店的数，
+     * 界面上却没有一个字说是哪家。
+     *
+     * 用 <biz-store-tag> 的页面豁免 —— 那个组件自己在 onMounted 里拉。
+     */
+    const bad: string[] = [];
+    for (const dir of ALL_DIRS) {
+      const s = pageSource(dir);
+      if (!/merchant\.(currentStore|multiStore)/.test(s)) continue;
+      if (/<biz-store-tag\b/.test(s)) continue;
+      if (!/ensureStores\(/.test(s)) bad.push(dir);
+    }
+    expect(
+      bad,
+      "这些页面读了 merchant.currentStore / multiStore，却没有 ensureStores()：\n  "
+      + bad.join("\n  ")
+      + "\n→ 在 onShow/onLoad 里 void merchant.ensureStores()，"
+      + "否则冷启动或刷新时门店那一行会整条消失",
+    ).toEqual([]);
+  });
+
   it("每条声明都要有依据；两份清单不许重叠 —— 同一页不能既「按门店」又「刻意不按」", () => {
     const noReason = Object.entries({ ...SCOPED, ...ENDPOINTS })
       .filter(([, why]) => !why.trim())

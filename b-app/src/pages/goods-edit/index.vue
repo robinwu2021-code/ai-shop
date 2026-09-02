@@ -1909,6 +1909,12 @@ function applyBulkStock() {
 onShow(() => {
   if (channelsLoaded.value) void loadStoreChannels();
   /*
+   * 门店列表：库存那一栏「改的是哪家店」靠它判多店。
+   * 不拉的话多店提示整条消失，而库存改的仍是当前门店那一份 ——
+   * 改错店的成本是真金白银（`ensureStores` 的注释里记着同一个坑）。
+   */
+  void merchant.ensureStores().catch(() => null);
+  /*
    * **规格也要重拉**，理由与送货方式一模一样：商家可能刚从「我的规格」回来，
    * 在那边给这一类停了一个维度、改了本店叫法、或者加了一个维度进来。
    * 不重拉的话，建品页手里还是**进来那一刻**的那份 —— 他会以为那一页白设了，

@@ -154,7 +154,15 @@ function open(o: Order) {
   uni.navigateTo({ url: `${ROUTES.order}?orderNo=${o.orderNo}` });
 }
 
-onShow(load);
+onShow(() => {
+  void load();
+  /*
+   * 门店列表：筛选条上那句「当前门店 / 全部门店」靠它判多店。
+   * 不拉的话 `stores` 是空的 → `multiStore` 为 false → **整条门店范围消失**，
+   * 而请求照样带着 X-Store-No：他看的是某一家店的单，界面上却没有一个字说是哪家。
+   */
+  void merchant.ensureStores().catch(() => null);
+});
 </script>
 
 <template>
