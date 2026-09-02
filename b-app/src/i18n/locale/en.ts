@@ -260,6 +260,9 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     expiringIn: "expires in {n} days",
   },
   goods: {
+    stockInvHint: "Inventory has {n} ({where}). This edits the storefront number — the two ledgers are kept separately",
+    stockInvNowhere: "zero at every location",
+    stockInvNone: "No inventory record for this item yet",
     categoryType: {
       NORMAL: "Standard goods",
       FRESH: "Fresh produce",

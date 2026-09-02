@@ -1553,6 +1553,16 @@ export interface MerchantApi {
    * 按条码找货。**没绑过回 `null` 不是抛错** —— 「这个码还没绑过」是常态
    *（线上条码 0/396），做成异常的话端上要靠 catch 走正常流程。
    */
+  /**
+   * 按**平台 SKU** 查这件货在进销存的账 —— 商品页与库存之间唯一的一条通路。
+   *
+   * 商品页上的「库存」是平台侧的数（`prd_sku.stock` / `prd_store_stock`），
+   * 而进销存这本账是另一个数。两处都叫「库存」，商家没法回答哪个是对的。
+   *
+   * **没有账时回 `null`，不是报错** —— 刚建的 SKU 在投影跑到之前本来就没有物料。
+   * 别家的 SKU 也回 `null`（不泄露「它存在但不是你的」）。
+   */
+  mItemBySku(skuNo: string): Promise<StockItemDetail | null>;
   mItemByBarcode(code: string): Promise<StockBalance | null>;
   /**
    * 绑码。**幂等** —— 同一个码绑同一件货重复调用是成功；

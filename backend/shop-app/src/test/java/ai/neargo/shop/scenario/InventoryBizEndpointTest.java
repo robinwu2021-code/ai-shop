@@ -103,6 +103,41 @@ class InventoryBizEndpointTest {
     }
 
     @Test
+    @DisplayName("★★★ 按 SKU 查账：有账给明细，没账给 null，别家的也给 null")
+    void itemBySkuBridgesTheTwoDomains() throws Exception {
+        Shop s = shop();
+
+        /*
+         * 这是商品页与进销存之间**唯一的一条可见通路**：商家在商品页看到的
+         * 「库存 1000」是平台侧的数，进销存是另一本账，两处都叫「库存」。
+         */
+        JsonNode hit = ok(get("/biz/inventory/item-by-sku?skuNo=" + s.skuA()), s.token());
+        assertThat(hit.isNull()).as("种子这件货已经投影过来了，该给得出账").isFalse();
+        for (String f : List.of("itemId", "name", "onHand", "byLocation")) {
+            assertThat(hit.has(f)).as("StockItemDetail 读 %s", f).isTrue();
+        }
+
+        /*
+         * **没账回 null，不是 404。**刚建的 SKU 在投影跑到之前本来就没有物料，
+         * 那是常态不是错误 —— 回 404 会被端上的通用错误处理弹成「加载失败」，
+         * 而商家看到的应该是「这件货还没建账」。
+         */
+        JsonNode none = ok(get("/biz/inventory/item-by-sku?skuNo=SK_NOT_PROJECTED_YET"), s.token());
+        assertThat(none.isNull()).as("没投影过来的 SKU 要回 null").isTrue();
+
+        /*
+         * **别家的 SKU 也回 null。**itemIdOfSku 是全局反查，它不认得调用者是谁。
+         * 如果这里回 403 或 NOT_FOUND，那个「异常」本身就是答案：它告诉试探的人
+         * 「这个 SKU 存在，只是不属于你」。回同一个 null，什么都问不出来。
+         */
+        Shop other = shop();
+        JsonNode foreign = ok(get("/biz/inventory/item-by-sku?skuNo=" + other.skuA()), s.token());
+        assertThat(foreign.isNull())
+                .as("别家的 SKU 要和「没有账」给同一个回答，否则回答本身泄露了存在性")
+                .isTrue();
+    }
+
+    @Test
     @DisplayName("★★★ balances 的 locationId：数出自哪个库位，以及别家的库位读不到")
     void balancesHonoursLocationAndRejectsForeignOnes() throws Exception {
         Shop s = shop();

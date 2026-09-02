@@ -260,6 +260,9 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     expiringIn: "ينتهي خلال {n} يومًا",
   },
   goods: {
+    stockInvHint: "المخزون يسجل {n} ({where}). هذا يعدّل رقم المتجر — الدفتران منفصلان",
+    stockInvNowhere: "صفر في كل المواقع",
+    stockInvNone: "لا يوجد سجل مخزون لهذا الصنف بعد",
     categoryType: {
       NORMAL: "سلع عادية",
       FRESH: "طازج",

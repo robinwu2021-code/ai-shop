@@ -562,6 +562,7 @@ export const httpApi: MerchantApi = {
   mStockLedger: (q) => http.get<StockLedgerPage>(E.mStockLedger.path, q),
   mStockAdjust: (req) => http.post<void>(E.mStockAdjust.path, req),
   mSafetyStock: (itemId, body) => http.put<void>(E.mSafetyStock.path, { itemId, ...body }),
+  mItemBySku: (skuNo) => http.get<StockItemDetail | null>(E.mItemBySku.path, { skuNo }),
   mItemByBarcode: (code) => http.get<StockBalance | null>(E.mItemByBarcode.path, { code }),
   mBindBarcode: (body) => http.post<void>(E.mBindBarcode.path, body),
 

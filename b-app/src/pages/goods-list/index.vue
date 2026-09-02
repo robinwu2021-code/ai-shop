@@ -302,8 +302,41 @@ async function editStock(g: Goods) {
   const sku = g.skus[0];
   if (!sku) return;
 
+  /*
+   * **改之前先把进销存那本账摆出来。**
+   *
+   * 这一页的「库存」是平台侧的数（`prd_sku.stock` / `prd_store_stock`），
+   * 而进销存是另一本账。两处都叫「库存」、都显示一个数字，界面上却没有
+   * 任何地方说明它们的关系 —— 商家没法回答「哪个是对的」。
+   *
+   * 摆在这一刻而不是做成常驻的一行：他正要改这个数，此刻才需要知道
+   * 另一本账记着多少。平时那是噪声。
+   *
+   * **查不到不挡着他改**：刚建的 SKU 在投影跑到之前没有物料，那是常态。
+   * 网络失败同理 —— 一个用来对照的数，不该让主动作失败。
+   */
+  let inv: string = "";
+  try {
+    const item = await api.mItemBySku(sku.skuNo);
+    if (item) {
+      const where = (item.byLocation ?? [])
+        .filter((l) => l.onHand !== 0)
+        .map((l) => `${l.locationName} ${l.onHand}`)
+        .join("、");
+      inv = String(t("goods.stockInvHint", {
+        n: item.onHand,
+        where: where || String(t("goods.stockInvNowhere")),
+      }));
+    } else {
+      inv = String(t("goods.stockInvNone"));
+    }
+  } catch {
+    // 对照信息拿不到就不显示 —— 不打断改库存这件事
+  }
+
   const value = await prompt({
     title: String(t("goods.editStock")),
+    hint: inv,
     placeholder: String(sku.stock),
     type: "number",
   });

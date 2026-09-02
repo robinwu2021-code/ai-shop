@@ -115,6 +115,45 @@ public class BizStockController {
         return query.byBarcode(owner(), location(), code);
     }
 
+    /**
+     * 按**平台 SKU** 反查这件货在进销存的账 —— 商品域与本域之间唯一的一条可见通路。
+     *
+     * <p><b>为什么要有它。</b>商家在商品页看到的「库存 1000」是平台侧的数
+     *（{@code prd_sku.stock} / {@code prd_store_stock}），而进销存这本账是另一个数。
+     * 两处都叫「库存」，界面上却没有任何地方说明它们的关系 —— 商家没法回答
+     * 「哪个是对的」。这条接口让商品页能把两个数摆在一起。
+     *
+     * <p><b>没有账时回 {@code null} 而不是 404</b>：一件刚建的 SKU 在投影跑到之前
+     * 本来就没有物料，那是常态不是错误。端上据此显示「还没建账」，
+     * 而 404 会被通用错误处理弹成一句「加载失败」。
+     *
+     * <p>刻意<b>不</b>走 {@code itemIdOf}（那一条不存在时会顺手投影一条）——
+     * 一个只读的查询接口不该有副作用：商家点开看一眼就凭空多出一件物料，
+     * 而那件物料的来源在任何单据上都查不到。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
+    @GetMapping("/biz/inventory/item-by-sku")
+    public ItemDetailVO itemBySku(@RequestParam String skuNo) {
+        String ownerId = owner();
+        String itemId = acl.itemIdOfSku(skuNo);
+        if (itemId == null) {
+            return null;
+        }
+        /*
+         * **别家的 SKU 也回 null，不是 403 也不是 NOT_FOUND。**
+         *
+         * `itemIdOfSku` 是全局反查（SKU 在平台内唯一），它不认得调用者是谁。
+         * 直接把 itemId 交给 `itemDetail` 的话，那一层的 ownerId 过滤会抛
+         * NOT_FOUND —— 挡是挡住了，但两件事变成了两种回答：自己没建账是 null，
+         * 别家的是一个异常。**而「异常」本身就是答案**：它告诉试探的人
+         * 「这个 SKU 存在，只是不属于你」。回同一个 null，什么都问不出来。
+         */
+        if (!ownerId.equals(acl.ownerOfSku(skuNo))) {
+            return null;
+        }
+        return query.itemDetail(ownerId, itemId);
+    }
+
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/items/{itemId}")
     public ItemDetailVO item(@PathVariable String itemId) {

@@ -338,6 +338,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mStockLedger: { method: "GET", path: "/biz/inventory/ledger", auth: true, summary: "库存变动明细" },
   mStockAdjust: { method: "POST", path: "/biz/inventory/adjust", auth: true, summary: "直接改数（走盘点，落单落流水）" },
   mSafetyStock: { method: "PUT", path: "/biz/inventory/safety-stock", auth: true, summary: "设安全库存（不传 locationId 设默认值；qty 为 null 撤掉库位覆盖）" },
+  mItemBySku: { method: "GET", path: "/biz/inventory/item-by-sku", auth: true, summary: "按平台 SKU 查进销存的账" },
   mItemByBarcode: { method: "GET", path: "/biz/inventory/items/by-barcode", auth: true, summary: "按条码找货（没绑过回 null，不是 404）" },
   mBindBarcode: { method: "POST", path: "/biz/sku-identity/barcode", auth: true, summary: "把条码绑到一件 SKU 上（幂等；本店内唯一）" },
 

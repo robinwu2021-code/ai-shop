@@ -4658,6 +4658,37 @@ export const mockApi: MerchantApi = {
   },
 
   /**
+   * 按平台 SKU 查进销存的账。
+   *
+   * **替身要能给出「没有账」这一态**：线上一件刚建的 SKU 在投影跑到之前
+   * 本来就没有物料，而商品页正是要把这件事显示出来。全都给一份账的替身，
+   * 会让「还没建账」那条分支在端上永远走不到。
+   *
+   * 约定：`skuNo` 以 `NOINV` 开头的当作还没投影过来。
+   */
+  async mItemBySku(skuNo) {
+    if (!skuNo || skuNo.startsWith("NOINV")) return delay(null);
+    const b = invBalances()[0]!;
+    /*
+     * **合计由库位算出来，不另写一个数。**真实的 `itemDetail` 里 onHand 就是
+     * 各库位之和；替身把两者各写各的话，界面上「记着 5（文三路店 5、城西仓 40）」
+     * 这种自相矛盾看起来像后端算错了，而实际是替身在骗人。
+     */
+    const byLocation = [
+      { locationId: "L1", locationName: "文三路店", onHand: 5, safetyStock: undefined },
+      { locationId: "L3", locationName: "城西仓", onHand: 40, safetyStock: undefined },
+    ];
+    const onHand = byLocation.reduce((n, l) => n + l.onHand, 0);
+    return delay({
+      itemId: b.itemId, name: b.name, specText: b.specText, baseUom: b.baseUom,
+      barcode: "6901234567892", itemCode: "LM-05",
+      onHand, reserved: b.reserved, available: onHand - b.reserved,
+      safetyStock: mockSafety.get(b.itemId) ?? 0,
+      byLocation,
+    });
+  },
+
+  /**
    * 按条码找货。**替身要留痕**：绑过的码在本次会话里再扫要命中 ——
    * 「绑完第二次直接命中」正是这个功能的全部承诺，而吞掉绑定的替身验不到它。
    *

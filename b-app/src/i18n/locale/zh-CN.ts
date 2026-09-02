@@ -349,6 +349,9 @@ export default {
     expiringIn: "{n} 天后到期",
   },
   goods: {
+    stockInvHint: "进销存记着 {n}（{where}）。这里改的是商城显示的数，两本账各记各的",
+    stockInvNowhere: "各库位都是 0",
+    stockInvNone: "这件货在进销存里还没建账",
     /**
      * 五品类的展示名。**此前页面直接渲染枚举码**（NORMAL / FRESH / …），
      * 商家看到的是一串英文常量 —— 与「i18n 键原样打给用户」是一枚硬币的两面：

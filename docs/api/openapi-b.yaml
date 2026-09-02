@@ -14220,6 +14220,34 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/inventory/item-by-sku": 
+    get: 
+      operationId: "mItemBySku"
+      summary: "按平台 SKU 查进销存的账"
+      tags: 
+        - "inventory"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/StockItemDetail"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/inventory/items/by-barcode": 
     get: 
       operationId: "mItemByBarcode"
