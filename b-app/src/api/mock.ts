@@ -37,6 +37,7 @@ import {
   REVIEW_RULES,
   TEMPLATE_TO_TYPE,
   MERCHANT_LOGO_FALLBACK,
+  STORAGE,
 } from "@shared/utils/constants";
 import { ensureDemoOrders } from "./demo-orders";
 import { DELIVERY_SHAPE, fulfillmentsOf } from "@shared/strategies/order-view";
@@ -1352,7 +1353,19 @@ export const mockApi: MerchantApi = {
       throw new ApiError(10403, "这张证照不属于你");
     }
     const bucket = onSecond ? db.secondEntityStores : db.stores;
-    const quota = onSecond ? 3 : db.storeQuota;
+    /*
+     * **额度只有一个来源**：套餐页与这道闸都走 `minePlan()`。
+     *
+     * 此前这里读的是 `db.storeQuota`（种子原值，恒为 1），而套餐页读的是
+     * `minePlan()` —— 它认 `mock:plan` 这个运行时覆盖。于是切到 PRO 之后，
+     * 页头写着「成长版 · 门店 1/3」，点保存却被拒「当前套餐最多 1 家门店」，
+     * **两处都「是真的」，谁也说不清哪个错** —— 而 MOCK_TIERS 上方那段注释
+     * 警告的正是这件事。
+     *
+     * 后果不只是别扭：多门店在 mock 下**根本建不出第二家店**，
+     * 于是「切了店页面没跟着变」这类缺陷在 mock 上永远复现不了。
+     */
+    const quota = onSecond ? 3 : minePlan().storeQuota;
     if (bucket.length >= quota) {
       throw new Error(`当前套餐最多 ${quota} 家门店`);
     }
@@ -1855,12 +1868,16 @@ export const mockApi: MerchantApi = {
      * 在 mock 上根本演不出来，而它正是多门店店主印之前唯一能发现贴错店的机会。
      */
     /*
-     * 取默认店（列表第一家）。**mock 里没有「当前门店」这个概念** ——
-     * 真实链路上它由请求头 X-Store-No 决定，而 mock 不走 HTTP。
-     * 所以在 mock 上切店不会换码，这一点与真后端不同；这里演的是
-     * 「码属于某一家具体的店」这件事本身。
+     * **跟着当前门店走**。mock 不走 HTTP，读不到 X-Store-No，
+     * 但 pinia 切店时会把门店号落到 `STORAGE.storeNo` —— 读同一个键即可，
+     * 与真后端「从请求头拿当前门店」是同一件事的两种实现。
+     *
+     * 早先这里写死取第一家，注释写的是「mock 里没有当前门店这个概念」——
+     * 那句话当时成立（多门店在 mock 下建不出来，无从分辨），
+     * 但它恰恰会让「切了店、码没跟着变」这个缺陷在 mock 上演不出来。
      */
-    const store = db.stores[0];
+    const current = (uni.getStorageSync(STORAGE.storeNo) as string) || "";
+    const store = db.stores.find((x) => x.storeNo === current) ?? db.stores[0];
     const storeNo = store?.storeNo ?? null;
     const storeCode = storeNo ? `shop_${storeNo}` : `shop_${merchantNo}`;
     // 落地页带 storeCode —— 真后端扫码走 by-code，靠它解出是哪家店
