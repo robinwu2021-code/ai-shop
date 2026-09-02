@@ -41,6 +41,8 @@ class StoreQrcodeFlowTest {
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
     @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
+    @Autowired
+    private ai.neargo.shop.merchant.service.PosterService posterService;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -182,6 +184,46 @@ class StoreQrcodeFlowTest {
                 .as("分店拿到了主体那张图 —— 印出去每一次扫码都算到主店头上")
                 .isNotEqualTo("ENTITY-LEVEL-IMAGE");
     }
+
+    /**
+     * <b>海报跟着门店走。</b>
+     *
+     * <p>海报是要发出去的物料，上面的码指向某一家具体的店。此前整条链没有门店入参，
+     * 分店的海报拿的是主店的码 —— 发出去之后客流全算到主店头上，
+     * 而这件事<b>没有任何症状</b>：码扫得通、页面打得开。
+     *
+     * <p>测法：只给分店种一张码图，主店没有。两张海报若字节相同，
+     * 说明 storeNo 根本没走到取图那一步。
+     *
+     * <p>可证伪：把 render 里的 storeNo 换成 null，两张图立刻一样。
+     */
+    @Test
+    @DisplayName("★ 分店海报取分店的码图 —— 与默认店那张不是同一张")
+    void posterFollowsTheStore() throws Exception {
+        String merchantNo = approvedMerchantNo("12600130009", "海报门店测试店", "CM-QR-P");
+        String branch = extraStore(merchantNo, "海报分店");
+        storeCodeService.ensureForStore(merchantNo, branch);
+        storeCodeService.ensureForStore(merchantNo, null);
+
+        // 只给分店种码图（通道在测试里没开，取不到真码，这里直接落一张）
+        var b = storeMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, branch).last("limit 1"));
+        b.setAcodeBase64(ONE_PX_PNG);
+        storeMapper.updateById(b);
+
+        byte[] branchPoster = posterService.render(merchantNo, branch, null);
+        byte[] defaultPoster = posterService.render(merchantNo, null, null);
+        assertThat(branchPoster).isNotNull();
+        assertThat(defaultPoster).isNotNull();
+        assertThat(branchPoster)
+                .as("★ 两张海报一模一样 —— storeNo 没走到取码图那一步，分店发的是主店的码")
+                .isNotEqualTo(defaultPoster);
+    }
+
+    /** 1x1 透明 PNG。只用来证明「取到的是这家店那一张」，不关心画出来长什么样。 */
+    private static final String ONE_PX_PNG =
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
     /**
      * <b>发码幂等，换码要理由。</b>

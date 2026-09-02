@@ -190,7 +190,8 @@ public class BizDashboardController {
     @GetMapping("/biz/store/poster")
     public PosterVO poster(@RequestParam(required = false) String goodsNo) {
         String merchantNo = BizContext.requireMerchantNo();
-        byte[] png = posterService.render(merchantNo, goodsNo);
+        // 海报也跟着当前门店（V298）—— 码、店名、发出去的物料要指同一家店
+        byte[] png = posterService.render(merchantNo, BizContext.current().currentStoreNo(), goodsNo);
         if (png == null) {
             return new PosterVO(null);
         }

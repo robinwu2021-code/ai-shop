@@ -13,8 +13,11 @@ public interface PosterService {
      * 渲染分享海报。
      *
      * @param merchantNo 商家单号
+     * @param storeNo    <b>哪家门店的海报</b>（V298 一店一码）；空 = 该主体的默认店。
+     *                   海报上的小程序码取这家店的码 —— 不然多门店商家发出去的海报
+     *                   全都指向主店，客流算错家而没有任何症状
      * @param goodsNo    带则渲染单品海报（封面/标题/价格）；不带则渲染整店海报
      * @return PNG 字节；商家不存在时为 null（调用方据此 404）
      */
-    byte[] render(String merchantNo, String goodsNo);
+    byte[] render(String merchantNo, String storeNo, String goodsNo);
 }

@@ -60,12 +60,16 @@ public class PosterServiceImpl implements PosterService {
     private final Font bodyFont;
 
     private final MchEntityMapper merchantMapper;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
     private final GoodsQueryPort goodsQueryPort;
     private final StoreCodeService storeCodeService;
 
-    public PosterServiceImpl(MchEntityMapper merchantMapper, GoodsQueryPort goodsQueryPort,
+    public PosterServiceImpl(MchEntityMapper merchantMapper,
+                             ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
+                             GoodsQueryPort goodsQueryPort,
                              StoreCodeService storeCodeService) {
         this.merchantMapper = merchantMapper;
+        this.storeMapper = storeMapper;
         this.goodsQueryPort = goodsQueryPort;
         this.storeCodeService = storeCodeService;
         this.titleFont = loadFont("/fonts/NotoSansSC-Bold.otf");
@@ -86,7 +90,7 @@ public class PosterServiceImpl implements PosterService {
     }
 
     @Override
-    public byte[] render(String merchantNo, String goodsNo) {
+    public byte[] render(String merchantNo, String storeNo, String goodsNo) {
         MchEntity m = DataScopeContext.executeWithoutScope(() ->
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
                         .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
@@ -108,7 +112,7 @@ public class PosterServiceImpl implements PosterService {
             g.fillRect(0, 0, W, H);
 
             drawCover(g, sku != null ? sku.cover() : null, m.getName());
-            drawCard(g, m, sku);
+            drawCard(g, m, storeNo, sku);
         } finally {
             g.dispose();
         }
@@ -143,12 +147,23 @@ public class PosterServiceImpl implements PosterService {
     }
 
     /** 下半部白卡：店名 + 标题/价格（单品）或一句招牌语（整店）+ 小程序码 */
-    private void drawCard(Graphics2D g, MchEntity m, GoodsQueryPort.SkuSnapshot sku) {
+    private void drawCard(Graphics2D g, MchEntity m, String storeNo,
+                          GoodsQueryPort.SkuSnapshot sku) {
+        String storeName = storeLabel(m.getEntityNo(), storeNo);
         int y = COVER_H + PAD;
 
         g.setFont(bodyFont.deriveFont(24f));
         g.setColor(SUB);
-        g.drawString(clip(g, m.getName(), W - PAD * 2), PAD, y + 24);
+        /*
+         * 店名：**多门店时把门店名也写上去**（V298）。
+         * 海报是要发出去的物料，上面的码指向某一家具体的店 ——
+         * 只写主体名的话，店主发完根本认不出这张是哪家店的，
+         * 而贴错/发错没有任何症状：码扫得通，只是客流算到另一家头上。
+         */
+        String title = storeName == null || storeName.isBlank() || storeName.equals(m.getName())
+                ? m.getName()
+                : m.getName() + " · " + storeName;
+        g.drawString(clip(g, title, W - PAD * 2), PAD, y + 24);
         y += 56;
 
         if (sku != null) {
@@ -174,16 +189,16 @@ public class PosterServiceImpl implements PosterService {
         g.setColor(SUB);
         g.drawString("长按识别小程序码，进店逛逛", PAD, y + 24);
 
-        drawQr(g, m.getEntityNo());
+        drawQr(g, m.getEntityNo(), storeNo);
     }
 
     /** 小程序码贴右下角。通道未开、或这个商家还没生成过码时，画一个说明性占位块而不是留白——
      *  空白区域容易被当成渲染坏了，写一句「稍后再来」至少说清楚这不是 bug */
-    private void drawQr(Graphics2D g, String merchantNo) {
+    private void drawQr(Graphics2D g, String merchantNo, String storeNo) {
         int size = 220;
         int x = W - PAD - size;
         int qy = H - PAD - size;
-        String b64 = safeAcode(merchantNo);
+        String b64 = safeAcode(merchantNo, storeNo);
         if (b64 == null) {
             g.setColor(new Color(0xF3, 0xF4, 0xF6));
             g.fill(new RoundRectangle2D.Float(x, qy, size, size, 16, 16));
@@ -205,14 +220,32 @@ public class PosterServiceImpl implements PosterService {
         }
     }
 
-    private String safeAcode(String merchantNo) {
+    /**
+     * 这张海报是哪家店的。
+     *
+     * <p>取不到就返回 null —— 海报只写主体名，与 V298 之前一致。
+     * <b>不猜一个名字画上去</b>：印出去的物料上写错店名，比不写更糟。
+     */
+    private String storeLabel(String merchantNo, String storeNo) {
+        /*
+         * 直接查门店表：这里就在 merchant 域内，走 SPI 端口是绕远路。
+         * 解数据域与 render 取主体那句同一条理由 —— B 端店主自己的海报，
+         * 而 mch_store 挂的是 MERCHANT 锚点。
+         */
+        boolean byNo = storeNo != null && !storeNo.isBlank();
+        var s = DataScopeContext.executeWithoutScope(() -> storeMapper.selectOne(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
+                        .eq(byNo, ai.neargo.shop.merchant.entity.MchStore::getStoreNo, storeNo)
+                        .eq(!byNo, ai.neargo.shop.merchant.entity.MchStore::getIsDefault, true)
+                        .last("limit 1")));
+        return s == null ? null : s.getName();
+    }
+
+    private String safeAcode(String merchantNo, String storeNo) {
         try {
-            /*
-             * 传 null = 默认店。海报这条链目前**整条都是主体级的**（没有门店入参），
-             * 与 V298 之前的行为一致。要做「分店各自的海报」得先把门店号一路带进来，
-             * 那是另一件事，不在这次改动里 —— 这里传默认店至少保证码与图同源。
-             */
-            return storeCodeService.acodeBase64(merchantNo, null);
+            // 取**这家店**的码图（storeNo 为空时是默认店）—— 与海报上写的店名同一家
+            return storeCodeService.acodeBase64(merchantNo, storeNo);
         } catch (RuntimeException e) {
             // 码生成失败不该让整张海报也生成不出来——降级成占位块，海报其余部分照常
             LOG.log(Level.WARNING, "海报取小程序码失败：" + merchantNo, e);
