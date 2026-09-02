@@ -74,6 +74,18 @@ export const useMerchantStore = defineStore("merchant", {
      * 端上拦、后端放 → 点不动一个其实能按的按钮；反过来 → 吃一句说不清缘由的报错。
      */
     categoryGateEnforced: (s) => s.switches.categoryGate === true,
+    /**
+     * 库存的真相源是不是进销存（`stock-authority=INVENTORY`）。
+     *
+     * <p>为 true 时商品页那个「修改库存」不该再直接改：改的是一个已经不作数的数，
+     * 而进销存那边只会看到一条来路不明的调整 —— 账上说不清这批货是哪来的。
+     * 那时该走的是进货单 / 盘点单。
+     *
+     * <p><b>默认 false</b>：拿不到开关（旧后端、请求失败）时按「平台是真相源」走，
+     * 也就是维持现状。反过来默认 true 的话，一次拉取失败就会让商家的高频操作
+     * 突然点不动，而他完全不知道为什么。
+     */
+    stockByInventory: (s) => s.switches.stockByInventory === true,
     /** 只有一家店时不显示切换器 —— 给单店商家一个永远只有一个选项的下拉是纯噪音 */
     multiStore: (s) => s.stores.length > 1,
     /**

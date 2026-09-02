@@ -103,6 +103,27 @@ class InventoryBizEndpointTest {
     }
 
     @Test
+    @DisplayName("★★★ /biz/context 要下发 stockByInventory —— 切真相源那天不该再发一次版")
+    void bizContextReportsStockAuthority() throws Exception {
+        Shop s = shop();
+
+        JsonNode sw = ok(get("/biz/context"), s.token()).get("switches");
+        assertThat(sw).as("switches 整个字段要在 —— 端上 `?? {}` 会把缺字段变成「全 false」").isNotNull();
+        assertThat(sw.has("stockByInventory"))
+                .as("端上据它决定商品页的「修改库存」还能不能直接改").isTrue();
+
+        /*
+         * 测试环境没设 `shop.inventory.stock-authority`，取默认 PLATFORM，
+         * 所以这里必须是 false —— **平台仍是真相源时不该拦商家改库存**，
+         * 那本来就是在改真相源。真为 true 的那一格由端上的替身覆盖
+         *（mock 的 mBizScope 可以把它拨成 true）。
+         */
+        assertThat(sw.get("stockByInventory").asBoolean())
+                .as("默认（PLATFORM）下必须是 false，否则一上线商家的高频操作就点不动了")
+                .isFalse();
+    }
+
+    @Test
     @DisplayName("★★★ 按 SKU 查账：有账给明细，没账给 null，别家的也给 null")
     void itemBySkuBridgesTheTwoDomains() throws Exception {
         Shop s = shop();

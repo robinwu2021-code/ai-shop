@@ -12,7 +12,7 @@ import { SHOW_CATEGORY_GATE } from "@/shared/flags";
 import { money } from "@shared/utils/money";
 import { saveBase64Image } from "@/utils/image";
 import type { Category, Goods, GoodsStatus, Poster, StoreCategory } from "@shared/types";
-import { prompt } from "@ai-shop/ui/prompt";
+import { confirm, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -294,6 +294,28 @@ async function toggle(g: Goods) {
  * 多规格仍进编辑页 —— 与其猜错，不如把话说明白。
  */
 async function editStock(g: Goods) {
+  /*
+   * **进销存成了真相源之后，这里不再直接改。**
+   *
+   * 三档真相源（`shop.inventory.stock-authority`）里只有 `INVENTORY` 走这一支：
+   * · `PLATFORM` / `DUAL` —— 平台仍是真相源，在这儿改库存**就是在改真相源**，
+   *   天经地义，不拦；
+   * · `INVENTORY` —— 改的是一个已经不作数的数，而进销存那边只会看到一条
+   *   来路不明的调整，账上说不清这批货是哪来的。该走的是进货单 / 盘点单。
+   *
+   * **给去处，不是只说不行。**「这个功能不可用」而不告诉他改哪儿，
+   * 等于把他卡在这一页 —— 而他手里那批菜是真的卖完了。
+   */
+  if (merchant.stockByInventory) {
+    const go = await confirm({
+      title: String(t("goods.stockByInvTitle")),
+      hint: String(t("goods.stockByInvHint")),
+      confirmText: String(t("goods.stockByInvGo")),
+    });
+    if (go) uni.navigateTo({ url: ROUTES.stockCheck });
+    return;
+  }
+
   if (g.skus.length > 1) {
     uni.showToast({ title: t("goods.multiSkuStock"), icon: "none" });
     uni.navigateTo({ url: `${ROUTES.goodsEdit}?goodsNo=${g.goodsNo}` });

@@ -349,6 +349,9 @@ export default {
     expiringIn: "{n} 天后到期",
   },
   goods: {
+    stockByInvTitle: "库存改在进销存里",
+    stockByInvHint: "这家店的库存现在以进销存为准，这一页的数只是展示。进货就开进货单，盘出来对不上就开盘点单 —— 那样账上说得清这批货是哪来的。",
+    stockByInvGo: "去盘点",
     stockInvHint: "进销存记着 {n}（{where}）。这里改的是商城显示的数，两本账各记各的",
     stockInvNowhere: "各库位都是 0",
     stockInvNone: "这件货在进销存里还没建账",

@@ -1465,6 +1465,19 @@ export const mockApi: MerchantApi = {
        * mock 商家能卖蔬菜与预包装食品，卖不了酒、肉、奶粉。
        */
       categoryCodes: ["FRESH_VEG", "PACKAGED_FOOD"],
+      /*
+       * **平台开关。此前替身根本不给这个字段**，于是 `switches` 恒为空对象，
+       * 所有跟开关有关的分支在开发期一条都走不到 —— 而它们恰恰是最难在真环境
+       * 里凑出来的那些（要改配置重启，或让运营去拨一次）。
+       *
+       * 两个都给 false，与线上当前一致：
+       * · `categoryGate` —— 类目资质拦不拦；
+       * · `stockByInventory` —— 库存真相源是不是进销存
+       *   （`stock-authority=INVENTORY`；线上现在是 DUAL，所以 false）。
+       *
+       * **要验另一支就把它改成 true**，这是替身存在的意义之一。
+       */
+      switches: { categoryGate: false, stockByInventory: false },
     });
   },
 

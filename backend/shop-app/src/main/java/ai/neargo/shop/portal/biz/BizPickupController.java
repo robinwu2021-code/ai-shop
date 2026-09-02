@@ -63,6 +63,13 @@ public class BizPickupController {
      * <p><b>切门店后要重新调它</b> —— 角色跟着门店走，同一个人可能在
      * A 店是店长、B 店是店员，权限跟着变。
      */
+    /**
+     * 库存真相源。取值 {@code PLATFORM}（默认）/ {@code DUAL} / {@code INVENTORY}，
+     * 与 {@code InventoryStockPort} / {@code DualWriteStockPort} 的装配条件同一个键。
+     */
+    @org.springframework.beans.factory.annotation.Value("${shop.inventory.stock-authority:PLATFORM}")
+    private String stockAuthority;
+
     @GetMapping("/biz/context")
     public BizContextVO context() {
         BizContext ctx = BizContext.current();
@@ -87,7 +94,25 @@ public class BizPickupController {
                  * 平台开关里有运营专用的项，端上拿到也没用，而多下发一个字段
                  * 就多一处将来会被误读的地方。
                  */
-                Map.of("categoryGate", switchPort.bool("category.gate.enforce", false)));
+                Map.of("categoryGate", switchPort.bool("category.gate.enforce", false),
+                        /*
+                         * **库存的真相源是不是进销存。**端上据它决定商品页那个
+                         * 「修改库存」还能不能直接改。
+                         *
+                         * 三档里只有 `INVENTORY` 是 true：
+                         * · `PLATFORM` / `DUAL` —— 平台仍是真相源，商家在商品页
+                         *   改库存<b>就是在改真相源</b>，天经地义，不该拦；
+                         * · `INVENTORY` —— 进销存成了真相源，那时再从商品页改，
+                         *   改的是一个已经不作数的数，而进销存那边只会看到一条
+                         *   来路不明的调整：账上说不清这批货是哪来的。
+                         *
+                         * <b>下发而不是端上写死</b>：切换是一次改配置重启
+                         *（见 InventoryStockPort「发现不对，改回去只要重启」），
+                         * 而端上写死意味着切换那天还要同步发一个版 ——
+                         * 两件事一旦要对齐时刻，中间那段就是商家点得动一个
+                         * 其实不作数的按钮。
+                         */
+                        "stockByInventory", "INVENTORY".equals(stockAuthority)));
     }
 
     /**
