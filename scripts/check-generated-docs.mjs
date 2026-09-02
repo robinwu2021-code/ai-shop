@@ -64,6 +64,9 @@ const GENERATORS = [
   // 只维护 README 末尾那个「未归类」小节，人工分组它不碰（理由见生成器文件头）
   ["scripts/gen-doc-index.mjs", ["docs/technical/README.md"]],
   ["scripts/gen-perm-domain-matrix.py", ["docs/technical/reference/三端权限矩阵-按业务域.md"]],
+  // 运营端功能清单：它比权限矩阵多量一样东西 —— **谁看得见哪个菜单**。
+  // 权限码可达（那是上面那份端点矩阵管的）不等于菜单里有那一行
+  ["scripts/gen-ops-feature-list.py", ["docs/technical/reference/运营端-功能清单.md"]],
   ["scripts/gen-ui-lib.py", ["docs/technical/design/ui-lib.json"]],
   /*
    * 三份界面规范。**必须是生成的**：这个仓库里有 170 份手写设计文档，

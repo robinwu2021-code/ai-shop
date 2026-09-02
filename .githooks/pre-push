@@ -76,6 +76,15 @@ if ! gate_run python3 scripts/gen-inv-ui-inventory.py --check; then
   exit 1
 fi
 
+# 运营端功能清单（主菜单 → 子菜单 → 角色）。它比上面两道多量一样东西：**谁看得见**。
+# 权限码改一处、角色加减一条、菜单挪一行，这份清单就该变 —— 而这三件事分别在
+# nav.ts、Perms.java、菜单树里，没有任何东西保证它们一起改。
+# 漏改的症状最温和：某个岗位登录后少一个菜单，而他不会知道自己少了什么。
+if ! gate_run python3 scripts/gen-ops-feature-list.py --check; then
+  echo "  ↑ 本机重现：python3 scripts/gen-ops-feature-list.py --check"
+  exit 1
+fi
+
 # V2 文档守卫：那套文档里同一事实被写了两遍的地方不少（术语层、能力码、状态、
 # 表名、自称数字）。一次人工 review 抓到过一处实质漂移 —— 可售时段的关系表
 # 在对齐清单里挂 goods、在规格书里挂 listing，**表名不同只是表面，粒度错了才是缺陷**。
