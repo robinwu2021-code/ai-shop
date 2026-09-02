@@ -366,7 +366,7 @@ class ServiceAreaFlowTest {
 
         storeService.saveAnnouncement(m, second, "全场最低价，速来", until, java.util.List.of());
 
-        var pending = governService.storeAudits("PENDING").stream()
+        var pending = governService.storeAudits("PENDING", null, null).stream()
                 .filter(a -> a.merchantNo().equals(m)).findFirst().orElseThrow();
         assertThat(pending.storeName()).as("运营要看得出是哪家店").isEqualTo("南门店");
         governService.decideStoreAudit(pending.auditNo(), true, null, "OPS-TEST");

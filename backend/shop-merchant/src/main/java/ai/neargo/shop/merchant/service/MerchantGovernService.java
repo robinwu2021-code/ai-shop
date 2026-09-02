@@ -18,7 +18,9 @@ public interface MerchantGovernService {
      * 给一个数组的话页面会当成「空页」—— 接口 200、数据 38 条、页面显示「暂无数据」。
      */
     ai.neargo.shop.common.PageData<MerchantProfileVO> list(String status, String communityNo,
-                                                           String keyword, long page, long size);
+                                                           String keyword, String tier,
+                                                           Boolean showArchived,
+                                                           long page, long size);
 
     MerchantProfileVO detail(String merchantNo);
 
@@ -294,7 +296,13 @@ public interface MerchantGovernService {
                        String businessMode, String payMerchantNo) {
     }
 
-    List<StoreAuditVO> storeAudits(String status);
+    /**
+     * 店招/公告待审列表。
+     *
+     * @param kind    BANNER / NOTICE / SERVICE_AREA；空=全部
+     * @param keyword 商家名 / 门店名 / 单号
+     */
+    List<StoreAuditVO> storeAudits(String status, String kind, String keyword);
 
     /**
      * 裁决。

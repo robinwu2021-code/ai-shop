@@ -321,9 +321,17 @@ export const merchantMock: MerchantApi = {
           db.kwHit(q.keyword, r.merchantNo, r.merchantName, r.payMerchantNo),
       ),
     ),
-  // mock 不真的问通道：回查是无副作用的空动作，页面回查后自己重取看板
-  refreshOnboarding: async () => {
+  /*
+   * mock 不真的问通道，但要**分得清两种结局**：没提交过的占位行回查是空动作
+   * （submitted=false，页面据此提示「还没提交，回查不到东西」），提交过的才算回查成功。
+   * 一律返回 true 的话，「点了没反应」这个缺陷在 mock 上永远复现不出来。
+   */
+  refreshOnboarding: async (v) => {
+    const m = db.merchants.find((x) => x.merchantNo === v.merchantNo);
     await wait(undefined);
+    // 与后端同一条判据：发给过通道才有提交时间（占位行 appliedAt 为 null）
+    const r = m ? onboardingRowOf(m) : null;
+    return { submitted: !!r?.appliedAt, applyStatus: r?.applyStatus ?? "NONE" };
   },
 
   setMerchantStatus: async (merchantNo, status, remark, communityNos) => {

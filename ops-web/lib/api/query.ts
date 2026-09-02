@@ -131,7 +131,15 @@ export type SettlementQ = ScopedQ & { status?: string; period?: string };
 export type StaffQ = PageQ & { role?: string; enabled?: string };
 
 /** 审计日志：是否只看高危（P-1.1.4）。 */
-export type AuditQ = PageQ & { critical?: string };
+/**
+ * 审计日志：关键操作开关 + 操作对象（P-15.2）。
+ *
+ * `target` 是**精确匹配**的对象标识（行业名、staffNo、开关 key），高基数，
+ * 没有做成下拉的意义 —— 运营找「谁动了这个」用 `keyword` 就够（后端对
+ * staffNo/staffName/action/target/detail 一起 LIKE）。这里声明它，是因为
+ * https 客户端一直在转发 `q.target`：不声明的话它是个谁也看不见的死参数。
+ */
+export type AuditQ = PageQ & { critical?: string; target?: string };
 
 /** 归因链路：来源 + 是否只看冲突/风险（P-9.1.3）。 */
 export type TraceQ = PageQ & { source?: string; conflictOnly?: string; riskyOnly?: string };

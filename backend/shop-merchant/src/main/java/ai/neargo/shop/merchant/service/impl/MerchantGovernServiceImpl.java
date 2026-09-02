@@ -113,7 +113,9 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
 
     @Override
     public ai.neargo.shop.common.PageData<MerchantProfileVO> list(String status, String communityNo,
-                                                                  String keyword, long page, long size) {
+                                                                  String keyword, String tier,
+                                                                  Boolean showArchived,
+                                                                  long page, long size) {
         var w = Wrappers.<MchEntity>lambdaQuery();
         if (status != null && !status.isBlank()) {
             // 前端会把多个状态拼成逗号分隔（如「待审+审核中」并列取）。单值 eq 遇到 CSV
@@ -129,6 +131,13 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         if (keyword != null && !keyword.isBlank()) {
             w.and(x -> x.like(MchEntity::getName, keyword).or().like(MchEntity::getEntityNo, keyword));
         }
+        /*
+         * ★ 默认滤掉已归档 —— 与券/活动/社区/运费模板同一条规矩（`.isNull(!showArchived, ...)`）。
+         * 商家此前是唯一没做这一步的：归档完还留在列表里，运营会以为没归档成功。
+         */
+        w.isNull(!Boolean.TRUE.equals(showArchived), MchEntity::getArchivedAt);
+        // 档位筛选：端上一直在发 tier，后端此前不接 —— 选了档位列表纹丝不动
+        w.eq(tier != null && !tier.isBlank(), MchEntity::getTier, tier);
         w.orderByDesc(MchEntity::getId);
 
         /*
@@ -507,8 +516,14 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                 m.getJoinedAt() == null ? 0L : m.getJoinedAt(),
                 contact.map(MerchantApplyQueryPort.ApplyContact::rejectReason).orElse(null),
                 contact.map(MerchantApplyQueryPort.ApplyContact::asPickupPoint).orElse(false),
-                // 归档用状态表达：FROZEN 即「不在营业中」，没有独立的归档位
-                null,
+                /*
+                 * ★ 真给归档时间。此前这里写死 null，注释说「归档用状态表达，没有独立的归档位」——
+                 * 而 mch_entity **有** archived_at，`ArchiveService` 也一直在写它
+                 * （Kind.MERCHANT → mch_entity）。恒 null 的后果是：归档写进去了，
+                 * 而运营端「恢复」按钮永不出现、归档商家继续留在默认列表 ——
+                 * 点了归档什么都没发生，且不报错。
+                 */
+                m.getArchivedAt() == null ? null : ai.neargo.shop.common.IsoTime.toIso(m.getArchivedAt()),
                 // 准入档位完全由它决定 —— 看得到结果看不到原因，只会引出一通电话
                 m.getLegalForm(),
                 quals,
@@ -678,10 +693,19 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     // ---------------------------------------------------------------- 门面内容审核（P-10.1）
 
     @Override
-    public List<StoreAuditVO> storeAudits(String status) {
+    public List<StoreAuditVO> storeAudits(String status, String kind, String keyword) {
         var w = Wrappers.<ai.neargo.shop.merchant.entity.MchStoreAudit>lambdaQuery();
         if (status != null && !status.isBlank()) {
             w.eq(ai.neargo.shop.merchant.entity.MchStoreAudit::getStatus, status);
+        }
+        // 内容类型：BANNER / NOTICE / SERVICE_AREA
+        w.eq(kind != null && !kind.isBlank(),
+                ai.neargo.shop.merchant.entity.MchStoreAudit::getKind, kind);
+        if (keyword != null && !keyword.isBlank()) {
+            // 单号与内容都能搜：运营手上常常只有一句被投诉的原文
+            w.and(x -> x.like(ai.neargo.shop.merchant.entity.MchStoreAudit::getAuditNo, keyword)
+                    .or().like(ai.neargo.shop.merchant.entity.MchStoreAudit::getContent, keyword)
+                    .or().like(ai.neargo.shop.merchant.entity.MchStoreAudit::getEntityNo, keyword));
         }
         w.orderByDesc(ai.neargo.shop.merchant.entity.MchStoreAudit::getId);
         return DataScopeContext.executeWithoutScope(() -> storeAuditMapper.selectList(w))

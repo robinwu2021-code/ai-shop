@@ -625,6 +625,7 @@ export type OnboardingStatus = "NONE" | "APPLYING" | "ACTIVE" | "REJECTED" | "FR
  * 此前运营端没有一个跨商家的地方能看见 —— 这份看板就是那个地方。
  */
 export interface OnboardingRow {
+  /** 主体号。进件挂在主体上，一个主体下多家店共用同一条主体级进件 */
   merchantNo: string;
   /** 商家名，展示用 */
   merchantName: string;
@@ -632,6 +633,11 @@ export interface OnboardingRow {
   storeNo: string;
   /** WECHAT / ALIPAY */
   payChannel: string;
+  /**
+   * 进件状态。**APPLYING 有两种含义**：入驻通过时派生的占位（商家还没填过东西），
+   * 与已发给通道等回执。两者要靠进件详情里的 `submitted` 才分得开 —— 只看这一列
+   * 会把「球在商家脚下」误读成「在等通道」。
+   */
   applyStatus: OnboardingStatus;
   /** 被拒原因，原样给商家看；null = 没被拒 */
   rejectReason: string | null;

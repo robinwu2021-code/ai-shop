@@ -102,9 +102,13 @@ public class OpsMerchantAuthController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String communityNo,
             @RequestParam(required = false) String keyword,
+            // 端上一直在发这两个，此前后端不接 —— 选了档位/开了「显示已归档」都纹丝不动
+            @RequestParam(required = false) String tier,
+            @RequestParam(required = false) Boolean showArchived,
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size) {
-        return governService.list(status, communityNo, keyword, page, Math.min(size, 100));
+        return governService.list(status, communityNo, keyword, tier, showArchived,
+                page, Math.min(size, 100));
     }
 
     @GetMapping("/ops/merchants/{merchantNo}")
@@ -196,10 +200,15 @@ public class OpsMerchantAuthController {
     @PreAuthorize("@perm.can('" + Perms.STORE_PAGE_AUDIT + "')")
     public ai.neargo.shop.common.PageData<MerchantGovernService.StoreAuditVO> storeAudits(
             @RequestParam(required = false) String status,
+            // 端上的搜索框与「内容类型」下拉一直在发这两个，此前后端不声明 ——
+            // 于是点了没反应、也不报错，看起来像「这一页的筛选坏了」
+            @RequestParam(required = false) String kind,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size) {
         // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
-        return ai.neargo.shop.common.PageData.ofAll(governService.storeAudits(status), page, size);
+        return ai.neargo.shop.common.PageData.ofAll(
+                governService.storeAudits(status, kind, keyword), page, size);
     }
 
     /** 裁决。通过 → 内容这时才生效；驳回 → 必须写原因，它原样出现在商家 B 端。 */

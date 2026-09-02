@@ -467,6 +467,7 @@ const zh = {
   obStayHours: "{n} 小时",
   obActionRefresh: "回查",
   obToastRefreshed: "已回查",
+  obToastNotSubmitted: "这家还没把资料提交给通道，回查不到东西 —— 要催的是商家，不是通道",
   obEmpty: "没有匹配的进件记录",
 };
 
@@ -933,6 +934,7 @@ const en: typeof zh = {
   obStayHours: "{n}h",
   obActionRefresh: "Re-query",
   obToastRefreshed: "Re-queried",
+  obToastNotSubmitted: "Never submitted to the channel — nothing to re-query. Chase the merchant, not the channel.",
   obEmpty: "No matching onboarding records",
 };
 

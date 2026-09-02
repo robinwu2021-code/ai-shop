@@ -143,7 +143,16 @@ export interface MerchantApi {
    * 人工回查：替卡在进件上的商家去通道问一次结果并落库。
    * @param storeNo 空 = 主体级默认收款号
    */
-  refreshOnboarding(v: { merchantNo: string; payChannel: string; storeNo?: string }): Promise<void>;
+  /**
+   * 人工回查：替卡在进件上的商家去通道问一次结果并落库。
+   *
+   * **返回值不能丢。** 入驻通过时派生的占位记录也是 APPLYING，但它从没发给过通道，
+   * 后端对这种行直接原样返回（不去问通道一个不存在的单号）。此前端上无论如何都弹
+   * 「已回查」，于是运营对着一家卡住的店天天点、天天看到成功、状态天天不动。
+   * `submitted` 就是那个判据：false = 球在商家脚下，回查再多次也不会变。
+   */
+  refreshOnboarding(v: { merchantNo: string; payChannel: string; storeNo?: string }):
+    Promise<{ submitted: boolean; applyStatus: string }>;
   /** 审核推进（DRAFT→SUBMITTED→REVIEWING→APPROVED/REJECTED），非法迁移抛错。 */
   /**
    * 审核推进。

@@ -69,7 +69,14 @@ export function OnboardingTab({ c }: { c: MerchantsCopy }) {
     mutationFn: (r: OnboardingRow) =>
       api.refreshOnboarding({ merchantNo: r.merchantNo, payChannel: r.payChannel, storeNo: r.storeNo }),
     // 回查落库后重取看板 —— 通道那边若已批，这一下状态就翻成「已开通」
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["onboarding"] }); notify.success(c.obToastRefreshed); },
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["onboarding"] });
+      /*
+       * ★ 从没提交过的占位行，后端根本没去问通道，状态一定不动。
+       * 这时报「已回查」是骗人的：运营会一直等通道，而球在商家脚下。
+       */
+      if (r.submitted) { notify.success(c.obToastRefreshed); } else { notify.info(c.obToastNotSubmitted); }
+    },
   });
 
   const columns: Column<OnboardingRow>[] = [

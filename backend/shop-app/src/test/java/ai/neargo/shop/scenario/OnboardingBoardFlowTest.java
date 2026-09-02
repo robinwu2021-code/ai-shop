@@ -108,6 +108,70 @@ class OnboardingBoardFlowTest {
                 .andExpect(jsonPath("$.data.records[?(@.name=='" + name + "')]").exists());
     }
 
+    /**
+     * <b>归档要真的从列表消失。</b>
+     *
+     * <p>此前 {@code archivedAt} 在 VO 里写死 null、`list()` 也不按归档过滤，
+     * 于是「归档」写进了 {@code mch_entity.archived_at}，而运营端列表纹丝不动、
+     * 「恢复」按钮永不出现 —— 点了归档什么都没发生，且不报错。
+     *
+     * <p>这条是**可证伪**的：去掉 `list()` 里那句 `isNull(!showArchived, ...)`，
+     * 第二个断言立刻变红。
+     */
+    @Test
+    @DisplayName("★ 归档后默认列表看不到，showArchived=true 才翻得到，且带得回归档时间")
+    void archivedMerchantLeavesDefaultList() throws Exception {
+        String name = "归档测试店";
+        approveMerchant("12600127003", name, "CM-ONB-ARCH");
+        String admin = opsLogin("admin", "admin123");
+        String merchantNo = merchantNoOf(admin, name);
+
+        // 归档前：在默认列表里
+        assertThat(merchantsHas(admin, name, null)).as("归档前就找不到，后面的断言等于没测").isTrue();
+
+        mvc().perform(post("/ops/merchants/" + merchantNo + "/archive")
+                        .header("Authorization", "Bearer " + admin))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // ★ 默认列表不该再有它
+        assertThat(merchantsHas(admin, name, null))
+                .as("归档后仍留在默认列表 —— 运营会以为没归档成功").isFalse();
+        // ★ 开了「显示已归档」才翻得到，且 archivedAt 非空（此前恒 null，恢复按钮永不出现）
+        assertThat(merchantsHas(admin, name, "true")).isTrue();
+        assertThat(archivedAtOf(admin, name)).as("archivedAt 恒 null 的话前端判不出它已归档").isNotNull();
+    }
+
+    private String merchantNoOf(String opsToken, String name) throws Exception {
+        JsonNode r = merchantRow(opsToken, name, null);
+        return r == null ? null : r.get("merchantNo").asString();
+    }
+
+    private boolean merchantsHas(String opsToken, String name, String showArchived) throws Exception {
+        return merchantRow(opsToken, name, showArchived) != null;
+    }
+
+    private String archivedAtOf(String opsToken, String name) throws Exception {
+        JsonNode r = merchantRow(opsToken, name, "true");
+        return r == null || r.get("archivedAt") == null || r.get("archivedAt").isNull()
+                ? null : r.get("archivedAt").asString();
+    }
+
+    private JsonNode merchantRow(String opsToken, String name, String showArchived) throws Exception {
+        var req = get("/ops/merchants").header("Authorization", "Bearer " + opsToken)
+                .param("keyword", name).param("size", "100");
+        if (showArchived != null) {
+            req = req.param("showArchived", showArchived);
+        }
+        String body = mvc().perform(req).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        for (JsonNode r : json.readTree(body).get("data").get("records")) {
+            if (name.equals(r.get("name").asString())) {
+                return r;
+            }
+        }
+        return null;
+    }
+
     // ---------------------------------------------------------------- helpers
 
     /** 走完「C 端提交 → 平台通过」，激活派生出 ACTIVE 主体 + APPLYING 进件占位。 */

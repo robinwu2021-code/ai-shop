@@ -900,6 +900,7 @@ components:
       properties: 
         merchantNo: 
           type: "string"
+          description: "主体号。进件挂在主体上，一个主体下多家店共用同一条主体级进件"
         merchantName: 
           type: "string"
           description: "商家名，展示用"
@@ -911,6 +912,7 @@ components:
           description: "WECHAT / ALIPAY"
         applyStatus: 
           "$ref": "#/definitions/OnboardingStatus"
+          description: "进件状态。**APPLYING 有两种含义**：入驻通过时派生的占位（商家还没填过东西）， 与已发给通道等回执。两者要靠进件详情里的 `submitted` 才分得开 —— 只看这一列 会把「球在商家脚下」误读成「在等通道」。"
         rejectReason: 
           type: 
             - "string"
@@ -14983,7 +14985,6 @@ paths:
                     type: "string"
                   data: 
                     type: "object"
-                    nullable: true
                 required: 
                   - "code"
                   - "msg"
