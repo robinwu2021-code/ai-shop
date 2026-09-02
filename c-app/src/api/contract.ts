@@ -47,6 +47,30 @@ import type {
   RegionOption,
 } from "@shared/types";
 
+export interface PayMethodList {
+  /** 记账币种。**拿不到时不显示金额** —— 按 2 位小数显示在日元上会差 100 倍 */
+  currency: string | null;
+  /** 有没有商家配过支付方式。false = 进件未完成，不是「一种都不支持」 */
+  configured: boolean;
+  methods: PayMethodItem[];
+}
+
+export interface PayMethodItem {
+  methodCode: string;
+  payChannel: string;
+  name: string;
+  available: boolean;
+  /** 不可用的原因，由服务端出文案 —— 端上不拼 */
+  unavailableReason: string | null;
+}
+
+export interface PayInit {
+  orderNo: string;
+  payChannel: string;
+  /** 端上唤起收银台要用的参数，**原样透传给 uni.requestPayment** */
+  payParams: Record<string, string>;
+}
+
 export interface GoodsQuery extends PageQuery {
   merchantNo?: string;
   type?: CategoryType;
@@ -166,7 +190,16 @@ export interface ShopApi {
 
   // ---- 交易
   createOrder(req: CreateOrderReq): Promise<Order>;
-  payOrder(orderNo: string): Promise<Order>;
+  /**
+   * 这一单能用哪些支付方式。
+   *
+   * <b>`configured` 与列表为空是两件事</b>：前者 false 表示商家进件还没走完，
+   * 端上照常允许支付（钱先欠着）；true 而列表空才是「一种都不支持」，要拦。
+   * 合成一个空数组的话，一个完全正常的订单会被拦死。
+   */
+  payMethods(orderNo: string): Promise<PayMethodList>;
+  /** 发起支付。**带上选中的通道** —— 不传时后端按商家所在市场挑一个 */
+  payOrder(orderNo: string, payChannel?: string): Promise<PayInit>;
   /**
    * 订单列表。**`status` 与 `fulfillments` 正交**：前者是抽象状态、后者是履约方式，
    * 页签由两者组合成谓词（「待取货」= FULFILLING + 自提类）。

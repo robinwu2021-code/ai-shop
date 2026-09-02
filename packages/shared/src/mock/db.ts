@@ -934,6 +934,30 @@ const reviewSeeds: Review[] = [
  * （items / status / createdAt），其余按 Order 的必填给出合理值。
  * daysAgo 让三笔单有先后，好验证「同频次时按最近购买排」。
  */
+/**
+ * 一笔<b>待付款</b>订单。
+ *
+ * <p>此前 mock 里一条都没有 —— 于是<b>收银台的待付款态在 mock 下根本打不开</b>：
+ * 所有种子单都是已完成，页面直接渲染成「支付成功」。
+ * 而收银台是 C 端最重要的页面之一，它的支付方式选择、倒计时、
+ * 「换一种方式重付」全都只在待付款态下才出现。
+ *
+ * <p>2026-09-02 接支付方式列表（C-1）时撞到：改完想在浏览器里看一眼，
+ * 造不出一笔待付款单。<b>看不见的东西没人会去看它对不对。</b>
+ */
+function pendingOrder(
+  orderNo: string,
+  rows: [goodsNo: string, skuNo: string, price: number, qty: number][],
+): Order {
+  const o = histOrder(orderNo, 0, rows);
+  o.status = "WAIT_PAY";
+  // 15 分钟后过期 —— 倒计时与「已超时」两态都要能在 mock 下看到
+  o.payDeadlineAt = Date.now() + 15 * 60 * 1000;
+  o.amount.paidMinor = 0;
+  o.timeline = [{ status: "WAIT_PAY", label: "已下单，待支付", at: o.createdAt }];
+  return o;
+}
+
 function histOrder(
   orderNo: string,
   daysAgo: number,
@@ -2036,6 +2060,8 @@ export const db = {
    * 好检验排序走的是**次数**而不是时间。
    */
   orders: [
+    // 待付款单放在最前面：进「我的订单」第一眼就能看到，收银台才有得可点
+    pendingOrder("SO900", [["G002", "G002S1", 1280, 1]]),
     histOrder("SO901", 26, [["G002", "G002S1", 1280, 1]]),
     histOrder("SO902", 19, [
       ["G002", "G002S1", 1280, 1],

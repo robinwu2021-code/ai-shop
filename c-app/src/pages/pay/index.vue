@@ -13,16 +13,41 @@ import { requestSubscribe, SUBSCRIBE_TMPL } from "@shared/ports/push";
 import { CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
 import type { Order } from "@shared/types";
+import type { PayMethodItem, PayMethodList } from "@/api/contract";
 import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 
 const order = ref<Order | null>(null);
 const paying = ref(false);
+/** 可用支付方式。null = 还没拉到 */
+const methodList = ref<PayMethodList | null>(null);
+/** 用户选中的通道。默认第一个可用的 */
+const chosen = ref<string>("");
 const now = ref(Date.now());
 let timer: ReturnType<typeof setInterval> | undefined;
 
 const paid = computed(() => !!order.value && order.value.status !== "WAIT_PAY");
+
+/**
+ * 能不能点「去支付」。
+ *
+ * <b>拉不到列表、或者商家还没进件（configured=false）时照常放行</b> ——
+ * 只有「确实配过、而一种都不可用」才拦。两者都是空列表，
+ * 而端上要做的事正好相反。
+ */
+const canPay = computed(() => {
+  const list = methodList.value;
+  if (!list || !list.configured) return true;
+  return list.methods.some((m) => m.available);
+});
+
+/** 拦住时要说明原因，别只给一个灰按钮 */
+const blockedReason = computed(() => {
+  const list = methodList.value;
+  if (!list || !list.configured || list.methods.some((m) => m.available)) return "";
+  return String(t("pay.noUsableMethod"));
+});
 const expired = computed(
   () =>
     !!order.value?.payDeadlineAt &&
@@ -43,6 +68,24 @@ const doneHintKey = computed(() => {
 
 async function load(orderNo: string) {
   order.value = await api.orderDetail(orderNo);
+  if (order.value?.status === "WAIT_PAY") {
+    await loadMethods(orderNo);
+  }
+}
+
+/** 拉可用支付方式，并把默认选中放在第一个可用的上 */
+async function loadMethods(orderNo: string) {
+  try {
+    const list = await api.payMethods(orderNo);
+    methodList.value = list;
+    chosen.value = list.methods.find((m) => m.available)?.payChannel ?? "";
+  } catch {
+    /*
+     * 拉不到就当作「未配置」放行 —— 与后端 configured=false 同一条口径。
+     * 拦住的话，一次网络抖动会让用户付不了一个完全正常的单。
+     */
+    methodList.value = null;
+  }
 }
 
 async function pay() {
@@ -50,13 +93,23 @@ async function pay() {
   if (!o || paying.value || expired.value) return;
   paying.value = true;
   try {
-    // 真实链路：后端下单拿支付参数 → 唤起 → 回查。这里 mock 直接推进状态
-    const res = await requestPayment({});
+    /*
+     * **顺序：先向后端下单拿真参数，再唤起收银台。**
+     *
+     * 此前是反的 —— 先 requestPayment({}) 唤起（传的是空对象），
+     * 再调 payOrder。那样端上唤起的是一个没有任何通道参数的收银台，
+     * 而 mock 下它「成功」了，于是这条链看起来是通的。
+     * 真通道上它一定失败，且失败在用户面前。
+     */
+    const init = await api.payOrder(o.orderNo, chosen.value || undefined);
+
+    // 参数原样透传：不同通道字段完全不同，端上不该翻译成一套「统一格式」
+    const res = await requestPayment(init.payParams);
     if (res.cancelled) {
       uni.showToast({ title: String(t("pay.cancelled")), icon: "none" });
+      // 取消不是失败：单还在，用户可以换一种方式再来（后端会换新的商户单号）
       return;
     }
-    await api.payOrder(o.orderNo);
     // 以回查为准，不用端侧返回值判成功
     order.value = await api.orderDetail(o.orderNo);
 
@@ -130,15 +183,38 @@ onUnmounted(() => clearInterval(timer));
       </view>
 
       <view class="sh-card block">
-        <view class="method is-on sh-row">
-          <text class="method__icon">💚</text>
-          <text class="txt-strong method__name">{{ $t("pay.wechat") }}</text>
-          <text class="txt-body method__tick txt-primary">✓</text>
+        <!--
+          支付方式来自后端算好的交集，不再写死「微信支付」。
+          不可用的也列出来并显示原因 —— 过滤掉的话用户会问
+          「为什么别人有支付宝我没有」，而客服答不上来。
+        -->
+        <view
+          v-for="m in methodList?.methods ?? []"
+          :key="m.payChannel"
+          class="method sh-row"
+          :class="{ 'is-on': m.payChannel === chosen, 'is-off': !m.available }"
+          @tap="m.available && (chosen = m.payChannel)"
+        >
+          <text class="method__icon">{{ m.payChannel === "ALIPAY" ? "💙" : "💚" }}</text>
+          <view class="method__body">
+            <text class="txt-strong method__name">{{ m.name || m.payChannel }}</text>
+            <text v-if="!m.available && m.unavailableReason" class="txt-caption method__why">
+              {{ m.unavailableReason }}
+            </text>
+          </view>
+          <text v-if="m.payChannel === chosen" class="txt-body method__tick txt-primary">✓</text>
+        </view>
+
+        <!-- 列表为空时的两种情况，文案不同：未进件是「照常可付」，无可用是「付不了」 -->
+        <view v-if="!(methodList?.methods ?? []).length" class="method sh-row">
+          <text class="txt-body method__name">{{ $t("pay.methodFallback") }}</text>
         </view>
       </view>
 
+      <text v-if="blockedReason" class="txt-caption block-reason">{{ blockedReason }}</text>
+
       <sh-actionbar class="bar-center" :pad="220">
-        <view class="sh-btn" :class="{ 'is-disabled': paying || expired }" @tap="pay">
+        <view class="sh-btn" :class="{ 'is-disabled': paying || expired || !canPay }" @tap="pay">
           {{ paying ? $t("pay.paying") : $t("pay.payNow") }}
         </view>
         <text class="txt-caption cancel" @tap="cancel">{{ $t("pay.cancel") }}</text>
@@ -231,8 +307,32 @@ onUnmounted(() => clearInterval(timer));
 .method__icon {
   font-size: 40rpx;
 }
+/*
+ * 名称与「为什么不可用」竖排。
+ *
+ * 挤在一行的话读起来是「支付宝本单中有店铺尚未开通这种收款方式」——
+ * 一句话，而它其实是两条信息。截图里一眼就看出来了。
+ */
+.method__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4rpx;
+}
 .method__name {
   flex: 1;
+}
+.method__why {
+  color: var(--sh-sub);
+}
+/* 不可用的整块压暗，让「能点的是哪个」不用读文字就看得出来 */
+.method.is-off {
+  opacity: 0.55;
+}
+.block-reason {
+  display: block;
+  padding: 0 32rpx;
+  color: var(--sh-warning);
 }
 .done {
   text-align: center;

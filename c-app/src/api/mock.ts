@@ -679,6 +679,20 @@ export const mockApi: ShopApi = {
     return delay(created[0]!);
   },
 
+  async payMethods(orderNo: string) {
+    // mock 给「一个可用 + 一个不可用带原因」—— 两种状态都要能在界面上看到
+    return {
+      currency: "CNY",
+      configured: true,
+      methods: [
+        { methodCode: "TEST", payChannel: "TEST", name: "测试渠道",
+          available: true, unavailableReason: null },
+        { methodCode: "ALIPAY", payChannel: "ALIPAY", name: "支付宝",
+          available: false, unavailableReason: "本单中有店铺尚未开通这种收款方式" },
+      ],
+    };
+  },
+
   async payOrder(orderNo) {
     const target = findOrder(orderNo);
 
@@ -715,9 +729,14 @@ export const mockApi: ShopApi = {
         continue;
       }
 
-      // 没有独立的备货态：付款后就是 PAID（待发货），与后端一致
-      assertTransition(o.status, "PAID");
-      o.status = "PAID";
+      /*
+       * 没有独立的备货态：付款后就是 PAID（待发货），与后端一致。
+       *
+       * ⚠️ **这里不再断言一次 PAID**：上面几行已经把它从 WAIT_PAY 转成 PAID 了，
+       * 再断言一次就是 PAID → PAID，非法迁移直接抛。
+       * 此前没暴露，是因为 mock 里<b>一条待付款订单都没有</b> ——
+       * 这条路径从来没被走到过。2026-09-02 加了待付款种子，它当场就红了。
+       */
       o.verifyCode = strategy.issueCode();
       pushTimeline(o, "商家备货中");
     }
@@ -734,7 +753,24 @@ export const mockApi: ShopApi = {
     );
 
     persist();
-    return delay(target);
+    /*
+     * **返回 PayInit，不是 Order**（C-1/C-2 之后）。
+     *
+     * mock 仍然直接把订单推进成已支付 —— 那是 mock 的便利，
+     * 而返回值要与真实契约一致：端上拿 payParams 去唤起收银台。
+     * 返回 Order 的话端上编译不过，那正是我们要的：
+     * <b>契约变了，mock 必须跟着变</b>，否则 mock 下能跑而真实链路跑不通。
+     */
+    return delay({
+      orderNo,
+      payChannel: "TEST",
+      payParams: {
+        prepayId: "mock_" + orderNo,
+        outTradeNo: orderNo,
+        amount: String(target.amount ?? 0),
+        testChannel: "true",
+      },
+    });
   },
 
   async orderList(q: PageQuery & { status?: string; fulfillments?: string[] }) {

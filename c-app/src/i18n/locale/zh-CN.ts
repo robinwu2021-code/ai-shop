@@ -478,6 +478,8 @@ export default {
     submitting: "提交中…",
   },
   pay: {
+    noUsableMethod: "本单中的店铺暂无可用的支付方式，请联系客服",
+    methodFallback: "支付方式将在下一步确认",
     title: "收银台",
     payable: "应付金额",
     covers: "本次付款覆盖 {n} 笔订单",

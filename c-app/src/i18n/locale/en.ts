@@ -449,6 +449,8 @@ timeSlotPh: "e.g. tonight 19:00–21:00",
     submitting: "Placing…",
   },
   pay: {
+    noUsableMethod: "No payment method is available for the stores in this order",
+    methodFallback: "Payment method will be confirmed next",
     title: "Checkout",
     payable: "Amount due",
     covers: "This payment covers {n} orders",

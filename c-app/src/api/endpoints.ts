@@ -135,6 +135,9 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
 
   // ---------------------------------------------------------------- 交易
   createOrder: { method: "POST", path: "/mp/order", auth: true, summary: "下单（幂等）" },
+  // 收银台先问「能用哪些方式」，再带着选中的通道去发起 —— 两步，不是一步。
+  // 后端算好了交集（市场 × 各商家进件 × 网关有没有实现），端上直接渲染。
+  payMethods: { method: "GET", path: "/mp/order/:orderNo/pay-method", auth: true, summary: "可用支付方式" },
   payOrder: { method: "POST", path: "/mp/order/:orderNo/pay", auth: true, summary: "支付" },
   orderList: { method: "GET", path: "/mp/order", auth: true, summary: "订单列表" },
   promotedGoods: { method: "GET", path: "/mp/goods/promoted", auth: false, summary: "推荐商品（运营位）" },
