@@ -65,6 +65,15 @@ public class TestPayGateway implements PayGateway {
     private record Order(long amountMinor, String tradeNo, boolean paid) {
     }
 
+    /**
+     * 通道侧的<b>退款</b>账本。与收款分开记 —— 真通道也是两套单据，
+     * 混在一起的话，查退款会查到收款那笔上去。
+     */
+    private final Map<String, Refund> refunds = new ConcurrentHashMap<>();
+
+    private record Refund(long amountMinor, String tradeNo) {
+    }
+
     @Override
     public String payChannel() {
         return CHANNEL;
@@ -134,6 +143,21 @@ public class TestPayGateway implements PayGateway {
         return new QueryResult(true, o.paid(), true, o.amountMinor(), o.tradeNo());
     }
 
+    /**
+     * 查退款。测试渠道把退款也记在自己的账本里 ——
+     * 不记的话对账那条轴永远查不通，而「查询失败绝不关单」会让
+     * 待确认的退款无限堆积，联调时看起来像是卡住了。
+     */
+    @Override
+    public QueryResult queryRefund(String outTradeNo) {
+        Refund r = refunds.get(outTradeNo);
+        if (r == null) {
+            // 通道这边没有这笔退款：查询本身成功（ok），只是没找到
+            return new QueryResult(true, false, false, 0L, null);
+        }
+        return new QueryResult(true, true, true, r.amountMinor(), r.tradeNo());
+    }
+
     @Override
     public Result subsidy(TxContext ctx, long amountMinor, String requestNo, String description) {
         log.info("[test-channel] 补差 tx={} amount={} req={}", ctx.tradeNo(), amountMinor, requestNo);
@@ -178,8 +202,15 @@ public class TestPayGateway implements PayGateway {
             log.warn("[test-channel] 退款失败：{} 超过原单金额 {}", amountMinor, o.amountMinor());
             return Result.fatal("退款金额超过原单");
         }
+        /*
+         * **记进退款账本**，用我方的退款商户单号做键 ——
+         * 对账回查时拿的正是那个号。用 requestNo 之外的键的话，
+         * 查得到与查不到取决于调用方传了什么，那不是通道该有的行为。
+         */
+        String refundTradeNo = "TESTRF-" + requestNo;
+        refunds.put(requestNo, new Refund(amountMinor, refundTradeNo));
         log.info("[test-channel] 退款 tx={} amount={} req={} reason={}",
                 ctx.tradeNo(), amountMinor, requestNo, reason);
-        return Result.ok("TEST-REFUND-" + requestNo);
+        return Result.ok(refundTradeNo);
     }
 }

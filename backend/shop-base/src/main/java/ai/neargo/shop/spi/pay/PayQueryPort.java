@@ -21,6 +21,13 @@ public interface PayQueryPort {
     Result query(String payChannel, String outTradeNo);
 
     /**
+     * 查退款。<b>与 {@link #query} 是两个接口</b> ——
+     * 通道侧收款单与退款单是两套单据。混用会让对账把待确认的退款
+     * 当成「通道说没有这笔」而关掉，<b>而钱可能真的已经退出去了</b>。
+     */
+    Result queryRefund(String payChannel, String outTradeNo);
+
+    /**
      * @param ok    查询本身是否成功。<b>false 时其余字段不可信</b>，
      *              而且<b>绝不能据此关单</b> —— 查询失败与「通道没有这笔」是两件事，
      *              混在一起会把已付的单关掉

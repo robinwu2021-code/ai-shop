@@ -31,4 +31,14 @@ public class PayQueryPortImpl implements PayQueryPort {
         PayGateway.QueryResult r = router.of(payChannel).query(outTradeNo);
         return new Result(r.ok(), r.paid(), r.found(), r.amountMinor(), r.tradeNo());
     }
+
+    @Override
+    public Result queryRefund(String payChannel, String outTradeNo) {
+        if (payChannel == null || !router.supports(payChannel)) {
+            // 同 query：通道未接入 ≠ 通道说没有这笔。前者不可据以关单
+            return new Result(false, false, false, 0, null);
+        }
+        PayGateway.QueryResult r = router.of(payChannel).queryRefund(outTradeNo);
+        return new Result(r.ok(), r.paid(), r.found(), r.amountMinor(), r.tradeNo());
+    }
 }

@@ -51,13 +51,34 @@ public class FakePayQueryPort implements PayQueryPort {
 
     public void reset() {
         asked.clear();
+        askedRefund.clear();
         byChannel.clear();
         next = new Result(true, false, false, 0, null);
+    }
+
+    /**
+     * <b>问过退款接口的单号，与 {@link #asked} 分开记。</b>
+     *
+     * 不分开的话，「拿退款单号去查了收款接口」这个错在测试里<b>看不出来</b> ——
+     * 两个接口的替身返回同一个值，用例只看结果就永远是绿的。
+     * 而那个错在真通道上的后果是：待确认的退款被批量关掉，
+     * 因为通道对收款接口说「没有这笔」，而对账把它当成可以安全关单。
+     */
+    private final List<String> askedRefund = new ArrayList<>();
+
+    public List<String> askedRefund() {
+        return askedRefund;
     }
 
     @Override
     public Result query(String payChannel, String outTradeNo) {
         asked.add(outTradeNo);
+        return byChannel.getOrDefault(payChannel, next);
+    }
+
+    @Override
+    public Result queryRefund(String payChannel, String outTradeNo) {
+        askedRefund.add(outTradeNo);
         return byChannel.getOrDefault(payChannel, next);
     }
 }

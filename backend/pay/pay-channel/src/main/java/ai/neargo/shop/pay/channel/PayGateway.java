@@ -44,6 +44,23 @@ public interface PayGateway {
     QueryResult query(String outTradeNo);
 
     /**
+     * <b>查退款。与 {@link #query} 是两个接口，不能混用。</b>
+     *
+     * <h2>为什么必须分开</h2>
+     * 通道侧收款单与退款单是<b>两套单据</b>（微信查退款用 refund_id，
+     * 接口路径都不同）。拿退款的商户单号去查收款接口，通道会说「没有这笔」——
+     * 而对账把「通道说没有」当作<b>可以安全关单</b>的依据。
+     * 于是所有待确认的退款会被批量关掉，<b>而钱可能真的已经退出去了</b>。
+     *
+     * <p>默认实现返回 {@code ok = false}（查不通）—— 真通道在接凭证之前
+     * 查不了退款。而「查询失败绝不关单」那条规则会保护它：
+     * <b>不确定时什么都不做，好过做错方向</b>。
+     */
+    default QueryResult queryRefund(String outTradeNo) {
+        return new QueryResult(false, false, false, 0L, null);
+    }
+
+    /**
      * <b>向通道下单，拿回端上唤起收银台所需的参数。</b>
      *
      * <h2>这个方法此前不存在</h2>

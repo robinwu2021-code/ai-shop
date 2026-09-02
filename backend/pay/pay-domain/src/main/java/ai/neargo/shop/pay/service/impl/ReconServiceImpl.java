@@ -101,7 +101,23 @@ public class ReconServiceImpl implements ReconService {
         long cutoff = now - staleMinutes * 60_000L;
         List<StlPayment> stale = DataScopeContext.executeWithoutScope(() ->
                 paymentMapper.selectList(Wrappers.<StlPayment>lambdaQuery()
-                        .eq(StlPayment::getDirection, StlPayment.PAY)
+                        /*
+                         * **收款与退款一起扫**（S8 · 2026-09-02）。
+                         *
+                         * 此前只扫 PAY —— 而退款流水从 2026-09-02 起才开始落，
+                         * 在那之前「只扫 PAY」与「扫全部」结果一样，
+                         * 所以这个限制<b>看起来一直是对的</b>。
+                         *
+                         * 现在退款有流水了：一笔停在 PENDING 的退款
+                         * 意味着「钱可能已经退出去而我方不知道」，
+                         * 与掉单同样严重，而且方向相反 —— 掉单是钱没进来，
+                         * 这是钱可能出去了。两者都要回查通道。
+                         *
+                         * 其余三个方向（补差 / 补差回退 / 打款）还没有流水，
+                         * 等它们开始落时，这里的清单要跟着加 ——
+                         * 而<b>覆盖范围那句话必须同步改</b>，否则「零差异」是句假话。
+                         */
+                        .in(StlPayment::getDirection, StlPayment.PAY, StlPayment.REFUND)
                         .in(StlPayment::getStatus, StlPayment.INIT, StlPayment.PENDING)
                         .le(StlPayment::getCreatedAt,
                                 java.time.LocalDateTime.ofInstant(
@@ -109,7 +125,20 @@ public class ReconServiceImpl implements ReconService {
         String day = DAY.format(Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()));
 
         return stale.stream().map(p -> {
-            PayQueryPort.Result r = payQueryPort.query(p.getPayChannel(), p.getOutTradeNo());
+            /*
+             * **按方向选查询接口。**收款查收款单，退款查退款单 ——
+             * 通道侧这是两套单据（微信查退款用 refund_id，路径都不同）。
+             *
+             * 混用的后果是单向的、且很重：拿退款单号去查收款接口，
+             * 通道会说「没有这笔」，而对账把「通道说没有」当作
+             * <b>可以安全关单</b>的依据 —— 于是待确认的退款被批量关掉，
+             * 而钱可能真的已经退出去了。
+             *
+             * 反过来（拿收款单号查退款接口）也一样错，只是今天不会发生。
+             */
+            PayQueryPort.Result r = StlPayment.REFUND.equals(p.getDirection())
+                    ? payQueryPort.queryRefund(p.getPayChannel(), p.getOutTradeNo())
+                    : payQueryPort.query(p.getPayChannel(), p.getOutTradeNo());
             return new ReconService.Finding(p.getPaymentNo(), p.getOrderNo(), p.getPayChannel(),
                     p.getOutTradeNo(), p.getAmountMinor(),
                     r.ok() && r.paid(), r.ok() && !r.paid() && !r.found(), !r.ok(),
@@ -211,9 +240,23 @@ public class ReconServiceImpl implements ReconService {
          * **不要因为「列表里已经有数据」就把它改成 true** —— 自查产出的数据
          * 与渠道侧差异是两回事，前者再多也不代表后者被覆盖到了。
          */
+        /*
+         * **覆盖范围要把「哪些方向没有账可对」也说出来。**
+         *
+         * 此前这句话只提渠道账单，而 stl_payment 有五个方向 ——
+         * 补差、补差回退、打款三个方向<b>连流水都还没有</b>，
+         * 也就谈不上对账。不说的话，运营看到「零差异」会以为账是平的，
+         * 而实际上有三类资金动作根本不在视野里。
+         *
+         * 退款是 2026-09-02（S8）才开始落流水并纳入扫描的 ——
+         * 每补一个方向，这句话都要跟着改。
+         */
         return new Coverage(false,
-                "渠道账单未接入：本列表只覆盖平台侧可自查的部分（超时未终态的收款）。"
-                        + "「渠道扣了钱而平台没有记录」这一类差异现在看不见，需接入对账单后才会出现。");
+                "渠道账单未接入：本列表只覆盖平台侧可自查的部分"
+                        + "（超时未终态的**收款与退款**）。"
+                        + "「渠道扣了钱而平台没有记录」这一类差异现在看不见，需接入对账单后才会出现。"
+                        + "另外，补差 / 补差回退 / 打款三个方向尚无资金流水，"
+                        + "因而也不在对账范围内 —— 「零差异」不代表这三类是平的。");
     }
 
     private ReconDiffVO toVO(StlReconDiff d) {

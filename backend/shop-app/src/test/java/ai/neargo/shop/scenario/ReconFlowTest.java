@@ -231,4 +231,55 @@ class ReconFlowTest {
 
         assertThat(empty.allDeferred()).isFalse();
     }
+
+    // ───────────────────────── 退款也进对账（S8 · 2026-09-02）
+
+    /** 造一笔 25 分钟前发起、至今停在 PENDING 的**退款** */
+    private StlPayment stalRefund() {
+        StlPayment p = new StlPayment();
+        p.setPaymentNo("RF-RECON-" + (++seq));
+        p.setDirection(StlPayment.REFUND);
+        p.setStatus(StlPayment.PENDING);
+        p.setOrderNo("OD-RFRECON-" + seq);
+        p.setSubOrderNo("SUB-RFRECON-" + seq);
+        p.setAfterSaleNo("AS-RFRECON-" + seq);
+        p.setOutTradeNo("OUT-RFRECON-" + seq + "-R1");
+        p.setPayChannel("WECHAT");
+        p.setUserNo("U-RECON");
+        p.setAmountMinor(3300L);
+        p.setCreatedAt(LocalDateTime.now().minusMinutes(25));
+        paymentMapper.insert(p);
+        return p;
+    }
+
+    @Test
+    @DisplayName("★★★ 停在 PENDING 的退款也要被扫到 —— 钱可能已经出去而我方不知道")
+    void staleRefundIsScanned() {
+        StlPayment r = stalRefund();
+        fakeQuery.answer(new PayQueryPort.Result(false, false, false, 0, null));
+
+        paymentRecon.scan(System.currentTimeMillis());
+
+        assertThat(fakeQuery.askedRefund())
+                .as("退款没有被扫到 —— 而一笔停在 PENDING 的退款意味着"
+                        + "「钱可能已经退出去而我方不知道」，与掉单同样严重，方向相反")
+                .contains(r.getOutTradeNo());
+    }
+
+    @Test
+    @DisplayName("★★★ 退款要问退款接口，不能问收款接口 —— 问错了会把待确认的退款批量关掉")
+    void refundGoesToRefundQuery() {
+        StlPayment r = stalRefund();
+        fakeQuery.answer(new PayQueryPort.Result(true, false, false, 0, null));
+
+        paymentRecon.scan(System.currentTimeMillis());
+
+        assertThat(fakeQuery.askedRefund())
+                .as("退款单号应当进退款查询").contains(r.getOutTradeNo());
+        assertThat(fakeQuery.asked())
+                .as("退款单号跑到收款查询去了 —— 通道那边收款单里没有这个号，"
+                        + "会回「没有这笔」，而对账把它当成可以安全关单。"
+                        + "于是待确认的退款被批量关掉，**而钱可能真的已经退出去了**")
+                .doesNotContain(r.getOutTradeNo());
+    }
 }
