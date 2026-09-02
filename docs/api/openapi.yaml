@@ -6633,6 +6633,9 @@ components:
         itemId: 
           type: "string"
           description: "物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键"
+        skuNo: 
+          type: "string"
+          description: "平台商品的 SKU 号。**绑码要它** —— 条码的真源是 `prd_sku.barcode`， 那是商品域的列，那边不认识 `itemId`。\n\n空 = 这件物料没有平台映射（独立交付形态下的自有主数据），**绑不了码**。 空时不要拿 `itemId` 顶替：两个域的 ID 长得都像编号，冒充了不会有人报错。"
         name: 
           type: "string"
           description: "货品名"
@@ -6701,6 +6704,9 @@ components:
         available: 
           type: "number"
           description: "可用 = 实存 − 预留"
+        safetyStock: 
+          type: "number"
+          description: "安全库存的**默认阈值**（物料上那一级）。低于它算缺货。\n\n**`0` 是「不预警」不是「低于 0 才报」** —— 界面上要写成「不预警」， 显示成 0 的话商家会以为是个没设好的数而去改它。"
         byLocation: 
           type: "array"
           items: 
@@ -6712,18 +6718,21 @@ components:
                 type: "string"
               onHand: 
                 type: "number"
+              safetyStock: 
+                type: "number"
             required: 
               - "locationId"
               - "locationName"
               - "onHand"
             additionalProperties: false
-          description: "在各库位的分布。总数与上面的 onHand 一致，对不上就是有库位没登记"
+          description: "在各库位的分布。总数与上面的 onHand 一致，对不上就是有库位没登记。\n\n`safetyStock` 是**该库位的覆盖值**，`undefined` = 跟随上面那个默认值。 与「显式设成 0」是两件事：后者是这个库位不预警。"
       required: 
         - "itemId"
         - "name"
         - "onHand"
         - "reserved"
         - "available"
+        - "safetyStock"
         - "byLocation"
       additionalProperties: false
       description: "某个物料在各库位的分布（`ItemDetailVO`）。"
@@ -6807,9 +6816,12 @@ components:
         status: 
           type: "string"
           description: "DRAFT / POSTED / VOIDED，调拨还有 SHIPPED / RECEIVED"
+        label: 
+          type: "string"
+          description: "取值域码，用来查文案：`PURCHASE` / `SCRAP` / `RETURN_SUPPLIER` / `COUNT` / `TRANSFER`……\n\n**文案在端上，不在后端。** 此前这些码被后端拼进 `subtitle` 直接下发， 商家看到的是 `SCRAP`；而盘点与调拨那两行是后端硬编码的中文， 阿语商家看到的是中文。两种坏法藏在同一个字段里。"
         subtitle: 
           type: "string"
-          description: "「订单 SO-88213」「来自 CNT-24082601」这类一句话出处"
+          description: "**只有自由文本**：供应商名、去向名、订单号、库位名。\n\n再往里塞枚举的话，上面那条修的东西下一轮就长回来了。"
         totalQty: 
           type: "number"
           description: "本单合计数量，按明细行汇总"
@@ -8485,6 +8497,39 @@ paths:
                       - "total"
                       - "page"
                       - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/order/{orderNo}/pay-method": 
+    get: 
+      operationId: "payMethods"
+      summary: "可用支付方式"
+      tags: 
+        - "order"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PayMethodList"
                 required: 
                   - "code"
                   - "msg"

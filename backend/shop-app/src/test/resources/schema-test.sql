@@ -3985,6 +3985,28 @@ CREATE TABLE IF NOT EXISTS mch_store_qrcode_print
     CONSTRAINT uk_store_qrcode_print_no UNIQUE (print_no)
 );
 
+CREATE TABLE IF NOT EXISTS sys_market
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    market VARCHAR(8) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    currency_scale TINYINT(4) NOT NULL DEFAULT 2,
+    time_zone VARCHAR(48) NOT NULL DEFAULT 'Asia/Shanghai',
+    display_rate DECIMAL(18,6) NOT NULL DEFAULT 1,
+    enabled TINYINT(4) NOT NULL DEFAULT 0,
+    sort_no INT(11) NOT NULL DEFAULT 0,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sys_market UNIQUE (tenant_no, market, deleted)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
@@ -8408,3 +8430,19 @@ INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated
 SELECT 'BD', 'OPS_STORE__TAB_QRCODE', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x
                     WHERE x.role_code = 'BD' AND x.point_code = 'OPS_STORE__TAB_QRCODE');
+INSERT INTO sys_market
+    (id, market, name, currency, currency_scale, time_zone, display_rate, enabled, sort_no,
+     tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+    (1, 'CN', '中国大陆', 'CNY', 2, 'Asia/Shanghai',  1.000000, 1, 10, 'MAIN',
+     '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0),
+    (2, 'TW', '中国台湾', 'TWD', 2, 'Asia/Taipei',    4.400000, 0, 20, 'MAIN',
+     '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0),
+    (3, 'HK', '中国香港', 'HKD', 2, 'Asia/Hong_Kong', 1.100000, 0, 30, 'MAIN',
+     '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0),
+    (4, 'SG', '新加坡',   'SGD', 2, 'Asia/Singapore', 0.190000, 0, 40, 'MAIN',
+     '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0),
+    (5, 'AE', '阿联酋',   'AED', 2, 'Asia/Dubai',     0.520000, 0, 50, 'MAIN',
+     '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0),
+    (6, 'SA', '沙特',     'SAR', 2, 'Asia/Riyadh',    0.530000, 0, 60, 'MAIN',
+     '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0);

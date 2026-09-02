@@ -11,6 +11,18 @@
 # 格式：<文件路径><TAB><规则 id>。行号故意不带 —— 带了的话，
 # 在文件里插一行注释就会让条目「变新」，那种闸门第二天就会被人绕过去。
 #
+# ── V288 那条（alter-column-if-exists）的理由，2026-09-02 ──────────────
+# 闸门的建议是「去掉；迁移只跑一次，幂等靠 Flyway 的版本号」。
+# **那句话在「迁移从没失败过」时才成立。**
+#
+# V288 在生产真的失败过一次：ALTER 已经成功、后面的 INSERT 撞了 JSON 列的
+# CHECK 约束。Flyway 留下一条 failed 记录，而失败的迁移**清掉记录后会重跑** ——
+# 那时 ALTER 会撞「Duplicate column name」，修完还要手工回退已成功的部分。
+# IF NOT EXISTS 正是为此加的，且它当天就救了一次。
+#
+# 更硬的理由：V288 现在是 success=1，改它一个字符 checksum 就对不上，
+# 线上直接起不来 —— 与这份文件顶部那句话是同一条。
+#
 # 看现状：node scripts/check-sql-portability.mjs
 
 backend/shop-app/src/main/resources/db/migration/V104__msg_push_token.sql	uca1400-collation
@@ -63,3 +75,4 @@ backend/shop-app/src/main/resources/db/migration/V8__sys_setting.sql	uca1400-col
 backend/shop-app/src/main/resources/db/migration/V9__mch_violation.sql	uca1400-collation
 backend/shop-inventory/src/main/resources/db/inventory/V1__inventory_baseline.sql	uca1400-collation
 backend/shop-inventory/src/main/resources/db/inventory/V2__snapshot_and_open_api.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V288__market_and_test_channel.sql	alter-column-if-exists

@@ -5031,6 +5031,39 @@ listViolations
 类型：[`Violation`](#violation)\[\]
 
 
+#### GET `/ops/onboarding`
+
+进件看板
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`OnboardingRow`](#onboardingrow)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### POST `/ops/onboarding/refresh`
+
+人工回查：替卡在进件上的商家去通道问一次结果并落库
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### GET `/ops/plan-defs`
 
 档位定义
@@ -7770,6 +7803,23 @@ _无字段_
 | `size` | `integer` | 是 | — |
 
 
+#### POST `/ops/stores/{merchantNo}/qrcode/print`
+
+登记一次店铺码印刷量（线下事实，系统无从自动知道）
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### GET `/ops/stores/{storeNo}`
 
 门店档案详情：门面 + 配送规则 + 经营模式 + 收款商户号
@@ -7872,7 +7922,7 @@ _无字段_
 
 #### GET `/ops/stores/acquisition`
 
-门店获客效果（P-10.1.4）
+获客漏斗「扫码 → 进店 → 首次归因 → 首单」，按**主体**聚合（P-10.1.4）
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
@@ -9811,6 +9861,26 @@ KPI 卡（金额为最小货币单位整数）。
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 
+### OnboardingRow
+
+进件看板的一行（`GET /ops/onboarding`）。**每主体每通道一条**。 它补的是入驻审核与收款进件两条链之间的盲区：审核通过 = 能上架卖货， 进件通过 = 能收钱。审核过了但进件没走完的商家「货照上、单照来、钱收不到」， 此前运营端没有一个跨商家的地方能看见 —— 这份看板就是那个地方。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `merchantName` | `string` | 是 | 商家名，展示用 |
+| `storeNo` | `string` | 是 | 为哪家门店进的件；**空串 = 主体级默认号** |
+| `payChannel` | `string` | 是 | WECHAT / ALIPAY |
+| `applyStatus` | [`#/definitions/OnboardingStatus`](#definitionsonboardingstatus) | 是 | — |
+| `rejectReason` | `string,null` | 是 | 被拒原因，原样给商家看；null = 没被拒 |
+| `settleAccountType` | `string,null` | 是 | PERSONAL_BANK / CORPORATE_BANK；null = 还没填 |
+| `settleAccountMasked` | `string,null` | 是 | 结算账号掩码 —— 真实账号只在后端 |
+| `subMchid` | `string,null` | 是 | 通道侧二级商户号；null = 还没开出来 |
+| `payMerchantNo` | `string,null` | 是 | 进件成功才生成的收款号业务键；**空/null = 还收不了钱** |
+| `appliedAt` | `number,null` | 是 | 提交进件的时间（毫秒）；null = 还没提交（占位记录） |
+| `ageMs` | `number,null` | 是 | 从提交到现在的停留时长（毫秒）；null = 还没提交。越大越该有人去问 |
+| `canReceiveMoney` | `boolean` | 是 | applyStatus === "ACTIVE" |
+
 ### OpsPerson
 
 人档：一份人档串起几家商家的会员关系 —— 这正是它存在的理由
@@ -10600,11 +10670,12 @@ KPI 卡（金额为最小货币单位整数）。
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | 归属商家 |
 | `merchantName` | `string` | 是 | 商家名快照 |
-| `scan` | `number` | 是 | 扫码次数 |
-| `enter` | `number` | 是 | 进店人数 |
-| `register` | `number` | 是 | 注册人数 |
-| `firstOrder` | `number` | 是 | 首单人数 |
-| `convRate` | `number` | 是 | 首单转化率 = firstOrder / scan，0–1 |
+| `scan` | `number` | 是 | 扫码次数（PV）。同一个人扫三次算三次 |
+| `scanUv` | `number` | 是 | 扫码人数（UV）。匿名访客按设备号去重 —— 他还没有账号 |
+| `enter` | `number` | 是 | 进店人数：归因到本店的去重用户数 |
+| `register` | `number` | 是 | **首次归因人数**（后端 `decision=CREATED`）。 ⚠️ **不等于「平台新注册」**：一个注册了很久的老用户，第一次扫这家店的码 也会计入。字段名沿用 `register` 是为了不动既有契约，口径以这句为准。 |
+| `firstOrder` | `number` | 是 | 其中已产生首单的人数 |
+| `convRate` | `number` | 是 | 首单转化率 = firstOrder / **scanUv**，0–1。 分母用 UV 不用 PV：同一个人扫三次不该把转化率摊薄成三分之一。 |
 
 ### StoreFulfillmentRow
 
@@ -10687,9 +10758,9 @@ KPI 卡（金额为最小货币单位整数）。
 | `merchantName` | `string` | 是 | 商家名快照 |
 | `communityName` | `string` | 是 | 所属社区名，BD 按社区领码地推 |
 | `code` | `string` | 是 | 码值（C 端扫码进店的深链参数），导出时给 BD 去印刷 |
-| `size` | `string` | 是 | 贴纸尺寸规格，如 "10x10cm" |
-| `printed` | `number` | 是 | 已印数量，用于对账印刷成本 |
-| `scanCount` | `number` | 是 | 累计扫码次数 |
+| `size` | `string,null` | 是 | 最近一次印刷的尺寸规格，如 "10x10cm"；**从没印过是 null**（尺寸属于那一次印刷，不是门店属性） |
+| `printed` | `number,null` | 是 | 累计已印数量，用于对账印刷成本。 ⚠️ **null = 还没人登记，不是「印了 0 张」**。两者在界面上必须分开显示 —— 混成一个数之后，运营没法知道该去催谁登记。 |
+| `scanCount` | `number` | 是 | 区间内扫码次数。**这个 0 是真的 0**（埋点一直在记），与 printed 的 null 不同 |
 
 ### StoreStats
 

@@ -6632,6 +6632,9 @@ components:
         itemId: 
           type: "string"
           description: "物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键"
+        skuNo: 
+          type: "string"
+          description: "平台商品的 SKU 号。**绑码要它** —— 条码的真源是 `prd_sku.barcode`， 那是商品域的列，那边不认识 `itemId`。\n\n空 = 这件物料没有平台映射（独立交付形态下的自有主数据），**绑不了码**。 空时不要拿 `itemId` 顶替：两个域的 ID 长得都像编号，冒充了不会有人报错。"
         name: 
           type: "string"
           description: "货品名"
@@ -6700,6 +6703,9 @@ components:
         available: 
           type: "number"
           description: "可用 = 实存 − 预留"
+        safetyStock: 
+          type: "number"
+          description: "安全库存的**默认阈值**（物料上那一级）。低于它算缺货。\n\n**`0` 是「不预警」不是「低于 0 才报」** —— 界面上要写成「不预警」， 显示成 0 的话商家会以为是个没设好的数而去改它。"
         byLocation: 
           type: "array"
           items: 
@@ -6711,18 +6717,21 @@ components:
                 type: "string"
               onHand: 
                 type: "number"
+              safetyStock: 
+                type: "number"
             required: 
               - "locationId"
               - "locationName"
               - "onHand"
             additionalProperties: false
-          description: "在各库位的分布。总数与上面的 onHand 一致，对不上就是有库位没登记"
+          description: "在各库位的分布。总数与上面的 onHand 一致，对不上就是有库位没登记。\n\n`safetyStock` 是**该库位的覆盖值**，`undefined` = 跟随上面那个默认值。 与「显式设成 0」是两件事：后者是这个库位不预警。"
       required: 
         - "itemId"
         - "name"
         - "onHand"
         - "reserved"
         - "available"
+        - "safetyStock"
         - "byLocation"
       additionalProperties: false
       description: "某个物料在各库位的分布（`ItemDetailVO`）。"
@@ -6806,9 +6815,12 @@ components:
         status: 
           type: "string"
           description: "DRAFT / POSTED / VOIDED，调拨还有 SHIPPED / RECEIVED"
+        label: 
+          type: "string"
+          description: "取值域码，用来查文案：`PURCHASE` / `SCRAP` / `RETURN_SUPPLIER` / `COUNT` / `TRANSFER`……\n\n**文案在端上，不在后端。** 此前这些码被后端拼进 `subtitle` 直接下发， 商家看到的是 `SCRAP`；而盘点与调拨那两行是后端硬编码的中文， 阿语商家看到的是中文。两种坏法藏在同一个字段里。"
         subtitle: 
           type: "string"
-          description: "「订单 SO-88213」「来自 CNT-24082601」这类一句话出处"
+          description: "**只有自由文本**：供应商名、去向名、订单号、库位名。\n\n再往里塞枚举的话，上面那条修的东西下一轮就长回来了。"
         totalQty: 
           type: "number"
           description: "本单合计数量，按明细行汇总"
@@ -7858,10 +7870,16 @@ components:
       properties: 
         purpose: 
           type: "string"
-          description: "SALE 销售 / TRANSFER_OUT 调拨出 / SCRAP 报损 / COUNT_LOSS 盘亏 / INTERNAL 领用 / OTHER。\n**SALE 不接受手工创建** —— 否则商家能凭空造销量"
+          description: "SALE 销售 / TRANSFER_OUT 调拨出 / SCRAP 报损 / COUNT_LOSS 盘亏 / INTERNAL 领用 / RETURN_SUPPLIER 退供应商 / OTHER。\n**SALE 不接受手工创建** —— 否则商家能凭空造销量"
         reasonCode: 
           type: "string"
           description: "SCRAP 必填：BROKEN 损坏 / EXPIRED 过期 / GIFT 赠送 / OTHER。**枚举不是自由文本**"
+        targetType: 
+          type: "string"
+          description: "去向类型：`SUPPLIER`。**空 = 没有去向**（报损就是没有去向的那一种）。\n\n与 `reasonCode` 是两个维度：那个答「为什么出」，这个答「出给谁」。 合成一个的话，「这个月报损多少」与「这个月退货多少」在报表上再也分不开。"
+        targetNo: 
+          type: "string"
+          description: "去向对象编号；`SUPPLIER` 时是 `supplierNo`。`RETURN_SUPPLIER` 必填。\n\n**名字不用传** —— 服务端查了写快照。端上传的话，供应商改个名就能让历史单据说谎。"
         occurredAt: 
           type: "string"
           description: "业务发生时刻。**不是录入时刻** —— 昨天进的货今天补录，账要落在昨天"
@@ -11724,6 +11742,61 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/settle/withdraw": 
+    get: 
+      operationId: "mWithdrawPage"
+      summary: "我的提现"
+      tags: 
+        - "settle"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/WithdrawPage"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+    post: 
+      operationId: "mApplyWithdraw"
+      summary: "申请提现"
+      tags: 
+        - "settle"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/WithdrawRecord"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/after-sale": 
     get: 
       operationId: "mAfterSaleList"
@@ -13858,6 +13931,92 @@ paths:
       summary: "直接改数（走盘点，落单落流水）"
       tags: 
         - "inventory"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/inventory/safety-stock": 
+    put: 
+      operationId: "mSafetyStock"
+      summary: "设安全库存（不传 locationId 设默认值；qty 为 null 撤掉库位覆盖）"
+      tags: 
+        - "inventory"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/inventory/items/by-barcode": 
+    get: 
+      operationId: "mItemByBarcode"
+      summary: "按条码找货（没绑过回 null，不是 404）"
+      tags: 
+        - "inventory"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/StockBalance"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/sku-identity/barcode": 
+    post: 
+      operationId: "mBindBarcode"
+      summary: "把条码绑到一件 SKU 上（幂等；本店内唯一）"
+      tags: 
+        - "sku-identity"
       security: 
         - bearerAuth: []
       parameters: []

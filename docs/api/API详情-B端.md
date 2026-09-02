@@ -2257,7 +2257,8 @@ _无字段_
 | `onHand` | `number` | 是 | 实存 |
 | `reserved` | `number` | 是 | 预留：别人下了单还没付钱的量 |
 | `available` | `number` | 是 | 可用 = 实存 − 预留 |
-| `byLocation` | `object`（见下）\[\] | 是 | 在各库位的分布。总数与上面的 onHand 一致，对不上就是有库位没登记 |
+| `safetyStock` | `number` | 是 | 安全库存的**默认阈值**（物料上那一级）。低于它算缺货。 **`0` 是「不预警」不是「低于 0 才报」** —— 界面上要写成「不预警」， 显示成 0 的话商家会以为是个没设好的数而去改它。 |
+| `byLocation` | `object`（见下）\[\] | 是 | 在各库位的分布。总数与上面的 onHand 一致，对不上就是有库位没登记。 `safetyStock` 是**该库位的覆盖值**，`undefined` = 跟随上面那个默认值。 与「显式设成 0」是两件事：后者是这个库位不预警。 |
 
 `byLocation[]` 的字段：
 
@@ -2266,6 +2267,32 @@ _无字段_
 | `locationId` | `string` | 是 | — |
 | `locationName` | `string` | 是 | — |
 | `onHand` | `number` | 是 | — |
+| `safetyStock` | `number` | 否 | — |
+
+
+#### GET `/biz/inventory/items/by-barcode`
+
+按条码找货（没绑过回 null，不是 404）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`StockBalance`](#stockbalance)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `string` | 是 | 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 |
+| `skuNo` | `string` | 否 | 平台商品的 SKU 号。**绑码要它** —— 条码的真源是 `prd_sku.barcode`， 那是商品域的列，那边不认识 `itemId`。 空 = 这件物料没有平台映射（独立交付形态下的自有主数据），**绑不了码**。 空时不要拿 `itemId` 顶替：两个域的 ID 长得都像编号，冒充了不会有人报错。 |
+| `name` | `string` | 是 | 货品名 |
+| `specText` | `string` | 否 | 规格描述（「10斤装」）。人读的，不参与匹配 |
+| `baseUom` | `string` | 否 | 基本计量单位（个/斤/箱）。**所有数量都以它为准**，收货填别的单位要先换算 |
+| `onHand` | `number` | 是 | 实存 |
+| `reserved` | `number` | 是 | 预留：别人下了单还没付钱的量 |
+| `available` | `number` | 是 | 可用 = 实存 − 预留。预留是别人下了单还没付钱的量，付了款才真扣 |
+| `safetyStock` | `number` | 否 | 安全库存。低于它算缺货 —— 0 表示不设 |
+| `lastMovedAt` | `string` | 否 | 最后一次动过的时间；滞销判据 |
+| `flags` | `string`\[\] | 是 | SHORTAGE 缺货 · STALE 滞销。**空数组 = 这件没事** |
 
 
 #### GET `/biz/inventory/ledger`
@@ -2406,6 +2433,17 @@ _无字段_
 **出参**（`data`）
 
 类型：[`StockRank`](#stockrank)\[\]
+
+
+#### PUT `/biz/inventory/safety-stock`
+
+设安全库存（不传 locationId 设默认值；qty 为 null 撤掉库位覆盖）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
 
 
 #### GET `/biz/inventory/summary`
@@ -4193,7 +4231,40 @@ _无字段_
 | `note` | `string` | 是 | 费率说明文案。**须写明「以下单时快照为准，调整不影响历史订单」** |
 
 
+#### GET `/biz/settle/withdraw`
+
+我的提现　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`WithdrawPage`](#withdrawpage)
+
+
+#### POST `/biz/settle/withdraw`
+
+申请提现　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`WithdrawRecord`](#withdrawrecord)
+
+
 ### sku-identity
+
+#### POST `/biz/sku-identity/barcode`
+
+把条码绑到一件 SKU 上（幂等；本店内唯一）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
+
 
 #### GET `/biz/sku-identity/export`
 
@@ -7366,6 +7437,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `itemId` | `string` | 是 | 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 |
+| `skuNo` | `string` | 否 | 平台商品的 SKU 号。**绑码要它** —— 条码的真源是 `prd_sku.barcode`， 那是商品域的列，那边不认识 `itemId`。 空 = 这件物料没有平台映射（独立交付形态下的自有主数据），**绑不了码**。 空时不要拿 `itemId` 顶替：两个域的 ID 长得都像编号，冒充了不会有人报错。 |
 | `name` | `string` | 是 | 货品名 |
 | `specText` | `string` | 否 | 规格描述（「10斤装」）。人读的，不参与匹配 |
 | `baseUom` | `string` | 否 | 基本计量单位（个/斤/箱）。**所有数量都以它为准**，收货填别的单位要先换算 |
@@ -7420,7 +7492,8 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `kind` | `string` | 是 | IN 入库 · OUT 出库 · COUNT 盘点 · TRANSFER 调拨 |
 | `docNo` | `string` | 是 | 单号 |
 | `status` | `string` | 是 | DRAFT / POSTED / VOIDED，调拨还有 SHIPPED / RECEIVED |
-| `subtitle` | `string` | 否 | 「订单 SO-88213」「来自 CNT-24082601」这类一句话出处 |
+| `label` | `string` | 否 | 取值域码，用来查文案：`PURCHASE` / `SCRAP` / `RETURN_SUPPLIER` / `COUNT` / `TRANSFER`…… **文案在端上，不在后端。** 此前这些码被后端拼进 `subtitle` 直接下发， 商家看到的是 `SCRAP`；而盘点与调拨那两行是后端硬编码的中文， 阿语商家看到的是中文。两种坏法藏在同一个字段里。 |
+| `subtitle` | `string` | 否 | **只有自由文本**：供应商名、去向名、订单号、库位名。 再往里塞枚举的话，上面那条修的东西下一轮就长回来了。 |
 | `totalQty` | `number` | 是 | 本单合计数量，按明细行汇总 |
 | `occurredAt` | `string` | 是 | 业务发生时刻。**不是落库时刻** —— 补录昨天的进货，这里是昨天 |
 | `operator` | `string` | 否 | 经手人 |
@@ -7440,7 +7513,8 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `onHand` | `number` | 是 | 实存 |
 | `reserved` | `number` | 是 | 预留：别人下了单还没付钱的量 |
 | `available` | `number` | 是 | 可用 = 实存 − 预留 |
-| `byLocation` | `object`（见下）\[\] | 是 | 在各库位的分布。总数与上面的 onHand 一致，对不上就是有库位没登记 |
+| `safetyStock` | `number` | 是 | 安全库存的**默认阈值**（物料上那一级）。低于它算缺货。 **`0` 是「不预警」不是「低于 0 才报」** —— 界面上要写成「不预警」， 显示成 0 的话商家会以为是个没设好的数而去改它。 |
+| `byLocation` | `object`（见下）\[\] | 是 | 在各库位的分布。总数与上面的 onHand 一致，对不上就是有库位没登记。 `safetyStock` 是**该库位的覆盖值**，`undefined` = 跟随上面那个默认值。 与「显式设成 0」是两件事：后者是这个库位不预警。 |
 
 `byLocation[]` 的字段：
 
@@ -7449,6 +7523,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `locationId` | `string` | 是 | — |
 | `locationName` | `string` | 是 | — |
 | `onHand` | `number` | 是 | — |
+| `safetyStock` | `number` | 否 | — |
 
 ### StockLedgerPage
 

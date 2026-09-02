@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 13 个权限点 × 169 个受控端点**。
+统计：**6 个角色 × 13 个权限点 × 173 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -16,12 +16,12 @@
 
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
-| `STOCK` | 改库存（含门店库存） | 31 | ✅ | ✅ | ✅ | ✅ | — | — |
-| `GOODS` | 建/改商品、上下架、规格模板、识图 | 26 | ✅ | ✅ | — | — | — | — |
+| `STOCK` | 改库存（含门店库存） | 33 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `GOODS` | 建/改商品、上下架、规格模板、识图 | 27 | ✅ | ✅ | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 19 | ✅ | ✅ | — | — | — | — |
 | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 19 | ✅ | — | — | — | — | — |
+| `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 19 | ✅ | — | — | — | — | — |
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 18 | ✅ | ✅ | — | — | — | — |
-| `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 18 | ✅ | — | — | — | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 16 | ✅ | ✅ | — | — | — | — |
 | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
@@ -53,6 +53,7 @@
 - `/biz/inventory/inbounds/{no}`
 - `/biz/inventory/inbounds/{no}/post`
 - `/biz/inventory/inbounds/{no}/void`
+- `/biz/inventory/items/by-barcode`
 - `/biz/inventory/items/{itemId}`
 - `/biz/inventory/ledger`
 - `/biz/inventory/locations`
@@ -60,6 +61,7 @@
 - `/biz/inventory/outbounds/{no}/post`
 - `/biz/inventory/outbounds/{no}/void`
 - `/biz/inventory/pickable`
+- `/biz/inventory/safety-stock`
 - `/biz/inventory/summary`
 - `/biz/inventory/suppliers`
 - `/biz/inventory/suppliers/{no}`
@@ -86,6 +88,7 @@
 - `/biz/my-spec-dims/{dimNo}/archive`
 - `/biz/my-spec-dims/{dimNo}/rename`
 - `/biz/pickable-props`
+- `/biz/sku-identity/barcode`
 - `/biz/sku-identity/export`
 - `/biz/sku-identity/import`
 - `/biz/sku-identity/import/plan`
@@ -142,27 +145,6 @@
 - `/biz/store/{storeNo}/rename`
 - `/biz/store/{storeNo}/status`
 
-### `CUSTOMER`　（OWNER、MANAGER）
-
-- `/biz/cross-store/compare`
-- `/biz/cross-store/overview`
-- `/biz/customers`
-- `/biz/dashboard/stats`
-- `/biz/inventory/export`
-- `/biz/inventory/report/monthly`
-- `/biz/inventory/report/ranking`
-- `/biz/member-reach/plan`
-- `/biz/member-segments`
-- `/biz/member-segments/preview`
-- `/biz/member-segments/{segmentNo}/remove`
-- `/biz/member-tags`
-- `/biz/member-tags/{tagNo}`
-- `/biz/member-tags/{tagNo}/merge`
-- `/biz/members`
-- `/biz/members/stats`
-- `/biz/members/tags`
-- `/biz/members/{memberNo}`
-
 ### `FINANCE`　（OWNER）
 
 - `/biz/deposit`
@@ -183,6 +165,28 @@
 - `/biz/settle/invoices`
 - `/biz/settle/rate-card`
 - `/biz/settle/statement`
+- `/biz/settle/withdraw`
+
+### `CUSTOMER`　（OWNER、MANAGER）
+
+- `/biz/cross-store/compare`
+- `/biz/cross-store/overview`
+- `/biz/customers`
+- `/biz/dashboard/stats`
+- `/biz/inventory/export`
+- `/biz/inventory/report/monthly`
+- `/biz/inventory/report/ranking`
+- `/biz/member-reach/plan`
+- `/biz/member-segments`
+- `/biz/member-segments/preview`
+- `/biz/member-segments/{segmentNo}/remove`
+- `/biz/member-tags`
+- `/biz/member-tags/{tagNo}`
+- `/biz/member-tags/{tagNo}/merge`
+- `/biz/members`
+- `/biz/members/stats`
+- `/biz/members/tags`
+- `/biz/members/{memberNo}`
 
 ### `CAMPAIGN`　（OWNER、MANAGER）
 

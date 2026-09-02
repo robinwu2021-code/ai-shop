@@ -71,9 +71,12 @@ public class PlatformConfigServiceImpl implements PlatformConfigService {
             "rate":1.0,"enabled":true}]""";
 
     private final SettingService settingService;
+    /** 市场主数据在 pay 域（S11）—— 币种与账期口径是资金域的知识 */
+    private final ai.neargo.shop.spi.pay.MarketPort marketService;
     private final ObjectMapper json;
 
-    public PlatformConfigServiceImpl(SettingService settingService, ObjectMapper json) {
+    public PlatformConfigServiceImpl(SettingService settingService, ObjectMapper json, ai.neargo.shop.spi.pay.MarketPort marketService) {
+        this.marketService = marketService;
         this.settingService = settingService;
         this.json = json;
     }
@@ -206,38 +209,44 @@ public class PlatformConfigServiceImpl implements PlatformConfigService {
 
     // ---------------------------------------------------------------- 市场
 
+    /**
+     * 市场清单。<b>2026-09-02（S11）起读的是 {@code sys_market} 表，不再是那段 JSON。</b>
+     *
+     * <p>为什么换：JSON 存得下，但<b>无法被引用与约束</b> ——
+     * {@code market} 这个列早就在五张表上用着（商品 SKU、门店价、
+     * 积分账户、积分流水、积分池），却没有任何东西保证那些值真的存在。
+     * 写错一个市场码，积分会记进一个不存在的市场，<b>而不报错</b>。
+     *
+     * <p><b>返回形状一个字段都没改</b> —— ops-web 那一页不用动。
+     * 换存储不该让调用方跟着改，那正是这层接口存在的理由。
+     */
     @Override
     public List<MarketVO> markets() {
-        return readValue(KEY_MARKETS, DEFAULT_MARKETS, new TypeReference<List<MarketVO>>() {
-        });
+        return marketService.all().stream()
+                .map(m -> new MarketVO(m.market(), m.name(), m.currency(),
+                        m.timeZone(), m.displayRate(), m.enabled()))
+                .toList();
     }
 
     @Override
     @Transactional
     public List<MarketVO> saveMarketRate(String code, double rate, boolean enabled,
                                          String operatorNo) {
-        List<MarketVO> all = new ArrayList<>(markets());
-        int idx = -1;
-        for (int i = 0; i < all.size(); i++) {
-            if (all.get(i).code().equals(code)) {
-                idx = i;
-                break;
-            }
-        }
-        if (idx < 0) {
-            throw BizException.of(ErrorCode.NOT_FOUND);
-        }
-        MarketVO m = all.get(idx);
-        // 基准货币的汇率是换算原点，改了整套价格都失去参照
-        if (BASE_CURRENCY.equals(m.currency()) && rate != 1.0d) {
+        var row = marketService.find(code).orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        /*
+         * 两条校验原样保留 —— 换存储不该顺手放宽规则。
+         *
+         * 基准货币的汇率是换算原点，改了整套价格都失去参照；
+         * 汇率非正会让折算出来的价格是 0 或负数。
+         */
+        if (BASE_CURRENCY.equals(row.currency()) && rate != 1.0d) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         if (rate <= 0) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        all.set(idx, new MarketVO(m.code(), m.name(), m.currency(), m.timezone(), rate, enabled));
-        settingService.put(KEY_MARKETS, json.writeValueAsString(all), operatorNo);
-        return all;
+        marketService.saveRate(code, rate, enabled, operatorNo);
+        return markets();
     }
 
     // ---------------------------------------------------------------- 助手

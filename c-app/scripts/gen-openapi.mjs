@@ -135,6 +135,7 @@ const RESPONSE_TYPES = {
   groupPickupOrders: "Order[]",
   myHostedGroups: "GroupBuy[]",
   myStores: "Merchant[]",
+  payMethods: "PayMethodList",
   promotedGoods: "Goods[]",
   promotedMerchants: "Merchant[]",
   raiseDispute: "Order",
