@@ -67,6 +67,18 @@ public interface ReservationService {
     /** 回收到期未确认的预留。由定时任务调，返回回收条数。 */
     int expireOverdue(int limit);
 
+    /**
+     * <b>还剩多少笔到期预留没回收</b>（`HELD` 且已过 `expires_at`）。
+     *
+     * <p>回收是分批的（一轮 200 条，防长事务），所以「本轮回收了 N 条」答不出
+     * 「还积着多少」。而**积压持续不降才是「回收出问题」的信号** ——
+     * 那批货被永久占着，商家看到的是「有货卖不出去」，
+     * 而任何地方都不会报错。
+     *
+     * <p>只用来报数，不参与回收 —— 它是给人看的，不是给流程用的。
+     */
+    int countOverdue();
+
     record Line(String itemId, String locationId, int qty) {
     }
 }

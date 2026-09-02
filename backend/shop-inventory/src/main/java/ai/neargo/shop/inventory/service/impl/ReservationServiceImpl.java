@@ -186,6 +186,13 @@ public class ReservationServiceImpl implements ReservationService {
         return due.size();
     }
 
+    @Override
+    public int countOverdue() {
+        return Math.toIntExact(resMapper.selectCount(Wrappers.<InvReservation>lambdaQuery()
+                .eq(InvReservation::getStatus, InvEnums.ReservationStatus.HELD)
+                .lt(InvReservation::getExpiresAt, LocalDateTime.now())));
+    }
+
     // ────────────────────────────────────────────────────────────────────
 
     private void unholdAll(InvReservation head, String toStatus) {

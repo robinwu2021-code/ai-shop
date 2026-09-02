@@ -127,6 +127,36 @@ class InventoryFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 到期预留要能数出「还积着多少」—— 只报本轮回收数，答不出回收有没有出问题")
+    void overdueBacklogIsCountable() {
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 10), "老板");
+
+        /*
+         * **负 ttl：这一笔一落库就已经过期。** 用 0 不行 —— `expires_at` 会正好
+         * 等于 now，而判据是严格小于（`expires_at < now()`），同一时刻不算过期。
+         * 这不是钻空子：真实场景里「过期」永远是时间走过去造成的，
+         * 测试里没法等，只能把它放在过去。
+         */
+        reservations.reserve(f.owner, "SO-overdue-" + f.seq, List.of(
+                new ReservationService.Line(f.item, f.location, 2)), -60);
+
+        assertThat(reservations.countOverdue())
+                .as("刚落的这一笔已经过期，该被数进来").isGreaterThan(0);
+
+        /*
+         * **回收之后要归零。** 这条断言才是这个数的意义所在：
+         * 它不为零就说明回收没跟上 —— 而回收不跟上时，那批货被永久占着，
+         * 商家看到的是「有货卖不出去」，任何地方都不会报错。
+         */
+        reservations.expireOverdue(200);
+        assertThat(reservations.countOverdue())
+                .as("回收完就该归零；不归零 = 这个任务出问题了，而这正是要报出来的那件事")
+                .isZero();
+        assertThat(onHand(f)).as("回收不改在手数，只是把占住的放开").isEqualTo(10);
+    }
+
+    @Test
     @DisplayName("★★★ 释放后可用回来，且没有产生任何流水 —— 没成交的单不进销量")
     void releaseLeavesNoLedger() {
         Fixture f = fixture();

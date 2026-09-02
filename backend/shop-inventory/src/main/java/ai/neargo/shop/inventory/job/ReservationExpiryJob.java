@@ -57,6 +57,18 @@ public class ReservationExpiryJob {
         if (n > 0) {
             log.info("回收到期预留 {} 条", n);
         }
-        return "expired=" + n;
+        /*
+         * **把剩下多少也报出来**（INV-P5 的落点）。
+         *
+         * 回收是分批的（一轮 200 条），所以「本轮回收了 N 条」答不出「还积着多少」。
+         * 而积压**持续不降**才是这个任务出问题的信号 —— 那批货被永久占着，
+         * 商家看到的是「有货卖不出去」，而任何地方都不会报错。
+         *
+         * 报在 detail 里而不是做一张运营端的表：运营已经在 `/jobs` 上看这一行，
+         * 而一张恒为空的表没人会去点开（线上 `inv_reservation` 今天是 0 行）。
+         * 有积压时它自己会出现在「最后一次」那一列上。
+         */
+        int left = reservations.countOverdue();
+        return left > 0 ? "expired=" + n + " 积压=" + left : "expired=" + n;
     }
 }
