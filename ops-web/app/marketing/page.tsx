@@ -14,7 +14,7 @@ import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime, money } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
-import type { CouponBuildableType, MerchantCampaign, ContentSlot, Coupon, CouponIssue, CouponStatus, IssueTarget } from "@/lib/types";
+import type { CouponBuildableType, MerchantCampaign, ContentSlot, Coupon, CouponIssue, CouponStatus, IssueTarget, SlotKind } from "@/lib/types";
 import {
   PlatformSlotStatusBadge, CouponStatusBadge, usePlatformSlotStatusMap, usePlatformSlotTypeMap,
   useCouponStatusMap, useCouponTypeMap, useSlotKindMap,
@@ -37,6 +37,8 @@ import { Pagination } from "@/components/ui/misc";
 import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { HelpNote } from "@/components/ui/help-note";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -95,6 +97,38 @@ const toCouponForm = (x: Coupon): CouponForm => ({
   validFrom: toDatetimeLocal(x.validFrom), validTo: toDatetimeLocal(x.validTo),
 });
 
+/**
+ * 内容位表单。货号用**逗号分隔的文本**收，而不是一个选货器：
+ * 运营手里的清单本来就是从商品页复制出来的一串货号，先做能用的那一版；
+ * 选货器要等商品检索组件（它同时被活动、专题、标准库要着）。
+ */
+type SlotForm = {
+  slotNo?: string;
+  title: string;
+  kind: SlotKind;
+  sort: string;
+  communityNos: string;
+  goodsNos: string;
+  onlineAt: string;
+  offlineAt: string;
+  enabled: boolean;
+};
+
+const EMPTY_SLOT_FORM: SlotForm = {
+  title: "", kind: "HOME_FLOOR", sort: "0", communityNos: "", goodsNos: "",
+  onlineAt: "", offlineAt: "", enabled: true,
+};
+
+const toSlotForm = (x: ContentSlot): SlotForm => ({
+  slotNo: x.slotNo, title: x.title, kind: x.kind, sort: String(x.sort),
+  communityNos: x.communityNos.join(", "), goodsNos: x.goodsNos.join(", "),
+  onlineAt: toDatetimeLocal(Date.parse(x.onlineAt)), offlineAt: toDatetimeLocal(Date.parse(x.offlineAt)),
+  enabled: x.enabled,
+});
+
+/** 逗号 / 空格 / 换行都当分隔符 —— 运营是从别处复制过来的，形状不由他决定。 */
+const splitNos = (v: string) => v.split(/[,，\s]+/).map((x) => x.trim()).filter(Boolean);
+
 const toDatetimeLocal = (ms: number) => {
   const d = new Date(ms - new Date().getTimezoneOffset() * 60_000);
   return d.toISOString().slice(0, 16);
@@ -129,6 +163,7 @@ function MarketingInner() {
   });
   const [budgetEdit, setBudgetEdit] = useState<{ couponNo: string; value: string } | null>(null);
   const [couponForm, setCouponForm] = useState<CouponForm | null>(null);
+  const [slotForm, setSlotForm] = useState<SlotForm | null>(null);
 
   const canIssue = allow("marketing:coupon:issue");
   const canEditCampaign = allow("marketing:campaign:update");
@@ -201,6 +236,18 @@ function MarketingInner() {
         count: Number(issueForm.count),
       }),
     onSuccess: (r) => { invalidate(); setIssuing(null); notify.success(fill(c.toastIssued, { n: r.count, amount: money(r.amount) })); },
+  });
+  const saveSlotMut = useMutation({
+    mutationFn: (f: SlotForm) =>
+      api.saveContentSlot({
+        slotNo: f.slotNo, title: f.title, kind: f.kind, sort: Number(f.sort) || 0,
+        communityNos: splitNos(f.communityNos), goodsNos: splitNos(f.goodsNos),
+        // datetime-local 是本地时间，后端收的是 ISO —— 不转的话上下线会差一个时区
+        onlineAt: new Date(f.onlineAt).toISOString(),
+        offlineAt: new Date(f.offlineAt).toISOString(),
+        enabled: f.enabled,
+      }),
+    onSuccess: () => { invalidate(); setSlotForm(null); notify.success(c.toastSlotSaved); },
   });
   const slotEnableMut = useMutation({
     mutationFn: (v: { slotNo: string; enabled: boolean }) => api.setSlotEnabled(v.slotNo, v.enabled),
@@ -379,6 +426,9 @@ function MarketingInner() {
     { header: c.colSort, cell: (s) => s.sort, numeric: true },
     // 空 = 全部社区。写"全部社区"而不是留空：留空会被读成"还没配"
     { header: c.colCommunities, cell: (s) => (s.communityNos.length ? s.communityNos.join("、") : c.allCommunities) },
+    // 只有首页楼层有内容；另两种在 C 端还没有承接位，写「—」而不是 0，
+    // 0 会被读成「配了但空着」，而它其实是「这种形态本来就不带货」
+    { header: c.colSlotGoods, cell: (s) => (s.kind === "HOME_FLOOR" ? s.goodsNos.length : "—"), numeric: true },
     { header: c.colOnOffline, cell: (s) => `${fmtTime(s.onlineAt)} ~ ${fmtTime(s.offlineAt)}` },
     {
       header: c.colEnabled,
@@ -394,6 +444,10 @@ function MarketingInner() {
     {
       header: c.colActions,
       cell: (s) => (
+        <div className="flex items-center gap-2">
+        {canEditSlot && !s.archivedAt && (
+          <Button size="sm" variant="outline" onClick={() => setSlotForm(toSlotForm(s))}>{c.actionEdit}</Button>
+        )}
         <ArchiveActions
           archived={!!s.archivedAt}
           canWrite={canEditSlot}
@@ -404,6 +458,7 @@ function MarketingInner() {
             await confirm(unarchiveConfirm(c.entitySlot, s.title, () => archiveMut.mutateAsync({ kind: "slot", no: s.slotNo, restore: true })));
           }}
         />
+        </div>
       ),
     },
   ];
@@ -455,9 +510,13 @@ function MarketingInner() {
               : tab === "campaigns" ? c.searchCampaigns
                 : c.searchSlots
         }
-        onAdd={tab === "coupons" ? () => setCouponForm(EMPTY_COUPON_FORM) : undefined}
-        addLabel={c.actionNewCoupon}
-        canAdd={canIssue}
+        onAdd={
+          tab === "coupons" ? () => setCouponForm(EMPTY_COUPON_FORM)
+            : tab === "slots" ? () => setSlotForm(EMPTY_SLOT_FORM)
+              : undefined
+        }
+        addLabel={tab === "slots" ? c.actionNewSlot : c.actionNewCoupon}
+        canAdd={tab === "slots" ? canEditSlot : canIssue}
       >
         {tab === "coupons" && (
           <>
@@ -692,6 +751,81 @@ function MarketingInner() {
                   onChange={(e) => setCouponForm({ ...couponForm, validTo: e.target.value })} />
               </div>
             </FieldGrid>
+          </div>
+        </Drawer>
+      )}
+
+      {/* 内容位抽屉：首页第一屏配什么，就在这里 */}
+      {slotForm && (
+        <Drawer
+          open
+          onOpenChange={() => setSlotForm(null)}
+          title={slotForm.slotNo ? fill(c.editSlotTitle, { title: slotForm.title }) : c.newSlotTitle}
+          desc={slotForm.slotNo}
+          footer={
+            <Button loading={saveSlotMut.isPending} onClick={() => saveSlotMut.mutate(slotForm)}>{c.save}</Button>
+          }
+        >
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="sl-title" required>{c.fieldSlotTitle}</Label>
+              <Input id="sl-title" className="w-full" value={slotForm.title}
+                onChange={(e) => setSlotForm({ ...slotForm, title: e.target.value })} />
+              <p className="txt-caption text-muted-foreground">{c.slotTitleHint}</p>
+            </div>
+            <FieldGrid>
+              <div className="space-y-1">
+                <Label htmlFor="sl-kind">{c.fieldSlotKind}</Label>
+                <Select id="sl-kind" className="w-full" value={slotForm.kind}
+                  onChange={(e) => setSlotForm({ ...slotForm, kind: e.target.value as SlotKind })}>
+                  {(Object.keys(slotKindMap) as SlotKind[]).map((k) => (
+                    <option key={k} value={k}>{slotKindMap[k].label}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="sl-sort">{c.fieldSlotSort}</Label>
+                <Input id="sl-sort" className="w-full" value={slotForm.sort}
+                  onChange={(e) => setSlotForm({ ...slotForm, sort: e.target.value })} />
+              </div>
+            </FieldGrid>
+            {slotForm.kind === "HOME_FLOOR" ? (
+              <div className="space-y-1">
+                <Label htmlFor="sl-goods" required>{c.fieldSlotGoods}</Label>
+                <Textarea value={slotForm.goodsNos}
+                  onChange={(v) => setSlotForm({ ...slotForm, goodsNos: v })}
+                  placeholder={c.slotGoodsPlaceholder} />
+                <p className="txt-caption text-muted-foreground">{c.slotGoodsHint}</p>
+              </div>
+            ) : (
+              // 说清楚而不是留一个能填却没人读的框：填了也不会有任何端展示它
+              <HelpNote>{c.slotKindNoContent}</HelpNote>
+            )}
+            <div className="space-y-1">
+              <Label htmlFor="sl-communities">{c.fieldSlotCommunities}</Label>
+              <Input id="sl-communities" className="w-full" value={slotForm.communityNos}
+                onChange={(e) => setSlotForm({ ...slotForm, communityNos: e.target.value })}
+                placeholder={c.slotCommunitiesPlaceholder} />
+              <p className="txt-caption text-muted-foreground">{c.slotCommunitiesHint}</p>
+            </div>
+            <FieldGrid>
+              <div className="space-y-1">
+                <Label htmlFor="sl-online" required>{c.fieldSlotOnline}</Label>
+                <Input id="sl-online" type="datetime-local" className="w-full" value={slotForm.onlineAt}
+                  onChange={(e) => setSlotForm({ ...slotForm, onlineAt: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="sl-offline" required>{c.fieldSlotOffline}</Label>
+                <Input id="sl-offline" type="datetime-local" className="w-full" value={slotForm.offlineAt}
+                  onChange={(e) => setSlotForm({ ...slotForm, offlineAt: e.target.value })} />
+              </div>
+            </FieldGrid>
+            <div className="space-y-1">
+              <Label htmlFor="sl-enabled">{c.fieldSlotEnabled}</Label>
+              <Switch checked={slotForm.enabled} aria-label={c.fieldSlotEnabled}
+                onChange={(v) => setSlotForm({ ...slotForm, enabled: v })} />
+              <p className="txt-caption text-muted-foreground">{c.slotEnabledHint}</p>
+            </div>
           </div>
         </Drawer>
       )}

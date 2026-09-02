@@ -73,11 +73,13 @@ describe("导航 × 权限", () => {
   const UNBUILT_LEAVES = [
     "message:faq:update",   // 帮助中心维护
     /*
-     * 2026-08-12 权限码细化时**新增**的两条。它们此前映到 marketing:govern ——
+     * 2026-08-12 权限码细化时新增的两条。它们此前映到 marketing:govern ——
      * 一个覆盖不到它们的粗码，于是"看着有人能进"而实际点进去是 mock。
-     * 细化之后没有粗码可躲，缺口显式了：content-slots 与会员卡后端都没有。
+     *
+     * 2026-09-02：**内容位（marketing:slot:update）已落地并从这里删掉** ——
+     * OpsContentSlotController + mkt_content_slot，且 C 端首页真的读它了。
+     * 会员卡还在（P-7.4 二期，需求上就没排）。
      */
-    "marketing:slot:update",   // 首页楼层与 Banner
     "marketing:member:update", // 会员卡与权益（P-7.4 二期）
     /*
      * store 域从 UNBUILT_SECTIONS 移走之后，它的叶子开始被逐个检查 ——

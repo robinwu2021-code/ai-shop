@@ -140,6 +140,30 @@ const zh = {
   /** `{title}` 是内容位标题 */
   ariaEnable: "{title} 启用开关",
 
+  // ── 内容位编辑（首页第一屏配什么）
+  colSlotGoods: "商品数",
+  actionEdit: "编辑",
+  actionNewSlot: "新建内容位",
+  newSlotTitle: "新建内容位",
+  /** `{title}` 是内容位标题 */
+  editSlotTitle: "编辑「{title}」",
+  fieldSlotTitle: "标题",
+  slotTitleHint: "运营自己认的名字，不会出现在用户那边",
+  fieldSlotKind: "形态",
+  fieldSlotSort: "排序",
+  fieldSlotGoods: "商品货号",
+  slotGoodsPlaceholder: "G0004, G0002, G0001",
+  slotGoodsHint: "顺序就是首页里的展示顺序；逗号或换行分隔。货号打错会存不进去（后端校验），不会静默丢掉",
+  slotKindNoContent: "轮播与频道这一版只能建、能排期，但用户那边还没有承接的位置，配了也不会展示。要用先做首页楼层。",
+  fieldSlotCommunities: "投放社区",
+  slotCommunitiesPlaceholder: "留空 = 全部社区",
+  slotCommunitiesHint: "填了就只有这些社区的首页会出现它",
+  fieldSlotOnline: "上线时间",
+  fieldSlotOffline: "下线时间",
+  fieldSlotEnabled: "启用",
+  slotEnabledHint: "关掉即刻不再展示，不等下线时间",
+  toastSlotSaved: "已保存内容位",
+
   readOnlyWhat: "券发放与预算调整",
   readOnlyNote: "不能发券、启停或归档",
   couponNotice:
@@ -349,6 +373,30 @@ const en: typeof zh = {
   colOnOffline: "Online / offline",
   colEnabled: "Enabled",
   ariaEnable: "Enable {title}",
+
+  // ── Content slot editing (what goes on the first screen)
+  colSlotGoods: "Items",
+  actionEdit: "Edit",
+  actionNewSlot: "New content slot",
+  newSlotTitle: "New content slot",
+  /** `{title}` is the slot title */
+  editSlotTitle: "Edit \u201c{title}\u201d",
+  fieldSlotTitle: "Title",
+  slotTitleHint: "An internal name — shoppers never see it",
+  fieldSlotKind: "Placement",
+  fieldSlotSort: "Order",
+  fieldSlotGoods: "Item codes",
+  slotGoodsPlaceholder: "G0004, G0002, G0001",
+  slotGoodsHint: "This order is the display order. Separate with commas or line breaks; a wrong code is rejected on save, never dropped silently",
+  slotKindNoContent: "Banners and channels can be created and scheduled, but the shopper app has nowhere to show them yet, so nothing will appear. Use a home floor for now.",
+  fieldSlotCommunities: "Communities",
+  slotCommunitiesPlaceholder: "Empty = all communities",
+  slotCommunitiesHint: "Fill this in and only these communities see it",
+  fieldSlotOnline: "Goes up",
+  fieldSlotOffline: "Comes down",
+  fieldSlotEnabled: "Enabled",
+  slotEnabledHint: "Turning this off takes it down right away — it does not wait for the end time",
+  toastSlotSaved: "Content slot saved",
 
   readOnlyWhat: "coupon issuing & budget changes",
   readOnlyNote: "cannot issue coupons, pause them or archive",

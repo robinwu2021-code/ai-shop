@@ -1,5 +1,5 @@
 // 覆盖范围：优惠券（P-7.1）、活动（P-7.2）、内容位（P-7.3）、会员卡（P-7.4）。
-import type { MerchantCampaign, PlatformSlot, ContentSlot, Coupon, CouponIssue, CouponSaveReq, CouponStatus, IssueTarget, MemberCard, MemberCardStatus, Page } from "@/lib/types";
+import type { MerchantCampaign, PlatformSlot, ContentSlot, SlotSaveReq, Coupon, CouponIssue, CouponSaveReq, CouponStatus, IssueTarget, MemberCard, MemberCardStatus, Page } from "@/lib/types";
 import type { CampaignQ, CouponQ, PageQ, SlotQ } from "../query";
 
 export interface MarketingApi {
@@ -68,6 +68,11 @@ export interface MarketingApi {
 
   listContentSlots(q?: SlotQ): Promise<Page<ContentSlot>>;
   /** 上下线开关（P-7.3.5）。 */
+  /**
+   * 建 / 改内容位。三条硬校验在后端：下线必须晚于上线、HOME_FLOOR 必须有商品、
+   * 商品必须真的存在 —— 货号打错一位不会报错，那一格在首页上**静默消失**。
+   */
+  saveContentSlot(v: SlotSaveReq): Promise<ContentSlot>;
   setSlotEnabled(slotNo: string, enabled: boolean): Promise<ContentSlot>;
   /** 定时上下线：下线必须晚于上线。 */
   setSlotSchedule(slotNo: string, onlineAt: string, offlineAt: string): Promise<ContentSlot>;

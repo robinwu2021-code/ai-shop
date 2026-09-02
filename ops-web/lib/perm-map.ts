@@ -68,7 +68,9 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "member:person:read": "member:person:read",
   "member:person:merge": "member:person:merge",
   "member:phone:reveal": "member:phone:reveal",
-  "marketing:slot:update": UNIMPLEMENTED,
+  // 2026-09-02 接通：OpsContentSlotController（列表/建改/开关/排期/归档）。**恒等映射**
+  "marketing:slot:read": "marketing:slot:read",
+  "marketing:slot:update": "marketing:slot:update",
   "marketing:member:update": UNIMPLEMENTED,
   "group:campaign:audit": "group:campaign:audit",
   "group:demand:assign": "group:demand:assign",

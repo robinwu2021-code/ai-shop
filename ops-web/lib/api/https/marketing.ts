@@ -31,6 +31,7 @@ export const marketingHttp: MarketingApi = {
   unarchiveCampaign: (no) => client.post(`/ops/campaigns/${no}/unarchive`),
 
   listContentSlots: (q) => client.get("/ops/content-slots", q),
+  saveContentSlot: (v) => client.post("/ops/content-slots", v),
   setSlotEnabled: (no, enabled) => client.post(`/ops/content-slots/${no}/enabled`, { enabled }),
   setSlotSchedule: (no, onlineAt, offlineAt) => client.post(`/ops/content-slots/${no}/schedule`, { onlineAt, offlineAt }),
   archiveSlot: (no) => client.post(`/ops/content-slots/${no}/archive`),

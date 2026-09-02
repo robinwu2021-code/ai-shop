@@ -3010,6 +3010,11 @@ components:
         enabled: 
           type: "boolean"
           description: "是否启用。关掉即刻不再展示，不等下线时间"
+        goodsNos: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "楼层里的商品，**有序** —— 数组顺序就是首页里的展示顺序。\n\n只有 `HOME_FLOOR` 有内容：BANNER 要「图 + 跳转目标」、CHANNEL 要频道页， 而 C 端两样都还没有，没有承接位就定不了那个模型。后端对这两种一律存空。"
       required: 
         - "slotNo"
         - "title"
@@ -3019,7 +3024,53 @@ components:
         - "onlineAt"
         - "offlineAt"
         - "enabled"
+        - "goodsNos"
       additionalProperties: false
+    SlotSaveReq: 
+      type: "object"
+      properties: 
+        slotNo: 
+          type: "string"
+          description: "为空 = 新建（与建券同一个约定）"
+        title: 
+          type: "string"
+          description: "运营自己认的名字，不出现在 C 端"
+        kind: 
+          "$ref": "#/definitions/SlotKind"
+          description: "形态。只有 `HOME_FLOOR` 带商品，另两种后端一律存空"
+        sort: 
+          type: "number"
+          description: "同一 kind 内的展示顺序，小的在前"
+        communityNos: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "投放社区；空 = 全部社区"
+        goodsNos: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "楼层里的商品，**有序**。货号不存在时后端拒收，不会静默丢掉"
+        onlineAt: 
+          type: "string"
+          description: "上线时间（ISO）"
+        offlineAt: 
+          type: "string"
+          description: "下线时间（ISO），必须晚于上线"
+        enabled: 
+          type: "boolean"
+          description: "启用。关掉即刻不再展示，不等下线时间"
+      required: 
+        - "title"
+        - "kind"
+        - "sort"
+        - "communityNos"
+        - "goodsNos"
+        - "onlineAt"
+        - "offlineAt"
+        - "enabled"
+      additionalProperties: false
+      description: "建 / 改内容位。"
     BenefitKind: 
       type: "string"
       enum: 
@@ -13662,10 +13713,41 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "saveContentSlot"
+      summary: "建 / 改内容位"
+      tags: 
+        - "marketing"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ContentSlot"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/content-slots/{no}/enabled": 
     post: 
       operationId: "setSlotEnabled"
-      summary: "上下线开关（P-7.3.5）"
+      summary: "setSlotEnabled"
       tags: 
         - "marketing"
       responses: 

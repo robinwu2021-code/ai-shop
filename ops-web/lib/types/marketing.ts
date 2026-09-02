@@ -231,6 +231,35 @@ export interface ContentSlot extends Archivable {
   offlineAt: string;
   /** 是否启用。关掉即刻不再展示，不等下线时间 */
   enabled: boolean;
+  /**
+   * 楼层里的商品，**有序** —— 数组顺序就是首页里的展示顺序。
+   *
+   * 只有 `HOME_FLOOR` 有内容：BANNER 要「图 + 跳转目标」、CHANNEL 要频道页，
+   * 而 C 端两样都还没有，没有承接位就定不了那个模型。后端对这两种一律存空。
+   */
+  goodsNos: string[];
+}
+
+/** 建 / 改内容位。 */
+export interface SlotSaveReq {
+  /** 为空 = 新建（与建券同一个约定） */
+  slotNo?: string;
+  /** 运营自己认的名字，不出现在 C 端 */
+  title: string;
+  /** 形态。只有 `HOME_FLOOR` 带商品，另两种后端一律存空 */
+  kind: SlotKind;
+  /** 同一 kind 内的展示顺序，小的在前 */
+  sort: number;
+  /** 投放社区；空 = 全部社区 */
+  communityNos: string[];
+  /** 楼层里的商品，**有序**。货号不存在时后端拒收，不会静默丢掉 */
+  goodsNos: string[];
+  /** 上线时间（ISO） */
+  onlineAt: string;
+  /** 下线时间（ISO），必须晚于上线 */
+  offlineAt: string;
+  /** 启用。关掉即刻不再展示，不等下线时间 */
+  enabled: boolean;
 }
 
 // ── 会员卡与权益（P-7.4）──────────────────────────────────────────

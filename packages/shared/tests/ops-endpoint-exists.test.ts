@@ -44,7 +44,9 @@ const UNBUILT_DOMAINS = new Set([
   // 归因：attribution-rule / attribution-traces 已于 2026-08-13 接通
   //（OpsGrowthController，V121，规则真正驱动引擎）
   // 营销的后期部分
-  "marketing", "content-slots",
+  // content-slots 已于 2026-09-02 接通（OpsContentSlotController + mkt_content_slot，
+  // 且 C 端首页 promoted() 真的读它了），按棘轮规矩从这里删掉
+  "marketing",
   // push-tasks / demands 同批接通（2026-08-29 实测端点都在）。
   // **留在这里的害处是它会让人以为这块还没做，从而绕开它另写一套** —— 那正是
   // 这条断言存在的理由，而它自己已经红了一阵子没人看见（守卫不在闸门里）

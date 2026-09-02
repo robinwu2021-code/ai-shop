@@ -244,6 +244,9 @@ export const RULES = [
   ["*", /^\/ops\/coupons/, "marketing:coupon:update"],
   ["GET", /^\/ops\/campaigns/, "marketing:campaign:read"],
   ["*", /^\/ops\/campaigns/, "marketing:campaign:update"],
+  // 内容位：读写分开 —— 改的是首页第一屏给谁看，比改一张券影响面大
+  ["GET", /^\/ops\/content-slots/, "marketing:slot:read"],
+  ["*", /^\/ops\/content-slots/, "marketing:slot:update"],
 
   // 促销（活动与券的只读面 + 停投）。停投是**处置**：它当场改变 C 端看到的价格，
   // 与新建活动同码，而与只读分开

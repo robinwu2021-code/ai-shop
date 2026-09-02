@@ -24,7 +24,7 @@ public interface ArchiveService {
      * 这样端点与实现之间不需要再维护一张映射表。
      */
     enum Kind {
-        COUPON, MERCHANT, PICKUP, CAMPAIGN, COMMUNITY
+        COUPON, MERCHANT, PICKUP, CAMPAIGN, COMMUNITY, CONTENT_SLOT
     }
 
     /**

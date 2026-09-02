@@ -87,8 +87,10 @@ describe("角色与功能点（P-1.1.2）", () => {
      * 那是对的，它逼着人回来把 mock 的 backendStatus 与 perm-map 的标记一起改。
      * 换样例时挑一个当下确实还没有后端的（会员卡、首页楼层、店铺码导出）。
      */
+    // 2026-09-02：marketing:slot:update 落地了（内容位），按上面那段说明换掉它 ——
+    // 换成主页模板配置，那条当下确实还没有后端（perm-map 里仍是 UNIMPLEMENTED）
     const unbuilt = pts.filter((p) => p.uiPermCode === "marketing:member:update"
-      || p.uiPermCode === "marketing:slot:update");
+      || p.uiPermCode === "store:page:read");
     expect(unbuilt.length).toBeGreaterThan(0);
     expect(unbuilt.every((p) => p.backendStatus === "NOT_IMPLEMENTED")).toBe(true);
 

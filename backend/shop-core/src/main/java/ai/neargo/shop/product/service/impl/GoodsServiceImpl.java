@@ -53,21 +53,40 @@ public class GoodsServiceImpl implements GoodsService {
     private final ObjectMapper json;
     /** 限时特价覆盖展示价。product → marketing 走 Port（ArchUnit 守着不许直连） */
     private final ai.neargo.shop.spi.marketing.CampaignPort campaignPort;
+    /** 首页推荐位的运营配置。没配时 promoted() 仍走销量兜底 */
+    private final ai.neargo.shop.spi.marketing.ContentSlotPort contentSlotPort;
 
     public GoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper, CommunityPoolMapper poolMapper,
                             MerchantQueryPort merchantPort, ObjectMapper json,
-                            ai.neargo.shop.spi.marketing.CampaignPort campaignPort) {
+                            ai.neargo.shop.spi.marketing.CampaignPort campaignPort,
+                            ai.neargo.shop.spi.marketing.ContentSlotPort contentSlotPort) {
         this.goodsMapper = goodsMapper;
         this.skuMapper = skuMapper;
         this.poolMapper = poolMapper;
         this.merchantPort = merchantPort;
         this.json = json;
         this.campaignPort = campaignPort;
+        this.contentSlotPort = contentSlotPort;
     }
 
     @Override
     public List<GoodsVO> promoted(String communityNo, Integer size) {
         int limit = size == null || size <= 0 ? 6 : size;
+        /*
+         * **运营配的内容位优先**。配了就按运营给的顺序展示 —— 首页上写的是「推荐」，
+         * 在此之前它展示的却是销量事实，运营想推一件新货只能等它先卖起来。
+         *
+         * 没配仍然走下面的销量兜底：删掉兜底的话，没人配过的社区首页那一屏直接空了。
+         */
+        List<String> curated = contentSlotPort.homeFloorGoodsNos(communityNo);
+        if (!curated.isEmpty()) {
+            List<GoodsVO> vos = byGoodsNos(curated.size() > limit ? curated.subList(0, limit) : curated);
+            if (!vos.isEmpty()) {
+                return vos;
+            }
+            // 配了位子、但那些货全都下架/下架待审了 —— 与「没配」同样处理，
+            // 不能让首页因为一条过期配置而空着
+        }
         LambdaQueryWrapper<PrdGoods> w = Wrappers.<PrdGoods>lambdaQuery()
                 .eq(PrdGoods::getOnSale, true)
                 .eq(PrdGoods::getAuditStatus, "APPROVED");
@@ -98,6 +117,31 @@ public class GoodsServiceImpl implements GoodsService {
         Map<String, List<PrdSku>> skus = loadSkus(rows.stream().map(PrdGoods::getGoodsNo).toList());
         var flash = campaignPort.flashPrices(rows.stream().map(PrdGoods::getGoodsNo).toList());
         return rows.stream()
+                .map(g -> toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of()), flash.get(g.getGoodsNo())))
+                .toList();
+    }
+
+    /**
+     * 按**给定顺序**取这些货的展示形状；不在售/未过审的<b>直接跳过</b>。
+     *
+     * <p>跳过而不是报错：运营配位子时那件货还在售，下架是商家自己的动作，
+     * 谁也不会回头去改内容位。留着它的结果是首页上一个点不开的坑。
+     */
+    private List<GoodsVO> byGoodsNos(List<String> goodsNos) {
+        List<PrdGoods> rows = DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
+                        .eq(PrdGoods::getOnSale, true)
+                        .eq(PrdGoods::getAuditStatus, "APPROVED")
+                        .in(PrdGoods::getGoodsNo, goodsNos)));
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        Map<String, PrdGoods> byNo = rows.stream()
+                .collect(java.util.stream.Collectors.toMap(PrdGoods::getGoodsNo, g -> g, (a, b) -> a));
+        Map<String, List<PrdSku>> skus = loadSkus(rows.stream().map(PrdGoods::getGoodsNo).toList());
+        var flash = campaignPort.flashPrices(rows.stream().map(PrdGoods::getGoodsNo).toList());
+        // ★ 顺序按运营配的来，不是按查出来的顺序 —— 数据库不保证 IN 的返回序
+        return goodsNos.stream().map(byNo::get).filter(java.util.Objects::nonNull)
                 .map(g -> toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of()), flash.get(g.getGoodsNo())))
                 .toList();
     }

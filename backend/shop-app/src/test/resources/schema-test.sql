@@ -4033,6 +4033,30 @@ CREATE TABLE IF NOT EXISTS sys_pay_channel_market
     CONSTRAINT uk_channel_market UNIQUE (tenant_no, pay_channel, market)
 );
 
+CREATE TABLE IF NOT EXISTS mkt_content_slot
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    slot_no VARCHAR(64) NOT NULL,
+    title VARCHAR(128) NOT NULL,
+    kind VARCHAR(32) NOT NULL,
+    sort_no INT(11) NOT NULL DEFAULT 0,
+    community_nos TEXT DEFAULT NULL,
+    goods_nos TEXT DEFAULT NULL,
+    online_at BIGINT(20) NOT NULL,
+    offline_at BIGINT(20) NOT NULL,
+    enabled TINYINT(4) NOT NULL DEFAULT 1,
+    archived_at DATETIME DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_content_slot_no UNIQUE (slot_no)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
@@ -8494,3 +8518,27 @@ SELECT 'SUPER_ADMIN', 'OPS_FINANCE__TAB_CHANNEL_MESSAGES', 'OPS', NOW(), NOW() F
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'FINANCE', 'OPS_FINANCE__TAB_CHANNEL_MESSAGES', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='FINANCE' AND x.point_code='OPS_FINANCE__TAB_CHANNEL_MESSAGES');
+UPDATE sys_function_point
+   SET ui_perm_code = 'marketing:slot:update',
+       perm_code = 'marketing:slot:update',
+       backend_status = 'IMPLEMENTED',
+       updated_at = NOW()
+ WHERE point_code = 'OPS_MARKETING__TAB_SLOTS';
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'CAMPAIGN_OPS', 'OPS_MARKETING__TAB_SLOTS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='CAMPAIGN_OPS' AND x.point_code='OPS_MARKETING__TAB_SLOTS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MARKETING__TAB_SLOTS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MARKETING__TAB_SLOTS');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'ACT__MARKETING_SLOT_READ', 'OPS_MARKETING', 'marketing:slot:read', '页面内操作', NULL, 'marketing:slot:read', 'marketing:slot:read', 'IMPLEMENTED', 1, NULL, 'ACTION', 912, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__MARKETING_SLOT_READ');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'GOODS_OPS', 'ACT__MARKETING_SLOT_READ', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='GOODS_OPS' AND x.point_code='ACT__MARKETING_SLOT_READ');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'CAMPAIGN_OPS', 'ACT__MARKETING_SLOT_READ', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='CAMPAIGN_OPS' AND x.point_code='ACT__MARKETING_SLOT_READ');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__MARKETING_SLOT_READ', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__MARKETING_SLOT_READ');

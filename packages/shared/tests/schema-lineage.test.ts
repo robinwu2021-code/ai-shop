@@ -225,6 +225,15 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  * 我们自己就连错过一次。
  */
 const NAME_COLLISIONS: Record<string, string> = {
+  slot_no:
+    "mch_appointment_slot 是**预约时段**（到店服务：周三 14:00–15:00 这一格）；" +
+    "mkt_content_slot 是**内容位**（运营：首页第一屏那个楼层）。\n" +
+    "  两族毫不相干，只是中文都能叫「位」。按名字 join 会把某个商家的预约时段" +
+    "连到一个首页楼层上，而两边都有 slot_no 且都非空 —— 连错了不报错。",
+  sort_no:
+    "两张表各自的**排序序号**，不是任何东西的键：sys_market 是国家/地区在选择器里的顺序，" +
+    "mkt_content_slot 是同类内容位之间的先后。\n" +
+    "  同名同义（都是「小的在前」）但**没有共同的定义域**，按它 join 只会得到笛卡尔积。",
   message_no:
     "stl_channel_message 是**渠道报文**（支付：通道推给我方的回调、我方发给通道的调用）；" +
     "notify_message 是**站内消息**（通知：发给用户看的那条）。\n" +

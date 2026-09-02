@@ -10,12 +10,6 @@
 #
 # 补上一条就删一行。删空的那天，把 check-ops-contract.mjs 的棘轮换成「必须全绿」。
 #
-# ── 内容位：整块没有后端（marketing.ts）
-GET /ops/content-slots
-POST /ops/content-slots/*/archive
-POST /ops/content-slots/*/enabled
-POST /ops/content-slots/*/schedule
-POST /ops/content-slots/*/unarchive
 #
 # ── 会员卡：整块没有后端（marketing.ts）
 GET /ops/marketing/member-cards

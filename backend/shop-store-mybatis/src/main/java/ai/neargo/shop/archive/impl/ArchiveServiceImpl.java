@@ -28,7 +28,8 @@ public class ArchiveServiceImpl implements ArchiveService {
             Kind.MERCHANT, new String[]{"mch_entity", "entity_no"},
             Kind.PICKUP, new String[]{"cmt_pickup_point", "pickup_no"},
             Kind.CAMPAIGN, new String[]{"mkt_campaign", "campaign_no"},
-            Kind.COMMUNITY, new String[]{"cmt_community", "community_no"});
+            Kind.COMMUNITY, new String[]{"cmt_community", "community_no"},
+            Kind.CONTENT_SLOT, new String[]{"mkt_content_slot", "slot_no"});
 
     private final ArchiveMapper archiveMapper;
     private final AuditLogPort auditLogPort;

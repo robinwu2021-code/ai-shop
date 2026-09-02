@@ -201,6 +201,15 @@ public final class Perms {
     public static final String MARKETING_CAMPAIGN_READ = "marketing:campaign:read";
     public static final String MARKETING_CAMPAIGN_UPDATE = "marketing:campaign:update";
 
+    /** 内容位（首页楼层/轮播/频道）只读。 */
+    public static final String MARKETING_SLOT_READ = "marketing:slot:read";
+
+    /**
+     * 改内容位。<b>改的是首页第一屏给谁看</b> —— 影响面比改一张券大得多，
+     * 所以跟 campaign 分开：能建活动的人不一定该决定首页推谁。
+     */
+    public static final String MARKETING_SLOT_UPDATE = "marketing:slot:update";
+
     // ── 会员与人档（P8）─────────────────────────────────────────────────────
     /**
      * 跨商家看会员名单与归属。
@@ -521,7 +530,10 @@ public final class Perms {
                     AFTERSALE_TICKET_READ, COMMUNITY_READ,
                     DASHBOARD_OVERVIEW_READ, GROUP_CAMPAIGN_AUDIT, GROUP_CAMPAIGN_READ,
                     MARKETING_CAMPAIGN_READ, MARKETING_CAMPAIGN_UPDATE, MARKETING_COUPON_ISSUE,
-                    MARKETING_COUPON_READ, MARKETING_COUPON_UPDATE, ORDER_READ,
+                    MARKETING_COUPON_READ, MARKETING_COUPON_UPDATE,
+                    // 只读：首页推的是商品，商品运营要查得到「这件货为什么在第一屏」，
+                    // 但配版位是内容运营的活
+                    MARKETING_SLOT_READ, ORDER_READ,
                     PRODUCT_CATEGORY_READ, PRODUCT_CATEGORY_UPDATE, PRODUCT_SKU_AUDIT,
                     PRODUCT_SKU_READ, PRODUCT_SPEC_READ, PRODUCT_SPEC_UPDATE,
                     // 进销存：**保持今天的可达面不变** —— 这三页此前靠
@@ -545,7 +557,9 @@ public final class Perms {
                     GROWTH_ATTRIBUTION_READ, GROWTH_ATTRIBUTION_UPDATE,
                     GROWTH_FISSION_READ, GROWTH_FISSION_UPDATE,
                     MARKETING_CAMPAIGN_READ, MARKETING_CAMPAIGN_UPDATE, MARKETING_COUPON_ISSUE,
-                    MARKETING_COUPON_READ, MARKETING_COUPON_UPDATE, ORDER_READ)),
+                    MARKETING_COUPON_READ, MARKETING_COUPON_UPDATE,
+                    // 首页第一屏配什么，就是「内容/活动运营」这个岗位的活
+                    MARKETING_SLOT_READ, MARKETING_SLOT_UPDATE, ORDER_READ)),
 
             /*
              * 社区运营。矩阵 §2.3 原话：「社区网格、自提点建档与启停、**履约调度**」——

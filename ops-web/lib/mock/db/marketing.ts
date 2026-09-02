@@ -72,10 +72,10 @@ export const platformSlots: PlatformSlot[] = [
 ];
 
 export const contentSlots: ContentSlot[] = [
-  { slotNo: "SL9001", title: "今日团（首页第一屏）", kind: "HOME_FLOOR", sort: 1, communityNos: [], onlineAt: "2026-08-01T00:00:00Z", offlineAt: "2026-12-31T16:00:00Z", enabled: true },
-  { slotNo: "SL9002", title: "生鲜大促 Banner", kind: "BANNER", sort: 1, communityNos: ["C001", "C002"], onlineAt: "2026-08-04T00:00:00Z", offlineAt: "2026-08-10T16:00:00Z", enabled: true },
-  { slotNo: "SL9003", title: "新人专区入口", kind: "HOME_FLOOR", sort: 2, communityNos: [], onlineAt: "2026-08-01T00:00:00Z", offlineAt: "2026-08-31T16:00:00Z", enabled: true },
-  { slotNo: "SL9004", title: "梧桐苑开城 Banner", kind: "BANNER", sort: 2, communityNos: ["C003"], onlineAt: "2026-08-08T00:00:00Z", offlineAt: "2026-08-20T16:00:00Z", enabled: false },
+  { slotNo: "SL9001", title: "今日团（首页第一屏）", kind: "HOME_FLOOR", sort: 1, communityNos: [], goodsNos: ["G0004", "G0002", "G0001"], onlineAt: "2026-08-01T00:00:00Z", offlineAt: "2026-12-31T16:00:00Z", enabled: true },
+  { slotNo: "SL9002", title: "生鲜大促 Banner", kind: "BANNER", sort: 1, communityNos: ["C001", "C002"], goodsNos: [], onlineAt: "2026-08-04T00:00:00Z", offlineAt: "2026-08-10T16:00:00Z", enabled: true },
+  { slotNo: "SL9003", title: "新人专区入口", kind: "HOME_FLOOR", sort: 2, communityNos: [], goodsNos: ["G0003"], onlineAt: "2026-08-01T00:00:00Z", offlineAt: "2026-08-31T16:00:00Z", enabled: true },
+  { slotNo: "SL9004", title: "梧桐苑开城 Banner", kind: "BANNER", sort: 2, communityNos: ["C003"], goodsNos: [], onlineAt: "2026-08-08T00:00:00Z", offlineAt: "2026-08-20T16:00:00Z", enabled: false },
 ];
 
 /**

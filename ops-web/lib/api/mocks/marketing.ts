@@ -202,6 +202,29 @@ export const marketingMock: MarketingApi = {
       ),
     ),
 
+  saveContentSlot: async (v) => {
+    if (!v.title.trim()) fail("内容位要有标题", "A content slot needs a title");
+    if (new Date(v.offlineAt) <= new Date(v.onlineAt)) fail("下线时间必须晚于上线时间", "It has to come down after it goes up");
+    // 有序去重：顺序就是首页里的展示顺序，用 Set 直接转会把它洗掉
+    const goodsNos = v.kind === "HOME_FLOOR" ? [...new Set(v.goodsNos.map((g) => g.trim()).filter(Boolean))] : [];
+    // HOME_FLOOR 没有货 = 首页上一块空白，而运营看着自己刚保存的配置以为它在生效
+    if (v.kind === "HOME_FLOOR" && goodsNos.length === 0) fail("首页楼层至少要放一件商品", "A home floor needs at least one item");
+    if (goodsNos.length > 30) fail("一个楼层最多 30 件", "A floor holds at most 30 items");
+    // 「货号必须真的存在」只有后端能判（mock 里没有完整商品库）——
+    // 所以 mock 上打错货号是存得进去的，真后端会 404。这是 mock 的边界，不是双方规则不同。
+    const found = v.slotNo ? db.contentSlots.find((x) => x.slotNo === v.slotNo) : undefined;
+    if (v.slotNo && !found) notFound("内容位", "Content slot", v.slotNo);
+    const row: ContentSlot = {
+      ...(found ?? { slotNo: db.nextNo("SL", db.contentSlots, 9100, "slotNo") }),
+      title: v.title.trim(), kind: v.kind, sort: v.sort,
+      communityNos: v.communityNos, goodsNos,
+      onlineAt: v.onlineAt, offlineAt: v.offlineAt, enabled: v.enabled,
+    };
+    if (found) Object.assign(found, row);
+    else db.contentSlots.unshift(row);
+    return wait(row, 400);
+  },
+
   setSlotEnabled: async (slotNo, enabled) => {
     const s = findSlot(slotNo);
     s.enabled = enabled;
