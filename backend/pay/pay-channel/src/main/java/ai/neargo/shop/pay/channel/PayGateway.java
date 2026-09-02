@@ -44,6 +44,60 @@ public interface PayGateway {
     QueryResult query(String outTradeNo);
 
     /**
+     * <b>向通道下单，拿回端上唤起收银台所需的参数。</b>
+     *
+     * <h2>这个方法此前不存在</h2>
+     * 网关接口原本只有 query / split / refund —— 都是「支付之后」的动作。
+     * 而<b>「支付本身」那一步从来没走过网关</b>：下单链路里通道写死 {@code "STUB"}，
+     * 直接编了一组假参数返回给端上。
+     * 于是网关体系建好了，却只被对账回查用到。
+     *
+     * <p>默认实现直接失败 —— 真通道（微信 / 支付宝）在接凭证之前还不能下单，
+     * 而<b>「没实现」必须表现为失败，不能表现为成功</b>：
+     * 返回一组假参数的话，端上会唤起一个付不了的收银台，
+     * 而我方库里已经记了一笔「已发起」。
+     *
+     * @param cmd 下单要素
+     * @return 成功时带端上要用的参数；失败时带原因
+     */
+    default PrepayResult prepay(PrepayCommand cmd) {
+        return PrepayResult.fail(payChannel() + " 尚未实现向通道下单");
+    }
+
+    /**
+     * @param outTradeNo  我方商户单号。**通道侧按它去重**，重试时会带后缀
+     * @param amountMinor 金额（分）
+     * @param currency    币种。多市场后不能省 —— 通道按它决定用哪个商户号结算
+     * @param subject     商品标题，展示在通道的收银台上
+     * @param payMethod   支付方式（JSAPI / H5 / APP…）。同一通道下不同方式的下单参数不同
+     * @param subMchId    子商户号（进件产出）。为空表示走平台商户号
+     * @param payerId     付款人在该通道的标识（微信 openid 等）。JSAPI 必需
+     */
+    record PrepayCommand(String outTradeNo, long amountMinor, String currency, String subject,
+                         String payMethod, String subMchId, String payerId) {
+    }
+
+    /**
+     * @param success  下单成不成功
+     * @param params   端上唤起收银台要用的参数。<b>原样透传给端</b> ——
+     *                 不同通道字段完全不同，服务端不该翻译成一套「统一格式」，
+     *                 那样每接一个通道都要改两处
+     * @param tradeNo  通道侧交易号。<b>对账按它去通道后台核</b>
+     * @param message  失败原因，给人看
+     */
+    record PrepayResult(boolean success, java.util.Map<String, String> params,
+                        String tradeNo, String message) {
+
+        public static PrepayResult ok(java.util.Map<String, String> params, String tradeNo) {
+            return new PrepayResult(true, params, tradeNo, null);
+        }
+
+        public static PrepayResult fail(String message) {
+            return new PrepayResult(false, java.util.Map.of(), null, message);
+        }
+    }
+
+    /**
      * 查单结果。
      *
      * @param ok        查询本身是否成功。<b>false 时下面的字段都不可信</b>

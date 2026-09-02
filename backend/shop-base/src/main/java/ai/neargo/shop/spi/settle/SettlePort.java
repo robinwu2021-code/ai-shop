@@ -47,6 +47,37 @@ public interface SettlePort {
     String openPayment(PaymentOpen cmd);
 
     /**
+     * <b>发起支付：落一行流水 + 向通道下单，一次做完。</b>
+     *
+     * <h2>为什么合成一个方法，而不是让调用方先 open 再 prepay</h2>
+     * 两步之间有一个真实窗口：<b>流水记了而通道没下单</b>。
+     * 那笔单会停在 PENDING，被对账轴当成「掉单」去回查，
+     * 而通道那边根本没有它 —— 于是每一轮都查一次、每一轮都查不到。
+     * 反过来（先下单再记账）更糟：用户手上有能付的凭据而我方一无所知。
+     *
+     * <p>合成一个之后，顺序与失败处理只有一处，而不是每个调用方各写一遍。
+     *
+     * <h2>下单失败时流水怎么办</h2>
+     * <b>关掉它</b>，不留在 PENDING。留着的话对账会反复回查一笔
+     * 通道那边压根不存在的单；而关掉之后用户重试会开一笔新的（带后缀的新单号），
+     * 那正是重试该有的样子。
+     *
+     * @return 成功时带端上唤起收银台的参数；失败时 {@code success = false} 且带原因
+     */
+    PayInitResult initPayment(PaymentOpen cmd);
+
+    /**
+     * @param success     下单成不成功。**失败时端上不要唤起收银台**
+     * @param outTradeNo  实际使用的商户单号（重试时带后缀）
+     * @param payChannel  实际使用的通道 —— 可能与请求时不同（未指定时由服务端解析）
+     * @param payParams   端上唤起收银台要用的参数，<b>原样透传</b>
+     * @param message     失败原因，给人看
+     */
+    record PayInitResult(boolean success, String outTradeNo, String payChannel,
+                         java.util.Map<String, String> payParams, String message) {
+    }
+
+    /**
      * 一笔收款<b>成功了</b>（{@code stl_payment} 转 SUCCESS）。
      *
      * <h2>它必须发生在订单转 PAID 之前</h2>

@@ -73,6 +73,29 @@ public class TestPayGateway implements PayGateway {
     /**
      * 向通道下单。<b>记住这笔，供后续回查</b>。
      *
+     * <p>返回的参数<b>刻意与微信 JSAPI 同形</b>（prepayId / outTradeNo / amount）——
+     * 端上按这套字段渲染，将来换真通道时改的是通道那一侧，不是端。
+     *
+     * <p>另外带一个 {@code testChannel: "true"}：<b>端上要能一眼看出这是测试通道</b>，
+     * 而不是渲染出一个和真收银台一模一样的界面。
+     */
+    @Override
+    public PrepayResult prepay(PrepayCommand cmd) {
+        if (cmd.amountMinor() <= 0) {
+            // 真通道一定会拒 0 元单，这里也拒 —— 恒成功的桩会让这种错在联调里永不暴露
+            return PrepayResult.fail("金额必须大于 0");
+        }
+        String tradeNo = placeOrder(cmd.outTradeNo(), cmd.amountMinor());
+        return PrepayResult.ok(Map.of(
+                "prepayId", "test_" + cmd.outTradeNo(),
+                "outTradeNo", cmd.outTradeNo(),
+                "amount", String.valueOf(cmd.amountMinor()),
+                "testChannel", "true"), tradeNo);
+    }
+
+    /**
+     * 向通道下单。<b>记住这笔，供后续回查</b>。
+     *
      * @return 通道侧交易号。回调时要带回来，对账时按它去通道后台核
      */
     public String placeOrder(String outTradeNo, long amountMinor) {

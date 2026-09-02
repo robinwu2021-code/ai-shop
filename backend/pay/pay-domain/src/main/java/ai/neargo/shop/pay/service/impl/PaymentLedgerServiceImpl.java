@@ -92,6 +92,28 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
 
     @Override
     @Transactional("payTxManager")
+    public void close(String outTradeNo, String reason) {
+        StlPayment p = byOutTradeNo(outTradeNo);
+        if (p == null || StlPayment.SUCCESS.equals(p.getStatus())
+                || StlPayment.CLOSED.equals(p.getStatus())) {
+            /*
+             * **已成功的绝不关。**下单失败与「钱已经收到」在时间上可以交错：
+             * 通道返回超时而实际下单成功、用户付了钱、回调先到 —— 这时再关单
+             * 就是把一笔收到的钱标成关闭，而对账会把它算成掉单。
+             */
+            return;
+        }
+        StlPayment patch = new StlPayment();
+        patch.setId(p.getId());
+        patch.setStatus(StlPayment.CLOSED);
+        patch.setClosedAt(System.currentTimeMillis());
+        patch.setErrMsg(reason == null ? "下单失败" : reason);
+        DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
+        log.info("[payment-ledger] 关掉未终态收款 {}：{}", outTradeNo, reason);
+    }
+
+    @Override
+    @Transactional("payTxManager")
     public String settle(SettlePort.PaymentSettled cmd) {
         StlPayment existing = byOutTradeNo(cmd.outTradeNo());
         if (existing == null) {

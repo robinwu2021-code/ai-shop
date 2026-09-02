@@ -98,8 +98,9 @@ public class MpTradeController {
     }
 
     @PostMapping("/mp/order/{orderNo}/pay")
-    public OrderService.PayResult pay(@PathVariable String orderNo) {
-        return orderService.pay(orderNo);
+    public OrderService.PayResult pay(@PathVariable String orderNo,
+                                      @RequestParam(required = false) String payChannel) {
+        return orderService.pay(orderNo, payChannel);
     }
 
     /** 支付结果回查：**端侧不自判成功**，付款后轮询这个。 */

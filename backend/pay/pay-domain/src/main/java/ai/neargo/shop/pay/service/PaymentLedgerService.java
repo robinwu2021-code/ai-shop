@@ -56,4 +56,17 @@ public interface PaymentLedgerService {
      *         直接拿去查订单会查不到
      */
     String settle(SettlePort.PaymentSettled cmd);
+
+    /**
+     * 关掉一笔未终态的收款。
+     *
+     * <p><b>向通道下单失败时要调它</b>：不关的话那笔流水停在 PENDING，
+     * 对账轴会反复回查一笔通道那边压根不存在的单 —— 每轮查一次、每轮查不到，
+     * 而「查询失败绝不关单」那条规则会让它永远留在那里。
+     *
+     * <p>已经终态的直接返回，不报错 —— 关单是幂等的。
+     *
+     * @param reason 关掉的原因，落进 err_msg 供排查
+     */
+    void close(String outTradeNo, String reason);
 }

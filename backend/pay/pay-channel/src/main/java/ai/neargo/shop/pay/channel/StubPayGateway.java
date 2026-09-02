@@ -29,6 +29,21 @@ public class StubPayGateway implements PayGateway {
         return "STUB";
     }
 
+    /**
+     * 下单：编一组与微信 JSAPI 同形的参数。**恒成功** —— 它是开发期的假网关。
+     *
+     * <p>与 {@code TEST} 通道的区别在这里最明显：这个不记状态、不校验金额，
+     * 因而<b>证明不了链路通</b>。联调要用 TEST，不要用它。
+     */
+    @Override
+    public PrepayResult prepay(PrepayCommand cmd) {
+        log.info("[stub] 下单 outTradeNo={} amount={}", cmd.outTradeNo(), cmd.amountMinor());
+        return PrepayResult.ok(java.util.Map.of(
+                "prepayId", "stub_" + cmd.outTradeNo(),
+                "outTradeNo", cmd.outTradeNo(),
+                "amount", String.valueOf(cmd.amountMinor())), "STUBTX-" + cmd.outTradeNo());
+    }
+
     @Override
     public Result subsidy(TxContext ctx, long amountMinor, String requestNo, String description) {
         log.info("[stub] 补差 sub_mchid={} tx={} amount={} req={}",

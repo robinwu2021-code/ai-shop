@@ -106,6 +106,8 @@ public class OrderServiceImpl implements OrderService {
     /** 店铺活动的自动优惠（满减）。此前 mkt_campaign 没有任何消费方 */
     private final CampaignPort campaignPort;
     private final PointsPort pointsPort;
+    /** 取该商家按市场筛出的可用通道（S4）—— 下单要选通道 */
+    private final ai.neargo.shop.spi.pay.PayChannelMasterPort payChannelMasterPort;
     /**
      * 「这一行配了什么积分规则」（product 域）。
      *
@@ -137,6 +139,7 @@ public class OrderServiceImpl implements OrderService {
                             ai.neargo.shop.spi.user.MerchantAdminPort merchantAdminPort,
                             AttributionPort attributionPort,
                             CouponPort couponPort, CampaignPort campaignPort, PointsPort pointsPort,
+                            ai.neargo.shop.spi.pay.PayChannelMasterPort payChannelMasterPort,
                             ai.neargo.shop.spi.product.PointsRulePort pointsRulePort,
                             SettlePort settlePort,
                             StatusLogMapper statusLogMapper,
@@ -163,6 +166,7 @@ public class OrderServiceImpl implements OrderService {
         this.attributionPort = attributionPort;
         this.couponPort = couponPort;
         this.pointsPort = pointsPort;
+        this.payChannelMasterPort = payChannelMasterPort;
         this.pointsRulePort = pointsRulePort;
         this.campaignPort = campaignPort;
         this.settlePort = settlePort;
@@ -843,7 +847,7 @@ public class OrderServiceImpl implements OrderService {
     // ---------------------------------------------------------------- 支付
 
     @Override
-    public PayResult pay(String orderNo) {
+    public PayResult pay(String orderNo, String payChannel) {
         OrdOrder order = requireOwnOrder(orderNo);
         if (!OrdOrder.WAIT_PAY.equals(order.getStatus())) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
@@ -871,15 +875,32 @@ public class OrderServiceImpl implements OrderService {
          * 复用未终态的收款时返回的是已有那笔的号 ——
          * 用户在收银台点两次不会在通道那边多出一个未支付单。
          */
-        String outTradeNo = settlePort.openPayment(new SettlePort.PaymentOpen(
-                orderNo, order.getUserNo(), null, "STUB",
+        /*
+         * **走网关下单**（S4 · 2026-09-02）。
+         *
+         * 此前这里通道写死 "STUB"、直接编一组假参数返回给端上 ——
+         * <b>网关体系建好了，而「支付本身」这一步从来没走过它</b>，
+         * PayGatewayRouter 只被对账回查用到。
+         *
+         * 于是「下单 → 向通道下单 → 拿参数」这一段<b>在真通道接上那天才第一次被执行</b>，
+         * 而那是最不该第一次执行它的时候。
+         */
+        String channel = resolvePayChannel(order, payChannel);
+        var init = settlePort.initPayment(new SettlePort.PaymentOpen(
+                orderNo, order.getUserNo(), null, channel,
                 order.getPayAmount() == null ? 0L : order.getPayAmount()));
 
-        // S2 是 stub 通道：返回的参数结构与微信 JSAPI 一致，S4 换真通道时端上不用改
-        return new PayResult(orderNo, "STUB", Map.of(
-                "prepayId", "stub_" + outTradeNo,
-                "outTradeNo", outTradeNo,
-                "amount", String.valueOf(order.getPayAmount())));
+        if (!init.success()) {
+            /*
+             * **下单失败要抛，不能返回一组空参数。**
+             *
+             * 返回空参数的话端上会唤起一个付不了的收银台，而用户看到的是
+             * 「点了没反应」—— 那是这条链上最难查的一类症状：
+             * 订单在、流水在（已关闭）、日志里只有一行 warn。
+             */
+            throw new BizException(ErrorCode.PAY_CHANNEL_UNAVAILABLE, init.message());
+        }
+        return new PayResult(orderNo, init.payChannel(), init.payParams());
     }
 
     @Override
@@ -1977,5 +1998,33 @@ public class OrderServiceImpl implements OrderService {
 
     private static long nz(Long v) {
         return v == null ? 0L : v;
+    }
+
+    /**
+     * 这一单走哪个通道。
+     *
+     * <p>端上指定优先；没指定时取该商家<b>按其市场筛出来的</b>第一个可用通道。
+     * 取不到就抛 —— <b>不回退到某个默认通道</b>：回退等于把钱发到
+     * 一个这家商户可能根本没进件的通道，那笔钱收不到而系统显示成功。
+     *
+     * <p>今天只用主单的第一个商家算。多商家单的通道交集在结算台
+     * （{@code checkoutCapability}）已经算过一次，这里不重复那套逻辑 ——
+     * <b>两处算出不同结果的话，用户在结算页看到的和实际用的就不是一个通道。</b>
+     * 端上应当把结算台给的那个通道传进来，这一支是它没传时的兜底。
+     */
+    private String resolvePayChannel(OrdOrder order, String requested) {
+        if (requested != null && !requested.isBlank()) {
+            return requested;
+        }
+        String entityNo = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .eq(OrdSubOrder::getOrderNo, order.getOrderNo()).last("LIMIT 1")))
+                .stream().findFirst().map(OrdSubOrder::getEntityNo).orElse(null);
+        List<String> available = entityNo == null ? List.of()
+                : payChannelMasterPort.payableChannels(merchantPort.marketOf(entityNo));
+        if (available.isEmpty()) {
+            throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
+        }
+        return available.getFirst();
     }
 }

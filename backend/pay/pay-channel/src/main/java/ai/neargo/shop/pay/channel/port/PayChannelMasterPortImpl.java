@@ -11,8 +11,11 @@ import org.springframework.stereotype.Component;
 public class PayChannelMasterPortImpl implements PayChannelMasterPort {
 
     private final PayChannelMasterService master;
+    /** 判断通道有没有网关实现 —— 运营开着但没接入的通道下不了单 */
+    private final ai.neargo.shop.pay.channel.PayGatewayRouter router;
 
-    public PayChannelMasterPortImpl(PayChannelMasterService master) {
+    public PayChannelMasterPortImpl(PayChannelMasterService master, ai.neargo.shop.pay.channel.PayGatewayRouter router) {
+        this.router = router;
         this.master = master;
     }
 
@@ -28,6 +31,12 @@ public class PayChannelMasterPortImpl implements PayChannelMasterPort {
     @Override
     public List<String> enabledChannels(String market) {
         return master.enabled(market).stream().map(SysPayChannel::getPayChannel).toList();
+    }
+
+    @Override
+    public List<String> payableChannels(String market) {
+        // 与 enabledChannels 同一份筛选，再交上「网关装配了没有」
+        return enabledChannels(market).stream().filter(router::supports).toList();
     }
 
     @Override

@@ -19,7 +19,8 @@ spring:
   sql:
     init:
       mode: always
-      schema-locations: classpath:schema-test.sql
+      # 第二份是**测试专用的补充种子**（开测试渠道），不进迁移 —— 见文件头注释
+      schema-locations: classpath:schema-test.sql,classpath:schema-test-extra.sql
 
 # ── 进销存独立库 ────────────────────────────────────────────────────────
 # 它是**另一个数据源**，所以要另一个内存库；名字不同（inv ≠ shop），

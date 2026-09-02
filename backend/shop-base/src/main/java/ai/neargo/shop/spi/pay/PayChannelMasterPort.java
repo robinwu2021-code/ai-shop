@@ -36,6 +36,21 @@ public interface PayChannelMasterPort {
     List<String> enabledChannels(String market);
 
     /**
+     * <b>这个市场里真的能下单的通道</b> = 运营开着的 ∩ <b>网关有实现的</b>。
+     *
+     * <h2>为什么不能直接用 {@link #enabledChannels}</h2>
+     * 那个只看 {@code sys_pay_channel.enabled} —— 运营开了微信通道
+     * 而凭证还没配、网关没装配时，它照样返回 WECHAT，
+     * 于是下单走到路由那一步才失败，<b>而失败发生在流水已经落库之后</b>。
+     *
+     * <h2>为什么这不是「自动降级」</h2>
+     * 端上<b>指定</b>了某个通道而它没有实现时，要<b>直接失败</b>，不换别的 ——
+     * 换一个等于把钱发到另一个通道的商户号，那是资金事故。
+     * 这个方法只用来<b>挑默认通道</b>：从一开始就只在有实现的里面挑。
+     */
+    List<String> payableChannels(String market);
+
+    /**
      * 启用中的通道，带展示信息 —— 端上主数据快照要用。
      *
      * <p>与 {@link #enabledChannels} 分开而不是让调用方拿码再逐个查名字：

@@ -60,19 +60,17 @@ class PayChannelDefaultResolveTest {
         DataScopeContext.executeWithoutScope(() -> {
             channelMapper.selectList(Wrappers.emptyWrapper()).forEach(r -> {
                 /*
-                 * **跳过测试渠道**（V288 种的 TEST）。
+                 * **全部启用，包括测试渠道。**
                  *
-                 * 这段还原的意图是「把本类用到的渠道恢复成启用」，
-                 * 而它写成了「把库里所有渠道都启用」—— 两者在只有
-                 * WECHAT/ALIPAY 两条时结果一样，<b>加了第三条就不一样了</b>：
-                 * 本类的 containsExactly("WECHAT") 会因为多出一条 TEST 而红。
+                 * 上一版在这里跳过了 TEST，理由是「它默认关是刻意的」——
+                 * 那条理由说的是<b>生产</b>（V288 种的 enabled=0，
+                 * 不能让假通道出现在真实渠道列表里），而这里是<b>测试库</b>。
                  *
-                 * TEST 渠道默认 enabled=0 是刻意的（不能有一条假通道
-                 * 出现在真实渠道列表里），这里不该把它打开。
+                 * S4 让下单走网关之后，测试库必须有一个通道既 enabled 又有网关实现，
+                 * 否则 30 个走支付链路的场景测试取不到可用通道。
+                 * 那个通道就是 TEST（schema-test-extra.sql 开的）——
+                 * 本类还原时把它关掉，等于把那 30 个测试的地基抽掉。
                  */
-                if ("TEST".equals(r.getPayChannel())) {
-                    return;
-                }
                 r.setEnabled(true);
                 r.setMarkets("[\"CN\"]");
                 channelMapper.updateById(r);
@@ -93,18 +91,11 @@ class PayChannelDefaultResolveTest {
          * 两句话互相打架 —— 而打架的表现是这一条自检把整个类染红，
          * 报错说「TEST 没被还原成启用」，<b>而它本来就不该被启用</b>。
          */
-        assertThat(after.stream().filter(r -> !"TEST".equals(r.getPayChannel())).toList())
-                .as("除测试渠道外，还原之后必须还看得见通道行").isNotEmpty();
-        after.stream().filter(r -> !"TEST".equals(r.getPayChannel())).forEach(r -> {
+        assertThat(after).as("还原之后必须还看得见通道行").isNotEmpty();
+        after.forEach(r -> {
             assertThat(r.getEnabled()).as("通道 " + r.getPayChannel() + " 没被还原成启用").isTrue();
             assertThat(r.getMarkets()).as("通道 " + r.getPayChannel() + " 的 markets 没被还原").isEqualTo("[\"CN\"]");
         });
-        // 测试渠道反过来：它必须**保持关闭**。开着的话真实渠道列表里会多一条假通道
-        after.stream().filter(r -> "TEST".equals(r.getPayChannel())).forEach(r ->
-                assertThat(r.getEnabled())
-                        .as("测试渠道被谁打开了 —— 它默认关是刻意的，"
-                                + "开着会让 availableChannels 多返回一条假通道")
-                        .isFalse());
 
         // 自己造的行自己收拾：留在共享库里会让别的用例莫名其妙多出一个主体
         jdbc.update("DELETE FROM mch_payment_merchant WHERE entity_no = ?", ENTITY);
@@ -131,9 +122,13 @@ class PayChannelDefaultResolveTest {
     @Test
     @DisplayName("★★★ 停用微信之后，默认通道跟着变 —— 不再写死 WECHAT")
     void defaultFollowsRegistry() {
+        /*
+         * 断言**顺序与包含**，不断言总数 —— 测试库里还有一条 TEST（S4 起必须开着）。
+         * 写死总数的话，每加一个渠道这一条就红一次，而它测的根本不是渠道有几个。
+         */
         assertThat(masterData.enabledChannels("CN"))
-                .as("基线两个通道都启用，微信在前")
-                .containsExactly("WECHAT", "ALIPAY");
+                .as("基线：微信与支付宝都启用，且微信在支付宝前面")
+                .containsSubsequence("WECHAT", "ALIPAY");
 
         SysPayChannel wechat = row("WECHAT");
         wechat.setEnabled(false);
@@ -141,7 +136,7 @@ class PayChannelDefaultResolveTest {
 
         assertThat(masterData.enabledChannels("CN"))
                 .as("停用之后它就不该再被选中 —— 此前无论如何都是 WECHAT")
-                .containsExactly("ALIPAY");
+                .doesNotContain("WECHAT").contains("ALIPAY");
     }
 
     @Test
@@ -151,8 +146,11 @@ class PayChannelDefaultResolveTest {
         alipay.setMarkets("[\"AE\"]");
         DataScopeContext.executeWithoutScope(() -> channelMapper.updateById(alipay));
 
-        assertThat(masterData.enabledChannels("CN")).containsExactly("WECHAT");
-        assertThat(masterData.enabledChannels("AE")).containsExactly("ALIPAY");
+        // 只看支付宝在哪个市场出现 —— 这一条测的是 markets 筛选，不是渠道总数
+        assertThat(masterData.enabledChannels("CN"))
+                .doesNotContain("ALIPAY").contains("WECHAT");
+        assertThat(masterData.enabledChannels("AE"))
+                .contains("ALIPAY").doesNotContain("WECHAT");
     }
 
     @Test
@@ -229,7 +227,8 @@ class PayChannelDefaultResolveTest {
         var all = paymentService.availableChannels(ENTITY);
 
         assertThat(all).extracting(v -> v.payChannel())
-                .as("两个启用中的通道都要在列表里").containsExactly("WECHAT", "ALIPAY");
+                .as("启用中的通道都要在列表里（只开了微信的进件，支付宝应显示为未进件）")
+                .contains("WECHAT", "ALIPAY");
         assertThat(all).filteredOn(v -> "ALIPAY".equals(v.payChannel()))
                 .singleElement()
                 .satisfies(v -> assertThat(v.applyStatus())
@@ -245,7 +244,14 @@ class PayChannelDefaultResolveTest {
         DataScopeContext.executeWithoutScope(() -> channelMapper.updateById(alipay));
         fixture("WECHAT");
 
+        /*
+         * 停用 ALIPAY 之后剩 WECHAT 与 TEST。
+         *
+         * TEST 是 S4 之后测试库里必须开着的那个（唯一有网关实现的通道）——
+         * 期望值里写上它，而不是把它从 setup 里排除掉：
+         * 排除会让「还原成启用」与「保持关闭」两句话互相打架，撞过一次。
+         */
         assertThat(paymentService.availableChannels(ENTITY))
-                .extracting(v -> v.payChannel()).containsExactly("WECHAT");
+                .extracting(v -> v.payChannel()).containsExactlyInAnyOrder("WECHAT", "TEST");
     }
 }

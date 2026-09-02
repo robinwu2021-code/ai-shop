@@ -19,7 +19,14 @@ public interface OrderService {
     OrderVO create(CreateOrderCommand cmd, String idempotencyKey);
 
     /** 发起支付，返回端上调起支付所需的参数。**端侧不自判成功**，以回调/回查为准。 */
-    PayResult pay(String orderNo);
+    /**
+     * 发起支付：落流水 + 向通道下单，拿回端上唤起收银台的参数。
+     *
+     * @param payChannel 端上选的通道。**可为空** —— 空时按该商家所在市场
+     *                   取第一个可用通道。端上应当把结算台给的那个传进来，
+     *                   否则「结算页显示的」与「实际用的」可能不是同一个
+     */
+    PayResult pay(String orderNo, String payChannel);
 
     /** 支付结果回查（端上轮询用）。 */
     OrderVO payResult(String orderNo);
