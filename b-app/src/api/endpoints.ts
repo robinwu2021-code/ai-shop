@@ -194,6 +194,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   // 提现（V288）。**读与写分开两条**：读给出「能提多少 + 下限 + 记录」，
   // 写只接一个金额 —— 让端上没法把「可提余额」当成入参传回去。
   mWithdrawPage: { method: "GET", path: "/biz/settle/withdraw", auth: true, summary: "我的提现" },
+  mDeposit: { method: "GET", path: "/biz/deposit", auth: true, summary: "保证金账户" },
+  mDepositTxns: { method: "GET", path: "/biz/deposit/txns", auth: true, summary: "保证金流水" },
   mApplyWithdraw: { method: "POST", path: "/biz/settle/withdraw", auth: true, summary: "申请提现" },
 
   mAfterSaleList: { method: "GET", path: "/biz/after-sale", auth: true, summary: "待处理售后" },

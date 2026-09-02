@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 71,
+      "count": 72,
       "domains": [
         {
           "name": "工作台",
@@ -307,6 +307,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/withdraw/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/deposit/index",
+              "title": "保证金",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/deposit/index"
             },
             {
               "app": "b-app",
@@ -3004,5 +3015,5 @@
       ]
     }
   ],
-  "total": 242
+  "total": 243
 }

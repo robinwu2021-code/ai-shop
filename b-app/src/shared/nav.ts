@@ -35,6 +35,15 @@ export const ROUTES = {
   groups: "/pages/groups/index",
   income: "/pages/income/index",
   settle: "/pages/settle/index",
+  /*
+   * 提现与保证金**从结算页进**，不各自在工作台开一道门。
+   *
+   * ⚠️ withdraw 此前根本不在这张表里 —— 页面建好了、后端做完了，
+   * 而**没有任何地方能走到它**。那正是「做了一半」最典型的形状：
+   * 后端有测试有守卫全绿，端上一个入口都没有。
+   */
+  withdraw: "/pages/withdraw/index",
+  deposit: "/pages/deposit/index",
   stats: "/pages/stats/index",
   crossStore: "/pages/cross-store/index",
   plan: "/pages/plan/index",

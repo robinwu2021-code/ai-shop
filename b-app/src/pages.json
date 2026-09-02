@@ -460,6 +460,12 @@
       }
     },
     {
+      "path": "pages/deposit/index",
+      "style": {
+        "navigationBarTitleText": "保证金"
+      }
+    },
+    {
       "path": "pages/stats/index",
       "style": {
         "navigationBarTitleText": "经营数据",

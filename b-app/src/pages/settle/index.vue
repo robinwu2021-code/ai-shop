@@ -18,6 +18,7 @@ import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import { monthDay } from "@shared/utils/datetime";
 import { confirm } from "@ai-shop/ui/prompt";
+import { ROUTES } from "@/shared/nav";
 import type {
   MerchantPointAccount,
   MerchantPointsRecord,
@@ -121,12 +122,33 @@ async function loadPointsRecords() {
   pointsRecords.value = await api.mPointsRecords().catch(() => []);
 }
 
+function go(url: string) {
+  uni.navigateTo({ url });
+}
+
 onShow(load);
 </script>
 
 <template>
   <sh-scaffold title-key="settle.title" :denied="!merchant.can('biz:finance')">
     <text class="txt-display">{{ $t("settle.title") }}</text>
+
+    <!--
+      两个入口摆在最上面。**它们是「钱去哪了」的另外两半** ——
+      结算单说的是「挣了多少」，提现说的是「怎么拿出来」，
+      保证金说的是「押着多少、还差多少」。三件事商家都要看，
+      而后两件此前<b>没有任何地方能走到</b>。
+    -->
+    <view class="entries sh-row">
+      <view class="entries__item sh-card" @tap="go(ROUTES.withdraw)">
+        <text class="txt-title">{{ $t("withdraw.title") }}</text>
+        <text class="sh-muted entries__hint">{{ $t("settle.entryWithdraw") }}</text>
+      </view>
+      <view class="entries__item sh-card" @tap="go(ROUTES.deposit)">
+        <text class="txt-title">{{ $t("deposit.title") }}</text>
+        <text class="sh-muted entries__hint">{{ $t("settle.entryDeposit") }}</text>
+      </view>
+    </view>
 
     <!-- 费率卡放在账单**之前**：先说清楚怎么算，再看算出来多少。
          把费率讲明白是「自带客流零佣金」这个策略能起作用的前提 —— 商家算不清自己能拿多少，
@@ -283,6 +305,18 @@ onShow(load);
 </template>
 
 <style scoped>
+
+.entries {
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+.entries__item {
+  flex: 1;
+}
+.entries__hint {
+  display: block;
+  margin-top: 8rpx;
+}
 
 .ratecard__row {
   margin-top: 16rpx;

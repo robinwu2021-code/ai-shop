@@ -3181,6 +3181,42 @@ export const mockApi: MerchantApi = {
     };
   },
 
+  /*
+   * mock 给一个**不够**的状态：够的那一半没什么可看的，
+   * 而「还差多少 + 限额因此被压着」正是这一页存在的理由。
+   */
+  async mDeposit() {
+    return {
+      paidMinor: 150_000,
+      frozenMinor: 30_000,
+      availableMinor: 120_000,
+      requiredMinor: 200_000,
+      sufficient: false,
+      singleOrderLimitMinor: 50_000,
+      dailyAmountLimitMinor: 500_000,
+    };
+  },
+
+  async mDepositTxns() {
+    // 五种流水类型各来一条 —— 少一种，那一种的文案就没人看过
+    return [
+      { txnNo: "DT-MOCK-5", txnType: "FREEZE", amountMinor: 30_000, balanceAfterMinor: 150_000,
+        reason: "买家投诉理赔冻结", operator: "运营小李", createdAt: "2026-09-01 14:20" },
+      { txnNo: "DT-MOCK-4", txnType: "DEDUCT", amountMinor: -20_000, balanceAfterMinor: 150_000,
+        reason: "理赔扣划：订单 SO-8821", operator: "运营小李", createdAt: "2026-08-28 10:05" },
+      // ⚠️ UNFREEZE 是**正数** —— 运营端对 FREEZE/UNFREEZE 都发正值，
+      // 后端原样落库（Math.abs 只用在内部算冻结额那一步）。
+      // 这里第一版写成负数，于是页面在 mock 下看着对、接真后端就反 ——
+      // 替身与真实语义不一致，比没有替身更危险。
+      { txnNo: "DT-MOCK-3", txnType: "UNFREEZE", amountMinor: 10_000, balanceAfterMinor: 170_000,
+        reason: "争议撤销，解冻", operator: "运营小李", createdAt: "2026-08-20 16:40" },
+      { txnNo: "DT-MOCK-2", txnType: "REFUND", amountMinor: -50_000, balanceAfterMinor: 170_000,
+        reason: "降档退还", operator: "运营小王", createdAt: "2026-08-10 09:30" },
+      { txnNo: "DT-MOCK-1", txnType: "PAY", amountMinor: 220_000, balanceAfterMinor: 220_000,
+        reason: "入驻缴纳", operator: "运营小王", createdAt: "2026-07-01 11:00" },
+    ];
+  },
+
   async mApplyWithdraw(amountMinor: number) {
     return { withdrawNo: "WD-MOCK-NEW", amount: amountMinor, availableBalance: 128_600,
       status: "PENDING", appliedAt: "刚刚", decidedAt: null, remark: null };

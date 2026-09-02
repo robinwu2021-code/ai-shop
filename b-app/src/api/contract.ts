@@ -108,6 +108,43 @@ import type {
 } from "@shared/types";
 
 /** 拍照识别的结果。全部是**建议值**，店主可改可弃 */
+/**
+ * 保证金账户。后端 {@code mch_deposit} + 准入档位算出来的几个数。
+ *
+ * **这一页要回答的不是「我押了多少」，是「我还差多少、我能收多少」** ——
+ * 前者他自己记得，后两个只有平台知道，而它们直接决定他今天能不能收款。
+ */
+export interface DepositAccount {
+  /** 实缴（分） */
+  paidMinor: number;
+  /** 理赔冻结中（分）。这部分钱还在账上，但**不能用来撑准入** */
+  frozenMinor: number;
+  /** 可用（分）= 实缴 − 冻结 */
+  availableMinor: number;
+  /** 本档位要求缴多少（分） */
+  requiredMinor: number;
+  /** 够不够。不够时**收款会被限额拦**，而那时他看到的只是「支付失败」 */
+  sufficient: boolean;
+  /** 单笔收款上限（分）。0 = 未设置，不拦 */
+  singleOrderLimitMinor: number;
+  /** 每日收款总额上限（分）。0 = 未设置，不拦 */
+  dailyAmountLimitMinor: number;
+}
+
+/** 保证金流水一行 */
+export interface DepositTxn {
+  txnNo: string;
+  /** PAY 缴纳 / REFUND 退还 / DEDUCT 扣划 / FREEZE 冻结 / UNFREEZE 解冻 */
+  txnType: string;
+  /** 分。**带符号** —— 退还与扣划是负的 */
+  amountMinor: number;
+  /** 这笔之后的余额（分） */
+  balanceAfterMinor: number;
+  reason: string;
+  operator: string;
+  createdAt: string;
+}
+
 export interface WithdrawPage {
   /** 现在能提多少（分）= 已到账结算款 − 在途提现 */
   withdrawableMinor: number;
@@ -1088,6 +1125,8 @@ export interface MerchantApi {
    * 会以为钱少了一截；没有下限的话他点了才知道太少。
    */
   mWithdrawPage(): Promise<WithdrawPage>;
+  mDeposit(): Promise<DepositAccount>;
+  mDepositTxns(): Promise<DepositTxn[]>;
   /** 申请提现。**金额单位是分** —— 与全站契约一致，浮点不进钱的接口 */
   mApplyWithdraw(amountMinor: number): Promise<WithdrawRecord>;
 
