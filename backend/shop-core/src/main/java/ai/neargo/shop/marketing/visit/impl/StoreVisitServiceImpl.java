@@ -144,8 +144,13 @@ public class StoreVisitServiceImpl implements StoreVisitService {
                         "COUNT(DISTINCT COALESCE(user_no, device_id)) AS uv")
                 .between("at", from, to)
                 .groupBy("entity_no");
+        /*
+         * ★ **接数据域**：配了「只看某商家」的运营，就该只看到那一家的扫码量。
+         * 第一版这里解了域（理由写的是「跨主体只读」）—— 那等于让被限定的运营
+         * 看到全平台，而且不报错。写入侧仍然解域（见 record）：扫码的人还没登录。
+         */
         Map<String, long[]> out = new LinkedHashMap<>();
-        for (Map<String, Object> r : DataScopeContext.executeWithoutScope(() -> visitMapper.selectMaps(w))) {
+        for (Map<String, Object> r : visitMapper.selectMaps(w)) {
             out.put(str(r, "entityNo"), new long[]{num(r, "pv"), num(r, "uv")});
         }
         return out;
@@ -155,7 +160,7 @@ public class StoreVisitServiceImpl implements StoreVisitService {
         var w = Wrappers.<MktStoreVisit>query()
                 .select("COUNT(DISTINCT COALESCE(user_no, device_id)) AS uv")
                 .between("at", from, to);
-        var rows = DataScopeContext.executeWithoutScope(() -> visitMapper.selectMaps(w));
+        var rows = visitMapper.selectMaps(w);
         return rows.isEmpty() ? 0 : num(rows.get(0), "uv");
     }
 
@@ -176,7 +181,7 @@ public class StoreVisitServiceImpl implements StoreVisitService {
                 .between("at", from, to)
                 .groupBy("entity_no");
         Map<String, long[]> out = new LinkedHashMap<>();
-        for (Map<String, Object> r : DataScopeContext.executeWithoutScope(() -> logMapper.selectMaps(w))) {
+        for (Map<String, Object> r : logMapper.selectMaps(w)) {
             String no = str(r, "entityNo");
             if (no == null) {
                 continue;   // 归因到邀请人/渠道的行没有主体号，不属于任何一家店

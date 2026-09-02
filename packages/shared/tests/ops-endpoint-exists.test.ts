@@ -58,6 +58,9 @@ const UNBUILT_DOMAINS = new Set([
  * 点下去 404。每一条都要有个说法，不能只是列在这里。
  */
 const KNOWN_GAPS: Record<string, string> = {
+  // 门店码（V292）与获客看板（V290）已于 2026-09-02 接通，按棘轮规矩从这里删掉 ——
+  // 它们卡的本来就不是接口而是指标源（扫码要埋点、印刷量要人录），口径补上接口才有意义
+
   // ── 归档 ──
   // V24 已补齐**四个实体**（券/商家/自提点/活动），见 ai.neargo.shop.archive。
   // 缩到四个而不是原先估的九个，是逐个点过之后的结论
@@ -104,8 +107,6 @@ const KNOWN_GAPS: Record<string, string> = {
   "POST /ops/campaigns": "刻意不做：一期平台不自出资做场次，见 TDD-ops-平台场次",
 
   // ── 门店经营支持 ──
-  "GET /ops/stores/qrcodes": "门店码管理",
-  "GET /ops/stores/acquisition": "获客数据",
   "GET /ops/stores/templates": "装修模板",
   "POST /ops/stores/templates": "装修模板",
   "POST /ops/stores/templates/{x}/enabled": "装修模板",

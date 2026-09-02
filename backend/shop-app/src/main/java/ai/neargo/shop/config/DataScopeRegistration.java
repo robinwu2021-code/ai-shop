@@ -148,6 +148,23 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
+         * ── 2026-09-02：获客埋点与店铺码印刷台账 ──
+         *
+         * 两张都只有 entity_no 一个归属列，所以只登记 MERCHANT。
+         *
+         * **不登记的后果不是报错，是越权**：运营端的获客看板与店铺码页都是跨商家列表，
+         * 配了「只看某商家」的运营会看到全平台的扫码量与印刷量 —— 而这不会有任何提示。
+         * 第一版我在那两处写了 executeWithoutScope（理由写的是「跨主体只读」），
+         * 那正是把这件事做实了；数据域守卫把它抓了出来。
+         *
+         * 写入侧仍然解域：扫码的人还没登录、不属于任何数据域（见 StoreVisitServiceImpl#record）。
+         */
+        registry.register("mkt_store_visit", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mch_store_qrcode_print", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
          * ── 2026-08-30 第二批：结算域的三张「运营端队列」表 ──
          *
          * 挑这三张的判据与第一批一致：**运营端有一条全量列表读它**。

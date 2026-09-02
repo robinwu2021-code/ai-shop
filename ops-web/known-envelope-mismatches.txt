@@ -1,0 +1,31 @@
+# 契约与后端**返回信封**对不上的端点 —— 只准变短，不准变长。
+#
+# 判据在 packages/shared/tests/ops-envelope-parity.test.ts。
+#
+# 为什么单独立一道闸：这类缺陷 **mock 挡不住**。契约怎么声明，mock 就怎么返，
+# 于是本地全绿；只有切到真后端那一刻才炸，而炸的形态是
+# `data.map is not a function` —— 整块列表消失，不像「少了个字段」那么好认。
+#
+# 2026-09-02 实测撞到一次：/ops/merchants/violations 后端一直返 PageData，
+# 契约声明成 Violation[]，信用档案抽屉与违规处置列表在真后端下整块崩掉，
+# 而 mock 返裸数组所以谁也没发现（已修，见 bedad524）。
+#
+# **contract 侧声明 void 不算不一致**：那是「我不读响应体」的正当声明，
+# 与后端返什么无关（lockChannel / refreshOnboarding 都是有意为之）。
+#
+# 下面这些是立此闸时的存量。每条的形态都是「页面按 A 用、后端给 B」，
+# 修法与 bedad524 相同：契约改成后端的形状 → mock 跟着改 → 页面读 records。
+# 补一条就删一行。
+
+# —— 契约当数组用，后端给分页包（页面 .map/.filter 会抛 TypeError）
+listSorting
+listRedeemStats
+listFreightTemplates
+listCategories
+
+# —— 契约当单对象用，后端给分页包（差得更远）
+listOpsMembers
+
+# —— 契约当单对象用，后端给数组
+saveMarketRate
+saveFeatureFlag

@@ -51,6 +51,12 @@ export const RULES = [
   // 资金路径（轴②：钱先进谁的账户）。与经营模式共用一组码 ——
   // 两者都决定钱怎么走，分成两套权限只会让配的人漏配其中一半
   ["PUT", /^\/ops\/merchants\/[^/]+\/funds-mode$/, "merchant:mode:update"],
+  // 进件看板与人工回查：与准入同一拨人在管（都决定这家店能不能真把生意做成），
+  // 复用 merchant:admission:*，不新增权限码
+  ["GET", /^\/ops\/onboarding$/, "merchant:admission:read"],
+  ["POST", /^\/ops\/onboarding\/refresh$/, "merchant:admission:update"],
+  // 店铺码印刷量登记：发码的与审店招的是同一拨 BD
+  ["POST", /^\/ops\/stores\/[^/]+\/qrcode\/print$/, "store:page:audit"],
   ["GET", /^\/ops\/merchants\/mode-risk$/, "merchant:mode:read"],
   // 自营应付账款。**制单与付款分权**：确认对账用 settle:execute，
   // 而登记付款用 payout:execute —— 今天两个码都在 FINANCE 一个角色上
@@ -468,6 +474,11 @@ export const NEAREST_CODE = {
   // 于是**超管也看不见 FAQ 这一页**，同时库里那个功能点标着 NOT_IMPLEMENTED、
   // 二级导航把它灰掉，两边一起把一个能用的页面关在了门外（V273 一并修）。
   "message:faq:update": "message:ticket:handle",
+  // 店铺码导出没有独立后端码：/ops/stores/qrcodes 与印刷量登记判的都是 store:page:audit。
+  // 此前 perm-map 里它标着 UNIMPLEMENTED，而 `can()` 先查映射后判通配 ——
+  // 于是「店铺码生成导出」这一页对所有人（含超管）都不可见，而后端 V292 已经做好了。
+  // 发码的与审店招的本来就是同一拨 BD，复用它就不必新增权限码（V293 一并修）。
+  "store:qrcode:export": "store:page:audit",
 };
 
 /** 端点 → 码；命中不了返回 null（守卫会把它报出来） */

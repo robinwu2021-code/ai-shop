@@ -64,8 +64,11 @@ public class StoreQrcodeServiceImpl implements StoreQrcodeService {
                     .or().like(MchEntity::getStoreCode, keyword));
         }
         w.orderByDesc(MchEntity::getId);
-        // 跨主体只读：解数据域，否则运营看到的只是自己域内那几家
-        List<MchEntity> rows = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectList(w));
+        /*
+         * ★ **接数据域**：配了「只看某商家」的运营，就该只看到那一家的码。
+         * 第一版这里解了域，等于让被限定的运营看到全平台的店铺码与印刷量。
+         */
+        List<MchEntity> rows = merchantMapper.selectList(w);
         if (rows.isEmpty()) {
             return PageData.of(List.of(), 0, page, size);
         }
@@ -121,9 +124,9 @@ public class StoreQrcodeServiceImpl implements StoreQrcodeService {
 
     /** entityNo -> [累计张数]。用数组包一层只是为了把「没有这一项」与「合计为 0」分开。 */
     private Map<String, int[]> printedOf(Set<String> entityNos) {
-        List<MchStoreQrcodePrint> rows = DataScopeContext.executeWithoutScope(() ->
-                printMapper.selectList(Wrappers.<MchStoreQrcodePrint>lambdaQuery()
-                        .in(MchStoreQrcodePrint::getEntityNo, entityNos)));
+        List<MchStoreQrcodePrint> rows = printMapper.selectList(
+                Wrappers.<MchStoreQrcodePrint>lambdaQuery()
+                        .in(MchStoreQrcodePrint::getEntityNo, entityNos));
         Map<String, int[]> out = new LinkedHashMap<>();
         for (MchStoreQrcodePrint r : rows) {
             out.computeIfAbsent(r.getEntityNo(), k -> new int[]{0})[0] +=
@@ -134,10 +137,10 @@ public class StoreQrcodeServiceImpl implements StoreQrcodeService {
 
     /** 最近一次印刷的尺寸。尺寸属于那一次印刷，不是门店属性，所以取最新的那次。 */
     private Map<String, String> lastSizeOf(Set<String> entityNos) {
-        List<MchStoreQrcodePrint> rows = DataScopeContext.executeWithoutScope(() ->
-                printMapper.selectList(Wrappers.<MchStoreQrcodePrint>lambdaQuery()
+        List<MchStoreQrcodePrint> rows = printMapper.selectList(
+                Wrappers.<MchStoreQrcodePrint>lambdaQuery()
                         .in(MchStoreQrcodePrint::getEntityNo, entityNos)
-                        .orderByAsc(MchStoreQrcodePrint::getId)));
+                        .orderByAsc(MchStoreQrcodePrint::getId));
         Map<String, String> out = new LinkedHashMap<>();
         for (MchStoreQrcodePrint r : rows) {
             if (r.getSize() != null && !r.getSize().isBlank()) {
@@ -156,9 +159,9 @@ public class StoreQrcodeServiceImpl implements StoreQrcodeService {
         if (port == null) {
             return Map.of();
         }
-        List<MchEntityCommunity> links = DataScopeContext.executeWithoutScope(() ->
-                communityMapper.selectList(Wrappers.<MchEntityCommunity>lambdaQuery()
-                        .in(MchEntityCommunity::getEntityNo, entityNos)));
+        List<MchEntityCommunity> links = communityMapper.selectList(
+                Wrappers.<MchEntityCommunity>lambdaQuery()
+                        .in(MchEntityCommunity::getEntityNo, entityNos));
         Map<String, String> firstCommunity = new LinkedHashMap<>();
         for (MchEntityCommunity l : links) {
             firstCommunity.putIfAbsent(l.getEntityNo(), l.getCommunityNo());

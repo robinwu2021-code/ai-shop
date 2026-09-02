@@ -573,6 +573,15 @@ const ANCHOR_WAIVED: Record<string, string> = {
   "mch_entity:COMMUNITY":
     "没有持社区域的角色能读商家档案（COMMUNITY_OPS 无 merchant:* 码）。若将来开了，这里会变成空白页",
   "mch_entity:PICKUP": "同上：没有持自提点域的角色能读商家档案",
+  // 获客埋点与店铺码印刷台账（2026-09-02）：两张都只有 entity_no 一个归属列。
+  // 读它们的两页（获客看板 / 店铺码）判 store:page:audit，而该码只给 BD 与超管，
+  // 两者都不持社区域或自提点域 —— 所以今天不会有人因此看到空白页。
+  // 若将来把这两页开给社区运营，这里就会变成空白，届时要按 mch_store.community_no
+  // 的做法加冗余列并回填，而不是放宽这条豁免。
+  "mkt_store_visit:COMMUNITY": "读它的获客看板判 store:page:audit，持社区域的角色没有这个码",
+  "mkt_store_visit:PICKUP": "同上：没有持自提点域的角色能读获客看板",
+  "mch_store_qrcode_print:COMMUNITY": "读它的店铺码页判 store:page:audit，持社区域的角色没有这个码",
+  "mch_store_qrcode_print:PICKUP": "同上：没有持自提点域的角色能读店铺码页",
   "mch_store:COMMUNITY":
     "同 mch_entity；且门店的社区本身是多值的（一店可在多社区挂自提点），单列锚点表达不了",
   "mch_store:PICKUP": "同上",

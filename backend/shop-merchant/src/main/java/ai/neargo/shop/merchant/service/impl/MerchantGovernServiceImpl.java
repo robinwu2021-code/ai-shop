@@ -378,8 +378,8 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         w.eq(payChannel != null && !payChannel.isBlank(), MchPaymentMerchant::getPayChannel, payChannel);
         // 关键词按店名匹配时，主体号在另一张表 —— 先把名字命中的主体号捞出来，再并进 or
         Set<String> nameMatch = (keyword == null || keyword.isBlank()) ? Set.of()
-                : DataScopeContext.executeWithoutScope(() -> merchantMapper.selectList(
-                        Wrappers.<MchEntity>lambdaQuery().like(MchEntity::getName, keyword)))
+                : merchantMapper.selectList(
+                        Wrappers.<MchEntity>lambdaQuery().like(MchEntity::getName, keyword))
                 .stream().map(MchEntity::getEntityNo).collect(java.util.stream.Collectors.toSet());
         if (keyword != null && !keyword.isBlank()) {
             w.and(x -> {
@@ -394,16 +394,20 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         // 卡住的（APPLYING/REJECTED）最需要人管，字典序恰好把它们排到 ACTIVE/NONE 前面；同态内新→旧
         w.orderByAsc(MchPaymentMerchant::getApplyStatus).orderByDesc(MchPaymentMerchant::getId);
 
-        // 跨主体只读：解数据域，否则运营看到的只是自己域内那几家（本域读路径的老坑）
-        var p = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectPage(
-                com.baomidou.mybatisplus.extension.plugins.pagination.Page.of(page, size), w));
+        /*
+         * ★ **接数据域**（与本类的 list() 同一口径）：配了「只看某商家」的运营，
+         * 就该只看到那一家的进件。第一版这里解了域、理由写的是「跨主体只读」——
+         * 那等于让被限定的运营看到全平台的收款开户状态，而且不报错。
+         */
+        var p = paymentMapper.selectPage(
+                com.baomidou.mybatisplus.extension.plugins.pagination.Page.of(page, size), w);
 
         long now = System.currentTimeMillis();
         Set<String> entityNos = p.getRecords().stream().map(MchPaymentMerchant::getEntityNo)
                 .collect(java.util.stream.Collectors.toSet());
         Map<String, String> names = entityNos.isEmpty() ? Map.of()
-                : DataScopeContext.executeWithoutScope(() -> merchantMapper.selectList(
-                        Wrappers.<MchEntity>lambdaQuery().in(MchEntity::getEntityNo, entityNos)))
+                : merchantMapper.selectList(
+                        Wrappers.<MchEntity>lambdaQuery().in(MchEntity::getEntityNo, entityNos))
                 .stream().collect(java.util.stream.Collectors.toMap(
                         MchEntity::getEntityNo, MchEntity::getName, (a, b) -> a));
 
