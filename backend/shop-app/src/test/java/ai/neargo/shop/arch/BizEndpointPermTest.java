@@ -119,6 +119,9 @@ class BizEndpointPermTest {
         put("/biz/fulfillment/carriers", BizPerms.STOCK);
         // 界面上的「改数」，底下是一次单件盘点 —— 便捷端点，不是第二条改余额的路
         put("/biz/inventory/adjust", BizPerms.STOCK);
+        // 设安全库存：判 STOCK 而不是更高的码 —— 阈值是理货员日常要调的东西
+        //（今天补了 5 袋、明天到货 50，线跟着动），与「改库存」同一档
+        put("/biz/inventory/safety-stock", BizPerms.STOCK);
         put("/biz/inventory/counts", BizPerms.STOCK);
         put("/biz/inventory/counts/{no}", BizPerms.STOCK);
         put("/biz/inventory/counts/{no}/lines", BizPerms.STOCK);
