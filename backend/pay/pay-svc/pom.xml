@@ -27,7 +27,13 @@
 
          **今天还带着 MyBatis**（经 pay-domain → shop-store-mybatis）。
          那是 C2c 的事，按 2026-09-01 的决定推后到业务跑通之后 ——
-         在此之前这个产物起得来、但 AOT 不成立。 -->
+         在此之前这个产物起得来、但 AOT 不成立。
+
+         **2026-09-02 定了时点**：pay-svc 暂时基于 JDK 21 跑 JVM 形态，
+         将来稳定后，切 MySQL 与 native 部署**一起做** —— 两件事共用
+         C2c 换持久层这一个前置。在那之前不为 native 做任何提前投入：
+         补一半的原生镜像元数据会在 C2c 那天整份作废。
+         判据见 docs/technical/design/TDD-GraalVM与资源占用优化.md §L4-2b。 -->
     <dependencies>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
