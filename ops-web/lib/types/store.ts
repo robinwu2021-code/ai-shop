@@ -76,15 +76,26 @@ export interface StoreAcquisition {
   merchantNo: string;
   /** 商家名快照 */
   merchantName: string;
-  /** 扫码次数 */
+  /** 扫码次数（PV）。同一个人扫三次算三次 */
   scan: number;
-  /** 进店人数 */
+  /** 扫码人数（UV）。匿名访客按设备号去重 —— 他还没有账号 */
+  scanUv: number;
+  /** 进店人数：归因到本店的去重用户数 */
   enter: number;
-  /** 注册人数 */
+  /**
+   * **首次归因人数**（后端 `decision=CREATED`）。
+   *
+   * ⚠️ **不等于「平台新注册」**：一个注册了很久的老用户，第一次扫这家店的码
+   * 也会计入。字段名沿用 `register` 是为了不动既有契约，口径以这句为准。
+   */
   register: number;
-  /** 首单人数 */
+  /** 其中已产生首单的人数 */
   firstOrder: number;
-  /** 首单转化率 = firstOrder / scan，0–1 */
+  /**
+   * 首单转化率 = firstOrder / **scanUv**，0–1。
+   *
+   * 分母用 UV 不用 PV：同一个人扫三次不该把转化率摊薄成三分之一。
+   */
   convRate: number;
 }
 

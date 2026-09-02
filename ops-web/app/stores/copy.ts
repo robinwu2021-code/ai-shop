@@ -71,11 +71,18 @@ const zh = {
   colPrinted: "已印",
   colScanCount: "累计扫码",
 
-  colScan: "扫码",
+  colScan: "扫码次数",
+  colScanUv: "扫码人数",
   colEnter: "进店",
-  colRegister: "注册",
+  colRegister: "首次归因",
   colFirstOrder: "首单",
   colConversion: "扫码→首单转化",
+  acqNotice:
+    "口径：扫码人数按设备去重（匿名访客还没有账号）；「首次归因」是第一次把这个人算到本店名下，"
+    + "不等于平台新注册 —— 老用户第一次扫这家店的码也计入。转化率的分母是扫码人数，不是次数。",
+  acqRange7: "近 7 天",
+  acqRange30: "近 30 天",
+  acqRange90: "近 90 天",
 
   readOnlyWhat: "店招与公告审核",
   readOnlyNote: "不能通过或驳回",
@@ -173,10 +180,19 @@ const en: typeof zh = {
   colScanCount: "Total scans",
 
   colScan: "Scans",
+  colScanUv: "Unique scanners",
   colEnter: "Store visits",
-  colRegister: "Sign-ups",
+  colRegister: "First attribution",
   colFirstOrder: "First orders",
   colConversion: "Scan → first order",
+  acqNotice:
+    "How to read this: unique scanners are de-duplicated by device (anonymous visitors have no account yet); "
+    + "\"first attribution\" means the first time a person was credited to this store — it is not a platform sign-up, "
+    + "since an existing user scanning this store's code for the first time also counts. "
+    + "The conversion denominator is unique scanners, not raw scans.",
+  acqRange7: "Last 7 days",
+  acqRange30: "Last 30 days",
+  acqRange90: "Last 90 days",
 
   readOnlyWhat: "storefront banner & notice review",
   readOnlyNote: "cannot approve or reject",

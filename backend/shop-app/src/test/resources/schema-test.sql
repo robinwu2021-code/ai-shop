@@ -8366,3 +8366,19 @@ SELECT 'SUPER_ADMIN', 'OPS_MERCHANT__TAB_ONBOARDING', 'OPS', NOW(), NOW() FROM D
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'FINANCE', 'OPS_MERCHANT__TAB_ONBOARDING', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='FINANCE' AND x.point_code='OPS_MERCHANT__TAB_ONBOARDING');
+UPDATE sys_function_point
+   SET ui_perm_code = 'store:page:audit',
+       perm_code = 'store:page:audit',
+       backend_status = 'IMPLEMENTED',
+       updated_at = NOW()
+ WHERE point_code = 'OPS_STORE__TAB_EFFECT';
+UPDATE sys_function_point
+   SET ui_perm_code = 'store:page:audit',
+       perm_code = 'store:page:audit',
+       backend_status = 'IMPLEMENTED',
+       updated_at = NOW()
+ WHERE point_code = 'OPS_STORE_04';
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'BD', 'OPS_STORE__TAB_EFFECT', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x
+                    WHERE x.role_code = 'BD' AND x.point_code = 'OPS_STORE__TAB_EFFECT');

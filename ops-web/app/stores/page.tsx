@@ -86,9 +86,18 @@ function StoresInner() {
     queryFn: () => api.listStoreQrcodes(qrcodeQ),
     enabled: tab === "qrcode",
   });
+  /*
+   * 获客看板带时间区间。**不给区间不等于「有史以来」** ——
+   * 累计值只会越来越大，判断不了这一轮投放有没有效果。
+   * 取值放 state 里而不是每次渲染现算 Date.now()：现算的话每次渲染都是新的 queryKey，
+   * react-query 会当成新查询一直重取。
+   */
+  const [acqDays, setAcqDays] = useState(30);
+  const [acqTo] = useState(() => Date.now());
+  const acqQ = { keyword, page, size, from: acqTo - acqDays * 86_400_000, to: acqTo };
   const acq = useQuery({
-    queryKey: ["store-acq", qrcodeQ],
-    queryFn: () => api.listStoreAcquisition(qrcodeQ),
+    queryKey: ["store-acq", acqQ],
+    queryFn: () => api.listStoreAcquisition(acqQ),
     enabled: tab === "effect",
   });
 
@@ -159,6 +168,8 @@ function StoresInner() {
   const acqColumns: Column<StoreAcquisition>[] = [
     { header: c.colMerchant, cell: (r) => r.merchantName },
     { header: c.colScan, cell: (r) => r.scan, numeric: true },
+    // 人数与次数分开列：只给次数的话，一个人反复扫会被当成「很多人来过」
+    { header: c.colScanUv, cell: (r) => r.scanUv, numeric: true },
     { header: c.colEnter, cell: (r) => r.enter, numeric: true },
     { header: c.colRegister, cell: (r) => r.register, numeric: true },
     { header: c.colFirstOrder, cell: (r) => r.firstOrder, numeric: true },
@@ -189,6 +200,9 @@ function StoresInner() {
           {c.notice}
         </Notice>
       )}
+
+      {/* 口径常驻：这几个数很容易被读成别的意思（尤其「首次归因」不是新注册） */}
+      {tab === "effect" && <Notice className="mb-3">{c.acqNotice}</Notice>}
 
       {tab === "template" && (
         <>
@@ -226,6 +240,18 @@ function StoresInner() {
             <FilterSelect aria-label={c.filterKind} value={kind} onChange={(v) => { setKind(v); setPage(1); }} options={kindOptions} allLabel={c.filterKindAll} />
             <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={statusMap} allLabel={c.filterStatusAll} />
           </>
+        )}
+        {tab === "effect" && (
+          <FilterSelect
+            aria-label={c.acqRange30}
+            value={String(acqDays)}
+            onChange={(v) => { setAcqDays(Number(v)); setPage(1); }}
+            options={[
+              { value: "7", label: c.acqRange7 },
+              { value: "30", label: c.acqRange30 },
+              { value: "90", label: c.acqRange90 },
+            ]}
+          />
         )}
       </Toolbar>
 

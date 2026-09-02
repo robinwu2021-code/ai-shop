@@ -124,7 +124,11 @@ export const NAV: NavSection[] = [
       // 主页模板配置依赖 C 端门店主页（C-ST-01）定稿，先做模板等于两头返工
       { href: "/stores?tab=template", label: "主页模板配置", perm: "store:page:read", group: "模板与合规", matrix: "P-10.1" },
       { href: "/stores?tab=qrcode", label: "店铺码生成导出", perm: "store:qrcode:export", group: "获客", matrix: "P-10.1", ready: true },
-      { href: "/stores?tab=effect", label: "获客效果看板", perm: "store:page:read", group: "获客", matrix: "P-10.1", ready: true },
+      // 用 store:page:audit 而不是同组其余叶子的 store:page:read：后者在 UI_PERM_MAP 里是
+      // UNIMPLEMENTED（判所有人无权限，超管也不例外），而这一块 V290 之后后端是真的了。
+      // 不把 store:page:read 整个放开，是因为「主页模板配置」还挂在它上面且后端仍然没有 ——
+      // 放开会多出一个点进去 404 的死按钮。后端端点判的也是 store:page:audit，两边对齐。
+      { href: "/stores?tab=effect", label: "获客效果看板", perm: "store:page:audit", group: "获客", matrix: "P-10.1", ready: true },
     ],
   },
 

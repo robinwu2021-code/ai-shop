@@ -2374,23 +2374,27 @@ components:
           description: "商家名快照"
         scan: 
           type: "number"
-          description: "扫码次数"
+          description: "扫码次数（PV）。同一个人扫三次算三次"
+        scanUv: 
+          type: "number"
+          description: "扫码人数（UV）。匿名访客按设备号去重 —— 他还没有账号"
         enter: 
           type: "number"
-          description: "进店人数"
+          description: "进店人数：归因到本店的去重用户数"
         register: 
           type: "number"
-          description: "注册人数"
+          description: "**首次归因人数**（后端 `decision=CREATED`）。\n\n⚠️ **不等于「平台新注册」**：一个注册了很久的老用户，第一次扫这家店的码 也会计入。字段名沿用 `register` 是为了不动既有契约，口径以这句为准。"
         firstOrder: 
           type: "number"
-          description: "首单人数"
+          description: "其中已产生首单的人数"
         convRate: 
           type: "number"
-          description: "首单转化率 = firstOrder / scan，0–1"
+          description: "首单转化率 = firstOrder / **scanUv**，0–1。\n\n分母用 UV 不用 PV：同一个人扫三次不该把转化率摊薄成三分之一。"
       required: 
         - "merchantNo"
         - "merchantName"
         - "scan"
+        - "scanUv"
         - "enter"
         - "register"
         - "firstOrder"
@@ -19553,7 +19557,7 @@ paths:
   "/ops/stores/acquisition": 
     get: 
       operationId: "listStoreAcquisition"
-      summary: "门店获客效果（P-10.1.4）"
+      summary: "获客漏斗「扫码 → 进店 → 首次归因 → 首单」，按**主体**聚合（P-10.1.4）"
       tags: 
         - "store"
       responses: 

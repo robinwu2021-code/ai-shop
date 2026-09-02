@@ -63,6 +63,14 @@ export type BatchQ = ScopedQ & { status?: string };
 export type StoreAuditQ = PageQ & { kind?: string; status?: string };
 
 /**
+ * 获客看板：时间区间（毫秒时间戳）+ 关键词（P-10.1.4）。
+ *
+ * **不传区间不等于「有史以来」** —— 后端缺省取最近 30 天。
+ * 累计值只会越来越大，且没法用来判断这一轮投放有没有效果。
+ */
+export type AcquisitionQ = PageQ & { from?: number; to?: number };
+
+/**
  * 门店档案检索：主体 + 经营状态 + 经营模式 + 关键词（P-11.2.1）。
  *
  * **含停用与强制下线的店** —— 治理视角更不能看不见：

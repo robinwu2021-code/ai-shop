@@ -1,7 +1,7 @@
 // 覆盖范围：门店主页治理（P-10.1）—— 一期主获客路径的平台侧；
 // 以及门店档案与经营状况（P-11.2.1）—— 平台看一家店的全貌。
 import type { Page, StoreAcquisition, StoreGovern, StorePageAudit, StoreQrcode, StoreStats, StoreTemplate } from "@/lib/types";
-import type { PageQ, StoreAuditQ, StoreQ } from "../query";
+import type { AcquisitionQ, PageQ, StoreAuditQ, StoreQ } from "../query";
 
 export interface StoreApi {
   // ── 门店档案（P-11.2.1）——**已接真后端** `/ops/stores`
@@ -29,7 +29,13 @@ export interface StoreApi {
   /** 店铺码（P-10.1.3），供 BD 批量导出去印刷。 */
   listStoreQrcodes(q?: PageQ): Promise<Page<StoreQrcode>>;
   /** 门店获客效果（P-10.1.4）。 */
-  listStoreAcquisition(q?: PageQ): Promise<Page<StoreAcquisition>>;
+  /**
+   * 获客漏斗「扫码 → 进店 → 首次归因 → 首单」，按**主体**聚合（P-10.1.4）。
+   *
+   * 粒度是主体不是门店：店铺码一主体一码，物理上分不出扫的是哪家分店。
+   * 不传 `from`/`to` 时后端取最近 30 天 —— 不给「有史以来」那个数。
+   */
+  listStoreAcquisition(q?: AcquisitionQ): Promise<Page<StoreAcquisition>>;
 
   // ── 主页模板配置（P-10.1.1）────────────────────────────────────
 
