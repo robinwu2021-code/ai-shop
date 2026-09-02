@@ -35,6 +35,42 @@ export const paymentMock: PaymentApi = {
     }),
 
   /*
+   * 渠道报文。**五种结论各造一条**，尤其是被拒的那三种 ——
+   * 出事那天最想看的正是它们，而只造「成功」的话
+   * 「拒绝原因该显示在哪」这件事就没人看过。
+   *
+   * 其中一条**没有单号**（验签失败时我方拿不到）：
+   * 它是「按单号筛会滤掉最该看的行」那句提示的活例子。
+   */
+  channelMessages: async () =>
+    wait({
+      records: [
+        { messageNo: "CM-5", payChannel: "WECHAT", msgType: "CALLBACK",
+          api: "/callback/wechat/pay", bizNo: null, paymentNo: null, outcome: "REJECTED",
+          reason: "验签失败：证书序列号不在信任列表", payload: '{"id":"…","resource":"[已脱敏]"}',
+          headers: '{"Wechatpay-Serial":"[已脱敏]"}', createdAt: 1_756_100_000_000 },
+        { messageNo: "CM-4", payChannel: "WECHAT", msgType: "CALLBACK",
+          api: "/callback/wechat/pay", bizNo: "SO-1009", paymentNo: null, outcome: "REJECTED",
+          reason: "回查说未支付，与回调不一致 —— 已回 FAIL", payload: '{"trade_state":"NOTPAY"}',
+          headers: "{}", createdAt: 1_756_090_000_000 },
+        { messageNo: "CM-3", payChannel: "ALIPAY", msgType: "SEND",
+          api: "alipay.trade.query", bizNo: "SO-1008", paymentNo: "PAY-8", outcome: "FAILED",
+          reason: "调用超时（3 次重试均失败）", payload: '{"out_trade_no":"SO-1008"}',
+          headers: null, createdAt: 1_756_080_000_000 },
+        { messageNo: "CM-2", payChannel: "WECHAT", msgType: "CALLBACK",
+          api: "/callback/wechat/pay", bizNo: "SO-1007", paymentNo: null, outcome: "RECEIVED",
+          reason: null, payload: '{"id":"…"}', headers: "{}", createdAt: 1_756_070_000_000 },
+        { messageNo: "CM-1", payChannel: "WECHAT", msgType: "CALLBACK",
+          api: "/callback/wechat/pay", bizNo: "SO-1006", paymentNo: "PAY-6", outcome: "ACCEPTED",
+          reason: null, payload: '{"trade_state":"SUCCESS"}', headers: "{}",
+          createdAt: 1_756_060_000_000 },
+      ],
+      total: 5, pageNo: 1, size: 20,
+      note: "报文已脱敏（签名、证书序列号、Authorization 都不入库），"
+        + "不能拿去重放验签 —— 要验签请到通道后台调原件。",
+    }),
+
+  /*
    * 四条轴。**各造一种形态**：正常有差异、零差异、跑失败。
    * 全造成「零差异」的话，「这条轴今天没跑成」那个提示永远看不见 ——
    * 而它与「今天没问题」在页面上长得一样、含义完全相反。

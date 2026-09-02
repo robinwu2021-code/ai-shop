@@ -98,10 +98,31 @@ describe("Java 实体与库表对齐", () => {
     expect(entities.size, "没扫到 @TableName 实体").toBeGreaterThan(10);
   });
 
+/**
+ * **刻意不映射**的列：库里有、实体故意不映射。按表按列登记，且要写明为什么。
+ *
+ * 与「忘了加字段」的区别是**有没有替代读法**：忘了加，那一列就没人读得到；
+ * 刻意不映射，是因为读它反而会读到错的东西。
+ *
+ * ⚠️ 只放到列这一级，不许整表豁免 —— 整表豁免之后，
+ * 这张表上任何真正的漏字段都不会再报。
+ */
+const DELIBERATELY_UNMAPPED: Record<string, Record<string, string>> = {
+  sys_pay_channel: {
+    markets:
+      "V295 起通道×市场在 sys_pay_channel_market 关系表。这一列还在库里（已应用的迁移是冻结的，" +
+      "且留着才有回滚余地），但不再被写入 —— 映射它就会有人读到陈旧值，" +
+      "那正是「运营改了一张表、领域读另一张，保存成功而改动不生效且不报错」的形状。",
+  },
+};
+
   it("实体不缺列 —— 少一个字段 MyBatis 不报错，只是**读不出那一列**", () => {
     const drift: string[] = [];
     for (const [table, { file, fields }] of entities) {
-      const missing = businessCols(table).filter((c) => !fields.has(c));
+      const waived = DELIBERATELY_UNMAPPED[table] ?? {};
+      const missing = businessCols(table)
+        .filter((c) => !fields.has(c))
+        .filter((c) => !waived[c]);
       if (missing.length) drift.push(`${table}（${file}）缺 ${missing.length} 列：${missing.join("、")}`);
     }
     expect(

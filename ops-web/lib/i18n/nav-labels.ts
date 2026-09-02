@@ -121,6 +121,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   支付通道与费率: { en: "Channels & channel fees" },
   账期批次与放款: { en: "Settlement batches" },
   商家欠款: { en: "Merchant debt" },
+  渠道报文: { en: "Channel messages" },
   提现审批: { en: "Withdrawal approval" },
   发票与个税: { en: "Invoices & tax" },
 

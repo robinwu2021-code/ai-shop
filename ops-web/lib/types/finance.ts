@@ -462,6 +462,46 @@ export interface BuyerInvoiceRequest {
  * `note` **直接展示，不在端上写死** —— 写死的话，后端接上渠道账单之后，
  * 页面还在说「看不见」。
  */
+/**
+ * 渠道报文一条（`stl_channel_message`，V286 起在落数据）。
+ *
+ * ⚠️ **报文已脱敏**：签名、证书序列号、Authorization 都不入库，
+ * 所以它<b>不能拿去重放验签</b>。列表响应里带着这句话（`note`），
+ * 页面必须显示 —— 不显示的话，第一个拿它去核签名的人会得出
+ * 「我们的验签实现有 bug」这个结论。
+ */
+export interface ChannelMessage {
+  messageNo: string;
+  payChannel: string;
+  /** CALLBACK 通道推给我方 / SEND 我方发给通道 */
+  msgType: string;
+  /** 回调是端点路径，发送是接口坐标 */
+  api: string;
+  /**
+   * 我方单号。**验签失败时为空** —— 那种行只能按时间和通道翻，
+   * 所以按单号筛会把最该看的那几行滤掉
+   */
+  bizNo?: string | null;
+  paymentNo?: string | null;
+  /** RECEIVED / ACCEPTED / REJECTED / OK / FAILED */
+  outcome: string;
+  /** 拒绝或失败的原因，直接显示 */
+  reason?: string | null;
+  /** 脱敏并截断后的报文 */
+  payload?: string | null;
+  headers?: string | null;
+  createdAt?: number | null;
+}
+
+/** 报文分页。`note` 是固定口径，**端上必须显示** */
+export interface ChannelMessagePage {
+  records: ChannelMessage[];
+  total: number;
+  pageNo: number;
+  size: number;
+  note: string;
+}
+
 export interface ReconCoverage {
   /** 渠道账单是否已接入。false 时 note 必须显示给运营 */
   channelBillConnected: boolean;

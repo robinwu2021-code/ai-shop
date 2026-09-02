@@ -8485,3 +8485,12 @@ UPDATE sys_function_point
                 '/merchants?tab=credit',
                 '/merchants?tab=ban',
                 '/merchants?tab=plans');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_FINANCE__TAB_CHANNEL_MESSAGES', 'OPS_FINANCE', '渠道报文', '分账结算', '/finance?tab=channel-messages', 'finance:recon:read', 'finance:recon:read', 'IMPLEMENTED', 1, 'P-12.1', 'MENU', 150, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_FINANCE__TAB_CHANNEL_MESSAGES');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_FINANCE__TAB_CHANNEL_MESSAGES', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_FINANCE__TAB_CHANNEL_MESSAGES');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'FINANCE', 'OPS_FINANCE__TAB_CHANNEL_MESSAGES', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='FINANCE' AND x.point_code='OPS_FINANCE__TAB_CHANNEL_MESSAGES');

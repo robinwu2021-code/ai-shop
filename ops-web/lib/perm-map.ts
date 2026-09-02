@@ -170,6 +170,13 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "message:template:read": "message:template:read",
   "marketing:coupon:read": "marketing:coupon:read",
   "group:demand:read": "group:demand:read",
+  /*
+   * 恒等映射也要登记。不登记的话生成器把它算成 UNMAPPED，
+   * 菜单项落库时 perm_code 是 NULL、backend_status 是 UNMAPPED ——
+   * 表现是**这一项只有超管看得见**（角色授权是按 perm_code 推的），
+   * 而财务角色明明持有这个码。界面上看不出任何异常。
+   */
+  "finance:recon:read": "finance:recon:read",
   "finance:settle:read": "finance:settle:read",
   "iam:staff:read": "iam:staff:read",
   "content:material:read": "content:material:read",

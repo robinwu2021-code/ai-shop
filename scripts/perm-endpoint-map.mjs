@@ -68,6 +68,12 @@ export const RULES = [
   // 将来拆角色时不用再回来改这里。
   // 四轴对账总览。与 recon-diffs 同一个码 —— 它们是同一件事的两个视图
   ["GET", /^\/ops\/payments\/recon-axes$/, "finance:recon:read"],
+  /*
+   * 渠道报文（O1）。**与对账同一个码** —— 查报文与查对账差异是同一件事的两面：
+   * 都是「账对不上时去找原因」。新开一个码要在五处登记，
+   * 而多一个码就多一处会被落下的地方。
+   */
+  ["GET", /^\/ops\/channel-messages/, "finance:recon:read"],
   ["GET", /^\/ops\/payables/, "finance:settle:read"],
   ["POST", /^\/ops\/payables\/[^/]+\/confirm$/, "finance:settle:execute"],
   ["POST", /^\/ops\/payables\/[^/]+\/paid$/, "finance:payout:execute"],

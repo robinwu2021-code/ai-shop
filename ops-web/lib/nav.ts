@@ -324,6 +324,17 @@ export const NAV: NavSection[] = [
       { href: "/finance?tab=debts", label: "商家欠款", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
       { href: "/finance?tab=withdraw", label: "提现审批", perm: "finance:withdraw:approve", group: "提现与税", matrix: "P-12.2", phase: 2, ready: true },
       { href: "/finance?tab=invoice", label: "发票与个税", perm: "finance:invoice:read", group: "提现与税", matrix: "P-12.2", phase: 2, ready: true },
+      /*
+       * 渠道报文（O1）。**归财务不归订单**：报文里有通道侧的商户号，
+       * 而设计册定的可见范围是财务与技术支持。
+       *
+       * 权限用 finance:recon:read —— 与对账差异同一把：
+       * 查报文与查对账差异是同一件事的两面（账对不上时去找原因）。
+       * 放到 /orders 的话它会跟着 order:pay:read 走，
+       * 而那个码映射到 order:order:read —— 有订单读权限的人能看见 tab，
+       * 却打不通接口（接口要的是 finance:recon:read），于是变成一个死按钮。
+       */
+      { href: "/finance?tab=channel-messages", label: "渠道报文", perm: "finance:recon:read", group: "分账结算", matrix: "P-12.1", ready: true },
     ],
   },
 

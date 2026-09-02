@@ -1,5 +1,5 @@
 <template>
-  <sh-scaffold title-key="invoice.title">
+  <sh-scaffold title-key="invoice.title" :denied="!merchant.can('biz:finance')">
     <view class="p-4 space-y-4">
       <view class="rounded-2xl bg-white p-5 shadow-sm">
         <text class="text-sm font-medium">{{ t("invoice.pendingTitle") }}</text>
@@ -52,11 +52,13 @@
         <text class="text-sm font-medium">{{ t("invoice.submitBlock") }}</text>
         <input
           v-model="invoiceNumber"
+          maxlength="32"
           class="w-full rounded-lg border border-gray-200 px-3 py-2"
           :placeholder="t('invoice.numberPlaceholder')"
         />
         <input
           v-model="titleName"
+          maxlength="64"
           class="w-full rounded-lg border border-gray-200 px-3 py-2"
           :placeholder="t('invoice.titleNamePlaceholder')"
         />
@@ -107,10 +109,18 @@ import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import type { PendingInvoice, PlatformInvoiceTitle, PurchaseInvoice } from "@/api/contract";
 
 const { t } = useI18n();
+/*
+ * 页面门禁。**不加的话店员/理货员/配送员进得了这一页，而页面里每个请求都是 403** ——
+ * 他看到的是一片空白加几个「网络异常」，读不出「这一页不归我管」。
+ * 判据由 packages/shared 的 biz-page-perm 闸门盯着：它比对
+ * 「这一页调了哪些接口」与「这一页的门禁覆盖了哪些码」。
+ */
+const merchant = useMerchantStore();
 const pending = ref<PendingInvoice | null>(null);
 const title = ref<PlatformInvoiceTitle>({});
 const mine = ref<PurchaseInvoice[]>([]);

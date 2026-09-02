@@ -1,10 +1,16 @@
 // 覆盖范围：支付管理（P-4.2 支付流水核对 / 掉单补偿 / 关单策略配置）。
 import type {
+  ChannelMessagePage,
   ReconCoverage,
   ReconAxisReport, CloseRule, Page, ReconDiff, RecoverAction } from "@/lib/types";
 import type { PageQ } from "../query";
 
 export type ReconQ = PageQ & { billDate?: string; type?: string; status?: string };
+
+/** ⚠️ bizNo 筛会滤掉验签失败的行（那些行没有单号）—— 页面要说明这一点 */
+export type ChannelMessageQ = PageQ & {
+  payChannel?: string; msgType?: string; outcome?: string; bizNo?: string;
+};
 
 export interface PaymentApi {
   /** 对账差异列表（P-4.2.1）。 */
@@ -17,6 +23,12 @@ export interface PaymentApi {
   reconCoverage(): Promise<ReconCoverage>;
   /** 四条轴各跑一轮。**会真的扫描** —— 对账页读一份过期的结果比不读更坏 */
   reconAxes(): Promise<ReconAxisReport[]>;
+
+  /**
+   * 渠道报文查询（O1）。V286 起报文一直在落库，而此前**没有任何地方能看** ——
+   * 落了没人看的表等于没落。查掉单、查通道纠纷时第一个要翻的就是它。
+   */
+  channelMessages(q?: ChannelMessageQ): Promise<ChannelMessagePage>;
 
   /**
    * 处置一条差异（P-4.2.1 / 4.2.2）。

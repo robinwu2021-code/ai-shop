@@ -7,6 +7,7 @@ export const paymentHttp: PaymentApi = {
   listReconDiffs: (q) => client.get("/ops/payments/recon-diffs", q),
   reconCoverage: () => client.get<ReconCoverage>("/ops/payments/recon-coverage"),
   reconAxes: () => client.get<ReconAxisReport[]>("/ops/payments/recon-axes"),
+  channelMessages: (q) => client.get("/ops/channel-messages", q),
   resolveReconDiff: (v) => client.post(`/ops/payments/recon-diffs/${v.diffNo}/resolve`, v),
   ignoreReconDiff: (v) => client.post(`/ops/payments/recon-diffs/${v.diffNo}/ignore`, v),
   getCloseRule: () => client.get("/ops/payments/close-rule"),
