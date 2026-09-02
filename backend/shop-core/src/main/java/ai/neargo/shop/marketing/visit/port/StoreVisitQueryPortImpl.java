@@ -1,6 +1,7 @@
 package ai.neargo.shop.marketing.visit.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.marketing.visit.StoreVisitService;
 import ai.neargo.shop.marketing.visit.entity.MktStoreVisit;
 import ai.neargo.shop.marketing.visit.mapper.VisitMappers.StoreVisitMapper;
 import ai.neargo.shop.spi.marketing.StoreVisitQueryPort;
@@ -16,9 +17,21 @@ import java.util.Map;
 public class StoreVisitQueryPortImpl implements StoreVisitQueryPort {
 
     private final StoreVisitMapper visitMapper;
+    private final StoreVisitService visitService;
 
-    public StoreVisitQueryPortImpl(StoreVisitMapper visitMapper) {
+    public StoreVisitQueryPortImpl(StoreVisitMapper visitMapper, StoreVisitService visitService) {
         this.visitMapper = visitMapper;
+        this.visitService = visitService;
+    }
+
+    /*
+     * 薄转发：口径只在 StoreVisitService 一处，这里不重算。
+     * 重算一遍就是「同一个指标两个实现」，而它们迟早分岔 —— 分岔那天两个数都看起来对。
+     */
+    @Override
+    public Funnel platformFunnel(long from, long to) {
+        StoreVisitService.Funnel f = visitService.platformFunnel(from, to);
+        return new Funnel(f.scanUv(), f.enter());
     }
 
     @Override

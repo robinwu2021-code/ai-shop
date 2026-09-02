@@ -36,16 +36,22 @@ public class DashboardServiceImpl implements DashboardService {
     private final MerchantApplyMapper applyMapper;
     /** 排行要显示商家名 —— platform 与 merchant 是兄弟模块，只能走 Port */
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
-    /** 漏斗前两环。**读它不自己算** —— 两处各算一份就会有两个「扫码数」 */
-    private final ai.neargo.shop.marketing.visit.StoreVisitService storeVisitService;
+    /**
+     * 漏斗前两环。**读它不自己算** —— 两处各算一份就会有两个「扫码数」。
+     *
+     * <p>走 spi 的 Port 而不是直接注入 marketing 域的 Service：
+     * platform 与 marketing 是两个域，直接依赖会让它们长在一起
+     * （ArchitectureTest.svcModulesMustNotDependOnEachOther 拦的就是这个）。
+     */
+    private final ai.neargo.shop.spi.marketing.StoreVisitQueryPort storeVisitPort;
 
     public DashboardServiceImpl(TradeStatsPort tradeStats, MerchantApplyMapper applyMapper,
                                 ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
-                                ai.neargo.shop.marketing.visit.StoreVisitService storeVisitService) {
+                                ai.neargo.shop.spi.marketing.StoreVisitQueryPort storeVisitPort) {
         this.tradeStats = tradeStats;
         this.applyMapper = applyMapper;
         this.merchantPort = merchantPort;
-        this.storeVisitService = storeVisitService;
+        this.storeVisitPort = storeVisitPort;
     }
 
     @Override
@@ -106,10 +112,10 @@ public class DashboardServiceImpl implements DashboardService {
          *
          * ★ **必须与获客看板同一个口径**：两处各写一份 group by 的话，
          * 首页漏斗和门店获客看板会给出两个不一样的「扫码数」，而两个都看起来是对的。
-         * 所以这里读 StoreVisitService，不自己算（TDD-门店获客埋点与看板 §3.3）。
+         * 所以这里读埋点域的 Port，不自己算（TDD-门店获客埋点与看板 §3.3）。
          */
         long to = System.currentTimeMillis();
-        var f = storeVisitService.platformFunnel(to - FUNNEL_WINDOW_MS, to);
+        var f = storeVisitPort.platformFunnel(to - FUNNEL_WINDOW_MS, to);
         TradeStatsPort.Reach reach = tradeStats.reach();
         return List.of(new FunnelRowVO("SCAN", f.scanUv()),
                 new FunnelRowVO("ENTER", f.enter()),

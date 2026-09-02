@@ -28,4 +28,22 @@ public interface StoreVisitQueryPort {
      *         （调用方自己决定显示 0 还是「未登记」—— 这两件事不一样）
      */
     Map<String, Long> scanCounts(Collection<String> entityNos, long from, long to);
+
+    /**
+     * 平台级漏斗的**前两环**（扫码 / 进店）。
+     *
+     * <p>给平台看板用。它与门店获客看板<b>必须是同一个口径</b> ——
+     * 两处各算一份的话，首页漏斗和门店看板会给出两个不一样的「扫码数」，
+     * 而两个都看起来是对的，只有人在会上对不上账时才发现。
+     *
+     * @return 该区间内的扫码人数与进店人数
+     */
+    Funnel platformFunnel(long from, long to);
+
+    /**
+     * @param scanUv 扫码人数（UV，匿名按设备去重）
+     * @param enter  进店人数（归因到某店的去重用户数）
+     */
+    record Funnel(long scanUv, long enter) {
+    }
 }

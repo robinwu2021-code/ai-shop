@@ -25,4 +25,4 @@ CREATE TABLE IF NOT EXISTS mch_store_qrcode_print
     PRIMARY KEY (id),
     UNIQUE KEY uk_store_qrcode_print_no (print_no),
     KEY idx_store_qrcode_print_entity (entity_no,at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='店铺码印刷量登记台账（线下事实，运营录入）';
+) COMMENT='店铺码印刷量登记台账（线下事实，运营录入）';

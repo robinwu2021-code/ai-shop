@@ -36,4 +36,4 @@ CREATE TABLE IF NOT EXISTS mkt_store_visit
     -- 聚合恒按 (主体, 时间区间) 走，这条索引就是给它的
     KEY idx_store_visit_entity_at (entity_no,at),
     KEY idx_store_visit_device_at (device_id,at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='门店访问埋点（append-only）：扫码落地即记，匿名也记';
+) COMMENT='门店访问埋点（append-only）：扫码落地即记，匿名也记';
