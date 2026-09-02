@@ -5,6 +5,19 @@ import type { StoreApi } from "../contracts/store";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
+/**
+ * 这家主体覆盖该社区吗（P-11.2.1b）。
+ *
+ * 不传社区就全放行；传了而主体查不到，**算不覆盖** ——
+ * 不能默认放行：那会让「筛了一个没人覆盖的社区」列出全平台的店，
+ * 看起来筛了、其实没筛，是筛选最坏的一种坏法。
+ */
+function coversCommunity(merchantNo: string, communityNo?: string) {
+  if (!communityNo) return true;
+  const m = db.merchants.find((x) => x.merchantNo === merchantNo);
+  return !!m?.communityNos?.includes(communityNo);
+}
+
 /** 1x1 透明 PNG。mock 不去要真的微信码，只证明「有图/没图」这条分叉走得通。 */
 const MOCK_PNG =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
@@ -32,6 +45,8 @@ export const storeMock: StoreApi = {
         db.eqHit(q.merchantNo, s.merchantNo) &&
         db.eqHit(q.status, s.status) &&
         db.eqHit(q.businessMode, s.businessMode) &&
+        // 社区维与真后端同口径：覆盖关系挂在**主体**上，门店跟着它的主体走
+        coversCommunity(s.merchantNo, q.communityNo) &&
         db.kwHit(q.keyword, s.storeNo, s.name, s.address, s.merchantName),
       ),
     ),

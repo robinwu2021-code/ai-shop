@@ -63,8 +63,16 @@ public interface MerchantGovernService {
      * 治理视角更不能看不见）。**只读**：门店资料、价格、库存运营一律不改，
      * 平台的边界是「裁、定、兜」，不替商家运营。
      */
+    /**
+     * 跨主体门店检索（P-11.2.1b）。
+     *
+     * @param communityNo 按<b>社区</b>筛。社区覆盖挂在主体上（{@code mch_entity_community}），
+     *                    所以这一维筛的是「覆盖该社区的主体」名下的门店 ——
+     *                    BD 的问题是「这个片区有哪些店」，而片区是他跑的单位
+     */
     ai.neargo.shop.common.PageData<StoreGovernVO> searchStores(String merchantNo, String status,
-                                                               String businessMode, String keyword,
+                                                               String businessMode, String communityNo,
+                                                               String keyword,
                                                                long page, long size);
 
     /** 门店详情：门面 + 配送规则 + 经营模式 + 收款商户号。 */

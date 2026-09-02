@@ -113,6 +113,65 @@ class OpsStoreGovernFlowTest {
 
     // ---------------------------------------------------------------- 强制下架（P-3.2.3）
 
+    /**
+     * <b>按社区筛门店（P-11.2.1b）。</b>
+     *
+     * <p>BD 的问题是「这个片区有哪些店」，而覆盖关系挂在<b>主体</b>上
+     * （{@code mch_entity_community}），所以这一维筛的是「覆盖该社区的主体」名下的门店。
+     *
+     * <p>真正要守的是<b>空集那一条</b>：筛一个没有任何主体覆盖的社区，
+     * 必须得到空列表。让它落到 {@code in()} 上的话，空 IN 会被整条丢掉 ——
+     * 表现是「筛了却列出全平台的店」，看起来筛了、其实全放行，
+     * 而页面上没有任何线索说明这一点。
+     *
+     * <p>可证伪：去掉 impl 里那段 {@code entityNos.isEmpty()} 的提前返回，
+     * 第二个断言立刻变红。
+     */
+    @Test
+    @DisplayName("★★ 门店按社区筛：命中的能筛出来；没人覆盖的社区必须是空列表，不是全平台")
+    void storeSearchByCommunity() throws Exception {
+        String biz = merchant("12600270021", "社区筛测试·总店");
+        String merchantNo = merchantNoOf(biz);
+        String ops = opsLogin();
+
+        // 这家主体覆盖 CM-STG-A（merchant() 建档时就带了社区）
+        String community = communityOf(ops, merchantNo);
+        assertThat(community).as("这家主体没有覆盖任何社区，后面的断言等于没测").isNotBlank();
+
+        assertThat(storeCount(ops, community))
+                .as("按它自己覆盖的社区筛，应当能筛到它的门店").isGreaterThan(0);
+
+        // ★ 没有任何主体覆盖的社区
+        assertThat(storeCount(ops, "CM-NOBODY-COVERS-THIS"))
+                .as("★ 筛了一个没人覆盖的社区却列出了门店 —— 空 IN 被丢掉，筛选全放行")
+                .isEqualTo(0);
+    }
+
+    /** 这家主体覆盖的第一个社区号。 */
+    private String communityOf(String opsToken, String merchantNo) throws Exception {
+        String body = mvc().perform(get("/ops/merchants")
+                        .header("Authorization", "Bearer " + opsToken)
+                        .param("keyword", merchantNo).param("size", "50"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        for (var r : json.readTree(body).get("data").get("records")) {
+            if (merchantNo.equals(r.get("merchantNo").asString())) {
+                var arr = r.get("communityNos");
+                if (arr != null && arr.isArray() && !arr.isEmpty()) {
+                    return arr.get(0).asString();
+                }
+            }
+        }
+        return null;
+    }
+
+    private int storeCount(String opsToken, String communityNo) throws Exception {
+        String body = mvc().perform(get("/ops/stores")
+                        .header("Authorization", "Bearer " + opsToken)
+                        .param("communityNo", communityNo).param("size", "100"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("records").size();
+    }
+
     @Test
     @DisplayName("★ 强制下架 = 撤销过审：C 端买不到、B 端看到原因、改后重新提审")
     void forceOffGoods() throws Exception {

@@ -87,10 +87,11 @@ public class OpsStoreController {
             @RequestParam(required = false) String merchantNo,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String businessMode,
+            @RequestParam(required = false) String communityNo,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size) {
-        return governService.searchStores(merchantNo, status, businessMode, keyword,
+        return governService.searchStores(merchantNo, status, businessMode, communityNo, keyword,
                 page, Math.min(size, 100));
     }
 

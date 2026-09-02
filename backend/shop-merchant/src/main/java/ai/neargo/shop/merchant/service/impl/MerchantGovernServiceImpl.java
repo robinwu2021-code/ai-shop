@@ -304,9 +304,41 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
 
     @Override
     public ai.neargo.shop.common.PageData<StoreGovernVO> searchStores(String merchantNo, String status,
-                                                                      String businessMode, String keyword,
+                                                                      String businessMode, String communityNo,
+                                                                      String keyword,
                                                                       long page, long size) {
-        var w = Wrappers.<MchStore>lambdaQuery()
+        /*
+         * 社区维（P-11.2.1b）：覆盖关系挂在主体上，先把该社区的主体解出来再筛门店。
+         *
+         * **空集必须直接返回空页**，不能让它落到 `in()` 上 —— 空 IN 在 MyBatis-Plus
+         * 里会被整条丢掉，表现是「筛了一个没有商家的社区，却列出全平台的店」，
+         * 而这正是筛选最不该有的坏法：看起来筛了，其实全放行。
+         */
+        if (communityNo != null && !communityNo.isBlank()) {
+            List<String> entityNos = communityMapper.selectList(
+                            Wrappers.<MchEntityCommunity>lambdaQuery()
+                                    .eq(MchEntityCommunity::getCommunityNo, communityNo))
+                    .stream().map(MchEntityCommunity::getEntityNo).distinct().toList();
+            if (entityNos.isEmpty()) {
+                return ai.neargo.shop.common.PageData.of(List.of(), 0, page, size);
+            }
+            if (merchantNo != null && !merchantNo.isBlank() && !entityNos.contains(merchantNo)) {
+                // 同时按主体与社区筛，而这家主体不覆盖该社区 —— 交集为空
+                return ai.neargo.shop.common.PageData.of(List.of(), 0, page, size);
+            }
+            var w0 = Wrappers.<MchStore>lambdaQuery()
+                    .in(MchStore::getEntityNo, entityNos);
+            return searchStoresWith(w0, merchantNo, status, businessMode, keyword, page, size);
+        }
+        return searchStoresWith(Wrappers.<MchStore>lambdaQuery(), merchantNo, status,
+                businessMode, keyword, page, size);
+    }
+
+    private ai.neargo.shop.common.PageData<StoreGovernVO> searchStoresWith(
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<MchStore> w0,
+            String merchantNo, String status, String businessMode, String keyword,
+            long page, long size) {
+        var w = w0
                 .eq(merchantNo != null && !merchantNo.isBlank(), MchStore::getEntityNo, merchantNo)
                 .eq(status != null && !status.isBlank(), MchStore::getStatus, status)
                 .eq(businessMode != null && !businessMode.isBlank(), MchStore::getBusinessMode, businessMode);

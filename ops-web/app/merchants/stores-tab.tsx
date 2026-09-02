@@ -11,6 +11,7 @@
 // 不替商家运营。唯一的写动作是解除强制下线；压下那一侧在「违规处置与封禁」，
 // 因为处置动作与它的留痕必须是同一次提交。
 import { useState } from "react";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -57,13 +58,23 @@ export function StoresTab({ c }: { c: Copy }) {
   const [status, setStatus] = useState("");
   const [businessMode, setBusinessMode] = useState("");
   const [merchantNo, setMerchantNo] = useState("");
+  const [communityNo, setCommunityNo] = useState("");
   const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<StoreGovern | null>(null);
 
   const canBan = allow("merchant:merchant:ban");
 
-  const q = { keyword, status, businessMode, merchantNo, page, size };
+  const q = { keyword, status, businessMode, merchantNo, page, size , communityNo: communityNo || undefined };
   const list = useQuery({ queryKey: ["stores-govern", q], queryFn: () => api.listStores(q) });
+
+  /*
+   * 社区目录（P-11.2.1b）。只取启用中的 —— 归档的小区不该还能被当筛选项，
+   * 选了只会得到一份空列表而看不出原因。
+   */
+  const communities = useQuery({
+    queryKey: ["communities", "for-store-filter"],
+    queryFn: () => api.listCommunities({ page: 1, size: 200 }),
+  });
 
   /*
    * 经营状况单独一条请求，只在抽屉打开时发：它在后端是另一个域（trade），
@@ -134,6 +145,12 @@ export function StoresTab({ c }: { c: Copy }) {
           aria-label={c.stFilterMode} value={businessMode} allLabel={c.stFilterModeAll}
           options={modeOptions} onChange={(v) => { setBusinessMode(v); setPage(1); }}
         />
+        {/* BD 的问题是「这个片区有哪些店」，片区就是他跑的单位 */}
+        <FilterSelect
+          aria-label={c.stFilterCommunity} value={communityNo} allLabel={c.stFilterCommunityAll}
+          options={(communities.data?.records ?? []).map((x) => ({ value: x.communityNo, label: x.name }))}
+          onChange={(v) => { setCommunityNo(v); setPage(1); }}
+        />
       </Toolbar>
 
       <DataTable
@@ -193,6 +210,17 @@ export function StoresTab({ c }: { c: Copy }) {
                   <Field className="mb-3" label={c.stStatToStock}>{stats.data.toStock}</Field>
                 </FieldGrid>
               )}
+            </DrawerSection>
+
+            {/*
+              门店订单入口（P-11.2.1f）。后端与 OrderQ 早就支持 storeNo，
+              **只是没有任何地方发它** —— 运营要看这家店的单，此前只能去订单页
+              自己按关键词猜。不做全局门店下拉：平台几千家店，那个下拉选不出来。
+            */}
+            <DrawerSection title={c.stSecOrders} desc={c.stOrdersHint}>
+              <Link href={`/orders?storeNo=${encodeURIComponent(current.storeNo)}`}>
+                <Button size="sm" variant="outline">{c.stViewOrders}</Button>
+              </Link>
             </DrawerSection>
 
             <DrawerSection title={c.stSecActions} desc={c.stRestoreHint}>

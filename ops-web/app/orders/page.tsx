@@ -4,6 +4,7 @@
 // 与商家页的差异是刻意的：这里演示「一行展开成一件事」的详情抽屉与跨查询的兄弟单，
 // 而不是审核那种状态机推进。
 import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { ReconAxes } from "./recon-axes";
@@ -77,6 +78,15 @@ function OrdersInner() {
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
   const [fulfillType, setFulfillType] = useState("");
+  /*
+   * 门店筛选（P-11.2.1f）走 URL 参数，**不做全局下拉** ——
+   * 平台有几千家店，下拉里选不出来；运营的问题从来是「这家店的单」，
+   * 而他是从门店详情点过来的。后端与 OrderQ 早就有 storeNo，
+   * 只是此前没有任何地方发它，是个死参数。
+   */
+  const sp = useSearchParams();
+  const [storeCleared, setStoreCleared] = useState(false);
+  const storeNo = storeCleared ? "" : (sp.get("storeNo") ?? "");
   const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<Order | null>(null);
 
@@ -89,7 +99,7 @@ function OrdersInner() {
   const canModify = allow("order:order:modify");
   const canProxy = allow("order:order:proxy");
 
-  const q = { keyword, status, fulfillType, page, size };
+  const q = { keyword, status, fulfillType, storeNo: storeNo || undefined, page, size };
   const list = useQuery({ queryKey: ["orders", q], queryFn: () => api.listOrders(q), enabled: tab === "search" });
 
   // 「掉单补偿」就是对账差异里 CHANNEL_ONLY + 待处置的那个子集 ——
@@ -254,7 +264,23 @@ function OrdersInner() {
       >
         <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={statusMap} allLabel={c.filterStatusAll} />
         <FilterSelect aria-label={c.filterFulfill} value={fulfillType} onChange={(v) => { setFulfillType(v); setPage(1); }} options={fulfillMap} allLabel={c.filterFulfillAll} />
+
       </Toolbar>
+
+      {/*
+        门店筛选是从门店详情带过来的，**必须显式回显 + 给得掉的出口** ——
+        否则运营看到的是一份少了很多单的列表，而页面上没有任何线索说明为什么。
+        不放进 Toolbar：那里的控件会被当成筛选项要求声明 toChip（design-tokens 那道闸），
+        而这是一个「取消筛选」的动作，不是筛选控件本身。
+      */}
+      {storeNo && (
+        <div className="mb-3">
+          <Button size="sm" variant="outline"
+                  onClick={() => { setStoreCleared(true); setPage(1); }}>
+            {fill(c.storeFilterChip, { no: storeNo })} · {c.storeFilterClear}
+          </Button>
+        </div>
+      )}
 
       <DataTable
         columns={columns}

@@ -84,7 +84,14 @@ export type QrcodeQ = AcquisitionQ & { codeless?: boolean };
  * **含停用与强制下线的店** —— 治理视角更不能看不见：
  * 默认过滤掉非 ACTIVE 的话，运营点开一个被自己压下去的店会找不到它。
  */
-export type StoreQ = PageQ & { merchantNo?: string; status?: string; businessMode?: string };
+export type StoreQ = PageQ & {
+  merchantNo?: string; status?: string; businessMode?: string;
+  /**
+   * 按社区筛（P-11.2.1b）。覆盖关系挂在**主体**上，所以筛的是
+   * 「覆盖该社区的主体」名下的门店 —— BD 的问题是「这个片区有哪些店」。
+   */
+  communityNo?: string;
+};
 
 /** 券模板：类型 + 状态 + 归档开关（P-7.1）。 */
 export type CouponQ = ArchiveQ & { type?: string; status?: string };
