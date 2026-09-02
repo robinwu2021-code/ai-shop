@@ -12,6 +12,7 @@
 // 因为处置动作与它的留痕必须是同一次提交。
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -57,7 +58,13 @@ export function StoresTab({ c }: { c: Copy }) {
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
   const [businessMode, setBusinessMode] = useState("");
-  const [merchantNo, setMerchantNo] = useState("");
+  /*
+   * 主体号可以由 URL 带进来（商家详情里的「看这家的门店」跳过来，P-11.2.1a）。
+   * **只当初值**，之后跟着输入框走 —— 否则运营清空输入框还筛着，
+   * 而页面上看起来没有任何筛选条件。
+   */
+  const sp = useSearchParams();
+  const [merchantNo, setMerchantNo] = useState(sp.get("merchantNo") ?? "");
   const [communityNo, setCommunityNo] = useState("");
   const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<StoreGovern | null>(null);
@@ -208,6 +215,8 @@ export function StoresTab({ c }: { c: Copy }) {
                   <Field className="mb-3" label={c.stStatToShip}>{stats.data.toShip}</Field>
                   <Field className="mb-3" label={c.stStatToDeliver}>{stats.data.toDeliver}</Field>
                   <Field className="mb-3" label={c.stStatToStock}>{stats.data.toStock}</Field>
+                  {/* 待售后与前三项摆在一起：运营看的是「这家店是不是没人管了」 */}
+                  <Field className="mb-3" label={c.stStatToAfterSale}>{stats.data.toAfterSale}</Field>
                 </FieldGrid>
               )}
             </DrawerSection>

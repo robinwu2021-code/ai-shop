@@ -32,9 +32,16 @@ public class OpsStoreStatsController {
     private final MerchantOrderService orderService;
     private final MerchantQueryPort merchantPort;
 
-    public OpsStoreStatsController(MerchantOrderService orderService, MerchantQueryPort merchantPort) {
+    private final ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper;
+    private final ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper;
+
+    public OpsStoreStatsController(MerchantOrderService orderService, MerchantQueryPort merchantPort,
+                                   ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper,
+                                   ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper) {
         this.orderService = orderService;
         this.merchantPort = merchantPort;
+        this.afterSaleMapper = afterSaleMapper;
+        this.subOrderMapper = subOrderMapper;
     }
 
     /**
@@ -55,7 +62,8 @@ public class OpsStoreStatsController {
         return new StoreStatsVO(storeNo, entityNo,
                 stats.todayOrders(), stats.todayGmvMinor(),
                 stats.monthOrders(), stats.monthGmvMinor(), stats.ownedTrafficRate(),
-                todo.toShip(), todo.toDeliver(), todo.toStock());
+                todo.toShip(), todo.toDeliver(), todo.toStock(),
+                pendingAfterSale(entityNo, storeNo));
     }
 
     /**
@@ -66,6 +74,39 @@ public class OpsStoreStatsController {
                                int todayOrders, long todayGmvMinor,
                                int monthOrders, long monthGmvMinor,
                                double ownedTrafficRate,
-                               int toShip, int toDeliver, int toStock) {
+                               int toShip, int toDeliver, int toStock,
+                               int toAfterSale) {
+    }
+
+    /**
+     * 这家店待处理的售后单数（P-11.2.1d）。
+     *
+     * <p><b>只算还压着人的两态</b>：{@code APPLIED}（等商家/平台处理）与
+     * {@code ARBITRATING}（等平台仲裁）。已退款/已驳回/已关闭是了结的事实，
+     * 把它们算进「待办堆积」会让一家处理得很快的店看起来积压严重 ——
+     * 而运营正是拿这个数判断「这家店是不是没人管了」。
+     *
+     * <p>售后表上没有 store_no，门店维度在子单上，所以先取这家店的子单号再数。
+     * 门店没有子单时**直接返回 0**，不让空集落到 {@code in()} 上 ——
+     * 空 IN 会被整条丢掉，那样数出来的是全平台的售后单。
+     */
+    private int pendingAfterSale(String entityNo, String storeNo) {
+        List<String> subOrderNos = subOrderMapper.selectList(
+                        com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.trade.entity.OrdSubOrder>lambdaQuery()
+                                .select(ai.neargo.shop.trade.entity.OrdSubOrder::getSubOrderNo)
+                                .eq(ai.neargo.shop.trade.entity.OrdSubOrder::getEntityNo, entityNo)
+                                .eq(ai.neargo.shop.trade.entity.OrdSubOrder::getStoreNo, storeNo))
+                .stream().map(ai.neargo.shop.trade.entity.OrdSubOrder::getSubOrderNo).toList();
+        if (subOrderNos.isEmpty()) {
+            return 0;
+        }
+        Long n = afterSaleMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.trade.entity.OrdAfterSale>lambdaQuery()
+                .in(ai.neargo.shop.trade.entity.OrdAfterSale::getSubOrderNo, subOrderNos)
+                .in(ai.neargo.shop.trade.entity.OrdAfterSale::getStatus,
+                        List.of(ai.neargo.shop.trade.entity.OrdAfterSale.APPLIED,
+                                ai.neargo.shop.trade.entity.OrdAfterSale.ARBITRATING)));
+        return n == null ? 0 : n.intValue();
     }
 }

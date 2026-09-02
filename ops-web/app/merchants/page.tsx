@@ -3,6 +3,7 @@
 // 商家治理（矩阵 P-11.1）。**样板页 ①：列表 + 筛选 + 审核抽屉 + 权限降级 + 归档**。
 // 新页面照这个骨架写：useQuery 取数 → Toolbar 筛选 → DataTable → Drawer 详情 → useMutation 写回。
 import { Suspense, useState } from "react";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
@@ -341,6 +342,17 @@ function MerchantsInner() {
             <FulfillmentBlock merchantNo={current.merchantNo} />
             {/* 人员与授权：只读。为什么不给按钮见 staff-block.tsx 顶部 */}
             <StaffBlock merchantNo={current.merchantNo} />
+            {/*
+              门店入口（P-11.2.1a）。需求要两个入口：这里 + 独立检索页，
+              **此前只有后者** —— 运营在商家详情里看不到这家有几个店，
+              得另开一页再手输主体号筛。门店列表本身在那一页，这里只给一条路径过去，
+              不在抽屉里再画一遍表。
+            */}
+            <Field label={c.fieldStores}>
+              <Link href={`/merchants?tab=stores&merchantNo=${encodeURIComponent(current.merchantNo)}`}>
+                <Button size="sm" variant="outline">{c.viewStores}</Button>
+              </Link>
+            </Field>
           </div>
         )}
       </Drawer>

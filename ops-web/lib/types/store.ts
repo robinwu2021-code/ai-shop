@@ -259,4 +259,12 @@ export interface StoreStats {
   toDeliver: number;
   /** 缺货待补。运营看它判断「这家店是不是没人管了」 */
   toStock: number;
+  /**
+   * 待处理售后单数（P-11.2.1d）。
+   *
+   * **只含还压着人的两态**（APPLIED / ARBITRATING）：已退款/已驳回/已关闭是了结的事实，
+   * 算进「待办堆积」会让处理得快的店看起来积压严重 ——
+   * 而运营正是拿这个数判断「这家店是不是没人管了」。
+   */
+  toAfterSale: number;
 }

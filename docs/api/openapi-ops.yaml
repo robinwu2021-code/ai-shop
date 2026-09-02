@@ -2608,6 +2608,9 @@ components:
         toStock: 
           type: "number"
           description: "缺货待补。运营看它判断「这家店是不是没人管了」"
+        toAfterSale: 
+          type: "number"
+          description: "待处理售后单数（P-11.2.1d）。\n\n**只含还压着人的两态**（APPLIED / ARBITRATING）：已退款/已驳回/已关闭是了结的事实， 算进「待办堆积」会让处理得快的店看起来积压严重 —— 而运营正是拿这个数判断「这家店是不是没人管了」。"
       required: 
         - "storeNo"
         - "merchantNo"
@@ -2619,6 +2622,7 @@ components:
         - "toShip"
         - "toDeliver"
         - "toStock"
+        - "toAfterSale"
       additionalProperties: false
       description: "门店经营状况（`GET /ops/stores/{storeNo}/stats`）。\n\n后端复用商家自己在 B 端看的那套统计，不另存计数器 —— 另存的迟早出现「总览说 3 单、点进去只有 2 单」。\n\n待办只有**门店维度**三项：核销与分拣是自提点维度且不限商家， 摆进门店页会被读成「这家店的活」。"
     CouponType: 

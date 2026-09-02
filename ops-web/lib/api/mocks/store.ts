@@ -71,6 +71,8 @@ export const storeMock: StoreApi = {
       monthOrders: 305, monthGmvMinor: 1042300,
       ownedTrafficRate: 0.42,
       toShip: 3, toDeliver: 2, toStock: 1,
+      // 非零：待售后恒为 0 的话，这一列有没有接上在界面上看不出来
+      toAfterSale: 2,
     });
   },
 
