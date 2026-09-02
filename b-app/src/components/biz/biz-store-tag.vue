@@ -13,6 +13,7 @@
 import { computed, onMounted } from "vue";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
+import { isStoreScopedPage } from "@/shared/store-scope";
 
 const props = defineProps<{ readonly?: boolean }>();
 const merchant = useMerchantStore();
@@ -21,10 +22,32 @@ onMounted(() => {
   void merchant.ensureStores();
 });
 
-/** 只读形态只为消歧义：一家店没有歧义可消 */
+/**
+ * 当前页面的目录名（`/pages/<dir>/index` 里的 `<dir>`）。
+ * 小程序端 `getCurrentPages()` 的 route 不带前导斜杠，H5 端带 —— 两头都剥一次。
+ */
+function currentDir(): string {
+  try {
+    const pages = getCurrentPages();
+    const route = (pages[pages.length - 1] as { route?: string })?.route ?? "";
+    return route.replace(/^\/?pages\//, "").split("/")[0] ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * 只读形态只为消歧义：一家店没有歧义可消。
+ *
+ * <b>并且要在门店维度的页面上</b> —— 判据取自 `shared/store-scope.ts` 那份声明，
+ * 不由各页自己说了算。这样「哪些页面按门店」只有一处答案：
+ * 组件依赖它、`biz-store-scope` 闸门也核对它，清单因此是模型而不是注释。
+ * （闸门双向查：声明了没渲染红，渲染了没声明也红 —— 后者正是这里会静默不显示的情况。）
+ */
 const show = computed(() =>
   props.readonly
-    ? merchant.multiStore
+    ? merchant.multiStore && isStoreScopedPage(currentDir())
+    // 可点形态是「门店管理」的门，与页面按不按门店无关：单店店主也要能进去开第二家
     : merchant.multiStore || merchant.can("biz:store:admin"));
 
 /** 一家店的人点进去是「管理」（在那里开第二家），多店的人点进去是「切换」 */
