@@ -2343,9 +2343,19 @@ components:
         communityName: 
           type: "string"
           description: "所属社区名，BD 按社区领码地推"
-        code: 
+        storeNo: 
           type: "string"
-          description: "码值（C 端扫码进店的深链参数），导出时给 BD 去印刷"
+          description: "哪家门店（V298 一店一码，一行一店）"
+        storeName: 
+          type: 
+            - "string"
+            - "null"
+          description: "门店名，可与主体名不同（「张记粮油·文三路店」）"
+        code: 
+          type: 
+            - "string"
+            - "null"
+          description: "码值（C 端扫码进店的深链参数），导出时给 BD 去印刷。\n\n⚠️ **null = 这家分店还没发过码**，不是空串。它是运营要动手的那一行 —— 显示成空白的话，与「有码但没印」看起来一模一样。"
         size: 
           type: 
             - "string"
@@ -2363,6 +2373,8 @@ components:
         - "merchantNo"
         - "merchantName"
         - "communityName"
+        - "storeNo"
+        - "storeName"
         - "code"
         - "size"
         - "printed"
@@ -10856,7 +10868,7 @@ paths:
   "/ops/debts/{entityNo}/deposit-offset": 
     post: 
       operationId: "offsetDebtByDeposit"
-      summary: "用保证金抵掉一部分欠款"
+      summary: "这个动作不是自然幂等的：它算 min(欠款, 请求额, 保证金可用)， 点第二次时三个数都变小了，于是会接着扣，而每次单看都「算得对」"
       tags: 
         - "finance"
       responses: 
@@ -14692,7 +14704,7 @@ paths:
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
     post: 
       operationId: "addDepositTxn"
-      summary: "addDepositTxn"
+      summary: "这张流水表只增不改、金额又是运营当场填的 —— 重复提交会实打实记两笔，而后端漏传时直接 400（不静默放行）"
       tags: 
         - "merchant"
       responses: 
@@ -19624,6 +19636,108 @@ paths:
                       - "total"
                       - "page"
                       - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/stores/{merchantNo}/qrcode/issue": 
+    post: 
+      operationId: "issueStoreQrcode"
+      summary: "给这家门店发码"
+      tags: 
+        - "store"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "merchantNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/stores/{merchantNo}/qrcode/reissue": 
+    post: 
+      operationId: "reissueStoreQrcode"
+      summary: "<b>换码：旧码当场失效</b>，已经贴在店里的物料全部变成死链"
+      tags: 
+        - "store"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "merchantNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/stores/qrcodes/export": 
+    get: 
+      operationId: "exportStoreQrcodes"
+      summary: "导出用：列表那几列 + <b>可直接印的码图</b>"
+      tags: 
+        - "store"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
                 required: 
                   - "code"
                   - "msg"

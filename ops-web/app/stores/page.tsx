@@ -6,8 +6,9 @@
 import { Suspense, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useCopy } from "@/lib/use-copy";
+import { useCopy, fill } from "@/lib/use-copy";
 import { STORES_COPY } from "./copy";
+import { buildPrintSheetHtml } from "@/lib/store-print-sheet";
 import { usePaging } from "@/lib/use-paging";
 import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime } from "@/lib/utils";
@@ -104,7 +105,8 @@ function StoresInner() {
 
   // 店铺码页的扫码数与获客看板同一个区间口径 —— 两页给出不同的「扫码数」会当场引出
   // 「到底哪个对」，而两个都对，只是窗口不同
-  const qrcodeQ = { keyword, page, size, from: acqTo - acqDays * 86_400_000, to: acqTo };
+  const [codeless, setCodeless] = useState(false);
+  const qrcodeQ = { keyword, codeless, page, size, from: acqTo - acqDays * 86_400_000, to: acqTo };
   const qrcodes = useQuery({
     queryKey: ["store-qrcodes", qrcodeQ],
     queryFn: () => api.listStoreQrcodes(qrcodeQ),
@@ -122,10 +124,68 @@ function StoresInner() {
     },
   });
 
+  const [reissueFor, setReissueFor] = useState<StoreQrcode | null>(null);
+  const [reissueReason, setReissueReason] = useState("");
+
+  const issue = useMutation({
+    mutationFn: (r: StoreQrcode) =>
+      api.issueStoreQrcode({ merchantNo: r.merchantNo, storeNo: r.storeNo }),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["store-qrcodes"] });
+      notify.success(fill(c.issued, { code: r.storeCode }));
+    },
+  });
+
+  const reissue = useMutation({
+    mutationFn: () =>
+      api.reissueStoreQrcode({
+        merchantNo: reissueFor!.merchantNo,
+        storeNo: reissueFor!.storeNo,
+        reason: reissueReason.trim(),
+      }),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["store-qrcodes"] });
+      setReissueFor(null);
+      notify.success(fill(c.reissued, { code: r.storeCode }));
+    },
+  });
+
+  /*
+   * 可印刷页。**CSV 装不下图** —— 而「导出」这个动作的用途就是把物料交给印刷，
+   * 拿到五列文本还得再找人配图，等于没导。
+   *
+   * 另开一个窗口写一张打印页：没有码图的行显示「无码图」而不是留空，
+   * 留空会被当成印刷失误，而真实原因是那家店还没发码。
+   */
+  const printSheet = async () => {
+    const rows = await api.exportStoreQrcodes({ keyword, codeless, from: qrcodeQ.from, to: qrcodeQ.to });
+    const w = window.open("", "_blank");
+    if (!w) {
+      /*
+       * **拦截要说出来。** 静默 return 的表现是「点了没反应」——
+       * 运营会以为这批店没有码图，而真正的原因是浏览器拦了弹窗。
+       */
+      notify.error(c.printSheetBlocked);
+      return;
+    }
+    w.document.write(buildPrintSheetHtml(
+      rows.map(({ row, imageBase64 }) => ({
+        storeNo: row.storeNo,
+        storeName: row.storeName,
+        merchantName: row.merchantName,
+        code: row.code,
+        imageBase64,
+      })),
+      { title: c.printSheetTitle, empty: c.printSheetEmpty, noImage: c.printSheetNoImage },
+    ));
+    w.document.close();
+  };
+
   const recordPrint = useMutation({
     mutationFn: () =>
       api.recordQrcodePrint({
         merchantNo: printFor!.merchantNo,
+        storeNo: printFor!.storeNo,
         qty: Number(printQty),
         size: printSize.trim() || undefined,
         remark: printRemark.trim() || undefined,
@@ -184,7 +244,15 @@ function StoresInner() {
     { header: c.colMerchantNo, cell: (r) => r.merchantNo, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (r) => r.merchantName },
     { header: c.colCommunity, cell: (r) => r.communityName },
-    { header: c.colCode, cell: (r) => <code className="txt-caption">{r.code}</code> },
+    // V298 一行一店：不给门店列的话，同一商家的几行长得一模一样
+    { header: c.colStore, cell: (r) => r.storeName ?? r.storeNo },
+    {
+      header: c.colCode,
+      // ★ null = 还没发过码，与「有码但没印」必须分开 —— 前者要发码，后者要催印
+      cell: (r) => (r.code
+        ? <code className="txt-caption">{r.code}</code>
+        : <span className="text-[var(--warning)]">{c.codeUnset}</span>),
+    },
     { header: c.colSize, cell: (r) => r.size },
     {
       header: c.colPrinted,
@@ -201,9 +269,25 @@ function StoresInner() {
       header: c.colActions,
       cell: (r) =>
         canExport ? (
-          <Button size="sm" variant="outline" onClick={() => { setPrintFor(r); setPrintQty(""); setPrintSize(r.size ?? ""); setPrintRemark(""); }}>
-            {c.printAction}
-          </Button>
+          <div className="flex gap-2">
+            {r.code == null ? (
+              // 没码就先发码 —— 登记印量、导出印刷页在这一行上都还无从谈起
+              <Button size="sm" variant="outline" disabled={issue.isPending}
+                      onClick={() => issue.mutate(r)}>
+                {c.issueAction}
+              </Button>
+            ) : (
+              <>
+                <Button size="sm" variant="outline" onClick={() => { setPrintFor(r); setPrintQty(""); setPrintSize(r.size ?? ""); setPrintRemark(""); }}>
+                  {c.printAction}
+                </Button>
+                {/* 换码单独一颗且要走确认：它让已印物料全部失效 */}
+                <Button size="sm" variant="outline" onClick={() => { setReissueFor(r); setReissueReason(""); }}>
+                  {c.reissueAction}
+                </Button>
+              </>
+            )}
+          </div>
         ) : null,
     },
   ];
@@ -269,7 +353,9 @@ function StoresInner() {
                     { header: c.colMerchantNo, value: (r: StoreQrcode) => r.merchantNo },
                     { header: c.colMerchant, value: (r: StoreQrcode) => r.merchantName },
                     { header: c.colCommunity, value: (r: StoreQrcode) => r.communityName },
-                    { header: c.colCode, value: (r: StoreQrcode) => r.code },
+                    { header: c.colStore, value: (r: StoreQrcode) => r.storeName ?? r.storeNo },
+                    // 没码的行导出「待发码」而不是空白：空白会被当成漏填
+                    { header: c.colCode, value: (r: StoreQrcode) => r.code ?? c.codeUnset },
                     { header: c.colSize, value: (r: StoreQrcode) => r.size },
                   ],
                   qrcodes.data?.records ?? [],
@@ -282,6 +368,18 @@ function StoresInner() {
           <>
             <FilterSelect aria-label={c.filterKind} value={kind} onChange={(v) => { setKind(v); setPage(1); }} options={kindOptions} allLabel={c.filterKindAll} />
             <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={statusMap} allLabel={c.filterStatusAll} />
+          </>
+        )}
+        {tab === "qrcode" && (
+          <>
+            {/* 待发码是「要动手」的清单，不是一个可有可无的筛子 */}
+            <FilterSelect
+              aria-label={c.filterCodeless}
+              value={codeless ? "1" : ""}
+              onChange={(v) => { setCodeless(v === "1"); setPage(1); }}
+              options={[{ value: "1", label: c.filterCodeless }]}
+              allLabel={c.filterStatusAll}
+            />
           </>
         )}
         {tab === "effect" && (
@@ -309,6 +407,16 @@ function StoresInner() {
           empty={c.emptyAudit}
         />
       )}
+      {tab === "qrcode" && canExport && (
+        // 印刷页是**动作**不是筛子，所以不放进 Toolbar：
+        // Toolbar 里的控件会被当成筛选项要求回显选中态（design-tokens 那道闸）
+        <div className="mb-3 flex justify-end">
+          <Button size="sm" variant="outline" onClick={() => void printSheet()}>
+            {c.printSheet}
+          </Button>
+        </div>
+      )}
+
       {tab === "qrcode" && (
         <DataTable
           columns={qrcodeColumns}
@@ -316,7 +424,9 @@ function StoresInner() {
           loading={qrcodes.isLoading}
           error={qrcodes.error}
           onRetry={() => qrcodes.refetch()}
-          rowKey={(r) => r.merchantNo}
+          // ★ 一行一店之后 merchantNo 不再唯一：多门店商家会出现重复 key，
+          //   React 把两行当成同一行合并，点「发码」作用在另一家店上且不报错
+          rowKey={(r) => r.storeNo}
           empty={c.emptyQrcode}
         />
       )}
@@ -400,7 +510,7 @@ function StoresInner() {
         open={!!printFor}
         onOpenChange={(o) => !o && setPrintFor(null)}
         title={printFor ? `${printFor.merchantName} · ${c.printTitle}` : ""}
-        desc={printFor?.code}
+        desc={printFor?.code ?? undefined}
         footer={
           <Button
             // 空与 0 都不提交：0 既不是印了也不是冲减，后端也会拒
@@ -422,6 +532,35 @@ function StoresInner() {
             </Field>
             <Field label={c.printRemark}>
               <Textarea value={printRemark} onChange={setPrintRemark} />
+            </Field>
+          </div>
+        )}
+      </Drawer>
+
+      {/*
+        换码。**单独一个抽屉而不是一次 confirm**：它让已经贴在店里的物料全部失效，
+        代价在线下，而线上只是一次点击 —— 要求写清楚原因，是让这一步慢下来的唯一办法。
+      */}
+      <Drawer
+        open={!!reissueFor}
+        onOpenChange={(o) => !o && setReissueFor(null)}
+        title={reissueFor ? fill(c.reissueTitle, { store: reissueFor.storeName ?? reissueFor.storeNo }) : ""}
+        desc={reissueFor?.code ?? undefined}
+        footer={
+          <Button
+            variant="destructive"
+            disabled={!reissueReason.trim() || reissue.isPending}
+            onClick={() => reissue.mutate()}
+          >
+            {c.reissueConfirm}
+          </Button>
+        }
+      >
+        {reissueFor && (
+          <div className="space-y-3">
+            <Notice tone="danger">{c.reissueWarn}</Notice>
+            <Field label={c.reissueReason}>
+              <Textarea value={reissueReason} onChange={setReissueReason} />
             </Field>
           </div>
         )}

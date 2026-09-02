@@ -5,6 +5,24 @@ import type { StoreApi } from "../contracts/store";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
+/** 1x1 透明 PNG。mock 不去要真的微信码，只证明「有图/没图」这条分叉走得通。 */
+const MOCK_PNG =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+/**
+ * 定位一家门店的店铺码行。
+ *
+ * <b>不传 storeNo 时取该主体的第一行</b>（对应后端的「默认店」）——
+ * 单店商家不该被迫先去查门店号。
+ */
+function pickStore(merchantNo: string, storeNo?: string) {
+  const row = db.storeQrcodes.find(
+    (r) => r.merchantNo === merchantNo && (!storeNo || r.storeNo === storeNo),
+  );
+  if (!row) notFound("店铺码", "Store QR code", storeNo ?? merchantNo);
+  return row!;
+}
+
 export const storeMock: StoreApi = {
   // ── 门店档案（P-11.2.1）────────────────────────────────────────
 
@@ -78,13 +96,45 @@ export const storeMock: StoreApi = {
   },
 
   listStoreQrcodes: (q = {}) =>
-    wait(db.paginate(db.storeQrcodes, q.page, q.size, (r) => db.kwHit(q.keyword, r.merchantNo, r.merchantName, r.code))),
+    wait(db.paginate(db.storeQrcodes, q.page, q.size, (r) =>
+      // codeless：只看还没发码的门店 —— 运营要动手的那一批
+      (!q.codeless || r.code == null)
+      && db.kwHit(q.keyword, r.merchantNo, r.merchantName, r.storeNo, r.code ?? ""))),
+
+  // 发码幂等：已经有码就原样给回来，重复点不换码
+  issueStoreQrcode: async ({ merchantNo, storeNo }) => {
+    const row = pickStore(merchantNo, storeNo);
+    if (row.code == null) row.code = `shop_${row.storeNo}_${Math.random().toString(36).slice(2, 6)}`;
+    await wait(undefined);
+    return { storeCode: row.code };
+  },
+
+  reissueStoreQrcode: async ({ merchantNo, storeNo, reason }) => {
+    // 换码让已印物料全部失效 —— 没有理由就不许换（后端同一道闸）
+    if (!reason?.trim()) fail("换码必须写明原因", "A reason is required to re-issue");
+    const row = pickStore(merchantNo, storeNo);
+    row.code = `shop_${row.storeNo}_${Math.random().toString(36).slice(2, 6)}`;
+    await wait(undefined);
+    return { storeCode: row.code };
+  },
+
+  /*
+   * 导出带码图。mock 不真的去要微信码，给一张 1x1 的透明 PNG 占位 ——
+   * **只给已经有码的行**：没发码的行 imageBase64 是 null，
+   * 界面据此显示「待发码」而不是塞一张会被直接送去印刷的空图。
+   */
+  exportStoreQrcodes: async (q = {}) => {
+    const rows = db.storeQrcodes.filter((r) =>
+      (!q.codeless || r.code == null)
+      && db.kwHit(q.keyword, r.merchantNo, r.merchantName, r.storeNo, r.code ?? ""));
+    await wait(undefined);
+    return rows.map((row) => ({ row, imageBase64: row.code == null ? null : MOCK_PNG }));
+  },
 
   // 登记后重取列表即可看到累计变化；mock 直接改内存里的那一行
-  recordQrcodePrint: async ({ merchantNo, qty, size }) => {
+  recordQrcodePrint: async ({ merchantNo, storeNo, qty, size }) => {
     if (qty === 0) fail("印量不能为 0", "Quantity cannot be zero");
-    const row = db.storeQrcodes.find((r) => r.merchantNo === merchantNo);
-    if (!row) notFound("店铺码", "Store QR code", merchantNo);
+    const row = pickStore(merchantNo, storeNo);
     // null 表示还没登记过 —— 第一次登记要从 0 起累加，而不是把 null 当 0 用
     row.printed = (row.printed ?? 0) + qty;
     if (size) row.size = size;

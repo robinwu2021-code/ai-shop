@@ -13,13 +13,16 @@ export const storeAudits: StorePageAudit[] = [
 ];
 
 export const storeQrcodes: StoreQrcode[] = [
-  { merchantNo: "M903", merchantName: "邻家便利", communityName: "阳光里", code: "shop_M903_c2", size: "10x10cm", printed: 200, scanCount: 1842 },
-  { merchantNo: "M902", merchantName: "老张水果店", communityName: "锦绣花园", code: "shop_M902_c1", size: "10x10cm", printed: 150, scanCount: 1130 },
-  { merchantNo: "M901", merchantName: "阿姨家的菜摊", communityName: "锦绣花园", code: "shop_M901_c1", size: "6x6cm", printed: 80, scanCount: 402 },
-  { merchantNo: "M905", merchantName: "快修家电服务", communityName: "梧桐苑", code: "shop_M905_c3", size: "10x10cm", printed: 120, scanCount: 836 },
+  { merchantNo: "M903", merchantName: "邻家便利", communityName: "阳光里", storeNo: "ST903", storeName: "邻家便利", code: "shop_M903_c2", size: "10x10cm", printed: 200, scanCount: 1842 },
+  { merchantNo: "M902", merchantName: "老张水果店", communityName: "锦绣花园", storeNo: "ST902", storeName: "老张水果店", code: "shop_M902_c1", size: "10x10cm", printed: 150, scanCount: 1130 },
+  { merchantNo: "M901", merchantName: "阿姨家的菜摊", communityName: "锦绣花园", storeNo: "ST901", storeName: "阿姨家的菜摊", code: "shop_M901_c1", size: "6x6cm", printed: 80, scanCount: 402 },
+  { merchantNo: "M905", merchantName: "快修家电服务", communityName: "梧桐苑", storeNo: "ST905", storeName: "快修家电服务", code: "shop_M905_c3", size: "10x10cm", printed: 120, scanCount: 836 },
   // ★ 还没人登记印刷量的那一行：printed 是 null 不是 0 ——
   //   「没登记」与「印了 0 张」在界面上必须分得开，否则运营不知道该催谁
-  { merchantNo: "M904", merchantName: "社区鲜奶站", communityName: "梧桐苑", code: "shop_M904_c3", size: null, printed: null, scanCount: 57 },
+  { merchantNo: "M904", merchantName: "社区鲜奶站", communityName: "梧桐苑", storeNo: "ST904", storeName: "社区鲜奶站", code: "shop_M904_c3", size: null, printed: null, scanCount: 57 },
+  // ★ V298：**还没发过码的分店**。它是运营要动手的那一行 ——
+  //   此前列表按「有码」过滤，这种行根本不出现，于是没人知道要去发码
+  { merchantNo: "M903", merchantName: "邻家便利", communityName: "阳光里", storeNo: "ST903-2", storeName: "邻家便利·南门店", code: null, size: null, printed: null, scanCount: 0 },
 ];
 
 export const storeAcquisition: StoreAcquisition[] = [

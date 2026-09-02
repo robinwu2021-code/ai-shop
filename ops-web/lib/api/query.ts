@@ -71,6 +71,14 @@ export type StoreAuditQ = PageQ & { kind?: string; status?: string };
 export type AcquisitionQ = PageQ & { from?: number; to?: number };
 
 /**
+ * 店铺码列表：获客区间 + <b>只看还没发码的门店</b>（P-10.1.3 / V298）。
+ *
+ * `codeless` 打开后列的是运营要动手的那一批。此前列表按「有码」过滤，
+ * 于是「这家分店从没发过码」永远不出现 —— 看不见就没人去发。
+ */
+export type QrcodeQ = AcquisitionQ & { codeless?: boolean };
+
+/**
  * 门店档案检索：主体 + 经营状态 + 经营模式 + 关键词（P-11.2.1）。
  *
  * **含停用与强制下线的店** —— 治理视角更不能看不见：

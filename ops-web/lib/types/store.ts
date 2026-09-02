@@ -60,8 +60,17 @@ export interface StoreQrcode {
   merchantName: string;
   /** 所属社区名，BD 按社区领码地推 */
   communityName: string;
-  /** 码值（C 端扫码进店的深链参数），导出时给 BD 去印刷 */
-  code: string;
+  /** 哪家门店（V298 一店一码，一行一店） */
+  storeNo: string;
+  /** 门店名，可与主体名不同（「张记粮油·文三路店」） */
+  storeName: string | null;
+  /**
+   * 码值（C 端扫码进店的深链参数），导出时给 BD 去印刷。
+   *
+   * ⚠️ **null = 这家分店还没发过码**，不是空串。它是运营要动手的那一行 ——
+   * 显示成空白的话，与「有码但没印」看起来一模一样。
+   */
+  code: string | null;
   /** 最近一次印刷的尺寸规格，如 "10x10cm"；**从没印过是 null**（尺寸属于那一次印刷，不是门店属性） */
   size: string | null;
   /**
