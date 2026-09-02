@@ -69,4 +69,29 @@ public interface PaymentLedgerService {
      * @param reason 关掉的原因，落进 err_msg 供排查
      */
     void close(String outTradeNo, String reason);
+
+    /**
+     * <b>退款：落一行 {@code REFUND} 方向的流水。</b>
+     *
+     * <h2>这个方法此前不存在，而退款一直在发生</h2>
+     * {@code stl_payment} 有五个方向，而生产代码里<b>只有 {@code PAY} 被写过</b>。
+     * 退款走的是「退积分 + 回退分账 + 记欠款」三条腿，
+     * <b>而资金侧没有任何一行记得「退了这笔钱」</b> ——
+     * 于是「这笔退款在资金上真的发生过吗」这个问题没有地方可以问，
+     * 对账也扫不到它（对账只看 {@code direction = PAY}）。
+     *
+     * <h2>挂在原收款上</h2>
+     * 退款流水带原收款的订单号与子单号，商户单号是
+     * {@code 原单号-R序号} —— <b>退款要能追回是哪一笔钱</b>，
+     * 而一笔单可以退多次（退一件、再退一件）。
+     *
+     * <p><b>幂等按售后单号</b>：同一张售后单重复调只落一行。
+     * 重试是常态（分账回退失败会停在 REFUNDING 等续跑），
+     * 不幂等的话每重试一次就多一行退款流水，而对账会把它们当成多退。
+     *
+     * @param afterSaleNo 售后单号 —— 幂等键，也是回查时的线索
+     * @return 退款流水号；原收款找不到时返回 {@code null}
+     */
+    String refund(String orderNo, String subOrderNo, String afterSaleNo,
+                  long amountMinor, String reason);
 }

@@ -70,6 +70,8 @@ public class SettleServiceImpl implements SettleService {
      * 那条反向依赖（pay 去问主应用「这个通道支不支持补贴」）随通道主数据搬家一起消失了。
      */
     private final PayChannelMasterService channelMaster;
+    /** 退款要落一行 REFUND 流水（S8） */
+    private final ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger;
     private final PayChannelRateService channelRates;
 
     private final BillMapper billMapper;
@@ -95,7 +97,9 @@ public class SettleServiceImpl implements SettleService {
                              ai.neargo.shop.pay.PointsService pointsService,
                              PayChannelMasterService channelMaster,
                              PayChannelRateService channelRates,
-                             ai.neargo.shop.pay.mapper.SettleMappers.SettleBatchMapper batchMapper) {
+                             ai.neargo.shop.pay.mapper.SettleMappers.SettleBatchMapper batchMapper,
+                             ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger) {
+        this.paymentLedger = paymentLedger;
         this.batchMapper = batchMapper;
         this.channelMaster = channelMaster;
         this.channelRates = channelRates;
@@ -581,9 +585,37 @@ public class SettleServiceImpl implements SettleService {
 
     @Override
     public String refund(String subOrderNo, long amountMinor, String reason) {
-        // S4 接真实支付退款；当前记录意图。**顺序保证在调用方**（AfterSaleServiceImpl.doRefund）
-        log.info("refund subOrder={} amount={} reason={}", subOrderNo, amountMinor, reason);
-        return "REFUND-" + subOrderNo;
+        /*
+         * **落一行 REFUND 方向的流水**（S8 · 2026-09-02）。
+         *
+         * 此前这里只打一行日志、返回一个编造的号 "REFUND-" + subOrderNo，
+         * 而调用方把返回值丢弃了 —— 于是<b>一笔退款发生之后，
+         * 资金侧没有任何东西记得它</b>。退款走的是「退积分 + 回退分账 + 记欠款」
+         * 三条腿，三条腿没有身体：「这笔退款在资金上真的发生过吗」
+         * 没有地方可以问，对账也扫不到（对账只看 direction = PAY）。
+         *
+         * 还没有接通道退款 —— 那要等真通道凭证。这一步先把账落下：
+         * <b>账要先有，钱才谈得上对不对得上。</b>
+         */
+        StlBill bill = DataScopeContext.executeWithoutScope(() -> billMapper.selectOne(
+                Wrappers.<StlBill>lambdaQuery()
+                        .eq(StlBill::getSubOrderNo, subOrderNo).last("LIMIT 1")));
+        if (bill == null) {
+            log.warn("[settle] 退款找不到结算单 subOrder={}，流水无从挂靠", subOrderNo);
+            return null;
+        }
+        return paymentLedger.refund(bill.getOrderNo(), subOrderNo, afterSaleNoOf(subOrderNo),
+                amountMinor, reason);
+    }
+
+    /**
+     * 这个子单当前的售后单号 —— 退款流水的幂等键。
+     *
+     * <p>取不到时用子单号兜底：<b>幂等键宁可粗一点，也不能没有</b>。
+     * 没有键的话重试会一笔一笔地落，而对账把它们当成多退。
+     */
+    private String afterSaleNoOf(String subOrderNo) {
+        return "AS-" + subOrderNo;
     }
 
     // ---------------------------------------------------------------- 查询

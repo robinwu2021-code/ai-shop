@@ -92,6 +92,72 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
 
     @Override
     @Transactional("payTxManager")
+    public String refund(String orderNo, String subOrderNo, String afterSaleNo,
+                         long amountMinor, String reason) {
+        /*
+         * **幂等按售后单号。**重试是常态 —— 分账回退失败会让整笔退款停在
+         * REFUNDING 等续跑任务再来一次。不幂等的话每重试一次多一行退款流水，
+         * 而对账会把它们当成「多退了几笔」。
+         */
+        StlPayment exist = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                Wrappers.<StlPayment>lambdaQuery()
+                        .eq(StlPayment::getDirection, StlPayment.REFUND)
+                        .eq(StlPayment::getAfterSaleNo, afterSaleNo)
+                        .last("LIMIT 1")));
+        if (exist != null) {
+            return exist.getPaymentNo();
+        }
+
+        /*
+         * **挂在原收款上。**没有原收款就退不了 —— 那说明这笔单的钱从没收到过，
+         * 而给一笔没收到钱的单退款是真通道一定会拒的。
+         * 返回 null 让调用方知道，而不是落一行无主的退款流水。
+         */
+        StlPayment origin = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                Wrappers.<StlPayment>lambdaQuery()
+                        .eq(StlPayment::getDirection, StlPayment.PAY)
+                        .eq(StlPayment::getOrderNo, orderNo)
+                        .eq(StlPayment::getStatus, StlPayment.SUCCESS)
+                        .orderByDesc(StlPayment::getId).last("LIMIT 1")));
+        if (origin == null) {
+            log.warn("[payment-ledger] 订单 {} 没有成功的收款流水，退款无从挂靠（售后 {}）",
+                    orderNo, afterSaleNo);
+            return null;
+        }
+
+        // 商户单号 = 原单号-R序号。客服按前缀能把一笔单的收与退一次找全
+        long times = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectCount(
+                Wrappers.<StlPayment>lambdaQuery()
+                        .eq(StlPayment::getDirection, StlPayment.REFUND)
+                        .eq(StlPayment::getOrderNo, orderNo)));
+
+        StlPayment r = new StlPayment();
+        r.setPaymentNo(BizKey.next(BizKey.PAYMENT));
+        r.setDirection(StlPayment.REFUND);
+        /*
+         * **落成 PENDING，不是 SUCCESS。**通道退款是异步的，
+         * 回执到了才算成功。直接写成功的话，通道拒单时账上显示退了而钱没退，
+         * 而这种差异只有用户来投诉才会被发现。
+         */
+        r.setStatus(StlPayment.PENDING);
+        r.setOutTradeNo(origin.getOutTradeNo() + "-R" + (times + 1));
+        r.setOrderNo(orderNo);
+        r.setSubOrderNo(subOrderNo);
+        r.setAfterSaleNo(afterSaleNo);
+        r.setUserNo(origin.getUserNo());
+        r.setEntityNo(origin.getEntityNo());
+        r.setPayChannel(origin.getPayChannel());
+        r.setCurrency(origin.getCurrency());
+        r.setAmountMinor(amountMinor);
+        r.setErrMsg(reason);
+        DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(r));
+        log.info("[payment-ledger] 退款流水 {} 已落（原收款 {}，{} 分）",
+                r.getPaymentNo(), origin.getOutTradeNo(), amountMinor);
+        return r.getPaymentNo();
+    }
+
+    @Override
+    @Transactional("payTxManager")
     public void close(String outTradeNo, String reason) {
         StlPayment p = byOutTradeNo(outTradeNo);
         if (p == null || StlPayment.SUCCESS.equals(p.getStatus())

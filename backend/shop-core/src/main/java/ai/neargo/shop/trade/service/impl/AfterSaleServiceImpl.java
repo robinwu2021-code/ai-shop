@@ -323,8 +323,32 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         }
         as.setSplitReversed(true);
 
-        // ② 再退款
-        settlePort.refund(as.getSubOrderNo(), as.getRefundMinor(), as.getReason());
+        /*
+         * ② 再退款，**并把退款流水号记下来**（S8 · 2026-09-02）。
+         *
+         * 此前这里丢弃了返回值 —— 而 refund 本身也只打了一行日志、
+         * 返回一个编造的号。两边加起来的效果是：<b>一笔退款发生之后，
+         * 资金侧没有任何东西记得它</b>，而售后单上的 refund_payment_no
+         * 这个字段只声明、从没被赋值过。
+         *
+         * 拿不到流水号不阻断退款：那说明原收款流水找不到（存量单、
+         * 或者钱本来就没收到），而<b>此时更不该把用户的退款卡住</b> ——
+         * 缺的那一行是账，账可以补，用户的钱不能不退。记 WARN 让人能查。
+         */
+        String refundPaymentNo = settlePort.refund(
+                as.getSubOrderNo(), as.getRefundMinor(), as.getReason());
+        if (refundPaymentNo == null) {
+            /*
+             * 留痕落在**售后单的时间线**上，不只写日志 ——
+             * 日志会滚掉，而客服查这张单时看到的是时间线。
+             */
+            appendLog(as.getSubOrderNo(), OrdAfterSale.REFUNDING,
+                    "退款已执行，但没能落下资金流水（原收款找不到）——"
+                            + "这一笔不在对账范围内，需人工补",
+                    OrdStatusLog.BY_SYSTEM, null);
+        } else {
+            as.setRefundPaymentNo(refundPaymentNo);
+        }
 
         // ③ 退货类的把货加回来
         restoreStockIfReturned(as);
