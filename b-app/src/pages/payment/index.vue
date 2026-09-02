@@ -192,8 +192,19 @@ async function refresh() {
         <text class="txt-caption badge" :class="badgeTone(p)">{{ badgeText(p) }}</text>
       </view>
 
-      <!-- 驳回原因要显眼：不给原因，商家只会反复重提同一份资料 -->
-      <text v-if="p.rejectReason" class="txt-caption reason">{{ p.rejectReason }}</text>
+      <!--
+        驳回原因要显眼：不给原因，商家只会反复重提同一份资料 ——
+        而通道侧重复进件会产生新的收款商户号，历史订单的分账仍指向旧号。
+
+        ⚠️ 判据是**状态**，不是 rejectReason 有没有值。
+        原来写的是 `v-if="p.rejectReason"`，于是通道驳回却没给原因时
+        这一整段消失：商家看到一个「已驳回」标签，下面**什么都没有**。
+        后端现在保证驳回必有一句可读的话，这里是第二道 —— 两道都在，
+        是因为「一段该出现的文字没出现」在页面上没有任何痕迹。
+      -->
+      <text v-if="p.applyStatus === 'REJECTED'" class="txt-caption reason">
+        {{ p.rejectReason || $t("payment.rejectNoReason") }}
+      </text>
 
       <sh-kv v-if="p.canReceiveMoney" between :label="String($t('payment.settleAccount'))">
         <text>{{ p.settleAccountMasked }}</text>

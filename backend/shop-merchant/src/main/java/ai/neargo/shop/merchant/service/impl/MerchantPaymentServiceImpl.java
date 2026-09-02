@@ -283,12 +283,54 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
                     row.setPayMethods(json.writeValueAsString(ms));
                 }
             }
+            /*
+             * ⚠️ **不能靠 setRejectReason(null) + updateById 来清这一列。**
+             *
+             * MyBatis-Plus 默认跳过 null 字段，那句 set 一行 SQL 都不会生成 ——
+             * 于是商家改完重提、通道批了之后，页面上「可以收款」下面
+             * 还挂着一句「结算账户名对不上」，他会以为自己还没过。
+             *
+             * 这个坑仓库里已经踩过一次（PayChannelDefaultResolveTest 的注释里写着），
+             * 而这里又踩了一次 —— <b>是消融把它逼出来的</b>：
+             * 用例第一版的夹具本来就没有旧原因，清不清都一样绿。
+             *
+             * 显式 lambdaUpdate 置空，与 updateById 分开走。
+             */
             row.setRejectReason(null);
+            clearRejectReason(row);
         } else if (MchPaymentMerchant.REJECTED.equals(r.status())) {
-            row.setRejectReason(r.rejectReason());
+            /*
+             * **「驳回必须带原因」此前只写在契约注释里，没有任何东西兑现它。**
+             *
+             * 通道给空的话这一列就是 null，而 b 端那句原因是 v-if 渲染的 ——
+             * 商家看到的是一个「已驳回」标签，下面<b>什么都没有</b>：
+             * 不知道哪儿不对，也就只能把同一份资料再提一遍。
+             * 而通道侧重复进件会产生新的二级商户号，历史订单的分账仍指向旧号 ——
+             * 那是对不上账的开始。
+             *
+             * 兜底文案<b>不编原因</b>：如实说通道没给，并明确告诉他别再重提。
+             * 编一个「资料不齐」之类的猜测更糟 —— 他会照着改一个本来没错的地方。
+             */
+            String reason = r.rejectReason();
+            if (reason == null || reason.isBlank()) {
+                log.warn("[applyment] 通道 {} 驳回 {} 但没给原因 —— 契约要求驳回必带原因",
+                        payChannel, merchantNo);
+                reason = "通道未说明驳回原因。请联系平台客服协助查询，"
+                        + "**不要重复提交同一份资料** —— 重复进件会产生新的收款商户号，"
+                        + "而历史订单的分账仍指向旧号。";
+            }
+            row.setRejectReason(reason);
         }
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(row));
         return toVO(row);
+    }
+
+    /** 显式把驳回原因置空 —— updateById 会跳过 null，见调用点的说明 */
+    private void clearRejectReason(MchPaymentMerchant row) {
+        DataScopeContext.executeWithoutScope(() -> paymentMapper.update(null,
+                Wrappers.<MchPaymentMerchant>lambdaUpdate()
+                        .eq(MchPaymentMerchant::getId, row.getId())
+                        .set(MchPaymentMerchant::getRejectReason, null)));
     }
 
     @Override

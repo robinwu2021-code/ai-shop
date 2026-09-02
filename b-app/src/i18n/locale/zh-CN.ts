@@ -818,6 +818,7 @@ export default {
     PLATFORM: "全平台发货",
   },
   payment: {
+    rejectNoReason: "已驳回，但通道没有说明原因。请联系平台客服协助查询 —— 先别重复提交同一份资料。",
     title: "收款设置",
     hint: "开店与收款是两件事：店开了，还要通道批过才能收到钱",
     ok: "可以收款",

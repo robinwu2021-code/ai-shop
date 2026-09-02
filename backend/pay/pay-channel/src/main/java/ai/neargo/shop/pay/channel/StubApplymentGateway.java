@@ -29,6 +29,30 @@ public class StubApplymentGateway implements PayApplymentGateway {
     /** 申请单号 → 提交时的主体名，查询时据此决定给什么结果 */
     private final Map<String, String> submitted = new ConcurrentHashMap<>();
 
+    /**
+     * 这些主体名会得到「驳回但不给原因」的回执。<b>仅测试使用</b>。
+     *
+     * <p>为什么需要这个钩子：契约写着「驳回必须带原因」，
+     * 而<b>没有任何东西兑现它</b> —— 落库那行是直传。
+     * 要验证兜底，就得造出一个违反契约的通道回执，
+     * 而正常的桩造不出来（它给的原因是写死的中文）。
+     *
+     * <p>放在桩里而不是生产服务里：这个类注定要被真实网关整体替换，
+     * 钩子会跟着一起消失。放进 {@code MerchantPaymentServiceImpl} 的话，
+     * 那个测试后门会永久留在进件链路上 —— 与 StubSplitGateway 的 failNext 同一条理由。
+     */
+    private final java.util.Set<String> rejectWithoutReason =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /** @param entityName 提交时用的主体名 */
+    public void rejectWithoutReasonFor(String entityName) {
+        rejectWithoutReason.add(entityName);
+    }
+
+    public void clearTestHooks() {
+        rejectWithoutReason.clear();
+    }
+
     @Override
     public String payChannel() {
         return "STUB";
@@ -50,6 +74,10 @@ public class StubApplymentGateway implements PayApplymentGateway {
         if (name == null) {
             // 查一个不存在的申请单：如实说不知道，不要编一个「审核中」
             return new ApplymentResult("APPLYING", null, null);
+        }
+        if (rejectWithoutReason.contains(name)) {
+            // 违反契约的回执：驳回却不给原因。生产上真通道也可能这么干
+            return new ApplymentResult("REJECTED", null, null);
         }
         if (name.contains("驳回")) {
             return new ApplymentResult("REJECTED", null, "结算账户与主体名称不一致（stub 模拟）");

@@ -649,6 +649,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     PLATFORM: "Ships anywhere",
   },
   payment: {
+    rejectNoReason: "Rejected, but the channel gave no reason. Contact platform support — do not resubmit the same documents yet.",
     title: "Payouts",
     hint: "Opening a shop and getting paid are two things — the channel must approve you first",
     ok: "Ready to receive",
