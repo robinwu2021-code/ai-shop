@@ -116,7 +116,15 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                                                                   String keyword, long page, long size) {
         var w = Wrappers.<MchEntity>lambdaQuery();
         if (status != null && !status.isBlank()) {
-            w.eq(MchEntity::getStatus, status);
+            // 前端会把多个状态拼成逗号分隔（如「待审+审核中」并列取）。单值 eq 遇到 CSV
+            // 会静默匹配零行 —— 运营看到空列表以为没商家。按需退化：单值走 eq，多值走 in。
+            List<String> statuses = java.util.Arrays.stream(status.split(","))
+                    .map(String::trim).filter(s -> !s.isBlank()).toList();
+            if (statuses.size() == 1) {
+                w.eq(MchEntity::getStatus, statuses.get(0));
+            } else if (!statuses.isEmpty()) {
+                w.in(MchEntity::getStatus, statuses);
+            }
         }
         if (keyword != null && !keyword.isBlank()) {
             w.and(x -> x.like(MchEntity::getName, keyword).or().like(MchEntity::getEntityNo, keyword));
@@ -349,6 +357,64 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         // 只回带 platform_suspended 标记的行 —— 商家在处置期间自己下架的不动
         shelfPort.getObject().platformRestore(s.getEntityNo(), storeNo);
         return toStoreGovernVO(s, nameOf(s.getEntityNo()));
+    }
+
+    // ---------------------------------------------------------------- 进件看板（运营端·只读）
+
+    @Override
+    public ai.neargo.shop.common.PageData<OnboardingRowVO> onboardingBoard(String status, String payChannel,
+                                                                            String keyword, long page, long size) {
+        var w = Wrappers.<MchPaymentMerchant>lambdaQuery();
+        if (status != null && !status.isBlank()) {
+            // 与商家列表同一口径：前端可能传逗号分隔多态（如「审核中+被拒」并列取）
+            List<String> statuses = java.util.Arrays.stream(status.split(","))
+                    .map(String::trim).filter(s -> !s.isBlank()).toList();
+            if (statuses.size() == 1) {
+                w.eq(MchPaymentMerchant::getApplyStatus, statuses.get(0));
+            } else if (!statuses.isEmpty()) {
+                w.in(MchPaymentMerchant::getApplyStatus, statuses);
+            }
+        }
+        w.eq(payChannel != null && !payChannel.isBlank(), MchPaymentMerchant::getPayChannel, payChannel);
+        // 关键词按店名匹配时，主体号在另一张表 —— 先把名字命中的主体号捞出来，再并进 or
+        Set<String> nameMatch = (keyword == null || keyword.isBlank()) ? Set.of()
+                : DataScopeContext.executeWithoutScope(() -> merchantMapper.selectList(
+                        Wrappers.<MchEntity>lambdaQuery().like(MchEntity::getName, keyword)))
+                .stream().map(MchEntity::getEntityNo).collect(java.util.stream.Collectors.toSet());
+        if (keyword != null && !keyword.isBlank()) {
+            w.and(x -> {
+                x.like(MchPaymentMerchant::getEntityNo, keyword)
+                        .or().like(MchPaymentMerchant::getPayMerchantNo, keyword)
+                        .or().like(MchPaymentMerchant::getSubMchid, keyword);
+                if (!nameMatch.isEmpty()) {
+                    x.or().in(MchPaymentMerchant::getEntityNo, nameMatch);
+                }
+            });
+        }
+        // 卡住的（APPLYING/REJECTED）最需要人管，字典序恰好把它们排到 ACTIVE/NONE 前面；同态内新→旧
+        w.orderByAsc(MchPaymentMerchant::getApplyStatus).orderByDesc(MchPaymentMerchant::getId);
+
+        // 跨主体只读：解数据域，否则运营看到的只是自己域内那几家（本域读路径的老坑）
+        var p = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectPage(
+                com.baomidou.mybatisplus.extension.plugins.pagination.Page.of(page, size), w));
+
+        long now = System.currentTimeMillis();
+        Set<String> entityNos = p.getRecords().stream().map(MchPaymentMerchant::getEntityNo)
+                .collect(java.util.stream.Collectors.toSet());
+        Map<String, String> names = entityNos.isEmpty() ? Map.of()
+                : DataScopeContext.executeWithoutScope(() -> merchantMapper.selectList(
+                        Wrappers.<MchEntity>lambdaQuery().in(MchEntity::getEntityNo, entityNos)))
+                .stream().collect(java.util.stream.Collectors.toMap(
+                        MchEntity::getEntityNo, MchEntity::getName, (a, b) -> a));
+
+        List<OnboardingRowVO> rows = p.getRecords().stream().map(m -> new OnboardingRowVO(
+                m.getEntityNo(), names.getOrDefault(m.getEntityNo(), m.getEntityNo()),
+                m.getStoreNo(), m.getPayChannel(), m.getApplyStatus(), m.getRejectReason(),
+                m.getSettleAccountType(), m.getSettleAccountMasked(),
+                m.getSubMchid(), m.getPayMerchantNo(), m.getAppliedAt(),
+                m.getAppliedAt() == null ? null : now - m.getAppliedAt(),
+                MchPaymentMerchant.ACTIVE.equals(m.getApplyStatus()))).toList();
+        return ai.neargo.shop.common.PageData.of(rows, p.getTotal(), page, size);
     }
 
     private StoreGovernVO toStoreGovernVO(MchStore s, String merchantName) {

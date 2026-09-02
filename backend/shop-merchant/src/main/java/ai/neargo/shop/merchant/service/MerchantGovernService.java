@@ -74,6 +74,35 @@ public interface MerchantGovernService {
      */
     StoreGovernVO restoreStore(String storeNo, String operatorNo);
 
+    // ---------------------------------------------------------------- 进件看板（运营端·只读 + 人工回查）
+
+    /**
+     * 跨商家的进件（收款开户）看板。读 {@code mch_payment_merchant}，<b>不碰通道</b> ——
+     * 通道接通与否看板都能用（stub 下照样显示 APPLYING/REJECTED/ACTIVE）。
+     *
+     * <p>运营在这里一眼看清「谁卡在收款上」：入驻审核过了能上架，但进件没走完就收不了钱，
+     * 而商家不自己点「刷新」进件状态就不会推进（今天没有回调、没有轮询触达商家侧）。
+     * 看板 + 人工回查（{@code MerchantPaymentService.refresh}）补的正是这个盲区。
+     *
+     * @param status     APPLYING / REJECTED / ACTIVE / NONE / FROZEN；空=全部。支持逗号分隔多态并取
+     * @param payChannel WECHAT / ALIPAY；空=全部
+     * @param keyword    店名 / 主体号 / 收款号
+     */
+    ai.neargo.shop.common.PageData<OnboardingRowVO> onboardingBoard(String status, String payChannel,
+                                                                    String keyword, long page, long size);
+
+    /**
+     * @param storeNo         为哪家门店进的件；空串=主体级默认号
+     * @param ageMs           从提交进件到现在的停留时长（毫秒）；null=还没提交过（占位 APPLYING）
+     * @param canReceiveMoney {@code applyStatus == ACTIVE}
+     */
+    record OnboardingRowVO(String merchantNo, String merchantName, String storeNo,
+                           String payChannel, String applyStatus, String rejectReason,
+                           String settleAccountType, String settleAccountMasked,
+                           String subMchid, String payMerchantNo,
+                           Long appliedAt, Long ageMs, boolean canReceiveMoney) {
+    }
+
     /**
      * @param payMerchantNo 空 = 用主体默认收款号（不是「没配」）
      * @param status ACTIVE / READONLY（商家自助停用）/ SUSPENDED（平台强制下线）
