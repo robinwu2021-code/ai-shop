@@ -14,10 +14,35 @@
 set -euo pipefail
 
 HOST="${HOST:-soukmind-tx}"
-REMOTE_DIR="${REMOTE_DIR:-/opt/ai-shop}"
-LINK="$REMOTE_DIR/shop-app.jar"
-SERVICE="${SERVICE:-ai-shop}"
-HEALTH="${HEALTH:-http://localhost:8081/actuator/health}"
+
+# ── 发哪个产物 ───────────────────────────────────────────────────────────
+#
+# 主应用与支付域是**两个进程**（2026-09-01 起），而这个脚本此前只认前者 ——
+# 于是 pay-svc 只能手敲 ssh 发，那条路上没有锁、没有干净副本、没有 health 守候，
+# 也没有回滚软链。**四样安全绳一样都没有的那条路，不该是常走的那条。**
+#
+#   scripts/deploy-backend.sh            # 主应用（默认，行为与此前逐字一致）
+#   scripts/deploy-backend.sh pay-svc    # 支付域独立进程
+APP="${1:-shop-app}"
+case "$APP" in
+    shop-app)
+        MVN_MODULE="shop-app"; JAR_IN_REPO="shop-app/target/shop-app-0.1.0-SNAPSHOT.jar"
+        REMOTE_DIR="${REMOTE_DIR:-/opt/ai-shop}"; LINK_NAME="shop-app.jar"
+        SERVICE="${SERVICE:-ai-shop}"
+        HEALTH="${HEALTH:-http://localhost:8081/actuator/health}" ;;
+    pay-svc)
+        MVN_MODULE="pay/pay-svc"; JAR_IN_REPO="pay/pay-svc/target/pay-svc-0.1.0-SNAPSHOT.jar"
+        REMOTE_DIR="${REMOTE_DIR:-/opt/ai-shop-pay}"; LINK_NAME="pay-svc.jar"
+        SERVICE="${SERVICE:-ai-shop-pay}"
+        # pay-svc 没有 actuator（它只暴露 /internal 与 /callback）。
+        # 拿 /internal 的 401 当活口：**401 说明容器起来了、过滤链在**，
+        # 而进程没起是连不上（000）。这两者必须分得开 —— 见 wait_healthy 的注释。
+        HEALTH="${HEALTH:-http://localhost:8083/internal/pay/fee-rules}"
+        HEALTH_OK="${HEALTH_OK:-401}" ;;
+    *) echo "不认识的产物：$APP（只支持 shop-app / pay-svc）" >&2; exit 2 ;;
+esac
+HEALTH_OK="${HEALTH_OK:-200}"
+LINK="$REMOTE_DIR/$LINK_NAME"
 
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
@@ -32,7 +57,7 @@ die()  { printf '  \033[31m✗\033[0m %s\n' "$1" >&2; exit 1; }
 wait_healthy() {
     ssh "$HOST" "for i in \$(seq 1 60); do
             c=\$(curl -s -o /dev/null -w '%{http_code}' '$HEALTH');
-            [ \"\$c\" = '200' ] && { echo \"health=200（约 \$((i*3)) 秒）\"; exit 0; };
+            [ \"\$c\" = '$HEALTH_OK' ] && { echo \"health=$HEALTH_OK（约 \$((i*3)) 秒）\"; exit 0; };
             sleep 3;
         done; echo \"health=\$c\"; exit 1"
 }
@@ -177,11 +202,11 @@ git worktree add -q --detach "$WT" HEAD
 TS="$(date +%Y%m%d-%H%M)"
 # **名字里带上提交号。** 时间戳答不了「线上跑的是哪个提交」——
 # 2026-08-29 为这个问题反推了四轮。带上 SHA 之后 readlink 一眼就是答案。
-JAR_NAME="shop-app-$TS-$HEAD_SHA.jar"
+JAR_NAME="$APP-$TS-$HEAD_SHA.jar"
 say "构建中（干净副本，约 2 分钟）…"
-( cd "$WT/backend" && mvn -o clean package -pl shop-app -am -DskipTests -q -Dgit.sha="$HEAD_SHA" ) \
+( cd "$WT/backend" && mvn -o clean package -pl "$MVN_MODULE" -am -DskipTests -q -Dgit.sha="$HEAD_SHA" ) \
     || die "构建失败"
-LOCAL_JAR="$WT/backend/shop-app/target/shop-app-0.1.0-SNAPSHOT.jar"
+LOCAL_JAR="$WT/backend/$JAR_IN_REPO"
 [ -f "$LOCAL_JAR" ] || die "构建完了却找不到 jar：$LOCAL_JAR"
 ok "构建完成 $(du -h "$LOCAL_JAR" | cut -f1)"
 
@@ -235,6 +260,26 @@ if wait_healthy; then
     # 切软链与「进程真的在跑它」是两件事：换了包没重启、或重启失败仍跑旧包，
     # 这两种过去只能靠猜，而它们正是「我明明部署了怎么没生效」的两大来源。
     # build.gitSha 与 jar 文件名里的 SHA 来自同一个变量，所以这条判据不会自欺。
+    #
+    # ⚠️ **pay-svc 没有 actuator**（它只暴露 /internal 与 /callback）。
+    # 2026-09-02 第一次用这个脚本发它时就撞了：包切了、进程也换了，
+    # 而这一步读不到 gitSha，报「进程在跑的不是这一版」——
+    # **一个吓人且不实的结论**。真相是判据不适用，不是部署失败。
+    #
+    # 对它改用两条能查的事实：软链指向新包 + 进程启动时间在本次部署之后。
+    # 那两条合起来同样排除「换了包没重启」与「重启失败跑旧包」。
+    if [ "$APP" = "pay-svc" ]; then
+        LIVE_JAR="$(ssh "$HOST" "readlink -f '$LINK'")"
+        STARTED="$(ssh "$HOST" "sudo ps -eo etimes,args | grep '$LINK_NAME' | grep -v grep | head -1 | awk '{print \$1}'")"
+        if [ "$(basename "$LIVE_JAR")" = "$JAR_NAME" ] && [ "${STARTED:-99999}" -lt 300 ]; then
+            ok "线上进程确认在跑 $JAR_NAME（起于 ${STARTED}s 前）"
+        else
+            die "包切过去了，但进程对不上：
+       软链 $(basename "$LIVE_JAR")（期望 $JAR_NAME）
+       进程已运行 ${STARTED:-?}s（应当不足 300s）
+    看：ssh $HOST 'sudo systemctl status $SERVICE'"
+        fi
+    else
     LIVE_SHA="$(ssh "$HOST" "curl -s '${HEALTH%/health}/info'" \
         | sed -n 's/.*"gitSha":"\([^"]*\)".*/\1/p')"
     if [ "$LIVE_SHA" = "$HEAD_SHA" ]; then
@@ -244,6 +289,7 @@ if wait_healthy; then
        期望 $HEAD_SHA
        实际 ${LIVE_SHA:-（/actuator/info 里没有 gitSha —— 这个包不是走部署流程出来的）}
     多半是重启没真的换进程。看：ssh $HOST 'sudo systemctl status $SERVICE'"
+    fi
     fi
 else
     die "没等到 health=200。**别走开** —— 现在线上是挂的。
