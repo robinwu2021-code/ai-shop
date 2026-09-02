@@ -3969,6 +3969,22 @@ CREATE TABLE IF NOT EXISTS mkt_store_visit
     CONSTRAINT uk_store_visit_no UNIQUE (visit_no)
 );
 
+CREATE TABLE IF NOT EXISTS mch_store_qrcode_print
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    print_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    qty INT(11) NOT NULL,
+    size VARCHAR(32) DEFAULT NULL,
+    remark VARCHAR(255) DEFAULT NULL,
+    operator_no VARCHAR(64) DEFAULT NULL,
+    at BIGINT(20) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_store_qrcode_print_no UNIQUE (print_no)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
@@ -8382,3 +8398,13 @@ INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated
 SELECT 'BD', 'OPS_STORE__TAB_EFFECT', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x
                     WHERE x.role_code = 'BD' AND x.point_code = 'OPS_STORE__TAB_EFFECT');
+UPDATE sys_function_point
+   SET ui_perm_code = 'store:page:audit',
+       perm_code = 'store:page:audit',
+       backend_status = 'IMPLEMENTED',
+       updated_at = NOW()
+ WHERE point_code IN ('OPS_STORE__TAB_QRCODE', 'OPS_STORE_03');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'BD', 'OPS_STORE__TAB_QRCODE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x
+                    WHERE x.role_code = 'BD' AND x.point_code = 'OPS_STORE__TAB_QRCODE');

@@ -154,6 +154,8 @@ public final class BizKey {
     public static final String FISSION = "FS";
     /** 门店访问埋点。扫码落地即记，**匿名也记** —— 获客漏斗的第一层靠它 */
     public static final String STORE_VISIT = "VS";
+    /** 店铺码印刷量登记。线下事实，运营录入 */
+    public static final String QRCODE_PRINT = "QP";
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final AtomicInteger SEQ = new AtomicInteger(0);
