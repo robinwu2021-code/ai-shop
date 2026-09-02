@@ -328,6 +328,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   // ── 进销存（P-18）。**注释别夹在 `{` 与 `method:` 之间** ——
   // 端点表的解析器认那个位置，夹进去这条端点会静默不进 spec。
   mStockSummary: { method: "GET", path: "/biz/inventory/summary", auth: true, summary: "库存总览三个数" },
+  mStockCrossStore: { method: "GET", path: "/biz/inventory/cross-store", auth: true, summary: "跨店库存总览" },
   mStockBalances: { method: "GET", path: "/biz/inventory/balances", auth: true, summary: "库存列表（默认只给要处理的）" },
   mStockPickable: { method: "GET", path: "/biz/inventory/pickable", auth: true, summary: "可挑的货（含 0 库存，从物料出发）" },
   mSuppliers: { method: "GET", path: "/biz/inventory/suppliers", auth: true, summary: "供应商档案（挑供应商传 activeOnly=true）" },

@@ -32,6 +32,26 @@ public final class InventoryVOs {
     }
 
     /**
+     * 跨店总览的一行：<b>一件货 × 全部库位</b>。
+     *
+     * <p>与 {@link BalanceVO} 的区别是维度：那一条是「一件货在一个库位」，
+     * 多门店商家看到的是同一件货重复 N 行；这一条把 N 行收成一行，
+     * 商家问的「哪家店断了」在一屏里答得出来。
+     *
+     * @param shortageLocations <b>缺货的库位数</b>，不是缺货的件数。
+     *                          排序按它降序 —— 五家店断了三家的那件货，
+     *                          比某一家店少两袋更值得先看见。
+     * @param byLocation        各库位的分布，<b>随列表一起下发</b>。
+     *                          点开一行不再发第二次请求：这一屏的用法是
+     *                          「扫一遍，挨个展开看」，逐行拉取会让每次展开都等一下。
+     */
+    public record CrossStoreVO(String itemId, String name, String specText, String baseUom,
+                               int onHand, int reserved, int available,
+                               int shortageLocations,
+                               List<LocationQty> byLocation) {
+    }
+
+    /**
      * 某个物料在各库位的分布 + 外部身份。
      *
      * @param safetyStock <b>物料上的默认阈值</b>，恒非 null（那一列 NOT NULL，默认 0）。

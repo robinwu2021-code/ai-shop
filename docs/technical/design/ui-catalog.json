@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 74,
+      "count": 75,
       "domains": [
         {
           "name": "工作台",
@@ -395,6 +395,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/member-reach/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-cross/index",
+              "title": "跨店库存",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stock-cross/index"
             }
           ]
         },
@@ -3049,5 +3060,5 @@
       ]
     }
   ],
-  "total": 246
+  "total": 247
 }

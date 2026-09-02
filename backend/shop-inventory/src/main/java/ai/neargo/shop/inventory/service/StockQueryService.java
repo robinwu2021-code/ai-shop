@@ -1,6 +1,7 @@
 package ai.neargo.shop.inventory.service;
 
 import ai.neargo.shop.inventory.dto.InventoryVOs.BalanceVO;
+import ai.neargo.shop.inventory.dto.InventoryVOs.CrossStoreVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.ItemDetailVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.LedgerPageVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.DocumentVO;
@@ -19,6 +20,18 @@ public interface StockQueryService {
      *               商家打开这一页只为两件事，哪件断了、哪件压着
      */
     List<BalanceVO> balances(String ownerId, String locationId, String filter, int limit);
+
+    /**
+     * 跨店总览：一件货一行，把它在<b>全部库位</b>的分布收在一起。
+     *
+     * <p>多门店商家在 {@link #balances} 里看到的是同一件货重复 N 行（一个库位一行），
+     * 「哪家店断了」得自己在脑子里合并。这一条替他合并。
+     *
+     * @param filter {@code shortage}（默认，只给至少一个库位缺货的）/ {@code all}。
+     *               默认给缺货是因为这一屏的用途就是补货：全给的话
+     *               209 件里有 200 件是「都还有」，那 9 件反而看不见了
+     */
+    List<CrossStoreVO> crossStore(String ownerId, String filter, int limit);
 
     /**
      * 可挑的货 —— **从物料出发，不从余额出发**。

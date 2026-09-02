@@ -263,6 +263,7 @@ const RESPONSE_TYPES = {
   mItemByBarcode: "StockBalance",
   mBindBarcode: "void",
   mStockBalances: "StockBalance[]",
+  mStockCrossStore: "StockCrossStoreRow[]",
   mStockDocuments: "StockDocument[]",
   mStockItem: "StockItemDetail",
   mStockLedger: "StockLedgerPage",

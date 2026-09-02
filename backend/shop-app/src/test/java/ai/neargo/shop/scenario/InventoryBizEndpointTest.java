@@ -103,6 +103,46 @@ class InventoryBizEndpointTest {
     }
 
     @Test
+    @DisplayName("★★★ 跨店总览：一件货一行，按「断了几家店」排，默认只给缺货的")
+    void crossStoreCollapsesLocationsIntoOneRow() throws Exception {
+        Shop s = shop();
+        String other = okText(post("/biz/inventory/locations")
+                .content("{\"name\":\"二号仓\"}"), s.token());
+
+        /*
+         * 种子那件货只在当前门店有余额，二号仓一件都没有 —— 也就是
+         * 「一家店有、一家店断」。这正是这一屏要答的那个问题。
+         */
+        JsonNode rows = ok(get("/biz/inventory/cross-store?filter=all&size=50"), s.token());
+        assertThat(rows.isArray()).isTrue();
+        assertThat(rows.isEmpty()).as("种子里有货，不该是空的").isFalse();
+
+        JsonNode r = rows.get(0);
+        for (String f : List.of("itemId", "name", "onHand", "available", "shortageLocations", "byLocation")) {
+            assertThat(r.has(f)).as("CrossStoreRow 读 %s", f).isTrue();
+        }
+
+        /*
+         * **一件货一行**，不是「一件货 × 一个库位」一行。同一个 itemId 出现两次
+         * 就说明合并没做 —— 那正是多门店商家在 balances 那一屏看到的样子。
+         */
+        List<String> ids = new java.util.ArrayList<>();
+        rows.forEach(x -> ids.add(x.get("itemId").asString()));
+        assertThat(ids).as("同一件货只能占一行").doesNotHaveDuplicates();
+
+        /*
+         * **默认只给缺货的**。这一屏的用途是补货，全给的话真断了的那几件
+         * 反而淹没在「都还有」里。刚建的二号仓一件货都没有，所以默认这一支非空。
+         */
+        JsonNode shortOnly = ok(get("/biz/inventory/cross-store?size=50"), s.token());
+        assertThat(shortOnly.isEmpty()).as("有库位一件都没有，默认这一支该给得出东西").isFalse();
+        shortOnly.forEach(x -> assertThat(x.get("shortageLocations").asInt())
+                .as("默认这一支里每一行都该至少断一家店").isGreaterThan(0));
+
+        assertThat(other).as("这条用例依赖新建的第二个库位").isNotBlank();
+    }
+
+    @Test
     @DisplayName("★★★ /biz/context 要下发 stockByInventory —— 切真相源那天不该再发一次版")
     void bizContextReportsStockAuthority() throws Exception {
         Shop s = shop();

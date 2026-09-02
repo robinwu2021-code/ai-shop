@@ -169,6 +169,16 @@ const urgent = computed(() =>
 
 const links = computed(() => [
   { key: "docs", route: ROUTES.stockDocs, perm: "biz:stock" },
+  /*
+   * 跨店总览（INV-S7）。**只给多门店商家** —— 单店商家的「跨店」就是这一页本身，
+   * 多一个入口只是多一处要维护的重复；六个商家里五个是单店。
+   *
+   * 判据用 `multiStore` 而**不是** `crossStoreStats` 那个付费能力位：
+   * 分层整体还没做（32 个商家端点今天对所有商家免费开着），单独给这一个
+   * 功能加门槛会变成「只有跨店总览要钱」。等分层做的时候一起接。
+   */
+  ...(merchant.multiStore
+    ? [{ key: "cross", route: ROUTES.stockCross, perm: "biz:stock" }] : []),
   { key: "report", route: ROUTES.stockReport, perm: "biz:customer" },
   { key: "locations", route: ROUTES.locations, perm: "biz:store:admin" },
   // 供应商与进货同一个码：能记进货的人就该能建供应商

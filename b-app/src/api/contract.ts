@@ -100,7 +100,7 @@ import type {
   Qualification,
   QualificationSaveReq, MerchantSpecDim, StoreCategorySpecs, SpecOverride, SpecOption,
   // 进销存（P-18）
-  StockSummary, StockBalance, StockItemDetail, StockLedgerPage, StockDocument, Supplier, Carrier,
+  StockSummary, StockBalance, StockCrossStoreRow, StockItemDetail, StockLedgerPage, StockDocument, Supplier, Carrier,
   StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
   StockCount, StockTransfer,
   FulfillmentImpactItem,
@@ -1515,6 +1515,15 @@ export interface MerchantApi {
    *               商家看到「可用 30」，点下去 `INV_INSUFFICIENT`
    */
   mStockBalances(q?: { filter?: string; locationId?: string; size?: number }): Promise<StockBalance[]>;
+  /**
+   * 跨店总览：一件货一行，把它在**全部库位**的分布收在一起。
+   *
+   * 只给多门店商家用 —— 单店商家的「跨店」就是 `mStockBalances`，
+   * 多一个入口只是多一处要维护的重复。
+   *
+   * @param filter `shortage`（默认，只给至少一个库位缺货的）· `all`
+   */
+  mStockCrossStore(q?: { filter?: string; size?: number }): Promise<StockCrossStoreRow[]>;
   /**
    * 开单时挑货用。**与 `mStockBalances` 问的不是一件事**：
    * 那一条问「我有多少」（读余额），这一条问「哪件货」（读物料）。

@@ -128,7 +128,7 @@ import type {
   RegionSearchResult,
   MyQualifications,
   Qualification, MerchantSpecDim, StoreCategorySpecs, SpecOverride, SpecOption,
-  StockSummary, StockBalance, StockItemDetail, StockLedgerPage, StockDocument, Supplier, Carrier,
+  StockSummary, StockBalance, StockCrossStoreRow, StockItemDetail, StockLedgerPage, StockDocument, Supplier, Carrier,
   StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
   StockCount, StockTransfer, I18nText,
 } from "@shared/types";
@@ -553,6 +553,7 @@ export const httpApi: MerchantApi = {
   // ---- 进销存（P-18）
   mStockSummary: () => http.get<StockSummary>(E.mStockSummary.path),
   mStockBalances: (q) => http.get<StockBalance[]>(E.mStockBalances.path, q),
+  mStockCrossStore: (q) => http.get<StockCrossStoreRow[]>(E.mStockCrossStore.path, q),
   mStockPickable: (q) => http.get<StockBalance[]>(E.mStockPickable.path, q),
   mSuppliers: (q) => http.get<Supplier[]>(E.mSuppliers.path, q),
   mSupplierCreate: (body) => http.post<{ supplierNo: string }>(E.mSupplierCreate.path, body),

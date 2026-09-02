@@ -99,6 +99,8 @@ class BizEndpointPermTest {
         //   · biz:store:admin    建仓与改发货源 —— 门店级配置，与改库存是两拨人
         put("/biz/inventory/summary", BizPerms.STOCK);
         put("/biz/inventory/balances", BizPerms.STOCK);
+        // 跨店总览。与 balances 同权：都是「看得见这家的货」，只是维度从「一个库位」换成「全部」
+        put("/biz/inventory/cross-store", BizPerms.STOCK);
         put("/biz/inventory/items/{itemId}", BizPerms.STOCK);
         put("/biz/inventory/ledger", BizPerms.STOCK);
         // 开单时挑货。与 balances 同权：都是「看得见这家的货」

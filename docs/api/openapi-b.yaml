@@ -6745,6 +6745,56 @@ components:
         - "byLocation"
       additionalProperties: false
       description: "某个物料在各库位的分布（`ItemDetailVO`）。"
+    StockCrossStoreRow: 
+      type: "object"
+      properties: 
+        itemId: 
+          type: "string"
+        name: 
+          type: "string"
+        specText: 
+          type: "string"
+        baseUom: 
+          type: "string"
+        onHand: 
+          type: "number"
+          description: "全部库位合计"
+        reserved: 
+          type: "number"
+        available: 
+          type: "number"
+        shortageLocations: 
+          type: "number"
+          description: "**缺货的库位数**，不是缺货的件数。列表按它降序 —— 五家店断了三家的那件货，比某一家店少两袋更值得先看见。"
+        byLocation: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              locationId: 
+                type: "string"
+              locationName: 
+                type: "string"
+              onHand: 
+                type: "number"
+              safetyStock: 
+                type: "number"
+            required: 
+              - "locationId"
+              - "locationName"
+              - "onHand"
+            additionalProperties: false
+          description: "各库位分布，**随列表一起下发**：点开一行不再发第二次请求"
+      required: 
+        - "itemId"
+        - "name"
+        - "onHand"
+        - "reserved"
+        - "available"
+        - "shortageLocations"
+        - "byLocation"
+      additionalProperties: false
+      description: "跨店总览的一行（`CrossStoreVO`）：**一件货 × 全部库位**。\n\n与 `StockBalance` 的区别是维度 —— 那一条是「一件货在一个库位」， 多门店商家看到的是同一件货重复 N 行；这一条把 N 行收成一行。"
     StockLedgerRow: 
       type: "object"
       properties: 
@@ -13917,6 +13967,36 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/StockSummary"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/inventory/cross-store": 
+    get: 
+      operationId: "mStockCrossStore"
+      summary: "跨店库存总览"
+      tags: 
+        - "inventory"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/StockCrossStoreRow"
                 required: 
                   - "code"
                   - "msg"

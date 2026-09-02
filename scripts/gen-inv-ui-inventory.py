@@ -26,8 +26,13 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 # **加页面时这里也要加**：这份列表是写死的，漏一页的症状是清单少一节而
 # 「跑一遍输出没变」照样成立 —— 闸门绿着，清单却不完整。suppliers 就这么漏过一轮。
-PAGES = ["stock","stock-detail","stock-docs","purchase-edit","stock-check",
+PAGES = ["stock","stock-cross","stock-detail","stock-docs","purchase-edit","stock-check",
          "stock-out","transfer","stock-report","suppliers","locations"]
+
+# 进销存页面的路径前缀。**只用来发现漏登记的新页**（见 check_scope）——
+# 不用它直接生成 PAGES：清单的顺序是有意排的（枢纽在前、配置在后），
+# 而按前缀扫出来的顺序是文件系统的。
+INV_PREFIXES = ("stock", "purchase-edit", "transfer", "suppliers", "locations")
 
 # ── 词条表：把 zh-CN.ts 当近似 JSON 读 ──
 def load_locale(path):
@@ -124,12 +129,34 @@ def rows(page):
         out.append(("输入框", f'type={ty.group(1) if ty else "text"} maxlength={ml.group(1) if ml else "—"}', ""))
     return out
 
-TITLES = {"stock":"库存","stock-detail":"库存明细","stock-docs":"单据",
+TITLES = {"stock":"库存","stock-cross":"跨店库存","stock-detail":"库存明细","stock-docs":"单据",
           "purchase-edit":"进货","stock-check":"盘点","stock-out":"报损",
           "transfer":"调拨","stock-report":"报表","suppliers":"供应商",
           "locations":"库位"}
 
 DOC = ROOT / "docs/technical/design/进销存-界面清单.md"
+
+
+def check_scope():
+    """**PAGES 有没有漏掉新页。**
+
+    这个列表是手写的，而新页是随时加的 —— 漏登记的症状是清单少一节，
+    而 `--check` 说「最新的」：闸门扫不到的东西，它当然不会报。
+    2026-09-02 就漏过一次（新增的 stock-cross），上一次是 suppliers。
+    """
+    import json
+    pages = json.load(open(ROOT / "b-app/src/pages.json", encoding="utf-8"))["pages"]
+    found = set()
+    for e in pages:
+        path = e.get("path", "")
+        if not path.startswith("pages/"):
+            continue
+        name = path[len("pages/"):].rsplit("/", 1)[0]
+        if name.startswith(INV_PREFIXES):
+            found.add(name)
+    missing = sorted(found - set(PAGES))
+    stale = sorted(set(PAGES) - found)
+    return missing, stale
 
 
 def section(p):
@@ -152,6 +179,16 @@ def check():
         doc = open(DOC, encoding="utf-8").read()
     except FileNotFoundError:
         print(f"✗ 找不到 {DOC} —— 清单被移动或改名了？闸门不能因此放行")
+        return 1
+
+    # **先查扫描面**：PAGES 漏了一页时，下面逐屏比的结果照样是「全对」
+    missing, gone = check_scope()
+    if missing:
+        print(f"✗ 这些进销存页面不在 PAGES 里，清单根本没扫到它们：{'、'.join(missing)}")
+        print("  加进 scripts/gen-inv-ui-inventory.py 的 PAGES 与 TITLES，再重新生成")
+        return 1
+    if gone:
+        print(f"✗ PAGES 里这些页面已经不存在了：{'、'.join(gone)}")
         return 1
 
     stale = [p for p in PAGES if section(p) not in doc]

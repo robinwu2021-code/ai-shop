@@ -4696,6 +4696,37 @@ export const mockApi: MerchantApi = {
    *
    * 约定：`skuNo` 以 `NOINV` 开头的当作还没投影过来。
    */
+  /**
+   * 跨店总览。**替身要造出「同一件货在几家店冷热不均」的样子** ——
+   * 各店都一样多的话，这一屏存在的理由（哪家店断了）在开发期就看不出来。
+   *
+   * 与后端同一套语义：**每一行都列出全部门店**，包括那家从来没进过这件货的
+   *（后端那边余额行是按需建的，没有行的库位按 0 补齐并算作缺货）。
+   * 只列「有余额的店」的话，「二号店一件都没有」这件事在界面上永远不出现，
+   * 而那正是商家最想知道的。
+   */
+  async mStockCrossStore(q) {
+    const rows = invBalances().slice(0, 8).map((b, i) => {
+      // 三家店，按序号错开：让第 0 件在两家店断、第 1 件断一家、其余不断
+      const per = [
+        { locationId: "L1", locationName: "文三路店", onHand: i === 0 ? 0 : b.onHand },
+        { locationId: "L2", locationName: "古墩路店", onHand: i <= 1 ? 0 : Math.ceil(b.onHand / 2) },
+        { locationId: "L3", locationName: "城西仓", onHand: b.onHand },
+      ];
+      const onHand = per.reduce((n, l) => n + l.onHand, 0);
+      return {
+        itemId: b.itemId, name: b.name, specText: b.specText, baseUom: b.baseUom,
+        onHand, reserved: b.reserved, available: onHand - b.reserved,
+        shortageLocations: per.filter((l) => l.onHand <= 0).length,
+        byLocation: per,
+      };
+    });
+    const picked = q?.filter === "all" ? rows : rows.filter((r) => r.shortageLocations > 0);
+    return delay([...picked]
+      .sort((a, b) => b.shortageLocations - a.shortageLocations || a.available - b.available)
+      .slice(0, q?.size ?? 50));
+  },
+
   async mItemBySku(skuNo) {
     if (!skuNo || skuNo.startsWith("NOINV")) return delay(null);
     const b = invBalances()[0]!;

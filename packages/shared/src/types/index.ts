@@ -4872,6 +4872,35 @@ export interface StockItemDetail {
   }[];
 }
 
+/**
+ * 跨店总览的一行（`CrossStoreVO`）：**一件货 × 全部库位**。
+ *
+ * 与 `StockBalance` 的区别是维度 —— 那一条是「一件货在一个库位」，
+ * 多门店商家看到的是同一件货重复 N 行；这一条把 N 行收成一行。
+ */
+export interface StockCrossStoreRow {
+  itemId: string;
+  name: string;
+  specText?: string;
+  baseUom?: string;
+  /** 全部库位合计 */
+  onHand: number;
+  reserved: number;
+  available: number;
+  /**
+   * **缺货的库位数**，不是缺货的件数。列表按它降序 ——
+   * 五家店断了三家的那件货，比某一家店少两袋更值得先看见。
+   */
+  shortageLocations: number;
+  /** 各库位分布，**随列表一起下发**：点开一行不再发第二次请求 */
+  byLocation: {
+    locationId: string;
+    locationName: string;
+    onHand: number;
+    safetyStock?: number;
+  }[];
+}
+
 /** 台账一行（`LedgerVO`）。**不可变** —— 只有查看，没有编辑 */
 export interface StockLedgerRow {
   /** 行号。台账不可变，它只用来分页定位 */

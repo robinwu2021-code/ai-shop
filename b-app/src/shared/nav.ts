@@ -57,6 +57,7 @@ export const ROUTES = {
   // 每屏各在工作台/我的上摆一个入口的话，就回到「同一件事三个门，人记不住走哪个」
   stock: "/pages/stock/index",
   stockDetail: "/pages/stock-detail/index",
+  stockCross: "/pages/stock-cross/index",
   stockCheck: "/pages/stock-check/index",
   purchaseEdit: "/pages/purchase-edit/index",
   stockDocs: "/pages/stock-docs/index",

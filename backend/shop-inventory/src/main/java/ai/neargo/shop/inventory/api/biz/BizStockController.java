@@ -7,6 +7,7 @@ import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.inventory.dto.InventoryVOs.BalanceVO;
+import ai.neargo.shop.inventory.dto.InventoryVOs.CrossStoreVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.ItemDetailVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.LedgerPageVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.SummaryVO;
@@ -80,6 +81,23 @@ public class BizStockController {
                                     @RequestParam(required = false) String locationId,
                                     @RequestParam(defaultValue = "50") int size) {
         return query.balances(owner(), locationOr(locationId), filter, Math.min(size, PAGE_MAX));
+    }
+
+    /**
+     * 跨店总览 —— 一件货一行，把它在**全部库位**的分布收在一起。
+     *
+     * <p><b>不带 locationId</b>：这一条问的就是「全部库位」，而 {@link #balances}
+     * 问的是「某一个库位」。多门店商家在那一条里看到的是同一件货重复 N 行，
+     * 「哪家店断了」得自己在脑子里合并。
+     *
+     * <p>默认只给<b>至少一个库位缺货的</b>：这一屏的用途是补货，
+     * 全给的话 209 件里有 200 件是「都还有」，那 9 件反而看不见了。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
+    @GetMapping("/biz/inventory/cross-store")
+    public List<CrossStoreVO> crossStore(@RequestParam(required = false) String filter,
+                                         @RequestParam(defaultValue = "50") int size) {
+        return query.crossStore(owner(), filter, Math.min(size, PAGE_MAX));
     }
 
     /**

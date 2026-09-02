@@ -682,6 +682,18 @@
       }
     },
     {
+      "path": "pages/stock-cross/index",
+      "style": {
+        "navigationBarTitleText": "跨店库存",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/stock-detail/index",
       "style": {
         "navigationBarTitleText": "库存明细",

@@ -4,6 +4,7 @@ import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.dto.InventoryVOs.BalanceVO;
+import ai.neargo.shop.inventory.dto.InventoryVOs.CrossStoreVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.DocumentVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.ItemDetailVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.LedgerPageVO;
@@ -35,6 +36,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -135,6 +137,92 @@ public class StockQueryServiceImpl implements StockQueryService {
         return picked.stream()
                 .sorted(Comparator.comparingInt((BalanceVO b) ->
                         b.flags().contains(FLAG_SHORTAGE) ? 0 : b.flags().contains(FLAG_STALE) ? 1 : 2))
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
+    public List<CrossStoreVO> crossStore(String ownerId, String filter, int limit) {
+        List<InvStockBalance> all = rows(ownerId, null);
+        if (all.isEmpty()) {
+            return List.of();
+        }
+        Map<String, InvItem> items = itemMapper.selectList(Wrappers.<InvItem>lambdaQuery()
+                        .eq(InvItem::getOwnerId, ownerId)).stream()
+                .collect(Collectors.toMap(InvItem::getItemId, Function.identity(), (a, b) -> a));
+        /*
+         * **要全部库位，不只是有余额行的那些。**
+         *
+         * 余额挂在（物料 × 库位）上且**按需建** —— 一家店从来没进过这件货，
+         * 那一行根本不存在。只按余额行组装的话，那家店在这一屏上不出现，
+         * 而商家最想知道的恰恰是它：「这件货二号店一件都没有」与
+         * 「二号店有 0 件」对补货是同一件事。
+         *
+         * **排除 TRANSIT**：在途不是一家店，货停在那儿是过程不是目的地；
+         * 把它算成「缺货的店」会让每件在途的货都凭空多断一家。
+         */
+        List<InvLocation> locations = locationMapper.selectList(Wrappers.<InvLocation>lambdaQuery()
+                        .eq(InvLocation::getOwnerId, ownerId)).stream()
+                .filter(l -> !InvEnums.LocationKind.TRANSIT.equals(l.getKind()))
+                .toList();
+
+        // (itemId, locationId) → 余额行；没有的那一格按 0 算
+        Map<String, Map<String, InvStockBalance>> byItem = new LinkedHashMap<>();
+        for (InvStockBalance b : all) {
+            byItem.computeIfAbsent(b.getItemId(), k -> new LinkedHashMap<>())
+                    .put(b.getLocationId(), b);
+        }
+
+        List<CrossStoreVO> out = new ArrayList<>();
+        for (Map.Entry<String, Map<String, InvStockBalance>> e : byItem.entrySet()) {
+            InvItem item = items.get(e.getKey());
+            if (item == null) {
+                continue;   // 物料被归档而余额行还在：不显示，但也不报错
+            }
+            int onHand = 0;
+            int reserved = 0;
+            int shortage = 0;
+            List<LocationQty> byLocation = new ArrayList<>();
+            for (InvLocation loc : locations) {
+                InvStockBalance b = e.getValue().get(loc.getLocationId());
+                if (b == null) {
+                    // 这家店从来没进过这件货 —— 按 0 算，并且**算作缺货**
+                    Integer safety = item.getSafetyStock() == null ? 0 : item.getSafetyStock();
+                    if (shortage(0, safety)) {
+                        shortage++;
+                    }
+                    byLocation.add(new LocationQty(loc.getLocationId(), loc.getName(), 0, null));
+                    continue;
+                }
+                onHand += b.getOnHand();
+                reserved += b.getReserved();
+                /*
+                 * **逐库位判缺货，判据与单店那一屏同一套**（`shortage(available, safety)`）：
+                 * 阈值优先，没设阈值就看可用是否见底。合计之后再判是不合适的 ——
+                 * 五家店合计还有 40 件，而其中一家已经是 0，那一家今天就卖不了货。
+                 */
+                int avail = b.getOnHand() - b.getReserved();
+                Integer safety = b.getSafetyStock() != null ? b.getSafetyStock()
+                        : (item.getSafetyStock() == null ? 0 : item.getSafetyStock());
+                if (shortage(avail, safety)) {
+                    shortage++;
+                }
+                byLocation.add(new LocationQty(loc.getLocationId(), loc.getName(),
+                        b.getOnHand(), b.getSafetyStock()));
+            }
+            out.add(new CrossStoreVO(e.getKey(), item.getName(), item.getSpecText(),
+                    item.getBaseUom(), onHand, reserved, onHand - reserved, shortage, byLocation));
+        }
+
+        List<CrossStoreVO> picked = "all".equals(filter)
+                ? out : out.stream().filter(r -> r.shortageLocations() > 0).toList();
+        /*
+         * 断的店多的排前面；同样多时按可用量升序 —— 两件货都断了两家店，
+         * 手上只剩 3 件的那件比剩 30 件的更急。
+         */
+        return picked.stream()
+                .sorted(Comparator.comparingInt(CrossStoreVO::shortageLocations).reversed()
+                        .thenComparingInt(CrossStoreVO::available))
                 .limit(limit)
                 .toList();
     }
@@ -375,6 +463,17 @@ public class StockQueryServiceImpl implements StockQueryService {
         return sb.toString();
     }
 
+    /**
+     * 缺货判据：<b>阈值优先，没设阈值就看可用是否见底</b>。
+     *
+     * <p>抽出来是因为跨店总览要逐库位判一遍同样的事。两处各写一遍的话，
+     * 「单店那一屏说缺货、跨店那一屏说不缺」迟早会发生，而两个数都对不上账
+     * 时没人知道该信哪个。端上的替身也照抄这一套（见 mock 的 `shortage`）。
+     */
+    private static boolean shortage(int available, Integer safety) {
+        return safety != null && safety > 0 ? available < safety : available <= 0;
+    }
+
     private List<InvStockBalance> rows(String ownerId, String locationId) {
         return balanceMapper.selectList(Wrappers.<InvStockBalance>lambdaQuery()
                 .eq(InvStockBalance::getOwnerId, ownerId)
@@ -398,9 +497,7 @@ public class StockQueryServiceImpl implements StockQueryService {
             Integer safety = b.getSafetyStock() != null ? b.getSafetyStock()
                     : item != null ? item.getSafetyStock() : 0;
             List<String> flags = new ArrayList<>();
-            if (safety != null && safety > 0 && available < safety) {
-                flags.add(FLAG_SHORTAGE);
-            } else if (available <= 0) {
+            if (shortage(available, safety)) {
                 flags.add(FLAG_SHORTAGE);
             }
             // 滞销要「还有货」才算 —— 零库存零动销是已经清完了，不是压着
