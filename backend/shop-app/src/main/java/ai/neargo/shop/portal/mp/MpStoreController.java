@@ -35,16 +35,19 @@ public class MpStoreController {
     private final StoreFavoriteService favoriteService;
     private final StoreCodeService storeCodeService;
     private final AttributionService attributionService;
+    private final ai.neargo.shop.marketing.visit.StoreVisitService storeVisitService;
     private final ai.neargo.shop.merchant.service.AppointmentSlotService appointmentSlotService;
 
     public MpStoreController(StoreService storeService, StoreFavoriteService favoriteService,
                              StoreCodeService storeCodeService,
                              AttributionService attributionService,
+                             ai.neargo.shop.marketing.visit.StoreVisitService storeVisitService,
                              ai.neargo.shop.merchant.service.AppointmentSlotService appointmentSlotService) {
         this.storeService = storeService;
         this.favoriteService = favoriteService;
         this.storeCodeService = storeCodeService;
         this.attributionService = attributionService;
+        this.storeVisitService = storeVisitService;
         this.appointmentSlotService = appointmentSlotService;
     }
 
@@ -53,11 +56,50 @@ public class MpStoreController {
         return favoriteService.myStores();
     }
 
+    /**
+     * 扫码落地。<b>游客可访问</b>，并且**在这里记获客漏斗的第一层**。
+     *
+     * <p>为什么埋点挂在这条而不是 {@code /enter}：{@code enter} 要求登录，
+     * 而扫码的人多数还没登录 —— 挂在那儿的话「扫了码但还没注册的人」恒为 0，
+     * 也就是漏斗最宽的那一层永远是空的，而这正是「这批贴纸有没有用」的答案。
+     *
+     * <p>埋点<b>不影响本接口的成败</b>：{@code record} 内部吞掉一切异常。
+     * 商家印出去的贴纸不能因为一次埋点写失败就扫不进来。
+     */
     @GetMapping("/mp/store/by-code")
-    public StoreHomeVO byCode(@RequestParam String storeCode) {
+    public StoreHomeVO byCode(@RequestParam String storeCode,
+                              @RequestParam(required = false) String deviceId,
+                              jakarta.servlet.http.HttpServletRequest request) {
         String merchantNo = storeCodeService.resolve(storeCode);
+        storeVisitService.record(new ai.neargo.shop.marketing.visit.StoreVisitService.Visit(
+                merchantNo, storeCode, null,
+                // 为空就是匿名访客 —— 那是要测的一层，不是缺失
+                SecurityUtils.currentUserNoOrNull(), deviceId,
+                clientIp(request), uaHash(request)));
         return storeService.home(merchantNo, SecurityUtils.currentUserNoOrNull(),
                 favoriteService.isFavorited(merchantNo));
+    }
+
+    /** 取值是 web 层的事（领域服务不碰 web 运行时，ArchitectureTest 拦这条）。 */
+    private static String clientIp(jakarta.servlet.http.HttpServletRequest request) {
+        if (request == null) {
+            return null;
+        }
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            int comma = xff.indexOf(',');
+            return (comma > 0 ? xff.substring(0, comma) : xff).trim();
+        }
+        return request.getRemoteAddr();
+    }
+
+    /** 只留摘要：UA 原文可用于指纹，属个人信息，没有留存的理由。 */
+    private static String uaHash(jakarta.servlet.http.HttpServletRequest request) {
+        String ua = request == null ? null : request.getHeader("User-Agent");
+        if (ua == null || ua.isBlank()) {
+            return null;
+        }
+        return Integer.toHexString(ua.hashCode());
     }
 
     @GetMapping("/mp/store/{merchantNo}")

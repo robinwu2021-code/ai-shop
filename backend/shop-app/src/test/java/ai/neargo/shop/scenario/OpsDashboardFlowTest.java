@@ -91,9 +91,19 @@ class OpsDashboardFlowTest {
         }
     }
 
+    /**
+     * 漏斗四环齐全。
+     *
+     * <p><b>这条断言在 V290 之后改了方向</b>：此前是「只给后两环，没埋点的不编一个 0」——
+     * 那时前两环确实没有数据源，编一个 0 会被读成「一个人都没扫码」。
+     * {@code mkt_store_visit} 落地后前两环成了真数，所以现在该断的是**四环都在**。
+     *
+     * <p>留着旧断言的话，它会替「漏斗缺两环」这个已经修好的缺陷背书 ——
+     * 该变红的是过时的断言，不是新补的能力。
+     */
     @Test
-    @DisplayName("★★ 漏斗只给有数据源的环节 —— 没埋点的不编一个 0")
-    void funnelOmitsStepsWithoutData() throws Exception {
+    @DisplayName("★★ 漏斗四环齐全 —— 扫码/进店有埋点之后不该再缺两环")
+    void funnelCoversAllFourSteps() throws Exception {
         String body = mvc().perform(get("/ops/dashboard/funnel")
                         .header("Authorization", "Bearer " + opsLogin()))
                 .andExpect(status().isOk())
@@ -104,11 +114,8 @@ class OpsDashboardFlowTest {
         for (var r : rows) {
             steps.add(r.get("step").asString());
         }
-        assertThat(steps).containsExactly("REGISTER", "FIRST_ORDER");
-        assertThat(steps)
-                .as("扫码与进店没有事件表，给 0 会被读成「一个人都没扫码」——"
-                        + " 而运营会照着它判断投放效果")
-                .doesNotContain("SCAN", "ENTER_STORE");
+        // 顺序就是漏斗的顺序：前端按数组顺序画，乱序画出来的是另一件事
+        assertThat(steps).containsExactly("SCAN", "ENTER", "REGISTER", "FIRST_ORDER");
     }
 
     @Test

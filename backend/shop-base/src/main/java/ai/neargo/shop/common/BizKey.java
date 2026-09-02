@@ -152,6 +152,8 @@ public final class BizKey {
     public static final String ATTRIBUTION_TRACE = "AT";
     /** 裂变活动（P-9.2.1） */
     public static final String FISSION = "FS";
+    /** 门店访问埋点。扫码落地即记，**匿名也记** —— 获客漏斗的第一层靠它 */
+    public static final String STORE_VISIT = "VS";
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final AtomicInteger SEQ = new AtomicInteger(0);

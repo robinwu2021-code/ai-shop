@@ -3951,6 +3951,24 @@ CREATE TABLE IF NOT EXISTS stl_channel_message
     CONSTRAINT uk_channel_message_no UNIQUE (message_no)
 );
 
+CREATE TABLE IF NOT EXISTS mkt_store_visit
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    visit_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_code VARCHAR(64) DEFAULT NULL,
+    store_no VARCHAR(64) DEFAULT NULL,
+    user_no VARCHAR(64) DEFAULT NULL,
+    device_id VARCHAR(64) DEFAULT NULL,
+    ip VARCHAR(64) DEFAULT NULL,
+    ua_hash VARCHAR(64) DEFAULT NULL,
+    at BIGINT(20) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_store_visit_no UNIQUE (visit_no)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
@@ -8339,3 +8357,12 @@ VALUES
      '["TEST_PAY"]', NULL, 'CNY', 'T1', 20,
      0, 3000, 'MAIN',
      '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0);
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MERCHANT__TAB_ONBOARDING', 'OPS_MERCHANT', '进件看板', '入驻与资质', '/merchants?tab=onboarding', 'merchant:admission:read', 'merchant:admission:read', 'IMPLEMENTED', 1, 'P-11.1', 'MENU', 41, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MERCHANT__TAB_ONBOARDING');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MERCHANT__TAB_ONBOARDING', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MERCHANT__TAB_ONBOARDING');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'FINANCE', 'OPS_MERCHANT__TAB_ONBOARDING', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='FINANCE' AND x.point_code='OPS_MERCHANT__TAB_ONBOARDING');

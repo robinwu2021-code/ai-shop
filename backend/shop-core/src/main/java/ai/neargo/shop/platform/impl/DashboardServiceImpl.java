@@ -29,16 +29,23 @@ import java.util.Map;
 @Service
 public class DashboardServiceImpl implements DashboardService {
 
+    /** 漏斗前两环的统计窗口：与获客看板的缺省窗口一致（30 天） */
+    private static final long FUNNEL_WINDOW_MS = 30L * 24 * 3600 * 1000;
+
     private final TradeStatsPort tradeStats;
     private final MerchantApplyMapper applyMapper;
     /** 排行要显示商家名 —— platform 与 merchant 是兄弟模块，只能走 Port */
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
+    /** 漏斗前两环。**读它不自己算** —— 两处各算一份就会有两个「扫码数」 */
+    private final ai.neargo.shop.marketing.visit.StoreVisitService storeVisitService;
 
     public DashboardServiceImpl(TradeStatsPort tradeStats, MerchantApplyMapper applyMapper,
-                                ai.neargo.shop.spi.user.MerchantQueryPort merchantPort) {
+                                ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
+                                ai.neargo.shop.marketing.visit.StoreVisitService storeVisitService) {
         this.tradeStats = tradeStats;
         this.applyMapper = applyMapper;
         this.merchantPort = merchantPort;
+        this.storeVisitService = storeVisitService;
     }
 
     @Override
@@ -89,14 +96,24 @@ public class DashboardServiceImpl implements DashboardService {
     @Override
     public List<FunnelRowVO> funnel() {
         /*
-         * 设计上是「扫码 → 进店 → 注册 → 首单」四环，这里**只给后两环**。
+         * 「扫码 → 进店 → 注册 → 首单」四环。
          *
-         * 前两环需要埋点，而平台没有任何扫码/进店的事件表（mkt_attribution_log 记的是
-         * 归因决策，不是曝光事件）。返回 0 会被读成「一个人都没扫码」——
-         * 那是假的，而运营会照着它去判断投放效果。少两行至少是真的。
+         * 前两环此前给不出来：平台没有任何扫码/进店的事件表（mkt_attribution_log 记的是
+         * 归因决策，不是曝光事件），当时的取舍是**宁可少两行也不返回 0** ——
+         * 0 会被读成「一个人都没扫码」，而运营会照着它去判断投放效果。
+         *
+         * V290 的 mkt_store_visit 补上了埋点，所以这两环现在是真的了。
+         *
+         * ★ **必须与获客看板同一个口径**：两处各写一份 group by 的话，
+         * 首页漏斗和门店获客看板会给出两个不一样的「扫码数」，而两个都看起来是对的。
+         * 所以这里读 StoreVisitService，不自己算（TDD-门店获客埋点与看板 §3.3）。
          */
+        long to = System.currentTimeMillis();
+        var f = storeVisitService.platformFunnel(to - FUNNEL_WINDOW_MS, to);
         TradeStatsPort.Reach reach = tradeStats.reach();
-        return List.of(new FunnelRowVO("REGISTER", reach.ordered()),
+        return List.of(new FunnelRowVO("SCAN", f.scanUv()),
+                new FunnelRowVO("ENTER", f.enter()),
+                new FunnelRowVO("REGISTER", reach.ordered()),
                 new FunnelRowVO("FIRST_ORDER", reach.paid()));
     }
 
