@@ -122,7 +122,14 @@ ok "已上传（备份 $(basename "$DEST.bak-$TS")）"
 #
 # nginx 那几条 location 都带 `try_files ... /index.html` —— VERSION 不存在时
 # 会回落到首页并返回 **200**。只看状态码是假绿，必须把 sha 读出来对。
-LIVE="$(ssh "$HOST" "curl -s -H 'Host: localhost' 'http://127.0.0.1${URL_PATH}VERSION'" || true)"
+#
+# ⚠️ **要带真实 Host 且跟随跳转**（-L）。
+# 用 `Host: localhost` 请求时 nginx 认不出这个站，回 **301** 跳到正式域名，
+# 而 curl 不跟随的话读到的是那段 301 的 HTML ——
+# 于是<b>部署明明成功，校验却报「读出来的不是这一版」</b>。
+# 2026-09-02 撞过一次：文件已经上去了、内容也对，只有校验在报错。
+# 这类「校验本身错了」的失败最费时间：它把人引去查部署，而部署是好的。
+LIVE="$(ssh "$HOST" "curl -sL -H 'Host: www.hxmall.top' 'http://127.0.0.1${URL_PATH}VERSION'" || true)"
 LIVE_SHA="$(printf '%s' "$LIVE" | sed -n 's/^sha=//p')"
 if [ "$LIVE_SHA" = "$HEAD_SHA" ]; then
     ok "线上 ${URL_PATH}VERSION 读出 sha=$LIVE_SHA"
