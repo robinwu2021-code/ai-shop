@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, Field } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
+import { Input } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
 import { Pagination } from "@/components/ui/misc";
 import { Progress } from "@/components/ui/progress";
@@ -80,12 +81,12 @@ function StoresInner() {
     queryFn: () => api.listStoreAudits(auditQ),
     enabled: tab === "audit",
   });
-  const qrcodeQ = { keyword, page, size };
-  const qrcodes = useQuery({
-    queryKey: ["store-qrcodes", qrcodeQ],
-    queryFn: () => api.listStoreQrcodes(qrcodeQ),
-    enabled: tab === "qrcode",
-  });
+  // 印刷量登记：哪一行正在登记（null = 对话框关着）
+  const [printFor, setPrintFor] = useState<StoreQrcode | null>(null);
+  const [printQty, setPrintQty] = useState("");
+  const [printSize, setPrintSize] = useState("");
+  const [printRemark, setPrintRemark] = useState("");
+
   /*
    * 获客看板带时间区间。**不给区间不等于「有史以来」** ——
    * 累计值只会越来越大，判断不了这一轮投放有没有效果。
@@ -101,6 +102,15 @@ function StoresInner() {
     enabled: tab === "effect",
   });
 
+  // 店铺码页的扫码数与获客看板同一个区间口径 —— 两页给出不同的「扫码数」会当场引出
+  // 「到底哪个对」，而两个都对，只是窗口不同
+  const qrcodeQ = { keyword, page, size, from: acqTo - acqDays * 86_400_000, to: acqTo };
+  const qrcodes = useQuery({
+    queryKey: ["store-qrcodes", qrcodeQ],
+    queryFn: () => api.listStoreQrcodes(qrcodeQ),
+    enabled: tab === "qrcode",
+  });
+
   const decide = useMutation({
     mutationFn: (v: { auditNo: string; pass: boolean; reason?: string }) =>
       api.decideStoreAudit(v.auditNo, v.pass, v.reason),
@@ -109,6 +119,21 @@ function StoresInner() {
       setCurrent(null);
       setReason("");
       notify.success(a.status === "PASSED" ? c.toastPassed : c.toastRejected);
+    },
+  });
+
+  const recordPrint = useMutation({
+    mutationFn: () =>
+      api.recordQrcodePrint({
+        merchantNo: printFor!.merchantNo,
+        qty: Number(printQty),
+        size: printSize.trim() || undefined,
+        remark: printRemark.trim() || undefined,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["store-qrcodes"] });
+      setPrintFor(null);
+      notify.success(c.printDone);
     },
   });
 
@@ -161,8 +186,26 @@ function StoresInner() {
     { header: c.colCommunity, cell: (r) => r.communityName },
     { header: c.colCode, cell: (r) => <code className="txt-caption">{r.code}</code> },
     { header: c.colSize, cell: (r) => r.size },
-    { header: c.colPrinted, cell: (r) => r.printed, numeric: true },
+    {
+      header: c.colPrinted,
+      numeric: true,
+      // ★ null 是「还没人登记」，与「印了 0 张」必须分开显示 ——
+      //   混成一个 0，运营就不知道该去催谁登记
+      cell: (r) =>
+        r.printed == null
+          ? <span className="text-muted-foreground">{c.printedUnset}</span>
+          : r.printed,
+    },
     { header: c.colScanCount, cell: (r) => r.scanCount, numeric: true },
+    {
+      header: c.colActions,
+      cell: (r) =>
+        canExport ? (
+          <Button size="sm" variant="outline" onClick={() => { setPrintFor(r); setPrintQty(""); setPrintSize(r.size ?? ""); setPrintRemark(""); }}>
+            {c.printAction}
+          </Button>
+        ) : null,
+    },
   ];
 
   const acqColumns: Column<StoreAcquisition>[] = [
@@ -347,6 +390,38 @@ function StoresInner() {
               ) : (
                 current.reason || "-"
               )}
+            </Field>
+          </div>
+        )}
+      </Drawer>
+
+      {/* 印刷量登记：线下事实，系统无从自动知道，只能人录 */}
+      <Drawer
+        open={!!printFor}
+        onOpenChange={(o) => !o && setPrintFor(null)}
+        title={printFor ? `${printFor.merchantName} · ${c.printTitle}` : ""}
+        desc={printFor?.code}
+        footer={
+          <Button
+            // 空与 0 都不提交：0 既不是印了也不是冲减，后端也会拒
+            disabled={!printQty.trim() || Number(printQty) === 0 || Number.isNaN(Number(printQty)) || recordPrint.isPending}
+            onClick={() => recordPrint.mutate()}
+          >
+            {c.printSubmit}
+          </Button>
+        }
+      >
+        {printFor && (
+          <div className="space-y-3">
+            <Field label={c.printQty}>
+              <Input value={printQty} onChange={(e) => setPrintQty(e.target.value)} placeholder="200" />
+              <p className="mt-1 txt-caption text-muted-foreground">{c.printQtyHint}</p>
+            </Field>
+            <Field label={c.printSize}>
+              <Input value={printSize} onChange={(e) => setPrintSize(e.target.value)} placeholder="10x10cm" />
+            </Field>
+            <Field label={c.printRemark}>
+              <Textarea value={printRemark} onChange={setPrintRemark} />
             </Field>
           </div>
         )}

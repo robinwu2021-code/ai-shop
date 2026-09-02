@@ -71,6 +71,16 @@ const zh = {
   colPrinted: "已印",
   colScanCount: "累计扫码",
 
+  printedUnset: "未登记",
+  printAction: "登记印量",
+  printTitle: "登记印刷量",
+  printQty: "本次印量",
+  printQtyHint: "有符号：印多了要冲减就填负数，补一行而不是改历史行。0 不接受。",
+  printSize: "贴纸尺寸",
+  printRemark: "备注",
+  printSubmit: "登记",
+  printDone: "已登记",
+
   colScan: "扫码次数",
   colScanUv: "扫码人数",
   colEnter: "进店",
@@ -178,6 +188,17 @@ const en: typeof zh = {
   colSize: "Sticker size",
   colPrinted: "Printed",
   colScanCount: "Total scans",
+
+  printedUnset: "Not recorded",
+  printAction: "Record print run",
+  printTitle: "Record a print run",
+  printQty: "Quantity",
+  printQtyHint:
+    "Signed: to correct an over-print, enter a negative number — a new row, never an edit to history. Zero is rejected.",
+  printSize: "Sticker size",
+  printRemark: "Note",
+  printSubmit: "Record",
+  printDone: "Recorded",
 
   colScan: "Scans",
   colScanUv: "Unique scanners",

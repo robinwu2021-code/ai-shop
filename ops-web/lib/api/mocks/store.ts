@@ -80,6 +80,17 @@ export const storeMock: StoreApi = {
   listStoreQrcodes: (q = {}) =>
     wait(db.paginate(db.storeQrcodes, q.page, q.size, (r) => db.kwHit(q.keyword, r.merchantNo, r.merchantName, r.code))),
 
+  // 登记后重取列表即可看到累计变化；mock 直接改内存里的那一行
+  recordQrcodePrint: async ({ merchantNo, qty, size }) => {
+    if (qty === 0) fail("印量不能为 0", "Quantity cannot be zero");
+    const row = db.storeQrcodes.find((r) => r.merchantNo === merchantNo);
+    if (!row) notFound("店铺码", "Store QR code", merchantNo);
+    // null 表示还没登记过 —— 第一次登记要从 0 起累加，而不是把 null 当 0 用
+    row.printed = (row.printed ?? 0) + qty;
+    if (size) row.size = size;
+    await wait(undefined);
+  },
+
   listStoreAcquisition: (q = {}) =>
     wait(db.paginate(db.storeAcquisition, q.page, q.size, (r) => db.kwHit(q.keyword, r.merchantNo, r.merchantName))),
 

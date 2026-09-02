@@ -2345,14 +2345,18 @@ components:
           type: "string"
           description: "码值（C 端扫码进店的深链参数），导出时给 BD 去印刷"
         size: 
-          type: "string"
-          description: "贴纸尺寸规格，如 \"10x10cm\""
+          type: 
+            - "string"
+            - "null"
+          description: "最近一次印刷的尺寸规格，如 \"10x10cm\"；**从没印过是 null**（尺寸属于那一次印刷，不是门店属性）"
         printed: 
-          type: "number"
-          description: "已印数量，用于对账印刷成本"
+          type: 
+            - "number"
+            - "null"
+          description: "累计已印数量，用于对账印刷成本。\n\n⚠️ **null = 还没人登记，不是「印了 0 张」**。两者在界面上必须分开显示 —— 混成一个数之后，运营没法知道该去催谁登记。"
         scanCount: 
           type: "number"
-          description: "累计扫码次数"
+          description: "区间内扫码次数。**这个 0 是真的 0**（埋点一直在记），与 printed 的 null 不同"
       required: 
         - "merchantNo"
         - "merchantName"
@@ -19554,6 +19558,45 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/stores/{merchantNo}/qrcode/print": 
+    post: 
+      operationId: "recordQrcodePrint"
+      summary: "登记一次店铺码印刷量（线下事实，系统无从自动知道）"
+      tags: 
+        - "store"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "merchantNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/stores/acquisition": 
     get: 
       operationId: "listStoreAcquisition"

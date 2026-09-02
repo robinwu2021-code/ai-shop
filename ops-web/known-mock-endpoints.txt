@@ -24,11 +24,10 @@ POST /ops/marketing/member-cards/*/archive
 POST /ops/marketing/member-cards/*/status
 POST /ops/marketing/member-cards/*/unarchive
 #
-# ── 门店码 / 建店模板：还没有后端（store.ts）
-#    获客看板（/ops/stores/acquisition）已于 V290 落地：埋点 mkt_store_visit + 归因留痕聚合。
-#    剩下这两块卡的**不是接口而是指标源**：店铺码要 printed（线下印刷量，系统不可能自动知道，
-#    得运营录入）、建店模板依赖 C 端门店主页定稿。补接口之前先补口径，否则只会得到一个恒为 0 的看板。
-GET /ops/stores/qrcodes
+# ── 建店模板：还没有后端（store.ts）
+#    获客看板（V290：埋点 mkt_store_visit + 归因留痕聚合）与店铺码（V292：扫码数走埋点、
+#    印刷量由运营录入台账）都已落地 —— 它们卡的本来就不是接口而是指标源，口径补上接口才有意义。
+#    模板这块同理：依赖 C 端门店主页定稿，先做模板等于两头返工。
 GET /ops/stores/templates
 POST /ops/stores/templates
 POST /ops/stores/templates/*/enabled

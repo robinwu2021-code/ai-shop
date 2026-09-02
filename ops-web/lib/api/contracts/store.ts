@@ -1,7 +1,7 @@
 // 覆盖范围：门店主页治理（P-10.1）—— 一期主获客路径的平台侧；
 // 以及门店档案与经营状况（P-11.2.1）—— 平台看一家店的全貌。
 import type { Page, StoreAcquisition, StoreGovern, StorePageAudit, StoreQrcode, StoreStats, StoreTemplate } from "@/lib/types";
-import type { AcquisitionQ, PageQ, StoreAuditQ, StoreQ } from "../query";
+import type { AcquisitionQ, StoreAuditQ, StoreQ } from "../query";
 
 export interface StoreApi {
   // ── 门店档案（P-11.2.1）——**已接真后端** `/ops/stores`
@@ -26,8 +26,21 @@ export interface StoreApi {
   listStoreAudits(q?: StoreAuditQ): Promise<Page<StorePageAudit>>;
   /** 审核裁决（P-10.1.2）。**驳回必须带原因**：原因原样进商家 B 端。 */
   decideStoreAudit(auditNo: string, pass: boolean, reason?: string): Promise<StorePageAudit>;
-  /** 店铺码（P-10.1.3），供 BD 批量导出去印刷。 */
-  listStoreQrcodes(q?: PageQ): Promise<Page<StoreQrcode>>;
+  /**
+   * 店铺码（P-10.1.3），供 BD 批量导出去印刷。
+   *
+   * `scanCount` 取 `from`/`to` 区间内的扫码次数（不传取最近 30 天）；
+   * `printed` 是**累计**印量，与区间无关 —— 它回答的是「一共印过多少」。
+   */
+  listStoreQrcodes(q?: AcquisitionQ): Promise<Page<StoreQrcode>>;
+
+  /**
+   * 登记一次店铺码印刷量（线下事实，系统无从自动知道）。
+   *
+   * @param qty **有符号**：印多了冲减传负数 —— 补一行而不是改历史行，
+   *   否则「当初到底印了多少」被抹掉，而那正是成本对账要问的。传 0 会被后端拒
+   */
+  recordQrcodePrint(v: { merchantNo: string; qty: number; size?: string; remark?: string }): Promise<void>;
   /** 门店获客效果（P-10.1.4）。 */
   /**
    * 获客漏斗「扫码 → 进店 → 首次归因 → 首单」，按**主体**聚合（P-10.1.4）。

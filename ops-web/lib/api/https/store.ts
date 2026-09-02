@@ -14,6 +14,8 @@ export const storeHttp: StoreApi = {
   listStoreAudits: (q) => client.get("/ops/stores/audits", q),
   decideStoreAudit: (auditNo, pass, reason) => client.post(`/ops/stores/audits/${auditNo}/decide`, { pass, reason }),
   listStoreQrcodes: (q) => client.get("/ops/stores/qrcodes", q),
+  recordQrcodePrint: ({ merchantNo, ...body }) =>
+    client.post(`/ops/stores/${merchantNo}/qrcode/print`, body),
   listStoreAcquisition: (q) => client.get("/ops/stores/acquisition", q),
   listStoreTemplates: () => client.get("/ops/stores/templates"),
   saveStoreTemplate: (v) => client.post("/ops/stores/templates", v),

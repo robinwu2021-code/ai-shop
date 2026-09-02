@@ -17,6 +17,9 @@ export const storeQrcodes: StoreQrcode[] = [
   { merchantNo: "M902", merchantName: "老张水果店", communityName: "锦绣花园", code: "shop_M902_c1", size: "10x10cm", printed: 150, scanCount: 1130 },
   { merchantNo: "M901", merchantName: "阿姨家的菜摊", communityName: "锦绣花园", code: "shop_M901_c1", size: "6x6cm", printed: 80, scanCount: 402 },
   { merchantNo: "M905", merchantName: "快修家电服务", communityName: "梧桐苑", code: "shop_M905_c3", size: "10x10cm", printed: 120, scanCount: 836 },
+  // ★ 还没人登记印刷量的那一行：printed 是 null 不是 0 ——
+  //   「没登记」与「印了 0 张」在界面上必须分得开，否则运营不知道该催谁
+  { merchantNo: "M904", merchantName: "社区鲜奶站", communityName: "梧桐苑", code: "shop_M904_c3", size: null, printed: null, scanCount: 57 },
 ];
 
 export const storeAcquisition: StoreAcquisition[] = [

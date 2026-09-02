@@ -100,7 +100,9 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "growth:attribution:read": "growth:attribution:read",
   "growth:fission:update": "growth:fission:update",
   "store:page:audit": "store:page:audit",
-  "store:qrcode:export": UNIMPLEMENTED,
+  // 后端没有 store:qrcode:export 这个码；店铺码与店招审核是同一拨人（BD）在做，
+  // 端点判的就是 store:page:audit。映过去而不是新增后端码 —— 见 V293。
+  "store:qrcode:export": "store:page:audit",
   "system:theme:update": "system:theme:update",
   "system:param:read": "system:param:read",
   // env:switch 映到它（见下），而映射目标自己也要登记 —— 守卫会检查这一点

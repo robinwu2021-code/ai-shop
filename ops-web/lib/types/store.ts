@@ -62,11 +62,16 @@ export interface StoreQrcode {
   communityName: string;
   /** 码值（C 端扫码进店的深链参数），导出时给 BD 去印刷 */
   code: string;
-  /** 贴纸尺寸规格，如 "10x10cm" */
-  size: string;
-  /** 已印数量，用于对账印刷成本 */
-  printed: number;
-  /** 累计扫码次数 */
+  /** 最近一次印刷的尺寸规格，如 "10x10cm"；**从没印过是 null**（尺寸属于那一次印刷，不是门店属性） */
+  size: string | null;
+  /**
+   * 累计已印数量，用于对账印刷成本。
+   *
+   * ⚠️ **null = 还没人登记，不是「印了 0 张」**。两者在界面上必须分开显示 ——
+   * 混成一个数之后，运营没法知道该去催谁登记。
+   */
+  printed: number | null;
+  /** 区间内扫码次数。**这个 0 是真的 0**（埋点一直在记），与 printed 的 null 不同 */
   scanCount: number;
 }
 
