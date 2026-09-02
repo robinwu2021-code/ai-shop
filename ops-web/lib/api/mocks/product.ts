@@ -243,9 +243,10 @@ export const productMock: ProductApi = {
     });
   },
 
+  // 与后端 PageData 同形。类目树整棵要给（页面自己拼层级），所以 size 放大而不是真分页
   listCategories: async (q = {}) =>
     wait(
-      db.categories.filter((c) =>
+      db.paginate(db.categories, undefined, 500, (c) =>
         db.liveHit(c, q.showArchived) &&
         db.eqHit(q.template, c.template) &&
         db.kwHit(q.keyword, c.categoryNo, c.name, c.i18n.en),

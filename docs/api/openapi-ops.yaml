@@ -10989,9 +10989,23 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    type: "array"
-                    items: 
-                      "$ref": "#/components/schemas/SortingRow"
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/SortingRow"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
                 required: 
                   - "code"
                   - "msg"
@@ -11017,9 +11031,23 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    type: "array"
-                    items: 
-                      "$ref": "#/components/schemas/RedeemStat"
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/RedeemStat"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
                 required: 
                   - "code"
                   - "msg"
@@ -11182,9 +11210,23 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    type: "array"
-                    items: 
-                      "$ref": "#/components/schemas/FreightTemplate"
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/FreightTemplate"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
                 required: 
                   - "code"
                   - "msg"
@@ -17376,9 +17418,23 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    type: "array"
-                    items: 
-                      "$ref": "#/components/schemas/Category"
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/Category"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
                 required: 
                   - "code"
                   - "msg"
@@ -20162,7 +20218,8 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    "$ref": "#/components/schemas/MarketConfig"
+                    type: "object"
+                    nullable: true
                 required: 
                   - "code"
                   - "msg"
@@ -20285,7 +20342,8 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    "$ref": "#/components/schemas/FeatureFlag"
+                    type: "object"
+                    nullable: true
                 required: 
                   - "code"
                   - "msg"

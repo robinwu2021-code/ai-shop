@@ -215,7 +215,7 @@ function ProductsInner() {
    * 所以选中态自己持有，行右侧放一个按钮。
    */
   const tree: TreeNode[] = useMemo(() => {
-    const all = cats.data ?? [];
+    const all = cats.data?.records ?? [];
     /*
      * 顶层用「没有父」判定，而不是 `=== undefined`：
      * 后端下发的一级类目 parentNo 是 **null**，而这里传的是 undefined ——
@@ -237,9 +237,9 @@ function ProductsInner() {
           children: build(cat.categoryNo),
         }));
     return build(undefined);
-  }, [cats.data, selectedCat]);
+  }, [cats.data?.records, selectedCat]);
 
-  const pickedCat: Category | undefined = (cats.data ?? []).find((c) => c.categoryNo === selectedCat);
+  const pickedCat: Category | undefined = (cats.data?.records ?? []).find((c) => c.categoryNo === selectedCat);
 
   const merchantOptions = (merchantsForFilter.data?.records ?? []).map((m) => ({ value: m.merchantNo, label: m.name }));
   /**
@@ -247,7 +247,7 @@ function ProductsInner() {
    * 而运营真正想筛的往往是叶子类目（如"叶菜"），面包屑让人不用记编号也能认出是哪条枝。
    */
   const categoryOptions = useMemo(() => {
-    const all = (cats.data ?? []).filter((cat) => !cat.archivedAt);
+    const all = (cats.data?.records ?? []).filter((cat) => !cat.archivedAt);
     const nameOf = (no?: string) => all.find((x) => x.categoryNo === no)?.name;
     return all.map((cat) => ({
       value: cat.categoryNo,

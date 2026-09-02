@@ -9,9 +9,9 @@ export interface FulfillmentApi {
   /** 批次推进（计划→已发车→已到货→已签收），跳步抛错。 */
   setBatchStatus(batchNo: string, status: BatchStatus): Promise<ArrivalBatch>;
   /** 按自提点汇总分拣（P-5.1.2）。只返回**已签收**批次的货。 */
-  listSorting(q?: ScopedQ): Promise<SortingRow[]>;
+  listSorting(q?: ScopedQ): Promise<Page<SortingRow>>;
   /** 核销监控与逾期看板（P-5.1.3）。 */
-  listRedeemStats(q?: ScopedQ): Promise<RedeemStat[]>;
+  listRedeemStats(q?: ScopedQ): Promise<Page<RedeemStat>>;
   getOverdueRule(): Promise<OverdueRule>;
   /** 逾期规则（P-5.1.4）。宽限小时数 <1 抛错 —— 到点即作废必产生客诉。 */
   saveOverdueRule(rule: Pick<OverdueRule, "action" | "graceHours" | "maxPostpone">): Promise<OverdueRule>;
@@ -32,7 +32,7 @@ export interface FulfillmentApi {
   // ── 运费模板与超区（P-5.2.3）──────────────────────────────────
 
   /** `showArchived` 为真时连归档的一起返回（G1：归档不是删除，得看得见）。 */
-  listFreightTemplates(q?: { showArchived?: boolean }): Promise<FreightTemplate[]>;
+  listFreightTemplates(q?: { showArchived?: boolean }): Promise<Page<FreightTemplate>>;
 
   /**
    * 新建/保存运费模板（含超区规则）。

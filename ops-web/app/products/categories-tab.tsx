@@ -346,7 +346,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
     onSuccess: () => { invalidate(); setForm(null); notify.success(c.catSaved); },
   });
 
-  const allWithOff = cats.data ?? [];
+  const allWithOff = cats.data?.records ?? [];
   // 停用的按筛选隐藏，**但刚被自己关掉的那几条留在原地**（见 `touched`）
   const all = showArchived
     ? allWithOff

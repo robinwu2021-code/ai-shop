@@ -106,7 +106,7 @@ export function SpuStdTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean })
     onSuccess: (r) => { invalidate(); clearPick(); notify.success(fill(c.stdToastBulk, { n: String(r.changed) })); },
   });
 
-  const catOptions = (cats.data ?? []).map((x) => ({ value: x.categoryNo, label: x.name }));
+  const catOptions = (cats.data?.records ?? []).map((x) => ({ value: x.categoryNo, label: x.name }));
 
   const rows = list.data?.records ?? [];
   const pageNos = rows.map((t) => t.stdNo);

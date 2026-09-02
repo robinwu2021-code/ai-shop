@@ -38,7 +38,7 @@ describe("类目树（P-3.1）", () => {
 
   it("空类目可以归档，且默认列表不再出现", async () => {
     await productMock.archiveCategory("CAT400");
-    const list = await productMock.listCategories();
+    const list = (await productMock.listCategories()).records;
     expect(list.some((c) => c.categoryNo === "CAT400")).toBe(false);
   });
 });

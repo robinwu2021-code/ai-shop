@@ -184,8 +184,8 @@ function FulfillmentInner() {
     },
   ];
 
-  const totalPending = (redeem.data ?? []).reduce((n, r) => n + r.pending, 0);
-  const totalOverdue = (redeem.data ?? []).reduce((n, r) => n + r.overdue, 0);
+  const totalPending = (redeem.data?.records ?? []).reduce((n, r) => n + r.pending, 0);
+  const totalOverdue = (redeem.data?.records ?? []).reduce((n, r) => n + r.overdue, 0);
 
   return (
     <div>
@@ -218,7 +218,7 @@ function FulfillmentInner() {
           <Notice className="mb-3">{c.sortingNotice}</Notice>
           <DataTable
             columns={sortingColumns}
-            rows={sorting.data}
+            rows={sorting.data?.records}
             loading={sorting.isLoading}
             error={sorting.error}
             onRetry={() => sorting.refetch()}
@@ -233,11 +233,11 @@ function FulfillmentInner() {
           <StatRow>
             <StatCard label={c.kpiPending} value={totalPending} sub={c.kpiPendingSub} />
             <StatCard label={c.kpiOverdue} value={totalOverdue} sub={totalOverdue > 0 ? c.kpiOverdueSub : c.kpiOverdueNone} tone={totalOverdue > 0 ? "down" : undefined} />
-            <StatCard label={c.kpiPickups} value={(redeem.data ?? []).length} />
+            <StatCard label={c.kpiPickups} value={(redeem.data?.records ?? []).length} />
           </StatRow>
           <DataTable
             columns={redeemColumns}
-            rows={redeem.data}
+            rows={redeem.data?.records}
             loading={redeem.isLoading}
             error={redeem.error}
             onRetry={() => redeem.refetch()}

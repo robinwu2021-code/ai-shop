@@ -137,7 +137,7 @@ export function FreightTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
       <Notice className="mb-3">{c.freightNotice}</Notice>
       <Toolbar onAdd={() => setEditing({ ...blank })} addLabel={c.actionNewTemplate} canAdd={canEdit} />
       <DataTable
-        columns={columns} rows={list.data} loading={list.isLoading}
+        columns={columns} rows={list.data?.records} loading={list.isLoading}
         error={list.error} onRetry={() => list.refetch()}
         rowKey={(t) => t.templateNo}
         empty={c.emptyTemplate}

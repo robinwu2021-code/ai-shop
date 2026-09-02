@@ -113,7 +113,7 @@ export const systemMock: SystemApi = {
     if (rate <= 0) fail("汇率必须大于 0", "The exchange rate must be greater than 0");
     m.rate = rate;
     m.enabled = enabled;
-    return wait(m, 400);
+    await wait(undefined);
   },
 
   getRuleTexts: async () => wait(db.ruleTexts),
@@ -135,7 +135,7 @@ export const systemMock: SystemApi = {
     f.enabled = enabled;
     f.rolloutPercent = rolloutPercent;
     f.updatedAt = "2026-08-06T00:00:00Z";
-    return wait(f, 400);
+    await wait(undefined);
   },
 
   // ── 存储空间治理 ──

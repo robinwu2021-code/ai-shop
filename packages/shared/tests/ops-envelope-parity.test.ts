@@ -45,7 +45,14 @@ function methodToReturn(): Map<string, string> {
   if (!existsSync(dir)) return out;
   for (const f of readdirSync(dir).filter((x) => x.endsWith(".ts"))) {
     const src = readFileSync(join(dir, f), "utf8");
-    for (const m of src.matchAll(/^\s{2}(\w+)\s*(?:<[^>]*>)?\([\s\S]*?\):\s*Promise<([\s\S]*?)>;\s*$/gm)) {
+    /*
+     * `)` 与 `:` 之间**允许换行** —— 长签名会写成
+     *   `listOpsMembers(q?: {...})\n    : Promise<Page<OpsMember>>;`
+     * 要求两者紧挨的话，这一条匹配不上，正则会继续往下吃、
+     * 与**下一个方法**的返回类型配成一对 —— 于是报出一条根本不存在的不一致，
+     * 而被误报的那个方法其实完全正确。立此闸当天就踩了一次（listOpsMembers）。
+     */
+    for (const m of src.matchAll(/^\s{2}(\w+)\s*(?:<[^>]*>)?\([\s\S]*?\)\s*:\s*Promise<([\s\S]*?)>;\s*$/gm)) {
       out.set(m[1]!, m[2]!.trim().replace(/\s+/g, " "));
     }
   }

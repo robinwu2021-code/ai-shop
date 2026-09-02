@@ -25,15 +25,15 @@ export const fulfillmentMock: FulfillmentApi = {
   },
 
   // 分拣只看**已签收**批次：没签收就分拣，等于把责任判定的依据跳过去了
+  // 与后端 PageData 同形 —— 裸数组正是「mock 绿、真后端 data.map 崩」那一类
   listSorting: async (q = {}) => {
     const signed = new Set(db.batches.filter((b) => b.status === "SIGNED").map((b) => b.pickupNo));
-    return wait(
-      db.sorting.filter((r) => signed.has(r.pickupNo) && db.eqHit(q.pickupNo, r.pickupNo)),
-    );
+    return wait(db.paginate(db.sorting, q.page, q.size,
+      (r) => signed.has(r.pickupNo) && db.eqHit(q.pickupNo, r.pickupNo)));
   },
 
   listRedeemStats: async (q = {}) =>
-    wait(db.redeemStats.filter((r) => db.eqHit(q.pickupNo, r.pickupNo))),
+    wait(db.paginate(db.redeemStats, q.page, q.size, (r) => db.eqHit(q.pickupNo, r.pickupNo))),
 
   getOverdueRule: async () => wait(db.overdueRule),
 
@@ -80,7 +80,8 @@ export const fulfillmentMock: FulfillmentApi = {
     return wait(sh, 350);
   },
 
-  listFreightTemplates: async (q = {}) => wait(db.freightTemplates.filter((t) => db.liveHit(t, q.showArchived))),
+  listFreightTemplates: async (q = {}) =>
+    wait(db.paginate(db.freightTemplates, undefined, 100, (t) => db.liveHit(t, q.showArchived))),
 
   saveFreightTemplate: async (v) => {
     if (!v.name.trim()) fail("模板名称不能为空", "The template name cannot be empty");

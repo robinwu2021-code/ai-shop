@@ -50,16 +50,25 @@ export interface SystemApi {
   saveAppearance(v: Pick<AppearanceConfig, "defaultSkin" | "festivalSkin" | "festivalFrom" | "festivalTo" | "fallbackLang">): Promise<AppearanceConfig>;
 
   listMarkets(): Promise<MarketConfig[]>;
-  /** 市场与汇率（P-17.1.3）。汇率 > 0；**基准货币不可改**。 */
-  saveMarketRate(code: string, rate: number, enabled: boolean): Promise<MarketConfig>;
+  /**
+   * 市场与汇率（P-17.1.3）。汇率 > 0；**基准货币不可改**。
+   *
+   * 声明 `void`：后端返的是整份列表，而页面保存后靠 invalidate 重取、
+   * 从不读这个返回体 —— 照后端形状声明只会逼页面接一个自己不用的类型。
+   */
+  saveMarketRate(code: string, rate: number, enabled: boolean): Promise<void>;
 
   getRuleTexts(): Promise<RuleTexts>;
   /** 规则文案（P-17.1.4）。三条都不能为空 —— C 端要展示给用户看。 */
   saveRuleTexts(v: Pick<RuleTexts, "refund" | "pickup" | "weighDiff">): Promise<RuleTexts>;
 
   listFeatureFlags(): Promise<FeatureFlag[]>;
-  /** 开关与灰度（P-17.1.5）。灰度比例 0–100。 */
-  saveFeatureFlag(key: string, enabled: boolean, rolloutPercent: number): Promise<FeatureFlag>;
+  /**
+   * 开关与灰度（P-17.1.5）。灰度比例 0–100。
+   *
+   * 同 {@link saveMarketRate}：返回体不读，声明 `void`。
+   */
+  saveFeatureFlag(key: string, enabled: boolean, rolloutPercent: number): Promise<void>;
 
   // ── 存储空间治理（TDD-图片存储与空间回收）── **已接真后端** `/ops/media/**`
 

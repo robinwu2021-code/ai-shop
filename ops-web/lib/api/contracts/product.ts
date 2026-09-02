@@ -75,7 +75,7 @@ export interface ProductApi {
   setTopicGoods(topicNo: string, goodsNos: string[]): Promise<Page<ProductGoods>>;
 
   /** 类目树：一次给全量（三级树总量有限，前端自己组树比逐层拉更快）。 */
-  listCategories(q?: CategoryQ): Promise<Category[]>;
+  listCategories(q?: CategoryQ): Promise<Page<Category>>;
   /**
    * 新建 / 改类目。
    *

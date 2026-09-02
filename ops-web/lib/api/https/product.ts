@@ -48,13 +48,17 @@ export const productHttp: ProductApi = {
   goodsDraftPreview: (goodsNo) => client.get(`/ops/goods/${goodsNo}/draft-preview`),
 
   /**
-   * 后端 `/ops/categories` 早改成了 `{records,total,page,size}`（十个列表端点统一收口那次），
-   * 这里没跟着改——本地看不出来，`app/products/page.tsx` 拿 `Category[]` 当数组用，
-   * 上生产直接白屏（`all.filter is not a function`）。size 给大一点：类目树总量有限，
-   * 契约本来就是"一次给全量"，不能被默认的 50 条分页悄悄截断。
+   * 后端 `/ops/categories` 是 `{records,total,page,size}`。
+   *
+   * 此前契约声明成 `Category[]`，这里靠 `.then(r => r.records)` 解包补上差额 ——
+   * 那是把契约的错误挡在了一层之下：契约仍然写着数组，下一个照契约写页面的人
+   * 照样会踩（原注释记的正是那次白屏 `all.filter is not a function`）。
+   * 契约改成 `Page<Category>` 之后这里直接透传，两侧同形，解包也就不需要了。
+   *
+   * size 给大一点：类目树总量有限，契约本来就是「一次给全量」，
+   * 不能被默认的 50 条分页悄悄截断。
    */
-  listCategories: (q) => client.get<{ records: Category[] }>("/ops/categories", { ...q, size: q?.size ?? 500 })
-    .then((r) => r.records),
+  listCategories: (q) => client.get("/ops/categories", { ...q, size: q?.size ?? 500 }),
   saveCategory: (v) => client.post("/ops/categories", v),
   // ── 标准品库（TDD-标准品库）——「运营录入」这一步，缺了它整个功能就是锁着的
   listSpuStd: (q) => client.get("/ops/spu-std", q),
