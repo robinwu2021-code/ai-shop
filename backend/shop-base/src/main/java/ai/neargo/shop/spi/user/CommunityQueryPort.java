@@ -50,6 +50,15 @@ public interface CommunityQueryPort {
     String communityName(String communityNo);
 
     /**
+     * 批量取自提点名（门店档案展示挂靠的取货点，P-11.2.1c）。
+     *
+     * <p><b>批量而不是逐个</b>：一家店可能挂多个点，逐个查就是 N+1。
+     *
+     * @return 自提点号 → 名称；<b>查不到的不出现</b>，调用方自己决定显示点号还是留空
+     */
+    java.util.Map<String, String> pickupNames(java.util.Collection<String> pickupNos);
+
+    /**
      * 这些社区的坐标（gcj02, E6）。<b>建社区池时用来算「哪家店离这儿最近」。</b>
      *
      * <p>批量取而不是逐个查：一次上架要给几十个社区建池行，逐个查就是几十次往返。

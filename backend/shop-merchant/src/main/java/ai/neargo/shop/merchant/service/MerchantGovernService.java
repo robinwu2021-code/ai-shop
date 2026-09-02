@@ -76,7 +76,6 @@ public interface MerchantGovernService {
                                                                long page, long size);
 
     /** 门店详情：门面 + 配送规则 + 经营模式 + 收款商户号。 */
-    StoreGovernVO storeDetail(String storeNo);
 
     /**
      * 解除门店强制下线（{@code SUSPENDED → ACTIVE}），并恢复被平台压下的货架行。
@@ -117,6 +116,26 @@ public interface MerchantGovernService {
      * @param payMerchantNo 空 = 用主体默认收款号（不是「没配」）
      * @param status ACTIVE / READONLY（商家自助停用）/ SUSPENDED（平台强制下线）
      */
+    /**
+     * 门店详情（P-11.2.1c）：档案 + 三样只有详情才算的东西。
+     *
+     * <p><b>不把这三项塞进 {@link StoreGovernVO}</b>：列表一屏几十行，
+     * 每行再去查社区/自提点/扫码数就是三次 N+1；而给它们留 null 又会让
+     * 「列表不算这一项」和「这家店没有」长得一模一样。
+     *
+     * @param communityNames 覆盖的社区名。挂在**主体**上，所以同主体的门店看到的是同一份
+     * @param pickupNames    这家店挂靠的取货点名。空 = 没挂，不是没查
+     * @param scanCount30d   近 30 天店铺码扫码次数 —— 与获客看板同一个数据源，不另算一份
+     */
+    record StoreDetailVO(StoreGovernVO store,
+                         java.util.List<String> communityNames,
+                         java.util.List<String> pickupNames,
+                         long scanCount30d) {
+    }
+
+    /** 门店详情（含上面那三项）。 */
+    StoreDetailVO storeDetail(String storeNo);
+
     record StoreGovernVO(String storeNo, String name, String address,
                          String merchantNo, String merchantName,
                          boolean isDefault, String status, String businessMode,

@@ -193,6 +193,23 @@ export type StoreGovernStatus = "ACTIVE" | "READONLY" | "SUSPENDED";
  * 的窄投影，这份是门店档案的全貌。两者共用 storeNo，故意不合并 ——
  * 合并会让那一页凭空多出十个它不该关心的字段。
  */
+/**
+ * 门店详情（P-11.2.1c）：档案 + 三样**只有详情才算**的东西。
+ *
+ * 不把这三项塞进 {@link StoreGovern}：列表一屏几十行，每行再查社区/自提点/扫码数
+ * 就是三次 N+1；而给它们留 null 又会让「列表不算这一项」与「这家店没有」长得一样。
+ */
+export interface StoreGovernDetail {
+  /** 门店档案本身（与列表行同一份形状） */
+  store: StoreGovern;
+  /** 覆盖的社区名。挂在**主体**上 —— 同主体的门店看到同一份，界面别写成「本店覆盖」 */
+  communityNames: string[];
+  /** 这家店挂靠的取货点名。空数组 = 没挂，不是没查到 */
+  pickupNames: string[];
+  /** 近 30 天店铺码扫码次数。与获客看板同一个数据源，不另算一份 */
+  scanCount30d: number;
+}
+
 export interface StoreGovern {
   /** 门店号 */
   storeNo: string;

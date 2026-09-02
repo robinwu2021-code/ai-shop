@@ -50,6 +50,13 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     private final MchEntityMapper merchantMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper;
     private final MchEntityCommunityMapper communityMapper;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper;
+    /*
+     * 扫码数在埋点域，惰性取：门店详情不该因为那个域没装配而整页 500 ——
+     * 少一列是「少一列」，起不来是「这页没了」。（社区名用已注入的 communityNamePort。）
+     */
+    private final org.springframework.beans.factory.ObjectProvider<
+            ai.neargo.shop.spi.marketing.StoreVisitQueryPort> visitQueryPort;
     private final MchPaymentMapper paymentMapper;
     private final ViolationMapper violationMapper;
     private final MerchantApplyQueryPort applyPort;
@@ -93,7 +100,12 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
             ai.neargo.shop.spi.settle.SelfOperatedExposurePort exposurePort,
             org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.product.StoreShelfPort> shelfPort,
-            ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper authCodeMapper) {
+            ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper authCodeMapper,
+            ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper,
+            org.springframework.beans.factory.ObjectProvider<
+                    ai.neargo.shop.spi.marketing.StoreVisitQueryPort> visitQueryPort) {
+        this.channelPickupMapper = channelPickupMapper;
+        this.visitQueryPort = visitQueryPort;
         this.authCodeMapper = authCodeMapper;
         this.serviceAreaMapper = serviceAreaMapper;
         this.communityNamePort = communityNamePort;
@@ -367,9 +379,69 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     }
 
     @Override
-    public StoreGovernVO storeDetail(String storeNo) {
+    public StoreDetailVO storeDetail(String storeNo) {
         MchStore s = requireStoreInScope(storeNo);
-        return toStoreGovernVO(s, nameOf(s.getEntityNo()));
+        StoreGovernVO base = toStoreGovernVO(s, nameOf(s.getEntityNo()));
+        return new StoreDetailVO(base,
+                communityNamesOf(s.getEntityNo()),
+                pickupNamesOf(s.getStoreNo()),
+                scanCount30dOf(s.getEntityNo(), s.getStoreNo()));
+    }
+
+    /**
+     * 覆盖的社区名（P-11.2.1c）。挂在**主体**上，所以同主体的门店看到同一份 ——
+     * 这不是门店属性，界面上别写成「本店覆盖」。
+     */
+    private List<String> communityNamesOf(String entityNo) {
+        List<String> nos = communityMapper.selectList(
+                        Wrappers.<MchEntityCommunity>lambdaQuery()
+                                .eq(MchEntityCommunity::getEntityNo, entityNo))
+                .stream().map(MchEntityCommunity::getCommunityNo).distinct().toList();
+        // 取不到名就给号，**不返回空** —— 空会被读成「没有覆盖」
+        return nos.stream().map(no -> {
+            String name = communityNamePort.communityName(no);
+            return name == null || name.isBlank() ? no : name;
+        }).toList();
+    }
+
+    /** 这家店挂靠的取货点名。空 = 没挂，不是没查到。 */
+    private List<String> pickupNamesOf(String storeNo) {
+        List<String> nos = channelPickupMapper.selectList(
+                        Wrappers.<ai.neargo.shop.merchant.entity.MchChannelPickup>lambdaQuery()
+                                .eq(ai.neargo.shop.merchant.entity.MchChannelPickup::getStoreNo, storeNo))
+                .stream().map(ai.neargo.shop.merchant.entity.MchChannelPickup::getPickupNo).distinct().toList();
+        if (nos.isEmpty()) {
+            return List.of();
+        }
+        Map<String, String> names = communityNamePort.pickupNames(nos);
+        return nos.stream().map(no -> names.getOrDefault(no, no)).toList();
+    }
+
+    /**
+     * 近 30 天扫码次数。**走获客看板同一个数据源**，不另算一份 ——
+     * 两处各算一遍的话，门店档案与获客看板会给出两个不一样的扫码数，
+     * 而两个看起来都是对的。
+     */
+    private long scanCount30dOf(String entityNo, String storeNo) {
+        var port = visitQueryPort.getIfAvailable();
+        if (port == null) {
+            return 0L;
+        }
+        long to = System.currentTimeMillis();
+        long from = to - 30L * 24 * 3600 * 1000;
+        var counts = port.scanCountsByStore(List.of(entityNo), List.of(storeNo), from, to);
+        long own = counts.byStore().getOrDefault(storeNo, 0L);
+        // 历史行（store_no 为空）并入默认店，与店铺码页/获客看板同一口径
+        if (Boolean.TRUE.equals(storeIsDefault(storeNo))) {
+            own += counts.legacyByEntity().getOrDefault(entityNo, 0L);
+        }
+        return own;
+    }
+
+    private Boolean storeIsDefault(String storeNo) {
+        MchStore s = storeProfileMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                .eq(MchStore::getStoreNo, storeNo).last("limit 1"));
+        return s == null ? Boolean.FALSE : s.getIsDefault();
     }
 
     /**

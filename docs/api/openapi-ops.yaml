@@ -2507,6 +2507,32 @@ components:
         - "READONLY"
         - "SUSPENDED"
       description: "门店经营状态。三档**不是同一个人在管**，所以不能压成一个 `enabled` 布尔：\n\n- `ACTIVE`    正常营业；\n- `READONLY`  商家自助停用（自己关的，自己能开回来）；\n- `SUSPENDED` 平台强制下线 —— **只有平台解得开**，商家侧的启停对它一律拒绝。\n\n压成布尔的后果是运营看不出「这家店是自己歇业还是被我们压下去的」， 而这两件事该做的动作完全相反。"
+    StoreGovernDetail: 
+      type: "object"
+      properties: 
+        store: 
+          "$ref": "#/definitions/StoreGovern"
+          description: "门店档案本身（与列表行同一份形状）"
+        communityNames: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "覆盖的社区名。挂在**主体**上 —— 同主体的门店看到同一份，界面别写成「本店覆盖」"
+        pickupNames: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "这家店挂靠的取货点名。空数组 = 没挂，不是没查到"
+        scanCount30d: 
+          type: "number"
+          description: "近 30 天店铺码扫码次数。与获客看板同一个数据源，不另算一份"
+      required: 
+        - "store"
+        - "communityNames"
+        - "pickupNames"
+        - "scanCount30d"
+      additionalProperties: false
+      description: "门店详情（P-11.2.1c）：档案 + 三样**只有详情才算**的东西。\n\n不把这三项塞进  {@link  StoreGovern } ：列表一屏几十行，每行再查社区/自提点/扫码数 就是三次 N+1；而给它们留 null 又会让「列表不算这一项」与「这家店没有」长得一样。"
     StoreGovern: 
       type: "object"
       properties: 
@@ -2574,7 +2600,6 @@ components:
         - "deliveryFeeMinor"
         - "deliveryFreeThresholdMinor"
       additionalProperties: false
-      description: "平台视角的门店档案（后端 `mch_store`，`GET /ops/stores`）。\n\n**只读为主**：门店资料、价格、库存运营一律不改 —— 平台的边界是「裁、定、兜」， 不替商家运营。这份类型里唯一会被写回的是 `status`（解除强制下线）。\n\n与  {@link  StoreMode  }  的关系：那份是「准入与保证金」页里**只关心经营模式与收款号** 的窄投影，这份是门店档案的全貌。两者共用 storeNo，故意不合并 —— 合并会让那一页凭空多出十个它不该关心的字段。"
     StoreStats: 
       type: "object"
       properties: 
@@ -5425,6 +5450,80 @@ components:
         - "status"
       additionalProperties: false
       description: "买家的开票申请（`/ops/invoice-requests`）。\n\n⚠️ **这个域里有三张不同的「票」，名字很近，别混：**\n\n| 类型 | 谁开给谁 | 决定什么 | 端点 | |---|---|---|---| |  {@link  PurchaseInvoice }  进项票 | 供应商 → 平台 | 平台能不能付款（票到付款）| `/ops/purchase-invoices` | |  {@link  InvoiceRequest }  商家开票申请 | 平台 → 商家 | 商家的服务费发票 | `/ops/finance/invoices` | | 本类型 买家开票申请 | 平台 → 买家 | 买家能不能报销 | `/ops/invoice-requests` |\n\n前两个此前已有类型，本类型是补的 —— 它按订单走（`orderNo`），前两个按主体/账期走。"
+    ChannelMessage: 
+      type: "object"
+      properties: 
+        messageNo: 
+          type: "string"
+        payChannel: 
+          type: "string"
+        msgType: 
+          type: "string"
+          description: "CALLBACK 通道推给我方 / SEND 我方发给通道"
+        api: 
+          type: "string"
+          description: "回调是端点路径，发送是接口坐标"
+        bizNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "我方单号。**验签失败时为空** —— 那种行只能按时间和通道翻， 所以按单号筛会把最该看的那几行滤掉"
+        paymentNo: 
+          type: 
+            - "string"
+            - "null"
+        outcome: 
+          type: "string"
+          description: "RECEIVED / ACCEPTED / REJECTED / OK / FAILED"
+        reason: 
+          type: 
+            - "string"
+            - "null"
+          description: "拒绝或失败的原因，直接显示"
+        payload: 
+          type: 
+            - "string"
+            - "null"
+          description: "脱敏并截断后的报文"
+        headers: 
+          type: 
+            - "string"
+            - "null"
+        createdAt: 
+          type: 
+            - "number"
+            - "null"
+      required: 
+        - "messageNo"
+        - "payChannel"
+        - "msgType"
+        - "api"
+        - "outcome"
+      additionalProperties: false
+      description: "渠道报文一条（`stl_channel_message`，V286 起在落数据）。\n\n⚠️ **报文已脱敏**：签名、证书序列号、Authorization 都不入库， 所以它<b>不能拿去重放验签</b>。列表响应里带着这句话（`note`）， 页面必须显示 —— 不显示的话，第一个拿它去核签名的人会得出 「我们的验签实现有 bug」这个结论。"
+    ChannelMessagePage: 
+      type: "object"
+      properties: 
+        records: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/ChannelMessage"
+        total: 
+          type: "number"
+        pageNo: 
+          type: "number"
+        size: 
+          type: "number"
+        note: 
+          type: "string"
+      required: 
+        - "records"
+        - "total"
+        - "pageNo"
+        - "size"
+        - "note"
+      additionalProperties: false
+      description: "报文分页。`note` 是固定口径，**端上必须显示**"
     ReconCoverage: 
       type: "object"
       properties: 
@@ -5438,7 +5537,6 @@ components:
         - "channelBillConnected"
         - "note"
       additionalProperties: false
-      description: "对账的**覆盖范围说明**。\n\n⚠️ 它存在的理由只有一个：**不说的话「今天没有差异」是句假话。** 一期只有平台侧自查（扫我方停在 PENDING 的收款逐笔查单）， 渠道账单比对要等通道能力 —— 也就是说「渠道扣了钱而我方没记录」 那一整类差异**现在根本看不见**。\n\n`note` **直接展示，不在端上写死** —— 写死的话，后端接上渠道账单之后， 页面还在说「看不见」。"
     ReconAxisReport: 
       type: "object"
       properties: 
@@ -17148,6 +17246,32 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/channel-messages": 
+    get: 
+      operationId: "channelMessages"
+      summary: "渠道报文查询（O1）"
+      tags: 
+        - "payment"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ChannelMessagePage"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/payments/recon-diffs/{diffNo}/resolve": 
     post: 
       operationId: "resolveReconDiff"
@@ -19451,7 +19575,7 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    "$ref": "#/components/schemas/StoreGovern"
+                    "$ref": "#/components/schemas/StoreGovernDetail"
                 required: 
                   - "code"
                   - "msg"

@@ -54,7 +54,24 @@ export const storeMock: StoreApi = {
   getStore: async (storeNo) => {
     const s = db.stores.find((x) => x.storeNo === storeNo);
     if (!s) notFound("门店", "Store", storeNo);
-    return wait(s);
+    const m = db.merchants.find((x) => x.merchantNo === s!.merchantNo);
+    /*
+     * 三样只有详情才有的东西（P-11.2.1c）。**两种态都要能演出来**：
+     * ST001 挂了取货点，其余没挂 —— 空数组是「没挂」，不是「没查到」。
+     */
+    return wait({
+      store: s!,
+      communityNames: (m?.communityNos ?? []).map((no) => db.communities.find((x) => x.communityNo === no)?.name ?? no),
+      pickupNames: storeNo === "ST001" ? ["文三路菜鸟驿站"] : [],
+      /*
+       * 扫码数取自店铺码那份数据。**mock 里两处的门店号不是同一套**
+       * （门店档案用 ST001..，店铺码用 ST901..），所以先按门店号找，
+       * 找不到再退回同主体的第一行 —— 这是 mock 数据的历史遗留，
+       * 真后端两边读的都是 mkt_store_visit，不存在这个问题。
+       */
+      scanCount30d: (db.storeQrcodes.find((q) => q.storeNo === storeNo)
+        ?? db.storeQrcodes.find((q) => q.merchantNo === s!.merchantNo))?.scanCount ?? 0,
+    });
   },
 
   /*

@@ -1,6 +1,6 @@
 // 覆盖范围：门店主页治理（P-10.1）—— 一期主获客路径的平台侧；
 // 以及门店档案与经营状况（P-11.2.1）—— 平台看一家店的全貌。
-import type { Page, StoreAcquisition, StoreGovern, StorePageAudit, StoreQrcode, StoreStats, StoreTemplate } from "@/lib/types";
+import type { Page, StoreAcquisition, StoreGovern, StoreGovernDetail, StorePageAudit, StoreQrcode, StoreStats, StoreTemplate } from "@/lib/types";
 import type { AcquisitionQ, QrcodeQ, StoreAuditQ, StoreQ } from "../query";
 
 export interface StoreApi {
@@ -10,7 +10,7 @@ export interface StoreApi {
   listStores(q?: StoreQ): Promise<Page<StoreGovern>>;
 
   /** 门店档案详情：门面 + 配送规则 + 经营模式 + 收款商户号。 */
-  getStore(storeNo: string): Promise<StoreGovern>;
+  getStore(storeNo: string): Promise<StoreGovernDetail>;
 
   /** 门店经营状况：今日/本月订单与 GMV，外加待发货/待自送/缺货三项待办堆积。 */
   getStoreStats(storeNo: string): Promise<StoreStats>;

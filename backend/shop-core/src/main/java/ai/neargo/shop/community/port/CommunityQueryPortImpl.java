@@ -22,9 +22,13 @@ public class CommunityQueryPortImpl implements CommunityQueryPort {
     private static final String OPEN = "OPEN";
 
     private final CommunityMapper communityMapper;
+    private final ai.neargo.shop.community.mapper.CommunityMappers.PickupPointMapper pickupPointMapper;
 
-    public CommunityQueryPortImpl(CommunityMapper communityMapper) {
+    public CommunityQueryPortImpl(CommunityMapper communityMapper,
+                                  ai.neargo.shop.community.mapper.CommunityMappers.PickupPointMapper
+                                          pickupPointMapper) {
         this.communityMapper = communityMapper;
+        this.pickupPointMapper = pickupPointMapper;
     }
 
     @Override
@@ -79,6 +83,25 @@ public class CommunityQueryPortImpl implements CommunityQueryPort {
                         out.put(c.getCommunityNo(), new int[]{c.getLatE6(), c.getLngE6()});
                     }
                 });
+        return out;
+    }
+
+    @Override
+    public java.util.Map<String, String> pickupNames(java.util.Collection<String> pickupNos) {
+        if (pickupNos == null || pickupNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        // 与 communityName 同一条理由：装饰性取名，把号换成人看得懂的字
+        var rows = DataScopeContext.executeWithoutScope(() ->
+                pickupPointMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.community.entity.CmtPickupPoint>lambdaQuery()
+                        .in(ai.neargo.shop.community.entity.CmtPickupPoint::getPickupNo, pickupNos)));
+        java.util.Map<String, String> out = new java.util.LinkedHashMap<>();
+        for (var r : rows) {
+            if (r.getName() != null && !r.getName().isBlank()) {
+                out.put(r.getPickupNo(), r.getName());
+            }
+        }
         return out;
     }
 

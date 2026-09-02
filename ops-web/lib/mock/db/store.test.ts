@@ -72,9 +72,10 @@ describe("门店档案（P-11.2.1）", () => {
   });
 
   it("payMerchantNo 为 null 表示「用主体默认收款号」，不是没配", async () => {
-    const s = await storeMock.getStore("ST001");
-    expect(s.payMerchantNo).toBeNull();
-    expect(s.isDefault).toBe(true);
+    // getStore 现在返回详情包（档案 + 覆盖/取货/扫码数，P-11.2.1c），档案在 .store 上
+    const d = await storeMock.getStore("ST001");
+    expect(d.store.payMerchantNo).toBeNull();
+    expect(d.store.isDefault).toBe(true);
   });
 
   it("★ 只有平台强制下线的店解得开 —— 商家自助停用的由商家自己开", async () => {
@@ -85,7 +86,18 @@ describe("门店档案（P-11.2.1）", () => {
 
   it("解除下线真落库（重新读回来是 ACTIVE，不是只改了返回值）", async () => {
     await storeMock.restoreStore("ST003");
-    expect((await storeMock.getStore("ST003")).status).toBe("ACTIVE");
+    expect((await storeMock.getStore("ST003")).store.status).toBe("ACTIVE");
+  });
+
+  it("★ 详情带回覆盖社区/取货点/扫码数；没挂取货点的店是空数组，不是查不到", async () => {
+    const withPickup = await storeMock.getStore("ST001");
+    expect(withPickup.pickupNames.length).toBeGreaterThan(0);
+    expect(withPickup.communityNames.length).toBeGreaterThan(0);
+    expect(withPickup.scanCount30d).toBeGreaterThan(0);
+
+    // ST002 没挂点：**空数组**。若实现成「查不到就不返回这个字段」，下面这行会炸
+    const noPickup = await storeMock.getStore("ST002");
+    expect(noPickup.pickupNames).toEqual([]);
   });
 
   it("经营状况按门店给，且带得回所属主体", async () => {

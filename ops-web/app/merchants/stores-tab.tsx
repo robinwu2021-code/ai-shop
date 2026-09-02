@@ -87,6 +87,16 @@ export function StoresTab({ c }: { c: Copy }) {
    * 经营状况单独一条请求，只在抽屉打开时发：它在后端是另一个域（trade），
    * 列表里每行都带上等于把商品池那份统计查询乘以一页的行数。
    */
+  /*
+   * 门店详情（P-11.2.1c）。`getStore` 这个调用**此前声明了、实现了、从没被调用过** ——
+   * 抽屉一直只画列表行上的字段，于是覆盖社区/挂靠自提点/扫码数三样在界面上没有。
+   */
+  const detail = useQuery({
+    queryKey: ["store-detail", current?.storeNo],
+    queryFn: () => api.getStore(current!.storeNo),
+    enabled: !!current,
+  });
+
   const stats = useQuery({
     queryKey: ["store-stats", current?.storeNo],
     queryFn: () => api.getStoreStats(current!.storeNo),
@@ -226,6 +236,26 @@ export function StoresTab({ c }: { c: Copy }) {
               **只是没有任何地方发它** —— 运营要看这家店的单，此前只能去订单页
               自己按关键词猜。不做全局门店下拉：平台几千家店，那个下拉选不出来。
             */}
+            {/* 覆盖社区挂在**主体**上：同主体的门店看到同一份，所以标题不写「本店覆盖」 */}
+            <DrawerSection title={c.stSecReach} desc={c.stReachHint}>
+              <FieldGrid>
+                <Field className="mb-3" label={c.stFieldCommunities}>
+                  {detail.data?.communityNames.length
+                    ? detail.data.communityNames.join("、")
+                    : <span className="text-muted-foreground">{c.stNoCommunity}</span>}
+                </Field>
+                <Field className="mb-3" label={c.stFieldPickups}>
+                  {/* 空 = 没挂，不是没查到 —— 两者在界面上要分得开 */}
+                  {detail.data?.pickupNames.length
+                    ? detail.data.pickupNames.join("、")
+                    : <span className="text-muted-foreground">{c.stNoPickup}</span>}
+                </Field>
+                <Field className="mb-3" label={c.stFieldScan30d}>
+                  {detail.data ? detail.data.scanCount30d : "—"}
+                </Field>
+              </FieldGrid>
+            </DrawerSection>
+
             <DrawerSection title={c.stSecOrders} desc={c.stOrdersHint}>
               <div className="flex gap-2">
                 <Link href={`/orders?storeNo=${encodeURIComponent(current.storeNo)}`}>

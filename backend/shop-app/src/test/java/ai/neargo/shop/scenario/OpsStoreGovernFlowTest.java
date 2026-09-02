@@ -94,11 +94,19 @@ class OpsStoreGovernFlowTest {
         assertThat(readonly.get("storeNo").asString()).isEqualTo(storeB);
         assertThat(readonly.get("merchantName").asString()).contains("门店档案");
 
-        // 详情带门面与配送规则字段
+        /*
+         * 详情带门面与配送规则字段。**档案挪到了 `data.store` 下**（P-11.2.1c）：
+         * 详情包 = 档案 + 覆盖社区 / 挂靠取货点 / 近 30 天扫码数，
+         * 这三项只有详情才算 —— 塞进列表就是三次 N+1。
+         */
         String storeA = findByStatus(rows, "ACTIVE").get("storeNo").asString();
         mvc().perform(get("/ops/stores/" + storeA).header("Authorization", "Bearer " + ops))
-                .andExpect(jsonPath("$.data.isDefault").value(true))
-                .andExpect(jsonPath("$.data.merchantNo").value(merchantNo));
+                .andExpect(jsonPath("$.data.store.isDefault").value(true))
+                .andExpect(jsonPath("$.data.store.merchantNo").value(merchantNo))
+                // ★ 三项必须**存在**：缺字段与「空」在端上长得一样，而含义相反
+                .andExpect(jsonPath("$.data.communityNames").isArray())
+                .andExpect(jsonPath("$.data.pickupNames").isArray())
+                .andExpect(jsonPath("$.data.scanCount30d").exists());
 
         // 经营数据：复用 B 端那套 stats（不另存计数器），刚开的店全是 0
         mvc().perform(get("/ops/stores/" + storeA + "/stats").header("Authorization", "Bearer " + ops))

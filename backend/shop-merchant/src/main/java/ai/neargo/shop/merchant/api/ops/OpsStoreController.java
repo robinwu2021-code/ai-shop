@@ -98,7 +98,7 @@ public class OpsStoreController {
     /** 门店详情：门面 + 配送规则 + 经营模式 + 收款商户号。 */
     @GetMapping("/ops/stores/{storeNo}")
     @PreAuthorize("@perm.can('" + Perms.MERCHANT_READ + "')")
-    public MerchantGovernService.StoreGovernVO storeDetail(@PathVariable String storeNo) {
+    public MerchantGovernService.StoreDetailVO storeDetail(@PathVariable String storeNo) {
         return governService.storeDetail(storeNo);
     }
 
