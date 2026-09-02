@@ -28,6 +28,15 @@ public class SysPayChannelRate extends BaseEntity {
 
     private String payChannel;
 
+    /**
+     * 适用市场；{@code *} = 不分市场。
+     *
+     * <p><b>台湾的微信费率与大陆的不是一回事</b>：费率不同，
+     * 而 {@code minFeeMinor} 存的是「分」—— 它到底是几分钱取决于哪个市场。
+     * 没有这一维时，两个市场的费率只能二选一地配，且选错不报。
+     */
+    private String market;
+
     private String payMethod;
 
     private String legalForm;

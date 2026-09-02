@@ -808,7 +808,7 @@ public class SettleServiceImpl implements SettleService {
         }
         String resolved = in.feeBearer();
         String bearer = resolved == null || resolved.isBlank() ? MchFeeBearer.UNKNOWN : resolved;
-        var rate = channelRates.effective(src.payChannel(), src.payScene(),
+        var rate = channelRates.effective(in.market(), src.payChannel(), src.payScene(),
                 in.legalForm(), at);
         if (rate == null) {
             /*

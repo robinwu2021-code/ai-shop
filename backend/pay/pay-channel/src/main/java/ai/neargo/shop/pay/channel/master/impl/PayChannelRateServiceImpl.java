@@ -23,7 +23,8 @@ public class PayChannelRateServiceImpl implements PayChannelRateService {
     }
 
     @Override
-    public PayChannelRateService.ChannelFeeRate effective(String payChannel, String payMethod, String legalForm, long at) {
+    public PayChannelRateService.ChannelFeeRate effective(String market, String payChannel,
+                                                          String payMethod, String legalForm, long at) {
         List<SysPayChannelRate> rows = DataScopeContext.executeWithoutScope(() ->
                 mapper.selectList(Wrappers.<SysPayChannelRate>lambdaQuery()
                         .eq(SysPayChannelRate::getPayChannel, payChannel)
@@ -34,11 +35,14 @@ public class PayChannelRateServiceImpl implements PayChannelRateService {
          * 先匹通配的话，配了「企业专属费率」也永远取不到，
          * 而那种错不报警，只会让某一类商家一直按通用费率结算。
          */
-        for (String pm : new String[]{payMethod, SysPayChannelRate.ANY}) {
-            for (String lf : new String[]{legalForm, SysPayChannelRate.ANY}) {
-                SysPayChannelRate hit = pick(rows, pm, lf);
-                if (hit != null) {
-                    return toRate(hit);
+        String mk = market == null || market.isBlank() ? SysPayChannelRate.ANY : market;
+        for (String m : new String[]{mk, SysPayChannelRate.ANY}) {
+            for (String pm : new String[]{payMethod, SysPayChannelRate.ANY}) {
+                for (String lf : new String[]{legalForm, SysPayChannelRate.ANY}) {
+                    SysPayChannelRate hit = pick(rows, m, pm, lf);
+                    if (hit != null) {
+                        return toRate(hit);
+                    }
                 }
             }
         }
@@ -54,14 +58,32 @@ public class PayChannelRateServiceImpl implements PayChannelRateService {
                 r.getRateNo());
     }
 
-    private static SysPayChannelRate pick(List<SysPayChannelRate> rows, String payMethod, String legalForm) {
+    private static SysPayChannelRate pick(List<SysPayChannelRate> rows, String market,
+                                          String payMethod, String legalForm) {
         if (payMethod == null || legalForm == null) {
             return null;
         }
         return rows.stream()
-                .filter(r -> payMethod.equals(r.getPayMethod()) && legalForm.equals(r.getLegalForm()))
+                .filter(r -> market.equals(marketOf(r))
+                        && payMethod.equals(r.getPayMethod()) && legalForm.equals(r.getLegalForm()))
                 .max(Comparator.comparingLong(SysPayChannelRate::getEffectiveFrom))
                 .orElse(null);
+    }
+
+    /**
+     * 空市场按通配读。
+     *
+     * <p>null 走不到这里 —— 列是 {@code NOT NULL DEFAULT '*'}，
+     * 而 {@code ADD COLUMN} 带默认值时已有行会被填上（V297）。
+     * <b>空串是约束挡不住的那个退化值</b>，所以仍要兜。
+     *
+     * <p><b>不能按「不匹配任何市场」处理</b>：那样一条已经在用的费率会突然取不到，
+     * 而结算侧「取不到费率」是留空不兜 0 —— 表现是手续费栏位一夜之间全空，
+     * 且每一笔单看都「算得对」。
+     */
+    private static String marketOf(SysPayChannelRate r) {
+        String m = r.getMarket();
+        return m == null || m.isBlank() ? SysPayChannelRate.ANY : m;
     }
 
     @Override
@@ -86,6 +108,11 @@ public class PayChannelRateServiceImpl implements PayChannelRateService {
         }
         if (rate.getLegalForm() == null || rate.getLegalForm().isBlank()) {
             rate.setLegalForm(SysPayChannelRate.ANY);
+        }
+        if (rate.getMarket() == null || rate.getMarket().isBlank()) {
+            // 不传市场 = 不分市场。运营端今天没有这个选择器，默认必须是通配 ——
+            // 默认成 CN 的话，一条本该全局的费率会被悄悄钉死在大陆
+            rate.setMarket(SysPayChannelRate.ANY);
         }
         if (rate.getRateNo() == null || rate.getRateNo().isBlank()) {
             /*

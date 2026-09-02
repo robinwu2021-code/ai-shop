@@ -85,7 +85,9 @@ public class OpsPayChannelAppServiceImpl implements OpsPayChannelAppService {
     }
 
     private ChannelVO toVO(SysPayChannel c, long at) {
-        var eff = rates.effective(c.getPayChannel(), SysPayChannelRate.ANY, SysPayChannelRate.ANY, at);
+        // 市场也传通配：这一列显示的是「通用费率」，与另外两维同一口径
+        var eff = rates.effective(SysPayChannelRate.ANY, c.getPayChannel(),
+                SysPayChannelRate.ANY, SysPayChannelRate.ANY, at);
         /*
          * currentRate 用「生效版本」的三个数补齐成 RateVO：effective 只返回
          * rateBp/minFeeMinor/rateNo，其余字段从 history 里那一条取。

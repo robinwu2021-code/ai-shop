@@ -1503,6 +1503,8 @@ CREATE TABLE IF NOT EXISTS mch_store
     announcement_at BIGINT(20) NULL,
     offline_pay_enabled TINYINT NOT NULL DEFAULT 0,
     cod_enabled TINYINT NOT NULL DEFAULT 0,
+    store_code VARCHAR(32) DEFAULT NULL,
+    CONSTRAINT uk_mch_store_code UNIQUE (store_code),
     PRIMARY KEY (id),
     CONSTRAINT uk_store_no UNIQUE (store_no)
 );

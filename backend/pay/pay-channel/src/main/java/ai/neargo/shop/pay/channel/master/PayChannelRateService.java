@@ -22,7 +22,17 @@ public interface PayChannelRateService {
      * @return 命中的那一版；<b>一条都没配返回 null</b>，调用方自己决定怎么办 ——
      *         这里不兜 0，兜 0 等于悄悄按「零手续费」算账
      */
-    ChannelFeeRate effective(String payChannel, String payMethod, String legalForm, long at);
+    /**
+     * 此刻生效的费率。<b>三维回退，市场是最外层</b>。
+     *
+     * <p>顺序是 市场 → 支付方式 → 法律形态，各自「精确 → 通配」，共八档。
+     * 市场排最外是因为它是最粗的商务分割：不同市场是不同的合同、
+     * 不同的货币、不同的结算周期。<b>把它排在里层的话，
+     * 一条「大陆 · 通用」的费率会盖过「台湾 · 企业」那条</b> ——
+     * 而那意味着按错误的国家费率结算，且金额看着完全正常。
+     */
+    ChannelFeeRate effective(String market, String payChannel, String payMethod,
+                             String legalForm, long at);
 
     /**
      * 生效费率的三个数。<b>不返回 entity</b>：{@code SysPayChannelRate} 带

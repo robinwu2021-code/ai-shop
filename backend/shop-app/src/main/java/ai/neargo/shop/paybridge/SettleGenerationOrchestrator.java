@@ -66,6 +66,12 @@ public class SettleGenerationOrchestrator {
                 merchants.payMerchantNoOf(src.merchantNo(), src.storeNo()).orElse(null),
                 merchants.legalFormOf(src.merchantNo()),
                 merchants.fundsModeOf(src.merchantNo()),
-                merchants.feeBearerOf(src.merchantNo(), src.storeNo(), src.payChannel()));
+                merchants.feeBearerOf(src.merchantNo(), src.storeNo(), src.payChannel()),
+                /*
+                 * 市场取自商家主体 —— 与 legalForm / fundsMode 同一层：
+                 * 都是**成单那一刻的商家快照**，落进结算单之后就不再跟着主数据变。
+                 * 商家改了市场不该让历史账重算。
+                 */
+                merchants.marketOf(src.merchantNo()));
     }
 }

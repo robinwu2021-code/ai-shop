@@ -51,9 +51,14 @@ public interface SettleService {
      *                       它来自进件档案，只有它有值而费率为空时，
      *                       读单据的人才看得出「知道该谁出，但不知道出多少」
      */
+    /**
+     * @param market 这家商家所在的市场，决定按哪一档通道费率算（V297）。
+     *               <b>为空按通配</b> —— 商家还没挂市场时不该取不到费率，
+     *               取不到的表现是手续费栏位空着，而那与「配了 0%」在事后分不开
+     */
     record SettleInput(SettleSourcePort.SettleSource source, String businessMode,
                        String payMerchantNo, String legalForm, String fundsMode,
-                       String feeBearer) {
+                       String feeBearer, String market) {
     }
 
     /**
