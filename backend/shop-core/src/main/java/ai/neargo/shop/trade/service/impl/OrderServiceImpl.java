@@ -847,6 +847,64 @@ public class OrderServiceImpl implements OrderService {
     // ---------------------------------------------------------------- 支付
 
     @Override
+    public ai.neargo.shop.trade.dto.OrderPayMethodVO payMethods(String orderNo) {
+        OrdOrder order = requireOwnOrder(orderNo);
+        List<OrdSubOrder> subs = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .eq(OrdSubOrder::getOrderNo, orderNo)));
+
+        /*
+         * **交集规则与结算页逐字一致** —— 一笔支付覆盖整单，有一家不支持就用不了；
+         * 而「一家都没配」当作未配置放行，不当作「一种都不支持」。
+         *
+         * 两处算出不同结果的话，用户在结算页看到「可以用微信」，
+         * 到了收银台却没有微信 —— 而两边各自都「对」。
+         */
+        /*
+         * ⚠️ 比的是**通道**，不是支付方式。
+         *
+         * 第一版在这里用了 {@code payCapabilityOf().payMethods()} ——
+         * 那是支付方式集合（JSAPI / H5），拿通道码去比永远比不中，
+         * 症状是「进过件的商家一种方式都没有」。
+         * <b>这正是领域模型里点名的那个最容易犯的错，而我自己犯了一次。</b>
+         */
+        java.util.Set<String> usable = null;
+        boolean anyConfigured = false;
+        for (OrdSubOrder sub : subs) {
+            java.util.Set<String> mine =
+                    merchantPort.activeChannelsOf(sub.getEntityNo(), sub.getStoreNo());
+            if (mine.isEmpty()) {
+                continue;                       // 未进件：跳过，不参与交集
+            }
+            anyConfigured = true;
+            usable = usable == null ? new java.util.LinkedHashSet<>(mine)
+                    : intersect(usable, mine);
+        }
+
+        /*
+         * 不可用的也要返回并带原因。过滤掉的话用户会问
+         * 「为什么别人有支付宝我没有」，而客服答不上来。
+         */
+        String market = subs.isEmpty() ? null
+                : merchantPort.marketOf(subs.getFirst().getEntityNo());
+        List<String> payable = payChannelMasterPort.payableChannels(market);
+        List<ai.neargo.shop.trade.dto.OrderPayMethodVO.Method> methods = new ArrayList<>();
+        for (String ch : payChannelMasterPort.enabledChannels(market)) {
+            boolean gatewayReady = payable.contains(ch);
+            boolean merchantOk = usable == null || usable.contains(ch);
+            String reason = !gatewayReady ? "该支付方式暂未开通"
+                    : !merchantOk ? "本单中有店铺尚未开通这种收款方式" : null;
+            methods.add(new ai.neargo.shop.trade.dto.OrderPayMethodVO.Method(
+                    ch, ch, payChannelMasterPort.channelName(ch),
+                    gatewayReady && merchantOk, reason));
+        }
+        // 币种跟着通道走（与结算单同一口径）；取不到时留空，端上据此不显示金额
+        String currency = methods.stream().filter(m -> m.available()).findFirst()
+                .map(m -> payChannelMasterPort.currencyOf(m.payChannel())).orElse(null);
+        return new ai.neargo.shop.trade.dto.OrderPayMethodVO(currency, anyConfigured, methods);
+    }
+
+    @Override
     public PayResult pay(String orderNo, String payChannel) {
         OrdOrder order = requireOwnOrder(orderNo);
         if (!OrdOrder.WAIT_PAY.equals(order.getStatus())) {

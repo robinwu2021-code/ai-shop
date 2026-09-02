@@ -1285,6 +1285,24 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
         @Override
+    public java.util.Set<String> activeChannelsOf(String merchantNo, String storeNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                merchantPaymentMapper.selectList(Wrappers.<MchPaymentMerchant>lambdaQuery()
+                        .eq(MchPaymentMerchant::getEntityNo, merchantNo)
+                        .eq(MchPaymentMerchant::getApplyStatus, MchPaymentMerchant.ACTIVE)))
+                .stream()
+                /*
+                 * 门店级进件只在**问的就是那家店**时算数；主体级（store_no 为空）
+                 * 对所有门店都算数。反过来（拿别家店的进件当自己的）
+                 * 会让钱进到另一家店的收款号。
+                 */
+                .filter(r -> r.getStoreNo() == null || r.getStoreNo().isEmpty()
+                        || r.getStoreNo().equals(storeNo))
+                .map(MchPaymentMerchant::getPayChannel)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    @Override
     public PayCapability payCapabilityOf(String merchantNo, String storeNo) {
         MchPaymentMerchant pm = resolvePayment(merchantNo, storeNo);
         if (pm == null) {

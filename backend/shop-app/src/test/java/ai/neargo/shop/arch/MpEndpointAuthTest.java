@@ -75,6 +75,8 @@ class MpEndpointAuthTest {
             "GET /mp/order",
             "GET /mp/order/{orderNo}",
             "GET /mp/order/{orderNo}/pay-result",
+            // 收银台的支付方式列表（C-1）：要登录 —— 它按下单的商家算，是这个人的单
+            "GET /mp/order/{orderNo}/pay-method",
             "GET /mp/points/account",
             "GET /mp/points/records",
             "GET /mp/store/{merchantNo}/frequent",

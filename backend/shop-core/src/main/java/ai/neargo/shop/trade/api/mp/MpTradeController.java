@@ -97,6 +97,20 @@ public class MpTradeController {
         return orderService.create(req.toCommand(client), idemKey == null ? req.idempotencyKey() : idemKey);
     }
 
+    /**
+     * 这一单能用哪些支付方式（C-1）。
+     *
+     * <p><b>单数 {@code pay-method}</b> —— {@code /mp} 下一律单数，有闸门在拦。
+     *
+     * <p>端上拿到之后：{@code configured = false} 时照常允许支付
+     * （进件还没走完，钱先欠着）；{@code true} 而列表为空时要拦住。
+     * <b>两者是相反的动作</b>，合成一个空数组会把正常订单拦死。
+     */
+    @GetMapping("/mp/order/{orderNo}/pay-method")
+    public ai.neargo.shop.trade.dto.OrderPayMethodVO payMethods(@PathVariable String orderNo) {
+        return orderService.payMethods(orderNo);
+    }
+
     @PostMapping("/mp/order/{orderNo}/pay")
     public OrderService.PayResult pay(@PathVariable String orderNo,
                                       @RequestParam(required = false) String payChannel) {

@@ -40,6 +40,14 @@ public class PayChannelMasterPortImpl implements PayChannelMasterPort {
     }
 
     @Override
+    public String currencyOf(String payChannel) {
+        return master.find(payChannel)
+                .map(ai.neargo.shop.pay.channel.entity.SysPayChannel::getCurrency)
+                .filter(c -> c != null && !c.isBlank())
+                .orElse(null);
+    }
+
+    @Override
     public List<ChannelBrief> enabledBriefs(String market) {
         return master.enabled(market).stream()
                 .map(c -> new ChannelBrief(c.getPayChannel(), c.getName(),

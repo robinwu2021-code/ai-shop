@@ -51,6 +51,15 @@ public interface PayChannelMasterPort {
     List<String> payableChannels(String market);
 
     /**
+     * 这个通道的记账币种。
+     *
+     * <p>取不到给 {@code null}，<b>不兜底成 CNY</b> —— 端上拿不到币种时
+     * 应当不显示金额，而不是按 2 位小数显示。
+     * 日元是 0 位、第纳尔是 3 位，按 2 位显示会差 100 倍，<b>而它不会报错</b>。
+     */
+    String currencyOf(String payChannel);
+
+    /**
      * 启用中的通道，带展示信息 —— 端上主数据快照要用。
      *
      * <p>与 {@link #enabledChannels} 分开而不是让调用方拿码再逐个查名字：

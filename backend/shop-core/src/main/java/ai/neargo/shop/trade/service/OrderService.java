@@ -26,6 +26,15 @@ public interface OrderService {
      *                   取第一个可用通道。端上应当把结算台给的那个传进来，
      *                   否则「结算页显示的」与「实际用的」可能不是同一个
      */
+    /**
+     * 这一单能用哪些支付方式（C-1）。
+     *
+     * <p>交集规则与结算页逐字一致：<b>一笔支付覆盖整单，有一家不支持就用不了</b>；
+     * 而「一家都没配」当作未配置放行，不当作「一种都不支持」。
+     * 两处算出不同结果的话，用户在结算页看到的与收银台看到的就不是一回事。
+     */
+    ai.neargo.shop.trade.dto.OrderPayMethodVO payMethods(String orderNo);
+
     PayResult pay(String orderNo, String payChannel);
 
     /** 支付结果回查（端上轮询用）。 */

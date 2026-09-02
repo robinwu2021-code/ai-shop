@@ -377,6 +377,19 @@ public interface MerchantQueryPort {
     PayCapability payCapabilityOf(String merchantNo, String storeNo);
 
     /**
+     * 这家（可指定门店）<b>进件已生效</b>的通道。
+     *
+     * <p>与 {@link PayCapability#payMethods()} 是<b>两件事</b>：那个是「支付方式」
+     * （JSAPI / H5 / APP —— 用户点的那个按钮），这个是「通道」（钱从哪家机构走）。
+     * <b>把两者当成一回事是这个域里最容易犯的错</b>：
+     * 收银台拿通道码去比支付方式集合，结果永远比不中，
+     * 而症状是「进过件的商家一种支付方式都没有」。
+     *
+     * @return 已生效（ACTIVE）的通道码；没进过件返回空集
+     */
+    java.util.Set<String> activeChannelsOf(String merchantNo, String storeNo);
+
+    /**
      * @param payMethods   该商家可用的支付方式（JSAPI/H5/APP/NATIVE）。
      *                     <b>小微通常没有 H5 与 APP</b>，混合购物车里有一件小微的货，
      *                     整单就只能走交集里剩下的那几种
