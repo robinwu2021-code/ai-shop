@@ -57,7 +57,8 @@ public class OpsDebtController {
     public DebtVO offsetByDeposit(@PathVariable String entityNo, @RequestBody OffsetReq req) {
         String operator = SecurityUtils.currentUserNo();
         debtService.offsetByDeposit(entityNo, req == null ? 0 : req.amountMinor(),
-                operator, req == null ? null : req.reason());
+                operator, req == null ? null : req.reason(),
+                req == null ? null : req.requestNo());
         return new DebtVO(entityNo, debtService.balanceOf(entityNo), debtService.txns(entityNo));
     }
 
@@ -66,7 +67,13 @@ public class OpsDebtController {
      *                    不超过欠款余额，也不超过保证金<b>可用</b>额
      *                    （冻结中的那部分正被别的争议占着）
      */
-    public record OffsetReq(long amountMinor, String reason) {
+    /**
+     * @param requestNo <b>必填</b>的幂等键，页面上一次点击生成一个。
+     *                  这个动作不是自然幂等的：它算的是
+     *                  {@code min(欠款, 请求额, 保证金可用)} —— 点第二次时三个数都变小了，
+     *                  于是它会接着扣，而每一次单看都「算得对」
+     */
+    public record OffsetReq(long amountMinor, String reason, String requestNo) {
     }
 
     public record DebtVO(String entityNo, long balanceMinor, List<DebtService.TxnVO> txns) {

@@ -98,8 +98,25 @@ public class DebtServiceImpl implements DebtService {
 
     @Override
     @Transactional
-    public long offsetByDeposit(String entityNo, long amountMinor, String operator, String reason) {
+    public long offsetByDeposit(String entityNo, long amountMinor, String operator, String reason,
+                                String requestNo) {
         if (amountMinor <= 0) {
+            return 0L;
+        }
+        if (requestNo == null || requestNo.isBlank()) {
+            // 与保证金流水同一条：漏传当场拒，不静默按「没有幂等」执行
+            throw new IllegalArgumentException("保证金抵扣必须带幂等键");
+        }
+        /*
+         * 这个动作**不是自然幂等的**。它算的是 min(欠款, 请求额, 保证金可用)——
+         * 点第二次时三个数都变小了，于是它会接着扣，直到某一边见底。
+         * 单看每一次都「算得对」，而运营的本意是扣一次。
+         */
+        if (DataScopeContext.executeWithoutScope(() -> txnMapper.selectCount(
+                Wrappers.<MchDebtTxn>lambdaQuery()
+                        .eq(MchDebtTxn::getEntityNo, entityNo)
+                        .eq(MchDebtTxn::getRequestNo, requestNo))) > 0) {
+            log.info("[debt] 抵扣 {} 已执行过，跳过", requestNo);
             return 0L;
         }
         if (operator == null || operator.isBlank()) {
@@ -123,7 +140,7 @@ public class DebtServiceImpl implements DebtService {
         }
         // 保证金侧：扣划为负，走它自己的流水（DEDUCT）
         admissionService.recordTxn(entityNo, MchDepositTxn.DEDUCT, -take,
-                reason == null || reason.isBlank() ? "抵扣商家欠款" : reason, operator);
+                reason == null || reason.isBlank() ? "抵扣商家欠款" : reason, operator, requestNo);
 
         long after = owed - take;
         account.setBalanceMinor(after);
@@ -131,7 +148,8 @@ public class DebtServiceImpl implements DebtService {
         DataScopeContext.executeWithoutScope(() -> debtMapper.updateById(account));
         // 欠款侧：偿还为负。两边各自留流水，事后能从任一侧对回去
         writeTxn(entityNo, MchDebtTxn.DEPOSIT, -take, after, null, null, null,
-                (reason == null || reason.isBlank() ? "保证金抵扣" : reason) + "（操作人 " + operator + "）");
+                (reason == null || reason.isBlank() ? "保证金抵扣" : reason) + "（操作人 " + operator + "）",
+                requestNo);
         log.warn("[debt] {} 用保证金抵扣 {} 分（操作人 {}），欠款余额 {}", entityNo, take, operator, after);
         return take;
     }
@@ -177,8 +195,15 @@ public class DebtServiceImpl implements DebtService {
 
     private void writeTxn(String entityNo, String type, long amount, long after,
                           String sourceType, String sourceNo, String batchNo, String reason) {
+        writeTxn(entityNo, type, amount, after, sourceType, sourceNo, batchNo, reason, null);
+    }
+
+    private void writeTxn(String entityNo, String type, long amount, long after,
+                          String sourceType, String sourceNo, String batchNo, String reason,
+                          String requestNo) {
         MchDebtTxn t = new MchDebtTxn();
         t.setTxnNo(BizKey.next(BizKey.DEBT_TXN));
+        t.setRequestNo(requestNo);
         t.setEntityNo(entityNo);
         t.setTxnType(type);
         t.setAmountMinor(amount);

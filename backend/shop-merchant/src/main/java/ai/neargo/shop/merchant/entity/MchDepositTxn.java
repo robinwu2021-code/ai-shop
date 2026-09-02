@@ -24,6 +24,15 @@ public class MchDepositTxn extends BaseEntity {
     public static final String DEDUCT = "DEDUCT";
 
     private String txnNo;
+
+    /**
+     * 这次操作的幂等键，由发起方生成（V299）。
+     *
+     * <p>这张表<b>没有状态可守</b>（流水只增不改），也<b>没有源单可依</b>
+     * （金额是运营当场填的）—— 重复提交会实打实地记两笔。
+     * 唯一索引在 (归属, request_no) 上，撞了就说明这次操作已经做过。
+     */
+    private String requestNo;
     private String merchantNo;
     private String txnType;
     /**

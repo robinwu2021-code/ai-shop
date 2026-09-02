@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -103,7 +104,26 @@ public class AdmissionServiceImpl implements AdmissionService {
 
     @Override
     @Transactional
-    public void recordTxn(String merchantNo, String txnType, long amountMinor, String reason, String operator) {
+    public void recordTxn(String merchantNo, String txnType, long amountMinor, String reason,
+                          String operator, String requestNo) {
+        if (requestNo == null || requestNo.isBlank()) {
+            /*
+             * **漏传当场 400，不静默放行。**
+             *
+             * 放行的话这个接口在「端上忘了传」的情况下与没接幂等一模一样，
+             * 而那正是 Idempotency-Key 头那套东西的毛病：
+             * 没带 key 就直接执行，于是「接没接上」在服务端看不出来。
+             */
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (DataScopeContext.executeWithoutScope(() -> txnMapper.selectCount(
+                Wrappers.<MchDepositTxn>lambdaQuery()
+                        .eq(MchDepositTxn::getMerchantNo, merchantNo)
+                        .eq(MchDepositTxn::getRequestNo, requestNo))) > 0) {
+            // 这次操作已经做过。**返回而不是报错** —— 用户看到的是「点了两下」，
+            // 报错会让他以为没成功，然后换个号再点一次
+            return;
+        }
         MchDeposit d = accountOf(merchantNo).orElseGet(() -> {
             MchDeposit fresh = new MchDeposit();
             fresh.setMerchantNo(merchantNo);
@@ -150,6 +170,7 @@ public class AdmissionServiceImpl implements AdmissionService {
 
         MchDepositTxn txn = new MchDepositTxn();
         txn.setTxnNo(BizKey.next(BizKey.DEPOSIT_TXN));
+        txn.setRequestNo(requestNo);
         txn.setMerchantNo(merchantNo);
         txn.setTxnType(txnType);
         txn.setAmountMinor(amountMinor);

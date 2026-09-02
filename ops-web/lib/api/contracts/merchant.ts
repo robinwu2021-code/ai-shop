@@ -84,7 +84,13 @@ export interface MerchantApi {
   setPayQuota(v: { merchantNo: string; storeNo?: string; quotaLimitMinor: number }): Promise<void>;
   depositTxns(merchantNo: string): Promise<DepositTxn[]>;
   /** @param amountMinor 有符号：缴纳为正、扣划为负 */
-  addDepositTxn(v: { merchantNo: string; txnType: DepositTxnType; amountMinor: number; reason?: string }): Promise<void>;
+  /**
+   * @param requestNo **必填**的幂等键，一次点击一个。
+   *                  这张流水表只增不改、金额又是运营当场填的 ——
+   *                  重复提交会实打实记两笔，而后端漏传时直接 400（不静默放行）。
+   */
+  addDepositTxn(v: { merchantNo: string; txnType: DepositTxnType; amountMinor: number;
+    reason?: string; requestNo: string }): Promise<void>;
 
   // ── 入驻审核（P-11.1.1）────────────────────────────────────────
   //

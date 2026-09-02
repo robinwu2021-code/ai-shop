@@ -25,7 +25,17 @@ public interface AdmissionService {
      *
      * @param amountMinor 有符号：缴纳为正、扣划为负
      */
-    void recordTxn(String merchantNo, String txnType, long amountMinor, String reason, String operator);
+/**
+     * 记一笔保证金流水。
+     *
+     * @param requestNo <b>必填</b>的幂等键，由发起方生成、一次操作一个。
+     *                  这张表没有状态可守也没有源单可依，重复提交会实打实记两笔 ——
+     *                  而金额是运营当场填的，点两次就是两倍。
+     *                  <b>不走 Idempotency-Key 头</b>：那个执行器没带 key 时直接放行，
+     *                  接上了也可能一直不生效，而「以为接了其实没接」比没接更糟。
+     */
+    void recordTxn(String merchantNo, String txnType, long amountMinor,
+                   String reason, String operator, String requestNo);
 
     List<TxnVO> txns(String merchantNo);
 

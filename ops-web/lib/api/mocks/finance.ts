@@ -371,7 +371,7 @@ export const financeMock: FinanceApi = {
     wait(db.merchantDebts[entityNo]
       ?? { entityNo, balanceMinor: 0, txns: [] }),
 
-  offsetDebtByDeposit: async (entityNo, amountMinor, reason) => {
+  offsetDebtByDeposit: async (entityNo, amountMinor, reason, _requestNo) => {
     const d = db.merchantDebts[entityNo];
     if (!d || d.balanceMinor <= 0) fail("这家没有待抵扣的欠款", "No outstanding debt");
     // 两头封顶，与后端一致：不超过欠款，也不超过保证金可用额（mock 里假设可用 5000）

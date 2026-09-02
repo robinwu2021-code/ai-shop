@@ -74,7 +74,8 @@ public class OpsAdmissionController {
     public void addTxn(@PathVariable String merchantNo, @RequestBody TxnReq req) {
         String operator = SecurityUtils.currentUserNo();
         admissionService.recordTxn(merchantNo, req.txnType(),
-                req.amountMinor() == null ? 0L : req.amountMinor(), req.reason(), operator);
+                req.amountMinor() == null ? 0L : req.amountMinor(), req.reason(), operator,
+                req.requestNo());
         auditLogPort.record("DEPOSIT_TXN", merchantNo + ":" + req.txnType(), operator);
     }
 
@@ -108,7 +109,11 @@ public class OpsAdmissionController {
     }
 
     /** 包装类型而非 long：{@code null} 要能被当成参数缺失报出来，而不是被 Jackson 当成 0 静默通过。 */
-    public record TxnReq(String txnType, Long amountMinor, String reason) {
+    /**
+     * @param requestNo <b>必填</b>的幂等键，页面上一次点击生成一个。
+     *                  漏传当场 400 —— 不静默放行，否则「接没接上」在服务端看不出来
+     */
+    public record TxnReq(String txnType, Long amountMinor, String reason, String requestNo) {
     }
 
     /** @param storeNo 为空 = 主体级默认收款号 */

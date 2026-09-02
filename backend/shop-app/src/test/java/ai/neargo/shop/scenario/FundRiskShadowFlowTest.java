@@ -148,7 +148,7 @@ class FundRiskShadowFlowTest {
     @DisplayName("★★ 缴过保证金且超倍数才命中集中度")
     void concentrationHitsOnlyAboveCap() {
         givenBill("d", 10000, false);
-        admissionService.recordTxn(ENTITY, "PAY", 10000, "缴纳保证金", "test");
+        admissionService.recordTxn(ENTITY, "PAY", 10000, "缴纳保证金", "test", java.util.UUID.randomUUID().toString());
 
         // 3 倍上限 = 30000
         riskService.decide(batch("STB-RISK-5", 20000));

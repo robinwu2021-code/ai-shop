@@ -53,7 +53,8 @@ public interface DebtService {
      * @param operator 谁按的。<b>必填</b> —— 动本金的操作没有操作人就没法追责
      * @return 实际抵掉的金额（分）。不超过欠款余额，也不超过保证金可用余额
      */
-    long offsetByDeposit(String entityNo, long amountMinor, String operator, String reason);
+    long offsetByDeposit(String entityNo, long amountMinor, String operator,
+                         String reason, String requestNo);
 
     /** 当前欠款余额（分）。没有账户返回 0 */
     long balanceOf(String entityNo);

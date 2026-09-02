@@ -137,9 +137,9 @@ class MerchantDebtFlowTest {
     void depositOffsetRequiresOperator() {
         debtService.incur(ENTITY, 5000, "REFUND", "AS-008", "退款追不回");
 
-        assertThatThrownBy(() -> debtService.offsetByDeposit(ENTITY, 1000, null, "抵扣"))
+        assertThatThrownBy(() -> debtService.offsetByDeposit(ENTITY, 1000, null, "抵扣", java.util.UUID.randomUUID().toString()))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> debtService.offsetByDeposit(ENTITY, 1000, "  ", "抵扣"))
+        assertThatThrownBy(() -> debtService.offsetByDeposit(ENTITY, 1000, "  ", "抵扣", java.util.UUID.randomUUID().toString()))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(debtService.balanceOf(ENTITY)).as("没扣成").isEqualTo(5000);
     }
@@ -148,8 +148,8 @@ class MerchantDebtFlowTest {
     @DisplayName("★★★ 保证金抵扣不超过**可用**余额 —— 冻结中的那部分正被别的争议占着")
     void depositOffsetRespectsFrozen() {
         debtService.incur(ENTITY, 100000, "REFUND", "AS-009", "退款追不回");
-        admissionService.recordTxn(ENTITY, "PAY", 10000, "缴纳保证金", "test");
-        admissionService.recordTxn(ENTITY, "FREEZE", 8000, "理赔占用", "test");
+        admissionService.recordTxn(ENTITY, "PAY", 10000, "缴纳保证金", "test", java.util.UUID.randomUUID().toString());
+        admissionService.recordTxn(ENTITY, "FREEZE", 8000, "理赔占用", "test", java.util.UUID.randomUUID().toString());
 
         /*
          * ⚠️ 前提要在**动作之前**断言。
@@ -160,7 +160,7 @@ class MerchantDebtFlowTest {
                 .as("前提：可用 = 实缴 10000 - 占用 8000")
                 .isEqualTo(2000);
 
-        long took = debtService.offsetByDeposit(ENTITY, 100000, "ops-1", "抵扣欠款");
+        long took = debtService.offsetByDeposit(ENTITY, 100000, "ops-1", "抵扣欠款", java.util.UUID.randomUUID().toString());
 
         assertThat(took)
                 .as("只能抵可用的那 2000，拿冻结部分去抵等于同一笔钱赔两次")
@@ -172,9 +172,9 @@ class MerchantDebtFlowTest {
     @DisplayName("★★ 两侧各留流水 —— 保证金侧 DEDUCT、欠款侧 DEPOSIT，从任一侧都能对回去")
     void depositOffsetWritesBothLedgers() {
         debtService.incur(ENTITY, 5000, "REFUND", "AS-010", "退款追不回");
-        admissionService.recordTxn(ENTITY, "PAY", 10000, "缴纳保证金", "test");
+        admissionService.recordTxn(ENTITY, "PAY", 10000, "缴纳保证金", "test", java.util.UUID.randomUUID().toString());
 
-        debtService.offsetByDeposit(ENTITY, 3000, "ops-2", "抵扣欠款");
+        debtService.offsetByDeposit(ENTITY, 3000, "ops-2", "抵扣欠款", java.util.UUID.randomUUID().toString());
 
         assertThat(debtService.txns(ENTITY).get(0).txnType()).isEqualTo("DEPOSIT");
         assertThat(debtService.txns(ENTITY).get(0).amountMinor()).as("偿还为负").isEqualTo(-3000);

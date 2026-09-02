@@ -188,7 +188,13 @@ export interface FinanceApi {
    * 实际抵扣两头封顶：不超过欠款余额，也不超过保证金**可用**额
    * （冻结中的那部分正被别的争议占着）。
    */
-  offsetDebtByDeposit(entityNo: string, amountMinor: number, reason: string): Promise<MerchantDebt>;
+  /**
+   * @param requestNo **必填**的幂等键，跟着运营的这一次意图走、不跟着每一次点击走。
+   *                  这个动作不是自然幂等的：它算 min(欠款, 请求额, 保证金可用)，
+   *                  点第二次时三个数都变小了，于是会接着扣，而每次单看都「算得对」。
+   */
+  offsetDebtByDeposit(entityNo: string, amountMinor: number, reason: string,
+    requestNo: string): Promise<MerchantDebt>;
 
   /** 加一版通道费率。**不改旧行**，与 `addFeeRule` 同一条规矩。 */
   addPayChannelRate(channel: string, v: {

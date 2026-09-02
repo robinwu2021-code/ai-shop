@@ -38,12 +38,20 @@ export function DebtTab({ c, canExecute }: { c: FinanceCopy; canExecute: boolean
     enabled: !!entityNo.trim(),
   });
 
+  /*
+   * 幂等键跟着**这一次抵扣的意图**走，不跟着每一次点击走 ——
+   * 每点一次生成一个新键的话，双击照样扣两次，幂等等于没做。
+   * 抵扣成功、表单清空之后再换新键。
+   */
+  const [offsetKey, setOffsetKey] = useState(() => crypto.randomUUID());
+
   const offset = useMutation({
-    mutationFn: () => api.offsetDebtByDeposit(entityNo, Number(amount) * 100, reason),
+    mutationFn: () => api.offsetDebtByDeposit(entityNo, Number(amount) * 100, reason, offsetKey),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["merchant-debt"] });
       setAmount("");
       setReason("");
+      setOffsetKey(crypto.randomUUID());
       notify.success(c.dbToastOffset);
     },
   });

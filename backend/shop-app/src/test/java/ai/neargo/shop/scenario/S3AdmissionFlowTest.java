@@ -61,7 +61,7 @@ class S3AdmissionFlowTest {
                 .isInstanceOf(BizException.class)
                 .hasMessage(ErrorCode.DEPOSIT_INSUFFICIENT.name());
 
-        admissionService.recordTxn(micro, MchDepositTxn.PAY, REQUIRED_DEPOSIT, "缴纳保证金", "OPS");
+        admissionService.recordTxn(micro, MchDepositTxn.PAY, REQUIRED_DEPOSIT, "缴纳保证金", "OPS", java.util.UUID.randomUUID().toString());
 
         assertThatCode(() -> admissionPort.requireListingAllowed(micro, "CAT_FREE", false))
                 .as("补足后必须真的放行——只拦不放的闸门会被运营直接关掉")
@@ -161,8 +161,8 @@ class S3AdmissionFlowTest {
     void everyChangeLeavesATrail() {
         String micro = aMerchantOf(MICRO);
 
-        admissionService.recordTxn(micro, MchDepositTxn.PAY, 300_000L, "缴纳", "OPS");
-        admissionService.recordTxn(micro, MchDepositTxn.DEDUCT, -50_000L, "理赔扣划", "OPS");
+        admissionService.recordTxn(micro, MchDepositTxn.PAY, 300_000L, "缴纳", "OPS", java.util.UUID.randomUUID().toString());
+        admissionService.recordTxn(micro, MchDepositTxn.DEDUCT, -50_000L, "理赔扣划", "OPS", java.util.UUID.randomUUID().toString());
 
         var txns = admissionService.txns(micro);
         assertThat(txns).hasSize(2);
@@ -178,7 +178,7 @@ class S3AdmissionFlowTest {
     @DisplayName("★★ 退还必须是负数 —— 「退还」把余额加上去，两侧都不会报错")
     void refundMustBeNegative() {
         String micro = aMerchantOf(MICRO);
-        admissionService.recordTxn(micro, MchDepositTxn.PAY, REQUIRED_DEPOSIT, "缴纳", "OPS");
+        admissionService.recordTxn(micro, MchDepositTxn.PAY, REQUIRED_DEPOSIT, "缴纳", "OPS", java.util.UUID.randomUUID().toString());
 
         /*
          * 这一条是真实发生过的：ops-web 只对 DEDUCT 取了负，于是运营选「退还 2000」
@@ -186,18 +186,18 @@ class S3AdmissionFlowTest {
          * 两侧都不报错，只有对账时才会发现 —— 所以守卫要在服务端。
          */
         assertThatThrownBy(() ->
-                admissionService.recordTxn(micro, MchDepositTxn.REFUND, 100_000L, "方向反了", "OPS"))
+                admissionService.recordTxn(micro, MchDepositTxn.REFUND, 100_000L, "方向反了", "OPS", java.util.UUID.randomUUID().toString()))
                 .isInstanceOf(BizException.class)
                 .hasMessage(ErrorCode.BAD_REQUEST.name());
 
-        admissionService.recordTxn(micro, MchDepositTxn.REFUND, -100_000L, "正常退还", "OPS");
+        admissionService.recordTxn(micro, MchDepositTxn.REFUND, -100_000L, "正常退还", "OPS", java.util.UUID.randomUUID().toString());
         assertThat(admissionService.deposit(micro).paidMinor())
                 .as("退还之后余额必须变少")
                 .isEqualTo(REQUIRED_DEPOSIT - 100_000L);
 
         // 缴纳反过来也不行：方向由类型决定，两个方向都要堵
         assertThatThrownBy(() ->
-                admissionService.recordTxn(micro, MchDepositTxn.PAY, -1L, "负的缴纳", "OPS"))
+                admissionService.recordTxn(micro, MchDepositTxn.PAY, -1L, "负的缴纳", "OPS", java.util.UUID.randomUUID().toString()))
                 .isInstanceOf(BizException.class);
     }
 
@@ -205,8 +205,8 @@ class S3AdmissionFlowTest {
     @DisplayName("★ 冻结动的是 frozen 不是 paid —— 可用余额减少，实缴不变")
     void freezeDoesNotEraseWhatWasPaid() {
         String micro = aMerchantOf(MICRO);
-        admissionService.recordTxn(micro, MchDepositTxn.PAY, REQUIRED_DEPOSIT, "缴纳", "OPS");
-        admissionService.recordTxn(micro, MchDepositTxn.FREEZE, 100_000L, "理赔冻结", "OPS");
+        admissionService.recordTxn(micro, MchDepositTxn.PAY, REQUIRED_DEPOSIT, "缴纳", "OPS", java.util.UUID.randomUUID().toString());
+        admissionService.recordTxn(micro, MchDepositTxn.FREEZE, 100_000L, "理赔冻结", "OPS", java.util.UUID.randomUUID().toString());
 
         var d = admissionService.deposit(micro);
         assertThat(d.paidMinor()).as("理赔不成立时要能还原「本来缴了多少」").isEqualTo(REQUIRED_DEPOSIT);

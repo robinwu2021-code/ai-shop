@@ -56,6 +56,6 @@ export const financeHttp: FinanceApi = {
   holdSettleBatch: (batchNo, remark) =>
     client.post(`/ops/settle-batches/${batchNo}/hold`, { remark }),
   merchantDebt: (entityNo) => client.get(`/ops/debts/${entityNo}`),
-  offsetDebtByDeposit: (entityNo, amountMinor, reason) =>
-    client.post(`/ops/debts/${entityNo}/deposit-offset`, { amountMinor, reason }),
+  offsetDebtByDeposit: (entityNo, amountMinor, reason, requestNo) =>
+    client.post(`/ops/debts/${entityNo}/deposit-offset`, { amountMinor, reason, requestNo }),
 };

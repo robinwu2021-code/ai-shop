@@ -116,6 +116,19 @@ export function AdmissionTab({ c }: { c: Copy }) {
   const [txnType, setTxnType] = useState<DepositTxnType>("PAY");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  /*
+   * 幂等键跟着**运营的这一次意图**走，不跟着每一次点击走。
+   *
+   * 第一版写成了 `requestNo: crypto.randomUUID()` 放在 mutationFn 里 ——
+   * 那样每点一次都是新键，<b>双击照样记两笔</b>，幂等等于没做。
+   *
+   * 正确的粒度是「这一笔要记的流水」：进页面时生成一个，
+   * 记成功、表单清空之后再换一个。于是
+   *   · 连点两下 → 同一个键 → 后端按已完成返回；
+   *   · 网络超时后重试 → 同一个键 → 不会记两笔；
+   *   · 真的要再记一笔 → 表单重填、新键 → 正常记录。
+   */
+  const [txnKey, setTxnKey] = useState(() => crypto.randomUUID());
 
   const addTxn = useMutation({
     mutationFn: () =>
@@ -134,12 +147,14 @@ export function AdmissionTab({ c }: { c: Copy }) {
           ? -Math.abs(Number(amount))
           : Math.abs(Number(amount)),
         reason: reason || undefined,
+        requestNo: txnKey,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["deposit", queried] });
       qc.invalidateQueries({ queryKey: ["deposit-txns", queried] });
       setAmount("");
       setReason("");
+      setTxnKey(crypto.randomUUID());   // 下一笔是另一次意图，换新键
       notify.success(c.adToastTxnAdded);
     },
   });
