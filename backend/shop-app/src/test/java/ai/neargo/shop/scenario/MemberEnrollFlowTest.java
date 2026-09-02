@@ -29,6 +29,9 @@ class MemberEnrollFlowTest {
     @Autowired
     private PersonService personService;
 
+    @Autowired
+    private ai.neargo.shop.marketing.attribution.AttributionService attributionService;
+
     private static int seq = 5000;
 
     private String person() {
@@ -55,6 +58,53 @@ class MemberEnrollFlowTest {
         assertThat(m.getTotalSpentMinor()).isEqualTo(6800);
         assertThat(m.getFirstOrderAt()).isEqualTo(now);
         assertThat(m.getLevel()).isEqualTo(MbrMember.LEVEL_NEW);
+    }
+
+    /**
+     * <b>扫码进来的人，来源要记 SCAN 而不是 ORDER。</b>
+     *
+     * <p>{@code SOURCE_SCAN} 这个常量声明了却<b>从没有人写过</b>：所有下单入会的人
+     * 一律记 ORDER，于是「扫了店门口那张贴纸才来的」在会员档案里查不到 ——
+     * 那批物料的效果永远是 0，而商家据此判断还要不要继续印。
+     *
+     * <p>可证伪：把 {@code byScan} 那一段去掉，来源退回 ORDER，第一个断言立刻变红。
+     */
+    @Test
+    @DisplayName("★ 扫码归因过的人下单入会 → 来源是 SCAN；下单那行仍在明细里")
+    void scannedMemberIsSourcedAsScanNotOrder() {
+        String p = person();
+        String e = entity();
+        String u = "U-SCAN-" + seq;
+        long now = System.currentTimeMillis();
+
+        // 先扫码：归因落到这家店（来源 STORE_CODE）
+        attributionService.report(u,
+                new ai.neargo.shop.marketing.attribution.AttributionService.Clue(e, null, null));
+
+        memberService.onOrderPaid("SUB-SCAN" + seq, u, p, e, "ST-1", 3300, now);
+
+        MbrMember m = memberService.find(e, p).orElseThrow();
+        assertThat(m.getSource())
+                .as("扫码进来的人记成「下单来的」—— 贴纸的效果永远算不出来")
+                .isEqualTo(MbrMember.SOURCE_SCAN);
+        // 下单这件事没有丢：明细是事件流水，两件事各一行
+        assertThat(m.getOrderCount()).isEqualTo(1);
+        assertThat(m.getTotalSpentMinor()).isEqualTo(3300);
+    }
+
+    /** 没扫过码的人照旧记 ORDER —— 别把所有人都标成扫码来的。 */
+    @Test
+    @DisplayName("★ 没归因过的人下单入会仍是 ORDER —— 判据要能分开两种人")
+    void unattributedMemberStaysOrderSourced() {
+        String p = person();
+        String e = entity();
+        long now = System.currentTimeMillis();
+
+        memberService.onOrderPaid("SUB-NOSCAN" + seq, "U-NOSCAN-" + seq, p, e, "ST-1", 2200, now);
+
+        assertThat(memberService.find(e, p).orElseThrow().getSource())
+                .as("没扫过码的也标成 SCAN —— 那这个字段就不再有区分力了")
+                .isEqualTo(MbrMember.SOURCE_ORDER);
     }
 
     @Test

@@ -57,6 +57,12 @@ public class MemberServiceImpl implements MemberService {
 
     /** 券包/会员卡上要显示店名 —— 号对顾客没有意义 */
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
+    /*
+     * 惰性取：会员域不该因为归因域没装配而整个起不来 ——
+     * 取不到时来源退回 ORDER（少一个来源），而不是入不了会（少一个会员）。
+     */
+    private final org.springframework.beans.factory.ObjectProvider<
+            ai.neargo.shop.spi.marketing.AttributionPort> attributionPort;
 
     /** 按标签筛人要读关系表。判 tagNo 存不存在是标签服务的事，这里只做交集 */
     private final ai.neargo.shop.member.mapper.MemberMappers.MemberTagMapper memberTagMapper;
@@ -67,7 +73,10 @@ public class MemberServiceImpl implements MemberService {
                              ai.neargo.shop.member.service.MemberTagService tagService,
                              ai.neargo.shop.member.mapper.MemberMappers.MemberTagMapper
                                      memberTagMapper,
-                             ai.neargo.shop.spi.user.MerchantQueryPort merchantPort) {
+                             ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
+                             org.springframework.beans.factory.ObjectProvider<
+                                     ai.neargo.shop.spi.marketing.AttributionPort> attributionPort) {
+        this.attributionPort = attributionPort;
         this.memberTagMapper = memberTagMapper;
         this.merchantPort = merchantPort;
         this.memberMapper = memberMapper;
@@ -96,10 +105,10 @@ public class MemberServiceImpl implements MemberService {
     public void onOrderPaid(String subOrderNo, String userNo, String personNo,
                             String entityNo, String storeNo, long amountMinor, long paidAt) {
         DataScopeContext.executeWithoutScope(() ->
-                doOnOrderPaid(subOrderNo, personNo, entityNo, storeNo, amountMinor, paidAt));
+                doOnOrderPaid(subOrderNo, userNo, personNo, entityNo, storeNo, amountMinor, paidAt));
     }
 
-    private void doOnOrderPaid(String subOrderNo, String personNo,
+    private void doOnOrderPaid(String subOrderNo, String userNo, String personNo,
                                String entityNo, String storeNo, long amountMinor, long paidAt) {
         if (personNo == null || personNo.isBlank()) {
             /*
@@ -115,8 +124,21 @@ public class MemberServiceImpl implements MemberService {
 
         MbrMember m = find(entityNo, personNo).orElse(null);
         boolean fresh = m == null;
+        /*
+         * **他是怎么来的，与他做了什么，是两件事。**
+         *
+         * 此前所有下单入会的人来源一律记 ORDER，于是「扫了店门口那张贴纸才来的」
+         * 这件事在会员档案里查不到 —— {@code SOURCE_SCAN} 这个常量声明了却<b>从没有人写过</b>。
+         * 后果很具体：贴纸带来的人全部算成「下单来的」，那批物料的效果永远是 0，
+         * 而商家据此判断还要不要继续印。
+         *
+         * 判据用现成的归因，不另开一套：{@code attributedMerchant} 只在
+         * <b>来源是店铺码且还在窗口期内</b>时给出商家号 —— 正是「扫码进来的」。
+         */
+        boolean byScan = fresh && scannedInto(userNo, entityNo);
         if (fresh) {
-            m = create(entityNo, personNo, MbrMember.SOURCE_ORDER, storeNo, paidAt);
+            m = create(entityNo, personNo,
+                    byScan ? MbrMember.SOURCE_SCAN : MbrMember.SOURCE_ORDER, storeNo, paidAt);
         }
         m.setLastOrderAt(paidAt);
         if (m.getFirstOrderAt() == null) {
@@ -132,7 +154,18 @@ public class MemberServiceImpl implements MemberService {
         memberMapper.updateById(m);
 
         applyStore(m, storeNo, amountMinor, paidAt, fresh);
-        recordSource(m, MbrMember.SOURCE_ORDER, storeNo, fresh, paidAt,
+        if (byScan) {
+            /*
+             * 扫码那一下单独记一行，且它才是 isFirst。
+             * 明细是**事件流水**：下单这件事照记（下面那行），但首次触点是扫码。
+             * 合成一行的话，要么丢掉「扫过码」，要么把订单号挂到扫码事件上 ——
+             * 后者会让按 refNo 判重的幂等把两件事当成一件。
+             */
+            recordSource(m, MbrMember.SOURCE_SCAN, storeNo, true, paidAt,
+                    null, null, null, null, null);
+        }
+        // 下单这行的 refNo 是子订单号，幂等靠它 —— 所以它必须留着，且只有它带 refNo
+        recordSource(m, MbrMember.SOURCE_ORDER, storeNo, fresh && !byScan, paidAt,
                 null, null, null, null, subOrderNo);
     }
 
@@ -614,6 +647,23 @@ public class MemberServiceImpl implements MemberService {
         }
         s.setLevel(levelOf(s.getD90OrderCount(), s.getLastOrderAt()));
         storeMapper.updateById(s);
+    }
+
+    /**
+     * 这个人是<b>扫这家店的码</b>进来的吗。
+     *
+     * <p>用归因域现成的判据，不另开一套：{@code attributedMerchant} 只在来源是
+     * 店铺码、且还在窗口期内时给出商家号。两处各算一遍的话，
+     * 「会员来源」与「归因来源」迟早对不上，而两个数看起来都是对的。
+     *
+     * <p>取不到归因域（没装配）就当不是 —— 少标一个来源，不影响入会本身。
+     */
+    private boolean scannedInto(String userNo, String entityNo) {
+        if (userNo == null || userNo.isBlank()) {
+            return false;   // 没有账号就没有归因：这一单是人档口径的，不是用户口径的
+        }
+        var port = attributionPort.getIfAvailable();
+        return port != null && entityNo != null && entityNo.equals(port.attributedMerchant(userNo));
     }
 
     private void recordSource(MbrMember m, String type, String storeNo, boolean first, long at,
