@@ -58,6 +58,7 @@ import java.util.List;
 public class GroupServiceImpl implements GroupService {
 
     private final GroupBuyMapper groupBuyMapper;
+    private final ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort;
     private final GroupMemberMapper memberMapper;
     private final RequestMapper requestMapper;
     private final RequestInterestMapper interestMapper;
@@ -79,7 +80,9 @@ public class GroupServiceImpl implements GroupService {
                             PickupQueryPort pickupPort,
                             ObjectMapper json,
                             GroupPickupPort groupPickupPort, FulfillmentQueryPort fulfillmentPort, GoodsQueryPort goodsPort,
-                            ai.neargo.shop.spi.user.MerchantGovernPort governPort) {
+                            ai.neargo.shop.spi.user.MerchantGovernPort governPort,
+                            ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort) {
+        this.switchPort = switchPort;
         this.governPort = governPort;
         this.pickupPort = pickupPort;
         this.groupPickupPort = groupPickupPort;
@@ -411,7 +414,13 @@ public class GroupServiceImpl implements GroupService {
         g.setMinCount(snap.groupMinCount() == null || snap.groupMinCount() < 2 ? 2 : snap.groupMinCount());
         g.setJoinedCount(0);
         g.setPickupNo(cmd.pickupNo());
-        g.setStatus(MktGroupBuy.OPEN);
+        /*
+         * 要不要先审：**开关说了算**（`group.audit`，默认关）。
+         *
+         * 关着 = 建团即上线，与加这个开关之前逐字相同 —— 不改变任何现存平台的行为。
+         * 开着 = 落 PENDING，等运营审。审核通过才进 OPEN。
+         */
+        g.setStatus(switchPort.bool("group.audit", false) ? MktGroupBuy.PENDING : MktGroupBuy.OPEN);
         // 团的有效期。7 天是发起人能等、商家能备货的折中；到期未成团自动失败
         g.setEndAt(System.currentTimeMillis() + Duration.ofDays(7).toMillis());
         scoped(() -> groupBuyMapper.insert(g));
@@ -818,6 +827,76 @@ public class GroupServiceImpl implements GroupService {
         return toGroupBuyVO(g, false);
     }
 
+    @Override
+    @Transactional
+    public GroupBuyVO auditGroup(String groupNo, boolean pass, String reason, String operatorNo) {
+        MktGroupBuy g = requireGroup(groupNo);
+        if (!MktGroupBuy.PENDING.equals(g.getStatus())) {
+            /*
+             * 只有待审的团能审。**不做成幂等返回** —— 两个运营同时点，
+             * 后点的那个应当看到「已经审过了，刷新看看」，
+             * 而不是以为自己的判断生效了（他可能点的是相反的那个键）。
+             */
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        if (!pass) {
+            if (reason == null || reason.isBlank()) {
+                // 驳回理由商家会原样看到。空理由等于让他猜自己错在哪
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            g.setStatus(MktGroupBuy.FAILED);
+            scoped(() -> groupBuyMapper.updateById(g));
+            return toGroupBuyVO(g, false);
+        }
+        /*
+         * 通过前的两条硬校验 —— **不能只做 UI 提示**：
+         * 「1 个人的团」与「团购价不低于原价」放出去之后，
+         * C 端页面上写着「拼团」，而它既拼不起来、也不便宜。
+         */
+        if (g.getMinCount() == null || g.getMinCount() < 2) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (nz(g.getGroupPriceMinor()) >= nz(g.getOriginPriceMinor())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        g.setStatus(MktGroupBuy.OPEN);
+        scoped(() -> groupBuyMapper.updateById(g));
+        return toGroupBuyVO(g, false);
+    }
+
+    /** 合法迁移表。**只列允许的**，其余一律拒 —— 白名单比黑名单少一类漏网。 */
+    private static final java.util.Map<String, java.util.Set<String>> STATUS_MOVES = java.util.Map.of(
+            MktGroupBuy.PENDING, java.util.Set.of(MktGroupBuy.OPEN, MktGroupBuy.FAILED),
+            MktGroupBuy.OPEN, java.util.Set.of(MktGroupBuy.FORMED, MktGroupBuy.FAILED));
+
+    @Override
+    @Transactional
+    public GroupBuyVO setGroupStatus(String groupNo, String status, String operatorNo) {
+        MktGroupBuy g = requireGroup(groupNo);
+        if (status == null || status.equals(g.getStatus())) {
+            return toGroupBuyVO(g, false);   // 原地不动是幂等，不是错
+        }
+        /*
+         * **已成团/已失败是终态**：改回去不会把钱退给任何人，也不会把货变回来，
+         * 只会让订单与团的状态对不上 —— 与 abortGroup 拒绝改已成团是同一条理由。
+         */
+        if (!STATUS_MOVES.getOrDefault(g.getStatus(), java.util.Set.of()).contains(status)) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        g.setStatus(status);
+        scoped(() -> groupBuyMapper.updateById(g));
+        return toGroupBuyVO(g, false);
+    }
+
+    private MktGroupBuy requireGroup(String groupNo) {
+        MktGroupBuy g = scoped(() -> groupBuyMapper.selectOne(Wrappers.<MktGroupBuy>lambdaQuery()
+                .eq(MktGroupBuy::getGroupNo, groupNo).last("limit 1")));
+        if (g == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return g;
+    }
+
     private QuoteVO toQuoteVO(MktQuote q) {
         var m = merchantPort.find(q.getEntityNo());
         return new QuoteVO(q.getQuoteNo(), q.getRequestNo(),
@@ -1000,7 +1079,12 @@ public class GroupServiceImpl implements GroupService {
         g.setOriginPriceMinor(snap.price());
         g.setMinCount(snap.groupMinCount() == null || snap.groupMinCount() < 2 ? 2 : snap.groupMinCount());
         g.setJoinedCount(0);
-        g.setStatus(MktGroupBuy.OPEN);
+        /*
+         * 与用户发起的团**走同一个开关** —— 两条建团路径少管一条，
+         * 开关就等于没开：商家自己开的团恰恰是最需要审的那种
+         * （把原价标高再打「团购价」）。
+         */
+        g.setStatus(switchPort.bool("group.audit", false) ? MktGroupBuy.PENDING : MktGroupBuy.OPEN);
         g.setEndAt(System.currentTimeMillis() + java.time.Duration.ofDays(7).toMillis());
         scoped(() -> groupBuyMapper.insert(g));
         return toGroupBuyVO(g, false);

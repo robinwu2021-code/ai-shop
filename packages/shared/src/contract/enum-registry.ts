@@ -257,7 +257,9 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "ops-web:OutOfRangeAction", dom: "fulfillment", shape: "CLASS", verdict: "PLANNED",
     note: "超区处置动作，后端只判超区拒单（err.trade.out_of_delivery_range），没有可配策略" },
   { decl: "ops-web:GroupStatus", dom: "group", shape: "STATUS", verdict: "OK",
-    words: ["SUCCESS"] },
+    note: "与后端 MktGroupBuy 的常量逐字一致（此前端上是 RUNNING/SUCCESS，只存在于 mock 里）——"
+      + "这两个词不能改成 L1 的说法，改了接真后端那天每一行都渲染成「未知」",
+    words: ["OPEN", "FORMED"] },
   { decl: "ops-web:DemandStatus", dom: "group", shape: "STATUS", verdict: "MERGE",
     note: "见 shared:GroupRequestStatus —— 同一件事两套说法",
     words: ["OPEN", "QUOTING", "CHOSEN"] },

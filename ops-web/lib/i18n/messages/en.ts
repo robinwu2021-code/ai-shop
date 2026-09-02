@@ -209,7 +209,7 @@ export const en: Messages = {
     APPLIED: "Awaiting merchant", REFUNDING: "Approved, refund pending", ARBITRATING: "Platform review",
     REJECTED: "Merchant rejected", REFUNDED: "Refunded", CLOSED: "Closed",
   },
-  groupStatus: { PENDING: "Pending review", RUNNING: "Running", SUCCESS: "Group formed", FAILED: "Group failed" },
+  groupStatus: { PENDING: "Pending review", OPEN: "Open", FORMED: "Formed", FAILED: "Not formed", CLOSED: "Closed" },
   demandStatus: { OPEN: "Collecting", QUOTING: "Quoting", CHOSEN: "Supplier chosen", CLOSED: "Closed" },
   categoryTemplate: { STANDARD: "Standard goods", FRESH: "Fresh produce", SERVICE: "Service", VIRTUAL: "Virtual", VOUCHER: "Voucher" },
   skuStatus: { DRAFT: "Draft", PENDING: "Pending review", ON_SALE: "On sale", OFF_SALE: "Off sale", REJECTED: "Rejected" },

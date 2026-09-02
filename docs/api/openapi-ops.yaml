@@ -3419,9 +3419,11 @@ components:
       type: "string"
       enum: 
         - "PENDING"
-        - "RUNNING"
-        - "SUCCESS"
+        - "OPEN"
+        - "FORMED"
         - "FAILED"
+        - "CLOSED"
+      description: "团的状态。**与后端逐字一致**（`MktGroupBuy` 的常量）。\n\n此前这里是 `PENDING/RUNNING/SUCCESS/FAILED` —— 一套只存在于运营端 mock 里的词汇， 而后端是 `PENDING/OPEN/FORMED/FAILED/CLOSED`。两套词汇对不上， 接真后端那天每一行的状态都会渲染成「未知」，而 mock 上一直是对的。\n\n- `PENDING` 待审核（**开关 `group.audit` 打开时才会有**；关着时建团直接进 OPEN）\n- `OPEN` 开团中（C 端可见、可参团）· `FORMED` 已成团\n- `FAILED` 未成团/被驳回 · `CLOSED` 已关闭"
     GroupCampaign: 
       type: "object"
       properties: 

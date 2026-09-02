@@ -52,6 +52,10 @@ public class PlatformConfigServiceImpl implements PlatformConfigService {
      * 于是这套机制建好之后一直没人用过。开关是**代码里读的东西** ——
      * 代码里读哪几个，这里就该列哪几个，运营才知道有什么可开。
      *
+     * <p>`group.audit` 默认 **false（建团即上线）**：这是加开关之前的行为，
+     * 默认值必须与它逐字相同 —— 否则升个版本，所有商家开的团突然都不上线了，
+     * 而没有任何人收到通知。要审的平台自己打开。
+     *
      * <p>`category.gate.enforce` 默认 **false（只展示、不限制）**：受理入口刚铺开
      * （B 端传证 + 运营按证授码），存量商家的授权码还在补。这时候闸门拦住的
      * 不是无证经营，是平台自己还没建好的那条路。它同时管两条路：
@@ -61,7 +65,9 @@ public class PlatformConfigServiceImpl implements PlatformConfigService {
             [{"key":"category.gate.enforce","name":"类目资质校验",\
             "enabled":false,"rolloutPercent":0,"updatedAt":null},\
             {"key":"goods.audit","name":"商品上架审核",\
-            "enabled":true,"rolloutPercent":0,"updatedAt":null}]""";
+            "enabled":true,"rolloutPercent":0,"updatedAt":null},\
+            {"key":"group.audit","name":"拼团上线审核",\
+            "enabled":false,"rolloutPercent":0,"updatedAt":null}]""";
 
     private static final String DEFAULT_RULE_TEXTS =
             "{\"refund\":\"\",\"pickup\":\"\",\"weighDiff\":\"\",\"version\":0}";

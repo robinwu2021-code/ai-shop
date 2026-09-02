@@ -32,9 +32,6 @@ GET /ops/stores/templates
 POST /ops/stores/templates
 POST /ops/stores/templates/*/enabled
 #
-# ── 需求与拼团的审核动作（group.ts）——「发起/中止」有，「审核/改状态」没有
-POST /ops/groups/*/audit
-POST /ops/groups/*/status
 #
 # ── 常见问题（message.ts）
 #

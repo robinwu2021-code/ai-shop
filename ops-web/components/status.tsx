@@ -315,9 +315,10 @@ export function useGroupStatusMap(): StatusMap<GroupStatus> {
   const { t } = useI18n();
   return {
     PENDING: { label: t("groupStatus.PENDING"), tone: "warning" },
-    RUNNING: { label: t("groupStatus.RUNNING"), tone: "info" },
-    SUCCESS: { label: t("groupStatus.SUCCESS"), tone: "success" },
+    OPEN: { label: t("groupStatus.OPEN"), tone: "info" },
+    FORMED: { label: t("groupStatus.FORMED"), tone: "success" },
     FAILED: { label: t("groupStatus.FAILED"), tone: "muted" },
+    CLOSED: { label: t("groupStatus.CLOSED"), tone: "muted" },
   };
 }
 export function GroupStatusBadge({ value }: { value: GroupStatus }) {

@@ -140,6 +140,29 @@ public interface GroupService {
      */
     GroupBuyVO abortGroup(String groupNo, String reason, String operatorNo);
 
+    /**
+     * 审核一个待上线的团（开关 {@code group.audit} 打开时才会有待审的团）。
+     *
+     * <p>通过 → {@code PENDING → OPEN}（这一刻起 C 端可见、可参团）；
+     * 驳回 → {@code PENDING → FAILED}，<b>理由必填</b>：商家会原样看到它。
+     *
+     * <p>两条业务校验放在这里而不是只做 UI 提示：
+     * <b>1 个人不叫团</b>（minCount ≥ 2）、<b>团购价必须低于原价</b> ——
+     * 后者若不成立，「团购」这个词本身就是假的，而它已经印在 C 端页面上了。
+     *
+     * @param pass   通过或驳回
+     * @param reason 驳回理由；通过时可空
+     */
+    GroupBuyVO auditGroup(String groupNo, boolean pass, String reason, String operatorNo);
+
+    /**
+     * 运营直接改团的状态（跨状态干预，与 {@link #abortGroup} 的区别是它不限定目标态）。
+     *
+     * <p><b>只允许合法迁移</b>：PENDING→OPEN/FAILED、OPEN→FORMED/FAILED。
+     * 不校验的话，运营可以把一个已失败的团改回 OPEN，而参团人早就被退款了。
+     */
+    GroupBuyVO setGroupStatus(String groupNo, String status, String operatorNo);
+
     record CreateRequestCommand(String title, String description, List<String> images,
                                 int expectCount, int days) {
     }

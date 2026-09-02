@@ -35,7 +35,7 @@ describe("团模板审核（P-8.1.1）", () => {
 
   it("通过后进入进行中", async () => {
     const g = await groupMock.auditGroupCampaign("GB9003", true);
-    expect(g.status).toBe("RUNNING");
+    expect(g.status).toBe("OPEN");
   });
 
   it("已审核的团不能重复审", async () => {

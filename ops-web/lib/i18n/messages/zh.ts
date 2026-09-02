@@ -207,7 +207,7 @@ export const zh = {
     APPLIED: "待商家处理", REFUNDING: "已同意待退款", ARBITRATING: "平台介入",
     REJECTED: "商家已驳回", REFUNDED: "已退款", CLOSED: "已关闭",
   },
-  groupStatus: { PENDING: "待审核", RUNNING: "进行中", SUCCESS: "已成团", FAILED: "未成团" },
+  groupStatus: { PENDING: "待审核", OPEN: "开团中", FORMED: "已成团", FAILED: "未成团", CLOSED: "已关闭" },
   demandStatus: { OPEN: "征集中", QUOTING: "报价中", CHOSEN: "已选定", CLOSED: "已关闭" },
   categoryTemplate: { STANDARD: "标品", FRESH: "生鲜", SERVICE: "服务", VIRTUAL: "虚拟", VOUCHER: "卡券" },
   skuStatus: { DRAFT: "草稿", PENDING: "待审核", ON_SALE: "在售", OFF_SALE: "已下架", REJECTED: "已驳回" },

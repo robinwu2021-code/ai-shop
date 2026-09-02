@@ -92,7 +92,7 @@ function GroupsInner() {
     mutationFn: (v: { groupNo: string; pass: boolean; reason?: string }) => api.auditGroupCampaign(v.groupNo, v.pass, v.reason),
     onSuccess: (g) => {
       invalidate(); setAuditing(null); setRejectReason("");
-      notify.success(g.status === "RUNNING" ? c.toastAuditPassed : c.toastAuditRejected);
+      notify.success(g.status === "OPEN" ? c.toastAuditPassed : c.toastAuditRejected);
     },
   });
 

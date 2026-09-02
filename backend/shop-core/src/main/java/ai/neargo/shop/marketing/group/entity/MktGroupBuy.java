@@ -12,6 +12,17 @@ import lombok.Setter;
 @TableName("mkt_group_buy")
 public class MktGroupBuy extends BaseEntity {
 
+    /**
+     * 等平台审核，<b>C 端不可见、不可参团</b>。
+     *
+     * <p>只有开关 {@code group.audit} 打开时才会产生这个态；关着时建团直接进
+     * {@link #OPEN}，行为与加开关之前逐字相同。
+     *
+     * <p>可见性无需另判：C 端只列 {@code OPEN/FORMED}，参团只认 {@code OPEN} ——
+     * PENDING 天然被这两处挡住。**这正是选它作为新态而不是加一个布尔位的理由**：
+     * 加布尔位要在每个读的地方补一次判断，漏一处就是「没审核就上线了」。
+     */
+    public static final String PENDING = "PENDING";
     public static final String OPEN = "OPEN";
     public static final String FORMED = "FORMED";
     public static final String FAILED = "FAILED";

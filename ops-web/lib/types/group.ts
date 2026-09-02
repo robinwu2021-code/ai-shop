@@ -2,13 +2,26 @@
 // 用户能发起求团，但没人能指派商家报价，功能是断的。
 // 报价规则遵循 ADR-003：**不做事前审核**，用锁价 + 改价公示 + 信用约束。
 
-export type GroupStatus = "PENDING" | "RUNNING" | "SUCCESS" | "FAILED";
+/**
+ * 团的状态。**与后端逐字一致**（`MktGroupBuy` 的常量）。
+ *
+ * 此前这里是 `PENDING/RUNNING/SUCCESS/FAILED` —— 一套只存在于运营端 mock 里的词汇，
+ * 而后端是 `PENDING/OPEN/FORMED/FAILED/CLOSED`。两套词汇对不上，
+ * 接真后端那天每一行的状态都会渲染成「未知」，而 mock 上一直是对的。
+ *
+ * - `PENDING` 待审核（**开关 `group.audit` 打开时才会有**；关着时建团直接进 OPEN）
+ * - `OPEN` 开团中（C 端可见、可参团）· `FORMED` 已成团
+ * - `FAILED` 未成团/被驳回 · `CLOSED` 已关闭
+ */
+export type GroupStatus = "PENDING" | "OPEN" | "FORMED" | "FAILED" | "CLOSED";
 
+/** 与后端 `STATUS_MOVES` 同一张表 —— 两处若分岔，端上放行的动作后端会拒。 */
 export const GROUP_TRANSITIONS: Record<GroupStatus, GroupStatus[]> = {
-  PENDING: ["RUNNING", "FAILED"],
-  RUNNING: ["SUCCESS", "FAILED"],
-  SUCCESS: [],
+  PENDING: ["OPEN", "FAILED"],
+  OPEN: ["FORMED", "FAILED"],
+  FORMED: [],
   FAILED: [],
+  CLOSED: [],
 };
 
 /** 商家团（P-8.1）。 */

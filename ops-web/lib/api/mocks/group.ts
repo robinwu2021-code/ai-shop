@@ -33,7 +33,7 @@ export const groupMock: GroupApi = {
       // 1 个人不叫团；团购价不低于原价的话"团购"就是假的 —— 这两条不能只做 UI 提示
       if (g.minCount < 2) fail("起团人数至少为 2", "A group buy needs at least 2 people");
       if (g.groupPrice >= g.originPrice) fail("团购价必须低于原价", "The group price has to be below the regular price");
-      g.status = "RUNNING";
+      g.status = "OPEN";
     } else {
       if (!reason?.trim()) fail("驳回必须填写原因，商家会原样看到", "Rejection needs a reason — the merchant sees it verbatim");
       g.status = "FAILED";
