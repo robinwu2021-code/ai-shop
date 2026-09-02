@@ -58,7 +58,13 @@ import java.util.function.Supplier;
  */
 @Component
 @ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
-@ConditionalOnBean(InvOutboxDispatchJob.class)
+/*
+ * **三个都要点名。** 原本只点了 InvOutboxDispatchJob —— 三个 job 挂的是同一个
+ * @ConditionalOnInventory，实际一起在或一起不在，所以运行时不会出事；但写成
+ * 「依赖三个、只声明一个」的话，哪天有谁改了其中一个的条件，这里就静默落空了。
+ */
+@ConditionalOnBean({ InvOutboxDispatchJob.class, ReservationExpiryJob.class,
+        InvDailySnapshotJob.class })
 public class InventoryJobHandlers {
 
     private final InvOutboxDispatchJob outbox;

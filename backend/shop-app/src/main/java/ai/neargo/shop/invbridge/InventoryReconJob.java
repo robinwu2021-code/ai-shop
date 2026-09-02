@@ -39,7 +39,20 @@ import org.springframework.stereotype.Component;
  * 一道只抽样的闸门比没有闸门更坏。
  */
 @Component
-@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
+/*
+ * **两个开关都要**，不是只要 job 那一个。
+ *
+ * 它构造依赖的 InventoryBackfillServiceImpl 挂在 `shop.inventory.enabled` 上，
+ * 而这里原本只声明了 `shop.job.enabled` —— 于是 job=true + inventory=false 这一格
+ * 直接 APPLICATION FAILED TO START（`No qualifying bean of type
+ * InventoryBackfillService`），整个应用起不来，不是这一个任务不装配。
+ * 2026-09-02 本机按 launch.json 的 backend-ops 起 ops 实例就撞上了：
+ * 那条命令传了 --shop.job.enabled=true 而没传 --shop.inventory.enabled。
+ *
+ * `name` 收数组，语义是**全部匹配**才装配。inventory 关着时对差本来也无意义 ——
+ * 没有进销存侧可对。
+ */
+@ConditionalOnProperty(name = { "shop.job.enabled", "shop.inventory.enabled" }, havingValue = "true")
 public class InventoryReconJob implements JobHandler {
 
     /**
