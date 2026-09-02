@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfigCard } from "@/components/ui/config-card";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { FormDrawer, type FieldDef } from "@/components/ui/form-drawer";
 import { Input } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
 import { Toolbar } from "@/components/ui/toolbar";
@@ -50,6 +51,58 @@ export function QualificationTab({ c }: { c: MerchantsCopy }) {
     queryKey: ["qualifications", queried],
     queryFn: () => api.qualifications(queried),
     enabled: !!queried,
+  });
+
+  /*
+   * 补录 / 更新。**写接口 `POST /ops/merchants/{no}/qualifications` 一直都在，
+   * 调用方一个都没有** —— 于是这一页顶上那句「补录历史资质、证件换发后更新」
+   * 只兑现了「撤销」那三分之一。
+   *
+   * 两处不报错的坑：
+   *   · expireAt 空 = **长期有效**，不是「没填」。空串转 0 会让它立刻算过期，
+   *     上架被拦，而运营看到的只是「传了也没用」
+   *   · qualName 是给类目授权做**前缀**比对的（LIKE「营业执照%」），
+   *     写成「食品证」不会报错，只是那条授权从此永远不匹配
+   */
+  const [form, setForm] = useState<Record<string, unknown> | null>(null);
+
+  const save = useMutation({
+    mutationFn: () => api.saveQualification({
+      merchantNo: queried,
+      qualNo: (form!.qualNo as string) || undefined,
+      qualType: String(form!.qualType ?? ""),
+      qualName: String(form!.qualName ?? ""),
+      qualNumber: String(form!.qualNumber ?? "") || undefined,
+      imageUrl: String(form!.imageUrl ?? "") || undefined,
+      // 空 = 长期有效，要发 null 而不是 0
+      expireAt: form!.expireAt ? new Date(`${form!.expireAt}T00:00:00`).getTime() : null,
+    }),
+    onSuccess: () => {
+      notify.success(c.qualSaved);
+      setForm(null);
+      qc.invalidateQueries({ queryKey: ["qualifications", queried] });
+    },
+  });
+
+  const fields: FieldDef[] = [
+    {
+      key: "qualType", label: c.qualFieldType, type: "select", required: true,
+      options: Object.entries(qualTypeLabel(c)).map(([value, label]) => ({ value, label })),
+    },
+    { key: "qualName", label: c.qualFieldName, required: true, help: c.qualFieldNameHelp },
+    { key: "qualNumber", label: c.qualFieldNumber, help: c.qualFieldNumberHelp },
+    { key: "imageUrl", label: c.qualFieldImage },
+    { key: "expireAt", label: c.qualFieldExpire, type: "date", help: c.qualFieldExpireHelp },
+  ];
+
+  /** 分 → 表单。到期日从毫秒转 YYYY-MM-DD；null 保持空串 = 长期有效 */
+  const openForm = (q?: Qualification) => setForm({
+    qualNo: q?.qualNo ?? "",
+    qualType: q?.qualType ?? "BUSINESS_LICENSE",
+    qualName: q?.qualName ?? "",
+    qualNumber: q?.qualNumber ?? "",
+    imageUrl: q?.imageUrl ?? "",
+    expireAt: q?.expireAt ? new Date(q.expireAt).toISOString().slice(0, 10) : "",
   });
 
   const revoke = useMutation({
@@ -87,6 +140,10 @@ export function QualificationTab({ c }: { c: MerchantsCopy }) {
     {
       header: c.qualColActions,
       cell: (q) => (
+        <div className="flex gap-2">
+        <Button size="sm" variant="outline" disabled={!canEdit} onClick={() => openForm(q)}>
+          {c.qualEdit}
+        </Button>
         <Button
           size="sm"
           variant="outline"
@@ -99,6 +156,7 @@ export function QualificationTab({ c }: { c: MerchantsCopy }) {
         >
           {c.qualRevoke}
         </Button>
+        </div>
       ),
     },
   ];
@@ -117,6 +175,10 @@ export function QualificationTab({ c }: { c: MerchantsCopy }) {
         <Button onClick={() => setQueried(merchantNo.trim())} disabled={!merchantNo.trim()}>
           {c.adSearch}
         </Button>
+        {/* 补录挂在「查过某个商家之后」—— 没有主体号就没有挂靠对象 */}
+        {queried && canEdit && (
+          <Button variant="outline" onClick={() => openForm()}>{c.qualAdd}</Button>
+        )}
       </Toolbar>
 
       {queried && (
@@ -130,6 +192,18 @@ export function QualificationTab({ c }: { c: MerchantsCopy }) {
           />
         </ConfigCard>
       )}
+      <FormDrawer
+        open={!!form}
+        onOpenChange={(o) => !o && setForm(null)}
+        titleNew={c.qualDrawerNew}
+        titleEdit={c.qualDrawerEdit}
+        isEdit={!!form?.qualNo}
+        fields={fields}
+        value={form ?? {}}
+        onChange={setForm}
+        onSubmit={() => save.mutate()}
+        submitting={save.isPending}
+      />
       {dialog}
     </div>
   );

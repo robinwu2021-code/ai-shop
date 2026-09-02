@@ -25,10 +25,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfigCard } from "@/components/ui/config-card";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { FormDrawer, type FieldDef } from "@/components/ui/form-drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
+import { ReadOnlyNotice } from "@/components/read-only-notice";
+import { useCan } from "@/lib/use-can";
 import { Toolbar } from "@/components/ui/toolbar";
 import type { MERCHANTS_COPY } from "./copy";
 
@@ -50,6 +53,56 @@ export function AdmissionTab({ c }: { c: Copy }) {
   const [queried, setQueried] = useState("");
 
   const policies = useQuery({ queryKey: ["admission-policies"], queryFn: () => api.admissionPolicies() });
+
+  /*
+   * 准入门槛的编辑入口。**写接口 `PUT /ops/admission/policies/{legalForm}` 一直都在，
+   * 只是没有任何地方调它** —— 这三档数字于是只能由会改库的人去改，
+   * 而它们恰恰是「最弱那档主体能做多大生意」的唯一闸门。
+   *
+   * 两个坑写在这里，因为它们都不报错：
+   *   · 界面按元收、接口按分存 —— 不乘 100 的话「保证金 2000」会存成 20 元
+   *   · 0 在这三个字段上是「免缴 / 不限」，不是「零元 / 零额度」，
+   *     所以每个框下面都写了 0 的含义，别让人靠猜
+   */
+  const canEditPolicy = useCan()("merchant:admission:update");
+  const [policyForm, setPolicyForm] = useState<Record<string, unknown> | null>(null);
+
+  const savePolicy = useMutation({
+    mutationFn: () => api.updateAdmissionPolicy({
+      legalForm: policyForm!.legalForm as LegalForm,
+      requiredDepositMinor: Math.round(Number(policyForm!.deposit) * 100),
+      singleOrderLimitMinor: Math.round(Number(policyForm!.single) * 100),
+      dailyAmountLimitMinor: Math.round(Number(policyForm!.daily) * 100),
+      banQualifiedCategory: policyForm!.banQualified ? 1 : 0,
+      enabled: policyForm!.enabled ? 1 : 0,
+      remark: String(policyForm!.remark ?? ""),
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admission-policies"] });
+      setPolicyForm(null);
+      notify.success(c.adToastPolicySaved);
+    },
+  });
+
+  const policyFields: FieldDef[] = [
+    { key: "deposit", label: c.adPolicyDeposit, type: "number", required: true, help: c.adPolicyDepositHelp },
+    { key: "single", label: c.adPolicySingle, type: "number", required: true, help: c.adPolicySingleHelp },
+    { key: "daily", label: c.adPolicyDaily, type: "number", required: true, help: c.adPolicyDailyHelp },
+    { key: "banQualified", label: c.adPolicyBanQualified, type: "switch", help: c.adPolicyBanQualifiedHelp },
+    { key: "enabled", label: c.adPolicyEnabled, type: "switch", help: c.adPolicyEnabledHelp },
+    { key: "remark", label: c.adPolicyRemark, type: "textarea", help: c.adPolicyRemarkHelp },
+  ];
+
+  const openPolicy = (p: AdmissionPolicy) => setPolicyForm({
+    legalForm: p.legalForm,
+    // 分 → 元。回填也要除，否则打开抽屉看到的是 200000 而不是 2000
+    deposit: p.requiredDepositMinor / 100,
+    single: p.singleOrderLimitMinor / 100,
+    daily: p.dailyAmountLimitMinor / 100,
+    banQualified: p.banQualifiedCategory === 1,
+    enabled: p.enabled === 1,
+    remark: p.remark ?? "",
+  });
   const deposit = useQuery({
     queryKey: ["deposit", queried], queryFn: () => api.merchantDeposit(queried), enabled: !!queried,
   });
@@ -183,6 +236,14 @@ export function AdmissionTab({ c }: { c: Copy }) {
         : <Badge tone="muted">{c.adAllowed}</Badge>),
     },
     { header: c.adColRemark, cell: (p) => p.remark ?? "—" },
+    {
+      header: c.adColAction,
+      cell: (p) => (
+        <Button size="sm" variant="outline" disabled={!canEditPolicy} onClick={() => openPolicy(p)}>
+          {c.adPolicyEdit}
+        </Button>
+      ),
+    },
   ];
 
   const txnColumns: Column<DepositTxn>[] = [
@@ -236,8 +297,26 @@ export function AdmissionTab({ c }: { c: Copy }) {
       <div>
         <div className="mb-2 txt-strong">{c.adPolicyTitle}</div>
         <p className="txt-caption text-muted-foreground mb-2">{c.adPolicyHint}</p>
+        {!canEditPolicy && (
+          <ReadOnlyNotice what={c.adPolicyReadOnly} perm="merchant:admission:update" className="mb-2" />
+        )}
         <DataTable columns={policyColumns} rows={policies.data ?? []} rowKey={(p) => p.legalForm} />
       </div>
+
+      <FormDrawer
+        open={!!policyForm}
+        onOpenChange={(o) => !o && setPolicyForm(null)}
+        titleNew={c.adPolicyEdit}
+        titleEdit={policyForm
+          ? fill(c.adPolicyEditTitle, { form: formLabel[policyForm.legalForm as LegalForm] })
+          : c.adPolicyEdit}
+        isEdit
+        fields={policyFields}
+        value={policyForm ?? {}}
+        onChange={setPolicyForm}
+        onSubmit={() => savePolicy.mutate()}
+        submitting={savePolicy.isPending}
+      />
 
       <Toolbar>
         <Input

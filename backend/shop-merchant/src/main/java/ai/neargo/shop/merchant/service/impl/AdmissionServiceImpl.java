@@ -72,6 +72,15 @@ public class AdmissionServiceImpl implements AdmissionService {
         if (patch.getEnabled() != null) {
             row.setEnabled(patch.getEnabled());
         }
+        /*
+         * 备注也要能改。**此前这一个字段被漏掉了**：其余六个都 patch，唯独它不。
+         * 而它恰恰是被回溯质问时最有用的那一栏 ——「那单当时为什么放行」，
+         * 答案是数字旁边这句话，不是数字本身。
+         * 漏掉的坏法很安静：运营填了理由、点保存、看到成功，回头一看还是旧的。
+         */
+        if (patch.getRemark() != null) {
+            row.setRemark(patch.getRemark());
+        }
         row.setUpdatedBy(operator);
         policyMapper.updateById(row);
     }

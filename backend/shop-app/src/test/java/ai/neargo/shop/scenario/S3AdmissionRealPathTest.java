@@ -208,6 +208,36 @@ class S3AdmissionRealPathTest {
                 .andReturn().getResponse().getContentAsString();
     }
 
+    /**
+     * <b>「为什么这么定」要能改。</b>
+     *
+     * <p>其余六个字段都 patch，唯独 remark 被漏掉了 —— 运营填了理由、点保存、
+     * 看到成功，回头一看还是旧的。而被回溯质问「那单当时为什么放行」时，
+     * 有用的恰恰是这句话，不是数字。
+     *
+     * <p>可证伪：去掉 impl 里那段 {@code if (patch.getRemark() != null)}，这条立刻变红。
+     */
+    @Test
+    @DisplayName("★ 准入策略的 remark 改得动 —— 此前只写不生效，且不报错")
+    void policyRemarkIsPatchable() {
+        MchAdmissionPolicy before = snapshotMicroPolicy();
+        try {
+            String reason = "上季度三起售后无人可追，2026-09 上调门槛";
+            MchAdmissionPolicy patch = new MchAdmissionPolicy();
+            patch.setRemark(reason);
+            admissionService.updatePolicy(MICRO, patch, "TEST");
+
+            assertThat(snapshotMicroPolicy().getRemark())
+                    .as("填了理由、看到成功、其实没存 —— 最难查的那种坏法").isEqualTo(reason);
+            // 只发 remark 不该动到数字：patch 语义是「没给的保持不变」
+            assertThat(snapshotMicroPolicy().getSingleOrderLimitMinor())
+                    .as("单发 remark 把限额带没了，比不生效更糟")
+                    .isEqualTo(before.getSingleOrderLimitMinor());
+        } finally {
+            restoreMicroPolicy(before);
+        }
+    }
+
     private void setMicroLimits(long single, long daily) {
         MchAdmissionPolicy patch = new MchAdmissionPolicy();
         patch.setSingleOrderLimitMinor(single);
@@ -228,6 +258,8 @@ class S3AdmissionRealPathTest {
         patch.setDailyAmountLimitMinor(p.getDailyAmountLimitMinor());
         patch.setRequiredDepositMinor(p.getRequiredDepositMinor());
         patch.setBanQualifiedCategory(p.getBanQualifiedCategory());
+        // remark 现在也可改，还原时就得带上 —— 否则这个类会把种子里的说明留成测试文本
+        patch.setRemark(p.getRemark());
         admissionService.updatePolicy(MICRO, patch, "TEST");
     }
 
