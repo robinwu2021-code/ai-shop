@@ -28,14 +28,8 @@ const props = withDefaults(
     picked?: string[];
     /** 右侧那个数的说明，如「账面 {n}」「可用 {n}」。各屏关心的数不一样 */
     qtyLabel?: (b: StockBalance) => string;
-    /**
-     * itemId → skuNo。**绑码要它** —— 条码的真源是平台商品的 `prd_sku.barcode`，
-     * 而这个件手里只有进销存的 itemId，两者靠 `inv_item_ref` 对上、端上解不出来。
-     * 不给的话扫码仍能用（找得到就挑），只是绑不了。
-     */
-    skuNoOf?: (b: StockBalance) => string;
   }>(),
-  { picked: () => [], qtyLabel: undefined, skuNoOf: undefined },
+  { picked: () => [], qtyLabel: undefined },
 );
 
 const emit = defineEmits<{ pick: [b: StockBalance]; close: [] }>();
@@ -111,10 +105,27 @@ async function choose(b: StockBalance) {
     return;
   }
   pendingCode.value = "";
+  /*
+   * **没有 skuNo 就别绑，也别拿 itemId 冒充。**
+   *
+   * 条码的真源是商品域的 `prd_sku.barcode`，那边不认识进销存的 itemId。
+   * 2026-09-02 这里原本写着 `props.skuNoOf ? props.skuNoOf(b) : b.itemId`，
+   * 而三个调用页一个都没传那个 prop（BalanceVO 当时也没有 skuNo，传不出来）——
+   * 于是每次绑码都拿 itemId 去当 skuNo，后端 NOT_FOUND，catch 吞成一个
+   * 一闪而过的 toast，货照样选中。**绑码 100% 失败，而界面上看不出来**：
+   * 真机上连扫两次同一个码，第二次仍然提示「还没绑过」。
+   *
+   * 两个域的 ID 长得都像编号，冒充了不会有人报错 —— 所以这里宁可不绑。
+   */
+  if (!b.skuNo) {
+    // 没有映射的物料（独立交付形态下的自有主数据）绑不了码。**说出来**，
+    // 静默跳过的话，商家会以为绑上了，下次扫不中时无从判断是哪一步没成
+    uni.showToast({ title: String(t("stockPick.scanNoSku")), icon: "none" });
+    emit("pick", b);
+    return;
+  }
   try {
-    // skuNo 从 itemId 反解不出来，绑码走的是商品域 —— 由外层给（见 skuNoOf）
-    const skuNo = props.skuNoOf ? props.skuNoOf(b) : b.itemId;
-    await api.mBindBarcode({ skuNo, barcode: code });
+    await api.mBindBarcode({ skuNo: b.skuNo, barcode: code });
     uni.showToast({ title: String(t("stockPick.scanBound")), icon: "none" });
   } catch (e) {
     // **绑失败不挡挑货**：他这一单还是要记的，码下次再绑

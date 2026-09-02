@@ -4449,6 +4449,8 @@ export const mockApi: MerchantApi = {
     // 从物料出发：mock 里也要有一件 0 库存的，否则「挑不到新货」这个缺陷在 mock 上看不见
     const k = (q?.q ?? "").trim();
     const all = [...invBalances(), {
+      // **故意不给 skuNo**：没有平台映射的物料绑不了码，那条分支要在替身上看得见，
+      // 否则它只会在真机上第一次露面（2026-09-02 的绑码缺陷就是这么漏过去的）
       itemId: "IT-NEW", name: "新到的货（还没进过）", specText: "500g",
       baseUom: "袋", onHand: 0, reserved: 0, available: 0,
       safetyStock: 0, flags: [],
@@ -4777,7 +4779,7 @@ function invBalances(): StockBalance[] {
   return [
     { itemId: "I1", name: "东北大米", specText: "5斤装", baseUom: "袋",
       onHand: 5, reserved: 2, available: 3, flags: [], lastMovedAt: "2026-08-26T14:22:00" },
-    { itemId: "I2", name: "小米", specText: "2斤装", baseUom: "袋",
+    { itemId: "I2", skuNo: "SK0002", name: "小米", specText: "2斤装", baseUom: "袋",
       onHand: 0, reserved: 0, available: 0, flags: [], lastMovedAt: "2026-08-24T10:00:00" },
     { itemId: "I3", name: "陈醋", specText: "500ml", baseUom: "瓶",
       onHand: 24, reserved: 0, available: 24, flags: ["STALE"], lastMovedAt: "2026-05-26T09:00:00" },
@@ -4791,9 +4793,9 @@ function invBalances(): StockBalance[] {
      * 不造这两行，「已下架」那个标记在 mock 上就永远看不见 —— 而它正是
      * 这次要验的东西。同一条教训刚在调拨发货上吃过：替身太干净会盖住真缺陷。
      */
-    { itemId: "I5", name: "金龙鱼调和油 5L", specText: "5L", baseUom: "桶",
+    { itemId: "I5", skuNo: "SK0005", name: "金龙鱼调和油 5L", specText: "5L", baseUom: "桶",
       onHand: 80, reserved: 0, available: 80, flags: [], lastMovedAt: "2026-08-27T18:11:00" },
-    { itemId: "I6", name: "金龙鱼调和油 5L", specText: "5L", baseUom: "桶",
+    { itemId: "I6", skuNo: "SK0006", name: "金龙鱼调和油 5L", specText: "5L", baseUom: "桶",
       onHand: 80, reserved: 0, available: 80, flags: ["OFF_SALE"],
       lastMovedAt: "2026-08-27T18:11:00" },
   ].map(withFlags);

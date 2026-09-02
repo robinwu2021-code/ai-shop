@@ -19,8 +19,15 @@ public final class InventoryVOs {
      * @param flags     {@code SHORTAGE} / {@code STALE}，<b>由服务端判</b> ——
      *                  前端自己算的话，「要处理」的口径会在列表页与报表页各有一份
      */
-    public record BalanceVO(String itemId, String name, String specText, String baseUom,
-                            int onHand, int reserved, int available,
+    /**
+     * @param skuNo 平台商品的 SKU 号（从 {@code inv_item_ref} 的 {@code AISHOP} 一系反查）。
+     *              <b>绑码要它</b>：条码的真源是 {@code prd_sku.barcode}，那是商品域的列，
+     *              而本域的 {@code itemId} 在那边不存在。
+     *              <p>可空 —— 没有映射的物料（独立交付形态下的自有主数据）绑不了码，
+     *              端上据此把绑码那一步跳过，而不是拿 {@code itemId} 冒充
+     */
+    public record BalanceVO(String itemId, String skuNo, String name, String specText,
+                            String baseUom, int onHand, int reserved, int available,
                             Integer safetyStock, LocalDateTime lastMovedAt, List<String> flags) {
     }
 

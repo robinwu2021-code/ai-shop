@@ -165,6 +165,8 @@ public class StockQueryServiceImpl implements StockQueryService {
                 .collect(Collectors.toMap(InvStockBalance::getItemId, Function.identity(), (a, b) -> a));
 
         List<BalanceVO> out = new ArrayList<>();
+        Map<String, String> skuNos = skuNosOf(ownerId,
+                items.stream().map(InvItem::getItemId).toList());
         for (InvItem item : items) {
             InvStockBalance b = byItem.get(item.getItemId());
             int onHand = b == null ? 0 : b.getOnHand();
@@ -177,7 +179,8 @@ public class StockQueryServiceImpl implements StockQueryService {
              * 线上有 13 组同名同规格的物料，弹层里几行完全一样（同库位、库存也一样），
              * 不标出来商家挑哪一行都不知道自己挑的是什么。
              */
-            out.add(new BalanceVO(item.getItemId(), item.getName(), item.getSpecText(),
+            out.add(new BalanceVO(item.getItemId(), skuNos.get(item.getItemId()),
+                    item.getName(), item.getSpecText(),
                     item.getBaseUom(), onHand, reserved, onHand - reserved,
                     item.getSafetyStock(), b == null ? null : b.getLastMovedAt(),
                     offSaleFlags(item)));
@@ -387,6 +390,7 @@ public class StockQueryServiceImpl implements StockQueryService {
                         .in(InvItem::getItemId, itemIds)).stream()
                 .collect(Collectors.toMap(InvItem::getItemId, Function.identity(), (a, b) -> a));
         LocalDateTime staleBefore = LocalDateTime.now().minusDays(STALE_DAYS);
+        Map<String, String> skuNos = skuNosOf(balances.get(0).getOwnerId(), itemIds);
         List<BalanceVO> out = new ArrayList<>();
         for (InvStockBalance b : balances) {
             InvItem item = items.get(b.getItemId());
@@ -407,13 +411,34 @@ public class StockQueryServiceImpl implements StockQueryService {
             if (item != null && Integer.valueOf(0).equals(item.getSourceOnSale())) {
                 flags.add(FLAG_OFF_SALE);
             }
-            out.add(new BalanceVO(b.getItemId(),
+            out.add(new BalanceVO(b.getItemId(), skuNos.get(b.getItemId()),
                     item == null ? b.getItemId() : item.getName(),
                     item == null ? null : item.getSpecText(),
                     item == null ? null : item.getBaseUom(),
                     b.getOnHand(), b.getReserved(), available, safety, b.getLastMovedAt(), flags));
         }
         return out;
+    }
+
+    /**
+     * 批量反查 {@code itemId → skuNo}（{@code AISHOP} 一系）。
+     *
+     * <p><b>批量不是优化，是必须</b>：挑货一次给 200 行，逐行查就是 200 趟跨表查询，
+     * 而这一屏商家是边打字边看的。
+     *
+     * <p>查不到的物料<b>不给假值</b>：返回 null，端上据此把绑码那一步跳过。
+     * 2026-09-02 就是拿 {@code itemId} 顶替 {@code skuNo} 才让绑码 100% 失败的 ——
+     * 两个域的 ID 长得都像编号，冒充了也不会有人报错。
+     */
+    private Map<String, String> skuNosOf(String ownerId, List<String> itemIds) {
+        if (itemIds.isEmpty()) {
+            return Map.of();
+        }
+        return refMapper.selectList(Wrappers.<InvItemRef>lambdaQuery()
+                        .eq(InvItemRef::getOwnerId, ownerId)
+                        .eq(InvItemRef::getRefSystem, InvEnums.RefSystem.AISHOP)
+                        .in(InvItemRef::getItemId, itemIds)).stream()
+                .collect(Collectors.toMap(InvItemRef::getItemId, InvItemRef::getRef, (a, b) -> a));
     }
 
     private String refOf(String ownerId, String itemId, String system) {

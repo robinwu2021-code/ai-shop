@@ -4784,6 +4784,14 @@ export interface Supplier {
 export interface StockBalance {
   /** 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 */
   itemId: string;
+  /**
+   * 平台商品的 SKU 号。**绑码要它** —— 条码的真源是 `prd_sku.barcode`，
+   * 那是商品域的列，那边不认识 `itemId`。
+   *
+   * 空 = 这件物料没有平台映射（独立交付形态下的自有主数据），**绑不了码**。
+   * 空时不要拿 `itemId` 顶替：两个域的 ID 长得都像编号，冒充了不会有人报错。
+   */
+  skuNo?: string;
   /** 货品名 */
   name: string;
   /** 规格描述（「10斤装」）。人读的，不参与匹配 */
