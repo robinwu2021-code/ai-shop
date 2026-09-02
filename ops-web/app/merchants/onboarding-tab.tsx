@@ -122,7 +122,13 @@ export function OnboardingTab({ c }: { c: MerchantsCopy }) {
           <Button
             size="sm"
             variant="outline"
-            disabled={refresh.isPending}
+            /*
+             * ★ 没提交过就没得回查（后端不会去问通道一个不存在的单号）。
+             * 点之前就说清楚，比点完弹一句提示好 —— 那时人已经在等状态变了。
+             * `appliedAt` 与后端的 `submitted` 同源：发出去过才有提交时间。
+             */
+            disabled={refresh.isPending || !r.appliedAt}
+            title={!r.appliedAt ? c.obNotSubmittedHint : undefined}
             onClick={() => refresh.mutate(r)}
           >
             {c.obActionRefresh}

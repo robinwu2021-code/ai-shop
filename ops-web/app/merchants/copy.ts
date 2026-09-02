@@ -497,6 +497,7 @@ const zh = {
   adToastPolicySaved: "准入门槛已更新",
   adPolicyReadOnly: "改准入门槛",
 
+  obNotSubmittedHint: "这家还没把资料提交给通道，没有单号可查 —— 要催的是商家补料，不是等通道",
   obToastNotSubmitted: "这家还没把资料提交给通道，回查不到东西 —— 要催的是商家，不是通道",
   obEmpty: "没有匹配的进件记录",
 };
@@ -994,6 +995,7 @@ const en: typeof zh = {
   adToastPolicySaved: "Admission thresholds updated",
   adPolicyReadOnly: "edit admission thresholds",
 
+  obNotSubmittedHint: "Never submitted to the channel, so there is no application to query — chase the merchant for documents",
   obToastNotSubmitted: "Never submitted to the channel — nothing to re-query. Chase the merchant, not the channel.",
   obEmpty: "No matching onboarding records",
 };

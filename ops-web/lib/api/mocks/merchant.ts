@@ -12,8 +12,22 @@ import { wait } from "./_wait";
  * `settleAccountReady` 就是「进件走没走完」的现成判据 —— 已就绪即 ACTIVE、能收钱，
  * 未就绪即 APPLYING、收不了钱。与真实后端读 mch_payment_merchant 是一回事的两种落地。
  */
+/*
+ * 已经把资料发给通道、还在等回执的那些主体。
+ *
+ * mock 里此前只有两种商家：已开通，和「入驻通过时派生的占位」。
+ * 于是进件看板上**每一行「审核中」都是没提交过的** —— 回查按钮永远是禁的，
+ * 「提交过、正在等通道」这半边在 mock 上根本演不出来，也就测不到。
+ * 这一份是那半边（生产里它是常态）。
+ */
+const SUBMITTED_TO_CHANNEL: Record<string, number> = {
+  M904: Date.parse("2026-08-20T02:00:00Z"),
+};
+
 function onboardingRowOf(m: Merchant): OnboardingRow {
   const ready = m.settleAccountReady;
+  // 提交时间 = 发给过通道的凭据。已开通的必然提交过；没开通的看它在不在上面那份里
+  const appliedAt = ready ? Date.parse(m.createdAt) : (SUBMITTED_TO_CHANNEL[m.merchantNo] ?? null);
   return {
     merchantNo: m.merchantNo,
     merchantName: m.name,
@@ -25,7 +39,7 @@ function onboardingRowOf(m: Merchant): OnboardingRow {
     settleAccountMasked: ready ? "****1234" : null,
     subMchid: ready ? `SUB-${m.merchantNo}` : null,
     payMerchantNo: ready ? `PM-${m.merchantNo}` : null,
-    appliedAt: ready ? Date.parse(m.createdAt) : null,
+    appliedAt,
     ageMs: null,
     canReceiveMoney: ready,
   };
