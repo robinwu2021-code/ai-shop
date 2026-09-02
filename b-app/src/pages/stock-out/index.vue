@@ -172,6 +172,11 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="stockOut.title" :denied="!merchant.can('biz:stock')">
+    <!-- 当前门店只读标记：出库扣的是**这家店**的库存（同上）——
+         界面上不说清是哪家店，多店店主会在另一家店上动手，而且没有任何症状。
+         只在多店时渲染（单店没有歧义可消）；切店入口在工作台，这里不带动作。 -->
+    <biz-store-tag readonly></biz-store-tag>
+
     <view class="sh-card">
       <!--
         去向排在日期上面：它决定了下面那半屏长什么样（报损问原因、退供应商问退给谁），

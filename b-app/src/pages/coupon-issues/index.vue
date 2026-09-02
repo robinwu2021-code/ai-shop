@@ -62,6 +62,11 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="couponIssues.title" :denied="!merchant.can('biz:campaign')">
+    <!-- 当前门店只读标记：发放记录按门店（同 coupons）——
+         界面上不说清是哪家店，多店店主会在另一家店上动手，而且没有任何症状。
+         只在多店时渲染（单店没有歧义可消）；切店入口在工作台，这里不带动作。 -->
+    <biz-store-tag readonly></biz-store-tag>
+
     <!-- 刚发完那一批：三个数字并排，跳过原因逐条列出 -->
     <view v-if="latest" class="sh-card fresh">
       <text class="txt-strong">{{ $t("couponIssues.done", { title: couponTitle(latest.couponNo) }) }}</text>

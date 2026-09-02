@@ -259,6 +259,11 @@ function at(iso?: string): string {
 
 <template>
   <sh-scaffold title-key="stockCheck.title" :denied="!merchant.can('biz:stock')">
+    <!-- 当前门店只读标记：盘点改的是**这家店**的库存（库位由 currentStoreNo 解出）——
+         界面上不说清是哪家店，多店店主会在另一家店上动手，而且没有任何症状。
+         只在多店时渲染（单店没有歧义可消）；切店入口在工作台，这里不带动作。 -->
+    <biz-store-tag readonly></biz-store-tag>
+
     <!-- ① 还没开单：先选要盘哪几件 -->
     <template v-if="!doc">
       <view class="sh-card">
