@@ -1696,6 +1696,13 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     safetyBadNumber: "Enter a whole number, 0 or more",
   },
   stockCheck: {
+    scanStart: "Scan to count",
+    scanning: "Scanning… cancel to stop",
+    scanCounted: "{name} → {n}",
+    scanUnknown: "This barcode is not linked to any item yet",
+    scanNotInDoc: "{name} is not in this count",
+    scanFailed: "Lookup failed — scan it again",
+    scanDone: "Counted {n} this round",
     title: "Stock count",
     pickHint: "Select the products to count. The book quantity is locked when the sheet opens; sales during the count are excluded.",
     pickEmpty: "No products available to count",

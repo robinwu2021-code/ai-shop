@@ -16,6 +16,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { StockBalance, StockCount } from "@shared/types";
 import { confirm } from "@ai-shop/ui/prompt";
+import { scanCode } from "@shared/ports/scan";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -111,6 +112,77 @@ async function open() {
 }
 
 /** 某一行的差异；还没填实盘数时返回 null（显示成「—」而不是 0） */
+/*
+ * 连续扫码点数（INV-W12 第四项）。
+ *
+ * **为什么是「扫一次 +1」而不是「扫一下跳到那一行」**：跳转那种做法要求
+ * 每扫一件都回来手输一个数，那不叫连续 —— 而盘点里真正费时的恰恰是
+ * 「货架上有几件」这个计数动作本身。逐件扫过去，数是攒出来的，不是数出来的。
+ * 整箱整袋的商品照旧手输，两条路并存：扫出来的数落在同一个输入框里，
+ * 扫完还能改。
+ *
+ * **`uni.scanCode` 是一次性的**，没有常驻取景框那种 API。所以这里自己循环：
+ * 扫完一件立刻再唤起一次，**取消扫码就是退出连扫**——那是这个模式唯一的出口，
+ * 而它恰好也是商家的自然动作（盘完这一片，按返回）。
+ *
+ * 循环里**任何一件事都不许把整轮打断**：扫到没绑过的码、扫到不在本单的货、
+ * 甚至查码时网络抖了一下，都只 toast 一句然后继续。他正端着手机站在货架前，
+ * 中途弹回去意味着刚才那几件白扫了。
+ */
+const scanning = ref(false);
+/** 这一轮扫中了几件 —— 退出时给一句汇总，否则他不知道刚才那阵子算没算上 */
+const scanHits = ref(0);
+
+async function scanLoop() {
+  if (scanning.value || !doc.value) return;
+  scanning.value = true;
+  scanHits.value = 0;
+  try {
+    for (;;) {
+      let code: string;
+      try {
+        code = (await scanCode()).trim();
+      } catch {
+        break;   // 取消 / 这个端不支持 —— 都是退出，不是错误
+      }
+      if (!code) continue;
+      await countOne(code);
+    }
+  } finally {
+    scanning.value = false;
+    if (scanHits.value) {
+      uni.showToast({ title: String(t("stockCheck.scanDone", { n: scanHits.value })), icon: "none" });
+    }
+  }
+}
+
+/** 扫到一个码：找到本单里那一行，实盘数 +1。三条失败路径都只提示，不中断连扫 */
+async function countOne(code: string) {
+  let hit: StockBalance | null = null;
+  try {
+    hit = await api.mItemByBarcode(code);
+  } catch {
+    uni.showToast({ title: String(t("stockCheck.scanFailed")), icon: "none" });
+    return;
+  }
+  if (!hit) {
+    // 第一天必然全是这一条：线上 prd_sku.barcode 是 0/396。绑码在挑货那一步做，
+    // 这里不做 —— 盘点单已经开了，此刻绑上也不会让它多出一行
+    uni.showToast({ title: String(t("stockCheck.scanUnknown")), icon: "none" });
+    return;
+  }
+  const line = doc.value?.lines.find((l) => l.itemId === hit!.itemId);
+  if (!line) {
+    // 开单时没选这一件。**说出是哪件货**，否则他会以为是码没绑上，反复扫同一件
+    uni.showToast({ title: String(t("stockCheck.scanNotInDoc", { name: hit.name })), icon: "none" });
+    return;
+  }
+  const next = Number(counted.value[line.itemId] || 0) + 1;
+  counted.value = { ...counted.value, [line.itemId]: String(next) };
+  scanHits.value += 1;
+  uni.showToast({ title: String(t("stockCheck.scanCounted", { name: line.name, n: next })), icon: "none" });
+}
+
 function diff(itemId: string, bookQty: number): number | null {
   const v = counted.value[itemId];
   if (v == null || v === "") return null;
@@ -247,6 +319,21 @@ function at(iso?: string): string {
           <text class="sh-chip sh-chip--warning">{{ $t("stockCheck.counting") }}</text>
         </view>
         <text class="txt-caption">{{ $t("stockCheck.lockedAt", { at: at(doc.startedAt) }) }}</text>
+        <!--
+          连续扫码贴在单据头下面，不进底部动作条：底下那枚是「提交并过账」，
+          两者一个是干活、一个是收工，摆一起迟早点错。
+        -->
+        <text v-if="!scanning" class="sh-link scan" @tap="scanLoop">
+          {{ $t("stockCheck.scanStart") }}
+        </text>
+        <!--
+          扫码中压暗且不响应。**两个静态文案而不是一个三元** —— 界面清单的
+          生成器只认 `$t("…")` 紧跟引号的写法，三元里的词条它一个都抽不到，
+          于是这枚按钮在清单上凭空消失，而 `--check` 照样绿。
+        -->
+        <text v-else class="sh-link scan sh-muted">
+          {{ $t("stockCheck.scanning") }}
+        </text>
       </view>
 
       <view v-for="l in doc.lines" :key="l.itemId" class="sh-card sh-mb-sm">
@@ -316,6 +403,13 @@ function at(iso?: string): string {
 </template>
 
 <style scoped>
+/* 连扫入口贴在单号右下：它属于这张单，不是一个独立功能 */
+.scan {
+  display: block;
+  text-align: end;
+  padding-top: 8rpx;
+}
+
 .row__top {
   gap: 20rpx;
 }
