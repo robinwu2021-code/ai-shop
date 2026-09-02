@@ -1,15 +1,21 @@
 # TDD-门店获客埋点与看板
 
-> 状态：**G1 + 漏斗已落地（2026-09-02，V290）· G2 店铺码待做**
+> 状态：**已全部落地（2026-09-02，V290–V293）**
 >
 > | 部分 | 状态 |
 > |---|---|
-> | G1 匿名扫码埋点（`mkt_store_visit`，落在 `by-code`） | ✅ |
-> | 获客漏斗聚合 + `GET /ops/stores/acquisition` | ✅ 后端；前端仍走 mock（`IS_MOCK` 未翻） |
+> | G1 匿名扫码埋点（`mkt_store_visit`，落在 `by-code`） | ✅ V290 |
+> | 获客漏斗聚合 + `GET /ops/stores/acquisition` | ✅ 后端 + 前端（含 7/30/90 天区间） |
 > | 平台看板 `funnel()` 前两环接同一口径 | ✅ |
-> | 闸门 V1–V4 / V6（`StoreAcquisitionFlowTest`） | ✅ 5 条全绿 |
-> | G2 `printed` 运营录入 + `GET /ops/stores/qrcodes` | ⬜ 未做 |
-> | V5（printed 未登记显示 null） | ⬜ 随 G2 |
+> | G2 `printed` 运营录入台账 + `GET /ops/stores/qrcodes` | ✅ V292（`mch_store_qrcode_print`，有符号、可冲减） |
+> | 菜单可见性（两项都曾对所有人不可见） | ✅ V291 / V293 |
+> | 闸门 V1–V6 | ✅ `StoreAcquisitionFlowTest` 5 条 + `StoreQrcodeFlowTest` 5 条 |
+>
+> **落地时改掉的一处设计**：原方案 §3.4 写「获客看板挂 `store:page:read`」——
+> 实际那个码在 `UI_PERM_MAP` 里是 UNIMPLEMENTED（判所有人无权限，超管也不例外），
+> 而它还被「主页模板配置」共用、那块后端仍然没有。所以两项都改判 `store:page:audit`
+> （审店招的与发码/看获客的是同一拨 BD），**不放开 `store:page:read`** ——
+> 放开会多出一个点进去 404 的死按钮。后端因此也不必新增权限码。
 >
 > **落地时发现的一处坑（已修，值得记）**：`selectMaps` 的键**大小写随库而变** ——
 > H2 把 `AS entityNo` 折成全小写 `entityno`，MariaDB 保留写法。
@@ -203,5 +209,5 @@ convRate   = firstOrder / nullif(scanUv,0)
 | 2 | 未登录访客的标识用什么 | 小程序侧无 cookie；用 `device_id`（前端生成并持久化）+ IP 兜底 |
 | 3 | `mkt_store_visit` 保留多久 | 90 天明细，之后按天汇总归档（**先不做归档**，到量再说） |
 | 4 | 获客看板归谁看 | 现挂 `store:page:read`（BD）；财务是否需要另说 |
-| 5 | **要不要现在就做「一店一码」** | 建议**不做**（§3.0）。现在是一主体一码，多门店商家看不到分店维度。要做得改发码归属 + 存量补码 + 已印贴纸作废，是独立一件事 |
+| 5 | **要不要现在就做「一店一码」** | 建议**不做**（§3.0）。现在是一主体一码，多门店商家看不到分店维度。要做得改发码归属 + 存量补码 + 已印贴纸作废，是独立一件事。`mkt_store_visit` 已留 `store_no` 列，届时不用改表 |
 | 6 | 会员来源 `SOURCE_SCAN` 何时接上 | 建议**下一步**：访客注册成会员时按 `device_id` 回溯 `mkt_store_visit` 标来源。本次不做，但新表已留 `device_id` 供回溯 |
