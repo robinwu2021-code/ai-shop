@@ -968,6 +968,9 @@ const mockSpecOverride = new Map<string, {
   values: { code: string; enabled: boolean }[];
 }[]>();
 
+/** 本次会话里建出来的出库单。**替身要留痕** —— 吞掉请求的替身验不出「带没带上」 */
+const mockOutbounds: StockDocument[] = [];
+
 /** 三条刻意各是一种状态（在用 / 平台档案 / 已停用）—— 见 mSuppliers 的注释 */
 const mockSuppliers: Supplier[] = [
   { supplierNo: "SUP-M1", name: "老周粮油", shortName: "老周", contactName: "周老板",
@@ -4550,8 +4553,31 @@ export const mockApi: MerchantApi = {
     return delay(undefined);
   },
 
-  async mOutboundCreate() {
-    return delay("OUT-2408260032");
+  async mOutboundCreate(req) {
+    /*
+     * **把请求记下来，别吞掉。**
+     *
+     * 原来这个替身连参数都不接，于是「去向有没有真的带上」在 mock 上根本验不到 ——
+     * 页面选了「退给老周」，提交，回到单据列表看到的还是「报损」，而两者都不报错。
+     * 同一条教训在调拨发货、安全库存上各吃过一次。
+     */
+    const no = `OUT-24082600${32 + mockOutbounds.length}`;
+    mockOutbounds.push({
+      kind: "OUT",
+      docNo: no,
+      status: "POSTED",
+      // 服务端拼 subtitle 的口径：去向或原因，二选一（同一张单不会两个都有）
+      subtitle: [
+        req.purpose,
+        req.targetNo
+          ? (mockSuppliers.find((x) => x.supplierNo === req.targetNo)?.name ?? req.targetNo)
+          : req.reasonCode,
+      ].filter(Boolean).join(" · "),
+      totalQty: req.lines.reduce((n, l) => n + l.qty, 0),
+      occurredAt: req.occurredAt ?? "2026-08-30T10:00:00",
+      operator: "老板",
+    });
+    return delay(no);
   },
   async mOutboundPost() {
     return delay(undefined);
@@ -4637,7 +4663,8 @@ export const mockApi: MerchantApi = {
   },
 
   async mStockDocuments(q) {
-    const all = invDocuments();
+    // 本次会话里新建的排在前面 —— 刚提交完就该在最上面看到它
+    const all = [...mockOutbounds, ...invDocuments()];
     const picked = q?.no ? all.filter((d) => d.docNo === q.no)
       : q?.kind ? all.filter((d) => d.kind === q.kind) : all;
     return delay(picked.slice(0, q?.size ?? 50)

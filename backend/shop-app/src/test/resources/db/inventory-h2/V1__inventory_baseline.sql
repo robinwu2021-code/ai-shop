@@ -239,6 +239,9 @@ CREATE TABLE IF NOT EXISTS inv_outbound_order
     created_by       VARCHAR(64)  DEFAULT NULL,
     updated_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by       VARCHAR(64)  DEFAULT NULL,
+    target_type VARCHAR(16) DEFAULT NULL,
+    target_no   VARCHAR(32) DEFAULT NULL,
+    target_name VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_outbound UNIQUE (owner_id, outbound_no)
 );

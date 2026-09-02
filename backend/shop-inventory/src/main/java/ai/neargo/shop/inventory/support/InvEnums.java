@@ -63,9 +63,26 @@ public final class InvEnums {
         public static final String SCRAP = "SCRAP";
         public static final String COUNT_LOSS = "COUNT_LOSS";
         public static final String INTERNAL = "INTERNAL";
+        /**
+         * 退回供应商。<b>去向指向 {@code inv_supplier}</b> —— 供应商建了档，退货才有对象可指，
+         * 而「这个月退给老周多少货」是应付账款对账的一半。
+         */
+        public static final String RETURN_SUPPLIER = "RETURN_SUPPLIER";
         public static final String OTHER = "OTHER";
 
         private OutboundPurpose() {
+        }
+    }
+
+    /**
+     * 出库去向的对象类型。<b>空表示没有去向</b> —— 报损就是没有去向的那一种，
+     * 不要为它造一个 {@code NONE}：那会让「没去向」与「去向是无」变成两个值。
+     */
+    public static final class TargetType {
+        public static final String SUPPLIER = "SUPPLIER";
+        public static final String STORE = "STORE";
+
+        private TargetType() {
         }
     }
 

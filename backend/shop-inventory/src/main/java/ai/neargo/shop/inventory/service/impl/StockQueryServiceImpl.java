@@ -268,7 +268,18 @@ public class StockQueryServiceImpl implements StockQueryService {
                     .eq(locationId != null, InvOutboundOrder::getLocationId, locationId)
                     .orderByDesc(InvOutboundOrder::getId).last("LIMIT " + limit))) {
                 out.add(new DocumentVO("OUT", h.getOutboundNo(), h.getStatus(),
-                        subtitle(h.getPurpose(), h.getReasonCode(), h.getSourceRef()),
+                        /*
+                         * 中间那一格给「去向或原因」——**同一张单不会两个都有**：
+                         * 退供应商说得出退给谁、不需要原因；报损说得出为什么、没有去向。
+                         *
+                         * **`sourceRef` 不能挤掉**：销售出库靠它显示订单号，
+                         * 换成去向的话，那一列会从「订单 xxx」变成空白，
+                         * 而销售出库恰恰是单据列表里最多的一类。
+                         */
+                        subtitle(h.getPurpose(),
+                                h.getTargetName() != null && !h.getTargetName().isBlank()
+                                        ? h.getTargetName() : h.getReasonCode(),
+                                h.getSourceRef()),
                         -h.getTotalQty(), h.getOccurredAt(), h.getCreatedBy()));
             }
         }

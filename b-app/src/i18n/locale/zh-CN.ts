@@ -2111,6 +2111,15 @@ entryHint: "谁在买 · 谁不来了",
     qtyBad: "填一个大于 0 的整数",
     qtyOver: "最多 {n}",
     reasonLabel: "原因",
+    // 去向：**这一页此前写死报损**，于是退给供应商这件事记不了。
+    // SALE 不在选项里，且永远不会在 —— 销售出库只能由预留 commit 产生，
+    // 做成选项等于让商家能凭空造销量。
+    purposeLabel: "出库类型",
+    purpose: { SCRAP: "报损", RETURN_SUPPLIER: "退供应商", INTERNAL: "内部领用" },
+    supplierLabel: "退给",
+    supplierPh: "选一家",
+    needSupplier: "先选退给哪一家供应商",
+    noSupplier: "还没有供应商 —— 记一笔进货时输入名称就能建",
     totalQty: "合计出库",
     post: "过账出库",
     posted: "已出库 {no}",

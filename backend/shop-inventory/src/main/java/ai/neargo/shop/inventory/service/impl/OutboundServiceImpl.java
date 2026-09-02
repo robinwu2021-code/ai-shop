@@ -6,9 +6,11 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.entity.InvItem;
 import ai.neargo.shop.inventory.entity.InvOutboundLine;
 import ai.neargo.shop.inventory.entity.InvOutboundOrder;
+import ai.neargo.shop.inventory.entity.InvSupplier;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboundLineMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboundOrderMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.SupplierMapper;
 import ai.neargo.shop.inventory.service.OutboundService;
 import ai.neargo.shop.inventory.service.StockPostingService;
 import ai.neargo.shop.inventory.support.InvEnums;
@@ -29,13 +31,15 @@ public class OutboundServiceImpl implements OutboundService {
     private final OutboundOrderMapper orderMapper;
     private final OutboundLineMapper lineMapper;
     private final ItemMapper itemMapper;
+    private final SupplierMapper supplierMapper;
     private final StockPostingService posting;
 
     public OutboundServiceImpl(OutboundOrderMapper orderMapper, OutboundLineMapper lineMapper,
-                               ItemMapper itemMapper, StockPostingService posting) {
+                               ItemMapper itemMapper, SupplierMapper supplierMapper, StockPostingService posting) {
         this.orderMapper = orderMapper;
         this.lineMapper = lineMapper;
         this.itemMapper = itemMapper;
+        this.supplierMapper = supplierMapper;
         this.posting = posting;
     }
 
@@ -121,6 +125,11 @@ public class OutboundServiceImpl implements OutboundService {
         head.setOwnerId(draft.ownerId());
         head.setLocationId(draft.locationId());
         head.setPurpose(draft.purpose());
+        head.setTargetType(draft.targetType());
+        head.setTargetNo(draft.targetNo());
+        // 名字由**服务端**查了写快照，不收端上传来的：端上传的话，
+        // 改个名字就能让历史单据说谎，而单据要能自证（与 V3 供应商、V4 承运方同一条规矩）
+        head.setTargetName(targetNameOf(draft));
         head.setSourceRef(draft.sourceRef());
         head.setReservationId(draft.reservationId());
         head.setReasonCode(draft.reasonCode());
@@ -203,6 +212,44 @@ public class OutboundServiceImpl implements OutboundService {
                 && (draft.reasonCode() == null || draft.reasonCode().isBlank())) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        /*
+         * 退供应商**必须指得出是哪一家**。
+         *
+         * 不校验的话，`RETURN_SUPPLIER` 会退化成「另一种报损」——
+         * 而它存在的全部理由就是「这个月退给老周多少货」这个数，
+         * 少了去向那个数根本算不出来，且界面上看不出区别。
+         */
+        if (InvEnums.OutboundPurpose.RETURN_SUPPLIER.equals(draft.purpose())
+                && (draft.targetNo() == null || draft.targetNo().isBlank())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 反过来也要拦：报损带着去向，说明端上把两件事混了
+        if (InvEnums.OutboundPurpose.SCRAP.equals(draft.purpose())
+                && draft.targetNo() != null && !draft.targetNo().isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+    }
+
+    /**
+     * 查去向对象当时的名字。**查不到就拒**，不落一个指向空气的编号 ——
+     * 那种行在报表上会聚成一个没有名字的分组，而没人说得清它是谁。
+     */
+    private String targetNameOf(Draft draft) {
+        if (draft.targetNo() == null || draft.targetNo().isBlank()) {
+            return null;
+        }
+        if (!InvEnums.TargetType.SUPPLIER.equals(draft.targetType())) {
+            // 今天只有供应商一种去向落得下名字；门店领用的 STORE 留位（见 V6 迁移注释）
+            return null;
+        }
+        InvSupplier row = supplierMapper.selectOne(Wrappers.<InvSupplier>lambdaQuery()
+                .eq(InvSupplier::getOwnerId, draft.ownerId())
+                .eq(InvSupplier::getSupplierNo, draft.targetNo()));
+        if (row == null) {
+            // **显式带 ownerId 查**：不带的话，别家的供应商号也能指进来，且不报错
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return row.getName();
     }
 
     private void saveLines(String outboundNo, Draft draft) {

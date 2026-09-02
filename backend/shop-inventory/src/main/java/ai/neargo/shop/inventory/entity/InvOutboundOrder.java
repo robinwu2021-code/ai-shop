@@ -22,6 +22,24 @@ public class InvOutboundOrder extends InvMutableEntity {
     /** SALE 销售 / TRANSFER_OUT 调拨出 / SCRAP 报损 / COUNT_LOSS 盘亏 / INTERNAL 领用 / OTHER */
     private String purpose;
 
+    /**
+     * 去向类型：{@code SUPPLIER} 退供应商 / {@code STORE} 门店领用。
+     * <b>空 = 没有去向</b>，报损就是没有去向的那一种。
+     *
+     * <p><b>与 {@code reasonCode} 是两个维度</b>：那一列答「为什么出」，这一列答「出给谁」。
+     * 挤进同一列之后，「这个月报损多少」与「这个月退货多少」在报表上再也分不开。
+     */
+    private String targetType;
+
+    /** 去向对象编号：{@code SUPPLIER} 时是 {@code inv_supplier.supplier_no}。 */
+    private String targetNo;
+
+    /**
+     * 下单当时的去向名字快照。<b>冗余是有意的</b> —— 对方三个月后改了名，
+     * 历史单据上该显示当时那个名字。跨库也不能外键，名字只能冗余。
+     */
+    private String targetName;
+
     /** SALE=订单号 / TRANSFER=调拨单 / COUNT_LOSS=盘点单 */
     private String sourceRef;
 

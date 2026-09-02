@@ -87,8 +87,9 @@ public class BizStockDocController {
     public InventoryVOs.DocNoVO createOutbound(@RequestBody OutboundReq req) {
         List<OutboundService.Line> lines = req.lines().stream()
                 .map(l -> new OutboundService.Line(l.itemId(), l.qty(), l.uom())).toList();
-        return new InventoryVOs.DocNoVO(outbound.createDraft(new OutboundService.Draft(owner(), location(), req.purpose(),
-                null, null, req.reasonCode(), req.occurredAt(), req.remark(), lines)));
+        return new InventoryVOs.DocNoVO(outbound.createDraft(new OutboundService.Draft(
+                owner(), location(), req.purpose(), null, null, req.reasonCode(),
+                req.occurredAt(), req.remark(), req.targetType(), req.targetNo(), lines)));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
@@ -182,8 +183,14 @@ public class BizStockDocController {
                              String remark, List<LineReq> lines) {
     }
 
+    /**
+     * @param targetType 去向类型（{@code SUPPLIER}），空 = 没有去向（报损）
+     * @param targetNo   去向对象编号。<b>名字不收</b> —— 由服务端查了写快照，
+     *                   端上传的话，改个名字就能让历史单据说谎
+     */
     public record OutboundReq(String purpose, String reasonCode, LocalDateTime occurredAt,
-                              String remark, List<LineReq> lines) {
+                              String remark, String targetType, String targetNo,
+                              List<LineReq> lines) {
     }
 
     public record CountOpenReq(List<String> itemIds) {

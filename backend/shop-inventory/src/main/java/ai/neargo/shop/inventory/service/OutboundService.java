@@ -30,9 +30,29 @@ public interface OutboundService {
     String postDirectly(Draft draft, String operator);
 
     /** @param reasonCode {@code SCRAP} 必填：枚举不是自由文本，否则汇总不出「这个月报损了多少」 */
+    /**
+     * @param targetType 去向类型（{@code SUPPLIER} / {@code STORE}），<b>空 = 没有去向</b>。
+     *                   报损就是没有去向的那一种 —— 不要为它造一个 {@code NONE}
+     * @param targetNo   去向对象编号；{@code SUPPLIER} 时是 {@code supplier_no}。
+     *                   名字不在这里传：<b>由服务端查了写快照</b>，
+     *                   端上传进来的话，改个名字就能让历史单据说谎
+     */
     record Draft(String ownerId, String locationId, String purpose, String sourceRef,
                  String reservationId, String reasonCode, LocalDateTime occurredAt,
-                 String remark, List<Line> lines) {
+                 String remark, String targetType, String targetNo, List<Line> lines) {
+
+        /**
+         * 没有去向的那一档（报损 / 盘亏 / 调拨出 / 销售出库）。
+         *
+         * <p><b>留这个构造器是为了不动那四处调用点</b>：它们本来就没有去向可传，
+         * 逐个补两个 {@code null} 只会让「这里为什么是 null」变成一个要读三行才答得上的问题。
+         */
+        public Draft(String ownerId, String locationId, String purpose, String sourceRef,
+                     String reservationId, String reasonCode, LocalDateTime occurredAt,
+                     String remark, List<Line> lines) {
+            this(ownerId, locationId, purpose, sourceRef, reservationId, reasonCode,
+                    occurredAt, remark, null, null, lines);
+        }
     }
 
     record Line(String itemId, int qty, String uom) {

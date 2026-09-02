@@ -546,11 +546,25 @@ export interface StockInboundReq {
 }
 
 export interface StockOutboundReq {
-  /** SALE 销售 / TRANSFER_OUT 调拨出 / SCRAP 报损 / COUNT_LOSS 盘亏 / INTERNAL 领用 / OTHER。
+  /** SALE 销售 / TRANSFER_OUT 调拨出 / SCRAP 报损 / COUNT_LOSS 盘亏 / INTERNAL 领用 /
+   *  RETURN_SUPPLIER 退供应商 / OTHER。
    *  **SALE 不接受手工创建** —— 否则商家能凭空造销量 */
   purpose: string;
   /** SCRAP 必填：BROKEN 损坏 / EXPIRED 过期 / GIFT 赠送 / OTHER。**枚举不是自由文本** */
   reasonCode?: string;
+  /**
+   * 去向类型：`SUPPLIER`。**空 = 没有去向**（报损就是没有去向的那一种）。
+   *
+   * 与 `reasonCode` 是两个维度：那个答「为什么出」，这个答「出给谁」。
+   * 合成一个的话，「这个月报损多少」与「这个月退货多少」在报表上再也分不开。
+   */
+  targetType?: string;
+  /**
+   * 去向对象编号；`SUPPLIER` 时是 `supplierNo`。`RETURN_SUPPLIER` 必填。
+   *
+   * **名字不用传** —— 服务端查了写快照。端上传的话，供应商改个名就能让历史单据说谎。
+   */
+  targetNo?: string;
   /** 业务发生时刻。**不是录入时刻** —— 昨天进的货今天补录，账要落在昨天 */
   occurredAt?: string;
   /** 备注 */

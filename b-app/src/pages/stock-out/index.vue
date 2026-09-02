@@ -13,8 +13,8 @@ import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
-import type { StockBalance } from "@shared/types";
-import { prompt } from "@ai-shop/ui/prompt";
+import type { StockBalance, Supplier } from "@shared/types";
+import { pick, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -32,8 +32,22 @@ interface Line {
   qty: number;
 }
 
+/**
+ * 出库去向。**这一页此前写死 SCRAP** —— 于是所有非销售出库都被记成报损，
+ * 「退给供应商」这件事记不了，而「这个月退给老周多少货」是应付账款对账的一半。
+ *
+ * **`SALE` 不在这里，且永远不会在**：销售出库只能由预留 commit 产生
+ *（后端 `OutboundServiceImpl` 的闸门）。做成一个选项的话，
+ * 商家能凭空造一笔销售出库，而它会进销量榜。
+ */
+const PURPOSES = ["SCRAP", "RETURN_SUPPLIER", "INTERNAL"] as const;
+
 const occurredAt = ref(today());
+const purpose = ref<(typeof PURPOSES)[number]>("SCRAP");
 const reason = ref<(typeof REASONS)[number]>("EXPIRED");
+/** 退供应商时退给谁。**只有 RETURN_SUPPLIER 用得上** */
+const supplier = ref<{ supplierNo: string; name: string } | null>(null);
+const suppliers = ref<Supplier[]>([]);
 const lines = ref<Line[]>([]);
 const busy = ref(false);
 const pickable = ref<StockBalance[]>([]);
@@ -52,9 +66,38 @@ async function load() {
     // 只给有货的：报损一件可用为 0 的货，唯一的结果是被后端拒绝
     const all = await api.mStockBalances({ filter: "all", size: 200 });
     pickable.value = all.filter((b) => b.available > 0);
+    // 供应商与货一起取：切到「退供应商」时再去拉，商家会先看到一个空选择器
+    suppliers.value = await api.mSuppliers({ activeOnly: true }).catch(() => []);
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
+}
+
+/** 选去向。切走「退供应商」时把已选的那家清掉 —— 留着它，下次切回来会是一家没显示过的 */
+async function pickPurpose() {
+  const idx = await pick({
+    title: String(t("stockOut.purposeLabel")),
+    items: PURPOSES.map((p) => String(t(`stockOut.purpose.${p}`))),
+  });
+  if (idx === null) return;
+  purpose.value = PURPOSES[idx]!;
+  if (purpose.value !== "RETURN_SUPPLIER") supplier.value = null;
+}
+
+async function pickSupplier() {
+  if (!suppliers.value.length) {
+    // 空态说实话：**没有供应商**与「加载失败」是两件事，
+    // 而商家能自己解决前者（去进货页随手建一个）
+    uni.showToast({ title: String(t("stockOut.noSupplier")), icon: "none" });
+    return;
+  }
+  const idx = await pick({
+    title: String(t("stockOut.supplierLabel")),
+    items: suppliers.value.map((s) => s.shortName || s.name),
+  });
+  if (idx === null) return;
+  const s = suppliers.value[idx]!;
+  supplier.value = { supplierNo: s.supplierNo, name: s.shortName || s.name };
 }
 
 function pickQty(b: StockBalance): string {
@@ -97,11 +140,20 @@ async function editQty(l: Line) {
 
 async function post() {
   if (!lines.value.length || busy.value) return;
+  // 退供应商必须指得出是哪一家。**在这里就卡住** —— 后端也拦，
+  // 但让它走一趟网络再被拒，商家看到的是一句没头没尾的错误
+  if (purpose.value === "RETURN_SUPPLIER" && !supplier.value) {
+    uni.showToast({ title: String(t("stockOut.needSupplier")), icon: "none" });
+    return;
+  }
   busy.value = true;
   try {
     const no = await api.mOutboundCreate({
-      purpose: "SCRAP",
-      reasonCode: reason.value,
+      purpose: purpose.value,
+      // 原因只有报损要：退供应商说得出退给谁，不需要再问一次为什么
+      reasonCode: purpose.value === "SCRAP" ? reason.value : undefined,
+      targetType: purpose.value === "RETURN_SUPPLIER" ? "SUPPLIER" : undefined,
+      targetNo: purpose.value === "RETURN_SUPPLIER" ? supplier.value?.supplierNo : undefined,
       occurredAt: `${occurredAt.value}T00:00:00`,
       lines: lines.value.map((l) => ({ itemId: l.itemId, qty: l.qty, uom: l.uom })),
     });
@@ -121,6 +173,21 @@ onShow(load);
 <template>
   <sh-scaffold title-key="stockOut.title" :denied="!merchant.can('biz:stock')">
     <view class="sh-card">
+      <!--
+        去向排在日期上面：它决定了下面那半屏长什么样（报损问原因、退供应商问退给谁），
+        而排在后面的话，商家会先填完原因再发现自己要的不是报损。
+      -->
+      <sh-kv between :label="String($t('stockOut.purposeLabel'))" @tap="pickPurpose">
+        <text class="sh-link">{{ $t(`stockOut.purpose.${purpose}`) }}</text>
+      </sh-kv>
+      <sh-kv
+        v-if="purpose === 'RETURN_SUPPLIER'"
+        between
+        :label="String($t('stockOut.supplierLabel'))"
+        @tap="pickSupplier"
+      >
+        <text class="sh-link">{{ supplier?.name || $t("stockOut.supplierPh") }}</text>
+      </sh-kv>
       <sh-kv between :label="String($t('stockOut.date'))">
         <picker mode="date" :value="occurredAt" @change="occurredAt = $event.detail.value">
           <text class="sh-link sh-num">{{ occurredAt }}</text>
@@ -145,7 +212,8 @@ onShow(load);
 
     <sh-add :text="String($t('stockOut.addItem'))" @tap="showPick = true"></sh-add>
 
-    <view class="sh-card">
+    <!-- 原因只有报损要问：退供应商说得出退给谁，再问一次「为什么」是多余的一步 -->
+    <view v-if="purpose === 'SCRAP'" class="sh-card">
       <text class="field__label">{{ $t("stockOut.reasonLabel") }}</text>
       <view class="reasons sh-wrap">
         <text
