@@ -45,6 +45,45 @@ public interface SettleBatchService {
     int closeDueBatches();
 
     /** 某商家的账期批次，倒序。<b>商家问的是「这一批什么时候放、卡在哪」</b> */
+    /**
+     * <b>核验 R6：批次合计 ≡ 其下结算单之和。</b>
+     *
+     * <h2>为什么要有这一条</h2>
+     * 合计是在<b>截批那一刻算完写死的</b>（不在收单期间维护，那样并发入批会丢更新）。
+     * 写对了当然一致 —— 而写错了<b>没有任何东西会发现</b>：
+     * 放款按合计数走，明细页按结算单算，两处各自都「对」，
+     * 只有把它们摆在一起才看得出差。
+     *
+     * <p>这类账目错误的特点是<b>不报错、只是数字不对</b>，
+     * 而它错的是「给商家打多少钱」。
+     *
+     * <h2>只告警，不自动改</h2>
+     * 合计数是放款依据。自动「修正」等于让巡检去改一个正在被用来打款的数字 ——
+     * 而巡检自己也可能算错（比如窗口取错、把已回退的单算进去）。
+     * <b>一个算错的修复比一个已知的差异危险得多。</b>
+     *
+     * @param limit 单轮上限。不扫全量：巡检要能在一次任务窗口里跑完
+     * @return 对不上的批次
+     */
+    java.util.List<BatchMismatch> checkBatchTotals(int limit);
+
+    /**
+     * @param batchNo        批次号
+     * @param batchNetMinor  批次上记的净额
+     * @param billsNetMinor  其下结算单实际之和
+     * @param batchBillCount 批次上记的单数
+     * @param billsCount     其下结算单实际条数
+     */
+    record BatchMismatch(String batchNo, String entityNo,
+                         long batchNetMinor, long billsNetMinor,
+                         int batchBillCount, int billsCount) {
+
+        /** 差额（分）。正数 = 批次记多了，负数 = 记少了 */
+        public long diffMinor() {
+            return batchNetMinor - billsNetMinor;
+        }
+    }
+
     java.util.List<BatchVO> merchantBatches(String entityNo);
 
     /** 平台端：全部批次，可按状态筛 */

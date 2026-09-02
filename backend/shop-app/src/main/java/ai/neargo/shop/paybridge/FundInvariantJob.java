@@ -46,6 +46,8 @@ public class FundInvariantJob implements JobHandler {
 
     private final FundInvariantReconciler invariants;
     private final JobSupport jobs;
+    /** R6 的核验在 pay 侧（纯 pay 内部的账，不跨域）—— 这里只负责让它每轮跑一次 */
+    private final ai.neargo.shop.pay.SettleBatchService batches;
 
     /**
      * 回看窗口。**不扫全量** —— 全量一次要几分钟，而这个任务每小时跑一次。
@@ -75,7 +77,9 @@ public class FundInvariantJob implements JobHandler {
     @Value("${shop.job.fund-invariant.alert-after-minutes:60}")
     private int alertAfterMinutes;
 
-    public FundInvariantJob(FundInvariantReconciler invariants, JobSupport jobs) {
+    public FundInvariantJob(FundInvariantReconciler invariants, JobSupport jobs,
+                            ai.neargo.shop.pay.SettleBatchService batches) {
+        this.batches = batches;
         this.invariants = invariants;
         this.jobs = jobs;
     }
@@ -150,16 +154,33 @@ public class FundInvariantJob implements JobHandler {
                     rel.released(), rel.dead(), rel.scanned());
         }
 
+        /*
+         * **R6：批次合计 ≡ 其下结算单之和**（S10 · 2026-09-02）。
+         *
+         * 与 I1–I3 一起跑而不是单开一个任务：它们都是「资金账对不对得上」，
+         * 分散在多个任务里的话，运营要看几个地方才知道账有没有问题。
+         *
+         * 这一条<b>只报不改</b> —— 合计是放款依据，而巡检自己也可能算错。
+         */
+        var mismatches = batches.checkBatchTotals(limit);
+        if (!mismatches.isEmpty()) {
+            log.error("[fund-invariant] **R6 违反 {} 条**：批次合计与结算单之和对不上 —— "
+                    + "放款按合计走，这个数错了就是给商家打错钱。**不自动改**，逐条查",
+                    mismatches.size());
+        }
+
         if (r.grantedNoLedger() > 0) {
             log.error("[fund-invariant] I3 违反 {} 条：标记说发过积分而没有流水，"
                     + "已清标记 {} 行 —— 下一轮会重发", r.grantedNoLedger(), r.clearedFlags());
         }
 
         return JobResult.ok(("已付子单 %d（缺 %d · 补 %d）· 结算单 %d（对不上 %d）"
-                + "· 已发分 %d（无流水 %d · 清 %d）· 预占 %d（已死 %d · 释放 %d）")
+                + "· 已发分 %d（无流水 %d · 清 %d）· 预占 %d（已死 %d · 释放 %d）"
+                + "· 批次合计不符 %d")
                 .formatted(r.scannedPaid(), r.missingBill(), r.repairedBill(),
                         r.scannedBills(), r.orphanBill(),
                         r.scannedGranted(), r.grantedNoLedger(), r.clearedFlags(),
-                        rel.scanned(), rel.dead(), rel.released()));
+                        rel.scanned(), rel.dead(), rel.released(),
+                        mismatches.size()));
     }
 }

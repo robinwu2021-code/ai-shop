@@ -391,6 +391,60 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     // ---------------------------------------------------------------- 查询与人工处置
 
     @Override
+    public java.util.List<BatchMismatch> checkBatchTotals(int limit) {
+        /*
+         * **只查已截批的**。DRAFT 状态下合计恒为 0（合计在截批那一刻才算），
+         * 拿它去比必然「不一致」—— 那是设计，不是缺陷。
+         * 不排除的话这条巡检每轮都报几十条假差异，
+         * 而<b>恒红的告警等于没有告警</b>。
+         */
+        List<StlSettleBatch> batches = DataScopeContext.executeWithoutScope(() ->
+                batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .ne(StlSettleBatch::getStatus, StlSettleBatch.DRAFT)
+                        .orderByDesc(StlSettleBatch::getId)
+                        .last("LIMIT " + Math.max(1, limit))));
+
+        List<BatchMismatch> out = new java.util.ArrayList<>();
+        for (StlSettleBatch b : batches) {
+            List<StlBill> bills = DataScopeContext.executeWithoutScope(() ->
+                    billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                            .eq(StlBill::getBatchNo, b.getBatchNo())));
+            /*
+             * **按批次的币种筛一次**，与截批时的口径逐字一致。
+             * 截批跳过了错币种的单（见 closeDueBatches），这里也要跳 ——
+             * 不跳的话，一笔混进来的错币种单会让这条巡检报「合计少算了」，
+             * 而实际上少算是对的。<b>两处口径不一致，巡检就在报自己的差异。</b>
+             */
+            String batchCur = b.getCurrency() == null || b.getCurrency().isBlank()
+                    ? DEFAULT_CURRENCY : b.getCurrency();
+            long net = 0;
+            int cnt = 0;
+            for (StlBill bill : bills) {
+                String bc = bill.getCurrency() == null || bill.getCurrency().isBlank()
+                        ? DEFAULT_CURRENCY : bill.getCurrency();
+                if (!bc.equals(batchCur)) {
+                    continue;
+                }
+                net += nz(bill.getNetMinor());
+                cnt++;
+            }
+            int recordedCount = b.getBillCount() == null ? 0 : b.getBillCount();
+            long recordedNet = nz(b.getNetMinor());
+            if (recordedNet != net || recordedCount != cnt) {
+                out.add(new BatchMismatch(b.getBatchNo(), b.getEntityNo(),
+                        recordedNet, net, recordedCount, cnt));
+            }
+        }
+        if (!out.isEmpty()) {
+            log.error("[fund-invariant] **R6 违反 {} 条**：批次合计与其下结算单之和对不上。"
+                    + "放款按合计走、明细页按结算单算，两处各自都「对」—— "
+                    + "只有摆在一起才看得出。**不自动改**：合计是放款依据，"
+                    + "而巡检自己也可能算错。逐条查：{}", out.size(), out);
+        }
+        return out;
+    }
+
+    @Override
     public java.util.List<BatchVO> merchantBatches(String entityNo) {
         return DataScopeContext.executeWithoutScope(() ->
                         batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
