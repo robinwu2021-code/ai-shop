@@ -6,7 +6,7 @@
 // 将来要在途就得改历史数据。
 //
 // **在途是一个真实的库位**，不是「暂时没有」：货在路上的这几天，合计一件不差。
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
@@ -50,19 +50,53 @@ async function load() {
       doc.value = await api.mTransferDetail(transferNo.value);
       return;
     }
-    const [locs, bal] = await Promise.all([
-      api.mStockLocations(),
-      api.mStockBalances({ filter: "all", size: 200 }),
-    ]);
+    /*
+     * **先定调出方，再取余额** —— 两件事不能并发。
+     *
+     * 余额是**按库位**的，而这一页的调出方未必是当前门店：此前这里
+     * `Promise.all` 同时发两个请求，余额那一发只能不带库位、拿到当前门店的数，
+     * 于是挑货弹层写着「可用 30」，过账时扣的却是另一个库位 ——
+     * `INV_INSUFFICIENT`，而商家刚刚亲眼看见 30。
+     */
+    const locs = await api.mStockLocations();
     locations.value = locs;
-    pickable.value = bal.filter((b) => b.available > 0);
     const usable = locs.filter((l) => l.kind !== "TRANSIT");
     if (!fromId.value && usable.length) fromId.value = usable[0]!.locationId;
     if (!toId.value && usable.length > 1) toId.value = usable[1]!.locationId;
+    await loadBalances();
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
 }
+
+/** 按当前调出方取余额。**没定调出方就别取** —— 那样只会拿到当前门店的数 */
+async function loadBalances() {
+  if (!fromId.value) return;
+  const bal = await api.mStockBalances({
+    filter: "all", locationId: fromId.value, size: 200,
+  });
+  pickable.value = bal.filter((b) => b.available > 0);
+}
+
+/*
+ * 换了调出方：余额要重取，**已挑的行也要清掉**。
+ *
+ * 只重取余额是不够的 —— 在 A 库位挑的三件还留在单子里，而 B 库位可能一件都没有，
+ * 过账时照样 `INV_INSUFFICIENT`。清空要说出来：单子是他一件件点出来的，
+ * 静默清掉比不清更糟。
+ */
+watch(fromId, async (nv, ov) => {
+  if (!ov || nv === ov) return;   // 首次赋默认值不算「换」
+  if (lines.value.length) {
+    lines.value = [];
+    uni.showToast({ title: String(t("transfer.fromChangedCleared")), icon: "none" });
+  }
+  try {
+    await loadBalances();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+});
 
 function nameOf(id?: string): string {
   const loc = locations.value.find((l) => l.locationId === id);

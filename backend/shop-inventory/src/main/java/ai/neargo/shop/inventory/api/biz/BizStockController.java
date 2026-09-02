@@ -1,5 +1,7 @@
 package ai.neargo.shop.inventory.api.biz;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
@@ -65,11 +67,19 @@ public class BizStockController {
         return query.summary(owner(), location());
     }
 
+    /**
+     * 余额。<b>{@code locationId} 可指定别的库位</b>，不传就是当前门店那个。
+     *
+     * <p>加这个参数是因为调拨：调出方可以是另一个库位，而挑货弹层此前一律读
+     * 当前门店的余额 —— 商家看到「可用 30」，点下去 {@code INV_INSUFFICIENT}。
+     * 数字来自一个库位，扣减发生在另一个库位，两边从来没对过。
+     */
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/balances")
     public List<BalanceVO> balances(@RequestParam(required = false) String filter,
+                                    @RequestParam(required = false) String locationId,
                                     @RequestParam(defaultValue = "50") int size) {
-        return query.balances(owner(), location(), filter, Math.min(size, PAGE_MAX));
+        return query.balances(owner(), locationOr(locationId), filter, Math.min(size, PAGE_MAX));
     }
 
     /**
@@ -179,5 +189,29 @@ public class BizStockController {
         BizContext ctx = BizContext.current();
         String locationId = acl.locationIdOf(ctx.merchantNo(), ctx.currentStoreNo());
         return locations.resolveStockLocation(acl.ownerIdOf(ctx.merchantNo()), locationId);
+    }
+
+    /**
+     * 显式指定的库位，空则回到当前门店那个。
+     *
+     * <p><b>必须校验归属。</b>这个参数是端上传来的一串 ID，不校验的话，
+     * 改一个字符就能读到别家的库存 —— 而读接口不会报错，只会安静地回一批数。
+     * 权限注解挡的是「这个人能不能看库存」，挡不住「看谁的库存」。
+     *
+     * <p>不对它做 {@code resolveStockLocation}：那是「门店 → 发货源」的映射，
+     * 端上传进来的已经是从 {@code /biz/inventory/locations} 拿到的真实库位 ID，
+     * 再解析一次会把调出方悄悄换成另一个库位 —— 那正是这个参数要修的毛病。
+     */
+    private String locationOr(String locationId) {
+        if (locationId == null || locationId.isBlank()) {
+            return location();
+        }
+        String ownerId = owner();
+        boolean mine = locations.list(ownerId).stream()
+                .anyMatch(l -> locationId.equals(l.getLocationId()));
+        if (!mine) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        return locationId;
     }
 }

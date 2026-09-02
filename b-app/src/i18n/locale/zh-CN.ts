@@ -2142,6 +2142,7 @@ entryHint: "谁在买 · 谁不来了",
     posted: "已出库 {no}",
   },
   transfer: {
+    fromChangedCleared: "换了调出方，已挑的货清空了",
     shipTitle: "发货信息",
     shipHint: "承运方与运单号都可以不填 —— 自己送就空着",
     trackingPh: "运单号，选填",

@@ -103,6 +103,54 @@ class InventoryBizEndpointTest {
     }
 
     @Test
+    @DisplayName("★★★ balances 的 locationId：数出自哪个库位，以及别家的库位读不到")
+    void balancesHonoursLocationAndRejectsForeignOnes() throws Exception {
+        Shop s = shop();
+
+        /*
+         * 这条钉的是调拨那个毛病（2026-09-02）：挑货弹层一律读**当前门店**的余额，
+         * 而调拨的调出方可以是另一个库位 —— 商家看到「可用 30」，过账时扣的是
+         * 另一个库位，`INV_INSUFFICIENT`。数字来自一个库位，扣减发生在另一个库位。
+         */
+        String warehouse = okText(post("/biz/inventory/locations")
+                .content("{\"name\":\"对照仓\"}"), s.token);
+
+        int here = ok(get("/biz/inventory/balances?filter=all&size=100&locationId="
+                + s.location), s.token).size();
+        assertThat(here)
+                .as("传自己门店的库位，要和不传时一样 —— 否则这个参数根本没接上")
+                .isEqualTo(ok(get("/biz/inventory/balances?filter=all&size=100"), s.token).size());
+
+        /*
+         * **对照量本身要能证伪**：新仓一件货都没有，所以它必须比有货的那个少。
+         * 只断言「新仓是 0」的话，参数写错拼成了别的名字、后端整个忽略它时，
+         * 这条也会绿 —— 那时两边都回当前门店的数，而当前门店恰好也可能是 0。
+         */
+        int fresh = ok(get("/biz/inventory/balances?filter=all&size=100&locationId="
+                + warehouse), s.token).size();
+        assertThat(here).as("种子给当前门店入了货，它必须非零，否则下面那条比不出东西")
+                .isGreaterThan(0);
+        assertThat(fresh).as("新建的仓一件货都没有 —— 数出自 locationId 指的那个库位").isZero();
+
+        /*
+         * **别家的库位读不到。** 这个参数是端上传来的一串 ID，不校验的话改一个字符
+         * 就能读到别家的库存，而读接口不会报错、只会安静地回一批数。
+         * 权限注解挡的是「这个人能不能看库存」，挡不住「看谁的库存」。
+         */
+        Shop other = shop();
+        String body = mvc().perform(
+                        get("/biz/inventory/balances?filter=all&size=100&locationId="
+                                + other.location())
+                                .header("Authorization", "Bearer " + s.token())
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())   // 信封裹着，HTTP 永远 200
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(body).get("code").asInt())
+                .as("拿别家的库位去读余额必须被拒 —— 回 0 就是安静地把别人的库存给出去了")
+                .isNotZero();
+    }
+
+    @Test
     @DisplayName("★★★ 明细页：byLocation 与台账分页的字段名")
     void itemDetailAndLedgerFieldsMatchBApp() throws Exception {
         Shop s = shop();

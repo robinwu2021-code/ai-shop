@@ -1369,8 +1369,11 @@ export interface MerchantApi {
    * @param filter `todo` 只给有待办标记的（默认，**要处理的排最前**）· `all` 全部 ·
    *               `reserved` 有预留。一屏 200 多个 SKU，按字母排等于没排 ——
    *               商家打开这一页只为两件事：哪件断了、哪件压着
+   * @param locationId 指定库位；不传就是当前门店那个。**调拨挑货必须传**——
+   *               调出方可以是另一个库位，不传的话拿到的是当前门店的数，
+   *               商家看到「可用 30」，点下去 `INV_INSUFFICIENT`
    */
-  mStockBalances(q?: { filter?: string; size?: number }): Promise<StockBalance[]>;
+  mStockBalances(q?: { filter?: string; locationId?: string; size?: number }): Promise<StockBalance[]>;
   /**
    * 开单时挑货用。**与 `mStockBalances` 问的不是一件事**：
    * 那一条问「我有多少」（读余额），这一条问「哪件货」（读物料）。

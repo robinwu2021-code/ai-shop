@@ -1802,6 +1802,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     posted: "Posted {no}",
   },
   transfer: {
+    fromChangedCleared: "Source changed — picked items cleared",
     shipTitle: "Shipping details",
     shipHint: "Carrier and tracking number are both optional — leave blank if you deliver it yourself",
     trackingPh: "Tracking number (optional)",
