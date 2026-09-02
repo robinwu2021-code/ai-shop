@@ -8336,6 +8336,6 @@ INSERT INTO sys_pay_channel
      created_at, created_by, updated_at, updated_by, version, deleted)
 VALUES
     (3, 'TEST', '测试渠道', 0, 1, 1, 1,
-     'TEST_PAY', NULL, 'CNY', 'T1', 20,
+     '["TEST_PAY"]', NULL, 'CNY', 'T1', 20,
      0, 3000, 'MAIN',
      '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0);

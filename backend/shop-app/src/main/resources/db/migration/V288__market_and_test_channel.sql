@@ -8,8 +8,12 @@
 --
 -- 挂在主体而不是门店：一个主体在两个市场经营要开两个主体，
 -- 这与「收款进件按主体」是同一条口径。
+-- ⚠️ IF NOT EXISTS：这条迁移在生产**失败重跑过一次** ——
+-- 第一次跑时这一句已经成功、下面的 INSERT 才失败，
+-- 于是 Flyway 记了一条 failed，而重跑时这一句会撞「列已存在」。
+-- 失败的迁移必须能安全重跑，否则修完还要手工回退已成功的部分。
 ALTER TABLE mch_entity
-    ADD COLUMN market VARCHAR(8) NOT NULL DEFAULT 'CN'
+    ADD COLUMN IF NOT EXISTS market VARCHAR(8) NOT NULL DEFAULT 'CN'
     COMMENT '经营市场。决定可选支付渠道、结算币种、账期时区';
 
 -- ② 测试渠道
@@ -44,13 +48,23 @@ ALTER TABLE mch_entity
 -- 症状是整个测试上下文起不来，报错指向一个毫不相干的 bizAuthController，
 -- 而真因是这一行。（生产库的序列是真实推进过的，所以只在测试库炸 ——
 -- 两边行为不同，更要在这里写死。）
-INSERT INTO sys_pay_channel
+-- ⚠️ **pay_methods 必须是合法 JSON 数组**，不是裸字符串。
+-- 生产表上有一条 CHECK 约束（MariaDB 的 json_valid）—— 写 'TEST_PAY' 会报
+-- 「CONSTRAINT `sys_pay_channel.pay_methods` failed」，整条迁移失败，
+-- 而 Flyway 因此拒绝启动，**任何版本的 jar 都起不来**（不只是新的那个）。
+--
+-- 测试库没有这条约束（H2 不带过来），所以本地 1641 条测试全绿。
+-- 2026-09-02 就是这么上线失败的：冒烟通过、jar 验过、迁移在生产炸。
+-- 跟着已有行的写法走：现有两条是 '["JSAPI","APP","H5","NATIVE"]'。
+--
+-- INSERT IGNORE：同样为了能安全重跑。
+INSERT IGNORE INTO sys_pay_channel
     (id, pay_channel, name, enabled, supports_subsidy, supports_split, supports_payout,
      pay_methods, markets, currency, settle_cycle, max_partial_refunds,
      refund_interval_seconds, max_split_rate, tenant_no,
      created_at, created_by, updated_at, updated_by, version, deleted)
 VALUES
     (3, 'TEST', '测试渠道', 0, 1, 1, 1,
-     'TEST_PAY', NULL, 'CNY', 'T1', 20,
+     '["TEST_PAY"]', NULL, 'CNY', 'T1', 20,
      0, 3000, 'MAIN',
      '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0);
