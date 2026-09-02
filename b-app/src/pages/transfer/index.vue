@@ -269,6 +269,17 @@ async function voidTransfer() {
   }
 }
 
+/**
+ * 状态徽章的色档。**三态，不是二元三目** —— 原来是「不是 SHIPPED 就用主色」，
+ * 于是新加的「已作废」跟草稿一样是一枚醒目的主色徽章，看着像个正常状态。
+ * 作废是终态，它不需要被注意，用中性的那一档。
+ */
+function statusChip(status: string): string {
+  if (status === "SHIPPED") return "sh-chip--warning";   // 在途：要惦记着收货
+  if (status === "VOIDED") return "";                     // 终态，中性
+  return "sh-chip--primary";
+}
+
 /** 「08-26 07:30」。切片不解析 —— 后端发的是不带时区的 LocalDateTime */
 function at(iso?: string): string {
   return iso && iso.length >= 16 ? iso.slice(5, 16).replace("T", " ") : "";
@@ -298,15 +309,22 @@ onShow(load);
           <text class="txt-strong sh-num">{{ doc.transferNo }}</text>
           <text
             class="sh-chip"
-            :class="doc.status === 'SHIPPED' ? 'sh-chip--warning' : 'sh-chip--primary'"
+            :class="statusChip(doc.status)"
           >
             {{ $t(`transfer.status.${doc.status}`) }}
           </text>
         </view>
-        <text class="txt-caption">
-          {{ doc.status === "SHIPPED"
-            ? $t("transfer.shippedAt", { at: at(doc.shippedAt) })
-            : $t("transfer.receivedAt", { at: at(doc.receivedAt) }) }}
+        <!--
+          时间只有**两种状态说得出**。原来这里是个二元三目：不是 SHIPPED 就当成
+          RECEIVED，于是草稿单上写着「 已收到」——时间还是空的（2026-09-02 真机
+          截图为证）。作废之后同样会这样。状态本身徽章已经说了，这一行没有内容
+          时就别出现。
+        -->
+        <text v-if="doc.status === 'SHIPPED'" class="txt-caption">
+          {{ $t("transfer.shippedAt", { at: at(doc.shippedAt) }) }}
+        </text>
+        <text v-else-if="doc.status === 'RECEIVED'" class="txt-caption">
+          {{ $t("transfer.receivedAt", { at: at(doc.receivedAt) }) }}
         </text>
 
         <!--
