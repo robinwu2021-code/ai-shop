@@ -466,6 +466,12 @@
       }
     },
     {
+      "path": "pages/invoice/index",
+      "style": {
+        "navigationBarTitleText": "开票"
+      }
+    },
+    {
       "path": "pages/stats/index",
       "style": {
         "navigationBarTitleText": "经营数据",

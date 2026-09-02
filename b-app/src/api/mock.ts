@@ -3232,6 +3232,54 @@ export const mockApi: MerchantApi = {
     ];
   },
 
+  /*
+   * 待开票摘要。**跨两个月**是刻意的 —— 一张票覆盖全部待开票的单，
+   * 不按月筛，而这件事只有跨月时才看得出来。
+   */
+  async mPendingInvoice() {
+    return {
+      payableMinor: 386_400,
+      billCount: 3,
+      periods: ["2026-07", "2026-08"],
+      settleNos: ["ST-MOCK-1", "ST-MOCK-2", "ST-MOCK-3"],
+    };
+  },
+
+  async mInvoiceTitle() {
+    return {
+      companyName: "邻高科技有限公司",
+      taxNo: "91310000MA1K00000X",
+      address: "上海市徐汇区某路 100 号",
+      phone: "021-12345678",
+      bankAccount: "招商银行上海分行 1234 5678 9012",
+    };
+  },
+
+  async mMyInvoices() {
+    // 三种状态各一条：驳回那条要能看到原因，否则他只会原样再传一次
+    return [
+      { invoiceNo: "PI-MOCK-3", period: "2026-08", invoiceNumber: "00123456",
+        invoiceType: "GENERAL", titleName: "邻高科技有限公司", amountMinor: 386_400,
+        status: "PENDING", rejectReason: null, settleNos: ["ST-MOCK-1"] },
+      { invoiceNo: "PI-MOCK-2", period: "2026-07", invoiceNumber: "00123455",
+        invoiceType: "SPECIAL", titleName: "邻高科技有限公司", amountMinor: 120_000,
+        status: "REJECTED", rejectReason: "票面金额与应付合计不符，请核对后重开",
+        settleNos: ["ST-MOCK-0"] },
+      { invoiceNo: "PI-MOCK-1", period: "2026-06", invoiceNumber: "00123454",
+        invoiceType: "GENERAL", titleName: "邻高科技有限公司", amountMinor: 98_000,
+        status: "VERIFIED", rejectReason: null, settleNos: [] },
+    ];
+  },
+
+  async mSubmitInvoice(v: { period: string; invoiceNumber: string; invoiceType: string;
+    titleName: string; amountMinor: number }) {
+    return {
+      invoiceNo: "PI-MOCK-NEW", period: v.period, invoiceNumber: v.invoiceNumber,
+      invoiceType: v.invoiceType, titleName: v.titleName, amountMinor: v.amountMinor,
+      status: "PENDING", rejectReason: null, settleNos: ["ST-MOCK-1"],
+    };
+  },
+
   async mApplyWithdraw(amountMinor: number) {
     return { withdrawNo: "WD-MOCK-NEW", amount: amountMinor, availableBalance: 128_600,
       status: "PENDING", appliedAt: "刚刚", decidedAt: null, remark: null };

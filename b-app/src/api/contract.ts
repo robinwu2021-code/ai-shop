@@ -109,6 +109,53 @@ import type {
 
 /** 拍照识别的结果。全部是**建议值**，店主可改可弃 */
 /**
+ * 待开票摘要。
+ *
+ * **这一页最重要的数字是 payableMinor** —— 提交时后端校验
+ * 「票面金额 == 这批单的应付合计」，对不上就拒收，
+ * 而供应商猜错一次就要走红字流程重开。
+ */
+export interface PendingInvoice {
+  /** 应付合计（分）。票面金额必须**等于**它 */
+  payableMinor: number;
+  /** 覆盖多少笔结算单。0 = 当前没有待开票的单 */
+  billCount: number;
+  /**
+   * 覆盖到的月份（YYYY-MM）。**不是筛选条件** ——
+   * 一张票永远覆盖该主体全部待开票的单，跨月时这里不止一个，
+   * 而商家要知道，否则他会以为自己只开了这个月的。
+   */
+  periods: string[];
+  /** 覆盖的结算单号 —— 对不上账时要能逐笔核 */
+  settleNos: string[];
+}
+
+/** 平台开票信息。供应商照着它开票，开错抬头要退回重开 */
+export interface PlatformInvoiceTitle {
+  companyName?: string;
+  taxNo?: string;
+  address?: string;
+  phone?: string;
+  bankAccount?: string;
+}
+
+/** 我提交过的进项票 */
+export interface PurchaseInvoice {
+  invoiceNo: string;
+  period: string;
+  invoiceNumber: string;
+  invoiceType: string;
+  titleName: string;
+  /** 分 */
+  amountMinor: number;
+  /** PENDING 待核验 / VERIFIED 已核验 / REJECTED 已驳回 */
+  status: string;
+  /** 驳回时必有 —— 不给原因他只会原样再传一次 */
+  rejectReason?: string | null;
+  settleNos: string[];
+}
+
+/**
  * 保证金账户。后端 {@code mch_deposit} + 准入档位算出来的几个数。
  *
  * **这一页要回答的不是「我押了多少」，是「我还差多少、我能收多少」** ——
@@ -1127,6 +1174,11 @@ export interface MerchantApi {
   mWithdrawPage(): Promise<WithdrawPage>;
   mDeposit(): Promise<DepositAccount>;
   mDepositTxns(): Promise<DepositTxn[]>;
+  mPendingInvoice(): Promise<PendingInvoice>;
+  mInvoiceTitle(): Promise<PlatformInvoiceTitle>;
+  mMyInvoices(): Promise<PurchaseInvoice[]>;
+  mSubmitInvoice(v: { period: string; invoiceNumber: string; invoiceType: string;
+    titleName: string; amountMinor: number }): Promise<PurchaseInvoice>;
   /** 申请提现。**金额单位是分** —— 与全站契约一致，浮点不进钱的接口 */
   mApplyWithdraw(amountMinor: number): Promise<WithdrawRecord>;
 

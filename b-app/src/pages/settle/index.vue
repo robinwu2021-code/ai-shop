@@ -148,6 +148,10 @@ onShow(load);
         <text class="txt-title">{{ $t("deposit.title") }}</text>
         <text class="sh-muted entries__hint">{{ $t("settle.entryDeposit") }}</text>
       </view>
+      <view class="entries__item sh-card" @tap="go(ROUTES.invoice)">
+        <text class="txt-title">{{ $t("invoice.title") }}</text>
+        <text class="sh-muted entries__hint">{{ $t("settle.entryInvoice") }}</text>
+      </view>
     </view>
 
     <!-- 费率卡放在账单**之前**：先说清楚怎么算，再看算出来多少。

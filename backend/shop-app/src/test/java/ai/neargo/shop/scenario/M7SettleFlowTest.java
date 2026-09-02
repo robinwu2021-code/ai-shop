@@ -879,6 +879,51 @@ class M7SettleFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 待开票摘要给的金额，照着填必须能提交成功 —— 此前端上根本拿不到这个数")
+    void pendingInvoiceAmountIsSubmittable() throws Exception {
+        /*
+         * 这一条钉的是**两头对得上**。
+         *
+         * 提交时后端校验「票面金额 == 这批单的应付合计」，对不上就拒收 ——
+         * 而在这个接口之前，那个合计<b>只在服务端算，没有任何接口给得出来</b>。
+         * 供应商只能猜，猜错一次就要走红字流程重开。
+         *
+         * 上面那条 invoiceAmountMustMatchPayable 用的是**测试自己算的**
+         * payableAwaitingInvoice —— 它证明了校验在，却证明不了端上拿得到这个数。
+         * 那正是这条缺口能藏这么久的原因。
+         */
+        String ops = opsLogin();
+        String settleNo = aSelfOperatedBill("p0-inv-pending", "13100131120");
+        confirmPayable(ops, settleNo);
+        String biz = loginAsOwnerOf("M0001", "13100131121");
+
+        String body = mvc().perform(get("/biz/settle/invoice-pending")
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        var data = json.readTree(body).get("data");
+
+        assertThat(data.get("billCount").asInt())
+                .as("笔数是 0 的话，下面那一行「照着填能提交」测的是空集")
+                .isGreaterThan(0);
+        assertThat(data.get("periods").size())
+                .as("覆盖月份是空的 —— 商家不知道这张票管的是哪几个月，而票面月份要拿去报税")
+                .isGreaterThan(0);
+        assertThat(data.get("settleNos").toString())
+                .as("覆盖的单号要给出来，商家对不上账时得能逐笔核")
+                .contains(settleNo);
+
+        long fromApi = data.get("payableMinor").asLong();
+        assertThat(fromApi)
+                .as("接口给的合计与服务端校验用的那个数不是同一个 —— "
+                        + "那商家照着这一页填，提交照样被拒")
+                .isEqualTo(payableAwaitingInvoice("M0001"));
+
+        submitInvoice(biz, fromApi, merchantName("M0001"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
     @DisplayName("★ 三流不一致被拦：开票方名称必须等于供应商主体名")
     void titleMismatchBlocksVerify() throws Exception {
         String ops = opsLogin();

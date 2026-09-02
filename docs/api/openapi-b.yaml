@@ -4705,6 +4705,11 @@ components:
         storeCode: 
           type: "string"
           description: "印在贴纸上的短码。**去掉了 0/O/1/I/L**，让人手输时不会认错"
+        storeNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "这个码属于**哪家门店**（V298 一店一码）。\n\n⚠️ **必须显示出来**：多门店店主看到的只是一串码，看不出它是哪家店的。 印 500 张贴纸之前，这是唯一能发现「贴错店」的机会 —— 贴错之后没有任何症状：码扫得通、页面打得开，只是客流算到了另一家头上。\n\n空 = 主体连门店行都没有的历史数据，不是「属于所有店」。"
         url: 
           type: 
             - "string"
@@ -11793,6 +11798,177 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/WithdrawRecord"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/deposit": 
+    get: 
+      operationId: "mDeposit"
+      summary: "保证金账户"
+      tags: 
+        - "deposit"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/DepositAccount"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/deposit/txns": 
+    get: 
+      operationId: "mDepositTxns"
+      summary: "保证金流水"
+      tags: 
+        - "deposit"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/DepositTxn"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/settle/invoice-pending": 
+    get: 
+      operationId: "mPendingInvoice"
+      summary: "待开票摘要"
+      tags: 
+        - "settle"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PendingInvoice"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/settle/invoice-title": 
+    get: 
+      operationId: "mInvoiceTitle"
+      summary: "平台开票信息"
+      tags: 
+        - "settle"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PlatformInvoiceTitle"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/settle/invoices": 
+    get: 
+      operationId: "mMyInvoices"
+      summary: "我提交的票"
+      tags: 
+        - "settle"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/PurchaseInvoice"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+    post: 
+      operationId: "mSubmitInvoice"
+      summary: "提交进项票"
+      tags: 
+        - "settle"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PurchaseInvoice"
                 required: 
                   - "code"
                   - "msg"

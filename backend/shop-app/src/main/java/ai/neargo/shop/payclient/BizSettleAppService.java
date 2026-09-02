@@ -59,6 +59,9 @@ public interface BizSettleAppService {
     /** 平台开票信息，供应商照着它开票 */
     Map<String, String> invoiceTitle();
 
+    /** 待开票摘要：应付合计 + 笔数 + 覆盖月份。没有它商家填不对票面金额 */
+    ai.neargo.shop.pay.SettleService.PendingInvoiceVO pendingInvoice();
+
     /** 提交进项票。一张票覆盖该周期全部已对账待开票的单 */
     PurchaseInvoiceVO submitInvoice(SettleService.SubmitInvoiceCommand command);
 

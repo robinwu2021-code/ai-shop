@@ -1155,6 +1155,25 @@ public class SettleServiceImpl implements SettleService {
     }
 
     /** 已对账确认、且还没开票的单 —— 一张票覆盖它们全部 */
+    @Override
+    public PendingInvoiceVO pendingInvoice(String merchantNo) {
+        List<StlBill> bills = billsAwaitingInvoice(merchantNo);
+        long payable = bills.stream().mapToLong(b -> nz(b.getNetMinor())).sum();
+        /*
+         * 月份从单据的**创建时间**推，与 statement 同一个口径。
+         * 用「现在是几月」推的话，月初提交上个月的票会标错月份，
+         * 而票面上的月份是要拿去报税的。
+         */
+        java.util.List<String> periods = bills.stream()
+                .map(StlBill::getCreatedAt)
+                .filter(java.util.Objects::nonNull)
+                .map(t -> t.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM")))
+                .distinct().sorted().toList();
+        java.util.List<String> nos = bills.stream()
+                .map(StlBill::getSettleNo).sorted().toList();
+        return new PendingInvoiceVO(payable, bills.size(), periods, nos);
+    }
+
     private List<StlBill> billsAwaitingInvoice(String merchantNo) {
         return DataScopeContext.executeWithoutScope(() ->
                 billMapper.selectList(Wrappers.<StlBill>lambdaQuery()

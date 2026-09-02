@@ -76,6 +76,11 @@ public class BizSettleAppServiceImpl implements BizSettleAppService {
     }
 
     @Override
+    public ai.neargo.shop.pay.SettleService.PendingInvoiceVO pendingInvoice() {
+        return settleService.pendingInvoice(BizContext.requireMerchantNo());
+    }
+
+    @Override
     public PurchaseInvoiceVO submitInvoice(SettleService.SubmitInvoiceCommand command) {
         return settleService.submitInvoice(BizContext.requireMerchantNo(), command);
     }

@@ -205,6 +205,35 @@ public interface SettleService {
 
     // ---------------------------------------------------------------- 进项票（P0-8/10）
 
+
+    /**
+     * 待开票摘要（B 端）。
+     *
+     * <p><b>没有它商家填不对金额。</b>提交时后端会校验「票面金额 == 这批单的应付合计」，
+     * 对不上就拒收 —— 而那个合计此前<b>只在服务端算，没有任何接口给得出来</b>。
+     * 于是供应商只能猜，猜错一次就要走红字流程重开。
+     *
+     * <p><b>periods 是覆盖到的月份，不是筛选条件。</b>
+     * 提交时传的 {@code period} 只落在票据记录上做标签，
+     * <b>不参与选单</b> —— 一张票永远覆盖该主体全部待开票的单。
+     * 所以这里返回的是「这一张票实际会覆盖哪几个月」，
+     * 跨月时商家要知道，否则他会以为自己只开了这个月的。
+     *
+     * @param merchantNo 主体号
+     */
+    PendingInvoiceVO pendingInvoice(String merchantNo);
+
+    /**
+     * @param payableMinor 应付合计（分）。<b>票面金额必须等于它</b>
+     * @param billCount    覆盖多少笔结算单。0 = 当前没有待开票的单
+     * @param periods      覆盖到的月份（YYYY-MM，升序）。跨月时不止一个
+     * @param settleNos    覆盖的结算单号 —— 商家对不上账时要能逐笔核
+     */
+    record PendingInvoiceVO(long payableMinor, int billCount,
+                            java.util.List<String> periods,
+                            java.util.List<String> settleNos) {
+    }
+
     /**
      * 供应商提交进项票（B 端）。一张票覆盖该周期**全部已对账待开票**的单。
      *

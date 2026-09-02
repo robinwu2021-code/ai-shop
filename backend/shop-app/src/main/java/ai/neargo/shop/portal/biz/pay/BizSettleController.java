@@ -122,6 +122,18 @@ public class BizSettleController {
                         req.invoiceDate(), req.imageUrl()));
     }
 
+    /**
+     * 待开票摘要。**没有它商家填不对票面金额** ——
+     * 提交时后端校验「票面金额 == 这批单的应付合计」，对不上就拒收，
+     * 而那个合计此前只在服务端算、没有任何接口给得出来。
+     * 供应商只能猜，猜错一次就要走红字流程重开。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
+    @GetMapping("/biz/settle/invoice-pending")
+    public SettleService.PendingInvoiceVO pendingInvoice() {
+        return app.pendingInvoice();
+    }
+
     /** 我提交过的票，含驳回原因 —— 被驳回时供应商要知道该改什么。 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/invoices")
