@@ -81,17 +81,17 @@ export const NAV: NavSection[] = [
       { href: "/merchants?tab=list", label: "商家档案", perm: "merchant:merchant:read", group: "入驻与资质", matrix: "P-11.1", ready: true },
       // 紧挨着商家档案：同一份 merchant:merchant:read，且门店是主体的下一层 ——
       // 从「这家商家」翻到「他的哪家店」是一次连续动作，中间隔着类目授权会断掉
-      { href: "/merchants?tab=stores", label: "门店档案", perm: "merchant:merchant:read", group: "入驻与资质", matrix: "P-11.2" },
-      { href: "/merchants?tab=categories", label: "类目授权", perm: "merchant:category:grant", group: "入驻与资质", matrix: "P-11.1" },
+      { href: "/merchants?tab=stores", label: "门店档案", perm: "merchant:merchant:read", group: "入驻与资质", matrix: "P-11.2" , ready: true },
+      { href: "/merchants?tab=categories", label: "类目授权", perm: "merchant:category:grant", group: "入驻与资质", matrix: "P-11.1" , ready: true },
       // 上架的「资质过期」「类目授权」两个闸门读的就是这张表 ——
       // 后端三个接口早已实现，此前**前端零调用**，于是表恒空、闸门从不触发
-      { href: "/merchants?tab=qualifications", label: "资质档案", perm: "merchant:category:read", group: "入驻与资质", matrix: "P-11.1" },
+      { href: "/merchants?tab=qualifications", label: "资质档案", perm: "merchant:category:read", group: "入驻与资质", matrix: "P-11.1" , ready: true },
       // 准入与保证金：页面早就有这个 tab，菜单里一直漏登记 —— 于是它只能靠手改 URL 进去。
       // 放在本组末尾而不是 verify 后面：同 group 的叶子必须相邻（nav.test.ts 锁这条）
       // 用专属的 admission 码而不是 merchant:merchant:read：Perms.ROLE_PERMS 把这两个码
       // 给了**财务**，用商家读权限的话正好反过来 —— 财务看不到，商家运营却看得到。
       // （该码 2026-08-12 才补进 UI_PERM_MAP；此前未登记，can() 会判所有人无权限）
-      { href: "/merchants?tab=admission", label: "准入与保证金", perm: "merchant:admission:read", group: "入驻与资质", matrix: "P-11.1" },
+      { href: "/merchants?tab=admission", label: "准入与保证金", perm: "merchant:admission:read", group: "入驻与资质", matrix: "P-11.1" , ready: true },
       // 进件看板（WS-C）：跨商家看「谁卡在收款上」。与准入同一拨人管（都决定这家店
       // 能不能真正把生意做成），复用 merchant:admission:read，不新增权限码。
       // 紧挨准入：同 group 的叶子必须相邻（nav.test.ts 锁这条）。
@@ -101,10 +101,10 @@ export const NAV: NavSection[] = [
       // ⚠️ 该码目前归 BD 与超管，**财务看不到** —— 而这是一张税务表，
       // 财务本该是主要读者。给 FINANCE 加这个码要动 ROLE_PERMS 与权限矩阵基线，
       // 属于单独一次改动，不混在本次里做。
-      { href: "/merchants?tab=mode-risk", label: "无照自营风险", perm: "merchant:mode:read", group: "入驻与资质", matrix: "P-11.1" },
-      { href: "/merchants?tab=verify", label: "认证标管理", perm: "merchant:verify:grant", group: "信用与处置", matrix: "P-11.1" },
-      { href: "/merchants?tab=credit", label: "信用档案", perm: "merchant:merchant:read", group: "信用与处置", matrix: "P-11.1" },
-      { href: "/merchants?tab=ban", label: "违规处置与封禁", perm: "merchant:merchant:ban", group: "信用与处置", matrix: "P-11.1" },
+      { href: "/merchants?tab=mode-risk", label: "无照自营风险", perm: "merchant:mode:read", group: "入驻与资质", matrix: "P-11.1" , ready: true },
+      { href: "/merchants?tab=verify", label: "认证标管理", perm: "merchant:verify:grant", group: "信用与处置", matrix: "P-11.1" , ready: true },
+      { href: "/merchants?tab=credit", label: "信用档案", perm: "merchant:merchant:read", group: "信用与处置", matrix: "P-11.1" , ready: true },
+      { href: "/merchants?tab=ban", label: "违规处置与封禁", perm: "merchant:merchant:ban", group: "信用与处置", matrix: "P-11.1" , ready: true },
       // 单独一个 group 而不是塞进「信用与处置」：降级确实压店，但它不是处置 ——
       // 处置是商家做错了事，降级是他没续费。混在一起，运营会照处置的口径去回访。
       //
@@ -112,7 +112,7 @@ export const NAV: NavSection[] = [
       // 叶子的 perm 前缀必须等于 section 的 module（nav.test.ts 锁着）。
       // 它作为页内区块存在，编辑按钮按 can('system:param:update') 显隐：
       // BD 能授予套餐，但改「套餐是什么」不在他手里。
-      { href: "/merchants?tab=plans", label: "增值包与额度", perm: "merchant:merchant:read", group: "增值包", matrix: "P-11.2" },
+      { href: "/merchants?tab=plans", label: "增值包与额度", perm: "merchant:merchant:read", group: "增值包", matrix: "P-11.2" , ready: true },
     ],
   },
 
