@@ -73,6 +73,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     /** 一期只做单市场（CN）；priceByMarket 里的其余市场各写一行 SKU。 */
     private static final String HOME_MARKET = "CN";
 
+    /** 市场主数据。**只用来校验 market 取值**，见 marketsOf 的注释 */
+    private final ai.neargo.shop.spi.pay.MarketPort marketPort;
+
     private final GoodsMapper goodsMapper;
     private final SkuMapper skuMapper;
     private final SpecTemplateMapper templateMapper;
@@ -136,7 +139,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                     ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper,
                                     ai.neargo.shop.product.service.SpecLibraryService specLibrary,
                                     ai.neargo.shop.event.OutboxEventBus events,
+                                    ai.neargo.shop.spi.pay.MarketPort marketPort,
                                     ObjectMapper json) {
+        this.marketPort = marketPort;
         this.specLibrary = specLibrary;
         this.storePriceMapper = storePriceMapper;
         this.storeCategoryPort = storeCategoryPort;
@@ -1280,6 +1285,28 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             Map<String, Long> prices = new LinkedHashMap<>();
             prices.put(HOME_MARKET, sku.price());
             if (sku.priceByMarket() != null) {
+                /*
+                 * **market 的取值要校验，它是从调用方原样落进列里的。**
+                 *
+                 * 2026-08-20 线上真的写进去过 4 行 `market='CNY'` —— 那是
+                 * **货币码**，不是市场码（`sys_market` 里 CN 那一行的 currency
+                 * 恰好就是 CNY）。唯一键是 (entity_no, sku_no, market)，
+                 * 于是同一个 SKU 变成两行、两份价、两份库存，而<b>没有任何报错</b>：
+                 * 界面上看不出来，只有拿平台侧 210 去对进销存 209 时才露出来。
+                 *
+                 * `PlatformConfigServiceImpl.markets()` 那段注释早就点了名：
+                 * 「market 这个列早就在五张表上用着，却没有任何东西保证那些值
+                 * 真的存在」。表（`sys_market`）在 S11 建好了，这里补上写入侧那一半。
+                 *
+                 * **一次取全量再比，不逐个 find**：一次保存最多 108 行
+                 *（36 个 SKU × 3 市场），逐个查等于 108 次往返。
+                 */
+                Set<String> known = marketsOf();
+                for (String m : sku.priceByMarket().keySet()) {
+                    if (!known.contains(m)) {
+                        throw BizException.of(ErrorCode.BAD_REQUEST);
+                    }
+                }
                 prices.putAll(sku.priceByMarket());
             }
             for (var e : prices.entrySet()) {
@@ -3131,4 +3158,18 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             return "[]";
         }
     }
+
+    /**
+     * 已登记的市场码。
+     *
+     * <p><b>每次保存查一次，不缓存</b> —— 运营端可以随时增删市场，缓存住的话
+     * 新开一个市场之后商家那边会一直报「不认识这个市场」，而没有任何地方
+     * 提示要重启。一次保存只查这一次（结果在循环外复用），代价是一条主键扫描。
+     */
+    private Set<String> marketsOf() {
+        return marketPort.all().stream()
+                .map(ai.neargo.shop.spi.pay.MarketPort.MarketBrief::market)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
 }

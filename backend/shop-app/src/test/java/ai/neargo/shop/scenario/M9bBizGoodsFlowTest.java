@@ -444,14 +444,53 @@ class M9bBizGoodsFlowTest {
     }
 
     /**
+     * <b>不认识的市场码要当场拒掉，不能原样落进列里。</b>
+     *
+     * <p>2026-08-20 线上真的写进去过 4 行 {@code market='CNY'} —— 那是**货币码**，
+     * 不是市场码（{@code sys_market} 里 CN 那一行的 currency 恰好就是 CNY）。
+     * 唯一键是 {@code (entity_no, sku_no, market)}，于是同一个 SKU 变成两行、
+     * 两份价、两份库存，<b>而没有任何报错</b>：界面上看不出来，只有拿平台侧的
+     * SKU 数去对进销存的物料数时才露出来（210 对 209）。
+     *
+     * <p>用 {@code CNY} 而不是随便一个乱码来测 —— <b>它是真实发生过的那一个</b>，
+     * 而且是最容易再犯的：market 与 currency 在同一张表上并排放着。
+     */
+    @Test
+    @DisplayName("★★ 不存在的市场码（CNY 是货币不是市场）要被拒，不能悄悄多出一行 SKU")
+    void unknownMarketCodeIsRejected() throws Exception {
+        String token = merchant("12600127016", "市场码校验店");
+
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"市场码测试\",\"subtitle\":\"t\","
+                                + "\"categoryNo\":\"CAT210\",\"cover\":\"c.jpg\",\"specGroups\":[],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":5,"
+                                + "\"priceByMarket\":{\"CN\":1000,\"CNY\":60}}]}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        // 已登记的市场照常收 —— 校验不能把多市场本身给关掉
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"市场码测试2\",\"subtitle\":\"t\","
+                                + "\"categoryNo\":\"CAT210\",\"cover\":\"c.jpg\",\"specGroups\":[],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":5,"
+                                + "\"priceByMarket\":{\"CN\":1000,\"AE\":60}}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    /**
      * <b>编辑一次商品，其余市场的价格行不能消失。</b>
      *
      * <p>上一版是按 {@code skuNo@market} 逐行比对：端上只回填得了当前市场那一格
      * （SkuVO 当时不下发 priceByMarket），提交上来的价格表只有 {CN}，
-     * 于是 AE/US 两行被逻辑删 —— 那两个市场的买家从此看不到这件商品，
+     * 于是 AE/SA 两行被逻辑删 —— 那两个市场的买家从此看不到这件商品，
      * 而商家在 B 端看不出任何异常。与 titleI18n 是逐字同款的形状。
      *
      * <p>两头都测：① 保存后三行还在 ② 详情把整张价格表发回来（否则下次保存照样丢）。
+     *
+     * <p><b>用 SA 而不是 US</b>：`sys_market` 里没有 US 这个市场。此前这条用例
+     * 一直拿它当第三个市场，而写入侧没有校验，于是一个**不存在的市场码**
+     * 被原样落进 `prd_sku.market` 也照样绿。2026-09-02 补上校验之后它才露出来。
      */
     @Test
     @DisplayName("★ 多市场定价：只改标题不该删掉其余市场的价，且详情要发回整张表")
@@ -463,7 +502,7 @@ class M9bBizGoodsFlowTest {
                         .content("{\"title\":\"三市场商品\",\"subtitle\":\"测试\","
                                 + "\"categoryNo\":\"CAT210\",\"cover\":\"c.jpg\",\"specGroups\":[],"
                                 + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":5,"
-                                + "\"priceByMarket\":{\"CN\":1000,\"AE\":60,\"US\":15}}]}"))
+                                + "\"priceByMarket\":{\"CN\":1000,\"AE\":60,\"SA\":15}}]}"))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
         String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
@@ -472,7 +511,7 @@ class M9bBizGoodsFlowTest {
         mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.data.skus[0].priceByMarket.CN").value(1000))
                 .andExpect(jsonPath("$.data.skus[0].priceByMarket.AE").value(60))
-                .andExpect(jsonPath("$.data.skus[0].priceByMarket.US").value(15));
+                .andExpect(jsonPath("$.data.skus[0].priceByMarket.SA").value(15));
 
         String skuNo = json.readTree(mvc().perform(get("/biz/goods/" + goodsNo)
                         .header("Authorization", "Bearer " + token))
@@ -491,7 +530,7 @@ class M9bBizGoodsFlowTest {
 
         mvc().perform(get("/biz/goods/" + goodsNo).header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.data.skus[0].priceByMarket.AE").value(60))
-                .andExpect(jsonPath("$.data.skus[0].priceByMarket.US").value(15));
+                .andExpect(jsonPath("$.data.skus[0].priceByMarket.SA").value(15));
     }
 
     /**
