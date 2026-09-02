@@ -248,6 +248,7 @@ const RESPONSE_TYPES = {
   mSkuIdentityPlan: "SkuIdentityReport",
   mSpecProps: "SpecTemplate[]",
   mStockAdjust: "void",
+  mSafetyStock: "void",
   mStockBalances: "StockBalance[]",
   mStockDocuments: "StockDocument[]",
   mStockItem: "StockItemDetail",

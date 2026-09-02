@@ -1396,6 +1396,15 @@ export interface MerchantApi {
    * 差异不为 0 时 `reasonCode` 必填，否则这个月报损了多少永远汇总不出来。
    */
   mStockAdjust(req: { itemId: string; countedQty: number; reasonCode?: string }): Promise<void>;
+  /**
+   * 设安全库存 —— 缺货预警的那条线。低于它，这件货在库存页标红、进「缺货」那一档。
+   *
+   * `locationId` 不传 = 设物料上的默认值（绝大多数商家只用得到这一级）；
+   * 传了 = 只设那个库位，`qty: null` 撤掉覆盖、跟回默认值。
+   *
+   * **`qty: 0` 是「不预警」**，与 `null`（跟随默认）是两件事。
+   */
+  mSafetyStock(itemId: string, body: { locationId?: string; qty: number | null }): Promise<void>;
 
   /** 记一笔进货 → 单号。存草稿用它，过账另调 */
   mInboundCreate(req: StockInboundReq): Promise<string>;

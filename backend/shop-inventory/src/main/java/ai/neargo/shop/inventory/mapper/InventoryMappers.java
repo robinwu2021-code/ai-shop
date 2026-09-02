@@ -108,6 +108,28 @@ public final class InventoryMappers {
                 """)
         int unhold(@Param("ownerId") String ownerId, @Param("itemId") String itemId,
                    @Param("locationId") String locationId, @Param("qty") int qty);
+
+        /**
+         * 设本库位的安全库存覆盖。**返回 0 = 这件货在这个库位上没有余额行**，
+         * 调用方据此抛 {@code NOT_FOUND}。
+         *
+         * <p><b>为什么不用 {@code updateById}</b>：撤掉覆盖要写 null，
+         * 而 MyBatis-Plus 的 {@code updateById} 默认跳过 null 字段 ——
+         * 「撤掉」会变成一次什么都没做的成功，界面刷新后阈值还在。
+         *
+         * <p><b>刻意不动 {@code version}</b>：那一列是余额并发协议的一部分
+         *（{@code applyDelta} / {@code hold} 用它），而阈值不是数量，
+         * 跟着它涨会让「这行的数量被人改过」这个信号失真。
+         * {@code updated_at} 由 DDL 的 {@code ON UPDATE} 自己刷。
+         */
+        @Update("""
+                UPDATE inv_stock_balance
+                   SET safety_stock = #{qty}, updated_by = #{operator}
+                 WHERE owner_id = #{ownerId} AND item_id = #{itemId} AND location_id = #{locationId}
+                """)
+        int setSafetyStock(@Param("ownerId") String ownerId, @Param("itemId") String itemId,
+                           @Param("locationId") String locationId, @Param("qty") Integer qty,
+                           @Param("operator") String operator);
     }
 
     // ── 流水：只追加 ──────────────────────────────────────────────────────

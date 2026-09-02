@@ -24,14 +24,27 @@ public final class InventoryVOs {
                             Integer safetyStock, LocalDateTime lastMovedAt, List<String> flags) {
     }
 
-    /** 某个物料在各库位的分布 + 外部身份。 */
+    /**
+     * 某个物料在各库位的分布 + 外部身份。
+     *
+     * @param safetyStock <b>物料上的默认阈值</b>，恒非 null（那一列 NOT NULL，默认 0）。
+     *                    {@code 0} 的意思是<b>不预警</b>，不是「低于 0 才报」——
+     *                    端上要把它显示成「不预警」而不是「0」
+     */
     public record ItemDetailVO(String itemId, String name, String specText, String baseUom,
                                String barcode, String itemCode,
                                int onHand, int reserved, int available,
+                               Integer safetyStock,
                                List<LocationQty> byLocation) {
     }
 
-    public record LocationQty(String locationId, String locationName, int onHand) {
+    /**
+     * @param safetyStock <b>本库位的覆盖值</b>，{@code null} = 跟随物料默认。
+     *                    与「显式设成 0」是两件事：前者跟着默认值走，后者是这个库位不预警。
+     *                    合成一个数的话，撤掉覆盖这件事在界面上就没法表达了
+     */
+    public record LocationQty(String locationId, String locationName, int onHand,
+                              Integer safetyStock) {
     }
 
     /** 流水行。**游标是 id 不是时间** —— 时钟回拨会让时间游标漏行，而漏的那几行不会报错。 */

@@ -4824,8 +4824,25 @@ export interface StockItemDetail {
   reserved: number;
   /** 可用 = 实存 − 预留 */
   available: number;
-  /** 在各库位的分布。总数与上面的 onHand 一致，对不上就是有库位没登记 */
-  byLocation: { locationId: string; locationName: string; onHand: number }[];
+  /**
+   * 安全库存的**默认阈值**（物料上那一级）。低于它算缺货。
+   *
+   * **`0` 是「不预警」不是「低于 0 才报」** —— 界面上要写成「不预警」，
+   * 显示成 0 的话商家会以为是个没设好的数而去改它。
+   */
+  safetyStock: number;
+  /**
+   * 在各库位的分布。总数与上面的 onHand 一致，对不上就是有库位没登记。
+   *
+   * `safetyStock` 是**该库位的覆盖值**，`undefined` = 跟随上面那个默认值。
+   * 与「显式设成 0」是两件事：后者是这个库位不预警。
+   */
+  byLocation: {
+    locationId: string;
+    locationName: string;
+    onHand: number;
+    safetyStock?: number;
+  }[];
 }
 
 /** 台账一行（`LedgerVO`）。**不可变** —— 只有查看，没有编辑 */

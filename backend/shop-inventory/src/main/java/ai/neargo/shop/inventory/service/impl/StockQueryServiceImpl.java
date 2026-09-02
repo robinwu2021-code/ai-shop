@@ -207,11 +207,15 @@ public class StockQueryServiceImpl implements StockQueryService {
             onHand += b.getOnHand();
             reserved += b.getReserved();
             byLocation.add(new LocationQty(b.getLocationId(),
-                    names.getOrDefault(b.getLocationId(), b.getLocationId()), b.getOnHand()));
+                    names.getOrDefault(b.getLocationId(), b.getLocationId()), b.getOnHand(),
+                    b.getSafetyStock()));
         }
         return new ItemDetailVO(itemId, item.getName(), item.getSpecText(), item.getBaseUom(),
                 refOf(ownerId, itemId, InvEnums.RefSystem.BARCODE), item.getItemCode(),
-                onHand, reserved, onHand - reserved, byLocation);
+                onHand, reserved, onHand - reserved,
+                // 投影进来的老物料可能没写过这一列，读出 null 时按 0（不预警）报
+                item.getSafetyStock() == null ? 0 : item.getSafetyStock(),
+                byLocation);
     }
 
     @Override

@@ -9,6 +9,7 @@ import ai.neargo.shop.inventory.dto.InventoryVOs.ItemDetailVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.LedgerPageVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.SummaryVO;
 import ai.neargo.shop.inventory.service.InventoryAclService;
+import ai.neargo.shop.inventory.service.ItemService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.StockCountService;
 import ai.neargo.shop.inventory.service.StockQueryService;
@@ -17,6 +18,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -43,13 +45,16 @@ public class BizStockController {
 
     private final StockQueryService query;
     private final StockCountService counts;
+    private final ItemService items;
     private final InventoryAclService acl;
     private final LocationService locations;
 
     public BizStockController(StockQueryService query, StockCountService counts,
-                              InventoryAclService acl, LocationService locations) {
+                              ItemService items, InventoryAclService acl,
+                              LocationService locations) {
         this.query = query;
         this.counts = counts;
+        this.items = items;
         this.acl = acl;
         this.locations = locations;
     }
@@ -105,6 +110,39 @@ public class BizStockController {
     }
 
     public record AdjustReq(String itemId, int countedQty, String reasonCode) {
+    }
+
+    /**
+     * 设安全库存阈值 —— <b>缺货预警的那条线</b>。
+     *
+     * <p>此前这两列（{@code inv_item.safety_stock} / {@code inv_stock_balance.safety_stock}）
+     * 建了、判据写了、界面标红也接了，<b>就是没有任何地方能改它</b>。
+     * 默认全 0 = 不预警，于是「缺货」这一档实际只在 {@code available <= 0} 时才亮 ——
+     * 预警功能整个是哑的，而库存页第一栏与工作台那张卡的第二个数都指着它。
+     *
+     * <p><b>不是 POST 是 PUT</b>：设阈值是把一个值放到一个已知位置上，重复设是幂等的。
+     *
+     * <p><b>{@code itemId} 在 body 不在路径</b>：本模块整个是复数资源名，而
+     * {@code /items/{id}/…} 会撞上 ADR-007 那条「资源段用单数」的闸门，
+     * 破例就要往 {@code known-plural-paths.txt} 里再加一行。
+     * 同模块的另一个单件写口 {@code /biz/inventory/adjust} 早就是这么做的 ——
+     * <b>跟着它走，比给一条豁免记录更省事，也更一致</b>。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
+    @PutMapping("/biz/inventory/safety-stock")
+    public void safetyStock(@RequestBody SafetyStockReq req) {
+        items.setSafetyStock(owner(), req.itemId(), req.locationId(), req.qty(),
+                SecurityUtils.currentUserNo());
+    }
+
+    /**
+     * @param locationId 空 = 设物料默认值（绝大多数商家只用得到这一级）；
+     *                   非空 = 只设该库位
+     * @param qty        {@code null} <b>只在设库位覆盖时合法</b>，含义是撤掉覆盖、跟随默认。
+     *                   用 {@code Integer} 而不是 {@code int}：后者会把「撤掉」
+     *                   静默变成「设成 0」，而 0 是「这个库位不预警」—— 两件事
+     */
+    public record SafetyStockReq(String itemId, String locationId, Integer qty) {
     }
 
     // ── 防腐：平台键 → 域内键 ──────────────────────────────────────────

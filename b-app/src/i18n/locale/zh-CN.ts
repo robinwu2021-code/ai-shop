@@ -1942,7 +1942,7 @@ entryHint: "谁在买 · 谁不来了",
     // 待收货的**调拨单数**，不是件数 —— 收货按单做，件数点不进任何一张单
     statTransit: "在途",
     tabTodo: "要处理",
-    entry: { purchase: "进货", check: "盘点", out: "报损", docs: "单据", transfer: "调拨", report: "报表", locations: "库位" },
+    entry: { purchase: "进货", check: "盘点", out: "报损", docs: "单据", transfer: "调拨", report: "报表", suppliers: "供应商", locations: "库位" },
     tabAll: "全部",
     tabReserved: "有预留",
     available: "可用",
@@ -2003,6 +2003,16 @@ entryHint: "谁在买 · 谁不来了",
     adjustHint: "盘这一件会生成一张盘点单；点出来与账面不一样时，会再问一次原因",
     reasonHint: "差异 {n}。请选择原因；自由文本无法汇总「本月报损总量」。",
     adjustBadNumber: "填一个不小于 0 的整数",
+    // 安全库存：低于它这件货就进「缺货」。
+    // **0 要显示成「不预警」不是「0」** —— 默认全 0 是有意的取值（猜错的预警比没有
+    // 预警更烦），显示成 0 的话商家以为是个没设好的数，会去改它。
+    safety: "安全库存",
+    safetyOff: "不预警",
+    safetyTitle: "安全库存",
+    safetyHint: "低于这个数，这件货会进「缺货」。填 0 表示不预警",
+    safetyLocHint: "只对「{name}」生效；留空则跟随上面的 {n}",
+    safetyFollow: "跟随默认",
+    safetyBadNumber: "填一个不小于 0 的整数",
   },
   stockCheck: {
     title: "盘点",

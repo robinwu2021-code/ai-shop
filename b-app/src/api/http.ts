@@ -550,6 +550,7 @@ export const httpApi: MerchantApi = {
   mStockItem: (itemId) => http.get<StockItemDetail>(buildPath(E.mStockItem.path, { itemId })),
   mStockLedger: (q) => http.get<StockLedgerPage>(E.mStockLedger.path, q),
   mStockAdjust: (req) => http.post<void>(E.mStockAdjust.path, req),
+  mSafetyStock: (itemId, body) => http.put<void>(E.mSafetyStock.path, { itemId, ...body }),
 
   /*
    * 五个「新建」口返回的是 **`{no}` 而不是裸字符串**。

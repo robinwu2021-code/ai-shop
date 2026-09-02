@@ -329,6 +329,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mStockItem: { method: "GET", path: "/biz/inventory/items/:itemId", auth: true, summary: "单件库存明细" },
   mStockLedger: { method: "GET", path: "/biz/inventory/ledger", auth: true, summary: "库存变动明细" },
   mStockAdjust: { method: "POST", path: "/biz/inventory/adjust", auth: true, summary: "直接改数（走盘点，落单落流水）" },
+  mSafetyStock: { method: "PUT", path: "/biz/inventory/safety-stock", auth: true, summary: "设安全库存（不传 locationId 设默认值；qty 为 null 撤掉库位覆盖）" },
 
   mInboundCreate: { method: "POST", path: "/biz/inventory/inbounds", auth: true, summary: "记一笔进货" },
   mInboundUpdate: { method: "PUT", path: "/biz/inventory/inbounds/:no", auth: true, summary: "改进货草稿" },

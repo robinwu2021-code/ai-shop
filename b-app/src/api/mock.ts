@@ -4496,16 +4496,27 @@ export const mockApi: MerchantApi = {
 
   async mStockItem(itemId) {
     const b = invBalances().find((x) => x.itemId === itemId) ?? invBalances()[0]!;
+    /** 库位覆盖读回来 —— `undefined` 是「跟随默认」，与显式的 0（这个库位不预警）是两件事 */
+    const override = (loc: string) => mockSafety.get(`${b.itemId}@${loc}`);
     return delay({
       itemId: b.itemId, name: b.name, specText: b.specText, baseUom: b.baseUom,
       barcode: "6901234567892", itemCode: "LM-05",
       onHand: b.onHand, reserved: b.reserved, available: b.available,
+      safetyStock: mockSafety.get(b.itemId) ?? 0,
       byLocation: [
-        { locationId: "L1", locationName: "文三路店", onHand: 5 },
-        { locationId: "L2", locationName: "古墩路店", onHand: 12 },
-        { locationId: "L3", locationName: "城西仓", onHand: 40 },
+        { locationId: "L1", locationName: "文三路店", onHand: 5, safetyStock: override("L1") },
+        { locationId: "L2", locationName: "古墩路店", onHand: 12, safetyStock: override("L2") },
+        { locationId: "L3", locationName: "城西仓", onHand: 40, safetyStock: override("L3") },
       ],
     });
+  },
+
+  async mSafetyStock(itemId, body) {
+    const key = body.locationId ? `${itemId}@${body.locationId}` : itemId;
+    // qty 为 null = 撤掉库位覆盖。**删掉而不是写 0** —— 写 0 是「这个库位不预警」
+    if (body.qty == null) mockSafety.delete(key);
+    else mockSafety.set(key, body.qty);
+    return delay(undefined as void);
   },
 
   async mStockLedger(q) {
@@ -4676,12 +4687,40 @@ export const mockApi: MerchantApi = {
 
 // ── 进销存的假数据 ──────────────────────────────────────────────────────
 
+/**
+ * 安全库存阈值的替身状态。**必须是可变的**：设完读不回来的替身会把
+ * 「只写不读」那一类缺陷整个盖住 —— 界面上看不出区别，而闸门全绿。
+ * 同一条教训在调拨发货上吃过一次（三列写进了库，VO 一个都没下发）。
+ *
+ * key：`itemId` 是物料默认值，`itemId@locationId` 是库位覆盖。
+ * 初值给 I1 一个 5 —— 它的可用是 3，于是「缺货」是**算出来的**而不是写死的。
+ */
+const mockSafety = new Map<string, number>([["I1", 5]]);
+
+/** 缺货判据，与后端 `StockQueryServiceImpl.build` 同一套：阈值优先，否则看可用是否见底 */
+function shortage(available: number, safety: number): boolean {
+  return safety > 0 ? available < safety : available <= 0;
+}
+
 function invBalances(): StockBalance[] {
+  /*
+   * **flags 由数算出来，不写死。** 写死的话，改完阈值列表纹丝不动 ——
+   * 而「改了阈值，那件货进不进缺货」正是这一屏要验的唯一一件事。
+   */
+  const withFlags = (b: StockBalance): StockBalance => {
+    const safety = mockSafety.get(b.itemId) ?? 0;
+    const rest = b.flags.filter((f) => f !== "SHORTAGE");
+    return {
+      ...b,
+      safetyStock: safety,
+      flags: shortage(b.available, safety) ? ["SHORTAGE", ...rest] : rest,
+    };
+  };
   return [
     { itemId: "I1", name: "东北大米", specText: "5斤装", baseUom: "袋",
-      onHand: 5, reserved: 2, available: 3, flags: ["SHORTAGE"], lastMovedAt: "2026-08-26T14:22:00" },
+      onHand: 5, reserved: 2, available: 3, flags: [], lastMovedAt: "2026-08-26T14:22:00" },
     { itemId: "I2", name: "小米", specText: "2斤装", baseUom: "袋",
-      onHand: 0, reserved: 0, available: 0, flags: ["SHORTAGE"], lastMovedAt: "2026-08-24T10:00:00" },
+      onHand: 0, reserved: 0, available: 0, flags: [], lastMovedAt: "2026-08-24T10:00:00" },
     { itemId: "I3", name: "陈醋", specText: "500ml", baseUom: "瓶",
       onHand: 24, reserved: 0, available: 24, flags: ["STALE"], lastMovedAt: "2026-05-26T09:00:00" },
     { itemId: "I4", name: "土鸡蛋", specText: "30枚装", baseUom: "箱",
@@ -4699,7 +4738,7 @@ function invBalances(): StockBalance[] {
     { itemId: "I6", name: "金龙鱼调和油 5L", specText: "5L", baseUom: "桶",
       onHand: 80, reserved: 0, available: 80, flags: ["OFF_SALE"],
       lastMovedAt: "2026-08-27T18:11:00" },
-  ];
+  ].map(withFlags);
 }
 
 function invLedger(): StockLedgerRow[] {

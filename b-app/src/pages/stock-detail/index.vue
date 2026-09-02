@@ -111,6 +111,58 @@ async function adjust() {
 }
 
 /**
+ * 设安全库存。**这一页此前没有它** —— 两张表的列、缺货判据、列表标红全都在，
+ * 就是没有任何地方能改，于是默认全 0 让「缺货」只在可用见底时才亮：
+ * 预警功能整个是哑的，而库存页第一栏和工作台那张卡的第二个数都指着它。
+ *
+ * `locationId` 不传 = 改物料默认值（一个库位的商家只会用到这一级）；
+ * 传了 = 只改那个库位，**留空提交 = 撤掉覆盖**跟回默认值。
+ */
+async function editSafety(loc?: { locationId: string; locationName: string; safetyStock?: number }) {
+  if (!detail.value) return;
+  const current = loc ? loc.safetyStock : detail.value.safetyStock;
+  const input = await prompt({
+    title: String(t("stockDetail.safetyTitle")),
+    hint: loc
+      ? String(t("stockDetail.safetyLocHint", { name: loc.locationName, n: detail.value.safetyStock }))
+      : String(t("stockDetail.safetyHint")),
+    type: "number",
+    // 库位那一级允许提交空串 —— 那就是「撤掉覆盖」。物料那一级空串当取消
+    value: current == null ? "" : String(current),
+  });
+  if (input == null) return;
+
+  let qty: number | null;
+  if (input === "") {
+    // 物料默认值没有「撤掉」这个含义（那一列 NOT NULL），空串按取消处理
+    if (!loc) return;
+    qty = null;
+  } else {
+    qty = Number(input);
+    if (!Number.isInteger(qty) || qty < 0) {
+      uni.showToast({ title: String(t("stockDetail.safetyBadNumber")), icon: "none" });
+      return;
+    }
+  }
+
+  try {
+    await api.mSafetyStock(itemId.value, { locationId: loc?.locationId, qty });
+    uni.showToast({ title: String(t("common.saved")), icon: "none" });
+    // **改完要读回来**：不重新拉一次的话，界面上看不出这次提交有没有生效，
+    // 而「写了没读」正是这一条要补的那类洞
+    await load();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
+/** `0` 显示成「不预警」：它是有意的取值，不是没设好的数 */
+function safetyText(n?: number): string {
+  if (n == null) return String(t("stockDetail.safetyFollow"));
+  return n > 0 ? String(n) : String(t("stockDetail.safetyOff"));
+}
+
+/**
  * 「08-26 14:22」。**不走 `new Date()` 解析** —— 后端发的是 `LocalDateTime`
  * （`2026-08-26T14:22:00`，不带时区），浏览器会按本地时区解读它，
  * 于是同一笔流水在不同设备上差几个小时，而且不报错。直接重排字符串没有这个洞。
@@ -171,16 +223,38 @@ onShow(load);
         不是容器 —— 内容要放它后面，套在 `sh-block` 里。
         当成容器用的话，几行内容会横着挤在标题右边。
       -->
+      <!--
+        安全库存单独一块，摆在「按库位」之前：它是**这件货的一个设置**，
+        与下面那块「这件货在哪儿有多少」不是一回事。
+        合进去的话，多库位商家会看到一行阈值夹在几行数量中间，分不清哪行可点。
+      -->
+      <view class="sh-block">
+        <view class="blk">
+          <sh-kv between :label="String($t('stockDetail.safety'))" @tap="editSafety()">
+            <text class="sh-link sh-num">{{ safetyText(detail.safetyStock) }}</text>
+          </sh-kv>
+          <text class="sh-hint">{{ $t("stockDetail.safetyHint") }}</text>
+        </view>
+      </view>
+
       <view class="sh-block">
         <sh-section pad :title="String($t('stockDetail.byLocation'))"></sh-section>
         <view class="blk">
+          <!--
+            阈值那一列**只在多于一个库位时出现**。一个库位的商家（绝大多数）
+            用不到覆盖，摆出来只会让人以为有两个数要维护。
+          -->
           <sh-kv
             v-for="l in detail.byLocation"
             :key="l.locationId"
             between
             :label="l.locationName"
+            @tap="detail.byLocation.length > 1 ? editSafety(l) : undefined"
           >
             <text class="sh-num">{{ l.onHand }}</text>
+            <text v-if="detail.byLocation.length > 1" class="sh-muted loc__safety">
+              {{ safetyText(l.safetyStock) }}
+            </text>
           </sh-kv>
         </view>
       </view>
@@ -235,6 +309,11 @@ onShow(load);
 }
 .head {
   display: block;
+}
+/* 阈值跟在数量后面。**用 margin 不用 gap** —— sh-kv 的右侧槽位没有 flex 容器，
+   两个 <text> 会贴在一起变成「40不预警」 */
+.loc__safety {
+  margin-inline-start: 16rpx;
 }
 .led {
   display: flex;
