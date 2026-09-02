@@ -39,27 +39,54 @@ public class StoreCodeServiceImpl implements StoreCodeService {
 
     @Override
     @Transactional
-    public String acodeBase64(String merchantNo) {
-        MchEntity m = DataScopeContext.executeWithoutScope(() ->
-                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
-                        .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
-        if (m == null) {
-            throw BizException.of(ErrorCode.NOT_FOUND);
+    public String acodeBase64(String merchantNo, String storeNo) {
+        /*
+         * **码图跟着码走**（V298）。此前这里读写 mch_entity.acode_base64，
+         * 而码已经下沉到门店 —— 结果是「码值是分店的、图扫出来是主店的」，
+         * 两者都显示得好好的，店主把图印了 500 张，每一次扫码都算到另一家店头上。
+         */
+        MchStore store = storeOf(merchantNo, storeNo);
+        if (store == null) {
+            return acodeOnEntity(merchantNo);   // 没有门店行的历史主体，维持旧路径
         }
         // 已经有了就直接给 —— 永久码，且额度有限，不能每次请求都去要一张
-        if (m.getAcodeBase64() != null && !m.getAcodeBase64().isBlank()) {
-            return m.getAcodeBase64();
+        if (notBlank(store.getAcodeBase64())) {
+            return store.getAcodeBase64();
         }
         if (!acodePort.enabled()) {
             return null;
         }
-        String code = ensureFor(merchantNo);
+        String code = ensureForStore(merchantNo, storeNo);
         byte[] png = acodePort.unlimited(code, STORE_PAGE);
         if (png == null || png.length == 0) {
             /*
              * 生成失败**不落库、也不抛**：下次请求会再试一次。
              * 抛出去的话商家整个店铺页打不开，而他此刻要看的多半不是码。
              */
+            return null;
+        }
+        String b64 = java.util.Base64.getEncoder().encodeToString(png);
+        store.setAcodeBase64(b64);
+        DataScopeContext.executeWithoutScope(() -> storeMapper.updateById(store));
+        return b64;
+    }
+
+    /** 没有门店行的历史主体：码与图都还挂在主体上，维持 V298 之前的行为。 */
+    private String acodeOnEntity(String merchantNo) {
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
+        if (m == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (notBlank(m.getAcodeBase64())) {
+            return m.getAcodeBase64();
+        }
+        if (!acodePort.enabled()) {
+            return null;
+        }
+        byte[] png = acodePort.unlimited(ensureOnEntity(merchantNo), STORE_PAGE);
+        if (png == null || png.length == 0) {
             return null;
         }
         String b64 = java.util.Base64.getEncoder().encodeToString(png);

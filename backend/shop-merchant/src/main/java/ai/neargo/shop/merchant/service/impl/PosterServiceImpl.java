@@ -207,7 +207,12 @@ public class PosterServiceImpl implements PosterService {
 
     private String safeAcode(String merchantNo) {
         try {
-            return storeCodeService.acodeBase64(merchantNo);
+            /*
+             * 传 null = 默认店。海报这条链目前**整条都是主体级的**（没有门店入参），
+             * 与 V298 之前的行为一致。要做「分店各自的海报」得先把门店号一路带进来，
+             * 那是另一件事，不在这次改动里 —— 这里传默认店至少保证码与图同源。
+             */
+            return storeCodeService.acodeBase64(merchantNo, null);
         } catch (RuntimeException e) {
             // 码生成失败不该让整张海报也生成不出来——降级成占位块，海报其余部分照常
             LOG.log(Level.WARNING, "海报取小程序码失败：" + merchantNo, e);

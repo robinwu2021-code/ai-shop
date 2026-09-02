@@ -45,10 +45,15 @@ public interface StoreCodeService {
      * 总量有限（十万级）—— 每次请求都现调，几百个商家反复刷新页面就能把额度耗掉，
      * 而额度用尽之后新入驻的商家<b>再也拿不到码</b>。
      *
+     * <p><b>码图必须与码同属一家店</b>（V298）。一店一码之后这两样如果不同源，
+     * 端上会出现「码值是分店的、图扫出来是主店的」—— 而两者都显示得好好的，
+     * 店主把图印了 500 张，每一次扫码都算到另一家店头上，没有任何症状。
+     *
+     * @param storeNo 哪家店的码图；<b>空 = 该主体的默认店</b>
      * @return 通道未开启或生成失败时 <b>null</b> —— 端上据此不显示码，
      *     而不是显示一张永远加载不出来的图
      */
-    String acodeBase64(String merchantNo);
+    String acodeBase64(String merchantNo, String storeNo);
 
     /**
      * 码解析结果。

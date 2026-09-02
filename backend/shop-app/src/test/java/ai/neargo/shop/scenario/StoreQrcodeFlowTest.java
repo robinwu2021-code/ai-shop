@@ -39,6 +39,8 @@ class StoreQrcodeFlowTest {
     private ai.neargo.shop.merchant.service.StoreCodeService storeCodeService;
     @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -152,6 +154,33 @@ class StoreQrcodeFlowTest {
                 .as("扫的是分店的码，分店却没记上").isEqualTo(1);
         assertThat(storeRowOf(admin, defaultStoreNoOf(merchantNo)).get("scanCount").asLong())
                 .as("★ 只扫了分店，主店也涨了 —— 等于没分开").isEqualTo(0);
+    }
+
+    /**
+     * <b>码图必须与码同属一家店。</b>
+     *
+     * <p>一店一码之后 {@code code} 取的是分店的，而码图一度还读 {@code mch_entity.acode_base64} ——
+     * 端上于是「码值是分店的、图扫出来是主店的」。两者都显示得好好的，
+     * 店主把图印了 500 张，每一次扫码都算到另一家店头上，<b>没有任何症状</b>。
+     *
+     * <p>可证伪：把 {@code acodeBase64} 改回读主体那一列，这条立刻变红。
+     */
+    @Test
+    @DisplayName("★ 分店的码图不会拿主体那张 —— 码与图不同源等于把客流算到别家")
+    void branchAcodeIsNotTheEntityOne() throws Exception {
+        String merchantNo = approvedMerchantNo("12600130008", "码图同源测试店", "CM-QR-H");
+        String branch = extraStore(merchantNo, "码图分店");
+
+        // 主体上先放一张「旧图」——V298 之前所有店共用的就是它
+        var m = entityMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchEntity::getEntityNo, merchantNo).last("limit 1"));
+        m.setAcodeBase64("ENTITY-LEVEL-IMAGE");
+        entityMapper.updateById(m);
+
+        assertThat(storeCodeService.acodeBase64(merchantNo, branch))
+                .as("分店拿到了主体那张图 —— 印出去每一次扫码都算到主店头上")
+                .isNotEqualTo("ENTITY-LEVEL-IMAGE");
     }
 
     /**
