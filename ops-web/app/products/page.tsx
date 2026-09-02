@@ -6,6 +6,7 @@
 // 多语言文案审核（P-3.2.5）**不单独成页**：它是商品抽屉里的一段（三语 + 回落提示）。
 // 拆出去会变成「审文案时看不到商品本身」。
 import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
@@ -98,13 +99,23 @@ function ProductsInner() {
   const statusMap = useSkuStatusMap();
 
   // 商品池的商家/类目筛选也要用到这两份列表，不再只在「类目」tab 下拉取
+  const sp = useSearchParams();
+  const [storeCleared, setStoreCleared] = useState(false);
+
   const cats = useQuery({ queryKey: ["categories"], queryFn: () => api.listCategories(), enabled: tab === "categories" || tab === "skus" });
   const merchantsForFilter = useQuery({
     queryKey: ["merchants", "lite"],
     queryFn: () => api.listMerchants({ size: 200 }),
     enabled: tab === "skus",
   });
-  const goodsQ = { keyword, status, merchantNo: merchantFilter, categoryNo: categoryFilter, page, size };
+  /*
+   * 门店商品投影（P-11.2.1e）走 URL 参数，从门店详情跳过来。
+   * 后端与 SkuQ 早就支持 storeNo（行上多 storeOnSale、sku 多 storeStock），
+   * **只是没有任何地方发它** —— 又一个死参数。
+   */
+  const storeNo = storeCleared ? "" : (sp.get("storeNo") ?? "");
+  const goodsQ = { keyword, status, merchantNo: merchantFilter, categoryNo: categoryFilter,
+                   storeNo: storeNo || undefined, page, size };
   const goodsList = useQuery({ queryKey: ["goods-pool", goodsQ], queryFn: () => api.listGoods(goodsQ), enabled: tab === "skus" });
   const oversell = useQuery({ queryKey: ["oversell"], queryFn: () => api.listOversellSkus(), enabled: tab === "stock" });
   /*
@@ -295,6 +306,29 @@ function ProductsInner() {
       },
     },
     { header: c.colSkuCount, cell: (g) => g.skus.length, numeric: true },
+    /*
+     * 门店投影的两列只在带 storeNo 时出现。**语义与主体级不同源**：
+     * storeOnSale=null 表示「未按店管理」（跟随主体级），不是「未上架」；
+     * storeStock 同理 —— 有任意店级行才算按店管理，没有行的店视为 0，不回退总量。
+     * 混在一起看会把「这家店没配」读成「这家店没货」。
+     */
+    ...(storeNo ? [{
+      header: c.colStoreOnSale,
+      cell: (g: ProductGoods) => (g.storeOnSale == null
+        ? <span className="text-muted-foreground">{c.storeUnmanaged}</span>
+        : <Badge tone={g.storeOnSale ? "success" : "muted"}>
+            {g.storeOnSale ? c.storeOnSaleYes : c.storeOnSaleNo}
+          </Badge>),
+    }, {
+      header: c.colStoreStock,
+      numeric: true,
+      cell: (g: ProductGoods) => {
+        const vals = g.skus.map((k) => k.storeStock).filter((v) => v != null) as number[];
+        return vals.length === 0
+          ? <span className="text-muted-foreground">{c.storeUnmanaged}</span>
+          : vals.reduce((a, b) => a + b, 0);
+      },
+    }] : []),
     { header: c.colStatus, cell: (g) => <SkuStatusBadge value={g.status as Sku["status"]} /> },
     {
       header: c.colActions,
@@ -344,6 +378,16 @@ function ProductsInner() {
       {tab === "categories" && <CategoriesTab c={c} canEdit={canEditCategory} />}
 
       {/* ── 商品池 ────────────────────────────────────────────────────── */}
+      {tab === "skus" && storeNo && (
+        // 从门店详情带过来的筛选：**必须显式回显 + 给得掉的出口**，
+        // 否则看到的是一份少了很多商品的池子，而页面上没有线索说明为什么
+        <div className="mb-3">
+          <Button size="sm" variant="outline" onClick={() => { setStoreCleared(true); setPage(1); }}>
+            {fill(c.storeFilterChip, { no: storeNo })} · {c.storeFilterClear}
+          </Button>
+        </div>
+      )}
+
       {tab === "skus" && (
         <>
           <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchSku}>

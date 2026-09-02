@@ -227,9 +227,15 @@ export function StoresTab({ c }: { c: Copy }) {
               自己按关键词猜。不做全局门店下拉：平台几千家店，那个下拉选不出来。
             */}
             <DrawerSection title={c.stSecOrders} desc={c.stOrdersHint}>
-              <Link href={`/orders?storeNo=${encodeURIComponent(current.storeNo)}`}>
-                <Button size="sm" variant="outline">{c.stViewOrders}</Button>
-              </Link>
+              <div className="flex gap-2">
+                <Link href={`/orders?storeNo=${encodeURIComponent(current.storeNo)}`}>
+                  <Button size="sm" variant="outline">{c.stViewOrders}</Button>
+                </Link>
+                {/* 门店商品投影（P-11.2.1e）：后端与 SkuQ 早就支持，只是没入口 */}
+                <Link href={`/products?tab=skus&storeNo=${encodeURIComponent(current.storeNo)}`}>
+                  <Button size="sm" variant="outline">{c.stViewGoods}</Button>
+                </Link>
+              </div>
             </DrawerSection>
 
             <DrawerSection title={c.stSecActions} desc={c.stRestoreHint}>

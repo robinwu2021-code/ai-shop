@@ -5,6 +5,33 @@ import type { ProductApi } from "../contracts/product";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
+/*
+ * 门店级覆盖（P-11.2.1e）。语义与真后端一致：
+ * **有任意店级行 = 该 SKU 转店级管理**，没有行的店视为 0/未上架，
+ * 而不是回退到主体总量 —— 回退的话给 A 店设了 10 件后 B 店会变成无限库存。
+ * 一条店级行都没有的 SKU 返回 null，端上显示「未按店管理」。
+ */
+const STORE_OVERRIDES: Record<string, Record<string, { stock: number; onSale: boolean }>> = {
+  // 只给一个 SKU 配店级行，另一个不配 —— 两种态在界面上都要看得见
+  // SKU1001 按店管理：ST001 配了 12 件，ST002 没配（= 0，不是回退总量）
+  SKU1001: { ST001: { stock: 12, onSale: true } },
+  // SKU1002 也按店管理，但**这家店没配** —— 用来演「有别家的行、这家是 0」
+  SKU1002: { ST002: { stock: 5, onSale: true } },
+};
+
+function storeStockOf(skuNo: string, storeNo: string): number | null {
+  const rows = STORE_OVERRIDES[skuNo];
+  if (!rows) return null;                 // 没有任何店级行 = 未按店管理
+  return rows[storeNo]?.stock ?? 0;       // 有别家店的行、这家没有 = 0
+}
+
+function storeOnSaleOf(skuNo: string, storeNo: string): boolean | null {
+  const rows = STORE_OVERRIDES[skuNo];
+  if (!rows) return null;
+  return rows[storeNo]?.onSale ?? false;
+}
+
+
 /**
  * mock 的类目规格绑定：只覆盖六个类目，其余留空。
  *
@@ -475,7 +502,13 @@ export const productMock: ProductApi = {
         categoryNo: s.categoryNo,
         categoryName: s.categoryName,
         status: s.status,
-        skus: [{ skuNo: s.skuNo, optionValues: [], spec: undefined, prices: s.prices, stock: s.stock }],
+        skus: [{
+          skuNo: s.skuNo, optionValues: [], spec: undefined, prices: s.prices, stock: s.stock,
+          // 门店投影：只在带 storeNo 时有值，且**未按店管理时是 null 不是 0** ——
+          // 0 会被读成「这家店没货」，而真相是「这家店没配，跟随主体」
+          storeStock: q.storeNo ? storeStockOf(s.skuNo, q.storeNo) : undefined,
+        }],
+        storeOnSale: q.storeNo ? storeOnSaleOf(s.skuNo, q.storeNo) : undefined,
       })),
     })),
 
