@@ -1,6 +1,23 @@
 # TDD-门店获客埋点与看板
 
-> 状态：**设计待确认（2026-09-02）**
+> 状态：**G1 + 漏斗已落地（2026-09-02，V290）· G2 店铺码待做**
+>
+> | 部分 | 状态 |
+> |---|---|
+> | G1 匿名扫码埋点（`mkt_store_visit`，落在 `by-code`） | ✅ |
+> | 获客漏斗聚合 + `GET /ops/stores/acquisition` | ✅ 后端；前端仍走 mock（`IS_MOCK` 未翻） |
+> | 平台看板 `funnel()` 前两环接同一口径 | ✅ |
+> | 闸门 V1–V4 / V6（`StoreAcquisitionFlowTest`） | ✅ 5 条全绿 |
+> | G2 `printed` 运营录入 + `GET /ops/stores/qrcodes` | ⬜ 未做 |
+> | V5（printed 未登记显示 null） | ⬜ 随 G2 |
+>
+> **落地时发现的一处坑（已修，值得记）**：`selectMaps` 的键**大小写随库而变** ——
+> H2 把 `AS entityNo` 折成全小写 `entityno`，MariaDB 保留写法。
+> 只试「原样 + 大写」会在 H2 上取到 null，而后果不是报错：
+> 看板照常返回一行，数字全对，只有 `merchantNo`/`merchantName` 是 null。
+> 现改为忽略大小写取值。这正是本仓「H2 绿 ≠ 生产对」那类问题的又一例。
+>
+> 原状态：设计待确认（2026-09-02）
 > 起因：[门店注册与进件-运营端对齐与开发计划](../../requirements/门店注册与进件-运营端对齐与开发计划.md) §六 —— WS-B1/B2/B3 三个 mock 端点卡在同一处，不是缺接口，是**缺指标源**。
 > 上游：[ADR-004 增长模型](../ADR/) · [TDD-运营端增长与归因](./TDD-运营端增长与归因.md) · [TDD-店铺码与分享](./TDD-店铺码与分享.md) · [分享激励与首页曝光-方案](./分享激励与首页曝光-方案.md)
 > 目标端点：`GET /ops/stores/acquisition`（获客看板）· `GET /ops/stores/qrcodes`（店铺码）
