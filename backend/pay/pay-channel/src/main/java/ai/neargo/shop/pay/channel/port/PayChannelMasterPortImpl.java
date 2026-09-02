@@ -55,7 +55,20 @@ public class PayChannelMasterPortImpl implements PayChannelMasterPort {
                 .toList();
     }
 
-    /** payMethods 存的是 JSON 数组字面量。解析失败给空列表 —— 收银台少几个按钮，不是崩 */
+    @Override
+    public List<String> payMethodsOf(String payChannel) {
+        return master.find(payChannel).map(c -> readList(c.getPayMethods())).orElse(List.of());
+    }
+
+    /**
+     * payMethods 存的是 JSON 数组字面量。解析失败给空列表 —— 收银台少几个按钮，不是崩。
+     *
+     * <p><b>刻意不用 Jackson。</b>这一列的字节在两个方言里不一样：
+     * 种子写的是 {@code '[\"JSAPI\"]'}，MariaDB 解成 {@code ["JSAPI"]}，
+     * H2 原样存下带反斜杠的那份。Jackson 解后者会抛，而调用方
+     * 常把「解析失败」兜成空集 —— 于是本地测试里这份清单<b>永远是空的</b>，
+     * 且没有任何东西会报。按 token 切分对两种字节都成立。
+     */
     private static List<String> readList(String raw) {
         if (raw == null || raw.isBlank()) {
             return List.of();

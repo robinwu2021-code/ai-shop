@@ -65,6 +65,19 @@ public interface PayChannelMasterPort {
      * <p>与 {@link #enabledChannels} 分开而不是让调用方拿码再逐个查名字：
      * 那样 N 个通道就是 N+1 次查询，而这份快照是每次冷启动都要的。
      */
+    /**
+     * 这个通道支持哪些支付方式（JSAPI / APP / H5 / NATIVE …）。查不到给空列表。
+     *
+     * <p><b>它是商家进件通过时那份方式清单的来源</b>：商家在一个通道上能用的方式
+     * 是通道支持的子集，通道回执没有明确缩窄时就等于通道自己那一份。
+     *
+     * <p>此前这一列<b>没有任何决策读它</b> —— 只映射进一个前端不读的 VO。
+     * 而下游 {@code MchPaymentMerchant.pay_methods} 有读取方（结算页与收银台的
+     * 支付方式交集）却<b>从没被写过</b>：一条判据两头都断着，
+     * 而中间那段逻辑写得很仔细。
+     */
+    List<String> payMethodsOf(String payChannel);
+
     List<ChannelBrief> enabledBriefs(String market);
 
     /**

@@ -45,6 +45,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
     private final MasterDataPort masterDataPort;
     /** 通道主数据。2026-09-01 从 MasterDataPort 拆出来 —— 通道属性归 pay（见 ADR-023 那条原则） */
     private final PayChannelMasterPort payChannelMasterPort;
+    private final tools.jackson.databind.ObjectMapper json;
     /** 每通道一个实现；开发期是 STUB 一个顶俩 */
     private final Map<String, PayApplymentGateway> gateways;
     /** 为门店开进件时校验归属 —— 不是本主体的店一律 404 */
@@ -53,12 +54,14 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
     public MerchantPaymentServiceImpl(MchPaymentMapper paymentMapper, MchEntityMapper merchantMapper,
                                       MasterDataPort masterDataPort,
                                       PayChannelMasterPort payChannelMasterPort,
+                                      tools.jackson.databind.ObjectMapper json,
                                       ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
                                       List<PayApplymentGateway> gatewayList) {
         this.paymentMapper = paymentMapper;
         this.merchantMapper = merchantMapper;
         this.masterDataPort = masterDataPort;
         this.payChannelMasterPort = payChannelMasterPort;
+        this.json = json;
         this.storeMapper = storeMapper;
         this.gateways = gatewayList.stream()
                 .collect(Collectors.toMap(PayApplymentGateway::payChannel, Function.identity()));
@@ -258,6 +261,27 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
             }
             if (row.getActivatedAt() == null) {
                 row.setActivatedAt(System.currentTimeMillis());
+            }
+            /*
+             * 开户成功才落支付方式清单 —— 而在此之前<b>这一列从没被写过</b>。
+             *
+             * 它有读取方：结算页与收银台都按它求交集（一笔支付覆盖整单，
+             * 有一家不支持这种方式就用不了），而那段交集写得很仔细 ——
+             * 空集当「未配置」跳过、未配置返回 null 不返回空数组。
+             * <b>只是它的输入永远是空的</b>，于是那条判据从来没有真正生效过。
+             *
+             * 来源是通道自己支持的那一份：商家能用的方式是通道支持的子集，
+             * 通道回执没有明确缩窄时两者相等。将来通道回执带了范围，
+             * 改的是这一行的来源，不是下游任何一处。
+             *
+             * **只在为空时写**：通道重推回执是常态，每次覆盖会把运营
+             * 后来收窄过的范围又放回去 —— 与上面 payMerchantNo「只生成一次」同一条理由。
+             */
+            if (row.getPayMethods() == null || row.getPayMethods().isBlank()) {
+                List<String> ms = payChannelMasterPort.payMethodsOf(payChannel);
+                if (!ms.isEmpty()) {
+                    row.setPayMethods(json.writeValueAsString(ms));
+                }
             }
             row.setRejectReason(null);
         } else if (MchPaymentMerchant.REJECTED.equals(r.status())) {
