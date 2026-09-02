@@ -1822,9 +1822,24 @@ export const mockApi: MerchantApi = {
 
   async mStoreQrcode() {
     const merchantNo = requireMerchant();
-    // 落地页必须带 merchant_no —— 扫码进店的归因就靠它，进而决定费率档（ADR-004 §6）
-    const url = `/pages/store/index?merchantNo=${merchantNo}&from=QR`;
-    return delay({ url });
+    /*
+     * **一店一码**（V298）：码属于当前这家门店，不是主体。
+     *
+     * 此前这里只返回 url，连 storeCode 都没有 —— 于是「码是哪家店的」这件事
+     * 在 mock 上根本演不出来，而它正是多门店店主印之前唯一能发现贴错店的机会。
+     */
+    /*
+     * 取默认店（列表第一家）。**mock 里没有「当前门店」这个概念** ——
+     * 真实链路上它由请求头 X-Store-No 决定，而 mock 不走 HTTP。
+     * 所以在 mock 上切店不会换码，这一点与真后端不同；这里演的是
+     * 「码属于某一家具体的店」这件事本身。
+     */
+    const store = db.stores[0];
+    const storeNo = store?.storeNo ?? null;
+    const storeCode = storeNo ? `shop_${storeNo}` : `shop_${merchantNo}`;
+    // 落地页带 storeCode —— 真后端扫码走 by-code，靠它解出是哪家店
+    const url = `/pages/store/index?storeCode=${storeCode}`;
+    return delay({ merchantNo, storeCode, storeNo, url, imageBase64: null });
   },
 
   async mShareKit(goodsNo) {

@@ -1167,6 +1167,8 @@ export default {
     qrcodePlaceholder: "小程序码由服务端生成，此处为占位图",
     qrcodePending: "小程序码还没生成好，稍后再来看",
     qrcodeHint: "印在包装袋、贴在收银台。老客扫码进店，订单记为「自带客流」，费率更低。",
+    qrcodeOfStore: "这是「{name}」的码",
+    qrcodeStoreWarn: "你有多家店，每家店的码不一样 —— 印之前先确认贴的是哪家。",
     copyLink: "复制链接",
     saveImage: "保存图片",
     imageSaved: "已保存到相册",

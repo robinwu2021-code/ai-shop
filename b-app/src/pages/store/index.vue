@@ -47,6 +47,22 @@ const HOURS = [
 ];
 
 const qrcode = ref<StoreQrcode | null>(null);
+
+/**
+ * 这个码是**哪家店**的（V298 一店一码）。
+ *
+ * 后端把 storeNo 一起下发了，此前端上没接 —— 店主看到的只是一串码。
+ * 多门店时这是**印之前唯一能发现「贴错店」的机会**：贴错了没有任何症状，
+ * 码扫得通、页面打得开，只是客流全算到了另一家头上。
+ *
+ * 名字优先从已加载的门店列表里取；取不到就退回门店号，**不显示成空白** ——
+ * 空白会被读成「这个码不属于任何店」。
+ */
+const qrStoreName = computed(() => {
+  const no = qrcode.value?.storeNo;
+  if (!no) return "";
+  return merchant.stores.find((x) => x.storeNo === no)?.name || no;
+});
 const kit = ref<ShareKit | null>(null);
 /** 真海报（P2）：封面/店名/价格/小程序码合成的一张图，不是 kit.posterUrl 那句假话 */
 const poster = ref<Poster | null>(null);
@@ -258,6 +274,10 @@ onShow(() => {
           <text class="sh-hint">
             {{ qrcode?.imageBase64 ? (qrcode.printableHint || $t("store.qrcodeDesc")) : $t("store.qrcodePending") }}
           </text>
+          <!-- 码属于哪家店，摆在码值上面：印之前先看见它 -->
+          <text v-if="qrStoreName" class="txt-sub qr__store">
+            {{ $t("store.qrcodeOfStore", { name: qrStoreName }) }}
+          </text>
           <text v-if="qrcode?.storeCode" class="txt-sub qr__code sh-num">{{ qrcode.storeCode }}</text>
           <view class="btns">
             <text v-if="qrcode?.imageBase64" class="txt-caption mini" @tap="saveQrImage">{{ $t("store.saveImage") }}</text>
@@ -265,6 +285,8 @@ onShow(() => {
           </view>
         </view>
       </view>
+      <!-- 多门店才提示：单店商家看到「每家店的码不一样」只会困惑 -->
+      <text v-if="merchant.multiStore" class="sh-hint qr__warn">{{ $t("store.qrcodeStoreWarn") }}</text>
       <text class="sh-hint">{{ $t("store.qrcodeHint") }}</text>
 
       <view class="kitwrap">
@@ -347,11 +369,20 @@ onShow(() => {
 .qr__t {
   display: block;
 }
+.qr__store {
+  display: block;
+  margin-top: 8rpx;
+  color: var(--sh-ink);
+}
 .qr__code {
   display: block;
   margin-top: 8rpx;
   letter-spacing: 4rpx;
   color: var(--sh-ink);
+}
+/* 多门店的提醒要比常规说明显眼一点 —— 它防的是「印完才发现」 */
+.qr__warn {
+  color: var(--sh-warning);
 }
 .btns {
   display: flex;
