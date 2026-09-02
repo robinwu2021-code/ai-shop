@@ -15174,7 +15174,7 @@ paths:
   "/ops/merchants/violations": 
     get: 
       operationId: "listViolations"
-      summary: "listViolations"
+      summary: "违规记录"
       tags: 
         - "merchant"
       responses: 
@@ -15191,9 +15191,23 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    type: "array"
-                    items: 
-                      "$ref": "#/components/schemas/Violation"
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/Violation"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
                 required: 
                   - "code"
                   - "msg"

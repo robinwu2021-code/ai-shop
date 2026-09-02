@@ -199,7 +199,15 @@ export interface MerchantApi {
 
   // ── 违规处置与信用档案（P-11.1.4 / 11.1.5）─────────────────────
 
-  listViolations(q?: { merchantNo?: string }): Promise<Violation[]>;
+  /**
+   * 违规记录。不传 `merchantNo` 就是全平台。
+   *
+   * ★ 返回**分页包**而不是裸数组 —— 后端 `PageData.ofAll(...)` 一直是这么给的。
+   * 此前契约声明成 `Violation[]`，而 mock 也真的返裸数组，于是两侧一起错、
+   * 本地永远看不出来；只有切到真后端那一刻 `data.map is not a function`，
+   * 信用档案抽屉与违规列表**整块炸掉**。
+   */
+  listViolations(q?: { merchantNo?: string; page?: number; size?: number }): Promise<Page<Violation>>;
 
   /**
    * 记一条违规并执行处置。

@@ -143,8 +143,11 @@ describe("违规处置（P-11.1.4）", () => {
     await merchantMock.recordViolation({
       merchantNo: "M903", type: "PRICE_FRAUD", action: "LIMIT", detail: "先涨后降，截图 #4",
     });
-    const list = await merchantMock.listViolations({ merchantNo: "M903" });
-    expect(list[0].type).toBe("PRICE_FRAUD");
-    expect(list.every((v) => v.merchantNo === "M903")).toBe(true);
+    // 分页包，与后端 PageData 同形 —— 此前这里断言的是裸数组，
+    // 那正是把「切到真后端就 data.map is not a function」藏了一路的那个形状
+    const page = await merchantMock.listViolations({ merchantNo: "M903" });
+    expect(page.records[0].type).toBe("PRICE_FRAUD");
+    expect(page.records.every((v) => v.merchantNo === "M903")).toBe(true);
+    expect(page.total).toBeGreaterThan(0);
   });
 });

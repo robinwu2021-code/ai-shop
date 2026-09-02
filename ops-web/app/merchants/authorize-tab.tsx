@@ -24,9 +24,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { MerchantsCopy } from "./copy";
 
-/** 两个 tab 共用：只有过审商家才谈得上授权与认证标。 */
+/**
+ * 两个 tab 共用：只有过审商家才谈得上授权与认证标。
+ *
+ * ★ 这里筛的是**商家经营状态**（`MerchantStatus` = ACTIVE/SUSPENDED/FROZEN），
+ * 不是申请单状态（`ApplyStatus` 才有 APPROVED）。此前写的是 `"APPROVED"` ——
+ * 后端 `w.eq(MchEntity::getStatus, "APPROVED")` 恒匹配零行，
+ * 于是类目授权与认证标两个 tab **列表永远是空的，而且不报错**；
+ * mock 里每个商家也都是 ACTIVE，`eqHit("APPROVED","ACTIVE")` 同样为假，
+ * 所以本地也看不出来 —— 两侧一起瞎，是这个缺陷活到今天的原因。
+ *
+ * 取 ACTIVE 与后端的准入一致：`setVerified` 明确只给 ACTIVE 的商家授标。
+ */
 function useApprovedMerchants(keyword: string, page: number, size: number) {
-  const q = { keyword, status: "APPROVED", page, size };
+  const q = { keyword, status: "ACTIVE", page, size };
   return useQuery({ queryKey: ["merchants", q], queryFn: () => api.listMerchants(q) });
 }
 

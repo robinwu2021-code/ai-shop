@@ -126,9 +126,9 @@ export function CreditTab({ c }: { c: MerchantsCopy }) {
             </DrawerSection>
             <DrawerSection title={c.secViolations}>
               {history.isLoading && <p className="txt-caption text-muted-foreground">{c.loading}</p>}
-              {history.data?.length === 0 && <p className="txt-caption text-muted-foreground">{c.noViolation}</p>}
+              {history.data?.records.length === 0 && <p className="txt-caption text-muted-foreground">{c.noViolation}</p>}
               <ul className="space-y-3">
-                {history.data?.map((v) => (
+                {history.data?.records.map((v) => (
                   <li key={v.violationNo} className="border-l-2 border-border pl-3">
                     <div className="flex items-center gap-2">
                       <StatusBadge map={typeMap} value={v.type} />
@@ -202,7 +202,7 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
     },
   });
 
-  const rows = (violations.data ?? []).filter((v) => !type || v.type === type);
+  const rows = (violations.data?.records ?? []).filter((v) => !type || v.type === type);
 
   const columns: Column<Violation>[] = [
     { header: c.colViolationNo, cell: (v) => v.violationNo, numeric: true, align: "start" },

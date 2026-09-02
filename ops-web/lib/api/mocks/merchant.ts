@@ -408,8 +408,10 @@ export const merchantMock: MerchantApi = {
     return wait({ codes: [...codes], revoked, affected }, 400);
   },
 
+  // 与后端同形：返分页包。mock 返裸数组正是上一版把真后端崩溃藏了一路的原因
   listViolations: async (q = {}) =>
-    wait(db.violations.filter((v) => db.eqHit(q.merchantNo, v.merchantNo))),
+    wait(db.paginate(db.violations, q.page, q.size,
+      (v) => db.eqHit(q.merchantNo, v.merchantNo))),
 
   recordViolation: async ({ merchantNo, type, action, detail, storeNo }) => {
     const m = find(merchantNo);
