@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,7 +82,7 @@ export function ChannelOverviewTab({ c }: { c: MessageCopy }) {
 
   return (
     <div className="space-y-4">
-      <Notice tone="info">{c.ovNotice}</Notice>
+      <HelpNote>{c.ovNotice}</HelpNote>
       <Card>
         <CardHeader><CardTitle>{c.ovTitle}</CardTitle></CardHeader>
         <CardContent>
@@ -169,7 +170,7 @@ function ChannelRegistryCard({ c }: { c: MessageCopy }) {
     <Card>
       <CardHeader><CardTitle>{c.crTitle}</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        <Notice tone="info">{c.crNotice}</Notice>
+        <HelpNote>{c.crNotice}</HelpNote>
         <DataTable columns={cols} rows={reg.data ?? []} loading={reg.isLoading}
                    rowKey={(r) => r.channelNo} empty={c.crEmpty} />
       </CardContent>

@@ -21,7 +21,7 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Button } from "@/components/ui/button";
 import type { MerchantsCopy } from "./copy";
 
@@ -133,7 +133,7 @@ export function OnboardingTab({ c }: { c: MerchantsCopy }) {
 
   return (
     <>
-      <Notice tone="info" className="mb-3">{c.obNotice}</Notice>
+      <HelpNote className="mb-3">{c.obNotice}</HelpNote>
 
       <Toolbar
         search={keyword}

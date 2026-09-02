@@ -26,7 +26,7 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import type { FinanceCopy } from "./copy";
 
@@ -101,7 +101,7 @@ export function FeeRuleTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean })
         <ReadOnlyNotice what={c.rateReadOnlyWhat} perm="finance:rate:update" note={c.rateReadOnlyNote} />
       )}
 
-      <Notice tone="info">{c.frNotice}</Notice>
+      <HelpNote>{c.frNotice}</HelpNote>
 
       <ConfigCard title={c.frEffectiveTitle}>
         <div className="grid grid-cols-2 gap-3">

@@ -25,18 +25,37 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useCan } from "@/lib/use-can";
 import { useCopy } from "@/lib/use-copy";
+import { useT } from "@/lib/i18n";
 import type { JobLogRow, JobRow, JobStatus } from "@/lib/types";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer } from "@/components/ui/drawer";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useOpsStream } from "@/lib/use-ops-stream";
 import { cronText, relTime, oneLine, TEXT_KEY } from "@/lib/job-format";
 import { JOBS_COPY } from "./copy";
 
 const MANAGE = "system:job:manage";
+
+/**
+ * 四列的栅格定义。
+ *
+ * **表头与所有数据行是同一个 grid 容器**，每一行靠 `display:contents` 把自己的
+ * 四个格子交给它排 —— 这不是写法偏好，是唯一能对齐的做法：grid 的列宽在**每个
+ * 容器内部**各算各的，表头一个 grid、每行一个 grid 的话，`auto` 与 `1fr` 会按
+ * 各自的内容重新分配。实测：操作列三行分别宽 212 / 132 / 76px（按钮数不同），
+ * 于是每一行的前三列起点都不一样，表头更是差了 190px。四列全给固定宽度也能
+ * 对齐，但那要按最长那一行留（英文更长），表格白白宽出一截。
+ *
+ * 第一列的下限是 `11rem` 而不是 `0`：写 `minmax(0,1fr)` 时那个 0 允许它一路缩到
+ * 0px —— 实测容器 494px、后三列固定 580px，于是名称列真的成了 0 宽，
+ * 页面第一列显示的是「频率」，**任务叫什么完全看不见**，且没有任何报错。
+ */
+const GRID = "grid grid-cols-[minmax(11rem,1fr)_8rem_12rem_auto] items-start min-w-[40rem]";
+/** 单元格通用间距。列间距靠它，不用 `gap` —— gap 会把行分隔线切成四段。 */
+const CELL = "border-t px-3 py-2.5";
 
 
 /**
@@ -58,6 +77,7 @@ const TONE: Record<JobStatus, BadgeTone> = {
 
 export default function JobsPage() {
   const c = useCopy(JOBS_COPY);
+  const t = useT();
   const can = useCan();
   const qc = useQueryClient();
   const [logsOf, setLogsOf] = useState<JobRow | null>(null);
@@ -116,7 +136,7 @@ export default function JobsPage() {
 
   return (
     <div className="space-y-4">
-      <Notice tone="info">{c.jobsNotice}</Notice>
+      <HelpNote>{c.jobsNotice}</HelpNote>
 
       {/* 概览条：十一行扫下来之前先给一个总览。**不重排行** ——
           实时更新时把出问题的挪到最前会让行位置跳，而人正要点某一行的按钮 */}
@@ -151,12 +171,19 @@ export default function JobsPage() {
         * 页面本身不横滚，这是仓库里宽表格一贯的做法。
         */}
       <div className="overflow-x-auto rounded-card border">
-       <div className="divide-y min-w-[40rem]">
+       <div className={GRID}>
+        {/*
+          * 表头。**加它是因为没有标题时那些数字读不出来**：
+          * 「每天 03:25」下面那个时间到底是上次还是下次，只能猜。
+          */}
+        {[c.jobsColName, c.jobsColCron, c.jobsColLast, t("common.actions")].map((h, i) => (
+          <div key={i} className="bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">{h}</div>
+        ))}
         {rows.map((r) => (
-          <div key={r.jobName} className="px-3 py-2.5">
-           <div className="grid grid-cols-[minmax(11rem,1fr)_8rem_12rem_auto] items-start gap-3">
-            {/* ① 名称。描述不在这一格里 —— 见行尾那个跨整行的 details */}
-            <div className="min-w-0">
+          /* display:contents —— 这一行的四个格子直接交给外层 grid 排，见 GRID 的注释 */
+          <div key={r.jobName} className="contents">
+            {/* ① 名称 + 说明触发器 */}
+            <div className={`${CELL} min-w-0`}>
               <div className="flex items-center gap-2">
                 <span aria-hidden
                       className={`inline-block size-2 shrink-0 rounded-chip ${dotClass(r)}`} />
@@ -173,10 +200,26 @@ export default function JobsPage() {
                   </Tooltip>
                 )}
               </div>
+              {/*
+                * 描述进浮层，不占行高。
+                *
+                * 它此前是 `truncate` 的一行：这几条描述都是两三句话，一句也看不全，
+                * 却天天占着一行 —— 而每天开这一页的人早就知道每个任务干什么，
+                * 他要的是「跑没跑、什么时候跑」。第一次来的人点一下就有。
+                *
+                * 中间试过就地展开（`<details>`），不行：展开会把下面的行推下去，
+                * 而且那一行比别的行高，**字段就不再横向对齐了** —— 加了表头之后
+                * 这一点尤其明显。浮层不占布局流，点开点关表格纹丝不动。
+                */}
+              {r.description && (
+                <HelpNote inline title={c.jobsDescToggle} className="mt-0.5 text-xs">
+                  {r.description}
+                </HelpNote>
+              )}
             </div>
 
             {/* ② 频率说人话，原始 cron 收进 tooltip */}
-            <div className="min-w-0 text-sm">
+            <div className={`${CELL} min-w-0 text-sm`}>
               <Tooltip label={<code>{r.cron}</code>}>
                 {(p) => <span {...p} className="block truncate">{cronText(r.cron, tc)}</span>}
               </Tooltip>
@@ -186,7 +229,7 @@ export default function JobsPage() {
             </div>
 
             {/* ③ 最后一次。detail 压成一行 —— 要看全的去日志里看 */}
-            <div className="min-w-0 text-sm">
+            <div className={`${CELL} min-w-0 text-sm`}>
               {r.lastStatus === null
                 ? <span className="text-muted-foreground">{c.jobsNeverRan}</span>
                 : (
@@ -213,7 +256,7 @@ export default function JobsPage() {
             </div>
 
             {/* ④ 操作 */}
-            <div className="flex shrink-0 items-center gap-1">
+            <div className={`${CELL} flex shrink-0 items-center gap-1`}>
               <Button size="sm" variant="ghost" onClick={() => setLogsOf(r)}>{c.jobsLogs}</Button>
               {can(MANAGE) && !r.missing && (
                 <>
@@ -230,39 +273,6 @@ export default function JobsPage() {
                 </>
               )}
             </div>
-           </div>
-
-           {/*
-             * 描述**默认不显示**，点「说明」才展开。
-             *
-             * 此前它是 `truncate` 的一行：既看不全（这几条描述都是两三句话），
-             * 又天天占着一行 —— 而每天开这一页的人早就知道每个任务是干什么的，
-             * 他要看的是「跑没跑、什么时候跑」。第一次来的人则需要它。
-             * 收起来两边都成立：常客不被挤，新人点一下就有。
-             *
-             * **放在 grid 外面、跨整行**，不是塞进第一列：第一列只有 11rem，
-             * 两三句话在里面会排成四行八字宽的一根柱子 —— 能看全，但没人愿意读。
-             * 摆在行下方，展开时用的是整行的宽度。
-             *
-             * 用原生 details：键盘可达、屏幕阅读器认得、无需状态。
-             */}
-           {r.description && (
-             <details className="group/desc mt-1">
-               <summary className="flex w-fit cursor-pointer list-none items-center gap-1 text-xs
-                                   text-muted-foreground focus-ring rounded-chip
-                                   [&::-webkit-details-marker]:hidden">
-                 <svg aria-hidden viewBox="0 0 12 12"
-                      className="size-2.5 shrink-0 transition-transform group-open/desc:rotate-90">
-                   <path d="M4 2.5 8 6l-4 3.5z" fill="currentColor" />
-                 </svg>
-                 {c.jobsDescToggle}
-               </summary>
-               {/* 展开后允许换行 —— 它本来就是给人读的，截断等于没写 */}
-               <div className="mt-1 pl-3.5 text-xs leading-relaxed text-muted-foreground">
-                 {r.description}
-               </div>
-             </details>
-           )}
           </div>
         ))}
        </div>

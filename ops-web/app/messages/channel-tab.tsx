@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { TestSendDrawer } from "./test-send-drawer";
 import type { MessageCopy } from "./copy";
@@ -103,7 +104,7 @@ function ChannelConfig({ c, health, channel, canWrite }:
     <Card>
       <CardHeader><CardTitle>{c.chConfig}</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        <Notice tone="info">{c.chCredNotice}</Notice>
+        <HelpNote>{c.chCredNotice}</HelpNote>
 
         <div className="space-y-1.5">
           {health.credentials.map((cred) => (

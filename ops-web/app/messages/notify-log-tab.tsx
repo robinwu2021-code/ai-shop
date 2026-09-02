@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { Pagination } from "@/components/ui/misc";
 import { TestSendDrawer } from "./test-send-drawer";
@@ -157,10 +158,10 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
   return (
     <div className="space-y-4">
       {/* U4：两条说明合成一条 —— 站内信那句降为次要文字，不再单占一个 Notice */}
-      <Notice tone="info">
+      <HelpNote>
         {c.nlNotice}
         <div className="mt-2 txt-caption text-muted-foreground">{c.nlInappNotice}</div>
-      </Notice>
+      </HelpNote>
 
       <div className="flex justify-end gap-2">
         <Button variant="ghost" size="sm"

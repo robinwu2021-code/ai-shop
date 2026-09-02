@@ -21,7 +21,7 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import type { FinanceCopy } from "./copy";
 
@@ -219,7 +219,7 @@ export function PayChannelTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean
         <ReadOnlyNotice what={c.rateReadOnlyWhat} perm="finance:rate:update" note={c.rateReadOnlyNote} />
       )}
 
-      <Notice tone="info">{c.pcNotice}</Notice>
+      <HelpNote>{c.pcNotice}</HelpNote>
 
       {/*
         **表不进 ConfigCard**：那是 `max-w-2xl` 的表单卡片，7 列塞进 672px 之后

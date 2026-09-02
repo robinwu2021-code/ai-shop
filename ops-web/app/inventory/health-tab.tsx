@@ -13,6 +13,7 @@ import type { InvBalanceRow, InvHealthRow } from "@/lib/types";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer } from "@/components/ui/drawer";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { Tabs } from "@/components/ui/tabs";
 import type { InventoryCopy } from "./copy";
@@ -133,7 +134,7 @@ export function HealthTab({ c }: { c: InventoryCopy }) {
 
   return (
     <div className="space-y-4">
-      <Notice tone="info">{c.invHealthNotice}</Notice>
+      <HelpNote>{c.invHealthNotice}</HelpNote>
       <Notice tone="muted">{c.invReadOnly}</Notice>
 
       <Tabs

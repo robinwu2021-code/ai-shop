@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 import type { InvReconDiff } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import type { InventoryCopy } from "./copy";
 
@@ -54,7 +55,7 @@ export function ReconTab({ c }: { c: InventoryCopy }) {
 
   return (
     <div className="space-y-4">
-      <Notice tone="info">{c.invReconNotice}</Notice>
+      <HelpNote>{c.invReconNotice}</HelpNote>
 
       {/*
         结论横幅。**只在数据到手后画** —— 加载中画一个灰底的「干净」，

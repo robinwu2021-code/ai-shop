@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Toolbar } from "@/components/ui/toolbar";
 import type { InventoryCopy } from "./copy";
 
@@ -75,7 +75,7 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
 
   return (
     <div className="space-y-4">
-      <Notice tone="info">{c.invLedgerNotice}</Notice>
+      <HelpNote>{c.invLedgerNotice}</HelpNote>
 
       <Toolbar>
         <Input

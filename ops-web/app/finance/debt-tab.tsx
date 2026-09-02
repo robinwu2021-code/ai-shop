@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { Toolbar } from "@/components/ui/toolbar";
@@ -84,7 +85,7 @@ export function DebtTab({ c, canExecute }: { c: FinanceCopy; canExecute: boolean
         <ReadOnlyNotice what={c.dbReadOnlyWhat} perm="finance:payout:execute" note={c.dbReadOnlyNote} />
       )}
 
-      <Notice tone="info">{c.dbNotice}</Notice>
+      <HelpNote>{c.dbNotice}</HelpNote>
 
       <Toolbar>
         <Input
