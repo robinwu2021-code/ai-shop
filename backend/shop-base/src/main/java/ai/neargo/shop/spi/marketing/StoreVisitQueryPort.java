@@ -30,6 +30,31 @@ public interface StoreVisitQueryPort {
     Map<String, Long> scanCounts(Collection<String> entityNos, long from, long to);
 
     /**
+     * 按<b>门店</b>取扫码次数（V298 一店一码之后的口径）。
+     *
+     * <p><b>历史埋点行的 {@code store_no} 是空的</b> —— 它们记录在码还挂主体的年代，
+     * 物理上分不出是哪家分店。这里<b>不替调用方决定它们算谁的</b>：
+     * 「哪家是默认店」是 merchant 域的事实，埋点域够不着，也不该猜。
+     * 两份数分开给出去，由调用方合并。
+     *
+     * <p>丢掉历史那部分也是一种选择，但那会让所有老商家的扫码数在升级当天归零 ——
+     * 数字不见了比数字归错店更难解释。
+     *
+     * @param entityNos 主体号，用来捞出无门店号的历史行
+     * @param storeNos  要统计的门店号
+     */
+    ScanCounts scanCountsByStore(Collection<String> entityNos, Collection<String> storeNos,
+                                 long from, long to);
+
+    /**
+     * @param byStore         门店号 → 扫码次数。<b>没有记录的门店不出现</b>
+     * @param legacyByEntity  主体号 → 扫码次数，<b>仅含 store_no 为空的历史行</b>。
+     *                        调用方通常把它并到该主体的默认店上 —— 与旧码的去向一致
+     */
+    record ScanCounts(Map<String, Long> byStore, Map<String, Long> legacyByEntity) {
+    }
+
+    /**
      * 平台级漏斗的**前两环**（扫码 / 进店）。
      *
      * <p>给平台看板用。它与门店获客看板<b>必须是同一个口径</b> ——

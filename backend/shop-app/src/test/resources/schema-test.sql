@@ -1504,6 +1504,7 @@ CREATE TABLE IF NOT EXISTS mch_store
     offline_pay_enabled TINYINT NOT NULL DEFAULT 0,
     cod_enabled TINYINT NOT NULL DEFAULT 0,
     store_code VARCHAR(32) DEFAULT NULL,
+    acode_base64 MEDIUMTEXT NULL,
     CONSTRAINT uk_mch_store_code UNIQUE (store_code),
     PRIMARY KEY (id),
     CONSTRAINT uk_store_no UNIQUE (store_no)
@@ -1850,8 +1851,10 @@ CREATE TABLE IF NOT EXISTS mch_deposit_txn
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    request_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_mch_deposit_txn_no UNIQUE (txn_no, tenant_no)
+    CONSTRAINT uk_mch_deposit_txn_no UNIQUE (txn_no, tenant_no),
+    CONSTRAINT uk_deposit_txn_request UNIQUE (merchant_no, request_no)
 );
 
 CREATE TABLE IF NOT EXISTS stl_fee_rule
@@ -3774,6 +3777,7 @@ CREATE TABLE IF NOT EXISTS sys_pay_channel_rate
     updated_by     VARCHAR(64)  DEFAULT NULL,
     version        BIGINT(20)   NOT NULL DEFAULT 0,
     deleted        TINYINT(4)   NOT NULL DEFAULT 0,
+    market VARCHAR(8) NOT NULL DEFAULT '*',
     PRIMARY KEY (id),
     CONSTRAINT uk_pcr_no UNIQUE (rate_no, tenant_no),
     CONSTRAINT uk_pcr_slot UNIQUE (pay_channel, pay_method, legal_form, effective_from, tenant_no)
@@ -3872,9 +3876,11 @@ CREATE TABLE IF NOT EXISTS mch_debt_txn
     updated_by          VARCHAR(64)  DEFAULT NULL,
     version             BIGINT(20)   NOT NULL DEFAULT 0,
     deleted             TINYINT(4)   NOT NULL DEFAULT 0,
+    request_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_mch_debt_txn_no UNIQUE (txn_no, tenant_no),
-    CONSTRAINT uk_mch_debt_txn_source UNIQUE (entity_no, source_type, source_no, tenant_no, deleted)
+    CONSTRAINT uk_mch_debt_txn_source UNIQUE (entity_no, source_type, source_no, tenant_no, deleted),
+    CONSTRAINT uk_debt_txn_request UNIQUE (entity_no, request_no)
 );
 
 CREATE TABLE IF NOT EXISTS pay_risk_shadow_log
@@ -3983,6 +3989,7 @@ CREATE TABLE IF NOT EXISTS mch_store_qrcode_print
     at BIGINT(20) NOT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
+    store_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_store_qrcode_print_no UNIQUE (print_no)
 );

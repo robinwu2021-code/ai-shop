@@ -156,7 +156,8 @@ public class BizDashboardController {
     @GetMapping("/biz/store/share-kit")
     public ShareKitVO shareKit(@RequestParam(required = false) String goodsNo) {
         String merchantNo = BizContext.requireMerchantNo();
-        String code = storeCodeService.ensureFor(merchantNo);
+        // 分享出去的也是当前这家店的码（V298）；没切店时是默认店
+        String code = storeCodeService.ensureForStore(merchantNo, BizContext.current().currentStoreNo());
         String shopName = merchantPort.find(merchantNo)
                 .map(MerchantQueryPort.MerchantBrief::merchantName).orElse("我的小店");
         /*

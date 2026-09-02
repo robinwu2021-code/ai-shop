@@ -60,6 +60,25 @@ public class MchStore extends BaseEntity {
     /** 默认门店。一主体<b>恰好一个</b>，删不掉 —— 它是单店商家的全部。 */
     private Boolean isDefault;
 
+    /**
+     * 这家店自己的店铺码（V298）。
+     *
+     * <p>默认店回填自 {@code mch_entity.store_code} —— <b>已经印出去的贴纸因此不作废</b>，
+     * 只是从此归到默认店名下，与今天的口径一致（今天所有分店共用一个码，本来也只能算到主体）。
+     *
+     * <p><b>空 = 这家分店还没发过码</b>，不是「码是空串」。分店要各算各的获客，
+     * 得先发码再印。
+     */
+    private String storeCode;
+
+    /**
+     * 这家店的小程序码 PNG（base64，不含 {@code data:} 前缀）。
+     *
+     * <p><b>生成一次就复用</b>：微信永久码每个 appid 总量有限，码下沉到门店之后
+     * 每家分店各要一张 —— 现调现用会把额度耗光，而耗光之后新商家再也拿不到码。
+     */
+    private String acodeBase64;
+
     private String status;
 
     /**

@@ -37,6 +37,8 @@ class StoreQrcodeFlowTest {
     private ObjectMapper json;
     @Autowired
     private ai.neargo.shop.merchant.service.StoreCodeService storeCodeService;
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -115,6 +117,149 @@ class StoreQrcodeFlowTest {
         String support = opsLogin("support", "support123");
         mvc().perform(get("/ops/stores/qrcodes").header("Authorization", "Bearer " + support))
                 .andExpect(jsonPath("$.code").value(10403));
+    }
+
+    /**
+     * <b>V298 一店一码：两家分店各是各的码，扫谁算谁。</b>
+     *
+     * <p>此前一主体一码，两家分店贴的是同一张纸 —— 扫码数在分店之间分不开，
+     * 而「哪家店的贴纸有用」正是商家问的第一个问题。
+     *
+     * <p>可证伪：把 {@code ensureForStore} 改回按主体发码，两家店会拿到同一个码，
+     * 第一个断言立刻变红。
+     */
+    @Test
+    @DisplayName("★ 两家分店发出来的是两个码，扫哪家算哪家")
+    void eachStoreGetsItsOwnCode() throws Exception {
+        String merchantNo = approvedMerchantNo("12600130005", "一店一码测试店", "CM-QR-E");
+        String branch = extraStore(merchantNo, "南门店");
+
+        String defaultCode = storeCodeService.ensureForStore(merchantNo, null);
+        String branchCode = storeCodeService.ensureForStore(merchantNo, branch);
+        assertThat(branchCode).as("两家分店拿到同一个码 —— 获客数据永远分不开").isNotEqualTo(defaultCode);
+
+        // 扫分店的码：解析要能说出是哪家店
+        var target = storeCodeService.resolveTarget(branchCode);
+        assertThat(target.entityNo()).isEqualTo(merchantNo);
+        assertThat(target.storeNo()).as("码解析不出门店 —— 埋点的 store_no 又会是空的").isEqualTo(branch);
+
+        // 只扫分店，主店一次都不扫
+        mvc().perform(get("/mp/store/by-code").param("storeCode", branchCode)
+                .param("deviceId", "DEV-QR-E")).andExpect(status().isOk());
+
+        String admin = opsLogin("admin", "admin123");
+        assertThat(storeRowOf(admin, branch).get("scanCount").asLong())
+                .as("扫的是分店的码，分店却没记上").isEqualTo(1);
+        assertThat(storeRowOf(admin, defaultStoreNoOf(merchantNo)).get("scanCount").asLong())
+                .as("★ 只扫了分店，主店也涨了 —— 等于没分开").isEqualTo(0);
+    }
+
+    /**
+     * <b>发码幂等，换码要理由。</b>
+     *
+     * <p>换码会让已经贴在店里的物料全部变成死链。这一步的代价在线下，
+     * 而线上只是一次点击 —— 不挡的话代价与操作难度完全不匹配。
+     */
+    @Test
+    @DisplayName("★ 运营发码幂等；换码没给理由被拒，给了才换且新旧码不同")
+    void opsIssueIsIdempotentAndReissueNeedsReason() throws Exception {
+        String merchantNo = approvedMerchantNo("12600130006", "发码测试店", "CM-QR-F");
+        String admin = opsLogin("admin", "admin123");
+
+        String first = issue(admin, merchantNo);
+        String again = issue(admin, merchantNo);
+        assertThat(again).as("重复点「发码」把码换掉了 —— 上一批贴纸当场作废").isEqualTo(first);
+
+        // 没给理由：拒
+        mvc().perform(post("/ops/stores/" + merchantNo + "/qrcode/reissue")
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
+        assertThat(issue(admin, merchantNo)).as("被拒的换码却把码改了").isEqualTo(first);
+
+        // 给了理由：换
+        String body = mvc().perform(post("/ops/stores/" + merchantNo + "/qrcode/reissue")
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"贴纸印错了地址，整批重做\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String reissued = json.readTree(body).get("data").get("storeCode").asString();
+        assertThat(reissued).as("给了理由却没真的换码").isNotEqualTo(first);
+    }
+
+    /** <b>没发过码的门店要出现在列表里</b> —— 看不见就没人去发。 */
+    @Test
+    @DisplayName("★ codeless=true 只列还没发码的店，发完就从这张单子上消失")
+    void codelessListsStoresNeedingACode() throws Exception {
+        String merchantNo = approvedMerchantNo("12600130007", "待发码测试店", "CM-QR-G");
+        String branch = extraStore(merchantNo, "还没发码的分店");
+        String admin = opsLogin("admin", "admin123");
+
+        assertThat(codelessHas(admin, branch)).as("没有码的分店不在待办清单上 —— 运营看不见就不会去发").isTrue();
+        issueForStore(admin, merchantNo, branch);
+        assertThat(codelessHas(admin, branch)).as("发完码还赖在待办清单上").isFalse();
+    }
+
+    private String issue(String opsToken, String merchantNo) throws Exception {
+        return issueForStore(opsToken, merchantNo, null);
+    }
+
+    private String issueForStore(String opsToken, String merchantNo, String storeNo) throws Exception {
+        var req = post("/ops/stores/" + merchantNo + "/qrcode/issue")
+                .header("Authorization", "Bearer " + opsToken);
+        if (storeNo != null) {
+            req = req.param("storeNo", storeNo);
+        }
+        String body = mvc().perform(req).andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("storeCode").asString();
+    }
+
+    private boolean codelessHas(String opsToken, String storeNo) throws Exception {
+        String body = mvc().perform(get("/ops/stores/qrcodes")
+                        .header("Authorization", "Bearer " + opsToken)
+                        .param("codeless", "true").param("size", "100"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        for (JsonNode r : json.readTree(body).get("data").get("records")) {
+            if (storeNo.equals(r.get("storeNo").asString())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private JsonNode storeRowOf(String opsToken, String storeNo) throws Exception {
+        String body = mvc().perform(get("/ops/stores/qrcodes")
+                        .header("Authorization", "Bearer " + opsToken)
+                        .param("keyword", storeNo).param("size", "100"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        for (JsonNode r : json.readTree(body).get("data").get("records")) {
+            if (storeNo.equals(r.get("storeNo").asString())) {
+                return r;
+            }
+        }
+        throw new AssertionError("门店 " + storeNo + " 不在店铺码列表里");
+    }
+
+    private String defaultStoreNoOf(String merchantNo) {
+        return storeMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getIsDefault, 1)
+                        .last("limit 1"))
+                .getStoreNo();
+    }
+
+    /** 加一家非默认分店。门店号自带前缀，免得与共享种子里的号撞上。 */
+    private String extraStore(String merchantNo, String name) {
+        var st = new ai.neargo.shop.merchant.entity.MchStore();
+        st.setStoreNo("ST-QR-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        st.setEntityNo(merchantNo);
+        st.setName(name);
+        st.setIsDefault(false);
+        storeMapper.insert(st);
+        return st.getStoreNo();
     }
 
     // ---------------------------------------------------------------- helpers

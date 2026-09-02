@@ -31,6 +31,12 @@ public class MchStoreQrcodePrint {
     /** 商家主体。店铺码一主体一码，印刷量因此也挂主体 */
     private String entityNo;
 
+    /**
+     * 印的是哪家店的码（V298）。历史行回填为该主体的默认店 ——
+     * 那些登记发生在一主体一码的年代，那个码现在归默认店。
+     */
+    private String storeNo;
+
     /** 本次印量，<b>有符号</b>：冲减补负数行，不改历史行 */
     private Integer qty;
 

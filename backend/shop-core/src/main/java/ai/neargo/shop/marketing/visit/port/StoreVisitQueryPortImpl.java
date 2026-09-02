@@ -57,6 +57,49 @@ public class StoreVisitQueryPortImpl implements StoreVisitQueryPort {
         return out;
     }
 
+    @Override
+    public ScanCounts scanCountsByStore(Collection<String> entityNos, Collection<String> storeNos,
+                                        long from, long to) {
+        Map<String, Long> byStore = new LinkedHashMap<>();
+        if (storeNos != null && !storeNos.isEmpty()) {
+            var w = Wrappers.<MktStoreVisit>query()
+                    .select("store_no AS storeNo", "COUNT(*) AS pv")
+                    .in("store_no", storeNos)
+                    .between("at", from, to)
+                    .groupBy("store_no");
+            var rows = DataScopeContext.executeWithoutScope(() -> visitMapper.selectMaps(w));
+            for (Map<String, Object> r : rows) {
+                Object no = cell(r, "storeNo");
+                if (no != null) {
+                    byStore.put(String.valueOf(no), num(r));
+                }
+            }
+        }
+
+        Map<String, Long> legacy = new LinkedHashMap<>();
+        if (entityNos != null && !entityNos.isEmpty()) {
+            /*
+             * 一店一码之前的行：store_no 为空。**必须显式 isNull 而不是靠 in 落空** ——
+             * `in(store_no, ...)` 永远匹配不到 NULL，那部分会静默消失，
+             * 表现是老商家的扫码数在升级当天变成 0，而没有任何报错。
+             */
+            var w = Wrappers.<MktStoreVisit>query()
+                    .select("entity_no AS entityNo", "COUNT(*) AS pv")
+                    .in("entity_no", entityNos)
+                    .isNull("store_no")
+                    .between("at", from, to)
+                    .groupBy("entity_no");
+            var rows = DataScopeContext.executeWithoutScope(() -> visitMapper.selectMaps(w));
+            for (Map<String, Object> r : rows) {
+                String no = str(r);
+                if (no != null) {
+                    legacy.put(no, num(r));
+                }
+            }
+        }
+        return new ScanCounts(byStore, legacy);
+    }
+
     /*
      * 键**忽略大小写**取：H2 把 `AS entityNo` 折成全小写 entityno，MariaDB 保留写法。
      * 只试原样会在 H2 上取到 null，而后果不报错 —— 页面照常渲染，只是那一列空着。

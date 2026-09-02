@@ -57,6 +57,10 @@ export const RULES = [
   ["POST", /^\/ops\/onboarding\/refresh$/, "merchant:admission:update"],
   // 店铺码印刷量登记：发码的与审店招的是同一拨 BD
   ["POST", /^\/ops\/stores\/[^/]+\/qrcode\/print$/, "store:page:audit"],
+  // 发码 / 换码 / 导出（V298 一店一码）。同上，不新增权限码
+  ["POST", /^\/ops\/stores\/[^/]+\/qrcode\/issue$/, "store:page:audit"],
+  ["POST", /^\/ops\/stores\/[^/]+\/qrcode\/reissue$/, "store:page:audit"],
+  ["GET", /^\/ops\/stores\/qrcodes\/export$/, "store:page:audit"],
   ["GET", /^\/ops\/merchants\/mode-risk$/, "merchant:mode:read"],
   // 自营应付账款。**制单与付款分权**：确认对账用 settle:execute，
   // 而登记付款用 payout:execute —— 今天两个码都在 FINANCE 一个角色上

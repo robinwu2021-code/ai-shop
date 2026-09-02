@@ -173,8 +173,17 @@ public class BizPickupController {
     @GetMapping("/biz/store/qrcode")
     public StoreQrcode qrcode() {
         String merchantNo = BizContext.requireMerchantNo();
-        String code = storeCodeService.ensureFor(merchantNo);
-        return new StoreQrcode(merchantNo, code,
+        /*
+         * **码是哪家店的，要说出来**（V298 一店一码）。
+         *
+         * 没切店时发的是默认店的码。这里不静默回落就完事 —— 把 storeNo 一并返回，
+         * 端上显示「这是 XX 店的码」。多门店店主印 500 张贴纸之前，
+         * 至少能看见它属于哪家店；看不见的话，贴错店没有任何症状：
+         * 码扫得通、页面打得开、只是获客全算到了另一家头上。
+         */
+        String storeNo = BizContext.current().currentStoreNo();
+        String code = storeCodeService.ensureForStore(merchantNo, storeNo);
+        return new StoreQrcode(merchantNo, code, storeNo,
                 storeLinkService.linkOf(code, null),
                 storeCodeService.acodeBase64(merchantNo),
                 "建议印成 3×3cm 贴纸，贴在包装袋封口处");
@@ -184,7 +193,11 @@ public class BizPickupController {
      * @param url         对外链接。<b>未配域名时为 null</b> —— 端上不显示链接那一行
      * @param imageBase64 小程序码 PNG 的 base64（不含 data: 前缀）。通道未开启时为 null
      */
-    public record StoreQrcode(String merchantNo, String storeCode, String url,
+    /**
+     * @param storeNo 这个码属于哪家店。<b>空 = 主体连门店行都没有的历史数据</b>，
+     *                不是「属于所有店」—— 端上要显示店名，否则多门店店主印完才发现贴错了店
+     */
+    public record StoreQrcode(String merchantNo, String storeCode, String storeNo, String url,
                               String imageBase64, String printableHint) {
     }
 

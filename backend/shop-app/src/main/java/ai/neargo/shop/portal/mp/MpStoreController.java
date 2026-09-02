@@ -70,9 +70,11 @@ public class MpStoreController {
     public StoreHomeVO byCode(@RequestParam String storeCode,
                               @RequestParam(required = false) String deviceId,
                               jakarta.servlet.http.HttpServletRequest request) {
-        String merchantNo = storeCodeService.resolve(storeCode);
+        // V298：码带得出是哪家分店了。此前这里恒传 null，mkt_store_visit.store_no 一直是空的
+        var target = storeCodeService.resolveTarget(storeCode);
+        String merchantNo = target.entityNo();
         storeVisitService.record(new ai.neargo.shop.marketing.visit.StoreVisitService.Visit(
-                merchantNo, storeCode, null,
+                merchantNo, storeCode, target.storeNo(),
                 // 为空就是匿名访客 —— 那是要测的一层，不是缺失
                 SecurityUtils.currentUserNoOrNull(), deviceId,
                 clientIp(request), uaHash(request)));
