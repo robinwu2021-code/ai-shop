@@ -1736,6 +1736,10 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     posted: "Received {no}",
   },
   stockPick: {
+    scan: "Scan",
+    scanUnknown: "This code isn't linked yet — pick the item it belongs to",
+    scanBindHint: "Pick an item to link code {code}. Next scan finds it directly",
+    scanBound: "Linked",
     searchPh: "Search a product name or option",
     empty: "No matching product",
     picked: "{n} selected",

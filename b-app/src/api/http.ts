@@ -551,6 +551,8 @@ export const httpApi: MerchantApi = {
   mStockLedger: (q) => http.get<StockLedgerPage>(E.mStockLedger.path, q),
   mStockAdjust: (req) => http.post<void>(E.mStockAdjust.path, req),
   mSafetyStock: (itemId, body) => http.put<void>(E.mSafetyStock.path, { itemId, ...body }),
+  mItemByBarcode: (code) => http.get<StockBalance | null>(E.mItemByBarcode.path, { code }),
+  mBindBarcode: (body) => http.post<void>(E.mBindBarcode.path, body),
 
   /*
    * 五个「新建」口返回的是 **`{no}` 而不是裸字符串**。

@@ -14,6 +14,9 @@
  * 硬塞进弹层反而把「一次盘一批」压回「一次挑一件」。
  */
 import { computed, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
+import { api } from "@/api";
+import { scanCode } from "@shared/ports/scan";
 import type { StockBalance } from "@shared/types";
 
 const props = withDefaults(
@@ -25,18 +28,29 @@ const props = withDefaults(
     picked?: string[];
     /** 右侧那个数的说明，如「账面 {n}」「可用 {n}」。各屏关心的数不一样 */
     qtyLabel?: (b: StockBalance) => string;
+    /**
+     * itemId → skuNo。**绑码要它** —— 条码的真源是平台商品的 `prd_sku.barcode`，
+     * 而这个件手里只有进销存的 itemId，两者靠 `inv_item_ref` 对上、端上解不出来。
+     * 不给的话扫码仍能用（找得到就挑），只是绑不了。
+     */
+    skuNoOf?: (b: StockBalance) => string;
   }>(),
-  { picked: () => [], qtyLabel: undefined },
+  { picked: () => [], qtyLabel: undefined, skuNoOf: undefined },
 );
 
 const emit = defineEmits<{ pick: [b: StockBalance]; close: [] }>();
 
+const { t } = useI18n();
 const keyword = ref("");
 
 // 关掉时清空关键词：留着的话下次打开是上一次的筛选结果，
 // 而商家以为看到的是全部 —— 一个静默的空列表
 watch(() => props.visible, (v) => {
-  if (!v) keyword.value = "";
+  if (!v) {
+    keyword.value = "";
+    // 待绑的码也要清：留着的话下次打开弹层，随手挑一件就会把它绑上去
+    pendingCode.value = "";
+  }
 });
 
 const shown = computed(() => {
@@ -49,6 +63,64 @@ const shown = computed(() => {
 
 function isPicked(b: StockBalance): boolean {
   return props.picked.includes(b.itemId);
+}
+
+/**
+ * 扫码找货。**加在这个件上就同时覆盖进货 / 报损 / 调拨三处** ——
+ * 各页各写一遍的话，三处的失败提示迟早各自漂。
+ *
+ * 三段：
+ * ① 命中 → 直接当成挑了这一件，不用再翻列表；
+ * ② 没绑过 → **不报错**，把码留着，让商家从列表里选一件绑上（`pendingCode`）；
+ * ③ 扫码取消 / 不可用 → 静默返回，商家继续用搜索。
+ *
+ * **第一天必然全是②**：线上 `prd_sku.barcode` 是 0/396。这不是缺陷，是设计 ——
+ * 已拍板不做批量补录，数据靠用出来。所以②那条路要好走，不能是一句错误提示。
+ */
+const scanning = ref(false);
+/** 扫到了但没绑过的那个码。有值时列表处于「选一件货绑给它」的状态 */
+const pendingCode = ref("");
+
+async function scan() {
+  if (scanning.value) return;
+  scanning.value = true;
+  try {
+    const code = (await scanCode()).trim();
+    if (!code) return;
+    const hit = await api.mItemByBarcode(code);
+    if (hit) {
+      pendingCode.value = "";
+      emit("pick", hit);
+      return;
+    }
+    // 没绑过：留着这个码，等他从列表里选一件
+    pendingCode.value = code;
+    uni.showToast({ title: String(t("stockPick.scanUnknown")), icon: "none" });
+  } catch {
+    // 取消扫码、或这个端不支持 —— 都不是错误，静默回到搜索
+  } finally {
+    scanning.value = false;
+  }
+}
+
+/** 选中一行。**有待绑的码时先绑再挑** —— 绑完下次扫同一件直接命中 */
+async function choose(b: StockBalance) {
+  const code = pendingCode.value;
+  if (!code) {
+    emit("pick", b);
+    return;
+  }
+  pendingCode.value = "";
+  try {
+    // skuNo 从 itemId 反解不出来，绑码走的是商品域 —— 由外层给（见 skuNoOf）
+    const skuNo = props.skuNoOf ? props.skuNoOf(b) : b.itemId;
+    await api.mBindBarcode({ skuNo, barcode: code });
+    uni.showToast({ title: String(t("stockPick.scanBound")), icon: "none" });
+  } catch (e) {
+    // **绑失败不挡挑货**：他这一单还是要记的，码下次再绑
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+  emit("pick", b);
 }
 </script>
 
@@ -69,6 +141,17 @@ function isPicked(b: StockBalance): boolean {
       confirm-type="search"
     />
 
+    <!--
+      扫码按钮贴着搜索框：它们是同一件事的两种做法（找到那件货），
+      分开摆的话商家会以为扫码是另一个功能。
+    -->
+    <text class="sh-link pick__scan" @tap="scan">{{ $t("stockPick.scan") }}</text>
+
+    <!-- 扫到了没绑过：这一屏此刻的意思变了，得说出来，否则他不知道点一行会发生什么 -->
+    <text v-if="pendingCode" class="sh-hint pick__pending">
+      {{ $t("stockPick.scanBindHint", { code: pendingCode }) }}
+    </text>
+
     <text v-if="picked.length" class="sh-hint pick__count">
       {{ $t("stockPick.picked", { n: picked.length }) }}
     </text>
@@ -80,7 +163,7 @@ function isPicked(b: StockBalance): boolean {
       :key="b.itemId"
       class="pick sh-row sh-row--between sh-row--baseline"
       :class="{ 'pick--on': isPicked(b) }"
-      @tap="emit('pick', b)"
+      @tap="choose(b)"
     >
       <!--
         「已下架」跟在名字后面，不另起一行 —— 它是**这一行是哪件货**的一部分，
@@ -103,6 +186,16 @@ function isPicked(b: StockBalance): boolean {
   margin-bottom: 12rpx;
 }
 .pick__count {
+  display: block;
+  padding-bottom: 8rpx;
+}
+/* 扫码贴着搜索框右下：它是搜索的另一种做法，不是另一个功能 */
+.pick__scan {
+  display: block;
+  text-align: end;
+  padding-bottom: 8rpx;
+}
+.pick__pending {
   display: block;
   padding-bottom: 8rpx;
 }

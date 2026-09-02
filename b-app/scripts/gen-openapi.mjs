@@ -249,6 +249,8 @@ const RESPONSE_TYPES = {
   mSpecProps: "SpecTemplate[]",
   mStockAdjust: "void",
   mSafetyStock: "void",
+  mItemByBarcode: "StockBalance",
+  mBindBarcode: "void",
   mStockBalances: "StockBalance[]",
   mStockDocuments: "StockDocument[]",
   mStockItem: "StockItemDetail",

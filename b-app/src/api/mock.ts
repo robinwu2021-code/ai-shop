@@ -4514,6 +4514,28 @@ export const mockApi: MerchantApi = {
     });
   },
 
+  /**
+   * 按条码找货。**替身要留痕**：绑过的码在本次会话里再扫要命中 ——
+   * 「绑完第二次直接命中」正是这个功能的全部承诺，而吞掉绑定的替身验不到它。
+   *
+   * 种子只给一个已绑的码，其余全部未命中 —— 这与线上一致（`prd_sku.barcode` 0/396），
+   * 替身比线上干净的话，「第一天扫什么都不中」这件事就看不见了。
+   */
+  async mItemByBarcode(code) {
+    const itemId = mockBarcodes.get(code.trim());
+    if (!itemId) return delay(null);
+    return delay(invBalances().find((b) => b.itemId === itemId) ?? null);
+  },
+
+  async mBindBarcode(body) {
+    const code = body.barcode.trim();
+    const taken = mockBarcodes.get(code);
+    // 幂等：同一个码绑同一件货是成功；绑到另一件上要拒
+    if (taken && taken !== body.skuNo) throw new Error("这个码已经绑在另一件货上");
+    mockBarcodes.set(code, body.skuNo);
+    return delay(undefined as void);
+  },
+
   async mSafetyStock(itemId, body) {
     const key = body.locationId ? `${itemId}@${body.locationId}` : itemId;
     // qty 为 null = 撤掉库位覆盖。**删掉而不是写 0** —— 写 0 是「这个库位不预警」
@@ -4723,6 +4745,13 @@ export const mockApi: MerchantApi = {
  * 初值给 I1 一个 5 —— 它的可用是 3，于是「缺货」是**算出来的**而不是写死的。
  */
 const mockSafety = new Map<string, number>([["I1", 5]]);
+
+/**
+ * 条码 → itemId。**只种一条**：线上 `prd_sku.barcode` 是 0/396，
+ * 替身给满的话「第一天扫什么都不中」这个事实就被盖住了 ——
+ * 而那正是这个功能上线后最需要有人预期到的一件事。
+ */
+const mockBarcodes = new Map<string, string>([["6901234567892", "I1"]]);
 
 /** 缺货判据，与后端 `StockQueryServiceImpl.build` 同一套：阈值优先，否则看可用是否见底 */
 function shortage(available: number, safety: number): boolean {

@@ -37,6 +37,20 @@ public interface StockQueryService {
 
     ItemDetailVO itemDetail(String ownerId, String itemId);
 
+    /**
+     * 按条码找货。<b>扫码那一步的服务端</b>。
+     *
+     * <p>读的是 {@code inv_item_ref}（{@code ref_system = BARCODE}）——
+     * 条码的真源是平台商品的 {@code prd_sku.barcode}，本域只有一份投影。
+     * <b>不新增 {@code inv_item.barcode}</b>：条码是商品的属性不是库存的属性，
+     * 放两处一定会分岔。
+     *
+     * @return 命中的那件货；<b>没命中回 {@code null} 而不是抛</b> ——
+     *         「这个码还没绑过」是这个功能的<b>常态</b>（线上 {@code prd_sku.barcode} 是 0/396），
+     *         把常态做成异常，端上就要靠 catch 走正常流程，而错误提示会在日志里刷屏
+     */
+    BalanceVO byBarcode(String ownerId, String locationId, String code);
+
     /** 变动明细。游标分页，{@code cursor} 传上一页最后一行的 {@code id}。 */
     /**
      * 台账。**两种问法共用一条**：给 itemId 是「这件货怎么变的」，

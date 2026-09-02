@@ -1405,6 +1405,18 @@ export interface MerchantApi {
    * **`qty: 0` 是「不预警」**，与 `null`（跟随默认）是两件事。
    */
   mSafetyStock(itemId: string, body: { locationId?: string; qty: number | null }): Promise<void>;
+  /**
+   * 按条码找货。**没绑过回 `null` 不是抛错** —— 「这个码还没绑过」是常态
+   *（线上条码 0/396），做成异常的话端上要靠 catch 走正常流程。
+   */
+  mItemByBarcode(code: string): Promise<StockBalance | null>;
+  /**
+   * 绑码。**幂等** —— 同一个码绑同一件货重复调用是成功；
+   * 绑到本店另一件货上会被拒（一个码指向两件货，扫出来该给哪一件没有答案）。
+   *
+   * 绑完要经事件投影到进销存才扫得到，**那条链依赖 outbox 投递任务在跑**。
+   */
+  mBindBarcode(body: { skuNo: string; barcode: string }): Promise<void>;
 
   /** 记一笔进货 → 单号。存草稿用它，过账另调 */
   mInboundCreate(req: StockInboundReq): Promise<string>;

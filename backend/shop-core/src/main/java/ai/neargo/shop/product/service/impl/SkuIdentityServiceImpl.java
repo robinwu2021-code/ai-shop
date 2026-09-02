@@ -1,11 +1,15 @@
 package ai.neargo.shop.product.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.service.SkuIdentityService;
+import ai.neargo.shop.spi.product.ProductEvents;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,10 +36,13 @@ public class SkuIdentityServiceImpl implements SkuIdentityService {
 
     private final SkuMapper skuMapper;
     private final GoodsMapper goodsMapper;
+    private final OutboxEventBus events;
 
-    public SkuIdentityServiceImpl(SkuMapper skuMapper, GoodsMapper goodsMapper) {
+    public SkuIdentityServiceImpl(SkuMapper skuMapper, GoodsMapper goodsMapper,
+                                  OutboxEventBus events) {
         this.skuMapper = skuMapper;
         this.goodsMapper = goodsMapper;
+        this.events = events;
     }
 
     // ------------------------------------------------------------------ 导出
@@ -215,8 +222,78 @@ public class SkuIdentityServiceImpl implements SkuIdentityService {
             for (PrdSku row : toWrite) {
                 DataScopeContext.executeWithoutScope(() -> skuMapper.updateById(row));
             }
+            /*
+             * **写完要发投影事件**。这一步 2026-09-02 之前是缺的：
+             * 三列写进了 prd_sku，而进销存那边的 inv_item_ref / base_uom 一个字没变 ——
+             * 于是批量导入的条码永远扫不出来，货号也永远对不上，
+             * 而两边各自看都正常（商品页显示新值、库存页显示旧值，都不报错）。
+             *
+             * 与建品那条链共用同一个事件（ProductEvents.SkuUpserted）——
+             * 另造一个「身份三列变了」的事件，消费方就要认两种，而它们投的是同一份东西。
+             */
+            publishUpserted(merchantNo, toWrite);
         }
         return new ImportReport(total, willSet, noChange, problems, samples);
+    }
+
+    // ------------------------------------------------------------------ 单件绑码
+
+    @Override
+    @Transactional
+    public void bindBarcode(String merchantNo, String skuNo, String barcode) {
+        if (skuNo == null || skuNo.isBlank() || barcode == null || barcode.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String code = barcode.trim();
+        List<PrdSku> mine = skusOf(merchantNo);
+
+        PrdSku target = mine.stream().filter(x -> skuNo.equals(x.getSkuNo())).findFirst()
+                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+
+        // 已经是这个码：**成功，不是冲突**。弱网重试是常态，
+        // 第二次报错的话商家会以为没绑上而再选一遍
+        if (code.equals(target.getBarcode())) {
+            return;
+        }
+        // 本店另一件货占着这个码 —— 一个码指向两件货的话，扫出来该给哪一件没有答案
+        boolean taken = mine.stream()
+                .anyMatch(x -> !skuNo.equals(x.getSkuNo()) && code.equals(x.getBarcode()));
+        if (taken) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        PrdSku row = new PrdSku();
+        row.setId(target.getId());
+        row.setBarcode(code);
+        // 另外两列必须回填原值：三列都是 updateStrategy=ALWAYS，
+        // 留 null 会把货号和单位一起清空 —— 而商家只是想绑个码
+        row.setMerchantSkuCode(target.getMerchantSkuCode());
+        row.setSaleUnit(target.getSaleUnit());
+        DataScopeContext.executeWithoutScope(() -> skuMapper.updateById(row));
+
+        target.setBarcode(code);
+        publishUpserted(merchantNo, List.of(target));
+    }
+
+    /**
+     * 发投影事件，让进销存那边的 {@code inv_item_ref} 跟上。
+     *
+     * <p><b>它依赖 outbox 投递任务真的在跑</b> —— 2026-09-02 查实那个任务在生产上
+     * 一次都没跑过（见 {@code InventoryJobHandlers}）。任务没开的话，
+     * 这里发出去的事件会堆在 {@code sys_outbox} 里，而「第二次扫同一件直接命中」
+     * 这条承诺不成立。
+     */
+    private void publishUpserted(String merchantNo, List<PrdSku> rows) {
+        Map<String, String> titles = titlesOf(rows);
+        for (PrdSku row : rows) {
+            if (row.getSkuNo() == null) {
+                continue;
+            }
+            events.publish(new ProductEvents.SkuUpserted(
+                    row.getSkuNo(), merchantNo, row.getGoodsNo(),
+                    titles.getOrDefault(row.getGoodsNo(), ""),
+                    row.getSpec(), row.getBarcode(), row.getMerchantSkuCode(), row.getSaleUnit()));
+        }
     }
 
     // ------------------------------------------------------------------ 取数

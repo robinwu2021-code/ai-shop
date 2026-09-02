@@ -119,6 +119,8 @@ class BizEndpointPermTest {
         put("/biz/fulfillment/carriers", BizPerms.STOCK);
         // 界面上的「改数」，底下是一次单件盘点 —— 便捷端点，不是第二条改余额的路
         put("/biz/inventory/adjust", BizPerms.STOCK);
+        // 按条码找货：只读，与挑货同一档
+        put("/biz/inventory/items/by-barcode", BizPerms.STOCK);
         // 设安全库存：判 STOCK 而不是更高的码 —— 阈值是理货员日常要调的东西
         //（今天补了 5 袋、明天到货 50，线跟着动），与「改库存」同一档
         put("/biz/inventory/safety-stock", BizPerms.STOCK);
@@ -234,6 +236,10 @@ class BizEndpointPermTest {
         put("/biz/sku-identity/export", BizPerms.GOODS);
         put("/biz/sku-identity/import/plan", BizPerms.GOODS);
         put("/biz/sku-identity/import", BizPerms.GOODS);
+        // 绑条码：判 GOODS 不是 STOCK —— 它改的是**商品**上的一列（prd_sku.barcode），
+        // 与批量导入同一张表同一批人。理货员扫得了码（找货判 STOCK），
+        // 但把码绑到哪件商品上是商品的事
+        put("/biz/sku-identity/barcode", BizPerms.GOODS);
         put("/biz/my-spec-dims/{dimNo}/rename", BizPerms.GOODS);
         put("/biz/my-spec-dims/{dimNo}/archive", BizPerms.GOODS);
         // 标准品搜索（TDD-标准品库）：建品链路的一环，与规格模板同一档 ——

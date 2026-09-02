@@ -77,5 +77,21 @@ public class BizSkuIdentityController {
      * <p>端上要先读文件才能显示试算结果，读都读了就没必要再让服务端解一遍 multipart；
      * 而且小程序端没有 file input，只能走「粘贴」这条路 —— 两端同一个接口。
      */
+    /**
+     * 绑一个条码到一件 SKU 上 —— 扫码找货的另一半。
+     *
+     * <p><b>路径不带 id</b>：{@code /biz/sku-identity/{skuNo}/barcode} 会撞上 ADR-007
+     * 那条「资源段用单数」的闸门，而 {@code sku-identity} 是这个控制器已有的前缀。
+     * 编号放 body 里，与同域的 {@code /biz/inventory/adjust} 同一手法。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @PostMapping("/biz/sku-identity/barcode")
+    public void bindBarcode(@RequestBody BarcodeReq req) {
+        service.bindBarcode(BizContext.requireMerchantNo(), req.skuNo(), req.barcode());
+    }
+
     public record CsvReq(String csv) {}
+
+    /** @param barcode 扫出来的原始码。**服务端 trim 后落库**，不做别的清洗 —— 码就是码 */
+    public record BarcodeReq(String skuNo, String barcode) {}
 }

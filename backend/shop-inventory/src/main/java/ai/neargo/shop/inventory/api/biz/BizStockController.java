@@ -86,6 +86,25 @@ public class BizStockController {
         return query.pickableItems(owner(), location(), q, Math.min(size, PAGE_MAX));
     }
 
+    /**
+     * 扫码找货。<b>三段里的前两段在这里，第三段在端上</b>：
+     *
+     * <ul>
+     *   <li>命中 → 回那件货，端上直接加进单子</li>
+     *   <li>没命中 → <b>回 {@code null}，不是 404</b>。「这个码还没绑过」是这个功能的常态
+     *       （线上 {@code prd_sku.barcode} 是 0/396），端上据此让商家选一件货绑上</li>
+     * </ul>
+     *
+     * <p><b>标准库那一段（「标准库里是《XX》」）不在这里</b>：它要读 {@code prd_spu_std}，
+     * 而那是平台的表，进销存是独立库、读不到。要做的话落点在 {@code shop-app} 的桥接层，
+     * 与健康度、对差同一处 —— 这一轮不做。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
+    @GetMapping("/biz/inventory/items/by-barcode")
+    public BalanceVO byBarcode(@RequestParam String code) {
+        return query.byBarcode(owner(), location(), code);
+    }
+
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/items/{itemId}")
     public ItemDetailVO item(@PathVariable String itemId) {

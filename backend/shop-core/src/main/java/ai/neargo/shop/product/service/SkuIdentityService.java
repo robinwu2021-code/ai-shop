@@ -69,6 +69,23 @@ public interface SkuIdentityService {
     ImportReport apply(String merchantNo, String csv);
 
     /**
+     * 把一个条码绑到一件 SKU 上。<b>扫码找货的另一半</b>。
+     *
+     * <p>为什么需要它：线上 {@code prd_sku.barcode} 是 <b>0/396</b> ——
+     * 扫任何一件货都不会命中。已拍板<b>不做批量补录</b>（没人会为一个还没上线的功能
+     * 去录 396 个条码），改成「第一次扫到不认识的码，问一句这是哪件货」，
+     * 商家选一次，下次扫同一件直接命中。<b>数据是被用出来的，不是被录出来的。</b>
+     *
+     * <p><b>幂等</b>：同一个码绑到同一件货上重复调用是成功不是冲突 ——
+     * 弱网重试是常态，第二次报错的话商家会以为没绑上而再选一遍。
+     *
+     * @throws ai.neargo.shop.common.BizException {@code NOT_FOUND} 这件 SKU 不是他的；
+     *         {@code CONFLICT} 这个码已经绑在本店<b>另一件</b>货上 ——
+     *         一个码指向两件货的话，扫出来该给哪一件没有答案
+     */
+    void bindBarcode(String merchantNo, String skuNo, String barcode);
+
+    /**
      * @param total    数据行数（不含表头）
      * @param willSet  会真正写下去的行数
      * @param noChange 匹配上了但三列都没变化的行数

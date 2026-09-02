@@ -48,6 +48,13 @@ public class StockQueryServiceImpl implements StockQueryService {
 
     /** 多少天没动就算滞销。与需求 B-5 的口径一致，**由服务端判**。 */
     private static final int STALE_DAYS = 90;
+    /**
+     * 扫码回查时最多扫多少件物料。**比挑货弹层的 200 大**：弹层是给人翻的，
+     * 这一条是按 itemId 精确找一行，翻不到的话商家看到的是「这个码没绑过」——
+     * 而它其实绑过，只是排在 200 名之后。
+     */
+    private static final int PICK_SCAN_LIMIT = 5000;
+
     private static final String FLAG_SHORTAGE = "SHORTAGE";
     private static final String FLAG_STALE = "STALE";
     /**
@@ -186,6 +193,36 @@ public class StockQueryServiceImpl implements StockQueryService {
     private static List<String> offSaleFlags(InvItem item) {
         return Integer.valueOf(0).equals(item.getSourceOnSale())
                 ? List.of(FLAG_OFF_SALE) : List.of();
+    }
+
+    @Override
+    public BalanceVO byBarcode(String ownerId, String locationId, String code) {
+        String c = code == null ? "" : code.trim();
+        if (c.isEmpty()) {
+            return null;
+        }
+        /*
+         * **显式带 ownerId**：进销存不走平台的 DataScope，不带的话别家绑的码也能扫出来，
+         * 而它不报错 —— 商家会看到一件自己没有的货。
+         *
+         * 一个码最多指向一件货（`inv_item_ref` 的唯一键管这条），所以 LIMIT 1 是安全的。
+         */
+        InvItemRef ref = refMapper.selectOne(Wrappers.<InvItemRef>lambdaQuery()
+                .eq(InvItemRef::getOwnerId, ownerId)
+                .eq(InvItemRef::getRefSystem, InvEnums.RefSystem.BARCODE)
+                .eq(InvItemRef::getRef, c)
+                .last("LIMIT 1"));
+        if (ref == null) {
+            return null;
+        }
+        /*
+         * **走 pickableItems 的口径而不是余额**：扫到一件从没进过货的物料时，
+         * 余额行还不存在 —— 从余额出发的话它「扫不到」，
+         * 而那恰恰是商家最需要扫它的时刻（记第一笔进货）。
+         */
+        return pickableItems(ownerId, locationId, null, PICK_SCAN_LIMIT).stream()
+                .filter(b -> b.itemId().equals(ref.getItemId()))
+                .findFirst().orElse(null);
     }
 
     @Override
