@@ -129,7 +129,6 @@ onShow(() => {
       多店店主会读成「没切过去」（这条就是这么被报上来的）。
       所以补一枚只读的当前门店胶囊：它只在多店时出现，单店没有歧义可消。
     -->
-    <biz-store-tag v-if="merchant.isLogin" readonly></biz-store-tag>
 
     <!--
       分组密排，不是一行一张卡。

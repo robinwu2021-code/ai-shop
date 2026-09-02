@@ -198,6 +198,8 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="stock.title" :denied="!merchant.can('biz:stock')">
+    <!-- 库存是这家店的：不标出来，人会照着另一家的数去补货 -->
+    <biz-store-tag readonly></biz-store-tag>
     <!--
       总览与去处**同一张卡**。原来是四个数四张卡、七个入口七张卡，
       一屏读下来是一个十一格的网格 —— 分不出哪半边是数、哪半边是动作。

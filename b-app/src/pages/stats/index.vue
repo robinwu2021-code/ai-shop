@@ -43,6 +43,8 @@ onShow(load);
 <template>
   <!-- 经营数据属于客户资产（`biz:customer`）；「我的」页的入口已判过，这里给深链兜底 -->
   <sh-scaffold title-key="stats.title" :denied="!merchant.can('biz:customer')">
+    <!-- 这一页整页走 mStats，与工作台是同一个数 —— 不标出来，切了店会以为数字自己变了 -->
+    <biz-store-tag readonly></biz-store-tag>
     <template v-if="stats">
       <view class="sh-card block">
         <text class="txt-title">{{ $t("stats.today") }}</text>

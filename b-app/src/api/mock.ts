@@ -710,6 +710,35 @@ function hashPick(key: string, stores: Store[]): string {
 }
 
 /**
+ * <b>当前门店（mock 版）</b>。
+ *
+ * <p>mock 不走 HTTP，读不到 `X-Store-No` —— 但 pinia 切店时会把门店号落到
+ * `STORAGE.storeNo`，读同一个键即可（`mStoreQrcode` 早先就是这么做的）。
+ *
+ * <p><b>为什么必须有它</b>：后端有 5 个 B 端控制器按当前门店取数
+ * （工作台统计与待办、订单、商品、库存、配送规则），而 mock 一处都不认。
+ * 表现是**切了门店，界面纹丝不动** —— 而这正是「门店切换好像没做好」的样子：
+ * 切店本身是好的（存储写了、请求头也带了），只是替身看不见它。
+ *
+ * <p>单店返回空 = 不筛，与后端 `currentStoreScope()` 的口径一致。
+ */
+function currentStoreNo(): string {
+  if (db.stores.length <= 1) return "";
+  try {
+    return (uni.getStorageSync(STORAGE.storeNo) as string) || "";
+  } catch {
+    return "";
+  }
+}
+
+/** 按当前门店筛订单。单店 / 没切过店时原样返回 —— 与后端「不限定即全主体」一致。 */
+function scopedToStore(list: Order[]): Order[] {
+  const cur = currentStoreNo();
+  if (!cur) return list;
+  return list.filter((o) => storeOfOrder(o, db.stores) === cur);
+}
+
+/**
  * 这一单算哪家店的。
  *
  * mock 的订单种子上**没有 storeNo**（它比多门店早），而按店分组是这两页的全部内容。
@@ -1084,7 +1113,17 @@ export const mockApi: MerchantApi = {
 
   // ---------------------------------------------------------------- 店铺与获客
   async mStore() {
-    const out = { ...db.store } as typeof db.store & { announcementUntil?: number | null };
+    const cur = currentStoreNo();
+    const store = cur ? db.stores.find((x) => x.storeNo === cur) : undefined;
+    /*
+     * 门面资料按**当前门店**：地址取那家店自己的，公告等改过的字段从按店覆盖里取。
+     * 不分开的话，切到第二家店看到的是第一家的地址 —— 而那正是店主说的「没切过去」。
+     */
+    const out = {
+      ...db.store,
+      ...(store ? { address: store.address } : {}),
+      ...(cur ? storeOverrides.get(cur) ?? {} : {}),
+    } as typeof db.store & { announcementUntil?: number | null };
     // 与保存那一处同一条判断：过期的公告读出来就是空的
     if (out.announcementUntil && out.announcementUntil < Date.now()) out.announcement = "";
     return delay(out);
@@ -1804,13 +1843,20 @@ export const mockApi: MerchantApi = {
      * 于是保存经营范围会弹一句「Failed to execute 'structuredClone'…」，
      * 商家看到的是保存失败，而他什么也没做错。深拷贝一次＝HTTP 上的 JSON 往返。
      */
-    db.store = JSON.parse(JSON.stringify(payload)) as typeof db.store;
-    persist();
+    const clean = JSON.parse(JSON.stringify(payload)) as typeof db.store;
+    const cur = currentStoreNo();
+    if (cur) {
+      // 多门店：改的是**这一家**的门面，不能顺手把另一家的公告也改了
+      storeOverrides.set(cur, clean);
+    } else {
+      db.store = clean;
+      persist();
+    }
     /*
      * **过期即空**：与后端 `MchStore.effectiveAnnouncement()` 同一条判断。
      * 只在真库里做的话，「昨天到货挂到今天」这个最要紧的后果在 mock 上看不见。
      */
-    const out = { ...db.store } as typeof db.store & { announcementUntil?: number | null };
+    const out = { ...clean } as typeof db.store & { announcementUntil?: number | null };
     if (out.announcementUntil && out.announcementUntil < Date.now()) out.announcement = "";
     return delay(out);
   },
@@ -1914,7 +1960,9 @@ export const mockApi: MerchantApi = {
   // ---------------------------------------------------------------- 工作台
   async mTodo() {
     const merchantNo = db.merchant.merchantNo;
-    const mine = merchantNo ? db.orders.filter((o) => belongsToMerchant(o, merchantNo)) : [];
+    // 待办同样按当前门店（后端 BizDashboardController#todo 走 currentStoreScope）
+    const mine = merchantNo
+      ? scopedToStore(db.orders.filter((o) => belongsToMerchant(o, merchantNo))) : [];
     const pickupNo = db.merchant.pickupNo;
     const atMyPoint = db.merchant.isPickupPoint
       ? db.orders.filter((o) => o.fulfillment === "STORE_PICKUP" && (!pickupNo || o.pickupNo === pickupNo))
@@ -1935,9 +1983,11 @@ export const mockApi: MerchantApi = {
 
   async mStats() {
     const merchantNo = db.merchant.merchantNo;
-    const mine = db.orders.filter(
+    // ★ 按当前门店，不是名下全部 —— 与后端 BizDashboardController#stats 同一口径
+    //（那里的注释原话：「否则切门店时这几个数字不会变」）
+    const mine = scopedToStore(db.orders.filter(
       (o) => belongsToMerchant(o, merchantNo) && o.status !== "CANCELLED",
-    );
+    ));
     const dayStart = new Date().setHours(0, 0, 0, 0);
     const today = mine.filter((o) => o.createdAt >= dayStart);
     const sum = (list: Order[]) => list.reduce((s, o) => s + o.amount.payableMinor, 0);
@@ -2067,6 +2117,22 @@ export const mockApi: MerchantApi = {
   // ---------------------------------------------------------------- 商品
   async mGoodsList(q) {
     let list = myGoods();
+    /*
+     * <b>店级在售投影</b>（后端 `GoodsVO.storeOnSale`，MerchantGoodsServiceImpl）。
+     * 主体级的四态（审核中/已驳回）不受门店影响 —— 与后端一致：
+     * 那两态是主体的事，标成「本店未上架」会把「等审核」说成「我没上架」。
+     * 散列指派而不是随机：同一件货在同一家店每次都一样，刷新不跳。
+     */
+    const cur = currentStoreNo();
+    if (cur) {
+      const idx = Math.max(0, db.stores.findIndex((x) => x.storeNo === cur));
+      list = list.map((g) => {
+        let h = idx;
+        for (const ch of String(g.goodsNo ?? g.title ?? "")) h = (h * 31 + ch.charCodeAt(0)) % 100_000;
+        // 每家店留一部分不上架，否则「本店未上架」这个状态在 mock 上永远看不见
+        return { ...g, storeOnSale: h % 4 !== 0 };
+      });
+    }
     /*
      * **按四态筛，不是按 onSale 布尔值**。
      *
@@ -3036,7 +3102,9 @@ export const mockApi: MerchantApi = {
   // ---------------------------------------------------------------- 订单与配送
   async mOrderList(q) {
     const merchantNo = db.merchant.merchantNo;
-    let list = merchantNo ? db.orders.filter((o) => belongsToMerchant(o, merchantNo)) : [];
+    // 订单也按当前门店（后端 BizOrderController 五处判当前门店）
+    let list = merchantNo
+      ? scopedToStore(db.orders.filter((o) => belongsToMerchant(o, merchantNo))) : [];
     if (q.status) list = list.filter((o) => o.status === q.status);
     // 与 status 正交：商家的「待核销」= FULFILLING + 自提/到店核销类
     if (q.fulfillments?.length) {
@@ -3068,6 +3136,15 @@ export const mockApi: MerchantApi = {
 
   async mDelivered(orderNo) {
     const o = findOrder(orderNo);
+    /*
+     * <b>只能操作当前门店的单</b> —— 与后端 `MerchantOrderServiceImpl.require()`
+     * 同一条：「只按主体判的话，A 店店员能翻出 B 店的单」。
+     * 替身不判的话，这条规则要等真机上第一次跨店点「已送达」才露面。
+     */
+    const cur = currentStoreNo();
+    if (cur && storeOfOrder(o, db.stores) !== cur) {
+      throw new Error("这一单不属于当前门店");
+    }
     // 商家自送没有骑手轨迹，老板点一下就是送到了 —— 直接进完成态（ADR-005 §5）
     assertTransition(o.status, "COMPLETED");
     o.status = "COMPLETED";
@@ -3131,10 +3208,18 @@ export const mockApi: MerchantApi = {
   },
 
   async mDeliveryRule() {
-    return delay({ ...db.deliveryRule });
+    // 配送规则是**这家店的**（后端 BizDashboardController#deliveryRule 读 currentStoreNo）
+    const cur = currentStoreNo();
+    return delay({ ...(cur ? deliveryOverrides.get(cur) ?? db.deliveryRule : db.deliveryRule) });
   },
 
   async mSaveDeliveryRule(rule) {
+    const cur = currentStoreNo();
+    if (cur) {
+      // 改的是这家店的规则，别把另一家的也改了
+      deliveryOverrides.set(cur, { ...rule });
+      return delay({ ...rule });
+    }
     db.deliveryRule = { ...rule };
     persist();
     return delay({ ...db.deliveryRule });
@@ -3630,7 +3715,8 @@ export const mockApi: MerchantApi = {
       { avatar: string; count: number; spent: number; last: number; owned: number }
     >();
 
-    for (const o of db.orders) {
+    // 顾客也按当前门店（后端 BizDashboardController#customers 走 currentStoreScope）
+    for (const o of scopedToStore(db.orders)) {
       if (o.status === "CANCELLED" || !belongsToMerchant(o, merchantNo)) continue;
       const key = o.buyerNickname ?? db.user.nickname;
       const cur = map.get(key) ?? { avatar: "🙂", count: 0, spent: 0, last: 0, owned: 0 };
@@ -4598,13 +4684,28 @@ export const mockApi: MerchantApi = {
   // 种子刻意「不干净」：有缺货、有滞销、有预留。全绿的库存页看不出这一页是干什么的。
 
   async mStockSummary() {
+    /*
+     * 四个数按**当前门店**算，而不是四个写死的常量。
+     * 后端的库存三个控制器都判当前门店 —— mock 给常量的话，切了店这一屏一动不动，
+     * 而那正是「门店切换好像没做好」的样子。
+     */
+    const mine = scopedBalances();
+    if (currentStoreNo()) {
+      return delay({
+        itemCount: mine.length,
+        shortageCount: mine.filter((b) => b.flags.includes("SHORTAGE")).length,
+        staleCount: mine.filter((b) => b.flags.includes("STALE")).length,
+        inTransitCount: 0,
+        openCountNo: "CNT-24082601",
+      });
+    }
     return delay({ itemCount: 216, shortageCount: 6, staleCount: 12, inTransitCount: 1,
       // mock 里给一张开着的盘点单，否则「继续盘点」这条在 mock 上永远看不见
       openCountNo: "CNT-24082601" });
   },
 
   async mStockBalances(q) {
-    const all = invBalances();
+    const all = scopedBalances();
     const filter = q?.filter ?? "todo";
     // shortage / stale 是**精确的两档**：点「缺货 6」就该给这 6 条。
     // mock 不认的话，前端这条在 mock 上验不到（会静静地落回 todo）
@@ -4618,8 +4719,9 @@ export const mockApi: MerchantApi = {
 
   async mStockPickable(q) {
     // 从物料出发：mock 里也要有一件 0 库存的，否则「挑不到新货」这个缺陷在 mock 上看不见
+    // 可挑的货**按当前门店**：盘点/出库改的是这家店的库存
     const k = (q?.q ?? "").trim();
-    const all = [...invBalances(), {
+    const all = [...scopedBalances(), {
       // **故意不给 skuNo**：没有平台映射的物料绑不了码，那条分支要在替身上看得见，
       // 否则它只会在真机上第一次露面（2026-09-02 的绑码缺陷就是这么漏过去的）
       itemId: "IT-NEW", name: "新到的货（还没进过）", specText: "500g",
@@ -4818,7 +4920,9 @@ export const mockApi: MerchantApi = {
      * 页面选了「退给老周」，提交，回到单据列表看到的还是「报损」，而两者都不报错。
      * 同一条教训在调拨发货、安全库存上各吃过一次。
      */
-    const no = `OUT-24082600${32 + mockOutbounds.length}`;
+    // 单号带上门店：出库扣的是**这家店**的库存（后端 BizStockDocController 按当前门店）
+    const cur = currentStoreNo();
+    const no = `OUT-${cur ? cur.slice(-4) + "-" : ""}24082600${32 + mockOutbounds.length}`;
     const target = req.targetNo
       ? (mockSuppliers.find((x) => x.supplierNo === req.targetNo)?.name ?? req.targetNo)
       : "";
@@ -4847,22 +4951,35 @@ export const mockApi: MerchantApi = {
   },
 
   async mCountOpen() {
-    return delay("CNT-24082601");
+    // 单号带上门店：盘的是这家店的库位（后端 BizStockDocController 按当前门店解库位）
+    const cur = currentStoreNo();
+    return delay(cur ? `CNT-${cur.slice(-4)}-24082601` : "CNT-24082601");
   },
   /** 账面数是开单那一刻的快照 —— mock 里也给成与当前余额**不同**的数，
    *  否则「用当前余额顶替」这个错在 mock 下永远看不出来 */
   async mCountDetail(no) {
+    // 盘的是这家店的库位：可盘行取当前门店那一份（与 mStockPickable 同一口径）
+    const mine = scopedBalances();
+    const seeded = [
+      { itemId: "I1", name: "东北大米", specText: "5斤装", baseUom: "袋", bookQty: 5, countedQty: null, diffQty: null },
+      { itemId: "I4", name: "土鸡蛋", specText: "30枚装", baseUom: "箱", bookQty: 48, countedQty: null, diffQty: null },
+      { itemId: "I3", name: "陈醋", specText: "500ml", baseUom: "瓶", bookQty: 24, countedQty: null, diffQty: null },
+    ];
+    /*
+     * 多门店时只留**这家店有的那几行**：盘点单盘的是这家店的库位。
+     * 一行都不剩时退回整份 —— 空盘点单看不出这一页是干什么的，
+     * 而「这家店恰好没有这三样」不是这一屏要演的事。
+     */
+    const lines = mine.length && currentStoreNo()
+      ? seeded.filter((l) => mine.some((b) => b.itemId === l.itemId))
+      : seeded;
     return delay({
       countNo: no,
       status: "COUNTING",
       locationId: "L1",
       startedAt: "2026-08-26T09:02:00",
       operator: "张伟",
-      lines: [
-        { itemId: "I1", name: "东北大米", specText: "5斤装", baseUom: "袋", bookQty: 5, countedQty: null, diffQty: null },
-        { itemId: "I4", name: "土鸡蛋", specText: "30枚装", baseUom: "箱", bookQty: 48, countedQty: null, diffQty: null },
-        { itemId: "I3", name: "陈醋", specText: "500ml", baseUom: "瓶", bookQty: 24, countedQty: null, diffQty: null },
-      ],
+      lines: lines.length ? lines : seeded,
     } satisfies StockCount);
   },
 
@@ -5002,6 +5119,37 @@ const mockBarcodes = new Map<string, string>([["6901234567892", "I1"]]);
 function shortage(available: number, safety: number): boolean {
   return safety > 0 ? available < safety : available <= 0;
 }
+
+/**
+ * 当前门店的库存。<b>散列指派，不是编造</b>：同一件货每次都落到同一家店，
+ * 各店之和恒等于主体总数 —— 「总览说 216 件、点进去只有 80」那类矛盾不会出现。
+ * 真实后端读的是这家店自己的库存行（inv_balance.store_no）。
+ */
+function scopedBalances(): StockBalance[] {
+  const all = invBalances();
+  const cur = currentStoreNo();
+  if (!cur) return all;
+  const idx = db.stores.findIndex((x) => x.storeNo === cur);
+  return all.filter((b, i) => {
+    let h = i;
+    for (const ch of b.itemId) h = (h * 31 + ch.charCodeAt(0)) % 100_000;
+    return h % db.stores.length === (idx < 0 ? 0 : idx);
+  });
+}
+
+/**
+ * <b>按门店的门面资料与配送规则</b>。
+ *
+ * <p>共享 mock 库里那两份是**主体级单例**（`db.store` / `db.deliveryRule`，
+ * 一期单店时够用）。多门店之后它们是每家店各一份 —— 后端就是这样
+ * （`BizMerchantController` / `BizDashboardController` 都读 `currentStoreNo()`）。
+ * 不分开的话，店主切到第二家店看到的是第一家的地址与配送范围，
+ * 而界面上没有任何地方告诉他这一点。
+ *
+ * <p>只放在 b-app 的替身里、不动共享库：这是 B 端的形状，C 端读的仍是主体那份。
+ */
+const storeOverrides = new Map<string, Partial<typeof db.store>>();
+const deliveryOverrides = new Map<string, typeof db.deliveryRule>();
 
 function invBalances(): StockBalance[] {
   /*
