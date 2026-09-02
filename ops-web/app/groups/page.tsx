@@ -61,7 +61,8 @@ function GroupsInner() {
   // 只在指派抽屉打开时查（size 100：一期候选池很小，够用且不分页）。
   const merchants = useQuery({
     queryKey: ["merchants", "assignable"],
-    queryFn: () => api.listMerchants({ size: 100, status: "APPROVED" }),
+    // 状态词是 ACTIVE：APPROVED 是进件申请单的词，商家档案上没有 —— 写错就是空下拉框
+    queryFn: () => api.listMerchants({ size: 100, status: "ACTIVE" }),
     enabled: !!assigning,
   });
 

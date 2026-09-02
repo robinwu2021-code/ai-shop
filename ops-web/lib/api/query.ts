@@ -29,6 +29,15 @@ export type ArchiveQ = ScopedQ & { showArchived?: boolean };
 export type ApplyQ = { status?: string; keyword?: string; page?: number; size?: number };
 
 /** 商家：审核状态 + 分层 + 归档开关（P-11.1）。 */
+/**
+ * 商家档案检索。
+ *
+ * <p>`status` 保持 `string` 是因为它**逗号分隔多态**（商家页同时看几种审核态）。
+ * 代价是写错一个词也能编译过：2026-09-03 实测有两处写着 `status: "APPROVED"` ——
+ * 那是进件申请单的词，商家档案上从来没有过。真后端返回 0 条，
+ * 而页面看不出任何异常，客服只会以为「一个商家都没有」。
+ * 所以词表由 `lib/merchant-status-literals.test.ts` 那道闸守着。
+ */
 export type MerchantQ = ArchiveQ & { status?: string; tier?: string };
 
 /**

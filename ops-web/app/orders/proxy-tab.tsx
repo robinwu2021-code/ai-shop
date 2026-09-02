@@ -87,7 +87,10 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
   const communities = useQuery({ queryKey: ["communities", "proxy"], queryFn: () => api.listCommunities({ size: 100 }) });
   const merchants = useQuery({
     queryKey: ["merchants", "proxy"],
-    queryFn: () => api.listMerchants({ size: 100, status: "APPROVED" }),
+    // ★ 状态词是 ACTIVE 不是 APPROVED —— 后者是进件那条线的词（申请单审批通过），
+    // 商家档案上从来没有过。写错的表现是**下拉框恒为空**：真后端返回 0 条，
+    // 而页面看不出任何异常，客服只会以为「一个商家都没有」
+    queryFn: () => api.listMerchants({ size: 100, status: "ACTIVE" }),
   });
   // 商品按所选商家过滤：跨商家下单在 mock 层就会被拒，选项里干脆不给
   const skus = useQuery({
