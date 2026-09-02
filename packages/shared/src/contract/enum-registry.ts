@@ -256,6 +256,9 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     words: ["CREATED", "PICKED_UP", "IN_TRANSIT", "DELIVERED", "EXCEPTION"] },
   { decl: "ops-web:OutOfRangeAction", dom: "fulfillment", shape: "CLASS", verdict: "PLANNED",
     note: "超区处置动作，后端只判超区拒单（err.trade.out_of_delivery_range），没有可配策略" },
+  { decl: "ops-web:PayMode", dom: "trade", shape: "CLASS", verdict: "OK",
+    note: "与后端 PayModes 逐字一致：ONLINE 钱经平台走分账，OFFLINE 当面付给商家、平台不碰这笔钱",
+    words: ["ONLINE", "OFFLINE"] },
   { decl: "ops-web:GroupStatus", dom: "group", shape: "STATUS", verdict: "OK",
     note: "与后端 MktGroupBuy 的常量逐字一致（此前端上是 RUNNING/SUCCESS，只存在于 mock 里）——"
       + "这两个词不能改成 L1 的说法，改了接真后端那天每一行都渲染成「未知」",

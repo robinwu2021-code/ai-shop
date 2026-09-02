@@ -10,5 +10,20 @@ export const orderHttp: OrderApi = {
   interveneOrder: (v) => client.post(`/ops/orders/${v.orderNo}/intervene`, v),
   listOrderInterventions: (orderNo) => client.get(`/ops/orders/${orderNo}/interventions`),
   proxyCancelOrder: (v) => client.post(`/ops/orders/${v.orderNo}/proxy-cancel`, v),
-  createProxyOrder: (v) => client.post("/ops/orders/proxy", v),
+  /*
+   * 字段逐个列出来而不是 `{ ...v }`：
+   *   · 后端收的是 `fulfillment`，端上叫 `fulfillType` —— 名字不一样，透传会静默丢掉；
+   *   · 幂等键放 body（后端两处都收，请求头优先），这个客户端没有逐请求加头的口子；
+   *   · reason 显式写着，闸门才看得见它真的发了（ops-reason-required）。
+   */
+  createProxyOrder: (v) => client.post("/ops/orders/proxy", {
+    userNo: v.userNo,
+    merchantNo: v.merchantNo,
+    fulfillment: v.fulfillType,
+    pickupNo: v.pickupNo,
+    payMode: v.payMode,
+    items: v.items,
+    reason: v.reason,
+    idempotencyKey: v.idempotencyKey,
+  }),
 };

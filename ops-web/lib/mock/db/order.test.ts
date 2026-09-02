@@ -107,17 +107,44 @@ describe("代客取消（P-4.1.5）", () => {
 });
 
 describe("代客下单（P-4.1.5）", () => {
+  // userNo 与 mock 人档里的映射一致（getOpsPerson 给 "U-" + personNo）
   const base = {
-    buyerNickname: "小满", communityNo: "C001", merchantNo: "M903",
-    fulfillType: "STORE_PICKUP" as const, reason: "用户电话下单，不会用小程序",
+    userNo: "U-PS-1001", merchantNo: "M903",
+    fulfillType: "STORE_PICKUP" as const, payMode: "ONLINE" as const,
+    reason: "用户电话下单，不会用小程序", idempotencyKey: "IDEM-TEST",
   };
 
-  it("落到待支付而不是已支付 —— **代客下单不代付款**", async () => {
+  it("线上付落到待支付而不是已支付 —— **代客下单不代付款**", async () => {
     const sku = skus.find((s) => s.merchantNo === "M903" && s.status === "ON_SALE")!;
     const o = await orderMock.createProxyOrder({ ...base, items: [{ skuNo: sku.skuNo, qty: 1 }] });
     expect(o.status).toBe("WAIT_PAY");
     expect(o.paidAt).toBeNull();
     expect(o.payAmount).toBe(sku.prices.CN);
+  });
+
+  it("线下付落到待线下付 —— 钱当面给商家，平台不碰这笔钱", async () => {
+    const sku = skus.find((s) => s.merchantNo === "M903" && s.status === "ON_SALE")!;
+    const o = await orderMock.createProxyOrder({
+      ...base, payMode: "OFFLINE", items: [{ skuNo: sku.skuNo, qty: 1 }],
+    });
+    expect(o.status).toBe("WAIT_OFFLINE_PAY");
+    expect(o.paidAt).toBeNull();
+  });
+
+  it("★ 没有顾客就下不了单 —— 那样的订单没有主人，他看不到也付不了", async () => {
+    const sku = skus.find((s) => s.merchantNo === "M903" && s.status === "ON_SALE")!;
+    await expect(
+      orderMock.createProxyOrder({ ...base, userNo: "", items: [{ skuNo: sku.skuNo, qty: 1 }] }),
+    ).rejects.toThrow(/顾客/);
+  });
+
+  it("★ 快递下不了 —— 客服不该替顾客填地址，也没法当面核对", async () => {
+    const sku = skus.find((s) => s.merchantNo === "M903" && s.status === "ON_SALE")!;
+    await expect(
+      orderMock.createProxyOrder({
+        ...base, fulfillType: "EXPRESS", items: [{ skuNo: sku.skuNo, qty: 1 }],
+      }),
+    ).rejects.toThrow(/自取/);
   });
 
   it("跨商家要报错 —— 全站按商家拆单，混着下会拆出对不上的单", async () => {

@@ -4,9 +4,12 @@
 //
 // 两件事放一起，因为客服接的是同一通电话：「帮我下一单」和「帮我把那单取消」。
 //
-// ⚠️ 两条硬规则在 mock 层（api/mocks/order.ts），页面写不出违规操作：
-//   - 代客下单落到**待支付**，不代付款 —— 钱必须由用户自己付；
-//   - 一次只能下一个商家的货 —— 全站按商家拆单（E3）。
+// ⚠️ 四条硬规则在后端（PlatformOrderService#createProxyOrder），页面只是不给入口：
+//   - **必须先选到顾客本人**（按手机后四位在人档里找）—— 没绑账号的下不了单：
+//     那样的订单没有主人，顾客在 C 端看不到、付不了款、也退不了；
+//   - **不代付款**：默认线下付（当面付给商家），线上付则由顾客自己在 App 里付；
+//   - **不代用券、不代扣积分** —— 那是顾客的资产；
+//   - **不代填地址**：只能到点自取，要送货得顾客自己下单（地址得他自己选）。
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -30,6 +33,12 @@ import type { OrdersCopy } from "./copy";
 
 interface Line { skuNo: string; qty: string }
 
+/**
+ * 代客能选的履约方式：**到点自取那几种**（与后端 PROXY_FULFILLMENTS 同一份）。
+ * 快递 / 自送 / 上门都要收货地址 —— 那是顾客的个人信息，客服也没法当面核对。
+ */
+const PROXY_FULFILLMENTS: FulfillmentType[] = ["STORE_PICKUP", "NEIGHBOR_PICKUP", "STORE_VERIFY"];
+
 export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) {
   const qc = useQueryClient();
   const fulfillMap = useFulfillmentTypeMap();
@@ -40,10 +49,31 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
   const [reason, setReason] = useState("");
 
   const [form, setForm] = useState({
-    buyerNickname: "", communityNo: "", merchantNo: "",
-    fulfillType: "STORE_PICKUP" as FulfillmentType, reason: "",
+    merchantNo: "", fulfillType: "STORE_PICKUP" as FulfillmentType,
+    payMode: "OFFLINE" as "OFFLINE" | "ONLINE", reason: "",
   });
   const [lines, setLines] = useState<Line[]>([{ skuNo: "", qty: "1" }]);
+  /** 顾客：按手机后四位在人档里找。**先有人，才有单** */
+  const [phoneTail, setPhoneTail] = useState("");
+  const [picked, setPicked] = useState<{ personNo: string; phoneTail: string | null } | null>(null);
+  /*
+   * 幂等键在**打开这张表单时**生成，提交成功后换一把。
+   * 连点两下 = 同一把钥匙 = 一单；顾客真要再来一单 = 新表单 = 新钥匙。
+   */
+  const [idemKey, setIdemKey] = useState(() => crypto.randomUUID());
+
+  // 与后端同一条规矩：手机尾号要恰好四位才查（三位能查出人是 mock 放宽出来的假象）
+  const candidates = useQuery({
+    queryKey: ["proxy-persons", phoneTail],
+    queryFn: () => api.listOpsMembers({ phoneTail, size: 20 }),
+    enabled: phoneTail.length === 4,
+  });
+  const person = useQuery({
+    queryKey: ["proxy-person", picked?.personNo],
+    queryFn: () => api.getOpsPerson(picked!.personNo),
+    enabled: !!picked,
+  });
+  const customerUserNo = person.data?.userNo ?? "";
 
   const q = { keyword, page, size };
   const list = useQuery({ queryKey: ["orders", q], queryFn: () => api.listOrders(q) });
@@ -60,14 +90,21 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
   });
 
   const reset = () => {
-    setForm({ buyerNickname: "", communityNo: "", merchantNo: "", fulfillType: "STORE_PICKUP", reason: "" });
+    setForm({ merchantNo: "", fulfillType: "STORE_PICKUP", payMode: "OFFLINE", reason: "" });
     setLines([{ skuNo: "", qty: "1" }]);
+    setPhoneTail(""); setPicked(null);
+    setIdemKey(crypto.randomUUID());
   };
 
   const create = useMutation({
     mutationFn: () =>
       api.createProxyOrder({
-        ...form,
+        userNo: customerUserNo,
+        merchantNo: form.merchantNo,
+        fulfillType: form.fulfillType,
+        payMode: form.payMode,
+        reason: form.reason,
+        idempotencyKey: idemKey,
         items: lines.filter((l) => l.skuNo).map((l) => ({ skuNo: l.skuNo, qty: Number(l.qty) })),
       }),
     onSuccess: (o) => {
@@ -114,20 +151,41 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
       <Card className="mb-4">
         <CardHeader><CardTitle>{c.proxyCreateTitle}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
+          {/* 先有人，才有单：这一格空着的时候，下面的东西都没有意义 */}
+          <div className="space-y-1">
+            <Label htmlFor="px-phone" required>{c.fieldCustomer}</Label>
+            <div className="flex items-center gap-2">
+              <Input id="px-phone" className="w-40" disabled={!canProxy} value={phoneTail}
+                placeholder={c.phoneTailPlaceholder} maxLength={4}
+                onChange={(e) => { setPhoneTail(e.target.value.replace(/\D/g, "").slice(0, 4)); setPicked(null); }} />
+              {picked ? (
+                <span className="txt-body">
+                  {fill(c.customerPicked, { tail: picked.phoneTail ?? "—" })}
+                  {person.isLoading ? "" : customerUserNo ? "" : ` · ${c.customerNoAccount}`}
+                </span>
+              ) : (
+                <span className="text-muted-foreground txt-caption">{c.customerPickHint}</span>
+              )}
+            </div>
+            {phoneTail.length === 4 && !picked && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {candidates.data?.records.length
+                  ? candidates.data.records.map((m) => (
+                    <Button key={m.memberNo} size="sm" variant="outline" disabled={!canProxy}
+                      onClick={() => setPicked({ personNo: m.personNo, phoneTail: m.phoneTail })}>
+                      {fill(c.customerCandidate, { tail: m.phoneTail ?? "—", entity: m.entityName })}
+                    </Button>
+                  ))
+                  : <span className="text-muted-foreground txt-caption">{c.customerNotFound}</span>}
+              </div>
+            )}
+            {/* 没绑账号 = 这单会没有主人。说清楚下一步，而不是只说「不行」 */}
+            {picked && !person.isLoading && !customerUserNo && (
+              <p className="txt-caption text-destructive">{c.customerNoAccountHint}</p>
+            )}
+          </div>
+
           <FieldGrid>
-            <div className="space-y-1">
-              <Label htmlFor="px-buyer" required>{c.fieldBuyer}</Label>
-              <Input id="px-buyer" className="w-full" disabled={!canProxy} value={form.buyerNickname}
-                onChange={(e) => setForm((p) => ({ ...p, buyerNickname: e.target.value }))} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="px-community" required>{c.fieldCommunity}</Label>
-              <Select id="px-community" className="w-full" disabled={!canProxy} value={form.communityNo}
-                onChange={(e) => setForm((p) => ({ ...p, communityNo: e.target.value }))}>
-                <option value="">{c.pickCommunity}</option>
-                {communities.data?.records.map((x) => <option key={x.communityNo} value={x.communityNo}>{x.name}</option>)}
-              </Select>
-            </div>
             <div className="space-y-1">
               <Label htmlFor="px-merchant" required>{c.fieldMerchant}</Label>
               <Select id="px-merchant" className="w-full" disabled={!canProxy} value={form.merchantNo}
@@ -139,10 +197,25 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
             </div>
             <div className="space-y-1">
               <Label htmlFor="px-fulfill" required>{c.fieldFulfill}</Label>
+              {/* 只给到点自取：要送货得顾客自己下单，地址得他自己选 */}
               <Select id="px-fulfill" className="w-full" disabled={!canProxy} value={form.fulfillType}
                 onChange={(e) => setForm((p) => ({ ...p, fulfillType: e.target.value as FulfillmentType }))}>
-                {Object.entries(fulfillMap).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                {PROXY_FULFILLMENTS.map((k) => (
+                  <option key={k} value={k}>{fulfillMap[k]?.label ?? k}</option>
+                ))}
               </Select>
+              <p className="txt-caption text-muted-foreground">{c.fulfillProxyHint}</p>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="px-paymode" required>{c.fieldPayMode}</Label>
+              <Select id="px-paymode" className="w-full" disabled={!canProxy} value={form.payMode}
+                onChange={(e) => setForm((p) => ({ ...p, payMode: e.target.value as "OFFLINE" | "ONLINE" }))}>
+                <option value="OFFLINE">{c.payModeOffline}</option>
+                <option value="ONLINE">{c.payModeOnline}</option>
+              </Select>
+              <p className="txt-caption text-muted-foreground">
+                {form.payMode === "OFFLINE" ? c.payModeOfflineHint : c.payModeOnlineHint}
+              </p>
             </div>
           </FieldGrid>
 
@@ -183,7 +256,7 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
 
           <div className="flex items-center justify-between">
             <span className="txt-body">{fill(c.proxyTotal, { amount: money(total) })}</span>
-            <Button loading={create.isPending} disabled={!canProxy}
+            <Button loading={create.isPending} disabled={!canProxy || !customerUserNo}
               onClick={() => create.mutate()}>{c.btnProxyCreate}</Button>
           </div>
         </CardContent>

@@ -48,6 +48,24 @@ const zh = {
   fieldProxyReason: "代下原因",
   proxyReasonPlaceholder: "例：用户电话下单，不会用小程序",
   proxyReasonHint: "代客下单绕过了用户自主下单，得留下为什么。",
+
+  // ── 代客下单：先有人，才有单
+  fieldCustomer: "顾客",
+  phoneTailPlaceholder: "手机后四位",
+  customerPickHint: "输入手机后四位找到本人 —— 单要落在他名下，他才看得到、付得了",
+  /** `{tail}` 是手机后四位，`{entity}` 是他在哪家店的会员 */
+  customerCandidate: "尾号 {tail} · {entity}",
+  /** `{tail}` 是手机后四位 */
+  customerPicked: "已选：尾号 {tail}",
+  customerNotFound: "没找到 —— 这个号还没在平台上留下过记录",
+  customerNoAccount: "未绑账号",
+  customerNoAccountHint: "这个人档还没绑账号，下不了单：订单会没有主人，他在小程序里既看不到也付不了。请先让他用这个手机号登录一次。",
+  fulfillProxyHint: "只能到点自取。要送货得顾客自己在小程序里下单 —— 收货地址得他自己选",
+  fieldPayMode: "支付方式",
+  payModeOffline: "线下付（当面付给商家）",
+  payModeOnline: "线上付（顾客自己在小程序里付）",
+  payModeOfflineHint: "落「待线下付」，商家当面收款后自己确认。要商家开了线下收款才能选",
+  payModeOnlineHint: "落「待支付」，顾客要在关单时限内自己付掉，否则会自动关单",
   proxyTotal: "合计 {amount}",
   btnProxyCreate: "生成待支付订单",
   toastProxyCreated: "已生成 {no}，待用户支付",
@@ -221,6 +239,24 @@ const en: typeof zh = {
   fieldProxyReason: "Why place it for them",
   proxyReasonPlaceholder: "e.g. Ordered by phone; cannot use the mini program",
   proxyReasonHint: "A proxy order bypasses the customer ordering for themselves, so the reason has to be on record.",
+
+  // ── Proxy ordering: find the person first
+  fieldCustomer: "Customer",
+  phoneTailPlaceholder: "Last 4 digits",
+  customerPickHint: "Find them by the last 4 digits — the order has to be theirs, or they cannot see or pay it",
+  /** `{tail}` is the phone tail, `{entity}` the merchant they are a member of */
+  customerCandidate: "…{tail} · {entity}",
+  /** `{tail}` is the phone tail */
+  customerPicked: "Chosen: …{tail}",
+  customerNotFound: "No match — this number has no record on the platform yet",
+  customerNoAccount: "no account",
+  customerNoAccountHint: "This person has no account yet, so no order can be placed: it would have no owner, and they could neither see nor pay it. Ask them to sign in once with this number first.",
+  fulfillProxyHint: "Pickup only. Delivery has to be placed by the customer — they pick the address themselves",
+  fieldPayMode: "Payment",
+  payModeOffline: "In person (pay the merchant)",
+  payModeOnline: "In the app (the customer pays)",
+  payModeOfflineHint: "Lands as awaiting in-person payment; the merchant confirms after collecting. Only if they accept in-person payment",
+  payModeOnlineHint: "Lands as awaiting payment; the customer has to pay before the order times out",
   proxyTotal: "Total {amount}",
   btnProxyCreate: "Create an unpaid order",
   toastProxyCreated: "{no} created — awaiting the customer’s payment",

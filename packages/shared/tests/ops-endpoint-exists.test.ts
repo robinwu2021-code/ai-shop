@@ -115,7 +115,6 @@ const KNOWN_GAPS: Record<string, string> = {
 
   // ── 其余零星 ──
   "POST /ops/after-sales/{x}/status": "改售后状态（现有 arbitrate 等具名动作）",
-  "POST /ops/orders/proxy": "代客下单",
 };
 
 function normalize(p: string): string {

@@ -1,5 +1,5 @@
 // 覆盖范围：订单管理（P-4.1）。
-import type { FulfillmentType, Order, OrderException, OrderIntervention, OrderStatus, Page } from "@/lib/types";
+import type { FulfillmentType, Order, OrderException, OrderIntervention, OrderStatus, Page, PayMode } from "@/lib/types";
 import type { OrderQ, PageQ } from "../query";
 
 export type ExceptionQ = PageQ & { kind?: string };
@@ -40,18 +40,28 @@ export interface OrderApi {
   proxyCancelOrder(v: { orderNo: string; reason: string }): Promise<Order>;
 
   /**
-   * 代客下单（客服电话代下）。
+   * 代客下单（客服电话代下，P-4.1.4）。需求梳理见
+   * `docs/requirements/代客下单-需求梳理.md`；四条边界都在后端强制：
    *
-   * - 一次只能下**一个商家**的商品：全站按商家拆单（E3），跨商家应该下多单；
-   * - 落到 `WAIT_PAY` 而不是已支付 —— 代客下单不代付款，钱必须由用户自己付；
-   * - `reason` 必填：代客下单绕过了用户自主下单，得留下为什么。
+   * - **必须落在真实顾客的 `userNo` 上**（从人档取）。此前这里收的是一个自由文本昵称，
+   *   照它做出来的是一张**没有主人的订单**：顾客在 C 端看不到、付不了款、也退不了；
+   * - **不代付款**：`OFFLINE` 落待线下付（当面付给商家），`ONLINE` 落待支付由顾客自己付；
+   * - **不代用券、不代扣积分** —— 那是顾客的资产，所以这里根本没有这两个字段；
+   * - **不代填地址**：只放行到点自取那几种履约方式，快递/自送要地址，客服没法核对。
+   *
+   * 一次只能下**一个商家**的商品：全站按商家拆单（E3），跨商家应该下多单。
+   *
+   * `idempotencyKey` 在**打开表单那一刻**生成：手一抖不能变成两单
+   * （两单会真的锁两份库存、也真的要顾客付两次）。
    */
   createProxyOrder(v: {
-    buyerNickname: string;
-    communityNo: string;
+    userNo: string;
     merchantNo: string;
     fulfillType: FulfillmentType;
+    pickupNo?: string;
+    payMode: PayMode;
     items: { skuNo: string; qty: number }[];
     reason: string;
+    idempotencyKey: string;
   }): Promise<Order>;
 }

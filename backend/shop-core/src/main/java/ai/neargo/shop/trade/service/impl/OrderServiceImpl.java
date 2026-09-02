@@ -259,7 +259,7 @@ public class OrderServiceImpl implements OrderService {
         Split split = split(cmd);
         // 预览不落库、不锁库存：用户可能在结算页反复改地址与履约方式。
         // 但**优惠要按下单时同一套规则算**，否则结算页显示的金额和实付对不上
-        return split.toVO(discountsOf(cmd, split));
+        return split.toVO(discountsOf(cmd, split, SecurityUtils.currentUserNo()));
     }
 
     /**
@@ -429,7 +429,12 @@ public class OrderServiceImpl implements OrderService {
      * 满 100 减 10 之后剩 95，再要用「满 100 可用」的券就不行了。
      * 宽松的一侧（按原价判门槛）会让商家承担两次优惠而事先算不出来。
      */
-    private Discounts discountsOf(CreateOrderCommand cmd, Split split) {
+    /**
+     * @param userNo 用券的人。<b>必须传进来，不能在这里取当前登录人</b> ——
+     *               代客下单（{@link #createFor}）下单的是客服、用券的是顾客，
+     *               取当前登录人会去扣客服自己的券，而且不会有任何报错
+     */
+    private Discounts discountsOf(CreateOrderCommand cmd, Split split, String userNo) {
         if (split.groups.isEmpty()) {
             return Discounts.none();
         }
@@ -443,7 +448,7 @@ public class OrderServiceImpl implements OrderService {
         if (cmd.couponNo() == null || cmd.couponNo().isBlank()) {
             return new Discounts(auto, CouponPort.Allocation.none());
         }
-        CouponPort.Allocation coupon = couponPort.allocate(SecurityUtils.currentUserNo(), cmd.couponNo(),
+        CouponPort.Allocation coupon = couponPort.allocate(userNo, cmd.couponNo(),
                 split.groups.stream()
                         .map(g -> new CouponPort.MerchantAmount(
                                 g.merchantNo, g.goodsAmount() - auto.of(g.merchantNo)))
@@ -485,7 +490,12 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderVO create(CreateOrderCommand cmd, String idempotencyKey) {
-        String userNo = SecurityUtils.currentUserNo();
+        return createFor(SecurityUtils.currentUserNo(), cmd, idempotencyKey);
+    }
+
+    @Override
+    @Transactional
+    public OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey) {
         return idempotency.execute(idempotencyKey, "POST /mp/order", userNo, OrderVO.class,
                 () -> doCreate(cmd, userNo));
     }
@@ -574,7 +584,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // 优惠：与预览同一套规则（discountsOf 是唯一实现）
-        Discounts discounts = discountsOf(cmd, split);
+        Discounts discounts = discountsOf(cmd, split, userNo);
 
         /*
          * 子单号**提前生成**：积分抵扣要落到各个子单上（三家里退了一家时才退得准），
@@ -841,7 +851,9 @@ public class OrderServiceImpl implements OrderService {
         // ⑦ 发事件（只写 outbox，与业务同事务）
         eventBus.publish(new OrderEvents.OrderCreated(orderNo, userNo, subOrderNos, split.payAmount()));
 
-        return detail(orderNo);   // 下单返回支付视角：端上下一步就是去收银台
+        // 下单返回支付视角：端上下一步就是去收银台。**按下单归属的那个人查**，
+        // 代客下单时下单的是客服、属主是顾客
+        return detailOf(orderNo, userNo);
     }
 
     // ---------------------------------------------------------------- 支付
@@ -1149,17 +1161,29 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderVO detail(String orderNo) {
+        return detailOf(orderNo, SecurityUtils.currentUserNo());
+    }
+
+    /**
+     * 属主视角的详情，<b>属主由参数给</b>。
+     *
+     * <p>公开的 {@link #detail} 永远只认当前登录人 —— 属主鉴权仍然写在查询条件里
+     * （防 IDOR 的第一层）。这里之所以要参数化：代客下单（{@link #createFor}）的
+     * 下单人是客服、属主是顾客，下单末尾那句「返回支付视角」用当前登录人去查，
+     * <b>查出来的必然是空</b>，于是一张已经建好的单以 404 收场。
+     */
+    private OrderVO detailOf(String orderNo, String userNo) {
         // Q6：先按子单号查（C 端绝大多数请求是订单视角），查不到再按主单号
         OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
                 .eq(OrdSubOrder::getSubOrderNo, orderNo)
-                .eq(OrdSubOrder::getUserNo, SecurityUtils.currentUserNo())
+                .eq(OrdSubOrder::getUserNo, userNo)
                 .last("limit 1"));
         if (sub != null) {
             OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                     .eq(OrdOrder::getOrderNo, sub.getOrderNo()).last("limit 1"));
             return orderView(sub, order);
         }
-        OrdOrder order = requireOwnOrder(orderNo);
+        OrdOrder order = requireOwnOrder(orderNo, userNo);
         return payView(order, subOrders(orderNo));
     }
 
@@ -1440,10 +1464,14 @@ public class OrderServiceImpl implements OrderService {
     // ---------------------------------------------------------------- 装配
 
     private OrdOrder requireOwnOrder(String orderNo) {
+        return requireOwnOrder(orderNo, SecurityUtils.currentUserNo());
+    }
+
+    private OrdOrder requireOwnOrder(String orderNo, String userNo) {
         // 属主鉴权：查询条件带 userNo，而不是查出来再判 —— 防 IDOR 的第一层
         OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getOrderNo, orderNo)
-                .eq(OrdOrder::getUserNo, SecurityUtils.currentUserNo())
+                .eq(OrdOrder::getUserNo, userNo)
                 .last("limit 1"));
         if (order == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);

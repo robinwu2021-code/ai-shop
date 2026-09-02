@@ -18,6 +18,19 @@ public interface OrderService {
     /** 下单。幂等由 {@code Idempotency-Key} 保证；库存在此锁定，支付成功才实扣。 */
     OrderVO create(CreateOrderCommand cmd, String idempotencyKey);
 
+    /**
+     * 下单，但**买家是传进来的那个人**（代客下单，P-4.1.4）。
+     *
+     * <p>与 {@link #create} 的唯一区别就是买家从哪儿来：那个取当前登录人，
+     * 这个由调用方给。<b>其余一切完全相同</b> —— 拆单、锁库存、算优惠、
+     * 归因、支付方式校验都走同一段代码，否则代客下的单迟早在某个环节与自助单不一样，
+     * 而那种差异只会在出问题时才被发现。
+     *
+     * <p><b>调用方必须自己把住权限</b>：这个方法不判「谁有资格替别人下单」。
+     * 目前唯一的调用方是 {@code PlatformOrderService#createProxyOrder}（判 order:order:proxy）。
+     */
+    OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey);
+
     /** 发起支付，返回端上调起支付所需的参数。**端侧不自判成功**，以回调/回查为准。 */
     /**
      * 发起支付：落流水 + 向通道下单，拿回端上唤起收银台的参数。

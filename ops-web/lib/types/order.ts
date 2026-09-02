@@ -74,6 +74,13 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   REFUNDED: [],
 };
 
+/**
+ * 支付方式。**与后端 `PayModes` 逐字一致**：
+ * `ONLINE` 钱经平台走分账；`OFFLINE` 买家当面付给商家，平台不碰这笔钱
+ * （因此不进分账、不抽佣，平台券也不能用）。
+ */
+export type PayMode = "ONLINE" | "OFFLINE";
+
 export interface OrderItem {
   /** SKU 单号 */
   skuNo: string;

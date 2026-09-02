@@ -29,5 +29,6 @@ POST /ops/stores/templates/*/enabled
 #
 # ── 常见问题（message.ts）
 #
-# ── 零散：工单转派与代客操作、社区归档、代客下单
-POST /ops/orders/proxy
+# ── 零散：工单转派与代客操作、社区归档
+#    代客下单已于 2026-09-03 接通（OpsOrderController POST /ops/orders/proxy，
+#    落在顾客的 userNo 上、默认线下付、不代用券与积分、只到点自取），按棘轮规矩删掉

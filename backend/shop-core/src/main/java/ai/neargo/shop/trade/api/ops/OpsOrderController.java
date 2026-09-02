@@ -5,6 +5,7 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.trade.service.MerchantOrderService;
+import ai.neargo.shop.trade.service.PlatformOrderService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -31,7 +33,7 @@ import java.util.List;
 public class OpsOrderController {
 
     private final MerchantOrderService orderService;
-    private final ai.neargo.shop.trade.service.PlatformOrderService platformOrderService;
+    private final PlatformOrderService platformOrderService;
     private final AuditLogPort auditLogPort;
 
     public OpsOrderController(MerchantOrderService orderService,
@@ -134,6 +136,47 @@ public class OpsOrderController {
                 SecurityUtils.currentUserNo());
         auditLogPort.record("ORDER_PROXY_CANCEL", orderNo, reason);
         return vo;
+    }
+
+    /**
+     * 代客下单（P-4.1.4）：老人打电话来，客服替他把单下了。
+     *
+     * <p>需求梳理见 {@code docs/requirements/代客下单-需求梳理.md}；四条边界
+     * （落在真实顾客名下 / 不代付款 / 不代用券与积分 / 不代填地址）写在
+     * {@link PlatformOrderService#createProxyOrder} 上。
+     *
+     * <p><b>幂等键必传</b>：运营端在打开表单那一刻生成。不传的话客服手一抖就是两单，
+     * 而这两单会真的锁两份库存、也真的要两次收款。
+     */
+    @PostMapping("/ops/orders/proxy")
+    @PreAuthorize("@perm.can('" + Perms.ORDER_PROXY + "')")
+    public ai.neargo.shop.trade.dto.OrderVO createProxy(
+            @RequestBody ProxyCreateReq req,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idemKey) {
+        String operator = SecurityUtils.currentUserNo();
+        var vo = platformOrderService.createProxyOrder(
+                new PlatformOrderService.ProxyOrderCommand(req.userNo(), req.merchantNo(),
+                        req.items() == null ? java.util.List.of() : req.items().stream()
+                                .map(i -> new PlatformOrderService.ProxyOrderCommand.Item(i.skuNo(), i.qty()))
+                                .toList(),
+                        req.fulfillment(), req.pickupNo(), req.payMode(), req.reason()),
+                operator, idemKey == null ? req.idempotencyKey() : idemKey);
+        auditLogPort.record("ORDER_PROXY_CREATE", vo.orderNo(),
+                "为 " + req.userNo() + " 代下 " + req.merchantNo() + "｜" + req.reason());
+        return vo;
+    }
+
+    /**
+     * @param userNo         顾客的账号。人档里没绑账号的<b>下不了单</b>
+     * @param payMode        为空按 {@code OFFLINE}（当面付）
+     * @param idempotencyKey 走不了请求头时的退路（与 {@code /mp/order} 同一个约定）
+     */
+    public record ProxyCreateReq(String userNo, String merchantNo, java.util.List<ItemReq> items,
+                                 String fulfillment, String pickupNo, String payMode,
+                                 String reason, String idempotencyKey) {
+
+        public record ItemReq(String skuNo, int qty) {
+        }
     }
 
     /** @param to 目标状态，用**展示状态**的词（与端上一致） */

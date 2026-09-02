@@ -194,6 +194,8 @@ export const RULES = [
   // ── 交易订单 ───────────────────────────────────────────────────────────
   ["POST", /^\/ops\/orders\/[^/]+\/intervene$/, "order:order:modify"],
   ["POST", /^\/ops\/orders\/[^/]+\/proxy-cancel$/, "order:order:proxy"],
+  // 代客下单（P-4.1.4）。与代客取消同一个码：客服接的是同一通电话
+  ["POST", /^\/ops\/orders\/proxy$/, "order:order:proxy"],
   ["GET", /^\/ops\/(order|orders)/, "order:order:read"],
 
   // ── 售后 ───────────────────────────────────────────────────────────────

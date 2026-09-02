@@ -1,25 +1,142 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.trade.service.PlatformOrderService;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.trade.dto.OrderVO;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.Fulfillments;
+import ai.neargo.shop.common.PayModes;
+import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.spi.product.GoodsQueryPort;
+import ai.neargo.shop.spi.user.UserQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class PlatformOrderServiceImpl implements PlatformOrderService {
 
-    private final SubOrderMapper subOrderMapper;
+    /**
+     * 代客下单能用的履约方式：<b>「到点自取」那几种</b>。
+     *
+     * <p>判据是**要不要收货地址**：快递 / 商家自送 / 上门服务都要
+     * （{@code requireReceiverWhenShipped} 还会校验地址属于这个用户），
+     * 而客服替顾客新建地址既是碰个人信息、也没法当面核对。
+     * 顾客想要送货上门，得他自己在 App 里下 —— 那时地址是他自己选的。
+     */
+    private static final java.util.Set<String> PROXY_FULFILLMENTS = java.util.Set.of(
+            Fulfillments.STORE_PICKUP, Fulfillments.NEIGHBOR_PICKUP, Fulfillments.STORE_VERIFY);
 
-    public PlatformOrderServiceImpl(SubOrderMapper subOrderMapper) {
+    private final SubOrderMapper subOrderMapper;
+    private final StatusLogMapper statusLogMapper;
+    private final OrderService orderService;
+    private final GoodsQueryPort goodsPort;
+    private final UserQueryPort userPort;
+
+    public PlatformOrderServiceImpl(SubOrderMapper subOrderMapper, StatusLogMapper statusLogMapper,
+                                    OrderService orderService, GoodsQueryPort goodsPort,
+                                    UserQueryPort userPort) {
         this.subOrderMapper = subOrderMapper;
+        this.statusLogMapper = statusLogMapper;
+        this.orderService = orderService;
+        this.goodsPort = goodsPort;
+        this.userPort = userPort;
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public OrderVO createProxyOrder(ProxyOrderCommand cmd, String operatorNo, String idempotencyKey) {
+        String reason = cmd.reason() == null ? "" : cmd.reason().trim();
+        if (reason.isEmpty() || cmd.items() == null || cmd.items().isEmpty()
+                || cmd.merchantNo() == null || cmd.merchantNo().isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 没绑账号的人下不了单：订单没有主人 = 他看不到、付不了、也退不了
+        if (cmd.userNo() == null || cmd.userNo().isBlank()
+                || userPort.find(cmd.userNo()).isEmpty()) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (!PROXY_FULFILLMENTS.contains(cmd.fulfillment())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String payMode = cmd.payMode() == null || cmd.payMode().isBlank()
+                ? PayModes.OFFLINE : cmd.payMode();
+        if (!PayModes.isValid(payMode)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+
+        /*
+         * 货号由**服务端从 skuNo 解出来**，不收端上传的 goodsNo ——
+         * 两者对不上时下出来的单，商品与价格会分属两件货。
+         * 顺带把「跨商家」挡在这里：全站按商家拆单（E3），一次一个商家。
+         */
+        java.util.List<String> skuNos = cmd.items().stream()
+                .map(ProxyOrderCommand.Item::skuNo).toList();
+        var snapshots = goodsPort.snapshot(skuNos);
+        java.util.List<OrderService.CreateOrderCommand.Item> items = new ArrayList<>();
+        for (var it : cmd.items()) {
+            var snap = snapshots.get(it.skuNo());
+            if (snap == null) {
+                throw BizException.of(ErrorCode.NOT_FOUND);
+            }
+            if (!cmd.merchantNo().equals(snap.merchantNo())) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            if (it.qty() <= 0) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            items.add(new OrderService.CreateOrderCommand.Item(snap.goodsNo(), it.skuNo(), it.qty()));
+        }
+
+        /*
+         * couponNo=null、usePoints=0：**不代用顾客的资产**，命令里也没有这两个字段。
+         * payScene=null：这一单没有「下单端」—— 它不是从任何一个端来的。
+         * 存量端上本来就不传这个头，null 是既有的合法状态。
+         */
+        OrderVO vo = orderService.createFor(cmd.userNo(),
+                new OrderService.CreateOrderCommand(items, cmd.fulfillment(), cmd.pickupNo(),
+                        null, null, 0L, "代客下单：" + reason,
+                        null, payMode, null, null),
+                // 幂等键由运营端在打开表单时生成：同一张表单连点两次只会有一单
+                idempotencyKey);
+
+        /*
+         * 订单时间线上留一行。**不能只写审计日志** —— 那张表只有运营看得到，
+         * 而「这单是客服代下的、为什么」正是顾客打电话来问、商家备货时要看到的第一句话。
+         * 与代客取消落在同一处（OrdStatusLog，operatorType=PLATFORM）。
+         */
+        for (var sub : subOrdersOf(vo)) {
+            OrdStatusLog log = new OrdStatusLog();
+            log.setSubOrderNo(sub);
+            log.setStatus(OrdSubOrder.WAIT_PAY);
+            log.setLabel("代客下单：" + reason);
+            log.setOperatorType(OrdStatusLog.BY_PLATFORM);
+            log.setOperatorNo(operatorNo);
+            log.setAt(System.currentTimeMillis());
+            log.setTenantNo("MAIN");
+            log.setCreatedAt(java.time.LocalDateTime.now());
+            statusLogMapper.insert(log);
+        }
+        return vo;
+    }
+
+    /** 代客单只会有一个子单（一次一个商家），但仍按列表取：拆单规则变了这里不用改。 */
+    private List<String> subOrdersOf(OrderVO vo) {
+        List<String> nos = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                                .eq(OrdSubOrder::getOrderNo, vo.orderNo()))
+                        .stream().map(OrdSubOrder::getSubOrderNo).toList());
+        return nos.isEmpty() ? List.of(vo.orderNo()) : nos;
     }
 
     @Override
