@@ -157,6 +157,9 @@ export const httpApi: MerchantApi = {
     http.post<PaymentApplyment>(E.mSubmitPayment.path, payload satisfies SubmitPaymentReq),
   mRefreshPayment: (payChannel) =>
     http.post<PaymentApplyment>(buildPath(E.mRefreshPayment.path, { payChannel })),
+  mOpenStorePayment: (storeNo, payChannel) =>
+    http.post<PaymentApplyment>(buildPath(E.mOpenStorePayment.path, { storeNo }),
+      payChannel ? { payChannel } : {}),
 
   mStore: () => http.get<StoreProfile>(E.mStore.path),
   mCommunities: () => http.get<Community[]>(E.mCommunities.path),

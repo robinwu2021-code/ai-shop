@@ -614,6 +614,14 @@ export interface MerchantApi {
   mPayChannels(entityNo?: string): Promise<PaymentApplyment[]>;
   /** 结算账号明文只在这一次请求里存在：库里只留掩码，回显也只有掩码 */
   mSubmitPayment(payload: SubmitPaymentReq): Promise<PaymentApplyment>;
+
+  /**
+   * 为某家门店**单独进件**，拿一个独立的收款号 —— 这是「分开结算」的入口。
+   *
+   * 不调它就是合并结算：门店不配号，走主体默认号。
+   * 两种模式都是配置的结果，**没有开关**。
+   */
+  mOpenStorePayment(storeNo: string, payChannel?: string): Promise<PaymentApplyment>;
   /** 主动回查。留这个入口是因为**回调会丢**，丢了商家就永远停在「审核中」 */
   mRefreshPayment(payChannel: string): Promise<PaymentApplyment>;
 

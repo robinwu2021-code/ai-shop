@@ -8324,6 +8324,39 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/merchant/payment/store/{storeNo}": 
+    post: 
+      operationId: "mOpenStorePayment"
+      summary: "为门店单独开通收款"
+      tags: 
+        - "merchant"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PaymentApplyment"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/merchant/payment/{payChannel}/refresh": 
     post: 
       operationId: "mRefreshPayment"

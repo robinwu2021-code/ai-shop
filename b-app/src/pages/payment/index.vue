@@ -14,11 +14,31 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { pickImages } from "@shared/ports/media";
-import type { PaymentApplyment } from "@shared/types";
+import type { PaymentApplyment, Store } from "@shared/types";
 
 const { t } = useI18n();
 
 const list = ref<PaymentApplyment[]>([]);
+/*
+ * 门店与门店级进件。**与 list 是两个来源**：
+ * list 走 mPayChannels（「能开的全部通道」，后端只回主体级），
+ * 这两个走 mStoreList + mPayments（后者含门店级那几条）。
+ *
+ * 用 list 是取不到门店级记录的 —— availableChannels 里明确
+ * `filter(storeNo 为空)`。所以商家给某家店单独开了号之后，
+ * 这一页此前<b>完全看不到这件事</b>，他不知道那家店的钱打去哪张卡。
+ */
+const stores = ref<Store[]>([]);
+const storePayments = ref<PaymentApplyment[]>([]);
+const openingStore = ref("");
+
+/**
+ * 这一块要不要显示。
+ *
+ * 单店且没有门店级号时不显示 —— 有主体号就够了，
+ * 多这一块只会让他以为自己漏配了什么。
+ */
+const showStores = computed(() => stores.value.length > 1 || storePayments.value.length > 0);
 const loading = ref(false);
 const submitting = ref(false);
 
@@ -78,10 +98,35 @@ async function load() {
      * 只取已开的话，这一页永远长不出第二个通道的入口。
      */
     list.value = await api.mPayChannels(entityNo.value || undefined);
+    /*
+     * 两个附加请求各自兜底：门店列表挂了不该让上面的通道列表也看不见。
+     * 单店商家这一块本来就不显示，多取一次的代价可以接受。
+     */
+    stores.value = await api.mStoreList().catch(() => []);
+    storePayments.value = (await api.mPayments(entityNo.value || undefined).catch(() => []))
+        .filter((x) => !!x.storeNo);
   } catch {
     list.value = [];
   } finally {
     loading.value = false;
+  }
+}
+
+/** 这家店有没有自己的收款号；没有就是走主体默认号（合并结算） */
+function storeOf(storeNo: string) {
+  return storePayments.value.find((x) => x.storeNo === storeNo) ?? null;
+}
+
+async function openForStore(storeNo: string) {
+  if (openingStore.value) return;
+  openingStore.value = storeNo;
+  try {
+    await api.mOpenStorePayment(storeNo);
+    uni.showToast({ title: t("payment.storeOpened"), icon: "none" });
+    await load();
+  } finally {
+    // finally 里收：失败时不解锁的话，这一行看起来永远卡在「开通中」
+    openingStore.value = "";
   }
 }
 
@@ -222,6 +267,47 @@ async function refresh() {
       </view>
     </view>
 
+    <!--
+      按门店单独收款。**多门店、或已经有门店级收款号时出现**。
+
+      ⚠️ 判据不能只写「多门店」：单店商家也可能已经开了门店级号
+      （降到一家店、或当初就是按店开的），那时这一块被藏起来，
+      他就<b>看不到自己那家店的钱打进的是另一张卡</b> ——
+      而这正是 PaymentApplyment.storeNo 的注释警告过的那件事。
+      这个错是**真的把页面打开**才发现的：mock 里恰好就是这种情形。
+
+      这一块回答的是「这家店的钱打进哪张卡」。不开就是合并结算（走主体默认号），
+      开了就是分开结算 —— <b>两种都是配置的结果，没有开关</b>，
+      所以这里不做成一个 toggle，而是列出每家店现在走哪条路。
+    -->
+    <view v-if="showStores" class="stores">
+      <text class="txt-title blk stores__hd">{{ $t("payment.storeTitle") }}</text>
+      <text class="sh-muted sh-mt-xs blk">{{ $t("payment.storeHint") }}</text>
+
+      <view v-for="st in stores" :key="st.storeNo" class="sh-card store">
+        <view class="sh-row sh-row--between">
+          <text class="txt-body">{{ st.name }}</text>
+          <text
+            class="txt-caption badge"
+            :class="storeOf(st.storeNo) ? 'is-ok' : 'is-muted'"
+          >{{ storeOf(st.storeNo)
+            ? $t("payment.storeOwn", { ch: storeOf(st.storeNo)!.channelName })
+            : $t("payment.storeShared") }}</text>
+        </view>
+        <!--
+          未单独开通时给按钮；已开通不给「取消」——
+          后端没有这个动作，而放一个点不动的按钮比不放更糟。
+        -->
+        <view v-if="!storeOf(st.storeNo)" class="sh-row store__act">
+          <text
+            class="sh-link"
+            :class="{ 'is-dim': openingStore === st.storeNo }"
+            @tap="openForStore(st.storeNo)"
+          >{{ openingStore === st.storeNo ? $t("payment.storeOpening") : $t("payment.storeOpen") }}</text>
+        </view>
+      </view>
+    </view>
+
     <!-- 已经能收钱就不再显示表单：重复进件会拿到新的商户号，历史分账仍指向旧号 -->
     <view v-if="current && !done" class="sh-card sh-mt-sm">
       <!-- 表单标题带上通道名：多通道下光写「开通收款」看不出在填哪一个 -->
@@ -276,6 +362,29 @@ async function refresh() {
 </template>
 
 <style scoped>
+
+/*
+ * 顶层块不自己写纵向 margin —— 写了就压过外壳那条统一间距，
+ * 这一页从此和别处不一样。用内部第一个子元素的上边距代替。
+ */
+.stores__hd {
+  margin-top: 32rpx;
+}
+.store {
+  margin-top: 16rpx;
+}
+.store__act {
+  margin-top: 12rpx;
+}
+/*
+ * 用现成的 .sh-link（49 处在用的「文字动作」语义件），不自己造一个：
+ * 自造的那个既不会跟着主题走，也不会跟着将来对比度的修正走。
+ * 第一版写了 color: var(--sh-color-primary, #2563eb) —— 两处都错：
+ * 写死的 hex 被闸门点名，而那个变量名在这套 token 里根本不存在。
+ */
+.is-dim {
+  opacity: 0.4;
+}
 /* 同 stores：横向内边距由 sh-scaffold 统一给，这里再加一道会与卡片左边界错开 */
 .head {
   padding: 8rpx 0 16rpx;

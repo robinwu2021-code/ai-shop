@@ -818,6 +818,13 @@ export default {
     PLATFORM: "全平台发货",
   },
   payment: {
+    storeTitle: "按门店单独收款",
+    storeHint: "不单独开就是合并结算：这家店的钱走主体默认收款号。单独开之后，这家店的钱打进它自己的账户 —— 两种都是配置的结果，没有开关。",
+    storeShared: "走主体默认号",
+    storeOwn: "{ch} · 独立收款号",
+    storeOpen: "为这家店单独开通",
+    storeOpening: "开通中…",
+    storeOpened: "已提交，等通道开户",
     rejectNoReason: "已驳回，但通道没有说明原因。请联系平台客服协助查询 —— 先别重复提交同一份资料。",
     title: "收款设置",
     hint: "开店与收款是两件事：店开了，还要通道批过才能收到钱",

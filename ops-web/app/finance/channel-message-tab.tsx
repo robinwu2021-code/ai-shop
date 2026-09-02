@@ -80,7 +80,7 @@ export function ChannelMessageTab({ c }: { c: FinanceCopy }) {
 
       <div className="flex flex-wrap items-center gap-2">
         <select
-          className="h-9 rounded-md border border-border bg-background px-2 text-[13px]"
+          className="focus-ring h-[var(--ctl-h)] rounded-input border border-border bg-background px-2 text-[13px]"
           value={msgType}
           onChange={(e) => setMsgType(e.target.value)}
         >
@@ -91,7 +91,7 @@ export function ChannelMessageTab({ c }: { c: FinanceCopy }) {
           ))}
         </select>
         <select
-          className="h-9 rounded-md border border-border bg-background px-2 text-[13px]"
+          className="focus-ring h-[var(--ctl-h)] rounded-input border border-border bg-background px-2 text-[13px]"
           value={outcome}
           onChange={(e) => setOutcome(e.target.value)}
         >

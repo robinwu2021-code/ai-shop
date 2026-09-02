@@ -1287,7 +1287,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 140,
+      "count": 141,
       "domains": [
         {
           "name": "经营看板",
@@ -2429,6 +2429,18 @@
               "status": "已实现",
               "proto": null,
               "preview": "http://localhost:3000/finance?tab=invoice"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=channel-messages",
+              "title": "渠道报文",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/finance?tab=channel-messages"
             }
           ]
         },
@@ -3037,5 +3049,5 @@
       ]
     }
   ],
-  "total": 245
+  "total": 246
 }

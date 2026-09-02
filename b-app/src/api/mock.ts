@@ -1120,8 +1120,13 @@ export const mockApi: MerchantApi = {
     });
   },
 
+  /*
+   * 主体级 + 门店级各一条。**同一个通道两行** —— 页面必须靠 storeNo 分得开，
+   * 只给一条的话「多门店时这一页长什么样」永远看不到，
+   * 而那正是这一块存在的理由。
+   */
   async mPayments() {
-    return delay([{ ...db.payment }]);
+    return delay([{ ...db.payment }, { ...db.storePayment }]);
   },
 
   /*
@@ -1171,6 +1176,14 @@ export const mockApi: MerchantApi = {
     };
     persist();
     return delay({ ...db.payment });
+  },
+
+  async mOpenStorePayment(storeNo: string, payChannel?: string) {
+    return {
+      payChannel: payChannel ?? "WECHAT", channelName: "微信支付",
+      applyStatus: "APPLYING", canReceiveMoney: false, missing: [],
+      submitted: false, storeNo,
+    };
   },
 
   async mRefreshPayment() {

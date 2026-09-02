@@ -1467,6 +1467,25 @@ export const db = {
   } as PaymentApplyment,
 
   /**
+   * 门店级进件。**多门店商家才会有** —— 它与上面那条是同一个通道的两行，
+   * 而 storeNo 是唯一分得开它们的东西。
+   *
+   * 给一条**已开通**的：门店级进件存在的全部意义是「这家店的钱打进它自己的账户」，
+   * 而只造 APPLYING 的话「已开通之后长什么样」这件事就没人看过。
+   */
+  storePayment: {
+    payChannel: "WECHAT",
+    channelName: "微信支付",
+    applyStatus: "ACTIVE",
+    canReceiveMoney: true,
+    missing: [],
+    submitted: true,
+    appliedAt: 1_755_000_000_000,
+    activatedAt: 1_755_200_000_000,
+    storeNo: "ST-MOCK-1",
+  } as PaymentApplyment,
+
+  /**
    * 类目树。**编号与后端 V4__category_tree.sql、ops-web 的 mock 完全一致** ——
    * 三处对不上时的症状是「mock 上跑得通、连真库就找不到类目」，而三处各自都自洽，
    * 谁也不报错。

@@ -180,6 +180,7 @@ const RESPONSE_TYPES = {
   mMyInvoices: "PurchaseInvoice[]",
   mPendingInvoice: "PendingInvoice",
   mStatement: "Statement",
+  mOpenStorePayment: "PaymentApplyment",
   mSubmitInvoice: "PurchaseInvoice",
   mWithdrawPage: "WithdrawPage",
   mCloseAppointmentSlot: "AppointmentSlot",
