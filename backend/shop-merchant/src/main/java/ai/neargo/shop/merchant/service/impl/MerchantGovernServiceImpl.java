@@ -540,7 +540,9 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                 Boolean.TRUE.equals(s.getIsDefault()), s.getStatus(), s.getBusinessMode(),
                 s.getPayMerchantNo(), s.getAnnouncement(), s.getOpenHours(),
                 s.getDeliveryRadiusM(), s.getDeliveryMinOrderMinor(),
-                s.getDeliveryFeeMinor(), s.getDeliveryFreeThresholdMinor());
+                s.getDeliveryFeeMinor(), s.getDeliveryFreeThresholdMinor(),
+                // 评分就在这一行上（V155 已由 recomputeRating 维护），不额外查
+                s.getRating(), s.getRatingCount());
     }
 
     private MchStore requireStore(String storeNo) {

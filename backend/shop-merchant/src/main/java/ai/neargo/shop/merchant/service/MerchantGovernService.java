@@ -136,12 +136,18 @@ public interface MerchantGovernService {
     /** 门店详情（含上面那三项）。 */
     StoreDetailVO storeDetail(String storeNo);
 
+    /**
+     * @param rating      门店评分，<b>×10 的整数</b>（与主体那几列同口径）
+     * @param ratingCount <b>0 = 暂无评价，不是 0 分</b> —— 新店与还没重算过的店都是这个形状。
+     *                    页面按<b>条数</b>判空，别按分值：按分值判会把「没人评过」显示成「0 分」
+     */
     record StoreGovernVO(String storeNo, String name, String address,
                          String merchantNo, String merchantName,
                          boolean isDefault, String status, String businessMode,
                          String payMerchantNo, String announcement, String openHours,
                          Integer deliveryRadiusM, Long deliveryMinOrderMinor,
-                         Long deliveryFeeMinor, Long deliveryFreeThresholdMinor) {
+                         Long deliveryFeeMinor, Long deliveryFreeThresholdMinor,
+                         Integer rating, Integer ratingCount) {
     }
 
     /**

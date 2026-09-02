@@ -253,6 +253,15 @@ export function StoresTab({ c }: { c: Copy }) {
                 <Field className="mb-3" label={c.stFieldScan30d}>
                   {detail.data ? detail.data.scanCount30d : "—"}
                 </Field>
+                <Field className="mb-3" label={c.stFieldRating}>
+                  {/*
+                    ★ 按**条数**判空，不按分值：ratingCount=0 是「暂无评价」，
+                    按分值判会把「没人评过」显示成「0 分」。rating 是 ×10 的整数。
+                  */}
+                  {current.ratingCount
+                    ? `${((current.rating ?? 0) / 10).toFixed(1)}（${current.ratingCount}）`
+                    : <span className="text-muted-foreground">{c.stNoRating}</span>}
+                </Field>
               </FieldGrid>
             </DrawerSection>
 

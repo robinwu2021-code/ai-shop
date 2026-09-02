@@ -233,6 +233,15 @@ export interface StoreGovern {
    */
   payMerchantNo: string | null;
   /** 门店公告（走 P-10.1 的机审 + 人审） */
+  /** 门店评分，**×10 的整数**（85 = 8.5 分）。与主体那几列同口径 */
+  rating: number | null;
+  /**
+   * 评价条数。
+   *
+   * ⚠️ **0 = 暂无评价，不是 0 分** —— 新店与还没重算过的店都是这个形状。
+   * 判空要按**条数**，按分值判会把「没人评过」显示成「0 分」。
+   */
+  ratingCount: number | null;
   announcement: string;
   /** 营业时间，展示串 */
   openHours: string;

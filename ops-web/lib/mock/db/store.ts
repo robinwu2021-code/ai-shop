@@ -107,6 +107,8 @@ export const stores: import("@/lib/types").StoreGovern[] = [
     isDefault: true, status: "ACTIVE", businessMode: "SELF_OPERATED",
     // null = 用主体默认收款号，**不是「没配」** —— 页面要显示成前者
     payMerchantNo: null,
+    // 有评价的那家：rating 是 ×10 的整数
+    rating: 47, ratingCount: 128,
     announcement: "每日 6 点到货，蔬菜当日售完不留隔夜。", openHours: "06:00-21:00",
     deliveryRadiusM: 2000, deliveryMinOrderMinor: 1500, deliveryFeeMinor: 300,
     deliveryFreeThresholdMinor: 4900,
@@ -116,6 +118,7 @@ export const stores: import("@/lib/types").StoreGovern[] = [
     merchantNo: "M901", merchantName: "阿姨家的菜摊",
     isDefault: false, status: "ACTIVE", businessMode: "THIRD_PARTY",
     payMerchantNo: "PM_M901_DEFAULT",
+    rating: 42, ratingCount: 31,
     announcement: "", openHours: "07:00-20:30",
     deliveryRadiusM: 1500, deliveryMinOrderMinor: 2000, deliveryFeeMinor: 400,
     deliveryFreeThresholdMinor: 5900,
@@ -125,6 +128,8 @@ export const stores: import("@/lib/types").StoreGovern[] = [
     merchantNo: "M906", merchantName: "夜市烧烤（停业整改）",
     isDefault: true, status: "SUSPENDED", businessMode: "THIRD_PARTY",
     payMerchantNo: "PM_M906_DEFAULT",
+    // ★ 新店：ratingCount = 0 是「暂无评价」，不是 0 分 —— 页面按条数判空
+    rating: null, ratingCount: 0,
     announcement: "", openHours: "17:00-02:00",
     deliveryRadiusM: 3000, deliveryMinOrderMinor: 3000, deliveryFeeMinor: 500,
     deliveryFreeThresholdMinor: 9900,
@@ -134,6 +139,7 @@ export const stores: import("@/lib/types").StoreGovern[] = [
     merchantNo: "M903", merchantName: "邻家便利",
     isDefault: true, status: "READONLY", businessMode: "THIRD_PARTY",
     payMerchantNo: null,
+    rating: 39, ratingCount: 7,
     announcement: "店主外出，暂停接单三天。", openHours: "08:00-22:00",
     deliveryRadiusM: 1200, deliveryMinOrderMinor: 0, deliveryFeeMinor: 0,
     deliveryFreeThresholdMinor: 0,
