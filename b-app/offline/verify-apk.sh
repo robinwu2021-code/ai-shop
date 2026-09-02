@@ -45,6 +45,22 @@ else
   ok "高德 key 已注入（${#k} 位，尾号 ${k: -4}）"
 fi
 
+# 1b. 相机权限。**扫码要用它，而它极容易缺**：离线工程的 AndroidManifest 在仓库外，
+# 重解压 DCloud SDK 会把那行清掉，而症状看着完全不像「少了个权限」——
+# 扫码页正常打开、黑屏、写一句「未获得相机权限」，像是用户自己拒了授权。
+# 实际是根本没声明：授权框不会弹，`adb shell pm grant` 也授不上
+#（不能授一个未声明的权限），于是怎么点都没用。
+#
+# 2026-09-02 就是这么发出去一个坏包的：扫码入口进了 0.4.42，而权限没进，
+# 真机上 100% 用不了 —— H5 上没有这个概念，mock 更看不见。
+if printf '%s\n' "$MANIFEST" | grep -q 'android.permission.CAMERA'; then
+  ok "相机权限已声明（扫码要用）"
+else
+  bad "manifest 里没有 android.permission.CAMERA —— 扫码页会黑屏并写「未获得相机权限」，
+     而那看着像用户拒了授权。把下面这行粘回离线工程的 AndroidManifest：
+       <uses-permission android:name=\"android.permission.CAMERA\" />"
+fi
+
 # 2. 应用名。重解压后会退回 SDK 自带的名字，而界面上看不出来
 label=$(printf '%s\n' "$BADGING" | awk -F"'" '/^application-label:/{print $2; exit}')
 if [ "$label" = "虹选商家" ]; then ok "应用名：$label"; else bad "应用名是「$label」，应为「虹选商家」"; fi
