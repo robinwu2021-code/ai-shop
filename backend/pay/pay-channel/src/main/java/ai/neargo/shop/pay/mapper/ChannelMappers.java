@@ -2,6 +2,7 @@ package ai.neargo.shop.pay.mapper;
 
 import ai.neargo.shop.pay.channel.entity.StlChannelMessage;
 import ai.neargo.shop.pay.channel.entity.SysPayChannel;
+import ai.neargo.shop.pay.channel.entity.SysPayChannelMarket;
 import ai.neargo.shop.pay.channel.entity.SysPayChannelRate;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
@@ -31,6 +32,26 @@ public final class ChannelMappers {
 
     /** 通道主数据表 */
     public interface PayChannelMapper extends BaseMapper<SysPayChannel> {
+    }
+
+    /** 通道 × 市场（V295）。替掉 sys_pay_channel.markets 那列 JSON 文本 */
+    public interface PayChannelMarketMapper extends BaseMapper<SysPayChannelMarket> {
+
+        /**
+         * <b>物理删除</b>，不走 BaseEntity 的逻辑删除。
+         *
+         * <p>这是一张纯关联表：一行的全部含义就是「这个通道在这个市场可用」，
+         * 删掉之后没有任何东西需要追溯 —— 谁在什么时候改的，
+         * 留痕在审计日志里，不在这张表的墓碑上。
+         *
+         * <p><b>而逻辑删除在这里会真的坏事</b>：唯一键是 (租户, 通道, 市场)，
+         * 逻辑删除留下的 deleted=1 行仍然占着那个键。运营第二次改同一个市场时，
+         * 「把它标成已删」会撞上上一次留下的墓碑 —— 保存直接报错，
+         * 而报的是一个与「改市场」毫无关系的重复键。
+         */
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM sys_pay_channel_market WHERE pay_channel = #{payChannel}")
+        int deleteByChannel(@org.apache.ibatis.annotations.Param("payChannel") String payChannel);
     }
 
     /** 通道费率版本表（V274）。只增不改 */

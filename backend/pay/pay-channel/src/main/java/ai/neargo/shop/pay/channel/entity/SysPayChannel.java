@@ -49,8 +49,17 @@ public class SysPayChannel extends BaseEntity {
     /** JSON：["JSAPI","APP","H5","NATIVE"] */
     private String payMethods;
 
-    /** JSON：该通道在哪些市场可用，如 ["CN"] */
-    private String markets;
+    /*
+     * markets 这一列 V295 之后**不再映射**。
+     *
+     * 它还在库里（已应用的迁移是冻结的，且留着才有回滚的余地），
+     * 但通道在哪些市场可用改由 sys_pay_channel_market 承担。
+     *
+     * <b>不映射是刻意的</b>：留着字段就会有人读到那一列的陈旧值 ——
+     * 那正是 S1 那条缺陷的形状（运营写一张表、领域读另一张，
+     * 保存成功、页面正确，而改动没有生效且不报错）。
+     * 字段不在，这种读法就写不出来。
+     */
 
     /** 平台在该通道的资金账户标识。**只存对账用的引用，不存密钥或完整账号**。 */
     private String poolAccountRef;

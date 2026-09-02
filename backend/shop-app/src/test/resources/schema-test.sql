@@ -4007,6 +4007,22 @@ CREATE TABLE IF NOT EXISTS sys_market
     CONSTRAINT uk_sys_market UNIQUE (tenant_no, market, deleted)
 );
 
+CREATE TABLE IF NOT EXISTS sys_pay_channel_market
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    pay_channel VARCHAR(32) NOT NULL,
+    market VARCHAR(8) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_channel_market UNIQUE (tenant_no, pay_channel, market)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
@@ -8446,3 +8462,16 @@ VALUES
      '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0),
     (6, 'SA', '沙特',     'SAR', 2, 'Asia/Riyadh',    0.530000, 0, 60, 'MAIN',
      '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0);
+UPDATE sys_function_point
+   SET ui_ready = 1, updated_at = NOW()
+ WHERE point_type = 'MENU'
+   AND backend_status = 'IMPLEMENTED'
+   AND href IN ('/merchants?tab=stores',
+                '/merchants?tab=categories',
+                '/merchants?tab=qualifications',
+                '/merchants?tab=admission',
+                '/merchants?tab=mode-risk',
+                '/merchants?tab=verify',
+                '/merchants?tab=credit',
+                '/merchants?tab=ban',
+                '/merchants?tab=plans');

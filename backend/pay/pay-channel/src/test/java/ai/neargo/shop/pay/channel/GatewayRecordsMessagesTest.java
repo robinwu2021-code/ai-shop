@@ -135,6 +135,11 @@ class GatewayRecordsMessagesTest {
             }
 
             @Override
+            public List<String> marketsOf(String payChannel) {
+                throw new UnsupportedOperationException("这组用例不该走到 marketsOf");
+            }
+
+            @Override
             public String settleCycle(String payChannel) {
                 throw new UnsupportedOperationException("这组用例不该走到 settleCycle");
             }

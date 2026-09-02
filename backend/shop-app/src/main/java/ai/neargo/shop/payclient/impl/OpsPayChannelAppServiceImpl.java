@@ -8,6 +8,7 @@ import ai.neargo.shop.pay.channel.master.PayChannelRateService;
 import ai.neargo.shop.payclient.OpsPayChannelAppService;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 /**
@@ -97,8 +98,16 @@ public class OpsPayChannelAppServiceImpl implements OpsPayChannelAppService {
                 .findFirst()
                 .orElse(new RateVO(eff.rateNo(), c.getPayChannel(), null, null,
                         eff.rateBp(), eff.minFeeMinor(), null, true, null));
+        /*
+         * markets 从关系表派生回 JSON 数组字面量 —— **ops-web 的契约不变**。
+         * 换存储不该让调用方跟着改；而这里也不能改读那一列，
+         * 读了就会出现「运营改了、页面显示旧值」。
+         */
+        List<String> ms = master.marketsOf(c.getPayChannel());
+        String marketsJson = ms.isEmpty() ? null
+                : ms.stream().collect(Collectors.joining("\",\"", "[\"", "\"]"));
         return new ChannelVO(c.getPayChannel(), c.getName(), Boolean.TRUE.equals(c.getEnabled()),
-                c.getMarkets(), c.getCurrency(), c.getSettleCycle(),
+                marketsJson, c.getCurrency(), c.getSettleCycle(),
                 Boolean.TRUE.equals(c.getSupportsSubsidy()), current, history);
     }
 

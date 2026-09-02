@@ -4,12 +4,18 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.channel.entity.SysPayChannel;
-import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelMapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import java.util.List;
-import java.util.Optional;
-import org.springframework.stereotype.Service;
+import ai.neargo.shop.pay.channel.entity.SysPayChannelMarket;
 import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
+import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelMapper;
+import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelMarketMapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import org.springframework.stereotype.Service;
 
 /**
  * 通道主数据的读取。<b>行为与搬家前逐字一致</b> ——
@@ -25,9 +31,12 @@ public class PayChannelMasterServiceImpl implements PayChannelMasterService {
     private static final String DEFAULT_MARKET = "CN";
 
     private final PayChannelMapper channelMapper;
+    private final PayChannelMarketMapper marketMapper;
 
-    public PayChannelMasterServiceImpl(PayChannelMapper channelMapper) {
+    public PayChannelMasterServiceImpl(PayChannelMapper channelMapper,
+                                      PayChannelMarketMapper marketMapper) {
         this.channelMapper = channelMapper;
+        this.marketMapper = marketMapper;
     }
 
     @Override
@@ -44,11 +53,38 @@ public class PayChannelMasterServiceImpl implements PayChannelMasterService {
     @Override
     public List<SysPayChannel> enabled(String market) {
         String m = market == null || market.isBlank() ? DEFAULT_MARKET : market;
-        var rows = DataScopeContext.executeWithoutScope(() ->
-                channelMapper.selectList(Wrappers.<SysPayChannel>lambdaQuery()
-                        .eq(SysPayChannel::getEnabled, true)
-                        .orderByAsc(SysPayChannel::getId)));
-        return rows.stream().filter(r -> marketAllowed(r.getMarkets(), m)).toList();
+        return DataScopeContext.executeWithoutScope(() -> {
+            var rows = channelMapper.selectList(Wrappers.<SysPayChannel>lambdaQuery()
+                    .eq(SysPayChannel::getEnabled, true)
+                    .orderByAsc(SysPayChannel::getId));
+            /*
+             * 一次把全部关系行捞回来再在内存里分组 —— 通道是个位数，
+             * 逐个通道查一次是 N+1 而换不来任何东西。
+             */
+            var pairs = marketMapper.selectList(Wrappers.emptyWrapper());
+            Map<String, Set<String>> byChannel = new HashMap<>();
+            for (var p : pairs) {
+                byChannel.computeIfAbsent(p.getPayChannel(), k -> new HashSet<>()).add(p.getMarket());
+            }
+            return rows.stream()
+                    .filter(r -> {
+                        var allowed = byChannel.get(r.getPayChannel());
+                        // 无行 = 不限市场。见 SysPayChannelMarket 的类注释
+                        return allowed == null || allowed.isEmpty() || allowed.contains(m);
+                    })
+                    .toList();
+        });
+    }
+
+    @Override
+    public List<String> marketsOf(String payChannel) {
+        if (payChannel == null || payChannel.isBlank()) {
+            return List.of();
+        }
+        return DataScopeContext.executeWithoutScope(() ->
+                marketMapper.selectList(Wrappers.<SysPayChannelMarket>lambdaQuery()
+                                .eq(SysPayChannelMarket::getPayChannel, payChannel))
+                        .stream().map(SysPayChannelMarket::getMarket).sorted().toList());
     }
 
     @Override
@@ -86,8 +122,9 @@ public class PayChannelMasterServiceImpl implements PayChannelMasterService {
         if (enabled != null) {
             row.setEnabled(enabled);
         }
+        // markets 不再写 sys_pay_channel 那一列 —— 见下方 replaceMarkets
         if (markets != null) {
-            row.setMarkets(markets);
+            replaceMarkets(payChannel, markets);
         }
         if (currency != null) {
             row.setCurrency(currency);
@@ -99,17 +136,32 @@ public class PayChannelMasterServiceImpl implements PayChannelMasterService {
         return row;
     }
 
-    /** markets 存的是 JSON 数组字面量；空表示不限市场 */
-    private static boolean marketAllowed(String markets, String market) {
-        if (markets == null || markets.isBlank()) {
-            return true;
-        }
-        for (String token : markets.replaceAll("[\\[\\]\"\\\\\\s]", "").split(",")) {
-            if (token.equals(market)) {
-                return true;
+    /**
+     * 整体替换一个通道的市场行。
+     *
+     * <p>入参仍是 JSON 数组字面量（如 {@code ["CN","TW"]}）—— <b>运营端的契约不变</b>。
+     * 解析只剩这一处：去掉 {@code []"\\} 与空白、按逗号切开。
+     * 此前同样的正则在 pay-channel 与 shop-core 各有一份，
+     * 而 shop-core 那份<b>没有任何调用方</b>。
+     *
+     * <p><b>先删后插，不做增量比对</b>：整体覆盖是运营的语义
+     * （「这个通道就在这几个市场」），而增量比对会让「取消一个市场」
+     * 这个动作没有表达方式。
+     */
+    private void replaceMarkets(String payChannel, String markets) {
+        DataScopeContext.executeWithoutScope(() -> {
+            marketMapper.deleteByChannel(payChannel);
+            for (String token : markets.replaceAll("[\\[\\]\"\\\\\\s]", "").split(",")) {
+                if (token.isBlank()) {
+                    continue;
+                }
+                SysPayChannelMarket row = new SysPayChannelMarket();
+                row.setPayChannel(payChannel);
+                row.setMarket(token);
+                marketMapper.insert(row);
             }
-        }
-        return false;
+            return null;
+        });
     }
 
 }

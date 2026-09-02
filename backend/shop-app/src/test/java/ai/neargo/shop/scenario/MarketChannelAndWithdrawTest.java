@@ -53,7 +53,22 @@ class MarketChannelAndWithdrawTest {
     @org.junit.jupiter.api.AfterEach
     void restoreChannelSeeds() {
         channels.updateSettings("WECHAT", true, "[\"CN\"]", "CNY", "T1");
-        channels.updateSettings("TEST", false, "", "CNY", "T1");
+        /*
+         * ⚠️ TEST 还原成**开着**，不是关着。
+         *
+         * 上一版这里写的是 false，理由是「默认关是刻意的」——
+         * <b>那句话说的是生产</b>（V288 种的 enabled=0，不能让假通道
+         * 出现在真实渠道列表里）。而测试库的初始状态是<b>开着</b>：
+         * schema-test-extra.sql 为 S4 专门开了它，因为下单要取
+         * 「运营开着的 ∩ 网关有实现的」，而只有 TEST 两头都占。
+         *
+         * 还原到生产默认值 = 把后面所有走支付链路的用例的地基抽掉。
+         * 症状是本类之后的某个用例报「$.data 是 null」，
+         * <b>而报错与支付通道看不出任何关系</b>。
+         *
+         * 还原的目标是<b>「我进来时的样子」，不是「产品的默认值」</b>。
+         */
+        channels.updateSettings("TEST", true, "", "CNY", "T1");
     }
 
     // ─────────────────────────── ① 渠道按区域筛
@@ -80,8 +95,7 @@ class MarketChannelAndWithdrawTest {
         assertThat(channels.enabled("CN")).extracting(SysPayChannel::getPayChannel).contains("TEST");
         assertThat(channels.enabled("TW")).extracting(SysPayChannel::getPayChannel).contains("TEST");
         assertThat(channels.enabled("AE")).extracting(SysPayChannel::getPayChannel).contains("TEST");
-        // 用完关回去：默认关是刻意的，留着开会让别的用例看到一条假通道
-        channels.updateSettings("TEST", false, "", "CNY", "T1");
+        // 不在这里关：测试库里它本来就是开的（见 restoreChannelSeeds 的说明）
     }
 
     @Test

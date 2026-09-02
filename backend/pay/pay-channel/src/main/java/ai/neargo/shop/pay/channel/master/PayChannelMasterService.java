@@ -53,6 +53,15 @@ public interface PayChannelMasterService {
     List<SysPayChannel> all();
 
     /**
+     * 这个通道在哪些市场可用（V295 起读 {@code sys_pay_channel_market}）。
+     *
+     * <p><b>返回空列表 = 不限市场</b>，不是「哪个市场都不可用」。
+     * 两者在调用方是相反的动作，而这张表从空的开始 ——
+     * 按「空 = 都不可用」会让存量通道一夜之间全部消失。
+     */
+    List<String> marketsOf(String payChannel);
+
+    /**
      * 改开关与结算属性。
      *
      * <p><b>能力位不在这里改</b> —— 支不支持补差、分账上限多少是通道自己的事实，

@@ -25,7 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 而它错得没有声音：开出来的是一个商家根本没打算开的通道，
  * 要到第一笔订单收不到钱才看得出来。
  *
- * <p>同时钉住 {@code sys_pay_channel.markets}。这一列从基线起就在
+ * <p>同时钉住通道 × 市场的筛选。它此前是 {@code sys_pay_channel.markets}
+ * 一列 JSON 文本，V295 起是 {@code sys_pay_channel_market} 关系表。这一列从基线起就在
  * （注释写着「该通道在哪些市场可用」），但在此之前<b>没有任何地方读它</b> ——
  * 一列没人读的数据不是扩展点，是一句承诺。
  *
@@ -72,11 +73,24 @@ class PayChannelDefaultResolveTest {
                  * 本类还原时把它关掉，等于把那 30 个测试的地基抽掉。
                  */
                 r.setEnabled(true);
-                r.setMarkets("[\"CN\"]");
                 channelMapper.updateById(r);
             });
             return null;
         });
+        /*
+         * 市场行 V295 起在 sys_pay_channel_market，还原要按种子的原样回填 ——
+         * 而不是给每个通道都补一行 CN：TEST 在种子里<b>本来就没有行</b>
+         * （无行 = 不限市场，V288 刻意留空，它要能在任何市场的链路上验证）。
+         * 多补一行等于悄悄改掉那个通道的语义。
+         */
+        jdbc.update("DELETE FROM sys_pay_channel_market");
+        jdbc.update("INSERT INTO sys_pay_channel_market"
+                + " (pay_channel, market, tenant_no, created_at, created_by,"
+                + "  updated_at, updated_by, version, deleted)"
+                + " VALUES ('WECHAT','CN','MAIN','2026-09-02 00:00:00','SYSTEM',"
+                + "         '2026-09-02 00:00:00','SYSTEM',0,0),"
+                + "        ('ALIPAY','CN','MAIN','2026-09-02 00:00:00','SYSTEM',"
+                + "         '2026-09-02 00:00:00','SYSTEM',0,0)");
         /*
          * **还原失败要当场变红。** 不断言的话，还原悄悄没生效 → 下一个测试类
          * 拿不到可用通道 → 报错落在一个与支付通道毫无关系的用例上
@@ -94,7 +108,9 @@ class PayChannelDefaultResolveTest {
         assertThat(after).as("还原之后必须还看得见通道行").isNotEmpty();
         after.forEach(r -> {
             assertThat(r.getEnabled()).as("通道 " + r.getPayChannel() + " 没被还原成启用").isTrue();
-            assertThat(r.getMarkets()).as("通道 " + r.getPayChannel() + " 的 markets 没被还原").isEqualTo("[\"CN\"]");
+            assertThat(marketsOf(r.getPayChannel()))
+                    .as("通道 " + r.getPayChannel() + " 的市场行没被还原")
+                    .isEqualTo("TEST".equals(r.getPayChannel()) ? List.of() : List.of("CN"));
         });
 
         // 自己造的行自己收拾：留在共享库里会让别的用例莫名其妙多出一个主体
@@ -142,9 +158,13 @@ class PayChannelDefaultResolveTest {
     @Test
     @DisplayName("★★★ markets 不覆盖本市场的通道不出现 —— 这一列终于有人读了")
     void marketsFiltersChannels() {
-        SysPayChannel alipay = row("ALIPAY");
-        alipay.setMarkets("[\"AE\"]");
-        DataScopeContext.executeWithoutScope(() -> channelMapper.updateById(alipay));
+        jdbc.update("DELETE FROM sys_pay_channel_market WHERE pay_channel = 'ALIPAY'");
+        jdbc.update("INSERT INTO sys_pay_channel_market"
+                + " (pay_channel, market, tenant_no, created_at, created_by,"
+                + "  updated_at, updated_by, version, deleted)"
+                + " VALUES ('ALIPAY','AE','MAIN','2026-09-02 00:00:00','SYSTEM',"
+                + "         '2026-09-02 00:00:00','SYSTEM',0,0)");
+        assertThat(marketsOf("ALIPAY")).as("先确认真的改成 AE 了").containsExactly("AE");
 
         // 只看支付宝在哪个市场出现 —— 这一条测的是 markets 筛选，不是渠道总数
         assertThat(masterData.enabledChannels("CN"))
@@ -157,17 +177,24 @@ class PayChannelDefaultResolveTest {
     @DisplayName("★★★ markets 为空按全市场可用 —— 存量行都是空的，按「空=不可用」会让通道一夜消失")
     void blankMarketsMeansAllMarkets() {
         /*
-         * **不能用 updateById 置 null**：MyBatis-Plus 默认跳过 null 字段，
-         * 那一行会原样保留 ["CN"]，于是这个用例测的是「CN 的通道在 AE 不可见」——
-         * 它会通过，但通过的原因与用例名毫无关系。写这个用例时就踩了一次。
+         * V295 之前这里踩过一次：用 updateById 置 null 时 MyBatis-Plus 默认跳过
+         * null 字段，那一行原样保留 ["CN"]，于是用例测的是「CN 的通道在 AE 不可见」——
+         * 它会通过，而通过的原因与用例名毫无关系。
+         *
+         * 关系表没有这个坑：<b>删掉行就是删掉行</b>，
+         * 「没配」与「配成空」在表结构上不再需要区分。
          */
-        DataScopeContext.executeWithoutScope(() -> channelMapper.update(null,
-                Wrappers.<SysPayChannel>lambdaUpdate()
-                        .eq(SysPayChannel::getPayChannel, "WECHAT")
-                        .set(SysPayChannel::getMarkets, null)));
-        assertThat(row("WECHAT").getMarkets()).as("先确认真的置空了").isNull();
+        jdbc.update("DELETE FROM sys_pay_channel_market WHERE pay_channel = 'WECHAT'");
+        assertThat(marketsOf("WECHAT")).as("先确认真的删空了").isEmpty();
 
         assertThat(masterData.enabledChannels("AE")).contains("WECHAT");
+    }
+
+    /** 从关系表读一个通道的市场，排序后返回 —— 断言要稳定 */
+    private List<String> marketsOf(String payChannel) {
+        return jdbc.queryForList(
+                "SELECT market FROM sys_pay_channel_market WHERE pay_channel = ? ORDER BY market",
+                String.class, payChannel);
     }
 
     @Test
@@ -188,9 +215,21 @@ class PayChannelDefaultResolveTest {
     @Test
     @DisplayName("市场码大小写不同不算命中 —— \"CN\" 不该匹配 [\"CNY\"] 这种前缀重名")
     void marketMatchIsExact() {
-        SysPayChannel wechat = row("WECHAT");
-        wechat.setMarkets("[\"CNY\"]");
-        DataScopeContext.executeWithoutScope(() -> channelMapper.updateById(wechat));
+        /*
+         * 这一条在 JSON 文本时代防的是「包含匹配」—— 一段文本里找 CN，
+         * ["CNY"] 会命中。关系表里 market 是一个离散值，比的是相等，
+         * 结构上就不会出这个错。
+         *
+         * **仍然留着**：V295 的<b>回填</b>用的正是朴素子串匹配
+         * （理由写在迁移里：那句只跑一次，跑的时候库里是什么我查过）。
+         * 万一将来有人把那套匹配挪到运行时来，这一条会当场变红。
+         */
+        jdbc.update("DELETE FROM sys_pay_channel_market WHERE pay_channel = 'WECHAT'");
+        jdbc.update("INSERT INTO sys_pay_channel_market"
+                + " (pay_channel, market, tenant_no, created_at, created_by,"
+                + "  updated_at, updated_by, version, deleted)"
+                + " VALUES ('WECHAT','CNY','MAIN','2026-09-02 00:00:00','SYSTEM',"
+                + "         '2026-09-02 00:00:00','SYSTEM',0,0)");
 
         assertThat(masterData.enabledChannels("CN"))
                 .as("CN 不该命中 CNY").doesNotContain("WECHAT");

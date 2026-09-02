@@ -11,3 +11,22 @@
 -- 而是给测试环境配一个「有实现的通道」——
 -- 正如生产环境将来会配真通道的凭证。
 UPDATE sys_pay_channel SET enabled = 1 WHERE pay_channel = 'TEST';
+
+-- ── V295 的回填结果（通道 × 市场）──────────────────────────────────
+--
+-- **为什么要在这里手写一遍**：schema-test.sql 的生成器<b>刻意丢掉
+-- INSERT … SELECT</b>（它的注释写着「那是数据回填，不是种子」）。
+-- 于是 V295 的回填在 H2 里根本不执行，sys_pay_channel_market 是空的。
+--
+-- 而空表恰好命中「无行 = 不限市场」这条语义 —— 所有断言照样绿，
+-- <b>而绿的原因是「谁都不受限」，不是「回填对了」</b>。
+-- 这种假绿最难发现：判据本身没测到要测的那件事。
+--
+-- 下面这两行是**生产库当场查出来的回填结果**（2026-09-02）：
+--   WECHAT ["CN"] · ALIPAY ["CN"] · TEST NULL（不限市场，V288 刻意留空）
+-- 回填逻辑一改，这里对不上就该有用例变红。
+INSERT INTO sys_pay_channel_market
+    (pay_channel, market, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+    ('WECHAT', 'CN', 'MAIN', '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0),
+    ('ALIPAY', 'CN', 'MAIN', '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0);
