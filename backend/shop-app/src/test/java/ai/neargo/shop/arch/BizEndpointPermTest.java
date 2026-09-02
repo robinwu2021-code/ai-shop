@@ -142,6 +142,7 @@ class BizEndpointPermTest {
         put("/biz/inventory/transfers/{no}", BizPerms.STOCK);
         put("/biz/inventory/transfers/{no}/ship", BizPerms.STOCK);
         put("/biz/inventory/transfers/{no}/receive", BizPerms.STOCK);
+        put("/biz/inventory/transfers/{no}/void", BizPerms.STOCK);
         put("/biz/inventory/locations", BizPerms.STOCK);
         put("/biz/inventory/locations/{id}/source", BizPerms.STORE_ADMIN);
         put("/biz/inventory/report/monthly", BizPerms.CUSTOMER);

@@ -170,6 +170,28 @@ public class TransferServiceImpl implements TransferService {
 
     @Override
     @Transactional(transactionManager = "invTransactionManager")
+    public void cancel(String ownerId, String transferNo, String operator) {
+        InvTransferOrder head = mine(ownerId, transferNo);
+        if (InvEnums.TransferStatus.VOIDED.equals(head.getStatus())) {
+            return;   // 幂等：弱网下重复提交是常事
+        }
+        /*
+         * **只放行草稿。** 已 SHIPPED 的货正停在 TRANSIT 库位上 —— 那不是「作废」
+         * 能表达的事：货真的离开了来源库位，要弄回去是**退回**，得再走一遍成对的
+         * 一出一入。把两件事塞进同一个动作，商家点下去之后账上会凭空少一批货。
+         */
+        if (!InvEnums.TransferStatus.DRAFT.equals(head.getStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        // 草稿态那张出库单也还是草稿，voidOrder 对它不会去写反向流水
+        outbound.voidOrder(ownerId, head.getShippedOutboundNo(), operator);
+        head.setStatus(InvEnums.TransferStatus.VOIDED);
+        head.setUpdatedBy(operator);
+        transferMapper.updateById(head);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
     public void receive(String ownerId, String transferNo, String operator) {
         InvTransferOrder head = mine(ownerId, transferNo);
         if (InvEnums.TransferStatus.RECEIVED.equals(head.getStatus())) {

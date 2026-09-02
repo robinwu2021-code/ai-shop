@@ -14554,6 +14554,40 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/inventory/transfers/{no}/void": 
+    post: 
+      operationId: "mTransferVoid"
+      summary: "作废调拨草稿"
+      tags: 
+        - "inventory"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "no"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/inventory/documents": 
     get: 
       operationId: "mStockDocuments"

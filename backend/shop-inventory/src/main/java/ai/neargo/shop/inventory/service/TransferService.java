@@ -32,6 +32,19 @@ public interface TransferService {
     void receive(String ownerId, String transferNo, String operator);
 
     /**
+     * 作废一张<b>还没发出</b>的调拨单。
+     *
+     * <p><b>只放行 DRAFT。</b>草稿只是「打算搬哪些货」，库存一个数都没动过，
+     * 作废掉那张出库草稿即可。已 SHIPPED 的货正停在 TRANSIT 库位上 ——
+     * 那不是「作废」能表达的事：货是真的离开了来源库位，要把它弄回去是**退回**，
+     * 得再走一遍成对的一出一入。把两件事塞进同一个动作，商家点下去之后
+     * 账上会凭空少一批货。RECEIVED 同理，那时该开一张反向调拨。
+     *
+     * <p>幂等：已经作废的再点一次不报错 —— 弱网下重复提交是常事。
+     */
+    void cancel(String ownerId, String transferNo, String operator);
+
+    /**
      * 读回一张调拨单。
      *
      * <p>行取自**发出那张出库单** —— 草稿态还没有行，界面上要把这一点说清楚，

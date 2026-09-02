@@ -166,6 +166,19 @@ public class BizStockDocController {
         transfers.receive(owner(), no, SecurityUtils.currentUserNo());
     }
 
+    /**
+     * 作废一张<b>还没发出</b>的调拨单 —— 「建错了怎么办」的答案。
+     *
+     * <p>此前调拨没有任何撤销路径：单据列表的作废按钮只放行出入库单，
+     * 而调拨详情页也没有口子，于是建错一张就永远挂在那儿（2026-09-02 生产上
+     * 有三张这样的草稿）。已发出的不给作废，见 {@link TransferService#cancel}。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
+    @PostMapping("/biz/inventory/transfers/{no}/void")
+    public void voidTransfer(@PathVariable String no) {
+        transfers.cancel(owner(), no, SecurityUtils.currentUserNo());
+    }
+
     // ── 请求体 ────────────────────────────────────────────────────────
     public record LineReq(String itemId, int qty, String uom, Long unitCostMinor) {
     }

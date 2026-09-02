@@ -241,6 +241,34 @@ async function receive() {
   }
 }
 
+/**
+ * 作废一张还没发出的调拨单 —— 「建错了怎么办」的答案。
+ *
+ * **只在草稿态出现**：已发出的货正停在在途库位上，把它弄回去是「退回」不是作废，
+ * 得再走一遍成对的一出一入。画一个点了报错的按钮比没有按钮更糟。
+ */
+async function voidTransfer() {
+  if (!doc.value || busy.value) return;
+  const ok = await confirm({
+    title: String(t("transfer.voidTitle")),
+    // 草稿没动过库存，别说「库存会退回」——那是吓人
+    hint: String(t("transfer.voidHint", { no: doc.value.transferNo })),
+    confirmText: String(t("transfer.voidConfirm")),
+    danger: true,
+  });
+  if (!ok) return;
+  busy.value = true;
+  try {
+    await api.mTransferVoid(doc.value.transferNo);
+    await load();
+    uni.showToast({ title: String(t("transfer.voided")), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
 /** 「08-26 07:30」。切片不解析 —— 后端发的是不带时区的 LocalDateTime */
 function at(iso?: string): string {
   return iso && iso.length >= 16 ? iso.slice(5, 16).replace("T", " ") : "";
@@ -318,6 +346,17 @@ onShow(load);
       <!-- 收货：单据详情一屏放不下时，这枚在最下面，而它是收货人唯一要点的东西 -->
       <sh-actionbar v-if="doc.status === 'SHIPPED'" :pad="180">
         <view class="sh-btn" @tap="receive">{{ $t("transfer.receive") }}</view>
+      </sh-actionbar>
+
+      <!--
+        作废**只在草稿态**。此前调拨一张撤销路径都没有：单据列表的作废按钮只放行
+        出入库单，这一页也没有口子，于是建错一张就永远挂在那儿。
+        已发出的不给 —— 那时要的是「退回」，是另一件事。
+      -->
+      <sh-actionbar v-else-if="doc.status === 'DRAFT'" :pad="180">
+        <view class="sh-btn sh-btn--danger" :class="{ 'sh-btn--muted': busy }" @tap="voidTransfer">
+          {{ $t("transfer.void") }}
+        </view>
       </sh-actionbar>
     </template>
 

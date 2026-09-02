@@ -208,6 +208,45 @@ class InventoryFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 调拨草稿能作废，已发出的不能 —— 那时要的是退回不是作废")
+    void transferDraftCanBeVoidedButShippedCannot() {
+        Fixture f = fixture();
+        String to = locations.createWarehouse(f.owner, "二店-" + f.seq, "老板");
+        inbound.postDirectly(purchase(f, 20), "老板");
+        int total = totalOf(f.owner, f.item);
+
+        /*
+         * 建错一张就作废掉。**此前调拨一张撤销路径都没有**：单据列表的作废按钮
+         * 只放行出入库单，详情页也没有口子，于是错单永远挂在那儿
+         *（2026-09-02 生产上有三张这样的草稿）。
+         */
+        String draft = transfers.create(f.owner, f.location, to,
+                List.of(new TransferService.Line(f.item, 8)), "老板");
+        transfers.cancel(f.owner, draft, "老板");
+        assertThat(transfers.detail(f.owner, draft).status())
+                .as("作废之后状态要变 —— VOIDED 这一档早就定义了，只是从来没人写进去")
+                .isEqualTo(InvEnums.TransferStatus.VOIDED);
+        assertThat(totalOf(f.owner, f.item))
+                .as("草稿本来就没动过库存，作废它一件都不该少").isEqualTo(total);
+        // 幂等：弱网下重复提交是常事
+        transfers.cancel(f.owner, draft, "老板");
+
+        /*
+         * **已发出的不给。** 货正停在在途库位上，把它弄回去是「退回」——
+         * 得再走一遍成对的一出一入。混成同一个动作的话，账上会凭空少一批货。
+         */
+        String shipped = transfers.create(f.owner, f.location, to,
+                List.of(new TransferService.Line(f.item, 5)), "老板");
+        transfers.ship(f.owner, shipped, null, null, null, "老板");
+        assertThatThrownBy(() -> transfers.cancel(f.owner, shipped, "老板"))
+                .as("已发出的调拨不能作废")
+                .isInstanceOf(BizException.class);
+        assertThat(totalOf(f.owner, f.item))
+                .as("被拒之后账上一件不差 —— 半路失败把货吃掉才是最坏的结果")
+                .isEqualTo(total);
+    }
+
+    @Test
     @DisplayName("★★ 作废已过账的入库单写反向流水，不删原行")
     void voidWritesReverseLedger() {
         Fixture f = fixture();

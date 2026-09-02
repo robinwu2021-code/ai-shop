@@ -352,6 +352,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mTransferShip: { method: "POST", path: "/biz/inventory/transfers/:no/ship", auth: true, summary: "调拨发出" },
   mCarriers: { method: "GET", path: "/biz/fulfillment/carriers", auth: true, summary: "承运方可选列表（只列启用的）" },
   mTransferReceive: { method: "POST", path: "/biz/inventory/transfers/:no/receive", auth: true, summary: "调拨收货" },
+  mTransferVoid: { method: "POST", path: "/biz/inventory/transfers/:no/void", auth: true, summary: "作废调拨草稿" },
 
   mStockDocuments: { method: "GET", path: "/biz/inventory/documents", auth: true, summary: "出入库单据" },
   mStockMonthly: { method: "GET", path: "/biz/inventory/report/monthly", auth: true, summary: "进销存月报" },

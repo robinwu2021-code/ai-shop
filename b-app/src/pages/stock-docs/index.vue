@@ -128,12 +128,20 @@ async function open(d: StockDocument) {
 }
 
 /**
- * 能不能作废这一张。**只有出入库单能** —— 盘点与调拨后端没有作废端点
- * （它们各自的详情页有自己的口子），在这里画一个点了报错的按钮更糟。
+ * 能不能作废这一张。
+ *
+ * - **出入库单**：草稿与已过账都能 —— 已过账的作废会写一行反向流水；
+ * - **调拨单**：**只有还没发出的**。已发出的货正停在在途库位上，把它弄回去是
+ *   「退回」不是作废，得再走一遍成对的一出一入 —— 在这里画一个点了报错的按钮
+ *   比没有按钮更糟；
+ * - **盘点单**：后端没有作废端点，它有自己的口子。
+ *
  * 已作废的不再给：作废是幂等的，但按钮还在会让人以为没生效。
  */
 function canVoid(d: StockDocument): boolean {
-  return (d.kind === "IN" || d.kind === "OUT") && d.status !== "VOIDED";
+  if (d.status === "VOIDED") return false;
+  if (d.kind === "IN" || d.kind === "OUT") return true;
+  return d.kind === "TRANSFER" && d.status === "DRAFT";
 }
 
 /**
@@ -153,7 +161,9 @@ async function voidDoc(d: StockDocument) {
   });
   if (!ok) return;
   try {
-    await (d.kind === "IN" ? api.mInboundVoid(d.docNo) : api.mOutboundVoid(d.docNo));
+    await (d.kind === "IN" ? api.mInboundVoid(d.docNo)
+      : d.kind === "TRANSFER" ? api.mTransferVoid(d.docNo)
+        : api.mOutboundVoid(d.docNo));
     uni.showToast({ title: String(t("stockDocs.voided")), icon: "none" });
     openedNo.value = "";
     await load();

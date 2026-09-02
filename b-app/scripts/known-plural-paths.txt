@@ -35,4 +35,5 @@ mSupplierActive	/biz/inventory/suppliers/:no/active
 mSupplierUpdate	/biz/inventory/suppliers/:no
 mTransferDetail	/biz/inventory/transfers/:no
 mTransferReceive	/biz/inventory/transfers/:no/receive
+mTransferVoid	/biz/inventory/transfers/:no/void
 mTransferShip	/biz/inventory/transfers/:no/ship

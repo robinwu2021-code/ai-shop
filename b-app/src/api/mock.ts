@@ -4687,6 +4687,14 @@ export const mockApi: MerchantApi = {
   async mTransferReceive() {
     return delay(undefined);
   },
+  async mTransferVoid(no) {
+    // 与后端同口径：已发出的不给作废，端上的按钮该按这条判据显隐
+    if (shipped.has(no)) {
+      throw new Error("已发出的调拨单不能作废");
+    }
+    voidedDocs.add(no);
+    return delay(undefined);
+  },
 
   async mStockDocuments(q) {
     // 本次会话里新建的排在前面 —— 刚提交完就该在最上面看到它

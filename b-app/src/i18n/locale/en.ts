@@ -1802,6 +1802,11 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     posted: "Posted {no}",
   },
   transfer: {
+    void: "Void this transfer",
+    voidTitle: "Void transfer",
+    voidHint: "{no} has not shipped yet. Voiding retires it for good. Stock was never touched, so nothing changes there.",
+    voidConfirm: "Void",
+    voided: "Voided",
     fromChangedCleared: "Source changed — picked items cleared",
     shipTitle: "Shipping details",
     shipHint: "Carrier and tracking number are both optional — leave blank if you deliver it yourself",

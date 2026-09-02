@@ -1457,6 +1457,13 @@ export interface MerchantApi {
   /** 承运方可选列表。只列启用的 —— 停用的选了会指向一个已经不合作的公司 */
   mCarriers(): Promise<Carrier[]>;
   mTransferReceive(no: string): Promise<void>;
+  /**
+   * 作废一张**还没发出**的调拨单。
+   *
+   * 已发出的会回 CONFLICT：货正停在在途库位上，把它弄回去是**退回**不是作废，
+   * 要再走一遍成对的一出一入 —— 混成一个动作的话，账上会凭空少一批货。
+   */
+  mTransferVoid(no: string): Promise<void>;
 
   /** 单据中心。`kind` 空=全部，否则 IN / OUT / COUNT / TRANSFER */
   mStockDocuments(q?: { kind?: string; no?: string; size?: number }): Promise<StockDocument[]>;

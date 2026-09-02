@@ -273,6 +273,7 @@ const RESPONSE_TYPES = {
   mTransferCreate: "string",
   mTransferDetail: "StockTransfer",
   mTransferReceive: "void",
+  mTransferVoid: "void",
   mTransferShip: "void",
   mVillageDict: "Region[]",
   mWarehouseCreate: "string",

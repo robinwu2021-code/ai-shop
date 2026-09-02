@@ -587,6 +587,7 @@ export const httpApi: MerchantApi = {
   mTransferShip: (no, body) => http.post<void>(buildPath(E.mTransferShip.path, { no }), body),
   mCarriers: () => http.get<Carrier[]>(E.mCarriers.path),
   mTransferReceive: (no) => http.post<void>(buildPath(E.mTransferReceive.path, { no })),
+  mTransferVoid: (no) => http.post<void>(buildPath(E.mTransferVoid.path, { no })),
 
   mStockDocuments: (q) => http.get<StockDocument[]>(E.mStockDocuments.path, q),
   mStockMonthly: (month) => http.get<StockMonthly>(E.mStockMonthly.path, { month }),
