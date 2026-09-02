@@ -49,6 +49,17 @@
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!--
+            H2 只给测试用：装配冒烟要有一个连得上的数据源，
+            而这个进程今天连的是主库 —— 测试里当然不能连它。
+            **不是引一个第二数据库**：跑的是「上下文装不装得起来」，
+            一张表都不会被读到（Flyway 在这个进程里本来就关着）。
+        -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
