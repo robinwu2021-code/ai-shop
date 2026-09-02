@@ -29,7 +29,7 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { ConfigCard } from "@/components/ui/config-card";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Switch } from "@/components/ui/switch";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Textarea } from "@/components/ui/textarea";
@@ -255,10 +255,10 @@ function SystemInner() {
 
       {tab === "market" && (
         <>
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.marketNotice}
             {fill(c.baseCurrencyNotice, { cur: BASE_CURRENCY })}
-          </Notice>
+          </HelpNote>
           <DataTable
             columns={marketColumns} rows={markets.data} loading={markets.isLoading}
             error={markets.error} onRetry={() => markets.refetch()}
@@ -278,9 +278,9 @@ function SystemInner() {
       {tab === "flags" && (
         <>
           {!canEnv && <ReadOnlyNotice what={c.flagsReadOnlyWhat} perm="system:env:switch" note={c.flagsReadOnlyNote} className="mb-3" />}
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.flagsNotice}
-          </Notice>
+          </HelpNote>
           <DataTable
             columns={flagColumns} rows={flags.data} loading={flags.isLoading}
             error={flags.error} onRetry={() => flags.refetch()}

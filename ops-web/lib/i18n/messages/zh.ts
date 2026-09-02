@@ -10,6 +10,7 @@ export const zh = {
     desktopBody: "你有 {n} 条未读通知",
   },
   common: {
+    helpNote: "说明",
     pageSize: "每页条数",
     jumpToPage: "跳转到第几页",
     perPage: "每页 {n} 条",

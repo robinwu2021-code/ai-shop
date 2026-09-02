@@ -16,6 +16,7 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { Pagination } from "@/components/ui/misc";
 import { Toolbar } from "@/components/ui/toolbar";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -105,7 +106,7 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
 
   return (
     <>
-      <Notice className="mb-3">{c.categoryNotice}</Notice>
+      <HelpNote className="mb-3">{c.categoryNotice}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder} />
       <DataTable
         columns={columns} rows={list.data?.records} loading={list.isLoading}
@@ -258,7 +259,7 @@ export function VerifyTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boolean
 
   return (
     <>
-      <Notice className="mb-3">{fill(c.verifyNotice, { n: MAX_MERCHANT_BREACH })}</Notice>
+      <HelpNote className="mb-3">{fill(c.verifyNotice, { n: MAX_MERCHANT_BREACH })}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder} />
       <DataTable
         columns={columns} rows={list.data?.records} loading={list.isLoading}

@@ -14,6 +14,7 @@ import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import type { ServiceScopeConfig } from "@/lib/types";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,7 +67,7 @@ export function ServiceScopeTab({ c, canWrite }: { c: SystemCopy; canWrite: bool
 
   return (
     <>
-      <Notice className="mb-3">{c.scNotice}</Notice>
+      <HelpNote className="mb-3">{c.scNotice}</HelpNote>
 
       <DataTable
         columns={columns}

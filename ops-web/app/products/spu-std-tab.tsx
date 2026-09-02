@@ -28,7 +28,7 @@ import { Drawer, Field } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Pagination } from "@/components/ui/misc";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -226,7 +226,7 @@ export function SpuStdTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean })
 
   return (
     <>
-      <Notice className="mb-3">{c.stdNotice}</Notice>
+      <HelpNote className="mb-3">{c.stdNotice}</HelpNote>
 
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.stdSearch}>
         <FilterSelect aria-label={c.stdFilterCategory} value={categoryNo}

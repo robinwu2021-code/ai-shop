@@ -14,7 +14,7 @@ import { MIN_ENABLED_SECTIONS } from "@/lib/constants";
 import type { SectionKey, StoreTemplate, TemplateSection } from "@/lib/types";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field } from "@/components/ui/drawer";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Toolbar } from "@/components/ui/toolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -137,7 +137,7 @@ export function TemplateTab({ c, canEdit }: { c: StoresCopy; canEdit: boolean })
 
   return (
     <>
-      <Notice className="mb-3">{fill(c.templateNotice, { n: MIN_ENABLED_SECTIONS })}</Notice>
+      <HelpNote className="mb-3">{fill(c.templateNotice, { n: MIN_ENABLED_SECTIONS })}</HelpNote>
       <Toolbar
         onAdd={() => setEditing({
           name: "", layout: "GRID", enabled: true, isDefault: false,

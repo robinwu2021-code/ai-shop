@@ -50,6 +50,18 @@
       "autoPort": false
     },
     {
+      "_comment": "mock 数据跑运营端：**改完界面自己看一遍**用的入口。与 ops-web（3100，连 8082）分开的理由和 c-app-mock 一样 —— .env.local 里写死 NEXT_PUBLIC_USE_MOCK=0，同一个端口起不了两份。这里靠 shell 环境变量压过 .env.local（Next 的优先级如此），所以不必去改那个被并行会话共用的文件。CORS 白名单只认 3100 这条限制在这儿不适用：mock 模式一个请求都不发。",
+      "name": "ops-web-mock",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "PORT=3105 NEXT_PUBLIC_USE_MOCK=1 NEXT_PUBLIC_API_BASE= npm run dev"
+      ],
+      "cwd": "ops-web",
+      "port": 3105,
+      "autoPort": false
+    },
+    {
       "_comment": "hxmall.top 官网。纯静态、不连后端 —— 起它只为看页面，后端起没起都不影响。端口挑 3200 是为了与 ops-web 的 3100 隔开一档。",
       "name": "site",
       "runtimeExecutable": "/bin/zsh",

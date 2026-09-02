@@ -30,7 +30,7 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { ConfigCard } from "@/components/ui/config-card";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { StatRow, Pagination, StatCard } from "@/components/ui/misc";
 import { Progress } from "@/components/ui/progress";
 import { TabHeader } from "@/components/ui/tab-header";
@@ -191,9 +191,9 @@ function FulfillmentInner() {
     <div>
       <TabHeader tabs={tabs} value={tab} onChange={setTab} />
 
-      <Notice className="mb-3">
+      <HelpNote className="mb-3">
         {c.notice}
-      </Notice>
+      </HelpNote>
 
       {tab === "batches" && (
         <>
@@ -215,7 +215,7 @@ function FulfillmentInner() {
 
       {tab === "sorting" && (
         <>
-          <Notice className="mb-3">{c.sortingNotice}</Notice>
+          <HelpNote className="mb-3">{c.sortingNotice}</HelpNote>
           <DataTable
             columns={sortingColumns}
             rows={sorting.data?.records}

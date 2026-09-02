@@ -35,7 +35,7 @@ import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer"
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { StatRow, Pagination, StatCard, IdCell } from "@/components/ui/misc";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TabHeader } from "@/components/ui/tab-header";
@@ -381,9 +381,9 @@ function ProductsInner() {
             />
             <StatCard label={c.kpiOversellQty} value={(oversell.data ?? []).reduce((n, s) => n + (s.soldCount - s.presaleQuota), 0)} />
           </StatRow>
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.stockNotice}
-          </Notice>
+          </HelpNote>
           <DataTable
             columns={stockColumns} rows={stockRows} loading={presaleList.isLoading}
             error={presaleList.error} onRetry={() => presaleList.refetch()}

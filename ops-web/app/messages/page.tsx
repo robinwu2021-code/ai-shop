@@ -32,6 +32,7 @@ import { Drawer, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { Pagination } from "@/components/ui/misc";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -231,9 +232,9 @@ function MessagesInner() {
             <CardHeader><CardTitle>{c.quotaTitle}</CardTitle></CardHeader>
             <CardContent>
               {!canEditTemplate && <ReadOnlyNotice what={c.quotaReadOnlyWhat} perm="message:template:update" className="mb-3" />}
-              <Notice className="mb-3">
+              <HelpNote className="mb-3">
                 {c.quotaNotice}
-              </Notice>
+              </HelpNote>
               {editingQuota && (
                 <div className="flex flex-wrap items-end gap-3">
                   <div className="space-y-1">
@@ -308,9 +309,9 @@ function MessagesInner() {
 
       {tab === "faq" && (
         <>
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.faqNotice}
-          </Notice>
+          </HelpNote>
           <Toolbar
             onAdd={canEditFaq ? openNewFaq : undefined}
             addLabel={c.addFaqLabel}

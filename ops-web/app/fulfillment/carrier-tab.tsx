@@ -14,7 +14,7 @@ import { fmtTime } from "@/lib/utils";
 import type { CarrierConfig } from "@/lib/types";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -123,7 +123,7 @@ export function CarrierTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
 
   return (
     <>
-      <Notice className="mb-3">{c.carrierNotice}</Notice>
+      <HelpNote className="mb-3">{c.carrierNotice}</HelpNote>
       <DataTable
         columns={columns} rows={list.data} loading={list.isLoading}
         error={list.error} onRetry={() => list.refetch()}

@@ -18,7 +18,7 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -85,7 +85,7 @@ export function ExpressTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
 
   return (
     <>
-      <Notice className="mb-3">{c.expressNotice}</Notice>
+      <HelpNote className="mb-3">{c.expressNotice}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchShipment}>
         <FilterSelect aria-label={c.filterCarrier} value={carrier} onChange={(v) => { setCarrier(v); setPage(1); }}
           options={carrierMap} allLabel={c.filterCarrierAll} />

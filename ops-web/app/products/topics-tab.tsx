@@ -23,6 +23,7 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { Toolbar } from "@/components/ui/toolbar";
 import type { ProductsCopy } from "./copy";
@@ -157,7 +158,7 @@ export function TopicsTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean })
 
   return (
     <>
-      <Notice className="mb-3">{c.topicNotice}</Notice>
+      <HelpNote className="mb-3">{c.topicNotice}</HelpNote>
 
       {canEdit && (
         <Toolbar>

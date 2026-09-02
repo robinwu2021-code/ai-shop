@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, Field } from "@/components/ui/drawer";
 import { Input, Select } from "@/components/ui/input";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Toolbar } from "@/components/ui/toolbar";
 import type { ProductsCopy } from "./copy";
 
@@ -176,7 +176,7 @@ export function SpecLibraryTab({ c, universal, canEdit }: {
 
   return (
     <>
-      <Notice className="mb-3">{universal ? c.slNoticeCommon : c.slNoticeSpecial}</Notice>
+      <HelpNote className="mb-3">{universal ? c.slNoticeCommon : c.slNoticeSpecial}</HelpNote>
 
       <Toolbar search={keyword} onSearch={setKeyword} searchPlaceholder={c.slSearch}>
         <ShowArchivedToggle checked={showArchived} onChange={setShowArchived} label={c.tplShowArchived} />

@@ -31,6 +31,7 @@ import { Drawer, Field } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { Pagination } from "@/components/ui/misc";
 import { Switch } from "@/components/ui/switch";
@@ -566,7 +567,7 @@ function IamInner() {
       */}
       {tab === "menu" && (
         <div className="space-y-3">
-          <Notice className="mb-3">{c.menuOrderNotice}</Notice>
+          <HelpNote className="mb-3">{c.menuOrderNotice}</HelpNote>
           <MenuOrderTree
             nodes={orderNodes}
             canEdit={canGrant}
@@ -583,7 +584,7 @@ function IamInner() {
 
       {tab === "roles" && (
         <>
-          <Notice className="mb-3">{c.notice}</Notice>
+          <HelpNote className="mb-3">{c.notice}</HelpNote>
           {canGrant && (
             <div className="mb-3">
               <Button size="sm" onClick={() => setNewRole({ roleCode: "", name: "", codeTouched: false })}>
@@ -706,9 +707,9 @@ function IamInner() {
 
       {tab === "audit" && (
         <>
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.auditNotice}
-          </Notice>
+          </HelpNote>
           {!canReadAudit ? (
             <ReadOnlyNotice what={c.auditReadOnlyWhat} perm="iam:audit:read" />
           ) : (

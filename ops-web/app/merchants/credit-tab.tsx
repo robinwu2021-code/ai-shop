@@ -19,7 +19,7 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -102,8 +102,8 @@ export function CreditTab({ c }: { c: MerchantsCopy }) {
 
   return (
     <>
-      <Notice className="mb-3">{fill(c.creditNotice, { n: MAX_MERCHANT_BREACH })}</Notice>
-      <Notice className="mb-3">{c.borneNotice}</Notice>
+      <HelpNote title={c.creditNoteTitle} className="mb-3">{fill(c.creditNotice, { n: MAX_MERCHANT_BREACH })}</HelpNote>
+      <HelpNote title={c.borneNoteTitle} className="mb-3">{c.borneNotice}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder} />
       <DataTable
         columns={columns} rows={list.data?.records} loading={list.isLoading}
@@ -220,7 +220,7 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
 
   return (
     <>
-      <Notice className="mb-3">{c.banNotice}</Notice>
+      <HelpNote className="mb-3">{c.banNotice}</HelpNote>
 
       <Toolbar search={keyword} onSearch={setKeyword} searchPlaceholder={c.searchPlaceholder}>
         <FilterSelect aria-label={c.filterViolationType} value={type} onChange={setType}

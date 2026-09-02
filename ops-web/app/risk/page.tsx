@@ -25,7 +25,7 @@ import { Drawer, Field } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { StatRow, Pagination, StatCard } from "@/components/ui/misc";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
@@ -179,9 +179,9 @@ function RiskInner() {
             <StatCard label={c.kpiPageCount} value={rows.length} />
             <StatCard label={c.kpiActiveBlack} value={blacks.data?.total ?? "—"} />
           </StatRow>
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.eventsNotice}
-          </Notice>
+          </HelpNote>
           <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchEvents}>
             <FilterSelect aria-label={c.filterType} value={type} onChange={(v) => { setType(v); setPage(1); }} options={typeMap} allLabel={c.filterTypeAll} />
             <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={statusMap} allLabel={c.filterStatusAll} />
@@ -198,9 +198,9 @@ function RiskInner() {
 
       {tab === "blacklist" && (
         <>
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.blacklistNotice}
-          </Notice>
+          </HelpNote>
           <Toolbar
             search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }}
             searchPlaceholder={c.searchBlacklist}
@@ -227,9 +227,9 @@ function RiskInner() {
           <CardHeader><CardTitle>{c.rulesTitle}</CardTitle></CardHeader>
           <CardContent>
             {!canUpdateRule && <ReadOnlyNotice what={c.rulesReadOnlyWhat} perm="risk:rule:update" className="mb-3" />}
-            <Notice className="mb-4">
+            <HelpNote className="mb-4">
               {c.rulesNotice}
-            </Notice>
+            </HelpNote>
             <div className="space-y-5">
               {(rules.data ?? []).map((r: RiskRule) => (
                 <div key={r.type} className="rounded-card bg-secondary p-4">

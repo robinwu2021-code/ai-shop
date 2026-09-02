@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { Switch } from "@/components/ui/switch";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Badge } from "@/components/ui/badge";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import type { SceneChannelCell } from "@/lib/types";
@@ -85,7 +85,7 @@ export function RoutingTab({ c, canEdit }: { c: MessageCopy; canEdit: boolean })
 
   return (
     <>
-      <Notice className="mb-3">{c.rtNotice}</Notice>
+      <HelpNote className="mb-3">{c.rtNotice}</HelpNote>
       {!canEdit && <ReadOnlyNotice what={c.rtTitle} perm="message:template:update" className="mb-3" />}
 
       {/*

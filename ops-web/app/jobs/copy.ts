@@ -44,6 +44,9 @@ const zh = {
   jobsPending: "已排队",
   jobsPendingHint: "已记下请求，调度器下一轮（最多 30 秒）会跑。运营端与调度器之间不直接通信。",
   jobsEnable: "启用",
+  // 「说明」而不是「详情」：详情在运营端到处都是「点进去看一条记录」，
+  // 而这里点开的是一段解释，不是另一个对象
+  jobsDescToggle: "说明",
   jobsDisable: "停用",
   jobsTrigger: "立即执行",
   jobsEditCron: "改频率",
@@ -108,6 +111,7 @@ const en: typeof zh = {
   jobsPendingHint: "Request recorded. The scheduler picks it up on its next poll (up to 30s). "
     + "This page never talks to the scheduler directly.",
   jobsEnable: "Enable",
+  jobsDescToggle: "What it does",
   jobsDisable: "Disable",
   jobsTrigger: "Run now",
   jobsEditCron: "Edit schedule",

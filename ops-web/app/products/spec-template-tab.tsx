@@ -24,7 +24,7 @@ import { Drawer, Field } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Pagination } from "@/components/ui/misc";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -158,7 +158,7 @@ export function SpecTemplateTab({ c, canEdit }: { c: ProductsCopy; canEdit: bool
         类目 × 规格已经搬到自己的页面（并变成可编辑的），这里不再寄居一份只读副本 ——
         两处显示同一件事，改了一处另一处不动，是最容易让人以为「没保存成功」的形状。
       */}
-      <Notice className="mb-3">{c.tplNotice}</Notice>
+      <HelpNote className="mb-3">{c.tplNotice}</HelpNote>
 
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.tplSearch}>
         <FilterSelect aria-label={c.tplFilterCategory} value={categoryType}

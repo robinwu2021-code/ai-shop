@@ -15,7 +15,7 @@ import type { PurchaseInvoice } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import type { FinanceCopy } from "./copy";
 
 export function PurchaseInvoiceTab({ c, canVerify }: { c: FinanceCopy; canVerify: boolean }) {
@@ -129,7 +129,7 @@ export function PurchaseInvoiceTab({ c, canVerify }: { c: FinanceCopy; canVerify
           {c.piSummary.replace("{n}", String(waiting))}
         </span>
       </div>
-      <Notice className="mb-3">{c.piNotice}</Notice>
+      <HelpNote className="mb-3">{c.piNotice}</HelpNote>
 
       <DataTable
         columns={columns} rows={rows} loading={list.isLoading}

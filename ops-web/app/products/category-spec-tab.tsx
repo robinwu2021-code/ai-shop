@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { CategorySpecDrawer } from "./category-spec-drawer";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import type { ProductsCopy } from "./copy";
 
 export function CategorySpecTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean }) {
@@ -138,7 +138,7 @@ export function CategorySpecTab({ c, canEdit }: { c: ProductsCopy; canEdit: bool
         <h3 className="text-[15px] font-semibold">{c.csTitle}</h3>
         <span className="text-[12px] tabular-nums text-muted-foreground">{summary}</span>
       </div>
-      <Notice className="mb-3">{c.csNotice}</Notice>
+      <HelpNote className="mb-3">{c.csNotice}</HelpNote>
 
       <DataTable
         columns={columns} rows={rows} loading={list.isLoading}

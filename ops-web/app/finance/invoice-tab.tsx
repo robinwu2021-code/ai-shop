@@ -19,7 +19,7 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfigCard } from "@/components/ui/config-card";
@@ -114,7 +114,7 @@ export function InvoiceTab({ c, canEdit, canWrite }: { c: FinanceCopy; canEdit: 
 
   return (
     <>
-      <Notice className="mb-3">{c.invoiceNotice}</Notice>
+      <HelpNote className="mb-3">{c.invoiceNotice}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchInvoice}>
         <FilterSelect aria-label={c.filterIvStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }}
           options={statusMap} allLabel={c.filterIvStatusAll} />

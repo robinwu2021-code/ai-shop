@@ -19,7 +19,7 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { Pagination } from "@/components/ui/misc";
 import { Toolbar } from "@/components/ui/toolbar";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
@@ -109,7 +109,7 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
 
   return (
     <>
-      <Notice className="mb-3">{c.proxyNotice}</Notice>
+      <HelpNote className="mb-3">{c.proxyNotice}</HelpNote>
 
       <Card className="mb-4">
         <CardHeader><CardTitle>{c.proxyCreateTitle}</CardTitle></CardHeader>

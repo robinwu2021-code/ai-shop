@@ -17,7 +17,7 @@ import type { Settlement } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import type { FinanceCopy } from "./copy";
 
 /** 能不能登记付款。**与后端同一套判据** —— 两处不同就会出现「按钮亮着、点了报错」 */
@@ -153,7 +153,7 @@ export function PayablesTab({ c, canEdit, canPay }: {
           {c.pySummary.replace("{n}", String(pending.length)).replace("{amount}", money(pendingAmount))}
         </span>
       </div>
-      <Notice className="mb-3">{c.pyNotice}</Notice>
+      <HelpNote className="mb-3">{c.pyNotice}</HelpNote>
 
       <div className="mb-3 flex gap-1.5">
         {["", "PENDING_RECON", "CONFIRMED", "PAID"].map((s) => (

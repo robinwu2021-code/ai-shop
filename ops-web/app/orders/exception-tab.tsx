@@ -22,7 +22,7 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -96,7 +96,7 @@ export function ExceptionTab({ c, canModify }: { c: OrdersCopy; canModify: boole
 
   return (
     <>
-      <Notice className="mb-3">{c.exceptionNotice}</Notice>
+      <HelpNote className="mb-3">{c.exceptionNotice}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchException}>
         <FilterSelect aria-label={c.filterKind} value={kind} onChange={(v) => { setKind(v); setPage(1); }}
           options={kindMap} allLabel={c.filterKindAll} />

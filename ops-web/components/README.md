@@ -26,6 +26,7 @@
 | `segmentedTrackClass` / `segmentedItemClass` | `ui/segmented.ts` | 分段控件（灰槽+全圆+白色药丸）的 className 拼装，供 `Tabs` 与 `TabHeader` 共用；两者场景不同（内容切换 vs URL 导航）不合并组件，只共享形状 |
 | `Progress` | `ui/progress.tsx` | |
 | `Notice` | `ui/notice.tsx` | 页内灰底提示条。权限降级用业务件 `ReadOnlyNotice` |
+| `HelpNote` | `ui/help-note.tsx` | **默认收起**的说明块。常驻的「这一页是什么」用它，别用 `Notice` 占着一行 |
 | `StatCard` / `StatRow` / `EmptyState` / `Skeleton` / `PageTitle` / `Pagination` / `PAGE_SIZES` | `ui/misc.tsx` | `StatRow` 是 KPI 卡片行；`Pagination` 传 `onSize` 才出「每页条数」 |
 | `Tooltip` | `ui/tooltip.tsx` | |
 | `Checkbox` / `CheckboxField` | `ui/checkbox.tsx` | 三态（含半选）。`DataTable` 的行选择用它 |

@@ -18,7 +18,7 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -112,7 +112,7 @@ export function AuditTab({ c, canAudit }: { c: ContentsCopy; canAudit: boolean }
 
   return (
     <>
-      <Notice className="mb-3">{c.auditNotice}</Notice>
+      <HelpNote className="mb-3">{c.auditNotice}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPost}>
         <FilterSelect aria-label={c.filterPostStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }}
           options={statusMap} allLabel={c.filterPostStatusAll} />

@@ -15,7 +15,7 @@ import type { CategoryPoints } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import type { ProductsCopy } from "./copy";
 
 export function CategoryPointsTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean }) {
@@ -118,7 +118,7 @@ export function CategoryPointsTab({ c, canEdit }: { c: ProductsCopy; canEdit: bo
           {c.cptSummary.replace("{n}", String(configured)).replace("{total}", String(rows.length))}
         </span>
       </div>
-      <Notice className="mb-3">{c.cptNotice}</Notice>
+      <HelpNote className="mb-3">{c.cptNotice}</HelpNote>
 
       <DataTable
         columns={columns} rows={rows} loading={list.isLoading}

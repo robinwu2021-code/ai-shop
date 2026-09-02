@@ -26,6 +26,7 @@ import { Pagination } from "@/components/ui/misc";
 import { TabHeader } from "@/components/ui/tab-header";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -228,7 +229,7 @@ function OrdersInner() {
 
       {tab === "search" && (
       <>
-      <Notice className="mb-3">{c.notice}</Notice>
+      <HelpNote className="mb-3">{c.notice}</HelpNote>
 
       <Toolbar
         search={keyword}
@@ -272,7 +273,7 @@ function OrdersInner() {
         <>
           {/* 四轴总览摆在最上面：先回答「哪一类在看、哪一类没看」，再看具体差异 */}
           {tab === "pay" && <ReconAxes c={c} />}
-          <Notice className="mb-3">{tab === "repair" ? c.repairNotice : c.payNotice}</Notice>
+          <HelpNote className="mb-3">{tab === "repair" ? c.repairNotice : c.payNotice}</HelpNote>
           {/*
             ⚠️ **这一条不能省，而且空表时更要显示。**
             后端 ReconService 的类注释写着「页面照它显示提示条，

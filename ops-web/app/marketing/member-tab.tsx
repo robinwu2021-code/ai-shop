@@ -20,6 +20,7 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -154,7 +155,7 @@ export function MemberTab({ c, canEdit }: { c: MarketingCopy; canEdit: boolean }
 
   return (
     <>
-      <Notice className="mb-3">{fill(c.memberNotice, { zhe: MIN_MEMBER_DISCOUNT / 1000, off: (10000 - MIN_MEMBER_DISCOUNT) / 100 })}</Notice>
+      <HelpNote className="mb-3">{fill(c.memberNotice, { zhe: MIN_MEMBER_DISCOUNT / 1000, off: (10000 - MIN_MEMBER_DISCOUNT) / 100 })}</HelpNote>
       <Toolbar
         search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchCard}
         onAdd={() => setEditing({ name: "", level: "1", priceMonthly: "9", benefits: [] })}

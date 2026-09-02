@@ -19,6 +19,7 @@ export const en: Messages = {
     desktopBody: "You have {n} unread notifications",
   },
   common: {
+    helpNote: "What this is",
     pageSize: "Rows per page",
     jumpToPage: "Jump to page",
     perPage: "{n} / page",

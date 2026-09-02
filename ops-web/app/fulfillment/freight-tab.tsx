@@ -15,7 +15,7 @@ import { MINOR_UNIT } from "@/lib/constants";
 import type { FreightTemplate, OutOfRangeAction, OutOfRangeRule } from "@/lib/types";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Toolbar } from "@/components/ui/toolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -134,7 +134,7 @@ export function FreightTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
 
   return (
     <>
-      <Notice className="mb-3">{c.freightNotice}</Notice>
+      <HelpNote className="mb-3">{c.freightNotice}</HelpNote>
       <Toolbar onAdd={() => setEditing({ ...blank })} addLabel={c.actionNewTemplate} canAdd={canEdit} />
       <DataTable
         columns={columns} rows={list.data?.records} loading={list.isLoading}

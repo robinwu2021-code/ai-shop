@@ -151,11 +151,11 @@ export default function JobsPage() {
         * 页面本身不横滚，这是仓库里宽表格一贯的做法。
         */}
       <div className="overflow-x-auto rounded-card border">
-       <div className="divide-y min-w-[52rem]">
+       <div className="divide-y min-w-[40rem]">
         {rows.map((r) => (
-          <div key={r.jobName}
-               className="grid grid-cols-[minmax(16rem,1fr)_9rem_14rem_auto] items-center gap-3 px-3 py-2.5">
-            {/* ① 名称 + 描述。两行封顶，描述截断 —— 这是行高一致的关键 */}
+          <div key={r.jobName} className="px-3 py-2.5">
+           <div className="grid grid-cols-[minmax(11rem,1fr)_8rem_12rem_auto] items-start gap-3">
+            {/* ① 名称。描述不在这一格里 —— 见行尾那个跨整行的 details */}
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span aria-hidden
@@ -173,7 +173,6 @@ export default function JobsPage() {
                   </Tooltip>
                 )}
               </div>
-              <div className="truncate pl-4 text-xs text-muted-foreground">{r.description}</div>
             </div>
 
             {/* ② 频率说人话，原始 cron 收进 tooltip */}
@@ -231,6 +230,39 @@ export default function JobsPage() {
                 </>
               )}
             </div>
+           </div>
+
+           {/*
+             * 描述**默认不显示**，点「说明」才展开。
+             *
+             * 此前它是 `truncate` 的一行：既看不全（这几条描述都是两三句话），
+             * 又天天占着一行 —— 而每天开这一页的人早就知道每个任务是干什么的，
+             * 他要看的是「跑没跑、什么时候跑」。第一次来的人则需要它。
+             * 收起来两边都成立：常客不被挤，新人点一下就有。
+             *
+             * **放在 grid 外面、跨整行**，不是塞进第一列：第一列只有 11rem，
+             * 两三句话在里面会排成四行八字宽的一根柱子 —— 能看全，但没人愿意读。
+             * 摆在行下方，展开时用的是整行的宽度。
+             *
+             * 用原生 details：键盘可达、屏幕阅读器认得、无需状态。
+             */}
+           {r.description && (
+             <details className="group/desc mt-1">
+               <summary className="flex w-fit cursor-pointer list-none items-center gap-1 text-xs
+                                   text-muted-foreground focus-ring rounded-chip
+                                   [&::-webkit-details-marker]:hidden">
+                 <svg aria-hidden viewBox="0 0 12 12"
+                      className="size-2.5 shrink-0 transition-transform group-open/desc:rotate-90">
+                   <path d="M4 2.5 8 6l-4 3.5z" fill="currentColor" />
+                 </svg>
+                 {c.jobsDescToggle}
+               </summary>
+               {/* 展开后允许换行 —— 它本来就是给人读的，截断等于没写 */}
+               <div className="mt-1 pl-3.5 text-xs leading-relaxed text-muted-foreground">
+                 {r.description}
+               </div>
+             </details>
+           )}
           </div>
         ))}
        </div>

@@ -26,7 +26,7 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { ConfigCard } from "@/components/ui/config-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Pagination } from "@/components/ui/misc";
 import { Radio, RadioGroup } from "@/components/ui/radio-group";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -264,9 +264,9 @@ function GrowthInner() {
       {tab === "traces" && (
         <>
           {!canRead && <ReadOnlyNotice what={c.tracesReadOnlyWhat} perm="growth:attribution:read" className="mb-3" />}
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.tracesNotice}
-          </Notice>
+          </HelpNote>
           <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder}>
             <FilterSelect aria-label={c.filterSource} value={source} onChange={(v) => { setSource(v); setPage(1); }} options={sourceMap} allLabel={c.filterSourceAll} />
             <FilterSelect aria-label={c.filterConflict} value={conflictOnly} onChange={(v) => { setConflictOnly(v); setPage(1); }}
@@ -286,9 +286,9 @@ function GrowthInner() {
 
       {tab === "fission" && (
         <>
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.fissionNotice}
-          </Notice>
+          </HelpNote>
           <DataTable
             columns={fissionColumns} rows={fissions.data?.records} loading={fissions.isLoading}
             error={fissions.error} onRetry={() => fissions.refetch()}

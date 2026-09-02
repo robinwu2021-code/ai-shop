@@ -40,7 +40,7 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { ConfigCard } from "@/components/ui/config-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { StatRow, Pagination, StatCard } from "@/components/ui/misc";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TabHeader } from "@/components/ui/tab-header";
@@ -225,9 +225,9 @@ function FinanceInner() {
               tone={rows.some((s) => s.status === "MANUAL") ? "down" : undefined}
             />
           </StatRow>
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.settleNotice}
-          </Notice>
+          </HelpNote>
           <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchSettle}>
             <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={settleStatusMap} allLabel={c.filterStatusAll} />
           </Toolbar>
@@ -254,9 +254,9 @@ function FinanceInner() {
 
       {tab === "refund-back" && (
         <>
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.refundBackNotice}
-          </Notice>
+          </HelpNote>
           <DataTable
             columns={backColumns}
             /*

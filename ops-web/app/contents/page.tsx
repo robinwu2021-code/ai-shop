@@ -28,7 +28,7 @@ import { Drawer } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Pagination } from "@/components/ui/misc";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
@@ -176,7 +176,7 @@ function ContentsInner() {
       <>
       {!canEdit && <ReadOnlyNotice what={c.readOnlyWhat} perm="content:material:update" note={c.readOnlyNote} className="mb-3" />}
 
-      <Notice className="mb-3">{c.notice}</Notice>
+      <HelpNote className="mb-3">{c.notice}</HelpNote>
 
       <Toolbar
         search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }}

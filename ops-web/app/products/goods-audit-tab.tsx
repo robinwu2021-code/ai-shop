@@ -14,6 +14,7 @@ import type { GoodsAudit } from "@/lib/types";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { Pagination } from "@/components/ui/misc";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,7 +97,7 @@ export function GoodsAuditTab({ c, canAudit }: { c: ProductsCopy; canAudit: bool
       {canAudit && (
         <div className="mb-4 rounded-card border p-3">
           <div className="mb-2 font-medium">{c.rsTitle}</div>
-          <Notice className="mb-3">{c.rsNotice}</Notice>
+          <HelpNote className="mb-3">{c.rsNotice}</HelpNote>
           <div className="flex flex-wrap items-end gap-2">
             <div className="space-y-1">
               <Label htmlFor="rs-scope">{c.rsScope}</Label>
@@ -147,7 +148,7 @@ export function GoodsAuditTab({ c, canAudit }: { c: ProductsCopy; canAudit: bool
 
             {draftPreview.data && (
               <DrawerSection title={c.gaDraftSection}>
-                <Notice className="mb-3">{c.gaDraftHint}</Notice>
+                <HelpNote className="mb-3">{c.gaDraftHint}</HelpNote>
                 {draftPreview.data.blocked.length > 0 && (
                   <Notice tone="warning" className="mb-3">
                     {c.gaDraftBlocked}
