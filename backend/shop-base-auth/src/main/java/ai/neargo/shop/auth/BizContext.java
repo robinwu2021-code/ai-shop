@@ -205,6 +205,31 @@ public record BizContext(String merchantNo, Set<String> pickupNos, Set<String> g
         return owner ? null : storeNos;
     }
 
+    /**
+     * 「<b>我现在看的这家店</b>」是哪些店 —— 经营台、订单这类**跟着门店切换走**的页面用它。
+     *
+     * <p><b>与 {@link #allowedStoresOrAll()} 的区别就是这条缺陷本身。</b>
+     * 那个方法回答的是「这个人有权看哪些店」：属主拿到 {@code null} = 完全不过滤。
+     * 于是老板在首页切门店，请求头换了、{@code currentStoreNo} 换了，
+     * 而待办与经营数据查的仍是**名下全部门店的合计** —— 切哪家店数字都一样，
+     * 并且没有任何报错。他会照着别家店的数做决定。
+     *
+     * <p>门店号已由 {@code BizContextFilter} 按 {@code storeNos()} 校验过归属，
+     * 越权的头会被丢回默认店，所以这里直接用不必再验一次。
+     *
+     * <p><b>不是所有地方都该换成它</b>：跨店报表要的正是「全部门店」，
+     * 那里继续用 {@link #allowedStoresOrAll()}。判据是这一页回答的问题里
+     * 有没有「哪家店」——「文三路店今天几单」有，「三家店这个月一共多少」没有。
+     *
+     * @return 当前门店的单元素集合；当前门店为空（极少见，如没有任何门店的店员）
+     *         时回落到 {@link #allowedStoresOrAll()}
+     */
+    public Set<String> currentStoreScope() {
+        return currentStoreNo == null || currentStoreNo.isBlank()
+                ? allowedStoresOrAll()
+                : Set.of(currentStoreNo);
+    }
+
     public static void set(BizContext ctx) {
         HOLDER.set(ctx);
     }

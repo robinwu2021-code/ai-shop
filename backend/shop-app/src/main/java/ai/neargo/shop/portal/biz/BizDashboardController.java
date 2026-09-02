@@ -79,8 +79,14 @@ public class BizDashboardController {
     public TodoVO todo() {
         BizContext ctx = BizContext.current();
         String merchantNo = BizContext.requireMerchantNo();
-        // 两个作用域：发货按门店，分拣与核销按自提点 —— 见 MerchantOrderService.todo
-        var counts = orderService.todo(merchantNo, ctx.allowedStoresOrAll(), ctx.pickupNos());
+        /*
+         * 两个作用域：发货按门店，分拣与核销按自提点 —— 见 MerchantOrderService.todo。
+         *
+         * 门店那一维取**当前门店**而不是「我有权限的全部门店」：后者对老板返回 null
+         * （不过滤），于是他在首页切门店时待办数纹丝不动 —— 切哪家店都是名下合计，
+         * 而且不报错。要看几家店的合计有「跨店报表」，不是这里。
+         */
+        var counts = orderService.todo(merchantNo, ctx.currentStoreScope(), ctx.pickupNos());
         return new TodoVO(counts.toShip(), counts.toDeliver(), counts.toStock(),
                 counts.toVerify(), counts.toPick(),
                 afterSaleService.merchantPendingCount(merchantNo),
@@ -94,7 +100,8 @@ public class BizDashboardController {
     public StatsVO stats() {
         BizContext ctx = BizContext.current();
         String merchantNo = BizContext.requireMerchantNo();
-        var s = orderService.stats(merchantNo, ctx.allowedStoresOrAll());
+        // 同 todo：按当前门店，不是名下全部 —— 否则切门店时这几个数字不会变
+        var s = orderService.stats(merchantNo, ctx.currentStoreScope());
         /*
          * 评分取**主体**的，不按门店切：一家店的评分是平台建档的商家主数据
          * （MerchantBrief.rating），门店维度的评分还没有数据来源。
@@ -118,7 +125,8 @@ public class BizDashboardController {
     @GetMapping("/biz/customers")
     public List<MerchantOrderService.CustomerSummary> customers() {
         BizContext ctx = BizContext.current();
-        return orderService.customers(BizContext.requireMerchantNo(), ctx.allowedStoresOrAll());
+        // 顾客页自己也有门店切换条，同样要跟着当前门店走
+        return orderService.customers(BizContext.requireMerchantNo(), ctx.currentStoreScope());
     }
 
     /** 当前门店的配送规则。没配过时返回默认值，不是空。 */

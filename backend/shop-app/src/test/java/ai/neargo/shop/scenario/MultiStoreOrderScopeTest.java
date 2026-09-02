@@ -75,6 +75,93 @@ class MultiStoreOrderScopeTest {
         assertThat(orderCount(token, second, true)).isEqualTo(1);
     }
 
+    /**
+     * <b>首页经营台要跟着门店切换走。</b>
+     *
+     * <p>此前它查的是 {@code allowedStoresOrAll()}——「我有权限的门店」，
+     * 而它对老板返回 {@code null} = 完全不过滤。于是切门店时请求头换了、
+     * {@code currentStoreNo} 换了，经营数据却纹丝不动：切哪家店都是名下合计，
+     * 而且不报错。老板会照着别家店的数做决定。
+     *
+     * <p><b>只断言 stats，不断言 todo</b>：待办里的自提/核销两档是按**自提点**算的
+     * （见 {@code MerchantOrderService.todo} 的两个作用域），本用例下的是自提单，
+     * 拿它探门店作用域会探到另一个维度上去。
+     *
+     * <p>这条断言是**可证伪**的：把 {@code currentStoreScope()} 换回
+     * {@code allowedStoresOrAll()}，分店那两个数会跟总店相等，用例立刻变红。
+     */
+    @Test
+    @DisplayName("★ 首页经营台跟着门店切换走 —— 切到没单的分店，今日/本月单数要归零")
+    void dashboardFollowsCurrentStore() throws Exception {
+        /*
+         * ★ 手机号必须是**本仓没人用过的**：12600180003 已经被
+         * StoreScopedVisibilityFlowTest.defaultStoreKeepsTheOrderWhenItServes 占着。
+         * 撞号时两个类各建各的商家、却拿到同一条记录，先跑的那个把门店与坐标留给后跑的 ——
+         * 表现是「单独跑绿、全量红」，而报错指向的是**对方**那条用例，与真因毫无关系。
+         */
+        String token = merchant("12600180021", "经营台切店·总店");
+        String defaultStore = defaultStoreNo(token);
+        TestPlan.grantPro(planMapper, merchantNoOf(token));
+        String second = createStore(token, "经营台切店·分店");
+        assertThat(second).isNotEqualTo(defaultStore);
+
+        // 只在总店成交一单。**必须付款** —— stats 只统计已成交（TRANSACTED）的单，
+        // 下单不付的话两家店都是 0，用例会以「全绿」的样子失去意义
+        buyAndPayFrom(token, "13000180021", "dash-1");
+
+        // 对照量先验非零：它要是 0，下面「分店为 0」就什么都没证明
+        assertThat(todayOrders(token, defaultStore))
+                .as("总店成交了一单，今日单数不该是 0（对照量不成立，此用例无效）").isEqualTo(1);
+        assertThat(monthOrders(token, defaultStore)).isGreaterThan(0);
+
+        // ★ 切到分店：这家店一单都没有，两个数都要归零
+        assertThat(todayOrders(token, second))
+                .as("切到没单的分店，今日单数仍非零 —— 经营台没跟着门店走").isZero();
+        assertThat(monthOrders(token, second))
+                .as("切到没单的分店，本月单数仍非零 —— 经营台没跟着门店走").isZero();
+    }
+
+    /** 下单并用桩回调付掉 —— stats 只认已成交的单 */
+    private void buyAndPayFrom(String bizToken, String buyerPhone, String idem) throws Exception {
+        String goodsNo = saveGoods(bizToken);
+        approveGoods(goodsNo);
+        publish(bizToken, goodsNo);
+
+        String buyer = login(buyerPhone);
+        String skuNo = firstSku(goodsNo);
+        mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + buyer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"goodsNo\":\"" + goodsNo + "\",\"skuNo\":\"" + skuNo + "\",\"qty\":1}"));
+        String body = mvc().perform(post("/mp/order").header("Authorization", "Bearer " + buyer)
+                        .header("Idempotency-Key", idem)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
+        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idem
+                        + "\",\"sign\":\"stub-secret\"}"));
+    }
+
+    private long todayOrders(String token, String storeNo) throws Exception {
+        return bizGet(token, storeNo, "/biz/dashboard/stats").get("todayOrders").asLong();
+    }
+
+    private long monthOrders(String token, String storeNo) throws Exception {
+        return bizGet(token, storeNo, "/biz/dashboard/stats").get("monthOrders").asLong();
+    }
+
+    private JsonNode bizGet(String token, String storeNo, String path) throws Exception {
+        var req = get(path).header("Authorization", "Bearer " + token);
+        if (storeNo != null) {
+            req = req.header("X-Store-No", storeNo);
+        }
+        String body = mvc().perform(req).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data");
+    }
+
     @Test
     @DisplayName("订单上的 store_no 真的被写了 —— 双写没写对的话上面那条会假绿")
     void subOrderCarriesStoreNo() throws Exception {
