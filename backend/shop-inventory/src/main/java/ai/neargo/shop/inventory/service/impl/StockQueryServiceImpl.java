@@ -294,7 +294,8 @@ public class StockQueryServiceImpl implements StockQueryService {
                 // 差异字段收进 subtitle 由服务端拼：让端上按 kind 分四种拼法，
                 // 那四段文案迟早各自漂
                 out.add(new DocumentVO("IN", h.getInboundNo(), h.getStatus(),
-                        subtitle(h.getSourceType(), h.getSupplierName(), h.getSourceRef()),
+                        h.getSourceType(),
+                        subtitle(h.getSupplierName(), h.getSourceRef(), null),
                         h.getTotalQty(), h.getOccurredAt(), h.getCreatedBy()));
             }
         }
@@ -304,19 +305,20 @@ public class StockQueryServiceImpl implements StockQueryService {
                     .eq(hasNo, InvOutboundOrder::getOutboundNo, docNo)
                     .eq(locationId != null, InvOutboundOrder::getLocationId, locationId)
                     .orderByDesc(InvOutboundOrder::getId).last("LIMIT " + limit))) {
+                /*
+                  * 第一格给「去向或原因」——**同一张单不会两个都有**：退供应商说得出退给谁、
+                  * 不需要原因；报损说得出为什么、没有去向。
+                  *
+                  * 去向名是自由文本（「老周粮油」），原因是枚举（`BROKEN`）——
+                  * **两者不能都往 subtitle 里塞**，否则枚举又漏出去了。
+                  * 有去向时走 subtitle，没有时把原因当第二个码交给端上。
+                  */
+                boolean hasTarget = h.getTargetName() != null && !h.getTargetName().isBlank();
                 out.add(new DocumentVO("OUT", h.getOutboundNo(), h.getStatus(),
-                        /*
-                         * 中间那一格给「去向或原因」——**同一张单不会两个都有**：
-                         * 退供应商说得出退给谁、不需要原因；报损说得出为什么、没有去向。
-                         *
-                         * **`sourceRef` 不能挤掉**：销售出库靠它显示订单号，
-                         * 换成去向的话，那一列会从「订单 xxx」变成空白，
-                         * 而销售出库恰恰是单据列表里最多的一类。
-                         */
-                        subtitle(h.getPurpose(),
-                                h.getTargetName() != null && !h.getTargetName().isBlank()
-                                        ? h.getTargetName() : h.getReasonCode(),
-                                h.getSourceRef()),
+                        hasTarget ? h.getPurpose() : reasonLabel(h),
+                        // **`sourceRef` 不能挤掉**：销售出库靠它显示订单号，
+                        // 而销售出库恰恰是单据列表里最多的一类
+                        subtitle(hasTarget ? h.getTargetName() : null, h.getSourceRef(), null),
                         -h.getTotalQty(), h.getOccurredAt(), h.getCreatedBy()));
             }
         }
@@ -327,7 +329,9 @@ public class StockQueryServiceImpl implements StockQueryService {
                     .eq(locationId != null, InvStockCount::getLocationId, locationId)
                     .orderByDesc(InvStockCount::getId).last("LIMIT " + limit))) {
                 out.add(new DocumentVO("COUNT", h.getCountNo(), h.getStatus(),
-                        subtitle("盘点", h.getScope(), null), 0, h.getStartedAt(), h.getOperator()));
+                        // 原本这里硬编码中文「盘点」—— 阿语商家看到的就是中文
+                        "COUNT", subtitle(h.getScope(), null, null),
+                        0, h.getStartedAt(), h.getOperator()));
             }
         }
         if (kind == null || "TRANSFER".equals(kind)) {
@@ -336,7 +340,7 @@ public class StockQueryServiceImpl implements StockQueryService {
                     .eq(hasNo, InvTransferOrder::getTransferNo, docNo)
                     .orderByDesc(InvTransferOrder::getId).last("LIMIT " + limit))) {
                 out.add(new DocumentVO("TRANSFER", h.getTransferNo(), h.getStatus(),
-                        subtitle("调拨", h.getFromLocationId(), h.getToLocationId()),
+                        "TRANSFER", subtitle(h.getFromLocationId(), h.getToLocationId(), null),
                         0, h.getShippedAt(), h.getOperator()));
             }
         }
@@ -348,6 +352,15 @@ public class StockQueryServiceImpl implements StockQueryService {
     }
 
     // ────────────────────────────────────────────────────────────────────
+
+    /**
+     * 出库没有去向时，把原因当码交给端上（{@code BROKEN} / {@code EXPIRED} …）。
+     * <b>不拼成文案</b> —— 拼了就又是一个从后端漏出去的取值域。
+     */
+    private static String reasonLabel(InvOutboundOrder h) {
+        return h.getReasonCode() != null && !h.getReasonCode().isBlank()
+                ? h.getReasonCode() : h.getPurpose();
+    }
 
     private static String subtitle(String a, String b, String c) {
         StringBuilder sb = new StringBuilder();

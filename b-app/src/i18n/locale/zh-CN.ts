@@ -2074,6 +2074,16 @@ entryHint: "谁在买 · 谁不来了",
     picked: "已选 {n} 件",
   },
   stockDocs: {
+    // 单据上的取值域码 → 文案。**文案在这儿，不在后端** ——
+    // 后端拼好下发的话，商家看到的是 SCRAP / PURCHASE 这样的裸枚举，
+    // 而盘点、调拨那两行曾经是后端硬编码的中文（阿语商家看到中文）。
+    label: {
+      PURCHASE: "采购", COUNT_GAIN: "盘盈", RETURN: "退货入库", TRANSFER_IN: "调拨入",
+      SCRAP: "报损", RETURN_SUPPLIER: "退供应商", INTERNAL: "内部领用",
+      SALE: "销售出库", COUNT_LOSS: "盘亏", TRANSFER_OUT: "调拨出", OTHER: "其他",
+      BROKEN: "损坏", EXPIRED: "过期", GIFT: "赠送",
+      COUNT: "盘点", TRANSFER: "调拨",
+    },
     // 与工作台入口 `stock.entry.docs`（「单据」）**同名**。
     // 这里曾叫「按单查」，理由写的是「与库存明细的『按货查』成一对」——
     // 但仓库里**没有任何一处叫「按货查」**（对面那页的标题是「库存明细」），

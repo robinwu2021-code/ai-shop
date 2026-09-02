@@ -1745,6 +1745,13 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     picked: "{n} selected",
   },
   stockDocs: {
+    label: {
+      PURCHASE: "Purchase", COUNT_GAIN: "Count gain", RETURN: "Return in", TRANSFER_IN: "Transfer in",
+      SCRAP: "Scrap", RETURN_SUPPLIER: "Return to supplier", INTERNAL: "Internal use",
+      SALE: "Sale", COUNT_LOSS: "Count loss", TRANSFER_OUT: "Transfer out", OTHER: "Other",
+      BROKEN: "Damaged", EXPIRED: "Expired", GIFT: "Gift",
+      COUNT: "Stock count", TRANSFER: "Transfer",
+    },
     title: "Documents",
     hint: "Movements by document. To see how one item changed, open it from Stock.",
     onlyOne: "Only {no}",

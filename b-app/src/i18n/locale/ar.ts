@@ -1743,6 +1743,13 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
     picked: "تم اختيار {n}",
   },
   stockDocs: {
+    label: {
+      PURCHASE: "شراء", COUNT_GAIN: "زيادة جرد", RETURN: "إرجاع وارد", TRANSFER_IN: "تحويل وارد",
+      SCRAP: "إتلاف", RETURN_SUPPLIER: "إرجاع للمورد", INTERNAL: "استخدام داخلي",
+      SALE: "بيع", COUNT_LOSS: "عجز جرد", TRANSFER_OUT: "تحويل صادر", OTHER: "أخرى",
+      BROKEN: "تالف", EXPIRED: "منتهي الصلاحية", GIFT: "هدية",
+      COUNT: "جرد", TRANSFER: "تحويل",
+    },
     title: "المستندات",
     hint: "الحركات حسب المستند. لمعرفة كيف تغيّر صنف واحد، افتحه من المخزون.",
     onlyOne: "عرض {no} فقط",

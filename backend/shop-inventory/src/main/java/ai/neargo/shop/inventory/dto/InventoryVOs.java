@@ -107,10 +107,27 @@ public final class InventoryVOs {
 
     /**
      * 单据中心的一行。四类单据长得不一样，**下发的是它们的交集** ——
-     * 差异字段（供应商、原因、来源单号）都收进 {@code subtitle}，
-     * 由服务端拼好：让端上按 kind 分四种拼法，那四段文案迟早各自漂。
+     * 差异字段（供应商、去向、来源单号）都收进 {@code subtitle}，由服务端拼好：
+     * 让端上按 kind 分四种拼法，那四段文案迟早各自漂。
+     *
+     * <h2>但取值域不能拼进 subtitle</h2>
+     *
+     * <p><b>2026-09-02 修</b>：此前 {@code subtitle} 里混着两种东西 ——
+     * 入库的 {@code source_type}、出库的 {@code purpose} 是<b>裸枚举</b>
+     *（商家看到的是 {@code PURCHASE} / {@code SCRAP}），
+     * 而盘点与调拨那两行是<b>硬编码的中文</b>（阿语商家看到的是中文）。
+     * 两种坏法都藏在同一个字段里，且 mock 的种子手写成中文，替身上一处都看不出来。
+     *
+     * <p>所以码走 {@code label}、文案回端上，自由文本仍走 {@code subtitle}。
+     * <b>这不违反上面那条设计</b>：端上多的是一次 i18n 查表，不是四种拼法。
+     *
+     * @param label    取值域码：{@code PURCHASE} / {@code SCRAP} / {@code RETURN_SUPPLIER} /
+     *                 {@code COUNT} / {@code TRANSFER} …… 端上用它查文案。可空
+     * @param subtitle <b>只放自由文本</b>：供应商名、去向名、订单号、库位名。
+     *                 再往里塞枚举的话，这次修的东西下一轮就长回来了
      */
-    public record DocumentVO(String kind, String docNo, String status, String subtitle,
+    public record DocumentVO(String kind, String docNo, String status,
+                             String label, String subtitle,
                              int totalQty, LocalDateTime occurredAt, String operator) {
     }
 

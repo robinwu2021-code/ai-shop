@@ -4885,7 +4885,19 @@ export interface StockDocument {
   docNo: string;
   /** DRAFT / POSTED / VOIDED，调拨还有 SHIPPED / RECEIVED */
   status: string;
-  /** 「订单 SO-88213」「来自 CNT-24082601」这类一句话出处 */
+  /**
+   * 取值域码，用来查文案：`PURCHASE` / `SCRAP` / `RETURN_SUPPLIER` / `COUNT` / `TRANSFER`……
+   *
+   * **文案在端上，不在后端。** 此前这些码被后端拼进 `subtitle` 直接下发，
+   * 商家看到的是 `SCRAP`；而盘点与调拨那两行是后端硬编码的中文，
+   * 阿语商家看到的是中文。两种坏法藏在同一个字段里。
+   */
+  label?: string;
+  /**
+   * **只有自由文本**：供应商名、去向名、订单号、库位名。
+   *
+   * 再往里塞枚举的话，上面那条修的东西下一轮就长回来了。
+   */
   subtitle?: string;
   /** 本单合计数量，按明细行汇总 */
   totalQty: number;

@@ -4584,18 +4584,20 @@ export const mockApi: MerchantApi = {
      * 同一条教训在调拨发货、安全库存上各吃过一次。
      */
     const no = `OUT-24082600${32 + mockOutbounds.length}`;
+    const target = req.targetNo
+      ? (mockSuppliers.find((x) => x.supplierNo === req.targetNo)?.name ?? req.targetNo)
+      : "";
     mockOutbounds.push({
       kind: "OUT",
       docNo: no,
       status: "POSTED",
-      // 服务端拼 subtitle 的口径：去向或原因，二选一（同一张单不会两个都有）
-      subtitle: [
-        req.purpose,
-        req.targetNo
-          ? (mockSuppliers.find((x) => x.supplierNo === req.targetNo)?.name ?? req.targetNo)
-          : req.reasonCode,
-      ].filter(Boolean).join(" · "),
-      totalQty: req.lines.reduce((n, l) => n + l.qty, 0),
+      // 服务端的口径：有去向时 label=purpose、subtitle=去向名；没有时 label=原因码
+      label: target ? req.purpose : (req.reasonCode ?? req.purpose),
+      subtitle: target,
+      // **负数**：后端下发的是 `-totalQty`（出库是减）。
+      // 上一轮这里写成正数，于是 H5 上出库单显示绿色的 +1 ——
+      // 我据此报了一条「后端符号反了」，那条是错的，错的是这个替身
+      totalQty: -req.lines.reduce((n, l) => n + l.qty, 0),
       occurredAt: req.occurredAt ?? "2026-08-30T10:00:00",
       operator: "老板",
     });
@@ -4819,17 +4821,29 @@ const voidedDocs = new Set<string>();
 /** 调拨发货信息。**进程内，刷新即失** —— 替身不是数据库，够验一条闭环即可 */
 const shipped = new Map<string, { carrierName?: string; trackingNo?: string }>();
 
+/*
+ * **种子按后端真实下发的形状写，不写成好看的样子。**
+ *
+ * 这几行此前把 `subtitle` 手写成中文（「报损」），而后端下发的是裸枚举 `SCRAP` ——
+ * 于是「商家看到的是英文枚举」这个缺陷在替身上一处都看不出来，
+ * 直到 2026-09-02 加 RETURN_SUPPLIER 时才撞见。现在码走 `label`、文案回端上，
+ * 种子也跟着改成码，替身与后端说同一种话。
+ */
 function invDocuments(): StockDocument[] {
   return [
-    { kind: "OUT", docNo: "OUT-2408260031", status: "POSTED", subtitle: "订单 SO-88213",
+    { kind: "OUT", docNo: "OUT-2408260031", status: "POSTED", label: "SALE",
+      subtitle: "SO-88213",
       totalQty: -2, occurredAt: "2026-08-26T14:22:00", operator: "系统" },
-    { kind: "OUT", docNo: "OUT-2408260029", status: "POSTED", subtitle: "来自 CNT-24082601",
+    { kind: "OUT", docNo: "OUT-2408260029", status: "POSTED", label: "COUNT_LOSS",
+      subtitle: "CNT-24082601",
       totalQty: -3, occurredAt: "2026-08-26T09:10:00" },
-    { kind: "OUT", docNo: "OUT-2408260028", status: "DRAFT", subtitle: "报损",
+    { kind: "OUT", docNo: "OUT-2408260028", status: "DRAFT", label: "BROKEN",
       totalQty: -2, occurredAt: "2026-08-26T08:50:00", operator: "张伟" },
-    { kind: "IN", docNo: "IN-24082502", status: "POSTED", subtitle: "老周粮油",
+    { kind: "IN", docNo: "IN-24082502", status: "POSTED", label: "PURCHASE",
+      subtitle: "老周粮油",
       totalQty: 54, occurredAt: "2026-08-25T18:40:00", operator: "老板" },
-    { kind: "TRANSFER", docNo: "TRF-24082507", status: "SHIPPED", subtitle: "城西仓 → 文三路店",
+    { kind: "TRANSFER", docNo: "TRF-24082507", status: "SHIPPED", label: "TRANSFER",
+      subtitle: "城西仓 → 文三路店",
       totalQty: 20, occurredAt: "2026-08-26T07:30:00" },
   ];
 }

@@ -168,6 +168,17 @@ function openItem(r: StockLedgerRow) {
 }
 
 /** 「08-26 14:22」。切片不解析 —— 后端发的是不带时区的 LocalDateTime */
+/**
+ * 单据上那个码的文案。**查不到就原样显示** —— 后端加了新取值而端上没跟时，
+ * 商家看到 `RETURN_SUPPLIER` 是难看，但比显示空白强：空白会让人以为这张单没有类型。
+ */
+function docLabel(d: StockDocument): string {
+  if (!d.label) return "";
+  const key = `stockDocs.label.${d.label}`;
+  const got = t(key);
+  return got && got !== key ? got : d.label;
+}
+
 function at(iso?: string): string {
   return iso && iso.length >= 16 ? iso.slice(5, 16).replace("T", " ") : "";
 }
@@ -211,7 +222,11 @@ onShow(load);
             <text v-if="d.operator" class="sh-muted">{{ d.operator }}</text>
           </view>
           <text class="txt-caption">
-            {{ d.subtitle ? `${d.subtitle} · ` : "" }}{{ at(d.occurredAt) }}
+            <!--
+              码与自由文本分开：`label` 查 i18n，`subtitle` 直接显示。
+              由后端拼成一句的话，枚举会原样漏到商家眼前 —— 此前正是这样。
+            -->
+            {{ [docLabel(d), d.subtitle, at(d.occurredAt)].filter(Boolean).join(" · ") }}
           </text>
         </view>
         <text class="txt-strong sh-num row__qty" :class="d.totalQty < 0 ? 'is-danger' : 'is-success'">
