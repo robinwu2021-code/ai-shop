@@ -165,7 +165,15 @@ DIST="b-app/dist/build/app"
 
 # API base：模拟器用的 10.0.2.2 打进包里，真机上每个列表都「网络异常」，
 # 而模拟器上一切正常 —— 看不出问题的那一类错。手册 §2。
-BASES=$(grep -o 'const [A-Za-z_$]*="http://[^"]*"' "$DIST/app-service.js" || true)
+#
+# **`https?` 不是可有可无的**：2026-09-01「备案下来，三端统一走域名」之后
+# `.env.production` 是 `https://www.hxmall.top`，而这条正则只认 `http://` ——
+# 于是它抓不到任何东西，落进下面那条「没找到 API base，产物可能不完整」，
+# 把一个**完全正常的产物**判成坏包。上一个 APK 是 8-30 打的，所以这道闸
+# 在改成 https 之后一次都没跑过，今天（09-02）第一次跑就拦住了自己人。
+#
+# 判据本身是对的（要拦本机地址），错的是它只认得半个取值域。
+BASES=$(grep -oE 'const [A-Za-z_$]*="https?://[^"]*"' "$DIST/app-service.js" || true)
 case "$BASES" in
     *10.0.2.2*|*127.0.0.1*|*localhost*)
         die "产物里的 API base 指向本机/模拟器，真机上一个接口都不通：
