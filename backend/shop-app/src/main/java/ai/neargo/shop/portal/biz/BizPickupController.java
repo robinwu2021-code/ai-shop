@@ -1,6 +1,7 @@
 package ai.neargo.shop.portal.biz;
 
 import ai.neargo.shop.auth.BizPerms;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.common.BizException;
@@ -67,7 +68,7 @@ public class BizPickupController {
      * 库存真相源。取值 {@code PLATFORM}（默认）/ {@code DUAL} / {@code INVENTORY}，
      * 与 {@code InventoryStockPort} / {@code DualWriteStockPort} 的装配条件同一个键。
      */
-    @org.springframework.beans.factory.annotation.Value("${shop.inventory.stock-authority:PLATFORM}")
+    @Value("${shop.inventory.stock-authority:PLATFORM}")
     private String stockAuthority;
 
     @GetMapping("/biz/context")
