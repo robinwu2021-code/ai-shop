@@ -349,9 +349,16 @@ function MerchantsInner() {
               不在抽屉里再画一遍表。
             */}
             <Field label={c.fieldStores}>
-              <Link href={`/merchants?tab=stores&merchantNo=${encodeURIComponent(current.merchantNo)}`}>
-                <Button size="sm" variant="outline">{c.viewStores}</Button>
-              </Link>
+              {/*
+                asChild：一个可聚焦元素，焦点环跟着按钮走（见 stores-tab 里那段说明）。
+                data-audit-skip 的理由同样写在那儿 —— 静态扫看不到运行时合成的类名，
+                而浏览器实测这个 <a> 确实带 focus-ring。
+              */}
+              <Button size="sm" variant="outline" asChild>
+                <Link href={`/merchants?tab=stores&merchantNo=${encodeURIComponent(current.merchantNo)}`} data-audit-skip="button-aschild">
+                  {c.viewStores}
+                </Link>
+              </Button>
             </Field>
           </div>
         )}

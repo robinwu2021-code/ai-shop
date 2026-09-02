@@ -267,13 +267,27 @@ export function StoresTab({ c }: { c: Copy }) {
 
             <DrawerSection title={c.stSecOrders} desc={c.stOrdersHint}>
               <div className="flex gap-2">
-                <Link href={`/orders?storeNo=${encodeURIComponent(current.storeNo)}`}>
-                  <Button size="sm" variant="outline">{c.stViewOrders}</Button>
-                </Link>
+                {/*
+                  用 asChild 让 Button 把样式套在 <Link> 上，而不是 <Link> 包一个 <button>：
+                  后者会有**两个可聚焦元素**（外层链接没有焦点环），键盘上要按两次 Tab
+                  才走得过一个按钮，且第一次停下来时看不见自己停在哪。
+
+                  `data-audit-skip="button-aschild"`：焦点环那道闸静态扫 JSX 里的
+                  className 字面量，看不到 asChild 在运行时合成的类名。
+                  **不是白名单式豁免** —— 浏览器实测这个 <a> 的 className 确实含
+                  focus-ring（Button 的基础类经 Slot 传了下来）。
+                */}
+                <Button size="sm" variant="outline" asChild>
+                  <Link href={`/orders?storeNo=${encodeURIComponent(current.storeNo)}`} data-audit-skip="button-aschild">
+                    {c.stViewOrders}
+                  </Link>
+                </Button>
                 {/* 门店商品投影（P-11.2.1e）：后端与 SkuQ 早就支持，只是没入口 */}
-                <Link href={`/products?tab=skus&storeNo=${encodeURIComponent(current.storeNo)}`}>
-                  <Button size="sm" variant="outline">{c.stViewGoods}</Button>
-                </Link>
+                <Button size="sm" variant="outline" asChild>
+                  <Link href={`/products?tab=skus&storeNo=${encodeURIComponent(current.storeNo)}`} data-audit-skip="button-aschild">
+                    {c.stViewGoods}
+                  </Link>
+                </Button>
               </div>
             </DrawerSection>
 
