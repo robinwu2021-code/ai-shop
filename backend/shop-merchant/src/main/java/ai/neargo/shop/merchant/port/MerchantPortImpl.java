@@ -453,6 +453,45 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public java.util.Map<String, String> storeNames(java.util.Collection<String> storeNos) {
+        if (storeNos == null || storeNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        /*
+         * **不解数据域。** 看板传进来的门店号来自已接域的埋点/归因查询，本来就在权限内；
+         * 再解一次域没有任何用处，只会让越权的行有机会漏进来。
+         * （第一版这里解了域，被 ops-data-scope 守卫抓了出来。）
+         */
+        var rows = storeMapper.selectList(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .in(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, storeNos));
+        java.util.Map<String, String> out = new java.util.LinkedHashMap<>();
+        for (var r : rows) {
+            if (r.getName() != null && !r.getName().isBlank()) {
+                out.put(r.getStoreNo(), r.getName());
+            }
+        }
+        return out;
+    }
+
+    @Override
+    public java.util.Map<String, String> defaultStoreNos(java.util.Collection<String> merchantNos) {
+        if (merchantNos == null || merchantNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        // 一次查完（逐个是 N+1），且**不解域** —— 见接口上那段与 defaultStoreNo 的区别
+        var rows = storeMapper.selectList(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .in(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNos)
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getIsDefault, true));
+        java.util.Map<String, String> out = new java.util.LinkedHashMap<>();
+        for (var r : rows) {
+            out.putIfAbsent(r.getEntityNo(), r.getStoreNo());
+        }
+        return out;
+    }
+
+    @Override
     public Optional<String> defaultStoreNo(String merchantNo) {
         if (merchantNo == null || merchantNo.isBlank()) {
             return Optional.empty();

@@ -173,6 +173,7 @@ CREATE TABLE IF NOT EXISTS mkt_attribution_log
     ip VARCHAR(64) DEFAULT NULL,
     order_no VARCHAR(64) DEFAULT NULL,
     risk_signals VARCHAR(255) DEFAULT NULL,
+    store_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id)
 );
 

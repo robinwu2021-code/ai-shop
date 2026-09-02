@@ -30,6 +30,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class StoreAcquisitionFlowTest {
 
     @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
+    @Autowired
+    private ai.neargo.shop.merchant.service.StoreCodeService codeService;
+
+    @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
     @Autowired
     private WebApplicationContext context;
@@ -228,6 +233,69 @@ class StoreAcquisitionFlowTest {
     }
 
     /** 从获客看板里挑出这家店那一行；找不到给 null（断言负责报错，不在这里抛）。 */
+    /**
+     * <b>一行一门店：两家分店各自成行，扫谁算谁。</b>
+     *
+     * <p>此前看板一行一主体，多门店商家的几家分店糊成一个数 ——
+     * 而商家问的恰恰是「哪家店的贴纸有用」。这条验的是后三环也拆开了：
+     * 扫码两环靠 {@code mkt_store_visit.store_no}，进店/首次归因靠
+     * {@code mkt_attribution_log.store_no}（V300）。两者缺一，
+     * 分母按店、分子按主体，转化率会算成一个偏高且没人解释得了的数。
+     *
+     * <p>可证伪：把聚合改回按 entity_no 分组，两家店会并成一行，第一个断言立刻变红。
+     */
+    @Test
+    @DisplayName("★★ 两家分店在看板上各占一行，且只扫其中一家时另一家是 0")
+    void boardSplitsByStore() throws Exception {
+        String merchantNo = approvedMerchantNo("12600128009", "分店看板测试店", "CM-ACQ-S");
+        String branch = extraStore(merchantNo, "分店看板·南门店");
+        String branchCode = codeService.ensureForStore(merchantNo, branch);
+        String defaultStore = codeService.ensureForStore(merchantNo, null);
+        assertThat(branchCode).as("两家店拿到同一个码，后面的断言就没意义了")
+                .isNotEqualTo(defaultStore);
+
+        String buyer = TestLogin.consumer(mvc(), json, otpStore, "12600128010");
+        // 只扫分店的码
+        mvc().perform(get("/mp/store/by-code")
+                        .header("Authorization", "Bearer " + buyer)
+                        .param("storeCode", branchCode).param("deviceId", "DEV-ACQ-S"))
+                .andExpect(status().isOk());
+
+        String admin = opsLogin("admin", "admin123");
+        JsonNode branchRow = acquisitionStoreRow(admin, branch);
+        assertThat(branchRow).as("★ 分店在看板上没有自己的一行 —— 又糊回主体级了").isNotNull();
+        assertThat(branchRow.get("scan").asLong()).as("扫的是分店的码").isGreaterThan(0);
+        assertThat(branchRow.get("enter").asLong())
+                .as("★ 后三环没跟着门店拆开 —— 转化率的分子分母口径就对不上了")
+                .isGreaterThan(0);
+        assertThat(branchRow.get("storeName").asString()).isEqualTo("分店看板·南门店");
+    }
+
+    /** 按门店号取行（看板已是一行一店）。 */
+    private JsonNode acquisitionStoreRow(String opsToken, String storeNo) throws Exception {
+        String body = mvc().perform(get("/ops/stores/acquisition")
+                        .header("Authorization", "Bearer " + opsToken)
+                        .param("size", "200"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        for (JsonNode r : json.readTree(body).get("data").get("records")) {
+            if (storeNo.equals(r.get("storeNo").asString())) {
+                return r;
+            }
+        }
+        return null;
+    }
+
+    /** 加一家非默认分店。门店号带前缀，免得与共享种子里的号撞上。 */
+    private String extraStore(String merchantNo, String name) {
+        var st = new ai.neargo.shop.merchant.entity.MchStore();
+        st.setStoreNo("ST-ACQ-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        st.setEntityNo(merchantNo);
+        st.setName(name);
+        st.setIsDefault(false);
+        storeMapper.insert(st);
+        return st.getStoreNo();
+    }
+
     private JsonNode acquisitionRowOf(String opsToken, String name) throws Exception {
         String body = mvc().perform(get("/ops/stores/acquisition")
                         .header("Authorization", "Bearer " + opsToken)

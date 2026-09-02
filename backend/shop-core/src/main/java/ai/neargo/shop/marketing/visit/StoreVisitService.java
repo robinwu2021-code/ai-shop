@@ -53,7 +53,13 @@ public interface StoreVisitService {
      * @param firstOrder 其中已产生首单的人数
      * @param convRate   firstOrder / scanUv；scanUv 为 0 时给 0
      */
+    /**
+     * @param storeNo   <b>一行一门店</b>（S1）。历史数据没有门店号，已并入该主体的默认店；
+     *                  主体连默认店都没有时这里退回主体号本身
+     * @param storeName 门店名；<b>null = 查不到</b>，端上显示门店号，别拿主体名冒充店名
+     */
     record AcquisitionRow(String merchantNo, String merchantName,
+                          String storeNo, String storeName,
                           long scan, long scanUv, long enter, long register,
                           long firstOrder, double convRate) {
     }

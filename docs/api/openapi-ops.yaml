@@ -2390,6 +2390,14 @@ components:
         merchantName: 
           type: "string"
           description: "商家名快照"
+        storeNo: 
+          type: "string"
+          description: "哪家门店（S1，**一行一店**）。\n\n历史数据没有门店号，后端已并入该主体的默认店；主体连默认店都没有时这里是主体号。"
+        storeName: 
+          type: 
+            - "string"
+            - "null"
+          description: "门店名；**null = 查不到**，端上显示门店号 —— 别拿主体名冒充店名"
         scan: 
           type: "number"
           description: "扫码次数（PV）。同一个人扫三次算三次"
@@ -2411,6 +2419,8 @@ components:
       required: 
         - "merchantNo"
         - "merchantName"
+        - "storeNo"
+        - "storeName"
         - "scan"
         - "scanUv"
         - "enter"

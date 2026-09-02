@@ -99,7 +99,8 @@ public class MpStoreController {
             try {
                 attributionService.report(userNo,
                         new ai.neargo.shop.marketing.attribution.AttributionService.Clue(
-                                merchantNo, null, null));
+                                // 门店号一路带进归因 —— 看板的后三环靠它才拆得开到分店
+                                merchantNo, null, null, target.storeNo()));
             } catch (RuntimeException e) {
                 // 与埋点同一条理由：归因失败不能让贴纸扫不进来
                 LOG.log(java.util.logging.Level.WARNING, "扫码归因失败：" + storeCode, e);

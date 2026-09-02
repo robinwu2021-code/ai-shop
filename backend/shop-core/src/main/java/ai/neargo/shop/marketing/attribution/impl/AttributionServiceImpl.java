@@ -156,6 +156,8 @@ public class AttributionServiceImpl implements AttributionService {
         MktAttributionLog entry = new MktAttributionLog();
         entry.setUserNo(userNo);
         entry.setEntityNo(clue.merchantNo());
+        // 门店号（V300）。空是常态：分享/渠道/站内进店都不知道是哪家分店
+        entry.setStoreNo(clue.storeNo());
         entry.setInviterNo(clue.inviterNo());
         entry.setChannel(clue.channel());
         entry.setSource(source);

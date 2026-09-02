@@ -67,6 +67,27 @@ public interface MerchantQueryPort {
     java.util.Optional<String> defaultStoreNo(String merchantNo);
 
     /**
+     * 批量取门店名（获客看板按门店出行时用）。
+     *
+     * <p><b>批量而不是逐个</b>：看板一屏几十行，逐行查就是 N+1。
+     *
+     * @return 门店号 → 门店名；<b>查不到的门店不出现在结果里</b>，
+     *     调用方自己决定显示门店号还是留空 —— 那两件事不一样
+     */
+    java.util.Map<String, String> storeNames(java.util.Collection<String> storeNos);
+
+    /**
+     * 批量取默认门店号。
+     *
+     * <p>与单个的 {@link #defaultStoreNo} 是<b>两件事</b>：那个为了兼容历史调用方
+     * （含无数据域上下文的 C 端游客路径）解了数据域；这个<b>接域</b>，
+     * 给运营端聚合用 —— 一屏几十家逐个查既是 N+1，又会把域外的默认店带出来。
+     *
+     * @return 主体号 → 默认门店号；<b>没有默认店的主体不出现</b>
+     */
+    java.util.Map<String, String> defaultStoreNos(java.util.Collection<String> merchantNos);
+
+    /**
      * 门店的<b>门面文案</b>：公告、营业时间、地址 —— 店主自己维护的那三样。
      *
      * <p>只给这三个，<b>不是整个门店资料</b>：经营范围、配送半径、收款号那些是

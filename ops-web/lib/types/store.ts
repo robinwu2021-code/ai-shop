@@ -90,6 +90,14 @@ export interface StoreAcquisition {
   merchantNo: string;
   /** 商家名快照 */
   merchantName: string;
+  /**
+   * 哪家门店（S1，**一行一店**）。
+   *
+   * 历史数据没有门店号，后端已并入该主体的默认店；主体连默认店都没有时这里是主体号。
+   */
+  storeNo: string;
+  /** 门店名；**null = 查不到**，端上显示门店号 —— 别拿主体名冒充店名 */
+  storeName: string | null;
   /** 扫码次数（PV）。同一个人扫三次算三次 */
   scan: number;
   /** 扫码人数（UV）。匿名访客按设备号去重 —— 他还没有账号 */

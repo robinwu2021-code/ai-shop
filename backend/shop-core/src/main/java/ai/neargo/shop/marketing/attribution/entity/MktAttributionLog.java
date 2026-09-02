@@ -31,6 +31,14 @@ public class MktAttributionLog {
 
     private String userNo;
     private String entityNo;
+
+    /**
+     * 归因发生在哪家门店（扫店铺码时带入，V300）。
+     *
+     * <p><b>空 = 主体级或历史行</b>，不是「没有门店」。历史行记录在一主体一码的年代，
+     * 物理上分不出分店；获客看板把它们并入该主体的默认店 —— 与旧码的去向一致。
+     */
+    private String storeNo;
     private String inviterNo;
     private String channel;
     private String source;

@@ -83,51 +83,106 @@ public class StoreVisitServiceImpl implements StoreVisitService {
 
     @Override
     public PageData<AcquisitionRow> acquisition(long from, long to, String keyword, long page, long size) {
-        Map<String, long[]> scans = scanGroups(from, to);       // entityNo -> [scan, scanUv]
-        Map<String, long[]> funnels = funnelGroups(from, to);   // entityNo -> [enter, register, firstOrder]
-
-        // 两侧主体取并集：只被扫没进店的要出现（那正是「码发了没人进」），
-        // 只进店没扫码的也要出现（老客直接从列表进的）
-        Set<String> entityNos = new java.util.LinkedHashSet<>(scans.keySet());
-        entityNos.addAll(funnels.keySet());
-        if (entityNos.isEmpty()) {
+        List<Grp> scanGrps = scanGroups(from, to);
+        List<Grp> funnelGrps = funnelGroups(from, to);
+        if (scanGrps.isEmpty() && funnelGrps.isEmpty()) {
             return PageData.of(List.of(), 0, page, size);
         }
 
+        /*
+         * **一行一门店**（S1）。此前一行一主体，多门店商家的几家分店糊成一个数，
+         * 而商家问的恰恰是「哪家店的贴纸有用」。
+         *
+         * 历史行的 store_no 为空（记录在一主体一码的年代）—— 并入该主体的**默认店**，
+         * 与旧码本身的去向、与店铺码页的扫码数完全一致。丢掉它们的话，
+         * 老商家的获客数会在升级当天归零：数字不见了比数字归错店更难解释。
+         */
+        Set<String> entityNos = new java.util.LinkedHashSet<>();
+        for (Grp g : scanGrps) {
+            entityNos.add(g.entityNo());
+        }
+        for (Grp g : funnelGrps) {
+            entityNos.add(g.entityNo());
+        }
+        Map<String, String> defaultStores = merchantPort.defaultStoreNos(entityNos);
+
+        // key = 门店号；主体连默认店都没有时回落成主体号本身（那一行显示「主体级」）
+        Map<String, String> ownerOf = new LinkedHashMap<>();
+        Map<String, long[]> scans = new LinkedHashMap<>();
+        Map<String, long[]> funnels = new LinkedHashMap<>();
+        for (Grp g : scanGrps) {
+            String key = keyOf(g, defaultStores);
+            ownerOf.put(key, g.entityNo());
+            long[] acc = scans.computeIfAbsent(key, k -> new long[2]);
+            acc[0] += g.metrics()[0];
+            /*
+             * <b>UV 只能加，不能去重</b>：并进来的历史行与本店的行是两次分别 COUNT DISTINCT 的结果，
+             * 同一个人若两边都出现会被算两次。这里宁可略高也不另查一次 ——
+             * 真要精确，得把 store_no 回填到历史埋点上，而那件事本身就是不可知的。
+             */
+            acc[1] += g.metrics()[1];
+        }
+        for (Grp g : funnelGrps) {
+            String key = keyOf(g, defaultStores);
+            ownerOf.put(key, g.entityNo());
+            long[] acc = funnels.computeIfAbsent(key, k -> new long[3]);
+            acc[0] += g.metrics()[0];
+            acc[1] += g.metrics()[1];
+            acc[2] += g.metrics()[2];
+        }
+
+        Set<String> keys = new java.util.LinkedHashSet<>(scans.keySet());
+        keys.addAll(funnels.keySet());
         Map<String, MerchantQueryPort.MerchantBrief> briefs = merchantPort.findAll(entityNos);
+        Map<String, String> storeNames = merchantPort.storeNames(keys);
 
         List<AcquisitionRow> all = new ArrayList<>();
-        for (String no : entityNos) {
-            long[] s = scans.getOrDefault(no, new long[]{0, 0});
-            long[] f = funnels.getOrDefault(no, new long[]{0, 0, 0});
-            var brief = briefs.get(no);
-            String name = brief == null ? no : brief.merchantName();
+        for (String key : keys) {
+            String entityNo = ownerOf.get(key);
+            long[] sc = scans.getOrDefault(key, new long[]{0, 0});
+            long[] f = funnels.getOrDefault(key, new long[]{0, 0, 0});
+            var brief = briefs.get(entityNo);
+            String merchantName = brief == null ? entityNo : brief.merchantName();
+            // 门店名查不到就给 null，端上显示门店号 —— 别拿主体名冒充店名
+            String storeName = storeNames.get(key);
             if (keyword != null && !keyword.isBlank()
-                    && !name.contains(keyword) && !no.contains(keyword)) {
+                    && !merchantName.contains(keyword) && !entityNo.contains(keyword)
+                    && !key.contains(keyword)
+                    && (storeName == null || !storeName.contains(keyword))) {
                 continue;
             }
             // 分母用 UV 不用 PV：同一个人扫三次不该把转化率摊薄成三分之一
-            double conv = s[1] == 0 ? 0d : (double) f[2] / s[1];
-            all.add(new AcquisitionRow(no, name, s[0], s[1], f[0], f[1], f[2], conv));
+            double conv = sc[1] == 0 ? 0d : (double) f[2] / sc[1];
+            all.add(new AcquisitionRow(entityNo, merchantName, key, storeName,
+                    sc[0], sc[1], f[0], f[1], f[2], conv));
         }
         // 扫得多的排前面 —— 看板要先看到「量大但转化差」的那几家
         all.sort((a, b) -> Long.compare(b.scan(), a.scan()));
         return PageData.ofAll(all, page, size);
     }
 
+    /** 聚合键：有门店号就用它；历史行并入默认店；连默认店都没有就退回主体号。 */
+    private static String keyOf(Grp g, Map<String, String> defaultStores) {
+        if (g.storeNo() != null && !g.storeNo().isBlank()) {
+            return g.storeNo();
+        }
+        String def = defaultStores.get(g.entityNo());
+        return def != null ? def : g.entityNo();
+    }
+
     @Override
     public Funnel platformFunnel(long from, long to) {
         long scan = 0;
-        for (long[] v : scanGroups(from, to).values()) {
-            scan += v[0];
+        for (Grp g : scanGroups(from, to)) {
+            scan += g.metrics()[0];
         }
         long enter = 0;
         long register = 0;
         long firstOrder = 0;
-        for (long[] v : funnelGroups(from, to).values()) {
-            enter += v[0];
-            register += v[1];
-            firstOrder += v[2];
+        for (Grp g : funnelGroups(from, to)) {
+            enter += g.metrics()[0];
+            register += g.metrics()[1];
+            firstOrder += g.metrics()[2];
         }
         /*
          * ★ 平台 UV **单独查一次**，不是把各主体的 UV 加起来 ——
@@ -136,22 +191,32 @@ public class StoreVisitServiceImpl implements StoreVisitService {
         return new Funnel(scan, platformScanUv(from, to), enter, register, firstOrder);
     }
 
-    /** entityNo -> [scan(PV), scanUv(按 userNo 回落 deviceId 去重)] */
-    private Map<String, long[]> scanGroups(long from, long to) {
+    /**
+     * 一组聚合结果：属于哪个主体、哪家门店、几个数。
+     *
+     * <p>{@code storeNo} 为空 = 一主体一码年代的历史行，物理上分不出分店。
+     * 调用方把它们并入该主体的默认店 —— 与旧码本身的去向一致。
+     */
+    private record Grp(String entityNo, String storeNo, long[] metrics) {
+    }
+
+    /** (entityNo, storeNo) -> [scan(PV), scanUv(按 userNo 回落 deviceId 去重)] */
+    private List<Grp> scanGroups(long from, long to) {
         var w = Wrappers.<MktStoreVisit>query()
                 // COALESCE：匿名访客没有 userNo，只能按 deviceId 算人
-                .select("entity_no AS entityNo", "COUNT(*) AS pv",
+                .select("entity_no AS entityNo", "store_no AS storeNo", "COUNT(*) AS pv",
                         "COUNT(DISTINCT COALESCE(user_no, device_id)) AS uv")
                 .between("at", from, to)
-                .groupBy("entity_no");
+                .groupBy("entity_no", "store_no");
         /*
          * ★ **接数据域**：配了「只看某商家」的运营，就该只看到那一家的扫码量。
          * 第一版这里解了域（理由写的是「跨主体只读」）—— 那等于让被限定的运营
          * 看到全平台，而且不报错。写入侧仍然解域（见 record）：扫码的人还没登录。
          */
-        Map<String, long[]> out = new LinkedHashMap<>();
+        List<Grp> out = new ArrayList<>();
         for (Map<String, Object> r : visitMapper.selectMaps(w)) {
-            out.put(str(r, "entityNo"), new long[]{num(r, "pv"), num(r, "uv")});
+            out.add(new Grp(str(r, "entityNo"), str(r, "storeNo"),
+                    new long[]{num(r, "pv"), num(r, "uv")}));
         }
         return out;
     }
@@ -170,23 +235,24 @@ public class StoreVisitServiceImpl implements StoreVisitService {
      * <p>只算 {@code source=STORE_CODE}：获客看板问的是「店铺码带来了什么」，
      * 把邀请与渠道也算进来的话，商家会看到一个自己没法解释的数。
      */
-    private Map<String, long[]> funnelGroups(long from, long to) {
+    private List<Grp> funnelGroups(long from, long to) {
         var w = Wrappers.<MktAttributionLog>query()
-                .select("entity_no AS entityNo",
+                .select("entity_no AS entityNo", "store_no AS storeNo",
                         "COUNT(DISTINCT user_no) AS enterUsers",
                         // CREATED = 此前没有任何归属。**不等于平台新注册**，见 AcquisitionRow 的注释
                         "COUNT(DISTINCT CASE WHEN decision = 'CREATED' THEN user_no END) AS registerUsers",
                         "COUNT(DISTINCT CASE WHEN order_no IS NOT NULL THEN user_no END) AS firstOrderUsers")
                 .eq("source", ai.neargo.shop.marketing.attribution.entity.MktAttribution.STORE_CODE)
                 .between("at", from, to)
-                .groupBy("entity_no");
-        Map<String, long[]> out = new LinkedHashMap<>();
+                .groupBy("entity_no", "store_no");
+        List<Grp> out = new ArrayList<>();
         for (Map<String, Object> r : logMapper.selectMaps(w)) {
             String no = str(r, "entityNo");
             if (no == null) {
                 continue;   // 归因到邀请人/渠道的行没有主体号，不属于任何一家店
             }
-            out.put(no, new long[]{num(r, "enterUsers"), num(r, "registerUsers"), num(r, "firstOrderUsers")});
+            out.add(new Grp(no, str(r, "storeNo"),
+                    new long[]{num(r, "enterUsers"), num(r, "registerUsers"), num(r, "firstOrderUsers")}));
         }
         return out;
     }

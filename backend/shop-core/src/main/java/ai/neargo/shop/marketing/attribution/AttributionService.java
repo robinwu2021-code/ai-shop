@@ -25,6 +25,16 @@ public interface AttributionService {
     /** 当前归属；不存在或已过期返回 null。 */
     AttributionVO current(String userNo);
 
-    record Clue(String merchantNo, String inviterNo, String channel) {
+    /**
+     * @param storeNo 扫的是哪家门店的码（V300）。<b>空 = 不知道是哪家店</b> ——
+     *                分享链接、渠道投放、老客直接进店都没有门店信息，
+     *                那些行在获客看板上并入该主体的默认店
+     */
+    record Clue(String merchantNo, String inviterNo, String channel, String storeNo) {
+
+        /** 不带门店的线索（分享 / 渠道 / 站内进店）。 */
+        public Clue(String merchantNo, String inviterNo, String channel) {
+            this(merchantNo, inviterNo, channel, null);
+        }
     }
 }

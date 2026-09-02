@@ -26,10 +26,14 @@ export const storeQrcodes: StoreQrcode[] = [
 ];
 
 export const storeAcquisition: StoreAcquisition[] = [
-  { merchantNo: "M903", merchantName: "邻家便利", scan: 1842, scanUv: 1289, enter: 1310, register: 540, firstOrder: 312, convRate: 0.242 },
-  { merchantNo: "M902", merchantName: "老张水果店", scan: 1130, scanUv: 791, enter: 806, register: 302, firstOrder: 161, convRate: 0.204 },
-  { merchantNo: "M905", merchantName: "快修家电服务", scan: 836, scanUv: 585, enter: 512, register: 188, firstOrder: 96, convRate: 0.164 },
-  { merchantNo: "M901", merchantName: "阿姨家的菜摊", scan: 402, scanUv: 281, enter: 232, register: 150, firstOrder: 71, convRate: 0.253 },
+  { merchantNo: "M903", merchantName: "邻家便利", storeNo: "ST903", storeName: "邻家便利", scan: 1842, scanUv: 1289, enter: 1310, register: 540, firstOrder: 312, convRate: 0.242 },
+  { merchantNo: "M902", merchantName: "老张水果店", storeNo: "ST902", storeName: "老张水果店", scan: 1130, scanUv: 791, enter: 806, register: 302, firstOrder: 161, convRate: 0.204 },
+  { merchantNo: "M905", merchantName: "快修家电服务", storeNo: "ST905", storeName: "快修家电服务", scan: 836, scanUv: 585, enter: 512, register: 188, firstOrder: 96, convRate: 0.164 },
+  { merchantNo: "M901", merchantName: "阿姨家的菜摊", storeNo: "ST901", storeName: "阿姨家的菜摊", scan: 402, scanUv: 281, enter: 232, register: 150, firstOrder: 71, convRate: 0.253 },
+  // ★ S1：**同一商家的第二家店**。此前看板一行一主体，这种行根本不存在，
+  //   于是「分店之间分得开吗」在 mock 上永远验不到 —— 而那正是这次改动的全部意义。
+  //   转化率明显低于主店：多门店商家看板上要能一眼看出是哪家店在拖后腿
+  { merchantNo: "M903", merchantName: "邻家便利", storeNo: "ST903-2", storeName: "邻家便利·南门店", scan: 268, scanUv: 191, enter: 143, register: 47, firstOrder: 12, convRate: 0.063 },
 ];
 
 /**

@@ -294,6 +294,8 @@ function StoresInner() {
 
   const acqColumns: Column<StoreAcquisition>[] = [
     { header: c.colMerchant, cell: (r) => r.merchantName },
+    // S1 一行一店：不给门店列的话，同一商家的几行长得一模一样
+    { header: c.colStore, cell: (r) => r.storeName ?? r.storeNo },
     { header: c.colScan, cell: (r) => r.scan, numeric: true },
     // 人数与次数分开列：只给次数的话，一个人反复扫会被当成「很多人来过」
     { header: c.colScanUv, cell: (r) => r.scanUv, numeric: true },
@@ -437,7 +439,7 @@ function StoresInner() {
           loading={acq.isLoading}
           error={acq.error}
           onRetry={() => acq.refetch()}
-          rowKey={(r) => r.merchantNo}
+          rowKey={(r) => r.storeNo}
           empty={c.emptyEffect}
         />
       )}
