@@ -44,14 +44,18 @@ public class DashboardServiceImpl implements DashboardService {
      * （ArchitectureTest.svcModulesMustNotDependOnEachOther 拦的就是这个）。
      */
     private final ai.neargo.shop.spi.marketing.StoreVisitQueryPort storeVisitPort;
+    /** 待审商品积压。走 SPI 而不是直接引 product 的 mapper —— 那是域间直连 */
+    private final ai.neargo.shop.spi.product.GoodsQueryPort goodsQuery;
 
     public DashboardServiceImpl(TradeStatsPort tradeStats, MerchantApplyMapper applyMapper,
                                 ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
-                                ai.neargo.shop.spi.marketing.StoreVisitQueryPort storeVisitPort) {
+                                ai.neargo.shop.spi.marketing.StoreVisitQueryPort storeVisitPort,
+                                ai.neargo.shop.spi.product.GoodsQueryPort goodsQuery) {
         this.tradeStats = tradeStats;
         this.applyMapper = applyMapper;
         this.merchantPort = merchantPort;
         this.storeVisitPort = storeVisitPort;
+        this.goodsQuery = goodsQuery;
     }
 
     @Override
@@ -65,8 +69,16 @@ public class DashboardServiceImpl implements DashboardService {
                         .in(MchEntityApply::getStatus,
                                 List.of(MchEntityApply.PENDING, MchEntityApply.REVIEWING))));
 
+        /*
+         * 待审商品：**数量与最久等待一起给**。看板上此前没有这一格，而运营端
+         * 有「商品审核队列」那个入口 —— 入口是要人主动点进去的，
+         * 它不会说「有 194 件在等你」。2026-09-03 线上待审 194 件，最早那件已等了两周上下。
+         */
+        ai.neargo.shop.spi.product.GoodsQueryPort.AuditBacklog backlog = goodsQuery.auditBacklog();
+
         return new KpiVO(t.gmv(), t.orderCount(), avg, pendingAudit,
-                tradeStats.openAfterSaleCount(), tradeStats.todayRedeemRate());
+                tradeStats.openAfterSaleCount(), tradeStats.todayRedeemRate(),
+                backlog.pending(), backlog.oldestDays());
     }
 
     @Override

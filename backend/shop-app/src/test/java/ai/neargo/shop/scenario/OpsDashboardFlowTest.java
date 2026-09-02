@@ -1,5 +1,8 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.product.entity.PrdGoods;
+import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,6 +46,9 @@ class OpsDashboardFlowTest {
     @Autowired
     private ObjectMapper json;
 
+    @Autowired
+    private GoodsMapper goodsMapper;
+
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())
@@ -60,12 +66,67 @@ class OpsDashboardFlowTest {
         var d = json.readTree(body).get("data");
 
         for (String k : java.util.List.of("gmv", "orderCount", "avgOrderValue",
-                "pendingMerchantAudit", "pendingAfterSale", "redeemRate")) {
+                "pendingMerchantAudit", "pendingAfterSale", "redeemRate",
+                "pendingGoodsAudit", "goodsAuditOldestDays")) {
             assertThat(d.has(k)).as("缺字段 " + k + " —— 端上会渲染成 undefined").isTrue();
         }
         assertThat(d.get("avgOrderValue").asLong()).isGreaterThanOrEqualTo(0L);
         // 「今天没有单要核销」不等于「全核销完了」
         assertThat(d.get("redeemRate").asDouble()).isBetween(0d, 1d);
+    }
+
+    @Test
+    @DisplayName("★★ 待审商品数与审核队列是同一个数 —— 不是各算各的")
+    void pendingGoodsMatchesTheAuditQueue() throws Exception {
+        String token = opsLogin();
+        /*
+         * **自己种一件待审的**。第一版没种，跑出来是绿的 —— 而测试库里一件待审都没有，
+         * 它比的是 0 与 0：把 executeWithoutScope 整个删掉照样绿。
+         * 一个恒真的断言比没有断言更糟，因为它看起来像有人在守。
+         */
+        String probe = "GAUDITPROBE-" + System.nanoTime();
+        PrdGoods seed = new PrdGoods();
+        seed.setGoodsNo(probe);
+        seed.setEntityNo("E-AUDIT-PROBE");
+        seed.setTitle("待审探针");
+        seed.setType("GOODS");
+        seed.setAuditStatus("AUDITING");
+        seed.setDeleted(0);
+        DataScopeContext.executeWithoutScope(() -> goodsMapper.insert(seed));
+        try {
+            var kpi = json.readTree(mvc().perform(get("/ops/dashboard/kpi")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString()).get("data");
+            var queue = json.readTree(mvc().perform(get("/ops/goods/audit-queue?page=1&size=1")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString()).get("data");
+
+            /*
+             * 看板上的数与队列里的数必须一致 —— 这张卡是待办，点进去就是那条队列。
+             *
+             * **这一条守的不是数据域**：超管无域，把 auditBacklog() 改回
+             * executeWithoutScope，这里照样绿（试过）。真正钉数据域的是
+             * OpsDataScopeFlowTest#goodsBacklogCardMatchesTheScopedQueue ——
+             * 那边用配了商家域的审核员、两件待审分属两个商家，加回绕过就红。
+             * 这一条守的是更基础的一件事：卡片与它的落点出自同一个判据。
+             */
+            assertThat(kpi.get("pendingGoodsAudit").asLong())
+                    .as("看板说 %s 件待审，队列里是 %s 件 —— 两边不是同一个数，多半是数据域没绕开",
+                            kpi.get("pendingGoodsAudit"), queue.get("total"))
+                    .isEqualTo(queue.get("total").asLong());
+
+            // 数量与天数要成对：没有待审就没有「最早那件」，说「等了 N 天」是编的
+            if (kpi.get("pendingGoodsAudit").asLong() == 0L) {
+                assertThat(kpi.get("goodsAuditOldestDays").asLong()).isZero();
+            }
+            assertThat(kpi.get("goodsAuditOldestDays").asLong()).isNotNegative();
+        } finally {
+            // 种子必须还原：留着它，别的用例里「待审队列」凭空多一条，
+            // 而报错会出现在一个跟本用例毫不相干的地方
+            DataScopeContext.executeWithoutScope(() -> goodsMapper.deleteById(seed.getId()));
+        }
     }
 
     @Test

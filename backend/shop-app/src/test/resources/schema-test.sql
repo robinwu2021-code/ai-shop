@@ -8542,3 +8542,5 @@ SELECT 'CAMPAIGN_OPS', 'ACT__MARKETING_SLOT_READ', 'OPS', NOW(), NOW() FROM DUAL
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'SUPER_ADMIN', 'ACT__MARKETING_SLOT_READ', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__MARKETING_SLOT_READ');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+VALUES ('AUDITOR', 'ACT__DASHBOARD_OVERVIEW_READ', 'OPS', NOW(), NOW());

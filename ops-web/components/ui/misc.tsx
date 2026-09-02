@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { Card } from "./card";
@@ -13,7 +14,7 @@ import { Card } from "./card";
  * 这正是"绕开原语"的典型代价：改一处的时候漏掉另一处，而且没人会发现。
  */
 export function StatCard({
-  label, value, sub, tone, loading,
+  label, value, sub, tone, loading, href,
 }: {
   label: string;
   value: React.ReactNode;
@@ -21,9 +22,20 @@ export function StatCard({
   tone?: "up" | "down";
   /** 数据未回来。此前调用方只能自己往 value 里塞一个 Skeleton，各页塞得不一样高 */
   loading?: boolean;
+  /**
+   * 点这张卡去哪儿。**只有待办型的卡该给** —— 「今天成交 128 万」点进去没有下一步，
+   * 而「194 件待审」的下一步是唯一的：那条队列。
+   *
+   * 不给 href 时整卡不可点，也不会有 hover 反馈 —— 看起来能点却点不动
+   * 比一开始就是静态的更糟。
+   */
+  href?: string;
 }) {
-  return (
-    <Card data-surface="stat" className="p-5">
+  const card = (
+    <Card
+      data-surface="stat"
+      className={cn("p-5", href && "transition-colors hover:border-[var(--ring)] hover:bg-accent/40")}
+    >
       <div data-slot="label" className="txt-body text-muted-foreground">{label}</div>
       <div className="mt-2 txt-display tabular-nums">
         {loading ? <Skeleton className="w-24" style={{ height: "30px" }} /> : value}
@@ -36,6 +48,10 @@ export function StatCard({
       )}
     </Card>
   );
+  // 数据没回来时不给链接：这一瞬间点进去的是一条还不知道有没有内容的队列
+  return href && !loading
+    ? <Link href={href} className="block rounded-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]">{card}</Link>
+    : card;
 }
 
 /**

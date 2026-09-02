@@ -14,6 +14,13 @@ const zh = {
   kpiPendingAfterSaleSub: "超时会升级为平台介入",
   kpiRedeemRate: "今日核销率",
   kpiRedeemRateSub: "自提履约健康度",
+  kpiPendingGoods: "待审商品",
+  // 「最早等了 N 天」而不是「已积压 N 天」：前者说的是那一件商品的处境，
+  // 后者听起来像整批都等了这么久 —— 而 194 件里多半是新旧混着的
+  /** `{n}` 是最早那件等待的天数 */
+  kpiPendingGoodsSub: "最早一件等了 {n} 天",
+  /** 一件没积压时不说天数（说「等了 0 天」像是坏了），改说这张卡点了去哪儿 */
+  kpiPendingGoodsSubClear: "点击进入审核队列",
 
   chartTrend: "GMV 与订单趋势",
   chartFunnel: "获客漏斗",
@@ -50,6 +57,9 @@ const en: typeof zh = {
   kpiPendingAfterSaleSub: "Escalates to platform review once overdue",
   kpiRedeemRate: "Redemption rate today",
   kpiRedeemRateSub: "Pickup fulfillment health",
+  kpiPendingGoods: "Goods awaiting review",
+  kpiPendingGoodsSub: "Oldest has waited {n} days",
+  kpiPendingGoodsSubClear: "Open the review queue",
 
   chartTrend: "GMV & order trend",
   chartFunnel: "Acquisition funnel",

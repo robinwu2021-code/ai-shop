@@ -15,6 +15,7 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.HashMap;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -170,6 +171,49 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                     g.getGroupPriceMinor(), g.getGroupMinCount()));
         }
         return result;
+    }
+
+    /**
+     * 待审积压。**两个数一起查**，见接口注释。
+     *
+     * <p><b>不绕数据域</b>。第一版写的是 `executeWithoutScope`（照抄了看板上
+     * 「待审商家」那一格），理由是「看板是平台视角」。这个理由站不住：
+     * 这张卡是**待办**，点进去落到 `/ops/goods/audit-queue`，而那条队列<b>是接域的</b>。
+     * 绕开的后果是配了商家域的审核员看到「194 件待审」、点进去只有 3 件 ——
+     * 卡片朝着「更吓人」的方向撒谎，而这正是 {@code OpsDataScopeFlowTest}
+     * 开头那段说的「看着生效、实际没有的限制」的同一类问题。
+     *
+     * <p>接上之后卡片与队列对任何人都是同一个数。社区域 / 自提点域的运营会得到 0
+     * （`prd_goods` 只有商家锚点，fail-closed），而他们的队列同样是 0 —— 仍然一致。
+     */
+    @Override
+    public AuditBacklog auditBacklog() {
+        /*
+         * 一次聚合查询取两个数，**不把行捞出来数**。第一版是 selectList 之后
+         * .size()：194 行时无所谓，但这是看板端点，每次打开都要跑，
+         * 而积压变大正是这张卡存在的场景 —— 它最该省的时候最费。
+         */
+        Map<String, Object> row = goodsMapper.selectMaps(Wrappers.<PrdGoods>query()
+                        .select("COUNT(*) AS cnt", "MIN(updated_at) AS oldest")
+                        .eq("audit_status", "AUDITING")
+                        .eq("deleted", 0))
+                .stream().findFirst().orElse(Map.of());
+
+        long cnt = row.get("cnt") instanceof Number n ? n.longValue() : 0L;
+        if (cnt == 0L) {
+            return new AuditBacklog(0L, 0L);
+        }
+        /*
+         * 用 `updated_at` 而不是 `created_at`：商家改一版重新提交，
+         * 等待是从**这一次提交**开始算的。用创建时间会把「刚改完又交上来」
+         * 的那件也算成等了两周，而催的人会去催一件其实刚到的单子。
+         */
+        Object oldest = row.get("oldest");
+        LocalDateTime at = oldest instanceof LocalDateTime t ? t
+                : oldest instanceof java.sql.Timestamp ts ? ts.toLocalDateTime() : null;
+        long days = at == null ? 0L
+                : Math.max(0L, java.time.Duration.between(at, LocalDateTime.now()).toDays());
+        return new AuditBacklog(cnt, days);
     }
 
     @Override

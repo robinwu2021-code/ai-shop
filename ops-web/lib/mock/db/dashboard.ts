@@ -8,6 +8,10 @@ export const kpi: DashboardKpi = {
   pendingMerchantAudit: 2,
   pendingAfterSale: 5,
   redeemRate: 0.87,
+  // 照着 2026-09-03 的线上量级：194 件、最早那件等了两周上下。
+  // mock 里放个 3 件的小数会让人以为这一格无关紧要，而它正是当时最贵的一处堵
+  pendingGoodsAudit: 194,
+  goodsAuditOldestDays: 14,
 };
 
 export const trend: TrendPoint[] = [

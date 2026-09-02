@@ -578,7 +578,10 @@ public final class Perms {
                     ORDER_READ,
                     SYSTEM_INDUSTRY_READ, SYSTEM_INDUSTRY_UPDATE)),
 
+            // DASHBOARD_OVERVIEW_READ（V304）：看板上的「待审商品」是给审核员的待办卡，
+            // 而他此前打开看板是 Access Denied —— 唯一该看见的人看不见
             Map.entry("AUDITOR", List.of(COMMUNITY_READ, CONTENT_MATERIAL_AUDIT,
+                    DASHBOARD_OVERVIEW_READ,
                     CONTENT_MATERIAL_READ, CONTENT_MATERIAL_UPDATE, PRODUCT_SKU_AUDIT,
                     PRODUCT_SKU_READ, REVIEW_AUDIT, REVIEW_READ, REVIEW_SCORE_READ,
                     // 进销存：V261 就把三页只读授给了审核员（与超管、商品运营同一套），

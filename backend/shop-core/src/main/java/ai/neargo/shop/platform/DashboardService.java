@@ -63,9 +63,15 @@ public interface DashboardService {
      * @param redeemRate            今日核销率 0–1：今天已核销 ÷ 今天到过货的自提单。
      *                              分母为 0 时返回 0 —— 而不是 1（「没有单要核销」
      *                              不等于「全核销完了」，后者会让监控看板一片绿）
+     * @param pendingGoodsAudit     待审商品数（`AUDITING`）
+     * @param goodsAuditOldestDays  最早那一件等了几天。<b>与数量一起给才有意义</b> ——
+     *                              「194 件待审」既可能是今天涌进来的一批，
+     *                              也可能是积了两周没人管，而这两件事该做的反应完全不同。
+     *                              没有待审时为 0
      */
     record KpiVO(long gmv, long orderCount, long avgOrderValue,
-                 long pendingMerchantAudit, long pendingAfterSale, double redeemRate) {
+                 long pendingMerchantAudit, long pendingAfterSale, double redeemRate,
+                 long pendingGoodsAudit, long goodsAuditOldestDays) {
     }
 
     /** @param date 日期 yyyy-MM-dd（按服务器时区切分，与 B 端「今日」同一口径） */

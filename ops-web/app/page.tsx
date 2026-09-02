@@ -57,7 +57,7 @@ export default function DashboardPage() {
           卡片的标签行不在，加载完成时这一排会跳一下 */}
       <StatRow>
         {kpi.isLoading || !k ? (
-          [c.kpiGmv, c.kpiOrders, c.kpiAov, c.kpiPendingMerchant, c.kpiPendingAfterSale, c.kpiRedeemRate].map(
+          [c.kpiGmv, c.kpiOrders, c.kpiAov, c.kpiPendingMerchant, c.kpiPendingAfterSale, c.kpiPendingGoods, c.kpiRedeemRate].map(
             (label) => <StatCard key={label} label={label} value={null} loading />,
           )
         ) : (
@@ -65,9 +65,16 @@ export default function DashboardPage() {
             <StatCard label={c.kpiGmv} value={money(k.gmv)} />
             <StatCard label={c.kpiOrders} value={k.orderCount.toLocaleString()} />
             <StatCard label={c.kpiAov} value={money(k.avgOrderValue)} />
-            {/* 这三张是**待办**而不是统计：数字大代表有人在等，故用告警色调 */}
+            {/* 这几张是**待办**而不是统计：数字大代表有人在等，故用告警色调 */}
             <StatCard label={c.kpiPendingMerchant} value={k.pendingMerchantAudit} sub={c.kpiPendingMerchantSub} tone={k.pendingMerchantAudit > 0 ? "down" : undefined} />
             <StatCard label={c.kpiPendingAfterSale} value={k.pendingAfterSale} sub={c.kpiPendingAfterSaleSub} tone={k.pendingAfterSale > 0 ? "down" : undefined} />
+            {/*
+              * 待审商品这一格是**主动告知**：审核队列一直都有入口，但入口要人主动点进去才看得到，
+              * 它不会说「有 194 件在等你」。2026-09-03 线上待审 194 件，最早那件已等了两周上下。
+              * 整卡可点，落到那条队列 —— 告诉了有事，就得连着告诉去哪儿办
+              */}
+            <StatCard label={c.kpiPendingGoods} value={k.pendingGoodsAudit} sub={k.goodsAuditOldestDays > 0 ? c.kpiPendingGoodsSub.replace("{n}", String(k.goodsAuditOldestDays)) : c.kpiPendingGoodsSubClear}
+              tone={k.pendingGoodsAudit > 0 ? "down" : undefined} href="/products?tab=audit" />
             <StatCard label={c.kpiRedeemRate} value={`${Math.round(k.redeemRate * 100)}%`} sub={c.kpiRedeemRateSub} />
           </>
         )}

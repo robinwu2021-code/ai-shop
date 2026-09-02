@@ -39,6 +39,14 @@ export interface DashboardKpi {
   pendingAfterSale: number;
   /** 今日核销率（P-5.1.3 核销监控），0–1 */
   redeemRate: number;
+  /** 待审商品数（P-3.2 商品审核队列） */
+  pendingGoodsAudit: number;
+  /**
+   * 最早那件待审商品等了几天。**与数量成对出现才有意义** ——
+   * 「194 件待审」既可能是今天涌进来的一批，也可能是积了两周没人管，
+   * 而这两件事该做的反应完全不同。没有待审时为 0
+   */
+  goodsAuditOldestDays: number;
 }
 
 export interface TrendPoint {

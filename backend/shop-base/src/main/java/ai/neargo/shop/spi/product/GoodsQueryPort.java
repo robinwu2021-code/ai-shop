@@ -63,6 +63,27 @@ public interface GoodsQueryPort {
     Map<String, Integer> skuCounts(java.util.Collection<String> goodsNos);
 
     /**
+     * 待审商品的积压情况 —— <b>数量与最久等待，一起给</b>。
+     *
+     * <p>只给数量答不出该做什么：「194 件待审」既可能是今天涌进来的一批，
+     * 也可能是积了两周没人管，而这两件事该做的反应完全不同。
+     *
+     * <p>2026-09-03 线上待审 <b>194 件</b>，最早那件提交于 08-20 前后。
+     * （那次是按提交时间数的；本方法按 `updated_at` 算，见实现里的说明 ——
+     * 两种口径下最早那件的天数可能差几天，量级一致。）
+     * 运营端此前有「商品审核队列」这个入口，但没有任何地方会说「有 194 件在等你」：
+     * 它是一个要人主动点进去才看得到的列表，不是一个会找上门的数。
+     */
+    AuditBacklog auditBacklog();
+
+    /**
+     * @param pending    待审件数
+     * @param oldestDays 最早那件等了几天。没有待审时为 0
+     */
+    record AuditBacklog(long pending, long oldestDays) {
+    }
+
+    /**
      * @param price        **当前**售价（分）。购物车不存价，每次都读实时价，
      *                     否则用户会看到「加购时 8 块、结算时 10 块」的跳变而没有任何提示
      * @param available    可售 = 总库存 - 已锁定

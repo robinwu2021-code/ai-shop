@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.OtpStore;
 import ai.neargo.shop.merchant.entity.MchViolation;
 import ai.neargo.shop.marketing.group.entity.MktGroupBuy;
@@ -13,6 +14,7 @@ import ai.neargo.shop.promotion.entity.PmtActivity;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityMapper;
 import ai.neargo.shop.pay.entity.StlWithdraw;
 import ai.neargo.shop.pay.mapper.SettleMappers.WithdrawMapper;
+import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -143,6 +145,58 @@ class OpsDataScopeFlowTest {
                     .as("看到了不属于 C0002 的单")
                     .isEqualTo("C0002");
         }
+    }
+
+    @Test
+    @DisplayName("★★ 看板「待审商品」与审核队列是同一个数 —— 配了商家域的人两边都收窄")
+    void goodsBacklogCardMatchesTheScopedQueue() throws Exception {
+        String admin = TestLogin.admin(mvc(), json);
+        /*
+         * 两件待审，分属两个商家。**必须是两个** —— 只种一件的话，
+         * 「接了域」与「没接域」都会得到同一个数，测试恒绿。
+         */
+        Long a = seedAuditingGoods("M0001");
+        Long b = seedAuditingGoods("M0002");
+        try {
+            var scoped = staffWithScope(admin, "ds-goods-audit", "AUDITOR", "M0001", null, null);
+
+            long card = json.readTree(mvc().perform(get("/ops/dashboard/kpi")
+                            .header("Authorization", "Bearer " + scoped.token()))
+                    .andReturn().getResponse().getContentAsString())
+                    .get("data").get("pendingGoodsAudit").asLong();
+            long queue = json.readTree(mvc().perform(get("/ops/goods/audit-queue?page=1&size=1")
+                            .header("Authorization", "Bearer " + scoped.token()))
+                    .andReturn().getResponse().getContentAsString())
+                    .get("data").get("total").asLong();
+
+            /*
+             * 这张卡是待办，点进去就是那条队列。两个数不一致的话，
+             * 卡片会朝「更吓人」的方向撒谎：说 194 件在等，点进去只有 3 件。
+             * 把 GoodsQueryPortImpl.auditBacklog() 改回 executeWithoutScope，这一条就红。
+             */
+            assertThat(card).as("看板 %s 件、队列 %s 件 —— 同一张卡和它的落点对不上", card, queue)
+                    .isEqualTo(queue);
+            // 域外那件必须被挡在外面：card == queue 但两边都是全量，同样是错的
+            assertThat(card).as("M0002 那件也被算进来了 —— 数据域没接上").isLessThan(2L);
+        } finally {
+            DataScopeContext.executeWithoutScope(() -> {
+                goodsMapper.deleteById(a);
+                return goodsMapper.deleteById(b);
+            });
+        }
+    }
+
+    /** 种一件待审商品，返回它的自增主键（还原用）。 */
+    private Long seedAuditingGoods(String merchantNo) {
+        PrdGoods g = new PrdGoods();
+        g.setGoodsNo("GAUDIT-" + System.nanoTime());
+        g.setEntityNo(merchantNo);
+        g.setTitle("待审探针");
+        g.setType("GOODS");
+        g.setAuditStatus("AUDITING");
+        g.setDeleted(0);
+        DataScopeContext.executeWithoutScope(() -> goodsMapper.insert(g));
+        return g.getId();
     }
 
     @Test
