@@ -2577,6 +2577,7 @@ components:
           description: "评价条数。\n\n⚠️ **0 = 暂无评价，不是 0 分** —— 新店与还没重算过的店都是这个形状。 判空要按**条数**，按分值判会把「没人评过」显示成「0 分」。"
         announcement: 
           type: "string"
+          description: "门店公告（走 P-10.1 的机审 + 人审）"
         openHours: 
           type: "string"
           description: "营业时间，展示串"
