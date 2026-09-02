@@ -121,6 +121,20 @@ export default function JobsPage() {
     total: rows.length,
     on: rows.filter((r) => r.enabled && !r.missing).length,
     off: rows.filter((r) => !r.enabled && !r.missing).length,
+    /*
+     * **从没开过** —— 注册进来就是停的，而后没有任何人动过它。
+     *
+     * 与「已停」是两回事：已停是有人主动关的（他知道自己在做什么），
+     * 从没开过是**没人管过**。两者混在同一个数里，后者就永远看不见。
+     *
+     * 2026-09-02 的代价：五个任务因此从未运行 —— 其中三条把商品域与进销存
+     * 之间的全部跨域链路堵着（216 条事件排队），另外两条是资金对账
+     *（「支付成功但订单未转已支付」躺了 34 小时）。
+     *
+     * 判据用 `lastStatus === null`（从未执行过一次）而不是 run_count：
+     * 一个开过又被关掉的任务不该算进来，那是有人做过决定的。
+     */
+    never: rows.filter((r) => !r.enabled && !r.missing && r.lastStatus === null).length,
     failing: rows.filter((r) => r.consecutiveFailures > 0).length,
     missing: rows.filter((r) => r.missing).length,
   }), [rows]);
@@ -151,6 +165,8 @@ export default function JobsPage() {
         <span className="text-muted-foreground">{tcn(c.jobsSumTotal, sum.total)}</span>
         <Badge tone="success">{tcn(c.jobsSumOn, sum.on)}</Badge>
         <Badge tone="muted">{tcn(c.jobsSumOff, sum.off)}</Badge>
+        {/* 用 warning 而不是 muted：它要被看见 —— 这一档的存在本身就是「有事没人管」 */}
+        {sum.never > 0 && <Badge tone="warning">{tcn(c.jobsSumNever, sum.never)}</Badge>}
         {sum.failing > 0 && <Badge tone="danger">{tcn(c.jobsSumFailing, sum.failing)}</Badge>}
         {sum.missing > 0 && <Badge tone="danger">{tcn(c.jobsSumMissing, sum.missing)}</Badge>}
         <span className="ml-auto">

@@ -47,6 +47,22 @@ const rows: JobRow[] = [
     durationMs: 91200, detail: null, error: null, consecutiveFailures: 0, runCount: 31,
     nextRunAt: null, running: false, triggerPending: false, updatedBy: "ops:li",
   },
+  /*
+   * **从没开过的那一档。** 注册进来就是停的（`startDisabled`），而后没有任何人
+   * 动过它 —— `updatedBy` 为空、`lastStatus` 为 null、`runCount` 为 0。
+   *
+   * 与上面 media-scan 那条「已停」是两回事：那条有人开过又关了（updatedBy: ops:li），
+   * 是有人做过决定的。给全集里没有这一态的话，概览条上「N 个从没开过」
+   * 这一档在开发期永远是 0，而它恰恰是 2026-09-02 让五个任务静默躺着的那一种。
+   */
+  {
+    jobName: "refund-retry", displayName: "退款续跑",
+    description: "把失败的退款重新发一遍。不跑的话钱卡在中间，而顾客那边只看到「退款处理中」",
+    ownerModule: "pay", cron: "0 */10 * * * *", enabled: false, missing: false,
+    manualTrigger: true, lastRunAt: null, lastStatus: null,
+    durationMs: null, detail: null, error: null, consecutiveFailures: 0, runCount: 0,
+    nextRunAt: null, running: false, triggerPending: false, updatedBy: null,
+  },
   {
     jobName: "legacy-cleanup", displayName: "历史清理（代码里已不存在）",
     description: "代码里已经没有这个任务了。**不删行是有意的** —— 静默消失比留着危险：运营会以为它还在跑",
