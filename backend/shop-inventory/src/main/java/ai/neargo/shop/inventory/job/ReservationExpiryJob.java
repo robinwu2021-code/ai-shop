@@ -42,12 +42,21 @@ public class ReservationExpiryJob {
     @Scheduled(cron = "${shop.job.inv-reservation-expiry.cron:0 * * * * *}")
     @SchedulerLock(name = "inv-reservation-expiry", lockAtLeastFor = "PT30S", lockAtMostFor = "PT5M")
     public void run() {
-        jobs.run("inv-reservation-expiry", () -> {
-            int n = reservations.expireOverdue(BATCH);
-            if (n > 0) {
-                log.info("回收到期预留 {} 条", n);
-            }
-            return "expired=" + n;
-        });
+        jobs.run("inv-reservation-expiry", this::expireOnce);
+    }
+
+    /**
+     * 回收一轮。**两条触发路径共用它** —— 见 {@code InvOutboxDispatchJob.dispatchOnce} 的注释：
+     * `@Scheduled` 那条在生产上根本不解析（`@EnableScheduling` 挂 worker profile）。
+     *
+     * <p>这个任务是三个里**最危险的一个**：不跑的话，未付款订单的预留永不回收，
+     * 那批货被永久占着，而商家看到的是「有货卖不出去」。今天线上 0 预留，所以还没出事。
+     */
+    public String expireOnce() {
+        int n = reservations.expireOverdue(BATCH);
+        if (n > 0) {
+            log.info("回收到期预留 {} 条", n);
+        }
+        return "expired=" + n;
     }
 }

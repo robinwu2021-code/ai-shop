@@ -90,6 +90,74 @@ class ScheduledJobConventionTest {
                 .hasSizeGreaterThanOrEqualTo(4);
     }
 
+    /**
+     * 每个 {@code @SchedulerLock(name = "x")} 都要有一个 {@code JobDeclaration("x", …)}。
+     *
+     * <p><b>2026-09-02 这条守卫是被一次真实的静默停摆逼出来的。</b>进销存那三个任务
+     * （事件投递 / 预留回收 / 日快照）写好了、注解挂着、开关也开着，
+     * <b>在生产上一次都没跑过</b>：
+     *
+     * <pre>
+     * inv_outbox   212 行全部 PENDING，SENT 0 行
+     * retry_count  max = 0        ← 连投都没投过，不是投失败
+     * </pre>
+     *
+     * 根因是两条触发路径同时不通，而各自看都合理：
+     * <ul>
+     *   <li>{@code @EnableScheduling} 挂 {@code @Profile("worker")}，生产是 {@code api,ops} ——
+     *       <b>{@code @Scheduled} 连解析都不会发生</b></li>
+     *   <li>另一条是独立调度器按 {@code job_definition} 打进来，进那张表要靠
+     *       {@code JobDeclaration} bean —— 那三个任务一个都没声明</li>
+     * </ul>
+     *
+     * <p><b>它没有任何症状</b>：类在、注解在、开关开着，只是没有任何东西去读那个注解。
+     * 而这正是守卫该管的形状 —— 人眼看代码看不出来，要把两处对起来才看得出来。
+     *
+     * <p>判据取 {@code @SchedulerLock} 的 name 而不是方法名：锁名就是任务的身份，
+     * {@code JobDeclaration} 的 handlerName 与它一一对应（现有任务都是这么写的）。
+     */
+    @Test
+    @DisplayName("★★★ 每个定时任务都要有 JobDeclaration —— 没有的那个在生产上根本不会被触发")
+    void everyScheduledJobIsDeclared() throws IOException {
+        Pattern lockName = Pattern.compile("@SchedulerLock\\s*\\(\\s*name\\s*=\\s*\"([^\"]*)\"");
+        List<String> locks = new ArrayList<>();
+        for (var e : jobSources().entrySet()) {
+            Matcher m = lockName.matcher(e.getValue());
+            while (m.find()) {
+                locks.add(m.group(1));
+            }
+        }
+        // 扫描面自己的断言：一个锁名都抽不到 = 正则失效，下面那句会空跑成绿
+        assertThat(locks).as("一个 @SchedulerLock(name=…) 都没抽到，先怀疑正则").isNotEmpty();
+
+        // 声明可以写在任何模块里（进销存那三个的声明在 shop-app/invbridge，
+        // 因为 shop-inventory 刻意不依赖 shop-job-api —— 它要能独立交付）
+        StringBuilder allSources = new StringBuilder();
+        for (Path module : Files.list(BACKEND).filter(Files::isDirectory).toList()) {
+            Path src = module.resolve("src/main/java");
+            if (!Files.isDirectory(src)) {
+                continue;
+            }
+            try (var files = Files.walk(src)) {
+                for (Path f : files.filter(p -> p.toString().endsWith(".java")).toList()) {
+                    allSources.append(stripComments(Files.readString(f, StandardCharsets.UTF_8)));
+                }
+            }
+        }
+        String declared = allSources.toString();
+
+        List<String> undeclared = locks.stream()
+                .filter(n -> !declared.contains("JobDeclaration(\"" + n + "\"")
+                        && !declared.contains("daily(\"" + n + "\""))
+                .toList();
+        assertThat(undeclared)
+                .as("这些任务有 @Scheduled 却没有 JobDeclaration：%s\n"
+                        + "  生产不带 worker profile，@EnableScheduling 因此不生效 ——\n"
+                        + "  没进 job_definition 的任务**一次都不会跑**，且没有任何症状。\n"
+                        + "  照 InventoryJobHandlers / InventoryReconJob 的样子补一个声明 bean。", undeclared)
+                .isEmpty();
+    }
+
     @Test
     @DisplayName("★★★ cron 必须来自配置 —— 硬编码时，调频率要改代码发版，而需要调的时刻正是出事的时刻")
     void cronComesFromConfig() throws IOException {

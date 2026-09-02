@@ -33,9 +33,12 @@ public class InvDailySnapshotJob {
     @Scheduled(cron = "${shop.job.inv-snapshot.cron:0 30 3 * * *}")
     @SchedulerLock(name = "inv-daily-snapshot", lockAtLeastFor = "PT1M", lockAtMostFor = "PT30M")
     public void run() {
-        jobs.run("inv-daily-snapshot", () -> {
-            LocalDate day = LocalDate.now().minusDays(1);
-            return "date=" + day + " rows=" + snapshots.buildFor(day);
-        });
+        jobs.run("inv-daily-snapshot", this::buildYesterday);
+    }
+
+    /** 建昨天的快照。**两条触发路径共用它**，见 {@code InvOutboxDispatchJob.dispatchOnce}。 */
+    public String buildYesterday() {
+        LocalDate day = LocalDate.now().minusDays(1);
+        return "date=" + day + " rows=" + snapshots.buildFor(day);
     }
 }

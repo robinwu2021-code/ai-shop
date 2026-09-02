@@ -65,7 +65,22 @@ public class OutboxDispatchJob {
     public void dispatch() {
         // 计时、记录、兜异常都在 JobSupport 里 —— 每个任务各写一遍的结果是
         // 「写了的兜住了，忘了的静默失败」，而忘了的那个恰恰是最新加的那个
-        jobs.run("outbox-dispatch", () -> {
+        jobs.run("outbox-dispatch", this::dispatchOnce);
+    }
+
+    /**
+     * 投一轮。**两条触发路径共用它**：{@code @Scheduled}（只在 worker 部署下解析）
+     * 与独立调度器打进来的那条。
+     *
+     * <p><b>2026-09-02 抽出来的，因为后者此前根本不通</b>：{@code @EnableScheduling} 挂
+     * {@code @Profile("worker")} 而生产是 {@code api,ops}，同时这个任务又没有
+     * {@code JobDeclaration}，于是没进 {@code job_definition} —— <b>两条路都不通</b>。
+     * 今天没出事只是因为 {@code sys_outbox} 还是空的（线上 0 订单）；
+     * 第一条事件写进去的那一刻它就会永远躺在那儿。声明在
+     * {@code PlatformOutboxJobHandler}（shop-app），本模块不依赖 shop-job-api。
+     */
+    public String dispatchOnce() {
+        {
             int sent = dispatcher.dispatchPending();
             if (sent == 0) {
                 return null;   // 没有待发事件是常态
@@ -79,6 +94,6 @@ public class OutboxDispatchJob {
                 log.warn("[outbox] 本轮投出 {} 条，已达告警线 —— 事件在积压，去看消费者是不是卡了", sent);
             }
             return "投出 " + sent + " 条";
-        });
+        }
     }
 }

@@ -48,7 +48,19 @@ public class InvOutboxDispatchJob {
     @Scheduled(cron = "${shop.job.inv-outbox.cron:*/5 * * * * *}")
     @SchedulerLock(name = "inv-outbox-dispatch", lockAtLeastFor = "PT3S", lockAtMostFor = "PT2M")
     public void run() {
-        jobs.run("inv-outbox-dispatch", () -> {
+        jobs.run("inv-outbox-dispatch", this::dispatchOnce);
+    }
+
+    /**
+     * 投一轮，返回给人看的一句话。
+     *
+     * <p><b>单独抽出来是因为这个任务有两条触发路径</b>：`@Scheduled`（只在 worker 部署下解析）
+     * 与独立调度器打进来的那条。2026-09-02 之前只有前者，而生产不带 worker profile ——
+     * 于是它一次都没跑过，212 条事件从 08-27 堆到 08-30，`retry_count` 全是 0
+     *（连投都没投过）。两条路径都收在这一个方法上，别再各写一遍。
+     */
+    public String dispatchOnce() {
+        {
             List<InvOutbox> pending = outboxMapper.selectList(Wrappers.<InvOutbox>lambdaQuery()
                     .eq(InvOutbox::getStatus, "PENDING")
                     .lt(InvOutbox::getRetryCount, MAX_RETRY)
@@ -86,6 +98,6 @@ public class InvOutboxDispatchJob {
                 outboxMapper.updateById(e);
             }
             return "sent=" + ok + "/" + pending.size();
-        });
+        }
     }
 }
