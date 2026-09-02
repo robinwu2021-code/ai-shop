@@ -49,11 +49,18 @@ const MANAGE = "system:job:manage";
  * 于是每一行的前三列起点都不一样，表头更是差了 190px。四列全给固定宽度也能
  * 对齐，但那要按最长那一行留（英文更长），表格白白宽出一截。
  *
- * 第一列的下限是 `11rem` 而不是 `0`：写 `minmax(0,1fr)` 时那个 0 允许它一路缩到
+ * **`1fr` 给「最后一次」，不给「任务」。** 任务名是一句短标题（最长的
+ * 「历史清理（代码里已不存在）」也就十来个字），给它 `1fr` 等于让它把整行的
+ * 剩余宽度全吃掉 —— 实测 1280 视口下四列是 442 / 128 / 192 / 236px，
+ * 名称列独占 442 而右边那列的时间戳被截成 `2026-08-27 1…`。
+ * 宽度该给内容最长、且**截断会丢信息**的那一列：状态徽章 + 时间 + 连败次数。
+ *
+ * 任务列的下限 `11rem` 不能写成 `0`：写 `minmax(0,…)` 时那个 0 允许它一路缩到
  * 0px —— 实测容器 494px、后三列固定 580px，于是名称列真的成了 0 宽，
  * 页面第一列显示的是「频率」，**任务叫什么完全看不见**，且没有任何报错。
+ * 上限 `20rem` 是为了宽屏：再宽也没有意义，那时该让给右边。
  */
-const GRID = "grid grid-cols-[minmax(11rem,1fr)_8rem_12rem_auto] items-start min-w-[40rem]";
+const GRID = "grid grid-cols-[minmax(11rem,20rem)_10rem_minmax(14rem,1fr)_auto] items-start min-w-[42rem]";
 /** 单元格通用间距。列间距靠它，不用 `gap` —— gap 会把行分隔线切成四段。 */
 const CELL = "border-t px-3 py-2.5";
 
@@ -223,7 +230,14 @@ export default function JobsPage() {
               <Tooltip label={<code>{r.cron}</code>}>
                 {(p) => <span {...p} className="block truncate">{cronText(r.cron, tc)}</span>}
               </Tooltip>
-              <div className="truncate text-xs text-muted-foreground">
+              {/*
+                * 截断了要能 hover 看全 —— 与下一列的 detail 同一个做法。
+                * 正常情况「下次」是近期，relTime 给的是「12 分钟后」这类短文本；
+                * 只有任务停了很久（下次时间是远期或过期）才回落成绝对时间戳，
+                * 而那恰恰是最需要看清楚的时候。
+                */}
+              <div className="truncate text-xs text-muted-foreground"
+                   title={`${c.jobsNextLabel} ${relTime(r.nextRunAt, tc)}`}>
                 {c.jobsNextLabel} {relTime(r.nextRunAt, tc)}
               </div>
             </div>
