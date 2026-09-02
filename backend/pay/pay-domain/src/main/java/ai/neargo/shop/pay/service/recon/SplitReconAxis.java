@@ -34,6 +34,7 @@ public class SplitReconAxis implements ReconAxis {
 
     private final SettleMappers.BillMapper billMapper;
     private final SettleMappers.ReconDiffMapper diffMapper;
+    private final ai.neargo.shop.pay.SplitGateway splitGateway;
 
     /**
      * 多久没确认算异常。默认 24 小时 —— 微信分账的回执通常在分钟级，
@@ -46,9 +47,11 @@ public class SplitReconAxis implements ReconAxis {
 
     public SplitReconAxis(SettleMappers.BillMapper billMapper,
                           SettleMappers.ReconDiffMapper diffMapper,
+                          ai.neargo.shop.pay.SplitGateway splitGateway,
                           @Value("${shop.recon.split-stale-hours:24}") int staleHours) {
         this.billMapper = billMapper;
         this.diffMapper = diffMapper;
+        this.splitGateway = splitGateway;
         this.staleHours = staleHours;
     }
 
@@ -115,13 +118,24 @@ public class SplitReconAxis implements ReconAxis {
                         .eq(StlReconDiff::getStatus, "PENDING"))) > 0;
     }
 
+    /**
+     * <b>桩那一句从网关算出来，不写死。</b>
+     *
+     * 写死的话，接了真通道之后这一句会变成假话 —— 而页面照常显示、
+     * 读的人照常相信「这批未确认只是因为还没接通道」，
+     * 于是一批<b>真的没划走的钱</b>会被当成已知现象放过去。
+     * 没有任何东西会提醒：文案不会因为换了实现而报错。
+     */
     @Override
     public Coverage coverage() {
-        return new Coverage(false,
-                "只有平台侧自查：扫我方已发出分账指令而超过 " + staleHours
+        String note = "只有平台侧自查：扫我方已发出分账指令而超过 " + staleHours
                 + " 小时未收到确认的结算单。**「通道那边实际划走了多少」现在看不见** —— "
-                + "要等分账查询能力接入。⚠️ 另外，分账网关目前是桩实现，"
-                + "所以每一笔已发出的单都不会有回执 —— 这条轴报出来的量反映的是这件事，"
-                + "不是通道出了问题。");
+                + "要等分账查询能力接入。";
+        if (!splitGateway.deliversConfirmation()) {
+            note += "⚠️ 另外，分账网关目前是桩实现，"
+                    + "所以每一笔已发出的单都不会有回执 —— 这条轴报出来的量反映的是这件事，"
+                    + "不是通道出了问题。";
+        }
+        return new Coverage(false, note);
     }
 }

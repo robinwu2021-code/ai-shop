@@ -32,6 +32,15 @@ public class StubSplitGateway implements SplitGateway {
     /** 下一次对这些子单的调用会失败。**仅测试使用**。 */
     private final Set<String> failing = ConcurrentHashMap.newKeySet();
 
+    /**
+     * 桩不会有回执 —— 每一笔「已发出」都永远停在 SPLIT。
+     * 对账轴据此告诉运营：那一批未确认反映的是「还没接通道」，不是通道出了问题。
+     */
+    @Override
+    public boolean deliversConfirmation() {
+        return false;
+    }
+
     @Override
     public Result split(String subOrderNo, String payMerchantNo, long amountMinor, String requestNo) {
         if (failing.remove(subOrderNo)) {
