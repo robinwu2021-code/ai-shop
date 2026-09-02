@@ -87,12 +87,64 @@ async function load() {
 
 const fromParam = ref("");
 
+/**
+ * 进这一页有两条路：
+ *
+ * 1. **扫印在店里的码** —— 微信把码里的 scene 原样带回来（就是店铺码），
+ *    这时页面手上<b>只有码，没有 merchantNo</b>。
+ * 2. 分享链接 / 站内跳转 —— 直接带 merchantNo。
+ *
+ * <b>第一条此前根本没接</b>：onLoad 只读 merchantNo，扫码进来时它是空的，
+ * `load()` 第一行就 return —— 商家印出去的贴纸扫出来是一张**白页**。
+ * 而且服务端的扫码埋点与进店归因都挂在 by-code 上，没人调 = 获客看板恒为 0，
+ * 看不出是「没人来」还是「没人记」。
+ */
 onLoad(async (q) => {
+  // scene 是微信小程序码带回来的参数，可能被 URL 编码过；storeCode 是 H5/普通二维码那条
+  const rawScene = (q?.scene as string) || (q?.storeCode as string) || "";
+  const storeCode = rawScene ? safeDecode(rawScene) : "";
+
   merchantNo.value = (q?.merchantNo as string) || "";
   // from=QR 表示扫码进店 —— 归因写在服务端，决定订单的 trafficSource 与商家费率档
-  fromParam.value = (q?.from as string) || "";
+  fromParam.value = (q?.from as string) || (storeCode ? "QR" : "");
+
+  if (storeCode && !merchantNo.value) {
+    const home = await api.storeByCode(storeCode, deviceId());
+    // 主页数据一次就拿回来了，不再多打一次 storeHome
+    data.value = home;
+    merchantNo.value = home.merchant.merchantNo;
+    frequent.value = await api.frequentItems(merchantNo.value);
+    return;
+  }
   await load();
 });
+
+/** scene 没编码过时 decodeURIComponent 会对「%」抛错 —— 解不开就用原样，别整页崩掉。 */
+function safeDecode(v: string) {
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return v;
+  }
+}
+
+/**
+ * 匿名去重用的设备号。**取不到就不传** —— 传空串会让所有游客算成同一个人，
+ * 扫码 UV 恒等于 1，比没有这个数更糟。
+ */
+function deviceId() {
+  try {
+    const k = "ng_device_id";
+    let v = uni.getStorageSync(k) as string;
+    if (!v) {
+      v = `D${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+      uni.setStorageSync(k, v);
+    }
+    return v || undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * 商品卡的加购。**这一页此前没接 `@add`** —— 卡片把事件 emit 出来，没人接，

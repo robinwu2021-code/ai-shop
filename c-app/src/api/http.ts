@@ -209,6 +209,8 @@ export const httpApi: ShopApi = {
   merchantList: (q) => call<Merchant[]>("merchantList", undefined, { ...q } satisfies MerchantListQuery),
   storeHome: (merchantNo, from) =>
     http.get<StoreHome>(buildPath(ENDPOINTS.storeHome.path, { merchantNo }), { from }),
+  storeByCode: (storeCode, deviceId) =>
+    http.get<StoreHome>(ENDPOINTS.storeByCode.path, { storeCode, deviceId }),
   frequentItems: (merchantNo) =>
     http.get<FrequentItem[]>(buildPath(ENDPOINTS.frequentItems.path, { merchantNo })),
   reorderFrom: (orderNo) =>

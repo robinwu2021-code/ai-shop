@@ -368,6 +368,16 @@ export interface ShopApi {
   // ---- 门店主页（**一期主获客路径**，ADR-004 决策 3）
   /** 扫码/分享进店。`from=QR` 时写进店归因，决定订单 trafficSource 与费率档 */
   storeHome(merchantNo: string, from?: string): Promise<StoreHome>;
+  /**
+   * 扫码进店：拿印在贴纸上的短码换门店主页。
+   *
+   * **不是 storeHome 的别名** —— 服务端在这条路上写两件事：匿名扫码埋点
+   * （游客也记，那是漏斗最宽的一层）与进店归因（登录了才记）。
+   * 走 storeHome 的话这两样都不会发生，而页面看起来一模一样。
+   *
+   * @param deviceId 匿名去重用。没有就不传 —— 传个空串会让所有游客算成同一个人
+   */
+  storeByCode(storeCode: string, deviceId?: string): Promise<StoreHome>;
   /** 常买清单：按购买频次排序；未登录时降级为店铺热销 */
   frequentItems(merchantNo: string): Promise<FrequentItem[]>;
   /** 一键再来一单：整单复制到购物车，失效品与涨价品分别回报 */

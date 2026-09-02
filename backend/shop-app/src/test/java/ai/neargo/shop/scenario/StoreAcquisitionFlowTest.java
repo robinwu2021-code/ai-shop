@@ -132,6 +132,41 @@ class StoreAcquisitionFlowTest {
         assertThat(row.get("register").asLong()).as("首次归因人数").isGreaterThan(0);
     }
 
+    /**
+     * <b>只走真实链路：扫码，不手动调 /enter。</b>
+     *
+     * <p>上面那条用例自己 POST 了一次 {@code /mp/store/{no}/enter}，所以一直是绿的 ——
+     * 而<b>生产里没有任何端调用过那条</b>（c-app 的 endpoints 里根本没有它）。
+     * 于是「进店 / 首次归因 / 首单」三环在真环境恒为 0，看板一片零，
+     * 却看不出是「没人来」还是「没人记」。替身太干净，盖住了真缺陷。
+     *
+     * <p>这条只做扫码这一个动作 —— 与店主贴一张纸、顾客扫一下完全一致。
+     * 可证伪：去掉 {@code byCode} 里那段归因，{@code enter} 立刻回到 0。
+     */
+    @Test
+    @DisplayName("★★ 登录后扫码即写归因 —— 不靠端上再调一次 /enter")
+    void scanAloneFeedsTheFunnel() throws Exception {
+        String merchantNo = approvedMerchantNo("12600128007", "获客真实链路店", "CM-ACQ-R");
+        String storeCode = storeCodeOf(merchantNo);
+        String buyer = TestLogin.consumer(mvc(), json, otpStore, "12600128008");
+
+        // 唯一动作：带着登录态扫这张码。**没有 /enter**
+        mvc().perform(get("/mp/store/by-code")
+                        .header("Authorization", "Bearer " + buyer)
+                        .param("storeCode", storeCode)
+                        .param("deviceId", "DEV-ACQ-R"))
+                .andExpect(status().isOk());
+
+        String admin = opsLogin("admin", "admin123");
+        JsonNode row = acquisitionRowOf(admin, "获客真实链路店");
+        assertThat(row).as("获客看板里找不到这家店").isNotNull();
+        assertThat(row.get("scan").asLong()).as("扫码数").isGreaterThan(0);
+        assertThat(row.get("enter").asLong())
+                .as("★ 只扫码没进店 —— 生产里正是这样，于是漏斗后三环恒为 0")
+                .isGreaterThan(0);
+        assertThat(row.get("register").asLong()).as("首次归因人数").isGreaterThan(0);
+    }
+
     /** V4：同设备连扫算多次 PV、一个 UV —— 去重放在聚合层，明细层照实记。 */
     @Test
     @DisplayName("★ 同设备连扫三次：scan=3 而 scanUv=1（去重在聚合层，不在明细层）")

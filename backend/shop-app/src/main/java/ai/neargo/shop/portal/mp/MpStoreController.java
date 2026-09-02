@@ -31,6 +31,9 @@ import java.util.List;
 @RestController
 public class MpStoreController {
 
+    private static final java.util.logging.Logger LOG =
+            java.util.logging.Logger.getLogger(MpStoreController.class.getName());
+
     private final StoreService storeService;
     private final StoreFavoriteService favoriteService;
     private final StoreCodeService storeCodeService;
@@ -78,7 +81,31 @@ public class MpStoreController {
                 // 为空就是匿名访客 —— 那是要测的一层，不是缺失
                 SecurityUtils.currentUserNoOrNull(), deviceId,
                 clientIp(request), uaHash(request)));
-        return storeService.home(merchantNo, SecurityUtils.currentUserNoOrNull(),
+        /*
+         * **归因也在这里写**（漏斗第二环）。
+         *
+         * 此前它只挂在 {@code /enter} 上，而<b>没有任何端调用过 /enter</b> ——
+         * 于是「进店 / 首次归因 / 首单」三环在生产里恒为 0，看板上一片零，
+         * 却看不出是「没人来」还是「没人记」。
+         *
+         * 放在这条而不是让端上再发一次：storeCode 只有服务端解得开，
+         * 端上多一次请求就多一个「忘了调」的机会 —— 而这正是它坏掉的原因。
+         *
+         * 未登录就跳过：归因必须挂在具体的人身上。那部分人已经被上面的
+         * 匿名扫码埋点记下了，是漏斗最宽的那一层。
+         */
+        String userNo = SecurityUtils.currentUserNoOrNull();
+        if (userNo != null && !userNo.isBlank()) {
+            try {
+                attributionService.report(userNo,
+                        new ai.neargo.shop.marketing.attribution.AttributionService.Clue(
+                                merchantNo, null, null));
+            } catch (RuntimeException e) {
+                // 与埋点同一条理由：归因失败不能让贴纸扫不进来
+                LOG.log(java.util.logging.Level.WARNING, "扫码归因失败：" + storeCode, e);
+            }
+        }
+        return storeService.home(merchantNo, userNo,
                 favoriteService.isFavorited(merchantNo));
     }
 

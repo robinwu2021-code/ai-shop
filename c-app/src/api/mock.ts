@@ -1316,6 +1316,18 @@ export const mockApi: ShopApi = {
   },
 
   // ---------------------------------------------------------------- 门店主页
+  /*
+   * 扫码进店。mock 里从码值反查商家：约定 `shop_<merchantNo>_<x>`，
+   * 与 mock 店铺码数据同一套字面量。**认不出来就报错，不静默回落到某一家** ——
+   * 静默回落会让「码印错了」这件事在演示里永远不出现，而那正是它最该出现的地方。
+   */
+  async storeByCode(storeCode) {
+    const m = /^shop_([A-Za-z0-9-]+)_/.exec(storeCode ?? "");
+    if (!m) throw new Error(`店铺码不存在：${storeCode}`);
+    // 走 QR 口径：扫码进店要写归因，与真后端一致
+    return this.storeHome(m[1]!, "QR");
+  },
+
   async storeHome(merchantNo, from) {
     const merchant = toMerchant(merchantNo);
     // 扫码/分享进店即写归因：这决定后续订单的 trafficSource 与商家费率档（ADR-004 §6）。
