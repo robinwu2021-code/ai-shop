@@ -886,6 +886,85 @@ components:
         - "entityCount"
       additionalProperties: false
       description: "升档信号的一行（`GET /ops/merchant-plans/upgrade-signals`）。\n\n**按 owner 分组而不是按主体**：「同一个人开了两个主体」正是要找的人 —— 他已经在多店经营，只是绕过了额度。主体表上没有联系电话（那在申请单上）， 所以这里只给 owner 号，销售拿它去后台查人。"
+    OnboardingStatus: 
+      type: "string"
+      enum: 
+        - "NONE"
+        - "APPLYING"
+        - "ACTIVE"
+        - "REJECTED"
+        - "FROZEN"
+      description: "进件（收款开户）状态：占位 / 审核中 / 已开通 / 被拒 / 冻结。"
+    OnboardingRow: 
+      type: "object"
+      properties: 
+        merchantNo: 
+          type: "string"
+        merchantName: 
+          type: "string"
+          description: "商家名，展示用"
+        storeNo: 
+          type: "string"
+          description: "为哪家门店进的件；**空串 = 主体级默认号**"
+        payChannel: 
+          type: "string"
+          description: "WECHAT / ALIPAY"
+        applyStatus: 
+          "$ref": "#/definitions/OnboardingStatus"
+        rejectReason: 
+          type: 
+            - "string"
+            - "null"
+          description: "被拒原因，原样给商家看；null = 没被拒"
+        settleAccountType: 
+          type: 
+            - "string"
+            - "null"
+          description: "PERSONAL_BANK / CORPORATE_BANK；null = 还没填"
+        settleAccountMasked: 
+          type: 
+            - "string"
+            - "null"
+          description: "结算账号掩码 —— 真实账号只在后端"
+        subMchid: 
+          type: 
+            - "string"
+            - "null"
+          description: "通道侧二级商户号；null = 还没开出来"
+        payMerchantNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "进件成功才生成的收款号业务键；**空/null = 还收不了钱**"
+        appliedAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "提交进件的时间（毫秒）；null = 还没提交（占位记录）"
+        ageMs: 
+          type: 
+            - "number"
+            - "null"
+          description: "从提交到现在的停留时长（毫秒）；null = 还没提交。越大越该有人去问"
+        canReceiveMoney: 
+          type: "boolean"
+          description: "applyStatus === \"ACTIVE\""
+      required: 
+        - "merchantNo"
+        - "merchantName"
+        - "storeNo"
+        - "payChannel"
+        - "applyStatus"
+        - "rejectReason"
+        - "settleAccountType"
+        - "settleAccountMasked"
+        - "subMchid"
+        - "payMerchantNo"
+        - "appliedAt"
+        - "ageMs"
+        - "canReceiveMoney"
+      additionalProperties: false
+      description: "进件看板的一行（`GET /ops/onboarding`）。**每主体每通道一条**。\n\n它补的是入驻审核与收款进件两条链之间的盲区：审核通过 = 能上架卖货， 进件通过 = 能收钱。审核过了但进件没走完的商家「货照上、单照来、钱收不到」， 此前运营端没有一个跨商家的地方能看见 —— 这份看板就是那个地方。"
     FulfillmentType: 
       type: "string"
       enum: 
@@ -14791,6 +14870,81 @@ paths:
           schema: 
             type: "string"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/onboarding": 
+    get: 
+      operationId: "onboardingBoard"
+      summary: "进件看板"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/OnboardingRow"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/onboarding/refresh": 
+    post: 
+      operationId: "refreshOnboarding"
+      summary: "人工回查：替卡在进件上的商家去通道问一次结果并落库"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/merchants/{merchantNo}/status": 
     post: 
       operationId: "setMerchantStatus"

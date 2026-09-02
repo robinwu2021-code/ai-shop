@@ -1,11 +1,35 @@
 // 覆盖范围：商家治理（P-11.1）。写操作真改 db.merchants（重开能读回），状态机在此强制。
 import * as db from "@/lib/mock/db";
-import { MERCHANT_TRANSITIONS, type Merchant } from "@/lib/types";
+import { MERCHANT_TRANSITIONS, type Merchant, type OnboardingRow } from "@/lib/types";
 import { MAX_MERCHANT_BREACH } from "@/lib/constants";
 import type { MerchantApi } from "../contracts/merchant";
 import type { LegalForm } from "@/lib/types";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
+
+/**
+ * 进件看板一行由商家派生（mock 没有独立的进件表）：
+ * `settleAccountReady` 就是「进件走没走完」的现成判据 —— 已就绪即 ACTIVE、能收钱，
+ * 未就绪即 APPLYING、收不了钱。与真实后端读 mch_payment_merchant 是一回事的两种落地。
+ */
+function onboardingRowOf(m: Merchant): OnboardingRow {
+  const ready = m.settleAccountReady;
+  return {
+    merchantNo: m.merchantNo,
+    merchantName: m.name,
+    storeNo: "",
+    payChannel: "WECHAT",
+    applyStatus: ready ? "ACTIVE" : "APPLYING",
+    rejectReason: null,
+    settleAccountType: ready ? "PERSONAL_BANK" : null,
+    settleAccountMasked: ready ? "****1234" : null,
+    subMchid: ready ? `SUB-${m.merchantNo}` : null,
+    payMerchantNo: ready ? `PM-${m.merchantNo}` : null,
+    appliedAt: ready ? Date.parse(m.createdAt) : null,
+    ageMs: null,
+    canReceiveMoney: ready,
+  };
+}
 
 /** 锁 / 解锁只差一个布尔；两个方法共用它，免得两份实现哪天走岔 */
 function setChannelLock(storeNo: string, channel: string, locked: boolean) {
@@ -283,6 +307,24 @@ export const merchantMock: MerchantApi = {
     ),
 
   getMerchant: async (merchantNo) => wait(find(merchantNo)),
+
+  // 进件看板（WS-C）：从商家派生只读行；status 支持逗号分隔多态，与后端同口径
+  onboardingBoard: (q = {}) =>
+    wait(
+      db.paginate(
+        db.merchants.map(onboardingRowOf),
+        q.page,
+        q.size,
+        (r) =>
+          (!q.status || q.status.split(",").map((s) => s.trim()).includes(r.applyStatus)) &&
+          db.eqHit(q.payChannel, r.payChannel) &&
+          db.kwHit(q.keyword, r.merchantNo, r.merchantName, r.payMerchantNo),
+      ),
+    ),
+  // mock 不真的问通道：回查是无副作用的空动作，页面回查后自己重取看板
+  refreshOnboarding: async () => {
+    await wait(undefined);
+  },
 
   setMerchantStatus: async (merchantNo, status, remark, communityNos) => {
     const m = find(merchantNo);

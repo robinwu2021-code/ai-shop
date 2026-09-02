@@ -92,6 +92,10 @@ export const NAV: NavSection[] = [
       // 给了**财务**，用商家读权限的话正好反过来 —— 财务看不到，商家运营却看得到。
       // （该码 2026-08-12 才补进 UI_PERM_MAP；此前未登记，can() 会判所有人无权限）
       { href: "/merchants?tab=admission", label: "准入与保证金", perm: "merchant:admission:read", group: "入驻与资质", matrix: "P-11.1" },
+      // 进件看板（WS-C）：跨商家看「谁卡在收款上」。与准入同一拨人管（都决定这家店
+      // 能不能真正把生意做成），复用 merchant:admission:read，不新增权限码。
+      // 紧挨准入：同 group 的叶子必须相邻（nav.test.ts 锁这条）。
+      { href: "/merchants?tab=onboarding", label: "进件看板", perm: "merchant:admission:read", group: "入驻与资质", matrix: "P-11.1", ready: true },
       // 用 mode:read 而不是 merchant:read：这张表答的是「哪些店按自营结算」，
       // 与门店经营模式读的是同一个字段、同一批人在处置。
       // ⚠️ 该码目前归 BD 与超管，**财务看不到** —— 而这是一张税务表，

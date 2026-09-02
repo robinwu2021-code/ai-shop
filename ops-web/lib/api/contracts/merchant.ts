@@ -7,8 +7,9 @@ import type {
   MerchantPlanRow,
   PlanDef,
   PlanUpgradeSignal,
+  OnboardingRow,
   AdmissionPolicy, AuthCode, AuthCodeSetResult, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, PayQuota, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType, StoreFulfillmentRow } from "@/lib/types";
-import type { ApplyQ, MerchantQ } from "../query";
+import type { ApplyQ, MerchantQ, OnboardingQ } from "../query";
 
 export interface MerchantApi {
   // ── 门店经营模式与弱主体准入 ─────────────────────────────────
@@ -124,6 +125,25 @@ export interface MerchantApi {
 
   listMerchants(q?: MerchantQ): Promise<Page<Merchant>>;
   getMerchant(merchantNo: string): Promise<Merchant>;
+
+  // ── 进件看板（WS-C）──────────────────────────────────────────────
+  //
+  // 只读 + 一个人工回查。它补的是「审核过了但收不了钱」的盲区：入驻审核与收款进件
+  // 是两条链，审核过的商家货照上、单照来，进件没走完就是钱收不到，而运营端此前
+  // 没有一个跨商家的地方能看见。**不碰通道** —— 真实进件通道属支付方案，
+  // 看板只读 mch_payment_merchant，回查转调后端已有的 refresh。
+
+  /**
+   * 进件看板。跨商家、跨通道，按状态/通道/关键词筛。
+   * @param q.status 逗号分隔多态；空 = 全部
+   */
+  onboardingBoard(q?: OnboardingQ): Promise<Page<OnboardingRow>>;
+
+  /**
+   * 人工回查：替卡在进件上的商家去通道问一次结果并落库。
+   * @param storeNo 空 = 主体级默认收款号
+   */
+  refreshOnboarding(v: { merchantNo: string; payChannel: string; storeNo?: string }): Promise<void>;
   /** 审核推进（DRAFT→SUBMITTED→REVIEWING→APPROVED/REJECTED），非法迁移抛错。 */
   /**
    * 审核推进。

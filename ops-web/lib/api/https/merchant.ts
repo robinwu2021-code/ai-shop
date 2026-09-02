@@ -44,6 +44,10 @@ export const merchantHttp: MerchantApi = {
 
   listMerchants: (q) => client.get("/ops/merchants", q),
   getMerchant: (merchantNo) => client.get(`/ops/merchants/${merchantNo}`),
+
+  // 进件看板（WS-C）：只读 + 人工回查。不碰通道 —— 回查转调后端已有的 refresh。
+  onboardingBoard: (q) => client.get("/ops/onboarding", q),
+  refreshOnboarding: (v) => client.post("/ops/onboarding/refresh", v),
   setMerchantStatus: (merchantNo, status, remark, communityNos) =>
     client.post(`/ops/merchants/${merchantNo}/status`, { status, remark, communityNos }),
   setMerchantVerified: (merchantNo, verified) =>

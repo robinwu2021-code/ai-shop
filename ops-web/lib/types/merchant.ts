@@ -613,3 +613,40 @@ export interface PlanUpgradeSignal {
   /** 命中几家 */
   entityCount: number;
 }
+
+/** 进件（收款开户）状态：占位 / 审核中 / 已开通 / 被拒 / 冻结。 */
+export type OnboardingStatus = "NONE" | "APPLYING" | "ACTIVE" | "REJECTED" | "FROZEN";
+
+/**
+ * 进件看板的一行（`GET /ops/onboarding`）。**每主体每通道一条**。
+ *
+ * 它补的是入驻审核与收款进件两条链之间的盲区：审核通过 = 能上架卖货，
+ * 进件通过 = 能收钱。审核过了但进件没走完的商家「货照上、单照来、钱收不到」，
+ * 此前运营端没有一个跨商家的地方能看见 —— 这份看板就是那个地方。
+ */
+export interface OnboardingRow {
+  merchantNo: string;
+  /** 商家名，展示用 */
+  merchantName: string;
+  /** 为哪家门店进的件；**空串 = 主体级默认号** */
+  storeNo: string;
+  /** WECHAT / ALIPAY */
+  payChannel: string;
+  applyStatus: OnboardingStatus;
+  /** 被拒原因，原样给商家看；null = 没被拒 */
+  rejectReason: string | null;
+  /** PERSONAL_BANK / CORPORATE_BANK；null = 还没填 */
+  settleAccountType: string | null;
+  /** 结算账号掩码 —— 真实账号只在后端 */
+  settleAccountMasked: string | null;
+  /** 通道侧二级商户号；null = 还没开出来 */
+  subMchid: string | null;
+  /** 进件成功才生成的收款号业务键；**空/null = 还收不了钱** */
+  payMerchantNo: string | null;
+  /** 提交进件的时间（毫秒）；null = 还没提交（占位记录） */
+  appliedAt: number | null;
+  /** 从提交到现在的停留时长（毫秒）；null = 还没提交。越大越该有人去问 */
+  ageMs: number | null;
+  /** applyStatus === "ACTIVE" */
+  canReceiveMoney: boolean;
+}

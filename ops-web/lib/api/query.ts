@@ -32,6 +32,14 @@ export type ApplyQ = { status?: string; keyword?: string; page?: number; size?: 
 export type MerchantQ = ArchiveQ & { status?: string; tier?: string };
 
 /**
+ * 进件看板：进件状态 + 通道（P-11.1）。
+ *
+ * `status` **逗号分隔多态** —— 运营常同时看「审核中+被拒」（都是要盯的），
+ * 与商家档案的 status 同一口径。没有归档开关：进件记录不归档。
+ */
+export type OnboardingQ = PageQ & { status?: string; payChannel?: string };
+
+/**
  * 订单：状态 + 履约方式 + 流量来源（P-4.1；trafficSource 供 P-16.1.6 结构分析）。
  *
  * `storeNo` 是**门店档案抽屉里那条「看这家店的订单」**用的（P-11.2）——

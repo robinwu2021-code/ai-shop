@@ -25,6 +25,7 @@ import { AdmissionTab } from "./admission-tab";
 import { StoresTab } from "./stores-tab";
 import { PlansTab } from "./plans-tab";
 import { ModeRiskTab } from "./mode-risk-tab";
+import { OnboardingTab } from "./onboarding-tab";
 import { QualificationTab } from "./qualification-tab";
 import { StaffBlock } from "./staff-block";
 import { FulfillmentBlock } from "./fulfillment-block";
@@ -48,7 +49,7 @@ const TIER_OPTIONS = (c: Copy) => [
   { value: "COMPANY", label: c.tierCompany },
 ];
 
-const TAB_KEYS = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "mode-risk", "ban", "plans"] as const;
+const TAB_KEYS = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "onboarding", "mode-risk", "ban", "plans"] as const;
 
 /** 入驻审核视图只看**还没走完审核**的那几档 —— 已通过/已封禁的属于档案，不该混在待办里。 */
 const AUDIT_STATUSES = ["SUBMITTED", "REVIEWING"];
@@ -246,6 +247,7 @@ function MerchantsInner() {
       {tab === "admission" && <AdmissionTab c={c} />}
       {tab === "qualifications" && <QualificationTab c={c} />}
       {tab === "mode-risk" && <ModeRiskTab c={c} />}
+      {tab === "onboarding" && <OnboardingTab c={c} />}
 
       {tab === "ban" && (
         <>
