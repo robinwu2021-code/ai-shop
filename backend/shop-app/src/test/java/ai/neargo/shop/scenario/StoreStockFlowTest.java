@@ -214,6 +214,58 @@ class StoreStockFlowTest {
     // ---------------------------------------------------------------- 装配
 
     /** B 端商品详情里这个 SKU 显示的可售量 */
+    /**
+     * <b>下架完，列表要跟着变。</b>
+     *
+     * <p>上下架早就按门店落行了（{@code MerchantGoodsServiceImpl#toggle}），
+     * 而商品列表一直回显**主体级** {@code onSale} —— 主体的 on_sale 是「任一门店在售就为真」
+     * 的总闸，所以 A 店下架后它仍是 true，<b>刷新后那件货还写着「在售」</b>。
+     * 店长会以为没点上，然后再点一次（第二次点的是「上架」，等于又开回去）。
+     *
+     * <p>可证伪：把 BizGoodsController 传的 storeNo 换成 null，第二个断言立刻变红。
+     */
+    @Test
+    @DisplayName("★★ A 店下架后，A 店的列表显示「本店未上架」，而 B 店不受影响")
+    void listShowsPerStoreOnSale() throws Exception {
+        String biz = merchant("12600190070", "分店上下架回显");
+        String goodsNo = listedGoods(biz, 50);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "回显·分店");
+
+        // 未按店管理时：storeOnSale 为空（跟随主体级），不是 false
+        assertThat(storeOnSaleOf(biz, storeA, goodsNo))
+                .as("一条店级行都没有却给了 false —— 会被读成「本店未上架」").isNull();
+
+        // A 店下架（落的是门店行；主体 on_sale 因为 B 店还在卖而保持 true）
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + biz)
+                        .header("X-Store-No", storeA)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":false}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        assertThat(storeOnSaleOf(biz, storeA, goodsNo))
+                .as("★ A 店下架完，A 店的列表还写着在售 —— 店长会以为没点上").isEqualTo(false);
+        assertThat(storeOnSaleOf(biz, storeB, goodsNo))
+                .as("A 店下架把 B 店也带下去了").isEqualTo(true);
+    }
+
+    /** 列表里这件货在这家店的上架态。null = 未按店管理。 */
+    private Boolean storeOnSaleOf(String token, String storeNo, String goodsNo) throws Exception {
+        String body = mvc().perform(get("/biz/goods")
+                        .header("Authorization", "Bearer " + token)
+                        .header("X-Store-No", storeNo).param("size", "100"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        for (var g : json.readTree(body).get("data").get("records")) {
+            if (goodsNo.equals(g.get("goodsNo").asString())) {
+                var v = g.get("storeOnSale");
+                return v == null || v.isNull() ? null : v.asBoolean();
+            }
+        }
+        throw new AssertionError("列表里没有这件货：" + goodsNo);
+    }
+
     private int shownStock(String token, String storeNo, String goodsNo, String skuNo) throws Exception {
         String body = mvc().perform(get("/biz/goods/" + goodsNo)
                         .header("Authorization", "Bearer " + token)

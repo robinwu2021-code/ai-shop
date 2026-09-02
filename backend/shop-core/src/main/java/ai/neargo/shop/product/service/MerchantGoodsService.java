@@ -26,7 +26,16 @@ public interface MerchantGoodsService {
      * @param categoryNo 按类目筛（通常是二级），为空不筛
      * @param keyword    按标题模糊搜，为空不筛
      */
-    PageData<GoodsVO> list(String merchantNo, String categoryNo, String keyword, String status, long page, long size);
+    /**
+     * 商家商品列表。
+     *
+     * @param storeNo 当前门店；<b>非空时每行带上 {@code storeOnSale}</b>（本店上不上架）。
+     *                多门店商家的上下架落在门店行上，而列表若只回显主体级 onSale，
+     *                A 店店长点完「下架」看到的还是「在售」—— 因为 B 店还在卖。
+     *                空 = 单店或无门店上下文，行为与改造前逐字相同
+     */
+    PageData<GoodsVO> list(String merchantNo, String categoryNo, String keyword, String status,
+                           String storeNo, long page, long size);
 
     /**
      * 关掉某一路送货方式会影响的在售商品（P1）：本店货架上<b>只勾了这一路</b>的。

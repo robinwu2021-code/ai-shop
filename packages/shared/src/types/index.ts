@@ -1067,6 +1067,15 @@ export interface GoodsParam {
 }
 
 export interface Goods {
+  /**
+   * <b>本店</b>上不上架（多门店，B 端列表下发）。
+   *
+   * ⚠️ **`null` / 缺省 = 未按店管理**（跟随主体级 `onSale`），**不是「未上架」**。
+   * 上下架早就按门店落行了，而主体的 `onSale` 是「任一门店在售就为真」的总闸 ——
+   * 只看它的话，A 店下架完那件货还写着「在售」，店长会以为没点上。
+   */
+  storeOnSale?: boolean | null;
+
   /** 商品单号 */
   goodsNo: string;
   /** 商品标题 */

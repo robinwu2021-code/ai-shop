@@ -97,8 +97,13 @@ public class BizGoodsController {
          * 类目变必填之后按类目找货是商家的主路径 —— 一个卖 200 件货的店，
          * 没有类目筛就只能靠滚动。
          */
+        /*
+         * 带上当前门店：多门店商家的上下架落在门店行上，而列表此前只回显主体级 onSale ——
+         * A 店店长点完「下架」，B 店还在卖、主体 on_sale 仍是 true，
+         * 刷新后那件货还写着「在售」，他会以为没点上然后再点一次。
+         */
         return goodsService.list(BizContext.requireMerchantNo(), categoryNo, keyword, status,
-                page, Math.min(size, 50));
+                BizContext.current().currentStoreNo(), page, Math.min(size, 50));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")

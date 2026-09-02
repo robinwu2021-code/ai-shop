@@ -106,7 +106,20 @@ public record GoodsVO(String goodsNo,
                        * 有未发布的草稿修改（双版本）。**只在 B 端商家视角下发，其余为 null** ——
                        * 买家不需要知道商家改没改到一半，与 {@code status} 同一条规矩。
                        */
-                      Boolean hasDraft) {
+                      Boolean hasDraft,
+                      /**
+                       * <b>本店</b>上不上架（多门店，B 端列表用）。
+                       *
+                       * <p>{@code null} = 未按店管理（跟随主体级 {@link #onSale}），
+                       * <b>不是「未上架」</b>。语义与 {@code prd_store_goods} 一致：
+                       * 有任意店级行即按店管理，没有行的店视为未上架。
+                       *
+                       * <p>为什么必须下发：上下架**早就按门店落行了**
+                       * （{@code MerchantGoodsServiceImpl#toggle}），而列表一直回显主体级的
+                       * {@code onSale} —— A 店店长点「下架」，B 店还在卖、主体 on_sale 仍是 true，
+                       * <b>刷新后这件货还写着「在售」</b>，他会以为没点上然后再点一次。
+                       */
+                      Boolean storeOnSale) {
 
     /** 一条商品参数。量纲型（功率、净重）平台不枚举值，那时只有 label */
     /**

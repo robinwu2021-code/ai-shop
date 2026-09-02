@@ -133,7 +133,19 @@ const empty = computed(() => !loading.value && !list.value.length);
  * 老数据没有这个字段时回落布尔值。
  */
 function stateOf(g: Goods) {
-  return g.status ?? (g.onSale ? "ON_SALE" : "OFF_SALE");
+  /*
+   * **本店的上架态优先**（多门店）。上下架落在门店行上，而 `status`/`onSale` 是主体级的：
+   * 主体的 onSale 是「任一门店在售就为真」的总闸 —— A 店下架完，B 店还在卖，
+   * 这一行仍会显示「在售」，店长会以为没点上、再点一次（第二次点的是上架，又开回去）。
+   *
+   * `storeOnSale == null` 是「未按店管理」，跟随主体级 —— 与 false 分开判，
+   * 合起来的话单店商家会全部变成「已下架」。
+   * 审核态（PENDING/REJECTED）仍以主体级为准：那是平台的判断，与哪家店无关。
+   */
+  const base = g.status ?? (g.onSale ? "ON_SALE" : "OFF_SALE");
+  if (base === "PENDING" || base === "REJECTED") return base;
+  if (g.storeOnSale == null) return base;
+  return g.storeOnSale ? "ON_SALE" : "OFF_SALE";
 }
 
 /** 审核中或被驳回 —— 这两种状态下商家自己按不了上架 */

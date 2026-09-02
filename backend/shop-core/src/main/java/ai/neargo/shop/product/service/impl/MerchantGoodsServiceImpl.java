@@ -206,7 +206,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     @Override
-    public PageData<GoodsVO> list(String merchantNo, String categoryNo, String keyword, String status, long page, long size) {
+    public PageData<GoodsVO> list(String merchantNo, String categoryNo, String keyword, String status,
+                                  String storeNo, long page, long size) {
         /*
          * merchantNo 为空 = **跨商家查**，给平台审核队列/商品池用。
          * 不做这个判空的话 MyBatis-Plus 会生成 `entity_no = null`，一行都查不到 ——
@@ -240,7 +241,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          */
         Page<PrdGoods> p = DataScopeContext.executeWithoutScope(() ->
                 goodsMapper.selectPage(Page.of(page, size), w));
-        return PageData.of(toVOs(p.getRecords()), p.getTotal(), page, size);
+        return PageData.of(toVOs(p.getRecords(), storeNo), p.getTotal(), page, size);
     }
 
     /** 对外的「缺货」筛选值。库里没有这个状态，它是按 SKU 可用量算出来的 */
@@ -283,15 +284,33 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * {@code listForOps} 一直是批量写法。
      */
     private List<GoodsVO> toVOs(List<PrdGoods> rows) {
+        return toVOs(rows, null);
+    }
+
+    /**
+     * @param storeNo 非空时每行带上「本店上不上架」。判据复用
+     *                {@link #loadStoreProjection} —— 与运营端的门店商品投影**同一套语义**，
+     *                不另写一份：两处各算一遍迟早出现「B 端说本店在售、运营端说未上架」，
+     *                而两个看起来都对。
+     */
+    private List<GoodsVO> toVOs(List<PrdGoods> rows, String storeNo) {
         if (rows.isEmpty()) {
             return List.of();
         }
-        Map<String, GoodsVO> base = goodsService.detailAll(
-                rows.stream().map(PrdGoods::getGoodsNo).toList());
+        List<String> goodsNos = rows.stream().map(PrdGoods::getGoodsNo).toList();
+        Map<String, GoodsVO> base = goodsService.detailAll(goodsNos);
+        StoreProjection proj = storeNo == null || storeNo.isBlank()
+                ? null : loadStoreProjection(storeNo, goodsNos, List.of());
         return rows.stream()
                 .map(g -> {
                     GoodsVO b = base.get(g.getGoodsNo());
-                    return b == null ? null : merchantView(g, b);
+                    if (b == null) {
+                        return null;
+                    }
+                    // 一条店级行都没有 → null（未按店管理，跟随主体级），不是 false
+                    Boolean storeOnSale = proj == null || !proj.managedGoods().contains(g.getGoodsNo())
+                            ? null : proj.onSaleAtStore().contains(g.getGoodsNo());
+                    return merchantView(g, b, storeOnSale);
                 })
                 .filter(java.util.Objects::nonNull)
                 .toList();
@@ -1883,6 +1902,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                  * 配了「只看某商家」的运营不该有任何一条绕过域的查询。
                  * 审核员要看的「待审草稿内容」另有入口（步骤 4 的欠口，见工单）。
                  */
+                null,
+                // 无门店上下文（ops 视角 / 单店）：storeOnSale 留空 = 未按店管理
                 null);
     }
 
@@ -2960,14 +2981,15 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
 
     private GoodsVO toVO(PrdGoods g) {
         // 复用买家侧的组装：同一件商品在两个端展示出两套价格/库存口径是最难查的一类 bug
-        return merchantView(g, goodsService.detail(g.getGoodsNo()));
+        // 单件详情不带门店上下文：列表才是「这家店卖什么」那一屏
+        return merchantView(g, goodsService.detail(g.getGoodsNo()), null);
     }
 
     /**
      * 买家侧的组装结果 → 商家视角。<b>与 {@link #toVO} 分开，是为了让列表能批量取 base</b>：
      * 逐行 {@code detail()} 是这个域最贵的一处 N+1（见 {@link #toVOs}）。
      */
-    private GoodsVO merchantView(PrdGoods g, GoodsVO base) {
+    private GoodsVO merchantView(PrdGoods g, GoodsVO base, Boolean storeOnSale) {
         return new GoodsVO(base.goodsNo(), base.title(), base.subtitle(), base.cover(),
                 base.images(), base.detail(), base.detailImages(),
                 base.type(), base.categoryNo(), base.merchant(),
@@ -2989,7 +3011,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 GoodsServiceImpl.groupBuyConf(g),
                 // 商家侧回显：不回显的话「打开编辑页再保存一次就把参数清空了」
                 readParams(g.getParams()),
-                hasDraft(g.getGoodsNo()));
+                hasDraft(g.getGoodsNo()),
+                storeOnSale);
     }
 
     /**

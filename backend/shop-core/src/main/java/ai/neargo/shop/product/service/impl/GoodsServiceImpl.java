@@ -314,6 +314,8 @@ public class GoodsServiceImpl implements GoodsService {
                 null,
                 groupBuyConf(g),
                 readParams(g.getParams()),
+                null,
+                // C 端不分门店视角：门店上下架由可售池决定，不在这条链上
                 null);
     }
 
