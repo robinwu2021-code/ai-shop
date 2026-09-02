@@ -336,6 +336,32 @@ public class AuthServiceImpl implements AuthService {
      * <p>返回列表而不是单个：这是与旧实现最本质的区别。旧版每次只拿一个凭证、
      * 只按那一个查，于是同一个人换个入口就变成新账号。
      */
+    @Override
+    @Transactional
+    public String ensureAccountByPhone(String phone) {
+        if (phone == null || !phone.matches("\\d{11}")) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        /*
+         * 复用登录那条 findOrCreate：**同一个手机号日后登录时必须命中同一个账号**，
+         * 否则客服建的号与他自己登出来的号是两个人，那张单他永远看不到。
+         * 另起一套建户逻辑迟早分岔，而分岔的表现正是这个。
+         */
+        UsrAccount user = findOrCreate(
+                List.of(new Credential(IdentityType.PHONE, phone, null)),
+                new LoginCommand(GRANT_PHONE_OTP, phone, null, null, null, null));
+        /*
+         * 人档同样在这里绑 —— 与登录一致，失败不阻塞（绑人档是副作用，
+         * 不该让「下不了单」成为它的后果）。
+         */
+        try {
+            personService.bindOnLogin(user.getUserNo(), phone);
+        } catch (RuntimeException e) {
+            log.warn("[person] 代客建号时绑定人档失败 user={}", user.getUserNo(), e);
+        }
+        return user.getUserNo();
+    }
+
     private List<Credential> resolveCredentials(LoginCommand cmd) {
         return switch (cmd.grantType() == null ? "" : cmd.grantType()) {
             // 两个标签一个分支：WX_MINI 是端上对同一件事的叫法（见 AuthService 常量注释）

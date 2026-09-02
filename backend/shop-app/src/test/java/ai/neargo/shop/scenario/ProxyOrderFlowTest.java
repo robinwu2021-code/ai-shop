@@ -50,6 +50,8 @@ class ProxyOrderFlowTest {
     @Autowired
     private ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper;
     @Autowired
+    private ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper;
+    @Autowired
     private ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper statusLogMapper;
     @Autowired
     private BaseMapper<MktAttribution> attributionMapper;
@@ -194,6 +196,73 @@ class ProxyOrderFlowTest {
         assertThat(json.readTree(second).get("data").get("orderNo").asString())
                 .as("★ 同一个幂等键下出了两张单")
                 .isEqualTo(json.readTree(first).get("data").get("orderNo").asString());
+    }
+
+    /**
+     * <b>没装过 App 的人也能电话下单</b>（2026-09-03 产品决定）。
+     *
+     * <p>关键不在「能建号」，而在**建的是不是他日后登录会命中的那个号** ——
+     * 另起一套建户逻辑的话，客服建的号与他自己登出来的号是两个人，
+     * 那张单他永远看不到，而两边都不会报错。
+     */
+    @Test
+    @DisplayName("★★★ 只有手机号也能代下：建的号就是他日后登录命中的那个号")
+    void proxyOrderProvisionsAccountForANewPhone() throws Exception {
+        String phone = "129001291" + (10 + new java.util.Random().nextInt(80));
+        String ops = opsLogin();
+
+        String body = mvc().perform(post("/ops/orders/proxy")
+                        .header("Authorization", "Bearer " + ops)
+                        .header("Idempotency-Key", "PROXY-" + java.util.UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(java.util.Map.of(
+                                "phone", phone, "merchantNo", MERCHANT, "payMode", "ONLINE",
+                                "fulfillment", "STORE_PICKUP", "pickupNo", "PP0001",
+                                "items", java.util.List.of(java.util.Map.of("skuNo", SKU, "qty", 1)),
+                                "reason", "老人没装小程序，电话来订"))))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String orderNo = json.readTree(body).get("data").get("orderNo").asString();
+
+        // ★ 他自己用这个号登录 —— 必须看得到那张单
+        String token = login(phone);
+        String mine = mvc().perform(get("/mp/order").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(mine)
+                .as("★ 客服建的号与他登录命中的号不是同一个 —— 这张单他永远看不到")
+                .contains(orderNo);
+        assertThat(subOf(orderNo).getUserNo()).isEqualTo(userNoOf(token));
+    }
+
+    /**
+     * <b>线上代客单给 30 分钟</b>（2026-09-03 产品决定）。
+     *
+     * <p>平台通用时限（默认 15 分钟）是给「人正看着屏幕」那条路配的，
+     * 而电话下单的人要先挂电话、打开小程序、找到订单才付得上 ——
+     * 用通用值的话他多半在还没找到那张单的时候就被关掉了。
+     */
+    @Test
+    @DisplayName("★★ 线上代客单的支付时限是 30 分钟，不是平台通用的那个数")
+    void onlineProxyOrderGetsHalfAnHour() throws Exception {
+        String customer = login(CUSTOMER_PHONE);
+        String ops = opsLogin();
+        long before = System.currentTimeMillis();
+
+        String body = proxy(ops, req(userNoOf(customer), "ONLINE", SKU, 1, "电话来订，回头自己付"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+
+        Long deadline = orderMapper.selectOne(Wrappers.<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
+                        .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo,
+                                subOf(json.readTree(body).get("data").get("orderNo").asString()).getOrderNo())
+                        .last("limit 1"))
+                .getPayDeadlineAt();
+        assertThat(deadline).isNotNull();
+        long minutes = (deadline - before) / 60_000L;
+        assertThat(minutes)
+                .as("★ 代客单用了平台通用时限 —— 老人还没找到那张单就被关掉了")
+                .isBetween(28L, 31L);
     }
 
     // ---------------------------------------------------------------- helpers

@@ -15,6 +15,7 @@ import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
+import ai.neargo.shop.spi.user.UserProvisionPort;
 import ai.neargo.shop.spi.user.UserQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -42,15 +43,30 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
     private final OrderService orderService;
     private final GoodsQueryPort goodsPort;
     private final UserQueryPort userPort;
+    private final UserProvisionPort userProvisionPort;
+
+    /**
+     * 代客单的支付时限：<b>30 分钟</b>（2026-09-03 产品决定）。
+     *
+     * <p>平台通用时限（默认 15 分钟）是给「人正看着屏幕」那条路配的 ——
+     * 而电话下单的人要先挂电话、打开小程序、找到订单才付得上。
+     * 用通用值的话，他多半在还没找到那张单的时候就被关掉了。
+     *
+     * <p>写成常量而不是加一条配置：这是一个产品定下来的数，
+     * 而关单策略那一页配的是「顾客自己下的单」。真要可配再并进去，
+     * 那时它得是一行有名字的配置，不是一个多出来的数字框。
+     */
+    private static final int PROXY_PAY_MINUTES = 30;
 
     public PlatformOrderServiceImpl(SubOrderMapper subOrderMapper, StatusLogMapper statusLogMapper,
                                     OrderService orderService, GoodsQueryPort goodsPort,
-                                    UserQueryPort userPort) {
+                                    UserQueryPort userPort, UserProvisionPort userProvisionPort) {
         this.subOrderMapper = subOrderMapper;
         this.statusLogMapper = statusLogMapper;
         this.orderService = orderService;
         this.goodsPort = goodsPort;
         this.userPort = userPort;
+        this.userProvisionPort = userProvisionPort;
     }
 
     @Override
@@ -61,9 +77,23 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
                 || cmd.merchantNo() == null || cmd.merchantNo().isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        // 没绑账号的人下不了单：订单没有主人 = 他看不到、付不了、也退不了
-        if (cmd.userNo() == null || cmd.userNo().isBlank()
-                || userPort.find(cmd.userNo()).isEmpty()) {
+        /*
+         * 顾客：优先用人档里已有的 userNo；没有就按手机号建一个。
+         *
+         * **建号走的是登录那条路**（UserProvisionPort → AuthService#findOrCreate），
+         * 所以他日后用同一个手机号登录命中的是同一个账号 —— 「认领」不需要任何动作。
+         * 自己另写一套建户逻辑的话，客服建的号与他登出来的号会是两个人，
+         * 而那张单他永远看不到。
+         */
+        String userNo = cmd.userNo();
+        boolean provisioned = false;
+        if (userNo == null || userNo.isBlank()) {
+            if (cmd.phone() == null || !cmd.phone().matches("\\d{11}")) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            userNo = userProvisionPort.ensureUserByPhone(cmd.phone());
+            provisioned = true;
+        } else if (userPort.find(userNo).isEmpty()) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         if (!PROXY_FULFILLMENTS.contains(cmd.fulfillment())) {
@@ -103,12 +133,14 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
          * payScene=null：这一单没有「下单端」—— 它不是从任何一个端来的。
          * 存量端上本来就不传这个头，null 是既有的合法状态。
          */
-        OrderVO vo = orderService.createFor(cmd.userNo(),
+        OrderVO vo = orderService.createFor(userNo,
                 new OrderService.CreateOrderCommand(items, cmd.fulfillment(), cmd.pickupNo(),
                         null, null, 0L, "代客下单：" + reason,
                         null, payMode, null, null),
                 // 幂等键由运营端在打开表单时生成：同一张表单连点两次只会有一单
-                idempotencyKey);
+                idempotencyKey,
+                // 线上付给 30 分钟；线下付不看这个数（它不走超时关单）
+                PROXY_PAY_MINUTES);
 
         /*
          * 订单时间线上留一行。**不能只写审计日志** —— 那张表只有运营看得到，
@@ -119,7 +151,8 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
             OrdStatusLog log = new OrdStatusLog();
             log.setSubOrderNo(sub);
             log.setStatus(OrdSubOrder.WAIT_PAY);
-            log.setLabel("代客下单：" + reason);
+            // 建了号也写进去：顾客问「我什么时候有的账号」时，答案在他自己的订单上
+            log.setLabel("代客下单：" + reason + (provisioned ? "（并为该手机号新建了账号）" : ""));
             log.setOperatorType(OrdStatusLog.BY_PLATFORM);
             log.setOperatorNo(operatorNo);
             log.setAt(System.currentTimeMillis());

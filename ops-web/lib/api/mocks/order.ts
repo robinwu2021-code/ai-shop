@@ -98,9 +98,14 @@ export const orderMock: OrderApi = {
     return wait(o, 350);
   },
 
-  createProxyOrder: async ({ userNo, merchantNo, fulfillType, payMode, items, reason }) => {
-    // 没有 userNo 就是一张没有主人的订单：顾客看不到、付不了、也退不了
-    if (!userNo?.trim()) fail("请先选顾客（没绑账号的下不了单）", "Pick the customer first — someone without an account cannot be ordered for");
+  createProxyOrder: async ({ userNo, phone, merchantNo, fulfillType, payMode, items, reason }) => {
+    /*
+     * 顾客要么是人档里的 userNo，要么是一个完整手机号（后端按它建号）。
+     * 两个都没有 = 一张没有主人的订单：顾客看不到、付不了、也退不了。
+     */
+    if (!userNo?.trim() && !/^\d{11}$/.test(phone?.trim() ?? "")) {
+      fail("请先选顾客，或填写完整手机号", "Pick the customer, or type their full phone number");
+    }
     if (!reason.trim()) fail("代客下单必须写原因 —— 它绕过了用户自主下单", "A proxy order needs a reason — it bypasses the customer ordering for themselves");
     if (!items.length) fail("至少要选一个商品", "Pick at least one item");
     // 快递/自送/上门要收货地址，而客服不该替顾客填地址（也没法核对）
@@ -111,6 +116,7 @@ export const orderMock: OrderApi = {
     const merchant = db.merchants.find((x) => x.merchantNo === merchantNo);
     if (!merchant) notFound("商家", "Merchant", merchantNo);
     const person = db.opsMembers.find((m) => "U-" + m.personNo === userNo);
+    const tail = person?.phoneTail ?? phone?.slice(-4);
 
     const lines = items.map(({ skuNo, qty }) => {
       const sku = db.skus.find((x) => x.skuNo === skuNo);
@@ -141,7 +147,7 @@ export const orderMock: OrderApi = {
       // 归因照常按顾客算 —— 硬写 PLATFORM 会让商家为自己带来的客人多付佣金。
       // mock 里没有归因数据，所以留空由后端决定，不在这儿编一个
       trafficSource: "PLATFORM",
-      buyerNickname: person ? `尾号 ${person.phoneTail}` : userNo,
+      buyerNickname: tail ? `尾号 ${tail}` : (userNo ?? ""),
       items: lines.map((x) => x.line),
       payAmount: lines.reduce((s, x) => s + x.line.price * x.line.qty, 0),
       createdAt: now, paidAt: null, statusAt: now,

@@ -31,6 +31,19 @@ public interface OrderService {
      */
     OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey);
 
+    /**
+     * 同上，但**支付时限由调用方指定**（分钟）。
+     *
+     * <p>只为代客下单而有：平台通用时限是给「人正看着屏幕」那条路配的，
+     * 而电话下单的人要挂了电话、打开小程序、找到订单才付得上。
+     *
+     * <p><b>没有对应的端上入口</b>：这个参数只在服务端之间传，
+     * 端上能传的话，任何人都能给自己的单要一个更长的时限。
+     *
+     * @param payMinutes 支付时限（分钟）；null 时按平台关单策略
+     */
+    OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey, Integer payMinutes);
+
     /** 发起支付，返回端上调起支付所需的参数。**端侧不自判成功**，以回调/回查为准。 */
     /**
      * 发起支付：落流水 + 向通道下单，拿回端上唤起收银台的参数。

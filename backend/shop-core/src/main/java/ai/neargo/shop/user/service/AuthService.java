@@ -73,6 +73,24 @@ public interface AuthService {
      * @param inviterNo  邀请人
      * @param agreed     是否勾选协议 —— 注册的合规前置，必须留痕
      */
+    /**
+     * 按手机号<b>确保有一个账号</b>：有就返回它，没有就建一个（<b>不签发任何令牌</b>）。
+     *
+     * <p>为「没装过 App 的人电话下单」而有（P-4.1.4）：客服替他下的单必须落在一个
+     * 真实账号上，否则那张单没有主人 —— 他看不到、付不了、也退不了。
+     *
+     * <p><b>走的就是登录那条 {@code findOrCreate}</b>，不另起一套建户逻辑：
+     * 所以他日后用这个手机号登录时命中的是**同一个账号**，
+     * 那张单自然出现在他的订单列表里 —— 「认领」不需要任何额外动作。
+     *
+     * <p>不签发令牌是这条与登录的唯一区别：客服替他建号，但不该拿到他的会话。
+     *
+     * @param phone 完整手机号。<b>只进不出</b> —— 返回值只有 userNo，
+     *              调用方要展示时一律用后四位（B12：完整号码永远不出 UserQueryPort）
+     * @return 这个手机号对应的 userNo
+     */
+    String ensureAccountByPhone(String phone);
+
     record LoginCommand(String grantType, String principal, String credential,
                         String merchantNo, String inviterNo, Boolean agreed) {
     }

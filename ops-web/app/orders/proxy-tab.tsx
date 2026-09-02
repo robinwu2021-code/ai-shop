@@ -56,6 +56,11 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
   /** 顾客：按手机后四位在人档里找。**先有人，才有单** */
   const [phoneTail, setPhoneTail] = useState("");
   const [picked, setPicked] = useState<{ personNo: string; phoneTail: string | null } | null>(null);
+  /**
+   * 完整手机号：**没装过 App 的人**走这条 —— 后端按这个号建账号（走登录那条建户路），
+   * 他日后用同一个号登录就能看到这张单。人档里找得到人时不用它。
+   */
+  const [fullPhone, setFullPhone] = useState("");
   /*
    * 幂等键在**打开这张表单时**生成，提交成功后换一把。
    * 连点两下 = 同一把钥匙 = 一单；顾客真要再来一单 = 新表单 = 新钥匙。
@@ -74,6 +79,8 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
     enabled: !!picked,
   });
   const customerUserNo = person.data?.userNo ?? "";
+  /** 人档里找到人（且绑了账号），或者填了完整手机号 —— 两条路都能落到一个真实账号上 */
+  const canSubmitCustomer = !!customerUserNo || /^\d{11}$/.test(fullPhone.trim());
 
   const q = { keyword, page, size };
   const list = useQuery({ queryKey: ["orders", q], queryFn: () => api.listOrders(q) });
@@ -92,14 +99,15 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
   const reset = () => {
     setForm({ merchantNo: "", fulfillType: "STORE_PICKUP", payMode: "OFFLINE", reason: "" });
     setLines([{ skuNo: "", qty: "1" }]);
-    setPhoneTail(""); setPicked(null);
+    setPhoneTail(""); setPicked(null); setFullPhone("");
     setIdemKey(crypto.randomUUID());
   };
 
   const create = useMutation({
     mutationFn: () =>
       api.createProxyOrder({
-        userNo: customerUserNo,
+        userNo: customerUserNo || undefined,
+        phone: customerUserNo ? undefined : fullPhone.trim(),
         merchantNo: form.merchantNo,
         fulfillType: form.fulfillType,
         payMode: form.payMode,
@@ -179,9 +187,18 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
                   : <span className="text-muted-foreground txt-caption">{c.customerNotFound}</span>}
               </div>
             )}
-            {/* 没绑账号 = 这单会没有主人。说清楚下一步，而不是只说「不行」 */}
-            {picked && !person.isLoading && !customerUserNo && (
-              <p className="txt-caption text-destructive">{c.customerNoAccountHint}</p>
+            {/*
+              * 人档里没有他、或者有但没绑账号 —— 两种情况的出路是同一条：
+              * 填完整手机号，后端按它建号。**不是「不行」，是「这样就行」**
+              */}
+            {(customerUserNo === "" && (picked ? !person.isLoading : phoneTail.length === 4)) && (
+              <div className="space-y-1 pt-2">
+                <Label htmlFor="px-fullphone">{c.fieldFullPhone}</Label>
+                <Input id="px-fullphone" className="w-56" disabled={!canProxy} value={fullPhone}
+                  placeholder={c.fullPhonePlaceholder} maxLength={11}
+                  onChange={(e) => setFullPhone(e.target.value.replace(/\D/g, "").slice(0, 11))} />
+                <p className="txt-caption text-muted-foreground">{c.fullPhoneHint}</p>
+              </div>
             )}
           </div>
 
@@ -256,7 +273,7 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
 
           <div className="flex items-center justify-between">
             <span className="txt-body">{fill(c.proxyTotal, { amount: money(total) })}</span>
-            <Button loading={create.isPending} disabled={!canProxy || !customerUserNo}
+            <Button loading={create.isPending} disabled={!canProxy || !canSubmitCustomer}
               onClick={() => create.mutate()}>{c.btnProxyCreate}</Button>
           </div>
         </CardContent>

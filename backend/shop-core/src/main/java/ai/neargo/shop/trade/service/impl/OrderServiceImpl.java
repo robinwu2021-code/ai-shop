@@ -496,8 +496,15 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey) {
+        return createFor(userNo, cmd, idempotencyKey, null);
+    }
+
+    @Override
+    @Transactional
+    public OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey,
+                             Integer payMinutes) {
         return idempotency.execute(idempotencyKey, "POST /mp/order", userNo, OrderVO.class,
-                () -> doCreate(cmd, userNo));
+                () -> doCreate(cmd, userNo, payMinutes));
     }
 
     /**
@@ -506,6 +513,10 @@ public class OrderServiceImpl implements OrderService {
      * 那样「锁了库存但订单没落库」会变成常态，且测试很难发现。
      */
     private OrderVO doCreate(CreateOrderCommand cmd, String userNo) {
+        return doCreate(cmd, userNo, null);
+    }
+
+    private OrderVO doCreate(CreateOrderCommand cmd, String userNo, Integer payMinutes) {
         Split split = split(cmd);
         if (split.items.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -666,7 +677,9 @@ public class OrderServiceImpl implements OrderService {
          * 否则昨天的单会跳到新社区的报表里。
          */
         userPort.communityOf(userNo).ifPresent(order::setCommunityNo);
-        order.setPayDeadlineAt(now + closeRuleService.unpaidMinutes() * 60_000L);
+        // 时限：默认按平台关单策略；代客单由调用方给（电话下单的人要挂了电话才去付）
+        int minutes = payMinutes == null ? closeRuleService.unpaidMinutes() : payMinutes;
+        order.setPayDeadlineAt(now + minutes * 60_000L);
 
         /*
          * 弱主体限额（F-6）。**按拆单后的每个商家分别判**，不是按整单总额：

@@ -22,7 +22,10 @@ public interface PlatformOrderService {
      * <ol>
      *   <li><b>必须落在真实 {@code userNo} 上</b>。运营端 mock 里原先收的是一个自由文本昵称，
      *       照它做出来的会是一张<b>没有主人的订单</b>：用户在 C 端看不到、付不了款，
-     *       售后与积分也没有落点</li>
+     *       售后与积分也没有落点。
+     *       <b>没装过 App 的人</b>（2026-09-03 产品决定：允许）走 {@code phone} ——
+     *       按手机号建一个账号，走的就是登录那条建户路，所以他日后用同一个号登录
+     *       命中的是同一个账号，那张单自然出现在他的订单列表里</li>
      *   <li><b>不代付款</b>。默认线下支付（当面付给商家），平台不碰这笔钱；
      *       要走线上就落待支付，由用户自己在 App 里付</li>
      *   <li><b>不代用券、不代扣积分</b> —— 那是顾客的资产，客服替他花掉事后说不清；
@@ -42,15 +45,18 @@ public interface PlatformOrderService {
     OrderVO createProxyOrder(ProxyOrderCommand cmd, String operatorNo, String idempotencyKey);
 
     /**
-     * @param userNo      顾客。运营端从人档里取（{@code OpsPersonVO.userNo}）；
-     *                    <b>人档里没绑账号的下不了单</b> —— 那种情况要先让他登录一次
+     * @param userNo      顾客。运营端从人档里取（{@code OpsPersonVO.userNo}）。
+     *                    为空时用 {@code phone}
+     * @param phone       顾客的完整手机号，<b>{@code userNo} 为空时才看它</b>：
+     *                    没有账号就按这个号建一个（没装过 App 的人也能电话下单）。
+     *                    只进不出 —— 回给运营端的只有尾号
      * @param merchantNo  商家。一次只能下一个商家的货：全站按商家拆单（E3）
      * @param fulfillment 履约方式，只接受不需要收货地址的那几种
      * @param pickupNo    自提点（社区自提）；到店自取不需要
      * @param payMode     {@code OFFLINE}（默认，当面付）/ {@code ONLINE}（用户自己在 App 里付）
      * @param reason      为什么代下。<b>必填</b>，落审计与订单时间线
      */
-    record ProxyOrderCommand(String userNo, String merchantNo, java.util.List<Item> items,
+    record ProxyOrderCommand(String userNo, String phone, String merchantNo, java.util.List<Item> items,
                              String fulfillment, String pickupNo, String payMode, String reason) {
 
         public record Item(String skuNo, int qty) {

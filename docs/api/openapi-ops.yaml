@@ -996,6 +996,12 @@ components:
         - "CANCELLED"
         - "REFUNDED"
       description: "订单状态。**抽象状态，与履约方式无关**，三端同一套。\n\n⚠️ 这里曾经是另一套：`PENDING_PAY` / `PREPARING` / `DELIVERING` / `AFTER_SALE`。 同一条订单，运营端叫一个名字、C/B 端叫另一个、库里又是第三个 —— 而 ops-web 只跑 mock，所以三套并存了很久没人发现。\n\n⚠️ 后来又有过 `SHIPPED` / `ARRIVED` 两个值。它们**不是状态**， 是「状态 × 履约方式」的组合冒充状态 —— 代价是每加一种履约就要加一批状态。 现在下发抽象状态 + 履约方式，显示成什么由展示层决定 （见《订单状态-统一整理》与 shared 的 `orderView`）。"
+    PayMode: 
+      type: "string"
+      enum: 
+        - "ONLINE"
+        - "OFFLINE"
+      description: "支付方式。**与后端 `PayModes` 逐字一致**： `ONLINE` 钱经平台走分账；`OFFLINE` 买家当面付给商家，平台不碰这笔钱 （因此不进分账、不抽佣，平台券也不能用）。"
     OrderItem: 
       type: "object"
       properties: 

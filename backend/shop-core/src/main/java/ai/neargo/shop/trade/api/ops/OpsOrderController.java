@@ -155,23 +155,33 @@ public class OpsOrderController {
             @RequestHeader(value = "Idempotency-Key", required = false) String idemKey) {
         String operator = SecurityUtils.currentUserNo();
         var vo = platformOrderService.createProxyOrder(
-                new PlatformOrderService.ProxyOrderCommand(req.userNo(), req.merchantNo(),
+                new PlatformOrderService.ProxyOrderCommand(req.userNo(), req.phone(), req.merchantNo(),
                         req.items() == null ? java.util.List.of() : req.items().stream()
                                 .map(i -> new PlatformOrderService.ProxyOrderCommand.Item(i.skuNo(), i.qty()))
                                 .toList(),
                         req.fulfillment(), req.pickupNo(), req.payMode(), req.reason()),
                 operator, idemKey == null ? req.idempotencyKey() : idemKey);
+        /*
+         * 审计里**只记尾号**，不记完整手机号：审计表会被导出、会被贴进工单，
+         * 而这条记录的用途是「谁替谁下的单」——尾号足够认人。
+         */
+        String who = req.userNo() != null && !req.userNo().isBlank() ? req.userNo()
+                : "尾号 " + (req.phone() == null || req.phone().length() < 4 ? "?"
+                        : req.phone().substring(req.phone().length() - 4));
         auditLogPort.record("ORDER_PROXY_CREATE", vo.orderNo(),
-                "为 " + req.userNo() + " 代下 " + req.merchantNo() + "｜" + req.reason());
+                "为 " + who + " 代下 " + req.merchantNo() + "｜" + req.reason());
         return vo;
     }
 
     /**
-     * @param userNo         顾客的账号。人档里没绑账号的<b>下不了单</b>
+     * @param userNo         顾客的账号（人档里取）。为空时看 {@code phone}
+     * @param phone          顾客的完整手机号。<b>没装过 App 的人走这条</b> ——
+     *                       没有账号就按这个号建一个，他日后用同一个号登录就能看到这张单
      * @param payMode        为空按 {@code OFFLINE}（当面付）
      * @param idempotencyKey 走不了请求头时的退路（与 {@code /mp/order} 同一个约定）
      */
-    public record ProxyCreateReq(String userNo, String merchantNo, java.util.List<ItemReq> items,
+    public record ProxyCreateReq(String userNo, String phone, String merchantNo,
+                                 java.util.List<ItemReq> items,
                                  String fulfillment, String pickupNo, String payMode,
                                  String reason, String idempotencyKey) {
 

@@ -18,6 +18,7 @@ export const orderHttp: OrderApi = {
    */
   createProxyOrder: (v) => client.post("/ops/orders/proxy", {
     userNo: v.userNo,
+    phone: v.phone,
     merchantNo: v.merchantNo,
     fulfillment: v.fulfillType,
     pickupNo: v.pickupNo,
