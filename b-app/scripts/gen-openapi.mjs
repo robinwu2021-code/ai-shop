@@ -179,6 +179,7 @@ const RESPONSE_TYPES = {
   mInvoiceTitle: "PlatformInvoiceTitle",
   mMyInvoices: "PurchaseInvoice[]",
   mPendingInvoice: "PendingInvoice",
+  mStatement: "Statement",
   mSubmitInvoice: "PurchaseInvoice",
   mWithdrawPage: "WithdrawPage",
   mCloseAppointmentSlot: "AppointmentSlot",

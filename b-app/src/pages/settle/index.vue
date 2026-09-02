@@ -152,6 +152,10 @@ onShow(load);
         <text class="txt-title">{{ $t("invoice.title") }}</text>
         <text class="sh-muted entries__hint">{{ $t("settle.entryInvoice") }}</text>
       </view>
+      <view class="entries__item sh-card" @tap="go(ROUTES.statement)">
+        <text class="txt-title">{{ $t("statement.title") }}</text>
+        <text class="sh-muted entries__hint">{{ $t("settle.entryStatement") }}</text>
+      </view>
     </view>
 
     <!-- 费率卡放在账单**之前**：先说清楚怎么算，再看算出来多少。
@@ -311,11 +315,22 @@ onShow(load);
 <style scoped>
 
 .entries {
+  /* 四个入口，一行放不下 —— 两列换行。一行四个的话每个只剩指甲盖宽，
+     标题会折成两行而副文案挤没 */
+  flex-wrap: wrap;
   gap: 16rpx;
   margin-top: 16rpx;
 }
 .entries__item {
-  flex: 1;
+  /*
+   * ⚠️ **必须 border-box。** sh-card 是 content-box（项目默认），
+   * 于是 flex-basis 算的是**内容宽**，再加上左右各 24rpx 内边距就超过一半，
+   * 两个放不下 —— 表现是四张卡竖着排、右半边空着。
+   * 计算样式里 flex-basis 一切正常（171.5px），只有量**盒子的实际宽度**
+   * 才看得出它是 196px。
+   */
+  box-sizing: border-box;
+  flex: 0 0 calc(50% - 8rpx);
 }
 .entries__hint {
   display: block;

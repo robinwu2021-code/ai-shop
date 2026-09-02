@@ -199,6 +199,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mPendingInvoice: { method: "GET", path: "/biz/settle/invoice-pending", auth: true, summary: "待开票摘要" },
   mInvoiceTitle: { method: "GET", path: "/biz/settle/invoice-title", auth: true, summary: "平台开票信息" },
   mMyInvoices: { method: "GET", path: "/biz/settle/invoices", auth: true, summary: "我提交的票" },
+  mStatement: { method: "GET", path: "/biz/settle/statement", auth: true, summary: "对账单" },
   mSubmitInvoice: { method: "POST", path: "/biz/settle/invoices", auth: true, summary: "提交进项票" },
   mApplyWithdraw: { method: "POST", path: "/biz/settle/withdraw", auth: true, summary: "申请提现" },
 

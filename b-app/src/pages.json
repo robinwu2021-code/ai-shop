@@ -472,6 +472,12 @@
       }
     },
     {
+      "path": "pages/statement/index",
+      "style": {
+        "navigationBarTitleText": "对账单"
+      }
+    },
+    {
       "path": "pages/stats/index",
       "style": {
         "navigationBarTitleText": "经营数据",

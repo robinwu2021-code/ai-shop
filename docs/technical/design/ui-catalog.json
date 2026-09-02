@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 73,
+      "count": 74,
       "domains": [
         {
           "name": "工作台",
@@ -318,6 +318,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/deposit/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/statement/index",
+              "title": "对账单",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/statement/index"
             },
             {
               "app": "b-app",
@@ -3026,5 +3037,5 @@
       ]
     }
   ],
-  "total": 244
+  "total": 245
 }

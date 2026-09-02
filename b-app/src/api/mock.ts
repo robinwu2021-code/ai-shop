@@ -3245,6 +3245,35 @@ export const mockApi: MerchantApi = {
     };
   },
 
+  /*
+   * 对账单。**三行是三种不同的状态**：已结算带凭证号、已分账未付款、待对账。
+   * 只给「都结完了」那一种的话，「凭证号为空该显示什么」这件事就没人看过。
+   */
+  async mStatement(period?: string) {
+    const lines = [
+      { settleNo: "ST-MOCK-1", orderNo: "SO-1001", subOrderNo: "SUB-1001",
+        grossMinor: 200_000, commissionMinor: 10_000, serviceFeeMinor: 2_000,
+        netMinor: 188_000, commissionRate: 500, status: "PAID", invoiceStatus: "VERIFIED",
+        settledAt: 1_756_000_000_000, voucherNo: "BANK-20260820-001" },
+      { settleNo: "ST-MOCK-2", orderNo: "SO-1002", subOrderNo: "SUB-1002",
+        grossMinor: 150_000, commissionMinor: 7_500, serviceFeeMinor: 1_500,
+        netMinor: 141_000, commissionRate: 500, status: "SPLIT", invoiceStatus: "PENDING",
+        settledAt: null, voucherNo: null },
+      { settleNo: "ST-MOCK-3", orderNo: "SO-1003", subOrderNo: "SUB-1003",
+        grossMinor: 60_000, commissionMinor: 3_000, serviceFeeMinor: 600,
+        netMinor: 56_400, commissionRate: 500, status: "PENDING_RECON", invoiceStatus: "PENDING",
+        settledAt: null, voucherNo: null },
+    ];
+    return {
+      period: period ?? "",
+      businessMode: "SELF_OPERATED",
+      grossMinor: 410_000, commissionMinor: 20_500, serviceFeeMinor: 4_100,
+      netMinor: 385_400, billCount: 3,
+      voucherNos: ["BANK-20260820-001"],
+      lines,
+    };
+  },
+
   async mInvoiceTitle() {
     return {
       companyName: "邻高科技有限公司",

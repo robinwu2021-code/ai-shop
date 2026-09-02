@@ -11973,6 +11973,34 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/settle/statement": 
+    get: 
+      operationId: "mStatement"
+      summary: "对账单"
+      tags: 
+        - "settle"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Statement"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/after-sale": 
     get: 
       operationId: "mAfterSaleList"

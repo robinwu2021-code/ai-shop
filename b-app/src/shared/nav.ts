@@ -45,6 +45,7 @@ export const ROUTES = {
   withdraw: "/pages/withdraw/index",
   deposit: "/pages/deposit/index",
   invoice: "/pages/invoice/index",
+  statement: "/pages/statement/index",
   stats: "/pages/stats/index",
   crossStore: "/pages/cross-store/index",
   plan: "/pages/plan/index",

@@ -109,6 +109,47 @@ import type {
 
 /** 拍照识别的结果。全部是**建议值**，店主可改可弃 */
 /**
+ * 对账单。**这是凭证不是报表** —— 小微供应商没有发票、没有对公流水，
+ * 平台出的这份对账单是他唯一能说明「这笔钱是怎么来的」的东西。
+ * 所以每一行都要能与外部账单勾对，且必须导得出去留存。
+ */
+export interface Statement {
+  /** YYYY-MM；查全部时为空 */
+  period: string;
+  businessMode: string;
+  /** 分 */
+  grossMinor: number;
+  commissionMinor: number;
+  serviceFeeMinor: number;
+  netMinor: number;
+  billCount: number;
+  /**
+   * 凭证号汇总。自营是付款凭证号（网银流水），第三方是分账回执号 ——
+   * 两者语义不同但作用相同：**与外部账单勾对的锚点**
+   */
+  voucherNos: string[];
+  lines: StatementLine[];
+}
+
+/** 一行 = 一张结算单 */
+export interface StatementLine {
+  settleNo: string;
+  orderNo: string;
+  subOrderNo: string;
+  grossMinor: number;
+  commissionMinor: number;
+  serviceFeeMinor: number;
+  netMinor: number;
+  /** 万分比。**逐行给** —— 只给合计的话商家每次都要来问客服 */
+  commissionRate: number;
+  status: string;
+  invoiceStatus: string;
+  settledAt?: number | null;
+  /** 该行的凭证号；未结算时为空 */
+  voucherNo?: string | null;
+}
+
+/**
  * 待开票摘要。
  *
  * **这一页最重要的数字是 payableMinor** —— 提交时后端校验
@@ -1177,6 +1218,7 @@ export interface MerchantApi {
   mPendingInvoice(): Promise<PendingInvoice>;
   mInvoiceTitle(): Promise<PlatformInvoiceTitle>;
   mMyInvoices(): Promise<PurchaseInvoice[]>;
+  mStatement(period?: string): Promise<Statement>;
   mSubmitInvoice(v: { period: string; invoiceNumber: string; invoiceType: string;
     titleName: string; amountMinor: number }): Promise<PurchaseInvoice>;
   /** 申请提现。**金额单位是分** —— 与全站契约一致，浮点不进钱的接口 */
