@@ -130,3 +130,23 @@ export interface MenuPoint {
   /** 同级排序，小的在前 */
   sort: number;
 }
+
+/**
+ * 门店经营排行的一行（门店③）。
+ *
+ * <p>经营看板早就有商家排行，**没有门店维度** —— 而多门店商家的货、单、码
+ * 都挂在门店上：商家排行会把「一家很好、一家半死」平均成「还行」。
+ */
+export interface StoreRankRow {
+  storeNo: string;
+  storeName: string | null;
+  merchantNo: string | null;
+  /** 门店属于谁。**两家都在垫底时，是不是同一个老板该做的事完全不同** */
+  merchantName: string | null;
+  gmv: number;
+  orderCount: number;
+  avgOrderValue: number;
+  refundedCount: number;
+  /** 退款率 0–1。分母是总成交单数（在售的 + 已退的） */
+  refundedRate: number;
+}

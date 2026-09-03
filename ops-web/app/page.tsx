@@ -10,7 +10,7 @@ import { useI18n } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { StatRow, PageTitle, Skeleton, StatCard } from "@/components/ui/misc";
-import type { MerchantRankRow } from "@/lib/types";
+import type { MerchantRankRow, StoreRankRow } from "@/lib/types";
 import { fill, useCopy } from "@/lib/use-copy";
 import { HOME_COPY } from "./copy";
 
@@ -27,8 +27,38 @@ export default function DashboardPage() {
   const trend = useQuery({ queryKey: ["dashboard", "trend"], queryFn: () => api.getDashboardTrend() });
   const funnel = useQuery({ queryKey: ["dashboard", "funnel"], queryFn: () => api.getAcquisitionFunnel() });
   const ranking = useQuery({ queryKey: ["dashboard", "merchants"], queryFn: () => api.getMerchantRanking() });
+  /*
+   * 门店排行（门店③）。**与商家排行并排，不是替代它** ——
+   * 多门店商家的货、单、码都挂在门店上，而商家维度会把
+   * 「一家很好、一家半死」平均成「还行」，那家半死的店永远看不见。
+   */
+  const storeRank = useQuery({
+    queryKey: ["dashboard", "stores"],
+    queryFn: () => api.getStoreRanking({ days: 30, limit: 20 }),
+  });
 
   const k = kpi.data;
+
+  const storeRankColumns: Column<StoreRankRow>[] = [
+    { header: c.storeRankColStore, cell: (r) => r.storeName ?? r.storeNo },
+    /* 商家名单独一列：一屏上出现两家都在垫底的店，「同一个老板的」
+       与「两家不相干的店」该做的事完全不同 —— 而只给门店名看不出来 */
+    { header: c.storeRankColMerchant, cell: (r) => r.merchantName ?? r.merchantNo ?? "—" },
+    { header: c.rankColGmv, numeric: true, cell: (r) => money(r.gmv) },
+    { header: c.rankColOrders, numeric: true, cell: (r) => r.orderCount.toLocaleString() },
+    { header: c.rankColAov, numeric: true, cell: (r) => money(r.avgOrderValue) },
+    {
+      header: c.storeRankColRefund,
+      numeric: true,
+      /* 与商家排行的售后率同一个阈值与同一种标法 —— 两张表并排放着，
+         同一件事用两套判据会让人以为它们量的不是一回事 */
+      cell: (r) => (
+        <span className={r.refundedRate >= 0.1 ? "text-destructive" : undefined}>
+          {(r.refundedRate * 100).toFixed(1)}%
+        </span>
+      ),
+    },
+  ];
 
   const rankColumns: Column<MerchantRankRow>[] = [
     { header: c.rankColMerchant, cell: (r) => r.merchantName },
@@ -135,6 +165,24 @@ export default function DashboardPage() {
 
       {/* 商家经营排行（P-16.1.2 / P-16.1.3）—— 大盘之下的第一层下钻。
           大盘回答「平台整体怎么样」，运营下一句必然是「哪几家在拉高、哪几家在拖后腿」。 */}
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>{c.storeRankTitle}</CardTitle>
+          <p className="txt-caption text-muted-foreground">{c.storeRankDesc}</p>
+        </CardHeader>
+        <CardContent>
+          <DataTable
+            columns={storeRankColumns}
+            rows={storeRank.data}
+            loading={storeRank.isLoading}
+            error={storeRank.error}
+            onRetry={() => storeRank.refetch()}
+            rowKey={(r) => r.storeNo}
+            empty={c.storeRankEmpty}
+          />
+        </CardContent>
+      </Card>
+
       <Card className="mt-4">
         <CardHeader>
           <CardTitle>{c.rankTitle}</CardTitle>

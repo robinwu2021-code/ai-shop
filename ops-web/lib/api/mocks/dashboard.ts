@@ -67,4 +67,16 @@ export const dashboardMock: DashboardApi = {
   getDashboardTrend: () => wait(db.trend),
   getAcquisitionFunnel: () => wait(db.funnel),
   getMerchantRanking: () => wait(db.merchantRanking),
+  /*
+   * 门店排行。**编成「同一个老板的两家店一好一差」** —— 那正是这一页
+   * 相对商家排行多出来的信息：商家维度会把这两家平均成「还行」。
+   */
+  getStoreRanking: () => wait([
+    { storeNo: "S0001", storeName: "文三路店", merchantNo: "M0004", merchantName: "文三路便利",
+      gmv: 86_420_00, orderCount: 912, avgOrderValue: 9_476, refundedCount: 11, refundedRate: 0.012 },
+    { storeNo: "S0007", storeName: "邻里鲜生·古荡店", merchantNo: "M0007", merchantName: "邻里鲜生",
+      gmv: 41_030_00, orderCount: 508, avgOrderValue: 8_077, refundedCount: 9, refundedRate: 0.017 },
+    { storeNo: "S0002", storeName: "城西仓店", merchantNo: "M0004", merchantName: "文三路便利",
+      gmv: 3_120_00, orderCount: 44, avgOrderValue: 7_090, refundedCount: 12, refundedRate: 0.214 },
+  ]),
 };

@@ -14,6 +14,13 @@ const zh = {
   kpiPendingAfterSaleSub: "超时会升级为平台介入",
   kpiRedeemRate: "今日核销率",
   kpiRedeemRateSub: "自提履约健康度",
+  storeRankTitle: "门店经营排行",
+  // 说清楚它为什么与商家排行并存 —— 否则看起来像同一张表放了两遍
+  storeRankDesc: "近 30 天。与下面的商家排行是同一份订单的两种切法：多门店商家的货与单都挂在门店上，而商家维度会把「一家很好、一家半死」平均成「还行」。",
+  storeRankColStore: "门店",
+  storeRankColMerchant: "所属商家",
+  storeRankColRefund: "退款率",
+  storeRankEmpty: "近 30 天没有带门店的成交",
   kpiPendingGoods: "待审商品",
   // 「最早等了 N 天」而不是「已积压 N 天」：前者说的是那一件商品的处境，
   // 后者听起来像整批都等了这么久 —— 而 194 件里多半是新旧混着的
@@ -57,6 +64,12 @@ const en: typeof zh = {
   kpiPendingAfterSaleSub: "Escalates to platform review once overdue",
   kpiRedeemRate: "Redemption rate today",
   kpiRedeemRateSub: "Pickup fulfillment health",
+  storeRankTitle: "Store ranking",
+  storeRankDesc: "Last 30 days. Two cuts of the same orders as the merchant ranking below: stock and orders hang off stores, and the merchant view averages \"one great, one dying\" into \"fine\".",
+  storeRankColStore: "Store",
+  storeRankColMerchant: "Merchant",
+  storeRankColRefund: "Refund rate",
+  storeRankEmpty: "No store-attributed sales in the last 30 days",
   kpiPendingGoods: "Goods awaiting review",
   kpiPendingGoodsSub: "Oldest has waited {n} days",
   kpiPendingGoodsSubClear: "Open the review queue",

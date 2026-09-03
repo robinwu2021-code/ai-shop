@@ -1217,6 +1217,19 @@ getDashboardKpi
 类型：[`MerchantRankRow`](#merchantrankrow)\[\]
 
 
+#### GET `/ops/dashboard/stores`
+
+门店经营排行（门店③）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`StoreRankRow`](#storerankrow)\[\]
+
+
 #### GET `/ops/dashboard/trend`
 
 getDashboardTrend
@@ -11328,6 +11341,22 @@ KPI 卡（金额为最小货币单位整数）。
 | `size` | `string,null` | 是 | 最近一次印刷的尺寸规格，如 "10x10cm"；**从没印过是 null**（尺寸属于那一次印刷，不是门店属性） |
 | `printed` | `number,null` | 是 | 累计已印数量，用于对账印刷成本。 ⚠️ **null = 还没人登记，不是「印了 0 张」**。两者在界面上必须分开显示 —— 混成一个数之后，运营没法知道该去催谁登记。 |
 | `scanCount` | `number` | 是 | 区间内扫码次数。**这个 0 是真的 0**（埋点一直在记），与 printed 的 null 不同 |
+
+### StoreRankRow
+
+门店经营排行的一行（门店③）。 <p>经营看板早就有商家排行，**没有门店维度** —— 而多门店商家的货、单、码 都挂在门店上：商家排行会把「一家很好、一家半死」平均成「还行」。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `storeName` | `string,null` | 是 | — |
+| `merchantNo` | `string,null` | 是 | — |
+| `merchantName` | `string,null` | 是 | 门店属于谁。**两家都在垫底时，是不是同一个老板该做的事完全不同** |
+| `gmv` | `number` | 是 | — |
+| `orderCount` | `number` | 是 | — |
+| `avgOrderValue` | `number` | 是 | — |
+| `refundedCount` | `number` | 是 | — |
+| `refundedRate` | `number` | 是 | 退款率 0–1。分母是总成交单数（在售的 + 已退的） |
 
 ### StoreStats
 

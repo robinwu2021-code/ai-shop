@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 695 个接口**：后端已实现 624（90%）· 前端在调 624
+**合计 696 个接口**：后端已实现 625（90%）· 前端在调 625
 
 ---
 
@@ -729,7 +729,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **383** 个接口 ｜ 后端已实现 **318**（83%）｜ 前端在调 **312**
+共 **384** 个接口 ｜ 后端已实现 **319**（83%）｜ 前端在调 **313**
 
 ### aftersale（4）
 
@@ -787,7 +787,7 @@
 | POST | `/ops/materials` | 保存素材（P-15.1.1–15.1.4） | — | `Material` | — | ✅ | ✅ |
 | POST | `/ops/materials/{no}/published` | setMaterialPublished | — | `Material` | — | ⬜ | ✅ |
 
-### dashboard（9）
+### dashboard（10）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -798,6 +798,7 @@
 | GET | `/ops/dashboard/funnel` | getAcquisitionFunnel | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/dashboard/kpi` | getDashboardKpi | — | `DashboardKpi` | — | ✅ | ✅ |
 | GET | `/ops/dashboard/merchants` | 商家经营排行（P-16.1.2 / P-16.1.3）——大盘之下的第一层下钻 | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/dashboard/stores` | 门店经营排行（门店③） | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 

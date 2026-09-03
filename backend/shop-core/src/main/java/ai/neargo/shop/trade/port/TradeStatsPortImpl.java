@@ -115,6 +115,46 @@ public class TradeStatsPortImpl implements TradeStatsPort {
         return new Reach(ordered, paidUsers);
     }
 
+    /**
+     * 按门店聚合。**与 merchantTotals 同一条查询口径**（成交态 + 已退款、
+     * GMV 只累成交态），只是分组键换成 {@code store_no}。
+     *
+     * <p>不带售后数：售后表上没有门店号（{@code ord_after_sale} 只到主体），
+     * 硬凑一个「按商家的售后数摊到他每家店」比不给更糟 ——
+     * 那个数看起来是门店的，实际是商家的。
+     */
+    @Override
+    public List<StoreTotal> storeTotals(LocalDate from) {
+        List<OrdSubOrder> rows = subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                .in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED)
+                .ge(from != null, OrdSubOrder::getCreatedAt,
+                        from == null ? null : from.atStartOfDay()));
+
+        record Cell(String merchantNo, long[] v) {
+        }
+        Map<String, Cell> byStore = new LinkedHashMap<>();
+        for (OrdSubOrder s : rows) {
+            if (s.getStoreNo() == null) {
+                // 没有门店号的单（历史数据 / 平台直营）不该被凑进任何一家店
+                continue;
+            }
+            Cell cell = byStore.computeIfAbsent(s.getStoreNo(),
+                    k -> new Cell(s.getEntityNo(), new long[]{0L, 0L, 0L}));
+            if (OrdSubOrder.REFUNDED.equals(s.getStatus())) {
+                cell.v()[2] += 1;
+                continue;
+            }
+            cell.v()[0] += nz(s.getPayAmount());
+            cell.v()[1] += 1;
+        }
+
+        return byStore.entrySet().stream()
+                .map(e -> new StoreTotal(e.getKey(), e.getValue().merchantNo(),
+                        e.getValue().v()[0], e.getValue().v()[1], e.getValue().v()[2]))
+                .sorted(java.util.Comparator.comparingLong(StoreTotal::gmv).reversed())
+                .toList();
+    }
+
     @Override
     public List<MerchantTotal> merchantTotals(LocalDate from) {
         /*

@@ -62,6 +62,30 @@ public interface TradeStatsPort {
     List<MerchantTotal> merchantTotals(LocalDate from);
 
     /**
+     * 按<b>门店</b>聚合的经营数据（门店③ 门店经营排行）。
+     *
+     * <p>与 {@link #merchantTotals} 是同一份订单数据的两种切法。
+     * <b>为什么两个都要</b>：多门店商家的货、单、码都挂在门店上，
+     * 而商家排行会把「一家很好、一家半死」平均成「还行」——
+     * 那家半死的店在商家维度上永远看不见。
+     *
+     * <p>与 {@code /ops/stores/&#123;no&#125;/stats} 也不重复：那一个答
+     * 「这家店最近怎么样」（要先知道看哪家），这个答「哪几家最该看」。
+     *
+     * @param from 起始日（含），为空不限
+     * @return 按 GMV 降序，<b>只含有成交的门店</b>
+     */
+    List<StoreTotal> storeTotals(LocalDate from);
+
+    /**
+     * @param storeNo    门店号
+     * @param merchantNo 它属于哪个商家 —— 排行上要能一眼看出「这两家差的店是同一个老板的」
+     */
+    record StoreTotal(String storeNo, String merchantNo, long gmv, long orderCount,
+                      long refundedCount) {
+    }
+
+    /**
      * @param gmv            <b>实收</b>：只算仍在成交态的单，退掉的不计 —— 与 {@link #paidTotals}
      *                       同一口径，看板上下两层不能有两个 GMV 定义
      * @param orderCount     仍在成交态的单数

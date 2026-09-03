@@ -1,5 +1,5 @@
 // 覆盖范围：认证登录 + 工作台（P-16.1）。
-import type { DashboardKpi, FunnelRow, LoginResp, MenuFunction, MerchantRankRow, TrendPoint } from "@/lib/types";
+import type { DashboardKpi, FunnelRow, LoginResp, MenuFunction, MerchantRankRow, TrendPoint, StoreRankRow } from "@/lib/types";
 import type { Role } from "@/lib/auth";
 
 export type { LoginResp };
@@ -56,4 +56,7 @@ export interface DashboardApi {
    * 全带上还会稀释「平台有多少家在做生意」这个数。
    */
   getMerchantRanking(): Promise<MerchantRankRow[]>;
+
+  /** 门店经营排行（门店③）。与商家排行是同一份订单的两种切法 */
+  getStoreRanking(q?: { days?: number; limit?: number }): Promise<StoreRankRow[]>;
 }

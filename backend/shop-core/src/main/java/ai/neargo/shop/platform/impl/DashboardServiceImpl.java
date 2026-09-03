@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.platform.DashboardService;
 import ai.neargo.shop.platform.entity.MchEntityApply;
 import ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.trade.TradeStatsPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 运营工作台的三个数（P-16.1）。
@@ -133,6 +135,44 @@ public class DashboardServiceImpl implements DashboardService {
                 new FunnelRowVO("ENTER", f.enter()),
                 new FunnelRowVO("REGISTER", reach.ordered()),
                 new FunnelRowVO("FIRST_ORDER", reach.paid()));
+    }
+
+    @Override
+    public List<StoreRankRowVO> storeRanking(int days, int limit) {
+        int span = Math.min(Math.max(days, 1), 90);
+        int top = Math.min(Math.max(limit, 1), 100);
+        List<TradeStatsPort.StoreTotal> totals =
+                tradeStats.storeTotals(LocalDate.now().minusDays(span - 1L));
+        if (totals.isEmpty()) {
+            return List.of();
+        }
+        List<TradeStatsPort.StoreTotal> head = totals.size() > top ? totals.subList(0, top) : totals;
+
+        /*
+         * 门店名与商家名都批量取 —— 逐行查是 N+1，而这是一张排行榜。
+         * **商家名一定要给**：一屏上出现两家都在垫底的店，
+         * 「它们是同一个老板的」与「是两家不相干的店」该做的事完全不同。
+         */
+        Map<String, String> storeNames = merchantPort.storeNames(head.stream()
+                .map(TradeStatsPort.StoreTotal::storeNo).collect(Collectors.toSet()));
+        Map<String, MerchantQueryPort.MerchantBrief> merchants = merchantPort.findAll(
+                head.stream().map(TradeStatsPort.StoreTotal::merchantNo)
+                        .filter(java.util.Objects::nonNull).collect(Collectors.toSet()));
+
+        return head.stream().map(t -> {
+            long avg = t.orderCount() == 0 ? 0L : t.gmv() / t.orderCount();
+            /*
+             * 分母是**总成交单数**（在售的 + 已退的），与商家排行同一口径。
+             * 只用在售的话，单子全退光的店分母为 0、率显示 0% ——
+             * 而那正是最该被看见的一行。
+             */
+            long total = t.orderCount() + t.refundedCount();
+            double rate = total == 0 ? 0d : (double) t.refundedCount() / total;
+            var brief = t.merchantNo() == null ? null : merchants.get(t.merchantNo());
+            return new StoreRankRowVO(t.storeNo(), storeNames.get(t.storeNo()),
+                    t.merchantNo(), brief == null ? null : brief.merchantName(),
+                    t.gmv(), t.orderCount(), avg, t.refundedCount(), rate);
+        }).toList();
     }
 
     @Override

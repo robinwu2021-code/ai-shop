@@ -45,6 +45,25 @@ public interface DashboardService {
     List<MerchantRankRowVO> merchantRanking(int days, int limit);
 
     /**
+     * 门店经营排行（门店③）。
+     *
+     * <p><b>为什么商家排行不够</b>：多门店商家的货、单、码都挂在门店上，
+     * 而商家维度会把「一家很好、一家半死」平均成「还行」——
+     * 那家半死的店在商家排行上永远看不见，而它才是要去看的。
+     */
+    List<StoreRankRowVO> storeRanking(int days, int limit);
+
+    /**
+     * @param merchantName 门店属于谁。**排行上要能一眼看出「这两家差的店是同一个老板的」**
+     * @param refundedRate 退款率。分母是总成交单数（在售的 + 已退的）——
+     *                     只用在售的话，单子全退光的店分母为 0、率显示 0%
+     */
+    record StoreRankRowVO(String storeNo, String storeName, String merchantNo,
+                          String merchantName, long gmv, long orderCount,
+                          long avgOrderValue, long refundedCount, double refundedRate) {
+    }
+
+    /**
      * @param merchantName 商家名快照。**必须下发** —— 只给 merchantNo 的话运营看到的是
      *                     一列编号，要判断「这家是谁」还得再查一次
      * @param afterSaleRate 售后率 0–1 = 售后单数 ÷ 成交单数。无单时为 0（不是除零）。

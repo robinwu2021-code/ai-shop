@@ -1625,6 +1625,47 @@ components:
         - "pointType"
         - "sort"
       additionalProperties: false
+    StoreRankRow: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+        storeName: 
+          type: 
+            - "string"
+            - "null"
+        merchantNo: 
+          type: 
+            - "string"
+            - "null"
+        merchantName: 
+          type: 
+            - "string"
+            - "null"
+          description: "门店属于谁。**两家都在垫底时，是不是同一个老板该做的事完全不同**"
+        gmv: 
+          type: "number"
+        orderCount: 
+          type: "number"
+        avgOrderValue: 
+          type: "number"
+        refundedCount: 
+          type: "number"
+        refundedRate: 
+          type: "number"
+          description: "退款率 0–1。分母是总成交单数（在售的 + 已退的）"
+      required: 
+        - "storeNo"
+        - "storeName"
+        - "merchantNo"
+        - "merchantName"
+        - "gmv"
+        - "orderCount"
+        - "avgOrderValue"
+        - "refundedCount"
+        - "refundedRate"
+      additionalProperties: false
+      description: "门店经营排行的一行（门店③）。\n\n<p>经营看板早就有商家排行，**没有门店维度** —— 而多门店商家的货、单、码 都挂在门店上：商家排行会把「一家很好、一家半死」平均成「还行」。"
     CommunityApplyStatus: 
       type: "string"
       enum: 
@@ -10190,6 +10231,34 @@ paths:
                     type: "array"
                     items: 
                       "$ref": "#/components/schemas/MerchantRankRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/dashboard/stores": 
+    get: 
+      operationId: "getStoreRanking"
+      summary: "门店经营排行（门店③）"
+      tags: 
+        - "dashboard"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/StoreRankRow"
                 required: 
                   - "code"
                   - "msg"
