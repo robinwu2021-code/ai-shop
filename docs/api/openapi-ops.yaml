@@ -1090,6 +1090,32 @@ components:
         - "ONLINE"
         - "OFFLINE"
       description: "支付方式。**与后端 `PayModes` 逐字一致**： `ONLINE` 钱经平台走分账；`OFFLINE` 买家当面付给商家，平台不碰这笔钱 （因此不进分账、不抽佣，平台券也不能用）。"
+    ProxyLimit: 
+      type: "object"
+      properties: 
+        maxAmountMinor: 
+          type: "number"
+          description: "单笔上限（分）。按订单**实际应付额**判，不按商品估算"
+        maxPerDay: 
+          type: "number"
+          description: "每个客服每天最多几笔。按自然日算"
+        updatedAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "最后修改时间"
+        updatedBy: 
+          type: 
+            - "string"
+            - "null"
+          description: "最后修改人"
+      required: 
+        - "maxAmountMinor"
+        - "maxPerDay"
+        - "updatedAt"
+        - "updatedBy"
+      additionalProperties: false
+      description: "代客下单的限额（M6：客服代客操作的权限边界与金额阈值）。\n\n<p>此前只有留痕没有闸门：客服能替任何人下任意金额的单，事后查得到、当时拦不住。 留痕回答「谁干的」，闸门回答「能干多大」—— 两件事。"
     OrderItem: 
       type: "object"
       properties: 
@@ -5113,6 +5139,29 @@ components:
         - "DISPATCHER_STALLED"
         - "CONSUMER_FAILING"
       description: "每一档指向不同的人 —— 这正是它比「积压 N 条」多出来的那点信息"
+    InvRepairResult: 
+      type: "object"
+      properties: 
+        scannedSkus: 
+          type: "number"
+        moved: 
+          type: "number"
+          description: "真搬了几条。**试算时恒为 0** —— 不传 apply 就一条都不该动"
+        skipped: 
+          type: "number"
+        pending: 
+          type: "number"
+          description: "仍待搬的"
+        clean: 
+          type: "boolean"
+      required: 
+        - "scannedSkus"
+        - "moved"
+        - "skipped"
+        - "pending"
+        - "clean"
+      additionalProperties: false
+      description: "手动补投影的结果（M2）。字段与 `InvReconReport` 同源（后端同一个 Report）"
     SettleStatus: 
       type: "string"
       enum: 
@@ -13058,6 +13107,71 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/inventory/repair-projection": 
+    post: 
+      operationId: "repairProjection"
+      summary: "手动补投影（M2）"
+      tags: 
+        - "inventory"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/InvRepairResult"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchant/${encodeURIComponent(entityNo)}/stock-doubt": 
+    post: 
+      operationId: "markStockDoubt"
+      summary: "库存存疑打标（M2）"
+      tags: 
+        - "inventory"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/inventory/balances": 
     get: 
       operationId: "listInvBalances"
@@ -17510,10 +17624,67 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/orders/proxy-limit": 
+    get: 
+      operationId: "getProxyLimit"
+      summary: "代客下单的限额"
+      tags: 
+        - "order"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ProxyLimit"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "saveProxyLimit"
+      summary: "改限额"
+      tags: 
+        - "order"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ProxyLimit"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/orders/proxy": 
     post: 
       operationId: "createProxyOrder"
-      summary: "代客下单（客服电话代下，P-4.1.4）"
+      summary: "createProxyOrder"
       tags: 
         - "order"
       responses: 
