@@ -55,6 +55,32 @@ describe("定位：回调不来也要收场", () => {
     expect(r).toEqual({ ok: true, coords: { lat: 30.28, lng: 120.1 } });
   });
 
+  it("★★★ 精确定位不可用 → 退到模糊定位，并**标出它是模糊的**", async () => {
+    (globalThis as { uni?: unknown }).uni = {
+      // getLocation 未获批时就是这个形状：不是 denied，是接口不可用
+      getLocation: (o: { fail: (e: unknown) => void }) =>
+        o.fail({ errMsg: "getLocation:fail api need to be declared" }),
+      getFuzzyLocation: (o: { success: (r: unknown) => void }) =>
+        o.success({ latitude: 30.2, longitude: 120.1 }),
+    };
+    const getLocationDetailed = await load();
+    const r = await getLocationDetailed();
+    expect(r).toEqual({ ok: true, coords: { lat: 30.2, lng: 120.1 }, fuzzy: true });
+  });
+
+  it("★★★ 用户明确拒绝时**不**再问一次模糊的 —— 那是同一个表态", async () => {
+    let askedFuzzy = false;
+    (globalThis as { uni?: unknown }).uni = {
+      getLocation: (o: { fail: (e: unknown) => void }) =>
+        o.fail({ errMsg: "getLocation:fail auth deny" }),
+      getFuzzyLocation: () => (askedFuzzy = true),
+    };
+    const getLocationDetailed = await load();
+    const r = await getLocationDetailed();
+    expect(askedFuzzy, "拒绝之后再弹一次是骚扰").toBe(false);
+    expect(r).toMatchObject({ ok: false, reason: "denied" });
+  });
+
   it("★ 明确失败照旧区分 denied / unavailable —— 超时不该把这个能力吃掉", async () => {
     (globalThis as { uni?: unknown }).uni = {
       getLocation: (o: { fail: (e: unknown) => void }) =>

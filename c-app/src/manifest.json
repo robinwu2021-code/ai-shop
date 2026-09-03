@@ -35,7 +35,7 @@
        · getLocation    选社区自提点时按距离排序
        · chooseLocation 收货地址页在地图上选点
        openLocation（导航到自提点）不在受限名单里，不用声明也不用申请。 */
-    "requiredPrivateInfos": ["getLocation", "chooseLocation", "chooseAddress"]
+    "requiredPrivateInfos": ["getLocation", "getFuzzyLocation", "chooseLocation", "chooseAddress"]
   },
   "h5": {
     "router": { "mode": "hash" },

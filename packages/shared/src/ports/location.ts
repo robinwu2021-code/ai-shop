@@ -12,7 +12,10 @@ export interface Coords {
  */
 export type LocationFailReason = "denied" | "unavailable";
 
-export type LocationOutcome = { ok: true; coords: Coords } | { ok: false; reason: LocationFailReason; detail: string };
+export type LocationOutcome =
+  /** `fuzzy` = 这是模糊定位（城市/区级）。**调用方不许拿它排距离** —— 见 getLocationDetailed */
+  | { ok: true; coords: Coords; fuzzy?: boolean }
+  | { ok: false; reason: LocationFailReason; detail: string };
 
 /** 高德原生错误码里「权限/开关」那几个：12 缺权限、13 定位服务未开；DCloud 系统定位被拒时 errMsg 带 permission */
 const DENIED_RE = /\[geolocation:1[23]\]|permission|denied|auth|未授权|权限|not allowed/i;
@@ -55,12 +58,43 @@ export function getLocationDetailed(): Promise<LocationOutcome> {
       clearTimeout(timer);
       done(r);
     };
+    /*
+     * **精确定位失败就退到模糊定位。**
+     *
+     * `wx.getLocation` 的开放范围**不含**「匹配附近服务」和「辅助填写收货地址」——
+     * 正是我们的用法，2026-09-03 申请被驳回，且驳的是规则不是措辞：
+     * 改写理由再提交也过不了（要过得含线下商家导航服务）。
+     * 微信给的替代就是 `getFuzzyLocation`，开放范围宽得多。
+     *
+     * 代价是精度：模糊定位只到城市/区一级，**排不出五公里内谁更近**。
+     * 所以它够用的地方是「你在哪个区」→ 给区域列表，
+     * 而不是「按距离排序自提点」—— 后者要么等 chooseLocation（用户在地图上点），
+     * 要么就别假装排过序。
+     *
+     * 顺序是「先精确、失败再模糊」而不是反过来：将来若真接了导航服务、
+     * getLocation 批下来，这段不用改就自动用上精确的那个。
+     */
+    const fuzzy = () => {
+      const api = (uni as unknown as { getFuzzyLocation?: (o: object) => void }).getFuzzyLocation;
+      if (!api) return finish({ ok: false, reason: "unavailable", detail: "no getFuzzyLocation" });
+      api({
+        type: "gcj02",
+        success: (res: { latitude: number; longitude: number }) =>
+          finish({ ok: true, coords: { lat: res.latitude, lng: res.longitude }, fuzzy: true }),
+        fail: (e: { errMsg?: string }) => {
+          const detail = String(e?.errMsg ?? "");
+          finish({ ok: false, reason: DENIED_RE.test(detail) ? "denied" : "unavailable", detail });
+        },
+      });
+    };
     uni.getLocation({
       type: "gcj02",
       success: (res) => finish({ ok: true, coords: { lat: res.latitude, lng: res.longitude } }),
       fail: (e) => {
         const detail = String((e as { errMsg?: string })?.errMsg ?? "");
-        finish({ ok: false, reason: DENIED_RE.test(detail) ? "denied" : "unavailable", detail });
+        // 用户明确拒绝就别再问一次模糊的 —— 那是同一个「不想给位置」的表态
+        if (DENIED_RE.test(detail)) return finish({ ok: false, reason: "denied", detail });
+        fuzzy();
       },
     });
   });
