@@ -369,7 +369,7 @@ const zh = {
   csEdit: "配置",
 
   // ── 类目 × 规格总览（规格库 V195）
-  cpmTitle: "类目 × 支付方式",
+  cpmTitle: "当面付禁用类目",
   cpmNotice: "这是「能不能当面付」四层判定的第 ① 层（类目 → 主体资质 → 门店 → 商品），四层取交集，任何一层说不就是不。⚠️ 这张表是「黑名单」：没有行即放行，配一条才是禁止 —— 所以空着是正常的，不是缺口。一期主力用的是「主体资质」那一层。",
   cpmSummary: "已禁 {blocked} / 共 {total} 个类目",
   cpmColCategory: "二级类目",
@@ -860,7 +860,7 @@ const en: typeof zh = {
   csEditOk: "Save bindings",
   csEdit: "Configure",
 
-  cpmTitle: "Categories × payment mode",
+  cpmTitle: "Pay-on-site deny list",
   cpmNotice: "Layer ① of the four that decide whether an order can be paid on site (category → licence → store → product); all four are intersected, so any one of them saying no is a no. ⚠️ This table is a deny list: no row means allowed, a row means blocked — an empty table is normal, not a gap. The licence layer is the one doing the work in phase one.",
   cpmSummary: "{blocked} blocked of {total} categories",
   cpmColCategory: "Level-2 category",

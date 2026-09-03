@@ -24,7 +24,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useCan } from "@/lib/use-can";
-import { useCopy } from "@/lib/use-copy";
+import { fill, useCopy } from "@/lib/use-copy";
 import { useT } from "@/lib/i18n";
 import type { JobLogRow, JobRow, JobStatus } from "@/lib/types";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
@@ -155,6 +155,21 @@ export default function JobsPage() {
     return out;
   };
 
+
+  /*
+   * 按归属模块分组，**保持后端给的顺序**（它已经排过了）——
+   * 按名字重排会让「同一个模块的任务挨在一起」这件事看起来像巧合。
+   * 没有 ownerModule 的归到「其它」，而不是各自成一组。
+   */
+  const grouped = useMemo(() => {
+    const map = new Map<string, JobRow[]>();
+    for (const r of rows) {
+      const key = r.ownerModule || c.jobsGroupOther;
+      const list = map.get(key);
+      if (list) list.push(r); else map.set(key, [r]);
+    }
+    return [...map.entries()];
+  }, [rows, c.jobsGroupOther]);
   return (
     <div className="space-y-4">
       <HelpNote>{c.jobsNotice}</HelpNote>
@@ -202,7 +217,32 @@ export default function JobsPage() {
         {[c.jobsColName, c.jobsColCron, c.jobsColLast, t("common.actions")].map((h, i) => (
           <div key={i} className="bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">{h}</div>
         ))}
-        {rows.map((r) => (
+        {grouped.map(([mod, group]) => (
+          <div key={mod} className="contents">
+            {/*
+              * 按模块分组（M8）。**理由是一次真实的事故**：2026-09-02 之前进销存的
+              * 三条命脉（事件投递 / 预留回收 / 日快照）全是关着的，六条跨域链路
+              * 堵了整整一天 —— 而在一张平铺的 17 行表里，「这三条都归进销存、
+              * 而且都关着」是读不出来的。
+              *
+              * 组头直接给「几个关着」：一个模块整组关掉，是最该被一眼看见的状态。
+              */}
+            <div className="col-span-full flex items-center gap-2 border-t bg-muted/40 px-3 py-1.5">
+              <span className="txt-caption font-medium">{mod}</span>
+              <span className="txt-caption text-muted-foreground">
+                {fill(c.jobsGroupCount, { n: group.length })}
+              </span>
+              {group.every((r) => !r.enabled && !r.missing) && group.length > 1 && (
+                <Badge tone="danger">{c.jobsGroupAllOff}</Badge>
+              )}
+              {group.some((r) => !r.enabled && !r.missing)
+                && !group.every((r) => !r.enabled && !r.missing) && (
+                <Badge tone="warning">
+                  {fill(c.jobsGroupOff, { n: group.filter((r) => !r.enabled && !r.missing).length })}
+                </Badge>
+              )}
+            </div>
+        {group.map((r) => (
           /* display:contents —— 这一行的四个格子直接交给外层 grid 排，见 GRID 的注释 */
           <div key={r.jobName} className="contents">
             {/* ① 名称 + 说明触发器 */}
@@ -303,6 +343,8 @@ export default function JobsPage() {
                 </>
               )}
             </div>
+          </div>
+        ))}
           </div>
         ))}
        </div>

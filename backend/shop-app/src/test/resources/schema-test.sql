@@ -1020,6 +1020,8 @@ CREATE TABLE IF NOT EXISTS stl_payment
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     entity_no VARCHAR(64) DEFAULT NULL,
+    payer_openid VARCHAR(64) NULL,
+    wx_appid     VARCHAR(32) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_stl_payment_no UNIQUE (payment_no),
     CONSTRAINT uk_stl_payment_trade UNIQUE (pay_channel,trade_no)
@@ -8585,3 +8587,18 @@ SELECT 'GOODS_OPS', 'OPS_PRODUCT__TAB_STATS', 'OPS', NOW(), NOW() FROM DUAL
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'AUDITOR', 'OPS_PRODUCT__TAB_STATS', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='AUDITOR' AND x.point_code='OPS_PRODUCT__TAB_STATS');
+UPDATE sys_function_point
+   SET name = '当面付禁用类目', updated_at = NOW()
+ WHERE point_code = 'OPS_PRODUCT__TAB_CATEGORY_PAY_MODE';
+UPDATE sys_function_point
+   SET name = '增值包授予', updated_at = NOW()
+ WHERE point_code = 'OPS_MERCHANT__TAB_PLANS';
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MERCHANT__TAB_PLAN_DEFS', 'OPS_MERCHANT', '档位定义', '增值包', '/merchants?tab=plan-defs', 'merchant:merchant:read', 'merchant:merchant:read', 'IMPLEMENTED', 1, 'P-11.2', 'MENU', 81, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MERCHANT__TAB_PLAN_DEFS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MERCHANT__TAB_PLAN_DEFS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MERCHANT__TAB_PLAN_DEFS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'BD', 'OPS_MERCHANT__TAB_PLAN_DEFS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='BD' AND x.point_code='OPS_MERCHANT__TAB_PLAN_DEFS');

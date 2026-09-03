@@ -112,7 +112,13 @@ export const NAV: NavSection[] = [
       // 叶子的 perm 前缀必须等于 section 的 module（nav.test.ts 锁着）。
       // 它作为页内区块存在，编辑按钮按 can('system:param:update') 显隐：
       // BD 能授予套餐，但改「套餐是什么」不在他手里。
-      { href: "/merchants?tab=plans", label: "增值包与额度", perm: "merchant:merchant:read", group: "增值包", matrix: "P-11.2" , ready: true },
+      // **拆成两条（M8）**：原先一个 tab 同时管「定义档位」（planDefs / savePlanDef，
+      // 一年动几次的产品决策）与「授予某商家」（grantPlan / overridePlanQuota，
+      // 天天做的运营动作）。混在一屏，前者会被后者的噪声淹没 ——
+      // 而它正是分层（FREE/PRO/CHAIN）落地前必须先理清的地基。
+      // 两条权限也不同：授予走 merchant:merchant:ban，改定义走 system:param:update。
+      { href: "/merchants?tab=plans", label: "增值包授予", perm: "merchant:merchant:read", group: "增值包", matrix: "P-11.2" , ready: true },
+      { href: "/merchants?tab=plan-defs", label: "档位定义", perm: "merchant:merchant:read", group: "增值包", matrix: "P-11.2" , ready: true },
       // ── 经营诊断 ────────────────────────────────────────────────────────
       // 链条画像（M1）：一家一行，建品 → 提审 → 上架 → 建账 → 首次进货 → 持续记账。
       //
@@ -173,7 +179,15 @@ export const NAV: NavSection[] = [
       { href: "/products?tab=category-spec", label: "类目 × 规格", perm: "product:spec:read", group: "规格", matrix: "P-3.4", ready: true },
       // 类目策略两条：权限跟**类目**走不跟规格走 —— 改「能不能当面付」与改规格绑定
       // 不是同一类决定，配规格的人不该顺手拿到改支付方式的权限
-      { href: "/products?tab=category-pay-mode", label: "类目 × 支付方式", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
+      // **改过名（M8）**：原来叫「类目 × 支付方式」，而它一件支付方式的事都不管 ——
+      // 它只决定「这个类目能不能当面付」，是四层判定（类目 → 主体资质 → 门店 → 商品）
+      // 的第一层，且是**黑名单**：没有行即放行。
+      // 看到「支付方式」这个名字的人会以为是配微信/支付宝，每个第一次看到它的人
+      // 都要把页面上的说明读一遍才明白 —— 名字本该省掉这一步。
+      //
+      // 路由 `category-pay-mode` **没跟着改**：它是内部键，改它要动 TAB_KEYS、
+      // 迁移里的 href、清单产物，还会让已有的链接失效，而这些换不来任何东西。
+      { href: "/products?tab=category-pay-mode", label: "当面付禁用类目", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
       { href: "/products?tab=category-points", label: "类目 × 积分", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
       // 标准品库（TDD-标准品库）。**单独一个权限码**而不是复用 product:category:*：
       // 类目决定「这类货要什么资质」（准入门槛），标准品决定「这件货长什么样」（录入模板）——

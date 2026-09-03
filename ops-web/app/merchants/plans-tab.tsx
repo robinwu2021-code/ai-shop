@@ -64,7 +64,6 @@ export function PlansTab({ c }: { c: Copy }) {
   // 授予与额度覆盖同一个码（处置面）；改档位定义是另一个码 ——
   // BD 能给某家授予套餐，但不能改「套餐是什么」
   const canGrant = allow("merchant:merchant:ban");
-  const canEditDef = allow("system:param:update");
 
   const q = { keyword, filter, page, size };
   const list = useQuery({ queryKey: ["merchant-plans", q], queryFn: () => api.merchantPlans(q) });
@@ -126,8 +125,12 @@ export function PlansTab({ c }: { c: Copy }) {
       />
       <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
 
-      <PlanDefsBlock c={c} defs={defs.data} loading={defs.isLoading} canEdit={canEditDef} />
-
+      {/*
+        * **档位定义已经拆到隔壁那个 tab 去了（M8）。**
+        * 这一屏原先同时管「定义档位」（一年动几次的产品决策）与
+        * 「授予某商家」（天天做的运营动作）—— 混在一起，前者会被后者的噪声淹没，
+        * 而它正是分层落地前必须理清的地基。
+        */}
       <UpgradeSignalsBlock c={c} rows={signals.data} loading={signals.isLoading} />
 
       <Drawer
@@ -412,4 +415,20 @@ function UpgradeSignalsBlock({ c, rows, loading }: {
       <DataTable columns={columns} rows={rows} loading={loading} rowKey={(r) => r.ownerUserNo} empty={c.plSignalsEmpty} />
     </section>
   );
+}
+
+/**
+ * 档位定义（M8 拆出来的那一半）。
+ *
+ * **与「增值包授予」是两类职责**：这一页改的是档位本身（`planDefs` / `savePlanDef`），
+ * 一年动几次，是产品决策；隔壁那一页是「给某家开哪个档」（`grantPlan` /
+ * `overridePlanQuota`），天天在做。混在一屏里，前者会被后者的噪声淹没 ——
+ * 而它是分层（FREE/PRO/CHAIN）落地前必须先理清的地基。
+ */
+export function PlanDefsTab({ c }: { c: Copy }) {
+  const allow = useCan();
+  // 与拆分前同一个码，不新造 —— 改档位定义本来就走 system:param:update
+  const canEditDef = allow("system:param:update");
+  const defs = useQuery({ queryKey: ["plan-defs"], queryFn: () => api.planDefs() });
+  return <PlanDefsBlock c={c} defs={defs.data} loading={defs.isLoading} canEdit={canEditDef} />;
 }

@@ -50,7 +50,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   开放对接: { en: "Open API keys" },
   // 以下七条是 V251 / V253 两轮菜单合入时漏补的译文，守卫一直红着 —— 恒红的守卫
   // 挡不住下一次漏登记，所以一并补上（只加行，不动既有行）。
-  "类目 × 支付方式": { en: "Category × payment mode" },
+  当面付禁用类目: { en: "Pay-on-site deny list" },
   "类目 × 积分": { en: "Category × points" },
   积分端开关: { en: "Points switches" },
   应付与发票: { en: "Payables & invoices" },
@@ -188,7 +188,8 @@ const OVERLAY: Record<string, Record<string, string>> = {
   经营诊断: { en: "Health check" },
   链条画像: { en: "Chain profile" },
   增值包: { en: "Plans" },
-  增值包与额度: { en: "Plans & quota" },
+  增值包授予: { en: "Plan grants" },
+  档位定义: { en: "Plan tiers" },
   模板与合规: { en: "Templates & compliance" },
   获客: { en: "Acquisition" },
   类目: { en: "Categories" },

@@ -1298,7 +1298,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 144,
+      "count": 145,
       "domains": [
         {
           "name": "经营看板",
@@ -1463,7 +1463,7 @@
             {
               "app": "ops-web",
               "route": "/merchants?tab=plans",
-              "title": "增值包与额度",
+              "title": "增值包授予",
               "domain": "商家治理",
               "group": "增值包",
               "matrix": "P-11.2",
@@ -1471,6 +1471,18 @@
               "status": "已实现",
               "proto": null,
               "preview": "http://localhost:3000/merchants?tab=plans"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=plan-defs",
+              "title": "档位定义",
+              "domain": "商家治理",
+              "group": "增值包",
+              "matrix": "P-11.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/merchants?tab=plan-defs"
             },
             {
               "app": "ops-web",
@@ -1661,7 +1673,7 @@
             {
               "app": "ops-web",
               "route": "/products?tab=category-pay-mode",
-              "title": "类目 × 支付方式",
+              "title": "当面付禁用类目",
               "domain": "商品与类目",
               "group": "类目",
               "matrix": "P-3.1",
@@ -3096,5 +3108,5 @@
       ]
     }
   ],
-  "total": 250
+  "total": 251
 }

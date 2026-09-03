@@ -66,6 +66,14 @@ const zh = {
   jobsStatusUNREACHABLE: "调不通（多半在发布）",
   jobsStatusTIMEOUT: "超时（结果未知）",
   jobsStatusRUNNING: "执行中",
+
+  // ── 按模块分组（M8）────────────────────────────────────────────────
+  // 2026-09-02 之前进销存的三条命脉全是关着的，六条跨域链路堵了一整天 ——
+  // 而在一张平铺的 17 行表里，「这三条都归进销存、而且都关着」读不出来
+  jobsGroupCount: "{n} 个任务",
+  jobsGroupOff: "{n} 个关着",
+  jobsGroupAllOff: "整组都关着",
+  jobsGroupOther: "其它",
 };
 
 const en: typeof zh = {
@@ -132,6 +140,11 @@ const en: typeof zh = {
   jobsStatusUNREACHABLE: "Unreachable (likely deploying)",
   jobsStatusTIMEOUT: "Timed out (outcome unknown)",
   jobsStatusRUNNING: "Running",
+
+  jobsGroupCount: "{n} jobs",
+  jobsGroupOff: "{n} off",
+  jobsGroupAllOff: "whole group off",
+  jobsGroupOther: "Other",
 };
 
 export type JobsCopy = typeof zh;
