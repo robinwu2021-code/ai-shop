@@ -17,6 +17,8 @@ public record AddressVO(String addressId,
                         String city,
                         String district,
                         String detail,
+                        /** 门牌号（V319）。存量地址为空 —— 那时它还混在 detail 里 */
+                        String houseNo,
                         boolean isDefault,
                         String tag,
                         /** 坐标（gcj02，E6）。可能为 null —— 存量地址是纯手填的，没有坐标 */
@@ -37,6 +39,7 @@ public record AddressVO(String addressId,
     private static AddressVO build(UsrAddress a, String phone) {
         return new AddressVO(a.getAddressId(), a.getName(), phone,
                 a.getRegion(), a.getProvince(), a.getCity(), a.getDistrict(), a.getDetail(),
+                a.getHouseNo(),
                 Boolean.TRUE.equals(a.getIsDefault()), a.getTag(),
                 a.getLatE6(), a.getLngE6());
     }

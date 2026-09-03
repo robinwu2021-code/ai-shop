@@ -3166,6 +3166,19 @@ components:
         quotaWouldExceed: 
           type: "boolean"
           description: "加上本车这些货会超额 —— 还没用尽，但这一单过不去"
+        deliveryLatE6: 
+          type: 
+            - "number"
+            - "null"
+          description: "自送圆心（门店坐标，gcj02 E6）与半径（米）。**三个都可能为 null**， 半径也可能 ≤ 0 —— 那是「不限距离」的表达。\n\n给结算页把**送不到的地址置灰**用。端上判的口径必须与后端 `requireWithinDeliveryRadius` 完全一致，**包括三条放行** （地址没坐标 / 门店没坐标 / 半径 ≤ 0）：端上比后端严， 会把本来下得成的单挡在门外，而那种单用户永远查不出为什么下不了。"
+        deliveryLngE6: 
+          type: 
+            - "number"
+            - "null"
+        deliveryRadiusM: 
+          type: 
+            - "number"
+            - "null"
       required: 
         - "merchantNo"
         - "merchantName"
@@ -7051,6 +7064,11 @@ components:
         detail: 
           type: "string"
           description: "详细地址（街道门牌）"
+        houseNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "门牌号（楼号-单元-室），V319 从 `detail` 里分出来。\n\n**与 `detail` 的区别不是长短，是来源**：`detail` 是地址主体，由选点页给出、带坐标； 门牌只能手打。合在一列里时，用户改一个字就可能让坐标与文字对不上，而没地方看得出来。 存量地址这一列为空 —— 那时它还混在 `detail` 里，照旧只显示那一串。"
         isDefault: 
           type: "boolean"
           description: "是否默认地址。整个地址簿至多一条为 true"

@@ -150,6 +150,14 @@ export interface Address {
   district?: string | null;
   /** 详细地址（街道门牌） */
   detail: string;
+  /**
+   * 门牌号（楼号-单元-室），V319 从 `detail` 里分出来。
+   *
+   * **与 `detail` 的区别不是长短，是来源**：`detail` 是地址主体，由选点页给出、带坐标；
+   * 门牌只能手打。合在一列里时，用户改一个字就可能让坐标与文字对不上，而没地方看得出来。
+   * 存量地址这一列为空 —— 那时它还混在 `detail` 里，照旧只显示那一串。
+   */
+  houseNo?: string | null;
   /** 是否默认地址。整个地址簿至多一条为 true */
   isDefault: boolean;
   /** 标签：家 / 公司 / 其他 */

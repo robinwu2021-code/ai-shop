@@ -2041,7 +2041,9 @@ export const db = {
       name: "张先生",
       phone: "13800138000",
       region: "浙江省 杭州市 西湖区",
-      detail: "阳光里小区 3 幢 2 单元 601",
+      // V319 之后这两个是分开的：主体来自选点（带坐标），门牌只能手打
+      detail: "阳光里小区",
+      houseNo: "3 幢 2 单元 601",
       isDefault: true,
       tag: "家",
     },

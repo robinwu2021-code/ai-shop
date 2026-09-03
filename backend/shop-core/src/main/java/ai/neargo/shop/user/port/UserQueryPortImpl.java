@@ -54,12 +54,24 @@ public class UserQueryPortImpl implements UserQueryPort {
         if (a == null) {
             return Optional.empty();
         }
-        String full = nz(a.getProvince()) + nz(a.getCity()) + nz(a.getDistrict()) + nz(a.getDetail());
+        /*
+         * **门牌要拼进去。** V319 把它从 detail 里分出来单独一列之后，
+         * 这里不补一句的话，订单快照里的地址就只到楼盘为止 ——
+         * 骑手拿到的是「阳光里小区」，最后 50 米没了，而地址簿页面上一切正常。
+         * 加列只改写入、不改读出，正是这类改动最容易漏的一半。
+         */
+        String full = nz(a.getProvince()) + nz(a.getCity()) + nz(a.getDistrict())
+                + nz(a.getDetail()) + houseSuffix(a.getHouseNo());
         return Optional.of(new Receiver(a.getName(), a.getPhone(), full, a.getLatE6(), a.getLngE6()));
     }
 
     private static String nz(String s) {
         return s == null ? "" : s;
+    }
+
+    /** 门牌前加一个空格好读；空的时候**什么都不加**，别留一个孤零零的尾巴 */
+    private static String houseSuffix(String houseNo) {
+        return houseNo == null || houseNo.isBlank() ? "" : " " + houseNo.trim();
     }
 
     @Override

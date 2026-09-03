@@ -310,6 +310,18 @@ export const PLANNED_FULFILLMENTS: readonly string[] = [
 ];
 
 /** 交易规则（一期） */
+/**
+ * 地址簿的规矩。
+ *
+ * `maxCount` 端上这份只管把「新增」按钮提前置灰；**真正的闸在后端**
+ * （`AddressServiceImpl.MAX_ADDRESSES`）—— 还没更新的老版本 App 不知道有这回事。
+ * 两处都改才算改：端上放宽而后端没放，用户会撞一个说不清的保存失败。
+ */
+export const ADDRESS_RULES = {
+  /** 一个人最多存几条。对标值；不设限会让结算页那个选地址的列表没法用 */
+  maxCount: 20,
+} as const;
+
 export const TRADE_RULES = {
   /**
    * 未支付自动关单（分钟）—— **出厂默认值，可被平台配置覆盖**。

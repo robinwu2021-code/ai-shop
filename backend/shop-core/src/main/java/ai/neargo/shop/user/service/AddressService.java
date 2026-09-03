@@ -13,6 +13,17 @@ import java.util.List;
  */
 public interface AddressService {
 
+    /**
+     * 一个人最多存几条地址。**对标值**（美团那边也是二十上下）。
+     *
+     * <p>不设限的后果不是「占空间」，是结算页那个选地址的列表变得没法用 ——
+     * 而地址是只增不减的东西：没人会回头去删。
+     *
+     * <p>端上也有一份（`ADDRESS_RULES.maxCount`），那是为了把「新增」按钮提前置灰；
+     * 这一份才是真正的闸 —— 还没更新的老版本 App 不知道有这回事。
+     */
+    int MAX_ADDRESSES = 20;
+
     List<AddressVO> list();
 
     /** {@code addressId} 为空即新增。首个地址自动成为默认。 */
@@ -36,6 +47,8 @@ public interface AddressService {
     AddressVO switchActiveAddress(String addressId);
 
     /**
+     * @param houseNo 门牌号（V319）。与 {@code detail} 是两件事：detail 是地址主体
+     *                （选点页给的，带坐标），houseNo 是最后 50 米（只能手打）。
      * @param latE6 收货地址坐标（gcj02，E6）。<b>null = 这次不改</b> ——
      *              老版本端上不传这两个字段，把缺省当清空会把已标好的点抹掉。
      *              这两列 V1 就建了（注释写着「配送范围校验用」），但在此之前<b>全链路无人写入</b>，
@@ -43,14 +56,16 @@ public interface AddressService {
      */
     record SaveCommand(String addressId, String name, String phone, String region,
                        String province, String city, String district, String detail,
+                       String houseNo,
                        Boolean isDefault, String tag,
                        Integer latE6, Integer lngE6) {
 
-        /** 不带坐标的老形状 */
+        /** 不带坐标、也不带门牌的老形状 */
         public SaveCommand(String addressId, String name, String phone, String region,
                            String province, String city, String district, String detail,
                            Boolean isDefault, String tag) {
-            this(addressId, name, phone, region, province, city, district, detail, isDefault, tag, null, null);
+            this(addressId, name, phone, region, province, city, district, detail,
+                    null, isDefault, tag, null, null);
         }
     }
 }

@@ -92,8 +92,15 @@ export interface SaveAddressReq {
   city?: string | null;
   /** 区/县 */
   district?: string | null;
-  /** 详细地址（街道门牌） */
+  /** 详细地址：**地址主体**（小区 / 写字楼），选点页给的那一段 */
   detail: string;
+  /**
+   * 门牌号（楼号-单元-室），V319 从 `detail` 里分出来。
+   *
+   * **端上必填、后端不必填**：后端要着 `@NotBlank` 的话，还没更新的老版本 App
+   * （它压根不发这个字段）连「改个手机号」都保存不了。
+   */
+  houseNo?: string | null;
   /** 设为默认。置 true 会把原默认地址改为 false */
   isDefault: boolean;
   /** 标签：家 / 公司 / 其他 */

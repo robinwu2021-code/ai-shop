@@ -15,6 +15,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -37,8 +38,16 @@ public class AddressServiceImpl implements AddressService {
     @Override
     @Transactional
     public List<AddressVO> save(SaveCommand cmd) {
-        UsrAddress row = cmd.addressId() == null || cmd.addressId().isBlank()
-                ? newRow() : requireOwn(cmd.addressId());
+        boolean creating = cmd.addressId() == null || cmd.addressId().isBlank();
+        /*
+         * 只拦**新增**。编辑已有的那条永远放行 —— 存量用户可能已经超了上限
+         * （上限是这次才有的），拦住编辑等于让他连自己的手机号都改不了，
+         * 而他做的事跟「地址太多」毫无关系。
+         */
+        if (creating && rows().size() >= MAX_ADDRESSES) {
+            throw BizException.of(ErrorCode.ADDRESS_LIMIT_EXCEEDED, MAX_ADDRESSES);
+        }
+        UsrAddress row = creating ? newRow() : requireOwn(cmd.addressId());
 
         row.setName(cmd.name());
         row.setPhone(cmd.phone());
@@ -47,6 +56,7 @@ public class AddressServiceImpl implements AddressService {
         row.setCity(cmd.city());
         row.setDistrict(cmd.district());
         row.setDetail(cmd.detail());
+        row.setHouseNo(cmd.houseNo());
         // 两个都给才写：只来一半是端上的 bug，写进去会得到一个落在赤道或本初子午线上的收货地址
         if (cmd.latE6() != null && cmd.lngE6() != null) {
             row.setLatE6(cmd.latE6());
@@ -153,10 +163,32 @@ public class AddressServiceImpl implements AddressService {
         return row;
     }
 
+    /**
+     * 列表顺序：**默认 → 有坐标 → 最近改动过的**。
+     *
+     * <p>此前是「默认 → id 倒序」，也就是越新加的越靠前 ——
+     * 一个用了半年的家会被上周填的一个临时地址压下去。
+     *
+     * <p>「有坐标的在前」不是排版偏好：没有坐标的那些，商家的自送半径判不了、
+     * 导航也打不开，把它们排在前面等于优先推荐一条会出问题的地址。
+     *
+     * <p>后两档在 Java 里排而不是写进 SQL：「坐标非空」在 H2 与 MariaDB 上
+     * 要写成不同的表达式，而这张表一个人至多 {@value AddressService#MAX_ADDRESSES} 行，
+     * 为它引一处方言差异不划算。
+     */
     private List<UsrAddress> rows() {
-        return addressMapper.selectList(Wrappers.<UsrAddress>lambdaQuery()
+        List<UsrAddress> rows = addressMapper.selectList(Wrappers.<UsrAddress>lambdaQuery()
                 .eq(UsrAddress::getUserNo, SecurityUtils.currentUserNo())
                 .orderByDesc(UsrAddress::getIsDefault)
                 .orderByDesc(UsrAddress::getId));
+        return rows.stream()
+                .sorted(Comparator
+                        .comparing((UsrAddress a) -> Boolean.TRUE.equals(a.getIsDefault())).reversed()
+                        .thenComparing(Comparator.comparing(
+                                (UsrAddress a) -> a.getLatE6() != null && a.getLngE6() != null).reversed())
+                        .thenComparing(Comparator.comparing(
+                                UsrAddress::getUpdatedAt,
+                                Comparator.nullsLast(Comparator.naturalOrder())).reversed()))
+                .toList();
     }
 }

@@ -1928,6 +1928,7 @@
 | `city` | `string,null` | 否 | 市 |
 | `district` | `string,null` | 否 | 区/县 |
 | `detail` | `string` | 是 | 详细地址（街道门牌） |
+| `houseNo` | `string,null` | 否 | 门牌号（楼号-单元-室），V319 从 `detail` 里分出来。 **与 `detail` 的区别不是长短，是来源**：`detail` 是地址主体，由选点页给出、带坐标； 门牌只能手打。合在一列里时，用户改一个字就可能让坐标与文字对不上，而没地方看得出来。 存量地址这一列为空 —— 那时它还混在 `detail` 里，照旧只显示那一串。 |
 | `isDefault` | `boolean` | 是 | 是否默认地址。整个地址簿至多一条为 true |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
 | `latE6` | `number,null` | 否 | 收货点坐标（gcj02，E6）。地图选点回填；**可能为空** —— 存量地址是纯手填的。 商家的「自送半径」要拿它跟门店坐标算距离，没有坐标那条规则就永远算不出结果。 |
@@ -1958,6 +1959,7 @@
 | `city` | `string,null` | 否 | 市 |
 | `district` | `string,null` | 否 | 区/县 |
 | `detail` | `string` | 是 | 详细地址（街道门牌） |
+| `houseNo` | `string,null` | 否 | 门牌号（楼号-单元-室），V319 从 `detail` 里分出来。 **与 `detail` 的区别不是长短，是来源**：`detail` 是地址主体，由选点页给出、带坐标； 门牌只能手打。合在一列里时，用户改一个字就可能让坐标与文字对不上，而没地方看得出来。 存量地址这一列为空 —— 那时它还混在 `detail` 里，照旧只显示那一串。 |
 | `isDefault` | `boolean` | 是 | 是否默认地址。整个地址簿至多一条为 true |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
 | `latE6` | `number,null` | 否 | 收货点坐标（gcj02，E6）。地图选点回填；**可能为空** —— 存量地址是纯手填的。 商家的「自送半径」要拿它跟门店坐标算距离，没有坐标那条规则就永远算不出结果。 |
@@ -1992,7 +1994,8 @@
 | `province` | `string,null` | 否 | 省 / 市 / 区县，分开的三个。后端 `SaveAddressReq` 一直收这三个字段， 端上一直没发 —— 于是 `usr_address` 那三列永远是 null（见 `Address` 的注释） |
 | `city` | `string,null` | 否 | 市 |
 | `district` | `string,null` | 否 | 区/县 |
-| `detail` | `string` | 是 | 详细地址（街道门牌） |
+| `detail` | `string` | 是 | 详细地址：**地址主体**（小区 / 写字楼），选点页给的那一段 |
+| `houseNo` | `string,null` | 否 | 门牌号（楼号-单元-室），V319 从 `detail` 里分出来。 **端上必填、后端不必填**：后端要着 `@NotBlank` 的话，还没更新的老版本 App （它压根不发这个字段）连「改个手机号」都保存不了。 |
 | `isDefault` | `boolean` | 是 | 设为默认。置 true 会把原默认地址改为 false |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
 | `latE6` | `number,null` | 否 | 地图选点给的坐标（gcj02，E6）；不传 = 不改 |
@@ -2231,6 +2234,7 @@
 | `city` | `string,null` | 否 | 市 |
 | `district` | `string,null` | 否 | 区/县 |
 | `detail` | `string` | 是 | 详细地址（街道门牌） |
+| `houseNo` | `string,null` | 否 | 门牌号（楼号-单元-室），V319 从 `detail` 里分出来。 **与 `detail` 的区别不是长短，是来源**：`detail` 是地址主体，由选点页给出、带坐标； 门牌只能手打。合在一列里时，用户改一个字就可能让坐标与文字对不上，而没地方看得出来。 存量地址这一列为空 —— 那时它还混在 `detail` 里，照旧只显示那一串。 |
 | `isDefault` | `boolean` | 是 | 是否默认地址。整个地址簿至多一条为 true |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
 | `latE6` | `number,null` | 否 | 收货点坐标（gcj02，E6）。地图选点回填；**可能为空** —— 存量地址是纯手填的。 商家的「自送半径」要拿它跟门店坐标算距离，没有坐标那条规则就永远算不出结果。 |
@@ -2977,6 +2981,9 @@
 | `payMethods` | `string`\[\] | 是 | 该商家支持的支付方式；**空 = 未配置**（进件还没走完），不是「一种都不支持」 |
 | `quotaExhausted` | `boolean` | 是 | 本期收款额度已用尽 —— 这家的货现在下不了单 |
 | `quotaWouldExceed` | `boolean` | 是 | 加上本车这些货会超额 —— 还没用尽，但这一单过不去 |
+| `deliveryLatE6` | `number,null` | 否 | 自送圆心（门店坐标，gcj02 E6）与半径（米）。**三个都可能为 null**， 半径也可能 ≤ 0 —— 那是「不限距离」的表达。 给结算页把**送不到的地址置灰**用。端上判的口径必须与后端 `requireWithinDeliveryRadius` 完全一致，**包括三条放行** （地址没坐标 / 门店没坐标 / 半径 ≤ 0）：端上比后端严， 会把本来下得成的单挡在门外，而那种单用户永远查不出为什么下不了。 |
+| `deliveryLngE6` | `number,null` | 否 | — |
+| `deliveryRadiusM` | `number,null` | 否 | — |
 
 ### MerchantSubject
 
@@ -3439,7 +3446,8 @@
 | `province` | `string,null` | 否 | 省 / 市 / 区县，分开的三个。后端 `SaveAddressReq` 一直收这三个字段， 端上一直没发 —— 于是 `usr_address` 那三列永远是 null（见 `Address` 的注释） |
 | `city` | `string,null` | 否 | 市 |
 | `district` | `string,null` | 否 | 区/县 |
-| `detail` | `string` | 是 | 详细地址（街道门牌） |
+| `detail` | `string` | 是 | 详细地址：**地址主体**（小区 / 写字楼），选点页给的那一段 |
+| `houseNo` | `string,null` | 否 | 门牌号（楼号-单元-室），V319 从 `detail` 里分出来。 **端上必填、后端不必填**：后端要着 `@NotBlank` 的话，还没更新的老版本 App （它压根不发这个字段）连「改个手机号」都保存不了。 |
 | `isDefault` | `boolean` | 是 | 设为默认。置 true 会把原默认地址改为 false |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
 | `latE6` | `number,null` | 否 | 地图选点给的坐标（gcj02，E6）；不传 = 不改 |

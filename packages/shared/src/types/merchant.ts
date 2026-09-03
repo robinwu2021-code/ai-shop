@@ -404,6 +404,18 @@ export interface MerchantCapability {
   quotaExhausted: boolean;
   /** 加上本车这些货会超额 —— 还没用尽，但这一单过不去 */
   quotaWouldExceed: boolean;
+  /**
+   * 自送圆心（门店坐标，gcj02 E6）与半径（米）。**三个都可能为 null**，
+   * 半径也可能 ≤ 0 —— 那是「不限距离」的表达。
+   *
+   * 给结算页把**送不到的地址置灰**用。端上判的口径必须与后端
+   * `requireWithinDeliveryRadius` 完全一致，**包括三条放行**
+   * （地址没坐标 / 门店没坐标 / 半径 ≤ 0）：端上比后端严，
+   * 会把本来下得成的单挡在门外，而那种单用户永远查不出为什么下不了。
+   */
+  deliveryLatE6?: number | null;
+  deliveryLngE6?: number | null;
+  deliveryRadiusM?: number | null;
 }
 // ================================================================ B 端（商家端）
 // 说明：B 端复用 C 端的 Goods / Order / Review / Merchant 等主类型，

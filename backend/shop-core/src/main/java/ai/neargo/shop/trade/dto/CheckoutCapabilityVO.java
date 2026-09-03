@@ -36,11 +36,24 @@ public record CheckoutCapabilityVO(List<String> usablePayMethods,
                                    List<String> usablePayModes) {
 
     /**
-     * @param quotaExhausted   本期额度已用尽 —— 这家的货现在下不了单
-     * @param quotaWouldExceed 加上本车这些货会超 —— 还没用尽，但这一单过不去
+     * @param quotaExhausted    本期额度已用尽 —— 这家的货现在下不了单
+     * @param quotaWouldExceed  加上本车这些货会超 —— 还没用尽，但这一单过不去
+     * @param deliveryLatE6     自送圆心（门店坐标，gcj02 E6）。<b>可能为 null</b> —— 门店没在地图上标过点
+     * @param deliveryLngE6     同上
+     * @param deliveryRadiusM   自送半径（米）。<b>可能为 null，也可能 ≤ 0</b>，两者都表示「不限距离」
+     *
+     * <p><b>这三个是给结算页把「送不到的地址」置灰用的。</b>此前端上完全不知道这件事，
+     * 用户挑一个地址、填完、点提交，才撞上 {@code OUT_OF_DELIVERY_RANGE} ——
+     * 而那时他既不知道哪家送不到，也不知道该换哪个地址。
+     *
+     * <p>端上判的口径必须与 {@code requireWithinDeliveryRadius} 完全一致，
+     * <b>包括三条放行</b>（地址没坐标 / 门店没坐标 / 半径 ≤ 0）。
+     * 端上比后端严，会把本来下得成的单挡在门外。
      */
     public record MerchantCapability(String merchantNo, String merchantName,
                                      boolean invoiceCapable, List<String> payMethods,
-                                     boolean quotaExhausted, boolean quotaWouldExceed) {
+                                     boolean quotaExhausted, boolean quotaWouldExceed,
+                                     Integer deliveryLatE6, Integer deliveryLngE6,
+                                     Integer deliveryRadiusM) {
     }
 }

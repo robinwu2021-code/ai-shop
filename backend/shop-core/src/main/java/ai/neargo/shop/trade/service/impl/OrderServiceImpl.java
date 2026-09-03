@@ -198,10 +198,19 @@ public class OrderServiceImpl implements OrderService {
             boolean noInvoice = !cap.invoiceCapable();
             anyNoInvoice = anyNoInvoice || noInvoice;
 
+            /*
+             * 自送圆心与半径下发给端上，让它能提前把送不到的地址置灰。
+             * 取不到（门店没标点）就是三个 null —— 那正是「这条规则不成立」的表达，
+             * 与 requireWithinDeliveryRadius 里的放行是同一件事。
+             */
+            var origin = merchantPort.deliveryOrigin(g.merchantNo).orElse(null);
             rows.add(new ai.neargo.shop.trade.dto.CheckoutCapabilityVO.MerchantCapability(
                     g.merchantNo, g.merchantName, cap.invoiceCapable(),
                     new ArrayList<>(cap.payMethods()),
-                    cap.quotaExhausted(), cap.wouldExceed(amount)));
+                    cap.quotaExhausted(), cap.wouldExceed(amount),
+                    origin == null ? null : origin.latE6(),
+                    origin == null ? null : origin.lngE6(),
+                    origin == null ? null : origin.radiusM()));
 
             /*
              * 交集而非并集：一笔支付覆盖整单，有一家不支持这种方式就用不了。

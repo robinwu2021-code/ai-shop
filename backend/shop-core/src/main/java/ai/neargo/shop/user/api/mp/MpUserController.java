@@ -215,7 +215,7 @@ public class MpUserController {
     public List<AddressVO> saveAddress(@jakarta.validation.Valid @RequestBody SaveAddressReq req) {
         return addressService.save(new AddressService.SaveCommand(
                 req.addressId(), req.name(), req.phone(), req.region(), req.province(), req.city(),
-                req.district(), req.detail(), req.isDefault(), req.tag(),
+                req.district(), req.detail(), req.houseNo(), req.isDefault(), req.tag(),
                 req.latE6(), req.lngE6()));
     }
 
@@ -247,7 +247,15 @@ public class MpUserController {
                                          message = ai.neargo.shop.common.Phones.MESSAGE) String phone,
                                  String region,
                                  String province, String city, String district,
-                                 @NotBlank String detail, Boolean isDefault, String tag,
+                                 @NotBlank String detail,
+                                 /*
+                                  * 门牌号**后端不设 @NotBlank**，端上才必填。
+                                  * 后端要着的话，还没更新的老版本 App（它压根不发这个字段）
+                                  * 会连「改个手机号」都保存不了 —— 一个纯粹由我们这次改动造成的故障，
+                                  * 而用户那边只看到「保存失败」。
+                                  */
+                                 String houseNo,
+                                 Boolean isDefault, String tag,
                                  Integer latE6, Integer lngE6) {
     }
 

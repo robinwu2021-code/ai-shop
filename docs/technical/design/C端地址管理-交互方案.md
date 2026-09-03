@@ -367,14 +367,79 @@ H5 能验的正是**降级那一半**，而降级恰恰是最容易写错、也�
 **没验到的**：原生搜索联想（要 App 包）与 `chooseLocation` 的回填（要 App / 小程序包）。
 两者都走 `choose() → placeFrom() → 交接`这条已经跑通的路，**但来源本身没在真端上跑过**。
 
-**第三批 —— 字段与置灰**
+**第三批 —— 字段与置灰 —— 已完成 2026-09-03**
 
-- [ ] `house_no` 五处登记（§6）
-- [ ] A3 门牌号独立必填；标签改预设 chip
-- [ ] B 模式按自送半径置灰 + 文案；与后端 `requireWithinDeliveryRadius` 同口径（含三条放行）
-- [ ] 地址条数上限 20，达到上限时「新增」置灰并说明
-- [ ] A 列表排序改为 默认 → 有坐标 → `updated_at`
-- [ ] `npx vue-tsc --noEmit`（改了 `.vue`，`npx tsc` 一行都不检查）
+- [x] `house_no`（V319）**六处**登记 —— §6 那张清单少写了一处，见下
+- [x] A3 门牌号独立字段；地址主体在能选点的端上改为只读 + 重选
+- [x] B 模式按自送半径置灰 + 点名是哪一家；与后端 `requireWithinDeliveryRadius` **共用一份实现**
+- [x] 地址条数上限 20：端上置灰 + 后端真闸；**只拦新增，永远放行编辑**
+- [x] A 列表排序改为 默认 → 有坐标 → `updated_at`
+- [x] 守卫：后端 4 条（`AddressHouseNoLimitTest`）+ 端上 36 条；六处消融逐一变红
+- [ ] ~~标签改预设 chip~~ **没做**：与本批其余几项没有依赖关系，留到后面单独一次
+
+### §6 那张清单少写了一处
+
+原文写的是五处，实际是**六处** —— 漏掉的是 `c-app/src/api/requests.ts` 的 `SaveAddressReq`。
+
+它的症状很有意思：**字段照样发得出去**（`http.ts` 里是 `{ ...payload }` 展开，
+运行时带着 `houseNo`），端上一切正常、闸门全绿 ——
+但**契约类型里没有它**，于是 `docs/api/API详情-C端.md` 与 `openapi.yaml`
+明写着「这个接口不收 houseNo」。照文档去对接的人会得出与事实相反的结论。
+
+补齐后的六处：
+
+- [x] 迁移 `V319__address_house_no.sql`
+- [x] `UsrAddress` 加 `houseNo`
+- [x] `AddressVO` 的 record 参数 + `build()`
+- [x] `AddressService.SaveCommand` + `MpUserController.SaveAddressReq` + 透传
+- [x] `packages/shared/src/types` 的 `Address` **＋ `c-app/src/api/requests.ts` 的 `SaveAddressReq`**
+- [x] 跑生成器：`gen-openapi.mjs` / `gen-api-detail.mjs`（文档是产物，不手写）
+
+### 三个「只改一半」的地方
+
+**一、门牌号端上必填，后端刻意不必填。** 后端要着 `@NotBlank` 的话，
+还没更新的老版本 App（它压根不发这个字段）连「改个手机号」都保存不了 ——
+一个纯粹由这次改动造成的故障，而用户那边只看到「保存失败」。
+
+**二、下单快照要把门牌拼进去**（`UserQueryPortImpl.receiverOf`）。
+加了一列只改写入、忘了读出，是这类改动最容易漏的一半：
+不报错、不崩、地址簿页面一切正常 —— 只有骑手拿到的地址少了最后 50 米。
+
+**三、地址主体只在能选点的端上只读。** 它是跟坐标一起来的，在表单里随手改几个字
+坐标不会跟着动，于是「文字写着 A、坐标指着 B」。但 H5 一条选点路都没有，
+一律只读的话他连存量地址都改不了 —— 与 §4.2 那个 `canPick` 是同一个判断，共用一处。
+
+### 置灰的口径必须与后端一字不差
+
+`MerchantCapability` 补了 `deliveryLatE6 / deliveryLngE6 / deliveryRadiusM`
+（§9-4 问的就是这个，已定）。判定走 `packages/shared/src/utils/geo.ts` 的
+`withinDeliveryRange`，**与后端 `requireWithinDeliveryRadius` 逐条对齐，包括三条放行**：
+地址没坐标 / 门店没标点 / 半径 ≤ 0。
+
+端上比后端**严**的后果比不判更糟：本来下得成的单被挡在门外，
+而用户永远查不出为什么 —— 所以这三条放行是守卫里的 ★★★。
+距离算法也要一样（经度间距乘 `cos(midLat)`）：不乘的话北纬 60 度会多算一倍，
+那正好是「送得到」与「送不到」的分界。
+
+### 顺手修了一个卡着两条闸门的生成器
+
+`backend/scripts/gen-test-schema.py` 撞上 `SELECT 1;` 就 `SystemExit` ——
+而 V318 是一条**纯注记迁移**（它存在只是为了给 V315 留一句「已应用的迁移是冻结的」），
+Flyway 要求文件里有条能跑的语句，于是 body 就是 `SELECT 1;`。
+
+后果是两条：`check-generated-docs` 恒红，以及**测试库 schema 加不了新列**
+（我的后端测试一开始四条全红，报的是 `10500`）。
+
+判据刻意收得很紧：**不带 `FROM`、且选的是字面量**才跳过。
+一律按前缀 `select` 放过的话，`INSERT … SELECT` 那类真回填也会被静默丢掉 ——
+那正是这个脚本开头写着「不认识的语句必须炸」要防的事。
+
+修好之后 `check-generated-docs` 第一次真正跑起来，报出四个过期产物。
+三个是我的（`openapi-b.yaml` 因为 `MerchantCapability` 是三端共享的、
+`C端功能点` 因为新页面用了 `nearbyCommunities`、`ui-lib.json` 的计数）。
+**`数据库表清单.md` 里 `ord_sub_order` 49→51 那一行不是我的** ——
+是 V317（佣金归属快照）加的两列，V318 紧接着把生成器搞哑了，所以一直没人发现。
+产物只能整份重生成，所以那一行跟着一起提交了。
 
 ---
 
@@ -382,9 +447,12 @@ H5 能验的正是**降级那一半**，而降级恰恰是最容易写错、也�
 
 1. ~~**A2 是新开一页还是 A 页内的一层？**~~ **已定：新开一页**（2026-09-03 落地）。
    `pages.json` + `ROUTES` + ui-catalog 各加了一条。
-2. **门牌号必填，对存量地址怎么办？** 建议：只在**新增/编辑保存时**必填，不回头拦存量地址的使用。
-3. **上限 20 是否合适？** 对标值。若担心「一个人给多位亲属寄」的场景，可放到 30。
-4. **B 模式置灰要往哪儿加字段？** 已查：`MerchantCapability`
+2. ~~**门牌号必填，对存量地址怎么办？**~~ **已定**：端上在新增/编辑保存时必填，
+   后端不必填（老版本 App 不发这个字段），存量地址照旧可用、`houseNo` 为空只显示 `detail`。
+3. **上限 20 是否合适？**（仍待你拍）已按 20 落地，端上后端各一份且守卫盯着两者相等。
+   若担心「一个人给多位亲属寄」的场景，改 `AddressService.MAX_ADDRESSES` 与
+   `ADDRESS_RULES.maxCount` 两处即可 —— 只改一处会让按钮还亮着、点下去被拒。
+4. ~~**B 模式置灰要往哪儿加字段？**~~ **已定并落地**：`MerchantCapability`
    （`packages/shared/src/types/merchant.ts:394`）只有 `merchantNo / merchantName /
    invoiceCapable / payMethods / quotaExhausted / quotaWouldExceed`，**没有自送圆心与半径**。
    建议在这里补三个字段（`deliveryLatE6 / deliveryLngE6 / deliveryRadiusM`，都可空）——

@@ -389,7 +389,7 @@
       },
       "usage": {
         "b-app": 82,
-        "c-app": 29
+        "c-app": 30
       }
     },
     {
@@ -413,7 +413,7 @@
       },
       "usage": {
         "b-app": 97,
-        "c-app": 6
+        "c-app": 8
       }
     },
     {
@@ -513,7 +513,7 @@
       },
       "usage": {
         "b-app": 248,
-        "c-app": 112
+        "c-app": 114
       }
     },
     {
@@ -545,7 +545,7 @@
       },
       "usage": {
         "b-app": 118,
-        "c-app": 67
+        "c-app": 68
       }
     },
     {
@@ -739,7 +739,7 @@
       },
       "usage": {
         "b-app": 23,
-        "c-app": 18
+        "c-app": 20
       }
     },
     {
@@ -799,7 +799,7 @@
       },
       "usage": {
         "b-app": 68,
-        "c-app": 54
+        "c-app": 59
       }
     },
     {
@@ -821,7 +821,7 @@
       },
       "usage": {
         "b-app": 248,
-        "c-app": 198
+        "c-app": 205
       }
     },
     {
@@ -953,7 +953,7 @@
       },
       "usage": {
         "b-app": 84,
-        "c-app": 84
+        "c-app": 87
       }
     },
     {
@@ -1039,7 +1039,7 @@
       },
       "usage": {
         "b-app": 195,
-        "c-app": 63
+        "c-app": 68
       }
     },
     {
@@ -1433,7 +1433,7 @@
       },
       "usage": {
         "b-app": 95,
-        "c-app": 14
+        "c-app": 16
       }
     },
     {
@@ -1766,7 +1766,7 @@
       ],
       "usage": {
         "b-app": 68,
-        "c-app": 29
+        "c-app": 30
       },
       "note": "页面外壳",
       "why": "**每页根元素必须是它** —— 否则小程序端换肤 / RTL / 三语标题全不生效"
@@ -3112,9 +3112,22 @@
         "sh-switch",
         "biz-region-picker"
       ],
-      "libClassHits": 36,
+      "libClassHits": 40,
       "localSelectors": 12,
       "localCssLines": 45,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "address-pick",
+      "key": "c-app/address-pick",
+      "file": "c-app/src/pages/address-pick/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 25,
+      "localSelectors": 8,
+      "localCssLines": 29,
       "rolled": []
     },
     {
@@ -3429,9 +3442,9 @@
         "sh-scaffold",
         "sh-switch"
       ],
-      "libClassHits": 103,
-      "localSelectors": 28,
-      "localCssLines": 118,
+      "libClassHits": 104,
+      "localSelectors": 29,
+      "localCssLines": 123,
       "rolled": []
     },
     {
@@ -3636,7 +3649,7 @@
     "tokens": 10,
     "blocks": 63,
     "components": 33,
-    "pages": 97,
+    "pages": 98,
     "gapKinds": 0
   }
 }

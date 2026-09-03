@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pickedAddress, pickedPlace, placeFrom } from "@/shared/address-pick";
+import { metersBetweenE6, withinDeliveryRange } from "@shared/utils/geo";
+import { ADDRESS_RULES } from "@shared/utils/constants";
 
 /** 判之前剥注释：解释规则的那句话自己也要能通过规则 */
 function code(rel: string): string {
@@ -151,9 +153,12 @@ describe("选点页：把「选」提为主路", () => {
     /*
      * H5 既没有原生搜索、也没配地图 JS key。不判这一下的话，
      * 那一页对他只剩一行「手动填写」—— 白挡一次点击，比改造前更差。
+     *
+     * 断言的是**这条性质**，不是某一种写法：canPick 为假时开表单、为真时才跳选点页。
+     * （canPick 自己由那两个端能力算出来，另一条守卫在管。）
      */
-    expect(body).toMatch(/canSearchPlaces\(\)[\s\S]{0,60}canChooseLocation\(\)/);
-    expect(body).toContain("openNew()");
+    expect(body).toMatch(/!canPick\.value[\s\S]{0,80}openNew\(\)/);
+    expect(body).toContain("ROUTES.addressPick");
   });
 
   it("★★★ 选点页交回来的地点要带坐标落进草稿", () => {
@@ -199,5 +204,94 @@ describe("选点页：把「选」提为主路", () => {
   it("★★ 模糊定位时不许显示距离 —— 假精确比不显示更糟", () => {
     // 区级坐标误差约 5 公里，而用户会照着「733m」去挑最近的那个
     expect(pickPage).toMatch(/v-if="!coarse && c\.distance"/);
+  });
+});
+
+/**
+ * 送不到就别让他填完再撞墙。
+ *
+ * <p>后端在**创建订单那一刻**拦（`requireWithinDeliveryRadius`），
+ * 而此前端上完全不知道这件事：用户挑地址、填完整页、点提交，才收到
+ * `OUT_OF_DELIVERY_RANGE` —— 那时他既不知道是哪家送不到，也不知道该换哪个地址。
+ *
+ * <p><b>这几条直接跑算法，不扫源码</b>：要守的是「与后端同一个口径」，
+ * 而口径是算出来的，不是写出来的。
+ */
+describe("送不到要提前说 —— 且口径与后端一字不差", () => {
+  const origin = { deliveryLatE6: 30_000_000, deliveryLngE6: 120_000_000, deliveryRadiusM: 3000 };
+
+  it("★★★ 三条放行必须与后端一致 —— 端上比后端严会把好单挡在门外", () => {
+    // ① 地址没坐标（存量地址全是这样）
+    expect(withinDeliveryRange(origin, { latE6: null, lngE6: null })).toBe(true);
+    // ② 门店没在地图上标过点
+    expect(withinDeliveryRange({}, { latE6: 31_000_000, lngE6: 121_000_000 })).toBe(true);
+    // ③ 半径 ≤ 0 = 不限距离
+    expect(withinDeliveryRange({ ...origin, deliveryRadiusM: 0 }, { latE6: 31_000_000, lngE6: 121_000_000 }))
+      .toBe(true);
+  });
+
+  it("★★★ 圈内放行、圈外拦下", () => {
+    // 约 1 公里：0.009 度纬度 ≈ 1002 米
+    expect(withinDeliveryRange(origin, { latE6: 30_009_000, lngE6: 120_000_000 })).toBe(true);
+    // 约 5.6 公里，超出 3 公里
+    expect(withinDeliveryRange(origin, { latE6: 30_050_000, lngE6: 120_000_000 })).toBe(false);
+  });
+
+  it("★★★ 经度间距要随纬度收缩 —— 不乘 cos 会在高纬度多算出几百米", () => {
+    /*
+     * 后端 metersBetween 乘了 cos(midLat)，端上不乘的话同一个点会被算远，
+     * 于是「后端说送得到、端上说送不到」——用户看着一个自相矛盾的界面。
+     * 在北纬 60 度，一度经度只有赤道的一半。
+     */
+    const far = metersBetweenE6(60_000_000, 0, 60_000_000, 1_000_000);
+    const equator = metersBetweenE6(0, 0, 0, 1_000_000);
+    expect(far).toBeLessThan(equator * 0.6);
+    expect(far).toBeGreaterThan(equator * 0.4);
+  });
+});
+
+/**
+ * 门牌号是**端上必填、后端不必填**。
+ *
+ * <p>后端要着 `@NotBlank` 的话，还没更新的老版本 App（它压根不发这个字段）
+ * 连「改个手机号」都保存不了 —— 一个纯粹由这次改动造成的故障，
+ * 而用户那边只看到「保存失败」。
+ */
+describe("门牌号与地址簿上限", () => {
+  const addressPage = code("src/pages/address/index.vue");
+
+  it("★★★ 门牌号在端上必填", () => {
+    const body = bodyOf(addressPage, "const valid = computed(");
+    expect(body, "valid 不见了").not.toBeNull();
+    expect(body).toContain("draft.value.houseNo");
+  });
+
+  it("★★★ 地址主体只在**能选点的端**上只读 —— 否则 H5 用户永远存不了地址", () => {
+    /*
+     * 地址主体是跟坐标一起来的。在表单里随手改几个字，坐标不会跟着动 ——
+     * 于是「文字写着 A、坐标指着 B」，而页面上完全看不出来。
+     * 但没有任何选点路的端（H5）必须保持可输入，否则他连存量地址都改不了。
+     */
+    expect(addressPage).toMatch(/:disabled="canPick"/);
+    expect(addressPage).toMatch(/canSearchPlaces\(\) \|\| canChooseLocation\(\)/);
+  });
+
+  it("★★ 到上限时按钮上就说清楚，不等他填完才拒", () => {
+    expect(addressPage).toContain("ADDRESS_RULES.maxCount");
+    expect(addressPage).toMatch(/atLimit/);
+  });
+
+  it("★★★ 上限端上后端各一份，且必须是同一个数", () => {
+    /*
+     * 端上这份只管把按钮提前置灰，后端那份才是真闸（老版本 App 不知道有这回事）。
+     * 两处对不上的表现：按钮还亮着，点下去被拒，而用户看不出自己哪里做错了。
+     */
+    const backend = readFileSync(
+      resolve(__dirname, "../../backend/shop-core/src/main/java/ai/neargo/shop/user/service/AddressService.java"),
+      "utf-8",
+    );
+    const m = backend.match(/int MAX_ADDRESSES = (\d+)/);
+    expect(m, "后端的 MAX_ADDRESSES 不见了").not.toBeNull();
+    expect(Number(m![1])).toBe(ADDRESS_RULES.maxCount);
   });
 });

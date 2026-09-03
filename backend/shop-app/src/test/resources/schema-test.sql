@@ -1283,6 +1283,7 @@ CREATE TABLE IF NOT EXISTS usr_address
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     region VARCHAR(96) NULL,
+    house_no VARCHAR(40) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_address_id UNIQUE (address_id)
 );

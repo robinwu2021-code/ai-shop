@@ -483,6 +483,19 @@ public enum ErrorCode {
     PERSON_PHONE_TAKEN(70038, "err.user.person_phone_taken"),
 
     /**
+     * 地址簿满了。
+     *
+     * <p><b>单独一个码而不是复用 BAD_REQUEST</b>：端上收到它要说的是
+     * 「删一条再加」，而 BAD_REQUEST 对应的话术是「请求参数有误」——
+     * 后者会让用户去反复检查自己填的字，而他填的每一个字都是对的。
+     *
+     * <p>上限本身在端上就拦了（按钮会置灰）。这条是第二道：
+     * 还没更新的老版本 App 不知道有这回事，而地址簿无限长之后
+     * 结算页那个选地址的列表就没法用了。
+     */
+    ADDRESS_LIMIT_EXCEEDED(70048, "err.user.address_limit_exceeded"),
+
+    /**
      * 要成为会员，先得有一个已验证的手机号。
      *
      * <p><b>这不是校验失败，是一次引导</b>：端上收到它就弹一次手机号授权

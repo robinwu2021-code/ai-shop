@@ -35,6 +35,15 @@ public class UsrAddress extends BaseEntity {
     private String district;
     private String detail;
 
+    /**
+     * 门牌号（楼号-单元-室），V319 从 {@code detail} 里分出来。
+     *
+     * <p><b>与 detail 的区别不是长短，是来源</b>：地址主体现在由选点页给出（带坐标），
+     * 门牌只能手打。合在一列里时，用户改一个字就可能让坐标与文字对不上，而没地方看得出来。
+     * 存量地址这一列为空 —— 照旧只显示 detail 那一串。
+     */
+    private String houseNo;
+
     private Integer latE6;
     private Integer lngE6;
 

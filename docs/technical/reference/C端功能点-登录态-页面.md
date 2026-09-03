@@ -36,7 +36,7 @@
 | `cartRemove` | `POST /mp/cart/remove` | 是 | (stores) | — |
 | `cartUpdate` | `POST /mp/cart/update` | 是 | (stores) | — |
 | `allCommunities` | `GET /mp/community` | 游客 | (stores) | — |
-| `nearbyCommunities` | `GET /mp/community/nearby` | 游客 | (stores) | — |
+| `nearbyCommunities` | `GET /mp/community/nearby` | 游客 | (stores) · address-pick | — |
 | `openRegions` | `GET /mp/community/regions` | 游客 | (stores) | — |
 | `couponList` | `GET /mp/coupon` | 游客 | coupons · order-confirm | — |
 | `receiveCoupon` | `POST /mp/coupon/:couponNo/receive` | 是 | coupons | — |

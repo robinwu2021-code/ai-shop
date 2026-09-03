@@ -451,6 +451,8 @@ export default {
   },
 
   confirm: {
+    /** 点名是哪一家送不到——车里有三家店时，只说「超出范围」他不知道该改什么 */
+    outOfRange: "{names} 送不到这个地址，换个地址或把这家的货挪出这一单",
     pickCoupon: "选择优惠券",
     pickSlot: "选择上门时间",
     pickPickupFirst: "先选一个自提点",
@@ -672,6 +674,8 @@ export default {
     remove: "删除",
     removeTitle: "删除地址",
     add: "新增地址",
+    /** 到上限时按钮上就是这句，别等他填完才说 */
+    limitReached: "最多 {n} 条，删一条再加",
     empty: "还没有收货地址",
     name: "收货人姓名",
     phone: "手机号",
@@ -687,7 +691,10 @@ export default {
     regionEmpty: "这一级暂时没有可选项",
     regionFailed: "区划没加载出来，可以重试或直接手填",
     regionIncomplete: "请把省 / 市 / 区选完整",
-    detail: "详细地址（街道门牌）",
+    detail: "详细地址（小区 / 写字楼）",
+    /** 与 detail 分开：那个是地址主体（带坐标），这个是最后 50 米（只能手打） */
+    houseNo: "门牌号（如 3 幢 2 单元 601）",
+    repickPlace: "重选",
     tagPh: "标签（选填，如 家 / 公司）",
     asDefault: "设为默认地址",
     invalid: "请填写完整信息，手机号需 11 位",

@@ -13,7 +13,7 @@ import { isPhone, notBlank } from "@shared/utils/validate";
 import { pickedAddress, pickedPlace } from "@/shared/address-pick";
 import type { PlacePick } from "@/shared/address-pick";
 import { canSearchPlaces } from "@shared/ports/geo-search";
-import { ROUTES } from "@shared/utils/constants";
+import { ADDRESS_RULES, ROUTES } from "@shared/utils/constants";
 import { isCompleteRegion, joinRegion, splitRegion } from "@shared/utils/region";
 
 const { t } = useI18n();
@@ -31,6 +31,7 @@ const draft = ref<Omit<Address, "addressId"> & { addressId?: string }>({
   city: "",
   district: "",
   detail: "",
+  houseNo: "",
   isDefault: false,
   tag: "",
   latE6: null,
@@ -135,7 +136,12 @@ const valid = computed(
     // 此前是 `/^\d{11}$/` —— 只查长度，`00000000000` 一路存进地址簿
     isPhone(draft.value.phone) &&
     notBlank(draft.value.region) &&
-    notBlank(draft.value.detail),
+    notBlank(draft.value.detail) &&
+    /*
+     * 门牌号**端上必填**。后端刻意没有 @NotBlank：还没更新的老版本 App 压根不发这个字段，
+     * 后端要着的话它连「改个手机号」都保存不了。所以这条闸只在这里。
+     */
+    notBlank(draft.value.houseNo ?? ""),
 );
 
 async function load() {
@@ -154,6 +160,7 @@ function openNew(place?: PlacePick) {
     city: place?.city ?? "",
     district: place?.district ?? "",
     detail: place?.name ?? "",
+    houseNo: "",
     isDefault: !list.value.length, tag: "",
     latE6: place?.latE6 ?? null,
     lngE6: place?.lngE6 ?? null,
@@ -168,16 +175,37 @@ function openNew(place?: PlacePick) {
  * 也没配地图 JS key）。否则那一页对他只剩一行「手动填写」，
  * 白挡一次点击，比改造前更差。
  */
+/**
+ * 这个端有没有任何一条选点路。**同一个判断供两处用**：
+ * 「新增」要不要进选点页，以及表单里的地址主体要不要设成只读。
+ * 两处分开写的话，H5 上会出现「进不了选点页、地址主体却锁着」——他就永远存不了地址。
+ */
+const canPick = computed(() => canSearchPlaces() || canChooseLocation());
+
+/** 到上限了。真正的闸在后端（老版本 App 不知道有这回事），这里只是提前说一声 */
+const atLimit = computed(() => list.value.length >= ADDRESS_RULES.maxCount);
+
 function addNew() {
-  if (!canSearchPlaces() && !canChooseLocation()) {
+  if (atLimit.value) {
+    uni.showToast({ title: String(t("address.limitReached", { n: ADDRESS_RULES.maxCount })), icon: "none" });
+    return;
+  }
+  if (!canPick.value) {
     openNew();
     return;
   }
   uni.navigateTo({ url: ROUTES.addressPick });
 }
 
+/** 从表单里回选点页重选地址主体。草稿留着 —— 姓名手机他已经填了 */
+function repick() {
+  editing.value = false;
+  uni.navigateTo({ url: ROUTES.addressPick });
+}
+
 function openEdit(a: Address) {
-  draft.value = { ...a };
+  // houseNo 存量为 null，直接绑到 input 上会显示 "null"
+  draft.value = { ...a, houseNo: a.houseNo ?? "" };
   editing.value = true;
 }
 
@@ -257,7 +285,7 @@ onShow(() => {
           {{ $t("address.default") }}
         </text>
       </view>
-      <text class="txt-caption card__addr">{{ a.region }} {{ a.detail }}</text>
+      <text class="txt-caption card__addr">{{ a.region }} {{ a.detail }} {{ a.houseNo }}</text>
 
       <view class="card__ops">
         <text
@@ -277,7 +305,9 @@ onShow(() => {
     <sh-empty bare v-if="!list.length" :text='$t("address.empty")'></sh-empty>
 
     <sh-actionbar :pad="160">
-      <view class="sh-btn" @tap="addNew">{{ $t("address.add") }}</view>
+      <view class="sh-btn" :class="{ 'is-disabled': atLimit }" @tap="addNew">
+        {{ atLimit ? $t("address.limitReached", { n: ADDRESS_RULES.maxCount }) : $t("address.add") }}
+      </view>
     </sh-actionbar>
 
     <!-- 编辑弹层 -->
@@ -311,7 +341,30 @@ onShow(() => {
           <!-- #endif -->
         </view>
         <text v-if="regionUnsplit" class="sh-hint">{{ $t("address.regionIncomplete") }}</text>
-        <input maxlength="255" v-model="draft.detail" class="field__input" :placeholder="$t('address.detail')" />
+        <!--
+          地址主体：能选点的端上**只读**，改要回选点页。
+          它是跟坐标一起来的，在这里随手改几个字，坐标不会跟着动 ——
+          于是「文字写着 A、坐标指着 B」，而页面上完全看不出来。
+          没有任何选点路的端（H5）保持可输入，否则他连存量地址都改不了。
+        -->
+        <view class="regionrow sh-row">
+          <input
+            maxlength="255"
+            v-model="draft.detail"
+            class="field__input sh-fill"
+            :disabled="canPick"
+            :placeholder="$t('address.detail')"
+          />
+          <text v-if="canPick" class="txt-caption regionrow__pick" @tap="repick">
+            {{ $t("address.repickPlace") }}
+          </text>
+        </view>
+        <input
+          maxlength="40"
+          v-model="draft.houseNo"
+          class="field__input"
+          :placeholder="$t('address.houseNo')"
+        />
         <input maxlength="16" v-model="draft.tag" class="field__input" :placeholder="$t('address.tagPh')" />
 
         <view class="switchrow sh-row sh-row--between" @tap="draft.isDefault = !draft.isDefault">

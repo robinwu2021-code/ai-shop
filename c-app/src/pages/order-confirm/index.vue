@@ -18,6 +18,7 @@ import { useCommunityStore } from "@/stores/community";
 import { useUserStore } from "@/stores/user";
 import PhoneGate from "@/components/phone-gate.vue";
 import { FEATURES, FULFILLMENT, PAY_MODE, POINTS, ROUTES, TRADE_RULES } from "@shared/utils/constants";
+import { withinDeliveryRange } from "@shared/utils/geo";
 import { datetime, money } from "@shared/utils/format";
 import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
 // 券能减多少与后端同一套算法算 —— 两处各写一遍就会出现「页面说减 8，付完只减 5」
@@ -169,6 +170,22 @@ const serverAmount = ref<OrderAmount | null>(null);
  * 点了支付之后才知道，而那时候平台既解释不清也补救不了。
  */
 const capability = ref<CheckoutCapability | null>(null);
+
+/**
+ * 这一单里**送不到这个地址**的商家。空数组 = 都送得到。
+ *
+ * <p>此前端上完全不知道这件事：用户挑地址、填完、点提交，才撞上后端的
+ * `OUT_OF_DELIVERY_RANGE` —— 而那时他既不知道是哪家送不到，也不知道该换哪个地址。
+ *
+ * <p>口径与后端 `requireWithinDeliveryRadius` 共用一份实现（`withinDeliveryRange`），
+ * **三条放行一字不差**。只在自送单上判：快递、自提都不受自送半径约束。
+ */
+const outOfRange = computed(() => {
+  if (fulfillment.value !== FULFILLMENT.DELIVERY) return [];
+  const a = address.value;
+  if (!a) return [];
+  return (capability.value?.merchants ?? []).filter((m) => !withinDeliveryRange(m, a));
+});
 
 /** 开不了票的商家。买完才发现开不了票，平台补救不了 —— 必须在付款前说。 */
 const noInvoiceMerchants = computed(
@@ -361,7 +378,9 @@ const canSubmit = computed(
     // 没选时段就提交，后端会拒 —— 在这里灰掉按钮，别让他撞一次
     && (!needAppointment.value || !!appointmentAt.value)
     // 一种支付方式都没有 / 有商家额度过不去：拦在这里，别让他撞一个说不清的「支付失败」
-    && !noPayMethod.value && quotaBlocked.value.length === 0,
+    && !noPayMethod.value && quotaBlocked.value.length === 0
+    // 送不到就别让他点下去：后端在创建那一刻会拒，而那时他已经填完了整页
+    && outOfRange.value.length === 0,
 );
 
 async function loadAddresses() {
@@ -537,7 +556,16 @@ onMounted(async () => {
             <text class="txt-caption sh-num">{{ address.phone }}</text>
             <text class="txt-caption recv__more">{{ $t("confirm.change") }}</text>
           </view>
-          <text class="txt-caption recv__sub">{{ address.region }} {{ address.detail }}</text>
+          <text class="txt-caption recv__sub">
+            {{ address.region }} {{ address.detail }} {{ address.houseNo }}
+          </text>
+          <!--
+            送不到要**点名是哪一家**。只说「超出配送范围」的话，
+            车里有三家店时他不知道该换地址还是该把某一家的货拿出来。
+          -->
+          <text v-if="outOfRange.length" class="txt-caption recv__warn">
+            {{ $t("confirm.outOfRange", { names: outOfRange.map((m) => m.merchantName).join("、") }) }}
+          </text>
         </template>
         <view v-else class="recv__empty sh-row">
           <text class="txt-body recv__empty-text sh-row">{{ $t("confirm.pickAddress") }}</text>
@@ -779,6 +807,11 @@ onMounted(async () => {
 .recv__sub {
   display: block;
   margin-top: 8rpx;
+}
+.recv__warn {
+  display: block;
+  margin-top: 8rpx;
+  color: var(--sh-danger-text);
 }
 .recv__empty-text {
   flex: 1;
