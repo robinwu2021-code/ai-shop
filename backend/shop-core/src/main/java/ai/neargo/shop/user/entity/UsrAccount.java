@@ -38,6 +38,13 @@ public class UsrAccount extends BaseEntity {
     private String communityNo;
     private String pickupNo;
 
+    /**
+     * 当前生效位置（{@code usr_address.address_id}）。**与 is_default 是两回事**：
+     * 默认是「下单预填哪个收货人」，生效是「现在按哪儿看货」——
+     * 给父母下单时切到父母家看货，而默认收货人仍是自己。
+     */
+    private String activeAddressId;
+
     /** 常去店（进店归因，C-ST-09/10）。 */
     private String entityNo;
 

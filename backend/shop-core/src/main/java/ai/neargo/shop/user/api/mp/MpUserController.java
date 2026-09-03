@@ -179,6 +179,31 @@ public class MpUserController {
         return userService.updateProfile(req.nickname(), req.avatar());
     }
 
+    // ---------------------------------------------------------------- 当前生效位置
+
+    /**
+     * 读当前生效位置。**返回可能是 null** —— 新用户一个位置都没有，
+     * 那不是异常：首页要照常有东西看（平台推荐 + 全局在售），
+     * 而不是空白等他去选（见 TDD-多位置单生效 §5-三）。
+     */
+    @GetMapping("/active-address")
+    public AddressVO activeAddress() {
+        return addressService.activeAddress();
+    }
+
+    /**
+     * 切换当前生效位置。
+     *
+     * <p><b>它不动 is_default。</b> 「默认」是下单预填哪个收货人，
+     * 「生效」是现在按哪儿看货 —— 给父母下单时切到父母家看货，
+     * 而默认收货人仍是自己。两者合成一个的后果是改了一个另一个跟着变，
+     * 而用户不会预期这件事。
+     */
+    @PostMapping("/active-address/{addressId}")
+    public AddressVO switchActiveAddress(@PathVariable String addressId) {
+        return addressService.switchActiveAddress(addressId);
+    }
+
     // ---------------------------------------------------------------- 地址簿
 
     @GetMapping("/address")

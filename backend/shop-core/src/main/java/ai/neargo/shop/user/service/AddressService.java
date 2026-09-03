@@ -24,6 +24,18 @@ public interface AddressService {
     List<AddressVO> setDefault(String addressId);
 
     /**
+     * 当前生效位置。**没有就是 null**，那不是异常：新用户一个位置都没有，
+     * 首页照常要有东西看，而不是空白等他去选。
+     */
+    AddressVO activeAddress();
+
+    /**
+     * 切换当前生效位置。**不动 {@code is_default}** ——
+     * 默认是「下单预填哪个收货人」，生效是「现在按哪儿看货」，两者会不一样。
+     */
+    AddressVO switchActiveAddress(String addressId);
+
+    /**
      * @param latE6 收货地址坐标（gcj02，E6）。<b>null = 这次不改</b> ——
      *              老版本端上不传这两个字段，把缺省当清空会把已标好的点抹掉。
      *              这两列 V1 就建了（注释写着「配送范围校验用」），但在此之前<b>全链路无人写入</b>，

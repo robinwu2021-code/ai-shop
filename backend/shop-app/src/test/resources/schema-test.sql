@@ -1550,6 +1550,7 @@ CREATE TABLE IF NOT EXISTS usr_account
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    active_address_id VARCHAR(32) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_user_no UNIQUE (user_no),
     CONSTRAINT uk_openid UNIQUE (openid),

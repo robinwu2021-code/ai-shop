@@ -9,6 +9,8 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.user.dto.AddressVO;
 import ai.neargo.shop.user.entity.UsrAddress;
 import ai.neargo.shop.user.mapper.UserMappers.AddressMapper;
+import ai.neargo.shop.user.mapper.UserMappers.UserMapper;
+import ai.neargo.shop.user.entity.UsrAccount;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,9 +21,12 @@ import java.util.List;
 public class AddressServiceImpl implements AddressService {
 
     private final AddressMapper addressMapper;
+    /** 生效位置存在 usr_account 上（用户级单值），所以这里要它 */
+    private final UserMapper userMapper;
 
-    public AddressServiceImpl(AddressMapper addressMapper) {
+    public AddressServiceImpl(AddressMapper addressMapper, UserMapper userMapper) {
         this.addressMapper = addressMapper;
+        this.userMapper = userMapper;
     }
 
     @Override
@@ -80,6 +85,37 @@ public class AddressServiceImpl implements AddressService {
         addressMapper.updateById(row);
         clearOtherDefaults(addressId);
         return list();
+    }
+
+    @Override
+    public AddressVO activeAddress() {
+        UsrAccount me = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                .eq(UsrAccount::getUserNo, SecurityUtils.currentUserNo())
+                .last("limit 1"));
+        String id = me == null ? null : me.getActiveAddressId();
+        if (id == null || id.isBlank()) {
+            return null; // 新用户没有位置 —— 不是异常，首页照常有东西看
+        }
+        UsrAddress row = addressMapper.selectOne(Wrappers.<UsrAddress>lambdaQuery()
+                .eq(UsrAddress::getAddressId, id)
+                .eq(UsrAddress::getUserNo, SecurityUtils.currentUserNo())
+                .last("limit 1"));
+        /*
+         * **指向的地址被删了就当作没有**，不要抛。
+         * 用户在地址簿里删掉了当前生效的那条是完全正常的操作，
+         * 而让首页因此报错、或让他从此打不开首页，是把一个正常动作变成故障。
+         */
+        return row == null ? null : AddressVO.forOwner(row);
+    }
+
+    @Override
+    public AddressVO switchActiveAddress(String addressId) {
+        UsrAddress row = requireOwn(addressId); // 顺带挡住「切到别人的地址」
+        userMapper.update(null, Wrappers.<UsrAccount>lambdaUpdate()
+                .eq(UsrAccount::getUserNo, SecurityUtils.currentUserNo())
+                .set(UsrAccount::getActiveAddressId, addressId));
+        // 刻意不碰 isDefault：它回答的是另一个问题（下单预填谁）
+        return AddressVO.forOwner(row);
     }
 
     /**
