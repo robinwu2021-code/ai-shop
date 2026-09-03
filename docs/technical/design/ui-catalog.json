@@ -1298,7 +1298,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 142,
+      "count": 143,
       "domains": [
         {
           "name": "经营看板",
@@ -1756,6 +1756,18 @@
               "status": "已实现",
               "proto": null,
               "preview": "http://localhost:3000/inventory?tab=recon"
+            },
+            {
+              "app": "ops-web",
+              "route": "/inventory?tab=link-health",
+              "title": "链路健康",
+              "domain": "进销存",
+              "group": "链路",
+              "matrix": "P-18.5",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/inventory?tab=link-health"
             },
             {
               "app": "ops-web",
@@ -3072,5 +3084,5 @@
       ]
     }
   ],
-  "total": 248
+  "total": 249
 }

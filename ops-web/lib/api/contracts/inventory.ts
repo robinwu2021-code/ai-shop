@@ -1,6 +1,6 @@
 // 进销存（P-18）—— `/ops/inventory/**`。**独立模块**：与商品域不共契约文件，
 // 它将来要能单独交付。
-import type { InvBalanceRow, InvHealthRow, InvLedgerPage, InvReconReport, InvCredential, InvCredentialIssued } from "@/lib/types";
+import type { InvBalanceRow, InvHealthRow, InvLedgerPage, InvReconReport, InvCredential, InvCredentialIssued, InvLinkHealth } from "@/lib/types";
 
 export interface InventoryApi {
   // **库存本身仍然只读**：运营不改商家库存 —— 改了之后「这个数是谁改的」
@@ -16,6 +16,12 @@ export interface InventoryApi {
    * 这三类商品**正在给买家制造失败的下单** —— 点进去、加购、然后发现买不了。
    */
   listInvHealth(q?: { kind?: InvHealthRow["kind"]; limit?: number }): Promise<InvHealthRow[]>;
+
+  /**
+   * 投影链路健康度（M3）。**恒返回两行**（两条方向各一行）——
+   * 少一行是查不到，不是那条链路没事。
+   */
+  invLinkHealth(): Promise<InvLinkHealth[]>;
 
   /**
    * **某一个商家**的库存待办（健康度页点进一行之后看的）。

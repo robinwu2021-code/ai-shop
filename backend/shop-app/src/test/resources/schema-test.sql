@@ -8553,3 +8553,14 @@ SELECT 'SUPER_ADMIN', 'OPS_MERCHANT__TAB_CHAIN', 'OPS', NOW(), NOW() FROM DUAL
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'BD', 'OPS_MERCHANT__TAB_CHAIN', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='BD' AND x.point_code='OPS_MERCHANT__TAB_CHAIN');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_INVENTORY__TAB_LINK_HEALTH', 'OPS_INVENTORY', '链路健康', '链路', '/inventory?tab=link-health', 'inventory:stock:read', 'inventory:stock:read', 'IMPLEMENTED', 1, 'P-18.5', 'MENU', 35, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_INVENTORY__TAB_LINK_HEALTH');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT r.role_code, 'OPS_INVENTORY__TAB_LINK_HEALTH', 'OPS', NOW(), NOW()
+  FROM sys_role_point r
+ WHERE r.point_code = 'OPS_INVENTORY__TAB_RECON' AND r.end_code = 'OPS'
+   AND NOT EXISTS (SELECT 1 FROM sys_role_point x
+                    WHERE x.role_code = r.role_code
+                      AND x.point_code = 'OPS_INVENTORY__TAB_LINK_HEALTH'
+                      AND x.end_code = 'OPS');

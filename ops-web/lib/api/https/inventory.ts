@@ -1,6 +1,6 @@
 // 覆盖范围：进销存（P-18）。**库存本身只读**；开放对接的钥匙是唯一的写口，
 // 它改的不是货，是「谁能读这些货」。
-import type { InvBalanceRow, InvCredential, InvCredentialIssued, InvHealthRow, InvLedgerPage, InvReconReport } from "@/lib/types";
+import type { InvLinkHealth, InvBalanceRow, InvCredential, InvCredentialIssued, InvHealthRow, InvLedgerPage, InvReconReport } from "@/lib/types";
 import { client } from "../http-client";
 import type { InventoryApi } from "../contracts/inventory";
 
@@ -9,6 +9,7 @@ export const inventoryHttp: InventoryApi = {
     client.get<InvHealthRow[]>("/ops/inventory/health", {
       kind: q.kind, limit: q.limit ?? 200,
     }),
+  invLinkHealth: () => client.get<InvLinkHealth[]>("/ops/inventory/link-health"),
 
   listInvBalances: (q) =>
     client.get<InvBalanceRow[]>("/ops/inventory/balances", {

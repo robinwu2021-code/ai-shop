@@ -93,6 +93,33 @@ const zh = {
   invCredCopied: "已复制",
   invCredDone: "我已经存好了",
   invReconHowTo: "差异只有三种来源，按可能性排：① 某条写库存的路径没经过 StockPort（平台侧还有几处直接改数）② 搬运那一刻正好有单在扣，重查一次会自己好 ③ 真有 bug。",
+
+  // ── 链路健康（M3）────────────────────────────────────────────────────
+  lhHelpTitle: "这一页和「库存对差」有什么不同",
+  lhHelp:
+    "对差读的是「数据」（账上有多少、实际有多少），这一页读的是「链路」（事件投出去了没有）。"
+    + "2026-09-02 投递任务停着，一条建品事件躺了六个小时 —— 那件货在库存里不存在，"
+    + "商家看不到、盘不着、进不了货，而任何地方都不会报错；它当时的唯一痕迹是对差页上的「待搬 1 个」。"
+    + "积压里混着两种东西：「没人碰过」（投递任务没在跑）和「一直在失败」（消费者在抛异常），"
+    + "两者该找的人不同，而条数看不出区别。",
+  lhChanToInv: "平台 → 进销存",
+  lhChanToPlatform: "进销存 → 平台",
+  lhOk: "通畅",
+  lhBacklog: "处理中",
+  lhStalled: "投递没在跑",
+  lhFailing: "消费者报错",
+  lhPending: "积压",
+  lhNeverTried: "没人碰过",
+  lhNeverTriedHint: "（投递停了）",
+  lhRetrying: "反复失败",
+  lhRetryingHint: "（消费者报错）",
+  // 最老一条才是判据：积压 1 条可能只是正在处理的那一瞬
+  lhOldest: "最老一条",
+  lhLastSent: "最近成功",
+  lhNeverSent: "从没成功过",
+  lhMaxRetry: "最大重试",
+  lhLastError: "最近一条错误",
+  lhLoadFailed: "链路状态取不到 —— 这不等于链路正常，先报障",
 };
 
 const en: typeof zh = {
@@ -183,6 +210,32 @@ const en: typeof zh = {
   invCredCopy: "Copy",
   invCredCopied: "Copied",
   invCredDone: "I have saved it",
+
+  lhHelpTitle: "How this differs from reconciliation",
+  lhHelp:
+    "Reconciliation reads the data (booked vs actual). This page reads the link "
+    + "(did the event get delivered). On 2026-09-02 the dispatcher was off and one listing event "
+    + "sat for six hours — the item did not exist in inventory, the merchant could not see it, "
+    + "count it or receive stock against it, and nothing anywhere raised an error. "
+    + "A backlog holds two different things: never touched (dispatcher not running) and "
+    + "failing repeatedly (consumer throwing). They need different people, and a count cannot tell them apart.",
+  lhChanToInv: "Platform → Inventory",
+  lhChanToPlatform: "Inventory → Platform",
+  lhOk: "Clear",
+  lhBacklog: "In flight",
+  lhStalled: "Dispatcher stopped",
+  lhFailing: "Consumer erroring",
+  lhPending: "Backlog",
+  lhNeverTried: "Never touched",
+  lhNeverTriedHint: "(dispatcher off)",
+  lhRetrying: "Failing",
+  lhRetryingHint: "(consumer erroring)",
+  lhOldest: "Oldest entry",
+  lhLastSent: "Last success",
+  lhNeverSent: "Never succeeded",
+  lhMaxRetry: "Max retries",
+  lhLastError: "Latest error",
+  lhLoadFailed: "Cannot read link state — that is not the same as healthy. Report it.",
 };
 
 export const INVENTORY_COPY: PageCopy<typeof zh> = { zh, en };

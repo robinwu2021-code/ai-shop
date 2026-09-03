@@ -4977,6 +4977,65 @@ components:
         - "appSecret"
       additionalProperties: false
       description: "签发的返回。**`appSecret` 这辈子只出现这一次**"
+    InvLinkHealth: 
+      type: "object"
+      properties: 
+        channel: 
+          "$ref": "#/definitions/InvLinkChannel"
+        pending: 
+          type: "number"
+          description: "积压总数"
+        neverTried: 
+          type: "number"
+          description: "其中一次都没被投递过的（retry = 0）—— 投递任务没在跑"
+        retrying: 
+          type: "number"
+          description: "其中投过且失败过的（retry > 0）—— 消费者在抛异常"
+        oldestPendingAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "最老一条积压的产生时间。**这是判据，不是 pending 的条数** —— 积压 1 条可能只是正在处理的那一瞬，最老的躺了六小时才是断了"
+        lastSentAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "最近一次成功投递。null = 从没成功过"
+        maxRetry: 
+          type: "number"
+        lastError: 
+          type: 
+            - "string"
+            - "null"
+          description: "最近一条错误摘要，只在 retrying > 0 时有意义"
+        verdict: 
+          "$ref": "#/definitions/InvLinkVerdict"
+      required: 
+        - "channel"
+        - "pending"
+        - "neverTried"
+        - "retrying"
+        - "oldestPendingAt"
+        - "lastSentAt"
+        - "maxRetry"
+        - "lastError"
+        - "verdict"
+      additionalProperties: false
+      description: "一条投影方向的健康度（M3）。\n\n<p>与  {@link  InvReconReport }  **不是同一件事**：那一页读的是数据（账上有多少、 实际有多少），这一条读的是链路（事件投出去了没有）。2026-09-02 的教训正是 它们被混成了一个数 —— 「待搬 1 个」看起来像一条数据要补， 实际是整条投递链停了六个小时。"
+    InvLinkChannel: 
+      type: "string"
+      enum: 
+        - "PLATFORM_TO_INVENTORY"
+        - "INVENTORY_TO_PLATFORM"
+      description: "平台 → 进销存（建品投影、上架变更）· 进销存 → 平台（库存镜像回写）"
+    InvLinkVerdict: 
+      type: "string"
+      enum: 
+        - "OK"
+        - "BACKLOG"
+        - "DISPATCHER_STALLED"
+        - "CONSUMER_FAILING"
+      description: "每一档指向不同的人 —— 这正是它比「积压 N 条」多出来的那点信息"
     SettleStatus: 
       type: "string"
       enum: 
@@ -12889,6 +12948,34 @@ paths:
                     type: "array"
                     items: 
                       "$ref": "#/components/schemas/InvHealthRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/inventory/link-health": 
+    get: 
+      operationId: "invLinkHealth"
+      summary: "投影链路健康度（M3）"
+      tags: 
+        - "inventory"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/InvLinkHealth"
                 required: 
                   - "code"
                   - "msg"

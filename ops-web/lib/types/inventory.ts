@@ -181,3 +181,42 @@ export type InvHealthKind = "NEGATIVE" | "ZERO_ON_SALE" | "STALE";
 
 /** 台账方向。IN 入库 / OUT 出库 —— 与 shared 的 StockDocKind 同义，归一属另一批 */
 export type InvDocKind = "IN" | "OUT";
+
+/**
+ * 一条投影方向的健康度（M3）。
+ *
+ * <p>与 {@link InvReconReport} **不是同一件事**：那一页读的是数据（账上有多少、
+ * 实际有多少），这一条读的是链路（事件投出去了没有）。2026-09-02 的教训正是
+ * 它们被混成了一个数 —— 「待搬 1 个」看起来像一条数据要补，
+ * 实际是整条投递链停了六个小时。
+ */
+export interface InvLinkHealth {
+  channel: InvLinkChannel;
+  /** 积压总数 */
+  pending: number;
+  /** 其中一次都没被投递过的（retry = 0）—— 投递任务没在跑 */
+  neverTried: number;
+  /** 其中投过且失败过的（retry > 0）—— 消费者在抛异常 */
+  retrying: number;
+  /**
+   * 最老一条积压的产生时间。**这是判据，不是 pending 的条数** ——
+   * 积压 1 条可能只是正在处理的那一瞬，最老的躺了六小时才是断了
+   */
+  oldestPendingAt: string | null;
+  /** 最近一次成功投递。null = 从没成功过 */
+  lastSentAt: string | null;
+  maxRetry: number;
+  /** 最近一条错误摘要，只在 retrying > 0 时有意义 */
+  lastError: string | null;
+  verdict: InvLinkVerdict;
+}
+
+/** 平台 → 进销存（建品投影、上架变更）· 进销存 → 平台（库存镜像回写） */
+export type InvLinkChannel = "PLATFORM_TO_INVENTORY" | "INVENTORY_TO_PLATFORM";
+
+/** 每一档指向不同的人 —— 这正是它比「积压 N 条」多出来的那点信息 */
+export type InvLinkVerdict =
+  | "OK"
+  | "BACKLOG"
+  | "DISPATCHER_STALLED"
+  | "CONSUMER_FAILING";

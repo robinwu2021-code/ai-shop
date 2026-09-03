@@ -1,5 +1,29 @@
 // 进销存（P-18）的内存 mock。三个都只读。
-import type { InvBalanceRow, InvHealthRow, InvLedgerRow } from "@/lib/types";
+import type { InvBalanceRow, InvHealthRow, InvLedgerRow, InvLinkHealth } from "@/lib/types";
+
+/*
+ * 链路健康。**照着 09-02 那次事故编上面这条**：投递任务停着、
+ * 一条 SKU_UPSERTED 躺了六个小时、retry 一次都没涨过。
+ * mock 里放两条 OK 会让这一页看起来像个永远绿着的装饰。
+ */
+const mockLinkHealth: InvLinkHealth[] = [
+  {
+    channel: "PLATFORM_TO_INVENTORY",
+    pending: 1, neverTried: 1, retrying: 0,
+    oldestPendingAt: "2026-09-02T13:12:00",
+    lastSentAt: "2026-09-02T13:11:58",
+    maxRetry: 0, lastError: null,
+    verdict: "DISPATCHER_STALLED",
+  },
+  {
+    channel: "INVENTORY_TO_PLATFORM",
+    pending: 0, neverTried: 0, retrying: 0,
+    oldestPendingAt: null,
+    lastSentAt: "2026-09-03T08:41:20",
+    maxRetry: 0, lastError: null,
+    verdict: "OK",
+  },
+];
 import type { InventoryApi } from "../contracts/inventory";
 import { wait } from "./_wait";
 
@@ -39,6 +63,8 @@ export const inventoryMock: InventoryApi = {
         onHand: 24, reserved: 0, available: 24, safetyStock: null,
         lastMovedAt: "2026-05-26T09:00:00", flags: ["STALE"] },
     ]),
+
+  invLinkHealth: () => wait(mockLinkHealth),
 
   listInvHealth: (q = {}) =>
     wait(mockInvHealth.filter((r) => !q.kind || r.kind === q.kind).slice(0, q.limit ?? 200)),

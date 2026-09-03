@@ -22,9 +22,10 @@ import { INVENTORY_COPY } from "./copy";
 import { HealthTab } from "./health-tab";
 import { LedgerTab } from "./ledger-tab";
 import { ReconTab } from "./recon-tab";
+import { LinkHealthTab } from "./link-health-tab";
 import { CredentialsTab } from "./credentials-tab";
 
-const TAB_KEYS = ["health", "ledger", "recon", "credentials"] as const;   // 顺序与 lib/nav.ts 的叶子一致
+const TAB_KEYS = ["health", "ledger", "recon", "link-health", "credentials"] as const;   // 顺序与 lib/nav.ts 的叶子一致
 
 export default function InventoryPage() {
   return <Suspense fallback={null}><InventoryInner /></Suspense>;
@@ -42,6 +43,8 @@ function InventoryInner() {
       {tab === "health" && <HealthTab c={c} />}
       {tab === "ledger" && <LedgerTab c={c} />}
       {tab === "recon" && <ReconTab c={c} />}
+
+      {tab === "link-health" && <LinkHealthTab c={c} />}
       {tab === "credentials" && <CredentialsTab c={c} />}
     </div>
   );

@@ -205,6 +205,12 @@ export const NAV: NavSection[] = [
       { href: "/inventory", label: "库存健康度", perm: "inventory:stock:read", group: "库存治理", matrix: "P-18.1", ready: true },
       { href: "/inventory?tab=ledger", label: "库存流水", perm: "inventory:stock:read", group: "库存治理", matrix: "P-18.2", ready: true },
       { href: "/inventory?tab=recon", label: "库存对差", perm: "inventory:stock:read", group: "切换判据", matrix: "P-18.3", ready: true },
+      // 链路健康（M3）：**从「库存对差」里拆出来的**。对差读的是数据、这一页读的是链路。
+      // 09-02 投递停了六个小时，唯一痕迹是对差页上的「待搬 1 个」——
+      // 一个链路问题被折叠进了一个数据指标，而看到那个数的人推断不出链路断了。
+      // 自成一组「链路」：同 group 的叶子必须相邻，塞进「切换判据」会让那个组名
+      // 名不副实（它说的是要不要切 stock-authority，不是链路通不通）。
+      { href: "/inventory?tab=link-health", label: "链路健康", perm: "inventory:stock:read", group: "链路", matrix: "P-18.5", ready: true },
       // 页面可见判 inventory:credential:read（只读视图：哪些钥匙发过、谁在用、
       // 哪些已吊销 —— 审计要看的正是这个）。签发与吊销另判
       // inventory:credential:grant，按钮按它藏掉，不是画出来点了 403。
