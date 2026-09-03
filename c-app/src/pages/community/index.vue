@@ -39,6 +39,15 @@ const pickingRegion = ref(false);
  * 但「把你落到你那个区」它绰绰有余，而那一步正是手选省市区里最烦的一步。
  */
 const locatedRegion = ref<{ name: string; cityName: string; fuzzy: boolean } | null>(null);
+/**
+ * **这一趟的坐标是不是模糊的。** 是的话不许显示距离 ——
+ * 区级坐标（getFuzzyLocation，精度约 5 公里）算出来的「733m」是**假精确**：
+ * 数字看着确凿，实际误差比它本身还大，而用户会照着它挑最近的那个。
+ *
+ * 排序也一样不可信，但排序错了只是顺序不理想；**把误差 5 公里的结果写成
+ * 「733m」是在骗人**，所以宁可不显示。要精确就点「在地图上选择我的位置」。
+ */
+const coarse = ref(false);
 /** 已选中的区域，用于列表标题与「换个区」 */
 const region = ref<RegionOption | null>(null);
 
@@ -120,6 +129,7 @@ async function pickOnMap() {
   failed.value = false;
   try {
     located.value = true;
+    coarse.value = false; // 地图选点是米级的，这一趟可以显示距离
     pickingRegion.value = false;
     region.value = null;
     showingAll.value = false;
@@ -179,6 +189,7 @@ async function load() {
     const r = await getLocationDetailed();
     const at = r.ok ? { lat: r.coords.lat, lng: r.coords.lng, fuzzy: r.fuzzy === true } : null;
     located.value = !!at;
+    coarse.value = at?.fuzzy === true;
     await community.loadNearby(at?.lat, at?.lng);
     /*
      * **附近没有就直接把全部列出来**，而不是先给一个空页面再让他点一次「查看全部」。
@@ -371,7 +382,7 @@ onLoad(load);
           <text class="txt-strong cm__name">{{ c.name }}</text>
           <text class="txt-caption cm__addr">{{ c.address }}</text>
         </view>
-        <text class="sh-chip">{{ distance(c.distance) }}</text>
+        <text v-if="!coarse" class="sh-chip">{{ distance(c.distance) }}</text>
       </view>
 
       <view v-if="expanded === c.communityNo" class="pk-list sh-row">
@@ -391,7 +402,7 @@ onLoad(load);
             <text v-if="p.address" class="txt-caption">{{ p.address }}</text>
           </view>
           <view class="pk__right">
-            <text class="txt-caption pk__dist sh-num">{{ distance(p.distance) }}</text>
+            <text v-if="!coarse" class="txt-caption pk__dist sh-num">{{ distance(p.distance) }}</text>
             <text v-if="p.latE6 != null" class="txt-caption pk__nav" @tap.stop="navTo(p)">{{ $t("community.navigate") }}</text>
           </view>
         </view>
