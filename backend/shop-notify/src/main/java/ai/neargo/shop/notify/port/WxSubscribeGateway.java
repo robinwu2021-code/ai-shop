@@ -199,8 +199,23 @@ public class WxSubscribeGateway implements WxSubscribePort {
              * 43101 = 用户未订阅或额度已用完。领域侧扣过额度才会走到这里，出现即说明
              * 两边的账对不上（比如用户在微信设置里关了通知）—— 记下来但不重试。
              */
+            /*
+             * 47003 = 模板参数不对。**几乎总是字段名的数字后缀错了。**
+             *
+             * 公共模板库里字段名由关键词的**选择顺序**决定：先选「商品数量」
+             * 后选「商品详情」得到 number1 + thing2，反过来就是 thing1 + number2。
+             * 而这件事**在真正有人订阅之前验不出来** —— 微信是先查订阅再校验字段，
+             * 没有配额时错的字段名和对的字段名都回 43101（2026-09-03 实测，
+             * 带对照组：故意写错的一组返回了同样的码）。
+             *
+             * 所以把话说在这里：第一条真实发送失败时，让日志直接指向该去看哪儿。
+             */
+            String hint = code == 47003
+                    ? " —— 模板字段名对不上。去 mp 后台该模板的「详情」看 {{...}} 里的确切名字"
+                      + "（顺序决定数字后缀），改 WxSubscribeGateway 里 data.put 的键"
+                    : "";
             throw new WxSubscribeException(
-                    "微信拒绝：" + code + " " + strField(resp, "errmsg"), false);
+                    "微信拒绝：" + code + " " + strField(resp, "errmsg") + hint, false);
         }
         return SendResult.of(strField(resp, "msgid"), templateId);
     }
