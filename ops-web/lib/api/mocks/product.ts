@@ -236,6 +236,18 @@ export const productMock: ProductApi = {
     auditActions: 3, auditDays: q.days ?? 7,
   }),
 
+  /*
+   * 单商品全链路。**编一件「建了一半账」的** —— 那正是这一页存在的理由：
+   * 两个规格搬过去一个，商家端表现为「有些规格盘不着」，四个页面跳着看查不出来。
+   */
+  goodsChain: (goodsNo) => wait({
+    goodsNo, title: "联调-测试面条", entityNo: "M0001",
+    auditStatus: "APPROVED", onSale: true,
+    skuCount: 3, bookedSkus: 1,
+    onHand: 12, available: 9, soldCount: 27,
+    stuckAt: "NO_ACCOUNT",
+  }),
+
   listGoodsAuditQueue: (q = {}) =>
     // 队列只给待审的：已处理的属于历史，混在待办里会让人重复审
     wait(db.paginate(db.goodsAudits, q.page, q.size, (g) => g.status === "PENDING")),

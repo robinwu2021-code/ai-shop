@@ -1,3 +1,4 @@
+import type { MerchantChainStuck } from "./merchant";
 // 商品与类目域（矩阵 P-3）。商家能入驻但没有商品池时，整条交易链路是空的 —— 这块把已交付的域串起来。
 import type { Archivable } from "./common";
 
@@ -632,4 +633,30 @@ export interface ProductStats {
   /** 最近 N 天的审核动作数 —— **吞吐**，与上面三个累计数不是一回事 */
   auditActions: number;
   auditDays: number;
+}
+
+/**
+ * 单商品全链路状态（M5）。
+ *
+ * <p>「审核到哪了、建账了吗、有库存吗、卖了多少」此前要在四个页面之间跳着看，
+ * 而它们各自的主键还不一样。卡点用词与链条画像同一套 —— 分叉就是两套结论。
+ */
+export interface GoodsChain {
+  goodsNo: string;
+  title: string | null;
+  entityNo: string;
+  auditStatus: string | null;
+  onSale: boolean;
+  skuCount: number;
+  /**
+   * 其中在进销存里建了账的。**少于 skuCount 就是投影没搬全** ——
+   * 商家端的表现是「有些规格盘得着、有些盘不着」，极难自查
+   */
+  bookedSkus: number;
+  onHand: number;
+  available: number;
+  soldCount: number;
+  /** 卡在哪一层。null = 这一件是通的 */
+  /** 与链条画像用同一套词（）—— 两处分叉就是两套结论 */
+  stuckAt: import("./merchant").MerchantChainStuck | null;
 }

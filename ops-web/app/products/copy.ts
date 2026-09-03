@@ -514,6 +514,25 @@ const zh = {
   // 「平均等多久」不在这里：表上没有「什么时候审的」这一列，
   // 只有 updated_at，而商家改一版也会动它 —— 拿它算出来的平均值在量别的东西
   statsAuditNote: "通过率的分母只算审完的。「平均等多久」暂时给不出：表上没有记录审核发生的时间。",
+
+  // ── 单商品全链路（M5）────────────────────────────────────────────────
+  chainLoadFailed: "全链路状态取不到 —— 这不等于这件货什么都没有，先报障",
+  chainSecState: "审核与上架",
+  chainAudit: "审核状态",
+  chainOnSale: "在架",
+  chainYes: "是",
+  chainNo: "否",
+  chainStuck: "卡在哪一层",
+  chainClear: "通了",
+  chainSecAccount: "进销存建账",
+  chainSkus: "规格数",
+  chainBooked: "已建账",
+  // 建了一半在商家端的表现是「有些规格盘得着、有些盘不着」，极难自查
+  chainPartial: "只建了一部分",
+  chainSecStock: "库存与销量",
+  chainOnHand: "实存",
+  chainAvailable: "可用",
+  chainSold: "累计卖出",
 };
 
 const en: typeof zh = {
@@ -1000,6 +1019,23 @@ const en: typeof zh = {
   statsPending: "Awaiting review",
   statsThroughput: "Reviewed in {n} days",
   statsAuditNote: "The pass rate counts only finished reviews. Average wait is not available: the table has no column recording when a review happened.",
+
+  chainLoadFailed: "Cannot load the chain — that is not the same as this item having nothing. Report it.",
+  chainSecState: "Review & listing",
+  chainAudit: "Review status",
+  chainOnSale: "On sale",
+  chainYes: "Yes",
+  chainNo: "No",
+  chainStuck: "Broken at",
+  chainClear: "Clear",
+  chainSecAccount: "Inventory account",
+  chainSkus: "SKUs",
+  chainBooked: "Booked",
+  chainPartial: "partially booked",
+  chainSecStock: "Stock & sales",
+  chainOnHand: "On hand",
+  chainAvailable: "Available",
+  chainSold: "Sold",
 };
 
 export const PRODUCTS_COPY: PageCopy<typeof zh> = { zh, en };

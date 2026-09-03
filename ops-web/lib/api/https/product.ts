@@ -30,6 +30,7 @@ interface BackendGoods {
 
 export const productHttp: ProductApi = {
   productStats: (q = {}) => client.get("/ops/product/stats", { days: q.days ?? 7 }),
+  goodsChain: (goodsNo) => client.get(`/ops/product/${encodeURIComponent(goodsNo)}/chain`),
   listGoodsAuditQueue: (q) => client.get("/ops/goods/audit-queue", q),
   // 后端这条收的是 @RequestParam（不是 body），而 client.post 只有 (path, data) 两个参数 ——
   // 所以 entityNo 拼进查询串。encodeURIComponent 不能省：商家号虽然目前是安全字符，

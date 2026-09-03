@@ -29,6 +29,7 @@ import { CategoriesTab } from "./categories-tab";
 import { SpuStdTab } from "./spu-std-tab";
 import { TopicsTab } from "./topics-tab";
 import { StatsTab } from "./stats-tab";
+import { GoodsChainDrawer } from "./goods-chain-drawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -267,8 +268,21 @@ function ProductsInner() {
     }));
   }, [cats.data]);
 
+  const [chainOf, setChainOf] = useState<string | null>(null);
+
   const goodsColumns: Column<ProductGoods>[] = [
-    { header: c.colSkuNo, cell: (g) => <IdCell value={g.goodsNo} />, numeric: true, align: "start" },
+    {
+      // 点开看这一件的全链路（M5）。放在第一列旁边而不是最右：
+      // 运营扫这张表时问的第一个问题就是「这件到底怎么了」
+      header: c.colSkuNo,
+      cell: (g) => (
+        <button type="button" className="text-start underline-offset-2 hover:underline"
+                onClick={() => setChainOf(g.goodsNo)}>
+          <IdCell value={g.goodsNo} />
+        </button>
+      ),
+      numeric: true, align: "start",
+    },
     { header: c.colTitle, cell: (g) => g.title.zh, className: "whitespace-normal", width: "16rem" },
     { header: c.colMerchant, cell: (g) => g.merchantName },
     { header: c.colCategory, cell: (g) => g.categoryName ?? <span className="text-muted-foreground">—</span> },
@@ -415,6 +429,9 @@ function ProductsInner() {
       {tab === "topics" && <TopicsTab c={c} canEdit={allow("product:topic:update")} />}
 
       {tab === "stats" && <StatsTab c={c} />}
+
+      {/* 全链路抽屉：任何 tab 下都可能被打开（今天入口在商品池） */}
+      <GoodsChainDrawer c={c} goodsNo={chainOf} onClose={() => setChainOf(null)} />
 
       {tab === "stock" && (
         <>
