@@ -547,6 +547,16 @@ const zh = {
   chainNoAccount: "进销存里没账",
   chainNoInbound: "从没进过货",
   chainStaleLedger: "很久没记账",
+  chainAction: "动作",
+  chainNudge: "提醒",
+  // IN_AUDIT 那一档不给提醒按钮：欠账的是平台，出路是去把队列审掉
+  chainGoAudit: "去审核队列",
+  chainNudgeTitle: "提醒 {name}",
+  chainNudgeDesc: "会往商家的收件箱发一条站内信，说明卡在哪一步、该做什么。同一家同一事由一天只发一次。可以补一句话，它会原样出现在商家看到的消息里。",
+  chainNudgeConfirm: "发送提醒",
+  chainNudgeSent: "已发出 {n} 条",
+  chainNudgeAlready: "今天已经就这件事提醒过了",
+  chainNudgeNoRecipient: "这家店还没有能收消息的人 —— 先去给它配员工",
 };
 
 const en: typeof zh = {
@@ -1090,6 +1100,15 @@ const en: typeof zh = {
   chainNoAccount: "No inventory account",
   chainNoInbound: "Never received stock",
   chainStaleLedger: "Books gone quiet",
+  chainAction: "Action",
+  chainNudge: "Nudge",
+  chainGoAudit: "Open review queue",
+  chainNudgeTitle: "Nudge {name}",
+  chainNudgeDesc: "Sends one in-app message to the merchant explaining where they are stuck and what to do. Once per merchant per reason per day. Anything you add appears verbatim in what they see.",
+  chainNudgeConfirm: "Send nudge",
+  chainNudgeSent: "Sent {n}",
+  chainNudgeAlready: "Already nudged about this today",
+  chainNudgeNoRecipient: "Nobody at this shop can receive messages — add staff first",
 };
 
 export const MERCHANTS_COPY: PageCopy<typeof zh> = { zh, en };

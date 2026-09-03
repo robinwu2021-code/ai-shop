@@ -6,6 +6,9 @@ import type { MerchantApi } from "../contracts/merchant";
 import type { LegalForm, MerchantChainRow } from "@/lib/types";
 
 /** 六个卡点各一行，末两行是通的 —— 全是卡点看不出对比，全是通的看不出这页为什么存在 */
+/** 本次会话里已经提醒过的「商家 × 事由」。真实实现按日期落库，mock 只要能演出第二次 */
+const nudgedToday = new Set<string>();
+
 const mockChain: MerchantChainRow[] = [
   { entityNo: "M0001", merchantName: "老张粮油店", goods: 0, pendingAudit: 0, onSale: 0, items: 0,
     firstInbound: null, lastLedger: null, stuckAt: "NO_GOODS" },
@@ -336,6 +339,19 @@ export const merchantMock: MerchantApi = {
    *
    * 六个卡点各来一行，最后两行是通的 —— 全是卡点也不对，那样看不出对比。
    */
+  /*
+   * 提醒。mock 里**记住已经发过谁**，否则连点两次都返回「发出去了」——
+   * 而这条能力最要紧的性质就是「一天一次」，mock 演不出来就等于没演。
+   */
+  nudgeMerchant: ({ entityNo, reason }) => {
+    const key = `${entityNo}:${reason}`;
+    if (nudgedToday.has(key)) {
+      return wait({ sent: 0, alreadySentToday: true, noRecipient: false });
+    }
+    nudgedToday.add(key);
+    return wait({ sent: 2, alreadySentToday: false, noRecipient: false });
+  },
+
   merchantChain: (q = {}) =>
     wait(
       mockChain.filter((r) => (q.stuckOnly ? r.stuckAt !== null : true))

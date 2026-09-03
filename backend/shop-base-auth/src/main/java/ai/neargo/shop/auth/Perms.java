@@ -248,6 +248,16 @@ public final class Perms {
      */
     public static final String MERCHANT_BAN = "merchant:merchant:ban";
 
+    /**
+     * 主动触达商家（M2）。**单独一个码，不复用 {@link #MERCHANT_READ}**：
+     * 它以平台的名义往商家的收件箱里写一条消息，而读档案不会在对方那里留下任何东西。
+     *
+     * <p>也不复用 {@link #MERCHANT_BAN}：那是封店。「你有商品还没上架」与「封店」
+     * 之间隔着一整个量级，而<b>缺的正是中间这一档</b> ——
+     * 把它挂在封店权限下，等于只有能封店的人才提醒得了商家。
+     */
+    public static final String MERCHANT_NUDGE = "merchant:merchant:nudge";
+
     public static final String MERCHANT_CATEGORY_READ = "merchant:category:read";
 
     /**
@@ -517,6 +527,9 @@ public final class Perms {
             Map.entry("BD", List.of(AFTERSALE_REFUND_READ, AFTERSALE_TICKET_READ,
                     COMMUNITY_READ,
                     DASHBOARD_OVERVIEW_READ, GROUP_DEMAND_ASSIGN, GROUP_DEMAND_READ,
+                    // MERCHANT_NUDGE（M2）：链条画像指出「这家卡在哪一层」之后的那个动作。
+                    // 只给 BD —— 找到人之后打电话、发消息的就是他
+                    MERCHANT_NUDGE,
                     MERCHANT_APPLY_AUDIT, MERCHANT_CATEGORY_GRANT, MERCHANT_CATEGORY_READ,
                     MERCHANT_BAN, MERCHANT_READ, MERCHANT_MODE_READ, MERCHANT_MODE_UPDATE,
                     MERCHANT_FULFILLMENT_UPDATE,

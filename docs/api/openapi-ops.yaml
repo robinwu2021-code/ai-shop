@@ -1025,6 +1025,36 @@ components:
         - "NO_INBOUND"
         - "STALE_LEDGER"
       description: "卡点。**取第一个断掉的环** —— 后面几列的 0 是它的后果，不是几个独立问题"
+    MerchantNudgeResult: 
+      type: "object"
+      properties: 
+        sent: 
+          type: "number"
+          description: "实际发出几条（按收件人计）"
+        alreadySentToday: 
+          type: "boolean"
+          description: "今天已就同一事由提醒过。不是失败，但必须说出来"
+        noRecipient: 
+          type: "boolean"
+          description: "这家店一个能收消息的人都没有 —— 该做的是去给这家店配人"
+      required: 
+        - "sent"
+        - "alreadySentToday"
+        - "noRecipient"
+      additionalProperties: false
+      description: "主动触达商家的结果（M2）。\n\n<p>三种结局要**分开告诉运营**：发出去了 / 今天已经提醒过了 / 这家店没人收 —— 混成一个「成功」，运营看不出区别就会一直点，而商家那头什么也没多收到。"
+    MerchantNudgeReason: 
+      "$ref": "#/definitions/Exclude%3CMerchantChainStuck%2C%22IN_AUDIT%22%3E"
+      description: "可提醒的事由。**不含 `IN_AUDIT`** —— 那一档的意思是「他的品全卡在平台的 审核队列里」，欠账的是平台；就这件事提醒商家等于把自己的积压说成对方的问题。 那一行该给的出路是「去审核队列」。"
+    "Exclude<MerchantChainStuck,\"IN_AUDIT\">": 
+      type: "string"
+      enum: 
+        - "NO_GOODS"
+        - "NOT_ON_SALE"
+        - "NO_ACCOUNT"
+        - "NO_INBOUND"
+        - "STALE_LEDGER"
+      description: "卡点。**取第一个断掉的环** —— 后面几列的 0 是它的后果，不是几个独立问题"
     FulfillmentType: 
       type: "string"
       enum: 
@@ -15297,6 +15327,38 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/merchant/${encodeURIComponent(entityNo)}/nudge": 
+    post: 
+      operationId: "nudgeMerchant"
+      summary: "主动触达商家（M2）"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MerchantNudgeResult"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/merchants/{merchantNo}": 
     get: 
       operationId: "getMerchant"

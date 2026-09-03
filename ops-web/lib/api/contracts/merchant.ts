@@ -8,7 +8,7 @@ import type {
   PlanDef,
   PlanUpgradeSignal,
   OnboardingRow,
-  AdmissionPolicy, AuthCode, AuthCodeSetResult, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, PayQuota, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType, StoreFulfillmentRow, MerchantChainRow } from "@/lib/types";
+  AdmissionPolicy, AuthCode, AuthCodeSetResult, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, PayQuota, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType, StoreFulfillmentRow, MerchantChainRow, MerchantNudgeReason, MerchantNudgeResult } from "@/lib/types";
 import type { ApplyQ, MerchantQ, OnboardingQ } from "../query";
 
 export interface MerchantApi {
@@ -19,6 +19,13 @@ export interface MerchantApi {
    * `stuckOnly` 只要卡住的那些行 —— 运营的常用视图是「谁需要我」。
    */
   merchantChain(q?: { limit?: number; stuckOnly?: boolean }): Promise<MerchantChainRow[]>;
+
+  /**
+   * 主动触达商家（M2）。**一天一次** —— 同一商家同一事由当天第二次
+   * 返回 `alreadySentToday`，不再发。
+   */
+  nudgeMerchant(v: { entityNo: string; reason: MerchantNudgeReason; note?: string }):
+    Promise<MerchantNudgeResult>;
 
   storeModes(merchantNo: string): Promise<StoreMode[]>;
   /** 无照主体 × 自营门店的税务敞口清单。后端按敞口倒序 */

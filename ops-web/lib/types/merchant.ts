@@ -690,3 +690,29 @@ export type MerchantChainStuck =
   | "NO_ACCOUNT"
   | "NO_INBOUND"
   | "STALE_LEDGER";
+
+/**
+ * 主动触达商家的结果（M2）。
+ *
+ * <p>三种结局要**分开告诉运营**：发出去了 / 今天已经提醒过了 / 这家店没人收 ——
+ * 混成一个「成功」，运营看不出区别就会一直点，而商家那头什么也没多收到。
+ */
+export interface MerchantNudgeResult {
+  /** 实际发出几条（按收件人计） */
+  sent: number;
+  /** 今天已就同一事由提醒过。不是失败，但必须说出来 */
+  alreadySentToday: boolean;
+  /** 这家店一个能收消息的人都没有 —— 该做的是去给这家店配人 */
+  noRecipient: boolean;
+}
+
+/**
+ * 可提醒的事由。**不含 `IN_AUDIT`** —— 那一档的意思是「他的品全卡在平台的
+ * 审核队列里」，欠账的是平台；就这件事提醒商家等于把自己的积压说成对方的问题。
+ * 那一行该给的出路是「去审核队列」。
+ */
+export type MerchantNudgeReason = Exclude<MerchantChainStuck, "IN_AUDIT">;
+
+/** 运行时也要能判：类型只在编译期拦得住，按钮是不是该出现是运行时的事 */
+export const NUDGEABLE: readonly MerchantNudgeReason[] =
+  ["NO_GOODS", "NOT_ON_SALE", "NO_ACCOUNT", "NO_INBOUND", "STALE_LEDGER"] as const;

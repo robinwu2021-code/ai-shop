@@ -9,16 +9,22 @@
 // 已有的三块统计（库存健康度、库存对差、获客看板）都是某一环的快照，
 // 没有一处是贯穿链条的漏斗。而线上那组数说明：问题不在某一环内部，在环与环之间。
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { notify } from "@/lib/notify";
+import { useCan } from "@/lib/use-can";
 import { fmtTime } from "@/lib/utils";
 import { fill } from "@/lib/use-copy";
-import type { MerchantChainRow, MerchantChainStuck } from "@/lib/types";
+import Link from "next/link";
+import type { MerchantChainRow, MerchantChainStuck, MerchantNudgeReason } from "@/lib/types";
+import { NUDGEABLE } from "@/lib/types";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
 import { HelpNote } from "@/components/ui/help-note";
 import { CheckboxField } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { StatCard, StatRow } from "@/components/ui/misc";
 import type { MerchantsCopy } from "./copy";
 
@@ -38,6 +44,22 @@ const useStuckMap = (c: MerchantsCopy): StatusMap<MerchantChainStuck> => ({
 export function ChainTab({ c }: { c: MerchantsCopy }) {
   const [stuckOnly, setStuckOnly] = useState(false);
   const stuckMap = useStuckMap(c);
+  const allow = useCan();
+  const canNudge = allow("merchant:merchant:nudge");
+  const { confirm, dialog } = useConfirm();
+
+  /*
+   * 提醒。**三种结局分开说** —— 发出去了 / 今天已经提醒过了 / 这家店没人收。
+   * 混成一个「成功」，运营看不出区别就会一直点，而商家那头什么也没多收到。
+   */
+  const nudge = useMutation({
+    mutationFn: api.nudgeMerchant,
+    onSuccess: (r) => {
+      if (r.noRecipient) notify.error(c.chainNudgeNoRecipient);
+      else if (r.alreadySentToday) notify.info(c.chainNudgeAlready);
+      else notify.success(fill(c.chainNudgeSent, { n: r.sent }));
+    },
+  });
   const q = useQuery({
     queryKey: ["merchant-chain", stuckOnly],
     queryFn: () => api.merchantChain({ limit: 200, stuckOnly }),
@@ -60,10 +82,42 @@ export function ChainTab({ c }: { c: MerchantsCopy }) {
     // 「一次都没进过货」与「进过货但很久没动」是两件事，空值不能显示成 0
     { header: c.chainFirstInbound, cell: (r) => (r.firstInbound ? fmtTime(r.firstInbound) : <Dash />) },
     { header: c.chainLastLedger, cell: (r) => (r.lastLedger ? fmtTime(r.lastLedger) : <Dash />) },
+    {
+      header: c.chainAction,
+      /*
+       * **IN_AUDIT 那一行不给提醒按钮，给去审核队列的入口。**
+       * 那一档的意思是「他的品全卡在平台的审核队列里」—— 欠账的是平台。
+       * 就这件事去提醒商家，等于把自己的积压说成对方的问题，
+       * 而商家收到之后能做的只有再等。后端也会拒（事由枚举里就没有它），
+       * 但界面不该画一个点了必然失败的按钮。
+       */
+      cell: (r) => {
+        if (r.stuckAt === "IN_AUDIT") {
+          return <Link href="/products?tab=audit" className="txt-caption underline">{c.chainGoAudit}</Link>;
+        }
+        if (!r.stuckAt || !canNudge || !NUDGEABLE.includes(r.stuckAt as MerchantNudgeReason)) {
+          return <Dash />;
+        }
+        return (
+          <Button size="sm" variant="outline" onClick={() => void confirm({
+            title: fill(c.chainNudgeTitle, { name: r.merchantName ?? r.entityNo }),
+            desc: c.chainNudgeDesc,
+            confirmText: c.chainNudgeConfirm,
+            requireReason: false,
+            action: (note) => nudge.mutateAsync({
+              entityNo: r.entityNo,
+              reason: r.stuckAt as MerchantNudgeReason,
+              note: note || undefined,
+            }),
+          })}>{c.chainNudge}</Button>
+        );
+      },
+    },
   ];
 
   return (
     <>
+      {dialog}
       <HelpNote title={c.chainHelpTitle}>{c.chainHelp}</HelpNote>
 
       <StatRow>

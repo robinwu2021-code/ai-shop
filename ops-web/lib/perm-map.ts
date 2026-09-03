@@ -41,6 +41,9 @@ export const UNIMPLEMENTED = Symbol("backend-unimplemented");
 export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "merchant:apply:audit": "merchant:apply:audit",
   "merchant:merchant:ban": "merchant:merchant:ban",
+  // 主动触达商家（M2）。**必须登记** —— 后端有码而这里没有的话 can() 一律判无权限，
+  // 表现是按钮在谁的界面上都不出现，且不报错（这个坑本文件里已经踩过两次）
+  "merchant:merchant:nudge": "merchant:merchant:nudge",
   "merchant:verify:grant": "merchant:verify:grant",
   "merchant:category:grant": "merchant:category:grant",
   "order:order:modify": "order:order:modify",

@@ -8564,3 +8564,12 @@ SELECT r.role_code, 'OPS_INVENTORY__TAB_LINK_HEALTH', 'OPS', NOW(), NOW()
                     WHERE x.role_code = r.role_code
                       AND x.point_code = 'OPS_INVENTORY__TAB_LINK_HEALTH'
                       AND x.end_code = 'OPS');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'ACT__MERCHANT_MERCHANT_NUDGE', 'OPS_MERCHANT', '主动触达商家', '经营诊断', NULL, 'merchant:merchant:nudge', 'merchant:merchant:nudge', 'IMPLEMENTED', 0, 'P-11.1', 'ACTION', 91, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__MERCHANT_MERCHANT_NUDGE');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__MERCHANT_MERCHANT_NUDGE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__MERCHANT_MERCHANT_NUDGE');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'BD', 'ACT__MERCHANT_MERCHANT_NUDGE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='BD' AND x.point_code='ACT__MERCHANT_MERCHANT_NUDGE');
