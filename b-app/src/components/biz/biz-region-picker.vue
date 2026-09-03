@@ -12,6 +12,14 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { pickOnMap, regionCenter } from "@/utils/geo";
+/*
+ * 地名的纯字符串规则（归一化 / 清洗机构名 / 抠市名）—— 整块在 `@/utils/region-names`。
+ * 它们一个字符串进一个字符串出，单独放才测得到；`normalizeName` 那份词表
+ * 与后端 `PlaceNames.norm` 由闸门盯着不许分叉。
+ */
+import {
+  cleanVillageName, guessCityFrom, looksLikeContainer, normalizeName, sameishName, shortName,
+} from "@/utils/region-names";
 import { getLocation } from "@shared/ports/location";
 import type { PlaceHit } from "@shared/ports/geo-search";
 import type { Community, Region, RegionSearchResult, ServiceArea } from "@shared/types";
@@ -223,9 +231,6 @@ async function loadVillages(street: string) {
  * 城区的「西坑社区」底下是好几个小区，停在它上面等于把范围放大一圈；
  * 而「福安雅园 A 区」本身就是终点。名字与 kind 都认：库里 kind 不是每条都填了。
  */
-function looksLikeContainer(name: string, kind?: string) {
-  return kind === "VILLAGE" || /(社区|居委会|村委会|村)$/.test(name);
-}
 
 /**
  * 第五级（村/社区）**一律可以再看一层**，城乡同一条规则。
@@ -241,26 +246,9 @@ const VILLAGE_DRILLABLE = true;
 const openedNames = computed(
   () => new Set(communities.value.filter((c) => c.regionCode === current.value?.regionCode).map((c) => c.name)),
 );
-/** 「阳光花园」「阳光花园小区」「阳光花园(北区)」在商家嘴里是同一个地方 —— 与后端同一套归一 */
-function normalizeName(s: string) {
-  /*
-   * 「村委会」必须单独列出，不能指望「村」+「委会」拼出来 —— 「委会」不在词表里，
-   * 漏了这一条会让「景滑村委会」（官方机构名）穿过归一化，跟「景滑」（商家起的名）
-   * 判成两个不同的地方（真机上搜「景滑村」出过两条，服务端 PlaceNames 同一处也补了）。
-   */
-  return s.replace(/[（(].*?[）)]/g, "")
-    .replace(/(小区|花园|家园|新村|苑|园|村委会|村|社区|居委会|村民委员会|居民委员会)+$/g, "")
-    .trim();
-}
-
 /** 这个名字在系统里是不是已经有了。**有就不该再出现「提报」入口** —— 直接勾就是了 */
 function isOpened(name: string) {
-  const x = normalizeName(name);
-  if (!x) return false;
-  for (const n of openedNames.value) {
-    const y = normalizeName(n);
-    if (y && (x === y || x.startsWith(y) || y.startsWith(x))) return true;
-  }
+  for (const n of openedNames.value) if (sameishName(name, n)) return true;
   return false;
 }
 
@@ -492,24 +480,6 @@ const settleRows = computed<Array<Community & { path?: string }>>(() => {
 });
 
 // ---------------------------------------------------------------- 地图兜底：搜到即加
-/** 「富城村村民委员会」→「富城村」：聚落叫的是地名，不是机构名 */
-function cleanVillageName(official: string): string {
-  /*
-   * 官方名是**机构名**（「牛杜村委会」「茜坑社区居委会」），而商家嘴里是**地名**
-   * （「牛杜村」「茜坑社区」）。去掉的只是「委员会」那一截，**地名的通名要留着** ——
-   * 此前一并吃掉，牛杜村委会变成了「牛杜」，而搜索里显示「牛杜」、名录里显示
-   * 「牛杜村委会」、已开通里又是「牛杜村」，同一个地方三种写法，看着像三层。
-   */
-  const cleaned = official
-    .replace(/(村民委员会|村委会)$/, "村")
-    .replace(/(居民委员会|居委会)$/, "社区")
-    .replace(/委员会$/, "")
-    // 「富城村村民委员会」→「富城村村」：通名重了收掉一个
-    .replace(/村村$/, "村")
-    .replace(/社区社区$/, "社区");
-  return cleaned || official;
-}
-
 /**
  * 市名给高德缩范围：优先取面包屑第二级（已经在浏览某个市），
  * 没有面包屑（在根级直接搜）时，从**关键词自己**里抠一个市名出来 ——
@@ -518,16 +488,6 @@ function cleanVillageName(official: string): string {
  * 退化成全国搜「福安雅园」，同名的、更有名的候选会把真正要的那条挤下去。
  */
 const cityName = computed(() => trail.value.find((r) => r.level === "CITY")?.name ?? guessCityFrom(q.value));
-
-const CITY_SUFFIXES = ["市", "自治州", "地区", "盟"];
-/** 「深圳市龙华区福安雅园」→「深圳市」。只认省市这两级前缀 */
-function guessCityFrom(kw: string): string | undefined {
-  for (const suf of CITY_SUFFIXES) {
-    const i = kw.indexOf(suf);
-    if (i > 0 && i <= 6) return kw.slice(0, i + suf.length);
-  }
-  return undefined;
-}
 
 /**
  * 在地图上选点 —— 选完**当场开通并勾上**，没有表单、没有提报、没有等待（v4）。
@@ -598,11 +558,6 @@ interface Hit {
 
 /** 已加入的（顶部清单用）。搜索时不过滤 —— 他要看的是「我已经选了什么」 */
 const chosen = computed(() => props.areas);
-
-/** 「浙江省 / 杭州市 / 西湖区」→「西湖区」。提示语里只需要末级，整条路径会把话挤没 */
-function shortName(name?: string) {
-  return (name ?? "").split(" / ").pop() ?? "";
-}
 
 /**
  * 这条覆盖项是不是还挂着旧的待审状态。
