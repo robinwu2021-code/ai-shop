@@ -117,15 +117,6 @@ shop:
     bucket: ${COS_BUCKET:}
     # 可选 CDN/自定义域名；留空用 COS 默认域名
     domain: ${COS_DOMAIN:}
-  wx:
-    push:
-      # 「消息推送」的令牌（后台 → 开发管理 → 消息推送）。**凭证，不进代码库。**
-      # 与它成对的 EncodingAESKey 同理 —— 当前只用明文/兼容模式，暂不需要解密，
-      # 真要解密时再加 shop.wx.push.aes-key，同样从环境变量来。
-      #
-      # 空 = 拒绝校验。**不放行**：放行等于任何人都能冒充微信给我们推事件，
-      # 而那些事件将来会驱动结算与发货状态。
-      token: ${WX_PUSH_TOKEN:}
   auth:
     # memory / ehcache / redis，取舍见 TokenStoreConfig 的类注释。
     #   memory  = 零依赖但**重启即全员掉线**，只适合测试
@@ -207,6 +198,19 @@ shop:
   # 会缝合出一个「发给不存在的人」的世界。这个组合由 WxSubscribeGateway
   # 的构造器直接拒绝，不是靠人记得别这么配。
   wx:
+    # ⚠️ **`shop.wx` 在这个文件里只能有一处。** 738bd4b2 另起了一个 `wx:` 放
+    # push.token，两个同级同名键让 SnakeYAML 直接拒绝解析整份配置 ——
+    # 后果不是「那一项没生效」，是**整个 Spring 上下文起不来**，
+    # 于是每一个 @SpringBootTest 都在 0.00 秒失败、报错也不指向 YAML。
+    # 这里把它并了回来，注释按原样保留。
+    push:
+      # 「消息推送」的令牌（后台 → 开发管理 → 消息推送）。**凭证，不进代码库。**
+      # 与它成对的 EncodingAESKey 同理 —— 当前只用明文/兼容模式，暂不需要解密，
+      # 真要解密时再加 shop.wx.push.aes-key，同样从环境变量来。
+      #
+      # 空 = 拒绝校验。**不放行**：放行等于任何人都能冒充微信给我们推事件，
+      # 而那些事件将来会驱动结算与发货状态。
+      token: ${WX_PUSH_TOKEN:}
     stub: ${SHOP_WX_STUB:true}
     login:
       stub: ${SHOP_WX_LOGIN_STUB:${SHOP_WX_STUB:true}}
