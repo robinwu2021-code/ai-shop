@@ -85,7 +85,21 @@ if (fixedPlural.length) {
 }
 
 // ---------------------------------------------------------------- 2. 类型 → JSON Schema
-function collect(file, typeNames) {
+/**
+ * 一次把入口能看见的类型**全部**生成出来。响应类型与 `requests.ts` 都走这一条。
+ *
+ * <p><b>不再逐个名字 `createSchema(name)`</b>：那种调法只解析得动「从这个名字出发、
+ * 且声明就在入口文件里」的引用 —— 跨文件的引用它解不开，解不开就 catch 掉、跳过，
+ * 不报错。共享类型因此被钉死在一个 5139 行的文件里：一拆就静默少 39 个 schema。
+ *
+ * <p>`createSchema("*")` 走的是整个 program（与平台端 `ops-web/scripts/gen-openapi.mjs`
+ * 同一种调法，那边的 `lib/types` 早就是按域分文件的）—— 拆不拆都一样。
+ *
+ * <p>旧注释里说 `requests.ts` 只能按名逐个取（「24 个请求类型只出了 5 个」），
+ * 那是**没有 `expose: "all"`** 时的行为：现在两种调法在 requests.ts 上量过，
+ * 68 个定义一个不差，所以那条例外去掉了。
+ */
+function collectAll(file) {
   const gen = createGenerator({
     path: file,
     tsconfig: path.resolve(root, "tsconfig.json"),
@@ -95,33 +109,10 @@ function collect(file, typeNames) {
     topRef: true,
     additionalProperties: false,
   });
-  const out = {};
-  for (const name of typeNames) {
-    try {
-      const s = gen.createSchema(name);
-      Object.assign(out, s.definitions ?? {});
-    } catch {
-      // 该名字不是一个可导出的类型（如泛型别名），跳过 —— 由调用方决定要不要报错
-    }
-  }
-  return out;
+  return gen.createSchema("*").definitions ?? {};
 }
 
-/** 从源码里抠出所有 `export interface X` / `export type X` 的名字 */
-function exportedTypeNames(file) {
-  const src = fs.readFileSync(file, "utf8");
-  const names = [];
-  const re = /^export\s+(?:interface|type)\s+(\w+)/gm;
-  let x;
-  while ((x = re.exec(src))) names.push(x[1]);
-  return names;
-}
-
-
-const respNames = exportedTypeNames(typesFile);
-const reqNames = exportedTypeNames(reqFile);
-
-let schemas = { ...collect(typesFile, respNames), ...collect(reqFile, reqNames) };
+let schemas = { ...collectAll(typesFile), ...collectAll(reqFile) };
 if (!Object.keys(schemas).length) {
   console.error("没有抽出任何 schema，检查类型文件路径");
   process.exit(1);

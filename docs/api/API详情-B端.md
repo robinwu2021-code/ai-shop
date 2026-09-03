@@ -1021,6 +1021,30 @@ _无字段_
 | `freeThresholdMinor` | `number` | 是 | 免配送费门槛，最小货币单位；0 表示不免 |
 
 
+### deposit
+
+#### GET `/biz/deposit`
+
+保证金账户　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`DepositAccount`](#depositaccount)
+
+
+#### GET `/biz/deposit/txns`
+
+保证金流水　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`DepositTxn`](#deposittxn)\[\]
+
+
 ### entities
 
 #### GET `/biz/entities`
@@ -1164,6 +1188,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `storeOnSale` | `boolean,null` | 否 | <b>本店</b>上不上架（多门店，B 端列表下发）。 ⚠️ **`null` / 缺省 = 未按店管理**（跟随主体级 `onSale`），**不是「未上架」**。 上下架早就按门店落行了，而主体的 `onSale` 是「任一门店在售就为真」的总闸 —— 只看它的话，A 店下架完那件货还写着「在售」，店长会以为没点上。 |
 | `goodsNo` | `string` | 是 | 商品单号 |
 | `title` | `string` | 是 | 商品标题 |
 | `subtitle` | `string` | 是 | 副标题/卖点一句话 |
@@ -1288,6 +1313,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `storeOnSale` | `boolean,null` | 否 | <b>本店</b>上不上架（多门店，B 端列表下发）。 ⚠️ **`null` / 缺省 = 未按店管理**（跟随主体级 `onSale`），**不是「未上架」**。 上下架早就按门店落行了，而主体的 `onSale` 是「任一门店在售就为真」的总闸 —— 只看它的话，A 店下架完那件货还写着「在售」，店长会以为没点上。 |
 | `goodsNo` | `string` | 是 | 商品单号 |
 | `title` | `string` | 是 | 商品标题 |
 | `subtitle` | `string` | 是 | 副标题/卖点一句话 |
@@ -1352,6 +1378,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `storeOnSale` | `boolean,null` | 否 | <b>本店</b>上不上架（多门店，B 端列表下发）。 ⚠️ **`null` / 缺省 = 未按店管理**（跟随主体级 `onSale`），**不是「未上架」**。 上下架早就按门店落行了，而主体的 `onSale` 是「任一门店在售就为真」的总闸 —— 只看它的话，A 店下架完那件货还写着「在售」，店长会以为没点上。 |
 | `goodsNo` | `string` | 是 | 商品单号 |
 | `title` | `string` | 是 | 商品标题 |
 | `subtitle` | `string` | 是 | 副标题/卖点一句话 |
@@ -1416,6 +1443,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `storeOnSale` | `boolean,null` | 否 | <b>本店</b>上不上架（多门店，B 端列表下发）。 ⚠️ **`null` / 缺省 = 未按店管理**（跟随主体级 `onSale`），**不是「未上架」**。 上下架早就按门店落行了，而主体的 `onSale` 是「任一门店在售就为真」的总闸 —— 只看它的话，A 店下架完那件货还写着「在售」，店长会以为没点上。 |
 | `goodsNo` | `string` | 是 | 商品单号 |
 | `title` | `string` | 是 | 商品标题 |
 | `subtitle` | `string` | 是 | 副标题/卖点一句话 |
@@ -1502,6 +1530,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `storeOnSale` | `boolean,null` | 否 | <b>本店</b>上不上架（多门店，B 端列表下发）。 ⚠️ **`null` / 缺省 = 未按店管理**（跟随主体级 `onSale`），**不是「未上架」**。 上下架早就按门店落行了，而主体的 `onSale` 是「任一门店在售就为真」的总闸 —— 只看它的话，A 店下架完那件货还写着「在售」，店长会以为没点上。 |
 | `goodsNo` | `string` | 是 | 商品单号 |
 | `title` | `string` | 是 | 商品标题 |
 | `subtitle` | `string` | 是 | 副标题/卖点一句话 |
@@ -1566,6 +1595,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `storeOnSale` | `boolean,null` | 否 | <b>本店</b>上不上架（多门店，B 端列表下发）。 ⚠️ **`null` / 缺省 = 未按店管理**（跟随主体级 `onSale`），**不是「未上架」**。 上下架早就按门店落行了，而主体的 `onSale` 是「任一门店在售就为真」的总闸 —— 只看它的话，A 店下架完那件货还写着「在售」，店长会以为没点上。 |
 | `goodsNo` | `string` | 是 | 商品单号 |
 | `title` | `string` | 是 | 商品标题 |
 | `subtitle` | `string` | 是 | 副标题/卖点一句话 |
@@ -1630,6 +1660,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `storeOnSale` | `boolean,null` | 否 | <b>本店</b>上不上架（多门店，B 端列表下发）。 ⚠️ **`null` / 缺省 = 未按店管理**（跟随主体级 `onSale`），**不是「未上架」**。 上下架早就按门店落行了，而主体的 `onSale` 是「任一门店在售就为真」的总闸 —— 只看它的话，A 店下架完那件货还写着「在售」，店长会以为没点上。 |
 | `goodsNo` | `string` | 是 | 商品单号 |
 | `title` | `string` | 是 | 商品标题 |
 | `subtitle` | `string` | 是 | 副标题/卖点一句话 |
@@ -1694,6 +1725,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `storeOnSale` | `boolean,null` | 否 | <b>本店</b>上不上架（多门店，B 端列表下发）。 ⚠️ **`null` / 缺省 = 未按店管理**（跟随主体级 `onSale`），**不是「未上架」**。 上下架早就按门店落行了，而主体的 `onSale` 是「任一门店在售就为真」的总闸 —— 只看它的话，A 店下架完那件货还写着「在售」，店长会以为没点上。 |
 | `goodsNo` | `string` | 是 | 商品单号 |
 | `title` | `string` | 是 | 商品标题 |
 | `subtitle` | `string` | 是 | 副标题/卖点一句话 |
@@ -1764,6 +1796,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `storeOnSale` | `boolean,null` | 否 | <b>本店</b>上不上架（多门店，B 端列表下发）。 ⚠️ **`null` / 缺省 = 未按店管理**（跟随主体级 `onSale`），**不是「未上架」**。 上下架早就按门店落行了，而主体的 `onSale` 是「任一门店在售就为真」的总闸 —— 只看它的话，A 店下架完那件货还写着「在售」，店长会以为没点上。 |
 | `goodsNo` | `string` | 是 | 商品单号 |
 | `title` | `string` | 是 | 商品标题 |
 | `subtitle` | `string` | 是 | 副标题/卖点一句话 |
@@ -1899,6 +1932,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `storeOnSale` | `boolean,null` | 否 | <b>本店</b>上不上架（多门店，B 端列表下发）。 ⚠️ **`null` / 缺省 = 未按店管理**（跟随主体级 `onSale`），**不是「未上架」**。 上下架早就按门店落行了，而主体的 `onSale` 是「任一门店在售就为真」的总闸 —— 只看它的话，A 店下架完那件货还写着「在售」，店长会以为没点上。 |
 | `goodsNo` | `string` | 是 | 商品单号 |
 | `title` | `string` | 是 | 商品标题 |
 | `subtitle` | `string` | 是 | 副标题/卖点一句话 |
@@ -2165,6 +2199,17 @@ _无字段_
 类型：`any`
 
 
+#### GET `/biz/inventory/cross-store`
+
+跨店库存总览　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`StockCrossStoreRow`](#stockcrossstorerow)\[\]
+
+
 #### GET `/biz/inventory/documents`
 
 出入库单据　🔒
@@ -2230,6 +2275,40 @@ _无字段_
 **出参**（`data`）
 
 类型：`any`
+
+
+#### GET `/biz/inventory/item-by-sku`
+
+按平台 SKU 查进销存的账　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`StockItemDetail`](#stockitemdetail)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `string` | 是 | 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 |
+| `name` | `string` | 是 | 货品名 |
+| `specText` | `string` | 否 | 规格描述（「10斤装」）。人读的，不参与匹配 |
+| `baseUom` | `string` | 否 | 基本计量单位（个/斤/箱）。**所有数量都以它为准**，收货填别的单位要先换算 |
+| `barcode` | `string` | 否 | 条码。**一个物料可以有多个**（换包装还是同一件货），这里给主条码 |
+| `itemCode` | `string` | 否 | 商家自己的货号，对接 ERP 用 |
+| `onHand` | `number` | 是 | 实存 |
+| `reserved` | `number` | 是 | 预留：别人下了单还没付钱的量 |
+| `available` | `number` | 是 | 可用 = 实存 − 预留 |
+| `safetyStock` | `number` | 是 | 安全库存的**默认阈值**（物料上那一级）。低于它算缺货。 **`0` 是「不预警」不是「低于 0 才报」** —— 界面上要写成「不预警」， 显示成 0 的话商家会以为是个没设好的数而去改它。 |
+| `byLocation` | `object`（见下）\[\] | 是 | 在各库位的分布。总数与上面的 onHand 一致，对不上就是有库位没登记。 `safetyStock` 是**该库位的覆盖值**，`undefined` = 跟随上面那个默认值。 与「显式设成 0」是两件事：后者是这个库位不预警。 |
+
+`byLocation[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `locationId` | `string` | 是 | — |
+| `locationName` | `string` | 是 | — |
+| `onHand` | `number` | 是 | — |
+| `safetyStock` | `number` | 否 | — |
 
 
 #### GET `/biz/inventory/items/{itemId}`
@@ -2586,6 +2665,21 @@ _无字段_
 #### POST `/biz/inventory/transfers/{no}/ship`
 
 调拨发出　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+**出参**（`data`）
+
+类型：`any`
+
+
+#### POST `/biz/inventory/transfers/{no}/void`
+
+作废调拨草稿　🔒
 
 **入参**
 
@@ -3107,6 +3201,38 @@ _无字段_
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
 | `payChannel` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`PaymentApplyment`](#paymentapplyment)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payChannel` | `string` | 是 | 通道码，如 WECHAT |
+| `channelName` | `string` | 是 | 通道展示名。取服务端的，端上不要再维护一份翻译 |
+| `applyStatus` | [`PaymentApplyStatus`](#paymentapplystatus) | 是 | NONE / APPLYING / ACTIVE / REJECTED / FROZEN |
+| `canReceiveMoney` | `boolean` | 是 | 这个通道现在能不能收钱。 **照着它显示，不要自己去比 applyStatus** —— 比错的表现是 「显示能收钱但收不了」，而这种错要到第一笔订单才暴露。 |
+| `payMerchantNo` | `string` | 否 | 收款商户号业务键，通过后才有。门店挂收款号引用的就是它 |
+| `subMchidMasked` | `string` | 否 | 二级商户号掩码。完整号不回显 |
+| `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户形态：小微打个人（PERSONAL_BANK_CARD），其余打对公（MERCHANT_ID） |
+| `settleAccountMasked` | `string` | 否 | 结算账号掩码。**明文永不回显**，包括给商家自己（ADR-002 §5） |
+| `rejectReason` | `string` | 否 | 驳回原因。驳回时必有 —— 没有原因商家只能反复重提 |
+| `missing` | `string`\[\] | 是 | 还缺哪些资料（settleAccount / licenses / settleAccountType）。空 = 资料齐了在等通道 |
+| `submitted` | `boolean` | 是 | **有没有真的发给通道过。** <p>没有它，`APPLYING` 同时表示两件相反的事：入驻通过时建的占位（商家还没填过 任何东西）与「已发给通道、在等回执」。都显示成「审核中」的话，新商家读到的是 球在平台，而球其实在他自己脚下 —— 这正是「不能收钱」最常卡死的一步。 |
+| `appliedAt` | `number` | 否 | 提交进件的时间。没提交过为空 |
+| `activatedAt` | `number` | 否 | 通道开户完成的时间 —— 从这一刻起才真的能收钱 |
+| `storeNo` | `string` | 否 | 这条进件是**为哪家门店**做的；空 = 主体级默认号。 多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。 |
+
+
+#### POST `/biz/merchant/payment/store/{storeNo}`
+
+为门店单独开通收款　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
 
 **出参**（`data`）
 
@@ -4214,6 +4340,50 @@ _无字段_
 | `oldestInFlightAt` | `number,null` | 否 | 最早一笔在途的发起时刻。**「卡了多久」是商家真正想问的** |
 
 
+#### GET `/biz/settle/invoice-pending`
+
+待开票摘要　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PendingInvoice`](#pendinginvoice)
+
+
+#### GET `/biz/settle/invoice-title`
+
+平台开票信息　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PlatformInvoiceTitle`](#platforminvoicetitle)
+
+
+#### GET `/biz/settle/invoices`
+
+我提交的票　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PurchaseInvoice`](#purchaseinvoice)\[\]
+
+
+#### POST `/biz/settle/invoices`
+
+提交进项票　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PurchaseInvoice`](#purchaseinvoice)
+
+
 #### GET `/biz/settle/rate-card`
 
 费率卡　🔒
@@ -4229,6 +4399,17 @@ _无字段_
 | `merchantOwnedRate` | `number` | 是 | 自带客流费率（万分比）。商家自己带来的客人，平台抽成低 |
 | `platformRate` | `number` | 是 | 平台客流费率（万分比）。平台分发带来的订单 |
 | `note` | `string` | 是 | 费率说明文案。**须写明「以下单时快照为准，调整不影响历史订单」** |
+
+
+#### GET `/biz/settle/statement`
+
+对账单　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Statement`](#statement)
 
 
 #### GET `/biz/settle/withdraw`
@@ -4984,6 +5165,7 @@ _无字段_
 |---|---|:---:|---|
 | `merchantNo` | `string` | 否 | 商家单号 |
 | `storeCode` | `string` | 否 | 印在贴纸上的短码。**去掉了 0/O/1/I/L**，让人手输时不会认错 |
+| `storeNo` | `string,null` | 否 | 这个码属于**哪家门店**（V298 一店一码）。 ⚠️ **必须显示出来**：多门店店主看到的只是一串码，看不出它是哪家店的。 印 500 张贴纸之前，这是唯一能发现「贴错店」的机会 —— 贴错之后没有任何症状：码扫得通、页面打得开，只是客流算到了另一家头上。 空 = 主体连门店行都没有的历史数据，不是「属于所有店」。 |
 | `url` | `string,null` | 否 | 落地页链接。**未配对外域名时为 null** —— 端上据此不显示链接那一行。 ⚠️ 此前后端在两处各写死一个 `https://shop.example.com/s/<code>` 占位域名， 商家复制出去的链接与印出去的贴纸**全都指向一个不存在的地方**， 而这两个功能点在清单上标着「已实现」。不发假链接比发一个点不开的强。 |
 | `imageBase64` | `string,null` | 否 | 店铺**小程序码**的 PNG base64（不含 `data:` 前缀）。通道未开启时为 null。 用小程序码而不是 H5 链接：ADR-004 的主获客路径是「码印在包装袋上，老客扫码直达」， 而小程序码**不依赖备案域名**（备案要 7–20 个工作日），扫了直接进门店页。 |
 | `printableHint` | `string` | 否 | 打印建议，服务端给的一句话 |
@@ -5684,6 +5866,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `storeOnSale` | `boolean,null` | 否 | <b>本店</b>上不上架（多门店，B 端列表下发）。 ⚠️ **`null` / 缺省 = 未按店管理**（跟随主体级 `onSale`），**不是「未上架」**。 上下架早就按门店落行了，而主体的 `onSale` 是「任一门店在售就为真」的总闸 —— 只看它的话，A 店下架完那件货还写着「在售」，店长会以为没点上。 |
 | `goodsNo` | `string` | 是 | 商品单号 |
 | `title` | `string` | 是 | 商品标题 |
 | `subtitle` | `string` | 是 | 副标题/卖点一句话 |
@@ -7474,6 +7657,31 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `diffQty` | `number,null` | 否 | 差异 = 实盘 − 账面。**正负都要能填**：多了和少了是两种问题 |
 | `reasonCode` | `string` | 否 | 变动原因码。**盘点差异不为 0 时必填** —— 说不出原因的调整事后查不了账 |
 
+### StockCrossStoreRow
+
+跨店总览的一行（`CrossStoreVO`）：**一件货 × 全部库位**。 与 `StockBalance` 的区别是维度 —— 那一条是「一件货在一个库位」， 多门店商家看到的是同一件货重复 N 行；这一条把 N 行收成一行。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `string` | 是 | 货号，点开一行取分布用的键 |
+| `name` | `string` | 是 | 商品名 |
+| `specText` | `string` | 否 | 规格文案（「500g/袋」这类），同名不同规格靠它分辨 |
+| `baseUom` | `string` | 否 | 基本单位，数量后面跟着显示 |
+| `onHand` | `number` | 是 | 全部库位合计 |
+| `reserved` | `number` | 是 | 已被订单占用的量（合计）—— 在库但不能再卖 |
+| `available` | `number` | 是 | 可卖量合计 = onHand - reserved。**店主真正该看的是这个数** |
+| `shortageLocations` | `number` | 是 | **缺货的库位数**，不是缺货的件数。列表按它降序 —— 五家店断了三家的那件货，比某一家店少两袋更值得先看见。 |
+| `byLocation` | `object`（见下）\[\] | 是 | 各库位分布，**随列表一起下发**：点开一行不再发第二次请求 |
+
+`byLocation[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `locationId` | `string` | 是 | — |
+| `locationName` | `string` | 是 | — |
+| `onHand` | `number` | 是 | — |
+| `safetyStock` | `number` | 否 | — |
+
 ### StockDocKind
 
 库存台账的方向。IN 入库 / OUT 出库 —— 台账不可变，只有查看没有编辑
@@ -7778,6 +7986,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 |---|---|:---:|---|
 | `merchantNo` | `string` | 否 | 商家单号 |
 | `storeCode` | `string` | 否 | 印在贴纸上的短码。**去掉了 0/O/1/I/L**，让人手输时不会认错 |
+| `storeNo` | `string,null` | 否 | 这个码属于**哪家门店**（V298 一店一码）。 ⚠️ **必须显示出来**：多门店店主看到的只是一串码，看不出它是哪家店的。 印 500 张贴纸之前，这是唯一能发现「贴错店」的机会 —— 贴错之后没有任何症状：码扫得通、页面打得开，只是客流算到了另一家头上。 空 = 主体连门店行都没有的历史数据，不是「属于所有店」。 |
 | `url` | `string,null` | 否 | 落地页链接。**未配对外域名时为 null** —— 端上据此不显示链接那一行。 ⚠️ 此前后端在两处各写死一个 `https://shop.example.com/s/<code>` 占位域名， 商家复制出去的链接与印出去的贴纸**全都指向一个不存在的地方**， 而这两个功能点在清单上标着「已实现」。不发假链接比发一个点不开的强。 |
 | `imageBase64` | `string,null` | 否 | 店铺**小程序码**的 PNG base64（不含 `data:` 前缀）。通道未开启时为 null。 用小程序码而不是 H5 链接：ADR-004 的主获客路径是「码印在包装袋上，老客扫码直达」， 而小程序码**不依赖备案域名**（备案要 7–20 个工作日），扫了直接进门店页。 |
 | `printableHint` | `string` | 否 | 打印建议，服务端给的一句话 |

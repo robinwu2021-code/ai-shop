@@ -11,8 +11,29 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "../../..");
+
+/**
+ * 三端共用的实体源码，**整个目录读进来**。
+ *
+ * <p>`types/` 2026-09-03 从单文件（5139 行）按域拆开了。只读 `index.ts` 的话
+ * 读到的是一份 `export *` 的门面 —— 一个类型都扫不到，而这道闸会**全绿**：
+ * 「少扫 = 没有违规」正是它最不该有的失败方式。
+ */
+function sharedTypesSrc(root: string): string {
+  const dir = join(root, "packages/shared/src/types");
+  const src = readdirSync(dir)
+    .filter((f) => f.endsWith(".ts"))
+    .map((f) => readFileSync(join(dir, f), "utf8"))
+    .join("\n");
+  // **扫描面本身要有断言**：这道闸是「找出违规」型的，少扫一律表现为全绿。
+  // 目录读空、后缀改了、路径写错 —— 都在这里当场炸，而不是安静地放行。
+  const n = (src.match(/export interface \w+/g) ?? []).length;
+  if (n < 100) throw new Error(`只扫到 ${n} 个实体（应有 100+）—— 扫描面塌了，闸门这时候的「绿」不作数`);
+  return src;
+}
+
 const GLOSSARY = readFileSync(join(ROOT, "docs/requirements/项目词典.md"), "utf8");
-const TYPES = readFileSync(join(ROOT, "packages/shared/src/types/index.ts"), "utf8");
+const TYPES = sharedTypesSrc(ROOT);
 const CONSTS = readFileSync(
   join(ROOT, "packages/shared/src/utils/constants/index.ts"),
   "utf8",

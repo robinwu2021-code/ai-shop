@@ -14,6 +14,27 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "../../..");
+
+/**
+ * 三端共用的实体源码，**整个目录读进来**。
+ *
+ * <p>`types/` 2026-09-03 从单文件（5139 行）按域拆开了。只读 `index.ts` 的话
+ * 读到的是一份 `export *` 的门面 —— 一个类型都扫不到，而这道闸会**全绿**：
+ * 「少扫 = 没有违规」正是它最不该有的失败方式。
+ */
+function sharedTypesSrc(root: string): string {
+  const dir = join(root, "packages/shared/src/types");
+  const src = readdirSync(dir)
+    .filter((f) => f.endsWith(".ts"))
+    .map((f) => readFileSync(join(dir, f), "utf8"))
+    .join("\n");
+  // **扫描面本身要有断言**：这道闸是「找出违规」型的，少扫一律表现为全绿。
+  // 目录读空、后缀改了、路径写错 —— 都在这里当场炸，而不是安静地放行。
+  const n = (src.match(/export interface \w+/g) ?? []).length;
+  if (n < 100) throw new Error(`只扫到 ${n} 个实体（应有 100+）—— 扫描面塌了，闸门这时候的「绿」不作数`);
+  return src;
+}
+
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 
 /**
@@ -66,7 +87,7 @@ function declaredTypes(app: string): Record<string, string> {
 
 /** shared 里某个 interface 的字段：{ name, optional } */
 function tsFields(type: string): { name: string; optional: boolean }[] {
-  const src = read("packages/shared/src/types/index.ts");
+  const src = sharedTypesSrc(ROOT);
   const i = src.indexOf(`export interface ${type} {`);
   if (i < 0) return [];
   const body = src.slice(i, src.indexOf("\n}", i));

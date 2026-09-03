@@ -108,8 +108,23 @@ export function backendVocabulary() {
 /** 端上声明的枚举。shared 供 c-app/b-app 共用，ops-web 自己一套 */
 export function clientEnums() {
   const out = [];
-  const shared = join(ROOT, "packages/shared/src/types/index.ts");
-  for (const [name, values] of unionTypes(readFileSync(shared, "utf8"))) {
+  /*
+   * **整个 types 目录读进来**：那份 5139 行的单文件按域拆开了，
+   * `index.ts` 现在只是 `export *` 的门面。只读它一个枚举都扫不到，
+   * 而这个检查会「全绿」—— 少扫等于没有违规。
+   */
+  const dir = join(ROOT, "packages/shared/src/types");
+  const sharedSrc = readdirSync(dir)
+    .filter((f) => f.endsWith(".ts"))
+    .map((f) => readFileSync(join(dir, f), "utf8"))
+    .join("\n");
+  const sharedUnions = [...unionTypes(sharedSrc)];
+  // 扫描面塌了要当场炸：这个检查「找不到就是没问题」，0 个枚举会安静地全绿
+  if (sharedUnions.length < 20) {
+    console.error(`✖ 共享类型里只扫到 ${sharedUnions.length} 个枚举（应有 20+）—— 扫描面塌了`);
+    process.exit(1);
+  }
+  for (const [name, values] of sharedUnions) {
     out.push({ client: "shared", name, values });
   }
   // 常量对象同样是 wire 契约 —— 见 constEnums 的注释

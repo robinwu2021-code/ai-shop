@@ -34,12 +34,13 @@
 // 「shared 的 FULFILLMENT 对应 ord_sub_order.fulfillment」这件事推断不出来 ——
 // 名字不一样、文件也不在一起。所以下面 FIELDS 是一张**显式声明表**。
 // 这不是缺陷，是这类工具能成立的前提：不写下来，就没有任何东西知道谁该等于谁。
-import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
-const SHARED_TYPES = "packages/shared/src/types/index.ts";
+/* **目录，不是文件**：那份实体单文件按域拆开了，指向 index.ts 只会读到一份门面 */
+const SHARED_TYPES = "packages/shared/src/types";
 const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
 
 /**
@@ -257,7 +258,11 @@ export function audit() {
       }
       const path = join(ROOT, c.file);
       if (!existsSync(path)) continue;
-      const src = readFileSync(path, "utf8");
+      // 目录（shared 的 types/）整份读进来；文件照旧
+      const src = statSync(path).isDirectory()
+        ? readdirSync(path).filter((f) => f.endsWith(".ts"))
+          .map((f) => readFileSync(join(path, f), "utf8")).join("\n")
+        : readFileSync(path, "utf8");
       const declared = c.type ? unionValues(src, c.type) : constValues(src, c.const);
       if (!declared) {
         problems.push({
