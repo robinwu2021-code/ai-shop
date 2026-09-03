@@ -14,6 +14,7 @@ import { onShow, onShareAppMessage } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCommunityStore } from "@/stores/community";
 import { useCartStore } from "@/stores/cart";
+import { useLocationStore } from "@/stores/location";
 import { useUserStore } from "@/stores/user";
 import { buildShareMessage } from "@shared/ports/share";
 import { GOODS_COVER_FALLBACK, ROUTES } from "@shared/utils/constants";
@@ -24,6 +25,7 @@ import type { Goods, GroupBuy } from "@shared/types";
 
 const { t } = useI18n();
 const community = useCommunityStore();
+const location = useLocationStore();
 const cart = useCartStore();
 const user = useUserStore();
 
@@ -139,6 +141,7 @@ async function ensureIdentity() {
 onShow(() => {
   load();
   cart.load();
+  void location.load();
   /*
    * **这里原先会把未绑归属的人推去选自提点，现在不推了。**
    *
@@ -182,14 +185,23 @@ onShareAppMessage(() =>
     <view class="place sh-row">
       <view class="place__main sh-fill sh-row" @tap="gotoCommunity">
         <sh-icon name="pin" :size="26" color="var(--sh-primary)"></sh-icon>
+        <!--
+          **显示的是「当前生效位置」，不是自提点。** 用户脑子里的第一层是
+          「我在哪」（家 / 公司），而不是「货落在哪个代收点」——
+          后者是前者推出来的结果（location store 的 syncCommunityFromActive）。
+          还没有位置时回落到自提点，再没有就提示去选：这一行**任何时候都要有内容**，
+          空着的顶栏会让人以为页面没加载完。
+        -->
         <text class="txt-body place__name">
-          {{ community.pickup?.name || $t("home.choosePickup") }}
+          {{ location.label || community.pickup?.name || $t("home.choosePickup") }}
         </text>
         <text class="txt-caption place__sub sh-fill">
           {{
-            community.pickup
-              ? community.pickup.arrivalDesc
-              : $t("home.choosePickupHint")
+            location.has
+              ? community.pickup?.arrivalDesc || $t("home.choosePickupHint")
+              : community.pickup
+                ? community.pickup.arrivalDesc
+                : $t("home.choosePickupHint")
           }}
         </text>
       </view>

@@ -599,6 +599,10 @@ timeSlotPh: "e.g. tonight 19:00–21:00",
     refundedHint: "Money returned to your original payment method; timing depends on your bank",
   },
   address: {
+    /** 与「设为默认」是两个动作：这个管看货，那个管下单预填 */
+    useHere: "Browse here",
+    here: "Current",
+    nowHere: "Now browsing from {name}",
     pick: "Pick on map",
     repick: "Pinned · change",
     mapUnsupported: "Map picking is unavailable here — type it in",

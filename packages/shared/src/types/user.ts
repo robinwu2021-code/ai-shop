@@ -9,6 +9,12 @@ import type { MerchantPointAccount } from "./merchant";
 // ---------------------------------------------------------------- 用户与归属
 
 export interface User {
+  /**
+   * 当前生效位置（`Address.addressId`）。**与默认收货地址是两回事**：
+   * 默认是「下单预填哪个收货人」，生效是「现在按哪儿看货」——
+   * 给父母下单时切到父母家看货，而默认收货人仍是自己。
+   */
+  activeAddressId?: string | null;
   /** C 端用户单号。前缀 `cUser` 是有意的：B 端商家、平台 STAFF 是**另外两个账号池**，单号不通用 */
   cUserNo: string;
   /** 昵称。微信授权取来的，用户可改 */

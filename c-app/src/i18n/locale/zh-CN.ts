@@ -636,6 +636,10 @@ export default {
     refundedHint: "款项已原路退回，到账时间以支付渠道为准",
   },
   address: {
+    /** 与「设为默认」是两个动作：这个管看货，那个管下单预填 */
+    useHere: "设为当前位置",
+    here: "当前位置",
+    nowHere: "已切到「{name}」，商品按这里显示",
     pick: "地图选点",
     repick: "已定位·重选",
     mapUnsupported: "这个端不支持地图选点，手动填写即可",

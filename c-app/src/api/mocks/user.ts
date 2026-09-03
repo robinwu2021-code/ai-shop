@@ -24,6 +24,8 @@ export const userMock: Pick<ShopApi,
   | "bindPhoneByWx"
   | "phoneCapable"
   | "bindCommunity"
+  | "activeAddress"
+  | "switchActiveAddress"
   | "addressList"
   | "saveAddress"
   | "removeAddress"
@@ -104,6 +106,26 @@ export const userMock: Pick<ShopApi,
     // 自提点由入驻商家承接（ADR-005）：绑点的同时把承接商家记为「常去的店」
     db.user.merchantNo = pk.hostMerchantNo;
     return delay({ ...db.user });
+  },
+
+  // ------------------------------------------------------- 当前生效位置
+  /**
+   * **替身要和正主一样会返回空。** 新用户没有位置是常态，
+   * 而 mock 里若总是给一条，「没有位置时首页什么样」这条路就永远测不到 ——
+   * 那正是最容易做坏的一条（空白页等他去选）。
+   */
+  async activeAddress() {
+    const id = db.user.activeAddressId;
+    return delay(id ? (db.addresses.find((a) => a.addressId === id) ?? null) : null);
+  },
+
+  async switchActiveAddress(addressId) {
+    const a = db.addresses.find((x) => x.addressId === addressId);
+    if (!a) throw new Error("地址不存在");
+    db.user.activeAddressId = addressId;
+    // **刻意不碰 isDefault** —— 与真后端同一条规则，替身松一点就等于没测
+    persist();
+    return delay({ ...a });
   },
 
   // ---------------------------------------------------------------- 地址簿

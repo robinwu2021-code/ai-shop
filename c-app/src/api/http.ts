@@ -111,6 +111,8 @@ export const httpApi: ShopApi = {
     call<User>("bindCommunity", undefined, { communityNo, pickupNo } satisfies BindCommunityReq),
 
   // ---- 地址簿
+  activeAddress: () => call<Address | null>("activeAddress"),
+  switchActiveAddress: (addressId) => call<Address>("switchActiveAddress", { addressId }),
   addressList: () => call<Address[]>("addressList"),
   saveAddress: (payload) => call<Address[]>("saveAddress", undefined, { ...payload } satisfies SaveAddressReq),
   removeAddress: (addressId) => call<Address[]>("removeAddress", { addressId }),

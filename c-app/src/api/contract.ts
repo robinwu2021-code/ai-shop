@@ -158,6 +158,16 @@ export interface ShopApi {
   bindCommunity(communityNo: string, pickupNo: string): Promise<User>;
 
   // ---- 地址簿（送货上门 / 快递的前置）
+  /**
+   * 当前生效位置。**可能是 null** —— 新用户一个位置都没有，那不是异常：
+   * 首页照常要有东西看，而不是空白等他去选。
+   */
+  activeAddress(): Promise<Address | null>;
+  /**
+   * 切换生效位置。**不动默认收货地址** —— 「默认」是下单预填哪个收货人，
+   * 「生效」是现在按哪儿看货，给父母下单时两者不一样。
+   */
+  switchActiveAddress(addressId: string): Promise<Address>;
   addressList(): Promise<Address[]>;
   saveAddress(payload: Omit<Address, "addressId"> & { addressId?: string }): Promise<Address[]>;
   removeAddress(addressId: string): Promise<Address[]>;

@@ -5,6 +5,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
+import { useLocationStore } from "@/stores/location";
 import type { Address } from "@shared/types";
 import { chooseLocation, chooseWxAddress } from "@shared/ports/location";
 import { confirm } from "@ai-shop/ui/prompt";
@@ -15,6 +16,7 @@ const { t } = useI18n();
 
 const list = ref<Address[]>([]);
 const picking = ref(false);
+const location = useLocationStore();
 const editing = ref(false);
 /** 编辑中的草稿。addressId 为空 = 新增 */
 const draft = ref<Omit<Address, "addressId"> & { addressId?: string }>({
@@ -164,6 +166,18 @@ async function remove(a: Address) {
   list.value = await api.removeAddress(a.addressId);
 }
 
+/**
+ * 设为当前位置 —— **和「设为默认」是两个动作，界面上也要是两个按钮。**
+ *
+ * <p>「当前位置」决定这一次逛看到哪些商家与商品；「默认」决定下单时预填哪个收货人。
+ * 给父母下单的人会切到父母家看货，但默认收货人仍是自己 ——
+ * 把两者做成一个按钮，他就没法表达这件事了。
+ */
+async function useHere(a: Address) {
+  await location.switchTo(a.addressId);
+  uni.showToast({ title: String(t("address.nowHere", { name: a.tag || a.detail })), icon: "none" });
+}
+
 async function setDefault(a: Address) {
   list.value = await api.setDefaultAddress(a.addressId);
 }
@@ -178,6 +192,7 @@ async function pick(a: Address) {
 onLoad((q) => {
   picking.value = q?.picking === "1";
   load();
+  void location.load();
 });
 </script>
 
@@ -195,6 +210,12 @@ onLoad((q) => {
       <text class="txt-caption card__addr">{{ a.region }} {{ a.detail }}</text>
 
       <view class="card__ops">
+        <text
+          v-if="location.active?.addressId !== a.addressId"
+          class="txt-caption op txt-primary"
+          @tap.stop="useHere(a)"
+        >{{ $t("address.useHere") }}</text>
+        <text v-else class="txt-caption op is-active">{{ $t("address.here") }}</text>
         <text v-if="!a.isDefault" class="txt-caption op txt-primary" @tap.stop="setDefault(a)">
           {{ $t("address.setDefault") }}
         </text>
@@ -263,6 +284,11 @@ onLoad((q) => {
 </template>
 
 <style scoped>
+.is-active {
+  color: var(--sh-primary);
+  font-weight: 600;
+}
+
 .regionrow {
   gap: 12rpx;
 }

@@ -80,6 +80,18 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   },
 
   // ---------------------------------------------------------------- 地址簿
+  activeAddress: {
+    method: "GET",
+    path: "/mp/user/active-address",
+    auth: true,
+    summary: "当前生效位置（可能为空，新用户就是这个状态）",
+  },
+  switchActiveAddress: {
+    method: "POST",
+    path: "/mp/user/active-address/:addressId",
+    auth: true,
+    summary: "切换生效位置（不动默认收货地址）",
+  },
   addressList: { method: "GET", path: "/mp/user/address", auth: true, summary: "地址列表" },
   saveAddress: { method: "POST", path: "/mp/user/address", auth: true, summary: "新增/编辑地址" },
   removeAddress: {
