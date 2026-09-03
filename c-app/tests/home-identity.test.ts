@@ -60,8 +60,13 @@ describe("首屏：只认人，不要东西", () => {
     expect(src).toContain("loadProfile");
   });
 
-  it("★★ 选取货点的入口没有消失 —— 不推 ≠ 不给路", () => {
-    expect(src, "顶栏那一行是用户自己去选的唯一入口").toContain("gotoCommunity");
+  it("★★ 顶栏那个入口没有消失 —— 不推 ≠ 不给路", () => {
+    /*
+     * a04d9c8b 把 `gotoCommunity` 改名为 `gotoPlace`（顶栏点开要按有没有位置分流，
+     * 一律去选社区页是答非所问），这条守卫当时没跟着改，从那以后一直红着 ——
+     * 而一条恒红的守卫既拦不住任何东西，还会把后来真正的失败盖在噪声里。
+     */
+    expect(src, "顶栏那一行是用户自己去选的唯一入口").toContain("gotoPlace");
   });
 });
 
