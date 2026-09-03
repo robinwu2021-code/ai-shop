@@ -115,6 +115,21 @@ public class OrdSubOrder extends BaseEntity {
     /** 自提点名称快照：页面要显示名字，不能只给号（C6）。 */
     private String pickupName;
 
+    /**
+     * 下单那一刻自提点的**承接方**，佣金归属依据（V317）。
+     *
+     * <p>不存的话，「这一单算谁的」要在结算时从 {@code pickup_no} 现推 ——
+     * 而自提点换了承接门店之后，**历史订单的归属会跟着变**：
+     * 上个月的单突然算到新承接方头上，而钱早就结给旧的了。
+     *
+     * <p>与同表的 {@code pickupName}、{@code receiver*} 是同一条理由
+     * （「改名/改地址不该影响历史订单」），只是那些护的是显示，这一列护的是钱。
+     */
+    private String pickupOwnerRef;
+
+    /** 下单时的承接门店号（STORE 类型自提点）。与 {@link #pickupOwnerRef} 成对 */
+    private String pickupOwnerStoreNo;
+
     private String addressId;
 
     /**

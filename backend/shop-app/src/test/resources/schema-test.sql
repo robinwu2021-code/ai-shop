@@ -623,6 +623,8 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     community_no VARCHAR(64) DEFAULT NULL,
     appointment_slot_no VARCHAR(64) DEFAULT NULL,
     appointment_released_at BIGINT DEFAULT NULL,
+    pickup_owner_ref VARCHAR(32) NULL,
+    pickup_owner_store_no VARCHAR(32) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sub_order_no UNIQUE (sub_order_no),
     CONSTRAINT uk_verify_code UNIQUE (verify_code)

@@ -758,8 +758,15 @@ public class OrderServiceImpl implements OrderService {
                 sub.setAppointmentSlotNo(slot == null ? null : cmd.appointmentSlotNo());
             }
             sub.setPickupNo(cmd.pickupNo());
-            // 自提点名称快照（C6）：页面要显示名字，且自提点改名不该影响历史订单
-            sub.setPickupName(pickupPort.find(cmd.pickupNo()).map(p -> p.name()).orElse(null));
+            /*
+             * 自提点快照。名称是给页面看的（改名不该影响历史订单），
+             * **承接方是给钱看的**（换了承接门店不该改写历史订单算谁的）——
+             * 两者一次取出，别分两处查，那会在并发改点时取到不一致的两半。
+             */
+            var brief = pickupPort.find(cmd.pickupNo());
+            sub.setPickupName(brief.map(p -> p.name()).orElse(null));
+            sub.setPickupOwnerRef(brief.map(p -> p.ownerRef()).orElse(null));
+            sub.setPickupOwnerStoreNo(brief.map(p -> p.ownerStoreNo()).orElse(null));
             sub.setAddressId(cmd.addressId());
             /*
              * 收件人快照（V69）：与上面的 pickupName 同一个理由 ——
