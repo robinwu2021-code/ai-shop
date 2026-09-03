@@ -17,6 +17,16 @@ REMOTE=/opt/ai-shop/mp-upload
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST="$HERE/dist/build/mp-weixin"
 
+# **AppID 只有一个真源：manifest.json。**
+# 它此前在三个地方各写一份（manifest、服务器 upload.mjs、密钥文件名），
+# 换小程序时漏改任何一处，产物就会被传进**另一个小程序**里 ——
+# 而 miniprogram-ci 不会拦：appid 与密钥对得上就传，传完一切正常，
+# 只是你在新小程序的版本管理里找不到它，去旧的那个才看得到。
+APPID="$(grep -oE '"appid"[[:space:]]*:[[:space:]]*"wx[a-z0-9]+"' "$HERE/src/manifest.json" \
+  | head -1 | grep -oE 'wx[a-z0-9]+')"
+[ -n "$APPID" ] || { echo "✗ 从 src/manifest.json 里读不出 mp-weixin 的 appid"; exit 1; }
+echo "▶ 目标小程序 AppID：$APPID"
+
 echo "▶ 1/4 构建"
 ( cd "$HERE" && rm -rf dist/build/mp-weixin && npm run build:mp-weixin >/dev/null )
 [ -f "$DIST/app.json" ] || { echo "✗ 产物没生成：$DIST"; exit 1; }
@@ -66,7 +76,7 @@ echo "▶ 4/4 上传（版本 $VERSION）"
 # 于是下面那句「传完了」会在失败时照常打印 —— 这正是本脚本第 2 步要防的那种错，
 # 别在自己身上再犯一遍。落盘再过滤，rc 单独取。
 if ! ssh "$HOST" "cd $REMOTE && rm -rf mp-weixin && tar xzf mp-weixin.tgz 2>/dev/null; \
-  node upload.mjs '$VERSION' '$DESC' > /tmp/mp-up.log 2>&1; rc=\$?; \
+  MP_APPID='$APPID' node upload.mjs '$VERSION' '$DESC' > /tmp/mp-up.log 2>&1; rc=\$?; \
   grep -aE '^\[upload\]|invalid ip' /tmp/mp-up.log; exit \$rc"; then
   echo
   echo "✗ 上传失败，代码没有传上去（完整日志在 $HOST:/tmp/mp-up.log）"

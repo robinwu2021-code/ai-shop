@@ -707,9 +707,49 @@ uni-page-wrapper[style*="--window-bottom"] {
  * 通过插槽塞进来的，带的是页面的 scope id，组件的 scoped 规则匹配不到它们
  * （要 `:slotted()`，而 uni 的编译链未必认）。
  */
+/*
+ * **`*` 在小程序里过不去，所以这条规则要分两份写。**
+ *
+ * WXSS 不支持通配选择器：带着它上传，微信直接拒收
+ * （`-80056 ./app.wxss error at token \`*\``）。而本地构建、开发者工具预览
+ * 全都正常 —— 只有真正上传那一刻才报，报的还是产物里的字符偏移，
+ * 回溯不到这几行（同一个坑本文件上面那条滚动条规则已经踩过一次）。
+ *
+ * 与那次不同的是：**这条规则在小程序上是需要的**，不能只排除掉。
+ * 所以小程序那份改成「每个顶层子节点都给上边距，再把第一个清零」——
+ * 与 `> * + *` 等价，且只用到 WXSS 认的元素选择器与 `:first-child`。
+ *
+ * ⚠️ 代价说清楚：小程序那份**只覆盖这几个内置标签**。顶层如果直接放的是
+ * 自定义组件（`<biz-goods-card>` 那类），它拿不到这条缝 ——
+ * WXSS 里父级样式本来也不穿透组件边界。真遇到了就给那个组件自己加。
+ */
+/* #ifndef MP-WEIXIN */
 .sh-scaffold > * + * {
   margin-top: var(--sh-gap-block, 20rpx);
 }
+/* #endif */
+/* #ifdef MP-WEIXIN */
+.sh-scaffold > view,
+.sh-scaffold > text,
+.sh-scaffold > scroll-view,
+.sh-scaffold > image,
+.sh-scaffold > button,
+.sh-scaffold > navigator,
+.sh-scaffold > swiper,
+.sh-scaffold > form {
+  margin-top: var(--sh-gap-block, 20rpx);
+}
+.sh-scaffold > view:first-child,
+.sh-scaffold > text:first-child,
+.sh-scaffold > scroll-view:first-child,
+.sh-scaffold > image:first-child,
+.sh-scaffold > button:first-child,
+.sh-scaffold > navigator:first-child,
+.sh-scaffold > swiper:first-child,
+.sh-scaffold > form:first-child {
+  margin-top: 0;
+}
+/* #endif */
 /*
  * 顶层的 `<text>` 要当块看待。
  *
