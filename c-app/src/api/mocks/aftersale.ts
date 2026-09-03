@@ -124,6 +124,17 @@ export const aftersaleMock: Pick<ShopApi,
       payMethods: m.micro ? ["JSAPI"] : ["JSAPI", "H5", "APP"],
       quotaExhausted: false,
       quotaWouldExceed: false,
+      /*
+       * 自送圆心与半径。**mock 里必须给一个真值**，理由与上面造两种小微形态一样：
+       * 都放空（= 三条放行全命中）的话，「这家送不到这个地址」那条提示
+       * 在开发期永远不出现，等于没做。
+       *
+       * 落在杭州西湖区、半径 3 公里：种子里那条没坐标的地址会被放行（本就该放行），
+       * 而在地图上选到市区外的地址会被判出圈 —— 两种都看得见。
+       */
+      deliveryLatE6: 30_200_000,
+      deliveryLngE6: 120_100_000,
+      deliveryRadiusM: 3000,
     }));
     // 与后端同口径：一个商家都没配时返回 null（未配置），不是空数组（无交集）
     const configured = merchants.filter((m) => m.payMethods.length);
