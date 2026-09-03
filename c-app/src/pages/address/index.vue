@@ -10,6 +10,7 @@ import type { Address } from "@shared/types";
 import { chooseLocation, chooseWxAddress } from "@shared/ports/location";
 import { confirm } from "@ai-shop/ui/prompt";
 import { isPhone, notBlank } from "@shared/utils/validate";
+import { offerPickedAddress } from "@/shared/address-pick";
 import { isCompleteRegion, joinRegion, splitRegion } from "@shared/utils/region";
 
 const { t } = useI18n();
@@ -182,10 +183,17 @@ async function setDefault(a: Address) {
   list.value = await api.setDefaultAddress(a.addressId);
 }
 
-/** 从结算页进来时，点一条即选中并返回 */
-async function pick(a: Address) {
+/**
+ * 从结算页进来时，点一条即选中并返回。
+ *
+ * <p><b>不动默认地址。</b>此前这里是 `await api.setDefaultAddress(...)` ——
+ * 借「改默认」来传「这一单选谁」。它能工作，所以一直没人看出问题：
+ * 副作用是**长期偏好被一单改写**，给父母寄一次，从此每单都预填父母家。
+ * 现在改为交回一个 id，由结算页自己决定这一单用哪条（`shared/address-pick`）。
+ */
+function pick(a: Address) {
   if (!picking.value) return;
-  await api.setDefaultAddress(a.addressId);
+  offerPickedAddress(a.addressId);
   uni.navigateBack();
 }
 

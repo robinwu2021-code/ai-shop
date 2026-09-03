@@ -11,7 +11,7 @@
 // 差异只在这一块，金额与提交是共用的 —— 与 strategies 的分层保持一致。
 import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { onLoad } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { api, idempotencyKey } from "@/api";
 import { segmentByMerchant, useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
@@ -25,6 +25,7 @@ import { couponDiscount } from "@shared/strategies/pricing/types";
 import { currentCurrency } from "@shared/utils/money";
 import type { Address, CartItem, CheckoutCapability, Coupon, FulfillmentType, OrderItem, OrderAmount, PointsDeductible } from "@shared/types";
 import { pick } from "@ai-shop/ui/prompt";
+import { takePickedAddress } from "@/shared/address-pick";
 
 const { t } = useI18n();
 const cart = useCartStore();
@@ -462,9 +463,33 @@ onLoad((q) => {
   );
 });
 
+/**
+ * 回到这一页时**重取地址簿并接住选中的那条**。两件事缺一不可：
+ *
+ * <ul>
+ *   <li><b>重取</b> —— 用户可能在地址簿里新增了一条，不重取这里根本没有它；
+ *   <li><b>接住</b> —— `addressId` 首次进页就有值了（默认地址），
+ *       `loadAddresses` 里那条 `if (!addressId.value)` 回落轮不到，
+ *       不显式改就等于他刚才白选了一次。
+ * </ul>
+ *
+ * <p>此前这一页只有 `onMounted`，两件事都没发生：选完返回，页面显示的还是原来那条 ——
+ * 而地址簿那边**已经把他的默认地址改掉了**。两个缺陷叠在一起，看起来像
+ * 「生效了，只是慢了一步」（下一次进结算页确实会显示新的那条），所以一直没人报。
+ *
+ * <p>`onShow` 首次进页也会触发，所以地址簿的加载**只留在这里一处**、
+ * 从 `onMounted` 里撤掉，进页时不会请求两次。同一种写法在 `pages/order` 已经用着
+ * （那一页也是「从别处返回时状态会变，必须重新拉」）。
+ */
+onShow(async () => {
+  const picked = takePickedAddress();
+  await loadAddresses();
+  // 放在 load 之后：新增的那条要先进 addresses，`address` 这个 computed 才找得到它
+  if (picked) addressId.value = picked;
+});
+
 onMounted(async () => {
   await Promise.all([
-    loadAddresses(),
     api.couponList().then((c) => (coupons.value = c)),
     FEATURES.points
       ? api.pointAccount().then((a) => (pointBalance.value = a.balance))

@@ -216,7 +216,7 @@ c-app 接过来就是美团主路。这不是新建，是复用。
 
 ## 5. 实测抓到的三处（先修这个，再谈对标）
 
-### D1 · 在结算页选一次地址，把用户的默认地址改掉了
+### D1 · 在结算页选一次地址，把用户的默认地址改掉了 —— **已修（2026-09-03）**
 
 `c-app/src/pages/address/index.vue:186`：
 
@@ -231,7 +231,7 @@ async function pick(a: Address) {
 给父母寄一次东西，从此每一单都预填父母家。**这一单的选择不该改长期偏好** —— 与
 「生效位置 ≠ 默认地址」是同一个道理，只是这次错在另一对概念上。
 
-### D2 · 选完回到结算页，显示的还是原来那条
+### D2 · 选完回到结算页，显示的还是原来那条 —— **已修（2026-09-03）**
 
 `pages/order-confirm/index.vue` 只有 `onLoad`（:453）和 `onMounted`（:465），**没有 `onShow`**；
 而 `loadAddresses()`（:366）里是 `if (!addressId.value)` —— 回来时 `addressId` 早有值，不会重取。
@@ -291,12 +291,28 @@ alter table usr_address add column house_no varchar(40) null comment '门牌号�
 
 ## 8. 实现任务
 
-**第一批 —— 修缺陷（不依赖任何新字段，可独立上线）**
+**第一批 —— 修缺陷（不依赖任何新字段，可独立上线）—— 已完成 2026-09-03**
 
-- [ ] D1：`picking` 模式下 `pick()` 不再调 `setDefaultAddress`，改走事件通道回传 `addressId`
-- [ ] D2：`order-confirm` 收到回传后重取地址并切换选中；补 `onShow` 兜底
-- [ ] 守卫：`c-app/tests/` 加两条 —— ①`picking` 分支里不出现 `setDefaultAddress`；②`order-confirm` 存在回传接收点
-      （消融验证：撤掉修复必须变红）
+- [x] D1：`picking` 模式下 `pick()` 不再调 `setDefaultAddress`，改为交回一个 id
+- [x] D2：`order-confirm` 用 `onShow` 重取地址簿并接住那条 id（地址簿的加载从 `onMounted` 撤掉，不请求两次）
+- [x] 交接落在 `c-app/src/shared/address-pick.ts`：`offer` / `take` 两个函数，**读即清**
+- [x] 守卫 5 条（`c-app/tests/address-pick.test.ts`），三次消融各自变红：
+      还原 `setDefaultAddress` → 红 2 条；删掉 `onShow` → 红 2 条；去掉 `pending = null` → 红 1 条
+
+> **不是事件通道**（本文原先写的是 `getOpenerEventChannel`）。仓库里一处都没用过它，
+> 而 `onShow` 是这一仓十几个页面在用的写法（`pages/order` 的注释写着同一个理由：
+> 「从别处返回时状态会变，必须重新拉」）。为一次交接引入一套新机制不划算。
+
+### 真链路验证（H5 mock，5178）
+
+四条性质逐条看过，不是只跑守卫：
+
+| 验的是什么 | 结果 |
+|---|---|
+| 进结算页时地址簿仍会加载（`onMounted` 那次已撤掉，只剩 `onShow`） | ✅ 显示默认地址「张先生」 |
+| 点「更换」选中另一条，**回来立刻变** | ✅ 变成「李四 · 未来科技城 8 号楼」 |
+| 选完之后**默认地址没变** | ✅ 地址簿里「张先生」仍带「默认」，李四仍是「设为默认」 |
+| 交接是一次性的：整页重载后回落到默认 | ✅ 回到「张先生」 |
 
 **第二批 —— 选地址页（主路改造）**
 
