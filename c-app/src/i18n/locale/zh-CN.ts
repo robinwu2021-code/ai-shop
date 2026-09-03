@@ -124,6 +124,8 @@ export default {
     INSTANT: "即时发放",
   },
   cart: {
+    /** 不可售那一行的操作。只删这一件，不清空全部 */
+    removeInvalid: "移除",
     pickFulfillment: "先选一种取货方式",
     title: "购物车",
     empty: "购物车是空的",

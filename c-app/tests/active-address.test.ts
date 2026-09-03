@@ -56,3 +56,28 @@ describe("生效位置 ≠ 默认收货地址", () => {
     expect(store).toMatch(/latE6 == null \|\| a\.lngE6 == null\) return/);
   });
 });
+
+/**
+ * 切位置之后，车里买不到的东西**要说出来**。
+ *
+ * <p>后端早就在标 `invalidReason`（这家店不送到新位置、下架、无库存），
+ * 而购物车页此前**一处都没展示** —— 于是货悄悄不算数：
+ * 合计里没有它、结算时它不在单里，而用户看到它好端端躺在车里，
+ * 只会以为是系统算错了。
+ */
+describe("购物车：不可售要说出来，但不许替用户删", () => {
+  const page = code("src/pages/cart/index.vue");
+
+  it("★★★ 不可售的行要显示原因", () => {
+    expect(page, "后端标了 invalidReason，页面必须用它").toContain("invalidReason");
+  });
+
+  it("★★★ 不可售时不许还能加减数量 —— 加了也结不掉，只会让人更困惑", () => {
+    expect(page).toMatch(/v-if="!it\.invalidReason"[\s\S]{0,200}stepper/);
+  });
+
+  it("★★★ 不许自动清空 —— 那是用户的东西，删不删由他决定", () => {
+    // 允许「点一下删这一件」，不允许出现批量清理不可售的调用
+    expect(page).not.toMatch(/removeAllInvalid|clearInvalid|filter\([^)]*invalidReason[^)]*\)\s*\.map[\s\S]{0,80}remove/);
+  });
+});

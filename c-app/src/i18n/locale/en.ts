@@ -122,6 +122,8 @@ export default {
     INSTANT: "Instant delivery",
   },
   cart: {
+    /** 不可售那一行的操作。只删这一件，不清空全部 */
+    removeInvalid: "Remove",
     pickFulfillment: "Choose a pickup method first",
     title: "Cart",
     empty: "Your cart is empty",

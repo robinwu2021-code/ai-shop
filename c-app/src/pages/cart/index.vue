@@ -11,6 +11,14 @@ import { pick } from "@ai-shop/ui/prompt";
 const { t } = useI18n();
 const cart = useCartStore();
 
+/**
+ * 删掉一件不可售的。**只删这一件**，不顺手清空所有不可售的 ——
+ * 用户可能只是想去掉其中一件、把别的留着等它恢复（换回原来的位置就又能买了）。
+ */
+async function remove(skuNo: string) {
+  await cart.remove([skuNo]);
+}
+
 function dec(skuNo: string, qty: number) {
   cart.update(skuNo, qty - 1);
 }
@@ -68,7 +76,22 @@ onShow(() => cart.load());
           :title="it.title"
           :spec="it.spec"
           size="lg"
+          :class="{ 'is-invalid': it.invalidReason }"
         >
+          <!--
+            **不可售要说出来，而且要说清是为什么。**
+            后端早就在标 invalidReason（换了位置之后这家店不送到这儿、
+            商品下架、库存没了），而这一页一处都没展示 ——
+            于是货悄悄不算数：合计里没有它、结算时它不在单里，
+            而用户看到它好端端躺在车里，只会以为是系统算错了。
+            **不自动删**：那是他的东西，删不删由他决定。
+          -->
+          <view v-if="it.invalidReason" class="invalid">
+            <text class="txt-caption invalid__text">{{ it.invalidReason }}</text>
+            <text class="txt-caption invalid__act" @tap.stop="remove(it.skuNo)">{{
+              $t("cart.removeInvalid")
+            }}</text>
+          </view>
           <view v-if="it.giftQty" class="giftrow sh-row">
             <text class="txt-caption giftrow__tag">{{ $t("promo.gift") }}</text>
             <text class="txt-caption giftrow__text sh-num">
@@ -76,7 +99,7 @@ onShow(() => cart.load());
             </text>
           </view>
 
-          <view class="row__foot sh-row sh-row--between">
+          <view v-if="!it.invalidReason" class="row__foot sh-row sh-row--between">
             <text class="txt-price sh-num">{{ money(it.price) }}</text>
             <view class="stepper sh-row">
               <view class="txt-body stepper__btn sh-center" @tap="dec(it.skuNo, it.qty)"><text>−</text></view>
@@ -110,6 +133,26 @@ onShow(() => cart.load());
 </template>
 
 <style scoped>
+/* 不可售的整行压暗，但**不隐藏** —— 用户要能看见自己加过什么 */
+.is-invalid {
+  opacity: 0.5;
+}
+.invalid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8rpx;
+  padding: 10rpx 16rpx;
+  border-radius: 12rpx;
+  background: var(--sh-warning-tint);
+}
+.invalid__text {
+  color: var(--sh-ink);
+}
+.invalid__act {
+  color: var(--sh-primary);
+}
+
 .group {
   margin-bottom: 20rpx;
 }

@@ -122,6 +122,8 @@ export default {
     INSTANT: "تسليم فوري",
   },
   cart: {
+    /** 不可售那一行的操作。只删这一件，不清空全部 */
+    removeInvalid: "إزالة",
     pickFulfillment: "اختر طريقة الاستلام أولاً",
     title: "السلة",
     empty: "سلتك فارغة",
