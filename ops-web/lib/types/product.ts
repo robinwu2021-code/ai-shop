@@ -675,3 +675,19 @@ export interface BannedWord {
   reason: string | null;
   enabled: boolean;
 }
+
+/**
+ * 建品规则（商品①）。提审那一刻校验，**拦在进审核队列之前**。
+ *
+ * <p>**三条默认全关**（等于今天的行为）：一旦打开，命中的存量商品下次提审全会被拦，
+ * 而平台上有 200 个 SPU、194 个正卡在审核里。默认打开等于在没人预告的情况下
+ * 让一批商家的提交突然失败。
+ */
+export interface ProductPolicy {
+  /** 提审前必须有主图 */
+  requireCover: boolean;
+  /** 标题最少几个字，0 = 不限 */
+  titleMinLength: number;
+  /** 标题最多几个字，0 = 不限 */
+  titleMaxLength: number;
+}

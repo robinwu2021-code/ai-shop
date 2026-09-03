@@ -34,6 +34,8 @@ export const productHttp: ProductApi = {
   bannedWords: () => client.get("/ops/banned-word"),
   addBannedWord: (v) => client.post("/ops/banned-word", v),
   removeBannedWord: (id) => client.post(`/ops/banned-word/${id}/remove`),
+  productPolicy: () => client.get("/ops/product/policy"),
+  saveProductPolicy: (v) => client.post("/ops/product/policy", v),
   listGoodsAuditQueue: (q) => client.get("/ops/goods/audit-queue", q),
   // 后端这条收的是 @RequestParam（不是 body），而 client.post 只有 (path, data) 两个参数 ——
   // 所以 entityNo 拼进查询串。encodeURIComponent 不能省：商家号虽然目前是安全字符，

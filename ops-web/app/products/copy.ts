@@ -562,6 +562,15 @@ const zh = {
   bwRemoveTitle: "移除「{w}」？",
   bwRemoveDesc: "移除之后，标题里带这个词的商品下次提审就不会再被拦。",
   bwEmpty: "还没有禁售词",
+
+  bpTitle: "提审前置约束",
+  // 默认全关是有意的，界面上要说清楚打开的后果
+  bpWarn: "这三条在商家点「提交审核」那一刻生效。打开之前先想清楚会拦下多少 —— 命中的存量商品下次提审全会被拦，而他们只会看到一个自己没做错什么的报错。",
+  bpRequireCover: "必须有主图",
+  bpTitleMin: "标题最少",
+  bpTitleMax: "标题最多",
+  bpZeroMeansOff: "0 = 不限",
+  bpSaved: "已保存，下次提审生效",
 };
 
 const en: typeof zh = {
@@ -1090,6 +1099,14 @@ const en: typeof zh = {
   bwRemoveTitle: "Remove \"{w}\"?",
   bwRemoveDesc: "After removal, listings containing this word will no longer be blocked at submission.",
   bwEmpty: "No banned words yet",
+
+  bpTitle: "Pre-submission rules",
+  bpWarn: "These apply the moment a merchant hits Submit. Think about how many they will block first — every existing listing that matches will fail its next submission, and the merchant only sees an error they did nothing to cause.",
+  bpRequireCover: "Cover image required",
+  bpTitleMin: "Title min",
+  bpTitleMax: "Title max",
+  bpZeroMeansOff: "0 = no limit",
+  bpSaved: "Saved, applies from the next submission",
 };
 
 export const PRODUCTS_COPY: PageCopy<typeof zh> = { zh, en };

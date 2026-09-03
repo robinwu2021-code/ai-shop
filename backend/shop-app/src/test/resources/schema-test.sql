@@ -8634,3 +8634,6 @@ SELECT 'SUPER_ADMIN', 'OPS_PRODUCT__TAB_BANNED_WORD', 'OPS', NOW(), NOW() FROM D
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'GOODS_OPS', 'OPS_PRODUCT__TAB_BANNED_WORD', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='GOODS_OPS' AND x.point_code='OPS_PRODUCT__TAB_BANNED_WORD');
+UPDATE sys_function_point
+   SET name = '建品规则', updated_at = NOW()
+ WHERE point_code = 'OPS_PRODUCT__TAB_BANNED_WORD';

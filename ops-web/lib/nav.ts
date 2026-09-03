@@ -194,7 +194,7 @@ export const NAV: NavSection[] = [
       // 而商家隔几天才知道要改哪个字。
       // 归「类目」组：与类目策略同一批人管（都是「平台定规则」那一类），
       // 且同 group 的叶子必须相邻。
-      { href: "/products?tab=banned-word", label: "禁售词", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
+      { href: "/products?tab=banned-word", label: "建品规则", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
       // 标准品库（TDD-标准品库）。**单独一个权限码**而不是复用 product:category:*：
       // 类目决定「这类货要什么资质」（准入门槛），标准品决定「这件货长什么样」（录入模板）——
       // 让能改准入的人才能录标准品，会把一件运营日常挡在一个很高的门后面

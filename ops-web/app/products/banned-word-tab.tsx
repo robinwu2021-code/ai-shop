@@ -10,11 +10,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { useCan } from "@/lib/use-can";
-import type { BannedWord } from "@/lib/types";
+import type { BannedWord, ProductPolicy } from "@/lib/types";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { HelpNote } from "@/components/ui/help-note";
 import { Toolbar } from "@/components/ui/toolbar";
 import { Input } from "@/components/ui/input";
+import { CheckboxField } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
@@ -30,6 +31,11 @@ export function BannedWordTab({ c }: { c: ProductsCopy }) {
   const [reason, setReason] = useState("");
 
   const list = useQuery({ queryKey: ["banned-words"], queryFn: () => api.bannedWords() });
+  const policy = useQuery({ queryKey: ["product-policy"], queryFn: () => api.productPolicy() });
+  const savePolicy = useMutation({
+    mutationFn: (v: ProductPolicy) => api.saveProductPolicy(v),
+    onSuccess: (v) => { qc.setQueryData(["product-policy"], v); notify.success(c.bpSaved); },
+  });
 
   const add = useMutation({
     mutationFn: () => api.addBannedWord({ word: word.trim(), reason: reason.trim() || undefined }),
@@ -66,6 +72,28 @@ export function BannedWordTab({ c }: { c: ProductsCopy }) {
     <>
       {dialog}
       <HelpNote title={c.bwHelpTitle}>{c.bwHelp}</HelpNote>
+
+      {/*
+        * 三条约束（商品①）。**默认全关，等于今天的行为** ——
+        * 一旦打开，命中的存量商品下次提审全会被拦，而平台上正有 194 件在审。
+        * 所以这一段旁边就写着「开之前先看看会拦下多少」，而不是让人先开了再说。
+        */}
+      {policy.data && (
+        <div className="mb-4 rounded-card border p-3">
+          <div className="mb-2 txt-body font-medium">{c.bpTitle}</div>
+          <p className="mb-3 txt-caption text-muted-foreground">{c.bpWarn}</p>
+          <div className="flex flex-wrap items-end gap-4">
+            <CheckboxField label={c.bpRequireCover} checked={policy.data.requireCover}
+              disabled={!canEdit || savePolicy.isPending}
+              onChange={(v) => savePolicy.mutate({ ...policy.data!, requireCover: v === true })} />
+            <NumField label={c.bpTitleMin} value={policy.data.titleMinLength} disabled={!canEdit}
+              onCommit={(n) => savePolicy.mutate({ ...policy.data!, titleMinLength: n })} />
+            <NumField label={c.bpTitleMax} value={policy.data.titleMaxLength} disabled={!canEdit}
+              onCommit={(n) => savePolicy.mutate({ ...policy.data!, titleMaxLength: n })} />
+            <span className="txt-caption text-muted-foreground">{c.bpZeroMeansOff}</span>
+          </div>
+        </div>
+      )}
       {!canEdit && <ReadOnlyNotice what={c.bwReadOnly} perm="product:category:update" className="mb-3" />}
 
       {canEdit && (
@@ -85,5 +113,27 @@ export function BannedWordTab({ c }: { c: ProductsCopy }) {
         error={list.error} onRetry={() => void list.refetch()}
         rowKey={(w) => String(w.id)} empty={c.bwEmpty} />
     </>
+  );
+}
+
+/**
+ * 数字输入，**失焦才提交**。每敲一个字就存的话，把「60」改成「8」的中间态是「6」，
+ * 而那一瞬间的规则会真的生效 —— 一个只存在半秒的规则拦下的提交，谁也查不出原因。
+ */
+function NumField({ label, value, disabled, onCommit }: {
+  label: string; value: number; disabled?: boolean; onCommit: (n: number) => void;
+}) {
+  const [v, setV] = useState(String(value));
+  return (
+    <label className="flex items-center gap-2 txt-body">
+      <span className="text-muted-foreground">{label}</span>
+      <Input type="number" min={0} value={v} disabled={disabled} className="w-24"
+        onChange={(e) => setV(e.target.value)}
+        onBlur={() => {
+          const n = Math.max(0, Math.floor(Number(v) || 0));
+          setV(String(n));
+          if (n !== value) onCommit(n);
+        }} />
+    </label>
   );
 }

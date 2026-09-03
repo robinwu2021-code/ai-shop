@@ -1,7 +1,7 @@
 // 覆盖范围：类目（P-3.1）、商品池（P-3.2）、库存与预售（P-3.3）。
 import type {
   CategoryPayMode,
-  CategoryPoints, GoodsAudit, GoodsDraftPreview, GoodsDetail, Category, CategoryArchiveImpact, CategorySpec, CategorySpecBinding, SpecDim, SpecValue, Page, ProductGoods, Sku, SpecTemplate, SpuStd, Topic, ProductStats, GoodsChain, BannedWord } from "@/lib/types";
+  CategoryPoints, GoodsAudit, GoodsDraftPreview, GoodsDetail, Category, CategoryArchiveImpact, CategorySpec, CategorySpecBinding, SpecDim, SpecValue, Page, ProductGoods, Sku, SpecTemplate, SpuStd, Topic, ProductStats, GoodsChain, BannedWord, ProductPolicy } from "@/lib/types";
 import type { CategoryQ, SkuQ, SpecTemplateQ } from "../query";
 
 export interface ProductApi {
@@ -156,6 +156,10 @@ export interface ProductApi {
   bannedWords(): Promise<BannedWord[]>;
   addBannedWord(v: { word: string; reason?: string }): Promise<BannedWord[]>;
   removeBannedWord(id: number): Promise<BannedWord[]>;
+
+  /** 建品规则（商品①）。与禁售词同一页、同一时刻校验 */
+  productPolicy(): Promise<ProductPolicy>;
+  saveProductPolicy(v: ProductPolicy): Promise<ProductPolicy>;
   /**
    * 超卖告警（P-3.3.3）：已售 > 预售额度。**已接真后端** `GET /ops/skus/oversell`。
    * 只读，处置要人判断是补货还是退单 —— 自动关单会把还能补上的团也关掉。

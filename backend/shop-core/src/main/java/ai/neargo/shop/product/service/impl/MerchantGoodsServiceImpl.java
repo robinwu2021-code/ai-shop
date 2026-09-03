@@ -88,6 +88,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private final ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort;
     /** 禁售词。走 SPI 不直连 platform 的表 —— product 与 platform 是兄弟模块 */
     private final ai.neargo.shop.spi.platform.BannedWordPort bannedWords;
+    /** 建品规则（必填主图 / 标题长度）。同上，走 SPI */
+    private final ai.neargo.shop.spi.platform.ProductPolicyPort productPolicy;
     private final ai.neargo.shop.product.mapper.ProductMappers.GoodsDraftMapper draftMapper;
 
     /**
@@ -132,6 +134,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                     ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
                                     ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort,
                                     ai.neargo.shop.spi.platform.BannedWordPort bannedWords,
+                                    ai.neargo.shop.spi.platform.ProductPolicyPort productPolicy,
                                     ai.neargo.shop.product.mapper.ProductMappers.GoodsDraftMapper draftMapper,
                                     ai.neargo.shop.spi.user.AdmissionPort admissionPort,
                                     ai.neargo.shop.product.service.CategoryService categoryService,
@@ -158,6 +161,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         this.communityQueryPort = communityQueryPort;
         this.switchPort = switchPort;
         this.bannedWords = bannedWords;
+        this.productPolicy = productPolicy;
         this.draftMapper = draftMapper;
         this.admissionPort = admissionPort;
         this.stockPort = stockPort;
@@ -2455,6 +2459,26 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
              * 报错**点名那个词**：驳回理由是人手写的一句话，商家读完常常还是
              * 不知道改哪儿；而「标题里的『XX』不能用」他当场就能改。
              */
+            /*
+             * 建品规则（商品①）。**与禁售词同一个时刻校验** ——
+             * 都是「拦在进审核队列之前」，报错都当场说清该改什么。
+             *
+             * 三条默认都是关的（等于今天的行为）：一旦打开，命中的存量商品
+             * 下次提审全会被拦，而平台上正有 194 件卡在审核里。
+             */
+            var policy = productPolicy.current();
+            if (policy.requireCover() && (g.getCover() == null || g.getCover().isBlank())) {
+                throw BizException.of(ErrorCode.BAD_REQUEST, "提交审核前要先上传主图");
+            }
+            String title = g.getTitle() == null ? "" : g.getTitle().strip();
+            if (policy.titleMinLength() > 0 && title.length() < policy.titleMinLength()) {
+                throw BizException.of(ErrorCode.BAD_REQUEST,
+                        "标题至少 " + policy.titleMinLength() + " 个字");
+            }
+            if (policy.titleMaxLength() > 0 && title.length() > policy.titleMaxLength()) {
+                throw BizException.of(ErrorCode.BAD_REQUEST,
+                        "标题最多 " + policy.titleMaxLength() + " 个字");
+            }
             bannedWords.firstHit(g.getTitle()).ifPresent(hit -> {
                 throw BizException.of(ErrorCode.BAD_REQUEST,
                         "标题里的「" + hit.word() + "」不能用"

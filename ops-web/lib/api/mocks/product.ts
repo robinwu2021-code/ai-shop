@@ -2,7 +2,7 @@
 import * as db from "@/lib/mock/db";
 import { MARKETS, MAX_CATEGORY_LEVEL, SKU_TRANSITIONS, type Category, type CategorySpecDim, type SpecDim, type SpecValue, type Sku, type SpecTemplate, type SpuStd, type Topic, type ProductGoods } from "@/lib/types";
 import type { ProductApi } from "../contracts/product";
-import type { BannedWord } from "@/lib/types";
+import type { BannedWord, ProductPolicy } from "@/lib/types";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
@@ -223,6 +223,8 @@ function parentNameOf(cat: Category) {
 const mockPayModes = new Map<string, boolean>();
 const mockPoints = new Map<string, { earnMode: "FIXED" | "RATIO" | null; earnValue: number | null }>();
 
+const mockPolicy: ProductPolicy = { requireCover: false, titleMinLength: 0, titleMaxLength: 0 };
+
 const mockBannedWords: BannedWord[] = [
   { id: 1, word: "特效", reason: "涉医疗功效宣称，广告法禁用", enabled: true },
   { id: 2, word: "国家级", reason: "绝对化用语", enabled: true },
@@ -251,6 +253,10 @@ export const productMock: ProductApi = {
    * 禁售词。**mock 里留一条没写理由的** —— 那一档在界面上是红字，
    * 而它正是这张表最该被看见的问题：没有理由的词，商家收到的还是一句「不能用」。
    */
+  // 默认全关：mock 也要演出「今天的行为」，否则开发期看到的是一套线上没有的约束
+  productPolicy: () => wait({ ...mockPolicy }),
+  saveProductPolicy: (v) => { Object.assign(mockPolicy, v); return wait({ ...mockPolicy }); },
+
   bannedWords: () => wait([...mockBannedWords]),
   addBannedWord: ({ word, reason }) => {
     mockBannedWords.push({ id: Date.now(), word: word.toLowerCase(), reason: reason ?? null, enabled: true });
