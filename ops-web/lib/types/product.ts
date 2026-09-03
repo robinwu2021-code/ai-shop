@@ -607,3 +607,29 @@ export interface ClientPointsPolicy {
   /** 当面付能不能用积分抵扣。**默认开** —— 成本本来就在商家，线下反而比线上简单 */
   offlineRedeem: boolean;
 }
+
+/**
+ * 商品域平台统计（M4）。
+ *
+ * <p>此前这个域**一个统计数字都没有**，而商品是这个平台的主体。
+ * 四个数各自对应一个能做的事，不是四个摆着看的指标。
+ */
+export interface ProductStats {
+  categories: number;
+  /** 至少被一个商品用过的类目数 */
+  categoriesUsed: number;
+  skus: number;
+  /** 填了条码的。**扫码功能的天花板就是这个数** */
+  skusWithBarcode: number;
+  /** 填了商家货号的 */
+  skusWithCode: number;
+  specDims: number;
+  /** 至少挂到一个类目上的维度数。规格库只增不减，没挂上的是清理依据 */
+  specDimsBound: number;
+  auditApproved: number;
+  auditRejected: number;
+  auditPending: number;
+  /** 最近 N 天的审核动作数 —— **吞吐**，与上面三个累计数不是一回事 */
+  auditActions: number;
+  auditDays: number;
+}

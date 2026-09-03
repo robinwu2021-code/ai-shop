@@ -481,6 +481,39 @@ const zh = {
   topicGoodsSaved: "专题商品已更新",
   topicLoadFailed: "当前专题商品加载失败，保存会覆盖成你现在勾的这些",
 
+
+  // ── 商品统计（M4）────────────────────────────────────────────────────
+  statsHelpTitle: "这几个数怎么用",
+  statsHelp:
+    "每一格都给分子和分母，不是只给百分比 —— 73 个类目用了 14 个，与 7300 个用了 1400 个，"
+    + "同样是 19%，但该做的事完全不同。四个数各自对应一件能做的事，"
+    + "不是四个摆着看的指标。",
+  statsLoadFailed: "统计取不到 —— 这不等于「一个都没有」，先报障",
+  statsOfN: "{n} / {total}",
+
+  statsCategoryTitle: "类目使用率",
+  statsCategoryUsed: "被用过的类目",
+  statsCategoryNote: "没被商品用过的类目，要么该收起来，要么说明商家在建品时找不到它们。",
+
+  statsBarcodeTitle: "条码覆盖率",
+  statsBarcodeUsed: "填了条码的 SKU",
+  statsCodeUsed: "填了商家货号的",
+  statsBarcodeNote: "扫码入库能覆盖的上限就是这个数。空值和空串都算没填。",
+
+  statsSpecTitle: "规格库使用率",
+  statsSpecUsed: "挂到类目上的维度",
+  statsSpecNote: "规格库只增不减。没挂上任何类目的维度，是清理它的唯一依据。",
+
+  statsAuditTitle: "审核",
+  statsPassRate: "通过率",
+  statsPassRateNone: "还没有审完的",
+  statsApproved: "已通过",
+  statsRejected: "已驳回",
+  statsPending: "待审",
+  statsThroughput: "最近 {n} 天审了",
+  // 「平均等多久」不在这里：表上没有「什么时候审的」这一列，
+  // 只有 updated_at，而商家改一版也会动它 —— 拿它算出来的平均值在量别的东西
+  statsAuditNote: "通过率的分母只算审完的。「平均等多久」暂时给不出：表上没有记录审核发生的时间。",
 };
 
 const en: typeof zh = {
@@ -937,6 +970,36 @@ const en: typeof zh = {
   topicGoodsSaved: "Topic products updated",
   topicLoadFailed: "Could not load the current selection — saving will replace it with what you ticked",
 
+
+  statsHelpTitle: "How to read these",
+  statsHelp:
+    "Every card gives the numerator and the denominator, not just a percentage — 14 of 73 categories "
+    + "and 1400 of 7300 are both 19%, but they call for completely different work. "
+    + "Each number maps to something you can act on.",
+  statsLoadFailed: "Cannot load stats — that is not the same as zero. Report it.",
+  statsOfN: "{n} / {total}",
+
+  statsCategoryTitle: "Category usage",
+  statsCategoryUsed: "Categories in use",
+  statsCategoryNote: "An unused category should either be retired, or merchants cannot find it while listing.",
+
+  statsBarcodeTitle: "Barcode coverage",
+  statsBarcodeUsed: "SKUs with a barcode",
+  statsCodeUsed: "With a merchant code",
+  statsBarcodeNote: "This is the ceiling for scan-to-receive. Null and empty both count as missing.",
+
+  statsSpecTitle: "Spec library usage",
+  statsSpecUsed: "Dimensions bound to a category",
+  statsSpecNote: "The spec library only ever grows. Dimensions bound to nothing are the only basis for pruning it.",
+
+  statsAuditTitle: "Review",
+  statsPassRate: "Pass rate",
+  statsPassRateNone: "Nothing reviewed yet",
+  statsApproved: "Approved",
+  statsRejected: "Rejected",
+  statsPending: "Awaiting review",
+  statsThroughput: "Reviewed in {n} days",
+  statsAuditNote: "The pass rate counts only finished reviews. Average wait is not available: the table has no column recording when a review happened.",
 };
 
 export const PRODUCTS_COPY: PageCopy<typeof zh> = { zh, en };

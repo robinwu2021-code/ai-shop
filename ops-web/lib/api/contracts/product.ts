@@ -1,7 +1,7 @@
 // 覆盖范围：类目（P-3.1）、商品池（P-3.2）、库存与预售（P-3.3）。
 import type {
   CategoryPayMode,
-  CategoryPoints, GoodsAudit, GoodsDraftPreview, GoodsDetail, Category, CategoryArchiveImpact, CategorySpec, CategorySpecBinding, SpecDim, SpecValue, Page, ProductGoods, Sku, SpecTemplate, SpuStd, Topic } from "@/lib/types";
+  CategoryPoints, GoodsAudit, GoodsDraftPreview, GoodsDetail, Category, CategoryArchiveImpact, CategorySpec, CategorySpecBinding, SpecDim, SpecValue, Page, ProductGoods, Sku, SpecTemplate, SpuStd, Topic, ProductStats } from "@/lib/types";
 import type { CategoryQ, SkuQ, SpecTemplateQ } from "../query";
 
 export interface ProductApi {
@@ -145,6 +145,9 @@ export interface ProductApi {
   setSkuPresale(skuNo: string, presaleQuota: number, cutoffAt: string, arriveAt?: string): Promise<Sku>;
   /** sku 粒度全量查询。**已接真后端** `GET /ops/skus`；`presaleOnly` 给「库存与预售」tab 用。 */
   listSkus(q?: SkuQ): Promise<Page<Sku>>;
+
+  /** 商品域平台统计（M4）。`days` 只影响审核吞吐那一个数，其余是累计 */
+  productStats(q?: { days?: number }): Promise<ProductStats>;
   /**
    * 超卖告警（P-3.3.3）：已售 > 预售额度。**已接真后端** `GET /ops/skus/oversell`。
    * 只读，处置要人判断是补货还是退单 —— 自动关单会把还能补上的团也关掉。

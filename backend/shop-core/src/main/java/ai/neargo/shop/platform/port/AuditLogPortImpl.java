@@ -1,5 +1,7 @@
 package ai.neargo.shop.platform.port;
 
+import ai.neargo.shop.platform.entity.SysAuditLog;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import org.springframework.stereotype.Component;
@@ -15,8 +17,12 @@ public class AuditLogPortImpl implements AuditLogPort {
 
     private final OpsService opsService;
 
-    public AuditLogPortImpl(OpsService opsService) {
+    private final ai.neargo.shop.platform.mapper.PlatformMappers.AuditLogMapper auditLogs;
+
+    public AuditLogPortImpl(OpsService opsService,
+                            ai.neargo.shop.platform.mapper.PlatformMappers.AuditLogMapper auditLogs) {
         this.opsService = opsService;
+        this.auditLogs = auditLogs;
     }
 
     @Override
@@ -33,5 +39,13 @@ public class AuditLogPortImpl implements AuditLogPort {
     public void record(String action, String target, String detail, boolean critical,
                         String beforeJson, String afterJson) {
         opsService.audit(action, target, detail, critical, beforeJson, afterJson);
+    }
+
+    /** 薄转发。查询本身留在 platform 域里 —— 别的域只拿到一个数 */
+    @Override
+    public long countSince(String action, long since) {
+        return auditLogs.selectCount(Wrappers.<SysAuditLog>lambdaQuery()
+                .eq(SysAuditLog::getOpAction, action)
+                .ge(SysAuditLog::getAt, since));
     }
 }

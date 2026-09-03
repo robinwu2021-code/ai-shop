@@ -4721,6 +4721,53 @@ components:
         - "offlineRedeem"
       additionalProperties: false
       description: "积分的**端策略**。存的是**禁用名单，不是允许名单** —— `X-Client` 头今天还没有哪个端全量在发，用允许名单会让开关一上线就把全站积分静默关掉。\n\n⚠️ 它**不是合规硬闸**：端标识来自客户端、可伪造，只能用于平台策略。"
+    ProductStats: 
+      type: "object"
+      properties: 
+        categories: 
+          type: "number"
+        categoriesUsed: 
+          type: "number"
+          description: "至少被一个商品用过的类目数"
+        skus: 
+          type: "number"
+        skusWithBarcode: 
+          type: "number"
+          description: "填了条码的。**扫码功能的天花板就是这个数**"
+        skusWithCode: 
+          type: "number"
+          description: "填了商家货号的"
+        specDims: 
+          type: "number"
+        specDimsBound: 
+          type: "number"
+          description: "至少挂到一个类目上的维度数。规格库只增不减，没挂上的是清理依据"
+        auditApproved: 
+          type: "number"
+        auditRejected: 
+          type: "number"
+        auditPending: 
+          type: "number"
+        auditActions: 
+          type: "number"
+          description: "最近 N 天的审核动作数 —— **吞吐**，与上面三个累计数不是一回事"
+        auditDays: 
+          type: "number"
+      required: 
+        - "categories"
+        - "categoriesUsed"
+        - "skus"
+        - "skusWithBarcode"
+        - "skusWithCode"
+        - "specDims"
+        - "specDimsBound"
+        - "auditApproved"
+        - "auditRejected"
+        - "auditPending"
+        - "auditActions"
+        - "auditDays"
+      additionalProperties: false
+      description: "商品域平台统计（M4）。\n\n<p>此前这个域**一个统计数字都没有**，而商品是这个平台的主体。 四个数各自对应一个能做的事，不是四个摆着看的指标。"
     InvHealthRow: 
       type: "object"
       properties: 
@@ -17750,6 +17797,32 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/product/stats": 
+    get: 
+      operationId: "productStats"
+      summary: "商品域平台统计（M4）"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ProductStats"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/goods/audit-queue": 
     get: 
       operationId: "listGoodsAuditQueue"

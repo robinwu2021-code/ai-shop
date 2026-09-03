@@ -183,6 +183,12 @@ export const NAV: NavSection[] = [
       // 而主题只是「这周首页摆什么」—— 改动最频繁、后果最轻的一档，
       // 挂在类目那个高门槛下面等于让一件运营日常天天找人开权限
       { href: "/products?tab=topics", label: "主题分类", perm: "product:topic:read", group: "陈列", matrix: "P-3.6", ready: true },
+      // ── 统计（M4）────────────────────────────────────────────────────────
+      // **此前这个域一个统计数字都没有**，而商品是这个平台的主体。骨架（类目、
+      // 规格库、标准品）画得最全，却答不出「画的这些骨架有多少真的被用上了」。
+      // 单独成组排在最后：同 group 的叶子必须相邻，且它是唯一一页只读不改的。
+      // perm 用 product:sku:read —— 与后端 OpsProductStatsController 同一个码
+      { href: "/products?tab=stats", label: "商品统计", perm: "product:sku:read", group: "统计", matrix: "P-3.2", ready: true },
     ],
   },
 

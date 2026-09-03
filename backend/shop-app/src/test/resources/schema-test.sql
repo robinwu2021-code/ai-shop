@@ -8573,3 +8573,15 @@ SELECT 'SUPER_ADMIN', 'ACT__MERCHANT_MERCHANT_NUDGE', 'OPS', NOW(), NOW() FROM D
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'BD', 'ACT__MERCHANT_MERCHANT_NUDGE', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='BD' AND x.point_code='ACT__MERCHANT_MERCHANT_NUDGE');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_PRODUCT__TAB_STATS', 'OPS_PRODUCT', '商品统计', '统计', '/products?tab=stats', 'product:sku:read', 'product:sku:read', 'IMPLEMENTED', 1, 'P-3.2', 'MENU', 80, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_PRODUCT__TAB_STATS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_PRODUCT__TAB_STATS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_PRODUCT__TAB_STATS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'GOODS_OPS', 'OPS_PRODUCT__TAB_STATS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='GOODS_OPS' AND x.point_code='OPS_PRODUCT__TAB_STATS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'AUDITOR', 'OPS_PRODUCT__TAB_STATS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='AUDITOR' AND x.point_code='OPS_PRODUCT__TAB_STATS');

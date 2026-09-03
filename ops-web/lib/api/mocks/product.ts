@@ -223,6 +223,19 @@ const mockPayModes = new Map<string, boolean>();
 const mockPoints = new Map<string, { earnMode: "FIXED" | "RATIO" | null; earnValue: number | null }>();
 
 export const productMock: ProductApi = {
+  /*
+   * 照着 2026-09-03 线上的形状：73 个类目只有 14 个被用过、209 个 SKU 里 1 个有条码。
+   * **mock 里放一组好看的数就等于把这一页做成了装饰** —— 它存在的理由
+   * 正是这几个数字有多难看（条码 0.5% 意味着扫码入库今天推不了）。
+   */
+  productStats: (q = {}) => wait({
+    categories: 73, categoriesUsed: 14,
+    skus: 209, skusWithBarcode: 1, skusWithCode: 0,
+    specDims: 34, specDimsBound: 11,
+    auditApproved: 4, auditRejected: 2, auditPending: 194,
+    auditActions: 3, auditDays: q.days ?? 7,
+  }),
+
   listGoodsAuditQueue: (q = {}) =>
     // 队列只给待审的：已处理的属于历史，混在待办里会让人重复审
     wait(db.paginate(db.goodsAudits, q.page, q.size, (g) => g.status === "PENDING")),
