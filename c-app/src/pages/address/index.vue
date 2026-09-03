@@ -6,7 +6,7 @@ import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import type { Address } from "@shared/types";
-import { chooseLocation } from "@shared/ports/location";
+import { chooseLocation, chooseWxAddress } from "@shared/ports/location";
 import { confirm } from "@ai-shop/ui/prompt";
 import { isPhone, notBlank } from "@shared/utils/validate";
 import { isCompleteRegion, joinRegion, splitRegion } from "@shared/utils/region";
@@ -36,6 +36,30 @@ const draft = ref<Omit<Address, "addressId"> & { addressId?: string }>({
  * 商家的自送半径、骑手导航、按位置找店全都用不上它。
  * 不支持选点的端（H5 没配 JS key）静默不显示这个入口，手填照旧。
  */
+/**
+ * 一键导入微信里存的收货地址。**只填字，不带坐标** ——
+ * 需要坐标（配送半径、骑手导航）时仍要点「地图选点」，两者是配合不是替代。
+ *
+ * <p>不覆盖用户已经填了的格子：他可能先手填了一半才想起来有这个按钮，
+ * 一键把他刚敲的字冲掉是最让人恼火的那种「贴心」。
+ */
+async function fillFromWx() {
+  const a = await chooseWxAddress();
+  if (!a) return; // 取消 / 不支持：什么都不做，不弹提示
+  const put = (k: "name" | "phone" | "detail", v: string) => {
+    if (v && !draft.value[k].trim()) draft.value[k] = v;
+  };
+  put("name", a.name);
+  put("phone", a.phone);
+  put("detail", a.detail);
+  if (a.province && !draft.value.province) {
+    draft.value.province = a.province;
+    draft.value.city = a.city;
+    draft.value.district = a.district;
+    draft.value.region = joinRegion({ province: a.province, city: a.city, district: a.district });
+  }
+}
+
 const picked = computed(() => draft.value.latE6 != null && draft.value.lngE6 != null);
 async function pickOnMap() {
   const init = picked.value
@@ -211,6 +235,9 @@ onLoad((q) => {
           <text class="txt-caption regionrow__pick" :class="{ 'is-ok': picked }" @tap="pickOnMap">
             {{ picked ? $t("address.repick") : $t("address.pick") }}
           </text>
+          <!-- #ifdef MP-WEIXIN -->
+          <text class="txt-caption regionrow__pick" @tap="fillFromWx">{{ $t("address.fromWx") }}</text>
+          <!-- #endif -->
         </view>
         <text v-if="regionUnsplit" class="sh-hint">{{ $t("address.regionIncomplete") }}</text>
         <input maxlength="255" v-model="draft.detail" class="field__input" :placeholder="$t('address.detail')" />

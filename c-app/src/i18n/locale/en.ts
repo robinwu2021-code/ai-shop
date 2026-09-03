@@ -611,6 +611,8 @@ timeSlotPh: "e.g. tonight 19:00–21:00",
     regionTitle: "Select province / city / district",
     regionHint: "Each level is stored separately — routing by district and shipping by province need them",
     regionSelect: "Select",
+    /** 一键导入微信通讯录里的收货地址（只小程序有） */
+    fromWx: "WeChat address",
     province: "Province",
     city: "City",
     district: "District",

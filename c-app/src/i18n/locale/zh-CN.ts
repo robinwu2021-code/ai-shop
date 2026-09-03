@@ -648,6 +648,8 @@ export default {
     regionTitle: "选择省 / 市 / 区",
     regionHint: "选出来的省市区会分别存下，按区派单、按省算运费才用得上",
     regionSelect: "请选择",
+    /** 一键导入微信通讯录里的收货地址（只小程序有） */
+    fromWx: "微信地址",
     province: "省",
     city: "市",
     district: "区 / 县",

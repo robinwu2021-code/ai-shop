@@ -140,3 +140,52 @@ export function openLocation(p: { lat: number; lng: number; name?: string; addre
 export function fromE6(latE6?: number | null, lngE6?: number | null): Coords | null {
   return latE6 == null || lngE6 == null ? null : { lat: latE6 / 1e6, lng: lngE6 / 1e6 };
 }
+
+/** 微信通讯录里的一条收货地址。**没有经纬度** —— 见 {@link chooseWxAddress} */
+export interface WxAddress {
+  name: string;
+  phone: string;
+  province: string;
+  city: string;
+  district: string;
+  detail: string;
+}
+
+/**
+ * 从微信通讯录里挑一条收货地址（`wx.chooseAddress`）。
+ *
+ * <p><b>它解决的是「填得快」，不是「填得准」。</b> 新增地址要手填五格
+ * （姓名、手机号、省市区、详细地址、标签），而地址表单是转化漏斗上最容易
+ * 流失的一屏 —— 尤其在手机上。这一下点击能把前四格填掉。
+ *
+ * <p><b>⚠️ 它不返回经纬度，替代不了 {@link chooseLocation}。</b>
+ * 我们要坐标做三件事：商家自送半径、骑手导航、按位置找店。
+ * 微信地址只给文字，所以两者是**配合**关系：先用它填字，
+ * 需要坐标时再去地图选点。把这条写在这儿，是因为「有了它就不用地图选点了」
+ * 是一个非常自然、而且悄悄丢掉坐标的错误结论。
+ *
+ * <p>只有小程序有这个能力；其它端返回 null，调用方照常手填。
+ * 用户取消也返回 null —— 取消不是错误，不该弹任何东西。
+ */
+export async function chooseWxAddress(): Promise<WxAddress | null> {
+  // #ifdef MP-WEIXIN
+  return new Promise((resolve) => {
+    const api = (uni as unknown as { chooseAddress?: (o: object) => void }).chooseAddress;
+    if (!api) return resolve(null);
+    api({
+      success: (r: Record<string, string>) =>
+        resolve({
+          name: r.userName ?? "",
+          phone: r.telNumber ?? "",
+          province: r.provinceName ?? "",
+          city: r.cityName ?? "",
+          district: r.countyName ?? "",
+          detail: r.detailInfo ?? "",
+        }),
+      fail: () => resolve(null),
+    });
+  });
+  // #endif
+  // eslint-disable-next-line no-unreachable
+  return null;
+}
