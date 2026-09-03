@@ -182,6 +182,20 @@ function openNew(place?: PlacePick) {
  */
 const canPick = computed(() => canSearchPlaces() || canChooseLocation());
 
+/**
+ * 预设标签。**存的是当前语言下的显示文案，不是码。**
+ *
+ * <p>本来该存 `HOME/WORK/SCHOOL` 再按词条渲染（这仓对枚举就是这个规矩）。
+ * 没这么做的理由很具体：顶栏那个短名走的是 `location` store 的 `label` getter，
+ * 而 `packages/shared/src/utils/locale.ts` 明确禁止 shared/store 反向依赖各端的 i18n ——
+ * 存码就得把翻译推进 store，或者让 getter 返回一个「这段要翻、那段别翻」的复合值。
+ * 为一个**纯装饰、无任何逻辑匹配**的字段（全仓只有三处在显示它）付这个代价不值。
+ *
+ * <p>代价说清楚：切了界面语言之后，已存的标签仍是当时那个语言的字。
+ * 自定义标签本来就是这样（那是用户自己写的字），预设的三个会略显别扭。
+ */
+const TAG_PRESETS = ["tagHome", "tagWork", "tagSchool"] as const;
+
 /** 到上限了。真正的闸在后端（老版本 App 不知道有这回事），这里只是提前说一声 */
 const atLimit = computed(() => list.value.length >= ADDRESS_RULES.maxCount);
 
@@ -365,7 +379,22 @@ onShow(() => {
           class="field__input"
           :placeholder="$t('address.houseNo')"
         />
-        <input maxlength="16" v-model="draft.tag" class="field__input" :placeholder="$t('address.tagPh')" />
+        <!--
+          标签：预设三个点一下就填好，旁边仍留一个输入框。
+          **不做成「预设/自定义」两种模式** —— 输入框始终是唯一真源，
+          chip 只是快捷方式，于是没有「我现在处在哪种模式」这个问题。
+        -->
+        <view class="tagrow sh-row">
+          <text
+            v-for="k in TAG_PRESETS"
+            :key="k"
+            class="txt-caption tagrow__chip"
+            :class="{ 'is-on': draft.tag === $t(`address.${k}`) }"
+            @tap="draft.tag = String($t(`address.${k}`))"
+          >{{ $t(`address.${k}`) }}</text>
+        </view>
+        <!-- 16 → 8：顶栏的短名直接显示它，16 个字会把那一行撑爆 -->
+        <input maxlength="8" v-model="draft.tag" class="field__input" :placeholder="$t('address.tagPh')" />
 
         <view class="switchrow sh-row sh-row--between" @tap="draft.isDefault = !draft.isDefault">
           <text class="txt-sub switchrow__label txt-ink">{{ $t("address.asDefault") }}</text>
@@ -431,6 +460,19 @@ onShow(() => {
    这里只留这一页特有的：字段之间的纵向间距。 */
 .field__input {
   margin-top: 16rpx;
+}
+.tagrow {
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+.tagrow__chip {
+  padding: 12rpx 24rpx;
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+}
+.tagrow__chip.is-on {
+  background: var(--sh-primary-tint);
+  color: var(--sh-primary-text);
 }
 .switchrow {
   margin-top: 28rpx;

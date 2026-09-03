@@ -295,3 +295,36 @@ describe("门牌号与地址簿上限", () => {
     expect(Number(m![1])).toBe(ADDRESS_RULES.maxCount);
   });
 });
+
+/**
+ * 标签：预设三个 + 自定义。
+ *
+ * <p><b>i18n 那道闸看不见这几个词条</b>：它们是动态键（`$t(\`address.${k}\`)`），
+ * 把整段 chip 删掉之后 `check-i18n-orphan` 照样是 6 条，一个字都不报。
+ * 所以「词条对账 0 条新增」在这里**不构成证据** —— 真正确认它们能渲染出来，
+ * 靠的是在 H5 上看见那三个 chip，以及存量的「家」把第一个 chip 点亮。
+ * 这几条守卫补的是另一半：结构别被人顺手改回去。
+ */
+describe("标签：预设 chip，输入框仍是唯一真源", () => {
+  const addressPage = code("src/pages/address/index.vue");
+
+  it("★★ 三个预设都在，且 chip 只写 draft.tag", () => {
+    expect(addressPage).toContain("TAG_PRESETS");
+    expect(addressPage).toMatch(/tagHome[\s\S]{0,40}tagWork[\s\S]{0,40}tagSchool/);
+    /*
+     * chip 是快捷方式、输入框是真源 —— 不做成「预设/自定义」两种模式，
+     * 于是没有「我现在处在哪种模式」这个问题，也没有两者对不上的中间态。
+     */
+    expect(addressPage).toMatch(/@tap="draft\.tag = String\(\$t\(/);
+  });
+
+  it("★★★ 标签长度上限 8 —— 顶栏的短名直接显示它", () => {
+    /*
+     * 此前是 16。`location` store 的 label getter 把 tag 原样交给顶栏那一行，
+     * 16 个字会把它撑爆，而那一行还要放定位图标与箭头。
+     */
+    const tagInput = addressPage.match(/<input[^>]*draft\.tag[^>]*>/s);
+    expect(tagInput, "标签那个输入框不见了").not.toBeNull();
+    expect(tagInput![0]).toContain('maxlength="8"');
+  });
+});

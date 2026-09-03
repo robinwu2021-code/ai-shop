@@ -695,7 +695,10 @@ export default {
     /** 与 detail 分开：那个是地址主体（带坐标），这个是最后 50 米（只能手打） */
     houseNo: "门牌号（如 3 幢 2 单元 601）",
     repickPlace: "重选",
-    tagPh: "标签（选填，如 家 / 公司）",
+    tagPh: "标签（选填）",
+    tagHome: "家",
+    tagWork: "公司",
+    tagSchool: "学校",
     asDefault: "设为默认地址",
     invalid: "请填写完整信息，手机号需 11 位",
   },
