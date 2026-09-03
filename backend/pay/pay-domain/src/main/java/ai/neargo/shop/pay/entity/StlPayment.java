@@ -80,6 +80,19 @@ public class StlPayment extends BaseEntity {
     /** 通道交易号（微信 transaction_id / 支付宝 trade_no）。**对账单上是这个**。 */
     private String tradeNo;
 
+    /**
+     * 付款人 openid。**按 {@link #wxAppid} 隔离** —— 同一个人在不同小程序下是不同的 openid。
+     *
+     * <p>微信「发货信息录入」上报时必填它，而那时候可能已经换过小程序号了：
+     * 拿当前会话的 openid 去报一笔旧号下的订单，微信认不出这个人，
+     * 而症状是那笔钱结不出账，没有任何端上可见的报错。
+     * 所以**上报时从支付单读，不从会话读**。
+     */
+    private String payerOpenid;
+
+    /** 支付发生时用的小程序 AppID。与 {@link #payerOpenid} 成对，缺一个另一个就没有意义 */
+    private String wxAppid;
+
     /** 通道实扣手续费（分）。以回执为准，不是按费率算出来的。 */
     private Long channelFeeMinor;
 
