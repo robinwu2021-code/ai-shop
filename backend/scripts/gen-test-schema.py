@@ -296,6 +296,18 @@ def replay(sql, tables, order, seeds, renames, altered):
                 if cols is not None:
                     cols[:] = [c for c in cols
                                if not re.match(rf"^\s*CONSTRAINT\s+{idx}\b", c, re.I)]
+        elif re.fullmatch(r"select\s+[\d'\"][^;]*", low) and not re.search(r"\bfrom\b", low):
+            # **只为占位的空查询**（`SELECT 1;`）。
+            #
+            # V318 是一条纯注记迁移：它一个字节的结构都不改，存在只是为了给 V315
+            # 留一句「已应用的迁移是冻结的」——而 Flyway 要求文件里得有条能跑的语句，
+            # 于是 body 是 `SELECT 1;`。
+            #
+            # **判据刻意收得很紧**：不带 FROM，且选的是字面量。
+            # 一律按前缀 `select` 跳过的话，`INSERT ... SELECT` 那类真回填
+            # 也会被静默放过 —— 那正是本脚本开头那条「不认识的语句必须炸」
+            # 要防的事，放宽它等于把闸门拆了。
+            pass
         else:
             # **不认识的语句必须炸，不能静默跳过。**
             # 这个脚本此前只认 CREATE TABLE 与部分 ALTER，DROP TABLE / DROP COLUMN
