@@ -120,6 +120,22 @@ const zh = {
   lhMaxRetry: "最大重试",
   lhLastError: "最近一条错误",
   lhLoadFailed: "链路状态取不到 —— 这不等于链路正常，先报障",
+
+  // ── 补投影与存疑打标（M2）─────────────────────────────────────────────
+  invRepair: "补投影",
+  // 两步：先试算再确认。一步到位的话，第一个点它的人就已经写了库
+  invRepairTitle: "把 {n} 条账外 SKU 搬进进销存？",
+  invRepairDesc: "这些货在平台侧有账、在进销存里没有 —— 商家看不到、盘不着、进不了货。搬过去的数就是平台侧那个数，落成一张 INIT 单据，不会凭空造出库存。刚才已经试算过一遍，这一步才真写。",
+  invRepairConfirm: "确认搬运",
+  invRepairNothing: "没有待搬的 —— 投影是齐的",
+  invRepairDone: "已搬 {n} 条",
+  invColAction: "动作",
+  invDoubt: "标记存疑",
+  invDoubtTitle: "把 {name} 的库存标记为存疑？",
+  // 明说它不做什么：一个「悄悄降权」的标记比下架更糟 —— 商家看不到、也申诉不了
+  invDoubtDesc: "记进这家商家的信用档案，运营与商家的对接人都看得到，可申诉。「它不会下架、不会封店、也不会影响曝光」 —— 平台今天没有曝光权重这套机制。要让商家知道该改什么，配合「链条画像」里的提醒一起用。",
+  invDoubtConfirm: "记录存疑",
+  invDoubtDone: "已记入信用档案",
 };
 
 const en: typeof zh = {
@@ -236,6 +252,19 @@ const en: typeof zh = {
   lhMaxRetry: "Max retries",
   lhLastError: "Latest error",
   lhLoadFailed: "Cannot read link state — that is not the same as healthy. Report it.",
+
+  invRepair: "Backfill",
+  invRepairTitle: "Move {n} unbooked SKUs into inventory?",
+  invRepairDesc: "These exist on the platform but have no inventory account — the merchant cannot see them, count them, or receive stock against them. The quantity moved is the platform's own, written as one INIT document; nothing is invented. The dry run has already happened; this step writes.",
+  invRepairConfirm: "Move them",
+  invRepairNothing: "Nothing to move — the projection is complete",
+  invRepairDone: "Moved {n}",
+  invColAction: "Action",
+  invDoubt: "Flag stock",
+  invDoubtTitle: "Flag stock for {name} as doubtful?",
+  invDoubtDesc: "Recorded in this merchant's credit file, visible to ops and to the merchant's account manager, and appealable. It does not delist, suspend, or affect exposure — the platform has no exposure-weighting mechanism today. Pair it with a nudge from the chain profile so the merchant knows what to fix.",
+  invDoubtConfirm: "Record it",
+  invDoubtDone: "Recorded in the credit file",
 };
 
 export const INVENTORY_COPY: PageCopy<typeof zh> = { zh, en };

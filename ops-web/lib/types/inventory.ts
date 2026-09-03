@@ -220,3 +220,14 @@ export type InvLinkVerdict =
   | "BACKLOG"
   | "DISPATCHER_STALLED"
   | "CONSUMER_FAILING";
+
+/** 手动补投影的结果（M2）。字段与 `InvReconReport` 同源（后端同一个 Report） */
+export interface InvRepairResult {
+  scannedSkus: number;
+  /** 真搬了几条。**试算时恒为 0** —— 不传 apply 就一条都不该动 */
+  moved: number;
+  skipped: number;
+  /** 仍待搬的 */
+  pending: number;
+  clean: boolean;
+}

@@ -412,6 +412,19 @@ public final class Perms {
     public static final String INVENTORY_CREDENTIAL_READ = "inventory:credential:read";
     public static final String INVENTORY_CREDENTIAL_GRANT = "inventory:credential:grant";
 
+    /**
+     * 手动补投影（M2）：把平台侧有账、进销存侧没账的 SKU 搬过去。
+     *
+     * <p><b>单独一个码，不复用 {@link #INVENTORY_STOCK_READ}</b>：它往进销存库里
+     * 写 INIT 单据。也不复用 {@link #INVENTORY_CREDENTIAL_GRANT} —— 那管的是
+     * 「谁能读这些货」，是授权；这一条动的是账本身。
+     *
+     * <p>只给超管。它是修复动作，不是日常运营动作 ——
+     * 日常状态下 {@code inv-backfill} 任务自己会搬，需要人来点的时候，
+     * 说明链路已经出了别的问题（见「链路健康」那一页）。
+     */
+    public static final String INVENTORY_PROJECTION_REPAIR = "inventory:projection:repair";
+
     /** 黑名单与申诉。拉黑直接挡住一个人下单，与只读分开 */
     public static final String RISK_BLACKLIST_READ = "risk:blacklist:read";
     public static final String RISK_BLACKLIST_UPDATE = "risk:blacklist:update";

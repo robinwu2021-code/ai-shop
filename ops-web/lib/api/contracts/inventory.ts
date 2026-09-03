@@ -1,6 +1,6 @@
 // 进销存（P-18）—— `/ops/inventory/**`。**独立模块**：与商品域不共契约文件，
 // 它将来要能单独交付。
-import type { InvBalanceRow, InvHealthRow, InvLedgerPage, InvReconReport, InvCredential, InvCredentialIssued, InvLinkHealth } from "@/lib/types";
+import type { InvBalanceRow, InvHealthRow, InvLedgerPage, InvReconReport, InvCredential, InvCredentialIssued, InvLinkHealth, InvRepairResult } from "@/lib/types";
 
 export interface InventoryApi {
   // **库存本身仍然只读**：运营不改商家库存 —— 改了之后「这个数是谁改的」
@@ -22,6 +22,18 @@ export interface InventoryApi {
    * 少一行是查不到，不是那条链路没事。
    */
   invLinkHealth(): Promise<InvLinkHealth[]>;
+
+  /**
+   * 手动补投影（M2）。**不传 `apply` 就是试算** —— `shop.inventory.backfill.dry-run`
+   * 的默认值是一个决定，不该被一个按钮悄悄绕过。
+   */
+  repairProjection(v?: { apply?: boolean; limit?: number }): Promise<InvRepairResult>;
+
+  /**
+   * 库存存疑打标（M2）。走 `mch_violation` 的 `WARN`：**只记录，不封店、不降权**。
+   * `detail` 必填 —— 这条记录会进信用档案，商家问「凭什么」要答得上。
+   */
+  markStockDoubt(v: { entityNo: string; detail: string }): Promise<void>;
 
   /**
    * **某一个商家**的库存待办（健康度页点进一行之后看的）。

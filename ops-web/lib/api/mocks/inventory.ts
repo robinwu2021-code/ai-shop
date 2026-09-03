@@ -65,6 +65,14 @@ export const inventoryMock: InventoryApi = {
     ]),
 
   invLinkHealth: () => wait(mockLinkHealth),
+  /*
+   * 补投影。mock 里也**默认试算**：演出来的行为要与真实的一致，
+   * 否则开发期看到的是「点一下就搬完了」，而线上第一步是试算。
+   */
+  repairProjection: (v = {}) => wait(v.apply
+    ? { scannedSkus: 209, moved: 3, skipped: 206, pending: 0, clean: true }
+    : { scannedSkus: 209, moved: 0, skipped: 206, pending: 3, clean: false }),
+  markStockDoubt: () => wait(undefined),
 
   listInvHealth: (q = {}) =>
     wait(mockInvHealth.filter((r) => !q.kind || r.kind === q.kind).slice(0, q.limit ?? 200)),

@@ -8602,3 +8602,9 @@ SELECT 'SUPER_ADMIN', 'OPS_MERCHANT__TAB_PLAN_DEFS', 'OPS', NOW(), NOW() FROM DU
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'BD', 'OPS_MERCHANT__TAB_PLAN_DEFS', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='BD' AND x.point_code='OPS_MERCHANT__TAB_PLAN_DEFS');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'ACT__INVENTORY_PROJECTION_REPAIR', 'OPS_INVENTORY', '手动补投影', '切换判据', NULL, 'inventory:projection:repair', 'inventory:projection:repair', 'IMPLEMENTED', 0, 'P-18.3', 'ACTION', 36, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__INVENTORY_PROJECTION_REPAIR');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__INVENTORY_PROJECTION_REPAIR', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__INVENTORY_PROJECTION_REPAIR');
