@@ -518,6 +518,7 @@ export const ROUTES = {
   groupHost: "/pages/group-host/index",
   search: "/pages/search/index",
   address: "/pages/address/index",
+  addressPick: "/pages/address-pick/index",
   orderConfirm: "/pages/order-confirm/index",
   pay: "/pages/pay/index",
   orders: "/pages/orders/index",

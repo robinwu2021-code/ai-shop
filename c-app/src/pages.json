@@ -154,6 +154,18 @@
       }
     },
     {
+      "path": "pages/address-pick/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/order-confirm/index",
       "style": {
         "navigationBarTitleText": "",

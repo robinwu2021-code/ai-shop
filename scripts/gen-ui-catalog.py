@@ -41,7 +41,7 @@ DOMAINS = [
     ("进销存", ["stock", "stock-detail", "stock-check", "purchase-edit", "stock-docs",
                 "stock-out", "transfer", "stock-report", "locations", "suppliers"]),
     ("账号与设置", ["login", "me", "apply", "staff", "staff-detail", "role-detail",
-                    "settings", "address", "profile", "legal"]),
+                    "settings", "address", "address-pick", "profile", "legal"]),
     ("消息与评价", ["messages", "reviews", "notice", "review-write"]),
     ("店铺与逛", ["merchant", "merchants", "community"]),
 ]
@@ -64,6 +64,7 @@ FALLBACK_TITLES = {
         "pages/order-confirm/index": "确认订单", "pages/cards/index": "我的卡包",
         "pages/coupons/index": "我的券", "pages/points/index": "我的积分",
         "pages/messages/index": "消息", "pages/address/index": "收货地址",
+        "pages/address-pick/index": "选择收货地址",
         "pages/store/index": "店铺主页", "pages/category/index": "分类",
         "pages/cart/index": "购物车", "pages/legal/index": "协议与条款",
     },

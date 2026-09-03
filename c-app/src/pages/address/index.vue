@@ -3,14 +3,17 @@
 // `picking=1` 时从结算页进入，选中即回填并返回。
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { onLoad } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useLocationStore } from "@/stores/location";
 import type { Address } from "@shared/types";
-import { chooseLocation, chooseWxAddress } from "@shared/ports/location";
+import { canChooseLocation, chooseLocation, chooseWxAddress } from "@shared/ports/location";
 import { confirm } from "@ai-shop/ui/prompt";
 import { isPhone, notBlank } from "@shared/utils/validate";
-import { offerPickedAddress } from "@/shared/address-pick";
+import { pickedAddress, pickedPlace } from "@/shared/address-pick";
+import type { PlacePick } from "@/shared/address-pick";
+import { canSearchPlaces } from "@shared/ports/geo-search";
+import { ROUTES } from "@shared/utils/constants";
 import { isCompleteRegion, joinRegion, splitRegion } from "@shared/utils/region";
 
 const { t } = useI18n();
@@ -139,12 +142,38 @@ async function load() {
   list.value = await api.addressList();
 }
 
-function openNew() {
+/**
+ * 打开空白表单。`place` 有值时用它预填地址主体与**坐标** ——
+ * 那条坐标正是走一趟选点页的全部收获。
+ */
+function openNew(place?: PlacePick) {
   draft.value = {
-    name: "", phone: "", region: "", province: "", city: "", district: "",
-    detail: "", isDefault: !list.value.length, tag: "", latE6: null, lngE6: null,
+    name: "", phone: "",
+    region: place?.region ?? "",
+    province: place?.province ?? "",
+    city: place?.city ?? "",
+    district: place?.district ?? "",
+    detail: place?.name ?? "",
+    isDefault: !list.value.length, tag: "",
+    latE6: place?.latE6 ?? null,
+    lngE6: place?.lngE6 ?? null,
   };
   editing.value = true;
+}
+
+/**
+ * 「新增地址」**先去选点页**，让地址从一开始就带坐标。
+ *
+ * <p><b>但这个端给不了任何一条选点路时直接开表单</b>（H5：没有原生搜索、
+ * 也没配地图 JS key）。否则那一页对他只剩一行「手动填写」，
+ * 白挡一次点击，比改造前更差。
+ */
+function addNew() {
+  if (!canSearchPlaces() && !canChooseLocation()) {
+    openNew();
+    return;
+  }
+  uni.navigateTo({ url: ROUTES.addressPick });
 }
 
 function openEdit(a: Address) {
@@ -193,7 +222,7 @@ async function setDefault(a: Address) {
  */
 function pick(a: Address) {
   if (!picking.value) return;
-  offerPickedAddress(a.addressId);
+  pickedAddress.offer(a.addressId);
   uni.navigateBack();
 }
 
@@ -201,6 +230,19 @@ onLoad((q) => {
   picking.value = q?.picking === "1";
   load();
   void location.load();
+});
+
+/**
+ * 从选点页回来：**选中的地点要立刻落进一张打开的表单**，别让他自己再点一次「新增」。
+ *
+ * <p>三种回法要分开：交回地点 → 开预填的表单；交回 manual → 开空表单；
+ * 什么都没交回（点了系统返回）→ **什么都不做**。
+ * 把第三种也当成「开表单」的话，用户每次退出选点页都会被塞一张表单。
+ */
+onShow(() => {
+  const p = pickedPlace.take();
+  if (!p) return;
+  openNew(p.kind === "place" ? p : undefined);
 });
 </script>
 
@@ -235,7 +277,7 @@ onLoad((q) => {
     <sh-empty bare v-if="!list.length" :text='$t("address.empty")'></sh-empty>
 
     <sh-actionbar :pad="160">
-      <view class="sh-btn" @tap="openNew">{{ $t("address.add") }}</view>
+      <view class="sh-btn" @tap="addNew">{{ $t("address.add") }}</view>
     </sh-actionbar>
 
     <!-- 编辑弹层 -->

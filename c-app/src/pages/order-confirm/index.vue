@@ -25,7 +25,7 @@ import { couponDiscount } from "@shared/strategies/pricing/types";
 import { currentCurrency } from "@shared/utils/money";
 import type { Address, CartItem, CheckoutCapability, Coupon, FulfillmentType, OrderItem, OrderAmount, PointsDeductible } from "@shared/types";
 import { pick } from "@ai-shop/ui/prompt";
-import { takePickedAddress } from "@/shared/address-pick";
+import { pickedAddress } from "@/shared/address-pick";
 
 const { t } = useI18n();
 const cart = useCartStore();
@@ -482,7 +482,7 @@ onLoad((q) => {
  * （那一页也是「从别处返回时状态会变，必须重新拉」）。
  */
 onShow(async () => {
-  const picked = takePickedAddress();
+  const picked = pickedAddress.take();
   await loadAddresses();
   // 放在 load 之后：新增的那条要先进 addresses，`address` 这个 computed 才找得到它
   if (picked) addressId.value = picked;

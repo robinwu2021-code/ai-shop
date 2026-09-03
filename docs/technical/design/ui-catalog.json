@@ -895,7 +895,7 @@
     {
       "key": "c-app",
       "label": "买家小程序",
-      "count": 31,
+      "count": 32,
       "domains": [
         {
           "name": "工作台",
@@ -1046,6 +1046,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/address/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/address-pick/index",
+              "title": "选择收货地址",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/address-pick/index"
             },
             {
               "app": "c-app",
@@ -3120,5 +3131,5 @@
       ]
     }
   ],
-  "total": 252
+  "total": 253
 }

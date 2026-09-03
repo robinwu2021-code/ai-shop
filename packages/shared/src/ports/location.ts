@@ -141,6 +141,22 @@ export function chooseLocation(init?: Coords | null): Promise<ChooseOutcome> {
   });
 }
 
+/**
+ * 这个端**能不能**地图选点。H5 不行 —— 没配 JS API key，`chooseLocation` 会直接 fail
+ * （理由见上面那段：那是决定，不是待办）。
+ *
+ * <p>为什么要能**提前**问：选点页要据此决定还值不值得进。
+ * 只在点下去之后才知道「不支持」，等于给了一个专门用来弹失败提示的入口。
+ */
+export function canChooseLocation(): boolean {
+  // 不用两个 return 分支：uni 的条件编译能处理，但 vue-tsc 看到的是两条都在的源码
+  let ok = true;
+  // #ifdef H5
+  ok = false;
+  // #endif
+  return ok;
+}
+
 /** 把用户带去本应用的权限设置页。老运行时没这个 API 时静默返回 false，调用方改用文字提示 */
 export function openLocationSettings(): boolean {
   const u = uni as unknown as { openAppAuthorizeSetting?: (o: object) => void };
