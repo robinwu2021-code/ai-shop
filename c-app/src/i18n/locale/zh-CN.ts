@@ -70,6 +70,10 @@ export default {
     conflict: "这个手机号已经注册过。用它登录可以继续，但当前微信里的浏览记录与购物车不会带过去。",
   },
   community: {
+    /** 精确定位到区 */
+    located: "已定位到 {city}{region}，下面是这一带的取货点",
+    /** 模糊定位（区级）—— 文案要说「大致」，别让人以为我们知道得更细 */
+    locatedFuzzy: "大致位置：{city}{region}，下面是这一带的取货点",
     /** 拿不到坐标时唯一的精确路径（getLocation 被驳回，见 ports/location.ts） */
     pickOnMap: "📍 在地图上选择我的位置",
     navigate: "导航",

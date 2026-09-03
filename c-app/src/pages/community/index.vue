@@ -6,7 +6,7 @@ import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { useCommunityStore } from "@/stores/community";
 import { useCartStore } from "@/stores/cart";
-import { chooseLocation, fromE6, getLocation, openLocation } from "@shared/ports/location";
+import { chooseLocation, fromE6, getLocationDetailed, openLocation } from "@shared/ports/location";
 import { distance } from "@shared/utils/format";
 import { ROUTES } from "@shared/utils/constants";
 import type { Community, Pickup, RegionOption } from "@shared/types";
@@ -33,6 +33,12 @@ const located = ref(true);
 const showingAll = ref(false);
 /** 正在选区域（附近没有时的第一步） */
 const pickingRegion = ref(false);
+/**
+ * 「你大概在哪个区」。**这是模糊定位唯一能干的事** ——
+ * 区级坐标排不出五公里内谁更近（见 ports/location.ts 的 fuzzy 标记），
+ * 但「把你落到你那个区」它绰绰有余，而那一步正是手选省市区里最烦的一步。
+ */
+const locatedRegion = ref<{ name: string; cityName: string; fuzzy: boolean } | null>(null);
 /** 已选中的区域，用于列表标题与「换个区」 */
 const region = ref<RegionOption | null>(null);
 
@@ -46,6 +52,8 @@ async function chooseRegion(r: RegionOption) {
     pickingRegion.value = false;
     showingAll.value = true;
     expanded.value = community.list[0]?.communityNo ?? "";
+    // 用户自己选的区，不是定位来的 —— 横幅要撤掉，否则它在说谎
+    locatedRegion.value = null;
   } catch (e) {
     failed.value = true;
     console.error("[community] 加载区域内社区失败", e);
@@ -129,6 +137,29 @@ async function pickOnMap() {
   }
 }
 
+/**
+ * 由「附近有哪些社区」反推「我在哪个区」。
+ *
+ * <p>社区带的是 9 位街道码，区是它的前 6 位；区名从 `openRegions()` 里查 ——
+ * 那份清单本来就要加载（手选区域用），顺手用掉不额外请求。
+ *
+ * <p>**拿不到就不显示**，而不是显示一个「定位中」或者猜一个：
+ * 这条横幅的价值全在「它说的是对的」，说错一次用户就再也不信它了。
+ */
+async function resolveLocatedRegion(fuzzy: boolean) {
+  locatedRegion.value = null;
+  const code = community.list[0]?.regionCode;
+  if (!code || code.length < 6) return;
+  const district = code.slice(0, 6);
+  try {
+    if (!community.regions.length) await community.loadRegions();
+  } catch {
+    return; // 查不到区名就不显示 —— 横幅不是必需品
+  }
+  const r = community.regions.find((x) => x.regionCode === district);
+  if (r) locatedRegion.value = { name: r.name, cityName: r.cityName, fuzzy };
+}
+
 async function load() {
   locating.value = true;
   failed.value = false;
@@ -141,7 +172,12 @@ async function load() {
      * 后端于是永远走「无坐标」分支：距离恒 0、排序退化成库序，
      * 「附近社区」四个字名不副实，而页面看起来完全正常。
      */
-    const at = await getLocation();
+    /*
+     * 用 detailed 而不是 getLocation()：后者只回坐标，**把「这是模糊定位」
+     * 那个标记丢了** —— 而横幅的文案要靠它区分「已定位到」与「大致位置」。
+     */
+    const r = await getLocationDetailed();
+    const at = r.ok ? { lat: r.coords.lat, lng: r.coords.lng, fuzzy: r.fuzzy === true } : null;
     located.value = !!at;
     await community.loadNearby(at?.lat, at?.lng);
     /*
@@ -151,6 +187,7 @@ async function load() {
      * 和自己点进来的（多半正是因为附近没有、他要手动挑一个）。
      * 对后者，那一次点击纯属多余 —— 他要的东西就在按钮后面。
      */
+    await resolveLocatedRegion(at?.fuzzy === true);
     if (!community.list.length) {
       /*
        * **附近没有 → 先给区域，而不是把全国的小区一股脑铺开。**
@@ -242,6 +279,20 @@ onLoad(load);
 <template>
   <sh-scaffold title-key="community.title">
     <text v-if="locating" class="txt-sub hint">{{ $t("community.locating") }}</text>
+
+    <!--
+      **定位到区**就直说，别让用户再从省市区里翻一遍。
+      模糊定位时文案说「大致位置」——精度是区级，不该让人以为我们知道得更细。
+    -->
+    <view v-if="!locating && locatedRegion" class="loc">
+      <text class="loc__pin">📍</text>
+      <text class="loc__text">{{
+        $t(locatedRegion.fuzzy ? "community.locatedFuzzy" : "community.located", {
+          city: locatedRegion.cityName,
+          region: locatedRegion.name,
+        })
+      }}</text>
+    </view>
 
     <view v-else-if="failed" class="state">
       <text class="txt-body state__title">{{ $t("community.failed") }}</text>
@@ -350,6 +401,23 @@ onLoad(load);
 </template>
 
 <style scoped>
+.loc {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 16rpx 24rpx;
+  margin-bottom: 16rpx;
+  border-radius: 16rpx;
+  background: var(--sh-primary-tint);
+}
+.loc__pin {
+  font-size: 26rpx;
+}
+.loc__text {
+  font-size: 26rpx;
+  color: var(--sh-ink);
+}
+
 .onmap {
   margin: 24rpx auto 0;
   padding: 16rpx 32rpx;

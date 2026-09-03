@@ -68,6 +68,10 @@ export default {
     conflict: "This number is already registered. You can log in with it, but this WeChat account\u2019s browsing history and cart will not carry over.",
   },
   community: {
+    /** 精确定位到区 */
+    located: "Located in {city} {region} — pickup points nearby",
+    /** 模糊定位（区级）—— 文案要说「大致」，别让人以为我们知道得更细 */
+    locatedFuzzy: "Approx. {city} {region} — pickup points nearby",
     /** 拿不到坐标时唯一的精确路径（getLocation 被驳回，见 ports/location.ts） */
     pickOnMap: "📍 Pick my location on map",
     navigate: "Directions",

@@ -68,6 +68,10 @@ export default {
     conflict: "هذا الرقم مسجّل بالفعل. يمكنك الدخول به، لكن سجل التصفح وسلة هذا الحساب لن ينتقلا.",
   },
   community: {
+    /** 精确定位到区 */
+    located: "موقعك: {city} {region}",
+    /** 模糊定位（区级）—— 文案要说「大致」，别让人以为我们知道得更细 */
+    locatedFuzzy: "الموقع التقريبي: {city} {region}",
     /** 拿不到坐标时唯一的精确路径（getLocation 被驳回，见 ports/location.ts） */
     pickOnMap: "📍 اختر موقعي على الخريطة",
     navigate: "الاتجاهات",
