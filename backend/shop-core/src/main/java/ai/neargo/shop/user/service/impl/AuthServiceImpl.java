@@ -128,12 +128,20 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void sendOtp(String phone) {
+        sendOtp(phone, null);
+    }
+
+    /**
+     * @param senderKey 发起人（C 端传当前账号号）。见 {@link ai.neargo.shop.common.ratelimit.OtpSendGuard}
+     */
+    @Override
+    public void sendOtp(String phone, String senderKey) {
         /*
          * **闸在生成码之前**：放在之后的话，被拒的那次仍然会把上一条有效码冲掉 ——
          * 用户手里那条还没用的码突然失效，而他看到的是「操作太频繁」，
          * 两件事对不上，只会让他再点一次。
          */
-        sendGuard.check(phone);
+        sendGuard.check(phone, senderKey);
 
         if (usingFixedOtp()) {
             /*

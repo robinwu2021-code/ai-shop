@@ -41,17 +41,27 @@ public class OtpSendGuard {
     private final RateRule perPhoneInterval;
     private final RateRule perPhoneDaily;
     private final RateRule perIpHourly;
+    /**
+     * **按发起人计数。** 前三道限的是「发给谁」（手机号）和「从哪来」（IP），
+     * 唯独没有限「谁在发」—— 一个会话对着不同号码轮着发，每个号都在自己的额度内，
+     * 而 IP 那道只要换网络就绕开了。短信轰炸正是这个形状：受害者是被发的那些号，
+     * 而他们各自只收到一两条，从任何单一维度看都不异常。
+     */
+    private final RateRule perSenderDaily;
 
     public OtpSendGuard(RateLimiter limiter,
                         @Value("${shop.otp.rate-limit:true}") boolean enabled,
                         @Value("${shop.otp.interval-seconds:60}") int intervalSeconds,
                         @Value("${shop.otp.daily-per-phone:10}") int dailyPerPhone,
-                        @Value("${shop.otp.hourly-per-ip:20}") int hourlyPerIp) {
+                        @Value("${shop.otp.hourly-per-ip:20}") int hourlyPerIp,
+                        @Value("${shop.otp.daily-per-sender:15}") int dailyPerSender) {
         this.limiter = limiter;
         this.enabled = enabled;
         this.perPhoneInterval = RateRule.of("otp.interval", Duration.ofSeconds(intervalSeconds), 1);
         this.perPhoneDaily = RateRule.of("otp.daily", Duration.ofDays(1), dailyPerPhone);
         this.perIpHourly = RateRule.of("otp.ip", Duration.ofHours(1), hourlyPerIp);
+        // 15：正常人给自己换绑几次远用不到；批量刷号的第一天就撞上
+        this.perSenderDaily = RateRule.of("otp.sender", Duration.ofDays(1), dailyPerSender);
 
         if (!enabled) {
             /*
@@ -71,8 +81,27 @@ public class OtpSendGuard {
      *                      / {@link ErrorCode#TOO_MANY_REQUESTS}
      */
     public void check(String phone) {
+        check(phone, null);
+    }
+
+    /**
+     * @param senderKey 发起人标识（C 端是账号号，它背后是一个微信 openid）。
+     *                  为 null 时跳过这一维 —— B 端登录页没有会话，那里只能靠号码与 IP。
+     */
+    public void check(String phone, String senderKey) {
         if (!enabled) {
             return;
+        }
+        /*
+         * **按发起人限，先于按号码限。**
+         * 放在后面的话，被拒的那次已经占掉了号码那一维的额度 ——
+         * 攻击者被挡住，代价却记在受害号码头上。
+         */
+        if (senderKey != null && !senderKey.isBlank()
+                && !limiter.tryAcquire("otp:sender:" + senderKey, perSenderDaily).allowed()) {
+            log.warn("[otp] 发起人 {} 触发每日发码上限（{} 条）—— 同一会话换号刷码的形状",
+                    senderKey, perSenderDaily.limit());
+            throw BizException.of(ErrorCode.OTP_DAILY_LIMIT);
         }
         RateLimiter.Decision interval = limiter.tryAcquire("otp:interval:" + phone, perPhoneInterval);
         if (!interval.allowed()) {

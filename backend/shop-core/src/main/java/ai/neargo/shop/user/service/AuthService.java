@@ -45,6 +45,9 @@ public interface AuthService {
     /** 发送短信验证码。返回是否发送成功；验证码本身<b>绝不回传</b>。 */
     void sendOtp(String phone);
 
+    /** 带发起人的发码。见 {@code OtpSendGuard} 的「按发起人」那一维 */
+    void sendOtp(String phone, String senderKey);
+
     /**
      * 会话续期：发新 token 并**立即吊销旧的**（token rotation）。
      * 不吊销旧的话，每次续期都会多留一把可用的钥匙 —— 用户点一次「退出」也收不回来。

@@ -74,10 +74,28 @@ public class MpUserController {
         }
     }
 
-    /** 发验证码。返回体不含验证码 —— 这条别为了联调方便破例。 */
+    /**
+     * 发验证码。返回体不含验证码 —— 这条别为了联调方便破例。
+     *
+     * <p><b>必须在微信环境里、且已经有会话。</b> 小程序的静默登录不需要任何点击，
+     * 所以每个真实用户天然就有一个账号（背后是 openid）—— 这道闸对他们零成本。
+     * 而没有会话的调用方只可能是直接打这个公网端点的脚本。
+     *
+     * <p>为什么这道比限流更管用：原来的三道限的是「发给谁」（手机号）和
+     * 「从哪来」（IP），**唯独没有限「谁在发」**。一个脚本对着不同号码轮着发，
+     * 每个号都在自己的额度内，IP 那道换个网络就绕开 ——
+     * 而受害者是被发的那些号，他们各自只收到一两条，从任何单一维度看都不异常。
+     *
+     * <p>B 端登录页（{@code /biz/auth/otp/send}）没有会话可言，那里仍然只能靠
+     * 号码与 IP 两道，不走这个分支。
+     */
     @PostMapping("/otp/send")
     public void sendOtp(@RequestBody @Valid OtpReq req) {
-        authService.sendOtp(req.phone());
+        String userNo = ai.neargo.shop.auth.SecurityUtils.currentUserNoOrNull();
+        if (userNo == null) {
+            throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.UNAUTHORIZED);
+        }
+        authService.sendOtp(req.phone(), userNo);
     }
 
     @GetMapping("/profile")
