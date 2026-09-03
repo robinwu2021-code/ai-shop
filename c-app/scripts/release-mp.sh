@@ -76,7 +76,7 @@ echo "▶ 4/4 上传（版本 $VERSION）"
 # 于是下面那句「传完了」会在失败时照常打印 —— 这正是本脚本第 2 步要防的那种错，
 # 别在自己身上再犯一遍。落盘再过滤，rc 单独取。
 if ! ssh "$HOST" "cd $REMOTE && rm -rf mp-weixin && tar xzf mp-weixin.tgz 2>/dev/null; \
-  MP_APPID='$APPID' node upload.mjs '$VERSION' '$DESC' > /tmp/mp-up.log 2>&1; rc=\$?; \
+  MP_APPID='$APPID' MP_ROBOT='${MP_ROBOT:-1}' node upload.mjs '$VERSION' '$DESC' > /tmp/mp-up.log 2>&1; rc=\$?; \
   grep -aE '^\[upload\]|invalid ip' /tmp/mp-up.log; exit \$rc"; then
   echo
   echo "✗ 上传失败，代码没有传上去（完整日志在 $HOST:/tmp/mp-up.log）"
