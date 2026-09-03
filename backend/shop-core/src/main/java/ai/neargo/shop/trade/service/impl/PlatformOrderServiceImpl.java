@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.trade.service.PlatformOrderService;
+import ai.neargo.shop.trade.service.ProxyLimitService;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.PageData;
@@ -44,6 +45,7 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
     private final GoodsQueryPort goodsPort;
     private final UserQueryPort userPort;
     private final UserProvisionPort userProvisionPort;
+    private final ProxyLimitService proxyLimitService;
 
     /**
      * 代客单的支付时限：<b>30 分钟</b>（2026-09-03 产品决定）。
@@ -60,13 +62,15 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
 
     public PlatformOrderServiceImpl(SubOrderMapper subOrderMapper, StatusLogMapper statusLogMapper,
                                     OrderService orderService, GoodsQueryPort goodsPort,
-                                    UserQueryPort userPort, UserProvisionPort userProvisionPort) {
+                                    UserQueryPort userPort, UserProvisionPort userProvisionPort,
+                                    ProxyLimitService proxyLimitService) {
         this.subOrderMapper = subOrderMapper;
         this.statusLogMapper = statusLogMapper;
         this.orderService = orderService;
         this.goodsPort = goodsPort;
         this.userPort = userPort;
         this.userProvisionPort = userProvisionPort;
+        this.proxyLimitService = proxyLimitService;
     }
 
     @Override
@@ -129,6 +133,17 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
         }
 
         /*
+         * <b>每日笔数闸</b>（M6）。放在建单**之前**：超了就不该占号、不该锁库存。
+         * 按这个客服今天已经代下的单数算 —— 数的是订单时间线上那行「代客下单」，
+         * 它本来就是留痕，不另建一张计数表（两处计数迟早对不上）。
+         */
+        var limit = proxyLimitService.get();
+        long today = proxyCountToday(operatorNo);
+        if (today >= limit.maxPerDay()) {
+            throw BizException.of(ErrorCode.PROXY_ORDER_DAILY_LIMIT);
+        }
+
+        /*
          * couponNo=null、usePoints=0：**不代用顾客的资产**，命令里也没有这两个字段。
          * payScene=null：这一单没有「下单端」—— 它不是从任何一个端来的。
          * 存量端上本来就不传这个头，null 是既有的合法状态。
@@ -141,6 +156,19 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
                 idempotencyKey,
                 // 线上付给 30 分钟；线下付不看这个数（它不走超时关单）
                 PROXY_PAY_MINUTES);
+
+        /*
+         * <b>单笔金额闸</b>（M6）。按订单**实际应付额**判，不按商品估算 ——
+         * 有运费与优惠时估算说不清，而这条闸拦住的是「这一单大得该有人看一眼」。
+         *
+         * <p>放在建单之后、整段还在同一个事务里：抛出去连同刚建的单与锁掉的库存
+         * 一起回滚。先估算再建单的话，估算与真实差一点点就会出现
+         * 「明明拦住了却留下一张单」。
+         */
+        long payable = vo.amount() == null ? 0L : vo.amount().payableMinor();
+        if (payable > limit.maxAmountMinor()) {
+            throw BizException.of(ErrorCode.PROXY_ORDER_AMOUNT_LIMIT);
+        }
 
         /*
          * 订单时间线上留一行。**不能只写审计日志** —— 那张表只有运营看得到，
@@ -161,6 +189,24 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
             statusLogMapper.insert(log);
         }
         return vo;
+    }
+
+    /**
+     * 这个客服**今天**已经代下了几单。
+     *
+     * <p>数的是订单时间线上那行「代客下单」（`OrdStatusLog`，operatorType=PLATFORM）——
+     * 它本来就是留痕，不另建计数表：两处计数迟早对不上，而对不上的那天
+     * 没人知道该信哪个。
+     */
+    private long proxyCountToday(String operatorNo) {
+        long dayStart = java.time.LocalDate.now()
+                .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        return DataScopeContext.executeWithoutScope(() ->
+                statusLogMapper.selectCount(Wrappers.<OrdStatusLog>lambdaQuery()
+                        .eq(OrdStatusLog::getOperatorType, OrdStatusLog.BY_PLATFORM)
+                        .eq(OrdStatusLog::getOperatorNo, operatorNo)
+                        .ge(OrdStatusLog::getAt, dayStart)
+                        .likeRight(OrdStatusLog::getLabel, "代客下单")));
     }
 
     /** 代客单只会有一个子单（一次一个商家），但仍按列表取：拆单规则变了这里不用改。 */

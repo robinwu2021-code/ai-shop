@@ -3,6 +3,7 @@ package ai.neargo.shop.scenario;
 import ai.neargo.shop.marketing.attribution.entity.MktAttribution;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
+import ai.neargo.shop.trade.service.ProxyLimitService;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -263,6 +264,94 @@ class ProxyOrderFlowTest {
         assertThat(minutes)
                 .as("★ 代客单用了平台通用时限 —— 老人还没找到那张单就被关掉了")
                 .isBetween(28L, 31L);
+    }
+
+    /**
+     * <b>金额闸</b>（M6）。此前只有留痕没有闸门：客服能替任何人下任意金额的单，
+     * 事后查得到、当时拦不住。留痕回答「谁干的」，闸门回答「能干多大」。
+     */
+    @Test
+    @DisplayName("★★★ 超过单笔上限的代客单被拒，且**一张单都不留**")
+    void proxyOrderRejectsOverAmountLimit() throws Exception {
+        String customer = login(CUSTOMER_PHONE);
+        String userNo = userNoOf(customer);
+        String ops = opsLogin();
+        long before = orderCount();
+        try {
+            setLimit(ops, 100L, 20);   // 单笔 1 元
+            proxy(ops, req(userNo, "ONLINE", SKU, 1, "超额那一单"))
+                    .andExpect(jsonPath("$.code").value(70046));
+            assertThat(orderCount())
+                    .as("★ 拦住了却留下一张单 —— 库存也就跟着锁住了")
+                    .isEqualTo(before);
+        } finally {
+            setLimit(ops, ProxyLimitService.DEFAULT_MAX_AMOUNT_MINOR, ProxyLimitService.DEFAULT_MAX_PER_DAY);
+        }
+    }
+
+    /**
+     * <b>笔数闸</b>。超过它多半不是「今天特别忙」，而是有人拿代客下单在刷什么。
+     * 这条要在**建单之前**拦住：拦在之后就白占了号、也白锁了库存。
+     */
+    @Test
+    @DisplayName("★★ 每人每天的笔数上限：到量之后再下就被拒")
+    void proxyOrderRejectsOverDailyLimit() throws Exception {
+        String customer = login(CUSTOMER_PHONE);
+        String userNo = userNoOf(customer);
+        String ops = opsLogin();
+        try {
+            /*
+             * 先在宽限额下下一单，**再把上限压到 1**。
+             *
+             * <p>不能反过来（先设 1 再下第一单）：同一个客服在这个测试类里
+             * 早已经代下过几单，而计数是「今天这个人下了几单」——
+             * 那样第一单就被自己的历史挡住，测到的是别的事。
+             */
+            setLimit(ops, ProxyLimitService.DEFAULT_MAX_AMOUNT_MINOR, ProxyLimitService.DEFAULT_MAX_PER_DAY);
+            proxy(ops, req(userNo, "ONLINE", SKU, 1, "到量之前那一单"))
+                    .andExpect(jsonPath("$.code").value(0));
+            long after = orderCount();
+
+            setLimit(ops, ProxyLimitService.DEFAULT_MAX_AMOUNT_MINOR, 1);
+            proxy(ops, req(userNo, "ONLINE", SKU, 1, "到量之后那一单"))
+                    .andExpect(jsonPath("$.code").value(70047));
+            assertThat(orderCount()).as("★ 到量之后仍然落了单").isEqualTo(after);
+        } finally {
+            setLimit(ops, ProxyLimitService.DEFAULT_MAX_AMOUNT_MINOR, ProxyLimitService.DEFAULT_MAX_PER_DAY);
+        }
+    }
+
+    /**
+     * <b>客服不能给自己松绑</b>。改限额判的是 system:param:update，
+     * 不是 order:order:proxy —— 否则闸门就是摆设。
+     */
+    @Test
+    @DisplayName("★★ 限额默认值就是出厂那两个数，且改它要平台参数权限")
+    void proxyLimitDefaultsAndPerm() throws Exception {
+        String ops = opsLogin();
+        String body = mvc().perform(get("/ops/orders/proxy-limit")
+                        .header("Authorization", "Bearer " + ops))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        var data = json.readTree(body).get("data");
+        assertThat(data.get("maxAmountMinor").asLong()).isEqualTo(ProxyLimitService.DEFAULT_MAX_AMOUNT_MINOR);
+        assertThat(data.get("maxPerDay").asInt()).isEqualTo(ProxyLimitService.DEFAULT_MAX_PER_DAY);
+
+        // 0 会把整条路关死 —— 想关功能该去收权限码，不是把限额设成 0
+        mvc().perform(post("/ops/orders/proxy-limit")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"maxAmountMinor\":0,\"maxPerDay\":5}"))
+                .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
+    }
+
+    /** 限额是**跨用例共享**的一行配置：改完必须还原，否则别的用例会莫名其妙被拒 */
+    private void setLimit(String ops, long amount, int perDay) throws Exception {
+        mvc().perform(post("/ops/orders/proxy-limit")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"maxAmountMinor\":" + amount + ",\"maxPerDay\":" + perDay + "}"))
+                .andExpect(jsonPath("$.code").value(0));
     }
 
     // ---------------------------------------------------------------- helpers

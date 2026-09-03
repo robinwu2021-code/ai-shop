@@ -14,6 +14,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
+import { useCan } from "@/lib/use-can";
 import { fill } from "@/lib/use-copy";
 import { money } from "@/lib/utils";
 import type { FulfillmentType, Order } from "@/lib/types";
@@ -66,6 +67,8 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
    * 连点两下 = 同一把钥匙 = 一单；顾客真要再来一单 = 新表单 = 新钥匙。
    */
   const [idemKey, setIdemKey] = useState(() => crypto.randomUUID());
+  /** 限额编辑态。null = 只看不改 */
+  const [limitForm, setLimitForm] = useState<{ amount: string; perDay: string } | null>(null);
 
   // 与后端同一条规矩：手机尾号要恰好四位才查（三位能查出人是 mock 放宽出来的假象）
   const candidates = useQuery({
@@ -81,6 +84,20 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
   const customerUserNo = person.data?.userNo ?? "";
   /** 人档里找到人（且绑了账号），或者填了完整手机号 —— 两条路都能落到一个真实账号上 */
   const canSubmitCustomer = !!customerUserNo || /^\d{11}$/.test(fullPhone.trim());
+
+  /*
+   * 限额（M6）。**读它谁都给看** —— 客服该知道天花板在哪，
+   * 而不是在被拒的那一刻才第一次听说有这回事。改它要平台参数权限。
+   */
+  const limit = useQuery({ queryKey: ["proxy-limit"], queryFn: () => api.getProxyLimit() });
+  const canEditLimit = useCan()("system:param:update");
+  const saveLimit = useMutation({
+    mutationFn: () => api.saveProxyLimit({
+      maxAmountMinor: Math.round(Number(limitForm!.amount) * 100),
+      maxPerDay: Number(limitForm!.perDay),
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["proxy-limit"] }); setLimitForm(null); notify.success(c.toastLimitSaved); },
+  });
 
   const q = { keyword, page, size };
   const list = useQuery({ queryKey: ["orders", q], queryFn: () => api.listOrders(q) });
@@ -158,6 +175,48 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
   return (
     <>
       <HelpNote className="mb-3">{c.proxyNotice}</HelpNote>
+
+      {/*
+        * 限额摆在下单表单**上面**：它是这一页的边界条件，
+        * 放在下面等于让人填完一整张表才知道自己超了。
+        */}
+      <Card className="mb-3">
+        <CardHeader><CardTitle>{c.limitTitle}</CardTitle></CardHeader>
+        <CardContent>
+          {limitForm ? (
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="px-limit-amount">{c.limitAmount}</Label>
+                <Input id="px-limit-amount" className="w-32" value={limitForm.amount}
+                  onChange={(e) => setLimitForm({ ...limitForm, amount: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="px-limit-perday">{c.limitPerDay}</Label>
+                <Input id="px-limit-perday" className="w-24" value={limitForm.perDay}
+                  onChange={(e) => setLimitForm({ ...limitForm, perDay: e.target.value })} />
+              </div>
+              <Button size="sm" loading={saveLimit.isPending} onClick={() => saveLimit.mutate()}>{c.save}</Button>
+              <Button size="sm" variant="ghost" onClick={() => setLimitForm(null)}>{c.cancel}</Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <span className="txt-body">
+                {fill(c.limitSummary, {
+                  amount: money(limit.data?.maxAmountMinor ?? 0),
+                  n: limit.data?.maxPerDay ?? 0,
+                })}
+              </span>
+              {canEditLimit && (
+                <Button size="sm" variant="outline" onClick={() => setLimitForm({
+                  amount: String((limit.data?.maxAmountMinor ?? 0) / 100),
+                  perDay: String(limit.data?.maxPerDay ?? 0),
+                })}>{c.limitEdit}</Button>
+              )}
+            </div>
+          )}
+          <p className="txt-caption text-muted-foreground pt-2">{c.limitHint}</p>
+        </CardContent>
+      </Card>
 
       <Card className="mb-4">
         <CardHeader><CardTitle>{c.proxyCreateTitle}</CardTitle></CardHeader>

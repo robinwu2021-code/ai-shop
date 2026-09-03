@@ -16,6 +16,8 @@ export const orderHttp: OrderApi = {
    *   · 幂等键放 body（后端两处都收，请求头优先），这个客户端没有逐请求加头的口子；
    *   · reason 显式写着，闸门才看得见它真的发了（ops-reason-required）。
    */
+  getProxyLimit: () => client.get("/ops/orders/proxy-limit"),
+  saveProxyLimit: (v) => client.post("/ops/orders/proxy-limit", v),
   createProxyOrder: (v) => client.post("/ops/orders/proxy", {
     userNo: v.userNo,
     phone: v.phone,

@@ -1,5 +1,5 @@
 // 覆盖范围：订单管理（P-4.1）。
-import type { FulfillmentType, Order, OrderException, OrderIntervention, OrderStatus, Page, PayMode } from "@/lib/types";
+import type { FulfillmentType, Order, OrderException, OrderIntervention, OrderStatus, Page, PayMode, ProxyLimit } from "@/lib/types";
 import type { OrderQ, PageQ } from "../query";
 
 export type ExceptionQ = PageQ & { kind?: string };
@@ -57,6 +57,15 @@ export interface OrderApi {
    * `idempotencyKey` 在**打开表单那一刻**生成：手一抖不能变成两单
    * （两单会真的锁两份库存、也真的要顾客付两次）。
    */
+  /** 代客下单的限额。**读它只要 system:param:read** —— 客服自己也能看见天花板在哪 */
+  getProxyLimit(): Promise<ProxyLimit>;
+
+  /**
+   * 改限额。**判的是 system:param:update，不是 order:order:proxy** ——
+   * 否则客服可以自己把自己的限额调上去，闸门就成了摆设。
+   */
+  saveProxyLimit(v: { maxAmountMinor: number; maxPerDay: number }): Promise<ProxyLimit>;
+
   createProxyOrder(v: {
     /** 顾客账号；为空时用 `phone` */
     userNo?: string;

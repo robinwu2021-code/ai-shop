@@ -2,7 +2,7 @@
 import * as db from "@/lib/mock/db";
 import { STUCK_MINUTES } from "@/lib/constants";
 import { ORDER_TRANSITIONS } from "@/lib/types";
-import type { ExceptionKind, Order, OrderException } from "@/lib/types";
+import type { ExceptionKind, Order, OrderException, ProxyLimit } from "@/lib/types";
 import type { OrderApi } from "../contracts/order";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
@@ -33,6 +33,11 @@ function toException(o: Order): OrderException | null {
  * 代客下单能选的履约方式：**到点自取那几种**。
  * 快递 / 自送 / 上门都要收货地址，而地址是顾客的个人信息、客服也没法当面核对。
  */
+/** 代客限额（mock 内存态）。默认与后端出厂值一致：单笔 2000 元 · 每人每天 20 笔 */
+const proxyLimit: ProxyLimit = {
+  maxAmountMinor: 200_000, maxPerDay: 20, updatedAt: null, updatedBy: null,
+};
+
 const PROXY_FULFILLMENTS = ["STORE_PICKUP", "NEIGHBOR_PICKUP", "STORE_VERIFY"];
 
 export const orderMock: OrderApi = {
@@ -96,6 +101,17 @@ export const orderMock: OrderApi = {
     o.status = "CANCELLED";
     o.statusAt = new Date().toISOString();
     return wait(o, 350);
+  },
+
+  getProxyLimit: async () => wait({ ...proxyLimit }),
+
+  saveProxyLimit: async (v) => {
+    // 与后端同一条：0 不是「不限」而是把整条路关死 —— 想关功能该去收权限码
+    if (!(v.maxAmountMinor > 0) || !(v.maxPerDay > 0)) {
+      fail("限额必须大于 0", "Both limits have to be greater than zero");
+    }
+    Object.assign(proxyLimit, v, { updatedAt: new Date().toISOString(), updatedBy: "admin" });
+    return wait({ ...proxyLimit }, 300);
   },
 
   createProxyOrder: async ({ userNo, phone, merchantNo, fulfillType, payMode, items, reason }) => {

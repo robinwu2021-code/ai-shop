@@ -81,6 +81,23 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
  */
 export type PayMode = "ONLINE" | "OFFLINE";
 
+/**
+ * 代客下单的限额（M6：客服代客操作的权限边界与金额阈值）。
+ *
+ * <p>此前只有留痕没有闸门：客服能替任何人下任意金额的单，事后查得到、当时拦不住。
+ * 留痕回答「谁干的」，闸门回答「能干多大」—— 两件事。
+ */
+export interface ProxyLimit {
+  /** 单笔上限（分）。按订单**实际应付额**判，不按商品估算 */
+  maxAmountMinor: number;
+  /** 每个客服每天最多几笔。按自然日算 */
+  maxPerDay: number;
+  /** 最后修改时间 */
+  updatedAt: string | null;
+  /** 最后修改人 */
+  updatedBy: string | null;
+}
+
 export interface OrderItem {
   /** SKU 单号 */
   skuNo: string;

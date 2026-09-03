@@ -532,6 +532,16 @@ public enum ErrorCode {
      */
     PAY_CHANNEL_UNAVAILABLE(70045, "err.pay.channel_unavailable"),
     /*
+     * 代客下单的两条限额（M6）。**与 10400 分开**：参数有误是他填错了，
+     * 而这两条是「填得都对，但这一单不该由你代下」——
+     * 合成一个码的话，客服会回头去改金额与商品，越改越糟。
+     *
+     * <p>两条也彼此分开：一条的出路是「让顾客自己下」，
+     * 另一条是「今天到量了，明天再说 / 找人调限额」，不是同一件事。
+     */
+    PROXY_ORDER_AMOUNT_LIMIT(70046, "err.trade.proxy_amount_limit"),
+    PROXY_ORDER_DAILY_LIMIT(70047, "err.trade.proxy_daily_limit"),
+    /*
      * 准入矩阵拒绝了这个 (主体档位 × 履约方式) 组合。与 70013 分开：
      * 那个是「这件商品不支持这种送法」（换一种即可），
      * 这个是「这家店不允许用这种送法」（换商品也没用）——

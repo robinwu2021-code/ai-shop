@@ -196,6 +196,12 @@ export const RULES = [
   ["POST", /^\/ops\/orders\/[^/]+\/proxy-cancel$/, "order:order:proxy"],
   // 代客下单（P-4.1.4）。与代客取消同一个码：客服接的是同一通电话
   ["POST", /^\/ops\/orders\/proxy$/, "order:order:proxy"],
+  /*
+   * 代客限额（M6）**不给 order:order:proxy**：那样客服能自己把自己的限额调上去，
+   * 闸门就成了摆设。读给系统参数只读，写给系统参数可写。
+   */
+  ["GET", /^\/ops\/orders\/proxy-limit$/, "system:param:read"],
+  ["POST", /^\/ops\/orders\/proxy-limit$/, "system:param:update"],
   ["GET", /^\/ops\/(order|orders)/, "order:order:read"],
 
   // ── 售后 ───────────────────────────────────────────────────────────────

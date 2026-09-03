@@ -6,6 +6,7 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.trade.service.MerchantOrderService;
 import ai.neargo.shop.trade.service.PlatformOrderService;
+import ai.neargo.shop.trade.service.ProxyLimitService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -34,13 +35,16 @@ public class OpsOrderController {
 
     private final MerchantOrderService orderService;
     private final PlatformOrderService platformOrderService;
+    private final ProxyLimitService proxyLimitService;
     private final AuditLogPort auditLogPort;
 
     public OpsOrderController(MerchantOrderService orderService,
-                              ai.neargo.shop.trade.service.PlatformOrderService platformOrderService,
+                              PlatformOrderService platformOrderService,
+                              ProxyLimitService proxyLimitService,
                               AuditLogPort auditLogPort) {
         this.orderService = orderService;
         this.platformOrderService = platformOrderService;
+        this.proxyLimitService = proxyLimitService;
         this.auditLogPort = auditLogPort;
     }
 
@@ -171,6 +175,34 @@ public class OpsOrderController {
         auditLogPort.record("ORDER_PROXY_CREATE", vo.orderNo(),
                 "为 " + who + " 代下 " + req.merchantNo() + "｜" + req.reason());
         return vo;
+    }
+
+    /**
+     * 代客下单的限额（M6）。**读用 system:param:read，写用 system:param:update** ——
+     * 不能用 {@code order:order:proxy}：那样客服可以自己把自己的限额调上去，
+     * 闸门就成了摆设。
+     */
+    @GetMapping("/ops/orders/proxy-limit")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_PARAM_READ + "')")
+    public ProxyLimitService.ProxyLimitVO proxyLimit() {
+        return proxyLimitService.get();
+    }
+
+    @PostMapping("/ops/orders/proxy-limit")
+    @PreAuthorize("@perm.can('" + Perms.SYSTEM_PARAM_UPDATE + "')")
+    public ProxyLimitService.ProxyLimitVO saveProxyLimit(@RequestBody ProxyLimitReq req) {
+        var vo = proxyLimitService.save(req.maxAmountMinor() == null ? 0 : req.maxAmountMinor(),
+                req.maxPerDay() == null ? 0 : req.maxPerDay(), SecurityUtils.currentUserNo());
+        auditLogPort.record("ORDER_PROXY_LIMIT", "trade.proxy-limit",
+                "单笔 " + vo.maxAmountMinor() + " 分｜每日 " + vo.maxPerDay() + " 笔");
+        return vo;
+    }
+
+    /**
+     * @param maxAmountMinor 单笔上限（分）
+     * @param maxPerDay      每个客服每天最多几笔
+     */
+    public record ProxyLimitReq(Long maxAmountMinor, Integer maxPerDay) {
     }
 
     /**

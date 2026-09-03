@@ -71,6 +71,18 @@ const zh = {
   payModeOnlineHint: "落「待支付」，顾客要在关单时限内自己付掉，否则会自动关单",
   proxyTotal: "合计 {amount}",
   btnProxyCreate: "代客下单",
+
+  // ── 代客限额（M6）：留痕回答「谁干的」，闸门回答「能干多大」
+  save: "保存",
+  limitTitle: "代客限额",
+  /** `{amount}` 单笔上限，`{n}` 每人每天笔数 */
+  limitSummary: "单笔不超过 {amount} · 每人每天不超过 {n} 笔",
+  limitEdit: "改限额",
+  limitAmount: "单笔上限（元）",
+  limitPerDay: "每人每天（笔）",
+  limitHint: "超了不是不让做 —— 让顾客自己下单那条路本来就通。改限额要「系统参数」权限，客服不能给自己松绑。",
+  toastLimitSaved: "已保存限额",
+  cancel: "取消",
   toastProxyCreated: "已生成 {no}，待用户支付",
   actionProxyCancel: "代客取消",
   cancelTitle: "代客取消 {no}",
@@ -265,6 +277,18 @@ const en: typeof zh = {
   payModeOnlineHint: "Lands as awaiting payment; the customer has to pay before the order times out",
   proxyTotal: "Total {amount}",
   btnProxyCreate: "Place the order",
+
+  // ── Proxy limits (M6)
+  save: "Save",
+  limitTitle: "Proxy limits",
+  /** `{amount}` per-order cap, `{n}` orders per day */
+  limitSummary: "Up to {amount} per order · {n} orders per person per day",
+  limitEdit: "Change",
+  limitAmount: "Per order (¥)",
+  limitPerDay: "Per person per day",
+  limitHint: "Hitting the cap does not block the sale — the customer can still place it themselves. Changing these needs the system-parameter permission, so agents cannot raise their own ceiling.",
+  toastLimitSaved: "Limits saved",
+  cancel: "Cancel",
   toastProxyCreated: "{no} created — awaiting the customer’s payment",
   actionProxyCancel: "Cancel for customer",
   cancelTitle: "Cancel {no} for the customer",
