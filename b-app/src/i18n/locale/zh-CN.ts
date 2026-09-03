@@ -508,7 +508,6 @@ export default {
     // 「先看后挑」那一屏。顺序即建议顺序：类目配好的 → 通用 → 自建
     dimAlready: "这个规格组已经加过了",
     // 说清代价，而不是只说「有个像的」—— 他要判断的是值不值得自己建
-    groupLimit: "最多 3 个规格组",
     skuMatrix: "价格",
     bulkPrice: "统一价格",
     bulkStock: "统一库存",

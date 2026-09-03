@@ -29,10 +29,6 @@ export default {
     // 同理：别借用 tab.home（那是底部菜单那一格的字）。
     // 标题栏说品牌、菜单说位置，两者本来就不该是同一个词
     title: "社区好物",
-    noNearbyPickup: "你这一带还没开通自提点，可以先逛逛；下单自提时再选",
-    noNearbyTitle: "这一带还没开通",
-    pickManually: "手动选一个",
-    browseFirst: "先逛逛",
     groups: "邻里团购",
     groupsMore: "全部团 ›",
     promoted: "推荐商品",
@@ -495,7 +491,6 @@ export default {
     covers: "本次付款覆盖 {n} 笔订单",
     remain: "剩余 {t} 自动关闭",
     expired: "支付超时，订单已关闭",
-    wechat: "微信支付",
     payNow: "立即支付",
     paying: "支付中…",
     cancelled: "已取消支付",
