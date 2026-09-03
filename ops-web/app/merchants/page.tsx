@@ -25,6 +25,7 @@ import { AdmissionTab } from "./admission-tab";
 // 门店档案（P-11.2.1）：主体的下一层实体，与「准入与保证金」里那份窄投影不是一回事
 import { StoresTab } from "./stores-tab";
 import { ChainTab } from "./chain-tab";
+import { MerchantChainLine } from "./chain-line";
 import { PlansTab, PlanDefsTab } from "./plans-tab";
 import { ModeRiskTab } from "./mode-risk-tab";
 import { OnboardingTab } from "./onboarding-tab";
@@ -343,6 +344,14 @@ function MerchantsInner() {
             <Field label={c.fieldRemark}>
               {current.auditRemark || "-"}
             </Field>
+            {/*
+              链条一行（M5，商家全景的另一半）。这个抽屉原先覆盖了主体、履约、人员、门店，
+              **唯独缺商品与进销存那一段** —— 而缺口清单里「一家商家的全景」说的
+              正是那件事：今天要在四个档案 + 商品池 + 库存流水之间跳，各自主键还不一样。
+              M1 已经把那六个数算好了，这里只是把这一家那一行取出来。
+            */}
+            <MerchantChainLine merchantNo={current.merchantNo} c={c} />
+
             {/* 履约配置：只读。为什么不给按钮见 fulfillment-block.tsx 顶部 */}
             <FulfillmentBlock merchantNo={current.merchantNo} />
             {/* 人员与授权：只读。为什么不给按钮见 staff-block.tsx 顶部 */}

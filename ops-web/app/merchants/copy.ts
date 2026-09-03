@@ -547,6 +547,8 @@ const zh = {
   chainNoAccount: "进销存里没账",
   chainNoInbound: "从没进过货",
   chainStaleLedger: "很久没记账",
+  chainLineLabel: "链条状态",
+  chainLineMore: "看全部",
   chainAction: "动作",
   chainNudge: "提醒",
   // IN_AUDIT 那一档不给提醒按钮：欠账的是平台，出路是去把队列审掉
@@ -1100,6 +1102,8 @@ const en: typeof zh = {
   chainNoAccount: "No inventory account",
   chainNoInbound: "Never received stock",
   chainStaleLedger: "Books gone quiet",
+  chainLineLabel: "Chain",
+  chainLineMore: "See all",
   chainAction: "Action",
   chainNudge: "Nudge",
   chainGoAudit: "Open review queue",

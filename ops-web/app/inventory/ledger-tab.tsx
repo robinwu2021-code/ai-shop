@@ -9,11 +9,13 @@
 // **游标翻页，不是页码翻页**：台账是一直在长的流水，按 offset 翻到第 3 页时
 // 前面又插进来几笔，第 3 页就会把没看过的行挤走 —— 而看的人不会察觉。
 import { useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { fmtTime } from "@/lib/utils";
+import { fill } from "@/lib/use-copy";
 import type { InvLedgerPage, InvLedgerRow } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
+import { Notice } from "@/components/ui/notice";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
@@ -38,6 +40,17 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
     enabled: !!q,
     // 游标由服务端给。**不要自己拿最后一行的 id 去推** —— 同一毫秒有多笔时会漏行
     getNextPageParam: (last: InvLedgerPage) => last.nextCursor ?? undefined,
+  });
+
+  /*
+   * 概况（M5）。**在翻明细之前先答「这家到底在不在用」** ——
+   * 线上 6 家商家里只有 2 家真在记账，而那 4 家在这张流水表上的样子
+   * 与「今天恰好没动」一模一样：两者都是空列表。
+   */
+  const digest = useQuery({
+    queryKey: ["inv-digest", q?.entityNo],
+    queryFn: () => api.invMerchantDigest(q!.entityNo),
+    enabled: !!q,
   });
 
   const rows: InvLedgerRow[] = list.data?.pages.flatMap((p) => p.entries) ?? [];
@@ -98,6 +111,28 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
         </Button>
       </Toolbar>
 
+      {/*
+        * 概况条（M5）。**「没搬进来」与「搬了但一笔没记」要分开说** ——
+        * 前者去看投影链路，后者去催商家，而在下面那张表上两者都是一片空白。
+        */}
+      {q && digest.data === null && !digest.isPending && (
+        <Notice tone="danger">{fill(c.invDigestNoOwner, { no: q.entityNo })}</Notice>
+      )}
+      {q && digest.data && (
+        <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-card border px-3 py-2">
+          <Stat label={c.invDigestItems} value={digest.data.itemCount} />
+          <Stat label={c.invDigestLedger} value={digest.data.ledgerCount} />
+          <Stat label={c.invDigestLast}
+                value={digest.data.lastLedgerAt ? fmtTime(digest.data.lastLedgerAt) : c.invDigestNever} />
+          <Stat label={c.invDigestShortage} value={digest.data.shortageCount} />
+          <Stat label={c.invDigestStale} value={digest.data.staleCount} />
+          {/* 建了账却一笔没记 —— 这正是线上 6 家里那 4 家的样子，值得一句话点破 */}
+          {digest.data.itemCount > 0 && digest.data.ledgerCount === 0 && (
+            <Badge tone="warning">{c.invDigestNeverUsed}</Badge>
+          )}
+        </div>
+      )}
+
       <DataTable
         columns={columns}
         rows={q ? rows : []}
@@ -124,5 +159,15 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** 概况条里的一格。标签在上、数在下，扫一眼就能比 */
+function Stat({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <span className="flex items-baseline gap-1.5">
+      <span className="txt-caption text-muted-foreground">{label}</span>
+      <span className="txt-body tabular-nums">{value}</span>
+    </span>
   );
 }

@@ -66,6 +66,15 @@ export const inventoryMock: InventoryApi = {
 
   invLinkHealth: () => wait(mockLinkHealth),
   /*
+   * 概况。**编一个「建了账但一笔没记」的** —— 线上 6 家里 4 家是这个样子，
+   * 而它正是这一格存在的理由：在流水页上它与「今天恰好没动」一模一样。
+   */
+  invMerchantDigest: (entityNo) => wait({
+    entityNo, ownerId: "OWN-" + entityNo,
+    itemCount: 34, shortageCount: 2, staleCount: 11,
+    ledgerCount: 0, lastLedgerAt: null, openCountNo: null,
+  }),
+  /*
    * 补投影。mock 里也**默认试算**：演出来的行为要与真实的一致，
    * 否则开发期看到的是「点一下就搬完了」，而线上第一步是试算。
    */

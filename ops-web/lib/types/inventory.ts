@@ -231,3 +231,26 @@ export interface InvRepairResult {
   pending: number;
   clean: boolean;
 }
+
+/**
+ * 单商家进销存概况（M5）。
+ *
+ * <p>库存流水那一页能按商家翻明细，但翻之前答不出「这家到底在不在用」——
+ * 线上 6 家商家里只有 2 家真在记账，那 4 家在流水页上的样子与「今天恰好没动」一模一样。
+ *
+ * <p>**不含账实差**：那是平台侧 vs 进销存侧的逐条比对，按商家拆要重扫全平台，
+ * 而「库存对差」那一页本来就是按商家列差异行的。一个数放两处算，迟早两种说法。
+ */
+export interface InvMerchantDigest {
+  entityNo: string;
+  ownerId: string;
+  /** 建了几条账（物料） */
+  itemCount: number;
+  shortageCount: number;
+  staleCount: number;
+  /** 累计流水笔数。**0 = 建了账但一次都没记过** */
+  ledgerCount: number;
+  lastLedgerAt: string | null;
+  /** 还开着的盘点单号 */
+  openCountNo: string | null;
+}

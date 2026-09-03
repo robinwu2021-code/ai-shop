@@ -2,6 +2,8 @@ package ai.neargo.shop.portal.ops;
 
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.invbridge.InventoryHealthService;
+import ai.neargo.shop.invbridge.MerchantStockDigestService;
+import ai.neargo.shop.invbridge.MerchantStockDigestService.Digest;
 import ai.neargo.shop.invbridge.InventoryHealthService.HealthRow;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
@@ -34,9 +36,29 @@ public class OpsInventoryHealthController {
     private static final int LIMIT_MAX = 500;
 
     private final InventoryHealthService health;
+    private final MerchantStockDigestService digest;
 
-    public OpsInventoryHealthController(InventoryHealthService health) {
+    public OpsInventoryHealthController(InventoryHealthService health,
+                                        MerchantStockDigestService digest) {
         this.health = health;
+        this.digest = digest;
+    }
+
+    /**
+     * 单商家进销存概况（M5）：这家记了多少笔、最近一笔什么时候、有多少条账。
+     *
+     * <p>库存流水那一页能按商家翻明细，但翻之前答不出「这家到底在不在用」——
+     * 而线上 6 家商家里只有 2 家真在记账，那 4 家在流水页上的样子
+     * 与「今天恰好没动」一模一样。
+     *
+     * <p>还没搬进进销存的商家返回 {@code null}：那本身就是答案（去看投影链路），
+     * 不是「零笔」（那是去催商家）。两者要分开说。
+     */
+    @PreAuthorize("@perm.can('" + Perms.INVENTORY_STOCK_READ + "')")
+    @GetMapping("/ops/inventory/merchant-digest")
+    public Digest digest(
+            @RequestParam String entityNo) {
+        return digest.of(entityNo);
     }
 
     /**

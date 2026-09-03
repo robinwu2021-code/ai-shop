@@ -136,6 +136,17 @@ const zh = {
   invDoubtDesc: "记进这家商家的信用档案，运营与商家的对接人都看得到，可申诉。「它不会下架、不会封店、也不会影响曝光」 —— 平台今天没有曝光权重这套机制。要让商家知道该改什么，配合「链条画像」里的提醒一起用。",
   invDoubtConfirm: "记录存疑",
   invDoubtDone: "已记入信用档案",
+
+  // ── 单商家进销存概况（M5）─────────────────────────────────────────────
+  // 「没搬进来」与「搬了但一笔没记」在下面那张表上都是一片空白，要分开说
+  invDigestNoOwner: "{no} 还没有搬进进销存 —— 这不是「没记账」，是这家在进销存里压根不存在。去「链路健康」看投影是不是断了。",
+  invDigestItems: "建账",
+  invDigestLedger: "流水",
+  invDigestLast: "最近一笔",
+  invDigestNever: "从没记过",
+  invDigestShortage: "低于安全库存",
+  invDigestStale: "长期未动销",
+  invDigestNeverUsed: "建了账，一笔没记",
 };
 
 const en: typeof zh = {
@@ -265,6 +276,15 @@ const en: typeof zh = {
   invDoubtDesc: "Recorded in this merchant's credit file, visible to ops and to the merchant's account manager, and appealable. It does not delist, suspend, or affect exposure — the platform has no exposure-weighting mechanism today. Pair it with a nudge from the chain profile so the merchant knows what to fix.",
   invDoubtConfirm: "Record it",
   invDoubtDone: "Recorded in the credit file",
+
+  invDigestNoOwner: "{no} has never been projected into inventory — this is not \"no entries\", the merchant does not exist there at all. Check Link health for a broken projection.",
+  invDigestItems: "Booked",
+  invDigestLedger: "Entries",
+  invDigestLast: "Last entry",
+  invDigestNever: "Never",
+  invDigestShortage: "Below safety",
+  invDigestStale: "Stale",
+  invDigestNeverUsed: "Booked, never used",
 };
 
 export const INVENTORY_COPY: PageCopy<typeof zh> = { zh, en };
