@@ -88,8 +88,28 @@ public class WxSubscribeGateway implements WxSubscribePort {
         }
         require(appid, "WX_APPID");
         require(secret, "WX_SECRET");
+        /*
+         * **到货通知是这条通道存在的理由，没有它就别开。**
+         * 自提模式下「货到了没人知道」直接变成自提点压货。
+         */
         require(tplOrderArrived, "WX_TPL_ORDER_ARRIVED（mp 后台报备的到货通知模板号）");
-        require(tplRefunded, "WX_TPL_REFUNDED（mp 后台报备的退款通知模板号）");
+        /*
+         * **退款通知是可选的，缺了不拦启动。**
+         *
+         * 原先这里和到货一样 require ——那假设了「两个模板都会有」，
+         * 而 2026-09 在新小程序申请时发现：公共模板库里能选到「购物服务动态」
+         * （到货）与「新品开售提醒」，退款那类并不是每个类目都有。
+         * 更要紧的是**微信支付本身会给用户发退款到账通知**，我们再发一条是重复的。
+         *
+         * 缺了不是静默跳过：启动时打一条 WARN 说清楚哪个场景是关的，
+         * 真去发的时候（{@link #sendRefunded}）直接抛，
+         * 而不是「发了、没到、没人知道」—— 后者才是这条 require 当初要防的东西。
+         */
+        if (tplRefunded == null || tplRefunded.isBlank()) {
+            log.warn("[wxsub] 未配 WX_TPL_REFUNDED —— 退款通知场景**关闭**。"
+                    + "微信支付自带退款到账通知，多数情况下不需要我们再发一条；"
+                    + "确实要发就去 mp 后台申请模板并配上这个变量");
+        }
         log.info("[wxsub] 订阅消息通道已启用 appid={} state={}", appid, mpState);
     }
 
@@ -132,6 +152,11 @@ public class WxSubscribeGateway implements WxSubscribePort {
 
     @Override
     public SendResult sendRefunded(String openId, String amountText, String page, String tip) {
+        // 没配模板号还来发 —— 明确抛，不可重试。静默跳过会变成「发了、没到、没人知道」
+        if (tplRefunded == null || tplRefunded.isBlank()) {
+            throw new WxSubscribeException(
+                    "退款通知未接入（WX_TPL_REFUNDED 未配）—— 该场景在本小程序上没有报备模板", false);
+        }
         // amount1=退款金额 thing2=提示语。截断口径与到货那条一致（见 sendOrderArrived）
         Map<String, String> data = new LinkedHashMap<>();
         data.put("amount1", amountText);

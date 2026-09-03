@@ -29,17 +29,30 @@ export interface SubscribeResult {
  * 调用方拿到结果后必须把 accepted / rejected 各报一次 `/mp/message/subscribe`。
  */
 export function requestSubscribe(tmplIds: string[]): Promise<SubscribeResult> {
+  /*
+   * **把没配的模板号剔掉再问。**
+   *
+   * 未配置时这里是 `STUB_TPL_*` 那样的占位串。微信对 tmplIds 是**整批校验**的：
+   * 里面混一个不存在的号，整次调用直接 fail —— 连同批里合法的那个也拿不到授权。
+   * 症状是「用户从没见过授权弹窗，后端配额恒为 0，而两端各自看都配好了」。
+   *
+   * 这在退款模板缺席时是必然发生的：本小程序的公共模板库里没有那一类，
+   * 而支付成功页原本一次要两个。
+   */
+  const ids = tmplIds.filter((id) => id && !id.startsWith("STUB_"));
+  if (!ids.length) return Promise.resolve({ accepted: [], rejected: [] });
+
   // #ifdef MP-WEIXIN
   return new Promise((resolve) => {
     uni.requestSubscribeMessage({
-      tmplIds,
+      tmplIds: ids,
       success: (res) => {
         // 微信按模板逐个给结果：'accept' / 'reject' / 'ban'（被封禁的当拒绝处理）。
         // 类型声明里没有按模板名的索引签名，实际响应有 —— 以运行时形状为准
         const byTmpl = res as unknown as Record<string, string>;
         resolve({
-          accepted: tmplIds.filter((id) => byTmpl[id] === "accept"),
-          rejected: tmplIds.filter((id) => byTmpl[id] && byTmpl[id] !== "accept"),
+          accepted: ids.filter((id) => byTmpl[id] === "accept"),
+          rejected: ids.filter((id) => byTmpl[id] && byTmpl[id] !== "accept"),
         });
       },
       // 弹窗失败（总开关关闭等）不阻塞主流程，也没有可报的结果
