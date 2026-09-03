@@ -7098,6 +7098,44 @@ _无字段_
 | `stuckAt` | [`#/definitions/MerchantChainStuck`](#definitionsmerchantchainstuck) \| `null` | 是 | 与链条画像用同一套词（）—— 两处分叉就是两套结论 |
 
 
+#### GET `/ops/product/policy`
+
+建品规则（商品①）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ProductPolicy`](#productpolicy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requireCover` | `boolean` | 是 | 提审前必须有主图 |
+| `titleMinLength` | `number` | 是 | 标题最少几个字，0 = 不限 |
+| `titleMaxLength` | `number` | 是 | 标题最多几个字，0 = 不限 |
+
+
+#### POST `/ops/product/policy`
+
+saveProductPolicy
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ProductPolicy`](#productpolicy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requireCover` | `boolean` | 是 | 提审前必须有主图 |
+| `titleMinLength` | `number` | 是 | 标题最少几个字，0 = 不限 |
+| `titleMaxLength` | `number` | 是 | 标题最多几个字，0 = 不限 |
+
+
 #### GET `/ops/product/stats`
 
 商品域平台统计（M4）
@@ -10667,6 +10705,16 @@ KPI 卡（金额为最小货币单位整数）。
 | `status` | `string` | 是 | 商品状态：AUDITING / ON_SALE / OFF_SALE / REJECTED |
 | `skus` | [`#/definitions/GoodsSkuRow`](#definitionsgoodsskurow)\[\] | 是 | 这件商品下的所有规格 |
 | `storeOnSale` | `boolean,null` | 否 | 门店投影（列表查询带 `storeNo` 时才有值）：这件商品在**那家店**上不上架。 `null`/缺失 = 未按店管理，跟随主体级 `status` —— 与「在那家店下架了」是两回事， 显示成同一个「否」会让运营去催商家上架一件其实全店都在卖的商品。 |
+
+### ProductPolicy
+
+建品规则（商品①）。提审那一刻校验，**拦在进审核队列之前**。 <p>**三条默认全关**（等于今天的行为）：一旦打开，命中的存量商品下次提审全会被拦， 而平台上有 200 个 SPU、194 个正卡在审核里。默认打开等于在没人预告的情况下 让一批商家的提交突然失败。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requireCover` | `boolean` | 是 | 提审前必须有主图 |
+| `titleMinLength` | `number` | 是 | 标题最少几个字，0 = 不限 |
+| `titleMaxLength` | `number` | 是 | 标题最多几个字，0 = 不限 |
 
 ### ProductStats
 

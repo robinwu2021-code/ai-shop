@@ -6883,6 +6883,11 @@ components:
     User: 
       type: "object"
       properties: 
+        activeAddressId: 
+          type: 
+            - "string"
+            - "null"
+          description: "当前生效位置（`Address.addressId`）。**与默认收货地址是两回事**： 默认是「下单预填哪个收货人」，生效是「现在按哪儿看货」—— 给父母下单时切到父母家看货，而默认收货人仍是自己。"
         cUserNo: 
           type: "string"
           description: "C 端用户单号。前缀 `cUser` 是有意的：B 端商家、平台 STAFF 是**另外两个账号池**，单号不通用"
@@ -7954,6 +7959,67 @@ paths:
           "application/json": 
             schema: 
               "$ref": "#/components/schemas/BindCommunityReq"
+  "/mp/user/active-address": 
+    get: 
+      operationId: "activeAddress"
+      summary: "当前生效位置（可能为空，新用户就是这个状态）"
+      tags: 
+        - "user"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Address"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/user/active-address/{addressId}": 
+    post: 
+      operationId: "switchActiveAddress"
+      summary: "切换生效位置（不动默认收货地址）"
+      tags: 
+        - "user"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "addressId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Address"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/mp/user/address": 
     get: 
       operationId: "addressList"

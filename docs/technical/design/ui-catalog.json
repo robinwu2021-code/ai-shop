@@ -1697,7 +1697,7 @@
             {
               "app": "ops-web",
               "route": "/products?tab=banned-word",
-              "title": "禁售词",
+              "title": "建品规则",
               "domain": "商品与类目",
               "group": "类目",
               "matrix": "P-3.1",

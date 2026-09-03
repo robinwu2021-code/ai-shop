@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 696 个接口**：后端已实现 625（90%）· 前端在调 625
+**合计 700 个接口**：后端已实现 629（90%）· 前端在调 629
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **85** 个接口 ｜ 后端已实现 **84**（99%）｜ 前端在调 **85**
+共 **87** 个接口 ｜ 后端已实现 **86**（99%）｜ 前端在调 **87**
 
 ### after-sale（4）
 
@@ -183,10 +183,12 @@
 | GET | `/mp/store/by-code` | 扫码进店 | — | `StoreHome` | — | ✅ | ✅ |
 | GET | `/mp/store/mine` | 我的常去店 | — | `数组` | 🔒 | ✅ | ✅ |
 
-### user（13）
+### user（15）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/mp/user/active-address` | 当前生效位置（可能为空，新用户就是这个状态） | — | `Address` | 🔒 | ✅ | ✅ |
+| POST | `/mp/user/active-address/{addressId}` | 切换生效位置（不动默认收货地址） | — | `Address` | 🔒 | ✅ | ✅ |
 | GET | `/mp/user/address` | 地址列表 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/mp/user/address` | 新增/编辑地址 | `SaveAddressReq` | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/mp/user/address/{addressId}/archive` | 删除地址（软删除） | — | `数组` | 🔒 | ✅ | ✅ |
@@ -729,7 +731,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **384** 个接口 ｜ 后端已实现 **319**（83%）｜ 前端在调 **313**
+共 **386** 个接口 ｜ 后端已实现 **321**（83%）｜ 前端在调 **315**
 
 ### aftersale（4）
 
@@ -1096,7 +1098,7 @@
 | POST | `/ops/payments/recon-diffs/{diffNo}/ignore` | 忽略一条差异（如渠道手续费导致的分位差） | — | `ReconDiff` | — | ✅ | ✅ |
 | POST | `/ops/payments/recon-diffs/{diffNo}/resolve` | 处置一条差异（P-4.2.1 / 4.2.2） | — | `ReconDiff` | — | ✅ | ✅ |
 
-### product（50）
+### product（52）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1122,6 +1124,8 @@
 | POST | `/ops/goods/{goodsNo}/force-off` | 平台强制下架（P-3.2.3），goods 粒度 = **撤销过审**：商品回到 `REJECTED` | — | `GoodsDetail` | — | ✅ | ✅ |
 | GET | `/ops/goods/audit-queue` | 待审队列 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/product/{goodsNo}/chain` | 单商品全链路状态（M5） | — | `GoodsChain` | — | ✅ | ⬜ |
+| GET | `/ops/product/policy` | 建品规则（商品①） | — | `ProductPolicy` | — | ✅ | ✅ |
+| POST | `/ops/product/policy` | saveProductPolicy | — | `ProductPolicy` | — | ✅ | ✅ |
 | GET | `/ops/product/stats` | 商品域平台统计（M4） | — | `ProductStats` | — | ✅ | ✅ |
 | GET | `/ops/skus` | sku 粒度全量查询 | — | `object` | — | ✅ | ⬜ |
 | POST | `/ops/skus/{no}/audit` | 商品审核（P-3.2.2），sku 粒度入口 | — | `Sku` | — | ⬜ | ⬜ |

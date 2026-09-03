@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**85 个功能点**，其中 **22 个游客可用**；**2 个没有任何页面调用**。
+统计：**88 个功能点**，其中 **23 个游客可用**；**2 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -96,8 +96,11 @@
 | `storeHome` | `GET /mp/store/:merchantNo` | 游客 | store | — |
 | `toggleFavoriteStore` | `POST /mp/store/:merchantNo/favorite` | 是 | store | — |
 | `frequentItems` | `GET /mp/store/:merchantNo/frequent` | 是 | store | — |
+| `storeByCode` | `GET /mp/store/by-code` | 游客 | store | — |
 | `myStores` | `GET /mp/store/mine` | 是 | **无** | — |
-| `addressList` | `GET /mp/user/address` | 是 | address · order-confirm | — |
+| `activeAddress` | `GET /mp/user/active-address` | 是 | (stores) | — |
+| `switchActiveAddress` | `POST /mp/user/active-address/:addressId` | 是 | (stores) | — |
+| `addressList` | `GET /mp/user/address` | 是 | (stores) · address · order-confirm | — |
 | `saveAddress` | `POST /mp/user/address` | 是 | address | — |
 | `removeAddress` | `POST /mp/user/address/:addressId/archive` | 是 | address | — |
 | `setDefaultAddress` | `POST /mp/user/address/:addressId/default` | 是 | address | — |

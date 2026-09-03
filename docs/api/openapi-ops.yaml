@@ -4904,6 +4904,24 @@ components:
         - "enabled"
       additionalProperties: false
       description: "平台禁售词（商品①）。商家提审商品时前置校验标题。\n\n<p>**此前只有事后驳回**：带违禁词的标题会进审核队列、占一个审核员的时间、 再被驳回，而商家隔几天才知道要改哪个字。"
+    ProductPolicy: 
+      type: "object"
+      properties: 
+        requireCover: 
+          type: "boolean"
+          description: "提审前必须有主图"
+        titleMinLength: 
+          type: "number"
+          description: "标题最少几个字，0 = 不限"
+        titleMaxLength: 
+          type: "number"
+          description: "标题最多几个字，0 = 不限"
+      required: 
+        - "requireCover"
+        - "titleMinLength"
+        - "titleMaxLength"
+      additionalProperties: false
+      description: "建品规则（商品①）。提审那一刻校验，**拦在进审核队列之前**。\n\n<p>**三条默认全关**（等于今天的行为）：一旦打开，命中的存量商品下次提审全会被拦， 而平台上有 200 个 SPU、194 个正卡在审核里。默认打开等于在没人预告的情况下 让一批商家的提交突然失败。"
     InvHealthRow: 
       type: "object"
       properties: 
@@ -18448,6 +18466,63 @@ paths:
           required: true
           schema: 
             type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/product/policy": 
+    get: 
+      operationId: "productPolicy"
+      summary: "建品规则（商品①）"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ProductPolicy"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "saveProductPolicy"
+      summary: "saveProductPolicy"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ProductPolicy"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
       requestBody: 
         required: true
         content: 

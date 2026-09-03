@@ -150,6 +150,11 @@ const RESPONSE_TYPES = {
   allCommunities: "Community[]",
   openRegions: "RegionOption[]",
   regions: "RegionNode[]",
+  // fb230e7b 加了这两个端点却没登记 —— 漏配的后果是静默产出 data:{type:"object"}，
+  // spec 看着完整而 DTO 是空壳，后端照着实现得自己猜返回什么。
+  // 类型直接取自 c-app/src/api/http.ts 里那两行的泛型参数。
+  activeAddress: "Address",
+  switchActiveAddress: "Address",
   addressList: "Address[]",
   saveAddress: "Address[]",
   removeAddress: "Address[]",

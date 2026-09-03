@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 13 个权限点 × 173 个受控端点**。
+统计：**6 个角色 × 13 个权限点 × 177 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -16,11 +16,11 @@
 
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
-| `STOCK` | 改库存（含门店库存） | 33 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `STOCK` | 改库存（含门店库存） | 36 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 27 | ✅ | ✅ | — | — | — | — |
+| `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 20 | ✅ | — | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 19 | ✅ | ✅ | — | — | — | — |
 | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 19 | ✅ | — | — | — | — | — |
-| `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 19 | ✅ | — | — | — | — | — |
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 18 | ✅ | ✅ | — | — | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 16 | ✅ | ✅ | — | — | — | — |
 | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
@@ -30,7 +30,7 @@
 | `SHIP` | 发货、标记自送送达 | 2 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 2 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 
-**只有 OWNER 能碰的 2 项**：`STORE_ADMIN`、`FINANCE`
+**只有 OWNER 能碰的 2 项**：`FINANCE`、`STORE_ADMIN`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点
@@ -48,11 +48,13 @@
 - `/biz/inventory/counts/{no}`
 - `/biz/inventory/counts/{no}/lines`
 - `/biz/inventory/counts/{no}/post`
+- `/biz/inventory/cross-store`
 - `/biz/inventory/documents`
 - `/biz/inventory/inbounds`
 - `/biz/inventory/inbounds/{no}`
 - `/biz/inventory/inbounds/{no}/post`
 - `/biz/inventory/inbounds/{no}/void`
+- `/biz/inventory/item-by-sku`
 - `/biz/inventory/items/by-barcode`
 - `/biz/inventory/items/{itemId}`
 - `/biz/inventory/ledger`
@@ -70,6 +72,7 @@
 - `/biz/inventory/transfers/{no}`
 - `/biz/inventory/transfers/{no}/receive`
 - `/biz/inventory/transfers/{no}/ship`
+- `/biz/inventory/transfers/{no}/void`
 
 ### `GOODS`　（OWNER、MANAGER）
 
@@ -100,6 +103,29 @@
 - `/biz/spec-values`
 - `/biz/spu-std`
 - `/biz/store-spec-dims`
+
+### `FINANCE`　（OWNER）
+
+- `/biz/deposit`
+- `/biz/deposit/txns`
+- `/biz/merchant/debt`
+- `/biz/merchant/pay-channel`
+- `/biz/merchant/payment`
+- `/biz/merchant/payment/store/{storeNo}`
+- `/biz/merchant/payment/{payChannel}/refresh`
+- `/biz/points/account`
+- `/biz/points/records`
+- `/biz/points/toggle`
+- `/biz/settle/batch`
+- `/biz/settle/bills`
+- `/biz/settle/bills/{settleNo}`
+- `/biz/settle/income`
+- `/biz/settle/invoice-pending`
+- `/biz/settle/invoice-title`
+- `/biz/settle/invoices`
+- `/biz/settle/rate-card`
+- `/biz/settle/statement`
+- `/biz/settle/withdraw`
 
 ### `STORE`　（OWNER、MANAGER）
 
@@ -144,28 +170,6 @@
 - `/biz/store/{storeNo}/payment`
 - `/biz/store/{storeNo}/rename`
 - `/biz/store/{storeNo}/status`
-
-### `FINANCE`　（OWNER）
-
-- `/biz/deposit`
-- `/biz/deposit/txns`
-- `/biz/merchant/debt`
-- `/biz/merchant/pay-channel`
-- `/biz/merchant/payment`
-- `/biz/merchant/payment/store/{storeNo}`
-- `/biz/merchant/payment/{payChannel}/refresh`
-- `/biz/points/account`
-- `/biz/points/records`
-- `/biz/points/toggle`
-- `/biz/settle/batch`
-- `/biz/settle/bills`
-- `/biz/settle/bills/{settleNo}`
-- `/biz/settle/income`
-- `/biz/settle/invoice-title`
-- `/biz/settle/invoices`
-- `/biz/settle/rate-card`
-- `/biz/settle/statement`
-- `/biz/settle/withdraw`
 
 ### `CUSTOMER`　（OWNER、MANAGER）
 
