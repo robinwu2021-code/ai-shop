@@ -22,7 +22,6 @@ import { countdownShort, money } from "@shared/utils/format";
 import { firstSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
 import type { Goods, GroupBuy } from "@shared/types";
-import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const community = useCommunityStore();
@@ -96,29 +95,6 @@ function gotoCommunity() {
  * 归属这件事推迟到他真要下自提单时再要（下单页会引导），
  * 而顶栏那个「选自提点」入口一直在，想手动选随时能点。
  */
-async function maybePickCommunity() {
-  if (community.bound) return;
-  if (await community.probeNearby()) {
-    gotoCommunity();
-  } else if (!hintedNoNearby) {
-    hintedNoNearby = true; // 一次会话说一次就够，每次回首页都弹是骚扰
-    /*
-     * **说「还没开通」的同时要给出手动选的路**，否则这句话只是个坏消息：
-     * 用户不知道自己其实可以挑一个别处的自提点（给父母下单、出差前囤货都是这么用的）。
-     * 用 showModal 而不是 toast，正是因为 toast 点不了 —— 它说完就走，什么也不给。
-     */
-    void confirm({
-      title: String(t("home.noNearbyTitle")),
-      hint: String(t("home.noNearbyPickup")),
-      confirmText: String(t("home.pickManually")),
-      cancelText: String(t("home.browseFirst")),
-    }).then((ok) => {
-      if (ok) gotoCommunity();
-    });
-  }
-}
-let hintedNoNearby = false;
-
 function gotoSearch() {
   uni.navigateTo({ url: ROUTES.search });
 }
@@ -181,7 +157,21 @@ watch(
 onShow(() => {
   load();
   cart.load();
-  maybePickCommunity();
+  /*
+   * **这里原先会把未绑归属的人推去选自提点，现在不推了。**
+   *
+   * 那条路的前提是能静默定位，而 2026-09 微信驳回了 `wx.getLocation`
+   * （开放范围不含「匹配附近服务」，且驳的是规则不是措辞）。前提没了，
+   * 这个跳转就成了**对着零信息做出的强制选择**：新用户第一屏被推进一个页面，
+   * 而他还不知道这个小程序卖什么。
+   *
+   * 现在的顺序是：先让他看见东西，顶栏「选择取货点 ›」一直在，想选随时点；
+   * 真到下自提单那一步，下单页会拦住并引导。
+   * **把选择放在他有理由做选择的那一刻。**
+   *
+   * 顺带也不再调 probeNearby()：它唯一的用途就是决定要不要跳，
+   * 不跳之后它只是一次白花的定位请求 —— 而定位请求会弹授权框。
+   */
   void ensureIdentity();
   timer = setInterval(() => (now.value = Date.now()), 1000);
 });

@@ -31,9 +31,25 @@ vi.mock("@/api", () => ({
   },
 }));
 
+/**
+ * 页面用的是 `getLocationDetailed`（不是 `getLocation`）—— 后者只回坐标，
+ * **把「这是模糊定位」那个标记丢了**，而界面要靠它决定说「已定位到」还是
+ * 「大致位置」、以及**要不要显示距离**（区级坐标算出的「733m」是假精确）。
+ *
+ * mock 里三个都给：漏一个的报错是 "No export is defined on the mock"，
+ * 它指向 mock 而不指向页面，很容易被读成「测试写错了」而去改测试。
+ */
 const getLocationMock = vi.fn();
+const chooseLocationMock = vi.fn(() => Promise.resolve({ ok: false, reason: "cancel" }));
 vi.mock("@shared/ports/location", () => ({
   getLocation: () => getLocationMock(),
+  getLocationDetailed: () =>
+    Promise.resolve(getLocationMock()).then((c) =>
+      c ? { ok: true, coords: c } : { ok: false, reason: "unavailable", detail: "" },
+    ),
+  chooseLocation: () => chooseLocationMock(),
+  openLocation: vi.fn(),
+  fromE6: (v: number | null | undefined) => (v == null ? null : v / 1e6),
 }));
 
 import CommunityPage from "@/pages/community/index.vue";
@@ -100,7 +116,7 @@ describe("选社区自提点页", () => {
 
     expect(w.text()).toContain("阳光花园");
     expect(openRegions).not.toHaveBeenCalled();
-    expect(w.text()).not.toContain("community.pickRegion");
+    expect(w.text()).not.toContain("common.pickRegion");
   });
 
   it("★★★ 附近没有但有区域 → 出**区域列表**（这条正是 0.1.6 漏掉的）", async () => {
@@ -108,7 +124,7 @@ describe("选社区自提点页", () => {
     openRegions.mockResolvedValue([REGION]);
     const w = await render();
 
-    expect(w.text()).toContain("community.pickRegion");
+    expect(w.text()).toContain("common.pickRegion");
     expect(w.text()).toContain("西湖区");
     expect(w.text()).toContain("杭州市");
     // 空态不该同时出现 —— 上一版正是空态抢先命中，把区域列表整段挡住了
@@ -144,11 +160,11 @@ describe("选社区自提点页", () => {
 
     expect(allCommunities).toHaveBeenCalledWith("330106");
     expect(w.text()).toContain("阳光花园");
-    expect(w.text()).toContain("community.changeRegion");
+    expect(w.text()).toContain("common.changeRegion");
 
     await w.find(".rg__back").trigger("tap");
     await w.vm.$nextTick();
-    expect(w.text()).toContain("community.pickRegion");
+    expect(w.text()).toContain("common.pickRegion");
   });
 
   it("★★★ 定位结果必须传给后端 —— 不传的话「附近」名不副实", async () => {
