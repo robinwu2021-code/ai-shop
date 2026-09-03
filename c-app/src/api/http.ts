@@ -206,7 +206,27 @@ export const httpApi: ShopApi = {
   confirmRequest: (requestNo) => call<GroupRequest>("confirmRequest", { requestNo }),
 
   // ---- 商家
-  merchantList: (q) => call<Merchant[]>("merchantList", undefined, { ...q } satisfies MerchantListQuery),
+  /*
+   * **分页信封要在这里拆掉。**
+   *
+   * 契约写的是 `Promise<Merchant[]>`，而 `/mp/merchant` 实际回的是
+   * MyBatis-Plus 的分页对象 `{records: [...], total, ...}`。
+   * 网络边界上的泛型是**断言不是校验** —— `call<Merchant[]>` 不会核对，
+   * TypeScript 也拦不住，于是对象一路流进页面。
+   *
+   * 后果不是「列表空着」，是**整页空白**：`merchants` 页把它交给
+   * `nearby.value.filter(...)`，对象没有 `filter`，computed 抛异常，
+   * 连它自己的空态都渲染不出来 —— 页面上只剩标题栏和底部菜单，
+   * 看着像还没加载完，而它已经结束了。
+   *
+   * 两种形状都收：后端哪天改回数组也不会再坏一次。
+   */
+  merchantList: (q) =>
+    call<Merchant[] | { records?: Merchant[] }>("merchantList", undefined, {
+      ...q,
+    } satisfies MerchantListQuery).then((r) =>
+      Array.isArray(r) ? r : (r?.records ?? []),
+    ),
   storeHome: (merchantNo, from) =>
     http.get<StoreHome>(buildPath(ENDPOINTS.storeHome.path, { merchantNo }), { from }),
   storeByCode: (storeCode, deviceId) =>

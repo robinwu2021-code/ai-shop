@@ -8,6 +8,21 @@ import { DEFAULT_LANG, STORAGE } from "@shared/utils/constants";
 import { setCurrentLang } from "@shared/utils/locale";
 import type { Lang } from "@shared/types";
 
+/*
+ * 是不是开发态。**不直接写 `process.env.NODE_ENV`**：这个包也被
+ * 类型检查（vue-tsc）单独扫，而 packages/ui 的 tsconfig 里没有 node 类型，
+ * 于是那一行编译期报 TS2591 —— 而构建照样通过（打包器会替换掉它），
+ * 又是一处「跑得起来但检查不过」。包一层，顺带把 `process` 不存在的端也兜住。
+ */
+function isDev(): boolean {
+  try {
+    return (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process?.env?.NODE_ENV
+      !== "production";
+  } catch {
+    return false;
+  }
+}
+
 /** 词条树：值可以是文案，也可以是更深一层的分组（`order.status.PAID`） */
 type MessageTree = { [key: string]: string | MessageTree };
 type Messages = Record<string, MessageTree>;
@@ -60,6 +75,28 @@ export function createAppI18n(messages: Messages) {
     fallbackLocale: DEFAULT_LANG,
     // 词条预编译成消息函数（见 compileMessages）——App 端别名的极简 runtime 只认这一种插值
     messages: compileMessages(messages) as never,
+    /*
+     * **缺词条时不要把键名印到界面上。**
+     *
+     * vue-i18n 的默认行为是「找不到就渲染 key 本身」，于是
+     * `$t(\`serviceScope.${m.serviceScope}\`)` 在字段为空时，屏幕上
+     * 真的出现一行 `serviceScope.undefined` —— 商家列表实测到过。
+     * 它不报错、不崩，就那么摆在用户眼前，而且**看起来像页面写错了代码**。
+     *
+     * 拼接键（`\`x.${变量}\``）是这个仓库到处都在用的写法，
+     * 只要接口少给一个字段就会中招 —— 靠逐处 `v-if` 守不住，
+     * 得在这一层兜底。
+     *
+     * 开发态**吵**、生产态**闭嘴**：dev 里打红字，让写的人当场发现；
+     * 生产里返回空串，宁可少一个标签，也不要给用户看内部键名。
+     */
+    missing: (locale: string, key: string) => {
+      if (isDev()) {
+        console.error(`[i18n] 缺词条：${locale} → ${key}`);
+        return key; // 开发态保留键名，方便定位
+      }
+      return "";
+    },
   });
   // shared 层（mock / 格式化）不依赖 vue-i18n 实例，靠这一处注入拿到当前语言
   setCurrentLang(stored);

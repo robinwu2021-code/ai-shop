@@ -117,7 +117,7 @@ onShow(load);
         ></biz-merchant-bar>
         <text class="txt-caption desc">{{ m.desc }}</text>
         <view class="meta sh-wrap">
-          <text class="sh-chip">{{
+          <text v-if="m.serviceScope" class="sh-chip">{{
             $t(`serviceScope.${m.serviceScope}`)
           }}</text>
         </view>
