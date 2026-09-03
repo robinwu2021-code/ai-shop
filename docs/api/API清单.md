@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 692 个接口**：后端已实现 621（90%）· 前端在调 621
+**合计 695 个接口**：后端已实现 624（90%）· 前端在调 624
 
 ---
 
@@ -729,7 +729,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **380** 个接口 ｜ 后端已实现 **315**（83%）｜ 前端在调 **309**
+共 **383** 个接口 ｜ 后端已实现 **318**（83%）｜ 前端在调 **312**
 
 ### aftersale（4）
 
@@ -1095,10 +1095,13 @@
 | POST | `/ops/payments/recon-diffs/{diffNo}/ignore` | 忽略一条差异（如渠道手续费导致的分位差） | — | `ReconDiff` | — | ✅ | ✅ |
 | POST | `/ops/payments/recon-diffs/{diffNo}/resolve` | 处置一条差异（P-4.2.1 / 4.2.2） | — | `ReconDiff` | — | ✅ | ✅ |
 
-### product（47）
+### product（50）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/banned-word` | 平台禁售词（商品①） | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/banned-word` | addBannedWord | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/banned-word/{id}/remove` | removeBannedWord | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/categories` | 类目树：一次给全量（三级树总量有限，前端自己组树比逐层拉更快） | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/categories` | 新建 / 改类目 | — | `Category` | — | ✅ | ✅ |
 | POST | `/ops/categories/{no}/archive` | 有子类目或有在售商品的类目不能归档 —— 归档后 C 端类目树会断枝 | — | `Category` | — | ⬜ | ✅ |

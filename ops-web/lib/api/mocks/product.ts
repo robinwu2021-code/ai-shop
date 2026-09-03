@@ -2,6 +2,7 @@
 import * as db from "@/lib/mock/db";
 import { MARKETS, MAX_CATEGORY_LEVEL, SKU_TRANSITIONS, type Category, type CategorySpecDim, type SpecDim, type SpecValue, type Sku, type SpecTemplate, type SpuStd, type Topic, type ProductGoods } from "@/lib/types";
 import type { ProductApi } from "../contracts/product";
+import type { BannedWord } from "@/lib/types";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
@@ -222,6 +223,12 @@ function parentNameOf(cat: Category) {
 const mockPayModes = new Map<string, boolean>();
 const mockPoints = new Map<string, { earnMode: "FIXED" | "RATIO" | null; earnValue: number | null }>();
 
+const mockBannedWords: BannedWord[] = [
+  { id: 1, word: "特效", reason: "涉医疗功效宣称，广告法禁用", enabled: true },
+  { id: 2, word: "国家级", reason: "绝对化用语", enabled: true },
+  { id: 3, word: "秒杀", reason: null, enabled: true },
+];
+
 export const productMock: ProductApi = {
   /*
    * 照着 2026-09-03 线上的形状：73 个类目只有 14 个被用过、209 个 SKU 里 1 个有条码。
@@ -240,6 +247,21 @@ export const productMock: ProductApi = {
    * 单商品全链路。**编一件「建了一半账」的** —— 那正是这一页存在的理由：
    * 两个规格搬过去一个，商家端表现为「有些规格盘不着」，四个页面跳着看查不出来。
    */
+  /*
+   * 禁售词。**mock 里留一条没写理由的** —— 那一档在界面上是红字，
+   * 而它正是这张表最该被看见的问题：没有理由的词，商家收到的还是一句「不能用」。
+   */
+  bannedWords: () => wait([...mockBannedWords]),
+  addBannedWord: ({ word, reason }) => {
+    mockBannedWords.push({ id: Date.now(), word: word.toLowerCase(), reason: reason ?? null, enabled: true });
+    return wait([...mockBannedWords]);
+  },
+  removeBannedWord: (id) => {
+    const i = mockBannedWords.findIndex((w) => w.id === id);
+    if (i >= 0) mockBannedWords.splice(i, 1);
+    return wait([...mockBannedWords]);
+  },
+
   goodsChain: (goodsNo) => wait({
     // 标题跟着入参走：写死一个名字的话，点哪一行抽屉都叫「测试面条」，
     // 而那会让「点错行了」这种问题在 mock 下完全看不出来

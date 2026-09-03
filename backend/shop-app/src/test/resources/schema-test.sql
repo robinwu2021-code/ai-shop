@@ -4059,6 +4059,23 @@ CREATE TABLE IF NOT EXISTS mkt_content_slot
     CONSTRAINT uk_content_slot_no UNIQUE (slot_no)
 );
 
+CREATE TABLE IF NOT EXISTS sys_banned_word
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    word VARCHAR(64) NOT NULL,
+    reason VARCHAR(255) DEFAULT NULL,
+    enabled TINYINT(1) NOT NULL DEFAULT 1,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted INT(11) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_banned_word UNIQUE (word, tenant_no, deleted)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
@@ -8608,3 +8625,12 @@ SELECT 'ACT__INVENTORY_PROJECTION_REPAIR', 'OPS_INVENTORY', '手动补投影', '
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'SUPER_ADMIN', 'ACT__INVENTORY_PROJECTION_REPAIR', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__INVENTORY_PROJECTION_REPAIR');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_PRODUCT__TAB_BANNED_WORD', 'OPS_PRODUCT', '禁售词', '类目', '/products?tab=banned-word', 'product:category:read', 'product:category:read', 'IMPLEMENTED', 1, 'P-3.1', 'MENU', 66, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_PRODUCT__TAB_BANNED_WORD');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_PRODUCT__TAB_BANNED_WORD', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_PRODUCT__TAB_BANNED_WORD');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'GOODS_OPS', 'OPS_PRODUCT__TAB_BANNED_WORD', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='GOODS_OPS' AND x.point_code='OPS_PRODUCT__TAB_BANNED_WORD');

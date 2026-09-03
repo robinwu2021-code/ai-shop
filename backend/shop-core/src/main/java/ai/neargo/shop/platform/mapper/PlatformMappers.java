@@ -16,6 +16,10 @@ public final class PlatformMappers {
     public interface StaffMapper extends BaseMapper<SysOpsStaff> {
     }
 
+    public interface BannedWordMapper
+            extends BaseMapper<ai.neargo.shop.platform.entity.SysBannedWord> {
+    }
+
     public interface AuditLogMapper extends BaseMapper<SysAuditLog> {
     }
 

@@ -30,6 +30,7 @@ import { SpuStdTab } from "./spu-std-tab";
 import { TopicsTab } from "./topics-tab";
 import { StatsTab } from "./stats-tab";
 import { GoodsChainDrawer } from "./goods-chain-drawer";
+import { BannedWordTab } from "./banned-word-tab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,7 +52,7 @@ type Copy = (typeof PRODUCTS_COPY)["zh"];
 const TAB_KEYS = ["categories", "skus", "audit", "stock", "templates",
   // 规格库（V195）：通用 / 专用 / 类目×规格 —— 三件事分成三页，见 lib/nav.ts 的说明
   "spec-common", "spec-special", "category-spec", "category-pay-mode", "category-points",
-  "spu-std", "topics", "stats"] as const;   // 顺序与 lib/nav.ts 的叶子一致
+  "spu-std", "topics", "stats", "banned-word"] as const;   // 顺序与 lib/nav.ts 的叶子一致
 
 const MARKET_LABEL = (c: Copy): Record<Market, string> => ({ CN: c.marketCN, SG: c.marketSG });
 
@@ -429,6 +430,8 @@ function ProductsInner() {
       {tab === "topics" && <TopicsTab c={c} canEdit={allow("product:topic:update")} />}
 
       {tab === "stats" && <StatsTab c={c} />}
+
+      {tab === "banned-word" && <BannedWordTab c={c} />}
 
       {/* 全链路抽屉：任何 tab 下都可能被打开（今天入口在商品池） */}
       <GoodsChainDrawer c={c} goodsNo={chainOf} onClose={() => setChainOf(null)} />

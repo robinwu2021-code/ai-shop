@@ -86,6 +86,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private final ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort;
     /** 平台开关（V209）—— 类目闸门开不开由运营在界面上定，不再是一条配置 */
     private final ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort;
+    /** 禁售词。走 SPI 不直连 platform 的表 —— product 与 platform 是兄弟模块 */
+    private final ai.neargo.shop.spi.platform.BannedWordPort bannedWords;
     private final ai.neargo.shop.product.mapper.ProductMappers.GoodsDraftMapper draftMapper;
 
     /**
@@ -129,6 +131,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                     ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
                                     ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
                                     ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort,
+                                    ai.neargo.shop.spi.platform.BannedWordPort bannedWords,
                                     ai.neargo.shop.product.mapper.ProductMappers.GoodsDraftMapper draftMapper,
                                     ai.neargo.shop.spi.user.AdmissionPort admissionPort,
                                     ai.neargo.shop.product.service.CategoryService categoryService,
@@ -154,6 +157,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         this.merchantPort = merchantPort;
         this.communityQueryPort = communityQueryPort;
         this.switchPort = switchPort;
+        this.bannedWords = bannedWords;
         this.draftMapper = draftMapper;
         this.admissionPort = admissionPort;
         this.stockPort = stockPort;
@@ -2441,6 +2445,22 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 端上重复点击是常态，一个「状态不允许」只会让商家以为提交失败又点一次。
          */
         if (DRAFT.equals(g.getAuditStatus())) {
+            /*
+             * 禁售词前置校验（商品①）。**拦在进队列之前**。
+             *
+             * 此前只有事后驳回：带违禁词的标题会进审核队列、占一个审核员的时间、
+             * 再被驳回，而商家隔几天才知道要改哪个字。
+             * 2026-09-03 线上 194 件卡在审核里，而这条链的入口没有任何前置检查。
+             *
+             * 报错**点名那个词**：驳回理由是人手写的一句话，商家读完常常还是
+             * 不知道改哪儿；而「标题里的『XX』不能用」他当场就能改。
+             */
+            bannedWords.firstHit(g.getTitle()).ifPresent(hit -> {
+                throw BizException.of(ErrorCode.BAD_REQUEST,
+                        "标题里的「" + hit.word() + "」不能用"
+                                + (hit.reason() == null || hit.reason().isBlank()
+                                        ? "" : "：" + hit.reason()));
+            });
             if (!auditRequired()) {
                 // 免审：提交即编译上架。编译失败（80017）直接抛给商家 ——
                 // 他就在屏幕前，逐条点名比留一个「审核中」的假状态有用

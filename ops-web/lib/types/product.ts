@@ -660,3 +660,18 @@ export interface GoodsChain {
   /** 与链条画像用同一套词（）—— 两处分叉就是两套结论 */
   stuckAt: MerchantChainStuck | null;
 }
+
+/**
+ * 平台禁售词（商品①）。商家提审商品时前置校验标题。
+ *
+ * <p>**此前只有事后驳回**：带违禁词的标题会进审核队列、占一个审核员的时间、
+ * 再被驳回，而商家隔几天才知道要改哪个字。
+ */
+export interface BannedWord {
+  id: number;
+  /** 词。**存的是小写**，匹配时两边都转小写 */
+  word: string;
+  /** 为什么禁。**会原样出现在给商家的报错里**，所以要写成他看得懂的一句话 */
+  reason: string | null;
+  enabled: boolean;
+}

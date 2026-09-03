@@ -6584,6 +6584,49 @@ _无字段_
 
 ### product
 
+#### GET `/ops/banned-word`
+
+平台禁售词（商品①）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`BannedWord`](#bannedword)\[\]
+
+
+#### POST `/ops/banned-word`
+
+addBannedWord
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`BannedWord`](#bannedword)\[\]
+
+
+#### POST `/ops/banned-word/{id}/remove`
+
+removeBannedWord
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `id` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`BannedWord`](#bannedword)\[\]
+
+
 #### GET `/ops/categories`
 
 类目树：一次给全量（三级树总量有限，前端自己组树比逐层拉更快）
@@ -9121,6 +9164,17 @@ _无字段_
 | `codes` | `string`\[\] | 是 | 改完之后持有的码（全量） |
 | `revoked` | `string`\[\] | 是 | 这次撤掉的码。空数组 = 只加不减 |
 | `affected` | `number` | 是 | 因撤码而下次上架会被拒的在架商品数 |
+
+### BannedWord
+
+平台禁售词（商品①）。商家提审商品时前置校验标题。 <p>**此前只有事后驳回**：带违禁词的标题会进审核队列、占一个审核员的时间、 再被驳回，而商家隔几天才知道要改哪个字。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | — |
+| `word` | `string` | 是 | 词。**存的是小写**，匹配时两边都转小写 |
+| `reason` | `string,null` | 是 | 为什么禁。**会原样出现在给商家的报错里**，所以要写成他看得懂的一句话 |
+| `enabled` | `boolean` | 是 | — |
 
 ### BlacklistEntry
 

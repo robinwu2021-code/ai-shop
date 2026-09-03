@@ -541,6 +541,27 @@ const zh = {
   chainStuckNoAccount: "进销存里没账",
   chainStuckNoInbound: "从没进过货",
   chainStuckStaleLedger: "很久没记账",
+
+  // ── 禁售词（商品①）────────────────────────────────────────────────────
+  bwHelpTitle: "它拦在什么时候",
+  bwHelp:
+    "商家点「提交审核」的那一刻校验标题，命中就当场拒，并「点名是哪个词」。"
+    + "此前只有事后驳回：带违禁词的标题会进审核队列、占一个审核员的时间、再被驳回，"
+    + "而商家隔几天才知道要改哪个字。词不区分大小写，配「iphone」也拦得住「iPhone」。",
+  bwReadOnly: "增删禁售词",
+  bwWord: "词",
+  bwReason: "为什么禁",
+  // 理由会原样进商家收到的报错，空着等于只告诉他「有违禁词」
+  bwNoReason: "没写理由 —— 商家只会看到「不能用」",
+  bwAction: "操作",
+  bwWordPh: "词（不区分大小写）",
+  bwReasonPh: "为什么禁 —— 这句话商家会原样看到",
+  bwAdd: "加入",
+  bwAdded: "已加入，立即生效",
+  bwRemove: "移除",
+  bwRemoveTitle: "移除「{w}」？",
+  bwRemoveDesc: "移除之后，标题里带这个词的商品下次提审就不会再被拦。",
+  bwEmpty: "还没有禁售词",
 };
 
 const en: typeof zh = {
@@ -1050,6 +1071,25 @@ const en: typeof zh = {
   chainStuckNoAccount: "No inventory account",
   chainStuckNoInbound: "Never received stock",
   chainStuckStaleLedger: "Books gone quiet",
+
+  bwHelpTitle: "When it blocks",
+  bwHelp:
+    "Checked the moment a merchant submits for review; a hit is rejected on the spot and names the word. "
+    + "Before this there was only after-the-fact rejection: the listing entered the queue, took a reviewer's time, "
+    + "and the merchant learned days later which word to change. Matching is case-insensitive.",
+  bwReadOnly: "Add or remove banned words",
+  bwWord: "Word",
+  bwReason: "Why",
+  bwNoReason: "No reason given — the merchant only sees \"not allowed\"",
+  bwAction: "Action",
+  bwWordPh: "Word (case-insensitive)",
+  bwReasonPh: "Why — the merchant sees this verbatim",
+  bwAdd: "Add",
+  bwAdded: "Added, effective immediately",
+  bwRemove: "Remove",
+  bwRemoveTitle: "Remove \"{w}\"?",
+  bwRemoveDesc: "After removal, listings containing this word will no longer be blocked at submission.",
+  bwEmpty: "No banned words yet",
 };
 
 export const PRODUCTS_COPY: PageCopy<typeof zh> = { zh, en };

@@ -189,6 +189,12 @@ export const NAV: NavSection[] = [
       // 迁移里的 href、清单产物，还会让已有的链接失效，而这些换不来任何东西。
       { href: "/products?tab=category-pay-mode", label: "当面付禁用类目", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
       { href: "/products?tab=category-points", label: "类目 × 积分", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
+      // 禁售词（商品①）。**前置拦在提审之前** —— 此前只有事后驳回：
+      // 带违禁词的标题会进审核队列、占一个审核员的时间、再被驳回，
+      // 而商家隔几天才知道要改哪个字。
+      // 归「类目」组：与类目策略同一批人管（都是「平台定规则」那一类），
+      // 且同 group 的叶子必须相邻。
+      { href: "/products?tab=banned-word", label: "禁售词", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
       // 标准品库（TDD-标准品库）。**单独一个权限码**而不是复用 product:category:*：
       // 类目决定「这类货要什么资质」（准入门槛），标准品决定「这件货长什么样」（录入模板）——
       // 让能改准入的人才能录标准品，会把一件运营日常挡在一个很高的门后面

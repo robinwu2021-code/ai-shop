@@ -1298,7 +1298,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 145,
+      "count": 146,
       "domains": [
         {
           "name": "经营看板",
@@ -1693,6 +1693,18 @@
               "status": "已实现",
               "proto": null,
               "preview": "http://localhost:3000/products?tab=category-points"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=banned-word",
+              "title": "禁售词",
+              "domain": "商品与类目",
+              "group": "类目",
+              "matrix": "P-3.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/products?tab=banned-word"
             },
             {
               "app": "ops-web",
@@ -3108,5 +3120,5 @@
       ]
     }
   ],
-  "total": 251
+  "total": 252
 }

@@ -58,18 +58,14 @@ class InventoryReserveTtlCapTest {
                                 .isEqualTo(ErrorCode.BAD_REQUEST));
     }
 
-    @Test
-    @DisplayName("★★ 0 与负数也拒 —— 「立刻过期的预留」等于没占，但调用方以为占上了")
-    void nonPositiveTtlIsRejected() {
-        for (long ttl : new long[]{0L, -1L}) {
-            assertThatThrownBy(() -> reservations.reserve(
-                    "OWNER-TTL-PROBE", "REF-TTL-" + System.nanoTime(),
-                    List.of(new ReservationService.Line("ITEM-X", "LOC-X", 1)),
-                    ttl))
-                    .as("ttlSeconds=%s 没被 TTL 那道闸拒 —— 这份预留一产生就过期，而调用方以为占上了", ttl)
-                    .isInstanceOfSatisfying(BizException.class,
-                            e -> org.assertj.core.api.Assertions.assertThat(e.errorCode())
-                                    .isEqualTo(ErrorCode.BAD_REQUEST));
-        }
-    }
+    /*
+     * **没有「0 与负数也拒」这一条**，而第一版有。
+     *
+     * 它撞坏了 InventoryFlowTest#overdueBacklogIsCountable：那条用例故意传负数，
+     * 造一笔「一落库就已过期」的预留来验回收任务 —— 而那是有道理的，
+     * 真实场景里「过期」是时间走过去造成的，测试里没法等。
+     *
+     * 需求要的是上限（防一个大数把货占住）。下限是我自己加的，
+     * 它没有对应的风险，却挡住了一个正当用法。
+     */
 }
