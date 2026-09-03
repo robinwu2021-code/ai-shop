@@ -181,6 +181,8 @@ const OVERLAY: Record<string, Record<string, string>> = {
   // ── L2 分组小标题（nav.ts 里的 leaf.group）──────────────────────────────
   入驻与资质: { en: "Onboarding & credentials" },
   信用与处置: { en: "Credit & penalties" },
+  经营诊断: { en: "Health check" },
+  链条画像: { en: "Chain profile" },
   增值包: { en: "Plans" },
   增值包与额度: { en: "Plans & quota" },
   模板与合规: { en: "Templates & compliance" },

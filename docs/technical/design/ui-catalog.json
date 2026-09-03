@@ -1298,7 +1298,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 141,
+      "count": 142,
       "domains": [
         {
           "name": "经营看板",
@@ -1471,6 +1471,18 @@
               "status": "已实现",
               "proto": null,
               "preview": "http://localhost:3000/merchants?tab=plans"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=chain",
+              "title": "链条画像",
+              "domain": "商家治理",
+              "group": "经营诊断",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/merchants?tab=chain"
             }
           ]
         },
@@ -3060,5 +3072,5 @@
       ]
     }
   ],
-  "total": 247
+  "total": 248
 }

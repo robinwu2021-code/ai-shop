@@ -24,6 +24,7 @@ import { BanTab, CreditTab } from "./credit-tab";
 import { AdmissionTab } from "./admission-tab";
 // 门店档案（P-11.2.1）：主体的下一层实体，与「准入与保证金」里那份窄投影不是一回事
 import { StoresTab } from "./stores-tab";
+import { ChainTab } from "./chain-tab";
 import { PlansTab } from "./plans-tab";
 import { ModeRiskTab } from "./mode-risk-tab";
 import { OnboardingTab } from "./onboarding-tab";
@@ -50,7 +51,7 @@ const TIER_OPTIONS = (c: Copy) => [
   { value: "COMPANY", label: c.tierCompany },
 ];
 
-const TAB_KEYS = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "onboarding", "mode-risk", "ban", "plans"] as const;
+const TAB_KEYS = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "onboarding", "mode-risk", "ban", "plans", "chain"] as const;
 
 /** 入驻审核视图只看**还没走完审核**的那几档 —— 已通过/已封禁的属于档案，不该混在待办里。 */
 const AUDIT_STATUSES = ["SUBMITTED", "REVIEWING"];
@@ -240,6 +241,8 @@ function MerchantsInner() {
       )}
 
       {tab === "stores" && <StoresTab c={c} />}
+
+      {tab === "chain" && <ChainTab c={c} />}
 
       {tab === "plans" && <PlansTab c={c} />}
 

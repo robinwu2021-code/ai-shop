@@ -518,6 +518,35 @@ const zh = {
   obNotSubmittedHint: "这家还没把资料提交给通道，没有单号可查 —— 要催的是商家补料，不是等通道",
   obToastNotSubmitted: "这家还没把资料提交给通道，回查不到东西 —— 要催的是商家，不是通道",
   obEmpty: "没有匹配的进件记录",
+  // ── 商家链条画像（M1）────────────────────────────────────────────────
+  chainHelpTitle: "这一页在看什么",
+  chainHelp:
+    "一家商家从建品到持续记账要走六步，每一步都在流失。这张表把六步排成一行，"
+    + "并给出**第一个**断掉的环 —— 后面几列的 0 通常是它的后果，不是几个独立问题。"
+    + "「卡在审核」那一档是平台自己欠商家的，与「商家没动」要分开看。",
+  chainMerchant: "商家",
+  chainStuck: "卡在哪一层",
+  chainHealthy: "通了",
+  chainGoods: "建品",
+  chainPending: "待审",
+  chainOnSale: "上架",
+  chainItems: "建账",
+  chainFirstInbound: "首次进货",
+  chainLastLedger: "最近记账",
+  chainTotal: "商家总数",
+  chainStuckCount: "卡住的",
+  // 分子分母一起给：「3 家卡住」答不出这是常态还是异常
+  chainStuckSub: "共 {n} 家",
+  chainStuckOnly: "只看卡住的",
+  chainEmpty: "还没有商家",
+  chainEmptyStuck: "没有卡住的商家",
+  chainNoGoods: "一个品都没建",
+  // 这一档是平台欠商家的，不是商家没动 —— 色调也因此与其余几档不同
+  chainInAudit: "全卡在审核",
+  chainNotOnSale: "审完了没上架",
+  chainNoAccount: "进销存里没账",
+  chainNoInbound: "从没进过货",
+  chainStaleLedger: "很久没记账",
 };
 
 const en: typeof zh = {
@@ -1034,6 +1063,33 @@ const en: typeof zh = {
   obNotSubmittedHint: "Never submitted to the channel, so there is no application to query — chase the merchant for documents",
   obToastNotSubmitted: "Never submitted to the channel — nothing to re-query. Chase the merchant, not the channel.",
   obEmpty: "No matching onboarding records",
+  chainHelpTitle: "What this page shows",
+  chainHelp:
+    "A merchant walks six steps from first listing to keeping books, and every step leaks."
+    + " This table lays the six across one row and names the **first** broken link —"
+    + " the zeros after it are usually its consequence, not separate problems."
+    + " \"Stuck in review\" is the platform's own debt; keep it apart from \"merchant went quiet\".",
+  chainMerchant: "Merchant",
+  chainStuck: "Broken at",
+  chainHealthy: "Clear",
+  chainGoods: "Listings",
+  chainPending: "In review",
+  chainOnSale: "On sale",
+  chainItems: "Booked",
+  chainFirstInbound: "First inbound",
+  chainLastLedger: "Last entry",
+  chainTotal: "Merchants",
+  chainStuckCount: "Stuck",
+  chainStuckSub: "of {n}",
+  chainStuckOnly: "Stuck only",
+  chainEmpty: "No merchants yet",
+  chainEmptyStuck: "No merchant is stuck",
+  chainNoGoods: "No listing yet",
+  chainInAudit: "All in review",
+  chainNotOnSale: "Reviewed, not listed",
+  chainNoAccount: "No inventory account",
+  chainNoInbound: "Never received stock",
+  chainStaleLedger: "Books gone quiet",
 };
 
 export const MERCHANTS_COPY: PageCopy<typeof zh> = { zh, en };

@@ -3,7 +3,27 @@ import * as db from "@/lib/mock/db";
 import { MERCHANT_TRANSITIONS, type Merchant, type OnboardingRow } from "@/lib/types";
 import { MAX_MERCHANT_BREACH } from "@/lib/constants";
 import type { MerchantApi } from "../contracts/merchant";
-import type { LegalForm } from "@/lib/types";
+import type { LegalForm, MerchantChainRow } from "@/lib/types";
+
+/** 六个卡点各一行，末两行是通的 —— 全是卡点看不出对比，全是通的看不出这页为什么存在 */
+const mockChain: MerchantChainRow[] = [
+  { entityNo: "M0001", merchantName: "老张粮油店", goods: 0, pendingAudit: 0, onSale: 0, items: 0,
+    firstInbound: null, lastLedger: null, stuckAt: "NO_GOODS" },
+  { entityNo: "M0002", merchantName: "巷口张记杂货", goods: 41, pendingAudit: 41, onSale: 0, items: 0,
+    firstInbound: null, lastLedger: null, stuckAt: "IN_AUDIT" },
+  { entityNo: "M0003", merchantName: "西城生鲜", goods: 18, pendingAudit: 0, onSale: 0, items: 0,
+    firstInbound: null, lastLedger: null, stuckAt: "NOT_ON_SALE" },
+  { entityNo: "M0004", merchantName: "文三路便利", goods: 22, pendingAudit: 3, onSale: 6, items: 0,
+    firstInbound: null, lastLedger: null, stuckAt: "NO_ACCOUNT" },
+  { entityNo: "M0005", merchantName: "城北果园", goods: 9, pendingAudit: 0, onSale: 9, items: 34,
+    firstInbound: null, lastLedger: null, stuckAt: "NO_INBOUND" },
+  { entityNo: "M0006", merchantName: "南塘水产", goods: 15, pendingAudit: 0, onSale: 12, items: 51,
+    firstInbound: "2026-06-11T09:20:00", lastLedger: "2026-07-02T18:40:00", stuckAt: "STALE_LEDGER" },
+  { entityNo: "M0007", merchantName: "邻里鲜生", goods: 63, pendingAudit: 2, onSale: 58, items: 120,
+    firstInbound: "2026-05-02T10:00:00", lastLedger: "2026-09-02T21:15:00", stuckAt: null },
+  { entityNo: "M0008", merchantName: "老李副食", goods: 31, pendingAudit: 0, onSale: 27, items: 88,
+    firstInbound: "2026-04-18T08:30:00", lastLedger: "2026-09-03T07:05:00", stuckAt: null },
+];
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
@@ -308,6 +328,19 @@ export const merchantMock: MerchantApi = {
     a.auditedAt = Date.now();
     await wait(undefined);
   },
+
+  /*
+   * 链条画像。**照着 2026-09-03 线上的形状编**：200 个 SPU 里只有 4 个上架、
+   * 6 家商家里只有 2 家真在记账 —— mock 里放一排健康的行，会让这一页
+   * 看起来像个没什么用的报表，而它存在的理由正是那些断掉的行。
+   *
+   * 六个卡点各来一行，最后两行是通的 —— 全是卡点也不对，那样看不出对比。
+   */
+  merchantChain: (q = {}) =>
+    wait(
+      mockChain.filter((r) => (q.stuckOnly ? r.stuckAt !== null : true))
+        .slice(0, q.limit ?? 200),
+    ),
 
   listMerchants: (q = {}) =>
     wait(

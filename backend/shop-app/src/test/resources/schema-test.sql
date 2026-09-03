@@ -8544,3 +8544,12 @@ SELECT 'SUPER_ADMIN', 'ACT__MARKETING_SLOT_READ', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__MARKETING_SLOT_READ');
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 VALUES ('AUDITOR', 'ACT__DASHBOARD_OVERVIEW_READ', 'OPS', NOW(), NOW());
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MERCHANT__TAB_CHAIN', 'OPS_MERCHANT', '链条画像', '经营诊断', '/merchants?tab=chain', 'merchant:merchant:read', 'merchant:merchant:read', 'IMPLEMENTED', 1, 'P-11.1', 'MENU', 90, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MERCHANT__TAB_CHAIN');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MERCHANT__TAB_CHAIN', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MERCHANT__TAB_CHAIN');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'BD', 'OPS_MERCHANT__TAB_CHAIN', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='BD' AND x.point_code='OPS_MERCHANT__TAB_CHAIN');

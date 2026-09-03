@@ -656,3 +656,37 @@ export interface OnboardingRow {
   /** applyStatus === "ACTIVE" */
   canReceiveMoney: boolean;
 }
+
+/**
+ * 商家链条画像的一行（M1）。
+ *
+ * <p>六个数字沿着「建品 → 提审 → 上架 → 建账 → 首次进货 → 持续记账」排开，
+ * 而**真正能拿去做事的是 `stuckAt`** —— 数字自己不指向任何人。
+ */
+export interface MerchantChainRow {
+  entityNo: string;
+  merchantName: string | null;
+  /** 建了几个 SPU */
+  goods: number;
+  /** 其中待审几个 */
+  pendingAudit: number;
+  /** 其中上架几个 */
+  onSale: number;
+  /** 进销存里建了几条账 */
+  items: number;
+  /** 第一笔入库时间。null = 一次都没进过货 */
+  firstInbound: string | null;
+  /** 最近一笔流水时间。null = 从没记过账 */
+  lastLedger: string | null;
+  /** 卡在哪一层。null = 这条链是通的 */
+  stuckAt: MerchantChainStuck | null;
+}
+
+/** 卡点。**取第一个断掉的环** —— 后面几列的 0 是它的后果，不是几个独立问题 */
+export type MerchantChainStuck =
+  | "NO_GOODS"
+  | "IN_AUDIT"
+  | "NOT_ON_SALE"
+  | "NO_ACCOUNT"
+  | "NO_INBOUND"
+  | "STALE_LEDGER";

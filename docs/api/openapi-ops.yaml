@@ -967,6 +967,64 @@ components:
         - "canReceiveMoney"
       additionalProperties: false
       description: "进件看板的一行（`GET /ops/onboarding`）。**每主体每通道一条**。\n\n它补的是入驻审核与收款进件两条链之间的盲区：审核通过 = 能上架卖货， 进件通过 = 能收钱。审核过了但进件没走完的商家「货照上、单照来、钱收不到」， 此前运营端没有一个跨商家的地方能看见 —— 这份看板就是那个地方。"
+    MerchantChainRow: 
+      type: "object"
+      properties: 
+        entityNo: 
+          type: "string"
+        merchantName: 
+          type: 
+            - "string"
+            - "null"
+        goods: 
+          type: "number"
+          description: "建了几个 SPU"
+        pendingAudit: 
+          type: "number"
+          description: "其中待审几个"
+        onSale: 
+          type: "number"
+          description: "其中上架几个"
+        items: 
+          type: "number"
+          description: "进销存里建了几条账"
+        firstInbound: 
+          type: 
+            - "string"
+            - "null"
+          description: "第一笔入库时间。null = 一次都没进过货"
+        lastLedger: 
+          type: 
+            - "string"
+            - "null"
+          description: "最近一笔流水时间。null = 从没记过账"
+        stuckAt: 
+          anyOf: 
+            - "$ref": "#/definitions/MerchantChainStuck"
+            - type: "null"
+          description: "卡在哪一层。null = 这条链是通的"
+      required: 
+        - "entityNo"
+        - "merchantName"
+        - "goods"
+        - "pendingAudit"
+        - "onSale"
+        - "items"
+        - "firstInbound"
+        - "lastLedger"
+        - "stuckAt"
+      additionalProperties: false
+      description: "商家链条画像的一行（M1）。\n\n<p>六个数字沿着「建品 → 提审 → 上架 → 建账 → 首次进货 → 持续记账」排开， 而**真正能拿去做事的是 `stuckAt`** —— 数字自己不指向任何人。"
+    MerchantChainStuck: 
+      type: "string"
+      enum: 
+        - "NO_GOODS"
+        - "IN_AUDIT"
+        - "NOT_ON_SALE"
+        - "NO_ACCOUNT"
+        - "NO_INBOUND"
+        - "STALE_LEDGER"
+      description: "卡点。**取第一个断掉的环** —— 后面几列的 0 是它的后果，不是几个独立问题"
     FulfillmentType: 
       type: "string"
       enum: 
@@ -15119,6 +15177,34 @@ paths:
                       - "total"
                       - "page"
                       - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/merchant/chain": 
+    get: 
+      operationId: "merchantChain"
+      summary: "商家链条画像（M1）：一家一行，建品 → 提审 → 上架 → 建账 → 首次进货 → 持续记账"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/MerchantChainRow"
                 required: 
                   - "code"
                   - "msg"

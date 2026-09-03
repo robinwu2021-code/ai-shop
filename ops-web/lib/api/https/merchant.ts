@@ -43,6 +43,7 @@ export const merchantHttp: MerchantApi = {
     }),
 
   listMerchants: (q) => client.get("/ops/merchants", q),
+  merchantChain: (q = {}) => client.get("/ops/merchant/chain", q),
   getMerchant: (merchantNo) => client.get(`/ops/merchants/${merchantNo}`),
 
   // 进件看板（WS-C）：只读 + 人工回查。不碰通道 —— 回查转调后端已有的 refresh。

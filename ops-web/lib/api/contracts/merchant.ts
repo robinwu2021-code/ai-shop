@@ -8,11 +8,17 @@ import type {
   PlanDef,
   PlanUpgradeSignal,
   OnboardingRow,
-  AdmissionPolicy, AuthCode, AuthCodeSetResult, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, PayQuota, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType, StoreFulfillmentRow } from "@/lib/types";
+  AdmissionPolicy, AuthCode, AuthCodeSetResult, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, PayQuota, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType, StoreFulfillmentRow, MerchantChainRow } from "@/lib/types";
 import type { ApplyQ, MerchantQ, OnboardingQ } from "../query";
 
 export interface MerchantApi {
   // ── 门店经营模式与弱主体准入 ─────────────────────────────────
+
+  /**
+   * 商家链条画像（M1）：一家一行，建品 → 提审 → 上架 → 建账 → 首次进货 → 持续记账。
+   * `stuckOnly` 只要卡住的那些行 —— 运营的常用视图是「谁需要我」。
+   */
+  merchantChain(q?: { limit?: number; stuckOnly?: boolean }): Promise<MerchantChainRow[]>;
 
   storeModes(merchantNo: string): Promise<StoreMode[]>;
   /** 无照主体 × 自营门店的税务敞口清单。后端按敞口倒序 */

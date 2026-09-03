@@ -113,6 +113,19 @@ export const NAV: NavSection[] = [
       // 它作为页内区块存在，编辑按钮按 can('system:param:update') 显隐：
       // BD 能授予套餐，但改「套餐是什么」不在他手里。
       { href: "/merchants?tab=plans", label: "增值包与额度", perm: "merchant:merchant:read", group: "增值包", matrix: "P-11.2" , ready: true },
+      // ── 经营诊断 ────────────────────────────────────────────────────────
+      // 链条画像（M1）：一家一行，建品 → 提审 → 上架 → 建账 → 首次进货 → 持续记账。
+      //
+      // 放在商家治理而不是经营看板下：它的结论是「今天该找谁」，而找到人之后
+      // 要做的事（看档案、发消息、处置）全在这个菜单里 —— 挂到看板下会让
+      // 「看出问题」与「动手」隔着一次菜单跳转。
+      //
+      // **单独成组且排在最后**：同 group 的叶子必须相邻（nav.test.ts 锁这条），
+      // 插在「入驻与资质」中间会把那个分区劈成两半。
+      //
+      // perm 与后端 OpsMerchantChainController 判的是同一个码 ——
+      // 界面闸门比后端松就是「菜单点得进、进去一片 403」。
+      { href: "/merchants?tab=chain", label: "链条画像", perm: "merchant:merchant:read", group: "经营诊断", matrix: "P-11.1", ready: true },
     ],
   },
 
