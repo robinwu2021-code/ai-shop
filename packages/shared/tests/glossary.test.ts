@@ -142,10 +142,19 @@ describe("后端验收清单与 mock 同步", () => {
     const count = (p: string) =>
       [...readFileSync(join(ROOT, p), "utf8").matchAll(/throw new Error\(\s*(`[^`]*`|"[^"]*")\s*\)/g)]
         .map((m) => m[1]!.slice(1, -1).replace(/\$\{[^}]*\}/g, "…"));
+    /*
+     * B 端替身 2026-09-03 按域拆到了 `b-app/src/api/mocks/`。
+     * **整个目录都要数**：只数原路径的话这一端一条都数不到，
+     * 而这条断言会「变绿」—— 少数等于没有规则，正是它最不该有的失败方式。
+     */
+    const countDir = (dir: string) =>
+      readdirSync(join(ROOT, dir))
+        .filter((f) => f.endsWith(".ts"))
+        .flatMap((f) => count(`${dir}/${f}`));
     const all = new Set([
       ...count("packages/shared/src/mock/db.ts"),
       ...count("c-app/src/api/mock.ts"),
-      ...count("b-app/src/api/mock.ts"),
+      ...countDir("b-app/src/api/mocks"),
     ]);
     const declared = SPEC.match(/mock 里共强制 \*\*(\d+)\*\* 条拒绝规则/);
     expect(declared, "验收清单里找不到条数声明").toBeTruthy();

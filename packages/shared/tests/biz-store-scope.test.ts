@@ -27,7 +27,9 @@ import { describe, expect, it } from "vitest";
 const ROOT = join(import.meta.dirname, "../../..");
 const PAGES = join(ROOT, "b-app/src/pages");
 const MODEL = join(ROOT, "b-app/src/shared/store-scope.ts");
-const MOCK = join(ROOT, "b-app/src/api/mock.ts");
+// 替身按域拆开了（2026-09-03）：**整个目录读进来**，
+// 只读那份门面的话一个方法体都扫不到，而这道闸会全绿
+const MOCK_DIR = join(ROOT, "b-app/src/api/mocks");
 
 /** 从模型文件里解出一份清单。**读源码而不是 import**：这里是 vitest 的 node 环境，
  *  而 b-app 的 ts 里有 uni-app 的全局，直接 import 会炸在无关的地方。 */
@@ -111,7 +113,10 @@ describe("B 端门店维度", () => {
   });
 
   it("★★★ mock 必须认当前门店 —— 不认的话切了店界面纹丝不动，看起来就是「切店没做好」", () => {
-    const mock = readFileSync(MOCK, "utf8");
+    const mock = readdirSync(MOCK_DIR)
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => readFileSync(join(MOCK_DIR, f), "utf8"))
+      .join("\n");
     // 替身里这几个函数体必须出现读当前门店的那两个helper之一
     const blind: string[] = [];
     for (const name of Object.keys(ENDPOINTS)) {

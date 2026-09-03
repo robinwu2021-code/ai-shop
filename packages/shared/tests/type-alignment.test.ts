@@ -167,7 +167,17 @@ describe("契约四件套：契约 / 端点表 / mock / http 必须一一对应"
     it(`${app}: 四处齐全`, () => {
       const methods = new Set([...read(app, "contract.ts").matchAll(/^ {2}(\w+)\(/gm)].map((m) => m[1]!));
       const eps = new Set([...read(app, "endpoints.ts").matchAll(/^ {2}(\w+): \{/gm)].map((m) => m[1]!));
-      const mockSrc = read(app, "mock.ts");
+      /*
+       * B 端替身 2026-09-03 按域拆到了 `src/api/mocks/`（原文件 5240 行）。
+       * **目录优先**：只读 `mock.ts` 的话读到的是一份 `export` 门面，
+       * 228 个方法会全被判成「mock 缺」—— 这次是响的（它当场红了），
+       * 但反过来的少扫是哑的，所以这里按目录读，别再回到单文件。
+       */
+      const mockDir = join(ROOT, app, "src/api/mocks");
+      const mockSrc = existsSync(mockDir)
+        ? readdirSync(mockDir).filter((f) => f.endsWith(".ts"))
+          .map((f) => readFileSync(join(mockDir, f), "utf8")).join("\n")
+        : read(app, "mock.ts");
       const mocks = new Set(
         [...mockSrc.matchAll(/^ {2}(?:async )?(\w+)[(:]/gm)].map((m) => m[1]!),
       );

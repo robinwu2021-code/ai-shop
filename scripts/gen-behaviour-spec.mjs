@@ -12,7 +12,7 @@
  *
  * 用法：npm run gen:spec
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -48,10 +48,22 @@ function rejections(file, label) {
   return out;
 }
 
+/** 一个目录下所有 .ts 里的拒绝规则 */
+function rejectionsIn(dir, label) {
+  return readdirSync(join(ROOT, dir))
+    .filter((f) => f.endsWith(".ts"))
+    .flatMap((f) => rejections(join(dir, f), label));
+}
+
 const rules = [
   ...rejections("packages/shared/src/mock/db.ts", "共享"),
   ...rejections("c-app/src/api/mock.ts", "C 端"),
-  ...rejections("b-app/src/api/mock.ts", "B 端"),
+  /*
+   * B 端替身 2026-09-03 按域拆到了 `b-app/src/api/mocks/`（原文件 5240 行）。
+   * **整个目录都要扫**：只读原路径的话拒绝规则会一条都扫不到，
+   * 而这份清单会安静地少掉一整端 —— 少扫等于「没有规则」，看不出区别。
+   */
+  ...rejectionsIn("b-app/src/api/mocks", "B 端"),
 ];
 
 // 同一条消息可能在多处抛（如「订单不存在」），按消息去重并合并来源
