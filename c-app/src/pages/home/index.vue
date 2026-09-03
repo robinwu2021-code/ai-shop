@@ -8,7 +8,7 @@
  * 入口留在「我的」。首页主体是社区商品流：先按覆盖范围滤掉送不到我这儿的商家，
  * 再按距离近的在前。附近的店排在商品流之前 —— 邻里购物里「谁在卖」常常先于「卖什么」。
  */
-import { onUnmounted, ref } from "vue";
+import { computed, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { onShow, onShareAppMessage } from "@dcloudio/uni-app";
 import { api } from "@/api";
@@ -26,6 +26,24 @@ import type { Goods, GroupBuy } from "@shared/types";
 const { t } = useI18n();
 const community = useCommunityStore();
 const location = useLocationStore();
+
+/**
+ * 顶栏第二行。**四种状态各说各的话，一个都不能落到「点击选择」上。**
+ *
+ * <p>有生效位置却还显示「点击选择你所在的社区」是自相矛盾的：
+ * 他明明已经选过了。实测撞到过 —— 切了位置、顶栏主标题变成「公司」，
+ * 副标题却还在催他去选。
+ *
+ * <p>没绑到自提点时显示地址本身，而不是催他 ——
+ * 那种情况是「这个位置附近还没有取货点」，催也没用。
+ */
+const placeSub = computed(() => {
+  const arrival = community.pickup?.arrivalDesc;
+  if (arrival) return arrival;
+  const a = location.active;
+  if (a) return a.detail || a.region || "";
+  return String(t("home.choosePickupHint"));
+});
 const cart = useCartStore();
 const user = useUserStore();
 
@@ -195,15 +213,7 @@ onShareAppMessage(() =>
         <text class="txt-body place__name">
           {{ location.label || community.pickup?.name || $t("home.choosePickup") }}
         </text>
-        <text class="txt-caption place__sub sh-fill">
-          {{
-            location.has
-              ? community.pickup?.arrivalDesc || $t("home.choosePickupHint")
-              : community.pickup
-                ? community.pickup.arrivalDesc
-                : $t("home.choosePickupHint")
-          }}
-        </text>
+        <text class="txt-caption place__sub sh-fill">{{ placeSub }}</text>
       </view>
       <!-- 搜索收成一个 icon 并入这一行：一个社区只覆盖三五家店、几十上百个 SKU，
            用户翻两屏就看完了全部 —— 搜索远没到值一整行主视觉的程度。

@@ -33,6 +33,15 @@ export const useLocationStore = defineStore("location", {
         ]);
         this.active = active;
         this.list = list;
+        /*
+         * **服务端说的生效位置，端上的归属要跟上。**
+         *
+         * 生效位置存在服务端（换设备、重装之后还是同一个上下文），
+         * 而商品池挂在本地的 community 归属上。只读不同步的话，
+         * 会出现「顶栏写着公司、商品还是家那边的」—— 两个都对，合起来是错的。
+         * 实测撞到过：从别处切了位置，回到首页顶栏变了、商品没变。
+         */
+        if (this.active) await this.syncCommunityFromActive();
       } finally {
         this.loading = false;
       }

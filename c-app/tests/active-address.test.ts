@@ -44,6 +44,11 @@ describe("生效位置 ≠ 默认收货地址", () => {
      * 只写第一段的话，新用户看到的是一行空白。
      */
     expect(home).toMatch(/location\.label \|\|[\s\S]{0,120}choosePickup/);
+    /*
+     * 副标题也要有回落，而且**有生效位置时不许落到「点击选择」**——
+     * 他明明已经选过了。实测撞到过：主标题变成「公司」，副标题还在催他去选。
+     */
+    expect(home).toMatch(/if \(a\) return a\.detail \|\| a\.region/);
   });
 
   it("★★ 生效位置没有坐标时，不许清掉现有归属", () => {
