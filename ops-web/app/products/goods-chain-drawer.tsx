@@ -42,7 +42,7 @@ export function GoodsChainDrawer({ c, goodsNo, onClose }: {
             <Field label={c.chainOnSale}>{d.onSale ? c.chainYes : c.chainNo}</Field>
             <Field label={c.chainStuck}>
               {d.stuckAt
-                ? <Badge tone={d.stuckAt === "IN_AUDIT" ? "warning" : "danger"}>{d.stuckAt}</Badge>
+                ? <Badge tone={d.stuckAt === "IN_AUDIT" ? "warning" : "danger"}>{stuckLabel(d.stuckAt, c)}</Badge>
                 : <span className="text-[var(--success-ink)]">{c.chainClear}</span>}
             </Field>
           </DrawerSection>
@@ -71,4 +71,23 @@ export function GoodsChainDrawer({ c, goodsNo, onClose }: {
       )}
     </Drawer>
   );
+}
+
+/**
+ * 卡点的中文名。**不给的话界面上直接显示 `NO_ACCOUNT` 这种原始枚举** ——
+ * 这个仓库刚为同一类问题修过一次（单据列表把 SCRAP 当文案显示给商家看）。
+ *
+ * 认不出的码原样显示：后端将来加一档新枚举时，页面上出现一个陌生的词
+ * 好过什么都不显示 —— 前者看得出「有新东西没接」，后者看起来像没问题。
+ */
+function stuckLabel(s: string, c: ProductsCopy): string {
+  const map: Record<string, string> = {
+    NO_GOODS: c.chainStuckNoGoods,
+    IN_AUDIT: c.chainStuckInAudit,
+    NOT_ON_SALE: c.chainStuckNotOnSale,
+    NO_ACCOUNT: c.chainStuckNoAccount,
+    NO_INBOUND: c.chainStuckNoInbound,
+    STALE_LEDGER: c.chainStuckStaleLedger,
+  };
+  return map[s] ?? s;
 }

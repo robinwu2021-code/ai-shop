@@ -241,7 +241,9 @@ export const productMock: ProductApi = {
    * 两个规格搬过去一个，商家端表现为「有些规格盘不着」，四个页面跳着看查不出来。
    */
   goodsChain: (goodsNo) => wait({
-    goodsNo, title: "联调-测试面条", entityNo: "M0001",
+    // 标题跟着入参走：写死一个名字的话，点哪一行抽屉都叫「测试面条」，
+    // 而那会让「点错行了」这种问题在 mock 下完全看不出来
+    goodsNo, title: "商品 " + goodsNo, entityNo: "M0001",
     auditStatus: "APPROVED", onSale: true,
     skuCount: 3, bookedSkus: 1,
     onHand: 12, available: 9, soldCount: 27,

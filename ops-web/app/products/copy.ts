@@ -533,6 +533,14 @@ const zh = {
   chainOnHand: "实存",
   chainAvailable: "可用",
   chainSold: "累计卖出",
+  // 卡点的中文名。**与商家治理那边同一套词** —— 同一件事在两处不能有两个说法。
+  // 不给的话界面上直接显示 NO_ACCOUNT 这种原始枚举（这个仓库刚为同一类问题修过一次）
+  chainStuckNoGoods: "一个品都没建",
+  chainStuckInAudit: "还在审核中",
+  chainStuckNotOnSale: "审完了没上架",
+  chainStuckNoAccount: "进销存里没账",
+  chainStuckNoInbound: "从没进过货",
+  chainStuckStaleLedger: "很久没记账",
 };
 
 const en: typeof zh = {
@@ -1036,6 +1044,12 @@ const en: typeof zh = {
   chainOnHand: "On hand",
   chainAvailable: "Available",
   chainSold: "Sold",
+  chainStuckNoGoods: "No listing yet",
+  chainStuckInAudit: "Still in review",
+  chainStuckNotOnSale: "Reviewed, not listed",
+  chainStuckNoAccount: "No inventory account",
+  chainStuckNoInbound: "Never received stock",
+  chainStuckStaleLedger: "Books gone quiet",
 };
 
 export const PRODUCTS_COPY: PageCopy<typeof zh> = { zh, en };

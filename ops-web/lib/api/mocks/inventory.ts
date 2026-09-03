@@ -72,7 +72,15 @@ export const inventoryMock: InventoryApi = {
   invMerchantDigest: (entityNo) => wait({
     entityNo, ownerId: "OWN-" + entityNo,
     itemCount: 34, shortageCount: 2, staleCount: 11,
-    ledgerCount: 0, lastLedgerAt: null, openCountNo: null,
+    /*
+     * **流水数与下面那张表同源。** 第一版这里硬写了 `ledgerCount: 0`
+     * 去演「建了账一笔没记」那种商家，结果概况说「从没记过」、
+     * 紧挨着的表里却列着三条带日期的记录 —— 一屏之内自相矛盾。
+     * 演那个场景该换一个没有流水的商家，而不是让同一份数据说两种话。
+     */
+    ledgerCount: mockInvLedger.length,
+    lastLedgerAt: mockInvLedger[0]?.occurredAt ?? null,
+    openCountNo: null,
   }),
   // mock 里也守着「不是 0」：0 会让「连续 0 轮为零」恒成立，那道闸等于不存在
   invPolicy: () => wait({ reconCleanStreakRequired: 7 }),
