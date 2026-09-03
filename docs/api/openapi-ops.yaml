@@ -5246,6 +5246,16 @@ components:
         - "openCountNo"
       additionalProperties: false
       description: "单商家进销存概况（M5）。\n\n<p>库存流水那一页能按商家翻明细，但翻之前答不出「这家到底在不在用」—— 线上 6 家商家里只有 2 家真在记账，那 4 家在流水页上的样子与「今天恰好没动」一模一样。\n\n<p>**不含账实差**：那是平台侧 vs 进销存侧的逐条比对，按商家拆要重扫全平台， 而「库存对差」那一页本来就是按商家列差异行的。一个数放两处算，迟早两种说法。"
+    InvPolicy: 
+      type: "object"
+      properties: 
+        reconCleanStreakRequired: 
+          type: "number"
+          description: "对差要连续几轮为零，才算够格切换真相源（G3）。\n**此前这个 N 根本不存在** —— 判据写的是「连续为零」，而连续多少是空的， 于是「够了没有」谁都答不了。"
+      required: 
+        - "reconCleanStreakRequired"
+      additionalProperties: false
+      description: "进销存平台规则（M7）。今天只有一条 —— 见后端那个控制器的类注释： 其余几条查下来多数不该按原样做（有的本来就在拦，有的会拆掉模块边界）。"
     SettleStatus: 
       type: "string"
       enum: 
@@ -12775,7 +12785,7 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/perm/functions/${encodeURIComponent(functionCode)}/move": 
+  "/ops/perm/functions/{functionCode}/move": 
     post: 
       operationId: "movePermFunction"
       summary: "菜单调序：同级内上移/下移"
@@ -12801,6 +12811,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      parameters: 
+        - name: "functionCode"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -12808,7 +12824,7 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
-  "/ops/perm/points/${encodeURIComponent(pointCode)}/move": 
+  "/ops/perm/points/{pointCode}/move": 
     post: 
       operationId: "movePermPoint"
       summary: "movePermPoint"
@@ -12834,6 +12850,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      parameters: 
+        - name: "pointCode"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -13217,6 +13239,63 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/inventory/policy": 
+    get: 
+      operationId: "invPolicy"
+      summary: "进销存平台规则（M7）"
+      tags: 
+        - "inventory"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/InvPolicy"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "saveInvPolicy"
+      summary: "saveInvPolicy"
+      tags: 
+        - "inventory"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/InvPolicy"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/inventory/repair-projection": 
     post: 
       operationId: "repairProjection"
@@ -13249,7 +13328,7 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
-  "/ops/merchant/${encodeURIComponent(entityNo)}/stock-doubt": 
+  "/ops/merchant/{entityNo}/stock-doubt": 
     post: 
       operationId: "markStockDoubt"
       summary: "库存存疑打标（M2）"
@@ -13275,6 +13354,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      parameters: 
+        - name: "entityNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -13488,7 +13573,7 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/jobs/${encodeURIComponent(name)}": 
+  "/ops/jobs/{name}": 
     get: 
       operationId: "getJob"
       summary: "getJob"
@@ -13513,8 +13598,14 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      parameters: 
+        - name: "name"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/jobs/${encodeURIComponent(q.name)}/logs": 
+  "/ops/jobs/{name}/logs": 
     get: 
       operationId: "listJobLogs"
       summary: "执行日志，倒序"
@@ -13541,8 +13632,14 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      parameters: 
+        - name: "name"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/jobs/${encodeURIComponent(name)}/enable": 
+  "/ops/jobs/{name}/enable": 
     post: 
       operationId: "enableJob"
       summary: "开"
@@ -13567,6 +13664,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      parameters: 
+        - name: "name"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -13574,7 +13677,7 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
-  "/ops/jobs/${encodeURIComponent(name)}/disable": 
+  "/ops/jobs/{name}/disable": 
     post: 
       operationId: "disableJob"
       summary: "关"
@@ -13599,6 +13702,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      parameters: 
+        - name: "name"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -13606,7 +13715,7 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
-  "/ops/jobs/${encodeURIComponent(name)}/cron": 
+  "/ops/jobs/{name}/cron": 
     put: 
       operationId: "updateJobCron"
       summary: "改频率"
@@ -13631,6 +13740,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      parameters: 
+        - name: "name"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -13638,7 +13753,7 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
-  "/ops/jobs/${encodeURIComponent(name)}/trigger": 
+  "/ops/jobs/{name}/trigger": 
     post: 
       operationId: "triggerJob"
       summary: "立即执行一次"
@@ -13663,6 +13778,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      parameters: 
+        - name: "name"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -15598,7 +15719,7 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/merchant/${encodeURIComponent(entityNo)}/nudge": 
+  "/ops/merchant/{entityNo}/nudge": 
     post: 
       operationId: "nudgeMerchant"
       summary: "主动触达商家（M2）"
@@ -15623,6 +15744,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      parameters: 
+        - name: "entityNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       requestBody: 
         required: true
         content: 
@@ -18104,7 +18231,7 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/product/${encodeURIComponent(goodsNo)}/chain": 
+  "/ops/product/{goodsNo}/chain": 
     get: 
       operationId: "goodsChain"
       summary: "单商品全链路状态（M5）"
@@ -18129,6 +18256,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      parameters: 
+        - name: "goodsNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/goods/audit-queue": 
     get: 

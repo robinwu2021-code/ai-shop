@@ -54,7 +54,13 @@ for (const file of fs.readdirSync(httpsDir).filter((f) => f.endsWith(".ts"))) {
       // `${merchantNo}` → {merchantNo}：OpenAPI 的路径参数写法。
       // **也要认 `${v.asNo}` 这种带前缀的**：只匹配裸标识符时，10 条路径原样带着
       // `${v.xxx}` 进了契约 —— 后端永远匹配不上，它们会被守卫永远算成「前端独有」。
-      path: rawPath.replace(/\$\{[^}]*?(\w+)\}/g, "{$1}"),
+      //
+      // **末尾也要允许非单词字符**（`\W*`）：`${encodeURIComponent(goodsNo)}`
+      // 里标识符后面还有一个 `)`，而原来的式子要求 `}` 前紧邻单词字符，
+      // 于是整段原样进了 spec —— 契约里真的躺着
+      // `"/ops/jobs/${encodeURIComponent(name)}"` 这样的路径，
+      // 而 encodeURIComponent 恰恰是**该鼓励**的写法。
+      path: rawPath.replace(/\$\{[^}]*?(\w+)\W*\}/g, "{$1}"),
       domain,
     };
   }

@@ -2926,11 +2926,15 @@ _无字段_
 类型：[`MenuFunction`](#menufunction)\[\]
 
 
-#### POST `/ops/perm/functions/${encodeURIComponent(functionCode)}/move`
+#### POST `/ops/perm/functions/{functionCode}/move`
 
 菜单调序：同级内上移/下移
 
 **入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `functionCode` | path | `string` | 是 | — |
 
 _无字段_
 
@@ -2952,11 +2956,15 @@ _无字段_
 类型：`object`
 
 
-#### POST `/ops/perm/points/${encodeURIComponent(pointCode)}/move`
+#### POST `/ops/perm/points/{pointCode}/move`
 
 movePermPoint
 
 **入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `pointCode` | path | `string` | 是 | — |
 
 _无字段_
 
@@ -3363,6 +3371,40 @@ _无字段_
 类型：`object`
 
 
+#### GET `/ops/inventory/policy`
+
+进销存平台规则（M7）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`InvPolicy`](#invpolicy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reconCleanStreakRequired` | `number` | 是 | 对差要连续几轮为零，才算够格切换真相源（G3）。 **此前这个 N 根本不存在** —— 判据写的是「连续为零」，而连续多少是空的， 于是「够了没有」谁都答不了。 |
+
+
+#### POST `/ops/inventory/policy`
+
+saveInvPolicy
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`InvPolicy`](#invpolicy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reconCleanStreakRequired` | `number` | 是 | 对差要连续几轮为零，才算够格切换真相源（G3）。 **此前这个 N 根本不存在** —— 判据写的是「连续为零」，而连续多少是空的， 于是「够了没有」谁都答不了。 |
+
+
 #### GET `/ops/inventory/recon`
 
 库存对差
@@ -3406,11 +3448,15 @@ _无字段_
 | `clean` | `boolean` | 是 | — |
 
 
-#### POST `/ops/merchant/${encodeURIComponent(entityNo)}/stock-doubt`
+#### POST `/ops/merchant/{entityNo}/stock-doubt`
 
 库存存疑打标（M2）
 
 **入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `entityNo` | path | `string` | 是 | — |
 
 _无字段_
 
@@ -3434,13 +3480,17 @@ _无字段_
 类型：[`JobRow`](#jobrow)\[\]
 
 
-#### GET `/ops/jobs/${encodeURIComponent(name)}`
+#### GET `/ops/jobs/{name}`
 
 getJob
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
-**入参**：无
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `name` | path | `string` | 是 | — |
 
 **出参**（`data`）
 
@@ -3469,12 +3519,16 @@ getJob
 | `updatedBy` | `string,null` | 是 | 上次改配置的人 |
 
 
-#### PUT `/ops/jobs/${encodeURIComponent(name)}/cron`
+#### PUT `/ops/jobs/{name}/cron`
 
 改频率
 
 **入参**
 
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `name` | path | `string` | 是 | — |
+
 _无字段_
 
 **出参**（`data`）
@@ -3504,12 +3558,16 @@ _无字段_
 | `updatedBy` | `string,null` | 是 | 上次改配置的人 |
 
 
-#### POST `/ops/jobs/${encodeURIComponent(name)}/disable`
+#### POST `/ops/jobs/{name}/disable`
 
 关
 
 **入参**
 
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `name` | path | `string` | 是 | — |
+
 _无字段_
 
 **出参**（`data`）
@@ -3539,46 +3597,15 @@ _无字段_
 | `updatedBy` | `string,null` | 是 | 上次改配置的人 |
 
 
-#### POST `/ops/jobs/${encodeURIComponent(name)}/enable`
+#### POST `/ops/jobs/{name}/enable`
 
 开
 
 **入参**
 
-_无字段_
-
-**出参**（`data`）
-
-类型：[`JobRow`](#jobrow)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `jobName` | `string` | 是 | 任务的锁名（与 shedlock 同一个键）。**页面不显示它**，显示 displayName |
-| `displayName` | `string` | 是 | 给人看的中文名。**页面显示这个，不显示 jobName** —— 运营看不懂锁名 |
-| `description` | `string,null` | 是 | 这个任务做什么，运营看的一句话 |
-| `ownerModule` | `string,null` | 是 | 归哪个模块。出问题时据此找人 |
-| `cron` | `string` | 是 | 排期表达式 |
-| `enabled` | `boolean` | 是 | 开着没有。关掉的任务不会被调度器捡起来 |
-| `missing` | `boolean` | 是 | 代码里已经没有这个任务了。**不删行是有意的**：静默消失比留着危险 |
-| `manualTrigger` | `boolean` | 是 | 页面上显不显示「立即执行」。秒级任务给 false —— 它们本来就一直在跑 |
-| `lastRunAt` | `string,null` | 是 | `null` = **从未执行**。这是今天 17 个任务的普遍状态，要显示成一句话而不是空白 |
-| `lastStatus` | [`#/definitions/JobStatus`](#definitionsjobstatus) \| `null` | 是 | 上一轮的结局 |
-| `durationMs` | `number,null` | 是 | 耗时（毫秒） |
-| `detail` | `string,null` | 是 | 业务写的一句人话：「关闭 12 单，释放库存 34 件」。运营唯一能看懂的东西 |
-| `error` | `string,null` | 是 | 错误信息。**与 detail 分开**：detail 是业务说的话，这里是异常 |
-| `consecutiveFailures` | `number` | 是 | **只统计 FAILED**；SKIPPED / TIMEOUT / UNREACHABLE 都不算 —— 否则告警会在一切正常时响 |
-| `runCount` | `number` | 是 | 累计执行轮次 |
-| `nextRunAt` | `string,null` | 是 | 下一次预计执行时刻。任务停用或已消失时为空 |
-| `running` | `boolean` | 是 | 此刻正在跑 |
-| `triggerPending` | `boolean` | 是 | 点过「立即执行」但调度器还没捡起来。没有这一格的话，点完页面毫无反应 |
-| `updatedBy` | `string,null` | 是 | 上次改配置的人 |
-
-
-#### POST `/ops/jobs/${encodeURIComponent(name)}/trigger`
-
-立即执行一次
-
-**入参**
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `name` | path | `string` | 是 | — |
 
 _无字段_
 
@@ -3609,17 +3636,60 @@ _无字段_
 | `updatedBy` | `string,null` | 是 | 上次改配置的人 |
 
 
-#### GET `/ops/jobs/${encodeURIComponent(q.name)}/logs`
+#### GET `/ops/jobs/{name}/logs`
 
 执行日志，倒序
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
-**入参**：无
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `name` | path | `string` | 是 | — |
 
 **出参**（`data`）
 
 类型：[`JobLogRow`](#joblogrow)\[\]
+
+
+#### POST `/ops/jobs/{name}/trigger`
+
+立即执行一次
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `name` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`JobRow`](#jobrow)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `jobName` | `string` | 是 | 任务的锁名（与 shedlock 同一个键）。**页面不显示它**，显示 displayName |
+| `displayName` | `string` | 是 | 给人看的中文名。**页面显示这个，不显示 jobName** —— 运营看不懂锁名 |
+| `description` | `string,null` | 是 | 这个任务做什么，运营看的一句话 |
+| `ownerModule` | `string,null` | 是 | 归哪个模块。出问题时据此找人 |
+| `cron` | `string` | 是 | 排期表达式 |
+| `enabled` | `boolean` | 是 | 开着没有。关掉的任务不会被调度器捡起来 |
+| `missing` | `boolean` | 是 | 代码里已经没有这个任务了。**不删行是有意的**：静默消失比留着危险 |
+| `manualTrigger` | `boolean` | 是 | 页面上显不显示「立即执行」。秒级任务给 false —— 它们本来就一直在跑 |
+| `lastRunAt` | `string,null` | 是 | `null` = **从未执行**。这是今天 17 个任务的普遍状态，要显示成一句话而不是空白 |
+| `lastStatus` | [`#/definitions/JobStatus`](#definitionsjobstatus) \| `null` | 是 | 上一轮的结局 |
+| `durationMs` | `number,null` | 是 | 耗时（毫秒） |
+| `detail` | `string,null` | 是 | 业务写的一句人话：「关闭 12 单，释放库存 34 件」。运营唯一能看懂的东西 |
+| `error` | `string,null` | 是 | 错误信息。**与 detail 分开**：detail 是业务说的话，这里是异常 |
+| `consecutiveFailures` | `number` | 是 | **只统计 FAILED**；SKIPPED / TIMEOUT / UNREACHABLE 都不算 —— 否则告警会在一切正常时响 |
+| `runCount` | `number` | 是 | 累计执行轮次 |
+| `nextRunAt` | `string,null` | 是 | 下一次预计执行时刻。任务停用或已消失时为空 |
+| `running` | `boolean` | 是 | 此刻正在跑 |
+| `triggerPending` | `boolean` | 是 | 点过「立即执行」但调度器还没捡起来。没有这一格的话，点完页面毫无反应 |
+| `updatedBy` | `string,null` | 是 | 上次改配置的人 |
 
 
 ### marketing
@@ -4649,11 +4719,15 @@ _无字段_
 类型：[`PlanUpgradeSignal`](#planupgradesignal)\[\]
 
 
-#### POST `/ops/merchant/${encodeURIComponent(entityNo)}/nudge`
+#### POST `/ops/merchant/{entityNo}/nudge`
 
 主动触达商家（M2）
 
 **入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `entityNo` | path | `string` | 是 | — |
 
 _无字段_
 
@@ -6937,13 +7011,17 @@ _无字段_
 | `size` | `integer` | 是 | — |
 
 
-#### GET `/ops/product/${encodeURIComponent(goodsNo)}/chain`
+#### GET `/ops/product/{goodsNo}/chain`
 
 单商品全链路状态（M5）
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
-**入参**：无
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
 
 **出参**（`data`）
 
@@ -9676,6 +9754,14 @@ KPI 卡（金额为最小货币单位整数）。
 | `maxRetry` | `number` | 是 | — |
 | `lastError` | `string,null` | 是 | 最近一条错误摘要，只在 retrying > 0 时有意义 |
 | `verdict` | [`#/definitions/InvLinkVerdict`](#definitionsinvlinkverdict) | 是 | — |
+
+### InvPolicy
+
+进销存平台规则（M7）。今天只有一条 —— 见后端那个控制器的类注释： 其余几条查下来多数不该按原样做（有的本来就在拦，有的会拆掉模块边界）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reconCleanStreakRequired` | `number` | 是 | 对差要连续几轮为零，才算够格切换真相源（G3）。 **此前这个 N 根本不存在** —— 判据写的是「连续为零」，而连续多少是空的， 于是「够了没有」谁都答不了。 |
 
 ### InvReconReport
 

@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 690 个接口**：后端已实现 608（88%）· 前端在调 626
+**合计 692 个接口**：后端已实现 621（90%）· 前端在调 621
 
 ---
 
@@ -729,7 +729,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **378** 个接口 ｜ 后端已实现 **302**（80%）｜ 前端在调 **314**
+共 **380** 个接口 ｜ 后端已实现 **315**（83%）｜ 前端在调 **309**
 
 ### aftersale（4）
 
@@ -893,9 +893,9 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/ops/audit-log` | 审计日志（P-1.1.4） | — | `object` | — | ✅ | ⬜ |
 | GET | `/ops/perm/functions` | 功能与功能点全集 —— 权限树的数据源 | — | `数组` | — | ✅ | ✅ |
-| POST | `/ops/perm/functions/${encodeURIComponent(functionCode)}/move` | 菜单调序：同级内上移/下移 | — | `object` | — | ⬜ | ✅ |
+| POST | `/ops/perm/functions/{functionCode}/move` | 菜单调序：同级内上移/下移 | — | `object` | — | ✅ | ⬜ |
 | POST | `/ops/perm/functions/reorder` | 整段重排（拖动用）：传该父级下的**完整顺序** | — | `object` | — | ✅ | ✅ |
-| POST | `/ops/perm/points/${encodeURIComponent(pointCode)}/move` | movePermPoint | — | `object` | — | ⬜ | ✅ |
+| POST | `/ops/perm/points/{pointCode}/move` | movePermPoint | — | `object` | — | ✅ | ⬜ |
 | POST | `/ops/perm/points/reorder` | reorderPermPoints | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/perm/roles` | listRoles | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/perm/roles` | createRole | — | `RoleDef` | — | ✅ | ✅ |
@@ -910,7 +910,7 @@
 | POST | `/ops/staffs/{no}/roles` | 改角色（**多角色**） | — | `Staff` | — | ⬜ | ⬜ |
 | POST | `/ops/staffs/{no}/scope` | 数据域授权（P-1.1.3） | — | `Staff` | — | ⬜ | ⬜ |
 
-### inventory（11）
+### inventory（13）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -922,21 +922,23 @@
 | GET | `/ops/inventory/ledger` | 商家台账（只读） | — | `InvLedgerPage` | — | ✅ | ⬜ |
 | GET | `/ops/inventory/link-health` | 投影链路健康度（M3） | — | `数组` | — | ✅ | ⬜ |
 | GET | `/ops/inventory/merchant-digest` | 单商家进销存概况（M5） | — | `object` | — | ✅ | ⬜ |
+| GET | `/ops/inventory/policy` | 进销存平台规则（M7） | — | `InvPolicy` | — | ✅ | ⬜ |
+| POST | `/ops/inventory/policy` | saveInvPolicy | — | `InvPolicy` | — | ✅ | ⬜ |
 | GET | `/ops/inventory/recon` | 库存对差 | — | `InvReconReport` | — | ✅ | ⬜ |
 | POST | `/ops/inventory/repair-projection` | 手动补投影（M2） | — | `InvRepairResult` | — | ✅ | ⬜ |
-| POST | `/ops/merchant/${encodeURIComponent(entityNo)}/stock-doubt` | 库存存疑打标（M2） | — | `object` | — | ⬜ | ✅ |
+| POST | `/ops/merchant/{entityNo}/stock-doubt` | 库存存疑打标（M2） | — | `object` | — | ✅ | ⬜ |
 
 ### job（7）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/ops/jobs` | 任务清单：定义与当前状态**已在后端合成一行** | — | `数组` | — | ✅ | ⬜ |
-| GET | `/ops/jobs/${encodeURIComponent(name)}` | getJob | — | `JobRow` | — | ⬜ | ⬜ |
-| PUT | `/ops/jobs/${encodeURIComponent(name)}/cron` | 改频率 | — | `JobRow` | — | ⬜ | ⬜ |
-| POST | `/ops/jobs/${encodeURIComponent(name)}/disable` | 关 | — | `JobRow` | — | ⬜ | ⬜ |
-| POST | `/ops/jobs/${encodeURIComponent(name)}/enable` | 开 | — | `JobRow` | — | ⬜ | ⬜ |
-| POST | `/ops/jobs/${encodeURIComponent(name)}/trigger` | 立即执行一次 | — | `JobRow` | — | ⬜ | ⬜ |
-| GET | `/ops/jobs/${encodeURIComponent(q.name)}/logs` | 执行日志，倒序 | — | `数组` | — | ⬜ | ⬜ |
+| GET | `/ops/jobs/{name}` | getJob | — | `JobRow` | — | ✅ | ⬜ |
+| PUT | `/ops/jobs/{name}/cron` | 改频率 | — | `JobRow` | — | ✅ | ⬜ |
+| POST | `/ops/jobs/{name}/disable` | 关 | — | `JobRow` | — | ✅ | ⬜ |
+| POST | `/ops/jobs/{name}/enable` | 开 | — | `JobRow` | — | ✅ | ⬜ |
+| GET | `/ops/jobs/{name}/logs` | 执行日志，倒序 | — | `数组` | — | ✅ | ⬜ |
+| POST | `/ops/jobs/{name}/trigger` | 立即执行一次 | — | `JobRow` | — | ✅ | ⬜ |
 
 ### marketing（23）
 
@@ -993,7 +995,7 @@
 | POST | `/ops/merchant-plans/{merchantNo}/grant` | 授予 / 延长 | — | `MerchantPlanRow` | — | ✅ | ✅ |
 | PUT | `/ops/merchant-plans/{merchantNo}/quota` | 单商家额度覆盖 | — | `MerchantPlanRow` | — | ✅ | ✅ |
 | GET | `/ops/merchant-plans/upgrade-signals` | 升档信号：一个人名下多个主体 = 他已经在多店经营，只是绕过了额度 | — | `数组` | — | ✅ | ✅ |
-| POST | `/ops/merchant/${encodeURIComponent(entityNo)}/nudge` | 主动触达商家（M2） | — | `MerchantNudgeResult` | — | ⬜ | ✅ |
+| POST | `/ops/merchant/{entityNo}/nudge` | 主动触达商家（M2） | — | `MerchantNudgeResult` | — | ✅ | ⬜ |
 | POST | `/ops/merchant/apply/{applyNo}/accept` | 受理：告诉商家「有人在看了」 | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/merchant/apply/{applyNo}/audit` | 审核 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/merchant/apply/search` | 入驻申请检索 | — | `object` | — | ✅ | ✅ |
@@ -1115,7 +1117,7 @@
 | GET | `/ops/goods/{goodsNo}/draft-preview` | 待审草稿的字段级差异（双版本） | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/goods/{goodsNo}/force-off` | 平台强制下架（P-3.2.3），goods 粒度 = **撤销过审**：商品回到 `REJECTED` | — | `GoodsDetail` | — | ✅ | ✅ |
 | GET | `/ops/goods/audit-queue` | 待审队列 | — | `object` | — | ✅ | ✅ |
-| GET | `/ops/product/${encodeURIComponent(goodsNo)}/chain` | 单商品全链路状态（M5） | — | `GoodsChain` | — | ⬜ | ✅ |
+| GET | `/ops/product/{goodsNo}/chain` | 单商品全链路状态（M5） | — | `GoodsChain` | — | ✅ | ⬜ |
 | GET | `/ops/product/stats` | 商品域平台统计（M4） | — | `ProductStats` | — | ✅ | ✅ |
 | GET | `/ops/skus` | sku 粒度全量查询 | — | `object` | — | ✅ | ⬜ |
 | POST | `/ops/skus/{no}/audit` | 商品审核（P-3.2.2），sku 粒度入口 | — | `Sku` | — | ⬜ | ⬜ |
