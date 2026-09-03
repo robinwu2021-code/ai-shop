@@ -14,6 +14,7 @@ import ai.neargo.shop.inventory.service.ReservationService;
 import ai.neargo.shop.inventory.support.InvEnums;
 import ai.neargo.shop.inventory.support.InvKeys;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,23 @@ public class ReservationServiceImpl implements ReservationService {
 
     /** 一次回收多少条。**有上界**：一次全捞会在预留积压时把这一轮任务拖成长事务。 */
     private static final int EXPIRE_BATCH_MAX = 200;
+
+    /**
+     * 预留时长的平台上限（秒），默认 24 小时。
+     *
+     * <p><b>今天没有任何调用方能触发它</b>：三个 reserve 的调用点传的都是常量，
+     * 开放 API（{@code /open/v1/*}）也只有 items / ledger / sync，没有 reserve。
+     * 所以这不是在堵一个正在被利用的洞 —— 需求文档里「今天传个长值就能把货占住」
+     * 那句话说过头了。
+     *
+     * <p>它堵的是<b>下一个调用方</b>：这个方法收任意 {@code ttlSeconds}，
+     * 而预留期间那批货<b>谁也买不走</b>。哪天有人把它接到外部输入上
+     * （开放 API v2、B 端的某个接口），一个很大的数就能把一家店的货占住，
+     * 而且<b>不报错、不告警，只表现为「那件货一直显示卖光了」</b>。
+     * 上限放在这一层，因为这里是所有调用方唯一必经的地方。
+     */
+    @Value("${shop.inventory.reserve.max-ttl-seconds:86400}")
+    private long maxTtlSeconds;
 
     private final ReservationMapper resMapper;
     private final ReservationLineMapper lineMapper;
@@ -54,6 +72,16 @@ public class ReservationServiceImpl implements ReservationService {
             return exists.getReservationId();
         }
         if (lines == null || lines.isEmpty()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        /*
+         * 超过上限**直接拒**，不是悄悄改成上限值。
+         *
+         * 截断的话调用方以为占住了 7 天、实际只占了 1 天，而到期释放是静默的 ——
+         * 表现是「那张单的货莫名其妙被别人买走了」，查起来没有任何线索。
+         * 拒绝是响的：接的人在联调当天就知道，而不是上线后某一天。
+         */
+        if (ttlSeconds <= 0 || ttlSeconds > maxTtlSeconds) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
 
