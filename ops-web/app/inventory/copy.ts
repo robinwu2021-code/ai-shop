@@ -147,6 +147,13 @@ const zh = {
   invDigestShortage: "低于安全库存",
   invDigestStale: "长期未动销",
   invDigestNeverUsed: "建了账，一笔没记",
+
+  // ── 对差趋势（M7）─────────────────────────────────────────────────────
+  // 顶上那条横幅说的是「此刻」，而能不能切真相源要看「连着多久」
+  invStreakClean: "已连续 {n} 轮对差为零",
+  invStreakBroken: "最近一轮不为零 —— 连续计数已中断",
+  invStreakNeverRan: "对差任务还没跑过 —— 「没有差异」与「没有依据」是两回事，现在是后者",
+  invStreakOf: "（近 {n} 轮记录）",
 };
 
 const en: typeof zh = {
@@ -285,6 +292,11 @@ const en: typeof zh = {
   invDigestShortage: "Below safety",
   invDigestStale: "Stale",
   invDigestNeverUsed: "Booked, never used",
+
+  invStreakClean: "{n} consecutive clean runs",
+  invStreakBroken: "Latest run was not clean — the streak is broken",
+  invStreakNeverRan: "The reconciliation job has never run — \"no differences\" and \"no evidence\" are not the same thing, and this is the latter",
+  invStreakOf: "(last {n} runs)",
 };
 
 export const INVENTORY_COPY: PageCopy<typeof zh> = { zh, en };

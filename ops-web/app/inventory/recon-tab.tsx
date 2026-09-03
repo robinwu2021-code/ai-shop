@@ -13,6 +13,7 @@ import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
 import { useCan } from "@/lib/use-can";
 import type { InvReconDiff } from "@/lib/types";
+import { cleanStreak } from "@/lib/recon-streak";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -33,6 +34,19 @@ export function ReconTab({ c }: { c: InventoryCopy }) {
    * 一步到位的话，第一个点它的人就已经写了库 —— 而 dry-run 的默认值
    * 本来就是一个决定，不该被一个按钮绕过去。
    */
+  /*
+   * 对差趋势（M7）。**判据是「连续 N 天为零」，而这一页此前只有当天的数** ——
+   * 一次干净说明不了任何事：切真相源之前要看的是它连着干净了多久。
+   *
+   * 数据不用新建：`inv-recon` 每天跑一轮，结论就落在它自己的运行记录里
+   * （成功 = 那天对差为零）。**另存一份的话，两处迟早对同一天给出两种说法。**
+   */
+  const runs = useQuery({
+    queryKey: ["job-logs", "inv-recon"],
+    queryFn: () => api.listJobLogs({ name: "inv-recon", size: 30 }),
+  });
+  const streak = cleanStreak(runs.data);
+
   const repair = useMutation({
     mutationFn: api.repairProjection,
     onSuccess: () => recon.refetch(),
@@ -133,6 +147,23 @@ export function ReconTab({ c }: { c: InventoryCopy }) {
       )}
 
       {dialog}
+
+      {/*
+        * 连续干净的天数。**这才是 G3 的判据** —— 顶上那条横幅说的是「此刻」，
+        * 而能不能切真相源要看「连着多久」。跑失败与跑没跑过要分开：
+        * 「连续 0 天」和「还没跑过」都不能切，但前者是有差异、后者是没有依据。
+        */}
+      {runs.data && runs.data.length === 0 && (
+        <Notice tone="warning">{c.invStreakNeverRan}</Notice>
+      )}
+      {runs.data && runs.data.length > 0 && (
+        <Notice tone={streak > 0 ? "info" : "warning"}>
+          {streak > 0 ? fill(c.invStreakClean, { n: streak }) : c.invStreakBroken}
+          <span className="ms-2 txt-caption text-muted-foreground">
+            {fill(c.invStreakOf, { n: runs.data.length })}
+          </span>
+        </Notice>
+      )}
 
       {/* 待搬与有差异是**两种**不合格，理由与处置都不同，分开说 */}
       {r && r.pending > 0 && (
