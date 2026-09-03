@@ -16,6 +16,7 @@
 // 看得到它。建错了只能一直留着，还占着配额，而配额用完那句「不能再建了」
 // 也说不清是被什么占了。
 import { computed, getCurrentInstance, ref } from "vue";
+import { moveItem, useChipDrag, useRowDrag } from "./drag-sort";
 import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
@@ -184,129 +185,31 @@ const platformNames = ref<Record<string, string>>({});
  * 也才有地方放动效 —— 边拖边重排的话，元素每帧都在换位置，没有可动画的稳定态。
  */
 
-/** 长按多久算「他要拖」。太短会把点击吞掉，太长会让人以为没反应 */
-const HOLD_MS = 180;
-/** 认定之前手指移动超过这么多 px 就当他在滚页面，放弃这次拖动 */
-const SLOP = 10;
-
-/**
- * 把 from 挪到 to，**越界就原样返回**。
- *
- * 上一版少的就是这个判断：`arr.splice(越界, 1)` 返回 `[]`，
- * 取 `[0]` 得到 undefined，再插回数组 —— 于是渲染整个塌掉。
- */
-function moveItem<T>(arr: T[], from: number, to: number): T[] {
-  if (from < 0 || from >= arr.length) return arr;
-  const next = [...arr];
-  const item = next.splice(from, 1)[0];
-  if (item === undefined) return arr;
-  next.splice(Math.max(0, Math.min(next.length, to)), 0, item);
-  return next;
-}
-
+/** 长按多久算「他要拖」等两个常数、moveItem，与两套拖动实现都在 `./drag-sort.ts` */
 const instance = getCurrentInstance();
 
-/** 正在拖的档位下标；-1 = 没在拖 */
-const valDragFrom = ref(-1);
-/** 手指按着但还没到 HOLD_MS —— 这个阶段什么都不做，抬手就是一次普通点击 */
-const valPending = ref(-1);
-/** 落点：拖动中只用来画插入位，不动数组 */
-const valDragTo = ref(-1);
-/** 被拖的 chip 相对起点的位移，直接喂给 transform */
-const valShift = ref({ x: 0, y: 0 });
-const valOrigin = ref({ x: 0, y: 0 });
-let valTimer: ReturnType<typeof setTimeout> | null = null;
-/** 每个 chip 的中心点，按下时量一次 */
-const valBoxes = ref<{ x: number; y: number }[]>([]);
-
-function clearValTimer() {
-  if (valTimer) { clearTimeout(valTimer); valTimer = null; }
-}
-
-function onValDragStart(i: number, e: TouchEvent) {
-  const t = e.touches?.[0];
-  if (!t) return;
-  valPending.value = i;
-  valOrigin.value = { x: t.clientX, y: t.clientY };
-  valShift.value = { x: 0, y: 0 };
-  valBoxes.value = [];
-  /*
-   * **用 uni 的 createSelectorQuery 量位置，不从事件对象拿 DOM。**
-   * uni 把事件包装过：`currentTarget` 在 H5 上不是 HTMLElement，
-   * 在小程序上更没有 getBoundingClientRect —— 照 DOM 那样写，
-   * 表现是「按下去什么都不发生」，而不会报错，很难看出原因。
-   */
-  uni.createSelectorQuery()
-    .in(instance)
-    .selectAll(".vals .val")
-    .boundingClientRect((res) => {
-      const rects = (Array.isArray(res) ? res : [res]) as UniApp.NodeInfo[];
-      valBoxes.value = rects
-        .slice(0, draft.value.values.length)
-        .map((r) => ({
-          x: (r.left ?? 0) + (r.width ?? 0) / 2,
-          y: (r.top ?? 0) + (r.height ?? 0) / 2,
-        }));
-    })
-    .exec();
-  clearValTimer();
-  valTimer = setTimeout(() => {
-    // 手指还在原地按着 → 这是一次拖动。震一下告诉他「拿起来了」
-    if (valPending.value !== i) return;
-    valDragFrom.value = i;
-    valDragTo.value = i;
-    uni.vibrateShort?.({ success: () => {}, fail: () => {} });
-  }, HOLD_MS);
-}
-
-function onValDragMove(e: TouchEvent) {
-  const t = e.touches?.[0];
-  if (!t) return;
-  if (valDragFrom.value < 0) {
-    // 还没认定：动得太多就是在滚页面，放弃（否则点 ✕ 时手抖也会变成拖动）
-    const dx = t.clientX - valOrigin.value.x;
-    const dy = t.clientY - valOrigin.value.y;
-    if (dx * dx + dy * dy > SLOP * SLOP) { clearValTimer(); valPending.value = -1; }
-    return;
-  }
-  valShift.value = { x: t.clientX - valOrigin.value.x, y: t.clientY - valOrigin.value.y };
-  if (!valBoxes.value.length) return;
-  // 离手指最近的那个 chip 就是落点。**只记下来，不动数组**
-  let best = valDragFrom.value;
-  let bestD = Infinity;
-  valBoxes.value.forEach((b, i) => {
-    const d = (b.x - t.clientX) ** 2 + (b.y - t.clientY) ** 2;
-    if (d < bestD) { bestD = d; best = i; }
-  });
-  valDragTo.value = best;
-}
-
-function onValDragEnd() {
-  clearValTimer();
-  const from = valDragFrom.value;
-  const to = valDragTo.value;
-  valPending.value = -1;
-  valDragFrom.value = -1;
-  valDragTo.value = -1;
-  valShift.value = { x: 0, y: 0 };
-  valBoxes.value = [];
-  if (from < 0 || to < 0 || from === to) return;
+/*
+ * 档位那一排（chip）。**落位之后做什么留在这一页** ——
+ * 这一栏只改本地草稿，不往后端跑：档位顺序要等他点「保存」才算数。
+ */
+const {
+  dragFrom: valDragFrom, pending: valPending, dragTo: valDragTo, shift: valShift,
+  onStart: onValDragStart, onMove: onValDragMove, onEnd: onValDragEnd,
+  cancel: cancelValDrag,
+} = useChipDrag(instance, ".vals .val", () => draft.value.values.length, (from, to) => {
   draft.value.values = moveItem(draft.value.values, from, to);
   // 落位后闪一下：不给反馈的话，松手瞬间元素归位，看不出到底有没有生效
   valLanded.value = draft.value.values[to]?.code ?? "";
   setTimeout(() => { valLanded.value = ""; }, 320);
-}
+});
 
 /** 刚落位的那一档，用来放一次「落定」动效 */
 const valLanded = ref("");
 
 /** 去掉一档 —— 记进 dropped：只是「不提交」等于跟平台走，那一档下次还在 */
 function dropValue(code: string) {
-  // 取消可能正在计时的那次长按：不取消的话，删完手指还没抬起，
-  // 计时器照样把「拖动」点着，而它记的下标已经指不到东西了
-  clearValTimer();
-  valPending.value = -1;
-  valDragFrom.value = -1;
+  // 取消可能正在计时的那次长按（理由见 drag-sort 里的 cancel）
+  cancelValDrag();
   const label = draft.value.labels[code] ?? code;
   draft.value.values = draft.value.values.filter((v) => v.code !== code);
   draft.value.dropped = [...draft.value.dropped, code];
@@ -477,77 +380,43 @@ async function saveDim(g: StoreCategorySpecs) {
  * 而他以为自己在拖那一行。代价是拖动期间这一段不能滚动，
  * 但一次拖动本来就只在几行之内。
  */
-const dragFrom = ref<string | null>(null);
-/** 手指按着但还没到 HOLD_MS。这个阶段抬手 = 一次普通点击，不会重排 */
-const dragPending = ref<string | null>(null);
-const dragOriginY = ref(0);
-const dragShift = ref(0);
-const dragTo = ref(-1);
-/** 一行的高度（px）。按下时量一次 —— 不同机型、不同字号下它不一样 */
-const rowH = ref(64);
-let rowTimer: ReturnType<typeof setTimeout> | null = null;
-
-function clearRowTimer() {
-  if (rowTimer) { clearTimeout(rowTimer); rowTimer = null; }
-}
+/*
+ * 规格行那一列。**按住的是哪一栏**由页面记着：一次拖动只在一栏之内，
+ * 而 `listOf(g)` 要有 g 才算得出下标。
+ */
+let dragGroup: StoreCategorySpecs | null = null;
+const {
+  dragFrom, pending: dragPending, dragTo, shift: dragShift,
+  onStart: rowDragStart, onMove: rowDragMove, onEnd: onDragEnd,
+} = useRowDrag(
+  instance,
+  ".spec",
+  (key) => (dragGroup ? listOf(dragGroup).findIndex((x) => x.templateNo === key) : -1),
+  () => (dragGroup ? listOf(dragGroup).length : 0),
+  async (from, to) => {
+    const g = byCategory.value.find((x) => listOf(x).some((t) => t.templateNo === from));
+    if (!g) return;
+    const i = listOf(g).findIndex((t) => t.templateNo === from);
+    if (i === to) return;   // 没挪动：不必往后端跑一趟
+    const seq = moveItem(listOf(g).map((t) => t.templateNo), i, to);
+    dimLanded.value = from;
+    setTimeout(() => { dimLanded.value = ""; }, 320);
+    try {
+      await commit(g, seq);
+    } catch (e) {
+      uni.showToast({ title: (e as Error).message, icon: "none" });
+    }
+  },
+);
 
 function onDragStart(g: StoreCategorySpecs, dimNo: string, e: TouchEvent) {
-  const t = e.touches?.[0];
-  if (!t) return;
-  dragPending.value = dimNo;
-  dragOriginY.value = t.clientY;
-  dragShift.value = 0;
-  dragTo.value = listOf(g).findIndex((x) => x.templateNo === dimNo);
-  // 行高按下时量一次：档位多的行更高，写死的话拖两行就错位
-  uni.createSelectorQuery().in(instance).select(".spec")
-    .boundingClientRect((r) => {
-      const h = (r as UniApp.NodeInfo | null)?.height;
-      if (h) rowH.value = h;
-    })
-    .exec();
-  clearRowTimer();
-  rowTimer = setTimeout(() => {
-    if (dragPending.value !== dimNo) return;
-    dragFrom.value = dimNo;
-    uni.vibrateShort?.({ success: () => {}, fail: () => {} });
-  }, HOLD_MS);
+  dragGroup = g;
+  rowDragStart(dimNo, e);
 }
 
 function onDragMove(g: StoreCategorySpecs, e: TouchEvent) {
-  const t = e.touches?.[0];
-  if (!t) return;
-  if (!dragFrom.value) {
-    // 还没认定就动了这么多 —— 他在滚页面，不是在拖这一行
-    if (Math.abs(t.clientY - dragOriginY.value) > SLOP) { clearRowTimer(); dragPending.value = null; }
-    return;
-  }
-  dragShift.value = t.clientY - dragOriginY.value;
-  const from = listOf(g).findIndex((x) => x.templateNo === dragFrom.value);
-  const delta = Math.round(dragShift.value / (rowH.value || 64));
-  dragTo.value = Math.max(0, Math.min(listOf(g).length - 1, from + delta));
-}
-
-async function onDragEnd() {
-  clearRowTimer();
-  const from = dragFrom.value;
-  const to = dragTo.value;
-  dragPending.value = null;
-  dragFrom.value = null;
-  dragShift.value = 0;
-  dragTo.value = -1;
-  if (!from || to < 0) return;
-  const g = byCategory.value.find((x) => listOf(x).some((t) => t.templateNo === from));
-  if (!g) return;
-  const i = listOf(g).findIndex((t) => t.templateNo === from);
-  if (i === to) return;   // 没挪动：不必往后端跑一趟
-  const seq = moveItem(listOf(g).map((t) => t.templateNo), i, to);
-  dimLanded.value = from;
-  setTimeout(() => { dimLanded.value = ""; }, 320);
-  try {
-    await commit(g, seq);
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  }
+  dragGroup = g;
+  rowDragMove(e);
 }
 
 /** 刚落位的那一行，用来放一次「落定」动效 */
