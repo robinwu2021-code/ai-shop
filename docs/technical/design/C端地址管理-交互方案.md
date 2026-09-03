@@ -259,17 +259,26 @@ async function pick(a: Address) {
 只加一列，其余复用。
 
 ```sql
--- V3xx__address_house_no.sql（迁移号提交前现查，见「迁移号撞车」）
+-- V319__address_house_no.sql（已落地。迁移号是提交前现查的，见「迁移号撞车」）
 alter table usr_address add column house_no varchar(40) null comment '门牌号（楼号-单元-室）';
 ```
 
-**加列必须同时改的五处**（漏一处那列就永远读出 null，而且零报错）：
+**加列必须同时改的七处**（漏一处那列就永远读出 null，而且零报错）。
+本文原先写的是五处，落地时发现少了两处 —— 补上的两处恰恰都是「不报错」的那种：
 
-- [ ] 迁移 `V3xx__address_house_no.sql`
-- [ ] `UsrAddress` 加 `houseNo` 字段（`entity-alignment` 守卫会查）
-- [ ] `AddressVO` 的 record 参数 + `build()`
-- [ ] `AddressService.SaveCommand` + `MpUserController.SaveAddressReq` + `saveAddress` 的透传
-- [ ] `packages/shared/src/types` 的 `Address` + `docs/api/API详情-C端.md`
+- [x] 迁移 `V319__address_house_no.sql`
+- [x] `UsrAddress` 加 `houseNo` 字段（`entity-alignment` / `SchemaDriftTest` 会查）
+- [x] `AddressVO` 的 record 参数 + `build()`
+- [x] `AddressService.SaveCommand` + `MpUserController.SaveAddressReq` + 透传 + `AddressServiceImpl` 写入
+- [x] `packages/shared/src/types` 的 `Address`
+- [x] **`c-app/src/api/requests.ts` 的 `SaveAddressReq`** ← 原先漏了。
+      字段照样发得出去（`http.ts` 是展开传参），闸门全绿，但契约类型里没有它，
+      于是生成的 API 文档明写着「这个接口不收 houseNo」
+- [x] **`UserQueryPortImpl.receiverOf` 的下单快照** ← 原先漏了。
+      只改写入不改读出，不报错、不崩、地址簿页面一切正常 ——
+      只有骑手拿到的地址少了最后 50 米
+- [x] 跑生成器：`gen-openapi.mjs` / `gen-api-detail.mjs` / `gen-test-schema.py`
+      （文档与测试库 schema 都是产物，不手写）
 
 `region` / `province` / `city` / `district` / `detail` **语义不变**：
 `detail` 继续是「地址主体」（POI 名或街道门牌那一串），`houseNo` 是最后 50 米。
@@ -398,23 +407,10 @@ chip 与输入框**不做成两种模式**：输入框始终是唯一真源，ch
 > **在这里不构成证据** —— 确认这三个词条真能渲染出来，靠的是在 H5 上看见那三个 chip、
 > 以及存量的「家」把第一个点亮。
 
-### §6 那张清单少写了一处
+### §6 那张清单少写了两处 —— 而且都是「不报错」的那种
 
-原文写的是五处，实际是**六处** —— 漏掉的是 `c-app/src/api/requests.ts` 的 `SaveAddressReq`。
-
-它的症状很有意思：**字段照样发得出去**（`http.ts` 里是 `{ ...payload }` 展开，
-运行时带着 `houseNo`），端上一切正常、闸门全绿 ——
-但**契约类型里没有它**，于是 `docs/api/API详情-C端.md` 与 `openapi.yaml`
-明写着「这个接口不收 houseNo」。照文档去对接的人会得出与事实相反的结论。
-
-补齐后的六处：
-
-- [x] 迁移 `V319__address_house_no.sql`
-- [x] `UsrAddress` 加 `houseNo`
-- [x] `AddressVO` 的 record 参数 + `build()`
-- [x] `AddressService.SaveCommand` + `MpUserController.SaveAddressReq` + 透传
-- [x] `packages/shared/src/types` 的 `Address` **＋ `c-app/src/api/requests.ts` 的 `SaveAddressReq`**
-- [x] 跑生成器：`gen-openapi.mjs` / `gen-api-detail.mjs`（文档是产物，不手写）
+原文写的是五处，实际是**七处**。补上的两处见 §6，共同点是**它们缺失时什么都不会响**：
+一处让生成的 API 文档说反话，一处让骑手少拿到门牌。加列这件事的风险从来不在建表那一步。
 
 ### 三个「只改一半」的地方
 
