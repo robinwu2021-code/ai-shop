@@ -399,44 +399,6 @@ const {
   await Promise.all([loadTemplates(), loadPickableDims(), loadProps()]);
 });
 
-/**
- * 按类目铺开**默认规格**。
- *
- * <p>只在**类目级**模板（`tpl.categoryNo` 有值）上做：品类兜底模板太泛，
- * 自动套给一件手机是帮倒忙。没有类目级模板时维持原来的 chip 推荐，
- * 商家点一下才成组。
- *
- * <p>三条边界：
- * <ul>
- *   <li><b>编辑已有商品永不自动套</b> —— 他的规格是已经卖过的事实，不是待填的空白
- *   <li>已经建过规格组就不动，除非那组正是上一次自动套出来、且他一个字没改
- *   <li>套出来的每个选项都可勾掉（见模板 chip 那一段），矩阵按选项组合保值
- * </ul>
- */
-function autoApplyDefaultSpec() {
-  if (isEdit.value) return;
-  const tpl = templates.value.find((x) => x.scope === "PLATFORM" && x.categoryNo);
-  if (!tpl) return;
-  // 手动建过组就不覆盖；自动套过的那一组（autoSpecNo 记着）可以换成新类目的
-  const only = groups.value.length === 1 ? groups.value[0] : undefined;
-  const replaceable = !groups.value.length || (only && only.templateNo === autoSpecNo.value);
-  if (!replaceable) return;
-  if (only?.templateNo === tpl.templateNo) return;
-  groups.value = [];
-  applyTemplate(tpl);
-  autoSpecNo.value = tpl.templateNo;
-}
-
-/** 上一次**自动**套上的模板号。手点的不算 —— 手点过的规格组不该被换类目冲掉 */
-const autoSpecNo = ref("");
-
-/** 撤销自动套上的规格组：回到单规格 */
-function clearAutoSpec() {
-  groups.value = [];
-  autoSpecNo.value = "";
-  rebuild();
-}
-
 
 // ── 六、规格状态与详情生成 ──────────────────────────────────────────────────
 //    groups/templates 是下面第八、九节的共同底座
@@ -777,59 +739,7 @@ function rebuild() {
   });
 }
 
-/** 套用模板：一次点选替代逐个手输，同时把 code 带进来（这是二期能做规格聚合的前提） */
-function applyTemplate(tpl: SpecTemplate) {
-  // 已有同名规格组就替换，避免点两次出来两个「重量」
-  const exist = groups.value.findIndex((g) => g.name === tpl.name);
-  // 空 options = 只填组名：留一个空档位给他自己写（与主维度预填同形）
-  const row = tpl.options.length
-    ? {
-      name: tpl.name,
-      options: tpl.options.map((o) => o.label),
-      codes: tpl.options.map((o) => o.code),
-      templateNo: tpl.templateNo,
-    }
-    : { name: tpl.name, options: [""], codes: [undefined], templateNo: tpl.templateNo };
-  if (exist >= 0) groups.value[exist] = row;
-  else if (groups.value.length >= 3) {
-    uni.showToast({ title: t("goods.groupLimit"), icon: "none" });
-    return;
-  } else groups.value.push(row);
-  rebuild();
-}
 
-/**
- * 推荐条的两个入口。
- *
- * <p>`applyTemplateEmpty` 只建组名 —— 与主维度预填同一条规矩：
- * **不替他填取值**。`applyTemplateWith` 带上他点的那一档，因为那是他自己选的，
- * 不是平台猜的；一步到位比「先建组、再进组里点档位」少一半动作，
- * 而多规格商品的第一档往往就是他要的那一档。
- */
-function applyTemplateEmpty(tpl: SpecTemplate) {
-  applyTemplate({ ...tpl, options: [] });
-}
-
-function applyTemplateWith(tpl: SpecTemplate, o: { code?: string; label: string }) {
-  applyTemplate({ ...tpl, options: [o] });
-}
-
-// ── 十、规格维度 ────────────────────────────────────────────────────────────
-//    平台模板 / 商家自存 / 按类目推荐，三个来源
-/**
- * 推荐规格 = 平台模板。**商家自存的不算推荐** —— 那是他自己的历史，
- * 摊在最显眼处会盖住平台的统一口径（平台模板带 code，聚合靠它）。
- */
-const suggestedSpecs = computed<SpecTemplate[]>(() =>
-  templates.value.filter((tpl) => tpl.scope === "PLATFORM"),
-);
-
-/** 推荐规格这一组到底是「谁的常用」：有类目级就报类目名，否则报品类名 */
-const suggestScope = computed(() => {
-  const leaf = catPath.value[catPath.value.length - 1];
-  const hasCatLevel = suggestedSpecs.value.some((t) => t.categoryNo);
-  return hasCatLevel && leaf ? leaf.name : String(t(`goods.categoryType.${type.value}`));
-});
 
 /**
  * 拉规格模板。**要带上已选类目** —— 只传品类拿到的是兜底那批，
@@ -840,83 +750,7 @@ async function loadTemplates() {
   templates.value = await api
     .mSpecTemplates(type.value, categoryNo.value || undefined)
     .catch(() => []);
-  // primeMainGroup 已移除：见 select() 里那段 —— 不自动建组，摆候选让他点
-}
-
-/**
- * 选完类目，**把主维度那一组先建出来**（组名填好，取值留空）。
- *
- * <p>此前平台配好的绑定只走到「摊开给他看」：模板卡片展开，他还得点一下才进规格组。
- * 而规格组名恰恰是建品最难的一步 —— 「这袋青菜该按什么分规格」比「有哪几档」难得多，
- * 平台已经替每个类目回答过了（主维度），却要商家自己再想一遍。
- *
- * <p><b>只填名，不预选取值。</b>预选「500g」的后果不是他发现填错，是他不假思索地留着：
- * 库里三千件商品整整齐齐写着 500g，而真实袋重是 400g、480g、一斤。
- * 那比空着更糟 —— 空着至少诚实，而「同规格比价」建立在这些数字真实的前提上，
- * 那正是平台养这个规格库的全部理由。规格名填错了他一眼看得出（「颜色」出现在
- * 一袋青菜上很刺眼），取值填错了没有任何视觉信号。
- *
- * <p>三条不动手的情形：已经有组了（他知道自己在干什么，或这是在编辑老商品）、
- * 没有主维度、这一组已经在了。
- */
-function primeMainGroup() {
-  /*
-   * **选了类目才动手**。此前没有这道闸：一进新建页 `loadTemplates` 就跑一遍，
-   * 那时还没选类目，拿回来的是按品类兜底的那批 —— 于是页面一打开就摆着一个
-   * 「包装」空组，而商家还没说这是什么货。
-   */
-  if (groups.value.length || !categoryNo.value) return;
-  /*
-   * **只认主维度，不拿兜底模板顶上。**
-   *
-   * <p>试过放宽成「没有主维度就取这一类的第一条」，为的是覆盖那些还没配
-   * 类目级模板的类目 —— 但那么做等于**每件新商品都从一个规格组开始**，
-   * 价格与库存随之进入按 SKU 逐行填的模式。而社区店的货多半就是单规格
-   * （一袋米、一瓶油、张姐的酱菜），等于为少数多规格商品给所有人加税。
-   *
-   * <p>更要紧的是兜底模板**不是平台对这一类的回答，只是对「标品/生鲜/服务」
-   * 这个大类的猜测**：「包装」盖着 18 个二级类目，手机数码与鲜花共用
-   * 「袋装/盒装/桶装/整箱」。拿猜测去代劳，会在库里留下一批
-   * 「包装：（空）」的规格组，而平台养这个规格库全为了同规格比价。
-   *
-   * <p>覆盖率的问题在**数据侧**解决（给类目配模板），不在端上拿泛答案补。
-   * 没配的类目走下面那条推荐 chip：一点即成组，代价一次点击。
-   */
-  const main = templates.value.find((t) => t.primary && t.scope === "PLATFORM");
-  if (!main || groups.value.some((g) => g.name === main.name)) return;
-  /*
-   * **档位跟着一起带出来，不再只填组名。**
-   *
-   * 此前这里只填名、取值留空，理由写在上面那段注释里：预选「500g」会让商家
-   * 不假思索地留着，于是库里三千件商品整整齐齐写着 500g，而真实袋重是 400g、
-   * 一斤。那个判断针对的是**平台的猜测** —— 那时档位是平台按类目配死的，
-   * 商家没有任何地方表达过「我这店卖哪几档」。
-   *
-   * 现在有了：「商品规格」页里他为每个类目**逐档确认过**留哪些、去掉哪些、
-   * 叫什么名字（prd_merchant_spec_override）。带出来的是**他自己刚说过的话**，
-   * 不是平台替他猜的。让他在建品页再点一遍，等于不认他刚才做的事。
-   *
-   * 不合适的那一档他一眼看得出（他自己删的那些根本不会出现在这里），
-   * 而「撤销」就在旁边，整组去掉是一次点击。
-   */
-  groups.value.push({
-    name: main.name,
-    /*
-     * **一个档位都不预选。** 上一版把本店确认过的那几档全填进去，
-     * 而商家进来面对的是一排「已经替你选好」的东西 —— 删比选累，
-     * 而且他很容易不假思索地留着，于是库里出现一批他并没有卖的规格。
-     * 现在档位一律灰着摆出来，他点哪个是哪个。
-     */
-    options: [],
-    codes: [],
-    templateNo: main.templateNo,
-  });
-  /*
-   * 记成「自动来的」：换类目时 `autoApplyDefaultSpec` 按这个判断能不能替换。
-   * 不记的话，这一组会被当成商家手点的，换到一个配了类目级模板的类目也顶不掉它。
-   */
-  autoSpecNo.value = main.templateNo;
-  rebuild();
+  // 这里只取回模板，**不建组** —— 建组是商家点 chip 的事（见 pickDim）
 }
 
 /**
@@ -971,36 +805,6 @@ function gotoMySpecs() {
 function removeGroup(i: number) {
   groups.value.splice(i, 1);
   rebuild();
-}
-
-/**
- * 自建一个规格维度：平台没有的那种（「辣度」）。
- *
- * <p>与「＋规格组」的差别是**它会落进规格库**（scope=MERCHANT），
- * 于是这家店下次建品还能选到它。代价要说清楚：不参与跨店比价。
- */
-/**
- * 与输入的名字**近似**的既有维度。没有就返回 null。
- *
- * <p>只认两条：一方包含另一方（「辣」vs「辣度」）、长度相同且只差一个字
- * （「口味」vs「口感」）。**故意不做模糊匹配** —— 编辑距离放宽一格，
- * 「颜色」和「颜值」就会互相命中，而一个问错的确认框比不问更烦人：
- * 每次都弹的框，第三次起就没人读了。
- */
-function nearestDimName(input: string): SpecTemplate | null {
-  const a = input.trim();
-  if (a.length < 2) return null;
-  for (const d of pickableDims.value) {
-    const b = d.name.trim();
-    if (b === a) return d;                      // 完全同名：后端也会复用，但先问更清楚
-    if (a.includes(b) || b.includes(a)) return d;
-    if (a.length === b.length) {
-      let diff = 0;
-      for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) diff++;
-      if (diff === 1) return d;
-    }
-  }
-  return null;
 }
 
 /**
@@ -1216,8 +1020,8 @@ onShow(() => {
    * 而这正是今天在送货方式上踩过的同一个坑（注释写着会重拉，其实没有 onShow）。
    *
    * <p>只在已经选了类目时拉：没选类目时那份是「他自己的常用」，与门店设置无关。
-   * `loadTemplates` 里的 `primeMainGroup` 有 `groups.length` 闸，
-   * 已经建过组的不会被它覆盖。
+   * 重拉只换候选清单（`templates`），**不碰已经建好的规格组** ——
+   * 它只在商家点 chip 时才变。
    */
   if (categoryNo.value) void loadTemplates();
 });
@@ -2169,6 +1973,15 @@ async function save(thenSubmit = false) {
           </view>
         </view>
       </view>
+
+      <!--
+        **加一个维度要多填几行，当场说出来**：「3 × 2 = 6 个规格」。
+
+        <p>`skuCost` 这一句连三种语言的词条都写好了，却从来没挂到模板上 ——
+        于是商家加完第二个维度才发现底下多出一屏价与库存要填，而那时他已经填了一半。
+        只在两个维度起才出现：一个维度时「3 个档位 = 3 行」是自明的。
+      -->
+      <text v-if="skuCost" class="txt-caption sh-muted more__manage">{{ skuCost }}</text>
 
       <!-- 平台真没有的（辣度、打磨程度）去那边加。压到最轻：多数人用不到 -->
       <text class="txt-caption sh-link sh-link--quiet more__manage" @tap="gotoMySpecs">
