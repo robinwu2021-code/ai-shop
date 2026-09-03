@@ -70,6 +70,8 @@ export default {
     conflict: "这个手机号已经注册过。用它登录可以继续，但当前微信里的浏览记录与购物车不会带过去。",
   },
   community: {
+    /** 拿不到坐标时唯一的精确路径（getLocation 被驳回，见 ports/location.ts） */
+    pickOnMap: "📍 在地图上选择我的位置",
     navigate: "导航",
     title: "选择社区自提点",
     locating: "正在定位附近社区…",

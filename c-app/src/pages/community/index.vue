@@ -6,7 +6,7 @@ import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { useCommunityStore } from "@/stores/community";
 import { useCartStore } from "@/stores/cart";
-import { fromE6, getLocation, openLocation } from "@shared/ports/location";
+import { chooseLocation, fromE6, getLocation, openLocation } from "@shared/ports/location";
 import { distance } from "@shared/utils/format";
 import { ROUTES } from "@shared/utils/constants";
 import type { Community, Pickup, RegionOption } from "@shared/types";
@@ -93,6 +93,42 @@ async function browseAll() {
  *   加载失败 → 重试（多半是网络/域名白名单）
  *   真的没有 → 别等了，这一带还没开通，先去逛商品
  */
+/**
+ * 在地图上指一下自己在哪。
+ *
+ * <p><b>这是目前唯一能拿到精确坐标的路。</b> 微信 2026-09 驳回了
+ * `wx.getLocation`：它的开放范围不含「匹配附近服务」，而那正是这一页在做的事，
+ * 且驳的是规则不是措辞。官方给的替代里，只有 `chooseLocation` 是米级的 ——
+ * 代价是要用户点一下，但他点的时候知道自己在做什么（「告诉你我在哪」），
+ * 比静默定位其实更少歧义。
+ *
+ * <p>拿到坐标后走**同一条** `loadNearby(lat, lng)`，与自动定位那条不分叉 ——
+ * 分叉的话，两条路的排序口径迟早会不一样，而那种差异没人看得出来。
+ */
+async function pickOnMap() {
+  const r = await chooseLocation();
+  if (!r.ok) return; // 取消 / 不支持：什么都不做，页面保持原样
+  locating.value = true;
+  failed.value = false;
+  try {
+    located.value = true;
+    pickingRegion.value = false;
+    region.value = null;
+    showingAll.value = false;
+    await community.loadNearby(r.picked.lat, r.picked.lng);
+    expanded.value = community.list[0]?.communityNo ?? "";
+    if (!community.list.length) {
+      // 指的这个位置附近确实没有：退回区域清单，别给一个空页面
+      await community.loadRegions();
+      pickingRegion.value = community.regions.length > 0;
+    }
+  } catch {
+    failed.value = true;
+  } finally {
+    locating.value = false;
+  }
+}
+
 async function load() {
   locating.value = true;
   failed.value = false;
@@ -247,6 +283,16 @@ onLoad(load);
     <text v-else-if="showingAll" class="txt-sub hint">{{ $t("common.allTip") }}</text>
     <text v-else-if="!located" class="txt-sub hint">{{ $t("common.noLocation") }}</text>
 
+    <!--
+      **拿不到坐标时的正路。** 放在 locating 之外的所有态里都能看到 ——
+      区域选择、空态、未定位，它们的共同点正是「系统不知道你在哪」。
+      只挂在其中一个态上的话，另外两个态的用户就没有这条路，
+      而他们同样需要它（这一页最常见的抱怨就是「它不知道我在哪，我也没法告诉它」）。
+    -->
+    <view v-if="!locating" class="txt-body onmap" @tap="pickOnMap">
+      <text>{{ $t("community.pickOnMap") }}</text>
+    </view>
+
     <view v-if="region" class="txt-sub rg__back" @tap="backToRegions">
       <text>{{ region.cityName }} · {{ region.name }} · {{ $t("common.changeRegion") }}</text>
     </view>
@@ -304,6 +350,16 @@ onLoad(load);
 </template>
 
 <style scoped>
+.onmap {
+  margin: 24rpx auto 0;
+  padding: 16rpx 32rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid var(--sh-primary);
+  color: var(--sh-primary);
+  text-align: center;
+  align-self: center;
+}
+
 .rg__tip {
   display: block;
   padding: 8rpx 0 24rpx;

@@ -31,11 +31,17 @@
       }
     },
     /* 涉隐私接口要**逐个声明**，漏一个那个接口在真机上直接失败（模拟器不拦，看不出来）。
+       ⚠️ **反过来也不行：还没获批的接口不许写进来。**
+       2026-09-03 把尚未申请的 getFuzzyLocation 写进这个数组，结果整个小程序
+       在启动阶段卡死 —— 不是报错，是**没有任何响应**：automator 连得上、
+       currentPage 却永远不返回，重启工具、重开项目都一样。
+       查了四轮才落到这一行。**声明与获批必须同时成立，缺哪一半都是坏的。**
+       所以顺序是：先在后台申请通过，再往这里加。
        两个都要在后台「开发管理 → 接口设置」单独申请开通，声明与申请缺一不可：
        · getLocation    选社区自提点时按距离排序
        · chooseLocation 收货地址页在地图上选点
        openLocation（导航到自提点）不在受限名单里，不用声明也不用申请。 */
-    "requiredPrivateInfos": ["getLocation", "getFuzzyLocation", "chooseLocation", "chooseAddress"]
+    "requiredPrivateInfos": ["getLocation", "chooseLocation", "chooseAddress"]
   },
   "h5": {
     "router": { "mode": "hash" },
