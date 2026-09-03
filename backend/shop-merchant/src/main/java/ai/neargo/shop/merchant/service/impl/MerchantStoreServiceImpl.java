@@ -38,6 +38,8 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper;
     /** 敏感词表从平台参数取 —— 运营加词不该等发版 */
     private final ai.neargo.shop.spi.platform.SettingPort settingPort;
+    /** 平台禁售词（V312）。与商品标题共用一份词表，但命中的处置不同，见 screen() */
+    private final ai.neargo.shop.spi.platform.BannedWordPort bannedWords;
     /** 经营范围的值域与启用白名单归 platform 管，本域只问「这个值能不能用」 */
     private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
     /** 覆盖项要显示成人能读的名字 —— 端上只拿到 330106 的话要么显示数字要么再查一次 */
@@ -63,6 +65,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                                     ObjectMapper json,
                                     ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper,
                                     ai.neargo.shop.spi.platform.SettingPort settingPort,
+                                    ai.neargo.shop.spi.platform.BannedWordPort bannedWords,
                                     ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
                                     ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort,
                                     ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
@@ -77,6 +80,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         this.json = json;
         this.storeAuditMapper = storeAuditMapper;
         this.settingPort = settingPort;
+        this.bannedWords = bannedWords;
         this.masterDataPort = masterDataPort;
     }
 
@@ -674,14 +678,36 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
 
     // ---------------------------------------------------------------- 门面内容机审
 
-    /** 敏感词表键。放在 sys_setting 里 —— 运营加词不该等发版。 */
+    /**
+     * 敏感词表键（**旧源**）。V10 种了 8 个词，注释写着「运营要能随时加词」——
+     * 而那个维护页从来没建，四年里它只能靠迁移或 DBA 改。
+     *
+     * <p>新源是 {@code sys_banned_word}（有理由、有缓存、有运营页，见 V312）。
+     * 这里<b>两个都读</b>：直接切过去会静默丢掉这 8 个词，
+     * 而「哪些词还在生效」这件事从界面上看不出来 —— 丢了也不会有人发现。
+     * 等有人确认过旧表里的词都搬进新表，再把这一段删掉。
+     */
     private static final String WORDS_KEY = "store.sensitive-words";
     private static final String WORDS_DEFAULT = "[]";
 
-    /** @return 命中的词；空表示放行 */
+    /**
+     * @return 命中的词；空表示放行
+     *
+     * <p><b>命中的后果与商品标题不同，这是有意的</b>：这里是转人审并保留旧公告，
+     * 那边（{@code MerchantGoodsServiceImpl#submitForAudit}）是当场拒。
+     * 公告是店主自发的时效内容（「今日到货」），全部先审后发等于这个功能没用；
+     * 而商品本来就要过审，早拒一步省的是审核员的时间。
+     * <b>共用一份词表，两种反应</b> —— 词表要统一，处置不该统一。
+     */
     private List<String> screen(String text) {
         if (text == null || text.isBlank()) {
             return List.of();
+        }
+        // 新源：运营在「禁售词」页加的词，对公告与商品标题同时生效
+        java.util.Optional<ai.neargo.shop.spi.platform.BannedWordPort.Hit> hit =
+                bannedWords.firstHit(text);
+        if (hit.isPresent()) {
+            return List.of(hit.get().word());
         }
         List<String> words;
         try {

@@ -95,6 +95,37 @@ class OpsBannedWordFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 一份词表两处生效 —— 但命中的处置不同，这是有意的")
+    void oneListTwoEnforcementPoints() throws Exception {
+        String token = TestLogin.admin(mvc(), json);
+        String probe = "zzstoreword" + (System.nanoTime() % 100000);
+
+        String body = mvc().perform(post("/ops/banned-word")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"word\":\"" + probe + "\",\"reason\":\"探针\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        Long id = idOf(json.readTree(body).get("data"), probe);
+        try {
+            /*
+             * 同一个词，两个场景都该命中 —— 此前是两套词表：
+             * 商品标题走 sys_banned_word，店招公告走 sys_setting 里一个 JSON 数组，
+             * 而那个数组**没有任何运营入口**（V10 种了 8 个词，维护页从来没建）。
+             * 运营在一处加词、另一处不生效，而这件事从界面上看不出来。
+             */
+            assertThat(port.firstHit("标题里有 " + probe))
+                    .as("商品标题这一侧没命中").isPresent();
+            assertThat(port.firstHit("今日到货 " + probe))
+                    .as("店招公告这一侧读的是同一个 Port —— 没命中说明两处又分叉了")
+                    .isPresent();
+        } finally {
+            mvc().perform(post("/ops/banned-word/" + id + "/remove")
+                    .header("Authorization", "Bearer " + token));
+        }
+    }
+
+    @Test
     @DisplayName("★★ 空词与超长词都拒 —— 一整句话配进去永远不会命中，等于一条假规则")
     void rejectsEmptyAndOverlongWords() throws Exception {
         String token = TestLogin.admin(mvc(), json);
