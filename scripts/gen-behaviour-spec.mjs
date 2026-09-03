@@ -57,7 +57,7 @@ function rejectionsIn(dir, label) {
 
 const rules = [
   ...rejections("packages/shared/src/mock/db.ts", "共享"),
-  ...rejections("c-app/src/api/mock.ts", "C 端"),
+  ...rejectionsIn("c-app/src/api/mocks", "C 端"),
   /*
    * B 端替身 2026-09-03 按域拆到了 `b-app/src/api/mocks/`（原文件 5240 行）。
    * **整个目录都要扫**：只读原路径的话拒绝规则会一条都扫不到，
@@ -99,7 +99,9 @@ const lines = [
     .sort((a, b) => a.msg.localeCompare(b.msg, "zh"))
     .map(
       (r) =>
-        `| ${r.msg} | ${[...r.owners].map((o) => `\`${o}\``).join(" ")} | ${[...r.labels].join(" / ")} |`,
+        // 方法名排序输出：替身按域拆开之后，读文件的顺序变了，
+        // 不排序的话每次拆分/改名都会带出一堆纯顺序的假差异
+        `| ${r.msg} | ${[...r.owners].sort().map((o) => `\`${o}\``).join(" ")} | ${[...r.labels].join(" / ")} |`,
     ),
   "",
   END,

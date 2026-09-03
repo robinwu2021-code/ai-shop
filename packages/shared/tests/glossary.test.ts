@@ -153,7 +153,7 @@ describe("后端验收清单与 mock 同步", () => {
         .flatMap((f) => count(`${dir}/${f}`));
     const all = new Set([
       ...count("packages/shared/src/mock/db.ts"),
-      ...count("c-app/src/api/mock.ts"),
+      ...countDir("c-app/src/api/mocks"),
       ...countDir("b-app/src/api/mocks"),
     ]);
     const declared = SPEC.match(/mock 里共强制 \*\*(\d+)\*\* 条拒绝规则/);
