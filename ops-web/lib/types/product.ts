@@ -658,5 +658,5 @@ export interface GoodsChain {
   soldCount: number;
   /** 卡在哪一层。null = 这一件是通的 */
   /** 与链条画像用同一套词（）—— 两处分叉就是两套结论 */
-  stuckAt: import("./merchant").MerchantChainStuck | null;
+  stuckAt: MerchantChainStuck | null;
 }

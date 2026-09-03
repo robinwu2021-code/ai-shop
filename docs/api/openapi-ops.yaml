@@ -4794,6 +4794,53 @@ components:
         - "auditDays"
       additionalProperties: false
       description: "商品域平台统计（M4）。\n\n<p>此前这个域**一个统计数字都没有**，而商品是这个平台的主体。 四个数各自对应一个能做的事，不是四个摆着看的指标。"
+    GoodsChain: 
+      type: "object"
+      properties: 
+        goodsNo: 
+          type: "string"
+        title: 
+          type: 
+            - "string"
+            - "null"
+        entityNo: 
+          type: "string"
+        auditStatus: 
+          type: 
+            - "string"
+            - "null"
+        onSale: 
+          type: "boolean"
+        skuCount: 
+          type: "number"
+        bookedSkus: 
+          type: "number"
+          description: "其中在进销存里建了账的。**少于 skuCount 就是投影没搬全** —— 商家端的表现是「有些规格盘得着、有些盘不着」，极难自查"
+        onHand: 
+          type: "number"
+        available: 
+          type: "number"
+        soldCount: 
+          type: "number"
+        stuckAt: 
+          anyOf: 
+            - "$ref": "#/definitions/MerchantChainStuck"
+            - type: "null"
+          description: "与链条画像用同一套词（）—— 两处分叉就是两套结论"
+      required: 
+        - "goodsNo"
+        - "title"
+        - "entityNo"
+        - "auditStatus"
+        - "onSale"
+        - "skuCount"
+        - "bookedSkus"
+        - "onHand"
+        - "available"
+        - "soldCount"
+        - "stuckAt"
+      additionalProperties: false
+      description: "单商品全链路状态（M5）。\n\n<p>「审核到哪了、建账了吗、有库存吗、卖了多少」此前要在四个页面之间跳着看， 而它们各自的主键还不一样。卡点用词与链条画像同一套 —— 分叉就是两套结论。"
     InvHealthRow: 
       type: "object"
       properties: 
@@ -5162,6 +5209,43 @@ components:
         - "clean"
       additionalProperties: false
       description: "手动补投影的结果（M2）。字段与 `InvReconReport` 同源（后端同一个 Report）"
+    InvMerchantDigest: 
+      type: "object"
+      properties: 
+        entityNo: 
+          type: "string"
+        ownerId: 
+          type: "string"
+        itemCount: 
+          type: "number"
+          description: "建了几条账（物料）"
+        shortageCount: 
+          type: "number"
+        staleCount: 
+          type: "number"
+        ledgerCount: 
+          type: "number"
+          description: "累计流水笔数。**0 = 建了账但一次都没记过**"
+        lastLedgerAt: 
+          type: 
+            - "string"
+            - "null"
+        openCountNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "还开着的盘点单号"
+      required: 
+        - "entityNo"
+        - "ownerId"
+        - "itemCount"
+        - "shortageCount"
+        - "staleCount"
+        - "ledgerCount"
+        - "lastLedgerAt"
+        - "openCountNo"
+      additionalProperties: false
+      description: "单商家进销存概况（M5）。\n\n<p>库存流水那一页能按商家翻明细，但翻之前答不出「这家到底在不在用」—— 线上 6 家商家里只有 2 家真在记账，那 4 家在流水页上的样子与「今天恰好没动」一模一样。\n\n<p>**不含账实差**：那是平台侧 vs 进销存侧的逐条比对，按商家拆要重扫全平台， 而「库存对差」那一页本来就是按商家列差异行的。一个数放两处算，迟早两种说法。"
     SettleStatus: 
       type: "string"
       enum: 
@@ -13107,6 +13191,32 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/inventory/merchant-digest": 
+    get: 
+      operationId: "invMerchantDigest"
+      summary: "单商家进销存概况（M5）"
+      tags: 
+        - "inventory"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/inventory/repair-projection": 
     post: 
       operationId: "repairProjection"
@@ -17989,6 +18099,32 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/ProductStats"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/product/${encodeURIComponent(goodsNo)}/chain": 
+    get: 
+      operationId: "goodsChain"
+      summary: "单商品全链路状态（M5）"
+      tags: 
+        - "product"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/GoodsChain"
                 required: 
                   - "code"
                   - "msg"

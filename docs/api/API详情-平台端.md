@@ -1200,6 +1200,8 @@ getDashboardKpi
 | `pendingMerchantAudit` | `number` | 是 | 待审商家数（P-11.1.1 提审队列） |
 | `pendingAfterSale` | `number` | 是 | 待处理售后（P-6.1.1 工单池） |
 | `redeemRate` | `number` | 是 | 今日核销率（P-5.1.3 核销监控），0–1 |
+| `pendingGoodsAudit` | `number` | 是 | 待审商品数（P-3.2 商品审核队列） |
+| `goodsAuditOldestDays` | `number` | 是 | 最早那件待审商品等了几天。**与数量成对出现才有意义** —— 「194 件待审」既可能是今天涌进来的一批，也可能是积了两周没人管， 而这两件事该做的反应完全不同。没有待审时为 0 |
 
 
 #### GET `/ops/dashboard/merchants`
@@ -1268,7 +1270,7 @@ getDashboardTrend
 
 #### POST `/ops/debts/{entityNo}/deposit-offset`
 
-用保证金抵掉一部分欠款
+这个动作不是自然幂等的：它算 min(欠款, 请求额, 保证金可用)， 点第二次时三个数都变小了，于是会接着扣，而每次单看都「算得对」
 
 **入参**
 
@@ -2173,7 +2175,14 @@ listSplitRecords
 
 **出参**（`data`）
 
-类型：[`FreightTemplate`](#freighttemplate)\[\]
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`FreightTemplate`](#freighttemplate)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
 
 
 #### POST `/ops/freight-templates`
@@ -2443,7 +2452,14 @@ _无字段_
 
 **出参**（`data`）
 
-类型：[`RedeemStat`](#redeemstat)\[\]
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`RedeemStat`](#redeemstat)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
 
 
 #### GET `/ops/fulfillment/sorting`
@@ -2456,7 +2472,14 @@ _无字段_
 
 **出参**（`data`）
 
-类型：[`SortingRow`](#sortingrow)\[\]
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SortingRow`](#sortingrow)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
 
 
 #### GET `/ops/shipments`
@@ -3314,6 +3337,32 @@ _无字段_
 | `nextCursor` | `number,null` | 否 | null = 没有下一页 |
 
 
+#### GET `/ops/inventory/link-health`
+
+投影链路健康度（M3）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`InvLinkHealth`](#invlinkhealth)\[\]
+
+
+#### GET `/ops/inventory/merchant-digest`
+
+单商家进销存概况（M5）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### GET `/ops/inventory/recon`
 
 库存对差
@@ -3334,6 +3383,40 @@ _无字段_
 | `pending` | `number` | 是 | 扫到了但**还没搬**的。**它必须是 0 才准切真相源** —— 没搬的那些在进销存侧余额是 0，切过去就是「全都卖不了」。 这一列原本不存在：`moveOne` 只算不写时故意不把没搬过的算成差异， `doRun` 又把它们计成既不 moved 也不 skipped，于是它们在报告里一个字都不出现， 而 `clean` 只看 diffs —— 闸门守着一个它没在看的东西。 |
 | `clean` | `boolean` | 是 | 没有差异**且**没有待搬的。两者缺一都不算干净 |
 | `diffs` | [`#/definitions/InvReconDiff`](#definitionsinvrecondiff)\[\] | 是 | 对不上的行 |
+
+
+#### POST `/ops/inventory/repair-projection`
+
+手动补投影（M2）
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`InvRepairResult`](#invrepairresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scannedSkus` | `number` | 是 | — |
+| `moved` | `number` | 是 | 真搬了几条。**试算时恒为 0** —— 不传 apply 就一条都不该动 |
+| `skipped` | `number` | 是 | — |
+| `pending` | `number` | 是 | 仍待搬的 |
+| `clean` | `boolean` | 是 | — |
+
+
+#### POST `/ops/merchant/${encodeURIComponent(entityNo)}/stock-doubt`
+
+库存存疑打标（M2）
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
 
 
 ### job
@@ -3668,6 +3751,32 @@ listContentSlots
 | `size` | `integer` | 是 | — |
 
 
+#### POST `/ops/content-slots`
+
+建 / 改内容位
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ContentSlot`](#contentslot)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `slotNo` | `string` | 是 | 内容位单号 |
+| `title` | `string` | 是 | 内容位标题 |
+| `kind` | [`#/definitions/SlotKind`](#definitionsslotkind) | 是 | 内容位形态：首页楼层 / 轮播 / 频道 |
+| `sort` | `number` | 是 | 同一 kind 内的展示顺序，小的在前 |
+| `communityNos` | `string`\[\] | 是 | 投放范围：社区编号列表，空 = 全部社区（P-7.3.4） |
+| `onlineAt` | `string` | 是 | 上线时间 |
+| `offlineAt` | `string` | 是 | 下线时间 |
+| `enabled` | `boolean` | 是 | 是否启用。关掉即刻不再展示，不等下线时间 |
+| `goodsNos` | `string`\[\] | 是 | 楼层里的商品，**有序** —— 数组顺序就是首页里的展示顺序。 只有 `HOME_FLOOR` 有内容：BANNER 要「图 + 跳转目标」、CHANNEL 要频道页， 而 C 端两样都还没有，没有承接位就定不了那个模型。后端对这两种一律存空。 |
+
+
 #### POST `/ops/content-slots/{no}/archive`
 
 archiveSlot
@@ -3695,11 +3804,12 @@ _无字段_
 | `onlineAt` | `string` | 是 | 上线时间 |
 | `offlineAt` | `string` | 是 | 下线时间 |
 | `enabled` | `boolean` | 是 | 是否启用。关掉即刻不再展示，不等下线时间 |
+| `goodsNos` | `string`\[\] | 是 | 楼层里的商品，**有序** —— 数组顺序就是首页里的展示顺序。 只有 `HOME_FLOOR` 有内容：BANNER 要「图 + 跳转目标」、CHANNEL 要频道页， 而 C 端两样都还没有，没有承接位就定不了那个模型。后端对这两种一律存空。 |
 
 
 #### POST `/ops/content-slots/{no}/enabled`
 
-上下线开关（P-7.3.5）
+setSlotEnabled
 
 **入参**
 
@@ -3724,6 +3834,7 @@ _无字段_
 | `onlineAt` | `string` | 是 | 上线时间 |
 | `offlineAt` | `string` | 是 | 下线时间 |
 | `enabled` | `boolean` | 是 | 是否启用。关掉即刻不再展示，不等下线时间 |
+| `goodsNos` | `string`\[\] | 是 | 楼层里的商品，**有序** —— 数组顺序就是首页里的展示顺序。 只有 `HOME_FLOOR` 有内容：BANNER 要「图 + 跳转目标」、CHANNEL 要频道页， 而 C 端两样都还没有，没有承接位就定不了那个模型。后端对这两种一律存空。 |
 
 
 #### POST `/ops/content-slots/{no}/schedule`
@@ -3753,6 +3864,7 @@ _无字段_
 | `onlineAt` | `string` | 是 | 上线时间 |
 | `offlineAt` | `string` | 是 | 下线时间 |
 | `enabled` | `boolean` | 是 | 是否启用。关掉即刻不再展示，不等下线时间 |
+| `goodsNos` | `string`\[\] | 是 | 楼层里的商品，**有序** —— 数组顺序就是首页里的展示顺序。 只有 `HOME_FLOOR` 有内容：BANNER 要「图 + 跳转目标」、CHANNEL 要频道页， 而 C 端两样都还没有，没有承接位就定不了那个模型。后端对这两种一律存空。 |
 
 
 #### POST `/ops/content-slots/{no}/unarchive`
@@ -3782,6 +3894,7 @@ _无字段_
 | `onlineAt` | `string` | 是 | 上线时间 |
 | `offlineAt` | `string` | 是 | 下线时间 |
 | `enabled` | `boolean` | 是 | 是否启用。关掉即刻不再展示，不等下线时间 |
+| `goodsNos` | `string`\[\] | 是 | 楼层里的商品，**有序** —— 数组顺序就是首页里的展示顺序。 只有 `HOME_FLOOR` 有内容：BANNER 要「图 + 跳转目标」、CHANNEL 要频道页， 而 C 端两样都还没有，没有承接位就定不了那个模型。后端对这两种一律存空。 |
 
 
 #### GET `/ops/coupon-issues`
@@ -4354,7 +4467,7 @@ depositTxns
 
 #### POST `/ops/admission/deposits/{merchantNo}/txns`
 
-addDepositTxn
+这张流水表只增不改、金额又是运营当场填的 —— 重复提交会实打实记两笔，而后端漏传时直接 400（不静默放行）
 
 **入参**
 
@@ -4536,6 +4649,25 @@ _无字段_
 类型：[`PlanUpgradeSignal`](#planupgradesignal)\[\]
 
 
+#### POST `/ops/merchant/${encodeURIComponent(entityNo)}/nudge`
+
+主动触达商家（M2）
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MerchantNudgeResult`](#merchantnudgeresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `sent` | `number` | 是 | 实际发出几条（按收件人计） |
+| `alreadySentToday` | `boolean` | 是 | 今天已就同一事由提醒过。不是失败，但必须说出来 |
+| `noRecipient` | `boolean` | 是 | 这家店一个能收消息的人都没有 —— 该做的是去给这家店配人 |
+
+
 #### POST `/ops/merchant/apply/{applyNo}/accept`
 
 受理：告诉商家「有人在看了」
@@ -4588,6 +4720,19 @@ _无字段_
 | `total` | `integer` | 是 | — |
 | `page` | `integer` | 是 | — |
 | `size` | `integer` | 是 | — |
+
+
+#### GET `/ops/merchant/chain`
+
+商家链条画像（M1）：一家一行，建品 → 提审 → 上架 → 建账 → 首次进货 → 持续记账
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MerchantChainRow`](#merchantchainrow)\[\]
 
 
 #### GET `/ops/merchants`
@@ -5020,7 +5165,7 @@ _无字段_
 
 #### GET `/ops/merchants/violations`
 
-listViolations
+违规记录
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
@@ -5028,7 +5173,14 @@ listViolations
 
 **出参**（`data`）
 
-类型：[`Violation`](#violation)\[\]
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`Violation`](#violation)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
 
 
 #### GET `/ops/onboarding`
@@ -6102,7 +6254,7 @@ _无字段_
 
 #### POST `/ops/orders/proxy`
 
-代客下单（客服电话代下）
+createProxyOrder
 
 **入参**
 
@@ -6132,7 +6284,68 @@ _无字段_
 | `statusAt` | `string` | 否 | 进入**当前状态**的时刻。异常单的"卡了多久"从这里算，不是从 createdAt 算 |
 
 
+#### GET `/ops/orders/proxy-limit`
+
+代客下单的限额
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ProxyLimit`](#proxylimit)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `maxAmountMinor` | `number` | 是 | 单笔上限（分）。按订单**实际应付额**判，不按商品估算 |
+| `maxPerDay` | `number` | 是 | 每个客服每天最多几笔。按自然日算 |
+| `updatedAt` | `string,null` | 是 | 最后修改时间 |
+| `updatedBy` | `string,null` | 是 | 最后修改人 |
+
+
+#### POST `/ops/orders/proxy-limit`
+
+改限额
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ProxyLimit`](#proxylimit)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `maxAmountMinor` | `number` | 是 | 单笔上限（分）。按订单**实际应付额**判，不按商品估算 |
+| `maxPerDay` | `number` | 是 | 每个客服每天最多几笔。按自然日算 |
+| `updatedAt` | `string,null` | 是 | 最后修改时间 |
+| `updatedBy` | `string,null` | 是 | 最后修改人 |
+
+
 ### payment
+
+#### GET `/ops/channel-messages`
+
+渠道报文查询（O1）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ChannelMessagePage`](#channelmessagepage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`#/definitions/ChannelMessage`](#definitionschannelmessage)\[\] | 是 | — |
+| `total` | `number` | 是 | — |
+| `pageNo` | `number` | 是 | — |
+| `size` | `number` | 是 | — |
+| `note` | `string` | 是 | — |
+
 
 #### GET `/ops/payments/close-rule`
 
@@ -6307,7 +6520,14 @@ _无字段_
 
 **出参**（`data`）
 
-类型：[`Category`](#category)\[\]
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`Category`](#category)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
 
 
 #### POST `/ops/categories`
@@ -6715,6 +6935,61 @@ _无字段_
 | `total` | `integer` | 是 | — |
 | `page` | `integer` | 是 | — |
 | `size` | `integer` | 是 | — |
+
+
+#### GET `/ops/product/${encodeURIComponent(goodsNo)}/chain`
+
+单商品全链路状态（M5）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`GoodsChain`](#goodschain)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | — |
+| `title` | `string,null` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `auditStatus` | `string,null` | 是 | — |
+| `onSale` | `boolean` | 是 | — |
+| `skuCount` | `number` | 是 | — |
+| `bookedSkus` | `number` | 是 | 其中在进销存里建了账的。**少于 skuCount 就是投影没搬全** —— 商家端的表现是「有些规格盘得着、有些盘不着」，极难自查 |
+| `onHand` | `number` | 是 | — |
+| `available` | `number` | 是 | — |
+| `soldCount` | `number` | 是 | — |
+| `stuckAt` | [`#/definitions/MerchantChainStuck`](#definitionsmerchantchainstuck) \| `null` | 是 | 与链条画像用同一套词（）—— 两处分叉就是两套结论 |
+
+
+#### GET `/ops/product/stats`
+
+商品域平台统计（M4）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ProductStats`](#productstats)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `categories` | `number` | 是 | — |
+| `categoriesUsed` | `number` | 是 | 至少被一个商品用过的类目数 |
+| `skus` | `number` | 是 | — |
+| `skusWithBarcode` | `number` | 是 | 填了条码的。**扫码功能的天花板就是这个数** |
+| `skusWithCode` | `number` | 是 | 填了商家货号的 |
+| `specDims` | `number` | 是 | — |
+| `specDimsBound` | `number` | 是 | 至少挂到一个类目上的维度数。规格库只增不减，没挂上的是清理依据 |
+| `auditApproved` | `number` | 是 | — |
+| `auditRejected` | `number` | 是 | — |
+| `auditPending` | `number` | 是 | — |
+| `auditActions` | `number` | 是 | 最近 N 天的审核动作数 —— **吞吐**，与上面三个累计数不是一回事 |
+| `auditDays` | `number` | 是 | — |
 
 
 #### GET `/ops/skus`
@@ -7803,9 +8078,43 @@ _无字段_
 | `size` | `integer` | 是 | — |
 
 
+#### POST `/ops/stores/{merchantNo}/qrcode/issue`
+
+给这家门店发码
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### POST `/ops/stores/{merchantNo}/qrcode/print`
 
 登记一次店铺码印刷量（线下事实，系统无从自动知道）
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/stores/{merchantNo}/qrcode/reissue`
+
+<b>换码：旧码当场失效</b>，已经贴在店里的物料全部变成死链
 
 **入参**
 
@@ -7834,25 +8143,14 @@ _无字段_
 
 **出参**（`data`）
 
-类型：[`StoreGovern`](#storegovern)
+类型：[`StoreGovernDetail`](#storegoverndetail)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | 门店号 |
-| `name` | `string` | 是 | 门店名 |
-| `address` | `string` | 是 | 门店地址 |
-| `merchantNo` | `string` | 是 | 所属商家主体 |
-| `merchantName` | `string` | 是 | 商家名快照 |
-| `isDefault` | `boolean` | 是 | 是否主体的默认门店。默认店承接「没指定门店」的那些流量 |
-| `status` | [`#/definitions/StoreGovernStatus`](#definitionsstoregovernstatus) | 是 | 经营状态，见  {@link  StoreGovernStatus } |
-| `businessMode` | [`#/definitions/BusinessMode`](#definitionsbusinessmode) | 是 | 自营 / 第三方。决定这家店的钱怎么走、票怎么开 |
-| `payMerchantNo` | `string,null` | 是 | 本店专属收款商户号。 **`null` 不是「没配」，是「用主体默认收款号」** —— 显示成空白会被读成前者。 |
-| `announcement` | `string` | 是 | 门店公告（走 P-10.1 的机审 + 人审） |
-| `openHours` | `string` | 是 | 营业时间，展示串 |
-| `deliveryRadiusM` | `number` | 是 | 配送半径（米） |
-| `deliveryMinOrderMinor` | `number` | 是 | 起送价（分） |
-| `deliveryFeeMinor` | `number` | 是 | 配送费（分） |
-| `deliveryFreeThresholdMinor` | `number` | 是 | 免配送费门槛（分） |
+| `store` | [`#/definitions/StoreGovern`](#definitionsstoregovern) | 是 | 门店档案本身（与列表行同一份形状） |
+| `communityNames` | `string`\[\] | 是 | 覆盖的社区名。挂在**主体**上 —— 同主体的门店看到同一份，界面别写成「本店覆盖」 |
+| `pickupNames` | `string`\[\] | 是 | 这家店挂靠的取货点名。空数组 = 没挂，不是没查到 |
+| `scanCount30d` | `number` | 是 | 近 30 天店铺码扫码次数。与获客看板同一个数据源，不另算一份 |
 
 
 #### POST `/ops/stores/{storeNo}/restore`
@@ -7882,6 +8180,8 @@ _无字段_
 | `status` | [`#/definitions/StoreGovernStatus`](#definitionsstoregovernstatus) | 是 | 经营状态，见  {@link  StoreGovernStatus } |
 | `businessMode` | [`#/definitions/BusinessMode`](#definitionsbusinessmode) | 是 | 自营 / 第三方。决定这家店的钱怎么走、票怎么开 |
 | `payMerchantNo` | `string,null` | 是 | 本店专属收款商户号。 **`null` 不是「没配」，是「用主体默认收款号」** —— 显示成空白会被读成前者。 |
+| `rating` | `number,null` | 是 | 门店评分，**×10 的整数**（85 = 8.5 分）。与主体那几列同口径 |
+| `ratingCount` | `number,null` | 是 | 评价条数。 ⚠️ **0 = 暂无评价，不是 0 分** —— 新店与还没重算过的店都是这个形状。 判空要按**条数**，按分值判会把「没人评过」显示成「0 分」。 |
 | `announcement` | `string` | 是 | 门店公告（走 P-10.1 的机审 + 人审） |
 | `openHours` | `string` | 是 | 营业时间，展示串 |
 | `deliveryRadiusM` | `number` | 是 | 配送半径（米） |
@@ -7918,6 +8218,7 @@ _无字段_
 | `toShip` | `number` | 是 | 待发货 |
 | `toDeliver` | `number` | 是 | 待自送 |
 | `toStock` | `number` | 是 | 缺货待补。运营看它判断「这家店是不是没人管了」 |
+| `toAfterSale` | `number` | 是 | 待处理售后单数（P-11.2.1d）。 **只含还压着人的两态**（APPLIED / ARBITRATING）：已退款/已驳回/已关闭是了结的事实， 算进「待办堆积」会让处理得快的店看起来积压严重 —— 而运营正是拿这个数判断「这家店是不是没人管了」。 |
 
 
 #### GET `/ops/stores/acquisition`
@@ -8009,6 +8310,19 @@ _无字段_
 | `total` | `integer` | 是 | — |
 | `page` | `integer` | 是 | — |
 | `size` | `integer` | 是 | — |
+
+
+#### GET `/ops/stores/qrcodes/export`
+
+导出用：列表那几列 + <b>可直接印的码图</b>
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
 
 
 #### GET `/ops/stores/templates`
@@ -8216,15 +8530,7 @@ _无字段_
 
 **出参**（`data`）
 
-类型：[`FeatureFlag`](#featureflag)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `key` | `string` | 是 | 开关标识，代码里读的就是它 |
-| `name` | `string` | 是 | 开关展示名 |
-| `enabled` | `boolean` | 是 | 总开关。关掉时 `rolloutPercent` 不生效 |
-| `rolloutPercent` | `number` | 是 | 灰度比例 0–100 |
-| `updatedAt` | `string` | 是 | 最后修改时间 |
+类型：`object`
 
 
 #### GET `/ops/industries`
@@ -8351,16 +8657,7 @@ _无字段_
 
 **出参**（`data`）
 
-类型：[`MarketConfig`](#marketconfig)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `code` | `string` | 是 | 市场编码，如 `CN` / `SG` |
-| `name` | `string` | 是 | 市场展示名 |
-| `currency` | `string` | 是 | 结算与展示货币，如 `CNY` |
-| `timezone` | `string` | 是 | 时区标识，如 `Asia/Shanghai`。截单时间按它切分自然日 |
-| `rate` | `number` | 是 | 对基准货币的汇率。 ⚠️ 基准货币（CNY）恒为 1 且**不可改** —— 改了整套价格换算的原点就没了。 |
-| `enabled` | `boolean` | 是 | 是否开放该市场。关掉后该市场的商品不再售卖 |
+类型：`object`
 
 
 #### POST `/ops/media/backfill`
@@ -8870,6 +9167,18 @@ _无字段_
 | `dimCount` | `number` | 是 | 已绑维度数。0 就是缺口 |
 | `dims` | [`#/definitions/CategorySpecDim`](#definitionscategoryspecdim)\[\] | 是 | 这个类目能用的规格维度 |
 
+### ChannelMessagePage
+
+报文分页。`note` 是固定口径，**端上必须显示**
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`#/definitions/ChannelMessage`](#definitionschannelmessage)\[\] | 是 | — |
+| `total` | `number` | 是 | — |
+| `pageNo` | `number` | 是 | — |
+| `size` | `number` | 是 | — |
+| `note` | `string` | 是 | — |
+
 ### ClientPointsPolicy
 
 积分的**端策略**。存的是**禁用名单，不是允许名单** —— `X-Client` 头今天还没有哪个端全量在发，用允许名单会让开关一上线就把全站积分静默关掉。 ⚠️ 它**不是合规硬闸**：端标识来自客户端、可伪造，只能用于平台策略。
@@ -8958,6 +9267,7 @@ _无字段_
 | `onlineAt` | `string` | 是 | 上线时间 |
 | `offlineAt` | `string` | 是 | 下线时间 |
 | `enabled` | `boolean` | 是 | 是否启用。关掉即刻不再展示，不等下线时间 |
+| `goodsNos` | `string`\[\] | 是 | 楼层里的商品，**有序** —— 数组顺序就是首页里的展示顺序。 只有 `HOME_FLOOR` 有内容：BANNER 要「图 + 跳转目标」、CHANNEL 要频道页， 而 C 端两样都还没有，没有承接位就定不了那个模型。后端对这两种一律存空。 |
 
 ### Coupon
 
@@ -9007,6 +9317,8 @@ KPI 卡（金额为最小货币单位整数）。
 | `pendingMerchantAudit` | `number` | 是 | 待审商家数（P-11.1.1 提审队列） |
 | `pendingAfterSale` | `number` | 是 | 待处理售后（P-6.1.1 工单池） |
 | `redeemRate` | `number` | 是 | 今日核销率（P-5.1.3 核销监控），0–1 |
+| `pendingGoodsAudit` | `number` | 是 | 待审商品数（P-3.2 商品审核队列） |
+| `goodsAuditOldestDays` | `number` | 是 | 最早那件待审商品等了几天。**与数量成对出现才有意义** —— 「194 件待审」既可能是今天涌进来的一批，也可能是积了两周没人管， 而这两件事该做的反应完全不同。没有待审时为 0 |
 
 ### DemandOrder
 
@@ -9162,6 +9474,24 @@ KPI 卡（金额为最小货币单位整数）。
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | — |
 | `name` | `string` | 是 | — |
+
+### GoodsChain
+
+单商品全链路状态（M5）。 <p>「审核到哪了、建账了吗、有库存吗、卖了多少」此前要在四个页面之间跳着看， 而它们各自的主键还不一样。卡点用词与链条画像同一套 —— 分叉就是两套结论。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | — |
+| `title` | `string,null` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `auditStatus` | `string,null` | 是 | — |
+| `onSale` | `boolean` | 是 | — |
+| `skuCount` | `number` | 是 | — |
+| `bookedSkus` | `number` | 是 | 其中在进销存里建了账的。**少于 skuCount 就是投影没搬全** —— 商家端的表现是「有些规格盘得着、有些盘不着」，极难自查 |
+| `onHand` | `number` | 是 | — |
+| `available` | `number` | 是 | — |
+| `soldCount` | `number` | 是 | — |
+| `stuckAt` | [`#/definitions/MerchantChainStuck`](#definitionsmerchantchainstuck) \| `null` | 是 | 与链条画像用同一套词（）—— 两处分叉就是两套结论 |
 
 ### GoodsDetail
 
@@ -9331,6 +9661,22 @@ KPI 卡（金额为最小货币单位整数）。
 | `entries` | [`#/definitions/InvLedgerRow`](#definitionsinvledgerrow)\[\] | 是 | 本页的台账行 |
 | `nextCursor` | `number,null` | 否 | null = 没有下一页 |
 
+### InvLinkHealth
+
+一条投影方向的健康度（M3）。 <p>与  {@link  InvReconReport }  **不是同一件事**：那一页读的是数据（账上有多少、 实际有多少），这一条读的是链路（事件投出去了没有）。2026-09-02 的教训正是 它们被混成了一个数 —— 「待搬 1 个」看起来像一条数据要补， 实际是整条投递链停了六个小时。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `channel` | [`#/definitions/InvLinkChannel`](#definitionsinvlinkchannel) | 是 | — |
+| `pending` | `number` | 是 | 积压总数 |
+| `neverTried` | `number` | 是 | 其中一次都没被投递过的（retry = 0）—— 投递任务没在跑 |
+| `retrying` | `number` | 是 | 其中投过且失败过的（retry > 0）—— 消费者在抛异常 |
+| `oldestPendingAt` | `string,null` | 是 | 最老一条积压的产生时间。**这是判据，不是 pending 的条数** —— 积压 1 条可能只是正在处理的那一瞬，最老的躺了六小时才是断了 |
+| `lastSentAt` | `string,null` | 是 | 最近一次成功投递。null = 从没成功过 |
+| `maxRetry` | `number` | 是 | — |
+| `lastError` | `string,null` | 是 | 最近一条错误摘要，只在 retrying > 0 时有意义 |
+| `verdict` | [`#/definitions/InvLinkVerdict`](#definitionsinvlinkverdict) | 是 | — |
+
 ### InvReconReport
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -9341,6 +9687,18 @@ KPI 卡（金额为最小货币单位整数）。
 | `pending` | `number` | 是 | 扫到了但**还没搬**的。**它必须是 0 才准切真相源** —— 没搬的那些在进销存侧余额是 0，切过去就是「全都卖不了」。 这一列原本不存在：`moveOne` 只算不写时故意不把没搬过的算成差异， `doRun` 又把它们计成既不 moved 也不 skipped，于是它们在报告里一个字都不出现， 而 `clean` 只看 diffs —— 闸门守着一个它没在看的东西。 |
 | `clean` | `boolean` | 是 | 没有差异**且**没有待搬的。两者缺一都不算干净 |
 | `diffs` | [`#/definitions/InvReconDiff`](#definitionsinvrecondiff)\[\] | 是 | 对不上的行 |
+
+### InvRepairResult
+
+手动补投影的结果（M2）。字段与 `InvReconReport` 同源（后端同一个 Report）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scannedSkus` | `number` | 是 | — |
+| `moved` | `number` | 是 | 真搬了几条。**试算时恒为 0** —— 不传 apply 就一条都不该动 |
+| `skipped` | `number` | 是 | — |
+| `pending` | `number` | 是 | 仍待搬的 |
+| `clean` | `boolean` | 是 | — |
 
 ### InvoiceRequest
 
@@ -9644,6 +10002,22 @@ KPI 卡（金额为最小货币单位整数）。
 | `endAt` | `number` | 是 | 结束时间（毫秒时间戳） |
 | `goodsNos` | `string`\[\] \| `null` | 否 | 参与的商品号。**列表上只显示条数**，明细进详情看 |
 
+### MerchantChainRow
+
+商家链条画像的一行（M1）。 <p>六个数字沿着「建品 → 提审 → 上架 → 建账 → 首次进货 → 持续记账」排开， 而**真正能拿去做事的是 `stuckAt`** —— 数字自己不指向任何人。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 是 | — |
+| `merchantName` | `string,null` | 是 | — |
+| `goods` | `number` | 是 | 建了几个 SPU |
+| `pendingAudit` | `number` | 是 | 其中待审几个 |
+| `onSale` | `number` | 是 | 其中上架几个 |
+| `items` | `number` | 是 | 进销存里建了几条账 |
+| `firstInbound` | `string,null` | 是 | 第一笔入库时间。null = 一次都没进过货 |
+| `lastLedger` | `string,null` | 是 | 最近一笔流水时间。null = 从没记过账 |
+| `stuckAt` | [`#/definitions/MerchantChainStuck`](#definitionsmerchantchainstuck) \| `null` | 是 | 卡在哪一层。null = 这条链是通的 |
+
 ### MerchantDebt
 
 商家欠款：退款追不回来时先记在账上，从后续货款里扣。 ⚠️ **与保证金方向相反**：保证金是商家的钱（平台代管、将来要退还）， 欠款是商家欠平台的。两者不能合成一个数看。
@@ -9668,6 +10042,16 @@ KPI 卡（金额为最小货币单位整数）。
 | `sufficient` | `boolean` | 是 | 可用是否已达应缴。不足则该商家不能上架 |
 | `singleOrderLimitMinor` | `number` | 是 | 单笔限额（分）；0 = 不限 |
 | `dailyAmountLimitMinor` | `number` | 是 | 日累计限额（分）；0 = 不限 |
+
+### MerchantNudgeResult
+
+主动触达商家的结果（M2）。 <p>三种结局要**分开告诉运营**：发出去了 / 今天已经提醒过了 / 这家店没人收 —— 混成一个「成功」，运营看不出区别就会一直点，而商家那头什么也没多收到。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `sent` | `number` | 是 | 实际发出几条（按收件人计） |
+| `alreadySentToday` | `boolean` | 是 | 今天已就同一事由提醒过。不是失败，但必须说出来 |
+| `noRecipient` | `boolean` | 是 | 这家店一个能收消息的人都没有 —— 该做的是去给这家店配人 |
 
 ### MerchantPlanRow
 
@@ -9867,11 +10251,11 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `merchantNo` | `string` | 是 | — |
+| `merchantNo` | `string` | 是 | 主体号。进件挂在主体上，一个主体下多家店共用同一条主体级进件 |
 | `merchantName` | `string` | 是 | 商家名，展示用 |
 | `storeNo` | `string` | 是 | 为哪家门店进的件；**空串 = 主体级默认号** |
 | `payChannel` | `string` | 是 | WECHAT / ALIPAY |
-| `applyStatus` | [`#/definitions/OnboardingStatus`](#definitionsonboardingstatus) | 是 | — |
+| `applyStatus` | [`#/definitions/OnboardingStatus`](#definitionsonboardingstatus) | 是 | 进件状态。**APPLYING 有两种含义**：入驻通过时派生的占位（商家还没填过东西）， 与已发给通道等回执。两者要靠进件详情里的 `submitted` 才分得开 —— 只看这一列 会把「球在商家脚下」误读成「在等通道」。 |
 | `rejectReason` | `string,null` | 是 | 被拒原因，原样给商家看；null = 没被拒 |
 | `settleAccountType` | `string,null` | 是 | PERSONAL_BANK / CORPORATE_BANK；null = 还没填 |
 | `settleAccountMasked` | `string,null` | 是 | 结算账号掩码 —— 真实账号只在后端 |
@@ -10131,6 +10515,36 @@ KPI 卡（金额为最小货币单位整数）。
 | `skus` | [`#/definitions/GoodsSkuRow`](#definitionsgoodsskurow)\[\] | 是 | 这件商品下的所有规格 |
 | `storeOnSale` | `boolean,null` | 否 | 门店投影（列表查询带 `storeNo` 时才有值）：这件商品在**那家店**上不上架。 `null`/缺失 = 未按店管理，跟随主体级 `status` —— 与「在那家店下架了」是两回事， 显示成同一个「否」会让运营去催商家上架一件其实全店都在卖的商品。 |
 
+### ProductStats
+
+商品域平台统计（M4）。 <p>此前这个域**一个统计数字都没有**，而商品是这个平台的主体。 四个数各自对应一个能做的事，不是四个摆着看的指标。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `categories` | `number` | 是 | — |
+| `categoriesUsed` | `number` | 是 | 至少被一个商品用过的类目数 |
+| `skus` | `number` | 是 | — |
+| `skusWithBarcode` | `number` | 是 | 填了条码的。**扫码功能的天花板就是这个数** |
+| `skusWithCode` | `number` | 是 | 填了商家货号的 |
+| `specDims` | `number` | 是 | — |
+| `specDimsBound` | `number` | 是 | 至少挂到一个类目上的维度数。规格库只增不减，没挂上的是清理依据 |
+| `auditApproved` | `number` | 是 | — |
+| `auditRejected` | `number` | 是 | — |
+| `auditPending` | `number` | 是 | — |
+| `auditActions` | `number` | 是 | 最近 N 天的审核动作数 —— **吞吐**，与上面三个累计数不是一回事 |
+| `auditDays` | `number` | 是 | — |
+
+### ProxyLimit
+
+代客下单的限额（M6：客服代客操作的权限边界与金额阈值）。 <p>此前只有留痕没有闸门：客服能替任何人下任意金额的单，事后查得到、当时拦不住。 留痕回答「谁干的」，闸门回答「能干多大」—— 两件事。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `maxAmountMinor` | `number` | 是 | 单笔上限（分）。按订单**实际应付额**判，不按商品估算 |
+| `maxPerDay` | `number` | 是 | 每个客服每天最多几笔。按自然日算 |
+| `updatedAt` | `string,null` | 是 | 最后修改时间 |
+| `updatedBy` | `string,null` | 是 | 最后修改人 |
+
 ### PurchaseInvoice
 
 进项票（供应商开给平台的）。自营链路专用 —— **票到才付款**。 `titleMatched` 是后端算好的：抬头与主体名对不上时不给核验通过， 而这一条**在界面上必须显示原因** —— 财务看到「不能核验」而不知道为什么， 只会去问开票的人，而对方也不知道。
@@ -10262,8 +10676,6 @@ KPI 卡（金额为最小货币单位整数）。
 | `note` | `string` | 是 | — |
 
 ### ReconCoverage
-
-对账的**覆盖范围说明**。 ⚠️ 它存在的理由只有一个：**不说的话「今天没有差异」是句假话。** 一期只有平台侧自查（扫我方停在 PENDING 的收款逐笔查单）， 渠道账单比对要等通道能力 —— 也就是说「渠道扣了钱而我方没记录」 那一整类差异**现在根本看不见**。 `note` **直接展示，不在端上写死** —— 写死的话，后端接上渠道账单之后， 页面还在说「看不见」。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
@@ -10670,6 +11082,8 @@ KPI 卡（金额为最小货币单位整数）。
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | 归属商家 |
 | `merchantName` | `string` | 是 | 商家名快照 |
+| `storeNo` | `string` | 是 | 哪家门店（S1，**一行一店**）。 历史数据没有门店号，后端已并入该主体的默认店；主体连默认店都没有时这里是主体号。 |
+| `storeName` | `string,null` | 是 | 门店名；**null = 查不到**，端上显示门店号 —— 别拿主体名冒充店名 |
 | `scan` | `number` | 是 | 扫码次数（PV）。同一个人扫三次算三次 |
 | `scanUv` | `number` | 是 | 扫码人数（UV）。匿名访客按设备号去重 —— 他还没有账号 |
 | `enter` | `number` | 是 | 进店人数：归因到本店的去重用户数 |
@@ -10702,8 +11116,6 @@ KPI 卡（金额为最小货币单位整数）。
 
 ### StoreGovern
 
-平台视角的门店档案（后端 `mch_store`，`GET /ops/stores`）。 **只读为主**：门店资料、价格、库存运营一律不改 —— 平台的边界是「裁、定、兜」， 不替商家运营。这份类型里唯一会被写回的是 `status`（解除强制下线）。 与  {@link  StoreMode  }  的关系：那份是「准入与保证金」页里**只关心经营模式与收款号** 的窄投影，这份是门店档案的全貌。两者共用 storeNo，故意不合并 —— 合并会让那一页凭空多出十个它不该关心的字段。
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `storeNo` | `string` | 是 | 门店号 |
@@ -10715,12 +11127,25 @@ KPI 卡（金额为最小货币单位整数）。
 | `status` | [`#/definitions/StoreGovernStatus`](#definitionsstoregovernstatus) | 是 | 经营状态，见  {@link  StoreGovernStatus } |
 | `businessMode` | [`#/definitions/BusinessMode`](#definitionsbusinessmode) | 是 | 自营 / 第三方。决定这家店的钱怎么走、票怎么开 |
 | `payMerchantNo` | `string,null` | 是 | 本店专属收款商户号。 **`null` 不是「没配」，是「用主体默认收款号」** —— 显示成空白会被读成前者。 |
+| `rating` | `number,null` | 是 | 门店评分，**×10 的整数**（85 = 8.5 分）。与主体那几列同口径 |
+| `ratingCount` | `number,null` | 是 | 评价条数。 ⚠️ **0 = 暂无评价，不是 0 分** —— 新店与还没重算过的店都是这个形状。 判空要按**条数**，按分值判会把「没人评过」显示成「0 分」。 |
 | `announcement` | `string` | 是 | 门店公告（走 P-10.1 的机审 + 人审） |
 | `openHours` | `string` | 是 | 营业时间，展示串 |
 | `deliveryRadiusM` | `number` | 是 | 配送半径（米） |
 | `deliveryMinOrderMinor` | `number` | 是 | 起送价（分） |
 | `deliveryFeeMinor` | `number` | 是 | 配送费（分） |
 | `deliveryFreeThresholdMinor` | `number` | 是 | 免配送费门槛（分） |
+
+### StoreGovernDetail
+
+门店详情（P-11.2.1c）：档案 + 三样**只有详情才算**的东西。 不把这三项塞进  {@link  StoreGovern } ：列表一屏几十行，每行再查社区/自提点/扫码数 就是三次 N+1；而给它们留 null 又会让「列表不算这一项」与「这家店没有」长得一样。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `store` | [`#/definitions/StoreGovern`](#definitionsstoregovern) | 是 | 门店档案本身（与列表行同一份形状） |
+| `communityNames` | `string`\[\] | 是 | 覆盖的社区名。挂在**主体**上 —— 同主体的门店看到同一份，界面别写成「本店覆盖」 |
+| `pickupNames` | `string`\[\] | 是 | 这家店挂靠的取货点名。空数组 = 没挂，不是没查到 |
+| `scanCount30d` | `number` | 是 | 近 30 天店铺码扫码次数。与获客看板同一个数据源，不另算一份 |
 
 ### StoreMode
 
@@ -10757,7 +11182,9 @@ KPI 卡（金额为最小货币单位整数）。
 | `merchantNo` | `string` | 是 | 归属商家 |
 | `merchantName` | `string` | 是 | 商家名快照 |
 | `communityName` | `string` | 是 | 所属社区名，BD 按社区领码地推 |
-| `code` | `string` | 是 | 码值（C 端扫码进店的深链参数），导出时给 BD 去印刷 |
+| `storeNo` | `string` | 是 | 哪家门店（V298 一店一码，一行一店） |
+| `storeName` | `string,null` | 是 | 门店名，可与主体名不同（「张记粮油·文三路店」） |
+| `code` | `string,null` | 是 | 码值（C 端扫码进店的深链参数），导出时给 BD 去印刷。 ⚠️ **null = 这家分店还没发过码**，不是空串。它是运营要动手的那一行 —— 显示成空白的话，与「有码但没印」看起来一模一样。 |
 | `size` | `string,null` | 是 | 最近一次印刷的尺寸规格，如 "10x10cm"；**从没印过是 null**（尺寸属于那一次印刷，不是门店属性） |
 | `printed` | `number,null` | 是 | 累计已印数量，用于对账印刷成本。 ⚠️ **null = 还没人登记，不是「印了 0 张」**。两者在界面上必须分开显示 —— 混成一个数之后，运营没法知道该去催谁登记。 |
 | `scanCount` | `number` | 是 | 区间内扫码次数。**这个 0 是真的 0**（埋点一直在记），与 printed 的 null 不同 |
@@ -10778,6 +11205,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `toShip` | `number` | 是 | 待发货 |
 | `toDeliver` | `number` | 是 | 待自送 |
 | `toStock` | `number` | 是 | 缺货待补。运营看它判断「这家店是不是没人管了」 |
+| `toAfterSale` | `number` | 是 | 待处理售后单数（P-11.2.1d）。 **只含还压着人的两态**（APPLIED / ARBITRATING）：已退款/已驳回/已关闭是了结的事实， 算进「待办堆积」会让处理得快的店看起来积压严重 —— 而运营正是拿这个数判断「这家店是不是没人管了」。 |
 
 ### StoreTemplate
 
