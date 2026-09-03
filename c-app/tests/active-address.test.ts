@@ -51,6 +51,17 @@ describe("生效位置 ≠ 默认收货地址", () => {
     expect(home).toMatch(/if \(a\) return a\.detail \|\| a\.region/);
   });
 
+  it("★★★ 有位置时，点顶栏去位置列表；一个都没有时才去选社区页", () => {
+    const home = code("src/pages/home/index.vue");
+    /*
+     * 顶栏显示的是「我在哪」（家/公司），点它的心智就是「换个地方」。
+     * 永远落到「选择社区自提点」是答非所问 —— 他要切位置，不是挑代收点。
+     * 这条曾经就是错的：顶栏已经显示「公司」，点开却是选社区页。
+     */
+    expect(home).toMatch(/location\.has \|\| location\.list\.length[\s\S]{0,120}ROUTES\.address/);
+    expect(home, "一个位置都没有时仍要能去探索").toContain("ROUTES.community");
+  });
+
   it("★★ 生效位置没有坐标时，不许清掉现有归属", () => {
     const store = code("src/stores/location.ts");
     /*

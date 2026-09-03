@@ -97,7 +97,20 @@ function openGroup(g: GroupBuy) {
   uni.navigateTo({ url: `${ROUTES.group}?groupNo=${g.groupNo}` });
 }
 
-function gotoCommunity() {
+/**
+ * 点顶栏那一行。**按「他现在有没有位置」分流，不是永远去选社区页。**
+ *
+ * <p>顶栏显示的是「我在哪」（家 / 公司），那么点它的心智就是「换个地方」——
+ * 落到「选择社区自提点」页是答非所问：他要的是切位置，不是挑一个代收点。
+ *
+ * <p>还一个位置都没有时才去选社区页 —— 那一页此时承担的是
+ * 「这一带有什么」的探索，正好是新用户需要的。
+ */
+function gotoPlace() {
+  if (location.has || location.list.length) {
+    uni.navigateTo({ url: ROUTES.address });
+    return;
+  }
   uni.navigateTo({ url: ROUTES.community });
 }
 
@@ -201,7 +214,7 @@ onShareAppMessage(() =>
          但**不能删**：自提点决定「东西送到哪、什么时候能拿」，下单前要一眼可确认，
          藏进「我的」会让人下完单才发现提错了点。 -->
     <view class="place sh-row">
-      <view class="place__main sh-fill sh-row" @tap="gotoCommunity">
+      <view class="place__main sh-fill sh-row" @tap="gotoPlace">
         <sh-icon name="pin" :size="26" color="var(--sh-primary)"></sh-icon>
         <!--
           **显示的是「当前生效位置」，不是自提点。** 用户脑子里的第一层是
