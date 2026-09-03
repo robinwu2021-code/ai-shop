@@ -158,6 +158,7 @@ class ConsumerBrowseFlowTest {
     /** 走真实的 OTP 链路：发码 → 从日志拿不到码，所以这里直接调服务发码后用固定流程登录。 */
     private String login(String phone) throws Exception {
         mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"" + phone + "\"}")).andExpect(status().isOk());
 

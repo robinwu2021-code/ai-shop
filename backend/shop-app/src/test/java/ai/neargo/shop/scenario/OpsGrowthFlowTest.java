@@ -546,7 +546,8 @@ class OpsGrowthFlowTest {
      * 那个字段一直在契约里、端上也一直在传，而后端**接收后直接丢掉**（2026-08-30 修）。
      */
     private String registerInvitedBy(String phone, String inviterNo) throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc())).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"" + phone + "\"}"));
         String code = otpStore.peek(phone).orElseThrow(
                 () -> new AssertionError("没有为 " + phone + " 生成验证码"));

@@ -39,7 +39,24 @@ public final class TestLogin {
      */
     public static String consumer(MockMvc mvc, ObjectMapper json, OtpStore otpStore, String phone)
             throws Exception {
-        mvc.perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+        /*
+         * **先静默登录，再发码** —— 与生产同序（3823991d）。
+         *
+         * `/mp/user/otp/send` 现在要求调用方已经有会话：小程序的静默登录不需要任何
+         * 点击，所以每个真实用户天然就有一个账号（背后是 openid），
+         * 而没有会话的调用方只可能是直接打这个公网端点的脚本。
+         *
+         * 这一步以前是省掉的，于是测试走的是一条**生产里不存在的路**：
+         * 未登录直接发码。那道闸加上之后，41 个场景类在登录那一步就断了 ——
+         * 而断的原因不是闸门错了，是夹具一直没照着真实流程走。
+         *
+         * openid 从手机号派生：同一个号在同一次测试里反复登录要拿到同一个账号，
+         * 用随机值会让「换绑手机号」这类用例每次都在跟一个新账号打交道。
+         */
+        String bootstrap = consumerByWechat(mvc, json, "otp-bootstrap-" + phone);
+        mvc.perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + bootstrap)
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"" + phone + "\"}"));
         /*
          * 取码走 OtpStore.peek —— 它只在测试里有调用方。
@@ -127,6 +144,35 @@ public final class TestLogin {
      * 看不出到底是密码错、被限流、还是账号被停用。而登录是第一步，
      * 它一挂后面全挂，最需要一眼看清原因的恰恰是这里。
      */
+    /**
+     * 一次性的「发码用会话」。
+     *
+     * <p>3823991d 之后 {@code /mp/user/otp/send} <b>要求调用方已经有会话</b>：
+     * 小程序的静默登录不需要任何点击，所以每个真实用户天然就有一个账号，
+     * 而没有会话的调用方只可能是直接打这个公网端点的脚本。
+     *
+     * <p>测试里过去是**未登录直接发码** —— 一条生产里不存在的路。
+     * 那道闸加上之后 691 条用例在登录那一步就断了，而断的原因不是闸门错了，
+     * 是夹具一直没照着真实流程走。
+     *
+     * <p><b>每次换一个 openid</b>：发码现在还按「发起人」限量（每天 15 条），
+     * 复用同一个会话的话，测手机号或 IP 那两道闸的用例会先撞上发起人这一道，
+     * 拿到一个对的错误码 —— 而断言只看「被拒了」就会以为被测的那道闸在工作。
+     *
+     * <p>不加测试专用后门（比如 test profile 下关掉这道闸）：那样测试就不再
+     * 覆盖真实路径，而这道闸恰恰是防短信轰炸的那一道。
+     */
+    public static String otpSession(MockMvc mvc) throws Exception {
+        String body = mvc.perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"grantType\":\"WECHAT_MP\",\"principal\":\"otp-session-"
+                                + java.util.UUID.randomUUID() + "\",\"agreed\":true}"))
+                .andReturn().getResponse().getContentAsString();
+        return token(SHARED_JSON, body, "发码用会话");
+    }
+
+    /** 只给 {@link #otpSession} 用 —— 那个方法刻意不要求调用方持有 ObjectMapper */
+    private static final ObjectMapper SHARED_JSON = new ObjectMapper();
+
     private static String token(ObjectMapper json, String body, String what) {
         JsonNode root = json.readTree(body);
         JsonNode data = root.get("data");

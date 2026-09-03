@@ -95,7 +95,8 @@ class M1UserFlowTest {
         String token = loginWechat("wx-openid-001");
         String userNo = profileUserNo(token);
 
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc())).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"13600136003\"}"));
         String code = otpStore.peek("13600136003").orElseThrow();
         mvc().perform(post("/mp/user/phone/bind").header("Authorization", "Bearer " + token)
@@ -249,7 +250,8 @@ class M1UserFlowTest {
     @Test
     @DisplayName("常去店 ≠ 我开的店：登录带 merchantNo 只写常去店，不授予商家身份（不变量③）")
     void visitedStoreDoesNotGrantMerchantRole() throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc())).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"13600136012\"}"));
         String code = otpStore.peek("13600136012").orElseThrow();
         String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
@@ -276,7 +278,8 @@ class M1UserFlowTest {
     @Test
     @DisplayName("OTP 一次性：用过的验证码不能重放")
     void otpCannotBeReplayed() throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc())).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"13600136013\"}"));
         String code = otpStore.peek("13600136013").orElseThrow();
         String payload = "{\"grantType\":\"PHONE_OTP\",\"principal\":\"13600136013\",\"credential\":\""
@@ -343,7 +346,8 @@ class M1UserFlowTest {
     }
 
     private String loginRaw(String phone) throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc())).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"" + phone + "\"}"));
         String code = otpStore.peek(phone).orElseThrow();
         return mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)

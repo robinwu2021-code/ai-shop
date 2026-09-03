@@ -151,7 +151,14 @@ class IdentityUnificationFlowTest {
 
     private org.springframework.test.web.servlet.ResultActions bindPhone(String token, String phone)
             throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+        /*
+         * **用调用方自己的会话发码**（3823991d 之后 otp/send 要求有会话）——
+         * 这正是生产里的样子：一个已登录的用户为「绑定我的手机号」要一条码。
+         * 此前这里不带 token，走的是一条生产里不存在的路。
+         */
+        mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"" + phone + "\"}"));
         String code = otpStore.peek(phone).orElseThrow();
         return mvc().perform(post("/mp/user/phone/bind").header("Authorization", "Bearer " + token)

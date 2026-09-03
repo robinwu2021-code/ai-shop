@@ -57,6 +57,10 @@ class OtpRateLimitFlowTest {
     @Autowired
     private RateLimiter limiter;
 
+    /** 只为建会话用 —— 发码要求调用方已登录（3823991d） */
+    @Autowired
+    private tools.jackson.databind.ObjectMapper json;
+
     @Autowired
     private CaptchaService captcha;
 
@@ -94,8 +98,20 @@ class OtpRateLimitFlowTest {
         return "1390000" + seed;
     }
 
+    /**
+     * 发一次码。
+     *
+     * <p><b>每次都换一个发起人</b>（3823991d 之后 `/mp/user/otp/send` 要求有会话）。
+     * 不换的话，测「IP 每小时 20 次」那一条会先撞上<b>发起人每天 15 条</b>那道闸 ——
+     * 于是它拿到的拒绝是对的错，而断言只看「被拒了」会让人以为 IP 那道在工作。
+     * 这个类每一条都在隔离**一个**维度，发起人这一维必须让开。
+     * （发起人那道闸自己的用例在 {@code OtpSenderLimitTest}。）
+     */
     private void send(String phone, org.springframework.test.web.servlet.ResultMatcher expect) throws Exception {
+        String session = ai.neargo.shop.support.TestLogin.consumerByWechat(
+                mvc(), json, "otp-rl-" + java.util.UUID.randomUUID());
         mvc().perform(post("/mp/user/otp/send")
+                        .header("Authorization", "Bearer " + session)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"phone\":\"" + phone + "\"}"))
                 .andExpect(expect);
@@ -108,6 +124,7 @@ class OtpRateLimitFlowTest {
         send(p, jsonPath("$.code").value(0));
         // 第二次立刻发 —— 60 秒间隔闸应当挡下
         mvc().perform(post("/mp/user/otp/send")
+                        .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"phone\":\"" + p + "\"}"))
                 .andExpect(status().isOk())
@@ -126,6 +143,7 @@ class OtpRateLimitFlowTest {
             limiter.reset("otp:interval:" + p);
         }
         mvc().perform(post("/mp/user/otp/send")
+                        .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"phone\":\"" + p + "\"}"))
                 .andExpect(status().isOk())
@@ -140,6 +158,7 @@ class OtpRateLimitFlowTest {
             send(phone("30" + (10 + i)), jsonPath("$.code").value(0));
         }
         mvc().perform(post("/mp/user/otp/send")
+                        .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"phone\":\"" + phone("3099") + "\"}"))
                 .andExpect(status().isOk())

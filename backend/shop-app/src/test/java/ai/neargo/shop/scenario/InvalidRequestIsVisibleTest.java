@@ -61,6 +61,7 @@ class InvalidRequestIsVisibleTest {
         try {
             // 手机号是**真格式的假号**：它必须不出现在日志里
             mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc()))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"phone\":\"\",\"scene\":\"13800001234\"}"))
                     .andReturn();

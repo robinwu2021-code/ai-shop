@@ -610,7 +610,8 @@ class M9aOpsFlowTest {
     @DisplayName("★ B 端登录一次拿到 token + 档案（分两次请求会先闪一屏错的）")
     void bizLoginReturnsProfileInOneShot() throws Exception {
         login("12600126043");   // 先建号
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc())).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"12600126043\"}"));
         String code = otpStore.peek("12600126043").orElseThrow();
         String body = mvc().perform(post("/biz/auth/login")
@@ -875,7 +876,8 @@ class M9aOpsFlowTest {
     @DisplayName("验证码对但不是员工 → 403，而不是「账号不存在」")
     void nonStaffPhoneCannotEnumerate() throws Exception {
         String phone = "13100999002";
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc())).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"" + phone + "\"}"));
         String code = otpStore.peek(phone).orElseThrow();
 

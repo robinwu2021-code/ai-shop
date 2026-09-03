@@ -188,7 +188,8 @@ class StoreAndStaffFlowTest {
                 .andExpect(jsonPath("$.data.loginPhone").value("13600001234"));
 
         // 这个店员从来没注册过 C 端账号，照样能登
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc())).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"13600001234\"}"));
         String code = otpStore.peek("13600001234").orElseThrow();
         mvc().perform(post("/biz/auth/staff-login").contentType(MediaType.APPLICATION_JSON)
