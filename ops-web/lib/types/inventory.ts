@@ -254,3 +254,16 @@ export interface InvMerchantDigest {
   /** 还开着的盘点单号 */
   openCountNo: string | null;
 }
+
+/**
+ * 进销存平台规则（M7）。今天只有一条 —— 见后端那个控制器的类注释：
+ * 其余几条查下来多数不该按原样做（有的本来就在拦，有的会拆掉模块边界）。
+ */
+export interface InvPolicy {
+  /**
+   * 对差要连续几轮为零，才算够格切换真相源（G3）。
+   * **此前这个 N 根本不存在** —— 判据写的是「连续为零」，而连续多少是空的，
+   * 于是「够了没有」谁都答不了。
+   */
+  reconCleanStreakRequired: number;
+}

@@ -1,6 +1,6 @@
 // 进销存（P-18）—— `/ops/inventory/**`。**独立模块**：与商品域不共契约文件，
 // 它将来要能单独交付。
-import type { InvBalanceRow, InvHealthRow, InvLedgerPage, InvReconReport, InvCredential, InvCredentialIssued, InvLinkHealth, InvRepairResult, InvMerchantDigest } from "@/lib/types";
+import type { InvBalanceRow, InvHealthRow, InvLedgerPage, InvReconReport, InvCredential, InvCredentialIssued, InvLinkHealth, InvRepairResult, InvMerchantDigest, InvPolicy } from "@/lib/types";
 
 export interface InventoryApi {
   // **库存本身仍然只读**：运营不改商家库存 —— 改了之后「这个数是谁改的」
@@ -28,6 +28,10 @@ export interface InventoryApi {
    * 那本身就是答案（去看投影链路），不是「零笔」（那是去催商家）。
    */
   invMerchantDigest(entityNo: string): Promise<InvMerchantDigest | null>;
+
+  /** 进销存平台规则（M7）。读要 stock:read，写要 system:param:update */
+  invPolicy(): Promise<InvPolicy>;
+  saveInvPolicy(v: InvPolicy): Promise<InvPolicy>;
 
   /**
    * 手动补投影（M2）。**不传 `apply` 就是试算** —— `shop.inventory.backfill.dry-run`

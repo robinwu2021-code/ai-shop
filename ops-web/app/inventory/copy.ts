@@ -154,6 +154,9 @@ const zh = {
   invStreakBroken: "最近一轮不为零 —— 连续计数已中断",
   invStreakNeverRan: "对差任务还没跑过 —— 「没有差异」与「没有依据」是两回事，现在是后者",
   invStreakOf: "（近 {n} 轮记录）",
+  // 「差多少才够」比「已经几轮」更是这一页要答的那个问题
+  invStreakEnough: "已达到切换门槛（要求 {n} 轮）",
+  invStreakShort: "还差 {n} 轮才够（要求 {need} 轮）",
 };
 
 const en: typeof zh = {
@@ -297,6 +300,8 @@ const en: typeof zh = {
   invStreakBroken: "Latest run was not clean — the streak is broken",
   invStreakNeverRan: "The reconciliation job has never run — \"no differences\" and \"no evidence\" are not the same thing, and this is the latter",
   invStreakOf: "(last {n} runs)",
+  invStreakEnough: "Threshold met (needs {n})",
+  invStreakShort: "{n} more needed (threshold {need})",
 };
 
 export const INVENTORY_COPY: PageCopy<typeof zh> = { zh, en };

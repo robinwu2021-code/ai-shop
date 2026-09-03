@@ -74,6 +74,9 @@ export const inventoryMock: InventoryApi = {
     itemCount: 34, shortageCount: 2, staleCount: 11,
     ledgerCount: 0, lastLedgerAt: null, openCountNo: null,
   }),
+  // mock 里也守着「不是 0」：0 会让「连续 0 轮为零」恒成立，那道闸等于不存在
+  invPolicy: () => wait({ reconCleanStreakRequired: 7 }),
+  saveInvPolicy: (v) => wait(v),
   /*
    * 补投影。mock 里也**默认试算**：演出来的行为要与真实的一致，
    * 否则开发期看到的是「点一下就搬完了」，而线上第一步是试算。

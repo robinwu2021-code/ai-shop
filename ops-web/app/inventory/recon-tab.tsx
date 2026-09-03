@@ -46,6 +46,12 @@ export function ReconTab({ c }: { c: InventoryCopy }) {
     queryFn: () => api.listJobLogs({ name: "inv-recon", size: 30 }),
   });
   const streak = cleanStreak(runs.data);
+  /*
+   * 要求连续几轮。**没有这个 N，「已连续 3 轮」答不出「够了没有」** ——
+   * 而「够了没有」正是这一页要回答的唯一问题。
+   */
+  const policy = useQuery({ queryKey: ["inv-policy"], queryFn: () => api.invPolicy() });
+  const required = policy.data?.reconCleanStreakRequired;
 
   const repair = useMutation({
     mutationFn: api.repairProjection,
@@ -157,8 +163,16 @@ export function ReconTab({ c }: { c: InventoryCopy }) {
         <Notice tone="warning">{c.invStreakNeverRan}</Notice>
       )}
       {runs.data && runs.data.length > 0 && (
-        <Notice tone={streak > 0 ? "info" : "warning"}>
+        <Notice tone={required != null && streak >= required ? "info" : "warning"}>
           {streak > 0 ? fill(c.invStreakClean, { n: streak }) : c.invStreakBroken}
+          {/* 差多少轮才够，比「已经几轮」更是这一页要答的那个问题 */}
+          {required != null && (
+            <span className="ms-2 font-semibold">
+              {streak >= required
+                ? fill(c.invStreakEnough, { n: required })
+                : fill(c.invStreakShort, { n: required - streak, need: required })}
+            </span>
+          )}
           <span className="ms-2 txt-caption text-muted-foreground">
             {fill(c.invStreakOf, { n: runs.data.length })}
           </span>
