@@ -513,7 +513,7 @@
       },
       "usage": {
         "b-app": 248,
-        "c-app": 114
+        "c-app": 117
       }
     },
     {
@@ -545,7 +545,7 @@
       },
       "usage": {
         "b-app": 118,
-        "c-app": 68
+        "c-app": 70
       }
     },
     {
@@ -739,7 +739,7 @@
       },
       "usage": {
         "b-app": 23,
-        "c-app": 20
+        "c-app": 22
       }
     },
     {
@@ -821,7 +821,7 @@
       },
       "usage": {
         "b-app": 248,
-        "c-app": 205
+        "c-app": 210
       }
     },
     {
@@ -3112,10 +3112,18 @@
         "sh-switch",
         "biz-region-picker"
       ],
-      "libClassHits": 40,
-      "localSelectors": 12,
-      "localCssLines": 45,
-      "rolled": []
+      "libClassHits": 52,
+      "localSelectors": 19,
+      "localCssLines": 77,
+      "rolled": [
+        {
+          "id": "segment",
+          "label": "选中态自画（含未拆出的）",
+          "lib": ".sh-chip--primary / --solid",
+          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "c-app",
@@ -3602,6 +3610,16 @@
       "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
       "pages": [
         "b-app/store"
+      ]
+    },
+    {
+      "id": "segment",
+      "label": "选中态自画（含未拆出的）",
+      "lib": ".sh-chip--primary / --solid",
+      "gap": false,
+      "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
+      "pages": [
+        "c-app/address"
       ]
     },
     {

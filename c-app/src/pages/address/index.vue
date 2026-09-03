@@ -8,6 +8,8 @@ import { api } from "@/api";
 import { useLocationStore } from "@/stores/location";
 import type { Address } from "@shared/types";
 import { canChooseLocation, chooseLocation, chooseWxAddress } from "@shared/ports/location";
+import { readClipboard } from "@shared/ports/clipboard";
+import { parsePastedAddress } from "@shared/utils/address-paste";
 import { confirm } from "@ai-shop/ui/prompt";
 import { isPhone, notBlank } from "@shared/utils/validate";
 import { pickedAddress, pickedPlace } from "@/shared/address-pick";
@@ -95,6 +97,43 @@ async function pickOnMap() {
     if (!draft.value.detail.trim() && parts.rest.trim()) draft.value.detail = parts.rest.trim().slice(0, 60);
   }
   if (!draft.value.detail.trim() && p.name) draft.value.detail = p.name.slice(0, 60);
+}
+
+/**
+ * 粘贴一段文字，认出姓名 / 手机 / 省市区 / 地址主体 / 门牌。
+ *
+ * <p><b>只填空着的格子，绝不覆盖他已经填了的字。</b>与旁边「微信地址」那个
+ * 入口同一条规矩（见 `fillFromWx`）：他可能先手填了一半才想起来有这个按钮，
+ * 一键把刚敲的字冲掉是最让人恼火的那种「贴心」。
+ *
+ * <p><b>它不给坐标</b>，所以不是选点页的替代 —— 粘完仍然要点一次地图选点，
+ * 否则商家的自送半径判不了。这件事由保存按钮上方那句提示负责说。
+ */
+async function pasteAndFill() {
+  const text = await readClipboard();
+  if (!text.trim()) {
+    uni.showToast({ title: String(t("address.pasteEmpty")), icon: "none" });
+    return;
+  }
+  const r = parsePastedAddress(text);
+  if (!r) {
+    uni.showToast({ title: String(t("address.pasteFailed")), icon: "none" });
+    return;
+  }
+  const put = (k: "name" | "phone" | "detail" | "houseNo" | "region", v: string) => {
+    if (v && !String(draft.value[k] ?? "").trim()) draft.value[k] = v;
+  };
+  put("name", r.name);
+  put("phone", r.phone);
+  put("detail", r.detail);
+  put("houseNo", r.houseNo);
+  if (r.region && !draft.value.region.trim()) {
+    draft.value.region = r.region;
+    draft.value.province = r.province;
+    draft.value.city = r.city;
+    draft.value.district = r.district;
+  }
+  uni.showToast({ title: String(t("address.pasteDone")), icon: "none" });
 }
 
 const pickingRegion = ref(false);
@@ -330,6 +369,15 @@ onShow(() => {
       :title="String(draft.addressId ? $t('address.edit') : $t('address.add'))"
       @close="editing = false"
     >
+        <!--
+          **放在最上面，不放省市区那一行。** 它填的是整张表，
+          而那一行已经有「请选择 / 地图选点 / 微信地址」三个按钮 ——
+          小程序上再挤一个，输入框只剩指甲盖那么宽。
+        -->
+        <view class="pasterow sh-row sh-row--between" @tap="pasteAndFill">
+          <text class="txt-caption pasterow__text">{{ $t("address.pasteHint") }}</text>
+          <text class="txt-caption txt-primary">{{ $t("address.paste") }}</text>
+        </view>
         <input maxlength="64" v-model="draft.name" class="field__input" :placeholder="$t('address.name')" />
         <input
           v-model="draft.phone"
@@ -399,6 +447,21 @@ onShow(() => {
         <view class="switchrow sh-row sh-row--between" @tap="draft.isDefault = !draft.isDefault">
           <text class="txt-sub switchrow__label txt-ink">{{ $t("address.asDefault") }}</text>
           <sh-switch :model-value="draft.isDefault"></sh-switch>
+        </view>
+
+        <!--
+          **没有坐标就说一句。** 手填、微信导入、粘贴识别三条路都只给字不给坐标，
+          而没坐标的地址上，商家的自送半径判不了（后端那条闸明写着「没坐标就放行」）、
+          骑手导航也打不开 —— 三件事在界面上都看不出区别，所以必须在这里说。
+
+          **刻意不拦保存**：拦了等于让一部分人存不了地址（存量地址、POI 搜不到的地方
+          本来就没有坐标），与旁边 regionUnsplit 那句是同一种口径：提示，不阻断。
+        -->
+        <view v-if="!picked" class="nocoord sh-row sh-row--between">
+          <text class="txt-caption nocoord__text">{{ $t("address.noCoordHint") }}</text>
+          <text v-if="canPick" class="txt-caption txt-primary" @tap="pickOnMap">
+            {{ $t("address.pick") }}
+          </text>
         </view>
 
         <view class="sh-btn sheet__save" :class="{ 'is-disabled': !valid }" @tap="save">
@@ -473,6 +536,25 @@ onShow(() => {
 .tagrow__chip.is-on {
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
+}
+.pasterow {
+  padding: 16rpx 20rpx;
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+  gap: 16rpx;
+}
+.pasterow__text {
+  flex: 1;
+}
+.nocoord {
+  margin-top: 24rpx;
+  padding: 16rpx 20rpx;
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+  gap: 16rpx;
+}
+.nocoord__text {
+  flex: 1;
 }
 .switchrow {
   margin-top: 28rpx;

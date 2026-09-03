@@ -811,7 +811,7 @@ onMounted(async () => {
 .recv__warn {
   display: block;
   margin-top: 8rpx;
-  color: var(--sh-danger-text);
+  color: var(--sh-danger);
 }
 .recv__empty-text {
   flex: 1;

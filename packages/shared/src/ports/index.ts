@@ -5,6 +5,7 @@ export * from "./payment";
 export * from "./share";
 export * from "./theme";
 export * from "./scan";
+export * from "./clipboard";
 export * from "./location";
 export * from "./media";
 export * from "./push";

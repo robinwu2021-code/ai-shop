@@ -328,3 +328,44 @@ describe("标签：预设 chip，输入框仍是唯一真源", () => {
     expect(tagInput![0]).toContain('maxlength="8"');
   });
 });
+
+/**
+ * 粘贴识别与「这个地址没有定位点」。
+ *
+ * <p>解析本身在 `packages/shared/tests/address-paste.test.ts` 里逐条行为测过。
+ * 这里守的是**接线上的两条性质**，它们都属于「错了也不会响」那一类。
+ */
+describe("粘贴识别：只填空格子，且不冒充选点", () => {
+  const addressPage = code("src/pages/address/index.vue");
+
+  it("★★★ 只填空着的格子，不覆盖他已经敲的字", () => {
+    const body = bodyOf(addressPage, "async function pasteAndFill(");
+    expect(body, "粘贴入口不见了").not.toBeNull();
+    /*
+     * 他可能先手填了一半才想起来有这个按钮。一键把刚敲的字冲掉，
+     * 是最让人恼火的那种「贴心」——旁边 fillFromWx 也是这条规矩。
+     */
+    expect(body).toMatch(/!String\(draft\.value\[k\] \?\? ""\)\.trim\(\)/);
+    expect(body, "省市区那一组也要判空再填").toMatch(/!draft\.value\.region\.trim\(\)/);
+  });
+
+  it("★★★ 认不出来要说一声，不能静默什么都不做", () => {
+    const body = bodyOf(addressPage, "async function pasteAndFill(");
+    expect(body).toContain("pasteFailed");
+    expect(body, "剪贴板空着与认不出来是两回事，文案也该是两句").toContain("pasteEmpty");
+  });
+
+  it("★★★ 没有坐标时必须说一句，但**不许拦保存**", () => {
+    /*
+     * 手填、微信导入、粘贴三条路都只给字不给坐标。没坐标的地址上
+     * 商家自送半径判不了（后端明写着「没坐标就放行」）、导航也打不开 ——
+     * 三件事在界面上都看不出区别。
+     *
+     * 拦保存同样不行：存量地址、POI 搜不到的地方本来就没有坐标，
+     * 拦了等于让一部分人存不了地址。与 regionUnsplit 那句同一种口径。
+     */
+    expect(addressPage).toMatch(/v-if="!picked"[\s\S]{0,200}noCoordHint/);
+    const valid = bodyOf(addressPage, "const valid = computed(");
+    expect(valid, "valid 里出现 picked = 把提示变成了闸").not.toContain("picked");
+  });
+});
