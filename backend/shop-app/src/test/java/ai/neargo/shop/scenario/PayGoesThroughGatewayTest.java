@@ -39,6 +39,8 @@ class PayGoesThroughGatewayTest {
     private TestPayGateway testGateway;
     @Autowired
     private SettleMappers.PaymentMapper paymentMapper;
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     private static int seq = 0;
 
@@ -49,6 +51,30 @@ class PayGoesThroughGatewayTest {
                         .orderByDesc(StlPayment::getId).last("LIMIT 1")));
     }
 
+
+    @Test
+    @DisplayName("★★★ 发起支付要记下付款人 —— 这两列从建表起就没被写过，客诉时要的正是它")
+    void payerIsRecordedOnTheLedgerRow() {
+        String orderNo = "OD-PAYER-" + (++seq);
+        String userNo = "U-PAYER-" + seq;
+        String openid = "oPROBE-" + seq;
+        // 这个用户在小程序里登录过 —— 没有这一行，取 openid 拿到的是空，
+        // 而「空」与「没写」在库里长得一模一样
+        jdbc.update("INSERT INTO usr_identity (user_no, identity_type, identity_value, channel,"
+                        + " tenant_no, created_at, updated_at, deleted)"
+                        + " VALUES (?,?,?,?,?,?,?,0)",
+                userNo, "WX_OPENID_MP", openid, "MP", "MAIN",
+                java.time.LocalDateTime.now(), java.time.LocalDateTime.now());
+
+        var r = settlePort.initPayment(new SettlePort.PaymentOpen(
+                orderNo, userNo, null, "TEST", 1_000L));
+        assertThat(r.success()).isTrue();
+
+        assertThat(paymentOf(orderNo).getPayerOpenid())
+                .as("payer_openid 还是 null —— 用户报「我付了钱」时，客服手上只有订单号，"
+                        + "而要去微信商户平台按付款人对上那一笔靠的就是这一列")
+                .isEqualTo(openid);
+    }
     @Test
     @DisplayName("★★★ 发起支付后，通道那边真的有这笔单 —— 编一组假参数返回也能让场景测试全绿")
     void gatewayActuallyReceivesTheOrder() {

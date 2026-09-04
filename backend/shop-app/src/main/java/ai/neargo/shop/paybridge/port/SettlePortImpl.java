@@ -7,6 +7,7 @@ import ai.neargo.shop.paybridge.SettleGenerationOrchestrator;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.user.UserIdentityPort;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -49,6 +50,7 @@ public class SettlePortImpl implements SettlePort {
     private static final String CURRENCY_CNY = "CNY";
     /** 一期只在小程序里收款。端形态扩到 App 时这里要按端传值，不能默认 */
     private static final String PAY_METHOD_JSAPI = "JSAPI";
+    private static final String WECHAT = "WECHAT";
 
     private final SettleService settleService;
     private final PaymentLedgerService paymentLedger;
@@ -65,16 +67,24 @@ public class SettlePortImpl implements SettlePort {
      * 而 `OrderServiceImpl` 要多一个构造参数 —— 一个通道的细节爬进了订单域的契约。
      */
     private final UserIdentityPort identityPort;
+    /**
+     * 记进 {@code stl_payment.wx_appid} 用。<b>与 openid 成对才有意义</b> ——
+     * 同一个人在不同小程序下是不同的 openid，只存 openid 不存 appid，
+     * 将来多一个应用时就分不清那一行属于谁。
+     */
+    private final String wechatAppId;
 
     public SettlePortImpl(SettleService settleService, PaymentLedgerService paymentLedger,
                           SettleGenerationOrchestrator orchestrator,
                           ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter,
-                          UserIdentityPort identityPort) {
+                          UserIdentityPort identityPort,
+                          @Value("${shop.pay.wechat.appid:}") String wechatAppId) {
         this.settleService = settleService;
         this.paymentLedger = paymentLedger;
         this.orchestrator = orchestrator;
         this.gatewayRouter = gatewayRouter;
         this.identityPort = identityPort;
+        this.wechatAppId = wechatAppId;
     }
 
     @Override
@@ -141,6 +151,16 @@ public class SettlePortImpl implements SettlePort {
             return new PayInitResult(false, outTradeNo, cmd.payChannel(),
                     java.util.Map.of(), r.message());
         }
+        /*
+         * **下单成功之后才记付款人。** 那两列从建表起就没被写过（见
+         * PaymentLedgerService#recordPayer）—— 用户报「我付了钱」时，
+         * 客服手上只有订单号，而要去微信商户平台对上那一笔靠的是 openid。
+         *
+         * 放在这里而不是开流水那一步：开流水**先于**取 openid（顺序不能反），
+         * 而下单失败的流水会被关掉，给关掉的流水记付款人没有意义。
+         */
+        paymentLedger.recordPayer(outTradeNo, payerId,
+                WECHAT.equals(cmd.payChannel()) ? wechatAppId : null);
         return new PayInitResult(true, outTradeNo, cmd.payChannel(), r.params(), null);
     }
 

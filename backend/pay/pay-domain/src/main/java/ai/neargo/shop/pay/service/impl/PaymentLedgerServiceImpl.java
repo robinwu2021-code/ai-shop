@@ -262,6 +262,27 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         log.info("[payment-ledger] 退款 {} 已确认到账（通道单号 {}）", refundPaymentNo, providerNo);
     }
 
+    @Override
+    @Transactional("payTxManager")
+    public void recordPayer(String outTradeNo, String payerId, String appId) {
+        if (payerId == null || payerId.isBlank()) {
+            // 没有就不写。写一行空的等于把「没取到」和「没这个概念」混成一件事
+            return;
+        }
+        StlPayment p = byOutTradeNo(outTradeNo);
+        if (p == null) {
+            log.warn("[payment-ledger] 记付款人时找不到流水 {}", outTradeNo);
+            return;
+        }
+        StlPayment patch = new StlPayment();
+        patch.setId(p.getId());
+        patch.setPayerOpenid(payerId);
+        if (appId != null && !appId.isBlank()) {
+            patch.setWxAppid(appId);
+        }
+        DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
+    }
+
     private StlPayment byPaymentNo(String paymentNo) {
         if (paymentNo == null) {
             return null;

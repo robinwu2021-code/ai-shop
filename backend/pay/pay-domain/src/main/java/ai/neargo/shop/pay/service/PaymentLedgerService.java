@@ -179,4 +179,27 @@ public interface PaymentLedgerService {
      *                   而撞键炸掉的是**整轮自查**，不是这一行
      */
     void markRefundSettled(String refundPaymentNo, String providerNo);
+
+    /**
+     * 记下这笔收款的<b>付款人</b>（{@code stl_payment.payer_openid} / {@code wx_appid}）。
+     *
+     * <h2>这两列从建表起就没被写过</h2>
+     * 它们在实体上声明着、在库里存在着，<b>而生产代码里一次都没有写过</b> ——
+     * 于是永远是 null。这是「加了列只改一半」的反面：那个是只写不读，
+     * 这个是<b>读的时候才发现根本没写</b>，而那个时候通常是客诉或对账。
+     *
+     * <p>用处很具体：用户报「我付了钱」，客服手上只有订单号；
+     * 拿 openid 才能去微信商户平台按付款人对上那一笔。
+     *
+     * <h2>为什么在下单成功之后才记，而不是开流水时</h2>
+     * 开流水那一步<b>先于</b>取 openid（顺序不能反：先落账再下单，
+     * 见 {@code SettlePortImpl.initPayment}）。而下单失败的流水会被关掉，
+     * 给一笔关掉的流水记付款人没有意义。
+     *
+     * @param payerId 付款人在通道侧的标识（微信小程序 openid）。为空则不写
+     * @param appId   发起支付用的应用 ID。<b>与 payerId 成对才有完整意义</b> ——
+     *                同一个人在不同小程序下是不同的 openid；
+     *                非微信通道没有这个概念，传 null，那时只记 payerId
+     */
+    void recordPayer(String outTradeNo, String payerId, String appId);
 }
