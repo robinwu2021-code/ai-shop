@@ -95,6 +95,9 @@ public class MpUserController {
         if (userNo == null) {
             throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.UNAUTHORIZED);
         }
+        // 已经绑在自己账号上就别发了 —— 见 UserService#assertPhoneSendable。
+        // 属于别人的号**照常发**：那是本人自证所有权的唯一手段
+        userService.assertPhoneSendable(req.phone());
         authService.sendOtp(req.phone(), userNo);
     }
 

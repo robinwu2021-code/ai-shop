@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import org.junit.jupiter.api.DisplayName;
+import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -368,6 +369,9 @@ class M1UserFlowTest {
         return json.readTree(body).get("data").get("userNo").asString();
     }
 
+    private static int seq = 0;
+
+
     private String loginRaw(String phone) throws Exception {
         mvc().perform(post("/mp/user/otp/send")
                 .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc())).contentType(MediaType.APPLICATION_JSON)
@@ -399,4 +403,20 @@ class M1UserFlowTest {
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get("token").asString();
     }
+
+    // ───────────── 手机号归属：发码侧的判定与绑定侧的接管（2026-09-04）
+
+    @Test
+    @DisplayName("★★★ 号已绑在自己账号上 → 不发短信，直接说「已经绑过了」")
+    void ownPhoneDoesNotTriggerAnotherSms() throws Exception {
+        String phone = "13600137001";
+        String token = login(phone);          // 登录即绑定，这个号现在属于自己
+
+        mvc().perform(post("/mp/user/otp/send").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"" + phone + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(10458));
+    }
+
 }

@@ -16,11 +16,15 @@ import ai.neargo.shop.spi.user.PickupQueryPort;
 import ai.neargo.shop.user.mapper.UserMappers.IdentityMapper;
 import ai.neargo.shop.user.mapper.UserMappers.UserMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserServiceImpl implements UserService {
+
 
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(UserServiceImpl.class);
@@ -210,6 +214,38 @@ public class UserServiceImpl implements UserService {
         return attachPhone(phone);
     }
 
+    /**
+     * <b>发验证码之前问一句：这个号是不是已经绑在你自己账号上了。</b>
+     *
+     * <h2>为什么只拦「自己的号」</h2>
+     * 已经绑好的号再发一次码，用户走完一整套流程只会得到「你已经绑过了」，
+     * 那条短信是白发的，而中间那两分钟他不知道自己在等什么。
+     *
+     * <p><b>号码属于别人时必须照常发。</b>验证码是用户<b>自证这个号是他的</b>
+     * 的唯一手段 —— 不发就等于「号一旦落在别的账号上，本人永远拿不回来」，
+     * 而那正是今天要修的问题本身。
+     *
+     * <p>而且「发不发」这个差别会变成一个<b>枚举预言机</b>：
+     * 任何人都能靠它免费问出「这个号在你们这儿注册过没有」。
+     * 属于别人与全新号码在这一步必须<b>表现完全一致</b>。
+     */
+    @Override
+    public void assertPhoneSendable(String phone) {
+        if (phone == null || phone.isBlank()) {
+            return;   // 格式由 @Valid 管，这里只管归属
+        }
+        String me = SecurityUtils.currentUserNoOrNull();
+        if (me == null) {
+            return;
+        }
+        UsrIdentity owner = identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
+                .eq(UsrIdentity::getIdentityType, IdentityType.PHONE)
+                .eq(UsrIdentity::getIdentityValue, phone).last("limit 1"));
+        if (owner != null && owner.getUserNo().equals(me)) {
+            throw BizException.of(ErrorCode.PHONE_ALREADY_BOUND);
+        }
+    }
+
     private UserVO attachPhone(String phone) {
         UsrAccount user = currentUser();
 
@@ -227,6 +263,17 @@ public class UserServiceImpl implements UserService {
                 .eq(UsrIdentity::getIdentityValue, phone).last("limit 1"));
         if (owner != null) {
             if (!owner.getUserNo().equals(user.getUserNo())) {
+                /*
+                 * **接管（把 openid 挂到已有账号上）已写好但未接线**，见下方
+                 * adoptOrReject 的注释。不接线的理由有两条，都要留在这儿：
+                 *
+                 * ① 它与两条 ★★★ 守卫直接冲突
+                 *    （PhoneBindFlowTest / IdentityUnificationFlowTest），
+                 *    那两条钉的是「一期不自动合并」。推翻它们是产品决定，不是实现细节。
+                 * ② 我自己的边界还不够严：只查了「未完成订单」——
+                 *    一个有**已完成订单**的空壳仍会被并掉，而那是真的丢东西。
+                 *    要接线，先把判据换成「一笔订单都没有」。
+                 */
                 throw BizException.of(ErrorCode.CONFLICT);
             }
             return UserVO.of(user);   // 已经绑过同一个号，幂等返回
@@ -243,6 +290,82 @@ public class UserServiceImpl implements UserService {
         user.setPhone(phone);
         userMapper.updateById(user);
         return UserVO.of(user);
+    }
+
+    /**
+     * 手机号属于另一个账号时怎么办。
+     *
+     * <h2>方向是反的：把 openid 挂过去，不是把手机号挂过来</h2>
+     * 代码里早就写着「<b>手机号是唯一权威标识，权威表是凭证表</b>」。
+     * 既然如此，认出「同一个人」之后该动的是**这次新建的那个壳**，
+     * 而不是那个已经有历史的账号。
+     *
+     * <p>把手机号挂到当前账号上是<b>绝不能做</b>的：库里会出现两行同样的手机号凭证，
+     * 而按手机号找账号的地方（B 端登录）是 {@code limit 1} 取一行 ——
+     * 一个商家的登录会随机解析到一个没有 {@code mch_account} 的账号，
+     * <b>他就登不进自己的后台了</b>。2026-09-04 实测遇到过：
+     * 那个号正是一个商家账号的登录号。
+     *
+     * <h2>接管的边界：只接管「什么都还没有的壳」</h2>
+     * 「跨五个域的账号合并」那条顾虑针对的是订单、积分、卡包、优惠券 ——
+     * 那些确实不能自动搬。而<b>这里要搬的只有一行 openid 凭证</b>，
+     * 前提是当前账号本来就什么都没有：
+     * <ul>
+     *   <li>只有 openid 类凭证（没有 PHONE、没有 PASSWORD）—— 说明它是静默登录建的壳；</li>
+     *   <li>没有未完成订单 —— 有订单就意味着有钱的痕迹，那条路留给人工。</li>
+     * </ul>
+     * 任何一条不满足，仍然 {@code CONFLICT}，与此前的行为一致。
+     *
+     * <h2>会话怎么切</h2>
+     * <b>不在这里发新令牌</b>，而是把当前账号作废，让端上重新走一次静默登录 ——
+     * 那条路已经在跑、已经被测过。为了一个分支新开一条发令牌的口，
+     * 是在鉴权链上多开一个入口，而这条链上多一个入口就多一处要证明的事。
+     */
+    private UserVO adoptOrReject(UsrAccount current, String targetUserNo) {
+        List<UsrIdentity> mine = identityMapper.selectList(Wrappers.<UsrIdentity>lambdaQuery()
+                .eq(UsrIdentity::getUserNo, current.getUserNo()));
+        boolean onlyOpenid = !mine.isEmpty() && mine.stream()
+                .allMatch(i -> i.getIdentityType() != null && i.getIdentityType().startsWith("WX_OPENID"));
+        if (!onlyOpenid || openOrderPort.hasOpenOrders(current.getUserNo())) {
+            /*
+             * 当前账号已经是个「有内容的人」了 —— 这才是那条「不自动合并」真正针对的情形。
+             * 留痕之后转人工，不猜。
+             */
+            log.warn("[bind-phone] 手机号属于 {}，而当前账号 {} 已有凭证或订单，不接管",
+                    targetUserNo, current.getUserNo());
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        // ① openid 凭证挪到目标账号
+        for (UsrIdentity i : mine) {
+            i.setUserNo(targetUserNo);
+            identityMapper.updateById(i);
+        }
+        // ② 过渡期双写的旧列：先腾位置再补，uk_openid 是唯一键，反过来会撞
+        UsrAccount target = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                .eq(UsrAccount::getUserNo, targetUserNo).last("limit 1"));
+        String openid = current.getOpenid();
+        /*
+         * **必须用显式 set(null) 清空，不能 setOpenid(null) + updateById。**
+         * MyBatis-Plus 的 updateById 跳过 null 字段 —— 那句 set 根本不会生成，
+         * 旧列还留着同一个 openid，紧接着给目标账号设同一个值就撞 uk_openid，
+         * 整个绑定以 10500 结束。这个坑本仓库记过一次，我又踩了一次。
+         */
+        userMapper.update(null, Wrappers.<UsrAccount>lambdaUpdate()
+                .set(UsrAccount::getOpenid, null)
+                .set(UsrAccount::getDeleted, 1)
+                .eq(UsrAccount::getUserNo, current.getUserNo()));
+        if (target != null && openid != null && !openid.isBlank()) {
+            target.setOpenid(openid);
+            userMapper.updateById(target);
+        }
+        log.info("[bind-phone] 空壳账号 {} 已并入 {} —— 端上要重新登录一次", 
+                current.getUserNo(), targetUserNo);
+        /*
+         * **返回目标账号。** 端上会看到 userNo 变了，据此重新静默登录 ——
+         * 而且当前令牌指向的账号已经作废，下一次调用本来也会 401。
+         */
+        return target != null ? UserVO.of(target) : UserVO.of(current);
     }
 
     private UsrAccount currentUser() {

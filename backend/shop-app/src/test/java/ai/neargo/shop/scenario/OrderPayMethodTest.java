@@ -57,6 +57,10 @@ class OrderPayMethodTest {
     @Autowired
     private MerchantMappers.MchPaymentMapper paymentMapper;
 
+    /** 判据来自路由表：装配了才算接得上，与通道表的 enabled 位是两件事 */
+    @Autowired
+    private ai.neargo.shop.pay.channel.PayGatewayRouter router;
+
     private static int seq = 0;
 
     private MockMvc mvc() {
@@ -166,5 +170,46 @@ class OrderPayMethodTest {
         }
         // 对照量：至少要返回了一些方式，否则上面的循环一次都没跑
         assertThat(vo.path("methods")).as("一种方式都没返回，上面那个循环等于没跑").isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("★★★ 网关没装配的通道，available 必须为 false —— 端上会默认选中第一个可用的")
+    void channelsWithoutAGatewayAreNeverAvailable() throws Exception {
+        /*
+         * **这条钉的是端上「默认选中」的前提。**
+         *
+         * 收银台的默认选择是 `list.methods.find(m => m.available)` ——
+         * 只要有一个网关没接的通道被标成可用，用户打开页面**默认就选中它**，
+         * 点「立即支付」必然失败，而失败信息是「收款通道还没接通」，
+         * 看起来像商家没进件。
+         *
+         * 判据来自路由表（{@code PayGatewayRouter.supports}）而不是通道表的
+         * enabled 位：enabled 说的是「运营开没开这条」，
+         * 装配说的是「代码接没接这条」，**两者可以不一致，而不一致的那一侧就是坑**。
+         * 2026-09-04 线上正是这个状态：支付宝 enabled=1 而网关没接。
+         */
+        String token = TestLogin.consumer(mvc(), json, otpStore, PHONE);
+        String userNo = currentUserNo(token);
+        JsonNode vo = payMethods(token, order(userNo, "M-PM-GW-" + (++seq)));
+
+        int checked = 0;
+        for (JsonNode m : vo.path("methods")) {
+            String ch = m.path("payChannel").asText();
+            if (!router.supports(ch)) {
+                assertThat(m.path("available").asBoolean())
+                        .as("通道 %s 没有装配网关，却被标成可用 —— "
+                                + "端上默认会选中第一个可用的，用户点了必然失败", ch)
+                        .isFalse();
+                checked++;
+            }
+        }
+        /*
+         * **对照量。** 一个没装配的通道都没有的话，上面的循环一次都没跑，
+         * 而这条用例会「全绿地什么都没验」。
+         */
+        assertThat(checked)
+                .as("测试世界里所有通道都装配了网关 —— 这条用例没有验到任何东西，"
+                        + "要么补一条没网关的通道种子，要么删掉它")
+                .isPositive();
     }
 }

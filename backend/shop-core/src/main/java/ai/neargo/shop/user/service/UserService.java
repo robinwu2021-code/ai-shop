@@ -32,6 +32,12 @@ public interface UserService {
      * 微信进来的用户绑了手机号，之后用手机号登录必须还是同一个人，
      * 否则同一用户会有两套订单与两个购物车。
      */
+    /**
+     * 发验证码之前的归属判定：已经绑在**自己**账号上就别发了（{@code PHONE_ALREADY_BOUND}）。
+     * 属于别人或全新号码一律放行 —— 理由见实现里的注释（自证与枚举预言机）。
+     */
+    void assertPhoneSendable(String phone);
+
     UserVO bindPhone(String phone, String code);
 
     /**
