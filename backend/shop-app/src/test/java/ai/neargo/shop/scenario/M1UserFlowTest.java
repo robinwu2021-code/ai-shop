@@ -111,6 +111,29 @@ class M1UserFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 绑手机号时验证码不对 → 10455「验证码不对或已过期」，不是 10400「参数有误」")
+    void wrongCodeOnBindSaysWrongCodeNotBadRequest() throws Exception {
+        /*
+         * **这两句话把人带到完全不同的地方。**
+         * 「请求参数有误」让人去查表单字段；真正该做的是重新获取一次验证码。
+         *
+         * 2026-09-04 实测有人卡在这里：短信确实发出去了（sys_notify_log 里是 SENT），
+         * 码过了 5 分钟 TTL，而屏幕上说的是「参数错误」。
+         *
+         * 登录（AuthServiceImpl）与商家员工（MerchantStaffServiceImpl）两条路
+         * 一直用的就是 OTP_INVALID —— **只有绑定这一条漏了**，
+         * 正是本仓库自己警告过的「少一个入口、少一条分支」。
+         */
+        String token = login("13600136099");
+
+        mvc().perform(post("/mp/user/phone/bind").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"13600136098\",\"code\":\"000000\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(10455));
+    }
+
+    @Test
     @DisplayName("修改昵称与头像")
     void updateProfile() throws Exception {
         String token = login("13600136004");

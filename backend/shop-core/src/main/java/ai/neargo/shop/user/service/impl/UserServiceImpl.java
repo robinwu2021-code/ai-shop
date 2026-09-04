@@ -175,7 +175,21 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserVO bindPhone(String phone, String code) {
         if (!otpStore.verifyAndConsume(phone, code)) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
+            /*
+             * **OTP_INVALID，不是 BAD_REQUEST**（2026-09-04 修）。
+             *
+             * 这一处此前抛 BAD_REQUEST —— 端上看到的是「请求参数有误」，
+             * 而真实原因是「验证码不对或已过期」。两句话把人带到完全不同的地方：
+             * 一个去查表单字段，一个去重新获取验证码。
+             * 实测有人卡在这里：短信确实发出去了（sys_notify_log 有 SENT），
+             * 码过了 5 分钟 TTL，而屏幕上说的是「参数错误」。
+             *
+             * 登录（AuthServiceImpl）与商家员工（MerchantStaffServiceImpl）
+             * 两条路一直用的就是 OTP_INVALID —— **只有绑定这一条漏了**。
+             * 正是本仓库自己警告过的「少一个入口、少一条分支」
+             * （见 bindPhoneTrusted 的注释）。
+             */
+            throw BizException.of(ErrorCode.OTP_INVALID);
         }
         return attachPhone(phone);
     }

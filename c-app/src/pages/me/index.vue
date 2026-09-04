@@ -14,6 +14,9 @@ import { confirm } from "@ai-shop/ui/prompt";
 import { isPhone } from "@shared/utils/validate";
 
 const { t } = useI18n();
+
+/** 构建版本号（vite define 注入）。见「帮助中心」那一行上方的注释 */
+const buildVersion = __BUILD_VERSION__;
 const user = useUserStore();
 /** 「我的」页的绑定入口。静默登录之后「有账号没手机号」是常态 */
 const phoneGate = ref(false);
@@ -297,9 +300,20 @@ onShow(() => {
         <text class="txt-body cell__label">{{ $t("me.appearance") }}</text>
         <text class="txt-sub cell__value">{{ $t("me.appearanceValue") }}</text>
       </view>
+      <!--
+        帮助中心这一行带**构建版本号**。它不是给用户看的功能说明，
+        是为了回答一个联调时反复出现的问题：**我手上这份是不是刚传的那一版**。
+        没有它的时候，「改了没生效」与「装的是旧包」在屏幕上长得一模一样，
+        而两者的排查方向完全相反。
+        版本串形如 `0.1.1 · 0904-1955`，后半段是构建时刻 —— 见 vite.config.mts。
+      -->
       <view class="cell sh-row sh-row--between">
         <text class="txt-body cell__label">{{ $t("me.help") }}</text>
         <text class="txt-sub cell__value">{{ $t("me.helpValue") }}</text>
+      </view>
+      <view class="cell sh-row sh-row--between">
+        <text class="txt-body cell__label">{{ $t("me.version") }}</text>
+        <text class="txt-sub cell__value">{{ buildVersion }}</text>
       </view>
       <!-- 此前**整个 c-app 没有退出登录入口** —— store 里的 logout() 是死代码。
            没有入口意味着共用设备上无法结束会话，而令牌在服务端一直有效 -->

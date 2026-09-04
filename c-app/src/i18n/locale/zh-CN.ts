@@ -212,6 +212,7 @@ export default {
     myCommunity: "我的社区",
     help: "帮助中心",
     helpValue: "退款 · 自提 · 称重差价",
+    version: "版本",
     logout: "退出登录",
     logoutConfirm: "退出后需要重新登录才能查看订单与优惠券。",
     deregister: "注销账号",

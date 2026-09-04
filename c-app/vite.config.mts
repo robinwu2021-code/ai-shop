@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
 import uniModule from "@dcloudio/vite-plugin-uni";
@@ -10,7 +11,30 @@ const uni = ((uniModule as any).default ?? uniModule) as () => any;
 
 // uni 插件在前，UnoCSS 在后（uni-app 官方推荐顺序）。
 // ⚠️ vite 精确锁 5.2.8：@dcloudio/vite-plugin-uni 的 peerDependencies 钉死此版本，勿升。
+/*
+ * 构建版本号：**versionName + 构建时刻**，注入成 `__BUILD_VERSION__`，
+ * 显示在「我的 → 帮助中心」那一行。
+ *
+ * <b>为什么不只用 versionName</b>：它要人记得改。忘了改的那次，屏幕上还是同一个数 ——
+ * 而这个数存在的全部意义，是回答「我手上这份是不是刚传的那一版」。
+ * 一个不会变的版本号对这个问题永远答「是」，比没有更糟。
+ * 带上构建时刻之后，它每次构建都不同，答错不了。
+ *
+ * 真源仍是 manifest.json（与 release-mp.sh 读 appid 同一个道理：只有一份）。
+ */
+const MANIFEST = fileURLToPath(new URL("./src/manifest.json", import.meta.url));
+const VERSION_NAME =
+  /"versionName"\s*:\s*"([^"]+)"/.exec(readFileSync(MANIFEST, "utf8"))?.[1] ?? "0.0.0";
+// 北京时间的 MMDD-HHmm。构建机时区不定，所以按 UTC+8 自己算，别依赖本地时区
+const D = new Date(Date.now() + 8 * 3600 * 1000);
+const pad = (n: number) => String(n).padStart(2, "0");
+const BUILD_STAMP =
+  `${pad(D.getUTCMonth() + 1)}${pad(D.getUTCDate())}-${pad(D.getUTCHours())}${pad(D.getUTCMinutes())}`;
+
 export default defineConfig({
+  define: {
+    __BUILD_VERSION__: JSON.stringify(`${VERSION_NAME} · ${BUILD_STAMP}`),
+  },
   // 两端各自独立部署在自己的域名根路径下（ADR-008 §5）。
   // 这个开关只为「非要挂在某个子路径下」的场景保留 —— 但**别再用它把两端合到同一域名**：
   // 同源会让两端共用 localStorage（登录态、皮肤、mock 数据库全串在一起）

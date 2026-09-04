@@ -17,3 +17,10 @@ declare module "*.vue" {
   const component: DefineComponent<{}, {}, any>;
   export default component;
 }
+
+/**
+ * 构建版本号（vite define 注入，见 vite.config.mts）。
+ * 形如 `0.1.1 · 0904-1955` —— 后半段是构建时刻，
+ * 它保证这个数**每次构建都不同**，因而能回答「我手上这份是不是刚传的那一版」。
+ */
+declare const __BUILD_VERSION__: string;
