@@ -164,6 +164,28 @@ const zh = {
   mapNoNearby: "红钉是这条提报的落点。附近 2 公里内没有已开通的聚落",
   fieldApplyCoords: "提报坐标",
   apOrigin: "官方村码",
+  // ── 坐标健康度（这一页是位置模块的分母）──────────────────────────
+  tabHealth: "坐标健康",
+  loading: "读取中…",
+  statStores: "门店已标点",
+  statAddresses: "收货地址有坐标",
+  statCommunities: "聚落有坐标",
+  storeConsequence: "没标点 = 自送半径不生效：商家以为限了几公里，实际多远的单都会进来，等他要送货才发现送不到，而那时钱已经收了",
+  addressConsequence: "没坐标的地址推不出任何聚落 —— 它进不了任何片区的统计，位置分析里要单列一格，不能算成「这一带没需求」",
+  communityConsequence: "没坐标的聚落谁也匹配不到，而它看起来一切正常：建档成功、列表里有、买家就是选不到",
+  missingStoresTitle: "还没在地图上标点的门店",
+  missingCommunitiesTitle: "还没有坐标的聚落",
+  allStoresPinned: "门店都标过点了",
+  colStoreName: "门店",
+  colStoreNo: "门店号",
+  colMerchant: "所属商家",
+  colSetRadius: "他设的自送半径",
+  radiusSuffix: " 米（未生效）",
+  radiusUnset: "没设",
+  storeAllGood: "都标过点了 —— 商家设的自送半径现在是真生效的",
+  addressAllGood: "都有坐标 —— 位置分析的分母是干净的",
+  communityAllGood: "都有坐标 —— 每个聚落都匹配得到",
+
 };
 
 const en: typeof zh = {
@@ -327,6 +349,27 @@ const en: typeof zh = {
   mapNoNearby: "Red pin: this submission. No open communities within 2 km",
   fieldApplyCoords: "Submitted coordinates",
   apOrigin: "Official village code",
+  tabHealth: "Coordinates",
+  loading: "Loading…",
+  statStores: "Stores pinned",
+  statAddresses: "Addresses with coordinates",
+  statCommunities: "Communities with coordinates",
+  storeConsequence: "No pin = the delivery radius does nothing: the merchant thinks he capped it at a few km, but every order gets through — he finds out on delivery day, after the money is taken",
+  addressConsequence: "An address without coordinates resolves to no community — it belongs in its own bucket, never counted as \"no demand here\"",
+  communityConsequence: "A community without coordinates matches nobody, while everything looks fine: created, listed, and simply unselectable",
+  missingStoresTitle: "Stores not pinned on the map yet",
+  missingCommunitiesTitle: "Communities without coordinates",
+  allStoresPinned: "Every store is pinned",
+  colStoreName: "Store",
+  colStoreNo: "Store no.",
+  colMerchant: "Merchant",
+  colSetRadius: "Radius they set",
+  radiusSuffix: " m (inactive)",
+  radiusUnset: "Not set",
+  storeAllGood: "All pinned — the delivery radius merchants set is actually in force",
+  addressAllGood: "All have coordinates — the denominator for location analysis is clean",
+  communityAllGood: "All have coordinates — every community is matchable",
+
 };
 
 export const COMMUNITIES_COPY: PageCopy<typeof zh> = { zh, en };

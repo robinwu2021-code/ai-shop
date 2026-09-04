@@ -413,6 +413,64 @@ _无字段_
 类型：[`NearbyCommunity`](#nearbycommunity)\[\]
 
 
+#### GET `/ops/coverage/health`
+
+坐标健康度（P-2.1）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`CoverageHealth`](#coveragehealth)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `stores` | `object`（见下） | 是 | — |
+| `addresses` | `object`（见下） | 是 | 地址**只给聚合数**：那是个人信息，看总数就够判断分母有多脏 |
+| `communities` | `object`（见下） | 是 | — |
+
+`stores` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `total` | `number` | 是 | — |
+| `withCoords` | `number` | 是 | — |
+| `missing` | `object`（见下）\[\] | 是 | 没标点的那些。**给明细不只给数字** —— 只给一个数，运营下一步无从做起 |
+
+`stores.missing[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `storeName` | `string` | 是 | — |
+| `merchantNo` | `string` | 是 | 从这里跳到商家去催他标点。**刻意不带商家名**（取名字要绕数据域） |
+| `deliveryRadiusM` | `number,null` | 是 | 他以为自己限了多少米，而实际一米都没限 —— 后果有多大就看这个数 |
+
+`addresses` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `total` | `number` | 是 | — |
+| `withCoords` | `number` | 是 | — |
+
+`communities` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `total` | `number` | 是 | — |
+| `withCoords` | `number` | 是 | — |
+| `missing` | `object`（见下）\[\] | 是 | 没坐标的聚落**谁也匹配不到** —— 而它看起来一切正常：建档成功、列表里有 |
+
+`communities.missing[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `communityNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+
+
 #### GET `/ops/pickups`
 
 listPickups
@@ -9487,6 +9545,55 @@ _无字段_
 | `amount` | `number` | 是 | 本次发放占用的预算（分） |
 | `operator` | `string` | 是 | 操作人（STAFF 账号）。**客服也持有发券权限**，留痕不能省 |
 | `createdAt` | `string` | 是 | 发放时间 |
+
+### CoverageHealth
+
+坐标健康度 —— **整个位置模块的分母**。 门店没标点时后端那条自送半径的闸**直接放行**（缺数据不该拦正常订单，这是对的）。 代价是商家以为自己限了三公里、实际多远的单都进来，等他要送货才发现送不到， 那时钱已经收了。而这件事此前在任何界面上都看不见 —— 商家看不见，运营也看不见。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `stores` | `object`（见下） | 是 | — |
+| `addresses` | `object`（见下） | 是 | 地址**只给聚合数**：那是个人信息，看总数就够判断分母有多脏 |
+| `communities` | `object`（见下） | 是 | — |
+
+`stores` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `total` | `number` | 是 | — |
+| `withCoords` | `number` | 是 | — |
+| `missing` | `object`（见下）\[\] | 是 | 没标点的那些。**给明细不只给数字** —— 只给一个数，运营下一步无从做起 |
+
+`stores.missing[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `storeName` | `string` | 是 | — |
+| `merchantNo` | `string` | 是 | 从这里跳到商家去催他标点。**刻意不带商家名**（取名字要绕数据域） |
+| `deliveryRadiusM` | `number,null` | 是 | 他以为自己限了多少米，而实际一米都没限 —— 后果有多大就看这个数 |
+
+`addresses` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `total` | `number` | 是 | — |
+| `withCoords` | `number` | 是 | — |
+
+`communities` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `total` | `number` | 是 | — |
+| `withCoords` | `number` | 是 | — |
+| `missing` | `object`（见下）\[\] | 是 | 没坐标的聚落**谁也匹配不到** —— 而它看起来一切正常：建档成功、列表里有 |
+
+`communities.missing[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `communityNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
 
 ### DashboardKpi
 

@@ -1,12 +1,19 @@
 // 覆盖范围：社区网格（P-2.1）与自提点主数据（P-2.2）。
 import type {
-  Community, CommunityApply, CommunityDuplicate, NearbyCommunity, Page, PickupPoint, PickupStatus,
+  Community, CommunityApply, CommunityDuplicate, CoverageHealth, NearbyCommunity, Page, PickupPoint, PickupStatus,
   Region, RegionSuggestion,
 } from "@/lib/types";
 import type { PickupDraft } from "@/lib/types";
 import type { CommunityApplyQ, CommunityQ, PickupQ } from "../query";
 
 export interface CommunityApi {
+  /**
+   * 坐标健康度（P-2.1）。**位置模块所有分析的分母** ——
+   * 没标点的门店让自送半径失效、没坐标的地址推不出聚落。
+   * 分母写错的分析比没有分析更危险：它会让运营去撤一个其实有人的片区的商家。
+   */
+  coverageHealth(): Promise<CoverageHealth>;
+
   listCommunities(q?: CommunityQ): Promise<Page<Community>>;
   /** 开城/停城（P-2.1.2）。停城不影响已有订单，只是 C 端不再展示。 */
   setCommunityOpen(communityNo: string, opened: boolean): Promise<Community>;

@@ -32,12 +32,13 @@ import { RegionPicker } from "./region-picker";
 import { TabHeader } from "@/components/ui/tab-header";
 import { ApplyTab } from "./apply-tab";
 import { RegionTab } from "./region-tab";
+import { HealthTab } from "./health-tab";
 import { DuplicatesPanel } from "./duplicates-panel";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof COMMUNITIES_COPY)["zh"];
-const TAB_KEYS = ["grid", "pickups", "neighbor", "applies", "regions"] as const;
+const TAB_KEYS = ["grid", "pickups", "neighbor", "applies", "regions", "health"] as const;
 
 const OPEN_OPTIONS = (c: Copy) => [
   { value: "1", label: c.openedYes },
@@ -330,6 +331,8 @@ function CommunitiesInner() {
         通过一条会让这个村对「全平台商家」可见，与改一个社区不是一回事。
       */}
       {tab === "regions" && <RegionTab c={cp} canDecide={allow("community:region:update")} />}
+      {/* 坐标健康度：只读，判 community:community:read（与社区网格同一码） */}
+      {tab === "health" && <HealthTab enabled={tab === "health"} />}
 
       {tab === "regions" && !allow("community:region:update") && (
         <ReadOnlyNotice what={cp.readOnlyRegionWhat} perm="community:region:update" note={cp.readOnlyRegionNote} className="mb-3" />

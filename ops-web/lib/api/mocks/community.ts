@@ -47,6 +47,25 @@ export const communityMock: CommunityApi = {
       ),
     ),
 
+  /**
+   * mock 里**必须造出「有缺口」的样子**：全都齐了的话，这一页在开发期看起来
+   * 永远是一片绿，而它存在的全部意义就是把缺口露出来。
+   * 与线上实测同形状（2026-09-04：9 家门店只有 2 家标过点）。
+   */
+  coverageHealth: async () => wait({
+    stores: {
+      total: 9,
+      withCoords: 2,
+      missing: [
+        { storeNo: "ST-M0001", storeName: "老张粮油店", merchantNo: "M0001", deliveryRadiusM: 3000 },
+        { storeNo: "ST-M0002", storeName: "阿明果蔬合作社", merchantNo: "M0002", deliveryRadiusM: 3000 },
+        { storeNo: "ST-M0003", storeName: "巷口早餐铺", merchantNo: "M0003", deliveryRadiusM: null },
+      ],
+    },
+    addresses: { total: 3, withCoords: 2 },
+    communities: { total: 23, withCoords: 23, missing: [] },
+  }, 400),
+
   setCommunityOpen: async (communityNo, opened) => {
     const c = findCommunity(communityNo);
     c.opened = opened;

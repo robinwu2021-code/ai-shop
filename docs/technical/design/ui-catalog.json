@@ -1309,7 +1309,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 146,
+      "count": 147,
       "domains": [
         {
           "name": "经营看板",
@@ -2775,6 +2775,18 @@
             },
             {
               "app": "ops-web",
+              "route": "/communities?tab=health",
+              "title": "坐标健康",
+              "domain": "社区与网点",
+              "group": "社区网格",
+              "matrix": "P-2.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/communities?tab=health"
+            },
+            {
+              "app": "ops-web",
               "route": "/communities?tab=pickups",
               "title": "自提点",
               "domain": "社区与网点",
@@ -3131,5 +3143,5 @@
       ]
     }
   ],
-  "total": 253
+  "total": 254
 }

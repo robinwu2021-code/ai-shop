@@ -8641,3 +8641,43 @@ SELECT 'GOODS_OPS', 'OPS_PRODUCT__TAB_BANNED_WORD', 'OPS', NOW(), NOW() FROM DUA
 UPDATE sys_function_point
    SET name = '建品规则', updated_at = NOW()
  WHERE point_code = 'OPS_PRODUCT__TAB_BANNED_WORD';
+INSERT INTO sys_function_point
+  (point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+   backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMUNITY__TAB_HEALTH', 'OPS_COMMUNITY', '坐标健康', '社区网格',
+       '/communities?tab=health', 'community:community:read', 'community:community:read',
+       'IMPLEMENTED', 1, 'P-2.1', 'MENU', 60, NOW(), NOW()
+FROM DUAL WHERE NOT EXISTS (
+  SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMUNITY__TAB_HEALTH');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMUNITY__TAB_HEALTH', 'OPS', NOW(), NOW()
+FROM DUAL WHERE NOT EXISTS (
+  SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMUNITY__TAB_HEALTH');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'BD', 'OPS_COMMUNITY__TAB_HEALTH', 'OPS', NOW(), NOW()
+FROM DUAL WHERE NOT EXISTS (
+  SELECT 1 FROM sys_role_point x WHERE x.role_code='BD' AND x.point_code='OPS_COMMUNITY__TAB_HEALTH');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'GOODS_OPS', 'OPS_COMMUNITY__TAB_HEALTH', 'OPS', NOW(), NOW()
+FROM DUAL WHERE NOT EXISTS (
+  SELECT 1 FROM sys_role_point x WHERE x.role_code='GOODS_OPS' AND x.point_code='OPS_COMMUNITY__TAB_HEALTH');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPPORT', 'OPS_COMMUNITY__TAB_HEALTH', 'OPS', NOW(), NOW()
+FROM DUAL WHERE NOT EXISTS (
+  SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPPORT' AND x.point_code='OPS_COMMUNITY__TAB_HEALTH');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'CAMPAIGN_OPS', 'OPS_COMMUNITY__TAB_HEALTH', 'OPS', NOW(), NOW()
+FROM DUAL WHERE NOT EXISTS (
+  SELECT 1 FROM sys_role_point x WHERE x.role_code='CAMPAIGN_OPS' AND x.point_code='OPS_COMMUNITY__TAB_HEALTH');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'COMMUNITY_OPS', 'OPS_COMMUNITY__TAB_HEALTH', 'OPS', NOW(), NOW()
+FROM DUAL WHERE NOT EXISTS (
+  SELECT 1 FROM sys_role_point x WHERE x.role_code='COMMUNITY_OPS' AND x.point_code='OPS_COMMUNITY__TAB_HEALTH');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'AUDITOR', 'OPS_COMMUNITY__TAB_HEALTH', 'OPS', NOW(), NOW()
+FROM DUAL WHERE NOT EXISTS (
+  SELECT 1 FROM sys_role_point x WHERE x.role_code='AUDITOR' AND x.point_code='OPS_COMMUNITY__TAB_HEALTH');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'ANALYST', 'OPS_COMMUNITY__TAB_HEALTH', 'OPS', NOW(), NOW()
+FROM DUAL WHERE NOT EXISTS (
+  SELECT 1 FROM sys_role_point x WHERE x.role_code='ANALYST' AND x.point_code='OPS_COMMUNITY__TAB_HEALTH');

@@ -300,3 +300,34 @@ export type DuplicateReason = "SAME_NAME" | "NEARBY";
 
 /** 行政区划是怎么定出来的。ADDRESS 靠地址串匹配 / COORDS 靠坐标反查 */
 export type RegionMatchSource = "ADDRESS" | "COORDS";
+
+/**
+ * 坐标健康度 —— **整个位置模块的分母**。
+ *
+ * 门店没标点时后端那条自送半径的闸**直接放行**（缺数据不该拦正常订单，这是对的）。
+ * 代价是商家以为自己限了三公里、实际多远的单都进来，等他要送货才发现送不到，
+ * 那时钱已经收了。而这件事此前在任何界面上都看不见 —— 商家看不见，运营也看不见。
+ */
+export interface CoverageHealth {
+  stores: {
+    total: number;
+    withCoords: number;
+    /** 没标点的那些。**给明细不只给数字** —— 只给一个数，运营下一步无从做起 */
+    missing: {
+      storeNo: string;
+      storeName: string;
+      /** 从这里跳到商家去催他标点。**刻意不带商家名**（取名字要绕数据域） */
+      merchantNo: string;
+      /** 他以为自己限了多少米，而实际一米都没限 —— 后果有多大就看这个数 */
+      deliveryRadiusM: number | null;
+    }[];
+  };
+  /** 地址**只给聚合数**：那是个人信息，看总数就够判断分母有多脏 */
+  addresses: { total: number; withCoords: number };
+  communities: {
+    total: number;
+    withCoords: number;
+    /** 没坐标的聚落**谁也匹配不到** —— 而它看起来一切正常：建档成功、列表里有 */
+    missing: { communityNo: string; name: string }[];
+  };
+}

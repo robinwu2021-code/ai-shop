@@ -438,6 +438,8 @@ export const NAV: NavSection[] = [
       // 放同一页而不是新开菜单 —— 否则运营要在两个地方找同一件事。
       // 读权限与其它 tab 一致；裁决按钮另判 community:region:update
       { href: "/communities?tab=regions", label: "区划维护", perm: "community:region:read", group: "社区网格", matrix: "P-2.1", ready: true },
+      // 坐标健康度：位置模块的分母（没标点的门店 = 自送半径是哑的）
+      { href: "/communities?tab=health", label: "坐标健康", perm: "community:community:read", group: "社区网格", matrix: "P-2.1", ready: true },
       { href: "/communities?tab=pickups", label: "自提点", perm: "community:pickup:read", group: "自提点", matrix: "P-2.2", ready: true },
       { href: "/communities?tab=neighbor", label: "临时点监控", perm: "community:pickup:read", group: "自提点", matrix: "P-2.2", ready: true },
     ],

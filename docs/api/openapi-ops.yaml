@@ -2073,6 +2073,89 @@ components:
         - "acceptCount30d"
         - "createdAt"
       additionalProperties: false
+    CoverageHealth: 
+      type: "object"
+      properties: 
+        stores: 
+          type: "object"
+          properties: 
+            total: 
+              type: "number"
+            withCoords: 
+              type: "number"
+            missing: 
+              type: "array"
+              items: 
+                type: "object"
+                properties: 
+                  storeNo: 
+                    type: "string"
+                  storeName: 
+                    type: "string"
+                  merchantNo: 
+                    type: "string"
+                    description: "从这里跳到商家去催他标点。**刻意不带商家名**（取名字要绕数据域）"
+                  deliveryRadiusM: 
+                    type: 
+                      - "number"
+                      - "null"
+                    description: "他以为自己限了多少米，而实际一米都没限 —— 后果有多大就看这个数"
+                required: 
+                  - "storeNo"
+                  - "storeName"
+                  - "merchantNo"
+                  - "deliveryRadiusM"
+                additionalProperties: false
+              description: "没标点的那些。**给明细不只给数字** —— 只给一个数，运营下一步无从做起"
+          required: 
+            - "total"
+            - "withCoords"
+            - "missing"
+          additionalProperties: false
+        addresses: 
+          type: "object"
+          properties: 
+            total: 
+              type: "number"
+            withCoords: 
+              type: "number"
+          required: 
+            - "total"
+            - "withCoords"
+          additionalProperties: false
+          description: "地址**只给聚合数**：那是个人信息，看总数就够判断分母有多脏"
+        communities: 
+          type: "object"
+          properties: 
+            total: 
+              type: "number"
+            withCoords: 
+              type: "number"
+            missing: 
+              type: "array"
+              items: 
+                type: "object"
+                properties: 
+                  communityNo: 
+                    type: "string"
+                  name: 
+                    type: "string"
+                required: 
+                  - "communityNo"
+                  - "name"
+                additionalProperties: false
+              description: "没坐标的聚落**谁也匹配不到** —— 而它看起来一切正常：建档成功、列表里有"
+          required: 
+            - "total"
+            - "withCoords"
+            - "missing"
+          additionalProperties: false
+      required: 
+        - "stores"
+        - "addresses"
+        - "communities"
+      additionalProperties: false
+      description: "坐标健康度 —— **整个位置模块的分母**。\n\n门店没标点时后端那条自送半径的闸**直接放行**（缺数据不该拦正常订单，这是对的）。 代价是商家以为自己限了三公里、实际多远的单都进来，等他要送货才发现送不到， 那时钱已经收了。而这件事此前在任何界面上都看不见 —— 商家看不见，运营也看不见。"
     BatchStatus: 
       type: "string"
       enum: 
@@ -8656,6 +8739,32 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/coverage/health": 
+    get: 
+      operationId: "coverageHealth"
+      summary: "坐标健康度（P-2.1）"
+      tags: 
+        - "community"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/CoverageHealth"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/communities": 
     get: 
       operationId: "listCommunities"
