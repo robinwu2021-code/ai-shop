@@ -202,12 +202,40 @@ export type StoreGovernStatus = "ACTIVE" | "READONLY" | "SUSPENDED";
 export interface StoreGovernDetail {
   /** 门店档案本身（与列表行同一份形状） */
   store: StoreGovern;
-  /** 覆盖的社区名。挂在**主体**上 —— 同主体的门店看到同一份，界面别写成「本店覆盖」 */
-  communityNames: string[];
+  /** 经营范围与它的投影结果。挂在**主体**上 —— 同主体的门店看到同一份，界面别写成「本店覆盖」 */
+  coverage: MerchantCoverage;
   /** 这家店挂靠的取货点名。空数组 = 没挂，不是没查到 */
   pickupNames: string[];
   /** 近 30 天店铺码扫码次数。与获客看板同一个数据源，不另算一份 */
   scanCount30d: number;
+}
+
+/**
+ * 一个主体的经营范围明细。
+ *
+ * **三块分开，缺一块都会被读反：**
+ * - `includes` 他框了哪些地方
+ * - `excludes` 他**明确排除**的地方 —— 混在上面一起列，运营会读成「他做这儿」，而事实正好相反
+ * - `reachableCount` 展开之后**实际覆盖几个聚落** —— 框了什么与覆盖到什么不是一回事：
+ *   框一个街道可能展开成 30 个聚落，也可能一个都没有（那条街道下还没开通任何聚落），
+ *   而后者在只看「他框了什么」的界面上完全看不出来
+ */
+export interface MerchantCoverage {
+  includes: CoverageArea[];
+  excludes: CoverageArea[];
+  reachableCount: number;
+  /** 覆盖到的聚落名，最多几条。只给一个数字的话，30 与 3 一样让人无从判断展开对不对 */
+  reachableSample: string[];
+}
+
+export interface CoverageArea {
+  /** COMMUNITY / STREET / DISTRICT / CITY / PROVINCE */
+  level: string;
+  refCode: string;
+  /** 取不到名就给号，**不留空** —— 空会被读成「没有这一条」 */
+  name: string;
+  /** ACTIVE / PENDING */
+  status: string;
 }
 
 export interface StoreGovern {

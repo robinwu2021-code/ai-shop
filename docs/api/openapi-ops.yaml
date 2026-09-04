@@ -2806,11 +2806,9 @@ components:
         store: 
           "$ref": "#/definitions/StoreGovern"
           description: "门店档案本身（与列表行同一份形状）"
-        communityNames: 
-          type: "array"
-          items: 
-            type: "string"
-          description: "覆盖的社区名。挂在**主体**上 —— 同主体的门店看到同一份，界面别写成「本店覆盖」"
+        coverage: 
+          "$ref": "#/definitions/MerchantCoverage"
+          description: "经营范围与它的投影结果。挂在**主体**上 —— 同主体的门店看到同一份，界面别写成「本店覆盖」"
         pickupNames: 
           type: "array"
           items: 
@@ -2821,7 +2819,7 @@ components:
           description: "近 30 天店铺码扫码次数。与获客看板同一个数据源，不另算一份"
       required: 
         - "store"
-        - "communityNames"
+        - "coverage"
         - "pickupNames"
         - "scanCount30d"
       additionalProperties: false
@@ -2904,6 +2902,51 @@ components:
         - "deliveryMinOrderMinor"
         - "deliveryFeeMinor"
         - "deliveryFreeThresholdMinor"
+      additionalProperties: false
+    MerchantCoverage: 
+      type: "object"
+      properties: 
+        includes: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/CoverageArea"
+        excludes: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/CoverageArea"
+        reachableCount: 
+          type: "number"
+        reachableSample: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "覆盖到的聚落名，最多几条。只给一个数字的话，30 与 3 一样让人无从判断展开对不对"
+      required: 
+        - "includes"
+        - "excludes"
+        - "reachableCount"
+        - "reachableSample"
+      additionalProperties: false
+      description: "一个主体的经营范围明细。\n\n**三块分开，缺一块都会被读反：**\n- `includes` 他框了哪些地方\n- `excludes` 他**明确排除**的地方 —— 混在上面一起列，运营会读成「他做这儿」，而事实正好相反\n- `reachableCount` 展开之后**实际覆盖几个聚落** —— 框了什么与覆盖到什么不是一回事：   框一个街道可能展开成 30 个聚落，也可能一个都没有（那条街道下还没开通任何聚落），   而后者在只看「他框了什么」的界面上完全看不出来"
+    CoverageArea: 
+      type: "object"
+      properties: 
+        level: 
+          type: "string"
+          description: "COMMUNITY / STREET / DISTRICT / CITY / PROVINCE"
+        refCode: 
+          type: "string"
+        name: 
+          type: "string"
+          description: "取不到名就给号，**不留空** —— 空会被读成「没有这一条」"
+        status: 
+          type: "string"
+          description: "ACTIVE / PENDING"
+      required: 
+        - "level"
+        - "refCode"
+        - "name"
+        - "status"
       additionalProperties: false
     StoreStats: 
       type: "object"

@@ -123,14 +123,40 @@ public interface MerchantGovernService {
      * 每行再去查社区/自提点/扫码数就是三次 N+1；而给它们留 null 又会让
      * 「列表不算这一项」和「这家店没有」长得一模一样。
      *
-     * @param communityNames 覆盖的社区名。挂在**主体**上，所以同主体的门店看到的是同一份
-     * @param pickupNames    这家店挂靠的取货点名。空 = 没挂，不是没查
-     * @param scanCount30d   近 30 天店铺码扫码次数 —— 与获客看板同一个数据源，不另算一份
+     * @param coverage    经营范围与它的**投影结果**。挂在<b>主体</b>上，同主体的门店看到同一份
+     * @param pickupNames 这家店挂靠的取货点名。空 = 没挂，不是没查
+     * @param scanCount30d 近 30 天店铺码扫码次数 —— 与获客看板同一个数据源，不另算一份
      */
     record StoreDetailVO(StoreGovernVO store,
-                         java.util.List<String> communityNames,
+                         CoverageVO coverage,
                          java.util.List<String> pickupNames,
                          long scanCount30d) {
+    }
+
+    /**
+     * 一个主体的经营范围明细。
+     *
+     * <p><b>三块分开，缺一块都会被读反：</b>
+     * <ul>
+     *   <li>{@code includes} 他框了哪些地方</li>
+     *   <li>{@code excludes} 他**明确排除**的地方 —— 混在上面一起列，运营会读成「他做这儿」，
+     *       而事实正好相反</li>
+     *   <li>{@code reachableCount} 展开之后**实际覆盖几个聚落** —— 框了什么和覆盖到什么不是一回事：
+     *       框一个街道可能展开成 30 个聚落，也可能一个都没有（那个街道下还没开通任何聚落），
+     *       而后者在只看「他框了什么」的界面上完全看不出来</li>
+     * </ul>
+     *
+     * @param reachableSample 覆盖到的聚落名，最多几条。给样本是为了让运营一眼看出
+     *                        「展开对不对」；只给一个数字的话，30 与 3 一样让人无从判断
+     */
+    record CoverageVO(java.util.List<AreaItem> includes,
+                      java.util.List<AreaItem> excludes,
+                      int reachableCount,
+                      java.util.List<String> reachableSample) {
+
+        /** @param name 取不到名就给号，<b>不留空</b> —— 空会被读成「没有这一条」 */
+        public record AreaItem(String level, String refCode, String name, String status) {
+        }
     }
 
     /** 门店详情（含上面那三项）。 */

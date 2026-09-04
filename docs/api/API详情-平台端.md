@@ -8458,7 +8458,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `store` | [`#/definitions/StoreGovern`](#definitionsstoregovern) | 是 | 门店档案本身（与列表行同一份形状） |
-| `communityNames` | `string`\[\] | 是 | 覆盖的社区名。挂在**主体**上 —— 同主体的门店看到同一份，界面别写成「本店覆盖」 |
+| `coverage` | [`#/definitions/MerchantCoverage`](#definitionsmerchantcoverage) | 是 | 经营范围与它的投影结果。挂在**主体**上 —— 同主体的门店看到同一份，界面别写成「本店覆盖」 |
 | `pickupNames` | `string`\[\] | 是 | 这家店挂靠的取货点名。空数组 = 没挂，不是没查到 |
 | `scanCount30d` | `number` | 是 | 近 30 天店铺码扫码次数。与获客看板同一个数据源，不另算一份 |
 
@@ -11547,7 +11547,7 @@ KPI 卡（金额为最小货币单位整数）。
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `store` | [`#/definitions/StoreGovern`](#definitionsstoregovern) | 是 | 门店档案本身（与列表行同一份形状） |
-| `communityNames` | `string`\[\] | 是 | 覆盖的社区名。挂在**主体**上 —— 同主体的门店看到同一份，界面别写成「本店覆盖」 |
+| `coverage` | [`#/definitions/MerchantCoverage`](#definitionsmerchantcoverage) | 是 | 经营范围与它的投影结果。挂在**主体**上 —— 同主体的门店看到同一份，界面别写成「本店覆盖」 |
 | `pickupNames` | `string`\[\] | 是 | 这家店挂靠的取货点名。空数组 = 没挂，不是没查到 |
 | `scanCount30d` | `number` | 是 | 近 30 天店铺码扫码次数。与获客看板同一个数据源，不另算一份 |
 

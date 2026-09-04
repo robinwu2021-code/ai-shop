@@ -96,15 +96,21 @@ class OpsStoreGovernFlowTest {
 
         /*
          * 详情带门面与配送规则字段。**档案挪到了 `data.store` 下**（P-11.2.1c）：
-         * 详情包 = 档案 + 覆盖社区 / 挂靠取货点 / 近 30 天扫码数，
+         * 详情包 = 档案 + 经营范围明细 / 挂靠取货点 / 近 30 天扫码数，
          * 这三项只有详情才算 —— 塞进列表就是三次 N+1。
+         *
+         * <p>覆盖那一项从 {@code communityNames}（读 {@code mch_entity_community}，
+         * 线上 0 行，于是对每一家商家都显示「没有覆盖社区」）换成了 {@code coverage}：
+         * 纳入 / 排除 / 实际展开三块分开，见 {@code MerchantCoverageDetailTest}。
          */
         String storeA = findByStatus(rows, "ACTIVE").get("storeNo").asString();
         mvc().perform(get("/ops/stores/" + storeA).header("Authorization", "Bearer " + ops))
                 .andExpect(jsonPath("$.data.store.isDefault").value(true))
                 .andExpect(jsonPath("$.data.store.merchantNo").value(merchantNo))
                 // ★ 三项必须**存在**：缺字段与「空」在端上长得一样，而含义相反
-                .andExpect(jsonPath("$.data.communityNames").isArray())
+                .andExpect(jsonPath("$.data.coverage.includes").isArray())
+                .andExpect(jsonPath("$.data.coverage.excludes").isArray())
+                .andExpect(jsonPath("$.data.coverage.reachableCount").exists())
                 .andExpect(jsonPath("$.data.pickupNames").isArray())
                 .andExpect(jsonPath("$.data.scanCount30d").exists());
 

@@ -239,10 +239,57 @@ export function StoresTab({ c }: { c: Copy }) {
             {/* 覆盖社区挂在**主体**上：同主体的门店看到同一份，所以标题不写「本店覆盖」 */}
             <DrawerSection title={c.stSecReach} desc={c.stReachHint}>
               <FieldGrid>
+                {/*
+                  ⚠️ 这一栏此前读的是 mch_entity_community，而那张表线上是 **0 行**
+                  （经营范围早就搬到 mch_service_area 了）—— 于是它对平台上
+                  **每一家商家**都显示「未覆盖任何社区」。不是报错、不是空白，
+                  是一行确定的「没有」：运营据此判断「这家还没配范围」，
+                  而他配了，只是配在另一张表里。
+
+                  现在三块分开：框了什么 / 排除了什么 / 实际覆盖到哪儿。
+                */}
                 <Field className="mb-3" label={c.stFieldCommunities}>
-                  {detail.data?.communityNames.length
-                    ? detail.data.communityNames.join("、")
+                  {detail.data?.coverage?.includes?.length
+                    ? detail.data.coverage!.includes.map((a) => a.name).join("、")
                     : <span className="text-muted-foreground">{c.stNoCommunity}</span>}
+                </Field>
+                {/*
+                  排除项**单列一栏**。混进上面那一栏，运营会读成「他做这儿」，
+                  而事实正好相反 —— 一个字段读反比没有这个字段更糟。
+                  没有排除项时整栏不出现：留一个空栏会让人以为「这里还没查出来」。
+                */}
+                {!!detail.data?.coverage?.excludes?.length && (
+                  <Field className="mb-3" label={c.stFieldExcludes}>
+                    <span className="text-destructive">
+                      {detail.data.coverage!.excludes.map((a) => a.name).join("、")}
+                    </span>
+                  </Field>
+                )}
+                {/*
+                  ⚠️ 每一处都 `coverage?.`：接**还没发这个字段的后端**时（部署有先后），
+                  少一栏是「少一栏」，而 `coverage.includes` 直接抛 TypeError ——
+                  整个抽屉白屏，运营连门店档案都打不开了。浏览器上当场撞到这个。
+
+                  投影结果：**框了什么 ≠ 覆盖到什么**。框一个街道可能展开成 30 个聚落，
+                  也可能一个都没有（那条街道下还没开通任何聚落）—— 后者在只看
+                  「他框了什么」的界面上完全看不出来，而买家看到的是后者。
+                */}
+                <Field className="mb-3" label={c.stFieldReachable}>
+                  {detail.data?.coverage ? (
+                    detail.data.coverage.reachableCount === 0 ? (
+                      <span className="text-destructive">{c.stReachableZero}</span>
+                    ) : (
+                      <>
+                        <span className="tabular-nums">{fill(c.stReachableCount, { n: detail.data.coverage.reachableCount })}</span>
+                        {!!detail.data.coverage.reachableSample.length && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {detail.data.coverage.reachableSample.join("、")}
+                            {detail.data.coverage.reachableCount > detail.data.coverage.reachableSample.length ? " …" : ""}
+                          </span>
+                        )}
+                      </>
+                    )
+                  ) : "—"}
                 </Field>
                 <Field className="mb-3" label={c.stFieldPickups}>
                   {/* 空 = 没挂，不是没查到 —— 两者在界面上要分得开 */}

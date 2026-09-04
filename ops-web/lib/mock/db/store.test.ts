@@ -92,8 +92,18 @@ describe("门店档案（P-11.2.1）", () => {
   it("★ 详情带回覆盖社区/取货点/扫码数；没挂取货点的店是空数组，不是查不到", async () => {
     const withPickup = await storeMock.getStore("ST001");
     expect(withPickup.pickupNames.length).toBeGreaterThan(0);
-    expect(withPickup.communityNames.length).toBeGreaterThan(0);
+    expect(withPickup.coverage.includes.length).toBeGreaterThan(0);
     expect(withPickup.scanCount30d).toBeGreaterThan(0);
+
+    /*
+     * ★ 排除项要**单列**，且投影数与「框了几条」不是同一个数。
+     * mock 里两者相等的话，界面把哪个显示成哪个都看不出来 ——
+     * 而这一屏改造的全部理由就是「框了什么 ≠ 覆盖到什么」。
+     */
+    expect(withPickup.coverage.excludes.length).toBeGreaterThan(0);
+    expect(withPickup.coverage.reachableCount)
+      .not.toBe(withPickup.coverage.includes.length);
+    expect(withPickup.coverage.reachableSample.length).toBeGreaterThan(0);
 
     // ST002 没挂点：**空数组**。若实现成「查不到就不返回这个字段」，下面这行会炸
     const noPickup = await storeMock.getStore("ST002");

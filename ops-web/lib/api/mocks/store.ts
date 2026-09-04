@@ -61,7 +61,24 @@ export const storeMock: StoreApi = {
      */
     return wait({
       store: s!,
-      communityNames: (m?.communityNos ?? []).map((no) => db.communities.find((x) => x.communityNo === no)?.name ?? no),
+      /*
+       * 覆盖明细。**mock 也要能演出「框了小区 + 排掉一栋楼」那一格** ——
+       * 只演纳入项的话，「排除项要单列」这条规则在 mock 下永远看不出效果，
+       * 而它正是这一屏改造的理由：混在一起列，运营会读成「他做这儿」。
+       *
+       * 投影数刻意与「框了几条」不同（框 1 条 → 覆盖 2 个聚落）：两个数字相等的话，
+       * 界面把哪个显示成哪个都看不出来。
+       */
+      coverage: (() => {
+        const nos = m?.communityNos ?? [];
+        const nameOf = (no: string) => db.communities.find((x) => x.communityNo === no)?.name ?? no;
+        const includes = nos.map((no) => ({ level: "COMMUNITY", refCode: no, name: nameOf(no), status: "ACTIVE" }));
+        const excludes = nos.length
+          ? [{ level: "COMMUNITY", refCode: `${nos[0]}B3`, name: `${nameOf(nos[0])} 3 幢`, status: "ACTIVE" }]
+          : [];
+        const sample = nos.flatMap((no) => [nameOf(no), `${nameOf(no)} 5 幢`]);
+        return { includes, excludes, reachableCount: sample.length, reachableSample: sample };
+      })(),
       pickupNames: storeNo === "ST001" ? ["文三路菜鸟驿站"] : [],
       /*
        * 扫码数取自店铺码那份数据。**mock 里两处的门店号不是同一套**

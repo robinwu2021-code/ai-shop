@@ -14,6 +14,7 @@ import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityCommunityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.ViolationMapper;
+import ai.neargo.shop.merchant.entity.MchServiceArea;
 import ai.neargo.shop.merchant.service.MerchantGovernService;
 import ai.neargo.shop.spi.platform.MerchantApplyQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -70,6 +71,15 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
     /** 待审覆盖项的展示名 —— 让运营对着「DISTRICT:330106」裁决等于让他去别处查一次 */
     private final ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort;
+    /**
+     * 投影结果走可见性的唯一出口，别在治理侧另算一份。
+     *
+     * <p><b>延迟取（ObjectProvider）而不是直接注入</b>：{@code MerchantPortImpl} 本来就依赖
+     * 这个治理服务，直接注入会绕成环 —— Spring 起不来，症状是整个上下文加载失败，
+     * 一屏堆栈里真正的那句话在最底下。同 {@code MerchantStoreServiceImpl} 里的 storeShelfPort。
+     */
+    private final org.springframework.beans.factory.ObjectProvider<
+            ai.neargo.shop.spi.user.MerchantQueryPort> merchantQueryPort;
     private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
     /** 自营结算敞口 —— 金额口径归结算域，商家域只负责「谁是无照的」 */
     private final ai.neargo.shop.spi.settle.SelfOperatedExposurePort exposurePort;
@@ -97,6 +107,8 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper,
             ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
             ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort,
+            org.springframework.beans.factory.ObjectProvider<
+                    ai.neargo.shop.spi.user.MerchantQueryPort> merchantQueryPort,
             ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
             ai.neargo.shop.spi.settle.SelfOperatedExposurePort exposurePort,
             org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.product.StoreShelfPort> shelfPort,
@@ -109,6 +121,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         this.authCodeMapper = authCodeMapper;
         this.serviceAreaMapper = serviceAreaMapper;
         this.communityNamePort = communityNamePort;
+        this.merchantQueryPort = merchantQueryPort;
         this.masterDataPort = masterDataPort;
         this.exposurePort = exposurePort;
         this.shelfPort = shelfPort;
@@ -383,25 +396,69 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         MchStore s = requireStoreInScope(storeNo);
         StoreGovernVO base = toStoreGovernVO(s, nameOf(s.getEntityNo()));
         return new StoreDetailVO(base,
-                communityNamesOf(s.getEntityNo()),
+                coverageOf(s.getEntityNo()),
                 pickupNamesOf(s.getStoreNo()),
                 scanCount30dOf(s.getEntityNo(), s.getStoreNo()));
     }
 
+    /** 投影样本给几条就够 —— 给全量只是把一屏塞满，运营要的是「展开对不对」 */
+    private static final int REACHABLE_SAMPLE = 8;
+
     /**
-     * 覆盖的社区名（P-11.2.1c）。挂在**主体**上，所以同主体的门店看到同一份 ——
-     * 这不是门店属性，界面上别写成「本店覆盖」。
+     * 主体的经营范围明细 + 投影结果（P-11.2.1c）。挂在**主体**上，
+     * 所以同主体的门店看到同一份 —— 这不是门店属性，界面上别写成「本店覆盖」。
+     *
+     * <p>⚠️ <b>这里原先读的是 {@code mch_entity_community}</b>，而那张表
+     * 2026-09-04 查生产是 <b>0 行</b>（经营范围早就搬到了 {@code mch_service_area}，
+     * 那儿有 5 条）。于是这一栏对**平台上每一家商家**都显示「没有覆盖社区」——
+     * 一句关于所有人的假话，而且它长得完全正常：没有报错、没有空白，
+     * 就是一行确定的「没有」。运营据此判断「这家商家还没配范围」，
+     * 而他其实配了，只是配在另一张表里。
+     *
+     * <p>三块分开返回的理由见 {@link CoverageVO}。
      */
-    private List<String> communityNamesOf(String entityNo) {
-        List<String> nos = communityMapper.selectList(
-                        Wrappers.<MchEntityCommunity>lambdaQuery()
-                                .eq(MchEntityCommunity::getEntityNo, entityNo))
-                .stream().map(MchEntityCommunity::getCommunityNo).distinct().toList();
-        // 取不到名就给号，**不返回空** —— 空会被读成「没有覆盖」
-        return nos.stream().map(no -> {
-            String name = communityNamePort.communityName(no);
-            return name == null || name.isBlank() ? no : name;
-        }).toList();
+    private CoverageVO coverageOf(String entityNo) {
+        /*
+         * **不加 executeWithoutScope。** `mch_service_area` 没有登记数据域
+         * （登记会让合并社区那条路只改到域内商家的行，见 ops-data-scope 的
+         * OPS_READS_UNREGISTERED_OK），所以绕过在这里是空操作 ——
+         * 写上去只会让读的人以为这张表已经登记、而这里在有意越权。
+         */
+        List<MchServiceArea> areas = serviceAreaMapper.selectList(
+                Wrappers.<MchServiceArea>lambdaQuery().eq(MchServiceArea::getEntityNo, entityNo));
+        List<CoverageVO.AreaItem> includes = new java.util.ArrayList<>();
+        List<CoverageVO.AreaItem> excludes = new java.util.ArrayList<>();
+        for (MchServiceArea a : areas) {
+            var item = new CoverageVO.AreaItem(a.getLevel(), a.getRefCode(),
+                    areaNameOf(a), a.getStatus());
+            if (MchServiceArea.MODE_EXCLUDE.equals(a.getMode())) {
+                excludes.add(item);
+            } else {
+                includes.add(item);
+            }
+        }
+        /*
+         * 投影走**可见性的唯一出口**，不在这儿另算一遍：
+         * 另算的那份迟早与真实可见性分叉，而分叉之后运营看到的数字是对的、
+         * 买家看到的商品是另一回事，没有任何报错能把这两件事连起来。
+         */
+        List<String> reachable = merchantQueryPort.getObject().reachableCommunities(entityNo);
+        return new CoverageVO(includes, excludes, reachable.size(),
+                reachable.stream().limit(REACHABLE_SAMPLE)
+                        .map(no -> {
+                            String name = communityNamePort.communityName(no);
+                            // 取不到名就给号，**不返回空** —— 空会被读成「没有这一条」
+                            return name == null || name.isBlank() ? no : name;
+                        })
+                        .toList());
+    }
+
+    /** 覆盖项的展示名。区划给整条路径：「浙江省 / 杭州市 / 西湖区」比光一个「西湖区」更不容易看错 */
+    private String areaNameOf(MchServiceArea a) {
+        String name = "COMMUNITY".equals(a.getLevel())
+                ? communityNamePort.communityName(a.getRefCode())
+                : masterDataPort.regionPathName(a.getRefCode());
+        return name == null || name.isBlank() ? a.getRefCode() : name;
     }
 
     /** 这家店挂靠的取货点名。空 = 没挂，不是没查到。 */
