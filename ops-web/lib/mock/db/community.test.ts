@@ -36,6 +36,50 @@ describe("社区网格", () => {
   });
 });
 
+describe("围栏影响预览（T9）", () => {
+  it("★ 差值要是真算出来的 —— 回常量的 mock 会让那一屏永远显示「+0」，界面对不对根本看不出", async () => {
+    const now = await communityMock.fenceImpact("C001");
+    const bigger = await communityMock.fenceImpact("C001", 1500);
+    expect(now.currentRadiusM).toBe(800);
+    expect(bigger.previewInside - bigger.currentInside)
+      .toBeGreaterThan(0);   // 种子里有两条落在 800 与 1500 之间
+    const smaller = await communityMock.fenceImpact("C001", 200);
+    expect(smaller.previewInside).toBeLessThan(smaller.currentInside);
+  });
+
+  it("★ 分母一起给 —— 「多进来 0 户」在一个没几条地址有坐标的库里说明不了任何事", async () => {
+    const vo = await communityMock.fenceImpact("C001", 1500);
+    expect(vo.addressesWithCoords).toBeGreaterThan(0);
+  });
+
+  it("没标点的聚落给 0/0，不抛错 —— 报错会让整页打不开，而缺口反而看不见", async () => {
+    const vo = await communityMock.fenceImpact("C003", 900);
+    expect(vo.currentInside).toBe(0);
+    expect(vo.previewInside).toBe(0);
+    expect(vo.previewRadiusM).toBe(900);
+  });
+});
+
+describe("建楼（T9）", () => {
+  it("★★ 街道从父级继承、围栏 150 不是 1000", async () => {
+    const b = await communityMock.createBuilding({ name: "锦绣花园 3 幢", parentNo: "C001" });
+    expect(b.regionCode).toBe("330106002");
+    expect(b.fenceRadius).toBe(150);
+    expect(b.parentNo).toBe("C001");
+  });
+
+  it("★★★ 归属只做两层：楼底下不许再挂楼", async () => {
+    const b = await communityMock.createBuilding({ name: "锦绣花园 5 幢", parentNo: "C001" });
+    await expect(communityMock.createBuilding({ name: "501 室", parentNo: b.communityNo }))
+      .rejects.toThrow(/两层/);
+  });
+
+  it("父级还没有街道就不许建楼 —— 建出来一样是错的，只是错得更隐蔽", async () => {
+    await expect(communityMock.createBuilding({ name: "梧桐苑 1 幢", parentNo: "C003" }))
+      .rejects.toThrow(/街道/);
+  });
+});
+
 describe("自提点", () => {
   it("ADR-005：邻里自提点零报酬，配费率直接抛错", async () => {
     await expect(communityMock.setPickupServiceFee("P004", 100)).rejects.toThrow(/零报酬/);

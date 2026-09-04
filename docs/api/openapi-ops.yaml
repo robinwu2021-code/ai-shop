@@ -1782,6 +1782,16 @@ components:
         fenceRadius: 
           type: "number"
           description: "覆盖围栏半径，米（P-2.1.3）"
+        parentNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面"
+        kind: 
+          type: 
+            - "string"
+            - "null"
+          description: "ESTATE / VILLAGE / BUILDING"
         pickupCount: 
           type: "number"
           description: "本社区的自提点数量（列表直接给，避免逐行再查一次）"
@@ -1794,6 +1804,15 @@ components:
         regionPath: 
           type: "string"
           description: "从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。\n\n**后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。"
+        latE6: 
+          type: 
+            - "number"
+            - "null"
+          description: "聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。"
+        lngE6: 
+          type: 
+            - "number"
+            - "null"
       required: 
         - "communityNo"
         - "name"
@@ -2156,6 +2175,28 @@ components:
         - "communities"
       additionalProperties: false
       description: "坐标健康度 —— **整个位置模块的分母**。\n\n门店没标点时后端那条自送半径的闸**直接放行**（缺数据不该拦正常订单，这是对的）。 代价是商家以为自己限了三公里、实际多远的单都进来，等他要送货才发现送不到， 那时钱已经收了。而这件事此前在任何界面上都看不见 —— 商家看不见，运营也看不见。"
+    FenceImpact: 
+      type: "object"
+      properties: 
+        currentRadiusM: 
+          type: "number"
+        previewRadiusM: 
+          type: "number"
+        currentInside: 
+          type: "number"
+        previewInside: 
+          type: "number"
+        addressesWithCoords: 
+          type: "number"
+          description: "有坐标的收货地址总数。**分母要给** —— 「多进来 0 户」在一个没几条地址有坐标的库里说明不了任何事"
+      required: 
+        - "currentRadiusM"
+        - "previewRadiusM"
+        - "currentInside"
+        - "previewInside"
+        - "addressesWithCoords"
+      additionalProperties: false
+      description: "围栏改动的影响预览。\n\n只给「当前半径」没用 —— 运营要回答的是「改成 1500 会多进来几户」， 而这件事此前在任何界面上都算不出来，只能改完再等有人投诉。"
     BatchStatus: 
       type: "string"
       enum: 
@@ -8876,6 +8917,70 @@ paths:
           required: true
           schema: 
             type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/communities/{no}/fence-impact": 
+    get: 
+      operationId: "fenceImpact"
+      summary: "改围栏之前先看影响：这个半径会圈进来多少条收货地址"
+      tags: 
+        - "community"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/FenceImpact"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "no"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/communities/buildings": 
+    post: 
+      operationId: "createBuilding"
+      summary: "建一栋楼"
+      tags: 
+        - "community"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Community"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
       requestBody: 
         required: true
         content: 

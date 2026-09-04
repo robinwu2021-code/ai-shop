@@ -1,6 +1,7 @@
 // 覆盖范围：社区网格（P-2.1）与自提点主数据（P-2.2）。
 import type {
-  Community, CommunityApply, CommunityDuplicate, CoverageHealth, NearbyCommunity, Page, PickupPoint, PickupStatus,
+  Community, CommunityApply, CommunityDuplicate, CoverageHealth, FenceImpact, NearbyCommunity, Page, PickupPoint,
+  PickupStatus,
   Region, RegionSuggestion,
 } from "@/lib/types";
 import type { PickupDraft } from "@/lib/types";
@@ -19,6 +20,18 @@ export interface CommunityApi {
   setCommunityOpen(communityNo: string, opened: boolean): Promise<Community>;
   /** 覆盖围栏半径，米（P-2.1.3）。 */
   setCommunityFence(communityNo: string, fenceRadius: number): Promise<Community>;
+  /**
+   * 改围栏之前先看影响：这个半径会圈进来多少条收货地址。
+   * **只读，不写库** —— 运营要在按下保存之前知道后果。
+   */
+  fenceImpact(communityNo: string, radiusM?: number): Promise<FenceImpact>;
+  /**
+   * 建一栋楼。**街道从父级继承**，所以没有 regionCode 参数 ——
+   * 两处各填一次就会有不一致的那一天，而「楼挂的街道和它所在小区不是同一个」
+   * 会让它在按街道覆盖里归到别人那儿，没有任何人会发现。
+   */
+  createBuilding(draft: { name: string; address?: string; parentNo: string;
+                          latE6?: number; lngE6?: number }): Promise<Community>;
   /**
    * 把社区挂到行政区划下（ADR-013）。**建议挂到街道级** ——
    * 挂区县也能用，但那样「按街道覆盖」就退化成了「按区覆盖」。

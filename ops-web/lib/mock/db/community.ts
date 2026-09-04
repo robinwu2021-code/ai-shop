@@ -22,10 +22,25 @@ export const communities: Community[] = [
   // **有意留两条未归属的**（C003/C004）：那正是运营要去补的情形，
   // 全都填好的假数据会把「未归属」这个状态藏起来，而它是 ADR-013 里
   // 最容易被忽略的一格 —— 没挂区划的社区，按区覆盖时谁也命中不了它
-  { communityNo: "C001", name: "锦绣花园", city: "杭州", grid: "西湖-北", opened: true, fenceRadius: 800, pickupCount: 3, createdAt: "2026-03-02T01:00:00Z", regionCode: "330106002", regionPath: "浙江省 / 杭州市 / 西湖区 / 北山街道" },
-  { communityNo: "C002", name: "阳光里", city: "杭州", grid: "西湖-北", opened: true, fenceRadius: 600, pickupCount: 2, createdAt: "2026-03-18T01:00:00Z", regionCode: "330106003", regionPath: "浙江省 / 杭州市 / 西湖区 / 西溪街道" },
+  { communityNo: "C001", name: "锦绣花园", city: "杭州", grid: "西湖-北", opened: true, fenceRadius: 800, pickupCount: 3, createdAt: "2026-03-02T01:00:00Z", regionCode: "330106002", regionPath: "浙江省 / 杭州市 / 西湖区 / 北山街道", latE6: 30_270_000, lngE6: 120_130_000 },
+  { communityNo: "C002", name: "阳光里", city: "杭州", grid: "西湖-北", opened: true, fenceRadius: 600, pickupCount: 2, createdAt: "2026-03-18T01:00:00Z", regionCode: "330106003", regionPath: "浙江省 / 杭州市 / 西湖区 / 西溪街道", latE6: 30_280_000, lngE6: 120_140_000 },
   { communityNo: "C003", name: "梧桐苑", city: "杭州", grid: "拱墅-东", opened: true, fenceRadius: 1000, pickupCount: 2, createdAt: "2026-04-06T01:00:00Z" },
   { communityNo: "C004", name: "云栖里", city: "杭州", grid: "西湖-南", opened: false, fenceRadius: 700, pickupCount: 0, createdAt: "2026-07-20T01:00:00Z" },
+];
+
+/**
+ * 买家收货地址的坐标（mock）。**只为围栏影响预览存在**，别的屏用不到它。
+ *
+ * 摆位是有讲究的：三条落在 C001 的 800 米围栏里，另外两条在 800 与 1500 之间 ——
+ * 「把半径从 800 改到 1500 会多进来几户」这个问题在 mock 下必须有一个**非零**的答案，
+ * 否则那一屏永远显示「+0」，界面做成什么样都判断不出对不对。
+ */
+export const addresses: Array<{ addressId: string; latE6: number; lngE6: number }> = [
+  { addressId: "A1", latE6: 30_270_200, lngE6: 120_130_100 },   // C001 中心附近
+  { addressId: "A2", latE6: 30_273_000, lngE6: 120_130_000 },   // ~333 m
+  { addressId: "A3", latE6: 30_276_000, lngE6: 120_130_000 },   // ~666 m
+  { addressId: "A4", latE6: 30_280_000, lngE6: 120_130_000 },   // ~1110 m，只有放大到 1500 才进来
+  { addressId: "A5", latE6: 30_282_000, lngE6: 120_130_000 },   // ~1332 m，同上
 ];
 
 /**

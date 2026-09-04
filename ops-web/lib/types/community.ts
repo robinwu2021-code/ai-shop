@@ -80,6 +80,10 @@ export interface Community extends Archivable {
   opened: boolean;
   /** 覆盖围栏半径，米（P-2.1.3） */
   fenceRadius: number;
+  /** 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 */
+  parentNo?: string | null;
+  /** ESTATE / VILLAGE / BUILDING */
+  kind?: string | null;
   /** 本社区的自提点数量（列表直接给，避免逐行再查一次） */
   pickupCount: number;
   /** 建档时间 */
@@ -99,6 +103,13 @@ export interface Community extends Archivable {
    * 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。
    */
   regionPath?: string;
+  /**
+   * 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** ——
+   * 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样，
+   * 必须分开说：前者是待办，后者是事实。
+   */
+  latE6?: number | null;
+  lngE6?: number | null;
 }
 
 /** 行政区划节点（ADR-013）。四级：省 / 市 / 区县 / 街道。 */
@@ -330,4 +341,19 @@ export interface CoverageHealth {
     /** 没坐标的聚落**谁也匹配不到** —— 而它看起来一切正常：建档成功、列表里有 */
     missing: { communityNo: string; name: string }[];
   };
+}
+
+/**
+ * 围栏改动的影响预览。
+ *
+ * 只给「当前半径」没用 —— 运营要回答的是「改成 1500 会多进来几户」，
+ * 而这件事此前在任何界面上都算不出来，只能改完再等有人投诉。
+ */
+export interface FenceImpact {
+  currentRadiusM: number;
+  previewRadiusM: number;
+  currentInside: number;
+  previewInside: number;
+  /** 有坐标的收货地址总数。**分母要给** —— 「多进来 0 户」在一个没几条地址有坐标的库里说明不了任何事 */
+  addressesWithCoords: number;
 }

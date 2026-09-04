@@ -74,6 +74,19 @@ public class UserQueryPortImpl implements UserQueryPort {
         return new AddressCoordHealth(rows.size(), withCoords);
     }
 
+    @Override
+    public int addressesWithin(int latE6, int lngE6, int radiusM) {
+        // 走数据域，不绕（同 addressCoordHealth）
+        return (int) addressMapper.selectList(Wrappers.<ai.neargo.shop.user.entity.UsrAddress>lambdaQuery()
+                        .isNotNull(ai.neargo.shop.user.entity.UsrAddress::getLatE6))
+                .stream()
+                .filter(a -> a.getLatE6() != null && a.getLngE6() != null)
+                // ★ 与围栏判定同一个 Geo.meters，且**实参顺序也要一致**（cos 用的是第二个点的纬度）：
+                //   围栏判的是 distance(社区, 地址)，这里也必须是 (社区, 地址)
+                .filter(a -> ai.neargo.shop.common.Geo.meters(latE6, lngE6, a.getLatE6(), a.getLngE6()) <= radiusM)
+                .count();
+    }
+
     private static String nz(String s) {
         return s == null ? "" : s;
     }

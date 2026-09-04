@@ -29,6 +29,8 @@ import { Notice } from "@/components/ui/notice";
 import { Pagination } from "@/components/ui/misc";
 import { Switch } from "@/components/ui/switch";
 import { RegionPicker } from "./region-picker";
+import { FenceDialog } from "./fence-dialog";
+import { BuildingDialog } from "./building-dialog";
 import { TabHeader } from "@/components/ui/tab-header";
 import { ApplyTab } from "./apply-tab";
 import { RegionTab } from "./region-tab";
@@ -135,13 +137,53 @@ function CommunitiesInner() {
     onSuccess: invalidate,
   });
 
+  const fenceMut = useMutation({
+    mutationFn: (v: { communityNo: string; radiusM: number }) =>
+      api.setCommunityFence(v.communityNo, v.radiusM),
+    onSuccess: (x, v) => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ["fence-impact"] });
+      setFenceOf(null);
+      notify.success(fill(cp.toastFenceSaved, { name: x.name, n: v.radiusM }));
+    },
+  });
+
+  const buildingMut = useMutation({
+    mutationFn: (draft: { name: string; address?: string; parentNo: string }) => api.createBuilding(draft),
+    onSuccess: (x, draft) => {
+      invalidate();
+      setBuildingOpen(false);
+      notify.success(fill(cp.toastBuildingCreated, {
+        name: x.name,
+        parent: communities.data?.records.find((r) => r.communityNo === draft.parentNo)?.name ?? draft.parentNo,
+      }));
+    },
+  });
+
   // ── 社区网格 ──────────────────────────────────────────────────────────
   // 正在编辑归属的社区。null = 抽屉关着
   const [regionOf, setRegionOf] = useState<Community | null>(null);
+  /** 正在调围栏的聚落。null = 对话框关着 */
+  const [fenceOf, setFenceOf] = useState<Community | null>(null);
+  const [buildingOpen, setBuildingOpen] = useState(false);
 
   const communityColumns: Column<Community>[] = [
     { header: cp.colCommunityNo, cell: (c) => c.communityNo, numeric: true, align: "start" },
-    { header: cp.colCommunity, cell: (c) => c.name },
+    {
+      header: cp.colCommunity,
+      // 楼栋要能一眼看出挂在谁下面：平铺的话「阳光里」和「阳光里 3 幢」并排两行，
+      // 分不出后者在前者里面，而「框了小区就盖住里面每栋楼」正是靠这层归属成立的
+      cell: (c) => (
+        <span>
+          {c.name}
+          {c.parentNo && (
+            <span className="ml-2 text-xs text-muted-foreground">
+              ← {communities.data?.records.find((r) => r.communityNo === c.parentNo)?.name ?? c.parentNo}
+            </span>
+          )}
+        </span>
+      ),
+    },
     { header: cp.colCityGrid, cell: (c) => `${c.city} · ${c.grid}` },
     {
       // 未归属显示成灰字而不是空白：空白读起来像「这一列没数据」，
@@ -165,7 +207,21 @@ function CommunitiesInner() {
         />
       ),
     },
-    { header: cp.colRadius, cell: (c) => `${c.fenceRadius} m`, numeric: true },
+    {
+      // 半径此前是只读的一个数：改它的接口一直都在，界面上却没有出口，
+      // 要调只能找人直接改库。点进去还能先看影响，再决定改不改。
+      header: cp.colRadius,
+      numeric: true,
+      cell: (c) =>
+        canEditCommunity ? (
+          <button type="button" className="focus-ring text-primary underline-offset-2 hover:underline tabular-nums"
+                  onClick={() => setFenceOf(c)}>
+            {c.fenceRadius} m
+          </button>
+        ) : (
+          <span className="tabular-nums">{c.fenceRadius} m</span>
+        ),
+    },
     { header: cp.colPickupCount, cell: (c) => c.pickupCount, numeric: true },
     { header: cp.colCreatedAt, cell: (c) => fmtTime(c.createdAt) },
     {
@@ -342,6 +398,12 @@ function CommunitiesInner() {
         它是「这一屏的例外情况」，不是一类新对象 —— 单开 tab 的话，
         运营只有想起来才会去点，而这件事的性质是「有就得处理」。
       */}
+      {tab === "grid" && canEditCommunity && (
+        <div className="mb-3 flex justify-end">
+          <Button size="sm" variant="outline" onClick={() => setBuildingOpen(true)}>{cp.buildingNew}</Button>
+        </div>
+      )}
+
       {tab === "grid" && <DuplicatesPanel c={cp} canMerge={canEditCommunity} />}
 
       {tab === "grid" && !canEditCommunity && (
@@ -425,6 +487,28 @@ function CommunitiesInner() {
         canWrite={canEditCommunity}
         onClose={() => setRegionOf(null)}
       />
+
+      {fenceOf && (
+        <FenceDialog
+          c={cp}
+          community={fenceOf}
+          saving={fenceMut.isPending}
+          onSave={(radiusM) => fenceMut.mutate({ communityNo: fenceOf.communityNo, radiusM })}
+          onClose={() => setFenceOf(null)}
+        />
+      )}
+
+      {buildingOpen && (
+        <BuildingDialog
+          c={cp}
+          // **只列顶层聚落**：归属只做两层，楼底下不再挂楼。
+          // 让已经是楼栋的出现在下拉里，运营挑了才被后端拒 —— 那是把规则藏到报错里。
+          candidates={(communities.data?.records ?? []).filter((r) => !r.parentNo)}
+          saving={buildingMut.isPending}
+          onSave={(draft) => buildingMut.mutate(draft)}
+          onClose={() => setBuildingOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -27,9 +27,6 @@ import java.util.stream.Collectors;
 @Service
 public class CommunityServiceImpl implements CommunityService {
 
-    /** 地球上 1 度纬度 ≈ 111km。选点只需要「谁更近」的排序，这个近似足够。 */
-    private static final double METERS_PER_DEGREE = 111_000d;
-
     private final CommunityMapper communityMapper;
     private final PickupPointMapper pickupMapper;
     /*
@@ -501,13 +498,12 @@ public class CommunityServiceImpl implements CommunityService {
         return own == null || own <= 0 ? nearbyRadiusM : own;
     }
 
+    /**
+     * 围栏与排序都走它。**算法搬到了 {@link ai.neargo.shop.common.Geo}** ——
+     * 围栏影响预览要拿同一个算法去数地址，各写一遍就会在边界那一圈上对不上，
+     * 而两个数字看起来都是对的。行为逐字未变（同一个 111000、同一个 cos(b点纬度)）。
+     */
     private int distance(Integer latE6, Integer lngE6, Integer myLatE6, Integer myLngE6) {
-        if (latE6 == null || lngE6 == null || myLatE6 == null || myLngE6 == null) {
-            return 0;
-        }
-        double dLat = (latE6 - myLatE6) / 1e6 * METERS_PER_DEGREE;
-        // 经度间距随纬度收缩，不乘 cos 会让高纬度地区的排序明显失真
-        double dLng = (lngE6 - myLngE6) / 1e6 * METERS_PER_DEGREE * Math.cos(Math.toRadians(myLatE6 / 1e6));
-        return (int) Math.round(Math.hypot(dLat, dLng));
+        return ai.neargo.shop.common.Geo.meters(latE6, lngE6, myLatE6, myLngE6);
     }
 }

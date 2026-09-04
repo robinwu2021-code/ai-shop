@@ -171,10 +171,14 @@ _无字段_
 | `grid` | `string` | 是 | 网格：城市与社区之间的运营划分单位 |
 | `opened` | `boolean` | 是 | 开城开关（P-2.1.2）：关掉后 C 端不再展示该社区，已有订单不受影响 |
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
+| `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 |
+| `kind` | `string,null` | 否 | ESTATE / VILLAGE / BUILDING |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
 | `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
+| `latE6` | `number,null` | 否 | 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。 |
+| `lngE6` | `number,null` | 否 | — |
 
 
 #### POST `/ops/communities/{no}/fence`
@@ -202,10 +206,39 @@ _无字段_
 | `grid` | `string` | 是 | 网格：城市与社区之间的运营划分单位 |
 | `opened` | `boolean` | 是 | 开城开关（P-2.1.2）：关掉后 C 端不再展示该社区，已有订单不受影响 |
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
+| `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 |
+| `kind` | `string,null` | 否 | ESTATE / VILLAGE / BUILDING |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
 | `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
+| `latE6` | `number,null` | 否 | 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。 |
+| `lngE6` | `number,null` | 否 | — |
+
+
+#### GET `/ops/communities/{no}/fence-impact`
+
+改围栏之前先看影响：这个半径会圈进来多少条收货地址
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+**出参**（`data`）
+
+类型：[`FenceImpact`](#fenceimpact)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currentRadiusM` | `number` | 是 | — |
+| `previewRadiusM` | `number` | 是 | — |
+| `currentInside` | `number` | 是 | — |
+| `previewInside` | `number` | 是 | — |
+| `addressesWithCoords` | `number` | 是 | 有坐标的收货地址总数。**分母要给** —— 「多进来 0 户」在一个没几条地址有坐标的库里说明不了任何事 |
 
 
 #### POST `/ops/communities/{no}/open`
@@ -233,10 +266,14 @@ _无字段_
 | `grid` | `string` | 是 | 网格：城市与社区之间的运营划分单位 |
 | `opened` | `boolean` | 是 | 开城开关（P-2.1.2）：关掉后 C 端不再展示该社区，已有订单不受影响 |
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
+| `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 |
+| `kind` | `string,null` | 否 | ESTATE / VILLAGE / BUILDING |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
 | `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
+| `latE6` | `number,null` | 否 | 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。 |
+| `lngE6` | `number,null` | 否 | — |
 
 
 #### POST `/ops/communities/{no}/region`
@@ -264,10 +301,14 @@ _无字段_
 | `grid` | `string` | 是 | 网格：城市与社区之间的运营划分单位 |
 | `opened` | `boolean` | 是 | 开城开关（P-2.1.2）：关掉后 C 端不再展示该社区，已有订单不受影响 |
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
+| `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 |
+| `kind` | `string,null` | 否 | ESTATE / VILLAGE / BUILDING |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
 | `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
+| `latE6` | `number,null` | 否 | 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。 |
+| `lngE6` | `number,null` | 否 | — |
 
 
 #### POST `/ops/communities/{no}/unarchive`
@@ -295,10 +336,14 @@ _无字段_
 | `grid` | `string` | 是 | 网格：城市与社区之间的运营划分单位 |
 | `opened` | `boolean` | 是 | 开城开关（P-2.1.2）：关掉后 C 端不再展示该社区，已有订单不受影响 |
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
+| `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 |
+| `kind` | `string,null` | 否 | ESTATE / VILLAGE / BUILDING |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
 | `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
+| `latE6` | `number,null` | 否 | 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。 |
+| `lngE6` | `number,null` | 否 | — |
 
 
 #### GET `/ops/communities/applies`
@@ -360,6 +405,37 @@ _无字段_
 | `submittedAt` | `number` | 是 | 提报时间 |
 
 
+#### POST `/ops/communities/buildings`
+
+建一栋楼
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`Community`](#community)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `archivedAt` | `string,null` | 否 | 归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。 |
+| `communityNo` | `string` | 是 | 社区单号。平台端数据域裁剪的主键之一 |
+| `name` | `string` | 是 | 社区名（小区名） |
+| `city` | `string` | 是 | 所属城市 |
+| `grid` | `string` | 是 | 网格：城市与社区之间的运营划分单位 |
+| `opened` | `boolean` | 是 | 开城开关（P-2.1.2）：关掉后 C 端不再展示该社区，已有订单不受影响 |
+| `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
+| `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 |
+| `kind` | `string,null` | 否 | ESTATE / VILLAGE / BUILDING |
+| `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
+| `createdAt` | `string` | 是 | 建档时间 |
+| `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
+| `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
+| `latE6` | `number,null` | 否 | 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。 |
+| `lngE6` | `number,null` | 否 | — |
+
+
 #### GET `/ops/communities/duplicates`
 
 疑似重复的聚落两两清单
@@ -394,10 +470,14 @@ _无字段_
 | `grid` | `string` | 是 | 网格：城市与社区之间的运营划分单位 |
 | `opened` | `boolean` | 是 | 开城开关（P-2.1.2）：关掉后 C 端不再展示该社区，已有订单不受影响 |
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
+| `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 |
+| `kind` | `string,null` | 否 | ESTATE / VILLAGE / BUILDING |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
 | `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
+| `latE6` | `number,null` | 否 | 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。 |
+| `lngE6` | `number,null` | 否 | — |
 
 
 #### GET `/ops/communities/near`
@@ -9453,10 +9533,14 @@ _无字段_
 | `grid` | `string` | 是 | 网格：城市与社区之间的运营划分单位 |
 | `opened` | `boolean` | 是 | 开城开关（P-2.1.2）：关掉后 C 端不再展示该社区，已有订单不受影响 |
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
+| `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 |
+| `kind` | `string,null` | 否 | ESTATE / VILLAGE / BUILDING |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
 | `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
+| `latE6` | `number,null` | 否 | 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。 |
+| `lngE6` | `number,null` | 否 | — |
 
 ### CommunityApply
 
@@ -9699,6 +9783,18 @@ KPI 卡（金额为最小货币单位整数）。
 | `remark` | `string,null` | 否 | 为什么调这一次 —— 回查时这句话比数字更有用 |
 | `createdAt` | `string` | 否 | 创建时间 |
 | `createdBy` | `string` | 否 | 创建人 |
+
+### FenceImpact
+
+围栏改动的影响预览。 只给「当前半径」没用 —— 运营要回答的是「改成 1500 会多进来几户」， 而这件事此前在任何界面上都算不出来，只能改完再等有人投诉。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currentRadiusM` | `number` | 是 | — |
+| `previewRadiusM` | `number` | 是 | — |
+| `currentInside` | `number` | 是 | — |
+| `previewInside` | `number` | 是 | — |
+| `addressesWithCoords` | `number` | 是 | 有坐标的收货地址总数。**分母要给** —— 「多进来 0 户」在一个没几条地址有坐标的库里说明不了任何事 |
 
 ### FissionCampaign
 

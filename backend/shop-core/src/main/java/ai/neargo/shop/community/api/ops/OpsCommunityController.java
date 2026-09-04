@@ -283,6 +283,38 @@ public class OpsCommunityController {
         return vo;
     }
 
+    /**
+     * 建一栋楼。<b>只有运营能建</b> —— 归属是声明的，让商家自己挑父级会挑错，而挑错不报错。
+     *
+     * <p>街道从父级继承，请求体里没有这个字段：两处各填一次就会有不一致的那一天。
+     */
+    @PostMapping("/ops/communities/buildings")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_UPDATE + "')")
+    public CommunityAdminService.CommunityVO createBuilding(@RequestBody BuildingReq req) {
+        var vo = adminService.createBuilding(req.name(), req.address(), req.parentNo(),
+                req.latE6(), req.lngE6(), SecurityUtils.currentUserNo());
+        // 建楼直接改变可见性（框了小区就盖住它），要追得到是谁建的
+        auditLogPort.record("COMMUNITY_BUILDING", vo.communityNo(),
+                req.name() + " ← " + req.parentNo());
+        return vo;
+    }
+
+    public record BuildingReq(String name, String address, String parentNo,
+                              Integer latE6, Integer lngE6) {
+    }
+
+    /**
+     * 围栏改动的影响预览。<b>读操作，不写库</b> —— 运营要在按下保存之前
+     * 知道「会多进来几户」，而这件事此前只能改完再等有人投诉。
+     */
+    @GetMapping("/ops/communities/{communityNo}/fence-impact")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_READ + "')")
+    public CommunityAdminService.FenceImpactVO fenceImpact(
+            @PathVariable String communityNo,
+            @RequestParam(required = false) Integer radiusM) {
+        return adminService.fenceImpact(communityNo, radiusM);
+    }
+
     // ---------------------------------------------------------------- 自提点
 
     @GetMapping("/ops/pickups")

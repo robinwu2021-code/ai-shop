@@ -73,6 +73,15 @@ public interface UserQueryPort {
      */
     AddressCoordHealth addressCoordHealth();
 
+    /**
+     * 这个圆里有多少条**有坐标的**收货地址。围栏改动的影响预览靠它。
+     *
+     * <p>没坐标的地址一条也不算 —— 它们本来就落不进任何围栏，
+     * 算进来会让运营看到一个「改大也不会变」的数，反而以为围栏没生效。
+     * 缺口有多大在「坐标健康度」那一页单独说（{@link #addressCoordHealth}）。
+     */
+    int addressesWithin(int latE6, int lngE6, int radiusM);
+
     record AddressCoordHealth(int total, int withCoords) {
     }
 }

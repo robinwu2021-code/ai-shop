@@ -24,6 +24,47 @@ public interface CommunityAdminService {
     CommunityVO setFence(String communityNo, int fenceRadius, String operatorNo);
 
     /**
+     * 建一栋楼（写字楼/园区里的一幢）。<b>运营专用</b>，商家侧没有这个入口 ——
+     * 归属是声明的，让商家自己挑父级会挑错，而挑错不报错。
+     *
+     * <p>归属只做两层：父级本身有父级就拒。园区 › 楼 › 单元 › 户没完没了，
+     * 而单元和户不是服务单位（它们属于收货地址的门牌号）。
+     *
+     * <p>街道<b>从父级继承</b>，不让运营自己填：两处各填一次就会有不一致的那一天，
+     * 而「这栋楼挂的街道和它所在小区不是同一个」这种数据错，
+     * 症状是它在「按街道覆盖」里悄悄归到了别人那儿，没有任何人会发现。
+     *
+     * @throws ai.neargo.shop.common.BizException 父级不存在 / 父级不是顶层 / 父级没有街道
+     */
+    CommunityVO createBuilding(String name, String address, String parentNo,
+                               Integer latE6, Integer lngE6, String operatorNo);
+
+    /**
+     * 围栏改动的影响预览：这个半径下圈进来多少条收货地址。
+     *
+     * <p><b>只给数字不够，要给差值。</b>运营看着「半径 1000」改成「1500」时，
+     * 真正要回答的问题是「会多进来几户」——而这件事此前在任何界面上都算不出来，
+     * 只能改完再等有人来投诉。
+     *
+     * @param radiusM 要预览的半径；传 null 用这个聚落当前的围栏
+     */
+    FenceImpactVO fenceImpact(String communityNo, Integer radiusM);
+
+    /**
+     * @param currentRadiusM 当前围栏
+     * @param previewRadiusM 预览的那个半径
+     * @param currentInside  当前圈里的收货地址数
+     * @param previewInside  改成预览半径之后圈里的数
+     * @param addressesWithCoords 有坐标的地址总数。<b>分母要给</b> ——
+     *        「会多进来 0 户」在一个只有 2 条地址有坐标的库里说明不了任何事，
+     *        而运营会据此认为「改大没用」
+     */
+    record FenceImpactVO(int currentRadiusM, int previewRadiusM,
+                         int currentInside, int previewInside,
+                         int addressesWithCoords) {
+    }
+
+    /**
      * 聚落的坐标与围栏健康度。
      *
      * <p>没坐标的聚落**谁也匹配不到** —— 而它看起来一切正常：建档成功、列表里有，

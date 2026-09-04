@@ -80,6 +80,50 @@ export const communityMock: CommunityApi = {
     return wait(c, 400);
   },
 
+  /*
+   * 影响预览的 mock：**要真的按半径算**，不是回一对好看的数。
+   *
+   * 回常量的话这一屏在 mock 下永远显示「会多进来 3 户」——
+   * 而这一屏存在的全部意义就是那个差值，它假了，界面做成什么样都没法判断对不对。
+   * 这里拿 db 里有坐标的地址按平面近似数一遍，与后端同一个口径。
+   */
+  fenceImpact: async (communityNo, radiusM) => {
+    const c = findCommunity(communityNo);
+    const withCoords = (db.addresses ?? []).filter((a) => a.latE6 != null && a.lngE6 != null);
+    const inside = (r: number) => (c.latE6 == null || c.lngE6 == null ? 0 : withCoords.filter((a) => {
+      const dLat = ((c.latE6 as number) - (a.latE6 as number)) / 1e6 * 111_000;
+      const dLng = ((c.lngE6 as number) - (a.lngE6 as number)) / 1e6 * 111_000
+        * Math.cos(((a.latE6 as number) / 1e6) * Math.PI / 180);
+      return Math.round(Math.hypot(dLat, dLng)) <= r;
+    }).length);
+    const preview = radiusM && radiusM > 0 ? radiusM : c.fenceRadius;
+    return wait({
+      currentRadiusM: c.fenceRadius, previewRadiusM: preview,
+      currentInside: inside(c.fenceRadius), previewInside: inside(preview),
+      addressesWithCoords: withCoords.length,
+    }, 200);
+  },
+
+  createBuilding: async (draft) => {
+    const parent = findCommunity(draft.parentNo);
+    // 与后端同一条判据：归属只做两层，父级自己有父级就拒
+    if (parent.parentNo) fail(`归属只做两层：「${parent.name}」自己已经挂在别的聚落下面了`,
+      `Only two levels: ${parent.name} already has a parent`);
+    if (!parent.regionCode) fail(`「${parent.name}」还没有归属的街道，先补上再建楼`,
+      `${parent.name} has no street yet`);
+    const c = {
+      communityNo: `B${900 + db.communities.length}`, name: draft.name,
+      city: parent.city, grid: parent.grid, opened: true,
+      // 楼默认 150 不是 1000 —— 与后端 defaultFenceOf 同一档
+      fenceRadius: 150, pickupCount: 0, createdAt: new Date().toISOString(),
+      regionCode: parent.regionCode, regionPath: parent.regionPath,
+      parentNo: parent.communityNo, kind: "BUILDING",
+      latE6: draft.latE6, lngE6: draft.lngE6,
+    };
+    db.communities.unshift(c as (typeof db.communities)[number]);
+    return wait(c as (typeof db.communities)[number], 400);
+  },
+
   listCommunityApplies: (q = {}) =>
     wait(db.paginate(db.communityApplies, q.page, q.size,
       (a) => (q.status && q.status !== "ALL" ? a.status === q.status : true))),

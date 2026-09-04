@@ -64,6 +64,8 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
     private final ai.neargo.shop.community.mapper.CommunityMappers.CommunityApplyMapper applyMapper;
     /** 只为把提报队列里的商家号显示成店名 —— 运营看着一串 M20260811… 判断不了任何事 */
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
+    /** 围栏影响预览要数收货地址。跨域，走 port */
+    private final ai.neargo.shop.spi.user.UserQueryPort userQueryPort;
 
     /** 逆地理：从坐标定出区县码与街道名。走 spi Port，不直连 platform.GeoService（ArchUnit 第 1 条） */
     private final ai.neargo.shop.spi.platform.GeoPort geoPort;
@@ -73,6 +75,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                                      ai.neargo.shop.community.mapper.CommunityMappers
                                              .CommunityApplyMapper applyMapper,
                                      ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort,
+                                     ai.neargo.shop.spi.user.UserQueryPort userQueryPort,
                                      ai.neargo.shop.spi.platform.GeoPort geoPort,
                                      java.util.List<ai.neargo.shop.spi.user.SettlementRefPort> refPorts,
                                      @org.springframework.beans.factory.annotation.Value(
@@ -87,6 +90,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         this.pickupMapper = pickupMapper;
         this.applyMapper = applyMapper;
         this.merchantQueryPort = merchantQueryPort;
+        this.userQueryPort = userQueryPort;
     }
 
     /**
@@ -446,6 +450,88 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                         "name", c.getName() == null ? "" : c.getName()))
                 .toList();
         return new CommunityCoordHealth(rows.size(), rows.size() - missing.size(), missing);
+    }
+
+    /**
+     * 建楼默认围栏 <b>150 米</b>，不是小区那个 1000。
+     *
+     * <p>一栋写字楼直径也就几十米，套 1000 米等于把周围整片都算成「我在这栋楼里」——
+     * 而楼栋这一档存在的全部理由是「层级优先于距离」：站在 3 幢门口要判成 3 幢。
+     * 默认值给大了，第一批楼建出来就是错的，且没有任何报错。
+     */
+    private static final int DEFAULT_FENCE_BUILDING = 150;
+
+    /** 默认围栏按 kind 分档。加新的一档时**必须在这里给值**，否则它会静默拿到小区那个 1000 */
+    private static int defaultFenceOf(String kind) {
+        return CmtCommunity.KIND_BUILDING.equals(kind) ? DEFAULT_FENCE_BUILDING : DEFAULT_FENCE_RADIUS;
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public CommunityVO createBuilding(String name, String address, String parentNo,
+                                      Integer latE6, Integer lngE6, String operatorNo) {
+        String n = name == null ? "" : name.trim();
+        if (n.isEmpty() || parentNo == null || parentNo.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        CmtCommunity parent = requireCommunity(parentNo);
+        /*
+         * **只做两层。** 父级自己有父级 = 有人在往楼里塞单元，而单元不是服务单位：
+         * 没有商家按单元框范围，它们属于收货地址的门牌号（house_no）。
+         * 放开一层看着无害，代价是 reachableCommunities 的展开要递归，
+         * 而递归展开在一条坏数据（自己指自己）上会挂住整个可见性。
+         */
+        if (parent.getParentNo() != null && !parent.getParentNo().isBlank()) {
+            throw new BizException(ErrorCode.BAD_REQUEST,
+                    "归属只做两层：「" + parent.getName() + "」自己已经挂在别的聚落下面了");
+        }
+        /*
+         * 街道从父级继承，不让运营自己填 —— 两处各填一次就会有不一致的那一天，
+         * 而「楼挂的街道和它所在小区不是同一个」会让它在按街道覆盖时归到别人那儿。
+         * 父级没有街道就拒：那条数据本身要先补，补之前建出来的楼一样是错的。
+         */
+        if (parent.getRegionCode() == null || parent.getRegionCode().isBlank()) {
+            throw new BizException(ErrorCode.BAD_REQUEST,
+                    "「" + parent.getName() + "」还没有归属的街道，先补上再建楼");
+        }
+        var c = new CmtCommunity();
+        c.setCommunityNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.COMMUNITY));
+        c.setName(n);
+        c.setAddress(address == null || address.isBlank() ? null : address.trim());
+        c.setRegionCode(parent.getRegionCode());
+        c.setParentNo(parent.getCommunityNo());
+        c.setKind(CmtCommunity.KIND_BUILDING);
+        c.setLatE6(latE6);
+        c.setLngE6(lngE6);
+        // 坐标可以先空着（楼在小区里，父级的围栏先兜着），但要分清「空的」与「没人核过」
+        c.setCoordsSource(latE6 == null ? null : "OPS");
+        c.setSource(CmtCommunity.SOURCE_OPS);
+        c.setStatus(OPEN);
+        c.setFenceRadius(defaultFenceOf(CmtCommunity.KIND_BUILDING));
+        c.setCreatedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> communityMapper.insert(c));
+        return toVO(c, 0);
+    }
+
+    @Override
+    public FenceImpactVO fenceImpact(String communityNo, Integer radiusM) {
+        CmtCommunity c = requireCommunity(communityNo);
+        int current = c.getFenceRadius() == null || c.getFenceRadius() <= 0
+                ? DEFAULT_FENCE_RADIUS : c.getFenceRadius();
+        int preview = radiusM == null || radiusM <= 0 ? current : radiusM;
+        var health = userQueryPort.addressCoordHealth();
+        /*
+         * 没坐标的聚落算不出任何圈 —— 两个数都给 0，**分母照给**。
+         * 给 0/0 而不是报错：这一页正是运营用来发现「这个聚落还没标点」的地方，
+         * 报错会让整页打不开，而缺口本身看不见。
+         */
+        if (c.getLatE6() == null || c.getLngE6() == null) {
+            return new FenceImpactVO(current, preview, 0, 0, health.withCoords());
+        }
+        return new FenceImpactVO(current, preview,
+                userQueryPort.addressesWithin(c.getLatE6(), c.getLngE6(), current),
+                userQueryPort.addressesWithin(c.getLatE6(), c.getLngE6(), preview),
+                health.withCoords());
     }
 
     @Override
