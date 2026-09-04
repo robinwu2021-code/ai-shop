@@ -547,3 +547,58 @@ SettleServiceImpl.refund
 收银台会显示微信可用而实际下单会失败**（`APPID_MCHID_NOT_MATCH`）。
 线上 `stl_payment` 至今 0 行 —— 三天里没有任何一次支付尝试，所以这个暴露面接近于零。
 不放心可以一条命令改回 `false` 再重启。
+
+---
+
+## 12. 回调 URL 重排 + 部署（2026-09-04 18:55–18:59）
+
+上线 `shop-app-20260904-1855-9b8b7197.jar`（前一版 `20260904-1505-bc9bcada`）。
+
+### 12.1 最终的回调 URL
+
+```
+POST /pay/callback/{channel}          支付结果
+POST /pay/callback/{channel}/refund   退款结果
+POST /pay/callback/stub               开发期，**生产不装配**
+```
+
+`/callback/` 这个前缀整个消失。按**业务域**排 —— 支付的回调跟着支付走，
+消息推送的回调跟着消息走（`/mp/wx/callback` 一直就是这么放的）。
+
+> 此前放在 `/callback/` 下的理由是「按谁在调分」。那个理由站不住：
+> **前缀既不授权也不拦截**（鉴权是每个端点自己验签），
+> 那它就该按「出事时人去哪儿找」排。
+
+### 12.2 验收（都带对照量）
+
+| 路径 | 实测 | 判据 |
+|---|---|---|
+| `/pay/callback/WECHAT` | **200** `{"code":"FAIL","message":"FAIL"}` | 那串 JSON 是 `WechatCallbackVerifier.ackFail()`，只有验签 bean 装配上才有 |
+| `/pay/callback/WECHAT/refund` | **200** 同上 | 退款回调端点在 |
+| `/callback/pay/channel/WECHAT` | **404** | 旧路径真的没了 |
+| `/callback/pay/stub` · `/callback/` | **404** | 旧前缀整段没了 |
+| 启动后 ERROR | **0 条** | |
+
+### 12.3 一处我预期错了：`/pay/callback/stub` 不是 404，是 200 `FAIL`
+
+我在部署前说它会 404。**实测是 200 + 裸 `FAIL`**，而这个结果是**对的**：
+
+- `PayCallbackController` 确实没装配（生产 `SHOP_PAY_STUB` 未设置=false）；
+- 于是 `/pay/callback/stub` 落到了通用入口 `/pay/callback/{channel}`，
+  `channel="stub"` 没有对应的验签实现 → 日志 `[callback] 未知通道 stub` → 回 `FAIL`，
+  **不落报文、不碰任何账**。
+
+对照量：随便一个 `/pay/callback/ZZZNOSUCH` 的响应<b>完全相同</b>，
+说明命中的是通用入口而不是 stub 那个处理器（后者若在，会按 `StubCallback` 绑定 body，
+空 body 会得到 400 而不是 `FAIL`）。
+
+**结论不变**：那个「知道订单号就能白拿货」的端点在生产已经不存在了。
+但「路径 404」和「处理器不存在」是两件事 —— 我把前者当成了后者的判据，
+而真正该看的是<b>谁答的这一句</b>。
+
+### 12.4 顺带修正一条我写在文档里的错话
+
+§7.4 与 §11 里把回调端点的期望写成「返回 `{"code":"FAIL"}`」——
+那只有在**该通道的验签 bean 装配了**的时候成立。
+通道没装配时回的是裸 `FAIL`。两者都不是 404，都能用来判「nginx 通没通」，
+但它们区分的是<b>另一件事</b>：微信这一侧接没接上。
