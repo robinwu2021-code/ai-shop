@@ -34,13 +34,21 @@ public class OpsCommunityController {
     /** 区划推断走 spi Port —— community 域不直连 platform（ArchUnit 第 1 条） */
     private final MasterDataPort masterDataPort;
 
+    /** 坐标健康度要跨三个域取数，同样只经 spi Port —— 不直连 merchant / user 的表 */
+    private final ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
+    private final ai.neargo.shop.spi.user.UserQueryPort userQueryPort;
+
     public OpsCommunityController(CommunityAdminService adminService, AuditLogPort auditLogPort,
                                   ai.neargo.shop.archive.ArchiveService archiveService,
-                                  MasterDataPort masterDataPort) {
+                                  MasterDataPort masterDataPort,
+                                  ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort,
+                                  ai.neargo.shop.spi.user.UserQueryPort userQueryPort) {
         this.adminService = adminService;
         this.auditLogPort = auditLogPort;
         this.archiveService = archiveService;
         this.masterDataPort = masterDataPort;
+        this.merchantQueryPort = merchantQueryPort;
+        this.userQueryPort = userQueryPort;
     }
 
     private final ai.neargo.shop.archive.ArchiveService archiveService;
@@ -159,6 +167,39 @@ public class OpsCommunityController {
 
     /** @param intoNo 留下来的那条。运营要挑名字更规范的那个，被并的名字会进 alias */
     public record MergeReq(String fromNo, String intoNo) {
+    }
+
+    /**
+     * 坐标健康度 —— <b>这是整个位置模块的分母。</b>
+     *
+     * <p>为什么必须有这一页：门店没标点时 {@code requireWithinDeliveryRadius}
+     * 那条闸**直接放行**（缺数据不该拦正常订单，这是对的）。代价是商家以为自己
+     * 限了三公里、实际多远的单都进来，等他要送货才发现送不到，那时钱已经收了。
+     * 而这件事今天在任何界面上都看不见 —— 商家看不见、运营也看不见。
+     *
+     * <p>同理，没坐标的收货地址推不出任何聚落。它们既不算进任何一个片区，
+     * 也不该被静默丢掉：位置分布那张表必须把它们**单列一格**，
+     * 否则会把「缺数据」说成「缺需求」，而运营会据此去撤一个其实有人的片区的商家。
+     *
+     * <p><b>给明细不只给数字</b>：只说「7 家没标点」，运营下一步无从做起。
+     */
+    @GetMapping("/ops/coverage/health")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_READ + "')")
+    public CoverageHealthVO coverageHealth() {
+        var stores = merchantQueryPort.storeCoordHealth();
+        var addresses = userQueryPort.addressCoordHealth();
+        var communities = adminService.communityCoordHealth();
+        return new CoverageHealthVO(stores, addresses, communities);
+    }
+
+    /**
+     * @param stores      门店：没标点 = 自送半径不生效
+     * @param addresses   收货地址：没坐标 = 推不出聚落，进不了任何片区的统计
+     * @param communities 聚落：没坐标 = 谁也匹配不到它；围栏异常 = 覆盖范围不对
+     */
+    public record CoverageHealthVO(ai.neargo.shop.spi.user.MerchantQueryPort.StoreCoordHealth stores,
+                                   ai.neargo.shop.spi.user.UserQueryPort.AddressCoordHealth addresses,
+                                   CommunityAdminService.CommunityCoordHealth communities) {
     }
 
     /**

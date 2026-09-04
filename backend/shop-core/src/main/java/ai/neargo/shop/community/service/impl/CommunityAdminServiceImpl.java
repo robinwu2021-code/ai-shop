@@ -436,6 +436,19 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
 
     @Override
     @Transactional
+    public CommunityCoordHealth communityCoordHealth() {
+        var rows = communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                .eq(CmtCommunity::getStatus, "OPEN")
+                .isNull(CmtCommunity::getArchivedAt));
+        java.util.List<java.util.Map<String, String>> missing = rows.stream()
+                .filter(c -> c.getLatE6() == null || c.getLngE6() == null)
+                .map(c -> java.util.Map.of("communityNo", c.getCommunityNo(),
+                        "name", c.getName() == null ? "" : c.getName()))
+                .toList();
+        return new CommunityCoordHealth(rows.size(), rows.size() - missing.size(), missing);
+    }
+
+    @Override
     public CommunityVO setFence(String communityNo, int fenceRadius, String operatorNo) {
         if (fenceRadius <= 0) {
             // 0 意味着这个社区覆盖不到任何地址，而界面上看起来只是「还没配」

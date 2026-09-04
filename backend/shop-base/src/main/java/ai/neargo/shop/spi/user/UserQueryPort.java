@@ -62,4 +62,17 @@ public interface UserQueryPort {
      * @return 没绑过社区时为空
      */
     java.util.Optional<String> communityOf(String userNo);
+
+    /**
+     * 收货地址的坐标健康度。**只给聚合数，不给明细** ——
+     * 地址是个人信息，运营看总数就够判断「分母有多脏」，没有理由逐条看。
+     *
+     * <p>没坐标的地址推不出任何聚落：它们既不算进任何一个片区，
+     * 也不该被静默丢掉。位置分布那张表（O11）必须把它们单列一格，
+     * 否则会把「缺数据」说成「缺需求」。
+     */
+    AddressCoordHealth addressCoordHealth();
+
+    record AddressCoordHealth(int total, int withCoords) {
+    }
 }

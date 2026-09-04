@@ -528,6 +528,36 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public StoreCoordHealth storeCoordHealth() {
+        /*
+         * **走数据域，不绕。**
+         *
+         * 一开始写的是 `executeWithoutScope`，理由是「平台级分母，配了域的运营
+         * 也该看到全量」。那个理由站不住：这一页是给不受限的管理员看的，
+         * 而他本来就没有域限制、照样看到全部。绕域换来的只是**让配了域的运营
+         * 看到他无权处置、也点不进去的别家门店** —— 既是泄漏又没用。
+         */
+        List<ai.neargo.shop.merchant.entity.MchStore> stores = storeMapper.selectList(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery());
+        List<StoreCoordHealth.MissingStore> missing = new java.util.ArrayList<>();
+        int withCoords = 0;
+        for (var st : stores) {
+            if (st.getLatE6() != null && st.getLngE6() != null) {
+                withCoords++;
+            } else {
+                /*
+                 * **不在这里取商家名。** 取名字要调 findAll，而它为 C 端刻意绕开了
+                 * 数据域（见那个方法的注释）—— 从 ops 读路径调它，配了域的运营
+                 * 就会看到别家的商家名，而且不报错。名字交给前端按 merchantNo 自取。
+                 */
+                missing.add(new StoreCoordHealth.MissingStore(
+                        st.getStoreNo(), st.getName(), st.getEntityNo(), st.getDeliveryRadiusM()));
+            }
+        }
+        return new StoreCoordHealth(stores.size(), withCoords, List.copyOf(missing));
+    }
+
+    @Override
     public Optional<DeliveryOrigin> deliveryOrigin(String merchantNo) {
         if (merchantNo == null || merchantNo.isBlank()) {
             return Optional.empty();

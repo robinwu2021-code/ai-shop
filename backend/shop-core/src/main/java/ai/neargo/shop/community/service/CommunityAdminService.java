@@ -24,6 +24,20 @@ public interface CommunityAdminService {
     CommunityVO setFence(String communityNo, int fenceRadius, String operatorNo);
 
     /**
+     * 聚落的坐标与围栏健康度。
+     *
+     * <p>没坐标的聚落**谁也匹配不到** —— 而它看起来一切正常：建档成功、列表里有，
+     * 只是没有任何买家能选到它。这类聚落会长期存在：商家提报审过后建出来的
+     * 只有名字与区划，坐标靠运营后补。
+     */
+    CommunityCoordHealth communityCoordHealth();
+
+    /** @param missing 没坐标的那些（communityNo + 名字），运营据此去补 */
+    record CommunityCoordHealth(int total, int withCoords,
+                                java.util.List<java.util.Map<String, String>> missing) {
+    }
+
+    /**
      * 把社区挂到某个行政区划下（ADR-013 阶段一）。
      *
      * <p>挂了之后「按区/按街道覆盖」才能命中它。**建议挂到街道级** ——

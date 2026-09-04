@@ -381,6 +381,8 @@ export const RULES = [
   // ── 社区与网点 ─────────────────────────────────────────────────────────
   ["GET", /^\/ops\/pickups/, "community:pickup:read"],
   ["*", /^\/ops\/pickups/, "community:pickup:update"],
+  // 坐标健康度：读的是聚落/门店/地址的分母，判 community 的读码（与社区网格同一页）
+  ["GET", /^\/ops\/coverage\//, "community:community:read"],
   ["GET", /^\/ops\/communities/, "community:community:read"],
   ["*", /^\/ops\/communities/, "community:community:update"],
   ["GET", /^\/ops\/regions/, "community:region:read",

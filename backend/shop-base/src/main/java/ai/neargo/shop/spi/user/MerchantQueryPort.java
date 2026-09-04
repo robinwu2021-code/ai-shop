@@ -110,6 +110,34 @@ public interface MerchantQueryPort {
      */
     java.util.Optional<DeliveryOrigin> deliveryOrigin(String merchantNo);
 
+    /**
+     * 门店坐标健康度。**运营端唯一能看见「自送半径是不是哑的」的地方。**
+     *
+     * <p>没标点的门店，{@code requireWithinDeliveryRadius} 那条闸直接放行 ——
+     * 商家以为自己限了三公里，实际多远的单都进来，等他要送货才发现送不到，
+     * 那时钱已经收了。而这件事今天在任何界面上都看不见。
+     *
+     * <p>返回明细而不只是数字：只给「7 家没标点」，运营下一步无从做起。
+     */
+    StoreCoordHealth storeCoordHealth();
+
+    /**
+     * @param missing 没标点的那些。**带上 merchantNo** —— 运营要从这里跳到商家去催
+     */
+    record StoreCoordHealth(int total, int withCoords, java.util.List<MissingStore> missing) {
+
+        /**
+         * @param merchantNo 运营从这里跳到商家去催他标点。
+         *                   <b>刻意不带商家名</b>：取名字要走 {@code findAll}，
+         *                   而那个方法为 C 端刻意绕开了数据域 —— 从 ops 读路径调它，
+         *                   配了域的运营就会看到别家的商家名。
+         *                   名字由前端按已授权的 merchantNo 自己去取。
+         */
+        public record MissingStore(String storeNo, String storeName, String merchantNo,
+                                   Integer deliveryRadiusM) {
+        }
+    }
+
     /** @param radiusM 0 或负数表示商家没限制距离 */
     record DeliveryOrigin(int latE6, int lngE6, int radiusM) {
     }

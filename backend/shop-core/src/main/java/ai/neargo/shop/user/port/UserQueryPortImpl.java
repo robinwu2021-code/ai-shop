@@ -65,6 +65,15 @@ public class UserQueryPortImpl implements UserQueryPort {
         return Optional.of(new Receiver(a.getName(), a.getPhone(), full, a.getLatE6(), a.getLngE6()));
     }
 
+    @Override
+    public AddressCoordHealth addressCoordHealth() {
+        // 走数据域，不绕（理由同 MerchantPortImpl.storeCoordHealth）
+        var rows = addressMapper.selectList(Wrappers.<ai.neargo.shop.user.entity.UsrAddress>lambdaQuery());
+        int withCoords = (int) rows.stream()
+                .filter(a -> a.getLatE6() != null && a.getLngE6() != null).count();
+        return new AddressCoordHealth(rows.size(), withCoords);
+    }
+
     private static String nz(String s) {
         return s == null ? "" : s;
     }
