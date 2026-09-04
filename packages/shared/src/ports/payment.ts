@@ -9,6 +9,15 @@ export interface PayResult {
   /** 端侧唤起结果，仅表示「用户完成了交互」，不代表支付成功 */
   invoked: boolean;
   cancelled: boolean;
+  /**
+   * 唤起失败时**通道自己说的原因**（`wx.requestPayment` 的 errMsg）。
+   *
+   * <b>此前这个字段不存在，于是失败被静默吞掉</b>：页面只处理了「用户取消」，
+   * 非取消的失败一句话都不留，继续往下走。
+   * 而微信在这一步会说很具体的话（未开通支付、appid 不匹配、签名错、参数缺失），
+   * 那句话是排查这条链唯一的输入 —— 丢掉它，剩下的只有「点了没反应」。
+   */
+  failReason?: string;
 }
 
 export async function requestPayment(params: PayParams): Promise<PayResult> {
@@ -18,7 +27,16 @@ export async function requestPayment(params: PayParams): Promise<PayResult> {
       provider: "wxpay",
       ...(params as object),
       success: () => resolve({ invoked: true, cancelled: false }),
-      fail: (e) => resolve({ invoked: false, cancelled: /cancel/i.test(e.errMsg || "") }),
+      fail: (e) => {
+        const msg = e?.errMsg || "";
+        // 取消是正常路径；其余一律带上通道原话
+        const cancelled = /cancel/i.test(msg);
+        if (!cancelled) {
+          // 控制台留一份：真机上 toast 一闪而过，而这句话往往是唯一的线索
+          console.error("[pay] requestPayment 失败：", msg, e);
+        }
+        resolve({ invoked: false, cancelled, failReason: cancelled ? undefined : msg });
+      },
     } as UniApp.RequestPaymentOptions);
   });
   // #endif

@@ -110,6 +110,22 @@ async function pay() {
       // 取消不是失败：单还在，用户可以换一种方式再来（后端会换新的商户单号）
       return;
     }
+    if (!res.invoked) {
+      /*
+       * **唤起失败要把通道的原话说出来。**
+       *
+       * 此前这里什么都不做，直接往下走 —— 于是「微信根本没弹出来」与
+       * 「弹出来了但没付」在界面上长得一模一样，都是回到订单页。
+       * 而微信在这一步说的是很具体的话（未开通支付、appid 不匹配、签名错），
+       * 那句话是排查这条链唯一的输入。
+       */
+      uni.showModal({
+        title: String(t("pay.invokeFailedTitle")),
+        content: res.failReason || String(t("pay.invokeFailedUnknown")),
+        showCancel: false,
+      });
+      return;
+    }
     // 以回查为准，不用端侧返回值判成功
     order.value = await api.orderDetail(o.orderNo);
 

@@ -495,6 +495,8 @@ export default {
     payNow: "立即支付",
     paying: "支付中…",
     cancelled: "已取消支付",
+    invokeFailedTitle: "支付没能唤起",
+    invokeFailedUnknown: "微信没有给出原因，请截图反馈",
     cancel: "取消订单",
     cancelTitle: "取消订单",
     cancelTip: "取消后库存将释放，确定取消？",

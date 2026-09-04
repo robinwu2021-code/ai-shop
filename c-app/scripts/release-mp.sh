@@ -27,6 +27,16 @@ APPID="$(grep -oE '"appid"[[:space:]]*:[[:space:]]*"wx[a-z0-9]+"' "$HERE/src/man
 [ -n "$APPID" ] || { echo "✗ 从 src/manifest.json 里读不出 mp-weixin 的 appid"; exit 1; }
 echo "▶ 目标小程序 AppID：$APPID"
 
+# **把版本号写回 manifest.json，再构建。**
+# 不写的话，命令行给的版本只到了微信的上传接口，而屏幕上（我的 → 帮助中心）
+# 显示的是 manifest 里那个从没人改过的数 —— **两个数不是同一个**，
+# 于是「我手上这份是哪一版」这个问题，界面给的答案是错的。
+# 2026-09-04 实测：后台是 0.1.3，界面显示 0.1.0。
+if ! grep -q "\"versionName\"[[:space:]]*:[[:space:]]*\"$VERSION\"" "$HERE/src/manifest.json"; then
+  perl -0pi -e "s/(\"versionName\"\s*:\s*\")[^\"]*(\")/\${1}$VERSION\${2}/" "$HERE/src/manifest.json"
+  echo "▶ 0/4 manifest.json 的 versionName 已更新为 $VERSION（记得随发布一起提交）"
+fi
+
 echo "▶ 1/4 构建"
 ( cd "$HERE" && rm -rf dist/build/mp-weixin && npm run build:mp-weixin >/dev/null )
 [ -f "$DIST/app.json" ] || { echo "✗ 产物没生成：$DIST"; exit 1; }
