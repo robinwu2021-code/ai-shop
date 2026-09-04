@@ -38,6 +38,18 @@ public class MchServiceArea extends BaseEntity {
     /** ACTIVE 已生效 / PENDING 待审（勾区、市要审 —— 影响面差一个量级） */
     private String status;
 
+    /**
+     * 覆盖方向：{@code INCLUDE} 纳入（默认）/ {@code EXCLUDE} 排除。
+     *
+     * <p>它回答的是「商家框了小区，算不算覆盖里面每栋楼」—— **默认算**，
+     * 但给一个显式的出口：勾了整个小区、单独排除 3 幢。
+     *
+     * <p>展开时**先并后减**，EXCLUDE 优先于 INCLUDE。
+     * 而更好的做法是在输入端就不让矛盾发生（B 端勾了排除就把对应的 include 去掉）——
+     * 从输入端消除比从判定端消除诚实，后者要求用户记住一条规则。
+     */
+    private String mode;
+
     public static final String ACTIVE = "ACTIVE";
     public static final String PENDING = "PENDING";
 }

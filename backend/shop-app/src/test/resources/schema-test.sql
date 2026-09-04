@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS cmt_community
     source VARCHAR(16) NULL,
     alias VARCHAR(128) NULL,
     archived_at DATETIME DEFAULT NULL,
+    parent_no VARCHAR(64) NULL,
     CONSTRAINT uk_community_origin UNIQUE (origin_code),
     PRIMARY KEY (id),
     CONSTRAINT uk_community_no UNIQUE (community_no)
@@ -1931,6 +1932,7 @@ CREATE TABLE IF NOT EXISTS mch_service_area
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     area_no VARCHAR(64) NOT NULL,
+    mode VARCHAR(16) NOT NULL DEFAULT 'INCLUDE',
     CONSTRAINT uk_service_area_no UNIQUE (area_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_service_area UNIQUE (entity_no,level,ref_code)

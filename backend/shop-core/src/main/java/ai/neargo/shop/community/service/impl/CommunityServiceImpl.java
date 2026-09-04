@@ -396,13 +396,12 @@ public class CommunityServiceImpl implements CommunityService {
     /**
      * 聚落粒度的**由内到外**排序。数字越小越内层。
      *
-     * <p>今天只有 ESTATE / VILLAGE 两种，两者同档 —— 也就是说这张表现在是空转的。
-     * **先写在这儿是有意的**：楼栋（`BUILDING`）落地时只要在这里加一行，
-     * 匹配逻辑一个字都不用改。而如果等那时候再引入「层级」这个概念，
-     * 改的就是 {@link #resolve} 的主干。
+     * <p>ESTATE 与 VILLAGE 同档，BUILDING 更内层。
+     * 这张表在 T2 就写好了（那时还没有 BUILDING、它是空转的），
+     * 于是楼栋落地时**匹配主干一个字没改** —— 那正是当初先写它的理由。
      */
     private static int depthOf(String kind) {
-        return "BUILDING".equals(kind) ? 0 : 1;
+        return CmtCommunity.KIND_BUILDING.equals(kind) ? 0 : 1;
     }
 
     @Override

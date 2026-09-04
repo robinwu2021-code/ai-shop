@@ -18,6 +18,15 @@ public class CmtCommunity extends BaseEntity {
 
     public static final String KIND_ESTATE = "ESTATE";
     public static final String KIND_VILLAGE = "VILLAGE";
+    /**
+     * 楼栋 / 写字楼。**与小区、村平级**，同样挂街道（L4），只是多了一个 {@code parentNo}。
+     *
+     * <p><b>这一档让 kind 从「展示标签」变成了参与判定的东西</b>：
+     * 匹配时「层级优先于距离」（见 {@code CommunityServiceImpl.depthOf}）——
+     * 站在楼门口时，隔壁小区的中心可能比本楼中心更近，按距离取会把
+     * 「我在 3 幢」判成「我在隔壁小区」，而两者的商品池不同。
+     */
+    public static final String KIND_BUILDING = "BUILDING";
 
     private String communityNo;
     private String name;
@@ -107,6 +116,17 @@ public class CmtCommunity extends BaseEntity {
      * <p>默认 1000 而不是 0：0 意味着「这个社区覆盖不到任何地址」，
      * 而它看起来像「还没配」—— 一个默认值就能让整个社区静默失效。
      */
+    /**
+     * 所属聚落（楼栋 → 小区/园区）。**为空 = 顶层聚落**，直接挂 {@code regionCode}。
+     *
+     * <p><b>只做两层</b>：园区 › 楼 › 单元 › 户会没完没了，而单元和户不是服务单位 ——
+     * 没有商家按单元框范围，它们属于收货地址的门牌号。
+     *
+     * <p>归属是**声明的**，不靠围栏几何推断：大小区边上的一栋楼可能落在小区中心圆之外，
+     * 而隔壁小区的圆反而把它罩进去。围栏只回答「我此刻站在哪一个聚落里」。
+     */
+    private String parentNo;
+
     private Integer fenceRadius;
 
     /**
