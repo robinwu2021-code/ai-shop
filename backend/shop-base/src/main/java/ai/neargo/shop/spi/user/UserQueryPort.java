@@ -82,6 +82,18 @@ public interface UserQueryPort {
      */
     int addressesWithin(int latE6, int lngE6, int radiusM);
 
+    /**
+     * 有坐标的收货地址的坐标。**位置分布那张表的需求侧靠它** ——
+     * 归属由调用方按围栏算（判据只有一份，见 {@code CommunityService.resolve}），
+     * 这里只负责把点交出去。
+     *
+     * <p>不返回任何可识别到人的字段：这张表要回答的是「哪儿有人」，不是「谁住哪儿」。
+     */
+    java.util.List<Point> addressPoints();
+
+    record Point(int latE6, int lngE6) {
+    }
+
     record AddressCoordHealth(int total, int withCoords) {
     }
 }

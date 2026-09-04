@@ -35,12 +35,13 @@ import { TabHeader } from "@/components/ui/tab-header";
 import { ApplyTab } from "./apply-tab";
 import { RegionTab } from "./region-tab";
 import { HealthTab } from "./health-tab";
+import { DistributionTab } from "./distribution-tab";
 import { DuplicatesPanel } from "./duplicates-panel";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof COMMUNITIES_COPY)["zh"];
-const TAB_KEYS = ["grid", "pickups", "neighbor", "applies", "regions", "health"] as const;
+const TAB_KEYS = ["grid", "pickups", "neighbor", "applies", "regions", "health", "distribution"] as const;
 
 const OPEN_OPTIONS = (c: Copy) => [
   { value: "1", label: c.openedYes },
@@ -389,6 +390,7 @@ function CommunitiesInner() {
       {tab === "regions" && <RegionTab c={cp} canDecide={allow("community:region:update")} />}
       {/* 坐标健康度：只读，判 community:community:read（与社区网格同一码） */}
       {tab === "health" && <HealthTab enabled={tab === "health"} />}
+      {tab === "distribution" && <DistributionTab enabled={tab === "distribution"} />}
 
       {tab === "regions" && !allow("community:region:update") && (
         <ReadOnlyNotice what={cp.readOnlyRegionWhat} perm="community:region:update" note={cp.readOnlyRegionNote} className="mb-3" />
@@ -419,7 +421,7 @@ function CommunitiesInner() {
         </Notice>
       )}
 
-      {tab !== "neighbor" && tab !== "applies" && (
+      {tab !== "neighbor" && tab !== "applies" && tab !== "health" && tab !== "distribution" && (
         <Toolbar
           search={keyword}
           onSearch={(v) => { setKeyword(v); setPage(1); }}
@@ -475,7 +477,12 @@ function CommunitiesInner() {
       )}
 
       {/* 提报 tab 自带分页 —— 这里再摆一个的话，一屏两个分页条，点哪个都不对 */}
-      {tab !== "applies" && (
+      {/*
+        health / distribution 自成一屏，**没有分页**。
+        照旧渲染的话底下会挂一条「共 0 条 · 1/1」—— 那是在说这一屏没有数据，
+        而它上面明明有一张表；读的人只能在两句互相矛盾的话里挑一句信。
+      */}
+      {tab !== "applies" && tab !== "health" && tab !== "distribution" && (
         <Pagination page={page} size={size} onSize={setSize} total={activeList.data?.total ?? 0} onPage={setPage} />
       )}
 

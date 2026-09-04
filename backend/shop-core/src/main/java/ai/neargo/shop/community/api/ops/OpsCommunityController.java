@@ -315,6 +315,18 @@ public class OpsCommunityController {
         return adminService.fenceImpact(communityNo, radiusM);
     }
 
+    /**
+     * 位置分布：聚落 × 买家 × 商家 × 商品。
+     *
+     * <p>返回体里 {@code unattributable} 与 {@code rows} <b>并列</b>，不是脚注 ——
+     * 端上要把它画成同样显眼的一块，否则「缺数据」会被读成「缺需求」。
+     */
+    @GetMapping("/ops/coverage/distribution")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_READ + "')")
+    public CommunityAdminService.DistributionVO distribution() {
+        return adminService.distribution();
+    }
+
     // ---------------------------------------------------------------- 自提点
 
     @GetMapping("/ops/pickups")

@@ -51,6 +51,49 @@ public interface CommunityAdminService {
     FenceImpactVO fenceImpact(String communityNo, Integer radiusM);
 
     /**
+     * 位置分布：<b>聚落 × 买家 × 商家 × 商品</b>。
+     *
+     * <p><b>这张表最要紧的不是那几行，是「算不了的」那一格。</b>
+     * 没坐标的收货地址推不出任何聚落、没标点的门店让自送半径失效、
+     * 关掉的聚落不在任何列表里 —— 把它们静默丢掉，这张表就会把
+     * <b>「缺数据」说成「缺需求」</b>，而运营会据此去撤一个其实有人的片区的商家。
+     *
+     * <p>分母写错的分析比没有分析更危险：没有分析时人会去查，
+     * 有一张看起来完整的表时，人会直接照着做。
+     */
+    DistributionVO distribution();
+
+    /**
+     * @param rows           每个开通聚落一行，按买家数降序
+     * @param unattributable 算不进任何一行的那些。<b>与 rows 并列，不是脚注</b>
+     */
+    record DistributionVO(java.util.List<DistributionRow> rows, Unattributable unattributable) {
+
+        /**
+         * @param buyerCount    围栏内有坐标的收货地址数
+         * @param merchantCount 社区池里在这儿有货的主体数 —— 是「买家真搜得到」，不是「谁框了这儿」
+         * @param goodsCount    社区池里在这儿搜得到的商品数
+         */
+        public record DistributionRow(String communityNo, String name, String kind, String regionPath,
+                                      int buyerCount, int merchantCount, int goodsCount) {
+        }
+
+        /**
+         * 算不进任何一行的。
+         *
+         * @param addressesWithoutCoords 没坐标的收货地址：推不出聚落，**不是没人**
+         * @param addressesOutsideFences 有坐标但**不落在任何围栏里**的地址：
+         *        那儿真的有人，只是平台还没在那儿开聚落 —— 这一格是开城线索，
+         *        混进「没需求」正好把它读反了
+         * @param storesWithoutCoords    没标点的门店：自送半径对它形同虚设
+         * @param communitiesClosed      已关闭的聚落：不在 rows 里，但它们的历史数据还在
+         */
+        public record Unattributable(int addressesWithoutCoords, int addressesOutsideFences,
+                                     int storesWithoutCoords, int communitiesClosed) {
+        }
+    }
+
+    /**
      * @param currentRadiusM 当前围栏
      * @param previewRadiusM 预览的那个半径
      * @param currentInside  当前圈里的收货地址数

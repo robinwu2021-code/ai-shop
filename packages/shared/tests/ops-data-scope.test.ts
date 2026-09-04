@@ -992,6 +992,24 @@ describe("运营端数据域接入", () => {
       + "而「我能在哪儿取货」是下单的前置",
     cmt_pickup_point: "同上，取货点跟着社区走",
     /*
+     * 2026-09-04 · 位置分布（GET /ops/coverage/distribution）读它。
+     *
+     * **试过了，不能登记。** 我先按 grep 推断「所有生产读路径都显式绕过」——
+     * 推错了：注册之后全量跑出两条红，`ConsumerScopeParityTest
+     * .loggedInSeesAtLeastWhatGuestSees` 与 `DataScopeFlowTest
+     * .loggedInUserSeesSameCatalogAsGuest`，也就是**游客有数据、登录是空的**
+     * （C 端会话的维度是 SELF，在池的锚点里找不到，fail-closed 拼出 1=0）。
+     * 与 cmt_community 那条同一个形状。
+     *
+     * ⚠️ 代价要说清楚：配了数据域的运营在这一屏看到的是**全平台**的供给数字
+     * （在售商家 / 在售商品）。买家那一列不受影响 —— 它按围栏算，本来就没有主体轴。
+     * 要收紧只能在服务层按域过滤，那是另一单。
+     */
+    prd_community_pool:
+      "社区池是 C 端可见性的派生索引，注册会让登录买家一件货都搜不到"
+      + "（实测：ConsumerScopeParityTest / DataScopeFlowTest 各红一条）；"
+      + "代价是这一屏的供给数字对配了域的运营是全平台口径",
+    /*
      * 2026-09-04 · 商家覆盖明细（GET /ops/stores/{storeNo}）读它。
      *
      * **不能登记**，而理由不在这条查询本身：`MerchantSettlementRefPortImpl

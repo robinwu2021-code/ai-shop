@@ -2197,6 +2197,71 @@ components:
         - "addressesWithCoords"
       additionalProperties: false
       description: "围栏改动的影响预览。\n\n只给「当前半径」没用 —— 运营要回答的是「改成 1500 会多进来几户」， 而这件事此前在任何界面上都算不出来，只能改完再等有人投诉。"
+    CoverageDistribution: 
+      type: "object"
+      properties: 
+        rows: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/DistributionRow"
+        unattributable: 
+          "$ref": "#/definitions/Unattributable"
+      required: 
+        - "rows"
+        - "unattributable"
+      additionalProperties: false
+      description: "位置分布：聚落 × 买家 × 商家 × 商品。\n\n**最要紧的不是那几行，是 `unattributable`。** 把算不了的静默丢掉， 这张表就会把「缺数据」说成「缺需求」—— 而运营会据此去撤一个其实有人的片区的商家。 分母写错的分析比没有分析更危险：没有分析时人会去查，有一张看起来完整的表时，人会直接照着做。"
+    DistributionRow: 
+      type: "object"
+      properties: 
+        communityNo: 
+          type: "string"
+        name: 
+          type: "string"
+        kind: 
+          type: "string"
+          description: "ESTATE / VILLAGE / BUILDING"
+        regionPath: 
+          type: 
+            - "string"
+            - "null"
+        buyerCount: 
+          type: "number"
+          description: "围栏内有坐标的收货地址数"
+        merchantCount: 
+          type: "number"
+          description: "社区池里在这儿有货的主体数 —— 是「买家真搜得到」，不是「谁框了这儿」"
+        goodsCount: 
+          type: "number"
+      required: 
+        - "communityNo"
+        - "name"
+        - "kind"
+        - "buyerCount"
+        - "merchantCount"
+        - "goodsCount"
+      additionalProperties: false
+    Unattributable: 
+      type: "object"
+      properties: 
+        addressesWithoutCoords: 
+          type: "number"
+          description: "没坐标的收货地址：推不出聚落，**不是没人**"
+        addressesOutsideFences: 
+          type: "number"
+          description: "有坐标但不落在任何围栏里：那儿真的有人，只是还没在那儿开聚落 —— **这是开城线索**"
+        storesWithoutCoords: 
+          type: "number"
+          description: "没标点的门店：自送半径对它形同虚设"
+        communitiesClosed: 
+          type: "number"
+          description: "已关闭的聚落：不在 rows 里，但历史数据还在"
+      required: 
+        - "addressesWithoutCoords"
+        - "addressesOutsideFences"
+        - "storesWithoutCoords"
+        - "communitiesClosed"
+      additionalProperties: false
     BatchStatus: 
       type: "string"
       enum: 
@@ -8844,6 +8909,32 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/CoverageHealth"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/coverage/distribution": 
+    get: 
+      operationId: "coverageDistribution"
+      summary: "位置分布（P-2.1）"
+      tags: 
+        - "community"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/CoverageDistribution"
                 required: 
                   - "code"
                   - "msg"

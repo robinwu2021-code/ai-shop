@@ -493,6 +493,24 @@ _无字段_
 类型：[`NearbyCommunity`](#nearbycommunity)\[\]
 
 
+#### GET `/ops/coverage/distribution`
+
+位置分布（P-2.1）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`CoverageDistribution`](#coveragedistribution)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`#/definitions/DistributionRow`](#definitionsdistributionrow)\[\] | 是 | — |
+| `unattributable` | [`#/definitions/Unattributable`](#definitionsunattributable) | 是 | — |
+
+
 #### GET `/ops/coverage/health`
 
 坐标健康度（P-2.1）
@@ -9629,6 +9647,15 @@ _无字段_
 | `amount` | `number` | 是 | 本次发放占用的预算（分） |
 | `operator` | `string` | 是 | 操作人（STAFF 账号）。**客服也持有发券权限**，留痕不能省 |
 | `createdAt` | `string` | 是 | 发放时间 |
+
+### CoverageDistribution
+
+位置分布：聚落 × 买家 × 商家 × 商品。 **最要紧的不是那几行，是 `unattributable`。** 把算不了的静默丢掉， 这张表就会把「缺数据」说成「缺需求」—— 而运营会据此去撤一个其实有人的片区的商家。 分母写错的分析比没有分析更危险：没有分析时人会去查，有一张看起来完整的表时，人会直接照着做。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`#/definitions/DistributionRow`](#definitionsdistributionrow)\[\] | 是 | — |
+| `unattributable` | [`#/definitions/Unattributable`](#definitionsunattributable) | 是 | — |
 
 ### CoverageHealth
 

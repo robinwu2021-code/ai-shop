@@ -148,6 +148,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   商家提报: { en: "Merchant submissions" },
   区划维护: { en: "Region maintenance" },
   坐标健康: { en: "Coordinate health" },
+  位置分布: { en: "Location distribution" },
   自提点: { en: "Pickup points" },
   临时点监控: { en: "Temporary points" },
 

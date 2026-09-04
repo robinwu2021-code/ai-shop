@@ -357,3 +357,39 @@ export interface FenceImpact {
   /** 有坐标的收货地址总数。**分母要给** —— 「多进来 0 户」在一个没几条地址有坐标的库里说明不了任何事 */
   addressesWithCoords: number;
 }
+
+/**
+ * 位置分布：聚落 × 买家 × 商家 × 商品。
+ *
+ * **最要紧的不是那几行，是 `unattributable`。** 把算不了的静默丢掉，
+ * 这张表就会把「缺数据」说成「缺需求」—— 而运营会据此去撤一个其实有人的片区的商家。
+ * 分母写错的分析比没有分析更危险：没有分析时人会去查，有一张看起来完整的表时，人会直接照着做。
+ */
+export interface CoverageDistribution {
+  rows: DistributionRow[];
+  unattributable: Unattributable;
+}
+
+export interface DistributionRow {
+  communityNo: string;
+  name: string;
+  /** ESTATE / VILLAGE / BUILDING */
+  kind: string;
+  regionPath?: string | null;
+  /** 围栏内有坐标的收货地址数 */
+  buyerCount: number;
+  /** 社区池里在这儿有货的主体数 —— 是「买家真搜得到」，不是「谁框了这儿」 */
+  merchantCount: number;
+  goodsCount: number;
+}
+
+export interface Unattributable {
+  /** 没坐标的收货地址：推不出聚落，**不是没人** */
+  addressesWithoutCoords: number;
+  /** 有坐标但不落在任何围栏里：那儿真的有人，只是还没在那儿开聚落 —— **这是开城线索** */
+  addressesOutsideFences: number;
+  /** 没标点的门店：自送半径对它形同虚设 */
+  storesWithoutCoords: number;
+  /** 已关闭的聚落：不在 rows 里，但历史数据还在 */
+  communitiesClosed: number;
+}

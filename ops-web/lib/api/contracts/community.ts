@@ -1,7 +1,7 @@
 // 覆盖范围：社区网格（P-2.1）与自提点主数据（P-2.2）。
 import type {
-  Community, CommunityApply, CommunityDuplicate, CoverageHealth, FenceImpact, NearbyCommunity, Page, PickupPoint,
-  PickupStatus,
+  Community, CommunityApply, CommunityDuplicate, CoverageDistribution, CoverageHealth, FenceImpact,
+  NearbyCommunity, Page, PickupPoint, PickupStatus,
   Region, RegionSuggestion,
 } from "@/lib/types";
 import type { PickupDraft } from "@/lib/types";
@@ -14,6 +14,12 @@ export interface CommunityApi {
    * 分母写错的分析比没有分析更危险：它会让运营去撤一个其实有人的片区的商家。
    */
   coverageHealth(): Promise<CoverageHealth>;
+
+  /**
+   * 位置分布（P-2.1）。**`unattributable` 与 `rows` 并列，不是脚注** ——
+   * 端上要把它画得同样显眼，否则「缺数据」会被读成「缺需求」。
+   */
+  coverageDistribution(): Promise<CoverageDistribution>;
 
   listCommunities(q?: CommunityQ): Promise<Page<Community>>;
   /** 开城/停城（P-2.1.2）。停城不影响已有订单，只是 C 端不再展示。 */

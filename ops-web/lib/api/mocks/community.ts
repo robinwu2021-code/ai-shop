@@ -124,6 +124,40 @@ export const communityMock: CommunityApi = {
     return wait(c as (typeof db.communities)[number], 400);
   },
 
+  /*
+   * 分布 mock。**「算不了的」那三格必须非零** —— 全 0 的话这一屏在 mock 下
+   * 永远只有一张干净的表，而它存在的理由正是那几格。
+   */
+  coverageDistribution: async () => {
+    const withCoords = (db.addresses ?? []).filter((a) => a.latE6 != null);
+    const open = db.communities.filter((c) => c.opened);
+    const inside = (c: (typeof db.communities)[number]) =>
+      c.latE6 == null ? 0 : withCoords.filter((a) => {
+        const dLat = ((c.latE6 as number) - a.latE6) / 1e6 * 111_000;
+        const dLng = ((c.lngE6 as number) - a.lngE6) / 1e6 * 111_000
+          * Math.cos((a.latE6 / 1e6) * Math.PI / 180);
+        return Math.round(Math.hypot(dLat, dLng)) <= c.fenceRadius;
+      }).length;
+    const rows = open.map((c) => ({
+      communityNo: c.communityNo, name: c.name, kind: c.kind ?? "ESTATE",
+      regionPath: c.regionPath,
+      buyerCount: inside(c),
+      // 供给侧：mock 没有社区池，按有没有归属区划给个稳定的假数
+      merchantCount: c.regionCode ? 2 : 0,
+      goodsCount: c.regionCode ? 17 : 0,
+    })).sort((a, b) => b.buyerCount - a.buyerCount);
+    const attributed = rows.reduce((n, r) => n + r.buyerCount, 0);
+    return wait({
+      rows,
+      unattributable: {
+        addressesWithoutCoords: 1,
+        addressesOutsideFences: Math.max(0, withCoords.length - attributed),
+        storesWithoutCoords: 2,
+        communitiesClosed: db.communities.length - open.length,
+      },
+    }, 300);
+  },
+
   listCommunityApplies: (q = {}) =>
     wait(db.paginate(db.communityApplies, q.page, q.size,
       (a) => (q.status && q.status !== "ALL" ? a.status === q.status : true))),

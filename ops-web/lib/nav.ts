@@ -440,6 +440,7 @@ export const NAV: NavSection[] = [
       { href: "/communities?tab=regions", label: "区划维护", perm: "community:region:read", group: "社区网格", matrix: "P-2.1", ready: true },
       // 坐标健康度：位置模块的分母（没标点的门店 = 自送半径是哑的）
       { href: "/communities?tab=health", label: "坐标健康", perm: "community:community:read", group: "社区网格", matrix: "P-2.1", ready: true },
+      { href: "/communities?tab=distribution", label: "位置分布", perm: "community:community:read", group: "社区网格", matrix: "P-2.1", ready: true },
       { href: "/communities?tab=pickups", label: "自提点", perm: "community:pickup:read", group: "自提点", matrix: "P-2.2", ready: true },
       { href: "/communities?tab=neighbor", label: "临时点监控", perm: "community:pickup:read", group: "自提点", matrix: "P-2.2", ready: true },
     ],

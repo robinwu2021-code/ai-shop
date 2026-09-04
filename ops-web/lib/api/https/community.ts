@@ -4,6 +4,7 @@ import type { CommunityApi } from "../contracts/community";
 
 export const communityHttp: CommunityApi = {
   coverageHealth: () => client.get("/ops/coverage/health"),
+  coverageDistribution: () => client.get("/ops/coverage/distribution"),
   listCommunities: (q) => client.get("/ops/communities", q),
   setCommunityOpen: (no, opened) => client.post(`/ops/communities/${no}/open`, { opened }),
   setCommunityFence: (no, fenceRadius) => client.post(`/ops/communities/${no}/fence`, { fenceRadius }),

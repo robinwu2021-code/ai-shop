@@ -66,6 +66,14 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
     /** 围栏影响预览要数收货地址。跨域，走 port */
     private final ai.neargo.shop.spi.user.UserQueryPort userQueryPort;
+    /** 分布表的供给侧 = 社区池（买家真搜得到的），不是「谁框了这儿」 */
+    private final ai.neargo.shop.spi.product.CommunityPoolStatsPort poolStatsPort;
+    /**
+     * 归属判定复用它（围栏 + 层级优先于距离）。
+     * <b>延迟取</b>：同域的两个服务互相引用，直接注入会绕成环。
+     */
+    private final org.springframework.beans.factory.ObjectProvider<
+            ai.neargo.shop.community.service.CommunityService> communityService;
 
     /** 逆地理：从坐标定出区县码与街道名。走 spi Port，不直连 platform.GeoService（ArchUnit 第 1 条） */
     private final ai.neargo.shop.spi.platform.GeoPort geoPort;
@@ -76,6 +84,9 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                                              .CommunityApplyMapper applyMapper,
                                      ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort,
                                      ai.neargo.shop.spi.user.UserQueryPort userQueryPort,
+                                     ai.neargo.shop.spi.product.CommunityPoolStatsPort poolStatsPort,
+                                     org.springframework.beans.factory.ObjectProvider<
+                                             ai.neargo.shop.community.service.CommunityService> communityService,
                                      ai.neargo.shop.spi.platform.GeoPort geoPort,
                                      java.util.List<ai.neargo.shop.spi.user.SettlementRefPort> refPorts,
                                      @org.springframework.beans.factory.annotation.Value(
@@ -91,6 +102,8 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         this.applyMapper = applyMapper;
         this.merchantQueryPort = merchantQueryPort;
         this.userQueryPort = userQueryPort;
+        this.poolStatsPort = poolStatsPort;
+        this.communityService = communityService;
     }
 
     /**
@@ -514,12 +527,66 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
     }
 
     @Override
+    public DistributionVO distribution() {
+        var communities = DataScopeContext.executeWithoutScope(() ->
+                communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()));
+        var open = communities.stream().filter(c -> OPEN.equals(c.getStatus())).toList();
+        var pool = poolStatsPort.byCommunity();
+        var points = userQueryPort.addressPoints();
+        var health = userQueryPort.addressCoordHealth();
+        var storeHealth = merchantQueryPort.storeCoordHealth();
+
+        /*
+         * 归属**复用 `CommunityService.resolve`**，不在这儿再写一遍围栏判定。
+         *
+         * 另写一份的下场在 T9 已经看过：两个数字都「算对了」，只是算的不是同一件事，
+         * 而分歧只出现在边界那一圈上，没人查得动。这里还多一层：resolve 里
+         * 「层级优先于距离」（站在 3 幢门口判成 3 幢，不是隔壁小区）——
+         * 按距离取最近会把楼里的买家算到隔壁小区头上，两边的结论都跟着错。
+         */
+        Map<String, Integer> buyers = new java.util.HashMap<>();
+        int outside = 0;
+        for (var p : points) {
+            String no = communityService.getObject().resolve(p.latE6(), p.lngE6(), false).innermostNo();
+            if (no == null || no.isBlank()) {
+                // 有坐标、却不落在任何围栏里 = 那儿真的有人，只是平台还没在那儿开聚落
+                outside++;
+            } else {
+                buyers.merge(no, 1, Integer::sum);
+            }
+        }
+
+        var rows = open.stream()
+                .map(c -> {
+                    // 池里没有这个聚落 = 那儿一件货都搜不到，补 0；
+                    // 「没有这一行」与「这一行是 0」在数据层分开，在这儿才合并
+                    var st = pool.getOrDefault(c.getCommunityNo(),
+                            new ai.neargo.shop.spi.product.CommunityPoolStatsPort.PoolStat(0, 0));
+                    return new DistributionVO.DistributionRow(
+                            c.getCommunityNo(), c.getName(),
+                            c.getKind() == null ? CmtCommunity.KIND_ESTATE : c.getKind(),
+                            regionPathOf(c.getRegionCode()),
+                            buyers.getOrDefault(c.getCommunityNo(), 0),
+                            st.merchantCount(), st.goodsCount());
+                })
+                .sorted(java.util.Comparator.comparingInt(DistributionVO.DistributionRow::buyerCount).reversed()
+                        .thenComparing(DistributionVO.DistributionRow::communityNo))
+                .toList();
+
+        return new DistributionVO(rows, new DistributionVO.Unattributable(
+                health.total() - health.withCoords(), outside,
+                storeHealth.total() - storeHealth.withCoords(),
+                communities.size() - open.size()));
+    }
+
+    @Override
     public FenceImpactVO fenceImpact(String communityNo, Integer radiusM) {
         CmtCommunity c = requireCommunity(communityNo);
         int current = c.getFenceRadius() == null || c.getFenceRadius() <= 0
                 ? DEFAULT_FENCE_RADIUS : c.getFenceRadius();
         int preview = radiusM == null || radiusM <= 0 ? current : radiusM;
         var health = userQueryPort.addressCoordHealth();
+        var storeHealth = merchantQueryPort.storeCoordHealth();
         /*
          * 没坐标的聚落算不出任何圈 —— 两个数都给 0，**分母照给**。
          * 给 0/0 而不是报错：这一页正是运营用来发现「这个聚落还没标点」的地方，

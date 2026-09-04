@@ -87,6 +87,17 @@ public class UserQueryPortImpl implements UserQueryPort {
                 .count();
     }
 
+    @Override
+    public java.util.List<Point> addressPoints() {
+        // 走数据域，不绕（同 addressCoordHealth）
+        return addressMapper.selectList(Wrappers.<ai.neargo.shop.user.entity.UsrAddress>lambdaQuery()
+                        .isNotNull(ai.neargo.shop.user.entity.UsrAddress::getLatE6))
+                .stream()
+                .filter(a -> a.getLatE6() != null && a.getLngE6() != null)
+                .map(a -> new Point(a.getLatE6(), a.getLngE6()))
+                .toList();
+    }
+
     private static String nz(String s) {
         return s == null ? "" : s;
     }
