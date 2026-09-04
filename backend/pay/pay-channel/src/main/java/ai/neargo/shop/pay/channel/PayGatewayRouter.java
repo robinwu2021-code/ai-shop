@@ -23,7 +23,22 @@ public class PayGatewayRouter {
 
     public PayGatewayRouter(List<PayGateway> gateways) {
         this.byChannel = gateways.stream()
-                .collect(Collectors.toMap(PayGateway::payChannel, Function.identity()));
+                /*
+                 * 同名通道有两个实现时**说人话再炸**。
+                 *
+                 * 默认的 toMap 抛的是 `IllegalStateException: Duplicate key WECHAT`，
+                 * 而真实场景是「微信的直连网关与收付通网关被同时装配」——
+                 * 从那句话看不出该去改哪个配置项。
+                 * 让它自己失败没问题（**绝不能任选一个**：选错等于把钱发到
+                 * 另一种商户号的接口上），但要说清楚原因。
+                 */
+                .collect(Collectors.toMap(PayGateway::payChannel, Function.identity(),
+                        (a, b) -> {
+                            throw new IllegalStateException("支付通道 " + a.payChannel()
+                                    + " 有两个网关同时装配：" + a.getClass().getSimpleName()
+                                    + " 与 " + b.getClass().getSimpleName()
+                                    + " —— 检查 shop.pay.wechat.mode（direct / ecommerce）");
+                        }));
     }
 
     /**

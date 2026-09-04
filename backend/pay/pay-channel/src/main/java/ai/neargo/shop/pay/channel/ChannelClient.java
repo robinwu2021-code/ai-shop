@@ -25,6 +25,20 @@ public interface ChannelClient {
      */
     Map<String, Object> post(String api, Map<String, Object> body) throws ChannelException;
 
+    /**
+     * 发起一次已签名的 <b>GET</b> 调用。
+     *
+     * <p><b>为什么必须与 {@link #post} 分开</b>：微信 APIv3 的待签串第一行是
+     * HTTP 方法，且 GET 的待签 body 是<b>空串</b>。用 POST 去调查单接口，
+     * 签名与方法都是错的，通道返回 405/签名错 —— 而那种失败看起来像凭据配错，
+     * 会让人去查一个没问题的地方。
+     *
+     * @param api 完整路径，<b>含 query</b>（query 参与签名）
+     */
+    default Map<String, Object> get(String api) throws ChannelException {
+        throw new ChannelException("该通道的 ChannelClient 未实现 GET：" + api, false);
+    }
+
     /** 通道调用失败。{@code retryable} 决定调用方是重试还是转人工。 */
     class ChannelException extends RuntimeException {
 

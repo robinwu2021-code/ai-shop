@@ -2,9 +2,6 @@ package ai.neargo.shop.pay.channel;
 
 import ai.neargo.shop.pay.channel.base.AbstractPayGateway;
 import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -16,14 +13,12 @@ import java.util.Map;
  * <b>分账回退 → 补差回退 → 退款</b>。顺序写反的表现是通道报错，
  * 而那时钱已经在二级商户的冻结账户里了。
  */
-@Component
-// 用**显式开关**而不是「凭据配了没」来判断是否装配：
-// `${ENV:}` 在未配置时是空串，而 @ConditionalOnProperty 认为「键存在」即成立 ——
-// 于是网关会带着空凭据启动，直到第一次调用才失败
-@ConditionalOnProperty(name = "shop.pay.wechat.enabled", havingValue = "true")
+// 装配点在 WechatPayChannelConfig：要同时满足 enabled=true 与 mode=ecommerce，
+// 而 @ConditionalOnProperty 不可重复（类上叠两个只有一个生效）。
+// 与 WechatDirectPayGateway 互斥 —— 两者的 payChannel() 都是 WECHAT
 public class WechatPayGateway extends AbstractPayGateway {
 
-    public WechatPayGateway(@Qualifier("wechatChannelClient") ChannelClient client,
+    public WechatPayGateway(ChannelClient client,
                             PayChannelMasterService channelMaster,
                             ChannelMessageRecorder recorder) {
         super(client, channelMaster, recorder);
@@ -113,10 +108,11 @@ public class WechatPayGateway extends AbstractPayGateway {
     @Override
     public QueryResult query(String outTradeNo) {
         try {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("out_trade_no", outTradeNo);
-            Map<String, Object> resp = client.post(
-                    WechatApis.TRANSACTION_BY_OUT_TRADE_NO + outTradeNo, body);
+            // **GET，不是 POST**：APIv3 的待签串第一行是 HTTP 方法，
+            // 用 POST 调这个接口签名与方法都是错的。此前写成 post(...) 没暴露，
+            // 只因为整条从未装配过 —— 真通道接上那天才第一次执行它
+            Map<String, Object> resp = client.get(
+                    WechatApis.TRANSACTION_BY_OUT_TRADE_NO + outTradeNo);
             Object state = resp.get("trade_state");
             if (state == null) {
                 // 通道没有这笔（微信对不存在的单返回 ORDERNOTEXIST）

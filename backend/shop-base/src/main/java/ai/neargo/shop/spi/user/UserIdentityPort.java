@@ -3,7 +3,11 @@ package ai.neargo.shop.spi.user;
 import java.util.Optional;
 
 /**
- * message → user：按用户号取**触达地址**（当前只有小程序 openid）。
+ * message / pay → user：按用户号取**用户在外部渠道的标识**（当前只有小程序 openid）。
+ *
+ * <p>两个消费方，都是同一个事实的两种用途：订阅消息要拿它<b>触达</b>，
+ * 微信 JSAPI 下单要拿它当 {@code payer.openid} —— 后者<b>不是可选的</b>：
+ * 取不到就不能向通道下单（见 {@code SettlePortImpl.initPayment}）。
  *
  * <p>不并进 {@link UserQueryPort}：那个 Port 的契约是「买家的展示信息」，
  * 受众是核销台与分拣单；openid 不是展示信息，混进去之后「只给最小事实」
