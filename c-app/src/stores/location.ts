@@ -58,11 +58,20 @@ export const useLocationStore = defineStore("location", {
      * <p>将来第二步会去掉这一跳、由后端按坐标实时算 ——
      * 到那时**端上这个函数之外一行都不用改**，这正是分两步的理由。
      */
+    /**
+     * 切到某个位置，并把商品池跟着换过去。
+     *
+     * <p><b>返回「归属有没有跟着换」</b> —— 没坐标的地址（微信导入、粘贴识别、
+     * 存量手填）推不出聚落，此时 `syncCommunityFromActive` 什么都不做，这是对的
+     * （清掉的话用户会发现「换了个地址，商品全没了」）。但**不能一声不吭**：
+     * 他看到顶栏变了而商品没变，无从判断是坏了还是设计如此。
+     * 调用方据此说一句「这个地址没有定位点，商品仍按 XX 显示」。
+     */
     async switchTo(addressId: string) {
       const addr = await api.switchActiveAddress(addressId);
       this.active = addr;
-      await this.syncCommunityFromActive();
-      return addr;
+      const rebound = await this.syncCommunityFromActive();
+      return { addr, rebound };
     },
 
     /**
@@ -73,9 +82,10 @@ export const useLocationStore = defineStore("location", {
      * 那种位置照样是个有效的收货地址，只是推不出社区。
      * 清掉的话，用户会发现自己「换了个地址，商品全没了」。
      */
-    async syncCommunityFromActive() {
+    /** @returns 归属有没有真的换过去。false = 这条地址没坐标，推不出聚落 */
+    async syncCommunityFromActive(): Promise<boolean> {
       const a = this.active;
-      if (!a || a.latE6 == null || a.lngE6 == null) return;
+      if (!a || a.latE6 == null || a.lngE6 == null) return false;
       const community = useCommunityStore();
       const list = await community
         .loadNearby(a.latE6 / 1e6, a.lngE6 / 1e6)
@@ -93,7 +103,12 @@ export const useLocationStore = defineStore("location", {
       const ctx = await api.resolveLocation(a.latE6, a.lngE6).catch(() => null);
       const c = list.find((x) => x.communityNo === ctx?.innermostNo) ?? list[0];
       const p = c?.pickups?.[0];
-      if (c && p) await community.bind(c, p);
+      if (c && p) {
+        await community.bind(c, p);
+        return true;
+      }
+      // 有坐标但一个聚落都没落进（新城区）—— 也算没换成，调用方同样要说一句
+      return false;
     },
   },
 });

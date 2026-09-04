@@ -658,6 +658,8 @@ export default {
     useHere: "设为当前位置",
     here: "当前位置",
     nowHere: "已切到「{name}」，商品按这里显示",
+    /** 没坐标推不出聚落：归属保持不变，但必须说，否则他以为坏了 */
+    nowHereNoCoord: "已切到「{name}」。它还没有定位点，商品仍按原来那片显示 —— 去编辑里补一次地图选点即可",
     pick: "地图选点",
     repick: "已定位·重选",
     mapUnsupported: "这个端不支持地图选点，手动填写即可",

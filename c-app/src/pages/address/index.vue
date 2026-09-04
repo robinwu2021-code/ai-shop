@@ -285,8 +285,23 @@ async function remove(a: Address) {
  * 把两者做成一个按钮，他就没法表达这件事了。
  */
 async function useHere(a: Address) {
-  await location.switchTo(a.addressId);
-  uni.showToast({ title: String(t("address.nowHere", { name: a.tag || a.detail })), icon: "none" });
+  const { rebound } = await location.switchTo(a.addressId);
+  const name = a.tag || a.detail;
+  /*
+   * **没换成也要说一句。**
+   *
+   * 没坐标的地址（微信导入、粘贴识别、存量手填）推不出聚落，归属**保持不变** ——
+   * 那是对的，清掉的话他会发现「换了个地址，商品全没了」。
+   * 但一声不吭同样糟：顶栏变了、商品没变，他无从判断是坏了还是本该如此。
+   * 说清楚之后，他至少知道下一步是去补一个定位点。
+   */
+  uni.showToast({
+    title: String(rebound
+      ? t("address.nowHere", { name })
+      : t("address.nowHereNoCoord", { name })),
+    icon: "none",
+    duration: rebound ? 1500 : 3000,
+  });
 }
 
 async function setDefault(a: Address) {

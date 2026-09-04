@@ -190,7 +190,21 @@ async function load() {
     const at = r.ok ? { lat: r.coords.lat, lng: r.coords.lng, fuzzy: r.fuzzy === true } : null;
     located.value = !!at;
     coarse.value = at?.fuzzy === true;
-    await community.loadNearby(at?.lat, at?.lng);
+    /*
+     * **模糊坐标不参与聚落匹配。**
+     *
+     * 围栏是 1000 米（小区）到 150 米（楼栋）量级，而模糊定位（getFuzzyLocation）
+     * 误差约 5 公里 —— 拿它去匹配，出来的要么是空、要么是隔壁片区。
+     * 两种都糟：空的看起来像「这一带没开通」，而隔壁片区的**看起来完全正常**，
+     * 他会照着选一个自己根本走不到的自提点。
+     *
+     * 此前这里不分流，只是把距离藏起来不显示 —— 藏数字挡不住选错。
+     * 模糊定位够用的地方只有一个：**把人落到他所在的区**（下面那句
+     * resolveLocatedRegion），然后给该区的候选让他挑。
+     */
+    await community.loadNearby(
+        at?.fuzzy ? undefined : at?.lat,
+        at?.fuzzy ? undefined : at?.lng);
     /*
      * **附近没有就直接把全部列出来**，而不是先给一个空页面再让他点一次「查看全部」。
      *

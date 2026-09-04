@@ -369,3 +369,45 @@ describe("粘贴识别：只填空格子，且不冒充选点", () => {
     expect(valid, "valid 里出现 picked = 把提示变成了闸").not.toContain("picked");
   });
 });
+
+/**
+ * 模糊定位不参与聚落匹配 · 切换没坐标的地址要说一句。
+ *
+ * <p>两条都属于「不做会怎样看不出来」那一类：
+ * 模糊坐标匹配出来的聚落**看起来完全正常**（顶栏一样显示小区名、商品一样列出来），
+ * 只是全都不是他那一带的；而切到没坐标的地址时归属不变是对的，
+ * 但一声不吭他就分不清「设计如此」与「坏了」。
+ */
+describe("模糊定位与无坐标地址：都要说话", () => {
+  const communityPage = code("src/pages/community/index.vue");
+  const addressPage = code("src/pages/address/index.vue");
+  const store = code("src/stores/location.ts");
+
+  it("★★★ 模糊坐标不喂给聚落匹配 —— 藏起距离挡不住选错", () => {
+    /*
+     * 此前只是「模糊时不显示距离」。藏数字挡不住他照着一个隔壁片区的自提点选下去，
+     * 而那个点他根本走不到。围栏 1000 米量级 vs 模糊定位 5 公里误差 ——
+     * 这一档的坐标只够把人落到区。
+     */
+    expect(communityPage).toMatch(/loadNearby\([\s\S]{0,120}fuzzy \? undefined/);
+  });
+
+  it("★★ 模糊时仍然不显示距离（原有行为不许退化）", () => {
+    expect(communityPage).toMatch(/v-if="!coarse"/);
+  });
+
+  it("★★★ 切到没坐标的地址：归属不变，但**必须说一句**", () => {
+    // 归属不变是对的——清掉的话他会发现「换了个地址，商品全没了」
+    expect(store).toMatch(/latE6 == null \|\| a\.lngE6 == null\) return false/);
+    // 而不说话同样糟：顶栏变了、商品没变，他无从判断
+    const body = bodyOf(addressPage, "async function useHere(");
+    expect(body, "useHere 不见了").not.toBeNull();
+    expect(body).toContain("nowHereNoCoord");
+    expect(body, "要能区分换成没换成，否则两句话没法分").toContain("rebound");
+  });
+
+  it("★★ 没换成时提示要停得久一点 —— 那句话比「已切到」长得多", () => {
+    const body = bodyOf(addressPage, "async function useHere(");
+    expect(body).toMatch(/duration: rebound \? \d+ : \d+/);
+  });
+});
