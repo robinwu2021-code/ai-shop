@@ -688,8 +688,10 @@ interface CommunitySeed {
   cityCode: string;
   /** 所属街道/镇（9 位）。商家「按街道看聚落」靠它分组 */
   regionCode?: string;
-  /** ESTATE 小区 / VILLAGE 村 */
+  /** ESTATE 小区 / VILLAGE 村 / BUILDING 楼栋 */
   kind?: string;
+  /** 楼栋挂的小区/园区。为空 = 顶层聚落 */
+  parentNo?: string;
   name: I18nText;
   address: I18nText;
   distance: number;
@@ -757,6 +759,35 @@ const communitySeeds: CommunitySeed[] = [
       },
     ],
   },
+  /*
+   * **两栋楼，不是一栋。**
+   *
+   * 只放一栋的话，「排除 3 幢」之后整个小区看起来就剩一条纳入项，
+   * 分辨不出「排除只作用在那一栋」还是「把小区一起去掉了」——
+   * 而那两种实现在界面上长得一模一样。
+   */
+  {
+    communityNo: "CM001B3",
+    cityCode: "330100",
+    regionCode: "330106001",
+    kind: "BUILDING",
+    parentNo: "CM001",
+    name: t("阳光里 3 幢", "Sunnyside Block 3", "صني سايد مبنى ٣"),
+    address: t("阳光里小区 3 幢", "Block 3, Sunnyside", "مبنى ٣، صني سايد"),
+    distance: 300,
+    pickups: [],
+  },
+  {
+    communityNo: "CM001B5",
+    cityCode: "330100",
+    regionCode: "330106001",
+    kind: "BUILDING",
+    parentNo: "CM001",
+    name: t("阳光里 5 幢", "Sunnyside Block 5", "صني سايد مبنى ٥"),
+    address: t("阳光里小区 5 幢", "Block 5, Sunnyside", "مبنى ٥، صني سايد"),
+    distance: 340,
+    pickups: [],
+  },
   {
     communityNo: "CM002",
     cityCode: "330100",
@@ -792,6 +823,7 @@ export function toCommunity(seed: CommunitySeed): Community {
     cityCode: seed.cityCode,
     regionCode: seed.regionCode,
     kind: seed.kind,
+    parentNo: seed.parentNo,
     name: pick(seed.name),
     address: pick(seed.address),
     distance: seed.distance,

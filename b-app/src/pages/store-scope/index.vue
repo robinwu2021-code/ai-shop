@@ -55,7 +55,16 @@ const fullAddress = computed(() =>
 );
 
 const areas = computed<ServiceArea[]>(() => form.value.serviceAreas ?? []);
-const activeAreas = computed(() => areas.value.filter((a) => !areaPending(a)));
+/** 排除项是从范围里挖掉的洞，不是范围本身 */
+const isExclude = (a: ServiceArea) => a.mode === "EXCLUDE";
+/**
+ * 生效中的**纳入**项。
+ *
+ * 排除项必须踢出去，它喂着两处：门店子集选择器（「本店只服务这几块」里
+ * 出现一条「不送 3 幢」，选它没有任何意义），以及「范围空不空」那个判据 ——
+ * 而后者关系到货看不看得见，见 emptyIsBlocking。
+ */
+const activeAreas = computed(() => areas.value.filter((a) => !areaPending(a) && !isExclude(a)));
 
 /**
  * 这一条要不要等运营。**判据与后端同一句话**：小区/村、街道自助生效，区/市/省要审
@@ -111,6 +120,16 @@ const expressOn = computed(() => on("EXPRESS"));
 const emptyIsBlocking = computed(
   () => pickupOn.value && !deliveryOn.value && !expressOn.value && !activeAreas.value.length,
 );
+
+/**
+ * 「不限」那句提示的判据是**没有纳入项**，不是「一条都没有」。
+ *
+ * 只写了排除的自送商家（「我上门送，就是不送 3 幢」）在后端走的正是
+ * 「没框 = 不限」那个分支再减去排除（`includes.isEmpty()`）。这里若还看
+ * `areas.length`，他会看到提示消失、以为自己框了一片范围 ——
+ * 而实际生效的是全平台减掉那一栋，两句话差着整个平台。
+ */
+const noIncludes = computed(() => !areas.value.some((a) => !isExclude(a)));
 
 async function loadFulfillment() {
   try {
@@ -400,19 +419,21 @@ onShow(() => {
       <view v-if="areas.length" class="list">
         <view v-for="a in areas" :key="`${a.level}:${a.refCode}`" class="sh-row sh-row--divided item">
           <view class="sh-fill">
-            <text class="txt-strong item__name" :class="{ 'txt-quiet': areaPending(a) }">
+            <text class="txt-strong item__name" :class="{ 'txt-quiet': areaPending(a) || isExclude(a) }">
               {{ splitName(a).main }}<text v-if="isWhole(a)" class="txt-caption"> {{ $t("store.whole") }}</text>
             </text>
             <text v-if="splitName(a).path" class="txt-caption item__path">{{ splitName(a).path }}</text>
           </view>
-          <text v-if="areaPending(a)" class="sh-chip sh-chip--warning">{{ $t("store.areaPending") }}</text>
+          <!-- 排除项不标出来，「已排除 3 幢」和「已覆盖 3 幢」在这张清单上长得一模一样 -->
+          <text v-if="isExclude(a)" class="sh-chip sh-chip--danger">{{ $t("store.areaExcluded") }}</text>
+          <text v-else-if="areaPending(a)" class="sh-chip sh-chip--warning">{{ $t("store.areaPending") }}</text>
           <sh-icon-btn name="close" @tap="removeArea(a)"></sh-icon-btn>
         </view>
       </view>
 
       <!-- 空列表的含义两分：只自提是故障，开了自送/快递是「不限」。绝不能显示同一句话 -->
       <text v-if="emptyIsBlocking" class="txt-caption warn">{{ $t("store.areaNeeded") }}</text>
-      <text v-else-if="!areas.length" class="sh-hint">{{ $t("store.areaUnlimited") }}</text>
+      <text v-else-if="noIncludes" class="sh-hint">{{ $t("store.areaUnlimited") }}</text>
       <text v-if="areas.length > activeAreas.length" class="sh-hint">{{ $t("store.areaPendingHint") }}</text>
 
       <view class="sh-btn sh-btn--soft add" @tap="pickerOpen = true">

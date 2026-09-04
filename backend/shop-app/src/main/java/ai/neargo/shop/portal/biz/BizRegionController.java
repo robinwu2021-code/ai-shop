@@ -72,7 +72,8 @@ public class BizRegionController {
                 .limit(30)
                 .map(c -> new CommunityHit(c.communityNo(), c.name(), c.regionCode(),
                         c.regionCode() == null ? "" : pathOf.apply(c.regionCode()),
-                        c.kind(), c.originCode(), c.originName(), c.rural(), c.latE6(), c.lngE6()))
+                        c.kind(), c.parentNo(), c.originCode(), c.originName(), c.rural(),
+                        c.latE6(), c.lngE6()))
                 .toList();
         /*
          * **村也要能直接搜到**。此前搜索只认市/区/街道与已开通的聚落 ——
@@ -132,7 +133,14 @@ public class BizRegionController {
      * @param originName origin_code 对应的原始官方名（如「景滑村委会」）。判「城区还是农村」用它
      */
     public record CommunityHit(String communityNo, String name, String regionCode, String path,
-                               String kind, String originCode, String originName, boolean rural,
+                               String kind,
+                               /**
+                                * 所属聚落（楼栋 → 小区/园区）。搜索这条路**同样要有** ——
+                                * 少了它，搜「阳光花园」搜出来的 3 幢在勾了整个小区之后
+                                * 仍然显示成「没选上」，而商家会再勾一遍。
+                                */
+                               String parentNo,
+                               String originCode, String originName, boolean rural,
                                Integer latE6, Integer lngE6) {
     }
 

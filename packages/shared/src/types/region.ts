@@ -44,6 +44,11 @@ export interface RegionSearchResult {
     communityNo: string; name: string; regionCode?: string | null; path: string;
     /** ESTATE 小区 / VILLAGE 村。判「这一条底下还有没有下一级」用它，名字这时已经是口语名了 */
     kind?: string | null;
+    /**
+     * 所属聚落（楼栋 → 小区/园区）。为空 = 顶层聚落。
+     * 少了它，搜出来的楼栋在整个小区已被勾中时仍显示成「没选上」，商家会再勾一遍。
+     */
+    parentNo?: string | null;
     /** 下钻要用它，不是 regionCode（那是它挂的街道/镇）。没有它就是地图开通的小区，没有下一级 */
     originCode?: string | null;
     /** 原始官方名（如「景滑村委会」），仅供展示/追溯 —— 判城乡用下面的 rural */

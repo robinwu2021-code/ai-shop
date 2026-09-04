@@ -653,7 +653,9 @@ export const storeMock: Pick<MerchantApi,
     const communities = q.length < 2 ? [] : allCommunitySeeds().map(toCommunity)
       .filter((c) => c.name.includes(q))
       .slice(0, 30)
-      .map((c) => ({ communityNo: c.communityNo, name: c.name, regionCode: c.regionCode, path: pathOf(c.regionCode) }));
+      // parentNo 要带上：少了它，搜出来的楼栋在整个小区已勾中时仍显示成「没选上」
+      .map((c) => ({ communityNo: c.communityNo, name: c.name, regionCode: c.regionCode,
+                     parentNo: c.parentNo, path: pathOf(c.regionCode) }));
     // 还没开通的官方村：与后端同口径 —— 已开通的走 communities，这里不重复出
     const openedNames = new Set(communities.map((c) => c.name));
     const villages = q.length < 2 ? [] : db.regionSeeds
@@ -822,8 +824,19 @@ export const storeMock: Pick<MerchantApi,
     const clean = JSON.parse(JSON.stringify(payload)) as typeof db.store;
     const cur = currentStoreNo();
     if (cur) {
-      // 多门店：改的是**这一家**的门面，不能顺手把另一家的公告也改了
-      storeOverrides.set(cur, clean);
+      /*
+       * 多门店：改的是**这一家**的门面，不能顺手把另一家的公告也改了。
+       *
+       * ★ 但经营范围是**主体级**的（这一页自己写着「全部门店共用」），
+       * 整包塞进按店覆盖里有两个后果：切到另一家店看不到刚保存的范围，
+       * 而按店覆盖又是个不落盘的内存 Map —— 刷新一次范围就回到种子值。
+       * 后者会把「排除项没读回来」这种真缺陷伪装成 mock 的正常表现，
+       * 反过来也一样：真的丢了，也看不出来。主体级的字段写回 db.store 并落盘。
+       */
+      const { serviceAreas, serviceScope, fulfillmentReach, serviceCommunityNos, ...perStore } = clean;
+      storeOverrides.set(cur, perStore as Partial<typeof db.store>);
+      db.store = { ...db.store, serviceAreas, serviceScope, fulfillmentReach, serviceCommunityNos };
+      persist();
     } else {
       db.store = clean;
       persist();

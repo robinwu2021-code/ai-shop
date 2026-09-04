@@ -22,8 +22,20 @@ public record CommunityVO(String communityNo,
                            * 不下发的话端上只能拿到一锅平铺清单，街道视图无从分组。
                            */
                           String regionCode,
-                          /** ESTATE 小区 / VILLAGE 村。只是展示标签，不参与匹配 */
+                          /**
+                           * ESTATE 小区 / VILLAGE 村 / BUILDING 楼栋。
+                           * <b>不再只是展示标签</b>：BUILDING 这一档参与匹配（层级优先于距离）。
+                           */
                           String kind,
+                          /**
+                           * 所属聚落（楼栋 → 小区/园区）。<b>为空 = 顶层聚落</b>。
+                           *
+                           * <p>不下发的话 B 端选择器只能把楼栋和小区平铺成一锅 ——
+                           * 商家看到「阳光花园」和「阳光花园 3 幢」并排两行，分不出后者在前者里面，
+                           * 于是他把两条都勾上（其实第二条是多余的），或者只勾了楼、以为整个小区都做了。
+                           * 「框了小区就盖住里面每栋楼」这件事在界面上必须看得见，它才成立。
+                           */
+                          String parentNo,
                           int distance,
                           List<PickupVO> pickups,
                           /**

@@ -377,7 +377,7 @@ public class CommunityServiceImpl implements CommunityService {
     private CommunityVO toVO(CmtCommunity c, List<CmtPickupPoint> pickups, Map<String, MerchantBrief> owners,
                              Integer latE6, Integer lngE6, String originName, boolean rural) {
         return new CommunityVO(c.getCommunityNo(), c.getName(), c.getAddress(), c.getCityCode(),
-                c.getRegionCode(), c.getKind() == null ? "ESTATE" : c.getKind(),
+                c.getRegionCode(), c.getKind() == null ? "ESTATE" : c.getKind(), c.getParentNo(),
                 distance(c.getLatE6(), c.getLngE6(), latE6, lngE6),
                 pickups.stream().map(p -> {
                     MerchantBrief owner = owners.get(p.getOwnerRef());

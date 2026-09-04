@@ -1080,6 +1080,10 @@ export default {
       selected: "已选 {n}",
       done: "完成 · 已选 {n} 项",
       coveredTag: "已被「{s}」覆盖",
+      // 排除是商家自己做的决定，标签要说得像个状态而不是一句解释
+      excludedTag: "已排除",
+      exclude: "排除",
+      undoExclude: "取消排除",
       coveredBy: "已被「{s}」覆盖，不用重复选",
       pendingTag: "待审核",
       merged: "已合并为「{s}」，收起 {n} 条下级",
@@ -1137,6 +1141,7 @@ export default {
     areas: "服务区域",
     areaNeeded: "使用自提点时至少需选择一个小区，否则顾客无法搜索到本店",
     areaUnlimited: "未设置范围即不限，全平台顾客均可看到本店商品",
+    areaExcluded: "已排除",
     areaPending: "待审核",
     areaPendingHint: "省、市、区等整片范围需运营审核后生效，审核前不计入；小区、村、街道勾选后即时生效。",
     areaDup: "这一条已经在清单里了",

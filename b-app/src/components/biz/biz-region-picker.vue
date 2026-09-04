@@ -349,7 +349,17 @@ async function enterLevel(r: Region, container?: Community | null) {
 
 // ---------------------------------------------------------------- 选中
 function has(level: string, refCode: string) {
-  return props.areas.some((a) => a.level === level && a.refCode === refCode);
+  return props.areas.some((a) => a.level === level && a.refCode === refCode && !isExclude(a));
+}
+
+/** 排除项。**不算「已选」** —— 它是从范围里挖掉的洞，勾与排除是相反的两件事 */
+function isExclude(a: ServiceArea) {
+  return a.mode === "EXCLUDE";
+}
+
+/** 这一行是不是已经被排除掉了 */
+function excluded(level: string, refCode: string) {
+  return props.areas.some((a) => a.level === level && a.refCode === refCode && isExclude(a));
 }
 
 /** 这一行加进来之后还在不在已选里（取消勾选后要跟着变回未选） */
@@ -382,10 +392,12 @@ function isRegionLevel(level: string) {
  */
 function coveredBy(regionCode: string): ServiceArea | null {
   if (!regionCode) return null;
-  // 自己已经在清单里就不说「被覆盖」：两个状态同时挂在一行上，读的人不知道该信哪个
-  if (props.areas.some((a) => a.refCode === regionCode)) return null;
+  // 自己已经在清单里就不说「被覆盖」：两个状态同时挂在一行上，读的人不知道该信哪个。
+  // **排除项不算在内** —— 「被上级覆盖、但我把它排掉了」正是要同时说出来的两句话。
+  if (props.areas.some((a) => a.refCode === regionCode && !isExclude(a))) return null;
   return props.areas.find(
-    (a) => isRegionLevel(a.level) && a.refCode !== regionCode && regionCode.startsWith(a.refCode),
+    (a) => isRegionLevel(a.level) && !isExclude(a)
+        && a.refCode !== regionCode && regionCode.startsWith(a.refCode),
   ) ?? null;
 }
 
@@ -398,14 +410,66 @@ function communityCoveredBy(regionCode?: string): ServiceArea | null {
   return regionCode ? coveredBy(regionCode) : null;
 }
 
+/**
+ * 楼栋被它**所属的小区/园区**盖住了没有。
+ *
+ * 区划那条路（`coveredBy`）靠国标码前缀，而聚落之间的归属不是码的前缀关系 ——
+ * 楼栋挂谁下面是 `parentNo` 声明的。少了这一条，商家勾了「阳光花园」之后
+ * 底下的楼还是一副「没选上」的样子，他会再逐栋勾一遍：范围没错，
+ * 但他以为不勾就不覆盖，而那正好想反了。
+ */
+type PlaceRef = { communityNo: string; parentNo?: string | null; regionCode?: string | null };
+
+function buildingCoveredBy(c: PlaceRef): ServiceArea | null {
+  if (!c.parentNo) return null;
+  if (props.areas.some((a) => a.refCode === c.communityNo && !isExclude(a))) return null;
+  return props.areas.find(
+    (a) => a.level === "COMMUNITY" && !isExclude(a) && a.refCode === c.parentNo,
+  ) ?? null;
+}
+
+/** 聚落这一行被谁盖住：先看所属小区，再看所属街道以上的区划 */
+function placeCoveredBy(c: PlaceRef): ServiceArea | null {
+  return buildingCoveredBy(c) ?? communityCoveredBy(c.regionCode ?? undefined);
+}
+
 /** 行上的覆盖提示：自己已被勾中时不显示 —— 勾与「被覆盖」是互斥的两种说法 */
 function coverNote(r: { picked: boolean; covered: ServiceArea | null }) {
   return r.picked ? null : r.covered;
 }
 
+/**
+ * 这一行现在是不是排除态。**现算而不是让每个 Row 构造点各填一遍** ——
+ * 这个文件里有九处在造 Row，漏掉一处的症状是「某个入口进来的楼栋排除不掉」，
+ * 而它长得像那一条数据的问题。
+ */
+function rowExcluded(r: Row) {
+  if (r.community) return excluded("COMMUNITY", r.community.communityNo);
+  if (r.region) return excluded(r.region.level, r.region.regionCode);
+  return false;
+}
+
+/**
+ * 给不给「排除」：被上级盖住了才有意义 —— 自己没被覆盖时，不勾就已经不在范围里。
+ *
+ * <p>判据用 `coverNote(r)` 而**不是** `r.covered`：后者在这一行自己已经勾中时
+ * 仍然非空（它算的是「有没有一条上级盖着这片地方」），于是已选的行右边显示的是
+ * 「排除」而不是那个勾 —— 同一行上又选又排除，正是这次要消除的那种矛盾态。
+ * 浏览器上一眼看见的就是这个：「阳光里小区」明明在已选清单里，行上却写着「排除」。
+ */
+function canExclude(r: Row) {
+  return !!(coverNote(r) || rowExcluded(r)) && !!(r.community || r.region);
+}
+
 /** 加一条覆盖项，顺手把**被它盖住的子项**收掉（R3/R5：父子只留父） */
 function addArea(next: ServiceArea) {
   const kept = props.areas.filter((a) => {
+    /*
+     * 同一个对象上的排除项先去掉。**矛盾在输入端消除**，不留给后端的优先级去裁 ——
+     * 后者要求商家记住「排除优先于纳入」这条规则，而他看到的是同一行上
+     * 既打了勾又标着「已排除」，无从判断货到底送不送。
+     */
+    if (a.level === next.level && a.refCode === next.refCode && isExclude(a)) return false;
     if (!isRegionLevel(next.level)) return true;
     // 子区划：码以父码开头即被覆盖
     if (isRegionLevel(a.level)) return !(a.refCode !== next.refCode && a.refCode.startsWith(next.refCode));
@@ -476,7 +540,26 @@ function toggleCommunity(c: Community & { path?: string }) {
 /** 本街道下已开通的聚落。**只按街道过滤**，没有第二种口径 */
 const settleRows = computed<Array<Community & { path?: string }>>(() => {
   if (!atLeaf.value) return [];
-  return communities.value.filter((c) => c.regionCode === current.value?.regionCode);
+  const here = communities.value.filter((c) => c.regionCode === current.value?.regionCode);
+  /*
+   * **楼栋排到它所属的小区/园区后面**，缩进一级显示。
+   *
+   * 平铺的话商家看到「阳光花园」和「阳光花园 3 幢」并排两行，分不出后者在前者里面：
+   * 他要么两条都勾（第二条是多余的），要么只勾了楼、以为整个小区都做了。
+   * 「框了小区就盖住里面每栋楼」这件事只有在界面上看得见，才对商家成立。
+   *
+   * 父级不在这一屏（跨街道挂靠，或被过滤掉了）的楼栋按顶层排 ——
+   * 藏起来比排得难看糟得多：那一栋就再也勾不到了。
+   */
+  const tops = here.filter((c) => !c.parentNo || !here.some((p) => p.communityNo === c.parentNo));
+  const out: Array<Community & { path?: string }> = [];
+  for (const t of tops) {
+    out.push(t);
+    for (const b of here) {
+      if (b.parentNo === t.communityNo) out.push(b);
+    }
+  }
+  return out;
 });
 
 // ---------------------------------------------------------------- 地图兜底：搜到即加
@@ -589,6 +672,8 @@ interface Row {
   picked: boolean;
   /** 被哪条已选项盖住了（父项覆盖子项），null = 没被盖 */
   covered: ServiceArea | null;
+  /** 楼栋：缩进一级挂在它的小区/园区下面。一行仍是一行，只是看得出谁在谁里面 */
+  indent?: boolean;
   region?: Region;
   community?: Community;
   hit?: Hit;
@@ -615,7 +700,7 @@ const rows = computed<Row[]>(() => {
         sub: c.address ?? "",
         hasChild: false,
         picked: has("COMMUNITY", c.communityNo),
-        covered: communityCoveredBy(c.regionCode),
+        covered: placeCoveredBy(c),
         community: c,
       });
     }
@@ -658,11 +743,12 @@ const rows = computed<Row[]>(() => {
     out.push({
       key: `c${c.communityNo}`,
       name: c.name,
+      indent: !!c.parentNo,
       sub: container && !c.rural ? estateNote(`C${c.communityNo}`) : (c.address ?? ""),
       // 已开通的社区底下照样有小区 —— 它开通过，不代表商家要的就是整片（村委会不适用，见上）
       hasChild: drillable,
       picked: has("COMMUNITY", c.communityNo),
-      covered: communityCoveredBy(c.regionCode),
+      covered: placeCoveredBy(c),
       community: c,
       /*
        * **下钻要用 originCode，不是 regionCode**：`c.regionCode` 是这个村/社区挂的
@@ -822,9 +908,10 @@ const groups = computed<Group[]>(() => {
       sub: c.path,
       hasChild: container,
       picked: has("COMMUNITY", c.communityNo),
-      covered: communityCoveredBy(c.regionCode ?? undefined),
+      covered: placeCoveredBy(c),
       community: {
         communityNo: c.communityNo, name: c.name, regionCode: c.regionCode ?? undefined, path: c.path,
+        parentNo: c.parentNo ?? undefined,
         originCode: c.originCode, originName: c.originName, rural: c.rural, latE6: c.latE6, lngE6: c.lngE6,
       } as unknown as Community & { path?: string },
       // 下钻用 originCode（它自己的村码），breadcrumb 靠 mRegionPath 从这个码往上走补齐
@@ -1060,6 +1147,36 @@ function toggleWhole() {
 }
 
 /** 从顶部清单里删一条。地图/搜索误点很容易，必须有后悔的地方 */
+/**
+ * 排除 / 取消排除这一行。
+ *
+ * <p><b>只对「已被上级覆盖」的行开放</b>：排除一个本来就不在范围里的对象没有意义，
+ * 而界面上给了这个动作，商家会以为自己做了一件事（对照 §「不做」）。
+ *
+ * <p>加排除项时同键的纳入项要一起去掉，反过来 `addArea` 也会去掉排除项 ——
+ * 两个方向都堵上，界面上就不可能出现「又勾又排除」那种自相矛盾的行。
+ */
+function toggleExclude(level: ServiceArea["level"], refCode: string, name: string) {
+  const rest = props.areas.filter((a) => !(a.level === level && a.refCode === refCode));
+  if (excluded(level, refCode)) {
+    emit("update:areas", rest);
+    return;
+  }
+  if (rest.length >= MAX_AREAS) {
+    uni.showToast({ title: t("store.picker.tooMany", { n: MAX_AREAS }), icon: "none" });
+    return;
+  }
+  emit("update:areas", [...rest, { level, refCode, name, mode: "EXCLUDE" }]);
+}
+
+/** 行上的排除动作。拿不到覆盖来源就不给 —— 见 toggleExclude 的说明 */
+function excludeRow(r: Row) {
+  const level = r.community ? "COMMUNITY" : (r.region?.level as ServiceArea["level"] | undefined);
+  const refCode = r.community?.communityNo ?? r.region?.regionCode;
+  if (!level || !refCode) return;
+  toggleExclude(level, refCode, r.name);
+}
+
 function removeArea(a: ServiceArea) {
   emit("update:areas", props.areas.filter((x) => !(x.level === a.level && x.refCode === a.refCode)));
 }
@@ -1091,7 +1208,9 @@ function close() {
       <view v-if="chosen.length && chosenOpen" class="chosen">
         <view class="chosen__list">
           <view v-for="a in chosen" :key="a.level + a.refCode" class="chosen__row">
-            <text class="chosen__name">{{ a.name }}</text>
+            <text class="chosen__name" :class="{ 'is-off': a.mode === 'EXCLUDE' }">{{ a.name }}</text>
+            <!-- 排除项混在已选里而不标出来 = 商家以为自己多做了一片，其实是少做了一片 -->
+            <text v-if="a.mode === 'EXCLUDE'" class="chosen__ex">{{ $t("store.picker.excludedTag") }}</text>
             <!-- 待审的要在**已选清单里**看得见：只写在行上的话，勾完就再也看不到了 -->
             <text v-if="areaPending(a)" class="chosen__audit">{{ $t("store.picker.pendingTag") }}</text>
             <text class="chosen__del" @tap="removeArea(a)">{{ $t("common.remove") }}</text>
@@ -1154,15 +1273,32 @@ function close() {
           -->
           <template v-for="g in sections" :key="g.key">
             <text v-if="g.title" class="group">{{ g.title }}</text>
-            <view v-for="r in g.rows" :key="r.key" class="row" :class="{ 'is-covered': coverNote(r) }">
+            <view v-for="r in g.rows" :key="r.key" class="row"
+                  :class="{ 'is-covered': coverNote(r), 'is-sub': r.indent, 'is-excluded': rowExcluded(r) }">
               <view class="row__main" @tap="r.hasChild ? drillRow(r) : pickRow(r)">
                 <text class="row__name">{{ r.name }}</text>
-                <text v-if="coverNote(r)" class="row__sub">
+                <!--
+                  排除态**压过覆盖提示**：两句话同时说（「已被阳光花园覆盖」+「已排除」）
+                  是自相矛盾的，商家读不出货到底送不送。排除是他自己做的那个决定，说它。
+                -->
+                <text v-if="rowExcluded(r)" class="row__sub row__sub--off">
+                  {{ $t("store.picker.excludedTag") }}
+                </text>
+                <text v-else-if="coverNote(r)" class="row__sub">
                   {{ $t("store.picker.coveredTag", { s: shortName(coverNote(r)?.name) }) }}
                 </text>
                 <text v-else-if="r.sub" class="row__sub">{{ r.sub }}</text>
               </view>
-              <view class="row__check" :class="{ 'is-on': r.picked, 'is-off': !!coverNote(r) }" @tap.stop="pickRow(r)">
+              <!--
+                **被上级盖住的行，右边给的是「排除」而不是一个灰勾。**
+                此前点它只弹一句「已被『阳光花园』覆盖」——说得没错，但那是个死胡同：
+                商家想做的正是「这个小区我做，就 3 幢不送」，而界面上没有任何出口。
+              -->
+              <text v-if="canExclude(r)" class="row__ex" :class="{ 'is-on': rowExcluded(r) }"
+                    @tap.stop="excludeRow(r)">
+                {{ rowExcluded(r) ? $t("store.picker.undoExclude") : $t("store.picker.exclude") }}
+              </text>
+              <view v-else class="row__check" :class="{ 'is-on': r.picked, 'is-off': !!coverNote(r) }" @tap.stop="pickRow(r)">
                 <sh-icon v-if="r.picked" name="check" :size="24" color="var(--sh-on-primary)"></sh-icon>
                 <text v-else-if="adding === r.key" class="row__tick">…</text>
               </view>
@@ -1443,6 +1579,37 @@ function close() {
   background: var(--sh-faint);
 }
 
+/*
+ * 楼栋缩进一级。**只缩进不换样式** —— 这个文件的规矩是「每一级都是同一种行」，
+ * 给楼栋另做一种样式，商家又要多学一遍哪儿能点。
+ */
+.row.is-sub .row__main {
+  padding-inline-start: 28rpx;
+}
+
+/* 排除掉的行：不再是「不用再选」的半透明，它是商家自己做的一个决定，要看得清 */
+.row.is-excluded {
+  opacity: 1;
+}
+.row__sub--off {
+  color: var(--sh-danger);
+}
+
+/* 行上的「排除 / 取消排除」。占的是勾选框那个位置 —— 对这一行来说它就是那个动作 */
+.row__ex {
+  flex-shrink: 0;
+  padding: 6rpx 16rpx;
+  border-radius: 16rpx;
+  font-size: 24rpx;
+  border: 2rpx solid var(--sh-line);
+  color: var(--sh-sub);
+}
+.row__ex.is-on {
+  border-color: var(--sh-danger);
+  background: var(--sh-danger-tint);
+  color: var(--sh-danger);
+}
+
 /* 每段的「还有 N 条」。不是分页 —— 一次点开全部，商家不需要理解页码 */
 .more {
   padding: 20rpx 24rpx;
@@ -1497,6 +1664,20 @@ function close() {
 .chosen__del {
   flex-shrink: 0;
   font-size: 24rpx;
+  color: var(--sh-sub);
+}
+
+/* 已选清单里的排除项：与纳入项混在一起而不标出来，读的人会以为多做了一片，其实是少做了一片 */
+.chosen__ex {
+  flex-shrink: 0;
+  padding: 2rpx 12rpx;
+  border-radius: 16rpx;
+  font-size: 24rpx;
+  background: var(--sh-danger-tint);
+  color: var(--sh-danger);
+}
+.chosen__name.is-off {
+  text-decoration: line-through;
   color: var(--sh-sub);
 }
 
