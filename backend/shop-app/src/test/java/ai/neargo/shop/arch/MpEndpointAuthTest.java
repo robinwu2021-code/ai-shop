@@ -82,8 +82,10 @@ class MpEndpointAuthTest {
             "GET /mp/store/{merchantNo}/frequent",
             "GET /mp/ticket",
             "GET /mp/ticket/{ticketNo}",
+            "GET /mp/user/active-address",
             "GET /mp/user/address",
             "GET /mp/user/profile",
+            "POST /mp/user/active-address/{addressId}",
             "POST /mp/after-sale/{afterSaleNo}/cancel",
             "POST /mp/after-sale/{afterSaleNo}/escalate",
             "POST /mp/after-sale/{afterSaleNo}/ship",
@@ -180,6 +182,22 @@ class MpEndpointAuthTest {
      * <p>其中三条另有问题：{@code logout}、{@code token/refresh} 的
      * {@code @RequestHeader("Authorization")} 是必填的，缺了会被渲染成
      * <b>10500 服务器内部错误</b>而不是 400 —— 客户端的错在监控里长成服务端故障。
+     */
+    /*
+     * ⚠ **还有两个端点谁都没登记：`GET|POST /mp/wx/callback`**（MpWxCallbackController）。
+     *
+     * 它们的鉴权不归本表的三个桶管：调它的是微信的服务器，不带我们的令牌，
+     * 靠 token/timestamp/nonce 的 SHA-1 签名自证；而且它们**故意返回裸字符串**
+     * （`echostr` / `"success"`）而不是 {code,msg,data} 信封 —— 那是微信的要求，
+     * 套了信封微信会判校验失败。
+     *
+     * 于是：探测拿不到 401（不是「要登录」），也拿不到 `200/0`（不是本表定义的
+     * 「游客可看」），而 UNDETERMINED 有棘轮、按设计不收新端点。
+     * **三个桶都不适配，缺的是第四类「平台回调，签名自证」。**
+     *
+     * 这一条留给微信推送那个功能的作者定：要么加一类，要么给 ANONYMOUS 的判据
+     * 加上「裸字符串 200 也算成功」。在那之前不替它判 ——
+     * 猜一个填进去，等于用一条假登记把这个口子的鉴权问题盖过去。
      */
     private static final Set<String> UNDETERMINED = Set.of(
             "GET /mp/community/{communityNo}",   // 探测得到 200/code=10404
