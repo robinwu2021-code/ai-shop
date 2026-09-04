@@ -65,12 +65,6 @@ public class WechatChannelClient implements ChannelClient {
                 .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(connectTimeoutSeconds))
                 .build();
-        if (!signer.canVerifyResponse()) {
-            // 不阻断装配（公钥是可以晚一步配的），但这条必须显眼：
-            // 静默地不验签，与「验过了」在日志上长得一模一样
-            log.warn("[wechat] 未配置微信支付公钥（shop.pay.wechat.platform-public-key）"
-                    + " —— 应答签名将不被校验");
-        }
     }
 
     @Override
@@ -151,17 +145,20 @@ public class WechatChannelClient implements ChannelClient {
             throw new ChannelException("微信 " + api + " HTTP " + status + "：" + failureOf(text), retryable);
         }
 
-        // 验应答签名。**验不过等同于没收到** —— 不能把内容当真
-        if (signer.canVerifyResponse()) {
-            boolean ok = signer.verifyResponse(
-                    header(resp, "Wechatpay-Timestamp"),
-                    header(resp, "Wechatpay-Nonce"),
-                    text,
-                    header(resp, "Wechatpay-Signature"));
-            if (!ok) {
-                // 不带出 body：验不过的内容来源不明，不该进日志
-                throw new ChannelException("微信 " + api + " 应答验签失败", false);
-            }
+        /*
+         * 验应答签名。**验不过等同于没收到** —— 不能把内容当真。
+         *
+         * 这里没有「配了公钥才验」的分支：公钥缺失在装配期就被
+         * WechatPayChannelConfig 拒了。留那个分支的话，少配一项就等于
+         * 整条出站流量不设防，而日志上只有一行 WARN。
+         */
+        if (!signer.verifyResponse(
+                header(resp, "Wechatpay-Timestamp"),
+                header(resp, "Wechatpay-Nonce"),
+                text,
+                header(resp, "Wechatpay-Signature"))) {
+            // 不带出 body：验不过的内容来源不明，不该进日志
+            throw new ChannelException("微信 " + api + " 应答验签失败", false);
         }
 
         if (text.isBlank()) {

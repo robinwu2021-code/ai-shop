@@ -157,6 +157,38 @@ class WechatApiV3SignerTest {
                 .hasMessageContaining("private-key");
     }
 
+
+    // ---------------------------------------------------------------- 装配期的拒绝
+
+    @Test
+    @DisplayName("★★★ 没配微信支付公钥 → 拒绝装配，不是「起来了但不验签」")
+    void 缺公钥拒绝装配() throws Exception {
+        KeyPair kp = rsa();
+        WechatPayChannelConfig cfg = new WechatPayChannelConfig();
+
+        /*
+         * **两边必须一致。** 回调验签没有公钥时是 fail-closed（每条回调都被拒），
+         * 应答验签此前却是 fail-open（不验就用）——
+         * 于是「没配公钥」的真实后果是「回调全挂 + 出站不设防」，
+         * 而日志上只有一行 WARN，那一行与「验过了」长得一模一样。
+         */
+        assertThat(org.assertj.core.api.Assertions.catchThrowable(() ->
+                        cfg.wechatApiV3Signer(MCH_ID, SERIAL_NO, pkcs8(kp), "", "", "")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("微信支付公钥");
+    }
+
+    @Test
+    @DisplayName("★★ 公钥配齐时正常装出签名器")
+    void 配齐了就装得起来() throws Exception {
+        KeyPair kp = rsa();
+        WechatApiV3Signer signer = new WechatPayChannelConfig()
+                .wechatApiV3Signer(MCH_ID, SERIAL_NO, pkcs8(kp), "", x509(kp), "");
+
+        assertThat(signer.canVerifyResponse())
+                .as("装出来了却验不了应答签名 —— 那这道装配期检查是摆设").isTrue();
+    }
+
     // ---------------------------------------------------------------- 夹具
 
     static KeyPair rsa() throws Exception {

@@ -46,9 +46,27 @@ public class WechatPayChannelConfig {
             throw new IllegalStateException("微信支付已开启（shop.pay.wechat.enabled=true）"
                     + "但商户号或证书序列号未配置 —— 拒绝以不完整的凭据装配");
         }
+        String publicKey = pemOf(platformPublicKeyPem, platformPublicKeyPath,
+                "shop.pay.wechat.platform-public-key");
+        if (publicKey == null || publicKey.isBlank()) {
+            /*
+             * **公钥缺了也拒绝装配**（2026-09-04 收紧）。此前只打一条 WARN 就放行 ——
+             * 而那是**两边不一致**：回调验签（WechatCallbackVerifier）没有公钥时
+             * 是 fail-closed（每一条回调都被拒），应答验签却是 fail-open（不验就用）。
+             *
+             * 于是「没配公钥」的真实后果是：所有回调被拒 + 出站应答不设防，
+             * 而日志上只有一行 WARN 和一堆「验签失败」——
+             * 那一行 WARN 与「验过了」在日志里长得一模一样。
+             *
+             * 既然缺了它整条链本来就不能用，就让它在装配期把话说清楚。
+             */
+            throw new IllegalStateException("微信支付已开启但未配置微信支付公钥"
+                    + "（shop.pay.wechat.platform-public-key 或 -path）—— "
+                    + "缺了它回调一条都验不过，且出站应答不设防，拒绝装配");
+        }
         return new WechatApiV3Signer(mchId, serialNo,
                 pemOf(privateKeyPem, privateKeyPath, "shop.pay.wechat.private-key"),
-                pemOf(platformPublicKeyPem, platformPublicKeyPath, "shop.pay.wechat.platform-public-key"));
+                publicKey);
     }
 
     /**
