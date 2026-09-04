@@ -5,7 +5,7 @@
 // 三个 tab 对应三种**对象**，不是三种操作：社区、自提点、临时点风控队列。
 // 矩阵里的 2.1.2 开城开关、2.1.3 围栏、2.2.2 启停迁移、2.2.4 费率都是**行上的字段与动作**，
 // 拆成独立菜单会让运营在两个页面之间来回找同一个自提点（见 TDD-ops-履约与获客 §3.1）。
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
@@ -14,6 +14,7 @@ import { usePaging } from "@/lib/use-paging";
 import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { NEIGHBOR_RISK_ACCEPT_COUNT } from "@/lib/constants";
 import { fmtTime } from "@/lib/utils";
+import { useSearchParams } from "next/navigation";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
 import type { Community, PickupPoint, PickupStatus } from "@/lib/types";
@@ -59,6 +60,7 @@ function CommunitiesInner() {
   const cp = useCopy(COMMUNITIES_COPY);
   const tabs = useNavTabs("/communities", TAB_KEYS);
   const openOptions = OPEN_OPTIONS(cp);
+  const sp = useSearchParams();
   const qc = useQueryClient();
   const allow = useCan();
   const { confirm, dialog } = useConfirm();
@@ -67,7 +69,31 @@ function CommunitiesInner() {
 
   const { page, setPage, size, setSize } = usePaging();
   const [keyword, setKeyword] = useState("");
-  const [opened, setOpened] = useState("");
+  /*
+   * 开城筛选**认 URL 上的 `opened`**（位置分布那一屏的「去看未开城的聚落 ›」跳过来）。
+   *
+   * 不认的话那个链接会跳到这一屏、却一条也不筛 —— 运营看到的是完整列表，
+   * 而他刚点的是「未开城的那 1 个」：一个跳过来什么也没发生的链接，
+   * 比没有链接更糟，它让人以为自己看到的就是筛过的结果。
+   */
+  const [opened, setOpened] = useState(sp.get("opened") ?? "");
+  /*
+   * ⚠️ **光有 useState 的初值不够。**
+   *
+   * 从「位置分布」点「去看未开城的聚落 ›」过来是**同一条路由**的导航，
+   * 组件不会重新挂载，初值那一行根本不会再跑 —— 浏览器上验到的就是这个：
+   * 页面跳过去了，筛选框还写着「全部开城状态」，四条聚落一条不少。
+   * 一个跳过来什么也没发生的链接比没有链接更糟：它让人以为自己看到的就是筛过的结果。
+   */
+  const spOpened = sp.get("opened");
+  useEffect(() => {
+    if (spOpened != null) {
+      setOpened(spOpened);
+      setPage(1);
+    }
+    // setPage 来自 usePaging，恒等；只跟着 URL 变
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spOpened]);
   const [type, setType] = useState("");
   const [status, setStatus] = useState("");
   const [showArchived, setShowArchived] = useState(false);
