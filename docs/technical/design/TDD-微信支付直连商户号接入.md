@@ -494,3 +494,56 @@ SettleServiceImpl.refund
 
 > 跑全量是在**干净 HEAD worktree + 我这 6 个文件**里跑的：
 > 共享工作区当时被别的会话的半成品卡着编译不过（`MerchantBrief.name()`）。
+
+---
+
+## 11. 部署记录（2026-09-04 15:05–15:13）
+
+上线 `shop-app-20260904-1505-bc9bcada.jar`（前一版 `20260904-1047-22256537`）。
+带上线的还有别的会话的三个提交（社区「附近」与 `/mp/location/resolve`、ops 坐标健康度）——
+**HEAD 是部署单位**，这一点每次都要说清楚。无新迁移，未备份库。
+
+### 做了什么
+
+| 步 | 结果 |
+|---|---|
+| nginx `/callback/pay/channel/` 反代 | ✅ 备份 → `nginx -t` → reload |
+| 两个 pem → `/opt/ai-shop/certs/` | ✅ |
+| 8 个 `WX_*` 追加进 `shop-app.env` | ✅ 无重复键（线上原本已有 6 个 `WX_`，**不能盲目追加**） |
+| jar 本机打包 → 新文件名 → 切软链 → 重启 | ✅ |
+
+> ⚠️ 服务器上**编译不了了**：私有父 POM `ai.neargo:neargo-parent` 从 `~/.m2` 消失
+> （`Non-resolvable parent POM`）。退回本机打包 scp。
+
+### 踩的坑：证书权限，导致线上停机约 4 分钟
+
+用 root 传的证书是 `700 root:root`，而服务以 **`deploy`** 用户跑 —— 读不到私钥。
+`WechatPayChannelConfig` 的「装配期就炸」按设计生效了（宁可起不来也不带空凭据跑），
+于是**崩溃重启循环，`health=000`**。
+
+`chown -R deploy:deploy /opt/ai-shop/certs` 后恢复，重启计数归零。
+
+**教训**：凭据文件传上去之后要**以服务用户的身份实测可读**
+（`sudo -u deploy test -r <file>`），不能只看 `ls` 的权限位好不好看。
+
+### 验收（都有对照量）
+
+| 判据 | 结果 |
+|---|---|
+| `/callback/pay/channel/WECHAT` | **200** |
+| `/callback/pay/stub`（默认共享密钥那个） | **404** —— 安全性质没被一起放开 |
+| `/callback/`（整个前缀） | **404** |
+| 回调应答体 | **`{"code":"FAIL","message":"FAIL"}`** —— 这是 `WechatCallbackVerifier.ackFail()`，**只有验签 bean 装配上才会有**；此前是裸 `FAIL`（未知通道分支）。这是「微信真的接上了」最硬的一条证据 |
+| 启动日志「未配置微信支付公钥」 | **0 条** —— 应答验签是开着的 |
+| 最后一次启动之后的 ERROR | **0 条** |
+| 新 jar 里的类 | `WechatDirectPayGateway` 等 9 个在 `BOOT-INF/lib/pay-channel.jar` 里；**旧 jar 里是 0** |
+
+> `unzip -l` 直接查 fat jar 查不到这些类（它们在嵌套 jar 里），
+> 第一次查出来 0，差点误判成「打包没带上」。要解开 `BOOT-INF/lib/*.jar` 再查。
+
+### 现在的状态
+
+`WX_PAY_ENABLED=true` 已生效。**在 AppID 绑定与 APIv3 密钥粘贴完成之前，
+收银台会显示微信可用而实际下单会失败**（`APPID_MCHID_NOT_MATCH`）。
+线上 `stl_payment` 至今 0 行 —— 三天里没有任何一次支付尝试，所以这个暴露面接近于零。
+不放心可以一条命令改回 `false` 再重启。
