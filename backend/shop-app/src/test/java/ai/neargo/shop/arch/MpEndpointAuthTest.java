@@ -47,6 +47,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       或请求体是空的，于是业务校验（404/400）挡在鉴权之前 ——
  *       回的不是 401，但也不能据此说它不要登录。
  *       <b>这个桶里的每一条都需要人确认</b>，它是待办清单，不是许可。</li>
+ *   <li>{@link #PLATFORM_CALLBACK}：<b>平台回调</b>。调它的是微信的服务器，
+ *       不带我方令牌，鉴权靠签名自证；而且它<b>故意返回裸字符串</b>
+ *       （{@code echostr} / {@code "success"}）而不是信封 —— 那是微信的要求。
+ *       于是它既拿不到 401，也拿不到 {@code 200/0}，三个桶都不适配。
+ *       <b>这一桶不是「免检」</b>：每一条都要有自己的判据 ——
+ *       GET 由 {@code WxPushVerifyTest} 逐条钉（签名不符回空串、没配 token 拒绝、
+ *       三个值要排序），POST 由 {@link #wxPushMustNotGrowSideEffectsBeforeVerifying} 盯着。</li>
  * </ul>
  *
  * <p>加端点时三个桶都不在，这条用例会红并点名 —— 逼加的人回答一句「这个要不要登录」。
@@ -200,6 +207,34 @@ class MpEndpointAuthTest {
      * 加上「裸字符串 200 也算成功」。在那之前不替它判 ——
      * 猜一个填进去，等于用一条假登记把这个口子的鉴权问题盖过去。
      */
+    /**
+     * <b>平台回调，签名自证。</b>2026-09-04 加这一桶。
+     *
+     * <h2>为什么此前空着</h2>
+     * 建表的人写下过一句「这一条留给微信推送那个功能的作者定 —— 猜一个填进去，
+     * 等于用一条假登记把这个口子的鉴权问题盖过去」。那句话是对的，
+     * 所以这一桶<b>不是把两条路径抄进来了事</b>：下面两条用例分别钉住
+     * GET 的签名判据与 POST 的「不许长出副作用」。
+     *
+     * <h2>读代码得到的事实，不是猜的</h2>
+     * <ul>
+     *   <li><b>GET</b> {@code /mp/wx/callback}：校验 SHA-1(排序后的 token/timestamp/nonce)，
+     *       <b>不符就不回显 {@code echostr}</b>，token 没配则一律拒。这是真的签名自证。
+     *       判据在 {@code WxPushVerifyTest}（单测，配了 token，真能红）——
+     *       <b>这里刻意不再写一条端点级的</b>：这个类的上下文没配 token，
+     *       控制器在验签之前就早返回了，那样的断言<b>恒绿、消融也不变红</b>；</li>
+     *   <li><b>POST</b> {@code /mp/wx/callback}：<b>今天完全没有校验</b> ——
+     *       任何人都能推任意 body，恒回 {@code "success"}。
+     *       它现在只落一行日志，所以无害；<b>而引入它的提交说
+     *       「支付结果与结算回调都要从这里进来」</b>。
+     *       那一天到来之前必须先给它加验签，否则就是无鉴权端点驱动资金。
+     *       这件事由 {@link #wxPushMustNotGrowSideEffectsBeforeVerifying} 盯着。</li>
+     * </ul>
+     */
+    private static final Set<String> PLATFORM_CALLBACK = Set.of(
+            "GET /mp/wx/callback",
+            "POST /mp/wx/callback");
+
     private static final Set<String> UNDETERMINED = Set.of(
             "GET /mp/community/{communityNo}",   // 探测得到 200/code=10404
             "GET /mp/goods/{goodsNo}/sku-price",   // 探测得到 200/code=10400
@@ -250,13 +285,15 @@ class MpEndpointAuthTest {
         unlisted.removeAll(REQUIRES_LOGIN);
         unlisted.removeAll(ANONYMOUS);
         unlisted.removeAll(UNDETERMINED);
+        unlisted.removeAll(PLATFORM_CALLBACK);
         assertThat(unlisted)
                 .as("""
                         这些 /mp 端点还没决定要不要登录：%s
 
                         每一个都可能是匿名可调的口子。跑一遍不带令牌的请求看它回什么，
                         然后加进 REQUIRES_LOGIN / ANONYMOUS；判不出来的放 UNDETERMINED
-                        并说明为什么判不出。""".formatted(unlisted))
+                        并说明为什么判不出；平台回调放 PLATFORM_CALLBACK，
+                        **并给它写一条自己的判据**。""".formatted(unlisted))
                 .isEmpty();
     }
 
@@ -333,6 +370,34 @@ class MpEndpointAuthTest {
         } catch (Exception e) {
             return "EX:" + e.getClass().getSimpleName();
         }
+    }
+
+    /**
+     * <b>POST 那一条今天不验签。</b>在给它补上验签之前，不许它长出任何副作用。
+     *
+     * <p>判据用的是「构造器只有一个 String（token）」—— 不优雅，但它钉住的正是
+     * 那件要紧的事：<b>一个无鉴权的公网端点，不能开始驱动业务</b>。
+     * 谁要往里注入 SettlePort / OrderService 之类，这条会红，
+     * 逼他先回答「这个口的鉴权怎么办」。
+     *
+     * <p>钉「行为」比钉「结构」好，但这里没有可观测的行为可钉 ——
+     * 它今天什么都不做。而「什么都不做」正是现在唯一让它安全的性质。
+     */
+    @Test
+    @DisplayName("★★★ 未验签的事件推送口，在补上验签之前不许长出副作用")
+    void wxPushMustNotGrowSideEffectsBeforeVerifying() {
+        var ctors = ai.neargo.shop.portal.mp.MpWxCallbackController.class.getDeclaredConstructors();
+        assertThat(ctors).hasSize(1);
+        Class<?>[] deps = ctors[0].getParameterTypes();
+
+        assertThat(deps)
+                .as("MpWxCallbackController 长出了新依赖：" + java.util.Arrays.toString(deps)
+                        + "。它的 POST /mp/wx/callback **今天完全不验签** —— "
+                        + "任何人都能推任意 body，现在无害只因为它什么都不做（只落一行日志）。"
+                        + "要接事件处理，**先给 POST 加签名校验**，再来动这个构造器；"
+                        + "否则就是一个无鉴权的公网端点在驱动业务，"
+                        + "而引入它的提交说「支付结果与结算回调都要从这里进来」。")
+                .containsExactly(String.class);
     }
 
     @Test
