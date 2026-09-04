@@ -73,9 +73,32 @@ public interface ReconService {
      *                      而用户的钱在通道那边
      */
     record Finding(String paymentNo, String orderNo, String payChannel, String outTradeNo,
-                   Long ourAmountMinor, boolean paidOnChannel, boolean notFound,
+                   String direction, Long ourAmountMinor, boolean paidOnChannel, boolean notFound,
                    boolean queryFailed, long channelAmountMinor, String channelTradeNo,
                    String day) {
+
+        /**
+         * 这是一笔<b>退款</b>的自查结果。
+         *
+         * <h2>为什么 direction 必须传出来</h2>
+         * 这条轴从 2026-09-02 起同时扫 {@code PAY} 与 {@code REFUND}
+         * （见 {@code ReconServiceImpl.checkStalePayments}），
+         * 而 {@code Finding} 里<b>没有方向</b> —— 于是处置那一层拿不到，
+         * 也就无从分叉，只能把两种单当成同一种。
+         *
+         * <p>后果不是「少了个字段」，是<b>处置正好做反</b>：
+         * 对退款行来说 {@code paidOnChannel} 的含义是「<b>退款</b>成功了」，
+         * 而处置那边把它当成「收款成功」去 {@code markPaid(订单)} ——
+         * <b>一笔已退款的订单会被改回已支付</b>；
+         * 「通道没有这笔退款」则会去 {@code closeUnpaid(订单)}，
+         * <b>把一笔已付的订单关掉</b>。
+         *
+         * <p>2026-09-04 之前这条走不到：退款从没真的发给过通道，
+         * {@code queryRefund} 永远查不到。退款接上通道的那一刻它就在线了。
+         */
+        public boolean isRefund() {
+            return "REFUND".equals(direction);
+        }
     }
 
 

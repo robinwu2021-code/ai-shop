@@ -19,7 +19,12 @@ import org.springframework.stereotype.Service;
  * <p>拆开之后：<b>对账的产出是「差异」，不是「修复」</b>。
  * pay 只回答「通道说这笔付了没」，处置在这里，与 I1–I3/I6 同一层。
  *
- * <h2>三种结果的处置刻意不同</h2>
+ * <h2>退款行走另一条路</h2>
+ * 这条轴同时扫 {@code PAY} 与 {@code REFUND}，而下面这三条是<b>为收款写的</b>。
+ * 退款行按 {@code Finding#isRefund} 提前分叉 —— 混在一起处置正好做反，
+ * 详见 {@code ReconService.Finding#isRefund} 的注释。
+ *
+ * <h2>三种结果的处置刻意不同（**收款**）</h2>
  * <ul>
  *   <li><b>通道说已付</b> → 走原本的支付成功链路补回。
  *       不自己写一段「把 status 改成 SUCCESS」：那会漏掉发券、积分、通知、
@@ -37,10 +42,14 @@ public class PaymentReconReconciler {
 
     private final ReconService recon;
     private final OrderRepairPort orderRepair;
+    /** 退款行的终态写在支付域自己的账上，不经订单域 */
+    private final ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger;
 
-    public PaymentReconReconciler(ReconService recon, OrderRepairPort orderRepair) {
+    public PaymentReconReconciler(ReconService recon, OrderRepairPort orderRepair,
+                                  ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger) {
         this.recon = recon;
         this.orderRepair = orderRepair;
+        this.paymentLedger = paymentLedger;
     }
 
     public Result scan(long now) {
@@ -67,6 +76,51 @@ public class PaymentReconReconciler {
             if (f.queryFailed()) {
                 deferred++;
                 c[3]++;
+                continue;
+            }
+            /*
+             * **退款行不能走下面那三条路。**这条轴从 2026-09-02 起同时扫
+             * PAY 与 REFUND，而下面整段是为**收款**写的（见类注释）——
+             * 对退款行来说 paidOnChannel 的含义是「**退款**成功了」，
+             * 拿它去 markPaid 会把一笔已退款的订单改回已支付；
+             * 而「通道没有这笔退款」会去 closeUnpaid，把一笔已付的订单关掉。
+             *
+             * 2026-09-04 之前走不到：退款从没真的发给过通道，queryRefund
+             * 永远查不到。退款接上通道的那一刻它就在线了。
+             */
+            if (f.isRefund()) {
+                if (f.paidOnChannel()) {
+                    // 钱确实退出去了 —— 把退款流水推到终态。这是这条轴唯一该对退款做的事
+                    try {
+                        paymentLedger.markRefundSettled(f.paymentNo(), f.channelTradeNo());
+                        repaired++;
+                        c[1]++;
+                    } catch (RuntimeException e) {
+                        /*
+                         * **一笔推不动不能让整轮炸掉** —— 与上面收款那条同一个道理：
+                         * 后面几百笔就都不查了。这里更要紧，因为退款这一侧
+                         * 「钱可能已经出去了」，而扫描中断的表现是**什么都没发生**。
+                         */
+                        deferred++;
+                        c[3]++;
+                        log.warn("[recon] 退款确认失败 payment={}：{}", f.paymentNo(), e.toString());
+                    }
+                } else if (f.notFound()) {
+                    /*
+                     * 通道那边没有这笔退款 —— 我方以为发出去了，其实没有。
+                     * **绝不能碰订单**：这是退款没发成，不是订单没付成。
+                     * 记差异转人工：钱还在我方这边，而用户在等退款。
+                     */
+                    recon.recordFinding(f, StlReconDiff.PLATFORM_ONLY,
+                            "退款单 " + f.outTradeNo() + " 通道那边不存在 —— "
+                                    + "我方以为已发起，实际没发出去，用户在等这笔钱");
+                    deferred++;
+                    c[3]++;
+                } else {
+                    // 通道有这笔但还没退完（PROCESSING）—— 正常的中间态，下一轮再看
+                    deferred++;
+                    c[3]++;
+                }
                 continue;
             }
             if (f.paidOnChannel()) {

@@ -140,7 +140,8 @@ public class ReconServiceImpl implements ReconService {
                     ? payQueryPort.queryRefund(p.getPayChannel(), p.getOutTradeNo())
                     : payQueryPort.query(p.getPayChannel(), p.getOutTradeNo());
             return new ReconService.Finding(p.getPaymentNo(), p.getOrderNo(), p.getPayChannel(),
-                    p.getOutTradeNo(), p.getAmountMinor(),
+                    // **方向要带出去。**处置那一层要靠它分叉 —— 见 Finding#isRefund
+                    p.getOutTradeNo(), p.getDirection(), p.getAmountMinor(),
                     r.ok() && r.paid(), r.ok() && !r.paid() && !r.found(), !r.ok(),
                     r.amountMinor(), r.tradeNo(), day);
         }).toList();

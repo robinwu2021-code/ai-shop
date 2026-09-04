@@ -282,4 +282,88 @@ class ReconFlowTest {
                         + "于是待确认的退款被批量关掉，**而钱可能真的已经退出去了**")
                 .doesNotContain(r.getOutTradeNo());
     }
+
+    // ───────────────── 退款的**处置**（2026-09-04）
+
+    /*
+     * 上面两条只断言「问对了接口」，回的都是 paid=false ——
+     * **退款成功那条分支从来没被走过**。而处置那一层整段是为收款写的：
+     * 对退款行来说 paidOnChannel 的含义是「退款成功」，
+     * 拿它去 markPaid 会把一笔已退款的订单改回已支付。
+     *
+     * 这条在退款真的发给通道之前走不到（queryRefund 永远查不到），
+     * 所以它一直静静地绿着。
+     */
+
+    @Test
+    @DisplayName("★★★ 退款查到已退成功 → 转 SUCCESS，**绝不能去补回订单的支付成功链路**")
+    void refundPaidSettlesTheRefundNotTheOrder() {
+        StlPayment r = stalRefund();
+        // 对退款单来说，paid=true 的含义是「**退款**成功了」
+        fakeQuery.answer(new PayQueryPort.Result(true, true, true, 3300L, "WXRF-1"));
+
+        paymentRecon.scan(System.currentTimeMillis());
+
+        assertThat(reload(r).getStatus())
+                .as("退款流水没被推到终态 —— 那它会永远停在 PENDING，"
+                        + "对账每一轮都捞出来、每一轮都问通道、每一轮什么都不做")
+                .isEqualTo(StlPayment.SUCCESS);
+        assertThat(reload(r).getSucceededAt()).isNotNull();
+        /*
+         * **断言只看自己这一行**，不用 scan 的计数器：那是全局的，
+         * 而这个类里前面的用例会留下 PENDING 行，同一次 scan 会一起处理掉。
+         */
+        assertThat(diffsOf(r))
+                .as("退款成功走进了收款那条路 —— 那会 markPaid 把一笔已退款的订单改回已支付")
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("★★★ 通道没有这笔**退款**时绝不动订单 —— 那是退款没发成，不是订单没付成")
+    void refundNotFoundMustNotTouchTheOrder() {
+        StlPayment r = stalRefund();
+        // ok=true, paid=false, found=false —— 通道说「没有这笔退款」
+        fakeQuery.answer(new PayQueryPort.Result(true, false, false, 0, null));
+
+        paymentRecon.scan(System.currentTimeMillis());
+
+        // 走对分支的证据：记了一条「退款单通道那边不存在」的差异，而不是去关订单
+        assertThat(diffsOf(r))
+                .as("没记差异 —— 说明这一行走的是收款那条路（关订单），"
+                        + "而那会关掉一笔用户已经付过钱的订单")
+                .isNotEmpty();
+        assertThat(diffsOf(r).getFirst().getResolution())
+                .contains("通道那边不存在");
+        assertThat(reload(r).getStatus())
+                .as("通道没有这笔退款时不能改退款流水的状态 —— 钱还在我方这边，要人工看")
+                .isEqualTo(StlPayment.PENDING);
+    }
+
+    @Test
+    @DisplayName("★★ 退款确认是幂等的 —— 重复扫不改已有的成功时刻")
+    void refundSettleIsIdempotent() {
+        StlPayment r = stalRefund();
+        fakeQuery.answer(new PayQueryPort.Result(true, true, true, 3300L, "WXRF-2"));
+
+        paymentRecon.scan(System.currentTimeMillis());
+        Long first = reload(r).getSucceededAt();
+        paymentRecon.scan(System.currentTimeMillis());
+
+        assertThat(reload(r).getSucceededAt())
+                .as("成功时刻被改写了 —— 对账查到的时刻会一轮一轮往后跳")
+                .isEqualTo(first);
+    }
+
+    /** 这一笔流水记下的差异。**按 paymentNo 取**，不受同类其他用例遗留行的影响 */
+    private List<StlReconDiff> diffsOf(StlPayment p) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                () -> diffMapper.selectList(Wrappers.<StlReconDiff>lambdaQuery()
+                        .eq(StlReconDiff::getPaymentNo, p.getPaymentNo())));
+    }
+
+    private StlPayment reload(StlPayment p) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                () -> paymentMapper.selectOne(Wrappers.<StlPayment>lambdaQuery()
+                        .eq(StlPayment::getPaymentNo, p.getPaymentNo()).last("LIMIT 1")));
+    }
 }

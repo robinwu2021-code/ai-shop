@@ -232,6 +232,36 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
     }
 
+    @Override
+    @Transactional("payTxManager")
+    public void markRefundSettled(String refundPaymentNo, String providerNo) {
+        StlPayment r = byPaymentNo(refundPaymentNo);
+        if (r == null || !StlPayment.REFUND.equals(r.getDirection())) {
+            log.warn("[payment-ledger] 确认退款到账时找不到退款流水 {}", refundPaymentNo);
+            return;
+        }
+        if (StlPayment.SUCCESS.equals(r.getStatus())) {
+            // **幂等**：不覆盖已有的成功时刻，否则对账查到的时刻会一轮一轮往后跳
+            return;
+        }
+        StlPayment patch = new StlPayment();
+        patch.setId(r.getId());
+        patch.setStatus(StlPayment.SUCCESS);
+        patch.setSucceededAt(System.currentTimeMillis());
+        /*
+         * **不写 trade_no。**它在受理那一刻就由 markRefundSent 记下了
+         * （通道自己回的 refund_id），那个才是权威；回查只负责确认「退成功了没」。
+         *
+         * 覆盖它有实打实的代价：`stl_payment` 上有
+         * <b>UNIQUE (pay_channel, trade_no)</b>，而这个索引是<b>跨方向</b>的 ——
+         * 回查一旦给回一个别的行已经占着的号，插不进去的不是这一行，
+         * 是<b>整轮自查当场抛异常中断</b>，后面几百笔一笔都不查了。
+         * 用一个不带新信息的写，去换一条能炸掉整轮扫描的路径，不划算。
+         */
+        DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
+        log.info("[payment-ledger] 退款 {} 已确认到账（通道单号 {}）", refundPaymentNo, providerNo);
+    }
+
     private StlPayment byPaymentNo(String paymentNo) {
         if (paymentNo == null) {
             return null;

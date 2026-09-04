@@ -348,8 +348,13 @@ SettleServiceImpl.refund
 | 不可重试的拒绝 | **FAILED** + errMsg | 留 PENDING 更糟：对账轴回查得到「通道没有这笔」，而那正是它安全关单的判据，**一笔该退的钱会被静默关掉** |
 | 可重试的失败（超时/限流） | **留 PENDING** | 超时时「到底发出去没有」是真的不知道，转 FAILED 等于替通道回答了一个我方答不了的问题 |
 
-**确认不在这一步做**：交给已有的对账轴 —— `ReconServiceImpl` 已经按
-`direction=REFUND && status=PENDING` 捞出来，用 `p.getOutTradeNo()` 调 `queryRefund`。
+**确认不在这一步做**：交给对账轴回查。
+
+> ⚠️ **2026-09-04 更正**：写这一段时我说「交给已有的对账轴」——
+> **那句话是错的**，而且错得不轻。轴确实会捞出退款行去问通道，
+> 但拿到答案之后它只会 `markPaid` / `closeUnpaid` **订单**，
+> <b>从来没有任何东西写过退款流水的终态</b>。
+> 更糟的是它把退款行当收款处置，方向正好做反。详见 §10。
 所以发送时的 `out_refund_no` **必须**就是退款流水的 `out_trade_no`（`原单号-R序号`），
 换个号就永远查不到，而查不到会被当成「通道没有这笔」。
 
@@ -384,7 +389,7 @@ SettleServiceImpl.refund
 
 | # | 事 | 为什么排最前 |
 |---|---|---|
-| **R1** | 对账轴把 `REFUND` 方向的流水**当收款补回** | `ReconServiceImpl.staleFindings` 捞的是 `direction IN (PAY, REFUND)`，而 `PaymentReconReconciler` 在 `f.paidOnChannel()` 分支里直接调 `orderRepair.markPaid(f.orderNo(), ...)` —— **没有按方向分叉**（读到第 55–110 行为止没看到）。对退款行来说 `paidOnChannel = 退款成功`，于是「退款成功」会把**订单改成已支付**。 |
+| **R1** ✅ | 对账轴把 `REFUND` 方向的流水**当收款补回**（已证实并修复，见 §10） | `ReconServiceImpl.staleFindings` 捞的是 `direction IN (PAY, REFUND)`，而 `PaymentReconReconciler` 在 `f.paidOnChannel()` 分支里直接调 `orderRepair.markPaid(f.orderNo(), ...)` —— **没有按方向分叉**（读到第 55–110 行为止没看到）。对退款行来说 `paidOnChannel = 退款成功`，于是「退款成功」会把**订单改成已支付**。 |
 
 **这条在我改之前是潜伏的**：`stl_payment` 从 2026-09-02 起就有 REFUND 行，但退款从没真的发出去过，`queryRefund` 永远返回查不到，所以那个分支走不到。
 **我把退款接上通道之后，它第一次会真的返回 `paid=true`** —— 潜伏变成在线。
@@ -436,3 +441,56 @@ SettleServiceImpl.refund
 `pre-push` 被**两条不是本次引入的红**挡着（已在干净 HEAD worktree 上复现确认）：
 `MpEndpointAuthTest` 的 `/mp/wx/callback` 未登记、`ConsumerBrowseFlowTest` 的社区种子。
 它们不影响上面任何一条的开发，但**影响推送**。
+
+---
+
+## 10. R1 已证实并修复：对账轴把退款当收款处置
+
+### 10.1 证实的过程
+
+- `PaymentReconReconciler` 全文 165 行，**`direction` / `REFUND` / `refund` 一次都没出现**。
+- 更彻底的是：`ReconService.Finding` 记录里**根本没有方向字段** ——
+  轴自己知道方向（它据此决定问 `query` 还是 `queryRefund`），
+  却在传给处置层时把它丢了。**不是漏了个分支，是信息在边界上就没了。**
+- 类注释第一句写着「**收款**自查的处置」。它一直是对的，
+  错的是 2026-09-02 把查询侧放宽成 `IN (PAY, REFUND)` 时，没人回来看处置侧。
+
+### 10.2 两条路径都伤到订单
+
+| 退款行的通道回答 | 修复前 | 修复后 |
+|---|---|---|
+| 退款成功 | `markPaid(订单)` —— **把已退款的订单改回已支付** | 退款流水转 SUCCESS |
+| 通道没这笔退款 | `closeUnpaid(订单)` —— **把一笔已付的订单关掉** | 记差异转人工，**不碰订单** |
+| 退款还在处理中 | 同上（当成 notFound） | 留到下一轮 |
+
+现有的两条退款用例（`staleRefundIsScanned` / `refundGoesToRefundQuery`）
+**只断言「问对了接口」，回的都是 `paid=false`** —— 退款成功那条分支从没被走过。
+而后者回的恰恰是 notFound，也就是说**它当时就在调 `closeUnpaid`**，
+只是没人断言订单，所以一直静静地绿着。
+
+### 10.3 顺手修掉的第二件：一行能炸掉整轮
+
+`stl_payment` 上有 **`UNIQUE (pay_channel, trade_no)`**，而且是**跨方向**的。
+第一版 `markRefundSettled` 把回查拿到的通道单号回写进 `trade_no` ——
+一旦撞键，**抛出来的不是这一行的失败，是整轮自查中断**，后面几百笔一笔都不查。
+
+改成**不回写**：受理时 `markRefundSent` 记下的那个才是权威（通道自己回的 `refund_id`），
+回查只负责回答「退成功了没」。用一个不带新信息的写，
+去换一条能炸掉整轮扫描的路径，不划算。
+
+同时给退款那一支加了 `try/catch`（收款那一支本来就有）——
+退款这一侧「钱可能已经出去了」，而扫描中断的表现是**什么都没发生**。
+
+### 10.4 验收
+
+`ReconFlowTest` 加三条。**消融实测**：把方向分叉改成 `if (false && f.isRefund())`
+→ 两条 ★★★ 变红。
+
+断言刻意**只看自己那一行**（按 `paymentNo` 取差异），不用 `scan()` 的计数器 ——
+那是全局的，而这个类里前面的用例会留下 PENDING 行，同一次 scan 会一起处理掉。
+第一版就是栽在这儿：单独跑全绿、进整个类就红。
+
+全量 **1821 条，1 条红**（`MpEndpointAuthTest` 的 `/mp/wx/callback`，来自 `738bd4b2`，非本次引入）。
+
+> 跑全量是在**干净 HEAD worktree + 我这 6 个文件**里跑的：
+> 共享工作区当时被别的会话的半成品卡着编译不过（`MerchantBrief.name()`）。
