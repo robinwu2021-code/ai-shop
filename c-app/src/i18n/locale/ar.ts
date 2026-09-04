@@ -35,6 +35,8 @@ export default {
     communityFeedHint: "اختر حيّك لترى ما يشتريه الجيران",
     communityFeedEmpty: "لا أحد يبيع هنا بعد",
     cutoffIn: "يغلق خلال {t}",
+    switchAsk: "يبدو أنك قرب {name}. هل تريد التبديل؟",
+    switchAskHint: "ستتبع المنتجات تلك المنطقة؛ ألغِ للبقاء كما أنت",
     choosePickup: "اختر نقطة الاستلام",
     choosePickupHint: "اضغط لاختيار حيّك",
     shareTitle: "منتجات يشتريها جيرانك؛ شاركهم",

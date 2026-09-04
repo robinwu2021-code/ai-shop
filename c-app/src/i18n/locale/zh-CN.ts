@@ -37,6 +37,8 @@ export default {
     communityFeedHint: "先选社区，看看邻居都在买什么",
     communityFeedEmpty: "这个社区暂时还没有商家上架",
     cutoffIn: "距截单 {t}",
+    switchAsk: "你好像在「{name}」附近，切过去吗？",
+    switchAskHint: "切了之后按那边显示商品；不切就维持现在这样",
     choosePickup: "选择自提点",
     choosePickupHint: "点击选择你所在的社区",
     shareTitle: "邻居都在买的社区好物，一起拼～",

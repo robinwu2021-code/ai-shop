@@ -35,6 +35,8 @@ export default {
     communityFeedHint: "Pick a community to see what neighbours buy",
     communityFeedEmpty: "No one is selling here yet",
     cutoffIn: "Closes in {t}",
+    switchAsk: "Looks like you are near {name}. Switch?",
+    switchAskHint: "Products will follow that area; tap cancel to stay as is",
     choosePickup: "Choose a pickup point",
     choosePickupHint: "Tap to pick your neighbourhood",
     shareTitle: "Great finds my neighbours are buying — join in",

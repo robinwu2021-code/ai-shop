@@ -411,3 +411,52 @@ describe("模糊定位与无坐标地址：都要说话", () => {
     expect(body).toMatch(/duration: rebound \? \d+ : \d+/);
   });
 });
+
+/**
+ * 快捷切换与「主动问一句」—— **手动多选被否掉之后的替代方案**（决策记录 D3）。
+ *
+ * <p>多选的真实驱动力是「切换太麻烦」。这一组守的是：切换确实变便宜了，
+ * 而且**没有为了便宜而越权**——绝不自动切。
+ */
+describe("切换要便宜，但绝不替他做决定", () => {
+  const home = code("src/pages/home/index.vue");
+  const store = code("src/stores/location.ts");
+
+  it("★★★ 定位到别处只**问**，不自动切", () => {
+    /*
+     * 自动切会让人在完全没察觉的情况下看到另一个地方的货 —— 比麻烦糟得多。
+     * 判据：建议必须经过 confirm，且只有拿到 true 才动。
+     */
+    const body = bodyOf(home, "async function maybeSuggestSwitch(");
+    expect(body, "首页没有 maybeSuggestSwitch 了").not.toBeNull();
+    expect(body).toContain("confirm(");
+    expect(body).toMatch(/if \(ok\) await quickSwitch/);
+    expect(body, "拿到建议就直接切 = 替他做了决定")
+      .not.toMatch(/const s = location\.suggestSwitch\([\s\S]{0,120}await quickSwitch/);
+  });
+
+  it("★★★ 同一个目标一次会话只问一次 —— 他拒了就是拒了", () => {
+    const body = bodyOf(home, "async function maybeSuggestSwitch(");
+    expect(body).toMatch(/askedFor\.value === s\.addressId/);
+    // 记下来要在**问之前**，否则他取消后下次回首页又弹
+    expect(body).toMatch(/askedFor\.value = s\.addressId[\s\S]{0,120}confirm\(/);
+  });
+
+  it("★★★ 模糊坐标不许触发建议 —— 5 公里误差在城里每次都会「发现」你在别处", () => {
+    const body = bodyOf(store, "suggestSwitch(");
+    expect(body, "store 里没有 suggestSwitch 了").not.toBeNull();
+    expect(body).toMatch(/if \(at\.fuzzy\) return null/);
+  });
+
+  it("★★ 两头都在附近时不问 —— 切不切都一样，问一句纯属打扰", () => {
+    const body = bodyOf(store, "suggestSwitch(");
+    expect(body).toMatch(/near\(this\.active\) < SUGGEST_FAR_M\) return null/);
+  });
+
+  it("★★ 顶栏 chip 不含当前那个，且最多两个", () => {
+    const body = bodyOf(home, "const quickPlaces = computed(");
+    expect(body, "quickPlaces 不见了").not.toBeNull();
+    expect(body).toContain("!== location.active?.addressId");
+    expect(body, "顶栏那一行还要放定位图标、地名与搜索").toContain("slice(0, 2)");
+  });
+});

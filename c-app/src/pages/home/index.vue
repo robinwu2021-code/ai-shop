@@ -15,6 +15,8 @@ import { api } from "@/api";
 import { useCommunityStore } from "@/stores/community";
 import { useCartStore } from "@/stores/cart";
 import { useLocationStore } from "@/stores/location";
+import { confirm } from "@ai-shop/ui/prompt";
+import { getLocationDetailed } from "@shared/ports/location";
 import { useUserStore } from "@/stores/user";
 import { buildShareMessage } from "@shared/ports/share";
 import { GOODS_COVER_FALLBACK, ROUTES } from "@shared/utils/constants";
@@ -106,6 +108,53 @@ function openGroup(g: GroupBuy) {
  * <p>还一个位置都没有时才去选社区页 —— 那一页此时承担的是
  * 「这一带有什么」的探索，正好是新用户需要的。
  */
+/**
+ * 顶栏常驻的快捷切换 chip：家 / 公司。**最多两个，且不含当前那个。**
+ *
+ * <p>这是「手动多选」被否掉之后的替代方案：多选的真实驱动力是「切换太麻烦」，
+ * 所以把切换做到一点即换 —— 而不是让他同时挂着两个地方、看一锅混合的货。
+ * 超过两个就别塞了：顶栏那一行还要放定位图标、地名与搜索。
+ */
+const quickPlaces = computed(() =>
+  location.list
+    .filter((a) => a.tag && a.addressId !== location.active?.addressId)
+    .slice(0, 2));
+
+async function quickSwitch(a: (typeof location.list)[number]) {
+  const { rebound } = await location.switchTo(a.addressId);
+  uni.showToast({
+    title: String(rebound
+      ? t("address.nowHere", { name: a.tag || a.detail })
+      : t("address.nowHereNoCoord", { name: a.tag || a.detail })),
+    icon: "none",
+    duration: rebound ? 1500 : 3000,
+  });
+  load();
+}
+
+/**
+ * 定位到别处时**问一句**，绝不自动切。
+ *
+ * <p>自动切会让人在完全没察觉的情况下看到另一个地方的货 —— 比麻烦糟得多。
+ * 门槛与只问一次的判据都在 store 的 `suggestSwitch` 里，这里只负责问。
+ *
+ * <p><b>一次会话只问一次同一个目标</b>：他拒了就是拒了，
+ * 每次回首页再弹一遍，比不问更烦。
+ */
+const askedFor = ref("");
+async function maybeSuggestSwitch() {
+  const r = await getLocationDetailed();
+  if (!r.ok) return;
+  const s = location.suggestSwitch({ lat: r.coords.lat, lng: r.coords.lng, fuzzy: r.fuzzy });
+  if (!s || askedFor.value === s.addressId) return;
+  askedFor.value = s.addressId;
+  const ok = await confirm({
+    title: String(t("home.switchAsk", { name: s.tag || s.detail })),
+    hint: String(t("home.switchAskHint")),
+  });
+  if (ok) await quickSwitch(s);
+}
+
 function gotoPlace() {
   if (location.has || location.list.length) {
     uni.navigateTo({ url: ROUTES.address });
@@ -172,7 +221,7 @@ async function ensureIdentity() {
 onShow(() => {
   load();
   cart.load();
-  void location.load();
+  void location.load().then(() => maybeSuggestSwitch());
   /*
    * **这里原先会把未绑归属的人推去选自提点，现在不推了。**
    *
@@ -227,6 +276,18 @@ onShareAppMessage(() =>
           {{ location.label || community.pickup?.name || $t("home.choosePickup") }}
         </text>
         <text class="txt-caption place__sub sh-fill">{{ placeSub }}</text>
+      </view>
+      <!--
+        家 / 公司 一点即换。**替代「手动多选」的那一半** ——
+        多选的驱动力是「切换太麻烦」，那就让切换便宜，而不是把两个地方的货混在一屏。
+      -->
+      <view v-if="quickPlaces.length" class="place__quick sh-row">
+        <text
+          v-for="a in quickPlaces"
+          :key="a.addressId"
+          class="txt-caption place__chip"
+          @tap.stop="quickSwitch(a)"
+        >{{ a.tag }}</text>
       </view>
       <!-- 搜索收成一个 icon 并入这一行：一个社区只覆盖三五家店、几十上百个 SKU，
            用户翻两屏就看完了全部 —— 搜索远没到值一整行主视觉的程度。
@@ -316,6 +377,17 @@ onShareAppMessage(() =>
   gap: 8rpx;
 }
 /* 搜索缩成 icon 后要保住可点面积：40×40 的圆底，不是一个裸图标 */
+.place__quick {
+  gap: 12rpx;
+  margin-left: 12rpx;
+  flex-shrink: 0;
+}
+.place__chip {
+  padding: 6rpx 18rpx;
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+  color: var(--sh-sub);
+}
 .place__search {
   flex-shrink: 0;
   width: 64rpx;

@@ -8,6 +8,12 @@ import { defineStore } from "pinia";
 import { api } from "@/api";
 import { useCommunityStore } from "./community";
 import type { Address } from "@shared/types";
+import { metersBetweenE6 } from "@shared/utils/geo";
+
+/** 候选要多近才值得问。再远就不是「你好像在那儿」，是他在逛街 */
+const SUGGEST_NEAR_M = 1000;
+/** 当前生效位置要多远才算「确实换地方了」。两者都在附近时问一句纯属打扰 */
+const SUGGEST_FAR_M = 3000;
 
 export const useLocationStore = defineStore("location", {
   state: () => ({
@@ -58,6 +64,49 @@ export const useLocationStore = defineStore("location", {
      * <p>将来第二步会去掉这一跳、由后端按坐标实时算 ——
      * 到那时**端上这个函数之外一行都不用改**，这正是分两步的理由。
      */
+    /**
+     * 定位到了别处 —— **要不要建议他切过去。** 返回该建议的地址，没有就是 null。
+     *
+     * <p>这是「手动多选」被否掉之后的替代方案（决策记录 D3）：多选的真实驱动力是
+     * 「切换太麻烦」，所以把切换做便宜，而不是让他同时挂着两个地方看一锅混合的货。
+     *
+     * <p><b>三条门槛，每一条都在挡一种误报：</b>
+     * <ul>
+     *   <li><b>坐标必须是精确的</b> —— 模糊定位误差约 5 公里，拿它比距离，
+     *       在城里几乎每次都会「发现」你在别处；</li>
+     *   <li><b>候选要足够近</b>（1 公里内）—— 否则「你好像在公司」会在他去逛街时冒出来；</li>
+     *   <li><b>当前生效位置要足够远</b>（3 公里外，或压根没坐标）——
+     *       两者都在附近时切不切都一样，问一句纯属打扰。</li>
+     * </ul>
+     *
+     * <p><b>只返回建议，绝不自动切。</b>自动切会让人在完全没察觉的情况下
+     * 看到另一个地方的货 —— 那比麻烦糟得多。
+     */
+    suggestSwitch(at: { lat: number; lng: number; fuzzy?: boolean }): Address | null {
+      if (at.fuzzy) return null;
+      const latE6 = Math.round(at.lat * 1e6);
+      const lngE6 = Math.round(at.lng * 1e6);
+      const near = (a: Address) =>
+        a.latE6 == null || a.lngE6 == null
+          ? Number.POSITIVE_INFINITY
+          : metersBetweenE6(a.latE6, a.lngE6, latE6, lngE6);
+
+      let best: Address | null = null;
+      let bestM = Number.POSITIVE_INFINITY;
+      for (const a of this.list) {
+        const m = near(a);
+        if (m < bestM) {
+          best = a;
+          bestM = m;
+        }
+      }
+      if (!best || bestM > SUGGEST_NEAR_M) return null;
+      if (this.active && best.addressId === this.active.addressId) return null;
+      // 当前那个也在附近 = 切不切都一样，别打扰
+      if (this.active && near(this.active) < SUGGEST_FAR_M) return null;
+      return best;
+    },
+
     /**
      * 切到某个位置，并把商品池跟着换过去。
      *
