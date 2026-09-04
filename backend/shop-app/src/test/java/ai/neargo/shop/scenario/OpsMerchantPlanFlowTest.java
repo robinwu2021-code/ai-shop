@@ -602,7 +602,7 @@ class OpsMerchantPlanFlowTest {
                 .get("data").get("payOrderNo").asString();
         // 走支付回调而不是 /pay：只调 /pay 的话单还在 WAIT_PAY，发货会被状态机拒 ——
         // 而那是测试写错了不是代码错了
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-"
                                 + payOrderNo + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
                 .andExpect(status().isOk());

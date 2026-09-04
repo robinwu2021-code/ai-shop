@@ -573,7 +573,7 @@ class M7SettleFlowTest {
                 .header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.code").value(0));
 
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idemKey
                         + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
         return payOrderNo;

@@ -202,4 +202,13 @@ public interface PaymentLedgerService {
      *                非微信通道没有这个概念，传 null，那时只记 payerId
      */
     void recordPayer(String outTradeNo, String payerId, String appId);
+
+    /**
+     * 按<b>退款商户单号</b>确认到账。{@link #markRefundSettled} 的另一个入口 ——
+     * 回调给的是商户单号，对账给的是我方流水号，两条路殊途同归。
+     *
+     * @return 这笔退款挂的订单号；找不到这个单号返回 {@code null}
+     *         （通道回传了一个我方没发出去过的退款号，那不能当成功）
+     */
+    String settleRefundByOutTradeNo(String outRefundNo, String providerNo);
 }

@@ -162,7 +162,7 @@ class ConsumerOrderFlowTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"改主意\"}"));
 
         // 迟到的支付回调：状态机拒绝 CANCELLED → PAID
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"TX-late\",\"sign\":\""
                                 + STUB_SECRET + "\"}"))
                 .andExpect(jsonPath("$.code").value(20004));
@@ -190,7 +190,7 @@ class ConsumerOrderFlowTest {
         addToCart(token, "G0002", "SK0003", 1);
         String orderNo = createOrder(token, "idem-badsign");
 
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"X\",\"sign\":\"wrong\"}"));
 
         mvc().perform(get("/mp/order/" + orderNo).header("Authorization", "Bearer " + token))
@@ -219,7 +219,7 @@ class ConsumerOrderFlowTest {
     }
 
     private void payCallback(String orderNo, String txId) throws Exception {
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"" + txId
                                 + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
                 .andExpect(status().isOk());

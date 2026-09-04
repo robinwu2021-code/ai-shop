@@ -388,7 +388,7 @@ class WxNotifyFlowTest {
         assertThat(payNode == null ? null : payNode.get("payOrderNo"))
                 .as("下单失败：%s", body).isNotNull();
         String payOrderNo = payNode.get("payOrderNo").asString();
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idemKey
                                 + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
                 .andExpect(status().isOk());

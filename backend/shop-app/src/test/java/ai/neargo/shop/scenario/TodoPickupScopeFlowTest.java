@@ -208,7 +208,7 @@ class TodoPickupScopeFlowTest {
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
         // 付款后才进 WAIT_FULFILL —— 未付款的单不是待办（那是买家的事）
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-todo-"
                         + phone + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
     }

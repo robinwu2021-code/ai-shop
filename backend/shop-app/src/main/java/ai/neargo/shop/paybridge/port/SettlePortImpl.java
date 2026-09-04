@@ -179,4 +179,9 @@ public class SettlePortImpl implements SettlePort {
     public String refund(String subOrderNo, long amountMinor, String reason) {
         return settleService.refund(subOrderNo, amountMinor, reason);
     }
+
+    @Override
+    public String settleRefund(String outRefundNo, String providerNo) {
+        return paymentLedger.settleRefundByOutTradeNo(outRefundNo, providerNo);
+    }
 }

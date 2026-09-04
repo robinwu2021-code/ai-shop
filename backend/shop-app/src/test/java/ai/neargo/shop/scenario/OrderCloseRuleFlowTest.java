@@ -295,7 +295,7 @@ class OrderCloseRuleFlowTest {
          * 而红的原因是测试没把单付掉，不是扫描范围写错。
          * 差点被当成生产缺陷去改 closeExpiredOrders。
          */
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"tx-"
                                 + idempotencyKey + "\",\"sign\":\"stub-secret\"}"))
                 .andExpect(status().isOk());

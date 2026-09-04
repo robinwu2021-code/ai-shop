@@ -112,7 +112,7 @@ class PayScenePassedThroughTest {
         mvc().perform(post("/mp/order/" + payOrderNo + "/pay")
                 .header("Authorization", "Bearer " + token));
         // **回调这条路上没有任何请求头** —— 「读当前端」在这里会读到 null
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-scene\","
                         + "\"sign\":\"" + STUB_SECRET + "\"}"));
 

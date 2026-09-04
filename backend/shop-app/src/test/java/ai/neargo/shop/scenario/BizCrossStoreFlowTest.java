@@ -471,7 +471,7 @@ class BizCrossStoreFlowTest {
     private void buyAndPay(String buyerPhone, String goodsNo, String skuNo, int qty,
                            String pickupNo, String idem) throws Exception {
         String payOrderNo = buyOnly(buyerPhone, goodsNo, skuNo, qty, pickupNo, idem);
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idem
                                 + "\",\"sign\":\"stub-secret\"}"))
                 .andExpect(status().isOk());

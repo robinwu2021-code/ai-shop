@@ -283,6 +283,23 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
     }
 
+    @Override
+    @Transactional("payTxManager")
+    public String settleRefundByOutTradeNo(String outRefundNo, String providerNo) {
+        StlPayment r = byOutTradeNo(outRefundNo);
+        if (r == null || !StlPayment.REFUND.equals(r.getDirection())) {
+            /*
+             * **认领不了就说认领不了。** 通道回传了一个我方没发出去过的退款号，
+             * 当成功的话账上会多出一笔从没发生过的退款；
+             * 而真出现这种情况，要么是串了商户号，要么是有人在伪造回调。
+             */
+            log.error("[payment-ledger] 收到无法认领的退款回调 out_refund_no={}", outRefundNo);
+            return null;
+        }
+        markRefundSettled(r.getPaymentNo(), providerNo);
+        return r.getOrderNo();
+    }
+
     private StlPayment byPaymentNo(String paymentNo) {
         if (paymentNo == null) {
             return null;

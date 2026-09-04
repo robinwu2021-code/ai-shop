@@ -111,7 +111,7 @@ class ChannelPayCallbackFlowTest {
     }
 
     private void callback(String body, String expectBody) throws Exception {
-        mvc().perform(post("/callback/pay/channel/" + CH)
+        mvc().perform(post("/pay/callback/" + CH)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(content().string(expectBody));
     }
@@ -158,7 +158,7 @@ class ChannelPayCallbackFlowTest {
     @Test
     @DisplayName("★★★ 没接的通道当没这个端点 —— 不回「通道未接入」，那等于告诉扫端点的人这里认得它")
     void unknownChannelRevealsNothing() throws Exception {
-        mvc().perform(post("/callback/pay/channel/NOPE")
+        mvc().perform(post("/pay/callback/NOPE")
                         .contentType(MediaType.APPLICATION_JSON).content("{\"x\":\"good\"}"))
                 .andExpect(content().string("FAIL"));
 
@@ -189,7 +189,7 @@ class ChannelPayCallbackFlowTest {
         // 原因直接给运营看，不能是空的 —— 「被拒了」而不说为什么等于没记
         assertThat(m.getReason()).isEqualTo("验签失败");
         assertThat(m.getMsgType()).isEqualTo(StlChannelMessage.CALLBACK);
-        assertThat(m.getApi()).isEqualTo("/callback/pay/channel/" + CH);
+        assertThat(m.getApi()).isEqualTo("/pay/callback/" + CH);
     }
 
     @Test
@@ -259,7 +259,7 @@ class ChannelPayCallbackFlowTest {
         var tt = new org.springframework.transaction.support.TransactionTemplate(payTx);
         try {
             tt.execute(status -> {
-                recorder.received(CH, "/callback/pay/channel/" + CH, Map.of(), "rollback-me");
+                recorder.received(CH, "/pay/callback/" + CH, Map.of(), "rollback-me");
                 throw new IllegalStateException("调用方回滚");
             });
         } catch (IllegalStateException expected) {
@@ -283,7 +283,7 @@ class ChannelPayCallbackFlowTest {
         int before = messages().size();
         // 不断言回执：异常被全局处理器接走，返回的是 500 的信封而不是通道格式。
         // 这条用例问的是「报文还在不在」，不是「回执长什么样」
-        mvc().perform(post("/callback/pay/channel/" + CH)
+        mvc().perform(post("/pay/callback/" + CH)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"x\":\"good\"}"));
 
         assertThat(messages()).hasSize(before + 1);
@@ -299,11 +299,51 @@ class ChannelPayCallbackFlowTest {
     void unknownChannelRecordsNothing() throws Exception {
         int before = messageMapper.selectCount(Wrappers.<StlChannelMessage>lambdaQuery()).intValue();
 
-        mvc().perform(post("/callback/pay/channel/NOPE")
+        mvc().perform(post("/pay/callback/NOPE")
                         .contentType(MediaType.APPLICATION_JSON).content("{\"x\":\"good\"}"))
                 .andExpect(content().string("FAIL"));
 
         assertThat(messageMapper.selectCount(Wrappers.<StlChannelMessage>lambdaQuery()).intValue())
                 .isEqualTo(before);
+    }
+
+    // ───────────────── 路径与装配（2026-09-04 回调搬到 /pay/callback/ 下）
+
+    @Test
+    @DisplayName("★★★ 假回调端点在生产不装配 —— 它的共享密钥是默认值，存在就等于白拿货")
+    void stubCallbackIsNotAssembledWithoutTheFlag() {
+        /*
+         * 这条钉的是**装配条件本身**，不是路径。
+         *
+         * `/pay/callback/stub` 的共享密钥用的是默认值 stub-secret，线上从没覆盖过。
+         * 此前挡住它的只是「nginx 没反代 /callback」——那是偶然，不是设计；
+         * 而 nginx 现在整段放行 /pay/callback/，那道侥幸没了。
+         *
+         * 所以保护换成了装配：生产 SHOP_PAY_STUB=false → bean 不存在 → 404。
+         * 谁把这个条件去掉，这条会红。
+         */
+        var conds = ai.neargo.shop.trade.api.callback.PayCallbackController.class
+                .getAnnotationsByType(
+                        org.springframework.boot.autoconfigure.condition.ConditionalOnProperty.class);
+
+        assertThat(conds)
+                .as("PayCallbackController 没有装配条件了 —— 那生产会重新长出一个"
+                        + "「知道订单号就能白拿货」的公网端点")
+                .hasSize(1);
+        assertThat(conds[0].name()).contains("shop.pay.stub");
+        assertThat(conds[0].havingValue()).isEqualTo("true");
+    }
+
+    @Test
+    @DisplayName("★★ 旧路径 /callback/** 必须已经不存在 —— 留着就是两个入口只有一个被守着")
+    void oldCallbackPathIsGone() throws Exception {
+        int status = mvc().perform(post("/callback/pay/channel/WECHAT")
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andReturn().getResponse().getStatus();
+
+        assertThat(status)
+                .as("旧路径还在 —— nginx 只放行了 /pay/callback/，"
+                        + "两个入口意味着有一个不在任何人的视野里")
+                .isEqualTo(404);
     }
 }

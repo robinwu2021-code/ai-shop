@@ -24,8 +24,14 @@ import ai.neargo.shop.spi.settle.SettlePort;
  * 真通道的支付回调。**不走 Bearer**，靠验签。
  *
  * <p>与 {@link PayCallbackController}（stub）并存而不是替换它：那个是开发期用的，
- * 挂在 {@code shop.pay.stub} 上；这个按 {@code /callback/pay/{channel}} 路由到
+ * 挂在 {@code shop.pay.stub} 上；这个按 {@code /pay/callback/{channel}} 路由到
  * 各通道的验签实现。<b>加一个通道不用改这个类</b> —— 路由表由 Spring 注入的实现列表构成。
+ *
+ * <h3>路径为什么在 {@code /pay/} 下面（2026-09-04 从 {@code /callback/pay/...} 搬来）</h3>
+ * 回调是<b>业务相关</b>的：支付的回调跟着支付走，消息推送的回调跟着消息走
+ * （{@code /mp/wx/callback} 一直就是这么放的）。此前把支付回调放在 {@code /callback/}
+ * 下，理由是「按谁在调分」—— 但前缀既不授权也不拦截（鉴权是每个端点自己验签），
+ * 那它就该按<b>出事时人去哪儿找</b>来排。
  *
  * <h3>三步顺序不能变：验签 → 回查 → 落库</h3>
  *
@@ -40,7 +46,7 @@ import ai.neargo.shop.spi.settle.SettlePort;
  */
 @Profile("api")
 @RestController
-@RequestMapping("/callback")
+@RequestMapping("/pay/callback")
 public class ChannelPayCallbackController {
 
     private static final Logger log = LoggerFactory.getLogger(ChannelPayCallbackController.class);
@@ -64,7 +70,7 @@ public class ChannelPayCallbackController {
         this.payMessage = payMessage;
     }
 
-    @PostMapping("/pay/channel/{channel}")
+    @PostMapping("/{channel}")
     public String callback(@PathVariable String channel,
                            @RequestHeader Map<String, String> headers,
                            @RequestBody String rawBody) {
@@ -90,7 +96,7 @@ public class ChannelPayCallbackController {
          * 而通道那边会一直重推。运营问「它到底推了什么过来」时没人答得上。
          */
         String msgNo = payMessage.callbackReceived(
-                channel, "/callback/pay/channel/" + channel, headers, rawBody);
+                channel, "/pay/callback/" + channel, headers, rawBody);
 
         Map<String, Object> payload = v.verify(headers, rawBody);
         if (payload == null) {
@@ -165,6 +171,82 @@ public class ChannelPayCallbackController {
                 String.valueOf(outTradeNo), null, payload);
         log.info("[callback] {} 支付成功入账：{}（通道单号 {}，{} 分）",
                 channel, outTradeNo, r.tradeNo(), r.amountMinor());
+        return v.ackOk();
+    }
+
+    /**
+     * <b>退款结果回调</b>（微信 {@code /v3/refund/domestic/refunds} 的 notify_url）。
+     *
+     * <h3>与支付回调同一套顺序，但认的是另一套单据</h3>
+     * 报文里给的是 {@code out_refund_no}（我方退款商户单号），
+     * 回查要走 {@code queryRefund} 而不是 {@code query} ——
+     * 拿退款单号去查收款接口，通道会说「没有这笔」，
+     * 而那正是对账用来<b>安全关单</b>的判据。
+     *
+     * <h3>为什么还要回查</h3>
+     * 与支付侧同理：回调会丢、会重复、会乱序，通道还会重推历史消息。
+     * 而退款这一侧更要紧 —— 认错的后果是<b>账上写着退了而钱没退</b>，
+     * 用户拿不到钱，且只有他自己会发现。
+     */
+    @PostMapping("/{channel}/refund")
+    public String refundCallback(@PathVariable String channel,
+                                 @RequestHeader Map<String, String> headers,
+                                 @RequestBody String rawBody) {
+        ChannelCallbackVerifier v = verifiers.get(channel);
+        if (v == null) {
+            log.warn("[callback] 未知通道 {}（退款）", channel);
+            return "FAIL";
+        }
+        String msgNo = payMessage.callbackReceived(
+                channel, "/pay/callback/" + channel + "/refund", headers, rawBody);
+
+        Map<String, Object> payload = v.verify(headers, rawBody);
+        if (payload == null) {
+            log.warn("[callback] {} 退款回调验签失败", channel);
+            payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED, "验签失败", null, null, null);
+            return v.ackFail();
+        }
+
+        Object outRefundNo = payload.get("out_refund_no");
+        if (outRefundNo == null) {
+            log.warn("[callback] {} 退款报文缺 out_refund_no", channel);
+            payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED,
+                    "报文缺 out_refund_no", null, null, payload);
+            return v.ackFail();
+        }
+
+        PayQueryPort.Result r = payQuery.queryRefund(channel, String.valueOf(outRefundNo));
+        if (!r.ok()) {
+            log.warn("[callback] {} 退款回查失败，回 FAIL 让通道重推：{}", channel, outRefundNo);
+            payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED,
+                    "回查失败（通道查询没答上来）", String.valueOf(outRefundNo), null, payload);
+            return v.ackFail();
+        }
+        if (!r.paid()) {
+            /*
+             * 通道推了「已退款」，回查却说没退完。**这两句话不能都对。**
+             * 回 FAIL 让它重推 —— 退款处理中（PROCESSING）也走这一支，
+             * 下一次推过来就一致了。
+             */
+            log.warn("[callback] {} 退款回调说已退、回查说未退，按未退处理：{}", channel, outRefundNo);
+            payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED,
+                    "回调说已退款、回查说未退 —— 这两句话不能都对",
+                    String.valueOf(outRefundNo), null, payload);
+            return v.ackFail();
+        }
+
+        String orderNo = settlePort.settleRefund(String.valueOf(outRefundNo), r.tradeNo());
+        if (orderNo == null) {
+            log.error("[callback] {} 收到无法认领的退款 out_refund_no={} —— 流水里没有这个单号",
+                    channel, outRefundNo);
+            payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED,
+                    "流水里没有这个退款单号 —— 通道回传了一个我方没发出去过的号",
+                    String.valueOf(outRefundNo), null, payload);
+            return v.ackFail();
+        }
+        payMessage.callbackSettled(msgNo, PayMessagePort.ACCEPTED, null,
+                String.valueOf(outRefundNo), null, payload);
+        log.info("[callback] {} 退款到账：{}（通道退款单号 {}）", channel, outRefundNo, r.tradeNo());
         return v.ackOk();
     }
 }

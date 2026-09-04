@@ -289,6 +289,14 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
         }
         body.put("out_refund_no", requestNo);
         body.put("reason", trim(reason, REASON_MAX));
+        /*
+         * **退款也要带 notify_url。** 不带的话微信会退回用「商户平台上配的那个」——
+         * 而那是个我方代码控制不了的地址：谁在后台改一下，退款结果就再也回不来，
+         * 且没有任何地方会报错，只有退款一直停在「处理中」。
+         */
+        if (notifyUrl != null && !notifyUrl.isBlank()) {
+            body.put("notify_url", notifyUrl + "/refund");
+        }
         body.put("amount", Map.of(
                 "refund", amountMinor,
                 "total", ctx.totalMinor(),

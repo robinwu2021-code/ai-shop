@@ -142,4 +142,17 @@ public interface SettlePort {
      * @return 支付服务商的退款单号
      */
     String refund(String subOrderNo, long amountMinor, String reason);
+
+    /**
+     * <b>退款确认到账</b>：把退款流水推到终态。由退款回调与对账回查共同驱动。
+     *
+     * <p>入参是<b>退款的商户单号</b>（{@code 原单号-R序号}），不是我方流水号 ——
+     * 通道回调里给的就是它（微信 {@code out_refund_no}），
+     * 而对账轴回查用的也是它。两处用同一个键，是为了让
+     * 「回调先到」与「回查先到」走同一条路。
+     *
+     * @return 这笔退款挂在哪个订单上；认领不了返回 {@code null}
+     *         —— 调用方要当成「这笔退款不是我方发出去的」，而不是当成成功
+     */
+    String settleRefund(String outRefundNo, String providerNo);
 }

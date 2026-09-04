@@ -467,7 +467,7 @@ class BizRoleForbiddenFlowTest {
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("payOrderNo").asString();
         // 走支付回调而不是 /pay —— 只调 /pay 的话单还停在 WAIT_PAY
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-"
                         + payOrderNo + "\",\"sign\":\"stub-secret\"}"));
     }

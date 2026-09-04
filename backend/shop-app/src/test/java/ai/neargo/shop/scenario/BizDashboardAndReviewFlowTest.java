@@ -773,7 +773,7 @@ class BizDashboardAndReviewFlowTest {
          * 而下一步「商家看不到这单」看起来像数据域过滤问题。
          */
         String payOrderNo = data.get("payOrderNo").asString();
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + payOrderNo
                         + "\",\"sign\":\"stub-secret\"}"));
 

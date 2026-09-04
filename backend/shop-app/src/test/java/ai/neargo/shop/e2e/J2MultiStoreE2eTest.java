@@ -156,7 +156,7 @@ class J2MultiStoreE2eTest extends E2eBase {
                 "items", List.of(Map.of("goodsNo", goodsNo, "skuNo", skuNo, "qty", 1)))))
                 .get("payOrderNo").asString();
         // 推进状态的是通道回调，不是 /pay
-        http().post().uri("/callback/pay/stub")
+        http().post().uri("/pay/callback/stub")
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .body(Map.of("outTradeNo", payOrderNo, "transactionId", "TX-" + payOrderNo,
                         "sign", "stub-secret"))

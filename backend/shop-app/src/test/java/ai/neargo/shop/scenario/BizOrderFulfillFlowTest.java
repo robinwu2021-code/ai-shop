@@ -237,7 +237,7 @@ class BizOrderFulfillFlowTest {
          * 真正把单推到 WAIT_FULFILL 的是通道回调 —— 只调 /pay 的话单还在 WAIT_PAY，
          * 发货会被状态机拒，而那是测试写错了不是代码错了。
          */
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-"
                                 + payOrderNo + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
                 // 回调面向支付通道，返回的**不是**统一信封 —— 断 HTTP 状态即可

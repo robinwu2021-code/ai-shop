@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
  *
  * <h2>它是被一次真实的漏改逼出来的</h2>
  * 2026-09-01 补 {@code stl_payment} 的写入时，回调入口<b>有两个</b>：
- * {@code /callback/pay/channel/{ch}}（多通道）与 {@code /callback/pay/stub}（今天在用的）。
+ * {@code /pay/callback/{ch}}（多通道）与 {@code /pay/callback/stub}（今天在用的）。
  * 只改了前者，测试当场红在「一笔成功支付都没扫到」——
  * 而如果那条测试没有对照量，它会因为自己造数据而绿，
  * <b>然后线上跑的那个入口一行流水都不写</b>。

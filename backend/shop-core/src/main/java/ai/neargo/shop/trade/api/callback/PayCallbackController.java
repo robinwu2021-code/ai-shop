@@ -25,8 +25,20 @@ import java.util.Map;
  * 乱序回调由状态机保证（{@code CANCELLED} 不能变 {@code PAID}）。
  */
 @Profile("api")
+/*
+ * **生产里根本不装配**（2026-09-04）。此前它只挂 @Profile("api")，也就是
+ * 生产**存在**这个端点，而它的共享密钥用的是默认值 stub-secret，线上从没覆盖过 ——
+ * 挡住它的一直只是「nginx 没反代 /callback」这件偶然的事
+ * （见 docs/qa/线上验收-总纲.md 第 3 条，那里把它记作「侥幸」）。
+ *
+ * 现在 nginx 整段放行 /pay/callback/，那道侥幸就没了。所以把保护换成装配条件：
+ * 生产 SHOP_PAY_STUB=false（已核），这个 bean 不存在，路径直接 404。
+ * 测试世界由 application-test.yml 开着——三十多个场景用例靠它推进「支付成功」。
+ */
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+        name = "shop.pay.stub", havingValue = "true")
 @RestController
-@RequestMapping("/callback")
+@RequestMapping("/pay/callback")
 public class PayCallbackController {
 
     private static final Logger log = LoggerFactory.getLogger(PayCallbackController.class);
@@ -47,7 +59,7 @@ public class PayCallbackController {
         this.payMessage = payMessage;
     }
 
-    @PostMapping("/pay/stub")
+    @PostMapping("/stub")
     public String stubPaid(@RequestBody StubCallback body) {
         /*
          * **报文先落，再处理**（与 ChannelPayCallbackController 同一套顺序）。
@@ -57,7 +69,7 @@ public class PayCallbackController {
          * 这个入口拿到的是**已经绑好的对象**而不是原始串（stub 是开发期通道，
          * 没有真通道那套签名头），所以直接按字段存，不走未验签报文那条路。
          */
-        String msgNo = payMessage.callbackReceived("STUB", "/callback/pay/stub",
+        String msgNo = payMessage.callbackReceived("STUB", "/pay/callback/stub",
                 Map.of(), null);
 
         if (!verify(body)) {

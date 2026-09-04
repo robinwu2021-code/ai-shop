@@ -143,7 +143,7 @@ class J1MerchantGoLiveE2eTest extends E2eBase {
                 "items", List.of(Map.of("goodsNo", goodsNo, "skuNo", skuNo, "qty", 1)))));
         String payOrderNo = order.get("payOrderNo").asString();
         // 真正把单推到待履约的是**通道回调**，不是 /pay（那只是拿收银台参数）
-        http().post().uri("/callback/pay/stub")
+        http().post().uri("/pay/callback/stub")
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .body(Map.of("outTradeNo", payOrderNo, "transactionId", "TX-" + payOrderNo,
                         "sign", "stub-secret"))

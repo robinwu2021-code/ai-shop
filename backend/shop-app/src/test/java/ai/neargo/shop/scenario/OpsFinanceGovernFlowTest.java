@@ -619,7 +619,7 @@ class OpsFinanceGovernFlowTest {
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
 
         // 只调 /pay 的话单还在 WAIT_PAY，也不会生成结算单 —— 分账无从谈起
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idem
                         + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
 

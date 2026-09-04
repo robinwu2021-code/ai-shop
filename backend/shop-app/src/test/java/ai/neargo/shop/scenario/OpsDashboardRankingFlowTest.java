@@ -314,7 +314,7 @@ class OpsDashboardRankingFlowTest {
             return code;
         }
         String payOrderNo = root.get("data").get("payOrderNo").asString();
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idem
                         + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
         return 0;

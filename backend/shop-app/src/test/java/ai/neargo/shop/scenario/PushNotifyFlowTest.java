@@ -311,7 +311,7 @@ class PushNotifyFlowTest {
                 .andReturn().getResponse().getContentAsString();
         var data = json.readTree(body).get("data");
         assertThat(data == null ? null : data.get("payOrderNo")).as("下单失败：%s", body).isNotNull();
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"outTradeNo\":\"" + data.get("payOrderNo").asString()
                                 + "\",\"transactionId\":\"TX-" + idemKey
                                 + "\",\"sign\":\"" + STUB_SECRET + "\"}"))

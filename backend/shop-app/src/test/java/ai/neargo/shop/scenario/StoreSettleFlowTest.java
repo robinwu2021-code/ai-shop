@@ -339,7 +339,7 @@ class StoreSettleFlowTest {
             String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
             mvc().perform(post("/mp/order/" + payOrderNo + "/pay")
                     .header("Authorization", "Bearer " + buyer));
-            mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+            mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                     .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idem
                             + "\",\"sign\":\"stub-secret\"}"));
         }
