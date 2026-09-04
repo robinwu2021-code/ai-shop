@@ -87,6 +87,16 @@ public class SettleServiceImpl implements SettleService {
     /** 支付域自己的设置（2026-09-01 从 sys_setting 搬过来，见 V285） */
     private final PaySettingService paySettings;
 
+    /**
+     * 向通道发退款要它。
+     *
+     * <p><b>与 {@code gateway}（{@link SplitGateway}）不是一回事</b>：那个是分账侧的
+     * 抽象，今天只有桩实现；这个是收单通道，退款走的是它
+     * （微信直连 {@code /v3/refund/domestic/refunds}）。
+     * 两者都叫「网关」，但一个动的是商家账户里的钱，一个动的是退给买家的钱。
+     */
+    private final ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter;
+
     public SettleServiceImpl(BillMapper billMapper, SplitLogMapper splitLogMapper,
                              SettleSourcePort sourcePort, SplitGateway gateway,
                              PickupQueryPort pickupPort,
@@ -98,7 +108,9 @@ public class SettleServiceImpl implements SettleService {
                              PayChannelMasterService channelMaster,
                              PayChannelRateService channelRates,
                              ai.neargo.shop.pay.mapper.SettleMappers.SettleBatchMapper batchMapper,
-                             ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger) {
+                             ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger,
+                             ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter) {
+        this.gatewayRouter = gatewayRouter;
         this.paymentLedger = paymentLedger;
         this.batchMapper = batchMapper;
         this.channelMaster = channelMaster;
@@ -594,8 +606,9 @@ public class SettleServiceImpl implements SettleService {
          * 三条腿，三条腿没有身体：「这笔退款在资金上真的发生过吗」
          * 没有地方可以问，对账也扫不到（对账只看 direction = PAY）。
          *
-         * 还没有接通道退款 —— 那要等真通道凭证。这一步先把账落下：
-         * <b>账要先有，钱才谈得上对不对得上。</b>
+         * **2026-09-04 起真的发给通道了**（见 {@link #sendRefundToChannel}）。
+         * 顺序仍是「先落账、再发」：<b>账要先有，钱才谈得上对不对得上</b> ——
+         * 反过来的话，两步之间进程挂掉，钱退出去了而我方一点痕迹都没有。
          */
         StlBill bill = DataScopeContext.executeWithoutScope(() -> billMapper.selectOne(
                 Wrappers.<StlBill>lambdaQuery()
@@ -604,8 +617,62 @@ public class SettleServiceImpl implements SettleService {
             log.warn("[settle] 退款找不到结算单 subOrder={}，流水无从挂靠", subOrderNo);
             return null;
         }
-        return paymentLedger.refund(bill.getOrderNo(), subOrderNo, afterSaleNoOf(subOrderNo),
-                amountMinor, reason);
+        String refundNo = paymentLedger.refund(bill.getOrderNo(), subOrderNo,
+                afterSaleNoOf(subOrderNo), amountMinor, reason);
+        if (refundNo == null) {
+            return null;
+        }
+        sendRefundToChannel(refundNo);
+        return refundNo;
+    }
+
+    /**
+     * <b>把退款真的发给通道。</b>
+     *
+     * <h2>这一步此前不存在</h2>
+     * 在 2026-09-04 之前，退款只落一行流水就返回了 —— 注释里写着
+     * 「还没有接通道退款，那要等真通道凭证」。凭证到位之后，
+     * 不接的话就成了<b>最不对称的那种缺口</b>：钱能收进来，退不出去，
+     * 而我方账上、订单上、售后单上都写着已退款，只有用户的银行卡知道没有。
+     *
+     * <h2>为什么不在这里判「退成功了没有」</h2>
+     * 微信退款是异步的，回执 {@code status=PROCESSING} 是常态。
+     * 这里只负责「发出去，并记下通道怎么答的」，
+     * 确认由对账轴回查完成（{@code ReconServiceImpl} 已经在按 {@code outTradeNo}
+     * 调 {@code queryRefund}）。三种结局怎么落见
+     * {@code PaymentLedgerService.markRefundSent}。
+     *
+     * <h2>失败不往上抛</h2>
+     * 抛的话调用方（售后）会回滚，而<b>退款流水那一行必须留下</b> ——
+     * 它是「这笔退款发生过」的唯一记录，也是对账唯一能扫到的对象。
+     * 回滚掉之后，一笔可能已经发到通道的退款在我方一点痕迹都没有。
+     */
+    private void sendRefundToChannel(String refundNo) {
+        var ticket = paymentLedger.refundTicket(refundNo);
+        if (ticket.isEmpty()) {
+            paymentLedger.markRefundSent(refundNo, false, false, null,
+                    "取不到原收款在通道侧的坐标");
+            return;
+        }
+        var t = ticket.get();
+        ai.neargo.shop.pay.channel.PayGateway channel;
+        try {
+            channel = gatewayRouter.of(t.payChannel());
+        } catch (RuntimeException e) {
+            // 通道未接入**不可重试** —— 重试一万次它也不会自己接上
+            paymentLedger.markRefundSent(refundNo, false, false, null,
+                    "支付通道未接入：" + t.payChannel());
+            return;
+        }
+        /*
+         * 通道交易号优先，我方单号兜底：**退的是原来那一笔**，
+         * 而我方单号在重试时会带后缀。
+         */
+        var ctx = new ai.neargo.shop.pay.channel.PayGateway.TxContext(
+                null, t.originTradeNo(), t.originOutTradeNo(), t.originTotalMinor());
+        var r = channel.refund(ctx, t.amountMinor(), t.outRefundNo(), t.reason());
+        paymentLedger.markRefundSent(refundNo, r.success(), r.retryable(),
+                r.providerNo(), r.message());
     }
 
     /**

@@ -94,4 +94,65 @@ public interface PaymentLedgerService {
      */
     String refund(String orderNo, String subOrderNo, String afterSaleNo,
                   long amountMinor, String reason);
+
+    /**
+     * 一笔退款要发给通道时的坐标。
+     *
+     * <h2>为什么是一个单独的读，而不是让 {@link #refund} 直接返回</h2>
+     * 落账与发通道是**两件事，且落账必须先完成**：先发后落的话，
+     * 两者之间进程挂掉，钱退出去了而我方没有任何记录 ——
+     * 那笔退款既不在对账轴的视野里（轴只扫 {@code stl_payment}），
+     * 也没人知道要去追。所以落账拿到单号，再用单号取坐标去发。
+     *
+     * <p>{@code outRefundNo} 是<b>退款流水自己的 {@code out_trade_no}</b>
+     * （形如 {@code 原单号-R1}）。它必须与对账轴回查时用的是同一个值 ——
+     * {@code ReconServiceImpl} 拿 {@code p.getOutTradeNo()} 去调
+     * {@code queryRefund}，发的时候换个号就永远查不到，
+     * 而查不到会被当成「通道没有这笔」。
+     *
+     * @return 找不到（单号不存在、或不是 REFUND 方向）时 empty
+     */
+    java.util.Optional<RefundTicket> refundTicket(String refundPaymentNo);
+
+    /**
+     * @param payChannel        原收款走的通道
+     * @param originTradeNo     原收款的<b>通道交易号</b>。退款优先按它认单
+     * @param originOutTradeNo  原收款的商户单号，{@code originTradeNo} 为空时的兜底
+     * @param outRefundNo       本次退款的商户单号，见上
+     * @param originTotalMinor  原订单总额（分）—— 通道要它来校验部分退款
+     * @param amountMinor       本次退款金额（分）
+     * @param reason            退款原因，展示给用户
+     */
+    record RefundTicket(String payChannel, String originTradeNo, String originOutTradeNo,
+                        String outRefundNo, long originTotalMinor, long amountMinor,
+                        String reason) {
+    }
+
+    /**
+     * 把「通道怎么答的」回填到退款流水上。
+     *
+     * <h2>受理不等于退款成功，所以受理时<b>仍留 PENDING</b></h2>
+     * 微信退款是异步的：{@code /v3/refund/domestic/refunds} 返回
+     * {@code status=PROCESSING} 是常态。这时把行改成 SUCCESS，
+     * 账上就写着「退了」而钱还在路上 —— 通道最终拒单的话，
+     * 这个差异<b>只有用户来投诉才会被发现</b>。
+     * 留 PENDING 则由对账轴回查确认（{@code ReconServiceImpl} 已经在做）。
+     *
+     * <h2>三种结局，三种处理，区别是有意的</h2>
+     * <ul>
+     *   <li><b>受理</b>：留 PENDING，记下通道退款单号，等轴确认；</li>
+     *   <li><b>不可重试的拒绝</b>（参数错、原单不存在、余额不足）：转 FAILED。
+     *       <b>留 PENDING 更糟</b> —— 轴回查会得到「通道没有这笔」，
+     *       而那正是它用来安全关单的判据，一笔该退的钱会被静默关掉；</li>
+     *   <li><b>可重试的失败</b>（超时、限流）：<b>留 PENDING</b>。
+     *       超时的时候「到底发出去没有」是真的不知道，
+     *       转 FAILED 等于替通道回答了一个我方答不了的问题。</li>
+     * </ul>
+     *
+     * @param accepted   通道是否受理
+     * @param retryable  未受理时，这次失败值不值得重试。{@code accepted} 为 true 时无意义
+     * @param providerNo 通道退款单号（微信 {@code refund_id}）。受理时必填
+     */
+    void markRefundSent(String refundPaymentNo, boolean accepted, boolean retryable,
+                        String providerNo, String reason);
 }

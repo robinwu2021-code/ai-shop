@@ -157,6 +157,95 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     }
 
     @Override
+    public java.util.Optional<RefundTicket> refundTicket(String refundPaymentNo) {
+        StlPayment r = byPaymentNo(refundPaymentNo);
+        if (r == null || !StlPayment.REFUND.equals(r.getDirection())) {
+            return java.util.Optional.empty();
+        }
+        /*
+         * 原收款按**订单号 + 成功**去找，与 refund() 落账时用的是同一个判据 ——
+         * 两处不一致的话，退款会挂在 A 而发给通道的坐标来自 B。
+         */
+        StlPayment origin = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                Wrappers.<StlPayment>lambdaQuery()
+                        .eq(StlPayment::getDirection, StlPayment.PAY)
+                        .eq(StlPayment::getOrderNo, r.getOrderNo())
+                        .eq(StlPayment::getStatus, StlPayment.SUCCESS)
+                        .orderByDesc(StlPayment::getId).last("LIMIT 1")));
+        if (origin == null) {
+            // 落账那一步已经查过一次，走到这里说明中间被改动过
+            log.warn("[payment-ledger] 退款 {} 的原收款不见了，不发通道", refundPaymentNo);
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(new RefundTicket(
+                origin.getPayChannel(), origin.getTradeNo(), origin.getOutTradeNo(),
+                r.getOutTradeNo(), nz(origin.getAmountMinor()), nz(r.getAmountMinor()),
+                r.getErrMsg()));
+    }
+
+    @Override
+    @Transactional("payTxManager")
+    public void markRefundSent(String refundPaymentNo, boolean accepted, boolean retryable,
+                               String providerNo, String reason) {
+        StlPayment r = byPaymentNo(refundPaymentNo);
+        if (r == null) {
+            log.warn("[payment-ledger] 回填退款结果时找不到流水 {}", refundPaymentNo);
+            return;
+        }
+        StlPayment patch = new StlPayment();
+        patch.setId(r.getId());
+        if (accepted) {
+            /*
+             * **仍是 PENDING。**受理不等于钱退出去了 —— 微信返回 PROCESSING 是常态。
+             * 改成 SUCCESS 的话账上写着退了而钱还在路上，
+             * 通道最终拒单时这个差异只有用户投诉才会被发现。
+             * 确认交给对账轴（它按 outTradeNo 调 queryRefund）。
+             */
+            patch.setTradeNo(providerNo);
+            /*
+             * **不动 err_msg。**这一列在退款行上存的是<b>退款原因</b>
+             * （落账时写进去的，refundTicket 还要读它发给通道），不是错误。
+             * 而且 updateById 本来就跳过 null 字段 —— 写 setErrMsg(null)
+             * 既清不掉，又会让读代码的人以为清掉了。
+             */
+            log.info("[payment-ledger] 退款 {} 已被通道受理，通道单号 {}（仍待确认）",
+                    refundPaymentNo, providerNo);
+        } else if (retryable) {
+            /*
+             * **留 PENDING。**超时的时候「到底发出去没有」是真的不知道，
+             * 转 FAILED 等于替通道回答了一个我方答不了的问题。
+             */
+            patch.setErrMsg(reason);
+            log.warn("[payment-ledger] 退款 {} 发送失败但可重试，留待回查：{}", refundPaymentNo, reason);
+        } else {
+            /*
+             * **转 FAILED。**留 PENDING 更糟：对账轴回查会得到「通道没有这笔」，
+             * 而那正是它用来安全关单的判据 —— 一笔该退的钱会被静默关掉。
+             * FAILED 是「没退出去，且重试没用」，要人工介入。
+             */
+            patch.setStatus(StlPayment.FAILED);
+            patch.setErrMsg(reason);
+            patch.setClosedAt(System.currentTimeMillis());
+            log.error("[payment-ledger] 退款 {} 被通道拒绝，钱没有退给用户，需人工处理：{}",
+                    refundPaymentNo, reason);
+        }
+        DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
+    }
+
+    private StlPayment byPaymentNo(String paymentNo) {
+        if (paymentNo == null) {
+            return null;
+        }
+        return DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                Wrappers.<StlPayment>lambdaQuery()
+                        .eq(StlPayment::getPaymentNo, paymentNo).last("LIMIT 1")));
+    }
+
+    private static long nz(Long v) {
+        return v == null ? 0L : v;
+    }
+
+    @Override
     @Transactional("payTxManager")
     public void close(String outTradeNo, String reason) {
         StlPayment p = byOutTradeNo(outTradeNo);

@@ -309,3 +309,66 @@ nginx 没反代 /callback 侥幸挡住」）。开成通配等于当场坐实
    应有一条 SEND `/v3/pay/transactions/jsapi` OK，
    与一条 CALLBACK ACCEPTED。**只有前者没有后者 = 回调没回来**，回 §7.3。
 4. `stl_payment` 那行的 `trade_no` 拿去微信商户平台查，**必须查得到同一笔**。
+
+---
+
+## 8. 退款接通道（2026-09-04 第二轮）
+
+### 8.1 它是收款上线后最不对称的缺口
+
+`SettleServiceImpl.refund` 此前**只落一行流水就返回**，注释里写着
+「还没有接通道退款 —— 那要等真通道凭证」。凭证到位之后不接的话：
+
+> **钱能收进来、退不出去**，而我方账上、订单上、售后单上都写着已退款，
+> 只有用户的银行卡知道没有。
+
+### 8.2 落点与顺序
+
+```
+SettleServiceImpl.refund
+  ├─ paymentLedger.refund(...)            ← 先落账（已有）
+  └─ sendRefundToChannel(refundNo)        ← 本次新增
+       ├─ paymentLedger.refundTicket()    ← 取原收款在通道侧的坐标
+       ├─ gatewayRouter.of(channel).refund(...)
+       └─ paymentLedger.markRefundSent(...)
+```
+
+**先落账再发**，顺序不能换：反过来的话两步之间进程挂掉，
+钱退出去了而我方一点痕迹都没有 —— 那笔退款既不在对账轴的视野里
+（轴只扫 `stl_payment`），也没人知道要去追。
+
+同理，**发通道失败不往上抛**：抛了调用方（售后）会回滚，
+而退款流水那一行是「这笔退款发生过」的唯一记录。
+
+### 8.3 三种结局，三种落法
+
+| 通道怎么答 | 流水怎么落 | 为什么不是别的 |
+|---|---|---|
+| 受理（含 `PROCESSING`） | **仍 PENDING** + 记 `refund_id` | 微信退款异步，受理≠钱退了。写 SUCCESS 的话通道最终拒单时**只有用户投诉才会发现** |
+| 不可重试的拒绝 | **FAILED** + errMsg | 留 PENDING 更糟：对账轴回查得到「通道没有这笔」，而那正是它安全关单的判据，**一笔该退的钱会被静默关掉** |
+| 可重试的失败（超时/限流） | **留 PENDING** | 超时时「到底发出去没有」是真的不知道，转 FAILED 等于替通道回答了一个我方答不了的问题 |
+
+**确认不在这一步做**：交给已有的对账轴 —— `ReconServiceImpl` 已经按
+`direction=REFUND && status=PENDING` 捞出来，用 `p.getOutTradeNo()` 调 `queryRefund`。
+所以发送时的 `out_refund_no` **必须**就是退款流水的 `out_trade_no`（`原单号-R序号`），
+换个号就永远查不到，而查不到会被当成「通道没有这笔」。
+
+### 8.4 验收
+
+`RefundReachesChannelTest` 四条。**判据是「通道退款单号有没有落到行上」** ——
+断言「退款流水存在」在接通道之前就是绿的，证明不了任何东西。
+
+消融（撤掉 `sendRefundToChannel`）实测变红 2 条：
+`refundIsSentToTheChannel`、`unreachableChannelFailsLoudly`。
+`acceptedRefundStaysPending` 消融后仍绿 —— 它守的是**将来**有人把受理改写成 SUCCESS，
+不是这次这段代码，如实记在这里。
+
+### 8.5 顺带确认：直连模式下退款**不会**被分账挡住
+
+`reverseSplit` 对「没分过账」的单直接置 REVERSED 返回 true，
+所以直连（归集）路径下 `split` 从来不成功这件事，**不会卡住买家退款**。
+
+> 另外记一笔：`SplitGateway`（分账侧）今天仍**只有桩实现**，
+> 与本次接的收单通道是两回事。归集路径下本来就不该分账
+> （`StlBill.fundsMode` 已经在建模这件事），所以它不在本轮范围里 ——
+> 但「桩恒成功」这一点得有人盯着，见 [收款上线路线图](./TDD-支付域-收款上线路线图.md)。
