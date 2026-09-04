@@ -15,8 +15,6 @@ import { api } from "@/api";
 import { useCommunityStore } from "@/stores/community";
 import { useCartStore } from "@/stores/cart";
 import { useLocationStore } from "@/stores/location";
-import { confirm } from "@ai-shop/ui/prompt";
-import { getLocationDetailed } from "@shared/ports/location";
 import { useUserStore } from "@/stores/user";
 import { buildShareMessage } from "@shared/ports/share";
 import { GOODS_COVER_FALLBACK, ROUTES } from "@shared/utils/constants";
@@ -132,29 +130,6 @@ async function quickSwitch(a: (typeof location.list)[number]) {
   load();
 }
 
-/**
- * 定位到别处时**问一句**，绝不自动切。
- *
- * <p>自动切会让人在完全没察觉的情况下看到另一个地方的货 —— 比麻烦糟得多。
- * 门槛与只问一次的判据都在 store 的 `suggestSwitch` 里，这里只负责问。
- *
- * <p><b>一次会话只问一次同一个目标</b>：他拒了就是拒了，
- * 每次回首页再弹一遍，比不问更烦。
- */
-const askedFor = ref("");
-async function maybeSuggestSwitch() {
-  const r = await getLocationDetailed();
-  if (!r.ok) return;
-  const s = location.suggestSwitch({ lat: r.coords.lat, lng: r.coords.lng, fuzzy: r.fuzzy });
-  if (!s || askedFor.value === s.addressId) return;
-  askedFor.value = s.addressId;
-  const ok = await confirm({
-    title: String(t("home.switchAsk", { name: s.tag || s.detail })),
-    hint: String(t("home.switchAskHint")),
-  });
-  if (ok) await quickSwitch(s);
-}
-
 function gotoPlace() {
   if (location.has || location.list.length) {
     uni.navigateTo({ url: ROUTES.address });
@@ -221,7 +196,7 @@ async function ensureIdentity() {
 onShow(() => {
   load();
   cart.load();
-  void location.load().then(() => maybeSuggestSwitch());
+  void location.load();
   /*
    * **这里原先会把未绑归属的人推去选自提点，现在不推了。**
    *

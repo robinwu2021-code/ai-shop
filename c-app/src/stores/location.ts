@@ -10,15 +10,18 @@ import { useCommunityStore } from "./community";
 import type { Address } from "@shared/types";
 import { metersBetweenE6 } from "@shared/utils/geo";
 
-/** 候选要多近才值得问。再远就不是「你好像在那儿」，是他在逛街 */
-const SUGGEST_NEAR_M = 1000;
-/** 当前生效位置要多远才算「确实换地方了」。两者都在附近时问一句纯属打扰 */
-const SUGGEST_FAR_M = 3000;
+/** 定位要多近才算「匹配到了这条地址」。再远就是「附近碰巧存过一个地址」 */
+const MATCH_NEAR_M = 1000;
 
 export const useLocationStore = defineStore("location", {
   state: () => ({
     /** 当前生效位置。**null 是常态**，不是错误：新用户一个都没有 */
     active: null as Address | null,
+    /**
+     * 「当前位置」这一次逛的坐标。**不入地址簿、不写服务端** ——
+     * 它是上下文不是资料（PRD §6.1.0）。App 重开就没了，那正是「现在这儿」的定义。
+     */
+    transientAt: null as { lat: number; lng: number } | null,
     list: [] as Address[],
     loading: false,
   }),
@@ -65,46 +68,52 @@ export const useLocationStore = defineStore("location", {
      * 到那时**端上这个函数之外一行都不用改**，这正是分两步的理由。
      */
     /**
-     * 定位到了别处 —— **要不要建议他切过去。** 返回该建议的地址，没有就是 null。
+     * 当前定位**匹配到哪一条收货地址**。没有就是 null。
      *
-     * <p>这是「手动多选」被否掉之后的替代方案（决策记录 D3）：多选的真实驱动力是
-     * 「切换太麻烦」，所以把切换做便宜，而不是让他同时挂着两个地方看一锅混合的货。
+     * <p>这是定位的**唯一用途**（PRD §6.1.0）：位置永远是一条地址，
+     * 聚落匹配是那条地址的下游。定位不直接选聚落 ——
+     * 那会让用户要理解两套东西，而归属、下单预填、送不送得到全都挂在地址上。
      *
-     * <p><b>三条门槛，每一条都在挡一种误报：</b>
-     * <ul>
-     *   <li><b>坐标必须是精确的</b> —— 模糊定位误差约 5 公里，拿它比距离，
-     *       在城里几乎每次都会「发现」你在别处；</li>
-     *   <li><b>候选要足够近</b>（1 公里内）—— 否则「你好像在公司」会在他去逛街时冒出来；</li>
-     *   <li><b>当前生效位置要足够远</b>（3 公里外，或压根没坐标）——
-     *       两者都在附近时切不切都一样，问一句纯属打扰。</li>
-     * </ul>
-     *
-     * <p><b>只返回建议，绝不自动切。</b>自动切会让人在完全没察觉的情况下
-     * 看到另一个地方的货 —— 那比麻烦糟得多。
+     * <p>只取**足够近**的那条（1 公里内）。再远就不是「你在那儿」，
+     * 而是「你附近碰巧存过一个地址」—— 按那个切会切到一个他此刻并不在的地方。
      */
-    suggestSwitch(at: { lat: number; lng: number; fuzzy?: boolean }): Address | null {
-      if (at.fuzzy) return null;
+    suggestNearest(at: { lat: number; lng: number }): Address | null {
       const latE6 = Math.round(at.lat * 1e6);
       const lngE6 = Math.round(at.lng * 1e6);
-      const near = (a: Address) =>
-        a.latE6 == null || a.lngE6 == null
-          ? Number.POSITIVE_INFINITY
-          : metersBetweenE6(a.latE6, a.lngE6, latE6, lngE6);
-
       let best: Address | null = null;
       let bestM = Number.POSITIVE_INFINITY;
       for (const a of this.list) {
-        const m = near(a);
+        if (a.latE6 == null || a.lngE6 == null) continue;
+        const m = metersBetweenE6(a.latE6, a.lngE6, latE6, lngE6);
         if (m < bestM) {
           best = a;
           bestM = m;
         }
       }
-      if (!best || bestM > SUGGEST_NEAR_M) return null;
-      if (this.active && best.addressId === this.active.addressId) return null;
-      // 当前那个也在附近 = 切不切都一样，别打扰
-      if (this.active && near(this.active) < SUGGEST_FAR_M) return null;
-      return best;
+      return bestM <= MATCH_NEAR_M ? best : null;
+    },
+
+    /**
+     * **以当前位置为准** —— 一条都没匹配上时走这里（PRD §6.1.0）。
+     *
+     * <p><b>不入地址簿、不写服务端</b>：它是这一次逛的上下文，不是一条资料。
+     * 地址簿上限 20 条，每次「用一下现在这儿」都存一条会很快塞满；
+     * 要不要存成地址，下单时再问。
+     *
+     * <p>「没匹配到」因此**不是死路**：他照样能逛、能下单。
+     * 回落到「无位置首屏」只留给**连定位都拿不到**的情况。
+     */
+    async useTransient(at: { lat: number; lng: number }) {
+      this.transientAt = at;
+      const community = useCommunityStore();
+      const list = await community.loadNearby(at.lat, at.lng).catch(() => [] as never[]);
+      const ctx = await api
+        .resolveLocation(Math.round(at.lat * 1e6), Math.round(at.lng * 1e6))
+        .catch(() => null);
+      const c = list.find((x) => x.communityNo === ctx?.innermostNo) ?? list[0];
+      const p = c?.pickups?.[0];
+      if (c && p) await community.bind(c, p);
+      return { name: ctx?.innermostName ?? "", bound: !!(c && p) };
     },
 
     /**

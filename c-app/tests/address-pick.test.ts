@@ -22,8 +22,43 @@ function bodyOf(src: string, signature: string): string | null {
   const at = src.indexOf(signature);
   if (at < 0) return null;
   const rest = src.slice(at);
-  const end = rest.indexOf("\n}");
-  return end < 0 ? rest : rest.slice(0, end + 2);
+  /*
+   * **按花括号配平找结尾，不要找 `\n}`。**
+   *
+   * 早先是 `rest.indexOf("\n}")` —— 那只认顶格的闭合。pinia store 里的方法
+   * 缩进四格、以 `\n    },` 结尾，于是取到的「函数体」一路延伸到文件末尾。
+   * 正向断言（toContain）碰巧还对，而**每一条否定断言都成了虚的**：
+   * 断言「这个方法里没有 switchActiveAddress」，实际扫的是整个 store。
+   * 一条永远为真的守卫比没有守卫更糟 —— 它让人以为那件事有人看着。
+   */
+  /*
+   * **先跳过参数表再数花括号。** 直接从签名处数的话，
+   * `suggestNearest(at: { lat: number })` 里那个**内联对象类型**的花括号
+   * 会被当成函数体的开头，于是「函数体」在参数表就结束了 ——
+   * 而那同样让否定断言变成空转。
+   */
+  let paren = 0;
+  let i = 0;
+  for (; i < rest.length; i++) {
+    if (rest[i] === "(") paren++;
+    else if (rest[i] === ")") {
+      paren--;
+      if (paren === 0) break;
+    }
+  }
+  let depth = 0;
+  let started = false;
+  for (; i < rest.length; i++) {
+    const ch = rest[i];
+    if (ch === "{") {
+      depth++;
+      started = true;
+    } else if (ch === "}") {
+      depth--;
+      if (started && depth === 0) return rest.slice(0, i + 1);
+    }
+  }
+  return rest;
 }
 
 /**
@@ -413,44 +448,56 @@ describe("模糊定位与无坐标地址：都要说话", () => {
 });
 
 /**
- * 快捷切换与「主动问一句」—— **手动多选被否掉之后的替代方案**（决策记录 D3）。
+ * **定位只做一件事：匹配用户自己的收货地址。**（PRD §6.1.0）
  *
- * <p>多选的真实驱动力是「切换太麻烦」。这一组守的是：切换确实变便宜了，
- * 而且**没有为了便宜而越权**——绝不自动切。
+ * <p>位置永远是一条地址，聚落匹配是那条地址的下游 —— 定位不直接选聚落。
+ * 把它做成第二条并列的入口，用户就要理解两套东西，
+ * 而归属、下单预填、送不送得到全都挂在地址上。
+ *
+ * <p>本组替换了早先「首页主动弹一句『切过去吗』」的那几条：
+ * 那个弹窗是自造的形状，不是这条链路该有的样子 —— 匹配到就在列表里标出来，
+ * 他点一下就切，不追问。
  */
-describe("切换要便宜，但绝不替他做决定", () => {
+describe("定位只匹配收货地址", () => {
   const home = code("src/pages/home/index.vue");
+  const addressPage = code("src/pages/address/index.vue");
   const store = code("src/stores/location.ts");
 
-  it("★★★ 定位到别处只**问**，不自动切", () => {
+  it("★★★ 匹配到的那条只标出来，点一下即切 —— 不弹窗", () => {
+    expect(addressPage).toContain("locatedMatch");
+    expect(addressPage).toMatch(/a\.addressId === locatedMatch/);
+    expect(home, "首页不许再主动弹窗问「切过去吗」").not.toContain("switchAsk");
+  });
+
+  it("★★★ 一条都没匹配到 → 以当前位置为准，**不是回落到无位置**", () => {
     /*
-     * 自动切会让人在完全没察觉的情况下看到另一个地方的货 —— 比麻烦糟得多。
-     * 判据：建议必须经过 confirm，且只有拿到 true 才动。
+     * 「没匹配到」不是死路：他照样能逛、能下单。
+     * 回落到无位置首屏只留给**连定位都拿不到**的情况。
      */
-    const body = bodyOf(home, "async function maybeSuggestSwitch(");
-    expect(body, "首页没有 maybeSuggestSwitch 了").not.toBeNull();
-    expect(body).toContain("confirm(");
-    expect(body).toMatch(/if \(ok\) await quickSwitch/);
-    expect(body, "拿到建议就直接切 = 替他做了决定")
-      .not.toMatch(/const s = location\.suggestSwitch\([\s\S]{0,120}await quickSwitch/);
+    expect(addressPage).toMatch(/v-if="locatedAt && !locatedMatch"/);
+    const body = bodyOf(addressPage, "async function useCurrentLocation(");
+    expect(body, "没有 useCurrentLocation").not.toBeNull();
+    expect(body).toContain("location.useTransient");
   });
 
-  it("★★★ 同一个目标一次会话只问一次 —— 他拒了就是拒了", () => {
-    const body = bodyOf(home, "async function maybeSuggestSwitch(");
-    expect(body).toMatch(/askedFor\.value === s\.addressId/);
-    // 记下来要在**问之前**，否则他取消后下次回首页又弹
-    expect(body).toMatch(/askedFor\.value = s\.addressId[\s\S]{0,120}confirm\(/);
+  it("★★★ 当前位置**不入地址簿、不写服务端** —— 它是上下文不是资料", () => {
+    const body = bodyOf(store, "async useTransient(");
+    expect(body, "store 里没有 useTransient").not.toBeNull();
+    expect(body, "存进地址簿会很快把 20 条上限塞满").not.toContain("saveAddress");
+    expect(body, "写服务端等于把一次性上下文变成长期偏好")
+      .not.toContain("switchActiveAddress");
   });
 
-  it("★★★ 模糊坐标不许触发建议 —— 5 公里误差在城里每次都会「发现」你在别处", () => {
-    const body = bodyOf(store, "suggestSwitch(");
-    expect(body, "store 里没有 suggestSwitch 了").not.toBeNull();
-    expect(body).toMatch(/if \(at\.fuzzy\) return null/);
+  it("★★★ 模糊坐标不参与地址匹配 —— 5 公里误差配 1 公里判据是噪音", () => {
+    const body = bodyOf(addressPage, "async function detectHere(");
+    expect(body, "没有 detectHere").not.toBeNull();
+    expect(body).toMatch(/!r\.ok \|\| r\.fuzzy\) return/);
   });
 
-  it("★★ 两头都在附近时不问 —— 切不切都一样，问一句纯属打扰", () => {
-    const body = bodyOf(store, "suggestSwitch(");
-    expect(body).toMatch(/near\(this\.active\) < SUGGEST_FAR_M\) return null/);
+  it("★★ 匹配要足够近 —— 再远就是「附近碰巧存过一个地址」", () => {
+    const body = bodyOf(store, "suggestNearest(");
+    expect(body, "store 里没有 suggestNearest").not.toBeNull();
+    expect(body).toMatch(/bestM <= MATCH_NEAR_M/);
   });
 
   it("★★ 顶栏 chip 不含当前那个，且最多两个", () => {

@@ -37,8 +37,6 @@ export default {
     communityFeedHint: "先选社区，看看邻居都在买什么",
     communityFeedEmpty: "这个社区暂时还没有商家上架",
     cutoffIn: "距截单 {t}",
-    switchAsk: "你好像在「{name}」附近，切过去吗？",
-    switchAskHint: "切了之后按那边显示商品；不切就维持现在这样",
     choosePickup: "选择自提点",
     choosePickupHint: "点击选择你所在的社区",
     shareTitle: "邻居都在买的社区好物，一起拼～",
@@ -658,6 +656,12 @@ export default {
   address: {
     /** 与「设为默认」是两个动作：这个管看货，那个管下单预填 */
     useHere: "设为当前位置",
+    /** 定位匹配到的那条：只标出来，点一下就切，不弹窗 */
+    youAreHere: "你在这儿",
+    useCurrentLocation: "就用我现在的位置",
+    useIt: "用这个",
+    noMatchHint: "定位没匹配到你存过的地址 —— 先按现在这儿看货，下单时再决定存不存",
+    nowAtCurrent: "已按当前位置显示商品",
     here: "当前位置",
     nowHere: "已切到「{name}」，商品按这里显示",
     /** 没坐标推不出聚落：归属保持不变，但必须说，否则他以为坏了 */

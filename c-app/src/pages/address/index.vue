@@ -7,7 +7,7 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useLocationStore } from "@/stores/location";
 import type { Address } from "@shared/types";
-import { canChooseLocation, chooseLocation, chooseWxAddress } from "@shared/ports/location";
+import { canChooseLocation, chooseLocation, chooseWxAddress, getLocationDetailed } from "@shared/ports/location";
 import { readClipboard } from "@shared/ports/clipboard";
 import { parsePastedAddress } from "@shared/utils/address-paste";
 import { confirm } from "@ai-shop/ui/prompt";
@@ -235,6 +235,36 @@ const canPick = computed(() => canSearchPlaces() || canChooseLocation());
  */
 const TAG_PRESETS = ["tagHome", "tagWork", "tagSchool"] as const;
 
+/**
+ * 当前定位**匹配到的那条收货地址**。null = 一条都没匹配到。
+ *
+ * <p><b>定位只做这一件事</b>（PRD §6.1.0）：它不直接选聚落 ——
+ * 位置永远是一条地址，聚落匹配是那条地址的下游。
+ * 把定位做成能直接选聚落的第二条路，等于让用户理解两套东西。
+ */
+const locatedMatch = ref<string>("");
+/** 拿到了定位但一条地址都没匹配上 —— 此时以「当前位置」为准，而不是回落到无位置 */
+const locatedAt = ref<{ lat: number; lng: number } | null>(null);
+
+async function detectHere() {
+  const r = await getLocationDetailed();
+  // 模糊坐标（区级，误差 5 公里）匹配收货地址同样是噪音，一律不用
+  if (!r.ok || r.fuzzy) return;
+  locatedAt.value = { lat: r.coords.lat, lng: r.coords.lng };
+  locatedMatch.value = location.suggestNearest(r.coords)?.addressId ?? "";
+}
+
+/**
+ * 以当前位置为准。**不入地址簿** —— 地址簿上限 20 条，
+ * 每次「用一下现在这儿」都存一条会很快塞满；下单时再问要不要存。
+ */
+async function useCurrentLocation() {
+  const at = locatedAt.value;
+  if (!at) return;
+  await location.useTransient(at);
+  uni.showToast({ title: String(t("address.nowAtCurrent")), icon: "none" });
+}
+
 /** 到上限了。真正的闸在后端（老版本 App 不知道有这回事），这里只是提前说一声 */
 const atLimit = computed(() => list.value.length >= ADDRESS_RULES.maxCount);
 
@@ -325,7 +355,7 @@ function pick(a: Address) {
 onLoad((q) => {
   picking.value = q?.picking === "1";
   load();
-  void location.load();
+  void location.load().then(() => detectHere());
 });
 
 /**
@@ -344,6 +374,19 @@ onShow(() => {
 
 <template>
   <sh-scaffold title-key="address.title">
+    <!--
+      **一条都没匹配到时，以当前位置为准。**（PRD §6.1.0）
+      不是死路：他照样能逛、能下单；要不要存成地址，下单时再问。
+      有匹配的话不显示这一条 —— 那条地址就在下面，标着「你在这儿」。
+    -->
+    <view v-if="locatedAt && !locatedMatch" class="sh-card here" @tap="useCurrentLocation">
+      <view class="sh-row sh-row--between">
+        <text class="txt-strong">{{ $t("address.useCurrentLocation") }}</text>
+        <text class="txt-caption txt-primary">{{ $t("address.useIt") }}</text>
+      </view>
+      <text class="txt-caption here__sub">{{ $t("address.noMatchHint") }}</text>
+    </view>
+
     <view v-for="a in list" :key="a.addressId" class="sh-card card" @tap="pick(a)">
       <view class="card__head sh-wrap">
         <text class="txt-strong">{{ a.name }}</text>
@@ -351,6 +394,10 @@ onShow(() => {
         <text v-if="a.tag" class="txt-caption sh-chip tiny">{{ a.tag }}</text>
         <text v-if="a.isDefault" class="txt-caption sh-chip sh-chip--primary tiny">
           {{ $t("address.default") }}
+        </text>
+        <!-- 定位匹配到的那条：标出来即可，**点一下就切**，不弹窗不追问 -->
+        <text v-if="a.addressId === locatedMatch" class="txt-caption sh-chip sh-chip--primary tiny">
+          {{ $t("address.youAreHere") }}
         </text>
       </view>
       <text class="txt-caption card__addr">{{ a.region }} {{ a.detail }} {{ a.houseNo }}</text>
@@ -538,6 +585,13 @@ onShow(() => {
    这里只留这一页特有的：字段之间的纵向间距。 */
 .field__input {
   margin-top: 16rpx;
+}
+.here {
+  margin-bottom: 20rpx;
+}
+.here__sub {
+  display: block;
+  margin-top: 12rpx;
 }
 .tagrow {
   gap: 12rpx;
