@@ -31,7 +31,20 @@ communityNo  ──► 商家可见性 / 商品池 / 佣金归属 / 配送范围
 
 ---
 
-## 3. 先看一个必须先解决的事实
+## 3. ~~先看一个必须先解决的事实~~ **这一节的结论已作废（2026-09-04 复查）**
+
+> **下面这段查的是老表。** `mch_entity_community` 现在只剩二维码与商家治理在读；
+> 经营范围真正落在 `mch_service_area`，可见性走它投影出来的 `prd_community_pool`。
+>
+> 2026-09-04 线上复查：`mch_service_area` **5 条**（COMMUNITY 4 + PROVINCE 1）、
+> `prd_community_pool` **74 行覆盖 23 个聚落** —— **范围是有的，投影也建好了，
+> 那 5 家商家并非「对任何人不可见」。**
+>
+> **第二步仍然值得做，但动机要换**：不是「商家没有绑定」，而是
+> **办公楼、任意门牌这类位置不属于任何已开通聚落**，communityNo 那一跳落不了地。
+> 见 [PRD-位置与经营范围 §2](../../requirements/PRD-位置与经营范围.md)。
+
+
 
 ```sql
 select service_scope, count(*) from mch_entity where deleted=0 group by service_scope;
