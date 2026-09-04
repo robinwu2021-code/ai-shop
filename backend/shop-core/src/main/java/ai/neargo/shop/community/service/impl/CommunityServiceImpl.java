@@ -189,8 +189,22 @@ public class CommunityServiceImpl implements CommunityService {
                 .map(c -> toVO(c, byCommunity.getOrDefault(c.getCommunityNo(), List.of()), owners, latE6, lngE6,
                         c.getOriginCode() == null ? null : originNames.get(c.getOriginCode()),
                         c.getOriginCode() != null && Boolean.TRUE.equals(originRural.get(c.getOriginCode()))))
+                /*
+                 * **判据是「有没有坐标」，不是「距离等于 0」。**
+                 *
+                 * 此前这里写的是 `v.distance() == 0 ? MAX : distance` —— 用「距离为 0」
+                 * 当「算不出距离」的替身。两者绝大多数时候一致，但**距离恰好为 0 还有另一种
+                 * 含义：我正站在它上面**。于是站在一个小区的中心点，它被排到最后一位，
+                 * 而 700 米外的邻居小区排第一。
+                 *
+                 * 不报错、不空白，只是把最该在第一位的那个放到了最末 ——
+                 * 而这条路径是 C 端的第一屏。2026-09-04 做位置解析时撞到：
+                 * 探针取种子社区的精确坐标，`nearby[0]` 给的是另一个社区。
+                 *
+                 * 原注释想防的事没变（没配坐标的排最后），只是把替身换成了真判据。
+                 */
                 .sorted(Comparator.comparingInt(
-                        v -> located && v.distance() == 0 ? Integer.MAX_VALUE : v.distance()))
+                        v -> located && v.latE6() == null ? Integer.MAX_VALUE : v.distance()))
                 .toList();
     }
 
@@ -377,6 +391,69 @@ public class CommunityServiceImpl implements CommunityService {
                             p.getLatE6(), p.getLngE6());
                 }).toList(),
                 c.getOriginCode(), originName, rural, c.getLatE6(), c.getLngE6());
+    }
+
+    /**
+     * 聚落粒度的**由内到外**排序。数字越小越内层。
+     *
+     * <p>今天只有 ESTATE / VILLAGE 两种，两者同档 —— 也就是说这张表现在是空转的。
+     * **先写在这儿是有意的**：楼栋（`BUILDING`）落地时只要在这里加一行，
+     * 匹配逻辑一个字都不用改。而如果等那时候再引入「层级」这个概念，
+     * 改的就是 {@link #resolve} 的主干。
+     */
+    private static int depthOf(String kind) {
+        return "BUILDING".equals(kind) ? 0 : 1;
+    }
+
+    @Override
+    public LocationVO resolve(Integer latE6, Integer lngE6, boolean coarse) {
+        /*
+         * **模糊坐标不做聚落匹配。**
+         *
+         * 围栏是 1000 米（小区）到 150 米（楼栋）量级，而模糊定位（getFuzzyLocation）
+         * 误差约 5 公里 —— 拿它匹配出来的聚落是噪音，不是结果。
+         * 而噪音在界面上与真结果**长得一模一样**：顶栏一样显示一个小区名，
+         * 商品一样列出来，只是全都不是他那一带的。
+         *
+         * 它够用的地方只有一个：把人落到所在的区，再给候选列表让他挑。
+         */
+        if (coarse || latE6 == null || lngE6 == null) {
+            return new LocationVO(null, null, List.of(), coarse);
+        }
+
+        List<CmtCommunity> hits = communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getStatus, "OPEN")
+                        .isNull(CmtCommunity::getArchivedAt)).stream()
+                .filter(c -> withinRadius(c, latE6, lngE6))
+                .toList();
+        if (hits.isEmpty()) {
+            // 一个围栏都没落进不是异常：新城区就是这个状态，端上回落到候选列表
+            return new LocationVO(null, null, List.of(), false);
+        }
+
+        /*
+         * **层级优先于距离。** 站在楼门口时，隔壁小区的中心可能比本楼中心更近 ——
+         * 按距离取会把「我在 3 幢」判成「我在隔壁小区」，而两者的商品池不同。
+         * 同档之间才比距离。
+         */
+        CmtCommunity innermost = hits.stream()
+                .min(java.util.Comparator
+                        .comparingInt((CmtCommunity c) -> depthOf(c.getKind()))
+                        .thenComparingInt(c -> distance(c.getLatE6(), c.getLngE6(), latE6, lngE6)))
+                .orElseThrow();
+
+        return new LocationVO(innermost.getCommunityNo(), innermost.getName(),
+                chainOf(innermost), false);
+    }
+
+    /**
+     * 从最内层沿归属链向上，由内到外。
+     *
+     * <p>**今天只有一层** —— `parent_no` 是二批才加的列。这里先把形状定下来，
+     * 二批只需要把上溯填进来，调用方（端上、商品池查询）一行不用改。
+     */
+    private List<String> chainOf(CmtCommunity innermost) {
+        return List.of(innermost.getCommunityNo());
     }
 
     /** 未传定位返回 0：端上按 0 隐藏距离展示，比编一个假距离诚实。 */

@@ -154,6 +154,24 @@ export interface Community {
   /** 经度 ×1e6。**全站坐标一律 gcj02** */
   lngE6?: number | null;
 }
+/**
+ * 一个坐标解析出来的位置上下文（`/mp/location/resolve`）。
+ *
+ * **不要用 `nearbyCommunities` 的第一条代替它**：「最内层」的判据是
+ * 层级优先于距离 —— 站在楼门口时，隔壁小区的中心可能比本楼中心更近。
+ * 那是业务规则，放端上就会有三份实现，而它们迟早不一样。
+ */
+export interface LocationContext {
+  /** 最内层聚落。**null 不是异常** —— 新城区一个围栏都没落进、或坐标是模糊的 */
+  innermostNo: string | null;
+  /** 顶栏直接显示它，省端上再查一次 */
+  innermostName: string | null;
+  /** 归属链，由内到外（含 innermost）。商品池按「链上任一命中」取并集 */
+  chainNos: string[];
+  /** 原样回传：坐标是不是模糊定位给的。端上据此决定要不要显示距离 */
+  coarse: boolean;
+}
+
 /** 一条地理覆盖项。名字由后端拼好下发 —— 端上只拿到 330106 的话，要么显示一串数字，要么自己再查一次 */
 export interface ServiceArea {
   /** 粒度：社区 / 村 / 街道 / 区县 / 城市。**可跨粒度组合** —— 三个小区 + 一个区是四条 */

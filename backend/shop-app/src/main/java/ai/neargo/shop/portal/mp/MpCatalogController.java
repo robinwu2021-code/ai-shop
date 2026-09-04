@@ -67,6 +67,23 @@ public class MpCatalogController {
     }
 
     /**
+     * 一个坐标解析出「我在哪」+ 归属链。**C 端匹配的唯一入口。**
+     *
+     * <p>端上此前是拿 {@code nearby} 的第一条当「我在哪」—— 那把
+     * 「最内层怎么定」这条业务规则放进了端，而 c-app / b-app / 将来的 H5
+     * 会各写一份，它们迟早不一样。
+     *
+     * @param coarse 坐标是不是模糊定位给的。是的话不做聚落匹配（理由见 service）
+     */
+    @GetMapping("/mp/location/resolve")
+    public CommunityService.LocationVO resolveLocation(
+            @RequestParam(required = false) Integer latE6,
+            @RequestParam(required = false) Integer lngE6,
+            @RequestParam(required = false, defaultValue = "false") boolean coarse) {
+        return communityService.resolve(latE6, lngE6, coarse);
+    }
+
+    /**
      * 全部已开通社区 —— <b>「附近没有」时的出路</b>。
      *
      * <p>附近为空不能是死路：这一页是新用户的第一屏，停在「暂未开通」而没有下一步，

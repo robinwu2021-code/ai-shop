@@ -160,6 +160,7 @@ const RESPONSE_TYPES = {
   removeAddress: "Address[]",
   setDefaultAddress: "Address[]",
   nearbyCommunities: "Community[]",
+  resolveLocation: "LocationContext",
   goodsList: "PageResult<Goods>",
   goodsDetail: "Goods",
   cartList: "CartItem[]",

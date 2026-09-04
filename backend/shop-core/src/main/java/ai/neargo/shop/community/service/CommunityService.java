@@ -16,6 +16,34 @@ public interface CommunityService {
      */
     List<CommunityVO> nearby(Integer latE6, Integer lngE6);
 
+    /**
+     * 一个坐标解析出「我在哪」以及归属链。**这是 C 端匹配的唯一入口。**
+     *
+     * <p>为什么不让端上拿 {@link #nearby} 自己挑第一条：**「最内层」的判据是业务规则**
+     * （层级优先于距离 —— 站在楼门口时，隔壁小区的中心可能比本楼中心更近）。
+     * 放端上就会有三份实现（c-app / b-app / 将来的 H5），而它们迟早不一样。
+     *
+     * @param coarse 坐标是不是**模糊定位**给的（区级，误差约 5 公里）。
+     *               是的话<b>不做聚落匹配</b>：围栏是 1000 米（小区）到 150 米（楼栋）量级，
+     *               用 5 公里误差的坐标去匹配，出来的是噪音不是结果。
+     *               此时返回空的 innermost，端上据此降级为「按区给候选列表」。
+     */
+    LocationVO resolve(Integer latE6, Integer lngE6, boolean coarse);
+
+    /**
+     * 一个坐标的位置上下文。
+     *
+     * @param innermostNo   最内层聚落；**null 不是异常** —— 一个围栏都没落进（新城区）
+     *                      或坐标是模糊的，都会是 null，端上照常要有东西看
+     * @param innermostName 顶栏直接显示它，省端上再查一次
+     * @param chainNos      归属链上的全部聚落（含 innermost，从内到外）。
+     *                      商品池按「链上任一命中」取并集
+     * @param coarse        原样回传，端上据此决定要不要显示距离
+     */
+    record LocationVO(String innermostNo, String innermostName,
+                      java.util.List<String> chainNos, boolean coarse) {
+    }
+
     /** 社区详情（含其下常驻自提点）。 */
     CommunityVO detail(String communityNo);
 

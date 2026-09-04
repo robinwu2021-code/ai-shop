@@ -114,6 +114,12 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
     auth: false,
     summary: "附近社区与自提点",
   },
+  resolveLocation: {
+    method: "GET",
+    path: "/mp/location/resolve",
+    auth: false,
+    summary: "一个坐标解析出「我在哪」与归属链",
+  },
   allCommunities: {
     method: "GET",
     path: "/mp/community",

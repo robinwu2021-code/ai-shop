@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**88 个功能点**，其中 **23 个游客可用**；**2 个没有任何页面调用**。
+统计：**89 个功能点**，其中 **24 个游客可用**；**2 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -60,6 +60,7 @@
 | `applyInvoice` | `POST /mp/invoice/apply` | 是 | order | — |
 | `myInvoices` | `GET /mp/invoice/mine` | 是 | **无** | — |
 | `invoiceOfOrder` | `GET /mp/invoice/order/:orderNo` | 是 | order | — |
+| `resolveLocation` | `GET /mp/location/resolve` | 游客 | (stores) | — |
 | `merchantList` | `GET /mp/merchant` | 游客 | merchants · search | — |
 | `merchantDetail` | `GET /mp/merchant/:merchantNo` | 游客 | merchant | — |
 | `merchantApply` | `POST /mp/merchant/apply` | 是 | me | — |

@@ -9,6 +9,7 @@ import type { ShopApi } from "../contract";
 
 export const communityMock: Pick<ShopApi,
   "nearbyCommunities"
+  | "resolveLocation"
   | "allCommunities"
   | "openRegions"
   | "regions"
@@ -16,6 +17,20 @@ export const communityMock: Pick<ShopApi,
   // ---------------------------------------------------------------- 社区
   async nearbyCommunities() {
     return delay(allCommunitySeeds().map(toCommunity));
+  },
+
+  /**
+   * mock 里也要**如实反映「模糊坐标不匹配」**这条规则 ——
+   * 恒返回第一个社区的话，端上那条降级分支在开发期一次都看不见，等于没做。
+   */
+  async resolveLocation(latE6, lngE6, coarse) {
+    if (coarse || latE6 == null || lngE6 == null) {
+      return delay({ innermostNo: null, innermostName: null, chainNos: [], coarse: !!coarse });
+    }
+    const first = allCommunitySeeds().map(toCommunity)[0];
+    return delay(first
+      ? { innermostNo: first.communityNo, innermostName: first.name, chainNos: [first.communityNo], coarse: false }
+      : { innermostNo: null, innermostName: null, chainNos: [], coarse: false });
   },
 
   async allCommunities() {

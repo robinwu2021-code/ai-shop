@@ -49,7 +49,19 @@ class ConsumerBrowseFlowTest {
     @Test
     @DisplayName("游客：选社区 → 看到自提点与承接商家")
     void guestCanPickCommunity() throws Exception {
-        String body = mvc().perform(get("/mp/community/nearby").param("lat", "30.2900").param("lng", "120.1100"))
+        /*
+         * 探针挪过 —— 原来是 (30.2900, 120.1100)，离 C0001 有 1470 米。
+         *
+         * 那时「附近」判的是全局 5000 米，所以 1470 米外的 C0001 也在列表里，
+         * 下面「第二条的距离更大」才有东西可比。现在判据换成了**每个聚落自己的围栏**
+         * （2026-09-04，默认 1000 米）—— 1470 米外**本来就不该算附近**，列表只剩一条，
+         * `communities.get(1)` 是 null。
+         *
+         * 用例的意图没变（传了定位就该算距离、近的排前面），缺的只是一个
+         * 两个社区都覆盖得到的探针。新点到 C0002 是 147 米、到 C0001 是 588 米，
+         * 都在围栏内，且近远关系与原来一致。
+         */
+        String body = mvc().perform(get("/mp/community/nearby").param("lat", "30.2840").param("lng", "120.1040"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();

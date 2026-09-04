@@ -47,6 +47,7 @@ import type {
   Address,
   CartItem,
   Community,
+  LocationContext,
   Coupon,
   UserCoupon,
   GroupPickupOrder,
@@ -121,6 +122,8 @@ export const httpApi: ShopApi = {
   // ---- 社区
   nearbyCommunities: (lat, lng) =>
     call<Community[]>("nearbyCommunities", undefined, { lat, lng } satisfies NearbyQuery),
+  resolveLocation: (latE6, lngE6, coarse) =>
+    call<LocationContext>("resolveLocation", undefined, { latE6, lngE6, coarse }),
   allCommunities: (regionCode) =>
     call<Community[]>("allCommunities", undefined, { regionCode }),
   openRegions: () => call<RegionOption[]>("openRegions"),

@@ -14,6 +14,7 @@ import type {
   MerchantApplyStatus,
   CartItem,
   Community,
+  LocationContext,
   Coupon,
   UserCoupon,
   GroupPickupOrder,
@@ -175,6 +176,13 @@ export interface ShopApi {
 
   // ---- 社区
   nearbyCommunities(lat?: number, lng?: number): Promise<Community[]>;
+  /**
+   * 一个坐标解析出「我在哪」与归属链。
+   *
+   * `coarse=true`（模糊定位）时后端**不做聚落匹配** —— 围栏是 1000 米量级，
+   * 而模糊定位误差约 5 公里，匹配出来的是噪音不是结果。
+   */
+  resolveLocation(latE6?: number | null, lngE6?: number | null, coarse?: boolean): Promise<LocationContext>;
   /**
    * 全部已开通社区。**附近为空时的出路** —— 异地下单是真实场景
    * （给父母下单、出差前囤货），而把用户停在「暂未开通」等于在第一屏劝退。

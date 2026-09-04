@@ -80,7 +80,18 @@ export const useLocationStore = defineStore("location", {
       const list = await community
         .loadNearby(a.latE6 / 1e6, a.lngE6 / 1e6)
         .catch(() => [] as never[]);
-      const c = list[0];
+      /*
+       * **「我在哪」由后端定，端上不再取第一条。**
+       *
+       * 判据是「层级优先于距离」（站在楼门口时，隔壁小区的中心可能比本楼中心更近）——
+       * 那是业务规则。此前端上取 `list[0]`，等于把规则抄进了端，
+       * 而 c-app / b-app / 将来的 H5 会各写一份，它们迟早不一样。
+       *
+       * 解析失败（新城区、模糊坐标）时回落到最近的那一条 —— 与改造前一致，
+       * 不因为多了一次请求就让人看不到货。
+       */
+      const ctx = await api.resolveLocation(a.latE6, a.lngE6).catch(() => null);
+      const c = list.find((x) => x.communityNo === ctx?.innermostNo) ?? list[0];
       const p = c?.pickups?.[0];
       if (c && p) await community.bind(c, p);
     },

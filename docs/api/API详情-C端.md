@@ -997,6 +997,26 @@
 | `createdAt` | `number` | 否 | 申请时刻 |
 
 
+### location
+
+#### GET `/mp/location/resolve`
+
+一个坐标解析出「我在哪」与归属链　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`LocationContext`](#locationcontext)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `innermostNo` | `string,null` | 是 | 最内层聚落。**null 不是异常** —— 新城区一个围栏都没落进、或坐标是模糊的 |
+| `innermostName` | `string,null` | 是 | 顶栏直接显示它，省端上再查一次 |
+| `chainNos` | `string`\[\] | 是 | 归属链，由内到外（含 innermost）。商品池按「链上任一命中」取并集 |
+| `coarse` | `boolean` | 是 | 原样回传：坐标是不是模糊定位给的。端上据此决定要不要显示距离 |
+
+
 ### master-data
 
 #### GET `/common/master-data`
@@ -2810,6 +2830,17 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `qty` | `number` | 是 | 参团件数，正整数 |
+
+### LocationContext
+
+一个坐标解析出来的位置上下文（`/mp/location/resolve`）。 **不要用 `nearbyCommunities` 的第一条代替它**：「最内层」的判据是 层级优先于距离 —— 站在楼门口时，隔壁小区的中心可能比本楼中心更近。 那是业务规则，放端上就会有三份实现，而它们迟早不一样。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `innermostNo` | `string,null` | 是 | 最内层聚落。**null 不是异常** —— 新城区一个围栏都没落进、或坐标是模糊的 |
+| `innermostName` | `string,null` | 是 | 顶栏直接显示它，省端上再查一次 |
+| `chainNos` | `string`\[\] | 是 | 归属链，由内到外（含 innermost）。商品池按「链上任一命中」取并集 |
+| `coarse` | `boolean` | 是 | 原样回传：坐标是不是模糊定位给的。端上据此决定要不要显示距离 |
 
 ### LoginReqBody
 
