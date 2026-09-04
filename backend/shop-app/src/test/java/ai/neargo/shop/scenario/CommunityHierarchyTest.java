@@ -68,17 +68,30 @@ class CommunityHierarchyTest {
     }
 
     @Test
-    @DisplayName("★★★ 存量聚落都是顶层（parent 为空）—— 不许凭空多出归属")
-    void existingCommunitiesHaveNoParent() {
+    @DisplayName("★★★ 有归属的**只能是楼栋** —— 不许凭空猜出一层归属")
+    void onlyBuildingsHaveAParent() {
         /*
-         * 归属是**声明的**，只能由建档时写入。加列那一刻全表应当都是 null ——
-         * 若有非空值，说明某处在拿别的字段猜归属，而猜错不会报错，
-         * 只会让一栋楼悄悄挂到别人的小区下面。
+         * 归属是**声明的**，只能由建档时写入。某处若在拿别的字段猜归属
+         * （按名字、按围栏几何、按 region_code 相同），猜错不会报错，
+         * 只会让一栋楼悄悄挂到别人的小区下面，而两边的商品池不同。
+         *
+         * ⚠️ 这一条**原本写的是「全表 parent 都为空」**。那是 V321 加列那一刻的事实，
+         * 不是一条不变量：楼栋这一档落地之后它等于「禁止楼栋存在」，
+         * 而第一批楼栋（ServiceAreaExcludeFlowTest 的夹具）一进来它就红了 ——
+         * 红得对，但指的是它自己过期了，不是被测的东西坏了。
+         * 换成「有 parent ⟹ 是楼栋」，猜归属那件事照样当场变红：
+         * 迁移或代码给存量小区填一个归属，它的 kind 还是 ESTATE，这里就红。
          */
         var all = DataScopeContext.executeWithoutScope(() ->
                 communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()));
         assertThat(all).isNotEmpty();
-        assertThat(all).allSatisfy(c -> assertThat(c.getParentNo()).isNull());
+        assertThat(all).allSatisfy(c -> {
+            if (c.getParentNo() != null) {
+                assertThat(c.getKind())
+                        .as("非楼栋却有归属（%s）= 某处在猜归属", c.getCommunityNo())
+                        .isEqualTo(CmtCommunity.KIND_BUILDING);
+            }
+        });
     }
 
     @Test

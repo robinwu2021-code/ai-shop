@@ -199,6 +199,100 @@ class StoreScopedVisibilityFlowTest {
                 .isTrue();
     }
 
+    @Test
+    @DisplayName("★★★ 池 = 可达集合，一个社区一行 —— 楼栋与排除落地之后仍然对得上")
+    void poolMatchesReachableExactly() throws Exception {
+        /*
+         * **B 端算出来的和 C 端看到的必须是同一件事。**
+         *
+         * 池是派生索引，reachableCommunities 是事实。楼栋展开进来之后，
+         * 「框了小区，又单独框了里面那栋楼」会让同一个聚落从两条路各进来一次 ——
+         * 去重由展开那一步负责（判据在 ServiceAreaExcludeFlowTest —— 池写入
+         * 自己会吞掉重复，放在这儿断言是断不出来的，消融过）；
+         * 而 EXCLUDE 那一条如果只减了聚落没减它的楼，B 端显示「已排除」、
+         * C 端站在楼下照样看得到，说的和做的对不上，且不报任何错。
+         */
+        String estate = openCommunityWithCoords("SVC-EST", 30_010_000, 120_010_000);
+        String keep = openBuildingUnder("SVC-BLD-KEEP", estate);
+        String drop = openBuildingUnder("SVC-BLD-DROP", estate);
+
+        String biz = merchant("12600180014", "框了小区又单独框了楼", estate);
+        String merchantNo = merchantNoOf(biz);
+        TestPlan.grantQuota(planMapper, merchantNo, 3);
+        storeService.save(merchantNo, new MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, null, null,
+                List.of(new MerchantStoreService.AreaCommand("COMMUNITY", estate, "INCLUDE"),
+                        // 同一个聚落从两条路进来：小区展开一次，自己又被框了一次
+                        new MerchantStoreService.AreaCommand("COMMUNITY", keep, "INCLUDE"),
+                        new MerchantStoreService.AreaCommand("COMMUNITY", drop, "EXCLUDE")),
+                null, null));
+
+        String goodsNo = onSaleGoods(biz, "既在小区也在楼里卖的抽纸");
+
+        var reach = merchantQuery.reachableCommunities(merchantNo);
+        assertThat(reach).contains(estate, keep).doesNotContain(drop);
+
+        var rows = poolRows(merchantNo, goodsNo);
+        assertThat(rows)
+                .as("池里的社区集合与可达集合对不上 = 两条路各算各的，而买家只看得见池")
+                .containsExactlyInAnyOrderElementsOf(reach);
+        assertThat(buyerSees(drop, goodsNo)).as("排除掉的楼里不该看得到").isFalse();
+        assertThat(buyerSees(keep, goodsNo)).as("没排除的楼里要看得到").isTrue();
+    }
+
+    @Test
+    @DisplayName("★★★ 重建幂等：连跑两次，池不多不少")
+    void resyncIsIdempotent() throws Exception {
+        /*
+         * 重建是上线后要手工跑一遍的动作（V321 的说明），运维多点一次是常态。
+         * 不幂等的症状不是报错，是池行翻倍 —— 而翻倍之后首页重复、
+         * 「这个社区有几家在卖」那类计数也跟着错，没人会想到是点了两次重建。
+         */
+        String biz = merchant("12600180015", "要连跑两次重建的店");
+        String merchantNo = merchantNoOf(biz);
+        String goodsNo = onSaleGoods(biz, "重建两次的抽纸");
+        String ops = "Bearer " + opsLogin("goods", "goods123");
+
+        mvc().perform(post("/ops/community-pool/resync").header("Authorization", ops)
+                .param("entityNo", merchantNo)).andExpect(jsonPath("$.code").value(0));
+        var once = poolRows(merchantNo, goodsNo);
+
+        mvc().perform(post("/ops/community-pool/resync").header("Authorization", ops)
+                .param("entityNo", merchantNo)).andExpect(jsonPath("$.code").value(0));
+
+        assertThat(poolRows(merchantNo, goodsNo))
+                .as("第二次重建改变了池 = 不幂等，运维多点一次就把数据点坏了")
+                .containsExactlyInAnyOrderElementsOf(once);
+        assertThat(once).as("对照量本身要非零，否则这条用例在比两个空集").isNotEmpty();
+    }
+
+    /** 池里这件货落在哪些社区。**带出重复行** —— 去重与否正是被测的东西 */
+    private List<String> poolRows(String merchantNo, String goodsNo) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                poolMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.product.entity.PrdCommunityPool>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdCommunityPool::getEntityNo, merchantNo)
+                                .eq(ai.neargo.shop.product.entity.PrdCommunityPool::getGoodsNo, goodsNo))
+                        .stream()
+                        .map(ai.neargo.shop.product.entity.PrdCommunityPool::getCommunityNo)
+                        .toList());
+    }
+
+    /** 楼栋：与小区同点，只是多了一个 parentNo —— 归属是声明的，不靠围栏几何 */
+    private String openBuildingUnder(String communityNo, String parentNo) {
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
+            var c = new ai.neargo.shop.community.entity.CmtCommunity();
+            c.setCommunityNo(communityNo);
+            c.setName("按门店算可见性测试楼栋");
+            c.setStatus("OPEN");
+            c.setKind(ai.neargo.shop.community.entity.CmtCommunity.KIND_BUILDING);
+            c.setParentNo(parentNo);
+            c.setFenceRadius(150);
+            return communityMapper.insert(c);
+        });
+        return communityNo;
+    }
+
     @Autowired
     private ai.neargo.shop.product.mapper.ProductMappers.CommunityPoolMapper poolMapper;
 

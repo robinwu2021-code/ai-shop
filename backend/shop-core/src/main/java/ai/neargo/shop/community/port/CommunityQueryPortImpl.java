@@ -66,6 +66,18 @@ public class CommunityQueryPortImpl implements CommunityQueryPort {
     }
 
     @Override
+    public java.util.List<String> openChildCommunityNos(java.util.Collection<String> parentNos) {
+        if (parentNos == null || parentNos.isEmpty()) {
+            return java.util.List.of();
+        }
+        return DataScopeContext.executeWithoutScope(() ->
+                        communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                                .eq(CmtCommunity::getStatus, "OPEN")
+                                .in(CmtCommunity::getParentNo, parentNos)))
+                .stream().map(CmtCommunity::getCommunityNo).toList();
+    }
+
+    @Override
     public java.util.Map<String, int[]> coordsOfCommunities(
             java.util.Collection<String> communityNos) {
         if (communityNos == null || communityNos.isEmpty()) {

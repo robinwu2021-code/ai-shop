@@ -140,7 +140,17 @@ public interface MerchantStoreService {
         }
     }
 
-    /** 一条覆盖项的入参。名字由后端补，端上不用传 */
-    record AreaCommand(String level, String refCode) {
+    /**
+     * 一条覆盖项的入参。名字由后端补，端上不用传。
+     *
+     * @param mode {@code INCLUDE} 纳入 / {@code EXCLUDE} 排除（挖洞：框了整个园区，单排掉其中一栋）。
+     *     <b>空按 INCLUDE</b> —— 老版本 b-app 不传这个字段，而它历史上只勾得出纳入项。
+     */
+    record AreaCommand(String level, String refCode, String mode) {
+
+        /** 老形状（= 纳入）。留着是因为覆盖项还有几处内部构造点只造纳入项 */
+        public AreaCommand(String level, String refCode) {
+            this(level, refCode, null);
+        }
     }
 }

@@ -46,7 +46,13 @@ public record StoreProfileVO(String announcement, Long announcementUntil,
      *                却一个订单也不来，而这是他自己永远查不出来的
      */
     /** @param areaNo 业务键（P2 范围子集按它引用；审核单也靠它指回） */
-    public record ServiceAreaVO(String level, String refCode, String name, String status, String areaNo) {
+    /**
+     * @param mode INCLUDE / EXCLUDE。<b>必须回显</b> —— 端上拿不到它就没法把排除项
+     *     单列一栏，于是「已排除 3 幢」在界面上长得和「已覆盖 3 幢」一模一样，
+     *     而商家保存一次就会把它当成纳入项原样传回来。
+     */
+    public record ServiceAreaVO(String level, String refCode, String name, String status, String areaNo,
+                                String mode) {
     }
 
     /**

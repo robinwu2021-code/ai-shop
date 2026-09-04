@@ -50,6 +50,9 @@ public class MchServiceArea extends BaseEntity {
      */
     private String mode;
 
+    public static final String MODE_INCLUDE = "INCLUDE";
+    public static final String MODE_EXCLUDE = "EXCLUDE";
+
     public static final String ACTIVE = "ACTIVE";
     public static final String PENDING = "PENDING";
 }

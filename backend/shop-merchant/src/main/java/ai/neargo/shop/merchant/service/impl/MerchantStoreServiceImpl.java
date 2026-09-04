@@ -368,6 +368,13 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
              * 已经在队列里的历史记录不受影响，运营该怎么处理还怎么处理。
              */
             row.setStatus(MchServiceArea.ACTIVE);
+            /*
+             * 空按 INCLUDE。**不能不写** —— 保存是全量删重插，端上不回传 mode 的话
+             * 商家勾好的排除项会在他下一次改任何一项范围时被静默抹掉，
+             * 而他看到的是「保存成功」，货悄悄回到了他明确排除掉的那栋楼里。
+             */
+            row.setMode(MchServiceArea.MODE_EXCLUDE.equals(a.mode())
+                    ? MchServiceArea.MODE_EXCLUDE : MchServiceArea.MODE_INCLUDE);
             DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.insert(row));
         }
 
@@ -472,15 +479,26 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
      * 而多留一条聚落覆盖项与父项同时存在时，展开结果仍然正确（并集）。
      */
     private static List<AreaCommand> normalize(List<AreaCommand> areas) {
-        List<String> regionCodes = areas.stream()
+        /*
+         * **归一只在同一个 mode 内做。**
+         *
+         * 「框西湖区，排除文新街道」正是这个功能存在的理由 —— 而排除项的国标码
+         * 天然以纳入项为前缀。跨 mode 归一会把它当成冗余子项丢掉，
+         * 于是商家勾了排除、保存成功、范围里也确实不见了那一条，货照送。
+         */
+        java.util.function.Function<AreaCommand, String> modeOf = a ->
+                MchServiceArea.MODE_EXCLUDE.equals(a.mode())
+                        ? MchServiceArea.MODE_EXCLUDE : MchServiceArea.MODE_INCLUDE;
+        List<AreaCommand> regions = areas.stream()
                 .filter(a -> a != null && a.level() != null && a.refCode() != null && !a.refCode().isBlank())
                 .filter(a -> !AREA_COMMUNITY.equals(a.level()))
-                .map(AreaCommand::refCode)
                 .toList();
         return areas.stream()
                 .filter(a -> a == null || a.refCode() == null || AREA_COMMUNITY.equals(a.level())
-                        || regionCodes.stream().noneMatch(
-                                p -> !p.equals(a.refCode()) && a.refCode().startsWith(p)))
+                        || regions.stream().noneMatch(
+                                p -> modeOf.apply(p).equals(modeOf.apply(a))
+                                        && !p.refCode().equals(a.refCode())
+                                        && a.refCode().startsWith(p.refCode())))
                 .toList();
     }
 
@@ -491,7 +509,8 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                                 .eq(MchServiceArea::getEntityNo, merchantNo)))
                 .stream()
                 .map(a -> new StoreProfileVO.ServiceAreaVO(
-                        a.getLevel(), a.getRefCode(), areaNameOf(a), a.getStatus(), a.getAreaNo()))
+                        a.getLevel(), a.getRefCode(), areaNameOf(a), a.getStatus(), a.getAreaNo(),
+                        a.getMode() == null ? MchServiceArea.MODE_INCLUDE : a.getMode()))
                 .toList();
     }
 

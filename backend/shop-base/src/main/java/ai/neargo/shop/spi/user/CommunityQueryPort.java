@@ -43,6 +43,18 @@ public interface CommunityQueryPort {
     java.util.List<String> openCommunityNosUnderRegion(String regionPrefix);
 
     /**
+     * 这些聚落底下的**子楼栋**（`parent_no` 指向它们的那些，V321）。
+     *
+     * <p>「商家框了小区，算不算覆盖里面每栋楼」—— **算**。这个方法就是那个「算」：
+     * 展开一条 COMMUNITY 级范围时，把它自己和它的楼栋一起纳入。
+     * 商家想排除其中某几栋，走 {@code mode=EXCLUDE}，不是靠这里少给。
+     *
+     * <p>只做一层：楼栋自己不再有子级（`parent_no` 只做两层，
+     * 因为单元和户不是服务单位）。
+     */
+    java.util.List<String> openChildCommunityNos(java.util.Collection<String> parentNos);
+
+    /**
      * 社区展示名。查不到时<b>返回社区号本身</b>，不返回空 ——
      * 页面上宁可显示 C0001，也不要显示一个空白的覆盖项：
      * 空白会让商家以为「这一条坏了」而去删掉它。

@@ -240,8 +240,20 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
         // 快递没有履约半径，不该被要求逐个勾社区 —— 那既是无谓劳动，
         // 也会在新开城时漏掉（新社区不会自动出现在别人手工勾的清单里）
+        List<MchServiceArea> allAreas = DataScopeContext.executeWithoutScope(() ->
+                serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
+                        .eq(MchServiceArea::getEntityNo, merchantNo)));
+
+        /*
+         * **EXCLUDE 减在最后，对每一条 include 分支一视同仁** —— 含这里的「快递=全部开放社区」
+         * 与下面 fallback 的「自送没框=不限」。只在「逐条展开」那一支减的话，
+         * 快递商家会**排除不掉任何地方**，而他在 B 端明明看到「已排除」。
+         *
+         * EXCLUDE **不看 status**：缩小自己的范围不需要审核，
+         * 而让一条待审的排除「暂时不生效」等于在审核期内把他不想服务的地方照样露出去。
+         */
         if (expressOn) {
-            return communityQueryPort.openCommunityNos();
+            return minusExcluded(communityQueryPort.openCommunityNos(), allAreas);
         }
 
         List<MchServiceArea> areas = DataScopeContext.executeWithoutScope(() ->
@@ -270,7 +282,19 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             }
         }
 
-        if (areas.isEmpty()) {
+        /*
+         * **判据是 includes 不是 areas —— 这是最容易写反的一处。**
+         *
+         * 一个开了自送、只写了「EXCLUDE 3 幢」的商家，语义是
+         * 「我上门送、不限范围，但不送 3 幢」，应当得到「全部开放社区 − 3 幢」。
+         * 沿用 `areas.isEmpty()` 的话，他会因为「有 area 行」而跳过下面这个 fallback、
+         * 展开出空集 —— **变成谁也看不到，结果正好相反，且不报错**。
+         */
+        List<MchServiceArea> includes = areas.stream()
+                .filter(a -> !MchServiceArea.MODE_EXCLUDE.equals(a.getMode()))
+                .toList();
+
+        if (includes.isEmpty()) {
             /*
              * **「没框范围」的含义由履约能力决定**（ADR-013 §6.2）——
              * 这是从三档枚举迁过来时保持行为不变的关键一格：
@@ -284,22 +308,58 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
              * 会突然铺满全平台；把自送的空当成「谁也看不到」，存量的上门商家
              * 在迁移当天集体从 C 端消失 —— 而且都不报错。
              */
-            return deliveryOn ? communityQueryPort.openCommunityNos() : List.of();
+            return deliveryOn
+                    ? minusExcluded(communityQueryPort.openCommunityNos(), allAreas)
+                    : List.of();
         }
 
+        return minusExcluded(expand(includes), allAreas);
+    }
+
+    /**
+     * 把一组范围项展开成聚落集合。**INCLUDE 与 EXCLUDE 共用这一个函数** ——
+     * 排除一个园区就排除它的全部楼栋，与纳入一个园区就纳入它的全部楼栋是同一件事。
+     * 写成两套的下场是有一天它们不一样了，而没有任何测试会发现。
+     */
+    private java.util.LinkedHashSet<String> expand(List<MchServiceArea> items) {
         java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
-        for (MchServiceArea a : areas) {
+        java.util.List<String> parents = new java.util.ArrayList<>();
+        for (MchServiceArea a : items) {
             if (AREA_COMMUNITY.equals(a.getLevel())) {
                 out.add(a.getRefCode());
+                // 它可能是小区/园区 —— 子楼栋一起纳入（楼栋自己没有子级，只查一层）
+                parents.add(a.getRefCode());
             } else {
                 /*
                  * 街道 / 区县 / 城市都走前缀展开：国标码是层级的，
                  * 330106 命中 330106（挂到区）与 330106002（挂到街道）两种归属。
-                 * 这正是当初坚持用国标码而不自造的回报。
+                 * 楼栋因为冗余存了 region_code，天然被这一支包含。
                  */
                 out.addAll(communityQueryPort.openCommunityNosUnderRegion(a.getRefCode()));
             }
         }
+        if (!parents.isEmpty()) {
+            out.addAll(communityQueryPort.openChildCommunityNos(parents));
+        }
+        return out;
+    }
+
+    /**
+     * 减去 EXCLUDE 展开出来的那些。**EXCLUDE 优先于 INCLUDE。**
+     *
+     * <p>而更好的做法是在**输入端**就不让矛盾发生（B 端勾了排除就把对应的 include 去掉）——
+     * 从输入端消除比从判定端消除诚实，后者要求用户记住这条优先级。
+     * 这里的优先级是最后一道，不是给用户看的规则。
+     */
+    private List<String> minusExcluded(java.util.Collection<String> base, List<MchServiceArea> allAreas) {
+        List<MchServiceArea> excludes = allAreas.stream()
+                .filter(a -> MchServiceArea.MODE_EXCLUDE.equals(a.getMode()))
+                .toList();
+        if (excludes.isEmpty()) {
+            return List.copyOf(base);
+        }
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>(base);
+        out.removeAll(expand(excludes));
         return List.copyOf(out);
     }
 
