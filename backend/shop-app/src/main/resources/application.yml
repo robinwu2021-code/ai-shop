@@ -306,7 +306,12 @@ shop:
       # 且没有任何地方会报错（回调验签会因为空密钥全部失败，看起来像密钥配错了）。
       mchid: ${WX_MCHID:}
       # 小程序 appid。**必须与商户号在商户平台里绑定过**，
-      # 否则下单返回 APPID_MCHID_NOT_MATCH —— 这一条改代码解决不了
+      # 否则下单返回 APPID_MCHID_NOT_MATCH —— 这一条改代码解决不了。
+      #
+      # **刻意与 shop.wx.appid 共用同一个 WX_APPID**，不另起变量：
+      # JSAPI 下单的 appid 必须就是登录/订阅消息用的那个小程序。
+      # 拆成两个变量的话，改了一个忘了另一个，症状是下单
+      # APPID_MCHID_NOT_MATCH，而排查会去查商户平台的绑定关系 —— 查不出来。
       appid: ${WX_APPID:}
       # 商户 API 证书序列号
       serial-no: ${WX_SERIAL_NO:}
