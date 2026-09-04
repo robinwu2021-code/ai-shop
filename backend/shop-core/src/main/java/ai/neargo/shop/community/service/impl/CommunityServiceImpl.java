@@ -397,7 +397,32 @@ public class CommunityServiceImpl implements CommunityService {
         if (c.getLatE6() == null || c.getLngE6() == null) {
             return false;
         }
-        return distance(c.getLatE6(), c.getLngE6(), myLatE6, myLngE6) <= nearbyRadiusM;
+        return distance(c.getLatE6(), c.getLngE6(), myLatE6, myLngE6) <= coverageRadiusOf(c);
+    }
+
+    /**
+     * 这个聚落的覆盖半径。**用它自己的 `fence_radius`，不是全局那一个值。**
+     *
+     * <p>此前这里一律用 {@code shop.community.nearby-radius-m}（默认 5000）——
+     * 而 `fence_radius` 这一列早就有了、运营端能设、ops 列表也显示它，
+     * **只是匹配一行都没读**。于是「附近」实际是「中心点五公里内」：
+     * 小区尺度上还凑合，楼栋尺度上直接不成立（五公里内可以有几十栋写字楼，
+     * 排第一的大概率不是你所在的那栋）。
+     *
+     * <p>切换前按线上真实数据量过（2026-09-04，23 个聚落全设了 1000 米）：
+     * 8 个探针的候选集收窄（如「弓村社区居委会」3 → 1），
+     * <b>没有一个被收成 0</b>，两条有坐标的真实收货地址结果不变。
+     *
+     * <p><b>那个回落是纯防御，不对应任何现实状态</b>：这一列是
+     * {@code NOT NULL DEFAULT 1000}，而唯一的写入口
+     * {@link ai.neargo.shop.community.service.CommunityAdminService#setFence} 拒绝 ≤0。
+     * 留着它是因为**万一某天取到 0，含义必须是「没设过」而不是「半径为零」** ——
+     * 后者会让这个聚落谁也匹配不到，而它看起来一切正常：
+     * 建档成功、列表里有、坐标也对，只是没有任何买家能选到它。
+     */
+    private int coverageRadiusOf(CmtCommunity c) {
+        Integer own = c.getFenceRadius();
+        return own == null || own <= 0 ? nearbyRadiusM : own;
     }
 
     private int distance(Integer latE6, Integer lngE6, Integer myLatE6, Integer myLngE6) {
