@@ -17,6 +17,7 @@ import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
 import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
+import { includedAreas } from "@shared/utils/coverage";
 import { confirm } from "@ai-shop/ui/prompt";
 import type {
   CommunityApply,
@@ -55,8 +56,8 @@ const fullAddress = computed(() =>
 );
 
 const areas = computed<ServiceArea[]>(() => form.value.serviceAreas ?? []);
-/** 排除项是从范围里挖掉的洞，不是范围本身 */
-const isExclude = (a: ServiceArea) => a.mode === "EXCLUDE";
+/** 排除项是从范围里挖掉的洞，不是范围本身。判据与工作台共用一份，见 @shared/utils/coverage */
+const isExclude = (a: ServiceArea) => !includedAreas([a]).length;
 /**
  * 生效中的**纳入**项。
  *

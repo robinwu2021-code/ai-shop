@@ -12,7 +12,8 @@ import { useMerchantStore } from "@/stores/merchant";
 import { urgentStockItems } from "@/shared/stock-urgent";
 import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
-import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
+import { SERVICE_SCOPE } from "@shared/utils/constants";
+import { visibleToBuyers } from "@shared/utils/coverage";
 import type { MerchantStats, MerchantTodo, PaymentApplyment, StockSummary, StoreProfile } from "@shared/types";
 import { prompt } from "@ai-shop/ui/prompt";
 
@@ -84,8 +85,16 @@ const visible = computed(() => {
    * 空数组的含义由 reach 决定：PICKUP 空 = 谁也看不到；ONSITE / SHIPPING 空 = 不限。
    */
   if (st.fulfillmentReach || st.serviceAreas) {
-    return st.fulfillmentReach !== FULFILLMENT_REACH.PICKUP
-      || (st.serviceAreas?.length ?? 0) > 0;
+    /*
+     * ★ 判据走 `visibleToBuyers`（`@shared/utils/coverage`），**不自己数 length**。
+     *
+     * 这里原来写的是 `serviceAreas.length > 0` —— 而排除项也占一行。
+     * 于是一个「我上门送，就是不送 3 幢」的商家改成只自提之后：
+     *   后端  纳入项为空 + 只自提 → 谁也看不到他
+     *   工作台 serviceAreas 有 1 条 → 一切正常，一条告警都不出
+     * 说的和做的正好相反，而两边都不报错。经营范围页那一处也曾是同一个洞。
+     */
+    return visibleToBuyers(st.fulfillmentReach, st.serviceAreas);
   }
   // 老数据回落：后端 V33 之前存的店只有老三档
   return st.serviceScope !== SERVICE_SCOPE.COMMUNITY || st.serviceCommunityNos.length > 0;

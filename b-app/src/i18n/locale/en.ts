@@ -130,7 +130,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     blockerHint: {
       license: "The shop becomes visible once the business licence is submitted. Products already entered are kept and go live on approval.",
       payment: "Payment onboarding is incomplete. Products can be listed, but customers cannot pay.",
-      scope: "No community selected, so your goods are invisible to everyone",
+      scope: "Your scope includes nowhere (exclusions alone do not count), so nobody can see your goods",
     },
     blockerGo: "Fix it",
     marketingEntry: "Promotions",
