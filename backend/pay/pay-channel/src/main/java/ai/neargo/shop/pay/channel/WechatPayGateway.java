@@ -115,7 +115,7 @@ public class WechatPayGateway extends AbstractPayGateway {
                     WechatApis.TRANSACTION_BY_OUT_TRADE_NO + outTradeNo);
             Object state = resp.get("trade_state");
             if (state == null) {
-                // 通道没有这笔（微信对不存在的单返回 ORDERNOTEXIST）
+                // 通道没有这笔（微信对不存在的单返回 ORDER_NOT_EXIST，**带下划线**，2026-09-04 实测）
                 return QueryResult.notFound();
             }
             if (!"SUCCESS".equals(state)) {

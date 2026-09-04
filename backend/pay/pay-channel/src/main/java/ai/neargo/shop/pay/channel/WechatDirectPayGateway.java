@@ -200,10 +200,10 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
             return QueryResult.paid(totalOf(resp), String.valueOf(resp.get("transaction_id")));
         } catch (ChannelClient.ChannelException e) {
             /*
-             * **ORDERNOTEXIST 才是「通道没有这笔」**，其余失败一律 failed()。
+             * **只有 ORDER_NOT_EXIST 才是「通道没有这笔」**，其余失败一律 failed()。
              * 把「查询失败」当成 notFound 的话，对账会把一批可能已付的单关掉。
              */
-            if (String.valueOf(e.getMessage()).contains("ORDERNOTEXIST")) {
+            if (notExist(e.getMessage(), "ORDER_NOT_EXIST")) {
                 return QueryResult.notFound();
             }
             log.warn("[wechat-direct] 查单失败，不据此关单：{}（{}）", outTradeNo, e.getMessage());
@@ -231,12 +231,36 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
             }
             return QueryResult.paid(refundAmountOf(resp), String.valueOf(resp.get("refund_id")));
         } catch (ChannelClient.ChannelException e) {
-            if (String.valueOf(e.getMessage()).contains("RESOURCE_NOT_EXISTS")) {
+            if (notExist(e.getMessage(), "RESOURCE_NOT_EXISTS")) {
                 return QueryResult.notFound();
             }
             log.warn("[wechat-direct] 查退款失败，不据此关单：{}（{}）", outRefundNo, e.getMessage());
             return QueryResult.failed();
         }
+    }
+
+    /**
+     * 通道的错误码是不是「确实没有这笔」。
+     *
+     * <h2>2026-09-04：这里原来写错了，而且错得很安静</h2>
+     * 原本判的是 {@code ORDERNOTEXIST}（无下划线，抄自旧文档），
+     * <b>而真微信返回的是 {@code ORDER_NOT_EXIST}</b> —— 拿一个不存在的单号
+     * 打真接口实测出来的。拼法对不上的后果不是报错，是
+     * <b>「通道确实没有这笔」被降级成「查询失败」</b>：
+     * 对账那条轴于是永远关不掉这种单，每一轮查一次、每一轮判不了，
+     * 而它本该在第一轮就安全关掉。
+     *
+     * <p>去掉下划线再比，两种拼法都认 —— 通道改文案的成本比我们再吃一次这个亏低。
+     *
+     * @param known 实测确认的错误码（查单 {@code ORDER_NOT_EXIST}、
+     *              查退款 {@code RESOURCE_NOT_EXISTS}，均 2026-09-04 打真接口验过）
+     */
+    private static boolean notExist(String message, String known) {
+        return norm(message).contains(norm(known));
+    }
+
+    private static String norm(String s) {
+        return String.valueOf(s).replace("_", "");
     }
 
     private static long totalOf(Map<String, Object> resp) {

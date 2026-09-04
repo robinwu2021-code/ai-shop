@@ -180,15 +180,52 @@ class WechatDirectPayGatewayTest {
     }
 
     @Test
-    @DisplayName("ORDERNOTEXIST 才是「通道没有这笔」，可以安全关单")
+    @DisplayName("★★★ ORDER_NOT_EXIST 才是「通道没有这笔」，可以安全关单")
     void 订单不存在可关单() throws Exception {
         RecordingClient client = new RecordingClient();
-        client.boom = new ChannelClient.ChannelException("微信 HTTP 404：ORDERNOTEXIST", false);
+        /*
+         * **这是真微信的原话**（2026-09-04 拿一个不存在的单号打真接口实测）：
+         * HTTP 404 + code=ORDER_NOT_EXIST，**带下划线**。
+         *
+         * 代码里原本判的是 ORDERNOTEXIST（抄自旧文档），永远匹配不上 ——
+         * 而失配的后果不是报错：「通道确实没有这笔」被降级成「查询失败」，
+         * 对账那条轴永远关不掉这种单。这条用例现在钉的是实测报文，不是文档。
+         */
+        client.boom = new ChannelClient.ChannelException(
+                "微信 /v3/pay/transactions/out-trade-no/P1 HTTP 404：ORDER_NOT_EXIST（订单不存在）", false);
 
         var r = gateway(client).query("P1");
 
         assertThat(r.ok()).isTrue();
+        assertThat(r.found())
+                .as("没认出「订单不存在」—— 这种单对账永远关不掉，每轮查一次每轮判不了")
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("★★ 查退款的「不存在」是另一个码：RESOURCE_NOT_EXISTS（同日实测）")
+    void 退款单不存在可关单() throws Exception {
+        RecordingClient client = new RecordingClient();
+        client.boom = new ChannelClient.ChannelException(
+                "微信 /v3/refund/domestic/refunds/R1 HTTP 404：RESOURCE_NOT_EXISTS（退款单不存在）", false);
+
+        var r = gateway(client).queryRefund("R1");
+
+        assertThat(r.ok()).isTrue();
         assertThat(r.found()).isFalse();
+    }
+
+    @Test
+    @DisplayName("★★★ 别的 404/401 不算「没有这笔」—— 混为一谈会把已付的单关掉")
+    void 其他失败不当成不存在() throws Exception {
+        RecordingClient client = new RecordingClient();
+        client.boom = new ChannelClient.ChannelException("微信 HTTP 401：SIGN_ERROR（签名错误）", false);
+
+        var r = gateway(client).query("P1");
+
+        assertThat(r.ok())
+                .as("签名错被当成「通道没有这笔」—— 那会在凭据过期时把一批已付的单批量关掉")
+                .isFalse();
     }
 
     @Test
