@@ -739,7 +739,7 @@
       },
       "usage": {
         "b-app": 23,
-        "c-app": 23
+        "c-app": 22
       }
     },
     {
@@ -821,7 +821,7 @@
       },
       "usage": {
         "b-app": 251,
-        "c-app": 224
+        "c-app": 223
       }
     },
     {
@@ -3112,7 +3112,7 @@
         "sh-switch",
         "biz-region-picker"
       ],
-      "libClassHits": 63,
+      "libClassHits": 61,
       "localSelectors": 21,
       "localCssLines": 83,
       "rolled": [
