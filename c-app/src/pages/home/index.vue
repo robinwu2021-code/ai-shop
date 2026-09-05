@@ -360,7 +360,7 @@ onShareAppMessage(() =>
 /* 搜索缩成 icon 后要保住可点面积：40×40 的圆底，不是一个裸图标 */
 .place__quick {
   gap: 12rpx;
-  margin-left: 12rpx;
+  margin-inline-start: 12rpx;
   flex-shrink: 0;
 }
 .place__chip {
