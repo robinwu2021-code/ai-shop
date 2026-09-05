@@ -2,6 +2,15 @@
 
 > 只写**每个会话都必须遵守、且靠记性会漏**的几条。其余约定在 `docs/` 里，不复制到这儿。
 
+## 开发流程走 `ai-shop-dev-standards`
+
+写代码前先看 `.claude/skills/ai-shop-dev-standards/SKILL.md`：需求 → 设计 → 实现，
+三份产物三处对账。**按「契约动没动」分三档** —— 改文案不写文档，
+动了端点/库表/权限码/i18n/配置就必须先有 TDD。Java 另见它的 `references/java.md`。
+
+通用的 `project-dev-standards` 在本仓库不适用（它的模板是 TypeScript/Jest，
+也没提本仓库真正拦得住人的那些闸门）。
+
 ## 改了界面，就要更新界面清单
 
 三端所有页面有一份唯一索引：`docs/technical/design/ui-catalog.json`
