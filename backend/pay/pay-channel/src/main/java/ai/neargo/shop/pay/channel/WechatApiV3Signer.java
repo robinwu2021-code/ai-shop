@@ -181,6 +181,37 @@ public class WechatApiV3Signer {
         }
     }
 
+    /**
+     * <b>用我们自己的公钥验回自己签的名。</b>
+     *
+     * <h2>为什么要这个</h2>
+     * 端上报「支付验证签名失败」这类问题时，第一个要回答的是
+     * 「<b>是我们签错了，还是对方不认</b>」—— 这两件事的下一步完全不同：
+     * 前者改代码，后者去后台。而打印 paySign 回答不了它：
+     * 一串 base64 看上去永远是对的。
+     *
+     * <p>公钥从私钥推出来（RSA 的 CRT 私钥里带着模数与公钥指数），
+     * 所以不需要额外配置一份 —— 少一项配置就少一处「配漏了」。
+     *
+     * <p><b>它证明的是「签的就是这段内容」，不证明「这段内容是对的」</b> ——
+     * 内容对不对要看日志里同时打出来的那几个字段。两者合起来才够。
+     */
+    public boolean verifyOwnSignature(String content, String signatureBase64) {
+        try {
+            if (!(privateKey instanceof java.security.interfaces.RSAPrivateCrtKey crt)) {
+                return false;
+            }
+            PublicKey pub = KeyFactory.getInstance("RSA").generatePublic(
+                    new java.security.spec.RSAPublicKeySpec(crt.getModulus(), crt.getPublicExponent()));
+            Signature v = Signature.getInstance(SIGN_ALG);
+            v.initVerify(pub);
+            v.update(content.getBytes(StandardCharsets.UTF_8));
+            return v.verify(Base64.getDecoder().decode(signatureBase64));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     // ------------------------------------------------------------ PEM
 
     /** PEM → DER。去掉 {@code -----BEGIN/END xxx-----} 与所有空白。 */

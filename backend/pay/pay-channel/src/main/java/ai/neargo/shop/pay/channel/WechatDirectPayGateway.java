@@ -168,13 +168,32 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
         String timeStamp = String.valueOf(System.currentTimeMillis() / 1000);
         String nonceStr = WechatApiV3Signer.nonce();
         String pkg = "prepay_id=" + prepayId;
+        String paySign = signer.jsapiPaySign(appId, timeStamp, nonceStr, pkg);
+        /*
+         * **把端上要用的六件套记一行，并当场自验一次签名。**
+         *
+         * 端上报「支付验证签名失败」时，第一个要回答的是「是我们签错了，还是对方不认」——
+         * 这两件事的下一步完全不同。打印 paySign 回答不了它（一串 base64 看上去永远是对的），
+         * 所以这里打的是**自验结果**：用从私钥推出的公钥验回自己刚签的名。
+         *
+         * 自验通过 ⇒ 签名与待签串是自洽的，问题在内容或对方那边；
+         * 自验失败 ⇒ 私钥/算法这一层就错了，与微信无关。
+         *
+         * paySign 本身**不打**：它没有长期价值，而日志会被采集、转发、贴进工单。
+         * 其余五项都不是机密（本来就要原样发给端上），而它们正是排查要对的东西。
+         */
+        log.info("[wechat-direct] 端上六件套 appId={} timeStamp={} nonceStr={} package={} signType={} paySign自验={}",
+                appId, timeStamp, nonceStr, pkg, WechatApiV3Signer.SIGN_TYPE,
+                signer.verifyOwnSignature(
+                        WechatApiV3Signer.paySignContent(appId, timeStamp, nonceStr, pkg), paySign)
+                        ? "通过" : "**失败**");
         return Map.of(
                 "appId", appId,
                 "timeStamp", timeStamp,
                 "nonceStr", nonceStr,
                 "package", pkg,
                 "signType", WechatApiV3Signer.SIGN_TYPE,
-                "paySign", signer.jsapiPaySign(appId, timeStamp, nonceStr, pkg));
+                "paySign", paySign);
     }
 
     // ---------------------------------------------------------------- 查单

@@ -158,6 +158,43 @@ class WechatApiV3SignerTest {
     }
 
 
+
+    @Test
+    @DisplayName("★★★ 自验能分辨真假 —— 否则日志里那句「通过」毫无意义")
+    void selfVerifyTellsRightFromWrong() throws Exception {
+        KeyPair kp = rsa();
+        WechatApiV3Signer signer = signerOf(kp);
+
+        String content = WechatApiV3Signer.paySignContent(
+                "wxAPPID", "1700000000", "NONCE1", "prepay_id=wx01");
+        String sig = signer.sign(content);
+
+        assertThat(signer.verifyOwnSignature(content, sig))
+                .as("验不回自己刚签的名 —— 那这条诊断永远说「失败」，等于没有")
+                .isTrue();
+
+        // ---- 反向控制量：换一个字节就必须验不过，否则它永远说「通过」 ----
+        String tampered = WechatApiV3Signer.paySignContent(
+                "wxAPPID", "1700000000", "NONCE1", "prepay_id=wx02");
+        assertThat(signer.verifyOwnSignature(tampered, sig))
+                .as("待签串换了内容还说通过 —— 那它分辨不了任何东西")
+                .isFalse();
+        assertThat(signer.verifyOwnSignature(content, "AAAA"))
+                .as("签名是垃圾还说通过").isFalse();
+    }
+
+    @Test
+    @DisplayName("★★ 公钥是从私钥推出来的 —— 少一项配置就少一处「配漏了」")
+    void publicKeyIsDerivedNotConfigured() throws Exception {
+        KeyPair kp = rsa();
+        // 只给私钥，不给任何公钥
+        WechatApiV3Signer signer = new WechatApiV3Signer(MCH_ID, SERIAL_NO, pkcs8(kp), null);
+        String c = "anything\n";
+        assertThat(signer.verifyOwnSignature(c, signer.sign(c)))
+                .as("自验依赖外部配置的公钥的话，那份配置漏了它就恒说失败")
+                .isTrue();
+    }
+
     // ---------------------------------------------------------------- 装配期的拒绝
 
     @Test
