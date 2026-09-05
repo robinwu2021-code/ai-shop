@@ -1,5 +1,8 @@
 export default {
   common: {
+    loadFailed: "没能加载出来",
+    loadFailedTip: "多半是网络不通。检查网络后重试。",
+    retry: "重试",
     confirm: "确定",
     cancel: "取消",
     done: "完成",

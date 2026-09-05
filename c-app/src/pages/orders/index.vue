@@ -71,6 +71,21 @@ const orders = ref<Order[]>([]);
  */
 const afterSaleOrderNos = ref<Set<string>>(new Set());
 const loaded = ref(false);
+/**
+ * 这一页拉挂了。
+ *
+ * ⚠️ **此前没有这个状态**：`orderList` 不接异常（同一个 `Promise.all` 里的
+ * `afterSaleList` 反倒接了），而传输层只集中处理 401、其余错误不弹 ——
+ * 于是一次网络抖动的表现是**一页空白，没有提示也没有重试**，
+ * 而空白与「你还没有订单」在屏幕上长得一模一样。
+ */
+const failed = ref(false);
+/**
+ * 后端说的那句话。**有就显示它，没有才回落到「多半是网络不通」** ——
+ * 「订单不存在」这种情况下告诉用户去检查网络，是一句**错的**解释，
+ * 而错的解释比没有解释更费时间。
+ */
+const failReason = ref("");
 
 /**
  * 状态页签由**后端**筛完了，端上不再二次过滤。
@@ -91,15 +106,27 @@ async function load() {
     ? undefined
     : TABS.find((x) => x.key === tab.value);
 
-  const [res, afterSales] = await Promise.all([
-    api.orderList({ size: PAGE_SIZE, ...(spec ? tabQuery(spec) : {}) }),
-    // 售后单独取。失败不该拖垮整个订单列表 —— 主列表是这一页的正事
-    api.afterSaleList().catch(() => []),
-  ]);
-  orders.value = res.records;
-  hiddenCount.value = Math.max(0, res.total - res.records.length);
-  afterSaleOrderNos.value = new Set(afterSales.map((a) => a.subOrderNo));
-  loaded.value = true;
+  failed.value = false;
+  failReason.value = "";
+  try {
+    const [res, afterSales] = await Promise.all([
+      api.orderList({ size: PAGE_SIZE, ...(spec ? tabQuery(spec) : {}) }),
+      // 售后单独取。失败不该拖垮整个订单列表 —— 主列表是这一页的正事
+      api.afterSaleList().catch(() => []),
+    ]);
+    orders.value = res.records;
+    hiddenCount.value = Math.max(0, res.total - res.records.length);
+    afterSaleOrderNos.value = new Set(afterSales.map((a) => a.subOrderNo));
+    loaded.value = true;
+  } catch (e) {
+    /*
+     * **失败要与「没有订单」分开**。两者在屏幕上都是「什么都没有」，
+     * 而用户该做的事完全相反：一个是重试，一个是去逛逛。
+     * 不清空 `orders` —— 重试失败时留着上一次的结果比清成空白强。
+     */
+    failed.value = true;
+    failReason.value = (e as Error).message || "";
+  }
 }
 
 /** 换页签要重新取数 —— 筛选在后端，不换数据就还是上一个页签的结果 */
@@ -194,7 +221,14 @@ onShow(load);
       {{ $t("orders.hiddenCount", { n: hiddenCount }) }}
     </text>
 
-    <view v-if="loaded && !shown.length" class="empty">
+    <!-- 拉挂了：说清楚，并给一条出路。与下面的空态是两件事 -->
+    <view v-if="failed && !shown.length" class="empty">
+      <text class="txt-sub empty__text">{{ $t("common.loadFailed") }}</text>
+      <text class="txt-caption empty__tip">{{ failReason || $t("common.loadFailedTip") }}</text>
+      <view class="sh-btn empty__btn" @tap="load">{{ $t("common.retry") }}</view>
+    </view>
+
+    <view v-else-if="loaded && !shown.length" class="empty">
       <text class="txt-sub empty__text">{{ $t("orders.empty") }}</text>
       <view class="sh-btn empty__btn" @tap="goShopping">{{ $t("visited.go") }}</view>
     </view>
@@ -260,6 +294,12 @@ onShow(load);
 }
 .empty__text {
   display: block;
+  margin-bottom: 40rpx;
+}
+/* 失败态多一行「多半是网络不通」：说清是环境问题而不是他的订单没了 */
+.empty__tip {
+  display: block;
+  margin-top: -24rpx;
   margin-bottom: 40rpx;
 }
 .empty__btn {

@@ -15,6 +15,20 @@ const { t } = useI18n();
 
 const order = ref<Order | null>(null);
 const orderNo = ref("");
+/**
+ * 拉挂了。
+ *
+ * ⚠️ **此前整页挂在 `v-if="order"` 上**：拉不到就连 `sh-scaffold` 都不渲染 ——
+ * 没有标题栏、没有皮肤根节点、没有一个字。那不是「加载中」的样子，
+ * 是「这个 App 坏了」的样子，而用户唯一能做的是退出去再进来。
+ */
+const failed = ref(false);
+/**
+ * 后端说的那句话。**有就显示它，没有才回落到「多半是网络不通」** ——
+ * 「订单不存在」这种情况下告诉用户去检查网络，是一句**错的**解释，
+ * 而错的解释比没有解释更费时间。
+ */
+const failReason = ref("");
 
 /*
  * 状态集合**标注成 `OrderStatus[]`**，不是裸的字符串数组。
@@ -123,9 +137,18 @@ const isVirtualOrCard = computed(() => {
 
 async function load() {
   if (!orderNo.value) return;
-  // 并行拉：开票状态与订单详情互不依赖，串行只会让页面多等一个来回
-  const [o] = await Promise.all([api.orderDetail(orderNo.value), loadInvoice()]);
-  order.value = o;
+  failed.value = false;
+  failReason.value = "";
+  try {
+    // 并行拉：开票状态与订单详情互不依赖，串行只会让页面多等一个来回
+    const [o] = await Promise.all([api.orderDetail(orderNo.value), loadInvoice()]);
+    order.value = o;
+  } catch (e) {
+    // 留着上一次的 `order`：从售后页返回时重拉失败，把已经看到的详情
+    // 清成空白只会更糟
+    failed.value = true;
+    failReason.value = (e as Error).message || "";
+  }
 }
 
 async function cancel() {
@@ -209,7 +232,18 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold v-if="order" title-key="order.title">
+  <sh-scaffold title-key="order.title">
+    <!--
+      **外壳常在**：拉不到也要有标题栏与皮肤根节点。
+      此前整页挂在 `v-if="order"` 上，失败时是一整片白。
+    -->
+    <view v-if="!order && failed" class="empty">
+      <text class="txt-sub empty__text">{{ $t("common.loadFailed") }}</text>
+      <text class="txt-caption empty__tip">{{ failReason || $t("common.loadFailedTip") }}</text>
+      <view class="sh-btn sh-btn--sm empty__btn" @tap="load">{{ $t("common.retry") }}</view>
+    </view>
+
+    <template v-if="order">
     <!-- 码：待取货的用户主要就是来看这个 -->
     <view v-if="order.verifyCode && order.status !== 'COMPLETED'" class="sh-card codecard">
       <text class="txt-caption codecard__label">{{ $t("pay.verifyCode") }}</text>
@@ -386,10 +420,29 @@ onShow(load);
       <view class="txt-sub sh-btn sh-btn--muted op" @tap="buyAgain">{{ $t("order.buyAgain") }}</view>
     </view>
     <view class="spacer" />
+    </template>
   </sh-scaffold>
 </template>
 
 <style scoped>
+/* 失败态：与购物车、结算页的引导型空态同一形状（标题 + 一句解释 + 主按钮） */
+.empty {
+  text-align: center;
+  padding: 120rpx 40rpx;
+}
+.empty__text {
+  display: block;
+}
+.empty__tip {
+  display: block;
+  margin-top: 8rpx;
+}
+.empty__btn {
+  display: inline-block;
+  margin-top: 40rpx;
+  padding-inline: 60rpx;
+}
+
 .as {
   margin-top: 20rpx;
 }

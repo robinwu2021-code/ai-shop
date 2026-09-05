@@ -1,5 +1,8 @@
 export default {
   common: {
+    loadFailed: "Could not load",
+    loadFailedTip: "Most likely the network. Check it and try again.",
+    retry: "Retry",
     confirm: "Confirm",
     cancel: "Cancel",
     done: "Done",

@@ -166,6 +166,23 @@ describe("订单详情页的操作按钮", () => {
     expect((await render()).text()).toContain("invoice.apply");
   });
 
+  it("★★★ 拉不到订单 → 失败态 + 重试，而不是一整片白", async () => {
+    orderDetail.mockRejectedValue(new Error("network down"));
+    const w = await render();
+
+    expect(w.text(), "此前整页挂在 v-if=\"order\" 上，连外壳都不渲染").toContain("common.loadFailed");
+    expect(w.text()).toContain("common.retry");
+    // 「订单不存在」时说「检查网络」是错的解释，后端说了话就显示它
+    expect(w.text()).toContain("network down");
+
+    // 点重试要真的再拉一次
+    orderDetail.mockResolvedValue(order("PAID"));
+    await w.find(".empty__btn").trigger("tap");
+    for (let i = 0; i < 8; i++) await w.vm.$nextTick();
+    expect(w.text()).not.toContain("common.loadFailed");
+    expect(w.text()).toContain("order.afterSale");
+  });
+
   it("★ 「再买一单」在任何状态下都在 —— 它不依赖订单状态", async () => {
     for (const st of ["WAIT_PAY", "PAID", "FULFILLING", "COMPLETED", "CANCELLED"] as OrderStatus[]) {
       orderDetail.mockResolvedValue(order(st));

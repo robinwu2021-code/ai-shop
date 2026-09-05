@@ -1,5 +1,8 @@
 export default {
   common: {
+    loadFailed: "تعذّر التحميل",
+    loadFailedTip: "الشبكة على الأرجح. تحقّق منها ثم أعد المحاولة.",
+    retry: "إعادة المحاولة",
     confirm: "تأكيد",
     cancel: "إلغاء",
     done: "تم",
