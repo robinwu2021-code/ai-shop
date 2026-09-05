@@ -557,7 +557,7 @@ onShow(load);
   gap: 12rpx;
   margin-top: 20rpx;
   padding-top: 20rpx;
-  border-top: 2rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 /* 只管版面。**颜色不在这里** —— 基类一旦设 color，
    它就是 scoped 的 (0,2,0)，会压掉模板上挂的库件（.txt-primary 那类），

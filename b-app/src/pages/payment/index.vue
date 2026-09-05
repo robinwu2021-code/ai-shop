@@ -422,7 +422,7 @@ async function refresh() {
 */
 .badge.is-none {
   background: transparent;
-  border: 1rpx solid var(--sh-line);
+  border: 2rpx solid var(--sh-line);
   color: var(--sh-sub);
 }
 /* 选中的通道要看得出来：多张卡片长得一样时，下面的表单在填哪一个全靠这一条 */

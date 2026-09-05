@@ -248,9 +248,7 @@ function arrow(from?: string | null, to?: string | null): string {
 }
 
 /* 只留本页版面与语义色：排法归 sh-kv。行号是红的 —— 这一块整个是「出错的行」 */
-.prob {
-  padding: 6rpx 0;
-}
+/* 行距归 sh-kv：这个 class 在小程序上宿主与根各吃一遍，覆盖内边距会翻倍 */
 .prob .kv__k {
   color: var(--sh-danger);
 }

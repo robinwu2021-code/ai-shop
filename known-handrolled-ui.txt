@@ -5,23 +5,25 @@
 #
 # 2026-08-29：清零。最后 6 条都在 c-app 的订单色调上，改法见
 # packages/shared/src/strategies/order-view.ts 的 statusTone()。
-
-# ── 2026-09-05 追加 7 条。**这份名单本来「只准变短」，这次它变长了，说明白为什么** ──
 #
-# 这 7 处都是 09-01 之后写进来的，横跨 b-app 的对账单/跨店盘点/门店与 c-app 的
-# 地址/社区/支付页。位置模块那十五单只带出过 1 条（c-app/community 的 inkover），
-# 已经当场改成 .txt-ink 了 —— 量过差集，剩下这 7 条一条都不是它的。
-#
-# 它们能积到 7 条而没人知道，与同一天记进 known-guard-failures 的那 16 条同源：
-# **这个分支从 2026-09-01 起一次都没推过**，而这道闸挂在 pre-push 上。
+# 2026-09-05：追加 7 条（09-01 之后写进来的，横跨两端六页）。名单变长的理由记在
+# 当时那一版里：**这个分支从 09-01 起一次都没推过**，而这道闸挂在 pre-push 上 ——
 # 闸门只在有人推的时候才是闸门。
 #
-# 记进来是为了让 09-05 那批位置模块的代码推得上去，不是认下这些皮。
-# 每一条都点着名要用哪个库件，改起来是一页一页的活，另开一单按页清。
-b-app/statement sysmodal
-b-app/stock-cross tabs
-b-app/store semcolor
-c-app/address segment
-c-app/community listrow
-c-app/pay sysmodal
-c-app/pay quietover
+# ── 2026-09-06：**又清零，7 条一条不留。** ──
+#
+# 六条是真收编（一页一页改的，不是改判据放行）：
+#   c-app/address   自画的选中态 chip      → .sh-chip / .sh-chip--primary（连圆角一起归档：16rpx → full）
+#   c-app/community 自画的横排行            → .sh-row（gap 12 → 库件的 16）
+#   c-app/pay       uni.showModal          → 库里的 sh-confirm（alert 态）
+#   c-app/pay       自写的次要色            → .txt-quiet
+#   b-app/statement uni.showActionSheet    → 库里的 sh-pick（顺带多了系统面板给不了的「当前项打勾」）
+#   b-app/store     自写的语义色            → 全局 .is-warning
+#
+# 第七条 `b-app/stock-cross tabs` **是误命中，改的是判据**：那一页用的正是库件
+#（`sh-row` 里排着 `.sh-chip` + `.sh-chip--primary`），`.tabs` 只有 gap 与 padding-bottom
+# 两条版面，被算进来的唯一依据是类名叫 tabs。判据已从判名字改成判声明
+#（gen-ui-lib.py 的 ROLLED，第十七次），消融验过：给那条规则加一条 border-bottom
+# 立刻又报出来。
+#
+# 一行一个 `端/页`。修好一条删一行；这份空着不代表判据松了。

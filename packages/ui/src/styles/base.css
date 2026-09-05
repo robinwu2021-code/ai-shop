@@ -745,9 +745,26 @@ uni-page-wrapper[style*="--window-bottom"] {
  * 所以小程序那份改成「每个顶层子节点都给上边距，再把第一个清零」——
  * 与 `> * + *` 等价，且只用到 WXSS 认的元素选择器与 `:first-child`。
  *
- * ⚠️ 代价说清楚：小程序那份**只覆盖这几个内置标签**。顶层如果直接放的是
- * 自定义组件（`<biz-goods-card>` 那类），它拿不到这条缝 ——
- * WXSS 里父级样式本来也不穿透组件边界。真遇到了就给那个组件自己加。
+ * ⚠️ **只列内置标签是不够的，而这一点在两端上长得不一样。**
+ *
+ * H5 里 `<script setup>` 组件**没有宿主节点** —— `<sh-tabs>` 编译出来就是它
+ * 自己的根 `<uni-view class="tabs">`，`> * + *` 直接命中，缝是有的。
+ * 小程序里宿主节点是**真节点**（`<sh-tabs>` 就在 wxml 里，见
+ * `dist/build/mp-weixin/pages/coupons/index.wxml`），而下面这份只列了八个
+ * 内置标签 —— 于是**顶层放组件的地方，小程序上一条缝都没有，H5 上有**。
+ *
+ * 后果不是「差一点」：这两端的产物本该逐字节等价，而这里 H5 对、小程序错，
+ * 且只有把两个产物摆在一起才看得出来 —— 单看小程序，它只是「整体挤了一点」。
+ * 2026-09-06 数下来两端共 70 处（c-app 13 / b-app 57）。
+ *
+ * 所以把**在文档流里的**组件标签一并列上。**浮层不列**（sh-sheet /
+ * sh-actionbar / sh-dialog / sh-savebar / sh-fab / sh-theme-sheet /
+ * biz-cart-fab / phone-gate / 各种 picker）：它们是 `position: fixed`，
+ * 给宿主加外边距会把浮层本身推下去，而 H5 那边因为没有宿主节点根本不会发生
+ * —— 那才是真把两端做出差别。
+ *
+ * 名单只准加不准漏：`packages/shared/tests/ui-package.test.ts` 有断言守着
+ * 「页面顶层用到的在流组件都在这份名单里」，新写一个当场报。
  */
 /* #ifndef MP-WEIXIN */
 .sh-scaffold > * + * {
@@ -755,6 +772,7 @@ uni-page-wrapper[style*="--window-bottom"] {
 }
 /* #endif */
 /* #ifdef MP-WEIXIN */
+/* 内置标签 */
 .sh-scaffold > view,
 .sh-scaffold > text,
 .sh-scaffold > scroll-view,
@@ -762,7 +780,30 @@ uni-page-wrapper[style*="--window-bottom"] {
 .sh-scaffold > button,
 .sh-scaffold > navigator,
 .sh-scaffold > swiper,
-.sh-scaffold > form {
+.sh-scaffold > form,
+/* 在文档流里的组件（宿主节点在小程序里是真节点，见上面那段） */
+.sh-scaffold > sh-empty,
+.sh-scaffold > sh-tabs,
+.sh-scaffold > sh-section,
+.sh-scaffold > sh-stat,
+.sh-scaffold > sh-add,
+.sh-scaffold > sh-kv,
+.sh-scaffold > sh-go,
+.sh-scaffold > sh-cover,
+.sh-scaffold > sh-option,
+.sh-scaffold > sh-check,
+.sh-scaffold > sh-switch,
+.sh-scaffold > sh-rating,
+.sh-scaffold > sh-uploader,
+.sh-scaffold > sh-icon-btn,
+.sh-scaffold > sh-icon,
+.sh-scaffold > biz-store-tag,
+.sh-scaffold > biz-goods-card,
+.sh-scaffold > biz-group-card,
+.sh-scaffold > biz-merchant-bar,
+.sh-scaffold > biz-review,
+.sh-scaffold > biz-sku-row,
+.sh-scaffold > biz-time-range {
   margin-top: var(--sh-gap-block, 20rpx);
 }
 .sh-scaffold > view:first-child,
@@ -772,7 +813,29 @@ uni-page-wrapper[style*="--window-bottom"] {
 .sh-scaffold > button:first-child,
 .sh-scaffold > navigator:first-child,
 .sh-scaffold > swiper:first-child,
-.sh-scaffold > form:first-child {
+.sh-scaffold > form:first-child,
+.sh-scaffold > sh-empty:first-child,
+.sh-scaffold > sh-tabs:first-child,
+.sh-scaffold > sh-section:first-child,
+.sh-scaffold > sh-stat:first-child,
+.sh-scaffold > sh-add:first-child,
+.sh-scaffold > sh-kv:first-child,
+.sh-scaffold > sh-go:first-child,
+.sh-scaffold > sh-cover:first-child,
+.sh-scaffold > sh-option:first-child,
+.sh-scaffold > sh-check:first-child,
+.sh-scaffold > sh-switch:first-child,
+.sh-scaffold > sh-rating:first-child,
+.sh-scaffold > sh-uploader:first-child,
+.sh-scaffold > sh-icon-btn:first-child,
+.sh-scaffold > sh-icon:first-child,
+.sh-scaffold > biz-store-tag:first-child,
+.sh-scaffold > biz-goods-card:first-child,
+.sh-scaffold > biz-group-card:first-child,
+.sh-scaffold > biz-merchant-bar:first-child,
+.sh-scaffold > biz-review:first-child,
+.sh-scaffold > biz-sku-row:first-child,
+.sh-scaffold > biz-time-range:first-child {
   margin-top: 0;
 }
 /* #endif */

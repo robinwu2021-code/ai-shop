@@ -88,6 +88,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
+import { pick } from "@ai-shop/ui/prompt";
 import { saveCsv } from "@/utils/csv-file";
 import type { Statement, StatementLine } from "@/api/contract";
 
@@ -116,20 +117,23 @@ function pct(bp: number) {
  * 而空单与「这个月确实没有结算」长得一模一样。
  */
 const MONTHS = 12;
-function pickPeriod() {
+async function pickPeriod() {
   const opts = [t("statement.allPeriods")];
   const now = new Date();
   for (let i = 0; i < MONTHS; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     opts.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
   }
-  uni.showActionSheet({
-    itemList: opts,
-    success: (r) => {
-      period.value = r.tapIndex === 0 ? "" : (opts[r.tapIndex] ?? "");
-      load();
-    },
+  // 走库里的 sh-pick 而不是 uni.showActionSheet：系统面板在四个端上长相各不相同，
+  // 也拿不到皮肤与明暗。顺带多了一样系统面板给不了的东西 —— 当前选中项打勾。
+  const i = await pick({
+    title: String(t("statement.periodLabel")),
+    items: opts,
+    selected: period.value ? opts.indexOf(period.value) : 0,
   });
+  if (i == null) return;
+  period.value = i === 0 ? "" : (opts[i] ?? "");
+  load();
 }
 
 /**

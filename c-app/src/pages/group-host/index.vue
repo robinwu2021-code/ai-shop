@@ -138,7 +138,7 @@ onShow(load);
             confirm-type="done"
             @confirm="verify()"
           />
-          <text class="txt-strong btn" @tap="verify()">{{ $t("groupHost.doVerify") }}</text>
+          <text class="sh-btn sh-btn--sm" @tap="verify()">{{ $t("groupHost.doVerify") }}</text>
         </view>
         <text v-if="error" class="txt-caption err">{{ error }}</text>
       </view>
@@ -155,7 +155,7 @@ onShow(load);
           <text class="txt-title row-item__code sh-num">{{ o.verifyCode }}</text>
           <text class="sh-muted">{{ o.buyerNickname || "—" }} · {{ o.items.length }} 件</text>
         </view>
-        <text class="txt-strong btn" @tap="verify(o.verifyCode)">{{ $t("groupHost.doVerify") }}</text>
+        <text class="sh-btn sh-btn--sm" @tap="verify(o.verifyCode)">{{ $t("groupHost.doVerify") }}</text>
       </view>
 
       <text class="tip sh-hint">{{ $t("groupHost.afterSaleHint") }}</text>
@@ -201,12 +201,6 @@ onShow(load);
 .field__input {
   flex: 1;
   letter-spacing: 4rpx;
-}
-.btn {
-  padding: 20rpx 30rpx;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
 }
 .err {
   display: block;

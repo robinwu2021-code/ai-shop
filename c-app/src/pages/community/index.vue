@@ -309,7 +309,7 @@ onLoad(load);
       **定位到区**就直说，别让用户再从省市区里翻一遍。
       模糊定位时文案说「大致位置」——精度是区级，不该让人以为我们知道得更细。
     -->
-    <view v-if="!locating && locatedRegion" class="loc">
+    <view v-if="!locating && locatedRegion" class="sh-row loc">
       <text class="txt-body loc__pin">📍</text>
       <text class="txt-body txt-ink loc__text">{{
         $t(locatedRegion.fuzzy ? "community.locatedFuzzy" : "community.located", {
@@ -365,7 +365,7 @@ onLoad(load);
       只挂在其中一个态上的话，另外两个态的用户就没有这条路，
       而他们同样需要它（这一页最常见的抱怨就是「它不知道我在哪，我也没法告诉它」）。
     -->
-    <view v-if="!locating" class="txt-body onmap" @tap="pickOnMap">
+    <view v-if="!locating" class="sh-btn sh-btn--soft sh-btn--sm onmap" @tap="pickOnMap">
       <text>{{ $t("community.pickOnMap") }}</text>
     </view>
 
@@ -426,10 +426,8 @@ onLoad(load);
 </template>
 
 <style scoped>
+/* 排法归 .sh-row（gap 收到库件的 16rpx）；这里只留这一条的底色与内边距 */
 .loc {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
   padding: 16rpx 24rpx;
   margin-bottom: 16rpx;
   border-radius: 16rpx;
@@ -437,12 +435,11 @@ onLoad(load);
 }
 /* 字号走字阶类、正文色走 .txt-ink —— 这里一行样式都不用写 */
 
+/* 形态归 .sh-btn--soft（次按钮只有 tint 与 faint 两种，描边主色胶囊不在档上）；
+   这里只留「居中、不通栏」这两件版面上的事 */
 .onmap {
   margin: 24rpx auto 0;
-  padding: 16rpx 32rpx;
-  border-radius: 9999px;
-  border: 2rpx solid var(--sh-primary);
-  color: var(--sh-primary);
+  width: fit-content;
   text-align: center;
   align-self: center;
 }

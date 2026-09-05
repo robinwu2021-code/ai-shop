@@ -56,13 +56,13 @@ onLoad(async (q) => {
         <text v-if="data.member.firstStoreNo" class="sh-muted">
           {{ $t("memberDetail.firstStore", { s: storeName(data.member.firstStoreNo) }) }}
         </text>
-        <sh-kv between :label="String($t('memberDetail.lifetime'))" class="txt-sub kv sh-mt-xs blk">
+        <sh-kv between :label="String($t('memberDetail.lifetime'))" class="txt-sub sh-mt-xs blk">
           <text class="txt-bold sh-num">
             {{ $t("members.stat", {
               n: data.member.orderCount, m: money(data.member.totalSpentMinor) }) }}
           </text>
         </sh-kv>
-        <sh-kv between :label="String($t('memberDetail.d90'))" class="txt-sub kv">
+        <sh-kv between :label="String($t('memberDetail.d90'))" class="txt-sub">
           <text class="txt-bold sh-num">{{ data.member.d90OrderCount }}</text>
         </sh-kv>
       </view>
@@ -113,7 +113,9 @@ onLoad(async (q) => {
 .blk {
   display: block;
 }
-/* 只留本页版面：排法（两端对齐）归 sh-kv */
+/* 只留本页版面：排法（两端对齐）归 sh-kv。
+   ⚠️ 这个类名与 sh-kv 的根同名，**不要挂到 <sh-kv> 上** ——
+   小程序上调用点的 class 会同时落在宿主与组件根，内边距吃两遍。下面两处是普通行 */
 .kv {
   padding: 6rpx 0;
 }

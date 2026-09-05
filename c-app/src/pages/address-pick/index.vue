@@ -167,7 +167,7 @@ onLoad(() => {
     <!-- 有关键词时结果顶掉「附近」：别让用户在两份列表里找自己刚搜的那个 -->
     <view v-if="keyword.trim()" class="sh-card block">
       <text class="txt-sub block__title">{{ $t("addressPick.results") }}</text>
-      <view v-for="(h, i) in hits" :key="`${h.name}-${i}`" class="row" @tap="chooseHit(h)">
+      <view v-for="(h, i) in hits" :key="`${h.name}-${i}`" class="sh-row--divided" @tap="chooseHit(h)">
         <text class="txt-body row__name">{{ h.name }}</text>
         <text class="txt-caption row__sub">{{ h.address }}</text>
       </view>
@@ -185,7 +185,7 @@ onLoad(() => {
         </view>
         <!-- 模糊定位时不显示距离，理由见 script 里 coarse 那段 -->
         <text v-if="coarse" class="sh-hint">{{ $t("addressPick.coarseHint") }}</text>
-        <view class="row" @tap="chooseHere">
+        <view class="sh-row--divided" @tap="chooseHere">
           <text class="txt-body row__name">{{ $t("addressPick.useHere") }}</text>
         </view>
       </view>
@@ -194,7 +194,7 @@ onLoad(() => {
       <!-- 判的是「能用的有几条」，不是「拿回来几条」—— 见 nearbyPickable 那段 -->
       <view v-if="nearbyPickable.length" class="sh-card block">
         <text class="txt-sub block__title">{{ $t("addressPick.nearby") }}</text>
-        <view v-for="c in nearbyPickable" :key="c.communityNo" class="row" @tap="chooseCommunity(c)">
+        <view v-for="c in nearbyPickable" :key="c.communityNo" class="sh-row--divided" @tap="chooseCommunity(c)">
           <text class="txt-body row__name">{{ c.name }}</text>
           <text class="txt-caption row__sub">
             {{ c.address }}<text v-if="!coarse && c.distance"> · {{ fmtDistance(c.distance) }}</text>
@@ -204,10 +204,10 @@ onLoad(() => {
     </template>
 
     <view class="sh-card block">
-      <view v-if="canMap" class="row" @tap="onMap">
+      <view v-if="canMap" class="sh-row--divided" @tap="onMap">
         <text class="txt-body row__name txt-primary">{{ $t("addressPick.onMap") }}</text>
       </view>
-      <view class="row" @tap="manual">
+      <view class="sh-row--divided" @tap="manual">
         <text class="txt-body row__name">{{ $t("addressPick.manual") }}</text>
       </view>
     </view>
@@ -229,14 +229,6 @@ onLoad(() => {
   display: block;
   padding: 24rpx 0;
   text-align: center;
-}
-.row {
-  padding: 20rpx 0;
-  border-top: 1rpx solid var(--sh-line);
-}
-/* 卡片里第一行上面不画线：那条线是用来分隔两行的，画在最上面只是一道多余的横杠 */
-.row:first-child {
-  border-top: none;
 }
 .row__name {
   display: block;

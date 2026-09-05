@@ -12,6 +12,19 @@ const ROOT = join(import.meta.dirname, "../../..");
 const APPS = ["c-app", "b-app"];
 const UI = join(ROOT, "packages/ui/src/components");
 
+/** 两端所有页面（跨 describe 共用）。 */
+function pageFilesAll() {
+  return APPS.flatMap((app) =>
+    readdirSync(join(ROOT, app, "src/pages"), { recursive: true, encoding: "utf8" })
+      .filter((f) => String(f).endsWith(".vue"))
+      .map((f) => ({
+        app,
+        file: String(f),
+        src: readFileSync(join(ROOT, app, "src/pages", String(f)), "utf8"),
+      })),
+  );
+}
+
 describe("共享组件库 packages/ui", () => {
   it("两端不再各自持有一份同名组件", () => {
     const shared = readdirSync(UI);
@@ -138,12 +151,7 @@ describe("版心宽度：三处必须是同一个数", () => {
 describe("抽出去的公共件不许再各写一份", () => {
   // 这个仓库已经因为「复制一份更快」漂移过好几次（空态在 27 个页面里 padding 各不相同、
   // 筛选条同时存在 chip 与方块两套实现）。抽完就得有东西守着，否则下一个页面照旧复制。
-  const pageFiles = () =>
-    APPS.flatMap((app) =>
-      readdirSync(join(ROOT, app, "src/pages"), { recursive: true, encoding: "utf8" })
-        .filter((f) => String(f).endsWith(".vue"))
-        .map((f) => ({ app, file: String(f), src: readFileSync(join(ROOT, app, "src/pages", String(f)), "utf8") })),
-    );
+  const pageFiles = pageFilesAll;
 
   it("空态走 sh-empty，不再自定义 .empty 样式", () => {
     // 例外：带标题与主按钮的「引导型空态」是页面自己的结构，不是通用空态那一行灰字。
@@ -159,5 +167,148 @@ describe("抽出去的公共件不许再各写一份", () => {
       .filter(({ src }) => /^\.tabs__item/m.test(src))
       .map(({ app, file }) => `${app}/${file}`);
     expect(offenders, `改用 <sh-tabs>：\n${offenders.join("\n")}`).toEqual([]);
+  });
+});
+
+/*
+ * 小程序上「块与块之间那道缝」的覆盖面。
+ *
+ * base.css 的 `.sh-scaffold > * + *` 在小程序上用不了（WXSS 不认 `*`，上传直接
+ * 被拒），那里改成逐个标签列。**而两端的节点树形状是不同的**：
+ *
+ *   H5    `<script setup>` 组件没有宿主节点，`<sh-tabs>` 就是它自己的根 view
+ *         → `> * + *` 命中，缝有
+ *   小程序 宿主节点是真节点（wxml 里就写着 `<sh-tabs>`）
+ *         → 名单里没这个标签就一条规则都不命中，缝没有
+ *
+ * 单看小程序只是「整体挤了一点」，没人会想到去比对另一个产物 ——
+ * 2026-09-06 补这条断言时两端共 70 处（c-app 13 / b-app 57）都在这个坑里。
+ */
+describe("小程序的块间缝：顶层组件也要在名单上", () => {
+  const BUILTIN = new Set(["view", "text", "scroll-view", "image", "button", "navigator",
+    "swiper", "form", "input", "textarea", "picker", "slot", "block", "template",
+    "movable-view", "cover-view", "video", "canvas", "map", "web-view", "checkbox", "radio",
+    "switch", "label", "rich-text", "progress", "icon"]);
+
+  /** 浮层：`position: fixed`，给宿主加外边距会把浮层本身推下去。
+   *  H5 那边因为没有宿主节点不会发生 —— 列进名单才是真把两端做出差别。 */
+  const OVERLAY = new Set(["sh-actionbar", "sh-sheet", "sh-dialog", "sh-savebar", "sh-fab",
+    "sh-tabbar", "sh-theme-sheet", "sh-prompt", "sh-confirm", "sh-pick", "app-overlay",
+    "biz-cart-fab", "phone-gate", "biz-region-picker", "biz-pickup-sheet",
+    "biz-item-picker", "biz-supplier-picker"]);
+
+  const mpBlock = (() => {
+    const css = readFileSync(join(ROOT, "packages/ui/src/styles/base.css"), "utf8");
+    const i = css.indexOf("/* #ifdef MP-WEIXIN */");
+    const j = css.indexOf("/* #endif */", i);
+    return css.slice(i, j);
+  })();
+  const listed = new Set(
+    [...mpBlock.matchAll(/\.sh-scaffold > ([a-z][\w-]*)/g)].map((m) => m[1]!),
+  );
+
+  /** `<sh-scaffold>` 的直接子标签。`<template>` 是编译期包裹，不产生节点，穿透它。 */
+  function topChildren(src: string): string[] {
+    const i = src.indexOf("<sh-scaffold");
+    if (i < 0) return [];
+    const from = src.indexOf(">", i) + 1;
+    const stack: string[] = [];
+    const out: string[] = [];
+    for (const m of src.slice(from).matchAll(/<(\/?)([a-zA-Z][\w:-]*)([^>]*?)(\/?)>/g)) {
+      const [, close, tag, , selfClose] = m as unknown as string[];
+      if (close) {
+        if (tag === "sh-scaffold" && stack.length === 0) break;
+        if (stack[stack.length - 1] === tag) stack.pop();
+        continue;
+      }
+      if (stack.filter((t) => t !== "template").length === 0 && tag !== "template") out.push(tag!);
+      if (!selfClose && !["input", "img", "br", "image"].includes(tag!)) stack.push(tag!);
+    }
+    return out;
+  }
+
+  const tops = pageFilesAll().flatMap(({ app, file, src }) =>
+    topChildren(src.replace(/<!--[\s\S]*?-->/g, "")).map((tag) => ({ app, file, tag })),
+  );
+
+  it("有东西可扫（顶层子节点数为 0 的话，下面那条断言是空转的）", () => {
+    expect(tops.length).toBeGreaterThan(200);
+    expect(listed.size).toBeGreaterThan(8);
+  });
+
+  it("页面顶层的在流组件，都在小程序那份名单里", () => {
+    const offenders = tops
+      .filter(({ tag }) => !BUILTIN.has(tag) && !OVERLAY.has(tag) && !listed.has(tag))
+      .map(({ app, file, tag }) => `${app}/${file}  <${tag}>`);
+    expect(
+      [...new Set(offenders)],
+      "这些组件放在 sh-scaffold 顶层，而 base.css 的 MP 分支没列它们的标签 ——\n" +
+        "H5 上有块间缝、小程序上没有，且只有把两个产物摆在一起才看得出来。\n" +
+        "补进 base.css 的 `#ifdef MP-WEIXIN` 那两条选择器；是浮层的话补进本文件的 OVERLAY。\n" +
+        offenders.join("\n"),
+    ).toEqual([]);
+  });
+});
+
+/*
+ * 调用点传给组件的 class，**在小程序上会落两遍**。
+ *
+ * `mergeVirtualHostAttributes`（两端 manifest.json，2026-09-06 打开）让 class 也
+ * 合并到组件根上 —— 那正是我们要的：没有它，`<sh-cover class="hero__emoji">` 的
+ * 宽高与圆角在小程序上一条都到不了组件根，13 个封面全是错尺寸 + 直角，而 H5 与
+ * 原型上都对。代价是 class **同时**留在宿主节点上：`padding` / `border` 这类
+ * 画在盒子上的声明会被宿主与根各吃一遍（外面一圈内边距、两条分隔线）。
+ *
+ * `margin` 不在名单里：父子相邻外边距会合并，取的是 max，不会翻倍。
+ */
+describe("传给组件的 class 不许带内边距与描边", () => {
+  // `border-radius` 不算：宿主与根各圆一次是同一个视觉，而它正是这个开关要修的东西之一
+  const BOXY = /^padding(-|$)|^border(-(width|style|color|top|right|bottom|left|inline|block))?$/;
+
+  function scopedRules(src: string): Map<string, string[]> {
+    const out = new Map<string, string[]>();
+    if (!src.includes("<style")) return out;
+    const css = src.slice(src.indexOf("<style")).replace(/\/\*[\s\S]*?\*\//g, "");
+    for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      for (const c of (m[1] ?? "").trim().matchAll(/^\.([\w-]+)$/g)) {
+        out.set(c[1]!, [...(out.get(c[1]!) ?? []), m[2] ?? ""]);
+      }
+    }
+    return out;
+  }
+
+  const passed = pageFilesAll().flatMap(({ app, file, src }) => {
+    const tpl = (src.includes("<style") ? src.slice(0, src.indexOf("<style")) : src)
+      .replace(/<!--[\s\S]*?-->/g, "");
+    const rules = scopedRules(src);
+    const out: { where: string; tag: string; cls: string; props: string[] }[] = [];
+    for (const m of tpl.matchAll(/<((?:sh|biz|app)-[\w-]+)([^>]*)>/g)) {
+      const cm = /\bclass="([^"]*)"/.exec(m[2] ?? "");
+      if (!cm) continue;
+      for (const cls of cm[1]!.split(/\s+/).filter(Boolean)) {
+        for (const body of rules.get(cls) ?? []) {
+          const props = body.split(";").map((d) => d.split(":")[0]!.trim()).filter(Boolean);
+          out.push({ where: `${app}/${file}`, tag: m[1]!, cls, props });
+        }
+      }
+    }
+    return out;
+  });
+
+  it("有东西可扫", () => {
+    expect(passed.length).toBeGreaterThan(10);
+  });
+
+  it("没有一个传出去的 class 画盒子", () => {
+    const offenders = passed
+      .filter((p) => p.props.some((x) => BOXY.test(x)))
+      .map((p) => `${p.where}  <${p.tag} class="${p.cls}">  ${p.props.filter((x) => BOXY.test(x)).join(", ")}`);
+    expect(
+      offenders,
+      "这些声明在小程序上会被宿主节点与组件根各吃一遍：\n" +
+        "要么把它包到外层 <view> 上，要么就用组件自己的档位（多半是后者 —— 覆盖库件的内边距\n" +
+        "本来就是两端不一致的来源）。\n" +
+        offenders.join("\n"),
+    ).toEqual([]);
   });
 });

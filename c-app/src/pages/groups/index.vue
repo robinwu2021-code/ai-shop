@@ -144,9 +144,9 @@ onShow(() => {
           <text class="txt-caption privacy">{{ $t("groupHost.addressPrivacy") }}</text>
         </template>
 
-        <view class="btns">
-          <text class="txt-strong btn btn--ghost" @tap="creating = false">{{ $t("common.cancel") }}</text>
-          <text class="txt-strong btn" @tap="submitCreate">{{ $t("groups.submitCreate") }}</text>
+        <view class="sh-row sh-mt-md">
+          <text class="sh-btn sh-btn--muted btns__act" @tap="creating = false">{{ $t("common.cancel") }}</text>
+          <text class="sh-btn btns__act" @tap="submitCreate">{{ $t("groups.submitCreate") }}</text>
         </view>
       </view>
       <biz-group-card
@@ -233,22 +233,9 @@ onShow(() => {
   display: block;
   margin-top: 16rpx;
 }
-.btns {
-  display: flex;
-  gap: 16rpx;
-  margin-top: 28rpx;
-}
-.btn {
+/* 并排两枚各占一半 —— 形态吃 .sh-btn，这里只给版面 */
+.btns__act {
   flex: 1;
-  text-align: center;
-  padding: 22rpx 0;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-}
-.btn--ghost {
-  background: var(--sh-faint);
-  color: var(--sh-sub);
 }
 
 .hint {

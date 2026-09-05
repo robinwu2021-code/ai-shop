@@ -241,8 +241,9 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
 
 .opt {
   /* 只留版面：描边、圆角、选中态都归 sh-option */
+  /* 内边距不再由调用点覆盖：小程序上这个 class 会同时落在宿主与组件根上，
+     一份内边距吃两遍。档位归 sh-option（20rpx），两端也就一致了 */
   gap: 8rpx;
-  padding: 12rpx 24rpx;
 }
 
 .row__stat {

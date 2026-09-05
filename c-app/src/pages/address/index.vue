@@ -7,7 +7,7 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useLocationStore } from "@/stores/location";
 import type { Address } from "@shared/types";
-import { canChooseLocation, chooseLocation, chooseWxAddress, getLocationDetailed } from "@shared/ports/location";
+import { canChooseLocation, canChooseWxAddress, chooseLocation, chooseWxAddress, getLocationDetailed } from "@shared/ports/location";
 import { readClipboard } from "@shared/ports/clipboard";
 import { parsePastedAddress } from "@shared/utils/address-paste";
 import { confirm } from "@ai-shop/ui/prompt";
@@ -52,6 +52,9 @@ const draft = ref<Omit<Address, "addressId"> & { addressId?: string }>({
  * <p>不覆盖用户已经填了的格子：他可能先手填了一半才想起来有这个按钮，
  * 一键把他刚敲的字冲掉是最让人恼火的那种「贴心」。
  */
+/** 端能力只问一次 —— 它在一次运行里不会变 */
+const canWx = canChooseWxAddress();
+
 async function fillFromWx() {
   const a = await chooseWxAddress();
   if (!a) return; // 取消 / 不支持：什么都不做，不弹提示
@@ -433,7 +436,7 @@ onShow(() => {
           而两个入口里总有一个会先坏掉、且没人发现。
         -->
         <text v-if="location.active?.addressId === a.addressId"
-              class="txt-caption txt-strong op is-active">{{ $t("address.here") }}</text>
+              class="txt-caption txt-strong op txt-primary">{{ $t("address.here") }}</text>
         <text v-if="!a.isDefault" class="txt-caption op txt-primary" @tap.stop="setDefault(a)">
           {{ $t("address.setDefault") }}
         </text>
@@ -485,9 +488,7 @@ onShow(() => {
           <text class="txt-caption regionrow__pick" :class="{ 'is-ok': picked }" @tap="pickOnMap">
             {{ picked ? $t("address.repick") : $t("address.pick") }}
           </text>
-          <!-- #ifdef MP-WEIXIN -->
-          <text class="txt-caption regionrow__pick" @tap="fillFromWx">{{ $t("address.fromWx") }}</text>
-          <!-- #endif -->
+          <text v-if="canWx" class="txt-caption regionrow__pick" @tap="fillFromWx">{{ $t("address.fromWx") }}</text>
         </view>
         <text v-if="regionUnsplit" class="sh-hint">{{ $t("address.regionIncomplete") }}</text>
         <!--
@@ -523,8 +524,8 @@ onShow(() => {
           <text
             v-for="k in TAG_PRESETS"
             :key="k"
-            class="txt-caption tagrow__chip"
-            :class="{ 'is-on': draft.tag === $t(`address.${k}`) }"
+            class="sh-chip"
+            :class="{ 'sh-chip--primary': draft.tag === $t(`address.${k}`) }"
             @tap="draft.tag = String($t(`address.${k}`))"
           >{{ $t(`address.${k}`) }}</text>
         </view>
@@ -566,10 +567,6 @@ onShow(() => {
 </template>
 
 <style scoped>
-/* 字重交给字阶类 txt-strong（见 规范-字体），这里只管颜色 */
-.is-active {
-  color: var(--sh-primary);
-}
 
 .regionrow {
   gap: 12rpx;
@@ -621,15 +618,6 @@ onShow(() => {
 .tagrow {
   gap: 12rpx;
   margin-top: 16rpx;
-}
-.tagrow__chip {
-  padding: 12rpx 24rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-}
-.tagrow__chip.is-on {
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
 }
 .pasterow {
   padding: 16rpx 20rpx;

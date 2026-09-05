@@ -217,6 +217,26 @@ export interface WxAddress {
  * <p>只有小程序有这个能力；其它端返回 null，调用方照常手填。
  * 用户取消也返回 null —— 取消不是错误，不该弹任何东西。
  */
+/**
+ * 这个端**有没有**「从微信地址导入」这个入口。只有小程序有。
+ *
+ * <p>为什么要能提前问、而不是让页面写 `#ifdef`：条件编译一旦进了页面，端差异就
+ * 散在几十个文件里，「加一个端」要翻遍 pages/。`design-tokens.test.ts` 有断言守着
+ * 「pages/ 下没有 #ifdef」—— 这个函数就是 `address` 那一处的落点。
+ *
+ * <p>与 {@link chooseWxAddress} 返回 null 的分工：那是「点了没拿到」，
+ * 这是「根本不该显示这个按钮」。只有后者才能不让人看见一个按下去没反应的入口。
+ */
+export function canChooseWxAddress(): boolean {
+  // 与 canChooseLocation 同一个写法：不用两个 return —— 条件编译能处理，
+  // 但 vue-tsc 看到的是两条都在的源码
+  let ok = false;
+  // #ifdef MP-WEIXIN
+  ok = true;
+  // #endif
+  return ok;
+}
+
 export async function chooseWxAddress(): Promise<WxAddress | null> {
   // #ifdef MP-WEIXIN
   return new Promise((resolve) => {

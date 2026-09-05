@@ -133,8 +133,8 @@ onShow(load);
             效果卡：**用掉多少、花了多少、还剩多少**。
             没有转化率、没有 UV —— 商家在这一页要决定的只有「要不要接着跑」。
           -->
-          <sh-stat
-            class="effect"
+          <!-- 分隔线与上留白包在外层：class 挂到组件上时，小程序会让宿主与根各画一条 -->
+          <view class="effect"><sh-stat
             :items="[
               { value: a.quotaUsed, label: String($t('activities.used')) },
               { value: money(a.budgetUsedMinor), label: String($t('activities.spent')) },
@@ -142,7 +142,7 @@ onShow(load);
                 label: String($t('activities.left')),
                 tone: (a.quotaLeft ?? 99) <= 10 ? 'warn' : undefined },
             ]"
-          ></sh-stat>
+          ></sh-stat></view>
 
           <view v-if="a.status !== 'ENDED'" class="acts">
             <text class="sh-link" @tap="go(`/pages/activity-edit/index?activityNo=${a.activityNo}`)">

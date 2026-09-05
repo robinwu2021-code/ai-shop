@@ -125,10 +125,15 @@ async function pay() {
        * 而微信在这一步说的是很具体的话（未开通支付、appid 不匹配、签名错），
        * 那句话是排查这条链唯一的输入。
        */
-      uni.showModal({
+      // 走库里的 sh-confirm 而不是 uni.showModal：系统弹框在四个端上长相各不相同
+      // （小程序是微信的样式、H5 是浏览器的），而这一句是排查支付链路唯一的输入，
+      // 不该由平台决定它长什么样。`alert` = 只有一个「知道了」，对应 showCancel: false。
+      // ⚠️ 说明文字的字段名是 `hint` 不是 `content` —— ConfirmOptions 没有 content，
+      // 写错不报错，那句通道原话会被静默丢掉（CLAUDE.md 记过同一个坑）。
+      void confirm({
         title: String(t("pay.invokeFailedTitle")),
-        content: res.failReason || String(t("pay.invokeFailedUnknown")),
-        showCancel: false,
+        hint: res.failReason || String(t("pay.invokeFailedUnknown")),
+        alert: true,
       });
       return;
     }
@@ -233,7 +238,7 @@ onUnmounted(() => clearInterval(timer));
           <text class="method__icon">{{ m.payChannel === "ALIPAY" ? "💙" : "💚" }}</text>
           <view class="method__body">
             <text class="txt-strong method__name">{{ m.name || m.payChannel }}</text>
-            <text v-if="!m.available && m.unavailableReason" class="txt-caption method__why">
+            <text v-if="!m.available && m.unavailableReason" class="txt-caption txt-quiet">
               {{ m.unavailableReason }}
             </text>
           </view>
@@ -300,7 +305,7 @@ onUnmounted(() => clearInterval(timer));
 .subs {
   margin-top: 32rpx;
   padding-top: 24rpx;
-  border-top: 1rpx solid var(--sh-line);
+  border-top: var(--sh-hairline);
 }
 .subs__title {
   display: block;
@@ -352,9 +357,6 @@ onUnmounted(() => clearInterval(timer));
 }
 .method__name {
   flex: 1;
-}
-.method__why {
-  color: var(--sh-sub);
 }
 /* 不可用的整块压暗，让「能点的是哪个」不用读文字就看得出来 */
 .method.is-off {

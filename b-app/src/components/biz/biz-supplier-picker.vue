@@ -121,7 +121,7 @@ const canCreate = computed(
 
 .sup {
   padding: 22rpx 0;
-  border-bottom: 1rpx solid var(--sh-line);
+  border-bottom: var(--sh-hairline);
 }
 
 /* 当前已选的那一行加重 —— 与挑货件的「已选置灰」不同：

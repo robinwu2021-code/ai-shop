@@ -25,6 +25,16 @@
     "appid": "wx3201250c28393850",
     "setting": { "urlCheck": false, "minified": true },
     "usingComponents": true,
+    /* 调用点传给组件的 class **要落到组件根上**，不能只落在宿主节点上。
+       两端的节点树形状不同：H5 里 `<script setup>` 组件没有宿主，`<sh-cover class="hero__emoji">`
+       编译出来就是它自己的根，页面那条 `.hero__emoji { width/height/border-radius }` 直接生效；
+       小程序里宿主是**真节点**，class 停在宿主上，组件根一条都吃不到 ——
+       于是全站 13 个封面在小程序上**尺寸由 image 的默认值决定、圆角丢失**，
+       而 H5 与原型上都是对的。这一个开关让两端一致（编译产物里可以看到组件根变成
+       `class="{{['cover','data-v-…', virtualHostClass]}}"`）。
+       ⚠️ 代价：class 会**同时**留在宿主上。所以调用点不要再往组件上挂
+       padding / border —— 那会被吃两遍。2026-09-06 打开时把两端 5 处这样的覆盖撤了。 */
+    "mergeVirtualHostAttributes": true,
     "permission": {
       "scope.userLocation": {
         "desc": "用于查找附近的社区自提点"

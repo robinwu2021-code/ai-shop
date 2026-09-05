@@ -400,7 +400,17 @@ def read_components() -> list[dict]:
 
 # (id, 名称, 在模板/脚本里找, 在样式里找, 若这个库件已被使用则不算自造, 对应库件)
 ROLLED = [
-    ("tabs",    "分栏切换",       None, r"^\s*\.tabs?\b",                       "sh-tabs",  "sh-tabs"),
+    # 2026-09-06 从判名字改成**判声明**（第十七次，也是这条规则最后一处误命中）：
+    # 原来只要有一条叫 `.tab` / `.tabs` 的规则就报，于是 `stock-cross` 被算了进来 ——
+    # 而那一页用的正是库件：`<view class="sh-row tabs">` 里排着 `.sh-chip` +
+    # `.sh-chip--primary`，`.tabs` 自己只有 `gap` 与 `padding-bottom` 两条**版面**。
+    # 名单说它自造，唯一的依据是类名叫 tabs。而这个仓库的规矩是「改名就能绕过去的判据
+    # 不算判据」—— 所以修的是判据不是名字。
+    # 真正该报的是**把页签本身画了一遍**：一个 `.tab*` 的规则里出现底色 / 圆角 /
+    # 下划线，那是 sh-tabs 与 .sh-chip 的活。只有容器的 gap 不算。
+    ("tabs",    "分栏切换",       None,
+     r"^\s*\.tabs?\b[^{}]*\{[^}]*(?:background:|border-radius:|border-bottom:)",
+     "sh-tabs",  "sh-tabs"),
     # 「空态」这条判据**撤掉了**：唯一还命中的 `home` 的 `.empty` 是整屏「未入驻」的
     # CTA（`sh-h1` + 说明 + 按钮），不是 `sh-empty` 那个「还没有内容」的一行灰字。
     # 按名字判第七次误命中。sh-empty 本身已有 24 页 27 处在用，这条留着只报假的。

@@ -154,7 +154,7 @@ function crumbs() {
   padding: 26rpx 4rpx;
   font-size: 28rpx;
   color: var(--sh-ink);
-  border-bottom: 2rpx solid var(--sh-hairline-soft);
+  border-bottom: var(--sh-hairline-soft);
 }
 
 .lv__node.is-on {

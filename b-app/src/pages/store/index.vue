@@ -286,7 +286,7 @@ onShow(() => {
         </view>
       </view>
       <!-- 多门店才提示：单店商家看到「每家店的码不一样」只会困惑 -->
-      <text v-if="merchant.multiStore" class="sh-hint qr__warn">{{ $t("store.qrcodeStoreWarn") }}</text>
+      <text v-if="merchant.multiStore" class="sh-hint is-warning">{{ $t("store.qrcodeStoreWarn") }}</text>
       <text class="sh-hint">{{ $t("store.qrcodeHint") }}</text>
 
       <view class="kitwrap">
@@ -379,10 +379,6 @@ onShow(() => {
   margin-top: 8rpx;
   letter-spacing: 4rpx;
   color: var(--sh-ink);
-}
-/* 多门店的提醒要比常规说明显眼一点 —— 它防的是「印完才发现」 */
-.qr__warn {
-  color: var(--sh-warning);
 }
 .btns {
   display: flex;
