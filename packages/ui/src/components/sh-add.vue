@@ -38,7 +38,7 @@ const label = computed(() => (props.active && props.activeText ? props.activeTex
       :size="small ? 20 : 24"
       :color="active ? 'var(--sh-sub)' : 'var(--sh-primary)'"
     ></sh-icon>
-    <text class="add__t">{{ label }}</text>
+    <text class="txt-caption txt-bold add__t">{{ label }}</text>
   </view>
 </template>
 
@@ -72,8 +72,6 @@ const label = computed(() => (props.active && props.activeText ? props.activeTex
   padding: 2rpx 14rpx;
 }
 .add__t {
-  font-size: 24rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
 }
 .add--on .add__t {

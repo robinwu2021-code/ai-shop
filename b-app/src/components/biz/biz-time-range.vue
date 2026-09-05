@@ -37,13 +37,13 @@ function clear() {
 </script>
 
 <template>
-  <view class="tr">
+  <view class="sh-row tr">
     <picker mode="time" :value="parts.start || '08:00'" @change="setPart('start', String(($event as any).detail.value))">
-      <view class="txt-body tr__box" :class="{ 'is-empty': !parts.start }">{{ parts.start || $t("store.timeRange.startPh") }}</view>
+      <view class="txt-body sh-row tr__box" :class="{ 'is-empty': !parts.start }">{{ parts.start || $t("store.timeRange.startPh") }}</view>
     </picker>
     <text class="txt-body tr__sep">{{ SEP }}</text>
     <picker mode="time" :value="parts.end || '21:00'" @change="setPart('end', String(($event as any).detail.value))">
-      <view class="txt-body tr__box" :class="{ 'is-empty': !parts.end }">{{ parts.end || $t("store.timeRange.endPh") }}</view>
+      <view class="txt-body sh-row tr__box" :class="{ 'is-empty': !parts.end }">{{ parts.end || $t("store.timeRange.endPh") }}</view>
     </picker>
     <text v-if="clearable && modelValue" class="txt-caption tr__clear" @tap="clear">{{ $t("store.timeRange.clear") }}</text>
   </view>
@@ -51,8 +51,6 @@ function clear() {
 
 <style scoped>
 .tr {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
 }
 .tr picker {
@@ -60,8 +58,6 @@ function clear() {
   min-width: 0;
 }
 .tr__box {
-  display: flex;
-  align-items: center;
   height: 88rpx;
   padding: 0 24rpx;
   border-radius: 24rpx;

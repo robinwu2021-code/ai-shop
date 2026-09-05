@@ -23,12 +23,12 @@ const off = computed(() =>
 <template>
   <view class="gcard" @tap="$emit('tap')">
     <view class="gcard__top">
-      <sh-cover class="gcard__cover" :src="group.cover"></sh-cover>
-      <view class="gcard__main">
+      <sh-cover class="sh-center gcard__cover" :src="group.cover"></sh-cover>
+      <view class="sh-fill gcard__main">
         <text class="txt-strong gcard__title">{{ group.title }}</text>
         <text class="txt-caption txt-quiet gcard__pickup">{{ group.pickupName }}</text>
         <view class="gcard__price">
-          <text class="txt-display gcard__now sh-num">{{ money(group.groupPrice) }}</text>
+          <text class="txt-display txt-ink gcard__now sh-num">{{ money(group.groupPrice) }}</text>
           <text v-if="off > 0" class="txt-caption txt-quiet gcard__base sh-num">{{
             money(group.basePrice)
           }}</text>
@@ -40,11 +40,16 @@ const off = computed(() =>
     </view>
 
     <!-- 还差几人到下一档 —— 这句话就是分享文案 -->
-    <view class="gcard__goal">
-      <text v-if="!group.reached" class="txt-sub gcard__goal-text">
+    <view class="sh-row sh-row--between gcard__goal">
+      <!--
+        强调靠**主色**，不靠字重 —— 这行已经是全卡唯一的彩色文字，再加一道粗体是同一件事说两遍。
+        ⚠️ 颜色走库件类而不是本页 scoped 规则：scoped 选择器带 `[data-v-x]`，权重压得过
+        全局的 `.is-success` —— 「已成团」那一支会被染回主色，而两个类看着都挂着。
+      -->
+      <text v-if="!group.reached" class="txt-sub txt-primary">
         {{ $t("group.needMore", { n: group.need }) }}
       </text>
-      <text v-else class="txt-sub gcard__goal-text is-success">
+      <text v-else class="txt-sub is-success">
         {{ $t("group.done") }}
       </text>
       <text class="txt-caption gcard__cd sh-num">{{
@@ -56,8 +61,8 @@ const off = computed(() =>
       <view class="bar__fill" :style="{ width: `${progress}%` }" />
     </view>
 
-    <view class="gcard__foot">
-      <view class="avatars">
+    <view class="sh-row sh-row--between gcard__foot">
+      <view class="sh-row avatars">
         <text
           v-for="(m, i) in group.members.slice(0, 5)"
           :key="i"
@@ -98,15 +103,8 @@ const off = computed(() =>
   width: 150rpx;
   height: 150rpx;
   border-radius: 32rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-size: 96rpx;
   flex-shrink: 0;
-}
-.gcard__main {
-  flex: 1;
-  min-width: 0;
 }
 .gcard__title {
   display: block;
@@ -126,24 +124,12 @@ const off = computed(() =>
   gap: 12rpx;
   margin-top: 16rpx;
 }
-.gcard__now {
-  color: var(--sh-ink);
-}
 .gcard__base {
   color: var(--sh-sub);
   text-decoration: line-through;
 }
 .gcard__goal {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
   margin-top: 24rpx;
-}
-.gcard__goal-text {
-  /* 强调靠**主色**，不靠字重 —— 这行已经是全卡唯一的彩色文字，
-     再加一道粗体是同一件事说两遍。字号归 .txt-sub */
-  color: var(--sh-primary-text);
 }
 .gcard__cd {
   color: var(--sh-warning);
@@ -164,15 +150,9 @@ const off = computed(() =>
   transition: width 0.3s ease;
 }
 .gcard__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
   margin-top: 24rpx;
 }
 .avatars {
-  display: flex;
-  align-items: center;
   gap: 8rpx;
   min-width: 0;
 }

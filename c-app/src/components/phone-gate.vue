@@ -121,7 +121,7 @@ async function bind(run: () => Promise<unknown>) {
       <text class="sh-muted sheet__why">{{ $t("phoneGate.why") }}</text>
 
       <view v-if="conflict" class="conflict">
-        <text class="txt-sub conflict__text">{{ $t("phoneGate.conflict") }}</text>
+        <text class="txt-sub txt-ink conflict__text">{{ $t("phoneGate.conflict") }}</text>
       </view>
 
       <!-- 一键：拿到的是 code，换号在后端 -->
@@ -139,10 +139,10 @@ async function bind(run: () => Promise<unknown>) {
       <view v-if="!capable" class="form">
         <input v-model="phone" class="field__input form__input" type="number" maxlength="11"
                :placeholder="String($t('phoneGate.phonePlaceholder'))" />
-        <view class="form__row">
+        <view class="sh-row form__row">
           <input v-model="code" class="field__input form__input form__input--code" type="number" maxlength="6"
                  :placeholder="String($t('phoneGate.codePlaceholder'))" />
-          <view class="sh-btn sh-btn--soft sh-btn--sm form__send" :class="{ 'is-off': sending }" @tap="sendCode">
+          <view class="sh-btn sh-btn--soft sh-btn--sm sh-row form__send" :class="{ 'is-off': sending }" @tap="sendCode">
             {{ $t("phoneGate.sendCode") }}
           </view>
         </view>
@@ -189,9 +189,6 @@ async function bind(run: () => Promise<unknown>) {
   border-radius: 16rpx;
   background: var(--sh-warning-tint);
 }
-.conflict__text {
-  color: var(--sh-ink);
-}
 .form {
   margin-top: 32rpx;
 }
@@ -201,9 +198,6 @@ async function bind(run: () => Promise<unknown>) {
   margin-bottom: 20rpx;
 }
 .form__row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
 }
 .form__input--code {
   flex: 1;
@@ -212,8 +206,6 @@ async function bind(run: () => Promise<unknown>) {
 /* 居中用 flex 而不是 line-height：后者既是「行距」又是「盒高」，
    判据分不出来，而字阶那一档的行距本来该由 .sh-btn--sm 给 */
 .form__send {
-  display: flex;
-  align-items: center;
   height: 88rpx;
   padding: 0 24rpx;
   margin-bottom: 20rpx;

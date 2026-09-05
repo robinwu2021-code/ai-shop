@@ -56,7 +56,7 @@ function close() {
       <!-- 两组配色分开：纯白底组只换主色与字色，整套组连背景一起换。
            **色点上不写字** —— 颜色本身就是最清楚的标识，压上文字反而看不清色；
            选中是谁、什么用途，都交给下方那一行 tip。 -->
-      <text class="sheet__label">{{ $t("theme.skinPure") }}</text>
+      <text class="txt-caption sheet__label">{{ $t("theme.skinPure") }}</text>
       <view class="swatches">
         <view
           v-for="id in PURE_SKINS"
@@ -66,11 +66,11 @@ function close() {
           :style="{ background: skinColor(id) }"
           @tap="theme.setSkin(id)"
         >
-          <text v-if="theme.skin === id" class="swatch__tick">✓</text>
+          <sh-icon v-if="theme.skin === id" class="swatch__tick" name="check" :size="28" color="#fff"></sh-icon>
         </view>
       </view>
 
-      <text class="sheet__label">{{ $t("theme.skinFull") }}</text>
+      <text class="txt-caption sheet__label">{{ $t("theme.skinFull") }}</text>
       <view class="swatches">
         <view
           v-for="id in FULL_SKINS"
@@ -80,21 +80,21 @@ function close() {
           :style="{ background: skinColor(id) }"
           @tap="theme.setSkin(id)"
         >
-          <text v-if="theme.skin === id" class="swatch__tick">✓</text>
+          <sh-icon v-if="theme.skin === id" class="swatch__tick" name="check" :size="28" color="#fff"></sh-icon>
         </view>
       </view>
 
       <!-- 选中的是哪套、什么用途，只在这里说一次 -->
-      <text class="sheet__tip">
+      <text class="txt-caption sheet__tip">
         {{ $t(`skin.${theme.skin}`) }} · {{ $t(`skin.${theme.skin}Desc`) }}
       </text>
 
-      <text class="sheet__label">{{ $t("theme.mode") }}</text>
+      <text class="txt-caption sheet__label">{{ $t("theme.mode") }}</text>
       <view class="opts">
         <view
           v-for="m in MODES"
           :key="m"
-          class="opts__item"
+          class="txt-sub opts__item"
           :class="{ 'is-on': theme.mode === m }"
           @tap="theme.setMode(m)"
         >
@@ -102,12 +102,12 @@ function close() {
         </view>
       </view>
 
-      <text class="sheet__label">{{ $t("theme.language") }}</text>
+      <text class="txt-caption sheet__label">{{ $t("theme.language") }}</text>
       <view class="opts">
         <view
           v-for="l in LANGS"
           :key="l.id"
-          class="opts__item"
+          class="txt-sub opts__item"
           :class="{ 'is-on': app.lang === l.id }"
           @tap="switchLang(l.id)"
         >
@@ -115,12 +115,12 @@ function close() {
         </view>
       </view>
 
-      <text class="sheet__label">{{ $t("market.label") }}</text>
+      <text class="txt-caption sheet__label">{{ $t("market.label") }}</text>
       <view class="opts opts--stack">
         <view
           v-for="m in MARKETS"
           :key="m.id"
-          class="opts__item"
+          class="txt-sub opts__item"
           :class="{ 'is-on': market.market === m.id }"
           @tap="switchMarket(m.id)"
         >
@@ -172,7 +172,6 @@ function close() {
 .sheet__label {
   display: block;
   margin: 44rpx 0 20rpx;
-  font-size: 24rpx;
   color: var(--sh-sub);
 }
 /* 一行固定 4 个、超出换行。
@@ -200,19 +199,16 @@ function close() {
   /* 选中靠一圈描边 + 勾，不靠底色 —— 底色已经被皮肤色占了 */
   box-shadow: 0 0 0 6rpx var(--sh-bg), 0 0 0 12rpx var(--sh-ink);
 }
+/* 勾压在任意皮肤色上都要看得见，用遮罩 token 做一层暗投影兜底（不写死颜色）。
+   `drop-shadow` 而不是 `text-shadow`：这枚勾现在是 sh-icon（mask 出来的形状），
+   text-shadow 对它无效 —— 换图标时最容易连带丢掉的就是这一条 */
 .swatch__tick {
-  color: #fff;
-  font-size: 34rpx;
-  font-weight: 600;
-  /* 勾压在任意皮肤色上都要看得见，用遮罩 token 做一层暗描边兜底（不写死颜色） */
-  text-shadow: 0 2rpx 6rpx var(--sh-scrim);
+  filter: drop-shadow(0 2rpx 6rpx var(--sh-scrim));
 }
 .sheet__tip {
   display: block;
   margin-top: 16rpx;
-  font-size: 24rpx;
   color: var(--sh-sub);
-  line-height: 1.5;
 }
 .opts {
   display: flex;
@@ -229,12 +225,10 @@ function close() {
   border-radius: 24rpx;
   background: var(--sh-faint);
   color: var(--sh-sub);
-  font-size: 26rpx;
 }
 .opts__item.is-on {
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  font-weight: 600;
 }
 .sheet__done {
   margin-top: 52rpx;

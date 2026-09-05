@@ -12,7 +12,7 @@ const s = confirmState;
 
 <template>
   <sh-dialog :visible="s.visible" :title="s.title" @close="closeConfirm(false)">
-    <text v-if="s.hint" class="cf__hint">{{ s.hint }}</text>
+    <text v-if="s.hint" class="txt-sub cf__hint">{{ s.hint }}</text>
     <template #actions>
       <text v-if="!s.alert" class="sh-btn sh-btn--muted sh-dialog__act" @tap="closeConfirm(false)">
         {{ s.cancelText || $t("common.cancel") }}
@@ -32,8 +32,6 @@ const s = confirmState;
 .cf__hint {
   display: block;
   margin-top: 12rpx;
-  font-size: 26rpx;
-  line-height: 1.6;
   color: var(--sh-sub);
 }
 </style>

@@ -76,7 +76,7 @@ watch(
           {{ tab.badge > 99 ? "99+" : tab.badge }}
         </text>
       </view>
-      <text class="tabbar__label">{{ $t(tab.labelKey) }}</text>
+      <text class="txt-body tabbar__label">{{ $t(tab.labelKey) }}</text>
     </view>
   </view>
 </template>
@@ -100,16 +100,16 @@ watch(
    */
   border-top: var(--sh-hairline);
   box-shadow: 0 -6rpx 20rpx var(--sh-scrim);
-  padding: 14rpx 0 14rpx;
-  padding: 14rpx 0 calc(14rpx + env(safe-area-inset-bottom));
+  padding: 16rpx 0;
+  padding: 16rpx 0 calc(16rpx + env(safe-area-inset-bottom));
 }
 .tabbar__item {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6rpx;
-  padding: 6rpx 0;
+  gap: 8rpx;
+  padding: 8rpx 0;
   color: var(--sh-sub);
   transition: color 0.18s ease;
 }
@@ -130,11 +130,8 @@ watch(
 }
 /* 字号 28rpx —— 原生 tabBar 固定在 ~20rpx，这是本次要解决的问题 */
 .tabbar__label {
-  font-size: 28rpx;
-  font-weight: 400;
 }
 .tabbar__item.is-on .tabbar__label {
-  font-weight: 400;
 }
 .tabbar__badge {
   position: absolute;

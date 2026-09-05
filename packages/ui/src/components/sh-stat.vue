@@ -74,8 +74,8 @@ function tap(it: StatItem) {
       :class="{ 'st__i--box': boxed, 'is-on': (boxed || panel) && !!it.key && active === it.key }"
       @tap="tap(it)"
     >
-      <text class="st__n sh-num" :class="it.tone ? `st__n--${it.tone}` : ''">{{ it.value }}</text>
-      <text class="st__l">{{ it.label }}</text>
+      <text class="txt-display st__n sh-num" :class="it.tone ? `txt-display st__n--${it.tone}` : ''">{{ it.value }}</text>
+      <text class="txt-caption st__l">{{ it.label }}</text>
     </view>
   </view>
 </template>
@@ -110,9 +110,6 @@ function tap(it: StatItem) {
 }
 .st__n {
   display: block;
-  font-size: 40rpx;
-  font-weight: 600;
-  line-height: 1.2;
   color: var(--sh-ink);
 }
 .st__n--ok {
@@ -131,8 +128,7 @@ function tap(it: StatItem) {
 }
 .st__l {
   display: block;
-  margin-top: 6rpx;
-  font-size: 24rpx;
+  margin-top: 8rpx;
   color: var(--sh-sub);
 }
 </style>

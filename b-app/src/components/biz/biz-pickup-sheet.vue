@@ -141,9 +141,9 @@ function close() {
 <template>
   <view v-if="visible" class="mask" @tap="close">
     <view class="sheet" @tap.stop>
-      <view class="sheet__head">
-        <text class="txt-title sheet__title">{{ $t("store.pickup.title") }}</text>
-        <text class="txt-sub sheet__count">{{ $t("store.picker.selected", { n: picked.length }) }}</text>
+      <view class="sh-row sh-row--between sheet__head">
+        <text class="txt-title txt-ink sheet__title">{{ $t("store.pickup.title") }}</text>
+        <text class="txt-sub txt-quiet sheet__count">{{ $t("store.picker.selected", { n: picked.length }) }}</text>
       </view>
       <text class="txt-caption hint">{{ $t("store.pickup.lead") }}</text>
 
@@ -151,34 +151,34 @@ function close() {
         <text v-if="loading" class="txt-caption hint">{{ $t("common.loading") }}</text>
         <template v-else>
           <text v-if="mine.length" class="txt-caption group">{{ $t("store.pickup.mine") }}</text>
-          <view v-for="c in mine" :key="c.pickupNo" class="row" :class="{ 'is-off': !selectable(c) }" @tap="toggle(c)">
-            <view class="row__main">
+          <view v-for="c in mine" :key="c.pickupNo" class="sh-row row" :class="{ 'is-off': !selectable(c) }" @tap="toggle(c)">
+            <view class="sh-fill row__main">
               <text class="txt-strong row__name">
                 {{ c.name }}<text v-if="c.status !== 'ACTIVE'" class="sh-chip row__st" :class="c.status === 'PENDING' ? 'sh-chip--warning' : ''">{{ $t(`store.pickup.st${c.status}`) }}</text>
               </text>
               <text class="txt-caption row__sub">{{ c.address || c.communityName }}</text>
               <text v-if="c.status === 'REJECTED' && c.rejectReason" class="txt-caption row__reason">{{ c.rejectReason }}</text>
             </view>
-            <view v-if="selectable(c)" class="row__check" :class="{ 'is-on': isOn(c.pickupNo) }">
+            <view v-if="selectable(c)" class="sh-center row__check" :class="{ 'is-on': isOn(c.pickupNo) }">
               <sh-icon v-if="isOn(c.pickupNo)" name="check" :size="24" color="var(--sh-on-primary)"></sh-icon>
             </view>
           </view>
 
           <text v-if="others.length" class="txt-caption group">{{ $t("store.pickup.nearby") }}</text>
-          <view v-for="c in others" :key="c.pickupNo" class="row" @tap="toggle(c)">
-            <view class="row__main">
+          <view v-for="c in others" :key="c.pickupNo" class="sh-row row" @tap="toggle(c)">
+            <view class="sh-fill row__main">
               <text class="txt-strong row__name">{{ c.name }}</text>
               <text class="txt-caption row__sub">{{ c.communityName }}<template v-if="c.address"> · {{ c.address }}</template></text>
             </view>
-            <view class="row__check" :class="{ 'is-on': isOn(c.pickupNo) }">
+            <view class="sh-center row__check" :class="{ 'is-on': isOn(c.pickupNo) }">
               <sh-icon v-if="isOn(c.pickupNo)" name="check" :size="24" color="var(--sh-on-primary)"></sh-icon>
             </view>
           </view>
           <text v-if="!mine.length && !others.length" class="txt-caption hint">{{ $t("store.pickup.empty") }}</text>
 
           <!-- 自建 -->
-          <view v-if="!buildOpen" class="row row--build" @tap="buildOpen = true">
-            <text class="txt-sub row__build">{{ $t("store.pickup.buildEntry") }}</text>
+          <view v-if="!buildOpen" class="sh-row row row--build" @tap="buildOpen = true">
+            <text class="txt-sub txt-primary row__build">{{ $t("store.pickup.buildEntry") }}</text>
           </view>
           <view v-else class="build">
             <text class="txt-caption hint">{{ $t("store.pickup.buildHint") }}</text>
@@ -188,7 +188,7 @@ function close() {
             <biz-time-range v-model="form.openHours" clearable></biz-time-range>
             <view class="locate" :class="{ 'is-ok': !!coords }" @tap="locate">
               <sh-icon name="pin" :size="18" :color="coords ? 'var(--sh-primary-text)' : 'var(--sh-sub)'"></sh-icon>
-              <text class="txt-caption locate__t">{{ locating ? $t("common.loading") : coords ? $t("store.pickup.pinned") : $t("store.pickup.pin") }}</text>
+              <text class="txt-caption txt-quiet locate__t">{{ locating ? $t("common.loading") : coords ? $t("store.pickup.pinned") : $t("store.pickup.pin") }}</text>
             </view>
             <view class="build__btns">
               <text class="sh-btn sh-btn--soft build__go" @tap="submitBuild">{{ submitting ? "…" : $t("common.submit") }}</text>
@@ -224,16 +224,7 @@ function close() {
   background: var(--sh-surface);
 }
 .sheet__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 28rpx 32rpx 8rpx;
-}
-.sheet__title {
-  color: var(--sh-ink);
-}
-.sheet__count {
-  color: var(--sh-sub);
 }
 .hint {
   display: block;
@@ -251,18 +242,12 @@ function close() {
   color: var(--sh-sub);
 }
 .row {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   padding: 22rpx 32rpx;
   border-bottom: var(--sh-hairline);
 }
 .row.is-off {
   opacity: 0.6;
-}
-.row__main {
-  flex: 1;
-  min-width: 0;
 }
 .row__name {
   display: block;
@@ -283,9 +268,6 @@ function close() {
 }
 .row__check {
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 44rpx;
   height: 44rpx;
   border-radius: 9999px;
@@ -298,9 +280,6 @@ function close() {
 }
 .row--build {
   border-bottom: none;
-}
-.row__build {
-  color: var(--sh-primary-text);
 }
 .build {
   display: flex;
@@ -319,9 +298,6 @@ function close() {
 }
 .locate.is-ok {
   background: var(--sh-primary-tint);
-}
-.locate__t {
-  color: var(--sh-sub);
 }
 .locate.is-ok .locate__t {
   color: var(--sh-primary-text);

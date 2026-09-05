@@ -36,7 +36,7 @@ withDefaults(
 
 <template>
   <view class="kv" :class="{ 'is-between': between, 'is-divided': divided }">
-    <text class="kv__k" :style="between ? {} : { flex: `0 0 ${keyWidth}rpx` }">{{ label }}</text>
+    <text class="txt-sub kv__k" :style="between ? {} : { flex: `0 0 ${keyWidth}rpx` }">{{ label }}</text>
     <view class="kv__v"><slot></slot></view>
   </view>
 </template>
@@ -58,7 +58,6 @@ withDefaults(
   border-top: var(--sh-hairline);
 }
 .kv__k {
-  font-size: 26rpx;
   color: var(--sh-sub);
 }
 .kv__v {

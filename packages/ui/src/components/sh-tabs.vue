@@ -55,7 +55,6 @@ defineEmits<{ (e: "change", key: string): void }>();
   margin-inline-end: 12rpx;
 }
 .tabs__chip {
-  font-size: 24rpx;
   padding: 12rpx 24rpx;
 }
 </style>

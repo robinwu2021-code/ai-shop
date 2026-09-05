@@ -23,9 +23,9 @@ const inputType = computed(() => (s.type === "text" ? "text" : s.type));
     <view class="pr__mask" @tap="closePrompt(null)"></view>
     <view class="pr__panel">
       <view class="pr__grip"></view>
-      <text class="pr__title">{{ s.title }}</text>
+      <text class="txt-title pr__title">{{ s.title }}</text>
       <!-- 说明**在输入框外面**。这是这个组件存在的一半理由，见 prompt.ts -->
-      <text v-if="s.hint" class="pr__hint">{{ s.hint }}</text>
+      <text v-if="s.hint" class="txt-caption pr__hint">{{ s.hint }}</text>
       <input
         v-model="s.input"
         class="field__input pr__input"
@@ -82,15 +82,11 @@ const inputType = computed(() => (s.type === "text" ? "text" : s.type));
 }
 .pr__title {
   display: block;
-  font-size: 34rpx;
-  font-weight: 600;
   color: var(--sh-ink);
 }
 .pr__hint {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
   color: var(--sh-sub);
 }
 .pr__input {

@@ -19,7 +19,7 @@ defineEmits<{ (e: "tap"): void }>();
 </script>
 
 <template>
-  <view class="fab" @tap="$emit('tap')">{{ text }}</view>
+  <view class="txt-strong fab" @tap="$emit('tap')">{{ text }}</view>
 </template>
 
 <style scoped>
@@ -35,8 +35,6 @@ defineEmits<{ (e: "tap"): void }>();
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  font-size: 28rpx;
-  font-weight: 600;
   white-space: nowrap;
   /* 阴影用 scrim（皮肤里那层半透明黑）：写死 rgba 在深色皮肤下会糊成一团 */
   box-shadow: 0 8rpx 24rpx var(--sh-scrim);

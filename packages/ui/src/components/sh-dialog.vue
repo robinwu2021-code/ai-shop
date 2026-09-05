@@ -32,7 +32,7 @@ const emit = defineEmits<{ close: [] }>();
   <view v-if="visible" class="dlg">
     <view class="dlg__mask" @tap="maskClosable && emit('close')"></view>
     <view class="dlg__panel" @tap.stop>
-      <text v-if="title" class="dlg__title">{{ title }}</text>
+      <text v-if="title" class="txt-title dlg__title">{{ title }}</text>
       <slot></slot>
       <view v-if="$slots.actions" class="dlg__acts">
         <slot name="actions"></slot>
@@ -67,9 +67,6 @@ const emit = defineEmits<{ close: [] }>();
 }
 .dlg__title {
   display: block;
-  font-size: 34rpx;
-  font-weight: 600;
-  line-height: 1.4;
   color: var(--sh-ink);
   margin-bottom: 12rpx;
 }

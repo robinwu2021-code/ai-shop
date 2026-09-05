@@ -8,10 +8,10 @@ defineEmits<{ (e: "tap"): void }>();
 </script>
 
 <template>
-  <view class="bar" @tap="$emit('tap')">
+  <view class="sh-row bar" @tap="$emit('tap')">
     <text class="bar__logo">{{ merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
-    <view class="bar__main">
-      <view class="bar__title">
+    <view class="sh-fill bar__main">
+      <view class="sh-row bar__title">
         <!--
           自营标识。**电商法 §37 的法定义务** —— 平台自营业务必须以显著方式区分标记。
           排在店名**之前**：它回答的是「谁在卖」，而店名只回答「货是谁供的」。
@@ -36,8 +36,6 @@ defineEmits<{ (e: "tap"): void }>();
 
 <style scoped>
 .bar {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
 }
 .bar__logo {
@@ -50,13 +48,7 @@ defineEmits<{ (e: "tap"): void }>();
   font-size: 40rpx;
   flex-shrink: 0;
 }
-.bar__main {
-  flex: 1;
-  min-width: 0;
-}
 .bar__title {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
   margin-bottom: 8rpx;
 }

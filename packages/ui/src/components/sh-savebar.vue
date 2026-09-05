@@ -32,7 +32,7 @@ defineEmits<{ (e: "discard"): void; (e: "save"): void }>();
          而这块空白只要「不挡住内容」就够了，多出的十几 rpx 没有代价。 -->
     <view class="bar__pad"></view>
     <view class="bar">
-      <text class="bar__t">{{ text }}</text>
+      <text class="txt-sub bar__t">{{ text }}</text>
       <text class="sh-btn sh-btn--muted bar__discard" @tap="$emit('discard')">{{ discardText }}</text>
       <view class="sh-btn bar__save" @tap="$emit('save')">{{ saveText }}</view>
     </view>
@@ -67,14 +67,11 @@ defineEmits<{ (e: "discard"): void; (e: "save"): void }>();
 }
 .bar__t {
   flex: 1;
-  font-size: 26rpx;
   color: var(--sh-sub);
 }
 .bar__discard {
   flex-shrink: 0;
   padding: 24rpx 32rpx;
-  font-size: 26rpx;
-  font-weight: 400;
 }
 .bar__save {
   padding: 20rpx 48rpx;

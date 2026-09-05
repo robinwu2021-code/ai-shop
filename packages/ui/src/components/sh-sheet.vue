@@ -39,10 +39,10 @@ const emit = defineEmits<{ close: [] }>();
     <view class="sheet__panel">
       <view class="sheet__grip" />
       <view class="sheet__head">
-        <text class="sheet__title">{{ title }}</text>
+        <text class="txt-title sheet__title">{{ title }}</text>
         <sh-icon-btn name="close" :size="28" :box="48" @tap="emit('close')"></sh-icon-btn>
       </view>
-      <text v-if="hint" class="sheet__hint">{{ hint }}</text>
+      <text v-if="hint" class="txt-caption sheet__hint">{{ hint }}</text>
       <slot />
     </view>
   </view>
@@ -101,8 +101,6 @@ const emit = defineEmits<{ close: [] }>();
    goods-list 的 .sheet__t 与 order 的 .dlg__title 也都是 32rpx。 */
 .sheet__title {
   flex: 1;
-  font-size: 34rpx;
-  font-weight: 600;
   color: var(--sh-ink);
 }
 
@@ -110,7 +108,6 @@ const emit = defineEmits<{ close: [] }>();
 .sheet__hint {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
   color: var(--sh-sub);
 }
 </style>

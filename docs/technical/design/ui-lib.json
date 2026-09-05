@@ -312,8 +312,8 @@
         "justify-content": "center"
       },
       "usage": {
-        "b-app": 5,
-        "c-app": 21
+        "b-app": 9,
+        "c-app": 27
       }
     },
     {
@@ -388,8 +388,8 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 82,
-        "c-app": 34
+        "b-app": 86,
+        "c-app": 39
       }
     },
     {
@@ -548,8 +548,8 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 255,
-        "c-app": 130
+        "b-app": 269,
+        "c-app": 142
       }
     },
     {
@@ -580,8 +580,8 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 125,
-        "c-app": 74
+        "b-app": 129,
+        "c-app": 77
       }
     },
     {
@@ -750,7 +750,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 52,
+        "b-app": 53,
         "c-app": 19
       }
     },
@@ -766,7 +766,7 @@
         "font-weight": "600"
       },
       "usage": {
-        "b-app": 22,
+        "b-app": 23,
         "c-app": 16
       }
     },
@@ -798,8 +798,8 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 9,
-        "c-app": 18
+        "b-app": 12,
+        "c-app": 20
       }
     },
     {
@@ -814,8 +814,8 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 23,
-        "c-app": 23
+        "b-app": 27,
+        "c-app": 25
       }
     },
     {
@@ -830,8 +830,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 26,
-        "c-app": 14
+        "b-app": 30,
+        "c-app": 16
       }
     },
     {
@@ -874,7 +874,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 76,
+        "b-app": 78,
         "c-app": 61
       }
     },
@@ -896,7 +896,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 288,
+        "b-app": 300,
         "c-app": 235
       }
     },
@@ -918,7 +918,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 32,
+        "b-app": 34,
         "c-app": 8
       }
     },
@@ -1006,7 +1006,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 128,
+        "b-app": 129,
         "c-app": 41
       }
     },
@@ -1028,7 +1028,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 109,
+        "b-app": 116,
         "c-app": 97
       }
     },
@@ -1050,7 +1050,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 104,
+        "b-app": 108,
         "c-app": 29
       }
     },
@@ -1573,7 +1573,7 @@
       "name": "sh-add",
       "file": "packages/ui/src/components/sh-add.vue",
       "scope": "跨端",
-      "lines": 82,
+      "lines": 80,
       "props": [
         "text: string",
         "activeText?: string",
@@ -1608,7 +1608,7 @@
       "name": "sh-confirm",
       "file": "packages/ui/src/components/sh-confirm.vue",
       "scope": "跨端",
-      "lines": 39,
+      "lines": 37,
       "props": [],
       "usage": {
         "b-app": 0,
@@ -1637,7 +1637,7 @@
       "name": "sh-dialog",
       "file": "packages/ui/src/components/sh-dialog.vue",
       "scope": "跨端",
-      "lines": 85,
+      "lines": 82,
       "props": [
         "visible: boolean",
         "title?: string",
@@ -1671,7 +1671,7 @@
       "name": "sh-fab",
       "file": "packages/ui/src/components/sh-fab.vue",
       "scope": "跨端",
-      "lines": 44,
+      "lines": 42,
       "props": [
         "text: string"
       ],
@@ -1737,7 +1737,7 @@
       "name": "sh-kv",
       "file": "packages/ui/src/components/sh-kv.vue",
       "scope": "跨端",
-      "lines": 73,
+      "lines": 72,
       "props": [
         "label: string",
         "between?: boolean",
@@ -1771,7 +1771,7 @@
       "name": "sh-pick",
       "file": "packages/ui/src/components/sh-pick.vue",
       "scope": "跨端",
-      "lines": 58,
+      "lines": 56,
       "props": [],
       "usage": {
         "b-app": 0,
@@ -1784,7 +1784,7 @@
       "name": "sh-prompt",
       "file": "packages/ui/src/components/sh-prompt.vue",
       "scope": "跨端",
-      "lines": 110,
+      "lines": 106,
       "props": [],
       "usage": {
         "b-app": 0,
@@ -1797,7 +1797,7 @@
       "name": "sh-rating",
       "file": "packages/ui/src/components/sh-rating.vue",
       "scope": "跨端",
-      "lines": 56,
+      "lines": 57,
       "props": [
         "value: number",
         "size?: number",
@@ -1814,7 +1814,7 @@
       "name": "sh-savebar",
       "file": "packages/ui/src/components/sh-savebar.vue",
       "scope": "跨端",
-      "lines": 82,
+      "lines": 79,
       "props": [
         "visible: boolean",
         "text: string",
@@ -1832,7 +1832,7 @@
       "name": "sh-scaffold",
       "file": "packages/ui/src/components/sh-scaffold.vue",
       "scope": "跨端",
-      "lines": 278,
+      "lines": 274,
       "props": [
         "padded?: boolean",
         "titleKey?: string",
@@ -1867,7 +1867,7 @@
       "name": "sh-sheet",
       "file": "packages/ui/src/components/sh-sheet.vue",
       "scope": "跨端",
-      "lines": 116,
+      "lines": 113,
       "props": [
         "visible: boolean",
         "title: string",
@@ -1885,7 +1885,7 @@
       "name": "sh-stat",
       "file": "packages/ui/src/components/sh-stat.vue",
       "scope": "跨端",
-      "lines": 138,
+      "lines": 134,
       "props": [
         "items: readonly StatItem[]",
         "boxed?: boolean",
@@ -1919,7 +1919,7 @@
       "name": "sh-tabbar",
       "file": "packages/ui/src/components/sh-tabbar.vue",
       "scope": "跨端",
-      "lines": 144,
+      "lines": 141,
       "props": [
         "active: string"
       ],
@@ -1934,7 +1934,7 @@
       "name": "sh-tabs",
       "file": "packages/ui/src/components/sh-tabs.vue",
       "scope": "跨端",
-      "lines": 61,
+      "lines": 60,
       "props": [
         "items: readonly { key: string",
         "label: string }[]",
@@ -1951,7 +1951,7 @@
       "name": "sh-theme-sheet",
       "file": "packages/ui/src/components/sh-theme-sheet.vue",
       "scope": "跨端",
-      "lines": 242,
+      "lines": 236,
       "props": [
         "visible: boolean"
       ],
@@ -1966,7 +1966,7 @@
       "name": "sh-uploader",
       "file": "packages/ui/src/components/sh-uploader.vue",
       "scope": "跨端",
-      "lines": 139,
+      "lines": 140,
       "props": [
         "list: readonly string[]",
         "max?: number",
@@ -2019,7 +2019,7 @@
       "name": "biz-pickup-sheet",
       "file": "b-app/src/components/biz/biz-pickup-sheet.vue",
       "scope": "B 端",
-      "lines": 348,
+      "lines": 324,
       "props": [
         "visible: boolean",
         "storeNo: string",
@@ -2036,7 +2036,7 @@
       "name": "biz-region-picker",
       "file": "b-app/src/components/biz/biz-region-picker.vue",
       "scope": "B 端",
-      "lines": 1691,
+      "lines": 1629,
       "props": [
         "visible: boolean",
         "areas: ServiceArea[]"
@@ -2052,7 +2052,7 @@
       "name": "biz-store-tag",
       "file": "b-app/src/components/biz/biz-store-tag.vue",
       "scope": "B 端",
-      "lines": 97,
+      "lines": 94,
       "props": [
         "readonly?: boolean"
       ],
@@ -2085,7 +2085,7 @@
       "name": "biz-time-range",
       "file": "b-app/src/components/biz/biz-time-range.vue",
       "scope": "B 端",
-      "lines": 82,
+      "lines": 78,
       "props": [
         "modelValue: string",
         "clearable?: boolean"
@@ -3601,14 +3601,398 @@
       "localSelectors": 23,
       "localCssLines": 115,
       "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "app-overlay",
+      "key": "b-app/app-overlay",
+      "file": "b-app/src/components/app-overlay.vue",
+      "components": [],
+      "libClassHits": 0,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "biz-item-picker",
+      "key": "b-app/biz-item-picker",
+      "file": "b-app/src/components/biz/biz-item-picker.vue",
+      "components": [
+        "sh-empty",
+        "sh-sheet"
+      ],
+      "libClassHits": 11,
+      "localSelectors": 7,
+      "localCssLines": 25,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "biz-pickup-sheet",
+      "key": "b-app/biz-pickup-sheet",
+      "file": "b-app/src/components/biz/biz-pickup-sheet.vue",
+      "components": [
+        "sh-icon",
+        "biz-time-range"
+      ],
+      "libClassHits": 37,
+      "localSelectors": 23,
+      "localCssLines": 115,
+      "rolled": [
+        {
+          "id": "sheet",
+          "label": "弹层 / 遮罩",
+          "lib": "sh-sheet",
+          "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
+          "gap": false
+        },
+        {
+          "id": "segment",
+          "label": "选中态自画（含未拆出的）",
+          "lib": ".sh-chip--primary / --solid",
+          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "b-app",
+      "page": "biz-region-picker",
+      "key": "b-app/biz-region-picker",
+      "file": "b-app/src/components/biz/biz-region-picker.vue",
+      "components": [
+        "sh-icon-btn",
+        "sh-icon"
+      ],
+      "libClassHits": 49,
+      "localSelectors": 50,
+      "localCssLines": 258,
+      "rolled": [
+        {
+          "id": "tabs",
+          "label": "分栏切换",
+          "lib": "sh-tabs",
+          "rule": "^\\s*\\.tabs?\\b[^{}]*\\{[^}]*(?:background:|border-radius:|border-bottom:)",
+          "gap": false
+        },
+        {
+          "id": "sheet",
+          "label": "弹层 / 遮罩",
+          "lib": "sh-sheet",
+          "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
+          "gap": false
+        },
+        {
+          "id": "segment",
+          "label": "选中态自画（含未拆出的）",
+          "lib": ".sh-chip--primary / --solid",
+          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
+          "gap": false
+        },
+        {
+          "id": "listrow",
+          "label": "横排行",
+          "lib": ".sh-row",
+          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
+          "gap": false
+        },
+        {
+          "id": "wraprow",
+          "label": "换行横排",
+          "lib": ".sh-wrap",
+          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
+          "gap": false
+        },
+        {
+          "id": "inkover",
+          "label": "正文色自写",
+          "lib": ".txt-ink",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-ink\\);?\\s*\\}",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "b-app",
+      "page": "biz-store-tag",
+      "key": "b-app/biz-store-tag",
+      "file": "b-app/src/components/biz/biz-store-tag.vue",
+      "components": [
+        "sh-go",
+        "sh-icon"
+      ],
+      "libClassHits": 3,
+      "localSelectors": 3,
+      "localCssLines": 16,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "biz-supplier-picker",
+      "key": "b-app/biz-supplier-picker",
+      "file": "b-app/src/components/biz/biz-supplier-picker.vue",
+      "components": [
+        "sh-empty",
+        "sh-sheet"
+      ],
+      "libClassHits": 7,
+      "localSelectors": 4,
+      "localCssLines": 13,
+      "rolled": [
+        {
+          "id": "primover",
+          "label": "主色文字自写",
+          "lib": ".txt-primary（可点的次要动作用 .sh-link）",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-primary-text\\);?\\s*\\}",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "b-app",
+      "page": "biz-time-range",
+      "key": "b-app/biz-time-range",
+      "file": "b-app/src/components/biz/biz-time-range.vue",
+      "components": [],
+      "libClassHits": 7,
+      "localSelectors": 6,
+      "localCssLines": 25,
+      "rolled": [
+        {
+          "id": "quietover",
+          "label": "次要色自写",
+          "lib": ".txt-quiet（整段次要用 .sh-muted）",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "app-overlay",
+      "key": "c-app/app-overlay",
+      "file": "c-app/src/components/app-overlay.vue",
+      "components": [
+        "sh-cover"
+      ],
+      "libClassHits": 1,
+      "localSelectors": 2,
+      "localCssLines": 21,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-cart-fab",
+      "key": "c-app/biz-cart-fab",
+      "file": "c-app/src/components/biz/biz-cart-fab.vue",
+      "components": [
+        "sh-icon"
+      ],
+      "libClassHits": 3,
+      "localSelectors": 3,
+      "localCssLines": 22,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-goods-card",
+      "key": "c-app/biz-goods-card",
+      "file": "c-app/src/components/biz/biz-goods-card.vue",
+      "components": [
+        "sh-cover"
+      ],
+      "libClassHits": 27,
+      "localSelectors": 15,
+      "localCssLines": 75,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-group-card",
+      "key": "c-app/biz-group-card",
+      "file": "c-app/src/components/biz/biz-group-card.vue",
+      "components": [
+        "sh-cover"
+      ],
+      "libClassHits": 29,
+      "localSelectors": 16,
+      "localCssLines": 84,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-merchant-bar",
+      "key": "c-app/biz-merchant-bar",
+      "file": "c-app/src/components/biz/biz-merchant-bar.vue",
+      "components": [
+        "sh-rating"
+      ],
+      "libClassHits": 10,
+      "localSelectors": 8,
+      "localCssLines": 36,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-region-picker",
+      "key": "c-app/biz-region-picker",
+      "file": "c-app/src/components/biz/biz-region-picker.vue",
+      "components": [
+        "sh-empty",
+        "sh-sheet",
+        "sh-tabs"
+      ],
+      "libClassHits": 3,
+      "localSelectors": 4,
+      "localCssLines": 19,
+      "rolled": [
+        {
+          "id": "primover",
+          "label": "主色文字自写",
+          "lib": ".txt-primary（可点的次要动作用 .sh-link）",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-primary-text\\);?\\s*\\}",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "biz-review",
+      "key": "c-app/biz-review",
+      "file": "c-app/src/components/biz/biz-review.vue",
+      "components": [
+        "sh-rating"
+      ],
+      "libClassHits": 19,
+      "localSelectors": 15,
+      "localCssLines": 75,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-sku-row",
+      "key": "c-app/biz-sku-row",
+      "file": "c-app/src/components/biz/biz-sku-row.vue",
+      "components": [
+        "sh-cover"
+      ],
+      "libClassHits": 6,
+      "localSelectors": 7,
+      "localCssLines": 33,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "phone-gate",
+      "key": "c-app/phone-gate",
+      "file": "c-app/src/components/phone-gate.vue",
+      "components": [],
+      "libClassHits": 15,
+      "localSelectors": 12,
+      "localCssLines": 54,
+      "rolled": [
+        {
+          "id": "sheet",
+          "label": "弹层 / 遮罩",
+          "lib": "sh-sheet",
+          "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
+          "gap": false
+        }
+      ]
     }
   ],
-  "gaps": [],
+  "gaps": [
+    {
+      "id": "sheet",
+      "label": "弹层 / 遮罩",
+      "lib": "sh-sheet",
+      "gap": false,
+      "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
+      "pages": [
+        "b-app/biz-pickup-sheet",
+        "b-app/biz-region-picker",
+        "c-app/phone-gate"
+      ]
+    },
+    {
+      "id": "segment",
+      "label": "选中态自画（含未拆出的）",
+      "lib": ".sh-chip--primary / --solid",
+      "gap": false,
+      "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
+      "pages": [
+        "b-app/biz-pickup-sheet",
+        "b-app/biz-region-picker"
+      ]
+    },
+    {
+      "id": "primover",
+      "label": "主色文字自写",
+      "lib": ".txt-primary（可点的次要动作用 .sh-link）",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-primary-text\\);?\\s*\\}",
+      "pages": [
+        "b-app/biz-supplier-picker",
+        "c-app/biz-region-picker"
+      ]
+    },
+    {
+      "id": "tabs",
+      "label": "分栏切换",
+      "lib": "sh-tabs",
+      "gap": false,
+      "rule": "^\\s*\\.tabs?\\b[^{}]*\\{[^}]*(?:background:|border-radius:|border-bottom:)",
+      "pages": [
+        "b-app/biz-region-picker"
+      ]
+    },
+    {
+      "id": "listrow",
+      "label": "横排行",
+      "lib": ".sh-row",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
+      "pages": [
+        "b-app/biz-region-picker"
+      ]
+    },
+    {
+      "id": "wraprow",
+      "label": "换行横排",
+      "lib": ".sh-wrap",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
+      "pages": [
+        "b-app/biz-region-picker"
+      ]
+    },
+    {
+      "id": "inkover",
+      "label": "正文色自写",
+      "lib": ".txt-ink",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-ink\\);?\\s*\\}",
+      "pages": [
+        "b-app/biz-region-picker"
+      ]
+    },
+    {
+      "id": "quietover",
+      "label": "次要色自写",
+      "lib": ".txt-quiet（整段次要用 .sh-muted）",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
+      "pages": [
+        "b-app/biz-time-range"
+      ]
+    }
+  ],
   "counts": {
     "tokens": 10,
     "blocks": 67,
     "components": 33,
-    "pages": 98,
+    "pages": 114,
     "gapKinds": 0
   }
 }

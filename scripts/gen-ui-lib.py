@@ -592,7 +592,15 @@ ROLLED = [
 #
 # 运营端（ops-web，23 页）不在这里：那是 React/Next，用不了 `sh-*`，
 # 是另一套体系。不扫它是有意的，但要在清单里说出来，而不是让它悄悄缺席。
-APPS = [("b-app", ROOT / "b-app/src/pages"), ("c-app", ROOT / "c-app/src/pages")]
+# **两端的页面**和**两端自己的组件**都要扫。
+#
+# 2026-09-06 之前只有 `src/pages`：于是 `biz-goods-card`、`biz-review`、`phone-gate`
+# 这些**画着首页每一行**的件，一条判据都没走过 —— 按同一套判据当天量出 42 处，
+# 其中 26 处是「把 `.sh-fill` / `.txt-ink` / `.txt-quiet` 这类一行的工具类又写了一遍」。
+# 组件库自己（packages/ui）不在内：那里是**定义**这些件的地方，判据反过来会把
+# `sh-sheet` 自己报成「自造弹层」。
+APPS = [("b-app", ROOT / "b-app/src/pages"), ("c-app", ROOT / "c-app/src/pages"),
+        ("b-app", ROOT / "b-app/src/components"), ("c-app", ROOT / "c-app/src/components")]
 
 
 def block_is_container(css: str, tpl: str = "") -> bool:
@@ -718,7 +726,10 @@ def read_pages(comps: list[dict], blocks: list[dict]) -> list[dict]:
           # 正好在名册里）。扩到两端时不加这一条，C 端的 login 会顶着 B 端 login 的
           # 核查结论被判成自造 —— **一份逐处核过的名册，被同名页悄悄套用到没核过的地方，
           # 比正则误命中更难发现：它看起来是有依据的。**
-          page_name = str(f.relative_to(base).parent).replace("\\", "/")
+          # 页面按目录名（pages/orders/index.vue → orders），组件按文件名 ——
+          # 组件都躺在 components/biz/ 下，用目录名的话十几个件全叫 "biz"
+          page_name = (f.stem if "components" in base.parts
+                       else str(f.relative_to(base).parent).replace("\\", "/"))
           for fam, _, items in FAMILIES:
               if FAM_COMP[fam] in used:
                   continue

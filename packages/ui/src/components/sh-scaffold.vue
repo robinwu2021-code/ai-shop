@@ -117,8 +117,8 @@ watch(() => props.titleKey, applyTitle);
       :style="{ '--sh-navbar-h': statusBar + 44 + 'px' }"
     >
       <view v-if="denied" class="sh-denied">
-        <text class="sh-denied__t">{{ deniedText || $t("common.noPermTitle") }}</text>
-        <text class="sh-denied__d">{{ $t("common.noPermHint") }}</text>
+        <text class="txt-title sh-denied__t">{{ deniedText || $t("common.noPermTitle") }}</text>
+        <text class="txt-sub sh-denied__d">{{ $t("common.noPermHint") }}</text>
       </view>
       <slot v-else />
     </view>
@@ -265,14 +265,10 @@ watch(() => props.titleKey, applyTitle);
   text-align: center;
 }
 .sh-denied__t {
-  font-size: 34rpx;
-  font-weight: 600;
   color: var(--sh-ink);
 }
 .sh-denied__d {
   margin-top: 16rpx;
-  font-size: 26rpx;
   color: var(--sh-sub);
-  line-height: 1.6;
 }
 </style>

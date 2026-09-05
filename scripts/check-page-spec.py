@@ -83,6 +83,13 @@ def scan(app: str):
     """
     rows = []
     roots = [(ROOT / app / "src/pages", "page"), (ROOT / app / "src/components", "comp")]
+    # 组件库自己也要受自己的规矩管。**2026-09-06 之前它不在任何一道逐页闸门里** ——
+    # 26 个件里 17 个带账，共 55 处，其中「34rpx/600 的标题」被各写了五遍
+    #（sh-dialog / sh-sheet / sh-prompt / sh-scaffold / sh-theme-sheet），
+    # 而那正是 `.txt-title` 那一档。定义字阶的地方在 base.css，不在这些 .vue 里 ——
+    # 组件消费字阶，和页面一样。挂在 b-app 名下扫一次就够（库是两端共用的）。
+    if app == "b-app":
+        roots.append((ROOT / "packages/ui/src/components", "lib"))
     for base, kind in roots:
         if not base.exists():
             continue
@@ -112,7 +119,9 @@ def _scan_dir(app: str, base: pathlib.Path, kind: str):
             if m.group(1) not in WEIGHT:
                 c["字重越档"] += 1
                 detail["字重越档"].append(m.group(1))
-        for m in re.finditer(r"border-radius:\s*([\d.]+rpx|9999px)", css):
+        # 角写法（`border-top-right-radius` 那一族）也要判：
+        # 2026-09-06 之前只认 `border-radius:`，于是 sh-uploader 的 8rpx 越档一直没人报。
+        for m in re.finditer(r"border(?:-(?:top|bottom|start|end)-(?:left|right|start|end))?-radius:\s*([\d.]+rpx|9999px)", css):
             if m.group(1) not in RADIUS:
                 c["圆角越档"] += 1
                 detail["圆角越档"].append(m.group(1))
@@ -128,7 +137,10 @@ def _scan_dir(app: str, base: pathlib.Path, kind: str):
         # 上一版用标记，而扫描前先去了注释，标记自己被吃掉了。
         for rm in re.finditer(r"\{([^}]*)\}", css):
             rb = rm.group(1)
-            danger_bg = "var(--sh-danger)" in rb
+            # 白字压在**不随皮肤变**的那两层上：语义红（`.sh-btn--danger-solid`）
+            # 与遮罩色（`--sh-scrim`，图上的角标与删除叉）。这两处白就是白，
+            # 换成 `--sh-on-primary` 反而会跟着皮肤走 —— 深色皮肤下白字变暗字，压在暗底上。
+            danger_bg = "var(--sh-danger)" in rb or "var(--sh-scrim)" in rb
             for m in re.finditer(r":\s*(#[0-9a-fA-F]{3,8})\b", rb):
                 if danger_bg and m.group(1).lower() in ("#fff", "#ffffff"):
                     continue
@@ -160,9 +172,13 @@ def main():
     # 扫描面自检：**「找出违规」型的判据，少扫就等于全绿**。这道闸 2026-09-06 之前
     # 只扫 pages/，于是「两端 94 页全部合规」这句话是真的、也是没用的 —— 首页那一屏
     # 上每一行都是 components/ 画的，那里当时有 123 处欠账。所以两边都要真的扫到。
-    kinds = {r["file"].split("/src/")[1].split("/")[0] for r in rows}
-    if not {"pages", "components"} <= kinds:
-        print(f"✗ 扫描面不全：只扫到 {sorted(kinds)} —— pages 与 components 两边都要扫")
+    seen = {r["file"].split("/src/")[0] + "/" + r["file"].split("/src/")[1].split("/")[0]
+            for r in rows}
+    need = {"b-app/pages", "b-app/components", "c-app/pages", "c-app/components",
+            "packages/ui/components"}
+    if a.app == "both" and not need <= seen:
+        print(f"✗ 扫描面不全，缺：{sorted(need - seen)}")
+        print("  「找出违规」型的判据少扫一处就等于那一处全绿，而全绿看上去和真干净一模一样。")
         return 1
     if len(rows) < 60:
         print(f"✗ 只扫到 {len(rows)} 个文件，判据多半没走到目录 —— 空转的闸门恒绿")

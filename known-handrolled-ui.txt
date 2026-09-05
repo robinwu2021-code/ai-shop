@@ -27,3 +27,42 @@
 # 立刻又报出来。
 #
 # 一行一个 `端/页`。修好一条删一行；这份空着不代表判据松了。
+
+# ── 2026-09-06 下午：**扫描面扩到两端自己的组件**，随之进来 12 条 ──
+#
+# 这道闸此前只扫 `src/pages`。而 `biz-goods-card`、`biz-review`、`phone-gate` 这些
+# **画着首页每一行**的件，一条判据都没走过 —— 按同一套判据当天量出 **42 处**。
+# 名单里只留下面 12 条，另外 30 处是当天改掉的：
+#   · 26 处「把一行的工具类又写了一遍」（`.sh-fill` / `.txt-ink` / `.txt-quiet` /
+#     `.txt-primary` / `.is-warning` / `.is-danger`）—— 模板挂类、删本地规则
+#   · 横排收编到 `.sh-row` / `.sh-row--between` / `.sh-wrap`，居中盒收编到 `.sh-center`
+#   · 一条死规则（`.place__main`，模板里 0 处引用）
+#
+# **剩下这 12 条不是「懒得改」，是三类需要单独决定的事**：
+#
+# ① b 端两个 picker 自己画了弹层（sheet / segment / tabs / listrow / wraprow 共 8 条）。
+#    正解是改用 `sh-sheet` + `sh-tabs` —— c 端的 `biz-region-picker` 就是样板，
+#    它用 `<sh-sheet stacked>`，连 z-index 都不用写。这是两个大件（1700+ 行）的重构，
+#    单独一单做，不塞进这一轮。同日只做了止血：把它们的 z-index 从 60 抬到弹层档
+#    （原来低于 sh-sheet 的 100，从弹层里再开就被盖住）。
+#
+# ② 三条**状态驱动的颜色**（`.crumb__i.is-cur` / `.sup--on` / `.tr__box.is-empty` /
+#    `.lv__node.is-on`）。判据说「只设一个 color 就该用工具类」，而这些是**态**：
+#    要挂类就得写成 `:class="{ 'txt-ink': isOn }"`，把一个语义状态拆成两处。
+#    判据在这一类上说多了，但收窄它要先盘清全仓的态类形状 —— 也是另一单。
+#
+# ③ `c-app/phone-gate sheet`：它是一个真弹层，同样该改用 `sh-sheet`。
+#    它比 b 端那两个小得多，是这三类里最先该动的。
+
+b-app/biz-pickup-sheet segment
+b-app/biz-pickup-sheet sheet
+b-app/biz-region-picker inkover
+b-app/biz-region-picker listrow
+b-app/biz-region-picker segment
+b-app/biz-region-picker sheet
+b-app/biz-region-picker tabs
+b-app/biz-region-picker wraprow
+b-app/biz-supplier-picker primover
+b-app/biz-time-range quietover
+c-app/biz-region-picker primover
+c-app/phone-gate sheet

@@ -66,11 +66,14 @@ function add() {
       @tap="emit('tapItem', i)"
     >
       <sh-cover class="up__img" :style="cell" :src="img"></sh-cover>
-      <text v-if="badge && i === 0" class="up__badge">{{ badge }}</text>
-      <text v-if="removable" class="up__del sh-hit" @tap.stop="emit('remove', i)">×</text>
+      <text v-if="badge && i === 0" class="txt-caption up__badge">{{ badge }}</text>
+      <view v-if="removable" class="up__del sh-hit sh-center" @tap.stop="emit('remove', i)">
+        <sh-icon name="close" :size="24" color="#fff"></sh-icon>
+      </view>
     </view>
     <view v-if="canAdd" class="up__add" :style="cell" @tap="add">
-      <text class="up__plus">{{ uploading ? "…" : "＋" }}</text>
+      <text v-if="uploading" class="txt-display up__plus">…</text>
+      <sh-icon v-else name="plus" :size="40" color="var(--sh-sub)"></sh-icon>
     </view>
   </view>
 </template>
@@ -101,14 +104,16 @@ function add() {
  */
 .up__badge {
   position: absolute;
-  left: 0;
+  /* 逻辑属性：阿语下这枚角标要跟着翻到另一头 */
+  inset-inline-start: 0;
   bottom: 0;
   padding: 2rpx 8rpx;
-  border-top-right-radius: 8rpx;
+  /* 上面两角一起圆：只圆一角的话在 RTL 下圆的是外侧那个。16rpx 在圆角五档上，
+     原来的 8rpx 不在 —— 而 `border-top-right-radius` 这种写法圆角判据看不见 */
+  border-radius: 16rpx 16rpx 0 0;
   background: var(--sh-scrim);
+  /* 白字压在遮罩色上：这一层不随皮肤变，白就是白（与 .sh-btn--danger-solid 同源） */
   color: #fff;
-  font-size: 24rpx;
-  line-height: 1.3;
 }
 /* 删除角标探出格子外一点：压在图上会挡住内容，而缩略图本来就小 */
 .up__del {
@@ -117,12 +122,8 @@ function add() {
   inset-inline-end: -10rpx;
   width: 40rpx;
   height: 40rpx;
-  line-height: 36rpx;
-  text-align: center;
   border-radius: 9999px;
   background: var(--sh-scrim);
-  color: #fff;
-  font-size: 26rpx;
 }
 .up__add {
   flex: none;
@@ -132,8 +133,8 @@ function add() {
   border-radius: 16rpx;
   background: var(--sh-faint);
 }
+/* 上传中那三个点。图标那一格由 sh-icon 画，这里只剩「等」的态 */
 .up__plus {
-  font-size: 40rpx;
   color: var(--sh-sub);
 }
 </style>

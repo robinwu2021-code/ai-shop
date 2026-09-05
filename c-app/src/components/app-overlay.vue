@@ -25,7 +25,7 @@ const style = computed(() => {
 </script>
 
 <template>
-  <view v-if="flyState.visible" class="fly" :style="style">
+  <view v-if="flyState.visible" class="sh-center fly" :style="style">
     <sh-cover class="fly__text" :src="flyState.emoji"></sh-cover>
   </view>
 </template>
@@ -40,9 +40,6 @@ const style = computed(() => {
   margin-top: -36rpx;
   border-radius: 9999px;
   background: var(--sh-primary-tint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   pointer-events: none;
   /* 横向匀速、纵向后段加速 —— 拼出抛物线的观感 */
   transition:

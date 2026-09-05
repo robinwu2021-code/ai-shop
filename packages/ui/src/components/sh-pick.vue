@@ -23,7 +23,7 @@ const s = pickState;
       :class="{ 'is-on': i === s.selected }"
       @tap="closePick(i)"
     >
-      <text class="pick__t">{{ it }}</text>
+      <text class="txt-body pick__t">{{ it }}</text>
       <sh-icon
         v-if="i === s.selected"
         name="check"
@@ -48,11 +48,9 @@ const s = pickState;
   border-top: var(--sh-hairline);
 }
 .pick__t {
-  font-size: 30rpx;
   color: var(--sh-ink);
 }
 .is-on .pick__t {
   color: var(--sh-primary-text);
-  font-weight: 600;
 }
 </style>

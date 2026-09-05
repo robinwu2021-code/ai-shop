@@ -28,7 +28,7 @@ withDefaults(
 
 <template>
   <view class="go" :class="{ 'go--quiet': quiet }">
-    <text class="go__t"><slot>{{ text }}</slot></text>
+    <text class="txt-caption go__t"><slot>{{ text }}</slot></text>
     <sh-icon
       name="chevronRight"
       :size="20"
@@ -45,9 +45,9 @@ withDefaults(
   align-items: center;
   gap: 4rpx;
 }
-/* 与 `.sh-link` 同值 —— 那是这一族的字号与颜色档 */
+/* 与 `.sh-link` 同值 —— 那是这一族的字号与颜色档。
+   字号走 `.txt-caption`（挂在模板上），这里只剩颜色：`--quiet` 要换成灰的 */
 .go__t {
-  font-size: 24rpx;
   color: var(--sh-primary-text);
 }
 .go--quiet .go__t {

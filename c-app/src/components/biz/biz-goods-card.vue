@@ -47,9 +47,9 @@ const off = computed(() => {
 
 <template>
   <view class="card" @tap="$emit('tap')">
-    <sh-cover class="card__cover" :src="goods.cover || GOODS_COVER_FALLBACK"></sh-cover>
+    <sh-cover class="sh-center card__cover" :src="goods.cover || GOODS_COVER_FALLBACK"></sh-cover>
 
-    <view class="card__body">
+    <view class="sh-fill card__body">
       <text class="txt-strong card__title">{{ goods.title }}</text>
       <!--
         第二行**按优先级取内容**，不是固定放描述：
@@ -61,7 +61,7 @@ const off = computed(() => {
         为什么不干脆删成三行：倒计时只有生鲜有，百货卡会矮一截，一列卡片高矮不齐、
         封面还得跟着变大小。按优先级取内容，两类商品都是四行，等高。
       -->
-      <text v-if="showCutoff" class="sh-muted card__sub card__sub--time">{{ timeText }}</text>
+      <text v-if="showCutoff" class="sh-muted card__sub is-warning card__sub--time">{{ timeText }}</text>
       <text v-else-if="isService && goods.storeName" class="sh-muted card__sub">
         {{ goods.storeName }}
       </text>
@@ -69,7 +69,7 @@ const off = computed(() => {
 
       <!-- 价格行只放价格这一件事：现价 + 划线价 + 折扣。
            时效搬到上一行之后，这里三件在英文下也放得开 -->
-      <view class="card__foot">
+      <view class="sh-row card__foot">
         <text class="txt-price price__now sh-num">{{ money(goods.price) }}</text>
         <text v-if="goods.originPrice" class="txt-caption txt-quiet price__was sh-num">
           {{ money(goods.originPrice) }}
@@ -80,13 +80,13 @@ const off = computed(() => {
           位置不变：手指本来就要落在这儿，换的是它说什么。
         -->
         <text v-if="soldOut" class="sh-chip sold">{{ $t("goods.soldOut") }}</text>
-        <view v-else class="add sh-hit" @tap.stop="$emit('add', $event)">
+        <view v-else class="sh-center add sh-hit" @tap.stop="$emit('add', $event)">
           <text class="add__sign">＋</text>
         </view>
       </view>
 
       <!-- 落款行：谁在卖 + 卖得好不好。位置固定在最下面才好扫 -->
-      <view class="card__merchant">
+      <view class="sh-row sh-row--between card__merchant">
         <!-- 自营标识（电商法 §37）。放在店名前 —— 「谁在卖」先于「货是谁供的」 -->
         <text v-if="goods.merchant.selfOperated" class="sh-chip sh-chip--primary card__self">{{ $t("merchant.selfOperated") }}</text>
         <text class="txt-caption txt-quiet card__shop">{{ goods.merchant.logo || MERCHANT_LOGO_FALLBACK }} {{ goods.merchant.name }}</text>
@@ -130,15 +130,9 @@ const off = computed(() => {
    * 真实商品图上线后这里直接换成 <image>，尺寸不用再动。
    */
   display: flex;
-  align-items: center;
-  justify-content: center;
   font-size: 104rpx;
   line-height: 1;
   flex-shrink: 0;
-}
-.card__body {
-  flex: 1;
-  min-width: 0;
 }
 .card__title {
   /* 商品名是列表的主体 —— 用户是照着它找东西的，所以按「卡片主标题」处理
@@ -161,8 +155,6 @@ const off = computed(() => {
   white-space: nowrap;
 }
 .card__foot {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
   margin-top: 12rpx;
 }
@@ -181,10 +173,6 @@ const off = computed(() => {
   text-decoration: line-through;
   flex-shrink: 0;
 }
-/* 时效行用警示色：它是「再不下单就没了」，与描述那行的中性灰不是一个分量 */
-.card__sub--time {
-  color: var(--sh-warning);
-}
 /* 售罄标记占的是「＋」的位置，所以也靠右 */
 .sold {
   margin-inline-start: auto;
@@ -195,9 +183,6 @@ const off = computed(() => {
   height: 60rpx;
   border-radius: 9999px;
   background: var(--sh-primary-tint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex-shrink: 0;
   margin-inline-start: auto;
 }
@@ -207,10 +192,6 @@ const off = computed(() => {
   line-height: 1;
 }
 .card__merchant {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
   margin-top: 8rpx;
 }
 /* 自营标识就是一颗 tint chip（形态归 .sh-chip--primary）——

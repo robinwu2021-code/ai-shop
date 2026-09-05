@@ -121,7 +121,9 @@ describe("字阶", () => {
     for (const f of [...vueFiles, BASE_CSS]) {
       const css = f.endsWith(".css") ? readFileSync(f, "utf8") : styleBlocks(readFileSync(f, "utf8"));
       for (const r of rules(css)) {
-        for (const m of r.body.matchAll(/border-radius:\s*(\d+)rpx/g)) {
+        // 角写法（`border-top-right-radius` 那一族）也算 —— 只认 `border-radius:` 的话，
+        // 圆一个角就能绕过这条（sh-uploader 的 8rpx 角标就是这么漏的）
+        for (const m of r.body.matchAll(/border(?:-(?:top|bottom|start|end)-(?:left|right|start|end))?-radius:\s*(\d+)rpx/g)) {
           if (!allowed.includes(Number(m[1]))) offenders.push(`${rel(f)}  ${r.sel}  ${m[1]}rpx`);
         }
       }

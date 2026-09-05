@@ -1195,20 +1195,20 @@ function close() {
         已选摘要在**标题栏右侧**：那一行如果放进面板里，会被列表挤出视野，
         而「我到底选了几条」是这一屏从头到尾都要能看见的东西。
       -->
-      <view class="sheet__head">
-        <text class="txt-title sheet__title">{{ $t("store.picker.title") }}</text>
-        <view v-if="chosen.length" class="sheet__sel" @tap="chosenOpen = !chosenOpen">
-          <text class="txt-sub sheet__selT">{{ $t("store.picker.selected", { n: areas.length }) }}</text>
-          <text class="txt-caption sheet__selM">{{ chosenOpen ? $t("store.picker.collapse") : $t("store.picker.expand") }}</text>
+      <view class="sh-row sh-row--between sheet__head">
+        <text class="txt-title txt-ink sheet__title">{{ $t("store.picker.title") }}</text>
+        <view v-if="chosen.length" class="sh-row sheet__sel" @tap="chosenOpen = !chosenOpen">
+          <text class="txt-sub txt-primary sheet__selT">{{ $t("store.picker.selected", { n: areas.length }) }}</text>
+          <text class="txt-caption txt-quiet sheet__selM">{{ chosenOpen ? $t("store.picker.collapse") : $t("store.picker.expand") }}</text>
         </view>
-        <text v-else class="txt-sub sheet__count">{{ $t("store.picker.selected", { n: areas.length }) }}</text>
+        <text v-else class="txt-sub txt-quiet sheet__count">{{ $t("store.picker.selected", { n: areas.length }) }}</text>
       </view>
 
       <!-- 已选清单：误点很容易，必须有个当场能删的地方。开关在标题栏右侧 -->
       <view v-if="chosen.length && chosenOpen" class="chosen">
         <view class="chosen__list">
-          <view v-for="a in chosen" :key="a.level + a.refCode" class="txt-sub chosen__row">
-            <text class="chosen__name" :class="{ 'is-off': a.mode === 'EXCLUDE' }">{{ a.name }}</text>
+          <view v-for="a in chosen" :key="a.level + a.refCode" class="txt-sub sh-row chosen__row">
+            <text class="sh-fill chosen__name" :class="{ 'is-off': a.mode === 'EXCLUDE' }">{{ a.name }}</text>
             <!-- 排除项混在已选里而不标出来 = 商家以为自己多做了一片，其实是少做了一片 -->
             <text v-if="a.mode === 'EXCLUDE'" class="txt-caption chosen__ex">{{ $t("store.picker.excludedTag") }}</text>
             <!-- 待审的要在**已选清单里**看得见：只写在行上的话，勾完就再也看不到了 -->
@@ -1229,7 +1229,7 @@ function close() {
 
       <template v-if="tab === 'REGION'">
         <!-- 面包屑：这个 Tab 唯一的导航。任一段可点，点了就回到那一级 -->
-        <view class="txt-caption crumb">
+        <view class="txt-caption sh-wrap crumb">
           <text class="crumb__i" :class="{ 'is-cur': !trail.length }" @tap="backTo(-1)">{{ $t("store.regionRoot") }}</text>
           <text v-for="(x, i) in trail" :key="x.regionCode" class="crumb__i" :class="{ 'is-cur': i === trail.length - 1 }" @tap="backTo(i)">
             › {{ x.name }}
@@ -1240,13 +1240,13 @@ function close() {
           「整个 XX」是每一级的第一行，固定在列表上方：
           它让「我就要这一整片」与「我进去挑几个」在同一屏里并列，不用先决定走哪条路。
         -->
-        <view v-if="current" class="whole" :class="{ 'is-on': wholePicked }" @tap="toggleWhole">
-          <text class="txt-sub txt-bold whole__t">{{ $t("store.picker.wholeLevel", { s: current.name }) }}</text>
+        <view v-if="current" class="sh-row sh-row--between whole" :class="{ 'is-on': wholePicked }" @tap="toggleWhole">
+          <text class="txt-sub txt-bold txt-primary whole__t">{{ $t("store.picker.wholeLevel", { s: current.name }) }}</text>
           <text v-if="wholePicked" class="txt-caption whole__on">{{ $t("store.picker.picked") }}</text>
         </view>
       </template>
 
-      <view v-else class="filter">
+      <view v-else class="sh-row filter">
         <sh-icon name="search" :size="16" color="var(--sh-sub)"></sh-icon>
         <input
           maxlength="32"
@@ -1273,15 +1273,15 @@ function close() {
           -->
           <template v-for="g in sections" :key="g.key">
             <text v-if="g.title" class="txt-caption group">{{ g.title }}</text>
-            <view v-for="r in g.rows" :key="r.key" class="row"
+            <view v-for="r in g.rows" :key="r.key" class="sh-row row"
                   :class="{ 'is-covered': coverNote(r), 'is-sub': r.indent, 'is-excluded': rowExcluded(r) }">
-              <view class="row__main" @tap="r.hasChild ? drillRow(r) : pickRow(r)">
+              <view class="sh-fill row__main" @tap="r.hasChild ? drillRow(r) : pickRow(r)">
                 <text class="txt-body row__name">{{ r.name }}</text>
                 <!--
                   排除态**压过覆盖提示**：两句话同时说（「已被阳光花园覆盖」+「已排除」）
                   是自相矛盾的，商家读不出货到底送不送。排除是他自己做的那个决定，说它。
                 -->
-                <text v-if="rowExcluded(r)" class="txt-caption row__sub row__sub--off">
+                <text v-if="rowExcluded(r)" class="txt-caption row__sub is-danger row__sub--off">
                   {{ $t("store.picker.excludedTag") }}
                 </text>
                 <text v-else-if="coverNote(r)" class="txt-caption row__sub">
@@ -1298,7 +1298,7 @@ function close() {
                     @tap.stop="excludeRow(r)">
                 {{ rowExcluded(r) ? $t("store.picker.undoExclude") : $t("store.picker.exclude") }}
               </text>
-              <view v-else class="row__check sh-hit" :class="{ 'is-on': r.picked, 'is-off': !!coverNote(r) }" @tap.stop="pickRow(r)">
+              <view v-else class="sh-center row__check sh-hit" :class="{ 'is-on': r.picked, 'is-off': !!coverNote(r) }" @tap.stop="pickRow(r)">
                 <sh-icon v-if="r.picked" name="check" :size="24" color="var(--sh-on-primary)"></sh-icon>
                 <text v-else-if="adding === r.key" class="row__tick">…</text>
               </view>
@@ -1325,8 +1325,8 @@ function close() {
           这两个瞬间也在：系统里没有的地方只有这一条路，藏起来商家就会以为「这个小区做不了」。
           点回来直接建档并勾上，没有提报、没有等待（v4）。
         -->
-        <view class="maprow" @tap="pickOnMapAndAdd">
-          <text class="txt-body maprow__t">{{ picking ? $t("common.loading") : $t("store.picker.mapEntry") }}</text>
+        <view class="sh-row sh-row--between maprow" @tap="pickOnMapAndAdd">
+          <text class="txt-body txt-primary maprow__t">{{ picking ? $t("common.loading") : $t("store.picker.mapEntry") }}</text>
           <sh-icon name="chevronRight" :size="18" color="var(--sh-primary-text)"></sh-icon>
         </view>
       </scroll-view>
@@ -1357,20 +1357,9 @@ function close() {
   background: var(--sh-surface);
 }
 .sheet__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 28rpx 32rpx 16rpx;
 }
-.sheet__title {
-  color: var(--sh-ink);
-}
-.sheet__count {
-  color: var(--sh-sub);
-}
 .crumb {
-  display: flex;
-  flex-wrap: wrap;
   gap: 8rpx;
   margin: 20rpx 32rpx 0;
   color: var(--sh-sub);
@@ -1379,16 +1368,10 @@ function close() {
   color: var(--sh-ink);
 }
 .whole {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin: 16rpx 24rpx 0;
   padding: 20rpx 24rpx;
   border-radius: 16rpx;
   background: var(--sh-primary-tint);
-}
-.whole__t {
-  color: var(--sh-primary-text);
 }
 .whole__on {
   padding: 4rpx 16rpx;
@@ -1402,15 +1385,9 @@ function close() {
   margin-top: 12rpx;
 }
 .row {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   padding: 20rpx 32rpx;
   border-bottom: var(--sh-hairline);
-}
-.row__main {
-  flex: 1;
-  min-width: 0;
 }
 .row__name {
   display: block;
@@ -1423,9 +1400,6 @@ function close() {
 }
 .row__check {
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 44rpx;
   height: 44rpx;
   border-radius: 9999px;
@@ -1462,13 +1436,6 @@ function close() {
   gap: 16rpx;
   padding: 20rpx 8rpx;
   border-bottom: var(--sh-hairline);
-}
-.place__main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
 }
 .apply__map {
   display: inline-flex;
@@ -1540,9 +1507,6 @@ function close() {
 .row.is-excluded {
   opacity: 1;
 }
-.row__sub--off {
-  color: var(--sh-danger);
-}
 
 /* 行上的「排除 / 取消排除」。占的是勾选框那个位置 —— 对这一行来说它就是那个动作 */
 .row__ex {
@@ -1565,8 +1529,6 @@ function close() {
 
 /* 本级筛选框：只过滤当前这一屏 */
 .filter {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
   margin: 20rpx 24rpx 4rpx;
   padding: 0 24rpx;
@@ -1587,21 +1549,11 @@ function close() {
   background: var(--sh-faint);
 }
 .chosen__row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   padding: 16rpx 24rpx;
   color: var(--sh-ink);
 }
 .chosen__row + .chosen__row {
   border-top: var(--sh-hairline);
-}
-.chosen__name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .chosen__del {
   flex-shrink: 0;
@@ -1659,13 +1611,7 @@ function close() {
 
 /* 地图入口：两个 Tab 的列表末尾都有，位置恒定 */
 .maprow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 28rpx 32rpx;
-}
-.maprow__t {
-  color: var(--sh-primary-text);
 }
 
 /* 两个点击区之间的竖线。左＝整片加入、右＝进下级，后果差着量级，不能挨着 */
@@ -1678,14 +1624,6 @@ function close() {
 
 /* 已选摘要挪到标题栏右侧：滚多远都看得见「我选了几条」，点一下就地展开 */
 .sheet__sel {
-  display: flex;
-  align-items: center;
   gap: 8rpx;
-}
-.sheet__selT {
-  color: var(--sh-primary-text);
-}
-.sheet__selM {
-  color: var(--sh-sub);
 }
 </style>
