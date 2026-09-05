@@ -363,7 +363,7 @@ onShow(load);
             { key: 'stale', value: stockSummary.staleCount, label: String($t('home.inv.stale')) },
             { key: 'transit', value: stockSummary.inTransitCount, label: String($t('stock.statTransit')), tone: 'warn' },
           ]"
-          @pick="open(ROUTES.stock)"
+          @change="open(ROUTES.stock)"
         ></sh-stat>
         <view class="inv__acts">
           <!--

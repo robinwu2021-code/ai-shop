@@ -54,13 +54,15 @@ const props = withDefaults(
   { boxed: false, panel: false, active: "" },
 );
 
-const emit = defineEmits<{ (e: "pick", key: string): void }>();
+/* 事件名与 `sh-tabs` 对齐：两者都是「在 N 个里选一个」。
+   `pick` 留给 picker 那一族（`biz-item-picker` 等）——那是「挑中了这一个，给你」。 */
+const emit = defineEmits<{ change: [key: string] }>();
 
 function tap(it: StatItem) {
   // **两档都可点**：判据只写 boxed 的话，新加的 panel 档视觉是对的、
   // 点下去毫无反应，而且不报错 —— 加档时正是这么漏的一次
   if (!(props.boxed || props.panel) || !it.key) return;
-  emit("pick", it.key);
+  emit("change", it.key);
 }
 </script>
 

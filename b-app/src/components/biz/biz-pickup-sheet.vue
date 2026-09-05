@@ -19,8 +19,8 @@ const props = defineProps<{
   selected: string[];
 }>();
 const emit = defineEmits<{
-  (e: "update:visible", v: boolean): void;
-  (e: "done", pickupNos: string[]): void;
+  close: [];
+  done: [pickupNos: string[]];
 }>();
 
 const { t } = useI18n();
@@ -131,10 +131,10 @@ async function submitBuild() {
 
 function done() {
   emit("done", picked.value);
-  emit("update:visible", false);
+  emit("close");
 }
 function close() {
-  emit("update:visible", false);
+  emit("close");
 }
 </script>
 

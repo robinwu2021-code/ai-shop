@@ -13,7 +13,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
 
-const props = defineProps<{ show: boolean }>();
+const props = defineProps<{ visible: boolean }>();
 const emit = defineEmits<{ (e: "done"): void; (e: "close"): void }>();
 
 const { t } = useI18n();
@@ -28,7 +28,7 @@ const busy = ref(false);
 const conflict = ref(false);
 
 watch(
-  () => props.show,
+  () => props.visible,
   async (on) => {
     if (!on) return;
     conflict.value = false;
@@ -121,7 +121,7 @@ async function bind(run: () => Promise<unknown>) {
     就把上半截顶出视口）、`left/right` 是物理属性（阿语下不跟着翻）。
   -->
   <sh-sheet
-    :visible="show"
+    :visible="visible"
     :title="String($t('phoneGate.title'))"
     :hint="String($t('phoneGate.why'))"
     @close="emit('close')"

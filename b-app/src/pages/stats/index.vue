@@ -130,7 +130,7 @@ onShow(load);
   height: 100%;
   border-radius: 9999px;
   background: var(--sh-primary);
-  transition: width 0.3s ease;
+  transition: width var(--sh-t-base) ease;
 }
 .hint {
   display: block;

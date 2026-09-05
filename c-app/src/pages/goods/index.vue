@@ -734,7 +734,7 @@ onShareAppMessage(() =>
   background: var(--sh-faint);
 }
 .actionbar__cart.is-bouncing {
-  animation: shCartBounce 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: shCartBounce var(--sh-t-slow) var(--sh-ease-spring);
 }
 @keyframes shCartBounce {
   0% { transform: scale(1); }

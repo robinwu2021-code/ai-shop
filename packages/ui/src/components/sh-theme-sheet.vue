@@ -18,7 +18,16 @@ import { LANGS, MARKETS } from "@shared/utils/constants";
 import type { Lang, MarketId } from "@shared/types";
 
 defineProps<{ visible: boolean }>();
-const emit = defineEmits<{ (e: "update:visible", v: boolean): void }>();
+/*
+ * 关闭走 `close`，不走 `update:visible`。
+ *
+ * 全仓两套写法并存过（`close` 六个件、`update:visible` 三个）—— 2026-09-06 统一。
+ * 取 `close` 的理由不是「它多数」，是**可见性归调用点管**：`update:visible` 让件
+ * 自己把 `visible` 改掉，于是「关之前先问一句」这种事没有插手的地方；
+ * `close` 只是报告「用户想关」，关不关由页面决定。底座 `sh-sheet` 本来就是这个口径，
+ * 包着它的件却往外翻译成另一个事件，读的人要在两层之间换一次脑筋。
+ */
+const emit = defineEmits<{ close: [] }>();
 
 const theme = useThemeStore();
 const app = useAppStore();
@@ -42,7 +51,7 @@ async function switchMarket(id: MarketId) {
 }
 
 function close() {
-  emit("update:visible", false);
+  emit("close");
 }
 </script>
 

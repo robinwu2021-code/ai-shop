@@ -41,7 +41,10 @@ const style = computed(() => {
   border-radius: 9999px;
   background: var(--sh-primary-tint);
   pointer-events: none;
-  /* 横向匀速、纵向后段加速 —— 拼出抛物线的观感 */
+  /* 横向匀速、纵向后段加速 —— 拼出抛物线的观感。
+     **这一处不走动效档，是有意的**：档里那三个是「状态切换 / 尺寸位置 / 强调」，
+     而这是一段**飞行轨迹** —— 时长由「从手指飞到购物车图标」这段距离定，
+     曲线也是为抛物线专门配的。把它塞进 --sh-t-slow(0.42s) 只会让球追不上手。 */
   transition:
     transform 0.62s cubic-bezier(0.42, 0.02, 0.72, 0.35),
     opacity 0.62s ease-in;

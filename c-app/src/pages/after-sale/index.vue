@@ -179,7 +179,7 @@ onLoad((q) => {
         />
 
         <text class="sh-muted imglabel">{{ $t("afterSale.images") }}</text>
-        <sh-uploader class="imgs" :list="images" :max="3" :w="160" @add="pickImages"></sh-uploader>
+        <sh-uploader class="imgs" :list="images" :max="3" :width="160" @add="pickImages"></sh-uploader>
       </view>
 
       <view v-if="instantRefund" class="sh-card block notice">

@@ -14,7 +14,13 @@
 //
 // 尺寸/圆角/底色仍由调用点的 class 决定（各处大小本就不同），这里只管
 // 「渲染成什么」。class 落在根 view 上，内层图片撑满即可。
-const props = withDefaults(defineProps<{ src?: string; mode?: string }>(), {
+/** uni `<image>` 的裁剪模式。**收成联合类型而不是 string**：
+ *  写错一个字母（`aspectfill`）时 image 会静默退回 `scaleToFill`，图被拉变形，
+ *  而类型检查一声不吭 —— 这一族的值只有九个，没有理由让它是自由文本。 */
+type CoverMode = "scaleToFill" | "aspectFit" | "aspectFill" | "widthFix" | "heightFix"
+  | "top" | "bottom" | "center" | "left" | "right";
+
+const props = withDefaults(defineProps<{ src?: string; mode?: CoverMode }>(), {
   src: "",
   mode: "aspectFill",
 });

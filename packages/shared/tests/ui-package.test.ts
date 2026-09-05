@@ -619,3 +619,64 @@ describe("浮层层级只许用 --sh-z-*", () => {
     ).toEqual([]);
   });
 });
+
+/*
+ * 动效只许用档。
+ *
+ * 色、圆角、间距、字阶都有档，**唯独动效没有** —— 2026-09-06 数下来跑着七个时长
+ *（0.18 / 0.2 / 0.22 / 0.3 / 0.32 / 0.42 / 0.62s）。与当初圆角出问题是同一个形状：
+ * 没有档，下一个人就照着「感觉差不多」再挑一个数，而两个差 0.02s 的过渡没人分得出。
+ *
+ * 例外只有一处，写在 `app-overlay` 里：加购小球的飞行轨迹。那不是状态过渡 ——
+ * 时长由「从手指飞到购物车图标」这段距离定。判据认它是因为它**在名单上**，
+ * 不是因为它长得特别。
+ */
+describe("动效只许用 --sh-t-*", () => {
+  /** 明账：不走档的地方，一处一行，写清楚为什么 */
+  const ALLOW = new Map<string, string>([
+    ["c-app/src/components/app-overlay.vue", "加购小球的飞行轨迹：时长由距离定，不是状态过渡"],
+  ]);
+
+  const tTokens = (() => {
+    const css = readFileSync(join(ROOT, "packages/ui/src/styles/base.css"), "utf8");
+    return new Set([...css.matchAll(/(--sh-t-[\w-]+)\s*:/g)].map((m) => m[1]!));
+  })();
+
+  const files = [
+    ...pageFilesAll(),
+    ...[["lib", "packages/ui/src/components"],
+        ...APPS.map((a) => [a, `${a}/src/components`] as const)]
+      .flatMap(([app, dir]) => {
+        const d = join(ROOT, dir as string);
+        if (!existsSync(d)) return [];
+        return readdirSync(d, { recursive: true, encoding: "utf8" })
+          .filter((f) => String(f).endsWith(".vue"))
+          .map((f) => ({
+            app: app as string,
+            file: String(f),
+            path: `${dir}/${f}`.replace(/\\/g, "/"),
+            src: readFileSync(join(d, String(f)), "utf8"),
+          }));
+      }),
+  ].map((x) => ({ ...x, path: (x as { path?: string }).path ?? `${x.app}/src/pages/${x.file}` }));
+
+  it("档表读得到（读不到的话下面那条是空转的）", () => {
+    expect(tTokens.size).toBeGreaterThan(2);
+  });
+
+  it("没有裸写的过渡时长", () => {
+    const offenders: string[] = [];
+    for (const { path, src } of files) {
+      if (ALLOW.has(path) || !src.includes("<style")) continue;
+      const css = src.slice(src.indexOf("<style")).replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const m of css.matchAll(/(?:transition|animation)[^;{}]*?(\d*\.?\d+)s/g))
+        offenders.push(`${path}  ${m[1]}s`);
+    }
+    expect(
+      offenders,
+      `动效时长走档：${[...tTokens].join(" / ")}，回弹曲线用 --sh-ease-spring。\n` +
+        "确实不该走档的（比如一段飞行轨迹），加进本测试的 ALLOW 并写清楚为什么。\n" +
+        offenders.join("\n"),
+    ).toEqual([]);
+  });
+});

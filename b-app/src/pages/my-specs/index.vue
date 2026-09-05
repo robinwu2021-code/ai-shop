@@ -1066,7 +1066,7 @@ onShow(() => void load());
     拖动中被拖的那一行走 transform，其余行位置不变（数组松手才改）——
     所以这里的过渡只负责「拿起来/放下去」两个瞬间，不会与手指位移打架。
   */
-  transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+  transition: transform var(--sh-t-fast) ease, background-color var(--sh-t-fast) ease, box-shadow var(--sh-t-fast) ease;
 }
 .spec + .spec {
   border-top: var(--sh-hairline);
@@ -1082,14 +1082,14 @@ onShow(() => void load());
   box-shadow: 0 8rpx 24rpx var(--sh-scrim);
   border-radius: 16rpx;
   /* 拖动中不要过渡 transform：否则元素追不上手指，像在拖一根皮筋 */
-  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+  transition: background-color var(--sh-t-fast) ease, box-shadow var(--sh-t-fast) ease;
   position: relative;
   z-index: 2;
 }
 
 /* 落定：松手后轻轻弹一下，否则看不出这次拖动到底有没有生效 */
 .spec--land {
-  animation: sh-land 0.32s ease;
+  animation: sh-land var(--sh-t-base) ease;
 }
 
 @keyframes sh-land {
@@ -1163,14 +1163,14 @@ onShow(() => void load());
   margin-top: 20rpx;
 }
 .val {
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+  transition: transform var(--sh-t-fast) ease, box-shadow var(--sh-t-fast) ease, background-color var(--sh-t-fast) ease;
 }
 
 /* 同上：抬起来，而不是变透明 */
 .val--drag {
   box-shadow: 0 6rpx 18rpx var(--sh-scrim);
   /* 跟手期间关掉 transform 过渡 */
-  transition: box-shadow 0.18s ease, background-color 0.18s ease;
+  transition: box-shadow var(--sh-t-fast) ease, background-color var(--sh-t-fast) ease;
   position: relative;
   z-index: 2;
 }
@@ -1182,7 +1182,7 @@ onShow(() => void load());
 }
 
 .val--land {
-  animation: sh-land-chip 0.32s ease;
+  animation: sh-land-chip var(--sh-t-base) ease;
 }
 
 @keyframes sh-land-chip {

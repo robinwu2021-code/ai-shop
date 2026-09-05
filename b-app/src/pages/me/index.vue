@@ -323,7 +323,7 @@ onShow(() => {
       </view>
     </view>
 
-    <sh-theme-sheet v-model:visible="sheetOpen"></sh-theme-sheet>
+    <sh-theme-sheet :visible="sheetOpen" @close="sheetOpen = false"></sh-theme-sheet>
   </sh-scaffold>
 </template>
 

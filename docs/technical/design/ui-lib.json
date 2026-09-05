@@ -1130,7 +1130,7 @@
         "border-radius": "9999px",
         "background": "var(--sh-primary)",
         "color": "var(--sh-on-primary)",
-        "font-size": "30rpx",
+        "font-size": "28rpx",
         "font-weight": "600",
         "line-height": "1.4"
       },
@@ -1141,7 +1141,7 @@
         "border-radius": "9999px",
         "background": "var(--sh-primary)",
         "color": "var(--sh-on-primary)",
-        "font-size": "15px",
+        "font-size": "14px",
         "font-weight": "600",
         "line-height": "1.4"
       },
@@ -1496,7 +1496,7 @@
         "padding": "0 24rpx",
         "border-radius": "24rpx",
         "background": "var(--sh-faint)",
-        "font-size": "30rpx",
+        "font-size": "28rpx",
         "color": "var(--sh-ink)"
       },
       "px": {
@@ -1504,7 +1504,7 @@
         "padding": "0 12px",
         "border-radius": "12px",
         "background": "var(--sh-faint)",
-        "font-size": "15px",
+        "font-size": "14px",
         "color": "var(--sh-ink)"
       },
       "usage": {
@@ -1621,10 +1621,10 @@
       "name": "sh-cover",
       "file": "packages/ui/src/components/sh-cover.vue",
       "scope": "跨端",
-      "lines": 51,
+      "lines": 57,
       "props": [
         "src?: string",
-        "mode?: string"
+        "mode?: CoverMode"
       ],
       "usage": {
         "b-app": 7,
@@ -1654,7 +1654,7 @@
       "name": "sh-empty",
       "file": "packages/ui/src/components/sh-empty.vue",
       "scope": "跨端",
-      "lines": 41,
+      "lines": 48,
       "props": [
         "text?: string",
         "compact?: boolean",
@@ -1885,7 +1885,7 @@
       "name": "sh-stat",
       "file": "packages/ui/src/components/sh-stat.vue",
       "scope": "跨端",
-      "lines": 134,
+      "lines": 136,
       "props": [
         "items: readonly StatItem[]",
         "boxed?: boolean",
@@ -1951,7 +1951,7 @@
       "name": "sh-theme-sheet",
       "file": "packages/ui/src/components/sh-theme-sheet.vue",
       "scope": "跨端",
-      "lines": 236,
+      "lines": 245,
       "props": [
         "visible: boolean"
       ],
@@ -1970,8 +1970,8 @@
       "props": [
         "list: readonly string[]",
         "max?: number",
-        "w?: number",
-        "h?: number",
+        "width?: number",
+        "height?: number",
         "uploading?: boolean",
         "removable?: boolean",
         "badge?: string"

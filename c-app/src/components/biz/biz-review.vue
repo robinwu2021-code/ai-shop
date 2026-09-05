@@ -110,7 +110,7 @@ defineEmits<{ (e: "like"): void }>();
   font-size: 26rpx;
   color: var(--sh-sub);
   line-height: 1;
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform var(--sh-t-base) var(--sh-ease-spring);
 }
 .like.is-on .like__icon {
   color: var(--sh-danger);

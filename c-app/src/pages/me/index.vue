@@ -331,7 +331,7 @@ onShow(() => {
       <text class="txt-sub">{{ $t("me.deregister") }}</text>
     </view>
 
-    <sh-theme-sheet v-model:visible="themeVisible"></sh-theme-sheet>
+    <sh-theme-sheet :visible="themeVisible" @close="themeVisible = false"></sh-theme-sheet>
 
     <!-- 商家入驻申请 -->
     <sh-sheet
@@ -396,7 +396,7 @@ onShow(() => {
       弹层文字直接浮在商品列表上，**看起来像页面串了行，而不像弹窗坏了**。
       H5 上不会露：浏览器里 `:root` 是匹配的。见 shared/tests/scaffold-scope.test.ts
     -->
-    <phone-gate :show="phoneGate" @done="phoneGate = false" @close="phoneGate = false" />
+    <phone-gate :visible="phoneGate" @done="phoneGate = false" @close="phoneGate = false" />
   </sh-scaffold>
 </template>
 

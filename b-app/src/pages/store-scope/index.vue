@@ -604,14 +604,16 @@ onShow(() => {
     </view>
 
     <biz-pickup-sheet
-      v-model:visible="pickupSheetOpen"
+      :visible="pickupSheetOpen"
+      @close="pickupSheetOpen = false"
       :store-no="merchant.storeNo || 'default'"
       :selected="neighborRefs.map((r) => r.pickupNo)"
       @done="savePickups"
     ></biz-pickup-sheet>
 
     <biz-region-picker
-      v-model:visible="pickerOpen"
+      :visible="pickerOpen"
+      @close="pickerOpen = false"
       :areas="areas"
       @update:areas="setAreas"
     ></biz-region-picker>

@@ -141,7 +141,7 @@ onLoad((q) => {
       <text class="txt-caption counter sh-num">{{ content.length }}/300</text>
 
       <text class="sh-muted imglabel">{{ $t("review.images") }}</text>
-      <sh-uploader class="imgs" :list="images" :max="3" :w="160" @add="pickImages"></sh-uploader>
+      <sh-uploader class="imgs" :list="images" :max="3" :width="160" @add="pickImages"></sh-uploader>
     </view>
 
     <sh-actionbar class="bar-center" :pad="220">

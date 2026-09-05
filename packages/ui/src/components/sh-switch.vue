@@ -49,7 +49,7 @@ function toggle(v: boolean) {
   height: 48rpx;
   border-radius: 9999px;
   background: var(--sh-faint);
-  transition: background 0.2s ease;
+  transition: background var(--sh-t-fast) ease;
 }
 .sw.is-on {
   background: var(--sh-primary);
@@ -67,7 +67,7 @@ function toggle(v: boolean) {
   border-radius: 9999px;
   /* 滑块用 surface 不是 #fff：深色皮肤下纯白会刺眼，而 surface 跟着明暗走 */
   background: var(--sh-surface);
-  transition: transform 0.2s ease;
+  transition: transform var(--sh-t-fast) ease;
 }
 /* 位移 = 88 − 40 − 4×2 = 40。算出来的，不是量出来的 */
 .sw.is-on .sw__knob {

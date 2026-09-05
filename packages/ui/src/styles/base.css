@@ -195,6 +195,23 @@ button::after {
   --sh-z-sheet: 100;       /* 底部弹层 */
   --sh-z-sheet-stacked: 150; /* 弹层叠弹层：从一个弹层里再开一个 */
   --sh-z-dialog: 200;      /* 居中对话框 —— 它是要人立刻回答的那一个，永远最上面 */
+
+  /* ---- 动效 ----
+     色、圆角、间距、字阶都有档，**唯独动效没有**：2026-09-06 数下来跑着七个时长
+     （0.18 / 0.2 / 0.22 / 0.3 / 0.32 / 0.42 / 0.62s）。这与当初圆角出问题是同一个形状 ——
+     没有档，每个人就照着「感觉差不多」再挑一个数，而两个差 0.02s 的过渡没人分得出，
+     只会让下一个人再挑一次。
+
+     按**动的是什么**分三档，不按「快慢好看」分：
+       fast  状态切换 —— 颜色、开关、按下。人不看它，只要不突兀
+       base  尺寸与位置 —— 进度条推进、元素落位。人在跟着看
+       slow  强调 —— 角标弹一下这类「请注意这里」，配 spring 曲线才成立
+     曲线只立 spring 一个：其余一律 `ease`，那是浏览器默认，不必起名字。 */
+  --sh-t-fast: 0.18s;
+  --sh-t-base: 0.3s;
+  --sh-t-slow: 0.42s;
+  /* 回弹：超过终点再退回来。用在「弹一下」的强调上，不要拿它做常规过渡 */
+  --sh-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   /* 页面里**块与块之间**的那道缝。由 sh-scaffold 的 gap 统一给出 ——
      此前没有任何人给（`.sh-block + .sh-block` 是 20rpx，`.sh-card` 之间没有），
      于是一屏白卡连成一整块灰板。理由写在 sh-scaffold 的 `.sh-scaffold` 那段。
@@ -680,7 +697,13 @@ uni-page-wrapper[style*="--window-bottom"] {
   padding: 0 24rpx;
   border-radius: 24rpx;
   background: var(--sh-faint);
-  font-size: 30rpx;
+  /* 28rpx = 字阶的正文档（.txt-body）。**此前是 30rpx，而 30 不在七档上** ——
+     它只活在这里和 `.sh-btn` 两处，于是两把尺对不上：`typography.test.ts` 的
+     SCALE 认它，而《规范·字体》与 `ui-lib.json` 的字阶（由 .txt-* 类生成）不认。
+     两个原语用同一个档外值，本来是「这一档真的缺」的信号（60rpx 就是这么加的），
+     但这两处要的正是「和正文一样大」：填进去的字与读到的字同一个尺寸。
+     所以是收回七档，不是加第八档。 */
+  font-size: 28rpx;
   color: var(--sh-ink);
 }
 .field__area {
@@ -1535,7 +1558,10 @@ uni-page-wrapper[style*="--window-bottom"] {
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  font-size: 30rpx;
+  /* 28rpx/600/1.4 = 字阶的 `.txt-strong`（「需要比正文重一档的行」——按钮正是它）。
+     与 `.field__input` 同一笔收回七档，理由写在那儿。
+     小一号那档 `.sh-btn--sm` 是 26rpx，两者仍差一档。 */
+  font-size: 28rpx;
   font-weight: 600;
   line-height: 1.4;
 }

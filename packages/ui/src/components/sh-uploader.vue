@@ -29,8 +29,8 @@ const props = withDefaults(
     /** 上限；到了就不再显示「＋」。不给＝不限 */
     max?: number;
     /** 格子宽高（rpx）。默认方形 104 —— 商品主图那一档 */
-    w?: number;
-    h?: number;
+    width?: number;
+    height?: number;
     /** 正在传：「＋」变「…」并挡住重复点 */
     uploading?: boolean;
     /** 显示右上角的删除角标。**默认关**，见文件头 */
@@ -38,7 +38,7 @@ const props = withDefaults(
     /** 第一格左下角的角标（如「主图」）。留空不显示 */
     badge?: string;
   }>(),
-  { max: 0, w: 104, h: 0, uploading: false, removable: false, badge: "" },
+  { max: 0, width: 104, height: 0, uploading: false, removable: false, badge: "" },
 );
 
 const emit = defineEmits<{
@@ -47,7 +47,7 @@ const emit = defineEmits<{
   (e: "tapItem", index: number): void;
 }>();
 
-const cell = computed(() => ({ width: `${props.w}rpx`, height: `${props.h || props.w}rpx` }));
+const cell = computed(() => ({ width: `${props.width}rpx`, height: `${props.height || props.width}rpx` }));
 const canAdd = computed(() => !props.max || props.list.length < props.max);
 
 function add() {

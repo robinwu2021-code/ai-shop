@@ -111,7 +111,7 @@ watch(
   gap: 8rpx;
   padding: 8rpx 0;
   color: var(--sh-sub);
-  transition: color 0.18s ease;
+  transition: color var(--sh-t-fast) ease;
 }
 .tabbar__item.is-on {
   color: var(--sh-primary-text);
@@ -121,7 +121,7 @@ watch(
   line-height: 0;
 }
 .tabbar__icon-wrap.is-bouncing {
-  animation: shCartBounce 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: shCartBounce var(--sh-t-slow) var(--sh-ease-spring);
 }
 @keyframes shCartBounce {
   0% { transform: scale(1); }

@@ -872,7 +872,7 @@ onMounted(async () => {
       多那一次点击，人会以为刚才那下没生效。
     -->
     <phone-gate
-      :show="phoneGate"
+      :visible="phoneGate"
       @done="((phoneGate = false), submit())"
       @close="phoneGate = false"
     />

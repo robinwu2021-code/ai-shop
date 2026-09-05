@@ -29,8 +29,8 @@ const props = defineProps<{
   areas: ServiceArea[];
 }>();
 const emit = defineEmits<{
-  (e: "update:visible", v: boolean): void;
-  (e: "update:areas", v: ServiceArea[]): void;
+  close: [];
+  "update:areas": [v: ServiceArea[]];
 }>();
 
 const { t } = useI18n();
@@ -1184,7 +1184,7 @@ function removeArea(a: ServiceArea) {
 const chosenOpen = ref(false);
 
 function close() {
-  emit("update:visible", false);
+  emit("close");
 }
 </script>
 

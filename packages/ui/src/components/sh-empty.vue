@@ -31,11 +31,18 @@ withDefaults(defineProps<{ text?: string; compact?: boolean; bare?: boolean }>()
   text-align: center;
   padding: var(--sh-pad-empty, 72rpx) 24rpx;
 }
-/* 页内小块的空态（如某个分组下暂无内容），不必占满一屏 */
-.empty.is-compact {
-  padding: 40rpx 24rpx;
-}
+/*
+ * 页内小块的空态（某个分组下暂无内容、或嵌在卡片里），不必占满一屏。
+ *
+ * **两种形态取同一个内边距**：它们的区别在「有没有卡片底」，不在松紧 ——
+ * 此前一个 40rpx 一个 60rpx，是两次各自随手取的。
+ *
+ * 走 `--sh-pad-empty` 的一半而不是再写死一个数：那个变量是**两端的密度旋钮**
+ *（C 端 72、B 端 48），而此前只有默认形态跟着它走 —— 旋钮拧一下，
+ * 三种形态里两种纹丝不动。现在 C 端 36 / B 端 24，都还在 4rpx 网格上。
+ */
+.empty.is-compact,
 .empty.is-bare {
-  padding: 60rpx 24rpx;
+  padding: calc(var(--sh-pad-empty, 72rpx) / 2) 24rpx;
 }
 </style>
