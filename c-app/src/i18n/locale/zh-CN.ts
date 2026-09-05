@@ -126,6 +126,7 @@ export default {
     INSTANT: "即时发放",
   },
   cart: {
+    groupSelected: "已选 {n} 件",
     pickToRemove: "先勾选要删除的商品",
     /** 不可售那一行的操作。只删这一件，不清空全部 */
     removeInvalid: "移除",

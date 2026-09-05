@@ -220,6 +220,11 @@ onShareAppMessage(() =>
         ></sh-empty>
       </template>
     </view>
+    <!--
+      悬浮购物车入口。**这三页此前加完购就没有下文** —— 不是 tab 页、没有操作条，
+      屏幕上再没有任何东西提到购物车。它同时是飞入动效的落点（见组件注释）。
+    -->
+    <biz-cart-fab></biz-cart-fab>
   </sh-scaffold>
 </template>
 

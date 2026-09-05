@@ -74,16 +74,13 @@ function tapItem(it: CartItem) {
   }
   if (cart.toggle(it.skuNo)) saySwitched(it.fulfillment);
 }
-function tapGroup(g: CartGroup) {
-  const on = !g.items.every((it) => cart.isSelected(it.skuNo));
-  if (cart.setGroup(g.fulfillment, on)) saySwitched(g.fulfillment);
-}
 function tapMerchant(g: CartGroup, m: MerchantSegment) {
   const on = !m.items.every((it) => cart.isSelected(it.skuNo));
   if (cart.setMerchant(g.fulfillment, m.merchantNo, on)) saySwitched(g.fulfillment);
 }
-function groupOn(g: CartGroup): boolean {
-  return g.items.length > 0 && g.items.every((it) => cart.isSelected(it.skuNo));
+/** 这一组里勾了几件。**只给勾了的组标**，没勾的组标个 0 是噪音 */
+function selectedIn(g: CartGroup): number {
+  return g.items.reduce((n, it) => n + (cart.isSelected(it.skuNo) ? it.qty : 0), 0);
 }
 function merchantOn(m: MerchantSegment): boolean {
   return m.items.length > 0 && m.items.every((it) => cart.isSelected(it.skuNo));
@@ -211,16 +208,25 @@ onShow(() => cart.load());
       </text>
     </view>
 
+    <!--
+      **一次只结一种取货方式**：这句话此前挂在每个组头上，两组就说两遍。
+      它说的是整页的规矩，不是某一组的属性 —— 所以移到这里，只说一次。
+    -->
+    <view v-if="cart.groups.length > 1" class="txt-caption onlyone">
+      {{ $t("cart.oneFulfillmentHint") }}
+    </view>
+
     <view v-for="g in cart.groups" :key="g.fulfillment" class="sh-card">
+      <!--
+        组头**不再有勾选框**。它此前与商家段、商品行的框长得一模一样、也在同一列上，
+        左边排出一把三级梯子，而最上面那一格做的事与底栏「全选」逐字相同
+        （全选本来就只作用于当前组）—— 删掉的是重复，不是能力。
+      -->
       <view class="ghead sh-row">
-        <!-- 勾选由外层的大点击区接管，sh-check 只负责画（与 b 端四处同一写法） -->
-        <view v-if="!editing" class="box sh-center" @tap="tapGroup(g)">
-          <sh-check :model-value="groupOn(g)"></sh-check>
-        </view>
         <text class="sh-chip sh-chip--primary">{{ $t(`fulfillment.${g.fulfillment}`) }}</text>
-        <!-- 多组时才说这句：只有一组时它是句废话 -->
-        <text v-if="cart.groups.length > 1" class="txt-caption ghead__note">
-          {{ $t("cart.oneFulfillmentHint") }}
+        <!-- 底栏那个合计说的是哪一组，在组头上标出来 -->
+        <text v-if="selectedIn(g)" class="txt-caption ghead__note sh-num">
+          {{ $t("cart.groupSelected", { n: selectedIn(g) }) }}
         </text>
       </view>
 
@@ -390,6 +396,11 @@ onShow(() => cart.load());
 
 .ghead {
   gap: 12rpx;
+}
+/* 整页只出现一次的规矩说明。缩进与卡片内容对齐，但它不属于任何一张卡 */
+.onlyone {
+  display: block;
+  padding: 0 8rpx;
 }
 .ghead__note {
   margin-inline-start: auto;

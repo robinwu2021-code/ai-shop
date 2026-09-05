@@ -124,6 +124,7 @@ export default {
     INSTANT: "Instant delivery",
   },
   cart: {
+    groupSelected: "{n} selected",
     pickToRemove: "Pick the items to delete first",
     /** 不可售那一行的操作。只删这一件，不清空全部 */
     removeInvalid: "Remove",

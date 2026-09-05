@@ -229,6 +229,44 @@ describe("购物车页", () => {
     expect([...store.selected].sort()).toEqual(["P1", "P2"]);
   });
 
+  it("★★★ 组头**没有**勾选框 —— 它与底栏「全选」做的是同一件事", async () => {
+    cartList.mockResolvedValue([item({ skuNo: "S1" }), item({ skuNo: "S2" })]);
+    const { w } = await render();
+
+    expect(w.findAll(".ghead .box").length, "左边那把三级梯子只留两级").toBe(0);
+    // 能力没丢：底栏全选照样把整组勾上
+    expect(w.findAll(".line .box").length).toBe(2);
+  });
+
+  it("★★ 「一次只结一种取货方式」整页只说一次，不是每组一遍", async () => {
+    cartList.mockResolvedValue([
+      item({ skuNo: "P1" }),
+      item({ skuNo: "E1", fulfillment: FULFILLMENT.EXPRESS }),
+    ]);
+    const { w } = await render();
+
+    const hits = w.text().split("cart.oneFulfillmentHint").length - 1;
+    expect(hits, "两组就说两遍是此前的样子").toBe(1);
+  });
+
+  it("★★ 只有一组时那句话根本不出现 —— 它是句废话", async () => {
+    cartList.mockResolvedValue([item({ skuNo: "S1" })]);
+    const { w } = await render();
+    expect(w.text()).not.toContain("cart.oneFulfillmentHint");
+  });
+
+  it("★★ 组头标出这一组勾了几件 —— 底栏那个合计说的是哪一组，要看得出来", async () => {
+    cartList.mockResolvedValue([
+      item({ skuNo: "P1", qty: 2 }),
+      item({ skuNo: "E1", fulfillment: FULFILLMENT.EXPRESS }),
+    ]);
+    const { w } = await render();
+
+    // 默认勾的是件数最多的那一组（自提 2 件），快递那组没勾就不标
+    expect(w.text()).toContain('cart.groupSelected:{"n":2}');
+    expect(w.text().split("cart.groupSelected").length - 1, "没勾的组标个 0 是噪音").toBe(1);
+  });
+
   it("★★ 一件都没勾就点去结算 → 不跳页，说一句", async () => {
     cartList.mockResolvedValue([item({ skuNo: "S1" })]);
     const { w, store } = await render();

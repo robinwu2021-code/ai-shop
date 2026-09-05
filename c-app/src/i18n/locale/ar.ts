@@ -124,6 +124,7 @@ export default {
     INSTANT: "تسليم فوري",
   },
   cart: {
+    groupSelected: "{n} مُختارة",
     pickToRemove: "اختر المنتجات المراد حذفها أولاً",
     /** 不可售那一行的操作。只删这一件，不清空全部 */
     removeInvalid: "إزالة",

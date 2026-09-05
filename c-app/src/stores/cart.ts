@@ -236,25 +236,6 @@ export const useCartStore = defineStore("cart", {
       return null;
     },
 
-    /** 整组勾 / 取消。跨组时同样让位 */
-    setGroup(fulfillment: FulfillmentType, on: boolean): FulfillmentType | null {
-      const g = this.groups.find((x) => x.fulfillment === fulfillment);
-      if (!g) return null;
-      this.touched = true;
-      const nos = g.items.map((it) => it.skuNo);
-      if (!on) {
-        this.selected = this.selected.filter((no) => !nos.includes(no));
-        return null;
-      }
-      const active = this.activeFulfillment;
-      if (active && active !== fulfillment) {
-        this.selected = nos;
-        return active;
-      }
-      this.selected = [...new Set([...this.selected, ...nos])];
-      return null;
-    },
-
     /** 一家店整段勾 / 取消。商家可能同时出现在两个履约组里，所以要连 fulfillment 一起给 */
     setMerchant(
       fulfillment: FulfillmentType,
