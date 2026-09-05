@@ -79,6 +79,21 @@ describe("结算页选地址 ≠ 改默认地址", () => {
       .not.toContain("setDefaultAddress");
   });
 
+  it("★★★ 不是选址模式时，点一整张卡就是「切到这儿」", () => {
+    /*
+     * 这一页的注释一直写着「点一下就切，不弹窗不追问」，而 `pick()` 第一行
+     * 曾是 `if (!picking.value) return;` —— 从「我的」进来点地址什么也不会发生，
+     * 切换只藏在一个小字按钮上。**说的和做的不是一回事**，
+     * 而症状是「点了没反应」：不报错、不留痕，只能靠人来说。
+     */
+    const body = bodyOf(addressPage, "function pick(");
+    expect(body, "地址页没有 pick 函数了").not.toBeNull();
+    expect(body, "非选址模式下点卡片要切换 —— 直接 return 就是「点了没反应」")
+      .toContain("useHere");
+    // 对照量：选址模式那条路还在，别把它一起改没了
+    expect(body).toContain("pickedAddress.offer");
+  });
+
   it("★★★ 选中的那条要交回给结算页，而不是写进服务端", () => {
     const body = bodyOf(addressPage, "function pick(");
     expect(body).toContain("pickedAddress.offer");

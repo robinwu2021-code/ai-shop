@@ -347,7 +347,20 @@ async function setDefault(a: Address) {
  * 现在改为交回一个 id，由结算页自己决定这一单用哪条（`shared/address-pick`）。
  */
 function pick(a: Address) {
-  if (!picking.value) return;
+  /*
+   * **不是选址模式时，点一整张卡就是「切到这儿」**（美团的口径）。
+   *
+   * 此前这里直接 return —— 于是从「我的」进来点地址什么也不会发生，
+   * 切换只藏在那个「设为当前位置」的小字上。而这一页的注释一直写着
+   * 「点一下就切，不弹窗不追问」：**说的和做的不是一回事**，
+   * 而不一致的那一半是用户会先撞上的那一半。
+   *
+   * 已经是当前位置的那条不用再切一次（切了也只是重放一遍同样的 toast）。
+   */
+  if (!picking.value) {
+    if (location.active?.addressId !== a.addressId) void useHere(a);
+    return;
+  }
   pickedAddress.offer(a.addressId);
   uni.navigateBack();
 }
@@ -403,12 +416,13 @@ onShow(() => {
       <text class="txt-caption card__addr">{{ a.region }} {{ a.detail }} {{ a.houseNo }}</text>
 
       <view class="card__ops">
-        <text
-          v-if="location.active?.addressId !== a.addressId"
-          class="txt-caption op txt-primary"
-          @tap.stop="useHere(a)"
-        >{{ $t("address.useHere") }}</text>
-        <text v-else class="txt-caption txt-strong op is-active">{{ $t("address.here") }}</text>
+        <!--
+          **只保留「当前位置」这个状态标，不再单给一个「设为当前位置」按钮** ——
+          整张卡点一下就是切换（见 pick），再摆一个按钮就是同一件事的第二个入口，
+          而两个入口里总有一个会先坏掉、且没人发现。
+        -->
+        <text v-if="location.active?.addressId === a.addressId"
+              class="txt-caption txt-strong op is-active">{{ $t("address.here") }}</text>
         <text v-if="!a.isDefault" class="txt-caption op txt-primary" @tap.stop="setDefault(a)">
           {{ $t("address.setDefault") }}
         </text>
