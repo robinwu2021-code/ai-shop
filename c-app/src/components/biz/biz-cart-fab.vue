@@ -81,7 +81,7 @@ onUnmounted(() => clearCartAnchor());
   bottom: 96rpx;
   bottom: calc(96rpx + constant(safe-area-inset-bottom));
   bottom: calc(96rpx + env(safe-area-inset-bottom));
-  z-index: 10;
+  z-index: var(--sh-z-fab);
   width: 96rpx;
   height: 96rpx;
   border-radius: 9999px;

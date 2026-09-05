@@ -236,14 +236,14 @@ onShow(() => cart.load());
       -->
       <template v-for="m in g.merchants" :key="m.merchantNo">
         <view v-if="g.merchants.length > 1" class="seg sh-row">
-          <view v-if="!editing" class="box sh-center" @tap="tapMerchant(g, m)">
+          <view v-if="!editing" class="box sh-hit sh-center" @tap="tapMerchant(g, m)">
             <sh-check :model-value="merchantOn(m)"></sh-check>
           </view>
           <text class="txt-strong">{{ m.merchantName || $t("cart.unknownMerchant") }}</text>
         </view>
 
         <view v-for="it in m.items" :key="it.skuNo" class="line sh-row">
-          <view class="box sh-center" @tap.stop="tapItem(it)">
+          <view class="box sh-hit sh-center" @tap.stop="tapItem(it)">
             <sh-check :model-value="boxOn(it)"></sh-check>
           </view>
           <biz-sku-row
@@ -271,7 +271,7 @@ onShow(() => cart.load());
               </view>
               <view class="stepper sh-row" @tap.stop>
                 <view
-                  class="stepper__btn sh-center"
+                  class="stepper__btn sh-hit sh-center"
                   :class="{ 'is-off': it.qty <= 1 }"
                   @tap.stop="dec(it)"
                 >
@@ -279,7 +279,7 @@ onShow(() => cart.load());
                 </view>
                 <text class="txt-strong stepper__num sh-num" @tap.stop="askQty(it)">{{ it.qty }}</text>
                 <view
-                  class="stepper__btn sh-center"
+                  class="stepper__btn sh-hit sh-center"
                   :class="{ 'is-off': atMax(it) }"
                   @tap.stop="inc(it)"
                 >
@@ -310,7 +310,7 @@ onShow(() => cart.load());
         <text class="txt-caption ghead__note sh-num">{{ cart.invalidItems.length }}</text>
       </view>
       <view v-for="it in cart.invalidItems" :key="it.skuNo" class="line sh-row is-invalid">
-        <view v-if="editing" class="box sh-center" @tap.stop="cart.toggleMark(it.skuNo)">
+        <view v-if="editing" class="box sh-hit sh-center" @tap.stop="cart.toggleMark(it.skuNo)">
           <sh-check :model-value="cart.isMarked(it.skuNo)"></sh-check>
         </view>
         <biz-sku-row
@@ -345,7 +345,7 @@ onShow(() => cart.load());
     <sh-actionbar v-if="cart.items.length" pill="lead" tabbar :pad="140">
       <!-- 光一个勾选框说不清它管的是什么，配一个字 —— 它离商品行有一段距离 -->
       <view class="bar__all sh-row" @tap="tapAll">
-        <view class="box sh-center">
+        <view class="box sh-hit sh-center">
           <sh-check :model-value="allOn"></sh-check>
         </view>
         <text class="txt-caption">{{ $t("cart.selectAll") }}</text>

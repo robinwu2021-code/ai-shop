@@ -2039,7 +2039,7 @@ async function save(thenSubmit = false) {
           −／＋ 步进。**库存是每天都在动的数**，最常见的改动是「卖掉两袋」——
           点两下比调出键盘、全选、重打快得多。数字仍然可以直接键入。
         -->
-        <view class="txt-body step sh-center" @tap="stepStock(r, -1)"><sh-icon name="minus" :size="26" color="var(--sh-sub)"></sh-icon></view>
+        <view class="txt-body step sh-hit sh-center" @tap="stepStock(r, -1)"><sh-icon name="minus" :size="26" color="var(--sh-sub)"></sh-icon></view>
         <!-- 库存 0 = 这个规格顾客买不到。多规格时最容易漏填的就是它 -->
         <input
           maxlength="6"
@@ -2048,7 +2048,7 @@ async function save(thenSubmit = false) {
           :class="{ 'is-danger': Number(r.stock) === 0 }"
           type="number"
         />
-        <view class="txt-body step sh-center" @tap="stepStock(r, 1)"><sh-icon name="plus" :size="26" color="var(--sh-sub)"></sh-icon></view>
+        <view class="txt-body step sh-hit sh-center" @tap="stepStock(r, 1)"><sh-icon name="plus" :size="26" color="var(--sh-sub)"></sh-icon></view>
       </view>
       <!-- 多店：改的是哪家店的库存必须写出来。主体总量与门店库存是两个数 -->
       <text v-if="merchant.multiStore" class="sh-muted hint">
@@ -2590,7 +2590,9 @@ async function save(thenSubmit = false) {
   position: fixed;
   inset: 0;
   background: var(--sh-scrim);
-  z-index: 20;
+  /* 它是一层弹层，就该站在弹层那一档上 —— 原来的 20 比 sh-actionbar(40) 还低，
+     这一页正好有贴底通栏，遮罩盖不住它 */
+  z-index: var(--sh-z-sheet);
 }
 .cat-sheet {
   position: absolute;

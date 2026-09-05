@@ -45,7 +45,7 @@ const emit = defineEmits<{ close: [] }>();
 .dlg {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: var(--sh-z-dialog);
   display: flex;
   align-items: center;
   justify-content: center;

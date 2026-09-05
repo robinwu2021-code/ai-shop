@@ -33,7 +33,7 @@ const style = computed(() => {
 <style scoped>
 .fly {
   position: fixed;
-  z-index: 200;
+  z-index: var(--sh-z-dialog);
   width: 72rpx;
   height: 72rpx;
   margin-inline-start: -36rpx;

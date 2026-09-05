@@ -104,7 +104,7 @@ watch(() => props.titleKey, applyTitle);
     <!-- #ifdef H5 || APP-PLUS -->
     <view class="navbar" :style="{ paddingTop: statusBar + 'px' }">
       <view class="navbar__bar">
-        <view v-if="canBack" class="navbar__back" @tap="goBack">
+        <view v-if="canBack" class="navbar__back sh-hit" @tap="goBack">
           <sh-icon name="chevronLeft" :size="34" color="var(--sh-ink)"></sh-icon>
         </view>
         <text class="txt-title navbar__title">{{ navTitle }}</text>
@@ -196,7 +196,7 @@ watch(() => props.titleKey, applyTitle);
   top: 0;
   left: 0;
   right: 0;
-  z-index: 50;
+  z-index: var(--sh-z-nav);
   background: var(--sh-surface);
 }
 .navbar__bar {

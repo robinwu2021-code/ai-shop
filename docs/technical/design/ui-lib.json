@@ -417,6 +417,42 @@
       }
     },
     {
+      "class": ".sh-hit",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "position": "relative"
+      },
+      "px": {
+        "position": "relative"
+      },
+      "usage": {
+        "b-app": 5,
+        "c-app": 14
+      }
+    },
+    {
+      "class": ".sh-hit::after",
+      "group": "其它",
+      "when": "—",
+      "avoid": "—",
+      "decl": {
+        "content": "\"\"",
+        "position": "absolute",
+        "inset": "-24rpx"
+      },
+      "px": {
+        "content": "\"\"",
+        "position": "absolute",
+        "inset": "-12px"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".sh-mb-md",
       "group": "其它",
       "when": "—",
@@ -2273,7 +2309,7 @@
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 282,
+      "libClassHits": 284,
       "localSelectors": 70,
       "localCssLines": 312,
       "rolled": []
@@ -3195,7 +3231,7 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 68,
+      "libClassHits": 74,
       "localSelectors": 28,
       "localCssLines": 121,
       "rolled": []
@@ -3254,7 +3290,7 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 122,
+      "libClassHits": 124,
       "localSelectors": 45,
       "localCssLines": 190,
       "rolled": []
@@ -3317,7 +3353,7 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 29,
+      "libClassHits": 31,
       "localSelectors": 16,
       "localCssLines": 92,
       "rolled": []
@@ -3516,7 +3552,7 @@
         "sh-actionbar",
         "sh-scaffold"
       ],
-      "libClassHits": 26,
+      "libClassHits": 28,
       "localSelectors": 9,
       "localCssLines": 43,
       "rolled": []
@@ -3561,7 +3597,7 @@
         "sh-scaffold",
         "sh-section"
       ],
-      "libClassHits": 39,
+      "libClassHits": 40,
       "localSelectors": 23,
       "localCssLines": 115,
       "rolled": []
@@ -3570,7 +3606,7 @@
   "gaps": [],
   "counts": {
     "tokens": 10,
-    "blocks": 65,
+    "blocks": 67,
     "components": 33,
     "pages": 98,
     "gapKinds": 0

@@ -54,7 +54,7 @@ const inputType = computed(() => (s.type === "text" ? "text" : s.type));
 .pr {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: var(--sh-z-dialog);
 }
 .pr__mask {
   position: absolute;

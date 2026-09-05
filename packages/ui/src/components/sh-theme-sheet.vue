@@ -137,7 +137,7 @@ function close() {
 .sheet {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: var(--sh-z-sheet);
 }
 .sheet__mask {
   position: absolute;

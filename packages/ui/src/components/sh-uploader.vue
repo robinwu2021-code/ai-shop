@@ -67,7 +67,7 @@ function add() {
     >
       <sh-cover class="up__img" :style="cell" :src="img"></sh-cover>
       <text v-if="badge && i === 0" class="up__badge">{{ badge }}</text>
-      <text v-if="removable" class="up__del" @tap.stop="emit('remove', i)">×</text>
+      <text v-if="removable" class="up__del sh-hit" @tap.stop="emit('remove', i)">×</text>
     </view>
     <view v-if="canAdd" class="up__add" :style="cell" @tap="add">
       <text class="up__plus">{{ uploading ? "…" : "＋" }}</text>

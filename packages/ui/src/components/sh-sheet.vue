@@ -52,12 +52,12 @@ const emit = defineEmits<{ close: [] }>();
 .sheet {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: var(--sh-z-sheet);
 }
 
 /* 比 sh-dialog（200）低一档：对话框永远该在最上面，它是要人立刻回答的那一个 */
 .sheet--stacked {
-  z-index: 150;
+  z-index: var(--sh-z-sheet-stacked);
 }
 
 .sheet__mask {

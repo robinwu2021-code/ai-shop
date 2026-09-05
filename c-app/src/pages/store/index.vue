@@ -356,7 +356,7 @@ function navToStore() {
         </view>
         <view class="freq__buy">
           <text class="txt-price freq__price sh-num">{{ money(f.price) }}</text>
-          <text class="txt-body add" @tap="addOne(f)">＋</text>
+          <text class="txt-body add sh-hit" @tap="addOne(f)">＋</text>
         </view>
       </view>
 

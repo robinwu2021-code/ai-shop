@@ -30,7 +30,7 @@ defineEmits<{ (e: "tap"): void }>();
   bottom: calc(var(--sh-tabbar-h) + 60rpx);
   bottom: calc(var(--sh-tabbar-h) + 60rpx + constant(safe-area-inset-bottom));
   bottom: calc(var(--sh-tabbar-h) + 60rpx + env(safe-area-inset-bottom));
-  z-index: 10;
+  z-index: var(--sh-z-fab);
   padding: 20rpx 36rpx;
   border-radius: 9999px;
   background: var(--sh-primary);

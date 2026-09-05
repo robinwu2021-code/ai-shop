@@ -389,9 +389,9 @@ onShareAppMessage(() =>
       <view class="qty sh-row sh-row--between">
         <text class="sh-muted sh-num">{{ $t("goods.stock", { n: sku?.stock ?? 0 }) }}</text>
         <view class="stepper sh-row">
-          <view class="txt-body stepper__btn sh-center" @tap="stepQty(-1)"><text>−</text></view>
+          <view class="txt-body stepper__btn sh-hit sh-center" @tap="stepQty(-1)"><text>−</text></view>
           <text class="txt-strong stepper__num sh-num">{{ qty }}</text>
-          <view class="txt-body stepper__btn sh-center" @tap="stepQty(1)"><text>＋</text></view>
+          <view class="txt-body stepper__btn sh-hit sh-center" @tap="stepQty(1)"><text>＋</text></view>
         </view>
       </view>
     </view>

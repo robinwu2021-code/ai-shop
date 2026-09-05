@@ -164,7 +164,7 @@ async function bind(run: () => Promise<unknown>) {
   position: fixed;
   inset: 0;
   background: var(--sh-scrim);
-  z-index: 100;
+  z-index: var(--sh-z-sheet);
 }
 .sheet {
   position: absolute;

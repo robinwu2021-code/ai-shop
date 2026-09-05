@@ -80,7 +80,7 @@ const off = computed(() => {
           位置不变：手指本来就要落在这儿，换的是它说什么。
         -->
         <text v-if="soldOut" class="sh-chip sold">{{ $t("goods.soldOut") }}</text>
-        <view v-else class="add" @tap.stop="$emit('add', $event)">
+        <view v-else class="add sh-hit" @tap.stop="$emit('add', $event)">
           <text class="add__sign">＋</text>
         </view>
       </view>

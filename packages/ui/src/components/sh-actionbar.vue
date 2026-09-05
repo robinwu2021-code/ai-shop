@@ -99,7 +99,7 @@ const padStyle = computed(() => ({
   bottom: 28rpx;
   bottom: calc(28rpx + constant(safe-area-inset-bottom));
   bottom: calc(28rpx + env(safe-area-inset-bottom));
-  z-index: 40;
+  z-index: var(--sh-z-actionbar);
 }
 /* 有底部菜单的页面：压在菜单之上。**高度走变量不抄数字** ——
    菜单高度改一次，这里跟着变（cart 的注释记着它曾经被菜单盖住过）。 */

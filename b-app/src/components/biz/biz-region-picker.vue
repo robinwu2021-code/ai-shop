@@ -1298,7 +1298,7 @@ function close() {
                     @tap.stop="excludeRow(r)">
                 {{ rowExcluded(r) ? $t("store.picker.undoExclude") : $t("store.picker.exclude") }}
               </text>
-              <view v-else class="row__check" :class="{ 'is-on': r.picked, 'is-off': !!coverNote(r) }" @tap.stop="pickRow(r)">
+              <view v-else class="row__check sh-hit" :class="{ 'is-on': r.picked, 'is-off': !!coverNote(r) }" @tap.stop="pickRow(r)">
                 <sh-icon v-if="r.picked" name="check" :size="24" color="var(--sh-on-primary)"></sh-icon>
                 <text v-else-if="adding === r.key" class="row__tick">…</text>
               </view>
@@ -1342,7 +1342,7 @@ function close() {
 .mask {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: var(--sh-z-sheet);
   background: var(--sh-scrim);
 }
 .sheet {

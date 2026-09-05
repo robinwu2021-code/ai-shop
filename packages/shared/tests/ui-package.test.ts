@@ -479,3 +479,143 @@ describe("块间缝归 --sh-gap-block", () => {
     ).toEqual([]);
   });
 });
+
+/*
+ * 可点元素的手指尺寸。
+ *
+ * **视觉尺寸与该有的点按面积不是一回事。** 2026-09-06 量了一遍，全站 12 个可点元素
+ * 的盒子小于 88rpx（= 44px，Apple HIG 与微信小程序设计指南取的是同一个下限），
+ * 最小的 40rpx 只有 20px —— 而它们全在最常点的地方：购物车与商品页的加减号、
+ * 列表里的「＋」、上传格子的删除叉。**这类缺陷不会有人报**：点空了人只会再点一次。
+ *
+ * 判据只看**显式写了宽高**的那些：靠内边距撑开的行、整行可点的列表项本来就够大，
+ * 量它们只会报一堆假的。补救办法是库里的 `.sh-hit`（`::after` 各边扩 24rpx = 48rpx），
+ * 所以挂了它的按 +48rpx 算。
+ */
+describe("可点元素的点按面积", () => {
+  const MIN = 88;   // rpx
+  const HIT = 48;   // .sh-hit 扩出来的总量（各边 24rpx）
+
+  const all = [
+    ...pageFilesAll(),
+    ...[["lib", "packages/ui/src/components"],
+        ...APPS.map((a) => [a, `${a}/src/components`] as const)]
+      .flatMap(([app, dir]) => {
+        const d = join(ROOT, dir as string);
+        if (!existsSync(d)) return [];
+        return readdirSync(d, { recursive: true, encoding: "utf8" })
+          .filter((f) => String(f).endsWith(".vue"))
+          .map((f) => ({ app: app as string, file: String(f), src: readFileSync(join(d, String(f)), "utf8") }));
+      }),
+  ];
+
+  /** 模板里挂了 @tap 的元素上的类名 → 是否同时挂了 sh-hit */
+  function tappable(tpl: string): Map<string, boolean> {
+    const out = new Map<string, boolean>();
+    for (const m of tpl.matchAll(/<[a-zA-Z][^>]*>/g)) {
+      const tag = m[0];
+      if (!/@tap|@click/.test(tag)) continue;
+      const cm = /(?<![:\w-])class="([^"]*)"/.exec(tag);
+      if (!cm) continue;
+      const classes = cm[1]!.split(/\s+/).filter(Boolean);
+      const hit = classes.includes("sh-hit");
+      for (const c of classes) out.set(c, (out.get(c) ?? false) || hit);
+    }
+    return out;
+  }
+
+  const findings = all.flatMap(({ app, file, src }) => {
+    if (!src.includes("<style")) return [];
+    const cut = src.indexOf("<style");
+    const taps = tappable(src.slice(0, cut).replace(/<!--[\s\S]*?-->/g, ""));
+    const css = src.slice(cut).replace(/\/\*[\s\S]*?\*\//g, "");
+    const out: string[] = [];
+    for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const one = /^\.([\w-]+)$/.exec((m[1] ?? "").trim());
+      if (!one || !taps.has(one[1]!)) continue;
+      const w = /\bwidth:\s*(\d+)rpx/.exec(m[2] ?? "");
+      const h = /\bheight:\s*(\d+)rpx/.exec(m[2] ?? "");
+      if (!w || !h) continue;
+      const grow = taps.get(one[1]!) ? HIT : 0;
+      const ew = Number(w[1]) + grow;
+      const eh = Number(h[1]) + grow;
+      if (ew < MIN || eh < MIN)
+        out.push(`${app}/${file}  .${one[1]}  ${w[1]}×${h[1]}rpx${grow ? " (+sh-hit)" : ""} → ${ew}×${eh}rpx`);
+    }
+    return out;
+  });
+
+  it("有东西可扫（扫不到可点元素的话，下面那条是空转的）", () => {
+    const anyTap = all.some(({ src }) => /@tap/.test(src));
+    expect(anyTap).toBe(true);
+    expect(all.length).toBeGreaterThan(100);
+  });
+
+  it("没有小于 88rpx（44px）的可点元素", () => {
+    expect(
+      findings,
+      `点按面积不足 ${MIN}rpx（= 44px，Apple HIG 与微信取同一个下限）：\n` +
+        "挂 `.sh-hit` 把 ::after 扩出去（元素自己的盒不动，排版不会被顶开），\n" +
+        "或者直接把元素做大到 88rpx。\n" +
+        findings.join("\n"),
+    ).toEqual([]);
+  });
+});
+
+/*
+ * 浮层层级只许用档。
+ *
+ * 《规范·版面》上那张表只有四层，而 2026-09-06 数下来代码里跑着**九个数**
+ *（200 / 150 / 100 / 90 / 60 / 50 / 40 / 20 / 10）。多出来的几个不是新层，
+ * 是「当时随手挑了一个看起来够大的数」，其中两处是真缺陷：
+ *   · `biz-pickup-sheet` 与 b 端 `biz-region-picker` 取 60，**低于 sh-sheet 的 100**
+ *   · `goods-edit` 的类目遮罩取 20，**低于 sh-actionbar 的 40** —— 而那一页正好有贴底通栏
+ * 现在一律走 `--sh-z-*`。
+ *
+ * 例外：**卡片内部**的小层叠（≤ 5）不算浮层 —— 那是「这个角标压在这张图上」，
+ * 与「这个面板压在哪一层」不是一件事，硬收进档里只会给档表添两个没人用的名字。
+ */
+describe("浮层层级只许用 --sh-z-*", () => {
+  const LOCAL_MAX = 5;
+
+  const zTokens = (() => {
+    const css = readFileSync(join(ROOT, "packages/ui/src/styles/base.css"), "utf8");
+    return new Set([...css.matchAll(/(--sh-z-[\w-]+)\s*:/g)].map((m) => m[1]!));
+  })();
+
+  const files = [
+    ...pageFilesAll(),
+    ...[["lib", "packages/ui/src/components"],
+        ...APPS.map((a) => [a, `${a}/src/components`] as const)]
+      .flatMap(([app, dir]) => {
+        const d = join(ROOT, dir as string);
+        if (!existsSync(d)) return [];
+        return readdirSync(d, { recursive: true, encoding: "utf8" })
+          .filter((f) => String(f).endsWith(".vue"))
+          .map((f) => ({ app: app as string, file: String(f), src: readFileSync(join(d, String(f)), "utf8") }));
+      }),
+  ];
+
+  it("档表读得到（读不到的话下面那条是空转的）", () => {
+    expect(zTokens.size).toBeGreaterThan(4);
+  });
+
+  it("没有裸写的层级数", () => {
+    const offenders: string[] = [];
+    for (const { app, file, src } of files) {
+      if (!src.includes("<style")) continue;
+      const css = src.slice(src.indexOf("<style")).replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const m of css.matchAll(/z-index:\s*(\d+)/g)) {
+        if (Number(m[1]) <= LOCAL_MAX) continue;
+        offenders.push(`${app}/${file}  z-index: ${m[1]}`);
+      }
+    }
+    expect(
+      offenders,
+      "浮层的先后关系是全局的事，不该由各文件各挑一个数决定。\n" +
+        `用 base.css 里的档：${[...zTokens].join(" / ")}。\n` +
+        `卡片内部的小层叠（≤ ${LOCAL_MAX}）不在此列。\n` +
+        offenders.join("\n"),
+    ).toEqual([]);
+  });
+});

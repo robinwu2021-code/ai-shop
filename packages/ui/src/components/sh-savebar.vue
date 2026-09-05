@@ -52,7 +52,7 @@ defineEmits<{ (e: "discard"): void; (e: "save"): void }>();
   bottom: 0;
   /* 宽屏下跟着应用框收窄：sh-scaffold 的 transform 让 fixed 以框为包含块，
      所以这里不必自己算 left/right（见 sh-scaffold 的注释） */
-  z-index: 40;
+  z-index: var(--sh-z-actionbar);
   display: flex;
   align-items: center;
   gap: 16rpx;

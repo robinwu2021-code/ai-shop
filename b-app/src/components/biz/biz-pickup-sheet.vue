@@ -209,7 +209,7 @@ function close() {
 .mask {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: var(--sh-z-sheet);
   background: var(--sh-scrim);
 }
 .sheet {

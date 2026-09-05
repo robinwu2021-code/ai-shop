@@ -90,7 +90,7 @@ watch(
   /* 宽屏下跟着应用框走，不贴到 1920px 两端 —— 变量由 App.vue 定义，窄屏为 100% */
   max-width: var(--sh-app-max);
   margin: 0 auto;
-  z-index: 90;
+  z-index: var(--sh-z-tabbar);
   display: flex;
   background: var(--sh-surface);
   /*

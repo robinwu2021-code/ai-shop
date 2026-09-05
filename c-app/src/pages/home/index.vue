@@ -273,7 +273,7 @@ onShareAppMessage(() =>
       <!-- 搜索收成一个 icon 并入这一行：一个社区只覆盖三五家店、几十上百个 SKU，
            用户翻两屏就看完了全部 —— 搜索远没到值一整行主视觉的程度。
            省下的那一行给「再来一单」，那才是这个场景下真正的高频动作。 -->
-      <view class="place__search sh-center" @tap="gotoSearch">
+      <view class="place__search sh-hit sh-center" @tap="gotoSearch">
         <sh-icon name="search" :size="30" color="var(--sh-sub)"></sh-icon>
       </view>
     </view>
@@ -315,7 +315,7 @@ onShareAppMessage(() =>
           <text class="txt-strong freq__title">{{ g.title }}</text>
           <view class="freq__foot sh-row sh-row--between">
             <text class="txt-price freq__price sh-num">{{ money(g.price) }}</text>
-            <view class="freq__add sh-center" @tap.stop="addToCart(g, $event)">
+            <view class="freq__add sh-hit sh-center" @tap.stop="addToCart(g, $event)">
               <text class="freq__sign">＋</text>
             </view>
           </view>

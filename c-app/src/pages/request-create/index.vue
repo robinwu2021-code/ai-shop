@@ -62,9 +62,9 @@ async function submit() {
       <view class="sh-row sh-row--between row sh-mt-md">
         <text class="txt-sub row__k txt-ink">{{ $t("request.expect") }}</text>
         <view class="stepper sh-row">
-          <view class="txt-body stepper__btn sh-center" @tap="step(-1)"><text>−</text></view>
+          <view class="txt-body stepper__btn sh-hit sh-center" @tap="step(-1)"><text>−</text></view>
           <text class="txt-strong stepper__num sh-num">{{ qty }}</text>
-          <view class="txt-body stepper__btn sh-center" @tap="step(1)"><text>＋</text></view>
+          <view class="txt-body stepper__btn sh-hit sh-center" @tap="step(1)"><text>＋</text></view>
         </view>
       </view>
 
