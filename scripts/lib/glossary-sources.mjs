@@ -72,7 +72,14 @@ export function firstSentence(doc) {
     .trim();
   const cut = s.search(/[。！？]|\.\s|；/);
   if (cut > 0) s = s.slice(0, cut + 1).replace(/[.；]$/, "。");
-  return s.replace(/\|/g, "\\|").trim();
+  /*
+   * **这里不转义竖线**，交给 `cell()`。
+   * 两处各转一次的后果是 `\\|`：markdown 里渲染成一个字面反斜杠加竖线，
+   * 而 `glossary.json` 里也会带上只对 markdown 有意义的转义 ——
+   * 结构化产物被下游工具读的时候，那个反斜杠是纯噪音。
+   * 现在这里只负责「取第一句」，转义只发生在渲染那一步。
+   */
+  return s.trim();
 }
 
 /**

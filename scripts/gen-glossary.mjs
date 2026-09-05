@@ -88,13 +88,28 @@ function flatten(obj, prefix = "", out = new Map()) {
   return out;
 }
 
-/** `.properties`：后端错误码与提示语。`\uXXXX` 与续行都不用管 —— 本仓库的三份都是直白 UTF-8。 */
+/**
+ * `.properties`：后端错误码与提示语。
+ *
+ * **`\uXXXX` 必须解码**。第一版的注释写着「本仓库的三份都是直白 UTF-8，不用管」——
+ * 那句话是错的，而错法很有代表性：中文那份确实是直白的，所以只看中文永远发现不了。
+ * 英文与阿语两份里大量存在 `\u2019`（撇号）、`\u2014`（破折号），
+ * 阿语更有整句都是转义的（`err.trade.out_of_delivery_range` 一整行）。
+ * 不解码的话，这份**中英文对照清单**里英文列写着
+ * `This merchant\u2019s entity type…`、阿语列是一串谁也读不了的 `\u0647\u0630\u0627…` ——
+ * 清单的全部价值是「说的是真话」，而这是它自己把真源念错了。
+ */
 function loadProperties(rel) {
   const src = read(join(ROOT, rel));
   const out = new Map();
+  const unescape = (v) => v
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/\\([nrt\\:=# !])/g, (_, c) => ({ n: "\n", r: "\r", t: "\t" })[c] ?? c);
   for (const line of src.split("\n")) {
-    const m = line.match(/^\s*([A-Za-z0-9_.\-]+)\s*=\s*(.*)$/);
-    if (m && !line.trimStart().startsWith("#")) out.set(m[1], m[2].trim());
+    const t = line.trimStart();
+    if (t.startsWith("#") || t.startsWith("!")) continue;
+    const m = line.match(/^\s*([A-Za-z0-9_.\-]+)\s*[=:]\s*(.*)$/);
+    if (m) out.set(m[1], unescape(m[2].trim()));
   }
   return out;
 }
@@ -150,11 +165,19 @@ function collectEntities(javaFiles) {
   const rows = [];
   for (const rel of javaFiles) {
     const src = read(join(ROOT, rel));
-    const at = src.search(/@TableName\(/);
+    if (!src.includes("@TableName")) continue;
+    /*
+     * 定位走抹码串：仓库里有四处 javadoc 写着 `{@code @TableName}`
+     * （在解释「别把带 @TableName 的类放进接口签名」）。今天它们都没带 `("…")`
+     * 所以取不出表名、正好被跳过 —— 但那是运气，不是判据。
+     * 类名同理：不抹码的话，注释里一句「这个 class Foo …」就会被当成类声明。
+     */
+    const masked = maskJava(src);
+    const at = masked.search(/@TableName\(/);
     if (at < 0) continue;
-    const table = src.match(/@TableName\(\s*(?:value\s*=\s*)?"([a-z0-9_]+)"/)?.[1];
+    const table = src.slice(at).match(/^@TableName\(\s*(?:value\s*=\s*)?"([a-z0-9_]+)"/)?.[1];
     if (!table) continue;
-    const cls = src.match(/(?:public\s+)?(?:final\s+|abstract\s+)?class\s+([A-Za-z0-9_]+)/)?.[1] ?? "?";
+    const cls = masked.match(/(?:public\s+)?(?:final\s+|abstract\s+)?class\s+([A-Za-z0-9_]+)/)?.[1] ?? "?";
     const pkg = src.match(/^package\s+([\w.]+);/m)?.[1] ?? "";
     rows.push({
       module: moduleOf(rel), cls, table, pkg, file: rel,
@@ -185,6 +208,18 @@ function maskJava(src) {
     const two = src.slice(i, i + 2);
     if (two === "//") { const e = src.indexOf("\n", i); const end = e < 0 ? src.length : e; blank(i, end); i = end; continue; }
     if (two === "/*") { const e = src.indexOf("*/", i + 2); const end = e < 0 ? src.length : e + 2; blank(i, end); i = end; continue; }
+    // Java 文本块 `"""…"""`：不特判的话，头尾三个引号会被当成
+    // 「空串 + 一个从第三个引号开始的串」，**块里的内容反而没被抹掉** ——
+    // 里面的花括号会把下面数括号定宿主类的逻辑带偏。
+    // 今天只有 PointsConfig 一个文件同时有文本块与常量（且顺序上没被咬到），
+    // 但这类漂移是静默的：常量被算到隔壁类名下，清单照样长得很整齐。
+    if (src.startsWith('"""', i)) {
+      const e = src.indexOf('"""', i + 3);
+      const end = e < 0 ? src.length : e + 3;
+      blank(i + 3, Math.max(i + 3, end - 3));
+      i = end;
+      continue;
+    }
     if (src[i] === '"' || src[i] === "'") {
       const q = src[i]; let k = i + 1;
       while (k < src.length && src[k] !== q) { if (src[k] === "\\") k++; k++; }
@@ -412,7 +447,12 @@ function collectMaven() {
   const modules = [];
   for (const rel of poms) {
     const src = read(join(ROOT, rel));
-    const body = src.replace(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/g, "");
+    // `<build>` 一起剥掉：插件也能带 `<dependencies><dependency>`，
+    // 那是构建期的东西，算进「这个模块依赖谁」是错的。今天四个 pom 有 <plugin>
+    // 但都没带依赖，所以这一行现在不改变任何输出 —— 它防的是下一个加进来的。
+    const body = src
+      .replace(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/g, "")
+      .replace(/<build>[\s\S]*?<\/build>/g, "");
     const deps = [];
     for (const d of body.matchAll(/<dependency>([\s\S]*?)<\/dependency>/g)) {
       const g = tagOf(d[1], "groupId"); const a = tagOf(d[1], "artifactId");
@@ -470,9 +510,12 @@ function collectNpm() {
    * 它区分的是「声明写得不一样但今天只跑一份」与「今天就在跑两份」。
    */
   const installed = (pkg, ws = null) => {
-    const p = ws
-      ? join(ROOT, ws.replace(/\/package\.json$/, ""), "node_modules", pkg, "package.json")
-      : join(ROOT, "node_modules", pkg, "package.json");
+    // 根 workspace 的 `ws` 就是 `"package.json"`（前面没有目录），
+    // 拿正则去掉 `/package.json` 匹配不上，路径会拼成 `ROOT/package.json/node_modules/…`
+    // —— 永远读不到，于是根上声明的包「实际安装」恒为空。
+    // 根今天声明 0 个依赖所以看不出来，但这是「查不到」被显示成「没装」。
+    const dir = ws ? ws.replace(/(^|\/)package\.json$/, "") : "";
+    const p = join(ROOT, dir, "node_modules", pkg, "package.json");
     if (!existsSync(p)) return null;
     try { return JSON.parse(readFileSync(p, "utf8")).version; } catch { return null; }
   };
@@ -647,7 +690,9 @@ function mdEntities(entities, schema, vocab, javaEnums, tsEnums, registry, msg) 
   L.push("|---|---|---|---|");
   for (const e of sorted) {
     const vals = e.values.length > BIG
-      ? `${e.values.slice(0, BIG).map((v) => `\`${v}\``).join(" · ")} …共 ${e.values.length}（[展开](#${e.name.toLowerCase()}）`
+      // 右括号必须是半角：写成 `](#errorcode）` 时 markdown 链接不闭合，
+      // 整条按字面文本渲染 —— 而它看起来仍然「有个链接」，不点不知道
+      ? `${e.values.slice(0, BIG).map((v) => `\`${v}\``).join(" · ")} …共 ${e.values.length}（[展开](#${e.name.toLowerCase()})）`
       : e.values.map((v) => `\`${v}\``).join(" · ");
     L.push(`| \`${e.name}\` | \`${e.module}\` | ${vals} | ${cell(e.zh) || "—"} |`);
   }
