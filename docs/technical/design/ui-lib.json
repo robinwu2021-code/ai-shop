@@ -275,7 +275,7 @@
       },
       "usage": {
         "b-app": 2,
-        "c-app": 1
+        "c-app": 2
       }
     },
     {
@@ -723,7 +723,7 @@
       },
       "usage": {
         "b-app": 9,
-        "c-app": 17
+        "c-app": 18
       }
     },
     {
@@ -821,7 +821,7 @@
       },
       "usage": {
         "b-app": 251,
-        "c-app": 223
+        "c-app": 224
       }
     },
     {
@@ -1239,7 +1239,7 @@
       },
       "usage": {
         "b-app": 194,
-        "c-app": 131
+        "c-app": 133
       }
     },
     {
@@ -1523,7 +1523,7 @@
       ],
       "usage": {
         "b-app": 5,
-        "c-app": 6
+        "c-app": 5
       },
       "note": "勾选框 / 单选点",
       "why": "四页各画一个、**四种尺寸**（28/36/44/44）。勾用 `check` 图标 —— 那个图标是这次一起补进 icons.ts 的"
@@ -1652,7 +1652,7 @@
       ],
       "usage": {
         "b-app": 60,
-        "c-app": 6
+        "c-app": 7
       },
       "note": "单色图标",
       "why": "内联 SVG 转 CSS mask，颜色吃 var(--sh-*) —— 换肤零成本。**不用 emoji**：各系统字形不一且是彩色的"
@@ -3179,9 +3179,9 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 67,
-      "localSelectors": 27,
-      "localCssLines": 117,
+      "libClassHits": 68,
+      "localSelectors": 28,
+      "localCssLines": 121,
       "rolled": []
     },
     {
@@ -3207,22 +3207,15 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 36,
-      "localSelectors": 28,
-      "localCssLines": 136,
+      "libClassHits": 37,
+      "localSelectors": 27,
+      "localCssLines": 133,
       "rolled": [
         {
           "id": "listrow",
           "label": "横排行",
           "lib": ".sh-row",
           "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-          "gap": false
-        },
-        {
-          "id": "inkover",
-          "label": "正文色自写",
-          "lib": ".txt-ink",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-ink\\);?\\s*\\}",
           "gap": false
         }
       ]
@@ -3629,16 +3622,6 @@
       "lib": ".sh-row",
       "gap": false,
       "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-      "pages": [
-        "c-app/community"
-      ]
-    },
-    {
-      "id": "inkover",
-      "label": "正文色自写",
-      "lib": ".txt-ink",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-ink\\);?\\s*\\}",
       "pages": [
         "c-app/community"
       ]
