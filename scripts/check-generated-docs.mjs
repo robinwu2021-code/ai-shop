@@ -69,6 +69,18 @@ const GENERATORS = [
   ["scripts/gen-ops-feature-list.py", ["docs/technical/reference/运营端-功能清单.md"]],
   ["scripts/gen-ui-lib.py", ["docs/technical/design/ui-lib.json"]],
   /*
+   * 全项目词汇清单四份。**它替掉的是四份手写清单里陈得最厉害的那一档** ——
+   * `Java实体清单.md` 自称 58 实体 / 6 模块，实测 188 / 6（模块名也变了），
+   * 而取值域与静态常量此前根本没有清单。
+   * 一个脚本四份产物：四类东西共用同一批真源（后端源码 / 词条文件 / 迁移 / pom），
+   * 拆成四个生成器最迟在第二次改结构时就会各自分叉。
+   */
+  ["scripts/gen-glossary.mjs", ["docs/technical/reference/中英文对照-词条.md",
+                                "docs/technical/reference/中英文对照-实体与字典.md",
+                                "docs/technical/reference/静态常量清单.md",
+                                "docs/technical/reference/依赖清单.md",
+                                "docs/technical/reference/glossary.json"]],
+  /*
    * 三份界面规范。**必须是生成的**：这个仓库里有 170 份手写设计文档，
    * 而 2026-08-28 把界面从头理一遍时发现，凡是手写的规范无一例外地陈了 ——
    * 它们描述的是「写文档那天」的样子。一份说错了的规范比没有规范更糟：

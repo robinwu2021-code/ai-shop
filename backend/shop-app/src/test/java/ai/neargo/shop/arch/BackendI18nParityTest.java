@@ -1,5 +1,6 @@
 package ai.neargo.shop.arch;
 
+import ai.neargo.shop.common.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -97,6 +98,36 @@ class BackendI18nParityTest {
             }
             assertThat(empties).as("%s 里这些词条是空的", path).isEmpty();
         }
+    }
+
+    @Test
+    @DisplayName("★★ 每个错误码指的文案都要存在 —— 缺一条，用户看到的是 err.xxx 这串键本身")
+    void everyErrorCodeHasAMessage() throws IOException {
+        Set<String> keys = keysOf(BASE);
+
+        List<String> missing = new ArrayList<>();
+        for (ErrorCode e : ErrorCode.values()) {
+            if (!keys.contains(e.msgKey())) {
+                missing.add(e.name() + " → " + e.msgKey());
+            }
+        }
+
+        /*
+         * 为什么这条守卫此前不存在，而它拦的东西一直有：
+         * 上面那条三语一致比的是**三份 properties 之间**，码指着一个谁都没有的键时，
+         * 三份齐齐地没有 —— 它一致、它绿。ErrorCodeUniqueTest 比的是码与键**不重复**，
+         * 不存在的键当然也不重复。两条守卫各自成立，中间那条缝没人量。
+         *
+         * 缝里躺着的是 2026-09-06 查出的两条：代客下单的单笔与每日限额
+         * （{@code PROXY_ORDER_AMOUNT_LIMIT} / {@code PROXY_ORDER_DAILY_LIMIT}），
+         * 两条都真的会抛（PlatformOrderServiceImpl），而 {@link ai.neargo.shop.common.Messages}
+         * 取不到 key 时**返回 key 本身** —— 运营点「代客下单」超限，界面上弹出的是
+         * {@code err.trade.proxy_amount_limit} 这串字符。零报错、零日志。
+         */
+        assertThat(missing)
+                .as("这些错误码在 %s 里没有文案，端上会直接看到 key：\n  %s",
+                        BASE, String.join("\n  ", missing))
+                .isEmpty();
     }
 
     private static Set<String> keysOf(String path) throws IOException {

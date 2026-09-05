@@ -70,10 +70,21 @@
         <module>shop-app</module>
     </modules>
 
+    <!-- neargo-parent 与 Spring Boot BOM 管不到的那几个，版本一律钉在这里。
+
+         **为什么不许写在模块 pom 里**：ehcache 此前在 shop-base 与 shop-auth-store
+         各写了一份 3.12.0。两处今天相同，明天只改一处 —— 而 Maven 不会报任何错，
+         同一个 classpath 上两个版本按最近者胜，症状是「本机跑得起来、换台机器行为不同」。
+         收编之后模块 pom 里不再出现字面量版本，`依赖清单.md` §1.2 就是这条的量具：
+         那一节非空即代表有人又写回去了。 -->
     <properties>
         <archunit.version>1.3.0</archunit.version>
         <flyway.version>11.14.1</flyway.version>
         <shedlock.version>6.9.0</shedlock.version>
+        <ehcache.version>3.12.0</ehcache.version>
+        <cos.version>5.6.245</cos.version>
+        <jakarta-mail.version>2.1.5</jakarta-mail.version>
+        <angus-mail.version>2.0.5</angus-mail.version>
     </properties>
 
     <dependencyManagement>
@@ -93,6 +104,36 @@
                 <groupId>org.flywaydb</groupId>
                 <artifactId>flyway-mysql</artifactId>
                 <version>${flyway.version}</version>
+            </dependency>
+            <!-- Ehcache 3：会话缓存。**classifier 必须是 jakarta** —— 默认包用的是
+                 javax.cache，Spring Boot 4 下连 CacheManager 都装配不起来，
+                 而报错是 NoClassDefFoundError: javax/cache/…，看不出是 classifier 选错了。
+                 **这里的 classifier 不是给引用方省事的，是让这条管理项匹配得上**：
+                 dependencyManagement 按 groupId:artifactId:type:classifier 匹配，
+                 两边都写 jakarta 才配得上，所以引用方那一侧的 classifier 仍要留着。 -->
+            <dependency>
+                <groupId>org.ehcache</groupId>
+                <artifactId>ehcache</artifactId>
+                <version>${ehcache.version}</version>
+                <classifier>jakarta</classifier>
+            </dependency>
+            <!-- 腾讯云 COS：对象存储（CosMediaStore，生产用；本地磁盘作兜底） -->
+            <dependency>
+                <groupId>com.qcloud</groupId>
+                <artifactId>cos_api</artifactId>
+                <version>${cos.version}</version>
+            </dependency>
+            <!-- 邮件：jakarta.mail + angus，不引 spring-boot-starter-mail
+                 （本项目 `mvn -o` 离线构建，官方 SDK 的依赖树不在本地仓） -->
+            <dependency>
+                <groupId>jakarta.mail</groupId>
+                <artifactId>jakarta.mail-api</artifactId>
+                <version>${jakarta-mail.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.angus</groupId>
+                <artifactId>angus-mail</artifactId>
+                <version>${angus-mail.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

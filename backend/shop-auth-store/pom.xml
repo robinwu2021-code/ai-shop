@@ -40,10 +40,11 @@
         <dependency>
             <groupId>org.ehcache</groupId>
             <artifactId>ehcache</artifactId>
-            <!-- classifier 必须是 jakarta —— 默认包用的是 javax.cache，Spring Boot 4 下
-                 连 CacheManager 都装配不起来，而报错是 NoClassDefFoundError: javax/cache/...，
-                 看不出是 classifier 选错了。版本不由 parent 管理，与 shop-base 一起钉住。 -->
-            <version>3.12.0</version>
+            <!-- 版本由父 POM 的 dependencyManagement 管（此前这里与 shop-base 各写了一份 3.12.0）。
+                 **classifier 仍要写在这里**：dependencyManagement 是按
+                 groupId:artifactId:type:classifier 匹配的，引用方不写 classifier
+                 就落不到那条管理项上 —— 拿到的是没有版本的默认包（javax.cache），
+                 而症状是 NoClassDefFoundError: javax/cache/…，看不出与 classifier 有关。 -->
             <classifier>jakarta</classifier>
         </dependency>
         <dependency>
