@@ -18,7 +18,11 @@ set -euo pipefail
 APP="${1:-}"
 case "$APP" in
     ops-web) BUILD_CMD='npm run build:prod'; OUT='out';           URL_PATH='/ops-web/' ;;
-    c-app)   BUILD_CMD='npm run build:h5';   OUT='dist/build/h5'; URL_PATH='/c/' ;;
+    # ⚠️ **H5_BASE 必须给**：站点在 /c/ 下，不给的话产物里的资源写成 `/assets/…`，
+    # 而它们实际在 `/c/assets/…` —— 首页请求 JS 拿到 404，**整站白屏**。
+    # 而 index.html 本身是 200、`/c/VERSION` 也读得出来，所以部署脚本一路报成功。
+    # 2026-09-05 发现时它已经这样有一阵了（上一版备份里的路径一模一样）。
+    c-app)   BUILD_CMD='H5_BASE=/c/ npm run build:h5'; OUT='dist/build/h5'; URL_PATH='/c/' ;;
     b-app)   BUILD_CMD='H5_BASE=/b/ npm run build:h5'; OUT='dist/build/h5'; URL_PATH='/b/' ;;
     # 官网。**它此前只能手工发**，而手工发漏掉的恰恰是最后一步：
     # 2026-08-28 包打好、装到测试机了，官网静静指着八天前的 0.1.0（5.7MB，真包 54MB），
