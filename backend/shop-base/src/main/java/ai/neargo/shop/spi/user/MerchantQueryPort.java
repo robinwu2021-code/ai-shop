@@ -55,6 +55,21 @@ public interface MerchantQueryPort {
     java.util.List<String> reachableCommunities(String merchantNo, String storeNo);
 
     /**
+     * <b>范围预览</b>：这一组范围行（还没保存）会覆盖到哪些聚落。
+     *
+     * <p>走的是与 {@link #reachableCommunities(String)} <b>同一段展开代码</b> ——
+     * 预览另算一遍的话，两个数字都「算对了」，只是算的不是同一件事，
+     * 而商家会照着预览做决定，保存之后才发现覆盖到的不是他看到的那些。
+     *
+     * <p>{@code EXCLUDE} 的减法用的也是传进来的这一份（不掺库里的旧行）：
+     * 预览要回答的是「改成这样之后」，不是「改成这样再叠上旧的」。
+     *
+     * @param areas 端上正要保存的那一份，每条是 {@code [level, refCode, mode]}；
+     *              {@code mode} 空按 INCLUDE
+     */
+    java.util.List<String> previewReachable(String merchantNo, java.util.List<String[]> areas);
+
+    /**
      * 该主体的<b>默认门店</b>。下单时用它填 {@code ord_sub_order.store_no}（M2 双写）。
      *
      * <p>为什么下单只认默认门店：多门店放开（M6）之前，一个主体恰好一家店，

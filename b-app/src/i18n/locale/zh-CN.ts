@@ -1144,6 +1144,11 @@ export default {
     areaNeeded: "使用自提点时至少需选择一个小区，否则顾客无法搜索到本店",
     areaUnlimited: "未设置范围即不限，全平台顾客均可看到本店商品",
     areaExcluded: "已排除",
+    previewTitle: "改完之后",
+    previewCommunities: "覆盖聚落：{a} → {b}{d}",
+    previewBuyers: "这些地方有 {a} → {b}{d} 个能定位的买家",
+    // 与「范围为空」不是一回事：他确实框了东西，只是展开出来是空的
+    previewZero: "这一组范围展开之后一个聚落都没有 —— 保存了也没有人看得到你",
     areaPending: "待审核",
     areaPendingHint: "省、市、区等整片范围需运营审核后生效，审核前不计入；小区、村、街道勾选后即时生效。",
     areaDup: "这一条已经在清单里了",

@@ -35,6 +35,7 @@ import type { MerchantApi } from "../contract";
 
 export const storeMock: Pick<MerchantApi,
   "mStore"
+  | "mScopePreview"
   | "mMasterData"
   | "mPayments"
   | "mPayChannels"
@@ -812,6 +813,45 @@ export const storeMock: Pick<MerchantApi,
   async mMyCommunityApplies() {
     const merchantNo = requireMerchant();
     return delay(db.communityApplies.filter((a) => a.merchantNo === merchantNo));
+  },
+
+  /*
+   * 范围预览 mock。**要真的按传进来的那一份算**，不是回一对好看的数：
+   * 回常量的话「改成这样会多覆盖几个」在 mock 下永远是同一个值，
+   * 而这一屏存在的理由就是那个差值。
+   *
+   * 口径与后端对齐的三条：框了小区盖住它下面的楼、排除项减掉、只自提且没有纳入项 = 0。
+   */
+  async mScopePreview(areas) {
+    const seeds = allCommunitySeeds();
+    const expand = (list: typeof areas) => {
+      const inc = (list ?? []).filter((a) => a.mode !== "EXCLUDE");
+      const exc = new Set<string>();
+      for (const a of (list ?? []).filter((x) => x.mode === "EXCLUDE")) {
+        exc.add(a.refCode);
+        for (const c of seeds) if (c.parentNo === a.refCode) exc.add(c.communityNo);
+      }
+      const out = new Set<string>();
+      for (const a of inc) {
+        out.add(a.refCode);
+        for (const c of seeds) if (c.parentNo === a.refCode) out.add(c.communityNo);
+      }
+      for (const x of exc) out.delete(x);
+      return out;
+    };
+    const pickupOnly = (db.store.fulfillmentReach ?? "PICKUP") === "PICKUP";
+    const nextSet = expand(areas);
+    const curSet = expand((db.store.serviceAreas ?? []) as typeof areas);
+    // 只自提 + 没有纳入项 = 谁也看不到（与后端 includes.isEmpty() 那一支同口径）
+    const size = (s: Set<string>, list: typeof areas) =>
+      (pickupOnly && !(list ?? []).some((a) => a.mode !== "EXCLUDE")) ? 0 : s.size;
+    const buyers = (s: Set<string>) => [...s].filter((no) => seeds.some((c) => c.communityNo === no)).length;
+    return delay({
+      currentCommunities: size(curSet, (db.store.serviceAreas ?? []) as typeof areas),
+      currentBuyers: buyers(curSet),
+      nextCommunities: size(nextSet, areas),
+      nextBuyers: buyers(nextSet),
+    });
   },
 
   async mSaveStore(payload) {

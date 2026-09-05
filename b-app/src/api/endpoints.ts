@@ -52,6 +52,9 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mOpenCommunityFromMap: { method: "POST", path: "/biz/communities/from-map", auth: true, summary: "地图上选中的小区直接开通" },
   mMyCommunityApplies: { method: "GET", path: "/biz/communities/applies", auth: true, summary: "我提报过的小区" },
   mSaveStore: { method: "POST", path: "/biz/store", auth: true, summary: "保存店铺门面" },
+  // POST 而不是 GET：入参是一串 {level, refCode, mode}，塞 query string 既难读又有长度上限。
+  // 它只读、不写库 —— 这一点靠后端注释与用例保证，不靠动词。
+  mScopePreview: { method: "POST", path: "/biz/store/scope-preview", auth: true, summary: "范围预览" },
   mSaveAnnouncement: { method: "POST", path: "/biz/store/announcement", auth: true, summary: "只改公告（含有效期，可同时发到别的门店）" },
   mDropNoticeRecent: { method: "POST", path: "/biz/store/announcement/recent/remove", auth: true, summary: "从常用里删一条" },
 

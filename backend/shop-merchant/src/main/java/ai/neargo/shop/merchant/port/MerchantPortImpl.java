@@ -260,6 +260,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
                         .eq(MchServiceArea::getEntityNo, merchantNo)
                         .eq(MchServiceArea::getStatus, AREA_ACTIVE)));
+        // 下面那段「一组范围行 → 可达集合」被范围预览共用，见 reachOf
 
         /*
          * 指定了门店时，把主体足迹裁剪成**这家店真正覆盖的那几块**。
@@ -290,6 +291,64 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 沿用 `areas.isEmpty()` 的话，他会因为「有 area 行」而跳过下面这个 fallback、
          * 展开出空集 —— **变成谁也看不到，结果正好相反，且不报错**。
          */
+        return reachOf(areas, allAreas, deliveryOn);
+    }
+
+    @Override
+    public List<String> previewReachable(String merchantNo, List<String[]> areas) {
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
+        if (m == null || !ACTIVE.equals(m.getStatus())) {
+            // 与可见性同一条闸：没激活的主体对谁都不可见，预览也不该给他一个好看的数
+            return List.of();
+        }
+        java.util.Set<String> channels = enabledFulfillments(merchantNo, null);
+        boolean expressOn;
+        boolean deliveryOn;
+        if (channels.isEmpty()) {
+            String reach = m.getFulfillmentReach() == null ? PICKUP : m.getFulfillmentReach();
+            expressOn = SHIPPING.equals(reach);
+            deliveryOn = !PICKUP.equals(reach) && !SHIPPING.equals(reach);
+        } else {
+            expressOn = channels.contains(ai.neargo.shop.common.Fulfillments.EXPRESS);
+            deliveryOn = channels.contains(ai.neargo.shop.common.Fulfillments.MERCHANT_DELIVERY);
+        }
+        /*
+         * 端上传来的那一份**当场变成范围行**（不落库）。status 一律按 ACTIVE：
+         * 所有粒度都自选即生效（2026-08-24 起），预览没有「待审」这一档。
+         */
+        List<MchServiceArea> rows = areas == null ? List.<MchServiceArea>of() : areas.stream()
+                .filter(a -> a != null && a.length >= 2 && a[0] != null && a[1] != null && !a[1].isBlank())
+                .map(a -> {
+                    var r = new MchServiceArea();
+                    r.setEntityNo(merchantNo);
+                    r.setLevel(a[0]);
+                    r.setRefCode(a[1]);
+                    r.setStatus(AREA_ACTIVE);
+                    r.setMode(a.length > 2 && MchServiceArea.MODE_EXCLUDE.equals(a[2])
+                            ? MchServiceArea.MODE_EXCLUDE : MchServiceArea.MODE_INCLUDE);
+                    return r;
+                })
+                .toList();
+        if (expressOn) {
+            return minusExcluded(communityQueryPort.openCommunityNos(), rows);
+        }
+        return reachOf(rows, rows, deliveryOn);
+    }
+
+    /**
+     * 一组范围行 + 履约能力 → 可达聚落集合。
+     *
+     * <p><b>抽出来是为了让「范围预览」走同一段代码</b>（B 端保存前问
+     * 「改成这样会覆盖到哪儿」）。预览另算一遍的话，两个数字都「算对了」，
+     * 只是算的不是同一件事 —— 而商家会照着预览做决定，
+     * 等到保存之后才发现覆盖到的不是他看到的那些。判据只能有一份。
+     *
+     * @param areas    参与判定的范围行（存量口径已按 status 过滤；预览口径是端上传来的那一份）
+     * @param allAreas 用来做减法的全部行（<b>不看 status</b>：缩小范围不需要审核）
+     */
+    private List<String> reachOf(List<MchServiceArea> areas, List<MchServiceArea> allAreas, boolean deliveryOn) {
         List<MchServiceArea> includes = areas.stream()
                 .filter(a -> !MchServiceArea.MODE_EXCLUDE.equals(a.getMode()))
                 .toList();

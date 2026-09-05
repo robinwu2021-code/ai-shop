@@ -55,6 +55,17 @@ public interface CommunityQueryPort {
     java.util.List<String> openChildCommunityNos(java.util.Collection<String> parentNos);
 
     /**
+     * 这些聚落里有多少条<b>能定位的</b>收货地址。
+     *
+     * <p>归属走的是 C 端那条唯一的判定（围栏 + 层级优先于距离），不另算一遍 ——
+     * 商家在范围预览里看到「这片有 12 个买家」，那 12 个必须与真正搜得到他的人是同一批。
+     *
+     * <p>没坐标的地址一条也不算：它推不出任何聚落。**这不等于那儿没人** ——
+     * 缺口有多大在运营端「位置分布」那一页单列一格，商家侧不重复这件事。
+     */
+    int buyerCountIn(java.util.Collection<String> communityNos);
+
+    /**
      * 社区展示名。查不到时<b>返回社区号本身</b>，不返回空 ——
      * 页面上宁可显示 C0001，也不要显示一个空白的覆盖项：
      * 空白会让商家以为「这一条坏了」而去删掉它。

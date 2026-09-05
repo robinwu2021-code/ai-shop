@@ -9,7 +9,7 @@
  *
  * 装修与获客拆去了页 B（pages/store）：那是日常会反复改的内容，和这两个决策不同频。
  */
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { onBackPress, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
@@ -18,6 +18,7 @@ import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
 import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
 import { includedAreas } from "@shared/utils/coverage";
+import type { ScopePreview } from "@shared/types";
 import { confirm } from "@ai-shop/ui/prompt";
 import type {
   CommunityApply,
@@ -131,6 +132,36 @@ const emptyIsBlocking = computed(
  * 而实际生效的是全平台减掉那一栋，两句话差着整个平台。
  */
 const noIncludes = computed(() => !areas.value.some((a) => !isExclude(a)));
+
+/**
+ * 范围预览：**保存之前**问一次「改成这样会覆盖到哪儿、那儿有多少买家」。
+ *
+ * <p>此前商家勾完只能看到自己勾了几条 —— 而他真正想知道的是「这几条到底盖住多少地方」。
+ * 「框了一个街道」可能展开成 30 个聚落，也可能一个都没有（那条街道下还没开通任何聚落），
+ * 两者在他的清单上长得一模一样，只有保存之后从「订单没来」里才察觉。
+ *
+ * <p>脏了才问：没改动时问一次也只会得到「当前 = 改后」，白发一次请求。
+ */
+const preview = ref<ScopePreview | null>(null);
+const previewing = ref(false);
+let previewSeq = 0;
+watch([areas, deliveryOn, expressOn], async () => {
+  if (!loaded.value || !dirty.value) {
+    preview.value = null;
+    return;
+  }
+  const mine = ++previewSeq;
+  previewing.value = true;
+  try {
+    const r = await api.mScopePreview(areas.value);
+    // 慢请求回来得比新的晚 —— 不判一下的话，界面上显示的是上一版范围的预览
+    if (mine === previewSeq) preview.value = r;
+  } catch {
+    if (mine === previewSeq) preview.value = null;
+  } finally {
+    if (mine === previewSeq) previewing.value = false;
+  }
+}, { deep: true });
 
 async function loadFulfillment() {
   try {
@@ -340,6 +371,11 @@ function normalize(p: StoreProfile): StoreProfile {
   return { ...p, serviceAreas: p.serviceAreas ?? [] };
 }
 
+/** 差值带正负号；0 时不显示一个「+0」——那读起来像「没算出来」 */
+function diffText(n: number) {
+  return n === 0 ? "" : n > 0 ? ` +${n}` : ` ${n}`;
+}
+
 async function save() {
   if (emptyIsBlocking.value) {
     uni.showToast({ title: t("store.areaNeeded"), icon: "none" });
@@ -435,6 +471,34 @@ onShow(() => {
       <!-- 空列表的含义两分：只自提是故障，开了自送/快递是「不限」。绝不能显示同一句话 -->
       <text v-if="emptyIsBlocking" class="txt-caption warn">{{ $t("store.areaNeeded") }}</text>
       <text v-else-if="noIncludes" class="sh-hint">{{ $t("store.areaUnlimited") }}</text>
+
+      <!--
+        范围预览：**改完还没保存**时才出现。
+        商家勾完只知道自己勾了几条，而「框了一个街道」可能展开成 30 个聚落、
+        也可能一个都没有（那条街道下还没开通任何聚落）—— 两者在清单上长得一样。
+        两个基数都给：光说「会覆盖 12 个」，他答不出那是多了还是少了。
+      -->
+      <view v-if="preview && dirty" class="pv">
+        <text class="pv__t">{{ $t("store.previewTitle") }}</text>
+        <text class="pv__l">
+          {{ $t("store.previewCommunities", {
+            a: preview.currentCommunities, b: preview.nextCommunities,
+            d: diffText(preview.nextCommunities - preview.currentCommunities),
+          }) }}
+        </text>
+        <text class="pv__l">
+          {{ $t("store.previewBuyers", {
+            a: preview.currentBuyers, b: preview.nextBuyers,
+            d: diffText(preview.nextBuyers - preview.currentBuyers),
+          }) }}
+        </text>
+        <!--
+          **改完之后一个聚落都不覆盖**要单独说一句红的：这一条与「范围为空」不是一回事 ——
+          他确实框了东西（比如一个还没开通任何聚落的街道），只是展开出来是空的，
+          而那在他的清单上完全看不出来。
+        -->
+        <text v-if="preview.nextCommunities === 0" class="pv__warn">{{ $t("store.previewZero") }}</text>
+      </view>
       <text v-if="areas.length > activeAreas.length" class="sh-hint">{{ $t("store.areaPendingHint") }}</text>
 
       <view class="sh-btn sh-btn--soft add" @tap="pickerOpen = true">
@@ -585,6 +649,29 @@ onShow(() => {
 .item__path {
   display: block;
   margin-top: 2rpx;
+}
+.pv {
+  margin-top: 16rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+}
+.pv__t {
+  display: block;
+  font-size: 26rpx;
+  color: var(--sh-ink);
+}
+.pv__l {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+.pv__warn {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: var(--sh-danger);
 }
 .add {
   margin-top: 20rpx;

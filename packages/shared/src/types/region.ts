@@ -317,3 +317,19 @@ export interface Region {
    */
   rural?: boolean;
 }
+
+/**
+ * 范围预览：保存之前先看这一组范围会覆盖到哪儿。
+ *
+ * **两个基数都给**，不只给改完的那个：光说「会覆盖 12 个聚落」，
+ * 商家答不出「那是多了还是少了」—— 而他真正要决定的是增减。
+ *
+ * `*Buyers` 是**能定位的**收货地址数。没坐标的一条也不算（推不出任何聚落），
+ * 缺口有多大在运营端「位置分布」那一页单列，商家侧不重复这件事。
+ */
+export interface ScopePreview {
+  currentCommunities: number;
+  currentBuyers: number;
+  nextCommunities: number;
+  nextBuyers: number;
+}

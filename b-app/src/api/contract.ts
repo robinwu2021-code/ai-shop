@@ -105,6 +105,8 @@ import type {
   StockCount, StockTransfer,
   FulfillmentImpactItem,
   SpecValueAdded,
+  ScopePreview,
+  ServiceArea,
 } from "@shared/types";
 
 /** 拍照识别的结果。全部是**建议值**，店主可改可弃 */
@@ -659,6 +661,15 @@ export interface MerchantApi {
   /** 我提报过的。没有它，提报出去等于石沉大海，商家只会隔几天再提一次同样的 */
   mMyCommunityApplies(): Promise<CommunityApply[]>;
   mSaveStore(payload: StoreProfile): Promise<StoreProfile>;
+  /**
+   * **保存前**看这一组范围会覆盖到哪儿、那儿有多少买家。只读，不写库。
+   *
+   * 后端走的是与可见性**同一段展开代码**（`previewReachable`）——
+   * 另算一遍的话商家会照着预览做决定，保存之后才发现覆盖到的不是他看到的那些。
+   *
+   * 传的是**正要保存的那一份**，不掺库里的旧行：它回答的是「改成这样之后」。
+   */
+  mScopePreview(areas: ServiceArea[]): Promise<ScopePreview>;
   /**
    * 只改公告。与 mSaveStore 分开的一条路 —— 公告一天可能改两次，
    * 混在整份门面里保存，改一句话要连带提交地址与营业时间。

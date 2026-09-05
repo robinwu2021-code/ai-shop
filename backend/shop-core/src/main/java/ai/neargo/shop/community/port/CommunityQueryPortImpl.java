@@ -24,11 +24,45 @@ public class CommunityQueryPortImpl implements CommunityQueryPort {
     private final CommunityMapper communityMapper;
     private final ai.neargo.shop.community.mapper.CommunityMappers.PickupPointMapper pickupPointMapper;
 
+    /** 买家数要按围栏归属，走 C 端那条唯一判定。延迟取：与 CommunityServiceImpl 互相引用 */
+    private final org.springframework.beans.factory.ObjectProvider<
+            ai.neargo.shop.community.service.CommunityService> communityService;
+    /** 收货地址的坐标。跨域，走 port —— 只拿点，不拿任何能识别到人的字段 */
+    private final ai.neargo.shop.spi.user.UserQueryPort userQueryPort;
+
     public CommunityQueryPortImpl(CommunityMapper communityMapper,
                                   ai.neargo.shop.community.mapper.CommunityMappers.PickupPointMapper
-                                          pickupPointMapper) {
+                                          pickupPointMapper,
+                                  org.springframework.beans.factory.ObjectProvider<
+                                          ai.neargo.shop.community.service.CommunityService> communityService,
+                                  ai.neargo.shop.spi.user.UserQueryPort userQueryPort) {
         this.communityMapper = communityMapper;
         this.pickupPointMapper = pickupPointMapper;
+        this.communityService = communityService;
+        this.userQueryPort = userQueryPort;
+    }
+
+    @Override
+    public int buyerCountIn(java.util.Collection<String> communityNos) {
+        if (communityNos == null || communityNos.isEmpty()) {
+            return 0;
+        }
+        var want = new java.util.HashSet<>(communityNos);
+        /*
+         * 归属**复用 resolve**，不在这儿再写一遍围栏判定。
+         *
+         * 商家在预览里看到「这片有 12 个买家」，那 12 个必须与真正搜得到他的人是同一批 ——
+         * 另算一份的话两个数字都「算对了」，只是算的不是同一件事，而他会照着这个数
+         * 决定要不要做这一片。
+         */
+        int n = 0;
+        for (var p : userQueryPort.addressPoints()) {
+            String no = communityService.getObject().resolve(p.latE6(), p.lngE6(), false).innermostNo();
+            if (no != null && want.contains(no)) {
+                n++;
+            }
+        }
+        return n;
     }
 
     @Override

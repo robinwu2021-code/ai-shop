@@ -18,6 +18,7 @@ import ai.neargo.shop.merchant.service.StoreCategoryService;
 import ai.neargo.shop.merchant.service.MerchantStoreService;
 import ai.neargo.shop.merchant.service.MerchantService;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
+import ai.neargo.shop.spi.user.CommunityQueryPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.user.service.UserService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -60,6 +61,8 @@ public class BizMerchantController {
     private final MerchantStaffService staffService;
     /** 资金路径 —— B 端价格字段叫什么由它决定，判据与积分能力同一根轴 */
     private final MerchantQueryPort merchantQueryPort;
+    /** 范围预览要数「那片有几个买家」，归属走 C 端那条唯一判定 */
+    private final CommunityQueryPort communityQueryPort;
     /** 资质：商家自己传证、看有效期、看这张证能解锁哪几类 */
     private final ai.neargo.shop.merchant.service.MerchantGovernService governService;
     /** 类目树：把门槛码翻成商家看得懂的类目名（跨域拼接放应用层） */
@@ -79,6 +82,7 @@ public class BizMerchantController {
                                  StoreAdminService storeAdminService,
                                  MerchantStaffService staffService,
                                  MerchantQueryPort merchantQueryPort,
+                                 CommunityQueryPort communityQueryPort,
                                  StoreCategoryService storeCategoryService,
                                  ai.neargo.shop.merchant.service.MerchantGovernService governService,
                                  ai.neargo.shop.product.service.CategoryService categoryService,
@@ -90,6 +94,7 @@ public class BizMerchantController {
         this.governService = governService;
         this.storeCategoryService = storeCategoryService;
         this.merchantQueryPort = merchantQueryPort;
+        this.communityQueryPort = communityQueryPort;
         this.storeService = storeService;
         this.paymentService = paymentService;
         this.storeAdminService = storeAdminService;
@@ -377,6 +382,51 @@ public class BizMerchantController {
                         req.featured(),
                         req.serviceScope(), req.serviceCommunityNos(), req.serviceCityCode(),
                         req.fulfillmentReach(), req.serviceAreas(), req.latE6(), req.lngE6()));
+    }
+
+    /**
+     * 范围预览：<b>保存之前</b>先看这一组范围会覆盖到哪儿、那儿有多少买家。
+     *
+     * <p><b>用 POST 不是 GET</b>（计划里写的是 GET）：入参是一串
+     * {@code {level, refCode, mode}}，塞进 query string 既难读又有长度上限。
+     * 它<b>只读、不写库</b>，这一点靠注释与用例保证，不靠动词。
+     *
+     * <p>覆盖数走 {@code previewReachable} —— 与真正的可见性<b>同一段展开代码</b>。
+     * 另算一遍的话商家会照着预览做决定，保存之后才发现覆盖到的不是他看到的那些。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    @PostMapping("/biz/store/scope-preview")
+    public ScopePreviewVO scopePreview(@RequestBody ScopePreviewReq req) {
+        String merchantNo = BizContext.requireMerchantNo();
+        var next = req.areas() == null ? java.util.List.<String[]>of()
+                : req.areas().stream()
+                        .map(a -> new String[]{a.level(), a.refCode(), a.mode()})
+                        .toList();
+        var after = merchantQueryPort.previewReachable(merchantNo, next);
+        var before = merchantQueryPort.reachableCommunities(merchantNo);
+        /*
+         * 两个数都给：光给「改成这样会覆盖 12 个」，商家答不出「那是多了还是少了」——
+         * 而他真正要决定的是增减。差值让端上自己算，两个基数都在这儿。
+         */
+        return new ScopePreviewVO(
+                before.size(), communityQueryPort.buyerCountIn(before),
+                after.size(), communityQueryPort.buyerCountIn(after));
+    }
+
+    public record ScopePreviewReq(java.util.List<AreaItem> areas) {
+        /** @param mode INCLUDE / EXCLUDE，空按 INCLUDE */
+        public record AreaItem(String level, String refCode, String mode) {
+        }
+    }
+
+    /**
+     * @param currentCommunities 现在覆盖几个聚落
+     * @param currentBuyers      现在这些聚落里有几个<b>能定位的</b>买家
+     * @param nextCommunities    改成这一组之后覆盖几个
+     * @param nextBuyers         改成这一组之后有几个
+     */
+    public record ScopePreviewVO(int currentCommunities, int currentBuyers,
+                                 int nextCommunities, int nextBuyers) {
     }
 
     /**

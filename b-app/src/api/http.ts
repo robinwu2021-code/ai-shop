@@ -113,6 +113,7 @@ import type {
   SkuIdentityReport,
   SpecTemplate,
   SpuStd,
+  ScopePreview,
   StoreProfile,
   StoreQrcode,
   LoginReq,
@@ -174,6 +175,7 @@ export const httpApi: MerchantApi = {
     http.post<CommunityApply>(E.mApplyCommunity.path, payload satisfies CommunityApplyReq),
   mMyCommunityApplies: () => http.get<CommunityApply[]>(E.mMyCommunityApplies.path),
   mSaveStore: (payload) => http.post<StoreProfile>(E.mSaveStore.path, payload),
+  mScopePreview: (areas) => http.post<ScopePreview>(E.mScopePreview.path, { areas }),
   mSaveAnnouncement: (payload) => http.post<StoreProfile>(E.mSaveAnnouncement.path, payload),
   mDropNoticeRecent: (text) => http.post<StoreProfile>(E.mDropNoticeRecent.path, { text }),
   mStoreFulfillment: (storeNo) =>

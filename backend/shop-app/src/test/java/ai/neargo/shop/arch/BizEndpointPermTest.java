@@ -270,6 +270,8 @@ class BizEndpointPermTest {
 
         // ---- 门店经营面 ----
         put("/biz/store", BizPerms.STORE);
+        // 范围预览：只读、不写库，但读的是这家主体的经营范围与买家分布 —— 与改范围同一把钥匙
+        put("/biz/store/scope-preview", BizPerms.STORE);
         // 会员（P1）：沿用客户资产那个码 —— 会员就是「我的客户」那一页的升级版
         put("/biz/members", BizPerms.CUSTOMER);
         put("/biz/members/stats", BizPerms.CUSTOMER);
