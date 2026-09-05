@@ -51,8 +51,10 @@
 #    要挂类就得写成 `:class="{ 'txt-ink': isOn }"`，把一个语义状态拆成两处。
 #    判据在这一类上说多了，但收窄它要先盘清全仓的态类形状 —— 也是另一单。
 #
-# ③ `c-app/phone-gate sheet`：它是一个真弹层，同样该改用 `sh-sheet`。
-#    它比 b 端那两个小得多，是这三类里最先该动的。
+# ③ ~~`c-app/phone-gate sheet`~~ **当天就改了**（三类里最小的那个）：换成 `<sh-sheet>` 之后
+#    圆角从 32rpx 回到库件的 44、拿到了它此前没有的 `max-height: 78vh`
+#    （内容一多会把上半截顶出视口）、`left/right` 两个物理属性也随之消失。
+#    实测面板 border-radius 22px、max-height 633px、z-index 100，都对上了。
 
 b-app/biz-pickup-sheet segment
 b-app/biz-pickup-sheet sheet
@@ -65,4 +67,3 @@ b-app/biz-region-picker wraprow
 b-app/biz-supplier-picker primover
 b-app/biz-time-range quietover
 c-app/biz-region-picker primover
-c-app/phone-gate sheet

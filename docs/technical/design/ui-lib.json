@@ -313,7 +313,7 @@
       },
       "usage": {
         "b-app": 9,
-        "c-app": 27
+        "c-app": 28
       }
     },
     {
@@ -549,7 +549,7 @@
       },
       "usage": {
         "b-app": 269,
-        "c-app": 142
+        "c-app": 141
       }
     },
     {
@@ -853,7 +853,7 @@
       },
       "usage": {
         "b-app": 291,
-        "c-app": 44
+        "c-app": 43
       }
     },
     {
@@ -1051,7 +1051,7 @@
       },
       "usage": {
         "b-app": 108,
-        "c-app": 29
+        "c-app": 28
       }
     },
     {
@@ -1876,7 +1876,7 @@
       ],
       "usage": {
         "b-app": 7,
-        "c-app": 3
+        "c-app": 4
       },
       "note": "底部弹层",
       "why": "不用 uni.showModal（字不归我们管）、不做页内展开（会把下文顶走）"
@@ -3887,19 +3887,13 @@
       "page": "phone-gate",
       "key": "c-app/phone-gate",
       "file": "c-app/src/components/phone-gate.vue",
-      "components": [],
-      "libClassHits": 15,
-      "localSelectors": 12,
-      "localCssLines": 54,
-      "rolled": [
-        {
-          "id": "sheet",
-          "label": "弹层 / 遮罩",
-          "lib": "sh-sheet",
-          "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
-          "gap": false
-        }
-      ]
+      "components": [
+        "sh-sheet"
+      ],
+      "libClassHits": 13,
+      "localSelectors": 8,
+      "localCssLines": 32,
+      "rolled": []
     }
   ],
   "gaps": [
@@ -3911,8 +3905,7 @@
       "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
       "pages": [
         "b-app/biz-pickup-sheet",
-        "b-app/biz-region-picker",
-        "c-app/phone-gate"
+        "b-app/biz-region-picker"
       ]
     },
     {

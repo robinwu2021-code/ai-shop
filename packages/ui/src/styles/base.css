@@ -103,8 +103,14 @@ html {
 /* #ifndef MP-WEIXIN */
 /* 这一整段只对 H5 / App 成立：`:root` 与 `uni-*` 这两样在 WXSS 里都不存在
    （小程序的根是 page，标签名也没有 uni- 前缀）—— 不排除的话它只是白进小程序包。 */
-:root:not([data-theme="dark"]) uni-button,
-:root:not([data-theme="dark"]) uni-button[type="default"] {
+/* ⚠️ **要避开我们自己的按钮。** 这条选择器是 `:root:not(...) uni-button`（0-2-1），
+   而 `.sh-btn` 只有 0-1-0 —— 于是任何 `<button class="sh-btn">` 在 H5 上都被这里
+   染成 `#f8f8f8` 灰底黑字，而不是品牌色。2026-09-06 实测：phone-gate 的
+   「微信一键获取」——那张弹层上的主操作——一直是灰的（量到 rgb(248,248,248)，
+   而 `--sh-primary` 是 #00B578）。全仓现在只剩这一个 `<button>`（微信只认 button 上的
+   open-type 拿手机号），但正因为只剩一个，更没人会去查它为什么长得不一样。 */
+:root:not([data-theme="dark"]) uni-button:not(.sh-btn),
+:root:not([data-theme="dark"]) uni-button[type="default"]:not(.sh-btn) {
   color: #000;
   background-color: #f8f8f8;
 }
@@ -113,8 +119,8 @@ html {
   color: rgba(0, 0, 0, 0.6);
   background-color: #dedede;
 }
-:root:not([data-theme="dark"]) uni-button[disabled][type="default"],
-:root:not([data-theme="dark"]) uni-button[disabled]:not([type]) {
+:root:not([data-theme="dark"]) uni-button[disabled][type="default"]:not(.sh-btn),
+:root:not([data-theme="dark"]) uni-button[disabled]:not([type]):not(.sh-btn) {
   color: rgba(0, 0, 0, 0.3);
   background-color: #f7f7f7;
 }

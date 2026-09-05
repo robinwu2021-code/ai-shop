@@ -115,79 +115,66 @@ async function bind(run: () => Promise<unknown>) {
 </script>
 
 <template>
-  <view v-if="show" class="mask" @tap="emit('close')">
-    <view class="sheet" @tap.stop>
-      <text class="txt-title sheet__title">{{ $t("phoneGate.title") }}</text>
-      <text class="sh-muted sheet__why">{{ $t("phoneGate.why") }}</text>
-
-      <view v-if="conflict" class="conflict">
-        <text class="txt-sub txt-ink conflict__text">{{ $t("phoneGate.conflict") }}</text>
-      </view>
-
-      <!-- 一键：拿到的是 code，换号在后端 -->
-      <button
-        v-if="capable"
-        class="sh-btn primary"
-        open-type="getPhoneNumber"
-        :disabled="busy"
-        @getphonenumber="onWxPhone"
-      >
-        {{ $t("phoneGate.oneTap") }}
-      </button>
-
-      <!-- 回落：手机号 + 验证码。一键可用时它仍然在，只是收起成一行小字入口 -->
-      <view v-if="!capable" class="form">
-        <input v-model="phone" class="field__input form__input" type="number" maxlength="11"
-               :placeholder="String($t('phoneGate.phonePlaceholder'))" />
-        <view class="sh-row form__row">
-          <input v-model="code" class="field__input form__input form__input--code" type="number" maxlength="6"
-                 :placeholder="String($t('phoneGate.codePlaceholder'))" />
-          <view class="sh-btn sh-btn--soft sh-btn--sm sh-row form__send" :class="{ 'is-off': sending }" @tap="sendCode">
-            {{ $t("phoneGate.sendCode") }}
-          </view>
-        </view>
-        <view class="sh-btn primary" :class="{ 'is-disabled': busy }" @tap="onSubmit">
-          {{ $t("phoneGate.submit") }}
-        </view>
-      </view>
-
-      <text v-if="capable" class="sh-muted switch" @tap="capable = false">
-        {{ $t("phoneGate.useCode") }}
-      </text>
-      <text class="sh-muted cancel" @tap="emit('close')">{{ $t("phoneGate.later") }}</text>
+  <!--
+    形态归 `sh-sheet`：遮罩、面板、圆角、把手、关闭、安全区、max-height 全在它那儿。
+    此前这一份自己画了一遍 —— 圆角 32rpx（库件是 44）、没有 max-height（内容一多
+    就把上半截顶出视口）、`left/right` 是物理属性（阿语下不跟着翻）。
+  -->
+  <sh-sheet
+    :visible="show"
+    :title="String($t('phoneGate.title'))"
+    :hint="String($t('phoneGate.why'))"
+    @close="emit('close')"
+  >
+    <view v-if="conflict" class="conflict">
+      <text class="txt-sub txt-ink">{{ $t("phoneGate.conflict") }}</text>
     </view>
-  </view>
+
+    <!-- 一键：拿到的是 code，换号在后端。
+         **这是全仓唯一保留的 `<button>`** —— 微信只认 button 上的 open-type 拿手机号 -->
+    <button
+      v-if="capable"
+      class="sh-btn onetap"
+      open-type="getPhoneNumber"
+      :disabled="busy"
+      @getphonenumber="onWxPhone"
+    >
+      {{ $t("phoneGate.oneTap") }}
+    </button>
+
+    <!-- 回落：手机号 + 验证码。一键可用时它仍然在，只是收起成一行小字入口 -->
+    <view v-if="!capable" class="form">
+      <input v-model="phone" class="field__input form__input" type="number" maxlength="11"
+             :placeholder="String($t('phoneGate.phonePlaceholder'))" />
+      <view class="sh-row">
+        <input v-model="code" class="field__input form__input form__input--code" type="number" maxlength="6"
+               :placeholder="String($t('phoneGate.codePlaceholder'))" />
+        <view class="sh-btn sh-btn--soft sh-btn--sm sh-center form__send" :class="{ 'is-off': sending }" @tap="sendCode">
+          {{ $t("phoneGate.sendCode") }}
+        </view>
+      </view>
+      <view class="sh-btn" :class="{ 'is-disabled': busy }" @tap="onSubmit">
+        {{ $t("phoneGate.submit") }}
+      </view>
+    </view>
+
+    <text v-if="capable" class="sh-muted switch" @tap="capable = false">
+      {{ $t("phoneGate.useCode") }}
+    </text>
+    <text class="sh-muted cancel" @tap="emit('close')">{{ $t("phoneGate.later") }}</text>
+  </sh-sheet>
 </template>
 
 <style scoped>
-.mask {
-  position: fixed;
-  inset: 0;
-  background: var(--sh-scrim);
-  z-index: var(--sh-z-sheet);
-}
-.sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 48rpx 40rpx 64rpx;
-  border-radius: 32rpx 32rpx 0 0;
-  background: var(--sh-surface);
-}
-.sheet__title {
-  display: block;
-  color: var(--sh-ink);
-}
-.sheet__why {
-  display: block;
-  margin-top: 12rpx;
-}
+/* 换号冲突的提示块：警示色 tint 底，与 deposit 的「还差多少」同一个做法 */
 .conflict {
   margin-top: 24rpx;
   padding: 20rpx 24rpx;
   border-radius: 16rpx;
   background: var(--sh-warning-tint);
+}
+.onetap {
+  margin-top: 32rpx;
 }
 .form {
   margin-top: 32rpx;
@@ -197,14 +184,11 @@ async function bind(run: () => Promise<unknown>) {
 .form__input {
   margin-bottom: 20rpx;
 }
-.form__row {
-}
 .form__input--code {
   flex: 1;
 }
-/* 形态归 .sh-btn--soft + --sm（tint 胶囊，26rpx）；只把高度对齐旁边那个输入框 */
-/* 居中用 flex 而不是 line-height：后者既是「行距」又是「盒高」，
-   判据分不出来，而字阶那一档的行距本来该由 .sh-btn--sm 给 */
+/* 形态归 .sh-btn--soft + --sm（tint 胶囊，26rpx）；只把高度对齐旁边那个输入框。
+   居中用 .sh-center 而不是 line-height：后者既是行距又是盒高，两件事挤在一个数上 */
 .form__send {
   height: 88rpx;
   padding: 0 24rpx;
