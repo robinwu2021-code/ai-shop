@@ -189,9 +189,6 @@ onLoad((q) => {
 .stars__label {
   margin-inline-start: 12rpx;
 }
-.block {
-  margin-top: 20rpx;
-}
 .ta {
   width: 100%;
   box-sizing: border-box;

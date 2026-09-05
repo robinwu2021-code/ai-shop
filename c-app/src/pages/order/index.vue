@@ -448,9 +448,6 @@ onShow(load);
   padding-inline: 60rpx;
 }
 
-.as {
-  margin-top: 20rpx;
-}
 .as__title {
   display: block;
 }
@@ -495,9 +492,6 @@ onShow(load);
 .codecard__hint {
   display: block;
   margin-top: 16rpx;
-}
-.block {
-  margin-top: 20rpx;
 }
 /* 只留版面。**颜色交给库件**（.txt-primary / .is-warning / .txt-quiet，
    由 statusTone 给）—— 页内 scoped 选择器带 [data-v-x]，权重比全局库件高，

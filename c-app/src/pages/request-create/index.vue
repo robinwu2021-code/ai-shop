@@ -135,9 +135,6 @@ async function submit() {
   min-width: 56rpx;
   text-align: center;
 }
-.block {
-  margin-top: 20rpx;
-}
 .note {
   background: var(--sh-faint);
 }

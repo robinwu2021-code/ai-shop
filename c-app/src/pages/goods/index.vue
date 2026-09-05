@@ -613,9 +613,6 @@ onShareAppMessage(() =>
   padding: 8rpx 20rpx;
   border-radius: 9999px;
 }
-.block {
-  margin-top: 20rpx;
-}
 .title {
   display: block;
 }

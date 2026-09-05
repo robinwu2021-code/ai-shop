@@ -351,7 +351,6 @@ onShow(() => {
 }
 /* 组：组间留白，组内不留 —— 归属靠分组表达，不靠每行浮起 */
 .cells {
-  margin-top: 20rpx;
   display: flex;
   flex-direction: column;
   gap: 2rpx;

@@ -289,9 +289,6 @@ onShareAppMessage(() => {
   padding: 12rpx 0;
 }
 
-.block {
-  margin-top: 20rpx;
-}
 .nothint {
   display: block;
   margin-top: 8rpx;

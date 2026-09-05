@@ -403,3 +403,71 @@ describe("挂上去的库件类名必须真的存在", () => {
     ).toEqual([]);
   });
 });
+
+/*
+ * 块与块之间那道缝**只许由 `--sh-gap-block` 说了算**。
+ *
+ * `sh-scaffold` 已经给了（`> * + *`，默认 20rpx）。页面再在顶层块上写一份
+ * `margin-top: 20rpx`，今天看不出区别 —— 外边距会合并，取的是 max。
+ * 但那个 token 从此是**装饰品**：改它只会改掉没写死的那几处，一页紧一页松。
+ * 2026-09-06 清掉 13 处（两端顶层块自己写的、与 token 同值的那一份）。
+ *
+ * 只判「这个类在本页**只出现在 scaffold 顶层**」的情况 —— 里层也用到的那些，
+ * 20rpx 是它自己的版面，不是这道缝。
+ */
+describe("块间缝归 --sh-gap-block", () => {
+  const GAP = (() => {
+    const css = readFileSync(join(ROOT, "packages/ui/src/styles/base.css"), "utf8");
+    const m = /--sh-gap-block:\s*(\d+)rpx/.exec(css);
+    return Number(m?.[1] ?? 0);
+  })();
+
+  /** scaffold 顶层出现过的类 / 更里层出现过的类 */
+  function classDepths(tpl: string): [Set<string>, Set<string>] {
+    const top = new Set<string>();
+    const deep = new Set<string>();
+    const i = tpl.indexOf("<sh-scaffold");
+    if (i < 0) return [top, deep];
+    const stack: string[] = [];
+    for (const m of tpl.slice(tpl.indexOf(">", i) + 1).matchAll(/<(\/?)([a-zA-Z][\w:-]*)([^>]*?)(\/?)>/g)) {
+      const [, close, tag, attrs, selfClose] = m as unknown as string[];
+      if (close) {
+        if (tag === "sh-scaffold" && stack.length === 0) break;
+        if (stack[stack.length - 1] === tag) stack.pop();
+        continue;
+      }
+      const visible = stack.filter((t) => t !== "template").length;
+      const cm = /\bclass="([^"]*)"/.exec(attrs ?? "");
+      if (cm) for (const c of cm[1]!.split(/\s+/).filter(Boolean))
+        (visible === 0 && tag !== "template" ? top : deep).add(c);
+      if (!selfClose && !["input", "img", "br", "image"].includes(tag!)) stack.push(tag!);
+    }
+    return [top, deep];
+  }
+
+  it("token 读得到（读不到的话下面那条是空转的）", () => {
+    expect(GAP).toBeGreaterThan(0);
+  });
+
+  it("顶层块不自己写一份与 token 同值的上边距", () => {
+    const offenders: string[] = [];
+    for (const { app, file, src } of pageFilesAll()) {
+      if (!src.includes("<sh-scaffold") || !src.includes("<style")) continue;
+      const cut = src.indexOf("<style");
+      const [top, deep] = classDepths(src.slice(0, cut).replace(/<!--[\s\S]*?-->/g, ""));
+      const css = src.slice(cut).replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const c of top) {
+        if (deep.has(c)) continue;
+        const m = new RegExp(`\\n\\.${c.replace(/[-]/g, "\\-")}\\s*\\{([^}]*)\\}`).exec(css);
+        if (m && new RegExp(`margin-top:\\s*${GAP}rpx`).test(m[1]!))
+          offenders.push(`${app}/${file}  .${c}`);
+      }
+    }
+    expect(
+      offenders,
+      `这道缝 sh-scaffold 已经给了（--sh-gap-block = ${GAP}rpx）。再写一份今天看不出区别\n` +
+        "（外边距合并取 max），但那个 token 从此改不动任何东西 —— 删掉页面里这一行：\n" +
+        offenders.join("\n"),
+    ).toEqual([]);
+  });
+});

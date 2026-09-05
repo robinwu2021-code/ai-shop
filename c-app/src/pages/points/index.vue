@@ -139,9 +139,6 @@ onShow(load);
   display: block;
   margin-top: 8rpx;
 }
-.block {
-  margin-top: 20rpx;
-}
 .rules__title {
   display: block;
   margin-bottom: 16rpx;

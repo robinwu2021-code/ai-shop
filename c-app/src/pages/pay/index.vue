@@ -328,9 +328,6 @@ onUnmounted(() => clearInterval(timer));
 .cd.is-expired .cd__text {
   color: var(--sh-danger);
 }
-.block {
-  margin-top: 20rpx;
-}
 .method {
   gap: 20rpx;
   padding: 24rpx;

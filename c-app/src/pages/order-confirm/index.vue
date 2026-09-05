@@ -949,9 +949,6 @@ onMounted(async () => {
   display: block;
   margin-top: 16rpx;
 }
-.block {
-  margin-top: 20rpx;
-}
 .row__foot {
   margin-top: 16rpx;
 }

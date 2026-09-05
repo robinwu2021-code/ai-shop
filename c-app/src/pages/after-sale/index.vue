@@ -196,9 +196,6 @@ onLoad((q) => {
 </template>
 
 <style scoped>
-.block {
-  margin-top: 20rpx;
-}
 .row__price {
   flex-shrink: 0;
 }

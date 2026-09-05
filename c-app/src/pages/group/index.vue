@@ -178,9 +178,6 @@ onShareAppMessage(() => {
   border-radius: 24rpx;
   padding: 20rpx 26rpx;
 }
-.block {
-  margin-top: 20rpx;
-}
 .tierhint {
   display: block;
   margin-top: 8rpx;

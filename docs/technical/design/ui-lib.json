@@ -2427,7 +2427,7 @@
       ],
       "libClassHits": 59,
       "localSelectors": 10,
-      "localCssLines": 47,
+      "localCssLines": 46,
       "rolled": []
     },
     {
@@ -3158,8 +3158,8 @@
         "sh-uploader"
       ],
       "libClassHits": 28,
-      "localSelectors": 18,
-      "localCssLines": 84,
+      "localSelectors": 17,
+      "localCssLines": 81,
       "rolled": []
     },
     {
@@ -3247,8 +3247,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 122,
-      "localSelectors": 46,
-      "localCssLines": 193,
+      "localSelectors": 45,
+      "localCssLines": 190,
       "rolled": []
     },
     {
@@ -3262,8 +3262,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 35,
-      "localSelectors": 14,
-      "localCssLines": 62,
+      "localSelectors": 13,
+      "localCssLines": 59,
       "rolled": []
     },
     {
@@ -3352,7 +3352,7 @@
       ],
       "libClassHits": 92,
       "localSelectors": 13,
-      "localCssLines": 63,
+      "localCssLines": 62,
       "rolled": []
     },
     {
@@ -3422,8 +3422,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 122,
-      "localSelectors": 36,
-      "localCssLines": 138,
+      "localSelectors": 34,
+      "localCssLines": 132,
       "rolled": []
     },
     {
@@ -3437,8 +3437,8 @@
         "sh-switch"
       ],
       "libClassHits": 111,
-      "localSelectors": 36,
-      "localCssLines": 155,
+      "localSelectors": 35,
+      "localCssLines": 152,
       "rolled": []
     },
     {
@@ -3465,8 +3465,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 33,
-      "localSelectors": 28,
-      "localCssLines": 122,
+      "localSelectors": 27,
+      "localCssLines": 119,
       "rolled": []
     },
     {
@@ -3479,8 +3479,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 35,
-      "localSelectors": 20,
-      "localCssLines": 78,
+      "localSelectors": 19,
+      "localCssLines": 75,
       "rolled": []
     },
     {
@@ -3495,8 +3495,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 89,
-      "localSelectors": 24,
-      "localCssLines": 117,
+      "localSelectors": 23,
+      "localCssLines": 114,
       "rolled": []
     },
     {
@@ -3509,8 +3509,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 26,
-      "localSelectors": 10,
-      "localCssLines": 46,
+      "localSelectors": 9,
+      "localCssLines": 43,
       "rolled": []
     },
     {
@@ -3524,8 +3524,8 @@
         "sh-uploader"
       ],
       "libClassHits": 14,
-      "localSelectors": 13,
-      "localCssLines": 53,
+      "localSelectors": 12,
+      "localCssLines": 50,
       "rolled": []
     },
     {

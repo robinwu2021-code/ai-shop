@@ -447,7 +447,6 @@ onShow(() => {
  * 现在**归属靠分组表达，留白只出现在组与组之间**。
  */
 .cells {
-  margin-top: 20rpx;
   display: flex;
   flex-direction: column;
   gap: 2rpx;
