@@ -1565,6 +1565,7 @@ function close() {
 }
 .foot {
   padding: 16rpx 24rpx;
+  padding-bottom: 16rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   border-top: var(--sh-hairline);
 }

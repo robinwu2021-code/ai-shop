@@ -73,6 +73,7 @@ const emit = defineEmits<{ close: [] }>();
   bottom: 0;
   background: var(--sh-surface);
   border-radius: 44rpx 44rpx 0 0;
+  padding: 24rpx 36rpx 48rpx;
   padding: 24rpx 36rpx calc(48rpx + env(safe-area-inset-bottom));
   /* 见类注释：没有 max-height 的 bottom:0 弹层，内容一多就把上半截顶出视口 */
   max-height: 78vh;

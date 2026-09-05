@@ -304,7 +304,7 @@ onShareAppMessage(() =>
         <text class="txt-title">{{ $t("home.promoted") }}</text>
         <text class="sh-muted">{{ $t("home.promotedHint") }}</text>
       </view>
-      <view class="freq">
+      <view class="freq sh-scrollx">
         <view
           v-for="g in promoted"
           :key="g.goodsNo"
@@ -404,17 +404,14 @@ onShareAppMessage(() =>
 }
 /* 常买：横滑窄卡。比商品卡窄得多 —— 这里不做决策，只做「就是它，加一个」，
    标题一行 + 价格 + 加号就够，副标题、销量、商家统统是噪音 */
+/* 横滑与「藏掉滚动条」都归 `.sh-scrollx`（见 base.css）——
+   小程序里那条灰杠就是因为这两半此前分开写、而藏的那一半没覆盖到小程序。
+   这里只留这一排自己的版面：通铺到块边，首尾各留出与标题一致的内边距，
+   半张卡露在边缘才是「可以滑」的暗示。 */
 .freq {
   display: flex;
   gap: 16rpx;
-  overflow-x: auto;
-  padding-bottom: 4rpx;
-}
-/* 白底页上不需要再铺一层白。横滑排回归纯粹的间距分隔 */
-/* 横滑排通铺到块边，首尾各留出与标题一致的内边距 —— 半张卡露在边缘才是「可以滑」的暗示 */
-.freq {
-  gap: 16rpx;
-  padding: 0 26rpx;
+  padding: 0 26rpx 4rpx;
 }
 .freq__i {
   flex-shrink: 0;

@@ -571,6 +571,32 @@ uni-page-wrapper[style*="--window-bottom"] {
 }
 /* #endif */
 
+/*
+ * 横滑排：**自带藏滚动条**，不靠上面那条 `*`。
+ *
+ * ⚠️ 上面那段的最后一句写着「小程序本来也不显示滚动条，这条规则在那边纯属多余」——
+ * **那句是错的**。2026-09-05 在线上那份真包里看到了：首页「推荐商品」横滑排的
+ * 价格行底下挂着一条灰杠，占满整块宽度。它不是内容也不是控件，
+ * 而这一排本来靠「半张卡露在边缘」就说清了可以滑。
+ *
+ * 用**类选择器**而不是 `*`：WXSS 不认通配选择器，带着它上传会被微信直接拒收
+ *（`-80056 unexpected token \`*\``），而本地构建与开发者工具预览全都正常，
+ * 只有上传那一刻才报 —— 所以这条必须换一种写法，不能把上面那段的 ifndef 去掉。
+ *
+ * 横滑本身也收进来：`overflow-x` 与「藏掉它的滚动条」是同一件事的两半，
+ * 分开写的话，下一个横滑排会只抄走前一半。
+ */
+.sh-scrollx {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.sh-scrollx::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .sh-num {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;

@@ -54,10 +54,19 @@ const props = withDefaults(
   { pill: undefined, tabbar: false, pad: 180 },
 );
 
+/*
+ * 占位块的高度。**安全区不写在这里** —— 内联样式没法像 CSS 那样「后一条覆盖前一条」，
+ * 而 `env()` 在部分 Android 内核里不认：一旦它进了 `calc()`，整条声明失效、
+ * 高度塌成 0，最后一行内容就被条压住了（2026-09-05 真机上撞到的正是这个）。
+ *
+ * 所以这里只算「条本身要占多高」，安全区那一段由下面 `.ab__pad` 的
+ * `padding-bottom` 单独加 —— 那是**另一个属性**，不认 `env()` 的设备最多少掉那一段，
+ * 不会把高度一起赔进去。
+ */
 const padStyle = computed(() => ({
   height: props.tabbar
-    ? `calc(${props.pad}rpx + var(--sh-tabbar-h) + env(safe-area-inset-bottom))`
-    : `calc(${props.pad}rpx + env(safe-area-inset-bottom))`,
+    ? `calc(${props.pad}rpx + var(--sh-tabbar-h))`
+    : `${props.pad}rpx`,
 }));
 </script>
 
@@ -76,9 +85,18 @@ const padStyle = computed(() => ({
 /* 两侧各缩 28rpx：露出四边是这一档与 `sh-savebar` 的全部区别 ——
    它说的是「这一页的主动作」，不是「你有一个未完成的状态」。
    宽屏下跟着应用框收窄：sh-scaffold 的 transform 让 fixed 以框为包含块（见其注释）。 */
+/* 安全区单独加在 padding 上，理由见 padStyle 的注释 */
+.ab__pad {
+  /* 兜底写 0：不认 env() 的内核上就是没有安全区，而不是整条声明失效 */
+  padding-bottom: 0;
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+  box-sizing: content-box;
+}
 .ab {
   position: fixed;
   inset-inline: 28rpx;
+  bottom: 28rpx;
   bottom: calc(28rpx + constant(safe-area-inset-bottom));
   bottom: calc(28rpx + env(safe-area-inset-bottom));
   z-index: 40;
@@ -86,6 +104,7 @@ const padStyle = computed(() => ({
 /* 有底部菜单的页面：压在菜单之上。**高度走变量不抄数字** ——
    菜单高度改一次，这里跟着变（cart 的注释记着它曾经被菜单盖住过）。 */
 .ab--tabbar {
+  bottom: calc(var(--sh-tabbar-h) + 20rpx);
   bottom: calc(var(--sh-tabbar-h) + 20rpx + constant(safe-area-inset-bottom));
   bottom: calc(var(--sh-tabbar-h) + 20rpx + env(safe-area-inset-bottom));
 }

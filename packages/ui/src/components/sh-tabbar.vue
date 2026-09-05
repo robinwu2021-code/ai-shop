@@ -100,6 +100,7 @@ watch(
    */
   border-top: var(--sh-hairline);
   box-shadow: 0 -6rpx 20rpx var(--sh-scrim);
+  padding: 14rpx 0 14rpx;
   padding: 14rpx 0 calc(14rpx + env(safe-area-inset-bottom));
 }
 .tabbar__item {

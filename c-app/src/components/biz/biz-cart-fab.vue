@@ -67,6 +67,7 @@ onUnmounted(() => clearCartAnchor());
 /* 96rpx 的按钮 + 上下各留一点。与下面 `bottom` 那个 96rpx 同源，
    改一个必然想到另一个 —— 它们就在相邻两条规则里 */
 .cartfab__pad {
+  height: 192rpx;
   height: calc(192rpx + env(safe-area-inset-bottom));
 }
 
@@ -77,6 +78,7 @@ onUnmounted(() => clearCartAnchor());
 .cartfab {
   position: fixed;
   inset-inline-end: 32rpx;
+  bottom: 96rpx;
   bottom: calc(96rpx + constant(safe-area-inset-bottom));
   bottom: calc(96rpx + env(safe-area-inset-bottom));
   z-index: 10;

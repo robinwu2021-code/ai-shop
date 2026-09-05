@@ -41,6 +41,7 @@ defineEmits<{ (e: "discard"): void; (e: "save"): void }>();
 
 <style scoped>
 .bar__pad {
+  height: 140rpx;
   height: calc(140rpx + constant(safe-area-inset-bottom));
   height: calc(140rpx + env(safe-area-inset-bottom));
 }
@@ -56,6 +57,7 @@ defineEmits<{ (e: "discard"): void; (e: "save"): void }>();
   align-items: center;
   gap: 16rpx;
   padding: 20rpx 24rpx;
+  padding-bottom: 20rpx;
   padding-bottom: calc(20rpx + constant(safe-area-inset-bottom));
   padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
   background: var(--sh-surface);

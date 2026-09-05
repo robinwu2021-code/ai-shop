@@ -27,6 +27,7 @@ defineEmits<{ (e: "tap"): void }>();
   position: fixed;
   inset-inline-end: 32rpx;
   /* 见文件头：60rpx 是「一指宽」的空当，tabBar 的高走变量而不是抄一个数 */
+  bottom: calc(var(--sh-tabbar-h) + 60rpx);
   bottom: calc(var(--sh-tabbar-h) + 60rpx + constant(safe-area-inset-bottom));
   bottom: calc(var(--sh-tabbar-h) + 60rpx + env(safe-area-inset-bottom));
   z-index: 10;
