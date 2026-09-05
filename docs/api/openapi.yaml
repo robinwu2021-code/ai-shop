@@ -5261,6 +5261,11 @@ components:
                   - "string"
                   - "null"
                 description: "ESTATE 小区 / VILLAGE 村。判「这一条底下还有没有下一级」用它，名字这时已经是口语名了"
+              parentNo: 
+                type: 
+                  - "string"
+                  - "null"
+                description: "所属聚落（楼栋 → 小区/园区）。为空 = 顶层聚落。 少了它，搜出来的楼栋在整个小区已被勾中时仍显示成「没选上」，商家会再勾一遍。"
               originCode: 
                 type: 
                   - "string"
@@ -5421,7 +5426,12 @@ components:
           description: "所属街道/镇（9 位区划码）。商家框范围时「按街道看聚落」靠它 —— 不下发的话端上只能拿到一锅平铺清单，街道视图无从分组。"
         kind: 
           type: "string"
-          description: "ESTATE 小区 / VILLAGE 村。只是展示标签，不参与匹配"
+          description: "`ESTATE` 小区 / `VILLAGE` 村 / `BUILDING` 楼栋（写字楼）。\n\n**不再只是展示标签**：`BUILDING` 这一档参与匹配 —— 定位到最内层聚落时 「层级优先于距离」，站在楼门口时隔壁小区的中心可能比本楼中心更近， 按距离取会把「我在 3 幢」判成「我在隔壁小区」，而两者的商品池不同。"
+        parentNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "所属聚落（楼栋 → 小区/园区）。**为空 = 顶层聚落**，直接挂 `regionCode`。\n\n只做两层：园区 › 楼 › 单元 › 户会没完没了，而单元和户不是服务单位 —— 没有商家按单元框范围，它们属于收货地址的门牌号。"
         distance: 
           type: "number"
           description: "米"
@@ -5504,6 +5514,12 @@ components:
         areaNo: 
           type: "string"
           description: "业务键（服务端回填）。范围子集（P2）按它引用；端上新加的项没有，保存后才有"
+        mode: 
+          type: "string"
+          enum: 
+            - "INCLUDE"
+            - "EXCLUDE"
+          description: "覆盖方向：`INCLUDE` 纳入（默认，不传即此）/ `EXCLUDE` 排除。\n\n它回答的是「商家框了小区，算不算覆盖里面每栋楼」—— **默认算**， 但给一个显式的出口：勾了整个小区、单独排除 3 幢。 展开时先并后减，EXCLUDE 优先；而矛盾应当在**输入端**消除 （勾了排除就把对应的 include 去掉），不要求用户记住这条优先级。"
         status: 
           "$ref": "#/components/schemas/AreaStatus"
           description: "`ACTIVE` 已生效 / `PENDING` 待运营审核。\n\n勾已有社区自助生效；勾区、街道要审 —— 一家菜摊声称覆盖整个西湖区， 影响面差一个量级（ADR-013 §4.2）。**端上必须把待审标出来**： 待审的不参与展开，商家看着它在清单里却一个订单也不来， 而这是他自己永远查不出来的那类故障。"
@@ -5645,6 +5661,24 @@ components:
         - "hasChild"
       additionalProperties: false
       description: "行政区划的一级（`/biz/regions`）。省 2 / 市 4 / 区 6 / 街道 9 / 村 12 位"
+    ScopePreview: 
+      type: "object"
+      properties: 
+        currentCommunities: 
+          type: "number"
+        currentBuyers: 
+          type: "number"
+        nextCommunities: 
+          type: "number"
+        nextBuyers: 
+          type: "number"
+      required: 
+        - "currentCommunities"
+        - "currentBuyers"
+        - "nextCommunities"
+        - "nextBuyers"
+      additionalProperties: false
+      description: "范围预览：保存之前先看这一组范围会覆盖到哪儿。\n\n**两个基数都给**，不只给改完的那个：光说「会覆盖 12 个聚落」， 商家答不出「那是多了还是少了」—— 而他真正要决定的是增减。\n\n`*Buyers` 是**能定位的**收货地址数。没坐标的一条也不算（推不出任何聚落）， 缺口有多大在运营端「位置分布」那一页单列，商家侧不重复这件事。"
     Review: 
       type: "object"
       properties: 
@@ -6475,9 +6509,12 @@ components:
         merchantName: 
           type: "string"
           description: "商家名。**购物车按它分组** —— 一车东西来自几家店， 结算时会拆成几笔子订单，分组是把这件事提前说清楚（见 TDD-购物车商家可见）。"
-        invalidReason: 
-          type: "string"
-          description: "失效原因，如「已下架」「库存不足」。有值即不可勾选结算"
+        invalid: 
+          type: "boolean"
+          description: "失效（已下架 / 已删除）。**为真即不可勾选结算**，端上放进失效区。\n\n⚠️ **这里此前叫 `invalidReason?: string`，而后端从来没有发过那个名字** —— 后端 `CartItemVO` 发的一直是 `invalid: boolean`。同物异名的后果不是「少个字段」： 端上按 `!invalidReason` 判有效，于是**已下架的商品在购物车里完全正常**， 能勾能结算，一直到下单那一刻才被后端拒。\n\n<p>不反过来让后端发那句中文原因：那是要显示给用户的话，而这个 app 有三门语言。 端上拿 `invalid` 与  {@link  available }  两个事实自己组装本地化文案， i18n 守卫也才管得着它。见 TDD-购物车与下单优化 §3.6。"
+        available: 
+          type: "number"
+          description: "可售库存。`0` = 售罄。\n\n⚠️ **缺省表示「后端没给」，不是 0** —— 旧版本后端与 mock 都可能不发。 每一处都要按「空 = 不设上限」处理；默认成 0 的后果是整车一件都加不了， 而且只在没带这个字段的环境里才出现。"
         giftQty: 
           type: "number"
           description: "买赠自动带出的赠品件数（不计价）"
@@ -6739,9 +6776,6 @@ components:
         verifyCode: 
           type: "string"
           description: "自提码 / 核销码"
-        redeemCode: 
-          type: "string"
-          description: "VIRTUAL：兑换码；CARD：卡号"
         pickupNo: 
           type: "string"
           description: "PICKUP：自提点单号"
@@ -6795,9 +6829,9 @@ components:
         merchantName: 
           type: "string"
           description: "商家名快照"
-        payGroupNo: 
-          type: "string"
-          description: "支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。\n\n⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。"
+        payGroupSize: 
+          type: "number"
+          description: "这次支付一共覆盖几笔子订单。缺省 1。\n\n⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。"
         subOrders: 
           type: "array"
           items: 
@@ -7742,7 +7776,8 @@ paths:
       summary: "发送验证码"
       tags: 
         - "user"
-      security: []
+      security: 
+        - bearerAuth: []
       parameters: []
       responses: 
         "200": 

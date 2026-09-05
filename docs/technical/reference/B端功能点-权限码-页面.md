@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 177 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 178 个受控功能点**
 （另有 28 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -23,8 +23,8 @@
 |---|---|---|---|---|---|---|---|---|---|
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 36 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 27 | ✅ | ✅ | — | — | — | — |
+| `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 20 | ✅ | ✅ | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 20 | ✅ | — | — | — | — | — |
-| `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 19 | ✅ | ✅ | — | — | — | — |
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 19 | ✅ | — | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 18 | ✅ | ✅ | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 16 | ✅ | ✅ | — | — | — | — |
@@ -122,6 +122,38 @@
 | 标准品搜索（建品用） | GET | `/biz/spu-std` | `mSpuStdSearch` | goods-edit |
 | 本店货架类目各自能用的规格 | GET | `/biz/store-spec-dims` | `mStoreSpecDims` | my-specs |
 
+### `biz:store`　门店经营面：装修、配送规则、店铺码、分享物料
+
+**可用角色**：老板、店长
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 停约 | POST | `/biz/appointment-slots/:slotNo/close` | `mCloseAppointmentSlot` | schedule |
+| 我提报过的小区 | GET | `/biz/communities/applies` | `mMyCommunityApplies` | store-scope |
+| 提报平台还没有的小区 | POST | `/biz/communities/apply` | `mApplyCommunity` | — |
+| 地图上选中的小区直接开通 | POST | `/biz/communities/from-map` | `mOpenCommunityFromMap` | — |
+| 自送规则 | GET | `/biz/delivery/rule` | `mDeliveryRule` | delivery、store-scope |
+| 保存自送规则 | POST | `/biz/delivery/rule` | `mSaveDeliveryRule` | delivery、store-scope |
+| 自建自提点（待运营核实） | POST | `/biz/pickup-points` | `mSelfBuildPickup` | — |
+| 门店可引用的取货点候选 | GET | `/biz/pickup-points/candidates` | `mPickupCandidates` | — |
+| 我的资质与已获授权的类目 | GET | `/biz/qualifications` | `mQualifications` | entity-detail、qualifications |
+| 传一张资质证件 | POST | `/biz/qualifications/save` | `mSaveQualification` | qualifications |
+| 店铺门面 | GET | `/biz/store` | `mStore` | home、store、store-notice、store-scope |
+| 保存店铺门面 | POST | `/biz/store` | `mSaveStore` | store、store-scope |
+| 本店经营类目 | GET | `/biz/store/:storeNo/categories` | `mStoreCategories` | goods-list、store-categories |
+| 整份替换本店经营类目 | POST | `/biz/store/:storeNo/categories` | `mSaveStoreCategories` | store-categories |
+| 只改公告（含有效期，可同时发到别的门店） | POST | `/biz/store/announcement` | `mSaveAnnouncement` | store-notice |
+| 从常用里删一条 | POST | `/biz/store/announcement/recent/remove` | `mDropNoticeRecent` | store-notice |
+| 分享海报 | GET | `/biz/store/poster` | `mPoster` | goods-list、store |
+| 店铺码 | GET | `/biz/store/qrcode` | `mStoreQrcode` | store |
+| 范围预览 | POST | `/biz/store/scope-preview` | `mScopePreview` | store-scope |
+| 分享素材 | GET | `/biz/store/share-kit` | `mShareKit` | goods-list、store |
+| 预约时段列表 | GET | `/biz/stores/:storeNo/appointment-slots` | `mAppointmentSlots` | schedule |
+| 开预约时段 | POST | `/biz/stores/:storeNo/appointment-slots` | `mOpenAppointmentSlot` | schedule |
+| 门店送货方式 | GET | `/biz/stores/:storeNo/fulfillment` | `mStoreFulfillment` | goods-edit、store-scope |
+| 保存门店送货方式 | PUT | `/biz/stores/:storeNo/fulfillment` | `mSaveStoreFulfillment` | store-scope |
+| —（b-app 未接） | — | `/biz/qualifications/recognize` | — | — |
+
 ### `biz:finance`　结算账单、费率卡、收款进件、积分开关
 
 **可用角色**：老板
@@ -151,37 +183,6 @@
 | 我的提现 | GET | `/biz/settle/withdraw` | `mWithdrawPage` | withdraw |
 | 申请提现 | POST | `/biz/settle/withdraw` | `mApplyWithdraw` | withdraw |
 | —（b-app 未接） | — | `/biz/settle/bills/{}` | — | — |
-
-### `biz:store`　门店经营面：装修、配送规则、店铺码、分享物料
-
-**可用角色**：老板、店长
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 停约 | POST | `/biz/appointment-slots/:slotNo/close` | `mCloseAppointmentSlot` | schedule |
-| 我提报过的小区 | GET | `/biz/communities/applies` | `mMyCommunityApplies` | store-scope |
-| 提报平台还没有的小区 | POST | `/biz/communities/apply` | `mApplyCommunity` | — |
-| 地图上选中的小区直接开通 | POST | `/biz/communities/from-map` | `mOpenCommunityFromMap` | — |
-| 自送规则 | GET | `/biz/delivery/rule` | `mDeliveryRule` | delivery、store-scope |
-| 保存自送规则 | POST | `/biz/delivery/rule` | `mSaveDeliveryRule` | delivery、store-scope |
-| 自建自提点（待运营核实） | POST | `/biz/pickup-points` | `mSelfBuildPickup` | — |
-| 门店可引用的取货点候选 | GET | `/biz/pickup-points/candidates` | `mPickupCandidates` | — |
-| 我的资质与已获授权的类目 | GET | `/biz/qualifications` | `mQualifications` | entity-detail、qualifications |
-| 传一张资质证件 | POST | `/biz/qualifications/save` | `mSaveQualification` | qualifications |
-| 店铺门面 | GET | `/biz/store` | `mStore` | home、store、store-notice、store-scope |
-| 保存店铺门面 | POST | `/biz/store` | `mSaveStore` | store、store-scope |
-| 本店经营类目 | GET | `/biz/store/:storeNo/categories` | `mStoreCategories` | goods-list、store-categories |
-| 整份替换本店经营类目 | POST | `/biz/store/:storeNo/categories` | `mSaveStoreCategories` | store-categories |
-| 只改公告（含有效期，可同时发到别的门店） | POST | `/biz/store/announcement` | `mSaveAnnouncement` | store-notice |
-| 从常用里删一条 | POST | `/biz/store/announcement/recent/remove` | `mDropNoticeRecent` | store-notice |
-| 分享海报 | GET | `/biz/store/poster` | `mPoster` | goods-list、store |
-| 店铺码 | GET | `/biz/store/qrcode` | `mStoreQrcode` | store |
-| 分享素材 | GET | `/biz/store/share-kit` | `mShareKit` | goods-list、store |
-| 预约时段列表 | GET | `/biz/stores/:storeNo/appointment-slots` | `mAppointmentSlots` | schedule |
-| 开预约时段 | POST | `/biz/stores/:storeNo/appointment-slots` | `mOpenAppointmentSlot` | schedule |
-| 门店送货方式 | GET | `/biz/stores/:storeNo/fulfillment` | `mStoreFulfillment` | goods-edit、store-scope |
-| 保存门店送货方式 | PUT | `/biz/stores/:storeNo/fulfillment` | `mSaveStoreFulfillment` | store-scope |
-| —（b-app 未接） | — | `/biz/qualifications/recognize` | — | — |
 
 ### `biz:store:admin`　建店、改名、停用、设默认店、挂收款号
 

@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 702 个接口**：后端已实现 631（90%）· 前端在调 631
+**合计 706 个接口**：后端已实现 634（90%）· 前端在调 635
 
 ---
 
@@ -203,7 +203,7 @@
 | POST | `/mp/user/deregister` | 注销账号（匿名化 + 解绑凭证，交易记录留存） | — | — | 🔒 | ✅ | ✅ |
 | POST | `/mp/user/login` | 登录建户 | `LoginReqBody` | `LoginResp` | — | ✅ | ✅ |
 | POST | `/mp/user/logout` | 登出（作废服务端会话） | — | — | 🔒 | ✅ | ✅ |
-| POST | `/mp/user/otp/send` | 发送验证码 | — | — | — | ✅ | ✅ |
+| POST | `/mp/user/otp/send` | 发送验证码 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/mp/user/phone/bind` | 绑定手机号（验证码） | `BindPhoneReq` | `User` | 🔒 | ✅ | ✅ |
 | GET | `/mp/user/phone/capable` | 一键授权当前可不可用（游客可读） | — | `PhoneCapable` | — | ✅ | ✅ |
 | POST | `/mp/user/phone/wx` | 微信一键授权绑定手机号 | `WxPhoneReq` | `User` | 🔒 | ✅ | ✅ |
@@ -211,7 +211,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **227** 个接口 ｜ 后端已实现 **222**（98%）｜ 前端在调 **227**
+共 **228** 个接口 ｜ 后端已实现 **223**（98%）｜ 前端在调 **228**
 
 ### activities（4）
 
@@ -692,7 +692,7 @@
 | POST | `/biz/staff/{mchAccountNo}/store` | 授权到店 | `GrantStoreReq` | `MerchantStaff` | 🔒 | ✅ | ✅ |
 | GET | `/biz/staff/logs` | 员工与授权变更记录 | — | `数组` | 🔒 | ✅ | ✅ |
 
-### store（15）
+### store（16）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -710,6 +710,7 @@
 | GET | `/biz/store/list` | 我的门店 | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/biz/store/poster` | 分享海报 | — | `Poster` | 🔒 | ✅ | ✅ |
 | GET | `/biz/store/qrcode` | 店铺码 | — | `StoreQrcode` | 🔒 | ✅ | ✅ |
+| POST | `/biz/store/scope-preview` | 范围预览 | — | `ScopePreview` | 🔒 | ✅ | ✅ |
 | GET | `/biz/store/share-kit` | 分享素材 | — | `ShareKit` | 🔒 | ✅ | ✅ |
 
 ### store-spec-dims（1）
@@ -737,7 +738,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **387** 个接口 ｜ 后端已实现 **322**（83%）｜ 前端在调 **316**
+共 **390** 个接口 ｜ 后端已实现 **324**（83%）｜ 前端在调 **319**
 
 ### aftersale（4）
 
@@ -748,21 +749,24 @@
 | GET | `/ops/after-sales/fast-refund-rule` | getFastRefundRule | — | `FastRefundRule` | — | ✅ | ✅ |
 | POST | `/ops/after-sales/fast-refund-rule` | 极速退阈值（P-6.1.2）：金额上限 > 0、时限 ≥ 1 小时 | — | `FastRefundRule` | — | ✅ | ✅ |
 
-### community（26）
+### community（29）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/ops/communities` | listCommunities | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/communities/{no}/archive` | archiveCommunity | — | `Community` | — | ⬜ | ✅ |
 | POST | `/ops/communities/{no}/fence` | 覆盖围栏半径，米（P-2.1.3） | — | `Community` | — | ⬜ | ✅ |
+| GET | `/ops/communities/{no}/fence-impact` | 改围栏之前先看影响：这个半径会圈进来多少条收货地址 | — | `FenceImpact` | — | ⬜ | ✅ |
 | POST | `/ops/communities/{no}/open` | 开城/停城（P-2.1.2） | — | `Community` | — | ⬜ | ✅ |
 | POST | `/ops/communities/{no}/region` | 把社区挂到行政区划下（ADR-013） | — | `Community` | — | ⬜ | ✅ |
 | POST | `/ops/communities/{no}/unarchive` | unarchiveCommunity | — | `Community` | — | ⬜ | ✅ |
 | GET | `/ops/communities/applies` | 提报队列 | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/communities/applies/{applyNo}/decide` | 裁决 | — | `CommunityApply` | — | ✅ | ✅ |
+| POST | `/ops/communities/buildings` | 建一栋楼 | — | `Community` | — | ✅ | ✅ |
 | GET | `/ops/communities/duplicates` | 疑似重复的聚落两两清单 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/communities/merge` | 合并：把 fromNo 并进 intoNo | — | `Community` | — | ✅ | ✅ |
 | GET | `/ops/communities/near` | 一个坐标附近已开通的聚落，按距离升序 —— 裁决时查重用 */ | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/coverage/distribution` | 位置分布（P-2.1） | — | `CoverageDistribution` | — | ✅ | ✅ |
 | GET | `/ops/coverage/health` | 坐标健康度（P-2.1） | — | `CoverageHealth` | — | ✅ | ✅ |
 | GET | `/ops/pickups` | listPickups | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/pickups` | 建自提点 | — | `PickupPoint` | — | ✅ | ✅ |

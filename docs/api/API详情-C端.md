@@ -57,7 +57,6 @@
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
 | `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
-| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
@@ -75,7 +74,7 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
@@ -101,7 +100,6 @@
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
 | `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
-| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
@@ -119,7 +117,7 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
@@ -636,7 +634,6 @@
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
 | `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
-| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
@@ -654,7 +651,7 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
@@ -1358,7 +1355,6 @@
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
 | `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
-| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
@@ -1376,7 +1372,7 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
@@ -1426,7 +1422,6 @@
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
 | `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
-| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
@@ -1444,7 +1439,7 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
@@ -1479,7 +1474,6 @@
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
 | `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
-| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
@@ -1497,7 +1491,7 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
@@ -1523,7 +1517,6 @@
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
 | `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
-| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
@@ -1541,7 +1534,7 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
@@ -1567,7 +1560,6 @@
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
 | `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
-| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
@@ -1585,7 +1577,7 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 
@@ -2399,7 +2391,8 @@
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 用户选定的履约方式。跨履约方式的商品结算时会拆单 |
 | `merchantNo` | `string` | 是 | 所属商家。**后端 `CartItemVO` 一直在发这两个字段，是这里此前没声明**—— 于是数据到了端上就被丢掉，购物车只能按履约方式分组，店名一个字都显示不出来。 后果不是「少个标签」：用户从头到尾看到「一单」，提交后拿到的是按商家拆出的 N 笔子订单（`ord_sub_order`）。见 TDD-购物车商家可见。 |
 | `merchantName` | `string` | 是 | 商家名。**购物车按它分组** —— 一车东西来自几家店， 结算时会拆成几笔子订单，分组是把这件事提前说清楚（见 TDD-购物车商家可见）。 |
-| `invalidReason` | `string` | 否 | 失效原因，如「已下架」「库存不足」。有值即不可勾选结算 |
+| `invalid` | `boolean` | 否 | 失效（已下架 / 已删除）。**为真即不可勾选结算**，端上放进失效区。 ⚠️ **这里此前叫 `invalidReason?: string`，而后端从来没有发过那个名字** —— 后端 `CartItemVO` 发的一直是 `invalid: boolean`。同物异名的后果不是「少个字段」： 端上按 `!invalidReason` 判有效，于是**已下架的商品在购物车里完全正常**， 能勾能结算，一直到下单那一刻才被后端拒。 <p>不反过来让后端发那句中文原因：那是要显示给用户的话，而这个 app 有三门语言。 端上拿 `invalid` 与  {@link  available }  两个事实自己组装本地化文案， i18n 守卫也才管得着它。见 TDD-购物车与下单优化 §3.6。 |
+| `available` | `number` | 否 | 可售库存。`0` = 售罄。 ⚠️ **缺省表示「后端没给」，不是 0** —— 旧版本后端与 mock 都可能不发。 每一处都要按「空 = 不设上限」处理；默认成 0 的后果是整车一件都加不了， 而且只在没带这个字段的环境里才出现。 |
 | `giftQty` | `number` | 否 | 买赠自动带出的赠品件数（不计价） |
 | `giftLabel` | `string` | 否 | 赠品说明，如「买 2 送 1」 |
 
@@ -2452,7 +2445,8 @@
 | `address` | `string` | 是 | 社区地址 |
 | `cityCode` | `string` | 是 | 所属城市。全市范围的商家靠它判定可达 |
 | `regionCode` | `string` | 否 | 所属街道/镇（9 位区划码）。商家框范围时「按街道看聚落」靠它 —— 不下发的话端上只能拿到一锅平铺清单，街道视图无从分组。 |
-| `kind` | `string` | 否 | ESTATE 小区 / VILLAGE 村。只是展示标签，不参与匹配 |
+| `kind` | `string` | 否 | `ESTATE` 小区 / `VILLAGE` 村 / `BUILDING` 楼栋（写字楼）。 **不再只是展示标签**：`BUILDING` 这一档参与匹配 —— 定位到最内层聚落时 「层级优先于距离」，站在楼门口时隔壁小区的中心可能比本楼中心更近， 按距离取会把「我在 3 幢」判成「我在隔壁小区」，而两者的商品池不同。 |
+| `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。**为空 = 顶层聚落**，直接挂 `regionCode`。 只做两层：园区 › 楼 › 单元 › 户会没完没了，而单元和户不是服务单位 —— 没有商家按单元框范围，它们属于收货地址的门牌号。 |
 | `distance` | `number` | 是 | 米 |
 | `pickups` | [`Pickup`](#pickup)\[\] | 是 | 本社区可用的自提点 |
 | `originCode` | `string,null` | 否 | 官方村码，只有 `kind=VILLAGE` 且经官方名录开通的才有。**`regionCode` 是它挂的 街道/镇，不是它自己** —— 经营范围选择器再往下钻一层要用这个码，不能用 regionCode， 否则「牛杜村」会被当成「牛杜镇」去下钻。 |
@@ -3095,7 +3089,6 @@
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
 | `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
-| `redeemCode` | `string` | 否 | VIRTUAL：兑换码；CARD：卡号 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
@@ -3113,7 +3106,7 @@
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
 | `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
 | `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupNo` | `string` | 否 | 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。 ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。 |
+| `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
 
 ### OrderAmount

@@ -321,6 +321,7 @@ const RESPONSE_TYPES = {
   mSetStaffStatus: "MerchantStaff",
   mGrantStore: "MerchantStaff",
   mStore: "StoreProfile",
+  mScopePreview: "ScopePreview",
   mCommunities: "Community[]",
   mRegions: "Region[]",
   mApplyCommunity: "CommunityApply",

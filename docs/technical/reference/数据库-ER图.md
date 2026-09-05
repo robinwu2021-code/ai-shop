@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **174** 张表、**269** 条引用关系，分 **16** 个域。
+全库 **175** 张表、**270** 条引用关系，分 **16** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -17,8 +17,8 @@
 | 商家主体与门店 | `mch_*` | 27 | 12 |
 | 社区与自提点 | `cmt_*` | 3 | 8 |
 | 商品与类目 | `prd_*` | 22 | 7 |
-| 购物车 | `trd_*` | 1 | 0 |
-| 交易 | `ord_*` | 6 | 7 |
+| 购物车 | `trd_*` | 2 | 0 |
+| 交易 | `ord_*` | 6 | 8 |
 | 履约 | `ful_*` | 8 | 0 |
 | 营销与团购 | `mkt_*` | 17 | 4 |
 | 积分 | `pts_*` | 2 | 0 |
@@ -130,15 +130,16 @@
 
 **跨域引用**：`prd_community_pool.community_no` → `cmt_community`、`prd_community_pool.entity_no` → `mch_entity`、`prd_community_pool.store_no` → `mch_store`、`prd_goods.entity_no` → `mch_entity`、`prd_sku.entity_no` → `mch_entity`、`prd_spec_template.entity_no` → `mch_entity`、`prd_stock_lock.store_no` → `mch_store`、`prd_store_stock.store_no` → `mch_store`、`prd_store_stock.entity_no` → `mch_entity`、`prd_store_goods.store_no` → `mch_store`、`prd_store_goods.entity_no` → `mch_entity`、`prd_store_price.store_no` → `mch_store`、`prd_store_price.entity_no` → `mch_entity`、`prd_topic_goods.entity_no` → `mch_entity`、`prd_spec_dim.entity_no` → `mch_entity`、`prd_spec_value.entity_no` → `mch_entity`、`prd_merchant_spec.entity_no` → `mch_entity`、`prd_merchant_spec_value.entity_no` → `mch_entity`、`prd_merchant_spec_override.merchant_no` → `mch_entity`、`prd_goods_draft.entity_no` → `mch_entity`
 
-### 购物车 `trd_*`（1 张）
+### 购物车 `trd_*`（2 张）
 
 ![购物车表关系](../diagrams/db-trd.svg)
 
 | 表 | 说明 |
 |---|---|
 | `trd_cart_item` | 购物车（不存价，读时实时算） |
+| `trd_shipping_upload` | 微信发货信息录入的上报台账 |
 
-**跨域引用**：`trd_cart_item.user_no` → `usr_account`、`trd_cart_item.goods_no` → `prd_goods`、`trd_cart_item.sku_no` → `prd_sku`
+**跨域引用**：`trd_cart_item.user_no` → `usr_account`、`trd_cart_item.goods_no` → `prd_goods`、`trd_cart_item.sku_no` → `prd_sku`、`trd_shipping_upload.order_no` → `ord_order`
 
 ### 交易 `ord_*`（6 张）
 

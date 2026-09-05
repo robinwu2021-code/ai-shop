@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**89 个功能点**，其中 **24 个游客可用**；**2 个没有任何页面调用**。
+统计：**89 个功能点**，其中 **23 个游客可用**；**2 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -109,7 +109,7 @@
 | `deregister` | `POST /mp/user/deregister` | 是 | me | — |
 | `login` | `POST /mp/user/login` | 游客 | (stores) | — |
 | `logout` | `POST /mp/user/logout` | 是 | (stores) | — |
-| `sendOtp` | `POST /mp/user/otp/send` | 游客 | (components) · login | — |
+| `sendOtp` | `POST /mp/user/otp/send` | 是 | (components) · login | — |
 | `bindPhone` | `POST /mp/user/phone/bind` | 是 | (components) | — |
 | `phoneCapable` | `GET /mp/user/phone/capable` | 游客 | (components) | — |
 | `bindPhoneByWx` | `POST /mp/user/phone/wx` | 是 | (components) | — |
