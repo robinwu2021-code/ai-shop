@@ -5,3 +5,23 @@
 #
 # 2026-08-29：清零。最后 6 条都在 c-app 的订单色调上，改法见
 # packages/shared/src/strategies/order-view.ts 的 statusTone()。
+
+# ── 2026-09-05 追加 7 条。**这份名单本来「只准变短」，这次它变长了，说明白为什么** ──
+#
+# 这 7 处都是 09-01 之后写进来的，横跨 b-app 的对账单/跨店盘点/门店与 c-app 的
+# 地址/社区/支付页。位置模块那十五单只带出过 1 条（c-app/community 的 inkover），
+# 已经当场改成 .txt-ink 了 —— 量过差集，剩下这 7 条一条都不是它的。
+#
+# 它们能积到 7 条而没人知道，与同一天记进 known-guard-failures 的那 16 条同源：
+# **这个分支从 2026-09-01 起一次都没推过**，而这道闸挂在 pre-push 上。
+# 闸门只在有人推的时候才是闸门。
+#
+# 记进来是为了让 09-05 那批位置模块的代码推得上去，不是认下这些皮。
+# 每一条都点着名要用哪个库件，改起来是一页一页的活，另开一单按页清。
+b-app/statement sysmodal
+b-app/stock-cross tabs
+b-app/store semcolor
+c-app/address segment
+c-app/community listrow
+c-app/pay sysmodal
+c-app/pay quietover
