@@ -56,4 +56,10 @@ public final class TradeMappers {
 
     public interface InvoiceRequestMapper extends BaseMapper<OrdInvoiceRequest> {
     }
+
+    /** 微信发货信息录入的上报台账（V323）。见 {@link ai.neargo.shop.trade.entity.TrdShippingUpload} */
+    public interface ShippingUploadMapper
+            extends com.baomidou.mybatisplus.core.mapper.BaseMapper<
+                    ai.neargo.shop.trade.entity.TrdShippingUpload> {
+    }
 }
