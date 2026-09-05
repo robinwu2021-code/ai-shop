@@ -412,7 +412,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 97,
+        "b-app": 111,
         "c-app": 8
       }
     },
@@ -460,7 +460,7 @@
         "margin-top": "14px"
       },
       "usage": {
-        "b-app": 8,
+        "b-app": 12,
         "c-app": 3
       }
     },
@@ -476,7 +476,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 85,
+        "b-app": 90,
         "c-app": 3
       }
     },
@@ -492,7 +492,7 @@
         "margin-top": "4px"
       },
       "usage": {
-        "b-app": 32,
+        "b-app": 35,
         "c-app": 0
       }
     },
@@ -512,7 +512,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 248,
+        "b-app": 255,
         "c-app": 130
       }
     },
@@ -544,7 +544,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 118,
+        "b-app": 125,
         "c-app": 74
       }
     },
@@ -560,7 +560,7 @@
         "padding": "8px 0"
       },
       "usage": {
-        "b-app": 3,
+        "b-app": 7,
         "c-app": 5
       }
     },
@@ -794,7 +794,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 9,
+        "b-app": 26,
         "c-app": 14
       }
     },
@@ -816,7 +816,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 287,
+        "b-app": 291,
         "c-app": 44
       }
     },
@@ -860,7 +860,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 278,
+        "b-app": 288,
         "c-app": 235
       }
     },
@@ -926,7 +926,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 3,
+        "b-app": 7,
         "c-app": 0
       }
     },
@@ -970,7 +970,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 118,
+        "b-app": 128,
         "c-app": 41
       }
     },
@@ -992,7 +992,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 92,
+        "b-app": 109,
         "c-app": 97
       }
     },
@@ -1078,7 +1078,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 195,
+        "b-app": 208,
         "c-app": 71
       }
     },
@@ -1110,7 +1110,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 111,
+        "b-app": 114,
         "c-app": 47
       }
     },
@@ -1204,7 +1204,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 26,
+        "b-app": 27,
         "c-app": 9
       }
     },
@@ -1278,7 +1278,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 194,
+        "b-app": 222,
         "c-app": 133
       }
     },
@@ -1472,7 +1472,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 97,
+        "b-app": 100,
         "c-app": 18
       }
     },
@@ -1625,7 +1625,7 @@
         "bare?: boolean"
       ],
       "usage": {
-        "b-app": 45,
+        "b-app": 46,
         "c-app": 18
       },
       "note": "空态",
@@ -1656,7 +1656,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 12,
+        "b-app": 14,
         "c-app": 0
       },
       "note": "—",
@@ -1709,7 +1709,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 37,
+        "b-app": 49,
         "c-app": 0
       },
       "note": "—",
@@ -1821,7 +1821,7 @@
         "pad?: boolean"
       ],
       "usage": {
-        "b-app": 18,
+        "b-app": 20,
         "c-app": 2
       },
       "note": "卡内标题行",
@@ -2220,11 +2220,12 @@
       "file": "b-app/src/pages/deposit/index.vue",
       "components": [
         "sh-empty",
+        "sh-kv",
         "sh-scaffold"
       ],
-      "libClassHits": 0,
-      "localSelectors": 0,
-      "localCssLines": 0,
+      "libClassHits": 41,
+      "localSelectors": 4,
+      "localCssLines": 15,
       "rolled": []
     },
     {
@@ -2362,11 +2363,14 @@
       "file": "b-app/src/pages/invoice/index.vue",
       "components": [
         "sh-empty",
-        "sh-scaffold"
+        "sh-go",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-section"
       ],
-      "libClassHits": 0,
-      "localSelectors": 0,
-      "localCssLines": 0,
+      "libClassHits": 48,
+      "localSelectors": 3,
+      "localCssLines": 11,
       "rolled": []
     },
     {
@@ -2812,11 +2816,14 @@
       "file": "b-app/src/pages/statement/index.vue",
       "components": [
         "sh-empty",
-        "sh-scaffold"
+        "sh-go",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-section"
       ],
-      "libClassHits": 0,
-      "localSelectors": 0,
-      "localCssLines": 0,
+      "libClassHits": 41,
+      "localSelectors": 2,
+      "localCssLines": 8,
       "rolled": []
     },
     {
@@ -3108,11 +3115,12 @@
       "key": "b-app/withdraw",
       "file": "b-app/src/pages/withdraw/index.vue",
       "components": [
+        "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 0,
-      "localSelectors": 0,
-      "localCssLines": 0,
+      "libClassHits": 24,
+      "localSelectors": 4,
+      "localCssLines": 14,
       "rolled": []
     },
     {

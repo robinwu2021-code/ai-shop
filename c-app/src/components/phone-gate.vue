@@ -75,6 +75,9 @@ async function sendCode() {
 }
 
 async function onSubmit() {
+  // `<view>` 没有 disabled 属性，防重复提交要在这儿拦一次 ——
+  // 换掉原生 button 时最容易漏的就是这一行（另外四处原本就有）
+  if (busy.value) return;
   if (!phone.value || !code.value) {
     uni.showToast({ title: String(t("phoneGate.needBoth")), icon: "none" });
     return;
@@ -143,9 +146,9 @@ async function bind(run: () => Promise<unknown>) {
             {{ $t("phoneGate.sendCode") }}
           </view>
         </view>
-        <button class="sh-btn primary" :disabled="busy" @tap="onSubmit">
+        <view class="sh-btn primary" :class="{ 'is-disabled': busy }" @tap="onSubmit">
           {{ $t("phoneGate.submit") }}
-        </button>
+        </view>
       </view>
 
       <text v-if="capable" class="sh-muted switch" @tap="capable = false">

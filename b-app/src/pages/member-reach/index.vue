@@ -158,11 +158,11 @@ onShow(() => {
       <textarea v-model="body" class="field__input area" :placeholder="$t('reach.bodyPh')" />
     </view>
 
-    <button class="sh-btn send" :disabled="!canSend" @tap="send">
+    <view class="sh-btn send" :class="{ 'is-disabled': !canSend }" @tap="send">
       {{ plan && plan.reachable
         ? $t("reach.sendN", { n: plan.reachable })
         : $t("reach.sendNone") }}
-    </button>
+    </view>
 
     <!-- 结果：与发券结果页同一形状，商家看两处学一次 -->
     <view v-if="result" class="sh-card sh-mt-sm done">

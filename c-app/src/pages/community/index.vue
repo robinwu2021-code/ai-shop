@@ -561,7 +561,7 @@ onLoad(load);
 }
 .pk__nav {
   padding: 6rpx 16rpx;
-  border-radius: 999px;
+  border-radius: 9999px;
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
 }

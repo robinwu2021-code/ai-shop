@@ -285,14 +285,14 @@ onShow(load);
         </text>
 
         <!-- 按钮上就写「不可撤销」：确认框里再写一遍已经晚了半步 -->
-        <button
+        <view
           v-if="couponView.redeemable"
           class="sh-btn redeem"
-          :disabled="busy"
+          :class="{ 'is-disabled': busy }"
           @tap="redeemCoupon"
         >
           {{ $t("verify.couponRedeem") }}
-        </button>
+        </view>
       </view>
 
       <view v-if="couponDone" class="txt-sub done">{{ couponDone }}</view>

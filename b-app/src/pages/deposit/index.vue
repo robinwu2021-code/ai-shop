@@ -1,73 +1,65 @@
 <template>
   <sh-scaffold title-key="deposit.title" :denied="!merchant.can('biz:finance')">
-    <view class="p-4 space-y-4">
-      <view class="rounded-2xl bg-white p-5 shadow-sm">
-        <text class="text-sm text-gray-500">{{ t("deposit.available") }}</text>
-        <view class="mt-1 text-3xl font-semibold">{{ money(acc?.availableMinor ?? 0) }}</view>
+    <view class="sh-card">
+      <text class="sh-muted">{{ t("deposit.available") }}</text>
+      <text class="txt-mega sh-num amt">{{ money(acc?.availableMinor ?? 0) }}</text>
 
-        <view class="mt-3 space-y-1">
-          <view class="flex justify-between text-sm">
-            <text class="text-gray-500">{{ t("deposit.paid") }}</text>
-            <text>{{ money(acc?.paidMinor ?? 0) }}</text>
-          </view>
-          <view v-if="(acc?.frozenMinor ?? 0) > 0" class="flex justify-between text-sm">
-            <text class="text-gray-500">{{ t("deposit.frozen") }}</text>
-            <text class="text-orange-600">-{{ money(acc?.frozenMinor ?? 0) }}</text>
-          </view>
-          <view class="flex justify-between text-sm">
-            <text class="text-gray-500">{{ t("deposit.required") }}</text>
-            <text>{{ money(acc?.requiredMinor ?? 0) }}</text>
-          </view>
-        </view>
-
-        <view v-if="acc" class="mt-3 rounded-lg p-3" :class="acc.sufficient ? 'bg-green-50' : 'bg-orange-50'">
-          <text class="text-sm font-medium" :class="acc.sufficient ? 'text-green-700' : 'text-orange-700'">
-            {{ acc.sufficient ? t("deposit.enough") : t("deposit.short", { n: money(shortfall) }) }}
-          </text>
-          <text class="mt-1 block text-xs leading-relaxed text-gray-500">
-            {{ acc.sufficient ? t("deposit.enoughHint") : t("deposit.shortHint") }}
-          </text>
-        </view>
+      <view class="sh-mt-md">
+        <sh-kv between :label="String(t('deposit.paid'))">
+          <text class="txt-sub sh-num">{{ money(acc?.paidMinor ?? 0) }}</text>
+        </sh-kv>
+        <sh-kv v-if="(acc?.frozenMinor ?? 0) > 0" between :label="String(t('deposit.frozen'))">
+          <text class="txt-sub sh-num is-warning">-{{ money(acc?.frozenMinor ?? 0) }}</text>
+        </sh-kv>
+        <sh-kv between :label="String(t('deposit.required'))">
+          <text class="txt-sub sh-num">{{ money(acc?.requiredMinor ?? 0) }}</text>
+        </sh-kv>
       </view>
 
-      <view class="rounded-2xl bg-white p-5 shadow-sm">
-        <text class="text-sm font-medium">{{ t("deposit.limitTitle") }}</text>
-        <view class="mt-2 space-y-1">
-          <view class="flex justify-between text-sm">
-            <text class="text-gray-500">{{ t("deposit.limitSingle") }}</text>
-            <text>{{ limitText(acc?.singleOrderLimitMinor) }}</text>
-          </view>
-          <view class="flex justify-between text-sm">
-            <text class="text-gray-500">{{ t("deposit.limitDaily") }}</text>
-            <text>{{ limitText(acc?.dailyAmountLimitMinor) }}</text>
-          </view>
-        </view>
+      <!-- 够不够那一块：语义色的 tint 底 + 同色字，与 .sh-chip 的做法同源 -->
+      <view v-if="acc" class="verdict" :class="acc.sufficient ? 'is-ok' : 'is-short'">
+        <text class="txt-strong" :class="acc.sufficient ? 'is-success' : 'is-warning'">
+          {{ acc.sufficient ? t("deposit.enough") : t("deposit.short", { n: money(shortfall) }) }}
+        </text>
+        <text class="sh-hint txt-quiet">
+          {{ acc.sufficient ? t("deposit.enoughHint") : t("deposit.shortHint") }}
+        </text>
       </view>
+    </view>
 
-      <view class="rounded-2xl bg-white p-5 shadow-sm">
-        <text class="text-sm font-medium">{{ t("deposit.txnTitle") }}</text>
-        <sh-empty v-if="!txns.length" :text="t('deposit.txnEmpty')"></sh-empty>
-        <view
-          v-for="(x, i) in txns"
-          :key="x.txnNo"
-          class="py-3"
-          :class="i === 0 ? '' : 'border-t border-gray-100'"
-        >
-          <view class="flex justify-between">
-            <text class="text-sm">{{ typeText(x.txnType) }}</text>
-            <text class="text-sm" :class="increases(x) ? 'text-green-600' : 'text-red-500'">
-              {{ increases(x) ? "+" : "-" }}{{ money(Math.abs(x.amountMinor)) }}
-            </text>
-          </view>
-          <view class="mt-1 flex justify-between text-xs text-gray-400">
-            <text>{{ x.createdAt }}</text>
-            <text>{{ t("deposit.balanceAfter", { n: money(x.balanceAfterMinor) }) }}</text>
-          </view>
-          <text v-if="x.reason" class="mt-1 block text-xs text-gray-500">{{ x.reason }}</text>
-          <text v-if="x.operator" class="mt-1 block text-xs text-gray-400">
-            {{ t("deposit.by", { n: x.operator }) }}
+    <view class="sh-card">
+      <text class="txt-strong">{{ t("deposit.limitTitle") }}</text>
+      <view class="sh-mt-sm">
+        <sh-kv between :label="String(t('deposit.limitSingle'))">
+          <text class="txt-sub sh-num">{{ limitText(acc?.singleOrderLimitMinor) }}</text>
+        </sh-kv>
+        <sh-kv between :label="String(t('deposit.limitDaily'))">
+          <text class="txt-sub sh-num">{{ limitText(acc?.dailyAmountLimitMinor) }}</text>
+        </sh-kv>
+      </view>
+    </view>
+
+    <view class="sh-card">
+      <text class="txt-strong">{{ t("deposit.txnTitle") }}</text>
+      <sh-empty v-if="!txns.length" bare :text="String(t('deposit.txnEmpty'))"></sh-empty>
+      <!-- 行距与分隔线归 .sh-row--divided（线画在相邻的后一行上，不用判首行） -->
+      <view v-for="x in txns" :key="x.txnNo" class="sh-row--divided">
+        <view class="sh-row sh-row--between">
+          <text class="txt-sub">{{ typeText(x.txnType) }}</text>
+          <text class="txt-sub sh-num" :class="increases(x) ? 'is-success' : 'is-danger'">
+            {{ increases(x) ? "+" : "-" }}{{ money(Math.abs(x.amountMinor)) }}
           </text>
         </view>
+        <view class="sh-row sh-row--between sh-mt-xs">
+          <text class="txt-caption txt-quiet sh-num">{{ x.createdAt }}</text>
+          <text class="txt-caption txt-quiet sh-num">
+            {{ t("deposit.balanceAfter", { n: money(x.balanceAfterMinor) }) }}
+          </text>
+        </view>
+        <text v-if="x.reason" class="sh-hint">{{ x.reason }}</text>
+        <text v-if="x.operator" class="sh-hint txt-quiet">
+          {{ t("deposit.by", { n: x.operator }) }}
+        </text>
       </view>
     </view>
   </sh-scaffold>
@@ -146,3 +138,23 @@ async function load() {
 
 onShow(load);
 </script>
+
+<style scoped>
+.amt {
+  display: block;
+  margin-top: 8rpx;
+}
+/* 够不够那一块。tint 底取语义色的 14%，与 .sh-chip 的 tint 同源；
+   圆角 md（24rpx），在五档上 */
+.verdict {
+  margin-top: 28rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 24rpx;
+}
+.verdict.is-ok {
+  background: var(--sh-success-tint);
+}
+.verdict.is-short {
+  background: var(--sh-warning-tint);
+}
+</style>

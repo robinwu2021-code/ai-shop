@@ -1,64 +1,67 @@
 <template>
   <sh-scaffold title-key="withdraw.title" :denied="!merchant.can('biz:finance')">
-    <view class="p-4 space-y-4">
-      <!-- 可提余额：这一页最重要的数字，单独一块 -->
-      <view class="rounded-2xl bg-white p-5 shadow-sm">
-        <text class="text-sm text-gray-500">{{ t("withdraw.canWithdraw") }}</text>
-        <view class="mt-1 text-3xl font-semibold">{{ money(page?.withdrawableMinor ?? 0) }}</view>
-        <!--
-          下限写出来，别让他点了才知道太少。
-          后端也拦，但那时他已经填过一遍金额了。
-        -->
-        <text class="mt-2 block text-xs text-gray-400">
-          {{ t("withdraw.minHint", { min: money(page?.minAmountMinor ?? 0) }) }}
-        </text>
-      </view>
+    <!-- 可提余额：这一页最重要的数字，单独一块。档位与 income / points 的结存一致（txt-mega） -->
+    <view class="sh-card">
+      <text class="sh-muted">{{ t("withdraw.canWithdraw") }}</text>
+      <text class="txt-mega sh-num amt">{{ money(page?.withdrawableMinor ?? 0) }}</text>
+      <!--
+        下限写出来，别让他点了才知道太少。
+        后端也拦，但那时他已经填过一遍金额了。
+      -->
+      <text class="sh-hint txt-quiet">
+        {{ t("withdraw.minHint", { min: money(page?.minAmountMinor ?? 0) }) }}
+      </text>
+    </view>
 
-      <!-- 申请 -->
-      <view class="rounded-2xl bg-white p-5 shadow-sm space-y-3">
-        <input
-          v-model="amountText"
-          type="digit"
-          maxlength="12"
-          class="w-full rounded-lg border border-gray-200 px-3 py-2 text-lg"
-          :placeholder="t('withdraw.amountPlaceholder')"
-        />
-        <button
-          class="w-full rounded-lg bg-blue-600 py-3 text-white"
-          :class="{ 'opacity-40': !canSubmit || submitting }"
-          :disabled="!canSubmit || submitting"
-          @click="submit"
-        >
-          {{ submitting ? t("withdraw.submitting") : t("withdraw.submit") }}
-        </button>
-        <!--
-          **按钮禁用时要说明原因。**只是灰掉的话，商家不知道是钱不够、
-          低于下限、还是有一笔在审 —— 三种情况他该做的事完全不同。
-        -->
-        <text v-if="blockReason" class="block text-xs text-orange-600">{{ blockReason }}</text>
+    <!-- 申请 -->
+    <view class="sh-card">
+      <input
+        v-model="amountText"
+        type="digit"
+        maxlength="12"
+        class="field__input sh-num"
+        :placeholder="t('withdraw.amountPlaceholder')"
+      />
+      <!--
+        用 view 而不是 button：这套界面的按钮形态是 `.sh-btn`，而原生 button 在小程序上
+        自带一圈 ::after 描边与最小高度，同一屏里两种按钮会差一圈。禁用态走全局 .is-disabled，
+        并在 handler 里也拦一次（view 没有 disabled 属性）。
+      -->
+      <view
+        class="sh-btn sh-mt-sm"
+        :class="{ 'is-disabled': !canSubmit || submitting }"
+        @tap="submit"
+      >
+        {{ submitting ? t("withdraw.submitting") : t("withdraw.submit") }}
       </view>
+      <!--
+        **按钮禁用时要说明原因。**只是灰掉的话，商家不知道是钱不够、
+        低于下限、还是有一笔在审 —— 三种情况他该做的事完全不同。
+      -->
+      <text v-if="blockReason" class="sh-hint is-warning">{{ blockReason }}</text>
+    </view>
 
-      <!-- 记录 -->
-      <view class="rounded-2xl bg-white p-5 shadow-sm">
-        <text class="text-sm font-medium">{{ t("withdraw.records") }}</text>
-        <view v-if="!page?.records?.length" class="py-6 text-center text-sm text-gray-400">
-          {{ t("withdraw.noRecords") }}
+    <!-- 记录 -->
+    <view class="sh-card">
+      <text class="txt-strong">{{ t("withdraw.records") }}</text>
+      <sh-empty v-if="!page?.records?.length" bare :text="String(t('withdraw.noRecords'))"></sh-empty>
+      <!-- 行距与分隔线归 .sh-row--divided：它把线画在「相邻的后一行」上，
+           所以不用再判「是不是最后一条」 -->
+      <view
+        v-for="r in page?.records ?? []"
+        :key="r.withdrawNo"
+        class="sh-row sh-row--between sh-row--divided"
+      >
+        <view>
+          <text class="txt-strong sh-num rec__amt">{{ money(r.amount) }}</text>
+          <text class="txt-caption txt-quiet rec__at">{{ r.appliedAt }}</text>
         </view>
-        <view
-          v-for="(r, i) in page?.records ?? []"
-          :key="r.withdrawNo"
-          class="flex items-center justify-between py-3"
-          :class="{ 'border-b border-gray-100': i < (page?.records?.length ?? 0) - 1 }"
-        >
-          <view>
-            <view class="font-medium">{{ money(r.amount) }}</view>
-            <text class="text-xs text-gray-400">{{ r.appliedAt }}</text>
-          </view>
-          <view class="text-right">
-            <text :class="statusClass(r.status)">{{ t(`withdraw.status.${r.status}`) }}</text>
-            <!-- 驳回理由要显示：不显示的话商家只知道被拒，不知道为什么 -->
-            <text v-if="r.remark" class="mt-1 block text-xs text-gray-400">{{ r.remark }}</text>
-          </view>
+        <view class="rec__r">
+          <text class="txt-caption" :class="statusClass(r.status)">
+            {{ t(`withdraw.status.${r.status}`) }}
+          </text>
+          <!-- 驳回理由要显示：不显示的话商家只知道被拒，不知道为什么 -->
+          <text v-if="r.remark" class="sh-hint txt-quiet">{{ r.remark }}</text>
         </view>
       </view>
     </view>
@@ -129,10 +132,12 @@ const blockReason = computed(() => {
   return "";
 });
 
+/** 状态色走全局语义类（.is-success / .is-danger / .is-warning）——
+ *  字号由调用点的 .txt-caption 给，这里只回颜色那一档 */
 function statusClass(s: string) {
-  if (s === "PAID") return "text-green-600 text-sm";
-  if (s === "REJECTED" || s === "FAILED") return "text-red-500 text-sm";
-  return "text-orange-500 text-sm";
+  if (s === "PAID") return "is-success";
+  if (s === "REJECTED" || s === "FAILED") return "is-danger";
+  return "is-warning";
 }
 
 async function load() {
@@ -155,3 +160,22 @@ async function submit() {
 
 onShow(load);
 </script>
+
+<style scoped>
+/* 大数与它上面那行标签之间的缝。字号与字重归 .txt-mega */
+.amt {
+  display: block;
+  margin-top: 8rpx;
+}
+.rec__amt {
+  display: block;
+}
+.rec__at {
+  display: block;
+  margin-top: 4rpx;
+}
+/* 右列贴右。用逻辑属性 —— 阿语下要跟着翻 */
+.rec__r {
+  text-align: end;
+}
+</style>

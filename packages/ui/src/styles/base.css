@@ -100,6 +100,9 @@ html {
  * 所以浅色下它是一条 no-op，深色下才把 uni 的翻转顶回去。
  * 前缀 `:root:not([data-theme="dark"])` 让我们**自己**要深色时它自动让开。
  */
+/* #ifndef MP-WEIXIN */
+/* 这一整段只对 H5 / App 成立：`:root` 与 `uni-*` 这两样在 WXSS 里都不存在
+   （小程序的根是 page，标签名也没有 uni- 前缀）—— 不排除的话它只是白进小程序包。 */
 :root:not([data-theme="dark"]) uni-button,
 :root:not([data-theme="dark"]) uni-button[type="default"] {
   color: #000;
@@ -145,6 +148,21 @@ html {
     linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.6)),
     linear-gradient(0deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.6));
 }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+/*
+ * 微信给原生 `<button>` 画的那一圈边，用的是 `::after` 的一张放大再缩放的边框 ——
+ * `.sh-btn` 改不到它，于是同一屏里「用 button 写的按钮」比「用 view 写的」多一圈线。
+ *
+ * 全仓只剩**一个** `<button>`（phone-gate 的 `open-type="getPhoneNumber"`，
+ * 微信强制要求用 button 才能拿手机号），其余 9 个 2026-09-06 都换成了
+ * `<view class="sh-btn">`。留这一条是为了那一个，也为了将来再出现 open-type 时不用重踩。
+ */
+button::after {
+  border: none;
+}
+/* #endif */
 
 
 /* ---- 与主题无关的常量 ---- */

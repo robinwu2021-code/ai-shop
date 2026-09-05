@@ -197,11 +197,19 @@ describe("小程序的块间缝：顶层组件也要在名单上", () => {
     "biz-cart-fab", "phone-gate", "biz-region-picker", "biz-pickup-sheet",
     "biz-item-picker", "biz-supplier-picker"]);
 
+  /** base.css 里**所有** `#ifdef MP-WEIXIN` 段拼起来 —— 不能只取第一段：
+   *  2026-09-06 在块间缝那段之前又插了一段（button::after 重置），
+   *  只取第一段的话名单当场变空，而断言看上去还是绿的（幸好有「有东西可扫」那条）。 */
   const mpBlock = (() => {
     const css = readFileSync(join(ROOT, "packages/ui/src/styles/base.css"), "utf8");
-    const i = css.indexOf("/* #ifdef MP-WEIXIN */");
-    const j = css.indexOf("/* #endif */", i);
-    return css.slice(i, j);
+    const out: string[] = [];
+    let i = css.indexOf("/* #ifdef MP-WEIXIN */");
+    while (i >= 0) {
+      const j = css.indexOf("/* #endif */", i);
+      out.push(css.slice(i, j < 0 ? undefined : j));
+      i = css.indexOf("/* #ifdef MP-WEIXIN */", j < 0 ? css.length : j);
+    }
+    return out.join("\n");
   })();
   const listed = new Set(
     [...mpBlock.matchAll(/\.sh-scaffold > ([a-z][\w-]*)/g)].map((m) => m[1]!),

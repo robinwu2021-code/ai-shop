@@ -448,7 +448,7 @@ function navToStore() {
 .addr__nav {
   flex-shrink: 0;
   padding: 6rpx 18rpx;
-  border-radius: 999px;
+  border-radius: 9999px;
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
 }

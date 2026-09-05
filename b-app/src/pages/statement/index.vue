@@ -1,78 +1,61 @@
 <template>
   <sh-scaffold title-key="statement.title" :denied="!merchant.can('biz:finance')">
-    <view class="p-4 space-y-4">
-      <view class="rounded-2xl bg-white p-5 shadow-sm">
-        <view class="flex justify-between">
-          <text class="text-sm font-medium">{{ t("statement.periodLabel") }}</text>
-          <text class="text-sm text-blue-600" @tap="pickPeriod">
-            {{ period || t("statement.allPeriods") }}
+    <view class="sh-card">
+      <sh-section :title="String(t('statement.periodLabel'))">
+        <sh-go :text="period || String(t('statement.allPeriods'))" @tap="pickPeriod"></sh-go>
+      </sh-section>
+      <text class="sh-hint txt-quiet">{{ t("statement.voucherHint") }}</text>
+    </view>
+
+    <view class="sh-card">
+      <text class="sh-muted">{{ t("statement.net") }}</text>
+      <text class="txt-mega sh-num amt">{{ money(data?.netMinor ?? 0) }}</text>
+      <view class="sh-mt-md">
+        <sh-kv between :label="String(t('statement.gross'))">
+          <text class="txt-sub sh-num">{{ money(data?.grossMinor ?? 0) }}</text>
+        </sh-kv>
+        <sh-kv between :label="String(t('statement.commission'))">
+          <text class="txt-sub sh-num is-danger">-{{ money(data?.commissionMinor ?? 0) }}</text>
+        </sh-kv>
+        <sh-kv between :label="String(t('statement.serviceFee'))">
+          <text class="txt-sub sh-num is-danger">-{{ money(data?.serviceFeeMinor ?? 0) }}</text>
+        </sh-kv>
+        <sh-kv between :label="String(t('statement.billCount'))">
+          <text class="txt-sub sh-num">{{ t("statement.billCountValue", { n: data?.billCount ?? 0 }) }}</text>
+        </sh-kv>
+      </view>
+
+      <!-- 导出是次操作（这一页的主体是对账，不是导出）：tint 胶囊，不是实心 -->
+      <view
+        class="sh-btn sh-btn--soft sh-mt-md"
+        :class="{ 'is-disabled': !lines.length }"
+        @tap="exportCsv"
+      >
+        {{ t("statement.export") }}
+      </view>
+      <text class="sh-hint txt-quiet">{{ t("statement.exportHint") }}</text>
+    </view>
+
+    <view class="sh-card">
+      <text class="txt-strong">{{ t("statement.linesTitle") }}</text>
+      <sh-empty v-if="!lines.length" bare :text="String(t('statement.empty'))"></sh-empty>
+      <view v-for="l in lines" :key="l.settleNo" class="sh-row--divided">
+        <view class="sh-row sh-row--between">
+          <text class="txt-sub sh-num">{{ l.orderNo }}</text>
+          <text class="txt-strong sh-num">{{ money(l.netMinor) }}</text>
+        </view>
+        <text class="txt-caption txt-quiet sh-num line__break">{{ t("statement.lineBreak", {
+          gross: money(l.grossMinor),
+          rate: pct(l.commissionRate),
+          commission: money(l.commissionMinor),
+          fee: money(l.serviceFeeMinor),
+        }) }}</text>
+        <view class="sh-row sh-row--between sh-mt-xs">
+          <text class="txt-caption txt-quiet">{{ t(`statement.st_${l.status}`) }}</text>
+          <!-- 没有凭证号要看得出来：那一行对不上银行流水 -->
+          <text class="txt-caption sh-num" :class="l.voucherNo ? 'txt-quiet' : 'is-warning'">
+            {{ l.voucherNo || t("statement.noVoucher") }}
           </text>
-        </view>
-        <text class="mt-1 block text-xs leading-relaxed text-gray-500">
-          {{ t("statement.voucherHint") }}
-        </text>
-      </view>
-
-      <view class="rounded-2xl bg-white p-5 shadow-sm">
-        <text class="text-xs text-gray-500">{{ t("statement.net") }}</text>
-        <view class="mt-1 text-3xl font-semibold">{{ money(data?.netMinor ?? 0) }}</view>
-        <view class="mt-3 space-y-1">
-          <view class="flex justify-between text-sm">
-            <text class="text-gray-500">{{ t("statement.gross") }}</text>
-            <text>{{ money(data?.grossMinor ?? 0) }}</text>
-          </view>
-          <view class="flex justify-between text-sm">
-            <text class="text-gray-500">{{ t("statement.commission") }}</text>
-            <text class="text-red-500">-{{ money(data?.commissionMinor ?? 0) }}</text>
-          </view>
-          <view class="flex justify-between text-sm">
-            <text class="text-gray-500">{{ t("statement.serviceFee") }}</text>
-            <text class="text-red-500">-{{ money(data?.serviceFeeMinor ?? 0) }}</text>
-          </view>
-          <view class="flex justify-between text-sm">
-            <text class="text-gray-500">{{ t("statement.billCount") }}</text>
-            <text>{{ t("statement.billCountValue", { n: data?.billCount ?? 0 }) }}</text>
-          </view>
-        </view>
-
-        <button
-          class="mt-4 w-full rounded-lg border border-gray-200 py-2 text-sm"
-          :class="{ 'opacity-40': !lines.length }"
-          :disabled="!lines.length"
-          @click="exportCsv"
-        >
-          {{ t("statement.export") }}
-        </button>
-        <text class="mt-1 block text-xs text-gray-400">{{ t("statement.exportHint") }}</text>
-      </view>
-
-      <view class="rounded-2xl bg-white p-5 shadow-sm">
-        <text class="text-sm font-medium">{{ t("statement.linesTitle") }}</text>
-        <sh-empty v-if="!lines.length" :text="t('statement.empty')"></sh-empty>
-        <view
-          v-for="(l, i) in lines"
-          :key="l.settleNo"
-          class="py-3"
-          :class="i === 0 ? '' : 'border-t border-gray-100'"
-        >
-          <view class="flex justify-between">
-            <text class="text-sm">{{ l.orderNo }}</text>
-            <text class="text-sm font-medium">{{ money(l.netMinor) }}</text>
-          </view>
-          <view class="mt-1 flex justify-between text-xs text-gray-400">
-            <text>{{ t("statement.lineBreak", {
-              gross: money(l.grossMinor),
-              rate: pct(l.commissionRate),
-              commission: money(l.commissionMinor),
-              fee: money(l.serviceFeeMinor),
-            }) }}</text>
-          </view>
-          <view class="mt-1 flex justify-between text-xs">
-            <text class="text-gray-400">{{ t(`statement.st_${l.status}`) }}</text>
-            <text :class="l.voucherNo ? 'text-gray-500' : 'text-orange-600'">
-              {{ l.voucherNo || t("statement.noVoucher") }}
-            </text>
-          </view>
         </view>
       </view>
     </view>
@@ -166,3 +149,14 @@ async function load() {
 
 onShow(load);
 </script>
+
+<style scoped>
+.amt {
+  display: block;
+  margin-top: 8rpx;
+}
+.line__break {
+  display: block;
+  margin-top: 8rpx;
+}
+</style>

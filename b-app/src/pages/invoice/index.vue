@@ -1,101 +1,85 @@
 <template>
   <sh-scaffold title-key="invoice.title" :denied="!merchant.can('biz:finance')">
-    <view class="p-4 space-y-4">
-      <view class="rounded-2xl bg-white p-5 shadow-sm">
-        <text class="text-sm font-medium">{{ t("invoice.pendingTitle") }}</text>
+    <view class="sh-card">
+      <text class="txt-strong">{{ t("invoice.pendingTitle") }}</text>
 
-        <view v-if="!pending || pending.billCount === 0" class="mt-2">
-          <text class="text-sm text-gray-500">{{ t("invoice.pendingNone") }}</text>
+      <text v-if="!pending || pending.billCount === 0" class="sh-muted none">
+        {{ t("invoice.pendingNone") }}
+      </text>
+
+      <view v-else class="sh-mt-sm">
+        <text class="txt-caption txt-quiet">{{ t("invoice.amountLabel") }}</text>
+        <text class="txt-mega sh-num amt">{{ money(pending.payableMinor) }}</text>
+        <text class="sh-hint txt-quiet">{{ t("invoice.amountHint") }}</text>
+
+        <view class="sh-mt-md">
+          <sh-kv between :label="String(t('invoice.billCount'))">
+            <text class="txt-sub sh-num">{{ t("invoice.billCountValue", { n: pending.billCount }) }}</text>
+          </sh-kv>
+          <sh-kv between :label="String(t('invoice.periods'))">
+            <text class="txt-sub sh-num">{{ pending.periods.join("、") }}</text>
+          </sh-kv>
         </view>
-
-        <view v-else class="mt-2">
-          <text class="text-xs text-gray-500">{{ t("invoice.amountLabel") }}</text>
-          <view class="mt-1 text-3xl font-semibold">{{ money(pending.payableMinor) }}</view>
-          <text class="mt-1 block text-xs leading-relaxed text-gray-500">
-            {{ t("invoice.amountHint") }}
-          </text>
-
-          <view class="mt-3 space-y-1">
-            <view class="flex justify-between text-sm">
-              <text class="text-gray-500">{{ t("invoice.billCount") }}</text>
-              <text>{{ t("invoice.billCountValue", { n: pending.billCount }) }}</text>
-            </view>
-            <view class="flex justify-between text-sm">
-              <text class="text-gray-500">{{ t("invoice.periods") }}</text>
-              <text>{{ pending.periods.join("、") }}</text>
-            </view>
-          </view>
-          <text v-if="pending.periods.length > 1" class="mt-2 block text-xs text-orange-600">
-            {{ t("invoice.crossPeriod") }}
-          </text>
-        </view>
-      </view>
-
-      <view class="rounded-2xl bg-white p-5 shadow-sm">
-        <view class="flex justify-between">
-          <text class="text-sm font-medium">{{ t("invoice.titleBlock") }}</text>
-          <text class="text-sm text-blue-600" @tap="copyTitle">{{ t("invoice.copy") }}</text>
-        </view>
-        <text class="mt-1 block text-xs leading-relaxed text-gray-500">
-          {{ t("invoice.titleHint") }}
+        <text v-if="pending.periods.length > 1" class="sh-hint is-warning">
+          {{ t("invoice.crossPeriod") }}
         </text>
-        <view v-if="titleReady" class="mt-2 space-y-1">
-          <view v-for="f in titleFields" :key="f.k" class="flex justify-between text-sm">
-            <text class="text-gray-500">{{ t(`invoice.f_${f.k}`) }}</text>
-            <text class="ml-3 flex-1 text-right">{{ f.v }}</text>
-          </view>
-        </view>
-        <text v-else class="mt-2 block text-sm text-orange-600">{{ t("invoice.titleMissing") }}</text>
       </view>
+    </view>
 
-      <view v-if="pending && pending.billCount > 0" class="rounded-2xl bg-white p-5 shadow-sm space-y-3">
-        <text class="text-sm font-medium">{{ t("invoice.submitBlock") }}</text>
-        <input
-          v-model="invoiceNumber"
-          maxlength="32"
-          class="w-full rounded-lg border border-gray-200 px-3 py-2"
-          :placeholder="t('invoice.numberPlaceholder')"
-        />
-        <input
-          v-model="titleName"
-          maxlength="64"
-          class="w-full rounded-lg border border-gray-200 px-3 py-2"
-          :placeholder="t('invoice.titleNamePlaceholder')"
-        />
-        <button
-          class="w-full rounded-lg bg-blue-600 py-3 text-white"
-          :class="{ 'opacity-40': !canSubmit || submitting }"
-          :disabled="!canSubmit || submitting"
-          @click="submit"
-        >
-          {{ submitting ? t("invoice.submitting") : t("invoice.submit") }}
-        </button>
-        <text v-if="blockReason" class="block text-xs text-orange-600">{{ blockReason }}</text>
+    <view class="sh-card">
+      <sh-section :title="String(t('invoice.titleBlock'))">
+        <sh-go :text="String(t('invoice.copy'))" @tap="copyTitle"></sh-go>
+      </sh-section>
+      <text class="sh-hint txt-quiet">{{ t("invoice.titleHint") }}</text>
+      <view v-if="titleReady" class="sh-mt-sm">
+        <sh-kv v-for="f in titleFields" :key="f.k" between :label="String(t(`invoice.f_${f.k}`))">
+          <text class="txt-sub">{{ f.v }}</text>
+        </sh-kv>
       </view>
+      <text v-else class="sh-hint is-warning">{{ t("invoice.titleMissing") }}</text>
+    </view>
 
-      <view class="rounded-2xl bg-white p-5 shadow-sm">
-        <text class="text-sm font-medium">{{ t("invoice.mineBlock") }}</text>
-        <sh-empty v-if="!mine.length" :text="t('invoice.mineEmpty')"></sh-empty>
-        <view
-          v-for="(inv, i) in mine"
-          :key="inv.invoiceNo"
-          class="py-3"
-          :class="i === 0 ? '' : 'border-t border-gray-100'"
-        >
-          <view class="flex justify-between">
-            <text class="text-sm">{{ inv.invoiceNumber }}</text>
-            <text class="text-sm" :class="statusClass(inv.status)">
-              {{ t(`invoice.status${inv.status}`) }}
-            </text>
-          </view>
-          <view class="mt-1 flex justify-between text-xs text-gray-400">
-            <text>{{ inv.period }}</text>
-            <text>{{ money(inv.amountMinor) }}</text>
-          </view>
-          <text v-if="inv.rejectReason" class="mt-1 block text-xs text-red-500">
-            {{ inv.rejectReason }}
+    <view v-if="pending && pending.billCount > 0" class="sh-card">
+      <text class="txt-strong">{{ t("invoice.submitBlock") }}</text>
+      <input
+        v-model="invoiceNumber"
+        maxlength="32"
+        class="field__input sh-num sub__f"
+        :placeholder="t('invoice.numberPlaceholder')"
+      />
+      <input
+        v-model="titleName"
+        maxlength="64"
+        class="field__input sub__f"
+        :placeholder="t('invoice.titleNamePlaceholder')"
+      />
+      <view
+        class="sh-btn sh-mt-sm"
+        :class="{ 'is-disabled': !canSubmit || submitting }"
+        @tap="submit"
+      >
+        {{ submitting ? t("invoice.submitting") : t("invoice.submit") }}
+      </view>
+      <text v-if="blockReason" class="sh-hint is-warning">{{ blockReason }}</text>
+    </view>
+
+    <view class="sh-card">
+      <text class="txt-strong">{{ t("invoice.mineBlock") }}</text>
+      <sh-empty v-if="!mine.length" bare :text="String(t('invoice.mineEmpty'))"></sh-empty>
+      <view v-for="inv in mine" :key="inv.invoiceNo" class="sh-row--divided">
+        <view class="sh-row sh-row--between">
+          <text class="txt-sub sh-num">{{ inv.invoiceNumber }}</text>
+          <text class="txt-sub" :class="statusClass(inv.status)">
+            {{ t(`invoice.status${inv.status}`) }}
           </text>
         </view>
+        <view class="sh-row sh-row--between sh-mt-xs">
+          <text class="txt-caption txt-quiet sh-num">{{ inv.period }}</text>
+          <text class="txt-caption txt-quiet sh-num">{{ money(inv.amountMinor) }}</text>
+        </view>
+        <text v-if="inv.rejectReason" class="sh-hint is-danger">
+          {{ inv.rejectReason }}
+        </text>
       </view>
     </view>
   </sh-scaffold>
@@ -151,10 +135,11 @@ const blockReason = computed(() => {
   return "";
 });
 
+/** 状态色走全局语义类，字号由调用点给 —— 这里只回颜色那一档 */
 function statusClass(s: string) {
-  if (s === "VERIFIED") return "text-green-600";
-  if (s === "REJECTED") return "text-red-500";
-  return "text-orange-500";
+  if (s === "VERIFIED") return "is-success";
+  if (s === "REJECTED") return "is-danger";
+  return "is-warning";
 }
 
 function copyTitle() {
@@ -192,3 +177,18 @@ async function submit() {
 
 onShow(load);
 </script>
+
+<style scoped>
+.amt {
+  display: block;
+  margin-top: 8rpx;
+}
+.none {
+  display: block;
+  margin-top: 16rpx;
+}
+/* 一列输入框之间的缝。形态归 .field__input */
+.sub__f {
+  margin-top: 16rpx;
+}
+</style>

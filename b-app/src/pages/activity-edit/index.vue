@@ -349,12 +349,12 @@ onLoad((q) => {
       <text v-if="step > 1" class="sh-btn sh-btn--soft nav__b" @tap="step -= 1">
         {{ $t("activityEdit.prev") }}
       </text>
-      <button v-if="step < 4" class="sh-btn nav__b" @tap="step += 1">
+      <view v-if="step < 4" class="sh-btn nav__b" @tap="step += 1">
         {{ $t("activityEdit.next") }}
-      </button>
-      <button v-else class="sh-btn nav__b" :disabled="saving" @tap="save">
+      </view>
+      <view v-else class="sh-btn nav__b" :class="{ 'is-disabled': saving }" @tap="save">
         {{ $t("activityEdit.save") }}
-      </button>
+      </view>
     </view>
   </sh-scaffold>
 </template>
