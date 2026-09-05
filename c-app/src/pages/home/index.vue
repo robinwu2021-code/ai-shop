@@ -247,6 +247,12 @@ onShareAppMessage(() =>
           还没有位置时回落到自提点，再没有就提示去选：这一行**任何时候都要有内容**，
           空着的顶栏会让人以为页面没加载完。
         -->
+        <!--
+          「当前位置」要**标出来**：它与「按家的地址在逛」看到的货不是一回事，
+          而两种状态若显示成同一个样子，用户会把此刻的商品当成家里能买到的，
+          下单才发现送不到。标签放在名字前面 —— 放后面会被长地名挤出屏幕。
+        -->
+        <text v-if="location.isTransient" class="txt-caption place__here">{{ $t("home.hereTag") }}</text>
         <text class="txt-body place__name">
           {{ location.label || community.pickup?.name || $t("home.choosePickup") }}
         </text>
@@ -371,6 +377,15 @@ onShareAppMessage(() =>
   /* 可点区域要可见，但用**有色**而不是灰：同样一块底，
      主色浅调读作「这是个按钮」，灰读作「这儿有块脏东西」 */
   background: var(--sh-primary-tint);
+}
+/* 「当前位置」标：与地名同一行，靠颜色区分，不占额外高度 */
+.place__here {
+  flex-shrink: 0;
+  margin-inline-end: 8rpx;
+  padding: 2rpx 10rpx;
+  border-radius: 8rpx;
+  background: var(--sh-primary-tint);
+  color: var(--sh-primary-text);
 }
 .place__name {
   /* 英文店名比中文长得多（Sunnyside Block 3 Point vs 阳光里 3 幢自提点）：

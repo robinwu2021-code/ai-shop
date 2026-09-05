@@ -15,6 +15,7 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import { api, idempotencyKey } from "@/api";
 import { segmentByMerchant, useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
+import { useLocationStore } from "@/stores/location";
 import { useUserStore } from "@/stores/user";
 import PhoneGate from "@/components/phone-gate.vue";
 import { FEATURES, FULFILLMENT, PAY_MODE, POINTS, ROUTES, TRADE_RULES } from "@shared/utils/constants";
@@ -101,6 +102,24 @@ async function pickSlot() {
   if (idx === null) return;
   const picked = list[idx];
   if (picked) appointmentAt.value = picked.at;
+}
+
+const location = useLocationStore();
+
+/**
+ * 把「当前位置」存成收货地址 —— **下单时才问，且问了才存**。
+ *
+ * <p>不自动存：地址簿上限 20 条，每次「用一下现在这儿」都存一条会很快塞满；
+ * 而且送到这儿要姓名电话门牌，那些他还没填。带着坐标跳去新建地址页，
+ * 让他自己补完 —— 存下来的那条才是一条**能送到的**地址。
+ */
+function saveHereAsAddress() {
+  const at = location.transientAt;
+  if (!at) return;
+  uni.navigateTo({
+    url: `${ROUTES.address}?new=1&latE6=${Math.round(at.lat * 1e6)}&lngE6=${Math.round(at.lng * 1e6)}`
+      + `&region=${encodeURIComponent(location.transientName)}`,
+  });
 }
 
 const address = computed(() => addresses.value.find((a) => a.addressId === addressId.value));
@@ -571,6 +590,15 @@ onMounted(async () => {
           <text class="txt-body recv__empty-text sh-row">{{ $t("confirm.pickAddress") }}</text>
           <text class="txt-caption recv__more">{{ $t("confirm.add") }}</text>
         </view>
+        <!--
+          **「当前位置」是上下文，不是收货地址** —— 要送到这儿就得留下姓名电话门牌，
+          那是一条资料。所以这里只在**这一单真的要送**、而他又没有可用地址时问一次，
+          点进去是带着坐标预填的新建地址页，不是替他偷偷存一条。
+          （自提 / 到店核销那几条线走不到这个分支：不留地址也照样下单。）
+        -->
+        <text v-if="location.isTransient" class="txt-caption recv__here" @tap.stop="saveHereAsAddress">
+          {{ $t("confirm.saveHere", { s: location.label }) }}
+        </text>
       </view>
 
       <!-- 到店核销 / 即时发放 -->
@@ -800,6 +828,12 @@ onMounted(async () => {
   gap: 16rpx;
 }
 
+/* 「把当前位置存成地址」：低调一行，它是提议不是待办 —— 不留地址也照样能自提下单 */
+.recv__here {
+  display: block;
+  margin-top: 8rpx;
+  color: var(--sh-primary-text);
+}
 .recv__more {
   margin-inline-start: auto;
   color: var(--sh-primary-text);

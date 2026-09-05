@@ -22,13 +22,29 @@ export const useLocationStore = defineStore("location", {
      * 它是上下文不是资料（PRD §6.1.0）。App 重开就没了，那正是「现在这儿」的定义。
      */
     transientAt: null as { lat: number; lng: number } | null,
+    /**
+     * 「当前位置」解析出来的地名。**顶栏必须把它说出来** ——
+     * 不说的话这一屏与「按家的地址在逛」长得一模一样，
+     * 而他看到的货是按现在这儿算的：两种状态显示成同一个样子，
+     * 用户会把此刻的商品当成家里能买到的，下单才发现送不到。
+     */
+    transientName: "",
     list: [] as Address[],
     loading: false,
   }),
 
   getters: {
-    /** 顶栏显示的短名：优先用标签（家/公司），否则用详细地址 */
-    label: (s) => (s.active ? s.active.tag || s.active.detail || s.active.region : ""),
+    /**
+     * 顶栏显示的短名：优先用标签（家/公司），否则用详细地址。
+     *
+     * <p><b>「当前位置」压过生效地址</b>：他刚点了「用现在这儿」，
+     * 此刻看到的货就是按那个点算的 —— 顶栏还显示「家」就是在说假话。
+     */
+    label: (s) => (s.transientAt
+      ? s.transientName
+      : s.active ? s.active.tag || s.active.detail || s.active.region : ""),
+    /** 这一次逛的是不是「当前位置」（而不是地址簿里的某一条） */
+    isTransient: (s) => !!s.transientAt,
     has: (s) => !!s.active,
   },
 
@@ -113,7 +129,12 @@ export const useLocationStore = defineStore("location", {
       const c = list.find((x) => x.communityNo === ctx?.innermostNo) ?? list[0];
       const p = c?.pickups?.[0];
       if (c && p) await community.bind(c, p);
-      return { name: ctx?.innermostName ?? "", bound: !!(c && p) };
+      /*
+       * 解析不出地名时给一句「当前位置」而不是空串：顶栏那一行**任何时候都要有内容**，
+       * 空着会让人以为页面没加载完，而这里恰恰是「已经切过去了」。
+       */
+      this.transientName = ctx?.innermostName ?? "";
+      return { name: this.transientName, bound: !!(c && p) };
     },
 
     /**
@@ -128,6 +149,13 @@ export const useLocationStore = defineStore("location", {
     async switchTo(addressId: string) {
       const addr = await api.switchActiveAddress(addressId);
       this.active = addr;
+      /*
+       * 切回地址簿里的某一条，这一次的「当前位置」就结束了。
+       * 不清的话顶栏会一直挂着「当前位置 · XX」，而货已经按新地址换过了 ——
+       * 顶栏说的和看到的不是一回事。
+       */
+      this.transientAt = null;
+      this.transientName = "";
       const rebound = await this.syncCommunityFromActive();
       return { addr, rebound };
     },
