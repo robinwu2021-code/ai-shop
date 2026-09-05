@@ -144,6 +144,40 @@ else
     回滚：ssh $HOST \"sudo rsync -a --delete '$DEST.bak-$TS/' '$DEST/'\""
 fi
 
+# ── 校验二：**首页引的资源真的取得到** ──────────────────────────────────
+#
+# VERSION 对上只说明「文件传上去了」，说明不了「页面能起来」。
+# 2026-09-05 撞的就是这个：c-app 的构建少了 `H5_BASE=/c/`，产物里的资源写成
+# `/assets/…` 而它们在 `/c/assets/…` —— 浏览器请求 JS 拿到 404、**整站白屏**，
+# 而这个脚本一路报成功（index.html 是 200、VERSION 也读得出来）。
+# 上一版备份里的路径一模一样，也就是说它已经这样有一阵了，没有任何人被挡住。
+#
+# ⚠️ 这一段的第一版**自己就假绿过一次**：资源清单是多行的，塞进 ssh 的命令串里
+# 被当成命令执行，报了语法错、循环一次都没跑，而 `BAD` 是空的于是照样打勾。
+# 现在改成：清单从**本地产物**里取（不经过远端 shell 引号），逐个单独请求，
+# 并且**数出真正比过几个**——比不到就直接失败，不给「少扫=全绿」留门。
+INDEX="$WT/$APP/$OUT/index.html"
+ASSETS="$(grep -oE '(src|href)="/[^"]*\.(js|css)"' "$INDEX" 2>/dev/null \
+    | grep -oE '"/[^"]*"' | tr -d '"' | sort -u)"
+if [ -z "$ASSETS" ]; then
+    die "产物的 index.html 里一个 js/css 都没解析到 —— 判据失效了，不是真的没问题
+       本地重现：grep -oE '(src|href)=\"/[^\"]*\.(js|css)\"' '$INDEX'"
+fi
+CHECKED=0
+BAD=""
+for u in $ASSETS; do
+    CODE="$(ssh "$HOST" "curl -sL -o /dev/null -w '%{http_code}' -H 'Host: www.hxmall.top' 'http://127.0.0.1$u'" </dev/null || echo 000)"
+    CHECKED=$((CHECKED + 1))
+    [ "$CODE" = "200" ] || BAD="$BAD
+       $u → $CODE"
+done
+if [ -n "$BAD" ]; then
+    die "上传了，但**首页引的资源取不到** —— 真人打开会是一片白：$BAD
+       多半是构建少给了 base（c-app 要 H5_BASE=/c/、b-app 要 /b/）。
+    回滚：ssh $HOST \"sudo rsync -a --delete '$DEST.bak-$TS/' '$DEST/'\""
+fi
+ok "首页引的 $CHECKED 个资源逐个取过，都是 200"
+
 ssh "$HOST" "printf '%s  %s  %s  %s\n' \"\$(date '+%F %T')\" '$APP' '$HEAD_SHA' \"\$(whoami)\" \
     | sudo tee -a '$WWW/deploy.log' >/dev/null" || true
 
