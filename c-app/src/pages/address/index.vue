@@ -332,6 +332,17 @@ async function useHere(a: Address) {
     icon: "none",
     duration: rebound ? 1500 : 3000,
   });
+  /*
+   * **切完就回上一页**（首页 / 我的 —— 他是从哪儿进来的就回哪儿）。
+   *
+   * 切换是手段不是目的：他要的是「看那一片的货」，而这一页**看不见货** ——
+   * 留在这儿他只能看到一个 toast，然后自己按返回。中间那一步没有任何信息，
+   * 纯粹是让他多点一下。首页的 onShow 里有 load()，回去就是新的那一片。
+   *
+   * 等一下再回：toast 弹出来那一刻页面就跳走的话，他会以为自己点空了。
+   * 没有定位点那条要说的话更长（3 秒那条），所以按 toast 的时长走。
+   */
+  setTimeout(() => uni.navigateBack(), rebound ? 600 : 1200);
 }
 
 async function setDefault(a: Address) {

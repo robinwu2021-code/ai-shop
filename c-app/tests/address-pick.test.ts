@@ -94,6 +94,20 @@ describe("结算页选地址 ≠ 改默认地址", () => {
     expect(body).toContain("pickedAddress.offer");
   });
 
+  it("★★★ 切完要回上一页 —— 这一页看不见货，留在这儿等于让他白点一下", () => {
+    /*
+     * 切换是手段不是目的：他要的是「看那一片的货」，而地址簿**看不见货**。
+     * 切完留在原地，他只能看到一个 toast 再自己按返回 ——
+     * 中间那一步没有任何信息量。首页 onShow 里有 load()，回去就是新的那一片。
+     */
+    const body = bodyOf(addressPage, "async function useHere(");
+    expect(body, "useHere 找不到了").not.toBeNull();
+    expect(body, "切完不回去 = 他得自己按返回，而这一页什么也没变")
+      .toContain("navigateBack");
+    // 对照量：那句「没有定位点」的提示还在，别为了跳转把它顺手删了
+    expect(body).toContain("nowHereNoCoord");
+  });
+
   it("★★★ 选中的那条要交回给结算页，而不是写进服务端", () => {
     const body = bodyOf(addressPage, "function pick(");
     expect(body).toContain("pickedAddress.offer");
