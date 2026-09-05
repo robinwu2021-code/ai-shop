@@ -5665,12 +5665,16 @@ components:
       properties: 
         currentCommunities: 
           type: "number"
+          description: "现在覆盖几个聚落"
         currentBuyers: 
           type: "number"
+          description: "现在这些聚落里有几个能定位的买家"
         nextCommunities: 
           type: "number"
+          description: "改成这一组之后覆盖几个聚落"
         nextBuyers: 
           type: "number"
+          description: "改成这一组之后有几个能定位的买家"
       required: 
         - "currentCommunities"
         - "currentBuyers"

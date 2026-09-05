@@ -328,8 +328,12 @@ export interface Region {
  * 缺口有多大在运营端「位置分布」那一页单列，商家侧不重复这件事。
  */
 export interface ScopePreview {
+  /** 现在覆盖几个聚落 */
   currentCommunities: number;
+  /** 现在这些聚落里有几个能定位的买家 */
   currentBuyers: number;
+  /** 改成这一组之后覆盖几个聚落 */
   nextCommunities: number;
+  /** 改成这一组之后有几个能定位的买家 */
   nextBuyers: number;
 }

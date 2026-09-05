@@ -5176,10 +5176,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `currentCommunities` | `number` | 是 | — |
-| `currentBuyers` | `number` | 是 | — |
-| `nextCommunities` | `number` | 是 | — |
-| `nextBuyers` | `number` | 是 | — |
+| `currentCommunities` | `number` | 是 | 现在覆盖几个聚落 |
+| `currentBuyers` | `number` | 是 | 现在这些聚落里有几个能定位的买家 |
+| `nextCommunities` | `number` | 是 | 改成这一组之后覆盖几个聚落 |
+| `nextBuyers` | `number` | 是 | 改成这一组之后有几个能定位的买家 |
 
 
 #### GET `/biz/store/share-kit`
@@ -7298,10 +7298,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `currentCommunities` | `number` | 是 | — |
-| `currentBuyers` | `number` | 是 | — |
-| `nextCommunities` | `number` | 是 | — |
-| `nextBuyers` | `number` | 是 | — |
+| `currentCommunities` | `number` | 是 | 现在覆盖几个聚落 |
+| `currentBuyers` | `number` | 是 | 现在这些聚落里有几个能定位的买家 |
+| `nextCommunities` | `number` | 是 | 改成这一组之后覆盖几个聚落 |
+| `nextBuyers` | `number` | 是 | 改成这一组之后有几个能定位的买家 |
 
 ### ServiceArea
 
