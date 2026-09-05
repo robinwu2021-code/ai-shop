@@ -311,7 +311,7 @@ onLoad(load);
     -->
     <view v-if="!locating && locatedRegion" class="loc">
       <text class="txt-body loc__pin">📍</text>
-      <text class="txt-body loc__text">{{
+      <text class="txt-body txt-ink loc__text">{{
         $t(locatedRegion.fuzzy ? "community.locatedFuzzy" : "community.located", {
           city: locatedRegion.cityName,
           region: locatedRegion.name,
@@ -435,10 +435,7 @@ onLoad(load);
   border-radius: 16rpx;
   background: var(--sh-primary-tint);
 }
-/* 字号交给字阶类（见 规范-字体），这里只管颜色 */
-.loc__text {
-  color: var(--sh-ink);
-}
+/* 字号走字阶类、正文色走 .txt-ink —— 这里一行样式都不用写 */
 
 .onmap {
   margin: 24rpx auto 0;
