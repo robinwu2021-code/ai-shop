@@ -76,3 +76,15 @@ backend/shop-app/src/main/resources/db/migration/V9__mch_violation.sql	uca1400-c
 backend/shop-inventory/src/main/resources/db/inventory/V1__inventory_baseline.sql	uca1400-collation
 backend/shop-inventory/src/main/resources/db/inventory/V2__snapshot_and_open_api.sql	uca1400-collation
 backend/shop-app/src/main/resources/db/migration/V288__market_and_test_channel.sql	alter-column-if-exists
+
+# ── 2026-09-05 追加两条。**这份基线本来「只准变短」，这次它变长了，说明白为什么** ──
+#
+# V312 与 V323 都是 09-01 之后新写的迁移，都用了 uca1400 —— 正是这份止血线要拦的东西。
+# 它们没被拦住，是因为**这个分支从 2026-09-01 起一次都没推过**：
+# 这道闸挂在 pre-push 上，没人推的时候它一个字也不会说。闸门只在有人推的时候才是闸门。
+#
+# 现在改不了：两条都已经应用到生产（V323 是 09-05 12:46 那次部署带上去的，
+# flyway_schema_history 里 success=1）。改一个字符 checksum 就对不上，下次部署直接起不来。
+# 所以只能记账。**这两行不是「批准」，是「跑掉了」** —— 收尾见头部那份 §3。
+backend/shop-app/src/main/resources/db/migration/V312__banned_word.sql	uca1400-collation
+backend/shop-app/src/main/resources/db/migration/V323__wx_shipping_upload.sql	uca1400-collation
