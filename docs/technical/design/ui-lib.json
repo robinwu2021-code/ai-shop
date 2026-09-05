@@ -275,7 +275,7 @@
       },
       "usage": {
         "b-app": 2,
-        "c-app": 2
+        "c-app": 1
       }
     },
     {
@@ -821,7 +821,7 @@
       },
       "usage": {
         "b-app": 251,
-        "c-app": 224
+        "c-app": 223
       }
     },
     {
@@ -1239,7 +1239,7 @@
       },
       "usage": {
         "b-app": 194,
-        "c-app": 133
+        "c-app": 131
       }
     },
     {
@@ -1523,7 +1523,7 @@
       ],
       "usage": {
         "b-app": 5,
-        "c-app": 5
+        "c-app": 6
       },
       "note": "勾选框 / 单选点",
       "why": "四页各画一个、**四种尺寸**（28/36/44/44）。勾用 `check` 图标 —— 那个图标是这次一起补进 icons.ts 的"
@@ -1652,7 +1652,7 @@
       ],
       "usage": {
         "b-app": 60,
-        "c-app": 7
+        "c-app": 6
       },
       "note": "单色图标",
       "why": "内联 SVG 转 CSS mask，颜色吃 var(--sh-*) —— 换肤零成本。**不用 emoji**：各系统字形不一且是彩色的"
@@ -3179,9 +3179,9 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 68,
-      "localSelectors": 28,
-      "localCssLines": 121,
+      "libClassHits": 67,
+      "localSelectors": 27,
+      "localCssLines": 117,
       "rolled": []
     },
     {
