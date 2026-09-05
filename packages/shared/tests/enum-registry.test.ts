@@ -113,6 +113,30 @@ describe("枚举登记表", () => {
     ).toEqual([]);
   });
 
+  it("G1 · 同一个 decl 不能登记两次 —— 两条各说各的，谁也不知道哪条算数", () => {
+    /*
+     * 由来：`shared:PaymentApplyStatus` 在本表里登记了两遍（逐字相同），
+     * 2026-09-06 盘点取值域时才发现。
+     *
+     * **上面两检都拦不住它**，而且是必然拦不住：覆盖检查用的是 `has()`
+     * ——两条都命中同一个名字，缺不缺一目了然，重不重完全看不见；
+     * 反向那检问的是「登记的还在不在代码里」，重复的两条当然都还在。
+     * 与 ErrorCodeUniqueTest 那条同一个形状：**重复不会让任何东西变红，
+     * 它只是让「这一条现在是什么状态」有了两个答案**，而下一个人只会改到其中一条。
+     */
+    const seen = new Set<string>();
+    const dup = new Set<string>();
+    for (const e of ENUM_REGISTRY) {
+      if (seen.has(e.decl)) dup.add(e.decl);
+      seen.add(e.decl);
+    }
+    expect(
+      [...dup].sort(),
+      `这些枚举登记了不止一次：${[...dup].join(", ")}\n` +
+        "删到只剩一条。留两条不会报错，但改 verdict / words 时必然只改到其中一条。",
+    ).toEqual([]);
+  });
+
   it("G1 · 登记表里不能有代码中已不存在的条目（防止表本身腐烂）", () => {
     const live = new Set(declared.map((d) => d.decl));
     const stale = [...registry.keys()].filter((d) => !live.has(d));

@@ -360,6 +360,17 @@ function collectTsEnums() {
           source: `TS · ${client}`, module: client, file: rel,
           name: e.name, values: e.values,
           zh: firstSentence(docBefore(src, e.at)),
+          /*
+           * 够不够「具名枚举」的判据 —— **与 G1 守卫逐条对齐**
+           * （`packages/shared/tests/enum-registry.test.ts` 的 declaredEnums）。
+           *
+           * 不对齐的代价立刻就付：这份清单第一版把 `ROUTES`（路由表）、
+           * `FONT_FAMILY`（字体名）、`TRADE_RULES`（`"21:00"`）一律标成「未登记」，
+           * 于是 9 条未登记里 5 条是假警报。**假警报会把真的那 4 条淹掉** ——
+           * 而那 4 条正是 G1 红了一个月的原因。
+           * 判据：取值 ≥2，且每个取值都是大写 token（路径、带空格的字体名、时刻都不是）。
+           */
+          namedEnum: e.values.length >= 2 && e.values.every((v) => /^[A-Z][A-Z0-9_]*$/.test(v)),
         });
       }
     }
@@ -673,7 +684,14 @@ function mdEntities(entities, schema, vocab, javaEnums, tsEnums, registry, msg) 
 
   L.push(`\n### 2.3 端上取值域（${tsEnums.length}）\n`);
   L.push("`登记` 一列取自 `packages/shared/src/contract/enum-registry.ts` ——");
-  L.push("端上每个具名枚举都必须在那张表里有一条（G1 守卫），空着的是漏登记。\n");
+  L.push("端上每个**具名枚举**都必须在那张表里有一条（G1 守卫）。三种取值：\n");
+  L.push("- 登记表里的 `verdict`（`OK` / `MERGE` / `PLANNED` …）");
+  L.push("- **未登记** —— 够 G1 判据却不在表里，这一档应当恒为 0");
+  L.push("- `不适用` —— 够不上「具名枚举」：单取值，或取值不是大写 token");
+  L.push("  （`ROUTES` 是路由表、`FONT_FAMILY` 是字体名、`TRADE_RULES` 是 `\"21:00\"`）。");
+  L.push("  它们仍列在这里 —— 它们确实是常量对象，只是不该被要求登记。\n");
+  L.push("> 本表的扫描面比 G1 宽：G1 在两端只扫 `src/api`，这里扫整个 `src`。");
+  L.push("> 所以 **未登记** 这一档同时兼着「G1 的扫描面有没有漏」的探针。\n");
   L.push("| 名字 | 端 | 取值 | 领域 | 登记 | 中文 |");
   L.push("|---|---|---|---|---|---|");
   const seen = new Set();
@@ -683,7 +701,8 @@ function mdEntities(entities, schema, vocab, javaEnums, tsEnums, registry, msg) 
     seen.add(k);
     const reg = registry.get(k);
     const vals = e.values.length > 8 ? `${e.values.slice(0, 8).map((v) => `\`${v}\``).join(" · ")} …共 ${e.values.length}` : e.values.map((v) => `\`${v}\``).join(" · ");
-    L.push(`| \`${e.name}\` | ${e.module} | ${vals} | ${reg?.dom ?? "—"} | ${reg ? reg.verdict : "**未登记**"} | ${cell(e.zh) || "—"} |`);
+    const mark = reg ? reg.verdict : e.namedEnum ? "**未登记**" : "不适用";
+    L.push(`| \`${e.name}\` | ${e.module} | ${vals} | ${reg?.dom ?? "—"} | ${mark} | ${cell(e.zh) || "—"} |`);
   }
   return L.join("\n") + "\n";
 }

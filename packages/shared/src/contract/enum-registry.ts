@@ -403,8 +403,10 @@ export const ENUM_REGISTRY: EnumEntry[] = [
    *     字段类型指向了它自己所在的 interface。编译器不报错，因为它是合法的递归引用。
    */
   { decl: "shared:SettleAccountType", dom: "settle", shape: "CLASS", verdict: "OK" },
-  { decl: "shared:PaymentApplyStatus", dom: "payment", shape: "STATUS", verdict: "OK",
-    words: ["NONE", "APPLYING"] },
+  // shared:PaymentApplyStatus 曾在这里又登记了一遍（与 payment 段里那条逐字相同）。
+  // 重复不会让任何断言变红 —— 覆盖检查用的是 has()，两条都命中同一个名字。
+  // 害处在改的时候：下一个人改了其中一条的 verdict / words，另一条原样留着，
+  // 而登记表的全部价值就是「这一条现在是什么状态」只有一个答案。
   { decl: "shared:StoreStatus", dom: "merchant", shape: "STATUS", verdict: "OK",
     words: ["READONLY"] },
   { decl: "shared:StaffStatus", dom: "merchant", shape: "STATUS", verdict: "OK",
@@ -524,4 +526,28 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     words: ["SUCCESS", "SKIPPED", "UNREACHABLE", "TIMEOUT"],
     note: "与 sys_job_run.status 一致。这 17 个定时任务在生产上一次都没跑过"
       + "（跑的是 api,ops 而任务全挂在 worker 上），这一页存在之前没人会发现" },
+
+  /*
+   * ── 2026-09-06 补登记 4 条 ──
+   *
+   * 它们不是新写的，是**一直没进雷达**：G1 从 2026-08 起就红着，而红着的守卫
+   * 与没有守卫是同一件事。这次是逐个查后端有没有在发之后补的登记，不是照抄名字。
+   */
+  { decl: "ops-web:InvLinkChannel", dom: "inventory", shape: "CLASS", verdict: "OK",
+    note: "平台↔进销存投影的方向。两个取值在后端都有（InvLinkService），不是端上编的" },
+  { decl: "ops-web:InvLinkVerdict", dom: "inventory", shape: "CLASS", verdict: "OK",
+    note: "**不叫 Status 是对的**：它不是「这条链路处在哪个态」，是「积压该找谁」——"
+      + "DISPATCHER_STALLED 找发件侧、CONSUMER_FAILING 找收件侧。"
+      + "套 L1 状态词会把这点信息抹平（见本表 shape 字段的说明）" },
+  { decl: "ops-web:MerchantChainStuck", dom: "merchant", shape: "CLASS", verdict: "OK",
+    note: "商家开店链路卡在哪一环，取第一个断掉的。六个取值后端都在发；"
+      + "MerchantNudgeReason 是它 Exclude IN_AUDIT 的派生类型，不单独登记" },
+  { decl: "ops-web:OnboardingStatus", dom: "payment", shape: "STATUS", verdict: "MERGE",
+    words: ["NONE", "APPLYING"],
+    note: "**与 shared:PaymentApplyStatus 异名同义**：五个取值逐字相同，两边都绑在"
+      + "名为 applyStatus 的字段上，真源同为后端 PaymentApplymentVO.applyStatus。"
+      + "并的方向应当是 ops-web 改用 shared 那个名字（shared 的名字带 Payment 前缀，"
+      + "而 ops-web 这个 Onboarding 在本仓库另有含义——入驻审核链路也叫进件）。"
+      + "记 MERGE 不记 OK：写 OK 等于说「两个名字指同一个概念没问题」，"
+      + "而那正是这张表要挡住的那件事" },
 ];
