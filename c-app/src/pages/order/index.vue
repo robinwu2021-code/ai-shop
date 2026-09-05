@@ -8,7 +8,7 @@ import { onShow, onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
 import { datetime, money } from "@shared/utils/format";
-import type { InvoiceRequest, Order } from "@shared/types";
+import type { InvoiceRequest, Order, OrderStatus } from "@shared/types";
 import { confirm, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
@@ -16,13 +16,40 @@ const { t } = useI18n();
 const order = ref<Order | null>(null);
 const orderNo = ref("");
 
+/*
+ * 状态集合**标注成 `OrderStatus[]`**，不是裸的字符串数组。
+ *
+ * ⚠️ 这不是洁癖：下面 `canAfterSale` 原本写的是
+ * `["PAID","ARRIVED","SHIPPED","COMPLETED"]`，而 `ARRIVED` / `SHIPPED`
+ * 在状态模型重整时已经并成 `FULFILLING`（见 `OrderStatus` 的注释）——
+ * **于是履约中的订单一直没有售后入口**，而那正是「货不对、货损了」
+ * 最常被发现的时候。
+ *
+ * 类型系统当时抓不到：数组字面量被推断成 `string[]`，
+ * 而 `Array<string>.includes()` 收任何字符串，两个「合法的字符串、
+ * 非法的状态」编译器无话可说。标注之后再写错当场编译不过。
+ */
+const AFTER_SALE_STATES: readonly OrderStatus[] = ["PAID", "FULFILLING", "COMPLETED"];
+/** 不能开票的状态。同样标注 —— 这里原本还排除着一个不存在的 `"CLOSED"` */
+const NO_INVOICE_STATES: readonly OrderStatus[] = ["WAIT_PAY", "WAIT_OFFLINE_PAY", "CANCELLED"];
+
+/**
+ * 能不能取消。**判据对齐后端状态机**（`OrderStateMachine.ORDER`）：
+ *   WAIT_PAY         → {PAID, CANCELLED, CLOSED}
+ *   WAIT_OFFLINE_PAY → {PAID, CANCELLED}
+ *   PAID             → {}          ← 空集
+ *
+ * ⚠️ 原本写的是 `WAIT_PAY || PAID`，**两个方向都错**：
+ * 已付款的单会显示一个按钮、二次确认还承诺「库存将释放」，点下去必然报错；
+ * 而当面付待收款（后端明确允许取消）反倒没有入口。
+ *
+ * 已付款要退钱走的是**售后**，不是取消 —— 也就是上面那条刚修好的路。
+ */
 const canCancel = computed(
-  () => order.value?.status === "WAIT_PAY" || order.value?.status === "PAID",
+  () => order.value?.status === "WAIT_PAY" || order.value?.status === "WAIT_OFFLINE_PAY",
 );
 const canAfterSale = computed(
-  () =>
-    !!order.value &&
-    ["PAID", "ARRIVED", "SHIPPED", "COMPLETED"].includes(order.value.status),
+  () => !!order.value && AFTER_SALE_STATES.includes(order.value.status),
 );
 const canReview = computed(
   () => order.value?.status === "COMPLETED" && !order.value?.reviewed,
@@ -41,7 +68,7 @@ const invoice = ref<InvoiceRequest | null>(null);
 const canInvoice = computed(
   () =>
     !!order.value &&
-    !["WAIT_PAY", "CANCELLED", "CLOSED"].includes(order.value.status) &&
+    !NO_INVOICE_STATES.includes(order.value.status) &&
     (!invoice.value || invoice.value.status === "REJECTED"),
 );
 

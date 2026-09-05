@@ -272,6 +272,20 @@ describe("购物车页", () => {
     expect(cartRemove).toHaveBeenCalledWith(["S1"]);
   });
 
+  it("★★★ 一件没勾就点删除 → 说一句，不静默 —— 灰按钮也要说话", async () => {
+    cartList.mockResolvedValue([item({ skuNo: "S1" })]);
+    const { w } = await render();
+
+    await w.find(".topbar .sh-link").trigger("tap");   // 进编辑态，此时一件都没标
+    await w.vm.$nextTick();
+    await w.find(".bar__btn").trigger("tap");
+    await w.vm.$nextTick();
+
+    expect(confirmMock, "没得删就不该弹确认").not.toHaveBeenCalled();
+    expect(cartRemove).not.toHaveBeenCalled();
+    expect(uniMock.showToast.mock.calls.at(-1)![0].title).toContain("cart.pickToRemove");
+  });
+
   it("★★ 删除弹层点取消 → 一件都不删", async () => {
     confirmMock.mockResolvedValue(false);
     cartList.mockResolvedValue([item({ skuNo: "S1" })]);

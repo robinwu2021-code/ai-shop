@@ -12,6 +12,10 @@ export const uniMock = {
   switchTab: vi.fn(),
   navigateBack: vi.fn(),
   getLocation: vi.fn(),
+  /* 页面加载时改导航栏标题。**不补的话 load() 会在这一行抛出**，
+     而抛在 await 链中间的表现是「测试照样绿、后面几步没跑」——
+     断言仍然成立，只是成立的理由不是你以为的那个（商品页第一次挂测试时撞到）。 */
+  setNavigationBarTitle: vi.fn(),
   setStorageSync: vi.fn(),
   getStorageSync: vi.fn(() => ""),
   removeStorageSync: vi.fn(),

@@ -115,6 +115,28 @@ const buyable = computed(
   () => !!sku.value && !soldOut.value && !cutoffPassed.value && appointmentReady.value,
 );
 
+/**
+ * 买不了是**为什么**。空串 = 买得了，或者**已经有别的地方说过了**。
+ *
+ * `buyable` 有四条否决条件，而按钮文案只区分两条（「已售罄」/「加入购物车」）、
+ * 截单另有一枚红 chip —— 剩下「没选预约时段」那一条，此前页面上一个字都没有：
+ * 两个按钮双双变灰，而屏幕上没有任何解释。
+ *
+ * **判据与 `buyable` 共用同一份**，不写成并排的两套 if ——
+ * 分开写的话，第五个条件加进 `buyable` 时这里不会跟着变，
+ * 于是又回到「灰着，不说话」。
+ *
+ * 售罄与截单**故意返回空串**：那两件事已经说过了，
+ * 同一件事说两遍会让人以为是两个问题（与结算页「一次只说一条」同源）。
+ */
+const buyBlockedReason = computed(() => {
+  if (!goods.value) return "";
+  if (!sku.value) return String(t("goods.whyNoSku"));
+  if (soldOut.value || cutoffPassed.value) return "";
+  if (!appointmentReady.value) return String(t("goods.whyNoSlot"));
+  return "";
+});
+
 /** 买 N 送 M 促销（一期一个商品最多一条） */
 const promo = computed(() => buyNGetM(goods.value?.promotions));
 /** 按当前购买数量算出的赠品件数 */
@@ -161,10 +183,33 @@ function choose(groupIndex: number, option: string) {
   chosen.value = next;
 }
 
+/**
+ * 这一次最多能买几件：**限购与库存取小**。
+ *
+ * ⚠️ 此前只封限购，于是「库存 3 件、买 50 件」一路走到提交才被后端的
+ * 锁库存拒 —— 加购不拦、试算也不拦（预览**刻意**不锁库存，因为用户会在
+ * 结算页反复改地址）。后端那一道必须留着，它才是真源；端上这一层
+ * 只是让人早点知道。
+ *
+ * 两个上限缺省都是「不限」而不是 0 —— 缺省当 0 的话，没带库存的商品
+ * 一件都买不了，而且只在那些环境里才出现（与购物车同一条口径）。
+ */
+const maxQty = computed(() =>
+  Math.min(goods.value?.limitPerUser || Infinity, sku.value?.stock ?? Infinity),
+);
+
 function stepQty(delta: number) {
-  const max = goods.value?.limitPerUser || Infinity;
-  qty.value = Math.min(max, Math.max(1, qty.value + delta));
+  qty.value = Math.min(maxQty.value, Math.max(1, qty.value + delta));
 }
+
+/*
+ * 换规格时数量要跟着回落。
+ * 不回落的话：「选了还剩 99 件的 A 规格、买 50 件，再切到只剩 3 件的 B 规格」，
+ * 数量还停在 50 —— 屏幕上是一个当场就买不成的数。
+ */
+watch(maxQty, (max) => {
+  if (qty.value > max) qty.value = Math.max(1, max === Infinity ? qty.value : max);
+});
 
 async function addToCart(e: unknown) {
   const g = goods.value;
@@ -482,6 +527,15 @@ onShareAppMessage(() =>
       <text v-if="!reviews.length" class="txt-caption rvempty">{{ $t("review.empty") }}</text>
     </view>
 
+    <!--
+      买不了要说是为什么。**贴着操作条上方** —— 他往下滚就是为了按那两个按钮，
+      话要落在他视线的终点（与结算页的同名做法一致）。
+      已经在别处说过的（售罄写在按钮上、截单有一枚红 chip）这里返回空串，不重复说。
+    -->
+    <view v-if="buyBlockedReason" class="txt-caption why">
+      <text>{{ buyBlockedReason }}</text>
+    </view>
+
     <!-- 底部操作条。详情页不是 tab 页，没有底部菜单，
          所以购物车入口必须在这里给 —— 否则加完购没有任何落点与反馈。 -->
     <sh-actionbar pill="plain" :pad="220">
@@ -518,6 +572,16 @@ onShareAppMessage(() =>
 </template>
 
 <style scoped>
+/* 买不了的原因。用 warning 不用 danger：**它不是故障，是还差一步**
+   （与 order-confirm 的 .why 同一档） */
+.why {
+  margin: 0 24rpx;
+  padding: 16rpx 24rpx;
+  border-radius: 16rpx;
+  background: var(--sh-warning-tint);
+  color: var(--sh-warning);
+}
+
 .hero {
   position: relative;
   height: 440rpx;

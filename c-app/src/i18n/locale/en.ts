@@ -84,6 +84,8 @@ export default {
     retry: "Retry",
   },
   goods: {
+    whyNoSku: "That combination is not available — try another",
+    whyNoSlot: "Pick a visit time to continue",
     detailTitle: "Description",
     limit: "Limit {n} per customer",
     noLimit: "No purchase limit",
@@ -119,6 +121,7 @@ export default {
     INSTANT: "Instant delivery",
   },
   cart: {
+    pickToRemove: "Pick the items to delete first",
     /** 不可售那一行的操作。只删这一件，不清空全部 */
     removeInvalid: "Remove",
     title: "Cart",

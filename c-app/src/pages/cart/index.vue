@@ -143,7 +143,20 @@ async function remove(skuNo: string) {
 /** 编辑态的批量删。**是他勾出来的，不是替他清理** */
 async function removeMarked() {
   const n = cart.marked.length;
-  if (!n) return;
+  /*
+   * **灰按钮也要说话。** 同一页的「去结算」在一件没勾时会 toast 一句，
+   * 这里此前是静默 return —— 同一个页面两套规矩，而规矩本身写在
+   * 交互清单 §七：灰按钮必须配一句话。
+   */
+  /*
+   * **灰按钮也要说话。** 同一页的「去结算」在一件没勾时会 toast 一句，
+   * 这里此前是静默 return —— 同一个页面两套规矩，而规矩本身写在
+   * 交互清单 §七：灰按钮必须配一句话。
+   */
+  if (!n) {
+    uni.showToast({ title: String(t("cart.pickToRemove")), icon: "none" });
+    return;
+  }
   const ok = await confirm({
     title: String(t("cart.removeTitle", { n })),
     hint: String(t("cart.removeHint")),

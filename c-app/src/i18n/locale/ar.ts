@@ -84,6 +84,8 @@ export default {
     retry: "إعادة المحاولة",
   },
   goods: {
+    whyNoSku: "هذه التركيبة غير متاحة — جرّب غيرها",
+    whyNoSlot: "اختر موعد الزيارة للمتابعة",
     detailTitle: "الوصف",
     limit: "الحد {n} لكل عميل",
     noLimit: "بدون حد للشراء",
@@ -119,6 +121,7 @@ export default {
     INSTANT: "تسليم فوري",
   },
   cart: {
+    pickToRemove: "اختر المنتجات المراد حذفها أولاً",
     /** 不可售那一行的操作。只删这一件，不清空全部 */
     removeInvalid: "إزالة",
     title: "السلة",

@@ -86,6 +86,8 @@ export default {
     retry: "重试",
   },
   goods: {
+    whyNoSku: "这个规格组合暂时买不到，换一个试试",
+    whyNoSlot: "先选一个上门时段才能下单",
     detailTitle: "图文详情",
     limit: "每人限购 {n} 件",
     noLimit: "不限购",
@@ -121,6 +123,7 @@ export default {
     INSTANT: "即时发放",
   },
   cart: {
+    pickToRemove: "先勾选要删除的商品",
     /** 不可售那一行的操作。只删这一件，不清空全部 */
     removeInvalid: "移除",
     title: "购物车",

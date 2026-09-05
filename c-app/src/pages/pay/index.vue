@@ -147,7 +147,20 @@ async function cancel() {
   if (!o) return;
   const ok = await confirm({ title: String(t("pay.cancelTitle")), hint: String(t("pay.cancelTip")) });
   if (!ok) return;
-  await api.cancelOrder(o.orderNo);
+  /*
+   * **失败要说话，而且要留在原地。**
+   *
+   * 此前这里是裸的 `await api.cancelOrder(...)` 接一句跳转：取消被后端拒时
+   * （单已经支付成功、状态机不允许迁移、网络断了），既不跳转也不提示 ——
+   * 用户点了「取消订单」、确认了一次，然后什么都没发生。
+   * 同一个动作在订单详情页是接住并 toast 的，两处写法不一致。
+   */
+  try {
+    await api.cancelOrder(o.orderNo);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+    return;
+  }
   uni.redirectTo({ url: `${ROUTES.orders}` });
 }
 
