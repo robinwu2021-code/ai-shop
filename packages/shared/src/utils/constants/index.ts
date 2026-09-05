@@ -322,6 +322,24 @@ export const ADDRESS_RULES = {
   maxCount: 20,
 } as const;
 
+/**
+ * 购物车的展示口径。
+ *
+ * **刻意不放进 {@link TRADE_RULES}**：那张表是「交易规则的唯一事实源」，
+ * 由 `scripts/gen-rules-table.mjs` 投影进三端需求矩阵，进去的每一条都要影响
+ * 钱或状态机。下面两条都不影响任何一笔单，只影响界面什么时候提醒。
+ * 混进去会让那张给运营看的表里混入前端细节。
+ */
+export const CART_RULES = {
+  /** 可售库存少到这个数（含）就在行内提醒「仅剩 N 件」。再多就成了噪音 */
+  lowStockHint: 5,
+  /**
+   * 单行最多买几件 —— **后端没给可售库存时的兜底**。
+   * 防的是手滑：数量框里输个 9999，一路走到下单才被库存拒。
+   */
+  maxQtyPerLine: 999,
+} as const;
+
 export const TRADE_RULES = {
   /**
    * 未支付自动关单（分钟）—— **出厂默认值，可被平台配置覆盖**。

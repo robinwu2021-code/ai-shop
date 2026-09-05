@@ -13,6 +13,36 @@ import {
 } from "./_shared";
 import type { ShopApi } from "../contract";
 
+
+/**
+ * 把购物车行按**当前商品状态**重算一遍：标题/规格的语言快照、赠品件数、
+ * 失效标记与可售库存。
+ *
+ * <p>四个购物车接口都要走它。**此前只有 `cartList` 做这件事**，
+ * 于是改一次数量返回的那份就少了这些派生字段 —— 页面上的表现是
+ * 「点一下加号，失效提示消失了」，而商品并没有重新上架。
+ *
+ * <p>失效与库存的口径与后端 `CartServiceImpl.list()` 一致：
+ * 商品下架或 SKU 查不到即 `invalid`，`available` 取 SKU 的可售库存。
+ */
+function refreshCart() {
+  return db.cart.map((it) => {
+    const g = toGoods(findGoodsSeed(it.goodsNo));
+    const sku = g.skus.find((s) => s.skuNo === it.skuNo);
+    // 赠品件数由促销规则实时算，不存库 —— 存下来会与规则漂移
+    const promo = buyNGetM(g.promotions);
+    return {
+      ...it,
+      title: g.title,
+      spec: sku?.spec ?? it.spec,
+      giftQty: giftQtyFor(promo, it.qty),
+      giftLabel: promo ? `${promo.buyN}+${promo.giftM}` : undefined,
+      invalid: !g.onSale || !sku,
+      available: sku?.stock ?? 0,
+    };
+  });
+}
+
 export const catalogMock: Pick<ShopApi,
   "goodsList"
   | "goodsDetail"
@@ -54,21 +84,7 @@ export const catalogMock: Pick<ShopApi,
 
   // ---------------------------------------------------------------- 购物车
   async cartList() {
-    // 购物车里的 title/spec 是加购当时的语言快照，按当前语言重算一遍
-    // （真实后端同理：购物车存 goodsNo/skuNo，返回时按 Accept-Language 本地化）
-    db.cart = db.cart.map((it) => {
-      const g = toGoods(findGoodsSeed(it.goodsNo));
-      const sku = g.skus.find((s) => s.skuNo === it.skuNo);
-      // 赠品件数由促销规则实时算，不存库 —— 存下来会与规则漂移
-      const promo = buyNGetM(g.promotions);
-      return {
-        ...it,
-        title: g.title,
-        spec: sku?.spec ?? it.spec,
-        giftQty: giftQtyFor(promo, it.qty),
-        giftLabel: promo ? `${promo.buyN}+${promo.giftM}` : undefined,
-      };
-    });
+    db.cart = refreshCart();
     // 这是读操作，不落盘 —— 只是把标题按当前语言重算了一遍
     return delay([...db.cart]);
   },
@@ -110,6 +126,7 @@ export const catalogMock: Pick<ShopApi,
       }
     }
     persist();
+    db.cart = refreshCart();
     return delay([...db.cart]);
   },
 
@@ -120,12 +137,14 @@ export const catalogMock: Pick<ShopApi,
       else item.qty = qty;
     }
     persist();
+    db.cart = refreshCart();
     return delay([...db.cart]);
   },
 
   async cartRemove(skuNos) {
     db.cart = db.cart.filter((c) => !skuNos.includes(c.skuNo));
     persist();
+    db.cart = refreshCart();
     return delay([...db.cart]);
   },
 };

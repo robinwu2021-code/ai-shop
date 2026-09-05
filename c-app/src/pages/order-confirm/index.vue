@@ -180,6 +180,16 @@ const merchantSegments = computed(() => segmentByMerchant(items.value));
  * 但一旦服务端的数到了就以它为准。
  */
 const serverAmount = ref<OrderAmount | null>(null);
+/**
+ * 试算是不是**在途**，以及上一次有没有失败。
+ *
+ * 金额会随地址、券、积分、支付方式一起变，每变一次就要重问一次后端。
+ * 中间那段时间屏幕上挂着的是上一次的数 —— 不说一声的话，用户会以为
+ * 「改完了，就是这个价」，然后在提交后看到另一个数。
+ */
+const amountPending = ref(false);
+/** 服务端试算失败，屏幕上是本地估算。**要说出来**，两个数长得一模一样 */
+const amountStale = ref(false);
 
 /**
  * 结算页能力提示：这一车货能不能开票、能用哪些支付方式、额度够不够。
@@ -293,12 +303,23 @@ const localEstimate = computed(() => {
 
 const amount = computed(() => serverAmount.value ?? localEstimate.value);
 
-/** 影响金额的任何一项变了就重新问后端 —— 少问一次就会显示上一次的价 */
+/**
+ * 影响金额的任何一项变了就重新问后端 —— 少问一次就会显示上一次的价。
+ *
+ * ⚠️ **每次发请求领一个号，回来时对不上号就整份丢掉。**
+ * 没有这道闸的时候，改地址、换券连点两下，先发的那个响应后到就会盖住后发的 ——
+ * 屏幕上是**上一次的价**，而页面看起来完全正常（金额有、没报错、也不转圈）。
+ * 这种错只在网络慢的那一台手机上出现，本机永远复现不了。
+ */
+let amountSeq = 0;
 async function refreshAmount() {
   if (!items.value.length) {
     serverAmount.value = null;
+    amountPending.value = false;
     return;
   }
+  const seq = ++amountSeq;
+  amountPending.value = true;
   try {
     const p = await api.orderPreview({
       items: items.value.map((it) => ({ goodsNo: it.goodsNo, skuNo: it.skuNo, qty: it.qty })),
@@ -310,10 +331,16 @@ async function refreshAmount() {
       usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
       appointmentAt: appointmentAt.value,
     });
+    if (seq !== amountSeq) return;
     serverAmount.value = p.amount;
+    amountStale.value = false;
   } catch {
-    // 预览失败不挡下单：兜底显示本地估算，真实金额在提交时由后端定
+    if (seq !== amountSeq) return;
+    // 预览失败不挡下单：兜底显示本地估算，真实金额在提交时由后端定 —— 但要说出来
     serverAmount.value = null;
+    amountStale.value = true;
+  } finally {
+    if (seq === amountSeq) amountPending.value = false;
   }
 }
 
@@ -321,18 +348,25 @@ async function refreshAmount() {
  * 能力提示与金额分开问：金额随优惠、地址、履约方式变，能力只随**车里有谁**变。
  * 合成一个请求的话，改一次地址就会把三次能力查询也重跑一遍。
  */
+let capabilitySeq = 0;
 async function refreshCapability() {
   if (!items.value.length) {
     capability.value = null;
     return;
   }
+  const seq = ++capabilitySeq;
   try {
-    capability.value = await api.orderCapability({
+    const cap = await api.orderCapability({
       items: items.value.map((it) => ({ goodsNo: it.goodsNo, skuNo: it.skuNo, qty: it.qty })),
       fulfillment: fulfillment.value,
       pickupNo: needPickup.value ? community.pickup?.pickupNo : undefined,
     });
+    // 同 refreshAmount：过期响应整份丢掉，否则「改成快递」之后
+    // 迟到的自提能力会把当面付那个选项又放回屏幕上
+    if (seq !== capabilitySeq) return;
+    capability.value = cap;
   } catch {
+    if (seq !== capabilitySeq) return;
     // 拿不到就不提示，但**不拦下单**：接口挂了是我们的问题，不该变成他买不了
     capability.value = null;
   }
@@ -344,19 +378,24 @@ async function refreshCapability() {
  * 与能力提示分开问：这个随支付方式与金额变（线下是否可抵是平台开关，
  * 上限按券后金额算），而能力只随车里有谁变。
  */
+let pointsSeq = 0;
 async function refreshPoints() {
   const merchantNo = items.value[0]?.merchantNo;
   if (!FEATURES.points || !merchantNo) {
     pointsDeductible.value = null;
     return;
   }
+  const seq = ++pointsSeq;
   try {
-    pointsDeductible.value = await api.pointsDeductible({
+    const d = await api.pointsDeductible({
       merchantNo,
       payableMinor: goodsMinor.value - (coupon.value ? couponDiscount(coupon.value, goodsMinor.value) : 0),
       payMode: payMode.value,
     });
+    if (seq !== pointsSeq) return;
+    pointsDeductible.value = d;
   } catch {
+    if (seq !== pointsSeq) return;
     // 同上：问不到就不显示原因，但不拦 —— 后端下单时还会再判一次
     pointsDeductible.value = null;
   }
@@ -391,16 +430,28 @@ watch(
   { immediate: true },
 );
 
-const canSubmit = computed(
-  () => !!items.value.length && !submitting.value
-    && (!needAddress.value || !!address.value)
-    // 没选时段就提交，后端会拒 —— 在这里灰掉按钮，别让他撞一次
-    && (!needAppointment.value || !!appointmentAt.value)
-    // 一种支付方式都没有 / 有商家额度过不去：拦在这里，别让他撞一个说不清的「支付失败」
-    && !noPayMethod.value && quotaBlocked.value.length === 0
-    // 送不到就别让他点下去：后端在创建那一刻会拒，而那时他已经填完了整页
-    && outOfRange.value.length === 0,
-);
+/**
+ * 提交不了是**为什么**。空串 = 提交得了。
+ *
+ * ⚠️ **这一条与 `canSubmit` 必须是同一份判据**，不是两套并排的 if ——
+ * 灰按钮此前有五种原因而屏幕上一个字都没有：他看得见按钮点不动，
+ * 却不知道该改哪儿。分成两份写的话，第六个条件加进 `canSubmit` 时
+ * 这里不会跟着变，于是又回到「灰着，不说话」。
+ *
+ * 顺序按「他能立刻动手改的」在前：地址、时段是他自己能补的；
+ * 支付方式与额度得换商品或者等商家。
+ */
+const submitBlockedReason = computed(() => {
+  if (!items.value.length) return String(t("confirm.emptyItems"));
+  if (needAddress.value && !address.value) return String(t("confirm.whyNoAddress"));
+  if (needAppointment.value && !appointmentAt.value) return String(t("confirm.whyNoSlot"));
+  if (outOfRange.value.length) return String(t("confirm.whyOutOfRange"));
+  if (noPayMethod.value) return String(t("confirm.whyNoPayMethod"));
+  if (quotaBlocked.value.length) return String(t("confirm.whyQuota"));
+  return "";
+});
+
+const canSubmit = computed(() => !submitBlockedReason.value && !submitting.value);
 
 async function loadAddresses() {
   addresses.value = await api.addressList();
@@ -426,6 +477,10 @@ async function pickCoupon() {
   });
   if (idx === null) return;
   couponNo.value = idx === 0 ? "" : usableCoupons.value[idx - 1]!.couponNo;
+}
+
+function backToCart() {
+  uni.switchTab({ url: ROUTES.cart });
 }
 
 function gotoAddress() {
@@ -538,6 +593,19 @@ onMounted(async () => {
 
 <template>
   <sh-scaffold title-key="confirm.title">
+    <!--
+      **这一单里一件商品都没有。**
+      来源两种：从购物车带过来的 sku 已经被别处删掉/下架了，或者页面被直接打开。
+      此前这里是一整页空白 + 一个点不动的灰按钮 —— 看起来像页面没加载出来。
+    -->
+    <view v-if="!items.length" class="sh-card empty">
+      <text class="txt-strong empty__t">{{ $t("confirm.emptyItems") }}</text>
+      <view class="sh-btn sh-btn--sm empty__btn" @tap="backToCart">
+        {{ $t("confirm.backToCart") }}
+      </view>
+    </view>
+
+    <template v-else>
     <!--
       能力提示：**必须在付款前**说。
       三条的共同后果都是付款那一刻才炸 —— 而那时候平台既解释不清也补救不了。
@@ -756,12 +824,30 @@ onMounted(async () => {
         <text class="txt-caption">{{ $t("confirm.pointsEarn") }}</text>
         <text class="txt-caption amt__v amt__v--earn sh-num txt-ink txt-primary">+{{ amount.pointsEarn }}</text>
       </view>
+      <!--
+        服务端试算失败，上面这些数是**端上估算的**。
+        端上不知道服务端有哪些活动，估出来的通常偏高一点点 ——
+        不说这句的话，两个数长得一模一样，他会以为提交后被多扣了钱。
+      -->
+      <text v-if="amountStale" class="txt-caption amt__stale">{{ $t("confirm.estimateOnly") }}</text>
+    </view>
+
+    <!--
+      **提交不了，要说是为什么。** 五个否决条件此前共用同一个灰按钮，
+      屏幕上一个字都没有 —— 他看得见按钮点不动，却不知道该改哪儿。
+      贴着提交条放：他往下滚就是为了按那个按钮，话要落在他视线的终点。
+    -->
+    <view v-if="submitBlockedReason" class="txt-caption why">
+      <text>{{ submitBlockedReason }}</text>
     </view>
 
     <sh-actionbar pill="lead" :pad="200">
       <view class="sh-fill">
-        <text class="sh-muted">{{ $t("confirm.payable") }}</text>
-        <text class="txt-price actionbar__total sh-num">{{ money(amount?.payableMinor ?? 0) }}</text>
+        <text class="sh-muted">{{ amountPending ? $t("confirm.calculating") : $t("confirm.payable") }}</text>
+        <text
+          class="txt-price actionbar__total sh-num"
+          :class="{ 'is-pending': amountPending }"
+        >{{ money(amount?.payableMinor ?? 0) }}</text>
       </view>
       <view
         class="txt-body sh-btn actionbar__btn"
@@ -771,6 +857,8 @@ onMounted(async () => {
         {{ submitting ? $t("confirm.submitting") : $t("confirm.submit") }}
       </view>
     </sh-actionbar>
+    </template>
+
     <!--
       **必须留在 sh-scaffold 里面。** 这套 `--sh-*` 变量声明在 `:root, .sh-root` 上，
       而**小程序里没有 `:root`** —— 根节点叫 `page`，那条选择器一个节点都不匹配，
@@ -912,6 +1000,40 @@ onMounted(async () => {
 .actionbar__btn {
   flex: 0 0 auto;
   padding-inline: 52rpx;
+}
+
+/* 引导型空态：有标题、有主按钮。**不是 sh-empty 那一行灰字** ——
+   这一页的空态要给出路（回购物车），而不只是陈述「没有」 */
+.empty {
+  text-align: center;
+  padding: 72rpx 24rpx;
+}
+.empty__t {
+  display: block;
+}
+.empty__btn {
+  display: inline-block;
+  margin-top: 28rpx;
+  padding-inline: 48rpx;
+}
+
+/* 提交不了的原因。用 warning 不用 danger：**它不是故障，是还差一步** */
+.why {
+  margin: 0 24rpx;
+  padding: 16rpx 24rpx;
+  border-radius: 16rpx;
+  background: var(--sh-warning-tint);
+  color: var(--sh-warning);
+}
+
+/* 试算在途：金额压暗而不是换成骨架 —— 上一次的数仍然是最好的猜测 */
+.actionbar__total.is-pending {
+  opacity: 0.45;
+}
+.amt__stale {
+  display: block;
+  padding-top: 12rpx;
+  color: var(--sh-warning);
 }
 
 /* 能力提示：拦下的用醒目色，只是提醒的用弱一档 —— 两者的用户动作不同 */

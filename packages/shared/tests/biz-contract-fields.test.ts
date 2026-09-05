@@ -220,6 +220,22 @@ const EXEMPT: Record<string, string> = {
   "Order.subOrders": "仅支付视角有；B 端子单视图为空数组",
 };
 
+/**
+ * 端点表的键是 `"GET /mp/cart"`（带方法），而 `prefix` 是 `/mp` ——
+ * **拿整个键去 `startsWith(prefix)` 永远是 false**。
+ *
+ * ⚠️ 这个函数是 2026-09-05 补的，补之前下面两条循环**一条端点都没比过**：
+ * 键里加方法（为了区分同路径的 GET/POST）那次改动没有同步这两处判据，
+ * 于是「找出违规」型的断言少扫了全部 —— 而少扫的表现是**全绿**。
+ * 棘轮的注释里还写着「b-app 15 / c-app 29」，那是它还能扫的时候量的数。
+ *
+ * 所以 {@link scanned} 那条计数断言不是装饰：**判据自己也要有人守**。
+ */
+function pathOf(key: string): string {
+  const i = key.indexOf(" ");
+  return i < 0 ? key : key.slice(i + 1);
+}
+
 describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
   const eps = endpoints(app);
   const decls = declaredTypes(app);
@@ -241,15 +257,17 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
    */
   it("★★★ 契约里的必填字段，后端 VO 必须真的有 —— 少一个就是屏幕上静默少一块", { timeout: 30_000 }, () => {
     const offenders: string[] = [];
+    let scanned = 0;
 
     for (const [name, path] of Object.entries(decls)) {
       const url = (eps[name] ?? "").replace(/:(\w+)/g, "{$1}");
-      if (!url.startsWith(prefix)) continue;
+      if (!pathOf(url).startsWith(prefix)) continue;
       const hit = rets[url];
       if (!hit) continue; // 后端路径没解析到：另一条守卫的事
       const { ret, file, pkg } = hit;
       const comps = javaComponents(ret, file, pkg);
       if (!comps) continue; // 不是 record（Map/void/未知）——比不了就别假装比过
+      scanned += 1;
 
       const missing = tsFields(path)
         .filter((f) => !f.optional)
@@ -298,6 +316,8 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
       return;
     }
 
+    expect(scanned, `${app}：一条端点都没比过 —— 判据失效了，不是真的没问题`)
+      .toBeGreaterThan(10);
     expect(
       offenders,
       "契约声明了、后端 VO 里没有的字段 ——\n"
@@ -337,10 +357,11 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
      * 而一个看不出进展的棘轮，下一个人就不会再去拧它。
      */
     const dropped = new Set<string>();
+    let scanned = 0;
 
     for (const [name, path] of Object.entries(decls)) {
       const url = (eps[name] ?? "").replace(/:(\w+)/g, "{$1}");
-      if (!url.startsWith(prefix)) continue;
+      if (!pathOf(url).startsWith(prefix)) continue;
       const hit = rets[url];
       if (!hit) continue;
       const comps = javaComponents(hit.ret, hit.file, hit.pkg);
@@ -348,6 +369,7 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
 
       const declared = new Set(tsFields(path).map((f) => f.name));
       if (!declared.size) continue; // 契约类型解析不到，别假装比过
+      scanned += 1;
       for (const c of comps) {
         if (declared.has(c) || IGNORED_BACKEND_FIELDS.has(c)) continue;
         dropped.add(`${path}.${c}（后端 ${hit.ret}）`);
@@ -355,31 +377,41 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
     }
 
     /*
-     * 存量欠账（2026-08-17 首次测量）。**这批不是全都无害**，
-     * 挑出来的几条记在这里，免得它们混在数字里没人再看：
+     * **先断言真的比过东西。** 少扫的表现是全绿 —— 这条棘轮就这么空转过一段时间：
+     * 端点表的键改成带方法（`"GET /mp/cart"`）之后，`startsWith("/mp")` 永远为假，
+     * 于是一条端点都没进循环，而断言照绿。见 {@link pathOf} 那段注释。
+     */
+    expect(scanned, `${app}：一条端点都没比过 —— 判据失效了，不是真的没问题`)
+      .toBeGreaterThan(10);
+
+    /*
+     * 存量欠账。**这批不是全都无害**，挑出来的几条记在这里，
+     * 免得它们混在数字里没人再看：
      *
      *   · ~~`Order` 丢 `subOrders`~~ —— **2026-08-17 已修**。CartItem 那条的同族。
-     *     订单详情的「本单由 XX 提供并收款」本来就在（用 `merchantName`，我一度误判成没实现）；
-     *     真正哑掉的是**收银台**：购物车与确认页都说了会拆几单，付款那一屏只有一个总额。
+     *   · ~~`CartItem` 的 `invalid` / `available`~~ —— **2026-09-05 已修**。
+     *     它此前被记成「同物异名而非真丢」（端上叫 `invalidReason`）并判为不在范围里，
+     *     而实际后果是：**后端标的失效标记一个字节都到不了端上**，
+     *     已下架的商品在购物车里完全正常、能勾能结算，一直到下单那一刻才被拒。
+     *     见 TDD-购物车与下单优化 §1 缺陷 D。
+     *   · `CartItem.selected` —— 后端有这一列也在发，但**没有任何端点能写它**；
+     *     端上这次的勾选留在本地（TDD §3.6.1），接通是一件独立的事。
      *   · `StoreHome` 丢 `closed` —— 店铺打烊与否端上不知道，会让人对着打烊的店下单
      *   · `Goods` 丢 `auditReason` —— 商品被驳回，商家看不到理由（b-app 侧同样丢）
      *   · `MerchantApplyStatus` 丢 `qualificationItems` —— 入驻要补哪张证，端上说不出
      *   · `SettleBill` 丢 `businessMode/invoiceStatus/paymentRef/pointsFeeMinor`
+     *   · `FrequentItem.available` —— 与 CartItem 那条同族，常买列表不知道货还有没有
      *
-     * 另有一批是**同物异名**而非真丢（`CartItem.invalid` ↔ 端上 `invalidReason`），
-     * 那类改契约名要连页面一起动，不在这次范围里。
+     * `OrderPreview` 那 20 条是**有意的子集**（它的类型注释写着理由：声明全套会让
+     * 后端每加一个字段都得改端上类型），与真漏接混在一个数里是这个棘轮的已知钝处。
      *
      * 这个数只许降不许升。修一条减一。
-     */
-    /*
-     * c-app 32 而不是 31：`OrderPreview` **刻意只声明预览页要用的那部分**
-     * （它的类型注释里写着理由：声明全套会让后端每加一个字段都得改端上类型）。
-     * 于是后端 `OrderVO` 每加一个字段，它就多欠一条 —— 这次加的是 `appointmentAt`。
      *
-     * 这类「有意的子集」与真漏接混在一个数里，是这个棘轮的已知钝处。
-     * 现在靠这段注释区分；真要分开，得给 FIELDS 加一个「子集类型」标记。
+     * ⚠️ **基线是 2026-09-05 重新量的**（b-app 31 / c-app 25）。
+     * 旧值 15 / 29 是判据还能扫的时候量的，中间空转了一段，期间新欠的账没人拦住 ——
+     * 这也正是上面那条 `scanned` 断言存在的理由。
      */
-    const BASELINE: Record<string, number> = { "b-app": 15, "c-app": 29 };
+    const BASELINE: Record<string, number> = { "b-app": 31, "c-app": 25 };
     expect(
       dropped.size,
       `${app}：后端在发、契约没接的字段共 ${dropped.size} 个（基线 ${BASELINE[app]}）——\n`

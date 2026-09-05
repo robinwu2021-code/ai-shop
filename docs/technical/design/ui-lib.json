@@ -313,7 +313,7 @@
       },
       "usage": {
         "b-app": 5,
-        "c-app": 16
+        "c-app": 21
       }
     },
     {
@@ -389,7 +389,7 @@
       },
       "usage": {
         "b-app": 82,
-        "c-app": 30
+        "c-app": 34
       }
     },
     {
@@ -513,7 +513,7 @@
       },
       "usage": {
         "b-app": 248,
-        "c-app": 117
+        "c-app": 128
       }
     },
     {
@@ -545,7 +545,7 @@
       },
       "usage": {
         "b-app": 118,
-        "c-app": 70
+        "c-app": 74
       }
     },
     {
@@ -723,7 +723,7 @@
       },
       "usage": {
         "b-app": 9,
-        "c-app": 16
+        "c-app": 17
       }
     },
     {
@@ -739,7 +739,7 @@
       },
       "usage": {
         "b-app": 23,
-        "c-app": 22
+        "c-app": 23
       }
     },
     {
@@ -821,7 +821,7 @@
       },
       "usage": {
         "b-app": 248,
-        "c-app": 210
+        "c-app": 223
       }
     },
     {
@@ -931,7 +931,7 @@
       },
       "usage": {
         "b-app": 116,
-        "c-app": 35
+        "c-app": 40
       }
     },
     {
@@ -953,7 +953,7 @@
       },
       "usage": {
         "b-app": 84,
-        "c-app": 87
+        "c-app": 88
       }
     },
     {
@@ -1039,7 +1039,7 @@
       },
       "usage": {
         "b-app": 195,
-        "c-app": 68
+        "c-app": 72
       }
     },
     {
@@ -1071,7 +1071,7 @@
       },
       "usage": {
         "b-app": 111,
-        "c-app": 36
+        "c-app": 39
       }
     },
     {
@@ -1093,7 +1093,7 @@
       },
       "usage": {
         "b-app": 3,
-        "c-app": 0
+        "c-app": 1
       }
     },
     {
@@ -1147,7 +1147,7 @@
       },
       "usage": {
         "b-app": 21,
-        "c-app": 0
+        "c-app": 2
       }
     },
     {
@@ -1185,7 +1185,7 @@
       },
       "usage": {
         "b-app": 61,
-        "c-app": 1
+        "c-app": 3
       }
     },
     {
@@ -1239,7 +1239,7 @@
       },
       "usage": {
         "b-app": 194,
-        "c-app": 129
+        "c-app": 133
       }
     },
     {
@@ -1268,8 +1268,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 114,
-        "c-app": 57
+        "b-app": 115,
+        "c-app": 58
       }
     },
     {
@@ -1286,7 +1286,7 @@
         "color": "var(--sh-danger)"
       },
       "usage": {
-        "b-app": 3,
+        "b-app": 4,
         "c-app": 9
       }
     },
@@ -1343,7 +1343,7 @@
       },
       "usage": {
         "b-app": 59,
-        "c-app": 23
+        "c-app": 24
       }
     },
     {
@@ -1523,7 +1523,7 @@
       ],
       "usage": {
         "b-app": 5,
-        "c-app": 1
+        "c-app": 6
       },
       "note": "勾选框 / 单选点",
       "why": "四页各画一个、**四种尺寸**（28/36/44/44）。勾用 `check` 图标 —— 那个图标是这次一起补进 icons.ts 的"
@@ -1586,7 +1586,7 @@
       ],
       "usage": {
         "b-app": 45,
-        "c-app": 19
+        "c-app": 18
       },
       "note": "空态",
       "why": "抽出来不是因为重复，是**观感会漂**：曾在 27 个页面各写一份，padding 在 60/80/100rpx 之间随手取"
@@ -1652,7 +1652,7 @@
       ],
       "usage": {
         "b-app": 60,
-        "c-app": 4
+        "c-app": 6
       },
       "note": "单色图标",
       "why": "内联 SVG 转 CSS mask，颜色吃 var(--sh-*) —— 换肤零成本。**不用 emoji**：各系统字形不一且是彩色的"
@@ -1960,7 +1960,7 @@
       "name": "biz-region-picker",
       "file": "b-app/src/components/biz/biz-region-picker.vue",
       "scope": "B 端",
-      "lines": 1576,
+      "lines": 1757,
       "props": [
         "visible: boolean",
         "areas: ServiceArea[]"
@@ -3015,9 +3015,9 @@
         "biz-region-picker",
         "biz-store-tag"
       ],
-      "libClassHits": 89,
-      "localSelectors": 24,
-      "localCssLines": 87,
+      "libClassHits": 91,
+      "localSelectors": 28,
+      "localCssLines": 110,
       "rolled": []
     },
     {
@@ -3112,9 +3112,9 @@
         "sh-switch",
         "biz-region-picker"
       ],
-      "libClassHits": 52,
-      "localSelectors": 19,
-      "localCssLines": 77,
+      "libClassHits": 62,
+      "localSelectors": 21,
+      "localCssLines": 84,
       "rolled": [
         {
           "id": "segment",
@@ -3175,28 +3175,14 @@
       "file": "c-app/src/pages/cart/index.vue",
       "components": [
         "sh-actionbar",
-        "sh-empty",
+        "sh-check",
+        "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 28,
-      "localSelectors": 16,
-      "localCssLines": 73,
-      "rolled": [
-        {
-          "id": "rowbetween",
-          "label": "两端对齐行",
-          "lib": ".sh-row + .sh-row--between",
-          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*justify-content:\\s*space-between",
-          "gap": false
-        },
-        {
-          "id": "inkover",
-          "label": "正文色自写",
-          "lib": ".txt-ink",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-ink\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "libClassHits": 67,
+      "localSelectors": 27,
+      "localCssLines": 117,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3323,9 +3309,9 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 25,
-      "localSelectors": 14,
-      "localCssLines": 78,
+      "libClassHits": 28,
+      "localSelectors": 17,
+      "localCssLines": 97,
       "rolled": []
     },
     {
@@ -3364,7 +3350,7 @@
         "sh-sheet",
         "sh-theme-sheet"
       ],
-      "libClassHits": 88,
+      "libClassHits": 92,
       "localSelectors": 13,
       "localCssLines": 63,
       "rolled": []
@@ -3450,9 +3436,9 @@
         "sh-scaffold",
         "sh-switch"
       ],
-      "libClassHits": 104,
-      "localSelectors": 29,
-      "localCssLines": 123,
+      "libClassHits": 111,
+      "localSelectors": 36,
+      "localCssLines": 155,
       "rolled": []
     },
     {
@@ -3482,6 +3468,13 @@
       "localSelectors": 29,
       "localCssLines": 125,
       "rolled": [
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        },
         {
           "id": "quietover",
           "label": "次要色自写",
@@ -3589,7 +3582,8 @@
       "gap": false,
       "rule": "showModal\\(|showActionSheet\\(",
       "pages": [
-        "b-app/statement"
+        "b-app/statement",
+        "c-app/pay"
       ]
     },
     {
@@ -3620,26 +3614,6 @@
       "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
       "pages": [
         "c-app/address"
-      ]
-    },
-    {
-      "id": "rowbetween",
-      "label": "两端对齐行",
-      "lib": ".sh-row + .sh-row--between",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*justify-content:\\s*space-between",
-      "pages": [
-        "c-app/cart"
-      ]
-    },
-    {
-      "id": "inkover",
-      "label": "正文色自写",
-      "lib": ".txt-ink",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-ink\\);?\\s*\\}",
-      "pages": [
-        "c-app/cart"
       ]
     },
     {
