@@ -34,7 +34,9 @@ class CourierOrderViewTest {
             new OrderVO.Receiver("王先生", "13800001234", "杭州市西湖区文三路 100 号"),
             List.of(), null,
             // 买家昵称（商家侧才有）—— 裁剪逻辑不碰它，但构造要给全
-            "邻居小李");
+            "邻居小李",
+            // 评价 / 售后 / 支付分组：只有 C 端订单详情才填，配送视角用不到
+            false, null, 1);
 
     // ---------------------------------------------------------------- 谁该被裁
 
@@ -124,7 +126,7 @@ class CourierOrderViewTest {
     void toleratesEmptyItems() {
         OrderVO noItems = new OrderVO("SUB-2", null, "PAID", "MERCHANT_DELIVERY", "M-1", null,
                 null, null, null, null, null, null, 0L, null, null, null, null, null, List.of(), null,
-                null);
+                null, false, null, 1);
         assertThat(CourierOrderVO.of(noItems).itemQty()).isZero();
     }
 }

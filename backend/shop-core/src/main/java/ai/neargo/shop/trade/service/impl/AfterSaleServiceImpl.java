@@ -467,6 +467,23 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             OrdAfterSale.APPLIED, OrdAfterSale.REFUNDING, OrdAfterSale.REFUNDED,
             OrdAfterSale.REJECTED, OrdAfterSale.ARBITRATING, OrdAfterSale.CLOSED);
 
+    @Override
+    public java.util.Optional<AfterSaleVO> ofSubOrder(String subOrderNo) {
+        if (subOrderNo == null || subOrderNo.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        /*
+         * **取最新的一张**：一张子单可以先被驳回、再申请一次。
+         * 取第一张的话，订单详情会一直显示那张已经作废的驳回单，
+         * 而用户正在等的是新提的那张。
+         */
+        OrdAfterSale as = afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
+                .eq(OrdAfterSale::getSubOrderNo, subOrderNo)
+                .orderByDesc(OrdAfterSale::getId)
+                .last("limit 1"));
+        return java.util.Optional.ofNullable(as).map(this::detailOf);
+    }
+
     private AfterSaleVO detailOf(OrdAfterSale as) {
         // 订单与售后共用 ord_status_log。早先按「at >= 售后创建时间」切分，
         // 但两者的时间戳精度与写入顺序都不保证 —— 时间窗口是猜，状态集合是判定。

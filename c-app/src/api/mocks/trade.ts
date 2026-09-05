@@ -19,6 +19,15 @@ import {
 } from "./_shared";
 import type { ShopApi } from "../contract";
 
+/**
+ * mock 内部的订单形状：契约的 `Order` **加上**一个分组键。
+ *
+ * <p>`payGroupNo` 只是 mock 用来把同一次结算拆出的子单串起来的东西，
+ * 后端库里与 VO 里都没有这一列 —— 放进契约类型的后果，是端上写出
+ * 一段只在 mock 下成立的逻辑（详情页那句拆单提示就是这么哑了半年）。
+ */
+type MockOrder = Order & { payGroupNo?: string };
+
 export const tradeMock: Pick<ShopApi,
   "createOrder"
   | "payMethods"
@@ -131,7 +140,7 @@ export const tradeMock: Pick<ShopApi,
         earnPoints: earnPointsFor(subItems),
       });
 
-      const order: Order = {
+      const order: MockOrder = {
         orderNo: nextNo("SO"),
         status: "WAIT_PAY",
         fulfillment: req.fulfillment,
@@ -148,7 +157,10 @@ export const tradeMock: Pick<ShopApi,
         groupNo: req.groupNo,
         merchantNo,
         merchantName: merchantBrief(merchantNo).name,
+        // mock 内部的分组键。**不是契约字段** —— 后端没有这一列，
+        // 端上要判的是「这次支付覆盖几笔」，那个由 payGroupSize 表达
         payGroupNo,
+        payGroupSize: byMerchant.size,
         trafficSource: db.user.merchantNo === merchantNo ? "MERCHANT_OWNED" : "PLATFORM",
       };
 
@@ -191,8 +203,10 @@ export const tradeMock: Pick<ShopApi,
      * 只把点进来的那一单置为已支付，用户会在订单列表里看到「付了一单还剩一单」，
      * 而他明明只付了一次钱。
      */
-    const group = target.payGroupNo
-      ? db.orders.filter((o) => o.payGroupNo === target.payGroupNo)
+    // 分组键是 mock 内部的（后端没有这一列），所以在这里显式当 MockOrder 用
+    const pg = (target as MockOrder).payGroupNo;
+    const group = pg
+      ? db.orders.filter((o) => (o as MockOrder).payGroupNo === pg)
       : [target];
 
     for (const o of group) {
@@ -206,7 +220,12 @@ export const tradeMock: Pick<ShopApi,
 
       // 虚拟商品 / 卡券：支付成功即发放，不经备货，直接完成
       if (strategy.instant) {
-        o.redeemCode = strategy.issueCode();
+        /*
+         * **发到 `verifyCode` 而不是另起一个 `redeemCode`** ——
+         * 后端 `OrderVO` 把自提码 / 核销码 / 兑换码三态合在这一个字段里，
+         * mock 另发一个字段的后果是：本机能看到兑换码，真机永远看不到。
+         */
+        o.verifyCode = strategy.issueCode();
         o.items
           .filter((it) => it.type === CATEGORY_TYPE.CARD)
           .forEach((it) => issueCard(o, it));
@@ -327,8 +346,9 @@ export const tradeMock: Pick<ShopApi,
      *
      * 只在**确实跨了商家**时带：单商家时 subOrders 等于把自己抄一遍，端上也不渲染。
      */
-    const siblings = o.payGroupNo
-      ? db.orders.filter((x) => x.payGroupNo === o.payGroupNo)
+    const pg = (o as MockOrder).payGroupNo;
+    const siblings = pg
+      ? db.orders.filter((x) => (x as MockOrder).payGroupNo === pg)
       : [];
     return delay(siblings.length > 1 ? { ...o, subOrders: siblings } : o);
   },

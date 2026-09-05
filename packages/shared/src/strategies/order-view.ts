@@ -170,6 +170,26 @@ export function tabQuery(spec: OrderTabSpec): { status?: OrderStatus; fulfillmen
  * <p>三档：待付款是**要办的事**（warning）；已完成 / 已取消 / 已退款是
  * **结束了的事**（quiet）；其余在进行中，用主色。
  */
+/**
+ * 那串码该叫什么。
+ *
+ * ⚠️ **后端把三种码合在一个字段里**（`OrderVO.verifyCode` 的注释写着
+ * 「自提码/核销码/兑换码三态共用」），端上不该另外要一个 `redeemCode` ——
+ * 早先就是那么写的，而那个字段后端从来不发：**买虚拟商品拿到的码，
+ * 被标成了「取货码」**，而卡包里那张券要用的是「兑换码」这个说法。
+ *
+ * <p>放在这里而不是各页各写一份：订单详情与收银台都要用它，
+ * 两处各写一个三分支，迟早只改其中一处。
+ */
+export function codeLabelKey(
+  type?: string | null,
+  fulfillment?: FulfillmentType | null,
+): string {
+  if (type === "VIRTUAL" || type === "CARD") return "pay.redeemCode";
+  if (fulfillment === "STORE_VERIFY") return "pay.verifyCodeStore";
+  return "pay.verifyCode";
+}
+
 export function statusTone(status: OrderStatus): string {
   if (status === "WAIT_PAY" || status === "WAIT_OFFLINE_PAY") return "is-warning";
   if (status === "COMPLETED" || status === "CANCELLED" || status === "REFUNDED") return "txt-quiet";

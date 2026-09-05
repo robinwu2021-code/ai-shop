@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.user.PickupQueryPort;
+import ai.neargo.shop.trade.service.AfterSaleService;
 import ai.neargo.shop.trade.service.CloseRuleService;
 import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.trade.service.OrderStateMachine;
@@ -130,8 +131,13 @@ public class OrderServiceImpl implements OrderService {
     /** 买家的人档号。没有（微信登录未授权手机号）就不入会 */
     private final ai.neargo.shop.spi.user.PersonPort personPort;
     private final ai.neargo.shop.spi.user.AppointmentSlotPort appointmentSlotPort;
+    /** 订单详情要说「评价过没有」与「有没有挂着售后单」。**只在详情用**，列表不查 */
+    private final ai.neargo.shop.spi.product.ReviewQueryPort reviewQueryPort;
+    private final AfterSaleService afterSaleService;
 
     public OrderServiceImpl(ai.neargo.shop.spi.user.AppointmentSlotPort appointmentSlotPort,
+                            ai.neargo.shop.spi.product.ReviewQueryPort reviewQueryPort,
+                            AfterSaleService afterSaleService,
                             OrderMapper orderMapper, SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                             ai.neargo.shop.spi.product.PayModePort payModeService,
                             CartItemMapper cartMapper, GoodsQueryPort goodsPort, StockPort stockPort,
@@ -153,6 +159,8 @@ public class OrderServiceImpl implements OrderService {
                             CloseRuleService closeRuleService) {
         this.payModeService = payModeService;
         this.appointmentSlotPort = appointmentSlotPort;
+        this.reviewQueryPort = reviewQueryPort;
+        this.afterSaleService = afterSaleService;
         this.orderMapper = orderMapper;
         this.subOrderMapper = subOrderMapper;
         this.admissionPort = admissionPort;
@@ -1210,7 +1218,19 @@ public class OrderServiceImpl implements OrderService {
         if (sub != null) {
             OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                     .eq(OrdOrder::getOrderNo, sub.getOrderNo()).last("limit 1"));
-            return orderView(sub, order);
+            /*
+             * **三样只在详情查**（见 OrderVO 上的说明）：列表一次几十条，
+             * 在 `orderView` 里查就是每条三次额外查询。
+             *
+             * 三样都是端上早就声明、后端一直没发的字段 —— 缺了的表现分别是
+             * 「已评价的单照样显示去评价」「售后进行中整张卡不显示」
+             * 「拆单提示不显示」，三条都不报错。见 TDD-交互清单缺口修复 G15。
+             */
+            return orderView(sub, order).withDetail(
+                    reviewQueryPort.reviewed(sub.getSubOrderNo()),
+                    afterSaleService.ofSubOrder(sub.getSubOrderNo()).orElse(null),
+                    subOrderMapper.selectCount(Wrappers.<OrdSubOrder>lambdaQuery()
+                            .eq(OrdSubOrder::getOrderNo, sub.getOrderNo())).intValue());
         }
         OrdOrder order = requireOwnOrder(orderNo, userNo);
         return payView(order, subOrders(orderNo));
@@ -1478,7 +1498,9 @@ public class OrderServiceImpl implements OrderService {
                     // 预览还没有单，收件人与预约时间自然也没有
                     null, null, null, null, 0L, null, null, null, null, null, List.of(), null,
                 // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
-                null)).toList();
+                null,
+                // 预览还没有单：评价、售后、支付分组三样都无从谈起
+                false, null, 1)).toList();
 
             return new OrderVO(null, null, OrdOrder.WAIT_PAY, null, null, null,
                     children.stream().flatMap(c -> c.items().stream()).toList(),
@@ -1486,7 +1508,9 @@ public class OrderServiceImpl implements OrderService {
                             discounts.total(), 0L, CURRENCY_CNY),
                     null, null, null, null, 0L, null, null, null, null, null, List.of(), children,
                 // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
-                null);
+                null,
+                // 预览还没有单；分组数用得上，结算页要说「会生成几笔订单」
+                false, null, children.size());
         }
     }
 
@@ -1565,7 +1589,13 @@ public class OrderServiceImpl implements OrderService {
                 timelineOf(s.getSubOrderNo()),
                 null,
                 // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
-                null);
+                null,
+                /*
+                 * 评价、售后、支付分组三样**在这里一律留空**，由 `detailOf` 用
+                 * `withDetail` 补上 —— 这个方法被列表与详情共用，
+                 * 在这里查就是每条订单三次额外查询（N+1）。
+                 */
+                false, null, 1);
     }
 
     /** 子单上的收件人快照 → VO。三列都空（自提单）时给 null，让端上少判一层 */
@@ -1597,7 +1627,9 @@ public class OrderServiceImpl implements OrderService {
                 // 支付视角跨商家，没有单一快递号 —— 它在每个子单上。收件人与预约时间同理
                 null, null, null, null, List.of(), children,
                 // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
-                null);
+                null,
+                // 支付视角：分组数就是子单数，收银台那句「本次付款覆盖 N 笔」读它
+                false, null, children.size());
     }
 
     private OrderVO.ItemVO toItemVO(OrdItem i) {

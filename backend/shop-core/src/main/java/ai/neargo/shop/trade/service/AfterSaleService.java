@@ -16,6 +16,18 @@ public interface AfterSaleService {
 
     AfterSaleVO detail(String afterSaleNo);
 
+    /**
+     * 挂在这张**子单**上的售后单，取最新的一张；没有则为空。
+     *
+     * <p>订单详情要用它：C 端「售后进行中」那张卡（连同「填写退货单号」与
+     * 「提出申诉」两个动作）判的是**售后单存不存在**，而不是订单状态 ——
+     * 订单在售后期间保持原状态，已完成的单照样能申请售后。
+     *
+     * <p>此前订单详情根本拿不到它（契约声明了 {@code afterSale}、后端不发），
+     * 于是整张卡永远不显示。见 TDD-交互清单缺口修复 G15。
+     */
+    java.util.Optional<AfterSaleVO> ofSubOrder(String subOrderNo);
+
     AfterSaleVO cancel(String afterSaleNo);
 
     AfterSaleVO shipBack(String afterSaleNo, String company, String expressNo);

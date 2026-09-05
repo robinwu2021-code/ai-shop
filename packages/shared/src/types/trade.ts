@@ -290,8 +290,6 @@ export interface Order {
   amount: OrderAmount;
   /** 自提码 / 核销码 */
   verifyCode?: string;
-  /** VIRTUAL：兑换码；CARD：卡号 */
-  redeemCode?: string;
   /** PICKUP：自提点单号 */
   pickupNo?: string;
   /** PICKUP：自提点名称快照 */
@@ -342,13 +340,14 @@ export interface Order {
   /** 商家名快照 */
   merchantName?: string;
   /**
-   * 支付组号。同一次结算拆出的子订单共享它，**一次支付付掉整组**。
-   * 用户感知是「买了一次」，资金与分账感知是「N 笔各归各家」。
+   * 这次支付一共覆盖几笔子订单。缺省 1。
    *
-   * ⚠️ **后端叫 `payOrderNo`，库里是 `ord_order.order_no`** —— 三处三个名字。
-   * 按这个名去后端或库里找会找不到（2026-08-17 人工测试时撞到）。
+   * ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** ——
+   * 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。
+   * 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号：
+   * 端上要判的本来就是「是不是多于一笔」。
    */
-  payGroupNo?: string;
+  payGroupSize?: number;
   /**
    * **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。
    *

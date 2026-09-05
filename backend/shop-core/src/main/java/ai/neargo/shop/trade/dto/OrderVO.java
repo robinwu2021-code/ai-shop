@@ -69,7 +69,49 @@ public record OrderVO(String orderNo,
                        * B 端售后页每一行的买家都是「—」：店主要处理一张退货单，
                        * 却看不到是谁申请的，只能回订单列表里对号入座。
                        */
-                      String buyerNickname) {
+                      String buyerNickname,
+                      /**
+                       * 这一单评价过没有。<b>只有详情视角填</b>，列表恒为 false。
+                       *
+                       * <p>此前端上的契约声明了它、后端从来不发 —— 于是「去评价」的判据
+                       * {@code status === COMPLETED && !reviewed} 后半截恒为真，
+                       * <b>已经评过的订单照样显示那个按钮</b>。而 mock 会在评价成功后置真，
+                       * 所以本机点一遍是对的，只有真机不对。
+                       */
+                      boolean reviewed,
+                      /**
+                       * 挂在这一单上的售后单。<b>只有详情视角填</b>，没有则为 null。
+                       *
+                       * <p>与 {@link #reviewed} 同一个来历：端上声明了、后端不发，于是订单详情页的
+                       * 「售后进行中」整张卡（连同「填写退货单号」与「提出申诉」两个动作）
+                       * <b>永远不显示</b>。
+                       *
+                       * <p><b>不在列表视角填</b>：列表一次几十条，逐条去查售后就是 N+1；
+                       * 而列表页本来就单独取了一次售后清单。
+                       */
+                      AfterSaleVO afterSale,
+                      /**
+                       * 这次支付一共覆盖几笔子订单。<b>只有详情视角填</b>，缺省 1。
+                       *
+                       * <p>端上原本读的是 {@code payGroupNo} —— <b>那个字段库里、VO 里都不存在，
+                       * 是 mock 里造出来的概念</b>，于是详情页那句「本次支付覆盖多笔订单」永远不出现。
+                       * 真实模型里这件事由「主单下有几张子单」表达，所以这里发的是个数而不是编号：
+                       * 端上要判的本来就是「是不是多于一笔」。
+                       */
+                      int payGroupSize) {
+
+    /**
+     * 补上**只有详情视角才查**的那三样。
+     *
+     * <p>做成 {@code with} 而不是让 {@code orderView} 多三个参数：
+     * 那个方法被列表与详情共用，多出来的三个查询会让列表变成 N+1。
+     */
+    public OrderVO withDetail(boolean reviewed, AfterSaleVO afterSale, int payGroupSize) {
+        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
+                items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
+                paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
+                buyerNickname, reviewed, afterSale, payGroupSize);
+    }
 
     /**
      * 金额值对象（字段名随 c-app）。把 8 个金额收在一起，

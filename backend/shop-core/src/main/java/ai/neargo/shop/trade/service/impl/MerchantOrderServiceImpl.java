@@ -295,7 +295,9 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 // 认人用：售后页、配送单都要显示「谁的单」。**只给昵称**，联系方式走
                 // receiver 那一档（B12：商家不需要能打给每一个买家）
                 main == null ? null : userPort.find(main.getUserNo())
-                        .map(ai.neargo.shop.spi.user.UserQueryPort.UserBrief::nickname).orElse(null));
+                        .map(ai.neargo.shop.spi.user.UserQueryPort.UserBrief::nickname).orElse(null),
+                // 商家侧不查这三样：评价与售后在 b-app 有自己的页面，支付分组是买家视角的事
+                false, null, 1);
     }
 
     private static final int PHONE_TAIL = 4;

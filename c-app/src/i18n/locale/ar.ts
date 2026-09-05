@@ -490,6 +490,7 @@ timeSlotPh: "مثال: الليلة ١٩:٠٠–٢١:٠٠",
     submitting: "جارٍ الإرسال…",
   },
   pay: {
+    verifyCodeStore: "رمز الاستخدام",
     noUsableMethod: "لا تتوفر طريقة دفع لمتاجر هذا الطلب",
     methodFallback: "سيتم تأكيد طريقة الدفع في الخطوة التالية",
     title: "الدفع",

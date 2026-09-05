@@ -490,6 +490,7 @@ timeSlotPh: "e.g. tonight 19:00–21:00",
     submitting: "Placing…",
   },
   pay: {
+    verifyCodeStore: "Redemption code",
     noUsableMethod: "No payment method is available for the stores in this order",
     methodFallback: "Payment method will be confirmed next",
     title: "Checkout",

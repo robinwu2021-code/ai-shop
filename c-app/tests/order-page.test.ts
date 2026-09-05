@@ -183,6 +183,55 @@ describe("订单详情页的操作按钮", () => {
     expect(w.text()).toContain("order.afterSale");
   });
 
+  it("★★★ 评价过的订单不再显示「去评价」—— reviewed 后端此前不发，判据恒为真", async () => {
+    orderDetail.mockResolvedValue(order("COMPLETED", { reviewed: true }));
+    expect((await render()).text()).not.toContain("review.writeTitle");
+
+    orderDetail.mockResolvedValue(order("COMPLETED", { reviewed: false }));
+    expect((await render()).text()).toContain("review.writeTitle");
+  });
+
+  it("★★★ 售后进行中的卡片靠 afterSale 出现 —— 后端此前不发，整张卡永远不显示", async () => {
+    orderDetail.mockResolvedValue(order("FULFILLING"));
+    expect((await render()).text()).not.toContain("afterSale.status.REFUNDING");
+
+    orderDetail.mockResolvedValue(order("FULFILLING", {
+      afterSale: { afterSaleNo: "AS1", status: "REFUNDING", type: "RETURN_REFUND" },
+    } as never));
+    const w = await render();
+    expect(w.text()).toContain("afterSale.status.REFUNDING");
+    expect(w.text(), "退货退款且还没填单号 → 要给填单号的入口").toContain("afterSale.fillExpress");
+  });
+
+  it("★★★ 那串码的标签按品类走 —— 虚拟商品拿到的是兑换码，不是取货码", async () => {
+    orderDetail.mockResolvedValue(order("FULFILLING", {
+      verifyCode: "8812",
+      items: [{ goodsNo: "G1", skuNo: "S1", title: "月卡", cover: "🎬", spec: "1 个月", price: 1500, qty: 1, type: "VIRTUAL" }],
+    } as never));
+    const w = await render();
+    expect(w.text()).toContain("pay.redeemCode");
+    expect(w.text()).not.toContain("pay.verifyCode");
+  });
+
+  it("★★ 到店核销叫核销码；自提叫取货码", async () => {
+    orderDetail.mockResolvedValue(order("FULFILLING", { verifyCode: "8812", fulfillment: "STORE_VERIFY" } as never));
+    expect((await render()).text()).toContain("pay.verifyCodeStore");
+
+    orderDetail.mockResolvedValue(order("FULFILLING", { verifyCode: "8812" }));
+    const w = await render();
+    // 「pay.verifyCode」是「pay.verifyCodeStore」的前缀，只判包含会两边都过
+    expect(w.text()).toContain("pay.verifyCode");
+    expect(w.text()).not.toContain("pay.verifyCodeStore");
+  });
+
+  it("★★ 拆单提示按**子单张数**出现，不再靠一个后端没有的编号", async () => {
+    orderDetail.mockResolvedValue(order("PAID", { payGroupSize: 1 }));
+    expect((await render()).text()).not.toContain("order.splitHint");
+
+    orderDetail.mockResolvedValue(order("PAID", { payGroupSize: 2 }));
+    expect((await render()).text()).toContain("order.splitHint");
+  });
+
   it("★ 「再买一单」在任何状态下都在 —— 它不依赖订单状态", async () => {
     for (const st of ["WAIT_PAY", "PAID", "FULFILLING", "COMPLETED", "CANCELLED"] as OrderStatus[]) {
       orderDetail.mockResolvedValue(order(st));

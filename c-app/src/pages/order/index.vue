@@ -2,7 +2,7 @@
 // 订单详情：码 → 状态时间线 → 商品 → 金额 → 履约信息 → 操作。
 // 码放最上面：待取货的用户打开订单，十有八九就是来看码的。
 import { computed, ref } from "vue";
-import { statusTone } from "@shared/strategies/order-view";
+import { codeLabelKey, statusTone } from "@shared/strategies/order-view";
 import { useI18n } from "vue-i18n";
 import { onShow, onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
@@ -130,6 +130,11 @@ async function applyInvoice() {
   }
 }
 
+/** 那串码叫什么：自提码 / 核销码 / 兑换码。三端共用一份判据 */
+const codeLabel = computed(() =>
+  codeLabelKey(order.value?.items[0]?.type, order.value?.fulfillment),
+);
+
 const isVirtualOrCard = computed(() => {
   const type = order.value?.items[0]?.type;
   return type === CATEGORY_TYPE.VIRTUAL || type === CATEGORY_TYPE.CARD;
@@ -245,16 +250,16 @@ onShow(load);
 
     <template v-if="order">
     <!-- 码：待取货的用户主要就是来看这个 -->
+    <!--
+      **一张卡，标签按品类变**。后端把自提码 / 核销码 / 兑换码合在同一个字段里，
+      端上此前另外读一个 `redeemCode` —— 那个字段后端从来不发，于是兑换码那张卡
+      永远不出现，而虚拟商品的码落进上面这张、被标成「取货码」。
+    -->
     <view v-if="order.verifyCode && order.status !== 'COMPLETED'" class="sh-card codecard">
-      <text class="txt-caption codecard__label">{{ $t("pay.verifyCode") }}</text>
+      <text class="txt-caption codecard__label">{{ $t(codeLabel) }}</text>
       <text class="txt-hero codecard__v sh-num">{{ order.verifyCode }}</text>
-      <text class="txt-caption codecard__hint">{{ $t("order.codeHint") }}</text>
-    </view>
-    <view v-if="order.redeemCode" class="sh-card codecard codecard--redeem">
-      <text class="txt-caption codecard__label">{{ $t("pay.redeemCode") }}</text>
-      <text class="txt-hero codecard__v sh-num">{{ order.redeemCode }}</text>
       <text class="txt-caption codecard__hint">
-        {{ isVirtualOrCard ? $t("order.redeemHint") : "" }}
+        {{ isVirtualOrCard ? $t("order.redeemHint") : $t("order.codeHint") }}
       </text>
     </view>
 
@@ -329,7 +334,7 @@ onShow(load);
          用户看到账单上出现陌生商户名会直接当成盗刷。 -->
     <view v-if="order.merchantName" class="sh-card block">
       <text class="txt-sub disclose">{{ $t("order.providedBy", { m: order.merchantName }) }}</text>
-      <text v-if="order.payGroupNo" class="sh-muted disclose__hint">
+      <text v-if="(order.payGroupSize ?? 1) > 1" class="sh-muted disclose__hint">
         {{ $t("order.splitHint") }}
       </text>
     </view>

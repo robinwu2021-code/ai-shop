@@ -252,7 +252,9 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
                         null, 0L, null, s.getExpressNo(), s.getTrafficSource(),
                         s.getAppointmentAt(), null, List.of(), null,
                         // 买家昵称：平台端列表是「查单」，认人靠订单号与手机号尾号
-                        null))
+                        null,
+                        // 平台端列表不查这三样：那是买家视角的东西，且列表逐条查就是 N+1
+                        false, null, 1))
                 .toList();
         return PageData.of(records, p.getTotal(), p.getCurrent(), p.getSize());
     }

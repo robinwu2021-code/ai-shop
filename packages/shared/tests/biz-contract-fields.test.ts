@@ -247,6 +247,65 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
     expect(Object.keys(rets).length).toBeGreaterThan(50);
   });
 
+  /**
+   * **可选字段也要有人守**（2026-09-05 加）。
+   *
+   * 上面那条只判**必填**字段：可选的少一个不会让端上崩，所以按设计跳过。
+   * 代价在 `Order` 上现了形 —— `reviewed` / `redeemCode` / `afterSale` /
+   * `payGroupNo` 四个可选字段端上声明了、后端一个都不发，而后果全是**静默的**：
+   *
+   *   · 已评价的订单照样显示「去评价」
+   *   · 兑换码那张卡永远不出现，码落进「取货码」卡被标错
+   *   · 「售后进行中」整张卡与它的两个动作永远不出现
+   *   · 拆单提示永远不出现
+   *
+   * 而 **mock 四个都有**，所以本机点一遍全都对，只有真机是哑的
+   *（见 TDD-交互清单缺口修复 G15）。
+   *
+   * 所以这一条不要求清零 —— 「有意的子集」确实存在（`OrderPreview` 的类型注释
+   * 写着它只声明预览页要用的那部分）—— 而是**只许降不许升**：
+   * 再新增一个「声明了但拿不到」的可选字段，闸门当场变红。
+   */
+  it("★★ 契约声明了、后端 VO 没有的**可选**字段（棘轮：只许降不许升）", { timeout: 30_000 }, () => {
+    const missing = new Set<string>();
+    let scanned = 0;
+
+    for (const [name, path] of Object.entries(decls)) {
+      const url = (eps[name] ?? "").replace(/:(\w+)/g, "{$1}");
+      if (!pathOf(url).startsWith(prefix)) continue;
+      const hit = rets[url];
+      if (!hit) continue;
+      const comps = javaComponents(hit.ret, hit.file, hit.pkg);
+      if (!comps) continue;
+      const fields = tsFields(path);
+      if (!fields.length) continue;
+      scanned += 1;
+      for (const f of fields) {
+        if (!f.optional || comps.includes(f.name) || EXEMPT[`${path}.${f.name}`]) continue;
+        missing.add(`${path}.${f.name}（后端 ${hit.ret} 没有）`);
+      }
+    }
+
+    expect(scanned, `${app}：一条端点都没比过 —— 判据失效了，不是真的没问题`)
+      .toBeGreaterThan(10);
+
+    /*
+     * 基线 2026-09-05 实测。修一条减一。
+     *
+     * ⚠️ **减到 0 之前别把它当噪声**：这里每一条的形状都是
+     * 「端上写了一段只在 mock 下成立的逻辑」，而那类缺陷在真机上不报错、
+     * 只是那块界面永远不出现。
+     */
+    const OPTIONAL_BASELINE: Record<string, number> = { "b-app": 9, "c-app": 12 };
+    expect(
+      missing.size,
+      `${app}：契约声明了、后端不发的可选字段共 ${missing.size} 个`
+        + `（基线 ${OPTIONAL_BASELINE[app]}）——\n`
+        + "  端上照着它写的那段界面在真机上永远不出现，而本机（mock）是对的。\n  "
+        + [...missing].join("\n  "),
+    ).toBeLessThanOrEqual(OPTIONAL_BASELINE[app] ?? 0);
+  });
+
   /*
    * ⚠️ 这两条要显式给 30 秒。它们逐个契约方法去后端源码里找返回类型并解析字段，
    * 单独跑 3 秒出头 —— 但全量是并发跑的，几十个文件抢 CPU 时轻易越过默认的 5 秒。
@@ -410,8 +469,14 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
      * ⚠️ **基线是 2026-09-05 重新量的**（b-app 31 / c-app 25）。
      * 旧值 15 / 29 是判据还能扫的时候量的，中间空转了一段，期间新欠的账没人拦住 ——
      * 这也正是上面那条 `scanned` 断言存在的理由。
+     *
+     * ⚠️ **c-app 当天晚些时候从 25 抬到 28，抬的不是欠账**：`OrderVO` 补了
+     * `reviewed` / `afterSale` / `payGroupSize` 三个字段（G15），端上三个都接了，
+     * 而 `OrderPreview` 是 `OrderVO` 的**有意子集**，于是它一口气多欠三条。
+     * 这正是上面说的那个钝处 —— 真要把两类分开，得给子集类型加个标记，
+     * 那是这条棘轮自己的下一步。
      */
-    const BASELINE: Record<string, number> = { "b-app": 31, "c-app": 25 };
+    const BASELINE: Record<string, number> = { "b-app": 31, "c-app": 28 };
     expect(
       dropped.size,
       `${app}：后端在发、契约没接的字段共 ${dropped.size} 个（基线 ${BASELINE[app]}）——\n`

@@ -9,6 +9,7 @@ import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { requestPayment } from "@shared/ports/payment";
+import { codeLabelKey } from "@shared/strategies/order-view";
 import { requestSubscribe, SUBSCRIBE_TMPL } from "@shared/ports/push";
 import { CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
@@ -28,6 +29,11 @@ const now = ref(Date.now());
 let timer: ReturnType<typeof setInterval> | undefined;
 
 const paid = computed(() => !!order.value && order.value.status !== "WAIT_PAY");
+
+/** 那串码叫什么。与订单详情共用一份判据，别在两处各写一个三分支 */
+const codeLabel = computed(() =>
+  codeLabelKey(order.value?.items[0]?.type, order.value?.fulfillment),
+);
 
 /**
  * 能不能点「去支付」。
@@ -257,14 +263,10 @@ onUnmounted(() => clearInterval(timer));
         <text class="txt-display done__title">{{ $t("pay.done") }}</text>
         <text class="txt-caption done__hint">{{ $t(doneHintKey) }}</text>
 
-        <!-- 各类码：自提码 / 核销码 / 兑换码 -->
+        <!-- 各类码共用一个字段，**标签按品类与履约方式变**（见 order 页同处说明） -->
         <view v-if="order.verifyCode" class="code">
-          <text class="txt-caption code__label">{{ $t("pay.verifyCode") }}</text>
+          <text class="txt-caption code__label">{{ $t(codeLabel) }}</text>
           <text class="txt-hero code__v sh-num">{{ order.verifyCode }}</text>
-        </view>
-        <view v-if="order.redeemCode" class="code code--redeem">
-          <text class="txt-caption code__label">{{ $t("pay.redeemCode") }}</text>
-          <text class="txt-hero code__v sh-num">{{ order.redeemCode }}</text>
         </view>
       </view>
 

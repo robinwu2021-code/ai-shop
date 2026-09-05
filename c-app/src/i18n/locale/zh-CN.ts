@@ -521,6 +521,7 @@ export default {
     submitting: "提交中…",
   },
   pay: {
+    verifyCodeStore: "核销码",
     noUsableMethod: "本单中的店铺暂无可用的支付方式，请联系客服",
     methodFallback: "支付方式将在下一步确认",
     title: "收银台",
