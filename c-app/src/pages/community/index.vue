@@ -310,8 +310,8 @@ onLoad(load);
       模糊定位时文案说「大致位置」——精度是区级，不该让人以为我们知道得更细。
     -->
     <view v-if="!locating && locatedRegion" class="loc">
-      <text class="loc__pin">📍</text>
-      <text class="loc__text">{{
+      <text class="txt-body loc__pin">📍</text>
+      <text class="txt-body loc__text">{{
         $t(locatedRegion.fuzzy ? "community.locatedFuzzy" : "community.located", {
           city: locatedRegion.cityName,
           region: locatedRegion.name,
@@ -435,18 +435,15 @@ onLoad(load);
   border-radius: 16rpx;
   background: var(--sh-primary-tint);
 }
-.loc__pin {
-  font-size: 26rpx;
-}
+/* 字号交给字阶类（见 规范-字体），这里只管颜色 */
 .loc__text {
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
 
 .onmap {
   margin: 24rpx auto 0;
   padding: 16rpx 32rpx;
-  border-radius: 999rpx;
+  border-radius: 9999px;
   border: 2rpx solid var(--sh-primary);
   color: var(--sh-primary);
   text-align: center;

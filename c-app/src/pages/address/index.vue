@@ -408,7 +408,7 @@ onShow(() => {
           class="txt-caption op txt-primary"
           @tap.stop="useHere(a)"
         >{{ $t("address.useHere") }}</text>
-        <text v-else class="txt-caption op is-active">{{ $t("address.here") }}</text>
+        <text v-else class="txt-caption txt-strong op is-active">{{ $t("address.here") }}</text>
         <text v-if="!a.isDefault" class="txt-caption op txt-primary" @tap.stop="setDefault(a)">
           {{ $t("address.setDefault") }}
         </text>
@@ -541,9 +541,9 @@ onShow(() => {
 </template>
 
 <style scoped>
+/* 字重交给字阶类 txt-strong（见 规范-字体），这里只管颜色 */
 .is-active {
   color: var(--sh-primary);
-  font-weight: 600;
 }
 
 .regionrow {

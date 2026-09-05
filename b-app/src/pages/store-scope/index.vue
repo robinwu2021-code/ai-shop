@@ -479,14 +479,14 @@ onShow(() => {
         两个基数都给：光说「会覆盖 12 个」，他答不出那是多了还是少了。
       -->
       <view v-if="preview && dirty" class="pv">
-        <text class="pv__t">{{ $t("store.previewTitle") }}</text>
-        <text class="pv__l">
+        <text class="txt-body pv__t">{{ $t("store.previewTitle") }}</text>
+        <text class="txt-caption pv__l">
           {{ $t("store.previewCommunities", {
             a: preview.currentCommunities, b: preview.nextCommunities,
             d: diffText(preview.nextCommunities - preview.currentCommunities),
           }) }}
         </text>
-        <text class="pv__l">
+        <text class="txt-caption pv__l">
           {{ $t("store.previewBuyers", {
             a: preview.currentBuyers, b: preview.nextBuyers,
             d: diffText(preview.nextBuyers - preview.currentBuyers),
@@ -497,7 +497,7 @@ onShow(() => {
           他确实框了东西（比如一个还没开通任何聚落的街道），只是展开出来是空的，
           而那在他的清单上完全看不出来。
         -->
-        <text v-if="preview.nextCommunities === 0" class="pv__warn">{{ $t("store.previewZero") }}</text>
+        <text v-if="preview.nextCommunities === 0" class="txt-caption pv__warn">{{ $t("store.previewZero") }}</text>
       </view>
       <text v-if="areas.length > activeAreas.length" class="sh-hint">{{ $t("store.areaPendingHint") }}</text>
 
@@ -656,21 +656,17 @@ onShow(() => {
   border-radius: 16rpx;
   background: var(--sh-faint);
 }
+/* 字号交给字阶类（txt-body / txt-caption），这里只管布局与颜色 —— 见 规范-字体 */
 .pv__t {
   display: block;
-  font-size: 26rpx;
-  color: var(--sh-ink);
 }
 .pv__l {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
 }
 .pv__warn {
   display: block;
   margin-top: 8rpx;
-  font-size: 24rpx;
   color: var(--sh-danger);
 }
 .add {

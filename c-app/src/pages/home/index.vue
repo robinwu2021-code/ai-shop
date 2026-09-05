@@ -364,7 +364,7 @@ onShareAppMessage(() =>
   flex-shrink: 0;
 }
 .place__chip {
-  padding: 6rpx 18rpx;
+  padding: 8rpx 20rpx;
   border-radius: 16rpx;
   background: var(--sh-faint);
   color: var(--sh-sub);
@@ -382,8 +382,8 @@ onShareAppMessage(() =>
 .place__here {
   flex-shrink: 0;
   margin-inline-end: 8rpx;
-  padding: 2rpx 10rpx;
-  border-radius: 8rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 16rpx;
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
 }
