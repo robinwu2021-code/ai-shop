@@ -19,7 +19,7 @@ import { useUserStore } from "@/stores/user";
 import { buildShareMessage } from "@shared/ports/share";
 import { GOODS_COVER_FALLBACK, ROUTES } from "@shared/utils/constants";
 import { countdownShort, money } from "@shared/utils/format";
-import { firstSku } from "@shared/utils/goods";
+import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
 import type { Goods, GroupBuy } from "@shared/types";
 
@@ -77,7 +77,7 @@ async function load() {
 
 async function addToCart(g: Goods, e: unknown) {
   try {
-    await cart.add(g.goodsNo, firstSku(g).skuNo, 1);
+    await cart.add(g.goodsNo, firstBuyableSku(g).skuNo, 1);
     const p = tapPoint(e as Parameters<typeof tapPoint>[0]);
     flyToCart(p.x, p.y, g.cover || GOODS_COVER_FALLBACK);
   } catch (err) {

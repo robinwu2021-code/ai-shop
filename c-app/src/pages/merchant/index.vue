@@ -7,7 +7,7 @@ import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { ROUTES, MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
 import { isoDate } from "@shared/utils/format";
-import { firstSku } from "@shared/utils/goods";
+import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
 import { buildShareMessage } from "@shared/ports/share";
 import type { Goods, Merchant, Review } from "@shared/types";
@@ -36,7 +36,7 @@ function openGoods(g: Goods) {
 
 async function add(g: Goods, e: unknown) {
   try {
-    await cart.add(g.goodsNo, firstSku(g).skuNo, 1);
+    await cart.add(g.goodsNo, firstBuyableSku(g).skuNo, 1);
     const p = tapPoint(e as Parameters<typeof tapPoint>[0]);
     flyToCart(p.x, p.y, g.cover);
   } catch (err) {

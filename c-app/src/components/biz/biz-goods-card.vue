@@ -3,6 +3,7 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { GOODS_COVER_FALLBACK, CATEGORY_TYPE, MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
+import { goodsSoldOut } from "@shared/utils/goods";
 import { money } from "@shared/utils/format";
 import type { Goods } from "@shared/types";
 
@@ -27,6 +28,15 @@ const timeText = computed(() => {
   const head = String(t("home.cutoffIn", { t: props.countdownText }));
   return props.goods.arrivalDesc ? `${head} · ${props.goods.arrivalDesc}` : head;
 });
+
+/**
+ * 整件都没货了。
+ *
+ * ⚠️ **这张卡此前没有售罄态** —— 「＋」无条件画出来、点了也无条件成功
+ *（加购这条路后端与 mock 都不校验库存），于是卖光的商品照样能加进购物车，
+ * 用户要到购物车的失效区才看见。见交互清单 G9。
+ */
+const soldOut = computed(() => goodsSoldOut(props.goods));
 
 const off = computed(() => {
   const o = props.goods.originPrice;
@@ -65,7 +75,12 @@ const off = computed(() => {
           {{ money(goods.originPrice) }}
         </text>
         <text v-if="off" class="sh-chip sh-chip--danger sh-num">-{{ off }}%</text>
-        <view class="add" @tap.stop="$emit('add', $event)">
+        <!--
+          售罄就把「＋」换成一句话，而不是画一个点了没用的按钮。
+          位置不变：手指本来就要落在这儿，换的是它说什么。
+        -->
+        <text v-if="soldOut" class="sh-chip sold">{{ $t("goods.soldOut") }}</text>
+        <view v-else class="add" @tap.stop="$emit('add', $event)">
           <text class="add__sign">＋</text>
         </view>
       </view>
@@ -175,6 +190,11 @@ const off = computed(() => {
 /* 时效行用警示色：它是「再不下单就没了」，与描述那行的中性灰不是一个分量 */
 .card__sub--time {
   color: var(--sh-warning);
+}
+/* 售罄标记占的是「＋」的位置，所以也靠右 */
+.sold {
+  margin-inline-start: auto;
+  flex-shrink: 0;
 }
 .add {
   width: 60rpx;

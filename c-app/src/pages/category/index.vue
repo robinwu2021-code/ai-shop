@@ -6,7 +6,7 @@ import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
 import { GOODS_COVER_FALLBACK, CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
-import { firstSku } from "@shared/utils/goods";
+import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
 import type { CategoryType, Goods } from "@shared/types";
 
@@ -50,7 +50,7 @@ function switchTab(type: CategoryType) {
 
 async function add(g: Goods, e: unknown) {
   try {
-    await cart.add(g.goodsNo, firstSku(g).skuNo, 1);
+    await cart.add(g.goodsNo, firstBuyableSku(g).skuNo, 1);
     const p = tapPoint(e as Parameters<typeof tapPoint>[0]);
     flyToCart(p.x, p.y, g.cover || GOODS_COVER_FALLBACK);
   } catch (err) {
