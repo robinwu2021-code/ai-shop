@@ -142,57 +142,57 @@ function close() {
   <view v-if="visible" class="mask" @tap="close">
     <view class="sheet" @tap.stop>
       <view class="sheet__head">
-        <text class="sheet__title">{{ $t("store.pickup.title") }}</text>
-        <text class="sheet__count">{{ $t("store.picker.selected", { n: picked.length }) }}</text>
+        <text class="txt-title sheet__title">{{ $t("store.pickup.title") }}</text>
+        <text class="txt-sub sheet__count">{{ $t("store.picker.selected", { n: picked.length }) }}</text>
       </view>
-      <text class="hint">{{ $t("store.pickup.lead") }}</text>
+      <text class="txt-caption hint">{{ $t("store.pickup.lead") }}</text>
 
       <scroll-view scroll-y class="body">
-        <text v-if="loading" class="hint">{{ $t("common.loading") }}</text>
+        <text v-if="loading" class="txt-caption hint">{{ $t("common.loading") }}</text>
         <template v-else>
-          <text v-if="mine.length" class="group">{{ $t("store.pickup.mine") }}</text>
+          <text v-if="mine.length" class="txt-caption group">{{ $t("store.pickup.mine") }}</text>
           <view v-for="c in mine" :key="c.pickupNo" class="row" :class="{ 'is-off': !selectable(c) }" @tap="toggle(c)">
             <view class="row__main">
-              <text class="row__name">
+              <text class="txt-strong row__name">
                 {{ c.name }}<text v-if="c.status !== 'ACTIVE'" class="sh-chip row__st" :class="c.status === 'PENDING' ? 'sh-chip--warning' : ''">{{ $t(`store.pickup.st${c.status}`) }}</text>
               </text>
-              <text class="row__sub">{{ c.address || c.communityName }}</text>
-              <text v-if="c.status === 'REJECTED' && c.rejectReason" class="row__reason">{{ c.rejectReason }}</text>
+              <text class="txt-caption row__sub">{{ c.address || c.communityName }}</text>
+              <text v-if="c.status === 'REJECTED' && c.rejectReason" class="txt-caption row__reason">{{ c.rejectReason }}</text>
             </view>
             <view v-if="selectable(c)" class="row__check" :class="{ 'is-on': isOn(c.pickupNo) }">
               <sh-icon v-if="isOn(c.pickupNo)" name="check" :size="24" color="var(--sh-on-primary)"></sh-icon>
             </view>
           </view>
 
-          <text v-if="others.length" class="group">{{ $t("store.pickup.nearby") }}</text>
+          <text v-if="others.length" class="txt-caption group">{{ $t("store.pickup.nearby") }}</text>
           <view v-for="c in others" :key="c.pickupNo" class="row" @tap="toggle(c)">
             <view class="row__main">
-              <text class="row__name">{{ c.name }}</text>
-              <text class="row__sub">{{ c.communityName }}<template v-if="c.address"> · {{ c.address }}</template></text>
+              <text class="txt-strong row__name">{{ c.name }}</text>
+              <text class="txt-caption row__sub">{{ c.communityName }}<template v-if="c.address"> · {{ c.address }}</template></text>
             </view>
             <view class="row__check" :class="{ 'is-on': isOn(c.pickupNo) }">
               <sh-icon v-if="isOn(c.pickupNo)" name="check" :size="24" color="var(--sh-on-primary)"></sh-icon>
             </view>
           </view>
-          <text v-if="!mine.length && !others.length" class="hint">{{ $t("store.pickup.empty") }}</text>
+          <text v-if="!mine.length && !others.length" class="txt-caption hint">{{ $t("store.pickup.empty") }}</text>
 
           <!-- 自建 -->
           <view v-if="!buildOpen" class="row row--build" @tap="buildOpen = true">
-            <text class="row__build">{{ $t("store.pickup.buildEntry") }}</text>
+            <text class="txt-sub row__build">{{ $t("store.pickup.buildEntry") }}</text>
           </view>
           <view v-else class="build">
-            <text class="hint">{{ $t("store.pickup.buildHint") }}</text>
+            <text class="txt-caption hint">{{ $t("store.pickup.buildHint") }}</text>
             <input v-model="form.name" class="field__input" :maxlength="30" :placeholder="$t('store.pickup.namePh')" />
             <input v-model="form.address" class="field__input" :maxlength="100" :placeholder="$t('store.pickup.addressPh')" />
             <text class="field__label">{{ $t("store.pickup.hoursPh") }}</text>
             <biz-time-range v-model="form.openHours" clearable></biz-time-range>
             <view class="locate" :class="{ 'is-ok': !!coords }" @tap="locate">
               <sh-icon name="pin" :size="18" :color="coords ? 'var(--sh-primary-text)' : 'var(--sh-sub)'"></sh-icon>
-              <text class="locate__t">{{ locating ? $t("common.loading") : coords ? $t("store.pickup.pinned") : $t("store.pickup.pin") }}</text>
+              <text class="txt-caption locate__t">{{ locating ? $t("common.loading") : coords ? $t("store.pickup.pinned") : $t("store.pickup.pin") }}</text>
             </view>
             <view class="build__btns">
               <text class="sh-btn sh-btn--soft build__go" @tap="submitBuild">{{ submitting ? "…" : $t("common.submit") }}</text>
-              <text class="mini" @tap="buildOpen = false">{{ $t("common.cancel") }}</text>
+              <text class="txt-caption mini" @tap="buildOpen = false">{{ $t("common.cancel") }}</text>
             </view>
           </view>
         </template>
@@ -230,19 +230,14 @@ function close() {
   padding: 28rpx 32rpx 8rpx;
 }
 .sheet__title {
-  font-size: 34rpx;
-  font-weight: 600;
   color: var(--sh-ink);
 }
 .sheet__count {
-  font-size: 26rpx;
   color: var(--sh-sub);
 }
 .hint {
   display: block;
   padding: 8rpx 32rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
   color: var(--sh-sub);
 }
 .body {
@@ -253,7 +248,6 @@ function close() {
 .group {
   display: block;
   padding: 16rpx 32rpx 4rpx;
-  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .row {
@@ -272,24 +266,19 @@ function close() {
 }
 .row__name {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
   color: var(--sh-ink);
 }
 .row__st {
   margin-inline-start: 12rpx;
-  font-weight: 400;
 }
 .row__sub {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .row__reason {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
   color: var(--sh-danger);
 }
 .row__check {
@@ -311,7 +300,6 @@ function close() {
   border-bottom: none;
 }
 .row__build {
-  font-size: 26rpx;
   color: var(--sh-primary-text);
 }
 .build {
@@ -333,7 +321,6 @@ function close() {
   background: var(--sh-primary-tint);
 }
 .locate__t {
-  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .locate.is-ok .locate__t {
@@ -351,7 +338,6 @@ function close() {
   border-radius: 16rpx;
   background: var(--sh-faint);
   color: var(--sh-sub);
-  font-size: 24rpx;
 }
 .foot {
   padding: 16rpx 24rpx;

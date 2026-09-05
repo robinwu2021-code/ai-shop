@@ -124,14 +124,14 @@ function crumbs() {
     <sh-tabs :items="crumbs()" :active="String(step)" @change="back(Number($event))"></sh-tabs>
 
     <sh-empty v-if="failed" bare :text="String($t('address.regionFailed'))"></sh-empty>
-    <text v-else-if="loading" class="lv__ph sh-ph">{{ $t("common.loading") }}</text>
+    <text v-else-if="loading" class="txt-sub lv__ph sh-ph">{{ $t("common.loading") }}</text>
     <sh-empty v-else-if="!rows.length" bare :text="String($t('address.regionEmpty'))"></sh-empty>
 
     <view v-else class="lv">
       <text
         v-for="r in rows"
         :key="r.regionCode"
-        class="lv__node"
+        class="txt-body lv__node"
         :class="{ 'is-on': chosen[step]?.code === r.regionCode }"
         @tap="choose(r)"
       >
@@ -152,20 +152,17 @@ function crumbs() {
 .lv__node {
   display: block;
   padding: 26rpx 4rpx;
-  font-size: 28rpx;
   color: var(--sh-ink);
   border-bottom: var(--sh-hairline-soft);
 }
 
 .lv__node.is-on {
   color: var(--sh-primary-text);
-  font-weight: 600;
 }
 
 .lv__ph {
   display: block;
   padding: 48rpx 0;
   text-align: center;
-  font-size: 26rpx;
 }
 </style>

@@ -39,13 +39,13 @@ function clear() {
 <template>
   <view class="tr">
     <picker mode="time" :value="parts.start || '08:00'" @change="setPart('start', String(($event as any).detail.value))">
-      <view class="tr__box" :class="{ 'is-empty': !parts.start }">{{ parts.start || $t("store.timeRange.startPh") }}</view>
+      <view class="txt-body tr__box" :class="{ 'is-empty': !parts.start }">{{ parts.start || $t("store.timeRange.startPh") }}</view>
     </picker>
-    <text class="tr__sep">{{ SEP }}</text>
+    <text class="txt-body tr__sep">{{ SEP }}</text>
     <picker mode="time" :value="parts.end || '21:00'" @change="setPart('end', String(($event as any).detail.value))">
-      <view class="tr__box" :class="{ 'is-empty': !parts.end }">{{ parts.end || $t("store.timeRange.endPh") }}</view>
+      <view class="txt-body tr__box" :class="{ 'is-empty': !parts.end }">{{ parts.end || $t("store.timeRange.endPh") }}</view>
     </picker>
-    <text v-if="clearable && modelValue" class="tr__clear" @tap="clear">{{ $t("store.timeRange.clear") }}</text>
+    <text v-if="clearable && modelValue" class="txt-caption tr__clear" @tap="clear">{{ $t("store.timeRange.clear") }}</text>
   </view>
 </template>
 
@@ -66,7 +66,6 @@ function clear() {
   padding: 0 24rpx;
   border-radius: 24rpx;
   background: var(--sh-faint);
-  font-size: 30rpx;
   color: var(--sh-ink);
 }
 .tr__box.is-empty {
@@ -74,12 +73,10 @@ function clear() {
 }
 .tr__sep {
   flex-shrink: 0;
-  font-size: 28rpx;
   color: var(--sh-sub);
 }
 .tr__clear {
   flex-shrink: 0;
-  font-size: 24rpx;
   color: var(--sh-sub);
 }
 </style>

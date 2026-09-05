@@ -243,7 +243,7 @@ onLoad((q) => {
       <text v-if="budgetTooLow" class="txt-caption bad">{{ $t("couponEdit.budgetTooLow") }}</text>
     </view>
 
-    <button class="sh-btn sh-btn--primary save" :disabled="saving" @tap="save">
+    <button class="sh-btn save" :disabled="saving" @tap="save">
       {{ $t("couponEdit.save") }}
     </button>
   </sh-scaffold>

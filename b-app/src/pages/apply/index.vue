@@ -559,7 +559,7 @@ async function submit() {
           <input
             maxlength="64"
             v-model="q.code"
-            class="sh-input"
+            class="field__input"
             :placeholder="$t('apply.qualCode')"
           />
           <view class="qual__row sh-row">
@@ -570,7 +570,7 @@ async function submit() {
             <input
               maxlength="10"
               v-if="!foreverFlags[i]"
-              class="sh-input qual__date"
+              class="field__input qual__date"
               type="number"
               :value="q.expireAt ?? ''"
               :placeholder="$t('apply.qualExpire')"

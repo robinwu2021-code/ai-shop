@@ -69,8 +69,30 @@ KIND = ["字号自写", "字号越档", "字重自写", "字重越档", "行高�
 
 
 def scan(app: str):
+    """扫 `src/pages` **和** `src/components`。
+
+    2026-09-06 加的 components：这道闸此前只看 pages/，报「两端 94 页全部合规」——
+    而首页那一屏上每一行都不是页面画的，是 `biz-goods-card` 画的。
+    扫描面一漏，**合规率就是在量一个不完整的东西**：components 下当场量出 123 处
+    （字号自写 75 / 字重自写 20 / 行高自写 14 / 字号越档 6 / 间距离格 8），
+    最大的一个文件一个人就占 35 处。
+
+    与 `typography.test.ts` 的分工：那一份**一直**在扫 components（所以「字号在不在
+    字阶上」是干净的），漏的是这一份特有的几条 —— 「字号该不该自己写」「行高该不该
+    自己写」「颜色写没写死」。两把尺量的不是同一个东西，缺的那把在这儿。
+    """
     rows = []
-    for f in sorted((ROOT / app / "src/pages").rglob("*.vue")):
+    roots = [(ROOT / app / "src/pages", "page"), (ROOT / app / "src/components", "comp")]
+    for base, kind in roots:
+        if not base.exists():
+            continue
+        rows += _scan_dir(app, base, kind)
+    return rows
+
+
+def _scan_dir(app: str, base: pathlib.Path, kind: str):
+    rows = []
+    for f in sorted(base.rglob("*.vue")):
         s = f.read_text(encoding="utf-8")
         if "<style" not in s:
             continue
@@ -121,7 +143,8 @@ def scan(app: str):
                 if cls in UNO_COLLIDE:
                     c["撞工具类"] += 1
                     detail["撞工具类"].append(cls)
-        rows.append({"app": app, "page": f.parent.name, "file": str(f.relative_to(ROOT)),
+        name = f.parent.name if kind == "page" else f.stem
+        rows.append({"app": app, "page": name, "file": str(f.relative_to(ROOT)),
                      "counts": c, "detail": {k: collections.Counter(v).most_common(4) for k, v in detail.items()},
                      "total": sum(c[k] for k in KIND)})
     return rows
@@ -134,6 +157,16 @@ def main():
     ap.add_argument("--check", action="store_true")
     a = ap.parse_args()
     rows = scan("b-app") + scan("c-app") if a.app == "both" else scan(a.app)
+    # 扫描面自检：**「找出违规」型的判据，少扫就等于全绿**。这道闸 2026-09-06 之前
+    # 只扫 pages/，于是「两端 94 页全部合规」这句话是真的、也是没用的 —— 首页那一屏
+    # 上每一行都是 components/ 画的，那里当时有 123 处欠账。所以两边都要真的扫到。
+    kinds = {r["file"].split("/src/")[1].split("/")[0] for r in rows}
+    if not {"pages", "components"} <= kinds:
+        print(f"✗ 扫描面不全：只扫到 {sorted(kinds)} —— pages 与 components 两边都要扫")
+        return 1
+    if len(rows) < 60:
+        print(f"✗ 只扫到 {len(rows)} 个文件，判据多半没走到目录 —— 空转的闸门恒绿")
+        return 1
     tot = collections.Counter()
     for r in rows:
         tot.update(r["counts"])
@@ -171,7 +204,7 @@ def main():
         c = r["counts"]
         flag = "" if r["total"] else " ✅"
         print(f"| `{r['page']}`{flag} | {r['total']} | {c['字号自写']}/{c['字号越档']} | "
-              f"{c['字重自写']}/{c['字重越档']} | {c['圆角越档']} | {c['间距越档']} | {c['行高自写']} | {c['写死颜色']} |")
+              f"{c['字重自写']}/{c['字重越档']} | {c['圆角越档']} | {c['间距离格']} | {c['行高自写']} | {c['写死颜色']} |")
     off = collections.Counter()
     for r in rows:
         for k in ("间距离格", "圆角越档", "字号越档"):
@@ -181,7 +214,7 @@ def main():
     print("| 项 | 值 | 处数 | 就近的档 |")
     print("|---|---|---:|---|")
     for (k, v), n in off.most_common(15):
-        pool = SPACE if k == "间距越档" else (RADIUS if k == "圆角越档" else TYPE)
+        pool = SPACE if k == "间距离格" else (RADIUS if k == "圆角越档" else TYPE)
         try:
             near = min((p for p in pool if p.endswith("rpx")), key=lambda p: abs(int(p[:-3]) - int(float(v[:-3]))))
         except Exception:

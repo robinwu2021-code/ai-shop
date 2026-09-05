@@ -32,8 +32,8 @@ withDefaults(
   <view class="skurow" :class="`skurow--${size}`">
     <sh-cover class="skurow__cover" :src="cover"></sh-cover>
     <view class="skurow__main">
-      <text class="skurow__title">{{ title }}</text>
-      <text v-if="spec" class="skurow__spec">{{ spec }}</text>
+      <text class="txt-strong skurow__title">{{ title }}</text>
+      <text v-if="spec" class="txt-caption txt-quiet skurow__spec">{{ spec }}</text>
       <slot />
     </view>
     <slot name="right" />
@@ -79,9 +79,6 @@ withDefaults(
 }
 .skurow__title {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  line-height: 1.4;
   color: var(--sh-ink);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -89,8 +86,7 @@ withDefaults(
 }
 .skurow__spec {
   display: block;
-  font-size: 24rpx;
   color: var(--sh-sub);
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 </style>

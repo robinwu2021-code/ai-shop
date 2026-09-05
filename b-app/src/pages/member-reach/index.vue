@@ -158,7 +158,7 @@ onShow(() => {
       <textarea v-model="body" class="field__input area" :placeholder="$t('reach.bodyPh')" />
     </view>
 
-    <button class="sh-btn sh-btn--primary send" :disabled="!canSend" @tap="send">
+    <button class="sh-btn send" :disabled="!canSend" @tap="send">
       {{ plan && plan.reachable
         ? $t("reach.sendN", { n: plan.reachable })
         : $t("reach.sendNone") }}

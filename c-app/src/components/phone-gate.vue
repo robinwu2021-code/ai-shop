@@ -114,11 +114,11 @@ async function bind(run: () => Promise<unknown>) {
 <template>
   <view v-if="show" class="mask" @tap="emit('close')">
     <view class="sheet" @tap.stop>
-      <text class="sheet__title">{{ $t("phoneGate.title") }}</text>
-      <text class="sheet__why">{{ $t("phoneGate.why") }}</text>
+      <text class="txt-title sheet__title">{{ $t("phoneGate.title") }}</text>
+      <text class="sh-muted sheet__why">{{ $t("phoneGate.why") }}</text>
 
       <view v-if="conflict" class="conflict">
-        <text class="conflict__text">{{ $t("phoneGate.conflict") }}</text>
+        <text class="txt-sub conflict__text">{{ $t("phoneGate.conflict") }}</text>
       </view>
 
       <!-- 一键：拿到的是 code，换号在后端 -->
@@ -134,12 +134,12 @@ async function bind(run: () => Promise<unknown>) {
 
       <!-- 回落：手机号 + 验证码。一键可用时它仍然在，只是收起成一行小字入口 -->
       <view v-if="!capable" class="form">
-        <input v-model="phone" class="form__input" type="number" maxlength="11"
+        <input v-model="phone" class="field__input form__input" type="number" maxlength="11"
                :placeholder="String($t('phoneGate.phonePlaceholder'))" />
         <view class="form__row">
-          <input v-model="code" class="form__input form__input--code" type="number" maxlength="6"
+          <input v-model="code" class="field__input form__input form__input--code" type="number" maxlength="6"
                  :placeholder="String($t('phoneGate.codePlaceholder'))" />
-          <view class="form__send" :class="{ 'is-off': sending }" @tap="sendCode">
+          <view class="sh-btn sh-btn--soft sh-btn--sm form__send" :class="{ 'is-off': sending }" @tap="sendCode">
             {{ $t("phoneGate.sendCode") }}
           </view>
         </view>
@@ -148,10 +148,10 @@ async function bind(run: () => Promise<unknown>) {
         </button>
       </view>
 
-      <text v-if="capable" class="switch" @tap="capable = false">
+      <text v-if="capable" class="sh-muted switch" @tap="capable = false">
         {{ $t("phoneGate.useCode") }}
       </text>
-      <text class="cancel" @tap="emit('close')">{{ $t("phoneGate.later") }}</text>
+      <text class="sh-muted cancel" @tap="emit('close')">{{ $t("phoneGate.later") }}</text>
     </view>
   </view>
 </template>
@@ -174,15 +174,11 @@ async function bind(run: () => Promise<unknown>) {
 }
 .sheet__title {
   display: block;
-  font-size: 34rpx;
   color: var(--sh-ink);
 }
 .sheet__why {
   display: block;
   margin-top: 12rpx;
-  font-size: 26rpx;
-  line-height: 1.6;
-  color: var(--sh-sub);
 }
 .conflict {
   margin-top: 24rpx;
@@ -191,21 +187,15 @@ async function bind(run: () => Promise<unknown>) {
   background: var(--sh-warning-tint);
 }
 .conflict__text {
-  font-size: 26rpx;
-  line-height: 1.6;
   color: var(--sh-ink);
 }
 .form {
   margin-top: 32rpx;
 }
+/* 形态归 .field__input（88rpx / 24rpx 圆角 / faint 底，与两端所有输入框同一档）；
+   这里只留这张弹层里项与项之间的缝 */
 .form__input {
-  height: 88rpx;
-  padding: 0 24rpx;
   margin-bottom: 20rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  font-size: 28rpx;
-  color: var(--sh-ink);
 }
 .form__row {
   display: flex;
@@ -215,15 +205,15 @@ async function bind(run: () => Promise<unknown>) {
 .form__input--code {
   flex: 1;
 }
+/* 形态归 .sh-btn--soft + --sm（tint 胶囊，26rpx）；只把高度对齐旁边那个输入框 */
+/* 居中用 flex 而不是 line-height：后者既是「行距」又是「盒高」，
+   判据分不出来，而字阶那一档的行距本来该由 .sh-btn--sm 给 */
 .form__send {
-  padding: 0 24rpx;
+  display: flex;
+  align-items: center;
   height: 88rpx;
-  line-height: 88rpx;
+  padding: 0 24rpx;
   margin-bottom: 20rpx;
-  border-radius: 24rpx;
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
-  font-size: 26rpx;
 }
 .form__send.is-off {
   opacity: 0.5;
@@ -233,7 +223,5 @@ async function bind(run: () => Promise<unknown>) {
   display: block;
   margin-top: 28rpx;
   text-align: center;
-  font-size: 26rpx;
-  color: var(--sh-sub);
 }
 </style>

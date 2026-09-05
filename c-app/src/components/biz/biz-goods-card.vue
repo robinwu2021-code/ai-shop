@@ -50,7 +50,7 @@ const off = computed(() => {
     <sh-cover class="card__cover" :src="goods.cover || GOODS_COVER_FALLBACK"></sh-cover>
 
     <view class="card__body">
-      <text class="card__title">{{ goods.title }}</text>
+      <text class="txt-strong card__title">{{ goods.title }}</text>
       <!--
         第二行**按优先级取内容**，不是固定放描述：
           有活动时效 → 时效（警示色，且带上到货说明）
@@ -61,17 +61,17 @@ const off = computed(() => {
         为什么不干脆删成三行：倒计时只有生鲜有，百货卡会矮一截，一列卡片高矮不齐、
         封面还得跟着变大小。按优先级取内容，两类商品都是四行，等高。
       -->
-      <text v-if="showCutoff" class="card__sub card__sub--time">{{ timeText }}</text>
-      <text v-else-if="isService && goods.storeName" class="card__sub">
+      <text v-if="showCutoff" class="sh-muted card__sub card__sub--time">{{ timeText }}</text>
+      <text v-else-if="isService && goods.storeName" class="sh-muted card__sub">
         {{ goods.storeName }}
       </text>
-      <text v-else class="card__sub">{{ goods.subtitle }}</text>
+      <text v-else class="sh-muted card__sub">{{ goods.subtitle }}</text>
 
       <!-- 价格行只放价格这一件事：现价 + 划线价 + 折扣。
            时效搬到上一行之后，这里三件在英文下也放得开 -->
       <view class="card__foot">
-        <text class="price__now sh-num">{{ money(goods.price) }}</text>
-        <text v-if="goods.originPrice" class="price__was sh-num">
+        <text class="txt-price price__now sh-num">{{ money(goods.price) }}</text>
+        <text v-if="goods.originPrice" class="txt-caption txt-quiet price__was sh-num">
           {{ money(goods.originPrice) }}
         </text>
         <text v-if="off" class="sh-chip sh-chip--danger sh-num">-{{ off }}%</text>
@@ -88,9 +88,9 @@ const off = computed(() => {
       <!-- 落款行：谁在卖 + 卖得好不好。位置固定在最下面才好扫 -->
       <view class="card__merchant">
         <!-- 自营标识（电商法 §37）。放在店名前 —— 「谁在卖」先于「货是谁供的」 -->
-        <text v-if="goods.merchant.selfOperated" class="card__self">{{ $t("merchant.selfOperated") }}</text>
-        <text class="card__shop">{{ goods.merchant.logo || MERCHANT_LOGO_FALLBACK }} {{ goods.merchant.name }}</text>
-        <text class="card__sales sh-num">{{ $t("common.sold", { n: goods.sales }) }}</text>
+        <text v-if="goods.merchant.selfOperated" class="sh-chip sh-chip--primary card__self">{{ $t("merchant.selfOperated") }}</text>
+        <text class="txt-caption txt-quiet card__shop">{{ goods.merchant.logo || MERCHANT_LOGO_FALLBACK }} {{ goods.merchant.name }}</text>
+        <text class="txt-caption txt-quiet card__sales sh-num">{{ $t("common.sold", { n: goods.sales }) }}</text>
       </view>
     </view>
   </view>
@@ -142,23 +142,19 @@ const off = computed(() => {
 }
 .card__title {
   /* 商品名是列表的主体 —— 用户是照着它找东西的，所以按「卡片主标题」处理
-     （字阶的 .txt-strong，30rpx/600）。
+     （字阶的 .txt-strong，28rpx/600）。**这里原先写死的是 30rpx** ——
+     注释点名了 txt-strong，代码却比它大一档，两边差 1px 谁也看不出来，
+     结果是同一句「主标题」在卡里和在页面上不是一个尺寸。现在挂类，不写字号。
      它现在真的醒目，靠的不是自己变重，而是**周围都轻了**：
      副标题、店铺、销量、标签统统降到 400，一列扫下来先看见的就是名字和价格。 */
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  font-size: 30rpx;
-  font-weight: 600;
-  line-height: 1.4;
   color: var(--sh-ink);
   overflow: hidden;
 }
 .card__sub {
   display: block;
-  font-size: 26rpx;
-  line-height: 1.5;
-  color: var(--sh-sub);
   margin-top: 4rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -167,23 +163,21 @@ const off = computed(() => {
 .card__foot {
   display: flex;
   align-items: center;
-  gap: 10rpx;
-  margin-top: 10rpx;
+  gap: 12rpx;
+  margin-top: 12rpx;
 }
-/* 卡片里的 chip 比通用件矮一档：通用 chip 是给正文用的，密排列表里显得肿 */
-.card__foot .sh-chip {
+/* 卡片里的 chip 比通用件矮一档：通用 chip 是给正文用的，密排列表里显得肿。
+   落款行的自营标识也是同一颗 chip，所以判据放在整张卡上而不是只在价格行 */
+.card .sh-chip {
   padding: 5rpx 14rpx;
 }
+/* 价格的档位归 .txt-price（34rpx/700）；这里只把它钉住不被压缩，
+   颜色回到墨色 —— 字阶不管颜色 */
 .price__now {
-  font-size: 34rpx;
-  font-weight: 700;
-  line-height: 1.3;
   color: var(--sh-ink);
   flex-shrink: 0;
 }
 .price__was {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   text-decoration: line-through;
   flex-shrink: 0;
 }
@@ -219,25 +213,18 @@ const off = computed(() => {
   gap: 16rpx;
   margin-top: 8rpx;
 }
+/* 自营标识就是一颗 tint chip（形态归 .sh-chip--primary）——
+   此前自己写了一份，圆角还取的是 `var(--sh-radius-sm)`，而库里没有这个变量 */
 .card__self {
   margin-inline-end: 8rpx;
-  padding: 0 8rpx;
-  border-radius: var(--sh-radius-sm, 16rpx);
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
-  font-size: 24rpx;
 }
 .card__shop {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .card__sales {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   flex-shrink: 0;
 }
 </style>

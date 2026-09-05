@@ -1196,24 +1196,24 @@ function close() {
         而「我到底选了几条」是这一屏从头到尾都要能看见的东西。
       -->
       <view class="sheet__head">
-        <text class="sheet__title">{{ $t("store.picker.title") }}</text>
+        <text class="txt-title sheet__title">{{ $t("store.picker.title") }}</text>
         <view v-if="chosen.length" class="sheet__sel" @tap="chosenOpen = !chosenOpen">
-          <text class="sheet__selT">{{ $t("store.picker.selected", { n: areas.length }) }}</text>
-          <text class="sheet__selM">{{ chosenOpen ? $t("store.picker.collapse") : $t("store.picker.expand") }}</text>
+          <text class="txt-sub sheet__selT">{{ $t("store.picker.selected", { n: areas.length }) }}</text>
+          <text class="txt-caption sheet__selM">{{ chosenOpen ? $t("store.picker.collapse") : $t("store.picker.expand") }}</text>
         </view>
-        <text v-else class="sheet__count">{{ $t("store.picker.selected", { n: areas.length }) }}</text>
+        <text v-else class="txt-sub sheet__count">{{ $t("store.picker.selected", { n: areas.length }) }}</text>
       </view>
 
       <!-- 已选清单：误点很容易，必须有个当场能删的地方。开关在标题栏右侧 -->
       <view v-if="chosen.length && chosenOpen" class="chosen">
         <view class="chosen__list">
-          <view v-for="a in chosen" :key="a.level + a.refCode" class="chosen__row">
+          <view v-for="a in chosen" :key="a.level + a.refCode" class="txt-sub chosen__row">
             <text class="chosen__name" :class="{ 'is-off': a.mode === 'EXCLUDE' }">{{ a.name }}</text>
             <!-- 排除项混在已选里而不标出来 = 商家以为自己多做了一片，其实是少做了一片 -->
-            <text v-if="a.mode === 'EXCLUDE'" class="chosen__ex">{{ $t("store.picker.excludedTag") }}</text>
+            <text v-if="a.mode === 'EXCLUDE'" class="txt-caption chosen__ex">{{ $t("store.picker.excludedTag") }}</text>
             <!-- 待审的要在**已选清单里**看得见：只写在行上的话，勾完就再也看不到了 -->
-            <text v-if="areaPending(a)" class="chosen__audit">{{ $t("store.picker.pendingTag") }}</text>
-            <text class="chosen__del" @tap="removeArea(a)">{{ $t("common.remove") }}</text>
+            <text v-if="areaPending(a)" class="txt-caption chosen__audit">{{ $t("store.picker.pendingTag") }}</text>
+            <text class="txt-caption chosen__del" @tap="removeArea(a)">{{ $t("common.remove") }}</text>
           </view>
         </view>
       </view>
@@ -1223,13 +1223,13 @@ function close() {
         商家不需要在第二个 Tab 里重学一遍怎么点。
       -->
       <view class="tabs">
-        <text class="tab" :class="{ 'is-on': tab === 'REGION' }" @tap="tab = 'REGION'">{{ $t("store.picker.tabRegion") }}</text>
-        <text class="tab" :class="{ 'is-on': tab === 'SEARCH' }" @tap="tab = 'SEARCH'">{{ $t("store.picker.tabSearch") }}</text>
+        <text class="txt-body tab" :class="{ 'is-on': tab === 'REGION' }" @tap="tab = 'REGION'">{{ $t("store.picker.tabRegion") }}</text>
+        <text class="txt-body tab" :class="{ 'is-on': tab === 'SEARCH' }" @tap="tab = 'SEARCH'">{{ $t("store.picker.tabSearch") }}</text>
       </view>
 
       <template v-if="tab === 'REGION'">
         <!-- 面包屑：这个 Tab 唯一的导航。任一段可点，点了就回到那一级 -->
-        <view class="crumb">
+        <view class="txt-caption crumb">
           <text class="crumb__i" :class="{ 'is-cur': !trail.length }" @tap="backTo(-1)">{{ $t("store.regionRoot") }}</text>
           <text v-for="(x, i) in trail" :key="x.regionCode" class="crumb__i" :class="{ 'is-cur': i === trail.length - 1 }" @tap="backTo(i)">
             › {{ x.name }}
@@ -1241,8 +1241,8 @@ function close() {
           它让「我就要这一整片」与「我进去挑几个」在同一屏里并列，不用先决定走哪条路。
         -->
         <view v-if="current" class="whole" :class="{ 'is-on': wholePicked }" @tap="toggleWhole">
-          <text class="whole__t">{{ $t("store.picker.wholeLevel", { s: current.name }) }}</text>
-          <text v-if="wholePicked" class="whole__on">{{ $t("store.picker.picked") }}</text>
+          <text class="txt-sub txt-bold whole__t">{{ $t("store.picker.wholeLevel", { s: current.name }) }}</text>
+          <text v-if="wholePicked" class="txt-caption whole__on">{{ $t("store.picker.picked") }}</text>
         </view>
       </template>
 
@@ -1251,7 +1251,7 @@ function close() {
         <input
           maxlength="32"
           v-model="q"
-          class="filter__i"
+          class="txt-sub filter__i"
           placeholder-class="sh-ph"
           placeholder-style="color: var(--sh-sub)"
           cursor-color="var(--sh-primary)"
@@ -1263,38 +1263,38 @@ function close() {
       </view>
 
       <scroll-view scroll-y class="body">
-        <text v-if="tab === 'REGION' && (loading || villageEstatesLoading)" class="hint">{{ $t("common.loading") }}</text>
-        <text v-else-if="tab === 'SEARCH' && q.trim().length < 2" class="hint">{{ $t("store.picker.searchTip") }}</text>
-        <text v-else-if="tab === 'SEARCH' && searching" class="hint">{{ $t("common.loading") }}</text>
+        <text v-if="tab === 'REGION' && (loading || villageEstatesLoading)" class="txt-caption hint">{{ $t("common.loading") }}</text>
+        <text v-else-if="tab === 'SEARCH' && q.trim().length < 2" class="txt-caption hint">{{ $t("store.picker.searchTip") }}</text>
+        <text v-else-if="tab === 'SEARCH' && searching" class="txt-caption hint">{{ $t("common.loading") }}</text>
         <template v-else>
           <!--
             **每一级、每一组都是同一种行**：左边勾选＝把这一整片加进来，右边 › ＝进下一级。
             最后一级（小区/村）没有下级，所以只有勾选 —— 除此之外与上面几级一模一样。
           -->
           <template v-for="g in sections" :key="g.key">
-            <text v-if="g.title" class="group">{{ g.title }}</text>
+            <text v-if="g.title" class="txt-caption group">{{ g.title }}</text>
             <view v-for="r in g.rows" :key="r.key" class="row"
                   :class="{ 'is-covered': coverNote(r), 'is-sub': r.indent, 'is-excluded': rowExcluded(r) }">
               <view class="row__main" @tap="r.hasChild ? drillRow(r) : pickRow(r)">
-                <text class="row__name">{{ r.name }}</text>
+                <text class="txt-body row__name">{{ r.name }}</text>
                 <!--
                   排除态**压过覆盖提示**：两句话同时说（「已被阳光花园覆盖」+「已排除」）
                   是自相矛盾的，商家读不出货到底送不送。排除是他自己做的那个决定，说它。
                 -->
-                <text v-if="rowExcluded(r)" class="row__sub row__sub--off">
+                <text v-if="rowExcluded(r)" class="txt-caption row__sub row__sub--off">
                   {{ $t("store.picker.excludedTag") }}
                 </text>
-                <text v-else-if="coverNote(r)" class="row__sub">
+                <text v-else-if="coverNote(r)" class="txt-caption row__sub">
                   {{ $t("store.picker.coveredTag", { s: shortName(coverNote(r)?.name) }) }}
                 </text>
-                <text v-else-if="r.sub" class="row__sub">{{ r.sub }}</text>
+                <text v-else-if="r.sub" class="txt-caption row__sub">{{ r.sub }}</text>
               </view>
               <!--
                 **被上级盖住的行，右边给的是「排除」而不是一个灰勾。**
                 此前点它只弹一句「已被『阳光花园』覆盖」——说得没错，但那是个死胡同：
                 商家想做的正是「这个小区我做，就 3 幢不送」，而界面上没有任何出口。
               -->
-              <text v-if="canExclude(r)" class="row__ex" :class="{ 'is-on': rowExcluded(r) }"
+              <text v-if="canExclude(r)" class="txt-caption row__ex" :class="{ 'is-on': rowExcluded(r) }"
                     @tap.stop="excludeRow(r)">
                 {{ rowExcluded(r) ? $t("store.picker.undoExclude") : $t("store.picker.exclude") }}
               </text>
@@ -1313,7 +1313,7 @@ function close() {
             </view>
           </template>
 
-          <text v-if="!sections.length" class="hint">
+          <text v-if="!sections.length" class="txt-caption hint">
             {{ tab === "SEARCH" ? $t("store.picker.searchEmpty")
               : atVillage ? $t("store.picker.villageEmpty") : $t("store.picker.levelEmpty") }}
           </text>
@@ -1326,7 +1326,7 @@ function close() {
           点回来直接建档并勾上，没有提报、没有等待（v4）。
         -->
         <view class="maprow" @tap="pickOnMapAndAdd">
-          <text class="maprow__t">{{ picking ? $t("common.loading") : $t("store.picker.mapEntry") }}</text>
+          <text class="txt-body maprow__t">{{ picking ? $t("common.loading") : $t("store.picker.mapEntry") }}</text>
           <sh-icon name="chevronRight" :size="18" color="var(--sh-primary-text)"></sh-icon>
         </view>
       </scroll-view>
@@ -1363,12 +1363,9 @@ function close() {
   padding: 28rpx 32rpx 16rpx;
 }
 .sheet__title {
-  font-size: 34rpx;
-  font-weight: 600;
   color: var(--sh-ink);
 }
 .sheet__count {
-  font-size: 26rpx;
   color: var(--sh-sub);
 }
 .crumb {
@@ -1376,12 +1373,10 @@ function close() {
   flex-wrap: wrap;
   gap: 8rpx;
   margin: 20rpx 32rpx 0;
-  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .crumb__i.is-cur {
   color: var(--sh-ink);
-  font-weight: 600;
 }
 .whole {
   display: flex;
@@ -1393,8 +1388,6 @@ function close() {
   background: var(--sh-primary-tint);
 }
 .whole__t {
-  font-size: 26rpx;
-  font-weight: 600;
   color: var(--sh-primary-text);
 }
 .whole__on {
@@ -1402,7 +1395,6 @@ function close() {
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  font-size: 24rpx;
 }
 .body {
   flex: 1;
@@ -1422,13 +1414,11 @@ function close() {
 }
 .row__name {
   display: block;
-  font-size: 28rpx;
   color: var(--sh-ink);
 }
 .row__sub {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .row__check {
@@ -1449,10 +1439,6 @@ function close() {
 .row--apply {
   border-bottom: none;
 }
-.row__apply {
-  font-size: 26rpx;
-  color: var(--sh-primary-text);
-}
 .apply {
   display: flex;
   flex-direction: column;
@@ -1466,7 +1452,6 @@ function close() {
 }
 .group {
   padding: 20rpx 32rpx 8rpx;
-  font-size: 24rpx;
   letter-spacing: 0.06em;
   color: var(--sh-sub);
   background: var(--sh-bg);
@@ -1485,19 +1470,6 @@ function close() {
   flex-direction: column;
   gap: 4rpx;
 }
-.place__name {
-  font-size: 30rpx;
-  color: var(--sh-ink);
-}
-.place__addr {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.place__go {
-  flex-shrink: 0;
-  font-size: 24rpx;
-  color: var(--sh-primary-text);
-}
 .apply__map {
   display: inline-flex;
   align-items: center;
@@ -1509,13 +1481,6 @@ function close() {
 }
 .apply__map.is-ok {
   background: var(--sh-primary-tint);
-}
-.apply__map-t {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.apply__map.is-ok .apply__map-t {
-  color: var(--sh-primary-text);
 }
 .apply__poi {
   display: flex;
@@ -1534,14 +1499,6 @@ function close() {
 .apply__poi-row:last-child {
   border-bottom: none;
 }
-.apply__poi-name {
-  font-size: 28rpx;
-  color: var(--sh-ink);
-}
-.apply__poi-addr {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
 .apply__btns {
   display: flex;
   gap: 16rpx;
@@ -1552,16 +1509,7 @@ function close() {
 .hint {
   display: block;
   padding: 16rpx 32rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
   color: var(--sh-sub);
-}
-.mini {
-  padding: 16rpx 28rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-  color: var(--sh-sub);
-  font-size: 24rpx;
 }
 .foot {
   padding: 16rpx 24rpx;
@@ -1601,7 +1549,6 @@ function close() {
   flex-shrink: 0;
   padding: 6rpx 16rpx;
   border-radius: 16rpx;
-  font-size: 24rpx;
   border: 2rpx solid var(--sh-line);
   color: var(--sh-sub);
 }
@@ -1614,10 +1561,6 @@ function close() {
 /* 每段的「还有 N 条」。不是分页 —— 一次点开全部，商家不需要理解页码 */
 .more {
   padding: 20rpx 24rpx;
-}
-.more__t {
-  font-size: 26rpx;
-  color: var(--sh-primary-text);
 }
 
 /* 本级筛选框：只过滤当前这一屏 */
@@ -1633,7 +1576,6 @@ function close() {
 }
 .filter__i {
   flex: 1;
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
 
@@ -1649,7 +1591,6 @@ function close() {
   align-items: center;
   gap: 16rpx;
   padding: 16rpx 24rpx;
-  font-size: 26rpx;
   color: var(--sh-ink);
 }
 .chosen__row + .chosen__row {
@@ -1664,7 +1605,6 @@ function close() {
 }
 .chosen__del {
   flex-shrink: 0;
-  font-size: 24rpx;
   color: var(--sh-sub);
 }
 
@@ -1673,7 +1613,6 @@ function close() {
   flex-shrink: 0;
   padding: 2rpx 12rpx;
   border-radius: 16rpx;
-  font-size: 24rpx;
   background: var(--sh-danger-tint);
   color: var(--sh-danger);
 }
@@ -1687,7 +1626,6 @@ function close() {
   flex-shrink: 0;
   padding: 2rpx 12rpx;
   border-radius: 16rpx;
-  font-size: 24rpx;
   background: var(--sh-warning-tint);
   color: var(--sh-warning);
 }
@@ -1702,12 +1640,10 @@ function close() {
 .tab {
   position: relative;
   padding: 16rpx 4rpx 20rpx;
-  font-size: 30rpx;
   color: var(--sh-sub);
 }
 .tab.is-on {
   color: var(--sh-ink);
-  font-weight: 600;
 }
 .tab.is-on::after {
   content: "";
@@ -1729,7 +1665,6 @@ function close() {
   padding: 28rpx 32rpx;
 }
 .maprow__t {
-  font-size: 28rpx;
   color: var(--sh-primary-text);
 }
 
@@ -1748,11 +1683,9 @@ function close() {
   gap: 8rpx;
 }
 .sheet__selT {
-  font-size: 26rpx;
   color: var(--sh-primary-text);
 }
 .sheet__selM {
-  font-size: 24rpx;
   color: var(--sh-sub);
 }
 </style>

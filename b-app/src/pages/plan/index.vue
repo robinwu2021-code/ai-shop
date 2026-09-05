@@ -188,7 +188,15 @@ onShow(load);
       </view>
       <text v-else-if="plan.trialUsed" class="sh-muted act__hint">{{ $t("plan.trialUsed") }}</text>
 
-      <view class="sh-btn sh-btn--ghost act" @tap="contact">{{ $t("plan.contactBtn") }}</view>
+      <!--
+        「升级 / 续费」的形态**跟着上面那颗试用按钮走**：
+        有试用可点时它是次操作（tint 胶囊），没有时它就是这一页唯一的动作（实心）。
+        此前这里写的是 `sh-btn--ghost` —— **库里没有这一档**，于是它无条件渲染成实心，
+        与试用按钮并排时是两颗一模一样的主按钮。不报错，也没人会去查一个类名存不存在。
+      -->
+      <view class="sh-btn act" :class="{ 'sh-btn--soft': plan.trialTier }" @tap="contact">
+        {{ $t("plan.contactBtn") }}
+      </view>
     </template>
   </sh-scaffold>
 </template>

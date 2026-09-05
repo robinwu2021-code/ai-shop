@@ -312,3 +312,94 @@ describe("传给组件的 class 不许带内边距与描边", () => {
     ).toEqual([]);
   });
 });
+
+/*
+ * 模板里挂了一个**不存在**的库件类名。
+ *
+ * 这一类不会报错、不会红、类型检查也看不到 —— 页面上只是少了一条样式。
+ * 2026-09-06 扫出四处，其中三处是真视觉缺陷：
+ *   · `b-app/plan` 的「联系我们」写的是 `sh-btn--ghost`（库里没有这一档），
+ *     于是它渲染成**实心主按钮**，就贴在真正的主操作旁边 —— 两个主按钮并排。
+ *   · `b-app/apply` 的两个资质输入框写的是 `sh-input`（应为 `field__input`），
+ *     一点样式都没有，夹在一列正常输入框中间。
+ *   · `c-app/biz-merchant-bar` 的自营标识写的是 `sh-chip--accent`，渲染成灰底，
+ *     而同一枚标识在 `biz-goods-card` 上是主色 tint —— 同一个字两种长相。
+ * 第四处 `sh-btn--primary`（5 个调用点）是空转：`.sh-btn` 本身就是主按钮。
+ *
+ * 判据只管 `sh-` / `txt-` / `field-` / `is-` 这四个前缀 —— 那是库件的命名空间，
+ * 页面自己的类名不在其中。
+ */
+describe("挂上去的库件类名必须真的存在", () => {
+  const NS = /^(sh|txt|field|is)-/;
+
+  const defined = (() => {
+    const out = new Set<string>();
+    const add = (src: string) => {
+      for (const m of src.matchAll(/\.([\w-]+)/g)) out.add(m[1]!);
+    };
+    add(readFileSync(join(ROOT, "packages/ui/src/styles/base.css"), "utf8"));
+    for (const dir of ["packages/ui/src/components", "c-app/src/components", "b-app/src/components"]) {
+      const d = join(ROOT, dir);
+      if (!existsSync(d)) continue;
+      for (const f of readdirSync(d, { recursive: true, encoding: "utf8" })) {
+        if (!String(f).endsWith(".vue")) continue;
+        const src = readFileSync(join(d, String(f)), "utf8");
+        if (src.includes("<style")) add(src.slice(src.indexOf("<style")));
+      }
+    }
+    for (const f of ["packages/ui/src/uno.config.ts", "c-app/uno.config.ts", "b-app/uno.config.ts"]) {
+      const p = join(ROOT, f);
+      if (!existsSync(p)) continue;
+      for (const m of readFileSync(p, "utf8").matchAll(/["'`]((?:sh|txt|field|is)-[\w-]+)["'`]/g))
+        out.add(m[1]!);
+    }
+    return out;
+  })();
+
+  /** 模板里出现的类名：静态 `class="…"` 与 `:class="{ 'x': cond }"` 两种写法 */
+  function usedClasses(src: string): string[] {
+    const tpl = (src.includes("<style") ? src.slice(0, src.indexOf("<style")) : src)
+      .replace(/<!--[\s\S]*?-->/g, "");
+    const out: string[] = [];
+    // `\b` 在 `:class="` 前面也成立（`:` 是非词字符）—— 不排除的话对象写法会被
+    // 当成静态类名切一遍，切出 `txt-primary':` 这种带引号的碎片
+    for (const m of tpl.matchAll(/(?<![:\w-])class="([^"]*)"/g)) out.push(...m[1]!.split(/\s+/));
+    // 对象写法的键：`'sh-chip--primary': cond` / `"is-on": cond`
+    for (const m of tpl.matchAll(/:class="\{([^}]*)\}"/g))
+      for (const k of m[1]!.matchAll(/['"]([\w-]+)['"]\s*:/g)) out.push(k[1]!);
+    return out.filter(Boolean);
+  }
+
+  const files = [
+    ...pageFilesAll(),
+    ...APPS.flatMap((app) => {
+      const d = join(ROOT, app, "src/components");
+      if (!existsSync(d)) return [];
+      return readdirSync(d, { recursive: true, encoding: "utf8" })
+        .filter((f) => String(f).endsWith(".vue"))
+        .map((f) => ({ app, file: `components/${f}`, src: readFileSync(join(d, String(f)), "utf8") }));
+    }),
+  ];
+
+  it("有东西可扫，且已知类名不是空集", () => {
+    expect(files.length).toBeGreaterThan(90);
+    expect(defined.size).toBeGreaterThan(100);
+  });
+
+  it("没有挂到不存在的 sh-/txt-/field-/is- 类上", () => {
+    const offenders: string[] = [];
+    for (const { app, file, src } of files) {
+      const own = src.includes("<style")
+        ? new Set([...src.slice(src.indexOf("<style")).matchAll(/\.([\w-]+)/g)].map((m) => m[1]!))
+        : new Set<string>();
+      for (const c of usedClasses(src)) {
+        if (!NS.test(c) || defined.has(c) || own.has(c)) continue;
+        offenders.push(`${app}/${file}  .${c}`);
+      }
+    }
+    expect(
+      [...new Set(offenders)],
+      "这些类名一个定义都没有 —— 不报错，只是那一条样式没了：\n" + offenders.join("\n"),
+    ).toEqual([]);
+  });
+});

@@ -730,8 +730,8 @@
         "font-weight": "600"
       },
       "usage": {
-        "b-app": 20,
-        "c-app": 13
+        "b-app": 22,
+        "c-app": 16
       }
     },
     {
@@ -795,7 +795,7 @@
       },
       "usage": {
         "b-app": 9,
-        "c-app": 5
+        "c-app": 14
       }
     },
     {
@@ -817,7 +817,7 @@
       },
       "usage": {
         "b-app": 287,
-        "c-app": 38
+        "c-app": 44
       }
     },
     {
@@ -838,8 +838,8 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 69,
-        "c-app": 60
+        "b-app": 76,
+        "c-app": 61
       }
     },
     {
@@ -860,8 +860,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 251,
-        "c-app": 222
+        "b-app": 278,
+        "c-app": 235
       }
     },
     {
@@ -883,7 +883,7 @@
       },
       "usage": {
         "b-app": 32,
-        "c-app": 7
+        "c-app": 8
       }
     },
     {
@@ -949,7 +949,7 @@
       },
       "usage": {
         "b-app": 15,
-        "c-app": 9
+        "c-app": 10
       }
     },
     {
@@ -970,8 +970,8 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 116,
-        "c-app": 37
+        "b-app": 118,
+        "c-app": 41
       }
     },
     {
@@ -992,8 +992,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 84,
-        "c-app": 90
+        "b-app": 92,
+        "c-app": 97
       }
     },
     {
@@ -1014,8 +1014,8 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 102,
-        "c-app": 28
+        "b-app": 104,
+        "c-app": 29
       }
     },
     {
@@ -1111,7 +1111,7 @@
       },
       "usage": {
         "b-app": 111,
-        "c-app": 46
+        "c-app": 47
       }
     },
     {
@@ -1187,7 +1187,7 @@
       },
       "usage": {
         "b-app": 21,
-        "c-app": 6
+        "c-app": 7
       }
     },
     {
@@ -1204,8 +1204,8 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 25,
-        "c-app": 8
+        "b-app": 26,
+        "c-app": 9
       }
     },
     {
@@ -1309,7 +1309,7 @@
       },
       "usage": {
         "b-app": 115,
-        "c-app": 60
+        "c-app": 61
       }
     },
     {
@@ -1383,7 +1383,7 @@
       },
       "usage": {
         "b-app": 59,
-        "c-app": 25
+        "c-app": 27
       }
     },
     {
@@ -1472,8 +1472,8 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 95,
-        "c-app": 16
+        "b-app": 97,
+        "c-app": 18
       }
     },
     {
@@ -1983,7 +1983,7 @@
       "name": "biz-pickup-sheet",
       "file": "b-app/src/components/biz/biz-pickup-sheet.vue",
       "scope": "B 端",
-      "lines": 362,
+      "lines": 348,
       "props": [
         "visible: boolean",
         "storeNo: string",
@@ -2000,7 +2000,7 @@
       "name": "biz-region-picker",
       "file": "b-app/src/components/biz/biz-region-picker.vue",
       "scope": "B 端",
-      "lines": 1758,
+      "lines": 1691,
       "props": [
         "visible: boolean",
         "areas: ServiceArea[]"
@@ -2016,7 +2016,7 @@
       "name": "biz-store-tag",
       "file": "b-app/src/components/biz/biz-store-tag.vue",
       "scope": "B 端",
-      "lines": 100,
+      "lines": 97,
       "props": [
         "readonly?: boolean"
       ],
@@ -2049,7 +2049,7 @@
       "name": "biz-time-range",
       "file": "b-app/src/components/biz/biz-time-range.vue",
       "scope": "B 端",
-      "lines": 85,
+      "lines": 82,
       "props": [
         "modelValue: string",
         "clearable?: boolean"
@@ -2120,7 +2120,7 @@
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 92,
+      "libClassHits": 94,
       "localSelectors": 25,
       "localCssLines": 79,
       "rolled": []
@@ -2622,7 +2622,7 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 33,
+      "libClassHits": 34,
       "localSelectors": 11,
       "localCssLines": 44,
       "rolled": []

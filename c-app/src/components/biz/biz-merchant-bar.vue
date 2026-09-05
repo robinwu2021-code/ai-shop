@@ -17,10 +17,10 @@ defineEmits<{ (e: "tap"): void }>();
           排在店名**之前**：它回答的是「谁在卖」，而店名只回答「货是谁供的」。
           放后面会被读成店名的一个后缀。
         -->
-        <text v-if="merchant.selfOperated" class="sh-chip sh-chip--accent bar__self">
+        <text v-if="merchant.selfOperated" class="sh-chip sh-chip--primary bar__self">
           {{ $t("merchant.selfOperated") }}
         </text>
-        <text class="bar__name">{{ merchant.name }}</text>
+        <text class="txt-strong bar__name">{{ merchant.name }}</text>
         <text v-if="merchant.verified" class="sh-chip sh-chip--primary bar__verified">
           {{ $t("merchant.verified") }}
         </text>
@@ -30,7 +30,7 @@ defineEmits<{ (e: "tap"): void }>();
       <sh-rating v-if="merchant.ratingCount > 0" :value="merchant.rating" :size="24"></sh-rating>
       <text v-else class="sh-muted bar__norate">{{ $t("merchant.noRating") }}</text>
     </view>
-    <text class="bar__more">{{ $t("merchant.enter") }}</text>
+    <text class="txt-caption bar__more">{{ $t("merchant.enter") }}</text>
   </view>
 </template>
 
@@ -64,8 +64,6 @@ defineEmits<{ (e: "tap"): void }>();
   flex-shrink: 0;
 }
 .bar__name {
-  font-size: 28rpx;
-  font-weight: 600;
   color: var(--sh-ink);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -74,13 +72,10 @@ defineEmits<{ (e: "tap"): void }>();
 .bar__verified {
   flex-shrink: 0;
   padding: 4rpx 14rpx;
-  font-size: 24rpx;
 }
 .bar__norate {
-  font-size: 24rpx;
 }
 .bar__more {
-  font-size: 24rpx;
   color: var(--sh-primary-text);
   flex-shrink: 0;
 }

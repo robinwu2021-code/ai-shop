@@ -12,24 +12,24 @@ defineEmits<{ (e: "like"): void }>();
     <view class="rv__head">
       <text class="rv__avatar">{{ review.avatar }}</text>
       <view class="rv__who">
-        <text class="rv__name">{{ review.nickname }}</text>
+        <text class="txt-sub txt-bold rv__name">{{ review.nickname }}</text>
         <!-- single-review：这是**某个人给的星数**，不是聚合评分，不需要 ratingCount 护栏 -->
         <sh-rating :value="review.rating" :size="22" :show-value="false"></sh-rating>
       </view>
-      <text class="rv__date sh-num">{{ monthDay(review.createdAt) }}</text>
+      <text class="txt-caption txt-quiet rv__date sh-num">{{ monthDay(review.createdAt) }}</text>
     </view>
 
-    <text class="rv__content">{{ review.content }}</text>
+    <text class="txt-sub rv__content">{{ review.content }}</text>
 
     <view v-if="review.images.length" class="rv__imgs">
       <view v-for="(img, i) in review.images" :key="i" class="rv__img">{{ img }}</view>
     </view>
 
-    <text class="rv__spec">{{ review.spec }}</text>
+    <text class="txt-caption txt-quiet rv__spec">{{ review.spec }}</text>
 
     <view v-if="review.reply" class="rv__reply">
-      <text class="rv__reply-text">
-        <text class="rv__reply-tag">{{ $t("merchant.reply") }}</text>
+      <text class="txt-caption rv__reply-text">
+        <text class="txt-bold rv__reply-tag">{{ $t("merchant.reply") }}</text>
         {{ review.reply }}
       </text>
     </view>
@@ -37,7 +37,7 @@ defineEmits<{ (e: "like"): void }>();
     <view class="rv__foot">
       <view class="like" :class="{ 'is-on': review.liked }" @tap="$emit('like')">
         <text class="like__icon">{{ review.liked ? "♥" : "♡" }}</text>
-        <text class="like__count sh-num">{{ review.likeCount }}</text>
+        <text class="txt-caption like__count sh-num">{{ review.likeCount }}</text>
       </view>
     </view>
   </view>
@@ -68,20 +68,15 @@ defineEmits<{ (e: "like"): void }>();
 }
 .rv__name {
   display: block;
-  font-size: 26rpx;
-  font-weight: 600;
   color: var(--sh-ink);
   margin-bottom: 4rpx;
 }
 .rv__date {
-  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .rv__content {
   display: block;
-  font-size: 26rpx;
   color: var(--sh-ink);
-  line-height: 1.6;
   margin-top: 16rpx;
 }
 .rv__imgs {
@@ -101,9 +96,8 @@ defineEmits<{ (e: "like"): void }>();
 }
 .rv__spec {
   display: block;
-  font-size: 24rpx;
   color: var(--sh-sub);
-  margin-top: 14rpx;
+  margin-top: 16rpx;
 }
 .rv__reply {
   margin-top: 16rpx;
@@ -112,13 +106,10 @@ defineEmits<{ (e: "like"): void }>();
   padding: 20rpx 24rpx;
 }
 .rv__reply-text {
-  font-size: 24rpx;
   color: var(--sh-sub);
-  line-height: 1.6;
 }
 .rv__reply-tag {
   color: var(--sh-primary-text);
-  font-weight: 600;
 }
 .rv__foot {
   display: flex;
@@ -129,7 +120,7 @@ defineEmits<{ (e: "like"): void }>();
   display: flex;
   align-items: center;
   gap: 8rpx;
-  padding: 10rpx 24rpx;
+  padding: 8rpx 24rpx;
   border-radius: 9999px;
   background: var(--sh-faint);
 }
@@ -147,7 +138,6 @@ defineEmits<{ (e: "like"): void }>();
   transform: scale(1.25);
 }
 .like__count {
-  font-size: 24rpx;
   color: var(--sh-sub);
 }
 .like.is-on .like__count {
