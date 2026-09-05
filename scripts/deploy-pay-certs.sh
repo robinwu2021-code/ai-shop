@@ -26,20 +26,29 @@ set -euo pipefail
 
 HOST="${HOST:-soukmind-tx}"
 CERT_DIR="${CERT_DIR:-$HOME/cert/1117261658}"
-REMOTE_DIR="${REMOTE_DIR:-/opt/ai-shop/cert}"
+# ⚠️ 是 certs 不是 cert。**线上早就是这个目录**，而 env 里那两条
+# WX_*_KEY_PATH 指的就是它 —— 写成单数会安静地造出第二份私钥副本，
+# 服务仍然读老的那份，于是「传上去了却不生效」，而两处内容还都是对的。
+# 2026-09-04 我就这么传错过一次（本条注释是那次的产物）。
+REMOTE_DIR="${REMOTE_DIR:-/opt/ai-shop/certs}"
 SVC_USER="${SVC_USER:-deploy}"
 
 say() { printf '\033[36m›\033[0m %s\n' "$1"; }
 ok()  { printf '  \033[32m✓\033[0m %s\n' "$1"; }
 die() { printf '  \033[31m✗\033[0m %s\n' "$1" >&2; exit 1; }
 
-# 只搬这三份。p12 与 README 不传 —— 服务端用不到，而每多传一份就多一处要护的东西
-FILES=(apiclient_key.pem apiclient_cert.pem wxpay_pub_key.pem)
+# 只搬这两份 —— **服务端只用它们**（env 里就这两条 _PATH）。
+# apiclient_cert.pem 服务端用不到：APIv3 签名用私钥，验签用微信支付公钥，
+# 商户证书只在本地算序列号时用。p12 与 README 同理不传。
+# 每多传一份就多一处要护的东西。
+FILES=(apiclient_key.pem wxpay_pub_key.pem)
+# 只在本地用，不上传（算序列号与验配对）
+LOCAL_ONLY_CERT="apiclient_cert.pem"
 
 # ── ① 本地校验：是不是我们以为的那种文件 ────────────────────────────────
 say "校验本地凭据（$CERT_DIR）"
 [ -d "$CERT_DIR" ] || die "找不到目录：$CERT_DIR"
-for f in "${FILES[@]}"; do
+for f in "${FILES[@]}" "$LOCAL_ONLY_CERT"; do
     [ -f "$CERT_DIR/$f" ] || die "缺少 $f"
 done
 # 按类型校验，不是按文件名 —— 名字对而内容放错是真会发生的
@@ -96,7 +105,7 @@ for f in "${FILES[@]}"; do
     ssh "$HOST" "sudo -u '$SVC_USER' test -r '$REMOTE_DIR/$f'" \
         || die "$SVC_USER 读不到 $f —— 服务起不来，且症状是崩溃重启循环 + health=000"
 done
-ok "三份都能读"
+ok "${#FILES[@]} 份都能读"
 
 # ── ⑤ 内容一致（比指纹，不比内容）───────────────────────────────────────
 say "比对指纹"
@@ -105,20 +114,31 @@ for f in "${FILES[@]}"; do
     R=$(ssh "$HOST" "sudo sha256sum '$REMOTE_DIR/$f' | cut -d' ' -f1")
     [ "$L" = "$R" ] || die "$f 指纹不一致（传输出问题）"
 done
-ok "三份指纹一致"
+ok "${#FILES[@]} 份指纹一致"
+
+# ── ⑥ env 里那几个非文件的值：只报「填没填」，不报值 ──────────────────
+say "核对 env（只看填没填，不取值）"
+for k in WX_MCHID WX_SERIAL_NO WX_APIV3_KEY; do
+    n=$(ssh "$HOST" "sudo grep -E '^$k=' /opt/ai-shop/shop-app.env 2>/dev/null | head -1 | cut -d= -f2- | wc -c")
+    [ "${n:-0}" -gt 1 ] && ok "$k 已填（$((n-1)) 位）" || printf '  \033[33m!\033[0m %s 是空的\n' "$k"
+done
+# 路径必须指到我们刚传的地方 —— 指到别处的话「传上去了却不生效」
+for k in WX_PRIVATE_KEY_PATH WX_PLATFORM_PUBLIC_KEY_PATH; do
+    v=$(ssh "$HOST" "sudo grep -E '^$k=' /opt/ai-shop/shop-app.env 2>/dev/null | head -1 | cut -d= -f2-")
+    case "$v" in
+        "$REMOTE_DIR"/*) ok "$k → $v" ;;
+        "") printf '  \033[33m!\033[0m %s 没配\n' "$k" ;;
+        *) die "$k 指向 $v，不是本次上传的 $REMOTE_DIR —— 传了也不生效" ;;
+    esac
+done
+# 序列号必须与证书对得上：换了证书没改这一行，通道会拒签而报错不提序列号
+RS=$(ssh "$HOST" "sudo grep -E '^WX_SERIAL_NO=' /opt/ai-shop/shop-app.env | head -1 | cut -d= -f2-")
+[ -z "$RS" ] || [ "$RS" = "$SERIAL" ] || die "env 里的 WX_SERIAL_NO 与证书不符（证书是 $SERIAL）"
+[ "$RS" = "$SERIAL" ] && ok "序列号与证书一致"
 
 cat <<TIP
 
-凭据已就位。**还差 env 里的三个值**（它们不是文件，脚本不碰）：
-  SHOP_PAY_WECHAT_MCHID           商户号
-  SHOP_PAY_WECHAT_SERIAL_NO       $SERIAL
-  SHOP_PAY_WECHAT_APIV3_KEY       ← 只有你知道，从商户平台取
-
-以及三条指向文件的（照抄即可）：
-  SHOP_PAY_WECHAT_PRIVATE_KEY_PATH=$REMOTE_DIR/apiclient_key.pem
-  SHOP_PAY_WECHAT_PLATFORM_PUBLIC_KEY_PATH=$REMOTE_DIR/wxpay_pub_key.pem
-
-改完 /opt/ai-shop/shop-app.env 后重启，并**守到 health=200 再走开** ——
+凭据已就位。改动过 env 的话记得重启，并**守到 health=200 再走开** ——
 缺凭据时 WechatPayChannelConfig 会拒绝装配（刻意的），
 表现是崩溃重启循环，不是降级运行。
 TIP
