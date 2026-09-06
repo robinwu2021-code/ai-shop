@@ -13629,9 +13629,9 @@
         },
         {
           "key": "stockCross.openDetail",
-          "zh-CN": "看流水 / 改数 ›",
-          "en": "Ledger / adjust ›",
-          "ar": "الحركات / تعديل ›"
+          "zh-CN": "看流水 / 改数",
+          "en": "Ledger / adjust",
+          "ar": "الحركات / تعديل"
         },
         {
           "key": "stockCross.shortageN",
