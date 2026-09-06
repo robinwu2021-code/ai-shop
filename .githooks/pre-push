@@ -293,13 +293,19 @@ if [ -d "$ROOT/node_modules" ]; then
   # 而类型检查看不见「测试按标签选元素」这种事。
   #
   # 挂之前先修绿：145 条全过，所以这里**不设基线**，红就是红。
-  # b-app 不在这个循环里 —— 它一个测试文件都没有（不是跳过，是没有可跑的）。
-  if ! (cd "$GATE_WT/c-app" && npm test --silent 2>&1); then
-    echo "✗ c-app 单元测试没过（上面是原始输出）。本机重现："
-    echo "    cd c-app && npm test"
-    echo "  判据取自 HEAD —— 工作区里没提交的改动不会让你被挡住。"
-    exit 1
-  fi
+  #
+  # ⚠️ **b-app 2026-09-06 起也在这里**（此前是「一个测试文件都没有，不是跳过是没有
+  # 可跑的」）。第一批只有纯函数（`src/utils` / `src/shared`）：那些是一个值进、
+  # 一个值出的业务规则，出错的后果具体（提交载荷少一半、覆盖被后端清掉），
+  # 而且不会跟正在进行的 UI 重构撞车 —— c-app 那边正是撞在这上面。
+  for app in c-app b-app; do
+    if ! (cd "$GATE_WT/$app" && npm test --silent 2>&1); then
+      echo "✗ $app 单元测试没过（上面是原始输出）。本机重现："
+      echo "    cd $app && npm test"
+      echo "  判据取自 HEAD —— 工作区里没提交的改动不会让你被挡住。"
+      exit 1
+    fi
+  done
 else
   echo "⚠ 跳过类型检查与 c-app 单测：本机没有 node_modules（跑一次 npm i 就会启用）"
 fi

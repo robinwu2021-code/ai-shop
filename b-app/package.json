@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "ai-shop B 端（商家端 · 商家经营与自提点履约）",
   "scripts": {
+    "test": "vitest run --config vitest.config.mts",
     "dev:h5": "uni",
     "dev:mp-weixin": "uni -p mp-weixin",
     "dev:app": "uni -p app",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@types/node": "^26",
+    "vitest": "^4.1.11",
     "@capacitor/cli": "^8.5.0",
     "@dcloudio/types": "3.4.31",
     "@dcloudio/uni-cli-shared": "3.0.0-5020420260813003",
