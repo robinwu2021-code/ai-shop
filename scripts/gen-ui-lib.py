@@ -60,6 +60,10 @@ BLOCK_NOTES = {
     ".sh-block": ("容器", "标题与内容同属一个白块 —— 灰缝只剩块与块之间那一道", "只有内容没有标题时用 .sh-card"),
     ".sh-block__head": ("容器", "块内标题行（横向留白 26rpx，列表行仍通铺到边）", "—"),
     ".sh-chip": ("标签", "状态、分类、筛选项。tint 色块，不描边", "可点的主操作用 .sh-btn"),
+    # ---- 底部弹层的壳（2026-09-06 从三个件里收出来的） ----
+    ".sh-mask": ("浮层", "浮层的遮罩：铺满、压 scrim 色。点它＝取消", "整屏的容器不是它，是件自己的 fixed 层"),
+    ".sh-panel": ("浮层", "贴底弹上来的面板：44rpx 上圆角、surface 底、自带安全区", "居中的对话框用 sh-dialog"),
+    ".sh-grip": ("浮层", "面板顶上那道短横 —— 在说「这是浮上来的一层，下面还有页面」", "它不可点，别挂手势"),
     # ---- 行与列：版面那一节靠这几条说话。**缺一条那张表就是一格 `—`** ----
     ".sh-row": ("行与列", "一行之内的横排：图标 + 文字 + 右侧值，纵向居中，缝 16rpx", "会折行的一堆用 .sh-wrap"),
     ".sh-row--between": ("行与列", "左右两端对齐，且左右**字号一样**", "字号不一样再叠 .sh-row--baseline"),
@@ -399,6 +403,32 @@ def class_usage(cls: str, roots: list[str]) -> int:
     return n
 
 
+def lead_line(src: str) -> str:
+    """件的**首行注释**当「这是什么」。
+
+    此前没登记的件在表里是 `—`（34 个里 22 个）—— 而每个件的开头都写着
+    「开关：一个滑块，开／关。」「键值行：左边一个名目，右边它的值。」这种一句话。
+    材料一直在，只是没人把它取出来。**手工再登记一遍 34 条的话，
+    第 35 个件仍然会是 `—`**，所以取源不取抄。
+
+    `COMP_NOTES` 仍然优先 —— 那里写的是打磨过的说法，这里只是兜底。
+    """
+    body = src.split("</script>")[0]
+    for raw in body.splitlines():
+        t = raw.strip()
+        if t.startswith("<script") or not t:
+            continue
+        if t.startswith(("//", "*", "/**", "/*")):
+            t = t.lstrip("/*").strip()
+            if not t or t.startswith("<"):        # `<p>`、`<h2>` 这类 JSDoc 标签行跳过
+                continue
+            # 一句话就够：到第一个句号为止，去掉 Markdown 强调号
+            t = t.split("。")[0].replace("**", "").strip()
+            return t[:60] if t else "—"
+        break                                      # 不是注释开头的件，没得可取
+    return "—"
+
+
 def read_components() -> list[dict]:
     out = []
     files = sorted(UI_COMPONENTS.glob("sh-*.vue")) + sorted(B_COMPONENTS.rglob("*.vue"))
@@ -418,7 +448,7 @@ def read_components() -> list[dict]:
             # 读的人会当成死代码删掉。（积木那边一直算了库内引用，组件这边漏了。）
             "usage": {"b-app": usage(name, ["b-app/src"]), "c-app": usage(name, ["c-app/src"]),
                       "lib": usage(name, ["packages/ui/src"])},
-            "note": COMP_NOTES.get(name, ("—", "—"))[0],
+            "note": COMP_NOTES.get(name, (lead_line(src), "—"))[0],
             "why": COMP_NOTES.get(name, ("—", "—"))[1],
             "css": scoped_css(src),
         })

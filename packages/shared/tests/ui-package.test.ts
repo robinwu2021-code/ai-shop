@@ -780,28 +780,200 @@ describe("版面：页面不自己画容器", () => {
  * 这里把占位符本身变成失败条件：宁可让生成器报错，也不要一份看着完整的空表。
  */
 describe("《规范·版面》不许有空格子", () => {
-  const doc = readFileSync(join(ROOT, "docs/technical/design/规范-版面.md"), "utf8");
+  const doc = readFileSync(join(ROOT, "docs/technical/design/规范-版面.md"), "utf8")
+    // 组件表同理：「什么时候用」那一列此前根本不存在，34 个件一句说明都没有 ——
+    // 而三个底部弹层能并存，一半原因就是文档从没说过该挑哪个
+    + "\n" + readFileSync(join(ROOT, "docs/technical/design/规范-组件.md"), "utf8")
+      .split("## 积木")[0];
 
   it("文档在，且有那几张表", () => {
-    for (const h of ["## 容器：四个，页面不自己画", "## 行与列表", "## 浮层层级"]) {
+    for (const h of ["## 容器：四个，页面不自己画", "## 行与列表", "## 浮层层级", "## 组件（"]) {
       expect(doc, `《规范·版面》缺这一节：${h}`).toContain(h);
     }
   });
 
-  it("表里没有 `—` 占位（末列的「别拿它当」除外 —— 有些件确实没有近邻）", () => {
+  it("每张表的第二列都说了话 —— 那一列是「这一行为什么存在」", () => {
+    /*
+     * **只看第二列**，不是所有列。四张表的第二列分别是
+     * 「什么时候用」×3 与「z-index」—— 它们空了这一行就没有信息量。
+     *
+     * 其余列的 `—` 多半是**真话**，不是占位：`sh-confirm` / `sh-pick` /
+     * `sh-prompt` / `app-overlay` 确实**没有 props**（壳由全局 store 驱动），
+     * 「别拿它当」那一列也常常空 —— `.sh-seg--on` 没有需要提防的近邻。
+     * 第一版把这些一起报了，四条假的立刻压过一条真的，那就又是一个会被加豁免的闸门。
+     */
     const bad: string[] = [];
     for (const line of doc.split("\n")) {
       if (!line.startsWith("| `")) continue;               // 只看数据行
       const cells = line.split("|").slice(1, -1).map((c) => c.trim());
-      // 末列是「别拿它当」：`.sh-seg--on` 这类没有需要提防的近邻，那一格空是对的
-      for (const c of cells.slice(0, -1)) {
-        if (c === "—" || c === "") bad.push(line.trim());
-      }
+      const why = cells[1];
+      if (why === "—" || why === "") bad.push(line.trim());
     }
     expect(
       [...new Set(bad)],
-      "这些格子是生成器没取到值填的占位符 —— 修生成器（BLOCK_NOTES / z-index 解析），别手改文档：\n" +
+      "这些行的第二列是生成器没取到值填的占位符 —— 修生成器（BLOCK_NOTES / 首行注释 / z-index 解析），别手改文档：\n" +
         [...new Set(bad)].join("\n"),
+    ).toEqual([]);
+  });
+});
+
+/*
+ * **库件之间不许有同一个形状。**
+ *
+ * 前两轮理的都是「页面在各写各的」，而 2026-09-06 补扫了 `packages/ui` 本身 ——
+ * 库自己也在。三个底部弹层（`sh-sheet` / `sh-prompt` / `sh-theme-sheet`）
+ * 各画了一份面板：`__mask` 逐字节相同，面板是同一套几何（44rpx 上圆角 +
+ * `24/36/48` 内边距 + surface 底），抓手条三份 `72×8rpx` 的胶囊
+ * ——**而抓手条的下外边距一份是 32、两份是 28**，同一道横条三个数。
+ * 另有三个件重画 `.sh-center`、一个件重画 `.sh-row`。
+ *
+ * 收成 `.sh-mask` / `.sh-panel` / `.sh-grip` 三个积木之后归零，这条守着不回去。
+ *
+ * <b>扫描面就是结论的边界</b>：这条**只扫 `packages/ui/src/components`**。
+ * 页面那一层的同类扫描会报出一批「值一样但不是同一件事」的假阳性
+ *（弱色底 + 24rpx 圆角 + 墨色字，同时命中文本域、搜索框、工具条三件事），
+ * 拿它当闸门只会训练人去加豁免。页面层归 `check-handrolled-ui.mjs`。
+ */
+describe("库件之间不许有同一个形状", () => {
+  /** 决定「长相」的属性。transition / opacity 之类不算形状，会把不同的东西凑一堆 */
+  const SHAPE = new Set(["display", "flex-direction", "align-items", "justify-content", "gap",
+    "padding", "background", "background-color", "border", "border-radius", "color", "font-size",
+    "font-weight", "width", "height", "min-height", "box-shadow", "text-align",
+    "position", "inset", "left", "right", "bottom", "top"]);
+
+  function shapeOf(body: string): string {
+    return body.split(";")
+      .map((l) => l.split(/:(.*)/s))
+      .filter(([p]) => SHAPE.has((p ?? "").trim()))
+      .map(([p, v]) => `${p!.trim()}:${(v ?? "").trim().replace(/\s+/g, " ")}`)
+      .sort().join(" · ");
+  }
+
+  const files = readdirSync(UI).filter((f) => f.endsWith(".vue"));
+  const byShape = new Map<string, { file: string; sel: string }[]>();
+  for (const f of files) {
+    const src = readFileSync(join(UI, f), "utf8");
+    const css = [...src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
+      .map((m) => m[1]!).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
+    for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const sel = m[1]!.trim().replace(/\s+/g, " ");
+      if (sel.startsWith("@") || sel.includes(",")) continue;
+      const shape = shapeOf(m[2]!);
+      // 少于三条声明的形状太单薄，凑到一起不说明问题
+      if (shape.split(" · ").length < 3) continue;
+      (byShape.get(shape) ?? byShape.set(shape, []).get(shape)!).push({ file: f, sel });
+    }
+  }
+
+  it("扫到了件（否则下面全是空转）", () => {
+    expect(files.length).toBeGreaterThan(25);
+    expect(byShape.size).toBeGreaterThan(20);
+  });
+
+  it("没有两个件画着同一个形状", () => {
+    const dupes = [...byShape.entries()]
+      .filter(([, v]) => new Set(v.map((x) => x.file)).size >= 2)
+      .map(([shape, v]) => `${v.map((x) => `${x.file} ${x.sel}`).join("  ／  ")}\n      ${shape}`);
+    expect(
+      dupes,
+      "两个以上的件画着同一个形状 —— 抽成 base.css 的积木（纯 CSS 无行为），\n" +
+        "别让后一个去复用前一个的组件（那样要为它用不上的部分加 prop）：\n" +
+        dupes.join("\n"),
+    ).toEqual([]);
+  });
+});
+
+/*
+ * **件不许重画 base.css 里已经有的积木。**
+ *
+ * 上一条只报「两个件画着同一个形状」—— 而**一个**件重画一个已有积木时它是哑的
+ *（只有一份，够不上门槛）。这一半才是常态：库里已经有 `.sh-center`，
+ * 新写一个件的人不知道，于是又敲一遍那三行。2026-09-06 实测：
+ * `sh-cover` / `sh-icon-btn` / `sh-dialog` 三个件各重画一遍 `.sh-center`，
+ * `sh-kv` 重画 `.sh-row`。
+ *
+ * 判据是**逐值命中**：件的某条规则与某个积木有 ≥3 条**属性和值都相同**的声明，
+ * 且覆盖了那个积木的**多数**（严格多于一半）。只对属性名相同不算 ——
+ * 那会把所有 flex 容器凑成一堆。
+ *
+ * 「严格多于一半」这个边界是被一条假阳性逼出来的：`sh-sheet` 的
+ * `.sheet__panel--tall`（定高面板）与 `.sh-cells`（密排清单）恰好共有
+ * `display:flex` / `flex-direction:column` / `overflow:hidden` 三条 = 3/6。
+ * 两者毫无关系。放行「刚好一半」的话，六条以上的积木会一直报这种巧合，
+ * 而**报假的闸门会训练人去加豁免**。
+ *
+ * 命中之后有两条出路，选哪条看**值一不一样**：
+ *   · 一样 → 挂上那个积木的类名，把重复的声明删掉
+ *   · 不一样（比如圆角故意小一档）→ 说明它不是那个积木，但要在注释里写清为什么，
+ *     并把差异做大到一眼能看出来 —— 差 4rpx 的两个圆角只会让下一个人再画一遍
+ */
+describe("件不许重画 base.css 的积木", () => {
+  const base = readFileSync(join(ROOT, "packages/ui/src/styles/base.css"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+
+  function declsOf(body: string): Map<string, string> {
+    const out = new Map<string, string>();
+    for (const line of body.split(";")) {
+      const i = line.indexOf(":");
+      if (i < 0) continue;
+      out.set(line.slice(0, i).trim(), line.slice(i + 1).trim().replace(/\s+/g, " "));
+    }
+    return out;
+  }
+
+  /** base.css 里声明数 ≥3 的积木 —— 太单薄的（只有一条 color）不做模板 */
+  const blocks = new Map<string, Map<string, string>>();
+  for (const m of base.matchAll(/\n(\.[a-z0-9-]+)\s*\{([^}]*)\}/g)) {
+    const d = declsOf(m[2]!);
+    if (d.size >= 3) blocks.set(m[1]!, d);
+  }
+
+  /**
+   * 规则 `sel` 对应的元素，是不是**已经挂着**积木 `blockCls`。
+   *
+   * 判据是「这个类名的每一处调用点都同时挂着它」—— 有一处没挂就还得报，
+   * 那一处正是漏网的。类名只出现在动态 `:class` 里时抓不到调用点，
+   * 这时退回文件级判断（宁可漏报也不误报：动态类名的组合是运行期才定的）。
+   */
+  function carriesBlock(src: string, sel: string, blockCls: string): boolean {
+    const own = sel.split(/[\s>+~]/).pop()!.split(".").filter(Boolean)[0];
+    if (!own) return false;
+    const sites = [...src.matchAll(/class="([^"]*)"/g)]
+      .map((m) => m[1]!.split(/\s+/).filter(Boolean))
+      .filter((t) => t.includes(own));
+    if (!sites.length) return src.includes(blockCls);
+    return sites.every((t) => t.includes(blockCls));
+  }
+
+  it("读到了积木模板（否则下面全是空转）", () => {
+    expect(blocks.size).toBeGreaterThan(10);
+    expect([...blocks.keys()]).toContain(".sh-center");
+  });
+
+  it("没有件在重画积木", () => {
+    const hits: string[] = [];
+    for (const f of readdirSync(UI).filter((x) => x.endsWith(".vue"))) {
+      const src = readFileSync(join(UI, f), "utf8");
+      const css = [...src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
+        .map((m) => m[1]!).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        const sel = m[1]!.trim().replace(/\s+/g, " ");
+        if (sel.startsWith("@") || sel.includes(",")) continue;
+        const own = declsOf(m[2]!);
+        for (const [name, tpl] of blocks) {
+          // 已经挂着这个积木的元素不算 —— 那正是我们要的写法。
+          // ⚠️ **要按元素判，不能按文件判**：文件里任何一处提到 `sh-center`，
+          //    就把这一整个文件的规则都豁免掉，等于第二个重画点永远看不见。
+          if (carriesBlock(src, sel, name.slice(1))) continue;
+          let same = 0;
+          for (const [k, v] of tpl) if (own.get(k) === v) same++;
+          if (same >= 3 && same * 2 > tpl.size) hits.push(`${f}  ${sel}  ≈ ${name}（逐值命中 ${same}/${tpl.size}）`);
+        }
+      }
+    }
+    expect(
+      [...new Set(hits)],
+      "这些规则与 base.css 的积木逐值相同 —— 挂类名，别再敲一遍：\n" + [...new Set(hits)].join("\n"),
     ).toEqual([]);
   });
 });

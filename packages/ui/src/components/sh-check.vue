@@ -31,7 +31,7 @@ const emit = defineEmits<{ (e: "update:modelValue", v: boolean): void }>();
 
 <template>
   <view
-    class="ck"
+    class="sh-center ck"
     :class="{ 'is-on': modelValue, 'is-round': round, 'is-off': disabled }"
     @tap="disabled || emit('update:modelValue', !modelValue)"
   >
@@ -42,9 +42,6 @@ const emit = defineEmits<{ (e: "update:modelValue", v: boolean): void }>();
 <style scoped>
 .ck {
   flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 44rpx;
   height: 44rpx;
   border-radius: 16rpx;

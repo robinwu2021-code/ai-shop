@@ -29,8 +29,8 @@ const emit = defineEmits<{ close: [] }>();
 </script>
 
 <template>
-  <view v-if="visible" class="dlg">
-    <view class="dlg__mask" @tap="maskClosable && emit('close')"></view>
+  <view v-if="visible" class="sh-center dlg">
+    <view class="sh-mask" @tap="maskClosable && emit('close')"></view>
     <view class="dlg__panel" @tap.stop>
       <text v-if="title" class="txt-title dlg__title">{{ title }}</text>
       <slot></slot>
@@ -46,14 +46,6 @@ const emit = defineEmits<{ close: [] }>();
   position: fixed;
   inset: 0;
   z-index: var(--sh-z-dialog);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.dlg__mask {
-  position: absolute;
-  inset: 0;
-  background: var(--sh-scrim);
 }
 /* `max-width: 82vw` 是给窄屏兜底：560rpx 在 320pt 的机器上会顶到两边 */
 .dlg__panel {

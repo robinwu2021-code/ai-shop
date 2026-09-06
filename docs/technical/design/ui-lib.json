@@ -522,7 +522,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 283,
+        "b-app": 280,
         "c-app": 230
       }
     },
@@ -1078,7 +1078,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 112,
+        "b-app": 115,
         "c-app": 10
       }
     },
@@ -1299,6 +1299,82 @@
       }
     },
     {
+      "class": ".sh-grip",
+      "group": "浮层",
+      "when": "面板顶上那道短横 —— 在说「这是浮上来的一层，下面还有页面」",
+      "avoid": "它不可点，别挂手势",
+      "decl": {
+        "width": "72rpx",
+        "height": "8rpx",
+        "border-radius": "9999px",
+        "background": "var(--sh-faint)",
+        "margin": "0 auto 28rpx"
+      },
+      "px": {
+        "width": "36px",
+        "height": "4px",
+        "border-radius": "9999px",
+        "background": "var(--sh-faint)",
+        "margin": "0 auto 14px"
+      },
+      "usage": {
+        "b-app": 3,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-mask",
+      "group": "浮层",
+      "when": "浮层的遮罩：铺满、压 scrim 色。点它＝取消",
+      "avoid": "整屏的容器不是它，是件自己的 fixed 层",
+      "decl": {
+        "position": "absolute",
+        "inset": "0",
+        "background": "var(--sh-scrim)"
+      },
+      "px": {
+        "position": "absolute",
+        "inset": "0",
+        "background": "var(--sh-scrim)"
+      },
+      "usage": {
+        "b-app": 4,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-panel",
+      "group": "浮层",
+      "when": "贴底弹上来的面板：44rpx 上圆角、surface 底、自带安全区",
+      "avoid": "居中的对话框用 sh-dialog",
+      "decl": {
+        "position": "absolute",
+        "left": "0",
+        "right": "0",
+        "bottom": "0",
+        "box-sizing": "border-box",
+        "--sh-panel-pad-x": "36rpx",
+        "background": "var(--sh-surface)",
+        "border-radius": "44rpx 44rpx 0 0",
+        "padding": "24rpx var(--sh-panel-pad-x) calc(48rpx + env(safe-area-inset-bottom, 0px))"
+      },
+      "px": {
+        "position": "absolute",
+        "left": "0",
+        "right": "0",
+        "bottom": "0",
+        "box-sizing": "border-box",
+        "--sh-panel-pad-x": "18px",
+        "background": "var(--sh-surface)",
+        "border-radius": "22px 22px 0 0",
+        "padding": "12px var(--sh-panel-pad-x) calc(24px + env(safe-area-inset-bottom, 0px))"
+      },
+      "usage": {
+        "b-app": 3,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".sh-center",
       "group": "行与列",
       "when": "内容摆正中间的方块",
@@ -1314,7 +1390,7 @@
         "justify-content": "center"
       },
       "usage": {
-        "b-app": 9,
+        "b-app": 18,
         "c-app": 22
       }
     },
@@ -1368,7 +1444,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 274,
+        "b-app": 277,
         "c-app": 143
       }
     },
@@ -1550,7 +1626,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 53,
+        "b-app": 54,
         "c-app": 19
       }
     },
@@ -1731,7 +1807,7 @@
         "c-app": 12,
         "lib": 0
       },
-      "note": "—",
+      "note": "悬浮内缩的贴底操作条 —— 第三种贴底形态，此前库里没有",
       "why": "—"
     },
     {
@@ -1757,7 +1833,7 @@
       "name": "sh-check",
       "file": "packages/ui/src/components/sh-check.vue",
       "scope": "跨端",
-      "lines": 65,
+      "lines": 62,
       "props": [
         "modelValue: boolean",
         "round?: boolean",
@@ -1782,14 +1858,14 @@
         "c-app": 0,
         "lib": 1
       },
-      "note": "—",
+      "note": "确认弹层的壳",
       "why": "—"
     },
     {
       "name": "sh-cover",
       "file": "packages/ui/src/components/sh-cover.vue",
       "scope": "跨端",
-      "lines": 57,
+      "lines": 54,
       "props": [
         "src?: string",
         "mode?: CoverMode"
@@ -1806,7 +1882,7 @@
       "name": "sh-dialog",
       "file": "packages/ui/src/components/sh-dialog.vue",
       "scope": "跨端",
-      "lines": 82,
+      "lines": 74,
       "props": [
         "visible: boolean",
         "title?: string",
@@ -1817,7 +1893,7 @@
         "c-app": 0,
         "lib": 1
       },
-      "note": "—",
+      "note": "居中对话框的外壳：遮罩 + 居中面板 + 可选标题 + 内容插槽 + 可选动作条",
       "why": "—"
     },
     {
@@ -1869,14 +1945,14 @@
         "c-app": 0,
         "lib": 0
       },
-      "note": "—",
+      "note": "带箭头的行内链接：「去填地址 ›」「切换门店 ›」「查看详情 ›」这一类",
       "why": "—"
     },
     {
       "name": "sh-icon-btn",
       "file": "packages/ui/src/components/sh-icon-btn.vue",
       "scope": "跨端",
-      "lines": 68,
+      "lines": 65,
       "props": [
         "name: IconName",
         "size?: number",
@@ -1913,7 +1989,7 @@
       "name": "sh-kv",
       "file": "packages/ui/src/components/sh-kv.vue",
       "scope": "跨端",
-      "lines": 72,
+      "lines": 67,
       "props": [
         "label: string",
         "between?: boolean",
@@ -1925,7 +2001,7 @@
         "c-app": 0,
         "lib": 0
       },
-      "note": "—",
+      "note": "键值行：左边一个名目，右边它的值",
       "why": "—"
     },
     {
@@ -1956,14 +2032,14 @@
         "c-app": 0,
         "lib": 1
       },
-      "note": "—",
+      "note": "「选一项」弹层的壳",
       "why": "—"
     },
     {
       "name": "sh-prompt",
       "file": "packages/ui/src/components/sh-prompt.vue",
       "scope": "跨端",
-      "lines": 106,
+      "lines": 79,
       "props": [],
       "usage": {
         "b-app": 0,
@@ -1995,7 +2071,7 @@
       "name": "sh-savebar",
       "file": "packages/ui/src/components/sh-savebar.vue",
       "scope": "跨端",
-      "lines": 79,
+      "lines": 76,
       "props": [
         "visible: boolean",
         "text: string",
@@ -2014,7 +2090,7 @@
       "name": "sh-scaffold",
       "file": "packages/ui/src/components/sh-scaffold.vue",
       "scope": "跨端",
-      "lines": 274,
+      "lines": 268,
       "props": [
         "padded?: boolean",
         "titleKey?: string",
@@ -2051,7 +2127,7 @@
       "name": "sh-sheet",
       "file": "packages/ui/src/components/sh-sheet.vue",
       "scope": "跨端",
-      "lines": 182,
+      "lines": 150,
       "props": [
         "visible: boolean",
         "title: string",
@@ -2071,7 +2147,7 @@
       "name": "sh-stat",
       "file": "packages/ui/src/components/sh-stat.vue",
       "scope": "跨端",
-      "lines": 136,
+      "lines": 131,
       "props": [
         "items: readonly StatItem[]",
         "boxed?: boolean",
@@ -2102,7 +2178,7 @@
         "c-app": 3,
         "lib": 0
       },
-      "note": "—",
+      "note": "数量步进器：减 · 数 · 加，装在一枚弱色药丸里",
       "why": "—"
     },
     {
@@ -2160,7 +2236,7 @@
       "name": "sh-theme-sheet",
       "file": "packages/ui/src/components/sh-theme-sheet.vue",
       "scope": "跨端",
-      "lines": 245,
+      "lines": 225,
       "props": [
         "visible: boolean"
       ],
@@ -2176,7 +2252,7 @@
       "name": "sh-uploader",
       "file": "packages/ui/src/components/sh-uploader.vue",
       "scope": "跨端",
-      "lines": 140,
+      "lines": 134,
       "props": [
         "list: readonly string[]",
         "max?: number",
@@ -2225,7 +2301,7 @@
         "c-app": 0,
         "lib": 0
       },
-      "note": "—",
+      "note": "挑货 —— 开单时选货那一步，进货 / 报损 / 调拨三处共用",
       "why": "—"
     },
     {
@@ -2295,7 +2371,7 @@
         "c-app": 0,
         "lib": 0
       },
-      "note": "—",
+      "note": "挑供应商 —— 开进货单时选「这批货从哪来」",
       "why": "—"
     },
     {
@@ -4049,7 +4125,7 @@
   "gaps": [],
   "counts": {
     "tokens": 10,
-    "blocks": 75,
+    "blocks": 78,
     "components": 34,
     "pages": 114,
     "gapKinds": 0

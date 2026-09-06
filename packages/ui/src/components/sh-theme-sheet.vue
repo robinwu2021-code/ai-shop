@@ -57,9 +57,9 @@ function close() {
 
 <template>
   <view v-if="visible" class="sheet">
-    <view class="sheet__mask" @tap="close" />
-    <view class="sheet__panel" :class="app.dirClass">
-      <view class="sheet__grip" />
+    <view class="sh-mask" @tap="close" />
+    <view class="sh-panel sheet__panel" :class="app.dirClass">
+      <view class="sh-grip" />
       <text class="txt-title">{{ $t("theme.title") }}</text>
 
       <!-- 两组配色分开：纯白底组只换主色与字色，整套组连背景一起换。
@@ -70,7 +70,7 @@ function close() {
         <view
           v-for="id in PURE_SKINS"
           :key="id"
-          class="swatch"
+          class="sh-center swatch"
           :class="{ 'is-on': theme.skin === id }"
           :style="{ background: skinColor(id) }"
           @tap="theme.setSkin(id)"
@@ -84,7 +84,7 @@ function close() {
         <view
           v-for="id in FULL_SKINS"
           :key="id"
-          class="swatch"
+          class="sh-center swatch"
           :class="{ 'is-on': theme.skin === id }"
           :style="{ background: skinColor(id) }"
           @tap="theme.setSkin(id)"
@@ -148,35 +148,18 @@ function close() {
   inset: 0;
   z-index: var(--sh-z-sheet);
 }
-.sheet__mask {
-  position: absolute;
-  inset: 0;
-  background: var(--sh-scrim);
-}
+/* 几何全部走 `.sh-panel`（base.css），这里只补这一个面板独有的约束。
+   ⚠️ 抓手条此前是 `margin-bottom: 32rpx`，另外两个弹层是 28 —— 同一道横条三个数，
+   收编时归 28（`.sh-grip`）。 */
 .sheet__panel {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--sh-surface);
-  border-radius: 44rpx 44rpx 0 0;
-  padding: 24rpx 36rpx 48rpx;
-  padding: 24rpx 36rpx calc(48rpx + env(safe-area-inset-bottom, 0px));
   /* 内容比屏幕高时必须能滚，否则超出的部分被顶到视口外、够不着。
      皮肤从 4 套加到 8 套时就撞上了这个：面板从「明暗」开始显示，
      上面的「配色」整段不见了 —— 而它恰恰是这个面板的第一功能。
-     bottom:0 的弹层没有 max-height 就是这个后果，加内容前先给约束。 */
+     bottom:0 的弹层没有 max-height 就是这个后果，加内容前先给约束。
+     85 而不是 sh-sheet 的 78：这一屏是三组选择器，矮了就要滚两下。 */
   max-height: 85vh;
-  box-sizing: border-box;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-}
-.sheet__grip {
-  width: 72rpx;
-  height: 8rpx;
-  border-radius: 9999px;
-  background: var(--sh-faint);
-  margin: 0 auto 32rpx;
 }
 .sheet__label {
   display: block;
@@ -200,9 +183,6 @@ function close() {
   height: 96rpx;
   box-sizing: border-box;
   border-radius: 24rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .swatch.is-on {
   /* 选中靠一圈描边 + 勾，不靠底色 —— 底色已经被皮肤色占了 */

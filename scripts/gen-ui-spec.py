@@ -167,6 +167,17 @@ def layout() -> str:
         zs |= {int(zmap[k]) for k in re.findall(r"z-index:\s*var\(--sh-z-([a-z-]+)\)", src) if k in zmap}
         L.append(f"| `{f}` | {' / '.join(map(str, sorted(zs))) or '—'} | {note} |")
     L.append("\n对话框永远在最上面 —— 它是要人立刻回答的那一个。弹层叠弹层用 `sh-sheet` 的 `stacked`。\n")
+    # 壳的几何（遮罩 / 面板 / 抓手条）也归这一节：它和 z-index 是同一个问题的两半 ——
+    # 「浮层长什么样」与「谁压谁」。此前三个弹层各画一份，就是因为没有一处说过它长什么样
+    shell = [x for x in LIB["blocks"] if x["group"] == "浮层"]
+    if shell:
+        L.append("\n浮层的**壳**由三个积木给，件只管自己的内容与层级：\n")
+        L.append("| 件 | 什么时候用 | 别拿它当 |")
+        L.append("|---|---|---|")
+        for b in shell:
+            L.append(f"| `{b['class']}` | {b.get('when') or '—'} | {b.get('avoid') or '—'} |")
+        L.append("\n**三个件此前各画了一份**（`sh-sheet` / `sh-prompt` / `sh-theme-sheet`）——")
+        L.append("遮罩逐字节相同，抓手条的下外边距却是 32 / 28 / 28 三个数。\n")
     L.append("\n## 深浅与皮肤\n")
     L.append(f"{len(tk['skins'])} 套皮肤 × 明暗两态。切换要**同时**翻两处：")
     L.append("H5/App 改 `<html data-skin data-theme>`，小程序改 `.sh-root.skin-*.mode-*`（`sh-scaffold` 统一注入）。\n")
@@ -185,13 +196,16 @@ def components() -> str:
     L.append("\n组件与积木的分工：**积木是一条 CSS 类**（没有行为，随便贴），")
     L.append("**组件有行为或结构**（插槽、事件、状态）。同一个东西不要两头都做。\n")
     L.append(f"\n## 组件（{c['components']}）\n")
-    L.append("| 组件 | 作用域 | props | 调用点 B/C（· 库内） |")
-    L.append("|---|---|---|---:|")
+    # ⚠️ **「什么时候用」这一列此前不存在。** `note` 一直算着（`COMP_NOTES` +
+    #    首行注释兜底），但表里只有 scope / props / 调用点数 —— 于是这份「组件规范」
+    #    从头到尾没有一句话说该挑哪个。三个底部弹层能并存，一半原因在这儿。
+    L.append("| 组件 | 什么时候用 | 作用域 | props | 调用点 B/C（· 库内） |")
+    L.append("|---|---|---|---|---:|")
     for x in sorted(LIB["components"],
                     key=lambda x: -(x["usage"].get("b-app", 0) + x["usage"].get("c-app", 0)
                                     + x["usage"].get("lib", 0))):
         props = ", ".join(p.split(":")[0] for p in x["props"][:4]) or "—"
-        L.append(f"| `{x['name']}` | {x['scope']} | {props} | {usage(x['usage'])} |")
+        L.append(f"| `{x['name']}` | {x.get('note') or '—'} | {x['scope']} | {props} | {usage(x['usage'])} |")
     L.append(f"\n## 积木（{c['blocks']}）\n")
     by = collections.defaultdict(list)
     for b in LIB["blocks"]:

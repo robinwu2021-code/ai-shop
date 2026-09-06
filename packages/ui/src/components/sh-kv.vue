@@ -35,18 +35,13 @@ withDefaults(
 </script>
 
 <template>
-  <view class="kv" :class="{ 'is-between': between, 'is-divided': divided }">
+  <view class="sh-row kv" :class="{ 'is-between': between, 'is-divided': divided }">
     <text class="txt-sub kv__k" :style="between ? {} : { flex: `0 0 ${keyWidth}rpx` }">{{ label }}</text>
     <view class="kv__v"><slot></slot></view>
   </view>
 </template>
 
 <style scoped>
-.kv {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
 .kv.is-between {
   justify-content: space-between;
 }

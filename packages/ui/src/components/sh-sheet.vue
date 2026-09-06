@@ -42,10 +42,10 @@ const emit = defineEmits<{ close: [] }>();
 
 <template>
   <view v-if="visible" class="sheet" :class="{ 'sheet--stacked': stacked }">
-    <view class="sheet__mask" @tap="emit('close')" />
-    <view class="sheet__panel" :class="{ 'sheet__panel--tall': !!$slots.foot }">
-      <view class="sheet__grip" />
-      <view class="sheet__head">
+    <view class="sh-mask" @tap="emit('close')" />
+    <view class="sh-panel sheet__panel" :class="{ 'sheet__panel--tall': !!$slots.foot }">
+      <view class="sh-grip" />
+      <view class="sh-row">
         <text class="txt-title sheet__title">{{ title }}</text>
         <!-- 标题右侧的附加内容（「已选 3 · 展开」这一类）。
              它必须**始终可见** —— 放进正文的话列表一滚就没了，而「我选了几条」
@@ -53,7 +53,7 @@ const emit = defineEmits<{ close: [] }>();
         <slot name="head"></slot>
         <sh-icon-btn name="close" :size="28" :box="48" @tap="emit('close')"></sh-icon-btn>
       </view>
-      <text v-if="hint" class="txt-caption sheet__hint">{{ hint }}</text>
+      <text v-if="hint" class="sh-hint">{{ hint }}</text>
       <!-- 不跟着滚的工具条：分栏、搜索框、已选清单。
            跟着滚的话，想换个分栏得先滚回顶部。 -->
       <view v-if="$slots.toolbar" class="sheet__toolbar"><slot name="toolbar"></slot></view>
@@ -82,27 +82,12 @@ const emit = defineEmits<{ close: [] }>();
   z-index: var(--sh-z-sheet-stacked);
 }
 
-.sheet__mask {
-  position: absolute;
-  inset: 0;
-  background: var(--sh-scrim);
-}
 
+/* 几何走 `.sh-panel`（base.css，三个弹层共用），横向留白也归它的
+   `--sh-panel-pad-x` —— 下面「通铺到边」那两处从同一个变量算负外边距 */
 .sheet__panel {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--sh-surface);
-  border-radius: 44rpx 44rpx 0 0;
-  /* 横向留白走变量，好让「通铺到边」的那两处用负外边距精确抵消它 ——
-     抄一个 36 过去的话，改一处另一处就错位，而错位只有几像素，没人会去量 */
-  --sheet-pad-x: 36rpx;
-  padding: 24rpx var(--sheet-pad-x) 48rpx;
-  padding: 24rpx var(--sheet-pad-x) calc(48rpx + env(safe-area-inset-bottom, 0px));
   /* 见类注释：没有 max-height 的 bottom:0 弹层，内容一多就把上半截顶出视口 */
   max-height: 78vh;
-  box-sizing: border-box;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -130,7 +115,7 @@ const emit = defineEmits<{ close: [] }>();
 /* 通铺到边：把面板的横向留白抵消掉。两处都从同一个变量算，不各写一个数 */
 .sheet__body--flush,
 .sheet__foot {
-  margin-inline: calc(var(--sheet-pad-x) * -1);
+  margin-inline: calc(var(--sh-panel-pad-x, 36rpx) * -1);
 }
 /* 工具条与正文同宽（flush 时一起通铺）—— 搜索框的左右边界要与列表行对齐 */
 .sheet__toolbar {
@@ -151,19 +136,7 @@ const emit = defineEmits<{ close: [] }>();
   border-top: var(--sh-hairline);
 }
 
-.sheet__grip {
-  width: 72rpx;
-  height: 8rpx;
-  border-radius: 9999px;
-  background: var(--sh-faint);
-  margin: 0 auto 28rpx;
-}
 
-.sheet__head {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
 
 /* 34rpx/600 = 字阶的 .txt-title。此前是 32rpx/700 —— 32 不在七档上，
    而 700 按字阶只给价格。**组件库带头破的那一档，页面照抄不奇怪**：
@@ -174,9 +147,4 @@ const emit = defineEmits<{ close: [] }>();
 }
 
 
-.sheet__hint {
-  display: block;
-  margin-top: 8rpx;
-  color: var(--sh-sub);
-}
 </style>

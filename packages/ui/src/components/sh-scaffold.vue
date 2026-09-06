@@ -103,8 +103,8 @@ watch(() => props.titleKey, applyTitle);
   <view class="sh-root sh-frame" :class="rootClass">
     <!-- #ifdef H5 || APP-PLUS -->
     <view class="navbar" :style="{ paddingTop: statusBar + 'px' }">
-      <view class="navbar__bar">
-        <view v-if="canBack" class="navbar__back sh-hit" @tap="goBack">
+      <view class="sh-center navbar__bar">
+        <view v-if="canBack" class="sh-center navbar__back sh-hit" @tap="goBack">
           <sh-icon name="chevronLeft" :size="34" color="var(--sh-ink)"></sh-icon>
         </view>
         <text class="txt-title navbar__title">{{ navTitle }}</text>
@@ -202,9 +202,6 @@ watch(() => props.titleKey, applyTitle);
 .navbar__bar {
   position: relative;
   height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 /* 返回键**绝对定位**：标题要在整条栏里居中，而不是在「返回键右边那段」里居中 ——
    后者会让有返回键和没返回键的两页标题位置差半个箭头，翻页时看得出来 */
@@ -213,9 +210,6 @@ watch(() => props.titleKey, applyTitle);
   inset-inline-start: 8rpx;
   width: 72rpx;
   height: 72rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 /* 标题两端留出返回键的宽度，长标题才不会压到箭头上 */
 .navbar__title {

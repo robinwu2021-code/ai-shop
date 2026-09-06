@@ -57,7 +57,7 @@ function add() {
 </script>
 
 <template>
-  <view class="up">
+  <view class="sh-wrap up">
     <view
       v-for="(img, i) in list"
       :key="img + i"
@@ -71,7 +71,7 @@ function add() {
         <sh-icon name="close" :size="24" color="#fff"></sh-icon>
       </view>
     </view>
-    <view v-if="canAdd" class="up__add" :style="cell" @tap="add">
+    <view v-if="canAdd" class="sh-center up__add" :style="cell" @tap="add">
       <text v-if="uploading" class="txt-display up__plus">…</text>
       <sh-icon v-else name="plus" :size="40" color="var(--sh-sub)"></sh-icon>
     </view>
@@ -80,9 +80,6 @@ function add() {
 
 <style scoped>
 .up {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 12rpx;
 }
 .up__cell {
@@ -127,9 +124,6 @@ function add() {
 }
 .up__add {
   flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border-radius: 16rpx;
   background: var(--sh-faint);
 }

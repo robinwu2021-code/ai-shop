@@ -30,7 +30,7 @@ const isImg = (s: string): boolean => /^(https?:)?\/\//.test(s) || s.startsWith(
 </script>
 
 <template>
-  <view class="cover">
+  <view class="sh-center cover">
     <image v-if="isImg(props.src)" :src="props.src" :mode="props.mode" class="cover__img" />
     <text v-else class="cover__emoji"><slot>{{ props.src }}</slot></text>
   </view>
@@ -40,9 +40,6 @@ const isImg = (s: string): boolean => /^(https?:)?\/\//.test(s) || s.startsWith(
 /* 居中用 flex 而不是靠调用点的 line-height：调用点那套是为文字写的，
    换成图片后 line-height 不再居中任何东西。overflow 是第二道闸（见上）。 */
 .cover {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
   flex-shrink: 0;
 }

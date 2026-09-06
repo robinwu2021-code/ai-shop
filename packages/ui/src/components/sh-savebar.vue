@@ -31,7 +31,7 @@ defineEmits<{ (e: "discard"): void; (e: "save"): void }>();
          逐像素对齐要么写死一个会过期的数、要么运行时量一次 ——
          而这块空白只要「不挡住内容」就够了，多出的十几 rpx 没有代价。 -->
     <view class="bar__pad"></view>
-    <view class="bar">
+    <view class="sh-row bar">
       <text class="txt-sub bar__t">{{ text }}</text>
       <text class="sh-btn sh-btn--muted bar__discard" @tap="$emit('discard')">{{ discardText }}</text>
       <view class="sh-btn bar__save" @tap="$emit('save')">{{ saveText }}</view>
@@ -53,9 +53,6 @@ defineEmits<{ (e: "discard"): void; (e: "save"): void }>();
   /* 宽屏下跟着应用框收窄：sh-scaffold 的 transform 让 fixed 以框为包含块，
      所以这里不必自己算 left/right（见 sh-scaffold 的注释） */
   z-index: var(--sh-z-actionbar);
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   padding: 20rpx 24rpx;
   padding-bottom: 20rpx;
   padding-bottom: calc(20rpx + constant(safe-area-inset-bottom, 0px));

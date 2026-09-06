@@ -1249,6 +1249,56 @@ uni-page-wrapper[style*="--window-bottom"] {
 }
 
 
+
+/* ---- 底部弹层的壳：遮罩 · 面板 · 抓手条 ----
+ *
+ * **库里三个件各画了一份**（2026-09-06 数的）：`sh-sheet` / `sh-prompt` /
+ * `sh-theme-sheet`。三份的 `__mask` **逐字节相同**，三份的面板也是同一套几何
+ * （44rpx 上圆角 + `24 / 36 / 48` 内边距 + surface 底），抓手条更是三份
+ * `72×8rpx` 的胶囊。页面那一层已经理过两轮了，而**库自己在各写各的**。
+ *
+ * 为什么是三个积木、不是让后两个复用 `sh-sheet` 组件：重复的**不是行为**，
+ * 是面板的几何。`sh-prompt` 没有关闭按钮、层级要压过弹层（它会开在弹层之上）、
+ * 内容是固定的三件；`sh-theme-sheet` 的正文是自己的网格。
+ * 按这个仓库的分法 —— **纯 CSS 无行为 = 积木**，硬塞进组件反而要加两个 prop
+ * 去关掉它用不上的部分。
+ *
+ * `z-index` **不在这里**：它是「谁压谁」，各件按 `--sh-z-*` 自己挑
+ *（弹层 100 / 叠层 150 / 对话框与输入弹层 200）。
+ */
+.sh-mask {
+  position: absolute;
+  inset: 0;
+  background: var(--sh-scrim);
+}
+.sh-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  /* 横向留白走变量，好让「通铺到边」的地方用负外边距精确抵消它 ——
+     抄一个 36 过去的话，改一处另一处就错位，而错位只有几像素，没人会去量 */
+  --sh-panel-pad-x: 36rpx;
+  background: var(--sh-surface);
+  border-radius: 44rpx 44rpx 0 0;
+  /* 三条同名声明是**有意的降级链**（见 safe-area-fallback.test.ts 的头注）：
+     不认 env() 的内核在计算期把整条丢掉、取初始值 auto，**不会退回上一条** ——
+     所以每一条都必须自带回退值，顺序按「老 → 新」，最后那条赢。 */
+  padding: 24rpx var(--sh-panel-pad-x) 48rpx;
+  padding: 24rpx var(--sh-panel-pad-x) calc(48rpx + constant(safe-area-inset-bottom, 0px));
+  padding: 24rpx var(--sh-panel-pad-x) calc(48rpx + env(safe-area-inset-bottom, 0px));
+}
+/* 抓手条：面板顶上那道短横。它不可点 —— 这套界面没有下拉关闭手势，
+   它只是在说「这是一层浮上来的东西，下面还有页面」 */
+.sh-grip {
+  width: 72rpx;
+  height: 8rpx;
+  border-radius: 9999px;
+  background: var(--sh-faint);
+  margin: 0 auto 28rpx;
+}
+
 /*
  * 计数徽标：红底白字的小圆点数字（未读数、购物车件数、待办数）。
  *

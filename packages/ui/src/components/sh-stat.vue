@@ -77,7 +77,7 @@ function tap(it: StatItem) {
       @tap="tap(it)"
     >
       <text class="txt-display st__n sh-num" :class="it.tone ? `txt-display st__n--${it.tone}` : ''">{{ it.value }}</text>
-      <text class="txt-caption st__l">{{ it.label }}</text>
+      <text class="sh-hint">{{ it.label }}</text>
     </view>
   </view>
 </template>
@@ -127,10 +127,5 @@ function tap(it: StatItem) {
    压在页面底上不足 AA。没有任何症状，只是弱视用户读不清 */
 .st__n--primary {
   color: var(--sh-primary-text);
-}
-.st__l {
-  display: block;
-  margin-top: 8rpx;
-  color: var(--sh-sub);
 }
 </style>

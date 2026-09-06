@@ -6,8 +6,10 @@
 // 业务代码里 await，而那段代码未必知道自己所在的页面有没有摆过弹层。
 // 少一处摆放 = 少一处「点了没反应」。
 //
-// 版式照抄 `sh-sheet`（同一个底部弹层的形状），不复用它本体是因为
-// 那一个是给插槽内容用的，而这一个的内容是固定的三件：说明 / 输入 / 两个按钮。
+// 壳（遮罩 / 面板 / 抓手条）走 base.css 的 `.sh-mask` `.sh-panel` `.sh-grip`
+// —— 此前三个弹层各画一份，`__mask` 逐字节相同。不复用 `sh-sheet` **组件**
+// 是因为重复的不是行为：那一个带关闭按钮、层级也不同，而这一个的内容是固定的
+// 三件（说明 / 输入 / 两个按钮），层级要压过弹层（它会开在弹层之上）。
 import { computed } from "vue";
 import { closePrompt, promptState } from "../prompt";
 
@@ -20,12 +22,12 @@ const inputType = computed(() => (s.type === "text" ? "text" : s.type));
 <template>
   <view v-if="s.visible" class="pr">
     <!-- 点遮罩＝取消。与右上角的关闭同义，不做「点外面不关」那种设计 -->
-    <view class="pr__mask" @tap="closePrompt(null)"></view>
-    <view class="pr__panel">
-      <view class="pr__grip"></view>
+    <view class="sh-mask" @tap="closePrompt(null)"></view>
+    <view class="sh-panel">
+      <view class="sh-grip"></view>
       <text class="txt-title pr__title">{{ s.title }}</text>
       <!-- 说明**在输入框外面**。这是这个组件存在的一半理由，见 prompt.ts -->
-      <text v-if="s.hint" class="txt-caption pr__hint">{{ s.hint }}</text>
+      <text v-if="s.hint" class="sh-hint">{{ s.hint }}</text>
       <input
         v-model="s.input"
         class="field__input pr__input"
@@ -56,38 +58,9 @@ const inputType = computed(() => (s.type === "text" ? "text" : s.type));
   inset: 0;
   z-index: var(--sh-z-dialog);
 }
-.pr__mask {
-  position: absolute;
-  inset: 0;
-  background: var(--sh-scrim);
-}
-.pr__panel {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--sh-surface);
-  border-radius: 44rpx 44rpx 0 0;
-  padding: 24rpx 36rpx calc(48rpx + constant(safe-area-inset-bottom, 0px));
-  padding: 24rpx 36rpx 48rpx;
-  padding: 24rpx 36rpx calc(48rpx + env(safe-area-inset-bottom, 0px));
-  box-sizing: border-box;
-}
-.pr__grip {
-  width: 72rpx;
-  height: 8rpx;
-  border-radius: 9999px;
-  background: var(--sh-faint);
-  margin: 0 auto 28rpx;
-}
 .pr__title {
   display: block;
   color: var(--sh-ink);
-}
-.pr__hint {
-  display: block;
-  margin-top: 8rpx;
-  color: var(--sh-sub);
 }
 .pr__input {
   display: block;

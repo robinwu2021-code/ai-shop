@@ -53,16 +53,13 @@ const boxStyle = computed(() => ({
 </script>
 
 <template>
-  <view class="ib" :style="boxStyle" @tap.stop="$emit('tap')">
+  <view class="sh-center ib" :style="boxStyle" @tap.stop="$emit('tap')">
     <sh-icon :name="name" :size="size" :color="color"></sh-icon>
   </view>
 </template>
 
 <style scoped>
 .ib {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex: none;
 }
 </style>
