@@ -71,7 +71,7 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="tab.category" tab="category">
-    <view class="searchentry" @tap="gotoSearch">
+    <view class="sh-searchbox searchentry" @tap="gotoSearch">
       <text class="txt-sub">{{ $t("search.placeholder") }}</text>
     </view>
 
@@ -110,9 +110,6 @@ onShow(load);
 
 <style scoped>
 .searchentry {
-  background: var(--sh-surface);
-  border-radius: 9999px;
-  padding: 24rpx 32rpx;
   margin-bottom: 24rpx;
 }
 </style>

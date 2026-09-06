@@ -1256,7 +1256,7 @@ function close() {
           「整个 XX」是每一级的第一行，固定在列表上方：
           它让「我就要这一整片」与「我进去挑几个」在同一屏里并列，不用先决定走哪条路。
         -->
-        <view v-if="current" class="sh-row sh-row--between whole" :class="{ 'is-on': wholePicked }" @tap="toggleWhole">
+        <view v-if="current" class="sh-row sh-row--between sh-notice whole" :class="{ 'is-on': wholePicked }" @tap="toggleWhole">
           <text class="txt-sub txt-bold txt-primary whole__t">{{ $t("store.picker.wholeLevel", { s: current.name }) }}</text>
           <text v-if="wholePicked" class="txt-caption whole__on">{{ $t("store.picker.picked") }}</text>
         </view>
@@ -1367,9 +1367,6 @@ function close() {
 }
 .whole {
   margin: 16rpx 24rpx 0;
-  padding: 20rpx 24rpx;
-  border-radius: 16rpx;
-  background: var(--sh-primary-tint);
 }
 .whole__on {
   padding: 4rpx 16rpx;

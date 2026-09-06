@@ -12,6 +12,12 @@ const ROOT = join(import.meta.dirname, "../../..");
 const APPS = ["c-app", "b-app"];
 const UI = join(ROOT, "packages/ui/src/components");
 
+/**
+ * 标签扫描。**属性值里可能有 `>`**（`v-if="list.length > 1"`），
+ * 所以不能用 `[^>]*?` —— 那会在那儿断掉，后面的 class 就抓不到了。
+ */
+const TAG_RE = /<(\/?)([a-zA-Z][\w:-]*)((?:[^>"']|"[^"]*"|'[^']*')*)(\/?)>/g;
+
 /** 两端所有页面（跨 describe 共用）。 */
 function pageFilesAll() {
   return APPS.flatMap((app) =>
@@ -222,7 +228,10 @@ describe("小程序的块间缝：顶层组件也要在名单上", () => {
     const from = src.indexOf(">", i) + 1;
     const stack: string[] = [];
     const out: string[] = [];
-    for (const m of src.slice(from).matchAll(/<(\/?)([a-zA-Z][\w:-]*)([^>]*?)(\/?)>/g)) {
+    // ⚠️ `[^>]*?` 会在**属性值里的 `>`** 处把标签截断（`v-if="a.length > 1"`），
+    // 于是那个标签后面的 class 抓不到 —— 2026-09-06 量版面时才发现，
+    // 六个顶层块因此被误报成「没有身份」。跳过引号内的内容。
+    for (const m of src.slice(from).matchAll(TAG_RE)) {
       const [, close, tag, , selfClose] = m as unknown as string[];
       if (close) {
         if (tag === "sh-scaffold" && stack.length === 0) break;
@@ -437,7 +446,7 @@ describe("块间缝归 --sh-gap-block", () => {
     const i = tpl.indexOf("<sh-scaffold");
     if (i < 0) return [top, deep];
     const stack: string[] = [];
-    for (const m of tpl.slice(tpl.indexOf(">", i) + 1).matchAll(/<(\/?)([a-zA-Z][\w:-]*)([^>]*?)(\/?)>/g)) {
+    for (const m of tpl.slice(tpl.indexOf(">", i) + 1).matchAll(TAG_RE)) {
       const [, close, tag, attrs, selfClose] = m as unknown as string[];
       if (close) {
         if (tag === "sh-scaffold" && stack.length === 0) break;
@@ -677,6 +686,80 @@ describe("动效只许用 --sh-t-*", () => {
       `动效时长走档：${[...tTokens].join(" / ")}，回弹曲线用 --sh-ease-spring。\n` +
         "确实不该走档的（比如一段飞行轨迹），加进本测试的 ALLOW 并写清楚为什么。\n" +
         offenders.join("\n"),
+    ).toEqual([]);
+  });
+});
+
+/*
+ * 版面：**页面可以排版，不可以自己画容器。**
+ *
+ * 「白卡」与「提示条」是库件的两样东西（`.sh-card` / `.sh-block` / `.sh-cells` /
+ * `.sh-notice`）。页面在 `sh-scaffold` 顶层自己写一个 `background: var(--sh-surface)`
+ * 或 `var(--sh-*-tint)` 的块，就是把它们又画了一遍 —— 而画出来的每一份圆角和内边距
+ * 都不一样：2026-09-06 量到 14 处，圆角 16/24/32、内边距十几种。
+ *
+ * 判据只盯这两类底色：
+ *   · `--sh-surface` / `--sh-elev` —— 那是「卡」
+ *   · `--sh-*-tint`               —— 那是「提示条」或「选中态」
+ * **`--sh-faint` 不在内**：它还兼着占位图的底、输入框的底、禁用态，收进来会报一堆假的。
+ *
+ * 挂了容器类之后再覆盖底色不算违规 —— 那是换皮肤（会员卡就是一张 tint 的卡），
+ * 不是重画一个容器。
+ */
+describe("版面：页面不自己画容器", () => {
+  const CONTAINER = new Set(["sh-card", "sh-block", "sh-cells", "sh-notice", "sh-chip",
+    "sh-btn", "sh-seg", "sh-scrollx", "sh-searchbox", "sh-empty"]);
+  const PAINT = /background(-color)?:\s*var\(--sh-(surface|elev|primary-tint|warning-tint|danger-tint|success-tint)\)/;
+
+  /** `sh-scaffold` 的直接子节点及其 class（`<template>` 透明） */
+  function topChildren(tpl: string): { tag: string; cls: string[] }[] {
+    const i = tpl.indexOf("<sh-scaffold");
+    if (i < 0) return [];
+    const stack: string[] = [];
+    const out: { tag: string; cls: string[] }[] = [];
+    for (const m of tpl.slice(tpl.indexOf(">", i) + 1).matchAll(TAG_RE)) {
+      const [, close, tag, attrs, selfClose] = m as unknown as string[];
+      if (close) {
+        if (tag === "sh-scaffold" && stack.length === 0) break;
+        if (stack[stack.length - 1] === tag) stack.pop();
+        continue;
+      }
+      if (stack.filter((t) => t !== "template").length === 0 && tag !== "template") {
+        const cm = /(?<![:\w-])class="([^"]*)"/.exec(attrs ?? "");
+        out.push({ tag: tag!, cls: cm ? cm[1]!.split(/\s+/).filter(Boolean) : [] });
+      }
+      if (!selfClose && !["input", "img", "br", "image"].includes(tag!)) stack.push(tag!);
+    }
+    return out;
+  }
+
+  const findings = pageFilesAll().flatMap(({ app, file, src }) => {
+    if (!src.includes("<sh-scaffold") || !src.includes("<style")) return [];
+    const cut = src.indexOf("<style");
+    const tpl = src.slice(0, cut).replace(/<!--[\s\S]*?-->/g, "");
+    const css = src.slice(cut).replace(/\/\*[\s\S]*?\*\//g, "");
+    const out: string[] = [];
+    for (const { tag, cls } of topChildren(tpl)) {
+      if (tag.includes("-")) continue;                       // 组件
+      if (cls.some((c) => CONTAINER.has(c))) continue;       // 已经有容器身份
+      for (const c of cls) {
+        const m = new RegExp(`\\n[ \\t]*\\.${c.replace(/-/g, "\\-")}[ \\t]*\\{([^}]*)\\}`).exec(css);
+        if (m && PAINT.test(m[1]!)) out.push(`${app}/${file}  .${c}`);
+      }
+    }
+    return out;
+  });
+
+  it("有东西可扫", () => {
+    expect(pageFilesAll().filter((f) => f.src.includes("<sh-scaffold")).length).toBeGreaterThan(80);
+  });
+
+  it("顶层块没有自己画的卡或提示条", () => {
+    expect(
+      [...new Set(findings)],
+      "白卡走 `.sh-card` / `.sh-block` / `.sh-cells`，提示条走 `.sh-notice`（四个语义档）。\n" +
+        "确实需要换个底色的，先挂容器类再覆盖 —— 那是皮肤，不是重画一个容器。\n" +
+        findings.join("\n"),
     ).toEqual([]);
   });
 });

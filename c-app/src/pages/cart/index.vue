@@ -254,7 +254,7 @@ onShow(() => cart.load());
             size="lg"
             @tap="openGoods(it)"
           >
-            <view v-if="it.giftQty" class="giftrow sh-row">
+            <view v-if="it.giftQty" class="sh-notice sh-notice--danger giftrow sh-row">
               <text class="txt-caption giftrow__tag">{{ $t("promo.gift") }}</text>
               <text class="txt-caption giftrow__text sh-num">
                 {{ $t("promo.giftItem", { title: it.title, n: it.giftQty }) }}
@@ -320,7 +320,7 @@ onShow(() => cart.load());
           :spec="it.spec"
           size="lg"
         >
-          <view class="invalid sh-row sh-row--between">
+          <view class="sh-notice sh-notice--warning invalid sh-row sh-row--between">
             <text class="txt-caption txt-ink">{{ invalidText(it) }}</text>
             <text class="sh-link" @tap.stop="remove(it.skuNo)">
               {{ $t("cart.removeInvalid") }}
@@ -334,13 +334,15 @@ onShow(() => cart.load());
       空态**要等第一次拉完**。不等的话冷启动那一瞬间「购物车是空的」会先闪一下，
       再被商品顶掉 —— 看起来像刚被谁清空了。
     -->
-    <view v-if="cart.loaded && !cart.items.length" class="sh-card empty">
-      <text class="txt-strong empty__t">{{ $t("cart.empty") }}</text>
-      <text class="txt-caption empty__d">{{ $t("cart.emptyHint") }}</text>
-      <view class="sh-btn sh-btn--sm empty__btn" @tap="goShopping">
-        {{ $t("cart.goShopping") }}
-      </view>
-    </view>
+    <sh-empty
+      v-if="cart.loaded && !cart.items.length"
+      :text="String($t('cart.empty'))"
+      :tip="String($t('cart.emptyHint'))"
+    >
+      <template #action>
+        <view class="sh-btn sh-btn--sm" @tap="goShopping">{{ $t("cart.goShopping") }}</view>
+      </template>
+    </sh-empty>
 
     <sh-actionbar v-if="cart.items.length" pill="lead" tabbar :pad="140">
       <!-- 光一个勾选框说不清它管的是什么，配一个字 —— 它离商品行有一段距离 -->
@@ -434,10 +436,6 @@ onShow(() => cart.load());
 }
 .invalid {
   margin-top: 8rpx;
-  padding: 10rpx 16rpx;
-  /* 圆角走 token 五档，原先的 12rpx 不在档上 */
-  border-radius: 16rpx;
-  background: var(--sh-warning-tint);
 }
 
 .splitnote {
@@ -447,9 +445,6 @@ onShow(() => cart.load());
 .giftrow {
   gap: 12rpx;
   margin-top: 16rpx;
-  background: var(--sh-danger-tint);
-  border-radius: 16rpx;
-  padding: 10rpx 16rpx;
 }
 .giftrow__tag {
   color: var(--sh-danger);
@@ -487,22 +482,6 @@ onShow(() => cart.load());
   text-align: center;
 }
 
-.empty {
-  text-align: center;
-  padding: 72rpx 24rpx;
-}
-.empty__t {
-  display: block;
-}
-.empty__d {
-  display: block;
-  margin-top: 8rpx;
-}
-.empty__btn {
-  display: inline-block;
-  margin-top: 28rpx;
-  padding-inline: 48rpx;
-}
 
 .bar__all {
   flex: none;

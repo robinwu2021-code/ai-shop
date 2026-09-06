@@ -713,7 +713,7 @@ onShow(() => void load());
       {{ $t(tab === "dims" ? "mySpecs.intro" : "mySpecs.introProps") }}
     </text>
 
-    <view v-for="g in byCategory" :key="g.categoryNo" class="cat">
+    <view v-for="g in byCategory" :key="g.categoryNo" class="sh-cells cat">
       <sh-section pad :title="g.categoryName">
         <!--
           **带字的按钮，不是裸图标。**一个 ＋ 摆在标题栏里认不出是加什么 ——
@@ -1002,9 +1002,6 @@ onShow(() => void load());
 }
 
 .cat {
-  background: var(--sh-surface);
-  border-radius: 24rpx;
-  overflow: hidden;
 }
 .cat__empty,
 /* 「可添加」区：压在卡片内容与「恢复平台默认」之间 —— 它比每一行的操作轻，

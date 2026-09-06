@@ -201,7 +201,7 @@ onShow(() => {
       中间的留白比行本身还显眼 —— 「看起来像五个功能模块」，而它们其实只是一张设置清单。
       改成组内密排（同 C 端「我的」）：**分组表达归属，间距只在组与组之间**。
     -->
-    <view class="cells">
+    <view class="sh-cells">
       <!-- 结算与经营数据按 perms 裁剪：店员看不到「钱」，也看不到客户资产 -->
       <!--
         **「我的收入」补一个门。** 这一页（B-11.9）此前全 app 没有一处跳得过去 ——
@@ -212,11 +212,11 @@ onShow(() => {
         <b>这是补位不是定案</b>：做「钱」那条线的人如果另有排布（比如提到工作台），
         以那边为准，把这一行删掉就是。有门总比没门强。
       -->
-      <view v-if="merchant.can('biz:finance')" class="cell sh-row sh-row--between" @tap="go(ROUTES.income)">
+      <view v-if="merchant.can('biz:finance')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.income)">
         <text class="txt-body cell__label">{{ $t("me.income") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
-      <view v-if="merchant.can('biz:finance')" class="cell sh-row sh-row--between" @tap="go(ROUTES.settle)">
+      <view v-if="merchant.can('biz:finance')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.settle)">
         <text class="txt-body cell__label">{{ $t("me.settle") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
@@ -229,12 +229,12 @@ onShow(() => {
         「我的」是账号维度的东西 —— 密码、语言、套餐；门店是经营维度的，
         两处都摆一个门就又回到「同一件事三个入口，人记不住走哪个」。
       -->
-      <view v-if="merchant.can('biz:store:admin')" class="cell sh-row sh-row--between" @tap="go(ROUTES.staff)">
+      <view v-if="merchant.can('biz:store:admin')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.staff)">
         <text class="txt-body cell__label">{{ $t("me.staff") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <!-- 收款设置：商户维度的钱袋子。「我的」本身就是商户视角，不必再造一层「商户」 -->
-      <view v-if="merchant.can('biz:finance')" class="cell sh-row sh-row--between" @tap="go(ROUTES.payment)">
+      <view v-if="merchant.can('biz:finance')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.payment)">
         <text class="txt-body cell__label">{{ $t("me.payment") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
@@ -243,7 +243,7 @@ onShow(() => {
         原先挂在门店管理页里 —— 那一页现在只答「哪家店、今天怎么样」，
         一年动一次的执照摆在那儿只会把每天要看的数字往下挤。
       -->
-      <view v-if="merchant.can('biz:store')" class="cell sh-row sh-row--between" @tap="go(ROUTES.qualifications)">
+      <view v-if="merchant.can('biz:store')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.qualifications)">
         <text class="txt-body cell__label">{{ $t("stores.qualEntry") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
@@ -259,7 +259,7 @@ onShow(() => {
       -->
       <view
         v-if="merchant.multiEntity && merchant.can('biz:store:admin')"
-        class="cell sh-row sh-row--between"
+        class="sh-cell sh-row sh-row--between"
         @tap="go(ROUTES.entities)"
       >
         <text class="txt-body cell__label">{{ $t("entities.title") }}</text>
@@ -275,22 +275,22 @@ onShow(() => {
         与员工同一个码（biz:store:admin，只有老板）：这一页答的是「主体买了什么」。
         店长看到额度只会去催老板买单，而他不是做这个决定的人。
       -->
-      <view v-if="merchant.can('biz:store:admin')" class="cell sh-row sh-row--between" @tap="go(ROUTES.plan)">
+      <view v-if="merchant.can('biz:store:admin')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.plan)">
         <text class="txt-body cell__label">{{ $t("plan.meCell") }}</text>
         <text v-if="plan" class="txt-caption cell__value" :class="{ 'is-warning': quotaFull }">
           {{ $t("plan.meSub", { name: plan.planName, used: plan.storeUsed, quota: plan.storeQuota }) }}
         </text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
-      <view v-if="merchant.can('biz:customer')" class="cell sh-row sh-row--between" @tap="go(ROUTES.stats)">
+      <view v-if="merchant.can('biz:customer')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.stats)">
         <text class="txt-body cell__label">{{ $t("me.stats") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
     </view>
 
-    <view class="cells">
+    <view class="sh-cells">
       <!-- 消息：新订单/售后/评价的落点。红点数与 tabBar 角标同源（30s 轮询） -->
-      <view v-if="merchant.isLogin" class="cell sh-row sh-row--between" @tap="go(ROUTES.messages)">
+      <view v-if="merchant.isLogin" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.messages)">
         <text class="txt-body cell__label">{{ $t("me.messages") }}</text>
         <text v-if="unreadCount" class="sh-badge-count cell__badge sh-num">
           {{ unreadCount > 99 ? "99+" : unreadCount }}
@@ -299,26 +299,26 @@ onShow(() => {
       </view>
       <!-- 登录密码：设过就是「修改」，没设过是「设置」——
            两个词对应的心理动作不同，含糊成一个「密码」会让人不知道点进去会发生什么 -->
-      <view v-if="merchant.isLogin" class="cell sh-row sh-row--between" @tap="editPassword">
+      <view v-if="merchant.isLogin" class="sh-cell sh-row sh-row--between" @tap="editPassword">
         <text class="txt-body cell__label">{{ $t("me.password") }}</text>
         <text class="txt-caption cell__value">
           {{ hasPassword ? $t("me.passwordSet") : $t("me.passwordUnset") }}
         </text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
-      <view class="cell sh-row sh-row--between" @tap="sheetOpen = true">
+      <view class="sh-cell sh-row sh-row--between" @tap="sheetOpen = true">
         <text class="txt-body cell__label">{{ $t("me.appearance") }}</text>
         <text class="txt-caption cell__value">{{ $t("me.appearanceValue") }}</text>
       </view>
-      <view class="cell sh-row sh-row--between" @tap="later">
+      <view class="sh-cell sh-row sh-row--between" @tap="later">
         <text class="txt-body cell__label">{{ $t("me.help") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
     </view>
 
     <!-- 退出登录单独一组：它与上面几项不是同类，紧挨着放容易误点 -->
-    <view v-if="merchant.isLogin" class="cells">
-      <view class="cell sh-row sh-row--between" @tap="logout">
+    <view v-if="merchant.isLogin" class="sh-cells">
+      <view class="sh-cell sh-row sh-row--between" @tap="logout">
         <text class="txt-body cell__label is-danger">{{ $t("me.logout") }}</text>
       </view>
     </view>
@@ -348,19 +348,6 @@ onShow(() => {
 
 .head__main .sh-chip {
   margin-top: 12rpx;
-}
-/* 组：组间留白，组内不留 —— 归属靠分组表达，不靠每行浮起 */
-.cells {
-  display: flex;
-  flex-direction: column;
-  gap: 2rpx;
-  background: var(--sh-surface);
-  border-radius: 24rpx;
-  overflow: hidden;
-}
-.cell {
-  gap: 24rpx;
-  padding: 28rpx;
 }
 .cell__label {
   flex-shrink: 0;

@@ -147,7 +147,7 @@ onShow(load);
         宽限期横幅。**能力全保留**这句话必须出现在这里 ——
         店主看到「即将到期」的第一反应是「我的店是不是已经关了」。
       -->
-      <view v-if="plan.status === 'GRACE'" class="banner banner--warn">
+      <view v-if="plan.status === 'GRACE'" class="sh-notice sh-notice--warning banner">
         <text class="txt-bold">{{ $t("plan.graceTitle") }}</text>
         <text class="txt-caption">{{ $t("plan.graceBody") }}</text>
       </view>
@@ -156,7 +156,7 @@ onShow(load);
         降级横幅：**写明是哪几家店**。这是整页最要紧的一块 ——
         那几家店正在丢单，而它们在门店列表里与「店主自己停用的」长得一模一样。
       -->
-      <view v-if="plan.suspendedStores.length" class="banner banner--danger">
+      <view v-if="plan.suspendedStores.length" class="sh-notice sh-notice--danger banner">
         <text class="txt-bold">
           {{ $t("plan.suspendedTitle", { n: plan.suspendedStores.length }) }}
         </text>
@@ -222,21 +222,11 @@ onShow(load);
   gap: 4rpx;
 }
 
+/* 形态归 .sh-notice（tint 底与同名字色）；这里只留「两行竖排」 */
 .banner {
-  padding: 20rpx;
-  border-radius: 16rpx;
   display: flex;
   flex-direction: column;
   gap: 8rpx;
-}
-/* 语义色的 tint 底（与 .sh-chip--warning/--danger 同一套）。
-   **此前写的是 --sh-warning-bg / --sh-danger-bg，这两个变量不存在** ——
-   于是恒用兜底的 #fff7e6 / #fff1f0，深色皮肤下浅黄浅红底配浅色墨字，对比直接崩。 */
-.banner--warn {
-  background: var(--sh-warning-tint);
-}
-.banner--danger {
-  background: var(--sh-danger-tint);
 }
 
 

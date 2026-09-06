@@ -269,7 +269,17 @@ onUnmounted(() => clearInterval(timer));
         <text class="txt-caption done__hint">{{ $t(doneHintKey) }}</text>
 
         <!-- 各类码共用一个字段，**标签按品类与履约方式变**（见 order 页同处说明） -->
-        <view v-if="order.verifyCode" class="code">
+        <!--
+          兑换码换一档色：它与「到店核销码」的用法不同（一个自己去兑，一个给店员看），
+          底色是唯一的区分。**这一档此前写了没接** —— `.code--redeem` 与
+          `.code--redeem .code__label` 两条规则都在，模板里一次都没挂过，
+          于是虚拟商品的兑换码一直和核销码长得一样。2026-09-06 接上。
+        -->
+        <view
+          v-if="order.verifyCode"
+          class="sh-notice code"
+          :class="{ 'sh-notice--warning': codeLabel === 'pay.redeemCode' }"
+        >
           <text class="txt-caption code__label">{{ $t(codeLabel) }}</text>
           <text class="txt-hero code__v sh-num">{{ order.verifyCode }}</text>
         </view>
@@ -391,18 +401,12 @@ onUnmounted(() => clearInterval(timer));
 }
 .code {
   margin-top: 36rpx;
-  background: var(--sh-primary-tint);
-  border-radius: 32rpx;
-  padding: 28rpx;
-}
-.code--redeem {
-  background: var(--sh-warning-tint);
 }
 .code__label {
   display: block;
   color: var(--sh-primary-text);
 }
-.code--redeem .code__label {
+.sh-notice--warning .code__label {
   color: var(--sh-warning);
 }
 .code__v {

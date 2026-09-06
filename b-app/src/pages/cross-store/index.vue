@@ -209,7 +209,7 @@ onShow(load);
       付费墙横幅。**在 tab 上面、内容之前** —— 商家先看到「这是示例」，
       再往下看那些数字，顺序反了就会先把假数据当真。
     -->
-    <view v-if="locked" class="lock">
+    <view v-if="locked" class="sh-notice lock">
       <view class="lock__row sh-row">
         <text class="txt-caption lock__tag">{{ $t("crossStore.demoTag") }}</text>
         <text class="txt-strong">{{ $t("crossStore.lockTitle") }}</text>
@@ -331,9 +331,6 @@ onShow(load);
 }
 /* 付费墙：用主色浅底而不是警示红 —— 这不是故障，是一次升档邀请 */
 .lock {
-  padding: 24rpx;
-  border-radius: 32rpx;
-  background: var(--sh-primary-tint);
 }
 .lock__row {
   gap: 12rpx;

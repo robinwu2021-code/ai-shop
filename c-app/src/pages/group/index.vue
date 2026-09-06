@@ -98,7 +98,7 @@ onShareAppMessage(() => {
         <text v-if="off > 0" class="sh-chip sh-chip--danger sh-num">-{{ off }}%</text>
       </view>
 
-      <view class="cd sh-row sh-row--between">
+      <view class="sh-notice sh-notice--warning cd sh-row sh-row--between">
         <text class="txt-caption cd__label is-warning">{{ $t("group.cutoff") }}</text>
         <text class="txt-body cd__v sh-num is-warning">{{ countdown(group.expireAt - now) }}</text>
       </view>
@@ -109,10 +109,10 @@ onShareAppMessage(() => {
       <text class="txt-title">{{ $t("group.progress") }}</text>
       <text class="sh-muted tierhint">{{ $t("group.tierHint") }}</text>
 
-      <view v-if="!group.reached" class="goal">
+      <view v-if="!group.reached" class="sh-notice goal">
         <text class="txt-strong goal__text txt-primary">{{ $t("group.needMore", { n: group.need }) }}</text>
       </view>
-      <view v-else class="goal goal--max">
+      <view v-else class="sh-notice goal goal--max">
         <text class="txt-strong goal__text txt-primary">{{ $t("group.done") }}</text>
       </view>
     </view>
@@ -174,9 +174,6 @@ onShareAppMessage(() => {
 }
 .cd {
   margin-top: 24rpx;
-  background: var(--sh-warning-tint);
-  border-radius: 24rpx;
-  padding: 20rpx 26rpx;
 }
 .tierhint {
   display: block;
@@ -184,9 +181,6 @@ onShareAppMessage(() => {
 }
 .goal {
   margin-top: 24rpx;
-  background: var(--sh-primary-tint);
-  border-radius: 24rpx;
-  padding: 22rpx 26rpx;
 }
 .goal--max {
   background: var(--sh-success-tint);

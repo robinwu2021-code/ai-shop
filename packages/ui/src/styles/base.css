@@ -1155,6 +1155,101 @@ uni-page-wrapper[style*="--window-bottom"] {
 
 
 /*
+ * 提示条：一段话，压在语义色的 tint 底上。
+ *
+ * **26 处各写一份**（2026-09-06 数的，c 端 13 / b 端 13），而且是 26 种写法 ——
+ * 圆角 16(×12) / 24(×11) / 32(×3)，内边距十二种（10 16 / 16 / 16 20 / 16 24 /
+ * 18 22 / 20 24 / 20 26 / 22 26 / 24 / 28 …）。同一个东西在同一屏上都对不齐。
+ *
+ * 取 **24rpx 圆角**：16 与 24 几乎打平（12:11），而这一族是「卡片里的一个块」——
+ * 与 `.field__input` 同层级，那一档是 24。取 **20rpx 24rpx 内边距**：
+ * 它与 `.field__input` 的横向 24 相同，于是同一张卡里的提示条与输入框内边界对齐。
+ *
+ * 底与字**成对出现**，与 `.sh-chip--*` 同一套配法（tint 底 + 同名语义色的字）——
+ * 26 处里有 14 处本来就是这么配的，剩下的没配字色是漏了，不是另一种设计。
+ */
+.sh-notice {
+  padding: 20rpx 24rpx;
+  border-radius: 24rpx;
+  background: var(--sh-primary-tint);
+  color: var(--sh-primary-text);
+}
+.sh-notice--warning {
+  background: var(--sh-warning-tint);
+  color: var(--sh-warning);
+}
+.sh-notice--danger {
+  background: var(--sh-danger-tint);
+  color: var(--sh-danger);
+}
+.sh-notice--success {
+  background: var(--sh-success-tint);
+  color: var(--sh-success);
+}
+/* 中性的一档：没有语义、只是「这段话与正文分开」。弱色块底 + 次要字色。
+   全站另有 26 处 faint 底的块，但那 26 处是**三件事**混在一起 ——
+   药丸标签（该走 .sh-chip）、弱化的容器（圆角 32、带 gap，那是卡不是话）、
+   以及这一档。只收第三种。 */
+.sh-notice--muted {
+  background: var(--sh-faint);
+  color: var(--sh-sub);
+}
+
+
+/*
+ * 分组密排清单：一组设置项/入口挤在一块白底上，行与行之间只留 2rpx 的缝。
+ *
+ * **两端各写了一遍，逐字节相同**（`c-app/me` 与 `b-app/me` 的 `.cells`），
+ * 唯独行内边距漂了：C 端 `24rpx 26rpx`、B 端 `28rpx`。同一个清单，两端两个行高。
+ *
+ * 为什么不是「一行一张卡」：原先 11 行各自带底色与圆角、彼此留 8rpx 空隙 ——
+ * 满屏漂着 11 个孤立色块，行与行的间距比行本身还抢眼，看起来像 11 个功能模块，
+ * 而它们其实是一张清单。**归属靠分组表达，留白只出现在组与组之间。**
+ *
+ * 缝取 2rpx 而不是发丝线：那 2rpx 露出的是页底色，比画一条线更轻，
+ * 且在圆角处天然收口（`overflow: hidden`）。
+ */
+.sh-cells {
+  display: flex;
+  flex-direction: column;
+  gap: 2rpx;
+  background: var(--sh-surface);
+  border-radius: 24rpx;
+  overflow: hidden;
+}
+/* 行的内边距走密度变量：C 端逛店松一点、B 端作业台紧一点，这本来就是两端的分歧，
+   而此前那点分歧是「各写各的」造成的，不是有意的。纵向 24 让行高落在 ~76rpx —— 
+   远超 44pt 的点按下限，一屏又能多放两三行 */
+.sh-cell {
+  padding: 24rpx var(--sh-pad-page, 28rpx);
+}
+
+
+/*
+ * 搜索框（也用作「点一下跳到搜索页」的假输入框）。
+ *
+ * **两端各画了一个，形状对不上**：c 端 `category` 是 `9999px` 圆角、`24rpx 32rpx`
+ * 内边距的胶囊；b 端 `goods-list` 是 `16rpx` 圆角、`0 24rpx` 内边距、靠里面的
+ * input 撑高。同一个东西在两个端上一个是药丸一个是方角。
+ *
+ * 取胶囊：这套界面里凡是「一整条可点的东西」都是胶囊（`.sh-btn`、`.sh-chip`）。
+ * 高度取 88rpx —— 与 `.field__input` 同高，于是搜索框与输入框在同一屏上齐平。
+ * 横向留白 28rpx 与 `--sh-pad-page` 的 C 端值相同，视觉上与页面边距成一条线。
+ *
+ * 只管「盒子长什么样」，里面放图标还是 input 由调用点定 —— 两端放的东西不一样。
+ */
+.sh-searchbox {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-height: 88rpx;
+  padding: 0 28rpx;
+  border-radius: 9999px;
+  background: var(--sh-surface);
+}
+
+
+/*
  * 计数徽标：红底白字的小圆点数字（未读数、购物车件数、待办数）。
  *
  * 三处各写一份（`me` 的消息未读、`goods` 的购物车角标、`sh-tabbar` 的红点），

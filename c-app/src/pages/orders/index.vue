@@ -207,7 +207,7 @@ onShow(load);
       <view v-if="o.status === 'WAIT_PAY'" class="card__ops">
         <view class="txt-sub sh-btn card__pay" @tap.stop="pay(o)">{{ $t("orders.pay") }}</view>
       </view>
-      <view v-else-if="o.verifyCode && o.status !== 'COMPLETED'" class="codeline sh-row sh-row--between">
+      <view v-else-if="o.verifyCode && o.status !== 'COMPLETED'" class="sh-notice codeline sh-row sh-row--between">
         <text class="txt-caption codeline__label txt-primary">{{ $t("pay.verifyCode") }}</text>
         <text class="txt-body codeline__v sh-num">{{ o.verifyCode }}</text>
       </view>
@@ -222,16 +222,21 @@ onShow(load);
     </text>
 
     <!-- 拉挂了：说清楚，并给一条出路。与下面的空态是两件事 -->
-    <view v-if="failed && !shown.length" class="empty">
-      <text class="txt-sub empty__text">{{ $t("common.loadFailed") }}</text>
-      <text class="txt-caption empty__tip">{{ failReason || $t("common.loadFailedTip") }}</text>
-      <view class="sh-btn empty__btn" @tap="load">{{ $t("common.retry") }}</view>
-    </view>
+    <sh-empty
+      v-if="failed && !shown.length"
+      :text="String($t('common.loadFailed'))"
+      :tip="String(failReason || $t('common.loadFailedTip'))"
+    >
+      <template #action>
+        <view class="sh-btn sh-btn--sm" @tap="load">{{ $t("common.retry") }}</view>
+      </template>
+    </sh-empty>
 
-    <view v-else-if="loaded && !shown.length" class="empty">
-      <text class="txt-sub empty__text">{{ $t("orders.empty") }}</text>
-      <view class="sh-btn empty__btn" @tap="goShopping">{{ $t("visited.go") }}</view>
-    </view>
+    <sh-empty v-else-if="loaded && !shown.length" :text="String($t('orders.empty'))">
+      <template #action>
+        <view class="sh-btn sh-btn--sm" @tap="goShopping">{{ $t("visited.go") }}</view>
+      </template>
+    </sh-empty>
   </sh-scaffold>
 </template>
 
@@ -285,34 +290,13 @@ onShow(load);
 }
 .codeline {
   margin-top: 20rpx;
-  background: var(--sh-primary-tint);
-  border-radius: 24rpx;
-  padding: 16rpx 24rpx;
 }
 .codeline__v {
   letter-spacing: 3rpx;
-}
-.empty__text {
-  display: block;
-  margin-bottom: 40rpx;
-}
-/* 失败态多一行「多半是网络不通」：说清是环境问题而不是他的订单没了 */
-.empty__tip {
-  display: block;
-  margin-top: -24rpx;
-  margin-bottom: 40rpx;
-}
-.empty__btn {
-  display: inline-block;
-  padding-inline: 60rpx;
 }
 .hidden-note {
   display: block;
   text-align: center;
   padding: 24rpx 32rpx;
-}
-.empty {
-  text-align: center;
-  padding: 120rpx 40rpx;
 }
 </style>

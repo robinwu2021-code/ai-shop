@@ -515,7 +515,7 @@ onShow(() => {
 
       搜索排在最前，是因为商品一多，「找某一个」比「筛一批」高频得多。
     -->
-    <view class="search sh-row">
+    <view class="sh-searchbox search">
       <input
         maxlength="32"
         class="txt-sub search__input"
@@ -544,7 +544,7 @@ onShow(() => {
       缺资质汇总。**只在真有的时候出现**，且说清是「当前列表里」的数 ——
       分页只加载了一部分，把它说成全店总数是在编一个自己也不知道的数字。
     -->
-    <text v-if="SHOW_CATEGORY_GATE && gatedCount" class="txt-caption gate-sum">
+    <text v-if="SHOW_CATEGORY_GATE && gatedCount" class="txt-caption sh-notice sh-notice--warning gate-sum">
       {{ $t("goods.gateCount", { n: gatedCount }) }}
     </text>
 
@@ -733,10 +733,6 @@ onShow(() => {
 <style scoped>
 /* 搜索：贴着筛选条，不套卡片 —— 它是这一页的工具，不是一条内容 */
 .search {
-  gap: 12rpx;
-  padding: 0 24rpx;
-  background: var(--sh-surface);
-  border-radius: 16rpx;
 }
 .search__input {
   flex: 1;
@@ -759,9 +755,6 @@ onShow(() => {
 /* 缺资质：用警示色而不是危险色 —— 商品本身没错，缺的是一张证 */
 .gate-sum {
   display: block;
-  padding: 16rpx 24rpx;
-  color: var(--sh-warning);
-  background: var(--sh-warning-tint);
 }
 
 /*

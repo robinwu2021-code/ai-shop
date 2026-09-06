@@ -175,7 +175,7 @@ function arrow(from?: string | null, to?: string | null): string {
         问题逐行列，**带行号**。「有 3 行有问题」他无从下手，
         「第 14 行：货号 HX-9 在本店找不到」他一眼就知道去 Excel 里改哪儿。
       -->
-      <view v-if="hasProblems" class="probs">
+      <view v-if="hasProblems" class="sh-notice sh-notice--danger probs">
         <sh-kv
           v-for="p in report.problems"
           :key="p.line"
@@ -242,9 +242,6 @@ function arrow(from?: string | null, to?: string | null): string {
 
 .probs {
   margin-top: 20rpx;
-  padding: 16rpx 20rpx;
-  border-radius: 16rpx;
-  background: var(--sh-danger-tint);
 }
 
 /* 只留本页版面与语义色：排法归 sh-kv。行号是红的 —— 这一块整个是「出错的行」 */

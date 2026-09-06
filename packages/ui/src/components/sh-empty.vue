@@ -10,16 +10,32 @@
 // 两种形态（都来自现有页面的真实用法，不是我加的花样）：
 //   默认  —— 独占一屏的空列表，带卡片底色
 //   bare  —— 嵌在某个分组/卡片**内部**的空态，只有一行灰字，再套一层底色会出现「卡中卡」
-withDefaults(defineProps<{ text?: string; compact?: boolean; bare?: boolean }>(), {
-  text: "",
-  compact: false,
-  bare: false,
-});
+// **两种空态是同一件事，此前当成了两件。**
+// 除了这一行灰字，全站还有 7 处「引导型空态」——说明 + 可选的补充 + 一个按钮，
+// 居中、大留白（`cards` / `merchants` / `orders`×2 / `cart` / `order-confirm` /
+// `community`）。它们各写一份，名字有 `.empty` 与 `.state` 两种，留白四种
+// （72 24 / 80 40 / 96 48 / 120 40），`community` 连按钮都自己画了一个。
+// 判据当年撤掉「空态」那一条时的理由是「那不是 sh-empty 那种一行灰字」——
+// 说得对，但结论应该是**把这一档补进来**，不是让它在外面各长各的。
+withDefaults(
+  defineProps<{
+    text?: string;
+    /** 补充一句：为什么空、下一步能做什么。只有一句话时不必给 */
+    tip?: string;
+    compact?: boolean;
+    bare?: boolean;
+  }>(),
+  { text: "", tip: "", compact: false, bare: false },
+);
 </script>
 
 <template>
   <view class="empty" :class="{ 'sh-card': !bare, 'is-compact': compact, 'is-bare': bare }">
     <text class="sh-muted"><slot>{{ text }}</slot></text>
+    <text v-if="tip" class="sh-hint txt-quiet">{{ tip }}</text>
+    <!-- 引导型空态的那个按钮。**具名插槽而不是 props**：动作是什么、叫什么、
+         点了去哪，都是调用点的事；这里只负责它与上面那行字的距离。 -->
+    <view v-if="$slots.action" class="empty__act"><slot name="action"></slot></view>
   </view>
 </template>
 
@@ -44,5 +60,10 @@ withDefaults(defineProps<{ text?: string; compact?: boolean; bare?: boolean }>()
 .empty.is-compact,
 .empty.is-bare {
   padding: calc(var(--sh-pad-empty, 72rpx) / 2) 24rpx;
+}
+/* 动作与说明之间的距离。**只在这儿定一次** —— 此前七处各给各的
+   （0 / 24 / 28 / 32rpx），于是同一种空态在不同页面上按钮高低不一 */
+.empty__act {
+  margin-top: 28rpx;
 }
 </style>

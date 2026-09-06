@@ -27,9 +27,9 @@ defineEmits<{ (e: "like"): void }>();
 
     <text class="txt-caption txt-quiet rv__spec">{{ review.spec }}</text>
 
-    <view v-if="review.reply" class="rv__reply">
-      <text class="txt-caption txt-quiet rv__reply-text">
-        <text class="txt-bold txt-primary rv__reply-tag">{{ $t("merchant.reply") }}</text>
+    <view v-if="review.reply" class="sh-notice sh-notice--muted rv__reply">
+      <text class="txt-caption txt-quiet sh-notice sh-notice--muted rv__reply-text">
+        <text class="txt-bold txt-primary sh-notice sh-notice--muted rv__reply-tag">{{ $t("merchant.reply") }}</text>
         {{ review.reply }}
       </text>
     </view>
@@ -88,9 +88,6 @@ defineEmits<{ (e: "like"): void }>();
 }
 .rv__reply {
   margin-top: 16rpx;
-  background: var(--sh-faint);
-  border-radius: 24rpx;
-  padding: 20rpx 24rpx;
 }
 .rv__foot {
   display: flex;

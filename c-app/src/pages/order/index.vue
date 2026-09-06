@@ -242,11 +242,15 @@ onShow(load);
       **外壳常在**：拉不到也要有标题栏与皮肤根节点。
       此前整页挂在 `v-if="order"` 上，失败时是一整片白。
     -->
-    <view v-if="!order && failed" class="empty">
-      <text class="txt-sub empty__text">{{ $t("common.loadFailed") }}</text>
-      <text class="txt-caption empty__tip">{{ failReason || $t("common.loadFailedTip") }}</text>
-      <view class="sh-btn sh-btn--sm empty__btn" @tap="load">{{ $t("common.retry") }}</view>
-    </view>
+    <sh-empty
+      v-if="!order && failed"
+      :text="String($t('common.loadFailed'))"
+      :tip="String(failReason || $t('common.loadFailedTip'))"
+    >
+      <template #action>
+        <view class="sh-btn sh-btn--sm" @tap="load">{{ $t("common.retry") }}</view>
+      </template>
+    </sh-empty>
 
     <template v-if="order">
     <!-- 码：待取货的用户主要就是来看这个 -->
@@ -430,23 +434,6 @@ onShow(load);
 </template>
 
 <style scoped>
-/* 失败态：与购物车、结算页的引导型空态同一形状（标题 + 一句解释 + 主按钮） */
-.empty {
-  text-align: center;
-  padding: 120rpx 40rpx;
-}
-.empty__text {
-  display: block;
-}
-.empty__tip {
-  display: block;
-  margin-top: 8rpx;
-}
-.empty__btn {
-  display: inline-block;
-  margin-top: 40rpx;
-  padding-inline: 60rpx;
-}
 
 .as__title {
   display: block;

@@ -598,12 +598,11 @@ onMounted(async () => {
       来源两种：从购物车带过来的 sku 已经被别处删掉/下架了，或者页面被直接打开。
       此前这里是一整页空白 + 一个点不动的灰按钮 —— 看起来像页面没加载出来。
     -->
-    <view v-if="!items.length" class="sh-card empty">
-      <text class="txt-strong empty__t">{{ $t("confirm.emptyItems") }}</text>
-      <view class="sh-btn sh-btn--sm empty__btn" @tap="backToCart">
-        {{ $t("confirm.backToCart") }}
-      </view>
-    </view>
+    <sh-empty v-if="!items.length" :text="String($t('confirm.emptyItems'))">
+      <template #action>
+        <view class="sh-btn sh-btn--sm" @tap="backToCart">{{ $t("confirm.backToCart") }}</view>
+      </template>
+    </sh-empty>
 
     <template v-else>
     <!--
@@ -612,13 +611,13 @@ onMounted(async () => {
       放在页首而不是靠近提交按钮：买家的注意力在这一页从上往下走，
       放在底部他会先看完金额再看到「其实付不了」。
     -->
-    <view v-if="noPayMethod" class="txt-sub cap cap--block">
+    <view v-if="noPayMethod" class="txt-sub sh-notice sh-notice--danger cap">
       <text>{{ $t("confirm.capNoPayMethod") }}</text>
     </view>
-    <view v-if="quotaBlocked.length" class="txt-sub cap cap--block">
+    <view v-if="quotaBlocked.length" class="txt-sub sh-notice sh-notice--danger cap">
       <text>{{ $t("confirm.capQuotaBlocked", { names: quotaBlocked.map((m) => m.merchantName).join("、") }) }}</text>
     </view>
-    <view v-if="noInvoiceMerchants.length" class="txt-sub cap cap--warn">
+    <view v-if="noInvoiceMerchants.length" class="txt-sub sh-notice sh-notice--warning cap">
       <text>{{ $t("confirm.capNoInvoice", { names: noInvoiceMerchants.map((m) => m.merchantName).join("、") }) }}</text>
     </view>
 
@@ -721,7 +720,7 @@ onMounted(async () => {
       </text>
 
       <!-- 赠品：单独列出来，让用户在付款前就看见 -->
-      <view v-for="g in gifts" :key="`gift-${g.skuNo}`" class="giftrow sh-row">
+      <view v-for="g in gifts" :key="`gift-${g.skuNo}`" class="sh-notice sh-notice--danger giftrow sh-row">
         <text class="txt-caption giftrow__tag">{{ $t("promo.gift") }}</text>
         <text class="txt-caption giftrow__text sh-num">
           {{ $t("promo.giftItem", { title: g.title, n: g.giftQty }) }}
@@ -837,7 +836,7 @@ onMounted(async () => {
       屏幕上一个字都没有 —— 他看得见按钮点不动，却不知道该改哪儿。
       贴着提交条放：他往下滚就是为了按那个按钮，话要落在他视线的终点。
     -->
-    <view v-if="submitBlockedReason" class="txt-caption why">
+    <view v-if="submitBlockedReason" class="txt-caption sh-notice sh-notice--warning why">
       <text>{{ submitBlockedReason }}</text>
     </view>
 
@@ -956,9 +955,6 @@ onMounted(async () => {
 .giftrow {
   gap: 12rpx;
   margin-top: 16rpx;
-  background: var(--sh-danger-tint);
-  border-radius: 16rpx;
-  padding: 12rpx 18rpx;
 }
 .giftrow__tag {
   color: var(--sh-danger);
@@ -999,28 +995,10 @@ onMounted(async () => {
   padding-inline: 52rpx;
 }
 
-/* 引导型空态：有标题、有主按钮。**不是 sh-empty 那一行灰字** ——
-   这一页的空态要给出路（回购物车），而不只是陈述「没有」 */
-.empty {
-  text-align: center;
-  padding: 72rpx 24rpx;
-}
-.empty__t {
-  display: block;
-}
-.empty__btn {
-  display: inline-block;
-  margin-top: 28rpx;
-  padding-inline: 48rpx;
-}
 
 /* 提交不了的原因。用 warning 不用 danger：**它不是故障，是还差一步** */
 .why {
   margin: 0 24rpx;
-  padding: 16rpx 24rpx;
-  border-radius: 16rpx;
-  background: var(--sh-warning-tint);
-  color: var(--sh-warning);
 }
 
 /* 试算在途：金额压暗而不是换成骨架 —— 上一次的数仍然是最好的猜测 */
@@ -1034,18 +1012,9 @@ onMounted(async () => {
 }
 
 /* 能力提示：拦下的用醒目色，只是提醒的用弱一档 —— 两者的用户动作不同 */
+/* 形态归 .sh-notice（拦下的用 danger、只是提醒的用 warning —— 两者要求的动作不同）；
+   这里只留它相对页面边距的位置 */
 .cap {
   margin: 16rpx 24rpx;
-  padding: 20rpx 24rpx;
-  border-radius: 16rpx;
-}
-/* 拦下的用 danger，只是提醒的用 warning —— 两者要求的用户动作不同 */
-.cap--block {
-  background: var(--sh-danger-tint);
-  color: var(--sh-danger);
-}
-.cap--warn {
-  background: var(--sh-warning-tint);
-  color: var(--sh-warning);
 }
 </style>

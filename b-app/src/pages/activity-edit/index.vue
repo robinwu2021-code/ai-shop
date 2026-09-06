@@ -269,7 +269,7 @@ onLoad((q) => {
       </template>
 
       <!-- 冲突提示：不阻止，但要在保存前说出来 -->
-      <view v-if="conflicts.length" class="conflict">
+      <view v-if="conflicts.length" class="sh-notice sh-notice--warning conflict">
         <text v-for="c in conflicts" :key="c.activityNo + c.goodsNo" class="txt-caption conflict__l">
           {{ $t("activityEdit.conflict", { g: c.goodsNo, name: c.activityName }) }}
         </text>
@@ -323,7 +323,7 @@ onLoad((q) => {
                :placeholder="$t('activityEdit.budgetPh')" />
       </view>
 
-      <view v-if="exposure > 0" class="txt-strong exposure">
+      <view v-if="exposure > 0" class="txt-strong sh-notice exposure">
         {{ $t("activityEdit.exposure", { n: money(exposure) }) }}
       </view>
       <text v-if="alwaysOnUncapped" class="txt-caption bad">{{ $t("activityEdit.alwaysOnNeedsCap") }}</text>
@@ -389,9 +389,6 @@ onLoad((q) => {
 
 .conflict {
   margin-top: 16rpx;
-  padding: 16rpx;
-  border-radius: 16rpx;
-  background: var(--sh-warning-tint);
 }
 .conflict__l {
   display: block;
@@ -402,9 +399,6 @@ onLoad((q) => {
 }
 .exposure {
   margin-top: 16rpx;
-  padding: 16rpx;
-  border-radius: 16rpx;
-  background: var(--sh-primary-tint);
 }
 .bad {
   display: block;

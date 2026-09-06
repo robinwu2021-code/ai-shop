@@ -208,7 +208,7 @@ onShareAppMessage(() => {
       <sh-empty bare v-if="!request.quotes.length" :text='$t("request.noQuote")'></sh-empty>
 
       <!-- 防加价说明：机制要让用户看见才有用，藏起来等于没有 -->
-      <view class="antihike">
+      <view class="sh-notice sh-notice--muted antihike">
         <text class="txt-caption">{{ $t("request.antiHike") }}</text>
       </view>
     </view>
@@ -360,9 +360,6 @@ onShareAppMessage(() => {
 }
 .antihike {
   margin-top: 24rpx;
-  background: var(--sh-faint);
-  border-radius: 24rpx;
-  padding: 22rpx 26rpx;
 }
 
 .matched__row {

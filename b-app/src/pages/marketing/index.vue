@@ -210,7 +210,7 @@ onShow(() => {
       塞进活动表单里会让这一页变成两页拼起来的样子。
     -->
     <!-- 新模型的活动（P5）。老的四类活动还在下面，两套并存到旧表退场 -->
-    <view v-if="!editing" class="entry sh-row sh-row--between" @tap="goActivities">
+    <view v-if="!editing" class="sh-card entry sh-row sh-row--between" @tap="goActivities">
       <view class="entry__main">
         <text class="txt-strong">{{ $t("activities.title") }}</text>
         <text class="txt-caption sh-muted entry__d">{{ $t("marketing.activityEntryHint") }}</text>
@@ -218,7 +218,7 @@ onShow(() => {
       <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
     </view>
 
-    <view v-if="!editing" class="entry sh-row sh-row--between" @tap="goCoupons">
+    <view v-if="!editing" class="sh-card entry sh-row sh-row--between" @tap="goCoupons">
       <view class="entry__main">
         <text class="txt-strong">{{ $t("coupons.title") }}</text>
         <text class="txt-caption sh-muted entry__d">{{ $t("marketing.couponEntryHint") }}</text>
@@ -352,9 +352,6 @@ onShow(() => {
 
 <style scoped>
 .entry {
-  background: var(--sh-surface);
-  border-radius: 16rpx;
-  padding: 24rpx;
 }
 
 .entry__d {

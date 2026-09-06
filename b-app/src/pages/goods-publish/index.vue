@@ -145,12 +145,12 @@ async function discard() {
       </view>
 
       <!-- 冲突横幅：线上被别人改过（运营处置/其他设备）。发布必被拒，先说清楚 -->
-      <view v-if="preview.stale" class="banner banner--warn sh-mb-sm">
+      <view v-if="preview.stale" class="sh-notice sh-notice--warning banner banner--warn sh-mb-sm">
         <text class="txt-caption">{{ $t("goods.publishStale") }}</text>
       </view>
 
       <!-- 被拦的档位：与其点了发布再看 80017，不如进页面就点名 -->
-      <view v-if="preview.blocked.length" class="banner banner--warn sh-mb-sm">
+      <view v-if="preview.blocked.length" class="sh-notice sh-notice--warning banner banner--warn sh-mb-sm">
         <text class="txt-caption">{{ $t("goods.publishBlocked") }}</text>
         <text v-for="b in preview.blocked" :key="b" class="txt-caption blocked__item">· {{ b }}</text>
       </view>
@@ -200,10 +200,6 @@ async function discard() {
 <style scoped>
 /* 块间距由外壳给（.sh-scaffold > * + *），顶层块不写纵向 margin */
 .banner {
-  padding: 16rpx 24rpx;
-  border-radius: 16rpx;
-  color: var(--sh-warning);
-  background: var(--sh-warning-tint);
 }
 .blocked__item {
   display: block;

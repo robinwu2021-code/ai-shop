@@ -61,7 +61,14 @@ function go() {
 </script>
 
 <template>
-  <view v-if="show" class="tag" :class="{ 'tag--flat': readonly }" @tap="go">
+  <!-- 形态归 `.sh-chip`（胶囊药丸）：它是个可点的标签，不是一段提示。
+       只读时退成裸文字（`tag--flat`），因为点了没反应的控件比没有控件更糟。 -->
+  <view
+    v-if="show"
+    class="sh-chip tag"
+    :class="readonly ? 'tag--flat' : 'sh-chip--primary'"
+    @tap="go"
+  >
     <sh-icon
       name="store"
       :size="18"
@@ -79,9 +86,6 @@ function go() {
   align-items: center;
   gap: 12rpx;
   margin-bottom: 16rpx;
-  padding: 12rpx 20rpx;
-  border-radius: 44rpx;
-  background: var(--sh-primary-tint);
 }
 /* 只读：褪成灰底，长得不像能点 —— 点了没反应的控件比没有控件更糟 */
 .tag--flat {

@@ -126,7 +126,7 @@ async function bind(run: () => Promise<unknown>) {
     :hint="String($t('phoneGate.why'))"
     @close="emit('close')"
   >
-    <view v-if="conflict" class="conflict">
+    <view v-if="conflict" class="sh-notice sh-notice--warning conflict">
       <text class="txt-sub txt-ink">{{ $t("phoneGate.conflict") }}</text>
     </view>
 
@@ -172,9 +172,6 @@ async function bind(run: () => Promise<unknown>) {
 /* 换号冲突的提示块：警示色 tint 底，与 deposit 的「还差多少」同一个做法 */
 .conflict {
   margin-top: 24rpx;
-  padding: 20rpx 24rpx;
-  border-radius: 16rpx;
-  background: var(--sh-warning-tint);
 }
 .onetap {
   margin-top: 32rpx;

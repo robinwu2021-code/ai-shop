@@ -309,7 +309,7 @@ onLoad(load);
       **定位到区**就直说，别让用户再从省市区里翻一遍。
       模糊定位时文案说「大致位置」——精度是区级，不该让人以为我们知道得更细。
     -->
-    <view v-if="!locating && locatedRegion" class="sh-row loc">
+    <view v-if="!locating && locatedRegion" class="sh-row sh-notice loc">
       <text class="txt-body loc__pin">📍</text>
       <text class="txt-body txt-ink loc__text">{{
         $t(locatedRegion.fuzzy ? "community.locatedFuzzy" : "community.located", {
@@ -319,13 +319,15 @@ onLoad(load);
       }}</text>
     </view>
 
-    <view v-else-if="failed" class="state">
-      <text class="txt-body state__title">{{ $t("community.failed") }}</text>
-      <text class="txt-sub state__tip">{{ $t("community.failedTip") }}</text>
-      <view class="txt-body state__btn" @tap="load">
-        <text>{{ $t("community.retry") }}</text>
-      </view>
-    </view>
+    <sh-empty
+      v-else-if="failed"
+      :text="String($t('community.failed'))"
+      :tip="String($t('community.failedTip'))"
+    >
+      <template #action>
+        <view class="sh-btn sh-btn--sm" @tap="load">{{ $t("community.retry") }}</view>
+      </template>
+    </sh-empty>
 
     <!-- 第一步：选区域。只列有已开通社区的区，并把社区数摆在旁边 -->
     <view v-else-if="pickingRegion" class="rg">
@@ -344,17 +346,19 @@ onLoad(load);
       </view>
     </view>
 
-    <view v-else-if="!community.list.length" class="state">
-      <!--
-        走到这里 = 附近没有、**区域清单也是空的**（区域块在上面先命中）。
-        那才是真的什么都没有：一个挂了区划的已开通社区都不存在。
-      -->
-      <text class="txt-body state__title">{{ $t("community.empty") }}</text>
-      <text class="txt-sub state__tip">{{ $t("community.emptyTip") }}</text>
-      <view class="txt-body state__btn" @tap="browseAll">
-        <text>{{ $t("common.browseAll") }}</text>
-      </view>
-    </view>
+    <!--
+      走到这里 = 附近没有、**区域清单也是空的**（区域块在上面先命中）。
+      那才是真的什么都没有：一个挂了区划的已开通社区都不存在。
+    -->
+    <sh-empty
+      v-else-if="!community.list.length"
+      :text="String($t('community.empty'))"
+      :tip="String($t('community.emptyTip'))"
+    >
+      <template #action>
+        <view class="sh-btn sh-btn--sm" @tap="browseAll">{{ $t("common.browseAll") }}</view>
+      </template>
+    </sh-empty>
 
     <text v-else-if="showingAll" class="txt-sub hint">{{ $t("common.allTip") }}</text>
     <text v-else-if="!located" class="txt-sub hint">{{ $t("common.noLocation") }}</text>
@@ -428,10 +432,7 @@ onLoad(load);
 <style scoped>
 /* 排法归 .sh-row（gap 收到库件的 16rpx）；这里只留这一条的底色与内边距 */
 .loc {
-  padding: 16rpx 24rpx;
   margin-bottom: 16rpx;
-  border-radius: 16rpx;
-  background: var(--sh-primary-tint);
 }
 /* 字号走字阶类、正文色走 .txt-ink —— 这里一行样式都不用写 */
 
@@ -475,26 +476,6 @@ onLoad(load);
   border-radius: 24rpx;
   background: var(--sh-surface);
   color: var(--sh-ink);
-}
-.state {
-  padding: 96rpx 48rpx;
-  text-align: center;
-}
-.state__title {
-  display: block;
-}
-.state__tip {
-  display: block;
-  margin-top: 16rpx;
-}
-.state__btn {
-  display: inline-block;
-  margin-top: 40rpx;
-  padding: 20rpx 56rpx;
-  border-radius: 24rpx;
-  background: var(--sh-primary);
-  /* 白字在 fresh 这类亮主色上只有 2.27 —— 前景必须按对比度算，走 token */
-  color: var(--sh-on-primary);
 }
 .hint {
   display: block;

@@ -149,15 +149,14 @@ onShow(load);
       </view>
     </view>
 
-    <view
+    <sh-empty
       v-if="loaded && !visited.length && !promoted.length && !nearby.length"
-      class="empty"
+      :text="String($t('shops.empty'))"
     >
-      <text class="txt-sub empty__text">{{ $t("shops.empty") }}</text>
-      <view class="sh-btn empty__btn" @tap="goShopping">{{
-        $t("visited.go")
-      }}</view>
-    </view>
+      <template #action>
+        <view class="sh-btn sh-btn--sm" @tap="goShopping">{{ $t("visited.go") }}</view>
+      </template>
+    </sh-empty>
   </sh-scaffold>
 </template>
 
@@ -209,17 +208,5 @@ onShow(load);
 }
 .near__dist {
   flex-shrink: 0;
-}
-.empty {
-  text-align: center;
-  padding: 120rpx 40rpx;
-}
-.empty__text {
-  display: block;
-  margin-bottom: 40rpx;
-}
-.empty__btn {
-  display: inline-block;
-  padding-inline: 60rpx;
 }
 </style>

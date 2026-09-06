@@ -216,7 +216,7 @@ onShow(() => {
       未计入的买家。**先说，比等他问强** ——
       商家一定会拿订单数与会员数对，对不上时他的第一反应是数据丢了。
     -->
-    <view v-if="stats && stats.unlinkedBuyers > 0" class="txt-caption notice">
+    <view v-if="stats && stats.unlinkedBuyers > 0" class="txt-caption sh-notice notice">
       {{ $t("members.unlinked", { n: stats.unlinkedBuyers }) }}
     </view>
 
@@ -308,10 +308,6 @@ onShow(() => {
 }
 /* 未计入提示：主色浅底，不是警示红 —— 这不是故障，是一个需要解释的差额 */
 .notice {
-  padding: 16rpx 20rpx;
-  border-radius: 24rpx;
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
 }
 
 

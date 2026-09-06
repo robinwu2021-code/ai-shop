@@ -378,7 +378,7 @@ onShareAppMessage(() =>
       </view>
 
       <!-- 买赠：当前数量能拿几件赠品，实时算给用户看 -->
-      <view v-if="promo" class="giftline">
+      <view v-if="promo" class="sh-notice sh-notice--danger giftline">
         <text class="txt-caption giftline__text is-danger">
           {{ giftQty > 0
             ? $t("promo.willGift", { n: giftQty })
@@ -425,8 +425,8 @@ onShareAppMessage(() =>
         </view>
       </view>
 
-      <view class="notice notice--info">
-        <text class="txt-caption notice__text is-warning">
+      <view class="sh-notice notice">
+        <text class="txt-caption notice__text">
           {{ $t("goods.changeRule", { n: TRADE_RULES.appointmentChangeBeforeHours }) }}
         </text>
       </view>
@@ -482,11 +482,11 @@ onShareAppMessage(() =>
         </text>
       </view>
 
-      <view v-if="goods.weighed" class="notice">
-        <text class="txt-caption notice__text is-warning">{{ $t("goods.weighed") }}</text>
+      <view v-if="goods.weighed" class="sh-notice sh-notice--warning notice">
+        <text class="txt-caption notice__text">{{ $t("goods.weighed") }}</text>
       </view>
-      <view v-if="isVirtual && goods.virtual" class="notice notice--info">
-        <text class="txt-caption notice__text is-warning">{{ goods.virtual.deliverDesc }}</text>
+      <view v-if="isVirtual && goods.virtual" class="sh-notice notice">
+        <text class="txt-caption notice__text">{{ goods.virtual.deliverDesc }}</text>
       </view>
     </view>
 
@@ -532,7 +532,7 @@ onShareAppMessage(() =>
       话要落在他视线的终点（与结算页的同名做法一致）。
       已经在别处说过的（售罄写在按钮上、截单有一枚红 chip）这里返回空串，不重复说。
     -->
-    <view v-if="buyBlockedReason" class="txt-caption why">
+    <view v-if="buyBlockedReason" class="txt-caption sh-notice sh-notice--warning why">
       <text>{{ buyBlockedReason }}</text>
     </view>
 
@@ -576,17 +576,16 @@ onShareAppMessage(() =>
    （与 order-confirm 的 .why 同一档） */
 .why {
   margin: 0 24rpx;
-  padding: 16rpx 24rpx;
-  border-radius: 16rpx;
-  background: var(--sh-warning-tint);
-  color: var(--sh-warning);
 }
 
+/* 主图框。底色是**占位**（图没到、或 emoji 占位时露出来的那层），
+   所以走弱色块而不是主色 tint —— 主色 tint 是「有语义」的那一档（提示条与选中态），
+   拿它当占位会让一张还没加载的图看起来像在强调什么。sh-cover 的调用点一直是 faint。 */
 .hero {
   position: relative;
   height: 440rpx;
   border-radius: 44rpx;
-  background: var(--sh-primary-tint);
+  background: var(--sh-faint);
 }
 /* 原先只有字号 —— 那是给 emoji 写的。换成真图后没有可撑的尺寸，
    图会塌成 0 高；给满整块 hero，emoji 仍按字号居中显示。 */
@@ -644,9 +643,6 @@ onShareAppMessage(() =>
    已经搬进 base.css，它不该只留在这一个页面里 */
 .giftline {
   margin-top: 28rpx;
-  background: var(--sh-danger-tint);
-  border-radius: 24rpx;
-  padding: 20rpx 26rpx;
 }
 .qty {
   margin-top: 32rpx;
@@ -715,15 +711,6 @@ onShareAppMessage(() =>
 }
 .notice {
   margin-top: 16rpx;
-  background: var(--sh-warning-tint);
-  border-radius: 24rpx;
-  padding: 22rpx 26rpx;
-}
-.notice--info {
-  background: var(--sh-primary-tint);
-}
-.notice--info .notice__text {
-  color: var(--sh-primary-text);
 }
 .actionbar__icon {
   position: relative;

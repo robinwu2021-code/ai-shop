@@ -286,7 +286,7 @@ function navToStore() {
       已停业横幅。**放在最上面、盖不住内容** —— 老客扫码进来是冲着这家店来的，
       要第一眼知道「店关了」而不是翻了半天才发现加不了购。
     -->
-    <view v-if="closed" class="closed">
+    <view v-if="closed" class="sh-notice sh-notice--muted closed">
       <text class="txt-sub">{{ $t("store.closed") }}</text>
     </view>
 
@@ -319,7 +319,7 @@ function navToStore() {
       **带更新时间**：一句没有时间的「今天到了新米」，既可能是今早写的、
       也可能是上个月忘了撤的 —— 分不出来就不会照着它跑一趟，而那正是这行字的用处。
     -->
-    <view v-if="data.store.announcement" class="txt-sub notice">
+    <view v-if="data.store.announcement" class="txt-sub sh-notice notice">
       <text>{{ data.store.announcement }}</text>
       <text v-if="noticeAt" class="txt-caption notice__at">{{ noticeAt }}</text>
     </view>
@@ -361,7 +361,7 @@ function navToStore() {
       </view>
 
       <!-- 履约说明：超区在店铺页就说清楚，不等到结算 -->
-      <view class="ship">
+      <view class="sh-notice sh-notice--muted ship">
         <text class="sh-muted">{{ $t("store.fulfillHint") }}</text>
       </view>
     </view>
@@ -453,10 +453,7 @@ function navToStore() {
   color: var(--sh-primary-text);
 }
 .closed {
-  padding: 20rpx 24rpx;
   margin-bottom: 16rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
 }
 
 .store {
@@ -489,12 +486,6 @@ function navToStore() {
   display: block;
   margin-top: 8rpx;
   opacity: 0.75;
-}
-.notice {
-  padding: 20rpx 24rpx;
-  border-radius: 24rpx;
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
 }
 /* 排布由 .sh-block__head 给，这里只把右侧的「再来一单 / 计数」推到头 */
 /* 底和圆角由外层 .sh-block 给 —— 常买行在块内成行，不再各自一张卡 */
@@ -543,9 +534,6 @@ function navToStore() {
 /* 履约说明在常买块内收尾：它解释的就是上面这些东西怎么送到 */
 .ship {
   margin: 8rpx 26rpx 0;
-  padding: 20rpx 24rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
 }
 /* 搜索框在白块内，底要比块浅一档才看得出是个输入框 */
 .search {

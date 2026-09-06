@@ -237,7 +237,7 @@ onLoad((q) => {
       </view>
 
       <!-- 他填的是张数，要为之负责的是钱 -->
-      <view v-if="exposure > 0" class="txt-strong exposure" :class="{ 'is-bad': budgetTooLow }">
+      <view v-if="exposure > 0" class="txt-strong sh-notice exposure" :class="{ 'is-bad': budgetTooLow }">
         {{ $t("couponEdit.exposure", { n: money(exposure) }) }}
       </view>
       <text v-if="budgetTooLow" class="txt-caption bad">{{ $t("couponEdit.budgetTooLow") }}</text>
@@ -268,9 +268,6 @@ onLoad((q) => {
 
 .exposure {
   margin-top: 16rpx;
-  padding: 16rpx;
-  border-radius: 16rpx;
-  background: var(--sh-primary-tint);
 }
 .exposure.is-bad {
   background: var(--sh-danger-tint);

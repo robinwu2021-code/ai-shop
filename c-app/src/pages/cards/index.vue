@@ -29,7 +29,7 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="cards.title">
-    <view v-for="c in cards" :key="c.cardNo" class="card" :class="{ 'is-expired': expired(c) }">
+    <view v-for="c in cards" :key="c.cardNo" class="sh-card card" :class="{ 'is-expired': expired(c) }">
       <view class="card__head sh-row">
         <sh-cover class="card__cover" :src="c.cover"></sh-cover>
         <view class="sh-fill">
@@ -52,18 +52,17 @@ onShow(load);
       </view>
     </view>
 
-    <view v-if="loaded && !cards.length" class="empty">
-      <text class="txt-sub empty__text">{{ $t("cards.empty") }}</text>
-      <view class="sh-btn empty__btn" @tap="goShopping">{{ $t("visited.go") }}</view>
-    </view>
+    <sh-empty v-if="loaded && !cards.length" :text="String($t('cards.empty'))">
+      <template #action>
+        <view class="sh-btn sh-btn--sm" @tap="goShopping">{{ $t("visited.go") }}</view>
+      </template>
+    </sh-empty>
   </sh-scaffold>
 </template>
 
 <style scoped>
 .card {
   background: var(--sh-primary-tint);
-  border-radius: 32rpx;
-  padding: 32rpx;
   margin-bottom: 20rpx;
 }
 .card.is-expired {
@@ -99,17 +98,4 @@ onShow(load);
   margin-top: 28rpx;
 }
 
-.empty__text {
-  display: block;
-  margin-bottom: 40rpx;
-}
-.empty__btn {
-  display: inline-block;
-  padding-inline: 60rpx;
-}
-/* 带引导按钮的空态，保留页面自有结构 */
-.empty {
-  text-align: center;
-  padding: 120rpx 40rpx;
-}
 </style>

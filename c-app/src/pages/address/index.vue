@@ -464,7 +464,7 @@ onShow(() => {
           而那一行已经有「请选择 / 地图选点 / 微信地址」三个按钮 ——
           小程序上再挤一个，输入框只剩指甲盖那么宽。
         -->
-        <view class="pasterow sh-row sh-row--between" @tap="pasteAndFill">
+        <view class="sh-notice sh-notice--muted pasterow sh-row sh-row--between" @tap="pasteAndFill">
           <text class="txt-caption pasterow__text">{{ $t("address.pasteHint") }}</text>
           <text class="txt-caption txt-primary">{{ $t("address.paste") }}</text>
         </view>
@@ -545,7 +545,7 @@ onShow(() => {
           **刻意不拦保存**：拦了等于让一部分人存不了地址（存量地址、POI 搜不到的地方
           本来就没有坐标），与旁边 regionUnsplit 那句是同一种口径：提示，不阻断。
         -->
-        <view v-if="!picked" class="nocoord sh-row sh-row--between">
+        <view v-if="!picked" class="sh-notice sh-notice--muted nocoord sh-row sh-row--between">
           <text class="txt-caption nocoord__text">{{ $t("address.noCoordHint") }}</text>
           <text v-if="canPick" class="txt-caption txt-primary" @tap="pickOnMap">
             {{ $t("address.pick") }}
@@ -620,9 +620,6 @@ onShow(() => {
   margin-top: 16rpx;
 }
 .pasterow {
-  padding: 16rpx 20rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
   gap: 16rpx;
 }
 .pasterow__text {
@@ -630,9 +627,6 @@ onShow(() => {
 }
 .nocoord {
   margin-top: 24rpx;
-  padding: 16rpx 20rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
   gap: 16rpx;
 }
 .nocoord__text {

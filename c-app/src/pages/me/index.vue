@@ -223,20 +223,20 @@ onShow(() => {
       </view>
     </view>
 
-    <view class="cells">
-      <view class="cell sh-row sh-row--between" @tap="gotoCommunity">
+    <view class="sh-cells">
+      <view class="sh-cell sh-row sh-row--between" @tap="gotoCommunity">
         <text class="txt-body cell__label">{{ $t("me.myCommunity") }}</text>
         <text class="txt-sub cell__value">{{ community.pickup?.name || $t("me.unset") }}</text>
       </view>
-      <view class="cell sh-row sh-row--between">
+      <view class="sh-cell sh-row sh-row--between">
         <text class="txt-body cell__label">{{ $t("me.myStores") }}</text>
         <text class="txt-sub cell__value">{{ community.hostName || "—" }}</text>
       </view>
     </view>
 
     <!-- 交易：订单、券、地址 —— 买东西相关的都在这一组 -->
-    <view class="cells">
-      <view class="cell sh-row sh-row--between" @tap="gotoMessages">
+    <view class="sh-cells">
+      <view class="sh-cell sh-row sh-row--between" @tap="gotoMessages">
         <text class="txt-body cell__label">{{ $t("message.title") }}</text>
         <!--
           未登录时**什么都不显示**。显示「已全部阅读」是在说一句假话：
@@ -247,56 +247,56 @@ onShow(() => {
           {{ unread ? $t("message.unread", { n: unread }) : $t("message.allRead") }}
         </text>
       </view>
-      <view class="cell sh-row sh-row--between" @tap="gotoOrders">
+      <view class="sh-cell sh-row sh-row--between" @tap="gotoOrders">
         <text class="txt-body cell__label">{{ $t("orders.title") }}</text>
         <text class="txt-sub cell__value">{{ $t("orders.entryHint") }}</text>
       </view>
-      <view class="cell sh-row sh-row--between" @tap="gotoCoupons">
+      <view class="sh-cell sh-row sh-row--between" @tap="gotoCoupons">
         <text class="txt-body cell__label">{{ $t("coupon.title") }}</text>
         <text class="txt-sub cell__value">{{ $t("coupon.entryHint") }}</text>
       </view>
       <!-- 会员与消息：**退订入口必须在显眼处**，藏起来的开关等于没有 -->
-      <view class="cell sh-row sh-row--between" @tap="gotoMemberships">
+      <view class="sh-cell sh-row sh-row--between" @tap="gotoMemberships">
         <text class="txt-body cell__label">{{ $t("myMembership.title") }}</text>
         <text class="txt-sub cell__value">{{ $t("myMembership.entryHint") }}</text>
       </view>
-      <view v-if="FEATURES.cards" class="cell sh-row sh-row--between" @tap="gotoCards">
+      <view v-if="FEATURES.cards" class="sh-cell sh-row sh-row--between" @tap="gotoCards">
         <text class="txt-body cell__label">{{ $t("cards.title") }}</text>
         <text class="txt-sub cell__value">{{ $t("cards.entryHint") }}</text>
       </view>
-      <view class="cell sh-row sh-row--between" @tap="gotoAddress">
+      <view class="sh-cell sh-row sh-row--between" @tap="gotoAddress">
         <text class="txt-body cell__label">{{ $t("address.title") }}</text>
         <text class="txt-sub cell__value">{{ $t("address.entryHint") }}</text>
       </view>
-      <view v-if="FEATURES.points" class="cell sh-row sh-row--between" @tap="gotoPoints">
+      <view v-if="FEATURES.points" class="sh-cell sh-row sh-row--between" @tap="gotoPoints">
         <text class="txt-body cell__label">{{ $t("points.title") }}</text>
         <text class="txt-sub cell__value sh-num">{{ $t("points.entryHint", { n: points }) }}</text>
       </view>
     </view>
 
     <!-- 邻里：团、买过的店、入驻 —— 与「人」相关的一组 -->
-    <view class="cells">
-      <view class="cell sh-row sh-row--between" @tap="gotoGroupHost">
+    <view class="sh-cells">
+      <view class="sh-cell sh-row sh-row--between" @tap="gotoGroupHost">
         <text class="txt-body cell__label">{{ $t("groupHost.title") }}</text>
         <text class="txt-sub cell__value">{{ $t("groupHost.entryHint") }}</text>
       </view>
-      <view class="cell sh-row sh-row--between" @tap="gotoGroups">
+      <view class="sh-cell sh-row sh-row--between" @tap="gotoGroups">
         <text class="txt-body cell__label">{{ $t("groups.title") }}</text>
         <text class="txt-sub cell__value">{{ $t("groups.entryHint") }}</text>
       </view>
-      <view class="cell sh-row sh-row--between" @tap="gotoVisited">
+      <view class="sh-cell sh-row sh-row--between" @tap="gotoVisited">
         <text class="txt-body cell__label">{{ $t("visited.title") }}</text>
         <text class="txt-sub cell__value">{{ $t("visited.hint") }}</text>
       </view>
-      <view class="cell sh-row sh-row--between" @tap="applyMerchant">
+      <view class="sh-cell sh-row sh-row--between" @tap="applyMerchant">
         <text class="txt-body cell__label">{{ $t("merchant.apply") }}</text>
         <text class="txt-sub cell__value">{{ applyStatusText }}</text>
       </view>
     </view>
 
     <!-- 设置：与生意无关，放最后 -->
-    <view class="cells">
-      <view class="cell sh-row sh-row--between" @tap="themeVisible = true">
+    <view class="sh-cells">
+      <view class="sh-cell sh-row sh-row--between" @tap="themeVisible = true">
         <text class="txt-body cell__label">{{ $t("me.appearance") }}</text>
         <text class="txt-sub cell__value">{{ $t("me.appearanceValue") }}</text>
       </view>
@@ -307,17 +307,17 @@ onShow(() => {
         而两者的排查方向完全相反。
         版本串形如 `0.1.1 · 0904-1955`，后半段是构建时刻 —— 见 vite.config.mts。
       -->
-      <view class="cell sh-row sh-row--between">
+      <view class="sh-cell sh-row sh-row--between">
         <text class="txt-body cell__label">{{ $t("me.help") }}</text>
         <text class="txt-sub cell__value">{{ $t("me.helpValue") }}</text>
       </view>
-      <view class="cell sh-row sh-row--between">
+      <view class="sh-cell sh-row sh-row--between">
         <text class="txt-body cell__label">{{ $t("me.version") }}</text>
         <text class="txt-sub cell__value">{{ buildVersion }}</text>
       </view>
       <!-- 此前**整个 c-app 没有退出登录入口** —— store 里的 logout() 是死代码。
            没有入口意味着共用设备上无法结束会话，而令牌在服务端一直有效 -->
-      <view v-if="user.isLogin" class="cell sh-row sh-row--between" @tap="onLogout">
+      <view v-if="user.isLogin" class="sh-cell sh-row sh-row--between" @tap="onLogout">
         <text class="txt-body cell__label">{{ $t("me.logout") }}</text>
       </view>
     </view>
@@ -439,26 +439,6 @@ onShow(() => {
 .head__sub {
   display: block;
   margin-top: 8rpx;
-}
-/*
- * 分组密排，不是一行一张浮起的卡。
- * 原先 11 行各自带背景与圆角、彼此留 8rpx 空隙 —— 满屏漂着 11 个孤立色块，
- * 行与行的间距比行本身还抢眼，看起来像 11 个功能模块，而它们其实是一张清单。
- * 现在**归属靠分组表达，留白只出现在组与组之间**。
- */
-.cells {
-  display: flex;
-  flex-direction: column;
-  gap: 2rpx;
-  background: var(--sh-surface);
-  border-radius: 24rpx;
-  overflow: hidden;
-}
-/* 32rpx 内边距 + 12rpx 行距，一屏只放得下 8 行，翻起来很累。
-   收到 22/8 之后仍有 ~76rpx 行高（远超 44pt 的点按下限），一屏多两三行 */
-.cell {
-  gap: 24rpx;
-  padding: 24rpx 26rpx;
 }
 .danger {
   margin: 48rpx 0 24rpx;

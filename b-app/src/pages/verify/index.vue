@@ -269,7 +269,7 @@ onShow(load);
         <text class="sh-btn sh-btn--sm txt-strong btn" @tap="peekCoupon()">{{ $t("verify.couponPeek") }}</text>
       </view>
       <view class="sh-btn sh-btn--soft scan" @tap="scanCoupon">{{ $t("verify.scan") }}</view>
-      <text v-if="couponError" class="txt-body err">{{ couponError }}</text>
+      <text v-if="couponError" class="txt-body sh-notice sh-notice--danger err">{{ couponError }}</text>
 
       <view v-if="couponView" class="peek">
         <text class="txt-strong peek__t">{{ couponView.title }}</text>
@@ -280,7 +280,7 @@ onShow(load);
             · {{ $t("verify.couponRemaining", { n: couponView.remaining, m: couponView.timesTotal }) }}
           </template>
         </text>
-        <text v-if="!couponView.redeemable" class="txt-body err">
+        <text v-if="!couponView.redeemable" class="txt-body sh-notice sh-notice--danger err">
           {{ $t(`verify.couponReason.${couponView.reason}`) }}
         </text>
 
@@ -295,7 +295,7 @@ onShow(load);
         </view>
       </view>
 
-      <view v-if="couponDone" class="txt-sub done">{{ couponDone }}</view>
+      <view v-if="couponDone" class="txt-sub sh-notice sh-notice--success done">{{ couponDone }}</view>
     </view>
 
     <template v-if="tab === 'pickup'">
@@ -334,7 +334,7 @@ onShow(load);
         <text class="sh-btn sh-btn--sm txt-strong btn" @tap="verify()">{{ $t("verify.submit") }}</text>
       </view>
       <view class="sh-btn sh-btn--soft scan" @tap="scan">{{ $t("verify.scan") }}</view>
-      <text v-if="error" class="txt-body err">{{ error }}</text>
+      <text v-if="error" class="txt-body sh-notice sh-notice--danger err">{{ error }}</text>
 
       <!--
         输码没核销掉时，按这几位搜出来的候选。**让他确认是哪一单，而不是替他选** ——
@@ -418,7 +418,7 @@ onShow(load);
     -->
     <view
       v-if="!waiting.length && preparingCount && merchant.can('biz:receive')"
-      class="txt-sub prep-hint sh-row sh-row--between"
+      class="txt-sub sh-notice sh-notice--warning prep-hint sh-row sh-row--between"
       @tap="goToPicking"
     >
       <text>{{ $t("picking.verifyPrepHint", { n: preparingCount }) }}</text>
@@ -467,9 +467,6 @@ onShow(load);
 }
 .done {
   margin-top: 16rpx;
-  padding: 16rpx;
-  border-radius: 16rpx;
-  background: var(--sh-success-tint);
 }
 
 
@@ -532,10 +529,6 @@ onShow(load);
 .err {
   display: block;
   margin-top: 20rpx;
-  padding: 20rpx 24rpx;
-  border-radius: 24rpx;
-  background: var(--sh-danger-tint);
-  color: var(--sh-danger);
 }
 
 .cands {
@@ -559,11 +552,7 @@ onShow(load);
   margin: 0 8rpx;
 }
 .prep-hint {
-  padding: 20rpx 24rpx;
   margin: 0 8rpx;
-  border-radius: 16rpx;
-  background: var(--sh-warning-tint);
-  color: var(--sh-warning);
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */

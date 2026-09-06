@@ -1126,7 +1126,7 @@ async function save(thenSubmit = false) {
       没有这行，商家会以为页面上这份就是买家看到的那份 —— 而两者可能已经
       差了好几轮保存。右侧给「查看差异」直达发布确认页。
     -->
-    <view v-if="editingDraft" class="draft-banner sh-row">
+    <view v-if="editingDraft" class="sh-notice sh-notice--warning draft-banner sh-row">
       <text class="txt-caption sh-fill">{{ $t("goods.draftBanner") }}</text>
       <text class="txt-caption draft-banner__link" @tap="toPublishPage">
         {{ $t("goods.viewDiff") }}
@@ -1305,9 +1305,9 @@ async function save(thenSubmit = false) {
             <sh-cover class="dimgs__img" :src="img"></sh-cover>
             <text class="txt-caption dimgs__i">{{ i + 1 }}</text>
             <view class="dimgs__ops">
-              <view class="txt-caption txt-bold mini" @tap="moveDetailImage(i, -1)"><sh-icon name="chevronUp" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
-              <view class="txt-caption txt-bold mini" @tap="moveDetailImage(i, 1)"><sh-icon name="chevronDown" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
-              <view class="txt-caption txt-bold mini" @tap="removeDetailImage(i)"><sh-icon name="close" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
+              <view class="sh-chip sh-chip--primary mini" @tap="moveDetailImage(i, -1)"><sh-icon name="chevronUp" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
+              <view class="sh-chip sh-chip--primary mini" @tap="moveDetailImage(i, 1)"><sh-icon name="chevronDown" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
+              <view class="sh-chip sh-chip--primary mini" @tap="removeDetailImage(i)"><sh-icon name="close" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
             </view>
           </view>
           <view
@@ -1514,7 +1514,7 @@ async function save(thenSubmit = false) {
             :placeholder="$t('goods.stdSearchPh')"
             @confirm="searchStd"
           />
-          <text class="txt-caption txt-bold mini" @tap="searchStd">{{ $t("common.search") }}</text>
+          <text class="sh-chip sh-chip--primary mini" @tap="searchStd">{{ $t("common.search") }}</text>
         </view>
         <view v-if="!stdResults.length" class="cat-sheet__empty">
           <text class="sh-muted">
@@ -2153,10 +2153,6 @@ async function save(thenSubmit = false) {
 /* 草稿横幅：警示色打底 —— 不是错误，是「页面这份 ≠ 买家那份」的常驻提醒。
    块间距由外壳给（.sh-scaffold > * + *），这里不写纵向 margin */
 .draft-banner {
-  padding: 16rpx 24rpx;
-  border-radius: 16rpx;
-  color: var(--sh-warning);
-  background: var(--sh-warning-tint);
 }
 .draft-banner__link {
   color: var(--sh-warning);
@@ -2539,10 +2535,6 @@ async function save(thenSubmit = false) {
   margin-top: 0;
 }
 .mini {
-  padding: 16rpx 28rpx;
-  border-radius: 16rpx;
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
   text-align: center;
 }
 .hint {

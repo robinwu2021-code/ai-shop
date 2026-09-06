@@ -102,7 +102,7 @@ onShow(load);
     </view>
 
     <!-- 这段话必须在保存之前出现 —— 见文件头的说明 -->
-    <view class="txt-caption notice">{{ $t("memberAdd.leadHint") }}</view>
+    <view class="txt-caption sh-notice notice">{{ $t("memberAdd.leadHint") }}</view>
 
     <view class="sh-btn go" :class="{ 'is-off': !canSave }" @tap="save">
       {{ saving ? "…" : $t("common.save") }}
@@ -121,10 +121,6 @@ onShow(load);
   margin-top: 12rpx;
 }
 .notice {
-  padding: 16rpx 20rpx;
-  border-radius: 24rpx;
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
 }
 
 .go.is-off {

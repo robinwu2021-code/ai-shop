@@ -320,7 +320,7 @@ onShow(load);
         开张之后卡在哪，这里直说。**只在有问题时出现** ——
         全通过还挂一张绿卡，是每天都要划过去的噪音。
       -->
-      <view v-for="b in blockers" :key="b.key" class="blocker sh-row" @tap="open(b.route)">
+      <view v-for="b in blockers" :key="b.key" class="sh-notice sh-notice--warning blocker sh-row" @tap="open(b.route)">
         <view class="sh-fill">
           <text class="txt-strong blocker__t">{{ $t(`home.blocker.${b.key}`) }}</text>
           <text class="txt-caption blocker__d">{{ $t(`home.blockerHint.${b.key}`) }}</text>
@@ -511,11 +511,6 @@ onShow(load);
   margin-top: 28rpx;
 }
 .blocker {
-  padding: 24rpx;
-  border-radius: 32rpx;
-  /* 真名是 --sh-warning-tint（此前拼成 --sh-warn-tint，恒走兜底的中性灰 ——
-     「还不能收款」这类拦路提示整块退化成灰，看不出是警示） */
-  background: var(--sh-warning-tint);
 }
 
 .blocker__t {

@@ -118,7 +118,7 @@ onShow(load);
         <text class="sh-muted">
           {{ $t("groupHost.slot") }}{{ current.neighborPickup?.timeSlot }}
         </text>
-        <text class="txt-caption free">{{ $t("groupHost.freeHint") }}</text>
+        <text class="txt-caption sh-notice free">{{ $t("groupHost.freeHint") }}</text>
       </view>
 
       <!-- 批次签收：整批到货后点一次，参团邻居收到通知 -->
@@ -140,7 +140,7 @@ onShow(load);
           />
           <text class="sh-btn sh-btn--sm" @tap="verify()">{{ $t("groupHost.doVerify") }}</text>
         </view>
-        <text v-if="error" class="txt-caption err">{{ error }}</text>
+        <text v-if="error" class="txt-caption sh-notice sh-notice--danger err">{{ error }}</text>
       </view>
 
       <view class="list-head sh-row sh-row--between sh-row--baseline">
@@ -184,10 +184,6 @@ onShow(load);
 .free {
   display: block;
   margin-top: 16rpx;
-  padding: 16rpx 20rpx;
-  border-radius: 24rpx;
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
 }
 .receive {
   margin-top: 24rpx;
@@ -205,10 +201,6 @@ onShow(load);
 .err {
   display: block;
   margin-top: 20rpx;
-  padding: 18rpx 22rpx;
-  border-radius: 24rpx;
-  background: var(--sh-danger-tint);
-  color: var(--sh-danger);
 }
 .list-head {
   margin: 32rpx 8rpx 16rpx;
