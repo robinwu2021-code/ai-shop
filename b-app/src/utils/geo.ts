@@ -1,6 +1,17 @@
 /**
  * 定位/选点的端上壳：把 ports/location 的结果翻译成给店主看的提示。
  *
+ * ── 2026-09-06 删掉三个死导出 ──────────────────────────────────────────────
+ * `searchPlacesNear` / `looksLikeEstate` / `streetOf` 曾被 `biz-region-picker.vue`
+ * 用着，`f8994811a` 重写那个组件（1573 行）时把调用点全删了、函数留在了这里。
+ * 小区候选现在由**服务端读穿透**给，街道抽取在后端 `RegionServiceImpl`
+ * （四级逐级剥离：省 → 市 → 区 → 街道，每级在剩下的串上匹配）。
+ *
+ * 不是「留着以后可能用」：`streetOf` 对它自己文档写的输入就是错的 ——
+ * 「广东省深圳市龙华区福城街道福安雅园」它给出「深圳市龙华区福城街道」而不是
+ * 「福城街道」（`{2,8}` 贪婪往前吞了两级）。一个没人调、又会给出确定错答案的
+ * 导出比没有更危险：下一个人会照它的文档用它。
+ *
  * 为什么不是一条「定位失败」：高德把原因分得很清楚 —— 没权限（12/13）再试一百次也一样，
  * 要带他去设置；网络/环境问题（2/4/6）去设置也没用，只能手动填。混成一条提示，
  * 店主只会反复点那个按钮。
@@ -8,7 +19,7 @@
 import type { Coords, PickedLocation } from "@shared/ports/location";
 import { chooseLocation, getLocationDetailed, openLocationSettings } from "@shared/ports/location";
 import type { PlaceHit } from "@shared/ports/geo-search";
-import { canSearchPlaces, searchPlacesNative, searchPlacesNearNative } from "@shared/ports/geo-search";
+import { canSearchPlaces, searchPlacesNative } from "@shared/ports/geo-search";
 import { api } from "@/api";
 
 type T = (key: string, named?: Record<string, unknown>) => string;
@@ -87,46 +98,6 @@ export async function searchPlaces(keyword: string, city?: string): Promise<Plac
 }
 
 /**
- * 在一个点周围找地方。**输名字找小区就该走这条** ——
- * 按城市搜时城市只是偏好（在深圳搜「福安」会返回福建福安市），
- * 而把街道名拼进关键词会把「XX街道办事处」顶到前面、真小区一个都排不上（都实测过）。
- * 不支持原生搜索的端退回按城市搜，聊胜于无。
- */
-export async function searchPlacesNear(
-  keyword: string,
-  center: Coords,
-  radiusM = 5000,
-  city?: string,
-): Promise<PlaceHit[]> {
-  const kw = keyword.trim();
-  if (kw.length < 2) return [];
-  if (canSearchPlaces()) {
-    const r = await searchPlacesNearNative(kw, center, radiusM);
-    if (r) return r;
-  }
-  return searchPlaces(kw, city);
-}
-
-/**
- * 地图上这类名字不是小区：公交站、停车场、门店、公共设施。
- *
- * 周边搜索会把它们一起带回来（「福安雅园(公交站)」「福安雅园水果店」），
- * 而商家要挑的是**住的地方** —— 让他在一堆快递柜里找自己的小区，等于没做联想。
- */
-export function looksLikeEstate(name: string): boolean {
-  const noise = /(公交站|地铁站|停车场|超市|便利店|水果|药店|换电|快递|驿站|丰巢|菜鸟|公厕|公共厕所|公园|学校|幼儿园|中学|小学|医院|诊所|卫生|银行|酒店|宾馆|餐厅|饭店|商铺|档口|工业园|办事处|居委会|村委会|工作站|党群|警务|服务中心|充电)/;
-  if (noise.test(name)) return false;
-  /*
-   * 去掉「A区 / 3期 / 5栋」这类后缀再看是不是住宅名。
-   * **前缀字符类不能放开到整个 CJK 区间**：那样会把「福安雅园A区」的「雅园」也
-   * 一起吃掉（贪婪匹配会尽量往前吞），base 变成「福安」，反而判成「不是小区」——
-   * 只留数字/字母/中文数字，长度天然就短，吞不到真正的名字部分。
-   */
-  const base = name.replace(/[A-Za-z0-9一二三四五六七八九十]{0,3}(区|期|栋|号楼)$/, "");
-  return /(小区|花园|家园|新村|公寓|苑|园|城|湾|府|庭|邸|里|村|大厦|广场|山庄|名居|世家)$/.test(base) || /小区/.test(name);
-}
-
-/**
  * 区域中心：把面包屑（「广东省 › 深圳市 › 龙华区 › 福城街道」）当成一个地名去搜，取第一条的坐标。
  *
  * 为什么要它：地图选点默认落在**当前设备位置**，而商家常常在店里给另一个区配范围 ——
@@ -143,10 +114,4 @@ export async function regionCenter(names: string[]): Promise<Coords | null> {
   const c = top ? { lat: top.lat, lng: top.lng } : null;
   centerCache.set(q, c);
   return c;
-}
-
-/** 从一条地址里抠出街道/镇/乡的名字（「广东省深圳市龙华区福城街道…」→「福城街道」），抠不到给 null */
-export function streetOf(address: string): string | null {
-  const m = address.match(/([\u4e00-\u9fa5]{2,8}(?:街道|镇|乡))/);
-  return m?.[1] ?? null;
 }
