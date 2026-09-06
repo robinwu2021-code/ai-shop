@@ -171,7 +171,29 @@ for (const ws of WORKSPACES) {
     }
 
     if (process.argv.includes("--update")) {
-        const header = [
+        /*
+         * **人写的抬头要保下来，不是靠人记得贴回去。**
+         *
+         * 这里原本每次都写一段固定的抬头，于是文件里人手写的那些话
+         * （「这是待办清单不是止血线」、某一批为什么被一次性追加进来）整段被冲掉。
+         * `known-guard-failures.txt` 自己的头部就写着这个警告，并记着
+         * 「2026-09-05 已经被删过一次」—— 一个已经发作过、且靠纪律防不住的坑。
+         *
+         * 改成：文件已存在就**原样保留它开头那段注释**，只重写下面的条目。
+         * 抬头里恰恰是「这份清单是什么、为什么不能当豁免名单」这类
+         * 重新生成不出来的信息；条目才是产物。
+         */
+        const existing = existsSync(baselineOf(ws))
+            ? readFileSync(baselineOf(ws), "utf8").split("\n")
+            : [];
+        const keptHeader = [];
+        for (const line of existing) {
+            if (line.trim() === "" || line.startsWith("#")) keptHeader.push(line);
+            else break;
+        }
+        while (keptHeader.length && keptHeader.at(-1).trim() === "") keptHeader.pop();
+
+        const header = keptHeader.length ? keptHeader.join("\n") : [
             `# ${ws} 里**已知红着**的守卫。`,
             "#",
             "# 每行末尾的 `@<=N` 是**观测值**，不是「允许失败」：实测超过 N 就红。",
@@ -185,7 +207,7 @@ for (const ws of WORKSPACES) {
             "# 修好一条就删一行 —— 留着的害处是**那条守卫从此免检**。",
             "# 分诊与降账计划：docs/technical/design/守卫与闸门-问题与优化方案.md",
             "#",
-        ].join("\n");
+        ].join("\n");   // ← 只在文件还不存在时用这份出厂抬头
         /*
          * **冻高了是静默的。**
          *

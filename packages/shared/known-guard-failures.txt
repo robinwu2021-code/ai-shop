@@ -34,8 +34,6 @@
 # 分诊与降账计划：docs/technical/design/守卫与闸门-问题与优化方案.md
 #
 api-path-naming.test.ts::端点路径：资源段的单复数按域一致 ★★ 新端点必须跟随本域的约定（/mp /biz 单数 · /ops 复数） @<=5
-design-tokens.test.ts::皮肤对比度：可读性是硬约束，不是审美偏好 源码里不再出现 `color: var(--sh-primary)` —— 红字要走 primary-text @<=2
-design-tokens.test.ts::端差异下沉到 ports/，页面里不写条件编译 pages/ 下没有 #ifdef / #ifndef @<=1
 doc-standard.test.ts::文档规范 不使用 mermaid —— 写错一个字符整张图不显示，而且不报错 @<=16
 doc-standard.test.ts::文档规范 每张 svg 都有 title 与 desc —— 图之外要有能读的说明 @<=4
 doc-standard.test.ts::文档规范 没有状态行的文档不许再增加（基线只降不升） @<=41
@@ -43,11 +41,8 @@ enum-registry.test.ts::枚举登记表 规范 §D5 · 不允许在 interface 里
 i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 ar：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家 @<=1
 i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 en：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家 @<=1
 i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 zh-CN：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家 @<=1
-icon-chars.test.ts::字符当图标 ★★★ 词条末尾没有箭头 —— 那是判据看不见的地方，一次就漏了 30 处 @<=3
 ops-data-scope.test.ts::运营端数据域接入 ★★★ G1 ops 查询端点不许绕过已注册表的数据域 —— 绕过了就是越权，而且不报错 @<=1
 ops-perm-matrix.test.ts::运营端角色×端点矩阵 ★★ 每个端点在细化登记表里都要有归属 —— 漏一条就是拆码时被落下的那条 @<=12
 ops-reason-required.test.ts::运营端写操作的 reason ★★★ 后端要 reason 的端点，ops-web 必须真的发 reason @<=13
-ops-ui-discipline.test.ts::运营端界面纪律 ★★★ 可聚焦元素必须有焦点环 —— Tailwind preflight 抹掉了浏览器默认环，没有兜底 @<=5
 schema-lineage.test.ts::对账血缘 新出现的跨表同名业务键必须被分类 @<=2
 spec-completeness.test.ts::契约完整性 平台端：每个字段都有说明 @<=75
-typography.test.ts::字阶 圆角只用 token 五档 —— 差 4rpx 的两个圆角，没人分得出，只会让人各写各的 @<=2

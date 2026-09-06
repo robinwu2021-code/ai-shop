@@ -119,6 +119,23 @@ describe("组件层不许写死颜色", () => {
   // 它不是 .vue，本来就不在这轮扫描里。
   const COLOR = /#[0-9a-f]{3,8}\b|\brgba?\(|\boklch\(/gi;
 
+  /**
+   * 刻意写死的色值 —— **每条都要有理由，且按「文件 + 那一整行」登记**。
+   *
+   * 按整行而不是按文件豁免：整个文件放行的话，同一个文件里下一次写死的颜色
+   * 就跟着免检了，而那多半不是刻意的。这与本仓库其他登记表同一口径
+   * （`check-enum-fields.mjs` 的 DISMISSED、`enum-fields.test.ts` 的 PENDING）：
+   * 「看过了，是对的」与「还没人看过」必须在数据里分得开。
+   */
+  const INTENTIONAL = new Map<string, string>([
+    [
+      "packages/ui/src/components/sh-theme-sheet.vue::filter: drop-shadow(0 2rpx 6rpx rgba(10, 12, 16, 0.45));",
+      "白色对勾压在**任意皮肤色**的色块上，这层投影是给它做可读性衬底，不是高度投影："
+        + "走 --sh-shadow-* 那两档（8%/16% 的纵深）不够浓，借 --sh-scrim 又会把弹层浓度"
+        + "与这个对勾绑在一起改。全仓只此一处，见 dd2e7567 的正交扫描结论。",
+    ],
+  ]);
+
   it("页面与组件的 style 块里没有 hex / rgb / oklch", () => {
     const offenders: string[] = [];
     for (const app of VUE_ROOTS) {
@@ -133,10 +150,19 @@ describe("组件层不许写死颜色", () => {
         const css = styleBlocks(readFileSync(file, "utf8")).replace(/\/\*[\s\S]*?\*\//g, " ");
         // 允许 #fff / #ffffff 作为「叠在语义色上的前景白」—— 它不随皮肤变，
         // 例如红色角标上的白字。除此之外一律走 var(--sh-*)。
-        const hits = (css.match(COLOR) ?? []).filter(
-          (c) => !["#fff", "#ffffff"].includes(c.toLowerCase()),
-        );
-        if (hits.length) offenders.push(`${file.replace(ROOT, "")}: ${hits.join(", ")}`);
+        const rel = file.replace(ROOT, "").replace(/^\//, "");
+        /*
+         * 逐行扫，不是整块扫 —— 这样才能按「文件 + 那一行」登记刻意的例外，
+         * 而不是把整个文件放行。报错也能直接给出那一行，省一次去文件里找。
+         */
+        for (const line of css.split("\n")) {
+          const hits = (line.match(COLOR) ?? []).filter(
+            (c) => !["#fff", "#ffffff"].includes(c.toLowerCase()),
+          );
+          if (!hits.length) continue;
+          if (INTENTIONAL.has(`${rel}::${line.trim()}`)) continue;
+          offenders.push(`${rel}: ${line.trim()}`);
+        }
       }
     }
     expect(offenders, `以下文件写死了颜色，应改用 var(--sh-*)：\n${offenders.join("\n")}`).toEqual(
