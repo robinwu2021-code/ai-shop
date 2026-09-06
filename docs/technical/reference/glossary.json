@@ -29922,24 +29922,7 @@
       "literalVersions": []
     },
     "npm": {
-      "drift": [
-        {
-          "pkg": "@types/node",
-          "installed": "26.1.2",
-          "specs": [
-            {
-              "ws": "ops-web/package.json",
-              "section": "devDependencies",
-              "spec": "^22"
-            },
-            {
-              "ws": "site/package.json",
-              "section": "devDependencies",
-              "spec": "^24.0.0"
-            }
-          ]
-        }
-      ]
+      "drift": []
     }
   }
 }
