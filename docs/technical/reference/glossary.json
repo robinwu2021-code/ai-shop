@@ -19209,12 +19209,6 @@
           "ar": "انتهت مهلة تقسيم المبلغ"
         },
         {
-          "key": "err.settle.split_reverse_failed",
-          "zh-CN": "分账回退失败，请稍后重试",
-          "en": "Split reversal failed, please retry",
-          "ar": "فشل التراجع عن تقسيم المبلغ، يرجى المحاولة لاحقًا"
-        },
-        {
           "key": "err.settle.tax_rate_too_high",
           "zh-CN": "个税税率超过上限，请核对后再保存",
           "en": "The tax rate is above the allowed cap — check it before saving",
@@ -29690,21 +29684,14 @@
     "maven": {
       "properties": {
         "archunit.version": "1.3.0",
-        "flyway.version": "11.14.1",
         "shedlock.version": "6.9.0",
-        "ehcache.version": "3.12.0",
-        "cos.version": "5.6.245",
-        "jakarta-mail.version": "2.1.5",
-        "angus-mail.version": "2.0.5"
+        "cos.version": "5.6.245"
       },
       "managed": [
         "com.qcloud:cos_api",
         "com.tngtech.archunit:archunit-junit5",
-        "jakarta.mail:jakarta.mail-api",
-        "org.eclipse.angus:angus-mail",
-        "org.ehcache:ehcache",
-        "org.flywaydb:flyway-core",
-        "org.flywaydb:flyway-mysql"
+        "net.javacrumbs.shedlock:shedlock-provider-jdbc-template",
+        "net.javacrumbs.shedlock:shedlock-spring"
       ],
       "literalVersions": []
     },

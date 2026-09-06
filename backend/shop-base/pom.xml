@@ -71,12 +71,11 @@
             因为 @SchedulerLock 标在各域自己的 Job 上（shop-merchant / shop-settle），
             注解要在它们的编译期可见；**锁的实现（JdbcTemplate provider）在 shop-app**，
             那里才知道连的是哪个库 —— 域模块不该知道。
-            版本不由 neargo-parent 管理，显式钉住。
+            版本在 backend/pom.xml 的 dependencyManagement（Boot BOM 不管它），这里不写。
         -->
         <dependency>
             <groupId>net.javacrumbs.shedlock</groupId>
             <artifactId>shedlock-spring</artifactId>
-            <version>${shedlock.version}</version>
         </dependency>
 
         <!-- 定时任务契约（JobHandler / JobDeclaration）。**零依赖**，
@@ -91,12 +90,22 @@
 
         <!--
             Ehcache 3：会话的**单机持久化**形态（shop.auth.token-store=ehcache）。
-            classifier 必须是 jakarta —— 默认包用的是 javax.cache，Spring Boot 4 下
-            连 CacheManager 都装配不起来，而报错信息是 NoClassDefFoundError: javax/cache/...，
-            看不出是 classifier 选错了。
-            版本 neargo-parent 不管，钉在**本仓库的父 POM**（backend/pom.xml）里；
-            classifier 仍要写在这里 —— dependencyManagement 按 g:a:type:classifier 匹配，
-            引用方不写就落不到那条管理项上。
+
+            版本由 Spring Boot BOM 管（4.0.7 → 3.11.1），这里与父 POM 都不写。
+            此前这里钉着 3.12.0，但在 shop-app 里从未生效 —— 根工程继承的 BOM 会覆盖
+            传递依赖声明的版本，fat jar 与线上装的一直是 3.11.1；2026-09-06 撤掉，
+            让模块测试与发布物跑同一个版本。要偏离 BOM，去 backend/pom.xml 用 ehcache3.version
+            覆盖并写明原因，别在这里写版本。
+
+            classifier=jakarta（本注释是这条约定唯一的家，shop-auth-store 与 CacheConfig 都指到这里）：
+            BOM 对 org.ehcache:ehcache 同时管着「无 classifier」与「jakarta」两条，同一个版本。
+            两种包都用 javax.cache（JCache 1.1 没有 jakarta 命名空间），区别只在 XML 配置
+            那一层的 JAXB（jakarta.xml.bind vs javax.xml.bind）。本仓库只用编程式
+            CacheManagerBuilder，两种包都能跑；选 jakarta 是与 Boot 4 的 Jakarta 栈保持一致，
+            而不是此前写在这里的「默认包装配不起来、报 NoClassDefFoundError: javax/cache」——
+            那句话没有任何一次真实报错支撑（2026-09-06 复核）。
+            引用方必须写 classifier：BOM 那两条按 g:a:type:classifier 匹配，不写就静默落到
+            无 classifier 的那条（版本相同、JAXB 走 javax），构建照样绿。
         -->
         <dependency>
             <groupId>org.ehcache</groupId>

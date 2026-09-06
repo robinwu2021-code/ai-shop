@@ -106,11 +106,11 @@
             <artifactId>flyway-mysql</artifactId>
         </dependency>
 
-        <!-- ShedLock 的锁实现：只有启动模块知道连的是哪个库（注解在 shop-base） -->
+        <!-- ShedLock 的锁实现：只有启动模块知道连的是哪个库（注解在 shop-base）。
+             版本在 backend/pom.xml 的 dependencyManagement（Boot BOM 不管它） -->
         <dependency>
             <groupId>net.javacrumbs.shedlock</groupId>
             <artifactId>shedlock-provider-jdbc-template</artifactId>
-            <version>${shedlock.version}</version>
         </dependency>
 
         <dependency>

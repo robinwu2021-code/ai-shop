@@ -130,6 +130,35 @@ class BackendI18nParityTest {
                 .isEmpty();
     }
 
+    @Test
+    @DisplayName("★ 每条文案都要有错误码指着它 —— 没人指的是死文案，三语对账还会逼着把它翻译出去")
+    void everyMessageBelongsToAnErrorCode() throws IOException {
+        Set<String> referenced = new LinkedHashSet<>();
+        for (ErrorCode e : ErrorCode.values()) {
+            referenced.add(e.msgKey());
+        }
+
+        List<String> orphans = new ArrayList<>();
+        for (String key : keysOf(BASE)) {
+            if (!referenced.contains(key)) {
+                orphans.add(key);
+            }
+        }
+
+        /*
+         * 与上一条互为反向：上一条守「码指着的键必须存在」，这一条守「存在的键必须有码指着」。
+         * 没人指的文案永远不会生效，而三语一致那条会把它当成正经词条逼着补翻译 ——
+         * err.settle.split_reverse_failed 就这样从初始提交一路被翻进阿语文件，
+         * 从来没有任何一个 ErrorCode 指过它（2026-09-06 查出并删除）。
+         *
+         * 所有取文案的路径都经 ErrorCode.msgKey()（主代码里没有字面量的 Messages.get 调用），
+         * 所以这个反向集合没有误报来源；将来出现第二种键的生产者，改的是这里的 referenced。
+         */
+        assertThat(orphans)
+                .as("这些词条没有任何 ErrorCode 指着，是死文案：\n  %s", String.join("\n  ", orphans))
+                .isEmpty();
+    }
+
     private static Set<String> keysOf(String path) throws IOException {
         return new LinkedHashSet<>(allKeysOf(path));
     }

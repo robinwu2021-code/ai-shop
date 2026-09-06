@@ -70,21 +70,30 @@
         <module>shop-app</module>
     </modules>
 
-    <!-- neargo-parent 与 Spring Boot BOM 管不到的那几个，版本一律钉在这里。
+    <!-- 第三方版本的三条规矩（2026-09-06 复核后改写，此前这段话有三处与事实相反）：
 
-         **为什么不许写在模块 pom 里**：ehcache 此前在 shop-base 与 shop-auth-store
-         各写了一份 3.12.0。两处今天相同，明天只改一处 —— 而 Maven 不会报任何错，
-         同一个 classpath 上两个版本按最近者胜，症状是「本机跑得起来、换台机器行为不同」。
-         收编之后模块 pom 里不再出现字面量版本，`依赖清单.md` §1.2 就是这条的量具：
-         那一节非空即代表有人又写回去了。 -->
+         1. **Spring Boot BOM 已管的，这里不写。** 继承链 shop-parent → neargo-parent →
+            spring-boot-starter-parent 把 BOM 的 dependencyManagement 一路带下来：ehcache（含
+            jakarta classifier）、jakarta.mail、angus-mail、flyway 都在里面，模块只写 g:a，
+            版本随 Boot 走。真要偏离 BOM，用 BOM **自己的属性名**覆盖（如 ehcache3.version）
+            并在这里写明原因 —— 别新起一个属性名（只覆盖到一条、家族其余成员留在旧版本），
+            更别用 BOM 的属性名却不知道（jakarta-mail.version / angus-mail.version 曾在这里
+            以「BOM 管不到」为名出现，实际把 BOM 里十个 org.eclipse.angus 条目全钉住了）。
+         2. **BOM 不管的，钉在下面的 dependencyManagement。** 今天只有 archunit、cos_api 与 shedlock
+            （flyway 曾以 BOM 的属性名 flyway.version 钉在这里，值与 BOM 相同，Boot 4.1 起会把
+            Flyway 静默留在 11.14.1 —— 同一次一并撤掉）。
+         3. **模块 pom 里不写任何版本**，字面量与 ${...} 都不写（内部模块的 ${project.version} 除外）。
+            为什么：模块里写的版本在 shop-app 里**根本不生效** —— 根工程继承的 BOM 会覆盖
+            传递依赖声明的版本。此前 shop-base 写着 ehcache 3.12.0，fat jar 与线上装的一直是
+            BOM 的 3.11.1；模块各自的测试跑一个版本、发布物跑另一个，台台机器都一样，
+            Maven 一个字不报。
+
+         闸门：scripts/gen-glossary.mjs 扫到模块 pom 里出现版本就直接失败
+         （连模块级 dependencyManagement 一起扫；`依赖清单.md` §1.2 因此永远为空）。 -->
     <properties>
         <archunit.version>1.3.0</archunit.version>
-        <flyway.version>11.14.1</flyway.version>
         <shedlock.version>6.9.0</shedlock.version>
-        <ehcache.version>3.12.0</ehcache.version>
         <cos.version>5.6.245</cos.version>
-        <jakarta-mail.version>2.1.5</jakarta-mail.version>
-        <angus-mail.version>2.0.5</angus-mail.version>
     </properties>
 
     <dependencyManagement>
@@ -95,45 +104,21 @@
                 <version>${archunit.version}</version>
                 <scope>test</scope>
             </dependency>
-            <dependency>
-                <groupId>org.flywaydb</groupId>
-                <artifactId>flyway-core</artifactId>
-                <version>${flyway.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.flywaydb</groupId>
-                <artifactId>flyway-mysql</artifactId>
-                <version>${flyway.version}</version>
-            </dependency>
-            <!-- Ehcache 3：会话缓存。**classifier 必须是 jakarta** —— 默认包用的是
-                 javax.cache，Spring Boot 4 下连 CacheManager 都装配不起来，
-                 而报错是 NoClassDefFoundError: javax/cache/…，看不出是 classifier 选错了。
-                 **这里的 classifier 不是给引用方省事的，是让这条管理项匹配得上**：
-                 dependencyManagement 按 groupId:artifactId:type:classifier 匹配，
-                 两边都写 jakarta 才配得上，所以引用方那一侧的 classifier 仍要留着。 -->
-            <dependency>
-                <groupId>org.ehcache</groupId>
-                <artifactId>ehcache</artifactId>
-                <version>${ehcache.version}</version>
-                <classifier>jakarta</classifier>
-            </dependency>
-            <!-- 腾讯云 COS：对象存储（CosMediaStore，生产用；本地磁盘作兜底） -->
+            <!-- 以下三条 Boot BOM 不管，版本只在这里出现（用途见各引用方自己的注释） -->
             <dependency>
                 <groupId>com.qcloud</groupId>
                 <artifactId>cos_api</artifactId>
                 <version>${cos.version}</version>
             </dependency>
-            <!-- 邮件：jakarta.mail + angus，不引 spring-boot-starter-mail
-                 （本项目 `mvn -o` 离线构建，官方 SDK 的依赖树不在本地仓） -->
             <dependency>
-                <groupId>jakarta.mail</groupId>
-                <artifactId>jakarta.mail-api</artifactId>
-                <version>${jakarta-mail.version}</version>
+                <groupId>net.javacrumbs.shedlock</groupId>
+                <artifactId>shedlock-spring</artifactId>
+                <version>${shedlock.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.eclipse.angus</groupId>
-                <artifactId>angus-mail</artifactId>
-                <version>${angus-mail.version}</version>
+                <groupId>net.javacrumbs.shedlock</groupId>
+                <artifactId>shedlock-provider-jdbc-template</artifactId>
+                <version>${shedlock.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

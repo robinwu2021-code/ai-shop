@@ -467,14 +467,38 @@ function collectMaven() {
   }
   assertScope("Maven 模块", modules.length, 15);
 
-  /** 字面量版本（既不是 `${...}` 也不是 parent 管着的）—— 这就是要收编的那一档 */
+  /*
+   * 模块 POM 里写了版本的第三方依赖 —— **闸门，不是清单**（2026-09-06 起）。
+   *
+   * 此前这里只数字面量、且先把模块级 <dependencyManagement> 剥掉再数，并且只是渲染成
+   * `依赖清单.md` §1.2，没有任何东西会因为它非空而失败：模块里写回一个版本、重跑生成器、
+   * 连同产物一起提交，闸门全绿。更糟的是模块级 dependencyManagement 会覆盖父 POM 的
+   * 管理项，而这条路在 §1.2 里根本看不见。
+   *
+   * 现在的规矩（backend/pom.xml 顶部那段注释）：模块 POM 里不写任何版本，字面量与
+   * `${...}` 都不写，模块级 dependencyManagement 也算；只放过内部模块的 `${project.version}`。
+   * 违反就退出非零 —— check-generated-docs.mjs 会把生成器的失败原样传成 pre-push 的红。
+   * 为什么拦得这么死：模块里写的版本在 shop-app 里根本不生效（根工程继承的 Boot BOM
+   * 覆盖传递依赖声明的版本），它只会让模块测试与发布物跑两个版本，而 Maven 一个字不报。
+   */
   const literals = [];
   for (const m of modules) {
     if (m.rel === parentRel) continue;
-    for (const d of m.deps) {
-      if (!d.v || d.v.startsWith("${")) continue;
-      literals.push({ module: m.rel, ga: `${d.g}:${d.a}`, version: d.v });
+    const scan = read(join(ROOT, m.rel))
+      .replace(/<parent>[\s\S]*?<\/parent>/, "")
+      .replace(/<build>[\s\S]*?<\/build>/g, "");
+    for (const d of scan.matchAll(/<dependency>([\s\S]*?)<\/dependency>/g)) {
+      const g = tagOf(d[1], "groupId"); const a = tagOf(d[1], "artifactId"); const v = tagOf(d[1], "version");
+      if (!a || !v) continue;
+      if (g === "ai.neargo.shop" && v === "${project.version}") continue;
+      literals.push({ module: m.rel, ga: `${g}:${a}`, version: v });
     }
+  }
+  if (literals.length) {
+    console.error('✗ 模块 POM 里不许写版本（字面量与 ${...} 都不许，模块级 dependencyManagement 也算）：');
+    console.error("  版本只能在 backend/pom.xml —— Boot BOM 已管的不写，BOM 不管的进 dependencyManagement。");
+    for (const l of literals) console.error(`  ${l.module}: ${l.ga} = ${l.version}`);
+    process.exit(1);
   }
   return { modules, managed, props, literals, parentRel };
 }
@@ -509,15 +533,29 @@ function collectNpm() {
    * 单独装一份。所以「§2.1 列出来的包有没有嵌套副本」不是文档细节，
    * 它区分的是「声明写得不一样但今天只跑一份」与「今天就在跑两份」。
    */
+  /*
+   * 版本从 **`package-lock.json`** 读，不从 `node_modules` 读。
+   *
+   * 第一版读的是磁盘上的 `node_modules`，而那个目录**不在仓库里** ——
+   * 于是这份产物在没跑过 `npm i` 的地方生成出来是另一份。后果有两层，第二层更糟：
+   *
+   *   · `check-generated-docs` 跑在 HEAD 的干净副本里（pre-push 只软链主仓的顶层
+   *     node_modules，复现不出各 workspace 自己那份），于是这份产物**每次推送都报陈**。
+   *   · 更要命的是它不是「少了点信息」，是**说反话**：@types/node 那一行会从
+   *     「ops-web → 22.20.1、site → 24.13.3」变成「否（今天只跑顶层那一份）」，
+   *     而那一列正是用来判断漂移是不是已经在发生的。
+   *
+   * 锁文件是提交进仓库的，且它记的正是 `npm ci` 会装出来的东西 ——
+   * 「别的机器上会跑什么」这个问题，锁文件比本机的 node_modules 更有资格回答。
+   */
+  const lock = (() => {
+    try { return JSON.parse(readFileSync(join(ROOT, "package-lock.json"), "utf8")).packages ?? {}; }
+    catch { return {}; }
+  })();
   const installed = (pkg, ws = null) => {
-    // 根 workspace 的 `ws` 就是 `"package.json"`（前面没有目录），
-    // 拿正则去掉 `/package.json` 匹配不上，路径会拼成 `ROOT/package.json/node_modules/…`
-    // —— 永远读不到，于是根上声明的包「实际安装」恒为空。
-    // 根今天声明 0 个依赖所以看不出来，但这是「查不到」被显示成「没装」。
     const dir = ws ? ws.replace(/(^|\/)package\.json$/, "") : "";
-    const p = join(ROOT, dir, "node_modules", pkg, "package.json");
-    if (!existsSync(p)) return null;
-    try { return JSON.parse(readFileSync(p, "utf8")).version; } catch { return null; }
+    const key = (dir ? dir + "/" : "") + "node_modules/" + pkg;
+    return lock[key]?.version ?? null;
   };
   /**
    * 漂移分两档，**混在一起数第一档就永远归不了零**。
@@ -722,6 +760,8 @@ function mdEntities(entities, schema, vocab, javaEnums, tsEnums, registry, msg) 
     });
     if (missing.length) {
       L.push("");
+      // 这只是把数字摆出来。真正拦住的是 BackendI18nParityTest#everyErrorCodeHasAMessage（正向）
+      // 与 #everyMessageBelongsToAnErrorCode（反向）—— 与上面 i18n-parity 那句同一个口径。
       L.push(`⚠️ ${missing.length} 个取值指着 \`messages.properties\` 里没有的键：` +
         `${missing.map((i) => `\`${i.name}\``).join(" · ")} —— 端上会直接看到裸 key。`);
     }
@@ -813,23 +853,10 @@ function mdDeps(mvn, npm) {
   L.push("|---|");
   for (const ga of [...mvn.managed].sort()) L.push(`| \`${ga}\` |`);
 
-  L.push(`\n### 1.2 模块 POM 里的字面量版本（${mvn.literals.length}）\n`);
-  if (!mvn.literals.length) {
-    L.push("无。**所有第三方版本都由父 POM 或 BOM 管着** —— 这一档为空是目标态：");
-    L.push("模块 POM 里再出现一个写死的版本号，这一节就会长出来。");
-  } else {
-    L.push("这一档是要收编的：版本应当只写在父 POM 的 `dependencyManagement` 里。\n");
-    L.push("| 模块 | 依赖 | 版本 |");
-    L.push("|---|---|---|");
-    for (const l of mvn.literals) L.push(`| \`${l.module}\` | \`${l.ga}\` | \`${l.version}\` |`);
-    const dup = new Map();
-    for (const l of mvn.literals) dup.set(l.ga, (dup.get(l.ga) ?? 0) + 1);
-    const many = [...dup].filter(([, n]) => n > 1);
-    if (many.length) {
-      L.push("");
-      L.push(`⚠️ 其中 ${many.map(([ga, n]) => `\`${ga}\`（${n} 处）`).join("、")} 各写了不止一份 —— 改一处漏一处的现成入口。`);
-    }
-  }
+  L.push("\n### 1.2 模块 POM 里写了版本的依赖（0）\n");
+  L.push("无，且**只会是无**：模块 POM 里不写任何第三方版本（字面量与 `${...}` 都不写，");
+  L.push("模块级 `dependencyManagement` 也算），生成器扫到就直接失败 —— 写回去的那份根本生成不出来。");
+  L.push("规矩与由来见 `backend/pom.xml` 顶部注释。");
 
   L.push("\n### 1.3 模块间依赖\n");
   L.push("| 模块 | 依赖的内部模块 |");
@@ -851,9 +878,9 @@ function mdDeps(mvn, npm) {
     L.push("无。同一个包在各 workspace 里声明的**版本号**一致（范围写法各自不同的见 §2.2）。");
   } else {
     L.push("这一档是**版本号本身不同**。npm workspaces 会把依赖提升到顶层，所以声明不一致时");
-    L.push("有两种结局，最后一列分得开：只跑顶层那一份（代价要到重装或换机那天才付），");
-    L.push("还是各 workspace 已经各装各的（代价今天就在付）。\n");
-    L.push("| 包 | 顶层安装 | 各处声明 | 各自另装了一份？ |");
+    L.push("有两种结局，最后一列分得开：只装顶层那一份（代价要到某次重装解出别的版本那天才付），");
+    L.push("还是锁文件里各 workspace 已经各装各的（代价现在就在付）。\n");
+    L.push("| 包 | 锁文件顶层 | 各处声明 | 锁文件里各自另装了一份？ |");
     L.push("|---|---|---|---|");
     for (const d of npm.drift) {
       const uses = d.uses.map((u) => `\`${u.spec}\` ${u.ws.replace("/package.json", "")}`).join("<br>");
@@ -866,7 +893,7 @@ function mdDeps(mvn, npm) {
     if (live.length) {
       L.push("");
       L.push(`⚠️ ${live.map((d) => `\`${d.pkg}\``).join("、")} **今天就在跑不止一份** ——`);
-      L.push("最后一列列出的每个 workspace 都在自己的 `node_modules` 里另装了一份。");
+      L.push("`package-lock.json` 里，最后一列的每个 workspace 都各锁了一份自己的版本。");
       L.push("对齐它要连着重装与逐端 typecheck 一起做，不是改一行声明就完了。");
     }
   }
@@ -877,7 +904,7 @@ function mdDeps(mvn, npm) {
   } else {
     L.push("**这一档不是缺陷**：版本号相同，只是 ops-web 一律 caret、site 一律精确钉。");
     L.push("列出来是为了让「以为已经统一过了」这件事不成立。\n");
-    L.push("| 包 | 实际安装 | 各处声明 |");
+    L.push("| 包 | 锁文件版本 | 各处声明 |");
     L.push("|---|---|---|");
     for (const d of npm.styleOnly) {
       const uses = d.uses.map((u) => `\`${u.spec}\` ${u.ws.replace("/package.json", "")}`).join("<br>");
@@ -890,7 +917,7 @@ function mdDeps(mvn, npm) {
     const all = [...Object.entries(w.deps).map(([k, v]) => [k, v, "dep"]), ...Object.entries(w.dev).map(([k, v]) => [k, v, "dev"])];
     if (!all.length) continue;
     L.push(`\n**\`${w.rel}\`**\n`);
-    L.push("| 包 | 规格 | 档 | 实际安装 |");
+    L.push("| 包 | 规格 | 档 | 锁文件版本 |");
     L.push("|---|---|---|---|");
     for (const [pkg, spec, kind] of all.sort()) {
       L.push(`| \`${pkg}\` | \`${spec}\` | ${kind} | \`${npm.installed(pkg) ?? "—"}\` |`);
@@ -972,7 +999,7 @@ async function main() {
     `✓ 词条 ${surfaces.reduce((n, s) => n + s.keys.length, 0)} 条 / ${surfaces.length} 面 · ` +
     `实体 ${entities.length} · 取值域 ${javaEnums.length + tsEnums.length + new Set(consts.filter((c) => c.isVocab).map((c) => c.host)).size} 组 · ` +
     `常量 ${consts.filter((c) => !c.isVocab).length} · ` +
-    `Maven 字面量版本 ${mvn.literals.length} · npm 漂移 ${npm.drift.length}`,
+    `Maven 模块 POM 版本 0（闸门） · npm 漂移 ${npm.drift.length}`,
   );
 }
 

@@ -280,7 +280,10 @@ class ProxyOrderFlowTest {
         try {
             setLimit(ops, 100L, 20);   // 单笔 1 元
             proxy(ops, req(userNo, "ONLINE", SKU, 1, "超额那一单"))
-                    .andExpect(jsonPath("$.code").value(70046));
+                    .andExpect(jsonPath("$.code").value(70046))
+                    // 文案必须真的解析出来：Messages.get 取不到 key 时返回 key 本身，界面上就会弹出 err.xxx；
+                    // 三份 properties 齐齐缺这两条时上面那行照样绿（2026-09-06 就是这么漏的）
+                    .andExpect(jsonPath("$.msg").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.startsWith("err."))));
             assertThat(orderCount())
                     .as("★ 拦住了却留下一张单 —— 库存也就跟着锁住了")
                     .isEqualTo(before);
@@ -314,7 +317,10 @@ class ProxyOrderFlowTest {
 
             setLimit(ops, ProxyLimitService.DEFAULT_MAX_AMOUNT_MINOR, 1);
             proxy(ops, req(userNo, "ONLINE", SKU, 1, "到量之后那一单"))
-                    .andExpect(jsonPath("$.code").value(70047));
+                    .andExpect(jsonPath("$.code").value(70047))
+                    // 文案必须真的解析出来：Messages.get 取不到 key 时返回 key 本身，界面上就会弹出 err.xxx；
+                    // 三份 properties 齐齐缺这两条时上面那行照样绿（2026-09-06 就是这么漏的）
+                    .andExpect(jsonPath("$.msg").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.startsWith("err."))));
             assertThat(orderCount()).as("★ 到量之后仍然落了单").isEqualTo(after);
         } finally {
             setLimit(ops, ProxyLimitService.DEFAULT_MAX_AMOUNT_MINOR, ProxyLimitService.DEFAULT_MAX_PER_DAY);
