@@ -194,6 +194,62 @@ describe("后端验收清单与 mock 同步", () => {
   // 它一旦过期就是**有害的**：后端照着实现，结果 mock 早就改了规则 —— 联调时两边都觉得自己对。
   const SPEC = readFileSync(join(ROOT, "docs/api/后端验收清单.md"), "utf8");
 
+  /*
+   * 词典 §5 的**迁移边** ↔ 下发口径的状态机。
+   *
+   * <p>下面那条比的是 `mock TRANSITIONS ↔ 后端验收清单`（两份代码侧产物）。
+   * 词典这一侧此前只有**取值**被 MUST_COVER 管着，**边一条都没人比** ——
+   * 而词典是规定：它漂了，实现与规定就在无人知晓的情况下分了家。
+   *
+   * <p>2026-09-06 逐条比过：7 个状态、每条边都对得上，所以这条从第一天起是绿的。
+   * 先绿再挂 —— 恒红的闸门等于没有闸门。
+   *
+   * <p><b>比的必须是下发口径</b>（`OrderStatus` / mock `TRANSITIONS`），
+   * 不是 `OrderStateMachine.ORDER`：词典这一节的标题写着 `OrderStatus`，
+   * 而它自己注明「库里那一列存的是 WAIT_FULFILL，同一件事」——
+   * 库口径与下发口径是刻意分层的两张表，拿错一张来比会得到一堆假差异
+   * （我第一次就比错了，报出四条根本不存在的「不一致」）。
+   */
+  it("★★ 词典 §5 的状态迁移边与下发口径一致 —— 规定漂了没人知道", () => {
+    const db = readFileSync(join(ROOT, "packages/shared/src/mock/db.ts"), "utf8");
+    const blk = db.match(/const TRANSITIONS: Record<OrderStatus, OrderStatus\[\]> = \{(.*?)\n\};/s);
+    expect(blk, "TRANSITIONS 改名了，本判据读不到就等于没查").toBeTruthy();
+    const code = new Map<string, string[]>();
+    for (const m of blk![1]!.matchAll(/^\s*(\w+):\s*\[([^\]]*)\]/gm)) {
+      code.set(m[1]!, [...m[2]!.matchAll(/"(\w+)"/g)].map((x) => x[1]!));
+    }
+
+    const sec = GLOSSARY.slice(
+      GLOSSARY.indexOf("### Order status"),
+      GLOSSARY.indexOf("> **订单状态里没有"),
+    );
+    const doc = new Map<string, string[]>();
+    for (const line of sec.split("\n")) {
+      const m = line.match(/^\|\s*`(\w+)`\s*\|(.*)\|([^|]*)\|\s*$/);
+      if (!m) continue;
+      doc.set(m[1]!, [...m[3]!.matchAll(/`(\w+)`/g)].map((x) => x[1]!));
+    }
+
+    // 少扫等于全绿：表格格式一改，doc 会是空 Map 而下面的差集照样为空
+    expect(doc.size, `词典 §5 只解析出 ${doc.size} 个状态，表格格式变了？`).toBe(code.size);
+
+    const diff: string[] = [];
+    for (const [state, tos] of code) {
+      const spec = doc.get(state);
+      if (!spec) { diff.push(`${state}：代码有、词典没有`); continue; }
+      const missing = tos.filter((t) => !spec.includes(t));
+      const extra = spec.filter((t) => !tos.includes(t));
+      if (missing.length || extra.length) {
+        diff.push(`${state}：代码多 [${missing.join(" ") || "—"}] · 词典多 [${extra.join(" ") || "—"}]`);
+      }
+    }
+    expect(
+      diff,
+      "词典 §5 的迁移边与下发口径对不上：\n  " + diff.join("\n  ") +
+        "\n词典是规定 —— 冲突时改代码、不改词典（见词典抬头）。",
+    ).toEqual([]);
+  });
+
   it("订单状态机与代码一致", () => {
     const db = readFileSync(join(ROOT, "packages/shared/src/mock/db.ts"), "utf8");
     const block = db.match(/const TRANSITIONS: Record<OrderStatus, OrderStatus\[\]> = \{(.*?)\n\};/s);
