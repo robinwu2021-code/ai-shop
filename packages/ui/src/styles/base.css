@@ -1231,14 +1231,25 @@ uni-page-wrapper[style*="--window-bottom"] {
   display: flex;
   flex-direction: column;
   gap: 2rpx;
-  background: var(--sh-surface);
   border-radius: 24rpx;
   overflow: hidden;
+  /*
+   * ⚠️ **容器自己不上色。** 第一版写的是 `background: var(--sh-surface)`，
+   * 而行（`.sh-cell`）是透明的 —— 于是那 2rpx 缝里露出来的是**容器自己的白**，
+   * 缝等于不存在（2026-09-06 在浏览器里量出来的：gap 确实是 1px，
+   * 只是白压白，看不见）。行看着分开完全是内边距的功劳。
+   *
+   * 白底要给到**行**上，缝才露得出它下面的东西。这里不写 `--sh-bg` 而是不写 ——
+   * 这一族大多数时候坐在页底色上，但也可能被放进别的容器里，
+   * 钉死一个颜色就会在那种地方露出一道不属于任何东西的灰。
+   */
 }
 /* 行的内边距走密度变量：C 端逛店松一点、B 端作业台紧一点，这本来就是两端的分歧，
    而此前那点分歧是「各写各的」造成的，不是有意的。纵向 24 让行高落在 ~76rpx —— 
    远超 44pt 的点按下限，一屏又能多放两三行 */
 .sh-cell {
+  /* 白底在行上不在容器上 —— 见上面那段：容器上色会把缝填掉 */
+  background: var(--sh-surface);
   padding: 24rpx var(--sh-pad-page, 28rpx);
 }
 

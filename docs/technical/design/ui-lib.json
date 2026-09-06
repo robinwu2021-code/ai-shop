@@ -612,9 +612,11 @@
       "when": ".sh-cells 里的一行，内边距跟着 --sh-pad-page 走",
       "avoid": "别单独用，它没有底色",
       "decl": {
+        "background": "var(--sh-surface)",
         "padding": "24rpx var(--sh-pad-page, 28rpx)"
       },
       "px": {
+        "background": "var(--sh-surface)",
         "padding": "12px var(--sh-pad-page, 14px)"
       },
       "usage": {
@@ -631,7 +633,6 @@
         "display": "flex",
         "flex-direction": "column",
         "gap": "2rpx",
-        "background": "var(--sh-surface)",
         "border-radius": "24rpx",
         "overflow": "hidden"
       },
@@ -639,7 +640,6 @@
         "display": "flex",
         "flex-direction": "column",
         "gap": "1px",
-        "background": "var(--sh-surface)",
         "border-radius": "12px",
         "overflow": "hidden"
       },

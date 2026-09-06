@@ -892,15 +892,20 @@ describe("库件之间不许有同一个形状", () => {
  * `sh-cover` / `sh-icon-btn` / `sh-dialog` 三个件各重画一遍 `.sh-center`，
  * `sh-kv` 重画 `.sh-row`。
  *
- * 判据是**逐值命中**：件的某条规则与某个积木有 ≥3 条**属性和值都相同**的声明，
- * 且覆盖了那个积木的**多数**（严格多于一半）。只对属性名相同不算 ——
- * 那会把所有 flex 容器凑成一堆。
+ * 判据是**逐值命中**：件的某条规则要**覆盖住整个积木** —— 积木的每一条声明，
+ * 属性和值都在这条规则里。只对属性名相同不算，那会把所有 flex 容器凑成一堆。
  *
- * 「严格多于一半」这个边界是被一条假阳性逼出来的：`sh-sheet` 的
- * `.sheet__panel--tall`（定高面板）与 `.sh-cells`（密排清单）恰好共有
- * `display:flex` / `flex-direction:column` / `overflow:hidden` 三条 = 3/6。
- * 两者毫无关系。放行「刚好一半」的话，六条以上的积木会一直报这种巧合，
- * 而**报假的闸门会训练人去加豁免**。
+ * 唯一的松口：**没盖住的那几条全是字体属性**（`font-*` / `line-height`）时也算命中。
+ * 那是这个仓库的常见写法 —— 调用点挂一个 `.txt-caption` 出字号，规则里只留剩下的
+ * （`.pr__hint` / `.sheet__hint` / `.st__l` 三处重画 `.sh-hint` 就是这个形状）。
+ *
+ * **判据换过一次，值得记**：第一版是「命中 ≥3 条且覆盖积木的多数」。
+ * 它把 `sh-sheet` 的 `.sheet__panel--tall`（定高滚动面板）报成重画 `.sh-cells`
+ * （密排清单）—— 两者只是恰好共有 `display:flex` / `flex-direction:column` /
+ * `overflow:hidden`。更糟的是**这个阈值挂在被测对象的声明条数上**：
+ * 我把 `.sh-cells` 的 `background` 挪走之后它从 6 条变 5 条，
+ * 原本不过半的 3/6 变成过半的 3/5，同一条假阳性自己回来了。
+ * 会随被测对象漂移的阈值，不是判据。
  *
  * 命中之后有两条出路，选哪条看**值一不一样**：
  *   · 一样 → 挂上那个积木的类名，把重复的声明删掉
@@ -965,9 +970,13 @@ describe("件不许重画 base.css 的积木", () => {
           // ⚠️ **要按元素判，不能按文件判**：文件里任何一处提到 `sh-center`，
           //    就把这一整个文件的规则都豁免掉，等于第二个重画点永远看不见。
           if (carriesBlock(src, sel, name.slice(1))) continue;
-          let same = 0;
-          for (const [k, v] of tpl) if (own.get(k) === v) same++;
-          if (same >= 3 && same * 2 > tpl.size) hits.push(`${f}  ${sel}  ≈ ${name}（逐值命中 ${same}/${tpl.size}）`);
+          const missing = [...tpl.keys()].filter((k) => own.get(k) !== tpl.get(k));
+          const same = tpl.size - missing.length;
+          if (same < 3) continue;
+          // 盖住整个积木，或者没盖住的全是字号那一族（调用点用 .txt-* 出的）
+          const TEXTY = /^(font-|line-height$|letter-spacing$)/;
+          if (missing.length && !missing.every((k) => TEXTY.test(k))) continue;
+          hits.push(`${f}  ${sel}  ≈ ${name}（逐值命中 ${same}/${tpl.size}）`);
         }
       }
     }
@@ -1099,5 +1108,58 @@ describe("投影只许用 --sh-shadow-*", () => {
       }
     }
     expect(bad, `散写的投影 —— 收进 --sh-shadow-up / --sh-shadow-float：\n${bad.join("\n")}`).toEqual([]);
+  });
+});
+
+/*
+ * **想让缝被看见，容器就不能自己上色。**
+ *
+ * 2026-09-06 我给 `.sh-cells` 写的第一版是：容器 `background: var(--sh-surface)`
+ * + `gap: 2rpx`，行（`.sh-cell`）只给内边距、不上色。想的是「那 2rpx 露出页底色，
+ * 比画一条线更轻」。**但缝里露出来的是容器自己的白** —— 白压白，缝等于不存在。
+ *
+ * 骗人的地方在于它看着是对的：`ui-lib.json` 里 gap 明明是 2rpx，浏览器量出来
+ * 行间距也确实是 1px，逐页体检、自造件、字阶全绿。只有把两张截图并排看，
+ * 才发现「行与行分开」完全是内边距的功劳，那道缝一次都没出现过。
+ *
+ * 判据：**`gap ≤ 4rpx` 的容器不许自己声明底色**。
+ * 4rpx 是分界线 —— 再小的缝不可能是「间距」，只可能是「想让人看见的一道线」；
+ * 而 8rpx 以上是真的在拉开距离，容器上色无所谓（`.sh-row` 的 16rpx 就是）。
+ * 白底要给到**行**上，缝才露得出它下面的东西。
+ */
+describe("缝要露得出下面的东西", () => {
+  const files = [
+    join(ROOT, "packages/ui/src/styles/base.css"),
+    ...[...APPS.map((a) => join(ROOT, a, "src")), join(ROOT, "packages/ui/src")].flatMap((dir) =>
+      readdirSync(dir, { recursive: true, encoding: "utf8" })
+        .filter((f) => f.endsWith(".vue"))
+        .map((f) => join(dir, f)),
+    ),
+  ];
+
+  it("有文件可扫（否则下面全是空转）", () => {
+    expect(files.length).toBeGreaterThan(80);
+  });
+
+  it("gap ≤ 4rpx 的容器没有自己上色 —— 那道缝里会露出它自己", () => {
+    const bad: string[] = [];
+    for (const f of files) {
+      const src = readFileSync(f, "utf8");
+      const css = f.endsWith(".css") ? src
+        : [...src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]!).join("\n");
+      for (const m of css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        const body = m[2]!;
+        const gap = /\bgap:\s*(\d+)rpx/.exec(body);
+        const bg = /background(?:-color)?:\s*([^;]+)/.exec(body);
+        if (!gap || !bg || Number(gap[1]) > 4) continue;
+        // 透明是对的写法 —— 那正是「让下面的东西露出来」
+        if (/^(transparent|none|0)$/.test(bg[1]!.trim())) continue;
+        bad.push(`${f.slice(ROOT.length + 1)}  ${m[1]!.trim().split("\n").pop()!.trim()}  gap:${gap[1]}rpx + ${bg[1]!.trim()}`);
+      }
+    }
+    expect(
+      bad,
+      "这些容器的缝里会露出它自己的底色，等于没有缝 —— 底色给到「行」上：\n" + bad.join("\n"),
+    ).toEqual([]);
   });
 });
