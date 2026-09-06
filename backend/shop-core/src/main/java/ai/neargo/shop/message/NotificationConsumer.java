@@ -143,9 +143,16 @@ public class NotificationConsumer implements OutboxConsumer {
             }
             default -> {
                 /*
-                 * 走不到：`supports()` 与本 switch 现在引用的是同一组常量（{@link NotifyScene}），
-                 * 不再是两处各写一遍的字面量。留着这一支是因为 switch 语法要求穷尽，
-                 * 而它一旦真的被走到，说明有人绕过 supports() 直接调了 consume()。
+                 * 共用一组常量消掉的是**拼写**不一致，消不掉**遗漏**：
+                 * 往 {@link NotifyScene#ALL} 加一个成员却忘了在这里加分支，
+                 * `supports()` 照样放行，事件进来之后落到这里 —— 什么都不做，零报错。
+                 * （上一版这里写的是「走不到」，把范围说宽了。）
+                 *
+                 * 所以这一支有两层用途，缺一不可：
+                 *   · 兜底日志 —— 真漏了的时候至少线上有一行指名道姓的记录；
+                 *   · 而「别漏」本身由 {@code NotifySceneCoverageTest} 在测试期拦下：
+                 *     ALL 里的每个成员都必须在本 switch 里有一个 case。
+                 *     日志是最后一道，不是唯一一道。
                  */
                 log.warn("[notify] 未登记的场景码 {}，事件 {} 未处理 —— 去 NotifyScene 里补",
                         scene, event.getEventNo());
