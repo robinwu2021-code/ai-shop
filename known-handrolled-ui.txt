@@ -56,14 +56,24 @@
 #    （内容一多会把上半截顶出视口）、`left/right` 两个物理属性也随之消失。
 #    实测面板 border-radius 22px、max-height 633px、z-index 100，都对上了。
 
-b-app/biz-pickup-sheet segment
-b-app/biz-pickup-sheet sheet
-b-app/biz-region-picker inkover
-b-app/biz-region-picker listrow
-b-app/biz-region-picker segment
-b-app/biz-region-picker sheet
-b-app/biz-region-picker tabs
-b-app/biz-region-picker wraprow
-b-app/biz-supplier-picker primover
-b-app/biz-time-range quietover
-c-app/biz-region-picker primover
+
+# ── 2026-09-06 晚：**又清零，11 条一条不留。** ──
+#
+# ① b 端两个 picker 收编到 `sh-sheet`（8 条）。做的时候发现它们要的东西库件都没有，
+#    而**两个件各写了一遍同一个壳** —— 那是「库里缺件」而不是「页面偷懒」，
+#    所以补的是 `sh-sheet`，不是在页面里再抄一次：
+#      · `#foot`   贴底页脚 —— 有它时面板定高、中间那段滚、页脚钉住。
+#                  否则列表一长，「确定」就滚出视野，而那是这一屏唯一的出口
+#      · `#toolbar` 不跟着滚的工具条（分栏、搜索框、已选清单）——
+#                  跟着滚的话，想换个分栏得先滚回顶部
+#      · `#head`   标题右侧的附加内容（「已选 3 · 展开」）——
+#                  放进正文会被列表挤出视野，而那是从头到尾都要能看见的数
+#      · `flush`   正文通铺到边 —— 一行行的列表，分隔线要压到弹层两侧
+#    顺带：全站唯一一处下划线 tab 归了 `sh-tabs`（chip 那套）；两处自画的圆勾选框
+#    归了 `sh-check`；定位入口那颗「faint → primary-tint」归了 `.sh-chip--primary`；
+#    删掉 9 条模板里一次都没用到的死规则。
+#
+# ② 四条**状态驱动的颜色**（`.crumb__i.is-cur` / `.sup--on` / `.tr__box.is-empty` /
+#    `.lv__node.is-on`）。上一版把它们记成「判据说多了」——**那个判断是错的**：
+#    改成 `:class="{ 'txt-ink': isCur }"` 之后，同一个颜色仍然只有一个名字，
+#    而本地那条 color 没了。判据没说多，是当时没想到条件绑定这条路。

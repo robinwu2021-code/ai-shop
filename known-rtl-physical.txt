@@ -10,4 +10,6 @@
 # 只把 margin 翻成逻辑属性、留着 left 是物理的，反而会把它推到一边去。
 # 要动就得连 left 一起换成 inset-inline-start —— 而居中这件事本来就与方向无关，
 # 两条都留物理属性是正确的。
-b-app/src/components/biz/biz-region-picker.vue margin-left
+
+# 2026-09-06：**清零。** 最后那条 `margin-left` 在 `biz-region-picker` 收编到
+# `sh-sheet` 时随死规则一起删掉了 —— 它属于 `.apply__*` 那一族，模板里一次都没用过。

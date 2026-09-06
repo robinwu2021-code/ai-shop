@@ -1189,21 +1189,30 @@ function close() {
 </script>
 
 <template>
-  <view v-if="visible" class="mask" @tap="close">
-    <view class="sheet" @tap.stop>
-      <!--
-        已选摘要在**标题栏右侧**：那一行如果放进面板里，会被列表挤出视野，
-        而「我到底选了几条」是这一屏从头到尾都要能看见的东西。
-      -->
-      <view class="sh-row sh-row--between sheet__head">
-        <text class="txt-title txt-ink sheet__title">{{ $t("store.picker.title") }}</text>
-        <view v-if="chosen.length" class="sh-row sheet__sel" @tap="chosenOpen = !chosenOpen">
+  <!--
+    形态归 `sh-sheet`。这一份与 `biz-pickup-sheet` 曾各写一遍同一个壳
+    （84vh 定高 + 内滚 + 贴底页脚 + 通铺到边），所以那几样补进了库件，
+    连同「标题右侧的附加内容」与「不跟着滚的工具条」两个插槽 —— 都是这两处都要的。
+  -->
+  <sh-sheet
+    :visible="visible"
+    flush
+    :title="String($t('store.picker.title'))"
+    @close="close"
+  >
+    <!--
+      已选摘要在**标题栏右侧**：那一行如果放进正文里，会被列表挤出视野，
+      而「我到底选了几条」是这一屏从头到尾都要能看见的东西。
+    -->
+    <template #head>
+      <view v-if="chosen.length" class="sh-row sheet__sel" @tap="chosenOpen = !chosenOpen">
           <text class="txt-sub txt-primary sheet__selT">{{ $t("store.picker.selected", { n: areas.length }) }}</text>
           <text class="txt-caption txt-quiet sheet__selM">{{ chosenOpen ? $t("store.picker.collapse") : $t("store.picker.expand") }}</text>
-        </view>
-        <text v-else class="txt-sub txt-quiet sheet__count">{{ $t("store.picker.selected", { n: areas.length }) }}</text>
       </view>
+      <text v-else class="txt-sub txt-quiet sheet__count">{{ $t("store.picker.selected", { n: areas.length }) }}</text>
+    </template>
 
+    <template #toolbar>
       <!-- 已选清单：误点很容易，必须有个当场能删的地方。开关在标题栏右侧 -->
       <view v-if="chosen.length && chosenOpen" class="chosen">
         <view class="chosen__list">
@@ -1221,17 +1230,24 @@ function close() {
       <!--
         两个 Tab：**只换内容，不换交互**。行的样式、左右分工、勾选框位置在两边完全一样 ——
         商家不需要在第二个 Tab 里重学一遍怎么点。
+        形态归 `sh-tabs`（chip 横排）—— 此前这里是全站唯一一处下划线 tab，
+        而同一个产品里两种分栏，用户会以为是两种不同的控件（那正是 sh-tabs 立起来的理由）。
       -->
-      <view class="tabs">
-        <text class="txt-body tab" :class="{ 'is-on': tab === 'REGION' }" @tap="tab = 'REGION'">{{ $t("store.picker.tabRegion") }}</text>
-        <text class="txt-body tab" :class="{ 'is-on': tab === 'SEARCH' }" @tap="tab = 'SEARCH'">{{ $t("store.picker.tabSearch") }}</text>
-      </view>
+      <sh-tabs
+        class="tabs"
+        :items="[
+          { key: 'REGION', label: String($t('store.picker.tabRegion')) },
+          { key: 'SEARCH', label: String($t('store.picker.tabSearch')) },
+        ]"
+        :active="tab"
+        @change="tab = $event as Tab"
+      ></sh-tabs>
 
       <template v-if="tab === 'REGION'">
         <!-- 面包屑：这个 Tab 唯一的导航。任一段可点，点了就回到那一级 -->
         <view class="txt-caption sh-wrap crumb">
-          <text class="crumb__i" :class="{ 'is-cur': !trail.length }" @tap="backTo(-1)">{{ $t("store.regionRoot") }}</text>
-          <text v-for="(x, i) in trail" :key="x.regionCode" class="crumb__i" :class="{ 'is-cur': i === trail.length - 1 }" @tap="backTo(i)">
+          <text class="crumb__i" :class="{ 'txt-ink': !trail.length }" @tap="backTo(-1)">{{ $t("store.regionRoot") }}</text>
+          <text v-for="(x, i) in trail" :key="x.regionCode" class="crumb__i" :class="{ 'txt-ink': i === trail.length - 1 }" @tap="backTo(i)">
             › {{ x.name }}
           </text>
         </view>
@@ -1262,7 +1278,8 @@ function close() {
           @tap="q = ''"></sh-icon-btn>
       </view>
 
-      <scroll-view scroll-y class="body">
+    </template>
+
         <text v-if="tab === 'REGION' && (loading || villageEstatesLoading)" class="txt-caption hint">{{ $t("common.loading") }}</text>
         <text v-else-if="tab === 'SEARCH' && q.trim().length < 2" class="txt-caption hint">{{ $t("store.picker.searchTip") }}</text>
         <text v-else-if="tab === 'SEARCH' && searching" class="txt-caption hint">{{ $t("common.loading") }}</text>
@@ -1298,9 +1315,12 @@ function close() {
                     @tap.stop="excludeRow(r)">
                 {{ rowExcluded(r) ? $t("store.picker.undoExclude") : $t("store.picker.exclude") }}
               </text>
-              <view v-else class="sh-center row__check sh-hit" :class="{ 'is-on': r.picked, 'is-off': !!coverNote(r) }" @tap.stop="pickRow(r)">
-                <sh-icon v-if="r.picked" name="check" :size="24" color="var(--sh-on-primary)"></sh-icon>
-                <text v-else-if="adding === r.key" class="row__tick">…</text>
+              <!-- 勾选框归 `sh-check`（圆点形态）。此前自己画了一份 44rpx 的圈 +
+                   选中铺主色 —— 那正是 sh-check 的内部实现，抄了一遍。
+                   外面这层只留「点得着」与「正在加入」那一瞬。 -->
+              <view v-else class="sh-center row__box sh-hit" @tap.stop="pickRow(r)">
+                <text v-if="adding === r.key" class="row__tick">…</text>
+                <sh-check v-else round :model-value="r.picked" :disabled="!!coverNote(r)"></sh-check>
               </view>
               <!--
                 竖线把两个点击区分开。**这不是装饰**：左边是「把整片加进来」（勾一个市影响几千个小区），
@@ -1329,43 +1349,21 @@ function close() {
           <text class="txt-body txt-primary maprow__t">{{ picking ? $t("common.loading") : $t("store.picker.mapEntry") }}</text>
           <sh-icon name="chevronRight" :size="18" color="var(--sh-primary-text)"></sh-icon>
         </view>
-      </scroll-view>
-
-      <view class="foot">
-        <view class="sh-btn" @tap="close">{{ $t("store.picker.done", { n: areas.length }) }}</view>
-      </view>
-    </view>
-  </view>
+    <template #foot>
+      <view class="sh-btn" @tap="close">{{ $t("store.picker.done", { n: areas.length }) }}</view>
+    </template>
+  </sh-sheet>
 </template>
 
 <style scoped>
-.mask {
-  position: fixed;
-  inset: 0;
-  z-index: var(--sh-z-sheet);
-  background: var(--sh-scrim);
-}
-.sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  height: 84vh;
-  border-radius: 32rpx 32rpx 0 0;
-  background: var(--sh-surface);
-}
-.sheet__head {
-  padding: 28rpx 32rpx 16rpx;
+/* 勾选框外层：只管别被压缩，形态归 sh-check */
+.row__box {
+  flex-shrink: 0;
 }
 .crumb {
   gap: 8rpx;
   margin: 20rpx 32rpx 0;
   color: var(--sh-sub);
-}
-.crumb__i.is-cur {
-  color: var(--sh-ink);
 }
 .whole {
   margin: 16rpx 24rpx 0;
@@ -1378,11 +1376,6 @@ function close() {
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-}
-.body {
-  flex: 1;
-  min-height: 0;
-  margin-top: 12rpx;
 }
 .row {
   gap: 20rpx;
@@ -1398,56 +1391,11 @@ function close() {
   margin-top: 4rpx;
   color: var(--sh-sub);
 }
-.row__check {
-  flex-shrink: 0;
-  width: 44rpx;
-  height: 44rpx;
-  border-radius: 9999px;
-  border: 3rpx solid var(--sh-line);
-  box-sizing: border-box;
-}
-.row__check.is-on {
-  border-color: var(--sh-primary);
-  background: var(--sh-primary);
-}
-.row--apply {
-  border-bottom: none;
-}
-.apply {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-  padding: 12rpx 32rpx 24rpx;
-}
-.apply__sug {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-}
 .group {
   padding: 20rpx 32rpx 8rpx;
   letter-spacing: 0.06em;
   color: var(--sh-sub);
   background: var(--sh-bg);
-}
-.place {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 20rpx 8rpx;
-  border-bottom: var(--sh-hairline);
-}
-.apply__map {
-  display: inline-flex;
-  align-items: center;
-  gap: 8rpx;
-  align-self: flex-start;
-  padding: 14rpx 24rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-}
-.apply__map.is-ok {
-  background: var(--sh-primary-tint);
 }
 .apply__poi {
   display: flex;
@@ -1478,21 +1426,11 @@ function close() {
   padding: 16rpx 32rpx;
   color: var(--sh-sub);
 }
-.foot {
-  padding: 16rpx 24rpx;
-  padding-bottom: 16rpx;
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  border-top: var(--sh-hairline);
-}
 
 /* 被上级覆盖的行：能看见、点得动（点了会说明原因），但明显是「不用再选」的样子 */
 .row.is-covered,
 .place.is-covered {
   opacity: 0.55;
-}
-.row__check.is-off {
-  border-color: var(--sh-line);
-  background: var(--sh-faint);
 }
 
 /*
@@ -1582,32 +1520,6 @@ function close() {
   color: var(--sh-warning);
 }
 
-/* Tab：两段式，唯一的模式切换。下划线只压在文字下面，不铺满整段 */
-.tabs {
-  display: flex;
-  gap: 44rpx;
-  padding: 4rpx 32rpx 0;
-  border-bottom: var(--sh-hairline);
-}
-.tab {
-  position: relative;
-  padding: 16rpx 4rpx 20rpx;
-  color: var(--sh-sub);
-}
-.tab.is-on {
-  color: var(--sh-ink);
-}
-.tab.is-on::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: -2rpx;
-  width: 44rpx;
-  height: 4rpx;
-  margin-left: -22rpx;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-}
 
 /* 地图入口：两个 Tab 的列表末尾都有，位置恒定 */
 .maprow {

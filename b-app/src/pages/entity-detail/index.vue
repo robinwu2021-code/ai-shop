@@ -144,7 +144,7 @@ function goPickStore() {
           <text class="txt-strong">{{ $t("entityDetail.quals") }}</text>
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
-        <text class="txt-sub block__val" :class="{ 'is-empty': !others.length }">
+        <text class="txt-sub block__val" :class="{ 'txt-quiet': !others.length }">
           {{ others.length ? $t("entityDetail.qualsCount", { n: others.length }) : $t("entityDetail.qualsEmpty") }}
         </text>
       </view>

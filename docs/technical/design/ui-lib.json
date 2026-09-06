@@ -312,7 +312,7 @@
         "justify-content": "center"
       },
       "usage": {
-        "b-app": 9,
+        "b-app": 7,
         "c-app": 28
       }
     },
@@ -332,7 +332,7 @@
         "gap": "3px"
       },
       "usage": {
-        "b-app": 4,
+        "b-app": 5,
         "c-app": 0
       }
     },
@@ -548,7 +548,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 269,
+        "b-app": 268,
         "c-app": 141
       }
     },
@@ -580,7 +580,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 129,
+        "b-app": 127,
         "c-app": 77
       }
     },
@@ -814,8 +814,8 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 27,
-        "c-app": 25
+        "b-app": 28,
+        "c-app": 26
       }
     },
     {
@@ -830,7 +830,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 30,
+        "b-app": 31,
         "c-app": 16
       }
     },
@@ -874,7 +874,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 78,
+        "b-app": 76,
         "c-app": 61
       }
     },
@@ -896,7 +896,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 300,
+        "b-app": 297,
         "c-app": 235
       }
     },
@@ -1028,7 +1028,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 116,
+        "b-app": 115,
         "c-app": 97
       }
     },
@@ -1050,7 +1050,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 108,
+        "b-app": 106,
         "c-app": 28
       }
     },
@@ -1146,7 +1146,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 114,
+        "b-app": 115,
         "c-app": 47
       }
     },
@@ -1204,7 +1204,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 30,
+        "b-app": 31,
         "c-app": 3
       }
     },
@@ -1222,7 +1222,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 21,
+        "b-app": 22,
         "c-app": 7
       }
     },
@@ -1344,7 +1344,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 115,
+        "b-app": 116,
         "c-app": 61
       }
     },
@@ -1418,7 +1418,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 59,
+        "b-app": 60,
         "c-app": 27
       }
     },
@@ -1598,7 +1598,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 5,
+        "b-app": 8,
         "c-app": 5
       },
       "note": "勾选框 / 单选点",
@@ -1727,7 +1727,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 60,
+        "b-app": 57,
         "c-app": 7
       },
       "note": "单色图标",
@@ -1867,15 +1867,16 @@
       "name": "sh-sheet",
       "file": "packages/ui/src/components/sh-sheet.vue",
       "scope": "跨端",
-      "lines": 113,
+      "lines": 182,
       "props": [
         "visible: boolean",
         "title: string",
         "hint?: string",
-        "stacked?: boolean"
+        "stacked?: boolean",
+        "flush?: boolean"
       ],
       "usage": {
-        "b-app": 7,
+        "b-app": 9,
         "c-app": 4
       },
       "note": "底部弹层",
@@ -1941,7 +1942,7 @@
         "active: string"
       ],
       "usage": {
-        "b-app": 9,
+        "b-app": 10,
         "c-app": 9
       },
       "note": "筛选条",
@@ -2019,7 +2020,7 @@
       "name": "biz-pickup-sheet",
       "file": "b-app/src/components/biz/biz-pickup-sheet.vue",
       "scope": "B 端",
-      "lines": 324,
+      "lines": 268,
       "props": [
         "visible: boolean",
         "storeNo: string",
@@ -2036,7 +2037,7 @@
       "name": "biz-region-picker",
       "file": "b-app/src/components/biz/biz-region-picker.vue",
       "scope": "B 端",
-      "lines": 1629,
+      "lines": 1541,
       "props": [
         "visible: boolean",
         "areas: ServiceArea[]"
@@ -2067,7 +2068,7 @@
       "name": "biz-supplier-picker",
       "file": "b-app/src/components/biz/biz-supplier-picker.vue",
       "scope": "B 端",
-      "lines": 134,
+      "lines": 127,
       "props": [
         "visible: boolean",
         "items: Supplier[]",
@@ -2085,7 +2086,7 @@
       "name": "biz-time-range",
       "file": "b-app/src/components/biz/biz-time-range.vue",
       "scope": "B 端",
-      "lines": 78,
+      "lines": 75,
       "props": [
         "modelValue: string",
         "clearable?: boolean"
@@ -2288,7 +2289,7 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 33,
+      "libClassHits": 34,
       "localSelectors": 8,
       "localCssLines": 31,
       "rolled": []
@@ -3633,28 +3634,15 @@
       "key": "b-app/biz-pickup-sheet",
       "file": "b-app/src/components/biz/biz-pickup-sheet.vue",
       "components": [
+        "sh-check",
         "sh-icon",
+        "sh-sheet",
         "biz-time-range"
       ],
-      "libClassHits": 37,
-      "localSelectors": 23,
-      "localCssLines": 115,
-      "rolled": [
-        {
-          "id": "sheet",
-          "label": "弹层 / 遮罩",
-          "lib": "sh-sheet",
-          "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
-          "gap": false
-        },
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary / --solid",
-          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-          "gap": false
-        }
-      ]
+      "libClassHits": 32,
+      "localSelectors": 13,
+      "localCssLines": 52,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -3662,56 +3650,16 @@
       "key": "b-app/biz-region-picker",
       "file": "b-app/src/components/biz/biz-region-picker.vue",
       "components": [
+        "sh-check",
         "sh-icon-btn",
-        "sh-icon"
+        "sh-icon",
+        "sh-sheet",
+        "sh-tabs"
       ],
-      "libClassHits": 49,
-      "localSelectors": 50,
-      "localCssLines": 258,
-      "rolled": [
-        {
-          "id": "tabs",
-          "label": "分栏切换",
-          "lib": "sh-tabs",
-          "rule": "^\\s*\\.tabs?\\b[^{}]*\\{[^}]*(?:background:|border-radius:|border-bottom:)",
-          "gap": false
-        },
-        {
-          "id": "sheet",
-          "label": "弹层 / 遮罩",
-          "lib": "sh-sheet",
-          "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
-          "gap": false
-        },
-        {
-          "id": "segment",
-          "label": "选中态自画（含未拆出的）",
-          "lib": ".sh-chip--primary / --solid",
-          "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-          "gap": false
-        },
-        {
-          "id": "listrow",
-          "label": "横排行",
-          "lib": ".sh-row",
-          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-          "gap": false
-        },
-        {
-          "id": "wraprow",
-          "label": "换行横排",
-          "lib": ".sh-wrap",
-          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
-          "gap": false
-        },
-        {
-          "id": "inkover",
-          "label": "正文色自写",
-          "lib": ".txt-ink",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-ink\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "libClassHits": 45,
+      "localSelectors": 32,
+      "localCssLines": 153,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -3736,18 +3684,10 @@
         "sh-empty",
         "sh-sheet"
       ],
-      "libClassHits": 7,
-      "localSelectors": 4,
-      "localCssLines": 13,
-      "rolled": [
-        {
-          "id": "primover",
-          "label": "主色文字自写",
-          "lib": ".txt-primary（可点的次要动作用 .sh-link）",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-primary-text\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "libClassHits": 8,
+      "localSelectors": 3,
+      "localCssLines": 10,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -3755,18 +3695,10 @@
       "key": "b-app/biz-time-range",
       "file": "b-app/src/components/biz/biz-time-range.vue",
       "components": [],
-      "libClassHits": 7,
-      "localSelectors": 6,
-      "localCssLines": 25,
-      "rolled": [
-        {
-          "id": "quietover",
-          "label": "次要色自写",
-          "lib": ".txt-quiet（整段次要用 .sh-muted）",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "libClassHits": 9,
+      "localSelectors": 5,
+      "localCssLines": 22,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3843,18 +3775,10 @@
         "sh-sheet",
         "sh-tabs"
       ],
-      "libClassHits": 3,
-      "localSelectors": 4,
-      "localCssLines": 19,
-      "rolled": [
-        {
-          "id": "primover",
-          "label": "主色文字自写",
-          "lib": ".txt-primary（可点的次要动作用 .sh-link）",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-primary-text\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "libClassHits": 4,
+      "localSelectors": 3,
+      "localCssLines": 16,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -3896,91 +3820,7 @@
       "rolled": []
     }
   ],
-  "gaps": [
-    {
-      "id": "sheet",
-      "label": "弹层 / 遮罩",
-      "lib": "sh-sheet",
-      "gap": false,
-      "rule": "^\\s*\\.[a-z-]*sheet\\b|^\\s*\\.(mask|dlg|modal|popup)\\b",
-      "pages": [
-        "b-app/biz-pickup-sheet",
-        "b-app/biz-region-picker"
-      ]
-    },
-    {
-      "id": "segment",
-      "label": "选中态自画（含未拆出的）",
-      "lib": ".sh-chip--primary / --solid",
-      "gap": false,
-      "rule": "(?:--on|is-on)[^{}]*\\{[^}]*background:\\s*var\\(--sh-primary(?:-tint)?\\)",
-      "pages": [
-        "b-app/biz-pickup-sheet",
-        "b-app/biz-region-picker"
-      ]
-    },
-    {
-      "id": "primover",
-      "label": "主色文字自写",
-      "lib": ".txt-primary（可点的次要动作用 .sh-link）",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-primary-text\\);?\\s*\\}",
-      "pages": [
-        "b-app/biz-supplier-picker",
-        "c-app/biz-region-picker"
-      ]
-    },
-    {
-      "id": "tabs",
-      "label": "分栏切换",
-      "lib": "sh-tabs",
-      "gap": false,
-      "rule": "^\\s*\\.tabs?\\b[^{}]*\\{[^}]*(?:background:|border-radius:|border-bottom:)",
-      "pages": [
-        "b-app/biz-region-picker"
-      ]
-    },
-    {
-      "id": "listrow",
-      "label": "横排行",
-      "lib": ".sh-row",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-      "pages": [
-        "b-app/biz-region-picker"
-      ]
-    },
-    {
-      "id": "wraprow",
-      "label": "换行横排",
-      "lib": ".sh-wrap",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
-      "pages": [
-        "b-app/biz-region-picker"
-      ]
-    },
-    {
-      "id": "inkover",
-      "label": "正文色自写",
-      "lib": ".txt-ink",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-ink\\);?\\s*\\}",
-      "pages": [
-        "b-app/biz-region-picker"
-      ]
-    },
-    {
-      "id": "quietover",
-      "label": "次要色自写",
-      "lib": ".txt-quiet（整段次要用 .sh-muted）",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
-      "pages": [
-        "b-app/biz-time-range"
-      ]
-    }
-  ],
+  "gaps": [],
   "counts": {
     "tokens": 10,
     "blocks": 67,

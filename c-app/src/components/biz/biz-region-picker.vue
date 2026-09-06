@@ -132,7 +132,7 @@ function crumbs() {
         v-for="r in rows"
         :key="r.regionCode"
         class="txt-body lv__node"
-        :class="{ 'is-on': chosen[step]?.code === r.regionCode }"
+        :class="{ 'txt-primary': chosen[step]?.code === r.regionCode }"
         @tap="choose(r)"
       >
         {{ r.name }}
@@ -156,9 +156,6 @@ function crumbs() {
   border-bottom: var(--sh-hairline-soft);
 }
 
-.lv__node.is-on {
-  color: var(--sh-primary-text);
-}
 
 .lv__ph {
   display: block;

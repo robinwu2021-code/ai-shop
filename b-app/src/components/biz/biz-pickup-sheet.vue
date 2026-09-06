@@ -139,108 +139,89 @@ function close() {
 </script>
 
 <template>
-  <view v-if="visible" class="mask" @tap="close">
-    <view class="sheet" @tap.stop>
-      <view class="sh-row sh-row--between sheet__head">
-        <text class="txt-title txt-ink sheet__title">{{ $t("store.pickup.title") }}</text>
-        <text class="txt-sub txt-quiet sheet__count">{{ $t("store.picker.selected", { n: picked.length }) }}</text>
+  <!--
+    形态归 `sh-sheet`（遮罩、面板、圆角、把手、关闭、安全区、定高与内滚都在它那儿）。
+    这一份此前自己画了一遍 —— 连同 `biz-region-picker` 是同一个形状写了两遍，
+    所以「定高 + 贴底页脚 + 通铺到边」补进了库件，不是留在这儿。
+  -->
+  <sh-sheet
+    :visible="visible"
+    flush
+    :title="String($t('store.pickup.title'))"
+    :hint="String($t('store.pickup.lead'))"
+    @close="close"
+  >
+    <text v-if="loading" class="txt-caption hint">{{ $t("common.loading") }}</text>
+    <template v-else>
+      <text v-if="mine.length" class="txt-caption group">{{ $t("store.pickup.mine") }}</text>
+      <view v-for="c in mine" :key="c.pickupNo" class="sh-row row" :class="{ 'is-off': !selectable(c) }" @tap="toggle(c)">
+        <view class="sh-fill">
+          <text class="txt-strong row__name">
+            {{ c.name }}<text v-if="c.status !== 'ACTIVE'" class="sh-chip row__st" :class="c.status === 'PENDING' ? 'sh-chip--warning' : ''">{{ $t(`store.pickup.st${c.status}`) }}</text>
+          </text>
+          <text class="txt-caption row__sub">{{ c.address || c.communityName }}</text>
+          <text v-if="c.status === 'REJECTED' && c.rejectReason" class="txt-caption row__reason">{{ c.rejectReason }}</text>
+        </view>
+        <sh-check v-if="selectable(c)" round :model-value="isOn(c.pickupNo)"></sh-check>
       </view>
-      <text class="txt-caption hint">{{ $t("store.pickup.lead") }}</text>
 
-      <scroll-view scroll-y class="body">
-        <text v-if="loading" class="txt-caption hint">{{ $t("common.loading") }}</text>
-        <template v-else>
-          <text v-if="mine.length" class="txt-caption group">{{ $t("store.pickup.mine") }}</text>
-          <view v-for="c in mine" :key="c.pickupNo" class="sh-row row" :class="{ 'is-off': !selectable(c) }" @tap="toggle(c)">
-            <view class="sh-fill row__main">
-              <text class="txt-strong row__name">
-                {{ c.name }}<text v-if="c.status !== 'ACTIVE'" class="sh-chip row__st" :class="c.status === 'PENDING' ? 'sh-chip--warning' : ''">{{ $t(`store.pickup.st${c.status}`) }}</text>
-              </text>
-              <text class="txt-caption row__sub">{{ c.address || c.communityName }}</text>
-              <text v-if="c.status === 'REJECTED' && c.rejectReason" class="txt-caption row__reason">{{ c.rejectReason }}</text>
-            </view>
-            <view v-if="selectable(c)" class="sh-center row__check" :class="{ 'is-on': isOn(c.pickupNo) }">
-              <sh-icon v-if="isOn(c.pickupNo)" name="check" :size="24" color="var(--sh-on-primary)"></sh-icon>
-            </view>
-          </view>
-
-          <text v-if="others.length" class="txt-caption group">{{ $t("store.pickup.nearby") }}</text>
-          <view v-for="c in others" :key="c.pickupNo" class="sh-row row" @tap="toggle(c)">
-            <view class="sh-fill row__main">
-              <text class="txt-strong row__name">{{ c.name }}</text>
-              <text class="txt-caption row__sub">{{ c.communityName }}<template v-if="c.address"> · {{ c.address }}</template></text>
-            </view>
-            <view class="sh-center row__check" :class="{ 'is-on': isOn(c.pickupNo) }">
-              <sh-icon v-if="isOn(c.pickupNo)" name="check" :size="24" color="var(--sh-on-primary)"></sh-icon>
-            </view>
-          </view>
-          <text v-if="!mine.length && !others.length" class="txt-caption hint">{{ $t("store.pickup.empty") }}</text>
-
-          <!-- 自建 -->
-          <view v-if="!buildOpen" class="sh-row row row--build" @tap="buildOpen = true">
-            <text class="txt-sub txt-primary row__build">{{ $t("store.pickup.buildEntry") }}</text>
-          </view>
-          <view v-else class="build">
-            <text class="txt-caption hint">{{ $t("store.pickup.buildHint") }}</text>
-            <input v-model="form.name" class="field__input" :maxlength="30" :placeholder="$t('store.pickup.namePh')" />
-            <input v-model="form.address" class="field__input" :maxlength="100" :placeholder="$t('store.pickup.addressPh')" />
-            <text class="field__label">{{ $t("store.pickup.hoursPh") }}</text>
-            <biz-time-range v-model="form.openHours" clearable></biz-time-range>
-            <view class="locate" :class="{ 'is-ok': !!coords }" @tap="locate">
-              <sh-icon name="pin" :size="18" :color="coords ? 'var(--sh-primary-text)' : 'var(--sh-sub)'"></sh-icon>
-              <text class="txt-caption txt-quiet locate__t">{{ locating ? $t("common.loading") : coords ? $t("store.pickup.pinned") : $t("store.pickup.pin") }}</text>
-            </view>
-            <view class="build__btns">
-              <text class="sh-btn sh-btn--soft build__go" @tap="submitBuild">{{ submitting ? "…" : $t("common.submit") }}</text>
-              <text class="txt-caption mini" @tap="buildOpen = false">{{ $t("common.cancel") }}</text>
-            </view>
-          </view>
-        </template>
-      </scroll-view>
-
-      <view class="foot">
-        <view class="sh-btn" @tap="done">{{ $t("store.picker.done", { n: picked.length }) }}</view>
+      <text v-if="others.length" class="txt-caption group">{{ $t("store.pickup.nearby") }}</text>
+      <view v-for="c in others" :key="c.pickupNo" class="sh-row row" @tap="toggle(c)">
+        <view class="sh-fill">
+          <text class="txt-strong row__name">{{ c.name }}</text>
+          <text class="txt-caption row__sub">{{ c.communityName }}<template v-if="c.address"> · {{ c.address }}</template></text>
+        </view>
+        <sh-check round :model-value="isOn(c.pickupNo)"></sh-check>
       </view>
-    </view>
-  </view>
+      <text v-if="!mine.length && !others.length" class="txt-caption hint">{{ $t("store.pickup.empty") }}</text>
+
+      <!-- 自建 -->
+      <view v-if="!buildOpen" class="sh-row row row--build" @tap="buildOpen = true">
+        <text class="txt-sub txt-primary">{{ $t("store.pickup.buildEntry") }}</text>
+      </view>
+      <view v-else class="build">
+        <text class="txt-caption hint">{{ $t("store.pickup.buildHint") }}</text>
+        <input v-model="form.name" class="field__input" :maxlength="30" :placeholder="$t('store.pickup.namePh')" />
+        <input v-model="form.address" class="field__input" :maxlength="100" :placeholder="$t('store.pickup.addressPh')" />
+        <text class="field__label">{{ $t("store.pickup.hoursPh") }}</text>
+        <biz-time-range v-model="form.openHours" clearable></biz-time-range>
+        <!-- 定位入口就是一颗 chip：未定位灰底（`.sh-chip` 本态），已定位主色 tint
+             （`--primary`）。此前自己画了一份「faint → primary-tint」，正是判据说的
+             「把 chip 的处理抄在了别的东西上」。不用 sh-option 是因为那个件带描边，
+             而这里从来没有边。 -->
+        <view
+          class="sh-chip sh-chip--icon locate"
+          :class="{ 'sh-chip--primary': !!coords }"
+          @tap="locate"
+        >
+          <sh-icon name="pin" :size="18" :color="coords ? 'var(--sh-primary-text)' : 'var(--sh-sub)'"></sh-icon>
+          <text>{{ locating ? $t("common.loading") : coords ? $t("store.pickup.pinned") : $t("store.pickup.pin") }}</text>
+        </view>
+        <view class="sh-row build__btns">
+          <text class="sh-btn sh-btn--soft build__go" @tap="submitBuild">{{ submitting ? "…" : $t("common.submit") }}</text>
+          <text class="sh-btn sh-btn--muted sh-btn--sm" @tap="buildOpen = false">{{ $t("common.cancel") }}</text>
+        </view>
+      </view>
+    </template>
+
+    <template #foot>
+      <view class="sh-btn" @tap="done">{{ $t("store.picker.done", { n: picked.length }) }}</view>
+    </template>
+  </sh-sheet>
 </template>
 
 <style scoped>
-.mask {
-  position: fixed;
-  inset: 0;
-  z-index: var(--sh-z-sheet);
-  background: var(--sh-scrim);
-}
-.sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  height: 84vh;
-  border-radius: 32rpx 32rpx 0 0;
-  background: var(--sh-surface);
-}
-.sheet__head {
-  padding: 28rpx 32rpx 8rpx;
-}
 .hint {
   display: block;
   padding: 8rpx 32rpx;
   color: var(--sh-sub);
-}
-.body {
-  flex: 1;
-  min-height: 0;
-  margin-top: 8rpx;
 }
 .group {
   display: block;
   padding: 16rpx 32rpx 4rpx;
   color: var(--sh-sub);
 }
+/* 通铺到边的一行。左右 32rpx 是行自己的留白（弹层已由 flush 让开） */
 .row {
   gap: 20rpx;
   padding: 22rpx 32rpx;
@@ -259,24 +240,11 @@ function close() {
 .row__sub {
   display: block;
   margin-top: 4rpx;
-  color: var(--sh-sub);
 }
 .row__reason {
   display: block;
   margin-top: 4rpx;
   color: var(--sh-danger);
-}
-.row__check {
-  flex-shrink: 0;
-  width: 44rpx;
-  height: 44rpx;
-  border-radius: 9999px;
-  border: 3rpx solid var(--sh-line);
-  box-sizing: border-box;
-}
-.row__check.is-on {
-  border-color: var(--sh-primary);
-  background: var(--sh-primary);
 }
 .row--build {
   border-bottom: none;
@@ -287,38 +255,14 @@ function close() {
   gap: 12rpx;
   padding: 8rpx 32rpx 24rpx;
 }
+/* 只留版面：圆角、内边距、底色与选中态都归 .sh-chip */
 .locate {
-  display: inline-flex;
-  align-items: center;
-  gap: 8rpx;
   align-self: flex-start;
-  padding: 14rpx 24rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-}
-.locate.is-ok {
-  background: var(--sh-primary-tint);
-}
-.locate.is-ok .locate__t {
-  color: var(--sh-primary-text);
 }
 .build__btns {
-  display: flex;
   gap: 16rpx;
 }
 .build__go {
   flex: 1;
-}
-.mini {
-  padding: 16rpx 28rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-  color: var(--sh-sub);
-}
-.foot {
-  padding: 16rpx 24rpx;
-  padding-bottom: 16rpx;
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  border-top: var(--sh-hairline);
 }
 </style>

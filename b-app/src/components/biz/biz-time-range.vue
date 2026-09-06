@@ -39,11 +39,11 @@ function clear() {
 <template>
   <view class="sh-row tr">
     <picker mode="time" :value="parts.start || '08:00'" @change="setPart('start', String(($event as any).detail.value))">
-      <view class="txt-body sh-row tr__box" :class="{ 'is-empty': !parts.start }">{{ parts.start || $t("store.timeRange.startPh") }}</view>
+      <view class="txt-body sh-row tr__box" :class="{ 'txt-quiet': !parts.start }">{{ parts.start || $t("store.timeRange.startPh") }}</view>
     </picker>
     <text class="txt-body tr__sep">{{ SEP }}</text>
     <picker mode="time" :value="parts.end || '21:00'" @change="setPart('end', String(($event as any).detail.value))">
-      <view class="txt-body sh-row tr__box" :class="{ 'is-empty': !parts.end }">{{ parts.end || $t("store.timeRange.endPh") }}</view>
+      <view class="txt-body sh-row tr__box" :class="{ 'txt-quiet': !parts.end }">{{ parts.end || $t("store.timeRange.endPh") }}</view>
     </picker>
     <text v-if="clearable && modelValue" class="txt-caption tr__clear" @tap="clear">{{ $t("store.timeRange.clear") }}</text>
   </view>
@@ -63,9 +63,6 @@ function clear() {
   border-radius: 24rpx;
   background: var(--sh-faint);
   color: var(--sh-ink);
-}
-.tr__box.is-empty {
-  color: var(--sh-sub);
 }
 .tr__sep {
   flex-shrink: 0;

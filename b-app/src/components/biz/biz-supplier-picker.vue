@@ -101,7 +101,7 @@ const canCreate = computed(
       v-for="s in shown"
       :key="s.supplierNo"
       class="sup sh-row sh-row--between sh-row--baseline"
-      :class="{ 'sup--on': s.supplierNo === picked }"
+      :class="{ 'txt-primary': s.supplierNo === picked }"
       @tap="emit('pick', s)"
     >
       <text class="txt-body">{{ s.shortName || s.name }}</text>
@@ -124,11 +124,4 @@ const canCreate = computed(
   border-bottom: var(--sh-hairline);
 }
 
-/* 当前已选的那一行加重 —— 与挑货件的「已选置灰」不同：
-   这里是单选，标的是「就是它」，不是「别再点」。
-   **红字走 primary-text 不走 primary**：后者是块面色，用在文字上对比度不够，
-   而这一行正是要让人一眼看见的那一行。 */
-.sup--on {
-  color: var(--sh-primary-text);
-}
 </style>
