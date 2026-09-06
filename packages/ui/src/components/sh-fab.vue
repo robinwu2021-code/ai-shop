@@ -37,6 +37,6 @@ defineEmits<{ (e: "tap"): void }>();
   color: var(--sh-on-primary);
   white-space: nowrap;
   /* 阴影用 scrim（皮肤里那层半透明黑）：写死 rgba 在深色皮肤下会糊成一团 */
-  box-shadow: 0 8rpx 24rpx var(--sh-scrim);
+  box-shadow: var(--sh-shadow-float);
 }
 </style>

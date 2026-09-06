@@ -97,9 +97,14 @@ watch(
    * **与主区域的分界要看得见。** 白色的 tabbar 压在浅灰页面上时，
    * 两者只差一点点明度 —— 滚动到底部时列表卡片像是溢出到了菜单里。
    * 一条 hairline 加一层很浅的上投影：静止时是分界，滚动时是「页面在它下面走」。
+   *
+   * ⚠️ **「很浅」此前是假的**：写的是 `0 -6rpx 20rpx var(--sh-scrim)`，
+   * 而 scrim 是**蒙层色**（45% 的黑，它的活是压暗弹层背后的整屏）——
+   * 于是菜单顶上顶着一条又黑又宽的灰带，比它要分界的那条 hairline 抢眼得多。
+   * 现在走 `--sh-shadow-up`（8%）。分界主要靠 hairline，投影只补一点纵深。
    */
   border-top: var(--sh-hairline);
-  box-shadow: 0 -6rpx 20rpx var(--sh-scrim);
+  box-shadow: var(--sh-shadow-up);
   padding: 16rpx 0;
   padding: 16rpx 0 calc(16rpx + env(safe-area-inset-bottom, 0px));
 }

@@ -167,6 +167,22 @@ def layout() -> str:
         zs |= {int(zmap[k]) for k in re.findall(r"z-index:\s*var\(--sh-z-([a-z-]+)\)", src) if k in zmap}
         L.append(f"| `{f}` | {' / '.join(map(str, sorted(zs))) or '—'} | {note} |")
     L.append("\n对话框永远在最上面 —— 它是要人立刻回答的那一个。弹层叠弹层用 `sh-sheet` 的 `stacked`。\n")
+    # 投影与 z-index 是「表达高度」的两种手段，放一起，好让人看出该用哪一种
+    sh = {k: v for k, v in LIB["tokens"]["constants"].items() if k.startswith("--sh-shadow-")}
+    if sh:
+        L.append("\n### 投影（2 档）\n")
+        L.append("| 档 | 值 | 用在哪 |")
+        L.append("|---|---|---|")
+        WHERE = {"--sh-shadow-up": "贴屏幕边缘的条（底部菜单）—— 分界主要靠 `--sh-hairline`，投影只补一点纵深",
+                 "--sh-shadow-float": "真的浮在内容之上、可被拖动的（FAB、拖起来的行）"}
+        for k, v in sh.items():
+            L.append(f"| `{k}` | `{v}` | {WHERE.get(k, '—')} |")
+        L.append("\n⚠️ **别拿 `--sh-scrim` 当投影色。** 它是**蒙层**色（45% 的黑，"
+                 "活是压暗弹层背后的整屏）—— 当投影用会得到一条又黑又宽的灰带。"
+                 "此前全仓 5 处投影全都抓了它，2026-09-06 用户直接报了「底部工具栏阴影太多」。"
+                 "`ui-package.test.ts` 有两条断言守着。\n")
+        L.append("\n深色态不另给一份：黑投影压在深色面上几乎看不见，而这是对的 ——"
+                 "深色界面靠面色的明度差表达高度，不靠投影。\n")
     # 壳的几何（遮罩 / 面板 / 抓手条）也归这一节：它和 z-index 是同一个问题的两半 ——
     # 「浮层长什么样」与「谁压谁」。此前三个弹层各画一份，就是因为没有一处说过它长什么样
     shell = [x for x in LIB["blocks"] if x["group"] == "浮层"]

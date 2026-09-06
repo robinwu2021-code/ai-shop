@@ -87,7 +87,7 @@ onUnmounted(() => clearCartAnchor());
   border-radius: 9999px;
   background: var(--sh-primary);
   /* 阴影走 scrim（皮肤里那层半透明黑）：写死 rgba 在深色皮肤下会糊成一团 */
-  box-shadow: 0 8rpx 24rpx var(--sh-scrim);
+  box-shadow: var(--sh-shadow-float);
 }
 /* 角标压在右上角外沿。定位归调用点，`.sh-badge-count` 只管长相（见它的注释） */
 .cartfab__badge {

@@ -106,7 +106,9 @@
     "constants": {
       "--sh-tabbar-h": "124rpx",
       "--sh-app-max": "100%",
-      "--sh-scrim": "rgba(10, 12, 16, 0.45)"
+      "--sh-scrim": "rgba(10, 12, 16, 0.45)",
+      "--sh-shadow-up": "0 -6rpx 20rpx rgba(10, 12, 16, 0.08)",
+      "--sh-shadow-float": "0 8rpx 24rpx rgba(10, 12, 16, 0.16)"
     },
     "skinVars": {
       "light": {
@@ -902,7 +904,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 61,
+        "b-app": 60,
         "c-app": 3
       }
     },
@@ -2007,7 +2009,7 @@
         "background": "var(--sh-primary)",
         "color": "var(--sh-on-primary)",
         "white-space": "nowrap",
-        "box-shadow": "0 8rpx 24rpx var(--sh-scrim)"
+        "box-shadow": "var(--sh-shadow-float)"
       }
     },
     {
@@ -2020,7 +2022,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 14,
+        "b-app": 15,
         "c-app": 0,
         "lib": 0
       },
@@ -2406,7 +2408,7 @@
       "name": "sh-tabbar",
       "file": "packages/ui/src/components/sh-tabbar.vue",
       "scope": "跨端",
-      "lines": 141,
+      "lines": 146,
       "props": [
         "active: string"
       ],
@@ -2431,7 +2433,7 @@
         "display": "flex",
         "background": "var(--sh-surface)",
         "border-top": "var(--sh-hairline)",
-        "box-shadow": "0 -6rpx 20rpx var(--sh-scrim)",
+        "box-shadow": "var(--sh-shadow-up)",
         "padding": "16rpx 0 calc(16rpx + env(safe-area-inset-bottom, 0px))"
       }
     },
@@ -3506,11 +3508,12 @@
       "file": "b-app/src/pages/stock-cross/index.vue",
       "components": [
         "sh-empty",
+        "sh-go",
         "sh-scaffold"
       ],
-      "libClassHits": 21,
+      "libClassHits": 20,
       "localSelectors": 6,
-      "localCssLines": 24,
+      "localCssLines": 23,
       "rolled": []
     },
     {

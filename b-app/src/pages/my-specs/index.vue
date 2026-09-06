@@ -1076,7 +1076,7 @@ onShow(() => void load());
 */
 .spec--drag {
   background: var(--sh-faint);
-  box-shadow: 0 8rpx 24rpx var(--sh-scrim);
+  box-shadow: var(--sh-shadow-float);
   border-radius: 16rpx;
   /* 拖动中不要过渡 transform：否则元素追不上手指，像在拖一根皮筋 */
   transition: background-color var(--sh-t-fast) ease, box-shadow var(--sh-t-fast) ease;
@@ -1165,7 +1165,7 @@ onShow(() => void load());
 
 /* 同上：抬起来，而不是变透明 */
 .val--drag {
-  box-shadow: 0 6rpx 18rpx var(--sh-scrim);
+  box-shadow: var(--sh-shadow-float);
   /* 跟手期间关掉 transform 过渡 */
   transition: box-shadow var(--sh-t-fast) ease, background-color var(--sh-t-fast) ease;
   position: relative;

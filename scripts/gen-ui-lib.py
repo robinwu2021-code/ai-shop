@@ -979,8 +979,12 @@ def build() -> dict:
             "skins": tok["skins"],
             "semantic": {k: v for k, v in base["consts"].items()
                          if k.startswith(("--sh-success", "--sh-warning", "--sh-danger"))},
+            # ⚠️ 这是**手抄的白名单** —— 新加的常量不写进来就不会出现在清单与规范里。
+            #    2026-09-06 的 `--sh-shadow-*` 就是这么差点漏掉的：投影档立了，
+            #    而《规范·版面》里一个字都没有，下一个人照样会去抓 `--sh-scrim`。
             "constants": {k: v for k, v in base["consts"].items()
-                          if k in ("--sh-tabbar-h", "--sh-app-max", "--sh-scrim")},
+                          if k in ("--sh-tabbar-h", "--sh-app-max", "--sh-scrim",
+                                   "--sh-shadow-up", "--sh-shadow-float")},
             "skinVars": {"light": base["light"], "dark": base["dark"]},
             "type": [{"class": c, "size": base["blocks"][c]["font-size"],
                       "px": rpx2px(base["blocks"][c]["font-size"]),

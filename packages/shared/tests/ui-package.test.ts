@@ -1016,3 +1016,76 @@ describe("库件登记齐全", () => {
     expect(bad, `这些积木还没归组：\n${bad.join("\n")}`).toEqual([]);
   });
 });
+
+/*
+ * **投影只许用 `--sh-shadow-*`，尤其不许拿 `--sh-scrim` 当投影色。**
+ *
+ * 2026-09-06 用户报「底部工具栏的阴影太多」。查下去不是那一处写歪了 ——
+ * 是**这套设计语言里根本没有投影档**，于是全仓 5 处投影全都抓了
+ * `--sh-scrim` 来当颜色。而 scrim 是**蒙层色**：它的活是把弹层背后的整屏压暗，
+ * 所以是 `rgba(10,12,16,.45)`。正常的高度投影是 4%~16%，**差一个数量级**。
+ *
+ * 症状为什么一直没人改：它不报错、闸门全绿、每一处单看都「有阴影，合理」。
+ * 只有把五处并排看，才发现它们共用了一个语义完全不同的 token。
+ *
+ * 例外只有一类：**复刻 uni 内置件默认外观**的那几条（`uni-switch` 的滑块）——
+ * 那不是我们的设计语言，是在补 uni 自己在浅色下丢掉的默认值，照抄它的数值才对。
+ */
+describe("投影只许用 --sh-shadow-*", () => {
+  /** 复刻 uni 内置件默认外观的选择器 —— 那是补 uni 的缺，不归设计语言管 */
+  const UNI_BUILTIN = /uni-(switch|checkbox|radio|slider)/;
+
+  /** base.css + 两端 src 下所有 .vue + 库件 —— 这条的扫描面要覆盖所有会写样式的地方 */
+  const files = [
+    join(ROOT, "packages/ui/src/styles/base.css"),
+    ...[...APPS.map((a) => join(ROOT, a, "src")), join(ROOT, "packages/ui/src")].flatMap((dir) =>
+      readdirSync(dir, { recursive: true, encoding: "utf8" })
+        .filter((f) => f.endsWith(".vue"))
+        .map((f) => join(dir, f)),
+    ),
+  ];
+
+  it("有文件可扫（否则下面全是空转）", () => {
+    expect(files.length).toBeGreaterThan(80);
+  });
+
+  it("base.css 里两档投影都在 —— 它们是这条规则的唯一落点", () => {
+    const css = readFileSync(join(ROOT, "packages/ui/src/styles/base.css"), "utf8");
+    for (const t of ["--sh-shadow-up", "--sh-shadow-float"]) {
+      expect(new RegExp(`${t}\\s*:`).test(css), `base.css 缺 ${t}`).toBe(true);
+    }
+  });
+
+  it("没有人拿 --sh-scrim 当投影色 —— 那是蒙层的 45%，不是高度的 8%", () => {
+    const bad: string[] = [];
+    for (const f of files) {
+      const src = readFileSync(f, "utf8");
+      const css = f.endsWith(".css") ? src
+        : [...src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]!).join("\n");
+      for (const m of css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/box-shadow:\s*([^;]+);/g)) {
+        if (/--sh-scrim/.test(m[1]!)) bad.push(`${f.slice(ROOT.length + 1)}  ${m[1]!.trim()}`);
+      }
+    }
+    expect(bad, `scrim 是蒙层色（45% 的黑），当投影用会得到一条又黑又宽的带：\n${bad.join("\n")}`).toEqual([]);
+  });
+
+  it("投影一律走档 —— 散写的数值下一处就对不上", () => {
+    const bad: string[] = [];
+    for (const f of files) {
+      const src = readFileSync(f, "utf8");
+      const css = f.endsWith(".css") ? src
+        : [...src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]!).join("\n");
+      const clean = css.replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const m of clean.matchAll(/([^{};]*)\{[^{}]*box-shadow:\s*([^;]+);/g)) {
+        const sel = m[1]!.trim().split("\n").pop()!.trim();
+        const val = m[2]!.trim();
+        if (val === "none" || /var\(--sh-shadow-/.test(val)) continue;
+        if (UNI_BUILTIN.test(sel)) continue;
+        // `0 0 0 Nrpx` 是**描边**不是投影（用 box-shadow 画同心环，见 sh-theme-sheet 的选中态）
+        if (/^(0 0 0 [^,]+)(,\s*0 0 0 [^,]+)*$/.test(val)) continue;
+        bad.push(`${f.slice(ROOT.length + 1)}  ${sel}  ${val}`);
+      }
+    }
+    expect(bad, `散写的投影 —— 收进 --sh-shadow-up / --sh-shadow-float：\n${bad.join("\n")}`).toEqual([]);
+  });
+});
