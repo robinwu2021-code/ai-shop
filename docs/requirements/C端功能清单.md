@@ -142,15 +142,32 @@
 | C-AS-02 | 凭证上传 | 最多 3 张 | — |
 | C-AS-03 | 极速退款 | 小额自动通过（阈值见[规则表](需求矩阵-三端.md#七之二交易规则常量唯一事实源)，平台端 P-6.1 可调），**仅对「仅退款」成立**——货没回来就秒退等于白送 | — |
 | C-AS-04 | 售后进度 | 状态时间线 + **下一步动作**（填运单号 / 申请平台介入） | `orderDetail` |
-| C-AS-05 | 填退货运单号 | 仅 `AGREED` 可填，填完转 `RETURNING` | `fillReturnExpress` |
-| C-AS-06 | 申请平台介入 | 仅 `REJECTED` 可上升，转 `DISPUTED`。**驳回不改订单状态**，否则用户以为售后结束了 | `raiseDispute` |
+| C-AS-05 | 填退货运单号 | **没有状态门禁**：任何自己的售后单都能填，只写 `expressCompany` / `expressNo` 两个字段，**不改状态**（退货物流是字段不是状态 —— 有没有寄回看字段有没有值） | `fillReturnExpress` |
+| C-AS-06 | 申请平台介入 | 仅 `REJECTED` 可上升，转 `ARBITRATING`。**驳回不改订单状态**，否则用户以为售后结束了 | `raiseDispute` |
 | C-AS-07 | 生鲜坏果包赔 | 走同一条售后，原因选「品质问题」+ 传图；申请时限自**核销起算**（见[规则表](需求矩阵-三端.md#七之二交易规则常量唯一事实源)） | `applyAfterSale` |
 
 > **寻址方式**：`fillReturnExpress` / `raiseDispute` 收的是 `afterSaleNo` 而不是 `orderNo`——
 > 售后是独立资源，一笔订单可能有多次售后。
 >
-> **售后状态机**：`PENDING → AGREED → RETURNING → RECEIVED → DONE`（退货退款）；
-> `PENDING → DONE`（仅退款直退）；`PENDING → REJECTED → DISPUTED`（争议）。
+> **售后状态机**（2026-09-06 更正，见下方说明）：
+>
+> ```
+> APPLIED ─┬─→ REFUNDING ──→ REFUNDED        退货退款：同意后等寄回，确认收货才实际退款
+>          ├─→ REFUNDED                       仅退款：同意即退
+>          ├─→ REJECTED ──→ ARBITRATING ──→ REFUNDING / REFUNDED / CLOSED
+>          └─→ CLOSED                         用户撤销或超时关闭
+> ```
+>
+> 终态：`REFUNDED` / `CLOSED`。真源是 `OrderStateMachine.AFTER_SALE` 与
+> `OrdAfterSale` 的常量，词汇定义见[项目词典 §6](项目词典.md#6-after-sales--售后)。
+>
+> ⚠️ **本节此前写的是另一套六态机**（`PENDING → AGREED → RETURNING → RECEIVED → DONE`、
+> `REJECTED → DISPUTED`）。那套词**在整个代码库里 0 处** —— 它是 C/B 两端早期各自
+> 补细出来的流程词，与后端只有 `REJECTED` 一个重合，后果是售后详情页的状态永远落进
+> 兜底分支、「填退货单号」按钮永远不出现（它 gate 在一个后端不会下发的 `AGREED` 上）。
+> 代码与[项目词典](项目词典.md#6-after-sales--售后)当时都改过来了，**只有这份功能清单
+> 停在旧那套**，而它恰恰是实现与验收时会去读的那份。
+>
 > 退款三件事必须一起做：改状态 + 回收已得积分 + 退还已用积分（`settleRefund()`）。
 
 ### C-IV 发票（**2026-08-17 补登**）
