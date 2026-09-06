@@ -59,7 +59,7 @@ onShow(load);
       <view class="msg__dot" :class="{ 'is-unread': !m.read }" />
       <view class="sh-fill">
         <view class="msg__top sh-row sh-row--between sh-row--baseline">
-          <text class="txt-sub msg__title" :class="{ 'is-unread': !m.read }">{{ m.title }}</text>
+          <text class="txt-body msg__title" :class="{ 'is-unread': !m.read }">{{ m.title }}</text>
           <text class="txt-caption msg__at sh-num">{{ datetime(m.at) }}</text>
         </view>
         <text class="txt-caption msg__body">{{ m.body }}</text>

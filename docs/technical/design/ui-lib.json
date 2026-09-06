@@ -264,8 +264,8 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 76,
-        "c-app": 53
+        "b-app": 77,
+        "c-app": 54
       }
     },
     {
@@ -303,7 +303,7 @@
       },
       "usage": {
         "b-app": 280,
-        "c-app": 230
+        "c-app": 243
       }
     },
     {
@@ -477,7 +477,7 @@
       },
       "usage": {
         "b-app": 130,
-        "c-app": 36
+        "c-app": 39
       }
     },
     {
@@ -498,8 +498,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 115,
-        "c-app": 87
+        "b-app": 114,
+        "c-app": 70
       }
     },
     {

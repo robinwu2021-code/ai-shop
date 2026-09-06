@@ -69,13 +69,21 @@ def typography() -> str:
         L.append(
             f"| `{x['class']}` | {x['size']} | {x['px']} | {x['weight']} | {x['lineHeight']} | {when[:46]} | {usage(blk.get('usage', {}))} |"
         )
-    L.append("\n## 三条硬规矩\n")
+    L.append("\n## 四条硬规矩\n")
     L.append("1. **700 只给价格**，600 只给标题与按钮，其余一律 400。")
     L.append("2. **行高按用途分档，不按语言分档。** 中文要 1.5 以上才不挤，拉丁 1.4 就够；")
     L.append("   取中文的下限对英文也不难看，而按语言切换行高会让同一个列表在中英文下高度不同，")
     L.append("   横滑卡、等高栅格全要跟着变。")
     L.append("3. **字阶里不含 `letter-spacing`。** 负字距是拉丁字母的排版习惯，中文小字号下收紧会让笔画粘连，")
     L.append("   而同一个类要同时承载中 / 英 / 阿三种文字 —— 少一个轴，三种语言就少三种试错。")
+    L.append("4. **同一行两端的字号，要么相同，要么至少差 4rpx。** 24 / 26 / 28 三档挤在 4rpx 里，")
+    L.append("   同一行两端各取一档（如「标签 `.txt-body`(28) + 值 `.txt-sub`(26)」）只差 1px ——")
+    L.append("   小到看不出是有意的，层次全靠颜色扛，看着就是没对齐。")
+    L.append("   合规的两种写法都在用：**同档**（靠颜色/字重分，数据行的主流）")
+    L.append("   或**差 ≥4rpx**（`body(28) → caption(24)`，导航行的写法）。")
+    L.append("   来历：2026-09-07 有人一眼看出「我的」页的字跟别处不一样 —— 量下来全站 104 个")
+    L.append("   两端对齐行用了 **22 种**「标签档 → 值档」组合，根本不存在「常见写法」，")
+    L.append("   那一页只是碰巧用了差 1px 的那种。`ui-package.test.ts` 有断言守着。")
     dens = LIB["tokens"].get("density", {})
     if dens:
         L.append("\n## 密度变量：同一个类，两端两个值\n")
@@ -92,9 +100,14 @@ def typography() -> str:
         L.append("|---|---:|---:|---|")
         for k in cvals:
             L.append(f"| `{k}` | {cvals.get(k, '—')} | {bvals.get(k, '—')} | {WHAT.get(k, '—')} |")
-        L.append("\n⚠️ **`.txt-*` 字阶目前只在 B 端落了地。** C 端 9 档合计只有 1 个调用点，")
-        L.append("而 `.sh-h1` / `.sh-h2` 那两个旧名在 C 端还有 26 处 —— ")
-        L.append("也就是说这份规范对 C 端还只是**纸面上的**，那 26 处是明账。")
+        # ⚠️ 这里原本是**手写死的一段**：「字阶只在 B 端落了地，C 端 9 档合计只有 1 个调用点，
+        #    `.sh-h1`/`.sh-h2` 还有 26 处」。2026-09-07 重核：那两个旧名**一处都没有了**，
+        #    C 端 `.txt-*` 有 539 个调用点。写死的数字不会自己更新，改成算出来的。
+        tot = {a: sum(b["usage"].get(a, 0) for b in LIB["blocks"] if b["class"].startswith(".txt-"))
+               for a in ("b-app", "c-app")}
+        L.append(f"\n字阶两端都落了地：**B 端 {tot['b-app']} 个调用点 · C 端 {tot['c-app']} 个**。")
+        L.append("（这一行是算出来的。此前写死着「C 端只有 1 个调用点、旧名 `.sh-h1`/`.sh-h2` 还有 26 处」，")
+        L.append("而那两个旧名早就一处不剩 —— 手写的数字不会自己更新。）")
     L.append("\n## 数字与 RTL\n")
     L.append("`.sh-num`：等宽数字，且在 RTL 下强制 LTR 方向 —— **金额、百分比、倒计时是 LTR 序列**，")
     L.append("跟着 RTL 走会把符号甩到另一端（`-25%` 变成 `25%-`）。\n")

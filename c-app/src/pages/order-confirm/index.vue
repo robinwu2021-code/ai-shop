@@ -760,7 +760,7 @@ onMounted(async () => {
     <view class="sh-card block">
       <view class="cell sh-row sh-row--between" @tap="pickCoupon">
         <text class="txt-sub cell__k">{{ $t("confirm.coupon") }}</text>
-        <text class="txt-bold txt-caption cell__v" :class="{ 'is-danger': !!coupon }">
+        <text class="txt-bold txt-sub cell__v" :class="{ 'is-danger': !!coupon }">
           {{ coupon
             ? `${coupon.title} -${money(couponDiscount(coupon, goodsMinor))}`
             : usableCoupons.length
@@ -795,7 +795,7 @@ onMounted(async () => {
 
       <view class="cell sh-row sh-row--between">
         <text class="txt-sub cell__k">{{ $t("confirm.remark") }}</text>
-        <input maxlength="255" v-model="remark" class="txt-caption cell__input" :placeholder="$t('confirm.remarkPh')" />
+        <input maxlength="255" v-model="remark" class="txt-sub cell__input" :placeholder="$t('confirm.remarkPh')" />
       </view>
     </view>
 

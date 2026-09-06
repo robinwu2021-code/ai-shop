@@ -1258,7 +1258,7 @@ function close() {
         -->
         <view v-if="current" class="sh-row sh-row--between sh-notice whole" :class="{ 'is-on': wholePicked }" @tap="toggleWhole">
           <text class="txt-sub txt-bold txt-primary whole__t">{{ $t("store.picker.wholeLevel", { s: current.name }) }}</text>
-          <text v-if="wholePicked" class="txt-caption whole__on">{{ $t("store.picker.picked") }}</text>
+          <text v-if="wholePicked" class="txt-sub whole__on">{{ $t("store.picker.picked") }}</text>
         </view>
       </template>
 

@@ -166,7 +166,7 @@ onLoad(() => {
 
     <!-- 有关键词时结果顶掉「附近」：别让用户在两份列表里找自己刚搜的那个 -->
     <view v-if="keyword.trim()" class="sh-card block">
-      <text class="txt-sub block__title">{{ $t("addressPick.results") }}</text>
+      <text class="txt-strong block__title">{{ $t("addressPick.results") }}</text>
       <view v-for="(h, i) in hits" :key="`${h.name}-${i}`" class="sh-row--divided" @tap="chooseHit(h)">
         <text class="txt-body row__name">{{ h.name }}</text>
         <text class="txt-caption row__sub">{{ h.address }}</text>
@@ -180,7 +180,7 @@ onLoad(() => {
     <template v-else>
       <view v-if="hasHere" class="sh-card block">
         <view class="sh-row sh-row--between">
-          <text class="txt-sub block__title">{{ $t("addressPick.here") }}</text>
+          <text class="txt-strong block__title">{{ $t("addressPick.here") }}</text>
           <text class="txt-caption txt-primary" @tap="locate">{{ $t("addressPick.relocate") }}</text>
         </view>
         <!-- 模糊定位时不显示距离，理由见 script 里 coarse 那段 -->
@@ -193,7 +193,7 @@ onLoad(() => {
 
       <!-- 判的是「能用的有几条」，不是「拿回来几条」—— 见 nearbyPickable 那段 -->
       <view v-if="nearbyPickable.length" class="sh-card block">
-        <text class="txt-sub block__title">{{ $t("addressPick.nearby") }}</text>
+        <text class="txt-strong block__title">{{ $t("addressPick.nearby") }}</text>
         <view v-for="c in nearbyPickable" :key="c.communityNo" class="sh-row--divided" @tap="chooseCommunity(c)">
           <text class="txt-body row__name">{{ c.name }}</text>
           <text class="txt-caption row__sub">

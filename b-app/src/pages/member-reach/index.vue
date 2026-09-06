@@ -128,7 +128,7 @@ onShow(() => {
     <!-- ② 发给谁 -->
     <view class="sh-card sh-mt-sm">
       <view class="sh-row sh-row--between" @tap="pickSegment">
-        <text class="txt-sub">{{ $t("reach.toWhom") }}</text>
+        <text class="txt-body">{{ $t("reach.toWhom") }}</text>
         <text class="txt-body row__v txt-primary">{{ segmentName }} ▾</text>
       </view>
     </view>

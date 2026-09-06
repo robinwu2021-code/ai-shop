@@ -1224,3 +1224,94 @@ describe("行尾箭头只有一个尺寸", () => {
     }
   });
 });
+
+/*
+ * **同一行两端的字号，要么相同，要么至少差 4rpx。**
+ *
+ * 2026-09-07 用户说「我的」页的字体跟别的页不一样。量下来两件事：
+ *
+ *   · 那一页每行是「标签 `.txt-body`(28) + 值 `.txt-sub`(26)」——
+ *     **只差 2rpx（1px）**，小到看不出是有意的，层次全靠颜色扛
+ *   · 而全站 104 个两端对齐行，用了 **22 种「标签档 → 值档」组合** ——
+ *     根本不存在「常见写法」这回事，「我的」只是碰巧用了第二多的那一种
+ *
+ * 24 / 26 / 28 三档挤在 4rpx 里，同一行两端各取一档就是这个毛病。
+ * 判据不按「档位相邻」也不按百分比 —— 就按**物理像素**：
+ * 差 1px 的两个字号没人分得出，只会让人觉得没对齐
+ *（与圆角那条同一个口径：「差 4rpx 的两个圆角，没人分得出」）。
+ *
+ * 合规的两种写法都在用，也都清楚：
+ *   同档（靠颜色/字重分）—— 数据行的主流，`caption→caption` 28 次
+ *   差 ≥4rpx —— 导航行，`body(28) → caption(24)`
+ *
+ * <b>两条排除项</b>：
+ *   · **只看行的直接子节点** —— 被假阳性逼出来的：`store-scope` 的标签里嵌了
+ *     一小段 caption 后缀，那是标签的一部分，不是这一行的值
+ *   · **按钮不是「值」**（按钮有自己的档）—— ⚠️ **这一条当前不起作用**：
+ *     撤掉它跑一遍，一处都不多报。原因是上面那条已经覆盖了唯一的候选
+ *     （`gcard__foot` 的参团按钮外面裹着 `.avatars`，本来就不是直接子节点）。
+ *     留着是因为它在定义上是对的 —— 但**别把它当成有验证的排除项**：
+ *     哪天真有一行「标签 + 直接子的按钮」，它才第一次生效，而那一刻没人验过它。
+ */
+describe("同一行两端的字号不许只差 1px", () => {
+  const base = readFileSync(join(ROOT, "packages/ui/src/styles/base.css"), "utf8");
+  const SIZE = new Map<string, number>();
+  for (const m of base.matchAll(/\.txt-([a-z]+)\s*\{([^}]*)\}/g)) {
+    const s = /font-size:\s*(\d+)rpx/.exec(m[2]!);
+    if (s) SIZE.set(`txt-${m[1]}`, Number(s[1]));
+  }
+  /** 按钮 / 动作 / 分段 —— 它们有自己的字号档，不参与「标签 vs 值」 */
+  const ACTION = /\b(sh-btn|sh-chip|sh-seg|sh-go|[\w-]*btn[\w-]*|[\w-]*action[\w-]*)\b/;
+
+  function offenders(): string[] {
+    const bad: string[] = [];
+    for (const { app, file, src } of pageFilesAll()) {
+      const tpl = src.split("<style")[0]!;
+      for (const row of tpl.matchAll(/<(view|label)([^>]*class="[^"]*sh-row--between[^"]*"[^>]*)>/g)) {
+        const rest = tpl.slice(row.index! + row[0].length);
+        let depth = 1;
+        const tiers: string[] = [];
+        for (const t of rest.matchAll(TAG_RE)) {
+          const [, close, tag, attrs, selfClose] = t as unknown as string[];
+          if (close) { if (--depth === 0) break; continue; }
+          const here = depth;                                   // 进入前的深度 = 它相对行的层级
+          if (!selfClose && !["input", "image", "br"].includes(tag!)) depth++;
+          if (here !== 1) continue;                             // 只看直接子节点
+          const cm = /class="([^"]*)"/.exec(attrs ?? "");
+          const cls = cm ? cm[1]! : "";
+          if (ACTION.test(cls) || /^(sh-btn|sh-go|sh-chip)/.test(tag!)) continue;
+          const tier = cls.split(/\s+/).find((c) => SIZE.has(c));
+          if (tier) tiers.push(tier);
+        }
+        if (tiers.length < 2) continue;
+        const a = SIZE.get(tiers[0]!)!, b = SIZE.get(tiers[tiers.length - 1]!)!;
+        if (a !== b && Math.abs(a - b) <= 2) {
+          const ln = tpl.slice(0, row.index!).split("\n").length;
+          bad.push(`${app}/${file}:${ln}  .${tiers[0]}(${a}) → .${tiers[tiers.length - 1]}(${b})`);
+        }
+      }
+    }
+    return bad;
+  }
+
+  it("字阶读到了（否则下面全是空转）", () => {
+    expect(SIZE.size).toBeGreaterThan(6);
+    expect(SIZE.get("txt-body")).toBe(28);
+  });
+
+  it("扫到了足够多的两端对齐行", () => {
+    // 判据本身要能空转报警：模板结构一改（比如 sh-row--between 换名），这条先红
+    let rows = 0;
+    for (const { src } of pageFilesAll()) rows += (src.match(/sh-row--between/g) ?? []).length;
+    expect(rows, "一个两端对齐行都没扫到，判据大概是写错了").toBeGreaterThan(80);
+  });
+
+  it("两端要么同档，要么差 ≥4rpx", () => {
+    const bad = offenders();
+    expect(
+      bad,
+      "差 1px 的两个字号没人分得出，只会让人觉得没对齐 —— 要么两端同档（靠颜色/字重分），\n" +
+        "要么把值降到 `.txt-caption`（导航行的写法）：\n" + bad.join("\n"),
+    ).toEqual([]);
+  });
+});

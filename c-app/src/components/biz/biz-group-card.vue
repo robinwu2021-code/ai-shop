@@ -52,7 +52,7 @@ const off = computed(() =>
       <text v-else class="txt-sub is-success">
         {{ $t("group.done") }}
       </text>
-      <text class="txt-caption gcard__cd sh-num">{{
+      <text class="txt-sub gcard__cd sh-num">{{
         countdown(group.expireAt - now)
       }}</text>
     </view>

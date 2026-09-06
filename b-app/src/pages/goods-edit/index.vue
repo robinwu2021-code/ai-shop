@@ -1209,7 +1209,7 @@ async function save(thenSubmit = false) {
         -->
         <view v-if="stdNo" class="std-on sh-row sh-row--between">
           <text class="txt-sub">{{ $t("goods.fromStd", { s: stdTitle || stdNo }) }}</text>
-          <text class="txt-caption" @tap="detachStd">{{ $t("goods.detachStd") }}</text>
+          <text class="txt-sub" @tap="detachStd">{{ $t("goods.detachStd") }}</text>
         </view>
         <text v-else class="sh-link std-link" @tap="showStd = true">{{ $t("goods.pickStd") }}</text>
       </view>

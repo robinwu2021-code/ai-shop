@@ -41,7 +41,7 @@
       <sh-empty v-if="!lines.length" bare :text="String(t('statement.empty'))"></sh-empty>
       <view v-for="l in lines" :key="l.settleNo" class="sh-row--divided">
         <view class="sh-row sh-row--between">
-          <text class="txt-sub sh-num">{{ l.orderNo }}</text>
+          <text class="txt-caption sh-num">{{ l.orderNo }}</text>
           <text class="txt-strong sh-num">{{ money(l.netMinor) }}</text>
         </view>
         <text class="txt-caption txt-quiet sh-num line__break">{{ t("statement.lineBreak", {

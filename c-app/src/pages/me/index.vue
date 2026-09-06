@@ -227,11 +227,11 @@ onShow(() => {
     <view class="sh-cells">
       <view class="sh-cell sh-row sh-row--between" @tap="gotoCommunity">
         <text class="txt-body cell__label">{{ $t("me.myCommunity") }}</text>
-        <text class="txt-sub cell__value">{{ community.pickup?.name || $t("me.unset") }}</text>
+        <text class="txt-caption cell__value">{{ community.pickup?.name || $t("me.unset") }}</text>
       </view>
       <view class="sh-cell sh-row sh-row--between">
         <text class="txt-body cell__label">{{ $t("me.myStores") }}</text>
-        <text class="txt-sub cell__value">{{ community.hostName || "—" }}</text>
+        <text class="txt-caption cell__value">{{ community.hostName || "—" }}</text>
       </view>
     </view>
 
@@ -244,34 +244,34 @@ onShow(() => {
           它暗示这个人有消息且都读过了，而他还没登录，平台根本不知道他是谁。
           与上面「我的常去店」未登录时显示「—」是同一个口径。
         -->
-        <text v-if="user.isLogin" class="txt-sub cell__value sh-num">
+        <text v-if="user.isLogin" class="txt-caption cell__value sh-num">
           {{ unread ? $t("message.unread", { n: unread }) : $t("message.allRead") }}
         </text>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="gotoOrders">
         <text class="txt-body cell__label">{{ $t("orders.title") }}</text>
-        <text class="txt-sub cell__value">{{ $t("orders.entryHint") }}</text>
+        <text class="txt-caption cell__value">{{ $t("orders.entryHint") }}</text>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="gotoCoupons">
         <text class="txt-body cell__label">{{ $t("coupon.title") }}</text>
-        <text class="txt-sub cell__value">{{ $t("coupon.entryHint") }}</text>
+        <text class="txt-caption cell__value">{{ $t("coupon.entryHint") }}</text>
       </view>
       <!-- 会员与消息：**退订入口必须在显眼处**，藏起来的开关等于没有 -->
       <view class="sh-cell sh-row sh-row--between" @tap="gotoMemberships">
         <text class="txt-body cell__label">{{ $t("myMembership.title") }}</text>
-        <text class="txt-sub cell__value">{{ $t("myMembership.entryHint") }}</text>
+        <text class="txt-caption cell__value">{{ $t("myMembership.entryHint") }}</text>
       </view>
       <view v-if="FEATURES.cards" class="sh-cell sh-row sh-row--between" @tap="gotoCards">
         <text class="txt-body cell__label">{{ $t("cards.title") }}</text>
-        <text class="txt-sub cell__value">{{ $t("cards.entryHint") }}</text>
+        <text class="txt-caption cell__value">{{ $t("cards.entryHint") }}</text>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="gotoAddress">
         <text class="txt-body cell__label">{{ $t("address.title") }}</text>
-        <text class="txt-sub cell__value">{{ $t("address.entryHint") }}</text>
+        <text class="txt-caption cell__value">{{ $t("address.entryHint") }}</text>
       </view>
       <view v-if="FEATURES.points" class="sh-cell sh-row sh-row--between" @tap="gotoPoints">
         <text class="txt-body cell__label">{{ $t("points.title") }}</text>
-        <text class="txt-sub cell__value sh-num">{{ $t("points.entryHint", { n: points }) }}</text>
+        <text class="txt-caption cell__value sh-num">{{ $t("points.entryHint", { n: points }) }}</text>
       </view>
     </view>
 
@@ -279,21 +279,21 @@ onShow(() => {
     <view class="sh-cells">
       <view class="sh-cell sh-row sh-row--between" @tap="gotoGroupHost">
         <text class="txt-body cell__label">{{ $t("groupHost.title") }}</text>
-        <text class="txt-sub cell__value">{{ $t("groupHost.entryHint") }}</text>
+        <text class="txt-caption cell__value">{{ $t("groupHost.entryHint") }}</text>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="gotoGroups">
         <text class="txt-body cell__label">{{ $t("groups.title") }}</text>
-        <text class="txt-sub cell__value">{{ $t("groups.entryHint") }}</text>
+        <text class="txt-caption cell__value">{{ $t("groups.entryHint") }}</text>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="gotoVisited">
         <text class="txt-body cell__label">{{ $t("visited.title") }}</text>
-        <text class="txt-sub cell__value">{{ $t("visited.hint") }}</text>
+        <text class="txt-caption cell__value">{{ $t("visited.hint") }}</text>
       </view>
       <!-- 小程序上不出现：自营类目的包里有「入驻」会被判成平台型经营而驳回。
            判断在 ports/storefront，页面不写 #ifdef -->
       <view v-if="merchantApplyVisible()" class="sh-cell sh-row sh-row--between" @tap="applyMerchant">
         <text class="txt-body cell__label">{{ $t("merchant.apply") }}</text>
-        <text class="txt-sub cell__value">{{ applyStatusText }}</text>
+        <text class="txt-caption cell__value">{{ applyStatusText }}</text>
       </view>
     </view>
 
@@ -301,7 +301,7 @@ onShow(() => {
     <view class="sh-cells">
       <view class="sh-cell sh-row sh-row--between" @tap="themeVisible = true">
         <text class="txt-body cell__label">{{ $t("me.appearance") }}</text>
-        <text class="txt-sub cell__value">{{ $t("me.appearanceValue") }}</text>
+        <text class="txt-caption cell__value">{{ $t("me.appearanceValue") }}</text>
       </view>
       <!--
         帮助中心这一行带**构建版本号**。它不是给用户看的功能说明，
@@ -312,11 +312,11 @@ onShow(() => {
       -->
       <view class="sh-cell sh-row sh-row--between">
         <text class="txt-body cell__label">{{ $t("me.help") }}</text>
-        <text class="txt-sub cell__value">{{ $t("me.helpValue") }}</text>
+        <text class="txt-caption cell__value">{{ $t("me.helpValue") }}</text>
       </view>
       <view class="sh-cell sh-row sh-row--between">
         <text class="txt-body cell__label">{{ $t("me.version") }}</text>
-        <text class="txt-sub cell__value">{{ buildVersion }}</text>
+        <text class="txt-caption cell__value">{{ buildVersion }}</text>
       </view>
       <!-- 此前**整个 c-app 没有退出登录入口** —— store 里的 logout() 是死代码。
            没有入口意味着共用设备上无法结束会话，而令牌在服务端一直有效 -->
