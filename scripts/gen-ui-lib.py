@@ -60,6 +60,23 @@ BLOCK_NOTES = {
     ".sh-block": ("容器", "标题与内容同属一个白块 —— 灰缝只剩块与块之间那一道", "只有内容没有标题时用 .sh-card"),
     ".sh-block__head": ("容器", "块内标题行（横向留白 26rpx，列表行仍通铺到边）", "—"),
     ".sh-chip": ("标签", "状态、分类、筛选项。tint 色块，不描边", "可点的主操作用 .sh-btn"),
+    # ---- 单值类：一条声明一个类。**分组也要给对** ----
+    #      这十四个此前全落在「其它」并且一句说明都没有 —— 而《规范·组件》按组渲染，
+    #      于是最常用的那几个（`.sh-mt-*` 有 137 个调用点）躺在一个叫「其它」的抽屉里。
+    ".sh-mt-xs": ("间距", "上边距 8rpx：紧跟着上一行的小字", "块与块之间归 --sh-gap-block"),
+    ".sh-mt-sm": ("间距", "上边距 16rpx：同一组里两件东西之间", "—"),
+    ".sh-mt-md": ("间距", "上边距 28rpx：一个小节结束、另一个开始", "—"),
+    ".sh-mb-sm": ("间距", "下边距 16rpx", "能用上边距就别用下边距 —— 两边都挂会叠"),
+    ".sh-mb-md": ("间距", "下边距 28rpx", "同上"),
+    ".txt-ink": ("字阶", "改成主文字色（默认色不对时才需要）", "整段正文用 .txt-body"),
+    ".txt-quiet": ("字阶", "改成次要色：说明、旁注", "—"),
+    ".txt-faint": ("字阶", "改成最弱色。**只给一种语义：零值**", "只是次要用 .txt-quiet"),
+    ".txt-primary": ("字阶", "改成主色：可点的字、强调的数", "整块可点的用 .sh-btn"),
+    ".txt-bold": ("字阶", "只加粗、不改字号", "价格用 .txt-price（那一档才是 700）"),
+    ".sh-dialog__act": ("按钮", "对话框底部的一格动作，等宽平分", "别在别处用，它没有底色"),
+    ".sh-block__head--tabs": ("容器", "块头里放页签时用：去掉下内边距，让页签贴住内容", "—"),
+    ".sh-hit::after": ("行与列", "`.sh-hit` 撑开的那块看不见的点按区", "不要单独挂，它是上一条的一半"),
+    ".sh-scrollx::-webkit-scrollbar": ("行与列", "`.sh-scrollx` 藏滚动条用", "同上"),
     # ---- 底部弹层的壳（2026-09-06 从三个件里收出来的） ----
     ".sh-mask": ("浮层", "浮层的遮罩：铺满、压 scrim 色。点它＝取消", "整屏的容器不是它，是件自己的 fixed 层"),
     ".sh-panel": ("浮层", "贴底弹上来的面板：44rpx 上圆角、surface 底、自带安全区", "居中的对话框用 sh-dialog"),
@@ -429,6 +446,50 @@ def lead_line(src: str) -> str:
     return "—"
 
 
+def root_classes(src: str) -> list[str]:
+    """根元素挂着的类名。
+
+    **`rootDecl` 为空有两种意思**，光看它分不出：根上挂的全是库件类
+    （`sh-scaffold` 就是 `sh-root sh-frame`，几何在 `blocks[].decl` 里）——
+    这是对的；还是**类名改了、解析器找不到那条规则了** —— 这是丢失。
+    把类名一并记上，两者就看得出区别，下一个人不用去翻源码。
+    （这正是同一天在《规范·版面》上踩过的那个坑：取不到就填占位符。）
+    """
+    tpl = src.split("<template>", 1)[-1].split("</template>")[0]
+    m = re.search(r'<[a-zA-Z][\w-]*[^>]*?\bclass="([^"]*)"', tpl)
+    return m.group(1).split() if m else []
+
+
+def root_decl(src: str) -> dict:
+    """件的**根元素几何** —— 它决定这个件在页面上占多大、怎么坐。
+
+    为什么要记进产物：积木的几何一直记着（`blocks[].decl`），改一档圆角就是
+    `ui-lib.json` 的一行 diff，`check-generated-docs` 逼着重新生成，
+    评审时看得见。**组件这边一直是空的** —— 于是 2026-09-06 把三个弹层的面板
+    收成积木时，`sh-sheet` / `sh-prompt` / `sh-theme-sheet` 的几何整体换了地方，
+    而产物里一个字都没变。改对了没有，只能靠人去点。
+
+    只取根那一条，不取全部样式：全取会让这份 JSON 涨几倍，而真正会让页面
+    「看起来不一样」的是根 —— 内部元素的偏移都相对它。
+    """
+    tpl = src.split("<template>", 1)[-1].split("</template>")[0]
+    m = re.search(r'<[a-zA-Z][\w-]*[^>]*?\bclass="([^"]*)"', tpl)
+    if not m:
+        return {}
+    for cls in m.group(1).split():
+        if cls.startswith(("sh-", "txt-", "is-")):     # 挂在根上的库件类，几何不归它
+            continue
+        for r in re.finditer(rf"\n\.{re.escape(cls)}\s*\{{([^}}]*)\}}", scoped_css(src)):
+            d = {}
+            for line in re.sub(r"/\*[\s\S]*?\*/", "", r.group(1)).split(";"):
+                if ":" not in line:
+                    continue
+                k, _, v = line.partition(":")
+                d[k.strip()] = " ".join(v.split())
+            return d
+    return {}
+
+
 def read_components() -> list[dict]:
     out = []
     files = sorted(UI_COMPONENTS.glob("sh-*.vue")) + sorted(B_COMPONENTS.rglob("*.vue"))
@@ -450,6 +511,8 @@ def read_components() -> list[dict]:
                       "lib": usage(name, ["packages/ui/src"])},
             "note": COMP_NOTES.get(name, (lead_line(src), "—"))[0],
             "why": COMP_NOTES.get(name, ("—", "—"))[1],
+            "rootClasses": root_classes(src),
+            "rootDecl": root_decl(src),
             "css": scoped_css(src),
         })
     return out

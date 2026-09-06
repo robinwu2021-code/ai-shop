@@ -223,244 +223,6 @@
   },
   "blocks": [
     {
-      "class": ".sh-block__head--tabs",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "display": "block",
-        "padding-bottom": "0"
-      },
-      "px": {
-        "display": "block",
-        "padding-bottom": "0"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 3
-      }
-    },
-    {
-      "class": ".sh-dialog__act",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "flex": "1",
-        "padding": "22rpx 0",
-        "text-align": "center"
-      },
-      "px": {
-        "flex": "1",
-        "padding": "11px 0",
-        "text-align": "center"
-      },
-      "usage": {
-        "b-app": 4,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-hit::after",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "content": "\"\"",
-        "position": "absolute",
-        "inset": "-24rpx"
-      },
-      "px": {
-        "content": "\"\"",
-        "position": "absolute",
-        "inset": "-12px"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-mb-md",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "margin-bottom": "28rpx"
-      },
-      "px": {
-        "margin-bottom": "14px"
-      },
-      "usage": {
-        "b-app": 3,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-mb-sm",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "margin-bottom": "16rpx"
-      },
-      "px": {
-        "margin-bottom": "8px"
-      },
-      "usage": {
-        "b-app": 27,
-        "c-app": 1
-      }
-    },
-    {
-      "class": ".sh-mt-md",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "margin-top": "28rpx"
-      },
-      "px": {
-        "margin-top": "14px"
-      },
-      "usage": {
-        "b-app": 12,
-        "c-app": 3
-      }
-    },
-    {
-      "class": ".sh-mt-sm",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "margin-top": "16rpx"
-      },
-      "px": {
-        "margin-top": "8px"
-      },
-      "usage": {
-        "b-app": 90,
-        "c-app": 3
-      }
-    },
-    {
-      "class": ".sh-mt-xs",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "margin-top": "8rpx"
-      },
-      "px": {
-        "margin-top": "4px"
-      },
-      "usage": {
-        "b-app": 35,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-scrollx::-webkit-scrollbar",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "display": "none",
-        "width": "0",
-        "height": "0"
-      },
-      "px": {
-        "display": "none",
-        "width": "0",
-        "height": "0"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".txt-bold",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "font-weight": "600"
-      },
-      "px": {
-        "font-weight": "600"
-      },
-      "usage": {
-        "b-app": 19,
-        "c-app": 16
-      }
-    },
-    {
-      "class": ".txt-faint",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "color": "var(--sh-faint)"
-      },
-      "px": {
-        "color": "var(--sh-faint)"
-      },
-      "usage": {
-        "b-app": 5,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".txt-ink",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "color": "var(--sh-ink)"
-      },
-      "px": {
-        "color": "var(--sh-ink)"
-      },
-      "usage": {
-        "b-app": 12,
-        "c-app": 20
-      }
-    },
-    {
-      "class": ".txt-primary",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "color": "var(--sh-primary-text)"
-      },
-      "px": {
-        "color": "var(--sh-primary-text)"
-      },
-      "usage": {
-        "b-app": 28,
-        "c-app": 26
-      }
-    },
-    {
-      "class": ".txt-quiet",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "color": "var(--sh-sub)"
-      },
-      "px": {
-        "color": "var(--sh-sub)"
-      },
-      "usage": {
-        "b-app": 32,
-        "c-app": 14
-      }
-    },
-    {
       "class": ".sh-muted",
       "group": "字阶",
       "when": "次要文字。**字号走密度变量**，B 端自动降到 24rpx",
@@ -502,6 +264,22 @@
       "usage": {
         "b-app": 76,
         "c-app": 53
+      }
+    },
+    {
+      "class": ".txt-bold",
+      "group": "字阶",
+      "when": "只加粗、不改字号",
+      "avoid": "价格用 .txt-price（那一档才是 700）",
+      "decl": {
+        "font-weight": "600"
+      },
+      "px": {
+        "font-weight": "600"
+      },
+      "usage": {
+        "b-app": 19,
+        "c-app": 16
       }
     },
     {
@@ -549,6 +327,22 @@
       }
     },
     {
+      "class": ".txt-faint",
+      "group": "字阶",
+      "when": "改成最弱色。**只给一种语义：零值**",
+      "avoid": "只是次要用 .txt-quiet",
+      "decl": {
+        "color": "var(--sh-faint)"
+      },
+      "px": {
+        "color": "var(--sh-faint)"
+      },
+      "usage": {
+        "b-app": 5,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".txt-hero",
       "group": "字阶",
       "when": "整页只有一个的大数（详情页主价、评分）",
@@ -568,6 +362,22 @@
       "usage": {
         "b-app": 4,
         "c-app": 11
+      }
+    },
+    {
+      "class": ".txt-ink",
+      "group": "字阶",
+      "when": "改成主文字色（默认色不对时才需要）",
+      "avoid": "整段正文用 .txt-body",
+      "decl": {
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 12,
+        "c-app": 20
       }
     },
     {
@@ -612,6 +422,38 @@
       "usage": {
         "b-app": 15,
         "c-app": 10
+      }
+    },
+    {
+      "class": ".txt-primary",
+      "group": "字阶",
+      "when": "改成主色：可点的字、强调的数",
+      "avoid": "整块可点的用 .sh-btn",
+      "decl": {
+        "color": "var(--sh-primary-text)"
+      },
+      "px": {
+        "color": "var(--sh-primary-text)"
+      },
+      "usage": {
+        "b-app": 28,
+        "c-app": 26
+      }
+    },
+    {
+      "class": ".txt-quiet",
+      "group": "字阶",
+      "when": "改成次要色：说明、旁注",
+      "avoid": "—",
+      "decl": {
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 32,
+        "c-app": 14
       }
     },
     {
@@ -722,6 +564,24 @@
       "usage": {
         "b-app": 0,
         "c-app": 10
+      }
+    },
+    {
+      "class": ".sh-block__head--tabs",
+      "group": "容器",
+      "when": "块头里放页签时用：去掉下内边距，让页签贴住内容",
+      "avoid": "—",
+      "decl": {
+        "display": "block",
+        "padding-bottom": "0"
+      },
+      "px": {
+        "display": "block",
+        "padding-bottom": "0"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 3
       }
     },
     {
@@ -1004,6 +864,26 @@
       "usage": {
         "b-app": 27,
         "c-app": 9
+      }
+    },
+    {
+      "class": ".sh-dialog__act",
+      "group": "按钮",
+      "when": "对话框底部的一格动作，等宽平分",
+      "avoid": "别在别处用，它没有底色",
+      "decl": {
+        "flex": "1",
+        "padding": "22rpx 0",
+        "text-align": "center"
+      },
+      "px": {
+        "flex": "1",
+        "padding": "11px 0",
+        "text-align": "center"
+      },
+      "usage": {
+        "b-app": 4,
+        "c-app": 0
       }
     },
     {
@@ -1429,6 +1309,26 @@
       }
     },
     {
+      "class": ".sh-hit::after",
+      "group": "行与列",
+      "when": "`.sh-hit` 撑开的那块看不见的点按区",
+      "avoid": "不要单独挂，它是上一条的一半",
+      "decl": {
+        "content": "\"\"",
+        "position": "absolute",
+        "inset": "-24rpx"
+      },
+      "px": {
+        "content": "\"\"",
+        "position": "absolute",
+        "inset": "-12px"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".sh-row",
       "group": "行与列",
       "when": "一行之内的横排：图标 + 文字 + 右侧值，纵向居中，缝 16rpx",
@@ -1530,6 +1430,26 @@
       "usage": {
         "b-app": 0,
         "c-app": 1
+      }
+    },
+    {
+      "class": ".sh-scrollx::-webkit-scrollbar",
+      "group": "行与列",
+      "when": "`.sh-scrollx` 藏滚动条用",
+      "avoid": "同上",
+      "decl": {
+        "display": "none",
+        "width": "0",
+        "height": "0"
+      },
+      "px": {
+        "display": "none",
+        "width": "0",
+        "height": "0"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 0
       }
     },
     {
@@ -1789,6 +1709,86 @@
         "b-app": 1,
         "c-app": 1
       }
+    },
+    {
+      "class": ".sh-mb-md",
+      "group": "间距",
+      "when": "下边距 28rpx",
+      "avoid": "同上",
+      "decl": {
+        "margin-bottom": "28rpx"
+      },
+      "px": {
+        "margin-bottom": "14px"
+      },
+      "usage": {
+        "b-app": 3,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-mb-sm",
+      "group": "间距",
+      "when": "下边距 16rpx",
+      "avoid": "能用上边距就别用下边距 —— 两边都挂会叠",
+      "decl": {
+        "margin-bottom": "16rpx"
+      },
+      "px": {
+        "margin-bottom": "8px"
+      },
+      "usage": {
+        "b-app": 27,
+        "c-app": 1
+      }
+    },
+    {
+      "class": ".sh-mt-md",
+      "group": "间距",
+      "when": "上边距 28rpx：一个小节结束、另一个开始",
+      "avoid": "—",
+      "decl": {
+        "margin-top": "28rpx"
+      },
+      "px": {
+        "margin-top": "14px"
+      },
+      "usage": {
+        "b-app": 12,
+        "c-app": 3
+      }
+    },
+    {
+      "class": ".sh-mt-sm",
+      "group": "间距",
+      "when": "上边距 16rpx：同一组里两件东西之间",
+      "avoid": "—",
+      "decl": {
+        "margin-top": "16rpx"
+      },
+      "px": {
+        "margin-top": "8px"
+      },
+      "usage": {
+        "b-app": 90,
+        "c-app": 3
+      }
+    },
+    {
+      "class": ".sh-mt-xs",
+      "group": "间距",
+      "when": "上边距 8rpx：紧跟着上一行的小字",
+      "avoid": "块与块之间归 --sh-gap-block",
+      "decl": {
+        "margin-top": "8rpx"
+      },
+      "px": {
+        "margin-top": "4px"
+      },
+      "usage": {
+        "b-app": 35,
+        "c-app": 0
+      }
     }
   ],
   "components": [
@@ -1808,7 +1808,14 @@
         "lib": 0
       },
       "note": "悬浮内缩的贴底操作条 —— 第三种贴底形态，此前库里没有",
-      "why": "—"
+      "why": "—",
+      "rootClasses": [
+        "ab__pad"
+      ],
+      "rootDecl": {
+        "padding-bottom": "env(safe-area-inset-bottom, 0px)",
+        "box-sizing": "content-box"
+      }
     },
     {
       "name": "sh-add",
@@ -1827,7 +1834,18 @@
         "lib": 0
       },
       "note": "＋ 加一项按钮",
-      "why": "收编自 goods-edit 与 my-specs 里**逐字节相同**的 `.btn-add`。`active` 是展开态：同一个按钮管开合"
+      "why": "收编自 goods-edit 与 my-specs 里**逐字节相同**的 `.btn-add`。`active` 是展开态：同一个按钮管开合",
+      "rootClasses": [
+        "add"
+      ],
+      "rootDecl": {
+        "display": "flex",
+        "align-items": "center",
+        "gap": "8rpx",
+        "padding": "10rpx 22rpx",
+        "border-radius": "9999px",
+        "background": "var(--sh-primary-tint)"
+      }
     },
     {
       "name": "sh-check",
@@ -1845,7 +1863,19 @@
         "lib": 0
       },
       "note": "勾选框 / 单选点",
-      "why": "四页各画一个、**四种尺寸**（28/36/44/44）。勾用 `check` 图标 —— 那个图标是这次一起补进 icons.ts 的"
+      "why": "四页各画一个、**四种尺寸**（28/36/44/44）。勾用 `check` 图标 —— 那个图标是这次一起补进 icons.ts 的",
+      "rootClasses": [
+        "sh-center",
+        "ck"
+      ],
+      "rootDecl": {
+        "flex": "none",
+        "width": "44rpx",
+        "height": "44rpx",
+        "border-radius": "16rpx",
+        "border": "2rpx solid var(--sh-line)",
+        "background": "transparent"
+      }
     },
     {
       "name": "sh-confirm",
@@ -1859,7 +1889,16 @@
         "lib": 1
       },
       "note": "确认弹层的壳",
-      "why": "—"
+      "why": "—",
+      "rootClasses": [
+        "txt-sub",
+        "cf__hint"
+      ],
+      "rootDecl": {
+        "display": "block",
+        "margin-top": "12rpx",
+        "color": "var(--sh-sub)"
+      }
     },
     {
       "name": "sh-cover",
@@ -1876,7 +1915,15 @@
         "lib": 1
       },
       "note": "商品封面",
-      "why": "`cover` 字段二义：种子是 emoji、商家上传后是 COS URL。14 处渲染点都没分流过"
+      "why": "`cover` 字段二义：种子是 emoji、商家上传后是 COS URL。14 处渲染点都没分流过",
+      "rootClasses": [
+        "sh-center",
+        "cover"
+      ],
+      "rootDecl": {
+        "overflow": "hidden",
+        "flex-shrink": "0"
+      }
     },
     {
       "name": "sh-dialog",
@@ -1894,7 +1941,16 @@
         "lib": 1
       },
       "note": "居中对话框的外壳：遮罩 + 居中面板 + 可选标题 + 内容插槽 + 可选动作条",
-      "why": "—"
+      "why": "—",
+      "rootClasses": [
+        "sh-center",
+        "dlg"
+      ],
+      "rootDecl": {
+        "position": "fixed",
+        "inset": "0",
+        "z-index": "var(--sh-z-dialog)"
+      }
     },
     {
       "name": "sh-empty",
@@ -1913,7 +1969,14 @@
         "lib": 0
       },
       "note": "空态",
-      "why": "抽出来不是因为重复，是**观感会漂**：曾在 27 个页面各写一份，padding 在 60/80/100rpx 之间随手取"
+      "why": "抽出来不是因为重复，是**观感会漂**：曾在 27 个页面各写一份，padding 在 60/80/100rpx 之间随手取",
+      "rootClasses": [
+        "empty"
+      ],
+      "rootDecl": {
+        "text-align": "center",
+        "padding": "var(--sh-pad-empty, 72rpx) 24rpx"
+      }
     },
     {
       "name": "sh-fab",
@@ -1929,7 +1992,23 @@
         "lib": 0
       },
       "note": "悬浮新建按钮",
-      "why": "贴右下角压在列表上。**只有一个调用点仍然收进来** —— 收的不是重复，是那一行 `bottom` 里的知识：抬到 tabBar 上方一指宽，否则想点新建却切了页"
+      "why": "贴右下角压在列表上。**只有一个调用点仍然收进来** —— 收的不是重复，是那一行 `bottom` 里的知识：抬到 tabBar 上方一指宽，否则想点新建却切了页",
+      "rootClasses": [
+        "txt-strong",
+        "fab"
+      ],
+      "rootDecl": {
+        "position": "fixed",
+        "inset-inline-end": "32rpx",
+        "bottom": "calc(var(--sh-tabbar-h, 124rpx) + 60rpx + env(safe-area-inset-bottom, 0px))",
+        "z-index": "var(--sh-z-fab)",
+        "padding": "20rpx 36rpx",
+        "border-radius": "9999px",
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)",
+        "white-space": "nowrap",
+        "box-shadow": "0 8rpx 24rpx var(--sh-scrim)"
+      }
     },
     {
       "name": "sh-go",
@@ -1946,7 +2025,15 @@
         "lib": 0
       },
       "note": "带箭头的行内链接：「去填地址 ›」「切换门店 ›」「查看详情 ›」这一类",
-      "why": "—"
+      "why": "—",
+      "rootClasses": [
+        "go"
+      ],
+      "rootDecl": {
+        "display": "inline-flex",
+        "align-items": "center",
+        "gap": "4rpx"
+      }
     },
     {
       "name": "sh-icon-btn",
@@ -1965,7 +2052,14 @@
         "lib": 1
       },
       "note": "图标按钮",
-      "why": "行尾的删除、弹层右上角的关闭、列表行上的编辑。收编的是**「文字当图标」**这件事 —— 两端曾有 11 处文字 ✕/×，其中 `store-scope` 用的还是 `×`(U+00D7)"
+      "why": "行尾的删除、弹层右上角的关闭、列表行上的编辑。收编的是**「文字当图标」**这件事 —— 两端曾有 11 处文字 ✕/×，其中 `store-scope` 用的还是 `×`(U+00D7)",
+      "rootClasses": [
+        "sh-center",
+        "ib"
+      ],
+      "rootDecl": {
+        "flex": "none"
+      }
     },
     {
       "name": "sh-icon",
@@ -1983,7 +2077,20 @@
         "lib": 13
       },
       "note": "单色图标",
-      "why": "内联 SVG 转 CSS mask，颜色吃 var(--sh-*) —— 换肤零成本。**不用 emoji**：各系统字形不一且是彩色的"
+      "why": "内联 SVG 转 CSS mask，颜色吃 var(--sh-*) —— 换肤零成本。**不用 emoji**：各系统字形不一且是彩色的",
+      "rootClasses": [
+        "icon"
+      ],
+      "rootDecl": {
+        "display": "inline-block",
+        "flex-shrink": "0",
+        "-webkit-mask-repeat": "no-repeat",
+        "mask-repeat": "no-repeat",
+        "-webkit-mask-position": "center",
+        "mask-position": "center",
+        "-webkit-mask-size": "contain",
+        "mask-size": "contain"
+      }
     },
     {
       "name": "sh-kv",
@@ -2002,7 +2109,12 @@
         "lib": 0
       },
       "note": "键值行：左边一个名目，右边它的值",
-      "why": "—"
+      "why": "—",
+      "rootClasses": [
+        "sh-row",
+        "kv"
+      ],
+      "rootDecl": {}
     },
     {
       "name": "sh-option",
@@ -2019,7 +2131,16 @@
         "lib": 0
       },
       "note": "选项卡片",
-      "why": "整块可选，比 chip 重比按钮轻 —— 每个选项里通常还有一行说明"
+      "why": "整块可选，比 chip 重比按钮轻 —— 每个选项里通常还有一行说明",
+      "rootClasses": [
+        "opt"
+      ],
+      "rootDecl": {
+        "padding": "20rpx",
+        "border-radius": "16rpx",
+        "border": "2rpx solid var(--sh-line)",
+        "background": "transparent"
+      }
     },
     {
       "name": "sh-pick",
@@ -2033,7 +2154,17 @@
         "lib": 1
       },
       "note": "「选一项」弹层的壳",
-      "why": "—"
+      "why": "—",
+      "rootClasses": [
+        "pick__row"
+      ],
+      "rootDecl": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "space-between",
+        "min-height": "88rpx",
+        "padding": "8rpx 0"
+      }
     },
     {
       "name": "sh-prompt",
@@ -2047,7 +2178,15 @@
         "lib": 1
       },
       "note": "输入弹层的壳",
-      "why": "页面不摆它 —— 只 `await prompt({...})`。由 sh-scaffold 无条件渲染，因为那段业务代码未必知道自己所在的页面摆没摆过弹层"
+      "why": "页面不摆它 —— 只 `await prompt({...})`。由 sh-scaffold 无条件渲染，因为那段业务代码未必知道自己所在的页面摆没摆过弹层",
+      "rootClasses": [
+        "pr"
+      ],
+      "rootDecl": {
+        "position": "fixed",
+        "inset": "0",
+        "z-index": "var(--sh-z-dialog)"
+      }
     },
     {
       "name": "sh-rating",
@@ -2065,7 +2204,15 @@
         "lib": 0
       },
       "note": "评分",
-      "why": "底层灰星 + 上层主色星按百分比裁切 —— 半星图标只能表达 0.5 粒度，4.3 会被抹成 4.5"
+      "why": "底层灰星 + 上层主色星按百分比裁切 —— 半星图标只能表达 0.5 粒度，4.3 会被抹成 4.5",
+      "rootClasses": [
+        "rating"
+      ],
+      "rootDecl": {
+        "display": "flex",
+        "align-items": "center",
+        "gap": "12rpx"
+      }
     },
     {
       "name": "sh-savebar",
@@ -2084,7 +2231,13 @@
         "lib": 0
       },
       "note": "底部未保存条",
-      "why": "收编自 store 与 store-scope 里**逐字节相同**的 `.savebar`。自带流内占位 —— 收编前两页都被它盖住了最后一段内容"
+      "why": "收编自 store 与 store-scope 里**逐字节相同**的 `.savebar`。自带流内占位 —— 收编前两页都被它盖住了最后一段内容",
+      "rootClasses": [
+        "bar__pad"
+      ],
+      "rootDecl": {
+        "height": "calc(140rpx + env(safe-area-inset-bottom, 0px))"
+      }
     },
     {
       "name": "sh-scaffold",
@@ -2104,7 +2257,12 @@
         "lib": 0
       },
       "note": "页面外壳",
-      "why": "**每页根元素必须是它** —— 否则小程序端换肤 / RTL / 三语标题全不生效"
+      "why": "**每页根元素必须是它** —— 否则小程序端换肤 / RTL / 三语标题全不生效",
+      "rootClasses": [
+        "sh-root",
+        "sh-frame"
+      ],
+      "rootDecl": {}
     },
     {
       "name": "sh-section",
@@ -2121,7 +2279,15 @@
         "lib": 0
       },
       "note": "卡内标题行",
-      "why": "收编自 goods-edit 与 sku-identity **逐字节相同**的 `.sec`（8 处调用点）。右侧动作直接进插槽，**不套壳** —— `.sec` 是 space-between，多一层就把「三个孩子摊开」变成「两组左右分」"
+      "why": "收编自 goods-edit 与 sku-identity **逐字节相同**的 `.sec`（8 处调用点）。右侧动作直接进插槽，**不套壳** —— `.sec` 是 space-between，多一层就把「三个孩子摊开」变成「两组左右分」",
+      "rootClasses": [
+        "sec"
+      ],
+      "rootDecl": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "space-between"
+      }
     },
     {
       "name": "sh-sheet",
@@ -2141,7 +2307,15 @@
         "lib": 1
       },
       "note": "底部弹层",
-      "why": "不用 uni.showModal（字不归我们管）、不做页内展开（会把下文顶走）"
+      "why": "不用 uni.showModal（字不归我们管）、不做页内展开（会把下文顶走）",
+      "rootClasses": [
+        "sheet"
+      ],
+      "rootDecl": {
+        "position": "fixed",
+        "inset": "0",
+        "z-index": "var(--sh-z-sheet)"
+      }
     },
     {
       "name": "sh-stat",
@@ -2160,7 +2334,14 @@
         "lib": 0
       },
       "note": "数字格",
-      "why": "几个大数一排，每格一句小标签。收编自 5 页 4 种档位（44/700 · 40/700 · 40/600 · 32/600）"
+      "why": "几个大数一排，每格一句小标签。收编自 5 页 4 种档位（44/700 · 40/700 · 40/600 · 32/600）",
+      "rootClasses": [
+        "st"
+      ],
+      "rootDecl": {
+        "display": "grid",
+        "gap": "12rpx"
+      }
     },
     {
       "name": "sh-stepper",
@@ -2179,7 +2360,18 @@
         "lib": 0
       },
       "note": "数量步进器：减 · 数 · 加，装在一枚弱色药丸里",
-      "why": "—"
+      "why": "—",
+      "rootClasses": [
+        "stepper",
+        "sh-row"
+      ],
+      "rootDecl": {
+        "flex": "none",
+        "gap": "8rpx",
+        "padding": "8rpx",
+        "border-radius": "9999px",
+        "background": "var(--sh-faint)"
+      }
     },
     {
       "name": "sh-switch",
@@ -2196,7 +2388,19 @@
         "lib": 0
       },
       "note": "开关",
-      "why": "三页各画一个，**三个数没有一个对得上**（宽 84/88、圆角 胶囊/24rpx、位移 40/42/46）。全 B 端零处原生 `&lt;switch&gt;`"
+      "why": "三页各画一个，**三个数没有一个对得上**（宽 84/88、圆角 胶囊/24rpx、位移 40/42/46）。全 B 端零处原生 `&lt;switch&gt;`",
+      "rootClasses": [
+        "sw"
+      ],
+      "rootDecl": {
+        "position": "relative",
+        "flex": "none",
+        "width": "88rpx",
+        "height": "48rpx",
+        "border-radius": "9999px",
+        "background": "var(--sh-faint)",
+        "transition": "background var(--sh-t-fast) ease"
+      }
     },
     {
       "name": "sh-tabbar",
@@ -2212,7 +2416,24 @@
         "lib": 1
       },
       "note": "自定义底部菜单",
-      "why": "原生 tabBar 字号锁死、不吃 CSS 变量、不吃 i18n，三件事自定义之后自然解决"
+      "why": "原生 tabBar 字号锁死、不吃 CSS 变量、不吃 i18n，三件事自定义之后自然解决",
+      "rootClasses": [
+        "tabbar"
+      ],
+      "rootDecl": {
+        "position": "fixed",
+        "left": "0",
+        "right": "0",
+        "bottom": "0",
+        "max-width": "var(--sh-app-max)",
+        "margin": "0 auto",
+        "z-index": "var(--sh-z-tabbar)",
+        "display": "flex",
+        "background": "var(--sh-surface)",
+        "border-top": "var(--sh-hairline)",
+        "box-shadow": "0 -6rpx 20rpx var(--sh-scrim)",
+        "padding": "16rpx 0 calc(16rpx + env(safe-area-inset-bottom, 0px))"
+      }
     },
     {
       "name": "sh-tabs",
@@ -2230,7 +2451,14 @@
         "lib": 0
       },
       "note": "筛选条",
-      "why": "抽之前两端有两套实现（chip 横排 / 方块），同一个产品里两种筛选条"
+      "why": "抽之前两端有两套实现（chip 横排 / 方块），同一个产品里两种筛选条",
+      "rootClasses": [
+        "sh-chip",
+        "tabs__chip"
+      ],
+      "rootDecl": {
+        "padding": "12rpx 24rpx"
+      }
     },
     {
       "name": "sh-theme-sheet",
@@ -2246,7 +2474,15 @@
         "lib": 0
       },
       "note": "外观面板",
-      "why": "9 套皮肤 × 明暗 × 语言，选中即时全局生效"
+      "why": "9 套皮肤 × 明暗 × 语言，选中即时全局生效",
+      "rootClasses": [
+        "sheet"
+      ],
+      "rootDecl": {
+        "position": "fixed",
+        "inset": "0",
+        "z-index": "var(--sh-z-sheet)"
+      }
     },
     {
       "name": "sh-uploader",
@@ -2268,7 +2504,14 @@
         "lib": 0
       },
       "note": "图片格",
-      "why": "已传的缩略图排一行，末尾一个「＋」。收编自 apply / payment / qualifications / goods-edit 四份"
+      "why": "已传的缩略图排一行，末尾一个「＋」。收编自 apply / payment / qualifications / goods-edit 四份",
+      "rootClasses": [
+        "sh-wrap",
+        "up"
+      ],
+      "rootDecl": {
+        "margin-top": "12rpx"
+      }
     },
     {
       "name": "app-overlay",
@@ -2282,7 +2525,9 @@
         "lib": 1
       },
       "note": "应用常驻层",
-      "why": "B 端是空壳，但**不能删** —— sh-scaffold 无条件渲染它"
+      "why": "B 端是空壳，但**不能删** —— sh-scaffold 无条件渲染它",
+      "rootClasses": [],
+      "rootDecl": {}
     },
     {
       "name": "biz-item-picker",
@@ -2302,7 +2547,14 @@
         "lib": 0
       },
       "note": "挑货 —— 开单时选货那一步，进货 / 报损 / 调拨三处共用",
-      "why": "—"
+      "why": "—",
+      "rootClasses": [
+        "field__input",
+        "pick__search"
+      ],
+      "rootDecl": {
+        "margin-bottom": "12rpx"
+      }
     },
     {
       "name": "biz-pickup-sheet",
@@ -2320,7 +2572,16 @@
         "lib": 0
       },
       "note": "自提点选择弹层",
-      "why": "自带 mask 与 panel，**没走 sh-sheet**"
+      "why": "自带 mask 与 panel，**没走 sh-sheet**",
+      "rootClasses": [
+        "txt-caption",
+        "hint"
+      ],
+      "rootDecl": {
+        "display": "block",
+        "padding": "8rpx 32rpx",
+        "color": "var(--sh-sub)"
+      }
     },
     {
       "name": "biz-region-picker",
@@ -2337,7 +2598,14 @@
         "lib": 0
       },
       "note": "经营范围选择器",
-      "why": "省市区 / 小区 / 村三级 + 提报。全项目最大的单文件组件"
+      "why": "省市区 / 小区 / 村三级 + 提报。全项目最大的单文件组件",
+      "rootClasses": [
+        "sh-row",
+        "sheet__sel"
+      ],
+      "rootDecl": {
+        "gap": "8rpx"
+      }
     },
     {
       "name": "biz-store-tag",
@@ -2353,7 +2621,17 @@
         "lib": 0
       },
       "note": "当前门店胶囊",
-      "why": "可点 = 门店管理入口；readonly = 只说清这屏属于哪家店"
+      "why": "可点 = 门店管理入口；readonly = 只说清这屏属于哪家店",
+      "rootClasses": [
+        "sh-chip",
+        "tag"
+      ],
+      "rootDecl": {
+        "display": "inline-flex",
+        "align-items": "center",
+        "gap": "12rpx",
+        "margin-bottom": "16rpx"
+      }
     },
     {
       "name": "biz-supplier-picker",
@@ -2372,7 +2650,14 @@
         "lib": 0
       },
       "note": "挑供应商 —— 开进货单时选「这批货从哪来」",
-      "why": "—"
+      "why": "—",
+      "rootClasses": [
+        "field__input",
+        "sup__search"
+      ],
+      "rootDecl": {
+        "margin-bottom": "12rpx"
+      }
     },
     {
       "name": "biz-time-range",
@@ -2389,7 +2674,14 @@
         "lib": 0
       },
       "note": "时段输入",
-      "why": "不让人手敲 —— 手敲的结果是全角横线、少个冒号、写成「6点半到9点」"
+      "why": "不让人手敲 —— 手敲的结果是全角横线、少个冒号、写成「6点半到9点」",
+      "rootClasses": [
+        "sh-row",
+        "tr"
+      ],
+      "rootDecl": {
+        "gap": "12rpx"
+      }
     }
   ],
   "pages": [

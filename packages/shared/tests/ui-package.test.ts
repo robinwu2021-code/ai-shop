@@ -977,3 +977,42 @@ describe("件不许重画 base.css 的积木", () => {
     ).toEqual([]);
   });
 });
+
+/*
+ * **每个库件都要有一句「什么时候用」，且要归进一个真的分组。**
+ *
+ * 上面那条守的是**文档里**没有空格子，这条守的是**源头**——
+ * `BLOCK_NOTES` / `COMP_NOTES` 没登记时，生成器只能填 `—`，
+ * 而新加的件默认就是没登记的那一种。两条一起才闭合：
+ * 「文档不许空」拦得住已经渲染出来的表，拦不住一个还没被任何表渲染的新件。
+ *
+ * 分组也判：没登记的件会落进一个叫「其它」的抽屉，而《规范·组件》按组渲染 ——
+ * 2026-09-06 那个抽屉里躺着 14 个件，包括 `.sh-mt-*` 这种有 137 个调用点的。
+ * 「其它」不是分类，是「还没分类」。
+ */
+describe("库件登记齐全", () => {
+  const lib = JSON.parse(readFileSync(join(ROOT, "docs/technical/design/ui-lib.json"), "utf8"));
+
+  it("读到了清单（否则下面全是空转）", () => {
+    expect(lib.blocks.length).toBeGreaterThan(50);
+    expect(lib.components.length).toBeGreaterThan(25);
+  });
+
+  it("每个积木都有「什么时候用」", () => {
+    const bad = lib.blocks.filter((b: { when?: string }) => !b.when || b.when === "—")
+      .map((b: { class: string }) => b.class);
+    expect(bad, `这些积木没登记（改 scripts/gen-ui-lib.py 的 BLOCK_NOTES）：\n${bad.join("\n")}`).toEqual([]);
+  });
+
+  it("每个组件都有「什么时候用」", () => {
+    const bad = lib.components.filter((c: { note?: string }) => !c.note || c.note === "—")
+      .map((c: { name: string }) => c.name);
+    expect(bad, `这些组件没登记，且首行注释也取不到一句话：\n${bad.join("\n")}`).toEqual([]);
+  });
+
+  it("没有积木落在「其它」里 —— 那不是分类，是「还没分类」", () => {
+    const bad = lib.blocks.filter((b: { group: string }) => b.group === "其它")
+      .map((b: { class: string }) => b.class);
+    expect(bad, `这些积木还没归组：\n${bad.join("\n")}`).toEqual([]);
+  });
+});
