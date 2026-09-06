@@ -164,38 +164,43 @@ class BackendI18nParityTest {
     }
 
     @Test
-    @DisplayName("★★ 占位符个数三语一致 —— 少一个，那种语言的用户就少看到一条关键信息")
-    void placeholderCountsMatchAcrossLocales() throws IOException {
-        Map<String, Integer> base = placeholdersOf(BASE);
+    @DisplayName("★★ 占位符三语一致 —— 下标错位与少一个同样致命，用户看到的是字面的 {1}")
+    void placeholdersMatchAcrossLocales() throws IOException {
+        Map<String, Set<String>> base = placeholdersOf(BASE);
 
         List<String> bad = new ArrayList<>();
         for (String locale : LOCALES) {
             String path = "i18n/messages_" + locale + ".properties";
-            Map<String, Integer> keys = placeholdersOf(path);
+            Map<String, Set<String>> keys = placeholdersOf(path);
             for (var e : base.entrySet()) {
-                Integer n = keys.get(e.getKey());
-                if (n != null && !n.equals(e.getValue())) {
-                    bad.add("%s · %s：中文 %d 个，%s %d 个"
-                            .formatted(locale, e.getKey(), e.getValue(), locale, n));
+                Set<String> other = keys.get(e.getKey());
+                if (other != null && !other.equals(e.getValue())) {
+                    bad.add("%s · %s：中文 %s，%s %s"
+                            .formatted(locale, e.getKey(), e.getValue(), locale, other));
                 }
             }
         }
 
         /*
-         * 三语键集一致（上面那条）与**每条文案里的占位符个数**一致，是两件事。
+         * 三语键集一致（上面那条）与**每条文案里的占位符**一致，是两件事。
          * 后者错了没有任何报错：MessageFormat 把多出来的参数直接丢掉 ——
          * 中文说「标题里的「秒杀」不能用：平台禁售词」，阿语只说「不能用」，
          * 而两边都是绿的。这一条与 message-placeholder 那两向合起来才闭合：
          * 那两向管的是「码与中文文案」，这一条管的是「中文文案与另外两种语言」。
+         *
+         * **比的是下标集合，不是个数。**第一版只比 size()，于是「中文 {0}、阿语 {1}」
+         * 这种错位两边都是 1、判为一致 —— 而抛出点只传一个参数，MessageFormat
+         * 找不到下标 1 的实参，就把 `{1}` 原样留在结果里：阿语用户看到一句话里嵌着
+         * 字面的 {1}。个数对不上与下标对不上，后果是同一种，判据不该只认前一种。
          */
         assertThat(bad)
                 .as("这些词条的占位符个数与中文对不上，参数会被静默丢掉：\n  %s", String.join("\n  ", bad))
                 .isEmpty();
     }
 
-    /** key → 文案里 {0}/{1}… 的个数 */
-    private static Map<String, Integer> placeholdersOf(String path) throws IOException {
-        Map<String, Integer> out = new LinkedHashMap<>();
+    /** key → 文案里出现过的占位符下标集合（{@code {0}} → "0"） */
+    private static Map<String, Set<String>> placeholdersOf(String path) throws IOException {
+        Map<String, Set<String>> out = new LinkedHashMap<>();
         for (String line : linesOf(path)) {
             int i = line.indexOf('=');
             if (i <= 0) {
@@ -206,7 +211,7 @@ class BackendI18nParityTest {
             while (m.find()) {
                 seen.add(m.group(1));
             }
-            out.put(line.substring(0, i).trim(), seen.size());
+            out.put(line.substring(0, i).trim(), seen);
         }
         return out;
     }

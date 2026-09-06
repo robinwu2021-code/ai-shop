@@ -59,11 +59,27 @@ class SceneChannelSeedTest {
     @Test
     @DisplayName("★ 反向：配置表里不许出现消费者不认识的场景码 —— 那一行永远不会被用到")
     void everySeededSceneIsHandled() {
-        List<String> unknown = mapper.selectList(Wrappers.<MsgSceneChannel>lambdaQuery()).stream()
+        List<String> seeded = mapper.selectList(Wrappers.<MsgSceneChannel>lambdaQuery()).stream()
                 .map(MsgSceneChannel::getSceneCode)
                 .distinct()
-                .filter(code -> !NotifyScene.ALL.contains(code))
                 .sorted()
+                .toList();
+
+        /*
+         * 先钉住**读到了东西**，再做差集。
+         *
+         * 没有这一条的话：种子迁移改名、测试 profile 换了库、或者这张表哪天挂上数据域过滤
+         * （本仓库带域表要 executeWithoutScope 才读得到），查询返回空集 ——
+         * 差集自然为空，断言通过，而这条守卫**一行都没查过**。
+         * 它守的正是「配置表里有一行谁都不读」，自己却可能什么都没读。
+         */
+        assertThat(seeded)
+                .as("场景×通道配置表一行都没读到 —— 种子没跑？还是这张表被数据域过滤挡住了？"
+                        + "读不到就等于没查，不能算通过")
+                .hasSizeGreaterThanOrEqualTo(NotifyScene.ALL.size());
+
+        List<String> unknown = seeded.stream()
+                .filter(code -> !NotifyScene.ALL.contains(code))
                 .toList();
 
         /*

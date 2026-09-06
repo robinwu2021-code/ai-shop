@@ -37,6 +37,8 @@
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+// DDL 解析只有一份 —— 见 ddl.mjs 的文件头「为什么必须只有一份」
+import { readSchema, MIGRATION_DIR, INVENTORY_MIGRATION_DIR } from "./lib/ddl.mjs";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 /* **目录，不是文件**：那份实体单文件按域拆开了，指向 index.ts 只会读到一份门面 */
@@ -260,26 +262,51 @@ export const DISMISSED = [
  *
  * <p>那它有什么用：让「已登记 8 个」旁边有一个可点名的清单，
  * 而不是一个谁都不知道有多大的空白。
+ *
+ * <p><b>解析走 `scripts/lib/ddl.mjs`，不自己写。</b>2026-09-06 第一版在这里手写了
+ * 第四份 CREATE TABLE 解析，把那份共用解析器早就修好的三个缺陷原样重现了一遍：
+ * 收尾写死 `) ENGINE`（14 张表用的是合法的 `) COMMENT='…';`，整张匹配不上）、
+ * 只扫平台迁移目录（进销存是另一条 Flyway 历史）、只读建表体不重放
+ * `ADD COLUMN` / `MODIFY COLUMN`（后加的列与改过的列注释全看不见）。
+ * 后果不是报错是**静默少数**：可见面报 134，实际 206，少 39%，
+ * 而这个数正是下面棘轮与 `known-unregistered-value-domains.txt` 的依据。
+ * ddl.mjs 的文件头写着这套逻辑曾在三个脚本里各写一遍、「修一处等于漏两处」——
+ * 那一版是第四份。
  */
 export function surface() {
-  const dir = join(ROOT, "backend/shop-app/src/main/resources/db/migration");
+  const tables = readSchema(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR]);
+
+  /*
+   * 扫描面的下界。**没有这一条，解析器哪天读不到东西，这里会安静地返回空 Map** ——
+   * 未判定面变成 0、棘轮里每一行都成了「已判定完」，一片绿。
+   * 这就是本仓库反复付过代价的形状：「找出违规」型判据，少扫等于全绿。
+   */
+  if (tables.size < 150) {
+    throw new Error(
+      `DDL 只解析出 ${tables.size} 张表（下界 150）—— 解析器或迁移目录出问题了。`
+        + "不抛的话可见面会静默变空，未判定面跟着归零，而那看起来像是活干完了。",
+    );
+  }
+
   const out = new Map();
-  for (const f of readdirSync(dir).filter((x) => x.endsWith(".sql")).sort()) {
-    const src = readFileSync(join(dir, f), "utf8");
-    for (const b of src.matchAll(/CREATE TABLE IF NOT EXISTS (\w+)\s*\n\(([\s\S]*?)\n\)\s*ENGINE/g)) {
-      for (const line of b[2].split("\n")) {
-        const col = line.match(/^\s+(\w+)\s+\w/);
-        const c = line.match(/COMMENT\s+'([^']*)'/);
-        if (!col || !c) continue;
-        const eq = [...c[1].matchAll(/\b([A-Z][A-Z0-9_]+)\s*=/g)].map((x) => x[1]);
-        const vals = eq.length
-          ? eq
-          : [...c[1].split(/[：:，,（(]/)[0].matchAll(/([A-Z][A-Z0-9_]{1,})/g)].map((x) => x[1]);
-        if (vals.length >= 2) out.set(`${b[1]}.${col[1]}`, vals);
-      }
+  for (const [table, def] of tables) {
+    for (const col of def.cols ?? []) {
+      const vals = valuesInComment(col.comment ?? "");
+      if (vals.length >= 2) out.set(`${table}.${col.name}`, vals);
     }
   }
   return out;
+}
+
+/**
+ * 列注释里的取值域。两种写法都要认（与 {@link ddlValues} 同一套判据）：
+ *   `A/B/C：说明`      —— 取值挤在开头
+ *   `A=说明 / B=说明`  —— 每个取值自带说明
+ */
+function valuesInComment(comment) {
+  const eq = [...comment.matchAll(/\b([A-Z][A-Z0-9_]+)\s*=/g)].map((x) => x[1]);
+  if (eq.length) return eq;
+  return [...comment.split(/[：:，,（(]/)[0].matchAll(/([A-Z][A-Z0-9_]{1,})/g)].map((x) => x[1]);
 }
 
 /** 已判定 = 登记进 FIELDS ∪ 显式驳回 */
