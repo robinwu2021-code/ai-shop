@@ -63,7 +63,7 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
 
     @Override
     public boolean supports(String eventType) {
-        return eventType != null && eventType.startsWith("INV_MIRROR_");
+        return eventType != null && eventType.startsWith(InvMirrorEvent.PREFIX);
     }
 
     @Override
@@ -71,7 +71,7 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
         JsonNode p = json.readTree(event.getPayload());
         String ref = text(p, "ref");
         // 手改那一类没有 ref（它的自然键是 skuNo + 目标值），单独放行
-        if ("INV_MIRROR_ADJUST".equals(event.getEventType())) {
+        if (InvMirrorEvent.ADJUST.equals(event.getEventType())) {
             adjust(p);
             return;
         }
@@ -83,11 +83,11 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
         }
 
         switch (event.getEventType()) {
-            case "INV_MIRROR_RESERVE" -> reserve(ref, p);
-            case "INV_MIRROR_COMMIT" -> settled(ref, () -> reservations.commitByRef(ref, "MIRROR"));
-            case "INV_MIRROR_RELEASE" -> settled(ref, () -> reservations.releaseByRef(ref));
-            case "INV_MIRROR_RESTORE" -> restore(ref, p);
-            case "INV_MIRROR_ADJUST" -> adjust(p);
+            case InvMirrorEvent.RESERVE -> reserve(ref, p);
+            case InvMirrorEvent.COMMIT -> settled(ref, () -> reservations.commitByRef(ref, "MIRROR"));
+            case InvMirrorEvent.RELEASE -> settled(ref, () -> reservations.releaseByRef(ref));
+            case InvMirrorEvent.RESTORE -> restore(ref, p);
+            case InvMirrorEvent.ADJUST -> adjust(p);
             default -> log.warn("不认识的镜像事件类型：{}", event.getEventType());
         }
     }

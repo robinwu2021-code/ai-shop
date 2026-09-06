@@ -1,5 +1,6 @@
 package ai.neargo.shop.invbridge.port;
 
+import ai.neargo.shop.invbridge.InvMirrorEvent;
 import ai.neargo.shop.event.DomainEvent;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.product.port.StockPortImpl;
@@ -77,26 +78,26 @@ public class DualWriteStockPort implements StockPort {
     public List<String> lock(String lockNo, List<StockPort.SkuQty> items) {
         // 平台先做。**不足会抛，事件根本发不出去** —— 这正是要的
         List<String> failed = platform.lock(lockNo, items);
-        mirror("MIRROR_RESERVE", lockNo, items);
+        mirror(InvMirrorEvent.RESERVE, lockNo, items);
         return failed;
     }
 
     @Override
     public void release(String lockNo) {
         platform.release(lockNo);
-        mirror("MIRROR_RELEASE", lockNo, List.of());
+        mirror(InvMirrorEvent.RELEASE, lockNo, List.of());
     }
 
     @Override
     public void confirm(String lockNo) {
         platform.confirm(lockNo);
-        mirror("MIRROR_COMMIT", lockNo, List.of());
+        mirror(InvMirrorEvent.COMMIT, lockNo, List.of());
     }
 
     @Override
     public void restore(String restoreNo, List<StockPort.SkuQty> items) {
         platform.restore(restoreNo, items);
-        mirror("MIRROR_RESTORE", restoreNo, items);
+        mirror(InvMirrorEvent.RESTORE, restoreNo, items);
     }
 
     @Override
@@ -137,8 +138,13 @@ public class DualWriteStockPort implements StockPort {
 
         @Override
         public String eventType() {
-            // 带 INV_ 前缀：平台的 eventType 是全局的，不带前缀会与别的域撞
-            return "INV_" + type;
+            /*
+             * **不再拼接**：type 传进来时就是 InvMirrorEvent 里的完整常量。
+             * 此前是 `"INV_" + type`，而调用方传的是半个名字（"MIRROR_RESERVE"）——
+             * 于是完整事件名在代码里从未以完整形态出现过，grep 搜不到生产方。
+             * 前缀本身仍然必要，它现在长在常量里（见 InvMirrorEvent 类注释）。
+             */
+            return type;
         }
     }
 
@@ -158,7 +164,7 @@ public class DualWriteStockPort implements StockPort {
 
         @Override
         public String eventType() {
-            return "INV_MIRROR_ADJUST";
+            return InvMirrorEvent.ADJUST;
         }
     }
 }
