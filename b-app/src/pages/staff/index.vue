@@ -145,10 +145,10 @@ onShow(load);
               {{ s.loginPhone }}
             </text>
             <!-- 名字已经回落成「老板」时不再挂同名标签，两个「老板」并排是噪声 -->
-            <text v-if="s.isOwner && nameOf(s) !== $t('staff.owner')" class="txt-caption tag tag--primary">
+            <text v-if="s.isOwner && nameOf(s) !== $t('staff.owner')" class="sh-chip sh-chip--primary">
               {{ $t("staff.owner") }}
             </text>
-            <text v-else-if="s.status !== 'ACTIVE'" class="txt-caption tag">{{ $t("staff.disabled") }}</text>
+            <text v-else-if="s.status !== 'ACTIVE'" class="sh-chip">{{ $t("staff.disabled") }}</text>
           </view>
           <text class="txt-caption row__sub sh-muted">{{ summary(s) }}</text>
         </view>
@@ -182,7 +182,7 @@ onShow(load);
         <view class="sh-fill" @tap="openRole(r)">
           <view class="row__top sh-row">
             <text class="txt-strong">{{ r.name }}</text>
-            <text v-if="r.builtin" class="txt-caption tag">{{ $t("staff.builtin") }}</text>
+            <text v-if="r.builtin" class="sh-chip">{{ $t("staff.builtin") }}</text>
           </view>
           <text class="txt-caption row__sub sh-muted">
             {{ permCount(r) }}　{{ $t("staff.roleUsed", { n: r.usedBy }) }}
@@ -232,16 +232,6 @@ onShow(load);
   margin-top: 8rpx;
 }
 
-.tag {
-  padding: 4rpx 14rpx;
-  border-radius: 9999px;
-  /* --sh-fill 不存在，此前 tag 底色是透明的（与 .sh-chip 同款，用 --sh-faint） */
-  background: var(--sh-faint);
-}
-.tag--primary {
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
-}
 
 
 .field {

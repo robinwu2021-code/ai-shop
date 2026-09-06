@@ -33,7 +33,7 @@ withDefaults(
     <sh-cover class="sh-center skurow__cover" :src="cover"></sh-cover>
     <view class="sh-fill skurow__main">
       <text class="txt-strong skurow__title">{{ title }}</text>
-      <text v-if="spec" class="txt-caption txt-quiet skurow__spec">{{ spec }}</text>
+      <text v-if="spec" class="sh-hint">{{ spec }}</text>
       <slot />
     </view>
     <slot name="right" />
@@ -74,10 +74,5 @@ withDefaults(
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.skurow__spec {
-  display: block;
-  color: var(--sh-sub);
-  margin-top: 8rpx;
 }
 </style>

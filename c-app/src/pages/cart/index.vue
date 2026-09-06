@@ -35,10 +35,6 @@ function toggleEdit() {
 function maxOf(it: CartItem): number | null {
   return typeof it.available === "number" ? it.available : null;
 }
-function atMax(it: CartItem): boolean {
-  const max = maxOf(it);
-  return max !== null ? it.qty >= max : it.qty >= CART_RULES.maxQtyPerLine;
-}
 /** 库存快没了才提醒。有货时报数字是噪音，只有「快没了」才改变他的决定 */
 function lowStock(it: CartItem): boolean {
   const max = maxOf(it);
@@ -93,20 +89,6 @@ function tapAll() {
 }
 
 // ── 数量 ──────────────────────────────────────────────────────────────
-
-/**
- * 减到 1 就停住。**减号的语义是减数量，不是删除** ——
- * 此前它在 qty=1 时传 0 下去，而后端与 mock 都把 `qty<=0` 当删除：
- * 商品当场消失，没有任何确认，也没有撤销。删除有它自己的入口（编辑态）。
- */
-function dec(it: CartItem) {
-  if (it.qty <= 1) return;
-  void cart.update(it.skuNo, it.qty - 1);
-}
-function inc(it: CartItem) {
-  if (atMax(it)) return;
-  void cart.update(it.skuNo, it.qty + 1);
-}
 
 /** 点数字直接输入。一次买 20 件不该点 19 下加号 */
 async function askQty(it: CartItem) {
@@ -269,23 +251,13 @@ onShow(() => cart.load());
                   {{ $t("cart.stockLeft", { n: it.available }) }}
                 </text>
               </view>
-              <view class="stepper sh-row" @tap.stop>
-                <view
-                  class="stepper__btn sh-hit sh-center"
-                  :class="{ 'is-off': it.qty <= 1 }"
-                  @tap.stop="dec(it)"
-                >
-                  <sh-icon name="minus" :size="26" color="var(--sh-ink)"></sh-icon>
-                </view>
-                <text class="txt-strong stepper__num sh-num" @tap.stop="askQty(it)">{{ it.qty }}</text>
-                <view
-                  class="stepper__btn sh-hit sh-center"
-                  :class="{ 'is-off': atMax(it) }"
-                  @tap.stop="inc(it)"
-                >
-                  <sh-icon name="plus" :size="26" color="var(--sh-ink)"></sh-icon>
-                </view>
-              </view>
+              <sh-stepper
+                :model-value="it.qty"
+                :max="maxOf(it) ?? CART_RULES.maxQtyPerLine"
+                editable
+                @change="(n: number) => cart.update(it.skuNo, n)"
+                @edit="askQty(it)"
+              ></sh-stepper>
             </view>
           </biz-sku-row>
         </view>
@@ -460,27 +432,6 @@ onShow(() => cart.load());
   margin-top: 20rpx;
 }
 
-.stepper {
-  flex: none;
-  gap: 8rpx;
-  background: var(--sh-faint);
-  border-radius: 9999px;
-  padding: 8rpx;
-}
-.stepper__btn {
-  width: 52rpx;
-  height: 52rpx;
-  border-radius: 9999px;
-  background: var(--sh-surface);
-}
-/* 到头了就明说，别让他反复点一个没反应的按钮 */
-.stepper__btn.is-off {
-  opacity: 0.35;
-}
-.stepper__num {
-  min-width: 64rpx;
-  text-align: center;
-}
 
 
 .bar__all {

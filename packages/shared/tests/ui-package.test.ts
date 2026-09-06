@@ -763,3 +763,45 @@ describe("版面：页面不自己画容器", () => {
     ).toEqual([]);
   });
 });
+
+/*
+ * 《规范·版面》里的表**必须真的说了话**。
+ *
+ * 这一条不是形式主义。2026-09-06 读那份文档时，「行与列表」的「什么时候用」
+ * 一整列是 `—`，「浮层层级」的 z-index 一整列也是 `—` —— 而文档照样生成、
+ * 照样有标题有表头有分隔线，`check-generated-docs` 也照样绿（它只比「重跑一遍
+ * 产物变不变」，不看产物里有没有内容）。
+ *
+ * 两处的成因不同，但症状是同一个：
+ *   · z-index：组件改用 `var(--sh-z-*)` 之后，生成器还在找字面量 `\d+`，找不到就填 `—`
+ *   · 什么时候用：`BLOCK_NOTES` 里没登记，缺省就是 `—`
+ *
+ * 也就是说**生成器的每一个「取不到就填占位符」都是一个静默丢失点**。
+ * 这里把占位符本身变成失败条件：宁可让生成器报错，也不要一份看着完整的空表。
+ */
+describe("《规范·版面》不许有空格子", () => {
+  const doc = readFileSync(join(ROOT, "docs/technical/design/规范-版面.md"), "utf8");
+
+  it("文档在，且有那几张表", () => {
+    for (const h of ["## 容器：四个，页面不自己画", "## 行与列表", "## 浮层层级"]) {
+      expect(doc, `《规范·版面》缺这一节：${h}`).toContain(h);
+    }
+  });
+
+  it("表里没有 `—` 占位（末列的「别拿它当」除外 —— 有些件确实没有近邻）", () => {
+    const bad: string[] = [];
+    for (const line of doc.split("\n")) {
+      if (!line.startsWith("| `")) continue;               // 只看数据行
+      const cells = line.split("|").slice(1, -1).map((c) => c.trim());
+      // 末列是「别拿它当」：`.sh-seg--on` 这类没有需要提防的近邻，那一格空是对的
+      for (const c of cells.slice(0, -1)) {
+        if (c === "—" || c === "") bad.push(line.trim());
+      }
+    }
+    expect(
+      [...new Set(bad)],
+      "这些格子是生成器没取到值填的占位符 —— 修生成器（BLOCK_NOTES / z-index 解析），别手改文档：\n" +
+        [...new Set(bad)].join("\n"),
+    ).toEqual([]);
+  });
+});

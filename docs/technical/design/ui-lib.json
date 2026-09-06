@@ -223,62 +223,6 @@
   },
   "blocks": [
     {
-      "class": ".field__head",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "display": "flex",
-        "align-items": "center",
-        "justify-content": "space-between",
-        "margin-bottom": "12rpx"
-      },
-      "px": {
-        "display": "flex",
-        "align-items": "center",
-        "justify-content": "space-between",
-        "margin-bottom": "6px"
-      },
-      "usage": {
-        "b-app": 5,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-badge-count",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "min-width": "32rpx",
-        "height": "32rpx",
-        "padding": "0 8rpx",
-        "border-radius": "9999px",
-        "background": "var(--sh-danger)",
-        "color": "#fff",
-        "font-size": "24rpx",
-        "font-weight": "600",
-        "line-height": "32rpx",
-        "text-align": "center"
-      },
-      "px": {
-        "min-width": "16px",
-        "height": "16px",
-        "padding": "0 4px",
-        "border-radius": "9999px",
-        "background": "var(--sh-danger)",
-        "color": "#fff",
-        "font-size": "12px",
-        "font-weight": "600",
-        "line-height": "16px",
-        "text-align": "center"
-      },
-      "usage": {
-        "b-app": 2,
-        "c-app": 2
-      }
-    },
-    {
       "class": ".sh-block__head--tabs",
       "group": "其它",
       "when": "—",
@@ -294,106 +238,6 @@
       "usage": {
         "b-app": 0,
         "c-app": 3
-      }
-    },
-    {
-      "class": ".sh-cell",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "padding": "24rpx var(--sh-pad-page, 28rpx)"
-      },
-      "px": {
-        "padding": "12px var(--sh-pad-page, 14px)"
-      },
-      "usage": {
-        "b-app": 13,
-        "c-app": 17
-      }
-    },
-    {
-      "class": ".sh-cells",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "display": "flex",
-        "flex-direction": "column",
-        "gap": "2rpx",
-        "background": "var(--sh-surface)",
-        "border-radius": "24rpx",
-        "overflow": "hidden"
-      },
-      "px": {
-        "display": "flex",
-        "flex-direction": "column",
-        "gap": "1px",
-        "background": "var(--sh-surface)",
-        "border-radius": "12px",
-        "overflow": "hidden"
-      },
-      "usage": {
-        "b-app": 4,
-        "c-app": 4
-      }
-    },
-    {
-      "class": ".sh-center",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "display": "flex",
-        "align-items": "center",
-        "justify-content": "center"
-      },
-      "px": {
-        "display": "flex",
-        "align-items": "center",
-        "justify-content": "center"
-      },
-      "usage": {
-        "b-app": 7,
-        "c-app": 28
-      }
-    },
-    {
-      "class": ".sh-chip--icon",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "display": "inline-flex",
-        "align-items": "center",
-        "gap": "6rpx"
-      },
-      "px": {
-        "display": "inline-flex",
-        "align-items": "center",
-        "gap": "3px"
-      },
-      "usage": {
-        "b-app": 5,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-chip--solid",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "background": "var(--sh-primary)",
-        "color": "var(--sh-on-primary)"
-      },
-      "px": {
-        "background": "var(--sh-primary)",
-        "color": "var(--sh-on-primary)"
-      },
-      "usage": {
-        "b-app": 3,
-        "c-app": 0
       }
     },
     {
@@ -414,64 +258,6 @@
       "usage": {
         "b-app": 4,
         "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-fill",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "flex": "1",
-        "min-width": "0"
-      },
-      "px": {
-        "flex": "1",
-        "min-width": "0"
-      },
-      "usage": {
-        "b-app": 86,
-        "c-app": 39
-      }
-    },
-    {
-      "class": ".sh-hint",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "display": "block",
-        "margin-top": "8rpx",
-        "font-size": "24rpx",
-        "color": "var(--sh-sub)",
-        "line-height": "1.5"
-      },
-      "px": {
-        "display": "block",
-        "margin-top": "4px",
-        "font-size": "12px",
-        "color": "var(--sh-sub)",
-        "line-height": "1.5"
-      },
-      "usage": {
-        "b-app": 112,
-        "c-app": 8
-      }
-    },
-    {
-      "class": ".sh-hit",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "position": "relative"
-      },
-      "px": {
-        "position": "relative"
-      },
-      "usage": {
-        "b-app": 5,
-        "c-app": 14
       }
     },
     {
@@ -575,204 +361,6 @@
       }
     },
     {
-      "class": ".sh-notice",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "padding": "20rpx 24rpx",
-        "border-radius": "24rpx",
-        "background": "var(--sh-primary-tint)",
-        "color": "var(--sh-primary-text)"
-      },
-      "px": {
-        "padding": "10px 12px",
-        "border-radius": "12px",
-        "background": "var(--sh-primary-tint)",
-        "color": "var(--sh-primary-text)"
-      },
-      "usage": {
-        "b-app": 20,
-        "c-app": 30
-      }
-    },
-    {
-      "class": ".sh-notice--danger",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "background": "var(--sh-danger-tint)",
-        "color": "var(--sh-danger)"
-      },
-      "px": {
-        "background": "var(--sh-danger-tint)",
-        "color": "var(--sh-danger)"
-      },
-      "usage": {
-        "b-app": 5,
-        "c-app": 6
-      }
-    },
-    {
-      "class": ".sh-notice--muted",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "background": "var(--sh-faint)",
-        "color": "var(--sh-sub)"
-      },
-      "px": {
-        "background": "var(--sh-faint)",
-        "color": "var(--sh-sub)"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 8
-      }
-    },
-    {
-      "class": ".sh-notice--success",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "background": "var(--sh-success-tint)",
-        "color": "var(--sh-success)"
-      },
-      "px": {
-        "background": "var(--sh-success-tint)",
-        "color": "var(--sh-success)"
-      },
-      "usage": {
-        "b-app": 1,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-notice--warning",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "background": "var(--sh-warning-tint)",
-        "color": "var(--sh-warning)"
-      },
-      "px": {
-        "background": "var(--sh-warning-tint)",
-        "color": "var(--sh-warning)"
-      },
-      "usage": {
-        "b-app": 8,
-        "c-app": 8
-      }
-    },
-    {
-      "class": ".sh-row",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "display": "flex",
-        "align-items": "center",
-        "gap": "16rpx"
-      },
-      "px": {
-        "display": "flex",
-        "align-items": "center",
-        "gap": "8px"
-      },
-      "usage": {
-        "b-app": 267,
-        "c-app": 141
-      }
-    },
-    {
-      "class": ".sh-row--baseline",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "align-items": "baseline"
-      },
-      "px": {
-        "align-items": "baseline"
-      },
-      "usage": {
-        "b-app": 31,
-        "c-app": 3
-      }
-    },
-    {
-      "class": ".sh-row--between",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "justify-content": "space-between"
-      },
-      "px": {
-        "justify-content": "space-between"
-      },
-      "usage": {
-        "b-app": 127,
-        "c-app": 77
-      }
-    },
-    {
-      "class": ".sh-row--divided",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "padding": "16rpx 0"
-      },
-      "px": {
-        "padding": "8px 0"
-      },
-      "usage": {
-        "b-app": 7,
-        "c-app": 5
-      }
-    },
-    {
-      "class": ".sh-row--top",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "align-items": "flex-start"
-      },
-      "px": {
-        "align-items": "flex-start"
-      },
-      "usage": {
-        "b-app": 1,
-        "c-app": 29
-      }
-    },
-    {
-      "class": ".sh-scrollx",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "overflow-x": "auto",
-        "scrollbar-width": "none",
-        "-ms-overflow-style": "none"
-      },
-      "px": {
-        "overflow-x": "auto",
-        "scrollbar-width": "none",
-        "-ms-overflow-style": "none"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 1
-      }
-    },
-    {
       "class": ".sh-scrollx::-webkit-scrollbar",
       "group": "其它",
       "when": "—",
@@ -790,132 +378,6 @@
       "usage": {
         "b-app": 0,
         "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-searchbox",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "display": "flex",
-        "align-items": "center",
-        "gap": "12rpx",
-        "min-height": "88rpx",
-        "padding": "0 28rpx",
-        "border-radius": "9999px",
-        "background": "var(--sh-surface)"
-      },
-      "px": {
-        "display": "flex",
-        "align-items": "center",
-        "gap": "6px",
-        "min-height": "44px",
-        "padding": "0 14px",
-        "border-radius": "9999px",
-        "background": "var(--sh-surface)"
-      },
-      "usage": {
-        "b-app": 1,
-        "c-app": 1
-      }
-    },
-    {
-      "class": ".sh-seg",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "padding": "20rpx 28rpx",
-        "border-radius": "24rpx",
-        "background": "var(--sh-faint)",
-        "color": "var(--sh-ink)",
-        "font-size": "26rpx"
-      },
-      "px": {
-        "padding": "10px 14px",
-        "border-radius": "12px",
-        "background": "var(--sh-faint)",
-        "color": "var(--sh-ink)",
-        "font-size": "13px"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 6
-      }
-    },
-    {
-      "class": ".sh-seg--fill",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "flex": "1",
-        "text-align": "center"
-      },
-      "px": {
-        "flex": "1",
-        "text-align": "center"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 2
-      }
-    },
-    {
-      "class": ".sh-seg--off",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "opacity": "0.35"
-      },
-      "px": {
-        "opacity": "0.35"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 2
-      }
-    },
-    {
-      "class": ".sh-seg--on",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "background": "var(--sh-primary)",
-        "color": "var(--sh-on-primary)",
-        "font-weight": "600"
-      },
-      "px": {
-        "background": "var(--sh-primary)",
-        "color": "var(--sh-on-primary)",
-        "font-weight": "600"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 6
-      }
-    },
-    {
-      "class": ".sh-wrap",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "display": "flex",
-        "flex-wrap": "wrap",
-        "gap": "12rpx"
-      },
-      "px": {
-        "display": "flex",
-        "flex-wrap": "wrap",
-        "gap": "6px"
-      },
-      "usage": {
-        "b-app": 53,
-        "c-app": 19
       }
     },
     {
@@ -995,7 +457,7 @@
       },
       "usage": {
         "b-app": 32,
-        "c-app": 16
+        "c-app": 14
       }
     },
     {
@@ -1039,7 +501,7 @@
       },
       "usage": {
         "b-app": 76,
-        "c-app": 57
+        "c-app": 53
       }
     },
     {
@@ -1060,8 +522,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 293,
-        "c-app": 232
+        "b-app": 283,
+        "c-app": 230
       }
     },
     {
@@ -1170,8 +632,8 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 129,
-        "c-app": 39
+        "b-app": 130,
+        "c-app": 36
       }
     },
     {
@@ -1193,7 +655,7 @@
       },
       "usage": {
         "b-app": 115,
-        "c-app": 90
+        "c-app": 87
       }
     },
     {
@@ -1280,6 +742,142 @@
       "usage": {
         "b-app": 210,
         "c-app": 70
+      }
+    },
+    {
+      "class": ".sh-cell",
+      "group": "容器",
+      "when": ".sh-cells 里的一行，内边距跟着 --sh-pad-page 走",
+      "avoid": "别单独用，它没有底色",
+      "decl": {
+        "padding": "24rpx var(--sh-pad-page, 28rpx)"
+      },
+      "px": {
+        "padding": "12px var(--sh-pad-page, 14px)"
+      },
+      "usage": {
+        "b-app": 13,
+        "c-app": 17
+      }
+    },
+    {
+      "class": ".sh-cells",
+      "group": "容器",
+      "when": "一组设置项/入口挤在一块白底上，行间只留 2rpx 缝",
+      "avoid": "行与行要分开成卡的用 .sh-card",
+      "decl": {
+        "display": "flex",
+        "flex-direction": "column",
+        "gap": "2rpx",
+        "background": "var(--sh-surface)",
+        "border-radius": "24rpx",
+        "overflow": "hidden"
+      },
+      "px": {
+        "display": "flex",
+        "flex-direction": "column",
+        "gap": "1px",
+        "background": "var(--sh-surface)",
+        "border-radius": "12px",
+        "overflow": "hidden"
+      },
+      "usage": {
+        "b-app": 4,
+        "c-app": 4
+      }
+    },
+    {
+      "class": ".sh-notice",
+      "group": "容器",
+      "when": "一段话压在语义色 tint 底上：主色档（说明、进行中）",
+      "avoid": "可点的用 .sh-btn，短标签用 .sh-chip",
+      "decl": {
+        "padding": "20rpx 24rpx",
+        "border-radius": "24rpx",
+        "background": "var(--sh-primary-tint)",
+        "color": "var(--sh-primary-text)"
+      },
+      "px": {
+        "padding": "10px 12px",
+        "border-radius": "12px",
+        "background": "var(--sh-primary-tint)",
+        "color": "var(--sh-primary-text)"
+      },
+      "usage": {
+        "b-app": 20,
+        "c-app": 30
+      }
+    },
+    {
+      "class": ".sh-notice--danger",
+      "group": "容器",
+      "when": "提示条的**出错**档：驳回、失败、被停用",
+      "avoid": "只是提醒用 --warning",
+      "decl": {
+        "background": "var(--sh-danger-tint)",
+        "color": "var(--sh-danger)"
+      },
+      "px": {
+        "background": "var(--sh-danger-tint)",
+        "color": "var(--sh-danger)"
+      },
+      "usage": {
+        "b-app": 5,
+        "c-app": 6
+      }
+    },
+    {
+      "class": ".sh-notice--muted",
+      "group": "容器",
+      "when": "提示条的**中性**档：没有语义，只是这段话与正文分开",
+      "avoid": "有语义就挑上面四档",
+      "decl": {
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 8
+      }
+    },
+    {
+      "class": ".sh-notice--success",
+      "group": "容器",
+      "when": "提示条的**完成**档：通过、已结算",
+      "avoid": "进行中用主色档",
+      "decl": {
+        "background": "var(--sh-success-tint)",
+        "color": "var(--sh-success)"
+      },
+      "px": {
+        "background": "var(--sh-success-tint)",
+        "color": "var(--sh-success)"
+      },
+      "usage": {
+        "b-app": 1,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-notice--warning",
+      "group": "容器",
+      "when": "提示条的**提醒**档：要注意但还没出错",
+      "avoid": "已经出错用 --danger",
+      "decl": {
+        "background": "var(--sh-warning-tint)",
+        "color": "var(--sh-warning)"
+      },
+      "px": {
+        "background": "var(--sh-warning-tint)",
+        "color": "var(--sh-warning)"
+      },
+      "usage": {
+        "b-app": 8,
+        "c-app": 8
       }
     },
     {
@@ -1461,6 +1059,30 @@
       }
     },
     {
+      "class": ".sh-hint",
+      "group": "排版",
+      "when": "紧跟在某一行下面的一句小字说明（block + 上缝 8rpx）",
+      "avoid": "整段独立的说明用 .sh-muted",
+      "decl": {
+        "display": "block",
+        "margin-top": "8rpx",
+        "font-size": "24rpx",
+        "color": "var(--sh-sub)",
+        "line-height": "1.5"
+      },
+      "px": {
+        "display": "block",
+        "margin-top": "4px",
+        "font-size": "12px",
+        "color": "var(--sh-sub)",
+        "line-height": "1.5"
+      },
+      "usage": {
+        "b-app": 112,
+        "c-app": 10
+      }
+    },
+    {
       "class": ".sh-num",
       "group": "数字",
       "when": "金额、结存、差异、百分比 —— 等宽且 RTL 下强制 LTR",
@@ -1478,8 +1100,42 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 222,
-        "c-app": 133
+        "b-app": 223,
+        "c-app": 130
+      }
+    },
+    {
+      "class": ".sh-badge-count",
+      "group": "标签",
+      "when": "红底白字的计数小圆点：未读数、购物车件数",
+      "avoid": "不带数字的红点另说",
+      "decl": {
+        "min-width": "32rpx",
+        "height": "32rpx",
+        "padding": "0 8rpx",
+        "border-radius": "9999px",
+        "background": "var(--sh-danger)",
+        "color": "#fff",
+        "font-size": "24rpx",
+        "font-weight": "600",
+        "line-height": "32rpx",
+        "text-align": "center"
+      },
+      "px": {
+        "min-width": "16px",
+        "height": "16px",
+        "padding": "0 4px",
+        "border-radius": "9999px",
+        "background": "var(--sh-danger)",
+        "color": "#fff",
+        "font-size": "12px",
+        "font-weight": "600",
+        "line-height": "16px",
+        "text-align": "center"
+      },
+      "usage": {
+        "b-app": 2,
+        "c-app": 2
       }
     },
     {
@@ -1508,7 +1164,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 121,
+        "b-app": 131,
         "c-app": 61
       }
     },
@@ -1526,7 +1182,7 @@
         "color": "var(--sh-danger)"
       },
       "usage": {
-        "b-app": 4,
+        "b-app": 6,
         "c-app": 9
       }
     },
@@ -1569,6 +1225,26 @@
       }
     },
     {
+      "class": ".sh-chip--icon",
+      "group": "标签",
+      "when": "里面带图标的 chip（选中的勾、可删的 ✕）",
+      "avoid": "纯文字用 .sh-chip",
+      "decl": {
+        "display": "inline-flex",
+        "align-items": "center",
+        "gap": "6rpx"
+      },
+      "px": {
+        "display": "inline-flex",
+        "align-items": "center",
+        "gap": "3px"
+      },
+      "usage": {
+        "b-app": 5,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".sh-chip--primary",
       "group": "标签",
       "when": "选中态 / 与主色相关的状态",
@@ -1582,8 +1258,26 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 65,
+        "b-app": 68,
         "c-app": 27
+      }
+    },
+    {
+      "class": ".sh-chip--solid",
+      "group": "标签",
+      "when": "实心主色 chip：当前选中的那一个",
+      "avoid": "未选中用 .sh-chip",
+      "decl": {
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)"
+      },
+      "px": {
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)"
+      },
+      "usage": {
+        "b-app": 3,
+        "c-app": 0
       }
     },
     {
@@ -1602,6 +1296,262 @@
       "usage": {
         "b-app": 11,
         "c-app": 6
+      }
+    },
+    {
+      "class": ".sh-center",
+      "group": "行与列",
+      "when": "内容摆正中间的方块",
+      "avoid": "只要横向居中用 text-align",
+      "decl": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "center"
+      },
+      "px": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "center"
+      },
+      "usage": {
+        "b-app": 9,
+        "c-app": 22
+      }
+    },
+    {
+      "class": ".sh-fill",
+      "group": "行与列",
+      "when": "占满剩余宽度并允许被压缩（`flex:1;min-width:0`）",
+      "avoid": "定宽的那一侧别挂",
+      "decl": {
+        "flex": "1",
+        "min-width": "0"
+      },
+      "px": {
+        "flex": "1",
+        "min-width": "0"
+      },
+      "usage": {
+        "b-app": 86,
+        "c-app": 39
+      }
+    },
+    {
+      "class": ".sh-hit",
+      "group": "行与列",
+      "when": "把点按面积撑到 88rpx 以上，而不改变它看上去的大小",
+      "avoid": "本来就够大的别挂",
+      "decl": {
+        "position": "relative"
+      },
+      "px": {
+        "position": "relative"
+      },
+      "usage": {
+        "b-app": 7,
+        "c-app": 8
+      }
+    },
+    {
+      "class": ".sh-row",
+      "group": "行与列",
+      "when": "一行之内的横排：图标 + 文字 + 右侧值，纵向居中，缝 16rpx",
+      "avoid": "会折行的一堆用 .sh-wrap",
+      "decl": {
+        "display": "flex",
+        "align-items": "center",
+        "gap": "16rpx"
+      },
+      "px": {
+        "display": "flex",
+        "align-items": "center",
+        "gap": "8px"
+      },
+      "usage": {
+        "b-app": 274,
+        "c-app": 143
+      }
+    },
+    {
+      "class": ".sh-row--baseline",
+      "group": "行与列",
+      "when": "两端对齐但按**基线**：左右字号不同时用它，两段字才坐在同一条线上",
+      "avoid": "字号一样就别加，center 更稳",
+      "decl": {
+        "align-items": "baseline"
+      },
+      "px": {
+        "align-items": "baseline"
+      },
+      "usage": {
+        "b-app": 37,
+        "c-app": 8
+      }
+    },
+    {
+      "class": ".sh-row--between",
+      "group": "行与列",
+      "when": "左右两端对齐，且左右**字号一样**",
+      "avoid": "字号不一样再叠 .sh-row--baseline",
+      "decl": {
+        "justify-content": "space-between"
+      },
+      "px": {
+        "justify-content": "space-between"
+      },
+      "usage": {
+        "b-app": 127,
+        "c-app": 77
+      }
+    },
+    {
+      "class": ".sh-row--divided",
+      "group": "行与列",
+      "when": "连排的行之间画一道发丝线（第一行不画）",
+      "avoid": "行与行之间要留白的用 .sh-cells",
+      "decl": {
+        "padding": "16rpx 0"
+      },
+      "px": {
+        "padding": "8px 0"
+      },
+      "usage": {
+        "b-app": 7,
+        "c-app": 5
+      }
+    },
+    {
+      "class": ".sh-row--top",
+      "group": "行与列",
+      "when": "两端对齐但顶对齐：右边的值会折成两行时用",
+      "avoid": "单行值用 .sh-row--between",
+      "decl": {
+        "align-items": "flex-start"
+      },
+      "px": {
+        "align-items": "flex-start"
+      },
+      "usage": {
+        "b-app": 1,
+        "c-app": 29
+      }
+    },
+    {
+      "class": ".sh-scrollx",
+      "group": "行与列",
+      "when": "横向滚动一排（隐藏滚动条）",
+      "avoid": "会折行的用 .sh-wrap",
+      "decl": {
+        "overflow-x": "auto",
+        "scrollbar-width": "none",
+        "-ms-overflow-style": "none"
+      },
+      "px": {
+        "overflow-x": "auto",
+        "scrollbar-width": "none",
+        "-ms-overflow-style": "none"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 1
+      }
+    },
+    {
+      "class": ".sh-seg",
+      "group": "行与列",
+      "when": "分段/筛选里的一格：弱色底、选中翻主色",
+      "avoid": "整块可选的卡用 sh-option",
+      "decl": {
+        "padding": "20rpx 28rpx",
+        "border-radius": "24rpx",
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-ink)",
+        "font-size": "26rpx"
+      },
+      "px": {
+        "padding": "10px 14px",
+        "border-radius": "12px",
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-ink)",
+        "font-size": "13px"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 6
+      }
+    },
+    {
+      "class": ".sh-seg--fill",
+      "group": "行与列",
+      "when": "分段格平分整行宽度",
+      "avoid": "个数不定时别用，会挤扁",
+      "decl": {
+        "flex": "1",
+        "text-align": "center"
+      },
+      "px": {
+        "flex": "1",
+        "text-align": "center"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 2
+      }
+    },
+    {
+      "class": ".sh-seg--off",
+      "group": "行与列",
+      "when": "分段格的不可选态：压暗且不响应",
+      "avoid": "—",
+      "decl": {
+        "opacity": "0.35"
+      },
+      "px": {
+        "opacity": "0.35"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 2
+      }
+    },
+    {
+      "class": ".sh-seg--on",
+      "group": "行与列",
+      "when": "分段格的选中态",
+      "avoid": "—",
+      "decl": {
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)",
+        "font-weight": "600"
+      },
+      "px": {
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)",
+        "font-weight": "600"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 6
+      }
+    },
+    {
+      "class": ".sh-wrap",
+      "group": "行与列",
+      "when": "会折行的一堆：标签组、筛选 chip 组、一排动作，缝 12rpx",
+      "avoid": "一行装得下的横排用 .sh-row",
+      "decl": {
+        "display": "flex",
+        "flex-wrap": "wrap",
+        "gap": "12rpx"
+      },
+      "px": {
+        "display": "flex",
+        "flex-wrap": "wrap",
+        "gap": "6px"
+      },
+      "usage": {
+        "b-app": 53,
+        "c-app": 19
       }
     },
     {
@@ -1647,6 +1597,28 @@
       },
       "usage": {
         "b-app": 6,
+        "c-app": 3
+      }
+    },
+    {
+      "class": ".field__head",
+      "group": "表单",
+      "when": "名目那一行（名目 + 右侧的计数或动作）",
+      "avoid": "—",
+      "decl": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "space-between",
+        "margin-bottom": "12rpx"
+      },
+      "px": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "space-between",
+        "margin-bottom": "6px"
+      },
+      "usage": {
+        "b-app": 5,
         "c-app": 0
       }
     },
@@ -1711,6 +1683,34 @@
       },
       "usage": {
         "b-app": 2,
+        "c-app": 1
+      }
+    },
+    {
+      "class": ".sh-searchbox",
+      "group": "表单",
+      "when": "搜索框，以及「点一下跳到搜索页」的假输入框。胶囊、88rpx 高",
+      "avoid": "真要收字的用 .field__input",
+      "decl": {
+        "display": "flex",
+        "align-items": "center",
+        "gap": "12rpx",
+        "min-height": "88rpx",
+        "padding": "0 28rpx",
+        "border-radius": "9999px",
+        "background": "var(--sh-surface)"
+      },
+      "px": {
+        "display": "flex",
+        "align-items": "center",
+        "gap": "6px",
+        "min-height": "44px",
+        "padding": "0 14px",
+        "border-radius": "9999px",
+        "background": "var(--sh-surface)"
+      },
+      "usage": {
+        "b-app": 1,
         "c-app": 1
       }
     }
@@ -1903,8 +1903,8 @@
       ],
       "usage": {
         "b-app": 57,
-        "c-app": 7,
-        "lib": 11
+        "c-app": 5,
+        "lib": 13
       },
       "note": "单色图标",
       "why": "内联 SVG 转 CSS mask，颜色吃 var(--sh-*) —— 换肤零成本。**不用 emoji**：各系统字形不一且是彩色的"
@@ -2085,6 +2085,25 @@
       },
       "note": "数字格",
       "why": "几个大数一排，每格一句小标签。收编自 5 页 4 种档位（44/700 · 40/700 · 40/600 · 32/600）"
+    },
+    {
+      "name": "sh-stepper",
+      "file": "packages/ui/src/components/sh-stepper.vue",
+      "scope": "跨端",
+      "lines": 111,
+      "props": [
+        "modelValue: number",
+        "min?: number",
+        "max?: number",
+        "editable?: boolean"
+      ],
+      "usage": {
+        "b-app": 0,
+        "c-app": 3,
+        "lib": 0
+      },
+      "note": "—",
+      "why": "—"
     },
     {
       "name": "sh-switch",
@@ -2528,9 +2547,9 @@
         "sh-tabs",
         "biz-store-tag"
       ],
-      "libClassHits": 39,
+      "libClassHits": 41,
       "localSelectors": 26,
-      "localCssLines": 111,
+      "localCssLines": 108,
       "rolled": []
     },
     {
@@ -2542,9 +2561,9 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 30,
+      "libClassHits": 32,
       "localSelectors": 8,
-      "localCssLines": 31,
+      "localCssLines": 28,
       "rolled": []
     },
     {
@@ -2747,9 +2766,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 21,
-      "localSelectors": 5,
-      "localCssLines": 21,
+      "libClassHits": 23,
+      "localSelectors": 4,
+      "localCssLines": 16,
       "rolled": []
     },
     {
@@ -3026,9 +3045,9 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 59,
-      "localSelectors": 10,
-      "localCssLines": 36,
+      "libClassHits": 60,
+      "localSelectors": 8,
+      "localCssLines": 27,
       "rolled": []
     },
     {
@@ -3039,9 +3058,9 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 44,
-      "localSelectors": 8,
-      "localCssLines": 32,
+      "libClassHits": 47,
+      "localSelectors": 6,
+      "localCssLines": 20,
       "rolled": []
     },
     {
@@ -3090,9 +3109,9 @@
         "sh-tabs",
         "biz-store-tag"
       ],
-      "libClassHits": 22,
+      "libClassHits": 24,
       "localSelectors": 9,
-      "localCssLines": 40,
+      "localCssLines": 37,
       "rolled": []
     },
     {
@@ -3251,9 +3270,9 @@
         "sh-check",
         "sh-scaffold"
       ],
-      "libClassHits": 13,
+      "libClassHits": 15,
       "localSelectors": 10,
-      "localCssLines": 37,
+      "localCssLines": 34,
       "rolled": []
     },
     {
@@ -3287,9 +3306,9 @@
         "sh-option",
         "sh-scaffold"
       ],
-      "libClassHits": 58,
-      "localSelectors": 21,
-      "localCssLines": 80,
+      "libClassHits": 61,
+      "localSelectors": 19,
+      "localCssLines": 71,
       "rolled": []
     },
     {
@@ -3402,7 +3421,7 @@
       ],
       "libClassHits": 28,
       "localSelectors": 17,
-      "localCssLines": 81,
+      "localCssLines": 75,
       "rolled": []
     },
     {
@@ -3429,12 +3448,12 @@
         "sh-actionbar",
         "sh-check",
         "sh-empty",
-        "sh-icon",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-stepper"
       ],
-      "libClassHits": 75,
-      "localSelectors": 24,
-      "localCssLines": 99,
+      "libClassHits": 68,
+      "localSelectors": 20,
+      "localCssLines": 79,
       "rolled": []
     },
     {
@@ -3490,11 +3509,12 @@
         "sh-actionbar",
         "sh-cover",
         "sh-icon",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-stepper"
       ],
-      "libClassHits": 132,
-      "localSelectors": 43,
-      "localCssLines": 174,
+      "libClassHits": 125,
+      "localSelectors": 40,
+      "localCssLines": 155,
       "rolled": []
     },
     {
@@ -3507,9 +3527,9 @@
         "sh-cover",
         "sh-scaffold"
       ],
-      "libClassHits": 39,
+      "libClassHits": 41,
       "localSelectors": 13,
-      "localCssLines": 53,
+      "localCssLines": 50,
       "rolled": []
     },
     {
@@ -3685,9 +3705,9 @@
         "sh-scaffold",
         "sh-switch"
       ],
-      "libClassHits": 119,
-      "localSelectors": 30,
-      "localCssLines": 123,
+      "libClassHits": 123,
+      "localSelectors": 29,
+      "localCssLines": 118,
       "rolled": []
     },
     {
@@ -3756,11 +3776,12 @@
       "file": "c-app/src/pages/request-create/index.vue",
       "components": [
         "sh-actionbar",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-stepper"
       ],
-      "libClassHits": 28,
-      "localSelectors": 9,
-      "localCssLines": 43,
+      "libClassHits": 19,
+      "localSelectors": 6,
+      "localCssLines": 21,
       "rolled": []
     },
     {
@@ -3775,7 +3796,7 @@
       ],
       "libClassHits": 14,
       "localSelectors": 12,
-      "localCssLines": 50,
+      "localCssLines": 44,
       "rolled": []
     },
     {
@@ -3952,9 +3973,9 @@
       "components": [
         "sh-cover"
       ],
-      "libClassHits": 29,
-      "localSelectors": 16,
-      "localCssLines": 84,
+      "libClassHits": 30,
+      "localSelectors": 15,
+      "localCssLines": 76,
       "rolled": []
     },
     {
@@ -4006,9 +4027,9 @@
       "components": [
         "sh-cover"
       ],
-      "libClassHits": 6,
-      "localSelectors": 7,
-      "localCssLines": 33,
+      "libClassHits": 5,
+      "localSelectors": 6,
+      "localCssLines": 28,
       "rolled": []
     },
     {
@@ -4029,7 +4050,7 @@
   "counts": {
     "tokens": 10,
     "blocks": 75,
-    "components": 33,
+    "components": 34,
     "pages": 114,
     "gapKinds": 0
   }

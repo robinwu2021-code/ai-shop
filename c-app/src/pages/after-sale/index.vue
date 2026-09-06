@@ -173,7 +173,7 @@ onLoad((q) => {
         <text class="txt-title">{{ $t("afterSale.detail") }}</text>
         <textarea
           v-model="detail"
-          class="txt-sub ta"
+          class="field__area ta"
           :placeholder="$t('afterSale.detailPh')"
           maxlength="200"
         />
@@ -219,14 +219,9 @@ onLoad((q) => {
   gap: 16rpx;
   margin-top: 24rpx;
 }
+/* 盒子归 .field__area，这里只说「这一个框多高」—— 尺寸是版面，不是件的属性 */
 .ta {
-  width: 100%;
-  box-sizing: border-box;
   min-height: 160rpx;
-  background: var(--sh-faint);
-  border-radius: 24rpx;
-  padding: 24rpx;
-  color: var(--sh-ink);
   margin-top: 20rpx;
 }
 .imglabel {

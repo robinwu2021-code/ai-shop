@@ -257,17 +257,17 @@ function pickPayment(s: Store, payMerchantNo?: string) {
       <view class="st__top sh-row sh-row--between">
         <text class="txt-title">{{ s.name }}</text>
         <view class="tags">
-          <text v-if="s.storeNo === merchant.storeNo" class="txt-caption tag tag--primary">{{ $t("stores.currentTag") }}</text>
-          <text v-if="s.isDefault" class="txt-caption tag">{{ $t("stores.default") }}</text>
+          <text v-if="s.storeNo === merchant.storeNo" class="sh-chip sh-chip--primary">{{ $t("stores.currentTag") }}</text>
+          <text v-if="s.isDefault" class="sh-chip">{{ $t("stores.default") }}</text>
           <!--
             ★ 两种只读必须分开显示：`status` 一模一样，而下一步完全不同 ——
             平台压的要补缴/升档，自己停的点一下启用就开。
             不分开的表现是店主反复点那个对降级店无效的「启用」。
           -->
-          <text v-if="s.planSuspended" class="txt-caption tag is-danger">{{ $t("stores.planSuspended") }}</text>
-          <text v-else-if="s.status !== 'ACTIVE'" class="txt-caption tag">{{ $t("stores.disabled") }}</text>
+          <text v-if="s.planSuspended" class="sh-chip sh-chip--danger">{{ $t("stores.planSuspended") }}</text>
+          <text v-else-if="s.status !== 'ACTIVE'" class="sh-chip">{{ $t("stores.disabled") }}</text>
           <!-- 收不了钱要显眼：店开着但钱进不来，是最容易被忽略的一种坏 -->
-          <text v-if="!s.payReady" class="txt-caption tag is-danger">{{ $t("stores.payNotReady") }}</text>
+          <text v-if="!s.payReady" class="sh-chip sh-chip--danger">{{ $t("stores.payNotReady") }}</text>
         </view>
       </view>
 
@@ -456,15 +456,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 .tags {
   display: flex;
   gap: 8rpx;
-}
-.tag {
-  padding: 4rpx 14rpx;
-  border-radius: 9999px;
-  background: var(--sh-faint);
-}
-.tag--primary {
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
 }
 .addr,
 .meta {

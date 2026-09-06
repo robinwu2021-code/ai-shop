@@ -92,7 +92,7 @@ onShareAppMessage(() => {
         </view>
       </view>
 
-      <view class="price">
+      <view class="price sh-row sh-row--baseline">
         <text class="txt-hero sh-num">{{ money(group.groupPrice) }}</text>
         <text v-if="off > 0" class="txt-sub price__base sh-num">{{ money(group.basePrice) }}</text>
         <text v-if="off > 0" class="sh-chip sh-chip--danger sh-num">-{{ off }}%</text>
@@ -163,9 +163,6 @@ onShareAppMessage(() => {
   margin-top: 8rpx;
 }
 .price {
-  display: flex;
-  align-items: baseline;
-  gap: 16rpx;
   margin-top: 28rpx;
 }
 

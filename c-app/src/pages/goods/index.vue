@@ -198,10 +198,6 @@ const maxQty = computed(() =>
   Math.min(goods.value?.limitPerUser || Infinity, sku.value?.stock ?? Infinity),
 );
 
-function stepQty(delta: number) {
-  qty.value = Math.min(maxQty.value, Math.max(1, qty.value + delta));
-}
-
 /*
  * 换规格时数量要跟着回落。
  * 不回落的话：「选了还剩 99 件的 A 规格、买 50 件，再切到只剩 3 件的 B 规格」，
@@ -316,7 +312,7 @@ onShareAppMessage(() =>
       <text class="txt-display title">{{ goods.title }}</text>
       <text class="sh-muted sub">{{ goods.subtitle }}</text>
 
-      <view class="price">
+      <view class="price sh-row sh-row--baseline">
         <text class="txt-hero sh-num sh-center">{{ money(sku?.price ?? goods.price) }}</text>
         <text v-if="sku?.originPrice" class="txt-sub price__was sh-num">
           {{ money(sku.originPrice) }}
@@ -388,11 +384,7 @@ onShareAppMessage(() =>
 
       <view class="qty sh-row sh-row--between">
         <text class="sh-muted sh-num">{{ $t("goods.stock", { n: sku?.stock ?? 0 }) }}</text>
-        <view class="stepper sh-row">
-          <view class="txt-body stepper__btn sh-hit sh-center" @tap="stepQty(-1)"><text>−</text></view>
-          <text class="txt-strong stepper__num sh-num">{{ qty }}</text>
-          <view class="txt-body stepper__btn sh-hit sh-center" @tap="stepQty(1)"><text>＋</text></view>
-        </view>
+        <sh-stepper v-model="qty" :max="maxQty"></sh-stepper>
       </view>
     </view>
 
@@ -620,9 +612,6 @@ onShareAppMessage(() =>
   margin-top: 8rpx;
 }
 .price {
-  display: flex;
-  align-items: baseline;
-  gap: 16rpx;
   margin-top: 28rpx;
 }
 
@@ -646,22 +635,6 @@ onShareAppMessage(() =>
 }
 .qty {
   margin-top: 32rpx;
-}
-.stepper {
-  gap: 8rpx;
-  background: var(--sh-faint);
-  border-radius: 9999px;
-  padding: 8rpx;
-}
-.stepper__btn {
-  width: 56rpx;
-  height: 56rpx;
-  border-radius: 9999px;
-  background: var(--sh-surface);
-}
-.stepper__num {
-  min-width: 56rpx;
-  text-align: center;
 }
 .dates {
   white-space: nowrap;

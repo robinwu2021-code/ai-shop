@@ -134,7 +134,7 @@ onLoad((q) => {
     <view class="sh-card block">
       <textarea
         v-model="content"
-        class="txt-sub ta"
+        class="field__area ta"
         :placeholder="$t('review.contentPh')"
         maxlength="300"
       />
@@ -189,14 +189,9 @@ onLoad((q) => {
 .stars__label {
   margin-inline-start: 12rpx;
 }
+/* 盒子归 .field__area，这里只说「这一个框多高」—— 尺寸是版面，不是件的属性 */
 .ta {
-  width: 100%;
-  box-sizing: border-box;
   min-height: 220rpx;
-  background: var(--sh-faint);
-  border-radius: 24rpx;
-  padding: 24rpx;
-  color: var(--sh-ink);
 }
 .counter {
   display: block;

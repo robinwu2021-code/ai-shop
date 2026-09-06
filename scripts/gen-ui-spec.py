@@ -127,22 +127,45 @@ def layout() -> str:
     L.append("所有页面走 `sh-scaffold`：它管标题、内边距（`--sh-pad-page`）、底部菜单占位、")
     L.append("宽屏收窄（>600px 收成 375 版心）与安全区。**`position: fixed` 的悬浮条不用各自处理宽屏** ——")
     L.append("scaffold 的 transform 让它们以应用框为包含块，漏改一处就会横跨整屏。\n")
-    L.append("\n## 行与列表\n")
-    L.append("| 件 | 什么时候用 |")
-    L.append("|---|---|")
-    for cls in [".sh-row", ".sh-row--between", ".sh-row--divided", ".sh-fill", ".sh-seg", ".sh-hint"]:
+    # ── 容器：**页面可以排版，不可以自己画容器** ──────────────────────────
+    #    这一节此前不存在，于是 14 个页面在顶层各画了一份白卡/提示条 ——
+    #    圆角 16/24/32、内边距十几种。规则本身有断言守着
+    #   （ui-package.test.ts「版面：页面不自己画容器」），文档这里只是把它说出来。
+    L.append("\n## 容器：四个，页面不自己画\n")
+    L.append("一屏东西装在**四种盒子**里，全部由库件给。页面在 `sh-scaffold` 顶层自己写")
+    L.append("`background: var(--sh-surface)` 或 `var(--sh-*-tint)` 而不挂容器类 —— 断言直接红。\n")
+    L.append("| 件 | 什么时候用 | 别拿它当 |")
+    L.append("|---|---|---|")
+    for cls in [".sh-card", ".sh-block", ".sh-cells", ".sh-notice"]:
         b = next((x for x in LIB["blocks"] if x["class"] == cls), None)
         if b:
-            L.append(f"| `{cls}` | {(b.get('when') or '—')[:70]} |")
+            L.append(f"| `{cls}` | {b.get('when') or '—'} | {b.get('avoid') or '—'} |")
+    tones = [x for x in LIB["blocks"] if x["class"].startswith(".sh-notice--")]
+    L.append(f"\n提示条有 **{len(tones) + 1} 档**（主色 / "
+             + " / ".join(x["class"].split("--")[1] for x in tones)
+             + "），底与字成对翻 —— 只改底色会得到一段读不清的字。\n")
+    L.append("\n## 行与列表\n")
+    L.append("| 件 | 什么时候用 | 别拿它当 |")
+    L.append("|---|---|---|")
+    # 整个 `行与列` 组都列出来 —— 手抄一份名单的话，新加的件不会自己出现在文档里，
+    # 而「文档里没有」与「库里没有」在读的人眼里是同一件事
+    for b in [x for x in LIB["blocks"] if x["group"] == "行与列"]:
+        L.append(f"| `{b['class']}` | {b.get('when') or '—'} | {b.get('avoid') or '—'} |")
     L.append("\n间距**由项自己挂 `.sh-mt-* / .sh-mb-*`**，不是容器给 gap —— ")
     L.append("36 个列表里 35 个的容器还装着分组标题与说明，容器一改 gap，标题与第一项的距离也跟着变。\n")
     L.append("\n## 浮层层级\n")
     L.append("| 层 | z-index | 说明 |")
     L.append("|---|---:|---|")
+    # ⚠️ 层级现在写成 `z-index: var(--sh-z-tabbar)`，不再是字面量 ——
+    #    只认 `\d+` 的话这一列会**整列变成 `—`**，而文档照样生成、照样看着完整。
+    #    所以先把 base.css 里的 `--sh-z-*` 读成一张表，再拿它解析组件里的引用。
+    zmap = dict(re.findall(r"--sh-z-([a-z-]+):\s*(\d+)", (ROOT / "packages/ui/src/styles/base.css").read_text(encoding="utf-8")))
     for f, note in [("sh-tabbar", "底部菜单"), ("sh-actionbar", "悬浮内缩通栏"), ("sh-sheet", "底部弹层"), ("sh-dialog", "居中对话框")]:
         p = ROOT / f"packages/ui/src/components/{f}.vue"
-        zs = sorted({int(m) for m in re.findall(r"z-index:\s*(\d+)", p.read_text(encoding="utf-8"))}) if p.exists() else []
-        L.append(f"| `{f}` | {' / '.join(map(str, zs)) or '—'} | {note} |")
+        src = p.read_text(encoding="utf-8") if p.exists() else ""
+        zs = {int(m) for m in re.findall(r"z-index:\s*(\d+)", src)}
+        zs |= {int(zmap[k]) for k in re.findall(r"z-index:\s*var\(--sh-z-([a-z-]+)\)", src) if k in zmap}
+        L.append(f"| `{f}` | {' / '.join(map(str, sorted(zs))) or '—'} | {note} |")
     L.append("\n对话框永远在最上面 —— 它是要人立刻回答的那一个。弹层叠弹层用 `sh-sheet` 的 `stacked`。\n")
     L.append("\n## 深浅与皮肤\n")
     L.append(f"{len(tk['skins'])} 套皮肤 × 明暗两态。切换要**同时**翻两处：")

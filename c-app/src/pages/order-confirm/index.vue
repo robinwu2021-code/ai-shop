@@ -637,7 +637,7 @@ onMounted(async () => {
       <!-- 送货上门 / 快递 -->
       <view v-else-if="needAddress" class="recv" @tap="gotoAddress">
         <template v-if="address">
-          <view class="recv__row">
+          <view class="sh-row sh-row--baseline">
             <text class="txt-strong">{{ address.name }}</text>
             <text class="txt-caption sh-num">{{ address.phone }}</text>
             <text class="txt-caption recv__more">{{ $t("confirm.change") }}</text>
@@ -679,7 +679,7 @@ onMounted(async () => {
       「去哪」和「几点」，缺任何一个这单都履约不了。
     -->
     <view v-if="needAppointment" class="sh-card block recv" @tap="pickSlot">
-      <view class="recv__row">
+      <view class="sh-row sh-row--baseline">
         <text class="txt-strong">{{ $t("confirm.appointmentSlot") }}</text>
         <text class="txt-caption recv__more">{{ appointmentAt ? $t("confirm.change") : $t("confirm.pick") }}</text>
       </view>
@@ -908,11 +908,6 @@ onMounted(async () => {
 }
 .recv {
   margin-top: 24rpx;
-}
-.recv__row {
-  display: flex;
-  align-items: baseline;
-  gap: 16rpx;
 }
 
 /* 「把当前位置存成地址」：低调一行，它是提议不是待办 —— 不留地址也照样能自提下单 */

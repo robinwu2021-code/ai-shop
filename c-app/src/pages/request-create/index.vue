@@ -22,10 +22,6 @@ const submitting = ref(false);
 
 const valid = computed(() => title.value.trim().length >= 4 && !submitting.value);
 
-function step(d: number) {
-  qty.value = Math.max(1, qty.value + d);
-}
-
 async function submit() {
   if (!valid.value) return;
   const pickupNo = community.pickup?.pickupNo;
@@ -57,15 +53,11 @@ async function submit() {
       <text class="sh-muted tip">{{ $t("request.createTip", { p: community.pickup?.name ?? "" }) }}</text>
 
       <input v-model="title" class="field__input" :placeholder="$t('request.titlePh')" maxlength="30" />
-      <textarea v-model="desc" class="txt-sub ta" :placeholder="$t('request.descPh')" maxlength="200" />
+      <textarea v-model="desc" class="field__area ta" :placeholder="$t('request.descPh')" maxlength="200" />
 
       <view class="sh-row sh-row--between row sh-mt-md">
         <text class="txt-sub row__k txt-ink">{{ $t("request.expect") }}</text>
-        <view class="stepper sh-row">
-          <view class="txt-body stepper__btn sh-hit sh-center" @tap="step(-1)"><text>−</text></view>
-          <text class="txt-strong stepper__num sh-num">{{ qty }}</text>
-          <view class="txt-body stepper__btn sh-hit sh-center" @tap="step(1)"><text>＋</text></view>
-        </view>
+        <sh-stepper v-model="qty"></sh-stepper>
       </view>
 
       <view class="sh-row sh-row--between row sh-mt-md">
@@ -101,14 +93,9 @@ async function submit() {
 .field__input {
   margin-top: 24rpx;
 }
+/* 盒子归 .field__area，这里只说「这一个框多高」—— 尺寸是版面，不是件的属性 */
 .ta {
-  width: 100%;
-  box-sizing: border-box;
   min-height: 180rpx;
-  background: var(--sh-faint);
-  border-radius: 24rpx;
-  padding: 24rpx 28rpx;
-  color: var(--sh-ink);
   margin-top: 16rpx;
 }
 .row {
@@ -118,22 +105,6 @@ async function submit() {
   flex: 1;
   text-align: end;
   color: var(--sh-ink);
-}
-.stepper {
-  gap: 8rpx;
-  background: var(--sh-faint);
-  border-radius: 9999px;
-  padding: 8rpx;
-}
-.stepper__btn {
-  width: 56rpx;
-  height: 56rpx;
-  border-radius: 9999px;
-  background: var(--sh-surface);
-}
-.stepper__num {
-  min-width: 56rpx;
-  text-align: center;
 }
 .note {
   background: var(--sh-faint);

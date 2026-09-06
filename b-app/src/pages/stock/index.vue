@@ -254,7 +254,7 @@ onShow(load);
       <view class="row__top sh-row">
         <view class="sh-fill">
           <text class="txt-strong row__title">{{ b.name }}{{ b.specText ? ` · ${b.specText}` : "" }}</text>
-          <view class="row__meta">
+          <view class="row__meta sh-row sh-row--baseline">
             <!--
               可用为 0 且缺货：说成「已售罄」而不是「可用 0」——
               商家看到 0 的第一反应是「是不是没录」，看到已售罄才会去补货
@@ -350,9 +350,6 @@ onShow(load);
   text-overflow: ellipsis;
 }
 .row__meta {
-  display: flex;
-  gap: 20rpx;
-  align-items: baseline;
   margin-top: 8rpx;
 }
 .row__end {

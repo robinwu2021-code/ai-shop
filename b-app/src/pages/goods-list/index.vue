@@ -599,7 +599,7 @@ onShow(() => {
         <sh-cover class="row__cover" :src="g.cover"></sh-cover>
         <view class="sh-fill">
           <text class="txt-strong row__title">{{ g.title }}</text>
-          <view class="row__meta">
+          <view class="row__meta sh-row sh-row--baseline">
             <text class="txt-strong row__price sh-num txt-primary">{{ money(g.price) }}</text>
             <text class="txt-sub row__stock sh-num" :class="{ 'is-danger': stockOf(g) === 0, 'txt-bold': stockOf(g) === 0 }">
               {{ $t("goods.stock") }} {{ stockOf(g) }}
@@ -821,9 +821,6 @@ onShow(() => {
   text-overflow: ellipsis;
 }
 .row__meta {
-  display: flex;
-  gap: 20rpx;
-  align-items: baseline;
   margin-top: 8rpx;
 }
 /* 降到属性档：仍是深红（可读性由 primary-text 保证），但不再抢标题的位 */

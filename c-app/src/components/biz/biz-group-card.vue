@@ -26,8 +26,8 @@ const off = computed(() =>
       <sh-cover class="sh-center gcard__cover" :src="group.cover"></sh-cover>
       <view class="sh-fill gcard__main">
         <text class="txt-strong gcard__title">{{ group.title }}</text>
-        <text class="txt-caption txt-quiet gcard__pickup">{{ group.pickupName }}</text>
-        <view class="gcard__price">
+        <text class="sh-hint">{{ group.pickupName }}</text>
+        <view class="gcard__price sh-row sh-row--baseline">
           <text class="txt-display txt-ink gcard__now sh-num">{{ money(group.groupPrice) }}</text>
           <text v-if="off > 0" class="txt-caption txt-quiet gcard__base sh-num">{{
             money(group.basePrice)
@@ -113,15 +113,7 @@ const off = computed(() =>
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.gcard__pickup {
-  display: block;
-  color: var(--sh-sub);
-  margin-top: 8rpx;
-}
 .gcard__price {
-  display: flex;
-  align-items: baseline;
-  gap: 12rpx;
   margin-top: 16rpx;
 }
 .gcard__base {

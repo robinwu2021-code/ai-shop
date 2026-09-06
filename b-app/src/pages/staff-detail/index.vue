@@ -84,8 +84,8 @@ onShow(load);
       <view class="sh-card">
         <view class="head sh-row">
           <text class="txt-display">{{ nameOf(staff) }}</text>
-          <text v-if="staff.isOwner" class="txt-caption tag tag--primary">{{ $t("staff.owner") }}</text>
-          <text v-else-if="staff.status !== 'ACTIVE'" class="txt-caption tag">{{ $t("staff.disabled") }}</text>
+          <text v-if="staff.isOwner" class="sh-chip sh-chip--primary">{{ $t("staff.owner") }}</text>
+          <text v-else-if="staff.status !== 'ACTIVE'" class="sh-chip">{{ $t("staff.disabled") }}</text>
         </view>
         <template v-if="staff.loginPhone">
           <text class="txt-caption sh-muted phone sh-num">{{ staff.loginPhone }}</text>
@@ -120,7 +120,7 @@ onShow(load);
       <view class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("staff.logs") }}</text>
         <text v-if="!logs.length" class="sh-muted sh-hint">{{ $t("staff.logsEmpty") }}</text>
-        <view v-for="(l, i) in logs" :key="i" class="txt-caption log">
+        <view v-for="(l, i) in logs" :key="i" class="txt-caption log sh-row sh-row--baseline">
           <text class="log__t sh-num txt-quiet">{{ datetime(l.at) }}</text>
           <text class="log__d sh-fill txt-ink">{{ l.detail || l.action }}</text>
           <text v-if="l.actor" class="txt-caption sh-muted">{{ l.actor }}</text>
@@ -164,20 +164,7 @@ onShow(load);
   margin-top: 16rpx;
 }
 
-.tag {
-  padding: 4rpx 14rpx;
-  border-radius: 9999px;
-  /* --sh-fill 不存在，此前 tag 底色是透明的（与 .sh-chip 同款，用 --sh-faint） */
-  background: var(--sh-faint);
-}
-.tag--primary {
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
-}
 .log {
-  display: flex;
-  align-items: baseline;
-  gap: 16rpx;
   padding: 12rpx 0;
   border-top: var(--sh-hairline);
 }

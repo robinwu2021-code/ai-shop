@@ -165,7 +165,7 @@ async function discard() {
         -->
         <view v-for="c in preview.changes" :key="c.field" class="diff">
           <text class="txt-caption txt-quiet">{{ c.label }}</text>
-          <view class="diff__vals">
+          <view class="diff__vals sh-row sh-row--baseline">
             <text class="txt-sub diff__before">{{ c.before || "—" }}</text>
             <!-- sh-icon 而不是「→」字符：字符伪图标跟着系统字形走，RTL 也不会自己翻；
                  chevronRight 在 DIRECTIONAL 名单里，阿语下自动镜像 -->
@@ -214,10 +214,7 @@ async function discard() {
   border-top: var(--sh-hairline-soft);
 }
 .diff__vals {
-  display: flex;
-  align-items: baseline;
-  gap: 12rpx;
-  /* 4rpx 网格上取 8 而不是 4：横向 gap 是 12rpx，纵向再紧到 4 会贴上 */
+  /* 4rpx 网格上取 8 而不是 4：横向缝走 .sh-row 的 16rpx，纵向再紧到 4 会贴上 */
   margin-top: 8rpx;
 }
 /* 旧值划线弱化、新值常规 —— 眼睛先落在「将变成什么」上 */

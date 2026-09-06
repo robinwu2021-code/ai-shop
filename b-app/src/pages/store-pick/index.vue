@@ -75,7 +75,7 @@ function confirm() {
 
     <view v-for="g in groups" :key="g.entity?.entityNo || 'only'" class="list">
       <!-- 分组头只在多证照时出现 -->
-      <view v-if="grouped" class="group">
+      <view v-if="grouped" class="group sh-row sh-row--baseline">
         <text class="txt-strong group__name txt-quiet">{{ g.entity?.name }}</text>
         <text v-if="entityNote(g)" class="txt-caption is-warning">{{ entityNote(g) }}</text>
       </view>
@@ -118,9 +118,6 @@ function confirm() {
   gap: 16rpx;
 }
 .group {
-  display: flex;
-  align-items: baseline;
-  gap: 12rpx;
   margin-top: 8rpx;
 }
 /* ⚠️ 此前写的是 `var(--sh-warn, var(--sh-sub))` —— **`--sh-warn` 这个变量不存在**
