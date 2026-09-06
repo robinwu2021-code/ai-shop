@@ -35,6 +35,11 @@ LIB = json.loads((ROOT / "docs/technical/design/ui-lib.json").read_text(encoding
 TYPE = {x["size"] for x in LIB["tokens"]["type"]}
 RADIUS = {v["rpx"] for v in LIB["tokens"]["radius"].values()}
 SPACE = {v["rpx"] for v in LIB["tokens"]["spacing"].values()}
+# `.txt-*` 类名 → 字号（rpx）。读 base.css，不手抄 —— 手抄的表会陈
+TYPE_OF_CLASS = {}
+for _m in re.finditer(r"\.txt-([a-z]+)\s*\{([^}]*)\}", (ROOT / "packages/ui/src/styles/base.css").read_text(encoding="utf-8")):
+    _s = re.search(r"font-size:\s*(\d+)rpx", _m.group(2))
+    if _s: TYPE_OF_CLASS["txt-" + _m.group(1)] = int(_s.group(1))
 WEIGHT = {"400", "600", "700"}
 
 # 与「文字排版」无关的选择器：emoji 当占位图时，字号就是**图的尺寸**，
@@ -65,7 +70,7 @@ UNO_COLLIDE = {"inline", "block", "flex", "grid", "table", "contents", "hidden",
                "static", "fixed", "absolute", "relative", "sticky", "flow-root",
                "inline-block", "inline-flex", "inline-grid", "inline-table"}
 
-KIND = ["字号自写", "字号越档", "字重自写", "字重越档", "行高自写", "圆角越档", "间距离格", "写死颜色", "撞工具类"]
+KIND = ["字号自写", "字号越档", "字重自写", "字重越档", "行高自写", "圆角越档", "间距离格", "写死颜色", "撞工具类", "两端差1px"]
 
 
 def scan(app: str):
@@ -155,6 +160,29 @@ def _scan_dir(app: str, base: pathlib.Path, kind: str):
                 if cls in UNO_COLLIDE:
                     c["撞工具类"] += 1
                     detail["撞工具类"].append(cls)
+        # 两端对齐行的两侧字号只差 1px —— 看不出是有意的，层次只剩颜色在扛。
+        # 判据与 `ui-package.test.ts`「同一行两端的字号不许只差 1px」同源
+        #（那边是闸门，这边是**逐页排期**：总数只说还剩多少，逐页才知道先改哪一页）。
+        for rm in re.finditer(r'<(?:view|label)[^>]*class="[^"]*sh-row--between[^"]*"[^>]*>', tpl):
+            rest, depth, tiers = tpl[rm.end():], 1, []
+            for t in re.finditer(r'<(/?)([a-zA-Z][\w:-]*)((?:[^>"\']|"[^"]*"|\'[^\']*\')*)(/?)>', rest):
+                if t.group(1):
+                    depth -= 1
+                    if depth == 0: break
+                    continue
+                here = depth
+                if not t.group(4) and t.group(2) not in ("input", "image", "br"): depth += 1
+                if here != 1: continue                       # 只看直接子节点
+                cm = re.search(r'class="([^"]*)"', t.group(3) or "")
+                cls = cm.group(1) if cm else ""
+                if re.search(r'\b(sh-btn|sh-chip|sh-seg|sh-go|[\w-]*btn[\w-]*)\b', cls): continue
+                hit = [x for x in cls.split() if x in TYPE_OF_CLASS]
+                if hit: tiers.append(hit[0])
+            if len(tiers) < 2: continue
+            a2, b2 = TYPE_OF_CLASS[tiers[0]], TYPE_OF_CLASS[tiers[-1]]
+            if a2 != b2 and abs(a2 - b2) <= 2:
+                c["两端差1px"] += 1
+                detail["两端差1px"].append(f"{tiers[0]}→{tiers[-1]}")
         name = f.parent.name if kind == "page" else f.stem
         rows.append({"app": app, "page": name, "file": str(f.relative_to(ROOT)),
                      "counts": c, "detail": {k: collections.Counter(v).most_common(4) for k, v in detail.items()},
@@ -192,7 +220,7 @@ def main():
     print("|---|---:|---|")
     RULE = {"字号自写": "应走 .txt-* / .sh-muted / .sh-hint", "字号越档": f"字阶只有 {len(TYPE)} 档",
             "字重自写": "应由字阶带出", "字重越档": "只有 400 / 600 / 700",
-            "圆角越档": "只有 16/24/32/44rpx / full", "间距离格": "落在 4rpx 网格上（2rpx 发丝线除外）",
+            "圆角越档": "只有 16/24/32/44rpx / full", "间距离格": "落在 4rpx 网格上（2rpx 发丝线除外）", "两端差1px": "同一行两端要么同档、要么差 ≥4rpx",
             "写死颜色": "一律走 --sh-*", "行高自写": "字阶自带行高",
             "撞工具类": "库件靠全局类给横排，与 UnoCSS 同名会被后加载的压掉"}
     for k in KIND:
@@ -213,14 +241,14 @@ def main():
         print(f"\n✓ 与清单一致（欠账 {len(base)} 页）")
         return 0
     print(f"\n## 逐页（按欠账排序）\n")
-    print("| 页 | 合计 | 字号自写/越档 | 字重自写/越档 | 圆角越档 | 间距离格 | 行高 | 写死色 |")
+    print("| 页 | 合计 | 字号自写/越档 | 字重自写/越档 | 圆角越档 | 间距离格 | 行高 | 写死色 | 两端差1px |")
     print("|---|---:|---:|---:|---:|---:|---:|---:|")
     ordered = sorted(rows, key=lambda r: -r["total"])
     for r in (ordered[: a.top] if a.top else ordered):
         c = r["counts"]
         flag = "" if r["total"] else " ✅"
         print(f"| `{r['page']}`{flag} | {r['total']} | {c['字号自写']}/{c['字号越档']} | "
-              f"{c['字重自写']}/{c['字重越档']} | {c['圆角越档']} | {c['间距离格']} | {c['行高自写']} | {c['写死颜色']} |")
+              f"{c['字重自写']}/{c['字重越档']} | {c['圆角越档']} | {c['间距离格']} | {c['行高自写']} | {c['写死颜色']} | {c['两端差1px']} |")
     off = collections.Counter()
     for r in rows:
         for k in ("间距离格", "圆角越档", "字号越档"):
