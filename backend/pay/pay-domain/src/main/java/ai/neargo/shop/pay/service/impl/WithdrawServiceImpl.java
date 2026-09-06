@@ -82,12 +82,11 @@ public class WithdrawServiceImpl implements WithdrawService {
                         .eq(StlWithdraw::getEntityNo, entityNo)
                         .in(StlWithdraw::getStatus, StlWithdraw.PENDING, StlWithdraw.APPROVED))) > 0;
         if (pending) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "还有一笔提现在处理中，完成后才能再提");
+            throw BizException.of(ErrorCode.WITHDRAW_PENDING_EXISTS);
         }
         long can = withdrawableMinor(entityNo);
         if (amountMinor > can) {
-            throw new BizException(ErrorCode.BAD_REQUEST,
-                    "可提金额不足：当前可提 " + (can / 100) + " 元");
+            throw BizException.of(ErrorCode.WITHDRAW_OVER_WITHDRAWABLE, can / 100);
         }
 
         StlWithdraw w = new StlWithdraw();

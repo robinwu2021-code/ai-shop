@@ -2,6 +2,8 @@ package ai.neargo.shop.pay.channel;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -18,6 +20,8 @@ import java.util.stream.Collectors;
  */
 @Component
 public class PayGatewayRouter {
+
+    private static final Logger log = LoggerFactory.getLogger(PayGatewayRouter.class);
 
     private final Map<String, PayGateway> byChannel;
 
@@ -48,7 +52,13 @@ public class PayGatewayRouter {
     public PayGateway of(String payChannel) {
         PayGateway g = byChannel.get(payChannel);
         if (g == null) {
-            throw new BizException(ErrorCode.INTERNAL_ERROR, "支付通道未接入：" + payChannel);
+            /*
+             * 通道名进**日志**不进响应：这是装配缺失（少注册一个 PayGateway 实现），
+             * 用户拿它做不了任何事，而 INTERNAL_ERROR 的文案没有占位符 ——
+             * 原来那个参数被 MessageFormat 静默丢掉，等于既没告诉用户、也没留下痕迹。
+             */
+            log.error("支付通道未接入：{}（已注册：{}）", payChannel, byChannel.keySet());
+            throw BizException.of(ErrorCode.INTERNAL_ERROR);
         }
         return g;
     }

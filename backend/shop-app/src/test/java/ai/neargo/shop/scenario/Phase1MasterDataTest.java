@@ -293,7 +293,10 @@ class Phase1MasterDataTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"enabled\":false,\"reason\":\"试着停一下\"}"))
                 .andReturn().getResponse().getContentAsString();
-        assertThat(json.readTree(body).get("code").asInt()).isEqualTo(80002);
+        // 此前是 80002 CATEGORY_IN_USE —— 那条文案说的是「类目下还有商品或子类目」，
+        // 与「授权码还被类目要求着」不是一回事，运营看到的提示指向错误的对象
+        assertThat(json.readTree(body).get("code").asInt())
+                .isEqualTo(ai.neargo.shop.common.ErrorCode.AUTH_CODE_IN_USE.code());
     }
 
     @Test
@@ -381,7 +384,9 @@ class Phase1MasterDataTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"enabled\":false,\"reason\":\"再关最后一档\"}"))
                 .andReturn().getResponse().getContentAsString();
-        assertThat(json.readTree(body).get("code").asInt()).isEqualTo(10400);
+        // 此前是 10400「请求参数有误」—— 会让运营去查自己填了什么，方向正好相反
+        assertThat(json.readTree(body).get("code").asInt())
+                .isEqualTo(ai.neargo.shop.common.ErrorCode.SERVICE_SCOPE_EMPTY.code());
 
         mvc().perform(post("/ops/service-scopes/CITY/enabled")
                         .header("Authorization", "Bearer " + ops)

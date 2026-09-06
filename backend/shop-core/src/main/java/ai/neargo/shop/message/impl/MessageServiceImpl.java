@@ -423,7 +423,7 @@ public class MessageServiceImpl implements MessageService {
         if (f == null) throw BizException.of(ErrorCode.NOT_FOUND);
         if (published && (f.getAnswer() == null || f.getAnswer().isBlank())) {
             // 空答案比没有条目更糟：用户点进去只看到空白
-            throw BizException.of(ErrorCode.BAD_REQUEST, "上架前答案不能为空");
+            throw BizException.of(ErrorCode.FAQ_ANSWER_REQUIRED);
         }
         f.setPublished(published);
         faqMapper.updateById(f);

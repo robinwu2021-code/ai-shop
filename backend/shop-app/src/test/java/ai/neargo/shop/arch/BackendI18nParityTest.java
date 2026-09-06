@@ -9,10 +9,14 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -158,6 +162,56 @@ class BackendI18nParityTest {
                 .as("这些词条没有任何 ErrorCode 指着，是死文案：\n  %s", String.join("\n  ", orphans))
                 .isEmpty();
     }
+
+    @Test
+    @DisplayName("★★ 占位符个数三语一致 —— 少一个，那种语言的用户就少看到一条关键信息")
+    void placeholderCountsMatchAcrossLocales() throws IOException {
+        Map<String, Integer> base = placeholdersOf(BASE);
+
+        List<String> bad = new ArrayList<>();
+        for (String locale : LOCALES) {
+            String path = "i18n/messages_" + locale + ".properties";
+            Map<String, Integer> keys = placeholdersOf(path);
+            for (var e : base.entrySet()) {
+                Integer n = keys.get(e.getKey());
+                if (n != null && !n.equals(e.getValue())) {
+                    bad.add("%s · %s：中文 %d 个，%s %d 个"
+                            .formatted(locale, e.getKey(), e.getValue(), locale, n));
+                }
+            }
+        }
+
+        /*
+         * 三语键集一致（上面那条）与**每条文案里的占位符个数**一致，是两件事。
+         * 后者错了没有任何报错：MessageFormat 把多出来的参数直接丢掉 ——
+         * 中文说「标题里的「秒杀」不能用：平台禁售词」，阿语只说「不能用」，
+         * 而两边都是绿的。这一条与 message-placeholder 那两向合起来才闭合：
+         * 那两向管的是「码与中文文案」，这一条管的是「中文文案与另外两种语言」。
+         */
+        assertThat(bad)
+                .as("这些词条的占位符个数与中文对不上，参数会被静默丢掉：\n  %s", String.join("\n  ", bad))
+                .isEmpty();
+    }
+
+    /** key → 文案里 {0}/{1}… 的个数 */
+    private static Map<String, Integer> placeholdersOf(String path) throws IOException {
+        Map<String, Integer> out = new LinkedHashMap<>();
+        for (String line : linesOf(path)) {
+            int i = line.indexOf('=');
+            if (i <= 0) {
+                continue;
+            }
+            Matcher m = PLACEHOLDER.matcher(line.substring(i + 1));
+            Set<String> seen = new LinkedHashSet<>();
+            while (m.find()) {
+                seen.add(m.group(1));
+            }
+            out.put(line.substring(0, i).trim(), seen.size());
+        }
+        return out;
+    }
+
+    private static final Pattern PLACEHOLDER = Pattern.compile("\\{(\\d+)}");
 
     private static Set<String> keysOf(String path) throws IOException {
         return new LinkedHashSet<>(allKeysOf(path));

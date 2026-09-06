@@ -44,7 +44,6 @@ i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 ar：每个枚举�
 i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 en：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家 @<=1
 i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 zh-CN：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家 @<=1
 icon-chars.test.ts::字符当图标 ★★★ 词条末尾没有箭头 —— 那是判据看不见的地方，一次就漏了 30 处 @<=3
-message-placeholder.test.ts::带占位符的错误文案 ★★ 反向：传了参数的码，文案里必须有 {0} —— 没有的话参数被静默吞掉，用户只看到泛话 @<=28
 ops-data-scope.test.ts::运营端数据域接入 ★★★ G1 ops 查询端点不许绕过已注册表的数据域 —— 绕过了就是越权，而且不报错 @<=1
 ops-perm-matrix.test.ts::运营端角色×端点矩阵 ★★ 每个端点在细化登记表里都要有归属 —— 漏一条就是拆码时被落下的那条 @<=12
 ops-reason-required.test.ts::运营端写操作的 reason ★★★ 后端要 reason 的端点，ops-web 必须真的发 reason @<=13

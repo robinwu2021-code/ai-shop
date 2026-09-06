@@ -70,7 +70,7 @@ public class StockPostingServiceImpl implements StockPostingService {
 
         if (!shortages.isEmpty()) {
             // 事务回滚，前面改掉的余额一并撤销
-            throw BizException.of(ErrorCode.STOCK_NOT_ENOUGH, String.join(",", shortages));
+            throw BizException.of(ErrorCode.STOCK_SHORT_ITEMS, String.join(",", shortages));
         }
         publish(doc);
         return ids;

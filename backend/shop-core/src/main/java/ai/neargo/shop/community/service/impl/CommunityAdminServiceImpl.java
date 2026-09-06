@@ -166,8 +166,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                     .filter(c -> sameSettlement(c.getName(), n))
                     .findFirst().orElse(null);
             if (exist != null) {
-                throw new BizException(ErrorCode.CONFLICT,
-                        "「" + exist.getName() + "」已经开通了，直接在列表里勾选即可，不用提报");
+                throw BizException.of(ErrorCode.COMMUNITY_ALREADY_OPEN, exist.getName());
             }
         }
 
@@ -179,7 +178,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                         .eq(ai.neargo.shop.community.entity.CmtCommunityApply::getStatus,
                                 ai.neargo.shop.community.entity.CmtCommunityApply.PENDING)));
         if (dup) {
-            throw new BizException(ErrorCode.CONFLICT, "这个小区你已经提报过，正在等运营处理");
+            throw BizException.of(ErrorCode.COMMUNITY_APPLY_DUPLICATE);
         }
         var a = new ai.neargo.shop.community.entity.CmtCommunityApply();
         a.setApplyNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.COMMUNITY_APPLY));
@@ -285,7 +284,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
              * 而运营看着界面上明明填着值。
              */
             if (code != null && code.equals(masterDataPort.regionPathName(code))) {
-                throw new BizException(ErrorCode.NOT_FOUND, "区划不存在：" + code);
+                throw BizException.of(ErrorCode.COMMUNITY_REGION_NOT_FOUND, code);
             }
             /*
              * 聚落必须挂在**街道/镇（9 位）**下。
@@ -294,9 +293,11 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
              * 存量那两条就是这么废掉「按街道覆盖」的。在裁决这一步拦住，
              * 比等商家框了街道发现一个聚落都命中不了要便宜得多。
              */
-            if (code == null || code.length() != 9) {
-                throw new BizException(ErrorCode.BAD_REQUEST,
-                        "聚落要挂在街道/镇（9 位码）下，当前：" + (code == null ? "未填" : code));
+            if (code == null) {
+                throw BizException.of(ErrorCode.COMMUNITY_REGION_REQUIRED);
+            }
+            if (code.length() != 9) {
+                throw BizException.of(ErrorCode.COMMUNITY_REGION_NOT_STREET, code);
             }
             /*
              * 官方村码查重：同一个官方村不能被开成两个聚落。
@@ -309,8 +310,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                                 .<CmtCommunity>lambdaQuery()
                                 .eq(CmtCommunity::getOriginCode, a.getOriginCode())));
                 if (opened) {
-                    throw new BizException(ErrorCode.CONFLICT,
-                            "这个村已经开通过聚落，驳回本条并让商家直接勾选既有的");
+                    throw BizException.of(ErrorCode.COMMUNITY_ORIGIN_ALREADY_OPEN);
                 }
             }
             var c = new CmtCommunity();
@@ -495,8 +495,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
          * 而递归展开在一条坏数据（自己指自己）上会挂住整个可见性。
          */
         if (parent.getParentNo() != null && !parent.getParentNo().isBlank()) {
-            throw new BizException(ErrorCode.BAD_REQUEST,
-                    "归属只做两层：「" + parent.getName() + "」自己已经挂在别的聚落下面了");
+            throw BizException.of(ErrorCode.COMMUNITY_PARENT_TOO_DEEP, parent.getName());
         }
         /*
          * 街道从父级继承，不让运营自己填 —— 两处各填一次就会有不一致的那一天，
@@ -504,8 +503,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
          * 父级没有街道就拒：那条数据本身要先补，补之前建出来的楼一样是错的。
          */
         if (parent.getRegionCode() == null || parent.getRegionCode().isBlank()) {
-            throw new BizException(ErrorCode.BAD_REQUEST,
-                    "「" + parent.getName() + "」还没有归属的街道，先补上再建楼");
+            throw BizException.of(ErrorCode.COMMUNITY_PARENT_NO_STREET, parent.getName());
         }
         var c = new CmtCommunity();
         c.setCommunityNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.COMMUNITY));
@@ -900,8 +898,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         }
         String street = resolveStreet(latE6, lngE6, streetHint);
         if (street == null) {
-            throw new BizException(ErrorCode.BAD_REQUEST,
-                    "定不出这个位置属于哪个街道，换个点或从行政区划里选");
+            throw BizException.of(ErrorCode.COMMUNITY_STREET_UNRESOLVED);
         }
 
         // 三道查重：撞上就复用，别让同一个小区在库里长出第二条
@@ -930,7 +927,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         if (!autoOpens(CmtCommunity.SOURCE_MAP)) {
             submitApply(merchantNo, n, address, street, "该地点已提交，等运营核对后即可加入",
                     CmtCommunity.KIND_ESTATE, null, latE6, lngE6);
-            throw new BizException(ErrorCode.CONFLICT, "已提交，等运营核对后就能加入");
+            throw BizException.of(ErrorCode.COMMUNITY_APPLY_SUBMITTED);
         }
 
         var c = new CmtCommunity();

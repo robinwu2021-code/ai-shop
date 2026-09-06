@@ -102,7 +102,7 @@ public class ReservationServiceImpl implements ReservationService {
         }
         if (!shortages.isEmpty()) {
             // 全成功或全失败：抛出去让事务回滚，已 hold 的那几件一并撤回
-            throw BizException.of(ErrorCode.STOCK_NOT_ENOUGH, String.join(",", shortages));
+            throw BizException.of(ErrorCode.STOCK_SHORT_ITEMS, String.join(",", shortages));
         }
 
         String id = InvKeys.next(InvKeys.RESERVATION);

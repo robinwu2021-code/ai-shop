@@ -2,6 +2,7 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.community.entity.CmtCommunity;
 import ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper;
 import ai.neargo.shop.community.service.CommunityAdminService;
@@ -95,9 +96,17 @@ class BuildingAdminFlowTest {
         assertThatThrownBy(() -> adminService.createBuilding("501 室", null,
                 building.communityNo(), null, null, "OPS-TEST"))
                 .isInstanceOf(BizException.class)
-                // 自定义文案走 args（BizException 的 message 是错误码名），端上直接当提示显示
-                .extracting(e -> ((BizException) e).args()[0])
-                .asString().contains("两层");
+                /*
+                 * 断的是**错误码**，不是 args。
+                 *
+                 * 这里原来断 `args()[0].contains("两层")`，并注了一句「自定义文案走 args，
+                 * 端上直接当提示显示」—— 那句话是错的，而它正是 2026-09-06 那次排查的起点：
+                 * args 只喂给 MessageFormat，而 BAD_REQUEST 的文案没有占位符，
+                 * 那句中文被静默丢掉，运营看到的是「请求参数有误」。
+                 * 现在这一处有自己的码与三语文案，args 里放的是父级名字。
+                 */
+                .extracting(e -> ((BizException) e).errorCode())
+                .isEqualTo(ErrorCode.COMMUNITY_PARENT_TOO_DEEP);
     }
 
     @Test
@@ -106,8 +115,8 @@ class BuildingAdminFlowTest {
         String orphan = estate(null, 30_420_000, 120_420_000);
         assertThatThrownBy(() -> adminService.createBuilding("无街道 1 幢", null, orphan, null, null, "OPS-TEST"))
                 .isInstanceOf(BizException.class)
-                .extracting(e -> ((BizException) e).args()[0])
-                .asString().contains("街道");
+                .extracting(e -> ((BizException) e).errorCode())
+                .isEqualTo(ErrorCode.COMMUNITY_PARENT_NO_STREET);
     }
 
     @Test

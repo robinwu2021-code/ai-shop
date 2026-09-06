@@ -1005,7 +1005,10 @@ public class OrderServiceImpl implements OrderService {
              * 「点了没反应」—— 那是这条链上最难查的一类症状：
              * 订单在、流水在（已关闭）、日志里只有一行 warn。
              */
-            throw new BizException(ErrorCode.PAY_CHANNEL_UNAVAILABLE, init.message());
+            // 网关原文进日志不进响应：它可能带外部厂商的措辞，且这条码的文案没有占位符，
+            // 原来那个参数被 MessageFormat 静默丢掉 —— 排查时两头都没有
+            log.warn("[pay] 下单失败 order={} channel={}：{}", orderNo, init.payChannel(), init.message());
+            throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
         }
         return new PayResult(orderNo, init.payChannel(), init.payParams());
     }

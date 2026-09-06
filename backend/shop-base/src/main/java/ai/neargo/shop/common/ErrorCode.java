@@ -153,6 +153,9 @@ public enum ErrorCode {
     /** 限定投放范围却没有投放对象：保存成功却谁都看不到 */
     CONTENT_SCOPE_REFS_REQUIRED(10437, "err.content.scope_refs_required"),
 
+    /** 上架一条没有答案的 FAQ：用户点进去只看到空白，比没有这一条更糟 */
+    FAQ_ANSWER_REQUIRED(10459, "err.content.faq_answer_required"),
+
     /** 预置角色是 Perms.java 的镜像，改了会与回落表分叉 */
     PERM_BUILTIN_ROLE_READONLY(10440, "err.perm.builtin_role_readonly"),
     /** 还有人在用的角色不能删：删了他们能登录但什么都点不动，且看不出原因 */
@@ -164,6 +167,17 @@ public enum ErrorCode {
 
     // ---- 2xxxx 交易 ----
     STOCK_NOT_ENOUGH(20001, "err.trade.stock_not_enough"),
+
+    /**
+     * 缺货的**具体是哪几件**（进销存的预留与过账用）。
+     *
+     * <p>不给 {@link #STOCK_NOT_ENOUGH} 的文案加 {@code {0}}：那个码还有一个无参抛出点
+     * （下单时的整单校验），加了之后那一处会渲染出字面的 {@code {0}}。
+     *
+     * <p>参数是逗号分隔的货号。少了它，商家在盘点里看到「库存不足」却不知道
+     * 六件货里是哪一件，只能一件件试。
+     */
+    STOCK_SHORT_ITEMS(20005, "err.trade.stock_short_items"),
     PRICE_CHANGED(20002, "err.trade.price_changed"),
     /**
      * 收货地址超出这家店的自送半径（下单时拦）。
@@ -319,6 +333,16 @@ public enum ErrorCode {
      * 而处置期间恰恰是最该冻住资金的时候。单独一个码，财务才知道该去找谁解封。
      */
     WITHDRAW_MERCHANT_BANNED(50010, "err.settle.withdraw_merchant_banned"),
+
+    /** 上一笔提现还没走完。**排在余额校验之前**：先说清「在处理中」，别让他以为钱不见了 */
+    WITHDRAW_PENDING_EXISTS(50011, "err.settle.withdraw_pending_exists"),
+
+    /**
+     * 申请额超过当前可提。与 {@link #WITHDRAW_OVER_BALANCE}(50004) 分开：
+     * 那条是运营复核时的再校验（无参），这条是商家申请时的，**要把可提多少说出来** ——
+     * 只说「超了」，他的下一步是反复试数。
+     */
+    WITHDRAW_OVER_WITHDRAWABLE(50012, "err.settle.withdraw_over_withdrawable"),
     /**
      * 开票金额超过该周期已结算金额。
      *
@@ -507,6 +531,85 @@ public enum ErrorCode {
      * 结算页那个选地址的列表就没法用了。
      */
     ADDRESS_LIMIT_EXCEEDED(70048, "err.user.address_limit_exceeded"),
+
+    /*
+     * ── 社区与聚落的九条（70049–70057）──
+     *
+     * 这九处此前一律抛 BAD_REQUEST / CONFLICT / NOT_FOUND 并把中文原因当参数传，
+     * 而那三条通用文案都没有占位符 —— 参数被 MessageFormat 静默丢掉，
+     * 运营看到的是「请求参数有误」，而写代码的人以为那句话已经到了对方眼前。
+     * 通用码的文案不能加占位符（它们还有一堆无参抛出点），所以逐条开码。
+     * 中文文案是从调用点原样搬过来的，没有重写。
+     */
+
+    /** 同名聚落已开通：运营在提报里看到的下一步是「去列表勾选」，不是「再报一次」 */
+    COMMUNITY_ALREADY_OPEN(70049, "err.community.already_open"),
+
+    /** 同一个商家把同一个小区报了两次，前一条还挂在待处理 */
+    COMMUNITY_APPLY_DUPLICATE(70050, "err.community.apply_duplicate"),
+
+    /**
+     * 挂了一个不存在的区划码。
+     *
+     * <p>不复用 {@code NOT_FOUND}：那句「数据不存在」不说是哪个数据，
+     * 而这里唯一有用的信息就是那串码 —— 挂错的区划不报错，只会让这个聚落
+     * 在任何「按区覆盖」里都出不来，而运营看着界面上明明填着值。
+     */
+    COMMUNITY_REGION_NOT_FOUND(70051, "err.community.region_not_found"),
+
+    /** 聚落挂粗了（挂到区县而不是街道/镇）：比它细的经营范围从此永远匹配不到 */
+    COMMUNITY_REGION_NOT_STREET(70052, "err.community.region_not_street"),
+
+    /**
+     * 压根没填区划。与 {@link #COMMUNITY_REGION_NOT_STREET} 分开：那条要把填错的码回显出来，
+     * 这条没有码可回显 —— 合成一条的话，「当前：」后面会跟一个空白。
+     */
+    COMMUNITY_REGION_REQUIRED(70058, "err.community.region_required"),
+
+    /** 这个村已经开过聚落。与 {@link #COMMUNITY_ALREADY_OPEN} 分开：那条按名字撞，这条按来源村撞 */
+    COMMUNITY_ORIGIN_ALREADY_OPEN(70053, "err.community.origin_already_open"),
+
+    /** 归属只做两层：再深一层会让可见性的展开变成递归，一条自指的坏数据就能挂住整棵树 */
+    COMMUNITY_PARENT_TOO_DEEP(70054, "err.community.parent_too_deep"),
+
+    /** 父级聚落自己还没有街道：楼从父级继承街道，父级空着建出来的楼一样是错的 */
+    COMMUNITY_PARENT_NO_STREET(70055, "err.community.parent_no_street"),
+
+    /** 这个坐标反查不到街道。给的出路是换个点或从行政区划里选，不是「参数有误」 */
+    COMMUNITY_STREET_UNRESOLVED(70056, "err.community.street_unresolved"),
+
+    /** 传了一个后端不认识的支付通道名。回显那个名字，否则运营不知道自己填错在哪 */
+    PAY_CHANNEL_UNKNOWN(70059, "err.pay.channel_unknown"),
+
+    /** 行业码查无此项。不复用 NOT_FOUND：那句「数据不存在」不说是哪个行业 */
+    INDUSTRY_NOT_FOUND(70060, "err.industry.not_found"),
+
+    /**
+     * 把经营范围白名单清空了。
+     *
+     * <p>不拦的话所有商家保存门店都会被拒，而他们看到的是「当前不支持这个经营范围」——
+     * 商家会以为是自己选错了，把档位挨个试一遍，每次都被拒。
+     */
+    SERVICE_SCOPE_EMPTY(70061, "err.merchant.service_scope_empty"),
+
+    /** 资质授权码查无此项，回显那串码 */
+    AUTH_CODE_NOT_FOUND(70062, "err.merchant.auth_code_not_found"),
+
+    /**
+     * 停用一个还被类目要求着的授权码。
+     *
+     * <p>此前这里抛的是 {@code CATEGORY_IN_USE}(80002)，而那条文案说的是
+     * 「类目下还有商品或子类目」—— 与本情形不是一回事，运营看到的提示指向错误的对象。
+     */
+    AUTH_CODE_IN_USE(70063, "err.merchant.auth_code_in_use"),
+
+    /**
+     * 商家从地图提报的地点已收下，等运营核对。
+     *
+     * <p>这是一条**成功路径上的拒绝**：单子建了、人没加进去。
+     * 不静默建一个 CLOSED 聚落 —— 那会让商家在列表里看见一个永远没有订单的地方。
+     */
+    COMMUNITY_APPLY_SUBMITTED(70057, "err.community.apply_submitted"),
 
     /**
      * 要成为会员，先得有一个已验证的手机号。
@@ -775,6 +878,32 @@ public enum ErrorCode {
      * {0} 是点名清单 —— 一次报全，不让商家改一个撞一个。
      */
     GOODS_SPEC_UNRESOLVED(80017, "err.goods.spec_unresolved"),
+
+    /*
+     * ── 建品规则的四条（80019–80022，规则默认全关，见 ProductPolicy）──
+     * 四条都是「拦在进审核队列之前，当场说清该改什么」，所以每条都要说出**具体的那个数/那个词**，
+     * 而不是一句「请求参数有误」。
+     */
+
+    /** 提审时主图为空 */
+    GOODS_COVER_REQUIRED(80019, "err.goods.cover_required"),
+
+    /** 标题短于平台下限，参数是下限字数 */
+    GOODS_TITLE_TOO_SHORT(80020, "err.goods.title_too_short"),
+
+    /** 标题超过平台上限，参数是上限字数 */
+    GOODS_TITLE_TOO_LONG(80021, "err.goods.title_too_long"),
+
+    /** 标题命中禁售词，参数是命中的那个词 */
+    GOODS_TITLE_BANNED_WORD(80022, "err.goods.title_banned_word"),
+
+    /**
+     * 标题命中禁售词，且词表里给了原因（参数：词、原因）。
+     *
+     * <p>与上一条分成两个码而不是拼一个可选后缀：词表的「原因」是可空字段，
+     * 拼空串会在英文与阿语里留下一个吊着的标点。
+     */
+    GOODS_TITLE_BANNED_WORD_REASON(80023, "err.goods.title_banned_word_reason"),
 
     /** 草稿基于的线上版本已被别人改过（多端编辑/运营强改）。拒并引导先看差异，不静默覆盖 */
     GOODS_DRAFT_STALE(80018, "err.goods.draft_stale"),

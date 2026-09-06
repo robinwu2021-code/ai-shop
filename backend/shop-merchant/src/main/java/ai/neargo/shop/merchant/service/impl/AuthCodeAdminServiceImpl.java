@@ -81,8 +81,7 @@ public class AuthCodeAdminServiceImpl implements AuthCodeAdminService {
          * 所以顺序是**先把类目改到别的码上（或归档），再停这个码**。
          */
         if (!enabled && categoryUsage.countByRequiredCode(code) > 0) {
-            throw new BizException(ErrorCode.CATEGORY_IN_USE,
-                    "还有类目要求这个授权码，先把它们改到别的码上或归档，再停用");
+            throw BizException.of(ErrorCode.AUTH_CODE_IN_USE);
         }
         row.setEnabled(enabled);
         mapper.updateById(row);
@@ -99,7 +98,7 @@ public class AuthCodeAdminServiceImpl implements AuthCodeAdminService {
     private SysAuthCode require(String code) {
         SysAuthCode row = find(code);
         if (row == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "授权码不存在：" + code);
+            throw BizException.of(ErrorCode.AUTH_CODE_NOT_FOUND, code);
         }
         return row;
     }

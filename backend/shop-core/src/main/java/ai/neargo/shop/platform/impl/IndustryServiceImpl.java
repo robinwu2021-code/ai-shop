@@ -64,7 +64,7 @@ public class IndustryServiceImpl implements IndustryService {
         switch (payChannel) {
             case WECHAT -> row.setWechatMicroAllowed(allowed);
             case ALIPAY -> row.setAlipayMicroAllowed(allowed);
-            default -> throw new BizException(ErrorCode.BAD_REQUEST, "未知支付通道：" + payChannel);
+            default -> throw BizException.of(ErrorCode.PAY_CHANNEL_UNKNOWN, payChannel);
         }
         // 准入结论必须写清理由 —— 半年后没人记得当初为什么放开或收紧
         if (remark != null && !remark.isBlank()) {
@@ -107,7 +107,7 @@ public class IndustryServiceImpl implements IndustryService {
     private SysIndustry require(String industry) {
         SysIndustry row = find(industry);
         if (row == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "行业不存在：" + industry);
+            throw BizException.of(ErrorCode.INDUSTRY_NOT_FOUND, industry);
         }
         return row;
     }

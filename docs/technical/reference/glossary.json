@@ -18531,10 +18531,70 @@
           "ar": "الفئات مستويان كحد أقصى، لا يمكن إنشاء فئة فرعية تحت المستوى الثاني"
         },
         {
+          "key": "err.community.already_open",
+          "zh-CN": "「{0}」已经开通了，直接在列表里勾选即可，不用提报",
+          "en": "\"{0}\" is already open — just tick it in the list, no need to submit a request",
+          "ar": "تم تفعيل «{0}» بالفعل — اخترها من القائمة مباشرة دون تقديم طلب"
+        },
+        {
+          "key": "err.community.apply_duplicate",
+          "zh-CN": "这个小区你已经提报过，正在等运营处理",
+          "en": "You have already submitted this community — it is waiting for the operations team",
+          "ar": "لقد قدمت هذا المجمع السكني بالفعل، وهو بانتظار فريق التشغيل"
+        },
+        {
+          "key": "err.community.apply_submitted",
+          "zh-CN": "已提交，等运营核对后就能加入",
+          "en": "Submitted — you can join once the operations team has checked it",
+          "ar": "تم الإرسال — يمكنك الانضمام بعد أن يتحقق فريق التشغيل منه"
+        },
+        {
+          "key": "err.community.origin_already_open",
+          "zh-CN": "这个村已经开通过聚落，驳回本条并让商家直接勾选既有的",
+          "en": "This village already has a settlement — reject this request and have the merchant pick the existing one",
+          "ar": "تم إنشاء تجمع سكني لهذه القرية من قبل — ارفض هذا الطلب واطلب من التاجر اختيار التجمع الحالي"
+        },
+        {
+          "key": "err.community.parent_no_street",
+          "zh-CN": "「{0}」还没有归属的街道，先补上再建楼",
+          "en": "\"{0}\" has no subdistrict yet — set that first, then add buildings",
+          "ar": "«{0}» ليس له حي تابع بعد — أضِف الحي أولًا ثم أنشئ المباني"
+        },
+        {
+          "key": "err.community.parent_too_deep",
+          "zh-CN": "归属只做两层：「{0}」自己已经挂在别的聚落下面了",
+          "en": "Nesting is two levels only: \"{0}\" is itself already under another settlement",
+          "ar": "التداخل مستويان فقط: «{0}» يتبع بالفعل تجمعًا سكنيًا آخر"
+        },
+        {
           "key": "err.community.pickup_community_required",
           "zh-CN": "先在经营范围里选一个小区，再自建取货点",
           "en": "Add a community to your coverage first, then build a pickup point",
           "ar": "أضف مجمعاً إلى نطاقك أولاً ثم أنشئ نقطة استلام"
+        },
+        {
+          "key": "err.community.region_not_found",
+          "zh-CN": "区划不存在：{0}",
+          "en": "No such administrative region: {0}",
+          "ar": "المنطقة الإدارية غير موجودة: {0}"
+        },
+        {
+          "key": "err.community.region_not_street",
+          "zh-CN": "聚落要挂在街道/镇（9 位码）下，当前：{0}",
+          "en": "A settlement must sit under a subdistrict or town (9-digit code); got: {0}",
+          "ar": "يجب أن يتبع التجمع السكني حيًا أو بلدة (رمز من 9 أرقام)، والحالي: {0}"
+        },
+        {
+          "key": "err.community.region_required",
+          "zh-CN": "聚落要挂在街道/镇（9 位码）下，现在这一条还没填",
+          "en": "A settlement must sit under a subdistrict or town (9-digit code); this one has none set",
+          "ar": "يجب أن يتبع التجمع السكني حيًا أو بلدة (رمز من 9 أرقام)، ولم يُحدَّد أي رمز هنا"
+        },
+        {
+          "key": "err.community.street_unresolved",
+          "zh-CN": "定不出这个位置属于哪个街道，换个点或从行政区划里选",
+          "en": "Cannot tell which subdistrict this location belongs to — pick another point or choose from the region list",
+          "ar": "تعذّر تحديد الحي الذي يقع فيه هذا الموقع — اختر نقطة أخرى أو حدّد من قائمة المناطق"
         },
         {
           "key": "err.conflict",
@@ -18553,6 +18613,12 @@
           "zh-CN": "不能从 {0} 变成 {1}",
           "en": "Cannot move from {0} to {1}",
           "ar": "لا يمكن الانتقال من {0} إلى {1}"
+        },
+        {
+          "key": "err.content.faq_answer_required",
+          "zh-CN": "上架前答案不能为空",
+          "en": "An answer is required before publishing",
+          "ar": "الإجابة مطلوبة قبل النشر"
         },
         {
           "key": "err.content.ranking_manual_only",
@@ -18687,6 +18753,12 @@
           "ar": "خدمة تحديد العنوان غير مفعّلة"
         },
         {
+          "key": "err.goods.cover_required",
+          "zh-CN": "提交审核前要先上传主图",
+          "en": "Upload a cover image before submitting for review",
+          "ar": "ارفع صورة الغلاف قبل الإرسال للمراجعة"
+        },
+        {
           "key": "err.goods.draft_stale",
           "zh-CN": "线上版本在你编辑期间已被修改，请查看差异后重新提交",
           "en": "The live version changed while you were editing. Review the differences and resubmit",
@@ -18709,6 +18781,36 @@
           "zh-CN": "以下规格档位已停用或不存在，请调整商品规格后再上架：{0}",
           "en": "These spec options are archived or missing. Adjust the product before publishing: {0}",
           "ar": "خيارات المواصفات هذه مؤرشفة أو مفقودة. عدّل المنتج قبل النشر: {0}"
+        },
+        {
+          "key": "err.goods.title_banned_word",
+          "zh-CN": "标题里的「{0}」不能用",
+          "en": "The word \"{0}\" cannot be used in the title",
+          "ar": "لا يمكن استخدام كلمة «{0}» في العنوان"
+        },
+        {
+          "key": "err.goods.title_banned_word_reason",
+          "zh-CN": "标题里的「{0}」不能用：{1}",
+          "en": "The word \"{0}\" cannot be used in the title: {1}",
+          "ar": "لا يمكن استخدام كلمة «{0}» في العنوان: {1}"
+        },
+        {
+          "key": "err.goods.title_too_long",
+          "zh-CN": "标题最多 {0} 个字",
+          "en": "The title can be at most {0} characters",
+          "ar": "يجب ألا يزيد العنوان عن {0} حرفًا"
+        },
+        {
+          "key": "err.goods.title_too_short",
+          "zh-CN": "标题至少 {0} 个字",
+          "en": "The title needs at least {0} characters",
+          "ar": "يجب ألا يقل العنوان عن {0} حرفًا"
+        },
+        {
+          "key": "err.industry.not_found",
+          "zh-CN": "行业不存在：{0}",
+          "en": "No such industry: {0}",
+          "ar": "المجال غير موجود: {0}"
         },
         {
           "key": "err.internal",
@@ -18891,6 +18993,18 @@
           "ar": "وسوم النظام للقراءة فقط"
         },
         {
+          "key": "err.merchant.auth_code_in_use",
+          "zh-CN": "还有类目要求这个授权码，先把它们改到别的码上或归档，再停用",
+          "en": "Some categories still require this authorisation code — move them to another code or archive them first",
+          "ar": "ما زالت بعض الفئات تتطلب رمز التفويض هذا — انقلها إلى رمز آخر أو أرشفها أولًا"
+        },
+        {
+          "key": "err.merchant.auth_code_not_found",
+          "zh-CN": "授权码不存在：{0}",
+          "en": "No such authorisation code: {0}",
+          "ar": "رمز التفويض غير موجود: {0}"
+        },
+        {
           "key": "err.merchant.category_banned",
           "zh-CN": "您的主体类型暂不支持经营该类目商品",
           "en": "Your entity type is not allowed to sell in this category.",
@@ -18967,6 +19081,12 @@
           "zh-CN": "经营资质已过期，请更新资质后再上架",
           "en": "Your business qualification has expired — update it before listing",
           "ar": "انتهت صلاحية مؤهلات عملك — قم بتحديثها قبل الإدراج"
+        },
+        {
+          "key": "err.merchant.service_scope_empty",
+          "zh-CN": "至少要开放一档经营范围 —— 全关等于所有商家都保存不了门店",
+          "en": "At least one service scope must stay open — closing all of them stops every merchant from saving a store",
+          "ar": "يجب إبقاء نطاق خدمة واحد مفتوحًا على الأقل — إغلاقها جميعًا يمنع كل التجار من حفظ متاجرهم"
         },
         {
           "key": "err.merchant.service_scope_not_allowed",
@@ -19075,6 +19195,12 @@
           "zh-CN": "收款通道还没接通，请联系平台开通后再提交（不是你填的资料有问题）",
           "en": "Payouts are not connected yet — contact the platform. Nothing is wrong with what you filled in.",
           "ar": "قناة التحصيل غير مفعّلة بعد، تواصل مع المنصّة. لا خطأ في البيانات التي أدخلتها."
+        },
+        {
+          "key": "err.pay.channel_unknown",
+          "zh-CN": "未知支付通道：{0}",
+          "en": "Unknown payment channel: {0}",
+          "ar": "قناة دفع غير معروفة: {0}"
         },
         {
           "key": "err.pay_mode.not_supported",
@@ -19233,6 +19359,18 @@
           "ar": "المبلغ المطلوب يتجاوز الرصيد المتاح وقت تقديم الطلب"
         },
         {
+          "key": "err.settle.withdraw_over_withdrawable",
+          "zh-CN": "可提金额不足：当前可提 {0} 元",
+          "en": "Not enough withdrawable balance: {0} yuan available right now",
+          "ar": "الرصيد القابل للسحب غير كافٍ: المتاح حاليًا {0} يوان"
+        },
+        {
+          "key": "err.settle.withdraw_pending_exists",
+          "zh-CN": "还有一笔提现在处理中，完成后才能再提",
+          "en": "A withdrawal is still being processed — finish that one first",
+          "ar": "هناك طلب سحب قيد المعالجة — أكمله أولًا"
+        },
+        {
           "key": "err.settle.withdraw_review_note_required",
           "zh-CN": "大额提现必须填写复核说明",
           "en": "A review note is required for a large withdrawal",
@@ -19270,9 +19408,9 @@
         },
         {
           "key": "err.staff.role_unknown",
-          "zh-CN": "该角色在后端没有权限配置",
-          "en": "This role has no permission configuration on the server",
-          "ar": "لا يوجد إعداد صلاحيات لهذا الدور في الخادم"
+          "zh-CN": "该角色在后端没有权限配置：{0}",
+          "en": "This role has no permission configuration on the server: {0}",
+          "ar": "لا يوجد إعداد صلاحيات لهذا الدور في الخادم: {0}"
         },
         {
           "key": "err.staff.scope_on_full_access",
@@ -19387,6 +19525,12 @@
           "zh-CN": "库存不足",
           "en": "Out of stock",
           "ar": "المخزون غير كافٍ"
+        },
+        {
+          "key": "err.trade.stock_short_items",
+          "zh-CN": "这些货库存不足：{0}",
+          "en": "Not enough stock for: {0}",
+          "ar": "المخزون غير كافٍ لهذه الأصناف: {0}"
         },
         {
           "key": "err.unauthorized",
@@ -25970,11 +26114,13 @@
           "CONTENT_RANKING_SKU_OFFLINE",
           "CONTENT_RANKING_MANUAL_ONLY",
           "CONTENT_SCOPE_REFS_REQUIRED",
+          "FAQ_ANSWER_REQUIRED",
           "PERM_BUILTIN_ROLE_READONLY",
           "PERM_ROLE_IN_USE",
           "PERM_ROLE_CODE_INVALID",
           "INTERNAL_ERROR",
           "STOCK_NOT_ENOUGH",
+          "STOCK_SHORT_ITEMS",
           "PRICE_CHANGED",
           "OUT_OF_DELIVERY_RANGE",
           "ORDER_STATE_ILLEGAL",
@@ -26020,6 +26166,8 @@
           "WITHDRAW_BELOW_MIN",
           "WITHDRAW_REVIEW_NOTE_REQUIRED",
           "WITHDRAW_MERCHANT_BANNED",
+          "WITHDRAW_PENDING_EXISTS",
+          "WITHDRAW_OVER_WITHDRAWABLE",
           "INVOICE_OVER_SETTLED",
           "INVOICE_TAX_NO_REQUIRED",
           "TAX_RATE_TOO_HIGH",
@@ -26057,6 +26205,21 @@
           "DEREGISTER_HAS_OPEN_ORDERS",
           "PERSON_PHONE_TAKEN",
           "ADDRESS_LIMIT_EXCEEDED",
+          "COMMUNITY_ALREADY_OPEN",
+          "COMMUNITY_APPLY_DUPLICATE",
+          "COMMUNITY_REGION_NOT_FOUND",
+          "COMMUNITY_REGION_NOT_STREET",
+          "COMMUNITY_REGION_REQUIRED",
+          "COMMUNITY_ORIGIN_ALREADY_OPEN",
+          "COMMUNITY_PARENT_TOO_DEEP",
+          "COMMUNITY_PARENT_NO_STREET",
+          "COMMUNITY_STREET_UNRESOLVED",
+          "PAY_CHANNEL_UNKNOWN",
+          "INDUSTRY_NOT_FOUND",
+          "SERVICE_SCOPE_EMPTY",
+          "AUTH_CODE_NOT_FOUND",
+          "AUTH_CODE_IN_USE",
+          "COMMUNITY_APPLY_SUBMITTED",
           "MEMBER_PHONE_REQUIRED",
           "MEMBER_TAG_LIMIT",
           "MEMBER_TAG_SYSTEM_READONLY",
@@ -26092,6 +26255,11 @@
           "APPOINTMENT_SLOT_UNAVAILABLE",
           "SPEC_IN_USE",
           "GOODS_SPEC_UNRESOLVED",
+          "GOODS_COVER_REQUIRED",
+          "GOODS_TITLE_TOO_SHORT",
+          "GOODS_TITLE_TOO_LONG",
+          "GOODS_TITLE_BANNED_WORD",
+          "GOODS_TITLE_BANNED_WORD_REASON",
           "GOODS_DRAFT_STALE",
           "PRESALE_CUTOFF_AFTER_ARRIVAL",
           "SPEC_TEMPLATE_CODE_REQUIRED",

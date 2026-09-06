@@ -82,8 +82,7 @@ public class ServiceScopeServiceImpl implements ServiceScopeService {
          * 每次都被拒。要停止入驻请走别的开关，那是明示的动作。
          */
         if (next.isEmpty()) {
-            throw new BizException(ErrorCode.BAD_REQUEST,
-                    "至少要开放一档经营范围 —— 全关等于所有商家都保存不了门店");
+            throw BizException.of(ErrorCode.SERVICE_SCOPE_EMPTY);
         }
 
         String operator = ai.neargo.shop.auth.SecurityUtils.requireUser().userNo();

@@ -2468,22 +2468,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
              */
             var policy = productPolicy.current();
             if (policy.requireCover() && (g.getCover() == null || g.getCover().isBlank())) {
-                throw BizException.of(ErrorCode.BAD_REQUEST, "提交审核前要先上传主图");
+                throw BizException.of(ErrorCode.GOODS_COVER_REQUIRED);
             }
             String title = g.getTitle() == null ? "" : g.getTitle().strip();
             if (policy.titleMinLength() > 0 && title.length() < policy.titleMinLength()) {
-                throw BizException.of(ErrorCode.BAD_REQUEST,
-                        "标题至少 " + policy.titleMinLength() + " 个字");
+                throw BizException.of(ErrorCode.GOODS_TITLE_TOO_SHORT, policy.titleMinLength());
             }
             if (policy.titleMaxLength() > 0 && title.length() > policy.titleMaxLength()) {
-                throw BizException.of(ErrorCode.BAD_REQUEST,
-                        "标题最多 " + policy.titleMaxLength() + " 个字");
+                throw BizException.of(ErrorCode.GOODS_TITLE_TOO_LONG, policy.titleMaxLength());
             }
             bannedWords.firstHit(g.getTitle()).ifPresent(hit -> {
-                throw BizException.of(ErrorCode.BAD_REQUEST,
-                        "标题里的「" + hit.word() + "」不能用"
-                                + (hit.reason() == null || hit.reason().isBlank()
-                                        ? "" : "：" + hit.reason()));
+                throw hit.reason() == null || hit.reason().isBlank()
+                        ? BizException.of(ErrorCode.GOODS_TITLE_BANNED_WORD, hit.word())
+                        : BizException.of(ErrorCode.GOODS_TITLE_BANNED_WORD_REASON,
+                                hit.word(), hit.reason());
             });
             if (!auditRequired()) {
                 // 免审：提交即编译上架。编译失败（80017）直接抛给商家 ——
