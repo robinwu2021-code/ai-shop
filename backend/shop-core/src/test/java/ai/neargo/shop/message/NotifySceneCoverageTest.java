@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -43,6 +44,7 @@ class NotifySceneCoverageTest {
         String src = Files.readString(CONSUMER, StandardCharsets.UTF_8);
 
         List<String> missing = new ArrayList<>();
+        int checked = 0;
         for (Field f : NotifyScene.class.getDeclaredFields()) {
             if (!Modifier.isStatic(f.getModifiers()) || f.getType() != String.class) {
                 continue;
@@ -57,10 +59,38 @@ class NotifySceneCoverageTest {
                 // 常量存在但不在 ALL 里 = 申报为「还没接」，不该要求有分支
                 continue;
             }
-            if (!src.contains("case NotifyScene." + f.getName())) {
+            checked++;
+            /*
+             * 判据带词边界，不能用 contains：一个成员是另一个的前缀时
+             * （比如同时有 ORDER 与 ORDER_PAID），`case NotifyScene.ORDER_PAID ->` 这一行
+             * 里含着 `case NotifyScene.ORDER` 这个子串，短的那个缺分支也会被判成有。
+             * 今天七个成员两两互不为前缀，所以这是潜伏项 —— 潜伏项也要修，
+             * 因为它发作的那天没有任何迹象。
+             */
+            Pattern branch = Pattern.compile("case\\s+NotifyScene\\." + Pattern.quote(f.getName()) + "\\b");
+            if (!branch.matcher(src).find()) {
                 missing.add(f.getName() + "（" + value + "）");
             }
         }
+
+        /*
+         * 扫描面的下界。**没有这一条，这个测试可以在什么都没查的情况下全绿** ——
+         * 上面的循环靠 `f.getType() == String.class` 认成员，
+         * 而这组常量一旦被改写成 Java enum（本仓库有 13 个 enum，不是没人会这么想），
+         * `getDeclaredFields()` 一个 String 字段都不会返回：missing 为空、断言通过，
+         * 而 ALL 还在，另外两条守卫照旧绿。实测过：枚举化之后 String 字段数 = 0。
+         *
+         * 顺带还钉住反向的一种：ALL 里放了一个没有对应常量的裸字符串时，
+         * checked 会小于 ALL.size()，同样红。
+         *
+         * 这就是本仓库反复付过代价的那个形状 —— 绿不等于查过，
+         * 所以每个「找出违规」型的判据都要有一条「我确实看了这么多个」。
+         */
+        assertThat(checked)
+                .as("只检查了 %d 个成员，而 NotifyScene.ALL 有 %d 个 —— "
+                        + "判据没认出成员（常量改成 enum 了？），这个测试正在空转",
+                        checked, NotifyScene.ALL.size())
+                .isEqualTo(NotifyScene.ALL.size());
 
         assertThat(missing)
                 .as("这些场景在 NotifyScene.ALL 里，但 NotificationConsumer 没有对应的 case —— "
