@@ -1815,7 +1815,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     tabAll: "All",
     hint: "One row per item; the number on the right is available across all stores. Tap to see each store.",
     shortageN: "short at {n}",
-    openDetail: "Ledger / adjust ›",
+    openDetail: "Ledger / adjust",
     empty: "No stock records yet",
     emptyOk: "Every item is in stock at every store — nothing to restock",
   },

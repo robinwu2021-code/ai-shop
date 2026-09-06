@@ -128,7 +128,11 @@ onShow(load);
           <text class="sh-muted">{{ l.locationName }}</text>
           <text class="sh-num" :class="{ 'is-danger': l.onHand <= 0 }">{{ l.onHand }}</text>
         </view>
-        <text class="sh-link detail" @tap="openDetail(r)">{{ $t("stockCross.openDetail") }}</text>
+        <!-- 箭头归 sh-go 画。外层给「靠右 + 上留白」：`.detail` 带 display:block 与 padding，
+             传给组件的话会顶掉它的 inline-flex，且小程序上宿主与根各吃一遍 padding -->
+        <view class="detail">
+          <sh-go :text="String($t('stockCross.openDetail'))" @tap="openDetail(r)"></sh-go>
+        </view>
       </template>
     </view>
   </sh-scaffold>
@@ -154,8 +158,8 @@ onShow(load);
   padding: 12rpx 0;
   border-top: var(--sh-hairline-soft);
 }
+/* <view> 本来就是块级，不用再声明 display */
 .detail {
-  display: block;
   text-align: end;
   padding-top: 12rpx;
 }
