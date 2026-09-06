@@ -97,7 +97,10 @@ describe("订单列表", () => {
     expect(orderList).toHaveBeenCalledTimes(1);
 
     orderList.mockResolvedValue({ records: [ORDER], total: 1 });
-    await w.find(".empty__btn").trigger("tap");
+    // 按库件自己定义的插槽容器选（sh-empty 的 .empty__act），不按页面私有类名：
+    // 重试按钮原来是 .empty__btn，收进 sh-empty 的 action 插槽之后那个类没了，
+    // 而失败信息只说「在空 wrapper 上 trigger」，指不到「类名已经不存在」
+    await w.find(".empty__act .sh-btn").trigger("tap");
     for (let i = 0; i < 8; i++) await w.vm.$nextTick();
 
     expect(orderList).toHaveBeenCalledTimes(2);

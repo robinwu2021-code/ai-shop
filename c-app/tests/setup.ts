@@ -1,6 +1,7 @@
 // 端能力的替身。**只补页面真正会碰到的那几个** ——
 // 把整个 uni 对象照着文档补全，测试就变成了在测 mock 自己。
 import { vi } from "vitest";
+import { config } from "@vue/test-utils";
 
 /** uni.showModal 默认「点确定」。要测「点取消」的用例自己覆盖它 */
 export const uniMock = {
@@ -44,3 +45,28 @@ vi.mock("@dcloudio/uni-app", () => ({
   onReachBottom: vi.fn(),
   onShareAppMessage: vi.fn(),
 }));
+
+/*
+ * 组件库按 easycom 的规则全局注册 —— 让测试里的组件树与真机上的一致。
+ *
+ * **为什么必须做这件事**：`<sh-*>` 在 uni 里由 easycom 自动解析
+ * （`c-app/src/pages.json` 的 `^sh-(.*)` → `@ai-shop/ui/components/sh-$1.vue`），
+ * 而 vitest 不走那套。不注册的话它们是未解析的自定义元素：
+ * 标签渲染成空壳、插槽内容一行不出。后果不是报错，是**断言在一个空的 DOM 上求值** ——
+ * 2026-09-06 UI 库把提示条/密排清单/搜索框/步进器收进库件之后，
+ * 16 条用例一次性变红，失败信息全是「期望包含 xxx，实际是空字符串」，
+ * 没有一条指向「这个组件压根没渲染」。
+ *
+ * 用 eager glob 而不是逐个 import：库里加一个件，这里不用跟着改 ——
+ * 而漏改的表现恰恰是上面那种查不出根因的红。
+ */
+const uiComponents = import.meta.glob("../../packages/ui/src/components/sh-*.vue", {
+  eager: true,
+}) as Record<string, { default: unknown }>;
+
+config.global.components = Object.fromEntries(
+  Object.entries(uiComponents).map(([path, mod]) => [
+    path.replace(/^.*\/(sh-[^/]+)\.vue$/, "$1"),
+    mod.default,
+  ]),
+) as typeof config.global.components;

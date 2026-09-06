@@ -18,6 +18,15 @@ export default defineConfig({
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
       "@shared": fileURLToPath(new URL("../packages/shared/src", import.meta.url)),
+      /*
+       * 组件库。**没有这条时 `<sh-*>` 在测试里根本不渲染** ——
+       * 它们靠 uni 的 easycom（pages.json 里 `^sh-(.*)` → `@ai-shop/ui/components/sh-$1.vue`）
+       * 解析，而 vitest 不走 easycom，也没有这个别名，于是 Vue 把它们当成未知自定义元素：
+       * 标签在、内容不在、插槽不渲染。断言拿到的是空字符串，
+       * 而失败信息说的是「期望包含 cart.empty」，指不到根因。
+       * 见 tests/setup.ts 里那段全局注册。
+       */
+      "@ai-shop/ui": fileURLToPath(new URL("../packages/ui/src", import.meta.url)),
     },
   },
   test: {
