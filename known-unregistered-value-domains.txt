@@ -23,7 +23,7 @@
 # 于是可见面报 134 而实际是 206。改用共用解析器之后这 72 列才露出来。
 # 教训：**「找出违规」型判据少扫等于全绿**，所以 surface() 现在带一条表数下界断言。
 #
-# 当前（2026-09-06 第二版）：可见面 206 列，已判定 12（登记 8 + 驳回 4），未判定 197。
+# 当前（2026-09-06 第二版）：可见面 206 列，已判定 12（登记 8 + 驳回 4），未判定 196（ful_batch.status 已登记，见 check-enum-fields.mjs 里那条注释）。
 cmt_community.coords_source
 cmt_community.kind
 cmt_community_apply.status
@@ -35,7 +35,6 @@ cnt_material.scope
 cnt_post.author_type
 cnt_post.status
 cnt_question.status
-ful_batch.status
 ful_carrier.carrier
 ful_group_pickup.status
 ful_shipment.carrier

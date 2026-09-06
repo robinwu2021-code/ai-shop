@@ -40,6 +40,16 @@ import { fileURLToPath } from "node:url";
 // DDL 解析只有一份 —— 见 ddl.mjs 的文件头「为什么必须只有一份」
 import { readSchema, MIGRATION_DIR, INVENTORY_MIGRATION_DIR } from "./lib/ddl.mjs";
 
+/**
+ * 重放后的表结构，**惰性 + 只算一次**：`audit()` 会对每条 FIELDS 查一次列注释，
+ * 每次都重放一遍全部迁移的话，200 多个文件要读上十几遍。
+ */
+let SCHEMA = null;
+function schema() {
+  if (!SCHEMA) SCHEMA = readSchema(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR]);
+  return SCHEMA;
+}
+
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 /* **目录，不是文件**：那份实体单文件按域拆开了，指向 index.ts 只会读到一份门面 */
 const SHARED_TYPES = "packages/shared/src/types";
@@ -103,6 +113,20 @@ export const FIELDS = [
     field: "prd_goods.type",
     backend: { ddl: ["prd_goods", "type"] },
     clients: [{ file: SHARED_CONST, const: "CATEGORY_TYPE" }],
+  },
+  {
+    /*
+     * 登记这一条是**为了钉住上面 ddlValues 那段注释里的教训**：
+     * 它曾经读的是建表时那份旧注释 `PENDING/RECEIVED`，而这一列早被
+     * `MODIFY COLUMN` 改成了 PLANNED/DISPATCHED/ARRIVED/SIGNED，两套词零重合。
+     * 端上（ops-web 的 BatchStatus）一直是对的四个。
+     * 也就是说：在解析器修好之前，谁登记这一列，谁就会拿到四条方向全反的「差异」。
+     * 现在两侧逐字相等 —— 这条既是登记，也是那次修复的回归用例。
+     */
+    concept: "履约批次状态",
+    field: "ful_batch.status",
+    backend: { ddl: ["ful_batch", "status"] },
+    clients: [{ file: "ops-web/lib/types/fulfillment.ts", type: "BatchStatus" }],
   },
   {
     concept: "商家经营状态",
@@ -176,35 +200,44 @@ function javaConstValues(rel, only) {
   return only ? out.filter((v) => only.includes(v)) : out;
 }
 
-/** 取建表语句列注释里的取值域：`COMMENT 'A/B/C：说明'` */
+/**
+ * 取某一列的取值域（来自它**当前**的列注释）。
+ *
+ * <p><b>解析走 `scripts/lib/ddl.mjs`，不自己写。</b>2026-09-06 这里曾手写一份
+ * CREATE TABLE 解析，与 {@link surface} 那份是同一天被换掉的第二处 ——
+ * 换 surface 时漏了它，而它是**活路径**：`FIELDS` 里 `backend: { ddl: [...] }`
+ * 那几条走的就是它。三个缺陷同样在：
+ *
+ * <ul>
+ *   <li>收尾写死 `) ENGINE` —— 195 张表里有 67 张找不到（合法的 `) COMMENT='…';`）；</li>
+ *   <li>只扫平台迁移目录 —— 进销存那条独立 Flyway 历史读不到；</li>
+ *   <li><b>不重放 `ALTER`</b> —— 这一条最要紧，因为它**不报错、直接给错答案**：
+ *       列注释被后续 `MODIFY COLUMN` 改过时读到的是建表时那份旧的。
+ *       实测 `ful_batch.status`：旧注释 `PENDING/RECEIVED`，实际
+ *       `PLANNED/DISPATCHED/ARRIVED/SIGNED` —— <b>两套词零重合</b>。
+ *       而 ops-web 的 `BatchStatus` 正是后面这四个，也就是端上对、判据错。
+ *       谁要是登记了这一列，这道闸门会把端上四个全报成「后端不认的词」、
+ *       把旧的两个报成「端上缺的」，四条全反，而且报得很确定 ——
+ *       一个会给出确定错答案的工具，比没有这个工具更糟。</li>
+ * </ul>
+ */
 function ddlValues(table, column) {
-  const dir = join(ROOT, "backend/shop-app/src/main/resources/db/migration");
-  for (const f of readdirSync(dir).filter((x) => x.endsWith(".sql")).sort()) {
-    const src = readFileSync(join(dir, f), "utf8");
-    // 建表语句以 `) ENGINE=...;` 收尾，不是裸的 `);`
-    const block = src.match(
-      new RegExp(`CREATE TABLE IF NOT EXISTS ${table}\\s*\\n\\(([\\s\\S]*?)\\n\\)\\s*ENGINE`),
-    );
-    if (!block) continue;
-    for (const line of block[1].split("\n")) {
-      if (!new RegExp(`^\\s+${column}\\s`).test(line)) continue;
-      const c = line.match(/COMMENT\s+'([^']*)'/);
-      if (!c) return { error: `${table}.${column} 建表语句没有列注释，取值域无处可查` };
-      /*
-       * 列注释里取值域有两种写法，都要认：
-       *   `A/B/C：说明`          —— 取值挤在开头，说明在冒号后
-       *   `A=说明 / B=说明`      —— 每个取值自带说明
-       * 后一种如果只切第一段，就只剩 A 了 —— 那会把 B、C 误报成「端上编的词」。
-       */
-      const eq = [...c[1].matchAll(/\b([A-Z][A-Z0-9_]+)\s*=/g)].map((x) => x[1]);
-      const vals = eq.length
-        ? eq
-        : [...c[1].split(/[：:，,（(]/)[0].matchAll(/([A-Z][A-Z0-9_]{1,})/g)].map((x) => x[1]);
-      if (!vals.length) return { error: `${table}.${column} 的注释里没有取值域：${c[1]}` };
-      return { values: vals };
-    }
+  const def = schema().get(table);
+  if (!def) {
+    return { error: `找不到 ${table} 的建表语句（重放全部迁移之后仍然没有这张表）` };
   }
-  return { error: `找不到 ${table}.${column} 的建表语句` };
+  const col = (def.cols ?? []).find((c) => c.name === column);
+  if (!col) {
+    return { error: `${table} 里没有 ${column} 这一列` };
+  }
+  if (!col.comment) {
+    return { error: `${table}.${column} 没有列注释，取值域无处可查` };
+  }
+  const vals = valuesInComment(col.comment);
+  if (!vals.length) {
+    return { error: `${table}.${column} 的注释里没有取值域：${col.comment}` };
+  }
+  return { values: vals };
 }
 
 /** 端上：字面量联合类型 `export type X = "A" | "B";` */
@@ -274,7 +307,7 @@ export const DISMISSED = [
  * 那一版是第四份。
  */
 export function surface() {
-  const tables = readSchema(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR]);
+  const tables = schema();
 
   /*
    * 扫描面的下界。**没有这一条，解析器哪天读不到东西，这里会安静地返回空 Map** ——
@@ -423,7 +456,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { added, fixed } = ratchet(un);
   console.log(`代码侧可见面 ${surface().size} 列，其中 ${un.length} 列还没有人判定过。`);
   console.log("（这不是覆盖率的分母 —— 分母应当是需求端定义的取值域，见 TDD §2.2。");
-  console.log("  这里只是让「已登记 8 个」旁边有一份点得出名字的清单。）\n");
+  console.log(`  这里只是让「已登记 ${FIELDS.length} 个」旁边有一份点得出名字的清单。）\n`);
   if (added.length) {
     console.log(`❌ 新出现 ${added.length} 列未判定的取值域（不在 ${RATCHET_FILE} 里）：`);
     for (const u of added) console.log(`   ${u.key}  ${u.values.join("/")}`);
