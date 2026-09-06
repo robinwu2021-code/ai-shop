@@ -115,11 +115,23 @@ ok "JDK：$JDK"
 # 这里让 b-app/src/manifest.json（**在仓库里、可提交、可 review**）当唯一真源，
 # 由脚本同步进仓库外的 gradle。人只改一处，另一处不可能落后。
 say "① 版本号"
-read -r VNAME VCODE <<<"$(python3 -c "
-import json
-m = json.load(open('b-app/src/manifest.json', encoding='utf-8'))
+# **用 heredoc，不用 python3 -c 的双引号。** 那对双引号里反引号会被 shell 当成命令
+# 替换执行，而且注释里只要出现一对引号就把字符串提前闭合 —— 这两样 2026-09-06
+# 各踩了一次，第二次正是那句**解释引号规则的注释**自己违反了规则。
+# 换成 <<'PY' 之后一个字符都不解释，注释里想写什么写什么。
+read -r VNAME VCODE <<<"$(python3 - <<'PY'
+import json, re
+# manifest.json 是 JSON5：uni 认注释，两端的 manifest 里都写着大段说明。
+# 2026-09-06 b 端也加了一段，上一版这一行当场炸在 line 30 column 5，
+# 而报出来的是「读不到 versionCode」—— 看着像字段没了，其实是解析器不认注释。
+raw = open('b-app/src/manifest.json', encoding='utf-8').read()
+raw = re.sub(r'/\*[\s\S]*?\*/', '', raw)
+raw = re.sub(r'^\s*//.*$', '', raw, flags=re.M)
+raw = re.sub(r',(\s*[}\]])', r'\1', raw)   # 剥完可能留下尾逗号
+m = json.loads(raw)
 print(m['versionName'], m['versionCode'])
-")"
+PY
+)"
 [ -n "$VCODE" ] || die "b-app/src/manifest.json 里读不到 versionCode"
 ok "真源 b-app/src/manifest.json：$VNAME / $VCODE"
 
