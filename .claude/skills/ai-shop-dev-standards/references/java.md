@@ -69,6 +69,7 @@ Flyway 迁移是本仓库出线上事故最多的一处。
 | Controller 越长越大 | 一个类装了不止一个资源，每次加的人都有一个局部合理的理由 | 判据是「路径第一段的种数 ≤3」，不是端点数。见 `known-fat-controllers.txt` |
 | 越权访问 | 路径或入参里接受了 `merchantNo` —— 等于把「我是谁」交给调用方声明 | 作用域一律取自 `BizContext#requireMerchantNo()` |
 | 发大 body 时请求挂死 | Java `HttpClient` 默认走 HTTP/2，对端（如 sglang）不处理 HTTP/2 大包 | 发大 body 的客户端锁 `HttpClient.Version.HTTP_1_1` |
+| 新加的错误码在界面上显示成 `err.xxx`；或传了参数用户只看到一句泛话 | 码在枚举、文案在三份 properties，两边没有编译期联系：`Messages.get` 取不到 key 返回 key 本身；`MessageFormat` 遇到没有 `{0}` 的文案把参数**静默丢掉** | 新增 ErrorCode = 枚举一条 + 三份 properties 各一条；带参抛出的码文案要有 `{0}`（参数是中文业务原因的，该另开一个码）。守卫：`BackendI18nParityTest`（正反两向）、`packages/shared/tests/message-placeholder.test.ts`（两向） |
 
 ---
 
@@ -100,6 +101,11 @@ JAVA_HOME=... mvn -o -f backend/pom.xml -pl shop-app -am test -Dtest=Architectur
 - **改了 `shop-core` 要先 `install`**，否则本地 dev server 验的是 `.m2` 里的旧包。
 - **端点还 404 就 `clean`**：`package` 会复用旧 lib，jar 的 mtime 不可信。
 - **别覆盖正在跑的 jar**：接口挂起且无日志，多半是 `mvn package` 把在跑的 jar 覆盖了。
+- **模块 pom 里不写任何第三方版本**（字面量与 `${...}` 都不写）。写了在 `shop-app` 里也**不生效**：
+  根工程继承的 Spring Boot BOM 会覆盖传递依赖声明的版本，只会让模块测试与发布物跑两个版本。
+  Boot BOM 已管的包父 POM 也不写，要偏离用 BOM 自己的属性名覆盖并写明原因；
+  规矩在 `backend/pom.xml` 顶部，`gen-glossary.mjs` 扫到模块里的版本直接红。
+  改了父 POM 记得 `mvn -o -N install`，否则 `~/.m2` 里的旧父 POM 会让单独 install 的模块静默丢依赖。
 
 ### 测试的四个坑
 
