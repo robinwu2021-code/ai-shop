@@ -33,7 +33,10 @@ import PhoneGate from "@/components/phone-gate.vue";
 
 async function render() {
   const w = mount(PhoneGate, {
-    props: { show: true },
+    // 组件的 prop 是 visible（8a80a75b「弹层 API 统一」把 show 改成了 visible），
+    // 传 show 的话 visible 为 undefined，弹层根本不渲染 ——
+    // 症状是后面 find("button") 拿到空 wrapper，报错指向触发那一行，看不出根因在这里
+    props: { visible: true },
     global: { mocks: { $t: (k: string) => k } },
   });
   for (let i = 0; i < 8; i++) {
@@ -76,7 +79,9 @@ describe("留手机号弹层", () => {
 
     await w.findAll("input")[0].setValue("13500135003");
     await w.findAll("input")[1].setValue("123456");
-    await w.find("button").trigger("tap");
+    // 按 .form__submit 选，不按标签：一键授权那个 <button> 只在 capable 时才有，
+    // 而这两条用例走的是验证码那一路（capable=false），提交是个 <view>
+    await w.find(".form__submit").trigger("tap");
     for (let i = 0; i < 8; i++) {
       await Promise.resolve();
       await w.vm.$nextTick();
@@ -92,7 +97,9 @@ describe("留手机号弹层", () => {
 
     await w.findAll("input")[0].setValue("13500135001");
     await w.findAll("input")[1].setValue("123456");
-    await w.find("button").trigger("tap");
+    // 按 .form__submit 选，不按标签：一键授权那个 <button> 只在 capable 时才有，
+    // 而这两条用例走的是验证码那一路（capable=false），提交是个 <view>
+    await w.find(".form__submit").trigger("tap");
     for (let i = 0; i < 8; i++) {
       await Promise.resolve();
       await w.vm.$nextTick();

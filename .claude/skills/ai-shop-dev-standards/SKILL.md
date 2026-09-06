@@ -79,7 +79,7 @@ TDD 末尾的「偏差说明」一节就是干这个的。设计文档过时了�
 
 | 闸门 | 怎么跑 | 管什么 |
 |---|---|---|
-| `.githooks/pre-push` 13 道 | push 时自动 | UI 清单 · 契约 · 孤儿页 · i18n（**只扫端上**）· RTL · Controller 内聚 · SQL 方言 · 生成文档 · vue-tsc · 后端编译 |
+| `.githooks/pre-push` 14 道 | push 时自动 | UI 清单 · 契约 · 孤儿页 · i18n（**只扫端上**）· RTL · Controller 内聚 · SQL 方言 · 生成文档 · vue-tsc · **c-app 单测** · 后端编译 |
 | `ArchitectureTest` 13 条 | `mvn -pl shop-app -am test -Dtest=ArchitectureTest` | 域间依赖 · Controller 位置 · Service 接口化 · Controller 不碰 Mapper · Port 只在 spi |
 | `BackendI18nParityTest` 5 条 + `message-placeholder` 两向 | `mvn -pl shop-app -am test -Dtest=BackendI18nParityTest` · `packages/shared` vitest | **后端** i18n：三语键集一致 · 每个 ErrorCode 有文案 · 每条文案有码指着 · 带 `{0}` 的码必传参、传参的码必有 `{0}`。上一行的「i18n」管不到这些 —— M6 加了 ErrorCode 没加文案就是这么漏的 |
 | `backend/known-*.txt` 5 份棘轮 | 各自的守卫 | 存量欠账**只准变短**。先读文件头 —— 分「待办型」和「止血线型」，后者一个字都改不得 |

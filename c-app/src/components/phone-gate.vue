@@ -153,7 +153,10 @@ async function bind(run: () => Promise<unknown>) {
           {{ $t("phoneGate.sendCode") }}
         </view>
       </view>
-      <view class="sh-btn" :class="{ 'is-disabled': busy }" @tap="onSubmit">
+      <!-- `form__submit` 只是给测试的稳定抓手（与旁边的 form__send 同一套命名）：
+           这一处此前是原生 <button>，测试按标签选它；换成 .sh-btn 之后选择器落空，
+           而报错指向 trigger 那一行，看不出根因是「这里已经不是 button 了」。 -->
+      <view class="sh-btn form__submit" :class="{ 'is-disabled': busy }" @tap="onSubmit">
         {{ $t("phoneGate.submit") }}
       </view>
     </view>
