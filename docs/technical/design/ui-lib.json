@@ -2466,7 +2466,7 @@
       "name": "sh-theme-sheet",
       "file": "packages/ui/src/components/sh-theme-sheet.vue",
       "scope": "跨端",
-      "lines": 225,
+      "lines": 233,
       "props": [
         "visible: boolean"
       ],
