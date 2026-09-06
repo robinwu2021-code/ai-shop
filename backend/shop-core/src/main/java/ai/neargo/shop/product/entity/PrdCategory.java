@@ -34,6 +34,20 @@ public class PrdCategory extends BaseEntity {
      *
      * <p>与下面的 {@link #attrTemplate} 不是一回事：那个是具体字段清单，这个是模板**类型**。
      */
+    /*
+     * ── 录入模板（`template` 列）─────────────────────────────────────────
+     *
+     * 决定商家录入时看到哪些字段。与 {@code PrdGoods} 的五品类是同一件事的另一面，
+     * 但**用词不同**：STANDARD↔NORMAL、VOUCHER↔CARD。
+     * 对应关系是有名字的一份代码（{@code CategoryService.TEMPLATE_TO_TYPE}），
+     * 不靠人脑记 —— 这两套近义词此前没有任何地方定义过对应关系。
+     */
+    public static final String TEMPLATE_STANDARD = "STANDARD";
+    public static final String TEMPLATE_FRESH = "FRESH";
+    public static final String TEMPLATE_SERVICE = "SERVICE";
+    public static final String TEMPLATE_VIRTUAL = "VIRTUAL";
+    public static final String TEMPLATE_VOUCHER = "VOUCHER";
+
     private String template;
 
     /**

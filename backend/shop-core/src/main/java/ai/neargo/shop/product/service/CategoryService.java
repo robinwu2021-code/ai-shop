@@ -1,5 +1,7 @@
 package ai.neargo.shop.product.service;
 
+import ai.neargo.shop.product.entity.PrdGoods;
+import ai.neargo.shop.product.entity.PrdCategory;
 import ai.neargo.shop.product.dto.CategoryVO;
 import ai.neargo.shop.product.dto.OpsCategoryVO;
 
@@ -55,11 +57,11 @@ public interface CategoryService {
      * 虚拟商品是即时发放（INSTANT），两者履约方式不同。
      */
     java.util.Map<String, String> TEMPLATE_TO_TYPE = java.util.Map.of(
-            "STANDARD", "NORMAL",
-            "FRESH", "FRESH",
-            "SERVICE", "SERVICE",
-            "VOUCHER", "CARD",
-            "VIRTUAL", "VIRTUAL");
+            PrdCategory.TEMPLATE_STANDARD, PrdGoods.TYPE_NORMAL,
+            PrdCategory.TEMPLATE_FRESH, PrdGoods.TYPE_FRESH,
+            PrdCategory.TEMPLATE_SERVICE, PrdGoods.TYPE_SERVICE,
+            PrdCategory.TEMPLATE_VOUCHER, PrdGoods.TYPE_CARD,
+            PrdCategory.TEMPLATE_VIRTUAL, PrdGoods.TYPE_VIRTUAL);
 
     /** 平台端平铺列表。{@code showArchived=false} 时不返回已归档的。 */
     List<OpsCategoryVO> list(String keyword, String template, boolean showArchived);

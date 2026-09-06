@@ -62,6 +62,23 @@ public class PrdGoods extends BaseEntity {
     private String detailImages;
 
     /** NORMAL / FRESH / SERVICE / VIRTUAL / CARD */
+    /*
+     * ── 五品类（`type` 列）───────────────────────────────────────────────
+     *
+     * 驱动**计价与履约策略分发**，不是展示标签（见项目词典 §4）。
+     * 与 `prd_category.template` 是两套码指同一件事的两个面：
+     * 录入模板用 STANDARD/VOUCHER，商品形态用 NORMAL/CARD，
+     * 对应关系在 {@code CategoryService.TEMPLATE_TO_TYPE}。
+     *
+     * ⚠️ `VIRTUAL` 这个词在本仓库另有一处：{@code InvEnums.LocationKind.VIRTUAL}
+     * 是**虚拟库位**（报废区/样品/借出），与商品形态毫无关系。取值相同、概念不同。
+     */
+    public static final String TYPE_NORMAL = "NORMAL";
+    public static final String TYPE_FRESH = "FRESH";
+    public static final String TYPE_SERVICE = "SERVICE";
+    public static final String TYPE_VIRTUAL = "VIRTUAL";
+    public static final String TYPE_CARD = "CARD";
+
     private String type;
     private String categoryNo;
 

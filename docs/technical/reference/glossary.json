@@ -24099,6 +24099,76 @@
         "module": "shop-core"
       },
       {
+        "host": "SysRegion",
+        "name": "LEVEL_PROVINCE",
+        "value": "PROVINCE",
+        "zh": "── 区划层级（`level` 列）───────────────────────────────────────────── 收编前这五个值在后端裸写在四个文件里（RegionServiceImpl 五处、 BizRegionController、MpCatalogController、MasterDataPortImpl），跨三个模块。",
+        "module": "shop-core"
+      },
+      {
+        "host": "SysRegion",
+        "name": "LEVEL_CITY",
+        "value": "CITY",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "SysRegion",
+        "name": "LEVEL_DISTRICT",
+        "value": "DISTRICT",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "SysRegion",
+        "name": "LEVEL_STREET",
+        "value": "STREET",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "SysRegion",
+        "name": "LEVEL_VILLAGE",
+        "value": "VILLAGE",
+        "zh": "村委会 · 居委会，第五级。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdCategory",
+        "name": "TEMPLATE_STANDARD",
+        "value": "STANDARD",
+        "zh": "── 录入模板（`template` 列）───────────────────────────────────────── 决定商家录入时看到哪些字段。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdCategory",
+        "name": "TEMPLATE_FRESH",
+        "value": "FRESH",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdCategory",
+        "name": "TEMPLATE_SERVICE",
+        "value": "SERVICE",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdCategory",
+        "name": "TEMPLATE_VIRTUAL",
+        "value": "VIRTUAL",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdCategory",
+        "name": "TEMPLATE_VOUCHER",
+        "value": "VOUCHER",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "PrdCategoryPoints",
         "name": "FIXED",
         "value": "FIXED",
@@ -24109,6 +24179,41 @@
         "host": "PrdCategoryPoints",
         "name": "RATIO",
         "value": "RATIO",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoods",
+        "name": "TYPE_NORMAL",
+        "value": "NORMAL",
+        "zh": "── 五品类（`type` 列）─────────────────────────────────────────────── 驱动**计价与履约策略分发**，不是展示标签（见项目词典 §4）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoods",
+        "name": "TYPE_FRESH",
+        "value": "FRESH",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoods",
+        "name": "TYPE_SERVICE",
+        "value": "SERVICE",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoods",
+        "name": "TYPE_VIRTUAL",
+        "value": "VIRTUAL",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoods",
+        "name": "TYPE_CARD",
+        "value": "CARD",
         "zh": "",
         "module": "shop-core"
       },

@@ -93,7 +93,7 @@ public class RegionServiceImpl implements RegionService {
             hit.append(token);
         }
         // 只匹配到省没有意义（一个省几千个街道），至少要到区县
-        if (cur == null || "PROVINCE".equals(cur.getLevel())) {
+        if (cur == null || SysRegion.LEVEL_PROVINCE.equals(cur.getLevel())) {
             return java.util.Optional.empty();
         }
         return java.util.Optional.of(new Suggestion(toVO(cur), pathName(cur.getRegionCode()),
@@ -113,7 +113,7 @@ public class RegionServiceImpl implements RegionService {
         }
         int win = (int) (NEAR_WINDOW_DEG * 1e6);
         var rows = mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
-                .eq(SysRegion::getLevel, "VILLAGE")
+                .eq(SysRegion::getLevel, SysRegion.LEVEL_VILLAGE)
                 .isNotNull(SysRegion::getLatE6)
                 .between(SysRegion::getLatE6, latE6 - win, latE6 + win)
                 .between(SysRegion::getLngE6, lngE6 - win, lngE6 + win)
@@ -226,9 +226,9 @@ public class RegionServiceImpl implements RegionService {
     /** 下一级的 level 由父级推导 —— 不让人选，选错的代价是整棵树的层级从此对不上 */
     private static String childLevel(String parentLevel) {
         return switch (parentLevel) {
-            case "PROVINCE" -> "CITY";
-            case "CITY" -> "DISTRICT";
-            case "DISTRICT" -> "STREET";
+            case SysRegion.LEVEL_PROVINCE -> SysRegion.LEVEL_CITY;
+            case SysRegion.LEVEL_CITY -> SysRegion.LEVEL_DISTRICT;
+            case SysRegion.LEVEL_DISTRICT -> SysRegion.LEVEL_STREET;
             default -> throw BizException.of(ErrorCode.BAD_REQUEST);
         };
     }
@@ -371,7 +371,7 @@ public class RegionServiceImpl implements RegionService {
         if (nearLatE6 != null && nearLngE6 != null) {
             rows = DataScopeContext.executeWithoutScope(() ->
                     mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
-                            .eq(SysRegion::getLevel, "VILLAGE")
+                            .eq(SysRegion::getLevel, SysRegion.LEVEL_VILLAGE)
                             .eq(SysRegion::getEnabled, true)
                             .eq(SysRegion::getAuditStatus, "APPROVED")
                             .like(SysRegion::getName, key)
@@ -393,7 +393,7 @@ public class RegionServiceImpl implements RegionService {
         if (rows.isEmpty()) {
             rows = DataScopeContext.executeWithoutScope(() ->
                     mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
-                            .eq(SysRegion::getLevel, "VILLAGE")
+                            .eq(SysRegion::getLevel, SysRegion.LEVEL_VILLAGE)
                             .eq(SysRegion::getEnabled, true)
                             .eq(SysRegion::getAuditStatus, "APPROVED")
                             .likeRight(SysRegion::getName, key)
@@ -404,7 +404,7 @@ public class RegionServiceImpl implements RegionService {
         if (rows.isEmpty()) {
             rows = DataScopeContext.executeWithoutScope(() ->
                     mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
-                            .eq(SysRegion::getLevel, "VILLAGE")
+                            .eq(SysRegion::getLevel, SysRegion.LEVEL_VILLAGE)
                             .eq(SysRegion::getEnabled, true)
                             .eq(SysRegion::getAuditStatus, "APPROVED")
                             .like(SysRegion::getName, key)
@@ -426,9 +426,9 @@ public class RegionServiceImpl implements RegionService {
      * 每级配额。省少而粗、街道多而细，各留各的位置 ——
      * 共用一份配额时细的那一级永远把粗的挤掉（这正是「搜运城出不来运城市」的原因）。
      */
-    private static final List<String> SEARCH_LEVELS = List.of("PROVINCE", "CITY", "DISTRICT", "STREET");
+    private static final List<String> SEARCH_LEVELS = List.of(SysRegion.LEVEL_PROVINCE, SysRegion.LEVEL_CITY, SysRegion.LEVEL_DISTRICT, SysRegion.LEVEL_STREET);
     private static final Map<String, Integer> SEARCH_QUOTA =
-            Map.of("PROVINCE", 3, "CITY", 5, "DISTRICT", 8, "STREET", 8);
+            Map.of(SysRegion.LEVEL_PROVINCE, 3, SysRegion.LEVEL_CITY, 5, SysRegion.LEVEL_DISTRICT, 8, SysRegion.LEVEL_STREET, 8);
     /** 每级先捞多少候选再在内存里排序。前缀命中通常远少于这个数，兜底防「新华」「城关」这种烂大街的名字 */
     private static final int CANDIDATES_PER_LEVEL = 200;
 

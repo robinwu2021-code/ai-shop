@@ -1,5 +1,6 @@
 package ai.neargo.shop.product.api.biz;
 
+import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.auth.BizPerms;
 import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
@@ -565,7 +566,7 @@ public class BizGoodsController {
         var guess = vision.recognize(req.imageUrl(), categories);
         if (guess == null) {
             // 识别不出来不是错误。confidence=0 时端上只提示、不预填（见 b-app shoot()）
-            return new GoodsGuessVO("", "", "NORMAL", "", 0d);
+            return new GoodsGuessVO("", "", PrdGoods.TYPE_NORMAL, "", 0d);
         }
         return new GoodsGuessVO(guess.title(), guess.subtitle(), guess.type(),
                 guess.categoryNo(), guess.confidence());

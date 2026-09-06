@@ -1171,7 +1171,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             // 负数限购会让「每人限购」变成谁都买不了，而界面上看着是配着的
             g.setLimitPerUser(Math.max(cmd.limitPerUser(), 0));
         }
-        if (cmd.fresh() != null && "FRESH".equals(g.getType())) {
+        if (cmd.fresh() != null && PrdGoods.TYPE_FRESH.equals(g.getType())) {
             var f = cmd.fresh();
             if (f.cutoffAt() != null) {
                 g.setCutoffAt(f.cutoffAt());
@@ -1186,7 +1186,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 g.setOrigin(f.origin());
             }
         }
-        if (cmd.service() != null && "SERVICE".equals(g.getType())) {
+        if (cmd.service() != null && PrdGoods.TYPE_SERVICE.equals(g.getType())) {
             var s = cmd.service();
             if (s.durationMin() != null) {
                 g.setDurationMin(s.durationMin());
@@ -2517,7 +2517,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * **只有生鲜有截单**。别的品类改它是无声无息的一次写入 ——
          * 字段进了库，而没有任何一条链路会读它，商家以为自己设了个什么。
          */
-        if (!"FRESH".equals(g.getType())) {
+        if (!PrdGoods.TYPE_FRESH.equals(g.getType())) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         if (cutoffAt != null) {

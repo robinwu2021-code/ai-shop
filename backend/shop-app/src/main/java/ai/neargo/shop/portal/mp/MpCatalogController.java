@@ -1,5 +1,6 @@
 package ai.neargo.shop.portal.mp;
 
+import ai.neargo.shop.platform.entity.SysRegion;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import ai.neargo.shop.common.PageData;
@@ -127,10 +128,10 @@ public class MpCatalogController {
     @GetMapping("/mp/regions")
     public List<MpRegionVO> regions(@RequestParam(required = false) String parent) {
         return regionService.children(parent, true).stream()
-                .filter(r -> !"STREET".equals(r.level()) && !"VILLAGE".equals(r.level()))
+                .filter(r -> !SysRegion.LEVEL_STREET.equals(r.level()) && !SysRegion.LEVEL_VILLAGE.equals(r.level()))
                 // 区县这一级把 hasChild 压成 false（见方法注释：地址表没有街道那一列）
                 .map(r -> new MpRegionVO(r.regionCode(), r.parentCode(), r.level(), r.name(),
-                        !"DISTRICT".equals(r.level()) && Boolean.TRUE.equals(r.hasChild())))
+                        !SysRegion.LEVEL_DISTRICT.equals(r.level()) && Boolean.TRUE.equals(r.hasChild())))
                 .toList();
     }
 

@@ -62,6 +62,29 @@ public class SysRegion extends BaseEntity {
     public static final String REJECTED = "REJECTED";
     public static final String SOURCE_MERCHANT = "MERCHANT";
 
+    /*
+     * ── 区划层级（`level` 列）─────────────────────────────────────────────
+     *
+     * 收编前这五个值在后端裸写在四个文件里（RegionServiceImpl 五处、
+     * BizRegionController、MpCatalogController、MasterDataPortImpl），跨三个模块。
+     *
+     * ⚠️ **与经营范围的粒度不是一回事。** `packages/shared` 的 `AREA_LEVEL`
+     * （覆盖项粒度）取值与这里高度重合，但它多一个 `COMMUNITY`（聚落，不是区划级），
+     * 而且回答的是另一个问题：商家的经营范围框到哪一级。
+     * 两者取值重合而概念不同 —— 别拿它们互相对账。
+     *
+     * ⚠️ **库里那一列的注释少一个 VILLAGE**（V30 建表时还没有村数据）。
+     * 这不只是文档陈旧：`scripts/check-enum-fields.mjs` 与 `gen-glossary` 的
+     * 可见面扫描都拿**列注释**当取值域真源，所以在补一条 ALTER 修正注释之前，
+     * `sys_region.level` 不能按 `ddl:` 登记进按字段对账 —— 会拿到少一个值的域。
+     */
+    public static final String LEVEL_PROVINCE = "PROVINCE";
+    public static final String LEVEL_CITY = "CITY";
+    public static final String LEVEL_DISTRICT = "DISTRICT";
+    public static final String LEVEL_STREET = "STREET";
+    /** 村委会 · 居委会，第五级。**V30 的列注释里没有它** —— 见上方说明 */
+    public static final String LEVEL_VILLAGE = "VILLAGE";
+
     /** PROVINCE / CITY / DISTRICT / STREET / VILLAGE（村委会·居委会，第五级） */
     private String level;
 
