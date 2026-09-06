@@ -191,8 +191,16 @@ function close() {
 /* 勾压在任意皮肤色上都要看得见，用遮罩 token 做一层暗投影兜底（不写死颜色）。
    `drop-shadow` 而不是 `text-shadow`：这枚勾现在是 sh-icon（mask 出来的形状），
    text-shadow 对它无效 —— 换图标时最容易连带丢掉的就是这一条 */
+/*
+ * 白色对勾压在**任意皮肤色**的色块上，投影是给它做可读性衬底的 ——
+ * 不是高度投影，所以不走 `--sh-shadow-*`（那两档是 8% / 16% 的纵深，
+ * 这里要的是「无论底下什么颜色都读得出白」，浓一档才对）。
+ *
+ * ⚠️ **也不借 `--sh-scrim`**（此前就是）：那是蒙层色，改一次弹层浓度
+ * 会连带把这个对勾的衬底改掉，而两者毫无关系。全仓只此一处，直接写值。
+ */
 .swatch__tick {
-  filter: drop-shadow(0 2rpx 6rpx var(--sh-scrim));
+  filter: drop-shadow(0 2rpx 6rpx rgba(10, 12, 16, 0.45));
 }
 .sheet__tip {
   display: block;

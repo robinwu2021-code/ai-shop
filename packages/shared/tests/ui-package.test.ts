@@ -1062,13 +1062,25 @@ describe("投影只许用 --sh-shadow-*", () => {
       const src = readFileSync(f, "utf8");
       const css = f.endsWith(".css") ? src
         : [...src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]!).join("\n");
-      for (const m of css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/box-shadow:\s*([^;]+);/g)) {
-        if (/--sh-scrim/.test(m[1]!)) bad.push(`${f.slice(ROOT.length + 1)}  ${m[1]!.trim()}`);
+      // ⚠️ **`filter: drop-shadow()` 也算投影** —— 第一版只认 `box-shadow:`，
+      //    于是 `sh-theme-sheet` 的 `.swatch__tick` 用 scrim 画的那道衬底整个漏过去了。
+      //    同一天写的闸门自己就留了这个缝，靠「token 落在哪些属性上」那一遍才扫出来。
+      const SHADOWY = /(box-shadow|filter|text-shadow):\s*([^;]+);/g;
+      for (const m of css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(SHADOWY)) {
+        if (!/shadow\(|box-shadow|text-shadow/.test(m[0])) continue;   // filter 也可能是 blur/opacity
+        if (/--sh-scrim/.test(m[2]!)) bad.push(`${f.slice(ROOT.length + 1)}  ${m[1]}: ${m[2]!.trim()}`);
       }
     }
     expect(bad, `scrim 是蒙层色（45% 的黑），当投影用会得到一条又黑又宽的带：\n${bad.join("\n")}`).toEqual([]);
   });
 
+  /*
+   * ⚠️ 这一条**只管 `box-shadow`**，不管 `filter: drop-shadow()`。
+   * 不是漏掉：那两档是**高度**（8% / 16% 的纵深），而全仓唯一的 drop-shadow
+   * 是给白色对勾做**可读性衬底**（压在任意皮肤色上），要的浓度完全不同。
+   * 一处特例不该建第三档（这个仓库的规矩：只对 1/36 成立的件不该建），
+   * 但它**仍然不许借 `--sh-scrim`** —— 上一条管着。
+   */
   it("投影一律走档 —— 散写的数值下一处就对不上", () => {
     const bad: string[] = [];
     for (const f of files) {
