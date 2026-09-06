@@ -1446,7 +1446,7 @@ function close() {
 /* 行上的「排除 / 取消排除」。占的是勾选框那个位置 —— 对这一行来说它就是那个动作 */
 .row__ex {
   flex-shrink: 0;
-  padding: 6rpx 16rpx;
+  padding: 8rpx 16rpx;
   border-radius: 16rpx;
   border: 2rpx solid var(--sh-line);
   color: var(--sh-sub);

@@ -673,7 +673,7 @@ onShareAppMessage(() =>
 }
 .fact {
   gap: 32rpx;
-  padding: 18rpx 0;
+  padding: 16rpx 0;
 }
 .fact__label {
   flex-shrink: 0;
@@ -708,7 +708,7 @@ onShareAppMessage(() =>
 }
 .actionbar__add,
 .actionbar__buy {
-  padding: 26rpx 8rpx;
+  padding: 24rpx 8rpx;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -93,7 +93,7 @@ const off = computed(() =>
 .gcard {
   border-radius: 32rpx;
   /* 卡在「今日团」白块内，块自己给上下留白 —— 卡再加外边距会在块底叠出一道空白 */
-  padding: 4rpx 26rpx;
+  padding: 4rpx 24rpx;
 }
 .gcard__top {
   display: flex;

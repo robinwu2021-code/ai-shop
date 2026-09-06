@@ -120,7 +120,7 @@ const canCreate = computed(
 }
 
 .sup {
-  padding: 22rpx 0;
+  padding: 24rpx 0;
   border-bottom: var(--sh-hairline);
 }
 

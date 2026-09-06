@@ -151,7 +151,7 @@ function crumbs() {
 /* 一行一个，通铺到边 —— 分隔靠发丝线而不是间距，一屏能多放三四个 */
 .lv__node {
   display: block;
-  padding: 26rpx 4rpx;
+  padding: 24rpx 4rpx;
   color: var(--sh-ink);
   border-bottom: var(--sh-hairline-soft);
 }

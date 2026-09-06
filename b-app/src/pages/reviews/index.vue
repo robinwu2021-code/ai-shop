@@ -254,7 +254,7 @@ onShow(load);
 .btn {
   flex: 1;
   text-align: center;
-  padding: 22rpx 0;
+  padding: 24rpx 0;
 }
 
 .sh-link {

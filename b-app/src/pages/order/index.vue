@@ -235,7 +235,7 @@ onLoad((q) => {
 
 <style scoped>
 .line {
-  padding: 10rpx 0;
+  padding: 8rpx 0;
 }
 /* 地址是长文本，跟着基线对齐会把标签顶歪 */
 .line--wrap {

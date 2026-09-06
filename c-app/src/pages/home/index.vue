@@ -411,7 +411,7 @@ onShareAppMessage(() =>
 .freq {
   display: flex;
   gap: 16rpx;
-  padding: 0 26rpx 4rpx;
+  padding: 0 24rpx 4rpx;
 }
 .freq__i {
   flex-shrink: 0;

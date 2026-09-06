@@ -942,7 +942,7 @@ uni-page-wrapper[style*="--window-bottom"] {
   display: flex;
   align-items: baseline;
   gap: 16rpx;
-  padding: 0 26rpx 16rpx;
+  padding: 0 24rpx 16rpx;
 }
 /*
  * 分栏切换（sh-tabs）当标题用 —— 分类页、搜索结果、商家详情都是这个形态：
@@ -977,7 +977,7 @@ uni-page-wrapper[style*="--window-bottom"] {
 .sh-chip--icon {
   display: inline-flex;
   align-items: center;
-  gap: 6rpx;
+  gap: 8rpx;
 }
 .sh-chip--primary {
   background: var(--sh-primary-tint);
@@ -1038,7 +1038,7 @@ uni-page-wrapper[style*="--window-bottom"] {
  *                    正确的做法是容器给 `gap`，而不是每一项各自挂 margin：
  *                    挂 margin 的话最后一项底下会多出一道缝，
  *                    而这道缝在卡片里就是「下边距比上边距大一截」。
- *   B 横排行  16 处   `display:flex; align-items:center; gap:N` —— gap 取
+ *   B 横排行  16 处   `display:flex; align-items:center; gap: N` —— gap 取
  *                    16(×11) / 20(×5) / 24(×4) / 12(×1)。
  *   C 两端对齐 5 处   B 再加 `justify-content: space-between`
  *   D 带分隔线 3 处   B 再加 `padding: 14~20rpx 0` + 一条 hairline
@@ -1051,7 +1051,7 @@ uni-page-wrapper[style*="--window-bottom"] {
 /*
  * ⚠️ **列表间距那一件（`.sh-list`）最后没有做 —— 因为那条路走不通。**
  *
- * 原本想的是容器 `display:flex; flex-direction:column; gap:14rpx`。
+ * 原本想的是容器 `display:flex; flex-direction:column; gap: 16rpx`。
  * 2026-08-28 把 36 个站点的容器逐个看了一遍：**35 个容器里还装着别的东西**
  *（分组标题、一段说明、空态…）。容器一改成 gap，**标题与第一项之间的距离
  * 也跟着变** —— 只有 `entities` 一处是干净的 `<view class="list">`。
@@ -1720,7 +1720,7 @@ uni-page-wrapper[style*="--window-bottom"] {
    与 `.field` 那一族同一条理由（见 b-app/App.vue）：跨插槽的布局只能走全局类。 */
 .sh-dialog__act {
   flex: 1;
-  padding: 22rpx 0;
+  padding: 24rpx 0;
   text-align: center;
 }
 
@@ -1728,7 +1728,7 @@ uni-page-wrapper[style*="--window-bottom"] {
 .sh-btn {
   display: block;
   text-align: center;
-  padding: 30rpx 0;
+  padding: 32rpx 0;
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);

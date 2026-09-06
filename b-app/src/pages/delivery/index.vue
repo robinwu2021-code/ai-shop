@@ -205,7 +205,7 @@ onShow(load);
 
 .btn {
 
-  padding: 18rpx 28rpx;
+  padding: 16rpx 28rpx;
 
 }
 .tip {

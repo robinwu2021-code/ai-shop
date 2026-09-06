@@ -224,15 +224,15 @@ onLoad((q) => {
 .hist__list {
   gap: 16rpx;
   /* 块本身只管上下留白，横向由内容自己给 */
-  padding: 0 26rpx;
+  padding: 0 24rpx;
   margin-top: 20rpx;
 }
 .hist__item {
-  padding: 12rpx 26rpx;
+  padding: 12rpx 24rpx;
 }
 /* 商家结果在结果块内成行 —— 行与行之间靠内边距分隔，不再各自一张卡 */
 .mcard {
-  padding: 20rpx 26rpx;
+  padding: 20rpx 24rpx;
 }
 .mcard__desc {
   display: block;

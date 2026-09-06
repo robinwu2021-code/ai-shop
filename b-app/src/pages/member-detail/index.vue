@@ -117,7 +117,7 @@ onLoad(async (q) => {
    ⚠️ 这个类名与 sh-kv 的根同名，**不要挂到 <sh-kv> 上** ——
    小程序上调用点的 class 会同时落在宿主与组件根，内边距吃两遍。下面两处是普通行 */
 .kv {
-  padding: 6rpx 0;
+  padding: 8rpx 0;
 }
 .kv.line {
   border-top: var(--sh-hairline-soft);

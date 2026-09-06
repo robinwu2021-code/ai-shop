@@ -47,7 +47,7 @@ const label = computed(() => (props.active && props.activeText ? props.activeTex
   display: flex;
   align-items: center;
   gap: 8rpx;
-  padding: 10rpx 22rpx;
+  padding: 8rpx 24rpx;
   border-radius: 9999px;
   background: var(--sh-primary-tint);
 }
@@ -69,7 +69,7 @@ const label = computed(() => (props.active && props.activeText ? props.activeTex
   padding: 4rpx 16rpx;
 }
 .add--sm.add--on {
-  padding: 2rpx 14rpx;
+  padding: 2rpx 16rpx;
 }
 .add__t {
   color: var(--sh-primary-text);

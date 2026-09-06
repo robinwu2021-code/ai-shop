@@ -337,7 +337,7 @@ onShow(load);
 }
 .lock__tag {
   flex-shrink: 0;
-  padding: 4rpx 14rpx;
+  padding: 4rpx 16rpx;
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
@@ -377,7 +377,7 @@ onShow(load);
 }
 
 .tag {
-  padding: 4rpx 14rpx;
+  padding: 4rpx 16rpx;
 }
 /*
  * 演示数据的标记：**灰底，不是虚线药丸**。

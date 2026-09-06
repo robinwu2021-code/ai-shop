@@ -63,7 +63,7 @@ defineEmits<{ (e: "tap"): void }>();
 }
 .bar__verified {
   flex-shrink: 0;
-  padding: 4rpx 14rpx;
+  padding: 4rpx 16rpx;
 }
 .bar__norate {
 }

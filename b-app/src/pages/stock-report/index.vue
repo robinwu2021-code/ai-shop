@@ -197,7 +197,7 @@ onShow(load);
   display: block;
 }
 .blk {
-  padding: 0 26rpx 8rpx;
+  padding: 0 24rpx 8rpx;
 }
 .formula {
   margin-top: 12rpx;

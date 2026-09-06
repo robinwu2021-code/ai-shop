@@ -2166,7 +2166,7 @@ async function save(thenSubmit = false) {
   给足点击面积比省地方重要。
 */
 .askspec {
-  padding: 18rpx 0 2rpx;
+  padding: 16rpx 0 2rpx;
 }
 
 .askspec__t {
@@ -2276,7 +2276,7 @@ async function save(thenSubmit = false) {
   display: flex;
   align-items: flex-start;
   gap: 16rpx;
-  padding: 14rpx 0;
+  padding: 16rpx 0;
   border-top: var(--sh-hairline);
 }
 
@@ -2371,7 +2371,7 @@ async function save(thenSubmit = false) {
   color: var(--sh-warning);
 }
 .chips .sh-chip {
-  padding: 14rpx 24rpx;
+  padding: 16rpx 24rpx;
 }
 /* 标准品入口：取用后是一枚可撤的徽标 */
 .std-on {

@@ -146,7 +146,7 @@ onShow(load);
   flex: none;
 }
 .blk {
-  padding: 0 26rpx 8rpx;
+  padding: 0 24rpx 8rpx;
 }
 .blk > text {
   display: block;

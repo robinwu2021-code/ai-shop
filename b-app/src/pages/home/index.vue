@@ -560,7 +560,7 @@ onShow(load);
 .inv__act {
   flex: 1;
   text-align: center;
-  padding: 14rpx 0;
+  padding: 16rpx 0;
   border-radius: 16rpx;
   background: var(--sh-bg);
 }

@@ -590,7 +590,7 @@ onShow(() => {
 }
 
 .tiny {
-  padding: 4rpx 14rpx;
+  padding: 4rpx 16rpx;
 }
 .card__addr {
   display: block;

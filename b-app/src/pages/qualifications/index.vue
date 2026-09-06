@@ -254,7 +254,7 @@ onShow(() => void load());
   margin-top: 12rpx;
 }
 .lock {
-  padding: 14rpx 0;
+  padding: 16rpx 0;
 }
 
 .lock__cats {

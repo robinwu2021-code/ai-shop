@@ -682,7 +682,7 @@ onShow(() => {
 /* 送货方式：紧凑开关行 */
 .ch {
   gap: 24rpx;
-  padding: 22rpx 0;
+  padding: 24rpx 0;
   border-bottom: var(--sh-hairline);
 }
 .ch.is-off {
@@ -720,7 +720,7 @@ onShow(() => {
   color: var(--sh-warning);
 }
 .subset__opt {
-  padding: 14rpx 0;
+  padding: 16rpx 0;
   border-bottom: var(--sh-hairline);
 }
 

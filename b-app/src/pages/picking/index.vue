@@ -225,7 +225,7 @@ onShow(load);
   margin: 0 8rpx;
 }
 .tabs .sh-chip {
-  padding: 14rpx 28rpx;
+  padding: 16rpx 28rpx;
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */

@@ -224,7 +224,7 @@ function close() {
 /* 通铺到边的一行。左右 32rpx 是行自己的留白（弹层已由 flush 让开） */
 .row {
   gap: 20rpx;
-  padding: 22rpx 32rpx;
+  padding: 24rpx 32rpx;
   border-bottom: var(--sh-hairline);
 }
 .row.is-off {

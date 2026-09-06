@@ -395,7 +395,7 @@ async function refresh() {
 }
 
 .badge {
-  padding: 6rpx 18rpx;
+  padding: 8rpx 16rpx;
   border-radius: 9999px;
 }
 .badge.is-ok {

@@ -44,6 +44,6 @@ withDefaults(
 /* 块内用：横向留白与 .sh-block__head 取同一个 26rpx —— 两处对不齐的话，
    同一屏上「块的标题」会有两种缩进 */
 .sec--pad {
-  padding: 24rpx 26rpx 16rpx;
+  padding: 24rpx 24rpx 16rpx;
 }
 </style>

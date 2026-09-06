@@ -1315,3 +1315,87 @@ describe("同一行两端的字号不许只差 1px", () => {
     ).toEqual([]);
   });
 });
+
+/*
+ * **间距表必须与真实用量对得上 —— 两个方向都要。**
+ *
+ * 2026-09-07：`tokens.ts` 声明的是五档 `8/16/28/40/64`，《规范·版面》配着一句
+ * 「只用这几档」，而全仓 1292 处间距取值落在那五档上的只有 **39%**：
+ * `20rpx` 用了 205 次，而档位里的 `64rpx` 只有 2 次。
+ *
+ * **这个矛盾早就有人发现，只是修错了方向。** `check-page-spec.py` 的头注写着
+ * 「按五档判会报出 361 处…那是判据说多了，不是页面写错了」——
+ * 于是放松了闸门，没有回头改声明。三把尺（声明 / 闸门 / 文档）从此各说各的，
+ * 而且三者都绿，因为**没有任何东西在比它们**。这条就是那个比。
+ *
+ * 两个方向缺一不可：
+ *   · 表上有、没人用 → 那是一句空话（`64rpx` 曾是「档」，全仓 2 处）
+ *   · 用得多、表上没有 → 那才是真的漂移（`20rpx` 用了 205 次却不在档上）
+ *
+ * 阈值取 **20 处**：再少就是个别页面的局部选择，不该逼着上表；
+ * 到了 20 处说明它已经是这套界面的一个节奏了，藏着不认才是问题。
+ */
+describe("间距表与真实用量对得上", () => {
+  const GRID = 4;
+  const BUSY = 20;
+  const PROPS = /\b(margin|margin-top|margin-bottom|margin-inline|padding|padding-top|padding-bottom|padding-inline|gap|row-gap|column-gap)\s*:\s*([^;]+);/g;
+
+  const declared = new Set(
+    Object.values(
+      JSON.parse(readFileSync(join(ROOT, "docs/technical/design/ui-lib.json"), "utf8"))
+        .tokens.spacing as Record<string, { rpx: string | number }>,
+    ).map((v) => Number(String(v.rpx).replace(/\D/g, ""))),
+  );
+
+  const used = new Map<number, number>();
+  {
+    const files = [
+      join(ROOT, "packages/ui/src/styles/base.css"),
+      ...[...APPS.map((a) => join(ROOT, a, "src")), join(ROOT, "packages/ui/src")].flatMap((dir) =>
+        readdirSync(dir, { recursive: true, encoding: "utf8" })
+          .filter((f) => f.endsWith(".vue"))
+          .map((f) => join(dir, f)),
+      ),
+    ];
+    for (const f of files) {
+      const src = readFileSync(f, "utf8");
+      const css = (f.endsWith(".css") ? src
+        : [...src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]!).join("\n"))
+        .replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const m of css.matchAll(PROPS))
+        for (const n of m[2]!.matchAll(/(\d+)rpx/g)) {
+          const v = Number(n[1]);
+          if (v) used.set(v, (used.get(v) ?? 0) + 1);
+        }
+    }
+  }
+
+  it("量到了间距（否则下面全是空转）", () => {
+    expect(declared.size).toBeGreaterThan(5);
+    expect([...used.values()].reduce((a, b) => a + b, 0)).toBeGreaterThan(500);
+  });
+
+  it("每个间距都落在 4rpx 网格上（2rpx 是发丝线单位，豁免）", () => {
+    /*
+     * **2rpx 不是「半格」，是发丝线本身**：`--sh-hairline` 就是 `2rpx solid`，
+     * `.sh-cells` 行与行之间那道缝也是 2rpx（露出下面的底色，比画一条线更轻）。
+     * 把它归到 0 会删掉那道缝，归到 4 会让它变成一条明显的灰带 —— 两个都不对。
+     *
+     * 其余 8 个离格值（5/6/10/14/18/22/26/30，共 81 处）已就近归格，
+     * 每处移动 0.5~1px。**先量后做**：改之前逐个数过，最大移动 2rpx。
+     */
+    const bad = [...used.keys()].filter((v) => v % GRID !== 0 && v !== 2).sort((a, b) => a - b);
+    expect(bad, `不在 ${GRID}rpx 网格上：${bad.join(", ")}rpx`).toEqual([]);
+  });
+
+  it(`用了 ≥${BUSY} 次的间距都在表上 —— 藏着不认才是漂移`, () => {
+    const bad = [...used].filter(([v, n]) => n >= BUSY && !declared.has(v))
+      .sort((a, b) => b[1] - a[1]).map(([v, n]) => `${v}rpx ×${n}`);
+    expect(bad, `这些数已经是这套界面的节奏了，却不在 tokens.ts 的表上：\n${bad.join("\n")}`).toEqual([]);
+  });
+
+  it("表上的每个数都真的有人用 —— 没人用的档是一句空话", () => {
+    const bad = [...declared].filter((v) => !(used.get(v) ?? 0)).sort((a, b) => a - b);
+    expect(bad, `声明了却零调用点：${bad.join(", ")}rpx`).toEqual([]);
+  });
+});

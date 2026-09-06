@@ -653,7 +653,7 @@ async function submit() {
   gap: 16rpx;
 }
 .chips .sh-chip {
-  padding: 14rpx 28rpx;
+  padding: 16rpx 28rpx;
 }
 
 .switch-row {

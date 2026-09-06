@@ -193,7 +193,7 @@ onShow(() => {
 .reason {
   background: var(--sh-faint);
   border-radius: 16rpx;
-  padding: 6rpx 12rpx;
+  padding: 8rpx 12rpx;
 }
 .area {
   height: 160rpx;

@@ -993,7 +993,7 @@ onShow(() => void load());
  */
 /* 只留横向留白：本页内容通铺到边，分栏要与卡片对齐 */
 .tabs {
-  margin: 0 26rpx;
+  margin: 0 24rpx;
 }
 
 .intro {
@@ -1007,7 +1007,7 @@ onShow(() => void load());
 /* 「可添加」区：压在卡片内容与「恢复平台默认」之间 —— 它比每一行的操作轻，
    但比「恢复全部」重，位置就该在两者中间 */
 .back {
-  padding: 16rpx 26rpx 0;
+  padding: 16rpx 24rpx 0;
 }
 .back__t {
   display: block;
@@ -1015,7 +1015,7 @@ onShow(() => void load());
 }
 .cat__foot {
   display: block;
-  padding: 18rpx 26rpx;
+  padding: 16rpx 24rpx;
   border-top: var(--sh-hairline);
 }
 
@@ -1058,7 +1058,7 @@ onShow(() => void load());
 
 /* 一个规格 = 一行主件 + 一行档位。它们是同一条，所以中间不留间距 */
 .spec {
-  padding: 14rpx 26rpx;
+  padding: 16rpx 24rpx;
   /*
     拖动中被拖的那一行走 transform，其余行位置不变（数组松手才改）——
     所以这里的过渡只负责「拿起来/放下去」两个瞬间，不会与手指位移打架。
@@ -1110,7 +1110,7 @@ onShow(() => void load());
 /* 自建的标出来 —— 它不参与跨店比价，而那是看不见的差别 */
 .spec__own {
   margin-inline-start: 8rpx;
-  padding: 2rpx 10rpx;
+  padding: 2rpx 8rpx;
   border-radius: 16rpx;
   background: var(--sh-faint);
   /* 20 不在字阶上；24 是最小的一档 */
@@ -1150,7 +1150,7 @@ onShow(() => void load());
 .edit__input {
   width: 100%;
   flex: 1;
-  padding: 14rpx 20rpx;
+  padding: 16rpx 20rpx;
   border-radius: 16rpx;
   border: 1rpx solid var(--sh-line);
   background: var(--sh-surface);

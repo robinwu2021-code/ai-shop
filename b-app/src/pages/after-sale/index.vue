@@ -262,7 +262,7 @@ onShow(load);
 .btn {
   flex: 1;
   text-align: center;
-  padding: 22rpx 0;
+  padding: 24rpx 0;
 }
 /*
  * 与运单号同行的那个按钮**按文字宽度收**，不跟着 `flex: 1` 平分。

@@ -210,7 +210,7 @@ async function discard() {
   margin-bottom: 16rpx;
 }
 .diff {
-  padding: 14rpx 0;
+  padding: 16rpx 0;
   border-top: var(--sh-hairline-soft);
 }
 .diff__vals {

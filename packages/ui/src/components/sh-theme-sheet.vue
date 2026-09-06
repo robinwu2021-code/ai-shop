@@ -218,7 +218,7 @@ function close() {
 .opts__item {
   flex: 1;
   text-align: center;
-  padding: 22rpx 0;
+  padding: 24rpx 0;
   border-radius: 24rpx;
   background: var(--sh-faint);
   color: var(--sh-sub);

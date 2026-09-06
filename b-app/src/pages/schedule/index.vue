@@ -153,7 +153,7 @@ onShow(() => {
 
 .slot {
   gap: 20rpx;
-  padding: 18rpx 0;
+  padding: 16rpx 0;
   border-top: var(--sh-hairline);
 }
 

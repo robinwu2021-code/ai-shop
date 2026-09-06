@@ -775,7 +775,7 @@ onShow(() => {
   gap: 12rpx;
 }
 .cats__chip {
-  padding: 10rpx 20rpx;
+  padding: 8rpx 20rpx;
   /*
    * 两条都要，缺一个都会换行 —— 类目从 3 个扩到 6 个之后才显形：
    *

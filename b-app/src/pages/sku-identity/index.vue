@@ -215,7 +215,7 @@ function arrow(from?: string | null, to?: string | null): string {
 
 <style scoped>
 .act {
-  padding: 10rpx 26rpx;
+  padding: 8rpx 24rpx;
 }
 
 /* 规则表：左边一个词、右边一句话 —— 他扫左边就够，右边是给存疑的人看的 */
@@ -259,7 +259,7 @@ function arrow(from?: string | null, to?: string | null): string {
 }
 
 .row {
-  padding: 14rpx 0;
+  padding: 16rpx 0;
   border-top: var(--sh-hairline-soft);
 }
 

@@ -163,7 +163,7 @@ onShow(load);
 <style scoped>
 /* 卡在分区白块内成行 —— 行的边界靠内边距，不再各自一张卡 */
 .card {
-  padding: 20rpx 26rpx;
+  padding: 20rpx 24rpx;
 }
 .meta {
   margin-top: 24rpx;
@@ -180,7 +180,7 @@ onShow(load);
 }
 .near__i {
   gap: 20rpx;
-  padding: 22rpx 24rpx;
+  padding: 24rpx 24rpx;
 }
 .near__logo {
   width: 76rpx;

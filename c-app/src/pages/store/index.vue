@@ -447,7 +447,7 @@ function navToStore() {
 
 .addr__nav {
   flex-shrink: 0;
-  padding: 6rpx 18rpx;
+  padding: 8rpx 16rpx;
   border-radius: 9999px;
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
@@ -491,7 +491,7 @@ function navToStore() {
 /* 底和圆角由外层 .sh-block 给 —— 常买行在块内成行，不再各自一张卡 */
 .freq {
   gap: 20rpx;
-  padding: 20rpx 26rpx;
+  padding: 20rpx 24rpx;
 }
 .freq.is-off {
   opacity: 0.5;
@@ -533,7 +533,7 @@ function navToStore() {
 }
 /* 履约说明在常买块内收尾：它解释的就是上面这些东西怎么送到 */
 .ship {
-  margin: 8rpx 26rpx 0;
+  margin: 8rpx 24rpx 0;
 }
 /* 搜索框在白块内，底要比块浅一档才看得出是个输入框 */
 .search {
@@ -542,6 +542,6 @@ function navToStore() {
   border-radius: 24rpx;
   background: var(--sh-faint);
   color: var(--sh-ink);
-  margin: 0 26rpx 12rpx;
+  margin: 0 24rpx 12rpx;
 }
 </style>

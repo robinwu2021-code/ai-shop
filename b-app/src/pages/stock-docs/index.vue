@@ -278,7 +278,7 @@ onShow(load);
 
 .hint {
   display: block;
-  padding: 0 26rpx 12rpx;
+  padding: 0 24rpx 12rpx;
 }
 .lines {
   margin-top: 16rpx;

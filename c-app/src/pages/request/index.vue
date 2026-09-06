@@ -340,7 +340,7 @@ onShareAppMessage(() => {
   white-space: nowrap;
 }
 .tiny {
-  padding: 4rpx 14rpx;
+  padding: 4rpx 16rpx;
   flex-shrink: 0;
 }
 .quote__price {

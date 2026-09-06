@@ -201,7 +201,7 @@ onShow(load);
   min-width: 150rpx;
   background: var(--sh-danger-tint);
   border-radius: 24rpx;
-  padding: 22rpx 16rpx;
+  padding: 24rpx 16rpx;
   text-align: center;
 }
 .ticket__v {

@@ -249,7 +249,7 @@ onShareAppMessage(() =>
   margin-bottom: 8rpx;
 }
 .tiny {
-  padding: 4rpx 14rpx;
+  padding: 4rpx 16rpx;
 }
 .head__desc {
   display: block;

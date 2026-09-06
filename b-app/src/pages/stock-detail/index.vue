@@ -305,7 +305,7 @@ onShow(load);
 /* 块内容的横向留白，与 `.sh-block__head` 取同一个 26rpx —— 对不齐的话，
    同一屏上标题与内容会有两种缩进 */
 .blk {
-  padding: 0 26rpx 8rpx;
+  padding: 0 24rpx 8rpx;
 }
 .head {
   display: block;

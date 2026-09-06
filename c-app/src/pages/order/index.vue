@@ -499,7 +499,7 @@ onShow(load);
   height: 16rpx;
   border-radius: 9999px;
   background: var(--sh-line);
-  margin-top: 10rpx;
+  margin-top: 8rpx;
   flex-shrink: 0;
 }
 .node__dot.is-last {
@@ -519,7 +519,7 @@ onShow(load);
   flex-shrink: 0;
 }
 .tiny {
-  padding: 4rpx 14rpx;
+  padding: 4rpx 16rpx;
 }
 .row__price {
   display: block;

@@ -360,7 +360,7 @@ onShow(() => {
 }
 
 .chips .sh-chip {
-  padding: 14rpx 24rpx;
+  padding: 16rpx 24rpx;
 }
 .hint {
   display: block;
@@ -373,7 +373,7 @@ onShow(() => {
 .btn {
   flex: 1;
   text-align: center;
-  padding: 22rpx 0;
+  padding: 24rpx 0;
 }
 
 .item__name {

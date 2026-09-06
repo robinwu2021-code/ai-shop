@@ -161,7 +161,7 @@ const off = computed(() => {
 /* 卡片里的 chip 比通用件矮一档：通用 chip 是给正文用的，密排列表里显得肿。
    落款行的自营标识也是同一颗 chip，所以判据放在整张卡上而不是只在价格行 */
 .card .sh-chip {
-  padding: 5rpx 14rpx;
+  padding: 4rpx 16rpx;
 }
 /* 价格的档位归 .txt-price（34rpx/700）；这里只把它钉住不被压缩，
    颜色回到墨色 —— 字阶不管颜色 */
