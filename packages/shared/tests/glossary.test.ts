@@ -48,9 +48,36 @@ function enumValues(name: string): string[] {
 
 /** 取某个常量对象的键集合 */
 function constKeys(name: string): string[] {
+  return constBody(name).map((e) => e.key);
+}
+
+/**
+ * 常量对象里的**值** —— 词典要收录的是这一侧。
+ *
+ * <p><b>为什么不是键。</b>MUST_COVER 原来用 `constKeys`，而这三个常量对象里
+ * `FULFILLMENT` 的键与值有两处不同（`PICKUP = "STORE_PICKUP"`、
+ * `DELIVERY = "MERCHANT_DELIVERY"`）。于是这条断言**要求词典写键名**，
+ * 而词典就照办了 —— §5 那一行列的是 `PICKUP` / `DELIVERY`，
+ * 照它写筛选条件（`?fulfillment=PICKUP`）必然筛不出东西。
+ *
+ * <p>断言本身的目的是「跨端沟通全靠这张表」，而跨端传的是**值**：
+ * 键只是端上代码里的叫法（词典 §3 规矩第 2 条明说键名随意）。
+ * 所以这里改成比值。`CATEGORY_TYPE` 与 `SERVICE_SCOPE` 键值相同，对它们是零变化。
+ */
+function constValues(name: string): string[] {
+  return constBody(name).map((e) => e.value);
+}
+
+function constBody(name: string): { key: string; value: string }[] {
   const m = CONSTS.match(new RegExp(`export const ${name} = \\{(.*?)\\} as const;`, "s"));
   if (!m) throw new Error(`constants 里找不到 ${name}`);
-  return [...m[1]!.matchAll(/^\s*(\w+):/gm)].map((x) => x[1]!);
+  const out = [...m[1]!.matchAll(/^\s*(\w+):\s*"([^"]+)"/gm)].map((x) => ({
+    key: x[1]!,
+    value: x[2]!,
+  }));
+  // 少扫等于全绿：解析写挂时这里会是空数组，而「每个值都在词典里」照样通过
+  if (out.length === 0) throw new Error(`${name} 一个成员都没解析出来 —— 解析写挂了`);
+  return out;
 }
 
 /**
@@ -77,11 +104,20 @@ describe("项目词典", () => {
     ["AfterSaleType", enumValues("AfterSaleType")],
     ["MerchantSubject", enumValues("MerchantSubject")],
     ["MerchantTier", enumValues("MerchantTier")],
-    ["FULFILLMENT", constKeys("FULFILLMENT")],
-    ["CATEGORY_TYPE", constKeys("CATEGORY_TYPE")],
-    ["SERVICE_SCOPE", constKeys("SERVICE_SCOPE")],
+    ["FULFILLMENT", constValues("FULFILLMENT")],
+    ["CATEGORY_TYPE", constValues("CATEGORY_TYPE")],
+    ["SERVICE_SCOPE", constValues("SERVICE_SCOPE")],
   ];
 
+  /*
+   * ⚠️ **粒度是「全文档出现过」，不是「写在那个词条那一行」。**
+   * 判据是 `GLOSSARY.includes(v)` —— 一个值只要在页面任何地方出现（哪怕在脚注里
+   * 被当反例提到），这条就通过。2026-09-06 实测：把 §5 履约那一行的 `STORE_PICKUP`
+   * 改回 `PICKUP`，断言**照样绿**，因为表下注里还有一处 `STORE_PICKUP`。
+   *
+   * 所以它保证的是「wire 取值被这一页记录过」，**不保证词条那一行写对了**。
+   * 后者要按行比对，那是另一条断言的事；在有人写之前，不要以为这条守着行内容。
+   */
   for (const [name, values] of MUST_COVER) {
     it(`${name} 的每个值都在词典里`, () => {
       const missing = values.filter((v) => !GLOSSARY.includes(v));
@@ -122,10 +158,24 @@ describe("项目词典", () => {
       "USER", // PickupPoint.ownerType
       "MERCHANT_OWNED",
       "PLATFORM", // trafficSource
+      // 端上键名（`FULFILLMENT.PICKUP` 这一侧）**允许**出现在词典里 —— 词典要解释
+      // 「键 ≠ 值」这件事就绕不开它们。但它们不是 wire 值，所以只在这里放行，
+      // 不进 MUST_COVER：词典**必须**收录的是值，键写不写随意。
+      ...constKeys("FULFILLMENT"),
+      ...constKeys("CATEGORY_TYPE"),
+      ...constKeys("SERVICE_SCOPE"),
     ]);
-    // 常量**组名**（FULFILLMENT / CATEGORY_TYPE…）本身就是词典要解释的对象，不是值
+    /*
+     * 常量**名**（FULFILLMENT / CATEGORY_TYPE / PLANNED_FULFILLMENTS…）本身就是
+     * 词典要解释的对象，不是取值。
+     *
+     * 原来只认 `export const X = {`（对象字面量），于是 `PLANNED_FULFILLMENTS`
+     * 这种 `export const X: readonly string[] = [` 被判成「代码里不存在」——
+     * 而它就在同一个文件里。断言的措辞是「在任何一端的代码里都不存在」，
+     * 而判据只是一张手工白名单：**措辞比判据宽，多出来的那部分就是误报**。
+     */
     const groupNames = new Set(
-      [...CONSTS.matchAll(/^export const ([A-Z_]+) = \{/gm)].map((m) => m[1]!),
+      [...CONSTS.matchAll(/^export const ([A-Z][A-Z0-9_]*)\s*[:=]/gm)].map((m) => m[1]!),
     );
     const ops = opsVocabulary();
     const invented = [...quoted].filter(
