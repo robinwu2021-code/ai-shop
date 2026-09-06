@@ -27,8 +27,15 @@ HEAD = "> **本文件由 `scripts/gen-ui-spec.py` 生成，请勿手改。**\n> 
 
 
 def usage(u):
-    b, c = u.get("b-app", 0), u.get("c-app", 0)
-    return f"{b} / {c}"
+    """调用点：B / C，再加「库内」——**组件里用组件**的那些。
+
+    不并进 B/C：一次引用算两次是假账，只算进一列又是瞎归。
+    但它必须出现在表里 —— `sh-tabbar` / `sh-confirm` / `sh-pick` / `sh-prompt`
+    由 `sh-scaffold` 无条件挂在**每一页**上，而表里此前写着 `0 / 0`，
+    读的人会当成死代码删掉。
+    """
+    b, c, lib = u.get("b-app", 0), u.get("c-app", 0), u.get("lib", 0)
+    return f"{b} / {c}" + (f" · 库内 {lib}" if lib else "")
 
 
 def criteria():
@@ -155,9 +162,11 @@ def components() -> str:
     L.append("\n组件与积木的分工：**积木是一条 CSS 类**（没有行为，随便贴），")
     L.append("**组件有行为或结构**（插槽、事件、状态）。同一个东西不要两头都做。\n")
     L.append(f"\n## 组件（{c['components']}）\n")
-    L.append("| 组件 | 作用域 | props | 调用点 B/C |")
+    L.append("| 组件 | 作用域 | props | 调用点 B/C（· 库内） |")
     L.append("|---|---|---|---:|")
-    for x in sorted(LIB["components"], key=lambda x: -(x["usage"].get("b-app", 0) + x["usage"].get("c-app", 0))):
+    for x in sorted(LIB["components"],
+                    key=lambda x: -(x["usage"].get("b-app", 0) + x["usage"].get("c-app", 0)
+                                    + x["usage"].get("lib", 0))):
         props = ", ".join(p.split(":")[0] for p in x["props"][:4]) or "—"
         L.append(f"| `{x['name']}` | {x['scope']} | {props} | {usage(x['usage'])} |")
     L.append(f"\n## 积木（{c['blocks']}）\n")

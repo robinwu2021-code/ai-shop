@@ -380,7 +380,13 @@ def read_components() -> list[dict]:
             "scope": "跨端" if "packages/ui" in str(f) else "B 端",
             "lines": len(src.splitlines()),
             "props": props_of(src),
-            "usage": {"b-app": usage(name, ["b-app/src"]), "c-app": usage(name, ["c-app/src"])},
+            # `lib` 是**组件里用组件**的调用点。不并进 B/C 两列：那会把一次引用算成两次，
+            # 而单独算进任意一列又是瞎归。
+            # 缺了它的后果不是数字小一点 —— `sh-tabbar` / `sh-confirm` / `sh-pick` /
+            # `sh-prompt` 由 `sh-scaffold` **无条件挂在每一页上**，而表里写着 `0 / 0`，
+            # 读的人会当成死代码删掉。（积木那边一直算了库内引用，组件这边漏了。）
+            "usage": {"b-app": usage(name, ["b-app/src"]), "c-app": usage(name, ["c-app/src"]),
+                      "lib": usage(name, ["packages/ui/src"])},
             "note": COMP_NOTES.get(name, ("—", "—"))[0],
             "why": COMP_NOTES.get(name, ("—", "—"))[1],
             "css": scoped_css(src),
@@ -1053,7 +1059,9 @@ def render(cat: dict, base: dict, comps: list[dict], dens: dict, icons: dict) ->
             f'<div class="cp">{demo}'
             f'<div class="c__meta"><div class="c__h"><code class="cn">&lt;{c["name"]}&gt;</code>'
             f'<span class="tag2">{c["scope"]}</span>'
-            f'<span class="use">B {c["usage"]["b-app"]} · C {c["usage"]["c-app"]} · {c["lines"]} 行</span></div>'
+            f'<span class="use">B {c["usage"]["b-app"]} · C {c["usage"]["c-app"]}'
+            + (f' · 库内 {c["usage"]["lib"]}' if c["usage"].get("lib") else "")
+            + f' · {c["lines"]} 行</span></div>'
             f'<p class="when">{md(c["note"])}</p><p class="avoid">{md(c["why"])}</p>'
             f'<ul class="props">{props}</ul>'
             f'<code class="path">{c["file"]}</code></div></div>')
@@ -1420,7 +1428,7 @@ def main() -> None:
     """
     TYPE_TIERS = set(TYPE_CLASSES)
     unused = [b["class"] for b in cat["blocks"]
-              if b["usage"]["b-app"] + b["usage"]["c-app"] == 0]
+              if b["usage"]["b-app"] + b["usage"]["c-app"] + b["usage"].get("lib", 0) == 0]
     debt = [c for c in unused if c not in TYPE_TIERS]
     tiers = [c for c in unused if c in TYPE_TIERS]
     if debt:
