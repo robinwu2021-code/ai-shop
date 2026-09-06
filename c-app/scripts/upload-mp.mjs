@@ -10,7 +10,8 @@
 // 用法：
 //   node scripts/upload-mp.mjs 0.1.0 "微信登录联调"
 //
-// 上传完在后台「版本管理」把这个开发版设为体验版，手机上才看得到。
+// 上传完**体验版就跟到这一版**（2026-09-06 确认，后台不用再点），拿体验版码的人
+// 直接就能看到新的。提审与发布另说 —— 那两步没有接口，只能人去后台。
 import { readFileSync } from "node:fs";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -58,7 +59,7 @@ try {
     onProgressUpdate: (t) => process.stdout.write(typeof t === "string" ? `${t}\n` : ""),
   });
   console.log("[upload] 完成", JSON.stringify(result?.subPackageInfo ?? {}, null, 2));
-  console.log("[upload] 去后台「版本管理」把这个开发版设为体验版");
+  console.log("[upload] 体验版已跟到这一版；要上线的话去后台提审（没有接口）");
 } catch (e) {
   const raw = String(e?.message ?? e);
   const ip = raw.match(/invalid ip: ([\d.]+)/)?.[1];
