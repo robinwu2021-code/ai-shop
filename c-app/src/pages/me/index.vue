@@ -5,6 +5,7 @@ import type { MasterData, MerchantApplyStatus, MerchantSubject } from "@shared/t
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
+import { merchantApplyVisible } from "@shared/ports";
 import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
 import PhoneGate from "@/components/phone-gate.vue";
@@ -288,7 +289,9 @@ onShow(() => {
         <text class="txt-body cell__label">{{ $t("visited.title") }}</text>
         <text class="txt-sub cell__value">{{ $t("visited.hint") }}</text>
       </view>
-      <view class="sh-cell sh-row sh-row--between" @tap="applyMerchant">
+      <!-- 小程序上不出现：自营类目的包里有「入驻」会被判成平台型经营而驳回。
+           判断在 ports/storefront，页面不写 #ifdef -->
+      <view v-if="merchantApplyVisible()" class="sh-cell sh-row sh-row--between" @tap="applyMerchant">
         <text class="txt-body cell__label">{{ $t("merchant.apply") }}</text>
         <text class="txt-sub cell__value">{{ applyStatusText }}</text>
       </view>
