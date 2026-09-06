@@ -29,9 +29,11 @@ withDefaults(
 <template>
   <view class="go" :class="{ 'go--quiet': quiet }">
     <text class="txt-caption go__t"><slot>{{ text }}</slot></text>
+    <!-- 22 = 全站行尾箭头的唯一尺寸（2026-09-06 归一：此前 14/18/20/22/28 五种，
+         同一个字形五个数）。方向指示（「从 A 到 B」）不在此列，那是另一件事 -->
     <sh-icon
       name="chevronRight"
-      :size="20"
+      :size="22"
       :color="quiet ? 'var(--sh-sub)' : 'var(--sh-primary-text)'"
     ></sh-icon>
   </view>

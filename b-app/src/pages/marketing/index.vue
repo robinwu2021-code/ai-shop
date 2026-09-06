@@ -215,7 +215,7 @@ onShow(() => {
         <text class="txt-strong">{{ $t("activities.title") }}</text>
         <text class="txt-caption sh-muted entry__d">{{ $t("marketing.activityEntryHint") }}</text>
       </view>
-      <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
+      <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
     </view>
 
     <view v-if="!editing" class="sh-card entry sh-row sh-row--between" @tap="goCoupons">
@@ -223,7 +223,7 @@ onShow(() => {
         <text class="txt-strong">{{ $t("coupons.title") }}</text>
         <text class="txt-caption sh-muted entry__d">{{ $t("marketing.couponEntryHint") }}</text>
       </view>
-      <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
+      <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
     </view>
 
     <!-- 新建表单 -->
@@ -262,7 +262,7 @@ onShow(() => {
         <text class="field__label">{{ $t("marketing.store") }}</text>
         <view class="field__input field__input--pick sh-row sh-row--between">
           <text>{{ storeName(form.storeNo) }}</text>
-          <sh-icon name="chevronRight" :size="20" color="var(--sh-sub)"></sh-icon>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
       </view>
 

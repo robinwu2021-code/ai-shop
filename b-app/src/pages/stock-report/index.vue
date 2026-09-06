@@ -141,7 +141,7 @@ onShow(load);
           @tap="openItem(r)"
         >
           <text class="txt-strong sh-num">{{ r.qty }}</text>
-          <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </sh-kv>
       </view>
     </view>
@@ -162,7 +162,7 @@ onShow(load);
                 : $t("stockReport.pressed", { n: r.qty, money: yuan(r.costAmountMinor) }) }}
             </text>
           </view>
-          <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
       </view>
     </view>

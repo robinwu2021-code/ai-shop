@@ -2016,7 +2016,7 @@
       "name": "sh-go",
       "file": "packages/ui/src/components/sh-go.vue",
       "scope": "跨端",
-      "lines": 56,
+      "lines": 58,
       "props": [
         "text?: string",
         "quiet?: boolean"
@@ -2074,7 +2074,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 57,
+        "b-app": 58,
         "c-app": 5,
         "lib": 13
       },

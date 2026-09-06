@@ -257,7 +257,7 @@ onShow(load);
           <text class="sh-num" :class="r.qtyDelta < 0 ? 'is-danger' : 'is-success'">
             {{ r.qtyDelta > 0 ? `+${r.qtyDelta}` : r.qtyDelta }}
           </text>
-          <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
 
         <!--

@@ -1328,7 +1328,7 @@ function close() {
               -->
               <template v-if="r.hasChild">
                 <view class="row__sep"></view>
-                <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)" @tap.stop="drillRow(r)"></sh-icon>
+                <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)" @tap.stop="drillRow(r)"></sh-icon>
               </template>
             </view>
           </template>
@@ -1347,7 +1347,7 @@ function close() {
         -->
         <view class="sh-row sh-row--between maprow" @tap="pickOnMapAndAdd">
           <text class="txt-body txt-primary maprow__t">{{ picking ? $t("common.loading") : $t("store.picker.mapEntry") }}</text>
-          <sh-icon name="chevronRight" :size="18" color="var(--sh-primary-text)"></sh-icon>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-primary-text)"></sh-icon>
         </view>
     <template #foot>
       <view class="sh-btn" @tap="close">{{ $t("store.picker.done", { n: areas.length }) }}</view>

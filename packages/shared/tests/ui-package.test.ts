@@ -1163,3 +1163,64 @@ describe("缝要露得出下面的东西", () => {
     ).toEqual([]);
   });
 });
+
+/*
+ * **行尾箭头只有一个尺寸。**
+ *
+ * `chevronRight` 是全站被手写得最多的一个图标（2026-09-06 数：35 处 / 17 个文件），
+ * 而它有 **5 种尺寸**：22(×20) / 18(×9) / 28 / 20 / 14。同一个字形五个数，
+ * 且大小与旁边的字号毫无关系 —— `stats` 用 18 配 `.txt-title`（34rpx），
+ * `me` 用 22 配 `.txt-body`（28rpx），越大的字反而配越小的箭头。
+ *
+ * 归一到 **22**（32 处里 20 处本来就是），包括 `sh-go` 里那一个。
+ *
+ * <b>豁免的不是「特例」，是另一件事</b>：`transfer` 与 `goods-publish` 那两处
+ * 不是「这一行可以点进去」，是**方向指示**（从库位→到库位、旧值→新值）。
+ * 它们的大小跟着两侧内容走，跟行尾箭头没关系。
+ * 用 `sh-icon` 而不是 `→` 字符是有意的（`goods-publish` 的注释里写着）：
+ * 字符伪图标跟着系统字形走，RTL 下也不会自己翻，而 `chevronRight`
+ * 在 `sh-icon` 的 DIRECTIONAL 名单里，阿语下自动镜像。
+ */
+describe("行尾箭头只有一个尺寸", () => {
+  /** 方向指示 —— 「从 A 到 B」，不是「点进去」。文件 → 为什么 */
+  const DIRECTION: Record<string, string> = {
+    "b-app/src/pages/transfer/index.vue": "从库位 → 到库位",
+    "b-app/src/pages/goods-publish/index.vue": "旧值 → 新值",
+  };
+  const SIZE = 22;
+
+  const files = [...APPS.map((a) => join(ROOT, a, "src")), join(ROOT, "packages/ui/src")]
+    .flatMap((dir) =>
+      readdirSync(dir, { recursive: true, encoding: "utf8" })
+        .filter((f) => f.endsWith(".vue"))
+        .map((f) => join(dir, f)),
+    );
+
+  it("扫得到那些箭头（否则下面全是空转）", () => {
+    const n = files.filter((f) => readFileSync(f, "utf8").includes('name="chevronRight"')).length;
+    expect(n, "一个 chevronRight 都没扫到，判据大概是写错了").toBeGreaterThan(10);
+  });
+
+  it("行尾箭头一律 22rpx", () => {
+    const bad: string[] = [];
+    for (const f of files) {
+      const rel = f.slice(ROOT.length + 1);
+      if (rel in DIRECTION) continue;
+      const src = readFileSync(f, "utf8");
+      for (const m of src.matchAll(/name="chevronRight"[\s\S]{0,120}?:size="(\d+)"/g)) {
+        if (Number(m[1]) !== SIZE) bad.push(`${rel}  :size="${m[1]}"`);
+      }
+    }
+    expect(
+      bad,
+      `行尾箭头只有 ${SIZE}rpx 一档 —— 真的是「从 A 到 B」的方向指示，登记进 DIRECTION 并写清理由：\n${bad.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  it("豁免名单里的文件还真的有方向箭头 —— 名单会锈", () => {
+    for (const [rel, why] of Object.entries(DIRECTION)) {
+      const src = readFileSync(join(ROOT, rel), "utf8");
+      expect(src.includes('name="chevronRight"'), `${rel}（${why}）里已经没有箭头了，名单该删这一条`).toBe(true);
+    }
+  });
+});

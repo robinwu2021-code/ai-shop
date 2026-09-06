@@ -219,7 +219,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
     -->
     <view v-if="merchant.can('biz:goods')" class="sh-card specs sh-row sh-row--between" @tap="goSpecs">
       <text class="txt-title">{{ $t("storeCategories.specsEntry") }}</text>
-      <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
+      <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
     </view>
   </sh-scaffold>
 </template>

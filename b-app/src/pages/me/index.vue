@@ -309,6 +309,7 @@ onShow(() => {
       <view class="sh-cell sh-row sh-row--between" @tap="sheetOpen = true">
         <text class="txt-body cell__label">{{ $t("me.appearance") }}</text>
         <text class="txt-caption cell__value">{{ $t("me.appearanceValue") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="later">
         <text class="txt-body cell__label">{{ $t("me.help") }}</text>

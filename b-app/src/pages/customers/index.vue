@@ -277,7 +277,7 @@ onShow(() => {
           </template>
         </text>
       </view>
-      <sh-icon name="chevronRight" :size="18" color="var(--sh-sub)"></sh-icon>
+      <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
     </view>
 
     <text v-if="list.length" class="sh-hint sh-mt-md">{{ $t("members.privacyHint") }}</text>
