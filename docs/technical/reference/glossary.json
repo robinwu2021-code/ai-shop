@@ -21628,6 +21628,48 @@
         "module": "pay/pay-domain"
       },
       {
+        "host": "InvMirrorEvent",
+        "name": "PREFIX",
+        "value": "INV_MIRROR_",
+        "zh": "域前缀。",
+        "module": "shop-app"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RESERVE",
+        "value": "INV_MIRROR_RESERVE",
+        "zh": "平台锁库 → 进销存建预留。",
+        "module": "shop-app"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "COMMIT",
+        "value": "INV_MIRROR_COMMIT",
+        "zh": "平台确认 → 进销存把预留转成出库。",
+        "module": "shop-app"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RELEASE",
+        "value": "INV_MIRROR_RELEASE",
+        "zh": "平台释放 → 进销存撤销预留。",
+        "module": "shop-app"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RESTORE",
+        "value": "INV_MIRROR_RESTORE",
+        "zh": "售后退回 → 进销存回补库存。",
+        "module": "shop-app"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "ADJUST",
+        "value": "INV_MIRROR_ADJUST",
+        "zh": "商家在商品页手改库存 → 进销存跟着改。",
+        "module": "shop-app"
+      },
+      {
         "host": "Channel",
         "name": "PLATFORM_TO_INVENTORY",
         "value": "PLATFORM_TO_INVENTORY",
@@ -24739,6 +24781,55 @@
         "host": "OrdAfterSale",
         "name": "EXCHANGE",
         "value": "EXCHANGE",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdAfterSale",
+        "name": "REASON_NOT_WANTED",
+        "value": "NOT_WANTED",
+        "zh": "── 售后原因（`reason` 列）────────────────────────────────────────── 收编到实体上，与上面两组取值域同处。",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdAfterSale",
+        "name": "REASON_DAMAGED",
+        "value": "DAMAGED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdAfterSale",
+        "name": "REASON_MISSING",
+        "value": "MISSING",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdAfterSale",
+        "name": "REASON_WRONG_ITEM",
+        "value": "WRONG_ITEM",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdAfterSale",
+        "name": "REASON_QUALITY",
+        "value": "QUALITY",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdAfterSale",
+        "name": "REASON_EXPIRED",
+        "value": "EXPIRED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdAfterSale",
+        "name": "REASON_OTHER",
+        "value": "OTHER",
         "zh": "",
         "module": "shop-core"
       },
@@ -28577,6 +28668,14 @@
       "module": "shop-app"
     },
     {
+      "host": "InvMirrorEvent",
+      "name": "ALL",
+      "type": "Set<String>",
+      "value": "Set.of(RESERVE, COMMIT, RELEASE, RESTORE, ADJUST)",
+      "zh": "全部镜像事件。",
+      "module": "shop-app"
+    },
+    {
       "host": "ApiResult",
       "name": "OK",
       "type": "int",
@@ -29742,6 +29841,14 @@
       "type": "String",
       "value": "\"\"",
       "zh": "覆盖维度时用它：value_no 存空串而不是 NULL —— 唯一键里的 NULL 互不相等",
+      "module": "shop-core"
+    },
+    {
+      "host": "OrdAfterSale",
+      "name": "REASONS",
+      "type": "List<String>",
+      "value": "List.of( REASON_NOT_WANTED, REASON_DAMAGED, REASON_MISSING, REASON_WRONG_ITEM, REASON_QUALITY, REASON_EXPIRED, REASON_OTHER)",
+      "zh": "下发给端上的原因清单。",
       "module": "shop-core"
     },
     {

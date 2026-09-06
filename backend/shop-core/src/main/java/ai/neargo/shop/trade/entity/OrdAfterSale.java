@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.entity;
 
+import java.util.List;
 import ai.neargo.shop.common.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -25,6 +26,31 @@ public class OrdAfterSale extends BaseEntity {
     public static final String REFUND_ONLY = "REFUND_ONLY";
     public static final String RETURN_REFUND = "RETURN_REFUND";
     public static final String EXCHANGE = "EXCHANGE";
+
+    /*
+     * ── 售后原因（`reason` 列）──────────────────────────────────────────
+     *
+     * 收编到实体上，与上面两组取值域同处。此前它是 AfterSaleServiceImpl 里的一个
+     * 裸 List.of，而端上有具名类型 `shared:AfterSaleReason` —— 两侧曾经真的漂过：
+     * 后端原是中文字面量，c-app 压根没调那个接口、自己硬编码了另一份**六个码**的清单。
+     * 修好之后一直没有护栏，因为**裸 List 进不了按字段对账**
+     * （scripts/check-enum-fields.mjs 读的是 `static final String`）。
+     * 现在它登记成了 `ord_after_sale.reason`，两侧不等就红。
+     *
+     * 下发的是码不是文案：这是三语 App（zh/en/ar），下发中文等于把翻译从端上剥夺掉。
+     */
+    public static final String REASON_NOT_WANTED = "NOT_WANTED";
+    public static final String REASON_DAMAGED = "DAMAGED";
+    public static final String REASON_MISSING = "MISSING";
+    public static final String REASON_WRONG_ITEM = "WRONG_ITEM";
+    public static final String REASON_QUALITY = "QUALITY";
+    public static final String REASON_EXPIRED = "EXPIRED";
+    public static final String REASON_OTHER = "OTHER";
+
+    /** 下发给端上的原因清单。顺序即展示顺序，`OTHER` 压在最后。 */
+    public static final List<String> REASONS = List.of(
+            REASON_NOT_WANTED, REASON_DAMAGED, REASON_MISSING, REASON_WRONG_ITEM,
+            REASON_QUALITY, REASON_EXPIRED, REASON_OTHER);
 
     private String afterSaleNo;
     private String subOrderNo;

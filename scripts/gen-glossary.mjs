@@ -253,6 +253,35 @@ function hostClassAt(masked, idx) {
 
 const JAVA_CONST = /(?:public|protected)\s+static\s+final\s+([A-Za-z0-9_<>,\[\]\s.]+?)\s+([A-Z][A-Z0-9_]*)\s*=\s*([^;]+);/g;
 
+/**
+ * 常量表达式求值：`PREFIX + "RESERVE"` → `"INV_MIRROR_RESERVE"`。
+ *
+ * <p>**为什么需要**：Java 的编译期常量允许由别的常量拼出来，而这个仓库
+ * 恰好用这一点把域前缀长进常量里（`InvMirrorEvent.PREFIX + "RESERVE"`，
+ * 目的是让完整事件名 grep 得到）。不求值的话，这类取值域会：
+ * <ul>
+ *   <li>被判成「不是取值域」（判据是初始化式长不长得像大写字面量），落进静态常量清单</li>
+ *   <li>值那一列渲染成 `PREFIX + "RESERVE"` —— 读的人看不到真正上 wire 的串</li>
+ * </ul>
+ * 也就是说：**把裸字面量收编成常量之后，清单反而看不见它了** ——
+ * 而收编的理由恰恰是「让它被看见」（见整改清单 P3）。2026-09-06 实测撞到。
+ *
+ * <p>只解一层、只认同文件里的纯字面量常量。解不开就原样返回 ——
+ * 猜一个值比留着表达式更糟。
+ */
+function resolveConstExpr(expr, literals) {
+  const parts = expr.split("+").map((x) => x.trim());
+  if (parts.length < 2) return expr;
+  const out = [];
+  for (const part of parts) {
+    const lit = part.match(/^"([^"]*)"$/);
+    if (lit) { out.push(lit[1]); continue; }
+    if (literals.has(part)) { out.push(literals.get(part)); continue; }
+    return expr;                       // 有一段解不开，整条不动
+  }
+  return `"${out.join("")}"`;
+}
+
 /** Java 里的常量声明（同时喂给「取值域」与「静态常量」两份清单）。 */
 function collectJavaConstants(javaFiles) {
   const rows = [];
@@ -260,10 +289,16 @@ function collectJavaConstants(javaFiles) {
     const src = read(join(ROOT, rel));
     if (!src.includes("static final")) continue;
     const masked = maskJava(src);
+    // 先收本文件里的纯字面量常量，供下面解表达式用
+    const literals = new Map();
+    for (const m of src.matchAll(JAVA_CONST)) {
+      const lit = m[3].trim().match(/^"([^"]*)"\s*$/);
+      if (lit) literals.set(m[2], lit[1]);
+    }
     for (const m of src.matchAll(JAVA_CONST)) {
       // 落在注释里的匹配丢掉：抹码后同一下标应当还是同一个字符
       if (masked[m.index] !== src[m.index]) continue;
-      const value = m[3].trim().replace(/\s+/g, " ");
+      const value = resolveConstExpr(m[3].trim().replace(/\s+/g, " "), literals);
       rows.push({
         module: moduleOf(rel), file: rel,
         host: hostClassAt(masked, m.index) ?? rel.split(sep).pop().replace(/\.java$/, ""),

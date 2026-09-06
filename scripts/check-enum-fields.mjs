@@ -129,6 +129,24 @@ export const FIELDS = [
     clients: [{ file: "ops-web/lib/types/fulfillment.ts", type: "BatchStatus" }],
   },
   {
+    concept: "售后原因",
+    field: "ord_after_sale.reason",
+    /*
+     * 走 javaConst 不走 ddl：`ord_after_sale.reason` 那一列**没有列注释**，
+     * 取值域只存在于 Java 侧。收编前它是 AfterSaleServiceImpl 里的裸 `List.of`，
+     * 正因为不是 `static final String` 才登记不进来 —— 2026-09-06 提成
+     * OrdAfterSale.REASON_* 之后才登得上。
+     *
+     * only 是必须的：这个实体上并排放着三组取值域（status / type / reason），
+     * 不筛的话三组会混成一堆，与端上任何一个类型都对不上。
+     */
+    backend: {
+      javaConst: "shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdAfterSale.java",
+      only: ["NOT_WANTED", "DAMAGED", "MISSING", "WRONG_ITEM", "QUALITY", "EXPIRED", "OTHER"],
+    },
+    clients: [{ file: SHARED_TYPES, type: "AfterSaleReason" }],
+  },
+  {
     concept: "商家经营状态",
     field: "mch_entity.status",
     backend: { ddl: ["mch_entity", "status"] },
