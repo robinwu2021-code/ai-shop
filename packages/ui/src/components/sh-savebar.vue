@@ -42,8 +42,8 @@ defineEmits<{ (e: "discard"): void; (e: "save"): void }>();
 <style scoped>
 .bar__pad {
   height: 140rpx;
-  height: calc(140rpx + constant(safe-area-inset-bottom));
-  height: calc(140rpx + env(safe-area-inset-bottom));
+  height: calc(140rpx + constant(safe-area-inset-bottom, 0px));
+  height: calc(140rpx + env(safe-area-inset-bottom, 0px));
 }
 .bar {
   position: fixed;
@@ -58,8 +58,8 @@ defineEmits<{ (e: "discard"): void; (e: "save"): void }>();
   gap: 16rpx;
   padding: 20rpx 24rpx;
   padding-bottom: 20rpx;
-  padding-bottom: calc(20rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(20rpx + constant(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom, 0px));
   background: var(--sh-surface);
   /* 这条 hairline 与 sh-tabbar 顶部那条同源：白条压在浅灰页面上，
      不加分界时列表像是溢出到条里去了 */

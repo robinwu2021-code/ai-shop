@@ -101,7 +101,7 @@ watch(
   border-top: var(--sh-hairline);
   box-shadow: 0 -6rpx 20rpx var(--sh-scrim);
   padding: 16rpx 0;
-  padding: 16rpx 0 calc(16rpx + env(safe-area-inset-bottom));
+  padding: 16rpx 0 calc(16rpx + env(safe-area-inset-bottom, 0px));
 }
 .tabbar__item {
   flex: 1;

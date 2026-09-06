@@ -229,8 +229,8 @@ watch(() => props.titleKey, applyTitle);
   min-height: 100vh;
   box-sizing: border-box;
   padding-bottom: 40rpx;
-  padding-bottom: calc(40rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(40rpx + constant(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom, 0px));
 }
 /* 页面边距。走变量的理由同 .sh-card（见 base.css）：两端密度诉求不同，
    默认 28rpx 保持 C 端原样，B 端在自己的 App.vue 里调紧 */
@@ -253,8 +253,8 @@ watch(() => props.titleKey, applyTitle);
 /* #endif */
 /* 自定义 tabBar 是 fixed 的，内容区要留出等高的底部空间 */
 .sh-scaffold.has-tabbar {
-  padding-bottom: calc(var(--sh-tabbar-h) + 40rpx);
-  padding-bottom: calc(var(--sh-tabbar-h) + 40rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--sh-tabbar-h, 124rpx) + 40rpx);
+  padding-bottom: calc(var(--sh-tabbar-h, 124rpx) + 40rpx + env(safe-area-inset-bottom, 0px));
 }
 /* 无权态：整屏只讲一件事，与「还没开店」那一屏同一套版式 */
 .sh-denied {

@@ -161,7 +161,7 @@ function close() {
   background: var(--sh-surface);
   border-radius: 44rpx 44rpx 0 0;
   padding: 24rpx 36rpx 48rpx;
-  padding: 24rpx 36rpx calc(48rpx + env(safe-area-inset-bottom));
+  padding: 24rpx 36rpx calc(48rpx + env(safe-area-inset-bottom, 0px));
   /* 内容比屏幕高时必须能滚，否则超出的部分被顶到视口外、够不着。
      皮肤从 4 套加到 8 套时就撞上了这个：面板从「明暗」开始显示，
      上面的「配色」整段不见了 —— 而它恰恰是这个面板的第一功能。

@@ -99,7 +99,7 @@ const emit = defineEmits<{ close: [] }>();
      抄一个 36 过去的话，改一处另一处就错位，而错位只有几像素，没人会去量 */
   --sheet-pad-x: 36rpx;
   padding: 24rpx var(--sheet-pad-x) 48rpx;
-  padding: 24rpx var(--sheet-pad-x) calc(48rpx + env(safe-area-inset-bottom));
+  padding: 24rpx var(--sheet-pad-x) calc(48rpx + env(safe-area-inset-bottom, 0px));
   /* 见类注释：没有 max-height 的 bottom:0 弹层，内容一多就把上半截顶出视口 */
   max-height: 78vh;
   box-sizing: border-box;
@@ -147,7 +147,7 @@ const emit = defineEmits<{ close: [] }>();
      被 iPhone 的横条压住一截。上面那条 `padding` 已经给了 16rpx，
      这里再显式写一遍同名声明，让下面那条 calc 有东西可退回 */
   padding-bottom: 16rpx;
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom, 0px));
   border-top: var(--sh-hairline);
 }
 

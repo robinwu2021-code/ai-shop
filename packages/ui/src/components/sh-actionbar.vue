@@ -65,7 +65,7 @@ const props = withDefaults(
  */
 const padStyle = computed(() => ({
   height: props.tabbar
-    ? `calc(${props.pad}rpx + var(--sh-tabbar-h))`
+    ? `calc(${props.pad}rpx + var(--sh-tabbar-h, 124rpx))`
     : `${props.pad}rpx`,
 }));
 </script>
@@ -89,24 +89,24 @@ const padStyle = computed(() => ({
 .ab__pad {
   /* 兜底写 0：不认 env() 的内核上就是没有安全区，而不是整条声明失效 */
   padding-bottom: 0;
-  padding-bottom: constant(safe-area-inset-bottom);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: constant(safe-area-inset-bottom, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   box-sizing: content-box;
 }
 .ab {
   position: fixed;
   inset-inline: 28rpx;
   bottom: 28rpx;
-  bottom: calc(28rpx + constant(safe-area-inset-bottom));
-  bottom: calc(28rpx + env(safe-area-inset-bottom));
+  bottom: calc(28rpx + constant(safe-area-inset-bottom, 0px));
+  bottom: calc(28rpx + env(safe-area-inset-bottom, 0px));
   z-index: var(--sh-z-actionbar);
 }
 /* 有底部菜单的页面：压在菜单之上。**高度走变量不抄数字** ——
    菜单高度改一次，这里跟着变（cart 的注释记着它曾经被菜单盖住过）。 */
 .ab--tabbar {
-  bottom: calc(var(--sh-tabbar-h) + 20rpx);
-  bottom: calc(var(--sh-tabbar-h) + 20rpx + constant(safe-area-inset-bottom));
-  bottom: calc(var(--sh-tabbar-h) + 20rpx + env(safe-area-inset-bottom));
+  bottom: calc(var(--sh-tabbar-h, 124rpx) + 20rpx);
+  bottom: calc(var(--sh-tabbar-h, 124rpx) + 20rpx + constant(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--sh-tabbar-h, 124rpx) + 20rpx + env(safe-area-inset-bottom, 0px));
 }
 .ab--plain,
 .ab--lead {

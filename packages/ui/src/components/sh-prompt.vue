@@ -68,9 +68,9 @@ const inputType = computed(() => (s.type === "text" ? "text" : s.type));
   bottom: 0;
   background: var(--sh-surface);
   border-radius: 44rpx 44rpx 0 0;
-  padding: 24rpx 36rpx calc(48rpx + constant(safe-area-inset-bottom));
+  padding: 24rpx 36rpx calc(48rpx + constant(safe-area-inset-bottom, 0px));
   padding: 24rpx 36rpx 48rpx;
-  padding: 24rpx 36rpx calc(48rpx + env(safe-area-inset-bottom));
+  padding: 24rpx 36rpx calc(48rpx + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
 }
 .pr__grip {

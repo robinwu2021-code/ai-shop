@@ -68,7 +68,7 @@ onUnmounted(() => clearCartAnchor());
    改一个必然想到另一个 —— 它们就在相邻两条规则里 */
 .cartfab__pad {
   height: 192rpx;
-  height: calc(192rpx + env(safe-area-inset-bottom));
+  height: calc(192rpx + env(safe-area-inset-bottom, 0px));
 }
 
 /*
@@ -79,8 +79,8 @@ onUnmounted(() => clearCartAnchor());
   position: fixed;
   inset-inline-end: 32rpx;
   bottom: 96rpx;
-  bottom: calc(96rpx + constant(safe-area-inset-bottom));
-  bottom: calc(96rpx + env(safe-area-inset-bottom));
+  bottom: calc(96rpx + constant(safe-area-inset-bottom, 0px));
+  bottom: calc(96rpx + env(safe-area-inset-bottom, 0px));
   z-index: var(--sh-z-fab);
   width: 96rpx;
   height: 96rpx;
