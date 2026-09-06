@@ -29688,6 +29688,7 @@
         "cos.version": "5.6.245"
       },
       "managed": [
+        "com.google.errorprone:error_prone_annotations",
         "com.qcloud:cos_api",
         "com.tngtech.archunit:archunit-junit5",
         "net.javacrumbs.shedlock:shedlock-provider-jdbc-template",

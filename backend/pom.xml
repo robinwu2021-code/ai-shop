@@ -79,7 +79,9 @@
             并在这里写明原因 —— 别新起一个属性名（只覆盖到一条、家族其余成员留在旧版本），
             更别用 BOM 的属性名却不知道（jakarta-mail.version / angus-mail.version 曾在这里
             以「BOM 管不到」为名出现，实际把 BOM 里十个 org.eclipse.angus 条目全钉住了）。
-         2. **BOM 不管的，钉在下面的 dependencyManagement。** 今天只有 archunit、cos_api 与 shedlock
+         2. **BOM 不管的，钉在下面的 dependencyManagement。** 今天只有 archunit、cos_api、shedlock，
+            外加一条纯收敛用的 error_prone_annotations（cos_api 那条链带 2.41.0，caffeine 带 2.49.0，
+            钉在原本就胜出的 2.49.0 上，运行时零变化）
             （flyway 曾以 BOM 的属性名 flyway.version 钉在这里，值与 BOM 相同，Boot 4.1 起会把
             Flyway 静默留在 11.14.1 —— 同一次一并撤掉）。
          3. **模块 pom 里不写任何版本**，字面量与 ${...} 都不写（内部模块的 ${project.version} 除外）。
@@ -88,8 +90,10 @@
             BOM 的 3.11.1；模块各自的测试跑一个版本、发布物跑另一个，台台机器都一样，
             Maven 一个字不报。
 
-         闸门：scripts/gen-glossary.mjs 扫到模块 pom 里出现版本就直接失败
-         （连模块级 dependencyManagement 一起扫；`依赖清单.md` §1.2 因此永远为空）。 -->
+         闸门有两道：scripts/gen-glossary.mjs 扫到模块 pom 里出现版本就直接失败
+         （连模块级 dependencyManagement 一起扫；`依赖清单.md` §1.2 因此永远为空）；
+         下面 maven-enforcer 的 dependencyConvergence 在 validate 阶段看**传递依赖**里的版本分叉 ——
+         那是生成器看不见的一层，2026-09-06 挂上时全 reactor 只有上面那一处，钉住即归零。 -->
     <properties>
         <archunit.version>1.3.0</archunit.version>
         <shedlock.version>6.9.0</shedlock.version>
@@ -120,6 +124,12 @@
                 <artifactId>shedlock-provider-jdbc-template</artifactId>
                 <version>${shedlock.version}</version>
             </dependency>
+            <!-- 只为 dependencyConvergence 收敛：钉的是今天本来就胜出的那个版本 -->
+            <dependency>
+                <groupId>com.google.errorprone</groupId>
+                <artifactId>error_prone_annotations</artifactId>
+                <version>2.49.0</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -135,5 +145,32 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 与 neargo-parent 的 enforce-build-env（锁 JDK/Maven 版本）并列的第二条执行。
+                 dependencyConvergence：同一个 classpath 上一个 g:a 只许解析出一个版本，
+                 传递依赖带进来的也算 —— 「两处各写一份版本」的真正后果在这里报，
+                 而不是靠人读 pom。冲突了就在上面的 dependencyManagement 钉一条，
+                 钉当前胜出的那个版本，运行时不变。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-dependency-convergence</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <dependencyConvergence/>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
