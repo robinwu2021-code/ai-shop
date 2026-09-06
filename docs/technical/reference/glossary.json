@@ -23371,6 +23371,55 @@
         "module": "shop-core"
       },
       {
+        "host": "NotifyScene",
+        "name": "ORDER_PAID",
+        "value": "ORDER_PAID",
+        "zh": "整单已支付（C 端）",
+        "module": "shop-core"
+      },
+      {
+        "host": "NotifyScene",
+        "name": "ORDER_ARRIVED",
+        "value": "ORDER_ARRIVED",
+        "zh": "订单已到货（C 端）",
+        "module": "shop-core"
+      },
+      {
+        "host": "NotifyScene",
+        "name": "SUB_ORDER_COMPLETED",
+        "value": "SUB_ORDER_COMPLETED",
+        "zh": "子单已完成（C 端）",
+        "module": "shop-core"
+      },
+      {
+        "host": "NotifyScene",
+        "name": "AFTER_SALE_REFUNDED",
+        "value": "AFTER_SALE_REFUNDED",
+        "zh": "售后已退款（C 端）",
+        "module": "shop-core"
+      },
+      {
+        "host": "NotifyScene",
+        "name": "SUB_ORDER_PAID",
+        "value": "SUB_ORDER_PAID",
+        "zh": "子单已支付 —— 扇出给门店员工（B 端）",
+        "module": "shop-core"
+      },
+      {
+        "host": "NotifyScene",
+        "name": "AFTER_SALE_APPLIED",
+        "value": "AFTER_SALE_APPLIED",
+        "zh": "顾客发起售后 —— 扇出给门店员工（B 端）",
+        "module": "shop-core"
+      },
+      {
+        "host": "NotifyScene",
+        "name": "REVIEW_CREATED",
+        "value": "REVIEW_CREATED",
+        "zh": "新评价 —— 扇出给商家客服（B 端）",
+        "module": "shop-core"
+      },
+      {
         "host": "MsgMessage",
         "name": "TRADE",
         "value": "TRADE",
@@ -29645,6 +29694,14 @@
       "type": "java.util.Map<String, String>",
       "value": "java.util.Map.of( STATUS_PLANNED, STATUS_DISPATCHED, STATUS_DISPATCHED, STATUS_ARRIVED, STATUS_ARRIVED, STATUS_SIGNED)",
       "zh": "状态机：每个状态只有一条出路。",
+      "module": "shop-core"
+    },
+    {
+      "host": "NotifyScene",
+      "name": "ALL",
+      "type": "Set<String>",
+      "value": "Set.of( ORDER_PAID, ORDER_ARRIVED, SUB_ORDER_COMPLETED, AFTER_SALE_REFUNDED, SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED)",
+      "zh": "全部场景码。",
       "module": "shop-core"
     },
     {

@@ -231,6 +231,102 @@ function plannedValues(src, name, ownerConst) {
     .filter(Boolean);
 }
 
+/**
+ * 显式驳回：看过了，这一列<b>不是</b>受限取值域。
+ *
+ * <p>与「还没人看过」必须在数据里分得开 —— 把没看过的显示成没问题，
+ * 比没有登记表更危险（同 `enum-registry.ts` 的 `UNREVIEWED` 那条教训）。
+ *
+ * <p>今天这里只有一类：**候选启发式自己的误报**。列注释里出现斜杠分隔的大写词
+ * 不一定是取值域，日期格式（`YYYY/MM/DD`）长得一模一样。
+ * 业务层面的「这一列不是受限取值域」要由做登记的人写，不要替他判 ——
+ * 那是 §3 待业务拍板的第 4 条（驳回理由谁把关）。
+ */
+export const DISMISSED = [
+  { key: "stl_settle_invoice.period", why: "日期格式 YYYY/MM，不是取值域 —— 候选启发式的误报" },
+  { key: "ful_batch.arrive_date", why: "日期格式 YYYY/MM/DD，同上" },
+  { key: "stl_recon_diff.bill_date", why: "日期格式 YYYY/MM/DD，同上" },
+  { key: "mch_entity_apply.community_nos", why: "JSON 数组列，注释里的 JSON/COMMUNITY 是句子不是取值域" },
+];
+
+/**
+ * 代码侧可见面：建表注释里枚举了取值的列。
+ *
+ * <p>⚠️ **这不是覆盖率的分母。** 分母应当是需求端定义的领域对象及其取值域
+ * （见 TDD-取值域按字段对账-补全登记 §2.2），而那份定义今天基本不存在
+ * （17 个 L2 域里只有三处写全）。这里扫出来的是**另一半** ——
+ * 「代码里实际有什么」。拿它当分母会得到一个自证的覆盖率：
+ * 分母是自己扫出来的，需求里有、代码没实现的那一类永远不在里面。
+ *
+ * <p>那它有什么用：让「已登记 8 个」旁边有一个可点名的清单，
+ * 而不是一个谁都不知道有多大的空白。
+ */
+export function surface() {
+  const dir = join(ROOT, "backend/shop-app/src/main/resources/db/migration");
+  const out = new Map();
+  for (const f of readdirSync(dir).filter((x) => x.endsWith(".sql")).sort()) {
+    const src = readFileSync(join(dir, f), "utf8");
+    for (const b of src.matchAll(/CREATE TABLE IF NOT EXISTS (\w+)\s*\n\(([\s\S]*?)\n\)\s*ENGINE/g)) {
+      for (const line of b[2].split("\n")) {
+        const col = line.match(/^\s+(\w+)\s+\w/);
+        const c = line.match(/COMMENT\s+'([^']*)'/);
+        if (!col || !c) continue;
+        const eq = [...c[1].matchAll(/\b([A-Z][A-Z0-9_]+)\s*=/g)].map((x) => x[1]);
+        const vals = eq.length
+          ? eq
+          : [...c[1].split(/[：:，,（(]/)[0].matchAll(/([A-Z][A-Z0-9_]{1,})/g)].map((x) => x[1]);
+        if (vals.length >= 2) out.set(`${b[1]}.${col[1]}`, vals);
+      }
+    }
+  }
+  return out;
+}
+
+/** 已判定 = 登记进 FIELDS ∪ 显式驳回 */
+function judged() {
+  const out = new Set(DISMISSED.map((d) => d.key));
+  for (const f of FIELDS) out.add(f.field.split(/\s*(?:→|@)\s*/)[0].trim());
+  return out;
+}
+
+/**
+ * 未判定：代码侧可见、既没登记也没驳回的列。**点名，不只给个数。**
+ *
+ * <p>只给总数的话，「126 个未判定」这句话没有任何人能据它做下一步 ——
+ * 而点名之后它就是一份可以逐条消化的清单。
+ */
+export function uncovered() {
+  const seen = judged();
+  return [...surface().entries()]
+    .filter(([key]) => !seen.has(key))
+    .map(([key, values]) => ({ key, values }))
+    .sort((a, b) => (a.key < b.key ? -1 : 1));
+}
+
+/** 未判定清单的棘轮基线：只准变短。文件头写着它为什么不是分母。 */
+export const RATCHET_FILE = "known-unregistered-value-domains.txt";
+
+/**
+ * 与基线比对。
+ *
+ * <p>比「数变大就红」更严一档：**按 key 比**。只盯数量的话，
+ * 判定掉一条、又新加一列带取值注释的表，数字不变而新的那条溜进来了。
+ */
+export function ratchet(un = uncovered()) {
+  const path = join(ROOT, RATCHET_FILE);
+  const base = new Set(
+    (existsSync(path) ? readFileSync(path, "utf8") : "")
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("#")),
+  );
+  const now = new Set(un.map((u) => u.key));
+  return {
+    added: un.filter((u) => !base.has(u.key)),
+    fixed: [...base].filter((k) => !now.has(k)).sort(),
+  };
+}
+
 export function audit() {
   const problems = [];
   const skipped = [];
@@ -294,7 +390,23 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { problems, skipped } = audit();
 
   console.log("枚举对账 · 按字段比对取值域\n");
-  console.log(`已登记 ${FIELDS.length} 个 wire 字段。\n`);
+  console.log(`已登记 ${FIELDS.length} 个 wire 字段、显式驳回 ${DISMISSED.length} 列。\n`);
+
+  const un = uncovered();
+  const { added, fixed } = ratchet(un);
+  console.log(`代码侧可见面 ${surface().size} 列，其中 ${un.length} 列还没有人判定过。`);
+  console.log("（这不是覆盖率的分母 —— 分母应当是需求端定义的取值域，见 TDD §2.2。");
+  console.log("  这里只是让「已登记 8 个」旁边有一份点得出名字的清单。）\n");
+  if (added.length) {
+    console.log(`❌ 新出现 ${added.length} 列未判定的取值域（不在 ${RATCHET_FILE} 里）：`);
+    for (const u of added) console.log(`   ${u.key}  ${u.values.join("/")}`);
+    console.log("   → 登记进 FIELDS，或写进 DISMISSED 并给理由；两者都不做就把它加进基线并说明为什么\n");
+  }
+  if (fixed.length) {
+    console.log(`🎉 这 ${fixed.length} 列已经判定完了，从 ${RATCHET_FILE} 里删掉（清单只准变短）：`);
+    for (const k of fixed) console.log(`   ${k}`);
+    console.log("");
+  }
 
   if (!problems.length) {
     console.log("✅ 每个字段两侧的取值域完全一致\n");
@@ -328,5 +440,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     "两侧都要看：端上多出来的值 → 筛不出东西；后端多出来的值 → 显示成键名或兜底。\n" +
       "同物异名（两边都有词但不是同一个词）只有按字段比对才抓得到 —— 这正是本工具存在的理由。",
   );
-  if (problems.length) process.exitCode = 1;
+  if (problems.length || added.length) process.exitCode = 1;
 }

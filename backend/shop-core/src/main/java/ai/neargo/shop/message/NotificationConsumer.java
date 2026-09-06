@@ -7,6 +7,8 @@ import ai.neargo.shop.message.entity.MsgSceneChannel;
 import ai.neargo.shop.message.notify.SceneChannelRouting;
 import ai.neargo.shop.message.notify.WxSubscribeSender;
 import ai.neargo.shop.spi.user.MerchantStaffPort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -31,13 +33,11 @@ import java.util.Set;
 @Component
 public class NotificationConsumer implements OutboxConsumer {
 
-    private static final Set<String> HANDLED = Set.of(
-            "ORDER_PAID", "ORDER_ARRIVED", "SUB_ORDER_COMPLETED", "AFTER_SALE_REFUNDED",
-            "SUB_ORDER_PAID", "AFTER_SALE_APPLIED", "REVIEW_CREATED");
+    private static final Logger log = LoggerFactory.getLogger(NotificationConsumer.class);
 
     /** 处理的场景码 —— 场景×通道种子必须逐一覆盖，{@code SceneChannelSeedTest} 据此守卫。 */
     public static Set<String> handledScenes() {
-        return HANDLED;
+        return NotifyScene.ALL;
     }
 
     /** 该被「来单/售后」提醒吵到的人：站柜台的和管店的。理货/配送收到也做不了什么。 */
@@ -69,7 +69,7 @@ public class NotificationConsumer implements OutboxConsumer {
 
     @Override
     public boolean supports(String eventType) {
-        return HANDLED.contains(eventType);
+        return NotifyScene.ALL.contains(eventType);
     }
 
     @Override
@@ -78,7 +78,7 @@ public class NotificationConsumer implements OutboxConsumer {
         String scene = event.getEventType();
         switch (scene) {
             // ------------------------------------------------------------ C 端
-            case "ORDER_PAID" -> {
+            case NotifyScene.ORDER_PAID -> {
                 String userNo = text(payload, "userNo");
                 String link = "/pages/order/index?orderNo=" + event.getAggregateId();
                 messageService.push(userNo, MessageService.TRADE,
@@ -86,7 +86,7 @@ public class NotificationConsumer implements OutboxConsumer {
                         link, event.getEventNo());
                 cPush(scene, userNo, "支付成功", "订单已支付，商家备货后可凭取货码到店自提", link);
             }
-            case "ORDER_ARRIVED" -> {
+            case NotifyScene.ORDER_ARRIVED -> {
                 String userNo = text(payload, "userNo");
                 int count = payload.get("subOrderNos") == null ? 1 : payload.get("subOrderNos").size();
                 // 一人多单时点开落到订单列表；单单直达详情
@@ -105,14 +105,14 @@ public class NotificationConsumer implements OutboxConsumer {
                 // 到货是 C 端最重要的一条；级别由配置决定（默认 NORMAL，不把买家从睡梦中叫醒）
                 cPush(scene, userNo, "到货了", arrivedBody, link);
             }
-            case "SUB_ORDER_COMPLETED" -> {
+            case NotifyScene.SUB_ORDER_COMPLETED -> {
                 String userNo = text(payload, "userNo");
                 String link = "/pages/order/index?orderNo=" + event.getAggregateId();
                 messageService.push(userNo, MessageService.TRADE,
                         "已取货", "订单已完成，欢迎评价", link, event.getEventNo());
                 cPush(scene, userNo, "已取货", "订单已完成，欢迎评价", link);
             }
-            case "AFTER_SALE_REFUNDED" -> {
+            case NotifyScene.AFTER_SALE_REFUNDED -> {
                 String userNo = text(payload, "userNo");
                 String link = "/pages/after-sale/index?afterSaleNo=" + event.getAggregateId();
                 messageService.push(userNo, MessageService.TRADE,
@@ -126,13 +126,13 @@ public class NotificationConsumer implements OutboxConsumer {
                 cPush(scene, userNo, "退款已处理", "退款将原路退回，到账时间以支付渠道为准", link);
             }
             // ------------------------------------------------------------ B 端
-            case "SUB_ORDER_PAID" -> fanOutToStaff(event, text(payload, "entityNo"), ORDER_ROLES,
+            case NotifyScene.SUB_ORDER_PAID -> fanOutToStaff(event, text(payload, "entityNo"), ORDER_ROLES,
                     "新订单", "有新的订单待备货，记得按时送到自提点",
                     "/pages/orders/index?tab=PAID");
-            case "AFTER_SALE_APPLIED" -> fanOutToStaff(event, text(payload, "entityNo"), AFTER_SALE_ROLES,
+            case NotifyScene.AFTER_SALE_APPLIED -> fanOutToStaff(event, text(payload, "entityNo"), AFTER_SALE_ROLES,
                     "新的售后申请", "买家提交了售后申请，尽早处理更容易协商解决",
                     "/pages/after-sale/index");
-            case "REVIEW_CREATED" -> {
+            case NotifyScene.REVIEW_CREATED -> {
                 int rating = payload.get("rating") == null ? 5 : payload.get("rating").asInt();
                 // 差评单独点名：混在普通评价里会被当成例行夸奖划掉
                 fanOutToStaff(event, text(payload, "entityNo"), REVIEW_ROLES,
@@ -142,7 +142,13 @@ public class NotificationConsumer implements OutboxConsumer {
                         "/pages/reviews/index");
             }
             default -> {
-                // supports() 已经过滤，走到这里说明两处不一致 —— 什么都不做比乱发消息强
+                /*
+                 * 走不到：`supports()` 与本 switch 现在引用的是同一组常量（{@link NotifyScene}），
+                 * 不再是两处各写一遍的字面量。留着这一支是因为 switch 语法要求穷尽，
+                 * 而它一旦真的被走到，说明有人绕过 supports() 直接调了 consume()。
+                 */
+                log.warn("[notify] 未登记的场景码 {}，事件 {} 未处理 —— 去 NotifyScene 里补",
+                        scene, event.getEventNo());
             }
         }
     }

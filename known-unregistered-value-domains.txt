@@ -1,0 +1,144 @@
+# 代码侧可见、还没有人判定过的取值域列 —— **待办清单，只准变短**。
+#
+# 一行一个 表.列。判定完一条就删一行：要么登记进 scripts/check-enum-fields.mjs 的
+# FIELDS（它对应哪个端上类型），要么写进 DISMISSED 并给出理由（这一列不是受限取值域）。
+#
+# ⚠️ **这不是覆盖率的分母。** 它是建表注释里枚举了取值的列，也就是「代码里实际有什么」。
+# 真正的分母应当是需求端定义的领域对象及其取值域，而那份定义今天基本不存在
+# （17 个 L2 域里只有三处写全：订单状态、售后状态、触达场景码）。
+# 拿这份清单当分母会得到一个自证的覆盖率 —— 需求里有、代码从没实现的状态永远不在里面。
+# 详见 docs/technical/design/TDD-取值域按字段对账-补全登记.md §2.2 与它的偏差说明。
+#
+# 也因此：**这里为空不等于对账做完了**，只等于「代码侧看得见的都有人看过了」。
+#
+# 已登记的三个字段（ord_sub_order.status / ord_after_sale.status / ord_sub_order.fulfillment）
+# 压根不在这份清单里 —— 它们的取值域写在 Java 常量类而不是列注释。
+# 这本身就是这个面不是真分母的证据。
+#
+# 生成当天（2026-09-06）：可见面 134 列，已判定 12（登记 8 + 驳回 4），未判定 125。
+cmt_community_apply.status
+cmt_pickup_point.fee_mode
+cmt_pickup_point.owner_ref
+cmt_pickup_point.scope
+cnt_material.kind
+cnt_material.scope
+cnt_post.author_type
+cnt_post.status
+cnt_question.status
+ful_batch.status
+ful_carrier.carrier
+ful_group_pickup.status
+ful_shipment.carrier
+ful_shipment.status
+ful_shortage_report.kind
+mbr_member.level
+mbr_member.source
+mbr_member_source.inviter_role
+mbr_member_source.source_type
+mbr_reach_log.scene
+mbr_tag.status
+mch_account.status
+mch_appointment_slot.status
+mch_entity.service_scope
+mch_entity_apply.service_scope
+mch_payment_merchant.apply_status
+mch_payment_merchant.fee_bearer
+mch_payment_merchant.legal_form
+mch_payment_merchant.pay_channel
+mch_payment_merchant.settle_account_type
+mch_service_area.level
+mch_service_area.source
+mch_service_area.status
+mch_staff_log.action
+mch_store.status
+mch_store_audit.status
+mch_violation.action
+mch_violation.type
+mkt_campaign.discount_minor
+mkt_campaign.status
+mkt_campaign.threshold_minor
+mkt_coupon.type
+mkt_coupon_issue.target
+mkt_group_buy.status
+mkt_quote.status
+mkt_request.status
+mkt_user_coupon.status
+msg_push_token.platform
+msg_push_token.receiver_type
+msg_scene_channel.audience
+msg_scene_channel.channel
+msg_scene_channel.push_level
+msg_template.channel
+notify_channel.channel_type
+notify_channel.provider
+notify_channel.scope
+notify_push_task.status
+ord_after_sale.liability
+ord_after_sale.type
+ord_invoice_request.title_type
+ord_order.pay_scene
+ord_status_log.operator_type
+ord_sub_order.traffic_source
+pmt_activity.benefit_amount_minor
+pmt_activity.benefit_ref
+pmt_activity.benefit_type
+pmt_activity.ended_reason
+pmt_activity.goal
+pmt_activity.quota
+pmt_activity.schedule_type
+pmt_activity.status
+pmt_activity.trigger_type
+pmt_activity_audience.audience_type
+pmt_activity_goods.scope_type
+pmt_apply.funder
+pmt_apply.promo_type
+pmt_apply.redeem_mode
+pmt_coupon.benefit_mode
+pmt_coupon.funder
+pmt_coupon.issue_mode
+pmt_coupon.redeem_mode
+pmt_coupon.scope_type
+pmt_coupon.status
+pmt_coupon.validity_mode
+pmt_coupon_issue.issue_mode
+pmt_coupon_scope.scope_type
+pmt_user_coupon.status
+prd_spu_std.status
+prd_stock_lock.status
+prd_topic.status
+pts_user_ledger.biz_type
+rvw_appeal.status
+rvw_review.risk_flags
+rvw_review.status
+stl_bill.channel_fee_source
+stl_payment.direction
+stl_payment.pay_channel
+stl_payment.pay_method
+stl_payment.pay_scene
+stl_payment.status
+stl_payment.sub_order_no
+stl_points_pool.direction
+stl_points_pool.pool_type
+stl_recon_diff.pay_channel
+stl_recon_diff.resolution
+stl_recon_diff.source
+stl_recon_diff.status
+stl_settle_invoice.title_type
+stl_split_log.result
+sys_channel_category_rule.category_type
+sys_channel_category_rule.scene
+sys_function.end_code
+sys_function.function_code
+sys_function_point.point_type
+sys_job_log.status
+sys_job_log.trigger_type
+sys_media_asset.biz_type
+sys_media_purge_batch.status
+sys_outbox.aggregate_type
+sys_outbox.status
+sys_pay_channel.pay_channel
+sys_region.level
+usr_identity.identity_type
+usr_person.status
+usr_person_merge_log.reason
+

@@ -12,7 +12,7 @@
 // 而那个 bug 的真实后果是确认订单页把 i18n 键原样打给用户。
 import { describe, expect, it } from "vitest";
 // @ts-expect-error —— 脚本是 .mjs，没有类型声明；这里只用它的返回值
-import { audit, FIELDS } from "../../../scripts/check-enum-fields.mjs";
+import { audit, FIELDS, DISMISSED, surface, uncovered, ratchet, RATCHET_FILE } from "../../../scripts/check-enum-fields.mjs";
 
 /**
  * 允许暂时存在的差异。**每条都要写清楚在等什么** ——
@@ -110,5 +110,49 @@ describe("枚举对账 · 按字段", () => {
 
   it("显式豁免的每一条都要有理由", () => {
     for (const s of skipped) expect(s.why, `${s.key} 缺少豁免理由`).toBeTruthy();
+  });
+
+  /*
+   * ── 未判定面（2026-09-06 加）──
+   *
+   * 在这之前这套工具只回答「已登记的 8 个对不对」，不回答「还有多少没人看过」。
+   * 两者差得很远：可见面 134 列，登记 8 列 —— 而没有任何东西说得出那 126 列在哪。
+   * 「工具全绿」于是同时意味着「查过的都对」和「绝大多数没查过」，
+   * 而读到绿色的人只会记住前一半。
+   *
+   * ⚠️ 这个面**不是覆盖率的分母**（那应当来自需求端的取值域定义，见
+   * TDD-取值域按字段对账-补全登记 §2.2）。它只是把空白点出名字来。
+   */
+  it("★★ 未判定的取值域列只准变少 —— 新出现的要点名", () => {
+    const { added } = ratchet() as { added: { key: string; values: string[] }[] };
+    const lines = added.map((u) => `${u.key}  取值：${u.values.join(" / ")}`);
+    expect(
+      lines,
+      `这些列在建表注释里枚举了取值，却既没登记进 FIELDS、也没写进 DISMISSED：\n  ` +
+        lines.join("\n  ") +
+        `\n\n登记 = 它对应哪个端上类型（于是两侧取值域会被逐字比对）；` +
+        `\n驳回 = 写明这一列不是受限取值域，并给理由。` +
+        `\n两者都不做就把它加进 ${RATCHET_FILE} 并说清为什么 —— 但那一档只准变短。`,
+    ).toEqual([]);
+  });
+
+  it("驳回的每一条都要有理由，且还在可见面里（陈条要删）", () => {
+    const dismissed = DISMISSED as { key: string; why: string }[];
+    for (const d of dismissed) {
+      expect(d.why, `${d.key} 驳回了却没写理由 —— 没有理由的驳回与豁免名单没有区别`).toBeTruthy();
+    }
+    const cols = surface() as Map<string, string[]>;
+    const stale = dismissed.map((d) => d.key).filter((k) => !cols.has(k));
+    expect(
+      stale,
+      `这些列已经不在可见面里（列删了或注释改了），驳回条是陈的，请删掉：\n  ` + stale.join("\n  "),
+    ).toEqual([]);
+  });
+
+  it("基线文件与工具算出来的未判定面是同一个数 —— 两把尺量的必须是同一个东西", () => {
+    const un = uncovered() as { key: string }[];
+    const { added, fixed } = ratchet() as { added: unknown[]; fixed: string[] };
+    // 收紧之后恒红的经典成因是「基线与量具量的不是同一个数」，先把这条钉住
+    expect(un.length - added.length + fixed.length, "基线条数与未判定面对不上").toBeGreaterThan(0);
   });
 });
