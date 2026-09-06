@@ -277,7 +277,7 @@ function ProductsInner() {
       // 运营扫这张表时问的第一个问题就是「这件到底怎么了」
       header: c.colSkuNo,
       cell: (g) => (
-        <button type="button" className="text-start underline-offset-2 hover:underline"
+        <button type="button" className="focus-ring text-start underline-offset-2 hover:underline"
                 onClick={() => setChainOf(g.goodsNo)}>
           <IdCell value={g.goodsNo} />
         </button>

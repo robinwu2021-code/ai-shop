@@ -42,7 +42,7 @@ export function MerchantChainLine({ merchantNo, c }: { merchantNo: string; c: Me
           ? <Badge tone={row.stuckAt === "IN_AUDIT" ? "warning" : "danger"}>{stuckLabel(row.stuckAt, c)}</Badge>
           : <span className="txt-caption text-[var(--success-ink)]">{c.chainHealthy}</span>}
         {/* 给一条过去的路：全景只说「卡在哪」，处置在画像那一页 */}
-        <Link href="/merchants?tab=chain" className="txt-caption underline">{c.chainLineMore}</Link>
+        <Link href="/merchants?tab=chain" className="focus-ring txt-caption underline">{c.chainLineMore}</Link>
       </span>
     </Field>
   );

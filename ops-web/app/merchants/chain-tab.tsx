@@ -93,7 +93,7 @@ export function ChainTab({ c }: { c: MerchantsCopy }) {
        */
       cell: (r) => {
         if (r.stuckAt === "IN_AUDIT") {
-          return <Link href="/products?tab=audit" className="txt-caption underline">{c.chainGoAudit}</Link>;
+          return <Link href="/products?tab=audit" className="focus-ring txt-caption underline">{c.chainGoAudit}</Link>;
         }
         if (!r.stuckAt || !canNudge || !NUDGEABLE.includes(r.stuckAt as MerchantNudgeReason)) {
           return <Dash />;

@@ -117,6 +117,49 @@ function scanClasses(re: RegExp, keep: (m: RegExpMatchArray) => boolean, tags?: 
   return bad;
 }
 
+/**
+ * className 里**拼装函数展开后**的类名。
+ *
+ * 静态扫只看得见字面量，而 `className={segmentedItemClass(active)}` 这一种
+ * 一个字面量都没有 —— 上面的注释早就写着这是盲区，可**盲区的结果是误报不是漏报**，
+ * 那比漏报更糟：`communities/distribution-tab.tsx:144` 被报了很久，
+ * 而 `segmentedItemClass` 自己就带着 `focus-ring`，那个按钮一直是有环的。
+ *
+ * 代价看得见：另外三个调用点写成 `"focus-ring " + segmentedItemClass(...)` ——
+ * **加的那一份是多余的**，加它只是为了让闸门闭嘴。一条报假的规则会训练人
+ * 去迎合它，而不是去修真问题。
+ *
+ * 所以顺着调用去看一眼：className 里出现 `someFn(`，就在 ops-web 里找
+ * `someFn` 的定义，把它函数体里的字符串也算进这个元素的类名。
+ * 按**声明**判，不按名字判（同 `gen-ui-lib.py` 的 ROLLED 判据）。
+ */
+const helperBodies = new Map<string, string>();
+function helperBody(name: string): string {
+  if (helperBodies.has(name)) return helperBodies.get(name)!;
+  let body = "";
+  for (const f of globSync(`${OPS}/**/*.{ts,tsx}`, { cwd: ROOT })) {
+    if (f.includes("node_modules") || f.includes("/out/")) continue;
+    const src = readFileSync(join(ROOT, f), "utf8");
+    const m = new RegExp(`(?:export\\s+)?(?:function\\s+${name}\\b|const\\s+${name}\\s*=)`).exec(src);
+    if (!m) continue;
+    // 从声明处起截 1200 字符就够看清它拼了哪些类名 —— 不做真正的括号配对：
+    // 这一层只是「查得到就算」，查不到仍按无环报，不会因为解析不动而放行
+    body = src.slice(m.index, m.index + 1200);
+    break;
+  }
+  helperBodies.set(name, body);
+  return body;
+}
+
+function effectiveClass(cls: string): string {
+  let out = cls;
+  for (const m of cls.matchAll(/\b([a-z][A-Za-z0-9_]*)\s*\(/g)) {
+    if (m[1] === "cn" || m[1] === "clsx") continue;       // 它们只是拼接，内容就在原地
+    out += " " + helperBody(m[1]!);
+  }
+  return out;
+}
+
 function pages(): string[] {
   return globSync(`${OPS}/app/**/page.tsx`, { cwd: ROOT });
 }
@@ -171,7 +214,7 @@ describe("运营端界面纪律", () => {
         if (el.tag === "a" && !/\bhref\b/.test(el.attrs)) continue;
         // `<Link>` 渲染成 <a>，同样可聚焦。第一版漏了它，浏览器里还剩 33 个无环
         if (el.attrs.includes("data-audit-skip")) continue;
-        if (HAS_RING.test(classAttr(el.attrs))) continue;
+        if (HAS_RING.test(effectiveClass(classAttr(el.attrs)))) continue;
         bad.push(`${f}:${el.line} <${el.tag}>`);
       }
     }

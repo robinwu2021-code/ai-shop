@@ -157,7 +157,7 @@ export function PayChannelTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean
       cell: (r) => (canEdit ? (
         <button
           type="button"
-          className="underline underline-offset-2 hover:opacity-70"
+          className="focus-ring underline underline-offset-2 hover:opacity-70"
           onClick={() => promptMarkets(r)}
           title={c.pcMarketsEditHint}
         >
