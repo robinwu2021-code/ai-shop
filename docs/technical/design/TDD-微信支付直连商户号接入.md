@@ -664,3 +664,55 @@ cd c-app && npm run release:mp -- <版本号> "<备注>"   # 构建 → 校验 �
 脚本会把版本号写回 `manifest.json`（记得一起提交），只传**开发版**；设体验版、提审、发布在
 mp.weixin.qq.com 版本管理里由人点。当前体验版 0.1.6（`e59fbdfb`）。
 后端当前线上 `shop-app-20260905-1248-3bcea017.jar`。
+
+## 14. 备案被工信部自动驳回（2026-09-07 查到）
+
+§13.2 那份逐页核查表**漏了一项：ICP 备案**。今天用小程序自己的凭据问微信，
+拿到的是明确答案 —— **备案没通过**：
+
+```
+GET /wxa/icp/get_icp_entrance_info
+{"info":{"status":5,"sms_verify_status":0,"available":1,
+ "audit_data":[{"error":"短信核验未通过（自动驳回）",
+ "suggest":"你的订单未完成工信部的短信验证，已被管局系统驳回；请重新提交订单后，
+            在收到工信部系统下发短信验证码的 24 小时内，按短信提示完成核验。"}]}}
+```
+
+09-05 收到的那条「备案通过初审」只是**平台**这一关；提交到工信部之后要负责人做
+一次短信核验，**24 小时内没做就自动驳回**，而这件事没有任何人收到失败通知 ——
+后台停在「已提交」的样子，看上去像还在排队。
+
+### 14.1 一行复现（不打印任何凭据）
+
+```bash
+ssh soukmind-tx 'set -a; . /opt/ai-shop/shop-app.env; set +a
+T=$(curl -s "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=$WX_APPID&secret=$WX_SECRET" \
+    | python3 -c "import sys,json;print(json.load(sys.stdin)[\"access_token\"])")
+curl -s "https://api.weixin.qq.com/wxa/icp/get_icp_entrance_info?access_token=$T" | python3 -m json.tool'
+```
+
+同一把 token 还能把 §13.2 里靠人眼看的两项变成可复现的量：
+
+| 想核的事 | 接口 | 2026-09-07 的答案 |
+|---|---|---|
+| 类目里还有没有 B2b | `GET /cgi-bin/wxopen/getcategory` | **没有**。5 个类目全 `audit_status:3`：家政服务 / 生鲜 / 3C数码 / 个护家清 / 玩具 |
+| 认证与主体 | `GET /cgi-bin/account/getaccountbasicinfo` | `qualification_verify:true`、`naming_verify:true`、深圳市虹选科技有限公司 |
+
+**这两条是好消息**：§13.2 说「B2b 已删」原本只有人眼看过一遍，现在有接口独立佐证了。
+
+### 14.2 它是不是 `banned` 的根因 —— 没证实，别当结论
+
+`requestPayment:fail banned` 由微信客户端在打开收银台之前抛出，我手上没有任何
+能把「类目受限」与「备案未完成」分开的判据。能说的只有：
+
+- 类目这条线索现在是**干净的**（14.1 的接口证据）；
+- 备案是**唯一确认没到位**的前置条件；
+- 不管它是不是支付的根因，**它都卡着上线**，必须先修。
+
+### 14.3 下一步（要人去后台，脚本做不了）
+
+1. mp.weixin.qq.com → 设置 → 基本设置 → 备案，**重新提交备案订单**。
+2. 提交后盯着负责人的手机：**收到工信部短信后 24 小时内**按短信里的流程核验。
+   上一轮就是死在这一步，且失败是静默的。
+3. 核验通过、备案下来之后，再按 §13.3 复测一次支付。还是 `banned` 的话，
+   §13.3 第 3 条不变：带 appid、mchid、out_trade_no 和删类目时间去开放社区开贴。
