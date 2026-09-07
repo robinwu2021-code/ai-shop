@@ -1955,7 +1955,7 @@
       "name": "sh-dialog",
       "file": "packages/ui/src/components/sh-dialog.vue",
       "scope": "跨端",
-      "lines": 74,
+      "lines": 78,
       "props": [
         "visible: boolean",
         "title?: string",

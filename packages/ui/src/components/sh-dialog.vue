@@ -34,7 +34,7 @@ const emit = defineEmits<{ close: [] }>();
     <view class="dlg__panel" @tap.stop>
       <text v-if="title" class="txt-title dlg__title">{{ title }}</text>
       <slot></slot>
-      <view v-if="$slots.actions" class="dlg__acts">
+      <view v-if="$slots.actions" class="dlg__acts sh-dialog__acts">
         <slot name="actions"></slot>
       </view>
     </view>
@@ -65,7 +65,11 @@ const emit = defineEmits<{ close: [] }>();
 /* 动作条。**等宽不能写在这里** —— `.dlg__acts > * { flex: 1 }` 会被编译成
    `> *[data-v-本组件]`，而插槽内容带的是调用方的 scope id，一行都不生效。
    所以按钮要自己挂全局的 `.sh-dialog__act`（见 base.css）。
-   第一次漏了这条的结果：两个按钮挤成两个小药丸，等宽没了。 */
+   第一次漏了这条的结果：两个按钮挤成两个小药丸，等宽没了。
+
+   ⚠️ **光有 `.sh-dialog__act` 在小程序上还不够**，所以上面还挂了一个
+   `.sh-dialog__acts`：小程序端 uni 会把具名插槽的内容再套一层 `<view slot="actions">`，
+   flex 的父子关系断在那一层上。理由与规则都写在 base.css 的 `.sh-dialog__acts` 那儿。 */
 .dlg__acts {
   display: flex;
   gap: 16rpx;
