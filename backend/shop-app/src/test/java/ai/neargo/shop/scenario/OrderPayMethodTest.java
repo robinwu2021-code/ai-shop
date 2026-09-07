@@ -20,6 +20,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
  * 收银台的支付方式列表（C-1）。
@@ -211,5 +212,46 @@ class OrderPayMethodTest {
                 .as("测试世界里所有通道都装配了网关 —— 这条用例没有验到任何东西，"
                         + "要么补一条没网关的通道种子，要么删掉它")
                 .isPositive();
+    }
+
+    /**
+     * ★★★ 子单号也要能进收银台。
+     *
+     * <p>C 端「我的订单」列表与订单详情给的都是<b>子单号</b>（订单视角，Q6），
+     * 「去支付」把它原样带进收银台；而 {@code pay-method} 与 {@code pay}
+     * 此前只认主单号 —— 于是从列表进来的每一单都是「数据不存在」，
+     * 而从结算页直接进来的（主单号）一切正常。<b>两条路一真一假，症状只在其中一条上。</b>
+     * 2026-09-07 真机上抓到：列表「去支付」→ 点「立即支付」没有任何反应，
+     * 服务器上一行 prepay 都没有。
+     */
+    @Test
+    @DisplayName("★★★ 子单号进收银台：pay-method 与 pay 都要认，与主单号同一答案")
+    void subOrderNoIsAcceptedByPayMethodsAndPay() throws Exception {
+        String token = TestLogin.consumer(mvc(), json, otpStore, PHONE);
+        String userNo = currentUserNo(token);
+        String orderNo = order(userNo, "M-PM-SUB-" + seq);
+        String subNo = "SUB-" + orderNo;
+
+        JsonNode viaParent = payMethods(token, orderNo);
+        JsonNode viaSub = payMethods(token, subNo);
+        assertThat(viaSub)
+                .as("子单号查支付方式回了空 data —— 就是「数据不存在」，列表进来的单付不了")
+                .isNotNull();
+        assertThat(viaSub.toString()).isEqualTo(viaParent.toString());
+
+        // pay：不管通道那头成不成，**决不能是 NOT_FOUND**；两条路的答案要一样
+        int codeParent = payCode(token, orderNo);
+        int codeSub = payCode(token, subNo);
+        assertThat(codeSub)
+                .as("子单号发起支付回了 NOT_FOUND(10404) —— 端上表现是「点了没反应」")
+                .isNotEqualTo(10404);
+        assertThat(codeSub).isEqualTo(codeParent);
+    }
+
+    private int payCode(String token, String orderNo) throws Exception {
+        String body = mvc().perform(post("/mp/order/" + orderNo + "/pay")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).path("code").asInt(-1);
     }
 }

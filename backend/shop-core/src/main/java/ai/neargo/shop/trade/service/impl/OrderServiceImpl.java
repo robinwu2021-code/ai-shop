@@ -897,10 +897,17 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public ai.neargo.shop.trade.dto.OrderPayMethodVO payMethods(String orderNo) {
-        OrdOrder order = requireOwnOrder(orderNo);
+        /*
+         * **主单号、子单号都认。** C 端「我的订单」与订单详情给的是子单号（Q6 订单视角），
+         * 「去支付」把它原样带进收银台；这里只认主单号的话，从列表进来的每一单都是
+         * 「数据不存在」，而从结算页进来的（主单号）一切正常 —— 2026-09-07 真机抓到。
+         * 下游一律用解析出来的主单号，别再用入参。
+         */
+        OrdOrder order = resolveOrder(orderNo);
+        String mainNo = order.getOrderNo();
         List<OrdSubOrder> subs = DataScopeContext.executeWithoutScope(() ->
                 subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
-                        .eq(OrdSubOrder::getOrderNo, orderNo)));
+                        .eq(OrdSubOrder::getOrderNo, mainNo)));
 
         /*
          * **交集规则与结算页逐字一致** —— 一笔支付覆盖整单，有一家不支持就用不了；
@@ -955,7 +962,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public PayResult pay(String orderNo, String payChannel) {
-        OrdOrder order = requireOwnOrder(orderNo);
+        // 同 payMethods：子单号也要能进收银台；下游（记账、商户单号）只认主单号
+        OrdOrder order = resolveOrder(orderNo);
+        orderNo = order.getOrderNo();
         if (!OrdOrder.WAIT_PAY.equals(order.getStatus())) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
