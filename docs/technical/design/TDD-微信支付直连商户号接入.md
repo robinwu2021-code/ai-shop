@@ -716,3 +716,25 @@ curl -s "https://api.weixin.qq.com/wxa/icp/get_icp_entrance_info?access_token=$T
    上一轮就是死在这一步，且失败是静默的。
 3. 核验通过、备案下来之后，再按 §13.3 复测一次支付。还是 `banned` 的话，
    §13.3 第 3 条不变：带 appid、mchid、out_trade_no 和删类目时间去开放社区开贴。
+
+## 15. 真机复测 + 顺手抓到的第二个缺陷（2026-09-07 18:40–18:55）
+
+### 15.1 `banned` 复现（结算页直进，主单号）
+
+18:41 下单 `SO202609071841120029691`：后端 prepay 成功、六件套下发、端上仍 `requestPayment:fail banned`。
+备案接口回读仍是 `status:5 / 短信核验未通过（自动驳回）`（§14），**还没重新提交**。
+这一侧没有新信息，结论不变：先把备案重新提交并完成短信核验。
+
+### 15.2 列表「去支付」进来的单一律「数据不存在」（与 banned 无关，已修）
+
+真机从「我的订单 → 去支付 → 立即支付」点下去**没有任何反应**，服务器一行 prepay 都没有；
+nginx 里看到的是 `GET /mp/order/SUB…/pay-method` 与 `POST /mp/order/SUB…/pay`（都 200，
+但信封里是 NOT_FOUND）。根因：列表与详情给的是**子单号**（Q6 订单视角），
+而 `payMethods` / `pay` 只走 `requireOwnOrder`（只认主单号）；`resolveOrder` 早就有，
+只是这两处没用。09-05 13:33 那次「数据不存在」toast 就是它，当时被当成订单过期误读了。
+
+- 修复：`096cd26a`（两处改 `resolveOrder`，下游只用解析出的主单号）；
+  用例 `OrderPayMethodTest.subOrderNoIsAcceptedByPayMethodsAndPay`（先红后绿）。
+- 部署：`shop-app-20260907-1852-096cd26a.jar`，health 9 次轮询内 200，启动 0 ERROR。
+- 真机验证：18:52:58 从列表「去支付」进来，后端对 `SO…691` prepay 成功 → 端上到达 `banned`。
+  **两条路现在走到同一处了**，剩下的只有 banned 本身。
