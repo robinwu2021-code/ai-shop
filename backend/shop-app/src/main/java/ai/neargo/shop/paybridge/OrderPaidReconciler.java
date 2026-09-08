@@ -34,22 +34,26 @@ import org.springframework.stereotype.Service;
  * 而不是支付域来推 —— 后者会让收款这条链依赖主应用可用，
  * 而「回调直接进 pay」的初衷恰恰是不要这个依赖。
  *
- * <h2>⚠️ 今天它在生产上扫不到东西 —— 前提还没补上</h2>
- * <b>2026-09-01 查明：生产代码里没有一处写 {@code stl_payment}。</b>
- * 那张表从 {@code V1__baseline} 建起就是空的，回调（{@code ChannelPayCallbackController}）
- * 只调 {@code orderService.markPaid}，不落支付流水。
- *
- * <p>连带的不只是 I8：<b>收款对账轴（{@code PaymentReconAxis}）也在对这张空表</b> ——
- * 它委托的 {@code ReconService.scan} 查的是「停在 INIT/PENDING 的收款」，
- * 而一行都没有，于是它每轮都报「没有差异」。
- * 它本该发现的恰恰是「用户付了钱而我方没收到回调」，也就是 I8 要防的同一件事。
- * 四个测试（ReconFlowTest 等）是绿的，因为它们自己造数据 ——
+ * <h2>前提：{@code stl_payment} 必须真的有行</h2>
+ * <b>2026-09-01 曾查明生产代码一处都不写 {@code stl_payment}</b>：那张表从
+ * {@code V1__baseline} 建起就是空的，于是本层恒为 {@code scanned == 0}，
+ * 而收款对账轴（{@code PaymentReconAxis} → {@code ReconService.scan}）
+ * 也在对同一张空表，每轮都报「没有差异」——
+ * 它本该发现的恰恰是「用户付了钱而我方没收到回调」，与 I8 是同一件事。
+ * 四个测试（{@code ReconFlowTest} 等）当时是绿的，因为它们自己造数据：
  * <b>逻辑被验证过，而真实链路根本不产生这种数据。</b>
  *
- * <p>所以这一层今天的表现是：{@code scanned == 0}，任务日志报
- * 「一笔成功支付都没扫到，这个数不该是 0」。<b>那是对的</b> ——
- * 对照量正是为了让「没有不一致」与「没有在看」分得开。
- * 补上写流水那一步（TDD-支付域-实施方案 §二·五 的第 ③ 步）之后它才真正开始工作。
+ * <p><b>2026-09-09 复核：写入这一步已经接上了。</b>
+ * {@code SettlePortImpl} 里 {@code open} / {@code close} / {@code recordPayer} /
+ * {@code settle} 四个动作都在，两个回调控制器
+ * （{@code ChannelPayCallbackController} 与 {@code PayCallbackController}）
+ * 走的都是 {@code settlePort.settlePayment}。所以上面那段描述的是**历史**，
+ * 不要照它判断本层是瞎的。
+ *
+ * <p>⚠️ <b>但这次复核只验到代码接线，没有验生产数据。</b>
+ * 判断本层此刻有没有在工作，看的仍是 {@link Result#scanned()} ——
+ * 它是对照量，为的就是让「没有不一致」与「没有在看」分得开。
+ * <b>结论要去看那个数，不要看这段注释</b>：注释会过期，上面这两段就是证据。
  *
  * <h2>自动补，因为方向安全</h2>
  * 补的动作是 {@code markPaid}，它本身幂等（订单已是 PAID 就直接返回），
