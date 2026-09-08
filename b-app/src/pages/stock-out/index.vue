@@ -61,6 +61,9 @@ function today(): string {
 
 const totalQty = computed(() => lines.value.reduce((s, l) => s + l.qty, 0));
 
+/** 这次没取到。**与「确定为空」是两件事** —— 空的选择器与「一件都没有」长得一样 */
+const failed = ref(false);
+
 async function load() {
   try {
     // 只给有货的：报损一件可用为 0 的货，唯一的结果是被后端拒绝
@@ -68,8 +71,10 @@ async function load() {
     pickable.value = all.filter((b) => b.available > 0);
     // 供应商与货一起取：切到「退供应商」时再去拉，商家会先看到一个空选择器
     suppliers.value = await api.mSuppliers({ activeOnly: true }).catch(() => []);
+    failed.value = false;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
+    failed.value = true;
   }
 }
 
@@ -249,6 +254,8 @@ onShow(load);
       :visible="showPick"
       :title="String($t('stockOut.addItem'))"
       :items="pickable"
+      :failed="failed"
+      @retry="load"
       :picked="lines.map((l) => l.itemId)"
       :qty-label="pickQty"
       @pick="addLine"

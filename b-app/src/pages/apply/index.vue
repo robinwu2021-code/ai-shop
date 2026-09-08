@@ -92,6 +92,8 @@ const communities = ref<Community[]>([]);
  * 不分开的话，申请人对着空白只会反复点提交 —— 而「仅本社区」必须选一个小区，
  * 提交永远过不去，他也永远不知道为什么。
  */
+/** 草稿没取到。**与「这是第一次填」是两件事** —— 后者才该是空表单 */
+const draftFailed = ref(false);
 const communitiesFailed = ref(false);
 
 function pickScope(v: ServiceScope) {
@@ -210,7 +212,8 @@ const licenseMissing = computed(
  */
 const isMore = computed(() => merchant.profile?.status === "ACTIVE");
 
-onShow(async () => {
+// 抽成具名函数：草稿没取到那一行要能重试，而 `@retry` 叫不到匿名箭头
+async function load() {
   // **不拿 profile.phone 预填**：那是脱敏后的登录号（138****8000），
   // 填进去看着像已填好，实际过不了 11 位校验，人只会盯着一个"填了的"框发愣。
   // 联系号码本来也不一定等于登录号 —— 店主登录，留的是店里座机是常事。
@@ -223,7 +226,20 @@ onShow(async () => {
   });
   master.value = await api.mMasterData().catch(() => null);
 
-  const draft = await api.mApplyDraft().catch(() => null);
+  /*
+   * **草稿不兜底**。兜成 null 之后下面那句 `if (!draft) return` 悄悄退出，
+   * 留下一张空表单 —— 而上面那句注释写的正是这件事：
+   * 「驳回往往只是缺一张执照，让人从头重填一遍是把『补交』变成『重来』」。
+   * 兜底造成的恰恰是它警告的后果，而且不出声。
+   */
+  let draft;
+  try {
+    draft = await api.mApplyDraft();
+    draftFailed.value = false;
+  } catch {
+    draftFailed.value = true;
+    return;
+  }
   if (!draft) return;
   form.value = {
     name: draft.name,
@@ -253,7 +269,9 @@ onShow(async () => {
    */
   qualItems.value = (draft.qualificationItems ?? []).map((q) => ({ ...q }));
   foreverFlags.value = qualItems.value.map((q) => q.expireAt == null);
-});
+}
+
+onShow(load);
 
 /** 上传资质。缺它正是个体户/企业被驳回的主因，所以入口要显眼 */
 /** @param idx 传入下标 = 上传到该条结构化资质；不传 = 旧的图片数组（两者并存） */
@@ -355,6 +373,13 @@ async function submit() {
       <text class="txt-display">{{ isMore ? $t("apply.titleMore") : $t("apply.title") }}</text>
       <text class="sh-muted sh-mt-xs blk">{{ isMore ? $t("apply.hintMore") : $t("apply.hint") }}</text>
       <text class="txt-caption sh-muted blk sh-mt-xs">{{ $t("apply.secProgress", { n: secDoneCount }) }}</text>
+    </view>
+
+    <!-- 上次填的没取到。**摆在最上面**：下面那张表看起来是空的，
+         而空表在这一页的意思是「第一次填」—— 商家会从头重来一遍，
+         那正是 `mApplyDraft` 那段注释警告的事。 -->
+    <view v-if="draftFailed" class="sh-card status">
+      <sh-empty line failed @retry="load"></sh-empty>
     </view>
 
     <!-- 审核中/驳回：不重复渲染整张表，先把状态说清楚 -->

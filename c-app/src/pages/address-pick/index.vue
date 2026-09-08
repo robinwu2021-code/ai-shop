@@ -37,6 +37,8 @@ const at = ref<{ lat: number; lng: number } | null>(null);
  */
 const coarse = ref(false);
 const locating = ref(false);
+/** 附近小区这次没取到。**与「这一带没有小区」是两件事** */
+const failed = ref(false);
 const nearby = ref<Community[]>([]);
 
 /** 拿到坐标之前，「当前定位」那一段不占位置 */
@@ -69,8 +71,15 @@ async function locate() {
     at.value = r.ok ? { lat: r.coords.lat, lng: r.coords.lng } : null;
     coarse.value = r.ok && r.fuzzy === true;
     if (at.value) {
-      // 复用「附近已开通社区」——它本来就是按坐标查的，且带 name / address / 坐标
-      nearby.value = await api.nearbyCommunities(at.value.lat, at.value.lng).catch(() => []);
+      // 复用「附近已开通社区」——它本来就是按坐标查的，且带 name / address / 坐标。
+      // **不兜底**：兜成空之后下面那个 `v-if="nearbyPickable.length"`
+      // 让整块「附近的小区」消失 —— 顾客看到的不是「没取到」，是「这一带没有小区」
+      try {
+        nearby.value = await api.nearbyCommunities(at.value.lat, at.value.lng);
+        failed.value = false;
+      } catch {
+        failed.value = true;
+      }
     }
   } finally {
     locating.value = false;
@@ -192,7 +201,9 @@ onLoad(() => {
       <text v-else-if="!locating" class="sh-hint">{{ $t(locateFailedKey) }}</text>
 
       <!-- 判的是「能用的有几条」，不是「拿回来几条」—— 见 nearbyPickable 那段 -->
-      <view v-if="nearbyPickable.length" class="sh-card block">
+      <!-- `|| failed` 一起判：没取到时这一块留在原地说出来，而不是整块消失 -->
+      <view v-if="nearbyPickable.length || failed" class="sh-card block">
+        <sh-empty v-if="failed" line failed @retry="locate"></sh-empty>
         <text class="txt-strong block__title">{{ $t("addressPick.nearby") }}</text>
         <view v-for="c in nearbyPickable" :key="c.communityNo" class="sh-row--divided" @tap="chooseCommunity(c)">
           <text class="txt-body row__name">{{ c.name }}</text>

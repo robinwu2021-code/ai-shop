@@ -626,7 +626,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 210,
+        "b-app": 211,
         "c-app": 70
       }
     },
@@ -2109,8 +2109,8 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 48,
-        "c-app": 27,
+        "b-app": 49,
+        "c-app": 28,
         "lib": 1
       },
       "note": "空态",
@@ -2962,13 +2962,14 @@
       "name": "biz-item-picker",
       "file": "b-app/src/components/biz/biz-item-picker.vue",
       "scope": "B 端",
-      "lines": 224,
+      "lines": 236,
       "props": [
         "visible: boolean",
         "title: string",
         "items: StockBalance[]",
         "picked?: string[]",
-        "qtyLabel?: (b: StockBalance) => string"
+        "qtyLabel?: (b: StockBalance) => string",
+        "failed?: boolean"
       ],
       "usage": {
         "b-app": 3,
@@ -3289,6 +3290,7 @@
       "file": "b-app/src/pages/apply/index.vue",
       "components": [
         "sh-check",
+        "sh-empty",
         "sh-icon",
         "sh-option",
         "sh-scaffold",
@@ -3296,7 +3298,7 @@
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 96,
+      "libClassHits": 97,
       "localSelectors": 25,
       "localCssLines": 79,
       "rolled": []
@@ -4325,6 +4327,7 @@
       "key": "c-app/address-pick",
       "file": "c-app/src/pages/address-pick/index.vue",
       "components": [
+        "sh-empty",
         "sh-scaffold"
       ],
       "libClassHits": 30,

@@ -63,6 +63,9 @@ function yuan(minor: number): string {
   return (minor / 100).toFixed(2);
 }
 
+/** 这次没取到。**与「确定为空」是两件事** —— 空的选择器与「一件都没有」长得一样 */
+const failed = ref(false);
+
 async function load() {
   try {
     // **挑货读物料，不读余额。** 进货恰恰是给「还没有存货的货」记第一笔，
@@ -70,8 +73,12 @@ async function load() {
     pickable.value = await api.mStockPickable({ size: 200 });
     // 只要在用的：停用的不该出现在新单据里（管理页才传 activeOnly=false）
     suppliers.value = await api.mSuppliers({ activeOnly: true });
+    failed.value = false;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
+    // 挑货弹层里空数组既是「一件货都没有」也是「这次没取到」——
+    // 前者该去建货，后者该重试
+    failed.value = true;
   }
 }
 
@@ -271,6 +278,8 @@ onShow(load);
       :visible="showPick"
       :title="String($t('purchase.addItem'))"
       :items="pickable"
+      :failed="failed"
+      @retry="load"
       :picked="lines.map((l) => l.itemId)"
       :qty-label="pickQty"
       @pick="addLine"

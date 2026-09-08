@@ -28,11 +28,17 @@ const props = withDefaults(
     picked?: string[];
     /** 右侧那个数的说明，如「账面 {n}」「可用 {n}」。各屏关心的数不一样 */
     qtyLabel?: (b: StockBalance) => string;
+    /**
+     * 货没取到。**件自己看不出这件事** —— `items` 是从外面传进来的，
+     * 空数组既可能是「一件货都没有」也可能是「这次没请求到」，
+     * 而这两句话在界面上一模一样、该给的东西正相反（建货 vs 重试）。
+     */
+    failed?: boolean;
   }>(),
-  { picked: () => [], qtyLabel: undefined },
+  { picked: () => [], qtyLabel: undefined, failed: false },
 );
 
-const emit = defineEmits<{ pick: [b: StockBalance]; close: [] }>();
+const emit = defineEmits<{ pick: [b: StockBalance]; close: []; retry: [] }>();
 
 const { t } = useI18n();
 const keyword = ref("");
@@ -167,7 +173,13 @@ async function choose(b: StockBalance) {
       {{ $t("stockPick.picked", { n: picked.length }) }}
     </text>
 
-    <sh-empty v-if="!shown.length" compact :text="String($t('stockPick.empty'))"></sh-empty>
+    <sh-empty
+      v-if="!shown.length"
+      compact
+      :failed="failed"
+      @retry="emit('retry')"
+      :text="String($t('stockPick.empty'))"
+    ></sh-empty>
 
     <view
       v-for="b in shown"

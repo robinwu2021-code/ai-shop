@@ -34,8 +34,18 @@ const canSend = computed(
   () => !!plan.value && plan.value.reachable > 0 && !!title.value.trim() && !busy.value,
 );
 
+/** 这次没取到。**与「确定为空」是两件事** —— 空的选择器与「一件都没有」长得一样 */
+const failed = ref(false);
+
 async function load() {
-  segments.value = await api.mMemberSegments().catch(() => []);
+  // 兜成空之后这个下拉只剩「全部会员」一条 —— 商家会以为自己没建过人群，
+  // 而他刚在隔壁页建完
+  try {
+    segments.value = await api.mMemberSegments();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
 }
 
 /** 换场景或换人群都要重算 —— 上一次的数字对这一次没有意义，留着比没有更糟 */

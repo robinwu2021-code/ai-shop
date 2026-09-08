@@ -31,17 +31,14 @@
 #    进页面时一个字节都不拉 —— 没有「加载失败」这回事，那些提交自己带 catch。
 #    判据只看「这一页有没有出现 `api.`」，分不出读与写，所以它们会一直躺在这儿。
 #    要让名单真的清零，得让判据认出「进页面时拉的那一次」，而不是加豁免。
+#    **`b-app/sku-identity` 是第四条**（2026-09-09 补）：它的三个接口
+#    （导出 / 试算 / 导入）全由按钮触发，一个生命周期钩子都没有。
 
-b-app/apply
 b-app/goods-edit
 b-app/home
 b-app/login
 b-app/me
-b-app/member-reach
-b-app/purchase-edit
 b-app/sku-identity
-b-app/stock-out
-c-app/address-pick
 c-app/login
 c-app/me
 c-app/order-confirm
