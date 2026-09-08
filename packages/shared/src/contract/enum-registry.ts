@@ -482,7 +482,17 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     words: ["ARCHIVED"],
     note: "规格模板。停用它会影响什么，看的是按规格组名统计的 usedCount" },
 
-  { decl: "shared:TransferStatus", dom: "inventory", shape: "STATE", verdict: "OK",
+  { decl: "shared:TransferStatus", dom: "inventory", shape: "STATUS", verdict: "OK",
+    // 三个词都不在 L1 表内，逐个交代为什么不能换成表里的（申报不是豁免）：
+    //   SHIPPED  已发出。L1 的 PROCESSING 是「在办」，说不出「货已经离开调出方、
+    //            正躺在在途库位上」—— 而在途库存正是这一档存在的理由。
+    //   RECEIVED 已收货。L1 的 CLOSED / ENDED 是通用终态，看不出「在途已清零」。
+    //   VOIDED   已作废。**与 L1 的 CANCELLED 不是一回事**：作废会记一行反向流水，
+    //            单据不消失、标成「已作废」（见 stockDocs.voidHintPosted 那句文案）；
+    //            而 CANCELLED 在本仓库的用法是「这件事没发生过」。
+    // 更硬的一条约束：这四个取值与后端 InvEnums.TransferStatus 逐字一致，
+    // 端上单方面改名就等于两边分叉。
+    words: ["SHIPPED", "RECEIVED", "VOIDED"],
     note: "调拨单状态，与后端 InvEnums.TransferStatus 逐字一致（DRAFT/SHIPPED/RECEIVED/VOIDED）。"
       + "2026-09-09 从 known-unregistered-value-domains.txt 摘下来的第一条：此前端上是 "
       + "`status: string`，取值只写在注释里，且注释漏了 VOIDED 而页面已经在比较它。"

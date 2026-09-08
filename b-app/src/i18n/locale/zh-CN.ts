@@ -446,7 +446,7 @@ export default {
     publishedPending: "已提交审核，线上仍在售旧版，过审后自动换新",
     publishConflict: "线上已变化，发布被拦。差异已刷新，请再核对",
     editTitle: "编辑商品",
-    draftLoadFailed: "上次存的草稿没读到，现在编辑的是线上版；发布会覆盖掉草稿",
+    draftLoadFailedHint: "上次存的草稿没读到，现在编辑的是线上版；发布会覆盖掉草稿",
     createTitle: "新建商品",
     name: "商品名称",
     subtitle: "副标题",

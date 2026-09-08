@@ -1747,7 +1747,18 @@ describe("拉数据的页面要区分出错与空", () => {
         const src = readFileSync(join(dir, rel), "utf8");
         if (!/\bapi\.\w+\(/.test(src)) continue;      // 不拉数据的页面没有这个问题
         scanned += 1;
-        if (/\b(failed|errMsg)\b/.test(src)) continue;
+        /*
+         * 认的是**真实信号**，不是「文件里出现过 failed 这个词」。
+         *
+         * 第一版写的是 `/\b(failed|errMsg)\b/`，两头都不准：
+         *   · 太松 —— 模板属性名 `:failed-text` 就能命中，而那不是处理，是传了个文案；
+         *     `goods-edit` 就是这么被判成「已处理」的，去掉那个属性后它又变回违规。
+         *   · 太紧 —— `draftFailed`（驼峰）不含小写的 `failed` 一词，认不出来，
+         *     而那正是这一页真正的处理。
+         * 现在只认两样：声明了一个 `*[Ff]ailed` 的 ref，或者把 `:failed` 绑给了某个件。
+         */
+        if (/\bconst\s+\w*(?:failed|Failed|errMsg|ErrMsg)\s*=\s*ref\(/.test(src)) continue;
+        if (/:failed=/.test(src)) continue;
         bad.push(`${app}/${rel.split("/")[0]}`);
       }
     }

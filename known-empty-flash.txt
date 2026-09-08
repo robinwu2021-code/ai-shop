@@ -25,4 +25,3 @@ b-app/staff
 b-app/stock-check
 b-app/stock-out
 b-app/transfer
-b-app/verify

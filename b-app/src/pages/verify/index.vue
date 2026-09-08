@@ -123,14 +123,27 @@ function goToPicking() {
   uni.navigateTo({ url: ROUTES.picking });
 }
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新 */
+const loaded = ref(false);
+/** 这次没取到。**与「今天没有待取的单」是两件事** */
+const failed = ref(false);
+
 async function load() {
   // 重新进页面时清掉上次的失败提示 —— 否则「该订单已核销」会一直挂在那里，
   // 下次进来看到它会以为是这次的结果
   error.value = "";
-  [orders.value, overview.value] = await Promise.all([
-    api.mPickupOrders(),
-    api.mPickupOverview(),
-  ]);
+  try {
+    [orders.value, overview.value] = await Promise.all([
+      api.mPickupOrders(),
+      api.mPickupOverview(),
+    ]);
+    failed.value = false;
+  } catch {
+    // `error` 那条是**核销动作**失败用的（「该订单已核销」）；
+    // 首屏拉不到是另一回事，此前无人接：列表空着，店员以为今天没有待取的单
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 /**
@@ -424,7 +437,7 @@ onShow(load);
       <text>{{ $t("picking.verifyPrepHint", { n: preparingCount }) }}</text>
       <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
     </view>
-    <sh-empty v-else-if="!waiting.length" :text='$t("verify.empty")'></sh-empty>
+    <sh-empty v-else-if="!waiting.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("verify.empty")'></sh-empty>
 
     <view
       v-for="o in waiting"

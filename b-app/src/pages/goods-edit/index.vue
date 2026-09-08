@@ -1143,7 +1143,11 @@ async function save(thenSubmit = false) {
          上次存的草稿覆盖掉，且不报错（见 `draftFailed` 那段）。
          摆在双版本横幅之前 —— 它比「你在编辑草稿」更要紧。 -->
     <view v-if="draftFailed" class="sh-notice sh-notice--warning draft-banner">
-      <sh-empty line failed :failed-text="String($t('goods.draftLoadFailed'))"></sh-empty>
+      <!-- **这一条不给重试**，与别处不同，理由要说清：这一页的拉取内联在 `onLoad` 里，
+           没有能再叫一次的具名函数；造一个就得重进页面，而那会丢掉他已经改的内容。
+           而且这不是「可恢复的错误」，是一句**必须先看见**的警告：
+           接着编辑会把上次存的草稿覆盖掉。给一个点了会丢东西的按钮，比不给更糟。 -->
+      <text class="sh-hint">{{ $t("goods.draftLoadFailedHint") }}</text>
     </view>
 
     <view v-if="editingDraft" class="sh-notice sh-notice--warning draft-banner sh-row">
