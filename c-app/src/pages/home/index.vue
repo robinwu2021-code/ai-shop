@@ -421,7 +421,6 @@ onShareAppMessage(() =>
   display: block;
   width: 100%;
   height: 120rpx;
-  border-radius: 16rpx;
   /* 同商品卡：不给底色，emoji 自带形状，字号放大填满占位区 */
   font-size: 88rpx;
   line-height: 120rpx;

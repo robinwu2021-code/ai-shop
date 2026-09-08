@@ -42,6 +42,20 @@ const isImg = (s: string): boolean => /^(https?:)?\/\//.test(s) || s.startsWith(
 .cover {
   overflow: hidden;
   flex-shrink: 0;
+  /*
+   * **圆角在这里，不在调用点。** 2026-09-08 实测：把一条真实图片 URL 放进种子，
+   * 商品卡上渲染出来的是一个**直角硬方块** —— 而同屏每一个别的东西都是圆角。
+   * 原因是这个框的圆角此前由调用点各给一个：`skurow__cover` 24rpx、
+   * `freq__cover` 16rpx、`card__cover` **一个都没有**。
+   *
+   * 它对 emoji 无所谓（emoji 没有底色，圆角切不到东西），所以三种写法长期看不出区别 ——
+   * **真图落地的那一刻才同时暴露**。而 `card__cover` 的注释里还写着
+   * 「真实商品图上线后这里直接换成 <image>，尺寸不用再动」：尺寸确实不用动，
+   * 缺的是框，而那句话让人以为已经想过了。
+   *
+   * 24rpx = 圆角五档的 md，与 `.field__input`、`.sh-notice` 同档。
+   */
+  border-radius: 24rpx;
 }
 .cover__img {
   width: 100%;

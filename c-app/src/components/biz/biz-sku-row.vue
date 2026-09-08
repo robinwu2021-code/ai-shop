@@ -55,8 +55,6 @@ withDefaults(
 .skurow__cover {
   flex-shrink: 0;
   background: var(--sh-faint);
-  /* 圆角走 token 的 md 档 —— 原先 22 / 24 / 28rpx 三种，前两者根本不在五档上 */
-  border-radius: 24rpx;
 }
 .skurow--md .skurow__cover {
   width: 108rpx;
