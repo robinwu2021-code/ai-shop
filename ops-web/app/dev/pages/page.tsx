@@ -34,7 +34,9 @@
 // 4. 依赖登录态：iframe 与本页同源，直接复用你当前的账号与数据域。
 //    换个角色重跑，看到的页面集合与内容都会变 —— 这是特性不是缺陷。
 import * as React from "react";
-import { audit, groupFindings, type Finding } from "../ui/audit";
+import { audit, groupFindings, type Finding, type Grouped } from "../ui/audit";
+import { DataTable } from "@/components/ui/data-table";
+import { Notice } from "@/components/ui/notice";
 import { Button } from "@/components/ui/button";
 import { NAV, isLeafLocked } from "@/lib/nav";
 import { cn } from "@/lib/utils";
@@ -232,74 +234,57 @@ export default function DevPagesAudit() {
 
           <Section title={`按规则归并（${grouped.length} 类）`}>
             {grouped.length === 0 ? (
-              <p className="txt-body text-muted-foreground">
+              <Notice>
                 页体上没有扫出线索。注意这只说明「当前渲染出来的节点」合规 ——
                 抽屉与弹窗关着时不在射程内。
-              </p>
+              </Notice>
             ) : (
-              <table className="w-full txt-body">
-                <thead>
-                  <tr className="border-b border-border text-start txt-caption text-muted-foreground">
-                    <th className="py-1.5 text-start">规则</th>
-                    <th className="py-1.5 text-start">归属</th>
-                    <th className="py-1.5 text-end">处数</th>
-                    <th className="py-1.5 text-start">实测值</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {grouped.map((g, i) => (
-                    <tr key={i} className="border-b border-border/50 align-top">
-                      <td className="py-1.5 pe-3">{g.rule}</td>
-                      <td className="py-1.5 pe-3 txt-caption text-muted-foreground">{g.comp}</td>
-                      <td className="py-1.5 pe-3 text-end tabular-nums">{g.count}</td>
-                      <td className="py-1.5 txt-caption text-muted-foreground">
-                        {g.details.slice(0, 3).join(" · ")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+                columns={[
+                  { header: "规则", cell: (g: Grouped) => g.rule, className: "whitespace-normal" },
+                  { header: "归属", cell: (g: Grouped) => <span className="txt-caption text-muted-foreground">{g.comp}</span> },
+                  { header: "处数", cell: (g: Grouped) => g.count, numeric: true },
+                  { header: "实测值", className: "whitespace-normal",
+                    cell: (g: Grouped) => (
+                      <span className="txt-caption text-muted-foreground">{g.details.slice(0, 3).join(" · ")}</span>
+                    ) },
+                ]}
+                rows={grouped}
+                rowKey={(g) => `${g.comp}||${g.rule}`}
+                empty="这一轮没有归并出任何线索。空集与「全都合规」不是一回事，先看上面的节点总数是不是 0。"
+              />
             )}
           </Section>
 
           <Section title="线索最多的页">
-            <table className="w-full txt-body">
-              <thead>
-                <tr className="border-b border-border txt-caption text-muted-foreground">
-                  <th className="py-1.5 text-start">路由</th>
-                  <th className="py-1.5 text-start">功能</th>
-                  <th className="py-1.5 text-end">节点</th>
-                  <th className="py-1.5 text-end">线索</th>
-                  <th className="py-1.5 text-end">耗时</th>
-                </tr>
-              </thead>
-              <tbody>
-                {worst.map((r) => (
-                  <tr key={r.href} className="border-b border-border/50">
-                    <td className="py-1.5 pe-3 font-mono txt-caption">{r.href}</td>
-                    <td className="py-1.5 pe-3 txt-caption text-muted-foreground">
-                      {r.section} · {r.label}
-                    </td>
-                    <td className="py-1.5 pe-3 text-end tabular-nums">{r.scanned}</td>
-                    <td className={cn("py-1.5 pe-3 text-end tabular-nums",
-                      r.findings.length > 0 && "text-[var(--warning-ink)]")}>
+            <DataTable
+              columns={[
+                { header: "路由", cell: (r: PageResult) => <span className="font-mono txt-caption">{r.href}</span> },
+                { header: "功能", cell: (r: PageResult) => (
+                  <span className="txt-caption text-muted-foreground">{r.section} · {r.label}</span>
+                ) },
+                { header: "节点", cell: (r: PageResult) => r.scanned, numeric: true },
+                { header: "线索", numeric: true,
+                  cell: (r: PageResult) => (
+                    <span className={cn(r.findings.length > 0 && "text-[var(--warning-ink)]")}>
                       {r.findings.length}
-                    </td>
-                    <td className="py-1.5 text-end tabular-nums txt-caption text-muted-foreground">
-                      {r.ms}ms
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </span>
+                  ) },
+                { header: "耗时", numeric: true,
+                  cell: (r: PageResult) => <span className="txt-caption text-muted-foreground">{r.ms}ms</span> },
+              ]}
+              rows={worst}
+              rowKey={(r) => r.href}
+              empty="还没有扫过任何路由 —— 点上面那个按钮开始。"
+            />
           </Section>
 
           {shell && (
             <Section title={`外壳（顶栏 + 导航，只扫一次）—— ${shell.length} 条`}>
               {shell.length === 0 ? (
-                <p className="txt-body text-muted-foreground">外壳没有扫出线索。</p>
+                <Notice>外壳没有扫出线索。</Notice>
               ) : (
-                <ul className="txt-body space-y-1">
+                <ul className="rounded-card border border-border p-3 txt-body space-y-1">
                   {groupFindings(shell).map((g, i) => (
                     <li key={i}>
                       {g.rule} · <span className="text-muted-foreground">{g.comp}</span> ×{g.count}
@@ -330,11 +315,15 @@ function Stat({ label, value, tone }: { label: string; value: React.ReactNode; t
   );
 }
 
+/**
+ * 分区。**自己不描边** —— 里面装的 `DataTable` 自带 Card 描边，
+ * 外面再套一层就是两圈框（实测过一次）。说明性内容用 `Notice`，它自带底色。
+ */
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-2">
       <h2 className="txt-heading">{title}</h2>
-      <div className="overflow-x-auto rounded-card border border-border p-3">{children}</div>
+      {children}
     </section>
   );
 }
