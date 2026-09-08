@@ -148,11 +148,21 @@ export function contrast(a: RGBA, b: RGBA): number {
  * 元素的**实际**背景色：自身背景半透明时向上合成祖先背景，直到遇到不透明层。
  * 只看 background-color（不看 background-image/渐变，本项目组件层没有渐变底）。
  */
+/**
+ * 取元素**自己那个视图**的 computed style。
+ *
+ * 不用全局 `getComputedStyle`：跨 iframe 扫真实页面时（`app/dev/pages`），
+ * 元素来自另一个 document，拿父窗口的视图去量是未定义行为 ——
+ * 而它出错的样子是「量到了，但量的是别的东西」，比抛异常难发现得多。
+ */
+export const csOf = (el: Element): CSSStyleDeclaration =>
+  (el.ownerDocument.defaultView ?? window).getComputedStyle(el);
+
 export function effectiveBg(el: Element): RGBA {
   const stack: RGBA[] = [];
   let cur: Element | null = el;
   while (cur) {
-    const c = parseColor(getComputedStyle(cur).backgroundColor);
+    const c = parseColor(csOf(cur).backgroundColor);
     if (c && c.a > 0) {
       stack.push(c);
       if (c.a >= 0.999) break;
@@ -175,7 +185,7 @@ export type Measured = {
 
 /** 量一个已挂载元素的「文字 vs 实际背景」对比度 */
 export function measure(el: Element): Measured {
-  const cs = getComputedStyle(el);
+  const cs = csOf(el);
   const fgRaw = cs.color;
   const bg = effectiveBg(el);
   const fg = parseColor(fgRaw);
@@ -191,7 +201,7 @@ export function rgbText({ r, g, b }: RGBA): string {
 
 /** AA 判据：正文 4.5、大字（≥18.66px 或 ≥14px 且 bold）3.0 */
 export function aaThreshold(el: Element): number {
-  const cs = getComputedStyle(el);
+  const cs = csOf(el);
   const px = parseFloat(cs.fontSize) || 14;
   const weight = parseInt(cs.fontWeight, 10) || 400;
   const large = px >= 24 || (px >= 18.66 && weight >= 700);

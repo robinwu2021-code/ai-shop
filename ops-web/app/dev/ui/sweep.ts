@@ -7,7 +7,7 @@
 //
 // 这里直接在 DOM 上量：切一组 → 等样式生效 → 扫一遍 → 记录 → 切下一组 → 最后还原。
 // 与 `<Probe>` 共用同一套 `measure/aaThreshold`，所以两边的数字一定一致。
-import { measure, aaThreshold } from "./color";
+import { measure, aaThreshold, csOf } from "./color";
 
 export interface SweepFail {
   /** 皮肤 key */
@@ -28,9 +28,21 @@ export interface SweepResult {
   combos: number;
 }
 
-/** 等两帧：换肤是改 CSS 变量，样式要下一帧才真正生效，当帧量到的是旧色。 */
-const nextFrames = () =>
-  new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+/**
+ * 等两帧：换肤是改 CSS 变量，样式要下一帧才真正生效，当帧量到的是旧色。
+ *
+ * ⚠️ **必须带超时兜底**：标签页/面板切到后台时 `requestAnimationFrame` 整个不触发，
+ * 整轮扫描会停在原地不动 —— 而界面上只是进度不走，看不出是卡住还是慢
+ * （`app/dev/pages` 的页面扫描踩过一次，停在 2/21）。
+ * 也要用**目标窗口**的 rAF：跨 iframe 时父窗口的帧与它不是一回事。
+ */
+const nextFrames = (win: Window = window) =>
+  new Promise<void>((r) => {
+    let done = false;
+    const fin = () => { if (!done) { done = true; r(); } };
+    win.requestAnimationFrame(() => win.requestAnimationFrame(fin));
+    setTimeout(fin, 120);
+  });
 
 /**
  * 扫描期间**关掉所有过渡/动画**。
@@ -39,10 +51,10 @@ const nextFrames = () =>
  * 量到的是**过渡中途的插值色**，会得出 1.23:1 这种不可能的读数 —— 比没有数字更糟，
  * 因为它看起来像个真缺陷。关掉之后颜色是终值，读数才可信。
  */
-function freezeTransitions(): () => void {
-  const style = document.createElement("style");
+function freezeTransitions(doc: Document): () => void {
+  const style = doc.createElement("style");
   style.textContent = "*,*::before,*::after{transition:none!important;animation:none!important}";
-  document.head.appendChild(style);
+  doc.head.appendChild(style);
   return () => style.remove();
 }
 
@@ -63,14 +75,15 @@ function shouldMeasure(el: Element): boolean {
     .join("")
     .trim();
   if (!text) return false;
-  const cs = getComputedStyle(el);
+  const cs = csOf(el);
   if (parseFloat(cs.opacity) < 1) return false;
   if (cs.visibility === "hidden" || cs.display === "none") return false;
   return true;
 }
 
-function compOf(el: Element): string {
-  return el.closest("[data-comp]")?.getAttribute("data-comp") ?? "(未归属)";
+function compOf(el: Element, fallback = "(未归属)"): string {
+  // 真实页面没有 data-comp 标记，回落成路由名 —— 否则归并后是一坨看不出该开哪一页的清单
+  return el.closest("[data-comp]")?.getAttribute("data-comp") ?? fallback;
 }
 
 function sampleOf(el: Element): string {
@@ -78,12 +91,26 @@ function sampleOf(el: Element): string {
   return `<${el.tagName.toLowerCase()}> ${t.length > 24 ? t.slice(0, 24) + "…" : t}`;
 }
 
+/**
+ * 扫描面。与 `audit.ts` 同一套判据：
+ * - `specimens`（组件画廊）：只看 `[data-specimen]` 里的组件实例
+ * - `subtree`（真实业务页）：整棵子树 —— 业务页没有 data-specimen 标记，
+ *   按前一种口径扫出来**恒为空**，而空集看起来和「全都合规」一模一样
+ */
+export type SweepScope = "specimens" | "subtree";
+
+function targets(root: ParentNode, scope: SweepScope): Element[] {
+  if (scope === "subtree") return [...root.querySelectorAll("*")];
+  return [...root.querySelectorAll("[data-specimen]")].flatMap((s) => [...s.querySelectorAll("*")]);
+}
+
 /** 扫当前这一组（不改 DOM 状态）。 */
-function scanOnce(skin: string, dark: boolean): { fails: SweepFail[]; measured: number } {
+function scanOnce(skin: string, dark: boolean, root: ParentNode, scope: SweepScope,
+                  label?: string): { fails: SweepFail[]; measured: number } {
   const fails: SweepFail[] = [];
   let measured = 0;
-  for (const spec of document.querySelectorAll("[data-specimen]")) {
-    for (const el of spec.querySelectorAll("*")) {
+  {
+    for (const el of targets(root, scope)) {
       if (!shouldMeasure(el)) continue;
       measured++;
       const m = measure(el);
@@ -91,7 +118,7 @@ function scanOnce(skin: string, dark: boolean): { fails: SweepFail[]; measured: 
       if (m.ratio == null) continue;
       const need = aaThreshold(el);
       if (m.ratio < need) {
-        fails.push({ skin, dark, comp: compOf(el), ratio: m.ratio, need, sample: sampleOf(el) });
+        fails.push({ skin, dark, comp: compOf(el, label), ratio: m.ratio, need, sample: sampleOf(el) });
       }
     }
   }
@@ -102,11 +129,26 @@ function scanOnce(skin: string, dark: boolean): { fails: SweepFail[]; measured: 
  * 跑完整个矩阵。跑完**一定还原**调用前的皮肤与明暗（用 try/finally，
  * 中途抛错也不会把使用者的界面留在某个随机皮肤上）。
  */
+export interface SweepTarget {
+  /** 要切皮肤的那个文档。跨 iframe 扫真实页面时传 `iframe.contentDocument` */
+  doc?: Document;
+  /** 扫描根。默认整个文档 */
+  root?: ParentNode;
+  scope?: SweepScope;
+  /** 没有 `data-comp` 时的归属回落（真实页面传路由） */
+  label?: string;
+}
+
 export async function runContrastSweep(
   skins: readonly string[],
   onProgress?: (done: number, total: number) => void,
+  target: SweepTarget = {},
 ): Promise<SweepResult> {
-  const el = document.documentElement;
+  const doc = target.doc ?? document;
+  const win = doc.defaultView ?? window;
+  const root = target.root ?? doc;
+  const scope = target.scope ?? "specimens";
+  const el = doc.documentElement;
   const prevSkin = el.dataset.theme;
   const prevDark = el.classList.contains("dark");
 
@@ -114,15 +156,15 @@ export async function runContrastSweep(
   let measuredPerCombo = 0;
   const total = skins.length * 2;
   let done = 0;
-  const unfreeze = freezeTransitions();
+  const unfreeze = freezeTransitions(doc);
 
   try {
     for (const dark of [false, true]) {
       el.classList.toggle("dark", dark);
       for (const skin of skins) {
         el.dataset.theme = skin;
-        await nextFrames();
-        const r = scanOnce(skin, dark);
+        await nextFrames(win);
+        const r = scanOnce(skin, dark, root, scope, target.label);
         fails.push(...r.fails);
         measuredPerCombo = Math.max(measuredPerCombo, r.measured);
         onProgress?.(++done, total);
@@ -131,7 +173,7 @@ export async function runContrastSweep(
   } finally {
     if (prevSkin) el.dataset.theme = prevSkin; else delete el.dataset.theme;
     el.classList.toggle("dark", prevDark);
-    await nextFrames();
+    await nextFrames(win);
     unfreeze();
   }
 

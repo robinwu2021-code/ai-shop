@@ -35,6 +35,8 @@
 //    换个角色重跑，看到的页面集合与内容都会变 —— 这是特性不是缺陷。
 import * as React from "react";
 import { audit, groupFindings, type Finding, type Grouped } from "../ui/audit";
+import { runContrastSweep, groupFails, type SweepFail } from "../ui/sweep";
+import { THEMES } from "@/lib/stores/theme";
 import { DataTable } from "@/components/ui/data-table";
 import { Notice } from "@/components/ui/notice";
 import { Button } from "@/components/ui/button";
@@ -101,6 +103,9 @@ export default function DevPagesAudit() {
   const [done, setDone] = React.useState(0);
   const [results, setResults] = React.useState<PageResult[]>([]);
   const [shell, setShell] = React.useState<Finding[] | null>(null);
+  const [contrast, setContrast] = React.useState<SweepFail[] | null>(null);
+  const [contrastRunning, setContrastRunning] = React.useState(false);
+  const [contrastDone, setContrastDone] = React.useState(0);
   const frameRef = React.useRef<HTMLIFrameElement>(null);
 
   const list = React.useMemo(() => routes(withTabs), [withTabs]);
@@ -162,6 +167,44 @@ export default function DevPagesAudit() {
     setRunning(false);
   };
 
+  /**
+   * 对比度体检：5 皮肤 × 明暗 = 10 组，逐条路由在 iframe 里跑。
+   *
+   * **只跑 21 个入口路由**（关掉「含子页签」那个开关的那份名单）。
+   * 124 × 10 = 1240 次重绘要十几分钟，而子页签与入口共用同一套组件与同一份 token ——
+   * 多出来的那 100 条路由几乎不会带来新的颜色组合。这是**刻意的取舍**，
+   * 写在这里免得下一个人以为它覆盖了全部路由。
+   */
+  const runContrast = async () => {
+    const frame = frameRef.current;
+    if (!frame || contrastRunning) return;
+    setContrastRunning(true);
+    setContrast(null);
+    setContrastDone(0);
+    const entries = routes(false);
+    const acc: SweepFail[] = [];
+    for (const [i, r] of entries.entries()) {
+      await new Promise<void>((resolve) => {
+        let settled = false;
+        const finish = () => { if (!settled) { settled = true; frame.removeEventListener("load", finish); clearTimeout(t); resolve(); } };
+        const t = setTimeout(finish, 8000);
+        frame.addEventListener("load", finish);
+        frame.src = r.href;
+      });
+      const win = frame.contentWindow;
+      if (!win) continue;
+      await settle(win);
+      const body = win.document.querySelector<HTMLElement>('[data-shell="body"]');
+      if (!body) continue;
+      const res = await runContrastSweep(THEMES.map((t) => t.key), undefined,
+        { doc: win.document, root: body, scope: "subtree", label: r.href });
+      acc.push(...res.fails);
+      setContrastDone(i + 1);
+      setContrast([...acc]);
+    }
+    setContrastRunning(false);
+  };
+
   const all = results.flatMap((r) => r.findings);
   const grouped = groupFindings(all);
   const blank = results.filter((r) => r.scanned === 0);
@@ -182,6 +225,9 @@ export default function DevPagesAudit() {
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={run} loading={running}>
           {running ? `扫描中 ${done}/${list.length}` : `开始体检（${list.length} 个路由）`}
+        </Button>
+        <Button variant="outline" onClick={runContrast} loading={contrastRunning} disabled={running}>
+          {contrastRunning ? `对比度 ${contrastDone}/21` : "对比度体检（21 入口 × 10 组）"}
         </Button>
         <label className="flex items-center gap-2 txt-body text-muted-foreground">
           <input
@@ -299,6 +345,44 @@ export default function DevPagesAudit() {
           )}
         </>
       )}
+
+        {contrast && (
+          <Section title={`对比度（21 入口 × 5 皮肤 × 明暗）—— ${contrast.length} 条不达 AA`}>
+            {contrast.length === 0 ? (
+              <Notice>
+                这 21 个入口在 10 组皮肤/明暗下都过 AA。注意只量了「当前渲染出来的文字」——
+                抽屉、弹窗、以及数据为空时不出现的那些行不在射程内。
+              </Notice>
+            ) : (
+              <DataTable
+                columns={[
+                  { header: "页面", cell: (g: ReturnType<typeof groupFails>[number]) => (
+                    <span className="font-mono txt-caption">{g.comp}</span>
+                  ) },
+                  { header: "元素", className: "whitespace-normal",
+                    cell: (g: ReturnType<typeof groupFails>[number]) => (
+                      <span className="txt-caption text-muted-foreground">{g.sample}</span>
+                    ) },
+                  { header: "最差", numeric: true,
+                    cell: (g: ReturnType<typeof groupFails>[number]) => (
+                      <span className="text-[var(--destructive-ink)]">{g.worst.toFixed(2)}</span>
+                    ) },
+                  { header: "要求", numeric: true,
+                    cell: (g: ReturnType<typeof groupFails>[number]) => g.need.toFixed(1) },
+                  { header: "哪几组", className: "whitespace-normal",
+                    cell: (g: ReturnType<typeof groupFails>[number]) => (
+                      <span className="txt-caption text-muted-foreground">
+                        {g.combos.slice(0, 6).join(" · ")}{g.combos.length > 6 ? " …" : ""}
+                      </span>
+                    ) },
+                ]}
+                rows={groupFails(contrast)}
+                rowKey={(g) => `${g.comp}||${g.sample}`}
+                empty="没有不达 AA 的文字。这一栏空着是好事，不是没跑。"
+              />
+            )}
+          </Section>
+        )}
     </div>
   );
 }
