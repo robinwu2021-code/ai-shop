@@ -32,10 +32,21 @@ const DAY = 86_400_000;
 /** 新时段表单。默认明天上午 9 点、一小时、一个名额 —— 最常见的那一档 */
 const form = ref({ dayOffset: 1, hour: 9, hours: 1, capacity: 1 });
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 整页内容都挂在拉来的数据后面 */
+const failed = ref(false);
+
 async function load() {
   const storeNo = merchant.storeNo || "default";
   const from = Date.now();
-  slots.value = await api.mAppointmentSlots(storeNo, from, from + WINDOW_DAYS * DAY);
+  try {
+    slots.value = await api.mAppointmentSlots(storeNo, from, from + WINDOW_DAYS * DAY);
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 function startAtOf(): number {
@@ -127,8 +138,17 @@ onShow(() => {
     -->
     <view class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("schedule.list") }}</text>
-      <text v-if="!slots.length" class="sh-muted sh-hint">{{ $t("schedule.empty") }}</text>
-      <text v-if="!slots.length" class="sh-hint txt-quiet">{{ $t("schedule.emptyTip") }}</text>
+      <!-- 两行裸 `text` 换成 `sh-empty`：三种态（还不知道 / 没取到 / 确定没有）
+           归它一个件管，也就顺带有了那颗重试按钮 -->
+      <sh-empty
+        bare
+        v-if="!slots.length"
+        :pending="!loaded"
+        :failed="failed"
+        @retry="load"
+        :text="String($t('schedule.empty'))"
+        :tip="String($t('schedule.emptyTip'))"
+      ></sh-empty>
       <view v-for="s in slots" :key="s.slotNo" class="slot sh-row">
         <view class="sh-fill">
           <text class="txt-body slot__when sh-num">{{ datetime(s.startAt) }}</text>

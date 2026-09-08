@@ -25,6 +25,12 @@
 #    不是一个空列表 —— 「详情页加载失败长什么样」还没定，别顺手套上面那个形状。
 #
 # **③ 剩下的才是同一种活**：有列表空态、有 load()，照上面三步改。
+#
+# **④ 三页是判据的误报**（2026-09-09 逐个核过）：`b-app/login`、`c-app/login`、
+#    `c-app/request-create` 只调用**提交型**接口（`mSendOtp` / `sendOtp` / `createRequest`），
+#    进页面时一个字节都不拉 —— 没有「加载失败」这回事，那些提交自己带 catch。
+#    判据只看「这一页有没有出现 `api.`」，分不出读与写，所以它们会一直躺在这儿。
+#    要让名单真的清零，得让判据认出「进页面时拉的那一次」，而不是加豁免。
 
 b-app/apply
 b-app/goods-edit
@@ -33,14 +39,9 @@ b-app/login
 b-app/me
 b-app/member-add
 b-app/member-reach
-b-app/payment
 b-app/purchase-edit
-b-app/schedule
 b-app/sku-identity
 b-app/stock-out
-b-app/store
-b-app/store-scope
-b-app/stores
 c-app/address-pick
 c-app/login
 c-app/me

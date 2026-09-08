@@ -266,7 +266,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 291,
+        "b-app": 290,
         "c-app": 43
       }
     },
@@ -478,7 +478,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 41,
+        "b-app": 40,
         "c-app": 13
       }
     },
@@ -984,7 +984,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 124,
+        "b-app": 122,
         "c-app": 11
       }
     },
@@ -2108,7 +2108,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 46,
+        "b-app": 47,
         "c-app": 27,
         "lib": 1
       },
@@ -3916,9 +3916,10 @@
       "key": "b-app/schedule",
       "file": "b-app/src/pages/schedule/index.vue",
       "components": [
+        "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 41,
+      "libClassHits": 37,
       "localSelectors": 3,
       "localCssLines": 12,
       "rolled": []

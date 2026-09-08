@@ -64,8 +64,18 @@ const payOptions = computed(() =>
 
 onShow(load);
 
+/** 这次没取到。**与「确定为空」是两件事** —— 整页内容都挂在拉来的数据后面 */
+const failed = ref(false);
+
 async function load() {
-  stores.value = await api.mStoreList().catch(() => []);
+  // 门店列表就是这一页：兜成 `[]` 的结果是「还没有门店」，
+  // 而店主看到这句会去建店 —— 建完发现原来那几家还在
+  try {
+    stores.value = await api.mStoreList();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
   /*
    * **每次都重取**，不是 ensure。这一页会建店、会停用店，而分组正是「哪张证照下有几家店」——
    * 用 ensure 的话建完店回到「我的」，那一行还写着建店之前的数字，
@@ -247,7 +257,10 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 </script>
 
 <template>
-  <sh-scaffold title-key="stores.title" :denied="!merchant.can('biz:store:admin')">
+  <sh-scaffold title-key="stores.title" :denied="!merchant.can('biz:store:admin')"
+    :failed="failed"
+    @retry="load"
+  >
     <!--
       这一页只答**此刻**的两个问题：哪家在做什么（数字长在卡上），我要切到哪家。
       一段时间里谁更好是另一类问题，在「经营数据 › 跨店对比」——

@@ -67,6 +67,9 @@ const kit = ref<ShareKit | null>(null);
 /** 真海报（P2）：封面/店名/价格/小程序码合成的一张图，不是 kit.posterUrl 那句假话 */
 const poster = ref<Poster | null>(null);
 
+/** 这次没取到。**与「确定为空」是两件事** —— 整页内容都挂在拉来的数据后面 */
+const failed = ref(false);
+
 async function load() {
   /*
    * allSettled 而不是 all：店铺码还没生成、分享素材抖一下，不该让门面字段
@@ -79,8 +82,12 @@ async function load() {
     form.value = { ...s.value, serviceAreas: s.value.serviceAreas ?? [] };
     snapshot.value = pick(form.value);
     loaded.value = true;
+    failed.value = false;
   } else {
+    // `dirty` 里的 `loaded` 已经挡住了保存条，但门面字段是空的 ——
+    // 商家看到的是一张空的店铺资料表，而不是「没取到」
     uni.showToast({ title: t("store.loadFailed"), icon: "none" });
+    failed.value = true;
   }
   qrcode.value = q.status === "fulfilled" ? q.value : null;
   kit.value = k.status === "fulfilled" ? k.value : null;
@@ -214,7 +221,10 @@ onShow(() => {
 </script>
 
 <template>
-  <sh-scaffold title-key="store.title" :denied="!merchant.can('biz:store')">
+  <sh-scaffold title-key="store.title" :denied="!merchant.can('biz:store')"
+    :failed="failed"
+    @retry="load"
+  >
     <biz-store-tag readonly></biz-store-tag>
 
     <!-- 门面：只有三个字段。公告在自己的页（pages/store-notice）里，即改即发 -->

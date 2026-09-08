@@ -163,6 +163,9 @@ watch([areas, deliveryOn, expressOn], async () => {
   }
 }, { deep: true });
 
+/** 这次没取到。**与「确定为空」是两件事** —— 整页内容都挂在拉来的数据后面 */
+const failed = ref(false);
+
 async function loadFulfillment() {
   try {
     fulfillment.value = await api.mStoreFulfillment(merchant.storeNo || "default");
@@ -361,8 +364,12 @@ async function load() {
     form.value = normalize(s.value);
     snapshot.value = JSON.stringify(form.value.serviceAreas ?? []);
     loaded.value = true;
+    failed.value = false;
   } else {
+    // `loaded` 已经挡住了保存（见 `dirty`），但界面上一个字都没有 ——
+    // 商家看到的是一张空的范围表，会以为自己什么都没设过
     uni.showToast({ title: t("store.loadFailed"), icon: "none" });
+    failed.value = true;
   }
   applies.value = ap.status === "fulfilled" ? ap.value : [];
 }
@@ -442,7 +449,10 @@ onShow(() => {
 </script>
 
 <template>
-  <sh-scaffold title-key="store.scopeTitle" :denied="!merchant.can('biz:store')">
+  <sh-scaffold title-key="store.scopeTitle" :denied="!merchant.can('biz:store')"
+    :failed="failed"
+    @retry="load"
+  >
     <biz-store-tag readonly></biz-store-tag>
 
     <!-- ① 经营范围（主体级） -->

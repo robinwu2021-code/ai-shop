@@ -89,6 +89,9 @@ onLoad((q) => {
 });
 onShow(load);
 
+/** 这次没取到。**与「确定为空」是两件事** —— 整页内容都挂在拉来的数据后面 */
+const failed = ref(false);
+
 async function load() {
   loading.value = true;
   try {
@@ -105,8 +108,14 @@ async function load() {
     stores.value = await api.mStoreList().catch(() => []);
     storePayments.value = (await api.mPayments(entityNo.value || undefined).catch(() => []))
         .filter((x) => !!x.storeNo);
+    failed.value = false;
   } catch {
-    list.value = [];
+    /*
+     * 此前这里是 `list.value = []` —— **把失败直接写成了空**。
+     * 而空列表在这一页的意思是「一个收款通道都没开」，商家会去点「开通」，
+     * 点开发现早就开过了。现在让它自己说「没能加载出来」。
+     */
+    failed.value = true;
   } finally {
     loading.value = false;
   }
@@ -207,7 +216,10 @@ async function refresh() {
 </script>
 
 <template>
-  <sh-scaffold title-key="payment.title" :denied="!merchant.can('biz:finance')">
+  <sh-scaffold title-key="payment.title" :denied="!merchant.can('biz:finance')"
+    :failed="failed"
+    @retry="load"
+  >
     <view class="head">
       <text class="txt-display">{{ $t("payment.title") }}</text>
       <text class="sh-muted sh-mt-xs blk">{{ $t("payment.hint") }}</text>
