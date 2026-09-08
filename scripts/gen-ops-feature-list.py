@@ -98,9 +98,18 @@ def nav_tree(src):
             perm = (re.search(r'perm:\s*"([^"]*)"', rest) or [None, ""])[1]
             group = (re.search(r'group:\s*"([^"]*)"', rest) or [None, ""])[1]
             matrix = (re.search(r'matrix:\s*"([^"]*)"', rest) or [None, ""])[1]
-            ready = "ready: false" not in rest
+            # ⚠️ 这里曾经写的是 `"ready: false" not in rest`，而 nav.ts **从不写
+            # `ready: false`** —— 它要么写 `ready: true`（今天 116 处），要么整个省略
+            # （8 处）。于是那个判据恒为真，8 个未就绪的叶子（掉单补偿、异常单处理、
+            # 主页模板配置…）全被报成已就绪，而下面那一列对 ready 的行输出空串 ——
+            # **整列 149 行一个值都没有，闸门却全绿**（check-generated-docs 只比对
+            # 产物新旧，不看内容）。默认值取反的代价就是这样：不报错，且看起来像没数据。
+            ready = "ready: true" in rest
+            soon = "soon: true" in rest
+            phm = re.search(r"phase:\s*(\d+)", rest)
             leaves.append({"href": href, "label": name, "perm": perm,
-                           "group": group, "matrix": matrix, "ready": ready})
+                           "group": group, "matrix": matrix, "ready": ready,
+                           "soon": soon, "phase": int(phm.group(1)) if phm else 1})
         if not leaves:
             # 单页模块（经营看板）：它自己就是那一个功能，
             # 漏掉它的后果是「数据分析」这个角色显示成 0 个可见页面 —— 而看板正是它的主场
@@ -109,9 +118,31 @@ def nav_tree(src):
             href = (re.search(r'href:\s*"([^"]*)"', head) or [None, ""])[1]
             matrix = (re.search(r'matrix:\s*"([^"]*)"', head) or [None, ""])[1]
             leaves = [{"href": href, "label": label, "perm": perm,
-                       "group": "", "matrix": matrix, "ready": True}]
+                       "group": "", "matrix": matrix, "ready": True,
+                       "soon": False, "phase": 1}]
         mods.append((label, leaves))
     return mods
+
+
+def leaf_status(lf):
+    """
+    一个叶子的状态。**取自 nav.ts 自己的三个字段，不另立口径。**
+
+    nav.ts 里 `ready` 的含义（见 NavLeaf 的注释）是「本叶前端静态功能完整
+    **且已实机验证**」，而且它「无视 phase 直接解锁」—— 所以 ready 优先于 phase。
+
+    「页面在、未标 ready」不是「没做」：掉单补偿（P-4.2）三个叶子都属于这一档，
+    它们的页面代码与后端端点都在，只是没过 ready 那道口。
+    **把这一档显示成空白，就是让读的人在「已建」与「没建」之间自己猜** ——
+    2026-09-09 我在同一天里朝两个方向各猜错过一次。
+    """
+    if lf.get("soon"):
+        return "⬜ 待建"
+    if lf["ready"]:
+        return "✅"
+    if lf.get("phase", 1) > 1:
+        return f"🔜 {lf['phase']} 期"
+    return "🟡 页面在、未标 ready"
 
 
 def visible_roles(perm, rp):
@@ -209,7 +240,7 @@ def build():
             rtxt = "、".join(cn(r) for r in roles) if roles else "**仅超管**"
             perm = f"`{lf['perm']}`" if lf["perm"] else "—"
             out.append(f"| {lf['group'] or '—'} | {lf['label']} | {perm} | {rtxt} "
-                       f"| {lf['matrix'] or '—'} | {'' if lf['ready'] else '⬜ 分期屏蔽'} |")
+                       f"| {lf['matrix'] or '—'} | {leaf_status(lf)} |")
         out.append("")
 
     return "\n".join(out) + "\n"

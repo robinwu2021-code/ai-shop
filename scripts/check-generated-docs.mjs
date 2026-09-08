@@ -67,6 +67,13 @@ const GENERATORS = [
   // 运营端功能清单：它比权限矩阵多量一样东西 —— **谁看得见哪个菜单**。
   // 权限码可达（那是上面那份端点矩阵管的）不等于菜单里有那一行
   ["scripts/gen-ops-feature-list.py", ["docs/technical/reference/运营端-功能清单.md"]],
+  /*
+   * 三端对齐文档的**状态列**。整份文档是手写的，只有那一列是生成的 ——
+   * 登记在这里是因为它会烂：原先它抄自平台端功能清单，而那份文档
+   * 自称 21 个路由页、nav.ts 实际 123 个，抄出来的 111 行里 31 行是错的。
+   * 生成器对文件其余部分是幂等的，所以这里比对整份文件是安全的。
+   */
+  ["scripts/gen-align-status.mjs", ["docs/requirements/三端功能对齐-运营端职责推导.md"]],
   ["scripts/gen-ui-lib.py", ["docs/technical/design/ui-lib.json"]],
   /*
    * 全项目词汇清单四份。**它替掉的是四份手写清单里陈得最厉害的那一档** ——
