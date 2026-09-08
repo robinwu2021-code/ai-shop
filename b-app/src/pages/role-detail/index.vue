@@ -62,12 +62,29 @@ const holders = computed(() =>
   staff.value.filter((s) => s.roles.some((r) => r.role === roleCode.value)),
 );
 
+/** 这次没取到。**与「这个东西不存在」是两件事** —— 预填失败留下的是一张空表单，
+ *  照着它填完保存，存出来的是一条新的，原来那条还在 */
+const failed = ref(false);
+
 async function load() {
-  [roles.value, staff.value, perms.value] = await Promise.all([
-    api.mRoles().catch(() => []),
-    api.mStaffList().catch(() => []),
-    api.mRolePerms().catch(() => []),
-  ]);
+  /*
+   * **角色表不兜底**。此前三样都 `.catch(() => [])`，而
+   * `isNew = !current`、`current = roles.find(r => r.roleCode === roleCode)` ——
+   * 名单兜成 `[]` 之后 `current` 为空、`isNew` 变成 true，
+   * 于是**编辑一个既有角色会静默变成新建一个重复角色**（名字空、权限空）。
+   * 员工名单与权限表取不到只是少几块，继续兜。
+   */
+  try {
+    [roles.value, staff.value, perms.value] = await Promise.all([
+      api.mRoles(),
+      api.mStaffList().catch(() => []),
+      api.mRolePerms().catch(() => []),
+    ]);
+    failed.value = false;
+  } catch {
+    failed.value = true;
+    return;
+  }
   const base = current.value
     ?? roles.value.find((r) => r.roleCode === copyFrom.value);
   if (base) {
@@ -139,7 +156,10 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="staff.roleDetailTitle" :denied="!merchant.can('biz:store:admin')">
+  <sh-scaffold title-key="staff.roleDetailTitle" :denied="!merchant.can('biz:store:admin')"
+    :failed="failed"
+    @retry="load"
+  >
     <view class="sh-card">
       <view class="field">
         <text class="field__label">{{ $t("staff.roleName") }}</text>

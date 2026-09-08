@@ -26,31 +26,23 @@
 #
 # **③ 剩下的才是同一种活**：有列表空态、有 load()，照上面三步改。
 
-b-app/activity-edit
 b-app/apply
-b-app/coupon-edit
 b-app/goods-edit
 b-app/home
 b-app/login
 b-app/me
 b-app/member-add
 b-app/member-reach
-b-app/order
 b-app/payment
 b-app/purchase-edit
-b-app/role-detail
 b-app/schedule
 b-app/sku-identity
 b-app/stock-out
 b-app/store
-b-app/store-notice
 b-app/store-scope
 b-app/stores
 c-app/address-pick
-c-app/after-sale
 c-app/login
 c-app/me
 c-app/order-confirm
 c-app/request-create
-c-app/review-write
-c-app/store

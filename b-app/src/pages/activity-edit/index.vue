@@ -80,6 +80,13 @@ const alwaysOnUncapped = computed(
     && !Number(form.value.quota || 0) && !toMinor(form.value.budget),
 );
 
+/** 这次没取到。**与「这个东西不存在」是两件事** —— 预填失败留下的是一张空表单，
+ *  照着它填完保存，存出来的是一条新的，原来那条还在 */
+/** 重试要把单号带回去 —— `@retry` 不带参数，而 `activityNo`/`couponNo`
+ *  是**加载成功之后**才设的，失败时它们是空的 */
+const currentNo = ref("");
+const failed = ref(false);
+
 async function checkConflicts() {
   if (!form.value.goodsNos.length) {
     conflicts.value = [];
@@ -95,8 +102,20 @@ function toggleWeekday(d: number) {
 }
 
 async function loadExisting(no: string) {
-  const a = await api.mActivity(no).catch(() => null);
-  if (!a) return;
+  currentNo.value = no;
+  /*
+   * **`.catch(() => null)` 脱掉**。兜成 null 之后 `if (!a) return` 悄悄退出，
+   * 留下一张空表单，而 `activityNo` 停在空 —— 商家照着空白填完点保存，
+   * 存出来的是**一个新活动**，原来那个还在。他要过一阵才会发现多了一条。
+   */
+  let a;
+  try {
+    a = await api.mActivity(no);
+    failed.value = false;
+  } catch {
+    failed.value = true;
+    return;
+  }
   activityNo.value = a.activityNo;
   form.value.goal = a.goal ?? "BASKET";
   form.value.name = a.name;
@@ -192,7 +211,10 @@ onLoad((q) => {
 </script>
 
 <template>
-  <sh-scaffold title-key="activityEdit.title" :denied="!merchant.can('biz:campaign')">
+  <sh-scaffold title-key="activityEdit.title" :denied="!merchant.can('biz:campaign')"
+    :failed="failed"
+    @retry="() => loadExisting(currentNo)"
+  >
     <!-- 四步的进度：让他知道还剩几步，而不是面对一屏输入框 -->
     <view class="steps sh-wrap">
       <text

@@ -130,6 +130,10 @@ const pendingAt = computed(() => {
 /** 常用里不重复列正在编辑的这条 */
 const recent = computed(() => recentAll.value.filter((x) => x && x !== text.value));
 
+/** 这次没取到。**与「这个东西不存在」是两件事** —— 预填失败留下的是一张空表单，
+ *  照着它填完保存，存出来的是一条新的，原来那条还在 */
+const failed = ref(false);
+
 async function load() {
   try {
     await merchant.ensureStores().catch(() => null);
@@ -148,8 +152,10 @@ async function load() {
     ttlKey.value = !at ? "forever"
       : new Date(at).toDateString() === new Date().toDateString() ? "today" : "d3";
     loaded.value = true;
+    failed.value = false;
   } catch {
     uni.showToast({ title: t("store.loadFailed"), icon: "none" });
+    failed.value = true;
   }
 }
 
@@ -226,7 +232,10 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="store.noticeTitle" :denied="!merchant.can('biz:store')">
+  <sh-scaffold title-key="store.noticeTitle" :denied="!merchant.can('biz:store')"
+    :failed="failed"
+    @retry="load"
+  >
     <view class="sh-card">
       <textarea
         v-model="text"

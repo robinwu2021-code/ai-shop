@@ -46,9 +46,21 @@ const target = computed(() =>
 
 const canSubmit = computed(() => !!target.value && content.value.trim().length >= 5 && !submitting.value);
 
+/** 这次没取到。**与「这个东西不存在」是两件事** —— 整页都挂在 `target` 后面，
+ *  拉不到连外壳都不渲染，是一整块白屏：没有导航栏、没有一个字、退不回去 */
+const failed = ref(false);
+/** 重试要把单号带回去 —— `@retry` 不带参数 */
+const currentNo = ref("");
+
 async function load(orderNo: string) {
-  order.value = await api.orderDetail(orderNo);
-  goodsNo.value = order.value.items.find((it) => !it.isGift)?.goodsNo ?? "";
+  currentNo.value = orderNo;
+  try {
+    order.value = await api.orderDetail(orderNo);
+    goodsNo.value = order.value.items.find((it) => !it.isGift)?.goodsNo ?? "";
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
 }
 
 async function pickImages() {
@@ -91,65 +103,75 @@ onLoad((q) => {
 </script>
 
 <template>
-  <sh-scaffold v-if="target" title-key="review.writeTitle">
-    <view class="sh-card">
-      <biz-sku-row
-        :cover="target.cover"
-        :title="target.title"
-        :spec="target.spec"
-      ></biz-sku-row>
+  <sh-scaffold title-key="review.writeTitle"
+    :pending="!target"
+    :failed="failed"
+    @retry="() => load(currentNo)"
+  >
+    <!-- 正文全靠 `target` 解引用，所以要一层 `v-if` 让 vue-tsc 收窄类型。
+         **不写在 `<sh-scaffold>` 上**：写在那儿的话，`target` 为空时连外壳都不渲染 ——
+         没有导航栏、没有一个字，退不回去。守卫留在这里，外壳照常在。 -->
+    <template v-if="target">
+      <view class="sh-card">
+        <biz-sku-row
+          :cover="target.cover"
+          :title="target.title"
+          :spec="target.spec"
+        ></biz-sku-row>
 
-      <!-- 星级：默认 5 星。默认 0 星会让人以为「必须选」，多一步操作 -->
-      <view class="stars sh-row">
-        <text
-          v-for="i in 5"
-          :key="i"
-          class="star"
-          :class="{ 'is-on': i <= rating }"
-          @tap="setRating(i)"
-        >
-          ★
-        </text>
-        <text class="txt-caption stars__label">{{ $t(`review.star${rating}`) }}</text>
-      </view>
-
-      <!-- 三维度：不强制，动了才算细评。只看总分的商家永远不知道
-           「东西没问题，是送得太慢」——而那正是他能改的部分 -->
-      <view v-for="d in DIMS" :key="d.key" class="dim sh-row sh-row--between">
-        <text class="txt-sub">{{ $t(d.labelKey) }}</text>
-        <view class="dim__stars">
+        <!-- 星级：默认 5 星。默认 0 星会让人以为「必须选」，多一步操作 -->
+        <view class="stars sh-row">
           <text
             v-for="i in 5"
             :key="i"
-            class="star star--sm"
-            :class="{ 'is-on': i <= scores[d.key] }"
-            @tap="setDim(d.key, i)"
+            class="star"
+            :class="{ 'is-on': i <= rating }"
+            @tap="setRating(i)"
           >
             ★
           </text>
+          <text class="txt-caption stars__label">{{ $t(`review.star${rating}`) }}</text>
+        </view>
+
+        <!-- 三维度：不强制，动了才算细评。只看总分的商家永远不知道
+             「东西没问题，是送得太慢」——而那正是他能改的部分 -->
+        <view v-for="d in DIMS" :key="d.key" class="dim sh-row sh-row--between">
+          <text class="txt-sub">{{ $t(d.labelKey) }}</text>
+          <view class="dim__stars">
+            <text
+              v-for="i in 5"
+              :key="i"
+              class="star star--sm"
+              :class="{ 'is-on': i <= scores[d.key] }"
+              @tap="setDim(d.key, i)"
+            >
+              ★
+            </text>
+          </view>
         </view>
       </view>
-    </view>
 
-    <view class="sh-card block">
-      <textarea
-        v-model="content"
-        class="field__area ta"
-        :placeholder="$t('review.contentPh')"
-        maxlength="300"
-      />
-      <text class="txt-caption counter sh-num">{{ content.length }}/300</text>
+      <view class="sh-card block">
+        <textarea
+          v-model="content"
+          class="field__area ta"
+          :placeholder="$t('review.contentPh')"
+          maxlength="300"
+        />
+        <text class="txt-caption counter sh-num">{{ content.length }}/300</text>
 
-      <text class="sh-muted imglabel">{{ $t("review.images") }}</text>
-      <sh-uploader class="imgs" :list="images" :max="3" :width="160" @add="pickImages"></sh-uploader>
-    </view>
-
-    <sh-actionbar class="bar-center" :pad="220">
-      <view class="sh-btn" :class="{ 'is-disabled': !canSubmit }" @tap="submit">
-        {{ submitting ? $t("confirm.submitting") : $t("review.submit") }}
+        <text class="sh-muted imglabel">{{ $t("review.images") }}</text>
+        <sh-uploader class="imgs" :list="images" :max="3" :width="160" @add="pickImages"></sh-uploader>
       </view>
-      <text class="sh-hint sh-mt-sm">{{ $t("review.tip") }}</text>
-    </sh-actionbar>
+
+      <sh-actionbar class="bar-center" :pad="220">
+        <view class="sh-btn" :class="{ 'is-disabled': !canSubmit }" @tap="submit">
+          {{ submitting ? $t("confirm.submitting") : $t("review.submit") }}
+        </view>
+        <text class="sh-hint sh-mt-sm">{{ $t("review.tip") }}</text>
+      </sh-actionbar>
+  
+    </template>
   </sh-scaffold>
 </template>
 

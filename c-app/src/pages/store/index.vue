@@ -75,12 +75,23 @@ const goods = computed(() => {
 
 const hasFrequent = computed(() => frequent.value.some((f) => f.times > 0));
 
+/** 这次没取到。**与「这个东西不存在」是两件事** —— 整页都挂在 `data` 后面，
+ *  拉不到连外壳都不渲染，是一整块白屏：没有导航栏、没有一个字、退不回去 */
+const failed = ref(false);
+
 async function load() {
   if (!merchantNo.value) return;
-  const [home, freq] = await Promise.all([
-    api.storeHome(merchantNo.value, fromParam.value),
-    api.frequentItems(merchantNo.value),
-  ]);
+  let home, freq;
+  try {
+    [home, freq] = await Promise.all([
+      api.storeHome(merchantNo.value, fromParam.value),
+      api.frequentItems(merchantNo.value),
+    ]);
+    failed.value = false;
+  } catch {
+    failed.value = true;
+    return;
+  }
   data.value = home;
   frequent.value = freq;
   // 标题给店名。**这一页此前一个标题都没有** —— `pages.json` 里
@@ -286,141 +297,151 @@ function navToStore() {
 </script>
 
 <template>
-  <sh-scaffold v-if="data" :padded="true">
-    <!--
-      已停业横幅。**放在最上面、盖不住内容** —— 老客扫码进来是冲着这家店来的，
-      要第一眼知道「店关了」而不是翻了半天才发现加不了购。
-    -->
-    <view v-if="closed" class="sh-notice sh-notice--muted closed">
-      <text class="txt-sub">{{ $t("store.closed") }}</text>
-    </view>
-
-    <!-- 店招：登录用户看到的是「常买」优先，这里只占一行 -->
-    <view class="store sh-row">
-      <text class="store__logo">{{ data.merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
-      <view class="sh-fill">
-        <view class="store__row sh-row">
-          <text class="txt-title">{{ data.merchant.name }}</text>
-          <text v-if="data.merchant.verified" class="sh-chip sh-chip--primary">
-            {{ $t("merchant.verified") }}
-          </text>
-        </view>
-        <view class="addr sh-row">
-          <text class="sh-muted sh-fill">
-            {{ data.store.openHours }} · {{ data.store.address }}
-          </text>
-          <text v-if="data.store.latE6 != null" class="txt-caption addr__nav" @tap="navToStore">
-            {{ $t("community.navigate") }}
-          </text>
-        </view>
+  <sh-scaffold :padded="true"
+    :pending="!data"
+    :failed="failed"
+    @retry="load"
+  >
+    <!-- 正文全靠 `data` 解引用，所以要一层 `v-if` 让 vue-tsc 收窄类型。
+         **不写在 `<sh-scaffold>` 上**：写在那儿的话，`data` 为空时连外壳都不渲染 ——
+         没有导航栏、没有一个字，退不回去。守卫留在这里，外壳照常在。 -->
+    <template v-if="data">
+      <!--
+        已停业横幅。**放在最上面、盖不住内容** —— 老客扫码进来是冲着这家店来的，
+        要第一眼知道「店关了」而不是翻了半天才发现加不了购。
+      -->
+      <view v-if="closed" class="sh-notice sh-notice--muted closed">
+        <text class="txt-sub">{{ $t("store.closed") }}</text>
       </view>
-      <text class="fav" :class="{ 'is-on': data.favorited }" @tap="toggleFav">
-        {{ data.favorited ? "★" : "☆" }}
-      </text>
-    </view>
 
-    <!--
-      店铺公告：店主自发，老客一进来就看到。
-      **带更新时间**：一句没有时间的「今天到了新米」，既可能是今早写的、
-      也可能是上个月忘了撤的 —— 分不出来就不会照着它跑一趟，而那正是这行字的用处。
-    -->
-    <view v-if="data.store.announcement" class="txt-sub sh-notice notice">
-      <text>{{ data.store.announcement }}</text>
-      <text v-if="noticeAt" class="txt-caption notice__at">{{ noticeAt }}</text>
-    </view>
-
-    <!-- 第一屏：我买过的。这是本页存在的理由 -->
-    <view class="sh-block">
-      <sh-section pad :title="String(hasFrequent ? $t('store.frequent') : $t('store.hot'))">
-        <text v-if="hasFrequent" class="sh-link" @tap="reorder">{{
-          $t("store.reorder")
-        }}</text>
-      </sh-section>
-
-      <view
-        v-for="f in frequent"
-        :key="f.skuNo"
-        class="freq sh-row"
-        :class="{ 'is-off': f.invalid }"
-      >
-        <sh-cover class="freq__cover" :src="f.cover"></sh-cover>
-        <view class="sh-fill" @tap="gotoGoods(f.goodsNo)">
-          <text class="txt-strong freq__title">{{ f.title }}</text>
-          <text class="sh-muted">{{ f.spec }}</text>
-          <view class="freq__tags sh-wrap">
-            <text v-if="f.times > 1" class="sh-chip">{{
-              $t("store.times", { n: f.times })
-            }}</text>
-            <text v-if="f.price > f.lastPrice" class="sh-chip sh-chip--warning">
-              {{ $t("store.priceUp", { p: money(f.lastPrice) }) }}
+      <!-- 店招：登录用户看到的是「常买」优先，这里只占一行 -->
+      <view class="store sh-row">
+        <text class="store__logo">{{ data.merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
+        <view class="sh-fill">
+          <view class="store__row sh-row">
+            <text class="txt-title">{{ data.merchant.name }}</text>
+            <text v-if="data.merchant.verified" class="sh-chip sh-chip--primary">
+              {{ $t("merchant.verified") }}
             </text>
-            <text v-if="f.invalid" class="sh-chip sh-chip--danger">{{
-              $t("store.invalid")
-            }}</text>
+          </view>
+          <view class="addr sh-row">
+            <text class="sh-muted sh-fill">
+              {{ data.store.openHours }} · {{ data.store.address }}
+            </text>
+            <text v-if="data.store.latE6 != null" class="txt-caption addr__nav" @tap="navToStore">
+              {{ $t("community.navigate") }}
+            </text>
           </view>
         </view>
-        <view class="freq__buy">
-          <text class="txt-price freq__price sh-num">{{ money(f.price) }}</text>
-          <text class="txt-body add sh-hit" @tap="addOne(f)">＋</text>
-        </view>
+        <text class="fav" :class="{ 'is-on': data.favorited }" @tap="toggleFav">
+          {{ data.favorited ? "★" : "☆" }}
+        </text>
       </view>
-
-      <!-- 履约说明：超区在店铺页就说清楚，不等到结算 -->
-      <view class="sh-notice sh-notice--muted ship">
-        <text class="sh-muted">{{ $t("store.fulfillHint") }}</text>
-      </view>
-    </view>
-
-    <!-- 店内搜索 + 全部商品 -->
-    <view class="sh-block">
-      <sh-section pad :title="String($t('store.allGoods'))">
-        <text class="sh-muted sh-num">{{ goods.length }}</text>
-      </sh-section>
-      <input
-        maxlength="32"
-        v-model="keyword"
-        class="txt-sub search"
-        :placeholder="$t('store.searchPh')"
-      />
 
       <!--
-        类目行：店主排的顺序、店主起的名字。
-        横滚而不是换行 —— 一家店摆七八类是常事，换行会把商品列表推到屏幕外。
+        店铺公告：店主自发，老客一进来就看到。
+        **带更新时间**：一句没有时间的「今天到了新米」，既可能是今早写的、
+        也可能是上个月忘了撤的 —— 分不出来就不会照着它跑一趟，而那正是这行字的用处。
       -->
-      <scroll-view v-if="showShelves" class="cats" scroll-x>
-        <view class="cats__row">
-          <text
-            class="txt-bold sh-chip"
-            :class="{ 'sh-chip--primary': !pickedCat }"
-            @tap="pickedCat = ''"
-          >
-            {{ $t("store.allCats") }}
-          </text>
-          <text
-            v-for="c in shelves"
-            :key="c.categoryNo"
-            class="txt-bold sh-chip"
-            :class="{ 'sh-chip--primary': pickedCat === c.categoryNo }"
-            @tap="pickedCat = pickedCat === c.categoryNo ? '' : c.categoryNo"
-          >
-            {{ c.name }} {{ c.count }}
-          </text>
-        </view>
-      </scroll-view>
+      <view v-if="data.store.announcement" class="txt-sub sh-notice notice">
+        <text>{{ data.store.announcement }}</text>
+        <text v-if="noticeAt" class="txt-caption notice__at">{{ noticeAt }}</text>
+      </view>
 
-      <biz-goods-card
-        v-for="g in goods"
-        :key="g.goodsNo"
-        :goods="g"
-        @tap="gotoGoods(g.goodsNo)"
-        @add="addGoods(g, $event)"
-      ></biz-goods-card>
-    </view>
-    <!--
-      悬浮购物车入口。**这三页此前加完购就没有下文** —— 不是 tab 页、没有操作条，
-      屏幕上再没有任何东西提到购物车。它同时是飞入动效的落点（见组件注释）。
-    -->
-    <biz-cart-fab></biz-cart-fab>
+      <!-- 第一屏：我买过的。这是本页存在的理由 -->
+      <view class="sh-block">
+        <sh-section pad :title="String(hasFrequent ? $t('store.frequent') : $t('store.hot'))">
+          <text v-if="hasFrequent" class="sh-link" @tap="reorder">{{
+            $t("store.reorder")
+          }}</text>
+        </sh-section>
+
+        <view
+          v-for="f in frequent"
+          :key="f.skuNo"
+          class="freq sh-row"
+          :class="{ 'is-off': f.invalid }"
+        >
+          <sh-cover class="freq__cover" :src="f.cover"></sh-cover>
+          <view class="sh-fill" @tap="gotoGoods(f.goodsNo)">
+            <text class="txt-strong freq__title">{{ f.title }}</text>
+            <text class="sh-muted">{{ f.spec }}</text>
+            <view class="freq__tags sh-wrap">
+              <text v-if="f.times > 1" class="sh-chip">{{
+                $t("store.times", { n: f.times })
+              }}</text>
+              <text v-if="f.price > f.lastPrice" class="sh-chip sh-chip--warning">
+                {{ $t("store.priceUp", { p: money(f.lastPrice) }) }}
+              </text>
+              <text v-if="f.invalid" class="sh-chip sh-chip--danger">{{
+                $t("store.invalid")
+              }}</text>
+            </view>
+          </view>
+          <view class="freq__buy">
+            <text class="txt-price freq__price sh-num">{{ money(f.price) }}</text>
+            <text class="txt-body add sh-hit" @tap="addOne(f)">＋</text>
+          </view>
+        </view>
+
+        <!-- 履约说明：超区在店铺页就说清楚，不等到结算 -->
+        <view class="sh-notice sh-notice--muted ship">
+          <text class="sh-muted">{{ $t("store.fulfillHint") }}</text>
+        </view>
+      </view>
+
+      <!-- 店内搜索 + 全部商品 -->
+      <view class="sh-block">
+        <sh-section pad :title="String($t('store.allGoods'))">
+          <text class="sh-muted sh-num">{{ goods.length }}</text>
+        </sh-section>
+        <input
+          maxlength="32"
+          v-model="keyword"
+          class="txt-sub search"
+          :placeholder="$t('store.searchPh')"
+        />
+
+        <!--
+          类目行：店主排的顺序、店主起的名字。
+          横滚而不是换行 —— 一家店摆七八类是常事，换行会把商品列表推到屏幕外。
+        -->
+        <scroll-view v-if="showShelves" class="cats" scroll-x>
+          <view class="cats__row">
+            <text
+              class="txt-bold sh-chip"
+              :class="{ 'sh-chip--primary': !pickedCat }"
+              @tap="pickedCat = ''"
+            >
+              {{ $t("store.allCats") }}
+            </text>
+            <text
+              v-for="c in shelves"
+              :key="c.categoryNo"
+              class="txt-bold sh-chip"
+              :class="{ 'sh-chip--primary': pickedCat === c.categoryNo }"
+              @tap="pickedCat = pickedCat === c.categoryNo ? '' : c.categoryNo"
+            >
+              {{ c.name }} {{ c.count }}
+            </text>
+          </view>
+        </scroll-view>
+
+        <biz-goods-card
+          v-for="g in goods"
+          :key="g.goodsNo"
+          :goods="g"
+          @tap="gotoGoods(g.goodsNo)"
+          @add="addGoods(g, $event)"
+        ></biz-goods-card>
+      </view>
+      <!--
+        悬浮购物车入口。**这三页此前加完购就没有下文** —— 不是 tab 页、没有操作条，
+        屏幕上再没有任何东西提到购物车。它同时是飞入动效的落点（见组件注释）。
+      -->
+      <biz-cart-fab></biz-cart-fab>
+  
+    </template>
   </sh-scaffold>
 </template>
 

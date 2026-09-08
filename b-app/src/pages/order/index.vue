@@ -55,6 +55,12 @@ const offlineAsking = ref(false);
 const dueMinor = computed(() => order.value?.amount.payableMinor ?? 0);
 const deductedMinor = computed(() => order.value?.amount.pointsDeductMinor ?? 0);
 
+/** 这次没取到。**与「这个东西不存在」是两件事** —— 预填失败留下的是一张空表单，
+ *  照着它填完保存，存出来的是一条新的，原来那条还在 */
+const failed = ref(false);
+/** 重试要把单号带回去 —— `@retry` 不带参数 */
+const currentNo = ref("");
+
 async function confirmOffline() {
   if (!order.value || busy.value) return;
   busy.value = true;
@@ -70,7 +76,15 @@ async function confirmOffline() {
 }
 
 async function load(orderNo: string) {
-  order.value = await api.mOrderDetail(orderNo);
+  currentNo.value = orderNo;
+  try {
+    order.value = await api.mOrderDetail(orderNo);
+    failed.value = false;
+  } catch {
+    // 此前这句是裸的：拉挂了是一个没人接的 Promise 拒绝，
+    // 界面上一个字都不说，整页停在空白
+    failed.value = true;
+  }
 }
 
 async function ship() {
@@ -106,7 +120,10 @@ onLoad((q) => {
 
 <template>
   <!-- 正常入口（订单列表）已判过一次，这里是给刷新与深链兜底 -->
-  <sh-scaffold title-key="order.detail" :denied="!merchant.can('biz:order:view')">
+  <sh-scaffold title-key="order.detail" :denied="!merchant.can('biz:order:view')"
+    :failed="failed"
+    @retry="() => load(currentNo)"
+  >
     <template v-if="order">
       <view class="sh-card">
         <view class="line sh-row sh-row--between">

@@ -55,9 +55,24 @@ const budgetTooLow = computed(() => {
   return b > 0 && exposure.value > 0 && b < exposure.value;
 });
 
+/** 这次没取到。**与「这个东西不存在」是两件事** —— 预填失败留下的是一张空表单，
+ *  照着它填完保存，存出来的是一条新的，原来那条还在 */
+/** 重试要把单号带回去 —— `@retry` 不带参数，而 `activityNo`/`couponNo`
+ *  是**加载成功之后**才设的，失败时它们是空的 */
+const currentNo = ref("");
+const failed = ref(false);
+
 async function loadExisting(no: string) {
-  const c = await api.mCoupon(no).catch(() => null);
-  if (!c) return;
+  currentNo.value = no;
+  // 同 activity-edit：兜成 null 会让「编辑这张券」静默变成「新建一张空券」
+  let c;
+  try {
+    c = await api.mCoupon(no);
+    failed.value = false;
+  } catch {
+    failed.value = true;
+    return;
+  }
   couponNo.value = c.couponNo;
   form.value = {
     title: c.title,
@@ -144,7 +159,10 @@ onLoad((q) => {
 </script>
 
 <template>
-  <sh-scaffold title-key="couponEdit.title" :denied="!merchant.can('biz:campaign')">
+  <sh-scaffold title-key="couponEdit.title" :denied="!merchant.can('biz:campaign')"
+    :failed="failed"
+    @retry="() => loadExisting(currentNo)"
+  >
     <view class="sh-card">
       <text class="field__label">{{ $t("couponEdit.name") }}</text>
       <input maxlength="64" v-model="form.title" class="field__input" :placeholder="$t('couponEdit.namePh')" />

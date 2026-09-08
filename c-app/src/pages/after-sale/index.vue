@@ -49,8 +49,20 @@ const instantRefund = computed(
 
 const canSubmit = computed(() => !!reason.value && !submitting.value);
 
+/** 这次没取到。**与「这个东西不存在」是两件事** —— 整页都挂在 `order` 后面，
+ *  拉不到连外壳都不渲染，是一整块白屏：没有导航栏、没有一个字、退不回去 */
+const failed = ref(false);
+/** 重试要把单号带回去 —— `@retry` 不带参数 */
+const currentNo = ref("");
+
 async function load(orderNo: string) {
-  order.value = await api.orderDetail(orderNo);
+  currentNo.value = orderNo;
+  try {
+    order.value = await api.orderDetail(orderNo);
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
 }
 
 async function pickImages() {
@@ -99,98 +111,108 @@ onLoad((q) => {
 </script>
 
 <template>
-  <sh-scaffold v-if="order" title-key="afterSale.title">
-    <!-- 已提交：展示进度 -->
-    <template v-if="submitted">
-      <view class="sh-card done">
-        <text class="done__icon">✓</text>
-        <text class="txt-title done__title">
-          {{ order.status === "REFUNDED" ? $t("afterSale.refunded") : $t("afterSale.applied") }}
-        </text>
-        <text class="txt-caption done__hint">
-          {{ order.status === "REFUNDED" ? $t("afterSale.refundedHint") : $t("afterSale.appliedHint") }}
-        </text>
-      </view>
-
-      <view class="sh-card block">
-        <view v-for="(n, i) in order.timeline.slice(-3)" :key="i" class="node sh-row">
-          <view class="node__dot" :class="{ 'is-last': i === order.timeline.slice(-3).length - 1 }" />
-          <text class="txt-caption node__label txt-ink">{{ n.label }}</text>
+  <sh-scaffold title-key="afterSale.title"
+    :pending="!order"
+    :failed="failed"
+    @retry="() => load(currentNo)"
+  >
+    <!-- 正文全靠 `order` 解引用，所以要一层 `v-if` 让 vue-tsc 收窄类型。
+         **不写在 `<sh-scaffold>` 上**：写在那儿的话，`order` 为空时连外壳都不渲染 ——
+         没有导航栏、没有一个字，退不回去。守卫留在这里，外壳照常在。 -->
+    <template v-if="order">
+      <!-- 已提交：展示进度 -->
+      <template v-if="submitted">
+        <view class="sh-card done">
+          <text class="done__icon">✓</text>
+          <text class="txt-title done__title">
+            {{ order.status === "REFUNDED" ? $t("afterSale.refunded") : $t("afterSale.applied") }}
+          </text>
+          <text class="txt-caption done__hint">
+            {{ order.status === "REFUNDED" ? $t("afterSale.refundedHint") : $t("afterSale.appliedHint") }}
+          </text>
         </view>
-      </view>
 
-      <view class="sh-btn block" @tap="gotoOrder">{{ $t("pay.viewOrder") }}</view>
-    </template>
-
-    <!-- 申请表单 -->
-    <template v-else>
-      <view class="sh-card">
-        <biz-sku-row
-          v-for="(it, i) in order.items.filter((x) => !x.isGift)"
-          :key="i"
-          :cover="it.cover"
-          :title="it.title"
-          :spec="it.spec"
-        >
-          <template #right>
-            <text class="txt-strong row__price sh-num">{{ money(it.price) }}</text>
-          </template>
-        </biz-sku-row>
-      </view>
-
-      <view class="sh-card block">
-        <text class="txt-title">{{ $t("afterSale.pickType") }}</text>
-        <view class="types">
-          <sh-option
-            v-for="tp in TYPES"
-            :key="tp"
-            class="type"
-            :selected="type === tp"
-            @tap="type = tp"
-          >
-            <text class="txt-strong type__t">{{ typeText(tp) }}</text>
-            <text class="txt-caption type__d">{{ typeText(tp, "Desc") }}</text>
-          </sh-option>
-        </view>
-      </view>
-
-      <view class="sh-card block">
-        <text class="txt-title">{{ $t("afterSale.pickReason") }}</text>
-        <view class="reasons sh-wrap">
-          <view
-            v-for="r in REASONS"
-            :key="r"
-            class="sh-seg"
-            :class="{ 'sh-seg--on': reason === r }"
-            @tap="reason = r"
-          >
-            {{ $t(`afterSale.reason.${r}`) }}
+        <view class="sh-card block">
+          <view v-for="(n, i) in order.timeline.slice(-3)" :key="i" class="node sh-row">
+            <view class="node__dot" :class="{ 'is-last': i === order.timeline.slice(-3).length - 1 }" />
+            <text class="txt-caption node__label txt-ink">{{ n.label }}</text>
           </view>
         </view>
-      </view>
 
-      <view class="sh-card block">
-        <text class="txt-title">{{ $t("afterSale.detail") }}</text>
-        <textarea
-          v-model="detail"
-          class="field__area ta"
-          :placeholder="$t('afterSale.detailPh')"
-          maxlength="200"
-        />
+        <view class="sh-btn block" @tap="gotoOrder">{{ $t("pay.viewOrder") }}</view>
+      </template>
 
-        <text class="sh-muted imglabel">{{ $t("afterSale.images") }}</text>
-        <sh-uploader class="imgs" :list="images" :max="3" :width="160" @add="pickImages"></sh-uploader>
-      </view>
-
-      <view v-if="instantRefund" class="sh-card block notice">
-        <text class="txt-caption notice__text txt-primary">{{ $t("afterSale.instant") }}</text>
-      </view>
-
-      <sh-actionbar :pad="180">
-        <view class="sh-btn" :class="{ 'is-disabled': !canSubmit }" @tap="submit">
-          {{ submitting ? $t("confirm.submitting") : $t("afterSale.submit") }}
+      <!-- 申请表单 -->
+      <template v-else>
+        <view class="sh-card">
+          <biz-sku-row
+            v-for="(it, i) in order.items.filter((x) => !x.isGift)"
+            :key="i"
+            :cover="it.cover"
+            :title="it.title"
+            :spec="it.spec"
+          >
+            <template #right>
+              <text class="txt-strong row__price sh-num">{{ money(it.price) }}</text>
+            </template>
+          </biz-sku-row>
         </view>
-      </sh-actionbar>
+
+        <view class="sh-card block">
+          <text class="txt-title">{{ $t("afterSale.pickType") }}</text>
+          <view class="types">
+            <sh-option
+              v-for="tp in TYPES"
+              :key="tp"
+              class="type"
+              :selected="type === tp"
+              @tap="type = tp"
+            >
+              <text class="txt-strong type__t">{{ typeText(tp) }}</text>
+              <text class="txt-caption type__d">{{ typeText(tp, "Desc") }}</text>
+            </sh-option>
+          </view>
+        </view>
+
+        <view class="sh-card block">
+          <text class="txt-title">{{ $t("afterSale.pickReason") }}</text>
+          <view class="reasons sh-wrap">
+            <view
+              v-for="r in REASONS"
+              :key="r"
+              class="sh-seg"
+              :class="{ 'sh-seg--on': reason === r }"
+              @tap="reason = r"
+            >
+              {{ $t(`afterSale.reason.${r}`) }}
+            </view>
+          </view>
+        </view>
+
+        <view class="sh-card block">
+          <text class="txt-title">{{ $t("afterSale.detail") }}</text>
+          <textarea
+            v-model="detail"
+            class="field__area ta"
+            :placeholder="$t('afterSale.detailPh')"
+            maxlength="200"
+          />
+
+          <text class="sh-muted imglabel">{{ $t("afterSale.images") }}</text>
+          <sh-uploader class="imgs" :list="images" :max="3" :width="160" @add="pickImages"></sh-uploader>
+        </view>
+
+        <view v-if="instantRefund" class="sh-card block notice">
+          <text class="txt-caption notice__text txt-primary">{{ $t("afterSale.instant") }}</text>
+        </view>
+
+        <sh-actionbar :pad="180">
+          <view class="sh-btn" :class="{ 'is-disabled': !canSubmit }" @tap="submit">
+            {{ submitting ? $t("confirm.submitting") : $t("afterSale.submit") }}
+          </view>
+        </sh-actionbar>
+      </template>
+  
     </template>
   </sh-scaffold>
 </template>
