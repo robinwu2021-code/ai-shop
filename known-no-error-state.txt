@@ -1,0 +1,101 @@
+# 已知「拉数据但没有出错态」的页面 —— 失败与「这儿本来就没有」长得一模一样。
+# 判据见 packages/shared/tests/ui-package.test.ts 的「拉数据的页面要区分出错与空」。
+#
+# 这份名单**只准变短**。补法：
+#   1. 加一个 `failed` ref，`try/catch` 里置位（**别再写 `.catch(() => [])`**）
+#   2. 空态改成 `<sh-empty :pending="!loaded" :failed="failed" @retry="load" ...>`
+#      —— 三种态归它一个件管，文案走 `common.loadFailed` / `loadFailedTip` / `retry`
+#   3. 有页面特有的说法就传 `failed-text`（`community` 的「没能加载附近的自提点」
+#      比通用的「没能加载出来」有用）
+#
+# ⚠️ 机制不是「忘了处理」，是**处理成了另一件事**：全仓 `.catch(() => [])` 55 处、
+# `.catch(() => null)` 41 处 —— 代码在主动把失败变成「空」。
+# 于是网络不通时，「暂无收货地址」与「你确实还没填过地址」一模一样，
+# 而前者该给「重试」、后者该给「去添加」，给反了比不给更糟。
+
+b-app/activities
+b-app/activity-edit
+b-app/after-sale
+b-app/apply
+b-app/coupon-edit
+b-app/coupon-issues
+b-app/coupons
+b-app/customers
+b-app/delivery
+b-app/deposit
+b-app/entity-detail
+b-app/goods-edit
+b-app/goods-list
+b-app/goods-publish
+b-app/groups
+b-app/home
+b-app/income
+b-app/invoice
+b-app/locations
+b-app/login
+b-app/marketing
+b-app/me
+b-app/member-add
+b-app/member-detail
+b-app/member-reach
+b-app/member-segments
+b-app/member-settings
+b-app/member-tags
+b-app/messages
+b-app/my-specs
+b-app/order
+b-app/orders
+b-app/payment
+b-app/picking
+b-app/points
+b-app/points-records
+b-app/purchase-edit
+b-app/qualifications
+b-app/quotes
+b-app/reviews
+b-app/role-detail
+b-app/schedule
+b-app/settle
+b-app/sku-identity
+b-app/staff
+b-app/staff-detail
+b-app/statement
+b-app/stats
+b-app/stock
+b-app/stock-check
+b-app/stock-cross
+b-app/stock-detail
+b-app/stock-docs
+b-app/stock-out
+b-app/stock-report
+b-app/store
+b-app/store-categories
+b-app/store-notice
+b-app/store-scope
+b-app/stores
+b-app/suppliers
+b-app/transfer
+b-app/withdraw
+c-app/address-pick
+c-app/after-sale
+c-app/cards
+c-app/category
+c-app/coupons
+c-app/goods
+c-app/group
+c-app/group-host
+c-app/groups
+c-app/home
+c-app/login
+c-app/me
+c-app/merchant
+c-app/merchants
+c-app/messages
+c-app/order-confirm
+c-app/pay
+c-app/points
+c-app/request
+c-app/request-create
+c-app/review-write
+c-app/search
+c-app/store

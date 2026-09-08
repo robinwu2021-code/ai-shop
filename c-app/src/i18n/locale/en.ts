@@ -83,8 +83,6 @@ export default {
     empty: "No pickup points here yet",
     emptyTip: "We are opening more neighbourhoods — have a look at the goods meanwhile",
     failed: "Could not load nearby pickup points",
-    failedTip: "Most likely the network. Check it and try again.",
-    retry: "Retry",
   },
   goods: {
     whyNoSku: "That combination is not available — try another",

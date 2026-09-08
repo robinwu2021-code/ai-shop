@@ -1603,6 +1603,12 @@ describe("空态不许在还不知道时出现", () => {
       for (const rel of readdirSync(dir, { recursive: true, encoding: "utf8" })) {
         if (!rel.endsWith("index.vue")) continue;
         const tpl = readFileSync(join(dir, rel), "utf8").split("<style")[0]!;
+        // **两种守法都算**：条件里带加载判据（`v-if="loaded && !list.length"`），
+        // 或者把它交给件（`<sh-empty :pending="!loaded">`）。
+        // 后者是 2026-09-08 之后的写法 —— 三种态归 `sh-empty` 一个件管。
+        // 判据只认前一种的话，**改成更好的写法反而会变红**（当天就撞上了）。
+        const tags = [...tpl.matchAll(/<sh-empty[^>]*>/g)].map((m) => m[0]);
+        if (tags.some((t) => /:pending=/.test(t))) continue;
         const conds = [...tpl.matchAll(/<sh-empty[^>]*v-(?:if|else-if)="([^"]+)"/g)].map((m) => m[1]!);
         if (!conds.length || conds.some((c) => LOADED.test(c))) continue;
         bad.push(`${app}/${rel.split("/")[0]}`);
@@ -1686,5 +1692,62 @@ describe("件不自己写 font-size", () => {
   it("名单不许锈：登记了却已经不写字号的要删掉", () => {
     const stale = Object.keys(ALLOW).filter((f) => !found.has(f));
     expect(stale, `这些件已经不自己写字号了，名单该删：${stale.join(", ")}`).toEqual([]);
+  });
+});
+
+/*
+ * **拉数据的页面要区分「出错」与「空」。**
+ *
+ * 2026-09-08 逐页量：94 页拉数据、87 页 `catch` 了，**只有 6 页有出错态**。
+ * 机制不是「忘了处理」，是**处理成了另一件事** —— 全仓 `.catch(() => [])` 55 处、
+ * `.catch(() => null)` 41 处：代码在主动把失败变成「空」。
+ *
+ * 后果：网络不通时，「暂无收货地址」和「你确实还没填过地址」长得一模一样。
+ * 前者该给「重试」，后者该给「去添加」—— **给反了比不给更糟**。
+ *
+ * 收法不是让 88 个页面各写一遍：`sh-empty` 收了 `pending` / `failed` 两态，
+ * 文案走 `common.loadFailed` / `loadFailedTip` / `retry`（词条本来就在，只是没人用）。
+ * 页面只需要一个 `failed` ref。
+ *
+ * 存量上棘轮，新写的页面直接拦。
+ */
+describe("拉数据的页面要区分出错与空", () => {
+  const baseline = new Set(
+    readFileSync(join(ROOT, "known-no-error-state.txt"), "utf8")
+      .split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")),
+  );
+
+  function offenders(): string[] {
+    const bad: string[] = [];
+    for (const app of APPS) {
+      const dir = join(ROOT, app, "src/pages");
+      for (const rel of readdirSync(dir, { recursive: true, encoding: "utf8" })) {
+        if (!rel.endsWith("index.vue")) continue;
+        const src = readFileSync(join(dir, rel), "utf8");
+        if (!/\bapi\.\w+\(/.test(src)) continue;      // 不拉数据的页面没有这个问题
+        if (/\b(failed|errMsg)\b/.test(src)) continue;
+        bad.push(`${app}/${rel.split("/")[0]}`);
+      }
+    }
+    return bad;
+  }
+
+  it("扫得到页面（否则下面全是空转）", () => {
+    expect(baseline.size).toBeGreaterThan(50);
+  });
+
+  it("没有新增的「失败长得像空」页面", () => {
+    const neu = offenders().filter((p) => !baseline.has(p));
+    expect(
+      neu,
+      "加一个 `failed` ref，别写 `.catch(() => [])`；空态改成\n" +
+        "`<sh-empty :pending=\"!loaded\" :failed=\"failed\" @retry=\"load\">`：\n" + neu.join("\n"),
+    ).toEqual([]);
+  });
+
+  it("棘轮不许锈：名单里补好的页面要删掉", () => {
+    const live = new Set(offenders());
+    const stale = [...baseline].filter((p) => !live.has(p));
+    expect(stale, `这些页面已经有出错态了，名单该删：\n${stale.join("\n")}`).toEqual([]);
   });
 });

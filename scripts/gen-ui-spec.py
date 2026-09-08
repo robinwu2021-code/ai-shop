@@ -154,6 +154,8 @@ def page_facts():
             m = re.search(r"<sh-scaffold([^>]*)>", tpl)
             attrs = m.group(1) if m else ""
             conds = re.findall(r'<sh-empty[^>]*v-(?:if|else-if)="([^"]+)"', tpl)
+            # 与断言同源：把守卫交给件（`:pending`）也算守好了
+            handed = bool(re.search(r'<sh-empty[^>]*:pending=', tpl))
             rows.append({
                 "app": app, "page": f.parent.name,
                 "scaffold": "sh-scaffold" in tpl,
@@ -166,8 +168,9 @@ def page_facts():
                 # 判据与 `ui-package.test.ts`「空态不许在还不知道时出现」**逐字同源** ——
                 # 末尾那个 `(?!\s*\.)` 不能少：`b-app/delivery` 的 `!pending.length` 里
                 # `pending` 是待处理列表不是加载标志，少了它这份文档会比闸门少数一页。
-                "emptyGuarded": any(re.search(r"\b(loading|loaded|pending|inited|ready|firstLoad)\b(?!\s*\.)", c)
-                                    for c in conds),
+                "emptyGuarded": handed or any(
+                    re.search(r"\b(loading|loaded|pending|inited|ready|firstLoad)\b(?!\s*\.)", c)
+                    for c in conds),
                 "bottomBar": ("sh-actionbar" in tpl or "sh-savebar" in tpl),
             })
     return rows

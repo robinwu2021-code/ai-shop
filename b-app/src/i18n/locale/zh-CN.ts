@@ -2,6 +2,8 @@
 // 同一笔订单两端说法不同，强行共用一套词条只会互相将就。
 export default {
   common: {
+    loadFailed: "没能加载出来",
+    loadFailedTip: "多半是网络不通。检查网络后重试。",
     remove: "移除",
     yes: "是",
     no: "否",

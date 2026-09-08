@@ -1,5 +1,7 @@
 export default {
   common: {
+    loadFailed: "Could not load",
+    loadFailedTip: "Most likely the network. Check it and try again.",
     remove: "Remove", search: "Search", yes: "Yes", no: "No", back: "Back", confirm: "OK", cancel: "Cancel", done: "Done", save: "Save", loading: "Loading…", empty: "Nothing here yet", retry: "Retry", saved: "Saved", all: "All",
     sessionExpired: "Session expired, please sign in again",
     unexpected: "Something went wrong — please try again",

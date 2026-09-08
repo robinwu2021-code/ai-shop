@@ -19,10 +19,20 @@ const { t } = useI18n();
 const list = ref<MyMembership[]>([]);
 /** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
 const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「你还没有会员」 */
+const failed = ref(false);
 const busy = ref("");
 
 async function load() {
-  list.value = await api.myMemberships().catch(() => []);
+  // `.catch(() => [])` 会把失败变成「空」—— 那正是全仓 88 页共有的那个 bug。
+  // 这里把两件事分开：取到了就清掉出错态，没取到就记下来，列表保持原样
+  //（刷新失败时把已有内容清空，比显示旧数据更糟）。
+  try {
+    list.value = await api.myMemberships();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
   loaded.value = true;
 }
 
@@ -54,7 +64,14 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="myMembership.title">
-    <sh-empty bare v-if="loaded && !list.length" :text="String($t('myMembership.empty'))"></sh-empty>
+    <sh-empty
+      bare
+      v-if="!list.length"
+      :pending="!loaded"
+      :failed="failed"
+      :text="String($t('myMembership.empty'))"
+      @retry="load"
+    ></sh-empty>
 
     <view v-for="m in list" :key="m.entityNo" class="sh-card card sh-row sh-row--between">
       <view class="card__main">

@@ -1,5 +1,7 @@
 export default {
   common: {
+    loadFailed: "تعذّر التحميل",
+    loadFailedTip: "الشبكة على الأرجح. تحقّق منها ثم أعد المحاولة.",
     remove: "إزالة", search: "بحث", yes: "نعم", no: "لا", back: "رجوع", confirm: "تأكيد", cancel: "إلغاء", done: "تم", save: "حفظ", loading: "جارٍ التحميل…", empty: "لا يوجد محتوى بعد", retry: "إعادة", saved: "تم الحفظ", all: "الكل",
     submit: "إرسال",
     sessionExpired: "انتهت الجلسة، يرجى تسجيل الدخول مجددًا",

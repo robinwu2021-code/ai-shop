@@ -319,15 +319,16 @@ onLoad(load);
       }}</text>
     </view>
 
+    <!-- 出错态归 sh-empty（2026-09-08）。此前这里手写了一遍：三行标签 + 三个自己的词条，
+         其中「多半是网络不通」与「重试」与 common 里的一字不差。只有那句
+         「没能加载附近的自提点」是页面特有的 —— 说清了什么没加载出来，比通用的有用，
+         所以走 failed-text 传进去。 -->
     <sh-empty
       v-else-if="failed"
-      :text="String($t('community.failed'))"
-      :tip="String($t('community.failedTip'))"
-    >
-      <template #action>
-        <view class="sh-btn sh-btn--sm" @tap="load">{{ $t("community.retry") }}</view>
-      </template>
-    </sh-empty>
+      :failed="true"
+      :failed-text="String($t('community.failed'))"
+      @retry="load"
+    ></sh-empty>
 
     <!-- 第一步：选区域。只列有已开通社区的区，并把社区数摆在旁边 -->
     <view v-else-if="pickingRegion" class="rg">

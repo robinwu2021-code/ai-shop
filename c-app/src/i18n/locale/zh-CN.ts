@@ -85,8 +85,6 @@ export default {
     empty: "这一带还没有自提点",
     emptyTip: "我们正在开通更多社区，先逛逛商品吧",
     failed: "没能加载附近的自提点",
-    failedTip: "多半是网络不通。检查网络后重试。",
-    retry: "重试",
   },
   goods: {
     whyNoSku: "这个规格组合暂时买不到，换一个试试",

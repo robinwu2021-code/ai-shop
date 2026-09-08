@@ -17,6 +17,24 @@
 // （72 24 / 80 40 / 96 48 / 120 40），`community` 连按钮都自己画了一个。
 // 判据当年撤掉「空态」那一条时的理由是「那不是 sh-empty 那种一行灰字」——
 // 说得对，但结论应该是**把这一档补进来**，不是让它在外面各长各的。
+//
+// ── 三种「没东西可看」是三件事 ────────────────────────────────
+//
+// 一个拉数据的页面有四种态：加载中 / 有数据 / 确定为空 / 出错。
+// 而 2026-09-08 逐页量下来：**88 页拉数据，只有 6 页区分了出错与空**，
+// 机制就在这一行 —— 全仓 `.catch(() => [])` 55 处、`.catch(() => null)` 41 处：
+// **代码在主动把失败变成「空」**。不是忘了处理，是处理成了另一件事。
+//
+// 后果：网络不通时，「暂无收货地址」和「你确实还没填过地址」长得一模一样。
+// 前者该给一个「重试」，后者该给一个「去添加」——给反了比不给更糟。
+//
+// 所以这个件收三种态，而不是让 88 个页面各写一遍：
+//   pending  还不知道 → **什么都不渲染**（不是转圈：这一档留给骨架屏，眼下不做）
+//   failed   没取到   → 「没能加载出来」+ 一句原因 + 重试
+//   都不是   确定为空 → 调用点给的 text / tip / #action
+//
+// 文案走 `common.loadFailed` / `loadFailedTip` / `retry` —— **词条本来就在**
+//（c 端三语齐全，b 端 2026-09-08 补齐），只是没人用。
 withDefaults(
   defineProps<{
     text?: string;
@@ -24,18 +42,52 @@ withDefaults(
     tip?: string;
     compact?: boolean;
     bare?: boolean;
+    /** 首屏还没到过 —— 整个件不渲染，避免「先闪一下暂无」 */
+    pending?: boolean;
+    /** 这次没取到（与「确定为空」是两件事） */
+    failed?: boolean;
+    /**
+     * 出错那一行的文案。**留给「说清什么没加载出来」** ——
+     * `community` 手写这一形状时用的是「没能加载附近的自提点」，
+     * 比通用的「没能加载出来」有用得多。不传就用通用的。
+     * 下面那句原因（多半是网络不通）与「重试」两个字不留口子：
+     * 它们在任何一页上都是同一句话，各写一份只会各自漂。
+     */
+    failedText?: string;
   }>(),
-  { text: "", tip: "", compact: false, bare: false },
+  { text: "", tip: "", compact: false, bare: false, pending: false, failed: false, failedText: "" },
 );
+
+// 重试由调用点决定重新拉什么 —— 这里只负责那颗按钮长什么样、摆在哪
+defineEmits<{ retry: [] }>();
 </script>
 
 <template>
-  <view class="empty" :class="{ 'sh-card': !bare, 'is-compact': compact, 'is-bare': bare }">
-    <text class="sh-muted"><slot>{{ text }}</slot></text>
-    <text v-if="tip" class="sh-hint txt-quiet">{{ tip }}</text>
-    <!-- 引导型空态的那个按钮。**具名插槽而不是 props**：动作是什么、叫什么、
-         点了去哪，都是调用点的事；这里只负责它与上面那行字的距离。 -->
-    <view v-if="$slots.action" class="empty__act"><slot name="action"></slot></view>
+  <!-- pending 时整个不渲染：见 script 里那段，「还不知道」不该长成「确定没有」 -->
+  <view
+    v-if="!pending"
+    class="empty"
+    :class="{ 'sh-card': !bare, 'is-compact': compact, 'is-bare': bare }"
+  >
+    <template v-if="failed">
+      <text class="sh-muted">{{ failedText || $t("common.loadFailed") }}</text>
+      <text class="sh-hint txt-quiet">{{ $t("common.loadFailedTip") }}</text>
+      <view class="empty__act">
+        <!-- 与现有 5 处引导型空态同款（`sh-btn sh-btn--sm`）。
+             想过用 `--soft` 压一档，但出错时重试是**这一屏唯一能做的事**，
+             它就是主操作；而与别处不同的按钮只会让人多想一下。 -->
+        <view class="sh-btn sh-btn--sm" @tap="$emit('retry')">
+          {{ $t("common.retry") }}
+        </view>
+      </view>
+    </template>
+    <template v-else>
+      <text class="sh-muted"><slot>{{ text }}</slot></text>
+      <text v-if="tip" class="sh-hint txt-quiet">{{ tip }}</text>
+      <!-- 引导型空态的那个按钮。**具名插槽而不是 props**：动作是什么、叫什么、
+           点了去哪，都是调用点的事；这里只负责它与上面那行字的距离。 -->
+      <view v-if="$slots.action" class="empty__act"><slot name="action"></slot></view>
+    </template>
   </view>
 </template>
 

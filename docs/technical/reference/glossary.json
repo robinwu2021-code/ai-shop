@@ -1042,12 +1042,6 @@
           "ar": "تعذّر تحميل نقاط الاستلام القريبة"
         },
         {
-          "key": "community.failedTip",
-          "zh-CN": "多半是网络不通。检查网络后重试。",
-          "en": "Most likely the network. Check it and try again.",
-          "ar": "غالباً بسبب الشبكة. تحقّق منها ثم أعد المحاولة."
-        },
-        {
           "key": "community.located",
           "zh-CN": "已定位到 {city}{region}，下面是这一带的取货点",
           "en": "Located in {city} {region} — pickup points nearby",
@@ -1076,12 +1070,6 @@
           "zh-CN": "📍 在地图上选择我的位置",
           "en": "📍 Pick my location on map",
           "ar": "📍 اختر موقعي على الخريطة"
-        },
-        {
-          "key": "community.retry",
-          "zh-CN": "重试",
-          "en": "Retry",
-          "ar": "إعادة المحاولة"
         },
         {
           "key": "community.switchTip",
@@ -5406,6 +5394,18 @@
           "zh-CN": "这里还没有内容",
           "en": "Nothing here yet",
           "ar": "لا يوجد محتوى بعد"
+        },
+        {
+          "key": "common.loadFailed",
+          "zh-CN": "没能加载出来",
+          "en": "Could not load",
+          "ar": "تعذّر التحميل"
+        },
+        {
+          "key": "common.loadFailedTip",
+          "zh-CN": "多半是网络不通。检查网络后重试。",
+          "en": "Most likely the network. Check it and try again.",
+          "ar": "الشبكة على الأرجح. تحقّق منها ثم أعد المحاولة."
         },
         {
           "key": "common.loading",
