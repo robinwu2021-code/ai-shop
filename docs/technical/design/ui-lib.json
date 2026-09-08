@@ -690,7 +690,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 20,
+        "b-app": 21,
         "c-app": 30
       }
     },
@@ -762,7 +762,7 @@
         "color": "var(--sh-warning)"
       },
       "usage": {
-        "b-app": 8,
+        "b-app": 9,
         "c-app": 8
       }
     },
@@ -2109,8 +2109,8 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 49,
-        "c-app": 28,
+        "b-app": 50,
+        "c-app": 29,
         "lib": 1
       },
       "note": "空态",
@@ -3443,6 +3443,7 @@
       "components": [
         "sh-add",
         "sh-cover",
+        "sh-empty",
         "sh-icon-btn",
         "sh-icon",
         "sh-kv",
@@ -3451,7 +3452,7 @@
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 288,
+      "libClassHits": 290,
       "localSelectors": 70,
       "localCssLines": 304,
       "rolled": []

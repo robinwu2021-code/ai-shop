@@ -453,8 +453,21 @@ const submitBlockedReason = computed(() => {
 
 const canSubmit = computed(() => !submitBlockedReason.value && !submitting.value);
 
+/** 地址簿这次没取到。**与「一条地址都没存过」是两件事** */
+const addressFailed = ref(false);
+/** 券没取到。**与「无可用券」是两件事** —— 后者会让顾客直接付全价 */
+const couponFailed = ref(false);
+
 async function loadAddresses() {
-  addresses.value = await api.addressList();
+  // 拉挂了 `addresses` 停在空，下面那个 `v-else` 就渲染成「选择收货地址 · 添加」——
+  // 顾客会去新建一条，进去发现自己明明存过几条
+  try {
+    addresses.value = await api.addressList();
+    addressFailed.value = false;
+  } catch {
+    addressFailed.value = true;
+    return;
+  }
   if (!addressId.value) {
     addressId.value =
       addresses.value.find((a) => a.isDefault)?.addressId ??
@@ -464,6 +477,17 @@ async function loadAddresses() {
 }
 
 async function pickCoupon() {
+  // 券没取到时这一行显示「没能加载出来」，点它就是重试 ——
+  // 否则那句话说了等于没说：顾客知道出事了，却没有能做的事
+  if (couponFailed.value) {
+    try {
+      coupons.value = await api.couponList();
+      couponFailed.value = false;
+    } catch {
+      couponFailed.value = true;
+    }
+    return;
+  }
   if (!usableCoupons.value.length) return;
   const names = [
     String(t("confirm.noCoupon")),
@@ -582,12 +606,18 @@ onShow(async () => {
 });
 
 onMounted(async () => {
-  await Promise.all([
-    api.couponList().then((c) => (coupons.value = c)),
-    FEATURES.points
-      ? api.pointAccount().then((a) => (pointBalance.value = a.balance))
-      : Promise.resolve(),
+  /*
+   * `allSettled` 而不是 `all`：此前任一挂掉两条都静默没了 ——
+   * 券那一行显示「无可用券」，而顾客明明有券；积分抵扣那一行直接不出现。
+   * 两件事互不相干，一条挂了不该带走另一条。
+   */
+  const [c, a] = await Promise.allSettled([
+    api.couponList(),
+    FEATURES.points ? api.pointAccount() : Promise.resolve(null),
   ]);
+  if (c.status === "fulfilled") coupons.value = c.value;
+  couponFailed.value = c.status === "rejected";
+  if (a.status === "fulfilled" && a.value) pointBalance.value = a.value.balance;
 });
 </script>
 
@@ -653,6 +683,8 @@ onMounted(async () => {
             {{ $t("confirm.outOfRange", { names: outOfRange.map((m) => m.merchantName).join("、") }) }}
           </text>
         </template>
+        <!-- 没取到与「一条地址都没存过」是两件事：后者该去新建，前者该重试 -->
+        <sh-empty v-else-if="addressFailed" line failed @retry="loadAddresses"></sh-empty>
         <view v-else class="recv__empty sh-row">
           <text class="txt-body recv__empty-text sh-row">{{ $t("confirm.pickAddress") }}</text>
           <text class="txt-caption recv__more">{{ $t("confirm.add") }}</text>
@@ -763,9 +795,11 @@ onMounted(async () => {
         <text class="txt-bold txt-sub cell__v" :class="{ 'is-danger': !!coupon }">
           {{ coupon
             ? `${coupon.title} -${money(couponDiscount(coupon, goodsMinor))}`
-            : usableCoupons.length
-              ? $t("confirm.couponAvailable", { n: usableCoupons.length })
-              : $t("confirm.noCouponAvailable") }}
+            : couponFailed
+              ? $t("common.loadFailed")
+              : usableCoupons.length
+                ? $t("confirm.couponAvailable", { n: usableCoupons.length })
+                : $t("confirm.noCouponAvailable") }}
         </text>
       </view>
       <!-- 积分抵扣：上限是「券后金额」的固定比例，说清楚为什么抵不满 -->

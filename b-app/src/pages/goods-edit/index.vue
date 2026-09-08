@@ -67,6 +67,16 @@ const goodsNo = ref("");
 const stdNo = ref("");
 const stdTitle = ref("");
 const stdKeyword = ref("");
+/**
+ * 草稿没读到。
+ *
+ * **兜成 null 是有意的**（见 onLoad 里那段：别把整页卡死在一个次要请求上），
+ * 但它有代价：那段注释的上半句写着「从线上版重改一遍，一发布上次保存的东西
+ * 就被覆盖了，且不报错」。兜底之后走的正是那条路 —— 所以至少要**说出来**，
+ * 让商家知道这次发布会丢掉上次存的草稿。
+ */
+const draftFailed = ref(false);
+
 const stdResults = ref<SpuStd[]>([]);
 const showStd = ref(false);
 const stdSearching = ref(false);
@@ -732,7 +742,10 @@ onLoad(async (q) => {
      * 上次保存的东西就被这次的覆盖了，且不报错。
      * 读失败按无草稿走（编辑线上版），别把整页卡死在一个次要请求上。
      */
-    api.mGoodsDraft(q.goodsNo).catch(() => null),
+    api.mGoodsDraft(q.goodsNo).catch(() => {
+      draftFailed.value = true;
+      return null;
+    }),
     loadTemplates(),
     loadCategories(),
     loadStoreChannels(),
@@ -1126,6 +1139,13 @@ async function save(thenSubmit = false) {
       没有这行，商家会以为页面上这份就是买家看到的那份 —— 而两者可能已经
       差了好几轮保存。右侧给「查看差异」直达发布确认页。
     -->
+    <!-- 草稿没读到：**必须说出来**。这一页会退回编辑线上版，而一发布就把
+         上次存的草稿覆盖掉，且不报错（见 `draftFailed` 那段）。
+         摆在双版本横幅之前 —— 它比「你在编辑草稿」更要紧。 -->
+    <view v-if="draftFailed" class="sh-notice sh-notice--warning draft-banner">
+      <sh-empty line failed :failed-text="String($t('goods.draftLoadFailed'))"></sh-empty>
+    </view>
+
     <view v-if="editingDraft" class="sh-notice sh-notice--warning draft-banner sh-row">
       <text class="txt-caption sh-fill">{{ $t("goods.draftBanner") }}</text>
       <text class="txt-caption draft-banner__link" @tap="toPublishPage">
