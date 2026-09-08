@@ -107,6 +107,13 @@ const GENERATORS = [
    * 2026-09-09 主菜单合并时补挂：那一轮正是靠重跑它们才发现 point_code 会漂。
    */
   ["ops-web/scripts/gen-perm-seed.mjs", ["docs/technical/design/权限配置落库-数据库设计与数据清单.md"], ["--doc"]],
+  /*
+   * 同一个脚本的第二份产出：菜单 × 角色矩阵。**上面那条注释说的是「种子与导航矩阵」，
+   * 而在 2026-09-09 之前只登记了前者** —— 矩阵由另一份脚本 `gen-nav-matrix.mjs` 产出，
+   * 那份自带一张硬编码的角色表、算出来 10 个非超管角色全是「无权限」，
+   * 却照样跑得通。已删，矩阵并进这里，两份产物共用同一个解析器。
+   */
+  ["ops-web/scripts/gen-perm-seed.mjs", ["docs/technical/design/运营端-动态菜单×角色矩阵.md"], ["--matrix"]],
   ["scripts/gen-ui-spec.py", ["docs/technical/design/规范-字体.md",
                               "docs/technical/design/规范-版面.md",
                               "docs/technical/design/规范-组件.md"]],

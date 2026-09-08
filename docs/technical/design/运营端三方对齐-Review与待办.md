@@ -147,7 +147,7 @@
 | # | 事项 | 防什么 |
 |---|---|---|
 | G1 | **需求编号 ↔ 菜单 `matrix` 双向守卫** | 这次两处不一致（P-3.4 / P-8.1）是人工比出来的，下次还会有 |
-| G2 | 菜单矩阵纳入 CI（`gen-nav-matrix.mjs` 产物 diff） | 改 `nav.ts` / `perm-map.ts` / `Perms.java` 时，**「谁看得到什么」的变化要显式可见** |
+| G2 ✅ | 菜单矩阵纳入闸门（2026-09-09 完成）：`gen-perm-seed.mjs --matrix` 已登记进 `check-generated-docs`。**不是拿 `gen-nav-matrix.mjs` 做 diff** —— 那份脚本的角色表是硬编码且陈的，非超管角色全算成无权限，拿它做 CI 会把一份错的快照钉成基线；已删并入种子生成器 | 改 `nav.ts` / `perm-map.ts` / `Perms.java` 时，**「谁看得到什么」的变化要显式可见** |
 
 ---
 

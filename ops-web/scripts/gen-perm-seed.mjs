@@ -335,6 +335,98 @@ function renderMarkdown(sql) {
   return L.join('\n');
 }
 
+/**
+ * 菜单 × 角色矩阵。**从 nav.ts × perm-map.ts × Perms.ROLE_PERMS 现算**。
+ *
+ * 这一节此前由 `scripts/gen-nav-matrix.mjs` 单独产出，而那份脚本自己抄了一张
+ * 「角色 → 后端码」表。抄来的那张在两处独立地烂掉了：
+ *   · 后端码停在细化之前（写 `merchant:audit`，现状是 `merchant:apply:audit`），
+ *     于是 10 个非超管角色**每一格都算成「无权限」**；
+ *   · 角色码 `MERCHANT_BD` / `PRODUCT_OPS` / `CS` 在 Perms.java 里根本不存在
+ *     （真名是 `BD` / `GOODS_OPS` / `SUPPORT`）—— 11 列里 3 列的键名是虚构的。
+ *
+ * 而它照样跑得通、照样吐出 127 行一张很像样的表。**这是最难发现的坏法**：
+ * 不报错、格式正确、数量对得上，只有结论是反的。而它的产物还被提议做 CI diff。
+ * 合进来之后矩阵与权限种子共用同一个解析器 —— 种子对，它就对。
+ */
+function renderMatrix() {
+  // 列序取 Perms.java 里的出场序：那是真源，谁增删角色它自己跟着走
+  const cols = Object.keys(roles).map((r) => [r, ROLE_NAME[r] ?? r]);
+  const cell = (perm, role) => {
+    const back = map[perm];
+    if (back === undefined) return '?';   // perm-map 里没登记 —— 按钮会神秘消失
+    if (back === null) return '✕';        // 后端整块没做，对所有人隐藏（含超管）
+    const g = roles[role] ?? [];
+    return g.includes('*') || g.includes(back) ? '●' : '·';
+  };
+
+  const all = secs.flatMap((s) => s.leaves);
+  const blocked = all.filter((l) => map[l.perm] === null);
+  const unreg = all.filter((l) => map[l.perm] === undefined);
+  const seen = cols.map(([r]) => all.filter((l) => cell(l.perm, r) === '●').length);
+
+  const L = [];
+  L.push('<!-- BEGIN:generated · 由 `node ops-web/scripts/gen-perm-seed.mjs --matrix` 产出，**请勿手改** -->');
+  L.push('');
+  L.push('## 1. 一眼看到的三件事');
+  L.push('');
+  L.push(`**① ${all.length} 个菜单项里，${blocked.length} 项对所有人隐藏**（含超管）—— 后端整域没开工。`);
+  L.push('它们不是「配漏了」，而是 `perm-map.ts` 里标了 `UNIMPLEMENTED`：');
+  L.push('**显示出来然后点出 404，比藏起来坏得多**。');
+  L.push('');
+  L.push('**② 每个角色实际看得到多少：**');
+  L.push('');
+  L.push(cols.map(([, n], i) => `${n} ${seen[i]}`).join(' | '));
+  L.push('');
+  L.push('数字小得难看的那几个是**如实反映**：后端零端点的域，给谁授权都看不到。');
+  L.push('一个登录后只有两三行菜单的岗位，正是该被看见的事实。');
+  L.push('');
+  L.push(`**③ ${unreg.length} 项 UI 码未登记。** 这条是 \`perm-map.test.ts\` 那几条守卫的功劳 ——`);
+  L.push('页面上用到的码必须在映射表里，漏一个的表现是「按钮神秘消失」。');
+  L.push('');
+  L.push('---');
+  L.push('');
+  L.push('## 2. 矩阵');
+  L.push('');
+  L.push('| 菜单分区 | 菜单项 | UI 权限码 | 后端码 | ' + cols.map((c) => c[1]).join(' | ') + ' |');
+  L.push('|---|---|---|---|' + cols.map(() => ':--:').join('|') + '|');
+  for (const s of secs) {
+    if (!s.leaves.length) {
+      L.push(`| **${s.label}** | *(无叶子)* | — | — | ` + cols.map(() => '○').join(' | ') + ' |');
+      continue;
+    }
+    s.leaves.forEach((l, i) => {
+      const back = map[l.perm];
+      L.push(`| ${i ? '' : '**' + s.label + '**'} | ${l.label}${l.ready ? '' : ' 🚧'} `
+           + `| \`${l.perm}\` | ${back === undefined ? '**未登记**' : back === null ? '*无*' : '`' + back + '`'} `
+           + `| ${cols.map(([r]) => cell(l.perm, r)).join(' | ')} |`);
+    });
+  }
+  L.push('');
+  L.push('<!-- END:generated -->');
+  return L.join('\n');
+}
+
+/**
+ * 把生成块写回文档的标记之间。
+ *
+ * 找不到标记就**退出非零**，不是静默追加 —— 一份「本该被生成、实际没被生成」的文档
+ * 与一份手写文档在磁盘上长得一模一样，而闸门比的是「跑完变没变」：
+ * 静默不写等于每次都不变，那道闸门会永远绿着。
+ */
+function writeBack(rel, md) {
+  const DOC = AT(rel);
+  const cur = readFileSync(DOC, 'utf8');
+  const b = cur.indexOf('<!-- BEGIN:generated');
+  const e = cur.indexOf('<!-- END:generated -->');
+  if (b < 0 || e < 0) {
+    console.error(`${rel} 里找不到 <!-- BEGIN:generated --> / <!-- END:generated --> 标记`);
+    process.exit(1);
+  }
+  writeFileSync(DOC, cur.slice(0, b) + md + cur.slice(e + '<!-- END:generated -->'.length));
+  console.error(`已写回 ${rel.split('/').pop()}`);
+}
+
 const args = process.argv.slice(2);
 if (args.includes('--emit-point-codes')) {
   /*
@@ -370,19 +462,12 @@ if (args.includes('--emit-point-codes')) {
   lines.push('');
   writeFileSync(AT('../lib/point-codes.ts'), lines.join('\n'));
   console.error(`已写出 ${Object.values(secs).reduce((n, s2) => n + s2.leaves.length, 0)} 条 point_code`);
+} else if (args.includes('--matrix')) {
+  writeBack('../../docs/technical/design/运营端-动态菜单×角色矩阵.md', renderMatrix());
 } else if (args.includes('--markdown') || args.includes('--doc')) {
   const md = renderMarkdown(out);
   if (args.includes('--doc')) {
-    const DOC = AT('../../docs/technical/design/权限配置落库-数据库设计与数据清单.md');
-    const cur = readFileSync(DOC, 'utf8');
-    const b = cur.indexOf('<!-- BEGIN:generated');
-    const e = cur.indexOf('<!-- END:generated -->');
-    if (b < 0 || e < 0) {
-      console.error('文档里找不到 <!-- BEGIN:generated --> / <!-- END:generated --> 标记');
-      process.exit(1);
-    }
-    writeFileSync(DOC, cur.slice(0, b) + md + cur.slice(e + '<!-- END:generated -->'.length));
-    console.error('已写回文档');
+    writeBack('../../docs/technical/design/权限配置落库-数据库设计与数据清单.md', md);
   } else {
     console.log(md);
   }
