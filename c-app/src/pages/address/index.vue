@@ -560,12 +560,12 @@ onShow(() => {
         </view>
     </sh-sheet>
 
-    <biz-region-picker
+    <biz-address-region
       :visible="pickingRegion"
       :current="draft.region"
       @close="pickingRegion = false"
       @pick="onRegionPick"
-    ></biz-region-picker>
+    ></biz-address-region>
   </sh-scaffold>
 </template>
 

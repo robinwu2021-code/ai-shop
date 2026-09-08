@@ -201,7 +201,7 @@ button::after {
      是「当时随手挑了一个看起来够大的数」—— 其中 `biz-pickup-sheet` 与
      b 端 `biz-region-picker` 取的 60 **低于 sh-sheet 的 100**：
      从一个已经打开的弹层里再开这两个 picker，它会被盖在下面。
-     c 端 `biz-region-picker` 更彻底 —— 它一个 z-index 都没写，靠 DOM 顺序碰运气，
+     c 端 `biz-address-region` 更彻底 —— 它一个 z-index 都没写，靠 DOM 顺序碰运气，
      而地址页正是「在编辑弹层里点省市区」这条路。
 
      所以把层立成档。加一层之前先问：它和下面这几层的先后关系是什么？

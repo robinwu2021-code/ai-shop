@@ -32,7 +32,7 @@ function pageFilesAll() {
 }
 
 describe("共享组件库 packages/ui", () => {
-  it("两端不再各自持有一份同名组件", () => {
+  it("app 里没有复制一份库里已有的组件", () => {
     const shared = readdirSync(UI);
     const dup: string[] = [];
     for (const app of APPS) {
@@ -45,6 +45,48 @@ describe("共享组件库 packages/ui", () => {
     expect(dup, `以下组件在组件库里已有一份，复制回 app 会立刻开始漂移：\n${dup.join("\n")}`).toEqual(
       [],
     );
+  });
+
+  /*
+   * **两端不许有同名但不同物的件。**
+   *
+   * 上面那条原本叫「两端不再各自持有一份同名组件」，而它查的只是
+   * 「app 里有没有复制一份**库里已有**的件」—— **名字比判据大**。
+   * 于是 2026-09-08 量组件清单时才发现：两端各有一个 `biz-region-picker`，
+   * 库里没有，闸门一声不吭。而那两个做的是完全不同的事 ——
+   * c 端是收货地址的省/市/区三级（69 行逻辑），
+   * b 端是经营范围的市›区›街道›小区/村 四级下钻 + 搜索 + 提报（722 行逻辑）。
+   *
+   * 危害不在「重复」（它们不重复），在**名字**：谁 grep、谁读评审、谁看组件清单
+   * 都会把它们当成一个。清单表里 `biz-region-picker` 出现两次、行数差十倍，
+   * 混淆当场就发生了。c 端那个已改名为 `biz-address-region`。
+   */
+  it("两端没有同名的业务件 —— 同名就该是同一个东西", () => {
+    const byName = new Map<string, string[]>();
+    for (const app of APPS) {
+      const dir = join(ROOT, app, "src/components");
+      if (!existsSync(dir)) continue;
+      for (const f of readdirSync(dir, { recursive: true, encoding: "utf8" })) {
+        const base = String(f).split("/").pop() ?? "";
+        if (!base.endsWith(".vue")) continue;
+        (byName.get(base) ?? byName.set(base, []).get(base)!).push(app);
+      }
+    }
+    /*
+     * `app-overlay.vue` 是**有意**两端同名的：`sh-scaffold` 无条件渲染它，
+     * 而动态组件（`<component :is>`）小程序端不支持 —— 同名是唯一跨四端成立的写法。
+     * 上面「两端都提供 app-overlay.vue」那条闸门**要求**它存在，
+     * 所以这里不豁免的话，两条断言会互相打架。
+     */
+    const BY_DESIGN = new Set(["app-overlay.vue"]);
+    const clash = [...byName].filter(([n, apps]) => apps.length > 1 && !BY_DESIGN.has(n))
+      .map(([n, apps]) => `${n}  —— ${apps.join(" / ")}`);
+    expect(
+      clash,
+      "两端各有一个同名件。如果它们是同一个东西，抽进 packages/ui；\n" +
+        "如果不是（多数情况），改名说清各自挑的是什么 —— 同名会让读的人把两件事当成一件：\n" +
+        clash.join("\n"),
+    ).toEqual([]);
   });
 
   it("库里不出现 `@/` 别名（那是各 app 自己的 src）", () => {
@@ -200,7 +242,10 @@ describe("小程序的块间缝：顶层组件也要在名单上", () => {
    *  H5 那边因为没有宿主节点不会发生 —— 列进名单才是真把两端做出差别。 */
   const OVERLAY = new Set(["sh-actionbar", "sh-sheet", "sh-dialog", "sh-savebar", "sh-fab",
     "sh-tabbar", "sh-theme-sheet", "sh-prompt", "sh-confirm", "sh-pick", "app-overlay",
-    "biz-cart-fab", "phone-gate", "biz-region-picker", "biz-pickup-sheet",
+    // ⚠️ **改名要同时改这里。** 2026-09-08 把 c 端的 `biz-region-picker` 改成
+    //    `biz-address-region` 之后这条闸门当场变红 —— 而它报的是「这个件不在
+    //    小程序块间缝名单上」，与「改名」毫无关系。名单里的字符串是改名的暗礁。
+    "biz-cart-fab", "phone-gate", "biz-region-picker", "biz-address-region", "biz-pickup-sheet",
     "biz-item-picker", "biz-supplier-picker"]);
 
   /** base.css 里**所有** `#ifdef MP-WEIXIN` 段拼起来 —— 不能只取第一段：
