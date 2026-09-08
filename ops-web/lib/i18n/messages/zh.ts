@@ -60,7 +60,7 @@ export const zh = {
     forgot: "忘记密码？",
     forgotTitle: "重置密码",
     forgotDesc: "输入你的登录邮箱，我们会把一次性重置码发到那个邮箱。",
-    forgotNote: "无论这个邮箱是不是运营账号，都会显示「已发送」—— 区分开等于告诉别人哪些邮箱是运营账号，而运营账号能改费率、批提现、封商家。",
+    forgotNote: "无论这个邮箱是不是运营账号，都会显示「已发送」。",
     forgotSend: "发送重置码",
     forgotSent: "如果这个邮箱是运营账号，重置码已发出。请查收邮件（15 分钟内有效，只能用一次）。",
     resetToken: "重置码",
@@ -97,7 +97,7 @@ export const zh = {
   nav: {
     /* 后端未实现：**渲染但禁用** —— 藏起来运营不知道平台规划了这个功能，可点则是死按钮 */
     notImplemented: "待建",
-    notImplementedHint: "该功能后端尚未实现 —— 显示出来是为了让你知道平台规划了它，但现在点不动",
+    notImplementedHint: "后端尚未实现，暂时点不动",
     expand: "展开导航", collapse: "收起导航",
     expandPanel: "展开子功能面板", collapsePanel: "收起子功能面板",
     search: "搜索功能",

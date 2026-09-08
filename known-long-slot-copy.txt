@@ -1,0 +1,18 @@
+# 短位（空态 / 占位 / 吐司 / 标题 / 状态）上写了两句或超长的文案 —— 已知欠账。
+# 由 packages/shared/tests/copy-slots.test.ts 读。
+#
+# 名单**只准变短**。两向都有闸：新增一条会红，名单里留着已经改好的也会红。
+#
+# 2026-09-09 立闸时的三条，都是有意留下的：
+#
+# · customers.empty / mySpecs.empty —— **死词条**，代码里没有任何地方引用
+#   （见 known-orphan-i18n.txt：`customers.*` 是改名后留下的整片死命名空间，
+#   那个页面早就改用 `members.*` 了）。改它们的文案没有意义，
+#   等孤儿名单那一批一起删掉，这两行也就跟着删。
+#
+# · goods.channelsFailed —— 「没读到本店的送货方式，下面按全部可选显示」。
+#   第二句不是「下一步怎么办」，是**在解释下面那一屏为什么全是可选的**。
+#   删掉它，商家会以为本店真的开通了全部送货方式。吐司没有第二个槽可放。
+b-app customers.empty
+b-app mySpecs.empty
+b-app goods.channelsFailed

@@ -69,7 +69,7 @@ export const en: Messages = {
     forgot: "Forgot password?",
     forgotTitle: "Reset password",
     forgotDesc: "Enter your login email and we will send a one-time reset code to it.",
-    forgotNote: "It always says “sent”, whether or not that email is an ops account — telling the two apart would reveal which addresses are ops accounts, and those accounts can change fee rates, batch payouts and ban merchants.",
+    forgotNote: "It always says “sent”, whether or not that email is an ops account.",
     forgotSend: "Send reset code",
     forgotSent: "If that email is an ops account, the reset code is on its way. It is valid for 15 minutes and can be used once.",
     resetToken: "Reset code",
@@ -106,7 +106,7 @@ export const en: Messages = {
   nav: {
     /* 后端未实现：**渲染但禁用** —— 藏起来运营不知道平台规划了这个功能，可点则是死按钮 */
     notImplemented: "Planned",
-    notImplementedHint: "The backend for this is not built yet — it is listed so you know it is planned, but it cannot be opened",
+    notImplementedHint: "Not built yet — cannot be opened",
     expand: "Expand navigation", collapse: "Collapse navigation",
     expandPanel: "Show sub-navigation panel", collapsePanel: "Hide sub-navigation panel",
     search: "Search features",

@@ -1205,9 +1205,9 @@
         },
         {
           "key": "confirm.offlineNoPlatformCoupon",
-          "zh-CN": "当面付款时平台券用不了：平台券的钱要由平台补给商家，而这笔钱不经过平台。商家券照常可用，积分也照常抵扣。",
-          "en": "Platform coupons cannot be used when paying on site — the platform reimburses merchants for them, and this money never passes through the platform. Merchant coupons and points still apply.",
-          "ar": "لا يمكن استخدام قسائم المنصة عند الدفع نقدًا؛ فالمنصة تعوّض التاجر عنها، وهذا المبلغ لا يمر عبر المنصة. قسائم التاجر والنقاط تعمل كالمعتاد."
+          "zh-CN": "当面付款时平台券用不了。商家券照常可用，积分也照常抵扣。",
+          "en": "Platform coupons cannot be used when paying on site. Merchant coupons and points still apply.",
+          "ar": "لا يمكن استخدام قسائم المنصة عند الدفع نقدًا. قسائم التاجر والنقاط تعمل كالمعتاد."
         },
         {
           "key": "confirm.outOfRange",
@@ -1865,9 +1865,9 @@
         },
         {
           "key": "groupHost.freeHint",
-          "zh-CN": "邻里自提不收任何费用。你是组织者不是商家，平台不会给你抽成，也不会向你收费。",
-          "en": "Neighbourhood pickup is unpaid — you are an organiser, not a merchant. The platform takes nothing from you and charges you nothing.",
-          "ar": "الاستلام من الجوار بلا مقابل؛ أنت منظّم لا تاجر. لا تأخذ المنصة منك شيئًا ولا تتقاضى منك شيئًا."
+          "zh-CN": "邻里自提不收任何费用：平台不抽成，也不向你收费。",
+          "en": "Neighbourhood pickup is free: the platform takes nothing and charges you nothing.",
+          "ar": "الاستلام من الجوار بلا مقابل: لا تأخذ المنصة شيئًا ولا تتقاضى منك شيئًا."
         },
         {
           "key": "groupHost.need",
@@ -1925,9 +1925,9 @@
         },
         {
           "key": "groupHost.toMyHomeHint",
-          "zh-CN": "货送到你家，邻居上门取。适合床垫、校服这类没有门店可提的东西。你不收费也不抽成。",
-          "en": "Goods come to you and neighbours collect. Good for mattresses or uniforms with no shop to collect from. You neither charge nor earn.",
-          "ar": "تصل البضاعة إليك ويستلمها الجيران. مناسب للمراتب والزي المدرسي مما لا متجر لاستلامه. لا تدفع ولا تربح."
+          "zh-CN": "货送到你家，邻居上门取。适合床垫、校服这类没有门店可提的东西。",
+          "en": "Goods come to you and neighbours collect. Good for mattresses or uniforms with no shop to collect from.",
+          "ar": "تصل البضاعة إليك ويستلمها الجيران. مناسب للمراتب والزي المدرسي مما لا متجر لاستلامه."
         },
         {
           "key": "groupHost.verify",
@@ -3491,9 +3491,9 @@
         },
         {
           "key": "request.antiHike",
-          "zh-CN": "关于报价：平台不做事前审核，但有三层约束。① 发起人选定后价格即锁定，下单一律按锁定价，商家改不了；② 商家每次改价都会留痕并公示在这里；③ 选定后不履约会计入商家信用，累计将被限制报价。",
-          "en": "About quotes: we don't vet them up front, but three things constrain them — 1) once chosen, the price is locked and orders always use that price; the shop cannot change it. 2) every price change is recorded and shown here. 3) failing to honour a chosen quote counts against the shop's credit and eventually blocks it from quoting.",
-          "ar": "عن العروض: لا نراجعها مسبقًا، لكن تحكمها ثلاثة قيود؛ ١) بعد الاختيار يُثبَّت السعر وتُنفَّذ الطلبات به ولا يستطيع التاجر تغييره. ٢) كل تغيير في السعر يُسجَّل ويُعرض هنا. ٣) عدم الوفاء بعرض مختار يُحتسب على سمعة التاجر وقد يمنعه من التسعير."
+          "zh-CN": "选定后价格锁定，商家改不了；每次改价都会留痕并公示在这里；选定后不履约会计入商家信用。",
+          "en": "Once chosen, the price is locked and the shop cannot change it. Every price change is recorded and shown here. Failing to honour a chosen quote counts against the shop's credit.",
+          "ar": "بعد الاختيار يُثبَّت السعر ولا يستطيع التاجر تغييره. كل تغيير يُسجَّل ويُعرض هنا. وعدم الوفاء بعرض مختار يُحتسب على سمعة التاجر."
         },
         {
           "key": "request.breach",
@@ -3557,9 +3557,9 @@
         },
         {
           "key": "request.createNote",
-          "zh-CN": "发起后邻居可以 +1 表示也想要。+1 只是意向，不扣款、不占库存。攒够人数后商家会来报价，你从中挑一家，价格当场锁定。",
-          "en": "Neighbours can +1 to say they want one too. A +1 is interest only — nothing is charged and no stock is held. Once enough join, shops quote and you pick one; the price locks on the spot.",
-          "ar": "يمكن للجيران الانضمام للقول إنهم يريدون أيضًا. الانضمام اهتمام فقط؛ لا خصم ولا حجز. عند اكتمال العدد يرسل التجار عروضهم وتختار واحدًا، ويُثبَّت السعر فورًا."
+          "zh-CN": "发起后邻居可以 +1。攒够人数商家来报价，你挑一家，价格当场锁定。",
+          "en": "Neighbours can +1 after you post. Once enough join, shops quote, you pick one, and the price locks.",
+          "ar": "يمكن للجيران الانضمام بعد النشر. عند اكتمال العدد يرسل التجار عروضهم، تختار واحدًا، ويُثبَّت السعر."
         },
         {
           "key": "request.createSubmit",
@@ -6111,9 +6111,9 @@
         },
         {
           "key": "crossStore.upgradeHow",
-          "zh-CN": "目前由平台代为开通：联系对接运营，或在「我的 → 商家帮助」中联系我们。自助购买将在后续版本上线。",
-          "en": "Currently enabled by the platform: contact your operations lead, or reach us under Me → Merchant help. Self-service purchase is coming in a later release.",
-          "ar": "الترقية تتم عبرنا حاليًا: تواصل مع مسؤول حسابك، أو راسلنا من «حسابي ← مساعدة التجار». الشراء الذاتي سيتوفر في إصدار لاحق."
+          "zh-CN": "目前由平台代为开通：联系对接运营，或在「我的 → 商家帮助」中联系我们。",
+          "en": "Currently enabled by the platform: contact your operations lead, or reach us under Me → Merchant help.",
+          "ar": "الترقية تتم عبرنا حاليًا: تواصل مع مسؤول حسابك، أو راسلنا من «حسابي ← مساعدة التجار»."
         },
         {
           "key": "crossStore.upgradeTitle",
@@ -7491,9 +7491,9 @@
         },
         {
           "key": "goods.publishStale",
-          "zh-CN": "线上商品在你保存之后有过变动（可能是你自己的上下架，也可能是平台处置）。下方差异以此刻线上为基准，核对后可继续发布，或放弃草稿以线上为准",
-          "en": "The live product changed after you saved (your own listing toggle, or a platform action). The differences below are against the current live version — review them, then publish, or drop the draft",
-          "ar": "تغيّر المنتج المعروض بعد حفظك (ربما بتبديل العرض بنفسك أو بإجراء من المنصة). الفروق أدناه مقارنة بالنسخة المعروضة الآن — راجعها ثم انشر، أو تخلَّ عن المسودة"
+          "zh-CN": "线上商品在你保存之后有过变动。下方差异以此刻线上为基准，核对后可继续发布，或放弃草稿以线上为准",
+          "en": "The live product changed after you saved. The differences below are against the current live version — review them, then publish, or drop the draft",
+          "ar": "تغيّر المنتج المعروض بعد حفظك. الفروق أدناه مقارنة بالنسخة المعروضة الآن — راجعها ثم انشر، أو تخلَّ عن المسودة"
         },
         {
           "key": "goods.publishStaleBtn",
@@ -7701,9 +7701,9 @@
         },
         {
           "key": "goods.stockByInvHint",
-          "zh-CN": "这家店的库存现在以进销存为准，这一页的数只是展示。进货就开进货单，盘出来对不上就开盘点单 —— 那样账上说得清这批货是哪来的。",
-          "en": "This store's stock is now authoritative in Inventory; the number here is display only. Record a purchase for goods coming in, or a stocktake when the count differs — that way the books can explain where the goods came from.",
-          "ar": "مخزون هذا المتجر مرجعه الآن نظام المخزون، والرقم هنا للعرض فقط. سجّل أمر شراء للوارد، أو أمر جرد عند اختلاف العدّ — عندها يوضّح الدفتر مصدر البضاعة."
+          "zh-CN": "这家店的库存以进销存为准，这一页只是展示。进货开进货单，数对不上开盘点单。",
+          "en": "This store's stock is authoritative in Inventory; the number here is display only. Record a purchase for goods coming in, or a stocktake when the count differs.",
+          "ar": "مخزون هذا المتجر مرجعه نظام المخزون، والرقم هنا للعرض فقط. سجّل أمر شراء للوارد، أو أمر جرد عند اختلاف العدّ."
         },
         {
           "key": "goods.stockByInvTitle",
@@ -8331,9 +8331,9 @@
         },
         {
           "key": "invoice.amountHint",
-          "zh-CN": "票面金额必须正好等于这个数。对不上会被拒收，退回重开要走红字流程。所以这一页不让你填金额，直接按它提交。",
-          "en": "The invoice must be for exactly this amount. Anything else is rejected, and reissuing means a credit-note process. That is why this page fills the amount for you.",
-          "ar": "يجب أن تكون الفاتورة بهذا المبلغ تماماً. أي مبلغ آخر يُرفض، وإعادة الإصدار تمرّ بإجراء إشعار دائن. لذلك تملأ هذه الصفحة المبلغ بدلاً عنك."
+          "zh-CN": "票面金额必须正好等于这个数。对不上会被拒收，退回重开要走红字流程。",
+          "en": "The invoice must be for exactly this amount. Anything else is rejected, and reissuing means a credit-note process.",
+          "ar": "يجب أن تكون الفاتورة بهذا المبلغ تماماً. أي مبلغ آخر يُرفض، وإعادة الإصدار تمرّ بإجراء إشعار دائن."
         },
         {
           "key": "invoice.amountLabel",
@@ -8637,9 +8637,9 @@
         },
         {
           "key": "login.agreementBody",
-          "zh-CN": "演示环境占位文本。正式版需包含：经营主体责任、结算与分账规则、个税代扣说明、数据与隐私处理、违规处置与争议解决。",
-          "en": "Placeholder for the demo. The real version must cover: operator liability, settlement and split rules, withholding tax, data and privacy handling, violations and dispute resolution.",
-          "ar": "نص مؤقت للبيئة التجريبية. تشمل النسخة الرسمية: مسؤولية المشغّل، قواعد التسوية والتقسيم، خصم الضريبة، معالجة البيانات والخصوصية، المخالفات وحل النزاعات."
+          "zh-CN": "演示环境占位文本，正式版协议以届时公布为准。",
+          "en": "Placeholder text for the demo; the final agreement will be published separately.",
+          "ar": "نص مؤقت للبيئة التجريبية؛ ستُنشر الاتفاقية النهائية لاحقًا."
         },
         {
           "key": "login.agreementTitle",
@@ -8937,9 +8937,9 @@
         },
         {
           "key": "marketing.stackHint",
-          "zh-CN": "叠加规则由结算侧统一计算：同类活动取最优，不重复叠加；券与满减可叠加。改规则要连着结算一起改，别在这里各算各的。",
-          "en": "Stacking is computed at checkout: best-of within a type, no double counting; coupons stack with spend-and-save. Change the rule there, not here.",
-          "ar": "يُحسب الدمج عند الدفع: الأفضل ضمن النوع بلا تكرار، والقسائم تُدمج مع خصم الحد. غيّر القاعدة هناك لا هنا."
+          "zh-CN": "叠加规则由结算侧统一计算：同类活动取最优，不重复叠加；券与满减可叠加。",
+          "en": "Stacking is computed at checkout: best-of within a type, no double counting; coupons stack with spend-and-save.",
+          "ar": "يُحسب الدمج عند الدفع: الأفضل ضمن النوع بلا تكرار، والقسائم تُدمج مع خصم الحد."
         },
         {
           "key": "marketing.statusDRAFT",
@@ -10689,9 +10689,9 @@
         },
         {
           "key": "payment.storeHint",
-          "zh-CN": "不单独开就是合并结算：这家店的钱走主体默认收款号。单独开之后，这家店的钱打进它自己的账户 —— 两种都是配置的结果，没有开关。",
-          "en": "Without its own account, a store settles through the entity's default one. Open one and that store's money lands in its own account — both are just configuration, there is no switch.",
-          "ar": "بدون حساب خاص يُسوّى الفرع عبر حساب الكيان الافتراضي. وبفتح حساب له تصل أمواله إلى حسابه هو — كلاهما مجرد إعداد ولا يوجد مفتاح تشغيل."
+          "zh-CN": "不单独开就是合并结算，这家店的钱走主体默认收款号；单独开之后打进它自己的账户。",
+          "en": "Without its own account, a store settles through the entity's default one; open one and that store's money lands in its own account.",
+          "ar": "بدون حساب خاص يُسوّى الفرع عبر حساب الكيان الافتراضي؛ وبفتح حساب له تصل أمواله إلى حسابه هو."
         },
         {
           "key": "payment.storeOpen",
@@ -12201,9 +12201,9 @@
         },
         {
           "key": "settle.pendingHint",
-          "zh-CN": "⚠️ 费率与履约服务费口径待平台公示（B9 / B10），当前为占位值；退款订单已从应结中扣回。",
-          "en": "⚠️ Commission and fulfilment fee rates are placeholders pending publication (B9 / B10). Refunded orders are already deducted.",
-          "ar": "⚠️ نسب العمولة ورسوم التنفيذ قيم مؤقتة بانتظار الإعلان (B9 / B10). الطلبات المستردة مخصومة بالفعل."
+          "zh-CN": "⚠️ 费率与履约服务费口径待平台公示，当前为占位值；退款订单已从应结中扣回。",
+          "en": "⚠️ Commission and fulfilment fee rates are placeholders pending publication. Refunded orders are already deducted.",
+          "ar": "⚠️ نسب العمولة ورسوم التنفيذ قيم مؤقتة بانتظار الإعلان. الطلبات المستردة مخصومة بالفعل."
         },
         {
           "key": "settle.pointsDetail",
@@ -12531,9 +12531,9 @@
         },
         {
           "key": "skuIdentity.copiedToClipboard",
-          "zh-CN": "当前端无法保存文件，已复制到剪贴板。建议在电脑上打开本页。",
-          "en": "Files cannot be saved on this platform; copied to the clipboard instead. Opening this page on a computer is recommended.",
-          "ar": "هذه المنصة لا تحفظ الملفات؛ نُسخ إلى الحافظة. افتح هذه الصفحة على الحاسوب."
+          "zh-CN": "已复制到剪贴板。建议在电脑上打开本页。",
+          "en": "Copied to the clipboard. Opening this page on a computer is recommended.",
+          "ar": "نُسخ إلى الحافظة. افتح هذه الصفحة على الحاسوب."
         },
         {
           "key": "skuIdentity.done",
@@ -13191,9 +13191,9 @@
         },
         {
           "key": "statement.voucherHint",
-          "zh-CN": "这份对账单是凭证不是报表：每一行都带费率与凭证号，能与你的银行流水逐笔勾对。没有发票、没有对公流水时，它是你能说明「这笔钱怎么来的」的东西。",
-          "en": "This statement is a record, not a report: every line carries its rate and voucher number so you can match it against your bank entries. Without invoices or a company account, this is what shows where the money came from.",
-          "ar": "هذا الكشف سجلّ لا تقرير: كل سطر يحمل نسبته ورقم سنده حتى تطابقه ببنود حسابك البنكي. وبدون فواتير أو حساب شركة، هو ما يُثبت مصدر هذه الأموال."
+          "zh-CN": "每一行带费率与凭证号，可与银行流水逐笔勾对。",
+          "en": "Every line carries its rate and voucher number, so you can match it against your bank entries.",
+          "ar": "كل سطر يحمل نسبته ورقم سنده، فتطابقه ببنود حسابك البنكي."
         },
         {
           "key": "stats.compareEntry",
@@ -17640,8 +17640,8 @@
         },
         {
           "key": "login.forgotNote",
-          "zh-CN": "无论这个邮箱是不是运营账号，都会显示「已发送」—— 区分开等于告诉别人哪些邮箱是运营账号，而运营账号能改费率、批提现、封商家。",
-          "en": "It always says “sent”, whether or not that email is an ops account — telling the two apart would reveal which addresses are ops accounts, and those accounts can change fee rates, batch payouts and ban merchants.",
+          "zh-CN": "无论这个邮箱是不是运营账号，都会显示「已发送」。",
+          "en": "It always says “sent”, whether or not that email is an ops account.",
           "ar": null
         },
         {
@@ -17868,8 +17868,8 @@
         },
         {
           "key": "nav.notImplementedHint",
-          "zh-CN": "该功能后端尚未实现 —— 显示出来是为了让你知道平台规划了它，但现在点不动",
-          "en": "The backend for this is not built yet — it is listed so you know it is planned, but it cannot be opened",
+          "zh-CN": "后端尚未实现，暂时点不动",
+          "en": "Not built yet — cannot be opened",
           "ar": null
         },
         {
