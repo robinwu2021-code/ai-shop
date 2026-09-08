@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
+import { TextFilter } from "@/components/ui/filter-select";
 import { Label } from "@/components/ui/label";
 import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
@@ -97,10 +98,11 @@ export function DebtTab({ c, canExecute }: { c: FinanceCopy; canExecute: boolean
       <HelpNote>{c.dbNotice}</HelpNote>
 
       <Toolbar>
-        <Input
+        {/* 同 stores-tab：值进 queryKey 就必须防抖，且要出 chip */}
+        <TextFilter
           aria-label={c.dbEntityLabel}
           value={entityNo}
-          onChange={(e) => setEntityNo(e.target.value.trim())}
+          onChange={(v) => setEntityNo(v.trim())}
           placeholder={c.dbEntityPh}
         />
       </Toolbar>

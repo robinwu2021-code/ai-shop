@@ -289,11 +289,14 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
 
   it("放进 <Toolbar> 的筛选控件必须声明 toChip —— 否则它的选中态不会出现在筛选回显里", () => {
     // 用户以为没筛，然后对着少掉的数据找半天。这是"加控件时顺手漏掉"的典型。
+    /*
+     * 登记表扫全 `components/`，不写死文件名。此前钉着 filter-select.tsx 与 archive.tsx
+     * 两份 —— 新控件放到第三个文件里就查不到 toChip，会被当成「没登记」而误报，
+     * 于是下一个人多半是把文件名加进这张写死的表，而不是问「为什么要有这张表」。
+     */
     const declared = new Set<string>();
-    for (const f of [
-      join(ROOT, "components/ui/filter-select.tsx"),
-      join(ROOT, "components/archive.tsx"),
-    ]) {
+    for (const f of walk(join(ROOT, "components"))) {
+      if (!/\.tsx?$/.test(f) || /\.test\.tsx?$/.test(f)) continue;
       for (const m of readFileSync(f, "utf8").matchAll(/^(\w+)\.toChip\s*=/gm)) declared.add(m[1]);
     }
 
@@ -308,8 +311,10 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
      *
      * 所以：先正确切出工具栏体，再只对**筛选控件家族**（名字里带 Select/Filter/
      * Toggle/Picker 的，以及已登记 toChip 的）要求登记。
-     * 边界写清楚：`<Toolbar>` 里直接放的 `<Input>` 若真是实时筛选（改一个字就重查），
-     * 它的状态同样进不了回显 —— 那一类由 review 认，这条正则认不出来。
+     * 边界曾经写着「工具栏里直接放的输入框若真是实时筛选，这条正则认不出来，由 review 认」。
+     * 2026-09-09 review 真去认了一遍，10 处里有 2 处是实时筛选（门店治理、财务欠款），
+     * 而且它们同时缺防抖 —— 值直接进 queryKey，每敲一个字符一次请求。
+     * 判据其实是有的，见下一条 `it`：**工具栏里没有提交入口的输入框，必然是实时筛选**。
      */
     const FILTERISH = /(Select|Filter|Toggle|Picker)$/;
     const offenders: string[] = [];
@@ -333,6 +338,51 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
       }
     }
     expect([...new Set(offenders)], `给它加 toChip（见 components/ui/filter-chip.ts）：\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  it("<Toolbar> 里没有提交入口的输入框 = 实时筛选，必须用 <TextFilter>", () => {
+    /*
+     * 上一条只认名字像筛选器的组件（Select/Filter/Toggle/Picker 结尾），
+     * 裸的输入框它认不出来。而裸输入框当筛选会**同时**丢两样东西：
+     *   · 没有 toChip → 选中态不进筛选回显，用户以为没筛；
+     *   · 没有防抖 → 值直接进 queryKey，每敲一个字符一次请求。
+     *
+     * 判据不是「工具栏里有输入框」—— 那样 10 处里 8 处是假阳（新增表单的字段、
+     * 带查询按钮的表单），而假阳性会训练人给按钮加没用的代码。
+     * 判据是**这个工具栏里有没有提交入口**：有按钮或回车提交，说明用户是显式发起查询的；
+     * 一个都没有，那这个框只可能是边敲边筛。实测这条判据在 10 处上分得干干净净：
+     * 报出 2 处（都是真的），跳过 8 处（都不是筛选）。
+     *
+     * 它的盲区要说在明处：**一个既有实时筛选框、又有不相干按钮的工具栏会被跳过。**
+     * 目前没有这样的页面；真出现了，这条会安静地放过它。
+     */
+    const offenders: string[] = [];
+    let toolbars = 0;
+    for (const f of pageFiles()) {
+      const src = readFileSync(f, "utf8");
+      for (const m of src.matchAll(/<Toolbar\b/g)) {
+        let depth = 0, end = -1, selfClosing = false;
+        for (let i = m.index!; i < src.length; i++) {
+          const ch = src[i];
+          if (ch === "{") depth++;
+          else if (ch === "}") depth--;
+          else if (ch === ">" && depth === 0) { end = i; selfClosing = src[i - 1] === "/"; break; }
+        }
+        if (end < 0 || selfClosing) continue;
+        const close = src.indexOf("</Toolbar>", end);
+        if (close < 0) continue;
+        toolbars++;
+        const inner = src.slice(end + 1, close);
+        if (/<Button\b/.test(inner) || /onKeyDown=/.test(inner)) continue;  // 有提交入口
+        for (const t of inner.matchAll(/<(Input|Textarea)[\s/]/g)) {
+          offenders.push(`${rel(f)}:${src.slice(0, end + 1 + t.index!).split("\n").length}  <${t[1]}>`);
+        }
+      }
+    }
+    // 分母先断言：正则一坏就是「0 个工具栏、0 条违规」，与真的没违规长得一样
+    expect(toolbars, "一个带子节点的 <Toolbar> 都没扫到 —— 多半是标签匹配坏了").toBeGreaterThan(20);
+    expect(offenders, `改用 <TextFilter>（components/ui/filter-select.tsx，自带防抖与 chip）：\n${offenders.join("\n")}`)
+      .toEqual([]);
   });
 
   it("components/ 下的每个文件都要在 README 的清单里 —— 清单漏了，新人就找不到已有件而重复造", () => {

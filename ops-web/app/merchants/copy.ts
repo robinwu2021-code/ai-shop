@@ -326,6 +326,7 @@ const zh = {
   // ── 门店档案（P-11.2.1）。平台**只读为主**：门店资料、价格、库存一律不改
   stNotice: "门店档案是「只读」的：资料、价格、库存归商家运营，平台的边界是「裁、定、兜」。这里唯一的写动作是解除强制下线 —— 压下那一侧在「违规处置与封禁」，处置动作与留痕必须是同一次提交。",
   stSearchPh: "门店号 / 门店名 / 地址 / 商家名",
+  stFilterMerchant: "按商家筛选",
   stFilterMerchantPh: "按商家号筛（如 M901）",
   stFilterStatus: "按经营状态筛选",
   stFilterStatusAll: "全部经营状态",
@@ -894,6 +895,7 @@ const en: typeof zh = {
 
   stNotice: "Store records are read only: details, pricing and stock belong to the merchant. The one write action here is lifting a forced offline — pushing a store offline lives under “Penalties & suspensions”, where the action and its audit trail are one submission.",
   stSearchPh: "Store no. / name / address / merchant",
+  stFilterMerchant: "Filter by merchant",
   stFilterMerchantPh: "Filter by merchant no. (e.g. M901)",
   stFilterStatus: "Filter by trading status",
   stFilterStatusAll: "All trading statuses",

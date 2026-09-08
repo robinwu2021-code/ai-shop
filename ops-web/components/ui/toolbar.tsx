@@ -4,10 +4,9 @@
 // selectedCount > 0 时整条替换为「批量操作条」（静态色块，不用浮层——静态导出下简单可靠）。
 import * as React from "react";
 import { Plus, Download, X } from "lucide-react";
-import { Input } from "./input";
+import { Input, useDebouncedPush } from "./input";
 import { Button } from "./button";
 import { chipsFrom } from "./filter-chip";
-import { SEARCH_DEBOUNCE_MS } from "@/lib/constants";
 import { useI18n } from "@/lib/i18n";
 
 export function Toolbar({
@@ -82,19 +81,9 @@ function SearchBox({
   value, onChange, placeholder,
 }: { value: string; onChange: (v: string) => void; placeholder: string }) {
   const { t } = useI18n();
-  const [local, setLocal] = React.useState(value);
-  const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // 外部改了值（切 tab 清空、点 chip 的 ×）要同步回来，否则框里还留着旧词
-  React.useEffect(() => { setLocal(value); }, [value]);
-  React.useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
-
-  const push = (v: string, immediate = false) => {
-    setLocal(v);
-    if (timer.current) clearTimeout(timer.current);
-    if (immediate) { onChange(v); return; }
-    timer.current = setTimeout(() => onChange(v), SEARCH_DEBOUNCE_MS);
-  };
+  // 防抖搬进 `useDebouncedPush`（components/ui/input.tsx）—— `TextFilter` 用的是同一份，
+  // 免得工具栏里「搜索框防抖、筛选框不防抖」这种只有接了真后端才看得出来的差别
+  const { local, push } = useDebouncedPush(value, onChange);
 
   return (
     <div className="relative w-60">

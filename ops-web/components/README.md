@@ -22,7 +22,8 @@
 | 组件 | 文件 | 说明 |
 |---|---|---|
 | `Button` | `ui/button.tsx` | |
-| `Input` / `Select` | `ui/input.tsx` | 裸控件。**筛选下拉请用组合件 `FilterSelect`** |
+| `Input` / `Select` | `ui/input.tsx` | 裸控件。**筛选下拉请用组合件 `FilterSelect`，文本筛选用 `TextFilter`** |
+| `useDebouncedPush` | `ui/input.tsx` | 受控输入 + 防抖对外通知（`SearchBox` 与 `TextFilter` 共用这一份） |
 | `DateInput` | `ui/date-input.tsx` | |
 | `Badge` | `ui/badge.tsx` | 导出 `BadgeTone` —— **全站色调联合的唯一真源** |
 | `Card` / `CardHeader` / `CardContent` / `CardTitle` | `ui/card.tsx` | |
@@ -59,6 +60,7 @@
 | `MultiSelect` | `ui/multi-select.tsx` | |
 | `StatusBadge` / `StatusMap` / `statusOptions` | `ui/status-badge.tsx` | 「枚举 → 徽标」的渲染与类型。**映射表本身留在页面** |
 | `FilterSelect` | `ui/filter-select.tsx` | 列表页筛选下拉；传 `StatusMap` 时选项自动派生。挂了 `toChip` → 选中态自动进筛选回显 |
+| `TextFilter` | `ui/filter-select.tsx` | 列表页**文本**筛选框。工具栏里要按编号/关键字实时筛就用它 —— 自带防抖（值进 `queryKey` 时，裸 `Input` 是每敲一个字符一次请求）与 `toChip`。带查询按钮的表单不算筛选，那种照旧用裸 `Input` |
 | `FilterChip` / `chipsFrom` | `ui/filter-chip.ts` | 「生效中的筛选」chip 的登记契约。**新增筛选控件时必须挂 `toChip`**，否则它的选中态不会出现在回显里（`design-tokens.test.ts` 挡） |
 | `Tree` | `ui/tree.tsx` | 层级树（类目树 / 权限树），可勾选（半选态复用 `Checkbox` 原语） |
 | `Timeline` | `ui/timeline.tsx` | 审计时间线（时间 + 操作人 + 前后值 + 说明） |

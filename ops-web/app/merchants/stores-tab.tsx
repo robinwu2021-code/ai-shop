@@ -25,7 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
-import { FilterSelect } from "@/components/ui/filter-select";
+import { FilterSelect, TextFilter } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
 import { HelpNote } from "@/components/ui/help-note";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
@@ -151,9 +151,15 @@ export function StoresTab({ c }: { c: Copy }) {
       <HelpNote className="mb-3">{c.stNotice}</HelpNote>
 
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.stSearchPh}>
-        <Input
-          className="w-52" placeholder={c.stFilterMerchantPh}
-          value={merchantNo} onChange={(e) => { setMerchantNo(e.target.value); setPage(1); }}
+        {/*
+          用 TextFilter 而不是裸 Input：这个值直接进 queryKey，
+          裸 Input 会每敲一个字符发一次请求，而且它的选中态不进筛选回显 ——
+          旁边三个 FilterSelect 都出 chip，只有这一个不出，最容易被当成「我没筛」。
+          （标签名不写尖括号形式：守卫连注释一起扫。）
+        */}
+        <TextFilter
+          className="w-52" aria-label={c.stFilterMerchant} placeholder={c.stFilterMerchantPh}
+          value={merchantNo} onChange={(v) => { setMerchantNo(v); setPage(1); }}
         />
         <FilterSelect
           aria-label={c.stFilterStatus} value={status} allLabel={c.stFilterStatusAll}
