@@ -1399,3 +1399,61 @@ describe("间距表与真实用量对得上", () => {
     expect(bad, `声明了却零调用点：${bad.join(", ")}rpx`).toEqual([]);
   });
 });
+
+/*
+ * **每一条断言都要出现在某一份规范里。**
+ *
+ * 三份规范此前有一个共同的毛病：读者**分不出哪一行有闸门、哪一行只是约定**。
+ * 「间距只用这五档」和「间距落在 4rpx 网格上」在纸面上一样重 ——
+ * 而前者是一句从来没成立过的话（实际命中率 39%），后者一直有断言守着。
+ *
+ * 修法是把闸门一节**从测试文件里生成**（`gen-ui-spec.py` 的 `gates()`），
+ * 于是「规范里写着的闸门」与「真的存在的断言」不可能对不上。
+ *
+ * 这一条守的是那个映射的另一头：`GATE_DOMAIN` 是按措辞归类的，
+ * 新写一条用词不同的断言就会落进「其它」—— 那它**在三份规范里一个字都不会出现**，
+ * 而写的人不会收到任何信号。所以「其它」必须是空的：
+ * 要么把措辞对齐，要么给 `GATE_DOMAIN` 加一个域。
+ */
+describe("断言都归得进规范", () => {
+  const gen = readFileSync(join(ROOT, "scripts/gen-ui-spec.py"), "utf8");
+
+  /** 从生成器里读同一份判据 —— 两边各抄一份的话，改一处就会悄悄分叉 */
+  function domains(): Record<string, string[]> {
+    const blk = /GATE_DOMAIN = \{([\s\S]*?)\n\}/.exec(gen);
+    expect(blk, "gen-ui-spec.py 里找不到 GATE_DOMAIN —— 判据改名了？").not.toBeNull();
+    const out: Record<string, string[]> = {};
+    for (const m of blk![1]!.matchAll(/"([^"]+)":\s*\(([^)]*)\)/g))
+      out[m[1]!] = [...m[2]!.matchAll(/"([^"]+)"/g)].map((x) => x[1]!);
+    return out;
+  }
+  const SKIP = /(有东西可扫|有文件可扫|空转|读到了|扫到了|扫得到|量到了|有那几张表|文档在|扫描面|有文件)/;
+
+  it("读到了判据（否则下面全是空转）", () => {
+    const d = domains();
+    expect(Object.keys(d).sort()).toEqual(["figure", "字体", "版面", "组件"].filter((k) => k in d).sort());
+    expect(Object.values(d).flat().length).toBeGreaterThan(15);
+  });
+
+  it("没有断言落在「其它」—— 落进去就等于在规范里消失了", () => {
+    const dom = domains();
+    const orphan: string[] = [];
+    for (const f of ["ui-package", "typography", "safe-area-fallback"]) {
+      const src = readFileSync(join(ROOT, `packages/shared/tests/${f}.test.ts`), "utf8");
+      let cur = "";
+      for (const m of src.matchAll(/\b(describe|it)\("([^"]+)"/g)) {
+        if (m[1] === "describe") { cur = m[2]!; continue; }
+        const title = m[2]!;
+        if (SKIP.test(title)) continue;
+        const ok = Object.values(dom).some((kws) => kws.some((k) => title.includes(k)))
+          || Object.values(dom).some((kws) => kws.some((k) => cur.includes(k)));
+        if (!ok) orphan.push(`${f} · ${cur} → ${title}`);
+      }
+    }
+    expect(
+      orphan,
+      "这些断言归不进任何一份规范，于是规范里一个字都不会提到它们 ——\n" +
+        "要么把措辞对齐，要么给 gen-ui-spec.py 的 GATE_DOMAIN 加一档：\n" + orphan.join("\n"),
+    ).toEqual([]);
+  });
+});

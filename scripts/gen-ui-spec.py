@@ -49,6 +49,91 @@ def criteria():
 
 
 # ─────────────────────────────────────────────────────────── 字体
+
+# ══════════════════════════════════════════════════════════════════════
+# 闸门清单：**从测试文件里读，不手抄**
+#
+# 三份规范此前有一个共同的毛病：**读者分不出哪一行有闸门、哪一行只是约定**。
+# 「只用这五档」和「间距落在 4rpx 网格上」在纸面上长得一样重，而前者曾经是
+# 一句从来没成立过的话（39% 命中率），后者一直有断言守着。
+#
+# 手抄一份清单只会重演同一个问题（第 41 条断言不会自己出现在文档里），
+# 所以这里直接解析 `describe(...)` / `it(...)`：**规范里的闸门一节，
+# 就是测试文件的投影**。
+# ══════════════════════════════════════════════════════════════════════
+
+GATE_FILES = [
+    ("packages/shared/tests/ui-package.test.ts", "ui-package"),
+    ("packages/shared/tests/typography.test.ts", "typography"),
+    ("packages/shared/tests/safe-area-fallback.test.ts", "safe-area"),
+]
+# 「这条断言归哪一份规范」——按 describe 的措辞分。落不进任何一档的进「其它」，
+# 那一档非空就是提醒：要么这条规矩没归好类，要么这份表该多一档
+GATE_DOMAIN = {
+    "字体": ("字阶", "字号", "字重", "行高", "letter-spacing", "两端的字号"),
+    "版面": ("间距", "块间缝", "浮层", "投影", "版面", "容器", "缝要露", "圆角", "安全区",
+             "点按面积", "动效", "版心", "行尾箭头"),
+    # 「断言 / 登记」这两个词把**关于规范自身的元规矩**归到这一份 ——
+    # 《规范·组件》本来就装着「算不算自己画」的判据与「库件登记齐全」，是元规矩的家
+    "组件": ("组件库", "公共件", "库件", "件不许", "小程序的块间缝", "传给组件", "两端独立",
+             "断言", "登记"),
+}
+# 空转守卫（「有东西可扫」那一类）不是规矩，是判据自己的体检 —— 不进规范
+GATE_SKIP = ("有东西可扫", "有文件可扫", "空转", "读到了", "扫到了", "扫得到", "量到了",
+             "有那几张表", "文档在", "扫描面", "有文件", "扫到了足够")
+
+
+def gates():
+    """→ {域: [(判据文件, describe, it)]}，外加落不进任何域的那些"""
+    out = {k: [] for k in GATE_DOMAIN}
+    out["其它"] = []
+    for rel, tag in GATE_FILES:
+        src = (ROOT / rel).read_text(encoding="utf-8")
+        cur = ""
+        for m in re.finditer(r'\b(describe|it)\("([^"]+)"', src):
+            if m.group(1) == "describe":
+                cur = m.group(2); continue
+            title = m.group(2)
+            if any(k in title for k in GATE_SKIP):
+                continue
+            # **先看这条规矩自己怎么说的，再看它住在哪个 describe 里。**
+            # 反过来会归错：「圆角只用 token 五档」住在 `typography.test.ts` 的
+            # 「字阶」块里（历史原因，那个文件先有），但它显然是版面规矩 ——
+            # 按 describe 判就被「字阶」抢进了《规范·字体》。
+            # 判据该跟着规矩的措辞走，不跟着它碰巧躺在哪个文件里走。
+            dom = next((d for d, kws in GATE_DOMAIN.items() if any(k in title for k in kws)), None) \
+                or next((d for d, kws in GATE_DOMAIN.items() if any(k in cur for k in kws)), "其它")
+            out[dom].append((tag, cur, title))
+    return out
+
+
+def gate_section(domain: str) -> list[str]:
+    g = gates()
+    rows = g.get(domain, [])
+    if not rows:
+        return []
+    L = [f"\n## 闸门：这一份里有 {len(rows)} 条是能自动判的\n"]
+    L.append("**这一节是从测试文件里读出来的，不是手抄的。** 规范里的话如果没有对应的断言，")
+    L.append("它就只是一个约定 —— 而这个仓库栽过：「间距只用这五档」写了很久，实际命中率 39%。")
+    L.append("下表每一行都能让 push 失败。\n")
+    L.append("| 判据 | 说的是什么 |")
+    L.append("|---|---|")
+    seen = set()
+    for tag, desc, title in rows:
+        key = (desc, title)
+        if key in seen:
+            continue
+        seen.add(key)
+        L.append(f"| `{tag}` · {desc} | {title} |")
+    extra = g.get("其它", [])
+    if extra and domain == "组件":
+        L.append(f"\n还有 {len(extra)} 条没归进三份规范的任何一档 —— ")
+        L.append("要么是这条规矩没归好类，要么是这张表该多一档：\n")
+        for tag, desc, title in extra:
+            L.append(f"- `{tag}` · {desc} → {title}")
+    return L
+
+
 def typography() -> str:
     t = LIB["tokens"]["type"]
     L = [f"# 界面规范 · 字体\n", HEAD]
@@ -118,6 +203,7 @@ def typography() -> str:
         L.append("|---|---|---:|")
         for b in old:
             L.append(f"| `{b['class']}` | {(b.get('when') or '—')[:40]} | {usage(b['usage'])} |")
+    L += gate_section("字体")
     return "\n".join(L) + "\n"
 
 
@@ -222,6 +308,7 @@ def layout() -> str:
     L.append("**只在 `@media (prefers-color-scheme: dark)` 里定义过** —— 系统浅色时它们根本没有定义，")
     L.append("用到它们的整条声明会被丢弃（内置件掉底色），系统深色时又跟 `--sh-*` 撞成两套色。")
     L.append("`base.css` 因此无条件补了一份浅色默认，位置在 uni 那段之后。\n")
+    L += gate_section("版面")
     return "\n".join(L) + "\n"
 
 
@@ -266,6 +353,7 @@ def components() -> str:
     L.append(f"\n## 形态缺口\n\n{'**当前 0 类** —— 页面里出现的形状，库里都有对应的件。' if not gaps else ''}")
     for g in gaps:
         L.append(f"- **{g['label']}**：{len(g.get('pages', []))} 页各造一份")
+    L += gate_section("组件")
     return "\n".join(L) + "\n"
 
 
