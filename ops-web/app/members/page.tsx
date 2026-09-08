@@ -27,9 +27,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
-import { Pagination } from "@/components/ui/misc";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Toolbar } from "@/components/ui/toolbar";
+import { PagedTable } from "@/components/ui/paged-table";
+import { ReadOnlyNotice } from "@/components/read-only-notice";
 import type { OpsMember, OpsPromoActivity, OpsPromoCoupon, ReachStat } from "@/lib/types";
 
 type Copy = (typeof MEMBERS_COPY)["zh"];
@@ -187,6 +188,7 @@ function MembersInner() {
   return (
     <div className="space-y-4">
       <TabHeader tabs={tabs} value={tab} onChange={setTab} />
+      {!canStop && <ReadOnlyNotice what={c.memberReadOnlyWhat} perm="marketing:campaign:update" note={c.memberReadOnlyNote} />}
 
       {tab === "members" && (
         <Card>
@@ -203,8 +205,15 @@ function MembersInner() {
               searchPlaceholder={c.searchTail}
             ></Toolbar>
             <Notice>{c.searchTailHint}</Notice>
-            <DataTable columns={memberCols} rows={members.data?.records ?? []} rowKey={(m) => m.memberNo} />
-            <Pagination page={page} size={size} onSize={setSize} total={members.data?.total ?? 0} onPage={setPage} />
+            <PagedTable
+              query={members}
+              page={page}
+              size={size}
+              onPage={setPage}
+              onSize={setSize}
+              columns={memberCols}
+              rowKey={(m) => m.memberNo}
+            />
           </CardContent>
         </Card>
       )}
@@ -224,7 +233,7 @@ function MembersInner() {
 
             {person.data && (
               <div className="space-y-3">
-                <div className="text-sm">
+                <div className="txt-body">
                   ···{person.data.phoneTail ?? "----"}
                   {" · "}
                   {person.data.userNo ?? c.noAccount}
@@ -233,6 +242,10 @@ function MembersInner() {
                   columns={memberCols}
                   rows={person.data.memberships}
                   rowKey={(m) => m.memberNo}
+                  empty={c.emptyMemberships}
+                  loading={person.isLoading}
+                  error={person.error}
+                  onRetry={() => person.refetch()}
                 />
                 {canReveal && (
                   <div className="space-y-2">
@@ -259,7 +272,7 @@ function MembersInner() {
           <CardHeader><CardTitle>{c.tabReach}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <Notice>{c.reachHint}</Notice>
-            <DataTable columns={reachCols} rows={reach.data ?? []} rowKey={(r) => r.entityNo} />
+            <DataTable columns={reachCols} rows={reach.data ?? []} rowKey={(r) => r.entityNo} empty={c.emptyReach} loading={reach.isLoading} error={reach.error} onRetry={() => reach.refetch()} />
           </CardContent>
         </Card>
       )}
@@ -269,7 +282,7 @@ function MembersInner() {
           <CardHeader><CardTitle>{c.tabCoupons}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <Notice>{c.couponHint}</Notice>
-            <DataTable columns={couponCols} rows={coupons.data ?? []} rowKey={(x) => x.couponNo} />
+            <DataTable columns={couponCols} rows={coupons.data ?? []} rowKey={(x) => x.couponNo} empty={c.emptyCoupons} loading={coupons.isLoading} error={coupons.error} onRetry={() => coupons.refetch()} />
           </CardContent>
         </Card>
       )}
@@ -279,7 +292,7 @@ function MembersInner() {
           <CardHeader><CardTitle>{c.tabActivities}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <Notice>{c.activityHint}</Notice>
-            <DataTable columns={activityCols} rows={activities.data ?? []} rowKey={(x) => x.activityNo} />
+            <DataTable columns={activityCols} rows={activities.data ?? []} rowKey={(x) => x.activityNo} empty={c.emptyActivities} loading={activities.isLoading} error={activities.error} onRetry={() => activities.refetch()} />
           </CardContent>
         </Card>
       )}

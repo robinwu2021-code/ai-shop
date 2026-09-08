@@ -154,7 +154,7 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
               {c.invLedgerMore}
             </Button>
           ) : (
-            <span className="text-sm text-muted-foreground">{c.invLedgerEnd}</span>
+            <span className="txt-body text-muted-foreground">{c.invLedgerEnd}</span>
           )}
         </div>
       )}

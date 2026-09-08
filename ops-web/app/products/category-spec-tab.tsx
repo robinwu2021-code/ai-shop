@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { CategorySpecDrawer } from "./category-spec-drawer";
 import { HelpNote } from "@/components/ui/help-note";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { ProductsCopy } from "./copy";
 
 export function CategorySpecTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean }) {
@@ -59,7 +60,7 @@ export function CategorySpecTab({ c, canEdit }: { c: ProductsCopy; canEdit: bool
       cell: (r) => (
         <div>
           <div className="font-semibold">{r.categoryName}</div>
-          <div className="text-[12px] text-muted-foreground">{r.parentName} · {r.categoryNo}</div>
+          <div className="txt-caption text-muted-foreground">{r.parentName} · {r.categoryNo}</div>
         </div>
       ),
       width: "13rem",
@@ -87,7 +88,7 @@ export function CategorySpecTab({ c, canEdit }: { c: ProductsCopy; canEdit: bool
                   <button key={key} type="button"
                     onClick={() => setOpenKey(openKey === key ? null : key)}
                     className="focus-ring inline-flex items-center gap-1.5 rounded-chip border border-border
-                               px-2.5 py-1 text-[12px] leading-[1.5] hover:bg-muted">
+                               px-2.5 py-1 txt-caption leading-[1.5] hover:bg-muted">
                     <span className="font-semibold">{d.name}</span>
                     {d.primary && <Badge tone="default">{c.csPrimary}</Badge>}
                     <Badge tone={d.universal ? "info" : "muted"}>
@@ -106,14 +107,14 @@ export function CategorySpecTab({ c, canEdit }: { c: ProductsCopy; canEdit: bool
                 <div key={key} className="flex flex-wrap gap-1.5 rounded-card bg-muted/60 p-2">
                   {d.values.map((v) => (
                     <span key={v.valueNo}
-                      className="inline-flex items-center gap-1 rounded-chip bg-background px-2 py-0.5 text-[12px]">
+                      className="inline-flex items-center gap-1 rounded-chip bg-background px-2 py-0.5 txt-caption">
                       {v.label}
                       {v.numericValue != null && (
                         <span className="tabular-nums text-muted-foreground">
                           {v.numericValue}{v.numericUnit}
                         </span>
                       )}
-                      <span className="font-mono text-[11px] text-muted-foreground">{v.code}</span>
+                      <span className="font-mono txt-caption text-muted-foreground">{v.code}</span>
                     </span>
                   ))}
                 </div>
@@ -134,10 +135,7 @@ export function CategorySpecTab({ c, canEdit }: { c: ProductsCopy; canEdit: bool
 
   return (
     <>
-      <div className="mb-2 flex items-baseline justify-between">
-        <h3 className="text-[15px] font-semibold">{c.csTitle}</h3>
-        <span className="text-[12px] tabular-nums text-muted-foreground">{summary}</span>
-      </div>
+      <SectionHeader title={c.csTitle} summary={summary} />
       <HelpNote className="mb-3">{c.csNotice}</HelpNote>
 
       <DataTable

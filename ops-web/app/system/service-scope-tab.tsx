@@ -76,6 +76,7 @@ export function ServiceScopeTab({ c, canWrite }: { c: SystemCopy; canWrite: bool
         error={list.error}
         onRetry={() => list.refetch()}
         rowKey={(r) => r.scope}
+        empty={c.scEmpty}
       />
 
       <Drawer open={!!current} onOpenChange={(o) => !o && setCurrent(null)} title={current ? label(current.scope) : ""}>

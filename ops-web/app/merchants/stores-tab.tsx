@@ -23,15 +23,15 @@ import { money } from "@/lib/utils";
 import type { StoreGovern, StoreGovernStatus } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
 import { HelpNote } from "@/components/ui/help-note";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
-import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
+import { PagedTable } from "@/components/ui/paged-table";
 import type { MerchantsCopy as Copy } from "./copy";
 
 /**
@@ -170,13 +170,17 @@ export function StoresTab({ c }: { c: Copy }) {
         />
       </Toolbar>
 
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(s) => s.storeNo}
         empty={c.stEmpty}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
 
       <Drawer
         open={!!current}
@@ -282,7 +286,7 @@ export function StoresTab({ c }: { c: Copy }) {
                       <>
                         <span className="tabular-nums">{fill(c.stReachableCount, { n: detail.data.coverage.reachableCount })}</span>
                         {!!detail.data.coverage.reachableSample.length && (
-                          <span className="ml-2 text-xs text-muted-foreground">
+                          <span className="ml-2 txt-caption text-muted-foreground">
                             {detail.data.coverage.reachableSample.join("、")}
                             {detail.data.coverage.reachableCount > detail.data.coverage.reachableSample.length ? " …" : ""}
                           </span>

@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { HelpNote } from "@/components/ui/help-note";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { ProductsCopy } from "./copy";
 
 export function CategoryPayModeTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean }) {
@@ -44,7 +45,7 @@ export function CategoryPayModeTab({ c, canEdit }: { c: ProductsCopy; canEdit: b
       cell: (r) => (
         <div>
           <div className="font-semibold">{r.categoryName}</div>
-          <div className="text-[12px] text-muted-foreground">{r.parentName} · {r.categoryNo}</div>
+          <div className="txt-caption text-muted-foreground">{r.parentName} · {r.categoryNo}</div>
         </div>
       ),
       width: "16rem",
@@ -78,12 +79,7 @@ export function CategoryPayModeTab({ c, canEdit }: { c: ProductsCopy; canEdit: b
 
   return (
     <>
-      <div className="mb-2 flex items-baseline justify-between">
-        <h3 className="text-[15px] font-semibold">{c.cpmTitle}</h3>
-        <span className="text-[12px] tabular-nums text-muted-foreground">
-          {c.cpmSummary.replace("{blocked}", String(blocked)).replace("{total}", String(rows.length))}
-        </span>
-      </div>
+      <SectionHeader title={c.cpmTitle} summary={c.cpmSummary.replace("{blocked}", String(blocked)).replace("{total}", String(rows.length))} />
       <HelpNote className="mb-3">{c.cpmNotice}</HelpNote>
 
       <DataTable

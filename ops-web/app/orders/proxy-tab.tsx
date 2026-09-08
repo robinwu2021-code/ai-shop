@@ -19,9 +19,8 @@ import { fill } from "@/lib/use-copy";
 import { money } from "@/lib/utils";
 import type { FulfillmentType, Order } from "@/lib/types";
 import { OrderStatusBadge, useFulfillmentTypeMap } from "@/components/status";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
-import { Pagination } from "@/components/ui/misc";
 import { Toolbar } from "@/components/ui/toolbar";
 import { HelpNote } from "@/components/ui/help-note";
 import { Button } from "@/components/ui/button";
@@ -29,7 +28,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PagedTable } from "@/components/ui/paged-table";
 import { ORDER_TRANSITIONS } from "@/lib/types";
+import { usePaging } from "@/lib/use-paging";
 import type { OrdersCopy } from "./copy";
 
 interface Line { skuNo: string; qty: string }
@@ -44,8 +45,7 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
   const qc = useQueryClient();
   const fulfillMap = useFulfillmentTypeMap();
   const [keyword, setKeyword] = useState("");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
   const [cancelling, setCancelling] = useState<Order | null>(null);
   const [reason, setReason] = useState("");
 
@@ -342,13 +342,17 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
       </Card>
 
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder} />
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(o) => o.orderNo}
         empty={c.empty}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
 
       <Drawer
         open={!!cancelling}

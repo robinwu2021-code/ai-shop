@@ -30,9 +30,13 @@ const zh = {
   toastApproved: "已通过，商家主体已创建",
   toastRejected: "已驳回，理由已发给商家",
   adNotice:
-    "平台**无仓、不碰货**，「自营」只是资质代持的外壳 —— 最弱一档（小微）没有「入平台仓让平台验货」这条出路。平台在法律上是销售主体、承担全部产品责任却没有货物控制手段，这个缺口只能用准入和钱去补：**保证金 / 限品类 / 限额三样必须同时生效**，任何一样调成 0，另外两样都会失效。",
+    "平台「无仓、不碰货」，「自营」只是资质代持的外壳 —— 最弱一档（小微）没有「入平台仓让平台验货」这条出路。平台在法律上是销售主体、承担全部产品责任却没有货物控制手段，这个缺口只能用准入和钱去补：「保证金 / 限品类 / 限额三样必须同时生效」，任何一样调成 0，另外两样都会失效。",
   adPolicyTitle: "准入策略（按主体档位）",
   adPolicyHint: "策略挂档位不挂商户：三档三行，改规则改一行。三档就是小微 / 个体户 / 企业，不再增删。",
+  adPolicyEmpty: "一条准入策略都没读到 —— 三档策略本应恒有三行。持续为空说明策略表没初始化，先找后端确认，不要在这里新增。",
+  adTxnEmpty: "这个商家还没有任何保证金流水。缴纳、冻结、扣划都会在这里留一条，空着说明一次都没发生过。",
+  adModeEmpty: "这个商家名下还没有门店。经营模式挂在门店上，得先让商家把店建出来。",
+  applyEmpty: "没有符合条件的入驻申请。新提交的申请落在「待审」，先把状态筛选放宽再看一次。",
   adColForm: "主体档位",
   adColDeposit: "应缴保证金",
   adColSingle: "单笔限额",
@@ -78,7 +82,7 @@ const zh = {
   fundsAggregated: "归集（平台收款）",
   fundsDirect: "直连（商家收款）",
   fundsModeTitle: "资金路径",
-  fundsModeHint: "钱先进谁的账户。**能走哪条由主体档位决定** —— 无照主体开不出进项票，平台按全额确认收入而成本不可税前扣除，所以禁归集；自产农产品除外。与「经营模式」是两件事：那个说谁是销售主体。",
+  fundsModeHint: "钱先进谁的账户。「能走哪条由主体档位决定」 —— 无照主体开不出进项票，平台按全额确认收入而成本不可税前扣除，所以禁归集；自产农产品除外。与「经营模式」是两件事：那个说谁是销售主体。",
   fundsModeChanged: "资金路径已更新",
   applySectionRawFiles: "其他上传文件",
   applyRawFilesHint: "旧版上传，只有图片没有类型与有效期 —— 不会转存为资质记录",
@@ -98,7 +102,7 @@ const zh = {
   qualRevoke: "撤销",
   qualRevoked: "已撤销",
   qualRevokeConfirm: "撤销后该证不再参与上架校验。不会物理删除 —— 「当初有没有这张证」仍可查。",
-  qualEmpty: "尚未登记任何资质",
+  qualEmpty: "这家商家尚未登记任何资质。上架时的资质校验读的就是这里，空着等于那道闸门不生效。",
   qualStatusVALID: "有效",
   qualStatusEXPIRED: "已过期",
   qualStatusREVOKED: "已撤销",
@@ -111,7 +115,7 @@ const zh = {
   mrColBills: "已结算单数",
   mrColExposure: "累计商家实得",
   mrNotTraded: "尚未成交",
-  mrEmpty: "没有无执照主体挂在自营门店上",
+  mrEmpty: "没有无执照主体挂在自营门店上。这一页空着是好事，说明没有进项票缺口。",
   mrWarning:
     "这些门店的经营主体没有营业执照，而门店按自营结算 —— 平台是销售方，"
     + "需取得进项发票才能列支成本。无票的支出不得在企业所得税前扣除，"
@@ -320,7 +324,7 @@ const zh = {
   remarkPlaceholder: "驳回时必须写清补交项，商家在 B 端看到的就是这段话",
 
   // ── 门店档案（P-11.2.1）。平台**只读为主**：门店资料、价格、库存一律不改
-  stNotice: "门店档案是**只读**的：资料、价格、库存归商家运营，平台的边界是「裁、定、兜」。这里唯一的写动作是解除强制下线 —— 压下那一侧在「违规处置与封禁」，处置动作与留痕必须是同一次提交。",
+  stNotice: "门店档案是「只读」的：资料、价格、库存归商家运营，平台的边界是「裁、定、兜」。这里唯一的写动作是解除强制下线 —— 压下那一侧在「违规处置与封禁」，处置动作与留痕必须是同一次提交。",
   stSearchPh: "门店号 / 门店名 / 地址 / 商家名",
   stFilterMerchantPh: "按商家号筛（如 M901）",
   stFilterStatus: "按经营状态筛选",
@@ -419,7 +423,7 @@ const zh = {
   plQuotaFull: "额度已满",
   plExpireNone: "长期",
   plDowngradedAt: "降级于",
-  plEmpty: "没有符合条件的订阅。",
+  plEmpty: "没有符合条件的订阅。商家买了套餐才会出现在这里，先把筛选条件放宽再看一次。",
   plDetail: "详情",
   plSecPlan: "订阅",
   plSecGrant: "授予 / 延长",
@@ -452,13 +456,14 @@ const zh = {
   plDefEdit: "编辑",
   plBtnDefSave: "保存定义",
   plDefConfirmTitle: "确认修改「{name}」的定义？",
-  plDefConfirmDesc: "当前有 {n} 家在用这一档。改动**只影响之后的新订阅** —— 已订阅的商家用的是自己那份额度快照，不会变。",
+  plDefConfirmDesc: "当前有 {n} 家在用这一档。改动「只影响之后的新订阅」 —— 已订阅的商家用的是自己那份额度快照，不会变。",
   plToastDefSaved: "档位定义已保存，只影响之后的新订阅",
   plSecSignals: "升档信号",
   plSignalsHint: "一个人名下有多个主体 = 他已经在多店经营，只是绕过了额度。这是最该打的电话。",
   plSignalOwner: "开户人",
   plSignalEntities: "名下主体",
-  plSignalsEmpty: "暂无一人多主体的情况。",
+  plSignalsEmpty: "暂无一人多主体的情况。这一页找的是「已经在多店经营却绕过额度」的人，空着说明没有。",
+  plDefsEmpty: "还没有任何档位定义，商家侧的套餐选择会是一张空表；先新增一档再去授予。",
   plReadOnlyGrant: "授予与延长套餐",
   plReadOnlyDef: "修改档位定义",
 
@@ -521,12 +526,12 @@ const zh = {
 
   obNotSubmittedHint: "这家还没把资料提交给通道，没有单号可查 —— 要催的是商家补料，不是等通道",
   obToastNotSubmitted: "这家还没把资料提交给通道，回查不到东西 —— 要催的是商家，不是通道",
-  obEmpty: "没有匹配的进件记录",
+  obEmpty: "没有匹配的进件记录。商家提交支付进件后才会出现，先把状态筛选放宽再看一次。",
   // ── 商家链条画像（M1）────────────────────────────────────────────────
   chainHelpTitle: "这一页在看什么",
   chainHelp:
     "一家商家从建品到持续记账要走六步，每一步都在流失。这张表把六步排成一行，"
-    + "并给出**第一个**断掉的环 —— 后面几列的 0 通常是它的后果，不是几个独立问题。"
+    + "并给出「第一个」断掉的环 —— 后面几列的 0 通常是它的后果，不是几个独立问题。"
     + "「卡在审核」那一档是平台自己欠商家的，与「商家没动」要分开看。",
   chainMerchant: "商家",
   chainStuck: "卡在哪一层",
@@ -596,6 +601,10 @@ const en: typeof zh = {
     "The platform has no warehouse and never handles the goods, so \"self-operated\" is only a licensing shell. The weakest tier has no \"send it through our warehouse\" escape hatch, because that warehouse does not exist. The platform is the legal seller and carries full product liability without any control over the goods, so the gap can only be closed with admission rules and money: deposit, category limits and amount caps must all be in force — set any one to zero and the other two stop working.",
   adPolicyTitle: "Admission policy (by entity tier)",
   adPolicyHint: "Policy is attached to the tier, not the merchant: three tiers, three rows, one edit changes the rule. The tiers are micro / sole proprietor / company and will not grow.",
+  adPolicyEmpty: "No admission policy rows loaded — the three tiers should always yield three rows. If it stays empty the policy table was never seeded; check with the backend rather than adding rows here.",
+  adTxnEmpty: "This merchant has no deposit transactions yet. Payments, freezes and deductions each leave a row here, so an empty list means none has happened.",
+  adModeEmpty: "This merchant has no stores yet. Business mode is attached to a store, so the merchant has to create one first.",
+  applyEmpty: "No applications match the current filters. New submissions land in Pending — widen the status filter and look again.",
   adColForm: "Entity tier",
   adColDeposit: "Required deposit",
   adColSingle: "Per-order cap",
@@ -641,7 +650,7 @@ const en: typeof zh = {
   fundsAggregated: "Aggregated (platform collects)",
   fundsDirect: "Direct (merchant collects)",
   fundsModeTitle: "Funds path",
-  fundsModeHint: "Whose account the money lands in first. **Which path is allowed follows from the legal form** — unlicensed entities cannot issue input invoices, so the platform books full revenue with non-deductible cost. Self-produced agricultural goods are the exception. This is not the same axis as business mode, which says who the seller is.",
+  fundsModeHint: "Whose account the money lands in first. Which path is allowed follows from the legal form — unlicensed entities cannot issue input invoices, so the platform books full revenue with non-deductible cost. Self-produced agricultural goods are the exception. This is not the same axis as business mode, which says who the seller is.",
   fundsModeChanged: "Funds path updated",
   applySectionRawFiles: "Other uploads",
   applyRawFilesHint: "Legacy upload: images only, no type or expiry — these are not turned into qualification records",
@@ -661,7 +670,7 @@ const en: typeof zh = {
   qualRevoke: "Revoke",
   qualRevoked: "Revoked",
   qualRevokeConfirm: "A revoked certificate no longer counts towards listing checks. It is not deleted — the record stays queryable.",
-  qualEmpty: "No qualification registered yet",
+  qualEmpty: "This merchant has no qualifications on record. Listing checks read from here, so an empty list means that gate does nothing.",
   qualStatusVALID: "Valid",
   qualStatusEXPIRED: "Expired",
   qualStatusREVOKED: "Revoked",
@@ -674,7 +683,7 @@ const en: typeof zh = {
   mrColBills: "Settled bills",
   mrColExposure: "Paid to supplier",
   mrNotTraded: "No sales yet",
-  mrEmpty: "No unlicensed entity is attached to a self-operated store",
+  mrEmpty: "No unlicensed entity is attached to a self-operated store. An empty page is the good outcome: no input-invoice exposure.",
   mrWarning:
     "These stores belong to entities without a business licence, yet settle as self-operated. "
     + "The platform is the seller and needs input invoices to deduct costs. "
@@ -883,7 +892,7 @@ const en: typeof zh = {
   fieldRemark: "Review note",
   remarkPlaceholder: "When rejecting, spell out what must be resubmitted — the merchant sees this text verbatim in the B-end app",
 
-  stNotice: "Store records are **read only**: details, pricing and stock belong to the merchant. The one write action here is lifting a forced offline — pushing a store offline lives under “Penalties & suspensions”, where the action and its audit trail are one submission.",
+  stNotice: "Store records are read only: details, pricing and stock belong to the merchant. The one write action here is lifting a forced offline — pushing a store offline lives under “Penalties & suspensions”, where the action and its audit trail are one submission.",
   stSearchPh: "Store no. / name / address / merchant",
   stFilterMerchantPh: "Filter by merchant no. (e.g. M901)",
   stFilterStatus: "Filter by trading status",
@@ -980,7 +989,7 @@ const en: typeof zh = {
   plQuotaFull: "Quota full",
   plExpireNone: "No expiry",
   plDowngradedAt: "Downgraded at",
-  plEmpty: "No subscriptions match.",
+  plEmpty: "No subscriptions match. A row appears once a merchant buys a plan — widen the filters and look again.",
   plDetail: "Details",
   plSecPlan: "Subscription",
   plSecGrant: "Grant / extend",
@@ -1019,7 +1028,8 @@ const en: typeof zh = {
   plSignalsHint: "One person holding several merchant entities is already running multiple stores — just outside the quota. These are the calls worth making.",
   plSignalOwner: "Account owner",
   plSignalEntities: "Entities held",
-  plSignalsEmpty: "No one currently holds more than one entity.",
+  plSignalsEmpty: "No one currently holds more than one entity. This page looks for people already running multiple stores outside the quota — empty means there are none.",
+  plDefsEmpty: "No tiers defined yet, so merchants see an empty plan picker. Add one before granting.",
   plReadOnlyGrant: "granting or extending a plan",
   plReadOnlyDef: "editing tier definitions",
 
@@ -1082,11 +1092,11 @@ const en: typeof zh = {
 
   obNotSubmittedHint: "Never submitted to the channel, so there is no application to query — chase the merchant for documents",
   obToastNotSubmitted: "Never submitted to the channel — nothing to re-query. Chase the merchant, not the channel.",
-  obEmpty: "No matching onboarding records",
+  obEmpty: "No onboarding records match. Rows appear after a merchant submits payment onboarding — widen the status filter and look again.",
   chainHelpTitle: "What this page shows",
   chainHelp:
     "A merchant walks six steps from first listing to keeping books, and every step leaks."
-    + " This table lays the six across one row and names the **first** broken link —"
+    + " This table lays the six across one row and names the first broken link —"
     + " the zeros after it are usually its consequence, not separate problems."
     + " \"Stuck in review\" is the platform's own debt; keep it apart from \"merchant went quiet\".",
   chainMerchant: "Merchant",

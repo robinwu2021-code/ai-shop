@@ -57,7 +57,8 @@ export function ChannelTab({ c, channel, canWrite }:
       <ChannelStatus c={c} health={me} loading={health.isLoading} />
       <ChannelConfig c={c} health={me} channel={channel} canWrite={canWrite} />
       <ChannelTemplates c={c} channel={channel} />
-      <RecentLogs c={c} rows={logs.data?.records ?? []} loading={logs.isLoading} />
+      <RecentLogs c={c} rows={logs.data?.records ?? []} loading={logs.isLoading}
+                  error={logs.error} onRetry={() => logs.refetch()} />
 
       <TestSendDrawer
         c={c} channel={channel} open={testOpen} onOpenChange={setTestOpen}
@@ -237,8 +238,8 @@ function ChannelTemplates({ c, channel }: { c: MessageCopy; channel: NotifyChann
 }
 
 /** 最近 10 条。全部记录去发送记录页。 */
-function RecentLogs({ c, rows, loading }:
-  { c: MessageCopy; rows: NotifyLog[]; loading: boolean }) {
+function RecentLogs({ c, rows, loading, error, onRetry }:
+  { c: MessageCopy; rows: NotifyLog[]; loading: boolean; error?: unknown; onRetry?: () => void }) {
   const reasonText: Record<string, string> = {
     CRED: c.nlReasonCred, QUOTA: c.nlReasonQuota,
     TARGET: c.nlReasonTarget, NETWORK: c.nlReasonNetwork,
@@ -266,7 +267,7 @@ function RecentLogs({ c, rows, loading }:
     <Card>
       <CardHeader><CardTitle>{c.chRecent}</CardTitle></CardHeader>
       <CardContent>
-        <DataTable columns={cols} rows={rows} loading={loading}
+        <DataTable columns={cols} rows={rows} loading={loading} error={error} onRetry={onRetry}
                    rowKey={(r) => r.notifyNo} empty={c.nlEmpty} />
       </CardContent>
     </Card>

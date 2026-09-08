@@ -13,10 +13,10 @@ import { useEditableConfig } from "@/lib/use-editable-config";
 import { fmtTime, money } from "@/lib/utils";
 import { MAX_TAX_RATE, MINOR_UNIT } from "@/lib/constants";
 import type { InvoiceRequest, InvoiceStatus } from "@/lib/types";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { usePaging } from "@/lib/use-paging";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
-import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
 import { HelpNote } from "@/components/ui/help-note";
@@ -26,6 +26,7 @@ import { ConfigCard } from "@/components/ui/config-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PagedTable } from "@/components/ui/paged-table";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import type { FinanceCopy } from "./copy";
 
@@ -40,8 +41,7 @@ export function InvoiceTab({ c, canEdit, canWrite }: { c: FinanceCopy; canEdit: 
   const statusMap = useInvoiceStatusMap(c);
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<InvoiceRequest | null>(null);
   const [serialNo, setSerialNo] = useState("");
   const [reason, setReason] = useState("");
@@ -119,13 +119,17 @@ export function InvoiceTab({ c, canEdit, canWrite }: { c: FinanceCopy; canEdit: 
         <FilterSelect aria-label={c.filterIvStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }}
           options={statusMap} allLabel={c.filterIvStatusAll} />
       </Toolbar>
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(i) => i.invoiceNo}
         empty={c.emptyInvoice}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
 
       {titleForm && (
         <ConfigCard
@@ -227,8 +231,8 @@ export function InvoiceTab({ c, canEdit, canWrite }: { c: FinanceCopy; canEdit: 
                 <Field className="mb-3" label={c.colIvAmount}>{money(current.amount)}</Field>
                 <Field className="mb-3" label={c.colSettled}>{money(current.settledAmount)}</Field>
               </FieldGrid>
-              {overSettled && <p className="txt-caption text-danger">{c.warnOverSettled}</p>}
-              {missingTaxNo && <p className="txt-caption text-danger">{c.warnMissingTaxNo}</p>}
+              {overSettled && <p className="txt-caption text-destructive">{c.warnOverSettled}</p>}
+              {missingTaxNo && <p className="txt-caption text-destructive">{c.warnMissingTaxNo}</p>}
             </DrawerSection>
 
             {pending && (

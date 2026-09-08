@@ -242,8 +242,8 @@ export function SpuStdTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean })
       </Toolbar>
 
       {picked.length > 0 && (
-        <div className="mb-2 flex items-center gap-2 rounded-field border border-line bg-surface-2 px-3 py-2">
-          <span className="text-sm text-fg-2">{fill(c.stdPickedN, { n: String(picked.length) })}</span>
+        <div className="mb-2 flex items-center gap-2 rounded-field border border-border bg-muted px-3 py-2">
+          <span className="txt-body text-muted-foreground">{fill(c.stdPickedN, { n: String(picked.length) })}</span>
           <Button size="sm" loading={bulk.isPending} onClick={() => bulk.mutate("ACTIVE")}>
             {c.stdBulkEnable}
           </Button>
@@ -289,13 +289,13 @@ export function SpuStdTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean })
             <div className="space-y-1">
               <Label htmlFor="std-title" required>{c.stdFieldTitle}</Label>
               <Input id="std-title" className="w-full" value={form.title} placeholder={c.stdTitlePh}
-                onChange={(e) => setForm({ ...form, title: e.target.value })} />
+                onChange={(e) => setForm((p) => p && { ...p, title: e.target.value })} />
             </div>
 
             <div className="space-y-1">
               <Label htmlFor="std-cat" required>{c.stdFieldCategory}</Label>
               <Select id="std-cat" className="w-full" value={form.categoryNo}
-                onChange={(e) => setForm({ ...form, categoryNo: e.target.value })}>
+                onChange={(e) => setForm((p) => p && { ...p, categoryNo: e.target.value })}>
                 <option value="">{c.stdCategoryPh}</option>
                 {catOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </Select>
@@ -306,13 +306,13 @@ export function SpuStdTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean })
             <div className="space-y-1">
               <Label htmlFor="std-sub">{c.stdFieldSubtitle}</Label>
               <Input id="std-sub" className="w-full" value={form.subtitle}
-                onChange={(e) => setForm({ ...form, subtitle: e.target.value })} />
+                onChange={(e) => setForm((p) => p && { ...p, subtitle: e.target.value })} />
             </div>
 
             <div className="space-y-1">
               <Label htmlFor="std-kw">{c.stdFieldKeywords}</Label>
               <Input id="std-kw" className="w-full" value={form.keywords} placeholder={c.stdKeywordsPh}
-                onChange={(e) => setForm({ ...form, keywords: e.target.value })} />
+                onChange={(e) => setForm((p) => p && { ...p, keywords: e.target.value })} />
               {/* 别名是搜得到的关键：商家嘴里的「洋芋」与标题「土豆」对不上时，
                   结果不是报错，是他以为标准库里没有 —— 然后自建一个 */}
               <p className="txt-caption text-muted-foreground">{c.stdKeywordsHint}</p>
@@ -327,7 +327,7 @@ export function SpuStdTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean })
                       <Input className="w-40" value={g.name} placeholder={c.stdGroupNamePh}
                         onChange={(e) => patchGroup(gi, { name: e.target.value })} />
                       <Button size="sm" variant="ghost"
-                        onClick={() => setForm({ ...form, groups: form.groups.filter((_, k) => k !== gi) })}>
+                        onClick={() => setForm((p) => p && { ...p, groups: form.groups.filter((_, k) => k !== gi) })}>
                         {c.stdRemoveGroup}
                       </Button>
                     </div>
@@ -359,7 +359,7 @@ export function SpuStdTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean })
                 ))}
               </div>
               <Button className="mt-2" size="sm" variant="outline"
-                onClick={() => setForm({ ...form, groups: [...form.groups, EMPTY_GROUP()] })}>
+                onClick={() => setForm((p) => p && { ...p, groups: [...form.groups, EMPTY_GROUP()] })}>
                 {c.stdAddGroup}
               </Button>
             </Field>

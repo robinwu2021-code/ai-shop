@@ -166,7 +166,8 @@ export function TopicsTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean })
         </Toolbar>
       )}
 
-      <DataTable rows={topics.data ?? []} columns={columns} rowKey={(t) => t.topicNo} />
+      <DataTable rows={topics.data ?? []} columns={columns} rowKey={(t) => t.topicNo} empty={c.topicListEmpty}
+                 loading={topics.isLoading} error={topics.error} onRetry={() => topics.refetch()} />
 
       <Drawer
         open={!!form}
@@ -176,22 +177,22 @@ export function TopicsTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean })
         {form && (
           <DrawerSection first title={c.topicSectionBasic}>
             <Field label={c.topicColTitle}>
-              <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+              <Input value={form.title} onChange={(e) => setForm((p) => p && { ...p, title: e.target.value })} />
             </Field>
             <Field label={c.topicColSubtitle}>
-              <Input value={form.subtitle} onChange={(e) => setForm({ ...form, subtitle: e.target.value })} />
+              <Input value={form.subtitle} onChange={(e) => setForm((p) => p && { ...p, subtitle: e.target.value })} />
             </Field>
             <Field label={c.topicColSort}>
-              <Input value={form.sort} onChange={(e) => setForm({ ...form, sort: e.target.value })} />
+              <Input value={form.sort} onChange={(e) => setForm((p) => p && { ...p, sort: e.target.value })} />
             </Field>
             {/* 档期两头都可空 —— 常设专题填一个假的结束时间会让它某天悄悄消失 */}
             <Field label={c.topicStart}>
               <Input type="datetime-local" value={form.startAt}
-                onChange={(e) => setForm({ ...form, startAt: e.target.value })} />
+                onChange={(e) => setForm((p) => p && { ...p, startAt: e.target.value })} />
             </Field>
             <Field label={c.topicEnd}>
               <Input type="datetime-local" value={form.endAt}
-                onChange={(e) => setForm({ ...form, endAt: e.target.value })} />
+                onChange={(e) => setForm((p) => p && { ...p, endAt: e.target.value })} />
             </Field>
             <p className="mt-1 txt-caption text-muted-foreground">{c.topicRangeHint}</p>
             <Button className="mt-4" disabled={!form.title.trim() || save.isPending}

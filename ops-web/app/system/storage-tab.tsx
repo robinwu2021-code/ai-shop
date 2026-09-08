@@ -27,6 +27,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { Toolbar } from "@/components/ui/toolbar";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { fmtTime } from "@/lib/utils";
+import { usePaging } from "@/lib/use-paging";
 import type { SystemCopy } from "./copy";
 
 /**
@@ -58,8 +59,7 @@ export function StorageTab({ c, canPurge }: { c: SystemCopy; canPurge: boolean }
   const [storeNo, setStoreNo] = useState("");
   const [includeQual, setIncludeQual] = useState(false);
   const [reason, setReason] = useState<"all" | "never" | "replaced">("all");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(20);
+  const { page, setPage, size, setSize } = usePaging(20);
   // **默认空**：破坏性操作不预选
   const [selected, setSelected] = useState<string[]>([]);
   /** 打开明细抽屉的那个批次号。批次明细是按需拉的 —— 列表页不该为了它多一次查询。 */
@@ -208,7 +208,7 @@ export function StorageTab({ c, canPurge }: { c: SystemCopy; canPurge: boolean }
          * **没有缩略图就是让人盲删**，所以这一列不能省。
          */
         <img src={`${MEDIA_BASE}/uploads/${r.assetKey}`} alt="" loading="lazy"
-             className="h-12 w-12 rounded object-cover ring-1 ring-border" />
+             className="h-12 w-12 rounded-field object-cover ring-1 ring-border" />
       ),
     },
     { header: c.stColBizType,
@@ -255,7 +255,7 @@ export function StorageTab({ c, canPurge }: { c: SystemCopy; canPurge: boolean }
       : s === "DONE" ? c.stBatchDone : c.stBatchPartial;
 
   const batchCols: Column<MediaPurgeBatch>[] = [
-    { header: c.stColBatchNo, cell: (r) => <span className="font-mono text-xs">{r.batchNo}</span> },
+    { header: c.stColBatchNo, cell: (r) => <span className="font-mono txt-caption">{r.batchNo}</span> },
     { header: c.stColOperator,
       // 显示名是发起时的快照 —— 人离职改名之后这条记录还得说得清是谁
       cell: (r) => r.operatorName ?? r.operator,
@@ -406,8 +406,9 @@ export function StorageTab({ c, canPurge }: { c: SystemCopy; canPurge: boolean }
               <Button variant="outline" size="sm" onClick={() => rescan.mutate()}>{c.stRescan}</Button>
             ) : undefined}
           />
+          {/* setSize 内部就会复位页码（lib/use-paging.ts），这里不必再包一层 */}
           <Pagination page={page} size={size} total={list.data?.total ?? 0}
-                      onPage={setPage} onSize={(s) => { setSize(s); setPage(1); }} />
+                      onPage={setPage} onSize={setSize} />
         </>
       )}
 
@@ -418,7 +419,7 @@ export function StorageTab({ c, canPurge }: { c: SystemCopy; canPurge: boolean }
         <DataTable
           columns={[
             { header: c.stColThumb, cell: (r: MediaReclaimable) => (
-              <span className="font-mono text-[11px]">{r.assetKey.split("/").pop()}</span>
+              <span className="font-mono txt-caption">{r.assetKey.split("/").pop()}</span>
             ) },
             { header: c.stColOwner, cell: (r: MediaReclaimable) => storeLabel(r.storeNo) },
             { header: c.stColSize, cell: (r: MediaReclaimable) => mb(r.bytes) },
@@ -432,6 +433,7 @@ export function StorageTab({ c, canPurge }: { c: SystemCopy; canPurge: boolean }
           rows={batchDetail.data?.items} loading={batchDetail.isLoading}
           error={batchDetail.error} onRetry={() => batchDetail.refetch()}
           rowKey={(r) => r.assetKey}
+          empty={c.stBatchEmpty}
         />
       </Drawer>
 

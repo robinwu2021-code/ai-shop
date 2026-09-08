@@ -35,15 +35,15 @@ import { FulfillmentBlock } from "./fulfillment-block";
 import { ArchiveActions, ShowArchivedToggle, archiveConfirm, archivedRowClass, unarchiveConfirm } from "@/components/archive";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, Field, FieldGrid } from "@/components/ui/drawer";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { FilterSelect } from "@/components/ui/filter-select";
-import { Pagination } from "@/components/ui/misc";
 import { Textarea } from "@/components/ui/textarea";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { PagedTable } from "@/components/ui/paged-table";
 
 type Copy = (typeof MERCHANTS_COPY)["zh"];
 const TIER_OPTIONS = (c: Copy) => [
@@ -275,17 +275,18 @@ function MerchantsInner() {
         <ShowArchivedToggle checked={showArchived} onChange={(v) => { setShowArchived(v); setPage(1); }} />
       </Toolbar>
 
-      <DataTable
-        columns={columns}
-        rows={list.data?.records}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
         loading={list.isLoading}
-        error={list.error}
-        onRetry={() => list.refetch()}
+        columns={columns}
         rowKey={(m) => m.merchantNo}
         rowClassName={archivedRowClass}
         empty={c.empty}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
       </>
       )}
 

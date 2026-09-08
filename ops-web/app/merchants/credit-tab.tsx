@@ -13,10 +13,10 @@ import { fmtTime } from "@/lib/utils";
 import { MAX_MERCHANT_BREACH } from "@/lib/constants";
 import { MERCHANT_TRANSITIONS } from "@/lib/types";
 import type { Merchant, Violation, ViolationAction, ViolationType } from "@/lib/types";
+import { usePaging } from "@/lib/use-paging";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
-import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
 import { HelpNote } from "@/components/ui/help-note";
@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { PagedTable } from "@/components/ui/paged-table";
 import { MerchantBrief } from "./authorize-tab";
 import type { MerchantsCopy } from "./copy";
 
@@ -49,8 +50,7 @@ export function CreditTab({ c }: { c: MerchantsCopy }) {
   const typeMap = useTypeMap(c);
   const actionMap = useActionMap(c);
   const [keyword, setKeyword] = useState("");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<Merchant | null>(null);
 
   const q = { keyword, page, size };
@@ -105,13 +105,17 @@ export function CreditTab({ c }: { c: MerchantsCopy }) {
       <HelpNote title={c.creditNoteTitle} className="mb-3">{fill(c.creditNotice, { n: MAX_MERCHANT_BREACH })}</HelpNote>
       <HelpNote title={c.borneNoteTitle} className="mb-3">{c.borneNotice}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder} />
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(m) => m.merchantNo}
         empty={c.empty}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
 
       <Drawer
         open={!!current}

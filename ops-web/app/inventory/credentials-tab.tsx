@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { useCan } from "@/lib/use-can";
 import type { InventoryCopy } from "./copy";
 
@@ -114,11 +115,11 @@ export function CredentialsTab({ c }: { c: InventoryCopy }) {
       cell: (r) => (
         <div>
           <div>{r.name}</div>
-          <div className="text-xs text-muted-foreground tabular-nums">{r.appKey}</div>
+          <div className="txt-caption text-muted-foreground tabular-nums">{r.appKey}</div>
         </div>
       ),
     },
-    { header: c.invColScopes, cell: (r) => <span className="text-xs">{r.scopes}</span> },
+    { header: c.invColScopes, cell: (r) => <span className="txt-caption">{r.scopes}</span> },
     {
       header: c.invColStatus,
       cell: (r) =>
@@ -171,6 +172,8 @@ export function CredentialsTab({ c }: { c: InventoryCopy }) {
     <div className="space-y-4">
       <Notice>{c.invCredNotice}</Notice>
       <Notice tone="muted">{c.invCredExpiresHint}</Notice>
+      {/* 没权限时按钮直接不渲染 —— 不说一句的话，看到的是「这一页少了个功能」 */}
+      {!canIssue && <ReadOnlyNotice what={c.invCredReadOnlyWhat} perm="inventory:credential:grant" note={c.invCredReadOnlyNote} />}
 
       <Toolbar>
         <Input
@@ -198,6 +201,8 @@ export function CredentialsTab({ c }: { c: InventoryCopy }) {
           loading={list.isLoading}
           empty={c.invCredEmpty}
           rowKey={(r) => r.credentialId}
+          error={list.error}
+          onRetry={() => list.refetch()}
         />
       )}
 
@@ -220,10 +225,10 @@ export function CredentialsTab({ c }: { c: InventoryCopy }) {
         用户点「我已经存好了」才关：点叉关掉太容易，而代价是只能吊销重发。
       */}
       {issued && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 space-y-3">
+        <div className="rounded-card bg-destructive-tint p-4 space-y-3">
           <div className="font-medium">{c.invCredIssuedTitle}</div>
-          <div className="text-sm text-muted-foreground">{c.invCredSecretOnce}</div>
-          <div className="space-y-1 font-mono text-sm">
+          <div className="txt-body text-muted-foreground">{c.invCredSecretOnce}</div>
+          <div className="space-y-1 font-mono txt-body">
             <div className="break-all">App Key: {issued.appKey}</div>
             <div className="break-all">App Secret: {issued.appSecret}</div>
           </div>

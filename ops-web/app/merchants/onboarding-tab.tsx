@@ -16,6 +16,7 @@ import { useCan } from "@/lib/use-can";
 import { fmtTime } from "@/lib/utils";
 import { fill } from "@/lib/use-copy";
 import type { OnboardingRow, OnboardingStatus } from "@/lib/types";
+import { usePaging } from "@/lib/use-paging";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Pagination } from "@/components/ui/misc";
@@ -59,8 +60,7 @@ export function OnboardingTab({ c }: { c: MerchantsCopy }) {
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
   const [payChannel, setPayChannel] = useState("");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
 
   const q = { keyword, status, payChannel, page, size };
   const list = useQuery({ queryKey: ["onboarding", q], queryFn: () => api.onboardingBoard(q) });
@@ -174,6 +174,8 @@ export function OnboardingTab({ c }: { c: MerchantsCopy }) {
         loading={list.isPending}
         rowKey={(r) => `${r.merchantNo}:${r.payChannel}:${r.storeNo}`}
         empty={c.obEmpty}
+        error={list.error}
+        onRetry={() => list.refetch()}
       />
       <Pagination
         page={page}

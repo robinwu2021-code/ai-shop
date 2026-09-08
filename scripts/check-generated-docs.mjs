@@ -86,6 +86,13 @@ const GENERATORS = [
    * 它们描述的是「写文档那天」的样子。一份说错了的规范比没有规范更糟：
    * 读的人会理直气壮地照它去对齐。
    */
+  /*
+   * 第四份界面规范：运营端。上面那三份的上游是 packages/shared + packages/ui +
+   * b-app/c-app 的页面 —— **那是端上的**。运营端有自己的一套 token、组件库与闸门，
+   * 在 docs/technical/design/ 里此前一份都没有，于是它的规范散在五处
+   * （components/README.md、globals.css 注释、测试文件、ops-web/README.md、TDD）。
+   */
+  ["scripts/gen-ops-ui-spec.py", ["docs/technical/design/规范-运营端.md"]],
   ["scripts/gen-ui-spec.py", ["docs/technical/design/规范-字体.md",
                               "docs/technical/design/规范-版面.md",
                               "docs/technical/design/规范-组件.md"]],

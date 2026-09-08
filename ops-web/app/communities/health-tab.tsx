@@ -16,7 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/ui/misc";
+import { EmptyState, ErrorState, Skeleton } from "@/components/ui/misc";
 import { useCopy } from "@/lib/use-copy";
 import { COMMUNITIES_COPY } from "./copy";
 
@@ -39,8 +39,8 @@ function Stat({ label, done, total, consequence, allGood, tone }: {
     : tone === "danger" ? "text-destructive" : "text-amber-600";
   return (
     <div className="rounded-card border border-border bg-card p-4">
-      <div className="text-sm text-muted-foreground">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums">
+      <div className="txt-body text-muted-foreground">{label}</div>
+      <div className="mt-1 txt-display tabular-nums">
         <span className={cls}>{done}</span>
         <span className="text-muted-foreground"> / {total}</span>
       </div>
@@ -49,7 +49,7 @@ function Stat({ label, done, total, consequence, allGood, tone }: {
         与「后果那行还没写完」长得一样 —— 而这一页的读者正是来找缺口的，
         他分不清「没缺口」和「没做完」。
       */}
-      <div className="mt-2 text-xs leading-relaxed text-muted-foreground">
+      <div className="mt-2 txt-caption leading-relaxed text-muted-foreground">
         {missing > 0 ? consequence : allGood}
       </div>
     </div>
@@ -58,7 +58,7 @@ function Stat({ label, done, total, consequence, allGood, tone }: {
 
 export function HealthTab({ enabled }: { enabled: boolean }) {
   const c = useCopy<Copy>(COMMUNITIES_COPY);
-  const { data, isPending } = useQuery({
+  const { data, isPending, error, refetch } = useQuery({
     queryKey: ["coverage-health"],
     queryFn: () => api.coverageHealth(),
     enabled,
@@ -66,7 +66,7 @@ export function HealthTab({ enabled }: { enabled: boolean }) {
 
   const cols: Column<MissingStore>[] = [
     { header: c.colStoreName, cell: (r) => r.storeName },
-    { header: c.colStoreNo, cell: (r) => <span className="font-mono text-xs">{r.storeNo}</span> },
+    { header: c.colStoreNo, cell: (r) => <span className="font-mono txt-caption">{r.storeNo}</span> },
     {
       header: c.colMerchant,
       // 能跳过去才算「点名到户」；只列一串号，运营下一步还是无从做起
@@ -86,7 +86,10 @@ export function HealthTab({ enabled }: { enabled: boolean }) {
     },
   ];
 
-  if (!data && isPending) return <div className="p-6 text-sm text-muted-foreground">{c.loading}</div>;
+  // 出错时**必须出一块看得见的东西**：此前这里是 `return null`，
+  // 接口一挂整个面板空白，运营既不知道坏了、也没有重试的入口。
+  if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
+  if (!data && isPending) return <Skeleton className="h-40 w-full" />;
   if (!data) return null;
 
   return (
@@ -101,7 +104,7 @@ export function HealthTab({ enabled }: { enabled: boolean }) {
       </div>
 
       <div>
-        <div className="mb-2 text-sm font-medium">{c.missingStoresTitle}</div>
+        <div className="mb-2 txt-strong">{c.missingStoresTitle}</div>
         {data.stores.missing.length === 0
           ? <EmptyState title={c.allStoresPinned} />
           : <DataTable rows={data.stores.missing} columns={cols} rowKey={(r) => r.storeNo} />}
@@ -109,11 +112,11 @@ export function HealthTab({ enabled }: { enabled: boolean }) {
 
       {data.communities.missing.length > 0 && (
         <div>
-          <div className="mb-2 text-sm font-medium">{c.missingCommunitiesTitle}</div>
-          <ul className="space-y-1 text-sm">
+          <div className="mb-2 txt-strong">{c.missingCommunitiesTitle}</div>
+          <ul className="space-y-1 txt-body">
             {data.communities.missing.map((m) => (
               <li key={m.communityNo}>
-                {m.name} <span className="font-mono text-xs text-muted-foreground">{m.communityNo}</span>
+                {m.name} <span className="font-mono txt-caption text-muted-foreground">{m.communityNo}</span>
               </li>
             ))}
           </ul>

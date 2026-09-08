@@ -12,10 +12,10 @@ import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
 import { fmtTime } from "@/lib/utils";
 import type { Carrier, Shipment, ShipmentStatus } from "@/lib/types";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { usePaging } from "@/lib/use-paging";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
-import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
 import { HelpNote } from "@/components/ui/help-note";
@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PagedTable } from "@/components/ui/paged-table";
 import type { FulfillmentCopy } from "./copy";
 
 const useShipStatusMap = (c: FulfillmentCopy): StatusMap<ShipmentStatus> => ({
@@ -47,8 +48,7 @@ export function ExpressTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
   const [carrier, setCarrier] = useState("");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<Shipment | null>(null);
   const [form, setForm] = useState({ waybillNo: "", reason: "" });
 
@@ -92,13 +92,17 @@ export function ExpressTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
         <FilterSelect aria-label={c.filterShipStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }}
           options={statusMap} allLabel={c.filterShipStatusAll} />
       </Toolbar>
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(s) => s.shipmentNo}
         empty={c.emptyShipment}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
 
       <Drawer
         open={!!current}

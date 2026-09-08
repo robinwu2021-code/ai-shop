@@ -82,6 +82,7 @@ export function IndustryTab({ c, canWrite }: { c: SystemCopy; canWrite: boolean 
         error={list.error}
         onRetry={() => list.refetch()}
         rowKey={(i) => i.industry}
+        empty={c.indEmpty}
       />
 
       <Drawer open={!!current} onOpenChange={(o) => !o && setCurrent(null)} title={current?.name ?? ""}>

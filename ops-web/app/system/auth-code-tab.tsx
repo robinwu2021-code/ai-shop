@@ -106,6 +106,7 @@ export function AuthCodeTab({ c, canWrite }: { c: SystemCopy; canWrite: boolean 
         error={list.error}
         onRetry={() => list.refetch()}
         rowKey={(r) => r.code}
+        empty={c.acEmpty}
       />
 
       <Drawer

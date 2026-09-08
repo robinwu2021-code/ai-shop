@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { HelpNote } from "@/components/ui/help-note";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { FinanceCopy } from "./copy";
 
 export function BuyerInvoiceTab({ c, canIssue }: { c: FinanceCopy; canIssue: boolean }) {
@@ -48,8 +49,8 @@ export function BuyerInvoiceTab({ c, canIssue }: { c: FinanceCopy; canIssue: boo
       header: c.brColOrder,
       cell: (r) => (
         <div>
-          <div className="font-mono text-[13px]">{r.orderNo}</div>
-          <div className="text-[12px] text-muted-foreground">{r.requestNo}</div>
+          <div className="font-mono txt-body">{r.orderNo}</div>
+          <div className="txt-caption text-muted-foreground">{r.requestNo}</div>
         </div>
       ),
       width: "13rem",
@@ -59,13 +60,13 @@ export function BuyerInvoiceTab({ c, canIssue }: { c: FinanceCopy; canIssue: boo
       cell: (r) => (
         <div>
           <div>{r.title}</div>
-          <div className="text-[12px] text-muted-foreground">
+          <div className="txt-caption text-muted-foreground">
             {c[`titleType_${r.titleType}` as keyof FinanceCopy] ?? r.titleType}
             {/* 公司抬头没税号是开不出来的，摆在这儿而不是等提交时报错 */}
             {r.titleType === "COMPANY" && !r.taxNo && (
               <Badge tone="danger">{c.brNoTaxNo}</Badge>
             )}
-            {r.taxNo && <span className="ml-1 font-mono text-[11px]">{r.taxNo}</span>}
+            {r.taxNo && <span className="ml-1 font-mono txt-caption">{r.taxNo}</span>}
           </div>
         </div>
       ),
@@ -78,8 +79,8 @@ export function BuyerInvoiceTab({ c, canIssue }: { c: FinanceCopy; canIssue: boo
           <Badge tone={r.status === "ISSUED" ? "default" : r.status === "REJECTED" ? "danger" : "warning"}>
             {c[`buyerInvoiceStatus_${r.status}` as keyof FinanceCopy] ?? r.status}
           </Badge>
-          {r.invoiceNo && <div className="font-mono text-[11px] text-muted-foreground">{r.invoiceNo}</div>}
-          {r.rejectReason && <div className="text-[11px] text-muted-foreground">{r.rejectReason}</div>}
+          {r.invoiceNo && <div className="font-mono txt-caption text-muted-foreground">{r.invoiceNo}</div>}
+          {r.rejectReason && <div className="txt-caption text-muted-foreground">{r.rejectReason}</div>}
         </div>
       ),
       width: "10rem",
@@ -93,7 +94,7 @@ export function BuyerInvoiceTab({ c, canIssue }: { c: FinanceCopy; canIssue: boo
           return (
             <div className="flex items-center gap-1.5">
               <input
-                className="focus-ring h-[calc(var(--ctl-h)-4px)] w-44 rounded-input border border-border bg-background px-1.5 text-[12px]"
+                className="focus-ring h-[calc(var(--ctl-h)-4px)] w-44 rounded-input border border-border bg-background px-1.5 txt-caption"
                 placeholder={isIssue ? c.brInvoiceNoPlaceholder : c.brRejectPlaceholder}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
@@ -127,12 +128,7 @@ export function BuyerInvoiceTab({ c, canIssue }: { c: FinanceCopy; canIssue: boo
 
   return (
     <>
-      <div className="mb-2 flex items-baseline justify-between">
-        <h3 className="text-[15px] font-semibold">{c.brTitle}</h3>
-        <span className="text-[12px] tabular-nums text-muted-foreground">
-          {c.brSummary.replace("{n}", String(waiting))}
-        </span>
-      </div>
+      <SectionHeader title={c.brTitle} summary={c.brSummary.replace("{n}", String(waiting))} />
       <HelpNote className="mb-3">{c.brNotice}</HelpNote>
 
       <DataTable

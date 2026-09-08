@@ -1,5 +1,10 @@
 # 组件分层与清单
 
+> **数字在别处**：组件有多少个、各自多少调用点、字阶用得怎么样、闸门有哪几条 ——
+> 都在 [`docs/technical/design/规范-运营端.md`](../../docs/technical/design/规范-运营端.md)，
+> 由 `scripts/gen-ops-ui-spec.py` 从代码里数出来，挂在 `check-generated-docs` 上。
+> **这份只写「为什么这么定」**：判据、边界、踩过的坑。手写的数字会陈，手写的判断不会。
+
 三层，不要混。判断标准是**依赖方向**：下层不许知道上层的存在。
 
 | 层 | 位置 | 判据 | 可以依赖 |
@@ -27,7 +32,7 @@
 | `Progress` | `ui/progress.tsx` | |
 | `Notice` | `ui/notice.tsx` | 页内灰底提示条。权限降级用业务件 `ReadOnlyNotice` |
 | `HelpNote` | `ui/help-note.tsx` | **默认收起**的说明块。常驻的「这一页是什么」用它，别用 `Notice` 占着一行 |
-| `StatCard` / `StatRow` / `EmptyState` / `Skeleton` / `PageTitle` / `Pagination` / `PAGE_SIZES` | `ui/misc.tsx` | `StatRow` 是 KPI 卡片行；`Pagination` 传 `onSize` 才出「每页条数」 |
+| `StatCard` / `StatRow` / `EmptyState` / `ErrorState` / `Skeleton` / `PageTitle` / `Pagination` / `PAGE_SIZES` | `ui/misc.tsx` | `StatRow` 是 KPI 卡片行；`Pagination` 传 `onSize` 才出「每页条数」。**`ErrorState` 与 `EmptyState` 是两件，不许合** —— 出错渲染成「没有数据」，运营会去改筛选而不是报障 |
 | `Tooltip` | `ui/tooltip.tsx` | |
 | `Checkbox` / `CheckboxField` | `ui/checkbox.tsx` | 三态（含半选）。`DataTable` 的行选择用它 |
 | `RadioGroup` / `RadioGroupItem` / `Radio` | `ui/radio-group.tsx` | 选项 ≤4 且需全部可见时用它，别用下拉 |
@@ -42,7 +47,9 @@
 
 | 组件 | 文件 | 说明 |
 |---|---|---|
-| `DataTable` | `ui/data-table.tsx` | 列表页表格：列配置 + 加载/空态 + 行选择/展开/排序/行样式 |
+| `DataTable` | `ui/data-table.tsx` | 列表页表格：列配置 + 加载/空态 + 行选择/展开/排序/行样式。入参具名导出为 `DataTableProps` |
+| `PagedTable` | `ui/paged-table.tsx` | **分页列表就用它**：`DataTable` + `Pagination` 绑同一份 `query`。rows / loading / error / onRetry / total 由 `query` 接出，`onSize` 是**必填** —— 漏了编译不过，不必再靠正则去追 |
+| `SectionHeader` | `ui/section-header.tsx` | 页内小节标题（标题 + 右侧概要 + 说明行）。收编前 13 处 `<h3>` 长出五种写法，其中两处写的 `txt-h3` **是个不存在的类** |
 | `FormDrawer` | `ui/form-drawer.tsx` | 配置化编辑抽屉（`FieldDef[]` → 表单 + 校验 + 分区 + 联动） |
 | `Drawer` / `DrawerSection` / `FieldGrid` / `Field` | `ui/drawer.tsx` | 右侧抽屉 + 分段 + 两列栅格 + **详情行**（`Field` 全站唯一一份，见下） |
 | `ConfigCard` | `ui/config-card.tsx` | 配置卡片：标题 + 说明 + 内容 + 保存按钮 + 「上次修改」页脚。**配置页一律用它**，别再手拼页脚 |
@@ -160,10 +167,18 @@ TabHeader（页头，单 tab 也走它，传 desc）
   ReadOnlyNotice（无权限时）
   Notice（这一屏的前提/风险，用 tone 分档）
   Toolbar（搜索 + 筛选槽；筛选回显 chip 自动出）
-  DataTable（列表；空态要写清「为什么空、下一步做什么」）
-  Pagination（一页一个，绑 activeList = 当前 tab 的查询）
+  PagedTable（分页列表：DataTable + Pagination 绑同一个 query）
+    └ 不分页的配置表用 DataTable，自己接 error/onRetry
   Drawer / ConfigCard（详情或配置）
 ```
+
+**分页列表一律走 `PagedTable`。** 它从 `query` 里接出 rows / loading / error /
+onRetry / total 五项，`onSize` 是必填 —— 这几项此前靠各页手拼，一次盘点里
+122 个 `DataTable` 调用点有 33 处漏了其中至少一项（15 处四项全缺），
+而组件早在 2026-08-06 就有错误态了。**修在库里没修到调用点，界面上等于没修。**
+
+例外只有一种：多 tab 页面共用**一个**分页器（`total` 绑 `activeList`）——
+表在 tab 的条件分支里、分页器在外面，那种结构 `PagedTable` 装不下，保持现状。
 
 几条已被守卫锁住的硬约定：
 
@@ -185,6 +200,21 @@ TabHeader（页头，单 tab 也走它，传 desc）
 
 **颜色一律用 token**（`--*-tint` / `--*-ink` / 语义色），不要写死 hex。见 `app/globals.css` 顶部注释，
 由 `lib/design-tokens.test.ts` 拦截（组件层与页面层基线都是 0）。
+
+**字号一律用七档**（`txt-display/title/heading/body/strong/label/caption`），
+不写 `text-sm` 也不写 `text-[13px]`。页面层基线 0；组件层还有 25 处没收，
+那一层的字号多半是控件自身的形态（按钮、徽标、表头），要连形态一起定。
+
+⚠️ **写了一个不存在的类，浏览器不会报错，只是什么都不做。**这一档最难发现，
+一次盘点查到 12 处：`txt-h3`（七档里没有，两个小节标题一直按正文 14px/400 渲染）、
+`txt-body-strong`（新员工初始密码那块 `<code>`，一个要照着念的字符串）、
+`border-card-border` / `border-warning-line` / `text-destructive-text` /
+`border-line` / `bg-surface` / `bg-surface-2` / `text-fg-2` / `text-danger`
+（Tailwind 4 只为 `@theme` 里注册过的 `--color-*` 生成类，这些一个都没注册）。
+现在有两条闸门分别盯 `txt-*` 与语义色 utility。
+
+同理**别把两个字阶挂在同一个元素上**（`txt-strong text-lg`）：两个都设 font-size、
+都是单类选择器，谁赢只由样式表先后决定。
 
 **焦点环只写 `focus-ring` 一个类**（`app/globals.css` 的 `@utility`）。
 不要再手写 `focus-visible:ring-2 focus-visible:ring-ring …` 那一串 ——

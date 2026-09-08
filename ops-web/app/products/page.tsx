@@ -34,19 +34,20 @@ import { BannedWordTab } from "./banned-word-tab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HelpNote } from "@/components/ui/help-note";
-import { StatRow, Pagination, StatCard, IdCell } from "@/components/ui/misc";
+import { StatRow, StatCard, IdCell } from "@/components/ui/misc";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
 import { Tree, type TreeNode } from "@/components/ui/tree";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { PagedTable } from "@/components/ui/paged-table";
 
 type Copy = (typeof PRODUCTS_COPY)["zh"];
 const TAB_KEYS = ["categories", "skus", "audit", "stock", "templates",
@@ -411,13 +412,17 @@ function ProductsInner() {
             <FilterSelect aria-label={c.filterCategory} value={categoryFilter} onChange={(v) => { setCategoryFilter(v); setPage(1); }} options={categoryOptions} allLabel={c.filterCategoryAll} />
             <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={statusMap} allLabel={c.filterStatusAll} />
           </Toolbar>
-          <DataTable
-            columns={goodsColumns} rows={goodsList.data?.records} loading={goodsList.isLoading}
-            error={goodsList.error} onRetry={() => goodsList.refetch()}
+          <PagedTable
+            query={goodsList}
+            page={page}
+            size={size}
+            onPage={setPage}
+            onSize={setSize}
+            loading={goodsList.isLoading}
+            columns={goodsColumns}
             rowKey={(g) => g.goodsNo}
             empty={c.emptySku}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={goodsList.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 
@@ -451,13 +456,14 @@ function ProductsInner() {
           <HelpNote className="mb-3">
             {c.stockNotice}
           </HelpNote>
-          <DataTable
-            columns={stockColumns} rows={stockRows} loading={presaleList.isLoading}
-            error={presaleList.error} onRetry={() => presaleList.refetch()}
+          <PagedTable
+            query={presaleList}
+            page={page} size={size} onPage={setPage} onSize={setSize}
+            loading={presaleList.isLoading}
+            columns={stockColumns}
             rowKey={(s) => s.skuNo}
             empty={c.emptyStock}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={presaleList.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 

@@ -189,6 +189,8 @@ export function QualificationTab({ c }: { c: MerchantsCopy }) {
             rowKey={(q) => q.qualNo}
             loading={list.isLoading}
             empty={c.qualEmpty}
+            error={list.error}
+            onRetry={() => list.refetch()}
           />
         </ConfigCard>
       )}

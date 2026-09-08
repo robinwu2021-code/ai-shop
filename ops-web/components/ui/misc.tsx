@@ -4,7 +4,9 @@ import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
+import { AlertTriangle } from "lucide-react";
 import { Card } from "./card";
+import { Button } from "./button";
 
 /**
  * 统计卡（工作台 KPI）。
@@ -74,6 +76,34 @@ export function EmptyState({
       <div className="text-sm font-semibold">{title}</div>
       {desc && <div className="txt-caption text-muted-foreground">{desc}</div>}
       {action && <div className="mt-2">{action}</div>}
+    </div>
+  );
+}
+
+/**
+ * 取数失败的整块占位。**必须与空态严格分开** —— 出错时渲染成「没有数据」，
+ * 运营会去改筛选条件而不是报障，这是 `DataTable` 此前最严重的一个缺陷
+ * （TDD-ops-组件库优化 §1.A）。
+ *
+ * 从 `DataTable` 内部提出来，是因为「整块内容依赖一个查询」的地方不止表格：
+ * 社区覆盖的两个页签此前写的是 `if (!data) return null` —— 接口一挂，
+ * 整个面板**什么都不渲染**，比错误的空态更难报障：屏幕上连一句话都没有。
+ */
+export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+  const { t } = useI18n();
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
+      <div className="flex size-11 items-center justify-center rounded-sheet bg-destructive-tint text-[var(--destructive-ink)]">
+        <AlertTriangle className="size-5" />
+      </div>
+      <div>
+        <div className="txt-heading">{t("table.errorTitle")}</div>
+        {/* 把后端/网络的原话给出来：运营报障时能直接截图，不用我们再问一遍 */}
+        <p className="mt-1 max-w-md txt-body text-muted-foreground">
+          {error instanceof Error ? error.message : t("error.unknown")}
+        </p>
+      </div>
+      {onRetry && <Button size="sm" variant="outline" onClick={onRetry}>{t("table.retry")}</Button>}
     </div>
   );
 }

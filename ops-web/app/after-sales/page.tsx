@@ -21,19 +21,20 @@ import { AfterSaleStatusBadge, useAfterSaleStatusMap, useAfterSaleTypeMap } from
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ConfigCard } from "@/components/ui/config-card";
 import { Notice } from "@/components/ui/notice";
-import { StatRow, Pagination, StatCard } from "@/components/ui/misc";
+import { StatRow, StatCard } from "@/components/ui/misc";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
+import { PagedTable } from "@/components/ui/paged-table";
 
 type Copy = (typeof AFTER_SALES_COPY)["zh"];
 const TAB_KEYS = ["tickets", "intervene", "fastrefund"] as const;
@@ -183,13 +184,17 @@ function AfterSalesInner() {
             )}
           </Toolbar>
 
-          <DataTable
-            columns={columns} rows={list.data?.records} loading={list.isLoading}
-            error={list.error} onRetry={() => list.refetch()}
+          <PagedTable
+            query={list}
+            page={page}
+            size={size}
+            onPage={setPage}
+            onSize={setSize}
+            loading={list.isLoading}
+            columns={columns}
             rowKey={(a) => a.afterSaleNo}
             empty={tab === "intervene" ? c.emptyIntervene : c.emptyTickets}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 

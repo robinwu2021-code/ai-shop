@@ -31,10 +31,11 @@ import { ConfigCard } from "@/components/ui/config-card";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HelpNote } from "@/components/ui/help-note";
-import { StatRow, Pagination, StatCard } from "@/components/ui/misc";
+import { StatRow, StatCard } from "@/components/ui/misc";
 import { Progress } from "@/components/ui/progress";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Toolbar } from "@/components/ui/toolbar";
+import { PagedTable } from "@/components/ui/paged-table";
 
 type Copy = (typeof FULFILLMENT_COPY)["zh"];
 const TAB_KEYS = ["batches", "sorting", "redeem", "express", "freight", "carrier", "overdue"] as const;
@@ -200,16 +201,17 @@ function FulfillmentInner() {
           <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder}>
             <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={batchStatusMap} allLabel={c.filterStatusAll} />
           </Toolbar>
-          <DataTable
-            columns={batchColumns}
-            rows={batches.data?.records}
+          <PagedTable
+            query={batches}
+            page={page}
+            size={size}
+            onPage={setPage}
+            onSize={setSize}
             loading={batches.isLoading}
-            error={batches.error}
-            onRetry={() => batches.refetch()}
+            columns={batchColumns}
             rowKey={(b) => b.batchNo}
             empty={c.emptyBatches}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={batches.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 

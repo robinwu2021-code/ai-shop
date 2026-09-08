@@ -116,14 +116,14 @@ export function CategorySpecDrawer({
           {!editing.bindings.length && (
             <CopyFrom
               c={c} rows={list.data ?? []} all={dims.data ?? []} self={editing.category.categoryNo}
-              onPick={(bindings) => setEditing({ ...editing, bindings })}
+              onPick={(bindings) => setEditing((p) => p && { ...p, bindings })}
             />
           )}
           <BindingEditor
             c={c}
             all={dims.data ?? []}
             editing={editing}
-            onChange={(bindings) => setEditing({ ...editing, bindings })}
+            onChange={(bindings) => setEditing((p) => p && { ...p, bindings })}
           />
         </>
       )}
@@ -224,7 +224,7 @@ function BindingEditor({ c, all, editing, onChange }: {
       ] as const).map((sec) => (
       <div key={sec.key}>
         <div className="mb-1 txt-label text-muted-foreground">{sec.title}</div>
-        <p className="mb-2 text-[12px] text-muted-foreground">{sec.hint}</p>
+        <p className="mb-2 txt-caption text-muted-foreground">{sec.hint}</p>
         <div className="space-y-2">
           {sec.rows.map((b, i) => {
             const d = dimOf(b.dimNo);
@@ -277,7 +277,7 @@ function BindingEditor({ c, all, editing, onChange }: {
                     return (
                       <span key={vn}
                         className="inline-flex items-center gap-0.5 rounded-chip
-                                   bg-[var(--primary)] px-1 py-0.5 text-[12px] text-white">
+                                   bg-[var(--primary)] px-1 py-0.5 txt-caption text-white">
                         <button type="button" title={c.csValMoveL} disabled={vi === 0}
                           onClick={() => moveVal(vi - 1)}
                           className="focus-ring px-0.5 leading-none opacity-70 hover:opacity-100
@@ -309,7 +309,7 @@ function BindingEditor({ c, all, editing, onChange }: {
                     );
                   })}
                   {!b.valueNos.length && (
-                    <span className="text-[12px] text-muted-foreground">{c.csValsAllHint}</span>
+                    <span className="txt-caption text-muted-foreground">{c.csValsAllHint}</span>
                   )}
                 </div>
 
@@ -320,7 +320,7 @@ function BindingEditor({ c, all, editing, onChange }: {
                       <button key={v.valueNo} type="button"
                         onClick={() => onChange(picked.map((x) => x.dimNo === b.dimNo
                           ? { ...x, valueNos: [...x.valueNos, v.valueNo] } : x))}
-                        className="focus-ring rounded-chip bg-muted px-2 py-0.5 text-[12px] text-muted-foreground
+                        className="focus-ring rounded-chip bg-muted px-2 py-0.5 txt-caption text-muted-foreground
                                    hover:bg-border">
                         {v.label}
                       </button>
@@ -329,7 +329,7 @@ function BindingEditor({ c, all, editing, onChange }: {
               </div>
             );
           })}
-          {!sec.rows.length && <p className="text-[13px] text-muted-foreground">{c.csNone}</p>}
+          {!sec.rows.length && <p className="txt-body text-muted-foreground">{c.csNone}</p>}
         </div>
       </div>
       ))}
@@ -358,7 +358,7 @@ function BindingEditor({ c, all, editing, onChange }: {
                 required: false, valueNos: [], labels: {},
               }])}
               className="focus-ring inline-flex items-center gap-1.5 rounded-chip border border-border
-                         px-2.5 py-1 text-[12px] hover:bg-muted">
+                         px-2.5 py-1 txt-caption hover:bg-muted">
               {d.name}
               <Badge tone={d.universal ? "info" : "muted"}>
                 {d.universal ? c.csUniversal : c.csDedicated}

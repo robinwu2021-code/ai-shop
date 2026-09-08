@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { HelpNote } from "@/components/ui/help-note";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { FinanceCopy } from "./copy";
 
 /** 能不能登记付款。**与后端同一套判据** —— 两处不同就会出现「按钮亮着、点了报错」 */
@@ -61,8 +62,8 @@ export function PayablesTab({ c, canEdit, canPay }: {
       header: c.pyColBill,
       cell: (r) => (
         <div>
-          <div className="font-mono text-[13px]">{r.settleNo}</div>
-          <div className="text-[12px] text-muted-foreground">{r.merchantNo} · {r.subOrderNo}</div>
+          <div className="font-mono txt-body">{r.settleNo}</div>
+          <div className="txt-caption text-muted-foreground">{r.merchantNo} · {r.subOrderNo}</div>
         </div>
       ),
       width: "13rem",
@@ -91,7 +92,7 @@ export function PayablesTab({ c, canEdit, canPay }: {
     {
       header: c.pyColRef,
       cell: (r) => (r.paymentRef
-        ? <span className="font-mono text-[12px]">{r.paymentRef}</span>
+        ? <span className="font-mono txt-caption">{r.paymentRef}</span>
         : <span className="text-muted-foreground">—</span>),
       width: "9rem",
     },
@@ -107,7 +108,7 @@ export function PayablesTab({ c, canEdit, canPay }: {
                 「银行慢了」还是「有人点早了」—— 与提现表不给人工 PAID 入口同一条规矩。
               */}
               <input
-                className="focus-ring h-[calc(var(--ctl-h)-4px)] w-40 rounded-input border border-border bg-background px-1.5 text-[12px] font-mono"
+                className="focus-ring h-[calc(var(--ctl-h)-4px)] w-40 rounded-input border border-border bg-background px-1.5 txt-caption font-mono"
                 placeholder={c.pyRefPlaceholder}
                 value={ref}
                 onChange={(e) => setRef(e.target.value)}
@@ -135,7 +136,7 @@ export function PayablesTab({ c, canEdit, canPay }: {
             {canPay && r.status !== "PAID" && (
               blocked
                 // **把原因说在前面**，而不是给一个点了会报错的按钮
-                ? <span className="text-[12px] text-muted-foreground">{blocked}</span>
+                ? <span className="txt-caption text-muted-foreground">{blocked}</span>
                 : <Button size="sm" onClick={() => setPaying(r.settleNo)}>{c.pyPay}</Button>
             )}
           </div>
@@ -147,18 +148,13 @@ export function PayablesTab({ c, canEdit, canPay }: {
 
   return (
     <>
-      <div className="mb-2 flex items-baseline justify-between">
-        <h3 className="text-[15px] font-semibold">{c.pyTitle}</h3>
-        <span className="text-[12px] tabular-nums text-muted-foreground">
-          {c.pySummary.replace("{n}", String(pending.length)).replace("{amount}", money(pendingAmount))}
-        </span>
-      </div>
+      <SectionHeader title={c.pyTitle} summary={c.pySummary.replace("{n}", String(pending.length)).replace("{amount}", money(pendingAmount))} />
       <HelpNote className="mb-3">{c.pyNotice}</HelpNote>
 
       <div className="mb-3 flex gap-1.5">
         {["", "PENDING_RECON", "CONFIRMED", "PAID"].map((s) => (
           <button key={s || "all"} type="button" onClick={() => setStatus(s)}
-            className={`focus-ring rounded-chip border px-2.5 py-1 text-[12px] ${
+            className={`focus-ring rounded-chip border px-2.5 py-1 txt-caption ${
               status === s ? "border-foreground bg-foreground text-background" : "border-border hover:bg-muted"
             }`}>
             {s ? (c[`payableStatus_${s}` as keyof FinanceCopy] ?? s) : c.all}

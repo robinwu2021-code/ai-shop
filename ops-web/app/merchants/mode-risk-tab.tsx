@@ -82,6 +82,8 @@ export function ModeRiskTab({ c }: { c: Copy }) {
           rows={rows}
           rowKey={(r) => r.storeNo}
           loading={list.isLoading}
+          error={list.error}
+          onRetry={() => list.refetch()}
           empty={c.mrEmpty}
         />
       </ConfigCard>

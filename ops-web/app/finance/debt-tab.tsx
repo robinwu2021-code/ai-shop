@@ -23,6 +23,7 @@ import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { Toolbar } from "@/components/ui/toolbar";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { FinanceCopy } from "./copy";
 
 export function DebtTab({ c, canExecute }: { c: FinanceCopy; canExecute: boolean }) {
@@ -108,7 +109,7 @@ export function DebtTab({ c, canExecute }: { c: FinanceCopy; canExecute: boolean
         <Notice>{c.dbPickFirst}</Notice>
       ) : (
         <>
-          <div className="rounded-sheet border border-line bg-surface p-4">
+          <div className="rounded-card border border-[var(--card-border)] bg-card p-4">
             <span className="txt-caption text-muted-foreground">{c.dbBalance}</span>
             <p className="txt-display tabular-nums">{money(debt.data?.balanceMinor ?? 0)}</p>
             {debt.data && debt.data.balanceMinor === 0 && (
@@ -118,8 +119,8 @@ export function DebtTab({ c, canExecute }: { c: FinanceCopy; canExecute: boolean
           </div>
 
           {canExecute && (debt.data?.balanceMinor ?? 0) > 0 && (
-            <div className="rounded-sheet border border-line bg-surface p-4 space-y-3">
-              <h3 className="txt-heading">{c.dbOffsetTitle}</h3>
+            <div className="rounded-card border border-[var(--card-border)] bg-card p-4 space-y-3">
+              <SectionHeader className="mb-0" title={c.dbOffsetTitle} />
               {/*
                 这段说明不能省：它是**人工而非自动**的理由。
                 写清楚之后，下一个人才不会顺手把它接进自动追偿链路。

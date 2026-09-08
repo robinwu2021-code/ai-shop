@@ -74,6 +74,8 @@ export function PointsTab({ c }: { c: Copy }) {
           rows={d?.byChannel ?? []}
           rowKey={(r) => `${r.market}-${r.payChannel}`}
           loading={q.isLoading}
+          error={q.error}
+          onRetry={() => q.refetch()}
           empty={c.ptEmpty}
         />
       </ConfigCard>
@@ -83,9 +85,9 @@ export function PointsTab({ c }: { c: Copy }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border p-3">
+    <div className="rounded-card border p-3">
       <div className="txt-caption text-muted-foreground">{label}</div>
-      <div className="mt-1 text-lg font-medium tabular-nums">{value}</div>
+      <div className="mt-1 txt-title tabular-nums">{value}</div>
     </div>
   );
 }

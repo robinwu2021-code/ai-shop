@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { HelpNote } from "@/components/ui/help-note";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { FinanceCopy } from "./copy";
 
 export function PurchaseInvoiceTab({ c, canVerify }: { c: FinanceCopy; canVerify: boolean }) {
@@ -43,8 +44,8 @@ export function PurchaseInvoiceTab({ c, canVerify }: { c: FinanceCopy; canVerify
       header: c.piColInvoice,
       cell: (r) => (
         <div>
-          <div className="font-mono text-[13px]">{r.invoiceNumber}</div>
-          <div className="text-[12px] text-muted-foreground">{r.invoiceCode} · {r.period}</div>
+          <div className="font-mono txt-body">{r.invoiceNumber}</div>
+          <div className="txt-caption text-muted-foreground">{r.invoiceCode} · {r.period}</div>
         </div>
       ),
       width: "12rem",
@@ -56,7 +57,7 @@ export function PurchaseInvoiceTab({ c, canVerify }: { c: FinanceCopy; canVerify
           <div>{r.titleName}</div>
           {/* 抬头不符是**不能核验的原因**，要摆在抬头旁边而不是藏在按钮的报错里 */}
           {!r.titleMatched && <Badge tone="danger">{c.piTitleMismatch}</Badge>}
-          <div className="font-mono text-[11px] text-muted-foreground">{r.titleTaxNo}</div>
+          <div className="font-mono txt-caption text-muted-foreground">{r.titleTaxNo}</div>
         </div>
       ),
     },
@@ -65,7 +66,7 @@ export function PurchaseInvoiceTab({ c, canVerify }: { c: FinanceCopy; canVerify
       header: c.piColSettle,
       // 这张票覆盖哪几张结算单 —— 核验通过之后那几张才付得了
       cell: (r) => (r.settleNos.length
-        ? <span className="font-mono text-[12px]">{r.settleNos.join(" ")}</span>
+        ? <span className="font-mono txt-caption">{r.settleNos.join(" ")}</span>
         : <span className="text-muted-foreground">—</span>),
       width: "10rem",
     },
@@ -76,7 +77,7 @@ export function PurchaseInvoiceTab({ c, canVerify }: { c: FinanceCopy; canVerify
           <Badge tone={r.status === "VERIFIED" ? "default" : r.status === "REJECTED" ? "danger" : "warning"}>
             {c[`purchaseInvoiceStatus_${r.status}` as keyof FinanceCopy] ?? r.status}
           </Badge>
-          {r.rejectReason && <div className="text-[11px] text-muted-foreground">{r.rejectReason}</div>}
+          {r.rejectReason && <div className="txt-caption text-muted-foreground">{r.rejectReason}</div>}
         </div>
       ),
       width: "9rem",
@@ -90,7 +91,7 @@ export function PurchaseInvoiceTab({ c, canVerify }: { c: FinanceCopy; canVerify
             <div className="flex items-center gap-1.5">
               {/* 驳回原因必填 —— 原样回给商家，不写等于让人猜 */}
               <input
-                className="focus-ring h-[calc(var(--ctl-h)-4px)] w-44 rounded-input border border-border bg-background px-1.5 text-[12px]"
+                className="focus-ring h-[calc(var(--ctl-h)-4px)] w-44 rounded-input border border-border bg-background px-1.5 txt-caption"
                 placeholder={c.piRejectPlaceholder}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
@@ -110,7 +111,7 @@ export function PurchaseInvoiceTab({ c, canVerify }: { c: FinanceCopy; canVerify
             {r.titleMatched
               ? <Button size="sm" disabled={verify.isPending}
                   onClick={() => verify.mutate(r.invoiceNo)}>{c.piVerify}</Button>
-              : <span className="text-[12px] text-muted-foreground">{c.piCannotVerify}</span>}
+              : <span className="txt-caption text-muted-foreground">{c.piCannotVerify}</span>}
             <Button size="sm" variant="ghost" onClick={() => setRejecting(r.invoiceNo)}>
               {c.piReject}
             </Button>
@@ -123,12 +124,7 @@ export function PurchaseInvoiceTab({ c, canVerify }: { c: FinanceCopy; canVerify
 
   return (
     <>
-      <div className="mb-2 flex items-baseline justify-between">
-        <h3 className="text-[15px] font-semibold">{c.piTitle}</h3>
-        <span className="text-[12px] tabular-nums text-muted-foreground">
-          {c.piSummary.replace("{n}", String(waiting))}
-        </span>
-      </div>
+      <SectionHeader title={c.piTitle} summary={c.piSummary.replace("{n}", String(waiting))} />
       <HelpNote className="mb-3">{c.piNotice}</HelpNote>
 
       <DataTable

@@ -19,6 +19,14 @@ type Copy = (typeof COMMUNITIES_COPY)["zh"];
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- 高德 JS API 没有类型包，只在这一层用 any */
 
+/**
+ * 邻近点位的标记色。**这里只能是字面量**：高德 SDK 收的是颜色字符串，
+ * 读不到 CSS 变量，而 `--primary` 是 oklch()，即便读出来 SDK 也不认。
+ * 提成常量是为了让「这里有一个绕过 token 的颜色」在 review 里看得见 ——
+ * 换皮肤时它不会跟着变，这一点是已知的。
+ */
+const NEARBY_MARKER = "#1677ff";
+
 export function ApplyMap({
   c, latE6, lngE6, name,
 }: {
@@ -53,7 +61,7 @@ export function ApplyMap({
       for (const n of near.data ?? []) {
         const pos: [number, number] = [n.lngE6 / 1e6, n.latE6 / 1e6];
         new AMap.CircleMarker({
-          center: pos, radius: 7, strokeColor: "#1677ff", fillColor: "#1677ff", fillOpacity: 0.6, map,
+          center: pos, radius: 7, strokeColor: NEARBY_MARKER, fillColor: NEARBY_MARKER, fillOpacity: 0.6, map,
         });
         new AMap.Text({ text: `${n.name} · ${n.distanceM}m`, position: pos, offset: new AMap.Pixel(10, -6), map });
       }
@@ -74,7 +82,7 @@ export function ApplyMap({
 
   return (
     <div className="mb-3">
-      <div ref={box} className="h-56 w-full rounded-md border border-border" />
+      <div ref={box} className="h-56 w-full rounded-card border border-border" />
       <div className="txt-caption text-muted-foreground mt-1">
         {near.data?.length ? c.mapNearbyHint.replace("{n}", String(near.data.length)) : c.mapNoNearby}
       </div>

@@ -64,7 +64,7 @@ export function HealthTab({ c }: { c: InventoryCopy }) {
       cell: (b) => (
         <div>
           <div>{b.name}</div>
-          <div className="text-xs text-muted-foreground">{b.specText ?? b.itemId}</div>
+          <div className="txt-caption text-muted-foreground">{b.specText ?? b.itemId}</div>
         </div>
       ),
     },
@@ -100,7 +100,7 @@ export function HealthTab({ c }: { c: InventoryCopy }) {
       cell: (r) => (
         <div>
           <div>{r.merchantName ?? r.entityNo}</div>
-          <div className="text-xs text-muted-foreground">{r.storeNo ?? r.entityNo}</div>
+          <div className="txt-caption text-muted-foreground">{r.storeNo ?? r.entityNo}</div>
         </div>
       ),
     },
@@ -109,7 +109,7 @@ export function HealthTab({ c }: { c: InventoryCopy }) {
       cell: (r) => (
         <div>
           <div>{r.itemName}</div>
-          <div className="text-xs text-muted-foreground">{r.specText ?? r.itemId}</div>
+          <div className="txt-caption text-muted-foreground">{r.specText ?? r.itemId}</div>
         </div>
       ),
     },

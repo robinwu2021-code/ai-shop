@@ -14,10 +14,10 @@ import { fmtTime, money } from "@/lib/utils";
 import { MINOR_UNIT, MIN_MEMBER_DISCOUNT } from "@/lib/constants";
 import { MEMBER_CARD_TRANSITIONS } from "@/lib/types";
 import type { Benefit, BenefitKind, MemberCard, MemberCardStatus } from "@/lib/types";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { usePaging } from "@/lib/use-paging";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
-import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
 import { HelpNote } from "@/components/ui/help-note";
@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PagedTable } from "@/components/ui/paged-table";
 import type { MarketingCopy } from "./copy";
 
 const useCardStatusMap = (c: MarketingCopy): StatusMap<MemberCardStatus> => ({
@@ -54,8 +55,7 @@ export function MemberTab({ c, canEdit }: { c: MarketingCopy; canEdit: boolean }
   const statusMap = useCardStatusMap(c);
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
   const [editing, setEditing] = useState<Form | null>(null);
 
   const benefitLabel: Record<BenefitKind, string> = {
@@ -164,13 +164,17 @@ export function MemberTab({ c, canEdit }: { c: MarketingCopy; canEdit: boolean }
         <FilterSelect aria-label={c.filterCardStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }}
           options={statusMap} allLabel={c.filterCardStatusAll} />
       </Toolbar>
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(m) => m.cardNo}
         empty={c.emptyCard}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
 
       <Drawer
         open={!!editing}

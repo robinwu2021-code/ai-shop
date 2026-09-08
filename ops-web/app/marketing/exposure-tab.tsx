@@ -92,8 +92,8 @@ export function ExposureTab({ c, kind, canStop }: {
     <div className="space-y-3">
       <Notice>{kind === "coupons" ? c.exposureCouponHint : c.exposureActivityHint}</Notice>
       {kind === "coupons"
-        ? <DataTable columns={couponCols} rows={coupons.data ?? []} rowKey={(x) => x.couponNo} />
-        : <DataTable columns={activityCols} rows={activities.data ?? []} rowKey={(x) => x.activityNo} />}
+        ? <DataTable columns={couponCols} rows={coupons.data ?? []} rowKey={(x) => x.couponNo} loading={coupons.isLoading} error={coupons.error} onRetry={() => coupons.refetch()} empty={c.exposureCouponEmpty} />
+        : <DataTable columns={activityCols} rows={activities.data ?? []} rowKey={(x) => x.activityNo} loading={activities.isLoading} error={activities.error} onRetry={() => activities.refetch()} empty={c.exposureActivityEmpty} />}
     </div>
   );
 }

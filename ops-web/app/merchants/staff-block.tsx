@@ -40,7 +40,7 @@ export function StaffBlock({ merchantNo }: { merchantNo: string }) {
       ) : (
         <ul className="space-y-1.5">
           {data.map((s) => (
-            <li key={s.mchAccountNo} className="flex flex-wrap items-center gap-1.5 text-sm">
+            <li key={s.mchAccountNo} className="flex flex-wrap items-center gap-1.5 txt-body">
               <span>{s.displayName || s.loginPhone}</span>
               {s.isOwner && <Badge tone="info">{c.staffOwner}</Badge>}
               {!s.isOwner && s.status !== "ACTIVE" && <Badge tone="muted">{c.staffDisabled}</Badge>}

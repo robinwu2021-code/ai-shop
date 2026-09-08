@@ -32,12 +32,20 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer } from "@/components/ui/drawer";
 import { HelpNote } from "@/components/ui/help-note";
+import { TabHeader } from "@/components/ui/tab-header";
 import { Tooltip } from "@/components/ui/tooltip";
+import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { useOpsStream } from "@/lib/use-ops-stream";
+import { useNavTabs } from "@/lib/use-page-tab";
 import { cronText, relTime, oneLine, TEXT_KEY } from "@/lib/job-format";
 import { JOBS_COPY } from "./copy";
 
 const MANAGE = "system:job:manage";
+
+// 单 tab 也走 TabHeader：这一页此前**一个页头件都没有**，直接从 HelpNote 起头 ——
+// 21 个业务域里唯一的一个。旧闸门判的是「用了 PageTitle 却没用 TabHeader」，
+// 两个都没用的反而穿过去了。规范里页头只有一种，这里补齐。
+const TAB_KEYS = ["jobs"] as const;
 
 /**
  * 四列的栅格定义。
@@ -84,6 +92,7 @@ const TONE: Record<JobStatus, BadgeTone> = {
 
 export default function JobsPage() {
   const c = useCopy(JOBS_COPY);
+  const tabs = useNavTabs("/jobs", TAB_KEYS);
   const t = useT();
   const can = useCan();
   const qc = useQueryClient();
@@ -172,11 +181,13 @@ export default function JobsPage() {
   }, [rows, c.jobsGroupOther]);
   return (
     <div className="space-y-4">
+      <TabHeader tabs={tabs} value={TAB_KEYS[0]} onChange={() => {}} desc={c.jobsHeaderDesc} />
+      {!can(MANAGE) && <ReadOnlyNotice what={c.jobsReadOnlyWhat} perm={MANAGE} note={c.jobsReadOnlyNote} />}
       <HelpNote>{c.jobsNotice}</HelpNote>
 
       {/* 概览条：十一行扫下来之前先给一个总览。**不重排行** ——
           实时更新时把出问题的挪到最前会让行位置跳，而人正要点某一行的按钮 */}
-      <div className="flex flex-wrap items-center gap-2 text-sm">
+      <div className="flex flex-wrap items-center gap-2 txt-body">
         <span className="text-muted-foreground">{tcn(c.jobsSumTotal, sum.total)}</span>
         <Badge tone="success">{tcn(c.jobsSumOn, sum.on)}</Badge>
         <Badge tone="muted">{tcn(c.jobsSumOff, sum.off)}</Badge>
@@ -195,7 +206,7 @@ export default function JobsPage() {
         </span>
       </div>
 
-      {jobs.isLoading && <div className="text-sm text-muted-foreground">…</div>}
+      {jobs.isLoading && <div className="txt-body text-muted-foreground">…</div>}
 
       {/*
         * 窄屏时**横向滚动，不是把列压没**。
@@ -215,7 +226,7 @@ export default function JobsPage() {
           * 「每天 03:25」下面那个时间到底是上次还是下次，只能猜。
           */}
         {[c.jobsColName, c.jobsColCron, c.jobsColLast, t("common.actions")].map((h, i) => (
-          <div key={i} className="bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">{h}</div>
+          <div key={i} className="bg-muted/40 px-3 py-2 txt-label text-muted-foreground">{h}</div>
         ))}
         {grouped.map(([mod, group]) => (
           <div key={mod} className="contents">
@@ -275,14 +286,14 @@ export default function JobsPage() {
                 * 这一点尤其明显。浮层不占布局流，点开点关表格纹丝不动。
                 */}
               {r.description && (
-                <HelpNote inline title={c.jobsDescToggle} className="mt-0.5 text-xs">
+                <HelpNote inline title={c.jobsDescToggle} className="mt-0.5 txt-caption">
                   {r.description}
                 </HelpNote>
               )}
             </div>
 
             {/* ② 频率说人话，原始 cron 收进 tooltip */}
-            <div className={`${CELL} min-w-0 text-sm`}>
+            <div className={`${CELL} min-w-0 txt-body`}>
               <Tooltip label={<code>{r.cron}</code>}>
                 {(p) => <span {...p} className="block truncate">{cronText(r.cron, tc)}</span>}
               </Tooltip>
@@ -292,14 +303,14 @@ export default function JobsPage() {
                 * 只有任务停了很久（下次时间是远期或过期）才回落成绝对时间戳，
                 * 而那恰恰是最需要看清楚的时候。
                 */}
-              <div className="truncate text-xs text-muted-foreground"
+              <div className="truncate txt-caption text-muted-foreground"
                    title={`${c.jobsNextLabel} ${relTime(r.nextRunAt, tc)}`}>
                 {c.jobsNextLabel} {relTime(r.nextRunAt, tc)}
               </div>
             </div>
 
             {/* ③ 最后一次。detail 压成一行 —— 要看全的去日志里看 */}
-            <div className={`${CELL} min-w-0 text-sm`}>
+            <div className={`${CELL} min-w-0 txt-body`}>
               {r.lastStatus === null
                 ? <span className="text-muted-foreground">{c.jobsNeverRan}</span>
                 : (
@@ -307,17 +318,17 @@ export default function JobsPage() {
                     <Badge tone={TONE[r.lastStatus]}>
                       {c[`jobsStatus${r.lastStatus}` as keyof typeof c]}
                     </Badge>
-                    <span className="truncate text-xs text-muted-foreground">
+                    <span className="truncate txt-caption text-muted-foreground">
                       {relTime(r.lastRunAt, tc)}
                     </span>
                     {r.consecutiveFailures > 0 && (
-                      <span className="shrink-0 text-xs font-medium text-destructive">
+                      <span className="shrink-0 txt-label text-destructive">
                         ×{r.consecutiveFailures}
                       </span>
                     )}
                   </div>
                 )}
-              <div className="truncate text-xs text-muted-foreground"
+              <div className="truncate txt-caption text-muted-foreground"
                    title={r.error ?? r.detail ?? ""}>
                 {r.error
                   ? <span className="text-destructive">{oneLine(r.error)}</span>
@@ -393,7 +404,7 @@ function JobLogs({ c, name }: { c: ReturnType<typeof useCopy<typeof JOBS_COPY.zh
     { header: c.jobsColDetail, cell: (l) => (
         <div className="space-y-0.5">
           <div>{l.detail ?? "—"}</div>
-          {l.error && <div className="text-xs text-destructive">{l.error}</div>}
+          {l.error && <div className="txt-caption text-destructive">{l.error}</div>}
         </div>
       ) },
   ];

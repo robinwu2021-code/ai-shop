@@ -727,10 +727,10 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
         {form && (
           <DrawerSection first title={c.catFormBasic}>
             <Field label={c.fieldCatName}>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <Input value={form.name} onChange={(e) => setForm((p) => p && { ...p, name: e.target.value })} />
             </Field>
             <Field label={c.fieldCatNameEn}>
-              <Input value={form.i18nEn} onChange={(e) => setForm({ ...form, i18nEn: e.target.value })} />
+              <Input value={form.i18nEn} onChange={(e) => setForm((p) => p && { ...p, i18nEn: e.target.value })} />
               {/*
                 **留空的后果要写在他正在填的地方。**不填不会报错，C 端英文界面
                 就静默回落成中文 —— 英文用户看到的类目列表里夹着几个汉字词，
@@ -745,7 +745,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
                 value={form.parentNo}
                 onChange={(v) => {
                   const parent = rows.find((x) => x.categoryNo === v);
-                  setForm({ ...form, parentNo: v, template: parent?.template ?? form.template });
+                  setForm((p) => p && { ...p, parentNo: v, template: parent?.template ?? form.template });
                 }}
                 options={[
                   { value: "", label: c.catParentNone },
@@ -762,7 +762,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
               ) : (
                 <FilterSelect
                   value={form.template}
-                  onChange={(v) => setForm({ ...form, template: v })}
+                  onChange={(v) => setForm((p) => p && { ...p, template: v })}
                   options={TEMPLATES.map((t) => ({ value: t, label: codeLabel(c, t) }))}
                 />
               )}
@@ -771,7 +771,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
             <Field label={c.fieldRequiredCode}>
               <FilterSelect
                 value={form.requiredCode}
-                onChange={(v) => setForm({ ...form, requiredCode: v })}
+                onChange={(v) => setForm((p) => p && { ...p, requiredCode: v })}
                 options={[
                   { value: "", label: c.catNoGate },
                   ...(authCodes.data ?? [])

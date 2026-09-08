@@ -107,11 +107,11 @@ export function FeeRuleTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean })
         <div className="grid grid-cols-2 gap-3">
           {MODES.flatMap((m) =>
             SOURCES.map((s) => (
-              <div key={`${m}|${s}`} className="rounded-md border p-3">
+              <div key={`${m}|${s}`} className="rounded-card border p-3">
                 <div className="txt-caption text-muted-foreground">
                   {modeLabel[m]} · {sourceLabel[s]}
                 </div>
-                <div className="txt-strong text-lg">
+                <div className="txt-title">
                   {pct(effective.data?.[`${m}|${s}`] ?? 0)}
                 </div>
               </div>
@@ -165,7 +165,8 @@ export function FeeRuleTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean })
 
       <div>
         <div className="mb-2 txt-strong">{fill(c.frHistoryTitle, { n: rules.data?.length ?? 0 })}</div>
-        <DataTable columns={columns} rows={rules.data ?? []} rowKey={(r) => r.ruleNo} />
+        <DataTable columns={columns} rows={rules.data ?? []} rowKey={(r) => r.ruleNo} loading={rules.isLoading} error={rules.error} onRetry={() => rules.refetch()}
+                   empty={c.frHistoryEmpty} />
       </div>
     </div>
   );

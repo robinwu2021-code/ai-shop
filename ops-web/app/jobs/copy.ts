@@ -5,6 +5,9 @@ const zh = {
   jobsNotice:
     "这里列的是后台自己会跑的任务：关单、对账、到期扫描。它们不跑的时候不会报错——"
     + "订单不会关、库存不会释放、过期的商家照常接单，而没有任何地方会亮红灯。这一页就是那盏灯。",
+  jobsHeaderDesc: "直读任务库，不问调度器 —— 调度器挂了这一页仍显示得出「上次跑是几小时前」",
+  jobsReadOnlyWhat: "定时任务管理",
+  jobsReadOnlyNote: "不能启停任务，也不能手动触发一次",
   // ── 概览条 ────────────────────────────────
   jobsSumTotal: "共 {n} 个",
   jobsSumOn: "{n} 个运行中",
@@ -54,7 +57,7 @@ const zh = {
   jobsLogs: "执行日志",
   jobsCronInvalid: "不是合法的 cron 表达式（6 段）。",
   jobsDisableConfirm: "停用之后这个任务不再执行。关掉关单任务，库存就从那一刻起不再释放。",
-  jobsLogEmpty: "还没有执行记录。",
+  jobsLogEmpty: "这个任务还没有执行记录。开启后由调度器按 cron 触发，空着说明它一次都没跑过。",
   jobsColStarted: "开始",
   jobsColDuration: "用时",
   jobsColTrigger: "触发",
@@ -104,6 +107,9 @@ const en: typeof zh = {
     "These are the background jobs the platform runs on its own: closing orders, reconciliation, "
     + "expiry sweeps. When they stop, nothing raises an error — orders stay open, stock stays locked, "
     + "expired merchants keep selling. This page is the only place that shows it.",
+  jobsHeaderDesc: "Reads the job table directly, not the scheduler — if the scheduler dies this page still says when each job last ran",
+  jobsReadOnlyWhat: "managing scheduled jobs",
+  jobsReadOnlyNote: "cannot enable, disable or trigger a job",
   jobsNeverRan: "Never ran",
   jobsColName: "Job",
   jobsColCron: "Schedule",
@@ -129,7 +135,7 @@ const en: typeof zh = {
   jobsCronInvalid: "Not a valid cron expression (6 fields).",
   jobsDisableConfirm: "Once disabled this job stops running. Disable order auto-close and stock "
     + "stops being released from that moment on.",
-  jobsLogEmpty: "No runs recorded yet.",
+  jobsLogEmpty: "This job has no run history. Once enabled the scheduler triggers it on its cron — an empty list means it has never run.",
   jobsColStarted: "Started",
   jobsColDuration: "Took",
   jobsColTrigger: "Trigger",

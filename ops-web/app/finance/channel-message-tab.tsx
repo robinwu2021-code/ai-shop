@@ -41,19 +41,19 @@ export function ChannelMessageTab({ c }: { c: FinanceCopy }) {
 
   const columns: Column<ChannelMessage>[] = [
     { header: c.cmTime, cell: (m) => (
-      <span className="tabular-nums text-[12px]">
+      <span className="tabular-nums txt-caption">
         {m.createdAt ? new Date(m.createdAt).toLocaleString() : "—"}
       </span>
     ) },
     { header: c.cmChannel, cell: (m) => m.payChannel },
     { header: c.cmType, cell: (m) => c[`cm${m.msgType}` as keyof FinanceCopy] as string ?? m.msgType },
-    { header: c.cmApi, cell: (m) => <span className="font-mono text-[12px]">{m.api}</span> },
+    { header: c.cmApi, cell: (m) => <span className="font-mono txt-caption">{m.api}</span> },
     {
       header: c.cmBizNo,
       // 无单号不留空白：空白读起来像「这一列没数据」，而它其实是一条信息
       cell: (m) => (m.bizNo
-        ? <span className="font-mono text-[12px]">{m.bizNo}</span>
-        : <span className="text-[12px] text-muted-foreground">{c.cmNoBizNo}</span>),
+        ? <span className="font-mono txt-caption">{m.bizNo}</span>
+        : <span className="txt-caption text-muted-foreground">{c.cmNoBizNo}</span>),
     },
     {
       header: c.cmOutcome,
@@ -67,20 +67,20 @@ export function ChannelMessageTab({ c }: { c: FinanceCopy }) {
     {
       header: c.cmReason,
       // 原因是这一页的重点，给它最多的宽度
-      cell: (m) => <span className="text-[12px]">{m.reason ?? "—"}</span>,
+      cell: (m) => <span className="txt-caption">{m.reason ?? "—"}</span>,
     },
   ];
 
   return (
     <div className="space-y-3">
-      <p className="text-[13px] text-muted-foreground">{c.cmHint}</p>
+      <p className="txt-body text-muted-foreground">{c.cmHint}</p>
 
       {/* 口径由服务端给，不在端上写死 —— 将来报文能重放了，改的是后端那一行 */}
       {q.data?.note && <Notice tone="warning">{q.data.note}</Notice>}
 
       <div className="flex flex-wrap items-center gap-2">
         <select
-          className="focus-ring h-[var(--ctl-h)] rounded-input border border-border bg-background px-2 text-[13px]"
+          className="focus-ring h-[var(--ctl-h)] rounded-input border border-border bg-background px-2 txt-body"
           value={msgType}
           onChange={(e) => setMsgType(e.target.value)}
         >
@@ -91,7 +91,7 @@ export function ChannelMessageTab({ c }: { c: FinanceCopy }) {
           ))}
         </select>
         <select
-          className="focus-ring h-[var(--ctl-h)] rounded-input border border-border bg-background px-2 text-[13px]"
+          className="focus-ring h-[var(--ctl-h)] rounded-input border border-border bg-background px-2 txt-body"
           value={outcome}
           onChange={(e) => setOutcome(e.target.value)}
         >

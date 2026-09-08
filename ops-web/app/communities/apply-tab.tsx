@@ -17,16 +17,17 @@ import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { fmtTime } from "@/lib/utils";
 import type { CommunityApply } from "@/lib/types";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { usePaging } from "@/lib/use-paging";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
-import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { Textarea } from "@/components/ui/textarea";
+import { PagedTable } from "@/components/ui/paged-table";
 import { RegionChooser } from "./region-chooser";
 import { RegionSuggest } from "./region-suggest";
 import { ApplyMap } from "./apply-map";
@@ -45,8 +46,7 @@ export function ApplyTab({ c, canDecide }: { c: Copy; canDecide: boolean }) {
   const statusMap = useApplyStatusMap(c);
   // 默认只看待审：这是个队列，历史是次要视图
   const [status, setStatus] = useState("PENDING");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<CommunityApply | null>(null);
   const [regionCode, setRegionCode] = useState("");
   const [reason, setReason] = useState("");
@@ -109,16 +109,17 @@ export function ApplyTab({ c, canDecide }: { c: Copy; canDecide: boolean }) {
         />
       </Toolbar>
 
-      <DataTable
-        columns={columns}
-        rows={list.data?.records}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
         loading={list.isLoading}
-        error={list.error}
-        onRetry={() => list.refetch()}
+        columns={columns}
         rowKey={(a) => a.applyNo}
         empty={c.emptyApply}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
 
       <Drawer
         open={!!current}

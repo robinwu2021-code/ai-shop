@@ -87,7 +87,7 @@ export function ReconTab({ c }: { c: InventoryCopy }) {
       cell: (d) => (
         <div>
           <div>{d.entityNo}</div>
-          {d.storeNo && <div className="text-xs text-muted-foreground">{d.storeNo}</div>}
+          {d.storeNo && <div className="txt-caption text-muted-foreground">{d.storeNo}</div>}
         </div>
       ),
     },

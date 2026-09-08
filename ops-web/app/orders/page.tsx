@@ -20,10 +20,9 @@ import { fmtTime, money } from "@/lib/utils";
 import { exportCsv } from "@/lib/export-csv";
 import type { Order, ReconDiff, ReconDiffType, ReconStatus, RecoverAction } from "@/lib/types";
 import { OrderStatusBadge, useFulfillmentTypeMap, useOrderStatusMap, useTrafficSourceMap } from "@/components/status";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
-import { Pagination } from "@/components/ui/misc";
 import { TabHeader } from "@/components/ui/tab-header";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
@@ -37,6 +36,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { PagedTable } from "@/components/ui/paged-table";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 // 异常单与代客操作各自成块，与其它 tab 只共用文案表 —— 拆出去，页面才不会长到读不动
 import { ExceptionTab } from "./exception-tab";
@@ -282,16 +282,17 @@ function OrdersInner() {
         </div>
       )}
 
-      <DataTable
-        columns={columns}
-        rows={list.data?.records}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
         loading={list.isLoading}
-        error={list.error}
-        onRetry={() => list.refetch()}
+        columns={columns}
         rowKey={(o) => o.orderNo}
         empty={c.empty}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
       </>
       )}
 
@@ -320,13 +321,17 @@ function OrdersInner() {
               </>
             )}
           </Toolbar>
-          <DataTable
-            columns={reconColumns} rows={recon.data?.records} loading={recon.isLoading}
-            error={recon.error} onRetry={() => recon.refetch()}
+          <PagedTable
+            query={recon}
+            page={page}
+            size={size}
+            onPage={setPage}
+            onSize={setSize}
+            loading={recon.isLoading}
+            columns={reconColumns}
             rowKey={(d) => d.diffNo}
             empty={tab === "repair" ? c.emptyRepair : c.emptyRecon}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={recon.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 

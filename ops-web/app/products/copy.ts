@@ -11,7 +11,7 @@ const zh = {
   gaColMerchant: "商家",
   gaColActions: "操作",
   gaAction: "审核",
-  gaEmpty: "没有待审商品",
+  gaEmpty: "没有待审商品。商家提审后会落到这里，空着说明都审完了或这一批还没提交。",
   // ── 社区池重建（P-3.2）。后端一直有，运营端此前没有入口 ──
   rsTitle: "重建社区池",
   rsNotice: "社区池是「这件商品出现在哪些社区」的派生索引。两种情况要重建：① 改过可见性口径之后（存量池行是旧口径写下的）；② 商家报「我明明上架了，买家搜不到」而经营范围看着没问题时。重建只重算索引，不改商品本身。",
@@ -378,7 +378,7 @@ const zh = {
   cpmBlocked: "已禁止",
   cpmBlock: "禁止",
   cpmAllow: "恢复允许",
-  cpmEmpty: "暂无类目",
+  cpmEmpty: "还没有可配置的类目。当面付开关挂在二级类目上，先去平台类目树里把类目建出来。",
   cptTitle: "类目 × 积分",
   cptNotice: "积分发放规则「由平台按类目统一管理，商家不参与配置」 —— 依据是实测：线上 199 件商品里，用商品级配置配了积分的是 0 件。没配规则的类目走平台兜底，而兜底是所有类目共用的一个数：生鲜与家电按同一个比例发分，怎么算都不对。所以这一页空着就是缺口。",
   cptSummary: "已配 {n} / 共 {total} 个类目",
@@ -392,7 +392,7 @@ const zh = {
   cptFixed: "定额",
   cptRatioText: "成交额的 {v}%",
   cptFixedText: "每单 {v} 分",
-  cptEmpty: "暂无类目",
+  cptEmpty: "还没有可配置的类目。积分规则挂在二级类目上，先去平台类目树里把类目建出来。",
   csTitle: "类目 × 规格",
   csNotice:
     "商家建品时能选到什么规格，取决于这张表。一条都没配的类目会标红 —— 那一类的商家只能手输，而手输的选项没有规格编码，三家店的「500g」「五百克」「0.5kg」永远聚不到一起。主维度是选完类目自动预填的那一个。",
@@ -408,7 +408,7 @@ const zh = {
   csExpand: "展开取值",
   csCollapse: "收起",
   csSummary: "{total} 个在售类目，{configured} 个已配规格，{gap} 个还空着",
-  csEmpty: "还没有任何类目绑定规格。",
+  csEmpty: "还没有任何类目绑定规格。商家建品时的规格选项来自这里，空着他就只能手输。",
 
   // ── 规格模板（P-3.4 / E27）
   tplNotice:
@@ -450,6 +450,7 @@ const zh = {
   toastTplArchived: "模板已归档，商家侧不再下发",
   toastTplUnarchived: "模板已恢复",
   topicNotice: "主题是「这周首页摆什么」，与类目、活动都不是一回事：类目决定这是什么货、要什么资质，活动决定打几折。摆到一起不等于降价。",
+  topicListEmpty: "还没有建过专题。专题是 C 端首页的成组入口，建好并挂上商品之后前台才会出现。",
   topicNew: "新建专题",
   topicEdit: "编辑",
   topicPick: "挑商品",
@@ -561,7 +562,7 @@ const zh = {
   bwRemove: "移除",
   bwRemoveTitle: "移除「{w}」？",
   bwRemoveDesc: "移除之后，标题里带这个词的商品下次提审就不会再被拦。",
-  bwEmpty: "还没有禁售词",
+  bwEmpty: "还没有禁售词。禁售词是商品标题的拦截词表，一条都没有等于这道闸门不生效。",
 
   bpTitle: "提审前置约束",
   // 默认全关是有意的，界面上要说清楚打开的后果
@@ -583,7 +584,7 @@ const en: typeof zh = {
   gaColMerchant: "Merchant",
   gaColActions: "Actions",
   gaAction: "Review",
-  gaEmpty: "Nothing waiting for review",
+  gaEmpty: "No goods awaiting review. They land here when merchants submit — empty means all reviewed, or none submitted yet.",
   rsTitle: "Rebuild community pools",
   rsNotice: "The community pool is a derived index of «which communities does this item appear in». Rebuild it when: (1) the visibility rule changed — existing rows were written under the old rule; or (2) a merchant reports «I listed it but buyers cannot find it» while the service scope looks fine. Rebuilding only recomputes the index; it does not touch the items themselves.",
   rsScope: "Limit to one merchant (blank = all)",
@@ -926,7 +927,7 @@ const en: typeof zh = {
   cpmBlocked: "Blocked",
   cpmBlock: "Block",
   cpmAllow: "Allow",
-  cpmEmpty: "No categories",
+  cpmEmpty: "No categories to configure. The pay-in-person switch hangs off second-level categories — create them in the category tree first.",
   cptTitle: "Categories × points",
   cptNotice: "Points rules are set by the platform per category; merchants do not configure them — measured: of 199 live products, 0 had a product-level points rule. Categories without a rule fall back to a single platform number shared by every category, which cannot be right for both groceries and appliances. So an empty row here is a gap.",
   cptSummary: "{n} configured of {total} categories",
@@ -940,7 +941,7 @@ const en: typeof zh = {
   cptFixed: "Fixed",
   cptRatioText: "{v}% of order value",
   cptFixedText: "{v} points per order",
-  cptEmpty: "No categories",
+  cptEmpty: "No categories to configure. Points rules hang off second-level categories — create them in the category tree first.",
   csTitle: "Categories × specs",
   csNotice:
     "What a merchant can pick when creating a product comes from this table. Categories with nothing configured are flagged — merchants there can only type freely, and free text has no option code, so “500g”, “half a jin” and “0.5kg” never group together. The primary dimension is the one pre-filled once a category is chosen.",
@@ -956,7 +957,7 @@ const en: typeof zh = {
   csExpand: "Show values",
   csCollapse: "Hide",
   csSummary: "{total} live categories · {configured} configured · {gap} still empty",
-  csEmpty: "No category has specs bound yet.",
+  csEmpty: "No category has specs bound yet. Merchants pick spec options from here when creating goods — with none, they have to type them by hand.",
 
   tplNotice:
     "Platform templates are what makes specs comparable across shops: merchants pick one when creating a product, and the option code decides whether “5 jin”, “five jin” and “2.5kg” group together. Archiving is not deleting — past products still need the template to explain the codes they used.",
@@ -996,6 +997,7 @@ const en: typeof zh = {
   toastTplArchived: "Archived — merchants no longer see it",
   toastTplUnarchived: "Template restored",
   topicNotice: "A topic answers “what goes on the home page this week”. It is neither a category (what the goods are and what licences they need) nor a campaign (what the discount is). Grouping is not discounting.",
+  topicListEmpty: "No topics yet. A topic is a grouped entry point on the shopper home page; it appears there only once it is created and has goods attached.",
   topicNew: "New topic",
   topicEdit: "Edit",
   topicPick: "Pick products",
@@ -1098,7 +1100,7 @@ const en: typeof zh = {
   bwRemove: "Remove",
   bwRemoveTitle: "Remove \"{w}\"?",
   bwRemoveDesc: "After removal, listings containing this word will no longer be blocked at submission.",
-  bwEmpty: "No banned words yet",
+  bwEmpty: "No banned words yet. They are the block list for product titles — with none, that gate does nothing.",
 
   bpTitle: "Pre-submission rules",
   bpWarn: "These apply the moment a merchant hits Submit. Think about how many they will block first — every existing listing that matches will fail its next submission, and the merchant only sees an error they did nothing to cause.",

@@ -48,7 +48,7 @@ export function FulfillmentBlock({ merchantNo }: { merchantNo: string }) {
         <div className="space-y-2">
           {data.map((s) => (
             <div key={s.storeNo}>
-              <div className="text-sm">
+              <div className="txt-body">
                 {s.storeName ?? s.storeNo}
                 {s.storeStatus !== "ACTIVE" && (
                   <Badge tone="muted" className="ms-1">{s.storeStatus}</Badge>

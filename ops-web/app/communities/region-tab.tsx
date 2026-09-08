@@ -107,7 +107,7 @@ export function RegionTab({ c, canDecide }: { c: Copy; canDecide: boolean }) {
   return (
     <>
       <Toolbar>
-        <span className="flex flex-wrap items-center gap-1 text-sm">
+        <span className="flex flex-wrap items-center gap-1 txt-body">
           <button className="focus-ring link" onClick={() => setTrail([])}>{c.rgRoot}</button>
           {trail.map((x, i) => (
             <span key={x.regionCode}>

@@ -94,20 +94,20 @@ function LoginForm() {
     <div className="flex h-screen items-center justify-center bg-muted/30">
       <Card className="w-[360px]">
         <CardHeader>
-          <div className="mb-1 flex size-9 items-center justify-center rounded-field bg-primary text-sm font-medium text-primary-foreground">
+          <div className="mb-1 flex size-9 items-center justify-center rounded-field bg-primary txt-strong text-primary-foreground">
             邻
           </div>
           <CardTitle>{t("common.appTitle")}</CardTitle>
-          <p className="text-sm text-muted-foreground">{t("login.subtitle")}</p>
+          <p className="txt-body text-muted-foreground">{t("login.subtitle")}</p>
         </CardHeader>
         <CardContent>
           <form className="space-y-3" onSubmit={submit}>
             <div className="space-y-1">
-              <label className="text-sm text-muted-foreground">{t("login.username")}</label>
+              <label className="txt-body text-muted-foreground">{t("login.username")}</label>
               <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t("login.username")} />
             </div>
             <div className="space-y-1">
-              <label className="text-sm text-muted-foreground">{t("login.password")}</label>
+              <label className="txt-body text-muted-foreground">{t("login.password")}</label>
               <Input
                 type="password"
                 value={password}
@@ -115,7 +115,7 @@ function LoginForm() {
                 placeholder={t("login.password")}
               />
             </div>
-            {err && <div className="rounded-field bg-destructive/10 px-3.5 py-2 text-sm text-destructive">{err}</div>}
+            {err && <div className="rounded-field bg-destructive/10 px-3.5 py-2 txt-body text-destructive">{err}</div>}
             <Button className="w-full" type="submit" disabled={busy}>
               {busy ? t("common.loading") : t("login.submit")}
             </Button>

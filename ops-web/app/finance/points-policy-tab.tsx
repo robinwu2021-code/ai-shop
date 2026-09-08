@@ -17,6 +17,7 @@ import { api } from "@/lib/api";
 import type { ClientPointsPolicy } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { FinanceCopy } from "./copy";
 
 /** 与后端 `PayScenes` 逐字一致。多一个少一个都不会报错，只会静默不生效 */
@@ -38,7 +39,7 @@ export function PointsPolicyTab({ c, canEdit }: { c: FinanceCopy; canEdit: boole
     onSuccess: (v) => qc.setQueryData(["points-client-policy"], v),
   });
 
-  if (!draft) return <div className="text-[13px] text-muted-foreground">{c.ppLoading}</div>;
+  if (!draft) return <div className="txt-body text-muted-foreground">{c.ppLoading}</div>;
 
   function toggle(list: string[], v: string) {
     return list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
@@ -55,9 +56,7 @@ export function PointsPolicyTab({ c, canEdit }: { c: FinanceCopy; canEdit: boole
 
   return (
     <>
-      <div className="mb-2 flex items-baseline justify-between">
-        <h3 className="text-[15px] font-semibold">{c.ppTitle}</h3>
-      </div>
+      <SectionHeader title={c.ppTitle} />
       <Notice className="mb-3" tone="warning">{c.ppNotSecurityGate}</Notice>
 
       <div className="space-y-4 rounded-card border border-border p-4">
@@ -72,7 +71,7 @@ export function PointsPolicyTab({ c, canEdit }: { c: FinanceCopy; canEdit: boole
           onToggle={(v) => setDraft({ ...draft, redeemDeny: toggle(draft.redeemDeny, v) })}
         />
 
-        <label className="flex items-start gap-2 text-[13px]">
+        <label className="flex items-start gap-2 txt-body">
           <input
             type="checkbox" className="focus-ring mt-1" disabled={!canEdit}
             checked={draft.offlineRedeem}
@@ -80,7 +79,7 @@ export function PointsPolicyTab({ c, canEdit }: { c: FinanceCopy; canEdit: boole
           />
           <span>
             <span className="font-semibold">{c.ppOfflineRedeem}</span>
-            <span className="block text-[12px] text-muted-foreground">{c.ppOfflineHint}</span>
+            <span className="block txt-caption text-muted-foreground">{c.ppOfflineHint}</span>
           </span>
         </label>
 
@@ -106,15 +105,15 @@ function Row({ label, hint, clients, picked, disabled, onToggle }: {
 }) {
   return (
     <div>
-      <div className="text-[13px] font-semibold">{label}</div>
-      <div className="mb-2 text-[12px] text-muted-foreground">{hint}</div>
+      <div className="txt-heading">{label}</div>
+      <div className="mb-2 txt-caption text-muted-foreground">{hint}</div>
       <div className="flex flex-wrap gap-1.5">
         {clients.map((v) => (
           <button
             key={v} type="button" disabled={disabled} onClick={() => onToggle(v)}
-            className={`focus-ring rounded-chip border px-2.5 py-1 text-[12px] ${
+            className={`focus-ring rounded-chip border px-2.5 py-1 txt-caption ${
               picked.includes(v)
-                ? "border-destructive bg-destructive-tint text-destructive-text"
+                ? "border-destructive bg-destructive-tint text-destructive-ink"
                 : "border-border hover:bg-muted"
             }`}
           >

@@ -139,7 +139,7 @@ export function GoodsAuditTab({ c, canAudit }: { c: ProductsCopy; canAudit: bool
                 <Field label={c.gaColMerchant}>{current.merchant?.name ?? "—"}</Field>
               </FieldGrid>
               {current.subtitle && (
-                <p className="mt-2 text-sm text-[var(--muted)]">{current.subtitle}</p>
+                <p className="mt-2 txt-body text-[var(--muted)]">{current.subtitle}</p>
               )}
               {current.status === "REJECTED" && (
                 <Notice tone="danger" className="mt-3">{c.gaRejectedTag}</Notice>
@@ -157,7 +157,7 @@ export function GoodsAuditTab({ c, canAudit }: { c: ProductsCopy; canAudit: bool
                 )}
                 <div className="space-y-2">
                   {draftPreview.data.changes.map((r) => (
-                    <div key={r.field} className="text-sm">
+                    <div key={r.field} className="txt-body">
                       <span className="text-[var(--muted)]">{r.label}：</span>
                       <span className="line-through text-[var(--muted)]">{r.before ?? "—"}</span>
                       <span className="mx-1 text-[var(--muted)]">→</span>
@@ -165,7 +165,7 @@ export function GoodsAuditTab({ c, canAudit }: { c: ProductsCopy; canAudit: bool
                     </div>
                   ))}
                   {draftPreview.data.changes.length === 0 && (
-                    <p className="text-sm text-[var(--muted)]">{c.gaDraftNoChange}</p>
+                    <p className="txt-body text-[var(--muted)]">{c.gaDraftNoChange}</p>
                   )}
                 </div>
               </DrawerSection>

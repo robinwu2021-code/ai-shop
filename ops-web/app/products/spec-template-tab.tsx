@@ -19,15 +19,15 @@ import { useCategoryTemplateMap } from "@/components/status";
 import { ArchiveActions, ArchivedAt, archivedRowClass, ShowArchivedToggle } from "@/components/archive";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, Field } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HelpNote } from "@/components/ui/help-note";
-import { Pagination } from "@/components/ui/misc";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { PagedTable } from "@/components/ui/paged-table";
 import type { ProductsCopy } from "./copy";
 
 /** 抽屉里的表单态。选项是**整组替换**的，所以直接持有一个数组，不做逐项 diff。 */
@@ -169,14 +169,18 @@ export function SpecTemplateTab({ c, canEdit }: { c: ProductsCopy; canEdit: bool
         {canEdit && <Button size="sm" onClick={() => setForm({ ...EMPTY, options: [{ code: "", label: "" }] })}>{c.tplNew}</Button>}
       </Toolbar>
 
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(t) => t.templateNo}
         rowClassName={archivedRowClass}
         empty={c.tplEmpty}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
 
       <Drawer
         open={!!form}
@@ -204,13 +208,13 @@ export function SpecTemplateTab({ c, canEdit }: { c: ProductsCopy; canEdit: bool
             <div className="space-y-1">
               <Label htmlFor="tpl-name" required>{c.tplFieldName}</Label>
               <Input id="tpl-name" className="w-full" value={form.name} placeholder={c.tplNamePh}
-                onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                onChange={(e) => setForm((p) => p && { ...p, name: e.target.value })} />
             </div>
 
             <div className="space-y-1">
               <Label htmlFor="tpl-cat">{c.tplFieldCategory}</Label>
               <Select id="tpl-cat" className="w-full" value={form.categoryType}
-                onChange={(e) => setForm({ ...form, categoryType: e.target.value })}>
+                onChange={(e) => setForm((p) => p && { ...p, categoryType: e.target.value })}>
                 <option value="">{c.tplCategoryAny}</option>
                 {categoryOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </Select>
@@ -228,14 +232,14 @@ export function SpecTemplateTab({ c, canEdit }: { c: ProductsCopy; canEdit: bool
                     <Button size="sm" variant="ghost"
                       // 最后一行不给删：删空之后抽屉里没有任何输入框，看起来像坏了
                       disabled={form.options.length <= 1}
-                      onClick={() => setForm({ ...form, options: form.options.filter((_, k) => k !== i) })}>
+                      onClick={() => setForm((p) => p && { ...p, options: form.options.filter((_, k) => k !== i) })}>
                       {c.tplRemoveOption}
                     </Button>
                   </div>
                 ))}
               </div>
               <Button className="mt-2" size="sm" variant="outline"
-                onClick={() => setForm({ ...form, options: [...form.options, { code: "", label: "" }] })}>
+                onClick={() => setForm((p) => p && { ...p, options: [...form.options, { code: "", label: "" }] })}>
                 {c.tplAddOption}
               </Button>
             </Field>

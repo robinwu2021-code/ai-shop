@@ -26,10 +26,11 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
 import { HelpNote } from "@/components/ui/help-note";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
-import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { SectionHeader } from "@/components/ui/section-header";
+import { PagedTable } from "@/components/ui/paged-table";
 import type { MerchantsCopy as Copy } from "./copy";
 
 /**
@@ -117,13 +118,17 @@ export function PlansTab({ c }: { c: Copy }) {
         />
       </Toolbar>
 
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(r) => r.merchantNo}
         empty={c.plEmpty}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
 
       {/*
         * **档位定义已经拆到隔壁那个 tab 去了（M8）。**
@@ -131,7 +136,8 @@ export function PlansTab({ c }: { c: Copy }) {
         * 「授予某商家」（天天做的运营动作）—— 混在一起，前者会被后者的噪声淹没，
         * 而它正是分层落地前必须理清的地基。
         */}
-      <UpgradeSignalsBlock c={c} rows={signals.data} loading={signals.isLoading} />
+      <UpgradeSignalsBlock c={c} rows={signals.data} loading={signals.isLoading}
+                           error={signals.error} onRetry={() => signals.refetch()} />
 
       <Drawer
         open={!!current}
@@ -283,8 +289,8 @@ function PlanDrawer({ c, row, defs, canGrant, onSaved }: {
  * 档位定义。**页内区块而不是独立菜单项** —— 它的权限码是 `system:*`，
  * 而叶子的 perm 前缀必须等于 section 的 module（nav.test.ts 锁着）。
  */
-function PlanDefsBlock({ c, defs, loading, canEdit }: {
-  c: Copy; defs?: PlanDef[]; loading: boolean; canEdit: boolean;
+function PlanDefsBlock({ c, defs, loading, error, onRetry, canEdit }: {
+  c: Copy; defs?: PlanDef[]; loading: boolean; error?: unknown; onRetry?: () => void; canEdit: boolean;
 }) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<PlanDef | null>(null);
@@ -312,9 +318,9 @@ function PlanDefsBlock({ c, defs, loading, canEdit }: {
 
   return (
     <section className="mt-6">
-      <h3 className="txt-h3 mb-1">{c.plSecDefs}</h3>
-      <p className="txt-caption text-muted-foreground mb-2">{c.plDefsHint}</p>
-      <DataTable columns={columns} rows={defs} loading={loading} rowKey={(d) => d.planCode} />
+      <SectionHeader title={c.plSecDefs} desc={c.plDefsHint} />
+      <DataTable columns={columns} rows={defs} loading={loading} error={error} onRetry={onRetry}
+                 rowKey={(d) => d.planCode} empty={c.plDefsEmpty} />
       {!canEdit && <ReadOnlyNotice what={c.plReadOnlyDef} perm="system:param:update" />}
 
       <Drawer
@@ -400,8 +406,9 @@ function PlanDefForm({ c, def, onSaved }: { c: Copy; def: PlanDef; onSaved: () =
 }
 
 /** 升档信号：一个人名下多个主体 —— 他已经在多店经营，只是绕过了额度。 */
-function UpgradeSignalsBlock({ c, rows, loading }: {
+function UpgradeSignalsBlock({ c, rows, loading, error, onRetry }: {
   c: Copy; rows?: { ownerUserNo: string; entityNos: string[]; entityNames: string[]; entityCount: number }[]; loading: boolean;
+  error?: unknown; onRetry?: () => void;
 }) {
   const columns: Column<NonNullable<typeof rows>[number]>[] = [
     { header: c.plSignalOwner, cell: (r) => r.ownerUserNo },
@@ -410,9 +417,9 @@ function UpgradeSignalsBlock({ c, rows, loading }: {
   ];
   return (
     <section className="mt-6">
-      <h3 className="txt-h3 mb-1">{c.plSecSignals}</h3>
-      <p className="txt-caption text-muted-foreground mb-2">{c.plSignalsHint}</p>
-      <DataTable columns={columns} rows={rows} loading={loading} rowKey={(r) => r.ownerUserNo} empty={c.plSignalsEmpty} />
+      <SectionHeader title={c.plSecSignals} desc={c.plSignalsHint} />
+      <DataTable columns={columns} rows={rows} loading={loading} error={error} onRetry={onRetry}
+                 rowKey={(r) => r.ownerUserNo} empty={c.plSignalsEmpty} />
     </section>
   );
 }
@@ -430,5 +437,6 @@ export function PlanDefsTab({ c }: { c: Copy }) {
   // 与拆分前同一个码，不新造 —— 改档位定义本来就走 system:param:update
   const canEditDef = allow("system:param:update");
   const defs = useQuery({ queryKey: ["plan-defs"], queryFn: () => api.planDefs() });
-  return <PlanDefsBlock c={c} defs={defs.data} loading={defs.isLoading} canEdit={canEditDef} />;
+  return <PlanDefsBlock c={c} defs={defs.data} loading={defs.isLoading}
+                        error={defs.error} onRetry={() => defs.refetch()} canEdit={canEditDef} />;
 }

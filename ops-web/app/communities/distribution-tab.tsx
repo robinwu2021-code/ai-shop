@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { ErrorState, Skeleton } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
 import { Notice } from "@/components/ui/notice";
 import { useCopy, fill } from "@/lib/use-copy";
@@ -52,12 +53,12 @@ function Gap({ label, n, hint, tone, to, toLabel }: {
     : tone === "danger" ? "text-destructive" : tone === "warn" ? "text-amber-600" : "text-primary";
   return (
     <div className="rounded-card border border-border bg-card p-4">
-      <div className="text-sm text-muted-foreground">{label}</div>
-      <div className={`mt-1 text-2xl font-semibold tabular-nums ${cls}`}>{n}</div>
-      <div className="mt-2 text-xs leading-relaxed text-muted-foreground">{hint}</div>
+      <div className="txt-body text-muted-foreground">{label}</div>
+      <div className={`mt-1 txt-display tabular-nums ${cls}`}>{n}</div>
+      <div className="mt-2 txt-caption leading-relaxed text-muted-foreground">{hint}</div>
       {/* 数字是 0 时不给链接：那一格没有待办，点进去只会让人以为漏看了什么 */}
       {to && n > 0 && (
-        <Link className="focus-ring mt-2 inline-block text-xs text-primary underline-offset-2 hover:underline"
+        <Link className="focus-ring mt-2 inline-block txt-caption text-primary underline-offset-2 hover:underline"
               href={to}>
           {toLabel}
         </Link>
@@ -68,7 +69,7 @@ function Gap({ label, n, hint, tone, to, toLabel }: {
 
 export function DistributionTab({ enabled }: { enabled: boolean }) {
   const c = useCopy<Copy>(COMMUNITIES_COPY);
-  const { data, isPending } = useQuery({
+  const { data, isPending, error, refetch } = useQuery({
     queryKey: ["coverage-distribution"],
     queryFn: () => api.coverageDistribution(),
     enabled,
@@ -100,7 +101,10 @@ export function DistributionTab({ enabled }: { enabled: boolean }) {
 
   const [gap, setGap] = useState<Gapkind>("all");
 
-  if (!data && isPending) return <div className="p-6 text-sm text-muted-foreground">{c.loading}</div>;
+  // 出错时**必须出一块看得见的东西**：此前这里是 `return null`，
+  // 接口一挂整个面板空白，运营既不知道坏了、也没有重试的入口。
+  if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
+  if (!data && isPending) return <Skeleton className="h-40 w-full" />;
   if (!data) return null;
 
   const u = data.unattributable;
@@ -150,7 +154,7 @@ export function DistributionTab({ enabled }: { enabled: boolean }) {
             </button>
           ))}
         </div>
-        <span className="text-xs text-muted-foreground">
+        <span className="txt-caption text-muted-foreground">
           {gap === "supply" ? c.gapTabSupplyHint
             : gap === "demand" ? c.gapTabDemandHint
             : gap === "empty" ? c.gapTabEmptyHint : c.gapTabAllHint}
@@ -159,7 +163,7 @@ export function DistributionTab({ enabled }: { enabled: boolean }) {
 
       <DataTable
         rows={gap === "all" ? data.rows : data.rows.filter((r) => classify(r) === gap)}
-        columns={cols} rowKey={(r) => r.communityNo} />
+        columns={cols} rowKey={(r) => r.communityNo} empty={c.gapRowsEmpty} />
     </div>
   );
 }

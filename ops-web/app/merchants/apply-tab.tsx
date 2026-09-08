@@ -18,6 +18,7 @@ import { notify } from "@/lib/notify";
 import { fmtTime } from "@/lib/utils";
 import { fill } from "@/lib/use-copy";
 import type { ApplyStatus, MerchantApply } from "@/lib/types";
+import { usePaging } from "@/lib/use-paging";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
@@ -60,8 +61,7 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
   const label = useCodeLabel();
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
 
   const [current, setCurrent] = useState<MerchantApply | null>(null);
   const [reason, setReason] = useState("");
@@ -181,6 +181,9 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
         rows={list.data?.records ?? []}
         loading={list.isPending}
         rowKey={(a) => a.applyNo}
+        empty={c.applyEmpty}
+        error={list.error}
+        onRetry={() => list.refetch()}
       />
       <Pagination
         page={page}
@@ -204,7 +207,7 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
                   <StatusBadge value={current.status} map={STATUS_MAP} />
                 </Field>
               </FieldGrid>
-              <p className="mt-2 text-sm text-[var(--muted)]">{current.desc}</p>
+              <p className="mt-2 txt-body text-[var(--muted)]">{current.desc}</p>
               {current.asPickupPoint && <Badge className="mt-2">{c.applyAsPickup}</Badge>}
               {current.rejectReason && (
                 <Notice tone="danger" className="mt-3">{current.rejectReason}</Notice>
@@ -222,7 +225,7 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
               <DrawerSection title={c.applySectionLicenses}>
                 <div className="grid grid-cols-2 gap-3">
                   {current.qualificationItems.map((q, i) => (
-                    <div key={i} className="rounded-lg border p-2">
+                    <div key={i} className="rounded-card border p-2">
                       <div className="flex items-center justify-between">
                         <Badge tone="info">{qualTypeLabel(c)[q.type] ?? q.type}</Badge>
                         <span className="txt-caption text-muted-foreground">
@@ -233,7 +236,7 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
                       {q.imageUrl && (
                         <a className="focus-ring" href={q.imageUrl} target="_blank" rel="noreferrer">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={q.imageUrl} alt={q.type} className="mt-2 w-full rounded" />
+                          <img src={q.imageUrl} alt={q.type} className="mt-2 w-full rounded-card" />
                         </a>
                       )}
                     </div>
@@ -251,7 +254,7 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
                 <p className="txt-caption text-muted-foreground">{c.applyRawFilesHint}</p>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {current.licenses.map((url) => (
-                    <a key={url} href={url} target="_blank" rel="noreferrer" className="focus-ring text-sm underline">
+                    <a key={url} href={url} target="_blank" rel="noreferrer" className="focus-ring txt-body underline">
                       {url.split("/").pop()}
                     </a>
                   ))}

@@ -204,7 +204,7 @@ function CommunitiesInner() {
         <span>
           {c.name}
           {c.parentNo && (
-            <span className="ml-2 text-xs text-muted-foreground">
+            <span className="ml-2 txt-caption text-muted-foreground">
               ← {communities.data?.records.find((r) => r.communityNo === c.parentNo)?.name ?? c.parentNo}
             </span>
           )}

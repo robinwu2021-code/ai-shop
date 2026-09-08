@@ -21,13 +21,13 @@ import { cn } from "@/lib/utils";
 function SoonBadge() {
   const { t } = useI18n();
   // 10px → txt-caption(12px)：规范的字号下限是 12px，10px 在任何屏幕上都读不清。
-  return <span className="ms-auto shrink-0 rounded bg-muted px-1 txt-caption text-muted-foreground">{t("common.soon")}</span>;
+  return <span className="ms-auto shrink-0 rounded-chip bg-muted px-1 txt-caption text-muted-foreground">{t("common.soon")}</span>;
 }
 
 function PhaseBadge({ phase }: { phase: Phase }) {
   const { t } = useI18n();
   return (
-    <span className="ms-auto shrink-0 rounded bg-primary/8 px-1 txt-caption text-primary/60">
+    <span className="ms-auto shrink-0 rounded-chip bg-primary/8 px-1 txt-caption text-primary/60">
       {t(PHASE_KEY[phase])}
     </span>
   );

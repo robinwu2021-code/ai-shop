@@ -48,11 +48,11 @@ export function BuildingDialog({
         </>
       }
     >
-      <label className="block text-sm text-muted-foreground" htmlFor="b-name">{c.buildingName}</label>
+      <label className="block txt-body text-muted-foreground" htmlFor="b-name">{c.buildingName}</label>
       <Input id="b-name" className="mt-1" value={name} placeholder={c.buildingNamePlaceholder}
              onChange={(e) => setName(e.target.value)} />
 
-      <label className="mt-3 block text-sm text-muted-foreground" htmlFor="b-parent">{c.buildingParent}</label>
+      <label className="mt-3 block txt-body text-muted-foreground" htmlFor="b-parent">{c.buildingParent}</label>
       <Select id="b-parent" className="mt-1" value={parentNo} onChange={(e) => setParentNo(e.target.value)}>
         <option value="">{c.buildingParentEmpty}</option>
         {candidates.map((x) => (
@@ -61,19 +61,19 @@ export function BuildingDialog({
           </option>
         ))}
       </Select>
-      <div className="mt-1 text-xs text-muted-foreground">{c.buildingTwoLevels}</div>
+      <div className="mt-1 txt-caption text-muted-foreground">{c.buildingTwoLevels}</div>
       {/*
         继承来的街道要**当场显示出来**：不显示的话运营无从确认自己挑对了父级，
         而挑错父级的后果（这栋楼跟着别人的经营范围走）在任何界面上都看不见。
       */}
       {parent && (
-        <div className="mt-1 text-xs text-muted-foreground">
+        <div className="mt-1 txt-caption text-muted-foreground">
           {c.buildingParentHint}
           {parent.regionPath ? ` · ${parent.regionPath}` : ""}
         </div>
       )}
 
-      <label className="mt-3 block text-sm text-muted-foreground" htmlFor="b-addr">{c.buildingAddress}</label>
+      <label className="mt-3 block txt-body text-muted-foreground" htmlFor="b-addr">{c.buildingAddress}</label>
       <Input id="b-addr" className="mt-1" value={address} onChange={(e) => setAddress(e.target.value)} />
 
       <Notice tone="info" className="mt-4">{c.buildingFenceHint}</Notice>

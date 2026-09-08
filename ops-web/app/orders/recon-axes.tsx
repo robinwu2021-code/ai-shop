@@ -15,6 +15,7 @@ import { api } from "@/lib/api";
 import type { ReconAxisReport } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Notice } from "@/components/ui/notice";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { OrdersCopy } from "./copy";
 
 export function ReconAxes({ c }: { c: OrdersCopy }) {
@@ -22,7 +23,7 @@ export function ReconAxes({ c }: { c: OrdersCopy }) {
   const rows = axes.data ?? [];
 
   if (axes.isLoading) {
-    return <div className="text-[13px] text-muted-foreground">{c.axesLoading}</div>;
+    return <div className="txt-body text-muted-foreground">{c.axesLoading}</div>;
   }
   if (!rows.length) return null;
 
@@ -30,10 +31,7 @@ export function ReconAxes({ c }: { c: OrdersCopy }) {
 
   return (
     <div className="mb-4 space-y-3">
-      <div className="flex items-baseline justify-between">
-        <h3 className="text-[15px] font-semibold">{c.axesTitle}</h3>
-        <span className="text-[12px] text-muted-foreground">{c.axesSubtitle}</span>
-      </div>
+      <SectionHeader className="mb-0" title={c.axesTitle} summary={c.axesSubtitle} />
 
       {/*
         有轴没跑成时先把它顶到最上面。**一条没跑成的轴等于今天这一类没人看** ——
@@ -67,7 +65,7 @@ function AxisCard({ c, r }: { c: OrdersCopy; r: ReconAxisReport }) {
       </div>
 
       {r.outcome && (
-        <div className="mt-1 text-[12px] tabular-nums text-muted-foreground">
+        <div className="mt-1 txt-caption tabular-nums text-muted-foreground">
           {c.axisCounts
             .replace("{scanned}", String(r.outcome.scanned))
             .replace("{resolved}", String(r.outcome.resolved))
@@ -75,14 +73,14 @@ function AxisCard({ c, r }: { c: OrdersCopy; r: ReconAxisReport }) {
         </div>
       )}
 
-      {r.error && <div className="mt-1 font-mono text-[11px] text-destructive-text">{r.error}</div>}
+      {r.error && <div className="mt-1 font-mono txt-caption text-destructive-ink">{r.error}</div>}
 
       {/*
         覆盖范围**永远显示**，不折叠、不藏在 tooltip 里。
         藏起来的话，读的人看到「零差异」就走了 —— 而那正是要防的。
       */}
       {!r.coverage.complete && (
-        <div className="mt-2 border-t border-border pt-2 text-[12px] leading-[1.55] text-muted-foreground">
+        <div className="mt-2 border-t border-border pt-2 txt-caption leading-[1.55] text-muted-foreground">
           {r.coverage.note}
         </div>
       )}

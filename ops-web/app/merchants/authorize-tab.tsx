@@ -12,9 +12,9 @@ import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
 import { MAX_MERCHANT_BREACH } from "@/lib/constants";
 import type { Merchant } from "@/lib/types";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { usePaging } from "@/lib/use-paging";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
-import { Pagination } from "@/components/ui/misc";
 import { Toolbar } from "@/components/ui/toolbar";
 import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { PagedTable } from "@/components/ui/paged-table";
 import type { MerchantsCopy } from "./copy";
 
 /**
@@ -45,8 +46,7 @@ function useApprovedMerchants(keyword: string, page: number, size: number) {
 export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boolean }) {
   const qc = useQueryClient();
   const [keyword, setKeyword] = useState("");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<Merchant | null>(null);
   const [codes, setCodes] = useState<string[]>([]);
   const [reason, setReason] = useState("");
@@ -108,13 +108,17 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
     <>
       <HelpNote className="mb-3">{c.categoryNotice}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder} />
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(m) => m.merchantNo}
         empty={c.emptyApproved}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
 
       <Drawer
         open={!!current}
@@ -206,8 +210,7 @@ export function VerifyTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boolean
   const qc = useQueryClient();
   const { confirm, dialog } = useConfirm();
   const [keyword, setKeyword] = useState("");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
 
   const list = useApprovedMerchants(keyword, page, size);
   const setVerified = useMutation({
@@ -261,13 +264,17 @@ export function VerifyTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boolean
     <>
       <HelpNote className="mb-3">{fill(c.verifyNotice, { n: MAX_MERCHANT_BREACH })}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder} />
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(m) => m.merchantNo}
         empty={c.emptyApproved}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
       {dialog}
     </>
   );

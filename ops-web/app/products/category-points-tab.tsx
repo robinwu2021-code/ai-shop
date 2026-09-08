@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { HelpNote } from "@/components/ui/help-note";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { ProductsCopy } from "./copy";
 
 export function CategoryPointsTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolean }) {
@@ -51,7 +52,7 @@ export function CategoryPointsTab({ c, canEdit }: { c: ProductsCopy; canEdit: bo
       cell: (r) => (
         <div>
           <div className="font-semibold">{r.categoryName}</div>
-          <div className="text-[12px] text-muted-foreground">{r.parentName} · {r.categoryNo}</div>
+          <div className="txt-caption text-muted-foreground">{r.parentName} · {r.categoryNo}</div>
         </div>
       ),
       width: "16rem",
@@ -79,7 +80,7 @@ export function CategoryPointsTab({ c, canEdit }: { c: ProductsCopy; canEdit: bo
         return (
           <div className="flex items-center gap-1.5">
             <select
-              className="focus-ring h-[calc(var(--ctl-h)-4px)] rounded-input border border-border bg-background px-1.5 text-[12px]"
+              className="focus-ring h-[calc(var(--ctl-h)-4px)] rounded-input border border-border bg-background px-1.5 txt-caption"
               value={mode}
               onChange={(e) => setMode(e.target.value as "FIXED" | "RATIO")}
             >
@@ -91,7 +92,7 @@ export function CategoryPointsTab({ c, canEdit }: { c: ProductsCopy; canEdit: bo
               不收小数是刻意的 —— 金额与比例一旦用浮点，对账时的分位差没人说得清。
             */}
             <input
-              className="focus-ring h-[calc(var(--ctl-h)-4px)] w-20 rounded-input border border-border bg-background px-1.5 text-[12px] tabular-nums"
+              className="focus-ring h-[calc(var(--ctl-h)-4px)] w-20 rounded-input border border-border bg-background px-1.5 txt-caption tabular-nums"
               inputMode="numeric"
               value={value}
               onChange={(e) => setValue(e.target.value.replace(/[^\d]/g, ""))}
@@ -112,12 +113,7 @@ export function CategoryPointsTab({ c, canEdit }: { c: ProductsCopy; canEdit: bo
 
   return (
     <>
-      <div className="mb-2 flex items-baseline justify-between">
-        <h3 className="text-[15px] font-semibold">{c.cptTitle}</h3>
-        <span className="text-[12px] tabular-nums text-muted-foreground">
-          {c.cptSummary.replace("{n}", String(configured)).replace("{total}", String(rows.length))}
-        </span>
-      </div>
+      <SectionHeader title={c.cptTitle} summary={c.cptSummary.replace("{n}", String(configured)).replace("{total}", String(rows.length))} />
       <HelpNote className="mb-3">{c.cptNotice}</HelpNote>
 
       <DataTable

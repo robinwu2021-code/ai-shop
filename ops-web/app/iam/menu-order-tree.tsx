@@ -115,7 +115,7 @@ export function MenuOrderTree({
                     // 拖动进行中禁用：两条路径同时改会互相覆盖
                     disabled={busy || !!dragging}
                     onClick={() => onMove(parentKey, n.key, dir)}
-                    className="focus-ring rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+                    className="focus-ring rounded-field p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
                   >
                     {dir === "UP" ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
                   </button>
@@ -131,7 +131,7 @@ export function MenuOrderTree({
   if (!nodes.length) {
     return <div className="py-8 text-center txt-body text-muted-foreground">{labels.empty}</div>;
   }
-  return <div className="rounded-card border border-card-border bg-card p-2">{rows(nodes, ROOT, 0)}</div>;
+  return <div className="rounded-card border border-[var(--card-border)] bg-card p-2">{rows(nodes, ROOT, 0)}</div>;
 }
 
 export { ROOT as ORDER_ROOT };

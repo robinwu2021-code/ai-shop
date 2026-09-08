@@ -1,12 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { Card } from "./card";
 import { Checkbox } from "./checkbox";
 import { Table, THead, TBody, TR, TH, TD } from "./table";
-import { Skeleton, EmptyState } from "./misc";
-import { Button } from "./button";
+import { Skeleton, EmptyState, ErrorState } from "./misc";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
@@ -63,15 +62,12 @@ function RowCheckbox({
   );
 }
 
-// 通用列表表格：列配置 + 行数据 + 加载/空态。让新列表页保持一致、精简。
-// 可选能力（不传即与旧行为完全一致）：行选择 / 行展开 / 受控排序。
-export function DataTable<T>({
-  columns, rows, loading, error, onRetry, rowKey, empty, emptyAction,
-  selectable, selectedKeys, onSelectedChange,
-  expandable,
-  sortKey, sortDir, onSortChange,
-  rowClassName, rowProps, striped = true,
-}: {
+/**
+ * `DataTable` 的入参。**具名导出**是为了让组合件（`ui/paged-table.tsx`）能
+ * `Omit` 掉自己接管的那几项后原样转发 —— 否则组合件要把 15 个 prop 抄一遍，
+ * 而抄漏的那个（此前是 `rowProps`）在调用点上看不出任何异常，只是不生效。
+ */
+export interface DataTableProps<T> {
   columns: Column<T>[];
   rows: T[] | undefined;
   loading?: boolean;
@@ -114,7 +110,17 @@ export function DataTable<T>({
   rowProps?: (row: T) => React.HTMLAttributes<HTMLTableRowElement>;
   /** 关掉隔行底色（行底色已被 `rowClassName` 用来表达语义时）。见 `TBody.striped` */
   striped?: boolean;
-}) {
+}
+
+// 通用列表表格：列配置 + 行数据 + 加载/空态。让新列表页保持一致、精简。
+// 可选能力（不传即与旧行为完全一致）：行选择 / 行展开 / 受控排序。
+export function DataTable<T>({
+  columns, rows, loading, error, onRetry, rowKey, empty, emptyAction,
+  selectable, selectedKeys, onSelectedChange,
+  expandable,
+  sortKey, sortDir, onSortChange,
+  rowClassName, rowProps, striped = true,
+}: DataTableProps<T>) {
   const { t } = useI18n();
   const emptyText = empty ?? t("common.empty");
   const [expanded, setExpanded] = React.useState<string[]>([]);
@@ -179,19 +185,7 @@ export function DataTable<T>({
   return (
     <Card className="overflow-hidden">
       {error ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
-          <div className="flex size-11 items-center justify-center rounded-sheet bg-destructive-tint text-[var(--destructive-ink)]">
-            <AlertTriangle className="size-5" />
-          </div>
-          <div>
-            <div className="txt-heading">{t("table.errorTitle")}</div>
-            {/* 把后端/网络的原话给出来：运营报障时能直接截图，不用我们再问一遍 */}
-            <p className="mt-1 max-w-md txt-body text-muted-foreground">
-              {error instanceof Error ? error.message : t("error.unknown")}
-            </p>
-          </div>
-          {onRetry && <Button size="sm" variant="outline" onClick={onRetry}>{t("table.retry")}</Button>}
-        </div>
+        <ErrorState error={error} onRetry={onRetry} />
       ) : loading && !rows ? (
         // 骨架要长成**这张表**的样子：表头照常渲染，占位格按各列宽度铺。
         // 原先是 6 条等宽灰条，加载完成时列宽一变整张表会跳一下，

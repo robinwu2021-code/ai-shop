@@ -87,6 +87,7 @@ export function ChannelOverviewTab({ c }: { c: MessageCopy }) {
         <CardHeader><CardTitle>{c.ovTitle}</CardTitle></CardHeader>
         <CardContent>
           <DataTable columns={cols} rows={health.data ?? []} loading={health.isLoading}
+                     error={health.error} onRetry={() => health.refetch()}
                      rowKey={(r) => r.channel} empty={c.nlEmpty} />
         </CardContent>
       </Card>
@@ -172,6 +173,7 @@ function ChannelRegistryCard({ c }: { c: MessageCopy }) {
       <CardContent className="space-y-3">
         <HelpNote>{c.crNotice}</HelpNote>
         <DataTable columns={cols} rows={reg.data ?? []} loading={reg.isLoading}
+                   error={reg.error} onRetry={() => reg.refetch()}
                    rowKey={(r) => r.channelNo} empty={c.crEmpty} />
       </CardContent>
     </Card>

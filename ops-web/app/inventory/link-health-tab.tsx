@@ -91,7 +91,7 @@ function ChannelCard({ row, c, name, map }: {
         <Row label={c.lhLastSent} value={row.lastSentAt ? fmtTime(row.lastSentAt) : c.lhNeverSent} />
         {row.retrying > 0 && <Row label={c.lhMaxRetry} value={row.maxRetry} />}
         {row.lastError && (
-          <div className="mt-1 rounded-md bg-muted/60 p-2">
+          <div className="mt-1 rounded-card bg-muted/60 p-2">
             <div className="txt-caption text-muted-foreground">{c.lhLastError}</div>
             <div className="txt-caption break-all font-mono">{row.lastError}</div>
           </div>

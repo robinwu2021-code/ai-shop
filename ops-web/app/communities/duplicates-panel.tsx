@@ -43,7 +43,7 @@ export function DuplicatesPanel({ c, canMerge }: { c: Copy; canMerge: boolean })
   if (!q.data?.length) return null;
 
   return (
-    <div className="mb-4 rounded-md border border-border">
+    <div className="mb-4 rounded-card border border-border">
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <span className="font-medium">{c.dupTitle.replace("{n}", String(q.data.length))}</span>
       </div>

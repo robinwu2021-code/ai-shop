@@ -79,6 +79,7 @@ export function BroadcastTab({ c }: { c: MessageCopy }) {
         <CardHeader><CardTitle>{c.bcTitle}</CardTitle></CardHeader>
         <CardContent>
           <DataTable columns={cols} rows={tasks.data?.records ?? []} loading={tasks.isLoading}
+                     error={tasks.error} onRetry={() => tasks.refetch()}
                      rowKey={(r) => r.taskNo} empty={c.bcEmpty} />
         </CardContent>
       </Card>

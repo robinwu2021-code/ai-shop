@@ -47,6 +47,9 @@ function commentLines(src: string): Set<number> {
       return;
     }
     if (/^\s*\/\//.test(l)) { out.add(i); return; }
+    // 行尾注释同样不渲染。漏了这一档的代价：`setIssued(r);  // **先摆出来** …`
+    // 被当成 JSX 文案报了出来，而下一个人只能去改注释的措辞来讨好闸门。
+    if (/\S\s*\/\/.*\*\*[^*]+\*\*/.test(l)) { out.add(i); return; }
     const start = l.indexOf("{/*") >= 0 ? l.indexOf("{/*") : l.indexOf("/*");
     if (start >= 0) {
       out.add(i);
@@ -118,8 +121,26 @@ describe("设计 token 守卫", () => {
 });
 
 describe("页面层同样受约束（基线 0，不留额度）", () => {
+  /**
+   * ⚠️ **扫描面 = 结论的边界。**
+   *
+   * 这里此前是 `f.endsWith("page.tsx")` —— 而运营端的页面代码早就不住在 page.tsx 里了：
+   * 24 个 `page.tsx` 共 9,259 行，`*-tab.tsx` / 抽屉 / 面板等 81 个文件共 15,556 行。
+   * **63% 的页面代码一行都没被扫过**，于是这一整组断言常年全绿，而射程外积着：
+   *
+   *   · 29 个文件的既有违规（废弃圆角 · 手写分页 state · 非函数式 setState · 词典里的 markdown 星号）
+   *   · 一个 `<Pagination>` 漏掉 `onSize`（storage-tab）—— 正是下面那条断言要拦的东西
+   *   · 33 个 `<DataTable>` 调用点缺 loading/error/onRetry/empty
+   *
+   * 闸门全绿不等于规则被遵守；它只等于「被扫到的那部分没违规」。
+   * 现在扫 `app/` 下**全部** .tsx（`/dev/` 是组件画廊与开发工具，不在其列）。
+   */
   const pageFiles = () =>
-    walk(join(ROOT, "app")).filter((f) => f.endsWith("page.tsx") && !f.includes("/dev/ui/"));
+    walk(join(ROOT, "app")).filter((f) => f.endsWith(".tsx") && !f.includes("/dev/"));
+
+  /** 少数几条只对「路由入口」成立的规则（页头件）用它，别拿它当默认扫描面 */
+  const entryPages = () =>
+    walk(join(ROOT, "app")).filter((f) => f.endsWith("page.tsx") && !f.includes("/dev/"));
 
   const countAll = (re: RegExp) =>
     pageFiles().reduce((n, f) => n + (readFileSync(f, "utf8").match(re)?.length ?? 0), 0);
@@ -195,15 +216,15 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
      * 实机截图里 `**失败的也记**` 原样出现，才发现这一点。
      * 现在两处一起扫：i18n 词典 + 各页 copy.ts。
      *
-     * 排除 finance/ 与 merchants/：并行会话正在改那两个文件，
-     * 它们各自的星号由那批一起清（暂列在 PENDING 里）。
+     * ⚠️ 2026-09-08：`finance/copy.ts`（14 行）与 `merchants/copy.ts`（8 行）
+     * 曾以「并行会话正在改」为由挂在 PENDING 里。**豁免清单一旦有名字就会长期化** ——
+     * 那两份的星号一直原样显示在界面上。现已一并清完（中文改「」，英文去掉星号），
+     * PENDING 随之删除：这条从此没有例外。
      */
-    const PENDING = ["app/finance/copy.ts", "app/merchants/copy.ts"];
     const offenders: string[] = [];
     const files = [...walk(join(ROOT, "lib/i18n/messages")),
                    ...walk(join(ROOT, "app")).filter((f) => f.endsWith("copy.ts"))]
-      .filter((f) => f.endsWith(".ts"))
-      .filter((f) => !PENDING.some((p) => f.endsWith(p)));
+      .filter((f) => f.endsWith(".ts"));
     for (const f of files) {
       readFileSync(f, "utf8").split("\n").forEach((l, i) => {
         const isComment = /^\s*(\/\/|\*|\/\*)/.test(l);
@@ -276,13 +297,38 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
       for (const m of readFileSync(f, "utf8").matchAll(/^(\w+)\.toChip\s*=/gm)) declared.add(m[1]);
     }
 
+    /*
+     * ⚠️ 两处此前是错的，扫描面一扩就露出来了：
+     *
+     * 1. `<Toolbar …/>` **自闭合**时，`<Toolbar[\s\S]*?</Toolbar>` 会一路吃到
+     *    文件后面另一个 `</Toolbar>`，把中间的 `<DataTable>` `<Drawer>` 全算成
+     *    工具栏子节点（credit-tab、rank-tab 就是这么被报出来的）。
+     * 2. 工具栏里不止筛选器：新增/导出按钮、查询表单的输入框都不改变结果集，
+     *    要求它们声明 toChip 是**假阳性**，而假阳性会训练人给按钮加没用的代码。
+     *
+     * 所以：先正确切出工具栏体，再只对**筛选控件家族**（名字里带 Select/Filter/
+     * Toggle/Picker 的，以及已登记 toChip 的）要求登记。
+     * 边界写清楚：`<Toolbar>` 里直接放的 `<Input>` 若真是实时筛选（改一个字就重查），
+     * 它的状态同样进不了回显 —— 那一类由 review 认，这条正则认不出来。
+     */
+    const FILTERISH = /(Select|Filter|Toggle|Picker)$/;
     const offenders: string[] = [];
     for (const f of pageFiles()) {
       const src = readFileSync(f, "utf8");
-      for (const tb of src.matchAll(/<Toolbar\b[\s\S]*?<\/Toolbar>/g)) {
-        const inner = tb[0].slice(tb[0].indexOf(">") + 1);
-        for (const m of inner.matchAll(/^\s*<([A-Z]\w*)/gm)) {
-          if (!declared.has(m[1])) offenders.push(`${rel(f)}：<${m[1]}>`);
+      for (const m of src.matchAll(/<Toolbar\b/g)) {
+        // 找开标签的结尾：`>` 要在花括号之外才算
+        let depth = 0, end = -1, selfClosing = false;
+        for (let i = m.index!; i < src.length; i++) {
+          const ch = src[i];
+          if (ch === "{") depth++;
+          else if (ch === "}") depth--;
+          else if (ch === ">" && depth === 0) { end = i; selfClosing = src[i - 1] === "/"; break; }
+        }
+        if (end < 0 || selfClosing) continue;      // 自闭合：没有子节点
+        const close = src.indexOf("</Toolbar>", end);
+        const inner = close < 0 ? "" : src.slice(end + 1, close);
+        for (const t of inner.matchAll(/^\s*<([A-Z]\w*)/gm)) {
+          if (FILTERISH.test(t[1]) && !declared.has(t[1])) offenders.push(`${rel(f)}：<${t[1]}>`);
         }
       }
     }
@@ -318,26 +364,211 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
     expect(offenders, `把业务语义留在 components/ 根：\n${offenders.join("\n")}`).toEqual([]);
   });
 
-  it("18 个业务页共用同一个页头件（TabHeader）—— PageTitle 只留给没有 L3 导航的工作台", () => {
-    const offenders = pageFiles()
-      .filter((f) => !/app\/(page|login)\.tsx$/.test(f) && !f.includes("/dev/"))
-      .filter((f) => {
-        const src = readFileSync(f, "utf8");
-        return src.includes("<PageTitle") && !src.includes("<TabHeader");
-      });
-    expect(offenders.map(rel), `改用 <TabHeader>（单 tab 也走它，传 desc）：\n${offenders.map(rel).join("\n")}`).toEqual([]);
+  it("每个业务页都要有页头件，且只能是 TabHeader —— PageTitle 只留给没有 L3 导航的工作台", () => {
+    /*
+     * ⚠️ 这条此前判的是「用了 `PageTitle` 却没用 `TabHeader`」——
+     * 于是**两个都没用**的那种反而穿过去了：`app/jobs/page.tsx` 直接从
+     * `<HelpNote>` 起头，是 21 个业务域里唯一没有页头的一个，而它在 nav.ts 里
+     * 明明有一条 L3 叶子。「有 A 没 B」与「A、B 都没有」是两个判据，只写前一个
+     * 就会漏掉后一个 —— 而后一个恰恰是更严重的那种。
+     */
+    const wrong: string[] = [];
+    const missing: string[] = [];
+    // ⚠️ 排除项原先写的是 `app/(page|login).tsx` —— 而登录页的路径是
+    // `app/login/page.tsx`，那条正则从来没排到它。此前没显形，只因为它也没用
+    // `<PageTitle>`；判据一变严就露了出来。工作台（app/page.tsx）与登录页都没有
+    // L3 导航，本来就不该有 TabHeader。
+    const EXCLUDE = /app\/page\.tsx$|app\/login\/page\.tsx$/;
+    for (const f of entryPages().filter((x) => !EXCLUDE.test(x))) {
+      const src = readFileSync(f, "utf8");
+      if (src.includes("<TabHeader")) continue;
+      (src.includes("<PageTitle") ? wrong : missing).push(rel(f));
+    }
+    expect([...wrong, ...missing],
+      `改用 <TabHeader>（单 tab 也走它，传 desc）：\n` +
+      `  用了 PageTitle：${wrong.join("、") || "无"}\n` +
+      `  一个页头件都没有：${missing.join("、") || "无"}`).toEqual([]);
   });
 
   it("空态文案要写清「为什么空 / 下一步做什么」，不许只有一句话", () => {
-    // 判据用长度是粗糙的，但"暂无数据"这类一句话空态确实全都很短，
-    // 而写清了原因与出路的那些一律超过 20 字。踩过的坑：运营看到空表就以为系统坏了。
+    /*
+     * 判据用长度是粗糙的，但"暂无数据"这类一句话空态确实全都很短，
+     * 而写清了原因与出路的那些一律超过 20 字。踩过的坑：运营看到空表就以为系统坏了。
+     *
+     * ⚠️ 这条此前只认 `empty="字面量"` —— 而 113 个 `empty=` 里有 95 个走的是
+     * `empty={c.xxx}`（页面文案表在各页自己的 copy.ts 里）。也就是说这条规则**覆盖不到
+     * 它 84% 的目标**，而它一直是绿的。把 copy 键解开之后一次查出 30 条短文案，
+     * 短到 4 个字的（「暂无类目」）都在里面。
+     *
+     * 规则的覆盖面就是它的结论 —— 一条只看得见 16% 的断言，绿着也说明不了什么。
+     */
+    const zhMap = (dir: string): Record<string, string> => {
+      const cp = join(dir, "copy.ts");
+      let src: string;
+      try { src = readFileSync(cp, "utf8"); } catch { return {}; }
+      const i = src.indexOf("const zh = {");
+      if (i < 0) return {};
+      const body = src.slice(i, src.indexOf("\n};", i));
+      const out: Record<string, string> = {};
+      for (const m of body.matchAll(/^ {2}(\w+):\s*(.+?),?\s*$/gm)) {
+        // 值可能是多段字符串相加；把所有字面量段拼起来
+        const parts = [...m[2].matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((x) => x[1]);
+        if (parts.length) out[m[1]] = parts.join("");
+      }
+      return out;
+    };
+
     const offenders: string[] = [];
     for (const f of pageFiles()) {
       const src = readFileSync(f, "utf8");
       for (const m of src.matchAll(/empty=\{?"([^"]+)"/g)) {
         if (m[1].length < 20) offenders.push(`${rel(f)}: empty="${m[1]}"`);
       }
+      const dict = zhMap(join(f, ".."));
+      for (const m of src.matchAll(/empty=\{c\.(\w+)\}/g)) {
+        const text = dict[m[1]];
+        // 解不出来的不算违规（可能来自别处 import）—— 但也别假装查过了
+        if (text !== undefined && text.length < 20) {
+          offenders.push(`${rel(f)}: empty={c.${m[1]}} = "${text}"（${text.length} 字）`);
+        }
+      }
     }
     expect(offenders, `补上「为什么空、下一步做什么」：\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  // ── 静默失效：写了、但那个类根本不存在 ────────────────────────────────────
+  //
+  // 这一档比"违反规范"更难发现：没有报错、没有告警，浏览器只是**什么都不做**。
+  // 一次盘点里查到 12 处，全部是人眼看不出来的：
+  //
+  //   · `txt-h3` ×2      —— 七档里没有这个类，两个小节标题一直按正文 14px/400 渲染
+  //   · `txt-body-strong` —— 新员工初始密码那块 <code>，一个要照着念的字符串
+  //   · `border-card-border` ×2 / `border-warning-line` / `text-destructive-text` ×2
+  //   · `border-line` ×3 / `bg-surface` ×2 / `bg-surface-2` / `text-fg-2`
+  //   · `text-danger` ×2 —— 结算超额与缺税号的两行警示，一直按正文色渲染
+  //
+  // Tailwind 4 里 `border-x` 只在 `--color-x` 注册进 @theme 时才生成，
+  // `.txt-x` 只在 globals.css 里写了才存在。两者都拿产物对一遍就能判。
+
+  const GLOBALS = readFileSync(join(ROOT, "app/globals.css"), "utf8");
+
+  it("用到的 txt-* 字阶必须在 globals.css 里定义（不存在的类不会报错，只是不生效）", () => {
+    const defined = new Set([...GLOBALS.matchAll(/\.(txt-[a-z0-9-]+)\b/g)].map((m) => m[1]));
+    const offenders: string[] = [];
+    for (const f of [...pageFiles(), ...walk(join(ROOT, "components"))]) {
+      const src = readFileSync(f, "utf8");
+      const comments = commentLines(src);
+      src.split("\n").forEach((l, i) => {
+        if (comments.has(i)) return;             // 注释里引用旧类名是说明来由，不是使用
+        for (const m of l.matchAll(/\btxt-[a-z0-9-]+/g)) {
+          if (!defined.has(m[0])) offenders.push(`${rel(f)}:${i + 1}  ${m[0]}`);
+        }
+      });
+    }
+    expect(offenders, `globals.css 里没有这些类：\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  it("语义色 utility 必须对应 @theme 里注册过的 --color-*", () => {
+    const theme = new Set([...GLOBALS.matchAll(/--color-([a-z0-9-]+)/g)].map((m) => m[1]));
+    /** Tailwind 自带的调色板与关键字，不需要注册 */
+    const BUILTIN = /^(white|black|transparent|current|inherit|red|green|blue|gray|slate|zinc|neutral|stone|amber|yellow|lime|emerald|teal|cyan|sky|indigo|violet|purple|fuchsia|pink|rose|orange)(-|$)/;
+    /** 同前缀的**非颜色** utility（border-t / text-center / shadow-pop …）—— 不在射程内 */
+    const NOT_A_COLOR = /^(t|b|l|r|s|e|x|y|0|2|4|8|center|left|right|start|end|justify|balance|pretty|wrap|nowrap|ellipsis|clip|none|solid|dashed|dotted|double|hidden|separate|collapse|pop|card|xs|sm|base|md|lg|xl|2xl|3xl|4xl|inner|offset|top|bottom|auto)(-|$)/;
+    const offenders: string[] = [];
+    for (const f of [...pageFiles(), ...walk(join(ROOT, "components"))]) {
+      const src = readFileSync(f, "utf8");
+      const comments = commentLines(src);
+      src.split("\n").forEach((l, i) => {
+        if (comments.has(i)) return;
+        for (const m of l.matchAll(/\b(?:bg|text|border|ring|fill|stroke|divide|placeholder)-([a-z][a-z0-9-]*)(?![\w[])/g)) {
+          const n = m[1];
+          if (theme.has(n) || BUILTIN.test(n) || NOT_A_COLOR.test(n)) continue;
+          offenders.push(`${rel(f)}:${i + 1}  ${m[0]}`);
+        }
+      });
+    }
+    expect(offenders, `@theme 里没有对应的 --color-*，这些类一个字节都不会生成：\n${offenders.join("\n")}`)
+      .toEqual([]);
+  });
+
+  it("一个元素只挂一个字阶 —— 两个 txt-* 撞在一起，谁生效取决于样式表顺序", () => {
+    // 实测有两处 `txt-strong text-lg`：两个类都设 font-size，都是单类选择器，
+    // 胜负只由 globals.css 与 Tailwind utilities 的**先后**决定 —— 换个构建顺序就变。
+    const offenders: string[] = [];
+    for (const f of [...pageFiles(), ...walk(join(ROOT, "components"))]) {
+      const src = readFileSync(f, "utf8");
+      const comments = commentLines(src);
+      src.split("\n").forEach((l, i) => {
+        if (comments.has(i)) return;
+        for (const m of l.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})/g)) {
+          const cls = m[1] ?? m[2] ?? "";
+          const tiers = [...cls.matchAll(/\btxt-(display|title|heading|body|strong|label|caption)\b/g)];
+          if (tiers.length > 1) offenders.push(`${rel(f)}:${i + 1}  ${tiers.map((t) => t[0]).join(" + ")}`);
+        }
+      });
+    }
+    expect(offenders, `只留一个字阶：\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  it("页面层不绕开字阶写字号（含裸 rounded：第六种圆角）", () => {
+    /*
+     * 字阶七档定义在 globals.css，而页面上曾有 175 处直接写 `text-xs` /
+     * `text-[12px]` / `text-[13px]`，其中 11 处低到 10–11px ——
+     * 规范里写着「字号下限 12px：此前页面上真实出现过 10px 文字，任何屏幕都读不清」，
+     * 它就那么长回来了。定义了没人消费的档，与没有这个档是一回事。
+     *
+     * ⚠️ 结尾用 `(?![\w-])` 不能用 `\b`：`text-[12px]` 以 `]` 收尾，
+     * 后面接空格时 `\b` 不成立 —— 第一版就是这么把带方括号的 66 处全漏掉的，
+     * 还报了「已改 68 处」。
+     *
+     * 裸 `rounded`（4px）同理：五档圆角的那条正则要求带后缀，于是它一直是
+     * 射程外的第六档，6 处（含 components/ 2 处）。
+     */
+    const offenders: string[] = [];
+    for (const f of pageFiles()) {
+      const src = readFileSync(f, "utf8");
+      const comments = commentLines(src);
+      src.split("\n").forEach((l, i) => {
+        if (comments.has(i)) return;
+        for (const m of l.matchAll(/\btext-(?:\[\d+px\]|xs|sm|base|lg|xl|2xl|3xl)(?![\w-])/g)) {
+          offenders.push(`${rel(f)}:${i + 1}  ${m[0]} → 用 txt-display/title/heading/body/strong/label/caption`);
+        }
+        for (const m of l.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})/g)) {
+          const cls = m[1] ?? m[2] ?? "";
+          if (/(^|\s)rounded(\s|$)/.test(cls)) offenders.push(`${rel(f)}:${i + 1}  裸 rounded → 五档之一`);
+        }
+      });
+    }
+    expect(offenders, `字号与圆角都只走档：\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  it("<DataTable> 调用点必须接上 error / onRetry —— 组件有错误态而调用点不传，等于没有", () => {
+    /*
+     * TDD-ops-组件库优化 §1.A 修的就是这个：接口挂掉时表格渲染成
+     * 「没有符合条件的数据」，运营会去改筛选条件而不是报障。
+     * 组件那一侧 2026-08-06 就加了 `error` 分支 —— 而一年后盘点，
+     * 122 个调用点里 **33 处**没接（全部由 useQuery 支撑，15 处四项全缺）。
+     * **修在库里没修到调用点，界面上就等于没修。**
+     *
+     * 分页列表请直接用 `PagedTable`：它从 `query` 里接出这几项，漏不掉。
+     */
+    const EXEMPT = [
+      // 整块内容由外层 <ErrorState> 兜住（`if (error) return …`），行数据来自已到手的 data
+      "app/communities/distribution-tab.tsx",
+      "app/communities/health-tab.tsx",
+      // 详情子表：行数据取自父查询已选中的那一行，自己没有查询
+      "app/finance/pay-channel-tab.tsx",
+    ];
+    const offenders: string[] = [];
+    for (const f of pageFiles()) {
+      if (EXEMPT.some((e) => rel(f) === e)) continue;
+      const src = readFileSync(f, "utf8");
+      for (const m of src.matchAll(/<DataTable[\s\S]*?\/>/g)) {
+        const miss = ["error", "onRetry"].filter((k) => !new RegExp(`\\b${k}=`).test(m[0]));
+        if (miss.length) offenders.push(`${rel(f)}:${src.slice(0, m.index).split("\n").length}  缺 ${miss.join("/")}`);
+      }
+    }
+    expect(offenders, `接上 error={q.error} onRetry={() => q.refetch()}，或改用 <PagedTable query={q}>：\n${offenders.join("\n")}`)
+      .toEqual([]);
   });
 });

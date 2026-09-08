@@ -3,6 +3,8 @@ import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
   exposureCouponHint: "这一页看的是敞口，不是券本身：谁家的券没设预算、不限量、单张优惠过大",
+  exposureCouponEmpty: "当前没有正在曝光的券。券要先在「券模板」里建好并投放出去，才会出现在这一屏。",
+  exposureActivityEmpty: "当前没有正在曝光的活动。活动要先在「活动」里建好并开始，才会出现在这一屏。",
   exposureActivityHint: "长期又不限量的活动没有停下来的那一天 —— 这一列就是为了让它跑不掉",
   exposureTitle: "券名",
   exposureActivity: "活动",
@@ -241,6 +243,8 @@ const zh = {
 
 const en: typeof zh = {
   exposureCouponHint: "This tab is about exposure, not coupons: who has no budget, no cap, or an unusually large discount",
+  exposureCouponEmpty: "No coupons are currently exposed. A coupon has to be created under Coupon templates and released before it shows up here.",
+  exposureActivityEmpty: "No campaigns are currently exposed. A campaign has to be created under Campaigns and started before it shows up here.",
   exposureActivityHint: "An always-on activity with no cap never stops — this column exists to catch it",
   exposureTitle: "Coupon",
   exposureActivity: "Activity",

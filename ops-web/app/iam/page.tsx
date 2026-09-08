@@ -39,6 +39,7 @@ import { TabHeader } from "@/components/ui/tab-header";
 import { Toolbar } from "@/components/ui/toolbar";
 import { Tree, type TreeNode } from "@/components/ui/tree";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { PagedTable } from "@/components/ui/paged-table";
 
 type Copy = (typeof IAM_COPY)["zh"];
 const TAB_KEYS = ["staffs", "roles", "menu", "audit"] as const;
@@ -287,7 +288,7 @@ function IamInner() {
             disabled={move.isPending}
             // 阻止冒泡：这两个按钮长在树节点的 label 里，不拦的话点一下会连带勾选/展开
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); move.mutate({ kind, code, dir }); }}
-            className="focus-ring rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+            className="focus-ring rounded-field p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
           >
             {dir === "UP" ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
           </button>
@@ -625,13 +626,17 @@ function IamInner() {
 
       {tab === "staffs" && (
         <>
-          <DataTable
-            columns={staffColumns} rows={staffs.data?.records} loading={staffs.isLoading}
-            error={staffs.error} onRetry={() => staffs.refetch()}
+          <PagedTable
+            query={staffs}
+            page={page}
+            size={size}
+            onPage={setPage}
+            onSize={setSize}
+            loading={staffs.isLoading}
+            columns={staffColumns}
             rowKey={(s) => s.staffNo}
             empty={c.emptyStaff}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={staffs.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 
@@ -906,7 +911,7 @@ function IamInner() {
         {createdPassword && (
           <div className="space-y-4">
             <Notice tone="warning">{c.initialPasswordWarn}</Notice>
-            <code className="block rounded-card bg-muted px-4 py-3 txt-body-strong tracking-widest">
+            <code className="block rounded-card bg-muted px-4 py-3 txt-strong tracking-widest">
               {createdPassword.password}
             </code>
           </div>

@@ -243,12 +243,12 @@ export function PayChannelTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean
           loading={channels.isLoading} error={channels.error}
           onRetry={() => channels.refetch()} empty={c.pcEmpty}
         />
-        <p className="mt-2 text-xs text-muted-foreground">{c.pcDisableHint}</p>
+        <p className="mt-2 txt-caption text-muted-foreground">{c.pcDisableHint}</p>
         {rows.some((r) => !r.currentRate) && (
-          <p className="mt-1 text-xs text-muted-foreground">{c.pcNoRateHint}</p>
+          <p className="mt-1 txt-caption text-muted-foreground">{c.pcNoRateHint}</p>
         )}
         {picked && !picked.supportsSubsidy && (
-          <p className="mt-1 text-xs text-muted-foreground">{c.pcSubsidyNo}</p>
+          <p className="mt-1 txt-caption text-muted-foreground">{c.pcSubsidyNo}</p>
         )}
       </div>
 
@@ -289,8 +289,8 @@ export function PayChannelTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean
               <Input value={remark} onChange={(e) => setRemark(e.target.value)} />
             </div>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">{c.pcAnyHint}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{c.frFromHint}</p>
+          <p className="mt-2 txt-caption text-muted-foreground">{c.pcAnyHint}</p>
+          <p className="mt-1 txt-caption text-muted-foreground">{c.frFromHint}</p>
           <div className="mt-3">
             <Button onClick={() => addRate.mutate()} disabled={!rate || addRate.isPending}>
               {addRate.isPending ? c.frAdding : c.frAdd}
@@ -301,7 +301,7 @@ export function PayChannelTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean
 
       {picked && (
         <ConfigCard title={fill(c.pcHistoryTitle, { ch: picked.name || picked.payChannel, n: picked.rates.length })}>
-          <DataTable columns={rateColumns} rows={picked.rates} rowKey={(r) => r.rateNo} />
+          <DataTable columns={rateColumns} rows={picked.rates} rowKey={(r) => r.rateNo} empty={c.pcRatesEmpty} />
         </ConfigCard>
       )}
     </div>

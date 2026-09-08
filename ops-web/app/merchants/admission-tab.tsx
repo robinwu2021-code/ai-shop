@@ -315,7 +315,8 @@ export function AdmissionTab({ c }: { c: Copy }) {
         {!canEditPolicy && (
           <ReadOnlyNotice what={c.adPolicyReadOnly} perm="merchant:admission:update" className="mb-2" />
         )}
-        <DataTable columns={policyColumns} rows={policies.data ?? []} rowKey={(p) => p.legalForm} />
+        <DataTable columns={policyColumns} rows={policies.data ?? []} rowKey={(p) => p.legalForm} empty={c.adPolicyEmpty}
+                   loading={policies.isLoading} error={policies.error} onRetry={() => policies.refetch()} />
       </div>
 
       <FormDrawer
@@ -390,7 +391,8 @@ export function AdmissionTab({ c }: { c: Copy }) {
         <div>
           <div className="mb-2 txt-strong">{c.adTxnTitle}</div>
           <p className="txt-caption text-muted-foreground mb-2">{c.adTxnHint}</p>
-          <DataTable columns={txnColumns} rows={txns.data ?? []} rowKey={(t) => t.txnNo} />
+          <DataTable columns={txnColumns} rows={txns.data ?? []} rowKey={(t) => t.txnNo} empty={c.adTxnEmpty}
+                     loading={txns.isLoading} error={txns.error} onRetry={() => txns.refetch()} />
         </div>
       )}
 
@@ -452,7 +454,8 @@ export function AdmissionTab({ c }: { c: Copy }) {
         <div>
           <div className="mb-2 txt-strong">{c.adModeTitle}</div>
           <p className="txt-caption text-muted-foreground mb-2">{c.adModeHint}</p>
-          <DataTable columns={modeColumns} rows={modes.data ?? []} rowKey={(s) => s.storeNo} />
+          <DataTable columns={modeColumns} rows={modes.data ?? []} rowKey={(s) => s.storeNo} empty={c.adModeEmpty}
+                     loading={modes.isLoading} error={modes.error} onRetry={() => modes.refetch()} />
         </div>
       )}
     </div>
@@ -461,9 +464,9 @@ export function AdmissionTab({ c }: { c: Copy }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border p-3">
+    <div className="rounded-card border p-3">
       <div className="txt-caption text-muted-foreground">{label}</div>
-      <div className="txt-strong text-lg">{value}</div>
+      <div className="txt-title">{value}</div>
     </div>
   );
 }

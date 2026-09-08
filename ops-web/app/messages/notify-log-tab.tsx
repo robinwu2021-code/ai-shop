@@ -248,6 +248,8 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
               loading={logs.isLoading}
               rowKey={(r) => r.notifyNo}
               empty={c.nlEmpty}
+              error={logs.error}
+              onRetry={() => logs.refetch()}
             />
           ) : (
             <DataTable
@@ -256,6 +258,8 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
               loading={inapp.isLoading}
               rowKey={(r) => r.messageNo}
               empty={c.nlInappEmpty}
+              error={inapp.error}
+              onRetry={() => inapp.refetch()}
             />
           )}
         </CardContent>

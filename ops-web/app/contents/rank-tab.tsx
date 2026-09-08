@@ -28,6 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { ContentsCopy } from "./copy";
 
 interface RankForm {
@@ -166,7 +167,7 @@ export function RankTab({ c, canEdit }: { c: ContentsCopy; canEdit: boolean }) {
         empty={c.emptyRank}
       />
 
-      <h3 className="mt-8 mb-3 txt-label text-muted-foreground">{c.secQuestions}</h3>
+      <SectionHeader className="mt-8" title={c.secQuestions} />
       <HelpNote className="mb-3">{c.qaNotice}</HelpNote>
       <Toolbar search={qKeyword} onSearch={(v) => { setQKeyword(v); setQPage(1); }} searchPlaceholder={c.searchQuestion}>
         <FilterSelect aria-label={c.filterQStatus} value={qStatus} onChange={(v) => { setQStatus(v); setQPage(1); }}

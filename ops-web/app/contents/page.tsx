@@ -23,18 +23,18 @@ import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { AuditTab } from "./audit-tab";
 import { RankTab } from "./rank-tab";
 import { Button } from "@/components/ui/button";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HelpNote } from "@/components/ui/help-note";
-import { Pagination } from "@/components/ui/misc";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
+import { PagedTable } from "@/components/ui/paged-table";
 
 type Copy = (typeof CONTENTS_COPY)["zh"];
 const TAB_KEYS = ["materials", "audit", "rank"] as const;
@@ -188,14 +188,18 @@ function ContentsInner() {
         <FilterSelect aria-label={c.filterScope} value={scope} onChange={(v) => { setScope(v); setPage(1); }} options={scopeMap} allLabel={c.filterScopeAll} />
       </Toolbar>
 
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(m) => m.materialNo}
         empty={c.empty}
         emptyAction={canEdit ? <Button size="sm" onClick={openNew}>{c.addLabel}</Button> : undefined}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
       </>
       )}
 

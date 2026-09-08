@@ -20,18 +20,19 @@ import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, Field } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HelpNote } from "@/components/ui/help-note";
-import { StatRow, Pagination, StatCard } from "@/components/ui/misc";
+import { StatRow, StatCard } from "@/components/ui/misc";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
+import { PagedTable } from "@/components/ui/paged-table";
 
 type Copy = (typeof RISK_COPY)["zh"];
 const TAB_KEYS = ["events", "blacklist", "rules"] as const;
@@ -186,13 +187,17 @@ function RiskInner() {
             <FilterSelect aria-label={c.filterType} value={type} onChange={(v) => { setType(v); setPage(1); }} options={typeMap} allLabel={c.filterTypeAll} />
             <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={statusMap} allLabel={c.filterStatusAll} />
           </Toolbar>
-          <DataTable
-            columns={eventColumns} rows={events.data?.records} loading={events.isLoading}
-            error={events.error} onRetry={() => events.refetch()}
+          <PagedTable
+            query={events}
+            page={page}
+            size={size}
+            onPage={setPage}
+            onSize={setSize}
+            loading={events.isLoading}
+            columns={eventColumns}
             rowKey={(e) => e.eventNo}
             empty={c.emptyEvents}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={events.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 
@@ -211,14 +216,18 @@ function RiskInner() {
             <FilterSelect aria-label={c.filterActive} value={activeOnly} onChange={(v) => { setActiveOnly(v); setPage(1); }}
               options={[{ value: "1", label: c.filterActiveOnly }]} allLabel={c.filterActiveAll} />
           </Toolbar>
-          <DataTable
-            columns={blackColumns} rows={blacks.data?.records} loading={blacks.isLoading}
-            error={blacks.error} onRetry={() => blacks.refetch()}
+          <PagedTable
+            query={blacks}
+            page={page}
+            size={size}
+            onPage={setPage}
+            onSize={setSize}
+            loading={blacks.isLoading}
+            columns={blackColumns}
             rowKey={(b) => b.blackNo}
             empty={c.emptyBlacklist}
             emptyAction={canBlacklist ? <Button size="sm" onClick={openAddBlack}>{c.addLabel}</Button> : undefined}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={blacks.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 

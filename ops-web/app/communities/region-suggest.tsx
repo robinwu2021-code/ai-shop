@@ -38,7 +38,7 @@ export function RegionSuggest({
   if (!q.data?.length) return null;
 
   return (
-    <div className="mb-3 rounded-md border border-border bg-muted/40 p-2">
+    <div className="mb-3 rounded-card border border-border bg-muted/40 p-2">
       <div className="txt-caption text-muted-foreground mb-1">{c.regionSuggestTitle}</div>
       {q.data.map((s) => (
         <div key={s.source + s.regionCode} className="flex items-center gap-2 py-1">

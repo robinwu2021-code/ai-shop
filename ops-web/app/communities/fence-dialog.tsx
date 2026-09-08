@@ -78,12 +78,12 @@ export function FenceDialog({
       */}
       {!located && <Notice tone="warning">{c.fenceNoCoords}</Notice>}
 
-      <label className="mt-4 block text-sm text-muted-foreground" htmlFor="fence-radius">
+      <label className="mt-4 block txt-body text-muted-foreground" htmlFor="fence-radius">
         {c.fenceRadiusLabel}
       </label>
       <Input id="fence-radius" className="mt-1" value={text} inputMode="numeric"
              onChange={(e) => setText(e.target.value)} />
-      {!valid && <div className="mt-1 text-xs text-destructive">{c.fenceMustBePositive}</div>}
+      {!valid && <div className="mt-1 txt-caption text-destructive">{c.fenceMustBePositive}</div>}
 
       {/*
         **预览拿不到就要说出来。**
@@ -96,7 +96,7 @@ export function FenceDialog({
       )}
 
       {located && impact && valid && (
-        <div className="mt-4 rounded-card border border-border bg-muted/40 p-3 text-sm">
+        <div className="mt-4 rounded-card border border-border bg-muted/40 p-3 txt-body">
           <div className="flex items-baseline justify-between">
             <span className="text-muted-foreground">{c.fenceImpactLabel}</span>
             <span className="tabular-nums">
@@ -111,7 +111,7 @@ export function FenceDialog({
             分母必须一起给：「多进来 0 户」在一个只有 5 条地址有坐标的库里
             说明不了任何事，而运营会据此认为「改大没用」。
           */}
-          <div className="mt-1 text-xs text-muted-foreground">
+          <div className="mt-1 txt-caption text-muted-foreground">
             {fill(c.fenceDenominator, { n: impact.addressesWithCoords })}
           </div>
         </div>

@@ -12,10 +12,10 @@ import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
 import { fmtTime } from "@/lib/utils";
 import type { Post, PostStatus } from "@/lib/types";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { usePaging } from "@/lib/use-paging";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
-import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
 import { HelpNote } from "@/components/ui/help-note";
@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { PagedTable } from "@/components/ui/paged-table";
 import type { ContentsCopy } from "./copy";
 
 const usePostStatusMap = (c: ContentsCopy): StatusMap<PostStatus> => ({
@@ -38,8 +39,7 @@ export function AuditTab({ c, canAudit }: { c: ContentsCopy; canAudit: boolean }
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
   const [hasRisk, setHasRisk] = useState("");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
   const [picked, setPicked] = useState<string[]>([]);
   const [current, setCurrent] = useState<Post | null>(null);
   const [remark, setRemark] = useState("");
@@ -130,13 +130,14 @@ export function AuditTab({ c, canAudit }: { c: ContentsCopy; canAudit: boolean }
         </div>
       )}
 
-      <DataTable
-        columns={columns} rows={rows} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page} size={size} onPage={setPage} onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(p) => p.postNo}
         empty={c.emptyPost}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
 
       <Drawer
         open={!!current}

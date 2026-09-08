@@ -23,6 +23,7 @@ import { HelpNote } from "@/components/ui/help-note";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { Toolbar } from "@/components/ui/toolbar";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { FinanceCopy } from "./copy";
 
 /**
@@ -132,9 +133,9 @@ export function SettleBatchTab({ c, canExecute }: { c: FinanceCopy; canExecute: 
       */}
       {blocked.length > 0 && (
         <div className="space-y-3">
-          <h3 className="txt-heading">{c.sbBlockedTitle}</h3>
+          <SectionHeader className="mb-0" title={c.sbBlockedTitle} />
           {blocked.map((b) => (
-            <div key={b.batchNo} className="rounded-sheet border border-warning-line bg-warning-tint p-4">
+            <div key={b.batchNo} className="rounded-card bg-warning-tint p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="txt-strong">{b.batchNo} · {b.entityNo}</span>
                 <span className="txt-body tabular-nums">{money(b.netMinor)} · {b.billCount} {c.sbUnitBill}</span>

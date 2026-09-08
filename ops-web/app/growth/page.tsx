@@ -27,12 +27,12 @@ import { ConfigCard } from "@/components/ui/config-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HelpNote } from "@/components/ui/help-note";
-import { Pagination } from "@/components/ui/misc";
 import { Radio, RadioGroup } from "@/components/ui/radio-group";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Toolbar } from "@/components/ui/toolbar";
+import { PagedTable } from "@/components/ui/paged-table";
 
 type Copy = (typeof GROWTH_COPY)["zh"];
 const TAB_KEYS = ["rule", "traces", "fission"] as const;
@@ -274,13 +274,17 @@ function GrowthInner() {
             <FilterSelect aria-label={c.filterRisk} value={riskyOnly} onChange={(v) => { setRiskyOnly(v); setPage(1); }}
               options={[{ value: "1", label: c.filterRiskOnly }]} allLabel={c.filterRiskAll} />
           </Toolbar>
-          <DataTable
-            columns={traceColumns} rows={traces.data?.records} loading={traces.isLoading}
-            error={traces.error} onRetry={() => traces.refetch()}
+          <PagedTable
+            query={traces}
+            page={page}
+            size={size}
+            onPage={setPage}
+            onSize={setSize}
+            loading={traces.isLoading}
+            columns={traceColumns}
             rowKey={(t) => t.traceNo}
             empty={c.emptyTraces}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={traces.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 

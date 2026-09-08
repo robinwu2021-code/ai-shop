@@ -20,7 +20,7 @@ const zh = {
   storeRankColStore: "门店",
   storeRankColMerchant: "所属商家",
   storeRankColRefund: "退款率",
-  storeRankEmpty: "近 30 天没有带门店的成交",
+  storeRankEmpty: "近 30 天没有带门店的成交。门店维度的榜单要有归属门店的订单才排得出来。",
   kpiPendingGoods: "待审商品",
   // 「最早等了 N 天」而不是「已积压 N 天」：前者说的是那一件商品的处境，
   // 后者听起来像整批都等了这么久 —— 而 194 件里多半是新旧混着的
@@ -46,7 +46,7 @@ const zh = {
   rankColOrders: "订单数",
   rankColAov: "客单价",
   rankColAfterSale: "售后率",
-  rankEmpty: "近 14 天还没有成交",
+  rankEmpty: "近 14 天还没有成交。榜单按成交额排，一笔都没有时这里是空的，不是统计坏了。",
 
   soon: "履约质量、trafficSource 结构分析（P-16.1.5/6）待建",
 };
@@ -69,7 +69,7 @@ const en: typeof zh = {
   storeRankColStore: "Store",
   storeRankColMerchant: "Merchant",
   storeRankColRefund: "Refund rate",
-  storeRankEmpty: "No store-attributed sales in the last 30 days",
+  storeRankEmpty: "No store-attributed sales in the last 30 days. The store ranking needs orders tied to a store before it can rank anything.",
   kpiPendingGoods: "Goods awaiting review",
   kpiPendingGoodsSub: "Oldest has waited {n} days",
   kpiPendingGoodsSubClear: "Open the review queue",
@@ -90,7 +90,7 @@ const en: typeof zh = {
   rankColOrders: "Orders",
   rankColAov: "Avg order value",
   rankColAfterSale: "After-sales rate",
-  rankEmpty: "No sales in the last 14 days",
+  rankEmpty: "No sales in the last 14 days. The ranking is by turnover — with no orders it is empty, which is not a broken metric.",
 
   soon: "Fulfillment quality and traffic-source breakdown (P-16.1.5/6) are not built yet",
 };

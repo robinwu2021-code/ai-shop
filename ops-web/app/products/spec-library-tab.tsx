@@ -145,13 +145,13 @@ export function SpecLibraryTab({ c, universal, canEdit }: {
                   onPromote={() => promote.mutate(v.valueNo)} />
               ))}
               {d.values.length > 8 && (
-                <button type="button" className="focus-ring text-[12px] text-[var(--primary)] hover:underline"
+                <button type="button" className="focus-ring txt-caption text-[var(--primary)] hover:underline"
                   onClick={() => setOpenDim(open ? null : d.dimNo)}>
                   {open ? c.csCollapse : `+${d.values.length - 8}`}
                 </button>
               )}
               {canEdit && (
-                <button type="button" className="focus-ring text-[12px] text-[var(--primary)] hover:underline"
+                <button type="button" className="focus-ring txt-caption text-[var(--primary)] hover:underline"
                   onClick={() => setValueForm({
                     dimNo: d.dimNo, code: "", label: "", numericValue: "", aliases: "", sort: "100",
                   })}>
@@ -202,12 +202,12 @@ export function SpecLibraryTab({ c, universal, canEdit }: {
           <div className="space-y-4">
             <Field label={c.slFieldName}>
               <Input value={dimForm.name} onChange={(e) => setDimForm({ ...dimForm, name: e.target.value })} />
-              <p className="mt-1 text-[12px] text-muted-foreground">{c.slNameHint}</p>
+              <p className="mt-1 txt-caption text-muted-foreground">{c.slNameHint}</p>
             </Field>
             <Field label={c.slFieldCode}>
               <Input value={dimForm.code} disabled={!!dimForm.dimNo}
                 onChange={(e) => setDimForm({ ...dimForm, code: e.target.value.toUpperCase() })} />
-              <p className="mt-1 text-[12px] text-muted-foreground">{c.slCodeHint}</p>
+              <p className="mt-1 txt-caption text-muted-foreground">{c.slCodeHint}</p>
             </Field>
             <Field label={c.slFieldValueType}>
               <Select value={dimForm.valueType}
@@ -215,12 +215,12 @@ export function SpecLibraryTab({ c, universal, canEdit }: {
                 <option value="ENUM">{c.slEnum}</option>
                 <option value="QUANT">{c.slQuant}</option>
               </Select>
-              <p className="mt-1 text-[12px] text-muted-foreground">{c.slValueTypeHint}</p>
+              <p className="mt-1 txt-caption text-muted-foreground">{c.slValueTypeHint}</p>
             </Field>
             {dimForm.valueType === "QUANT" && (
               <Field label={c.slFieldUnit}>
               <Input value={dimForm.unit} onChange={(e) => setDimForm({ ...dimForm, unit: e.target.value })} />
-              <p className="mt-1 text-[12px] text-muted-foreground">{c.slUnitHint}</p>
+              <p className="mt-1 txt-caption text-muted-foreground">{c.slUnitHint}</p>
             </Field>
             )}
             <Field label={c.slFieldUsage}>
@@ -229,7 +229,7 @@ export function SpecLibraryTab({ c, universal, canEdit }: {
                 <option value="SALE">{c.slSale}</option>
                 <option value="PROP">{c.slProp}</option>
               </Select>
-              <p className="mt-1 text-[12px] text-muted-foreground">{c.slUsageHint}</p>
+              <p className="mt-1 txt-caption text-muted-foreground">{c.slUsageHint}</p>
             </Field>
             <Field label={c.slFieldSort}>
               <Input value={dimForm.sort} onChange={(e) => setDimForm({ ...dimForm, sort: e.target.value })} />
@@ -250,22 +250,22 @@ export function SpecLibraryTab({ c, universal, canEdit }: {
             <Field label={c.slFieldLabel}>
               <Input value={valueForm.label}
                 onChange={(e) => setValueForm({ ...valueForm, label: e.target.value })} />
-              <p className="mt-1 text-[12px] text-muted-foreground">{c.slLabelHint}</p>
+              <p className="mt-1 txt-caption text-muted-foreground">{c.slLabelHint}</p>
             </Field>
             <Field label={c.slFieldCode}>
               <Input value={valueForm.code} disabled={!!valueForm.valueNo}
                 onChange={(e) => setValueForm({ ...valueForm, code: e.target.value.toUpperCase() })} />
-              <p className="mt-1 text-[12px] text-muted-foreground">{c.slValueCodeHint}</p>
+              <p className="mt-1 txt-caption text-muted-foreground">{c.slValueCodeHint}</p>
             </Field>
             <Field label={c.slFieldNumeric}>
               <Input value={valueForm.numericValue}
                 onChange={(e) => setValueForm({ ...valueForm, numericValue: e.target.value })} />
-              <p className="mt-1 text-[12px] text-muted-foreground">{c.slNumericHint}</p>
+              <p className="mt-1 txt-caption text-muted-foreground">{c.slNumericHint}</p>
             </Field>
             <Field label={c.slFieldAliases}>
               <Input value={valueForm.aliases}
                 onChange={(e) => setValueForm({ ...valueForm, aliases: e.target.value })} />
-              <p className="mt-1 text-[12px] text-muted-foreground">{c.slAliasesHint}</p>
+              <p className="mt-1 txt-caption text-muted-foreground">{c.slAliasesHint}</p>
             </Field>
             <Field label={c.slFieldSort}>
               <Input value={valueForm.sort}
@@ -284,7 +284,7 @@ function ValueChip({ v, c, canEdit, onEdit, onPromote }: {
 }) {
   const mine = v.scope === "MERCHANT";
   return (
-    <span className={`inline-flex items-center gap-1 rounded-chip px-2 py-0.5 text-[12px]
+    <span className={`inline-flex items-center gap-1 rounded-chip px-2 py-0.5 txt-caption
       ${v.status === "ARCHIVED" ? "opacity-45 line-through" : ""}
       ${mine ? "bg-warning-tint" : "bg-muted"}`}>
       <button type="button" className="focus-ring hover:underline" onClick={() => canEdit && onEdit()}>
@@ -293,10 +293,10 @@ function ValueChip({ v, c, canEdit, onEdit, onPromote }: {
       {v.numericValue != null && (
         <span className="tabular-nums text-muted-foreground">{v.numericValue}{v.numericUnit}</span>
       )}
-      <span className="font-mono text-[11px] text-muted-foreground">{v.code}</span>
+      <span className="font-mono txt-caption text-muted-foreground">{v.code}</span>
       {mine && (
         // 商家自有值：用的店多了就该进公共值池 —— 提升只改 scope，编号不变，商品不用重建
-        <button type="button" className="focus-ring text-[11px] text-[var(--primary)] hover:underline"
+        <button type="button" className="focus-ring txt-caption text-[var(--primary)] hover:underline"
           title={c.slPromoteHint} onClick={onPromote}>
           {c.slPromote}
           {v.merchantCount > 0 && <span className="tabular-nums"> {v.merchantCount}</span>}
