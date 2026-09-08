@@ -55,11 +55,33 @@ def cos_put(sid, skey, bucket, region, key, body, ctype):
     return st, url
 
 
-def off_image(bc):
+def off_image(bc, tries=4):
+    """查 OFF。**必须退避重试** —— 2026-09-08 首次全量跑，0.3s 一次的节奏
+    让 117 条里 40 条挂在 `429 Too Many Requests` 上，而失败的样子是「这个商品没图」，
+    看日志才知道是被限流。OFF 的产品接口限额约 100 次/分，这里按 1s 一次走。"""
     u = f"https://world.openfoodfacts.org/api/v2/product/{bc}.json?fields=product_name,image_front_url"
-    r = urllib.request.Request(u, headers={"User-Agent": UA})
-    p = (json.load(urllib.request.urlopen(r, timeout=25)).get("product") or {})
-    return p.get("image_front_url"), p.get("product_name")
+    for i in range(tries):
+        try:
+            r = urllib.request.Request(u, headers={"User-Agent": UA})
+            p = (json.load(urllib.request.urlopen(r, timeout=25)).get("product") or {})
+            return p.get("image_front_url"), p.get("product_name")
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or i == tries - 1:
+                raise
+            time.sleep(4 * (i + 1))
+    return None, None
+
+
+def cos_exists(bucket, region, key):
+    """这个 key 是不是已经传过了。
+
+    **脚本不写库**（SQL 只生成不执行），所以重跑时选出来的还是同一批 ——
+    没有这一步，每次重跑都要把已经传好的几百张再下再传一遍。"""
+    url = f"https://{bucket}.cos.{region}.myqcloud.com/{key}"
+    try:
+        return urllib.request.urlopen(urllib.request.Request(url, method="HEAD"), timeout=15).status == 200
+    except Exception:
+        return False
 
 
 def main():
@@ -91,14 +113,19 @@ def main():
             print(f"  – {std_no} {title[:16]} OFF 无图"); continue
         if a.dry:
             print(f"  · {std_no} {title[:16]:18s} ← {name} {src[:56]}"); continue
-        body = urllib.request.urlopen(urllib.request.Request(src, headers={"User-Agent": UA}), timeout=30).read()
         ext = ".jpg" if src.lower().endswith((".jpg", ".jpeg")) else ".png"
         key = f"catalog/std/{bc}{ext}"
+        host = f"{bucket}.cos.{region}.myqcloud.com"
+        if cos_exists(bucket, region, key):
+            print(f"  ↷ {std_no} {title[:16]:18s} 已在 COS，跳过")
+            done.append((std_no, f"https://{host}/{key}"))
+            continue
+        body = urllib.request.urlopen(urllib.request.Request(src, headers={"User-Agent": UA}), timeout=30).read()
         st, url = cos_put(sid, skey, bucket, region, key, body,
                           "image/jpeg" if ext == ".jpg" else "image/png")
         print(f"  ✓ {std_no} {title[:16]:18s} {len(body)//1024}KB → {url}")
         done.append((std_no, url))
-        time.sleep(0.3)
+        time.sleep(1.0)   # OFF 限额约 100 次/分
     if done and not a.dry:
         import tempfile
         with tempfile.NamedTemporaryFile("w", suffix=".sql", delete=False) as f:

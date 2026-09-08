@@ -1930,7 +1930,7 @@
       "name": "sh-cover",
       "file": "packages/ui/src/components/sh-cover.vue",
       "scope": "跨端",
-      "lines": 54,
+      "lines": 68,
       "props": [
         "src?: string",
         "mode?: CoverMode"
@@ -1948,7 +1948,8 @@
       ],
       "rootDecl": {
         "overflow": "hidden",
-        "flex-shrink": "0"
+        "flex-shrink": "0",
+        "border-radius": "24rpx"
       }
     },
     {
@@ -3972,7 +3973,7 @@
       ],
       "libClassHits": 31,
       "localSelectors": 16,
-      "localCssLines": 92,
+      "localCssLines": 91,
       "rolled": []
     },
     {
@@ -4424,7 +4425,7 @@
       ],
       "libClassHits": 5,
       "localSelectors": 6,
-      "localCssLines": 28,
+      "localCssLines": 27,
       "rolled": []
     },
     {
