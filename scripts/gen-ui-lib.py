@@ -492,6 +492,28 @@ def root_decl(src: str) -> dict:
     return {}
 
 
+def uses(src: str) -> dict:
+    """一个件用了哪些**字阶档 / 间距 / 圆角**，又依赖哪些别的件。
+
+    清单此前只说「有哪些件、props 是什么、多少调用点」——
+    **看不出一个件在字号与间距上占了什么位置**。问「sh-empty 的字多大」
+    只能去开源码，而那正是「规范」该替人回答的问题。
+
+    字阶档两个来源都要算：模板里挂的 `.txt-*`，以及 scoped CSS 里自写的
+    `font-size`（后者本该没有 —— 有就是这个件自己越过了字阶，看得见才拦得住）。
+    """
+    tpl = src.split("<style")[0]
+    css = scoped_css(src)
+    tiers = sorted({m for m in re.findall(r"\btxt-[a-z]+\b", tpl)})
+    raw_fs = sorted({int(x) for x in re.findall(r"font-size:\s*(\d+)rpx", css)})
+    space = sorted({int(x) for x in re.findall(
+        r"(?:margin|padding|gap)(?:-\w+)?:\s*[^;]*?(\d+)rpx", css)})
+    radius = sorted({int(x) for x in re.findall(r"border-radius:\s*(\d+)rpx", css)})
+    deps = sorted({m for m in re.findall(r"<(sh-[a-z-]+|biz-[a-z-]+)", tpl)})
+    return {"tiers": tiers, "rawFontSize": raw_fs, "spacing": space,
+            "radius": radius, "deps": deps}
+
+
 def read_components() -> list[dict]:
     out = []
     files = sorted(UI_COMPONENTS.glob("sh-*.vue")) + sorted(B_COMPONENTS.rglob("*.vue"))
@@ -513,6 +535,7 @@ def read_components() -> list[dict]:
                       "lib": usage(name, ["packages/ui/src"])},
             "note": COMP_NOTES.get(name, (lead_line(src), "—"))[0],
             "why": COMP_NOTES.get(name, ("—", "—"))[1],
+            "uses": uses(src),
             "rootClasses": root_classes(src),
             "rootDecl": root_decl(src),
             "css": scoped_css(src),

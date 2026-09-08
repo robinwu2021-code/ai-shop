@@ -423,6 +423,47 @@ def components() -> str:
                                     + x["usage"].get("lib", 0))):
         props = ", ".join(p.split(":")[0] for p in x["props"][:4]) or "—"
         L.append(f"| `{x['name']}` | {x.get('note') or '—'} | {x['scope']} | {props} | {usage(x['usage'])} |")
+    # ── 件的字号与间距足迹 ──────────────────────────────────────────
+    #    清单此前只说「有哪些件、props 是什么、多少调用点」，**看不出一个件
+    #    在字号与间距上占了什么位置**。问「sh-empty 的字多大」只能去开源码，
+    #    而那正是规范该替人回答的问题。
+    L.append("\n## 件的字号与间距足迹\n")
+    L.append("**一个件用了字阶的哪几档、间距的哪几个数、又依赖哪些别的件。**")
+    L.append("这一节回答的是「我要改字阶的某一档，会动到谁」——")
+    L.append("此前只能全仓 grep，而 grep 分不清「件自己用的」与「调用点传进去的」。\n")
+    L.append("| 组件 | 字阶档 | 间距(rpx) | 依赖 |")
+    L.append("|---|---|---|---|")
+    for x in sorted(LIB["components"], key=lambda x: x["name"]):
+        u = x.get("uses") or {}
+        tiers = " ".join(f"`{t}`" for t in u.get("tiers", [])) or "—"
+        raw = u.get("rawFontSize") or []
+        if raw:
+            tiers += f" ⚠️自写 {'/'.join(map(str, raw))}rpx"
+        sp = "/".join(map(str, u.get("spacing", []))) or "—"
+        deps = " ".join(f"`{d}`" for d in u.get("deps", [])) or "—"
+        L.append(f"| `{x['name']}` | {tiers} | {sp} | {deps} |")
+    # 反查：改一档会动到谁。正查表（上面）扫一列也能得到，但那是九列 ×34 行，
+    # 而「改这一档会动到哪些件」是实际会问的那一句
+    L.append("\n### 反查：改一档，动到谁\n")
+    L.append("| 字阶档 | 用到它的件 |")
+    L.append("|---|---|")
+    idx: dict[str, list[str]] = {}
+    for x in LIB["components"]:
+        for t in (x.get("uses") or {}).get("tiers", []):
+            idx.setdefault(t, []).append(x["name"])
+    for t in sorted(idx, key=lambda k: -len(idx[k])):
+        names = " ".join(f"`{n}`" for n in sorted(idx[t]))
+        L.append(f"| `.{t}` | {len(idx[t])} 个：{names} |")
+    orphan = [b["class"] for b in LIB["blocks"]
+              if b["class"].startswith(".txt-") and b["class"][1:] not in idx]
+    if orphan:
+        L.append(f"\n没有任何**件**用到的档：{' '.join(f'`{o}`' for o in orphan)} ——")
+        L.append("它们只在页面里用。字阶是一个闭合的集合，不是使用清单，")
+        L.append("所以「件里没人用」不是欠账（见《规范·字体》）。\n")
+    L.append("\n⚠️ **「自写」那一栏本该是空的** —— 字号该由 `.txt-*` 带出来。")
+    L.append("眼下只有 `sh-uploader` 有一处（48rpx，`sh-cover` 拿到 emoji 时按文字排的兜底字号，")
+    L.append("且在字阶上）—— 看过是对的。**清单的作用就是让这种东西露出来被看一眼**，")
+    L.append("而不是等它变成第二处、第三处。\n")
     L.append(f"\n## 积木（{c['blocks']}）\n")
     by = collections.defaultdict(list)
     for b in LIB["blocks"]:

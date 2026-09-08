@@ -1873,6 +1873,17 @@
       },
       "note": "悬浮内缩的贴底操作条 —— 第三种贴底形态，此前库里没有",
       "why": "—",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [
+          12,
+          16,
+          24
+        ],
+        "radius": [],
+        "deps": []
+      },
       "rootClasses": [
         "ab__pad"
       ],
@@ -1899,6 +1910,22 @@
       },
       "note": "＋ 加一项按钮",
       "why": "收编自 goods-edit 与 my-specs 里**逐字节相同**的 `.btn-add`。`active` 是展开态：同一个按钮管开合",
+      "uses": {
+        "tiers": [
+          "txt-bold",
+          "txt-caption"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          2,
+          4,
+          8
+        ],
+        "radius": [],
+        "deps": [
+          "sh-icon"
+        ]
+      },
       "rootClasses": [
         "add"
       ],
@@ -1928,6 +1955,17 @@
       },
       "note": "勾选框 / 单选点",
       "why": "四页各画一个、**四种尺寸**（28/36/44/44）。勾用 `check` 图标 —— 那个图标是这次一起补进 icons.ts 的",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [],
+        "radius": [
+          16
+        ],
+        "deps": [
+          "sh-icon"
+        ]
+      },
       "rootClasses": [
         "sh-center",
         "ck"
@@ -1954,6 +1992,19 @@
       },
       "note": "确认弹层的壳",
       "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-sub"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          12
+        ],
+        "radius": [],
+        "deps": [
+          "sh-dialog"
+        ]
+      },
       "rootClasses": [
         "txt-sub",
         "cf__hint"
@@ -1980,6 +2031,15 @@
       },
       "note": "商品封面",
       "why": "`cover` 字段二义：种子是 emoji、商家上传后是 COS URL。14 处渲染点都没分流过",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [],
+        "radius": [
+          24
+        ],
+        "deps": []
+      },
       "rootClasses": [
         "sh-center",
         "cover"
@@ -2007,6 +2067,22 @@
       },
       "note": "居中对话框的外壳：遮罩 + 居中面板 + 可选标题 + 内容插槽 + 可选动作条",
       "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-title"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          12,
+          16,
+          32,
+          40
+        ],
+        "radius": [
+          32
+        ],
+        "deps": []
+      },
       "rootClasses": [
         "sh-center",
         "dlg"
@@ -2035,6 +2111,18 @@
       },
       "note": "空态",
       "why": "抽出来不是因为重复，是**观感会漂**：曾在 27 个页面各写一份，padding 在 60/80/100rpx 之间随手取",
+      "uses": {
+        "tiers": [
+          "txt-quiet"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          28,
+          72
+        ],
+        "radius": [],
+        "deps": []
+      },
       "rootClasses": [
         "empty"
       ],
@@ -2058,6 +2146,17 @@
       },
       "note": "悬浮新建按钮",
       "why": "贴右下角压在列表上。**只有一个调用点仍然收进来** —— 收的不是重复，是那一行 `bottom` 里的知识：抬到 tabBar 上方一指宽，否则想点新建却切了页",
+      "uses": {
+        "tiers": [
+          "txt-strong"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          20
+        ],
+        "radius": [],
+        "deps": []
+      },
       "rootClasses": [
         "txt-strong",
         "fab"
@@ -2091,6 +2190,19 @@
       },
       "note": "带箭头的行内链接：「去填地址 ›」「切换门店 ›」「查看详情 ›」这一类",
       "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-caption"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          4
+        ],
+        "radius": [],
+        "deps": [
+          "sh-icon"
+        ]
+      },
       "rootClasses": [
         "go"
       ],
@@ -2118,6 +2230,15 @@
       },
       "note": "图标按钮",
       "why": "行尾的删除、弹层右上角的关闭、列表行上的编辑。收编的是**「文字当图标」**这件事 —— 两端曾有 11 处文字 ✕/×，其中 `store-scope` 用的还是 `×`(U+00D7)",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [],
+        "radius": [],
+        "deps": [
+          "sh-icon"
+        ]
+      },
       "rootClasses": [
         "sh-center",
         "ib"
@@ -2143,6 +2264,13 @@
       },
       "note": "单色图标",
       "why": "内联 SVG 转 CSS mask，颜色吃 var(--sh-*) —— 换肤零成本。**不用 emoji**：各系统字形不一且是彩色的",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [],
+        "radius": [],
+        "deps": []
+      },
       "rootClasses": [
         "icon"
       ],
@@ -2175,6 +2303,17 @@
       },
       "note": "键值行：左边一个名目，右边它的值",
       "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-sub"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          12
+        ],
+        "radius": [],
+        "deps": []
+      },
       "rootClasses": [
         "sh-row",
         "kv"
@@ -2197,6 +2336,17 @@
       },
       "note": "选项卡片",
       "why": "整块可选，比 chip 重比按钮轻 —— 每个选项里通常还有一行说明",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [
+          20
+        ],
+        "radius": [
+          16
+        ],
+        "deps": []
+      },
       "rootClasses": [
         "opt"
       ],
@@ -2220,6 +2370,20 @@
       },
       "note": "「选一项」弹层的壳",
       "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-body"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          8
+        ],
+        "radius": [],
+        "deps": [
+          "sh-icon",
+          "sh-sheet"
+        ]
+      },
       "rootClasses": [
         "pick__row"
       ],
@@ -2244,6 +2408,19 @@
       },
       "note": "输入弹层的壳",
       "why": "页面不摆它 —— 只 `await prompt({...})`。由 sh-scaffold 无条件渲染，因为那段业务代码未必知道自己所在的页面摆没摆过弹层",
+      "uses": {
+        "tiers": [
+          "txt-title"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          16,
+          20,
+          24
+        ],
+        "radius": [],
+        "deps": []
+      },
       "rootClasses": [
         "pr"
       ],
@@ -2270,6 +2447,15 @@
       },
       "note": "评分",
       "why": "底层灰星 + 上层主色星按百分比裁切 —— 半星图标只能表达 0.5 粒度，4.3 会被抹成 4.5",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [
+          12
+        ],
+        "radius": [],
+        "deps": []
+      },
       "rootClasses": [
         "rating"
       ],
@@ -2297,6 +2483,18 @@
       },
       "note": "底部未保存条",
       "why": "收编自 store 与 store-scope 里**逐字节相同**的 `.savebar`。自带流内占位 —— 收编前两页都被它盖住了最后一段内容",
+      "uses": {
+        "tiers": [
+          "txt-sub"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          20,
+          24
+        ],
+        "radius": [],
+        "deps": []
+      },
       "rootClasses": [
         "bar__pad"
       ],
@@ -2323,6 +2521,28 @@
       },
       "note": "页面外壳",
       "why": "**每页根元素必须是它** —— 否则小程序端换肤 / RTL / 三语标题全不生效",
+      "uses": {
+        "tiers": [
+          "txt-sub",
+          "txt-title"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          16,
+          28,
+          40,
+          124,
+          160
+        ],
+        "radius": [],
+        "deps": [
+          "sh-confirm",
+          "sh-icon",
+          "sh-pick",
+          "sh-prompt",
+          "sh-tabbar"
+        ]
+      },
       "rootClasses": [
         "sh-root",
         "sh-frame"
@@ -2345,6 +2565,17 @@
       },
       "note": "卡内标题行",
       "why": "收编自 goods-edit 与 sku-identity **逐字节相同**的 `.sec`（8 处调用点）。右侧动作直接进插槽，**不套壳** —— `.sec` 是 space-between，多一层就把「三个孩子摊开」变成「两组左右分」",
+      "uses": {
+        "tiers": [
+          "txt-title"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          24
+        ],
+        "radius": [],
+        "deps": []
+      },
       "rootClasses": [
         "sec"
       ],
@@ -2373,6 +2604,20 @@
       },
       "note": "底部弹层",
       "why": "不用 uni.showModal（字不归我们管）、不做页内展开（会把下文顶走）",
+      "uses": {
+        "tiers": [
+          "txt-title"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          16,
+          36
+        ],
+        "radius": [],
+        "deps": [
+          "sh-icon-btn"
+        ]
+      },
       "rootClasses": [
         "sheet"
       ],
@@ -2400,6 +2645,20 @@
       },
       "note": "数字格",
       "why": "几个大数一排，每格一句小标签。收编自 5 页 4 种档位（44/700 · 40/700 · 40/600 · 32/600）",
+      "uses": {
+        "tiers": [
+          "txt-display"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          12,
+          20
+        ],
+        "radius": [
+          24
+        ],
+        "deps": []
+      },
       "rootClasses": [
         "st"
       ],
@@ -2426,6 +2685,19 @@
       },
       "note": "数量步进器：减 · 数 · 加，装在一枚弱色药丸里",
       "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-strong"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          8
+        ],
+        "radius": [],
+        "deps": [
+          "sh-icon"
+        ]
+      },
       "rootClasses": [
         "stepper",
         "sh-row"
@@ -2454,6 +2726,13 @@
       },
       "note": "开关",
       "why": "三页各画一个，**三个数没有一个对得上**（宽 84/88、圆角 胶囊/24rpx、位移 40/42/46）。全 B 端零处原生 `&lt;switch&gt;`",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [],
+        "radius": [],
+        "deps": []
+      },
       "rootClasses": [
         "sw"
       ],
@@ -2482,6 +2761,20 @@
       },
       "note": "自定义底部菜单",
       "why": "原生 tabBar 字号锁死、不吃 CSS 变量、不吃 i18n，三件事自定义之后自然解决",
+      "uses": {
+        "tiers": [
+          "txt-body"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          8,
+          16
+        ],
+        "radius": [],
+        "deps": [
+          "sh-icon"
+        ]
+      },
       "rootClasses": [
         "tabbar"
       ],
@@ -2517,6 +2810,16 @@
       },
       "note": "筛选条",
       "why": "抽之前两端有两套实现（chip 横排 / 方块），同一个产品里两种筛选条",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [
+          12,
+          20
+        ],
+        "radius": [],
+        "deps": []
+      },
       "rootClasses": [
         "sh-chip",
         "tabs__chip"
@@ -2540,6 +2843,27 @@
       },
       "note": "外观面板",
       "why": "9 套皮肤 × 明暗 × 语言，选中即时全局生效",
+      "uses": {
+        "tiers": [
+          "txt-caption",
+          "txt-sub",
+          "txt-title"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          16,
+          24,
+          32,
+          44,
+          52
+        ],
+        "radius": [
+          24
+        ],
+        "deps": [
+          "sh-icon"
+        ]
+      },
       "rootClasses": [
         "sheet"
       ],
@@ -2570,6 +2894,26 @@
       },
       "note": "图片格",
       "why": "已传的缩略图排一行，末尾一个「＋」。收编自 apply / payment / qualifications / goods-edit 四份",
+      "uses": {
+        "tiers": [
+          "txt-caption",
+          "txt-display"
+        ],
+        "rawFontSize": [
+          48
+        ],
+        "spacing": [
+          2,
+          12
+        ],
+        "radius": [
+          16
+        ],
+        "deps": [
+          "sh-cover",
+          "sh-icon"
+        ]
+      },
       "rootClasses": [
         "sh-wrap",
         "up"
@@ -2591,6 +2935,13 @@
       },
       "note": "应用常驻层",
       "why": "B 端是空壳，但**不能删** —— sh-scaffold 无条件渲染它",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [],
+        "radius": [],
+        "deps": []
+      },
       "rootClasses": [],
       "rootDecl": {}
     },
@@ -2613,6 +2964,22 @@
       },
       "note": "挑货 —— 开单时选货那一步，进货 / 报损 / 调拨三处共用",
       "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-body"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          8,
+          12,
+          20
+        ],
+        "radius": [],
+        "deps": [
+          "sh-empty",
+          "sh-sheet"
+        ]
+      },
       "rootClasses": [
         "field__input",
         "pick__search"
@@ -2638,6 +3005,30 @@
       },
       "note": "自提点选择弹层",
       "why": "自带 mask 与 panel，**没走 sh-sheet**",
+      "uses": {
+        "tiers": [
+          "txt-caption",
+          "txt-primary",
+          "txt-strong",
+          "txt-sub"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          4,
+          8,
+          12,
+          16,
+          20,
+          24
+        ],
+        "radius": [],
+        "deps": [
+          "biz-time-range",
+          "sh-check",
+          "sh-icon",
+          "sh-sheet"
+        ]
+      },
       "rootClasses": [
         "txt-caption",
         "hint"
@@ -2664,6 +3055,39 @@
       },
       "note": "经营范围选择器",
       "why": "省市区 / 小区 / 村三级 + 提报。全项目最大的单文件组件",
+      "uses": {
+        "tiers": [
+          "txt-body",
+          "txt-bold",
+          "txt-caption",
+          "txt-ink",
+          "txt-primary",
+          "txt-quiet",
+          "txt-sub"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          2,
+          4,
+          8,
+          12,
+          16,
+          20,
+          24,
+          28
+        ],
+        "radius": [
+          16,
+          24
+        ],
+        "deps": [
+          "sh-check",
+          "sh-icon",
+          "sh-icon-btn",
+          "sh-sheet",
+          "sh-tabs"
+        ]
+      },
       "rootClasses": [
         "sh-row",
         "sheet__sel"
@@ -2687,6 +3111,24 @@
       },
       "note": "当前门店胶囊",
       "why": "可点 = 门店管理入口；readonly = 只说清这屏属于哪家店",
+      "uses": {
+        "tiers": [
+          "txt-bold",
+          "txt-ink",
+          "txt-sub"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          8,
+          12,
+          16
+        ],
+        "radius": [],
+        "deps": [
+          "sh-go",
+          "sh-icon"
+        ]
+      },
       "rootClasses": [
         "sh-chip",
         "tag"
@@ -2716,6 +3158,23 @@
       },
       "note": "挑供应商 —— 开进货单时选「这批货从哪来」",
       "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-body",
+          "txt-primary"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          12,
+          16,
+          24
+        ],
+        "radius": [],
+        "deps": [
+          "sh-empty",
+          "sh-sheet"
+        ]
+      },
       "rootClasses": [
         "field__input",
         "sup__search"
@@ -2740,6 +3199,22 @@
       },
       "note": "时段输入",
       "why": "不让人手敲 —— 手敲的结果是全角横线、少个冒号、写成「6点半到9点」",
+      "uses": {
+        "tiers": [
+          "txt-body",
+          "txt-caption",
+          "txt-quiet"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          12,
+          24
+        ],
+        "radius": [
+          24
+        ],
+        "deps": []
+      },
       "rootClasses": [
         "sh-row",
         "tr"

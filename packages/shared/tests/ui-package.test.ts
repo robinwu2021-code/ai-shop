@@ -802,11 +802,24 @@ describe("《规范·版面》不许有空格子", () => {
      * 「别拿它当」那一列也常常空 —— `.sh-seg--on` 没有需要提防的近邻。
      * 第一版把这些一起报了，四条假的立刻压过一条真的，那就又是一个会被加豁免的闸门。
      */
+    /*
+     * **按表头判，不按位置判。** 第一版写的是「每张表的第二列」——
+     * 2026-09-08 加「件的字号与间距足迹」那张表时它当场变红，
+     * 而那里的 `—` 是**真话**：`sh-icon` 就是不含文字、不占字阶。
+     * 该拦的是「取不到值填的占位符」，判据是**这一列在问什么**。
+     */
+    const WHY = new Set(["什么时候用", "z-index", "说的是什么"]);
     const bad: string[] = [];
+    let col = -1;
     for (const line of doc.split("\n")) {
-      if (!line.startsWith("| `")) continue;               // 只看数据行
+      if (line.startsWith("| ") && !line.startsWith("| `") && line.includes("|")) {
+        const hs = line.split("|").slice(1, -1).map((c) => c.trim());
+        col = hs.findIndex((h) => WHY.has(h));                // 表头行：记住「为什么」在第几列
+        continue;
+      }
+      if (!line.startsWith("| `") || col < 0) continue;       // 数据行；这张表没有「为什么」列就跳过
       const cells = line.split("|").slice(1, -1).map((c) => c.trim());
-      const why = cells[1];
+      const why = cells[col];
       if (why === "—" || why === "") bad.push(line.trim());
     }
     expect(
@@ -1579,5 +1592,54 @@ describe("空态不许在还不知道时出现", () => {
       stale,
       "这些页面已经修好了，但还留在 known-empty-flash.txt 里 —— 留着它们就永远免检：\n" + stale.join("\n"),
     ).toEqual([]);
+  });
+});
+
+/*
+ * **件不自己写 `font-size` —— 字号由 `.txt-*` 带出来。**
+ *
+ * 2026-09-08 把「每个件用了哪几档字阶、哪几个间距」算进清单时露出来的：
+ * 34 个件里只有 `sh-uploader` 自己写了一处 `font-size: 48rpx`。
+ * 看过是**对的** —— 那是 `sh-cover` 拿到 emoji 时按文字排的兜底字号，
+ * 而且 48 在字阶上。
+ *
+ * 所以这条不是「发现了缺陷」，是**趁只有一处的时候立止血线**：
+ * `typography.test.ts` 只管「字号必须落在字阶上」，管不住「件绕过 `.txt-*` 自己写」——
+ * 而后者一旦有第二处、第三处，字阶在件这一层就名存实亡了。
+ *
+ * 名单是**止血线型**（不是待办）：里面那一条是经过判断保留的，不该被「修掉」。
+ * 要加新的一条，得先说清为什么这个件的字号不能由调用点给。
+ */
+describe("件不自己写 font-size", () => {
+  /** 允许自写字号的件 → 理由。**加一条要写清理由** */
+  const ALLOW: Record<string, string> = {
+    "sh-uploader.vue": "sh-cover 拿到 emoji 时按文字排，这里给兜底字号（48rpx 在字阶上）",
+  };
+
+  const found = new Map<string, number[]>();
+  for (const f of readdirSync(UI).filter((x) => x.endsWith(".vue"))) {
+    const css = [...readFileSync(join(UI, f), "utf8").matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
+      .map((m) => m[1]!).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
+    const sizes = [...css.matchAll(/font-size:\s*(\d+)rpx/g)].map((m) => Number(m[1]));
+    if (sizes.length) found.set(f, sizes);
+  }
+
+  it("扫到了件（否则下面全是空转）", () => {
+    expect(readdirSync(UI).filter((x) => x.endsWith(".vue")).length).toBeGreaterThan(25);
+  });
+
+  it("没有新的件自己写字号", () => {
+    const bad = [...found].filter(([f]) => !(f in ALLOW))
+      .map(([f, s]) => `${f}  ${s.join("/")}rpx`);
+    expect(
+      bad,
+      "字号由 `.txt-*` 带出来。确实该由件自己定的（比如给 emoji 兜底），\n" +
+        "登记进 ALLOW 并写清「为什么这个件的字号不能由调用点给」：\n" + bad.join("\n"),
+    ).toEqual([]);
+  });
+
+  it("名单不许锈：登记了却已经不写字号的要删掉", () => {
+    const stale = Object.keys(ALLOW).filter((f) => !found.has(f));
+    expect(stale, `这些件已经不自己写字号了，名单该删：${stale.join(", ")}`).toEqual([]);
   });
 });
