@@ -145,7 +145,7 @@
 | B-5.2 | 行内状态标 | 显示**订单自己的状态**并按「要动手的用主色、售后用警示色、终态中性」上色 | — |
 | B-5.3 | 订单详情 | 买家、履约方式、金额、客流来源 | `mOrderDetail` |
 | B-5.4 | 发货 | 填运单号，`PAID → FULFILLING`（送法记在 `fulfillment`，不占状态名） | `mShip` |
-| B-5.5 | 标记送达 | 自送场景，`SHIPPED → COMPLETED` | `mDelivered` |
+| B-5.5 | 标记送达 | 自送场景，`FULFILLING → COMPLETED` | `mDelivered` |
 | B-5.6 | **只看本店的单** | 拆单后一单只属一家，按 `merchantNo` 精确匹配（不是「含即算」） | `mOrderList` |
 
 ### B-6 履约（自提点）
