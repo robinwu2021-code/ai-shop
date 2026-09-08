@@ -41,6 +41,11 @@ onLoad((q) => {
   itemId.value = String((q as Record<string, string>)?.itemId ?? "");
 });
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
   if (!itemId.value) return;
   loading.value = true;
@@ -52,10 +57,13 @@ async function load() {
     detail.value = d;
     ledger.value = page.entries;
     cursor.value = page.nextCursor ?? null;
+    failed.value = false;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
+    failed.value = true;
   } finally {
     loading.value = false;
+    loaded.value = true;
   }
 }
 
@@ -262,7 +270,7 @@ onShow(load);
       <view class="sh-block">
         <sh-section pad :title="String($t('stockDetail.ledger'))"></sh-section>
         <view class="blk">
-        <sh-empty v-if="!ledger.length" compact :text="String($t('stockDetail.ledgerEmpty'))"></sh-empty>
+        <sh-empty v-if="!ledger.length" :pending="!loaded" :failed="failed" @retry='load' compact :text="String($t('stockDetail.ledgerEmpty'))"></sh-empty>
         <text v-else class="sh-hint led__hint">{{ $t("stockDetail.ledgerHint") }}</text>
 
         <view v-for="r in ledger" :key="r.id" class="led" @tap="openDoc(r)">

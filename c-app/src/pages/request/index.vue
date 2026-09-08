@@ -25,9 +25,24 @@ const isInitiator = computed(
   () => !!request.value && request.value.initiatorNickname === user.user?.nickname,
 );
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
+/** 重试要把单号带回去 —— `@retry` 不带参数 */
+const currentNo = ref("");
+
 async function load(requestNo: string) {
-  request.value = await api.requestDetail(requestNo);
-  uni.setNavigationBarTitle({ title: request.value.title });
+  currentNo.value = requestNo;
+  try {
+    request.value = await api.requestDetail(requestNo);
+    uni.setNavigationBarTitle({ title: request.value.title });
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 async function toggle() {
@@ -205,7 +220,7 @@ onShareAppMessage(() => {
         </view>
       </view>
 
-      <sh-empty bare v-if="!request.quotes.length" :text='$t("request.noQuote")'></sh-empty>
+      <sh-empty bare v-if="!request.quotes.length" :pending="!loaded" :failed="failed" @retry='() => load(currentNo)' :text='$t("request.noQuote")'></sh-empty>
 
       <!-- 防加价说明：机制要让用户看见才有用，藏起来等于没有 -->
       <view class="sh-notice sh-notice--muted antihike">

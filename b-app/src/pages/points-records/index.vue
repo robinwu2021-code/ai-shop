@@ -18,8 +18,19 @@ const canView = computed(() => merchant.can("biz:finance"));
 const rows = ref<MerchantPointsRecord[]>([]);
 const total = computed(() => rows.value.reduce((n, r) => n + r.feeMinor, 0));
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  rows.value = await api.mPointsRecords();
+  try {
+    rows.value = await api.mPointsRecords();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 onShow(() => {
@@ -36,7 +47,7 @@ onShow(() => {
       </view>
     </view>
 
-    <sh-empty v-if="!rows.length" :text="$t('points.recordsEmpty')" />
+    <sh-empty v-if="!rows.length" :pending="!loaded" :failed="failed" @retry="load" :text="$t('points.recordsEmpty')" />
 
     <view v-for="r in rows" :key="r.settleNo" class="sh-card sh-mt-xs" :class="{ 'is-none': !r.points }">
       <view class="line sh-row sh-row--between sh-row--baseline">

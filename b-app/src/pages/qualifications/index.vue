@@ -45,14 +45,23 @@ const TYPES: { type: QualificationType; labelKey: string }[] = [
 
 const form = ref<{ qualType: QualificationType; qualName: string; qualNumber: string; imageUrl: string; expireAt: string } | null>(null);
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」。
+ *  这一页本来就弹了吐司，但吐司两秒就没，而空态一直挂在那儿说「还没有」 */
+const failed = ref(false);
+
 async function load() {
   loading.value = true;
   try {
     data.value = await api.mQualifications(entityNo.value || undefined);
+    failed.value = false;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
+    failed.value = true;
   } finally {
     loading.value = false;
+    loaded.value = true;
   }
 }
 
@@ -142,7 +151,7 @@ onShow(() => void load());
     <!-- 已传的证 -->
     <view class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("qual.mine") }}</text>
-      <sh-empty v-if="!loading && !data?.items.length" :text='$t("qual.emptyMine")'></sh-empty>
+      <sh-empty v-if="!data?.items.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("qual.emptyMine")'></sh-empty>
       <view v-for="q in data?.items ?? []" :key="q.qualNo" class="sh-row sh-row--divided row">
         <view class="sh-fill">
           <text class="txt-strong row__name">{{ q.qualName }}</text>

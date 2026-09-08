@@ -27,14 +27,23 @@ const loading = ref(false);
 /** 能当发货源的：只有仓。**门店不能当别的门店的源** —— 那是接力的第一步 */
 const sources = computed(() => rows.value.filter((l) => l.kind === "WAREHOUSE"));
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」。
+ *  这一页本来就弹了吐司，但吐司两秒就没，而空态一直挂在那儿说「还没有」 */
+const failed = ref(false);
+
 async function load() {
   loading.value = true;
   try {
     rows.value = await api.mStockLocations();
+    failed.value = false;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
+    failed.value = true;
   } finally {
     loading.value = false;
+    loaded.value = true;
   }
 }
 
@@ -83,7 +92,7 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="locations.title" :denied="!merchant.can('biz:store:admin')">
-    <sh-empty v-if="!loading && !rows.length" :text="String($t('locations.empty'))"></sh-empty>
+    <sh-empty v-if="!rows.length" :pending="!loaded" :failed="failed" @retry="load" :text="String($t('locations.empty'))"></sh-empty>
 
     <view v-for="l in rows" :key="l.locationId" class="sh-card sh-mb-sm" @tap="setSource(l)">
       <view class="row__top sh-row">

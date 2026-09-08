@@ -14,24 +14,15 @@
 
 c-app/community
 c-app/group-host
-c-app/home
-c-app/merchant
 c-app/order
 c-app/order-confirm
-c-app/request
 c-app/search
 b-app/cross-store
-b-app/goods-list
 b-app/groups
-b-app/marketing
-b-app/orders
-b-app/points-records
 b-app/purchase-edit
 b-app/settle
 b-app/staff
 b-app/stock-check
-b-app/stock-cross
-b-app/stock-detail
 b-app/stock-out
 b-app/transfer
 b-app/verify

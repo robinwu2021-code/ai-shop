@@ -1717,14 +1717,19 @@ describe("拉数据的页面要区分出错与空", () => {
       .split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")),
   );
 
+  /** 扫了多少页（不管有没有问题）。**下面那条断言要量的是它，不是欠债数**。 */
+  let scanned = 0;
+
   function offenders(): string[] {
     const bad: string[] = [];
+    scanned = 0;
     for (const app of APPS) {
       const dir = join(ROOT, app, "src/pages");
       for (const rel of readdirSync(dir, { recursive: true, encoding: "utf8" })) {
         if (!rel.endsWith("index.vue")) continue;
         const src = readFileSync(join(dir, rel), "utf8");
         if (!/\bapi\.\w+\(/.test(src)) continue;      // 不拉数据的页面没有这个问题
+        scanned += 1;
         if (/\b(failed|errMsg)\b/.test(src)) continue;
         bad.push(`${app}/${rel.split("/")[0]}`);
       }
@@ -1732,8 +1737,17 @@ describe("拉数据的页面要区分出错与空", () => {
     return bad;
   }
 
+  /*
+   * 量的是**扫描面**，不是欠债数。
+   *
+   * 第一版写的是 `expect(baseline.size).toBeGreaterThan(50)` —— 那条断言把
+   * 「量具还在不在」和「欠债还有多少」绑到了一起：名单从 86 修到 47 的那天它就红了，
+   * 而红的原因是**修得太多**。闸门不该在事情变好时变红。
+   * 现在钉的是「拉数据的页面有多少」（实测 100+），它只会因为解析坏掉而掉下来。
+   */
   it("扫得到页面（否则下面全是空转）", () => {
-    expect(baseline.size).toBeGreaterThan(50);
+    offenders();
+    expect(scanned).toBeGreaterThan(80);
   });
 
   it("没有新增的「失败长得像空」页面", () => {

@@ -12,34 +12,39 @@
 # `.catch(() => null)` 41 处 —— 代码在主动把失败变成「空」。
 # 于是网络不通时，「暂无收货地址」与「你确实还没填过地址」一模一样，
 # 而前者该给「重试」、后者该给「去添加」，给反了比不给更糟。
+#
+# ── 剩下的 47 页不是同一种活（2026-09-09 逐页量过）──────────────────
+#
+# **① 空态挂在草稿上，不是拉来的数据**（purchase-edit / stock-out / order-confirm）：
+#    那三页的 `<sh-empty>` 说的是「你还没添行」「购物车是空的」，加 `:failed` 是错的。
+#    但它们**仍在名单上**，因为同一个 bug 换了个面：页里的选择器（可选货、供应商、
+#    地址、可用券）也是拉来的，拉挂了就是一个空选择器，与「没有可选的」一模一样。
+#    要补的是**那些选择器的空态**，不是页面主体的。
+#
+# **② 36 页根本没有空态**：详情页与表单页。加载失败时它们是一张空表单，
+#    不是一个空列表 —— 「详情页加载失败长什么样」还没定，别顺手套上面那个形状。
+#
+# **③ 剩下的才是同一种活**：有列表空态、有 load()，照上面三步改。
 
 b-app/activity-edit
 b-app/apply
 b-app/coupon-edit
-b-app/customers
 b-app/entity-detail
 b-app/goods-edit
-b-app/goods-list
 b-app/goods-publish
 b-app/groups
 b-app/home
 b-app/income
-b-app/locations
 b-app/login
-b-app/marketing
 b-app/me
 b-app/member-add
 b-app/member-detail
 b-app/member-reach
 b-app/member-settings
-b-app/my-specs
 b-app/order
-b-app/orders
 b-app/payment
 b-app/points
-b-app/points-records
 b-app/purchase-edit
-b-app/qualifications
 b-app/role-detail
 b-app/schedule
 b-app/settle
@@ -47,19 +52,12 @@ b-app/sku-identity
 b-app/staff
 b-app/staff-detail
 b-app/stats
-b-app/stock
 b-app/stock-check
-b-app/stock-cross
-b-app/stock-detail
-b-app/stock-docs
 b-app/stock-out
-b-app/stock-report
 b-app/store
-b-app/store-categories
 b-app/store-notice
 b-app/store-scope
 b-app/stores
-b-app/suppliers
 b-app/transfer
 c-app/address-pick
 c-app/after-sale
@@ -67,13 +65,10 @@ c-app/goods
 c-app/group
 c-app/group-host
 c-app/groups
-c-app/home
 c-app/login
 c-app/me
-c-app/merchant
 c-app/order-confirm
 c-app/pay
-c-app/request
 c-app/request-create
 c-app/review-write
 c-app/search

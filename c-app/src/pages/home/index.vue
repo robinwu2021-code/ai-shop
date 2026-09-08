@@ -60,19 +60,30 @@ function cutdownOf(g: Goods): string {
   return countdownShort(g.cutoffAt - now.value);
 }
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  // 没绑社区时不带 communityNo —— 拿全量兜底，总比空首页强（随后会弹自提点选择）
-  const communityNo = community.community?.communityNo;
-  const [res, gs, promo] = await Promise.all([
-    api.goodsList({ size: 20, communityNo }),
-    api.groupBuyList(community.pickup?.pickupNo).catch(() => []),
-    // 关着的模块**不发请求** —— 开关关掉却照样打接口，是白白的一次往返
-    api.promotedGoods({ communityNo }).catch(() => []),
-  ]);
-  goods.value = res.records;
-  promoted.value = promo;
-  // 首页只放**还能参与**的团（没到截止），过期的留在团购页
-  groups.value = gs.filter((g) => g.expireAt > Date.now()).slice(0, 3);
+  try {
+    // 没绑社区时不带 communityNo —— 拿全量兜底，总比空首页强（随后会弹自提点选择）
+    const communityNo = community.community?.communityNo;
+    const [res, gs, promo] = await Promise.all([
+      api.goodsList({ size: 20, communityNo }),
+      api.groupBuyList(community.pickup?.pickupNo),
+      // 关着的模块**不发请求** —— 开关关掉却照样打接口，是白白的一次往返
+      api.promotedGoods({ communityNo }),
+    ]);
+    goods.value = res.records;
+    promoted.value = promo;
+    // 首页只放**还能参与**的团（没到截止），过期的留在团购页
+    groups.value = gs.filter((g) => g.expireAt > Date.now()).slice(0, 3);
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 async function addToCart(g: Goods, e: unknown) {
@@ -334,7 +345,7 @@ onShareAppMessage(() =>
 
       <sh-empty
         bare
-        v-if="!goods.length"
+        v-if="!goods.length" :pending="!loaded" :failed="failed" @retry="load"
         :text="$t('home.communityFeedEmpty')"
       ></sh-empty>
       <biz-goods-card

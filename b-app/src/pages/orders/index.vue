@@ -119,6 +119,11 @@ const allStores = ref(false);
 
 const empty = computed(() => !loading.value && !list.value.length);
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
   if (!merchant.canOperate) return;
   loading.value = true;
@@ -135,8 +140,13 @@ async function load() {
       const res = await api.mOrderList({ ...scope, ...(spec ? tabQuery(spec) : {}) });
       list.value = res.records;
     }
+    failed.value = false;
+  } catch {
+    // 此前只有 finally，请求挂了没人接：单子列表空着，而商家以为今天没单
+    failed.value = true;
   } finally {
     loading.value = false;
+    loaded.value = true;
   }
 }
 
@@ -181,7 +191,7 @@ onShow(() => {
       <sh-go>{{ allStores ? $t("order.scopeToCurrent") : $t("order.scopeToAll") }}</sh-go>
     </view>
 
-    <sh-empty v-if="empty" :text='$t("order.empty")'></sh-empty>
+    <sh-empty v-if="empty" :pending="!loaded" :failed="failed" @retry='load' :text='$t("order.empty")'></sh-empty>
 
     <view v-for="o in list" :key="o.orderNo" class="sh-card sh-mb-sm" @tap="open(o)">
       <view class="row__head sh-row sh-row--between">

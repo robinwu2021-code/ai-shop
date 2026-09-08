@@ -80,13 +80,24 @@ function openGoods(no: string) {
 
 onShow(load);
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  tree.value = await api.mCategoryTree().catch(() => []);
-  if (!storeNo.value) {
-    picked.value = [];
-    return;
+  // 两处 `.catch(() => [])` 脱掉：它们把「没取到」折叠成了「货架上什么都没有」，
+  // 而下面那张空态卡说的是「还没摆货架，建一件商品它的类目会自动加进来」——
+  // 网络不通时照着做，商家会以为自己建的商品没生效。
+  try {
+    tree.value = await api.mCategoryTree();
+    // 没选门店时本来就没有「本店类目」可言，这是确定的空，不是没取到
+    picked.value = storeNo.value ? await api.mStoreCategories(storeNo.value) : [];
+    failed.value = false;
+  } catch {
+    failed.value = true;
   }
-  picked.value = await api.mStoreCategories(storeNo.value).catch(() => []);
+  loaded.value = true;
 }
 
 /**
@@ -210,7 +221,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
       </view>
     </view>
 
-    <sh-empty v-else :text='$t("storeCategories.empty")' :tip='$t("storeCategories.emptyTip")'></sh-empty>
+    <sh-empty v-else :pending="!loaded" :failed="failed" @retry='load' :text='$t("storeCategories.empty")' :tip='$t("storeCategories.emptyTip")'></sh-empty>
 
     <!--
       商品规格。**这一页叫「类目与规格」，规格却一直没有门** ——

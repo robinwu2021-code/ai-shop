@@ -240,6 +240,11 @@ function switchCategory(no: string) {
   void load();
 }
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load(more = false) {
   if (!merchant.canOperate) return;
   if (more && (!hasMore.value || loading.value)) return;
@@ -258,8 +263,14 @@ async function load(more = false) {
     // 拿满一页就认为还有下一页 —— 比信任 total 稳：total 与 records 的口径
     // 在按门店裁剪的场景下会分岔，而「这一页满了」是端上能自己看见的事实
     hasMore.value = res.records.length >= PAGE_SIZE;
+    failed.value = false;
+  } catch {
+    // 此前这里只有 finally：请求挂了是一个没人接的 Promise 拒绝，
+    // 界面上一个字都不说，列表停在空的 —— 与「这一档真的没有商品」一模一样
+    failed.value = true;
   } finally {
     loading.value = false;
+    loaded.value = true;
   }
 }
 
@@ -581,7 +592,7 @@ onShow(() => {
       右下角那个常驻悬浮按钮已经是新建入口，同一屏两个一模一样的主色按钮
       只会让人怀疑它们做的不是同一件事。
     -->
-    <sh-empty v-if="empty" :text='$t("goods.empty")'></sh-empty>
+    <sh-empty v-if="empty" :pending="!loaded" :failed="failed" @retry='() => load()' :text='$t("goods.empty")'></sh-empty>
 
     <!--
       **一行商品分成上下两段，不再是「左信息 / 右操作」两栏。**

@@ -34,22 +34,37 @@ function yuan(minor?: number | null): string {
   return ((minor ?? 0) / 100).toFixed(2);
 }
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」。
+ *  这一页本来就弹了吐司，但吐司两秒就没，而空态一直挂在那儿说「还没有」 */
+const failed = ref(false);
+
 async function load() {
   loading.value = true;
   try {
-    // 三段各自兜底：榜单取不到不该让月报也空着
+    /*
+     * 榜单各自兜底：取不到不该让月报也空着。
+     *
+     * **但月报自己不兜底**：兜了的话，`.catch(() => null)` 会让「没取到」
+     * 与「这个月没数」长得一模一样 —— 下面那张空态卡说「暂无数据」，
+     * 而真相是这次没请求到。让它抛出去，由外面的 catch 记成 failed。
+     */
     const [m, f, s] = await Promise.all([
-      api.mStockMonthly(month.value).catch(() => null),
+      api.mStockMonthly(month.value),
       api.mStockRanking({ type: "fast", size: 5 }).catch(() => []),
       api.mStockRanking({ type: "slow", size: 5 }).catch(() => []),
     ]);
     monthly.value = m;
     fast.value = f;
     slow.value = s;
+    failed.value = false;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
+    failed.value = true;
   } finally {
     loading.value = false;
+    loaded.value = true;
   }
 }
 
@@ -128,7 +143,7 @@ onShow(load);
       </view>
     </template>
 
-    <sh-empty v-else-if="!loading" :text="String($t('stockReport.noData'))"></sh-empty>
+    <sh-empty v-else-if="!loading" :pending="!loaded" :failed="failed" @retry="load" :text="String($t('stockReport.noData'))"></sh-empty>
 
     <view v-if="fast.length" class="sh-block">
       <sh-section pad :title="String($t('stockReport.fast'))"></sh-section>
