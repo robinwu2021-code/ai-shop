@@ -39,12 +39,117 @@ describe("导航结构", () => {
   });
 
   it("叶子的 href 归属本 section 或显式跨 section（跨链必须指向已存在的 section）", () => {
-    const sectionPaths = NAV.map((s) => leafParts(s.href).path);
+    // 合并之后一个 section 覆盖多个路径前缀（商家与门店 = /merchants + /stores），
+    // 那些前缀写在 `match` 里 —— 只看 `href` 的话，被合进来的域全都成了「不存在的 section」
+    const sectionPaths = NAV.flatMap((s) => [leafParts(s.href).path, ...(s.match ?? [])]);
     for (const s of NAV) {
       for (const l of s.children ?? []) {
         expect(sectionPaths, `${s.key} 的 ${l.href} 指向了不存在的 section`).toContain(leafParts(l.href).path);
       }
     }
+  });
+});
+
+describe("菜单合并（2026-09-09，21 → 13）", () => {
+  /*
+   * Rail 的几何，**逐项在浏览器里量出来的**（components/layout/rail.tsx）：
+   *
+   *   可用高 = 视口 − Logo 行 56 − 收起按钮 40
+   *   内容高 = n×36（项）+ (n−1)×2（gap-0.5）+ 8（py-1 上下各 4）
+   *
+   * ⚠️ 第一版写的是 `64 + n×40 ≤ 620` —— 那个模型把「Logo + 内边距」估成 64、
+   * 又忘了底部收起按钮那 40px 也不在滚动区里。算出来 584 说「放得下」，
+   * 而实测 536 > 524 是溢出的。**算式对不上真实布局的断言，绿着也没有意义。**
+   */
+  const LOGO_H = 56;
+  const COLLAPSE_BTN_H = 40;
+  const ITEM_H = 36;
+  const ITEM_GAP = 2;
+  const NAV_PAD = 8;
+  /** 1366×768 的笔记本，去掉浏览器 chrome 后可视高约 620。这是要放得下的那一档。 */
+  const SHORTEST_VIEWPORT = 620;
+
+  it("AC1 · L1 在 620px 高的窗口里放得下（不靠滚动）", () => {
+    const n = NAV.length;
+    const need = n * ITEM_H + (n - 1) * ITEM_GAP + NAV_PAD;
+    const have = SHORTEST_VIEWPORT - LOGO_H - COLLAPSE_BTN_H;
+    expect(need, `${n} 个 L1 需要 ${need}px，可滚区只有 ${have}px。\n` +
+      "  三条路：合并掉一个域 / 收紧 Rail 的间距 / 接受它要滚（那样把这条断言删掉，\n" +
+      "  别把 SHORTEST_VIEWPORT 调大 —— 那是改题目不是解题）")
+      .toBeLessThanOrEqual(have);
+  });
+
+  it("★★★ AC2 · 合并前后每个角色看得见的功能点集合完全不变", () => {
+    /*
+     * **这条是整轮合并唯一会造成真实损失的失败模式**，而它在界面上看不出来：
+     * 少一条菜单，人只会以为「我没这个权限」，不会报障。
+     *
+     * 基线是合并**之前**导出的（lib/nav-visibility.baseline.json）。
+     * 它是一次性快照，不该再被重新生成 —— 重新生成等于拿改后的代码给自己出题。
+     */
+    const baseline = JSON.parse(
+      readFileSync(join(ROOT, "lib/nav-visibility.baseline.json"), "utf8")) as Record<string, string[]>;
+    const diffs: string[] = [];
+    for (const role of ALL_ROLES) {
+      const perms = backendPermsOf(role);
+      const now = new Set<string>();
+      for (const s of visibleSections(perms)) for (const l of visibleLeaves(s, perms)) now.add(l.href);
+      const was = new Set(baseline[role] ?? []);
+      const lost = [...was].filter((h) => !now.has(h));
+      const gained = [...now].filter((h) => !was.has(h));
+      if (lost.length) diffs.push(`${role} 少了：${lost.join(", ")}`);
+      if (gained.length) diffs.push(`${role} 多了：${gained.join(", ")}`);
+    }
+    expect(diffs, `可见性变了：\n${diffs.join("\n")}`).toEqual([]);
+  });
+
+  it("★★★ AC3 · 每个叶子都在 point_code 冻结表里，且没有两片叶子撞同一个码", () => {
+    /*
+     * `sys_role_point` 存的就是 point_code。冻结表漏登记一条 ⇒ 那条按 href 现场派生，
+     * 而派生源里含 section key ⇒ 下次菜单再动它就漂了，既有授权跟着指向别处。
+     * 撞码则更直接：sys_function_point 主键冲突，迁移当场失败。
+     */
+    const src = readFileSync(join(ROOT, "lib/point-codes.ts"), "utf8");
+    const frozen: Record<string, string> = {};
+    for (const m of src.matchAll(/^\s*"((?:[^"\\]|\\.)*)":\s*"([^"]+)"/gm)) {
+      frozen[m[1].replace(/\\t/g, "\t")] = m[2];
+    }
+    const missing: string[] = [];
+    const byCode = new Map<string, string>();
+    for (const s of NAV) {
+      const fc = `OPS_${s.key.toUpperCase()}`;
+      for (const l of s.children ?? []) {
+        const code = frozen[`${fc}\t${l.href}`] ?? frozen[l.href];
+        if (!code) { missing.push(`${s.key} › ${l.href}`); continue; }
+        const prev = byCode.get(code);
+        if (prev && prev !== `${fc}\t${l.href}`) missing.push(`${code} 被 ${prev} 与 ${fc}\t${l.href} 共用`);
+        byCode.set(code, `${fc}\t${l.href}`);
+      }
+    }
+    expect(missing, "跑 `node scripts/gen-perm-seed.mjs --emit-point-codes` 补登记：\n" +
+      missing.join("\n")).toEqual([]);
+  });
+
+  it("AC3b · 冻结表里没有指向已删叶子的陈行", () => {
+    // 棘轮会锈：修好的行不删，那个对象就永远免检。这里反过来查一遍。
+    const src = readFileSync(join(ROOT, "lib/point-codes.ts"), "utf8");
+    const keys = [...src.matchAll(/^\s*"((?:[^"\\]|\\.)*)":/gm)].map((m) => m[1].replace(/\\t/g, "\t"));
+    const live = new Set<string>();
+    for (const s of NAV) {
+      const fc = `OPS_${s.key.toUpperCase()}`;
+      for (const l of s.children ?? []) { live.add(l.href); live.add(`${fc}\t${l.href}`); }
+    }
+    const stale = keys.filter((k) => !live.has(k));
+    expect(stale, "这些 href 已经不在 NAV 里了。**删之前先确认库里没有指向它们的授权**：\n" +
+      stale.join("\n")).toEqual([]);
+  });
+
+  it("AC4 · 合并后每个叶子仍在一个分组下（不出现无组平铺）", () => {
+    const naked: string[] = [];
+    for (const s of NAV) {
+      for (const l of s.children ?? []) if (!l.group) naked.push(`${s.key} › ${l.label}`);
+    }
+    expect(naked, `18~19 个叶子平铺在一个面板里没法读，给它们分组：\n${naked.join("\n")}`).toEqual([]);
   });
 });
 
@@ -96,7 +201,7 @@ describe("导航 × 权限", () => {
     for (const s of NAV) {
       if (UNBUILT_SECTIONS.includes(s.key)) continue;
       const someone = ALL_ROLES.some((r) => visibleSections(backendPermsOf(r)).some((x) => x.key === s.key));
-      expect(someone, `${s.key}(${s.module}) 对所有角色都不可见`).toBe(true);
+      expect(someone, `${s.key}(${s.modules.join("/")}) 对所有角色都不可见`).toBe(true);
     }
   });
 
@@ -123,15 +228,21 @@ describe("导航 × 权限", () => {
     expect(orphans, `无人可见的叶子：\n${orphans.join("\n")}`).toEqual([]);
   });
 
-  it("叶子的 perm 前缀必须等于所属 section 的 module（跨 section 深链除外）", () => {
-    const sectionOf = new Map(NAV.map((s) => [leafParts(s.href).path, s.module]));
+  it("叶子的 perm 前缀必须属于所属 section 的 modules", () => {
+    /*
+     * 此前是「必须**等于** section.module，跨 section 深链除外」，靠按 href 反查
+     * 目标 section 的模块码来处理那个例外。合并菜单之后跨模块是常态而不是例外，
+     * 所以改成集合判定：**前缀 ∈ section.modules**。
+     *
+     * 判据没有变松：modules 是显式写在 section 上的白名单，
+     * 写错一个模块名照样红 —— 变的是「一个 section 只能有一个模块」这条假设。
+     */
     for (const s of NAV) {
       if (UNBUILT_SECTIONS.includes(s.key)) continue;
       for (const l of s.children ?? []) {
         if (!l.perm || UNBUILT_LEAVES.includes(l.perm)) continue;
-        // 跨 section 深链（href 指向别的 section）用目标 section 的模块码
-        const expected = sectionOf.get(leafParts(l.href).path) ?? s.module;
-        expect(l.perm.split(":")[0], `${l.label} 的权限码模块与 section 不一致`).toBe(expected);
+        expect(s.modules, `${s.key} › ${l.label}(${l.perm}) 的模块不在 section.modules 里`)
+          .toContain(l.perm.split(":")[0]);
       }
     }
   });
@@ -393,15 +504,16 @@ describe("路由归属与面包屑", () => {
     });
 
     it("★★ 叶子层同理：缺 sort 的跟着前一项走", () => {
-      const s = NAV.find((x) => x.key === "store")!;
+      // 原来用的 "store" 已并入 "merchant"（2026-09-09 菜单合并）
+      const s = NAV.find((x) => x.key === "merchant")!;
       const hrefs = s.children!.map((l) => l.href);
       const partial = overlayNav(NAV, { leaves: { [hrefs[1]]: { sort: 1 } } })
-        .find((x) => x.key === "store")!.children!.map((l) => l.href);
+        .find((x) => x.key === "merchant")!.children!.map((l) => l.href);
       expect(partial).toEqual(hrefs);
       const all: Record<string, { sort: number }> = {};
       hrefs.forEach((h, i) => { all[h] = { sort: hrefs.length - i }; });
       const sorted = overlayNav(NAV, { leaves: all })
-        .find((x) => x.key === "store")!.children!.map((l) => l.href);
+        .find((x) => x.key === "merchant")!.children!.map((l) => l.href);
       expect(sorted).toEqual([...hrefs].reverse());
     });
 
@@ -558,7 +670,7 @@ describe("路由归属与面包屑", () => {
   });
 
   it("面包屑 = L1 › 分组 › 子功能", () => {
-    expect(breadcrumb("/merchants", null, null, backendPermsOf("SUPER_ADMIN"))).toEqual(["商家治理", "入驻与资质", "入驻审核"]);
+    expect(breadcrumb("/merchants", null, null, backendPermsOf("SUPER_ADMIN"))).toEqual(["商家与门店", "入驻与资质", "入驻审核"]);
   });
 
   it("⌘K 候选：排除待建/锁定叶 —— 面板是「去某处」，列出去不了的只是噪音", () => {
@@ -583,7 +695,7 @@ describe("路由归属与面包屑", () => {
       const s = NAV.find((x) => x.label === e.label)!;
       expect(s.soon, `${s.key} 整域待建却进了搜索候选`).toBeFalsy();
     }
-    expect(sections.map((e) => e.label)).toContain("商家治理");
+    expect(sections.map((e) => e.label)).toContain("商家与门店");
     expect(entries.find((e) => e.label === "商家档案")?.href).toBe("/merchants?tab=list");
   });
 

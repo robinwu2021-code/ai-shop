@@ -23,7 +23,7 @@ function permGroups() {
   return NAV.map((s) => ({
     key: s.key,
     label: s.label,
-    module: s.module,
+    module: s.modules.join(" / "),
     perms: [...new Set((s.children ?? []).map((l) => l.perm).filter(Boolean) as string[])],
   })).filter((g) => g.perms.length > 0);
 }

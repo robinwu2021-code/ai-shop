@@ -93,6 +93,13 @@ const GENERATORS = [
    * （components/README.md、globals.css 注释、测试文件、ops-web/README.md、TDD）。
    */
   ["scripts/gen-ops-ui-spec.py", ["docs/technical/design/规范-运营端.md"]],
+  /*
+   * 权限种子与导航矩阵。**它们此前一道闸门都没挂** —— 而这两份的上游是 lib/nav.ts，
+   * 产出的是 sys_function / sys_function_point / sys_role_point 的种子。
+   * 陈了没人知道，而「陈了的权限种子」意味着库里的功能点与界面对不上。
+   * 2026-09-09 主菜单合并时补挂：那一轮正是靠重跑它们才发现 point_code 会漂。
+   */
+  ["ops-web/scripts/gen-perm-seed.mjs", ["docs/technical/design/权限配置落库-数据库设计与数据清单.md"], ["--doc"]],
   ["scripts/gen-ui-spec.py", ["docs/technical/design/规范-字体.md",
                               "docs/technical/design/规范-版面.md",
                               "docs/technical/design/规范-组件.md"]],

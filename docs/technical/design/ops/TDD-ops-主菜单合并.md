@@ -1,6 +1,6 @@
 # TDD-ops-主菜单合并
 
-> 状态：**草稿 · 待确认** · 创建 2026-09-09
+> 状态：**已实现 · 迁移待在真后端验收** · 创建 2026-09-09 · 最后更新 2026-09-09
 > 档位：**1**（动了库表数据 `sys_function` / `sys_function_point` + i18n 词条；端点、权限码、配置项均不动）
 > 关联：[需求矩阵-三端 §六](../../../requirements/需求矩阵-三端.md)（平台端业务域）· [TDD-ops-web](./TDD-ops-web.md) §导航
 > 判据来源：浏览器实测的 Rail 几何 + `lib/nav.ts` 数出来的树形
@@ -125,7 +125,8 @@
 | 风控 | — | 3 | 2 | risk |
 | **平台管理** | 员工与权限 + 定时任务 + 系统配置 | 12 | 6 | iam, system |
 
-合并后 Rail 高 = 64 + 13×40 = **584px** ≤ 620，AC1 满足。
+合并后 Rail 需要 `13×36 + 12×2 + 8 = 500px`，可滚区 `620 − 56 − 40 = 524px` —— 放得下。
+⚠️ 起草时这里算的是 `64 + 13×40 = 584`，那个模型是错的，见 §6 偏差说明第 1 条。
 
 **没有合的，各自有理由**：
 - `售后治理`（4 叶）不并进 `交易与履约` —— 裁决是另一班人、另一套 KPI，
@@ -168,13 +169,16 @@ point_code    = pointCodeOf(function_code, href)   // OPS_STORE__TAB_TEMPLATE
 
 ```ts
 // ops-web/lib/point-codes.ts —— 生成一次，此后只增不改
-export const POINT_CODES: Record<string /* href */, string> = {
+export const POINT_CODES: Record<string, string> = {
+  // href 唯一 → 直接按 href 做键（与 section 无关，所以搬家不影响它）
   "/stores?tab=template": "OPS_STORE__TAB_TEMPLATE",
-  …
+  // 同一个 href 挂在两个域下 → 带上 function_code 区分（库里本就是两个功能点）
+  "OPS_AFTERSALE\t/finance?tab=refund-back": "OPS_AFTERSALE__TAB_REFUND_BACK",
+  "OPS_FINANCE\t/finance?tab=refund-back": "OPS_FINANCE__TAB_REFUND_BACK",
 };
 ```
 
-- 生成器改成：`point_code = POINT_CODES[href] ?? pointCodeOf(...)`（新叶子仍按 href 派生并写回表）
+- 生成器改成：`point_code = POINT_CODES[fc+href] ?? POINT_CODES[href] ?? derive(...)`（新叶子仍按 href 派生并写回表）
 - 守卫：`nav.test.ts` 断言「`NAV` 里每个叶子的 href 都在 `POINT_CODES` 里，且表里没有指向已删叶子的陈行」
 - 这样 §合并 就退化成一次纯粹的展示层改动，AC3 天然成立
 
@@ -198,9 +202,9 @@ export const POINT_CODES: Record<string /* href */, string> = {
 | 新增 | `ops-web/lib/point-codes.ts` | 冻结的 href → point_code 表（由生成器首次导出） |
 | 修改 | `ops-web/scripts/gen-perm-seed.mjs` | 读冻结表；新叶子才派生 |
 | 修改 | `ops-web/lib/nav.test.ts` | 模块断言改成集合判定；新增冻结表完整性、合并前后可见集合一致 |
-| 修改 | `ops-web/lib/i18n/messages/{zh,en}.ts` | 13 条新 L1 译名 |
+| 修改 | `ops-web/lib/i18n/nav-labels.ts` | 新 L1 的英文译名（导航译名在这里，不在 messages/）|
 | 新增 | `backend/…/db/migration/V<下一个>__ops_menu_merge.sql` | 重写 `sys_function` 与 `sys_function_point.function_code` |
-| 修改 | `scripts/check-generated-docs.mjs` | **把 `gen-perm-seed.mjs` 与 `gen-nav-matrix.mjs` 挂上** —— 它们今天一个都不在闸门里，产物陈了没人知道 |
+| 修改 | `scripts/check-generated-docs.mjs` | 把 `gen-perm-seed.mjs --doc` 挂上（`gen-nav-matrix.mjs` 挂不上，理由见 §6 偏差说明第 3 条）|
 
 ### 迁移写法（AC3 的具体保证）
 
@@ -243,11 +247,19 @@ UPDATE sys_function SET name = '商家与门店', sort = 20 WHERE function_code 
 
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
-| AC1 | `nav.test.ts#rail_fits_in_620px`（按 `NAV.length` 算高度，不依赖浏览器） | ☐ | 把 `NAV` 加回一个 section → 变红 |
-| AC2 | `nav.test.ts#visible_leaf_set_unchanged_per_role`（对 11 个角色比合并前后的 href 集合，基线快照存 `nav-baseline.json`） | ☐ | 删掉任一叶子的 `perm` → 变红 |
-| AC3 | `perm-seed.test.ts#point_codes_are_frozen`（跑生成器，比对 `POINT_CODES` 全集） | ☐ | 把某条 href 从冻结表删掉 → 变红 |
-| AC4 | `nav-group.test.ts#merged_sections_keep_origin_as_group` | ☐ | 去掉一个 `group` → 变红 |
-| AC5 | 已实现（2026-09-09），`/risk` 无溢出不出提示的负例已验 | ✅ | — |
+| AC1 | `nav.test.ts`「AC1 · L1 在 620px 高的窗口里放得下」 | ✅ | 加回一个 L1 → 红 3 条 |
+| AC2 | `nav.test.ts`「★★★ AC2 · 合并前后每个角色看得见的功能点集合完全不变」，基线 `lib/nav-visibility.baseline.json`（**合并前**导出，11 角色 / 121 条） | ✅ | 删一条叶子 → 红 3 条 |
+| AC3 | `nav.test.ts`「★★★ AC3 · 每个叶子都在 point_code 冻结表里，且没有两片叶子撞同一个码」 | ✅ | 冻结表少一行 → 红 1 条 |
+| AC3b | `nav.test.ts`「AC3b · 冻结表里没有指向已删叶子的陈行」 | ✅ | 塞一条陈行 → 红 1 条 |
+| AC4 | `nav.test.ts`「AC4 · 合并后每个叶子仍在一个分组下」 | ✅ | 去掉一个 group → 红 1 条 |
+| AC5 | `ScrollHint`（2026-09-09 先行落地），`/risk` 无溢出不出提示的负例已验 | ✅ | — |
+
+**AC3 另有一次更强的验证**：把生成器在合并前后各跑一遍，比对产物 ——
+`167` 个功能点、`0` 个 point_code 变动、`410` 行 `sys_role_point` 逐字节相同。
+断言证明「表覆盖得全」，这一次比对证明「码一个没动」。
+
+**实机（Chrome，1280×620）**：13 个图标，滚动区需要 524px、可用 524px，
+`overflows: false`，上下两条溢出提示都不出现。
 
 **AC2 的基线快照是这份 TDD 最重要的一个动作**：合并前先把「11 个角色各自看得见哪些
 href」导出成 JSON，合并后逐字节比。可见性回归是这类改动唯一会造成真实损失的失败模式，
@@ -257,7 +269,55 @@ href」导出成 JSON，合并后逐字节比。可见性回归是这类改动�
 
 ## §6 对账二 · 设计 → 实现
 
-（实现后填 `git diff --stat`，与 §2 模块设计逐行比）
+```
+ backend/.../db/migration/V325__ops_menu_merge.sql   | 82 ++（新增）
+ backend/shop-app/src/test/resources/schema-test.sql | 59 ++
+ ops-web/lib/nav.ts                                  | 204 +-
+ ops-web/lib/nav.test.ts                             | 136 +-
+ ops-web/lib/point-codes.ts                          | 133 ++（新增）
+ ops-web/lib/nav-visibility.baseline.json            | 138 ++（新增）
+ ops-web/lib/permissions.ts                          |   3 +-
+ ops-web/lib/i18n/nav-labels.ts                      |   9 +
+ ops-web/scripts/gen-perm-seed.mjs                   |  80 +-
+ ops-web/components/layout/rail.tsx                  |   8 +-
+ ops-web/app/dev/perms/page.tsx                      |   2 +-
+ scripts/check-generated-docs.mjs                    |   7 +
+```
+
+| 差异 | 说明 |
+|---|---|
+| TDD 里没有、实际改了的：`components/layout/rail.tsx` | 见下「偏差说明」第 1 条 |
+| TDD 里没有、实际改了的：`app/dev/perms/page.tsx` | 它读 `s.module`，跟着改成 `s.modules` |
+| TDD 里没有、实际改了的：`schema-test.sql` | 生成物，`gen-test-schema.py` 跟着新迁移重跑 |
+| TDD 列了、实际没动的：`gen-nav-matrix.mjs` 挂闸门 | 见「偏差说明」第 3 条 |
+
+### 偏差说明
+
+**1. AC1 的算式是错的，13 个 L1 一开始并没有放下。**
+TDD 里写的是 `64 + n×40 ≤ 620`，算出 584 说「放得下」。实测 536 > 524 —— 溢出。
+错在模型：把「Logo + 内边距」估成 64，又忘了底部收起按钮那 40px 也不在滚动区里。
+真实几何是 `可用 = 视口 − 56 − 40`、`内容 = n×36 + (n−1)×gap + 内边距`。
+**处理**：没有为 12px 再合并一个业务域（那是拿像素倒推信息架构），
+改成把 Rail 自己的节奏收紧一档（`gap-1 → gap-0.5`、`py-2 → py-1`），
+并把断言的算式改成真实几何 —— 一条算式对不上真实布局的断言，绿着也没有意义。
+
+**2. 冻结表的键改过一次，第一版是错的。**
+先按 `function_code + href` 做键，跑完发现 33 个码全漂了：`function_code = OPS_<SECTION_KEY>`，
+而 section 一合它就变 —— **键本身被它要防的那件事动到了**。
+改成「href 唯一就按 href、重复的才带 function_code」：前者与 section 无关，后者只用于
+`/finance?tab=refund-back` 这种同时挂在两个域下的深链（库里本就是两个功能点，
+合成一个会撞 `sys_function_point` 主键）。
+
+**3. `gen-nav-matrix.mjs` 没有挂闸门，因为它挂不上。**
+它只往 stdout 打印、没有提交的产物，闸门无从比对。而且它内部硬写了一份
+`ROLE` 表（`merchant:audit`、`goods:audit`），是权限码细化前的旧口径 ——
+与 `Perms.java` 早已对不上。**这是一份陈了的脚本，不是一个缺闸门的生成器**，
+记在这里等单独处置，不在本轮范围内。
+
+**4. `gen-ui-catalog.py` 按行解析 nav.ts。**
+把跨域说明的注释插在 `key:` 与 `href:` 之间，会让整个域从界面清单里消失
+（`key … label … href` 必须在同一行）。注释改放在 `key` 行之前。
+界面清单 255 → 247：少掉的 8 条正是被合并掉的 8 个 section 头，符合预期。
 
 ---
 
@@ -265,4 +325,6 @@ href」导出成 JSON，合并后逐字节比。可见性回归是这类改动�
 
 | 日期 | 事件 |
 |---|---|
-| 2026-09-09 | 起草。**待确认三件**：① 13 个 L1 的合并口径；② `point_code` 冻结这条是否接受；③ 谁来在带 ops profile 的真后端上验 AC2 |
+| 2026-09-09 | 起草。待确认三件：① 合并口径 ② `point_code` 冻结 ③ 谁在真后端验 AC2 |
+| 2026-09-09 | 按①②已实现。闸门：`ops-web` vitest 698 条全绿（扫 `ops-web/lib` + `app`）· `tsc --noEmit` 干净 · `check-generated-docs` 22 个生成器全新 · `check-sql-portability` 无新增方言 · `gen-ui-catalog --check` 通过 · `packages/shared` 停在基线 13 |
+| **待办** | ③ **迁移没有在真后端跑过**。本地 ops 实例（8082）的库仍是旧菜单，所以界面上的 L1 标题还是「商家治理」而不是「商家与门店」—— 这正是 §1 写的那条：只改 `nav.ts` 不落迁移，接真后端毫无变化。需要有运营账号的人在 ops profile 上应用 V325 后回验 AC2 |

@@ -1,7 +1,8 @@
 import type { Role } from "./auth";
 import { UI_PERM_MAP, UNIMPLEMENTED } from "./perm-map";
 
-// 权限码 `<模块>:<资源>:<动作>`。模块前缀与 lib/nav.ts 的 NavSection.module 一一对应
+// 权限码 `<模块>:<资源>:<动作>`。模块前缀出现在 lib/nav.ts 的 NavSection.modules 里
+// （一个 section 可以跨多个模块 —— 合并菜单之后是常态）
 // （nav.test.ts 断言这条对应关系，改一处必须改两处）。
 // 通配：'*' 全部；'merchant:*' 该模块全部。
 //

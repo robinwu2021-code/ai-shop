@@ -13,6 +13,15 @@ import type { Locale } from "@/lib/stores/locale";
 const OVERLAY: Record<string, Record<string, string>> = {
   经营看板: { en: "Dashboard" },
 
+  // ── 2026-09-09 菜单合并：21 个 L1 → 13 个。被合并掉的域名仍留在下面 ——
+  // 它们变成了 L2 的分组标题或叶子名，译文照旧要有。
+  商家与门店: { en: "Merchants & stores" },
+  商品与库存: { en: "Catalog & inventory" },
+  交易与履约: { en: "Orders & fulfillment" },
+  营销与增长: { en: "Marketing & growth" },
+  内容与口碑: { en: "Content & reviews" },
+  平台管理: { en: "Platform admin" },
+
   商家治理: { en: "Merchants" },
   准入与保证金: { en: "Admission & deposit" },
   进件看板: { en: "Payment onboarding" },

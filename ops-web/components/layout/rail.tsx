@@ -119,7 +119,13 @@ export function Rail() {
       </div>
       {/* relative：渐隐条挂在容器的定位父级上，跟着容器一起滚就没意义了 */}
       <div className="relative flex min-h-0 flex-1 flex-col">
-        <nav ref={scrollRef} className={cn("flex flex-1 flex-col gap-1 overflow-y-auto px-2 py-2")}>
+        {/*
+          gap-0.5 + py-1 而不是 gap-1 + py-2：13 个 L1 在 620px 高的窗口里
+          可用高只有 524（视口 − Logo 56 − 收起按钮 40），原来的节奏要 536px，差 12px。
+          为 12px 再合并一个业务域是拿像素倒推信息架构 —— 收紧自己的间距才是这一层该做的事。
+          现在 13×36 + 12×2 + 8 = 500，还剩 24px 余量。
+        */}
+        <nav ref={scrollRef} className={cn("flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-1")}>
           {top.map(render)}
           <div className="flex-1" />
           {bottom.map(render)}

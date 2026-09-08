@@ -2,7 +2,7 @@
 // 依据 docs/requirements/需求矩阵-三端.md §六「平台端矩阵」逐行对照，勿凭记忆增删
 // —— nav.test.ts 断言矩阵里每个 P-x.y 模块都被至少一个叶子覆盖。
 //
-// - L1 可见性 = canModule(section.module)；权限码模块前缀见 lib/permissions.ts
+// - L1 可见性 = section.modules 里**任一**模块可见；权限码模块前缀见 lib/permissions.ts
 // - L3 可见性 = leaf.perm ? can(perms, perm) : 跟随 section
 //   判权入参是**后端下发的 perms**，不是 role —— role 只用于展示与分组
 // - soon = 待建：灰显不可点，不产生 404 入口（脚手架阶段绝大多数叶子都是 soon）
@@ -53,7 +53,18 @@ export interface NavSection {
   key: string;
   label: string;
   icon: string; // lucide 图标名
-  module: string; // 权限码模块前缀（canModule 过滤）
+  /**
+   * 权限码模块前缀，**可以有多个**。
+   *
+   * 合并菜单之后一个 section 会跨域（商家与门店 = merchant + store）。
+   * 这不是新概念：售后治理早就跨 `aftersale` + `finance`（退款回退分账那条深链），
+   * 只是此前靠「按 href 反查目标 section」绕开了，规则本身没承认它。
+   *
+   * 语义：**任一模块可见 → 这个 section 可见**；叶子仍逐条判自己的 `perm`，
+   * 所以可见性的粒度一点没变（合并前后每个角色看得见的功能点集合完全相同，
+   * `nav.test.ts` 拿基线快照逐条比）。
+   */
+  modules: string[];
   href: string; // section 首页
   match?: string[]; // 路径归属前缀（默认 = href 的 path 部分）
   /**
@@ -70,12 +81,13 @@ export interface NavSection {
 export const NAV: NavSection[] = [
   // ── P-16.1 数据看板：无子功能，内容区全宽 ────────────────────────────────
   {
-    key: "dashboard", label: "经营看板", icon: "LayoutDashboard", module: "dashboard", href: "/",
+    key: "dashboard", label: "经营看板", icon: "LayoutDashboard", modules: ["dashboard"], href: "/",
   },
 
   // ── P-11 商家治理（一期 M1-2 的平台侧主角）───────────────────────────────
   {
-    key: "merchant", label: "商家治理", icon: "Store", module: "merchant", href: "/merchants",
+    key: "merchant", label: "商家与门店", icon: "Store", modules: ["merchant", "store"], href: "/merchants",
+    match: ["/merchants", "/stores"],
     children: [
       { href: "/merchants", label: "入驻审核", perm: "merchant:apply:audit", group: "入驻与资质", matrix: "P-11.1", ready: true },
       { href: "/merchants?tab=list", label: "商家档案", perm: "merchant:merchant:read", group: "入驻与资质", matrix: "P-11.1", ready: true },
@@ -132,13 +144,9 @@ export const NAV: NavSection[] = [
       // perm 与后端 OpsMerchantChainController 判的是同一个码 ——
       // 界面闸门比后端松就是「菜单点得进、进去一片 403」。
       { href: "/merchants?tab=chain", label: "链条画像", perm: "merchant:merchant:read", group: "经营诊断", matrix: "P-11.1", ready: true },
-    ],
-  },
+    
 
-  // ── P-10 门店主页治理（一期主获客路径）──────────────────────────────────
-  {
-    key: "store", label: "门店主页", icon: "LayoutTemplate", module: "store", href: "/stores",
-    children: [
+      // ── P-10 门店主页治理（一期主获客路径）──────────────────────────────────
       { href: "/stores", label: "店招公告审核", perm: "store:page:audit", group: "模板与合规", matrix: "P-10.1", ready: true },
       // 主页模板配置依赖 C 端门店主页（C-ST-01）定稿，先做模板等于两头返工
       { href: "/stores?tab=template", label: "主页模板配置", perm: "store:page:read", group: "模板与合规", matrix: "P-10.1" },
@@ -148,12 +156,15 @@ export const NAV: NavSection[] = [
       // 不把 store:page:read 整个放开，是因为「主页模板配置」还挂在它上面且后端仍然没有 ——
       // 放开会多出一个点进去 404 的死按钮。后端端点判的也是 store:page:audit，两边对齐。
       { href: "/stores?tab=effect", label: "获客效果看板", perm: "store:page:audit", group: "获客", matrix: "P-10.1", ready: true },
+    
     ],
   },
 
+
   // ── P-3 商品与类目 ──────────────────────────────────────────────────────
   {
-    key: "product", label: "商品与类目", icon: "Package", module: "product", href: "/products",
+    key: "product", label: "商品与库存", icon: "Package", modules: ["product", "inventory"], href: "/products",
+    match: ["/products", "/inventory"],
     children: [
       // 属性模板（3.1.2）与类目多语言（3.1.3）是类目行上的字段，在类目详情里看，不单独成页。
       { href: "/products", label: "平台类目树", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
@@ -209,25 +220,20 @@ export const NAV: NavSection[] = [
       // 单独成组排在最后：同 group 的叶子必须相邻，且它是唯一一页只读不改的。
       // perm 用 product:sku:read —— 与后端 OpsProductStatsController 同一个码
       { href: "/products?tab=stats", label: "商品统计", perm: "product:sku:read", group: "统计", matrix: "P-3.2", ready: true },
-    ],
-  },
+    
 
-
-  // ── P-18 进销存 ────────────────────────────────────────────────────────
-  //
-  // **独立成 section，不做「商品与类目」的 tab。** 进销存有独立的库、独立的
-  // Java 模块，将来要能单独交付；在菜单里把它塞进商品页，等于在界面上先把这条
-  // 边界抹掉 —— 而抹掉之后没有人会记得它曾经存在。
-  //
-  // module 填 `inventory`（2026-08-29 改）。这个字段是**权限码前缀**，canModule
-  // 按它过滤整段。此前只能填 `product`，因为那时没有任何 `inventory:` 开头的码 ——
-  // 而填 `inventory` 会让 canModule 走「这个模块不受权限约束」那条分支返回 true，
-  // **整个 section 对所有人可见**，靠叶子逐条兜底：看着能用，闸门却空了一层。
-  // 现在 Perms 里有了 inventory:* 三个码（见 Perms.java 的进销存那一段），
-  // 前缀过滤才真的成立。
-  {
-    key: "inventory", label: "进销存", icon: "Boxes", module: "inventory", href: "/inventory",
-    children: [
+      // ── P-18 进销存 ────────────────────────────────────────────────────────
+      //
+      // **独立成 section，不做「商品与类目」的 tab。** 进销存有独立的库、独立的
+      // Java 模块，将来要能单独交付；在菜单里把它塞进商品页，等于在界面上先把这条
+      // 边界抹掉 —— 而抹掉之后没有人会记得它曾经存在。
+      //
+      // module 填 `inventory`（2026-08-29 改）。这个字段是**权限码前缀**，canModule
+      // 按它过滤整段。此前只能填 `product`，因为那时没有任何 `inventory:` 开头的码 ——
+      // 而填 `inventory` 会让 canModule 走「这个模块不受权限约束」那条分支返回 true，
+      // **整个 section 对所有人可见**，靠叶子逐条兜底：看着能用，闸门却空了一层。
+      // 现在 Perms 里有了 inventory:* 三个码（见 Perms.java 的进销存那一段），
+      // 前缀过滤才真的成立。
       { href: "/inventory", label: "库存健康度", perm: "inventory:stock:read", group: "库存治理", matrix: "P-18.1", ready: true },
       { href: "/inventory?tab=ledger", label: "库存流水", perm: "inventory:stock:read", group: "库存治理", matrix: "P-18.2", ready: true },
       { href: "/inventory?tab=recon", label: "库存对差", perm: "inventory:stock:read", group: "切换判据", matrix: "P-18.3", ready: true },
@@ -241,12 +247,16 @@ export const NAV: NavSection[] = [
       // 哪些已吊销 —— 审计要看的正是这个）。签发与吊销另判
       // inventory:credential:grant，按钮按它藏掉，不是画出来点了 403。
       { href: "/inventory?tab=credentials", label: "开放对接", perm: "inventory:credential:read", group: "对外", matrix: "P-18.4", ready: true },
+    
     ],
   },
 
+
+
   // ── P-4 交易订单 ────────────────────────────────────────────────────────
   {
-    key: "order", label: "交易订单", icon: "ReceiptText", module: "order", href: "/orders",
+    key: "order", label: "交易与履约", icon: "ReceiptText", modules: ["order", "fulfillment"], href: "/orders",
+    match: ["/orders", "/fulfillment"],
     children: [
       { href: "/orders", label: "订单检索", perm: "order:order:read", group: "订单", matrix: "P-4.1", ready: true },
       { href: "/orders?tab=exception", label: "异常单处理", perm: "order:order:modify", group: "订单", matrix: "P-4.1" },
@@ -254,13 +264,9 @@ export const NAV: NavSection[] = [
       { href: "/orders?tab=pay", label: "支付流水核对", perm: "order:pay:read", group: "支付", matrix: "P-4.2" },
       { href: "/orders?tab=repair", label: "掉单补偿", perm: "order:pay:repair", group: "支付", matrix: "P-4.2" },
       { href: "/orders?tab=close", label: "关单策略配置", perm: "order:pay:repair", group: "支付", matrix: "P-4.2" },
-    ],
-  },
+    
 
-  // ── P-5 履约调度（一期 M1-3，与 B 端核销台成对交付）──────────────────────
-  {
-    key: "fulfillment", label: "履约调度", icon: "Truck", module: "fulfillment", href: "/fulfillment",
-    children: [
+      // ── P-5 履约调度（一期 M1-3，与 B 端核销台成对交付）──────────────────────
       { href: "/fulfillment", label: "到货批次与配车", perm: "fulfillment:batch:read", group: "到货与分拣", matrix: "P-5.1", ready: true },
       { href: "/fulfillment?tab=sorting", label: "按自提点汇总分拣", perm: "fulfillment:batch:read", group: "到货与分拣", matrix: "P-5.1", ready: true },
       { href: "/fulfillment?tab=redeem", label: "核销监控与逾期", perm: "fulfillment:redeem:read", group: "核销", matrix: "P-5.1", ready: true },
@@ -268,12 +274,18 @@ export const NAV: NavSection[] = [
       { href: "/fulfillment?tab=express", label: "快递与轨迹", perm: "fulfillment:logistics:read", group: "物流", matrix: "P-5.2" },
       { href: "/fulfillment?tab=freight", label: "运费模板与超区", perm: "fulfillment:rule:update", group: "物流", matrix: "P-5.2" },
       { href: "/fulfillment?tab=carrier", label: "第三方运力配置", perm: "fulfillment:logistics:read", group: "物流", matrix: "P-5.2", phase: 2, ready: true },
+    
     ],
   },
 
+
   // ── P-6 售后治理 ────────────────────────────────────────────────────────
   {
-    key: "aftersale", label: "售后治理", icon: "Undo2", module: "aftersale", href: "/after-sales",
+    // 跨域：「退款回退分账」那条深链挂的是 finance: 前缀。这一条一直存在，
+    // 只是旧断言按 href 反查目标 section 把它绕过去了 —— 改成集合判定之后要显式写出来。
+    // ⚠️ 注释放在 key 行**之前**：gen-ui-catalog.py 按行认 section 头
+    // （`key: … label: … href: …` 要在同一行），插在中间会让这个域从界面清单里消失
+    key: "aftersale", label: "售后治理", icon: "Undo2", modules: ["aftersale", "finance"], href: "/after-sales",
     children: [
       { href: "/after-sales", label: "售后工单池", perm: "aftersale:ticket:read", group: "处置", matrix: "P-6.1", ready: true },
       // 责任判定（6.1.4）并入裁决抽屉：判了责任才谈得上赔付归属，拆成两页会出现
@@ -288,7 +300,8 @@ export const NAV: NavSection[] = [
 
   // ── P-7 营销活动 ────────────────────────────────────────────────────────
   {
-    key: "marketing", label: "营销活动", icon: "Ticket", module: "marketing", href: "/marketing",
+    key: "marketing", label: "营销与增长", icon: "Ticket", modules: ["marketing", "group", "growth"], href: "/marketing",
+    match: ["/marketing", "/groups", "/growth"],
     children: [
       // 2026-08-06 合并：券的「发放/预算/核销效果」都是**同一行券上的动作与列**，
       // 拆三个菜单会让运营为了看一张券的效果在三页之间跳。四类活动同表（见页面注释）。
@@ -303,6 +316,22 @@ export const NAV: NavSection[] = [
        */
       { href: "/marketing?tab=promoCoupons", label: "券敞口", perm: "marketing:coupon:read", group: "敞口", matrix: "P-7.1", ready: true },
       { href: "/marketing?tab=promoActivities", label: "活动敞口", perm: "marketing:campaign:read", group: "敞口", matrix: "P-7.2", ready: true },
+    
+
+      // ── P-8 团购与求团 ──────────────────────────────────────────────────────
+      // 团模板审核与团监控是同一张列表的两种看法（筛状态即可），合并为一个叶子
+      { href: "/groups", label: "商家团", perm: "group:campaign:audit", group: "商家团", matrix: "P-8.1", ready: true },
+      { href: "/groups?tab=demands", label: "需求单池与指派", perm: "group:demand:read", group: "求团撮合", matrix: "P-8.2", ready: true },
+      { href: "/groups?tab=quotes", label: "改价留痕与毁约", perm: "group:demand:read", group: "求团撮合", matrix: "P-8.2", ready: true },
+    
+
+      // ── P-9 增长与归因（B1 未拍板，见矩阵 §九）──────────────────────────────
+      // 优先级/窗口期/冲突处置/新客口径都是同一张规则表上的字段，拆四个菜单
+      // 会让人以为它们能分别生效 —— 实际改任何一个都影响同一套归因。
+      { href: "/growth", label: "归因规则", perm: "growth:attribution:read", group: "归因引擎", matrix: "P-9.1", ready: true },
+      { href: "/growth?tab=traces", label: "归因链路审计", perm: "growth:attribution:read", group: "归因引擎", matrix: "P-9.1", ready: true },
+      { href: "/growth?tab=fission", label: "邀请有礼配置", perm: "growth:fission:update", group: "裂变活动", matrix: "P-9.2", ready: true },
+    
     ],
   },
 
@@ -312,7 +341,7 @@ export const NAV: NavSection[] = [
   // 「这个人是谁家的会员」「谁家的券会失控」。两者的权限域也不同
   // （member:* 与 marketing:*），挂在一起会让看会员的人顺带拿到改券的入口。
   {
-    key: "member", label: "会员与人档", icon: "UserCheck", module: "member", href: "/members",
+    key: "member", label: "会员与人档", icon: "UserCheck", modules: ["member"], href: "/members",
     children: [
       { href: "/members", label: "会员名单", perm: "member:member:read", group: "会员", matrix: "P-7.4", ready: true },
       { href: "/members?tab=persons", label: "人档", perm: "member:person:read", group: "会员", matrix: "P-7.4", ready: true },
@@ -320,32 +349,11 @@ export const NAV: NavSection[] = [
     ],
   },
 
-  // ── P-8 团购与求团 ──────────────────────────────────────────────────────
-  {
-    key: "group", label: "团购与求团", icon: "Users", module: "group", href: "/groups",
-    children: [
-      // 团模板审核与团监控是同一张列表的两种看法（筛状态即可），合并为一个叶子
-      { href: "/groups", label: "商家团", perm: "group:campaign:audit", group: "商家团", matrix: "P-8.1", ready: true },
-      { href: "/groups?tab=demands", label: "需求单池与指派", perm: "group:demand:read", group: "求团撮合", matrix: "P-8.2", ready: true },
-      { href: "/groups?tab=quotes", label: "改价留痕与毁约", perm: "group:demand:read", group: "求团撮合", matrix: "P-8.2", ready: true },
-    ],
-  },
 
-  // ── P-9 增长与归因（B1 未拍板，见矩阵 §九）──────────────────────────────
-  {
-    key: "growth", label: "增长与归因", icon: "TrendingUp", module: "growth", href: "/growth",
-    children: [
-      // 优先级/窗口期/冲突处置/新客口径都是同一张规则表上的字段，拆四个菜单
-      // 会让人以为它们能分别生效 —— 实际改任何一个都影响同一套归因。
-      { href: "/growth", label: "归因规则", perm: "growth:attribution:read", group: "归因引擎", matrix: "P-9.1", ready: true },
-      { href: "/growth?tab=traces", label: "归因链路审计", perm: "growth:attribution:read", group: "归因引擎", matrix: "P-9.1", ready: true },
-      { href: "/growth?tab=fission", label: "邀请有礼配置", perm: "growth:fission:update", group: "裂变活动", matrix: "P-9.2", ready: true },
-    ],
-  },
 
   // ── P-12 结算与资金 ─────────────────────────────────────────────────────
   {
-    key: "finance", label: "结算与资金", icon: "Wallet", module: "finance", href: "/finance",
+    key: "finance", label: "结算与资金", icon: "Wallet", modules: ["finance"], href: "/finance",
     children: [
       // 分账指令/重试/报备状态都是结算单**行上的动作与列**，不单独成页
       { href: "/finance", label: "结算单与分账", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
@@ -385,19 +393,28 @@ export const NAV: NavSection[] = [
 
   // ── P-13 评价治理 ───────────────────────────────────────────────────────
   {
-    key: "review", label: "评价治理", icon: "Star", module: "review", href: "/reviews",
+    key: "review", label: "内容与口碑", icon: "Star", modules: ["review", "content"], href: "/reviews",
+    match: ["/reviews", "/contents"],
     children: [
       { href: "/reviews", label: "评价审核", perm: "review:review:audit", group: "审核", matrix: "P-13.1", ready: true },
       { href: "/reviews?tab=appeals", label: "恶意差评申诉裁决", perm: "review:review:audit", group: "审核", matrix: "P-13.1", ready: true },
       // 刷评识别（13.1.5）并入审核队列的筛选项：发现刷评后要做的动作就在那条队列里，
       // 单独一页会变成"看得见但没法处置"的孤岛。
       { href: "/reviews?tab=score", label: "评分算法参数", perm: "review:score:update", group: "评分", matrix: "P-13.1", ready: true },
+    
+
+      // ── P-15 素材与内容 ─────────────────────────────────────────────────────
+      // 分发范围是素材行上的字段，不是另一张表：一份素材投给谁，和素材本身是一件事
+      { href: "/contents", label: "素材中心与分发", perm: "content:material:read", group: "素材", matrix: "P-15.1", ready: true },
+      { href: "/contents?tab=audit", label: "种草内容审核", perm: "content:material:audit", group: "内容", matrix: "P-15.2", phase: 2, ready: true },
+      { href: "/contents?tab=rank", label: "榜单与问答", perm: "content:material:update", group: "内容", matrix: "P-15.2", phase: 2, ready: true },
+    
     ],
   },
 
   // ── P-14 消息与客服 ─────────────────────────────────────────────────────
   {
-    key: "message", label: "消息与客服", icon: "MessageSquare", module: "message", href: "/messages",
+    key: "message", label: "消息与客服", icon: "MessageSquare", modules: ["message"], href: "/messages",
     children: [
       /*
        * 触达**按通道拆菜单**（2026-08-14，TDD-运营端触达中心 §3.1）。
@@ -425,7 +442,7 @@ export const NAV: NavSection[] = [
 
   // ── P-2 社区与网点 ──────────────────────────────────────────────────────
   {
-    key: "community", label: "社区与网点", icon: "MapPin", module: "community", href: "/communities",
+    key: "community", label: "社区与网点", icon: "MapPin", modules: ["community"], href: "/communities",
     // 2026-08-06 合并：原先按矩阵 L4 逐条铺了 6 个叶子，实现时收成 3 个。
     // 开城开关(2.1.2)、围栏(2.1.3)、启停迁移(2.2.2)、服务费费率(2.2.4) 都是**同一行数据上的
     // 字段与动作**，不是独立页面 —— 拆成菜单会让运营在两个页面之间来回找同一个自提点。
@@ -446,20 +463,10 @@ export const NAV: NavSection[] = [
     ],
   },
 
-  // ── P-15 素材与内容 ─────────────────────────────────────────────────────
-  {
-    key: "content", label: "素材与内容", icon: "Images", module: "content", href: "/contents",
-    children: [
-      // 分发范围是素材行上的字段，不是另一张表：一份素材投给谁，和素材本身是一件事
-      { href: "/contents", label: "素材中心与分发", perm: "content:material:read", group: "素材", matrix: "P-15.1", ready: true },
-      { href: "/contents?tab=audit", label: "种草内容审核", perm: "content:material:audit", group: "内容", matrix: "P-15.2", phase: 2, ready: true },
-      { href: "/contents?tab=rank", label: "榜单与问答", perm: "content:material:update", group: "内容", matrix: "P-15.2", phase: 2, ready: true },
-    ],
-  },
 
   // ── P-16.2 风控 ─────────────────────────────────────────────────────────
   {
-    key: "risk", label: "风控", icon: "ShieldAlert", module: "risk", href: "/risk",
+    key: "risk", label: "风控", icon: "ShieldAlert", modules: ["risk"], href: "/risk",
     children: [
       // 三类识别（刷单/异常裂变/恶意退款）同表用 type 筛：拆三个菜单会让
       // 「这个用户同时命中几类」看不出来，而那恰恰最该优先处理。
@@ -471,7 +478,8 @@ export const NAV: NavSection[] = [
 
   // ── P-1 账号与权限 ──────────────────────────────────────────────────────
   {
-    key: "iam", label: "员工与权限", icon: "UserCog", module: "iam", href: "/iam",
+    key: "iam", label: "平台管理", icon: "UserCog", modules: ["iam", "system"], href: "/iam",
+    match: ["/iam", "/jobs", "/system"],
     children: [
       // 数据域授权（1.1.3）是员工行上的动作，二次校验（1.1.5）是动作上的一层 ——
       // 两者都不单独成页：拆出去就会出现"改完角色忘了配数据域"的空档。
@@ -483,29 +491,24 @@ export const NAV: NavSection[] = [
       // 复用 iam:role:grant：能配权限的人才该动菜单结构，不为它新增一个码。
       { href: "/iam?tab=menu", label: "菜单顺序", perm: "iam:role:grant", group: "账号", matrix: "P-1.1", ready: true },
       { href: "/iam?tab=audit", label: "操作审计日志", perm: "iam:audit:read", group: "审计", matrix: "P-1.1", ready: true },
-    ],
-  },
+    
 
-  // ── P-17.1 定时任务（**独立成一个入口，不做成系统配置的一个 tab**）──────
-  //
-  // 系统配置那七个 tab 回答的是「平台怎么配」，而这一页回答的是「后台此刻在不在跑」——
-  // 一个是配置，一个是运行时监控。塞进那七个 tab 里，出事时没人会想到去那儿翻。
-  //
-  // perm 用 read 而不是 manage：叶子的 perm 决定能不能**看见入口**，
-  // 而「能看任务跑没跑」的人比「能停任务」的人多得多 ——
-  // 一个任务出事时，先来看的往往是被它影响到的那条业务线的人。
-  // 开关/改频率/立即执行由页面内部按 system:job:manage 显隐。
-  {
-    key: "jobs", label: "定时任务", icon: "Timer", module: "system", href: "/jobs", pinBottom: true,
-    children: [
-      { href: "/jobs", label: "任务与执行日志", perm: "system:job:read", group: "运行配置", matrix: "P-17.1", ready: true },
-    ],
-  },
+      // ── P-17.1 定时任务（**独立成一个入口，不做成系统配置的一个 tab**）──────
+      //
+      // 系统配置那七个 tab 回答的是「平台怎么配」，而这一页回答的是「后台此刻在不在跑」——
+      // 一个是配置，一个是运行时监控。塞进那七个 tab 里，出事时没人会想到去那儿翻。
+      //
+      // perm 用 read 而不是 manage：叶子的 perm 决定能不能**看见入口**，
+      // 而「能看任务跑没跑」的人比「能停任务」的人多得多 ——
+      // 一个任务出事时，先来看的往往是被它影响到的那条业务线的人。
+      // 开关/改频率/立即执行由页面内部按 system:job:manage 显隐。
+      // 组名用「定时任务」而不是「运行配置」：系统配置那边已经有一个同名组，
+      // 而 groupedLeaves 会把同名组并成一段 —— 并进去之后「任务与执行日志」
+      // 会和市场/货币、开关灰度挤在一个标题下，它是监控页不是配置页
+      { href: "/jobs", label: "任务与执行日志", perm: "system:job:read", group: "定时任务", matrix: "P-17.1", ready: true },
+    
 
-  // ── P-17 系统配置（固定在 Rail 底部）────────────────────────────────────
-  {
-    key: "system", label: "系统配置", icon: "Settings", module: "system", href: "/system", pinBottom: true,
-    children: [
+      // ── P-17 系统配置（固定在 Rail 底部）────────────────────────────────────
       // 皮肤/回落语言/规则文案都是"下发给 C 端的东西"，放同一页；市场与开关各自成 tab
       { href: "/system", label: "外观与规则文案", perm: "system:theme:update", group: "外观与语言", matrix: "P-17.1", ready: true },
       { href: "/system?tab=market", label: "市场/货币/汇率", perm: "system:param:read", group: "外观与语言", matrix: "P-17.1", ready: true },
@@ -522,8 +525,11 @@ export const NAV: NavSection[] = [
       { href: "/system?tab=industry", label: "行业与小微白名单", perm: "system:param:read", group: "经营范围", matrix: "P-17.1", ready: true },
       { href: "/system?tab=authCode", label: "经营授权码", perm: "system:param:read", group: "经营范围", matrix: "P-17.1", ready: true },
       { href: "/system?tab=scope", label: "经营范围开关", perm: "system:param:read", group: "经营范围", matrix: "P-17.1", ready: true },
+    
     ],
   },
+
+
 ];
 
 // ── 纯函数 helper（无 React 依赖，可单测） ──────────────────────────────
@@ -558,7 +564,7 @@ export function visibleSections(perms: string[] | undefined,
     return nav.filter((s) => !(s.children?.length)
         || s.children.some((l) => serverHrefs.has(l.href)));
   }
-  return nav.filter((s) => canModule(perms, s.module));
+  return nav.filter((s) => s.modules.some((m) => canModule(perms, m)));
 }
 
 /** L3 可见性 = leaf.perm ? can() : 跟随 section。phase-locked 叶子保留（灰显）。 */

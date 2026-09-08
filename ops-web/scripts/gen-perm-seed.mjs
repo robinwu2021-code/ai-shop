@@ -17,6 +17,17 @@ import { readFileSync, writeFileSync } from 'node:fs';
  * 那时它会安静地生成一份错的种子。
  */
 const AT = (rel) => new URL(rel, import.meta.url);
+
+/** 冻结的 href → point_code。首次生成这张表时它还不存在，用空表退化成纯派生。 */
+const FROZEN = (() => {
+  try {
+    const src = readFileSync(AT('../lib/point-codes.ts'), 'utf8');
+    const m = {};
+    for (const x of src.matchAll(/^\s*"((?:[^"\\]|\\.)*)":\s*"([^"]+)"/gm))
+      m[x[1].replace(/\\t/g, '\t')] = x[2];
+    return m;
+  } catch { return {}; }
+})();
 const nav = readFileSync(AT('../lib/nav.ts'), 'utf8');
 const pmSrc = readFileSync(AT('../lib/perm-map.ts'), 'utf8');
 const permsJava = readFileSync(
@@ -39,7 +50,38 @@ const permsJava = readFileSync(
  *   /system?tab=authCode → OPS_SYSTEM__TAB_AUTHCODE
  */
 const POINT_SEP = '__';
-export function pointCodeOf(functionCode, href) {
+
+/**
+ * **冻结表优先。**
+ *
+ * href 派生解决了「插入叶子让编号右移」，但没解决**搬家**：派生源里还留着一个会变的
+ * 东西 —— section key（`function_code = OPS_<KEY>`）。把「门店主页」并进「商家治理」，
+ * `OPS_STORE__TAB_TEMPLATE` 就变成 `OPS_MERCHANT__TAB_TEMPLATE`，
+ * 而 `sys_role_point` 存的正是 point_code：既有授权要么静默失效，
+ * 要么指向一个恰好同名的别的功能点。运营自建角色同样受影响，且没有任何东西会发现。
+ *
+ * 所以 2026-09-09 把已有的 point_code 一次性冻进 `lib/point-codes.ts`：
+ * 老叶子按表取，新叶子仍按 href 派生并写回表（`nav.test.ts` 双向守着）。
+ * 从此菜单怎么搬都不影响授权。
+ */
+export function pointCodeOf(functionCode, href, frozen = FROZEN) {
+  /*
+   * 查两次，顺序很重要：
+   *
+   * 1. `functionCode\thref` —— 只给**同一个 href 挂在两个 section 下**的那种。
+   *    `/finance?tab=refund-back` 同时在售后治理与结算与资金里，库里本就是两个功能点，
+   *    只按 href 查会把两行合成一个码，直接撞 sys_function_point 的主键。
+   * 2. `href` —— 绝大多数叶子走这条。**它必须与 functionCode 无关**：
+   *    冻结的全部意义就是「菜单怎么搬，码都不变」，而 functionCode = OPS_<SECTION_KEY>,
+   *    section 一合它就变了。第一版只用 ① 做键，结果合并后 33 个码全部漂掉 ——
+   *    键本身被它要防的那件事动到了。
+   */
+  const hit = frozen?.[`${functionCode}\t${href}`] ?? frozen?.[href];
+  if (hit) return hit;
+  return derivePointCode(functionCode, href);
+}
+
+export function derivePointCode(functionCode, href) {
   const [, qs] = href.split('?');
   const tab = new URLSearchParams(qs).get('tab');
   const view = new URLSearchParams(qs).get('view');
@@ -272,7 +314,41 @@ function renderMarkdown(sql) {
 }
 
 const args = process.argv.slice(2);
-if (args.includes('--markdown') || args.includes('--doc')) {
+if (args.includes('--emit-point-codes')) {
+  /*
+   * 生成 `lib/point-codes.ts`。**只在两种时候跑**：
+   *   · 第一次冻结（2026-09-09）
+   *   · 新增叶子之后补登记（老条目原样保留，不重算）
+   * 平时不跑 —— 它的价值全在「不变」。
+   */
+  const lines = [];
+  lines.push('// ⚠️ 由 `node scripts/gen-perm-seed.mjs --emit-point-codes` 生成，**只增不改**。');
+  lines.push('//');
+  lines.push('// 这是 `function_code + href` → point_code 的**冻结表**（键里的分隔符是制表符）。');
+  lines.push('// 不按 href 单独做键：跨 section 深链会让同一个 href 出现在两个 function 下，');
+  lines.push('// 库里本就是两个功能点，合成一个会撞 sys_function_point 的主键。');
+  lines.push('// `sys_role_point` 存的就是 point_code，');
+  lines.push('// 改动其中任何一行都会让既有角色授权（含运营自建角色）指向别的功能点 ——');
+  lines.push('// 没有报错，而且是放宽方向。菜单怎么合并、怎么搬家，这张表都不动。');
+  lines.push('//');
+  lines.push('// 新增叶子：跑一次生成器，它会按 href 派生出新码并追加在末尾。');
+  lines.push('// 删除叶子：**先确认库里没有指向它的授权**，再从表里删。');
+  lines.push('export const POINT_CODES: Record<string, string> = {');
+  const seen = {};
+  for (const s2 of secs) for (const l of s2.leaves) seen[l.href] = (seen[l.href] || 0) + 1;
+  for (const s2 of secs) {
+    const fc = `OPS_${s2.key.toUpperCase()}`;
+    for (const l of s2.leaves) {
+      // href 唯一 → 只按 href 做键，这样 section 合并/改名都不影响它
+      const key = seen[l.href] > 1 ? `${fc}\t${l.href}` : l.href;
+      lines.push(`  ${JSON.stringify(key)}: ${JSON.stringify(derivePointCode(fc, l.href))},`);
+    }
+  }
+  lines.push('};');
+  lines.push('');
+  writeFileSync(AT('../lib/point-codes.ts'), lines.join('\n'));
+  console.error(`已写出 ${Object.values(secs).reduce((n, s2) => n + s2.leaves.length, 0)} 条 point_code`);
+} else if (args.includes('--markdown') || args.includes('--doc')) {
   const md = renderMarkdown(out);
   if (args.includes('--doc')) {
     const DOC = AT('../../docs/technical/design/权限配置落库-数据库设计与数据清单.md');
