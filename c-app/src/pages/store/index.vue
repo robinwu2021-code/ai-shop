@@ -83,6 +83,11 @@ async function load() {
   ]);
   data.value = home;
   frequent.value = freq;
+  // 标题给店名。**这一页此前一个标题都没有** —— `pages.json` 里
+  // `navigationBarTitleText` 是空的、没有 `title-key`、也没有动态设置，
+  // 于是顾客扫码进店看到的是应用名「社区好物」，而不是这家店叫什么。
+  // 同类的 `merchant` 页一直是动态设的，只有这一页漏了（2026-09-08 逐页 review 查出）。
+  uni.setNavigationBarTitle({ title: home.merchant.name });
 }
 
 const fromParam = ref("");
