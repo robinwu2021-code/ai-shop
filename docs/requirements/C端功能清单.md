@@ -96,15 +96,25 @@
 
 > **订单状态机**（非法迁移直接抛错，mock 与后端同一张表）：
 > ```
-> WAIT_PAY  → PAID | CANCELLED
-> PAID      → PREPARING | COMPLETED | REFUNDING | CANCELLED
-> PREPARING → ARRIVED | SHIPPED | REFUNDING
-> ARRIVED   → COMPLETED | REFUNDING
-> SHIPPED   → COMPLETED | REFUNDING
-> COMPLETED → REFUNDING
-> REFUNDING → REFUNDED | COMPLETED
+> WAIT_PAY         → PAID | CANCELLED
+> WAIT_OFFLINE_PAY → PAID | CANCELLED
+> PAID             → FULFILLING | COMPLETED | REFUNDED | CANCELLED
+> FULFILLING       → COMPLETED | REFUNDED
+> COMPLETED        → REFUNDED
 > REFUNDED / CANCELLED → 终态
 > ```
+>
+> ⚠️ **2026-09-09 更正**：此前这张表写的是
+> `PAID → PREPARING → ARRIVED | SHIPPED`，四个词都不在 `OrderStatus` 里。
+> ① `PREPARING`（备货中）是 mock 早期多出来的一步，后端付款后直接 `PAID`；
+> ② `ARRIVED`/`SHIPPED` 把**怎么送**编进了状态名 —— 每加一种履约方式就要加一个状态，
+> 现已合并为单一的 `FULFILLING`，送法由 `fulfillment` 表达
+> （`orderView(status, fulfillment, info)`，见 `strategies/order-view.ts`）；
+> ③ `REFUNDING` 是**售后单**的状态不是订单的 —— 一个已完成的订单可以同时挂着处理中的
+> 售后单，做成订单状态就强迫二选一。订单只在退款到账时迁到 `REFUNDED`。
+>
+> 真源：`packages/shared/src/mock/db.ts` 的 `TRANSITIONS`（线级）。
+> **别拿 `OrderStateMachine` 比** —— 那是库级的主单/子单两台机，词表本就不同。
 
 ### C-FF 履约
 

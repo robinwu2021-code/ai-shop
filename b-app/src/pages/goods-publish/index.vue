@@ -44,6 +44,10 @@ const canPublish = computed(() =>
   && preview.value.changes.length > 0
   && preview.value.blocked.length === 0);
 
+/** 这次没取到。**与「这儿本来就没有」是两件事** —— 整页内容都挂在拉来的数据后面，
+ *  拉不到就是一个只有标题栏的空白页。交给 `sh-scaffold` 的 `failed` 说出来 */
+const failed = ref(false);
+
 async function load() {
   loading.value = true;
   try {
@@ -54,8 +58,10 @@ async function load() {
     ]);
     preview.value = p;
     goodsTitle.value = g.title;
+    failed.value = false;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
+    failed.value = true;
   } finally {
     loading.value = false;
   }
@@ -134,7 +140,10 @@ async function discard() {
 
 <template>
   <!-- 发布改的是线上商品 —— 与编辑同一道门（biz:goods），店员进不来 -->
-  <sh-scaffold title-key="goods.publishTitle" :denied="!merchant.can('biz:goods')">
+  <sh-scaffold title-key="goods.publishTitle" :denied="!merchant.can('biz:goods')"
+    :failed="failed"
+    @retry="load"
+  >
     <view v-if="loading" class="sh-card">
       <text class="txt-sub">{{ $t("common.loading") }}</text>
     </view>

@@ -21,9 +21,19 @@ const ownedPct = computed(() =>
   stats.value ? Math.round(stats.value.ownedTrafficRate * 100) : 0,
 );
 
+/** 这次没取到。**与「这儿本来就没有」是两件事** —— 整页内容都挂在拉来的数据后面，
+ *  拉不到就是一个只有标题栏的空白页。交给 `sh-scaffold` 的 `failed` 说出来 */
+const failed = ref(false);
+
 async function load() {
-  stats.value = await api.mStats();
-  // 门店数决定要不要给跨店入口 —— 深链进来时 stores 还是空的
+  try {
+    stats.value = await api.mStats();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  // 门店数决定要不要给跨店入口 —— 深链进来时 stores 还是空的。
+  // 它自己兜底：跨店入口出不来是少一个口子，而上面那份数据是这一页的全部
   await merchant.ensureStores().catch(() => null);
 }
 
@@ -42,7 +52,10 @@ onShow(load);
 
 <template>
   <!-- 经营数据属于客户资产（`biz:customer`）；「我的」页的入口已判过，这里给深链兜底 -->
-  <sh-scaffold title-key="stats.title" :denied="!merchant.can('biz:customer')">
+  <sh-scaffold title-key="stats.title" :denied="!merchant.can('biz:customer')"
+    :failed="failed"
+    @retry="load"
+  >
     <!-- 这一页整页走 mStats，与工作台是同一个数 —— 不标出来，切了店会以为数字自己变了 -->
     <biz-store-tag readonly></biz-store-tag>
     <template v-if="stats">

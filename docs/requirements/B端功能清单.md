@@ -144,7 +144,7 @@
 | B-5.1 | 订单列表 | 全部/待发货/已发货/待核销/已完成/售后 | `mOrderList` |
 | B-5.2 | 行内状态标 | 显示**订单自己的状态**并按「要动手的用主色、售后用警示色、终态中性」上色 | — |
 | B-5.3 | 订单详情 | 买家、履约方式、金额、客流来源 | `mOrderDetail` |
-| B-5.4 | 发货 | 填运单号，`PREPARING → SHIPPED` | `mShip` |
+| B-5.4 | 发货 | 填运单号，`PAID → FULFILLING`（送法记在 `fulfillment`，不占状态名） | `mShip` |
 | B-5.5 | 标记送达 | 自送场景，`SHIPPED → COMPLETED` | `mDelivered` |
 | B-5.6 | **只看本店的单** | 拆单后一单只属一家，按 `merchantNo` 精确匹配（不是「含即算」） | `mOrderList` |
 
@@ -155,10 +155,10 @@
 | B-6.0 | **履约总览** | 承接方进来最关心的三个数：待核销 / 今日到货 / 累计服务费。**都从同一份订单数据算**，不另存计数器——否则迟早「总览说 3 单、点进去只有 2 单」 | `mPickupOverview` |
 | B-6.1 | 待到货订单 | | `mPickupOrders` |
 | B-6.2 | 分拣单 | 按商品聚合（分货用）/ 按用户聚合（装袋用）两种视图 | `mPickingList` |
-| B-6.3 | 到货确认 | 批量标记到货并通知邻居，`PREPARING → ARRIVED` | `mMarkArrived` |
+| B-6.3 | 到货确认 | 批量标记到货并通知邻居，`PAID → FULFILLING` | `mMarkArrived` |
 | B-6.4 | 核销 | 输码或扫码。**校验三件事**：码有效、未核销过、**这单属于本自提点** | `mVerify` |
 | B-6.4b | **批量核销** | 连续扫多张、最后一次提交。**逐条尝试、失败逐条回报**，不整批回滚——一张废码不该让另外四单白扫，而「3 成功 2 失败」这种汇总店主还得自己找是哪两单 | `mVerifyBatch` |
-| B-6.5 | 核销即完成 | `PREPARING` 的单核销时先补 `ARRIVED` 再转 `COMPLETED`，不跳状态 | `mVerify` |
+| B-6.5 | 核销即完成 | `PAID` 的单核销时先补 `FULFILLING` 再转 `COMPLETED`，不跳状态 | `mVerify` |
 | B-6.6 | 破损/短少上报 | **只留痕并通知用户，不自动退款**——责任归属未定，自动退等于默认平台兜底 | `mReportShortage` |
 | B-6.7 | 分拣单打印/导出 | ⬜ 到货当日高频，手机上看着分货容易串 | — |
 | B-6.8 | 配送规则 | 起送价、配送费、免配送门槛、覆盖范围 | `mDeliveryRule` `mSaveDeliveryRule` |

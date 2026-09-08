@@ -29,9 +29,43 @@ const props = withDefaults(
     denied?: boolean;
     /** 无权时显示的话。留空用通用文案 */
     deniedText?: string;
+    /**
+     * 这次没取到：整页替换成「没能加载出来 + 重试」，**不渲染 slot**。
+     *
+     * 与上面 `denied` 是同一类事的两个面。那条注释说的是
+     * 「把『不给看』渲染成『没有』，比报错更糟 —— 它不像故障，像事实」；
+     * 这一条说的是**把『没取到』渲染成『没有』**。
+     *
+     * 为什么收在外壳上：详情页与看板页的整页内容都挂在
+     * `<template v-if="sum">` 这类守卫后面，拉不到就是**一个只有标题栏的空白页**
+     * —— 不解释、不能重试，用户以为应用坏了。而这类页面存在的全部理由就是
+     * 那份拉来的数据，拉不到该说什么没有第二种答案，所以不必让 13 个页面各写一遍。
+     *
+     * 呈现直接借 `sh-empty` 的出错态：文案（`common.loadFailed` / `loadFailedTip`）
+     * 与那颗重试按钮都在那儿，再画一份只会两处漂。
+     */
+    failed?: boolean;
+    /** 出错那一行的文案。留空用通用的「没能加载出来」 */
+    failedText?: string;
+    /**
+     * 还不知道：**渲染外壳但不渲染 slot**。
+     *
+     * 详情页的正文全靠 `goods.title` 这类解引用，所以它们写成
+     * `<sh-scaffold v-if="goods">` —— 于是首屏那一瞬间与失败之后，
+     * **连外壳都不渲染**：没有导航栏、没有一个字，退不回去，也不知道发生了什么。
+     * 把守卫挪到这里，外壳照常在，正文等数据到了再出。
+     *
+     * 与 `sh-empty` 的 `pending` 是同一档：不转圈（那一档留给骨架屏，眼下不做），
+     * 只是不把「还不知道」画成「确定没有」。
+     */
+    pending?: boolean;
   }>(),
-  { padded: true, titleKey: "", tab: "", denied: false, deniedText: "" },
+  { padded: true, titleKey: "", tab: "", denied: false, deniedText: "",
+    failed: false, failedText: "", pending: false },
 );
+
+// 重试由调用点决定重新拉什么 —— 外壳只负责那颗按钮长什么样、摆在哪
+const emit = defineEmits<{ retry: [] }>();
 
 const { t } = useI18n();
 const theme = useThemeStore();
@@ -120,6 +154,13 @@ watch(() => props.titleKey, applyTitle);
         <text class="txt-title sh-denied__t">{{ deniedText || $t("common.noPermTitle") }}</text>
         <text class="txt-sub sh-denied__d">{{ $t("common.noPermHint") }}</text>
       </view>
+      <!-- 顺序要紧：无权比没取到更根本 —— 没权限的人重试一万次也还是没权限 -->
+      <view v-else-if="failed" class="sh-failed">
+        <sh-empty bare failed :failed-text="failedText" @retry="emit('retry')"></sh-empty>
+      </view>
+      <!-- pending：外壳在，正文不在。**顺序在 failed 之后** —— 拉失败时
+           `goods` 也还是空的，两个都为真时要看见的是出错，不是一片空白 -->
+      <view v-else-if="pending"></view>
       <slot v-else />
     </view>
     <sh-tabbar v-if="tab" :active="tab"></sh-tabbar>
@@ -264,5 +305,10 @@ watch(() => props.titleKey, applyTitle);
 .sh-denied__d {
   margin-top: 16rpx;
   color: var(--sh-sub);
+}
+/* 与 `.sh-denied` 站在同一个高度：两者都是「整页替换」，位置不一致会让人
+   以为是两种不同性质的东西。`sh-empty` 自带 72rpx 内边距，这里补到 160。 */
+.sh-failed {
+  padding-top: 88rpx;
 }
 </style>

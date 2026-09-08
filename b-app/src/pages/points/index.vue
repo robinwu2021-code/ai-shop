@@ -35,8 +35,17 @@ const lockedReason = computed(() => {
   return account.value.disabledReason || "";
 });
 
+/** 这次没取到。**与「这儿本来就没有」是两件事** —— 整页内容都挂在拉来的数据后面，
+ *  拉不到就是一个只有标题栏的空白页。交给 `sh-scaffold` 的 `failed` 说出来 */
+const failed = ref(false);
+
 async function load() {
-  account.value = await api.mPointsAccount();
+  try {
+    account.value = await api.mPointsAccount();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
 }
 
 async function toggle() {
@@ -62,7 +71,10 @@ onShow(() => {
 </script>
 
 <template>
-  <sh-scaffold title-key="points.title" :denied="!canEdit">
+  <sh-scaffold title-key="points.title" :denied="!canEdit"
+    :failed="failed"
+    @retry="load"
+  >
     <template v-if="account">
       <view class="sh-card">
         <text class="sh-muted">{{ $t("points.periodExpense") }}</text>

@@ -153,8 +153,16 @@ const times = computed(
   () => goods.value?.slots?.find((s) => s.date === slotDate.value)?.times ?? [],
 );
 
+/** 这次没取到。**与「这个东西不存在」是两件事** —— 整页都挂在 `goods` 后面，
+ *  拉不到连外壳都不渲染，是一整块白屏：没有导航栏、没有一个字、退不回去 */
+const failed = ref(false);
+/** 重试要把单号带回去 —— `@retry` 不带参数 */
+const currentNo = ref("");
+
 async function load(goodsNo: string) {
-  const g = await api.goodsDetail(goodsNo);
+  currentNo.value = goodsNo;
+  try {
+    const g = await api.goodsDetail(goodsNo);
   goods.value = g;
   // 默认选中第一个有货的 SKU 的组合
   const first = g.skus.find((s) => s.stock > 0) ?? g.skus[0];
@@ -162,7 +170,11 @@ async function load(goodsNo: string) {
   slotDate.value = g.slots?.[0]?.date ?? "";
   uni.setNavigationBarTitle({ title: g.title });
   measureCartAnchor();
-  reviews.value = await api.reviewList({ goodsNo });
+    reviews.value = await api.reviewList({ goodsNo });
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
 }
 
 function openMerchant() {
@@ -285,282 +297,293 @@ onShareAppMessage(() =>
 </script>
 
 <template>
-  <sh-scaffold v-if="goods">
-    <!-- 主视觉 -->
-    <!--
-      主视觉。**此前只画 cover 一张** —— `goods.images` 后端一直在发、
-      商家在 B 端也一直传得进去，而这个页面里一次都没引用过：
-      店主传了五张详情图，买家一张也看不到，两侧都不报错。
+  <sh-scaffold
+    :pending="!goods"
+    :failed="failed"
+    @retry="() => load(currentNo)"
+  >
+    <!-- 正文全靠 `goods` 解引用，所以要一层 `v-if` 让 vue-tsc 收窄类型。
+         **不写在 `<sh-scaffold>` 上**：写在那儿的话，`goods` 为空时连外壳都不渲染 ——
+         没有导航栏、没有一个字，退不回去。守卫留在这里，外壳照常在。 -->
+    <template v-if="goods">
+        <!-- 主视觉 -->
+        <!--
+          主视觉。**此前只画 cover 一张** —— `goods.images` 后端一直在发、
+          商家在 B 端也一直传得进去，而这个页面里一次都没引用过：
+          店主传了五张详情图，买家一张也看不到，两侧都不报错。
 
-      只有一张时不套 swiper：一个滑不动的轮播还带着一个指示点，
-      看着像坏了。
-    -->
-    <swiper v-if="gallery.length > 1" class="hero sh-center" :indicator-dots="true" circular>
-      <swiper-item v-for="(img, i) in gallery" :key="img + i" class="hero__item sh-center">
-        <sh-cover class="hero__emoji" :src="img"></sh-cover>
-      </swiper-item>
-    </swiper>
-    <view v-else class="hero sh-center">
-      <sh-cover class="hero__emoji" :src="goods.cover"></sh-cover>
-    </view>
-    <view v-if="off" class="hero__wrap">
-      <text class="txt-caption hero__off sh-num">-{{ off }}%</text>
-    </view>
+          只有一张时不套 swiper：一个滑不动的轮播还带着一个指示点，
+          看着像坏了。
+        -->
+        <swiper v-if="gallery.length > 1" class="hero sh-center" :indicator-dots="true" circular>
+          <swiper-item v-for="(img, i) in gallery" :key="img + i" class="hero__item sh-center">
+            <sh-cover class="hero__emoji" :src="img"></sh-cover>
+          </swiper-item>
+        </swiper>
+        <view v-else class="hero sh-center">
+          <sh-cover class="hero__emoji" :src="goods.cover"></sh-cover>
+        </view>
+        <view v-if="off" class="hero__wrap">
+          <text class="txt-caption hero__off sh-num">-{{ off }}%</text>
+        </view>
 
-    <!-- 标题与价格 -->
-    <view class="sh-card block">
-      <text class="txt-display title">{{ goods.title }}</text>
-      <text class="sh-muted sub">{{ goods.subtitle }}</text>
+        <!-- 标题与价格 -->
+        <view class="sh-card block">
+          <text class="txt-display title">{{ goods.title }}</text>
+          <text class="sh-muted sub">{{ goods.subtitle }}</text>
 
-      <view class="price sh-row sh-row--baseline">
-        <text class="txt-hero sh-num sh-center">{{ money(sku?.price ?? goods.price) }}</text>
-        <text v-if="sku?.originPrice" class="sh-was sh-num">
-          {{ money(sku.originPrice) }}
-        </text>
-      </view>
+          <view class="price sh-row sh-row--baseline">
+            <text class="txt-hero sh-num sh-center">{{ money(sku?.price ?? goods.price) }}</text>
+            <text v-if="sku?.originPrice" class="sh-was sh-num">
+              {{ money(sku.originPrice) }}
+            </text>
+          </view>
 
-      <view class="chips sh-wrap">
-        <text v-if="isFresh && !cutoffPassed" class="sh-chip sh-chip--warning">
-          {{ $t("home.cutoffIn", { t: cutoffText }) }}
-        </text>
-        <text v-if="cutoffPassed" class="sh-chip sh-chip--danger">
-          {{ $t("goods.cutoffPassed") }}
-        </text>
-        <text v-if="isService && goods.durationMin" class="sh-chip sh-chip--primary">
-          {{ $t("goods.duration", { n: goods.durationMin }) }}
-        </text>
-        <text v-if="isVirtual" class="sh-chip sh-chip--primary">
-          {{ $t("goods.virtualTag") }}
-        </text>
-        <text v-if="isCard && goods.card?.timesTotal" class="sh-chip sh-chip--primary">
-          {{ $t("goods.cardTimes", { n: goods.card.timesTotal }) }}
-        </text>
-        <text v-if="isCard && goods.card?.faceValueMinor" class="sh-chip sh-chip--primary">
-          {{ $t("goods.cardValue", { v: money(goods.card.faceValueMinor) }) }}
-        </text>
-        <text v-if="promo" class="sh-chip sh-chip--danger">
-          {{ $t("promo.buyNGetM", promoLabelArgs(promo)) }}
-        </text>
-        <text v-if="FEATURES.points && goods.points" class="sh-chip sh-chip--primary sh-num">
-          {{ $t("points.earnChip", { n: goods.points }) }}
-        </text>
-        <text class="sh-chip sh-num">{{ $t("common.sold", { n: goods.sales }) }}</text>
-      </view>
-    </view>
-
-    <!-- 商家信息：商品与服务都要展示，点进商家详情 -->
-    <view class="sh-card block">
-      <biz-merchant-bar :merchant="goods.merchant" @tap="openMerchant"></biz-merchant-bar>
-    </view>
-
-    <!-- 规格矩阵：每个维度一行，不可组合的取值置灰 -->
-    <view class="sh-card block">
-      <view v-for="(group, gi) in goods.specGroups" :key="group.name" class="specgroup">
-        <text class="sh-muted">{{ group.name }}</text>
-        <view class="specs sh-wrap">
-          <view
-            v-for="opt in group.options"
-            :key="opt"
-            class="sh-seg"
-            :class="{
-              'sh-seg--on': chosen[gi] === opt,
-              'is-off': !optionState(gi, opt).inStock,
-            }"
-            @tap="choose(gi, opt)"
-          >
-            <text class="txt-bold">{{ opt }}</text>
+          <view class="chips sh-wrap">
+            <text v-if="isFresh && !cutoffPassed" class="sh-chip sh-chip--warning">
+              {{ $t("home.cutoffIn", { t: cutoffText }) }}
+            </text>
+            <text v-if="cutoffPassed" class="sh-chip sh-chip--danger">
+              {{ $t("goods.cutoffPassed") }}
+            </text>
+            <text v-if="isService && goods.durationMin" class="sh-chip sh-chip--primary">
+              {{ $t("goods.duration", { n: goods.durationMin }) }}
+            </text>
+            <text v-if="isVirtual" class="sh-chip sh-chip--primary">
+              {{ $t("goods.virtualTag") }}
+            </text>
+            <text v-if="isCard && goods.card?.timesTotal" class="sh-chip sh-chip--primary">
+              {{ $t("goods.cardTimes", { n: goods.card.timesTotal }) }}
+            </text>
+            <text v-if="isCard && goods.card?.faceValueMinor" class="sh-chip sh-chip--primary">
+              {{ $t("goods.cardValue", { v: money(goods.card.faceValueMinor) }) }}
+            </text>
+            <text v-if="promo" class="sh-chip sh-chip--danger">
+              {{ $t("promo.buyNGetM", promoLabelArgs(promo)) }}
+            </text>
+            <text v-if="FEATURES.points && goods.points" class="sh-chip sh-chip--primary sh-num">
+              {{ $t("points.earnChip", { n: goods.points }) }}
+            </text>
+            <text class="sh-chip sh-num">{{ $t("common.sold", { n: goods.sales }) }}</text>
           </view>
         </view>
-      </view>
 
-      <!-- 买赠：当前数量能拿几件赠品，实时算给用户看 -->
-      <view v-if="promo" class="sh-notice sh-notice--danger giftline">
-        <text class="txt-caption giftline__text is-danger">
-          {{ giftQty > 0
-            ? $t("promo.willGift", { n: giftQty })
-            : $t("promo.needMore", { n: promo.buyN - (qty % promo.buyN) }) }}
-        </text>
-      </view>
-
-      <view class="qty sh-row sh-row--between">
-        <text class="sh-muted sh-num">{{ $t("goods.stock", { n: sku?.stock ?? 0 }) }}</text>
-        <sh-stepper v-model="qty" :max="maxQty"></sh-stepper>
-      </view>
-    </view>
-
-    <!-- 预约：日期 + 时刻 -->
-    <view v-if="needAppointment" class="sh-card block">
-      <text class="sh-muted">{{ $t("goods.pickDate") }}</text>
-      <scroll-view class="dates" scroll-x>
-        <view
-          v-for="s in goods.slots"
-          :key="s.date"
-          class="sh-seg date"
-          :class="{ 'sh-seg--on': slotDate === s.date }"
-          @tap="((slotDate = s.date), (slotTime = ''))"
-        >
-          <text class="txt-bold sh-num">{{ s.date.slice(5) }}</text>
+        <!-- 商家信息：商品与服务都要展示，点进商家详情 -->
+        <view class="sh-card block">
+          <biz-merchant-bar :merchant="goods.merchant" @tap="openMerchant"></biz-merchant-bar>
         </view>
-      </scroll-view>
 
-      <text class="sh-muted times-label sh-wrap">{{ $t("goods.pickTime") }}</text>
-      <view class="times sh-wrap">
-        <view
-          v-for="tm in times"
-          :key="tm.time"
-          class="sh-seg time"
-          :class="{ 'sh-seg--on': slotTime === tm.time, 'sh-seg--off': tm.left <= 0 }"
-          @tap="tm.left > 0 && (slotTime = tm.time)"
-        >
-          <text class="txt-bold time__t sh-num">{{ tm.time }}</text>
-          <text class="txt-caption time__left">{{ $t("goods.slotLeft", { n: tm.left }) }}</text>
+        <!-- 规格矩阵：每个维度一行，不可组合的取值置灰 -->
+        <view class="sh-card block">
+          <view v-for="(group, gi) in goods.specGroups" :key="group.name" class="specgroup">
+            <text class="sh-muted">{{ group.name }}</text>
+            <view class="specs sh-wrap">
+              <view
+                v-for="opt in group.options"
+                :key="opt"
+                class="sh-seg"
+                :class="{
+                  'sh-seg--on': chosen[gi] === opt,
+                  'is-off': !optionState(gi, opt).inStock,
+                }"
+                @tap="choose(gi, opt)"
+              >
+                <text class="txt-bold">{{ opt }}</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 买赠：当前数量能拿几件赠品，实时算给用户看 -->
+          <view v-if="promo" class="sh-notice sh-notice--danger giftline">
+            <text class="txt-caption giftline__text is-danger">
+              {{ giftQty > 0
+                ? $t("promo.willGift", { n: giftQty })
+                : $t("promo.needMore", { n: promo.buyN - (qty % promo.buyN) }) }}
+            </text>
+          </view>
+
+          <view class="qty sh-row sh-row--between">
+            <text class="sh-muted sh-num">{{ $t("goods.stock", { n: sku?.stock ?? 0 }) }}</text>
+            <sh-stepper v-model="qty" :max="maxQty"></sh-stepper>
+          </view>
         </view>
-      </view>
 
-      <view class="sh-notice notice">
-        <text class="txt-caption notice__text">
-          {{ $t("goods.changeRule", { n: TRADE_RULES.appointmentChangeBeforeHours }) }}
-        </text>
-      </view>
-    </view>
+        <!-- 预约：日期 + 时刻 -->
+        <view v-if="needAppointment" class="sh-card block">
+          <text class="sh-muted">{{ $t("goods.pickDate") }}</text>
+          <scroll-view class="dates" scroll-x>
+            <view
+              v-for="s in goods.slots"
+              :key="s.date"
+              class="sh-seg date"
+              :class="{ 'sh-seg--on': slotDate === s.date }"
+              @tap="((slotDate = s.date), (slotTime = ''))"
+            >
+              <text class="txt-bold sh-num">{{ s.date.slice(5) }}</text>
+            </view>
+          </scroll-view>
 
-    <!-- 事实区 -->
-    <view class="sh-card block">
-      <view class="fact sh-row sh-row--between sh-row--top">
-        <text class="txt-sub fact__label">{{ $t("goods.fulfillment") }}</text>
-        <text class="txt-sub fact__value">
-          {{ goods.fulfillments.map((x) => $t(`fulfillment.${x}`)).join(" · ") }}
-        </text>
-      </view>
-      <view v-if="isFresh && goods.arrivalDesc" class="fact sh-row sh-row--between sh-row--top">
-        <text class="txt-sub fact__label">{{ $t("goods.arrival") }}</text>
-        <text class="txt-sub fact__value">{{ goods.arrivalDesc }}</text>
-      </view>
-      <!--
-        **商品参数**（产地 / 保质期 / 材质…）。商家在建品页填的就是这些。
-        没有这一段的话，他填了买家看不见 —— 等于白填，而他不会知道。
+          <text class="sh-muted times-label sh-wrap">{{ $t("goods.pickTime") }}</text>
+          <view class="times sh-wrap">
+            <view
+              v-for="tm in times"
+              :key="tm.time"
+              class="sh-seg time"
+              :class="{ 'sh-seg--on': slotTime === tm.time, 'sh-seg--off': tm.left <= 0 }"
+              @tap="tm.left > 0 && (slotTime = tm.time)"
+            >
+              <text class="txt-bold time__t sh-num">{{ tm.time }}</text>
+              <text class="txt-caption time__left">{{ $t("goods.slotLeft", { n: tm.left }) }}</text>
+            </view>
+          </view>
 
-        <p>接在既有的「事实区」里而不是另起一张卡：买家心里这些和履约方式、
-        到货时间是同一类信息（「这货是什么样的」），分成两块只是把一件事拆散。
-      -->
-      <view v-for="p in goods.params ?? []" :key="p.dimNo" class="fact sh-row sh-row--between sh-row--top">
-        <text class="txt-sub fact__label">{{ p.name || p.dimNo }}</text>
-        <text class="txt-sub fact__value">{{ p.label }}</text>
-      </view>
-      <!--
-        旧的 `origin` 列：**参数里已经有产地就不再重复显示**。
-        两处都显示的话，商家在新的参数里填了「本地」、老列里还留着
-        早年填的「山东」—— 买家看到两个产地，而谁也说不清哪个算数。
-        存量商品（只有老列、没有参数）仍旧照常显示。
-      -->
-      <view v-if="isFresh && goods.origin && !hasOriginParam" class="fact sh-row sh-row--between sh-row--top">
-        <text class="txt-sub fact__label">{{ $t("goods.origin") }}</text>
-        <text class="txt-sub fact__value">{{ goods.origin }}</text>
-      </view>
-      <view v-if="isService && goods.storeName" class="fact sh-row sh-row--between sh-row--top">
-        <text class="txt-sub fact__label">{{ $t("goods.store") }}</text>
-        <text class="txt-sub fact__value">{{ goods.storeName }}</text>
-      </view>
-      <view v-if="isCard && goods.card" class="fact sh-row sh-row--between sh-row--top">
-        <text class="txt-sub fact__label">{{ $t("goods.validity") }}</text>
-        <text class="txt-sub fact__value sh-num">
-          {{ $t("goods.validDays", { n: goods.card.validDays }) }}
-        </text>
-      </view>
-      <view class="fact sh-row sh-row--between sh-row--top">
-        <text class="txt-sub fact__label">{{ $t("goods.limitLabel") }}</text>
-        <text class="txt-sub fact__value">
-          {{ goods.limitPerUser ? $t("goods.limit", { n: goods.limitPerUser }) : $t("goods.noLimit") }}
-        </text>
-      </view>
+          <view class="sh-notice notice">
+            <text class="txt-caption notice__text">
+              {{ $t("goods.changeRule", { n: TRADE_RULES.appointmentChangeBeforeHours }) }}
+            </text>
+          </view>
+        </view>
 
-      <view v-if="goods.weighed" class="sh-notice sh-notice--warning notice">
-        <text class="txt-caption notice__text">{{ $t("goods.weighed") }}</text>
-      </view>
-      <view v-if="isVirtual && goods.virtual" class="sh-notice notice">
-        <text class="txt-caption notice__text">{{ goods.virtual.deliverDesc }}</text>
-      </view>
-    </view>
+        <!-- 事实区 -->
+        <view class="sh-card block">
+          <view class="fact sh-row sh-row--between sh-row--top">
+            <text class="txt-sub fact__label">{{ $t("goods.fulfillment") }}</text>
+            <text class="txt-sub fact__value">
+              {{ goods.fulfillments.map((x) => $t(`fulfillment.${x}`)).join(" · ") }}
+            </text>
+          </view>
+          <view v-if="isFresh && goods.arrivalDesc" class="fact sh-row sh-row--between sh-row--top">
+            <text class="txt-sub fact__label">{{ $t("goods.arrival") }}</text>
+            <text class="txt-sub fact__value">{{ goods.arrivalDesc }}</text>
+          </view>
+          <!--
+            **商品参数**（产地 / 保质期 / 材质…）。商家在建品页填的就是这些。
+            没有这一段的话，他填了买家看不见 —— 等于白填，而他不会知道。
 
-    <!--
-      图文详情。**这一段此前整个不存在** —— `detail`（正文）与 `detailImages`（长图）
-      后端都在发，页面一个字都没渲染。商家写的产地、保质期、售后说明，
-      买家从来没看到过。
+            <p>接在既有的「事实区」里而不是另起一张卡：买家心里这些和履约方式、
+            到货时间是同一类信息（「这货是什么样的」），分成两块只是把一件事拆散。
+          -->
+          <view v-for="p in goods.params ?? []" :key="p.dimNo" class="fact sh-row sh-row--between sh-row--top">
+            <text class="txt-sub fact__label">{{ p.name || p.dimNo }}</text>
+            <text class="txt-sub fact__value">{{ p.label }}</text>
+          </view>
+          <!--
+            旧的 `origin` 列：**参数里已经有产地就不再重复显示**。
+            两处都显示的话，商家在新的参数里填了「本地」、老列里还留着
+            早年填的「山东」—— 买家看到两个产地，而谁也说不清哪个算数。
+            存量商品（只有老列、没有参数）仍旧照常显示。
+          -->
+          <view v-if="isFresh && goods.origin && !hasOriginParam" class="fact sh-row sh-row--between sh-row--top">
+            <text class="txt-sub fact__label">{{ $t("goods.origin") }}</text>
+            <text class="txt-sub fact__value">{{ goods.origin }}</text>
+          </view>
+          <view v-if="isService && goods.storeName" class="fact sh-row sh-row--between sh-row--top">
+            <text class="txt-sub fact__label">{{ $t("goods.store") }}</text>
+            <text class="txt-sub fact__value">{{ goods.storeName }}</text>
+          </view>
+          <view v-if="isCard && goods.card" class="fact sh-row sh-row--between sh-row--top">
+            <text class="txt-sub fact__label">{{ $t("goods.validity") }}</text>
+            <text class="txt-sub fact__value sh-num">
+              {{ $t("goods.validDays", { n: goods.card.validDays }) }}
+            </text>
+          </view>
+          <view class="fact sh-row sh-row--between sh-row--top">
+            <text class="txt-sub fact__label">{{ $t("goods.limitLabel") }}</text>
+            <text class="txt-sub fact__value">
+              {{ goods.limitPerUser ? $t("goods.limit", { n: goods.limitPerUser }) : $t("goods.noLimit") }}
+            </text>
+          </view>
 
-      正文是**纯文本**：后端存的就是纯文本而不是 HTML（收 HTML 要在三端各消毒一次，
-      漏一处就是 XSS），所以这里也不做富文本解析，按段落原样排。
-      两样都没有时整段不渲染，不拿一个空白区块占着详情页。
-    -->
-    <view v-if="goods.detail || goods.detailImages?.length" class="sh-card block">
-      <text class="txt-title dt__h">{{ $t("goods.detailTitle") }}</text>
-      <text v-if="goods.detail" class="txt-body dt__text">{{ goods.detail }}</text>
-      <!-- 长图按顺序全宽竖排。mode="widthFix" 是关键：不给的话
-           1:3 的长图会被压进默认的 320×240 里 -->
-      <image
-        v-for="(img, i) in goods.detailImages ?? []"
-        :key="img + i"
-        class="dt__img"
-        :src="img"
-        mode="widthFix"
-      />
-    </view>
+          <view v-if="goods.weighed" class="sh-notice sh-notice--warning notice">
+            <text class="txt-caption notice__text">{{ $t("goods.weighed") }}</text>
+          </view>
+          <view v-if="isVirtual && goods.virtual" class="sh-notice notice">
+            <text class="txt-caption notice__text">{{ goods.virtual.deliverDesc }}</text>
+          </view>
+        </view>
 
-    <!-- 评价 -->
-    <view class="sh-card block">
-      <view class="rvhead">
-        <text class="txt-title">{{ $t("review.title", { n: reviews.length }) }}</text>
-      </view>
-      <biz-review
-        v-for="r in reviews"
-        :key="r.reviewNo"
-        :review="r"
-        @like="likeReview(r)"
-      ></biz-review>
-      <text v-if="!reviews.length" class="txt-caption rvempty">{{ $t("review.empty") }}</text>
-      <text v-if="!reviews.length" class="sh-hint txt-quiet">{{ $t("review.emptyTip") }}</text>
-    </view>
+        <!--
+          图文详情。**这一段此前整个不存在** —— `detail`（正文）与 `detailImages`（长图）
+          后端都在发，页面一个字都没渲染。商家写的产地、保质期、售后说明，
+          买家从来没看到过。
 
-    <!--
-      买不了要说是为什么。**贴着操作条上方** —— 他往下滚就是为了按那两个按钮，
-      话要落在他视线的终点（与结算页的同名做法一致）。
-      已经在别处说过的（售罄写在按钮上、截单有一枚红 chip）这里返回空串，不重复说。
-    -->
-    <view v-if="buyBlockedReason" class="txt-caption sh-notice sh-notice--warning why">
-      <text>{{ buyBlockedReason }}</text>
-    </view>
+          正文是**纯文本**：后端存的就是纯文本而不是 HTML（收 HTML 要在三端各消毒一次，
+          漏一处就是 XSS），所以这里也不做富文本解析，按段落原样排。
+          两样都没有时整段不渲染，不拿一个空白区块占着详情页。
+        -->
+        <view v-if="goods.detail || goods.detailImages?.length" class="sh-card block">
+          <text class="txt-title dt__h">{{ $t("goods.detailTitle") }}</text>
+          <text v-if="goods.detail" class="txt-body dt__text">{{ goods.detail }}</text>
+          <!-- 长图按顺序全宽竖排。mode="widthFix" 是关键：不给的话
+               1:3 的长图会被压进默认的 320×240 里 -->
+          <image
+            v-for="(img, i) in goods.detailImages ?? []"
+            :key="img + i"
+            class="dt__img"
+            :src="img"
+            mode="widthFix"
+          />
+        </view>
 
-    <!-- 底部操作条。详情页不是 tab 页，没有底部菜单，
-         所以购物车入口必须在这里给 —— 否则加完购没有任何落点与反馈。 -->
-    <sh-actionbar pill="plain" :pad="220">
-      <view class="actionbar__icon sh-center" @tap="() => {}">
-        <sh-icon name="share" :size="40" color="var(--sh-sub)"></sh-icon>
-      </view>
+        <!-- 评价 -->
+        <view class="sh-card block">
+          <view class="rvhead">
+            <text class="txt-title">{{ $t("review.title", { n: reviews.length }) }}</text>
+          </view>
+          <biz-review
+            v-for="r in reviews"
+            :key="r.reviewNo"
+            :review="r"
+            @like="likeReview(r)"
+          ></biz-review>
+          <text v-if="!reviews.length" class="txt-caption rvempty">{{ $t("review.empty") }}</text>
+          <text v-if="!reviews.length" class="sh-hint txt-quiet">{{ $t("review.emptyTip") }}</text>
+        </view>
 
-      <view
-        class="actionbar__icon actionbar__cart sh-center"
-        :class="{ 'is-bouncing': bouncing }"
-        @tap="gotoCart"
-      >
-        <sh-icon name="cart" :size="40" color="var(--sh-sub)"></sh-icon>
-        <text v-if="cart.count" class="sh-badge-count actionbar__badge sh-num">
-          {{ cart.count > 99 ? "99+" : cart.count }}
-        </text>
-      </view>
-      <view
-        class="sh-btn actionbar__add"
-        :class="{ 'is-disabled': !buyable }"
-        @tap="buyable && addToCart($event)"
-      >
-        {{ soldOut ? $t("goods.soldOut") : $t("goods.addCart") }}
-      </view>
-      <view
-        class="txt-sub sh-btn actionbar__buy sh-fill"
-        :class="{ 'is-disabled': !buyable }"
-        @tap="buyable && buyNow()"
-      >
-        {{ $t("goods.buyNow") }}
-      </view>
-    </sh-actionbar>
+        <!--
+          买不了要说是为什么。**贴着操作条上方** —— 他往下滚就是为了按那两个按钮，
+          话要落在他视线的终点（与结算页的同名做法一致）。
+          已经在别处说过的（售罄写在按钮上、截单有一枚红 chip）这里返回空串，不重复说。
+        -->
+        <view v-if="buyBlockedReason" class="txt-caption sh-notice sh-notice--warning why">
+          <text>{{ buyBlockedReason }}</text>
+        </view>
+
+        <!-- 底部操作条。详情页不是 tab 页，没有底部菜单，
+             所以购物车入口必须在这里给 —— 否则加完购没有任何落点与反馈。 -->
+        <sh-actionbar pill="plain" :pad="220">
+          <view class="actionbar__icon sh-center" @tap="() => {}">
+            <sh-icon name="share" :size="40" color="var(--sh-sub)"></sh-icon>
+          </view>
+
+          <view
+            class="actionbar__icon actionbar__cart sh-center"
+            :class="{ 'is-bouncing': bouncing }"
+            @tap="gotoCart"
+          >
+            <sh-icon name="cart" :size="40" color="var(--sh-sub)"></sh-icon>
+            <text v-if="cart.count" class="sh-badge-count actionbar__badge sh-num">
+              {{ cart.count > 99 ? "99+" : cart.count }}
+            </text>
+          </view>
+          <view
+            class="sh-btn actionbar__add"
+            :class="{ 'is-disabled': !buyable }"
+            @tap="buyable && addToCart($event)"
+          >
+            {{ soldOut ? $t("goods.soldOut") : $t("goods.addCart") }}
+          </view>
+          <view
+            class="txt-sub sh-btn actionbar__buy sh-fill"
+            :class="{ 'is-disabled': !buyable }"
+            @tap="buyable && buyNow()"
+          >
+            {{ $t("goods.buyNow") }}
+          </view>
+        </sh-actionbar>
+  
+  
+    </template>
   </sh-scaffold>
 </template>
 

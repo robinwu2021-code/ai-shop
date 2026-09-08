@@ -2110,7 +2110,7 @@
       "usage": {
         "b-app": 46,
         "c-app": 27,
-        "lib": 0
+        "lib": 1
       },
       "note": "空态",
       "why": "抽出来不是因为重复，是**观感会漂**：曾在 27 个页面各写一份，padding 在 60/80/100rpx 之间随手取",
@@ -2510,18 +2510,21 @@
       "name": "sh-scaffold",
       "file": "packages/ui/src/components/sh-scaffold.vue",
       "scope": "跨端",
-      "lines": 268,
+      "lines": 314,
       "props": [
         "padded?: boolean",
         "titleKey?: string",
         "tab?: string",
         "denied?: boolean",
-        "deniedText?: string"
+        "deniedText?: string",
+        "failed?: boolean",
+        "failedText?: string",
+        "pending?: boolean"
       ],
       "usage": {
         "b-app": 68,
-        "c-app": 30,
-        "lib": 0
+        "c-app": 33,
+        "lib": 1
       },
       "note": "页面外壳",
       "why": "**每页根元素必须是它** —— 否则小程序端换肤 / RTL / 三语标题全不生效",
@@ -2535,15 +2538,18 @@
           16,
           28,
           40,
+          88,
           124,
           160
         ],
         "radius": [],
         "deps": [
           "sh-confirm",
+          "sh-empty",
           "sh-icon",
           "sh-pick",
           "sh-prompt",
+          "sh-scaffold",
           "sh-tabbar"
         ]
       },

@@ -20,8 +20,19 @@ const merchant = useMerchantStore();
 const setting = ref<MemberSetting | null>(null);
 const busy = ref(false);
 
+/** 这次没取到。**与「这儿本来就没有」是两件事** —— 整页内容都挂在拉来的数据后面，
+ *  拉不到就是一个只有标题栏的空白页。交给 `sh-scaffold` 的 `failed` 说出来 */
+const failed = ref(false);
+
 async function load() {
-  setting.value = await api.mMemberSettings().catch(() => null);
+  // `.catch(() => null)` 脱掉：这一页整屏的内容都挂在 `setting` 后面，
+  // 兜成 null 的结果是一个只有标题栏的空白页 —— 不解释、不能重试
+  try {
+    setting.value = await api.mMemberSettings();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
 }
 
 async function save(patch: { memberScope?: string; autoJoinOnOrder?: boolean }) {
@@ -60,7 +71,10 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="memberSettings.title" :denied="!merchant.can('biz:store:admin')">
+  <sh-scaffold title-key="memberSettings.title" :denied="!merchant.can('biz:store:admin')"
+    :failed="failed"
+    @retry="load"
+  >
     <view class="sh-card">
       <text class="field__label">{{ $t("memberSettings.scope") }}</text>
 

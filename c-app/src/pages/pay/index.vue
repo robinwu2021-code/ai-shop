@@ -72,8 +72,21 @@ const doneHintKey = computed(() => {
   return "pay.doneGeneric";
 });
 
+/** 这次没取到。**与「这个东西不存在」是两件事** —— 整页都挂在 `order` 后面，
+ *  拉不到连外壳都不渲染，是一整块白屏：没有导航栏、没有一个字、退不回去 */
+const failed = ref(false);
+/** 重试要把单号带回去 —— `@retry` 不带参数 */
+const currentNo = ref("");
+
 async function load(orderNo: string) {
-  order.value = await api.orderDetail(orderNo);
+  currentNo.value = orderNo;
+  try {
+    order.value = await api.orderDetail(orderNo);
+    failed.value = false;
+  } catch {
+    failed.value = true;
+    return;
+  }
   if (order.value?.status === "WAIT_PAY") {
     await loadMethods(orderNo);
   }
@@ -193,102 +206,113 @@ onUnmounted(() => clearInterval(timer));
 </script>
 
 <template>
-  <sh-scaffold v-if="order" title-key="pay.title">
-    <!-- 待支付 -->
-    <template v-if="!paid">
-      <view class="sh-card hero">
-        <text class="txt-hero hero__amount sh-num">{{ money(order.amount.payableMinor) }}</text>
-        <text class="txt-caption hero__label">{{ $t("pay.payable") }}</text>
-        <!--
-          这次付款覆盖哪几笔单。**只有跨商家时才出现** —— 单商家时它等于把
-          总额又抄了一遍，是噪音。
-          放在金额下面而不是折叠起来：用户在这一屏要回答的是「我付的是什么」，
-          而拆单是这个问题里最容易意外的那部分。
-        -->
-        <view v-if="(order.subOrders?.length ?? 0) > 1" class="subs">
-          <text class="txt-caption subs__title">{{ $t("pay.covers", { n: order.subOrders!.length }) }}</text>
-          <view v-for="s in order.subOrders" :key="s.orderNo" class="subs__row sh-row sh-row--between">
-            <text class="txt-sub subs__name txt-ink">{{ s.merchantName }}</text>
-            <text class="txt-sub sh-num">{{ money(s.amount.payableMinor) }}</text>
+  <sh-scaffold title-key="pay.title"
+    :pending="!order"
+    :failed="failed"
+    @retry="() => load(currentNo)"
+  >
+    <!-- 正文全靠 `order` 解引用，所以要一层 `v-if` 让 vue-tsc 收窄类型。
+         **不写在 `<sh-scaffold>` 上**：写在那儿的话，`order` 为空时连外壳都不渲染 ——
+         没有导航栏、没有一个字，退不回去。守卫留在这里，外壳照常在。 -->
+    <template v-if="order">
+        <!-- 待支付 -->
+        <template v-if="!paid">
+          <view class="sh-card hero">
+            <text class="txt-hero hero__amount sh-num">{{ money(order.amount.payableMinor) }}</text>
+            <text class="txt-caption hero__label">{{ $t("pay.payable") }}</text>
+            <!--
+              这次付款覆盖哪几笔单。**只有跨商家时才出现** —— 单商家时它等于把
+              总额又抄了一遍，是噪音。
+              放在金额下面而不是折叠起来：用户在这一屏要回答的是「我付的是什么」，
+              而拆单是这个问题里最容易意外的那部分。
+            -->
+            <view v-if="(order.subOrders?.length ?? 0) > 1" class="subs">
+              <text class="txt-caption subs__title">{{ $t("pay.covers", { n: order.subOrders!.length }) }}</text>
+              <view v-for="s in order.subOrders" :key="s.orderNo" class="subs__row sh-row sh-row--between">
+                <text class="txt-sub subs__name txt-ink">{{ s.merchantName }}</text>
+                <text class="txt-sub sh-num">{{ money(s.amount.payableMinor) }}</text>
+              </view>
+            </view>
+
+            <view v-if="order.payDeadlineAt" class="cd" :class="{ 'is-expired': expired }">
+              <text class="txt-bold cd__text sh-num is-warning">
+                {{ expired
+                  ? $t("pay.expired")
+                  : $t("pay.remain", { t: countdown(order.payDeadlineAt - now) }) }}
+              </text>
+            </view>
           </view>
-        </view>
 
-        <view v-if="order.payDeadlineAt" class="cd" :class="{ 'is-expired': expired }">
-          <text class="txt-bold cd__text sh-num is-warning">
-            {{ expired
-              ? $t("pay.expired")
-              : $t("pay.remain", { t: countdown(order.payDeadlineAt - now) }) }}
-          </text>
-        </view>
-      </view>
+          <view class="sh-card block">
+            <!--
+              支付方式来自后端算好的交集，不再写死「微信支付」。
+              不可用的也列出来并显示原因 —— 过滤掉的话用户会问
+              「为什么别人有支付宝我没有」，而客服答不上来。
+            -->
+            <view
+              v-for="m in methodList?.methods ?? []"
+              :key="m.payChannel"
+              class="method sh-row"
+              :class="{ 'is-on': m.payChannel === chosen, 'is-off': !m.available }"
+              @tap="m.available && (chosen = m.payChannel)"
+            >
+              <text class="method__icon">{{ m.payChannel === "ALIPAY" ? "💙" : "💚" }}</text>
+              <view class="method__body">
+                <text class="txt-strong method__name">{{ m.name || m.payChannel }}</text>
+                <text v-if="!m.available && m.unavailableReason" class="txt-caption txt-quiet">
+                  {{ m.unavailableReason }}
+                </text>
+              </view>
+              <text v-if="m.payChannel === chosen" class="txt-body method__tick txt-primary">✓</text>
+            </view>
 
-      <view class="sh-card block">
-        <!--
-          支付方式来自后端算好的交集，不再写死「微信支付」。
-          不可用的也列出来并显示原因 —— 过滤掉的话用户会问
-          「为什么别人有支付宝我没有」，而客服答不上来。
-        -->
-        <view
-          v-for="m in methodList?.methods ?? []"
-          :key="m.payChannel"
-          class="method sh-row"
-          :class="{ 'is-on': m.payChannel === chosen, 'is-off': !m.available }"
-          @tap="m.available && (chosen = m.payChannel)"
-        >
-          <text class="method__icon">{{ m.payChannel === "ALIPAY" ? "💙" : "💚" }}</text>
-          <view class="method__body">
-            <text class="txt-strong method__name">{{ m.name || m.payChannel }}</text>
-            <text v-if="!m.available && m.unavailableReason" class="txt-caption txt-quiet">
-              {{ m.unavailableReason }}
-            </text>
+            <!-- 列表为空时的两种情况，文案不同：未进件是「照常可付」，无可用是「付不了」 -->
+            <view v-if="!(methodList?.methods ?? []).length" class="method sh-row">
+              <text class="txt-body method__name">{{ $t("pay.methodFallback") }}</text>
+            </view>
           </view>
-          <text v-if="m.payChannel === chosen" class="txt-body method__tick txt-primary">✓</text>
-        </view>
 
-        <!-- 列表为空时的两种情况，文案不同：未进件是「照常可付」，无可用是「付不了」 -->
-        <view v-if="!(methodList?.methods ?? []).length" class="method sh-row">
-          <text class="txt-body method__name">{{ $t("pay.methodFallback") }}</text>
-        </view>
-      </view>
+          <text v-if="blockedReason" class="txt-caption block-reason">{{ blockedReason }}</text>
 
-      <text v-if="blockedReason" class="txt-caption block-reason">{{ blockedReason }}</text>
+          <sh-actionbar class="bar-center" :pad="220">
+            <view class="sh-btn" :class="{ 'is-disabled': paying || expired || !canPay }" @tap="pay">
+              {{ paying ? $t("pay.paying") : $t("pay.payNow") }}
+            </view>
+            <text class="txt-caption cancel" @tap="cancel">{{ $t("pay.cancel") }}</text>
+          </sh-actionbar>
+        </template>
 
-      <sh-actionbar class="bar-center" :pad="220">
-        <view class="sh-btn" :class="{ 'is-disabled': paying || expired || !canPay }" @tap="pay">
-          {{ paying ? $t("pay.paying") : $t("pay.payNow") }}
-        </view>
-        <text class="txt-caption cancel" @tap="cancel">{{ $t("pay.cancel") }}</text>
-      </sh-actionbar>
-    </template>
+        <!-- 支付完成 -->
+        <template v-else>
+          <view class="sh-card done">
+            <text class="done__icon">✓</text>
+            <text class="txt-display done__title">{{ $t("pay.done") }}</text>
+            <text class="txt-caption done__hint">{{ $t(doneHintKey) }}</text>
 
-    <!-- 支付完成 -->
-    <template v-else>
-      <view class="sh-card done">
-        <text class="done__icon">✓</text>
-        <text class="txt-display done__title">{{ $t("pay.done") }}</text>
-        <text class="txt-caption done__hint">{{ $t(doneHintKey) }}</text>
+            <!-- 各类码共用一个字段，**标签按品类与履约方式变**（见 order 页同处说明） -->
+            <!--
+              兑换码换一档色：它与「到店核销码」的用法不同（一个自己去兑，一个给店员看），
+              底色是唯一的区分。**这一档此前写了没接** —— `.code--redeem` 与
+              `.code--redeem .code__label` 两条规则都在，模板里一次都没挂过，
+              于是虚拟商品的兑换码一直和核销码长得一样。2026-09-06 接上。
+            -->
+            <view
+              v-if="order.verifyCode"
+              class="sh-notice code"
+              :class="{ 'sh-notice--warning': codeLabel === 'pay.redeemCode' }"
+            >
+              <text class="txt-caption code__label">{{ $t(codeLabel) }}</text>
+              <text class="txt-hero code__v sh-num">{{ order.verifyCode }}</text>
+            </view>
+          </view>
 
-        <!-- 各类码共用一个字段，**标签按品类与履约方式变**（见 order 页同处说明） -->
-        <!--
-          兑换码换一档色：它与「到店核销码」的用法不同（一个自己去兑，一个给店员看），
-          底色是唯一的区分。**这一档此前写了没接** —— `.code--redeem` 与
-          `.code--redeem .code__label` 两条规则都在，模板里一次都没挂过，
-          于是虚拟商品的兑换码一直和核销码长得一样。2026-09-06 接上。
-        -->
-        <view
-          v-if="order.verifyCode"
-          class="sh-notice code"
-          :class="{ 'sh-notice--warning': codeLabel === 'pay.redeemCode' }"
-        >
-          <text class="txt-caption code__label">{{ $t(codeLabel) }}</text>
-          <text class="txt-hero code__v sh-num">{{ order.verifyCode }}</text>
-        </view>
-      </view>
-
-      <sh-actionbar class="bar-center" :pad="220">
-        <view class="sh-btn" @tap="gotoOrder">{{ $t("pay.viewOrder") }}</view>
-        <text class="txt-caption cancel" @tap="gotoHome">{{ $t("pay.keepShopping") }}</text>
-      </sh-actionbar>
+          <sh-actionbar class="bar-center" :pad="220">
+            <view class="sh-btn" @tap="gotoOrder">{{ $t("pay.viewOrder") }}</view>
+            <text class="txt-caption cancel" @tap="gotoHome">{{ $t("pay.keepShopping") }}</text>
+          </sh-actionbar>
+        </template>
+  
+  
     </template>
   </sh-scaffold>
 </template>

@@ -60,20 +60,30 @@ function signed(minor: number) {
   return `${minor > 0 ? "+" : "−"}${money(Math.abs(minor))}`;
 }
 
+/** 这次没取到。**与「这儿本来就没有」是两件事** —— 整页内容都挂在拉来的数据后面，
+ *  拉不到就是一个只有标题栏的空白页。交给 `sh-scaffold` 的 `failed` 说出来 */
+const failed = ref(false);
+
 async function load() {
   /*
    * 三件事各自 catch：账期与欠款是本批新接的口子，
    * 老后端上会 404 —— 绑在一起的话，一个新功能会把整页收入数据带走，
    * 而收入才是这一页存在的理由。
    */
-  const [s, b, d] = await Promise.all([
-    api.mIncomeSummary(allStores.value),
-    api.mSettleBatches().catch(() => []),
-    api.mMyDebt().catch(() => null),
-  ]);
-  sum.value = s;
-  batches.value = b;
-  debt.value = d;
+  try {
+    const [s, b, d] = await Promise.all([
+      api.mIncomeSummary(allStores.value),
+      api.mSettleBatches().catch(() => []),
+      api.mMyDebt().catch(() => null),
+    ]);
+    sum.value = s;
+    batches.value = b;
+    debt.value = d;
+    failed.value = false;
+  } catch {
+    // 收入那一件没兜底（见上），它挂了整页就没内容 —— 那正是要说出来的时候
+    failed.value = true;
+  }
 }
 
 function toggleScope() {
@@ -87,7 +97,10 @@ onShow(() => {
 </script>
 
 <template>
-  <sh-scaffold title-key="income.title" :denied="!canView">
+  <sh-scaffold title-key="income.title" :denied="!canView"
+    :failed="failed"
+    @retry="load"
+  >
     <template v-if="sum">
       <view class="txt-sub scope txt-primary" @tap="toggleScope">
         {{ allStores ? $t("income.scopeAll") : $t("income.scopeCurrent") }}

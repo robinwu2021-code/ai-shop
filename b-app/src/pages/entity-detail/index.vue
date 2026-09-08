@@ -13,6 +13,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
+import { ApiError } from "@shared/net/http-client";
 import { ROUTES } from "@/shared/nav";
 import { useMerchantStore } from "@/stores/merchant";
 import type { EntityStores, MyQualifications, PaymentApplyment } from "@shared/types";
@@ -48,18 +49,28 @@ const others = computed(() =>
  */
 const payReady = computed(() => pays.value.some((p) => p.canReceiveMoney));
 
-onLoad(async (q) => {
-  entityNo.value = q?.entityNo ?? "";
+/** 这次没取到。**与「这儿本来就没有」是两件事** —— 整页内容都挂在拉来的数据后面，
+ *  拉不到就是一个只有标题栏的空白页。交给 `sh-scaffold` 的 `failed` 说出来 */
+const failed = ref(false);
+
+async function load() {
   if (!entityNo.value) return;
   loading.value = true;
+  failed.value = false;
   try {
     data.value = await api.mEntity(entityNo.value);
   } catch (e) {
     /*
      * 后端对「不是我的证照」回 403 而不是 404 —— 这一页照它给一句明确的话，
      * 而不是画一个空壳。空壳会让他以为这张证照被删了。
+     *
+     * **但不是所有失败都是「不给看」**：此前这里无差别置 `denied`，
+     * 于是网络不通时商家看到的是「无权访问这张证照」—— 把「没取到」
+     * 说成了「不该你看」，而这两件事该给的东西正相反（重试 vs 找店主授权）。
+     * `ApiError` 的 `code` 分得开：`-1` 是网络/响应不成形，其余是后端给的业务码。
      */
-    denied.value = true;
+    if (e instanceof ApiError && e.code === -1) failed.value = true;
+    else denied.value = true;
     uni.showToast({ title: (e as Error).message, icon: "none" });
     loading.value = false;
     return;
@@ -75,6 +86,11 @@ onLoad(async (q) => {
   quals.value = qs;
   pays.value = ps;
   loading.value = false;
+}
+
+onLoad((q) => {
+  entityNo.value = q?.entityNo ?? "";
+  void load();
 });
 
 function statusText(s?: string): string {
@@ -99,7 +115,10 @@ function goPickStore() {
 </script>
 
 <template>
-  <sh-scaffold title-key="entityDetail.title" :denied="!canView">
+  <sh-scaffold title-key="entityDetail.title" :denied="!canView"
+    :failed="failed"
+    @retry="load"
+  >
     <view v-if="denied" class="sh-card">
       <text class="txt-display">{{ $t("entityDetail.denied") }}</text>
       <text class="sh-hint">{{ $t("entityDetail.deniedHint") }}</text>

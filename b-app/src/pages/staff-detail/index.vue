@@ -31,17 +31,33 @@ const grantable = computed(() => roles.value.filter((r) => r.roleCode !== "OWNER
 const hasRole = (storeNo: string, role: string) =>
   !!staff.value?.roles.some((r) => r.storeNo === storeNo && r.role === role);
 
+/** 这次没取到。**与「这儿本来就没有」是两件事** —— 整页内容都挂在拉来的数据后面，
+ *  拉不到就是一个只有标题栏的空白页。交给 `sh-scaffold` 的 `failed` 说出来 */
+const failed = ref(false);
+
 async function load() {
-  const [list, roleList, storeList, logList] = await Promise.all([
-    api.mStaffList().catch(() => []),
-    api.mRoles().catch(() => []),
-    api.mStoreList().catch(() => []),
-    api.mStaffLogs(accountNo.value).catch(() => []),
-  ]);
-  staff.value = list.find((s) => s.mchAccountNo === accountNo.value) ?? null;
-  roles.value = roleList;
-  stores.value = storeList;
-  logs.value = logList;
+  /*
+   * 名单不兜底，其余三样兜底。
+   *
+   * 这一页整屏都挂在 `staff` 后面，而 `staff` 是从名单里 find 出来的 ——
+   * 名单兜成 `[]` 的结果是 find 不到、`staff` 为 null、整页空白，
+   * 与「这个人不在了」一模一样。角色/门店/日志取不到只是少几块。
+   */
+  try {
+    const [list, roleList, storeList, logList] = await Promise.all([
+      api.mStaffList(),
+      api.mRoles().catch(() => []),
+      api.mStoreList().catch(() => []),
+      api.mStaffLogs(accountNo.value).catch(() => []),
+    ]);
+    staff.value = list.find((s) => s.mchAccountNo === accountNo.value) ?? null;
+    roles.value = roleList;
+    stores.value = storeList;
+    logs.value = logList;
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
 }
 
 async function run(fn: () => Promise<unknown>) {
@@ -78,7 +94,10 @@ onShow(load);
 
 <template>
   <!-- 与列表同一档权限：能看谁有什么权限 = 能改谁有什么权限 -->
-  <sh-scaffold title-key="staff.detailTitle" :denied="!merchant.can('biz:store:admin')">
+  <sh-scaffold title-key="staff.detailTitle" :denied="!merchant.can('biz:store:admin')"
+    :failed="failed"
+    @retry="load"
+  >
     <template v-if="staff">
       <!-- ① 认人 -->
       <view class="sh-card">

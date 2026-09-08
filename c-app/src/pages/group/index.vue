@@ -28,9 +28,21 @@ const off = computed(() =>
     : 0,
 );
 
+/** 这次没取到。**与「这个东西不存在」是两件事** —— 整页都挂在 `group` 后面，
+ *  拉不到连外壳都不渲染，是一整块白屏：没有导航栏、没有一个字、退不回去 */
+const failed = ref(false);
+/** 重试要把单号带回去 —— `@retry` 不带参数 */
+const currentNo = ref("");
+
 async function load(groupNo: string) {
-  group.value = await api.groupBuyDetail(groupNo);
-  uni.setNavigationBarTitle({ title: group.value.title });
+  currentNo.value = groupNo;
+  try {
+    group.value = await api.groupBuyDetail(groupNo);
+    uni.setNavigationBarTitle({ title: group.value.title });
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
 }
 
 async function join() {
@@ -81,67 +93,78 @@ onShareAppMessage(() => {
 </script>
 
 <template>
-  <sh-scaffold v-if="group">
-    <!-- 头部：当前价 + 自提点 -->
-    <view class="sh-card">
-      <view class="head sh-row">
-        <sh-cover class="head__cover sh-center" :src="group.cover || GOODS_COVER_FALLBACK" @tap="openGoods"></sh-cover>
-        <view class="sh-fill">
-          <text class="txt-title">{{ group.title }}</text>
-          <text class="txt-caption head__pickup">📍 {{ group.pickupName }}</text>
+  <sh-scaffold
+    :pending="!group"
+    :failed="failed"
+    @retry="() => load(currentNo)"
+  >
+    <!-- 正文全靠 `group` 解引用，所以要一层 `v-if` 让 vue-tsc 收窄类型。
+         **不写在 `<sh-scaffold>` 上**：写在那儿的话，`group` 为空时连外壳都不渲染 ——
+         没有导航栏、没有一个字，退不回去。守卫留在这里，外壳照常在。 -->
+    <template v-if="group">
+        <!-- 头部：当前价 + 自提点 -->
+        <view class="sh-card">
+          <view class="head sh-row">
+            <sh-cover class="head__cover sh-center" :src="group.cover || GOODS_COVER_FALLBACK" @tap="openGoods"></sh-cover>
+            <view class="sh-fill">
+              <text class="txt-title">{{ group.title }}</text>
+              <text class="txt-caption head__pickup">📍 {{ group.pickupName }}</text>
+            </view>
+          </view>
+
+          <view class="price sh-row sh-row--baseline">
+            <text class="txt-hero sh-num">{{ money(group.groupPrice) }}</text>
+            <text v-if="off > 0" class="sh-was sh-num">{{ money(group.basePrice) }}</text>
+            <text v-if="off > 0" class="sh-chip sh-chip--danger sh-num">-{{ off }}%</text>
+          </view>
+
+          <view class="sh-notice sh-notice--warning cd sh-row sh-row--between">
+            <text class="txt-caption cd__label is-warning">{{ $t("group.cutoff") }}</text>
+            <text class="txt-body cd__v sh-num is-warning">{{ countdown(group.expireAt - now) }}</text>
+          </view>
         </view>
-      </view>
 
-      <view class="price sh-row sh-row--baseline">
-        <text class="txt-hero sh-num">{{ money(group.groupPrice) }}</text>
-        <text v-if="off > 0" class="sh-was sh-num">{{ money(group.basePrice) }}</text>
-        <text v-if="off > 0" class="sh-chip sh-chip--danger sh-num">-{{ off }}%</text>
-      </view>
+        <!-- 成团进度：单档，够人就成 -->
+        <view class="sh-card block">
+          <text class="txt-title">{{ $t("group.progress") }}</text>
+          <text class="sh-muted tierhint">{{ $t("group.tierHint") }}</text>
 
-      <view class="sh-notice sh-notice--warning cd sh-row sh-row--between">
-        <text class="txt-caption cd__label is-warning">{{ $t("group.cutoff") }}</text>
-        <text class="txt-body cd__v sh-num is-warning">{{ countdown(group.expireAt - now) }}</text>
-      </view>
-    </view>
-
-    <!-- 成团进度：单档，够人就成 -->
-    <view class="sh-card block">
-      <text class="txt-title">{{ $t("group.progress") }}</text>
-      <text class="sh-muted tierhint">{{ $t("group.tierHint") }}</text>
-
-      <view v-if="!group.reached" class="sh-notice goal">
-        <text class="txt-strong goal__text txt-primary">{{ $t("group.needMore", { n: group.need }) }}</text>
-      </view>
-      <view v-else class="sh-notice goal goal--max">
-        <text class="txt-strong goal__text txt-primary">{{ $t("group.done") }}</text>
-      </view>
-    </view>
-
-    <!-- 参团邻居 -->
-    <view class="sh-card block">
-      <text class="txt-title">{{ $t("group.neighbours", { n: group.joinedCount }) }}</text>
-      <view class="members sh-wrap">
-        <view v-for="(m, i) in group.members" :key="i" class="member sh-row">
-          <text class="txt-body">{{ m.avatar }}</text>
-          <text class="txt-caption member__n txt-ink">{{ m.nickname }}</text>
+          <view v-if="!group.reached" class="sh-notice goal">
+            <text class="txt-strong goal__text txt-primary">{{ $t("group.needMore", { n: group.need }) }}</text>
+          </view>
+          <view v-else class="sh-notice goal goal--max">
+            <text class="txt-strong goal__text txt-primary">{{ $t("group.done") }}</text>
+          </view>
         </view>
-      </view>
-    </view>
 
-    <!-- 不成团怎么办 —— 必须写清楚，这是用户敢下单的前提 -->
-    <view class="sh-card block notice">
-      <text class="txt-caption">{{ $t("group.fallback") }}</text>
-    </view>
+        <!-- 参团邻居 -->
+        <view class="sh-card block">
+          <text class="txt-title">{{ $t("group.neighbours", { n: group.joinedCount }) }}</text>
+          <view class="members sh-wrap">
+            <view v-for="(m, i) in group.members" :key="i" class="member sh-row">
+              <text class="txt-body">{{ m.avatar }}</text>
+              <text class="txt-caption member__n txt-ink">{{ m.nickname }}</text>
+            </view>
+          </view>
+        </view>
 
-    <sh-actionbar :pad="180">
-      <view
-        class="sh-btn"
-        :class="{ 'is-disabled': group.joined || closed }"
-        @tap="join"
-      >
-        {{ closed ? $t("group.closed") : group.joined ? $t("group.joinedBtn") : $t("group.join") }}
-      </view>
-    </sh-actionbar>
+        <!-- 不成团怎么办 —— 必须写清楚，这是用户敢下单的前提 -->
+        <view class="sh-card block notice">
+          <text class="txt-caption">{{ $t("group.fallback") }}</text>
+        </view>
+
+        <sh-actionbar :pad="180">
+          <view
+            class="sh-btn"
+            :class="{ 'is-disabled': group.joined || closed }"
+            @tap="join"
+          >
+            {{ closed ? $t("group.closed") : group.joined ? $t("group.joinedBtn") : $t("group.join") }}
+          </view>
+        </sh-actionbar>
+  
+  
+    </template>
   </sh-scaffold>
 </template>
 

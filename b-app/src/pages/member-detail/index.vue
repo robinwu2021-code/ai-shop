@@ -23,11 +23,17 @@ function storeName(no?: string | null) {
   return merchant.stores.find((s) => s.storeNo === no)?.name || no;
 }
 
+/** 这次没取到。**与「这儿本来就没有」是两件事** —— 整页内容都挂在拉来的数据后面，
+ *  拉不到就是一个只有标题栏的空白页。交给 `sh-scaffold` 的 `failed` 说出来 */
+const failed = ref(false);
+
 async function load() {
   try {
     data.value = await api.mMemberDetail(memberNo.value);
+    failed.value = false;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
+    failed.value = true;
   }
 }
 
@@ -39,7 +45,10 @@ onLoad(async (q) => {
 </script>
 
 <template>
-  <sh-scaffold title-key="memberDetail.title" :denied="!merchant.can('biz:customer')">
+  <sh-scaffold title-key="memberDetail.title" :denied="!merchant.can('biz:customer')"
+    :failed="failed"
+    @retry="load"
+  >
     <template v-if="data">
       <view class="sh-card">
         <view class="sh-row row">
