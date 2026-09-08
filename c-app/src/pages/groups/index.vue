@@ -28,13 +28,21 @@ let timer: ReturnType<typeof setInterval> | undefined;
 
 const pickupNo = computed(() => community.pickup?.pickupNo);
 
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  const [g, r] = await Promise.all([
-    api.groupBuyList(pickupNo.value),
-    api.requestList(pickupNo.value),
-  ]);
-  groups.value = g;
-  requests.value = r;
+  try {
+    const [g, r] = await Promise.all([
+      api.groupBuyList(pickupNo.value),
+      api.requestList(pickupNo.value),
+    ]);
+    groups.value = g;
+    requests.value = r;
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
   loaded.value = true;
 }
 
@@ -156,7 +164,9 @@ onShow(() => {
         :now="now"
         @tap="openGroup(g)"
       ></biz-group-card>
-      <sh-empty bare v-if="loaded && !groups.length" :text='$t("groups.merchantEmpty")'></sh-empty>
+      <sh-empty bare v-if="loaded && !groups.length"
+          :failed="failed"
+          @retry="load" :text='$t("groups.merchantEmpty")'></sh-empty>
     </template>
 
     <!-- 邻里求团：先有需求，后有供给 -->
@@ -193,7 +203,9 @@ onShow(() => {
         </view>
       </view>
 
-      <sh-empty bare v-if="loaded && !requests.length" :text='$t("groups.requestEmpty")' :tip='$t("groups.requestEmptyTip")'></sh-empty>
+      <sh-empty bare v-if="loaded && !requests.length"
+          :failed="failed"
+          @retry="load" :text='$t("groups.requestEmpty")' :tip='$t("groups.requestEmptyTip")'></sh-empty>
 
       <sh-actionbar :pad="160">
         <view class="sh-btn" @tap="createRequest">{{ $t("groups.createGroup") }}</view>

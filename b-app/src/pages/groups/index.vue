@@ -33,12 +33,20 @@ const groups = ref<GroupBuy[]>([]);
 const groupable = ref<Groupable[]>([]);
 const busy = ref(false);
 
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  const [gs, res] = await Promise.all([api.mGroupList(), api.mGoodsList({ size: 100 })]);
-  groups.value = gs;
-  groupable.value = res.records
+  try {
+    const [gs, res] = await Promise.all([api.mGroupList(), api.mGoodsList({ size: 100 })]);
+    groups.value = gs;
+    groupable.value = res.records
     .filter((g) => g.groupBuy && g.onSale)
-    .map((g) => ({ goodsNo: g.goodsNo, title: g.title, cover: g.cover }));
+      .map((g) => ({ goodsNo: g.goodsNo, title: g.title, cover: g.cover }));
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
 }
 
 async function create(goodsNo: string) {
@@ -64,7 +72,9 @@ onShow(load);
     <text class="sh-muted intro">{{ $t("groups.intro") }}</text>
 
     <text class="txt-title sec">{{ $t("groups.running") }}</text>
-    <sh-empty v-if="!groups.length" :text='$t("groups.noRunning")'></sh-empty>
+    <sh-empty v-if="!groups.length"
+          :failed="failed"
+          @retry="load" :text='$t("groups.noRunning")'></sh-empty>
 
     <view v-for="g in groups" :key="g.groupNo" class="sh-card sh-mb-sm">
       <view class="item__head sh-row">
@@ -89,7 +99,9 @@ onShow(load);
     </view>
 
     <text class="txt-title sec">{{ $t("groups.canOpen") }}</text>
-    <sh-empty v-if="!groupable.length" :text='$t("groups.noGroupable")'></sh-empty>
+    <sh-empty v-if="!groupable.length"
+          :failed="failed"
+          @retry="load" :text='$t("groups.noGroupable")'></sh-empty>
 
     <view v-for="g in groupable" :key="g.goodsNo" class="sh-row sh-card row sh-mb-sm">
       <sh-cover class="row__cover" :src="g.cover"></sh-cover>

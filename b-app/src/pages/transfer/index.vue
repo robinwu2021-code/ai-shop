@@ -44,6 +44,9 @@ onLoad(async (q) => {
   transferNo.value = String((q as Record<string, string>)?.no ?? "");
 });
 
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
   try {
     if (transferNo.value) {
@@ -337,7 +340,9 @@ onShow(load);
       </view>
 
       <!-- 草稿态没有行（行在发出的那张出库单上）。说成「还没发出」而不是「空单」 -->
-      <sh-empty v-if="!doc.lines.length" :text="String($t('transfer.notShipped'))"></sh-empty>
+      <sh-empty v-if="!doc.lines.length"
+          :failed="failed"
+          @retry="load" :text="String($t('transfer.notShipped'))"></sh-empty>
 
       <view v-for="l in doc.lines" :key="l.itemId" class="sh-card sh-mb-sm">
         <view class="row__top sh-row">

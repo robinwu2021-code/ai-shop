@@ -68,6 +68,9 @@ onLoad(async (q) => {
   else await loadPick();
 });
 
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function loadDoc() {
   try {
     doc.value = await api.mCountDetail(countNo.value);
@@ -86,8 +89,10 @@ async function loadPick() {
   try {
     // 同上：盘点要能盘到账面为 0 的货（盘盈就是这种情况）
     picking.value = await api.mStockPickable({ size: 200 });
+    failed.value = false;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
+    failed.value = true;
   }
 }
 
@@ -285,7 +290,9 @@ function at(iso?: string): string {
         </view>
       </view>
 
-      <sh-empty v-if="!picking.length" :text="String($t('stockCheck.pickEmpty'))"></sh-empty>
+      <sh-empty v-if="!picking.length"
+          :failed="failed"
+          @retry="loadPick" :text="String($t('stockCheck.pickEmpty'))"></sh-empty>
       <sh-empty v-else-if="!visible.length" :text="String($t('stockPick.empty'))"></sh-empty>
 
       <view v-for="b in visible" :key="b.itemId" class="sh-card sh-mb-sm" @tap="toggle(b.itemId)">

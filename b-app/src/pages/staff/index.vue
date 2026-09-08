@@ -73,13 +73,25 @@ const visibleStaff = computed(() => {
     .filter((s) => !k || nameOf(s).includes(k) || s.loginPhone.includes(k));
 });
 
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  // 三段各自 catch：角色表拉不到不该让员工列表也空掉
-  [staff.value, roles.value, logs.value] = await Promise.all([
-    api.mStaffList().catch(() => []),
-    api.mRoles().catch(() => []),
-    api.mStaffLogs().catch(() => []),
-  ]);
+  /*
+   * 角色表与日志各自兜底：拉不到不该让员工列表也空掉。
+   * **但员工名单自己不兜** —— 兜成 `[]` 的结果是「还没有员工」，
+   * 而店主看到这句会去加人，加完发现原来那些人都还在。
+   */
+  try {
+    [staff.value, roles.value, logs.value] = await Promise.all([
+      api.mStaffList(),
+      api.mRoles().catch(() => []),
+      api.mStaffLogs().catch(() => []),
+    ]);
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
 }
 
 function add() {
@@ -133,7 +145,9 @@ onShow(load);
         >{{ $t("staff.activeOnly") }}</text>
       </view>
 
-      <sh-empty v-if="!visibleStaff.length" :text='$t("staff.empty")'></sh-empty>
+      <sh-empty v-if="!visibleStaff.length"
+          :failed="failed"
+          @retry="load" :text='$t("staff.empty")'></sh-empty>
 
       <!-- 一行四样：认人的、状态、他管什么、进详情。**其余全在详情页** -->
       <view v-for="s in visibleStaff" :key="s.mchAccountNo" class="sh-row sh-card sh-mb-sm" @tap="openStaff(s)">

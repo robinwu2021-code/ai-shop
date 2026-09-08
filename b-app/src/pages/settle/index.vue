@@ -80,14 +80,26 @@ function switchScope(all: boolean) {
   void load();
 }
 
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+/** 积分流水那一段单独算：它是折叠出来的，挂了不该牵连账单 */
+const pointsFailed = ref(false);
+
 async function load() {
   // 三件事各自 catch：积分账户还没开通时这条会失败，而账单本身没问题 ——
   // 绑在一起的话，一个没开通的功能会把整页结算数据带走
-  [bills.value, rate.value, points.value] = await Promise.all([
-    api.mSettleList(allStores.value),
-    api.mRateCard(),
-    api.mPointsAccount().catch(() => null),
-  ]);
+  try {
+    [bills.value, rate.value, points.value] = await Promise.all([
+      api.mSettleList(allStores.value),
+      api.mRateCard(),
+      api.mPointsAccount().catch(() => null),
+    ]);
+    failed.value = false;
+  } catch {
+    // 账单没兜底（见上）：它挂了这一屏就没内容 —— 而「本期没有可结算的单」
+    // 与「没取到」在界面上一模一样，前者该等下个账期，后者该重试
+    failed.value = true;
+  }
 }
 
 /**
@@ -119,7 +131,12 @@ async function loadPointsRecords() {
     pointsRecords.value = null;
     return;
   }
-  pointsRecords.value = await api.mPointsRecords().catch(() => []);
+  try {
+    pointsRecords.value = await api.mPointsRecords();
+    pointsFailed.value = false;
+  } catch {
+    pointsFailed.value = true;
+  }
 }
 
 function go(url: string) {
@@ -216,7 +233,9 @@ onShow(() => {
         {{ pointsRecords ? $t("settle.pointsFold") : $t("settle.pointsDetail") }}
       </text>
       <view v-if="pointsRecords" class="rows">
-        <sh-empty v-if="!pointsRecords.length" :text='$t("settle.pointsEmpty")'></sh-empty>
+        <sh-empty v-if="!pointsRecords.length"
+          :failed="pointsFailed"
+          @retry="load" :text='$t("settle.pointsEmpty")'></sh-empty>
         <view v-for="r in pointsRecords" :key="r.settleNo + r.subOrderNo" class="sh-row sh-row--between row">
           <text class="sh-muted sh-num">{{ r.subOrderNo }}</text>
           <text class="sh-num">
@@ -241,7 +260,9 @@ onShow(() => {
       >{{ $t(opt.labelKey) }}</text>
     </view>
 
-    <sh-empty v-if="!bills.length" :text='$t("settle.empty")'></sh-empty>
+    <sh-empty v-if="!bills.length"
+          :failed="failed"
+          @retry="load" :text='$t("settle.empty")'></sh-empty>
 
     <!--
       **一笔子订单一行**，不是周期账单 —— 后端 stl_bill 就是这个粒度。

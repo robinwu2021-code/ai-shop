@@ -44,16 +44,29 @@ function clearHistory() {
   uni.removeStorageSync(STORAGE.searchHistory);
 }
 
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function search(k = keyword.value) {
   const q = k.trim();
   if (!q) return;
   keyword.value = q;
   pushHistory(q);
   // 两个域并行查，切 tab 时不用再等
-  const [g, m] = await Promise.all([
-    api.goodsList({ keyword: q, size: 50 }),
-    api.merchantList({ keyword: q }),
-  ]);
+  let g, m;
+  try {
+    [g, m] = await Promise.all([
+      api.goodsList({ keyword: q, size: 50 }),
+      api.merchantList({ keyword: q }),
+    ]);
+    failed.value = false;
+  } catch {
+    // 搜挂了与「这个词搜不到东西」是两件事：后者该换个词，前者该重试。
+    // 此前两者都显示「没有找到相关商品」，而用户会以为自己搜错了
+    failed.value = true;
+    searched.value = true;
+    return;
+  }
   goods.value = g.records;
   merchants.value = m;
   searched.value = true;
@@ -152,7 +165,7 @@ onLoad((q) => {
         ></biz-goods-card>
         <sh-empty
           bare
-          v-if="!goods.length"
+          v-if="!goods.length && !failed"
           :text="$t('search.noGoods')"
         ></sh-empty>
       </template>
@@ -181,7 +194,7 @@ onLoad((q) => {
         </view>
         <sh-empty
           bare
-          v-if="!merchants.length"
+          v-if="!merchants.length && !failed"
           :text="$t('search.noMerchant')"
         ></sh-empty>
       </template>
@@ -189,6 +202,8 @@ onLoad((q) => {
       <sh-empty
         bare
         v-if="empty"
+          :failed="failed"
+          @retry="() => search()"
         :text="$t('search.nothing', { k: keyword })"
       ></sh-empty>
     </view>

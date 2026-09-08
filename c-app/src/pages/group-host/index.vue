@@ -32,11 +32,21 @@ const current = computed(() => hosting.value.find((g) => g.groupNo === active.va
 const waiting = computed(() => orders.value.filter((o) => o.status === "FULFILLING"));
 const preparing = computed(() => orders.value.filter((o) => o.status === "PAID"));
 
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
   error.value = "";
-  groups.value = await api.myHostedGroups();
-  if (!active.value && hosting.value[0]) active.value = hosting.value[0].groupNo;
-  if (active.value) orders.value = await api.groupPickupOrders(active.value);
+  try {
+    groups.value = await api.myHostedGroups();
+    if (!active.value && hosting.value[0]) active.value = hosting.value[0].groupNo;
+    if (active.value) orders.value = await api.groupPickupOrders(active.value);
+    failed.value = false;
+  } catch {
+    // `error` 那条红字是**动作**失败用的（建团、核销）；首屏拉不到是另一回事：
+    // 它该整片说「没能加载出来 + 重试」，而不是显示「你还没有团」
+    failed.value = true;
+  }
 }
 
 async function pick(groupNo: string) {
@@ -90,7 +100,9 @@ onShow(load);
   <sh-scaffold title-key="groupHost.title">
     <text class="txt-display">{{ $t("groupHost.title") }}</text>
 
-    <sh-empty v-if="!hosting.length" :text='$t("groupHost.empty")'></sh-empty>
+    <sh-empty v-if="!hosting.length"
+          :failed="failed"
+          @retry="load" :text='$t("groupHost.empty")'></sh-empty>
 
     <template v-else>
       <!-- 多个团时切换 -->
@@ -148,7 +160,9 @@ onShow(load);
         <text class="sh-muted sh-num">{{ waiting.length }}</text>
       </view>
 
-      <sh-empty v-if="!waiting.length" compact :text='$t("groupHost.noWaiting")'></sh-empty>
+      <sh-empty v-if="!waiting.length"
+          :failed="failed"
+          @retry="load" compact :text='$t("groupHost.noWaiting")'></sh-empty>
 
       <view v-for="o in waiting" :key="o.subOrderNo" class="sh-card row-item sh-row">
         <view class="sh-fill">
