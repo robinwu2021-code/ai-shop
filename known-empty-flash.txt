@@ -1,0 +1,54 @@
+# 已知「空态没排除加载中」的页面 —— 数据到达前会先闪一下「暂无内容」。
+# 判据见 packages/shared/tests/ui-package.test.ts 的「空态不许在还不知道时出现」。
+#
+# 这份名单**只准变短**。补法是一行：把空态的条件从 `v-if="!list.length"`
+# 改成 `v-if="loaded && !list.length"`（用 `loaded` 不用 `loading` ——
+# 前者是「首屏到过没有」，后者含下拉刷新，刷新时不该把列表换成空态）。
+#
+# ⚠️ 症状是实测出来的，不是推断：2026-09-08 在 my-memberships 上逐帧采样，
+# 空态可见约 175ms（102ms → 277ms）才被数据顶掉。**那还是本地 mock** ——
+# 真机弱网下这个窗口是 0.5~2 秒，用户看到「暂无会员」再翻成列表。
+#
+# 为什么不一次改完：这 41 页各有各的加载变量名（loading / pending / loaded / failed
+# 四种写法），逐页要看清「哪个变量代表首屏到过」，机械替换会把刷新态也判成空。
+
+c-app/category
+c-app/community
+c-app/coupons
+c-app/group-host
+c-app/home
+c-app/merchant
+c-app/order
+c-app/order-confirm
+c-app/points
+c-app/request
+c-app/search
+b-app/activities
+b-app/after-sale
+b-app/coupon-issues
+b-app/coupons
+b-app/cross-store
+b-app/delivery
+b-app/deposit
+b-app/goods-list
+b-app/groups
+b-app/invoice
+b-app/marketing
+b-app/member-segments
+b-app/member-tags
+b-app/orders
+b-app/picking
+b-app/points-records
+b-app/purchase-edit
+b-app/quotes
+b-app/reviews
+b-app/settle
+b-app/staff
+b-app/statement
+b-app/stock-check
+b-app/stock-cross
+b-app/stock-detail
+b-app/stock-out
+b-app/transfer
+b-app/verify
+b-app/withdraw

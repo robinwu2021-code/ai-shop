@@ -17,10 +17,13 @@ import type { MyMembership } from "@shared/types";
 const { t } = useI18n();
 
 const list = ref<MyMembership[]>([]);
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
 const busy = ref("");
 
 async function load() {
   list.value = await api.myMemberships().catch(() => []);
+  loaded.value = true;
 }
 
 /**
@@ -51,7 +54,7 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="myMembership.title">
-    <sh-empty bare v-if="!list.length" :text="String($t('myMembership.empty'))"></sh-empty>
+    <sh-empty bare v-if="loaded && !list.length" :text="String($t('myMembership.empty'))"></sh-empty>
 
     <view v-for="m in list" :key="m.entityNo" class="sh-card card sh-row sh-row--between">
       <view class="card__main">

@@ -21,6 +21,8 @@ import { isCompleteRegion, joinRegion, splitRegion } from "@shared/utils/region"
 const { t } = useI18n();
 
 const list = ref<Address[]>([]);
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
 const picking = ref(false);
 const location = useLocationStore();
 const editing = ref(false);
@@ -188,6 +190,7 @@ const valid = computed(
 
 async function load() {
   list.value = await api.addressList();
+  loaded.value = true;
 }
 
 /**
@@ -445,7 +448,7 @@ onShow(() => {
       </view>
     </view>
 
-    <sh-empty bare v-if="!list.length" :text='$t("address.empty")'></sh-empty>
+    <sh-empty bare v-if="loaded && !list.length" :text='$t("address.empty")'></sh-empty>
 
     <sh-actionbar :pad="160">
       <view class="sh-btn" :class="{ 'is-disabled': atLimit }" @tap="addNew">

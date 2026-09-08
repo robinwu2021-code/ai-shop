@@ -21,7 +21,7 @@ LIB = json.loads((ROOT / "docs/technical/design/ui-lib.json").read_text(encoding
 BASE = (ROOT / "packages/ui/src/styles/base.css").read_text(encoding="utf-8")
 GEN = (ROOT / "scripts/gen-ui-lib.py").read_text(encoding="utf-8")
 
-STATUS = {'规范-字体.md': '> 状态：**生成物 · 长期有效** · 创建 2026-08-28\n> 上游：`packages/shared/src/design/tokens.ts` + `packages/ui/src/styles/base.css` → [`ui-lib.json`](./ui-lib.json) → **本文**\n> 定位：字号 / 字重 / 行高 / 密度 —— 「一个字长什么样」。版面见 [规范-版面](规范-版面.md)，件见 [规范-组件](规范-组件.md)。\n', '规范-版面.md': '> 状态：**生成物 · 长期有效** · 创建 2026-08-28\n> 上游：`tokens.ts` + `base.css` + 组件源码 → [`ui-lib.json`](./ui-lib.json) → **本文**\n> 定位：一屏东西怎么摆 —— 画布、圆角与间距档、页面框、行与列表、浮层层级、皮肤与明暗。\n', '规范-组件.md': '> 状态：**生成物 · 长期有效** · 创建 2026-08-28\n> 上游：`packages/ui/src/components/*.vue` + `base.css` + 90 个页面 → [`ui-lib.json`](./ui-lib.json) → **本文**\n> 定位：有哪些件、各自用在哪、调用点多少，以及「算不算自己画」的 18 条判据。\n'}
+STATUS = {'规范-字体.md': '> 状态：**生成物 · 长期有效** · 创建 2026-08-28\n> 上游：`packages/shared/src/design/tokens.ts` + `packages/ui/src/styles/base.css` → [`ui-lib.json`](./ui-lib.json) → **本文**\n> 定位：字号 / 字重 / 行高 / 密度 —— 「一个字长什么样」。版面见 [规范-版面](规范-版面.md)，件见 [规范-组件](规范-组件.md)。\n', '规范-版面.md': '> 状态：**生成物 · 长期有效** · 创建 2026-08-28\n> 上游：`tokens.ts` + `base.css` + 组件源码 → [`ui-lib.json`](./ui-lib.json) → **本文**\n> 定位：一屏东西怎么摆 —— 画布、圆角与间距档、页面框、行与列表、浮层层级、皮肤与明暗。\n', '规范-组件.md': '> 状态：**生成物 · 长期有效** · 创建 2026-08-28\n> 上游：`packages/ui/src/components/*.vue` + `base.css` + 90 个页面 → [`ui-lib.json`](./ui-lib.json) → **本文**\n> 定位：有哪些件、各自用在哪、调用点多少，以及「算不算自己画」的 18 条判据。\n', '规范-页面.md': '> 状态：**生成物 · 长期有效** · 创建 2026-09-08\n> 上游：`c-app/src/pages/**` + `b-app/src/pages/**`（98 页现扫）→ **本文**\n> 定位：**一页由什么搭起来、必须处理哪几种态** —— 骨架、加载/空/出错、贴底条。\n'}
 
 HEAD = "> **本文件由 `scripts/gen-ui-spec.py` 生成，请勿手改。**\n> 数字来自 `ui-lib.json`（tokens.ts / base.css / 组件源码 / 90 个页面），跑一次同步一次。\n> 改规范改源头，然后 `python3 scripts/gen-ui-spec.py`。\n"
 
@@ -77,6 +77,10 @@ GATE_DOMAIN = {
     # 《规范·组件》本来就装着「算不算自己画」的判据与「库件登记齐全」，是元规矩的家
     "组件": ("组件库", "公共件", "库件", "件不许", "小程序的块间缝", "传给组件", "两端独立",
              "断言", "登记"),
+    # 页面级：骨架、四种态、贴底条 —— 眼下还没有断言落在这一档，
+    # 所以《规范·页面》的闸门一节暂时是空的。**这本身是个信号**：
+    # 那一份现在全是「约定」，一条也拦不住 push
+    "页面": ("页面骨架", "空态", "加载", "出错", "四种态", "scaffold"),
 }
 # 空转守卫（「有东西可扫」那一类）不是规矩，是判据自己的体检 —— 不进规范
 GATE_SKIP = ("有东西可扫", "有文件可扫", "空转", "读到了", "扫到了", "扫得到", "量到了",
@@ -132,6 +136,95 @@ def gate_section(domain: str) -> list[str]:
         for tag, desc, title in extra:
             L.append(f"- `{tag}` · {desc} → {title}")
     return L
+
+
+# ─────────────────────────────────────────────────────────── 页面
+def page_facts():
+    """扫两端所有页面，量「一页由什么搭起来、缺哪几种态」。
+
+    数字全部现算 —— 手抄的比例会陈（《规范·字体》里那句「C 端只有 1 个调用点」
+    错了很久，就是因为它是写死的）。
+    """
+    import collections
+    rows = []
+    for app in ("c-app", "b-app"):
+        for f in sorted((ROOT / app / "src/pages").rglob("index.vue")):
+            src = f.read_text(encoding="utf-8")
+            tpl = src.split("<style")[0]
+            m = re.search(r"<sh-scaffold([^>]*)>", tpl)
+            attrs = m.group(1) if m else ""
+            conds = re.findall(r'<sh-empty[^>]*v-(?:if|else-if)="([^"]+)"', tpl)
+            rows.append({
+                "app": app, "page": f.parent.name,
+                "scaffold": "sh-scaffold" in tpl,
+                "titleKey": "title-key" in attrs,
+                "fetch": bool(re.search(r"\bapi\.\w+\(", src)),
+                "catch": "catch" in src,
+                "errState": bool(re.search(r"\b(failed|errMsg)\b", src)),
+                "empty": bool(conds),
+                # 空态的显示条件里有没有把「还没加载完」排除掉
+                # 判据与 `ui-package.test.ts`「空态不许在还不知道时出现」**逐字同源** ——
+                # 末尾那个 `(?!\s*\.)` 不能少：`b-app/delivery` 的 `!pending.length` 里
+                # `pending` 是待处理列表不是加载标志，少了它这份文档会比闸门少数一页。
+                "emptyGuarded": any(re.search(r"\b(loading|loaded|pending|inited|ready|firstLoad)\b(?!\s*\.)", c)
+                                    for c in conds),
+                "bottomBar": ("sh-actionbar" in tpl or "sh-savebar" in tpl),
+            })
+    return rows
+
+
+def pages() -> str:
+    rows = page_facts()
+    n = len(rows)
+    def pct(k, base=None):
+        b = base if base is not None else n
+        c = sum(1 for r in rows if r[k])
+        return c, b, (round(100 * c / b) if b else 0)
+    L = ["# 界面规范 · 页面\n", HEAD]
+    L.append("\n> 字怎么长见 [规范·字体](规范-字体.md)，东西怎么摆见 [规范·版面](规范-版面.md)，")
+    L.append("> 有哪些件见 [规范·组件](规范-组件.md)。")
+    L.append("> ⚠️ **本文的数字不来自 `ui-lib.json`，是每次生成时现扫两端 `pages/` 得到的** ——")
+    L.append("> 上面那句通用页脚对这一份不成立。\n")
+
+    L.append(f"\n## 骨架：{n} 页的实测\n")
+    L.append("| 项 | 覆盖 | 规矩 |")
+    L.append("|---|---:|---|")
+    for k, rule in [
+        ("scaffold", "**每页根元素必须是 `sh-scaffold`** —— 否则小程序端换肤 / RTL / 三语标题全不生效"),
+        ("titleKey", "标题走 `title-key`（i18n 词条）。详情页的标题是动态的（商品名、店名），那几页例外"),
+        ("bottomBar", "贴底操作用 `sh-actionbar` / `sh-savebar`，不自己写 `position: fixed`"),
+    ]:
+        c, b, p_ = pct(k)
+        L.append(f"| {k} | {c}/{b}（{p_}%） | {rule} |")
+
+    fetch = [r for r in rows if r["fetch"]]
+    withEmpty = [r for r in rows if r["empty"]]
+    guarded = [r for r in withEmpty if r["emptyGuarded"]]
+    errs = [r for r in fetch if r["errState"]]
+    L.append("\n## 一个拉数据的页面有四种态\n")
+    L.append("**「还不知道」和「确定没有」是两回事，而现在它们长得一样。**\n")
+    L.append("| 态 | 该显示什么 | 实测 |")
+    L.append("|---|---|---|")
+    L.append(f"| 加载中 | **不显示空态**（骨架，或什么都不显示） | 有空态的 {len(withEmpty)} 页里，"
+             f"只有 **{len(guarded)}** 页把「加载中」从空态条件里排除了 |")
+    L.append("| 有数据 | 内容 | — |")
+    L.append(f"| 确定为空 | `sh-empty`，并给一句「接下来能做什么」 | 其余 "
+             f"**{len(withEmpty) - len(guarded)}** 页会在数据到达前**先闪一下空态** |")
+    L.append(f"| 出错 | **与「空」区分开** —— 空是「这儿本来就没有」，出错是「没取到，可以重试」 | "
+             f"{len(fetch)} 页拉数据、{sum(1 for r in fetch if r['catch'])} 页 `catch` 了，"
+             f"但只有 **{len(errs)}** 页有出错态 |")
+    L.append("\n⚠️ **这不是理论问题。** 2026-09-08 在 `my-memberships` 上逐帧采样：")
+    L.append("空态**可见约 175ms**（102ms → 277ms）才被数据顶掉 —— 而这是本地 mock，")
+    L.append("真机弱网下这个窗口是 0.5~2 秒。用户看到的是「暂无会员」，然后它翻成一个列表。\n")
+    L.append("\n写法：`v-if=\"loaded && !list.length\"`，不是 `v-if=\"!list.length\"`。\n")
+
+    L.append("\n## 四个名字，三件事\n")
+    L.append("表示这几种态的变量名眼下有四种（`loading` / `pending` / `loaded` / `failed`），")
+    L.append("而它们表达的其实是**两个正交的问题**：「第一次加载完了没有」与「这次请求成不成功」。")
+    L.append("`loading` 与 `loaded` 尤其容易互相顶替 —— 前者是瞬时的（含下拉刷新），")
+    L.append("后者是一次性的（首屏到过没有）。**判空态该用后者**：刷新时不该把列表换成空态。\n")
+    L += gate_section("页面")
+    return "\n".join(L) + "\n"
 
 
 def typography() -> str:
@@ -361,6 +454,7 @@ for path, body in [
     ("docs/technical/design/规范-字体.md", typography()),
     ("docs/technical/design/规范-版面.md", layout()),
     ("docs/technical/design/规范-组件.md", components()),
+    ("docs/technical/design/规范-页面.md", pages()),
 ]:
     # 状态行按文档规范 §四：必须紧跟标题
     lines = body.split("\n")

@@ -1429,10 +1429,17 @@ describe("断言都归得进规范", () => {
   }
   const SKIP = /(有东西可扫|有文件可扫|空转|读到了|扫到了|扫得到|量到了|有那几张表|文档在|扫描面|有文件)/;
 
-  it("读到了判据（否则下面全是空转）", () => {
+  it("每个域都对应一份真实存在的规范", () => {
+    /*
+     * 判据不写死域名 —— 第一版写的是 `["字体","版面","组件"]`，
+     * 2026-09-08 加《规范·页面》时它当场变红，而变红的理由与规矩无关，
+     * 纯粹是我把清单抄了一份。**域名的真源是 docs 目录里那几份文件。**
+     */
     const d = domains();
-    expect(Object.keys(d).sort()).toEqual(["figure", "字体", "版面", "组件"].filter((k) => k in d).sort());
     expect(Object.values(d).flat().length).toBeGreaterThan(15);
+    const missing = Object.keys(d)
+      .filter((k) => !existsSync(join(ROOT, `docs/technical/design/规范-${k}.md`)));
+    expect(missing, `GATE_DOMAIN 里有域没有对应的规范文件：${missing.join(", ")}`).toEqual([]);
   });
 
   it("没有断言落在「其它」—— 落进去就等于在规范里消失了", () => {
@@ -1499,6 +1506,78 @@ describe("划掉的字走库件", () => {
       bad,
       "划线原价走 `.sh-was`（自带 caption 字号与次要色），不再有效走 `.sh-void`（只改装饰与颜色）：\n"
         + bad.join("\n"),
+    ).toEqual([]);
+  });
+});
+
+/*
+ * **空态不许在「还不知道」的时候出现。**
+ *
+ * 一个拉数据的页面有四种态：加载中 / 有数据 / 确定为空 / 出错。
+ * 而全仓 57 个有空态的页面里，只有 16 个把「加载中」从空态条件里排除了 ——
+ * 其余 41 页写的是 `v-if="!list.length"`，于是**数据到达前先闪一下「暂无内容」**。
+ *
+ * <b>症状是实测的，不是推断</b>：2026-09-08 在 `my-memberships` 上逐帧采样，
+ * 空态可见约 **175ms**（102ms → 277ms）才被数据顶掉。而那是**本地 mock** ——
+ * 真机弱网下这个窗口是 0.5~2 秒，用户看到「暂无会员」，然后它翻成一个列表。
+ *
+ * 存量 41 页上棘轮（`known-empty-flash.txt`，只准变短）：这 41 页各有各的
+ * 加载变量名（`loading` / `pending` / `loaded` / `failed` 四种），逐页要看清
+ * 「哪个变量代表首屏到过」，机械替换会把下拉刷新也判成空。**新写的页面直接拦。**
+ */
+describe("空态不许在还不知道时出现", () => {
+  /**
+   * 「首屏加载完了没有」的标志位。**后面不许跟 `.`** ——
+   * `b-app/delivery` 的 `v-if="!pending.length"` 里 `pending` 是**待处理列表**，
+   * 不是加载标志；只按词匹配会把那一页误判成「已经守好了」，
+   * 而它恰恰是会闪空态的那一类。判据认的是标志位，不是同名的名词。
+   */
+  const LOADED = /\b(loading|loaded|pending|inited|ready|firstLoad)\b(?!\s*\.)/;
+  const baseline = new Set(
+    readFileSync(join(ROOT, "known-empty-flash.txt"), "utf8")
+      .split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")),
+  );
+
+  function offenders(): string[] {
+    const bad: string[] = [];
+    for (const app of APPS) {
+      const dir = join(ROOT, app, "src/pages");
+      for (const rel of readdirSync(dir, { recursive: true, encoding: "utf8" })) {
+        if (!rel.endsWith("index.vue")) continue;
+        const tpl = readFileSync(join(dir, rel), "utf8").split("<style")[0]!;
+        const conds = [...tpl.matchAll(/<sh-empty[^>]*v-(?:if|else-if)="([^"]+)"/g)].map((m) => m[1]!);
+        if (!conds.length || conds.some((c) => LOADED.test(c))) continue;
+        bad.push(`${app}/${rel.split("/")[0]}`);
+      }
+    }
+    return bad;
+  }
+
+  it("扫得到页面（否则下面全是空转）", () => {
+    let n = 0;
+    for (const app of APPS)
+      n += readdirSync(join(ROOT, app, "src/pages"), { recursive: true, encoding: "utf8" })
+        .filter((f) => f.endsWith("index.vue")).length;
+    expect(n).toBeGreaterThan(80);
+    expect(baseline.size).toBeGreaterThan(10);
+  });
+
+  it("没有新增的「会闪空态」页面", () => {
+    const neu = offenders().filter((p) => !baseline.has(p));
+    expect(
+      neu,
+      "空态要排除「还没加载完」：`v-if=\"loaded && !list.length\"`。\n" +
+        "用 `loaded` 不用 `loading` —— 前者是「首屏到过没有」，后者含下拉刷新，\n" +
+        "刷新时不该把列表换成空态：\n" + neu.join("\n"),
+    ).toEqual([]);
+  });
+
+  it("棘轮不许锈：名单里修好的页面要及时删掉", () => {
+    const live = new Set(offenders());
+    const stale = [...baseline].filter((p) => !live.has(p));
+    expect(
+      stale,
+      "这些页面已经修好了，但还留在 known-empty-flash.txt 里 —— 留着它们就永远免检：\n" + stale.join("\n"),
     ).toEqual([]);
   });
 });
