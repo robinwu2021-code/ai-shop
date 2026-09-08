@@ -1609,7 +1609,19 @@ describe("空态不许在还不知道时出现", () => {
         // 判据只认前一种的话，**改成更好的写法反而会变红**（当天就撞上了）。
         const tags = [...tpl.matchAll(/<sh-empty[^>]*>/g)].map((m) => m[0]);
         if (tags.some((t) => /:pending=/.test(t))) continue;
-        const conds = [...tpl.matchAll(/<sh-empty[^>]*v-(?:if|else-if)="([^"]+)"/g)].map((m) => m[1]!);
+        /*
+         * **`line` 那一档不是空态**，别把它算进来。
+         *
+         * `<sh-empty line failed v-if="failed">` 是页面里某一小块的出错行
+         *（标签选择器、可选货、可用券拉挂了那一行），它只在 `failed` 为真时出现，
+         * 加载中一定不显示 —— 而这道闸拦的是「加载中先闪一下『暂无』」。
+         * 不排掉的话，给一个块补上出错态**反而会让这道闸变红**。
+         */
+        const real = tags.filter((t) => !/\bline\b/.test(t));
+        if (!real.length) continue;
+        const conds = [...tpl.matchAll(/<sh-empty[^>]*v-(?:if|else-if)="([^"]+)"/g)]
+          .filter((m) => !/\bline\b/.test(m[0]))
+          .map((m) => m[1]!);
         if (!conds.length || conds.some((c) => LOADED.test(c))) continue;
         bad.push(`${app}/${rel.split("/")[0]}`);
       }
@@ -1623,7 +1635,12 @@ describe("空态不许在还不知道时出现", () => {
       n += readdirSync(join(ROOT, app, "src/pages"), { recursive: true, encoding: "utf8" })
         .filter((f) => f.endsWith("index.vue")).length;
     expect(n).toBeGreaterThan(80);
-    expect(baseline.size).toBeGreaterThan(10);
+    /*
+     * **不许钉基线条数**。第一版写的是 `expect(baseline.size).toBeGreaterThan(10)`，
+     * 而名单是「只准变短」的 —— 修到第 11 页那天它就红了，红的原因是修得太多。
+     * 隔壁「拉数据的页面要区分出错与空」犯过同一个错，2026-09-09 一起改掉：
+     * 量扫描面（上面那个 `n`），不量欠债。
+     */
   });
 
   it("没有新增的「会闪空态」页面", () => {

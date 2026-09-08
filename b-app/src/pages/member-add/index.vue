@@ -38,8 +38,19 @@ function toggle(tagNo: string) {
   else picked.value.push(tagNo);
 }
 
+/** 标签这次没取到。**与「这家店还没建过标签」是两件事** */
+const failed = ref(false);
+
 async function load() {
-  tags.value = await api.mMemberTags().catch(() => []);
+  // `.catch(() => [])` 脱掉：兜成空之后下面那个 `v-if="mine.length"`
+  // 让**整块标签字段消失** —— 商家看到的不是一个坏掉的选择器，
+  // 是「这个功能不存在」，他不会想到重试
+  try {
+    tags.value = await api.mMemberTags();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
 }
 
 async function save() {
@@ -87,9 +98,12 @@ onShow(load);
         <text class="field__label">{{ $t("memberAdd.remark") }}</text>
         <input maxlength="255" v-model="remark" class="field__input" :placeholder="$t('memberAdd.remarkPh')" />
       </view>
-      <view v-if="mine.length" class="field">
+      <!-- `|| failed` 一起判：拉挂时这一块要**留在原地**说「没能加载出来」，
+           而不是整块消失 —— 后者与「这家店还没建过标签」一模一样 -->
+      <view v-if="mine.length || failed" class="field">
         <text class="field__label">{{ $t("memberAdd.tags") }}</text>
-        <view class="tags sh-wrap">
+        <sh-empty v-if="failed" line failed @retry="load"></sh-empty>
+        <view v-else class="tags sh-wrap">
           <text
             v-for="tg in mine"
             :key="tg.tagNo"

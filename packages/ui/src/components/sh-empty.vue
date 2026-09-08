@@ -44,6 +44,16 @@ withDefaults(
     bare?: boolean;
     /** 首屏还没到过 —— 整个件不渲染，避免「先闪一下暂无」 */
     pending?: boolean;
+    /**
+     * 单行形态：**给页面里的一小块用**（表单里的标签选择器、可选货、可用券）。
+     *
+     * 为什么要这一档：那些块拉挂时，整块字段会因为 `v-if="list.length"` 直接消失 ——
+     * 商家看到的不是坏掉的选择器，是「这个功能不存在」，他不会想到重试。
+     * 但把默认那一档摆进去也不对：**量出来是三行居中 + 一颗大按钮**，
+     * 立在本该是一排小 chip 的位置上，读起来像「整页出了大事」。
+     * 所以这一档收成一行：一句灰字 + 一个文字链，与字段内容同一个体量。
+     */
+    line?: boolean;
     /** 这次没取到（与「确定为空」是两件事） */
     failed?: boolean;
     /**
@@ -55,7 +65,8 @@ withDefaults(
      */
     failedText?: string;
   }>(),
-  { text: "", tip: "", compact: false, bare: false, pending: false, failed: false, failedText: "" },
+  { text: "", tip: "", compact: false, bare: false, pending: false, failed: false, failedText: "",
+    line: false },
 );
 
 // 重试由调用点决定重新拉什么 —— 这里只负责那颗按钮长什么样、摆在哪
@@ -67,9 +78,15 @@ defineEmits<{ retry: [] }>();
   <view
     v-if="!pending"
     class="empty"
-    :class="{ 'sh-card': !bare, 'is-compact': compact, 'is-bare': bare }"
+    :class="{ 'sh-card': !bare && !line, 'is-compact': compact, 'is-bare': bare, 'is-line': line }"
   >
-    <template v-if="failed">
+    <!-- 单行形态只做出错这一态：块级的「确定为空」由调用点自己说
+         （「还没有标签」这类话是页面特有的，收不进来） -->
+    <template v-if="line">
+      <text class="sh-hint empty__line-t">{{ failedText || $t("common.loadFailed") }}</text>
+      <text class="sh-link" @tap="$emit('retry')">{{ $t("common.retry") }}</text>
+    </template>
+    <template v-else-if="failed">
       <text class="txt-body">{{ failedText || $t("common.loadFailed") }}</text>
       <text class="sh-hint txt-quiet">{{ $t("common.loadFailedTip") }}</text>
       <view class="empty__act">
@@ -123,6 +140,19 @@ defineEmits<{ retry: [] }>();
 }
 /* 动作与说明之间的距离。**只在这儿定一次** —— 此前七处各给各的
    （0 / 24 / 28 / 32rpx），于是同一种空态在不同页面上按钮高低不一 */
+/* 单行形态：左对齐、无留白、与字段内容同高。默认那一档是 72rpx 上下留白
+   加居中，摆在表单里会把一个字段撑成一屏的主角 */
+.empty.is-line {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  padding: 8rpx 0;
+  text-align: start;
+}
+.empty__line-t {
+  flex: 0 1 auto;
+}
+
 .empty__act {
   margin-top: 28rpx;
   /*

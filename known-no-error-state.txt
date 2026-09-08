@@ -37,7 +37,6 @@ b-app/goods-edit
 b-app/home
 b-app/login
 b-app/me
-b-app/member-add
 b-app/member-reach
 b-app/purchase-edit
 b-app/sku-identity

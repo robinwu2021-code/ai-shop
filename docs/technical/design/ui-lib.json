@@ -928,7 +928,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 60,
+        "b-app": 61,
         "c-app": 3
       }
     },
@@ -984,7 +984,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 122,
+        "b-app": 123,
         "c-app": 11
       }
     },
@@ -2097,18 +2097,19 @@
       "name": "sh-empty",
       "file": "packages/ui/src/components/sh-empty.vue",
       "scope": "跨端",
-      "lines": 145,
+      "lines": 175,
       "props": [
         "text?: string",
         "tip?: string",
         "compact?: boolean",
         "bare?: boolean",
         "pending?: boolean",
+        "line?: boolean",
         "failed?: boolean",
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 47,
+        "b-app": 48,
         "c-app": 27,
         "lib": 1
       },
@@ -2121,6 +2122,8 @@
         ],
         "rawFontSize": [],
         "spacing": [
+          8,
+          12,
           28,
           72
         ],
@@ -3613,6 +3616,7 @@
       "key": "b-app/member-add",
       "file": "b-app/src/pages/member-add/index.vue",
       "components": [
+        "sh-empty",
         "sh-scaffold"
       ],
       "libClassHits": 15,
