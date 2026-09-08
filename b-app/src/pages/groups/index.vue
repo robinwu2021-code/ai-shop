@@ -75,7 +75,7 @@ onShow(load);
         </view>
         <view class="item__price">
           <text class="txt-body sh-num now">{{ money(g.groupPrice) }}</text>
-          <text class="txt-caption sh-num base">{{ money(g.basePrice) }}</text>
+          <text class="sh-was sh-num">{{ money(g.basePrice) }}</text>
         </view>
       </view>
 
@@ -133,9 +133,6 @@ onShow(load);
 .now {
   display: block;
   color: var(--sh-primary-text);
-}
-.base {
-  text-decoration: line-through;
 }
 .progress {
   gap: 20rpx;

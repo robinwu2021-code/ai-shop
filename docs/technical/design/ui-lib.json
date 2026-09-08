@@ -326,8 +326,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 280,
-        "c-app": 243
+        "b-app": 279,
+        "c-app": 241
       }
     },
     {
@@ -479,7 +479,7 @@
       },
       "usage": {
         "b-app": 32,
-        "c-app": 14
+        "c-app": 12
       }
     },
     {
@@ -523,7 +523,7 @@
       },
       "usage": {
         "b-app": 114,
-        "c-app": 70
+        "c-app": 68
       }
     },
     {
@@ -986,6 +986,44 @@
       "usage": {
         "b-app": 115,
         "c-app": 10
+      }
+    },
+    {
+      "class": ".sh-void",
+      "group": "排版",
+      "when": "划掉：这个东西不再有效（作废、被移出、旧值）。**不带字号** —— 它挂在原本就有大小的字上",
+      "avoid": "折扣前的价用 .sh-was",
+      "decl": {
+        "color": "var(--sh-sub)",
+        "text-decoration": "line-through"
+      },
+      "px": {
+        "color": "var(--sh-sub)",
+        "text-decoration": "line-through"
+      },
+      "usage": {
+        "b-app": 3,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-was",
+      "group": "排版",
+      "when": "划线原价：折扣前的价。自带 caption 字号与次要色",
+      "avoid": "「不再有效」用 .sh-void",
+      "decl": {
+        "font-size": "24rpx",
+        "color": "var(--sh-sub)",
+        "text-decoration": "line-through"
+      },
+      "px": {
+        "font-size": "12px",
+        "color": "var(--sh-sub)",
+        "text-decoration": "line-through"
+      },
+      "usage": {
+        "b-app": 1,
+        "c-app": 4
       }
     },
     {
@@ -2614,7 +2652,7 @@
       "name": "biz-region-picker",
       "file": "b-app/src/components/biz/biz-region-picker.vue",
       "scope": "B 端",
-      "lines": 1538,
+      "lines": 1534,
       "props": [
         "visible: boolean",
         "areas: ServiceArea[]"
@@ -2956,9 +2994,9 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 32,
-      "localSelectors": 8,
-      "localCssLines": 28,
+      "libClassHits": 33,
+      "localSelectors": 7,
+      "localCssLines": 24,
       "rolled": []
     },
     {
@@ -2972,8 +3010,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 30,
-      "localSelectors": 13,
-      "localCssLines": 55,
+      "localSelectors": 12,
+      "localCssLines": 52,
       "rolled": []
     },
     {
@@ -3161,9 +3199,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 23,
-      "localSelectors": 4,
-      "localCssLines": 16,
+      "libClassHits": 24,
+      "localSelectors": 3,
+      "localCssLines": 12,
       "rolled": []
     },
     {
@@ -3570,8 +3608,8 @@
         "sh-tabs"
       ],
       "libClassHits": 25,
-      "localSelectors": 12,
-      "localCssLines": 46,
+      "localSelectors": 11,
+      "localCssLines": 43,
       "rolled": []
     },
     {
@@ -3909,8 +3947,8 @@
         "sh-stepper"
       ],
       "libClassHits": 125,
-      "localSelectors": 40,
-      "localCssLines": 155,
+      "localSelectors": 39,
+      "localCssLines": 152,
       "rolled": []
     },
     {
@@ -3924,8 +3962,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 41,
-      "localSelectors": 13,
-      "localCssLines": 50,
+      "localSelectors": 12,
+      "localCssLines": 47,
       "rolled": []
     },
     {
@@ -4278,9 +4316,9 @@
         "sh-sheet",
         "sh-tabs"
       ],
-      "libClassHits": 46,
-      "localSelectors": 32,
-      "localCssLines": 150,
+      "libClassHits": 47,
+      "localSelectors": 31,
+      "localCssLines": 146,
       "rolled": []
     },
     {
@@ -4356,9 +4394,9 @@
       "components": [
         "sh-cover"
       ],
-      "libClassHits": 27,
+      "libClassHits": 26,
       "localSelectors": 15,
-      "localCssLines": 75,
+      "localCssLines": 74,
       "rolled": []
     },
     {
@@ -4369,9 +4407,9 @@
       "components": [
         "sh-cover"
       ],
-      "libClassHits": 30,
-      "localSelectors": 15,
-      "localCssLines": 76,
+      "libClassHits": 29,
+      "localSelectors": 14,
+      "localCssLines": 72,
       "rolled": []
     },
     {
@@ -4445,7 +4483,7 @@
   "gaps": [],
   "counts": {
     "tokens": 16,
-    "blocks": 78,
+    "blocks": 80,
     "components": 34,
     "pages": 114,
     "gapKinds": 0

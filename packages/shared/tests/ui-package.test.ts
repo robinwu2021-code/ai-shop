@@ -1457,3 +1457,48 @@ describe("断言都归得进规范", () => {
     ).toEqual([]);
   });
 });
+
+/*
+ * **划掉的字只有两种，各有各的件。**
+ *
+ * 全仓曾有 9 处自写 `text-decoration: line-through`，而它们是**两种语义**：
+ *
+ *   划线原价（c 端 4 处）  「原价 ¥39.80」—— 折扣前的价，永远是一小段附注
+ *   作废 / 失效（b 端 5 处）「这个区域被移出了」「这个标签失效了」「这是旧值」
+ *
+ * 分成 `.sh-was` / `.sh-void` 两个而不是一个，是因为**它们对字号的态度相反**：
+ * 划线原价永远是附注、字号固定（此前 4 处却是 caption ×2 / sub ×2）；
+ * 而作废挂在原本就有大小的文本上，只该改装饰与颜色。
+ *
+ * ⚠️ **迁移时踩过一次**：`chosen__name` / `item__name` / `is-void` 三处的划线是
+ * **条件态**（`.is-off` 才划），而第一版把 `sh-void` 无条件加到了调用点上 ——
+ * 那会把**每一项**都划掉。改成 `:class="{ 'sh-void': 失效 }"` 直接绑条件。
+ * 「同一个装饰」不等于「同一个时机」。
+ */
+describe("划掉的字走库件", () => {
+  const files = [...APPS.map((a) => join(ROOT, a, "src"))].flatMap((dir) =>
+    readdirSync(dir, { recursive: true, encoding: "utf8" })
+      .filter((f) => f.endsWith(".vue"))
+      .map((f) => join(dir, f)),
+  );
+
+  it("有文件可扫（否则下面全是空转）", () => {
+    expect(files.length).toBeGreaterThan(80);
+  });
+
+  it("页面与业务件里没有自写的 line-through", () => {
+    const bad: string[] = [];
+    for (const f of files) {
+      const src = readFileSync(f, "utf8");
+      const css = [...src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
+        .map((m) => m[1]!).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const m of css.matchAll(/([^{}]+)\{[^{}]*text-decoration:\s*line-through/g))
+        bad.push(`${f.slice(ROOT.length + 1)}  ${m[1]!.trim().split("\n").pop()!.trim()}`);
+    }
+    expect(
+      bad,
+      "划线原价走 `.sh-was`（自带 caption 字号与次要色），不再有效走 `.sh-void`（只改装饰与颜色）：\n"
+        + bad.join("\n"),
+    ).toEqual([]);
+  });
+});

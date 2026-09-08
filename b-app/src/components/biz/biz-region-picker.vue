@@ -1217,7 +1217,7 @@ function close() {
       <view v-if="chosen.length && chosenOpen" class="chosen">
         <view class="chosen__list">
           <view v-for="a in chosen" :key="a.level + a.refCode" class="txt-sub sh-row chosen__row">
-            <text class="sh-fill chosen__name" :class="{ 'is-off': a.mode === 'EXCLUDE' }">{{ a.name }}</text>
+            <text class="sh-fill" :class="{ 'sh-void': a.mode === 'EXCLUDE' }">{{ a.name }}</text>
             <!-- 排除项混在已选里而不标出来 = 商家以为自己多做了一片，其实是少做了一片 -->
             <text v-if="a.mode === 'EXCLUDE'" class="txt-caption chosen__ex">{{ $t("store.picker.excludedTag") }}</text>
             <!-- 待审的要在**已选清单里**看得见：只写在行上的话，勾完就再也看不到了 -->
@@ -1502,10 +1502,6 @@ function close() {
   border-radius: 16rpx;
   background: var(--sh-danger-tint);
   color: var(--sh-danger);
-}
-.chosen__name.is-off {
-  text-decoration: line-through;
-  color: var(--sh-sub);
 }
 
 /* 已选清单里的待审标：与行内那句「选中后需运营审核」是同一件事的两个时刻 */

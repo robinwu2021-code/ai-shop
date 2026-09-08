@@ -88,11 +88,11 @@ function showAll() {
  * 于是同一个「单据状态」在两个页面上长得完全不一样。
  *
  * 草稿与作废都用「不着色」的默认 chip：它们不是要引起注意的态，
- * 只是「还没生效」和「已经没了」。作废另外保留删除线（见样式）。
+ * 只是「还没生效」和「已经没了」。作废另外保留删除线 —— 走库件 `.sh-void`（全仓划线的两种语义之一：「不再有效」）。
  */
 function stateChip(status: string): string {
   if (status === "SHIPPED" || status === "COUNTING") return "sh-chip--warning";
-  if (status === "VOIDED") return "is-void";
+  if (status === "VOIDED") return "sh-void";
   if (status === "DRAFT") return "";
   return "sh-chip--primary";
 }
@@ -320,9 +320,5 @@ onShow(load);
 /* 数量单独占右侧一列，不再与状态叠在一起 */
 .row__qty {
   flex: none;
-}
-/* 作废：chip 不着色，但把字划掉 —— 「已经没了」比「注意我」更要紧 */
-.is-void {
-  text-decoration: line-through;
 }
 </style>

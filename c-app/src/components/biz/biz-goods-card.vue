@@ -71,7 +71,7 @@ const off = computed(() => {
            时效搬到上一行之后，这里三件在英文下也放得开 -->
       <view class="sh-row card__foot">
         <text class="txt-price price__now sh-num">{{ money(goods.price) }}</text>
-        <text v-if="goods.originPrice" class="txt-caption txt-quiet price__was sh-num">
+        <text v-if="goods.originPrice" class="sh-was price__was sh-num">
           {{ money(goods.originPrice) }}
         </text>
         <text v-if="off" class="sh-chip sh-chip--danger sh-num">-{{ off }}%</text>
@@ -175,7 +175,6 @@ const off = computed(() => {
   flex-shrink: 0;
 }
 .price__was {
-  text-decoration: line-through;
   flex-shrink: 0;
 }
 /* 售罄标记占的是「＋」的位置，所以也靠右 */

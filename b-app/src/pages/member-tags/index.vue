@@ -110,7 +110,7 @@ onShow(load);
 
       <view v-for="tg in mine" :key="tg.tagNo" class="item sh-mt-sm">
         <view class="sh-row sh-row--baseline">
-          <text class="txt-strong item__name" :class="{ 'is-off': tg.status !== 'ACTIVE' }">{{ tg.name }}</text>
+          <text class="txt-strong" :class="{ 'sh-void': tg.status !== 'ACTIVE' }">{{ tg.name }}</text>
           <text class="sh-muted">
             {{ $t("memberTags.count", { n: tg.count }) }}
             <template v-if="tg.status !== 'ACTIVE'"> · {{ $t("memberTags.disabled") }}</template>
@@ -140,10 +140,6 @@ onShow(load);
   padding-top: 16rpx;
 }
 
-.item__name.is-off {
-  color: var(--sh-sub);
-  text-decoration: line-through;
-}
 .acts {
   display: flex;
   gap: 24rpx;

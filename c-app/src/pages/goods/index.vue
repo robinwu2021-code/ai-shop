@@ -314,7 +314,7 @@ onShareAppMessage(() =>
 
       <view class="price sh-row sh-row--baseline">
         <text class="txt-hero sh-num sh-center">{{ money(sku?.price ?? goods.price) }}</text>
-        <text v-if="sku?.originPrice" class="txt-sub price__was sh-num">
+        <text v-if="sku?.originPrice" class="sh-was sh-num">
           {{ money(sku.originPrice) }}
         </text>
       </view>
@@ -615,9 +615,6 @@ onShareAppMessage(() =>
   margin-top: 28rpx;
 }
 
-.price__was {
-  text-decoration: line-through;
-}
 .chips {
   margin-top: 24rpx;
 }

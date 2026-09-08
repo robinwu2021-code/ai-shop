@@ -166,7 +166,7 @@ async function discard() {
         <view v-for="c in preview.changes" :key="c.field" class="diff">
           <text class="txt-caption txt-quiet">{{ c.label }}</text>
           <view class="diff__vals sh-row sh-row--baseline">
-            <text class="txt-sub diff__before">{{ c.before || "—" }}</text>
+            <text class="txt-sub sh-void">{{ c.before || "—" }}</text>
             <!-- sh-icon 而不是「→」字符：字符伪图标跟着系统字形走，RTL 也不会自己翻；
                  chevronRight 在 DIRECTIONAL 名单里，阿语下自动镜像 -->
             <sh-icon name="chevronRight" :size="14" class="txt-quiet"></sh-icon>
@@ -218,10 +218,6 @@ async function discard() {
   margin-top: 8rpx;
 }
 /* 旧值划线弱化、新值常规 —— 眼睛先落在「将变成什么」上 */
-.diff__before {
-  text-decoration: line-through;
-  color: var(--sh-sub);
-}
 .btns {
   gap: 20rpx;
 }

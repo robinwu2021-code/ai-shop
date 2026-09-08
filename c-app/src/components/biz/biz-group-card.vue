@@ -29,7 +29,7 @@ const off = computed(() =>
         <text class="sh-hint">{{ group.pickupName }}</text>
         <view class="gcard__price sh-row sh-row--baseline">
           <text class="txt-display txt-ink gcard__now sh-num">{{ money(group.groupPrice) }}</text>
-          <text v-if="off > 0" class="txt-caption txt-quiet gcard__base sh-num">{{
+          <text v-if="off > 0" class="sh-was sh-num">{{
             money(group.basePrice)
           }}</text>
           <text v-if="off > 0" class="sh-chip sh-chip--danger sh-num"
@@ -115,10 +115,6 @@ const off = computed(() =>
 }
 .gcard__price {
   margin-top: 16rpx;
-}
-.gcard__base {
-  color: var(--sh-sub);
-  text-decoration: line-through;
 }
 .gcard__goal {
   margin-top: 24rpx;
