@@ -27,7 +27,7 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
-import { Pagination } from "@/components/ui/misc";
+import { Pagination, IdCell } from "@/components/ui/misc";
 import { Switch } from "@/components/ui/switch";
 import { RegionPicker } from "./region-picker";
 import { FenceDialog } from "./fence-dialog";
@@ -278,7 +278,7 @@ function CommunitiesInner() {
 
   // ── 自提点 ────────────────────────────────────────────────────────────
   const pickupColumns: Column<PickupPoint>[] = [
-    { header: cp.colPickupNo, cell: (p) => p.pickupNo, numeric: true, align: "start" },
+    { header: cp.colPickupNo, cell: (p) => <IdCell value={p.pickupNo} />, numeric: true, align: "start" },
     { header: cp.colName, cell: (p) => p.name },
     { header: cp.colType, cell: (p) => <PickupPointTypeBadge value={p.type} /> },
     { header: cp.colCommunity, cell: (p) => p.communityName },
@@ -369,7 +369,7 @@ function CommunitiesInner() {
 
   // ── 临时点风控 ────────────────────────────────────────────────────────
   const riskyColumns: Column<PickupPoint>[] = [
-    { header: cp.colPickupNo, cell: (p) => p.pickupNo, numeric: true, align: "start" },
+    { header: cp.colPickupNo, cell: (p) => <IdCell value={p.pickupNo} />, numeric: true, align: "start" },
     { header: cp.colName, cell: (p) => p.name },
     { header: cp.colCommunity, cell: (p) => p.communityName },
     {

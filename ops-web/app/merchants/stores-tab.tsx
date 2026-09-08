@@ -32,6 +32,7 @@ import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
 import { PagedTable } from "@/components/ui/paged-table";
+import { IdCell } from "@/components/ui/misc";
 import type { MerchantsCopy as Copy } from "./copy";
 
 /**
@@ -115,7 +116,7 @@ export function StoresTab({ c }: { c: Copy }) {
   });
 
   const columns: Column<StoreGovern>[] = [
-    { header: c.stColNo, cell: (s) => s.storeNo, numeric: true, align: "start" },
+    { header: c.stColNo, cell: (s) => <IdCell value={s.storeNo} />, numeric: true, align: "start" },
     {
       header: c.stColName,
       cell: (s) => (

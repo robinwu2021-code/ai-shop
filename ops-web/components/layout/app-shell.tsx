@@ -49,7 +49,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             毛玻璃下穿过、自然出现分界 —— 零线条（Linear/GitHub 的做法）。 */}
         <main className="flex-1 overflow-y-auto">
           <Header />
-          <div className="p-6 pt-2">
+          {/* data-shell="body" 是**页体的稳定锚点**：dev 工具 /dev/pages 隔着 iframe
+              扫真实页面时要能只扫页体 —— 顶栏与导航在每一页都一样，跟着扫 124 遍
+              只会把清单淹掉。别改这个属性名，那边按它取根节点。 */}
+          <div data-shell="body" className="p-6 pt-2">
           {/* PhaseGuard 读 useSearchParams（静态导出要求包 Suspense） */}
           <Suspense fallback={null}>
             <PhaseGuard>{children}</PhaseGuard>

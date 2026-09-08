@@ -42,7 +42,7 @@ import { ConfigCard } from "@/components/ui/config-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HelpNote } from "@/components/ui/help-note";
-import { StatRow, Pagination, StatCard } from "@/components/ui/misc";
+import { StatRow, Pagination, StatCard, IdCell } from "@/components/ui/misc";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Toolbar } from "@/components/ui/toolbar";
@@ -117,8 +117,8 @@ function FinanceInner() {
   });
 
   const settleColumns: Column<Settlement>[] = [
-    { header: c.colSettleNo, cell: (s) => s.settleNo, numeric: true, align: "start" },
-    { header: c.colOrder, cell: (s) => s.subOrderNo, numeric: true, align: "start" },
+    { header: c.colSettleNo, cell: (s) => <IdCell value={s.settleNo} />, numeric: true, align: "start" },
+    { header: c.colOrder, cell: (s) => <IdCell value={s.subOrderNo} />, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (s) => s.merchantNo },
     {
       header: c.colMode,
@@ -146,7 +146,7 @@ function FinanceInner() {
   ];
 
   const splitColumns: Column<SplitLog>[] = [
-    { header: c.colSettleNo, cell: (r) => r.settleNo, numeric: true, align: "start" },
+    { header: c.colSettleNo, cell: (r) => <IdCell value={r.settleNo} />, numeric: true, align: "start" },
     { header: c.colOrder, cell: (r) => r.subOrderNo, numeric: true, align: "start" },
     {
       header: c.colAction,
@@ -166,7 +166,7 @@ function FinanceInner() {
 
   const backColumns: Column<AfterSale>[] = [
     { header: c.colAsNo, cell: (a) => a.afterSaleNo, numeric: true, align: "start" },
-    { header: c.colOrderNo, cell: (a) => a.orderNo, numeric: true, align: "start" },
+    { header: c.colOrderNo, cell: (a) => <IdCell value={a.orderNo} />, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (a) => a.merchantName },
     { header: c.colRefundAmount, cell: (a) => money(a.refundMinor), numeric: true },
     {

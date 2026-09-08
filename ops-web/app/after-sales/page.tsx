@@ -28,7 +28,7 @@ import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ConfigCard } from "@/components/ui/config-card";
 import { Notice } from "@/components/ui/notice";
-import { StatRow, StatCard } from "@/components/ui/misc";
+import { StatRow, StatCard, IdCell } from "@/components/ui/misc";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
 import { TabHeader } from "@/components/ui/tab-header";
@@ -120,8 +120,8 @@ function AfterSalesInner() {
   };
 
   const columns: Column<AfterSale>[] = [
-    { header: c.colAsNo, cell: (a) => a.afterSaleNo, numeric: true, align: "start" },
-    { header: c.colOrderNo, cell: (a) => a.orderNo, numeric: true, align: "start" },
+    { header: c.colAsNo, cell: (a) => <IdCell value={a.afterSaleNo} />, numeric: true, align: "start" },
+    { header: c.colOrderNo, cell: (a) => <IdCell value={a.orderNo} />, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (a) => a.merchantName },
     { header: c.colBuyer, cell: (a) => a.buyerNickname },
     { header: c.colType, cell: (a) => <StatusBadge map={typeMap} value={a.type} /> },

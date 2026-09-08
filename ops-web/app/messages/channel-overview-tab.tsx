@@ -60,9 +60,12 @@ export function ChannelOverviewTab({ c }: { c: MessageCopy }) {
             </div>;
       },
     },
-    { header: c.chTodaySent, cell: (r) => r.todaySent },
+    // numeric：右对齐 + 等宽。这两列是计数，漏了 numeric 的话「0 / 12 / 1043」
+    // 各自靠左起排，扫一眼看不出量级差 —— /dev/pages 在真实页面上量出来的
+    { header: c.chTodaySent, cell: (r) => r.todaySent, numeric: true },
     {
       header: c.chTodayFailed,
+      numeric: true,
       cell: (r) => r.todayFailed > 0
         ? <span className="font-medium text-destructive">{r.todayFailed}</span>
         : <span>{r.todayFailed}</span>,

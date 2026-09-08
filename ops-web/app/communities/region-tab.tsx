@@ -78,7 +78,10 @@ export function RegionTab({ c, canDecide }: { c: Copy; canDecide: boolean }) {
           <span>{r.name}</span>
         ),
     },
-    { header: c.colRgNodeCode, cell: (r) => <span className="font-mono text-muted-foreground">{r.regionCode}</span> },
+    // 区划码是标识符不是数量：人从左往右按层级读它，右对齐反而把层级对错位。
+    // 显式写 align 也是给 /dev/pages 的信号：这一列的对齐是判断过的，别再猜。
+    { header: c.colRgNodeCode, align: "start",
+      cell: (r) => <span className="font-mono text-muted-foreground">{r.regionCode}</span> },
     {
       header: c.colRgNodeState,
       cell: (r) => (

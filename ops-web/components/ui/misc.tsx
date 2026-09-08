@@ -92,7 +92,9 @@ export function EmptyState({
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const { t } = useI18n();
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
+    // data-audit-error：给 dev 工具一个稳定标记。/dev/pages 要区分「这一页没数据」
+    // 与「这一页接口挂了」—— 靠文案匹配的话，改一次文案或切一次语言就失灵。
+    <div data-audit-error className="flex flex-col items-center justify-center gap-3 py-14 text-center">
       <div className="flex size-11 items-center justify-center rounded-sheet bg-destructive-tint text-[var(--destructive-ink)]">
         <AlertTriangle className="size-5" />
       </div>
@@ -136,12 +138,23 @@ export function PageTitle({ title, desc, action }: { title: string; desc?: strin
  *
  * <p>等宽而不是普通字体：单号是逐位比对的东西，比例字体下 `0/O`、`1/l` 对不齐。
  */
-export function IdCell({ value, width = "9rem" }: { value: string; width?: string }) {
+/**
+ * 单号 / 编号单元格：等宽 + 12px/500 的扫描锚点。
+ *
+ * ⚠️ **默认不截断。** 这里原先写死 `maxWidth: 9rem`（144px），而运营端的单号是
+ * 「3~4 位前缀 + 20 位数字」共 23 个字符，等宽 12px 下要 173px —— 也就是说
+ * 默认宽度**必然截掉尾部**，而尾部恰恰是区分两笔单的那几位：
+ * `SUB202609030227380008614` 与 `…0007270` 截完长得一模一样。
+ * 标识符被静默切短比字号不对严重得多：它让人对着两行相同的字去猜哪行是哪笔。
+ *
+ * 要限宽就显式传 `width`（比如一屏里列特别多的表），传了才截。
+ */
+export function IdCell({ value, width }: { value: string; width?: string }) {
   return (
     <span
       title={value}
-      style={{ maxWidth: width }}
-      className="block truncate font-mono txt-caption text-muted-foreground"
+      style={width ? { maxWidth: width } : undefined}
+      className={cn("block font-mono txt-caption text-muted-foreground", width && "truncate")}
     >
       {value}
     </span>

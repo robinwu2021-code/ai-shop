@@ -31,7 +31,7 @@ import { ConfigCard } from "@/components/ui/config-card";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HelpNote } from "@/components/ui/help-note";
-import { StatRow, StatCard } from "@/components/ui/misc";
+import { StatRow, StatCard, IdCell } from "@/components/ui/misc";
 import { Progress } from "@/components/ui/progress";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Toolbar } from "@/components/ui/toolbar";
@@ -125,7 +125,7 @@ function FulfillmentInner() {
   });
 
   const batchColumns: Column<ArrivalBatch>[] = [
-    { header: c.colBatchNo, cell: (b) => b.batchNo, numeric: true, align: "start" },
+    { header: c.colBatchNo, cell: (b) => <IdCell value={b.batchNo} />, numeric: true, align: "start" },
     { header: c.colPickup, cell: (b) => b.pickupName },
     { header: c.colCommunity, cell: (b) => b.communityName },
     { header: c.colPlanArrive, cell: (b) => fmtTime(b.planArriveAt) },
@@ -176,6 +176,9 @@ function FulfillmentInner() {
     {
       header: c.colRate,
       width: "12rem",
+      // 这一格是「进度条 + 百分比」的组合件，不是一个数。显式 start：
+      // 右对齐会把进度条推到列尾，几行之间的条首对不齐，反而读不出高低
+      align: "start",
       cell: (r) => (
         <div className="flex items-center gap-2">
           <Progress value={Math.round(r.rate * 100)} total={100} showText={false} className="w-24" />

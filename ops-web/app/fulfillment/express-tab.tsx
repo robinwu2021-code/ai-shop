@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PagedTable } from "@/components/ui/paged-table";
+import { IdCell } from "@/components/ui/misc";
 import type { FulfillmentCopy } from "./copy";
 
 const useShipStatusMap = (c: FulfillmentCopy): StatusMap<ShipmentStatus> => ({
@@ -67,8 +68,8 @@ export function ExpressTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
   const open = (s: Shipment) => { setCurrent(s); setForm({ waybillNo: s.waybillNo, reason: "" }); };
 
   const columns: Column<Shipment>[] = [
-    { header: c.colShipmentNo, cell: (s) => s.shipmentNo, numeric: true, align: "start" },
-    { header: c.colOrderNo, cell: (s) => s.orderNo, numeric: true, align: "start" },
+    { header: c.colShipmentNo, cell: (s) => <IdCell value={s.shipmentNo} />, numeric: true, align: "start" },
+    { header: c.colOrderNo, cell: (s) => <IdCell value={s.orderNo} />, numeric: true, align: "start" },
     { header: c.colCarrier, cell: (s) => <StatusBadge map={carrierMap} value={s.carrier} /> },
     { header: c.colWaybill, cell: (s) => s.waybillNo, numeric: true, align: "start" },
     { header: c.colShipStatus, cell: (s) => <StatusBadge map={statusMap} value={s.status} /> },

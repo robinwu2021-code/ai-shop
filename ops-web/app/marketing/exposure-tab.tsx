@@ -60,9 +60,14 @@ export function ExposureTab({ c, kind, canStop }: {
   const couponCols: Column<OpsPromoCoupon>[] = [
     { header: c.exposureTitle, cell: (x) => x.title },
     { header: c.exposureEntity, cell: (x) => x.entityName },
-    { header: c.exposureIssued, cell: (x) => `${x.receivedCount} / ${x.totalCount ?? c.exposureUnlimited}` },
-    { header: c.exposureBudget, cell: (x) => (x.budgetMinor ? money(x.budgetMinor) : c.exposureNone) },
-    { header: c.exposureMax, cell: (x) => (x.maxExposureMinor == null ? c.exposureUnlimited : money(x.maxExposureMinor)) },
+    { header: c.exposureIssued, numeric: true,
+      cell: (x) => `${x.receivedCount} / ${x.totalCount ?? c.exposureUnlimited}` },
+    // 金额两列同样是数字列。/dev/pages 只报了上面那一列 —— 因为「未设」「不限」
+    // 混在值里，整列就不再"全是数字"，规则的 every() 判不出来。规则的盲区不等于这里没问题
+    { header: c.exposureBudget, numeric: true,
+      cell: (x) => (x.budgetMinor ? money(x.budgetMinor) : c.exposureNone) },
+    { header: c.exposureMax, numeric: true,
+      cell: (x) => (x.maxExposureMinor == null ? c.exposureUnlimited : money(x.maxExposureMinor)) },
     { header: c.exposureFlags, cell: (x) => flags(x.flags) },
   ];
 

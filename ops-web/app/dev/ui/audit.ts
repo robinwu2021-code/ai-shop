@@ -44,9 +44,16 @@ function classOf(el: Element): string {
   return el.getAttribute("class") ?? "";
 }
 
-function compOf(el: Element): string {
+/**
+ * 归属：最近的 `[data-comp]` 祖先。
+ *
+ * `fallback` 是给**真实业务页**用的：那里没有 `data-comp` 标记（只有组件画廊有），
+ * 不给回落值的话每一条都归到「(未归属)」，归并之后是一坨看不出该开哪一页的清单 ——
+ * 一份指不到位置的问题清单当不了工作单。
+ */
+function compOf(el: Element, fallback = "(未归属)"): string {
   const owner = el.closest("[data-comp]");
-  return owner?.getAttribute("data-comp") ?? "(未归属)";
+  return owner?.getAttribute("data-comp") ?? fallback;
 }
 
 function sampleOf(el: Element): string {
@@ -56,9 +63,16 @@ function sampleOf(el: Element): string {
 
 const FOCUSABLE = 'button,a[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
 
-/** 允许的圆角档位（px 数值）。rounded-full 在 Tailwind 4 下会算成极大值，单独按"药丸"处理。 */
-function allowedRadii(): number[] {
-  const cs = getComputedStyle(document.documentElement);
+/**
+ * 允许的圆角档位（px 数值）。rounded-full 在 Tailwind 4 下会算成极大值，单独按"药丸"处理。
+ *
+ * ⚠️ 从**被扫的那个文档**读，不是永远读当前页：跨 iframe 扫真实页面时
+ * （见 `app/dev/pages`），两个文档虽然共用同一份 globals.css，但取值一旦分家
+ * （比如以后按端做主题差异），读错文档就会把合法圆角全判成违规 —— 而那种假阳性
+ * 会让整份清单失去可信度。
+ */
+function allowedRadii(doc: Document): number[] {
+  const cs = doc.defaultView!.getComputedStyle(doc.documentElement);
   const read = (name: string) => parseFloat(cs.getPropertyValue(name)) || NaN;
   // --r-control 是刻意只给 16px 级小控件（Checkbox）开的第五档，见 globals.css 里的注释：
   // 四档最小的 field(11px) 会把 16px 方块夹成正圆、与单选点撞脸。漏掉它会把 Checkbox
@@ -68,7 +82,7 @@ function allowedRadii(): number[] {
 
 /** 四个角是否同一个值；返回该值（px），不一致返回 null（不一致本身不判违规，四角不同是合法设计） */
 function uniformRadius(el: Element): number | null {
-  const cs = getComputedStyle(el);
+  const cs = el.ownerDocument.defaultView!.getComputedStyle(el);
   const corners = [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius];
   // 只处理简单 <n>px 形态；百分比/椭圆(两值)一律跳过
   const vals = corners.map((c) => (/^-?[\d.]+px$/.test(c.trim()) ? parseFloat(c) : NaN));
@@ -77,11 +91,19 @@ function uniformRadius(el: Element): number | null {
 }
 
 /**
- * 只扫 `[data-specimen]` 容器内的节点 —— 也就是**真正的组件实例**。
- * 本页自己的骨架（分区标题、状态标签、这份体检表本身）不参与扫描，
- * 否则清单里一半是这页自己的 div，读的人没法当工作单用。
+ * 要扫哪些节点。
+ *
+ * - `specimens`（组件画廊 `/dev/ui` 用）：只看 `[data-specimen]` 容器内的节点，
+ *   也就是**真正的组件实例**。那一页自己的骨架（分区标题、状态标签、体检表本身）
+ *   不参与扫描，否则清单里一半是那页自己的 div，读的人没法当工作单用。
+ * - `subtree`（真实业务页 `/dev/pages` 用）：整棵子树。业务页上没有
+ *   `data-specimen` 标记，按前一种口径扫出来的结果**恒为空** ——
+ *   而空集看起来和「全都合规」一模一样。
  */
-function specimens(root: HTMLElement): HTMLElement[] {
+export type AuditScope = "specimens" | "subtree";
+
+function targets(root: HTMLElement, scope: AuditScope): HTMLElement[] {
+  if (scope === "subtree") return Array.from(root.querySelectorAll<HTMLElement>("*"));
   const out: HTMLElement[] = [];
   for (const box of Array.from(root.querySelectorAll<HTMLElement>("[data-specimen]"))) {
     out.push(...Array.from(box.querySelectorAll<HTMLElement>("*")));
@@ -96,7 +118,29 @@ function specimens(root: HTMLElement): HTMLElement[] {
  * 需要看渲染出来的内容，判断"对齐/字重对不对"需要看计算样式。
  * 所以它们不在 lib/design-tokens.test.ts（那是源码扫描），而在这里。
  */
-function auditTables(root: HTMLElement, findings: Finding[]) {
+/**
+ * 单元格里**真正承载文字的那个节点**。
+ *
+ * ⚠️ 此前这两条表格规则直接量 `<td>` 的 computed style —— 而单元格内容多半包一层
+ * span（`IdCell` 就是 `<td><span class="txt-caption">…</span></td>`）。
+ * td 本身继承 14px/400，span 是 12px/500，量 td 得到的是**外壳的样式，不是看得见的那个**。
+ * 实测：7 个长单号列改用 `IdCell` 之后，界面上确实变成了 500，而这条规则照旧报违规。
+ *
+ * 判据：只要还有唯一一个元素子节点、且它包住了全部文字，就往下走。
+ */
+function textHost(cell: Element): Element {
+  let el = cell;
+  for (let i = 0; i < 4; i++) {
+    const kids = Array.from(el.children);
+    if (kids.length !== 1) break;
+    const kid = kids[0];
+    if ((kid.textContent ?? "").trim() !== (el.textContent ?? "").trim()) break;
+    el = kid;
+  }
+  return el;
+}
+
+function auditTables(root: HTMLElement, findings: Finding[], label?: string) {
   for (const table of Array.from(root.querySelectorAll("table"))) {
     const rows = Array.from(table.querySelectorAll<HTMLTableRowElement>("tbody tr"));
     if (rows.length < 2) continue;
@@ -108,13 +152,27 @@ function auditTables(root: HTMLElement, findings: Finding[]) {
       const texts = cells.map((td) => (td.textContent ?? "").trim()).filter(Boolean);
       if (texts.length < 2) continue;
 
-      // 纯数字列：只含数字/千分位/小数点/货币符号/斜杠（如 "7/8"）与空白
-      const numeric = texts.every((t) => /^[\d.,\s/%+-]+$|^[A-Z]{3}\s[\d.,]+$/.test(t));
+      /*
+       * 纯数字列：只含数字/千分位/小数点/货币符号/斜杠（如 "7/8"）与空白。
+       *
+       * ⚠️ 两条例外，都是实测踩出来的假阳性：
+       * 1. **整列都是占位符**（`-` / `—` / `/`）。归档时间列在没有归档记录时
+       *    整列都是 `-`，而 `-` 落在上面那个字符集里 —— 于是一个日期列被判成数字列。
+       *    要求至少有一个真带数字的值。
+       * 2. **调用点显式声明过 `align`**（`data-col-align`）。「区划码 11」长得像数字，
+       *    按规范却该左对齐 —— 它是标识符不是数量。写了 align 就是做过判断，
+       *    工具不该再替他下结论；不然下一个人会去给编号列加 numeric。
+       */
+      const hasDigit = texts.some((t) => /\d/.test(t));
+      const declared = cells.some((td) => td.hasAttribute("data-col-align"));
+      const numeric = hasDigit && !declared
+        && texts.every((t) => /^[\d.,\s/%+-]+$|^[A-Z]{3}\s[\d.,]+$/.test(t));
       if (numeric) {
-        const align = getComputedStyle(cells[0]).textAlign;
+        const cell0 = cells[0];
+        const align = cell0.ownerDocument.defaultView!.getComputedStyle(cell0).textAlign;
         if (align !== "right" && align !== "end") {
           findings.push({
-            comp: compOf(table), rule: RULES.numAlign,
+            comp: compOf(table, label), rule: RULES.numAlign,
             detail: `第 ${c + 1} 列 text-align: ${align}（示例 "${texts[0]}"）`,
             sample: sampleOf(cells[0]),
           });
@@ -124,10 +182,12 @@ function auditTables(root: HTMLElement, findings: Finding[]) {
       // 主键列：第一个非选择框列，内容形如 CAB1000 / ORD500001（字母前缀 + 数字）
       const isPk = c <= 2 && texts.every((t) => /^[A-Z]{2,4}[-_]?\d{3,}$/.test(t));
       if (isPk) {
-        const w = Number(getComputedStyle(cells[0]).fontWeight);
+        // 量承载文字的那个节点，不是 td 外壳
+        const host = textHost(cells[0]);
+        const w = Number(host.ownerDocument.defaultView!.getComputedStyle(host).fontWeight);
         if (w < 500) {
           findings.push({
-            comp: compOf(table), rule: RULES.pkWeight,
+            comp: compOf(table, label), rule: RULES.pkWeight,
             detail: `第 ${c + 1} 列 font-weight: ${w}（示例 "${texts[0]}"）`,
             sample: sampleOf(cells[0]),
           });
@@ -137,11 +197,11 @@ function auditTables(root: HTMLElement, findings: Finding[]) {
   }
 }
 
-export function audit(root: HTMLElement): AuditResult {
+export function audit(root: HTMLElement, scope: AuditScope = "specimens", label?: string): AuditResult {
   const findings: Finding[] = [];
-  const allowed = allowedRadii();
+  const allowed = allowedRadii(root.ownerDocument);
   const pill = 100; // ≥100px 视为药丸（= --r-chip 的 9999px）
-  const all = specimens(root);
+  const all = targets(root, scope);
 
   for (const el of all) {
     const cls = classOf(el);
@@ -150,46 +210,62 @@ export function audit(root: HTMLElement): AuditResult {
     // ── 圆角
     const r = uniformRadius(el);
     if (r != null && r > 0.51 && r < pill && !allowed.some((a) => Math.abs(a - r) < 0.51)) {
-      findings.push({ comp: compOf(el), rule: RULES.radius, detail: `border-radius: ${r}px`, sample: sampleOf(el) });
+      findings.push({ comp: compOf(el, label), rule: RULES.radius, detail: `border-radius: ${r}px`, sample: sampleOf(el) });
     }
 
     // ── 硬编码颜色（class 里的 hex 与 inline style 里的 hex）
     const styleAttr = el.getAttribute("style") ?? "";
     const hex = [...cls.matchAll(/#[0-9a-fA-F]{3,8}\b/g), ...styleAttr.matchAll(/#[0-9a-fA-F]{3,8}\b/g)];
     if (hex.length) {
-      findings.push({ comp: compOf(el), rule: RULES.hex, detail: hex.map((m) => m[0]).join(" "), sample: sampleOf(el) });
+      findings.push({ comp: compOf(el, label), rule: RULES.hex, detail: hex.map((m) => m[0]).join(" "), sample: sampleOf(el) });
     }
 
     // ── 硬编码 z-index（放过 z-[var(--z-…)] 与 z-0/z-10 这类语义无关的层内排序？——
     //    不放过：z-40/50 以上一定是浮层，正是踩过坑的地方）
     const z = cls.match(/(?:^|\s)z-\[?(\d+)\]?(?:\s|$)/);
     if (z && Number(z[1]) >= 20) {
-      findings.push({ comp: compOf(el), rule: RULES.z, detail: z[0].trim(), sample: sampleOf(el) });
+      findings.push({ comp: compOf(el, label), rule: RULES.z, detail: z[0].trim(), sample: sampleOf(el) });
     }
 
     // ── 阴影
     const sh = cls.match(/(?:^|\s)shadow-(sm|md|lg|xl|2xl|inner)(?:\s|$)/);
     if (sh) {
-      findings.push({ comp: compOf(el), rule: RULES.shadow, detail: sh[0].trim(), sample: sampleOf(el) });
+      findings.push({ comp: compOf(el, label), rule: RULES.shadow, detail: sh[0].trim(), sample: sampleOf(el) });
     }
 
     // ── 过渡时长
     const du = cls.match(/(?:^|\s)duration-(\d+)(?:\s|$)/);
     if (du) {
-      findings.push({ comp: compOf(el), rule: RULES.dur, detail: du[0].trim(), sample: sampleOf(el) });
+      findings.push({ comp: compOf(el, label), rule: RULES.dur, detail: du[0].trim(), sample: sampleOf(el) });
     }
 
     // ── 控件高度 / 行高硬写
     const isCtl = /^(button|input|select|textarea)$/.test(el.tagName.toLowerCase());
     const h = cls.match(/(?:^|\s)h-(8|9|10|11)(?:\s|$)/);
     if (isCtl && h) {
-      findings.push({ comp: compOf(el), rule: RULES.ctlH, detail: h[0].trim(), sample: sampleOf(el) });
+      findings.push({ comp: compOf(el, label), rule: RULES.ctlH, detail: h[0].trim(), sample: sampleOf(el) });
     }
   }
 
   // ── 焦点环
+  //
+  // ⚠️ 这条判据放宽过两次，两次都是**假阳性**，而假阳性比漏报更伤：
+  // 它会训练人往正确的代码上加没用的类，去讨好一个错着的规则。
+  //
+  // 1. **漫游 tabindex 的容器**：Radix 的 `role="radiogroup"` / `tablist` 等会在
+  //    容器上放 `tabindex="0"`，焦点落上去会转交给选中项 —— 环该长在项上，
+  //    不在容器上。`/growth` 的归因方式选择组就是这么被报出来的。
+  // 2. **outline 写法**：`focus-visible:outline-2 + outline-offset-2 + outline-[var(--ring)]`
+  //    是一份完整正确的焦点环（`ui/misc.tsx` 的 StatCard 链接刻意用它：outline 跟随
+  //    `rounded-[inherit]`，也不会与卡片自己的阴影抢同一条 box-shadow）。
+  //    此前只认 `focus-visible:ring-offset`，于是把它报成「有 ring 无 offset」。
+  /** 焦点由子项承担的容器角色（漫游 tabindex），环不该长在容器上 */
+  const ROVING = /^(radiogroup|tablist|menu|menubar|listbox|tree|grid|toolbar)$/;
   const focusables = all.filter(
-    (el) => el.matches(FOCUSABLE) && !el.hasAttribute("disabled") && !el.hasAttribute("data-audit-skip"),
+    (el) => el.matches(FOCUSABLE)
+      && !el.hasAttribute("disabled")
+      && !el.hasAttribute("data-audit-skip")
+      && !ROVING.test(el.getAttribute("role") ?? ""),
   );
   for (const el of focusables) {
     const cls = classOf(el);
@@ -198,14 +274,15 @@ export function audit(root: HTMLElement): AuditResult {
     // 否则「把配方沉到一处」这件正确的事反而会被报成违规。
     if (/(^|\s)focus-ring(\s|$)/.test(cls)) continue;
     const hasRing = /focus-visible:(ring|outline-|shadow)/.test(cls);
+    const hasOffset = /focus-visible:(ring|outline)-offset/.test(cls);
     if (!hasRing) {
-      findings.push({ comp: compOf(el), rule: RULES.focus, detail: "class 里没有 focus-visible:*", sample: sampleOf(el) });
-    } else if (!/focus-visible:ring-offset/.test(cls)) {
-      findings.push({ comp: compOf(el), rule: RULES.focusOffset, detail: "有 ring 无 offset", sample: sampleOf(el) });
+      findings.push({ comp: compOf(el, label), rule: RULES.focus, detail: "class 里没有 focus-visible:*", sample: sampleOf(el) });
+    } else if (!hasOffset) {
+      findings.push({ comp: compOf(el, label), rule: RULES.focusOffset, detail: "有环无 offset", sample: sampleOf(el) });
     }
   }
 
-  auditTables(root, findings);
+  auditTables(root, findings, label);
 
   return { findings, scanned: all.length, focusable: focusables.length };
 }

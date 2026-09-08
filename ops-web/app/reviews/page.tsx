@@ -27,7 +27,7 @@ import { ConfigCard } from "@/components/ui/config-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
-import { Pagination } from "@/components/ui/misc";
+import { Pagination, IdCell } from "@/components/ui/misc";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
@@ -129,7 +129,7 @@ function ReviewsInner() {
   });
 
   const reviewColumns: Column<Review>[] = [
-    { header: c.colReviewNo, cell: (r) => r.reviewNo, numeric: true, align: "start" },
+    { header: c.colReviewNo, cell: (r) => <IdCell value={r.reviewNo} />, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (r) => r.merchantName },
     { header: c.colScore, cell: (r) => <span title={fill(c.scoreTitle, { n: r.score })}>{stars(r.score)}</span> },
     {
@@ -156,7 +156,7 @@ function ReviewsInner() {
   const appealColumns: Column<ReviewAppeal>[] = [
     { header: c.colAppealNo, cell: (a) => a.appealNo, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (a) => a.merchantName },
-    { header: c.colRelatedReview, cell: (a) => a.reviewNo, numeric: true, align: "start" },
+    { header: c.colRelatedReview, cell: (a) => <IdCell value={a.reviewNo} />, numeric: true, align: "start" },
     {
       header: c.colReason,
       width: "24rem",

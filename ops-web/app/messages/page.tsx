@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
-import { Pagination } from "@/components/ui/misc";
+import { Pagination, IdCell } from "@/components/ui/misc";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
 import { TabHeader } from "@/components/ui/tab-header";
@@ -185,7 +185,7 @@ function MessagesInner() {
   ];
 
   const faqColumns: Column<FaqEntry>[] = [
-    { header: c.colFaqNo, cell: (f) => f.faqNo, numeric: true, align: "start" },
+    { header: c.colFaqNo, cell: (f) => <IdCell value={f.faqNo} />, numeric: true, align: "start" },
     { header: c.colQuestion, cell: (f) => f.question, className: "whitespace-normal", width: "20rem" },
     { header: c.colCategory, cell: (f) => f.category },
     {

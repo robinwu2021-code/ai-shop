@@ -29,6 +29,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PagedTable } from "@/components/ui/paged-table";
+import { IdCell } from "@/components/ui/misc";
 import type { OrdersCopy } from "./copy";
 
 /** 异常成因 → 徽标。两类的处置方式不同：一类推状态，一类去查关单任务。 */
@@ -67,7 +68,7 @@ export function ExceptionTab({ c, canModify }: { c: OrdersCopy; canModify: boole
   });
 
   const columns: Column<OrderException>[] = [
-    { header: c.colSubOrderNo, cell: (e) => e.order.orderNo, numeric: true, align: "start" },
+    { header: c.colSubOrderNo, cell: (e) => <IdCell value={e.order.orderNo} />, numeric: true, align: "start" },
     { header: c.colKind, cell: (e) => <StatusBadge map={kindMap} value={e.kind} /> },
     { header: c.colStatus, cell: (e) => <OrderStatusBadge value={e.order.status} /> },
     {

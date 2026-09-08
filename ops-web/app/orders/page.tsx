@@ -37,6 +37,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { PagedTable } from "@/components/ui/paged-table";
+import { IdCell } from "@/components/ui/misc";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 // 异常单与代客操作各自成块，与其它 tab 只共用文案表 —— 拆出去，页面才不会长到读不动
 import { ExceptionTab } from "./exception-tab";
@@ -198,7 +199,7 @@ function OrdersInner() {
   });
 
   const columns: Column<Order>[] = [
-    { header: c.colSubOrderNo, cell: (o) => o.orderNo, numeric: true, align: "start" },
+    { header: c.colSubOrderNo, cell: (o) => <IdCell value={o.orderNo} />, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (o) => o.merchantName },
     { header: c.colCommunity, cell: (o) => o.communityName },
     { header: c.colFulfill, cell: (o) => <StatusBadge map={fulfillMap} value={o.fulfillType} /> },

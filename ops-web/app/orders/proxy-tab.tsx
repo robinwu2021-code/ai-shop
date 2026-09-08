@@ -29,6 +29,7 @@ import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PagedTable } from "@/components/ui/paged-table";
+import { IdCell } from "@/components/ui/misc";
 import { ORDER_TRANSITIONS } from "@/lib/types";
 import { usePaging } from "@/lib/use-paging";
 import type { OrdersCopy } from "./copy";
@@ -152,7 +153,7 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
   });
 
   const columns: Column<Order>[] = [
-    { header: c.colSubOrderNo, cell: (o) => o.orderNo, numeric: true, align: "start" },
+    { header: c.colSubOrderNo, cell: (o) => <IdCell value={o.orderNo} />, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (o) => o.merchantName },
     { header: c.colBuyer, cell: (o) => o.buyerNickname },
     { header: c.colPaid, cell: (o) => money(o.payAmount), numeric: true },

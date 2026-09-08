@@ -156,6 +156,15 @@ export function DataTable<T>({
       c.className,
     );
   const colStyle = (c: Column<T>) => (c.width ? { width: c.width } : undefined);
+  /**
+   * 列显式声明过对齐时打个标。
+   *
+   * 给 dev 工具 `/dev/pages` 用：它按渲染出来的内容猜「这是不是数字列」，
+   * 而「区划码 11」这种**长得像数字的标识符**照规范就该左对齐 —— 猜错一次，
+   * 下一个人就会去给它加 `numeric`，把一列编号排成右对齐。
+   * 调用点写了 `align` 就是做过判断，工具不再对它下结论。
+   */
+  const colAudit = (c: Column<T>) => (c.align ? { "data-col-align": c.align } : undefined);
 
   const headerCell = (c: Column<T>, i: number) => {
     const sortable = !!c.sortKey && !!onSortChange;
@@ -273,7 +282,9 @@ export function DataTable<T>({
                         ) : null}
                       </TD>
                     )}
-                    {columns.map((c, i) => <TD key={i} className={colClass(c)} style={colStyle(c)}>{c.cell(row)}</TD>)}
+                    {columns.map((c, i) => (
+                      <TD key={i} className={colClass(c)} style={colStyle(c)} {...colAudit(c)}>{c.cell(row)}</TD>
+                    ))}
                   </TR>
                   {expandable && isOpen && content && (
                     <TR className="hover:bg-muted">
