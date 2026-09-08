@@ -36,6 +36,7 @@
 import * as React from "react";
 import { audit, groupFindings, type Finding, type Grouped } from "../ui/audit";
 import { runContrastSweep, groupFails, type SweepFail } from "../ui/sweep";
+import { fmtRatio } from "../ui/color";
 import { THEMES } from "@/lib/stores/theme";
 import { DataTable } from "@/components/ui/data-table";
 import { Notice } from "@/components/ui/notice";
@@ -365,7 +366,7 @@ export default function DevPagesAudit() {
                     ) },
                   { header: "最差", numeric: true,
                     cell: (g: ReturnType<typeof groupFails>[number]) => (
-                      <span className="text-[var(--destructive-ink)]">{g.worst.toFixed(2)}</span>
+                      <span className="text-[var(--destructive-ink)]">{fmtRatio(g.worst)}</span>
                     ) },
                   { header: "要求", numeric: true,
                     cell: (g: ReturnType<typeof groupFails>[number]) => g.need.toFixed(1) },

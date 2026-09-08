@@ -413,7 +413,8 @@ function IamInner() {
           s.communityNo && fill(c.scopeCommunity, { no: s.communityNo }),
           s.pickupNo && fill(c.scopePickup, { no: s.pickupNo }),
         ].filter(Boolean);
-        return parts.length ? parts.join(" · ") : <span className="text-[var(--warning)]">{c.scopeUnbounded}</span>;
+        // 用 -ink 档而不是实心 --warning：实心色压在浅底上实测 2.26:1，五套浅色皮肤全过不了 AA
+        return parts.length ? parts.join(" · ") : <span className="text-warning-ink">{c.scopeUnbounded}</span>;
       },
     },
     { header: c.colLastLogin, cell: (s) => fmtTime(s.lastLoginAt) },

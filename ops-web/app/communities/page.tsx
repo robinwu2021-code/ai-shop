@@ -241,7 +241,8 @@ function CommunitiesInner() {
       numeric: true,
       cell: (c) =>
         canEditCommunity ? (
-          <button type="button" className="focus-ring text-primary underline-offset-2 hover:underline tabular-nums"
+          // text-primary 是实心主色，压在卡片底上实测 2.59:1（生鲜绿/促销橙/时尚蓝都挂）
+          <button type="button" className="focus-ring text-primary-ink underline-offset-2 hover:underline tabular-nums"
                   onClick={() => setFenceOf(c)}>
             {c.fenceRadius} m
           </button>

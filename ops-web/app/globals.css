@@ -303,6 +303,8 @@
   --color-warning-ink: var(--warning-ink);
   --color-destructive-ink: var(--destructive-ink);
   --color-info-ink: var(--info-ink);
+  /* 四个 ink 档里它此前唯一没注册 —— 写 text-primary-ink 会静默什么都不生成 */
+  --color-primary-ink: var(--primary-ink);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-input: var(--input);

@@ -524,7 +524,7 @@ export function CategoriesTab({ c, canEdit }: { c: ProductsCopy; canEdit: boolea
         // 用实心点而不是「·」：无门槛那格是「—」，两个细长灰符号并排根本分不出，
         // 而它们的意思正好相反
         if (label === r.name)
-          return <span title={title} className="text-info" aria-label={title}>●</span>;
+          return <span title={title} className="text-info-ink" aria-label={title}>●</span>;
         return (
           <span title={title}><Badge tone="info">{label}</Badge></span>
         );

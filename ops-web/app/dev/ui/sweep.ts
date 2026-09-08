@@ -7,7 +7,7 @@
 //
 // 这里直接在 DOM 上量：切一组 → 等样式生效 → 扫一遍 → 记录 → 切下一组 → 最后还原。
 // 与 `<Probe>` 共用同一套 `measure/aaThreshold`，所以两边的数字一定一致。
-import { measure, aaThreshold, csOf } from "./color";
+import { measure, aaThreshold, csOf, beginColorBatch, endColorBatch } from "./color";
 
 export interface SweepFail {
   /** 皮肤 key */
@@ -164,6 +164,9 @@ export async function runContrastSweep(
       for (const skin of skins) {
         el.dataset.theme = skin;
         await nextFrames(win);
+        // 每组重开一次缓存：组内颜色不变可以复用，组间必须失效 ——
+        // 不失效就是拿上一组的背景色算这一组，比值全错而且错得很像真的
+        beginColorBatch();
         const r = scanOnce(skin, dark, root, scope, target.label);
         fails.push(...r.fails);
         measuredPerCombo = Math.max(measuredPerCombo, r.measured);
@@ -173,6 +176,7 @@ export async function runContrastSweep(
   } finally {
     if (prevSkin) el.dataset.theme = prevSkin; else delete el.dataset.theme;
     el.classList.toggle("dark", prevDark);
+    endColorBatch();
     await nextFrames(win);
     unfreeze();
   }
