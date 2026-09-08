@@ -54,8 +54,12 @@ function aggregate(ids, by) {
   if (all.length === 0) return "—";
   const ok = all.filter((s) => s === "✅").length;
   if (ok === all.length) return "✅";
-  if (ok === 0) return all.every((s) => s.startsWith("🔜")) ? "🔜 二期" : "🟡 未标 ready";
-  return `🟡 ${ok}/${all.length}`;
+  if (ok === 0) return all.every((s) => s.startsWith("🔜")) ? "🔜 二期" : "🟡 落点未标 ready";
+  // **「落点」两个字不能省。** 这个比例说的是整个 P-x.y 名下的菜单叶子，
+  // 不是本行那一个功能点 —— C-OD-03 订单列表落在 P-4.1，而 P-4.1 的三个叶子里
+  // 「订单检索」是就绪的，另两个不是。写成「🟡 1/3」会被读成「这条只做了三分之一」，
+  // 那正是本文档反复栽的跨粒度误读。
+  return `🟡 落点 ${ok}/${all.length}`;
 }
 
 const by = leafStatusByMatrix();
