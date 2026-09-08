@@ -81,6 +81,7 @@
 | `PhaseGuard` | `layout/phase-guard.tsx` | 分期门禁：直达未开放功能时的兜底页 |
 | `NotifyBell` | `layout/notify-bell.tsx` | 顶栏铃铛：运营通知收件箱（15s 轮询 + 浏览器桌面横幅） |
 | `ThemeSwitcher` | `layout/theme-switcher.tsx` | 顶栏皮肤切换（五套） |
+| `ScrollHint` / `useScrollHint` | `layout/scroll-hint.tsx` | 导航溢出提示。Rail 与 L2 面板**一直都能滚**，缺的是「下面还有」这件事的可见性 —— macOS 的覆盖式滚动条静止时不渲染，而 Rail 是 56px 宽的纯图标条，21 个域在 720px 以下必有几个落在折线以下 |
 | `LangSwitcher` | `layout/lang-switcher.tsx` | 顶栏**中 / EN** 语言切换 |
 
 ### `components/status.tsx` 的归位

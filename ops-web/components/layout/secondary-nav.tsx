@@ -5,6 +5,7 @@
 // 2026-07-30 删 miller（三列逐级）分支：切换入口早已撤掉，只剩老 localStorage
 // 还能走到它 —— 一条没有入口的呈现路径不值得长期维护（navMode 也一并删）。
 // 读 useSearchParams → 必须在 <Suspense> 下渲染（app-shell 已包）。
+import * as React from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -17,6 +18,7 @@ import { useServerMenu, isPointUnimplemented, useNavTree } from "@/lib/stores/se
 import { useI18n } from "@/lib/i18n";
 import { PHASE_KEY, isPhaseLocked, type Phase } from "@/lib/phase";
 import { cn } from "@/lib/utils";
+import { ScrollHint, useScrollHint } from "./scroll-hint";
 
 function SoonBadge() {
   const { t } = useI18n();
@@ -114,12 +116,18 @@ export function SecondaryNav() {
   // 不是把导航拿走不给替代品；展开按钮常驻顶栏，收起态也能一键回来。
   if (panelCollapsed) return null;
 
+  const scrollRef = React.useRef<HTMLElement>(null);
+  const hint = useScrollHint(scrollRef);
+
   return (
     <aside className="hidden shrink-0 flex-col bg-sidebar/60 md:flex" style={{ width: PANEL_WIDTH }}>
       <div className="flex h-14 shrink-0 items-center px-3">
         <span className="truncate txt-strong">{tNav(section.label)}</span>
       </div>
-      <nav className="flex-1 overflow-y-auto px-2 py-2">
+      {/* 同 Rail：容器一直能滚，缺的是「下面还有」的提示。结算与资金 15 叶，
+          720px 高时只剩 17px 余量，再矮一档就开始有功能落在折线以下 */}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+      <nav ref={scrollRef} className="flex-1 overflow-y-auto px-2 py-2">
         {segments.map((seg, si) => (
           <div key={segKey(seg.group, si)} className={cn(seg.group ? "mb-3" : "mb-1")}>
             {seg.group && (
@@ -137,6 +145,9 @@ export function SecondaryNav() {
           </div>
         ))}
       </nav>
+        <ScrollHint side="top" show={hint.top} />
+        <ScrollHint side="bottom" show={hint.bottom} />
+      </div>
     </aside>
   );
 }
