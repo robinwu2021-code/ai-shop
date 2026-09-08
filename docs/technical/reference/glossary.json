@@ -28533,6 +28533,17 @@
         "zh": "流量来源。"
       },
       {
+        "name": "TransferStatus",
+        "client": "shared",
+        "values": [
+          "DRAFT",
+          "SHIPPED",
+          "RECEIVED",
+          "VOIDED"
+        ],
+        "zh": "调拨单状态。"
+      },
+      {
         "name": "ViolationAction",
         "client": "ops-web",
         "values": [

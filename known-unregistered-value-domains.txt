@@ -60,7 +60,6 @@ inv_reservation.status
 inv_stock_count.scope
 inv_stock_count.status
 inv_supplier.status
-inv_transfer_order.status
 mbr_member.level
 mbr_member.source
 mbr_member_source.inviter_role

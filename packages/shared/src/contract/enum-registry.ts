@@ -482,6 +482,12 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     words: ["ARCHIVED"],
     note: "规格模板。停用它会影响什么，看的是按规格组名统计的 usedCount" },
 
+  { decl: "shared:TransferStatus", dom: "inventory", shape: "STATE", verdict: "OK",
+    note: "调拨单状态，与后端 InvEnums.TransferStatus 逐字一致（DRAFT/SHIPPED/RECEIVED/VOIDED）。"
+      + "2026-09-09 从 known-unregistered-value-domains.txt 摘下来的第一条：此前端上是 "
+      + "`status: string`，取值只写在注释里，且注释漏了 VOIDED 而页面已经在比较它。"
+      + "ops-web 没有调拨页面，所以只有 shared 一侧，不是漏登" },
+
   { decl: "shared:StockDocKind", dom: "inventory", shape: "CLASS", verdict: "MERGE",
     note: "与 ops-web:InvDocKind 逐字相同（IN/OUT）。归一到 shared 是对的，"
       + "但要连 ops-web 的引用一起改，属独立一批" },

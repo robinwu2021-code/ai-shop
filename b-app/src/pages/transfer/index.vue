@@ -11,7 +11,7 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
-import type { Carrier, StockBalance, StockLocation, StockTransfer } from "@shared/types";
+import type { Carrier, StockBalance, StockLocation, StockTransfer, TransferStatus } from "@shared/types";
 import { confirm, pick, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
@@ -277,7 +277,10 @@ async function voidTransfer() {
  * 于是新加的「已作废」跟草稿一样是一枚醒目的主色徽章，看着像个正常状态。
  * 作废是终态，它不需要被注意，用中性的那一档。
  */
-function statusChip(status: string): string {
+// 参数吃 TransferStatus 而不是 string。写死 string 的话，把某个取值拼错一个字母
+// 也是合法 TypeScript，vue-tsc 一声不吭，那个分支从此不进 —— 收窄之后消融验证过：
+// 改错一处会报 TS2367「两个类型没有重叠」并点到行。
+function statusChip(status: TransferStatus): string {
   if (status === "SHIPPED") return "sh-chip--warning";   // 在途：要惦记着收货
   if (status === "VOIDED") return "";                     // 终态，中性
   return "sh-chip--primary";

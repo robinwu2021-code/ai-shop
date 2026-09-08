@@ -181,6 +181,27 @@ export const FIELDS = [
       { file: "ops-web/lib/types/community.ts", type: "PickupPointType" },
     ],
   },
+  {
+    /*
+     * 2026-09-09 从 known-unregistered-value-domains.txt 摘下来的第一条。
+     *
+     * 后端一直有正经的 `InvEnums.TransferStatus`（四个常量），端上却是
+     * `status: string` + 一句注释写取值 —— 而注释里只写了三个，漏了 VOIDED，
+     * 页面却已经在比较它。裸字面量比较有 7 处（在途角标、数量、操作条都挂在
+     * SHIPPED 上），拼错一个字母不报错，那个分支从此不进。
+     *
+     * ops-web 侧没有调拨页面，所以 clients 只有一条 —— 不是漏登。
+     */
+    concept: "调拨单状态",
+    field: "inv_transfer_order.status",
+    backend: {
+      javaConst: "shop-inventory/src/main/java/ai/neargo/shop/inventory/support/InvEnums.java",
+      // InvEnums 是一个装了十几个取值域的壳（ReservationStatus / MasterStatus / …），
+      // 不按名字排掉的话会把整个文件的常量都当成这一列的取值域
+      only: ["DRAFT", "SHIPPED", "RECEIVED", "VOIDED"],
+    },
+    clients: [{ file: SHARED_TYPES, type: "TransferStatus" }],
+  },
 ];
 
 /**
