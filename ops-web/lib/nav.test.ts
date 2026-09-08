@@ -144,6 +144,30 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
       stale.join("\n")).toEqual([]);
   });
 
+  it("★★ 每个权限码模块前缀都要有归属 section —— 否则它的页面内操作点会掉进兜底", () => {
+    /*
+     * `gen-perm-seed.mjs` 按模块前缀给「页面内操作」点找 function_code：
+     * `prefixToFn[prefix] || 'OPS_SYSTEM'`。合并菜单时它原先按 `section.key` 建表，
+     * 而 inventory / group / growth 合并后不再是任何 section 的 key ——
+     * 13 个 ACTION 点**静默落进了兜底**，被归到「平台管理」下面。
+     * 库里不报错，只是那些权限点挂错了域，谁也不会去看。
+     *
+     * 这条守的是「兜底那一支不该被走到」。新增一个模块前缀却忘了写进某个
+     * section.modules，这里就红。
+     */
+    const owned = new Set(NAV.flatMap((s) => s.modules));
+    const orphans = new Set<string>();
+    for (const [ui, back] of Object.entries(UI_PERM_MAP)) {
+      // 与生成器同一条口径：UI 前缀无主时退到后端码的前缀
+      // （`category:manage` 是历史遗留 UI 码，后端码是 product:category:update）
+      if (owned.has(ui.split(":")[0])) continue;
+      if (typeof back === "string" && owned.has(back.split(":")[0])) continue;
+      orphans.add(`${ui.split(":")[0]}（如 ${ui}）`);
+    }
+    expect([...orphans], "这些模块前缀没有任何 section 认领，它们的操作点会掉进 OPS_SYSTEM：\n" +
+      [...orphans].join("\n")).toEqual([]);
+  });
+
   it("AC4 · 合并后每个叶子仍在一个分组下（不出现无组平铺）", () => {
     const naked: string[] = [];
     for (const s of NAV) {

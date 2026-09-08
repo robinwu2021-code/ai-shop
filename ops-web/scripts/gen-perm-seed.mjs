@@ -111,7 +111,9 @@ for (const m of nav.matchAll(/key:\s*"(\w+)",\s*label:\s*"([^"]+)"([\s\S]*?)(?=k
       matrix: (l[4].match(/matrix:\s*"([^"]+)"/) || [])[1] || null,
       ready: /ready:\s*true/.test(l[4]),
     }));
-  secs.push({ key: m[1], label: m[2], icon, href, leaves });
+  const modules = (body.match(/modules:\s*\[([^\]]*)\]/) || [])[1];
+  secs.push({ key: m[1], label: m[2], icon, href, leaves,
+              modules: modules ? [...modules.matchAll(/"([^"]+)"/g)].map(x => x[1]) : [m[1]] });
 }
 
 // ── 角色 → 后端码（从 Java 源码抽，与 BizEndpointPermTest 同一手法）
@@ -162,14 +164,34 @@ secs.forEach((s, si) => {
  * 一致性守卫第一次跑就是这么红的。
  */
 const menuPerms = new Set(secs.flatMap(s => s.leaves.map(l => l.perm)));
+/*
+ * 权限码模块前缀 → function_code。
+ *
+ * ⚠️ 这里原先是 `prefixToFn[s.key]` —— 假设「section key 就是模块前缀」。
+ * 合并菜单之后这条假设塌了：`inventory` / `group` / `growth` 不再是任何 section 的 key，
+ * 于是它们的页面内操作点全部落进 `|| 'OPS_SYSTEM'` 的兜底，
+ * 被归到「平台管理」下面 —— 库里不报错，只是那些权限点挂错了域。
+ * 改成读 section.modules：一个 section 可以认领多个前缀。
+ */
 const prefixToFn = {};
-secs.forEach(s => { prefixToFn[s.key] = `OPS_${s.key.toUpperCase()}`; });
+secs.forEach(s => {
+  const fc = `OPS_${s.key.toUpperCase()}`;
+  for (const m of s.modules) prefixToFn[m] = fc;
+});
 let actionSeq = 0;
 for (const ui of Object.keys(map)) {
   if (menuPerms.has(ui)) continue;
   const back = map[ui];
   const status = back === null ? 'NOT_IMPLEMENTED' : 'IMPLEMENTED';
-  const fc = prefixToFn[ui.split(':')[0]] || 'OPS_SYSTEM';
+  /*
+   * 归属：先按 UI 码的模块前缀，UI 前缀无主时退到**后端码**的前缀。
+   * `category:manage` 是历史遗留的 UI 码（见 perm-map.ts），`category` 不是任何
+   * section 的模块，而它的后端码是 `product:category:update` —— 按后端码算才归得对。
+   * 两条都落空才进 OPS_SYSTEM；nav.test.ts 有一条守着「兜底不该被走到」。
+   */
+  const fc = prefixToFn[ui.split(':')[0]]
+    || (back ? prefixToFn[back.split(':')[0]] : undefined)
+    || 'OPS_SYSTEM';
   // ACTION 点同样改成稳定派生：按 UI 码，不按出现顺序
   const pc = `ACT${POINT_SEP}${ui.replace(/[^A-Za-z0-9]+/g, '_').toUpperCase()}`;
   actionSeq++;
