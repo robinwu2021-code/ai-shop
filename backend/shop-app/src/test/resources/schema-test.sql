@@ -8799,3 +8799,14 @@ UPDATE sys_function SET sort=100, updated_at=NOW() WHERE function_code='OPS_MESS
 UPDATE sys_function SET sort=110, updated_at=NOW() WHERE function_code='OPS_COMMUNITY';
 UPDATE sys_function SET sort=120, updated_at=NOW() WHERE function_code='OPS_RISK';
 UPDATE sys_function SET name='平台管理', sort=130, updated_at=NOW() WHERE function_code='OPS_IAM';
+UPDATE sys_function_point
+   SET perm_code = 'system:param:update', backend_status = 'IMPLEMENTED', updated_at = NOW()
+ WHERE point_code = 'ACT__SYSTEM_ENV_SWITCH' AND perm_code IS NULL;
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPPORT', 'OPS_MESSAGE__TAB_FAQ', 'OPS', NOW(), NOW()
+FROM DUAL WHERE NOT EXISTS (
+  SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPPORT' AND x.point_code='OPS_MESSAGE__TAB_FAQ');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'TECH_OPS', 'ACT__SYSTEM_ENV_SWITCH', 'OPS', NOW(), NOW()
+FROM DUAL WHERE NOT EXISTS (
+  SELECT 1 FROM sys_role_point x WHERE x.role_code='TECH_OPS' AND x.point_code='ACT__SYSTEM_ENV_SWITCH');
