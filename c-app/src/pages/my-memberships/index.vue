@@ -70,6 +70,7 @@ onShow(load);
       :pending="!loaded"
       :failed="failed"
       :text="String($t('myMembership.empty'))"
+      :tip="String($t('myMembership.emptyTip'))"
       @retry="load"
     ></sh-empty>
 

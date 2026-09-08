@@ -76,7 +76,7 @@ export const en: Messages = {
     resetNew: "New password",
     resetNewHint: "At least 8 characters",
     resetSubmit: "Set new password",
-    resetDone: "Password reset. Sign in with the new one — every other session has been signed out.",
+    resetDone: "Password reset — every other session has been signed out",
   },
   role: {
     SUPER_ADMIN: "Super admin",

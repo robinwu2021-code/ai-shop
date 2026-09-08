@@ -517,6 +517,7 @@ onShareAppMessage(() =>
         @like="likeReview(r)"
       ></biz-review>
       <text v-if="!reviews.length" class="txt-caption rvempty">{{ $t("review.empty") }}</text>
+      <text v-if="!reviews.length" class="sh-hint txt-quiet">{{ $t("review.emptyTip") }}</text>
     </view>
 
     <!--

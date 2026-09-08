@@ -1337,6 +1337,15 @@ function close() {
             {{ tab === "SEARCH" ? $t("store.picker.searchEmpty")
               : atVillage ? $t("store.picker.villageEmpty") : $t("store.picker.levelEmpty") }}
           </text>
+          <!-- 「层级下面没有」那一种没有下一句可说：这一级本来就是空的，
+               换个词也没用，换层才有用 —— 而层就在上面摆着 -->
+          <text
+            v-if="!sections.length && (tab === 'SEARCH' || atVillage)"
+            class="sh-hint txt-quiet"
+          >
+            {{ tab === "SEARCH" ? $t("store.picker.searchEmptyTip")
+              : $t("store.picker.villageEmptyTip") }}
+          </text>
 
         </template>
 

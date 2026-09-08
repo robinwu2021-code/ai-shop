@@ -123,7 +123,7 @@ onShow(load);
       </text>
     </view>
 
-    <sh-empty v-if="!list.length" :text="String($t('coupons.empty'))"></sh-empty>
+    <sh-empty v-if="!list.length" :text="String($t('coupons.empty'))" :tip="String($t('coupons.emptyTip'))"></sh-empty>
 
     <view v-for="c in list" :key="c.couponNo" class="sh-card sh-mb-sm">
       <view class="item__head sh-row">

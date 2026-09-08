@@ -210,7 +210,7 @@ async function save(items: { categoryNo: string; displayName?: string; sort: num
       </view>
     </view>
 
-    <sh-empty v-else :text='$t("storeCategories.empty")'></sh-empty>
+    <sh-empty v-else :text='$t("storeCategories.empty")' :tip='$t("storeCategories.emptyTip")'></sh-empty>
 
     <!--
       商品规格。**这一页叫「类目与规格」，规格却一直没有门** ——

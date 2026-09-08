@@ -94,7 +94,7 @@ const canCreate = computed(
     <sh-empty
       v-if="!shown.length && !canCreate"
       compact
-      :text="String($t('supplier.empty'))"
+      :text="String($t('supplier.empty'))" :tip="String($t('supplier.emptyTip'))"
     ></sh-empty>
 
     <view

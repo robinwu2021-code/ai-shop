@@ -99,7 +99,7 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="memberSegments.title" :denied="!merchant.can('biz:customer')">
-    <sh-empty v-if="!list.length" :text="String($t('memberSegments.empty'))"></sh-empty>
+    <sh-empty v-if="!list.length" :text="String($t('memberSegments.empty'))" :tip="String($t('memberSegments.emptyTip'))"></sh-empty>
 
     <view v-for="sg in list" :key="sg.segmentNo" class="sh-card sh-mb-sm">
       <view class="item__head sh-row sh-row--between sh-row--baseline">

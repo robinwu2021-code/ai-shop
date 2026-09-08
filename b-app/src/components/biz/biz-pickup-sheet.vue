@@ -174,6 +174,7 @@ function close() {
         <sh-check round :model-value="isOn(c.pickupNo)"></sh-check>
       </view>
       <text v-if="!mine.length && !others.length" class="txt-caption hint">{{ $t("store.pickup.empty") }}</text>
+      <text v-if="!mine.length && !others.length" class="sh-hint txt-quiet">{{ $t("store.pickup.emptyTip") }}</text>
 
       <!-- 自建 -->
       <view v-if="!buildOpen" class="sh-row row row--build" @tap="buildOpen = true">

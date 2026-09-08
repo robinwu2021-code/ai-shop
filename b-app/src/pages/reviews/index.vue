@@ -157,6 +157,7 @@ onShow(load);
           :placeholder="$t('reviews.appealPh')"
           maxlength="120"
         />
+        <text class="sh-hint txt-quiet">{{ $t("reviews.appealHint") }}</text>
         <view class="btns">
           <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="appealing = ''">{{ $t("common.cancel") }}</text>
           <text class="sh-btn sh-btn--sm txt-strong btn" @tap="submitAppeal(r)">{{ $t("reviews.appealSubmit") }}</text>

@@ -70,7 +70,7 @@ defineEmits<{ retry: [] }>();
     :class="{ 'sh-card': !bare, 'is-compact': compact, 'is-bare': bare }"
   >
     <template v-if="failed">
-      <text class="sh-muted">{{ failedText || $t("common.loadFailed") }}</text>
+      <text class="txt-body">{{ failedText || $t("common.loadFailed") }}</text>
       <text class="sh-hint txt-quiet">{{ $t("common.loadFailedTip") }}</text>
       <view class="empty__act">
         <!-- 与现有 5 处引导型空态同款（`sh-btn sh-btn--sm`）。
@@ -82,7 +82,15 @@ defineEmits<{ retry: [] }>();
       </view>
     </template>
     <template v-else>
-      <text class="sh-muted"><slot>{{ text }}</slot></text>
+      <!-- 有第二行时第一行换 `.txt-body`（28rpx / 墨色），没有就还是 `.sh-muted`。
+           **不这么分档等于没拆**：`.sh-muted` 的字号走 `--sh-fs-sub`，而 b 端在
+           App.vue 里把它调到了 24rpx —— 正好等于 `.sh-hint`；两者颜色又都是
+           `--sh-sub`。于是两行同字号、同色、同字重，读起来是一句折了行的话，
+           而拆开的全部意义就是「一眼看出哪句是结论、哪句是下一步」。
+           这是量出来的：截图上两行长得一样，computed 才说得清为什么。
+           走类不写数 —— 第一版在这儿硬写了 `font-size: 28rpx`，被「件不自己写字号」
+           那道闸拦下了，而闸是对的：字阶里本来就有这一档。 -->
+      <text :class="tip ? 'txt-body' : 'sh-muted'"><slot>{{ text }}</slot></text>
       <text v-if="tip" class="sh-hint txt-quiet">{{ tip }}</text>
       <!-- 引导型空态的那个按钮。**具名插槽而不是 props**：动作是什么、叫什么、
            点了去哪，都是调用点的事；这里只负责它与上面那行字的距离。 -->
@@ -118,4 +126,5 @@ defineEmits<{ retry: [] }>();
 .empty__act {
   margin-top: 28rpx;
 }
+
 </style>

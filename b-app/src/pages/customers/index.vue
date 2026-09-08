@@ -255,7 +255,7 @@ onShow(() => {
     </view>
     <text v-if="phonePartial" class="sh-muted sh-hint">{{ $t("members.phonePartial") }}</text>
 
-    <sh-empty v-if="!list.length && !loading" :text="String($t('members.empty'))"></sh-empty>
+    <sh-empty v-if="!list.length && !loading" :text="String($t('members.empty'))" :tip="String($t('members.emptyTip'))"></sh-empty>
 
     <view v-for="m in list" :key="m.memberNo" class="sh-row sh-card sh-mt-sm" @tap="open(m)">
       <view class="sh-fill">

@@ -97,7 +97,7 @@ onShow(load);
   <sh-scaffold title-key="suppliers.title" :denied="!merchant.can('biz:stock')">
     <text class="sh-hint">{{ $t("suppliers.intro") }}</text>
 
-    <sh-empty v-if="!loading && !rows.length" :text="String($t('suppliers.empty'))"></sh-empty>
+    <sh-empty v-if="!loading && !rows.length" :text="String($t('suppliers.empty'))" :tip="String($t('suppliers.emptyTip'))"></sh-empty>
 
     <view v-for="s in rows" :key="s.supplierNo" class="sh-card sup">
       <view class="sh-row sh-row--between sh-row--baseline">

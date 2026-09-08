@@ -197,9 +197,9 @@
         },
         {
           "key": "address.regionFailed",
-          "zh-CN": "区划没加载出来，可以重试或直接手填",
-          "en": "Could not load regions — retry, or type the address in",
-          "ar": "تعذّر تحميل المناطق؛ أعد المحاولة أو اكتب العنوان"
+          "zh-CN": "区划没加载出来",
+          "en": "Could not load regions",
+          "ar": "تعذّر تحميل المناطق"
         },
         {
           "key": "address.regionHint",
@@ -323,9 +323,9 @@
         },
         {
           "key": "addressPick.locateFailed",
-          "zh-CN": "没拿到定位。可以直接搜索、在地图上选点，或手动填写",
-          "en": "No location. Search, pick on the map, or type it in",
-          "ar": "تعذّر تحديد الموقع. ابحث أو حدّده على الخريطة أو اكتبه يدويًا"
+          "zh-CN": "没拿到定位",
+          "en": "No location",
+          "ar": "تعذّر تحديد الموقع"
         },
         {
           "key": "addressPick.locateFailedManualOnly",
@@ -413,21 +413,21 @@
         },
         {
           "key": "afterSale.detailPh",
-          "zh-CN": "请描述遇到的问题，有助于更快处理",
-          "en": "Describe what went wrong; it helps us handle it faster",
-          "ar": "صف المشكلة ليُعالَج أسرع"
+          "zh-CN": "遇到了什么问题？",
+          "en": "What went wrong?",
+          "ar": "ما المشكلة؟"
         },
         {
           "key": "afterSale.disputeOk",
-          "zh-CN": "已提交，客服会尽快联系你",
-          "en": "Submitted — support will reach out shortly",
-          "ar": "تم الإرسال؛ سيتواصل معك الدعم قريباً"
+          "zh-CN": "已提交",
+          "en": "Submitted",
+          "ar": "تم الإرسال"
         },
         {
           "key": "afterSale.disputePh",
-          "zh-CN": "请说明你的诉求，客服会联系双方",
-          "en": "Tell us what you want; support will contact both sides",
-          "ar": "وضّح طلبك وسيتواصل الدعم مع الطرفين"
+          "zh-CN": "你希望怎么处理？",
+          "en": "How would you like this resolved?",
+          "ar": "كيف تريد حلّها؟"
         },
         {
           "key": "afterSale.disputeTitle",
@@ -869,9 +869,9 @@
         },
         {
           "key": "category.emptyInCommunity",
-          "zh-CN": "你的社区还没有这类商家",
-          "en": "No such shops in your community yet",
-          "ar": "لا توجد متاجر من هذا النوع في حيّك بعد"
+          "zh-CN": "这个社区还没有这类商家",
+          "en": "No such shops in this community yet",
+          "ar": "لا توجد متاجر من هذا النوع في هذا الحي بعد"
         },
         {
           "key": "category.fresh",
@@ -1163,9 +1163,9 @@
         },
         {
           "key": "confirm.emptyItems",
-          "zh-CN": "这些商品已经不在购物车里了",
-          "en": "These items are no longer in your cart",
-          "ar": "لم تعد هذه المنتجات في سلتك"
+          "zh-CN": "这些商品已不在购物车",
+          "en": "These items are no longer in the cart",
+          "ar": "لم تعد هذه المنتجات في السلة"
         },
         {
           "key": "confirm.estimateOnly",
@@ -1853,9 +1853,9 @@
         },
         {
           "key": "groupHost.empty",
-          "zh-CN": "你还没有「送到我家」的团",
-          "en": "No groups delivered to your home yet",
-          "ar": "لا مجموعات تُوصَّل إلى منزلك بعد"
+          "zh-CN": "还没有「送到我家」的团",
+          "en": "No groups delivered to home yet",
+          "ar": "لا مجموعات تُوصَّل إلى المنزل بعد"
         },
         {
           "key": "groupHost.entryHint",
@@ -1967,9 +1967,9 @@
         },
         {
           "key": "groups.merchantEmpty",
-          "zh-CN": "本自提点暂时没有进行中的团",
-          "en": "No active groups at your pickup point",
-          "ar": "لا توجد مجموعات نشطة في نقطة الاستلام"
+          "zh-CN": "这个自提点没有进行中的团",
+          "en": "No active groups at this pickup point",
+          "ar": "لا توجد مجموعات نشطة في نقطة الاستلام هذه"
         },
         {
           "key": "groups.merchantHint",
@@ -2003,9 +2003,15 @@
         },
         {
           "key": "groups.requestEmpty",
-          "zh-CN": "还没有邻居发起求团，你可以做第一个",
-          "en": "No requests yet — you could be the first",
-          "ar": "لا توجد طلبات بعد؛ كن أول من يبدأ"
+          "zh-CN": "还没有人发起求团",
+          "en": "No requests yet",
+          "ar": "لا توجد طلبات بعد"
+        },
+        {
+          "key": "groups.requestEmptyTip",
+          "zh-CN": "你可以做第一个",
+          "en": "You could be the first",
+          "ar": "كن أول من يبدأ"
         },
         {
           "key": "groups.requestHint",
@@ -2057,7 +2063,7 @@
         },
         {
           "key": "home.communityFeedEmpty",
-          "zh-CN": "这个社区暂时还没有商家上架",
+          "zh-CN": "这个社区还没有商家上架",
           "en": "No one is selling here yet",
           "ar": "لا أحد يبيع هنا بعد"
         },
@@ -2135,9 +2141,9 @@
         },
         {
           "key": "invoice.emailPh",
-          "zh-CN": "请输入邮箱，电子发票会发到这里",
-          "en": "Enter an email; the e-invoice will be sent there",
-          "ar": "أدخل بريدًا إلكترونيًا؛ ستصلك الفاتورة عليه"
+          "zh-CN": "name@example.com",
+          "en": "name@example.com",
+          "ar": "name@example.com"
         },
         {
           "key": "invoice.emailTitle",
@@ -2741,9 +2747,15 @@
         },
         {
           "key": "myMembership.empty",
-          "zh-CN": "你还不是任何一家店的会员。在店里买过一单就会成为会员",
-          "en": "You are not a member of any store yet. One order makes you one",
-          "ar": "لست عضوًا في أي متجر بعد. طلب واحد يجعلك عضوًا"
+          "zh-CN": "还不是任何一家店的会员",
+          "en": "Not a member of any store yet",
+          "ar": "لست عضوًا في أي متجر بعد"
+        },
+        {
+          "key": "myMembership.emptyTip",
+          "zh-CN": "在店里买过一单就会成为会员",
+          "en": "One order makes you one",
+          "ar": "طلب واحد يجعلك عضوًا"
         },
         {
           "key": "myMembership.entryHint",
@@ -2753,27 +2765,27 @@
         },
         {
           "key": "myMembership.hint",
-          "zh-CN": "关掉之后，这家店的上新、优惠都不会再推给你。订单和售后的通知不受影响",
-          "en": "Turning it off stops new-arrival and promotion messages. Order and after-sales notifications are not affected",
-          "ar": "الإيقاف يمنع رسائل الجديد والعروض. إشعارات الطلبات وما بعد البيع لا تتأثر"
+          "zh-CN": "关掉后不再推送上新与优惠；订单和售后通知照常",
+          "en": "Off stops new-arrival and promotion messages; order and after-sales notices continue",
+          "ar": "الإيقاف يمنع رسائل الجديد والعروض؛ إشعارات الطلبات وما بعد البيع تستمر"
         },
         {
           "key": "myMembership.off",
-          "zh-CN": "你已关掉这家店的消息",
-          "en": "You turned this store’s messages off",
-          "ar": "أوقفت رسائل هذا المتجر"
+          "zh-CN": "消息已关",
+          "en": "Messages off",
+          "ar": "الرسائل موقوفة"
         },
         {
           "key": "myMembership.offDone",
-          "zh-CN": "以后不会再收到这家店的消息",
-          "en": "You will not receive messages from this store",
-          "ar": "لن تصلك رسائل من هذا المتجر"
+          "zh-CN": "已关闭",
+          "en": "Turned off",
+          "ar": "تم الإيقاف"
         },
         {
           "key": "myMembership.on",
-          "zh-CN": "这家店可以给你发消息",
-          "en": "This store can message you",
-          "ar": "يمكن لهذا المتجر مراسلتك"
+          "zh-CN": "消息已开",
+          "en": "Messages on",
+          "ar": "الرسائل مفعّلة"
         },
         {
           "key": "myMembership.onDone",
@@ -3341,9 +3353,9 @@
         },
         {
           "key": "phoneGate.wxFailed",
-          "zh-CN": "这次没从微信拿到，用验证码试试",
-          "en": "WeChat did not return a number — try an SMS code",
-          "ar": "لم يُرجع WeChat رقماً؛ جرّب رمز التحقق"
+          "zh-CN": "没从微信拿到手机号",
+          "en": "WeChat did not return a number",
+          "ar": "لم يُرجع WeChat رقماً"
         },
         {
           "key": "points.after",
@@ -3539,9 +3551,9 @@
         },
         {
           "key": "request.confirmedOk",
-          "zh-CN": "已确认，等大家都确认后统一下单",
-          "en": "Confirmed — orders go in once everyone has confirmed",
-          "ar": "تم التأكيد؛ تُرسل الطلبات بعد تأكيد الجميع"
+          "zh-CN": "已确认",
+          "en": "Confirmed",
+          "ar": "تم التأكيد"
         },
         {
           "key": "request.createNote",
@@ -3701,9 +3713,9 @@
         },
         {
           "key": "review.contentPh",
-          "zh-CN": "请说说这次的体验，至少 5 个字；你的评价会帮到楼里其他邻居",
-          "en": "Tell your neighbours how it went, at least 5 characters",
-          "ar": "أخبر جيرانك بتجربتك، ٥ أحرف على الأقل"
+          "zh-CN": "说说这次的体验（至少 5 个字）",
+          "en": "How did it go? (at least 5 characters)",
+          "ar": "كيف كانت التجربة؟ (٥ أحرف على الأقل)"
         },
         {
           "key": "review.dimFulfill",
@@ -3725,9 +3737,15 @@
         },
         {
           "key": "review.empty",
-          "zh-CN": "还没有评价，买过的邻居可以来说两句",
-          "en": "No reviews yet — be the first neighbour to share",
-          "ar": "لا توجد تقييمات بعد؛ كن أول جار يشارك"
+          "zh-CN": "还没有评价",
+          "en": "No reviews yet",
+          "ar": "لا توجد تقييمات بعد"
+        },
+        {
+          "key": "review.emptyTip",
+          "zh-CN": "买过的邻居可以来说两句",
+          "en": "Be the first neighbour to share",
+          "ar": "كن أول جار يشارك"
         },
         {
           "key": "review.images",
@@ -4281,9 +4299,15 @@
         },
         {
           "key": "activities.empty",
-          "zh-CN": "还没有活动。建一个，顾客下单时自动生效",
-          "en": "No activities yet. Create one and it applies automatically at checkout",
-          "ar": "لا توجد حملات بعد. أنشئ واحدة وستُطبق تلقائيًا عند الدفع"
+          "zh-CN": "还没有活动",
+          "en": "No activities yet",
+          "ar": "لا توجد حملات بعد"
+        },
+        {
+          "key": "activities.emptyTip",
+          "zh-CN": "建一个，顾客下单时自动生效",
+          "en": "Create one and it applies automatically at checkout",
+          "ar": "أنشئ واحدة وستُطبق تلقائيًا عند الدفع"
         },
         {
           "key": "activities.end",
@@ -5793,9 +5817,15 @@
         },
         {
           "key": "coupons.empty",
-          "zh-CN": "还没有券。建一张，再挑一群人发给他们",
-          "en": "No coupons yet. Create one, then pick a group to send it to",
-          "ar": "لا توجد قسائم بعد. أنشئ واحدة ثم اختر مجموعة لإرسالها"
+          "zh-CN": "还没有券",
+          "en": "No coupons yet",
+          "ar": "لا توجد قسائم بعد"
+        },
+        {
+          "key": "coupons.emptyTip",
+          "zh-CN": "建一张，再挑一群人发给他们",
+          "en": "Create one, then pick a group to send it to",
+          "ar": "أنشئ واحدة ثم اختر مجموعة لإرسالها"
         },
         {
           "key": "coupons.exposure",
@@ -6051,9 +6081,9 @@
         },
         {
           "key": "crossStore.subtitle",
-          "zh-CN": "这一段时间里哪家店更好。各店今天怎么样，在门店管理里看。",
-          "en": "Who did better over this period. For today's numbers per store, see Stores.",
-          "ar": "أيّ فرع كان أفضل خلال هذه الفترة. أما أرقام اليوم لكل فرع فتظهر في إدارة المتاجر."
+          "zh-CN": "这一段时间里哪家店更好",
+          "en": "Who did better over this period",
+          "ar": "أيّ فرع كان أفضل خلال هذه الفترة"
         },
         {
           "key": "crossStore.title",
@@ -6627,9 +6657,9 @@
         },
         {
           "key": "geo.unavailable",
-          "zh-CN": "暂时定位不到，可以手动填或稍后再试",
-          "en": "Can’t get a location right now — type it in or try later",
-          "ar": "تعذر تحديد الموقع الآن؛ اكتبه يدوياً أو حاول لاحقاً"
+          "zh-CN": "定位不到",
+          "en": "Can’t get a location",
+          "ar": "تعذر تحديد الموقع"
         },
         {
           "key": "goods.add",
@@ -7359,9 +7389,9 @@
         },
         {
           "key": "goods.paramPoolFailed",
-          "zh-CN": "没取到平台的可选值，退出去重开一次",
-          "en": "Could not load the platform values — close and reopen",
-          "ar": "تعذّر تحميل قيم المنصة؛ أغلق وأعد الفتح"
+          "zh-CN": "没取到平台的可选值",
+          "en": "Could not load the platform values",
+          "ar": "تعذّر تحميل قيم المنصة"
         },
         {
           "key": "goods.params",
@@ -7371,9 +7401,15 @@
         },
         {
           "key": "goods.paramsEmpty",
-          "zh-CN": "平台尚未为本类目配置参数。可新建本店专用参数。",
-          "en": "No parameters configured for this category yet — you can create one.",
-          "ar": "لم تُضبط خصائص لهذه الفئة بعد. يمكنك إنشاء خاصية خاصة بمتجرك."
+          "zh-CN": "这个类目还没有平台参数",
+          "en": "No platform parameters for this category yet",
+          "ar": "لم تُضبط خصائص لهذه الفئة بعد"
+        },
+        {
+          "key": "goods.paramsEmptyTip",
+          "zh-CN": "可以新建本店专用的",
+          "en": "You can create one for your store",
+          "ar": "يمكنك إنشاء خاصية خاصة بمتجرك"
         },
         {
           "key": "goods.paramsPick",
@@ -8463,9 +8499,9 @@
         },
         {
           "key": "invoice.titleBlock",
-          "zh-CN": "开票给谁（平台抬头）",
-          "en": "Bill to (platform details)",
-          "ar": "تُصدر باسم (بيانات المنصة)"
+          "zh-CN": "开票抬头",
+          "en": "Bill to",
+          "ar": "تُصدر باسم"
         },
         {
           "key": "invoice.titleHint",
@@ -8475,15 +8511,27 @@
         },
         {
           "key": "invoice.titleMissing",
-          "zh-CN": "平台还没配开票信息，先联系客服 —— 现在开出来的票抬头一定是错的。",
-          "en": "The platform has not set its invoicing details yet. Contact support — anything issued now will have the wrong header.",
-          "ar": "لم تُعدّ المنصة بيانات الفوترة بعد. تواصل مع الدعم — أي فاتورة تُصدر الآن ستحمل بيانات خاطئة."
+          "zh-CN": "平台还没配开票信息",
+          "en": "The platform has not set its invoicing details",
+          "ar": "لم تُعدّ المنصة بيانات الفوترة بعد"
+        },
+        {
+          "key": "invoice.titleMissingTip",
+          "zh-CN": "现在开出来的抬头一定是错的，先联系客服",
+          "en": "Anything issued now will have the wrong header — contact support",
+          "ar": "أي فاتورة تُصدر الآن ستحمل بيانات خاطئة — تواصل مع الدعم"
+        },
+        {
+          "key": "invoice.titleNameHint",
+          "zh-CN": "必须与主体名一致",
+          "en": "Must match your entity name",
+          "ar": "يجب أن يطابق اسم كيانك"
         },
         {
           "key": "invoice.titleNamePlaceholder",
-          "zh-CN": "开票方名称（必须与你的主体名一致）",
-          "en": "Issuer name (must match your entity name)",
-          "ar": "اسم المُصدِر (يجب أن يطابق اسم كيانك)"
+          "zh-CN": "开票方名称",
+          "en": "Issuer name",
+          "ar": "اسم المُصدِر"
         },
         {
           "key": "locations.add",
@@ -8835,9 +8883,15 @@
         },
         {
           "key": "marketing.empty",
-          "zh-CN": "暂无活动。可先创建一个「满 30 减 5」。",
-          "en": "No promotions yet. Start with 「5 off 30」.",
-          "ar": "لا توجد حملات بعد. ابدأ بـ«خصم 5 عند 30»."
+          "zh-CN": "还没有活动",
+          "en": "No promotions yet",
+          "ar": "لا توجد حملات بعد"
+        },
+        {
+          "key": "marketing.emptyTip",
+          "zh-CN": "可以先建一个「满 30 减 5」",
+          "en": "Start with 「5 off 30」",
+          "ar": "ابدأ بـ«خصم 5 عند 30»"
         },
         {
           "key": "marketing.flashPrice",
@@ -9297,9 +9351,15 @@
         },
         {
           "key": "memberSegments.empty",
-          "zh-CN": "还没有人群。在会员列表里筛出一批人，点「另存为人群」",
-          "en": "No audiences yet. Filter members, then tap “Save as audience”",
-          "ar": "لا توجد شرائح بعد. صفِّ الأعضاء ثم اضغط «حفظ كشريحة»"
+          "zh-CN": "还没有人群",
+          "en": "No audiences yet",
+          "ar": "لا توجد شرائح بعد"
+        },
+        {
+          "key": "memberSegments.emptyTip",
+          "zh-CN": "在会员列表里筛出一批人，点「另存为人群」",
+          "en": "Filter members, then tap “Save as audience”",
+          "ar": "صفِّ الأعضاء ثم اضغط «حفظ كشريحة»"
         },
         {
           "key": "memberSegments.reachHint",
@@ -9573,9 +9633,15 @@
         },
         {
           "key": "members.empty",
-          "zh-CN": "还没有会员。有人在这里买过一单，就会出现在这里",
-          "en": "No members yet. Anyone who buys once shows up here",
-          "ar": "لا أعضاء بعد. من يشترِ مرة يظهر هنا"
+          "zh-CN": "还没有会员",
+          "en": "No members yet",
+          "ar": "لا أعضاء بعد"
+        },
+        {
+          "key": "members.emptyTip",
+          "zh-CN": "有人在这里买过一单，就会出现在这里",
+          "en": "Anyone who buys once shows up here",
+          "ar": "من يشترِ مرة يظهر هنا"
         },
         {
           "key": "members.lead",
@@ -11745,9 +11811,9 @@
         },
         {
           "key": "reach.titlePh",
-          "zh-CN": "请输入一句话标题，顾客优先看到",
-          "en": "Enter a one-line title; customers see it first",
-          "ar": "أدخل عنوانًا من سطر واحد؛ يراه العملاء أولًا"
+          "zh-CN": "如：本周牛奶第二件半价",
+          "en": "e.g. Half price on your second milk this week",
+          "ar": "مثال: نصف السعر على العلبة الثانية من الحليب هذا الأسبوع"
         },
         {
           "key": "reach.toWhom",
@@ -11760,6 +11826,12 @@
           "zh-CN": "申诉这条评价",
           "en": "Appeal this review",
           "ar": "تقديم اعتراض على التقييم"
+        },
+        {
+          "key": "reviews.appealHint",
+          "zh-CN": "附聊天记录或物流截图，裁决更快",
+          "en": "Chat logs or delivery screenshots speed up the ruling",
+          "ar": "إرفاق المحادثات أو لقطات الشحن يسرّع القرار"
         },
         {
           "key": "reviews.appealNeedReason",
@@ -11775,9 +11847,9 @@
         },
         {
           "key": "reviews.appealPh",
-          "zh-CN": "请说明该评价不实的理由；附聊天记录或物流截图可加快裁决",
-          "en": "Explain why this review is inaccurate; chat logs or delivery screenshots speed up the ruling",
-          "ar": "وضّح سبب عدم دقة التقييم؛ إرفاق المحادثات أو لقطات الشحن يسرّع القرار"
+          "zh-CN": "哪里不实？",
+          "en": "What is inaccurate?",
+          "ar": "ما غير الدقيق؟"
         },
         {
           "key": "reviews.appealREJECTED",
@@ -11859,15 +11931,15 @@
         },
         {
           "key": "reviews.replyOnce",
-          "zh-CN": "回复只能发一次，发出后不能修改，请确认后再发布",
-          "en": "A reply can only be posted once and cannot be edited afterwards — check it before you post",
-          "ar": "يمكن نشر الرد مرة واحدة فقط ولا يمكن تعديله بعد ذلك؛ تأكد منه قبل النشر"
+          "zh-CN": "公开显示在评价下方，只能发一次",
+          "en": "Shown publicly beneath the review — you can only post once",
+          "ar": "يظهر علنًا أسفل التقييم — يمكن النشر مرة واحدة فقط"
         },
         {
           "key": "reviews.replyPh",
-          "zh-CN": "请输入回复内容，将公开展示在评价下方",
-          "en": "Enter a reply; it is shown publicly beneath the review",
-          "ar": "أدخل ردك؛ يظهر علنًا أسفل التقييم"
+          "zh-CN": "回复内容",
+          "en": "Your reply",
+          "ar": "ردّك"
         },
         {
           "key": "reviews.submit",
@@ -11925,9 +11997,15 @@
         },
         {
           "key": "schedule.empty",
-          "zh-CN": "尚未开放时段。未开放时，顾客按原方式自行填写时间。",
-          "en": "No slots opened yet. Until then, customers enter a time themselves as before.",
-          "ar": "لا توجد مواعيد بعد. بدونها يختار العميل الوقت بنفسه كالسابق."
+          "zh-CN": "还没有开放时段",
+          "en": "No slots opened yet",
+          "ar": "لا توجد مواعيد بعد"
+        },
+        {
+          "key": "schedule.emptyTip",
+          "zh-CN": "不开放时，顾客自己填时间",
+          "en": "Until then, customers enter a time themselves",
+          "ar": "بدونها يختار العميل الوقت بنفسه"
         },
         {
           "key": "schedule.full",
@@ -12501,9 +12579,9 @@
         },
         {
           "key": "skuIdentity.pastePh",
-          "zh-CN": "请粘贴 CSV 内容，或点右上角选择文件",
-          "en": "Paste the CSV here, or choose a file from the top right",
-          "ar": "الصق محتوى CSV هنا، أو اختر ملفًا من الأعلى"
+          "zh-CN": "粘贴 CSV 内容",
+          "en": "Paste the CSV here",
+          "ar": "الصق محتوى CSV هنا"
         },
         {
           "key": "skuIdentity.previewTitle",
@@ -13617,9 +13695,9 @@
         },
         {
           "key": "stockCross.emptyOk",
-          "zh-CN": "所有货在每家店都还有 —— 没有要补的",
-          "en": "Every item is in stock at every store — nothing to restock",
-          "ar": "كل صنف متوفر في كل متجر — لا شيء لإعادة تعبئته"
+          "zh-CN": "没有要补的货",
+          "en": "Nothing to restock",
+          "ar": "لا شيء لإعادة تعبئته"
         },
         {
           "key": "stockCross.hint",
@@ -14373,9 +14451,9 @@
         },
         {
           "key": "store.addressDetailPh",
-          "zh-CN": "如 3 号楼 2 单元，顾客照此找到店门",
-          "en": "e.g. Block 3, Unit 2 — how customers find the door",
-          "ar": "مثال: مبنى ٣ وحدة ٢؛ يستدل به العملاء على الباب"
+          "zh-CN": "如 3 号楼 2 单元",
+          "en": "e.g. Block 3, Unit 2",
+          "ar": "مثال: مبنى ٣ وحدة ٢"
         },
         {
           "key": "store.addressHint",
@@ -14529,15 +14607,21 @@
         },
         {
           "key": "store.communitiesEmpty",
-          "zh-CN": "平台尚未在该区域开通小区，请联系运营开通后再设置",
-          "en": "No community has been opened in this area yet. Contact operations to enable it.",
-          "ar": "لا يوجد حي مفتوح لك بعد، تواصل مع التشغيل لفتح واحد"
+          "zh-CN": "这个区域还没开通小区",
+          "en": "No community opened in this area yet",
+          "ar": "لا يوجد حي مفتوح في هذه المنطقة بعد"
+        },
+        {
+          "key": "store.communitiesEmptyTip",
+          "zh-CN": "联系运营开通后再来设置",
+          "en": "Contact operations to enable it",
+          "ar": "تواصل مع التشغيل لفتح واحد"
         },
         {
           "key": "store.communitiesFailed",
-          "zh-CN": "小区列表加载失败，请下拉刷新重试",
-          "en": "The community list failed to load. Pull down to refresh.",
-          "ar": "تعذّر تحميل قائمة الأحياء، اسحب للتحديث؛ هذا لا يعني عدم وجود أحياء"
+          "zh-CN": "小区列表没加载出来",
+          "en": "The community list failed to load",
+          "ar": "تعذّر تحميل قائمة الأحياء"
         },
         {
           "key": "store.copied",
@@ -14673,9 +14757,9 @@
         },
         {
           "key": "store.loadFailed",
-          "zh-CN": "店铺信息没加载出来，别在这个页面上保存，先刷新",
-          "en": "Your shop details did not load — refresh before saving anything here",
-          "ar": "لم تُحمّل بيانات المتجر، حدّث الصفحة قبل الحفظ"
+          "zh-CN": "店铺信息没加载出来，先别保存",
+          "en": "Your shop details did not load — don't save yet",
+          "ar": "لم تُحمّل بيانات المتجر؛ لا تحفظ الآن"
         },
         {
           "key": "store.locateAddr",
@@ -14919,9 +15003,9 @@
         },
         {
           "key": "store.picker.levelEmpty",
-          "zh-CN": "这一级下面还没有可选的地方",
-          "en": "Nothing to pick under this level yet",
-          "ar": "لا يوجد شيء لاختياره ضمن هذا المستوى بعد"
+          "zh-CN": "下面没有可选的地方",
+          "en": "Nothing to pick under this level",
+          "ar": "لا يوجد شيء لاختياره ضمن هذا المستوى"
         },
         {
           "key": "store.picker.mapEntry",
@@ -14955,9 +15039,15 @@
         },
         {
           "key": "store.picker.searchEmpty",
-          "zh-CN": "没搜到。换个词，或用下面的「在地图上选点添加」",
-          "en": "Nothing found. Try another word, or pick it on the map below",
-          "ar": "لا نتائج. جرّب كلمة أخرى أو حدّده على الخريطة أدناه"
+          "zh-CN": "没搜到",
+          "en": "Nothing found",
+          "ar": "لا نتائج"
+        },
+        {
+          "key": "store.picker.searchEmptyTip",
+          "zh-CN": "换个词，或在地图上选点添加",
+          "en": "Try another word, or pick it on the map below",
+          "ar": "جرّب كلمة أخرى أو حدّده على الخريطة أدناه"
         },
         {
           "key": "store.picker.searchPh",
@@ -15015,9 +15105,15 @@
         },
         {
           "key": "store.picker.villageEmpty",
-          "zh-CN": "该区域未找到小区。可直接勾选上方的「整个…」，或使用下方地图选点。",
-          "en": "No community found in this area. Select the district option above, or pick a point on the map below.",
-          "ar": "لا توجد مجمّعات على الخريطة هنا؛ اختر الكل أعلاه أو حدّد على الخريطة أدناه"
+          "zh-CN": "没找到小区",
+          "en": "No community found here",
+          "ar": "لا توجد مجمّعات هنا"
+        },
+        {
+          "key": "store.picker.villageEmptyTip",
+          "zh-CN": "可以勾上方的「整个…」，或在地图上选点",
+          "en": "Select the district option above, or pick a point on the map",
+          "ar": "اختر الكل أعلاه أو حدّد على الخريطة أدناه"
         },
         {
           "key": "store.picker.villageHint",
@@ -15069,9 +15165,15 @@
         },
         {
           "key": "store.pickup.empty",
-          "zh-CN": "范围内还没有可用的自提点，先自建一个",
-          "en": "No pickup point available in your coverage yet — build one",
-          "ar": "لا نقاط متاحة ضمن نطاقك بعد؛ أنشئ واحدة"
+          "zh-CN": "范围内没有自提点",
+          "en": "No pickup point in your coverage",
+          "ar": "لا نقاط ضمن نطاقك"
+        },
+        {
+          "key": "store.pickup.emptyTip",
+          "zh-CN": "先自建一个",
+          "en": "Build one",
+          "ar": "أنشئ واحدة"
         },
         {
           "key": "store.pickup.hoursPh",
@@ -15093,9 +15195,9 @@
         },
         {
           "key": "store.pickup.locateFailed",
-          "zh-CN": "没拿到定位，开启定位权限后重试",
-          "en": "Location unavailable — enable location access and retry",
-          "ar": "تعذر تحديد الموقع؛ فعّل إذن الموقع وأعد المحاولة"
+          "zh-CN": "没拿到定位",
+          "en": "Location unavailable",
+          "ar": "تعذر تحديد الموقع"
         },
         {
           "key": "store.pickup.located",
@@ -15278,12 +15380,6 @@
           "ar": "رمز متجرك ليس جاهزًا بعد؛ تحقق لاحقًا"
         },
         {
-          "key": "store.qrcodePlaceholder",
-          "zh-CN": "小程序码由服务端生成，此处为占位图",
-          "en": "The mini-program code is generated server-side; this is a placeholder",
-          "ar": "يُنشأ رمز المنصة من الخادم، وهذا عنصر نائب"
-        },
-        {
           "key": "store.qrcodeStoreWarn",
           "zh-CN": "你有多家店，每家店的码不一样 —— 印之前先确认贴的是哪家。",
           "en": "You have several stores and each has its own code — check which one before printing.",
@@ -15423,9 +15519,9 @@
         },
         {
           "key": "store.settleEmpty",
-          "zh-CN": "这个街道/镇下还没有开通的聚落",
-          "en": "No opened settlement under this street/town yet",
-          "ar": "لا يوجد تجمع مفتوح تحت هذا الشارع/البلدة بعد"
+          "zh-CN": "这个街道/镇还没开通聚落",
+          "en": "No settlement opened under this street/town",
+          "ar": "لا يوجد تجمع مفتوح تحت هذا الشارع/البلدة"
         },
         {
           "key": "store.settleUnder",
@@ -15621,9 +15717,15 @@
         },
         {
           "key": "storeCategories.empty",
-          "zh-CN": "还没摆货架。建一件商品，它的类目会自动加进来",
-          "en": "No shelves yet. Publish a product and its category shows up here.",
-          "ar": "لا توجد أرفف بعد. انشر منتجاً وستظهر فئته هنا."
+          "zh-CN": "还没摆货架",
+          "en": "No shelves yet",
+          "ar": "لا توجد أرفف بعد"
+        },
+        {
+          "key": "storeCategories.emptyTip",
+          "zh-CN": "建一件商品，它的类目会自动加进来",
+          "en": "Publish a product and its category shows up here",
+          "ar": "انشر منتجاً وستظهر فئته هنا"
         },
         {
           "key": "storeCategories.goodsCount",
@@ -15789,9 +15891,9 @@
         },
         {
           "key": "stores.addressPh",
-          "zh-CN": "请填写详细地址，顾客据此找到取货点",
-          "en": "Enter the full address customers use to find the pickup point",
-          "ar": "أدخل العنوان الكامل الذي يستدل به العملاء على نقطة الاستلام"
+          "zh-CN": "如 3 号楼 2 单元",
+          "en": "e.g. Block 3, Unit 2",
+          "ar": "مثال: مبنى ٣ وحدة ٢"
         },
         {
           "key": "stores.currentTag",
@@ -15957,9 +16059,15 @@
         },
         {
           "key": "supplier.empty",
-          "zh-CN": "还没有供应商，输入名称即可建一个",
-          "en": "No suppliers yet — type a name to create one",
-          "ar": "لا يوجد مورّدون بعد — اكتب اسمًا لإنشاء واحد"
+          "zh-CN": "还没有供应商",
+          "en": "No suppliers yet",
+          "ar": "لا يوجد مورّدون بعد"
+        },
+        {
+          "key": "supplier.emptyTip",
+          "zh-CN": "输入名称就能建一个",
+          "en": "Type a name to create one",
+          "ar": "اكتب اسمًا لإنشاء واحد"
         },
         {
           "key": "supplier.pickTitle",
@@ -15969,9 +16077,9 @@
         },
         {
           "key": "supplier.searchPh",
-          "zh-CN": "搜名称或联系人；没有就直接建",
-          "en": "Search by name or contact — or just type a new one",
-          "ar": "ابحث بالاسم أو جهة الاتصال — أو اكتب اسمًا جديدًا"
+          "zh-CN": "搜名称或联系人",
+          "en": "Search by name or contact",
+          "ar": "ابحث بالاسم أو جهة الاتصال"
         },
         {
           "key": "suppliers.add",
@@ -16017,9 +16125,15 @@
         },
         {
           "key": "suppliers.empty",
-          "zh-CN": "还没有供应商 —— 记进货时输入名称就能建",
-          "en": "No suppliers yet — type a name while recording a purchase to create one",
-          "ar": "لا يوجد مورّدون بعد — اكتب اسمًا أثناء تسجيل الشراء لإنشاء واحد"
+          "zh-CN": "还没有供应商",
+          "en": "No suppliers yet",
+          "ar": "لا يوجد مورّدون بعد"
+        },
+        {
+          "key": "suppliers.emptyTip",
+          "zh-CN": "记进货时输入名称就能建",
+          "en": "Type a name while recording a purchase",
+          "ar": "اكتب اسمًا أثناء تسجيل الشراء"
         },
         {
           "key": "suppliers.intro",
@@ -17556,8 +17670,8 @@
         },
         {
           "key": "login.resetDone",
-          "zh-CN": "密码已重置，请用新密码登录。其它设备上的登录已全部退出。",
-          "en": "Password reset. Sign in with the new one — every other session has been signed out.",
+          "zh-CN": "密码已重置，其它设备已退出登录",
+          "en": "Password reset — every other session has been signed out",
           "ar": null
         },
         {

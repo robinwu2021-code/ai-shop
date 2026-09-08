@@ -513,9 +513,10 @@ async function submit() {
         <text v-if="communitiesFailed" class="txt-caption warn">
           {{ $t("store.communitiesFailed") }}
         </text>
-        <text v-else-if="!communities.length" class="txt-caption warn">
-          {{ $t("store.communitiesEmpty") }}
-        </text>
+        <view v-else-if="!communities.length">
+          <text class="txt-caption warn">{{ $t("store.communitiesEmpty") }}</text>
+          <text class="sh-hint txt-quiet">{{ $t("store.communitiesEmptyTip") }}</text>
+        </view>
         <text v-else-if="!form.communityNos.length" class="txt-caption warn">
           {{ $t("store.scopeNeedCommunity") }}
         </text>

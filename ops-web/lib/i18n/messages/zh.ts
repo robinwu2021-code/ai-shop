@@ -67,7 +67,7 @@ export const zh = {
     resetNew: "新密码",
     resetNewHint: "至少 8 位",
     resetSubmit: "设置新密码",
-    resetDone: "密码已重置，请用新密码登录。其它设备上的登录已全部退出。",
+    resetDone: "密码已重置，其它设备已退出登录",
   },
   role: {
     SUPER_ADMIN: "超级管理员",

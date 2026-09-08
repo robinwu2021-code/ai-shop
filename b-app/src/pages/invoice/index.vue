@@ -36,7 +36,10 @@
           <text class="txt-sub">{{ f.v }}</text>
         </sh-kv>
       </view>
-      <text v-else class="sh-hint is-warning">{{ t("invoice.titleMissing") }}</text>
+      <view v-else>
+        <text class="sh-hint is-warning">{{ t("invoice.titleMissing") }}</text>
+        <text class="sh-hint txt-quiet">{{ t("invoice.titleMissingTip") }}</text>
+      </view>
     </view>
 
     <view v-if="pending && pending.billCount > 0" class="sh-card">
@@ -53,6 +56,9 @@
         class="field__input sub__f"
         :placeholder="t('invoice.titleNamePlaceholder')"
       />
+      <!-- 「必须与主体名一致」从占位符里搬到这儿：占位符一动笔就没了，
+           而这条约束恰恰是**填的时候**要看见的 -->
+      <text class="sh-hint txt-quiet">{{ t("invoice.titleNameHint") }}</text>
       <view
         class="sh-btn sh-mt-sm"
         :class="{ 'is-disabled': !canSubmit || submitting }"

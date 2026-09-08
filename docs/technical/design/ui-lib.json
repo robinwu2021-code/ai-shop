@@ -266,7 +266,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 292,
+        "b-app": 291,
         "c-app": 43
       }
     },
@@ -288,7 +288,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 77,
+        "b-app": 79,
         "c-app": 54
       }
     },
@@ -478,8 +478,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 33,
-        "c-app": 12
+        "b-app": 41,
+        "c-app": 13
       }
     },
     {
@@ -984,8 +984,8 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 116,
-        "c-app": 10
+        "b-app": 124,
+        "c-app": 11
       }
     },
     {
@@ -2097,7 +2097,7 @@
       "name": "sh-empty",
       "file": "packages/ui/src/components/sh-empty.vue",
       "scope": "跨端",
-      "lines": 121,
+      "lines": 130,
       "props": [
         "text?: string",
         "tip?: string",
@@ -2116,6 +2116,7 @@
       "why": "抽出来不是因为重复，是**观感会漂**：曾在 27 个页面各写一份，padding 在 60/80/100rpx 之间随手取",
       "uses": {
         "tiers": [
+          "txt-body",
           "txt-quiet"
         ],
         "rawFontSize": [],
@@ -2995,7 +2996,7 @@
       "name": "biz-pickup-sheet",
       "file": "b-app/src/components/biz/biz-pickup-sheet.vue",
       "scope": "B 端",
-      "lines": 268,
+      "lines": 269,
       "props": [
         "visible: boolean",
         "storeNo: string",
@@ -3012,6 +3013,7 @@
         "tiers": [
           "txt-caption",
           "txt-primary",
+          "txt-quiet",
           "txt-strong",
           "txt-sub"
         ],
@@ -3046,7 +3048,7 @@
       "name": "biz-region-picker",
       "file": "b-app/src/components/biz/biz-region-picker.vue",
       "scope": "B 端",
-      "lines": 1534,
+      "lines": 1543,
       "props": [
         "visible: boolean",
         "areas: ServiceArea[]"
@@ -3285,7 +3287,7 @@
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 94,
+      "libClassHits": 96,
       "localSelectors": 25,
       "localCssLines": 79,
       "rolled": []
@@ -3438,7 +3440,7 @@
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 286,
+      "libClassHits": 288,
       "localSelectors": 70,
       "localCssLines": 304,
       "rolled": []
@@ -3533,7 +3535,7 @@
         "sh-scaffold",
         "sh-section"
       ],
-      "libClassHits": 48,
+      "libClassHits": 52,
       "localSelectors": 3,
       "localCssLines": 11,
       "rolled": []
@@ -3883,7 +3885,7 @@
         "sh-rating",
         "sh-scaffold"
       ],
-      "libClassHits": 42,
+      "libClassHits": 44,
       "localSelectors": 17,
       "localCssLines": 81,
       "rolled": []
@@ -3910,7 +3912,7 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 39,
+      "libClassHits": 41,
       "localSelectors": 3,
       "localCssLines": 12,
       "rolled": []
@@ -4423,7 +4425,7 @@
         "sh-scaffold",
         "sh-stepper"
       ],
-      "libClassHits": 125,
+      "libClassHits": 127,
       "localSelectors": 39,
       "localCssLines": 152,
       "rolled": []
@@ -4776,7 +4778,7 @@
         "sh-sheet",
         "biz-time-range"
       ],
-      "libClassHits": 32,
+      "libClassHits": 34,
       "localSelectors": 13,
       "localCssLines": 52,
       "rolled": []
@@ -4793,7 +4795,7 @@
         "sh-sheet",
         "sh-tabs"
       ],
-      "libClassHits": 47,
+      "libClassHits": 49,
       "localSelectors": 31,
       "localCssLines": 146,
       "rolled": []

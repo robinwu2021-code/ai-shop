@@ -128,6 +128,7 @@ onShow(() => {
     <view class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("schedule.list") }}</text>
       <text v-if="!slots.length" class="sh-muted sh-hint">{{ $t("schedule.empty") }}</text>
+      <text v-if="!slots.length" class="sh-hint txt-quiet">{{ $t("schedule.emptyTip") }}</text>
       <view v-for="s in slots" :key="s.slotNo" class="slot sh-row">
         <view class="sh-fill">
           <text class="txt-body slot__when sh-num">{{ datetime(s.startAt) }}</text>

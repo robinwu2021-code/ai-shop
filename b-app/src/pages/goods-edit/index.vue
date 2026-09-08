@@ -1690,6 +1690,7 @@ async function save(thenSubmit = false) {
       <!-- 与规格同一条：常驻展开，理由见上面那段 -->
       <!-- 这一类还没配参数：说清现状，并把唯一的下一步摆在眼前 -->
       <text v-if="!propDims.length" class="sh-muted hint">{{ $t("goods.paramsEmpty") }}</text>
+      <text v-if="!propDims.length" class="sh-hint txt-quiet">{{ $t("goods.paramsEmptyTip") }}</text>
       <!--
         **参数是单值，规格是多值** —— 一件货有三档重量，但只有一个产地。
         所以这里的 chip 是单选（再点取消），而规格那边是开关（本店有的全列、

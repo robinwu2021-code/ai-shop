@@ -314,7 +314,7 @@ onShow(() => {
     </view>
 
     <!-- 活动列表 -->
-    <sh-empty v-if="!list.length && !editing" :text='$t("marketing.empty")'></sh-empty>
+    <sh-empty v-if="!list.length && !editing" :text='$t("marketing.empty")' :tip='$t("marketing.emptyTip")'></sh-empty>
 
     <view v-for="c in list" :key="c.campaignNo" class="sh-card sh-mt-sm">
       <view class="item__head sh-row sh-row--between">

@@ -105,7 +105,7 @@ onShow(load);
       </text>
     </view>
 
-    <sh-empty v-if="!list.length" :text="String($t('activities.empty'))"></sh-empty>
+    <sh-empty v-if="!list.length" :text="String($t('activities.empty'))" :tip="String($t('activities.emptyTip'))"></sh-empty>
 
     <template v-for="g in [
       { key: 'live', rows: live },

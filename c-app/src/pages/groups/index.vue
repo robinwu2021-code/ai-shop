@@ -193,7 +193,7 @@ onShow(() => {
         </view>
       </view>
 
-      <sh-empty bare v-if="loaded && !requests.length" :text='$t("groups.requestEmpty")'></sh-empty>
+      <sh-empty bare v-if="loaded && !requests.length" :text='$t("groups.requestEmpty")' :tip='$t("groups.requestEmptyTip")'></sh-empty>
 
       <sh-actionbar :pad="160">
         <view class="sh-btn" @tap="createRequest">{{ $t("groups.createGroup") }}</view>
