@@ -252,7 +252,7 @@ onShareAppMessage(() =>
           而两种状态若显示成同一个样子，用户会把此刻的商品当成家里能买到的，
           下单才发现送不到。标签放在名字前面 —— 放后面会被长地名挤出屏幕。
         -->
-        <text v-if="location.isTransient" class="txt-caption place__here">{{ $t("home.hereTag") }}</text>
+        <text v-if="location.isTransient" class="sh-chip sh-chip--primary place__here">{{ $t("home.hereTag") }}</text>
         <text class="txt-body place__name">
           {{ location.label || community.pickup?.name || $t("home.choosePickup") }}
         </text>
@@ -266,7 +266,7 @@ onShareAppMessage(() =>
         <text
           v-for="a in quickPlaces"
           :key="a.addressId"
-          class="txt-caption place__chip"
+          class="sh-chip"
           @tap.stop="quickSwitch(a)"
         >{{ a.tag }}</text>
       </view>
@@ -363,12 +363,6 @@ onShareAppMessage(() =>
   margin-inline-start: 12rpx;
   flex-shrink: 0;
 }
-.place__chip {
-  padding: 8rpx 20rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-  color: var(--sh-sub);
-}
 .place__search {
   flex-shrink: 0;
   width: 64rpx;
@@ -382,10 +376,6 @@ onShareAppMessage(() =>
 .place__here {
   flex-shrink: 0;
   margin-inline-end: 8rpx;
-  padding: 4rpx 12rpx;
-  border-radius: 16rpx;
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
 }
 .place__name {
   /* 英文店名比中文长得多（Sunnyside Block 3 Point vs 阳光里 3 幢自提点）：
