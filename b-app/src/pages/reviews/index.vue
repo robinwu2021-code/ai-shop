@@ -35,10 +35,21 @@ const sorted = computed(() =>
 
 const pending = computed(() => list.value.filter((r) => !r.reply).length);
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  replying.value = "";
-  text.value = "";
-  list.value = await api.mReviewList();
+  try {
+    replying.value = "";
+    text.value = "";
+    list.value = await api.mReviewList();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 /**
@@ -102,7 +113,7 @@ onShow(load);
       </text>
     </view>
 
-    <sh-empty v-if="!list.length" :text='$t("reviews.empty")'></sh-empty>
+    <sh-empty v-if="!list.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("reviews.empty")'></sh-empty>
 
     <view v-for="r in sorted" :key="r.reviewNo" class="sh-card sh-mt-sm">
       <view class="item__head sh-row sh-row--between">

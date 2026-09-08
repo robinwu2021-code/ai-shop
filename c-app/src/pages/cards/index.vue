@@ -11,8 +11,16 @@ import type { UserCard } from "@shared/types";
 const cards = ref<UserCard[]>([]);
 const loaded = ref(false);
 
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  cards.value = await api.myCards();
+  try {
+    cards.value = await api.myCards();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
   loaded.value = true;
 }
 
@@ -52,7 +60,7 @@ onShow(load);
       </view>
     </view>
 
-    <sh-empty v-if="loaded && !cards.length" :text="String($t('cards.empty'))">
+    <sh-empty v-if="!cards.length" :pending="!loaded" :failed="failed" @retry="load" :text="String($t('cards.empty'))">
       <template #action>
         <view class="sh-btn sh-btn--sm" @tap="goShopping">{{ $t("visited.go") }}</view>
       </template>

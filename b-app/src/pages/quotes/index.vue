@@ -31,9 +31,20 @@ function myQuote(r: GroupRequest): Quote | undefined {
 
 const canQuote = computed(() => merchant.isActive);
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  editing.value = "";
-  list.value = await api.mRequestList();
+  try {
+    editing.value = "";
+    list.value = await api.mRequestList();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 function start(r: GroupRequest) {
@@ -76,7 +87,7 @@ onShow(load);
     <text class="txt-display">{{ $t("quotes.title") }}</text>
     <text class="sh-muted intro">{{ $t("quotes.intro") }}</text>
 
-    <sh-empty v-if="!list.length" :text='$t("quotes.empty")'></sh-empty>
+    <sh-empty v-if="!list.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("quotes.empty")'></sh-empty>
 
     <view v-for="r in list" :key="r.requestNo" class="sh-card sh-mt-sm">
       <view class="item__head sh-row sh-row--between">

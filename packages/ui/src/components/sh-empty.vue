@@ -125,6 +125,21 @@ defineEmits<{ retry: [] }>();
    （0 / 24 / 28 / 32rpx），于是同一种空态在不同页面上按钮高低不一 */
 .empty__act {
   margin-top: 28rpx;
+  /*
+   * 按内容宽，不占满一行。
+   *
+   * `.sh-btn` 是 `display: block` —— 页面底部的主操作本来就该通栏，那是对的。
+   * 但它站在一张**本来就没内容**的卡片正中间时，一条通栏的实心主色条把
+   * 「这儿没东西」说成了「这儿有件大事要办」。量出来是 303px，与卡片同宽。
+   *
+   * 已有的 5 处引导型空态（cards / order-confirm / order…）也一直是这个样子，
+   * 一起改过来 —— 出错态要把「重试」铺到 65 页上，这条杠会被放大 65 倍。
+   */
+  display: flex;
+  justify-content: center;
+}
+.empty__act > * {
+  flex: 0 0 auto;
 }
 
 </style>

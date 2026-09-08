@@ -12,43 +12,26 @@
 # 为什么不一次改完：这 41 页各有各的加载变量名（loading / pending / loaded / failed
 # 四种写法），逐页要看清「哪个变量代表首屏到过」，机械替换会把刷新态也判成空。
 
-c-app/category
 c-app/community
-c-app/coupons
 c-app/group-host
 c-app/home
 c-app/merchant
 c-app/order
 c-app/order-confirm
-c-app/points
 c-app/request
 c-app/search
-b-app/activities
-b-app/after-sale
-b-app/coupon-issues
-b-app/coupons
 b-app/cross-store
-b-app/delivery
-b-app/deposit
 b-app/goods-list
 b-app/groups
-b-app/invoice
 b-app/marketing
-b-app/member-segments
-b-app/member-tags
 b-app/orders
-b-app/picking
 b-app/points-records
 b-app/purchase-edit
-b-app/quotes
-b-app/reviews
 b-app/settle
 b-app/staff
-b-app/statement
 b-app/stock-check
 b-app/stock-cross
 b-app/stock-detail
 b-app/stock-out
 b-app/transfer
 b-app/verify
-b-app/withdraw

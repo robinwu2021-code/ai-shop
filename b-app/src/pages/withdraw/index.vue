@@ -44,7 +44,7 @@
     <!-- 记录 -->
     <view class="sh-card">
       <text class="txt-strong">{{ t("withdraw.records") }}</text>
-      <sh-empty v-if="!page?.records?.length" bare :text="String(t('withdraw.noRecords'))"></sh-empty>
+      <sh-empty v-if="!page?.records?.length" :pending="!loaded" :failed="failed" @retry="load" bare :text="String(t('withdraw.noRecords'))"></sh-empty>
       <!-- 行距与分隔线归 .sh-row--divided：它把线画在「相邻的后一行」上，
            所以不用再判「是不是最后一条」 -->
       <view
@@ -140,8 +140,19 @@ function statusClass(s: string) {
   return "is-warning";
 }
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  page.value = await api.mWithdrawPage();
+  try {
+    page.value = await api.mWithdrawPage();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 async function submit() {

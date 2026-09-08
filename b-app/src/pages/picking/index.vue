@@ -59,15 +59,26 @@ const canPickupOrders = computed(() => merchant.can("biz:verify"));
  * 到货登记（下面的「备货中」区）依赖自提单，所以它跟着 `biz:verify` 走 ——
  * 标到货会触发给买家的到货通知，属于交付面，与核销同一档（RECEIVE 对货、VERIFY 对顾客）。
  */
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  // 先等权限到位 —— `can()` fail-closed，深链进来时 onShow 早于外壳的 ensureScope
-  await merchant.ensureScope();
-  const [r, o] = await Promise.all([
-    api.mPickingList().catch(() => []),
-    canPickupOrders.value ? api.mPickupOrders().catch(() => []) : Promise.resolve([]),
-  ]);
-  rows.value = r;
-  orders.value = o;
+  try {
+    // 先等权限到位 —— `can()` fail-closed，深链进来时 onShow 早于外壳的 ensureScope
+    await merchant.ensureScope();
+    const [r, o] = await Promise.all([
+      api.mPickingList(),
+      canPickupOrders.value ? api.mPickupOrders() : Promise.resolve([]),
+    ]);
+    rows.value = r;
+    orders.value = o;
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 /**
@@ -159,7 +170,7 @@ onShow(load);
       @change="(k: string) => (view = k as 'goods' | 'buyer')"
     ></sh-tabs>
 
-    <sh-empty v-if="!rows.length" :text='$t("picking.empty")'></sh-empty>
+    <sh-empty v-if="!rows.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("picking.empty")'></sh-empty>
 
     <!-- 按商品：分货用 -->
     <template v-if="view === 'goods'">

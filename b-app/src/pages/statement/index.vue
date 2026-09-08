@@ -38,7 +38,7 @@
 
     <view class="sh-card">
       <text class="txt-strong">{{ t("statement.linesTitle") }}</text>
-      <sh-empty v-if="!lines.length" bare :text="String(t('statement.empty'))"></sh-empty>
+      <sh-empty v-if="!lines.length" :pending="!loaded" :failed="failed" @retry="load" bare :text="String(t('statement.empty'))"></sh-empty>
       <view v-for="l in lines" :key="l.settleNo" class="sh-row--divided">
         <view class="sh-row sh-row--between">
           <text class="txt-caption sh-num">{{ l.orderNo }}</text>
@@ -143,8 +143,19 @@ function exportCsv() {
   saveCsv([head, ...rows].join("\n"), `statement-${period.value || "all"}.csv`, t);
 }
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  data.value = await api.mStatement(period.value || undefined).catch(() => null);
+  try {
+    data.value = await api.mStatement(period.value || undefined);
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 onShow(load);

@@ -2097,7 +2097,7 @@
       "name": "sh-empty",
       "file": "packages/ui/src/components/sh-empty.vue",
       "scope": "跨端",
-      "lines": 130,
+      "lines": 145,
       "props": [
         "text?: string",
         "tip?: string",

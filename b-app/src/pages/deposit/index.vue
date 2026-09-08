@@ -41,7 +41,7 @@
 
     <view class="sh-card">
       <text class="txt-strong">{{ t("deposit.txnTitle") }}</text>
-      <sh-empty v-if="!txns.length" bare :text="String(t('deposit.txnEmpty'))"></sh-empty>
+      <sh-empty v-if="!txns.length" :pending="!loaded" :failed="failed" @retry="load" bare :text="String(t('deposit.txnEmpty'))"></sh-empty>
       <!-- 行距与分隔线归 .sh-row--divided（线画在相邻的后一行上，不用判首行） -->
       <view v-for="x in txns" :key="x.txnNo" class="sh-row--divided">
         <view class="sh-row sh-row--between">
@@ -130,10 +130,24 @@ function typeText(type: string) {
   return s === key ? type : s;
 }
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 流水这次没取到。**与「确定没有流水」是两件事** */
+const failed = ref(false);
+
 async function load() {
   // 两个接口分开取：流水挂了不该让上面那几个数字也看不见
   acc.value = await api.mDeposit();
-  txns.value = await api.mDepositTxns().catch(() => []);
+  // 反过来也要成立：流水挂了要让**流水那一格自己说出来**。
+  // 此前这里是 `.catch(() => [])`，把「没取到」折叠成了「还没有流水」——
+  // 两种情况在界面上一模一样，而该给的东西正相反（重试 vs 去充值）。
+  try {
+    txns.value = await api.mDepositTxns();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 onShow(load);

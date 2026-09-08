@@ -44,17 +44,28 @@ const nearbyShown = computed(() => {
   return nearby.value.filter((m) => !seen.has(m.merchantNo));
 });
 
+/** 三条全没取到。**与「这一带确实没有商家」是两件事** */
+const failed = ref(false);
+
 async function load() {
   const communityNo = community.community?.communityNo;
-  const [v, p, n] = await Promise.all([
-    // 未登录没有消费记录，但推荐与附近照常要出 —— 不能整页空着
-    user.isLogin ? api.visitedMerchants().catch(() => []) : Promise.resolve([]),
-    api.promotedMerchants({ communityNo }).catch(() => []),
-    api.merchantList({ communityNo }).catch(() => []),
+  /*
+   * 三个接口分开取，未登录没有消费记录，但推荐与附近照常要出 —— 不能整页空着。
+   *
+   * **用 `allSettled` 而不是各自 `.catch(() => [])`**：后者把「没取到」抹成「空」，
+   * 于是三条全挂时这一屏显示「这附近还没有商家入驻」—— 而真相是一条都没取到。
+   * 抹掉之后连「全挂了没有」都判断不出来，因为失败和空返回长得一模一样。
+   */
+  const [v, p, n] = await Promise.allSettled([
+    user.isLogin ? api.visitedMerchants() : Promise.resolve([]),
+    api.promotedMerchants({ communityNo }),
+    api.merchantList({ communityNo }),
   ]);
-  visited.value = v;
-  promoted.value = p;
-  nearby.value = n;
+  visited.value = v.status === "fulfilled" ? v.value : [];
+  promoted.value = p.status === "fulfilled" ? p.value : [];
+  nearby.value = n.status === "fulfilled" ? n.value : [];
+  // 只有全挂才算「没取到」：挂一条时另两块还在，照常显示
+  failed.value = [v, p, n].every((r) => r.status === "rejected");
   loaded.value = true;
 }
 
@@ -150,7 +161,7 @@ onShow(load);
     </view>
 
     <sh-empty
-      v-if="loaded && !visited.length && !promoted.length && !nearby.length"
+      v-if="!visited.length && !promoted.length && !nearby.length" :pending="!loaded" :failed="failed" @retry="load"
       :text="String($t('shops.empty'))"
     >
       <template #action>

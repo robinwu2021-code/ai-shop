@@ -40,14 +40,25 @@ const storeCoupons = ref<MyStoreCoupon[]>([]);
 const mineUsable = computed(() => storeCoupons.value.filter((c) => c.usableNow));
 const mineDead = computed(() => storeCoupons.value.filter((c) => !c.usableNow));
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  const [list, mineList] = await Promise.all([
-    api.couponList(),
-    // 没登录时这条会 401，券包空着就好，不该把整页搞挂
-    api.myStoreCoupons().catch(() => [] as MyStoreCoupon[]),
-  ]);
-  coupons.value = list;
-  storeCoupons.value = mineList;
+  try {
+    const [list, mineList] = await Promise.all([
+      api.couponList(),
+      // 没登录时这条会 401，券包空着就好，不该把整页搞挂
+      api.myStoreCoupons().catch(() => [] as MyStoreCoupon[]),
+    ]);
+    coupons.value = list;
+    storeCoupons.value = mineList;
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 /**
@@ -181,7 +192,7 @@ onShow(load);
 
     <sh-empty
       bare
-      v-if="!shown.length && !(tab === 'mine' && storeCoupons.length)" :text='tab === "center" ? $t("coupon.centerEmpty") : $t("coupon.mineEmpty")'></sh-empty>
+      v-if="!shown.length && !(tab === 'mine' && storeCoupons.length)" :pending="!loaded" :failed="failed" @retry="load" :text='tab === "center" ? $t("coupon.centerEmpty") : $t("coupon.mineEmpty")'></sh-empty>
   </sh-scaffold>
 </template>
 

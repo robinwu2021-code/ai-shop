@@ -27,8 +27,19 @@ const idle = computed(() => list.value.filter((a) => a.status === "RUNNING" && !
 const paused = computed(() => list.value.filter((a) => a.status === "PAUSED"));
 const ended = computed(() => list.value.filter((a) => a.status === "ENDED"));
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  list.value = await api.mActivities(includeEnded.value).catch(() => []);
+  try {
+    list.value = await api.mActivities(includeEnded.value);
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 async function run(fn: () => Promise<unknown>) {
@@ -105,7 +116,7 @@ onShow(load);
       </text>
     </view>
 
-    <sh-empty v-if="!list.length" :text="String($t('activities.empty'))" :tip="String($t('activities.emptyTip'))"></sh-empty>
+    <sh-empty v-if="!list.length" :pending="!loaded" :failed="failed" @retry="load" :text="String($t('activities.empty'))" :tip="String($t('activities.emptyTip'))"></sh-empty>
 
     <template v-for="g in [
       { key: 'live', rows: live },

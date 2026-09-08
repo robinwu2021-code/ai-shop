@@ -44,28 +44,39 @@ const pending = computed(() =>
  *
  * 而工作台「待配送」格子的权限正是 `biz:ship`，它每天都在把配送员往这儿送。
  */
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  /*
-   * **先等权限到位**。`can()` 在 perms 没加载时一律 false（fail-closed），
-   * 而深链进来时 `onShow` 会早于外壳的 `ensureScope` 跑完 ——
-   * 不等的话老板刷新这一页也看不到规则卡，且**不会重试**：
-   * 那正是「判权状态没加载 = 界面被自己锁死」这个老问题的新形态。
-   */
-  await merchant.ensureScope();
-  const [r, res] = await Promise.all([
-    canRule.value ? api.mDeliveryRule().catch(() => null) : Promise.resolve(null),
-    api.mOrderList({ size: 100 }).catch(() => null),
-  ]);
-  rule.value = r;
-  if (r) {
-    form.value = {
-      radius: String(r.radius),
-      minOrder: toMajor(r.minOrderMinor),
-      fee: toMajor(r.feeMinor),
-      freeThreshold: toMajor(r.freeThresholdMinor),
-    };
+  try {
+    /*
+     * **先等权限到位**。`can()` 在 perms 没加载时一律 false（fail-closed），
+     * 而深链进来时 `onShow` 会早于外壳的 `ensureScope` 跑完 ——
+     * 不等的话老板刷新这一页也看不到规则卡，且**不会重试**：
+     * 那正是「判权状态没加载 = 界面被自己锁死」这个老问题的新形态。
+     */
+    await merchant.ensureScope();
+    const [r, res] = await Promise.all([
+      canRule.value ? api.mDeliveryRule() : Promise.resolve(null),
+      api.mOrderList({ size: 100 }),
+    ]);
+    rule.value = r;
+    if (r) {
+      form.value = {
+        radius: String(r.radius),
+        minOrder: toMajor(r.minOrderMinor),
+        fee: toMajor(r.feeMinor),
+        freeThreshold: toMajor(r.freeThresholdMinor),
+      };
+    }
+    orders.value = res?.records ?? [];
+    failed.value = false;
+  } catch {
+    failed.value = true;
   }
-  orders.value = res?.records ?? [];
+  loaded.value = true;
 }
 
 async function saveRule() {
@@ -148,7 +159,7 @@ onShow(load);
       <text class="sh-muted sh-num">{{ pending.length }}</text>
     </view>
 
-    <sh-empty v-if="!pending.length" :text='$t("delivery.empty")'></sh-empty>
+    <sh-empty v-if="!pending.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("delivery.empty")'></sh-empty>
 
     <view v-for="o in pending" :key="o.orderNo" class="sh-row sh-card row sh-mb-sm">
       <view class="sh-fill">

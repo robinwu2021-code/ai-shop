@@ -23,8 +23,19 @@ const busy = ref(false);
 const sys = computed(() => tags.value.filter((x) => x.tagType === "SYS"));
 const mine = computed(() => tags.value.filter((x) => x.tagType === "MCH"));
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  tags.value = await api.mMemberTags().catch(() => []);
+  try {
+    tags.value = await api.mMemberTags();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 async function run(fn: () => Promise<unknown>) {
@@ -106,7 +117,7 @@ onShow(load);
         <text class="sh-chip sh-chip--primary" @tap="create">{{ $t("memberTags.new") }}</text>
       </view>
 
-      <sh-empty v-if="!mine.length" :text="String($t('memberTags.empty'))"></sh-empty>
+      <sh-empty v-if="!mine.length" :pending="!loaded" :failed="failed" @retry="load" :text="String($t('memberTags.empty'))"></sh-empty>
 
       <view v-for="tg in mine" :key="tg.tagNo" class="item sh-mt-sm">
         <view class="sh-row sh-row--baseline">

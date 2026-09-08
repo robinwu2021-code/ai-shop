@@ -31,16 +31,27 @@ const tabs = [
  * 只是走店铺页与搜索触达。二期若真有量，再决定给不给独立入口。
  */
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  // 与首页同一条约束：送不到我这个社区的商品不该出现在「逛」的场景里 ——
-  // 让人点进去才发现没法自提，比一开始就不展示更糟。
-  // （搜索页不加这个限制：那是**主动找特定商家**，用户自己清楚在找什么。）
-  const res = await api.goodsList({
-    type: active.value,
-    size: 50,
-    communityNo: community.community?.communityNo,
-  });
-  list.value = res.records;
+  try {
+    // 与首页同一条约束：送不到我这个社区的商品不该出现在「逛」的场景里 ——
+    // 让人点进去才发现没法自提，比一开始就不展示更糟。
+    // （搜索页不加这个限制：那是**主动找特定商家**，用户自己清楚在找什么。）
+    const res = await api.goodsList({
+      type: active.value,
+      size: 50,
+      communityNo: community.community?.communityNo,
+    });
+    list.value = res.records;
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 function switchTab(type: CategoryType) {
@@ -101,7 +112,7 @@ onShow(load);
            照旧显示「还没有内容」会让人以为 App 坏了 -->
       <sh-empty
         bare
-        v-if="!list.length"
+        v-if="!list.length" :pending="!loaded" :failed="failed" @retry="load"
         :text="$t('category.emptyInCommunity')"
       ></sh-empty>
     </view>

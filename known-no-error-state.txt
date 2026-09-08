@@ -13,16 +13,10 @@
 # 于是网络不通时，「暂无收货地址」与「你确实还没填过地址」一模一样，
 # 而前者该给「重试」、后者该给「去添加」，给反了比不给更糟。
 
-b-app/activities
 b-app/activity-edit
-b-app/after-sale
 b-app/apply
 b-app/coupon-edit
-b-app/coupon-issues
-b-app/coupons
 b-app/customers
-b-app/delivery
-b-app/deposit
 b-app/entity-detail
 b-app/goods-edit
 b-app/goods-list
@@ -30,7 +24,6 @@ b-app/goods-publish
 b-app/groups
 b-app/home
 b-app/income
-b-app/invoice
 b-app/locations
 b-app/login
 b-app/marketing
@@ -38,28 +31,21 @@ b-app/me
 b-app/member-add
 b-app/member-detail
 b-app/member-reach
-b-app/member-segments
 b-app/member-settings
-b-app/member-tags
-b-app/messages
 b-app/my-specs
 b-app/order
 b-app/orders
 b-app/payment
-b-app/picking
 b-app/points
 b-app/points-records
 b-app/purchase-edit
 b-app/qualifications
-b-app/quotes
-b-app/reviews
 b-app/role-detail
 b-app/schedule
 b-app/settle
 b-app/sku-identity
 b-app/staff
 b-app/staff-detail
-b-app/statement
 b-app/stats
 b-app/stock
 b-app/stock-check
@@ -75,12 +61,8 @@ b-app/store-scope
 b-app/stores
 b-app/suppliers
 b-app/transfer
-b-app/withdraw
 c-app/address-pick
 c-app/after-sale
-c-app/cards
-c-app/category
-c-app/coupons
 c-app/goods
 c-app/group
 c-app/group-host
@@ -89,11 +71,8 @@ c-app/home
 c-app/login
 c-app/me
 c-app/merchant
-c-app/merchants
-c-app/messages
 c-app/order-confirm
 c-app/pay
-c-app/points
 c-app/request
 c-app/request-create
 c-app/review-write

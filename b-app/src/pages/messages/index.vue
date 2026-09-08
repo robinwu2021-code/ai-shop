@@ -24,8 +24,16 @@ const shown = computed(() => {
 });
 const unread = computed(() => messages.value.filter((m) => !m.read).length);
 
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  messages.value = await api.mMessageList();
+  try {
+    messages.value = await api.mMessageList();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
   loaded.value = true;
 }
 
@@ -66,7 +74,7 @@ onShow(load);
       </view>
     </view>
 
-    <sh-empty bare v-if="loaded && !shown.length" :text='$t("message.empty")'></sh-empty>
+    <sh-empty bare v-if="!shown.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("message.empty")'></sh-empty>
   </sh-scaffold>
 </template>
 

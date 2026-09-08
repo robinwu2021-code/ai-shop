@@ -71,7 +71,7 @@
 
     <view class="sh-card">
       <text class="txt-strong">{{ t("invoice.mineBlock") }}</text>
-      <sh-empty v-if="!mine.length" bare :text="String(t('invoice.mineEmpty'))"></sh-empty>
+      <sh-empty v-if="!mine.length" :pending="!loaded" :failed="failed" @retry="load" bare :text="String(t('invoice.mineEmpty'))"></sh-empty>
       <view v-for="inv in mine" :key="inv.invoiceNo" class="sh-row--divided">
         <view class="sh-row sh-row--between">
           <text class="txt-sub sh-num">{{ inv.invoiceNumber }}</text>
@@ -153,11 +153,24 @@ function copyTitle() {
   uni.setClipboardData({ data: text });
 }
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 「我的发票」这次没取到。**与「确定没开过票」是两件事** */
+const failed = ref(false);
+
 async function load() {
   // 三个接口分开取：任何一个挂了，其余两块仍要看得见
   pending.value = await api.mPendingInvoice().catch(() => null);
   title.value = await api.mInvoiceTitle().catch(() => ({}));
-  mine.value = await api.mMyInvoices().catch(() => []);
+  // 但「分开取」不等于「挂了就当空」：这一条挂了，下面那一格该说「没能加载出来」，
+  // 而不是「还没有开过票」—— 后者会让商家以为票真的没开成。
+  try {
+    mine.value = await api.mMyInvoices();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 async function submit() {
