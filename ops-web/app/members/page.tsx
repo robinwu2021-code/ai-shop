@@ -212,6 +212,7 @@ function MembersInner() {
               onPage={setPage}
               onSize={setSize}
               columns={memberCols}
+              empty={c.emptyMembers}
               rowKey={(m) => m.memberNo}
             />
           </CardContent>

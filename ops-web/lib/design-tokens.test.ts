@@ -421,19 +421,68 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
     const offenders: string[] = [];
     for (const f of pageFiles()) {
       const src = readFileSync(f, "utf8");
-      for (const m of src.matchAll(/empty=\{?"([^"]+)"/g)) {
-        if (m[1].length < 20) offenders.push(`${rel(f)}: empty="${m[1]}"`);
-      }
       const dict = zhMap(join(f, ".."));
-      for (const m of src.matchAll(/empty=\{c\.(\w+)\}/g)) {
-        const text = dict[m[1]];
+      const check = (where: string, text: string | undefined) => {
         // 解不出来的不算违规（可能来自别处 import）—— 但也别假装查过了
         if (text !== undefined && text.length < 20) {
-          offenders.push(`${rel(f)}: empty={c.${m[1]}} = "${text}"（${text.length} 字）`);
+          offenders.push(`${rel(f)}: ${where} = "${text}"（${text.length} 字）`);
+        }
+      };
+      for (const m of src.matchAll(/empty=\{?"([^"]+)"/g)) check(`empty="${m[1]}"`, m[1]);
+      for (const m of src.matchAll(/empty=\{c\.(\w+)\}/g)) check(`empty={c.${m[1]}}`, dict[m[1]]);
+      /*
+       * `<EmptyState>` 直接用的那些也要看。**这是 2026-09-09 补的**：
+       * 规则只认 `empty=` 属性，于是一处
+       * `{missing.length === 0 ? <EmptyState title={c.allStoresPinned}/> : <表格/>}`
+       * 整个绕开了射程 —— 而那句文案只有 7 个字（「门店都标过点了」）。
+       * 射程外唯一的一处正好是违规，这不是巧合：**没被看的地方就是欠账攒着的地方。**
+       */
+      for (const m of src.matchAll(/<EmptyState[^>]*?\stitle="([^"]+)"/g)) check(`<EmptyState title="${m[1]}">`, m[1]);
+      for (const m of src.matchAll(/<EmptyState[^>]*?\stitle=\{c\.(\w+)\}/g)) check(`<EmptyState title={c.${m[1]}}>`, dict[m[1]]);
+    }
+    expect(offenders, `补上「为什么空、下一步做什么」：\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  it("每个表格都要传 empty —— 不传就吃默认的「暂无数据」，而那正是本规则禁的四个字", () => {
+    /*
+     * 上一条量的是**传了什么**，这一条量**传没传**。两条缺一不可：
+     * `common.empty` 的值就是「暂无数据」，所以一个 `<DataTable>` 只要不传 `empty`，
+     * 它渲染出来的就是上一条明令禁止的那句 —— 而上一条一个字都看不见它。
+     * 「默认值就是违规值」这种情况下，只检查显式传参等于只检查了守规矩的那一半。
+     * 2026-09-09 查出 2 处：`/members` 名单（线上就长这样）与 `/communities` 健康度。
+     *
+     * 取标签用花括号深度而不是 `[\s\S]*?\/>`：属性值里嵌 `<Foo />`（cell 渲染函数里
+     * 到处都是）会把非贪婪匹配提前截断，截断后 `empty=` 自然搜不到 —— 假阳。
+     * 实测本轮两种写法结论一致，但一致是当下的事实，不是这么写的理由。
+     */
+    const tagAt = (src: string, i: number) => {
+      let depth = 0;
+      for (let j = i; j < src.length; j++) {
+        const ch = src[j];
+        if (ch === "{") depth++;
+        else if (ch === "}") depth--;
+        else if (ch === ">" && depth === 0) return src.slice(i, j + 1);
+      }
+      return src.slice(i);
+    };
+    const offenders: string[] = [];
+    let scanned = 0;
+    for (const f of pageFiles()) {
+      const src = readFileSync(f, "utf8");
+      for (const m of src.matchAll(/<(DataTable|PagedTable)\b/g)) {
+        scanned++;
+        if (!/\bempty=/.test(tagAt(src, m.index!))) {
+          offenders.push(`${rel(f)}:${src.slice(0, m.index).split("\n").length}  ${m[1]} 缺 empty`);
         }
       }
     }
-    expect(offenders, `补上「为什么空、下一步做什么」：\n${offenders.join("\n")}`).toEqual([]);
+    /*
+     * **先断言分母。** 这是「找出违规」型的规则：匹配器一坏，它扫到 0 个表格、
+     * 报 0 条违规、然后全绿 —— 与真的没有违规长得一模一样。
+     * 数字取整百的下界，不钉死，免得加一个表格就红。
+     */
+    expect(scanned, "一个表格都没扫到 —— 多半是标签匹配坏了，不是真的没有表格").toBeGreaterThan(100);
+    expect(offenders, `传 empty={c.xxx}，写清为什么空：\n${offenders.join("\n")}`).toEqual([]);
   });
 
   // ── 静默失效：写了、但那个类根本不存在 ────────────────────────────────────
