@@ -5,3 +5,67 @@
 #
 # 2026-08-29：清零。b-app 70 条、c-app 35 条都已删除。
 # 名单空着是正常状态 —— 新增一条没人引用的词条，闸门就会红。
+#
+# ── 2026-09-09：上面那次「清零」是在瞎掉的量具上清的 ──────────────
+#
+# 闸门的动态前缀正则把 `` `c${code}` `` 这种**拼 ID 的模板串**也收成了 i18n 前缀，
+# 而放行判据是 `startsWith` —— 单个字母 `c` 于是放行了所有 c 开头的词条。
+# 修好正则（前缀必须含点）之后，下面这 50 条立刻露出来。
+#
+# 它们是**待办型**条目，不是止血线：该逐条判「接上入口」还是「删掉」，判完就从这儿删。
+# 已知的一片：`customers.*` 15 条是改名留下的死命名空间 ——
+# 那个页面（b-app/src/pages/customers）早就改用 `members.*` 了。
+#
+# **闸门仍有一处瞎**：`` `store.${x}` `` 这种裸命名空间前缀一条放行整片
+#（`store.*` 211 条）。所以这份名单是下限，不是全部。
+
+b-app common.back
+b-app common.empty
+b-app customers.daysAgo
+b-app customers.empty
+b-app customers.entryHint
+b-app customers.owned
+b-app customers.ownedTag
+b-app customers.privacyHint
+b-app customers.repeatRate
+b-app customers.silent
+b-app customers.silentHint
+b-app customers.silentTag
+b-app customers.stat
+b-app customers.title
+b-app customers.today
+b-app customers.total
+b-app me.stores
+b-app me.switchStore
+b-app mySpecs.addValueTitle
+b-app mySpecs.adjust
+b-app mySpecs.adjustHint
+b-app mySpecs.archive
+b-app mySpecs.archiveConfirm
+b-app mySpecs.archiveTitle
+b-app mySpecs.archivedTitle
+b-app mySpecs.empty
+b-app mySpecs.mineTitle
+b-app mySpecs.noValues
+b-app mySpecs.quota
+b-app mySpecs.remove
+b-app mySpecs.removed
+b-app mySpecs.renameTitle
+b-app mySpecs.saved
+b-app mySpecs.typeMine
+b-app mySpecs.unarchive
+b-app mySpecs.used
+b-app staff.editRoles
+b-app staff.hint
+b-app staff.logAdd
+b-app staff.logDisable
+b-app staff.logEnable
+b-app staff.logGrant
+b-app staff.logRevoke
+b-app staff.logsFold
+b-app staff.moreRoles
+b-app staff.role.CLERK
+b-app staff.role.MANAGER
+b-app stores.hint
+b-app verify.ovBatches
+b-app verify.ovFee
