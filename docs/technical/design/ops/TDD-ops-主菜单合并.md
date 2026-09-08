@@ -1,6 +1,6 @@
 # TDD-ops-主菜单合并
 
-> 状态：**已实现 · 迁移待在真后端验收** · 创建 2026-09-09 · 最后更新 2026-09-09
+> 状态：**已实现 · V325 已在本地 ops 实例应用并验收** · 创建 2026-09-09 · 最后更新 2026-09-09
 > 档位：**1**（动了库表数据 `sys_function` / `sys_function_point` + i18n 词条；端点、权限码、配置项均不动）
 > 关联：[需求矩阵-三端 §六](../../../requirements/需求矩阵-三端.md)（平台端业务域）· [TDD-ops-web](./TDD-ops-web.md) §导航
 > 判据来源：浏览器实测的 Rail 几何 + `lib/nav.ts` 数出来的树形
@@ -327,4 +327,29 @@ TDD 里写的是 `64 + n×40 ≤ 620`，算出 584 说「放得下」。实测 5
 |---|---|
 | 2026-09-09 | 起草。待确认三件：① 合并口径 ② `point_code` 冻结 ③ 谁在真后端验 AC2 |
 | 2026-09-09 | 按①②已实现。闸门：`ops-web` vitest 698 条全绿（扫 `ops-web/lib` + `app`）· `tsc --noEmit` 干净 · `check-generated-docs` 22 个生成器全新 · `check-sql-portability` 无新增方言 · `gen-ui-catalog --check` 通过 · `packages/shared` 停在基线 13 |
-| **待办** | ③ **迁移没有在真后端跑过**。本地 ops 实例（8082）的库仍是旧菜单，所以界面上的 L1 标题还是「商家治理」而不是「商家与门店」—— 这正是 §1 写的那条：只改 `nav.ts` 不落迁移，接真后端毫无变化。需要有运营账号的人在 ops profile 上应用 V325 后回验 AC2 |
+| 2026-09-09 | ③ V325 已在本地 ops 实例（8082，profile=ops，库 `ai_shop`）应用：`Successfully applied 7 migrations … now at version v325`。**顺带补上了 6 条积压的迁移** —— 那个实例已连续跑了 5 天 23 小时，库落后 HEAD 六条 |
+
+### ③ 真后端验收结果（直接查库，不经界面）
+
+| 检查 | 结果 |
+|---|---|
+| `sys_function`（OPS） | **13 行**，名称与排序与 §2 的表逐行一致 |
+| 孤儿功能点（指向不存在的 function） | **0** |
+| 悬空授权（指向不存在的 point） | **0** |
+| OPS 授权总行数 | 438，其中**运营自建角色** `ABC` 16 行 / `REVIEW_TEST` 1 行，悬空 0 |
+| `OPS_STORE__TAB_*` 四条 | point_code **原样保留**，function_code 改为 `OPS_MERCHANT` |
+| `OPS_JOBS` | 归 `OPS_IAM`，group_name 已改「定时任务」 |
+| `ACT__CATEGORY_MANAGE` | 归 `OPS_PRODUCT`（按后端码 `product:category:update`）|
+| 11 个内置角色的可见 href 集合 | 与合并前基线**逐条一致**（`MERCHANT_BD/PRODUCT_OPS/CS` 在库里的码是 `BD/GOODS_OPS/SUPPORT`，别名对齐后比）|
+
+**两处差异，都不是合并造成的，逐条追过**：
+
+1. `SUPER_ADMIN` 库里比基线多 2 条（`/stores?tab=template`、`/marketing?tab=member`）——
+   这两条在前端是 UNIMPLEMENTED/待建叶子，`visibleLeaves` 会藏起来，而种子按既定口径
+   **把未实现项只授给超管**（留着关联，等后端补齐那天翻个状态就能用）。合并前就是这样。
+2. `SUPPORT` 少 1 条（`/messages?tab=faq`）—— 种子里有这条授权，实库里只有 `SUPER_ADMIN`。
+   **V325 里没有一行写 `sys_role_point`**（文件里那 4 处全在注释里，grep 可查），
+   所以不可能是它删的；这是种子与实库之间的存量漂移，先记在这里。
+
+**界面本身没有登录进去看** —— 后端重启把会话清了，登录要密码，我不输密码也不猜。
+库里的结构比界面更硬：菜单标签、分组、归属、授权全部直接查过。
