@@ -106,11 +106,10 @@ export function HealthTab({ enabled }: { enabled: boolean }) {
       <div>
         <div className="mb-2 txt-strong">{c.missingStoresTitle}</div>
         {/*
-          不写成「length === 0 就渲染 EmptyState、否则渲染表格」两支 ——
-          表格空的时候渲染的本来就是 EmptyState，分两支只多一条路径。
+          不写成 `missing.length === 0 ? <EmptyState/> : <DataTable/>` ——
+          DataTable 空表时渲染的本来就是 EmptyState，分两支只多一条路径。
           而且分出去那一支的文案绕开了 `empty=` 那条守卫的射程：
           它当时只有 7 个字（「门店都标过点了」），规则若看得见早就拦了。
-          （标签名这里故意不写成尖括号形式：守卫连注释一起扫，写了会被当成第 124 个表格。）
         */}
         <DataTable rows={data.stores.missing} columns={cols} rowKey={(r) => r.storeNo}
                    empty={c.allStoresPinned} />

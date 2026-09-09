@@ -47,8 +47,40 @@ def rel(p):
     return str(p.relative_to(OPS))
 
 
-PAGES = {p: p.read_text(encoding="utf-8") for p in page_files()}
-COMPS = {p: p.read_text(encoding="utf-8") for p in component_files()}
+def strip_comments(src):
+    """把注释行换成空行（保留行数，行号仍可用）。
+
+    为什么要有它：用量列是「有没有现成件可用」的判断依据，而**注释里提到的标签
+    照样会被 `<Name\b` 数进去**。2026-09-09 实测：给 health-tab 写了一句
+    「不写成 EmptyState 标签 : DataTable 标签」的解释注释，规范里 `EmptyState`
+    的页面用量就从 0 变成 1 —— 而 0 与 1 在这一列上的含义天差地别
+    （「没人用，可以删」对「有人在用」）。
+
+    与 `lib/design-tokens.test.ts` 的 `commentLines` 同一套判据，逐行判，
+    不做块级正则替换 —— 那会被字符串里的 `/*` 带偏。
+    """
+    out, in_block = [], False
+    for line in src.split("\n"):
+        if in_block:
+            out.append("")
+            if "*/" in line:
+                in_block = False
+            continue
+        if re.match(r"^\s*//", line):
+            out.append("")
+            continue
+        start = line.find("{/*") if line.find("{/*") >= 0 else line.find("/*")
+        if start >= 0:
+            out.append(line[:start])
+            if line.find("*/", start) < 0:
+                in_block = True
+            continue
+        out.append(line)
+    return "\n".join(out)
+
+
+PAGES = {p: strip_comments(p.read_text(encoding="utf-8")) for p in page_files()}
+COMPS = {p: strip_comments(p.read_text(encoding="utf-8")) for p in component_files()}
 
 
 def comment_lines(src):
@@ -101,7 +133,14 @@ def lib_usage(name):
 
 
 # ── 字阶 ────────────────────────────────────────────────────────────────────
-TIERS = re.findall(r"^\.(txt-[a-z]+)\s*\{([^}]*)\}", CSS, re.M)
+# 允许缩进：七档已收进 `@layer components`（裸写会压掉调用点的 font-* / leading-*）。
+# 此前正则要求类名顶行，改成缩进后**匹配到 0 条，整张七档表静默从规范里消失** ——
+# 而产物前后一致，check-generated-docs 照样绿：陈旧闸门不看内容。
+TIERS = re.findall(r"^\s*\.(txt-[a-z]+)\s*\{([^}]*)\}", CSS, re.M)
+# 解析不出来就当场炸，不要生成一张空表。「少了一整块」比「数字不对」更难被发现：
+# 读的人只会以为规范里本来就没有这一节。
+if len(TIERS) < 7:
+    raise SystemExit(f"字阶只解析出 {len(TIERS)} 档（应为 7）—— globals.css 的写法变了，先修这里的正则")
 
 
 def tier_row(cls, body):

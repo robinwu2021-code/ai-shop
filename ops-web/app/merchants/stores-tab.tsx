@@ -152,10 +152,9 @@ export function StoresTab({ c }: { c: Copy }) {
 
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.stSearchPh}>
         {/*
-          用 TextFilter 而不是裸 Input：这个值直接进 queryKey，
-          裸 Input 会每敲一个字符发一次请求，而且它的选中态不进筛选回显 ——
-          旁边三个 FilterSelect 都出 chip，只有这一个不出，最容易被当成「我没筛」。
-          （标签名不写尖括号形式：守卫连注释一起扫。）
+          用 <TextFilter> 而不是裸 <Input>：这个值直接进 queryKey，
+          裸 <Input> 会每敲一个字符发一次请求，而且它的选中态不进筛选回显 ——
+          旁边三个 <FilterSelect> 都出 chip，只有这一个不出，最容易被当成「我没筛」。
         */}
         <TextFilter
           className="w-52" aria-label={c.stFilterMerchant} placeholder={c.stFilterMerchantPh}

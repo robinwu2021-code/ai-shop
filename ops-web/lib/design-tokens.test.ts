@@ -609,6 +609,39 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
       .toEqual([]);
   });
 
+  it("字阶必须写在 @layer components 里 —— 裸写会压掉紧挨着它的工具类", () => {
+    /*
+     * `@import "tailwindcss"` 声明了 `theme, base, components, utilities` 四层，
+     * 而 **CSS 里不属于任何层的规则压过所有层内规则**，与选择器权重无关。
+     * 于是裸写的 `.txt-body` 会赢过 `font-medium` —— 类名写在 DOM 上、
+     * computed 里却是档位的值，没有报错、没有警告，只是看起来「样式没生效」。
+     *
+     * 2026-09-09 实测：`txt-body font-medium` 算出来 400（不是 500），
+     * `txt-caption leading-none` 算出来 16.8px（不是 12px）。
+     * 全站 9 处这样的写法，渲染出来的都不是作者写的那个样子 ——
+     * 而且这正是组件层迟迟不敢接入字阶的原因：机械替换会静默改掉一批字重。
+     *
+     * 这条只查得了**写法**，查不了层叠的实际结果（那要真浏览器算）。
+     * 所以判据取「七档全部落在同一个 @layer 块内」：搬出去一档就红。
+     */
+    const m = GLOBALS.match(/@layer\s+components\s*\{/);
+    expect(m, "globals.css 里找不到 @layer components 块").not.toBeNull();
+    // 从块首起按花括号配平找到块尾 —— 用正则截会被块内的规则花括号提前截断
+    let depth = 0, end = -1;
+    for (let i = m!.index! + m![0].length - 1; i < GLOBALS.length; i++) {
+      if (GLOBALS[i] === "{") depth++;
+      else if (GLOBALS[i] === "}" && --depth === 0) { end = i; break; }
+    }
+    const inLayer = GLOBALS.slice(m!.index!, end + 1);
+    const TIERS = ["display", "title", "heading", "body", "strong", "label", "caption"];
+    const outside = TIERS.filter((t) => !new RegExp(`\\.txt-${t}\\s*\\{`).test(inLayer));
+    expect(outside,
+      `这几档写在了 @layer components 之外，会静默压掉调用点的 font-* / leading-*：${outside.join("、")}`)
+      .toEqual([]);
+    // 分母：七档一档都没找到时上面也会「全部报出来」，这里确认块本身不是空的
+    expect(inLayer.length, "@layer components 块是空的 —— 多半是块尾匹配错了").toBeGreaterThan(200);
+  });
+
   it("一个元素只挂一个字阶 —— 两个 txt-* 撞在一起，谁生效取决于样式表顺序", () => {
     // 实测有两处 `txt-strong text-lg`：两个类都设 font-size，都是单类选择器，
     // 胜负只由 globals.css 与 Tailwind utilities 的**先后**决定 —— 换个构建顺序就变。
