@@ -26,19 +26,13 @@
 # 当前（2026-09-06 第二版）：可见面 206 列，已判定 12（登记 8 + 驳回 4），未判定 196（ful_batch.status 已登记，见 check-enum-fields.mjs 里那条注释）。
 cmt_community.coords_source
 cmt_community.kind
-cmt_community_apply.status
 cmt_pickup_point.fee_mode
 cmt_pickup_point.owner_ref
 cmt_pickup_point.scope
-cnt_material.kind
-cnt_material.scope
-cnt_post.author_type
-cnt_post.status
 cnt_question.status
 ful_carrier.carrier
 ful_group_pickup.status
 ful_shipment.carrier
-ful_shipment.status
 ful_shortage_report.kind
 inv_inbound_line.unit_cost_minor
 inv_inbound_order.source_type
@@ -88,13 +82,9 @@ mch_service_area.status
 mch_session.subject_kind
 mch_staff_log.action
 mch_store.status
-mch_store_audit.status
 mch_violation.action
-mch_violation.type
 mkt_attribution_log.trace_no
-mkt_attribution_rule.conflict_policy
 mkt_campaign.discount_minor
-mkt_campaign.status
 mkt_campaign.threshold_minor
 mkt_content_slot.kind
 mkt_coupon.type
@@ -116,7 +106,6 @@ notify_scene_channel.channel
 notify_scene_channel.push_level
 notify_template.channel
 ops_session.subject_kind
-ord_after_sale.liability
 ord_after_sale.type
 ord_invoice_request.title_type
 ord_order.pay_scene
@@ -139,7 +128,6 @@ pmt_apply.funder
 pmt_apply.promo_type
 pmt_apply.redeem_mode
 pmt_coupon.benefit_mode
-pmt_coupon.funder
 pmt_coupon.issue_mode
 pmt_coupon.redeem_mode
 pmt_coupon.scope_type
@@ -166,18 +154,14 @@ prd_stock_lock.status
 prd_topic.status
 pts_user_ledger.biz_type
 risk_blacklist.appeal_status
-risk_blacklist.subject_type
 risk_event.status
-risk_event.subject_type
 risk_event.type
 risk_rule.type
 rvw_appeal.status
 rvw_review.risk_flags
-rvw_review.status
 stl_bill.channel_fee_source
 stl_bill.invoice_status
 stl_channel_message.msg_type
-stl_fee_rule.traffic_source
 stl_payment.direction
 stl_payment.pay_channel
 stl_payment.pay_method
@@ -190,8 +174,6 @@ stl_recon_diff.pay_channel
 stl_recon_diff.resolution
 stl_recon_diff.source
 stl_recon_diff.status
-stl_settle_batch.recon_scope
-stl_settle_batch.status
 stl_settle_invoice.title_type
 stl_split_log.result
 sys_channel_category_rule.category_type

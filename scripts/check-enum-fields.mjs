@@ -202,6 +202,145 @@ export const FIELDS = [
     },
     clients: [{ file: SHARED_TYPES, type: "TransferStatus" }],
   },
+  /*
+   * ── 2026-09-09 一批 22 条，从 known-unregistered-value-domains.txt 摘下来 ──
+   *
+   * 挑选口径**不是名字像**：先按「表名去域前缀 + 列名」找同名的端上类型（47 条命中），
+   * 再把库列注释里的取值与端上联合体/常量对象的取值**排序后逐字比**，
+   * 只有完全相同的才进来。
+   *
+   * 名字对得上而取值不同的 18 条一条没收。举一个说明为什么：
+   * mch_payment_merchant.apply_status 对上的 ApplyStatus 是**入驻申请**的状态
+   * （APPROVED/PENDING/REVIEWING/REJECTED），而这一列是**进件**状态
+   * （ACTIVE/APPLYING/FROZEN/NONE/REJECTED）—— 同名不同物。
+   * 收进来的后果不是多一条记录，是对账每轮报一次假差异，
+   * 而假差异一多，这张表就没人看了。那 18 条要逐条判，是另一批的事。
+   *
+   * **有 4 条查出来了但没收**，它们不是名字问题，是端上多出后端没有的值：
+   *   mkt_coupon.type        ops-web 多 NEWCOMER / TARGETED
+   *   ord_sub_order.traffic_source  ops-web 多 INVITE / CHANNEL
+   *   pmt_coupon.status      shared 多 ENDED；ops-web 多 DRAFT / ENDED
+   *   rvw_appeal.status      ops-web 多 REJECTED
+   * 后果是「端上按它筛，筛出来必然是空列表且不报错」。收进来会让这道闸当场变红，
+   * 而**用 DISMISSED 豁免掉等于把真差异藏了**；它们也可能是 plannedValues
+   * （计划中、后端还没上），但那要有依据，我没有。所以留在棘轮上，逐条判是下一批的事。
+   */
+  {
+    concept: "社区提报单状态",
+    field: "cmt_community_apply.status",
+    backend: { ddl: ["cmt_community_apply", "status"] },
+    clients: [
+      // shared 侧是「常量对象 + 派生类型」，取值在 COMMUNITY_APPLY_STATUS 上，
+      // 写 type: 会报「找不到声明」—— 那不是代码的问题，是登记写错了
+      { file: SHARED_CONST, const: "COMMUNITY_APPLY_STATUS" },
+      { file: "ops-web/lib/types/community.ts", type: "CommunityApplyStatus" },
+    ],
+  },
+  {
+    concept: "分享素材类型",
+    field: "cnt_material.kind",
+    backend: { ddl: ["cnt_material", "kind"] },
+    clients: [{ file: "ops-web/lib/types/content.ts", type: "MaterialKind" }],
+  },
+  {
+    concept: "分享素材可见范围",
+    field: "cnt_material.scope",
+    backend: { ddl: ["cnt_material", "scope"] },
+    clients: [{ file: "ops-web/lib/types/content.ts", type: "MaterialScope" }],
+  },
+  {
+    concept: "种草内容作者类型",
+    field: "cnt_post.author_type",
+    backend: { ddl: ["cnt_post", "author_type"] },
+    clients: [{ file: "ops-web/lib/types/content.ts", type: "PostAuthorType" }],
+  },
+  {
+    concept: "种草内容状态",
+    field: "cnt_post.status",
+    backend: { ddl: ["cnt_post", "status"] },
+    clients: [{ file: "ops-web/lib/types/content.ts", type: "PostStatus" }],
+  },
+  {
+    concept: "运单状态",
+    field: "ful_shipment.status",
+    backend: { ddl: ["ful_shipment", "status"] },
+    clients: [{ file: "ops-web/lib/types/fulfillment.ts", type: "ShipmentStatus" }],
+  },
+  {
+    concept: "门店审核状态",
+    field: "mch_store_audit.status",
+    backend: { ddl: ["mch_store_audit", "status"] },
+    clients: [{ file: "ops-web/lib/types/store.ts", type: "StoreAuditStatus" }],
+  },
+  {
+    concept: "违规类型",
+    field: "mch_violation.type",
+    backend: { ddl: ["mch_violation", "type"] },
+    clients: [{ file: "ops-web/lib/types/merchant.ts", type: "ViolationType" }],
+  },
+  {
+    concept: "归因冲突策略",
+    field: "mkt_attribution_rule.conflict_policy",
+    backend: { ddl: ["mkt_attribution_rule", "conflict_policy"] },
+    clients: [{ file: "ops-web/lib/types/growth.ts", type: "ConflictPolicy" }],
+  },
+  {
+    concept: "营销活动状态（老模型）",
+    field: "mkt_campaign.status",
+    backend: { ddl: ["mkt_campaign", "status"] },
+    clients: [{ file: SHARED_TYPES, type: "CampaignStatus" }],
+  },
+  {
+    concept: "售后责任方",
+    field: "ord_after_sale.liability",
+    backend: { ddl: ["ord_after_sale", "liability"] },
+    clients: [{ file: "ops-web/lib/types/aftersale.ts", type: "Liability" }],
+  },
+  {
+    concept: "券出资方",
+    field: "pmt_coupon.funder",
+    backend: { ddl: ["pmt_coupon", "funder"] },
+    clients: [{ file: SHARED_TYPES, type: "CouponFunder" }],
+  },
+  {
+    concept: "风控主体类型（黑名单）",
+    field: "risk_blacklist.subject_type",
+    backend: { ddl: ["risk_blacklist", "subject_type"] },
+    clients: [{ file: "ops-web/lib/types/risk.ts", type: "SubjectType" }],
+  },
+  {
+    concept: "风控主体类型（事件）",
+    field: "risk_event.subject_type",
+    backend: { ddl: ["risk_event", "subject_type"] },
+    clients: [{ file: "ops-web/lib/types/risk.ts", type: "SubjectType" }],
+  },
+  {
+    concept: "评价状态",
+    field: "rvw_review.status",
+    backend: { ddl: ["rvw_review", "status"] },
+    clients: [{ file: "ops-web/lib/types/review.ts", type: "ReviewStatus" }],
+  },
+  {
+    concept: "客流来源（费率规则）",
+    field: "stl_fee_rule.traffic_source",
+    backend: { ddl: ["stl_fee_rule", "traffic_source"] },
+    clients: [{ file: SHARED_TYPES, type: "TrafficSource" }],
+  },
+  {
+    concept: "对账范围",
+    field: "stl_settle_batch.recon_scope",
+    backend: { ddl: ["stl_settle_batch", "recon_scope"] },
+    clients: [{ file: "ops-web/lib/types/finance.ts", type: "ReconScope" }],
+  },
+  {
+    concept: "结算批次状态",
+    field: "stl_settle_batch.status",
+    backend: { ddl: ["stl_settle_batch", "status"] },
+    clients: [
+      { file: SHARED_TYPES, type: "SettleBatchStatus" },
+      { file: "ops-web/lib/types/finance.ts", type: "SettleBatchStatus" },
+    ],
+  },
 ];
 
 /**
