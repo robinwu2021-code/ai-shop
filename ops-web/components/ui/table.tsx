@@ -26,7 +26,7 @@ export function THead({ className, ...props }: React.HTMLAttributes<HTMLTableSec
   //   工具类生成任意变体，`[&_th]:txt-caption` 一条规则都不生成 —— 类名在 DOM 上、
   //   样式不存在，表头会静默退回继承的 14px（2026-09-09 换过一次，当场量到 12→14px）。
   //   要上档得把表头排版写进 globals.css 的 @layer components，那是另一件事。
-  return <thead className={cn("sticky top-0 z-[var(--z-sticky)] bg-muted [&_th]:h-[var(--row-h)] [&_th]:whitespace-nowrap [&_th]:px-3.5 [&_th:not(.text-end):not(.text-center)]:text-left [&_th]:align-middle [&_th]:text-xs [&_th]:font-medium [&_th]:text-muted-foreground", className)} {...props} />;
+  return <thead className={cn("sticky top-0 z-[var(--z-sticky)] bg-muted", className)} {...props} />;
 }
 export function TBody({
   className, striped = true, ...props
@@ -49,8 +49,30 @@ export function TBody({
 export function TR({ className, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
   return <tr className={cn("transition-colors hover:bg-accent/50", className)} {...props} />;
 }
+/**
+ * 表头单元格。**排版长在这里，不长在 `<thead>` 的 `[&_th]:` 变体上。**
+ *
+ * 原先是一串 `[&_th]:text-xs [&_th]:font-medium …` 挂在 THead 上。那样写有个死角：
+ * 任意变体**只能套 Tailwind 自己的工具类** —— 把 `[&_th]:text-xs` 换成
+ * `[&_th]:txt-caption` 会**一条 CSS 规则都不生成**（`txt-caption` 是 globals.css 里
+ * 手写的类，Tailwind 不认），类名照样在 DOM 上、样式不存在，
+ * 表头静默退回继承的 14px（2026-09-09 换过一次，当场量到 12→14px）。
+ * 于是它成了组件层唯一上不了字阶的一处。
+ *
+ * 挪到这里之后档位就是普通用法，没有那个限制。`text-left` 放基础档，
+ * 调用点传 `text-end` / `text-center` 由 `cn()`（tailwind-merge）正常覆盖 ——
+ * 比原先那个 `[&_th:not(.text-end):not(.text-center)]` 选择器也好读。
+ */
 export function TH({ className, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) {
-  return <th className={className} {...props} />;
+  return (
+    <th
+      className={cn(
+        "h-[var(--row-h)] whitespace-nowrap px-3.5 text-left align-middle txt-caption text-muted-foreground",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 export function TD({ className, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) {
   return <td className={className} {...props} />;
