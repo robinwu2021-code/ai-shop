@@ -261,7 +261,11 @@ describe("选点页：把「选」提为主路", () => {
      * 底下一条没有（mock 的社区都没坐标）—— 一个承诺了内容的空标题，而守卫全绿。
      */
     expect(pickPage).toMatch(/nearby\.value\.filter\([\s\S]{0,80}latE6 != null/);
-    expect(pickPage, "整段的 v-if 要看过滤之后的条数").toMatch(/v-if="nearbyPickable\.length"/);
+    // 钉的是**用哪个数**，不是那一行的完整写法：2026-09-09 这一段加了
+    // `|| failed`（没取到时要留在原地说出来，而不是整块消失），
+    // 而原来的断言写死了 `v-if="nearbyPickable.length"` 连引号 —— 于是
+    // 一个不改变它所守之事的改动把它变红了。守「条数取自过滤后」就够。
+    expect(pickPage, "整段的 v-if 要看过滤之后的条数").toMatch(/v-if="nearbyPickable\.length\b/);
     expect(pickPage, "别再按原始条数判显隐").not.toMatch(/v-if="nearby\.length"/);
   });
 

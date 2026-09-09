@@ -53,6 +53,13 @@ vi.mock("@shared/ports/location", () => ({
 }));
 
 import CommunityPage from "@/pages/community/index.vue";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+/** 页面源码。**渲染测不出「按钮是不是活的」** —— 见下面那条断言的注释 */
+const pageSrc = readFileSync(
+  join(import.meta.dirname, "../src/pages/community/index.vue"), "utf8",
+);
 
 const COMMUNITY = {
   communityNo: "C0001",
@@ -145,7 +152,16 @@ describe("选社区自提点页", () => {
     const w = await render();
 
     expect(w.text()).toContain("community.failed");
-    expect(w.text()).toContain("community.retry");
+    // 重试那两个字走 `common.retry`：2026-09-09 把出错态收进 `sh-empty` 时，
+    // `community.retry` 与 `community.failedTip` 被删了 —— 它们与 common 里的
+    // 一字不差。只有「没能加载附近的自提点」是这一页特有的，所以留着。
+    expect(w.text()).toContain("common.retry");
+    /*
+     * **光有那两个字不算**。把 `@retry="load"` 摘掉，按钮就变成死的 ——
+     * 而「重试」二字照样渲染，上面那条断言照样绿（2026-09-09 消融验证过）。
+     * 这条测试的名字承诺的是「失败态 + 重试」，就得真的钉住那根线。
+     */
+    expect(pageSrc, "重试按钮要接到 load 上，否则是个死按钮").toMatch(/@retry="load"/);
     expect(w.text()).not.toContain("community.empty");
   });
 
