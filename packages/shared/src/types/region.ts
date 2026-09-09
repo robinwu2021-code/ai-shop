@@ -4,6 +4,7 @@
 
 import type {
   AREA_LEVEL,
+  AREA_MODE,
   AREA_STATUS,
   COMMUNITY_APPLY_STATUS,
 } from "@shared/utils/constants";
@@ -80,6 +81,7 @@ export interface RegionSearchResult {
    */
   places?: GeoTip[];
 }
+export type AreaMode = (typeof AREA_MODE)[keyof typeof AREA_MODE];
 export type AreaLevel = (typeof AREA_LEVEL)[keyof typeof AREA_LEVEL];
 export type AreaStatus = (typeof AREA_STATUS)[keyof typeof AREA_STATUS];
 export type CommunityApplyStatus =
@@ -208,7 +210,7 @@ export interface ServiceArea {
    * 展开时先并后减，EXCLUDE 优先；而矛盾应当在**输入端**消除
    * （勾了排除就把对应的 include 去掉），不要求用户记住这条优先级。
    */
-  mode?: "INCLUDE" | "EXCLUDE";
+  mode?: AreaMode;
   /**
    * `ACTIVE` 已生效 / `PENDING` 待运营审核。
    *

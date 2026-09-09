@@ -191,6 +191,12 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "与 shared:COMMUNITY_APPLY_STATUS 同一套取值（三端同一张提报单）。与 ops-web:StoreAuditStatus 的 PENDING/REJECTED 同名不同物：那个是门面内容审核单，通过叫 PASSED；这个通过叫 APPROVED，因为它的通过**建出了一个社区**" },
   { decl: "shared:COMMUNITY_APPLY_STATUS", dom: "core", shape: "STATUS", verdict: "OK",
     note: "商家提报新社区的单据状态。与 AREA_STATUS 的 PENDING 同名不同物：那个是「这条覆盖算不算数」，这个是「这张提报单走到哪了」——  APPROVED 意味着平台已经建出了社区" },
+  { decl: "shared:AREA_MODE", dom: "core", shape: "CLASS", verdict: "OK",
+    note: "覆盖项的方向（INCLUDE 纳入 / EXCLUDE 排除），与后端 "
+      + "MchServiceArea.MODE_INCLUDE/MODE_EXCLUDE 逐字一致。"
+      + "2026-09-09 从 ServiceArea.mode 上的内联字面量联合提出来 —— §D5 为它红着，"
+      + "而它的两个邻居 AREA_LEVEL / AREA_STATUS 本来就是常量对象写法" },
+
   { decl: "shared:AREA_LEVEL", dom: "core", shape: "CLASS", verdict: "OK",
     note: "覆盖项粒度。取值与 sys_region.level 同源（COMMUNITY 除外——那是社区不是区划），后端不写字面量，值从库里带出来。2026-08-23 补 PROVINCE：经营范围本就是「任意一级的并集」，走快递的商家框的就是省；后端无需新分支——展开走国标码前缀（省码 2 位），审核归入「非社区非街道即待审」那一档" },
   { decl: "ops-web:Role", dom: "auth", shape: "CLASS", verdict: "OK",

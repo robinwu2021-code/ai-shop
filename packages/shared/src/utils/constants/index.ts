@@ -179,6 +179,25 @@ export const FULFILLMENT_REACH = {
 } as const;
 
 /**
+ * 覆盖项的方向。与后端 `MchServiceArea.MODE_INCLUDE / MODE_EXCLUDE` 逐字一致。
+ *
+ * 它回答的是「商家框了小区，算不算覆盖里面每栋楼」——**默认算**，
+ * 但给一个显式的出口：勾了整个小区、单独排除 3 幢。
+ * 展开时先并后减，`EXCLUDE` 优先；而矛盾应当在**输入端**消除
+ * （勾了排除就把对应的 include 去掉），不要求用户记住这条优先级。
+ *
+ * 此前它是 `ServiceArea.mode` 上一个内联的字面量联合，`enum-registry`
+ * 的 §D5 为此红着 —— **内联的枚举对所有工具不可见**：登记不到、对账不到、
+ * 改名必漏。而它的两个邻居（`AREA_LEVEL` / `AREA_STATUS`）本来就是这个写法。
+ */
+export const AREA_MODE = {
+  /** 纳入。**不传即此** —— 端上不必显式回填 */
+  INCLUDE: "INCLUDE",
+  /** 排除。展开时后减，优先于 INCLUDE */
+  EXCLUDE: "EXCLUDE",
+} as const;
+
+/**
  * 覆盖项的生效状态。勾已有社区自助生效；勾区、街道要运营审 ——
  * 一家菜摊声称覆盖整个西湖区，影响面差一个量级（ADR-013 §4.2）。
  */
