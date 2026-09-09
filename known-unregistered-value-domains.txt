@@ -87,7 +87,6 @@ mkt_attribution_log.trace_no
 mkt_campaign.discount_minor
 mkt_campaign.threshold_minor
 mkt_content_slot.kind
-mkt_coupon.type
 mkt_coupon_issue.target
 mkt_group_buy.status
 mkt_quote.status

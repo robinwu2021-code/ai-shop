@@ -4,7 +4,7 @@ import type { MerchantCampaign, PlatformSlot, ContentSlot, Coupon, CouponIssue }
 
 export const coupons: Coupon[] = [
   {
-    couponNo: "CP9001", name: "新人首单立减 5 元", type: "NEWCOMER", status: "ACTIVE",
+    couponNo: "CP9001", name: "新人首单立减 5 元", type: "FULL_CUT", status: "ACTIVE",
     value: 500, threshold: 1900, validFrom: Date.parse("2026-08-01T00:00:00Z"), validTo: Date.parse("2026-08-31T16:00:00Z"),
     budget: 500_000, issuedAmount: 214_000, issued: 428, redeemed: 301, createdAt: Date.parse("2026-07-28T02:00:00Z"),
     totalCount: 1000, perUserLimit: 1, maxDiscountMinor: 0,
@@ -23,7 +23,7 @@ export const coupons: Coupon[] = [
     totalCount: 200, perUserLimit: 1, maxDiscountMinor: 2000,
   },
   {
-    couponNo: "CP9004", name: "老客回归 10 元券", type: "TARGETED", status: "DRAFT",
+    couponNo: "CP9004", name: "老客回归 10 元券", type: "FULL_CUT", status: "DRAFT",
     value: 1000, threshold: 4900, validFrom: Date.parse("2026-08-10T00:00:00Z"), validTo: Date.parse("2026-09-10T16:00:00Z"),
     budget: 300_000, issuedAmount: 0, issued: 0, redeemed: 0, createdAt: Date.parse("2026-08-05T08:00:00Z"),
     totalCount: 500, perUserLimit: 1, maxDiscountMinor: 0,

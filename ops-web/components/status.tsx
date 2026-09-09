@@ -163,8 +163,6 @@ export function useCouponTypeMap(): StatusMap<CouponType> {
   return {
     FULL_CUT: { label: t("couponType.FULL_CUT"), tone: "muted" },
     DISCOUNT: { label: t("couponType.DISCOUNT"), tone: "muted" },
-    NEWCOMER: { label: t("couponType.NEWCOMER"), tone: "info" },
-    TARGETED: { label: t("couponType.TARGETED"), tone: "muted" },
   };
 }
 

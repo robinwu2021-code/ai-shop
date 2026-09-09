@@ -189,7 +189,7 @@ export const zh = {
   pickupStatus: { PENDING: "待审核", ACTIVE: "启用中", MIGRATING: "迁移中", SUSPENDED: "已停用", REJECTED: "已驳回" },
   batchStatus: { PLANNED: "计划中", DISPATCHED: "已发车", ARRIVED: "已到货", SIGNED: "已签收" },
   storeAuditStatus: { PENDING: "待审核", PASSED: "已通过", REJECTED: "已驳回" },
-  couponType: { FULL_CUT: "满减", DISCOUNT: "折扣", NEWCOMER: "新人", TARGETED: "定向" },
+  couponType: { FULL_CUT: "满减", DISCOUNT: "折扣" },
   couponStatus: { DRAFT: "草稿", ACTIVE: "启用中", PAUSED: "已暂停", ENDED: "已结束" },
   // 商家自建活动的四种（/ops/campaigns 真正返回的取值）。与 platformSlotType 是两套 ——
   // 共用一套的表现是 FULL_CUT / COUPON / BUY_GIFT 译不出来，原始枚举码直接打给用户

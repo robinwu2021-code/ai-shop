@@ -2,11 +2,24 @@
 // 金额一律最小货币单位（分），与全局契约一致。
 import type { Archivable } from "./common";
 
-export type CouponType = "FULL_CUT" | "DISCOUNT" | "NEWCOMER" | "TARGETED";
+/**
+ * 券类型。**与 `mkt_coupon.type` 的库列注释逐字一致**（`FULL_CUT 满减 / DISCOUNT 折扣`）。
+ *
+ * ⚠️ **2026-09-09：这里原来还有 `NEWCOMER` / `TARGETED`，已删。**
+ * 三条都指向同一个结论：库列只允许两个值；`discountFor` 从未处理过它们
+ * （下面那条注释原本就写着「没有折扣算法撑着，建券表单不给选」）；
+ * 而 `TARGETED` 在后端根本是**另一个字段**的值 —— `PmtCoupon.ISSUE_TARGETED`
+ * 是发放方式（issueMode），不是券类型。
+ *
+ * 留着的代价不是多两个枚举值：它们有三语标签、有 mock 数据、
+ * 界面上还有「按券类型筛选」——**筛「新人」永远是空列表，而且不报错**。
+ */
+export type CouponType = "FULL_CUT" | "DISCOUNT";
 
 /**
- * 建券表单能建的类型子集。NEWCOMER/TARGETED 不在这里——`discountFor` 从未处理过
- * 它们，没有折扣算法撑着，建券表单不给选，避免看着能建、保存必炸。
+ * 建券表单能建的类型子集。删掉 NEWCOMER/TARGETED 之后它与 {@link CouponType} 相等，
+ * 保留是因为**这两个概念本来就会分开**：将来若有「能显示不能建」的类型，
+ * 分歧会回到这里，而不是又一次靠注释提醒。
  */
 export type CouponBuildableType = "FULL_CUT" | "DISCOUNT";
 

@@ -193,7 +193,7 @@ export const en: Messages = {
   pickupStatus: { PENDING: "Pending review", ACTIVE: "Active", MIGRATING: "Migrating", SUSPENDED: "Suspended", REJECTED: "Rejected" },
   batchStatus: { PLANNED: "Planned", DISPATCHED: "Dispatched", ARRIVED: "Arrived", SIGNED: "Signed off" },
   storeAuditStatus: { PENDING: "Pending review", PASSED: "Approved", REJECTED: "Rejected" },
-  couponType: { FULL_CUT: "Spend & save", DISCOUNT: "Percent off", NEWCOMER: "New customer", TARGETED: "Targeted" },
+  couponType: { FULL_CUT: "Spend & save", DISCOUNT: "Percent off" },
   couponStatus: { DRAFT: "Draft", ACTIVE: "Active", PAUSED: "Paused", ENDED: "Ended" },
   merchantCampaignType: { COUPON: "Coupon", FULL_CUT: "Spend & save", FLASH: "Flash price", BUY_GIFT: "Buy & gift" },
   merchantCampaignStatus: { RUNNING: "Running", PAUSED: "Paused", ENDED: "Ended" },

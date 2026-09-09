@@ -297,6 +297,23 @@ export const FIELDS = [
     clients: [{ file: "ops-web/lib/types/aftersale.ts", type: "Liability" }],
   },
   {
+    /*
+     * 2026-09-09 从上面那 4 条「查到但没收」里摘下来的第一条。
+     * ops-web 的 CouponType 曾经多出 NEWCOMER / TARGETED —— 三条证据都指向删：
+     * 库列注释是 `FULL_CUT 满减 / DISCOUNT 折扣`；`discountFor` 从未处理过它们
+     * （ops-web 自己的注释就写着「没有折扣算法撑着，建券表单不给选」）；
+     * 而 TARGETED 在后端是**另一个字段**的值（PmtCoupon.ISSUE_TARGETED 是发放方式）。
+     * 它们却有三语标签、mock 数据和「按券类型筛选」——筛「新人」永远空列表且不报错。
+     */
+    concept: "券类型（老模型）",
+    field: "mkt_coupon.type",
+    backend: { ddl: ["mkt_coupon", "type"] },
+    clients: [
+      { file: SHARED_TYPES, type: "CouponType" },
+      { file: "ops-web/lib/types/marketing.ts", type: "CouponType" },
+    ],
+  },
+  {
     concept: "券出资方",
     field: "pmt_coupon.funder",
     backend: { ddl: ["pmt_coupon", "funder"] },
