@@ -22,6 +22,7 @@
  */
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import automator from "miniprogram-automator";
 
@@ -36,9 +37,34 @@ const PAGES = [
   ["pages/coupons/index", "coupons"],
   ["pages/community/index", "community"],
   ["pages/points/index", "points"],
+  ["pages/order-confirm/index", "order-confirm"],
+  ["pages/address-pick/index", "address-pick"],
+  ["pages/orders/index", "orders"],
+  ["pages/cart/index", "cart"],
 ];
 
+const CLI = "/Applications/wechatwebdevtools.app/Contents/MacOS/cli";
+const PROJECT = resolve(process.cwd(), "dist/build/mp-weixin");
+
+/*
+ * **必须自己跑一次 `cli auto`**。`automator.launch()` 用不了（第 2 处不兼容：
+ * 它从 stdout 抠 ws 地址，新版工具不打印）；而**重开过项目之后自动化会话会断**，
+ * 直接 connect 会卡在 "timeout waiting for automator response" ——
+ * 那句报错既不提端口也不提会话，看着像工具挂了。
+ */
+function enableAutomation() {
+  return new Promise((res) => {
+    const p = spawn(CLI, ["auto", "--project", PROJECT, "--auto-port", String(PORT)],
+      { stdio: ["ignore", "pipe", "pipe"] });
+    let done = false;
+    const fin = () => { if (!done) { done = true; res(); } };
+    p.stdout.on("data", () => setTimeout(fin, 1500));
+    setTimeout(fin, 12000);
+  });
+}
+
 mkdirSync(OUT, { recursive: true });
+await enableAutomation();
 const mp = await automator.connect({ wsEndpoint: `ws://localhost:${PORT}` });
 
 // 先证明请求真的在失败 —— 不然下面截到的「空」说明不了任何事
