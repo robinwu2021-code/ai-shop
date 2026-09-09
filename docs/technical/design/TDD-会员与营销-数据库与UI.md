@@ -424,17 +424,16 @@ CREATE TABLE IF NOT EXISTS mkt_promotion_apply
 
 ### 2.10 关系图
 
-```mermaid
-erDiagram
-    mbr_member ||--o{ mbr_member_tag : "打标"
-    mbr_tag_dict ||--o{ mbr_member_tag : "字典"
-    mbr_member ||--o{ mbr_reach_log : "触达"
-    mkt_campaign ||--o{ mkt_campaign_audience : "受众"
-    mkt_campaign |o--o| mkt_coupon : "引用(COUPON型)"
-    mkt_coupon ||--o{ mkt_user_coupon : "发放"
-    ord_sub_order ||--o{ mkt_promotion_apply : "命中优惠"
-    mbr_member }o--|| usr_account : "认领后指向"
-```
+![会员与促销 · 实体关系](../diagrams/topic-member-promotion.svg)
+
+> 这张图由 `node scripts/gen-erd.mjs` 从建表语句生成（专题 `member-promotion`，20 张表）。
+> **不要在这里手画** —— 表名与关系都从 schema 里算，改了库自动跟上。
+
+> ⚠️ **2026-09-09：这里原来是一张手画的 mermaid erDiagram，它错了两张表。**
+> 它连的是 `mkt_promotion_apply` 与 `mbr_tag_dict` —— **库里都不存在**；
+> 而 `mkt_campaign` / `mkt_coupon` 虽然还在，属于上一代模型，
+> 促销这一代是 `pmt_*`。手画的图错两张表，没有任何东西会报错。
+
 
 ---
 

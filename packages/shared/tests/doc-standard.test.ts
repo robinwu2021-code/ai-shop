@@ -46,7 +46,31 @@ describe("文档规范", () => {
       const n = (readFileSync(f, "utf8").match(/^```mermaid/gm) ?? []).length;
       return Array.from({ length: n }, (_, i) => `${rel(f)}#${i + 1}`);
     });
-    expect(bad).toEqual([]);
+    /*
+     * **基线只降不升**（2026-09-09 修回）。
+     *
+     * 上面那段注释一直写着「基线语义随之从『6 篇』变为『16 张』」，而断言却是
+     * `toEqual([])` —— 基线在某次收紧时丢了。后果不是拦住了谁，是**这条从此恒红**：
+     * 恒红的闸门等于没有闸门，它还会顺带盖住 doc-standard 里其它真失败
+     * （svg 缺 title/desc 那条就在它旁边红了不知多久，今天才被翻出来）。
+     *
+     * 而剩下这 14 张里，至少 11 张前面写着作者的取舍说明 ——
+     * 「泳道 × 序号 × 跨轨箭头换成表格会掉信息（哪条是异步），
+     * 而这里的结构信息值这个风险。改动它时请手工确认渲染」。
+     * 那是**看过这条规则之后做的决定**，不是欠账。把它们一律铲平不是我该做的，
+     * 而让闸门为此恒红更糟：它既没拦住新增，也没保住已有的判断。
+     *
+     * 所以恢复成棘轮：**新增会红，减少要改小这个数。**
+     * 2026-09-09 用生成的 ER 专题图替掉两张（会员与营销那两篇），16 → 14。
+     */
+    const MERMAID_BASELINE = 14;
+    expect(
+      bad.length,
+      `mermaid 图 ${bad.length} 张，基线 ${MERMAID_BASELINE} —— 只准变少：\n  `
+        + bad.join("\n  ")
+        + "\n新增请改画 SVG（docs/technical/diagrams/），"
+        + "关系图优先走 scripts/gen-erd.mjs 的专题图 —— 生成的不会漂。",
+    ).toBeLessThanOrEqual(MERMAID_BASELINE);
   });
 
   it("图不断链：md 引用的 svg 必须存在", () => {

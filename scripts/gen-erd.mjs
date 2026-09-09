@@ -151,6 +151,41 @@ const TOPICS = [
       "stl_points_pool",
     ],
   },
+  {
+    /*
+     * 会员 × 促销。**这张图替掉了两份文档里手写的 mermaid erDiagram**
+     * （TDD-会员与营销-数据库与UI / -表结构与对象模型），而那两份画的不是同一代模型：
+     * 旧的那份连的是 mkt_campaign / mkt_coupon / mkt_promotion_apply / mbr_tag_dict，
+     * 后两张**库里根本不存在** —— 手写的图错了两张表，而没有任何东西会报错。
+     *
+     * mkt_* 今天仍在（17 张），但那一族是团购/求团/归因/裂变/内容位，
+     * 与这里的促销不是一回事；促销这一代是 pmt_*。
+     */
+    id: "member-promotion",
+    label: "会员与促销",
+    tables: [
+      "usr_person",
+      "usr_account",
+      "mbr_setting",
+      "mbr_member",
+      "mbr_member_store",
+      "mbr_member_source",
+      "mbr_tag",
+      "mbr_member_tag",
+      "mbr_tag_merge_log",
+      "mbr_segment",
+      "mbr_reach_log",
+      "pmt_activity",
+      "pmt_activity_audience",
+      "pmt_activity_goods",
+      "pmt_coupon",
+      "pmt_coupon_scope",
+      "pmt_coupon_issue",
+      "pmt_user_coupon",
+      "pmt_apply",
+      "ord_sub_order",
+    ],
+  },
 ];
 
 /**

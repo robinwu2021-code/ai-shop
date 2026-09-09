@@ -35,29 +35,14 @@ user_coupon / coupon_issue / apply）。
 
 ### 1.1 全景
 
-```mermaid
-erDiagram
-    usr_person      ||--o{ mbr_member        : "一个人在多家商家各有一条会员"
-    usr_person      |o--|| usr_account        : "注册后绑定（可空 1:1）"
-    mbr_setting     ||--|| MERCHANT       : "每个主体一行：会员按主体还是按门店"
-    mbr_member      ||--o{ mbr_member_store  : "他在每家店的往来"
-    mbr_member      ||--o{ mbr_member_source : "每一次来源留一行"
-    mbr_member      ||--o{ mbr_member_tag    : "打了哪些标签"
-    mbr_tag         ||--o{ mbr_member_tag    : "标签字典（tag_no 不可变）"
-    mbr_tag         ||--o{ mbr_tag_merge_log : "合并留痕"
-    mbr_member      ||--o{ mbr_reach_log     : "被触达的记录"
-    mbr_segment     ||--o{ mbr_reach_log     : "这次发给哪一群人"
+![会员与促销 · 实体关系](../diagrams/topic-member-promotion.svg)
 
-    pmt_activity    ||--o{ pmt_activity_audience : "给谁"
-    pmt_activity    ||--o{ pmt_activity_goods   : "作用在哪些商品"
-    pmt_activity    |o--o| pmt_coupon           : "发券型活动引用一张券"
-    pmt_coupon      ||--o{ pmt_user_coupon      : "发出去的每一张"
-    pmt_coupon      ||--o{ pmt_coupon_issue     : "每一批发放"
-    mbr_segment     ||--o{ pmt_coupon_issue     : "发给哪一群人"
-    pmt_user_coupon ||--o{ pmt_apply            : "被用掉的每一次（次卡多行）"
-    pmt_apply       }o--|| pmt_activity         : "这一单命中的活动"
-    pmt_apply       }o--|| pmt_user_coupon      : "这一单用掉的券"
-```
+> 这张图由 `node scripts/gen-erd.mjs` 从建表语句生成（专题 `member-promotion`，20 张表）。
+> **不要在这里手画** —— 表名与关系都从 schema 里算，改了库自动跟上。
+
+> 原来这里是一张手画的 mermaid erDiagram，内容与库一致，但**手画的对不对没人验**
+> —— 同一份需求的另一篇（数据库与UI §2.10）就画错了两张表。换成生成的。
+
 
 ### 1.2 一句话说明每张表
 
