@@ -609,6 +609,82 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
       .toEqual([]);
   });
 
+  it("components/ 绕开字阶的存量只准变短（基线 23，来源见注释）", () => {
+    /*
+     * 页面层那条同样的规则是「基线 0，不留额度」。组件层不能照抄，因为它**还没接入字阶**：
+     * 23 处里有 6 处写的是 `text-[13px]`（二级导航、页签、tooltip），
+     * 而七档里**根本没有 13px** —— 要么给外壳加一档，要么把它们挪到 12/14，
+     * 那是设计决定，不是顺手能改的。硬清会一次改掉全站外壳的观感。
+     *
+     * 所以先立基线止血：新写的一处都不许加，存量只准变短。
+     * 2026-09-09 立基线时先清掉了两处 **`text-[10px]`**（通知徽标、二级导航的「待建」标）
+     * —— 那两处不是「档位选择」而是**违反明文规范**：globals.css 写着
+     * 「字号下限 12px：此前页面上真实出现过 10px 文字，任何屏幕都读不清」。
+     * 25 → 23。
+     *
+     * ⚠️ **两个方向都要报**：只报「多了」的话，修好的行会永远留在表里，
+     * 那一档就此免检（见 known-* 棘轮吃过的亏）。修好了就把数字改小或删掉这一行。
+     */
+    const BASELINE: Record<string, number> = {
+      "layout/lang-switcher.tsx": 1,
+      "layout/rail.tsx": 1,
+      "layout/secondary-nav.tsx": 3,
+      "layout/theme-switcher.tsx": 1,
+      "ui/badge.tsx": 1,
+      "ui/button.tsx": 2,
+      "ui/checkbox.tsx": 1,
+      "ui/dropdown-menu.tsx": 1,
+      "ui/form-drawer.tsx": 1,
+      "ui/label.tsx": 1,
+      "ui/misc.tsx": 1,
+      "ui/multi-select.tsx": 2,
+      "ui/radio-group.tsx": 1,
+      "ui/switch.tsx": 1,
+      "ui/tab-header.tsx": 1,
+      "ui/table.tsx": 1,
+      "ui/tabs.tsx": 1,
+      "ui/tooltip.tsx": 1,
+      "ui/tree.tsx": 1,
+    };
+    const actual: Record<string, number> = {};
+    for (const f of walk(join(ROOT, "components"))) {
+      if (!/\.tsx?$/.test(f) || /\.test\.tsx?$/.test(f)) continue;
+      const src = readFileSync(f, "utf8");
+      const comments = commentLines(src);
+      const key = f.slice(join(ROOT, "components").length).replace(/^\/+/, "");
+      src.split("\n").forEach((l, i) => {
+        if (comments.has(i)) return;
+        const n = l.match(/\btext-(?:\[\d+px\]|xs|sm|base|lg|xl|2xl|3xl)(?![\w-])/g)?.length ?? 0;
+        if (n) actual[key] = (actual[key] ?? 0) + n;
+      });
+    }
+    const grew = Object.entries(actual)
+      .filter(([f, n]) => n > (BASELINE[f] ?? 0))
+      .map(([f, n]) => `${f}: ${n}（基线 ${BASELINE[f] ?? 0}）`);
+    const stale = Object.entries(BASELINE)
+      .filter(([f, n]) => (actual[f] ?? 0) < n)
+      .map(([f, n]) => `${f}: 现在只有 ${actual[f] ?? 0} 处，基线还写着 ${n}`);
+    expect(grew, `字号只走七档（txt-display/title/heading/body/strong/label/caption）：\n${grew.join("\n")}`)
+      .toEqual([]);
+    expect(stale, `已经修好了，把基线一起改小 —— 留着的话那一档就此免检：\n${stale.join("\n")}`)
+      .toEqual([]);
+    // 字号下限：10px 那两处清掉之后一处都不许再有，这条不设额度
+    const tooSmall: string[] = [];
+    for (const f of walk(join(ROOT, "components")).concat(walk(join(ROOT, "app")))) {
+      if (!/\.tsx?$/.test(f) || /\.test\.tsx?$/.test(f) || f.includes("/dev/")) continue;
+      const src = readFileSync(f, "utf8");
+      const comments = commentLines(src);
+      src.split("\n").forEach((l, i) => {
+        if (comments.has(i)) return;
+        for (const m of l.matchAll(/\btext-\[(\d+)px\]/g)) {
+          if (Number(m[1]) < 12) tooSmall.push(`${rel(f)}:${i + 1}  ${m[0]}`);
+        }
+      });
+    }
+    expect(tooSmall, `字号下限 12px（规范原话：10px 文字任何屏幕都读不清）：\n${tooSmall.join("\n")}`)
+      .toEqual([]);
+  });
+
   it("字阶必须写在 @layer components 里 —— 裸写会压掉紧挨着它的工具类", () => {
     /*
      * `@import "tailwindcss"` 声明了 `theme, base, components, utilities` 四层，

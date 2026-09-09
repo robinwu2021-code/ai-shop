@@ -55,7 +55,7 @@ function LeafRow({ leaf, active }: { leaf: NavLeaf; active: boolean }) {
         title={t("nav.notImplementedHint")}
       >
         <span className="truncate">{tNav(leaf.label)}</span>
-        <span className="ms-1.5 rounded-chip border border-border px-1.5 text-[10px] leading-4 text-muted-foreground/70">
+        <span className="ms-1.5 rounded-chip border border-border px-1.5 txt-caption leading-4 text-muted-foreground/70">
           {t("nav.notImplemented")}
         </span>
       </span>
