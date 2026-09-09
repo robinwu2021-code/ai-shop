@@ -105,14 +105,36 @@ class OpsPermConfigFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
 
+        /*
+         * **被开关门着的点要排掉。**
+         *
+         * `NOT_IMPLEMENTED` 现在有两种来源（见 TDD-ops-功能开关与菜单状态）：
+         *   · 真的没开工 —— `backend_status` 就是它，没有 permCode；
+         *   · 实现了、但这个部署把开关关着 —— `effectiveStatus()` 运行时降级，
+         *     而 permCode 是**真的**（端点存在，开关一开就能用），不该抹掉。
+         * 端上刻意不区分这两种（那份 TDD：「为什么用不了」是运维的问题），
+         * 所以从菜单响应里分不出来 —— 用 `gated_by` 从库里分。
+         *
+         * 这条断言写在第三种状态出现之前，那时 NOT_IMPLEMENTED 只有第一种来源，
+         * 于是「不该挂后端码」是成立的。它守的事没变（**没有后端的东西不许发码**），
+         * 变的是「哪些算没有后端」。
+         */
+        java.util.Set<String> gated = new java.util.HashSet<>(jdbc.queryForList(
+                "SELECT point_code FROM sys_function_point WHERE gated_by IS NOT NULL AND gated_by <> ''",
+                String.class));
+
         int notImpl = 0;
         for (JsonNode f : json.readTree(body).get("data")) {
             for (JsonNode p : f.get("points")) {
-                if ("NOT_IMPLEMENTED".equals(p.get("backendStatus").asString())) {
-                    notImpl++;
-                    assertThat(p.get("permCode").isNull())
-                            .as("未实现的功能点不该挂后端码").isTrue();
+                if (!"NOT_IMPLEMENTED".equals(p.get("backendStatus").asString())) {
+                    continue;
                 }
+                if (gated.contains(p.get("pointCode").asString())) {
+                    continue;
+                }
+                notImpl++;
+                assertThat(p.get("permCode").isNull())
+                        .as("未实现的功能点不该挂后端码").isTrue();
             }
         }
         assertThat(notImpl)
