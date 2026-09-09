@@ -57,11 +57,20 @@ public class PermConfigServiceImpl implements PermConfigService {
     private final ai.neargo.shop.auth.TokenStores tokenStores;
     private final tools.jackson.databind.ObjectMapper objectMapper;
 
+    /**
+     * 用来现算「这一页的开关此刻开着没有」。
+     *
+     * <p>{@code sys_function_point.gated_by} 存的是**源码事实**（哪个开关门着哪一页），
+     * 而开没开是**部署状态** —— 只能在这里读。
+     */
+    private final org.springframework.core.env.Environment environment;
+
     public PermConfigServiceImpl(FunctionMapper functionMapper, FunctionPointMapper pointMapper,
                                  RoleMapper roleMapper, RolePointMapper rolePointMapper,
                                  RoleMemberMapper memberMapper, RolePermResolver resolver,
                                  AuditLogPort auditLogPort, TokenStore tokenStore, ai.neargo.shop.auth.TokenStores tokenStores, 
-                                 tools.jackson.databind.ObjectMapper objectMapper) {
+                                 tools.jackson.databind.ObjectMapper objectMapper,
+            org.springframework.core.env.Environment environment) {
         this.functionMapper = functionMapper;
         this.pointMapper = pointMapper;
         this.roleMapper = roleMapper;
@@ -72,6 +81,7 @@ public class PermConfigServiceImpl implements PermConfigService {
         this.tokenStore = tokenStore;
         this.tokenStores = tokenStores;
         this.objectMapper = objectMapper;
+        this.environment = environment;
     }
 
     @Override
@@ -150,9 +160,32 @@ public class PermConfigServiceImpl implements PermConfigService {
         return out;
     }
 
-    private static MenuPointVO toVO(SysFunctionPoint p) {
+    /**
+     * 这一页此刻点得动吗。
+     *
+     * <p>`backend_status` 是**源码事实**（生成器按「源码里有没有端点」算），
+     * 而进销存这类整域开关关着时**一个 Bean 都不装**、控制器根本不注册 ——
+     * 于是源码里有、运行时没有。此前菜单只报前者，运营看到一个和别的项一模一样的入口，
+     * 点下去 404，而他没有任何线索知道这是「没开」而不是「坏了」。
+     *
+     * <p>降级到 `NOT_IMPLEMENTED` 而不是新造一个状态值：端上早就认这个值
+     * （灰显 + 「待建」标、点不动），而运营要的答案就是「现在用不了」。
+     * 「为什么用不了」是运维的问题，不是菜单该在这里回答的。
+     */
+    // 包内可见：GatedMenuStatusTest 直接测它（AC1/AC2）
+    String effectiveStatus(SysFunctionPoint p) {
+        String gate = p.getGatedBy();
+        if (gate == null || gate.isBlank()) {
+            return p.getBackendStatus();
+        }
+        return Boolean.parseBoolean(environment.getProperty(gate))
+                ? p.getBackendStatus()
+                : "NOT_IMPLEMENTED";
+    }
+
+    private MenuPointVO toVO(SysFunctionPoint p) {
         return new MenuPointVO(p.getPointCode(), p.getName(), p.getGroupName(), p.getHref(),
-                p.getUiPermCode(), p.getPermCode(), p.getBackendStatus(),
+                p.getUiPermCode(), p.getPermCode(), effectiveStatus(p),
                 !Boolean.FALSE.equals(p.getUiReady()), p.getMatrixCode(),
                 p.getPointType() == null ? "MENU" : p.getPointType(),
                 p.getSort() == null ? 0 : p.getSort());

@@ -26,6 +26,18 @@ export interface NavLeaf {
   label: string;
   perm?: string; // 细粒度权限码；无则跟随所属 section 的 canModule
   soon?: boolean; // 待建：灰显不可点
+  /**
+   * 这一页被哪个**运行时开关**门着（属性名，如 `shop.inventory.enabled`）。
+   *
+   * 与 `soon` 的区别：`soon` 是「还没做」，`gated` 是「做了，但这个部署没开」。
+   * 关着时后端一个 Bean 都不装、控制器根本不注册 —— 点进去是 404，
+   * 而运营没有任何线索知道这是没开还是坏了。登记之后，
+   * `/ops/menu` 会现读这个属性，关着就按未实现返回（灰显 + 「待建」标）。
+   *
+   * 登记必须与后端 `@ConditionalOnProperty` 对上 ——
+   * `ConditionalEndpointNavParityTest` 双向守着，漂了就红。
+   */
+  gated?: string;
   phase?: Phase; // 产品分期徽章（缺省=1）
   /**
    * 就绪度覆盖：本叶**前端静态功能完整且已实机验证**，无视 phase 直接解锁。
@@ -143,7 +155,7 @@ export const NAV: NavSection[] = [
       //
       // perm 与后端 OpsMerchantChainController 判的是同一个码 ——
       // 界面闸门比后端松就是「菜单点得进、进去一片 403」。
-      { href: "/merchants?tab=chain", label: "链条画像", perm: "merchant:merchant:read", group: "经营诊断", matrix: "P-11.1", ready: true },
+      { href: "/merchants?tab=chain", label: "链条画像", perm: "merchant:merchant:read", group: "经营诊断", matrix: "P-11.1", ready: true , gated: "shop.inventory.enabled"},
     
 
       // ── P-10 门店主页治理（一期主获客路径）──────────────────────────────────
@@ -234,19 +246,19 @@ export const NAV: NavSection[] = [
       // **整个 section 对所有人可见**，靠叶子逐条兜底：看着能用，闸门却空了一层。
       // 现在 Perms 里有了 inventory:* 三个码（见 Perms.java 的进销存那一段），
       // 前缀过滤才真的成立。
-      { href: "/inventory", label: "库存健康度", perm: "inventory:stock:read", group: "库存治理", matrix: "P-18.1", ready: true },
-      { href: "/inventory?tab=ledger", label: "库存流水", perm: "inventory:stock:read", group: "库存治理", matrix: "P-18.2", ready: true },
-      { href: "/inventory?tab=recon", label: "库存对差", perm: "inventory:stock:read", group: "切换判据", matrix: "P-18.3", ready: true },
+      { href: "/inventory", label: "库存健康度", perm: "inventory:stock:read", group: "库存治理", matrix: "P-18.1", ready: true , gated: "shop.inventory.enabled"},
+      { href: "/inventory?tab=ledger", label: "库存流水", perm: "inventory:stock:read", group: "库存治理", matrix: "P-18.2", ready: true , gated: "shop.inventory.enabled"},
+      { href: "/inventory?tab=recon", label: "库存对差", perm: "inventory:stock:read", group: "切换判据", matrix: "P-18.3", ready: true , gated: "shop.inventory.enabled"},
       // 链路健康（M3）：**从「库存对差」里拆出来的**。对差读的是数据、这一页读的是链路。
       // 09-02 投递停了六个小时，唯一痕迹是对差页上的「待搬 1 个」——
       // 一个链路问题被折叠进了一个数据指标，而看到那个数的人推断不出链路断了。
       // 自成一组「链路」：同 group 的叶子必须相邻，塞进「切换判据」会让那个组名
       // 名不副实（它说的是要不要切 stock-authority，不是链路通不通）。
-      { href: "/inventory?tab=link-health", label: "链路健康", perm: "inventory:stock:read", group: "链路", matrix: "P-18.5", ready: true },
+      { href: "/inventory?tab=link-health", label: "链路健康", perm: "inventory:stock:read", group: "链路", matrix: "P-18.5", ready: true , gated: "shop.inventory.enabled"},
       // 页面可见判 inventory:credential:read（只读视图：哪些钥匙发过、谁在用、
       // 哪些已吊销 —— 审计要看的正是这个）。签发与吊销另判
       // inventory:credential:grant，按钮按它藏掉，不是画出来点了 403。
-      { href: "/inventory?tab=credentials", label: "开放对接", perm: "inventory:credential:read", group: "对外", matrix: "P-18.4", ready: true },
+      { href: "/inventory?tab=credentials", label: "开放对接", perm: "inventory:credential:read", group: "对外", matrix: "P-18.4", ready: true , gated: "shop.inventory.enabled"},
     
     ],
   },
@@ -505,7 +517,7 @@ export const NAV: NavSection[] = [
       // 组名用「定时任务」而不是「运行配置」：系统配置那边已经有一个同名组，
       // 而 groupedLeaves 会把同名组并成一段 —— 并进去之后「任务与执行日志」
       // 会和市场/货币、开关灰度挤在一个标题下，它是监控页不是配置页
-      { href: "/jobs", label: "任务与执行日志", perm: "system:job:read", group: "定时任务", matrix: "P-17.1", ready: true },
+      { href: "/jobs", label: "任务与执行日志", perm: "system:job:read", group: "定时任务", matrix: "P-17.1", ready: true , gated: "shop.job.enabled"},
     
 
       // ── P-17 系统配置（固定在 Rail 底部）────────────────────────────────────

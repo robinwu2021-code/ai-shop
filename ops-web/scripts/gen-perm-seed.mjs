@@ -110,6 +110,8 @@ for (const m of nav.matchAll(/key:\s*"(\w+)",\s*label:\s*"([^"]+)"([\s\S]*?)(?=k
       group: (l[4].match(/group:\s*"([^"]+)"/) || [])[1] || null,
       matrix: (l[4].match(/matrix:\s*"([^"]+)"/) || [])[1] || null,
       ready: /ready:\s*true/.test(l[4]),
+      // 运行时开关（TDD-ops-功能开关与菜单状态）：关着时 /ops/menu 按未实现返回
+      gated: (l[4].match(/gated:\s*"([^"]+)"/) || [])[1] || null,
     }));
   const modules = (body.match(/modules:\s*\[([^\]]*)\]/) || [])[1];
   secs.push({ key: m[1], label: m[2], icon, href, leaves,
@@ -149,7 +151,7 @@ secs.forEach((s, si) => {
     const status = back === undefined ? 'UNMAPPED' : back === null ? 'NOT_IMPLEMENTED' : 'IMPLEMENTED';
     const pc = pointCodeOf(fc, l.href);
     points.push({ pc, perm: back || null, status });
-    out.push(`INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at) VALUES (${q(pc)}, ${q(fc)}, ${q(l.label)}, ${q(l.group)}, ${q(l.href)}, ${q(l.perm)}, ${q(back)}, ${q(status)}, ${l.ready ? 1 : 0}, ${q(l.matrix)}, 'MENU', ${(li + 1) * 10}, NOW(), NOW());`);
+    out.push(`INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, gated_by, sort, created_at, updated_at) VALUES (${q(pc)}, ${q(fc)}, ${q(l.label)}, ${q(l.group)}, ${q(l.href)}, ${q(l.perm)}, ${q(back)}, ${q(status)}, ${l.ready ? 1 : 0}, ${q(l.matrix)}, 'MENU', ${q(l.gated)}, ${(li + 1) * 10}, NOW(), NOW());`);
   });
 });
 
@@ -196,7 +198,7 @@ for (const ui of Object.keys(map)) {
   const pc = `ACT${POINT_SEP}${ui.replace(/[^A-Za-z0-9]+/g, '_').toUpperCase()}`;
   actionSeq++;
   points.push({ pc, perm: back || null, status });
-  out.push(`INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at) VALUES (${q(pc)}, ${q(fc)}, ${q(ui)}, '页面内操作', NULL, ${q(ui)}, ${q(back)}, ${q(status)}, 1, NULL, 'ACTION', ${900 + actionSeq}, NOW(), NOW());`);
+  out.push(`INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, gated_by, sort, created_at, updated_at) VALUES (${q(pc)}, ${q(fc)}, ${q(ui)}, '页面内操作', NULL, ${q(ui)}, ${q(back)}, ${q(status)}, 1, NULL, 'ACTION', NULL, ${900 + actionSeq}, NOW(), NOW());`);
 }
 
 /*
@@ -220,7 +222,7 @@ for (const code of [...roleBackendCodes].filter(c => !coveredBackend.has(c)).sor
   const pc = `ACT${POINT_SEP}${code.replace(/[^A-Za-z0-9]+/g, '_').toUpperCase()}`;
   actionSeq++;
   points.push({ pc, perm: code, status: 'IMPLEMENTED' });
-  out.push(`INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at) VALUES (${q(pc)}, ${q(fc)}, ${q(code)}, '仅后端', NULL, NULL, ${q(code)}, 'IMPLEMENTED', 0, NULL, 'ACTION', ${900 + actionSeq}, NOW(), NOW());`);
+  out.push(`INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, gated_by, sort, created_at, updated_at) VALUES (${q(pc)}, ${q(fc)}, ${q(code)}, '仅后端', NULL, NULL, ${q(code)}, 'IMPLEMENTED', 0, NULL, 'ACTION', NULL, ${900 + actionSeq}, NOW(), NOW());`);
 }
 
 out.push('');
@@ -280,7 +282,7 @@ function renderMarkdown(sql) {
   }
   // 字段序与上面的 INSERT 一致
   const P = pts.map((v) => ({ code: v[0], fn: v[1], name: v[2], group: v[3], href: v[4],
-                              ui: v[5], perm: v[6], status: v[7], matrix: v[8], type: v[9] }));
+                              ui: v[5], perm: v[6], status: v[7], matrix: v[8], type: v[9], gated: v[10] }));
   const menu = P.filter((x) => x.type === 'MENU');
   const notImpl = P.filter((x) => x.status === 'NOT_IMPLEMENTED');
   const L = [];

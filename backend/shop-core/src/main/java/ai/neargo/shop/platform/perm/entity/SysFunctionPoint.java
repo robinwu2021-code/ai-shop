@@ -33,8 +33,27 @@ public class SysFunctionPoint extends BaseEntity {
     /** 后端权限码。<b>null = 不受权限约束（谁都能用）</b> —— 与 NOT_IMPLEMENTED 是两回事 */
     private String permCode;
 
-    /** IMPLEMENTED / NOT_IMPLEMENTED / UNMAPPED */
+    /**
+     * IMPLEMENTED / NOT_IMPLEMENTED / UNMAPPED。
+     *
+     * <p><b>这是源码事实，不是运行时事实</b>：它由生成器按「源码里有没有这个端点」算出来，
+     * 算不到 {@link #gatedBy} 那种运行时开关。菜单要返回的是**用户点得动点不动**，
+     * 所以 {@code menu()} 会在这个值之上再按开关降一级。
+     */
     private String backendStatus;
+
+    /**
+     * 这一页被哪个运行时开关门着（属性名，如 {@code shop.inventory.enabled}）；没有则为 null。
+     *
+     * <p><b>为什么要有这一列</b>：进销存整个域默认关着，关着时一个 Bean 都不装、
+     * 控制器根本不注册。而这些点在库里标着 IMPLEMENTED（源码里确实有端点），
+     * 于是菜单把它们当正常项渲染 —— 运营点进去是 404，
+     * 而他没有任何线索知道这是「没开」而不是「坏了」。
+     *
+     * <p>存的是**源码事实**（哪个开关门着哪一页），跨部署稳定；
+     * 「现在开着没开着」是部署状态，由 {@code menu()} 现算。
+     */
+    private String gatedBy;
 
     /** 后端通了但前端页面还没做完 */
     private Boolean uiReady;
