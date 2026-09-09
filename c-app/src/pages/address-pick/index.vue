@@ -203,8 +203,11 @@ onLoad(() => {
       <!-- 判的是「能用的有几条」，不是「拿回来几条」—— 见 nearbyPickable 那段 -->
       <!-- `|| failed` 一起判：没取到时这一块留在原地说出来，而不是整块消失 -->
       <view v-if="nearbyPickable.length || failed" class="sh-card block">
-        <sh-empty v-if="failed" line failed @retry="locate"></sh-empty>
         <text class="txt-strong block__title">{{ $t("addressPick.nearby") }}</text>
+        <!-- **摆在标题之下**：它说的是「这一块的内容没取到」，
+             放到标题上面会读成「这张卡整个没加载」，而卡里还有别的东西。
+             第一版摆错了位置 —— 小程序截图上一眼看出来的（H5 上我没看这一块）。 -->
+        <sh-empty v-if="failed" line failed @retry="locate"></sh-empty>
         <view v-for="c in nearbyPickable" :key="c.communityNo" class="sh-row--divided" @tap="chooseCommunity(c)">
           <text class="txt-body row__name">{{ c.name }}</text>
           <text class="txt-caption row__sub">
