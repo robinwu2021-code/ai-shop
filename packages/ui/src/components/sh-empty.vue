@@ -168,8 +168,16 @@ defineEmits<{ retry: [] }>();
   display: flex;
   justify-content: center;
 }
-.empty__act > * {
-  flex: 0 0 auto;
-}
+/*
+ * ⚠️ **不要在这里写 `.empty__act > *`**。
+ *
+ * 插槽内容归**调用点**的作用域：小程序产物里它带的是页面的 `data-v-ecf8f08b`，
+ * 而这个件的规则钉的是 `data-v-981c29c1` —— 选择器一次都不匹配。
+ * H5 上同理（Vue 的 scoped 对插槽内容也给父作用域 id，要穿透得用 `:slotted()`）。
+ * 2026-09-09 先写了一条 `.empty__act > * { flex: 0 0 auto }`，
+ * 两端都是死规则 —— 而它看起来在做事：**按钮确实是内容宽的**，
+ * 那是上面 `display: flex` 让它成了 flex item、按内容定宽，与那条无关。
+ * 量出来才看得见：那颗按钮的 computed `flex` 是 `0 1 auto`（默认值），不是 `0 0 auto`。
+ */
 
 </style>
