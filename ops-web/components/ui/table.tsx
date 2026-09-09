@@ -22,6 +22,10 @@ export function THead({ className, ...props }: React.HTMLAttributes<HTMLTableSec
   //   「表头跟着一起右对齐」一直是**没兑现**的。全站的数值列都中招，不止某一页。
   // - sticky：滚过一屏后列名不能消失。**底色必须不透明**，否则内容会从表头下面透出来
   // - 高度走 --row-h：此前硬写 h-11，与行体的 --row-h 打架，密度切换对列表页近乎无效
+  // - `[&_th]:text-xs` 是**唯一没能上字阶的一处**，不是漏了：Tailwind 只给自己的
+  //   工具类生成任意变体，`[&_th]:txt-caption` 一条规则都不生成 —— 类名在 DOM 上、
+  //   样式不存在，表头会静默退回继承的 14px（2026-09-09 换过一次，当场量到 12→14px）。
+  //   要上档得把表头排版写进 globals.css 的 @layer components，那是另一件事。
   return <thead className={cn("sticky top-0 z-[var(--z-sticky)] bg-muted [&_th]:h-[var(--row-h)] [&_th]:whitespace-nowrap [&_th]:px-3.5 [&_th:not(.text-end):not(.text-center)]:text-left [&_th]:align-middle [&_th]:text-xs [&_th]:font-medium [&_th]:text-muted-foreground", className)} {...props} />;
 }
 export function TBody({

@@ -25,7 +25,7 @@ export function Tabs({
           onClick={() => onChange(t.key)}
           className={"focus-ring " + (segmentedItemClass(
             value === t.key,
-            "px-3.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-45",
+            "px-3.5 py-1.5 txt-body disabled:cursor-not-allowed disabled:opacity-45",
           ))}
         >
           {t.label}

@@ -114,7 +114,7 @@ export function Rail() {
       style={{ width: railExpanded ? RAIL_EXPANDED_WIDTH : RAIL_WIDTH }}
     >
       <div className={cn("flex h-14 items-center gap-2", railExpanded ? "px-4" : "justify-center")}>
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-field bg-primary text-xs text-primary-foreground">邻</span>
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-field bg-primary txt-caption text-primary-foreground">邻</span>
         {railExpanded && <span className="truncate txt-strong">{t("common.appName")}</span>}
       </div>
       {/* relative：渐隐条挂在容器的定位父级上，跟着容器一起滚就没意义了 */}

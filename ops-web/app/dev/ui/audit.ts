@@ -36,6 +36,7 @@ const RULES = {
   shadow: "阴影只有 shadow-card / shadow-pop 两档",
   dur: "过渡时长走 var(--dur) / var(--dur-fast)",
   ctlH: "控件高走 var(--ctl-h)、表格行高走 var(--row-h)（否则密度切换无效）",
+  dualTier: "一个元素挂了两个字阶（谁生效只由 globals.css 里的先后决定）",
   numAlign: "数字单元格应右对齐（规范 §12：数字右对齐 + 等宽）",
   pkWeight: "主键列应加强字重（规范 §12：扫描时需要锚点）",
 } as const;
@@ -211,6 +212,26 @@ export function audit(root: HTMLElement, scope: AuditScope = "specimens", label?
     const r = uniformRadius(el);
     if (r != null && r > 0.51 && r < pill && !allowed.some((a) => Math.abs(a - r) < 0.51)) {
       findings.push({ comp: compOf(el, label), rule: RULES.radius, detail: `border-radius: ${r}px`, sample: sampleOf(el) });
+    }
+
+    /*
+     * ── 两个字阶撞在一个元素上
+     *
+     * **为什么这条要在 DOM 上量，而不是在源码里扫**：`design-tokens.test.ts` 有一条
+     * 同名规则，但它只看单个 `className="…"` 字面量。而档位常常是**拼出来的** ——
+     * `button.tsx` 的 base 带一档、`size.sm` 再带一档，两个档从不出现在同一个字符串里，
+     * 源码扫描一个字都看不见（2026-09-09 组件层接入字阶时就这么漏出去一处）。
+     * 拼装是运行时的事，那就在运行时量。
+     *
+     * ⚠️ 写这条时先把它放进了上面圆角那个 `if` 的**块内**，于是它只对
+     * 「已经违反圆角」的元素才跑 —— 页面上 78 个撞档的元素一个都没报，而体检是绿的。
+     * 又一次「判据放在了比意图更窄的作用域里」。加规则后先做一次消融，
+     * 就是为了逼出这种错。
+     */
+    const tiers = cls.match(/\btxt-(display|title|heading|body|strong|label|caption)\b/g);
+    if (tiers && tiers.length > 1) {
+      findings.push({ comp: compOf(el, label), rule: RULES.dualTier,
+                      detail: tiers.join(" + "), sample: sampleOf(el) });
     }
 
     // ── 硬编码颜色（class 里的 hex 与 inline style 里的 hex）

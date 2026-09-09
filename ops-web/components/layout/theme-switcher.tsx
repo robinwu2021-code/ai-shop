@@ -79,7 +79,7 @@ export function ThemeSwitcher() {
                   type="button"
                   aria-pressed={dark === key}
                   onClick={() => setDark(key)}
-                  className={"focus-ring " + (segmentedItemClass(dark === key, "flex flex-1 items-center justify-center gap-1.5 py-1 text-xs"))}
+                  className={"focus-ring " + (segmentedItemClass(dark === key, "flex flex-1 items-center justify-center gap-1.5 py-1 txt-caption"))}
                 >
                   <Icon className="size-3.5" /> {label}
                 </button>

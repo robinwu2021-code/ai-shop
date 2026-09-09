@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 const buttonVariants = cva(
   // 控件档 6px：**不用药丸**。药丸是消费端语言，密集表格每行 3~5 个按钮时
   // 吃横向空间且削弱扫描性；业界密集后台（Linear/Vercel/Stripe/shadcn）都在 4~8px。
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-field text-sm font-semibold transition-colors focus-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-field font-semibold transition-colors focus-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -19,11 +19,16 @@ const buttonVariants = cva(
       // 高度一律走 --ctl-h（密度 token）。此前是 h-9/h-8/h-10 字面值：
       // 输入框走了 token 而按钮没走，[data-density="dense"] 下两者**高度错开**，
       // 工具栏一行里搜索框和按钮不齐 —— token 定义了却没人消费，等于没有密度切换。
+      // 字阶挂在**尺寸**上，base 里不留 —— base 带一档、sm 再带一档的话，
+      // 一个元素上就有两个 txt-*，谁生效只由 globals.css 里的先后决定。
+      // 而这种「两个档位分散在 cva 的不同片段里」的写法，
+      // `design-tokens.test.ts` 那条「一个元素只挂一个字阶」**扫不到** ——
+      // 它只看单个 className 字面量，两个档从不出现在同一个字符串里。
       size: {
-        default: "h-[var(--ctl-h)] px-4 py-2",
-        sm: "h-[calc(var(--ctl-h)-4px)] px-3.5 text-xs",
-        lg: "h-[calc(var(--ctl-h)+4px)] px-6",
-        icon: "h-[var(--ctl-h)] w-[var(--ctl-h)]",
+        default: "h-[var(--ctl-h)] px-4 py-2 txt-body",
+        sm: "h-[calc(var(--ctl-h)-4px)] px-3.5 txt-caption",
+        lg: "h-[calc(var(--ctl-h)+4px)] px-6 txt-body",
+        icon: "h-[var(--ctl-h)] w-[var(--ctl-h)] txt-body",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

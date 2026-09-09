@@ -79,7 +79,7 @@ export function MultiSelect({
             <span className="text-muted-foreground">{placeholder ?? t("form.selectPlaceholder")}</span>
           ) : (
             value.map((v) => (
-              <span key={v} className="inline-flex items-center gap-1 rounded-chip bg-card px-1.5 text-xs leading-5">
+              <span key={v} className="inline-flex items-center gap-1 rounded-chip bg-card px-1.5 txt-caption leading-5">
                 {labelOf(v)}
                 {!disabled && (
                   <X

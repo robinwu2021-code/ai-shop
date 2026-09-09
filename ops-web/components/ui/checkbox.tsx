@@ -95,7 +95,7 @@ export function CheckboxField({
       <label
         htmlFor={inputId}
         className={cn(
-          "select-none text-sm leading-none",
+          "select-none txt-body leading-none",
           disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
         )}
       >

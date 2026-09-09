@@ -73,7 +73,7 @@ export function EmptyState({
 }: { title: string; desc?: string; action?: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 rounded-card bg-muted/50 py-16 text-center">
-      <div className="text-sm font-semibold">{title}</div>
+      <div className="txt-body font-semibold">{title}</div>
       {desc && <div className="txt-caption text-muted-foreground">{desc}</div>}
       {action && <div className="mt-2">{action}</div>}
     </div>

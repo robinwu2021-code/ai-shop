@@ -28,7 +28,7 @@ export const Label = React.forwardRef<React.ComponentRef<typeof LabelPrimitive.R
     <LabelPrimitive.Root
       ref={ref}
       className={cn(
-        "inline-block text-xs font-bold text-muted-foreground",
+        "inline-block txt-caption font-bold text-muted-foreground",
         // 控件 disabled 时标签同步变淡：靠 peer 关系（<Label className="peer-disabled:…"> 需
         // 控件在前）不可靠，故这里用 group：把行套 `group` 并给控件 `data-disabled`。
         "group-data-[disabled=true]:opacity-50",

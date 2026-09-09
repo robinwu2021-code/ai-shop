@@ -609,42 +609,37 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
       .toEqual([]);
   });
 
-  it("components/ 绕开字阶的存量只准变短（基线 23，来源见注释）", () => {
+  it("components/ 绕开字阶的存量只准变短（基线 7，来源见注释）", () => {
     /*
-     * 页面层那条同样的规则是「基线 0，不留额度」。组件层不能照抄，因为它**还没接入字阶**：
-     * 23 处里有 6 处写的是 `text-[13px]`（二级导航、页签、tooltip），
-     * 而七档里**根本没有 13px** —— 要么给外壳加一档，要么把它们挪到 12/14，
-     * 那是设计决定，不是顺手能改的。硬清会一次改掉全站外壳的观感。
+     * 页面层那条同样的规则是「基线 0，不留额度」。组件层留了额度，但**只剩两个真原因**
+     * （见下面 BASELINE 里的分类），不是「还没轮到」。
      *
-     * 所以先立基线止血：新写的一处都不许加，存量只准变短。
-     * 2026-09-09 立基线时先清掉了两处 **`text-[10px]`**（通知徽标、二级导航的「待建」标）
-     * —— 那两处不是「档位选择」而是**违反明文规范**：globals.css 写着
-     * 「字号下限 12px：此前页面上真实出现过 10px 文字，任何屏幕都读不清」。
-     * 25 → 23。
+     * 2026-09-09 一天走完 25 → 7：
+     *   · 25 → 23：清掉两处 `text-[10px]`。那不是档位选择而是**违反明文规范** ——
+     *     globals.css 写着「字号下限 12px：此前页面上真实出现过 10px 文字，
+     *     任何屏幕都读不清」。
+     *   · 23 → 7：清掉 16 处。**能清的前提是先修了根因** —— 字阶原本裸写在 layer 之外，
+     *     会压掉紧挨着它的 `font-semibold` / `leading-*`，机械替换会静默改掉一批字重。
+     *     `lang-switcher.tsx` 里当时就留着一句「不用 txt-label：类型阶（无 @layer）
+     *     会盖掉 Tailwind 的字重类」——**诊断早就是对的，只是没人去修那个根因**。
+     *     修完之后这 16 处里 12 处 computed 值一字不变，2 处只差 1px 行高，
+     *     4 处 12px 文字从 400 变 500 —— 而那正是 globals.css 明写的
+     *     「小字（≤12px）一律 500 以上字重」。
      *
      * ⚠️ **两个方向都要报**：只报「多了」的话，修好的行会永远留在表里，
-     * 那一档就此免检（见 known-* 棘轮吃过的亏）。修好了就把数字改小或删掉这一行。
+     * 那一档就此免检（见 known-* 棘轮吃过的亏）。修好了就把数字改小或删掉这一行 ——
+     * 这一轮 23 → 7 就是它自己报出来的。
      */
     const BASELINE: Record<string, number> = {
-      "layout/lang-switcher.tsx": 1,
-      "layout/rail.tsx": 1,
+      // 只剩两类。**都不是「还没轮到」，是各有原因**：
+      // ① 6 处 `text-[13px]`：七档里没有 13px（二级导航 3 · 页签 · 多选项 · tooltip）。
       "layout/secondary-nav.tsx": 3,
-      "layout/theme-switcher.tsx": 1,
-      "ui/badge.tsx": 1,
-      "ui/button.tsx": 2,
-      "ui/checkbox.tsx": 1,
-      "ui/dropdown-menu.tsx": 1,
-      "ui/form-drawer.tsx": 1,
-      "ui/label.tsx": 1,
-      "ui/misc.tsx": 1,
-      "ui/multi-select.tsx": 2,
-      "ui/radio-group.tsx": 1,
-      "ui/switch.tsx": 1,
+      "ui/multi-select.tsx": 1,
       "ui/tab-header.tsx": 1,
-      "ui/table.tsx": 1,
-      "ui/tabs.tsx": 1,
       "ui/tooltip.tsx": 1,
-      "ui/tree.tsx": 1,
+      // ② 表头：`[&_th]:txt-caption` 是任意变体套自定义类，**一条规则都不生成**
+      //    （换过一次，当场量到 12→14px）。要上档得把表头排版写进 @layer components。
+      "ui/table.tsx": 1,
     };
     const actual: Record<string, number> = {};
     for (const f of walk(join(ROOT, "components"))) {
