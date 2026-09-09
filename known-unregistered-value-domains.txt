@@ -24,6 +24,22 @@
 # 教训：**「找出违规」型判据少扫等于全绿**，所以 surface() 现在带一条表数下界断言。
 #
 # 当前（2026-09-06 第二版）：可见面 206 列，已判定 12（登记 8 + 驳回 4），未判定 196（ful_batch.status 已登记，见 check-enum-fields.mjs 里那条注释）。
+
+# ── 2026-09-09 第三版：176 → 182，**又一次「变长 = 此前少看了」** ──
+#
+# check-enum-fields 的 valuesInComment 在**第一个括号处截断**注释：
+# `ACTIVE / PAUSED 暂停发放（已领的不受影响）/ ENDED` 只抽出前两个，ENDED 静默丢掉。
+# 量过：24 个列受影响，最重的 prd_goods.audit_status 四个值只抽出 DRAFT 一个，
+# stl_payment.direction 丢掉 SUBSIDY_REVERSE 与 PAYOUT。
+#
+# 后果不只是少看：漏抽的值会被报成「端上多出来的、按它筛必然是空列表」——
+# **一个方向完全相反的假结论**。我据它一度把 pmt_coupon.status 与 rvw_appeal.status
+# 记成「端上有后端没有」的真差异，其实两条都是量具造的假阳性。
+#
+# 改成「先剥括号、再在句号处截断」之后：18 个列多抽出真取值（进了这份清单），
+# 23 个列去掉了从散文里误抽的假值（其中 6 个因此不再算取值域，从清单里删了）。
+# 两个方向都变准，所以这次的净增 +6 是**看得更清楚**，不是欠账变多。
+
 cmt_community.coords_source
 cmt_community.kind
 cmt_pickup_point.fee_mode
@@ -34,7 +50,6 @@ ful_carrier.carrier
 ful_group_pickup.status
 ful_shipment.carrier
 ful_shortage_report.kind
-inv_inbound_line.unit_cost_minor
 inv_inbound_order.source_type
 inv_inbound_order.status
 inv_item.cost_method
@@ -56,10 +71,13 @@ inv_stock_count.status
 inv_supplier.status
 mbr_member.level
 mbr_member.source
+mbr_member.status
 mbr_member_source.inviter_role
 mbr_member_source.source_type
 mbr_reach_log.scene
+mbr_setting.member_scope
 mbr_tag.status
+mbr_tag.tag_type
 mch_account.status
 mch_admission_policy.legal_form
 mch_appointment_slot.status
@@ -81,7 +99,9 @@ mch_service_area.source
 mch_service_area.status
 mch_session.subject_kind
 mch_staff_log.action
+mch_store.business_mode
 mch_store.status
+mch_store_audit.kind
 mch_violation.action
 mkt_attribution_log.trace_no
 mkt_campaign.discount_minor
@@ -111,13 +131,11 @@ ord_order.pay_scene
 ord_status_log.operator_type
 ord_sub_order.traffic_source
 pay_risk_shadow_log.verdict
-pay_setting.setting_value
 pmt_activity.benefit_amount_minor
 pmt_activity.benefit_ref
 pmt_activity.benefit_type
 pmt_activity.ended_reason
 pmt_activity.goal
-pmt_activity.quota
 pmt_activity.schedule_type
 pmt_activity.status
 pmt_activity.trigger_type
@@ -127,16 +145,17 @@ pmt_apply.funder
 pmt_apply.promo_type
 pmt_apply.redeem_mode
 pmt_coupon.benefit_mode
+pmt_coupon.benefit_value
 pmt_coupon.issue_mode
 pmt_coupon.redeem_mode
 pmt_coupon.scope_type
-pmt_coupon.status
 pmt_coupon.validity_mode
 pmt_coupon_issue.issue_mode
 pmt_coupon_scope.scope_type
 pmt_user_coupon.status
 prd_category.template
-prd_goods.params
+prd_category_points.earn_mode
+prd_goods.audit_status
 prd_goods_draft.status
 prd_sku.barcode
 prd_spec_dim.code
@@ -145,9 +164,9 @@ prd_spec_dim.scope
 prd_spec_dim.status
 prd_spec_dim.usage_type
 prd_spec_dim.value_type
+prd_spec_template.scope
 prd_spec_template.status
 prd_spec_value.code
-prd_spec_value.value_no
 prd_spu_std.status
 prd_stock_lock.status
 prd_topic.status
@@ -161,6 +180,7 @@ rvw_review.risk_flags
 stl_bill.channel_fee_source
 stl_bill.invoice_status
 stl_channel_message.msg_type
+stl_fee_rule.business_mode
 stl_payment.direction
 stl_payment.pay_channel
 stl_payment.pay_method
@@ -169,8 +189,8 @@ stl_payment.status
 stl_payment.sub_order_no
 stl_points_pool.direction
 stl_points_pool.pool_type
+stl_recon_diff.diff_type
 stl_recon_diff.pay_channel
-stl_recon_diff.resolution
 stl_recon_diff.source
 stl_recon_diff.status
 stl_settle_invoice.title_type
@@ -195,9 +215,10 @@ sys_pay_channel.pay_channel
 sys_pay_channel_rate.legal_form
 sys_pay_channel_rate.pay_channel
 sys_pay_channel_rate.pay_method
+sys_region.audit_status
 sys_region.level
+sys_region.source
 usr_identity.identity_type
 usr_person.status
 usr_person_merge_log.reason
 usr_session.subject_kind
-

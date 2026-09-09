@@ -314,6 +314,12 @@ export const FIELDS = [
     ],
   },
   {
+    concept: "券状态（新模型）",
+    field: "pmt_coupon.status",
+    backend: { ddl: ["pmt_coupon", "status"] },
+    clients: [{ file: SHARED_TYPES, type: "CouponStatus" }],
+  },
+  {
     concept: "券出资方",
     field: "pmt_coupon.funder",
     backend: { ddl: ["pmt_coupon", "funder"] },
@@ -476,7 +482,6 @@ export const DISMISSED = [
   { key: "stl_settle_invoice.period", why: "日期格式 YYYY/MM，不是取值域 —— 候选启发式的误报" },
   { key: "ful_batch.arrive_date", why: "日期格式 YYYY/MM/DD，同上" },
   { key: "stl_recon_diff.bill_date", why: "日期格式 YYYY/MM/DD，同上" },
-  { key: "mch_entity_apply.community_nos", why: "JSON 数组列，注释里的 JSON/COMMUNITY 是句子不是取值域" },
 ];
 
 /**
@@ -536,7 +541,25 @@ export function surface() {
 function valuesInComment(comment) {
   const eq = [...comment.matchAll(/\b([A-Z][A-Z0-9_]+)\s*=/g)].map((x) => x[1]);
   if (eq.length) return eq;
-  return [...comment.split(/[：:，,（(]/)[0].matchAll(/([A-Z][A-Z0-9_]{1,})/g)].map((x) => x[1]);
+  /*
+   * ⚠️ **括号是插在取值中间的说明，不是取值域的结尾。**
+   *
+   * 这里原来是 `comment.split(/[：:，,（(]/)[0]` —— 在第一个括号处截断。
+   * 于是 `ACTIVE / PAUSED 暂停发放（已领的不受影响）/ ENDED` 只抽出前两个，
+   * **ENDED 被静默丢掉**，然后报成「端上多出来的值，按它筛必然是空列表」——
+   * 一个方向完全相反的假结论。2026-09-09 量过：24 个列受影响，
+   * 最重的是 `prd_goods.audit_status`（四个值只抽出 DRAFT 一个）
+   * 与 `stl_payment.direction`（丢掉 SUBSIDY_REVERSE 与 PAYOUT）。
+   *
+   * 改法两步，缺一不可：
+   *   ① 先**剥掉成对括号**里的内容 —— 那是说明，不是值；
+   *   ② 再在 `。` 或 `：，` 处截断 —— 句号之后是散文。
+   * 只做 ① 会从散文里抽出假值（`kind=NOTICE 才有意义` 抽出 NOTICE、
+   * 布尔列 `stock_restored` 抽出 RETURN_REFUND）；只做 ② 修不了本来的漏抽。
+   * 两步一起：18 个列多抽出真取值，23 个列去掉误抽的假值，两个方向都变准。
+   */
+  const noParen = comment.replace(/（[^）]*）/g, " ").replace(/\([^)]*\)/g, " ");
+  return [...noParen.split(/[。：:，,]/)[0].matchAll(/([A-Z][A-Z0-9_]{1,})/g)].map((x) => x[1]);
 }
 
 /** 已判定 = 登记进 FIELDS ∪ 显式驳回 */
