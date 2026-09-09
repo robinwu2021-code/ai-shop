@@ -64,8 +64,17 @@ async function load() {
   visited.value = v.status === "fulfilled" ? v.value : [];
   promoted.value = p.status === "fulfilled" ? p.value : [];
   nearby.value = n.status === "fulfilled" ? n.value : [];
-  // 只有全挂才算「没取到」：挂一条时另两块还在，照常显示
-  failed.value = [v, p, n].every((r) => r.status === "rejected");
+  /*
+   * 只有**问过的全挂**才算「没取到」：挂一条时另两块还在，照常显示。
+   *
+   * **`v` 不能无条件算进来**：未登录时它是 `Promise.resolve([])`，永远 fulfilled，
+   * 于是 `every(rejected)` 永远为假 —— 这一页的出错态对未登录用户根本到不了，
+   * 而没登录正是它最常见的访客。2026-09-09 在小程序运行时里把请求全打挂才看出来：
+   * 三条全失败，页面显示的却是空态「这附近还没有商家入驻」加一颗「去逛逛」。
+   * H5 上同样漏，只是我当时是登录态，第一条真的发了出去、也真的挂了。
+   */
+  const asked = user.isLogin ? [v, p, n] : [p, n];
+  failed.value = asked.every((r) => r.status === "rejected");
   loaded.value = true;
 }
 
