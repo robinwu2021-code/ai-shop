@@ -1860,7 +1860,7 @@
       "name": "sh-actionbar",
       "file": "packages/ui/src/components/sh-actionbar.vue",
       "scope": "跨端",
-      "lines": 128,
+      "lines": 166,
       "props": [
         "pill?: \"plain\" | \"lead\"",
         "tabbar?: boolean",
@@ -1879,7 +1879,8 @@
         "spacing": [
           12,
           16,
-          24
+          24,
+          28
         ],
         "radius": [],
         "deps": []

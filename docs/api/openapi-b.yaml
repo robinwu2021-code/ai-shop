@@ -5342,6 +5342,11 @@ components:
         - "communities"
       additionalProperties: false
       description: "跨级搜索（P1）：区划命中带从省到父级的路径，聚落命中带所在街道路径"
+    AreaMode: 
+      type: "string"
+      enum: 
+        - "INCLUDE"
+        - "EXCLUDE"
     AreaLevel: 
       type: "string"
       enum: 
@@ -5522,10 +5527,7 @@ components:
           type: "string"
           description: "业务键（服务端回填）。范围子集（P2）按它引用；端上新加的项没有，保存后才有"
         mode: 
-          type: "string"
-          enum: 
-            - "INCLUDE"
-            - "EXCLUDE"
+          "$ref": "#/components/schemas/AreaMode"
           description: "覆盖方向：`INCLUDE` 纳入（默认，不传即此）/ `EXCLUDE` 排除。\n\n它回答的是「商家框了小区，算不算覆盖里面每栋楼」—— **默认算**， 但给一个显式的出口：勾了整个小区、单独排除 3 幢。 展开时先并后减，EXCLUDE 优先；而矛盾应当在**输入端**消除 （勾了排除就把对应的 include 去掉），不要求用户记住这条优先级。"
         status: 
           "$ref": "#/components/schemas/AreaStatus"

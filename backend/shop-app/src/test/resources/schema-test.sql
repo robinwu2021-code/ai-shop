@@ -2109,6 +2109,7 @@ CREATE TABLE IF NOT EXISTS sys_function_point
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     ui_kind VARCHAR(16) NOT NULL DEFAULT 'MENU',
+    gated_by VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_point UNIQUE (point_code)
 );
@@ -8810,3 +8811,13 @@ INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated
 SELECT 'TECH_OPS', 'ACT__SYSTEM_ENV_SWITCH', 'OPS', NOW(), NOW()
 FROM DUAL WHERE NOT EXISTS (
   SELECT 1 FROM sys_role_point x WHERE x.role_code='TECH_OPS' AND x.point_code='ACT__SYSTEM_ENV_SWITCH');
+UPDATE sys_function_point SET gated_by='shop.inventory.enabled', updated_at=NOW()
+ WHERE point_code IN (
+   'OPS_MERCHANT__TAB_CHAIN',
+   'OPS_INVENTORY',
+   'OPS_INVENTORY__TAB_LEDGER',
+   'OPS_INVENTORY__TAB_RECON',
+   'OPS_INVENTORY__TAB_LINK_HEALTH',
+   'OPS_INVENTORY__TAB_CREDENTIALS');
+UPDATE sys_function_point SET gated_by='shop.job.enabled', updated_at=NOW()
+ WHERE point_code = 'OPS_JOBS';
