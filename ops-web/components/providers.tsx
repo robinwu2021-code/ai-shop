@@ -1,6 +1,6 @@
 "use client";
 
-import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, MutationCache, focusManager } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTheme, applyTheme } from "@/lib/stores/theme";
 import { useLocaleStore, applyLocale } from "@/lib/stores/locale";
@@ -72,6 +72,31 @@ function useRefreshPerms() {
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [token]);
+}
+
+/*
+ * **接管 React Query 的焦点判定，钉成「始终有焦点」。**
+ *
+ * 不这么做的后果是一个不会自愈的死局：请求失败时 React Query 会安排重试，
+ * 而**窗口没有焦点时重试被暂停**（`fetchStatus: "paused"`）——
+ * 于是 `status` 永远停在 `pending`，页面里那句
+ * `if (!data && isPending) return <Skeleton/>` 就一直渲染骨架屏：
+ * 没有错误、没有重试入口，而且**焦点回来也不恢复**。
+ *
+ * 场景一点都不刁钻：运营在后台标签页打开运营端，某个接口抖一下，
+ * 他切回来看到的是一个永远转不完的加载条 —— 他会以为「系统卡住了」，
+ * 而真相是「请求失败过一次，然后没人再试了」。
+ * 2026-09-09 在 /communities?tab=health 上实地撞到（后端那次是本地 jar 陈了），
+ * 两处独立复现：真实浏览器 + `lib/query-focus.test.ts` 里的单测。
+ *
+ * 代价是失去「后台标签页里不重试」这个省电优化。对一个内部管理台来说，
+ * 「失败要看得见」远比省那一次重试重要 —— 何况 retry 只有 1 次。
+ *
+ * ⚠️ 只在浏览器里做。服务端渲染时没有 window，也没有焦点这回事。
+ */
+if (typeof window !== "undefined") {
+  focusManager.setEventListener(() => () => {});  // 断开 visibilitychange 这个事件源
+  focusManager.setFocused(true);
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
