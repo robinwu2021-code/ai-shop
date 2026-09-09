@@ -29,7 +29,7 @@ function SoonBadge() {
 function PhaseBadge({ phase }: { phase: Phase }) {
   const { t } = useI18n();
   return (
-    <span className="ms-auto shrink-0 rounded-chip bg-primary/8 px-1 txt-caption text-primary/60">
+    <span className="ms-auto shrink-0 rounded-chip bg-primary/8 px-1 txt-caption text-primary-ink">
       {t(PHASE_KEY[phase])}
     </span>
   );

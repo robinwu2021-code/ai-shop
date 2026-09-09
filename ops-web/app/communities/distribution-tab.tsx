@@ -50,7 +50,7 @@ function Gap({ label, n, hint, tone, to, toLabel }: {
   to?: string; toLabel?: string;
 }) {
   const cls = n === 0 ? "text-muted-foreground"
-    : tone === "danger" ? "text-destructive" : tone === "warn" ? "text-amber-600" : "text-primary";
+    : tone === "danger" ? "text-destructive" : tone === "warn" ? "text-warning-ink" : "text-primary-ink";
   return (
     <div className="rounded-card border border-border bg-card p-4">
       <div className="txt-body text-muted-foreground">{label}</div>
@@ -58,7 +58,7 @@ function Gap({ label, n, hint, tone, to, toLabel }: {
       <div className="mt-2 txt-caption leading-relaxed text-muted-foreground">{hint}</div>
       {/* 数字是 0 时不给链接：那一格没有待办，点进去只会让人以为漏看了什么 */}
       {to && n > 0 && (
-        <Link className="focus-ring mt-2 inline-block txt-caption text-primary underline-offset-2 hover:underline"
+        <Link className="focus-ring mt-2 inline-block txt-caption text-primary-ink underline-offset-2 hover:underline"
               href={to}>
           {toLabel}
         </Link>

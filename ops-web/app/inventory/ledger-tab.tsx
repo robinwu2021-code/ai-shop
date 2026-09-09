@@ -77,7 +77,7 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
       // 正负是这一页最该一眼看见的东西，所以带符号显示：
       // 「12」与「-12」在窄列里差一个字符，加了号才不用回头看单据类型
       cell: (r) => (
-        <span className={r.qtyDelta < 0 ? "text-destructive" : "text-success"}>
+        <span className={r.qtyDelta < 0 ? "text-destructive" : "text-success-ink"}>
           {r.qtyDelta > 0 ? `+${r.qtyDelta}` : r.qtyDelta}
         </span>
       ),

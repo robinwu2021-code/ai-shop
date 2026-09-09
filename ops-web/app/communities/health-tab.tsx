@@ -36,7 +36,7 @@ function Stat({ label, done, total, consequence, allGood, tone }: {
 }) {
   const missing = total - done;
   const cls = missing === 0 ? "text-muted-foreground"
-    : tone === "danger" ? "text-destructive" : "text-amber-600";
+    : tone === "danger" ? "text-destructive" : "text-warning-ink";
   return (
     <div className="rounded-card border border-border bg-card p-4">
       <div className="txt-body text-muted-foreground">{label}</div>
@@ -71,7 +71,7 @@ export function HealthTab({ enabled }: { enabled: boolean }) {
       header: c.colMerchant,
       // 能跳过去才算「点名到户」；只列一串号，运营下一步还是无从做起
       cell: (r) => (
-        <a className="focus-ring text-primary underline-offset-2 hover:underline"
+        <a className="focus-ring text-primary-ink underline-offset-2 hover:underline"
            href={`/merchants?keyword=${encodeURIComponent(r.merchantNo)}`}>
           {r.merchantNo}
         </a>

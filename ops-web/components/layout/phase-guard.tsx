@@ -21,7 +21,7 @@ export function PhaseGuard({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
-      <div className="mb-4 flex size-14 items-center justify-center rounded-sheet bg-primary/8 text-primary/70">
+      <div className="mb-4 flex size-14 items-center justify-center rounded-sheet bg-primary/8 text-primary-ink">
         <Lock className="size-6" />
       </div>
       <div className="mb-1 txt-title">{t("phase.lockedTitle")}</div>

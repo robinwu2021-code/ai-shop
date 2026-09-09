@@ -102,7 +102,7 @@ export function FenceDialog({
             <span className="tabular-nums">
               {impact.currentInside} → <strong>{impact.previewInside}</strong>
               <span className={delta === 0 ? "ml-2 text-muted-foreground"
-                : delta > 0 ? "ml-2 text-primary" : "ml-2 text-destructive"}>
+                : delta > 0 ? "ml-2 text-primary-ink" : "ml-2 text-destructive"}>
                 {delta > 0 ? `+${delta}` : delta}
               </span>
             </span>

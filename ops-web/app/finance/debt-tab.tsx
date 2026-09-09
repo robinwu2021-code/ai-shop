@@ -74,7 +74,7 @@ export function DebtTab({ c, canExecute }: { c: FinanceCopy; canExecute: boolean
        * 而这一页存在的理由就是让人看得懂这本账。
        */
       cell: (t) => (
-        <span className={t.amountMinor > 0 ? "text-warning" : "text-success"}>
+        <span className={t.amountMinor > 0 ? "text-warning-ink" : "text-success-ink"}>
           {t.amountMinor > 0 ? "+" : "−"}{money(Math.abs(t.amountMinor))}
         </span>
       ),

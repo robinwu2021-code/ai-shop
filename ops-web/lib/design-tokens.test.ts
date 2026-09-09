@@ -680,6 +680,49 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
       .toEqual([]);
   });
 
+  it("实心语义色不许当文字色 —— 用 -ink 档（`text-destructive` 是唯一例外，实测够 AA）", () => {
+    /*
+     * `--primary` / `--warning` / `--info` / `--success` 是给**填充面**用的实心色。
+     * 拿它们当文字色压在浅底上，对比度过不了 AA。2026-09-09 全 5 套皮肤 × 明暗
+     * 逐个量过（文字压在 `--card` 上，取最差一组）：
+     *
+     *   --primary      2.66（浅·fresh）    ✗
+     *   --warning      2.35（浅·blue）     ✗
+     *   --info         4.50（浅·blue）     ✗  ← 实际 4.4996，卡在线下
+     *   --success      2.62（浅·mono）     ✗
+     *   --destructive  4.83（浅·mono）     ✓  ← 唯一够的，所以不拦它
+     *   text-amber-600 3.19（裸调色板色）   ✗  ← 顺带一并拦掉：它连 token 都不是
+     *
+     * **为什么要有这条源码规则**：`/dev/pages` 的对比度体检量的是「当前渲染出来的
+     * 文字」—— 弹窗、抽屉、非默认页签里的那些量不到。这一轮 6 处违规里，
+     * 有 4 处正好落在那个盲区（社区围栏弹窗、位置分布页签、库存台账、财务欠款）。
+     * 两种手段各有盲区，不能互相替代。
+     *
+     * 判据只认「独立的类名」：`text-primary-ink` / `text-primary-foreground`
+     * 这些带后缀的是另一档，不在此列。
+     */
+    const SOLID = ["primary", "warning", "info", "success"];
+    const offenders: string[] = [];
+    for (const f of [...pageFiles(), ...walk(join(ROOT, "components"))]) {
+      if (!/\.tsx?$/.test(f) || /\.test\.tsx?$/.test(f)) continue;
+      const src = readFileSync(f, "utf8");
+      const comments = commentLines(src);
+      src.split("\n").forEach((l, i) => {
+        if (comments.has(i)) return;
+        for (const name of SOLID) {
+          // 后面必须不是 `-`（否则是 -ink / -tint / -foreground）也不是别的类名字符
+          if (new RegExp(`\\btext-${name}(?![\\w-])`).test(l)) {
+            offenders.push(`${rel(f)}:${i + 1}  text-${name} → text-${name}-ink`);
+          }
+        }
+        for (const m of l.matchAll(/\btext-(?:amber|red|green|blue|orange|yellow|slate|gray|zinc)-\d{2,3}(?![\w-])/g)) {
+          offenders.push(`${rel(f)}:${i + 1}  ${m[0]} → 走语义 token（-ink 档）`);
+        }
+      });
+    }
+    expect(offenders, `实心色只用于填充面，文字用 -ink：\n${offenders.join("\n")}`).toEqual([]);
+  });
+
   it("字阶必须写在 @layer components 里 —— 裸写会压掉紧挨着它的工具类", () => {
     /*
      * `@import "tailwindcss"` 声明了 `theme, base, components, utilities` 四层，
