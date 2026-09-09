@@ -984,7 +984,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 123,
+        "b-app": 124,
         "c-app": 11
       }
     },
@@ -2109,7 +2109,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 50,
+        "b-app": 49,
         "c-app": 29,
         "lib": 1
       },
@@ -3443,7 +3443,6 @@
       "components": [
         "sh-add",
         "sh-cover",
-        "sh-empty",
         "sh-icon-btn",
         "sh-icon",
         "sh-kv",
@@ -3452,7 +3451,7 @@
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 290,
+      "libClassHits": 291,
       "localSelectors": 70,
       "localCssLines": 304,
       "rolled": []

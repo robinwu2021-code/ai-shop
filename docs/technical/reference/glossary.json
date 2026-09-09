@@ -6914,7 +6914,7 @@
           "ar": "أنت تعدّل مسودة؛ ما زال المشترون يرون النسخة القديمة"
         },
         {
-          "key": "goods.draftLoadFailed",
+          "key": "goods.draftLoadFailedHint",
           "zh-CN": "上次存的草稿没读到，现在编辑的是线上版；发布会覆盖掉草稿",
           "en": "Could not read your saved draft — you are editing the live version, and publishing will overwrite the draft",
           "ar": "تعذّر قراءة مسودتك المحفوظة؛ أنت تحرّر النسخة المعروضة، والنشر سيستبدل المسودة"
