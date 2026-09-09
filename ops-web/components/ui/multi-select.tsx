@@ -107,7 +107,7 @@ export function MultiSelect({
                 type="button"
                 onClick={() => toggle(o.value)}
                 className={cn(
-                  "focus-ring flex w-full items-center gap-2 rounded-field px-2 py-1.5 text-start text-[13px] transition-colors",
+                  "focus-ring flex w-full items-center gap-2 rounded-field px-2 py-1.5 text-start txt-body transition-colors",
                   on ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
                 )}
               >

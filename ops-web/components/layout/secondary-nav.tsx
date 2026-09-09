@@ -51,7 +51,7 @@ function LeafRow({ leaf, active }: { leaf: NavLeaf; active: boolean }) {
   if (unimplemented) {
     return (
       <span
-        className="flex items-center rounded-field px-2.5 py-1.5 text-[13px] text-muted-foreground/50"
+        className="flex items-center rounded-field px-2.5 py-1.5 txt-body text-muted-foreground/50"
         title={t("nav.notImplementedHint")}
       >
         <span className="truncate">{tNav(leaf.label)}</span>
@@ -64,7 +64,7 @@ function LeafRow({ leaf, active }: { leaf: NavLeaf; active: boolean }) {
   if (leaf.soon || locked) {
     return (
       <span
-        className="flex items-center rounded-field px-2.5 py-1.5 text-[13px] text-muted-foreground/50"
+        className="flex items-center rounded-field px-2.5 py-1.5 txt-body text-muted-foreground/50"
         title={locked ? `${t(PHASE_KEY[leaf.phase!])} ${t("phase.suffix")}` : t("common.soon")}
       >
         <span className="truncate">{tNav(leaf.label)}</span>
@@ -76,7 +76,7 @@ function LeafRow({ leaf, active }: { leaf: NavLeaf; active: boolean }) {
     <Link
       href={leaf.href}
       className={cn("focus-ring", 
-        "flex items-center rounded-field px-2.5 py-1.5 text-[13px] transition-colors",
+        "flex items-center rounded-field px-2.5 py-1.5 txt-body transition-colors",
         active ? "bg-accent font-medium text-[var(--primary)]" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
       )}
     >

@@ -77,7 +77,7 @@ export function TabHeader({
                   key={tb.key}
                   type="button"
                   onClick={() => onChange(tb.key)}
-                  className={"focus-ring " + (segmentedItemClass(tb.key === value, "px-3.5 py-1 text-[13px]"))}
+                  className={"focus-ring " + (segmentedItemClass(tb.key === value, "px-3.5 py-1 txt-body"))}
                 >
                   {tb.label}
                 </button>
