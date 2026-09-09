@@ -2622,7 +2622,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `transferNo` | `string` | 是 | 调拨单号 |
-| `status` | `string` | 是 | DRAFT 草稿 / SHIPPED 已发出 / RECEIVED 已收到 |
+| `status` | [`TransferStatus`](#transferstatus) | 是 | 见  {@link  TransferStatus } |
 | `fromLocationId` | `string` | 否 | 调出库位 |
 | `fromLocationName` | `string` | 否 | 调出库位名 |
 | `toLocationId` | `string` | 否 | 调入库位 |
@@ -7845,7 +7845,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `transferNo` | `string` | 是 | 调拨单号 |
-| `status` | `string` | 是 | DRAFT 草稿 / SHIPPED 已发出 / RECEIVED 已收到 |
+| `status` | [`TransferStatus`](#transferstatus) | 是 | 见  {@link  TransferStatus } |
 | `fromLocationId` | `string` | 否 | 调出库位 |
 | `fromLocationName` | `string` | 否 | 调出库位名 |
 | `toLocationId` | `string` | 否 | 调入库位 |
@@ -8082,6 +8082,17 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 - `MERCHANT_OWNED`
 - `PLATFORM`
+
+### TransferStatus
+
+调拨单状态。**与后端 `InvEnums.TransferStatus` 逐字一致。** DRAFT 草稿（还没有行）· SHIPPED 已发出（在途）· RECEIVED 已收到 · VOIDED 已作废。 此前这里是 `status: string`，取值只写在一句注释里 —— 于是 `inv_transfer_order.status` 一直挂在 `known-unregistered-value-domains.txt` 上， 而端上有 7 处 `status === "…"` 的裸字面量比较，拼错一个字母不报错、 那个分支从此不进（在途角标、数量、操作条都挂在 SHIPPED 上）。 VOIDED 是这次补上的：注释里原本只写了三个，而页面已经在比较它了。
+
+枚举取值：
+
+- `DRAFT`
+- `SHIPPED`
+- `RECEIVED`
+- `VOIDED`
 
 ### UploadImageReq
 

@@ -360,7 +360,9 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
     let toolbars = 0;
     for (const f of pageFiles()) {
       const src = readFileSync(f, "utf8");
+      const comments = commentLines(src);
       for (const m of src.matchAll(/<Toolbar\b/g)) {
+        if (comments.has(src.slice(0, m.index!).split("\n").length - 1)) continue;
         let depth = 0, end = -1, selfClosing = false;
         for (let i = m.index!; i < src.length; i++) {
           const ch = src[i];
@@ -374,8 +376,10 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
         toolbars++;
         const inner = src.slice(end + 1, close);
         if (/<Button\b/.test(inner) || /onKeyDown=/.test(inner)) continue;  // 有提交入口
-        for (const t of inner.matchAll(/<(Input|Textarea)[\s/]/g)) {
-          offenders.push(`${rel(f)}:${src.slice(0, end + 1 + t.index!).split("\n").length}  <${t[1]}>`);
+        for (const t of inner.matchAll(/<(Input|Textarea)\b/g)) {
+          const line = src.slice(0, end + 1 + t.index!).split("\n").length;
+          if (comments.has(line - 1)) continue;   // 注释里提到标签名不算
+          offenders.push(`${rel(f)}:${line}  <${t[1]}>`);
         }
       }
     }
@@ -478,8 +482,16 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
           offenders.push(`${rel(f)}: ${where} = "${text}"（${text.length} 字）`);
         }
       };
-      for (const m of src.matchAll(/empty=\{?"([^"]+)"/g)) check(`empty="${m[1]}"`, m[1]);
-      for (const m of src.matchAll(/empty=\{c\.(\w+)\}/g)) check(`empty={c.${m[1]}}`, dict[m[1]]);
+      const comments = commentLines(src);
+      /** 匹配点落在注释行里就不算 —— 见文件头 `commentLines`：解释规则的那句话
+       *  本身含被禁的记号是常态，靠改措辞讨好闸门会把注释越写越别扭 */
+      const inComment = (idx: number) => comments.has(src.slice(0, idx).split("\n").length - 1);
+      for (const m of src.matchAll(/empty=\{?"([^"]+)"/g)) {
+        if (!inComment(m.index!)) check(`empty="${m[1]}"`, m[1]);
+      }
+      for (const m of src.matchAll(/empty=\{c\.(\w+)\}/g)) {
+        if (!inComment(m.index!)) check(`empty={c.${m[1]}}`, dict[m[1]]);
+      }
       /*
        * `<EmptyState>` 直接用的那些也要看。**这是 2026-09-09 补的**：
        * 规则只认 `empty=` 属性，于是一处
@@ -487,8 +499,12 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
        * 整个绕开了射程 —— 而那句文案只有 7 个字（「门店都标过点了」）。
        * 射程外唯一的一处正好是违规，这不是巧合：**没被看的地方就是欠账攒着的地方。**
        */
-      for (const m of src.matchAll(/<EmptyState[^>]*?\stitle="([^"]+)"/g)) check(`<EmptyState title="${m[1]}">`, m[1]);
-      for (const m of src.matchAll(/<EmptyState[^>]*?\stitle=\{c\.(\w+)\}/g)) check(`<EmptyState title={c.${m[1]}}>`, dict[m[1]]);
+      for (const m of src.matchAll(/<EmptyState[^>]*?\stitle="([^"]+)"/g)) {
+        if (!inComment(m.index!)) check(`<EmptyState title="${m[1]}">`, m[1]);
+      }
+      for (const m of src.matchAll(/<EmptyState[^>]*?\stitle=\{c\.(\w+)\}/g)) {
+        if (!inComment(m.index!)) check(`<EmptyState title={c.${m[1]}}>`, dict[m[1]]);
+      }
     }
     expect(offenders, `补上「为什么空、下一步做什么」：\n${offenders.join("\n")}`).toEqual([]);
   });
@@ -519,7 +535,10 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
     let scanned = 0;
     for (const f of pageFiles()) {
       const src = readFileSync(f, "utf8");
+      const comments = commentLines(src);
       for (const m of src.matchAll(/<(DataTable|PagedTable)\b/g)) {
+        // 注释里提到标签名不算一个表格（自伤过一次：解释这条规则的注释被算成第 123 个）
+        if (comments.has(src.slice(0, m.index!).split("\n").length - 1)) continue;
         scanned++;
         if (!/\bempty=/.test(tagAt(src, m.index!))) {
           offenders.push(`${rel(f)}:${src.slice(0, m.index).split("\n").length}  ${m[1]} 缺 empty`);
