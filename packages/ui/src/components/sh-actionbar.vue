@@ -104,9 +104,11 @@ const padStyle = computed(() => ({
 /* 有底部菜单的页面：压在菜单之上。**高度走变量不抄数字** ——
    菜单高度改一次，这里跟着变（cart 的注释记着它曾经被菜单盖住过）。 */
 .ab--tabbar {
-  bottom: calc(var(--sh-tabbar-h, 124rpx) + 20rpx);
-  bottom: calc(var(--sh-tabbar-h, 124rpx) + 20rpx + constant(safe-area-inset-bottom, 0px));
-  bottom: calc(var(--sh-tabbar-h, 124rpx) + 20rpx + env(safe-area-inset-bottom, 0px));
+  /* 贴着菜单，不留缝：那 20rpx 的灰缝正是「两块板没对齐」的来源（见下面那段） */
+  inset-inline: 0;
+  bottom: var(--sh-tabbar-h, 124rpx);
+  bottom: calc(var(--sh-tabbar-h, 124rpx) + constant(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--sh-tabbar-h, 124rpx) + env(safe-area-inset-bottom, 0px));
 }
 .ab--plain,
 .ab--lead {
@@ -124,5 +126,41 @@ const padStyle = computed(() => ({
 .ab--lead {
   gap: 24rpx;
   padding: 16rpx 16rpx 16rpx 40rpx;
+}
+
+/*
+ * **压在底部菜单上时不做药丸，做通栏。**
+ *
+ * 两种形状在屏幕底部打架：这条是全圆药丸、左右内缩 28rpx、浮在灰底上；
+ * 而 `sh-tabbar` 是方角通栏、贴底、顶上一条发丝线。两块都是白的，
+ * 中间夹着 20rpx 的灰缝 —— **那条缝太窄，读不成「分开」，
+ * 形状又不同，读不成「一体」**，于是看着像两块没对齐的板。
+ * 全圆端头在屏幕底部也是孤例：那一片再没有第二个圆角这么大的东西。
+ *
+ * 浮动药丸这个形态本身是对的，但它对的是**没有底部菜单**的页面 ——
+ * 那时它浮在内容之上，下面是页面本身，圆角与阴影都说得通。
+ * 有菜单时下面是另一条白栏，浮不起来。
+ *
+ * 所以这一档改成贴着菜单、通栏、方角、共用同一条发丝线：底部两行读成一块。
+ * （淘宝 / 京东 / 拼多多的购物车结算条都是这个形态。）
+ * 今天只有 `c-app/pages/cart` 一处用到 `tabbar`，其余调用点不受影响。
+ */
+.ab--tabbar.ab--plain,
+.ab--tabbar.ab--lead {
+  border-radius: 0;
+  border-top: var(--sh-hairline);
+}
+/*
+ * 通栏之后内边距走**页面留白**，让条里的内容与页面内容同一条边线。
+ *
+ * 药丸态下这里是 `16rpx 16rpx 16rpx 40rpx` —— 左边那 40 是为圆角留的
+ *（见上面那段：文字贴着圆边会看着像被切掉一块）。方角之后这个理由没了，
+ * 而照搬它会让「全选」比上面那行「共 N 件」往里缩约 20px，两条左边线对不齐。
+ * 直接补成 68rpx（= 药丸原来的 28 内缩 + 40 内边距）也不对：那保住的是
+ * **药丸的**光学位置，而现在参照物换成了页面。
+ */
+.ab--tabbar.ab--lead,
+.ab--tabbar.ab--plain {
+  padding-inline: var(--sh-pad-page, 28rpx);
 }
 </style>
