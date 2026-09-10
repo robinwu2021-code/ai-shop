@@ -16,7 +16,13 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { pickImages } from "@shared/ports/media";
-import type { AuthCodeInfo, MyQualifications, QualificationType } from "@shared/types";
+import type {
+  AuthCodeInfo,
+  CertRecognition,
+  MyQualifications,
+  QualificationType,
+} from "@shared/types";
+import { planPrefill } from "@/utils/cert-prefill";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -108,13 +114,61 @@ async function pickPhoto() {
   uploading.value = true;
   try {
     const urls = await pickImages(1, ["album", "camera"]);
-    if (urls[0]) form.value.imageUrl = urls[0].tempPath;
+    if (!urls[0]) return;
+    form.value.imageUrl = urls[0].tempPath;
+    await tryRecognize(urls[0].tempPath);
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
     uploading.value = false;
   }
 }
+
+/**
+ * 传完图顺手识别一次，**只用来省手打**。
+ *
+ * ⚠️ **识别失败一律静默。** 后端把 `recognized=false` 定成「让他手填」而不是
+ * 错误（认不出只是少省一次手打），端上再弹一个错就把这个设计推翻了 ——
+ * 商家看到红字会以为这张证有问题，而它没有。
+ * 网络失败同理：图已经选上了，识别是附加动作，失败不该挡住他继续填。
+ */
+async function tryRecognize(tempPath: string) {
+  const f = form.value;
+  if (!f) return;
+  let cert: CertRecognition;
+  try {
+    cert = await api.mRecognizeQualification(tempPath);
+  } catch {
+    return;
+  }
+  if (!f.imageUrl || !form.value) return;   // 期间他换了图或退出了表单
+
+  // 规则在 planPrefill 里，连同「为什么」一起 —— 见 tests/cert-prefill.test.ts
+  const plan = planPrefill(cert, f, f.qualType);
+  const filled: string[] = [];
+  if (plan.qualNumber !== null) {
+    f.qualNumber = plan.qualNumber;
+    filled.push(String(t("qual.fieldNumber")));
+  }
+  if (plan.expireAt !== null) {
+    f.expireAt = plan.expireAt;
+    filled.push(String(t("qual.fieldExpire")));
+  }
+
+  /*
+   * 传错证是这一页最常见的错，而它到平台审核那一步才被打回，中间隔着好几天。
+   * **只提醒不拦**：模型认错的代价不该由他承担。
+   * 提醒与「已填好」二选一 —— 两条吐司叠在一起他只看得到后一条。
+   */
+  if (plan.typeMismatch) {
+    uni.showToast({ title: String(t("qual.typeMismatch")), icon: "none", duration: 3000 });
+    return;
+  }
+  if (filled.length) {
+    uni.showToast({ title: String(t("qual.prefilled", { f: filled.join("、") })), icon: "none" });
+  }
+}
+
 
 async function submit() {
   const f = form.value;

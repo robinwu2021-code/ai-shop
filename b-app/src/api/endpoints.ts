@@ -81,6 +81,10 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mStoreCategories: { method: "GET", path: "/biz/store/:storeNo/categories", auth: true, summary: "本店经营类目" },
   mQualifications: { method: "GET", path: "/biz/qualifications", auth: true, summary: "我的资质与已获授权的类目" },
   mSaveQualification: { method: "POST", path: "/biz/qualifications/save", auth: true, summary: "传一张资质证件" },
+  mRecognizeQualification: {
+    method: "POST", path: "/biz/qualifications/recognize", auth: true,
+    summary: "识别证照（预填编号与有效期，认不出就让他手填）",
+  },
   mSaveStoreCategories: { method: "POST", path: "/biz/store/:storeNo/categories", auth: true, summary: "整份替换本店经营类目" },
 
   mStaffList: { method: "GET", path: "/biz/staff", auth: true, summary: "员工列表" },

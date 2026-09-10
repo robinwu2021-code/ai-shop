@@ -3,9 +3,27 @@
 # 这份名单**两向都有闸**：新增一条会红，名单里留着已经接上的也会红
 # （留着不删的话，那个端点就永远免检 —— 棘轮锈掉的经典形状）。
 #
-# 2026-09-10 立闸时的 33 条。b 端 5 条已逐条核过，其中两条是功能洞：
-#   · quote/*/revise    能报价不能改价 —— /group-request/*/quote 端上有，改价没有
-#   · settle/bills/*    结算单只有列表没有详情，商家看不到一笔结算由什么构成
+# 2026-09-10 立闸时 33 条，当天接掉 1 条，现 32 条。
+#
+# ⚠️ **「没有出口」不等于「缺功能」。** 立闸时我把 b 端 5 条里的两条判成了
+# 功能洞，逐条读代码之后两条都不成立 —— 记在这里，免得下一个人照着去接：
+#
+#   · POST /biz/quote/*/revise   **不要接。** quote() 里已经写着「二次报价 = 改价」
+#     并转给 doRevise，正常改价端上早就通了。两个入口只在「已锁价之后」口径不同
+#     （quote 拒、revise 放行），后端注释明说这条缝「目前没有实际后果，因为端上只走
+#     quote」。接上它等于把缝打开：改价规则会随入口而变。
+#     见 GroupServiceImpl#revise 的注释与 M6cGroupFlowTest.quoteAndReviseDifferAfterLock。
+#
+#   · GET  /biz/settle/bills/*   列表端点返回的就是 List<SettleBillVO>，与详情
+#     **同一个 VO**，列表已经带全了所有字段。详情端点不多给任何东西。
+#     要动的话是删后端那个，不是给它补入口。
+#
+# （2026-09-10 当天已接：POST /biz/qualifications/recognize 证照 OCR。
+#   b 端有 qualifications 页，GET/save 都接了，独独识别没接。）
+#
+# 另两条判断留给做的人：
+#   · GET /biz/inventory/export  手机端「导出」要先想清楚文件去哪
+#   · POST /biz/geo/geocode      地址校验与标准化，端上现在按自由文本存
 #
 # c 端 28 条没有逐条核，只验证了「端上确实一处都没有」。其中两条要注意：
 #   · POST /mp/user/token/refresh  会话续期，端上从不调 —— 与「能登进去、
@@ -15,7 +33,6 @@
 b-app GET /biz/inventory/export
 b-app GET /biz/settle/bills/*
 b-app POST /biz/geo/geocode
-b-app POST /biz/qualifications/recognize
 b-app POST /biz/quote/*/revise
 c-app GET /mp/after-sale/*
 c-app GET /mp/category/tree

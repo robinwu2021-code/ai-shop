@@ -337,6 +337,8 @@ export default {
     goUpload: "去传证",
     add: "传一张证",
     fieldName: "证件名称",
+    typeMismatch: "这张证看着不是你选的类型，确认一下",
+    prefilled: "已按证照填好{f}，请核对",
     fieldNumber: "证件编号",
     fieldExpire: "有效期至",
     expireHint: "长期有效就留空。填了的话到期前 30 天这一页会标出来，过期后新商品上不了架。",

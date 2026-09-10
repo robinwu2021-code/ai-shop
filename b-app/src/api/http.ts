@@ -132,6 +132,7 @@ import type {
   StockSummary, StockBalance, StockCrossStoreRow, StockItemDetail, StockLedgerPage, StockDocument, Supplier, Carrier,
   StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
   StockCount, StockTransfer, I18nText,
+  CertRecognition,
 } from "@shared/types";
 
 export const httpApi: MerchantApi = {
@@ -352,6 +353,10 @@ export const httpApi: MerchantApi = {
   // 真上传文件字节（multipart），不是把本地路径当 JSON 发 —— 后端要 MultipartFile
   mUploadImage: (tempPath) =>
     http.uploadFile<{ url: string }>(E.mUploadImage.path, tempPath),
+  // 同样走 multipart：证照识别要的是字节，不是一个 URL ——
+  // 后端刻意不接受「先传图拿 URL 再识别」，那会让身份证在桶里留一份
+  mRecognizeQualification: (tempPath) =>
+    http.uploadFile<CertRecognition>(E.mRecognizeQualification.path, tempPath),
   mRecognizeGoods: (imageUrl) =>
     http.post<GoodsGuess>(E.mRecognizeGoods.path, { imageUrl } satisfies RecognizeGoodsReq),
 

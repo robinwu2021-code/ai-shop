@@ -607,6 +607,46 @@ export interface MyQualifications {
   /** 平台的门槛码字典：哪些码要哪一类证 */
   catalog: AuthCodeInfo[];
 }
+/**
+ * 证照识别结果，用来**预填**表单。与后端 `BizCertController.CertVO` 同形。
+ *
+ * ⚠️ **认不出的字段一律 null，不猜。** 猜出来的值会被商家当成「系统读到的」
+ * 直接提交，比空着危险得多 —— 后端 `CertVisionPort.Cert` 的注释写的就是这条。
+ */
+export interface CertRecognition {
+  /**
+   * false = 模型没开或没认出来。**端上据此让他手填，不要弹错误** ——
+   * 识别是锦上添花，没识别出来只是少省一次手打。
+   *
+   * 少了这一位、只看字段是不是 null 的话，端上分不清
+   * 「模型说这张证上没有」与「压根没认」。
+   */
+  recognized: boolean;
+  /** `BUSINESS_LICENSE` 营业执照 / `ID_CARD` 身份证 / `UNKNOWN` 认不出是什么证 */
+  docType: string | null;
+  /** 身份证专用：`FRONT` 人像面 / `BACK` 国徽面。其余证件为 null */
+  side: string | null;
+  /** 执照上的名称，或身份证上的姓名。**不是「证件名称」那一栏** */
+  name: string | null;
+  /**
+   * 统一社会信用代码（执照）或身份证号。
+   * **回给上传者本人是必要的**（他正要核对这一栏），
+   * 但不要写进日志、不要转给第三方。
+   */
+  code: string | null;
+  /** 执照类型：个体工商户 / 有限责任公司 …… */
+  legalForm: string | null;
+  /** 法定代表人 / 经营者 */
+  person: string | null;
+  /** 住所、经营场所或住址 */
+  address: string | null;
+  /** 成立日期。`YYYY-MM-DD` */
+  issuedAt: string | null;
+  /** 有效期止。`YYYY-MM-DD`，或字面量 `长期` */
+  validTo: string | null;
+  /** 模型自评 0–1。**只用来决定「预填还是仅提示」**，不作为放行依据 */
+  confidence: number;
+}
 export interface MerchantApplyReq {
   /** 拟用店铺名 */
   name: string;

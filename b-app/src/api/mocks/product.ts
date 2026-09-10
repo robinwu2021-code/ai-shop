@@ -61,6 +61,7 @@ export const productMock: Pick<MerchantApi,
   | "mSpecProps"
   | "mQualifications"
   | "mSaveQualification"
+  | "mRecognizeQualification"
   | "mSaveSpecTemplate"
 > = {
   // ---------------------------------------------------------------- 商品
@@ -983,6 +984,28 @@ export const productMock: Pick<MerchantApi,
    * 我的资质。mock 里给一条「已传但还没授码」的样本 ——
    * 那正是这一页要说清楚的状态：传了 ≠ 解锁了。
    */
+  /**
+   * mock 里固定回一张能认出来的营业执照 —— 交互要能在 H5 上走通。
+   * 真识别不出来时后端回 recognized:false，那条路在页面上是「让他手填」，
+   * 与「没传图」长得一样，所以 mock 不模拟它：**要验那条路就断网或关模型**。
+   */
+  async mRecognizeQualification() {
+    await delay(600);
+    return {
+      recognized: true,
+      docType: "BUSINESS_LICENSE",
+      side: null,
+      name: "示例商贸有限公司",
+      code: "91330100MA2XXXXX1A",
+      legalForm: "有限责任公司",
+      person: "张三",
+      address: "浙江省杭州市示例路 1 号",
+      issuedAt: "2020-03-15",
+      validTo: "长期",
+      confidence: 0.93,
+    };
+  },
+
   async mQualifications(entityNo) {
     requireMerchant();
     return delay({

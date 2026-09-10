@@ -107,6 +107,7 @@ import type {
   SpecValueAdded,
   ScopePreview,
   ServiceArea,
+  CertRecognition,
 } from "@shared/types";
 
 /** 拍照识别的结果。全部是**建议值**，店主可改可弃 */
@@ -990,6 +991,15 @@ export interface MerchantApi {
   // ---- 商品图片与拍照建品（B-11.3.7 / E9）
   /** 上传一张图，返回可访问 URL。小程序侧走 uploadFile，域名需在白名单 */
   mUploadImage(tempPath: string): Promise<{ url: string }>;
+
+  /**
+   * 识别一张证照，用来预填表单。**识别不出不是错误** ——
+   * `recognized=false` 时端上让他手填，不要弹错。
+   *
+   * `code` 是信用代码或身份证号：**原样回给上传者本人**（他正要核对这一栏），
+   * 但不要写进日志、不要转给第三方。
+   */
+  mRecognizeQualification(tempPath: string): Promise<CertRecognition>;
   /**
    * 拍照识别：**只用来猜一个标题**，猜错不影响，店主可改。
    * ⚠️ 绝不做「一拍就自动上架」—— 识别错了价格也错，货会以错价卖出去。
