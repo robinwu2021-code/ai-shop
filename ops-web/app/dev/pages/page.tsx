@@ -28,13 +28,16 @@
 // 全是 node/python。它替掉的是「手点 124 个页面挨个看」，不是替掉守卫。
 //
 // 已知边界（诚实记在这里）：
-// 1. 只看得到**当前渲染出来的**节点。抽屉、弹窗、确认框关着时不在 DOM 里。
+// 1. 只看得到**当前渲染出来的**节点 —— 加上一遍浮层体检：
+//    带 `aria-haspopup` 的声明式浮层（下拉、说明气泡）会被逐个打开、量、关掉。
+//    **抽屉与确认弹窗仍在射程外**：它们是受控的，打开它的是一个普通 button，
+//    DOM 上没有标记能把它与「删除」区分开 —— 要靠调用点显式登记，见 auditOverlays。
 // 2. class 字符串扫描判断不了「这个 h-9 是不是刻意的」，结论是**线索**不是判决。
 // 3. 顶栏与左侧导航每页都一样，只在第一条路由上扫一次，别重复计入。
 // 4. 依赖登录态：iframe 与本页同源，直接复用你当前的账号与数据域。
 //    换个角色重跑，看到的页面集合与内容都会变 —— 这是特性不是缺陷。
 import * as React from "react";
-import { audit, groupFindings, type Finding, type Grouped } from "../ui/audit";
+import { audit, auditOverlays, groupFindings, type Finding, type Grouped } from "../ui/audit";
 import { runContrastSweep, groupFails, type SweepFail } from "../ui/sweep";
 import { fmtRatio } from "../ui/color";
 import { THEMES } from "@/lib/stores/theme";
@@ -72,6 +75,13 @@ interface PageResult {
   section: string;
   /** 扫到的节点数。**0 说明这一页压根没渲染出来**，与「没有违规」是两回事 */
   scanned: number;
+  /**
+   * 这一页打开并量过的浮层数（下拉、说明气泡等声明式的那些）。
+   *
+   * **它是浮层这一层的分母**：全站合计为 0 时，「浮层里没有违规」等于没说 ——
+   * 分不清是真的干净，还是一个都没打开过。抽屉与确认弹窗不在其中，见 `auditOverlays`。
+   */
+  overlays: number;
   findings: Finding[];
   /** 页面自己渲染了错误块（DataTable 的 error 分支或 ErrorState） */
   errored: boolean;
@@ -143,10 +153,17 @@ export default function DevPagesAudit() {
 
       const body = win.document.querySelector<HTMLElement>('[data-shell="body"]');
       const res = body ? audit(body, "subtree", r.href) : { findings: [], scanned: 0, focusable: 0 };
+      /*
+       * 再把页面上声明式的浮层逐个打开量一遍。
+       * 上面那次 `audit()` 量的是「此刻渲染出来的节点」—— 下拉菜单、说明气泡里的内容
+       * 当时不在 DOM 里，一次都没被量到过。判据与边界见 `auditOverlays` 的注释。
+       */
+      const ov = await auditOverlays(win.document, r.href);
       acc.push({
         ...r,
         scanned: res.scanned,
-        findings: res.findings,
+        overlays: ov.opened,
+        findings: [...res.findings, ...ov.findings],
         // 错误块与空态要分开看：前者是接口挂了，后者是真没数据
         errored: !!body?.querySelector("[data-audit-error]"),
         ms: Date.now() - t0,
@@ -258,6 +275,15 @@ export default function DevPagesAudit() {
           <section className="grid gap-3 sm:grid-cols-4">
             <Stat label="扫过的路由" value={`${results.length} / ${list.length}`} />
             <Stat label="节点总数" value={results.reduce((n, r) => n + r.scanned, 0).toLocaleString()} />
+            {/*
+              浮层这一层的分母。为 0 时上面那句「没扫出线索」对浮层不成立 ——
+              分不清是真干净还是一个都没打开过。
+            */}
+            <Stat
+              label="打开量过的浮层"
+              value={results.reduce((n, r) => n + r.overlays, 0)}
+              tone={results.length && results.reduce((n, r) => n + r.overlays, 0) === 0 ? "warn" : undefined}
+            />
             <Stat label="线索条数" value={all.length} tone={all.length ? "warn" : "ok"} />
             <Stat
               label="没渲染出来的页"
@@ -283,7 +309,7 @@ export default function DevPagesAudit() {
             {grouped.length === 0 ? (
               <Notice>
                 页体上没有扫出线索。注意这只说明「当前渲染出来的节点」合规 ——
-                抽屉与弹窗关着时不在射程内。
+                声明式浮层（下拉、说明气泡）已经会被打开量过；**抽屉与确认弹窗仍不在射程内**。
               </Notice>
             ) : (
               <DataTable
@@ -298,7 +324,7 @@ export default function DevPagesAudit() {
                 ]}
                 rows={grouped}
                 rowKey={(g) => `${g.comp}||${g.rule}`}
-                empty="这一轮没有归并出任何线索。空集与「全都合规」不是一回事，先看上面的节点总数是不是 0。"
+                empty="这一轮没有归并出任何线索。空集与「全都合规」不是一回事，先看上面的节点总数与浮层数是不是 0。"
               />
             )}
           </Section>
@@ -352,7 +378,7 @@ export default function DevPagesAudit() {
             {contrast.length === 0 ? (
               <Notice>
                 这 21 个入口在 10 组皮肤/明暗下都过 AA。注意只量了「当前渲染出来的文字」——
-                抽屉、弹窗、以及数据为空时不出现的那些行不在射程内。
+                抽屉、弹窗、以及数据为空时不出现的那些行不在射程内（对比度这一项还没接浮层体检）。
               </Notice>
             ) : (
               <DataTable

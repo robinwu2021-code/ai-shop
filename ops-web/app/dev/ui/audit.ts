@@ -323,3 +323,77 @@ export function groupFindings(findings: Finding[]): Grouped[] {
   }
   return [...map.values()].sort((a, b) => b.count - a.count || a.comp.localeCompare(b.comp));
 }
+
+/**
+ * 浮层体检：把页面上**声明式的**浮层逐个打开、量、关掉。
+ *
+ * **为什么必须有这一层**：`audit()` 与对比度体检量的都是「此刻渲染出来的节点」——
+ * 抽屉、弹窗、下拉里的内容当时不在 DOM 里，一次都没被量到过。
+ * 2026-09-09 换个正交方向（源码扫描）从那片盲区里捞出 8 处实心语义色当文字色，
+ * **其中 4 处正好在弹窗与非默认页签里**。源码规则挡得住写死的类名，
+ * 挡不住算出来的样式；两种手段各有洞，不能互相替代。
+ *
+ * ⚠️ **判据只认声明式触发器，不猜按钮文案。**
+ * 只点带 `aria-haspopup` 且 `data-state="closed"` 的 `<button>` ——
+ * 那是 Radix 给「我会打开一个浮层」加的标记，点它不会提交、不会写数据。
+ * 按文案猜（「详情」「查看」）迟早会点到「受理」「停用」上去，
+ * 那是拿生产数据换一次体检，不划算。
+ *
+ * **因此它现在覆盖不到抽屉与确认弹窗**：本仓库的 Drawer / ConfirmDialog 是**受控**的
+ * （`<Drawer open={!!current}>`），打开它的是一个普通 `<button onClick={setState}>`，
+ * DOM 上没有任何标记能把它与「删除」按钮区分开。那一类要靠调用点显式登记
+ * （`data-audit-open`），是下一步的事 —— 边界写在这里，免得有人以为已经全覆盖了。
+ */
+export async function auditOverlays(
+  doc: Document,
+  label: string,
+  scope: AuditScope = "subtree",
+): Promise<{ findings: Finding[]; opened: number; triggers: number }> {
+  const win = doc.defaultView ?? window;
+  const triggers = Array.from(
+    doc.querySelectorAll<HTMLButtonElement>('button[aria-haspopup][data-state="closed"]'),
+  );
+  const findings: Finding[] = [];
+  let opened = 0;
+
+  for (const t of triggers) {
+    // 已经被别的浮层遮住 / 不可见的不点：点了也量不到东西，还可能误触后面的元素
+    if (!t.isConnected || t.offsetParent === null) continue;
+    const before = new Set(layerNodes(doc));
+    t.click();
+    await settleFrames(win);
+    const fresh = layerNodes(doc).filter((n) => !before.has(n));
+    if (fresh.length) {
+      opened++;
+      for (const layer of fresh) findings.push(...audit(layer, scope, `${label} · 浮层`).findings);
+    }
+    // 关掉：优先按 Esc（Radix 认它），兜底再点一次触发器
+    win.document.activeElement instanceof HTMLElement && win.document.activeElement.blur();
+    doc.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await settleFrames(win);
+    if (t.getAttribute("data-state") === "open") {
+      t.click();
+      await settleFrames(win);
+    }
+  }
+  return { findings, opened, triggers: triggers.length };
+}
+
+/** Radix 把浮层挂到 body 上（portal），所以在整个文档里找，不在触发器附近找。 */
+function layerNodes(doc: Document): HTMLElement[] {
+  return Array.from(
+    doc.querySelectorAll<HTMLElement>(
+      '[role="menu"],[role="dialog"],[role="listbox"],[data-radix-popper-content-wrapper]',
+    ),
+  );
+}
+
+async function settleFrames(win: Window): Promise<void> {
+  await new Promise<void>((r) => {
+    let n = 0;
+    const tick = () => (++n >= 2 ? r() : win.requestAnimationFrame(tick));
+    win.requestAnimationFrame(tick);
+    // 隐藏标签页里 rAF 不跑，给个超时兜底（对比度体检踩过同一个坑）
+    setTimeout(r, 150);
+  });
+}
