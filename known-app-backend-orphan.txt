@@ -26,8 +26,12 @@
 #   · POST /biz/geo/geocode      地址校验与标准化，端上现在按自由文本存
 #
 # c 端 28 条没有逐条核，只验证了「端上确实一处都没有」。其中两条要注意：
-#   · POST /mp/user/token/refresh  会话续期，端上从不调 —— 与「能登进去、
-#     用一会儿掉线」那条老账可能是同一件事，接之前先去查那个。
+#   · POST /mp/user/token/refresh  **不要接，2026-09-10 查过了。**
+#     C 端 401 的动作是 clearSession() + silentLogin()，走 wx.login 拿 code、
+#     不需要旧令牌，所以到期是自愈的、用户看不见。而 refresh **需要一个还活着的
+#     令牌**，在 401 那一刻恰好用不了 —— 接它是拿一条更弱的路去替一条更强的。
+#     （真正的缺口在别处：expires_at 此前是签发时定死的，B 端与运营端没有静默登录，
+#     到点就硬踢。已改成「用着就不过期」，见 DbTokenStore#touchIfStale。）
 #   · GET /mp/coupon/mine  与端上在用的 /mp/my-coupons 疑似同一件事的两套实现，
 #     接之前先判是不是该删后端那个，而不是给它补入口。
 b-app GET /biz/inventory/export

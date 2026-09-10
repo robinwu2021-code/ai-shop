@@ -214,15 +214,29 @@ public class DbTokenStore implements TokenStore {
         return Optional.of(user);
     }
 
-    /** {@code last_seen_at} 节流写回 —— 每请求写会把这张表变成全库写最频繁的表。 */
+    /**
+     * {@code last_seen_at} 节流写回，**顺带把有效期往后推**。
+     *
+     * <p>每请求写会把这张表变成全库写最频繁的表，所以按
+     * {@link SessionProfile#lastSeenThrottle} 节流（B 端与运营 1 小时、C 端 24 小时）。
+     * 续期精度因此也是这个量级 —— 相对 30 天的 TTL 绰绰有余。
+     *
+     * <p><b>用着就不过期，放着才过期。</b> 这一句只在会话被使用时才跑，
+     * 所以闲置的会话仍然在 TTL 到点时死掉（{@code expiredSessionIsRejected} 钉的是那一半）。
+     *
+     * <p>缓存里的 {@code expiresAt} 要一起换掉：不换的话缓存会一直拿着旧的到点时间，
+     * 到那一刻 {@link #get} 把它 evict 掉、回源、再从库里读到新的 —— 结果是对的，
+     * 但白跑一次回源，而且「缓存与库不一致」这件事本身早晚会绊到别人。
+     */
     private void touchIfStale(String hash, CachedSession cached, LocalDateTime now) {
         LocalDateTime last = cached.lastSeenAt();
         if (last != null && last.plus(profile.lastSeenThrottle()).isAfter(now)) {
             return;
         }
-        sessions.touch(hash, now);
+        LocalDateTime renewed = now.plus(profile.sessionTtl());
+        sessions.touch(hash, now, renewed);
         sessionCache.put(hash, new CachedSession(cached.userNo(), cached.subjectKind(),
-                cached.expiresAt(), now));
+                renewed, now));
     }
 
     /**

@@ -126,11 +126,32 @@ class SessionDaoTest {
     }
 
     @Test
-    @DisplayName("touch 更新活跃时间（节流由调用方做，DAO 只管写）")
+    @DisplayName("touch 更新活跃时间与有效期（节流由调用方做，DAO 只管写）")
     void touchUpdatesLastSeen() {
         String hash = issue("U1", now.plusDays(30));
-        dao.touch(hash, now.plusHours(2));
-        assertEquals(now.plusHours(2), dao.findByHash(hash).orElseThrow().lastSeenAt());
+        dao.touch(hash, now.plusHours(2), now.plusHours(2).plusDays(30));
+        var row = dao.findByHash(hash).orElseThrow();
+        assertEquals(now.plusHours(2), row.lastSeenAt());
+        assertEquals(now.plusHours(2).plusDays(30), row.expiresAt(),
+                "有效期没往后推的话，用得再勤的会话也在登录整 30 天那一刻死掉");
+    }
+
+    @Test
+    @DisplayName("★ 已吊销的会话 touch 不动它 —— 撤销与缓存之间有个窗口")
+    void touchSkipsRevoked() {
+        /*
+         * 踢人之后、各实例的缓存过期之前，仍可能有实例拿着旧缓存 touch 一次。
+         * 推它的有效期不会让它复活（isLive 还看 revoked_at），
+         * 但一个已经吊销的会话不该再被记成「刚活跃过」—— 那会让登录审计读起来
+         * 像是「踢完他还在用」。
+         */
+        String hash = issue("U1", now.plusDays(30));
+        dao.revoke(hash, RevokeReason.LOGOUT, now.plusHours(1));
+
+        dao.touch(hash, now.plusHours(2), now.plusHours(2).plusDays(30));
+
+        var row = dao.findByHash(hash).orElseThrow();
+        assertEquals(now.plusDays(30), row.expiresAt(), "吊销后不该再续期");
     }
 
     @Test

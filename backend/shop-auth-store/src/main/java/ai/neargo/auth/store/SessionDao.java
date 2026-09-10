@@ -125,13 +125,34 @@ public class SessionDao {
     }
 
     /**
-     * 记一次活跃。**由调用方按 {@link SessionProfile#lastSeenThrottle} 节流**，
-     * 不要每个请求都调 —— 那会把这张表变成全库写入最频繁的表，而它的用途只是
-     * 「这个会话还活着吗」，低精度完全够。
+     * 记一次活跃，**并把有效期往后推**。
+     *
+     * <p>由调用方按 {@link SessionProfile#lastSeenThrottle} 节流 ——
+     * 不要每个请求都调，那会把这张表变成全库写入最频繁的表。
+     *
+     * <h2>为什么续期挂在这一句上</h2>
+     * 在这之前 {@code expires_at} 是**签发那一刻定死的**，用得再勤也不延长 ——
+     * 于是每个用户在登录整 30 天那一刻被踢，而 C 端有静默登录会自愈、
+     * <b>B 端与运营端没有</b>：401 的动作是清掉登录态 + 跳回登录页，
+     * 商家要重新收一次短信才能回来，且他正干着的那一页没了。
+     *
+     * <p>挂在这里而不是另开一个续期端点，是因为续期端点需要**一个还活着的
+     * 令牌**，而 401 的前提正是令牌已经死了 —— 它在最需要它的那一刻用不了。
+     * 而 touch 本来就在跑，多写一列不增加任何一次写。
+     *
+     * <p><b>{@code expires_at} 由调用方算好传进来</b>，不在 SQL 里做日期运算：
+     * 测试跑 H2、生产跑 MariaDB，两边的日期函数不是一回事。
+     *
+     * <p>{@code revoked_at IS NULL} 那一条不是多余的：撤销与缓存之间有个
+     * {@code revokePoll} 的窗口，窗口里这个实例仍可能 touch 一个已被踢掉的会话。
+     * 推它的有效期不会让它复活（{@code isLive} 还看 revoked_at），
+     * 但一个已经吊销的会话不该再被记成「刚活跃过」。
      */
-    public void touch(String tokenHash, LocalDateTime at) {
-        jdbc.sql("UPDATE " + table + " SET last_seen_at = :at WHERE token_hash = :h")
-                .param("at", at).param("h", tokenHash)
+    public void touch(String tokenHash, LocalDateTime at, LocalDateTime expiresAt) {
+        jdbc.sql("UPDATE " + table
+                        + " SET last_seen_at = :at, expires_at = :e"
+                        + " WHERE token_hash = :h AND revoked_at IS NULL")
+                .param("at", at).param("e", expiresAt).param("h", tokenHash)
                 .update();
     }
 

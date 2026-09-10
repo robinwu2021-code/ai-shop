@@ -14,7 +14,18 @@ import java.time.Duration;
  */
 public final class SessionProfiles {
 
-    /** 30 天：与 C 端「一次登录长期有效」的体感一致；运营端由前端主动登出控制。 */
+    /**
+     * 30 天 —— 但读作「**闲置 30 天**」，不是「登录满 30 天」。
+     *
+     * <p>{@link ai.neargo.shop.auth.store.DbTokenStore#touchIfStale} 在会话被使用时
+     * 把有效期往后推，所以用着的会话不会到点被踢，放着不用的照旧到点死。
+     *
+     * <p>此前是从签发起算的绝对期限，注释写的理由是「与 C 端『一次登录长期有效』
+     * 的体感一致」—— <b>而 C 端恰恰是唯一不受影响的那端</b>：它 401 时走静默登录
+     * 自愈，用户看不见。真正被踢的是 B 端与运营端，那里 401 的动作是清登录态 +
+     * 跳回登录页，商家要重新收一次短信，且正干着的那一页没了。
+     * 2026-09-10 改成滑动，那时线上最老的会话 13 天，一次都还没撞上。
+     */
     private static final Duration TTL = Duration.ofDays(30);
 
     private SessionProfiles() {

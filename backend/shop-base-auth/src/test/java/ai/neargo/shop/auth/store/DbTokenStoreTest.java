@@ -1,5 +1,9 @@
 package ai.neargo.shop.auth.store;
 
+import ai.neargo.auth.store.SessionDao;
+import ai.neargo.auth.store.TokenHash;
+import java.time.LocalDateTime;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import ai.neargo.auth.store.*;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.Realm;
@@ -339,6 +343,102 @@ class DbTokenStoreTest {
         assertTrue(b.get(probe).isPresent(),
                 "缓存了「不存在」的话，用户刚登录后的头几秒会间歇性 401 —— "
                 + "而这种错「重试一下就好了」，最容易被当成网络问题");
+    }
+
+    /**
+     * 会话缓存也用**真实的极短 TTL**，逼 {@link DbTokenStore#get} 走回源。
+     *
+     * <p>不这么做的话，「续期了吗」这个问题只会问到缓存里那份，
+     * 而缓存本来就是刚写进去的 —— 断言必然通过，且**production 里真正长期走的
+     * 是回源那条路**。这块代码上次出问题（重建丢 realm）就是这个形状：
+     * 命中与回源是两条路，测试几乎总在命中那条上跑完。
+     */
+    private DbTokenStore instanceWithoutSessionCache() {
+        SessionProfile fast = new SessionProfile(
+                profile.poolName(), profile.sessionTable(), profile.loginLogTable(),
+                profile.tokenPrefix(), profile.sessionTtl(),
+                Duration.ofMillis(1),          // 会话缓存立刻过期 → 每次都回源
+                profile.identityTtl(),
+                // revokePoll 要跟着调小：SessionProfile 不许 cacheTtl 比它还短
+                // （缓存比轮询活得久 = 撤销轮询形同虚设，那条校验是对的）
+                Duration.ofMillis(1),
+                profile.lastSeenThrottle(),
+                profile.asyncLoginLog(), profile.logRetentionDays());
+        AuthCache<String, DbTokenStore.CachedSession> sc = new AuthCache<>(
+                "s" + System.nanoTime(), String.class, DbTokenStore.CachedSession.class,
+                fast.cacheTtl(), 1000);
+        AuthCache<String, LoginUser> ic = new AuthCache<>(
+                "i" + System.nanoTime(), String.class, LoginUser.class,
+                fast.identityTtl(), 1000);
+        closeables.add(sc);
+        closeables.add(ic);
+        return new DbTokenStore(Realm.CONSUMER, fast, new SessionDao(jdbc, fast),
+                users, sc, ic, auditWriter(fast), clock);
+    }
+
+    @Test
+    @DisplayName("★★★ 用着的会话不会在整 30 天那一刻被踢 —— 而且续期要真落到库里")
+    void activeSessionSlidesPastOriginalTtl() {
+        /*
+         * 在这之前 expires_at 是签发那一刻定死的：用得再勤也在第 30 天死。
+         * C 端有静默登录会自愈，**B 端与运营端没有** —— 那里 401 的动作是
+         * 清登录态 + 跳回登录页，商家要重新收一次短信，且正干着的那一页没了。
+         *
+         * 断言走的是**回源那条路**（会话缓存 1ms 就过期），
+         * 问的是库里的行，不是刚写进去的那份缓存。
+         */
+        DbTokenStore store = instanceWithoutSessionCache();
+        String token = store.issue(TokenStore.SessionData.of(users.users.get("U1")));
+
+        // 隔了两小时（超过 1 小时的节流）再用一次 —— 这一下才会触发续期
+        clock.advance(Duration.ofHours(2));
+        assertTrue(store.get(token).isPresent(), "两小时后当然还在");
+
+        // 越过**原本**的到点时间，但在续期之后的窗口内
+        clock.advance(profile.sessionTtl().minusHours(1));
+
+        assertTrue(store.get(token).isPresent(),
+                "原到期日之后仍然可用 —— 续期没落库的话这里是空的");
+    }
+
+    @Test
+    @DisplayName("★★ 续期过的会话放着不用，仍然到点就死 —— 是「用着不过期」不是「永不过期」")
+    void renewedSessionStillExpiresWhenIdle() {
+        /*
+         * 与上一条成对：那条管「续了没有」，这条管「续得对不对」。
+         *
+         * ⚠️ **必须先真的触发一次续期，再放着不用。** 第一版写成「签发后直接
+         * 快进 31 天」—— 那样 touchIfStale 一次都没跑，renewed 写成什么都看不见。
+         * 消融验出来的：把续期改成 now.plusYears(100)，那一版全绿。
+         * 而它的注释当时写着「少了这一条，写成很远的常量也能让上面那条绿」——
+         * **那句话是假的**，测试并没有提供它声称的那层保护。
+         */
+        DbTokenStore store = instanceWithoutSessionCache();
+        String token = store.issue(TokenStore.SessionData.of(users.users.get("U1")));
+
+        clock.advance(Duration.ofHours(2));                 // 过节流窗口
+        assertTrue(store.get(token).isPresent(), "这一下才真的续了一次");
+
+        clock.advance(profile.sessionTtl().plusDays(1));    // 此后一次都没用过
+
+        assertTrue(store.get(token).isEmpty(),
+                "续期只该推一个 TTL，推成「很远的将来」就是会话永不过期");
+    }
+
+    @Test
+    @DisplayName("节流窗口内反复用不会反复写库 —— 续期精度是小时级，够用")
+    void renewalIsThrottled() {
+        DbTokenStore store = instanceWithoutSessionCache();
+        String token = store.issue(TokenStore.SessionData.of(users.users.get("U1")));
+        SessionDao dao = new SessionDao(jdbc, profile);
+        String hash = TokenHash.of(token);
+        LocalDateTime first = dao.findByHash(hash).orElseThrow().expiresAt();
+
+        clock.advance(Duration.ofMinutes(10));             // 没到 1 小时
+        assertTrue(store.get(token).isPresent());
+
+        assertEquals(first, dao.findByHash(hash).orElseThrow().expiresAt(),
+                "节流窗口内不该写库 —— 每请求写会把这张表变成全库写最频繁的表");
     }
 
     @Test
