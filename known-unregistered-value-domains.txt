@@ -99,7 +99,6 @@ mch_service_area.source
 mch_service_area.status
 mch_session.subject_kind
 mch_staff_log.action
-mch_store.business_mode
 mch_store.status
 mch_store_audit.kind
 mch_violation.action
@@ -163,7 +162,6 @@ prd_spec_dim.scope
 prd_spec_dim.status
 prd_spec_dim.usage_type
 prd_spec_dim.value_type
-prd_spec_template.scope
 prd_spec_template.status
 prd_spec_value.code
 prd_spu_std.status
@@ -178,7 +176,6 @@ rvw_review.risk_flags
 stl_bill.channel_fee_source
 stl_bill.invoice_status
 stl_channel_message.msg_type
-stl_fee_rule.business_mode
 stl_payment.direction
 stl_payment.pay_channel
 stl_payment.pay_method
@@ -187,7 +184,6 @@ stl_payment.status
 stl_payment.sub_order_no
 stl_points_pool.direction
 stl_points_pool.pool_type
-stl_recon_diff.diff_type
 stl_recon_diff.pay_channel
 stl_recon_diff.source
 stl_recon_diff.status

@@ -352,6 +352,42 @@ export const FIELDS = [
     ],
   },
   {
+    /*
+     * ── 2026-09-10：valuesInComment 修准之后新看见的 13 个取值域，能收的 4 条 ──
+     *
+     * 另外 9 条没收，两类原因：
+     *   ① 端上根本没有对应类型（mbr_member.status / prd_goods.audit_status /
+     *      sys_region.source 等 8 条）—— 为登记而造一个没人用的类型比不登记更糟；
+     *   ② **取值撞了但不是同一件事**：sys_region.audit_status 的
+     *      PENDING/APPROVED/REJECTED 与 CommunityApplyStatus 逐字相同，
+     *      但那是「商家提报社区」的单据状态，这是「区划条目」的审核状态；
+     *      prd_spec_template.scope 的 PLATFORM/MERCHANT 也撞上了 CouponFunder。
+     *      按取值相同就连线，等于把两个概念焊死 —— 这正是本工具要防的那一型。
+     */
+    concept: "经营模式（门店）",
+    field: "mch_store.business_mode",
+    backend: { ddl: ["mch_store", "business_mode"] },
+    clients: [{ file: "ops-web/lib/types/finance.ts", type: "BusinessMode" }],
+  },
+  {
+    concept: "经营模式（费率规则）",
+    field: "stl_fee_rule.business_mode",
+    backend: { ddl: ["stl_fee_rule", "business_mode"] },
+    clients: [{ file: "ops-web/lib/types/finance.ts", type: "BusinessMode" }],
+  },
+  {
+    concept: "规格模板适用范围",
+    field: "prd_spec_template.scope",
+    backend: { ddl: ["prd_spec_template", "scope"] },
+    clients: [{ file: SHARED_TYPES, type: "SpecTemplateScope" }],
+  },
+  {
+    concept: "对账差异类型",
+    field: "stl_recon_diff.diff_type",
+    backend: { ddl: ["stl_recon_diff", "diff_type"] },
+    clients: [{ file: "ops-web/lib/types/payment.ts", type: "ReconDiffType" }],
+  },
+  {
     concept: "券出资方",
     field: "pmt_coupon.funder",
     backend: { ddl: ["pmt_coupon", "funder"] },
