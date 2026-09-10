@@ -56,8 +56,6 @@ const TAB_KEYS = ["settlements", "settle-batches", "splits", "refund-back", "pay
 const TRAFFIC_LABEL = (c: Copy): Record<TrafficSource, string> => ({
   MERCHANT_OWNED: c.trafficMerchantOwned,
   PLATFORM: c.trafficPlatform,
-  INVITE: c.trafficInvite,
-  CHANNEL: c.trafficChannel,
 });
 
 /** 费率以万分比存，展示成百分比 —— 财务说的是「5%」不是「500 个万分点」。 */

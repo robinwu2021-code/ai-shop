@@ -151,8 +151,6 @@ const zh = {
 
   trafficMerchantOwned: "商家自带",
   trafficPlatform: "平台流量",
-  trafficInvite: "邀请",
-  trafficChannel: "渠道",
 
   /** `{no}` 是结算单号 */
   toastSplitDone: "{no} 分账完成",
@@ -605,8 +603,6 @@ const en: typeof zh = {
 
   trafficMerchantOwned: "Merchant-owned",
   trafficPlatform: "Platform traffic",
-  trafficInvite: "Referral",
-  trafficChannel: "Channel",
 
   toastSplitDone: "{no} paid out",
   toastFrozenBack: "Released back to the platform",

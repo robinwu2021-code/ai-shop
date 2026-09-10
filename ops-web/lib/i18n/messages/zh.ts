@@ -233,8 +233,6 @@ export const zh = {
   trafficSource: {
     MERCHANT_OWNED: "商家自带",
     PLATFORM: "平台流量",
-    INVITE: "邀请",
-    CHANNEL: "渠道",
   },
 };
 

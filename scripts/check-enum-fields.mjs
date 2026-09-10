@@ -320,6 +320,38 @@ export const FIELDS = [
     clients: [{ file: SHARED_TYPES, type: "CouponStatus" }],
   },
   {
+    /*
+     * 2026-09-09 那批「查到但没收」的 4 条里，这一条与 pmt_coupon.status
+     * 都是**量具造的假阳性** —— 注释 `PENDING/UPHELD(差评下架)/REJECTED(评价保留)`
+     * 在第一个括号处被截断，REJECTED 丢掉，于是报成「端上多出来的值」。
+     * 解析器修好之后两侧逐字相等。这条既是登记，也是那次修复的回归用例。
+     */
+    concept: "评价申诉状态",
+    field: "rvw_appeal.status",
+    backend: { ddl: ["rvw_appeal", "status"] },
+    clients: [{ file: "ops-web/lib/types/review.ts", type: "AppealStatus" }],
+  },
+  {
+    /*
+     * 2026-09-10：那批 4 条「查到但没收」的最后一条。前两条（pmt_coupon.status /
+     * rvw_appeal.status）是量具造的假阳性，这一条是真的 ——
+     * 它的库列注释没有括号，不受那个截断 bug 影响。
+     *
+     * ops-web 的 TrafficSource 曾多出 INVITE / CHANNEL，已删：后端那一列只有两个值
+     * 且「下单时固化」；shared 同名类型也只有两个；而 **ops-web 自己就在绕开它** ——
+     * finance.ts 专门定义了 FeeTrafficSource，注释写着「只有两档，比订单上的
+     * TrafficSource（还有 INVITE / CHANNEL）窄」。多出的两个更像归因来源
+     * （本端另有 AttrSource = STORE_CODE | INVITER | CHANNEL），是两个域串了。
+     */
+    concept: "客流来源（订单）",
+    field: "ord_sub_order.traffic_source",
+    backend: { ddl: ["ord_sub_order", "traffic_source"] },
+    clients: [
+      { file: SHARED_TYPES, type: "TrafficSource" },
+      { file: "ops-web/lib/types/order.ts", type: "TrafficSource" },
+    ],
+  },
+  {
     concept: "券出资方",
     field: "pmt_coupon.funder",
     backend: { ddl: ["pmt_coupon", "funder"] },

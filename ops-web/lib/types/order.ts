@@ -22,8 +22,21 @@ export type FulfillmentType =
   /** 上门预约（SERVICE 商品）。2026-08-17 接通，带预约时段与上门地址 */
   | "APPOINTMENT";
 
-/** 流量来源（矩阵 P-12.1.7 按 trafficSource 分档计费）。 */
-export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM" | "INVITE" | "CHANNEL";
+/**
+ * 客流来源（矩阵 P-12.1.7 按 trafficSource 分档计费）。**与 `ord_sub_order.traffic_source` 的库列注释逐字一致**
+ * （`MERCHANT_OWNED 自带客流 / PLATFORM 平台客流`，下单时固化）。
+ *
+ * ⚠️ **2026-09-10：这里原来还有 `INVITE` / `CHANNEL`，已删。**
+ * 后端那一列只有两个值、下单时固化；shared 的同名类型也只有两个；
+ * 而 ops-web **自己已经在绕开这个宽类型** —— `finance.ts` 专门定义了
+ * `FeeTrafficSource`，注释写着「只有两档，比订单上的 TrafficSource
+ * （还有 INVITE / CHANNEL）窄」。多出来的那两个更像归因来源
+ * （本端另有 `AttrSource = STORE_CODE | INVITER | CHANNEL`），是两个域串了。
+ *
+ * 留着的代价与券类型那次一样：它有标签、有 mock 数据、订单列表按它画徽章 ——
+ * 对着真后端永远不会出现，而开发机上看着一切正常。
+ */
+export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM";
 
 /**
  * 订单状态。**抽象状态，与履约方式无关**，三端同一套。

@@ -235,7 +235,5 @@ export const en: Messages = {
   trafficSource: {
     MERCHANT_OWNED: "Merchant-owned",
     PLATFORM: "Platform traffic",
-    INVITE: "Referral",
-    CHANNEL: "Channel",
   },
 };

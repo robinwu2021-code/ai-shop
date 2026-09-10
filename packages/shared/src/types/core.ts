@@ -47,5 +47,9 @@ export interface PageQuery {
   /** 每页条数。不传按各接口默认值（通常 10 或 20） */
   size?: number;
 }
-/** 流量来源。**与 ops-web 的 `TrafficSource` 同名** —— 那边多 INVITE/CHANNEL 两个值（已标 MERGE） */
+/**
+ * 流量来源。与 `ord_sub_order.traffic_source` 的库列注释逐字一致（下单时固化）。
+ * ops-web 的同名类型 2026-09-10 起也是这两个值 —— 它此前多的 INVITE/CHANNEL
+ * 后端从不下发，已删（见 ops-web/lib/types/order.ts 的注释）。
+ */
 export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM";

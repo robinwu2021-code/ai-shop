@@ -129,7 +129,6 @@ ord_after_sale.type
 ord_invoice_request.title_type
 ord_order.pay_scene
 ord_status_log.operator_type
-ord_sub_order.traffic_source
 pay_risk_shadow_log.verdict
 pmt_activity.benefit_amount_minor
 pmt_activity.benefit_ref
@@ -175,7 +174,6 @@ risk_blacklist.appeal_status
 risk_event.status
 risk_event.type
 risk_rule.type
-rvw_appeal.status
 rvw_review.risk_flags
 stl_bill.channel_fee_source
 stl_bill.invoice_status

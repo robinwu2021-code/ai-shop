@@ -206,7 +206,9 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "ops-web:BusinessMode", dom: "settle", shape: "CLASS", verdict: "OK",
     note: "经营模式，与后端 MchStore.SELF_OPERATED / THIRD_PARTY 同一套取值。**它与「分账时机」是两个正交的轴，不要合并** —— 合并之后「自营 + 直连分账」这种非法组合在类型上就是可表达的" },
   { decl: "ops-web:FeeTrafficSource", dom: "settle", shape: "CLASS", verdict: "OK",
-    note: "费率适用的流量来源，**比订单上的 TrafficSource 窄**（没有 INVITE / CHANNEL）—— 后端 stl_fee_rule 只认这两档。窄是事实不是遗漏：那两档后端从未实现过费率" },
+    note: "费率适用的流量来源。**2026-09-10 起它与订单上的 TrafficSource 相同** —— "
+      + "后者此前多 INVITE/CHANNEL，而这一条的存在正是当时绕开那个宽类型的产物 —— "
+      + "两者相等之后它可以并掉，但那要连 stl_fee_rule 的引用一起改，属独立一批" },
   { decl: "ops-web:LegalForm", dom: "merchant", shape: "CLASS", verdict: "OK",
     note: "主体档位，与后端 mch_entity.legal_form 同一套取值。**三档锁定不再增删**：准入矩阵里的 S1/S2/S3 是对这三个值的读法，不是另一个枚举" },
   { decl: "ops-web:DepositTxnType", dom: "merchant", shape: "CLASS", verdict: "OK",
@@ -281,7 +283,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "shared:CouponFunder", dom: "marketing", shape: "CLASS", verdict: "OK",
     note: "券的出资方，与后端 MktCoupon.funder 一致。平台券走平台预算，商家券从结算里扣 —— 这个字段决定钱从谁账上出，不是展示用" },
   { decl: "shared:CouponType", dom: "marketing", shape: "CLASS", verdict: "OK",
-    note: "与后端 MktCoupon 的两个常量逐字一致。与 ops-web:CouponType 是同一件事的两套声明（那边多了两个未接的取值）" },
+    note: "与后端 MktCoupon 的两个常量逐字一致。与 ops-web:CouponType 是同一件事的两套声明 —— "
+      + "那边此前多 NEWCOMER/TARGETED，2026-09-09 已删（后端列不允许、discountFor 也从未处理），现两侧相同" },
   { decl: "shared:CouponStatus", dom: "marketing", shape: "STATUS", verdict: "OK",
     note: "与 ops-web:CouponStatus 同值同义（ACTIVE/PAUSED/ENDED），两端各有一份声明是现状" },
   { decl: "ops-web:CouponBuildableType", dom: "marketing", shape: "CLASS", verdict: "OK",

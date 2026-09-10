@@ -77,8 +77,6 @@ export function useTrafficSourceMap(): StatusMap<TrafficSource> {
   return {
     MERCHANT_OWNED: { label: t("trafficSource.MERCHANT_OWNED"), tone: "success" },
     PLATFORM: { label: t("trafficSource.PLATFORM"), tone: "info" },
-    INVITE: { label: t("trafficSource.INVITE"), tone: "muted" },
-    CHANNEL: { label: t("trafficSource.CHANNEL"), tone: "muted" },
   };
 }
 

@@ -30,7 +30,7 @@ export const orders: Order[] = [
     orderNo: "SO2026080504", parentNo: "PO20260805C", status: "FULFILLING",
     merchantNo: "M903", merchantName: "邻家便利",
     communityNo: "C002", communityName: "阳光里",
-    fulfillType: "MERCHANT_DELIVERY", trafficSource: "INVITE",
+    fulfillType: "MERCHANT_DELIVERY", trafficSource: "MERCHANT_OWNED",
     buyerNickname: "阿May", items: [
       { skuNo: "SKU1102", title: "抽纸 3 层 12 包", qty: 1, price: 2990 },
       { skuNo: "SKU1103", title: "洗衣液 2kg", qty: 1, price: 3560 },
@@ -41,7 +41,7 @@ export const orders: Order[] = [
     orderNo: "SO2026080505", parentNo: "PO20260804D", status: "COMPLETED",
     merchantNo: "M905", merchantName: "快修家电服务",
     communityNo: "C003", communityName: "梧桐苑",
-    fulfillType: "STORE_VERIFY", trafficSource: "CHANNEL",
+    fulfillType: "STORE_VERIFY", trafficSource: "PLATFORM",
     buyerNickname: "梧桐苑 12-3", items: [{ skuNo: "SKU9001", title: "空调深度清洗（1 台）", qty: 1, price: 12800 }],
     payAmount: 12800, createdAt: "2026-08-03T02:00:00Z", paidAt: "2026-08-03T02:01:00Z",
   },

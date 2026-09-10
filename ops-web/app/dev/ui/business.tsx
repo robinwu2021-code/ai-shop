@@ -23,7 +23,7 @@ const ORDER_STATES: OrderStatus[] = [
 const FULFILL_TYPES: FulfillmentType[] = [
   "STORE_PICKUP", "NEIGHBOR_PICKUP", "MERCHANT_DELIVERY", "EXPRESS", "STORE_VERIFY",
 ];
-const TRAFFIC_SOURCES: TrafficSource[] = ["MERCHANT_OWNED", "PLATFORM", "INVITE", "CHANNEL"];
+const TRAFFIC_SOURCES: TrafficSource[] = ["MERCHANT_OWNED", "PLATFORM"];
 
 export function BusinessSections() {
   const [showArchived, setShowArchived] = React.useState(false);
