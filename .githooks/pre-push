@@ -113,6 +113,17 @@ if ! gate_run python3 scripts/check-app-contract.py --check; then
   exit 1
 fi
 
+# **b/c 端的反向那一侧**：后端做了、端上没有入口。
+# 上面那道盯「画了没后端」（切真后端时 404，看得见），这道盯「做了没入口」——
+# 它不报任何错，表现成「这个功能我们做过啊」，而人点不到。
+# 运营端两个方向早就都有闸了（check-ops-contract / check-ops-orphan），
+# **b/c 端此前只有一个方向**，缺的偏偏是更难发现的那个。
+# 立闸当天扫出 33 条，其中 b 端 5 条里两条是功能洞（报价不能改、结算单没详情）。
+# 基线：known-app-backend-orphan.txt，两向都有闸（新增会红，修好没删也会红）。
+if ! gate_run python3 scripts/check-app-backend-orphan.py --check; then
+  exit 1
+fi
+
 # 反向那一侧：**后端做了、运营端没有入口**。两个方向都要盯 ——
 # 「画了没后端」在切真后端时会 404，看得见；「做了没入口」不报任何错，
 # 它表现为「这个功能我们做过啊」，而运营点不到。

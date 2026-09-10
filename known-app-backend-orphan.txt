@@ -1,0 +1,47 @@
+# 后端做了、**端上没有出口**的端点 —— 由 scripts/check-app-backend-orphan.py 读。
+#
+# 这份名单**两向都有闸**：新增一条会红，名单里留着已经接上的也会红
+# （留着不删的话，那个端点就永远免检 —— 棘轮锈掉的经典形状）。
+#
+# 2026-09-10 立闸时的 33 条。b 端 5 条已逐条核过，其中两条是功能洞：
+#   · quote/*/revise    能报价不能改价 —— /group-request/*/quote 端上有，改价没有
+#   · settle/bills/*    结算单只有列表没有详情，商家看不到一笔结算由什么构成
+#
+# c 端 28 条没有逐条核，只验证了「端上确实一处都没有」。其中两条要注意：
+#   · POST /mp/user/token/refresh  会话续期，端上从不调 —— 与「能登进去、
+#     用一会儿掉线」那条老账可能是同一件事，接之前先去查那个。
+#   · GET /mp/coupon/mine  与端上在用的 /mp/my-coupons 疑似同一件事的两套实现，
+#     接之前先判是不是该删后端那个，而不是给它补入口。
+b-app GET /biz/inventory/export
+b-app GET /biz/settle/bills/*
+b-app POST /biz/geo/geocode
+b-app POST /biz/qualifications/recognize
+b-app POST /biz/quote/*/revise
+c-app GET /mp/after-sale/*
+c-app GET /mp/category/tree
+c-app GET /mp/community/*
+c-app GET /mp/config/bootstrap
+c-app GET /mp/coupon/mine
+c-app GET /mp/goods/*/sku-price
+c-app GET /mp/group-request/*/price-history
+c-app GET /mp/group-request/*/quotes
+c-app GET /mp/help/faq
+c-app GET /mp/merchant/*/score
+c-app GET /mp/order/*/pay-result
+c-app GET /mp/pickup/*
+c-app GET /mp/search/hot
+c-app GET /mp/search/suggest
+c-app GET /mp/stores/*/appointment-slots
+c-app GET /mp/ticket
+c-app GET /mp/ticket/*
+c-app GET /mp/topics
+c-app GET /mp/topics/*/goods
+c-app POST /mp/after-sale/*/cancel
+c-app POST /mp/attribution/report
+c-app POST /mp/coupon/best
+c-app POST /mp/order/*/confirm-receipt
+c-app POST /mp/risk/appeal
+c-app POST /mp/store/*/enter
+c-app POST /mp/store/*/rebuy
+c-app POST /mp/ticket
+c-app POST /mp/user/token/refresh
