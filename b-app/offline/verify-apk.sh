@@ -114,12 +114,36 @@ else
        <(unzip -l "$NEW" | awk '/\.so$/{print $4}' | sort) | head -6 || true
 fi
 
-# 5. 图标资源
-if diff -q <(unzip -l "$OLD" | awk '/res\/.*icon.*\.(png|webp|xml)$/{print $4}' | sort) \
-           <(unzip -l "$NEW" | awk '/res\/.*icon.*\.(png|webp|xml)$/{print $4}' | sort) >/dev/null; then
-  ok "图标资源一致"
+# 5. 启动图标
+#
+# ⚠️ **这一条此前恒绿，一个字节都没量到。** 它按文件名筛
+# `res/.*icon.*\.(png|webp|xml)`，而 release 包的资源名是**混淆过的**
+# （启动图标叫 `res/9T.png`），两边都筛出 0 个文件 —— diff 两个空列表当然一致。
+# 2026-09-11 换图标时发现：图标真的换了，而它照样报「一致」。
+#
+# 现在问 aapt 要 `application: icon=`，那是**运行时真正用的那一个**，
+# 再比它的字节。名字混淆不混淆都不影响。
+#
+# 判据方向也反过来了：图标**本来就该偶尔变**（换 logo），所以「变了」不是失败，
+# 是要打印出来让人看一眼；真正该失败的是**取不到图标**——那意味着包里没图标，
+# 而那种包装上去是个小机器人。
+NEW_IC=$("$AAPT" dump badging "$NEW" 2>/dev/null | grep -oE "icon='[^']*'" | head -1 | sed "s/icon='//;s/'//" || true)
+if [ -z "$NEW_IC" ]; then
+  bad "取不到启动图标 —— 这种包装上去图标是系统默认的小机器人"
+  # ⚠️ 上面那行 `|| true` 不是随手加的：脚本开头是 set -euo pipefail，
+  # 而 grep 无匹配退出 1 —— 于是「取不到图标」这件事会让**整条赋值失败、脚本当场
+  # 静默中止**，这个分支一个字也打不出来。写完消融验的时候才发现：
+  # 注入一个必然不匹配的 grep，脚本在 .so 那条之后就没声了，退出码 1、没有任何提示。
+  # **一个防御分支若在它该触发的那一刻不可达，等于没写。**
 else
-  bad "图标资源变了"
+  NEW_IC_MD5=$(unzip -p "$NEW" "$NEW_IC" 2>/dev/null | md5 -q || true)
+  OLD_IC=$("$AAPT" dump badging "$OLD" 2>/dev/null | grep -oE "icon='[^']*'" | head -1 | sed "s/icon='//;s/'//" || true)
+  OLD_IC_MD5=$(unzip -p "$OLD" "$OLD_IC" 2>/dev/null | md5 -q || true)
+  if [ "$NEW_IC_MD5" = "$OLD_IC_MD5" ]; then
+    ok "启动图标与旧包一致（$NEW_IC）"
+  else
+    ok "启动图标**变了**：$OLD_IC_MD5 → $NEW_IC_MD5（有意换过就对，没换过要查）"
+  fi
 fi
 
 # 6. dex 里的四个关键 SDK。**数类，不数文件** —— aar 在不在只有 dex 看得出
