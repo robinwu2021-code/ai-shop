@@ -279,8 +279,12 @@ APPS = {
     # 为什么是「虹选」两字而不是「虹选商家」四字：图标在桌面上是 48dp，
     # 四个汉字每个不到 10dp，笔画糊成一团 —— 而「商家」这层信息桌面名里已经有了
     # （app_name = 虹选商家）。方章走 spec §02 已有的 CN2 档，不新造几何。
+    # `cn_span` = 那道弧压住几个字。**2026-09-11 定案：乙（横跨「虹选」两字）。**
+    # 甲（弧只压「虹」）是 spec §04 的字面读法，乙与 HX 方章同构 —— 那道弧在 HX 上
+    # 本来就横跨 h 与 x。48dp 下甲的弧只占左半边，重心明显偏左；乙压住整个字组，
+    # 缩到桌面尺寸仍然是一个完整的方块。
     "b": dict(name="虹选商家", label="虹选 · 商家", plate=RED, glyph=PAPER, arc=PAPER,
-              cn="虹选", flavor="merchant", pkg="ai.neargo.shop.b"),
+              cn="虹选", cn_span="虹选", flavor="merchant", pkg="ai.neargo.shop.b"),
 }
 
 # ─────────────────────────────────────────── PNG 渲染（headless Chrome）
@@ -336,11 +340,38 @@ def write(p: pathlib.Path, text):
 def app_icon_svg(a):
     # 带 `cn` 的走中文方章（B 端「虹选」），否则走 HX 方章（C 端）
     if a.get("cn"):
-        return cn_icon_svg(a["plate"], a["glyph"], a["arc"], text=a["cn"], span="虹")
+        # span 从 APPS 取：写死在这里的话，改弧跨度要翻到这个函数里来，
+        # 而看的人以为改 APPS 就够了 —— 定案那天正是这么找了一圈
+        return cn_icon_svg(a["plate"], a["glyph"], a["arc"],
+                           text=a["cn"], span=a.get("cn_span", a["cn"][:1]))
     return icon_svg(a["plate"], a["glyph"], a["arc"])
 
 
+def adaptive_fg_cn_svg(glyph, arc, text, span):
+    """中文字标的 Android 自适应前景。与 {@link adaptive_fg_svg} 同一套安全圆排版。"""
+    inner = 72
+    off = (108 - inner) / 2
+    return svg("0 0 108 108",
+               f'<g transform="translate({f(off)} {f(off)})">'
+               + cn_body(inner, glyph, arc, text, span) + '</g>')
+
+
 def app_adaptive_fg_svg(a):
+    """
+    带 `cn` 的要走中文字标 —— **此前一律走 glyph_body，于是 b 与 c 的自适应前景
+    字节完全相同**（实测 md5 一致）。那正是 APPS["b"] 注释里记着「走过并否掉」的
+    第①版：两端图标一模一样，桌面上只能靠名字分，而桌面名会被截断。
+
+    方章那一侧早就分开了（app_icon_svg 认 cn），自适应这一侧没跟上 ——
+    两条产物链做同一件事而只改了一条，是这类缺陷的常见形状。
+
+    当前 APK 用的是老式方形 PNG（aapt2 badging 各密度都指向同一个 png），
+    所以这个洞还没在真机上露出来 —— 但哪天离线工程接上自适应图标，
+    商家端的图标会静默变回 HX，且不报任何错。
+    """
+    if a.get("cn"):
+        return adaptive_fg_cn_svg(a["glyph"], a["arc"],
+                                  a["cn"], a.get("cn_span", a["cn"][:1]))
     return adaptive_fg_svg(a["glyph"], a["arc"])
 
 

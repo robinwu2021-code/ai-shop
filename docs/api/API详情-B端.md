@@ -3998,6 +3998,31 @@ _无字段_
 | `catalog` | [`AuthCodeInfo`](#authcodeinfo)\[\] | 是 | 平台的门槛码字典：哪些码要哪一类证 |
 
 
+#### POST `/biz/qualifications/recognize`
+
+识别证照（预填编号与有效期，认不出就让他手填）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`CertRecognition`](#certrecognition)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `recognized` | `boolean` | 是 | false = 模型没开或没认出来。**端上据此让他手填，不要弹错误** —— 识别是锦上添花，没识别出来只是少省一次手打。 少了这一位、只看字段是不是 null 的话，端上分不清 「模型说这张证上没有」与「压根没认」。 |
+| `docType` | `string,null` | 是 | `BUSINESS_LICENSE` 营业执照 / `ID_CARD` 身份证 / `UNKNOWN` 认不出是什么证 |
+| `side` | `string,null` | 是 | 身份证专用：`FRONT` 人像面 / `BACK` 国徽面。其余证件为 null |
+| `name` | `string,null` | 是 | 执照上的名称，或身份证上的姓名。**不是「证件名称」那一栏** |
+| `code` | `string,null` | 是 | 统一社会信用代码（执照）或身份证号。 **回给上传者本人是必要的**（他正要核对这一栏）， 但不要写进日志、不要转给第三方。 |
+| `legalForm` | `string,null` | 是 | 执照类型：个体工商户 / 有限责任公司 …… |
+| `person` | `string,null` | 是 | 法定代表人 / 经营者 |
+| `address` | `string,null` | 是 | 住所、经营场所或住址 |
+| `issuedAt` | `string,null` | 是 | 成立日期。`YYYY-MM-DD` |
+| `validTo` | `string,null` | 是 | 有效期止。`YYYY-MM-DD`，或字面量 `长期` |
+| `confidence` | `number` | 是 | 模型自评 0–1。**只用来决定「预填还是仅提示」**，不作为放行依据 |
+
+
 #### POST `/biz/qualifications/save`
 
 传一张资质证件　🔒
@@ -5602,6 +5627,24 @@ _无字段_
 - `SERVICE`
 - `VIRTUAL`
 - `CARD`
+
+### CertRecognition
+
+证照识别结果，用来**预填**表单。与后端 `BizCertController.CertVO` 同形。 ⚠️ **认不出的字段一律 null，不猜。** 猜出来的值会被商家当成「系统读到的」 直接提交，比空着危险得多 —— 后端 `CertVisionPort.Cert` 的注释写的就是这条。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `recognized` | `boolean` | 是 | false = 模型没开或没认出来。**端上据此让他手填，不要弹错误** —— 识别是锦上添花，没识别出来只是少省一次手打。 少了这一位、只看字段是不是 null 的话，端上分不清 「模型说这张证上没有」与「压根没认」。 |
+| `docType` | `string,null` | 是 | `BUSINESS_LICENSE` 营业执照 / `ID_CARD` 身份证 / `UNKNOWN` 认不出是什么证 |
+| `side` | `string,null` | 是 | 身份证专用：`FRONT` 人像面 / `BACK` 国徽面。其余证件为 null |
+| `name` | `string,null` | 是 | 执照上的名称，或身份证上的姓名。**不是「证件名称」那一栏** |
+| `code` | `string,null` | 是 | 统一社会信用代码（执照）或身份证号。 **回给上传者本人是必要的**（他正要核对这一栏）， 但不要写进日志、不要转给第三方。 |
+| `legalForm` | `string,null` | 是 | 执照类型：个体工商户 / 有限责任公司 …… |
+| `person` | `string,null` | 是 | 法定代表人 / 经营者 |
+| `address` | `string,null` | 是 | 住所、经营场所或住址 |
+| `issuedAt` | `string,null` | 是 | 成立日期。`YYYY-MM-DD` |
+| `validTo` | `string,null` | 是 | 有效期止。`YYYY-MM-DD`，或字面量 `长期` |
+| `confidence` | `number` | 是 | 模型自评 0–1。**只用来决定「预填还是仅提示」**，不作为放行依据 |
 
 ### Community
 
@@ -8083,7 +8126,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 ### TrafficSource
 
-流量来源。**与 ops-web 的 `TrafficSource` 同名** —— 那边多 INVITE/CHANNEL 两个值（已标 MERGE）
+流量来源。与 `ord_sub_order.traffic_source` 的库列注释逐字一致（下单时固化）。 ops-web 的同名类型 2026-09-10 起也是这两个值 —— 它此前多的 INVITE/CHANNEL 后端从不下发，已删（见 ops-web/lib/types/order.ts 的注释）。
 
 枚举取值：
 

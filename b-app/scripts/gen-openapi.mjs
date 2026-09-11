@@ -238,6 +238,7 @@ const RESPONSE_TYPES = {
   mSaveMemberSegment: "MemberSegment",
   mSaveMemberSettings: "MemberSetting",
   mSaveQualification: "Qualification",
+  mRecognizeQualification: "CertRecognition",
   mSaveSpecOverride: "SpecTemplate[]",
   mSaveStoreFulfillment: "StoreFulfillment",
   mSelfBuildPickup: "PickupCandidate",

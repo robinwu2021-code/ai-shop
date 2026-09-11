@@ -137,6 +137,7 @@
 | 自建自提点（待运营核实） | POST | `/biz/pickup-points` | `mSelfBuildPickup` | — |
 | 门店可引用的取货点候选 | GET | `/biz/pickup-points/candidates` | `mPickupCandidates` | — |
 | 我的资质与已获授权的类目 | GET | `/biz/qualifications` | `mQualifications` | entity-detail、qualifications |
+| 识别证照（预填编号与有效期，认不出就让他手填） | POST | `/biz/qualifications/recognize` | `mRecognizeQualification` | qualifications |
 | 传一张资质证件 | POST | `/biz/qualifications/save` | `mSaveQualification` | qualifications |
 | 店铺门面 | GET | `/biz/store` | `mStore` | home、store、store-notice、store-scope |
 | 保存店铺门面 | POST | `/biz/store` | `mSaveStore` | store、store-scope |
@@ -152,7 +153,6 @@
 | 开预约时段 | POST | `/biz/stores/:storeNo/appointment-slots` | `mOpenAppointmentSlot` | schedule |
 | 门店送货方式 | GET | `/biz/stores/:storeNo/fulfillment` | `mStoreFulfillment` | goods-edit、store-scope |
 | 保存门店送货方式 | PUT | `/biz/stores/:storeNo/fulfillment` | `mSaveStoreFulfillment` | store-scope |
-| —（b-app 未接） | — | `/biz/qualifications/recognize` | — | — |
 
 ### `biz:finance`　结算账单、费率卡、收款进件、积分开关
 
@@ -417,7 +417,6 @@
 | 端点 | 权限码 | 可用角色 |
 |---|---|---|
 | `/biz/inventory/export` | `biz:customer` | 老板、店长 |
-| `/biz/qualifications/recognize` | `biz:store` | 老板、店长 |
 | `/biz/quote/{}/revise` | `biz:campaign` | 老板、店长 |
 | `/biz/settle/bills/{}` | `biz:finance` | 老板 |
 

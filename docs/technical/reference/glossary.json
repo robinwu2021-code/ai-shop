@@ -11474,6 +11474,12 @@
           "ar": "هذه الفئات قابلة للعرض الآن، والرفع لاستكمال الأوراق فقط؛ بعد المراجعة تنتقل إلى «فئات يمكنك بيعها»."
         },
         {
+          "key": "qual.prefilled",
+          "zh-CN": "已按证照填好{f}，请核对",
+          "en": "Filled {f} from the document — please check",
+          "ar": "تمت تعبئة {f} من الوثيقة — يرجى التحقق"
+        },
+        {
           "key": "qual.submit",
           "zh-CN": "提交",
           "en": "Submit",
@@ -11508,6 +11514,12 @@
           "zh-CN": "营业执照",
           "en": "Business licence",
           "ar": "رخصة تجارية"
+        },
+        {
+          "key": "qual.typeMismatch",
+          "zh-CN": "这张证看着不是你选的类型，确认一下",
+          "en": "This looks like a different document type — please check",
+          "ar": "يبدو أن هذه وثيقة من نوع آخر — يرجى التحقق"
         },
         {
           "key": "qual.typeOther",
@@ -17369,18 +17381,6 @@
           "ar": null
         },
         {
-          "key": "couponType.NEWCOMER",
-          "zh-CN": "新人",
-          "en": "New customer",
-          "ar": null
-        },
-        {
-          "key": "couponType.TARGETED",
-          "zh-CN": "定向",
-          "en": "Targeted",
-          "ar": null
-        },
-        {
           "key": "demandStatus.CHOSEN",
           "zh-CN": "已选定",
           "en": "Supplier chosen",
@@ -18542,18 +18542,6 @@
           "key": "ticketStatus.RESOLVED",
           "zh-CN": "已解决",
           "en": "Resolved",
-          "ar": null
-        },
-        {
-          "key": "trafficSource.CHANNEL",
-          "zh-CN": "渠道",
-          "en": "Channel",
-          "ar": null
-        },
-        {
-          "key": "trafficSource.INVITE",
-          "zh-CN": "邀请",
-          "en": "Referral",
           "ar": null
         },
         {
@@ -27063,11 +27051,9 @@
         "client": "ops-web",
         "values": [
           "FULL_CUT",
-          "DISCOUNT",
-          "NEWCOMER",
-          "TARGETED"
+          "DISCOUNT"
         ],
-        "zh": ""
+        "zh": "券类型。"
       },
       {
         "name": "DELIVERY_SHAPE",
@@ -28532,11 +28518,9 @@
         "client": "ops-web",
         "values": [
           "MERCHANT_OWNED",
-          "PLATFORM",
-          "INVITE",
-          "CHANNEL"
+          "PLATFORM"
         ],
-        "zh": "流量来源（矩阵 P-12.1.7 按 trafficSource 分档计费）。"
+        "zh": "客流来源（矩阵 P-12.1.7 按 trafficSource 分档计费）。"
       },
       {
         "name": "TrafficSource",
