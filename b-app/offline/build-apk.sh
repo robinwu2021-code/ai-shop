@@ -163,6 +163,26 @@ if [ -n "$INSTALL_TO" ]; then
     fi
 fi
 
+# ── ①b 启动图标：同样以仓库里那份为单一真源 ───────────────
+#
+# 图标文件在**仓库外的离线工程**里（res/drawable/icon.png），而离线工程
+# 重解压一次就回到厂商默认 —— 高德 key 就是这么丢过一次的
+# （见 amap-key-missing-in-offline-apk）。所以接线留在仓库内：
+# 每次打包都从 brand/dist/b-app/ 拷一份过去，人只维护 brand/build.py。
+#
+# 只在**内容不同**时才拷：拷了就打印一行，让「图标这次变了」在日志里看得见。
+# 静默覆盖的话，图标改没改要去比 md5 才知道。
+say "①b 启动图标"
+ICON_SRC="brand/dist/b-app/icon-512.png"
+ICON_DST="$OFFLINE_PROJECT/simpleDemo/src/main/res/drawable/icon.png"
+[ -f "$ICON_SRC" ] || die "$ICON_SRC 不在 —— 先跑 brand/build.py"
+if [ ! -f "$ICON_DST" ] || ! cmp -s "$ICON_SRC" "$ICON_DST"; then
+    cp "$ICON_SRC" "$ICON_DST" || die "拷图标失败"
+    ok "已把 $ICON_SRC 同步进离线工程（内容有变）"
+else
+    ok "离线工程的图标已是最新"
+fi
+
 # ── ② 构建 App 资源 ─────────────────────────────────────────────────────
 say "② 构建 App 资源"
 if [ "$DO_BUILD" -eq 1 ]; then
