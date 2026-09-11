@@ -207,7 +207,20 @@ export const useMerchantStore = defineStore("merchant", {
      * 本地那个号会让所有页面查出空数据，而人只会觉得「今天没单」。
      */
     async loadStores() {
-      this.stores = await api.mStoreList().catch(() => []);
+      /*
+       * ★ **拉不到 ≠ 一家店都没有**。原先兜成 `[]`，于是下面那串兜底会一路走到
+       * `switchStore("")` —— 连本地存的门店号一起删掉。
+       *
+       * 在 H5 上看不出来：刷一次页面就重来一遍。**App 的进程能活好几天**，
+       * 而 `onLaunch` 里这一拉只发生一次 —— 冷启那一秒网络还没就绪的话，
+       * 人被静默送回默认店，之后整段会话里没有任何一处会再拉一次。
+       * 他记得自己切过店，界面却一直是另一家的数。
+       *
+       * 「真的没有门店」（新注册还没建店）走的是 `rows = []` 那条，行为不变。
+       */
+      const rows = await api.mStoreList().catch(() => null);
+      if (!rows) return this.stores;
+      this.stores = rows;
       const usable = this.stores.filter((s) => s.status === "ACTIVE");
       const saved = (uni.getStorageSync(STORAGE.storeNo) as string) || "";
       const keep = usable.some((s) => s.storeNo === saved) ? saved : "";
@@ -264,6 +277,10 @@ export const useMerchantStore = defineStore("merchant", {
       void this.loadScope();
       if (crossEntity) {
         // 资料也要重拉：店名、状态（待补证照 / 营业中）都是**按证照**的
+        //
+        // 这两个都是尽力而为，失败不拦人切店。**但失败不能就此了结** ——
+        // 列表停在上一张证照的代价是「我的」头部静默退回主体名（见 ensureStores
+        // 的注释）。兜底在那里：它的新判据会发现当前门店不在列表里，下一次调用重拉。
         void api.mStoreList().then((rows) => { this.stores = rows; }).catch(() => {});
         void this.loadProfile().catch(() => {});
       }
@@ -276,9 +293,22 @@ export const useMerchantStore = defineStore("merchant", {
      * `multiStore` 变 false，门店切换条整条消失 —— 而 `storeNo` 仍从本地存储里
      * 读出来发给后端。表现是「页面显示的是古荡店的库存，界面上却没有任何地方
      * 告诉你现在看的是古荡店」，多店商家据此改库存会改到另一家店去。
+     *
+     * <p>★ **判据不是「非空」，是「当前门店在不在这份列表里」**。
+     * 非空只能说明拉过一次，说明不了拉的是**哪张证照**的：跨证照切店后
+     * {@link switchStore} 那次重拉一旦失败（`.catch` 吞掉，没人重试），
+     * 这份列表就永远停在上一张证照上 —— 而 `stores.length` 是非零的，
+     * 于是之后每一次 `ensureStores` 都直接返回，**整段会话都不会再拉**。
+     *
+     * <p>后果只在「我的」头部看得见，而且伪装得很好：`currentStore` 找不到
+     * 当前门店 → `multiStore` 退回 false → 那一格显示**主体名**（证照抬头）。
+     * 主体名按定义不跟着切店变，所以它长得像一条正常信息，只是永远停在切换之前。
+     * 别的页面用 `biz-store-tag`，列表过期时它显示「—」，一眼看得出是坏的。
      */
     async ensureStores() {
-      if (this.stores.length) return this.stores;
+      const fresh = this.stores.length > 0
+        && (!this.storeNo || this.stores.some((x) => x.storeNo === this.storeNo));
+      if (fresh) return this.stores;
       this.storesLoading ??= this.loadStores().finally(() => {
         this.storesLoading = null;
       });
