@@ -24,7 +24,10 @@ Environment=JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 #   日志格式被悄悄改坏、且不报错。
 Environment=LOGGING_FILE_NAME=/data/log/ai-shop/shop-app/shop-app.log
 Environment=LOGGING_LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE=20MB
-Environment=LOGGING_LOGBACK_ROLLINGPOLICY_MAX_HISTORY=3
+# maxHistory 放宽、总量封顶不动（2026-09-14 复核）：实测平时约 0.5MB/天，
+# 起约束的一直是天数不是总量 —— 3 天只留约 1.5MB，周五的问题周一就查不到了。
+# 洪水照样被 TOTAL_SIZE_CAP 挡住；多留的天数在平时几乎不占空间。
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_MAX_HISTORY=14
 Environment=LOGGING_LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP=100MB
 Environment=LOGGING_THRESHOLD_CONSOLE=ERROR
 Environment=LOGGING_EXCEPTION_CONVERSION_WORD=%%wEx{30}

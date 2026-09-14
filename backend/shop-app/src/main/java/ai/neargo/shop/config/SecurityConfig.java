@@ -8,6 +8,7 @@ import ai.neargo.shop.auth.ConsumerTokenAuthFilter;
 import ai.neargo.shop.auth.MerchantTokenAuthFilter;
 import ai.neargo.shop.auth.OperatorTokenAuthFilter;
 import ai.neargo.shop.auth.TokenStore;
+import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -172,6 +173,8 @@ public class SecurityConfig {
                          */
                         .requestMatchers("/biz/auth/login", "/biz/auth/staff-login",
                                 "/biz/auth/otp/send").permitAll()
+                        // 异步与错误分派放行 —— 理由见 operatorChain 同一行的注释
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         .anyRequest().authenticated())
                 /*
                  * **只认 btk_（A7）。** 此前这条链与 /mp/** 合用一条，挂的是
@@ -230,6 +233,22 @@ public class SecurityConfig {
                         // 安全性靠邮件里那个一次性令牌，以及「账号不存在也返回成功」
                         .requestMatchers("/ops/auth/login", "/ops/auth/forgot",
                                 "/ops/auth/reset").permitAll()
+                        /*
+                         * **异步与错误分派放行。** 不放的话，SSE（/ops/stream）每次到点
+                         * 都会被当成匿名拒掉：令牌过滤器继承 OncePerRequestFilter、默认跳过
+                         * 异步分派，且身份只写进 SecurityContextHolder、不存进请求属性 ——
+                         * 于是 30 分钟一到，那次 ASYNC 分派拿到的是空身份。而 SSE 的响应
+                         * 早已提交、转不成 401，异常一路抛到 Tomcat 记 ERROR 带整段堆栈。
+                         *
+                         * 2026-09-14 生产实测：当天全部 10 条 ERROR 都是它、占日志字节 46%，
+                         * 恰好每 30 分钟 2 条（ASYNC 一次、随后的 ERROR 分派一次）。
+                         * 「控制台只留 ERROR 进 journal」那条通道因此 100% 是噪音。
+                         *
+                         * **这样放行是安全的**：ASYNC 分派只能延续一个已经在 REQUEST 分派上
+                         * 过了鉴权的请求，外面打不进来；ERROR 分派只渲染错误页。
+                         * OpsStreamTest.asyncDispatchAfterTimeoutKeepsIdentity 钉住它。
+                         */
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(new OperatorTokenAuthFilter(tokenStore, identityResolver),
                         UsernamePasswordAuthenticationFilter.class)
