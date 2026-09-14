@@ -34,7 +34,7 @@ case "$APP" in
 esac
 
 HOST="${HOST:-soukmind-tx}"
-WWW="${WWW:-/var/www/ai-shop}"
+WWW="${WWW:-/data/app/ai-shop/web}"
 DEST="$WWW/$APP"
 
 ROOT="$(git rev-parse --show-toplevel)"

@@ -70,8 +70,8 @@ done
 
 # ── 3. 服务器直出（官网今天真正指向的地方）────────────────────────────
 REMOTE="hxmall-merchant-$VNAME.apk"
-scp -q "$APK" "$SSH_HOST:/var/www/ai-shop/dl/$REMOTE"
-R_MD5=$(ssh "$SSH_HOST" "md5sum /var/www/ai-shop/dl/$REMOTE | cut -d' ' -f1")
+scp -q "$APK" "$SSH_HOST:/data/app/ai-shop/web/dl/$REMOTE"
+R_MD5=$(ssh "$SSH_HOST" "md5sum /data/app/ai-shop/web/dl/$REMOTE | cut -d' ' -f1")
 [ "$R_MD5" = "$MD5" ] || { echo "✗ 服务器上的 md5 对不上：$R_MD5"; exit 1; }
 echo "✓ 已传服务器：/dl/$REMOTE"
 

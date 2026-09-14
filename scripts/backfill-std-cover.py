@@ -90,7 +90,7 @@ def main():
     ap.add_argument("--dry", action="store_true")
     a = ap.parse_args()
     env = {}
-    for line in open("/opt/ai-shop/shop-app.env"):
+    for line in open("/data/app/ai-shop/shop-app/shop-app.env"):
         if "=" in line and not line.startswith("#"):
             k, _, v = line.strip().partition("=")
             env[k] = v

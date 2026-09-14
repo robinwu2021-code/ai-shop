@@ -14,23 +14,33 @@ Requires=mariadb.service
 [Service]
 User=deploy
 Group=deploy
-WorkingDirectory=/opt/ai-shop-job
-EnvironmentFile=/opt/ai-shop-job/job.env
+WorkingDirectory=/data/app/ai-shop/shop-job
+EnvironmentFile=/data/app/ai-shop/shop-job/job.env
 Environment=JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+
+# 日志（测试档）：这个进程几乎不打日志（现 job.log 仅 323K）。说明见 deploy/tencent/systemd/ai-shop.service
+Environment=LOGGING_FILE_NAME=/data/log/ai-shop/shop-job/shop-job.log
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE=10MB
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_MAX_HISTORY=3
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP=30MB
+Environment=LOGGING_THRESHOLD_CONSOLE=ERROR
+Environment=LOGGING_EXCEPTION_CONVERSION_WORD=%%wEx{30}
+
 # 堆给 256M：这个进程只做「按时发一个 HTTP 请求 + 写三行库」，
 # 任务体全在业务系统里跑。给大了是从 MariaDB 和页缓存那里抢
-ExecStart=/usr/lib/jvm/java-21-openjdk-amd64/bin/java -Xms128m -Xmx256m -jar /opt/ai-shop-job/shop-job.jar
+ExecStart=/usr/lib/jvm/java-21-openjdk-amd64/bin/java -Xms128m -Xmx256m -jar /data/app/ai-shop/shop-job/shop-job.jar
 SuccessExitStatus=143
 Restart=always
 RestartSec=10
 # 关进程给 45 秒：JobWorkerConfig 里调度器 waitForTasksToComplete=true，
 # awaitTermination=30s。systemd 的默认 90s 够，这里写明是为了别人改的时候知道下限
 TimeoutStopSec=45
-StandardOutput=append:/var/log/ai-shop/job.log
-StandardError=append:/var/log/ai-shop/job.log
+# 控制台只剩 ERROR；应用自己写文件、自己滚（说明见 deploy/tencent/systemd/ai-shop.service）
+StandardOutput=journal
+StandardError=journal
 NoNewPrivileges=true
 ProtectSystem=full
-ReadWritePaths=/var/log/ai-shop
+ReadWritePaths=/data/log/ai-shop/shop-job
 
 [Install]
 WantedBy=multi-user.target

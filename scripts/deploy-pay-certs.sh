@@ -30,7 +30,7 @@ CERT_DIR="${CERT_DIR:-$HOME/cert/1117261658}"
 # WX_*_KEY_PATH 指的就是它 —— 写成单数会安静地造出第二份私钥副本，
 # 服务仍然读老的那份，于是「传上去了却不生效」，而两处内容还都是对的。
 # 2026-09-04 我就这么传错过一次（本条注释是那次的产物）。
-REMOTE_DIR="${REMOTE_DIR:-/opt/ai-shop/certs}"
+REMOTE_DIR="${REMOTE_DIR:-/data/app/ai-shop/shop-app/certs}"
 SVC_USER="${SVC_USER:-deploy}"
 
 say() { printf '\033[36m›\033[0m %s\n' "$1"; }
@@ -119,12 +119,12 @@ ok "${#FILES[@]} 份指纹一致"
 # ── ⑥ env 里那几个非文件的值：只报「填没填」，不报值 ──────────────────
 say "核对 env（只看填没填，不取值）"
 for k in WX_MCHID WX_SERIAL_NO WX_APIV3_KEY; do
-    n=$(ssh "$HOST" "sudo grep -E '^$k=' /opt/ai-shop/shop-app.env 2>/dev/null | head -1 | cut -d= -f2- | wc -c")
+    n=$(ssh "$HOST" "sudo grep -E '^$k=' /data/app/ai-shop/shop-app/shop-app.env 2>/dev/null | head -1 | cut -d= -f2- | wc -c")
     [ "${n:-0}" -gt 1 ] && ok "$k 已填（$((n-1)) 位）" || printf '  \033[33m!\033[0m %s 是空的\n' "$k"
 done
 # 路径必须指到我们刚传的地方 —— 指到别处的话「传上去了却不生效」
 for k in WX_PRIVATE_KEY_PATH WX_PLATFORM_PUBLIC_KEY_PATH; do
-    v=$(ssh "$HOST" "sudo grep -E '^$k=' /opt/ai-shop/shop-app.env 2>/dev/null | head -1 | cut -d= -f2-")
+    v=$(ssh "$HOST" "sudo grep -E '^$k=' /data/app/ai-shop/shop-app/shop-app.env 2>/dev/null | head -1 | cut -d= -f2-")
     case "$v" in
         "$REMOTE_DIR"/*) ok "$k → $v" ;;
         "") printf '  \033[33m!\033[0m %s 没配\n' "$k" ;;
@@ -132,7 +132,7 @@ for k in WX_PRIVATE_KEY_PATH WX_PLATFORM_PUBLIC_KEY_PATH; do
     esac
 done
 # 序列号必须与证书对得上：换了证书没改这一行，通道会拒签而报错不提序列号
-RS=$(ssh "$HOST" "sudo grep -E '^WX_SERIAL_NO=' /opt/ai-shop/shop-app.env | head -1 | cut -d= -f2-")
+RS=$(ssh "$HOST" "sudo grep -E '^WX_SERIAL_NO=' /data/app/ai-shop/shop-app/shop-app.env | head -1 | cut -d= -f2-")
 [ -z "$RS" ] || [ "$RS" = "$SERIAL" ] || die "env 里的 WX_SERIAL_NO 与证书不符（证书是 $SERIAL）"
 [ "$RS" = "$SERIAL" ] && ok "序列号与证书一致"
 

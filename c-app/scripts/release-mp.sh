@@ -15,7 +15,7 @@ VERSION="${1:?用法: npm run release:mp -- <版本号> [备注]}"
 DESC="${2:-自动发布 $VERSION}"
 
 HOST=soukmind-tx
-REMOTE=/opt/ai-shop/mp-upload
+REMOTE=/data/build/ai-shop/mp-upload
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST="$HERE/dist/build/mp-weixin"
 

@@ -27,12 +27,12 @@ APP="${1:-shop-app}"
 case "$APP" in
     shop-app)
         MVN_MODULE="shop-app"; JAR_IN_REPO="shop-app/target/shop-app-0.1.0-SNAPSHOT.jar"
-        REMOTE_DIR="${REMOTE_DIR:-/opt/ai-shop}"; LINK_NAME="shop-app.jar"
+        REMOTE_DIR="${REMOTE_DIR:-/data/app/ai-shop/shop-app}"; LINK_NAME="shop-app.jar"
         SERVICE="${SERVICE:-ai-shop}"
         HEALTH="${HEALTH:-http://localhost:8081/actuator/health}" ;;
     pay-svc)
         MVN_MODULE="pay/pay-svc"; JAR_IN_REPO="pay/pay-svc/target/pay-svc-0.1.0-SNAPSHOT.jar"
-        REMOTE_DIR="${REMOTE_DIR:-/opt/ai-shop-pay}"; LINK_NAME="pay-svc.jar"
+        REMOTE_DIR="${REMOTE_DIR:-/data/app/ai-shop/pay-svc}"; LINK_NAME="pay-svc.jar"
         SERVICE="${SERVICE:-ai-shop-pay}"
         # pay-svc 没有 actuator（它只暴露 /internal 与 /callback）。
         # 拿 /internal 的 401 当活口：**401 说明容器起来了、过滤链在**，
@@ -188,6 +188,10 @@ WT=""
 release_lock() { ssh "$HOST" "rm -rf '$LOCKDIR'" >/dev/null 2>&1 || true; }
 cleanup() {
     [ -n "$WT" ] && git worktree remove --force "$WT" >/dev/null 2>&1 || true
+    # 远端 /tmp 里的包：成功路径上 install 之后已经删过，这里兜的是中途退出 ——
+    # MD5 不一致、「线上被别人换过」、以及 DRY=1（**每跑一次就留一个 86MB**）。
+    # 2026-09-14 在服务器 /tmp 里清点出 5 个这样的残留，近 1G。
+    [ -n "${JAR_NAME:-}" ] && ssh "$HOST" "rm -f /tmp/$JAR_NAME" >/dev/null 2>&1 || true
     release_lock
 }
 trap cleanup EXIT

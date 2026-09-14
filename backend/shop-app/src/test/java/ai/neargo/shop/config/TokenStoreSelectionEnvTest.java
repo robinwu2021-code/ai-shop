@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * 按端开关能不能<b>用环境变量</b>配。
  *
  * <h2>为什么单独钉这一条</h2>
- * <p>生产改配置走的是 {@code /opt/ai-shop/shop-app.env} 里的环境变量，不是 yml。
+ * <p>生产改配置走的是 {@code /data/app/ai-shop/shop-app/shop-app.env} 里的环境变量，不是 yml。
  * 而「写了一行环境变量，但没有任何代码在读它」是一种<b>零报错的失败</b> ——
  * 2026-08-28 早上刚踩过：{@code job.env} 里写着
  * {@code JOB_WORKER_START_DISABLED=true}，而 {@code application.yml} 里没有占位符

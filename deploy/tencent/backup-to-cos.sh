@@ -1,20 +1,20 @@
 #!/bin/bash
 # 每日备份 → COS `hxmall-backup-1301656997`
 #
-# 装在服务器 /opt/ai-shop/backup-to-cos.sh，由 /etc/cron.d/ai-shop-backup 每天 03:20 跑。
+# 装在服务器 /data/app/ai-shop/ops/backup-to-cos.sh，由 /etc/cron.d/ai-shop-backup 每天 03:20 跑。
 #
 # **只在本机留一份不叫备份** —— 机器没了备份跟着没。所以落地即上传，
 # 本机只保留最近 3 天用于快速回滚，其余交给 COS 的生命周期规则。
 #
-# ⚠️ 当前用的是后端那把 COS 密钥（/opt/ai-shop/shop-app.env）。
+# ⚠️ 当前用的是后端那把 COS 密钥（/data/app/ai-shop/shop-app/shop-app.env）。
 #    按 cos-buckets.md §四 应该换成**只能写 backup 桶**的子账号密钥 ——
 #    发子账号密钥要在控制台做，换的时候只需改下面的 ENV_FILE 指向新文件。
 set -euo pipefail
 
-ENV_FILE=/opt/ai-shop/shop-app.env
+ENV_FILE=/data/app/ai-shop/shop-app/shop-app.env
 BUCKET=hxmall-backup-1301656997
 REGION=ap-guangzhou
-LOCAL=/var/backups/ai-shop
+LOCAL=/data/backup/ai-shop/db
 KEEP_DAYS=3
 DAY=$(date +%Y%m%d)
 
@@ -39,7 +39,7 @@ if [ "$SIZE" -lt 10240 ]; then
 fi
 
 # ── 上传 ──
-python3 /opt/ai-shop/cos_put.py "$DUMP" "$BUCKET" "$REGION" \
+python3 /data/app/ai-shop/ops/cos_put.py "$DUMP" "$BUCKET" "$REGION" \
   "db/ai_shop-$DAY.sql.gz" "application/gzip"
 
 # ── 本机只留最近几天 ──

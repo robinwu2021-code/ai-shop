@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 后端发布：**新 jar 用新文件名，再切软链**，不覆盖正在跑的那个。
 #
-# 为什么不能直接 scp 覆盖 /opt/ai-shop/shop-app.jar：
+# 为什么不能直接 scp 覆盖 /data/app/ai-shop/shop-app/shop-app.jar：
 #
 #   Spring Boot fat jar 是懒加载的 —— 有些类**只在关闭时才第一次加载**
 #   （Ehcache 的 TieredStore$Provider$1、Lettuce 的 netty executor、
@@ -21,7 +21,7 @@
 set -euo pipefail
 
 HOST="${1:-soukmind-tx-root}"
-REMOTE_DIR=/opt/ai-shop
+REMOTE_DIR=/data/app/ai-shop/shop-app
 LOCAL_JAR="$(cd "$(dirname "$0")/../../.." && pwd)/backend/shop-app/target/shop-app-0.1.0-SNAPSHOT.jar"
 STAMP="$(date +%Y%m%d-%H%M)"
 KEEP=5   # 保留最近几个实体 jar。**至少 2** —— 上一个还要给正在关闭的旧 JVM 读
@@ -35,7 +35,7 @@ ssh "$HOST" "set -euo pipefail; cd $REMOTE_DIR
   # **先记下日志行数**：下面那条 unclean 检查只许看本次重启之后的行。
   # 用 tail -N 是错的 —— 窗口里会残留几小时前那次真的 unclean，
   # 于是每次部署都报警，报到第三次就没人看了。
-  before=\$(wc -l < /var/log/ai-shop/app.log 2>/dev/null || echo 0)
+  before=\$(wc -l < /data/log/ai-shop/shop-app/shop-app.log 2>/dev/null || echo 0)
   # 原子切换：先建临时软链再 mv -T，避免中间出现「软链不存在」的窗口
   ln -sfn shop-app-$STAMP.jar shop-app.jar.new
   mv -Tf shop-app.jar.new shop-app.jar
@@ -49,7 +49,7 @@ ssh "$HOST" "set -euo pipefail; cd $REMOTE_DIR
   echo \"health=\$code\"
   [ \"\$code\" = 200 ] || { echo '✗ 起不来，回滚：ln -sfn <上一个 jar> shop-app.jar && systemctl restart ai-shop' >&2; exit 1; }
   # 闸门二：**这次关闭是否干净** —— 不干净就意味着所有人的会话又被清了一遍
-  if tail -n +\$((before+1)) /var/log/ai-shop/app.log | grep -q 'deleted root directory'; then
+  if tail -n +\$((before+1)) /data/log/ai-shop/shop-app/shop-app.log | grep -q 'deleted root directory'; then
     echo '⚠ Ehcache 判定 unclean shutdown 并删了持久化目录 —— 所有人已掉线。查上一次关闭的 NoClassDefFoundError' >&2
   else
     echo '✓ 会话持久化目录保留（clean shutdown）'

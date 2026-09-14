@@ -80,7 +80,7 @@ export const site = {
     /**
      * 商家端 · 虹选商家（Android APK 直链）。
      *
-     * **当前托管在自己的服务器上**：`/var/www/ai-shop/dl/`，由 nginx 的 `location ^~ /dl/`
+     * **当前托管在自己的服务器上**：`/data/app/ai-shop/web/dl/`，由 nginx 的 `location ^~ /dl/`
      * 直出。用相对路径而不是绝对地址 —— 备案未过之前，商家多半从 `http://<IP>/` 进来，
      * 写死 https://www.hxmall.top 会让 IP 入口的下载跳到一个他打不开的地方。
      *

@@ -16,8 +16,8 @@ URL="https://cdn.mysql.com/Downloads/MySQL-${VER%.*}/${PKG}.tar.xz"
 BASE=/opt/mysql
 HERE="$(cd "$(dirname "$0")" && pwd)"
 CNF=/etc/mysql97/my.cnf
-DATA=/var/lib/mysql97
-LOGD=/var/log/mysql97
+DATA=/data/db/mysql97
+LOGD=/data/log/infra/mysql97
 PORT=3307
 export LD_LIBRARY_PATH="$BASE/lib-compat"
 

@@ -1,10 +1,10 @@
 # MySQL 9.7 待机实例的错误日志。
 # 2026-09-14 刚因为 app.log 从没轮转过把根分区写满 —— 新装的东西从第一天就带上轮转。
-/var/log/mysql97/error.log {
+/data/log/infra/mysql97/error.log {
     su mysql mysql
     daily
     maxsize 100M
-    rotate 14
+    rotate 7
     compress
     delaycompress
     missingok
