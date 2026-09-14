@@ -1,0 +1,31 @@
+# MySQL 9.7 LTS · 待机实例（将来替代 MariaDB）
+# 安装：deploy/tencent/mysql97/install.sh（幂等）· 说明：同目录 README.md
+[Unit]
+Description=MySQL 9.7 LTS standby (port 3307, will replace MariaDB)
+After=network.target
+# 与 MariaDB 互不依赖：两个数据目录、两个端口、两个 socket，谁停都不牵连对方
+
+[Service]
+Type=simple
+User=mysql
+Group=mysql
+# 官方通用二进制包链接的是 libaio.so.1，而 Ubuntu 24.04 改名成了 libaio.so.1t64。
+# 兼容链接放在 MySQL 自己的私有目录里、只对这个服务生效 —— 不往系统库目录里写任何东西。
+Environment=LD_LIBRARY_PATH=/opt/mysql/lib-compat
+# --defaults-file 必须是第一个参数，而且不能省：否则会读到 MariaDB 的 /etc/mysql/my.cnf
+ExecStart=/opt/mysql/current/bin/mysqld --defaults-file=/etc/mysql97/my.cnf
+RuntimeDirectory=mysqld97
+RuntimeDirectoryMode=0755
+LimitNOFILE=10000
+# 「尽量小的资源」的硬边界。按 my.cnf 的配置常驻约 200~300MB：
+# MemoryHigh 到了先回收、限速，MemoryMax 是天花板 —— 给足余量，免得正常峰值被 OOM 杀掉
+MemoryHigh=384M
+MemoryMax=640M
+# InnoDB 正常关机要刷脏页，别被 systemd 默认的 90 秒掐断
+TimeoutStopSec=600
+Restart=on-failure
+RestartSec=5
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

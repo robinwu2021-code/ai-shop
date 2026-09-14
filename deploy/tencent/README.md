@@ -42,10 +42,11 @@ MariaDB 12.3.2（本机 3306 · 库 ai_shop · 115 张表 · Flyway v164）
 | `/opt/ai-shop/shop-app.env` | 运行时环境（600，含真实凭据） |
 | `/etc/systemd/system/ai-shop.service` | 服务单元 |
 | `/var/lib/ai-shop/sessions` | ehcache 会话（重启不掉线） |
-| `/var/log/ai-shop/app.log` | 应用日志 |
+| `/var/log/ai-shop/app.log` | 应用日志。**2026-09-14 前从未轮转**，被刷到 41.6G 写满根分区；现由 `/etc/logrotate.d/ai-shop` 管（源文件在 [`logrotate/`](logrotate/)，重建服务器要装回去） |
 | `/var/www/ai-shop/{c-app,b-app,ops-web}` | 三个前端静态产物 |
 | `/opt/build/ai-shop` · `/opt/build/ai-neargo` | 构建工作区（源码 rsync 上来） |
 | `/etc/nginx/sites-available/www.hxmall.top` | 站点配置 |
+| `/opt/mysql` · `/var/lib/mysql97` · `mysql97.service` | MySQL 9.7 LTS 待机实例（127.0.0.1:3307，将来替代 MariaDB），见 [`mysql97/README.md`](mysql97/README.md) |
 
 ## 备份
 

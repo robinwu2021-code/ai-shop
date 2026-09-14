@@ -1,0 +1,21 @@
+# 2026-09-14 盘满事故引入。
+# app.log 由 systemd 的 StandardOutput=append: 直接追加，从上线起从未轮转过，
+# 被一个无上限重试的 outbox 毒消息刷到 41.6G，把根分区写满、线上 DOWN 约 23 小时。
+#
+# copytruncate：systemd 一直握着这个文件句柄，改名重开它不会跟着走，只能原地截断。
+# maxsize：配合 logrotate.timer 改成每小时（见 /etc/systemd/system/logrotate.timer.d/），
+#          否则要等到半夜那一次才生效 —— 事故里它一小时能长 0.65G。
+# su root root：文件是 root 建的（systemd 以 root 打开后才降权给 deploy），目录属 deploy。
+/var/log/ai-shop/app.log {
+    su root root
+    daily
+    maxsize 500M
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    dateext
+    dateformat -%Y%m%d-%H%M%S
+}
