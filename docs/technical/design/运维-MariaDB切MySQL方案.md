@@ -248,9 +248,12 @@ mariadb-dump --single-transaction --no-create-info --no-tablespaces "$db" \
 
 ### M4 · 切换（离线，一次窗口）
 
+> **执行手册见 [`migrate/CUTOVER.md`](../../../deploy/tencent/mysql97/migrate/CUTOVER.md)** ——
+> 把下面这段落成了 T-1…T5 一条按序、每步能证伪、随时可回滚的清单。
+
 顺序：停三个服务 → **各库跑一遍 M2 的①②③④**（导出结构映射建表 → 灌数据建索引 → 对账）→
 每库 `flyway baseline` → 改 env 里三个数据源指向 3307 → 起服务 →
-冒烟（按生产 profile，见 [[deploy-smoke-with-prod-profile]]）。
+冒烟（按生产 profile，见 [[deploy-smoke-with-prod-profile]]，注意单实例，见 [[second-app-instance-false-401]]）。
 预计停机：三个库 319+2+2 MB，导+灌+建索引分钟级，加对账与冒烟 **约 10~15 分钟**。
 
 **回滚**：MariaDB 全程不动、继续在 3306 跑着。切完发现问题，把 env 三个数据源指回 3306、重启即回退——
