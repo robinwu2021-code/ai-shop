@@ -378,7 +378,12 @@ ssh soukmind-tx-root   # 救火通道
 3. **短信/邮件/微信登录是真通道**（`SHOP_SMS_STUB=false`·`SHOP_MAIL_STUB=false`·
    `SHOP_WX_LOGIN_STUB=false`，从本机 env 原样搬来）。`/mp/user/otp/send` 是**公网未鉴权端点**，
    发码限流默认开着（`SHOP_OTP_RATE_LIMIT=true`）兜底，但仍建议确认限流阈值。
-4. **22 端口对 `0.0.0.0/0` 开放** —— 建议收窄到办公 IP + CI 出口 IP。
+4. **22 端口对 `0.0.0.0/0` 开放，且开着口令登录、允许 root 登录** —— 2026-09-14 实测上周 SSH 口令失败 7217 次、
+   来自 540 个 IP，其中 6937 次针对 root；`btmp` 已 11M。约 4 周内**没有一次口令登录成功**，
+   所有真实登录都走公钥（root、deploy 各一把），所以关掉口令不影响任何现有用法。
+   关口令（`/etc/ssh/sshd_config.d/00-hardening.conf`：`PasswordAuthentication no` · `KbdInteractiveAuthentication no` ·
+   `PermitRootLogin prohibit-password`；片段目录在主配置第 12 行引入、`00-` 排在 `50-cloud-init.conf` 之前，所以能压过两处 `yes`）；
+   另建议防火墙把 22 收窄到办公 IP + CI 出口 IP（控制台操作）。
 5. ~~证书 90 天到期无人续~~ **已解决（2026-08-18）** —— 见下方「10. 证书」。
 6. **`DNS_AUTO` 自动验证不生效** —— 实测回落成手动模式，`_dnsauth` TXT 是手工补的，脚本未处理。
    这也是改用 acme.sh 的原因之一：它自己写 TXT、自己轮询、自己清理。原
