@@ -1,0 +1,4 @@
+# 安装位置：/etc/cron.d/ai-shop-logwatch
+# 每小时第 7 分巡检磁盘、日志总量、日志增速；脚本见 deploy/tencent/logwatch.sh
+# 告警写进 logwatch.log 与 journal（journalctl -t logwatch）；推送通道在 /data/app/ai-shop/ops/logwatch.env 里配
+7 * * * * root /data/app/ai-shop/ops/logwatch.sh >> /data/log/ai-shop/ops/logwatch.log 2>&1

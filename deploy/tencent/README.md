@@ -48,7 +48,7 @@ MariaDB 12.3.2（本机 3306 · 库 ai_shop · 115 张表 · Flyway v164）
 | `/data/app/ai-shop/shop-app/` | 后端（`systemd: ai-shop`）：`shop-app-<时间>-<SHA>.jar` 若干版 + `shop-app.jar` 软链指当前版 · `shop-app.env`（600，含真实凭据）· `env-backup/` · `certs/`（微信支付证书，700）· `state/` · `deploy.log`（回滚读它，不轮转） |
 | `/data/app/ai-shop/shop-job/` · `pay-svc/` | 定时任务（`ai-shop-job`，`job.env`）· 支付服务（`ai-shop-pay`，`pay.env`，端口 8083），结构同上 |
 | `/data/app/ai-shop/web/{site,c-app,b-app,ops-web,dl}` | 前端静态产物；`dl/` 是 APK 直出 |
-| `/data/app/ai-shop/ops/` | 运维脚本：`backup-to-cos.sh`、`cos_put.py` |
+| `/data/app/ai-shop/ops/` | 运维脚本：`backup-to-cos.sh`、`cos_put.py`、[`housekeeping.sh`](housekeeping.sh)（每日清理，**现在只列清单**）、[`logwatch.sh`](logwatch.sh)（每小时巡检盘与日志） |
 | `/data/log/ai-shop/{shop-app,shop-job,pay-svc}/` | 应用日志。**logback 自己滚动、总量封顶**（测试档 100M / 30M / 50M），参数在各服务单元的 `Environment=` 里；控制台只留 ERROR，进 journal |
 | `/data/log/ai-shop/ops/` | 备份等运维日志，`/etc/logrotate.d/ai-shop` 管（7 份） |
 | `/data/log/ai-shop/incident/2026-09-14/` | 盘满事故留档：`app.log` 从未轮转、被刷到 41.6G 写满根分区 |
@@ -58,7 +58,7 @@ MariaDB 12.3.2（本机 3306 · 库 ai_shop · 115 张表 · Flyway v164）
 | `/etc/systemd/system/ai-shop{,-job,-pay}.service` | 服务单元。源文件：[`systemd/`](systemd/)（ai-shop、ai-shop-pay）· [`backend/deploy/tencent/ai-shop-job.service`](../../backend/deploy/tencent/ai-shop-job.service) |
 | `/etc/nginx/sites-available/www.hxmall.top` · `ai-shop-ip` | 站点配置，源文件在 [`nginx/`](nginx/) |
 | `/etc/logrotate.d/ai-shop` · `/etc/systemd/journald.conf.d/00-size.conf` | 日志兜底（logrotate 只管 `ops/`；journal 200M）。源文件在 [`logrotate/`](logrotate/) 与 [`journald/`](journald/)，**重建服务器要装回去** |
-| `/etc/cron.d/ai-shop-backup` | 每日备份，源文件 [`cron/ai-shop-backup`](cron/ai-shop-backup) |
+| `/etc/cron.d/ai-shop-{backup,housekeeping,logwatch}` | 03:20 备份 · 04:10 清理 · 每小时第 7 分巡检，源文件在 [`cron/`](cron/) |
 | `/opt/mysql` · `/data/db/mysql97` · `mysql97.service` | MySQL 9.7 LTS 待机实例（127.0.0.1:3307，将来替代 MariaDB），见 [`mysql97/README.md`](mysql97/README.md) |
 
 **会话存在库里**（`SHOP_TOKEN_STORE=db`），不在任何目录：`state/sessions` 自 2026-08-28 起不再写入，
