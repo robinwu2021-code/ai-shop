@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" width="1000" height="600" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Source Han Sans SC, sans-serif">
+  <title>日志从产生到删除</title>
+  <desc>生产服务器上五类日志的去向：本机有上限的滚动存放、必要的归档到 COS、按生命周期删除；告警盯住本机这一层，非日志的累积物由每日清理任务负责。</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6472"/>
+    </marker>
+    <marker id="ad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9aa1ab"/>
+    </marker>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c2412d"/>
+    </marker>
+  </defs>
+
+  <!-- 底色：显式给出，深色查看器里也不会透成黑底 -->
+  <rect x="0" y="0" width="1000" height="600" fill="#ffffff"/>
+  <text x="24" y="36" font-size="20" font-weight="700" fill="#1f2328">日志从产生到删除</text>
+  <text x="24" y="58" font-size="12.5" fill="#5b6472">腾讯云单机 · 本机每一类都有上限 · 需要长留的进 COS 归档 · 告警盯住本机这一层</text>
+
+  <!-- 列标题 -->
+  <g font-size="13" font-weight="700" fill="#1f2328">
+    <text x="24"  y="92">① 产生</text>
+    <text x="258" y="92">② 本机（有上限，自动滚动）</text>
+    <text x="608" y="92">③ 归档 COS</text>
+    <text x="826" y="92">④ 删除</text>
+  </g>
+  <line x1="24" y1="100" x2="976" y2="100" stroke="#d8dce2"/>
+
+  <!-- ① 产生 -->
+  <g font-size="12.5">
+    <rect x="24" y="116" width="200" height="54" rx="6" fill="#eef2f8" stroke="#b8c4d6"/>
+    <text x="36" y="138" font-weight="700" fill="#1f2328">应用 ai-shop / job / pay</text>
+    <text x="36" y="158" fill="#5b6472">Java，改由 logback 自己滚动</text>
+
+    <rect x="24" y="184" width="200" height="54" rx="6" fill="#eef2f8" stroke="#b8c4d6"/>
+    <text x="36" y="206" font-weight="700" fill="#1f2328">nginx 访问 / 错误</text>
+    <text x="36" y="226" fill="#5b6472">网络日志，法定 ≥ 6 个月</text>
+
+    <rect x="24" y="252" width="200" height="54" rx="6" fill="#eef2f8" stroke="#b8c4d6"/>
+    <text x="36" y="274" font-weight="700" fill="#1f2328">数据库 MariaDB / MySQL97</text>
+    <text x="36" y="294" fill="#5b6472">错误日志</text>
+
+    <rect x="24" y="320" width="200" height="54" rx="6" fill="#eef2f8" stroke="#b8c4d6"/>
+    <text x="36" y="342" font-weight="700" fill="#1f2328">系统 journald / rsyslog</text>
+    <text x="36" y="362" fill="#5b6472">含 sshd 登录等安全事件</text>
+
+    <rect x="24" y="388" width="200" height="54" rx="6" fill="#eef2f8" stroke="#b8c4d6"/>
+    <text x="36" y="410" font-weight="700" fill="#1f2328">运维 备份 / 清理 / 部署</text>
+    <text x="36" y="430" fill="#5b6472">deploy.log 是回滚真源</text>
+  </g>
+
+  <!-- ② 本机 -->
+  <g font-size="12.5">
+    <rect x="258" y="116" width="316" height="54" rx="6" fill="#fdf5e6" stroke="#e3c48a"/>
+    <text x="270" y="138" font-weight="700" fill="#1f2328">/var/log/ai-shop/{app,job,pay}/</text>
+    <text x="270" y="158" fill="#5b6472">单文件 100M · 总量封顶 · ERROR 另存一份</text>
+
+    <rect x="258" y="184" width="316" height="54" rx="6" fill="#fdf5e6" stroke="#e3c48a"/>
+    <text x="270" y="206" font-weight="700" fill="#1f2328">/var/log/nginx/</text>
+    <text x="270" y="226" fill="#5b6472">每天轮 · 本机 14 天（发行版默认，不改）</text>
+
+    <rect x="258" y="252" width="316" height="54" rx="6" fill="#fdf5e6" stroke="#e3c48a"/>
+    <text x="270" y="274" font-weight="700" fill="#1f2328">journal（MariaDB）· /var/log/mysql97/</text>
+    <text x="270" y="294" fill="#5b6472">随 journal 上限 · 每天轮留 14 份</text>
+
+    <rect x="258" y="320" width="316" height="54" rx="6" fill="#fdf5e6" stroke="#e3c48a"/>
+    <text x="270" y="342" font-weight="700" fill="#1f2328">journal 500M · syslog 4 周</text>
+    <text x="270" y="362" fill="#5b6472">已于 9-14 加上限</text>
+
+    <rect x="258" y="388" width="316" height="54" rx="6" fill="#fdf5e6" stroke="#e3c48a"/>
+    <text x="270" y="410" font-weight="700" fill="#1f2328">/var/log/ai-shop/ops/</text>
+    <text x="270" y="430" fill="#5b6472">很小；deploy.log 留在原处、不轮转</text>
+  </g>
+
+  <!-- ①→② -->
+  <g stroke="#5b6472" stroke-width="1.4" marker-end="url(#a)">
+    <line x1="224" y1="143" x2="256" y2="143"/>
+    <line x1="224" y1="211" x2="256" y2="211"/>
+    <line x1="224" y1="279" x2="256" y2="279"/>
+    <line x1="224" y1="347" x2="256" y2="347"/>
+    <line x1="224" y1="415" x2="256" y2="415"/>
+  </g>
+
+  <!-- ③ 归档 -->
+  <rect x="608" y="150" width="196" height="200" rx="6" fill="#ecf6ef" stroke="#9fcfae"/>
+  <g font-size="12.5">
+    <text x="620" y="174" font-weight="700" fill="#1f2328">hxmall-backup 桶</text>
+    <text x="620" y="194" fill="#1f2328">serverlogs/&lt;来源&gt;/</text>
+    <text x="620" y="212" fill="#1f2328">  YYYY/MM/DD/…gz</text>
+    <text x="620" y="240" fill="#5b6472">每天 03:40 上传前一天</text>
+    <text x="620" y="258" fill="#5b6472">已轮转、已压缩的那份</text>
+    <text x="620" y="286" fill="#5b6472">失败要告警 ——</text>
+    <text x="620" y="304" fill="#5b6472">本机 14 天内可补传</text>
+    <text x="620" y="332" fill="#5b6472">不新开桶，走前缀</text>
+  </g>
+
+  <!-- ②→③ -->
+  <line x1="574" y1="211" x2="606" y2="211" stroke="#5b6472" stroke-width="1.4" marker-end="url(#a)"/>
+  <line x1="574" y1="347" x2="606" y2="320" stroke="#5b6472" stroke-width="1.4" marker-end="url(#a)"/>
+  <!-- 应用日志归档待定：虚线 -->
+  <line x1="574" y1="143" x2="606" y2="172" stroke="#9aa1ab" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#ad)"/>
+  <text x="608" y="140" font-size="11.5" fill="#8a6d1f">应用日志进不进：待定（先核脱敏）</text>
+
+  <!-- ④ 删除 -->
+  <rect x="826" y="150" width="150" height="200" rx="6" fill="#f3f4f6" stroke="#c8ccd2"/>
+  <g font-size="12.5">
+    <text x="838" y="174" font-weight="700" fill="#1f2328">桶生命周期</text>
+    <text x="838" y="202" fill="#1f2328">30 天 → 低频</text>
+    <text x="838" y="224" fill="#1f2328">90 天 → 归档</text>
+    <text x="838" y="246" fill="#1f2328">365 天 → 删除</text>
+    <text x="838" y="282" fill="#5b6472">≥ 180 天：</text>
+    <text x="838" y="300" fill="#5b6472">网络安全法 §21</text>
+    <text x="838" y="332" fill="#5b6472">本机那份由滚动删</text>
+  </g>
+  <line x1="804" y1="250" x2="824" y2="250" stroke="#5b6472" stroke-width="1.4" marker-end="url(#a)"/>
+
+  <!-- 告警：盯住本机这一层 -->
+  <rect x="258" y="470" width="316" height="58" rx="6" fill="#fdecea" stroke="#e8a397" stroke-dasharray="5 4"/>
+  <text x="270" y="493" font-size="12.5" font-weight="700" fill="#1f2328">告警（此前完全没有）</text>
+  <text x="270" y="513" font-size="12.5" fill="#5b6472">磁盘 &gt; 80% / 90% · 日志增速 &gt; 200MB/时</text>
+  <line x1="416" y1="468" x2="416" y2="446" stroke="#c2412d" stroke-width="1.4" marker-end="url(#ar)"/>
+  <text x="590" y="494" font-size="12" fill="#c2412d">这次从 9-4 刷到 9-13 盘满，</text>
+  <text x="590" y="512" font-size="12" fill="#c2412d">十天没有任何人知道</text>
+
+  <!-- 非日志累积物 -->
+  <rect x="24" y="470" width="200" height="104" rx="6" fill="#f3f4f6" stroke="#c8ccd2"/>
+  <g font-size="12">
+    <text x="36" y="492" font-weight="700" fill="#1f2328">不是日志，但同样会积</text>
+    <text x="36" y="512" fill="#5b6472">/tmp 残留 jar（近 1G）</text>
+    <text x="36" y="530" fill="#5b6472">env.bak ×13（含凭据）</text>
+    <text x="36" y="548" fill="#5b6472">部署前导出 · 事故留档</text>
+    <text x="36" y="566" fill="#1f2328">→ 每日 housekeeping 定时任务</text>
+  </g>
+</svg>
