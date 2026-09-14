@@ -30233,6 +30233,14 @@
       "module": "shop-merchant"
     },
     {
+      "host": "OutboxDispatcher",
+      "name": "MAX_ATTEMPTS",
+      "type": "int",
+      "value": "10",
+      "zh": "一条事件最多投几次。",
+      "module": "shop-store-mybatis"
+    },
+    {
       "host": "SysMediaAsset",
       "name": "ENTITY_SCOPE",
       "type": "String",
