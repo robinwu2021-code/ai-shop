@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# 本机巡检：磁盘、日志总量、日志增速。
+# 本机巡检：磁盘、日志总量、日志增速、outbox 死信。
 # 安装位置：/data/app/ai-shop/ops/logwatch.sh
 # 由 /etc/cron.d/ai-shop-logwatch 每小时第 7 分跑，输出进 /data/log/ai-shop/ops/logwatch.log。
 #
@@ -13,6 +13,7 @@
 #
 # 阈值是测试档（方案 §6）；转生产只改 logwatch.env 里的数，不改脚本：
 #   DISK_WARN=80  DISK_CRIT=90  LOG_TOTAL_MB=1024  RATE_MB_PER_H=50  WEBHOOK_URL=
+#   OUTBOX_FAILED_BASELINE=20   （outbox 死信的已知条数，见第 4 节）
 set -euo pipefail
 
 DATA="${DATA:-/data}"
@@ -26,6 +27,7 @@ DISK_CRIT="${DISK_CRIT:-90}"
 LOG_TOTAL_MB="${LOG_TOTAL_MB:-1024}"
 RATE_MB_PER_H="${RATE_MB_PER_H:-50}"
 WEBHOOK_URL="${WEBHOOK_URL:-}"
+OUTBOX_FAILED_BASELINE="${OUTBOX_FAILED_BASELINE:-}"
 STATE="${STATE:-$DATA/app/ai-shop/ops/state/logwatch}"
 RESEND_MIN=360        # 同一项告警多久再推一次
 MIN_INTERVAL=600      # 两次运行间隔短于这个就不算增速：手动补跑一次会把一分钟的量放大 60 倍
@@ -97,7 +99,33 @@ for d in "$DATA"/log/*/*/; do
     say "$lv" "rate $key" "$(mb "$rate")/h（上限 ${RATE_MB_PER_H}M/h）· 滚出 $nroll 份 · 当前文件 $(mb "$cur")"
 done
 
-# ── 4. 告警出口 ─────────────────────────────────────────────────────────────
+# ── 4. outbox 死信 ──────────────────────────────────────────────────────────
+# 投递器投满上限就把事件转成 FAILED（6a375ac5）。那一步把「无限重试刷满盘」这种
+# **响亮的失败**，换成了「事件悄悄进死信」这种**无声的失败** —— 不在这里数，就没人知道。
+#
+# 判据是「多于基线」而不是「多于 0」：9-14 那 20 条已定不重投、手工转成了 FAILED，
+# 写成 > 0 的话装上第一轮就响、此后每轮都响，这条告警就此变成噪音。
+# 新的 FAILED 处理完，由人把 logwatch.env 里的基线调上去 —— 与仓库的 known-* 同一个道理。
+#
+# ⚠️ 查库放在 if 里：本脚本 set -euo pipefail，库连不上时 $(mysql …) 失败会让**整个脚本
+# 当场静默退出**，连后面的告警出口都走不到。库连不上本身就该报，不能让它把巡检一起带走。
+# （同一个坑 2026-09-11 在 verify-apk.sh 里踩过：防御分支在它该触发的那一刻不可达。）
+if f_sys="$(mysql -N -B -e "SELECT COUNT(*) FROM ai_shop.sys_outbox WHERE status='FAILED'" 2>/dev/null)" \
+   && f_inv="$(mysql -N -B -e "SELECT COUNT(*) FROM ai_shop_inv.inv_outbox WHERE status='FAILED'" 2>/dev/null)" \
+   && [[ "$f_sys" =~ ^[0-9]+$ && "$f_inv" =~ ^[0-9]+$ ]]; then
+    f=$((f_sys + f_inv))
+    if [ -z "$OUTBOX_FAILED_BASELINE" ]; then
+        say WARN "outbox-failed" "现有 $f 条（sys $f_sys · inv $f_inv），基线没设 —— 核过之后在 logwatch.env 写 OUTBOX_FAILED_BASELINE=$f"
+    elif [ "$f" -gt "$OUTBOX_FAILED_BASELINE" ]; then
+        say WARN "outbox-failed" "$f 条，比基线多 $((f - OUTBOX_FAILED_BASELINE))（sys $f_sys · inv $f_inv）—— 有事件投满上限进了死信"
+    else
+        say OK "outbox-failed" "$f 条（基线 $OUTBOX_FAILED_BASELINE · sys $f_sys · inv $f_inv）"
+    fi
+else
+    say WARN "outbox-failed" "查不了 outbox（库连不上或表不在）—— 死信有没有新增此刻不知道"
+fi
+
+# ── 5. 告警出口 ─────────────────────────────────────────────────────────────
 [ "${#alerts[@]}" -gt 0 ] || exit 0
 
 for a in "${alerts[@]}"; do
