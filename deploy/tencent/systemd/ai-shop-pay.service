@@ -1,0 +1,32 @@
+# 支付域独立形态（形态 B）。今天只承接费率的只读调用 —— 见 ADR-021 / TDD-支付域 §C4。
+# 安装位置：/etc/systemd/system/ai-shop-pay.service（源文件在仓库 deploy/tencent/systemd/）
+[Unit]
+Description=ai-shop pay service (standalone pay domain)
+After=network.target mariadb.service
+Requires=mariadb.service
+
+[Service]
+User=deploy
+Group=deploy
+WorkingDirectory=/data/app/ai-shop/pay-svc
+EnvironmentFile=/data/app/ai-shop/pay-svc/pay.env
+Environment=JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+
+# 日志（测试档）：资金问题回溯周期长，天数比主应用多留几天。说明见 ai-shop.service
+Environment=LOGGING_FILE_NAME=/data/log/ai-shop/pay-svc/pay-svc.log
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE=10MB
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_MAX_HISTORY=7
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP=50MB
+Environment=LOGGING_THRESHOLD_CONSOLE=ERROR
+Environment=LOGGING_EXCEPTION_CONVERSION_WORD=%%wEx{30}
+
+# 堆给 512m：它今天只做费率只读，比 shop-job（256m）重一点，远小于主应用（2g）
+ExecStart=/usr/lib/jvm/java-21-openjdk-amd64/bin/java -Xms128m -Xmx512m -jar /data/app/ai-shop/pay-svc/pay-svc.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

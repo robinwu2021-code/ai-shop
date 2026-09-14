@@ -1,0 +1,47 @@
+# ai-shop 后端（Spring Boot 4 · Java 21）
+# 安装位置：/etc/systemd/system/ai-shop.service（源文件在仓库 deploy/tencent/systemd/）
+# 目录规划见 docs/technical/design/运维-目录与日志方案.md
+[Unit]
+Description=ai-shop backend (Spring Boot)
+After=network.target mariadb.service
+Requires=mariadb.service
+
+[Service]
+User=deploy
+Group=deploy
+WorkingDirectory=/data/app/ai-shop/shop-app
+EnvironmentFile=/data/app/ai-shop/shop-app/shop-app.env
+# profile: api = C/B 端面(/mp /biz)，ops = 运营面(/ops)。
+# ⚠ 本机单实例同时装两面；项目设计原意(S8/DeploymentProfileTest)是 ops 独立部署在内网。
+#   如需收紧：去掉 ops，或在 nginx 层对 /ops 做 IP 白名单。
+Environment=SPRING_PROFILES_ACTIVE=api,ops
+Environment=JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+
+# ── 日志：应用自己写、自己滚，总量封顶（测试档）────────────────────────────
+# 不是凭据，所以写在单元里（进仓库、可复现），不写进 shop-app.env。
+# 封顶按压缩后的归档算（实测约 13:1），清理是滚动时异步做的，会超出约 25%。
+# ⚠ `%%` 是给 systemd 的转义：单写 `%w` 会被 systemd 展开成系统版本号，
+#   日志格式被悄悄改坏、且不报错。
+Environment=LOGGING_FILE_NAME=/data/log/ai-shop/shop-app/shop-app.log
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE=20MB
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_MAX_HISTORY=3
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP=100MB
+Environment=LOGGING_THRESHOLD_CONSOLE=ERROR
+Environment=LOGGING_EXCEPTION_CONVERSION_WORD=%%wEx{30}
+
+# 7.5G 机器上给堆留 2G，其余留给 MariaDB 与页缓存
+ExecStart=/usr/lib/jvm/java-21-openjdk-amd64/bin/java -Xms512m -Xmx2g -jar /data/app/ai-shop/shop-app/shop-app.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+# 控制台只剩 ERROR 与 logback 起来之前的 JVM 输出（启动即崩时看得见）。
+# 不再用 append: 写文件 —— 那样 systemd 握着句柄，只能 copytruncate，
+# 9-14 的 41.6G 就是在那条路上长出来的。
+StandardOutput=journal
+StandardError=journal
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/data/app/ai-shop/shop-app/state /data/log/ai-shop/shop-app
+
+[Install]
+WantedBy=multi-user.target
