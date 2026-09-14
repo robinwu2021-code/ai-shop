@@ -10,12 +10,12 @@
 |---|---|
 | 版本 | 9.7.2（`mysql-9.7-lts` 分支；官方通用二进制 minimal 包） |
 | 位置 | 程序 `/opt/mysql/current` → `mysql-9.7.2-linux-glibc2.28-x86_64-minimal` |
-| 数据 | `/var/lib/mysql97`（初始 165M） |
+| 数据 | `/data/db/mysql97`（初始 165M；2026-09-14 从 `/var/lib/mysql97` 搬来，见[目录方案](../../../docs/technical/design/运维-目录与日志方案.md)） |
 | 配置 | `/etc/mysql97/my.cnf`（= 本目录 `my.cnf`） |
 | 服务 | `systemctl {status,restart} mysql97`，开机自启 |
 | 监听 | **仅** `127.0.0.1:3307`；socket `/run/mysqld97/mysqld.sock`；X 协议关 |
 | 内存 | 常驻约 130~160MB；systemd `MemoryHigh=384M` / `MemoryMax=640M` |
-| 日志 | `/var/log/mysql97/error.log`，logrotate 已配 |
+| 日志 | `/data/log/infra/mysql97/error.log`，`/etc/logrotate.d/mysql97` 管（7 份） |
 | root | **只认操作系统身份**（`auth_socket`）：服务器上的 root 直接登，没有任何密码 |
 
 ```bash
@@ -55,8 +55,8 @@ ssh soukmind-tx-root 'bash /opt/mysql/deploy/install.sh'
 ```bash
 systemctl disable --now mysql97
 rm -f /etc/systemd/system/mysql97.service /etc/logrotate.d/mysql97 && systemctl daemon-reload
-rm -rf /opt/mysql /etc/mysql97 /var/log/mysql97
-rm -rf /var/lib/mysql97        # ⚠️ 数据；切主之后就不能这么删了
+rm -rf /opt/mysql /etc/mysql97 /data/log/infra/mysql97
+rm -rf /data/db/mysql97        # ⚠️ 数据；切主之后就不能这么删了
 ```
 
 ## 迁移前要解决的事（切主之前，一条都不能跳）

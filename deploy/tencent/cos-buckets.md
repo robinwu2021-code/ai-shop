@@ -89,7 +89,7 @@ c-app/…                             顾客端安卓包（上架应用商店后
 ## 四、备份桶 `hxmall-backup-1301656997`
 
 现在数据库备份如果只在服务器本机，那不叫备份 —— 机器没了备份跟着没。
-**已落地**：`/opt/ai-shop/backup-to-cos.sh`（源文件 [backup-to-cos.sh](./backup-to-cos.sh)）
+**已落地**：`/data/app/ai-shop/ops/backup-to-cos.sh`（源文件 [backup-to-cos.sh](./backup-to-cos.sh)）
 由 `/etc/cron.d/ai-shop-backup` 每天 03:20 跑，落地即上传，本机只留最近 3 天。
 
 ```

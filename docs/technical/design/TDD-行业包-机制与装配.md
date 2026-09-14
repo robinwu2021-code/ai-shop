@@ -202,7 +202,7 @@ backend/shop-app/pom.xml
 ### 5.2 L2 · 运行时加载（预留，机制现在就定死）
 
 ```
-/opt/ai-shop/
+/data/app/ai-shop/shop-app/
   ├── app-<ver>.jar           基座
   ├── industries/
   │     ├── food-1.2.0.jar

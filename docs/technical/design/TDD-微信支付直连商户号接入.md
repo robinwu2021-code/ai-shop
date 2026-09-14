@@ -685,7 +685,7 @@ GET /wxa/icp/get_icp_entrance_info
 ### 14.1 一行复现（不打印任何凭据）
 
 ```bash
-ssh soukmind-tx 'set -a; . /opt/ai-shop/shop-app.env; set +a
+ssh soukmind-tx 'set -a; . /data/app/ai-shop/shop-app/shop-app.env; set +a
 T=$(curl -s "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=$WX_APPID&secret=$WX_SECRET" \
     | python3 -c "import sys,json;print(json.load(sys.stdin)[\"access_token\"])")
 curl -s "https://api.weixin.qq.com/wxa/icp/get_icp_entrance_info?access_token=$T" | python3 -m json.tool'

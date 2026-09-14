@@ -2,6 +2,11 @@
 
 > 状态截至 **2026-08-18**。**后端 + 三个前端已全部上线并验证通过**。
 > 线上：https://www.hxmall.top
+>
+> **2026-09-14 起，我们的东西全部在 `/data` 下**（应用、日志、本机备份、MySQL 9.7 数据、构建快照），
+> 规则见 [运维-目录与日志方案](../../docs/technical/design/运维-目录与日志方案.md)。
+> 旧路径（`/opt/ai-shop*`、`/var/www/ai-shop`、`/opt/build/*`）暂时是指向新位置的兼容软链 ——
+> **新写的脚本、文档一律用 `/data` 路径**，软链在一个完整部署周期后删掉。
 
 ## 1. 目标机
 
@@ -10,16 +15,16 @@
 | 产品 | **轻量应用服务器 Lighthouse**（非 CVM） |
 | 实例 ID | `lhins-98lm5asj` · 地域 `ap-guangzhou`（**大陆地域 → 受备案约束**） |
 | 公网 IP | `106.55.27.246`（**Lighthouse 不能绑 EIP，IP 与实例绑死**） |
-| 系统 | Ubuntu 24.04.4 LTS · 内存 7.5 GB · 磁盘 59 GB（已用 8.7 G） |
+| 系统 | Ubuntu 24.04.4 LTS · 内存 7.5 GB · 磁盘 59 GB 单盘（2026-09-14 已用 16 G）；**没有数据盘**，`/data` 是系统盘上的目录 |
 | 域名 | `www.hxmall.top`（DNSPod 托管） |
 
 ## 2. 线上拓扑
 
 ```
-nginx(443/80) ──┬─ /            → /var/www/ai-shop/site     静态（Next.js export·官网）
-   唯一入口     ├─ /c/          → /var/www/ai-shop/c-app    静态（uni-app H5·社区好物）
-                ├─ /b/          → /var/www/ai-shop/b-app    静态（uni-app H5·邻里商家）
-                ├─ /ops-web/    → /var/www/ai-shop/ops-web  静态（Next.js export·平台运营端）
+nginx(443/80) ──┬─ /            → /data/app/ai-shop/web/site     静态（Next.js export·官网）
+   唯一入口     ├─ /c/          → /data/app/ai-shop/web/c-app    静态（uni-app H5·社区好物）
+                ├─ /b/          → /data/app/ai-shop/web/b-app    静态（uni-app H5·邻里商家）
+                ├─ /ops-web/    → /data/app/ai-shop/web/ops-web  静态（Next.js export·平台运营端）
                 ├─ /s/<code>    → 302 /c/                   老店铺码链接的退路
                 └─ /mp /biz /ops /actuator → 127.0.0.1:8081  shop-app.jar (systemd)
 MariaDB 12.3.2（本机 3306 · 库 ai_shop · 115 张表 · Flyway v164）
@@ -36,30 +41,45 @@ MariaDB 12.3.2（本机 3306 · 库 ai_shop · 115 张表 · Flyway v164）
 
 ## 3. 落位
 
+按「类型 / 业务 / 服务」三级：`/data/<app|log|backup|db|build>/ai-shop/<服务>/`。
+
 | 路径 | 内容 |
 |---|---|
-| `/opt/ai-shop/shop-app.jar` | 后端可执行 jar |
-| `/opt/ai-shop/shop-app.env` | 运行时环境（600，含真实凭据） |
-| `/etc/systemd/system/ai-shop.service` | 服务单元 |
-| `/var/lib/ai-shop/sessions` | ehcache 会话（重启不掉线） |
-| `/var/log/ai-shop/app.log` | 应用日志。**2026-09-14 前从未轮转**，被刷到 41.6G 写满根分区；现由 `/etc/logrotate.d/ai-shop` 管整个目录（`*.log`，含 job.log / backup.log）；journald 另有 500M 上限。源文件在 [`logrotate/`](logrotate/) 与 [`journald/`](journald/)，**重建服务器要装回去** |
-| `/var/www/ai-shop/{c-app,b-app,ops-web}` | 三个前端静态产物 |
-| `/opt/build/ai-shop` · `/opt/build/ai-neargo` | 构建工作区（源码 rsync 上来） |
-| `/etc/nginx/sites-available/www.hxmall.top` | 站点配置 |
-| `/opt/mysql` · `/var/lib/mysql97` · `mysql97.service` | MySQL 9.7 LTS 待机实例（127.0.0.1:3307，将来替代 MariaDB），见 [`mysql97/README.md`](mysql97/README.md) |
+| `/data/app/ai-shop/shop-app/` | 后端（`systemd: ai-shop`）：`shop-app-<时间>-<SHA>.jar` 若干版 + `shop-app.jar` 软链指当前版 · `shop-app.env`（600，含真实凭据）· `env-backup/` · `certs/`（微信支付证书，700）· `state/` · `deploy.log`（回滚读它，不轮转） |
+| `/data/app/ai-shop/shop-job/` · `pay-svc/` | 定时任务（`ai-shop-job`，`job.env`）· 支付服务（`ai-shop-pay`，`pay.env`，端口 8083），结构同上 |
+| `/data/app/ai-shop/web/{site,c-app,b-app,ops-web,dl}` | 前端静态产物；`dl/` 是 APK 直出 |
+| `/data/app/ai-shop/ops/` | 运维脚本：`backup-to-cos.sh`、`cos_put.py` |
+| `/data/log/ai-shop/{shop-app,shop-job,pay-svc}/` | 应用日志。**logback 自己滚动、总量封顶**（测试档 100M / 30M / 50M），参数在各服务单元的 `Environment=` 里；控制台只留 ERROR，进 journal |
+| `/data/log/ai-shop/ops/` | 备份等运维日志，`/etc/logrotate.d/ai-shop` 管（7 份） |
+| `/data/log/ai-shop/incident/2026-09-14/` | 盘满事故留档：`app.log` 从未轮转、被刷到 41.6G 写满根分区 |
+| `/data/backup/ai-shop/{db,predeploy,legacy}` | 本机短留：每日导出（3 天）· 迁移前导出 · 版本化部署之前手工留的 jar 备份（待清） |
+| `/data/build/ai-shop/src` · `/data/build/ai-neargo/src` | 服务器构建快照。后端已改本机打包、前端已改本机构建（见 §4），只剩地基升级那段还用 |
+| `/data/build/ai-shop/mp-upload` | 小程序上传工作区（[`release-mp.sh`](../../c-app/scripts/release-mp.sh)） |
+| `/etc/systemd/system/ai-shop{,-job,-pay}.service` | 服务单元。源文件：[`systemd/`](systemd/)（ai-shop、ai-shop-pay）· [`backend/deploy/tencent/ai-shop-job.service`](../../backend/deploy/tencent/ai-shop-job.service) |
+| `/etc/nginx/sites-available/www.hxmall.top` · `ai-shop-ip` | 站点配置，源文件在 [`nginx/`](nginx/) |
+| `/etc/logrotate.d/ai-shop` · `/etc/systemd/journald.conf.d/00-size.conf` | 日志兜底（logrotate 只管 `ops/`；journal 200M）。源文件在 [`logrotate/`](logrotate/) 与 [`journald/`](journald/)，**重建服务器要装回去** |
+| `/etc/cron.d/ai-shop-backup` | 每日备份，源文件 [`cron/ai-shop-backup`](cron/ai-shop-backup) |
+| `/opt/mysql` · `/data/db/mysql97` · `mysql97.service` | MySQL 9.7 LTS 待机实例（127.0.0.1:3307，将来替代 MariaDB），见 [`mysql97/README.md`](mysql97/README.md) |
+
+**会话存在库里**（`SHOP_TOKEN_STORE=db`），不在任何目录：`state/sessions` 自 2026-08-28 起不再写入，
+重启、搬家都不会让人掉线。部署后全员掉线的真正原因见 §4 的「别覆盖在跑的 jar」。
+
+`/data/soukmind/` 不是本业务的：另一个项目 2026-09-14 部署进来，用的是 `releases/ shared/` 布局，
+与上面的「类型在前」约定不同。别动它，也别照它的样子加东西。
 
 ## 备份
 
-每天 03:20 由 `/etc/cron.d/ai-shop-backup` 跑 `/opt/ai-shop/backup-to-cos.sh`：
+每天 03:20 由 `/etc/cron.d/ai-shop-backup` 跑 `/data/app/ai-shop/ops/backup-to-cos.sh`：
 `mariadb-dump`（`--single-transaction`，不锁表）→ gzip → 上传 `hxmall-backup-1301656997/db/`，
-本机只留最近 3 天。桶上配了生命周期：30 天转低频、90 天转归档、365 天删。
+本机在 `/data/backup/ai-shop/db/` 只留最近 3 天。桶上配了生命周期：30 天转低频、90 天转归档、365 天删。
 
 ```bash
-sudo /opt/ai-shop/backup-to-cos.sh          # 手动跑一次
-tail -20 /var/log/ai-shop/backup.log        # 看结果
+sudo /data/app/ai-shop/ops/backup-to-cos.sh           # 手动跑一次
+sudo tail -20 /data/log/ai-shop/ops/backup.log        # 看结果
 ```
 
-脚本源文件在仓库 [deploy/tencent/backup-to-cos.sh](./backup-to-cos.sh)，改完要重新 install 到 /opt。
+脚本源文件在仓库 [backup-to-cos.sh](./backup-to-cos.sh) 与 [cron/ai-shop-backup](cron/ai-shop-backup)，
+改完要重新 install 到 `/data/app/ai-shop/ops/` 与 `/etc/cron.d/`。
 
 ## 商家端 App 分发（COS `download` 桶）
 
@@ -100,7 +120,7 @@ tail -20 /var/log/ai-shop/backup.log        # 看结果
 >
 > ### 当前的做法：服务器直出
 >
-> 包放 `/var/www/ai-shop/dl/`（**不在 `/var/www/ai-shop/site/` 里** —— 官网发布用
+> 包放 `/data/app/ai-shop/web/dl/`（**不在 `web/site/` 里** —— 官网发布用
 > `rsync --delete` 同步 site 目录，放进去每次发官网都会被删掉），
 > nginx 用 `location ^~ /dl/` 直出，`www.hxmall.top` 与 `ai-shop-ip` **两个 server 块都要有**。
 >
@@ -161,48 +181,39 @@ coscli cp cos://hxmall-download-1301656997/b-app/hxmall-merchant-$VER.apk \
 ```
 
 
-## 4. 部署流程（服务器上自构建）
+## 4. 部署流程
 
-私有依赖 `ai.neargo:*` 不在公开仓库，已把 **ai-neargo 的 `commons/` 源码**传到服务器
-`mvn install` 进本机 `~/.m2`，之后服务器可独立构建，不依赖任何人的笔记本。
+**一律走脚本**，都在本机构建、再传上去：
 
 ```bash
-# 1) 同步源码（本机执行）
-rsync -az --delete --exclude 'node_modules/' --exclude 'target/' --exclude '.git/' \
-  --exclude '.next/' --exclude 'out/' --exclude 'dist/' --exclude 'android-shell/' \
-  ~/work/ai/ai-shop/ soukmind-tx:/opt/build/ai-shop/
-
-# 2) 后端（服务器）
-ssh soukmind-tx 'cd /opt/build/ai-shop/backend && \
-  JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 mvn package -DskipTests -B'
-ssh soukmind-tx 'sudo cp /opt/build/ai-shop/backend/shop-app/target/shop-app-0.1.0-SNAPSHOT.jar \
-  /opt/ai-shop/shop-app.jar && sudo systemctl restart ai-shop'
-
-# 3) 前端（服务器）
-#    ⚠ 官网构建要读两处仓库内的文件，rsync 时别排除掉：
-#      · site/content/**.md      正文（2026-08-20 起内容与代码分离）
-#      · brand/logo/mark-red.svg 页头标识的几何（由 brand/build.py 生成）
-#      少任一个都是构建期直接报错，不会静默出一个缺内容的站。
-#    ⚠ site/fonts/src/ 可以排除（14 MB 源字体）：中文子集产物已进仓库，
-#      文案没动时 prebuild 会跳过重新子集化，服务器不必装 fontTools。
-#    ⚠ C 端的 H5_BASE 是 /c/ 不是 / —— 根路径 2026-08-19 起归官网
-ssh soukmind-tx 'cd /opt/build/ai-shop && \
-  npm run build -w ai-shop-site && \
-  NEXT_PUBLIC_BASE_PATH=/ops-web NEXT_PUBLIC_API_BASE= NEXT_PUBLIC_USE_MOCK=0 \
-    npm run build -w ai-shop-ops-web && \
-  H5_BASE=/c/ npm run build:h5 -w ai-shop-c-app && \
-  H5_BASE=/b/ npm run build:h5 -w ai-shop-b-app && \
-  sudo rsync -a --delete site/out/              /var/www/ai-shop/site/ && \
-  sudo rsync -a --delete ops-web/out/           /var/www/ai-shop/ops-web/ && \
-  sudo rsync -a --delete c-app/dist/build/h5/   /var/www/ai-shop/c-app/ && \
-  sudo rsync -a --delete b-app/dist/build/h5/   /var/www/ai-shop/b-app/'
+scripts/deploy-backend.sh                 # 后端 shop-app
+scripts/deploy-backend.sh pay-svc         # 支付服务
+scripts/deploy-frontend.sh <site|ops-web|c-app|b-app>
+backend/deploy/tencent/deploy-job.sh      # 定时任务；要先自己 mvn package -pl shop-job -am
 ```
+
+前两个从 `git worktree` 取干净的 HEAD 构建；`deploy-job.sh` 还是用工作区里现成的 jar，
+**在共享工作区里打出来的包可能带着别人未提交的改动**，发之前先看 `git status`。
+
+锁、版本标识、健康检查、回滚都在脚本里，细节见
+[后端部署-流程与约定](../../docs/technical/design/后端部署-流程与约定.md)。
+
+**早先那套「rsync 源码到服务器 → 服务器上 `mvn package` → `cp` 到 `shop-app.jar` → 重启」已经不能用了**，
+别照着旧版本文档敲：
+
+- **服务器编译不了**：私有父 POM 从服务器的 `~/.m2` 里消失了，所以退回本机打包。
+- **`cp`/`scp` 盖掉在跑的 jar 会让 JVM 挂起或全员掉线**：JVM 按需从 jar 里读类，文件被原地改写后
+  读到的是新包的字节。脚本的做法是传一个带时间和 SHA 的新文件、切软链、再重启。
+- **在主工作区构建会带上别人未提交的改动**：这个仓库常有多个会话同时在改。
+
+官网构建要读 `site/content/**.md`（正文）与 `brand/logo/mark-red.svg`（页头标识），两者都在仓库里，
+worktree 副本自带；少任一个是构建期直接报错。C 端的 `H5_BASE` 是 `/c/` 不是 `/`，脚本里已写死。
 
 ### ⚠️ 发完必须验一句：生产 env 里不许有 IP 字面量
 
 ```bash
 ssh soukmind-tx 'sudo grep -hoE "(jdbc:mysql://|http://)[0-9]{1,3}(\.[0-9]{1,3}){3}" \
-  /opt/ai-shop/shop-app.env /opt/ai-shop-job/job.env'
+  /data/app/ai-shop/shop-app/shop-app.env /data/app/ai-shop/shop-job/job.env /data/app/ai-shop/pay-svc/pay.env'
 # 期望：**没有输出**。有输出就是有人又写了 IP。
 ```
 
@@ -248,11 +259,11 @@ ssh soukmind-tx 'curl -sk -H "Host: www.hxmall.top" https://localhost/ops-web/ |
 ```bash
 ssh soukmind-tx 'sudo cp /etc/nginx/sites-available/www.hxmall.top.bak-<stamp> \
   /etc/nginx/sites-available/www.hxmall.top && sudo nginx -t && sudo systemctl reload nginx'
-ssh soukmind-tx 'cd /opt/build/ai-shop && H5_BASE=/ npm run build:h5 -w ai-shop-c-app && \
-  sudo rsync -a --delete c-app/dist/build/h5/ /var/www/ai-shop/c-app/'
+ssh soukmind-tx 'cd /data/build/ai-shop/src && H5_BASE=/ npm run build:h5 -w ai-shop-c-app && \
+  sudo rsync -a --delete c-app/dist/build/h5/ /data/app/ai-shop/web/c-app/'
 ```
 
-上线时的 c-app 备份在 `/var/www/ai-shop/c-app.bak-<stamp>`（stamp 见部署当天），
+上线时的 c-app 备份在 `/data/app/ai-shop/web/c-app.bak-<stamp>`（stamp 见部署当天），
 nginx 旧配置在 `/etc/nginx/sites-available/www.hxmall.top.bak-<stamp>`。
 
 ### 备案未过期间：用 IP 直连
@@ -291,12 +302,14 @@ C 端资源 `application/javascript` 424 KB · 官网 CSS `text/css` 30 KB ·
 
 ```bash
 rsync -az --exclude 'target/' ~/work/ai/ai-neargo/pom.xml ~/work/ai/ai-neargo/commons \
-  soukmind-tx:/opt/build/ai-neargo/
-ssh soukmind-tx 'cd /opt/build/ai-neargo && JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 mvn -N install -DskipTests && \
+  soukmind-tx:/data/build/ai-neargo/src/
+ssh soukmind-tx 'cd /data/build/ai-neargo/src && JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 mvn -N install -DskipTests && \
   cd commons && JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 mvn install -DskipTests -B'
 ```
 
-> `/opt/build/ai-neargo/commons/pom.xml` 是**部署侧生成的聚合 pom**（仓库里没有），
+> ⚠️ 这段是服务器还能自己编译时的做法。后端已改本机打包（§4），这段只在要恢复服务器构建时才有用。
+>
+> `/data/build/ai-neargo/src/commons/pom.xml` 是**部署侧生成的聚合 pom**（仓库里没有），
 > 让 Maven 自己算 9 个 commons 模块的构建顺序。rsync 时勿用 `--delete` 覆盖掉它。
 
 ## 5. 三个**必须由部署侧覆盖**的配置
@@ -319,7 +332,7 @@ ssh soukmind-tx 'cd /opt/build/ai-neargo && JAVA_HOME=/usr/lib/jvm/java-21-openj
 | `ai-shop.env` | 数据库账号密码（32 位随机生成） |
 | `soukmind_tx(.pub)` | SSH 部署密钥（名字是历史遗留） |
 
-服务器上 `/opt/ai-shop/shop-app.env`（600）含从本机 `backend/.env.local` · `.env.mail.local` ·
+服务器上 `/data/app/ai-shop/shop-app/shop-app.env`（600）含从本机 `backend/.env.local` · `.env.mail.local` ·
 `.env.sms.local` 原样搬运的真实凭据，共 27 个变量。
 
 ```bash
@@ -378,8 +391,9 @@ ssh soukmind-tx-root   # 救火通道
 ```bash
 curl https://www.hxmall.top/actuator/health          # {"status":"UP"}
 curl https://www.hxmall.top/mp/community/nearby      # {"code":0,...}
-ssh soukmind-tx 'sudo tail -f /var/log/ai-shop/app.log'
-ssh soukmind-tx 'systemctl status ai-shop mariadb nginx'
+ssh soukmind-tx 'tail -f /data/log/ai-shop/shop-app/shop-app.log'   # 全量日志（deploy 可读）
+ssh soukmind-tx 'sudo journalctl -u ai-shop -p err --since -1h'      # 只有 ERROR 与启动前的 JVM 输出；不加 sudo 看不到系统单元
+ssh soukmind-tx 'systemctl status ai-shop ai-shop-job ai-shop-pay mariadb nginx'
 ```
 
 上线时实测：`/` `/b/` `/ops-web/` `/actuator/health` `/mp/community/nearby` 均 200，
