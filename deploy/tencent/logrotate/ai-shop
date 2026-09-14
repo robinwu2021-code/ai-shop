@@ -1,15 +1,21 @@
-# 2026-09-14 盘满事故引入。
+# 2026-09-14 盘满事故引入。安装位置：/etc/logrotate.d/ai-shop
+#
 # app.log 由 systemd 的 StandardOutput=append: 直接追加，从上线起从未轮转过，
 # 被一个无上限重试的 outbox 毒消息刷到 41.6G，把根分区写满、线上 DOWN 约 23 小时。
 #
-# copytruncate：systemd 一直握着这个文件句柄，改名重开它不会跟着走，只能原地截断。
-# maxsize：配合 logrotate.timer 改成每小时（见 /etc/systemd/system/logrotate.timer.d/），
-#          否则要等到半夜那一次才生效 —— 事故里它一小时能长 0.65G。
-# su root root：文件是 root 建的（systemd 以 root 打开后才降权给 deploy），目录属 deploy。
-/var/log/ai-shop/app.log {
+# 用通配而不是逐个列：job.log（ai-shop-job.service）与 backup.log 用的是同一种写法，
+# 第一版只列了 app.log，于是同一个坑的另一半还敞着。以后这个目录里新加的 *.log 也自动纳入。
+# 轮转出来的文件名带日期后缀（app.log-20260914-...），不再以 .log 结尾，不会被通配再轮一次。
+#
+# copytruncate：systemd 一直握着这些文件句柄，改名重开它不会跟着走，只能原地截断。
+# maxsize 200M：实测正常一天十几到二十几 MB，平时由 daily 轮；这条只防洪水。
+#          配合 logrotate.timer 改成每小时（logrotate.timer-hourly.conf），否则要等到半夜才生效 ——
+#          事故里它一小时能长 0.65G。
+# su root root：文件属主不一（app.log 是 root，job.log 是 deploy），目录属 deploy；root 都截得动。
+/var/log/ai-shop/*.log {
     su root root
     daily
-    maxsize 500M
+    maxsize 200M
     rotate 14
     compress
     delaycompress
