@@ -324,13 +324,16 @@ ssh soukmind-tx 'cd /data/build/ai-neargo/src && JAVA_HOME=/usr/lib/jvm/java-21-
 
 ## 6. 凭据
 
-**全部在仓库外**：`~/work/env/tencent/`
+**全部在仓库外**：
 
 | 文件 | 内容 |
 |---|---|
-| `tencent.env` | 腾讯云 API 密钥（子用户 `deploy-user`） |
-| `ai-shop.env` | 数据库账号密码（32 位随机生成） |
-| `soukmind_tx(.pub)` | SSH 部署密钥（名字是历史遗留） |
+| `~/work/env/tencent/tencent.env` | 腾讯云 API 密钥（子用户 `deploy-user`） |
+| `~/work/env/tencent/ai-shop.env` | 数据库账号密码（32 位随机生成） |
+| `~/work/env/server/tencent/soukmind_tx(.pub)` | SSH 部署密钥（名字是历史遗留）。2026-09-14 从 `env/tencent/` 挪来，`~/.ssh/config` 的两个别名已跟着改 |
+
+**SSH 只认这把密钥**（服务器已关口令登录的话）。它丢了 SSH 就进不去 —— 私钥要另有安全备份；
+不走 SSH 的后路是腾讯云控制台的 VNC 登录。
 
 服务器上 `/data/app/ai-shop/shop-app/shop-app.env`（600）含从本机 `backend/.env.local` · `.env.mail.local` ·
 `.env.sms.local` 原样搬运的真实凭据，共 27 个变量。

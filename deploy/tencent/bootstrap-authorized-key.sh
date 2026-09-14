@@ -5,11 +5,12 @@
 set -euo pipefail
 
 # 凭据/密钥目录（**故意在仓库外** —— 私钥与 API 密钥永不入库）
+# 两者分开放：API 凭据在 env/tencent，SSH 密钥 2026-09-14 挪到了 env/server/tencent
 TX_ENV_DIR="${TX_ENV_DIR:-$HOME/work/env/tencent}"
-KEY_DIR="$TX_ENV_DIR"
+KEY_DIR="${TX_KEY_DIR:-$HOME/work/env/server/tencent}"
 
-# ── 0. 载入凭据（同目录 tencent.env，600）──────────────────────────
-ENV_FILE="$KEY_DIR/tencent.env"
+# ── 0. 载入凭据（tencent.env，600）─────────────────────────────────
+ENV_FILE="$TX_ENV_DIR/tencent.env"
 if [[ -f "$ENV_FILE" ]]; then
   set -a; source "$ENV_FILE"; set +a
 else
