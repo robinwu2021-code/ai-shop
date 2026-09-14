@@ -1,19 +1,30 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.event.OutboxDispatcher;
+import ai.neargo.shop.event.SysOutbox;
+import ai.neargo.shop.event.SysOutboxMapper;
+import ai.neargo.shop.invbridge.InvMirrorEvent;
 import ai.neargo.shop.invbridge.InventoryBackfillService;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.StockQueryService;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.spi.product.StockPort;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -65,6 +76,8 @@ class InventoryDualWriteTest {
     private SkuMapper skuMapper;
     @Autowired
     private InventoryBackfillService backfill;
+    @Autowired
+    private SysOutboxMapper outboxMapper;
 
     @Test
     @DisplayName("★★★ 装配的是双写口 —— 拿到 StockPortImpl 就说明这一档整个没生效")
@@ -243,9 +256,125 @@ class InventoryDualWriteTest {
                 .isEqualTo(6);
     }
 
+    /*
+     * 下面两条复现的是 2026-09-14 的盘满事故：一个商品在平台有、在进销存没有
+     * （支付联调的测试商品由种子数据直接写库，没走「保存即投影」），
+     * 于是它的每一笔下单预留都镜像失败 —— 而投递器没有上限、没有退避，
+     * 20 条事件重试了 16 万次，每次一整条堆栈，把日志刷到 41.6G。
+     */
+
+    @Test
+    @DisplayName("★★★ 商品没投影到进销存：失败原因要说「没投影」，而不是一句「owner_id 没有默认值」")
+    void unprojectedSkuFailsWithItsRealReason() {
+        String skuNo = unprojectedSku(5);
+        String lockNo = "SO-" + skuNo;
+
+        stockPort.lock(lockNo, List.of(new StockPort.SkuQty(skuNo, 1)));
+        dispatcher.dispatchPending();
+
+        SysOutbox e = reserveEventOf(lockNo);
+        assertThat(e.getStatus()).as("没补记成功就不能标已发").isEqualTo(SysOutbox.PENDING);
+        assertThat(e.getLastError())
+                .as("此前 null 业主一路传到自动建库位，报的是 SQL「Field 'owner_id' doesn't have a default value」、"
+                        + "指向 LocationMapper —— 看上去是库位代码漏了一列，查错方向整个是反的")
+                .contains("没投影").contains(skuNo);
+    }
+
+    @Test
+    @DisplayName("★★★ 每次必败的事件：退避重投、整条堆栈只打两次、投满上限转 FAILED —— 不再 5 秒一轮直到写满盘")
+    void poisonEventBacksOffThenGoesFailed() {
+        String skuNo = unprojectedSku(5);
+        String lockNo = "SO-" + skuNo;
+        stockPort.lock(lockNo, List.of(new StockPort.SkuQty(skuNo, 1)));
+        String eventNo = reserveEventOf(lockNo).getEventNo();
+
+        Logger logger = (Logger) LoggerFactory.getLogger(OutboxDispatcher.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.setContext((LoggerContext) LoggerFactory.getILoggerFactory());
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            // ① 第一次失败：约好下一次
+            dispatcher.dispatchPending();
+            SysOutbox first = reserveEventOf(lockNo);
+            assertThat(first.getRetryCount()).isEqualTo(1);
+            assertThat(first.getNextRetryAt()).as("失败之后要约好下一次").isAfter(LocalDateTime.now());
+
+            // ② 退避期内再跑一轮：不该碰它
+            dispatcher.dispatchPending();
+            assertThat(reserveEventOf(lockNo).getRetryCount())
+                    .as("退避期内又被取出来重投 —— next_retry_at 写了却没人读，就是事故里 5 秒一轮的原样")
+                    .isEqualTo(1);
+
+            // ③ 到点了：再投一次
+            due(lockNo, 1);
+            dispatcher.dispatchPending();
+            assertThat(reserveEventOf(lockNo).getRetryCount()).isEqualTo(2);
+
+            // ④ 快进到最后一次：转 FAILED
+            due(lockNo, OutboxDispatcher.MAX_ATTEMPTS - 1);
+            dispatcher.dispatchPending();
+            SysOutbox failed = reserveEventOf(lockNo);
+            assertThat(failed.getStatus()).as("投满上限要转 FAILED，交给人").isEqualTo(SysOutbox.FAILED);
+            assertThat(failed.getRetryCount()).isEqualTo(OutboxDispatcher.MAX_ATTEMPTS);
+
+            // ⑤ FAILED 之后不再自动重投
+            dispatcher.dispatchPending();
+            assertThat(reserveEventOf(lockNo).getRetryCount())
+                    .as("FAILED 了还在被重投 —— 那上限就是摆设")
+                    .isEqualTo(OutboxDispatcher.MAX_ATTEMPTS);
+
+            List<ILoggingEvent> mine = appender.list.stream()
+                    .filter(x -> x.getFormattedMessage().contains(eventNo)).toList();
+            assertThat(mine).extracting(ILoggingEvent::getLevel)
+                    .as("投了三次：两次 WARN，放弃那次 ERROR")
+                    .containsExactly(Level.WARN, Level.WARN, Level.ERROR);
+            assertThat(mine.get(0).getThrowableProxy()).as("第一次要带堆栈，看得出是什么错").isNotNull();
+            assertThat(mine.get(1).getThrowableProxy())
+                    .as("中间的重投不该再打整条堆栈 —— 同一个异常每轮一整条，正是 41.6G 的来源")
+                    .isNull();
+            assertThat(mine.get(1).getFormattedMessage()).as("但那一行要说得出是什么错").contains("没投影");
+            assertThat(mine.get(2).getThrowableProxy())
+                    .as("放弃那一次要带堆栈：它之后再没有自动重投，这是最后一次看得见现场")
+                    .isNotNull();
+        } finally {
+            logger.detachAppender(appender);
+        }
+    }
+
     // ------------------------------------------------------------------ 种子
 
     private record Fixture(int seq, String skuNo, String owner, String itemId) {
+    }
+
+    /** 只在平台建、**不搬运**：进销存里没有它，镜像事件必然找不到业主。 */
+    private String unprojectedSku(int qty) {
+        int seq = SEQ.incrementAndGet();
+        PrdSku sku = new PrdSku();
+        sku.setSkuNo("SKU-UNPROJ-" + seq);
+        sku.setGoodsNo("G-UNPROJ-" + seq);
+        sku.setEntityNo("E-UNPROJ-" + seq);
+        sku.setMarket("CN");
+        sku.setStock(qty);
+        sku.setLockedStock(0);
+        sku.setPrice(10L);
+        skuMapper.insert(sku);
+        assertThat(acl.ownerOfSku(sku.getSkuNo())).as("前提：进销存里确实没有它").isNull();
+        return sku.getSkuNo();
+    }
+
+    private SysOutbox reserveEventOf(String lockNo) {
+        return outboxMapper.selectOne(Wrappers.<SysOutbox>lambdaQuery()
+                .eq(SysOutbox::getAggregateId, lockNo)
+                .eq(SysOutbox::getEventType, InvMirrorEvent.RESERVE));
+    }
+
+    /** 模拟退避期已过：把下一次投递时间拨到过去，并把已投次数设成 {@code attemptsSoFar}。 */
+    private void due(String lockNo, int attemptsSoFar) {
+        SysOutbox e = reserveEventOf(lockNo);
+        e.setRetryCount(attemptsSoFar);
+        e.setNextRetryAt(LocalDateTime.now().minusSeconds(1));
+        outboxMapper.updateById(e);
     }
 
     /**

@@ -33,9 +33,9 @@ import java.util.List;
  *
  * <h2>吞哪些异常，不吞哪些</h2>
  * <b>「已经做过了」吞掉，「做不了」抛出去。</b>
- * 抛出去的会留在队列里重投（{@code OutboxDispatcher} 逐条捕获、不标已发），
- * 这正是我们要的：<b>补记失败必须看得见</b>，否则双写期结束时对差是干净的，
- * 而干净的原因是「漏的那些根本没记」。
+ * 抛出去的会留在队列里退避重投（{@code OutboxDispatcher} 逐条捕获、不标已发），
+ * 投满上限转 FAILED 等人处理。这正是我们要的：<b>补记失败必须看得见</b>，
+ * 否则双写期结束时对差是干净的，而干净的原因是「漏的那些根本没记」。
  */
 @Component
 @ConditionalOnProperty(prefix = "shop.inventory", name = "stock-authority", havingValue = "DUAL")
@@ -97,7 +97,7 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
         if (lines.isEmpty()) {
             return;
         }
-        String owner = acl.ownerOfSku(first(p));
+        String owner = requireOwner(first(p));
         reservations.reserve(owner, ref, lines, RESERVE_TTL_SECONDS);
     }
 
@@ -112,7 +112,7 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
         if (skuNo == null) {
             return;
         }
-        String owner = acl.ownerOfSku(skuNo);
+        String owner = requireOwner(skuNo);
         String locationId = locations.resolveStockLocation(
                 owner, acl.locationOfStore(owner, text(p, "storeNo")));
         String reason = text(p, "reason");
@@ -126,7 +126,7 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
         if (lines.isEmpty()) {
             return;
         }
-        String owner = acl.ownerOfSku(first(p));
+        String owner = requireOwner(first(p));
         reservations.restore(owner, ref, lines, "MIRROR");
     }
 
@@ -150,7 +150,7 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
         if (items == null || !items.isArray() || items.isEmpty()) {
             return List.of();
         }
-        String owner = acl.ownerOfSku(first(p));
+        String owner = requireOwner(first(p));
         List<ReservationService.Line> out = new ArrayList<>();
         for (JsonNode it : items) {
             String skuNo = text(it, "skuNo");
@@ -164,6 +164,28 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
             out.add(new ReservationService.Line(acl.itemIdOfSku(skuNo), locationId, qty));
         }
         return out;
+    }
+
+    /**
+     * 按 SKU 反查业主，<b>查不到就抛</b> —— 别拿着 null 往下走。
+     *
+     * <p>查不到 = 这个 SKU 还没投影到进销存（{@link InventoryAclService#ownerOfSku} 的约定）。
+     * 此前这里不判：null 一路传到自动建库位，MyBatis-Plus 插入时把空值那一列整个略掉，
+     * 报出来的是「Field 'owner_id' doesn't have a default value」、指向 LocationMapper ——
+     * 看上去是库位代码漏了一列，查错方向整个是反的。
+     * 2026-09-14 那 20 条毒消息都是同一个商品：支付联调用的测试商品由种子数据直接写库，
+     * 没走「保存即投影」，进销存里从来没有它。
+     *
+     * <p>抛出去而不是丢掉：这是「做不了」不是「做过了」（见类注释）。
+     * 投递器会退避重投、到上限转 FAILED —— 期间商家保存一次商品就会投影，重投即可成功。
+     */
+    private String requireOwner(String skuNo) {
+        String owner = acl.ownerOfSku(skuNo);
+        if (owner == null) {
+            throw new IllegalStateException("商品还没投影到进销存，无法补记：skuNo=" + skuNo
+                    + "（商家保存一次商品即会投影，或跑存量搬运）");
+        }
+        return owner;
     }
 
     /** 第一行的 skuNo —— 一张单只属于一个商家，拿它反查业主就够 */
