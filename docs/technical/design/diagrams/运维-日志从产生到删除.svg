@@ -16,7 +16,7 @@
   <!-- 底色：显式给出，深色查看器里也不会透成黑底 -->
   <rect x="0" y="0" width="1000" height="600" fill="#ffffff"/>
   <text x="24" y="36" font-size="20" font-weight="700" fill="#1f2328">日志从产生到删除</text>
-  <text x="24" y="58" font-size="12.5" fill="#5b6472">腾讯云单机 · 本机每一类都有上限 · 需要长留的进 COS 归档 · 告警盯住本机这一层</text>
+  <text x="24" y="58" font-size="12.5" fill="#5b6472">应用日志一律落 /data/log（将来整块挂数据盘）· 每类都有上限 · 当前按测试档压到最小 · 转生产再开 COS 归档</text>
 
   <!-- 列标题 -->
   <g font-size="13" font-weight="700" fill="#1f2328">
@@ -53,24 +53,24 @@
   <!-- ② 本机 -->
   <g font-size="12.5">
     <rect x="258" y="116" width="316" height="54" rx="6" fill="#fdf5e6" stroke="#e3c48a"/>
-    <text x="270" y="138" font-weight="700" fill="#1f2328">/var/log/ai-shop/{app,job,pay}/</text>
-    <text x="270" y="158" fill="#5b6472">单文件 100M · 总量封顶 · ERROR 另存一份</text>
+    <text x="270" y="138" font-weight="700" fill="#1f2328">/data/log/&lt;业务&gt;/&lt;服务&gt;/</text>
+    <text x="270" y="158" fill="#5b6472">测试档：总量 30–100M · 3–7 天 · 封顶</text>
 
     <rect x="258" y="184" width="316" height="54" rx="6" fill="#fdf5e6" stroke="#e3c48a"/>
     <text x="270" y="206" font-weight="700" fill="#1f2328">/var/log/nginx/</text>
     <text x="270" y="226" fill="#5b6472">每天轮 · 本机 14 天（发行版默认，不改）</text>
 
     <rect x="258" y="252" width="316" height="54" rx="6" fill="#fdf5e6" stroke="#e3c48a"/>
-    <text x="270" y="274" font-weight="700" fill="#1f2328">journal（MariaDB）· /var/log/mysql97/</text>
-    <text x="270" y="294" fill="#5b6472">随 journal 上限 · 每天轮留 14 份</text>
+    <text x="270" y="274" font-weight="700" fill="#1f2328">journal（MariaDB）· /data/log/infra/mysql97/</text>
+    <text x="270" y="294" fill="#5b6472">随 journal 上限 · 每天轮留 7 份</text>
 
     <rect x="258" y="320" width="316" height="54" rx="6" fill="#fdf5e6" stroke="#e3c48a"/>
-    <text x="270" y="342" font-weight="700" fill="#1f2328">journal 500M · syslog 4 周</text>
-    <text x="270" y="362" fill="#5b6472">已于 9-14 加上限</text>
+    <text x="270" y="342" font-weight="700" fill="#1f2328">journal 200M · syslog 4 周</text>
+    <text x="270" y="362" fill="#5b6472">发行版管的留在 /var/log，不挪</text>
 
     <rect x="258" y="388" width="316" height="54" rx="6" fill="#fdf5e6" stroke="#e3c48a"/>
-    <text x="270" y="410" font-weight="700" fill="#1f2328">/var/log/ai-shop/ops/</text>
-    <text x="270" y="430" fill="#5b6472">很小；deploy.log 留在原处、不轮转</text>
+    <text x="270" y="410" font-weight="700" fill="#1f2328">/data/log/&lt;业务&gt;/ops/</text>
+    <text x="270" y="430" fill="#5b6472">很小；deploy.log 在应用目录、不轮转</text>
   </g>
 
   <!-- ①→② -->
@@ -85,11 +85,11 @@
   <!-- ③ 归档 -->
   <rect x="608" y="150" width="196" height="200" rx="6" fill="#ecf6ef" stroke="#9fcfae"/>
   <g font-size="12.5">
-    <text x="620" y="174" font-weight="700" fill="#1f2328">hxmall-backup 桶</text>
+    <text x="620" y="174" font-weight="700" fill="#1f2328">hxmall-backup 桶（生产档）</text>
     <text x="620" y="194" fill="#1f2328">serverlogs/&lt;来源&gt;/</text>
     <text x="620" y="212" fill="#1f2328">  YYYY/MM/DD/…gz</text>
     <text x="620" y="240" fill="#5b6472">每天 03:40 上传前一天</text>
-    <text x="620" y="258" fill="#5b6472">已轮转、已压缩的那份</text>
+    <text x="620" y="258" fill="#5b6472">最近轮转出、不再变的那份</text>
     <text x="620" y="286" fill="#5b6472">失败要告警 ——</text>
     <text x="620" y="304" fill="#5b6472">本机 14 天内可补传</text>
     <text x="620" y="332" fill="#5b6472">不新开桶，走前缀</text>
@@ -118,7 +118,7 @@
   <!-- 告警：盯住本机这一层 -->
   <rect x="258" y="470" width="316" height="58" rx="6" fill="#fdecea" stroke="#e8a397" stroke-dasharray="5 4"/>
   <text x="270" y="493" font-size="12.5" font-weight="700" fill="#1f2328">告警（此前完全没有）</text>
-  <text x="270" y="513" font-size="12.5" fill="#5b6472">磁盘 &gt; 80% / 90% · 日志增速 &gt; 200MB/时</text>
+  <text x="270" y="513" font-size="12.5" fill="#5b6472">磁盘 &gt; 80% / 90% · 日志增速 &gt; 50MB/时（测试档）</text>
   <line x1="416" y1="468" x2="416" y2="446" stroke="#c2412d" stroke-width="1.4" marker-end="url(#ar)"/>
   <text x="590" y="494" font-size="12" fill="#c2412d">这次从 9-4 刷到 9-13 盘满，</text>
   <text x="590" y="512" font-size="12" fill="#c2412d">十天没有任何人知道</text>
