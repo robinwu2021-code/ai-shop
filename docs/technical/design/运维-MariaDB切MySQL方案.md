@@ -225,8 +225,21 @@ mariadb-dump --single-transaction --no-create-info --no-tablespaces "$db" \
 
 ### M3 · 应用侧改造（发版，属于代码改动）
 
+> **应用连 MySQL 已实测通过（2026-09-14）**：拿现网 jar（a348d7db）起临时实例（18099）连迁好的 MySQL 三库，
+> 建了个 `caching_sha2_password` 应用账号（`allowPublicKeyRetrieval=true`）。结果：
+> - **启动成功 15.9 秒、health 200、0 ERROR**；
+> - **Flyway 在 MySQL 9.7 上成功校验 265 个迁移、认出 `ai_shop` 版本 327、判定无需迁移**——切库最大的 Flyway 风险清掉；
+> - 直接读（`sys_role_point` 423 行）+ 写（建表插回读删）都成功。
+>
+> 排查记录（值得留意，切换时会撞上）：临时实例上 `/mp/community/nearby` 返回 401，而现网 8081 是 200。
+> 三重对照排除法证明**与 MySQL 无关、与桩无关**：MariaDB+完全生产配置起**第二个实例**也是 401。
+> 根因是**同库并发第二个实例**——某个 DB 锁（shedlock）守着的启动初始化被第二个实例跳过，`/mp` 链没配全。
+> **真实切换只有一个实例**（如现网独占的 8081 就是 200），不受影响；但切换后验证要认准"单实例"，别被并发实例的假 401 带偏。
+> 临时实例、账号、密码文件均已清理，现网未受影响。
+
 | 改什么 | 怎么改 |
 |---|---|
+| 连接的 env 加载 | 部署侧用 systemd `EnvironmentFile`（能正确处理值里的 `&`）。**别用 `set -a; . env`** 在 bash 里加载——URL 里的 `&` 会被当后台符截断（排查时踩过） |
 | 三个数据源的 `jdbc:mysql://` | host/port 指向 MySQL；串已是 mysql 协议，基本不改 |
 | 连接参数 | 确认 `allowPublicKeyRetrieval=true`（caching_sha2 + 无 TLS 本地连接需要） |
 | Flyway 基线（三个库各一套，表名各不同） | 切库走 dump→load、结构+数据一次到位，**不重跑历史迁移**。dump 把各库的 Flyway 历史表连内容一起搬过去了（`ai_shop.flyway_schema_history` 到 V327、`ai_shop_inv.inv_flyway_history` 到 V6、`ai_shop_job.job_flyway_history` 到 V2），所以切完 Flyway 一看历史齐全、只跑新版本，**多半不用手动 baseline**；启动时若因校验报错，再 `baseline` 到上述版本。三个库的 `flyway.table` 名不一样，配置别搞混 |
