@@ -65,6 +65,25 @@
 **全库归一到 `utf8mb4_0900_ai_ci`（bin 列除外）**：留着多种排序规则，将来任何跨这两列的 JOIN
 都可能在生产上炸 1267，而 H2 测试看不见（见 [[sql-dialect-h2-vs-mariadb]]）。归一是一次把这个雷排掉。
 
+### 不一致清单（2026-09-14 实测点名）——转换要逐个照顾到
+
+不是所有表都是 uca1400。**三种表级排序规则并存**，归一化必须把异类也带上：
+
+| 对象 | 现状 | 转成 | 备注 |
+|---|---|---|---|
+| 除下面之外的 198 张表 | `utf8mb4_uca1400_ai_ci` | `utf8mb4_0900_ai_ci` | 主流 |
+| `ai_shop.prd_goods_draft`（整表 7 列） | `utf8mb4_unicode_520_ci` | `utf8mb4_0900_ai_ci` | 异类①：商品草稿表 |
+| `ai_shop_inv.inv_supplier`（整表 12 列） | `utf8mb4_unicode_520_ci` | `utf8mb4_0900_ai_ci` | 异类②：供应商表 |
+| **整个 `ai_shop_job` 库**（含 `job_flyway_history`） | `utf8mb4_unicode_ci` | `utf8mb4_0900_ai_ci` | 异类③：调度库当年建库默认就不同 |
+| 9 个 JSON 列（`sys_pay_channel.pay_methods`、`rvw_review.images`…全是 longtext） | `utf8mb4_bin` | `utf8mb4_bin`（**不变**） | 存 JSON、非唯一键，故意二进制 |
+
+**这不只是"迁过去要处理"，是现网就埋着的雷**：`prd_goods_draft`/`inv_supplier` 的 520 列一旦和
+uca1400 表在字符串键上 JOIN，**MariaDB 现在就会报 1267**（只是这两张表恰好没跨库 JOIN 才没炸）。
+归一到 0900 顺手把它拆了——**换库是清掉这个历史不一致的最好时机**。
+
+**字符集层：无需转换。** 三库 1864 个字符串列**全部 utf8mb4**，没有 latin1/utf8mb3。
+所以整件事只动排序规则、不动字符集——比一般的库迁移少一大块风险。
+
 ### 风险点：230 个唯一索引
 
 `ai_shop` + `ai_shop_inv` 里有 **230 个唯一索引含字符串列**。排序规则一换，判等规则跟着变：
@@ -121,20 +140,50 @@ HAVING c > 1;
 - 这一步的产物是一张「230 个索引 × 通过/需处理」的清单，附在本文，切换前必须全绿。
   （脚本我可以生成——从 `information_schema.statistics` 拼出这 230 条查询，只读、不改库。）
 
-### M2 · 副本试灌（在 3307 上真跑一遍，不影响现网）
+### M2 · 转换与索引构建的**执行方案**（在 3307 上跑，不影响现网）
 
-```
-mysqldump（--single-transaction --no-tablespaces）导出 ai_shop → 一个 .sql
-sed 把三种排序规则统一替换成 0900（bin 不动）
-灌进 MySQL 9.7 的 ai_shop_test
-```
+M1 那次用的是"整体 sed 一遍 dump"——**验证够用，正式迁移要换更稳的做法：schema 与 data 分离**。
+整体 sed 的风险是替换字符串可能撞上**数据里恰好含 `utf8mb4_uca1400_ai_ci` 字面量**的行（虽然极少）；
+拆开之后，排序规则替换只发生在 DDL 段，数据段一个字节都不碰。
 
-验收（都要能证伪）：
-- 灌库过程**零报错**（撞唯一键会在这里暴露——那说明 M1 漏了一条）。
-- 表数、行数与现网逐库一致。
-- 抽查若干中文/emoji 记录，`ORDER BY`、`LIKE`、唯一性行为与预期一致。
-- **把仓库的 269 个迁移在一个空 MySQL 上重跑一遍**（用改过排序规则的副本）——
-  验的是「将来全新环境能不能在 MySQL 上从零建起」，也顺带逼出方言差异。
+**步骤①　导出并转换表结构（只在 DDL 上改排序规则）**
+```bash
+for db in ai_shop ai_shop_inv ai_shop_job; do
+  # 只要结构，不要数据；关掉 MariaDB 专有的 gtid 选项（它不认）
+  mariadb-dump --single-transaction --no-data --no-tablespaces "$db" \
+  | sed -E 's/utf8mb4_uca1400_ai_ci/utf8mb4_0900_ai_ci/g;
+            s/utf8mb4_unicode_520_ci/utf8mb4_0900_ai_ci/g;
+            s/utf8mb4_unicode_ci\b/utf8mb4_0900_ai_ci/g' > schema.$db.sql
+  # ⚠ utf8mb4_bin 不在替换列表 —— 9 个 JSON 列保持二进制
+done
+```
+把三种排序规则（uca1400 / unicode_520 / unicode_ci）**一律归一到 0900**，异类①②③（见上表）随之被拉平。
+
+**步骤②　建空表 → 索引结构同时落地**
+```bash
+mysql --defaults-file=/etc/mysql97/my.cnf "${db}" < schema.$db.sql
+```
+`CREATE TABLE` 里带着**全部索引定义**（主键、唯一键、普通索引），建空表这一步索引结构就位。
+0900 是库/表默认，之后任何新列不写 COLLATE 也落 0900，不再有"取决于服务器版本"的问题。
+
+**步骤③　灌数据 → InnoDB 构建二级索引**
+```bash
+mariadb-dump --single-transaction --no-create-info --no-tablespaces "$db" \
+  | mysql --defaults-file=/etc/mysql97/my.cnf "${db}"
+```
+数据逐行灌进已经建好结构的表，InnoDB **一边插一边构建二级索引与唯一索引**——这就是"同时构建索引"。
+**唯一索引在 0900 下会不会撞：M1 已用真数据验通（0 冲突）**；这里若报 ER_DUP_ENTRY，就是切换前又攒了新的冲突数据，停下来按 M1 的办法定夺。
+
+> **索引构建的两个注意**：
+> - InnoDB 没有 MyISAM 的 `DISABLE KEYS` 批量建索引优化；它靠 `innodb_sort_buffer_size` 在灌数据时排序建索引。319MB 规模默认参数分钟级完成，不用调。
+> - **外键**：三库**实测 0 个跨表外键**（2026-09-14，应用层维护关系），灌数据不受引用顺序约束，`FOREIGN_KEY_CHECKS` 不涉及。正式迁移前仍 grep 一遍 `FOREIGN KEY` 复核。
+
+**步骤④　验收（都要能证伪）**
+- 灌库**零报错**；**逐表 `COUNT(*)` 对账**（不用估算的 `table_rows`），每张表行数与现网一致——M1 已跑通此法。
+- `SHOW INDEX FROM <表>` 抽查：索引条目数、唯一性、列顺序与现网一致（结构没在转换里掉）。
+- 抽查中文/emoji 记录的 `ORDER BY`、`LIKE`、唯一性行为符合预期。
+- **269 个迁移在一个空 MySQL 上从头跑一遍**：验"将来全新环境能否在 MySQL 上从零建起"、逼出 DDL 方言差异。
+  注意迁移文件里那 132 处 uca1400 会**卡住全新构建**——这条路要么等迁移文件改造（但会破坏现网 checksum，见 M3），要么就认定"全新环境不重跑历史迁移、直接用 dump 的结构 + baseline"。
 
 ### M3 · 应用侧改造（发版，属于代码改动）
 
@@ -142,14 +191,16 @@ sed 把三种排序规则统一替换成 0900（bin 不动）
 |---|---|
 | 三个数据源的 `jdbc:mysql://` | host/port 指向 MySQL；串已是 mysql 协议，基本不改 |
 | 连接参数 | 确认 `allowPublicKeyRetrieval=true`（caching_sha2 + 无 TLS 本地连接需要） |
-| Flyway `validate-on-migrate` | 现网迁移的 checksum 是按 MariaDB 建立的；切库后**基线要重建**（`flyway baseline` 到当前版本），否则它会想从头跑一遍——这一步在 TDD 补细节 |
-| 建表默认排序规则 | 那 16 张没写显式 COLLATE 的表（[部署 README §7②](../../../deploy/tencent/README.md)）要补上显式 `utf8mb4_0900_ai_ci`，别再让结果取决于服务器版本 |
+| Flyway 基线（三个库各一套，表名各不同） | 切库走 dump→load、结构+数据一次到位，**不重跑历史迁移**。dump 把各库的 Flyway 历史表连内容一起搬过去了（`ai_shop.flyway_schema_history` 到 V327、`ai_shop_inv.inv_flyway_history` 到 V6、`ai_shop_job.job_flyway_history` 到 V2），所以切完 Flyway 一看历史齐全、只跑新版本，**多半不用手动 baseline**；启动时若因校验报错，再 `baseline` 到上述版本。三个库的 `flyway.table` 名不一样，配置别搞混 |
+| 新迁移不许再写 uca1400 | 归一到 0900 之后，新迁移写 `COLLATE utf8mb4_uca1400_ai_ci` 会在 MySQL 上直接失败。**加一条 pre-push 守卫**：迁移文件里出现 uca1400/unicode_520/unicode_ci 就拦，只允许 0900 或不写（靠库默认） |
+| 建表默认排序规则 | 那几张没写显式 COLLATE 的表：切库后库默认是 0900，它们自动落 0900，反而对了；隐患消失 |
 
 ### M4 · 切换（离线，一次窗口）
 
-顺序：停三个服务 → 各库最后一次导出+映射+灌进 MySQL → 改 env 里三个数据源指向 3307 →
-起服务 → 冒烟（按生产 profile，见 [[deploy-smoke-with-prod-profile]]）。
-预计停机：三个库 319+2+2 MB，导+灌分钟级，加冒烟 **约 10~15 分钟**。
+顺序：停三个服务 → **各库跑一遍 M2 的①②③④**（导出结构映射建表 → 灌数据建索引 → 对账）→
+每库 `flyway baseline` → 改 env 里三个数据源指向 3307 → 起服务 →
+冒烟（按生产 profile，见 [[deploy-smoke-with-prod-profile]]）。
+预计停机：三个库 319+2+2 MB，导+灌+建索引分钟级，加对账与冒烟 **约 10~15 分钟**。
 
 **回滚**：MariaDB 全程不动、继续在 3306 跑着。切完发现问题，把 env 三个数据源指回 3306、重启即回退——
 只要**切换后没有新数据写进 MySQL**（或写了能补回）。所以要定「观察期多久、这期间要不要双写或只读」。
