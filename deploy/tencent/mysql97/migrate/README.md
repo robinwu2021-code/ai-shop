@@ -29,6 +29,47 @@
 实测(2026-09-14):生产档拿到菜单 13 / 角色授权 423,而商品·订单·社区全 0、SK9901 不存在;测试档三者齐全。
 **新表默认落 TEST** —— 安全:不会把新的业务数据误当"必要"灌进生产。要进必要档,得在 `tiers.conf` 里显式登记。
 
+
+## 新环境怎么登进去（2026-09-16 整理）
+
+**生产档建出来是登不进去的，这是有意的。** `--level required` 不含任何运营账号：
+`sys_ops_staff` 与 `sys_role_member` 都是 0 行。
+
+| 档 | 账号从哪来 | 口令 |
+|---|---|---|
+| `--level test` | 仓库里的 `seed-accounts-test.sql`（11 个角色账号 + 角色绑定） | **公开：`Test@12345`** —— 它就是测试账号 |
+| `--level required`（生产） | **没有**，第一个管理员手工建 | 由人当场定，首登强制改密 |
+
+### 生产：开第一个管理员
+
+口令由人自己想，**不要复制测试种子里的哈希** —— 那等于把一个公开口令装进生产。
+
+```bash
+# ① 在**本机**算哈希（口令不进服务器命令行、不进 shell 历史）
+htpasswd -bnBC 10 "" '你想好的口令' | tr -d ':\n' | sed 's/^\$2y\$/\$2a\$/'
+
+# ② 把算出来的哈希填进去（must_change_password=1：首次登录强制改）
+INSERT INTO sys_ops_staff (staff_no, username, password, real_name, roles, status,
+                           tenant_no, created_at, created_by, updated_at, updated_by,
+                           version, deleted, must_change_password)
+VALUES ('ST-ADMIN', 'admin', '<①算出来的哈希>', '超级管理员', '["SUPER_ADMIN"]', 'ACTIVE',
+        'MAIN', NOW(), 'BOOTSTRAP', NOW(), 'BOOTSTRAP', 0, 0, 1);
+INSERT INTO sys_role_member (end_code, subject_no, role_code, granted_at, tenant_no,
+                             created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES ('OPS', 'ST-ADMIN', 'SUPER_ADMIN', UNIX_TIMESTAMP()*1000, 'MAIN',
+        NOW(), 'BOOTSTRAP', NOW(), 'BOOTSTRAP', 0, 0);
+```
+
+⚠️ **两条都要**。只插 `sys_ops_staff` 的话人能登进去、但什么都点不开 ——
+权限是靠 `sys_role_member` 绑上去的，而它此前被错归在「必要」档里（见 `tiers.conf` 的说明）。
+
+### 为什么这么改
+
+原先这 11 个运营账号**只存在于生产那一台机器的库里**，仓库里没有任何东西能重建它们：
+换一台机器就没有账号可登。而它们的角色绑定 `sys_role_member` 却被归进「必要」档，
+于是 `--level required` 建出来的「生产档」会长出 **11 条指向不存在账号的悬空绑定**（实测）。
+现在两张表一起归 ACCOUNTS：从现网抽的那份当凭据、不入库；要可重建的测试账号用仓库里这份。
+
 ## 怎么用
 
 ### 场景一:正式把现网迁到 MySQL(方案 M4 的核心一步)

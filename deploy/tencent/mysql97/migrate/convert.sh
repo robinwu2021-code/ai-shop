@@ -15,7 +15,12 @@
 #   SUFFIX=_m2 bash convert.sh      # 迁到 ai_shop_m2 等(副本演练,不占用正式库名)
 #   DBS="ai_shop" bash convert.sh   # 只迁一个库
 set -uo pipefail
-cd "$(dirname "$0")"; . ./lib.sh
+cd "$(dirname "$0")"; # 本脚本专做 MariaDB → MySQL,源固定是 MariaDB（lib.sh 的默认源已于 2026-09-16 改成 MySQL）。
+# 放在 . ./lib.sh **之前**：lib.sh 用的是 ${VAR:-默认}，先设好这里就不会被默认值覆盖。
+SRC_DUMP="${SRC_DUMP:-sudo mariadb-dump}"
+SRC_CLI="${SRC_CLI:-sudo mariadb -N -B}"
+SRC_DUMP_EXTRA="${SRC_DUMP_EXTRA:-}"   # mariadb-dump 不认 --set-gtid-purged
+. ./lib.sh
 
 DBS="${DBS:-ai_shop ai_shop_inv ai_shop_job}"
 SUFFIX="${SUFFIX:-}"                 # 目标库名后缀;空=同名(正式切换),_m2=演练
@@ -30,7 +35,7 @@ for db in $DBS; do
     say "── $db → $tgt"
 
     # ① 结构:dump --no-data,只在 DDL 上归一排序规则,建空表
-    $SRC_DUMP $DUMP_OPTS --no-data "$db" 2>"$WORK/$db.dumperr" | normalize_collation > "$WORK/$db.schema.sql"
+    $SRC_DUMP $DUMP_OPTS $SRC_DUMP_EXTRA --no-data "$db" 2>"$WORK/$db.dumperr" | normalize_collation > "$WORK/$db.schema.sql"
     [ -s "$WORK/$db.schema.sql" ] || { warn "$db 结构导出为空:$(cat "$WORK/$db.dumperr")"; fail=1; continue; }
     left=$(grep -c uca1400 "$WORK/$db.schema.sql" || true)
     [ "$left" = 0 ] || { warn "$db 结构里仍残留 $left 处 uca1400,归一化没干净"; fail=1; continue; }
@@ -40,7 +45,7 @@ for db in $DBS; do
     ok "空表 + 索引结构就位($(grep -c 'CREATE TABLE' "$WORK/$db.schema.sql") 张表)"
 
     # ② 数据:dump --no-create-info,灌进空表,InnoDB 同时构建索引
-    $SRC_DUMP $DUMP_OPTS --no-create-info "$db" 2>>"$WORK/$db.dumperr" \
+    $SRC_DUMP $DUMP_OPTS $SRC_DUMP_EXTRA --no-create-info "$db" 2>>"$WORK/$db.dumperr" \
         | $TGT_CLI "$tgt" 2>"$WORK/$db.loaderr"
     dup=$(grep -c "ERROR 1062" "$WORK/$db.loaderr" || true)
     err=$(grep -c "ERROR"      "$WORK/$db.loaderr" || true)

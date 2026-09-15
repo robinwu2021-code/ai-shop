@@ -21,7 +21,7 @@ OUT="${OUT:-./out}"; mkdir -p "$OUT"
 WITH_ACCOUNTS="${WITH_ACCOUNTS:-0}"
 
 # 纯数据导出:不带建表、不带 DROP;数据里若含排序规则字面量不受影响(--no-create-info 不输出 DDL)。
-dump_data() { $SRC_DUMP $DUMP_OPTS --no-create-info --complete-insert --skip-add-locks "$1" "$2"; }
+dump_data() { $SRC_DUMP $DUMP_OPTS $SRC_DUMP_EXTRA --no-create-info --complete-insert --skip-add-locks "$1" "$2"; }
 
 req="$OUT/seed-required.sql"; tst="$OUT/seed-test.sql"; acc="$OUT/seed-accounts.sql"
 : > "$req"; : > "$tst"

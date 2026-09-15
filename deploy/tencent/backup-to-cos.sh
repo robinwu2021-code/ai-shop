@@ -35,11 +35,17 @@ DUMP="$LOCAL/ai_shop-$DAY.sql.gz"
 # 2026-09-16 切 MySQL 9.7：客户端换成 mysql97 自带的那个。
 # `mariadb-dump` 连的是 3306 —— MariaDB 停掉之后它每天 03:20 直接失败，
 # 而失败只写进备份日志，不改这里就是「备份一直在跑、其实一份都没有」。
+# ⚠️ `--set-gtid-purged=OFF` 不是可选项：开了 binlog 之后 mysqldump 会在文件开头写
+# `SET @@GLOBAL.GTID_PURGED=...`，把这份备份灌进任何已有 GTID 的实例会当场 ERROR 3546。
+# 也就是说，**不加这一句备出来的文件是恢复不了的** —— 而它照样 8.2M、照样传上 COS、
+# 照样每天「备份成功」。2026-09-16 切库当天备的第一份就带着它。
+#
 # 顺带把密码从命令行挪走：`-p<密码>` 在 dump 的几分钟里对 `ps` 全可见。
 # 走 socket，不加 --protocol=TCP：root 是 auth_socket 认证（以 OS root 身份免密），
 # 走 TCP 会变成「需要密码」而当场 1045 —— 迁移脚本用的也是这种连法。
 "$MYSQLDUMP" --defaults-file=/etc/mysql97/my.cnf -uroot \
   --single-transaction --routines --events --default-character-set=utf8mb4 \
+  --set-gtid-purged=OFF \
   ai_shop | gzip -9 > "$DUMP"
 
 SIZE=$(stat -c%s "$DUMP")

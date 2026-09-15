@@ -32,6 +32,12 @@ say "新建环境:结构=$SCHEMA · 种子档=$LEVEL · 库后缀「$SUFFIX」"
 
 # 1) 分级种子(现从现网抽一份到 WORK;已有 out/ 可设 SEED_DIR 复用)
 SEED_DIR="${SEED_DIR:-$WORK/seed}"
+# 种子已存在就复用(省一次 dump)。**但它认的只是「文件在不在」** ——
+# 源库换了、dump 参数改了、库里数据变了,它一概不知道,照样用旧文件。
+# 2026-09-16 就栽在这儿:修好 --set-gtid-purged=OFF 之后重跑,用的还是修复前那份种子,
+# 结构建好了、灌种子仍然 ERROR 3546,看起来像「没修好」。
+# 要重抽就删掉 $SEED_DIR,或传 FRESH_SEED=1。
+[ "${FRESH_SEED:-0}" = 1 ] && rm -f "$SEED_DIR"/seed-*.sql
 if [ ! -f "$SEED_DIR/seed-required.sql" ]; then
     say "抽取分级种子 → $SEED_DIR"
     OUT="$SEED_DIR" WITH_ACCOUNTS="${WITH_ACCOUNTS:-0}" bash ./extract-seed.sh >/dev/null
@@ -43,7 +49,7 @@ for db in $DBS; do
     say "── 建 $tgt"
     # 2) 结构
     if [ "$SCHEMA" = dump ]; then
-        $SRC_DUMP $DUMP_OPTS --no-data "$db" | normalize_collation > "$WORK/$db.schema.sql"
+        $SRC_DUMP $DUMP_OPTS $SRC_DUMP_EXTRA --no-data "$db" | normalize_collation > "$WORK/$db.schema.sql"
         $TGT_CLI -e "DROP DATABASE IF EXISTS \`$tgt\`; CREATE DATABASE \`$tgt\` CHARACTER SET $TARGET_CS COLLATE $TARGET_COLL"
         $TGT_CLI "$tgt" < "$WORK/$db.schema.sql" || die "$tgt 建表失败"
         ok "结构就位(dump,索引结构随之落地)"
@@ -63,6 +69,13 @@ load_seed() {
 say "灌必要种子(REQUIRED)"; load_seed "$SEED_DIR/seed-required.sql" && ok "必要种子已灌"
 if [ "$LEVEL" = test ]; then
     say "灌测试种子(TEST)"; load_seed "$SEED_DIR/seed-test.sql" && ok "测试种子已灌"
+    # 运营账号：用**仓库里版本化**的那份，不从现网抽。
+    # 口令是公开的（Test@12345），所以这一句只在 test 档里 —— 生产档走不到这里。
+    say "灌测试运营账号(ACCOUNTS)"
+    load_seed "./seed-accounts-test.sql" && ok "11 个角色账号 + 角色绑定已灌（口令 Test@12345）"
+else
+    # 说在明处：生产档建出来是**登不进去的**，这是有意的。
+    warn "生产档不含任何运营账号 —— 第一个管理员要按 README 手工建（口令由人定、首登强制改密）"
 fi
 
 echo
