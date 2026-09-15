@@ -22,11 +22,29 @@
 - [ ] **建应用账号**（MySQL 上，`caching_sha2_password`）：用户名/密码要和将来 env 里填的一致；
       `GRANT` 到三个库；密码走仓库外 env，**不写进本文、不用 root 连**。
       验：`mysql -h127.0.0.1 -P3307 -u<应用用户> -p<...> -e "SELECT 1"` 通。
-- [ ] **env 草稿备好**（先不生效）：把 `SPRING_DATASOURCE_URL`、`SHOP_INVENTORY_DATASOURCE_URL`、
-      `SHOP_JOB_DATASOURCE_URL` 及各自 user/password 指向 3307 的三个库，串带 `allowPublicKeyRetrieval=true`。
+- [ ] **env 草稿备好**（先不生效）。⚠️ **是五个 URL、三个文件，不是三个 URL**（2026-09-16 实测补）：
+      | 文件 | 键 | 注意 |
+      |---|---|---|
+      | `shop-app/shop-app.env` | `SPRING_DATASOURCE_URL` | **原本不存在**：主数据源的 URL 写死在 `application.yml` 里（`127.0.0.1:3306`），env 里只有 user/pass。必须新增这一条，否则主库还连 MariaDB |
+      | 同上 | `SHOP_INVENTORY_DATASOURCE_URL` · `SHOP_JOB_DATASOURCE_URL` | 任务库那条原本没有 `allowPublicKeyRetrieval` |
+      | `shop-job/job.env` | `JOB_DB_URL` | **手册第一版漏了这个文件** |
+      | `pay-svc/pay.env` | `PAY_DB_URL` | **同上**；它连的是主库 `ai_shop`，用 `shop` 账号 |
+
+      三个 URL 里的主机是 `db.svc.internal`（`/etc/hosts` 指 127.0.0.1），改成 `127.0.0.1:3307` 即可。
 - [ ] **预演一次**：`SUFFIX=_pre bash convert.sh` 迁到 `*_pre`，跑通、对账过，再 DROP 掉。确认工具在当前数据上没问题。
 
 ---
+
+- [ ] **改三个 systemd 单元的 `Requires=` / `After=`：`mariadb.service` → `mysql97.service`**（2026-09-16 实测补）。
+      不改的后果不是「起不来」，而是**「停掉 MariaDB」这件事根本不成立**：`Requires=` 会在启动本服务时
+      把 MariaDB 一起拉起来。当天实测：停掉 MariaDB 之后只要起一次 `ai-shop`，3306 就又在听了；
+      而反过来停 MariaDB 会**把三个应用一起带停**（当天因此掉线约 3 分钟）。
+
+- [ ] **`sql_mode` 与切换前的 MariaDB 对齐**（2026-09-16 实测补）。MySQL 默认比 MariaDB 多三项：
+      `ONLY_FULL_GROUP_BY`、`NO_ZERO_IN_DATE`、`NO_ZERO_DATE`。每一项都只在「那条查询真跑到时」才报错，
+      可能几天后才撞上。这次切换的原则是**只换引擎、不换语义**（同排序规则的选法），
+      所以在 `my.cnf` 里显式写成 MariaDB 的那三项（`NO_AUTO_CREATE_USER` 在 MySQL 8+ 已移除，不能写）。
+      要收紧应当单独立项，先把 GROUP BY 查询逐条查干净。
 
 ## T0 · 停业务
 
@@ -59,6 +77,14 @@
 - [ ] 关键写：让**运营账号**的人登一次运营端、做一个读写动作（我没有账号，这步要人点）。
 - [ ] 两个投递任务在跑：`sudo mariadb -N -B ai_shop_job -e "SELECT job_name,last_status FROM job_run WHERE job_name LIKE '%outbox%'"`
       —— ⚠️ 注意这查的是 MariaDB 的 job_run；切后要查 **MySQL** 的：改用 mysql97 客户端。
+
+## T4b · 运维链（2026-09-16 实测补：这两处切完当场就坏，而且都只在日志里报）
+
+- [ ] `logwatch.sh` 里查 outbox 的那条用的是裸 `mysql` —— 那是 **MariaDB 客户端**，切后一直报「查不了 outbox」。
+      改用 `/opt/mysql/current/bin/mysql --defaults-file=/etc/mysql97/my.cnf -uroot`。
+- [ ] `backup-to-cos.sh` 用 `mariadb-dump` —— 切后每天 03:20 直接失败，表现是「备份一直在跑、其实一份都没有」。
+      改用 `mysqldump` + `--defaults-file`，**不要加 `--protocol=TCP`**：root 是 auth_socket 认证，走 TCP 会 1045。
+      改完当场跑一次，看本机文件与 COS 都有。
 
 ## T5 · 放流量
 

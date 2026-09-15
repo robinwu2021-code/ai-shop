@@ -3,8 +3,13 @@
 # 目录规划见 docs/technical/design/运维-目录与日志方案.md
 [Unit]
 Description=ai-shop backend (Spring Boot)
-After=network.target mariadb.service
-Requires=mariadb.service
+# 2026-09-16 切 MySQL 9.7：这两行原本指向 mariadb.service。
+# 不改的后果不是「起不来」，而是**「停掉 MariaDB」这件事根本不成立**：
+# Requires= 在启动本服务时会把它一起拉起来 —— 切换当天实测，停掉 MariaDB 之后
+# 只要起一次 ai-shop，3306 就又在听了；而反过来停 MariaDB 会把三个应用一起带停。
+# 依赖必须跟着数据源走。
+After=network.target mysql97.service
+Requires=mysql97.service
 
 [Service]
 User=deploy

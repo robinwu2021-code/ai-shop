@@ -27,6 +27,9 @@ DISK_CRIT="${DISK_CRIT:-90}"
 LOG_TOTAL_MB="${LOG_TOTAL_MB:-1024}"
 RATE_MB_PER_H="${RATE_MB_PER_H:-50}"
 WEBHOOK_URL="${WEBHOOK_URL:-}"
+# 数据库客户端。2026-09-16 切 MySQL 9.7 后，裸 `mysql` 连的是已停的 MariaDB(3306)，
+# 这一条会一直报「查不了 outbox」—— 报得对，但它该查的是新库。
+MYSQL_CLI="${MYSQL_CLI:-/opt/mysql/current/bin/mysql --defaults-file=/etc/mysql97/my.cnf -uroot}"
 OUTBOX_FAILED_BASELINE="${OUTBOX_FAILED_BASELINE:-}"
 STATE="${STATE:-$DATA/app/ai-shop/ops/state/logwatch}"
 RESEND_MIN=360        # 同一项告警多久再推一次
@@ -110,8 +113,8 @@ done
 # ⚠️ 查库放在 if 里：本脚本 set -euo pipefail，库连不上时 $(mysql …) 失败会让**整个脚本
 # 当场静默退出**，连后面的告警出口都走不到。库连不上本身就该报，不能让它把巡检一起带走。
 # （同一个坑 2026-09-11 在 verify-apk.sh 里踩过：防御分支在它该触发的那一刻不可达。）
-if f_sys="$(mysql -N -B -e "SELECT COUNT(*) FROM ai_shop.sys_outbox WHERE status='FAILED'" 2>/dev/null)" \
-   && f_inv="$(mysql -N -B -e "SELECT COUNT(*) FROM ai_shop_inv.inv_outbox WHERE status='FAILED'" 2>/dev/null)" \
+if f_sys="$($MYSQL_CLI -N -B -e "SELECT COUNT(*) FROM ai_shop.sys_outbox WHERE status='FAILED'" 2>/dev/null)" \
+   && f_inv="$($MYSQL_CLI -N -B -e "SELECT COUNT(*) FROM ai_shop_inv.inv_outbox WHERE status='FAILED'" 2>/dev/null)" \
    && [[ "$f_sys" =~ ^[0-9]+$ && "$f_inv" =~ ^[0-9]+$ ]]; then
     f=$((f_sys + f_inv))
     if [ -z "$OUTBOX_FAILED_BASELINE" ]; then

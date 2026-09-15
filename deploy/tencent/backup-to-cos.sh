@@ -23,14 +23,24 @@ set -a
 . "$ENV_FILE"
 set +a
 
+MYSQLDUMP="${MYSQLDUMP:-/opt/mysql/current/bin/mysqldump}"
+[ -x "$MYSQLDUMP" ] || { echo "找不到 mysqldump：$MYSQLDUMP" >&2; exit 1; }
+
 mkdir -p "$LOCAL"
 
 # ── 逻辑备份 ──
 # --single-transaction：InnoDB 下不锁表，备份期间照常接单
 # --routines --events：存储过程与事件也要，否则恢复出来的库少东西且不报错
 DUMP="$LOCAL/ai_shop-$DAY.sql.gz"
-mariadb-dump --single-transaction --routines --events --default-character-set=utf8mb4 \
-  -u"${SHOP_DB_USER:-shop}" -p"${SHOP_DB_PASS:-shop}" ai_shop | gzip -9 > "$DUMP"
+# 2026-09-16 切 MySQL 9.7：客户端换成 mysql97 自带的那个。
+# `mariadb-dump` 连的是 3306 —— MariaDB 停掉之后它每天 03:20 直接失败，
+# 而失败只写进备份日志，不改这里就是「备份一直在跑、其实一份都没有」。
+# 顺带把密码从命令行挪走：`-p<密码>` 在 dump 的几分钟里对 `ps` 全可见。
+# 走 socket，不加 --protocol=TCP：root 是 auth_socket 认证（以 OS root 身份免密），
+# 走 TCP 会变成「需要密码」而当场 1045 —— 迁移脚本用的也是这种连法。
+"$MYSQLDUMP" --defaults-file=/etc/mysql97/my.cnf -uroot \
+  --single-transaction --routines --events --default-character-set=utf8mb4 \
+  ai_shop | gzip -9 > "$DUMP"
 
 SIZE=$(stat -c%s "$DUMP")
 if [ "$SIZE" -lt 10240 ]; then
