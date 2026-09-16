@@ -12,6 +12,16 @@ const nudgedToday = new Set<string>();
 /** 手机号 → 已建出的平台自营主体号。幂等判据按人，与真实实现同一口径 */
 const selfOperatedByPhone = new Map<string, string>();
 
+/*
+ * mock 侧也把「实际可达多少个小区」算出来，而不是回显入参。
+ * CITY 档在 mock 的社区库里能展开出东西，在一个小区都没有的真库里是 0 ——
+ * 这个差别正是这个字段存在的理由，所以 mock 至少要让它**不恒等于勾选数**。
+ */
+function reachOf(scope: string, communityNos?: string[]): number {
+  if (scope === "COMMUNITY") return communityNos?.length ?? 0;
+  return db.communities.filter((c) => c.opened).length;
+}
+
 const mockChain: MerchantChainRow[] = [
   { entityNo: "M0001", merchantName: "老张粮油店", goods: 0, pendingAudit: 0, onSale: 0, items: 0,
     firstInbound: null, lastLedger: null, stuckAt: "NO_GOODS" },
@@ -152,15 +162,17 @@ export const merchantMock: MerchantApi = {
    * 只「每次新建一个」的话，「连点两次会怎样」这件事在开发期永远演不出来，
    * 而那正是这个入口最需要看清的一种行为。
    */
-  createSelfOperated: async ({ phone, name, communityNos }) => {
+  createSelfOperated: async ({ phone, name, serviceScope, communityNos }) => {
     if (!/^1[3-9]\d{9}$/.test(phone ?? "")) {
       fail("手机号格式不对，应为 11 位大陆手机号", "Invalid mainland China mobile number");
     }
     if (!name?.trim()) {
       fail("主体名称不能为空", "Merchant name is required");
     }
-    // 没有覆盖社区的商家上着架却对谁都不可见，而这个故障没有任何报错（ADR-009）
-    if (!communityNos?.length) {
+    const scope = serviceScope || "COMMUNITY";
+    // 没有覆盖社区的商家上着架却对谁都不可见，而这个故障没有任何报错（ADR-009）。
+    // 只对 COMMUNITY 档拦 —— 与真实实现同口径
+    if (scope === "COMMUNITY" && !communityNos?.length) {
       fail("必须至少选一个覆盖社区", "At least one covered community is required");
     }
     const tail = phone.slice(-4);
@@ -169,7 +181,8 @@ export const merchantMock: MerchantApi = {
       return wait({
         merchantNo: owned, storeNo: `${owned}-S1`,
         ownerUserNo: `U-${phone}`, fundsMode: "AGGREGATED" as const,
-        businessMode: "SELF_OPERATED", created: false,
+        businessMode: "SELF_OPERATED", serviceScope: scope, created: false,
+        reachableCommunities: reachOf(scope, communityNos),
       }, 500);
     }
     const merchantNo = `M9${String(db.merchants.length + 10).padStart(2, "0")}`;
@@ -184,7 +197,9 @@ export const merchantMock: MerchantApi = {
     selfOperatedByPhone.set(phone, merchantNo);
     return wait({
       merchantNo, storeNo: `${merchantNo}-S1`, ownerUserNo: `U-${phone}`,
-      fundsMode: "AGGREGATED" as const, businessMode: "SELF_OPERATED", created: true,
+      fundsMode: "AGGREGATED" as const, businessMode: "SELF_OPERATED",
+      serviceScope: scope, created: true,
+      reachableCommunities: reachOf(scope, communityNos),
     }, 700);
   },
 

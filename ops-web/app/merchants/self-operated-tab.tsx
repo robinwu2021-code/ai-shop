@@ -30,6 +30,7 @@ import { ConfigCard } from "@/components/ui/config-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
+import { FilterSelect } from "@/components/ui/filter-select";
 import { Textarea } from "@/components/ui/textarea";
 import type { MerchantsCopy } from "./copy";
 
@@ -39,6 +40,7 @@ export function SelfOperatedTab({ c, canCreate }: { c: MerchantsCopy; canCreate:
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [scope, setScope] = useState("COMMUNITY");
   const [communityNos, setCommunityNos] = useState<string[]>([]);
   const [done, setDone] = useState<SelfOperatedResult | null>(null);
 
@@ -49,7 +51,8 @@ export function SelfOperatedTab({ c, canCreate }: { c: MerchantsCopy; canCreate:
 
   const create = useMutation({
     mutationFn: () => api.createSelfOperated({
-      phone: phone.trim(), name: name.trim(), communityNos,
+      phone: phone.trim(), name: name.trim(), serviceScope: scope,
+      communityNos: scope === "COMMUNITY" ? communityNos : [],
       description: description.trim() || undefined,
     }),
     onSuccess: (r) => {
@@ -61,7 +64,8 @@ export function SelfOperatedTab({ c, canCreate }: { c: MerchantsCopy; canCreate:
   });
 
   const phoneOk = PHONE.test(phone.trim());
-  const ready = phoneOk && name.trim().length > 0 && communityNos.length > 0;
+  const byCommunity = scope === "COMMUNITY";
+  const ready = phoneOk && name.trim().length > 0 && (!byCommunity || communityNos.length > 0);
 
   const toggle = (no: string) =>
     setCommunityNos((prev) => prev.includes(no) ? prev.filter((x) => x !== no) : [...prev, no]);
@@ -113,27 +117,53 @@ export function SelfOperatedTab({ c, canCreate }: { c: MerchantsCopy; canCreate:
           </div>
 
           <div>
-            <Label>{c.soCommunities}</Label>
-            <div className="mt-2 flex flex-wrap gap-3">
-              {(communities.data?.records ?? []).map((cm) => (
-                <CheckboxField
-                  key={cm.communityNo}
-                  checked={communityNos.includes(cm.communityNo)}
-                  onChange={() => toggle(cm.communityNo)}
-                  label={cm.name}
-                  disabled={!canCreate}
-                />
-              ))}
-            </div>
-            {!communities.isLoading && (communities.data?.records ?? []).length === 0 && (
-              // 社区目录空着时，这个表单**一定提交不了** —— 要直说是缺什么，
-              // 否则运营只会看到一个永远点不动的按钮
-              <Notice tone="danger" className="mt-2">{c.soNoCommunities}</Notice>
-            )}
-            {communityNos.length === 0 && (communities.data?.records ?? []).length > 0 && (
-              <Notice tone="warning" className="mt-2">{c.soNeedCommunity}</Notice>
-            )}
+            <Label>{c.soScope}</Label>
+            <FilterSelect
+              className="mt-1"
+              value={scope}
+              onChange={setScope}
+              options={[
+                { value: "COMMUNITY", label: c.soScopeCommunity },
+                { value: "CITY", label: c.soScopeCity },
+              ]}
+            />
+            <p className="mt-1 txt-caption text-muted-foreground">{c.soScopeHint}</p>
           </div>
+
+          {byCommunity && (
+            <div>
+              <Label>{c.soCommunities}</Label>
+              <div className="mt-2 flex flex-wrap gap-3">
+                {(communities.data?.records ?? []).map((cm) => (
+                  <CheckboxField
+                    key={cm.communityNo}
+                    checked={communityNos.includes(cm.communityNo)}
+                    onChange={() => toggle(cm.communityNo)}
+                    label={cm.name}
+                    disabled={!canCreate}
+                  />
+                ))}
+              </div>
+              {!communities.isLoading && (communities.data?.records ?? []).length === 0 && (
+                // 社区目录空着时这个表单一定提交不了 —— 要直说缺什么，
+                // 否则运营只会看到一个永远点不动的按钮
+                <Notice tone="danger" className="mt-2">{c.soNoCommunities}</Notice>
+              )}
+              {communityNos.length === 0 && (communities.data?.records ?? []).length > 0 && (
+                <Notice tone="warning" className="mt-2">{c.soNeedCommunity}</Notice>
+              )}
+            </div>
+          )}
+
+          {!byCommunity && !communities.isLoading
+            && (communities.data?.records ?? []).length === 0 && (
+            /*
+              全市档不要求勾社区 —— **但那不等于就可见了**。可见性一律展开成小区号，
+              库里一个小区都没有时全市档同样是 0。这句话要在提交之前说，
+              而不是等建完看着 reachableCommunities=0 再解释。
+            */
+            <Notice tone="warning">{c.soCityNoCommunities}</Notice>
+          )}
 
           <Button
             onClick={() => create.mutate()}
@@ -162,7 +192,20 @@ export function SelfOperatedTab({ c, canCreate }: { c: MerchantsCopy; canCreate:
             <dd className="font-medium">{done.fundsMode}</dd>
             <dt className="text-muted-foreground">{c.soResultBusiness}</dt>
             <dd className="font-medium">{done.businessMode}</dd>
+            <dt className="text-muted-foreground">{c.soResultScope}</dt>
+            <dd className="font-medium">{done.serviceScope}</dd>
+            <dt className="text-muted-foreground">{c.soResultReach}</dt>
+            <dd className="font-medium tabular-nums">{done.reachableCommunities}</dd>
           </dl>
+
+          {/*
+            可达 0 要当成**失败态来显示**，虽然接口返回的是成功。
+            这家店确实建出来了，但它现在对谁都不可见，而这个状态
+            在任何别的界面上都看不出异常（商品能上架、店在列表里、零订单）。
+          */}
+          {done.reachableCommunities === 0 && (
+            <Notice tone="danger" className="mt-3">{c.soResultReachZero}</Notice>
+          )}
           <Notice tone={done.created ? "muted" : "warning"} className="mt-3">
             {done.created
               ? fill(c.soResultCreated, { no: done.merchantNo })

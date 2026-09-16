@@ -632,6 +632,16 @@ export interface SelfOperatedResult {
   fundsMode: FundsMode;
   /** 回读值，应为 `SELF_OPERATED` */
   businessMode: string;
+  /** 回读值：COMMUNITY / CITY / PLATFORM */
+  serviceScope: string;
+  /**
+   * **这家店现在对多少个小区可见。**
+   *
+   * 不是装饰：ADR-009 的「必须勾社区」只拦得住「一个都没勾」，
+   * 而可见性最终一律展开成小区号 —— 库里一个小区都没有时 CITY 档同样是 0
+   * （区划表里有深圳，不代表深圳有小区）。建完是 0 就是「建好了，谁也看不到」。
+   */
+  reachableCommunities: number;
   /**
    * 本次是否**真的新建**了主体。false = 这个手机号名下已经有主体，原样返回它。
    * 界面上要分开说：运营连点两次时，「又建了一个」与「就是刚才那个」是不同的事实。

@@ -49,6 +49,9 @@ class SelfOperatedMerchantFlowTest {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
+
     /** 手机号各用例互不相同 —— 幂等判据是人，共用一个号会让用例之间互相喂结果。 */
     private static String phone(int n) {
         return "1390000" + String.format("%04d", n);
@@ -103,6 +106,35 @@ class SelfOperatedMerchantFlowTest {
 
         assertThatThrownBy(() -> selfOperated.create(new SelfOperatedService.CreateCommand(
                 phone(3), "看不见的店", null, null, null), "OPS"))
+                .isInstanceOf(BizException.class);
+    }
+
+    @Test
+    @DisplayName("★★★ CITY 档不要求勾社区 —— 但「不要求」不等于「就可见了」")
+    void cityScopeNeedsNoCommunitiesButMayStillReachNobody() {
+        var r = selfOperated.create(new SelfOperatedService.CreateCommand(
+                phone(6), "虹选鲜果·深圳", "CITY", List.of(), null, "主营水果"), "OPS");
+
+        assertThat(r.serviceScope()).isEqualTo("CITY");
+        MchEntity m = entity(r.merchantNo());
+        assertThat(m.getServiceScope()).isEqualTo("CITY");
+
+        /*
+         * 这条断言要的不是某个具体数字，是**这个数字真的被算过**。
+         *
+         * 建完时可达可能就是 0 —— 库里一个小区都没有的时候，CITY 档同样是 0，
+         * 而那正是本入口最需要当场说出来的事实（ADR-009 的必填规则拦不住它）。
+         * 所以只断言它与可见性的唯一出口一致，不断言它大于零。
+         */
+        assertThat(r.reachableCommunities())
+                .isEqualTo(merchantQueryPort.reachableCommunities(r.merchantNo()).size());
+    }
+
+    @Test
+    @DisplayName("★★ 没开放的经营范围档要拒 —— 写进去不报错，只是这家店按范围查时被静默漏掉")
+    void rejectsScopeOutsideWhitelist() {
+        assertThatThrownBy(() -> selfOperated.create(new SelfOperatedService.CreateCommand(
+                phone(7), "范围不存在", "ABC", List.of("CMT-SO-7"), null, null), "OPS"))
                 .isInstanceOf(BizException.class);
     }
 

@@ -4,12 +4,14 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Phones;
+import ai.neargo.shop.common.ServiceScopes;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.service.MerchantGovernService;
 import ai.neargo.shop.merchant.service.SelfOperatedService;
+import ai.neargo.shop.spi.platform.MasterDataPort;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.user.UserProvisionPort;
@@ -34,17 +36,24 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
     private final MerchantGovernService governService;
     private final MchEntityMapper entityMapper;
     private final MchStoreMapper storeMapper;
+    private final MasterDataPort masterDataPort;
+    /** 回读「现在对多少个小区可见」——可见性的唯一出口，别在这里另算一份 */
+    private final MerchantQueryPort merchantQueryPort;
 
     public SelfOperatedServiceImpl(UserProvisionPort userProvision,
                                    MerchantAdminPort merchantAdminPort,
                                    MerchantGovernService governService,
                                    MchEntityMapper entityMapper,
-                                   MchStoreMapper storeMapper) {
+                                   MchStoreMapper storeMapper,
+                                   MasterDataPort masterDataPort,
+                                   MerchantQueryPort merchantQueryPort) {
         this.userProvision = userProvision;
         this.merchantAdminPort = merchantAdminPort;
         this.governService = governService;
         this.entityMapper = entityMapper;
         this.storeMapper = storeMapper;
+        this.masterDataPort = masterDataPort;
+        this.merchantQueryPort = merchantQueryPort;
     }
 
     @Override
@@ -56,12 +65,25 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         /*
-         * 覆盖社区在这里再拦一道，而不是「反正 activate 会拒」。
-         * 理由是判据的归属：这条约束（ADR-009）属于本入口的契约，
-         * 靠下游顺手拒的话，下游哪天放宽了，这里就悄悄跟着放宽。
+         * 经营范围先过**值域 + 一期启用白名单**，再谈别的。
+         * 只判值域不判白名单，就能写进一个平台还没开放的档 ——
+         * 而表现不是报错，是这家店按范围查商品时被静默漏掉。
          */
-        List<String> communities = cmd.communityNos();
-        if (communities == null || communities.isEmpty()) {
+        String scope = cmd.serviceScope() == null || cmd.serviceScope().isBlank()
+                ? ServiceScopes.COMMUNITY : cmd.serviceScope().trim();
+        masterDataPort.assertServiceScopeAllowed(scope);
+
+        /*
+         * 覆盖社区在这里再拦一道，而不是「反正 activate 会拒」。
+         * 判据的归属：这条约束（ADR-009）属于本入口的契约，靠下游顺手拒的话，
+         * 下游哪天放宽了，这里就悄悄跟着放宽。
+         *
+         * **只对 COMMUNITY 档必填** —— 与 activate 自己那条规则同口径。
+         * CITY/PLATFORM 不逐个勾小区（快递、上门本来就没有落点约束），
+         * 在那两档上强制要社区是无谓劳动，且新开城时必然漏。
+         */
+        List<String> communities = cmd.communityNos() == null ? List.of() : cmd.communityNos();
+        if (ServiceScopes.COMMUNITY.equals(scope) && communities.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
 
@@ -96,7 +118,7 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
          * 直接 return 只会把残缺状态原样还回去，而界面显示「成功」。
          */
         String entityNo = merchantAdminPort.activate(new MerchantAdminPort.ActivateCommand(
-                ownerUserNo, name, LEGAL_FORM, "COMMUNITY", communities,
+                ownerUserNo, name, LEGAL_FORM, scope, communities,
                 null, cmd.industry(), cmd.description(),
                 owned == null ? null : owned.getEntityNo()));
 
@@ -121,9 +143,20 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
                 entityMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
                         .eq(MchEntity::getEntityNo, entityNo).last("LIMIT 1")));
         MchStore freshStore = defaultStoreOf(entityNo);
+        /*
+         * **把「现在对多少个小区可见」当场回读出来**，而不是让调用方以为建完就完事了。
+         *
+         * ADR-009 那条必填规则防的是「上着架却对谁都不可见」，但它只防住了
+         * 「一个社区都没勾」这一种写法。可见性最终一律展开成小区号，所以
+         * 库里一个小区都没有时，CITY 档同样是 0 —— 区划表里有深圳，
+         * 不代表深圳有小区。那种 0 没有任何一道校验拦得住，只能报出来。
+         */
+        int reachable = merchantQueryPort.reachableCommunities(entityNo).size();
         return new ResultVO(entityNo, freshStore.getStoreNo(), ownerUserNo,
                 fresh == null ? null : fresh.getFundsMode(),
-                freshStore.getBusinessMode(), created);
+                freshStore.getBusinessMode(),
+                fresh == null ? scope : fresh.getServiceScope(),
+                created, reachable);
     }
 
     private MchStore defaultStoreOf(String entityNo) {

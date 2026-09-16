@@ -903,6 +903,12 @@ components:
         businessMode: 
           type: "string"
           description: "回读值，应为 `SELF_OPERATED`"
+        serviceScope: 
+          type: "string"
+          description: "回读值：COMMUNITY / CITY / PLATFORM"
+        reachableCommunities: 
+          type: "number"
+          description: "**这家店现在对多少个小区可见。**\n\n不是装饰：ADR-009 的「必须勾社区」只拦得住「一个都没勾」， 而可见性最终一律展开成小区号 —— 库里一个小区都没有时 CITY 档同样是 0 （区划表里有深圳，不代表深圳有小区）。建完是 0 就是「建好了，谁也看不到」。"
         created: 
           type: "boolean"
           description: "本次是否**真的新建**了主体。false = 这个手机号名下已经有主体，原样返回它。 界面上要分开说：运营连点两次时，「又建了一个」与「就是刚才那个」是不同的事实。"
@@ -912,6 +918,8 @@ components:
         - "ownerUserNo"
         - "fundsMode"
         - "businessMode"
+        - "serviceScope"
+        - "reachableCommunities"
         - "created"
       additionalProperties: false
       description: "建平台自营商家的结果（`POST /ops/merchants/self-operated`）。\n\n三个「回读值」是有意的：`fundsMode` / `businessMode` 不是把入参回显给你看， 而是**建完之后从库里再读一次**。自营这件事由这两个字段共同成立 （主体级：钱先进平台账户；门店级：平台是销售主体）， 少任何一个都会得到一家「看起来是自营」的店，而售后会派给商家自己。"

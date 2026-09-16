@@ -53,7 +53,7 @@ POST /ops/merchants/self-operated     建平台自营商家
 | 资质材料 | 必须交、必须审 | **不需要** —— 见 L1 |
 | 申请单 `mch_entity_apply` | 建，走 APPLYING→REVIEWING→APPROVED | **不建** —— 驳回/重提对自营没有意义，留一条永远 APPROVED 的假记录只会污染待审队列 |
 | `legal_form` | 申请人填 | 恒 `ENTERPRISE` |
-| 覆盖社区 | 审核时勾选 | **同样必须有** —— ADR-009 对谁都成立：没有覆盖社区的商家上着架却对谁都不可见 |
+| 覆盖社区 | 审核时勾选 | **scope=COMMUNITY 时同样必须有**（ADR-009）；别的档不要求勾，但要看回读的 `reachableCommunities` |
 
 ### ⚠️ 「自营」是两个字段，不是一个
 
@@ -72,6 +72,24 @@ mch_store.business_mode = SELF_OPERATED  平台是销售主体        （门店�
 没有任何报错。写在代码里，验收用例才有东西可以消融
 （`SelfOperatedMerchantFlowTest#bothAxesAreSelfOperated`，
 改成 `FUNDS_DIRECT` 实测变红）。
+
+### ⚠️ 经营范围与「可达 0」
+
+第一版把 `communityNos` 写成**恒必填**。落到真库上才发现两件事：
+
+1. **深圳是全市生意，不是几个小区。** `activate` 自己的规则是「只有 scope=COMMUNITY
+   才要社区」，恒必填等于在本入口另立一套更严的规矩，把 CITY/PLATFORM 档堵死。
+   已改成同口径，并补上 `assertServiceScopeAllowed`（一期启用白名单）——
+   `activate` 本身不判它，只有审核那条路判，新路径漏掉就能写进一个没开放的档。
+
+2. **换档躲不掉真正的阻塞。** 可见性的唯一出口 `reachableCommunities` 最终
+   一律展开成**小区号**：库里一个小区都没有时，CITY 档同样返回空集。
+   「区划表里有深圳」与「深圳有小区」是两件事。
+
+所以返回值里加了 `reachableCommunities`，**并在界面上把 0 当失败态显示**。
+ADR-009 的必填规则只拦得住「一个社区都没勾」这一种写法，拦不住「勾了，但那一档
+展开出来是空的」—— 而后者的表现完全一样：商品能上架、店在列表里、订单永远是零、
+任何页面都不报错。校验拦不住的，就把数字报出来。
 
 ### 手机号不需要先收验证码
 
@@ -144,7 +162,7 @@ B 端身份（成员行）由 `activate` 一并建好 —— 不需要「先让�
   加了 `ADDED_SINCE_MERGE`：新增要手写一行并写明是什么，
   而「少了」永远没有豁免口 —— 那一半才是这条断言存在的理由。
 
-## L4 · 验收（`SelfOperatedMerchantFlowTest`，6 条全绿）
+## L4 · 验收（`SelfOperatedMerchantFlowTest`，8 条全绿）
 
 | 要验的 | 怎么验 | 结果 |
 |---|---|---|
@@ -152,7 +170,10 @@ B 端身份（成员行）由 `activate` 一并建好 —— 不需要「先让�
 | `legal_form=ENTERPRISE` | 同上 | ✅ |
 | 分账主体一并建好 | `mch_payment_merchant` 有对应行 —— 这条正是「复用 Port」要保住的 | ✅ |
 | 覆盖范围一并写好 | `mch_entity_community` 行数 = 传入社区数 | ✅ |
-| 没有覆盖社区就拒 | 空集合与 null 各一条 → `BizException` | ✅ |
+| COMMUNITY 档没社区就拒 | 空集合与 null 各一条 → `BizException` | ✅ |
+| CITY 档不要求社区 | 建得出来，且 `serviceScope` 回读为 CITY | ✅ |
+| 可达数是真算的 | 与 `reachableCommunities()` 逐值相等，**不断言大于零** —— 建完就是 0 正是要报出来的事实 | ✅ |
+| 没开放的档要拒 | `serviceScope="ABC"` → 400（白名单） | ✅ |
 | 手机号格式 | `12345678901`（位数够、号段不存在）→ 拒 | ✅ |
 | 幂等 | 同号两次 → 同 `entityNo`，主体数只 +1，第二次 `created=false` | ✅ |
 | 不产生申请单 | `mch_entity_apply` 行数不变 | ✅ |

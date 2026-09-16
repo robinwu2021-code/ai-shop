@@ -7,7 +7,6 @@ import ai.neargo.shop.merchant.service.SelfOperatedService;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
 import java.util.List;
 import org.springframework.context.annotation.Profile;
@@ -47,27 +46,41 @@ public class OpsSelfOperatedController {
     public SelfOperatedService.ResultVO create(@Valid @RequestBody CreateReq req) {
         String operator = SecurityUtils.currentUserNo();
         var vo = selfOperatedService.create(new SelfOperatedService.CreateCommand(
-                req.phone(), req.name(), req.communityNos(), req.industry(), req.description()),
+                req.phone(), req.name(), req.serviceScope(), req.communityNos(),
+                req.industry(), req.description()),
                 operator);
         /*
          * 幂等命中也记一条，且**把是不是新建写进摘要**。
          * 否则日后查「这个平台主体是谁什么时候建的」时，会看到一串一模一样的记录，
          * 分不清哪一条才是真正建出它的那次。
          */
+        /*
+         * 审计里记 reachableCommunities 而不是「勾了几个社区」。
+         * 前者是**结果**，后者只是输入 —— 而这两个数不相等正是要留痕的那一刻：
+         * 「勾了 1 个市，实际可达 0 个小区」，日后查「为什么这家店一单都没有」时
+         * 第一眼就能看到答案。
+         */
         auditLogPort.record("MERCHANT_SELFOP_CREATE", vo.merchantNo(),
                 (vo.created() ? "新建" : "幂等命中已有") + "平台自营商家 " + req.name()
-                        + "，覆盖社区 " + req.communityNos().size() + " 个");
+                        + "，范围 " + vo.serviceScope()
+                        + "，当前可达小区 " + vo.reachableCommunities() + " 个");
         return vo;
     }
 
     /**
-     * @param communityNos 覆盖社区，<b>必填</b>。空集合在这里就拒，不是「先建了再说」——
-     *                     没有覆盖社区的商家上着架却对谁都不可见，而这个故障没有任何报错（ADR-009）
+     * @param serviceScope COMMUNITY / CITY / PLATFORM；空按 COMMUNITY
+     * @param communityNos 覆盖社区。<b>scope=COMMUNITY 时必填</b>，空集合当场拒 ——
+     *                     不是「先建了再说」：没有覆盖社区的商家上着架却对谁都不可见，
+     *                     而这个故障没有任何报错（ADR-009）。
+     *                     <p>⚠️ 别的档不要求勾社区，<b>但也不等于就可见了</b> ——
+     *                     可见性一律展开成小区号，返回值 {@code reachableCommunities}
+     *                     才是那个真判据
      */
     public record CreateReq(
             @NotBlank @Pattern(regexp = Phones.CN_MOBILE, message = Phones.MESSAGE) String phone,
             @NotBlank String name,
-            @NotEmpty List<String> communityNos,
+            String serviceScope,
+            List<String> communityNos,
             String industry,
             String description) {
     }

@@ -35,12 +35,22 @@ public interface SelfOperatedService {
      * @param phone        店主手机号（11 位）。<b>没有账号就按登录那条路建一个</b>
      *                     （{@code UserProvisionPort}），所以不需要本人先去 App 收验证码
      * @param name         主体名称（同时作为默认门店名）
-     * @param communityNos 覆盖社区，<b>不得为空</b> —— 见上文
+     * @param serviceScope COMMUNITY / CITY / PLATFORM（ADR-009）。空按 COMMUNITY。
+     *                     取值先过<b>一期启用白名单</b>（{@code merchant.service-scope-enabled}）——
+     *                     绕过去就能写进一个平台没开放的档，而表现是这家店按范围查时被静默漏掉
+     * @param communityNos 覆盖社区。<b>只有 scope=COMMUNITY 时必填</b> —— 与
+     *                     {@code activate} 自己那条规则同口径，不另立一套
      * @param industry     行业码（{@code sys_industry.industry}），可空
      * @param description  店铺简介，可空；C 端门店页读的就是它
      */
-    record CreateCommand(String phone, String name, List<String> communityNos,
-                         String industry, String description) {
+    record CreateCommand(String phone, String name, String serviceScope,
+                         List<String> communityNos, String industry, String description) {
+
+        /** 老形状：不传范围 = 按社区。留着是因为已有调用点只建社区档 */
+        public CreateCommand(String phone, String name, List<String> communityNos,
+                             String industry, String description) {
+            this(phone, name, null, communityNos, industry, description);
+        }
     }
 
     /**
@@ -49,9 +59,20 @@ public interface SelfOperatedService {
      *                「又建了一个」和「就是刚才那个」是完全不同的事实
      * @param fundsMode    回读值，不是入参回显。判据要来自库
      * @param businessMode 默认门店的经营模式，同样是回读值
+     * @param serviceScope 回读值
+     * @param reachableCommunities <b>这家店现在对多少个小区可见。</b>
+     *
+     *        <p>它是本入口最要紧的一个返回值，而不是装饰。ADR-009 那条约束防的是
+     *        「商家上着架却对谁都不可见，且没有任何报错」—— 而<b>光有覆盖范围不够</b>：
+     *        可见性最终一律展开成小区号，库里一个小区都没有时，
+     *        CITY 档同样是 0（区划表里有深圳，不代表深圳有小区）。
+     *
+     *        <p>所以这里把真实数字回读出来：建完是 0，就是「建好了，但现在谁也看不到」，
+     *        运营当场知道下一步要去提报小区，而不是等一个月后问「为什么一单都没有」。
      */
     record ResultVO(String merchantNo, String storeNo, String ownerUserNo,
-                    String fundsMode, String businessMode, boolean created) {
+                    String fundsMode, String businessMode, String serviceScope,
+                    boolean created, int reachableCommunities) {
     }
 
     ResultVO create(CreateCommand cmd, String operatorNo);
