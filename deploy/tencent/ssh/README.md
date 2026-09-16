@@ -132,32 +132,55 @@ sudo fail2ban-client -t && sudo systemctl restart fail2ban
 > 踩过的两个坑：`fail2ban-client reload` **不重建 iptables 规则**，改端口要 `restart`；
 > 而 `restart` 又会留下旧的 INPUT 规则，要手工 `iptables -D` 清掉重复的那条。
 
-### ③ 换端口（ssh.socket.d/10-ports.conf）—— 对无差别扫描立竿见影
+### ③ 换端口（`30-port.conf` → `/etc/ssh/sshd_config.d/30-port.conf`）
 
-**⚠️ 端口写在 `ssh.socket`，不是 `sshd_config`。**
-Ubuntu 24.04 用 socket 激活：`ssh.socket` 持有监听套接字再交给 sshd，
-于是 `sshd_config` 里的 `Port` **被完全忽略** —— 实测 `sshd -T` 报
-`port 22 port 57022`，而 `ss -ltnp` 里只有 22。
-**「配置读进去了」不等于「端口在听」，判据只能是 `ss`。**
+对无差别扫描立竿见影。实测这次的流量 96% 来自 4 个 IP、**全部只打 22**。
+换端口挡不住定向攻击（它是障眼法不是防御），但眼下的流量全是无差别扫描。
 
-空的 `ListenStream=` 是必需的：不清空则新值**追加**到单元自带的 22 上而不是替换。
+**端口写在 `sshd_config.d/`，不要写 `ssh.socket` 的 drop-in。**
+下面三个坑一晚上全踩了一遍，每一个单独看都像「配置没生效」：
 
-**云防火墙才是决定可达性的那一道**，它在控制台里、不在这台机器上。
-实测对照（三个端口同一条命令）：
+| 坑 | 症状 | 真相 |
+|---|---|---|
+| `systemctl reload ssh` | `sshd -T` 如实报出新端口，而 `ss` 里根本没有它 | **reload 不重新绑定端口，要 `restart`**。判据永远是 `ss`，不是 `sshd -T` |
+| `ssh.socket` 还活着 | `restart ssh` 之后新端口仍不出现 | socket 激活下 sshd 用 systemd 传下来的 fd，不开自己的。要 `systemctl disable --now ssh.socket` 让它做普通守护进程 |
+| 改用 `ssh.socket.d` 里写 `ListenStream=` | `ss` 里 `0.0.0.0:22` **消失**，只剩 `[::]:22`，**IPv4 客户端全部在 banner 前被关**：`kex_exchange_identification: Connection closed by remote host` | systemd 只绑了 IPv6。要走这条路必须显式写 `0.0.0.0:` 与 `[::]:` 两组，或 `BindIPv6Only=both` |
+
+**第三个坑差点变成一次锁死**，而它被掩盖了将近十分钟：日常用的 `soukmind-tx`
+别名配了 `ControlMaster` **连接复用**，它一直在复用一条旧连接、根本没新建，
+于是「deploy 能连、root 连不上」看起来像用户权限问题。
+**验 SSH 改动必须加 `-o ControlPath=none` 强制新建连接** ——
+复用会精确地掩盖「新连接已经连不上了」这一件事，而那正是你最需要知道的。
+
+（另：`ssh.socket.d/10-ports.conf` 第一版还漏了 `[Socket]` 段头，
+systemd 报 `Assignment outside of section. Ignoring.` 把三行全忽略了。
+**而当时 `ss` 里确实出现了新端口** —— 那是 `sshd_config` 的 `Port` 在起作用，
+我却据此得出「socket 覆盖了 sshd_config」的反向结论。
+两个机制同时在场时，别用「现象出现了」去推断「是谁让它出现的」。）
+
+#### 迁移顺序
+
+云防火墙才是决定可达性的那一道，它在控制台里、不在机器上。实测对照：
 
 | 端口 | 外部表现 | 含义 |
 |---|---|---|
-| 22 | `Permission denied (publickey)` | 到了 sshd |
-| 57022 | `Connection closed` | 被云防火墙 RST |
-| 51999（无人监听） | `Connection closed` | **与 57022 完全一致** |
+| 22 / 50722（已放行且在听） | `OK-deploy` / `OK-root` | 通 |
+| 51999（未放行） | `Connection closed` | 被云防火墙 RST |
 
-所以**换端口的顺序不能错**：
+```
+① 控制台放行新端口        ← 只有人能做
+② 机器同时听 22 + 新端口   ← Port 两行 + systemctl restart ssh
+③ 从外面验新端口通         ← 必须 -o ControlPath=none
+④ 改本机 ~/.ssh/config     ← 加 Port；并清掉 ~/.ssh/cm-* 旧复用套接字
+⑤ 删掉 `Port 22`，restart
+⑥ 控制台关掉 22
+```
 
-1. 控制台放行新端口 ← **只有人能做**
-2. 这台机器同时听两个端口（已做）
-3. 从外面验新端口通
-4. 改本机 `~/.ssh/config`
-5. 从 `ssh.socket.d/10-ports.conf` 里删掉 `ListenStream=22`
-6. 控制台关掉 22
+**⑤ 放在最后，且要等「会被锁在门外的那个人」自己验过新端口能进。**
+过渡期两个端口都在听，前四步任何一处出错都还有 22 兜着。
 
-**第 2 步先做、第 5 步最后做**：过渡期两个端口都在听，任何一步出错都还有 22 兜着。
+验证判据（缺一条都可能是假的）：
+- `ss -ltn` 里两个端口都有 **`0.0.0.0:` 和 `[::]:` 两行**；
+- 全新连接（`-o ControlPath=none`）四种组合（两端口 × 两用户）都通；
+- 连上之后 `echo $SSH_CONNECTION` 的**服务端端口**是新端口 —— 这是唯一的铁证；
+- 对照：一个未放行的端口必须仍然不通。
