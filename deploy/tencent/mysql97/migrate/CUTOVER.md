@@ -117,8 +117,8 @@
 | 空着的 | 为什么 |
 |---|---|
 | 公告 / 维护页 | 现在没有真实用户，不适用 |
-| `disable --now mariadb` | 按本手册要等观察期过（约 9-23）。现在是「已停但仍 enabled」，机器重启它会回来 |
-| `mysql97/README` 改「主库」 | 等 disable 那一步一起做，两处措辞同时改才不会前后矛盾 |
+| ~~`disable --now mariadb`~~ | **2026-09-16 17:4x 已做**，见下面 M5。观察期没等满 9-23，是按要求提前收的 |
+| ~~`mysql97/README` 改「主库」~~ | 同上，与 disable 一起做掉了 |
 
 **顺带记一件验收时看到的**：运营端任务页显示「1 个连败」—— `inv-recon` 连败 19 次，
 `DIFF_NOT_CLEAN：扫描 210，差异 5 条，待搬 2 个 —— 不得切换真相源`。
@@ -128,5 +128,35 @@
 ## 收尾（观察期过、确认稳）—— M5
 
 - [x] 备份脚本 `backup-to-cos.sh` 改 `mysqldump` + 3307（否则继续备份没人用的 MariaDB、还不报错）。
-- [ ] `sudo systemctl disable --now mariadb`（**先停不卸**，留一段退路）。
-- [ ] 文档：部署 README 拓扑、`mysql97/README` 从「待机」改「主库」、方案状态改「已实施」。
+- [x] `sudo systemctl disable mariadb` + **`mask mariadb mysql mysqld`**（**先停不卸**，留一段退路）。
+- [x] 文档：部署 README 拓扑、`mysql97/README` 从「待机」改「主库」、方案状态改「已实施」。
+
+### M5 执行记录（2026-09-16 17:4x）
+
+**观察期没等满**（手册写的是约 9-23），是按要求提前收的。数据与包都没动，回滚仍然成立。
+
+**光 `disable` 不够，所以连 `mask` 一起上。** `disable` 只摘掉开机自启；
+`systemctl start mariadb`、apt 升级 `mariadb-server` 时的 `deb-systemd-invoke`、
+以及任何残留的 `Requires=mariadb.service`，都还能把它拉起来。`mask` 让这三条路一起断。
+
+**别名也要 mask。** `/lib/systemd/system/mysql.service` 与 `mysqld.service` 都是
+指向 `mariadb.service` 的符号链接 —— 只 mask `mariadb` 的话，`systemctl start mysql`
+仍然走得通（它是另一个单元名）。三个一起 mask。**与 `mysql97.service` 无关**，那是另一个名字。
+
+先核过再动的四件（缺一件都可能把生产打停）：
+
+| 查的 | 结果 |
+|---|---|
+| 四个应用单元还引不引用 mariadb | `ai-shop` / `ai-shop-job` / `ai-shop-pay` / `soukmind-backend` 的 `After=`/`Requires=` 全是 `mysql97.service`，`grep -l mariadb /etc/systemd/system/*.service` 为空 |
+| 还有谁配着 3306 | systemd 单元、四个 `*.env`、`/etc/cron.d/*`、ops 脚本里**一处都没有** |
+| 备份会不会静默变空 | `backup-to-cos.sh` 已走 `/opt/mysql/current/bin/mysqldump` + `--defaults-file=/etc/mysql97/my.cnf` socket 连法 |
+| 两边数据目录是不是分开的 | MariaDB `/var/lib/mysql`（530M，原样留着）· MySQL `/data/db/mysql97`。停一个碰不到另一个 |
+
+消融（否则「masked」只是一行字）：`sudo systemctl start mariadb` →
+`Failed to start mariadb.service: Unit mariadb.service is masked.`；
+`start mysql` 同样被拒；`ss -lnt` 里 **3306 零条**；四个应用仍 active，`/actuator/health` 200。
+
+**唯一还开着的路**：`/etc/init.d/mariadb` 这个 SysV 脚本**不重定向到 systemd**
+（全文没有 `systemctl`），手工跑它仍能拉起 mysqld。没有堵 —— 它只会被「明知故犯的人」
+执行，而那正是想回滚的人。**回滚**：`sudo systemctl unmask mariadb mysql mysqld && sudo systemctl enable --now mariadb`，
+再把四个单元的 `Requires=` 指回去。

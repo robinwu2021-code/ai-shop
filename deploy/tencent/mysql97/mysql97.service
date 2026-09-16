@@ -1,9 +1,11 @@
-# MySQL 9.7 LTS · 待机实例（将来替代 MariaDB）
+# MySQL 9.7 LTS · **生产主库**（2026-09-16 起；此前是待机实例）
 # 安装：deploy/tencent/mysql97/install.sh（幂等）· 说明：同目录 README.md
 [Unit]
-Description=MySQL 9.7 LTS standby (port 3307, will replace MariaDB)
+Description=MySQL 9.7 LTS primary (port 3307)
 After=network.target
-# 与 MariaDB 互不依赖：两个数据目录、两个端口、两个 socket，谁停都不牵连对方
+# 与 MariaDB 互不依赖：两个数据目录、两个端口、两个 socket，谁停都不牵连对方。
+# 2026-09-16 起 MariaDB 已 disable + mask（连同 mysql/mysqld 两个别名），
+# 端口仍留在 3307 —— 改成 3306 要动三个应用的连接串，收益只是「看着顺眼」。
 
 [Service]
 Type=simple

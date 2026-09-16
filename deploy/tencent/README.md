@@ -27,13 +27,14 @@ nginx(443/80) ──┬─ /            → /data/app/ai-shop/web/site     静�
                 ├─ /ops-web/    → /data/app/ai-shop/web/ops-web  静态（Next.js export·平台运营端）
                 ├─ /s/<code>    → 302 /c/                   老店铺码链接的退路
                 └─ /mp /biz /ops /actuator → 127.0.0.1:8081  shop-app.jar (systemd)
-MariaDB 12.3.2（本机 3306 · 库 ai_shop · 115 张表 · Flyway v164）
+MySQL 9.7.2 LTS（本机 3307 · 库 ai_shop / ai_shop_inv / ai_shop_job · Flyway v164）
 ```
 
 | 组件 | 版本 | 运行方式 |
 |---|---|---|
 | 后端 | Spring Boot 4.0.7 · Java 21.0.11 | `systemd: ai-shop` · 端口 **8081** |
-| MariaDB | **12.3.2**（官方源最新版，非 Ubuntu 自带的 10.11） | `systemd: mariadb` |
+| MySQL | **9.7.2 LTS**（`/opt/mysql`，非 apt 装，见 [`mysql97/`](mysql97/)） | `systemd: mysql97` · 端口 **3307** |
+| ~~MariaDB~~ | ~~12.3.2~~ —— 2026-09-16 退役：`disable` + `mask`（连 `mysql`/`mysqld` 两个别名一起）。数据仍在 `/var/lib/mysql`（530M），没卸包，`unmask` 即可回滚 | 已停 |
 | nginx | 1.24.0 | `systemd: nginx` |
 | Node | 20.20.2 | 仅构建期用 |
 
@@ -59,7 +60,7 @@ MariaDB 12.3.2（本机 3306 · 库 ai_shop · 115 张表 · Flyway v164）
 | `/etc/nginx/sites-available/www.hxmall.top` · `ai-shop-ip` | 站点配置，源文件在 [`nginx/`](nginx/) |
 | `/etc/logrotate.d/ai-shop` · `/etc/systemd/journald.conf.d/00-size.conf` | 日志兜底（logrotate 只管 `ops/`；journal 200M）。源文件在 [`logrotate/`](logrotate/) 与 [`journald/`](journald/)，**重建服务器要装回去** |
 | `/etc/cron.d/ai-shop-{backup,housekeeping,logwatch}` | 03:20 备份 · 04:10 清理 · 每小时第 7 分巡检，源文件在 [`cron/`](cron/) |
-| `/opt/mysql` · `/data/db/mysql97` · `mysql97.service` | MySQL 9.7 LTS 待机实例（127.0.0.1:3307，将来替代 MariaDB），见 [`mysql97/README.md`](mysql97/README.md) |
+| `/opt/mysql` · `/data/db/mysql97` · `mysql97.service` | MySQL 9.7 LTS **生产主库**（127.0.0.1:3307），见 [`mysql97/README.md`](mysql97/README.md) |
 
 **会话存在库里**（`SHOP_TOKEN_STORE=db`），不在任何目录：`state/sessions` 自 2026-08-28 起不再写入，
 重启、搬家都不会让人掉线。部署后全员掉线的真正原因见 §4 的「别覆盖在跑的 jar」。
@@ -70,7 +71,7 @@ MariaDB 12.3.2（本机 3306 · 库 ai_shop · 115 张表 · Flyway v164）
 ## 备份
 
 每天 03:20 由 `/etc/cron.d/ai-shop-backup` 跑 `/data/app/ai-shop/ops/backup-to-cos.sh`：
-`mariadb-dump`（`--single-transaction`，不锁表）→ gzip → 上传 `hxmall-backup-1301656997/db/`，
+MySQL 9.7 自带的 `mysqldump`（`--single-transaction` 不锁表 · `--set-gtid-purged=OFF`，缺了恢复不了）→ gzip → 上传 `hxmall-backup-1301656997/db/`，
 本机在 `/data/backup/ai-shop/db/` 只留最近 3 天。桶上配了生命周期：30 天转低频、90 天转归档、365 天删。
 
 ```bash
@@ -410,7 +411,7 @@ curl https://www.hxmall.top/actuator/health          # {"status":"UP"}
 curl https://www.hxmall.top/mp/community/nearby      # {"code":0,...}
 ssh soukmind-tx 'tail -f /data/log/ai-shop/shop-app/shop-app.log'   # 全量日志（deploy 可读）
 ssh soukmind-tx 'sudo journalctl -u ai-shop -p err --since -1h'      # 只有 ERROR 与启动前的 JVM 输出；不加 sudo 看不到系统单元
-ssh soukmind-tx 'systemctl status ai-shop ai-shop-job ai-shop-pay mariadb nginx'
+ssh soukmind-tx 'systemctl status ai-shop ai-shop-job ai-shop-pay mysql97 nginx'
 ```
 
 上线时实测：`/` `/b/` `/ops-web/` `/actuator/health` `/mp/community/nearby` 均 200，
