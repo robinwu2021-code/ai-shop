@@ -544,7 +544,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   /* 店名可能很长，标签区要保得住：名字压缩，标签不被挤到下一行 */
   flex: 1;
   min-width: 0;
-  margin-right: 16rpx;
+  margin-inline-end: 16rpx;
   align-items: baseline;
   gap: 16rpx;
 }
@@ -594,7 +594,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 }
 /* 「切换至此店 ›」推到最右：它说的是整张卡的行为，不是与左边并列的第四个动作 */
 .acts__hint {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 .field {
   margin-top: 20rpx;

@@ -954,7 +954,7 @@ onShow(() => {
   opacity: 0.6;
 }
 .row__chev {
-  margin-left: 4rpx;
+  margin-inline-start: 4rpx;
   /* --sh-sub 不是 --sh-faint：后者是 #E4E5E8，分隔线那一档，白底上量出来几乎看不见 */
   color: var(--sh-sub);
   font-size: 32rpx;
@@ -1047,8 +1047,8 @@ onShow(() => {
 /* 「更多」是收纳口不是动作：不给底色，免得看着像第三个并列按钮 */
 .mini--more {
   background: transparent;
-  padding-left: 8rpx;
-  padding-right: 8rpx;
+  padding-inline-start: 8rpx;
+  padding-inline-end: 8rpx;
   color: var(--sh-sub);
 }
 
