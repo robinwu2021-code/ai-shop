@@ -18,7 +18,7 @@ import { confirm, pick, prompt } from "@ai-shop/ui/prompt";
  * `runAct` 与菜单项都按它分发，写错一个拼法在 string 下是运行时静默无反应，
  * 在这里是编译期红字。
  */
-type GoodsAct = "submit" | "onSale" | "offSale" | "edit" | "share" | "editStorePrice";
+type GoodsAct = "submit" | "onSale" | "offSale" | "share" | "editStorePrice";
 
 
 const { t } = useI18n();
@@ -507,7 +507,14 @@ function actsOf(g: Goods): GoodsAct[] {
   if (canGoods && !pending(g) && g.status !== "DRAFT") {
     out.push(stateOf(g) === "ON_SALE" ? "offSale" : "onSale");
   }
-  if (canGoods) out.push("edit");
+  /*
+   * ★ **「编辑」不在这个清单里** —— 它是**点商品本身**（`onRowTap`）。
+   *
+   * 它此前是这里的一项，于是在「审核中/已驳回」之外的状态下都排在主动作之后，
+   * 被收进「更多」：改一件商品要点两次，而「更多」这个词说不出里面有什么。
+   * 编辑是这一页仅次于改库存的高频动作，且「点这件货 → 打开这件货」
+   * 不需要任何标签来解释。放回二级菜单等于给最常用的动作加一道门。
+   */
   // 只给在售商品：分享一件审核中/已下架的货，买家点进去要么看不见要么下不了单
   if (stateOf(g) === "ON_SALE" && merchant.can("biz:store")) out.push("share");
   // 本店价只在多门店时出现：单店商家改的就是主体价（编辑页那个），
@@ -563,7 +570,6 @@ const ACT_LABEL: Record<GoodsAct, string> = {
   submit: "goods.submit",
   onSale: "goods.onSale",
   offSale: "goods.offSale",
-  edit: "goods.edit",
   share: "goods.share",
   editStorePrice: "goods.editStorePrice",
 };
@@ -585,7 +591,6 @@ function soleMoreLabel(g: Goods) { const a = soleMoreOf(g); return a ? labelOf(a
 function runAct(g: Goods, act: GoodsAct) {
   if (act === "submit") void submit(g);
   else if (act === "onSale" || act === "offSale") void toggle(g);
-  else if (act === "edit") edit(g);
   else if (act === "share") void shareGoods(g);
   else if (act === "editStorePrice") void editStorePrice(g);
 }
@@ -597,6 +602,20 @@ async function openMore(g: Goods) {
     items: acts.map(labelOf),
   });
   if (i != null && acts[i]) runAct(g, acts[i]);
+}
+
+/**
+ * 点商品本身 → 打开它的编辑页。
+ *
+ * <p>写成具名函数而不是在模板里写 `merchant.can('biz:goods') && edit(g)`：
+ * 「谁点得动」这条判断要能被读到、也要和右边那个 `›` 用的是同一个条件 ——
+ * 两处各写各的，早晚会出现「有箭头但点不动」或反过来。
+ *
+ * <p>没有 `biz:goods` 的店员点不动：他能看货、能改库存，但改不了商品本身。
+ * 这时右边不出箭头，行也没有按下态 —— 不给一个点了没反应的可点相。
+ */
+function onRowTap(g: Goods) {
+  if (merchant.can("biz:goods")) edit(g);
 }
 
 function edit(g?: Goods) {
@@ -734,7 +753,11 @@ onShow(() => {
       按钮多一个少一个都不再影响上面那行的可读性。
     -->
     <view v-for="g in list" :key="g.goodsNo" class="sh-card sh-mb-sm">
-      <view class="row__top sh-row">
+      <view
+        class="row__top sh-row"
+        :class="{ 'row__top--tap': merchant.can('biz:goods') }"
+        @tap="onRowTap(g)"
+      >
         <sh-cover class="row__cover" :src="g.cover"></sh-cover>
         <view class="sh-fill">
           <text class="txt-strong row__title">{{ g.title }}</text>
@@ -749,6 +772,8 @@ onShow(() => {
           <text class="state__dot"></text>
           <text class="txt-caption state__txt">{{ $t(`goods.status${stateOf(g)}`) }}</text>
         </view>
+        <!-- 可点相。只在真的点得动时出现（见 onRowTap 的注释） -->
+        <text v-if="merchant.can('biz:goods')" class="row__chev">›</text>
       </view>
       <view class="row__ops">
         <!--
@@ -785,8 +810,9 @@ onShow(() => {
 
           留下的两个的取法：
             · 主动作按状态定。每种状态其实只有一件显然该做的事
-              （草稿→提交审核、审核中/已驳回→编辑、在售→下架、已下架→上架），
-              摆最左并给主色。
+              （草稿→提交审核、在售→下架、已下架→上架），摆最左并给主色。
+              审核中/已驳回没有主动作 —— 它们要做的是「改了再交」，
+              而改走的是点商品本身那条路（见 `onRowTap`），不占按钮位。
             · 改库存**恒在**：它是最高频的（生鲜一天改几次），
               也是店员唯一点得动的那一个（biz:stock 不含 biz:goods）。
           其余全进「更多」。收纳走库里的 `pick()` 而不是 uni.showActionSheet ——
@@ -923,6 +949,15 @@ onShow(() => {
 /* 上段：图 + 名/价 + 状态。状态贴右，名字吃掉中间所有剩余宽度 */
 .row__top {
   gap: 20rpx;
+}
+.row__top--tap:active {
+  opacity: 0.6;
+}
+.row__chev {
+  margin-left: 4rpx;
+  color: var(--sh-faint);
+  font-size: 32rpx;
+  line-height: 1;
 }
 .row__cover {
   font-size: 60rpx;
