@@ -55,6 +55,9 @@ export const RULES = [
   // 于是只有持 "*" 的 SUPER_ADMIN 能用。不复用 merchant:admission:update：
   // 那个码 BD 手里有，而「平台成为这批货的销售主体」不该由招商日常决定
   ["POST", /^\/ops\/merchants\/self-operated$/, "merchant:selfop:create"],
+  // 给自营主体开店。**同一个码** —— 它回答的是同一个问题「平台要不要自己下场经营」，
+  // 而不是两件事。拆成两个码只会让配的人漏配其中一半
+  ["POST", /^\/ops\/merchants\/[^/]+\/stores$/, "merchant:selfop:create"],
   // 进件看板与人工回查：与准入同一拨人在管（都决定这家店能不能真把生意做成），
   // 复用 merchant:admission:*，不新增权限码
   ["GET", /^\/ops\/onboarding$/, "merchant:admission:read"],

@@ -18,12 +18,12 @@
 // 覆盖社区。没有覆盖社区的商家**上着架却对谁都不可见**，
 // 而这个故障没有任何报错：商家和运营都只看到「一个订单都不来」（ADR-009）。
 // 所以这里在提交按钮上硬拦，而不是让后端 400 之后再来解释。
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
-import type { SelfOperatedResult } from "@/lib/types";
+import type { SelfOperatedResult, SelfOperatedStore } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { CheckboxField } from "@/components/ui/checkbox";
 import { ConfigCard } from "@/components/ui/config-card";
@@ -44,6 +44,9 @@ export function SelfOperatedTab({ c, canCreate }: { c: MerchantsCopy; canCreate:
   const [scope, setScope] = useState("COMMUNITY");
   const [communityNos, setCommunityNos] = useState<string[]>([]);
   const [done, setDone] = useState<SelfOperatedResult | null>(null);
+  const [storeName, setStoreName] = useState("");
+  const [storeAddress, setStoreAddress] = useState("");
+  const [addedStores, setAddedStores] = useState<SelfOperatedStore[]>([]);
 
   /*
    * 行业不是类目。类目回答「这家店卖什么」（水果 → FRESH_FRUIT），
@@ -72,6 +75,20 @@ export function SelfOperatedTab({ c, canCreate }: { c: MerchantsCopy; canCreate:
       // 幂等命中与新建要说成两件事：都提示「建好了」的话，
       // 运营连点两次会以为自己建出了两家店，而库里只有一家
       notify.success(r.created ? c.soToastCreated : c.soToastIdempotent);
+    },
+  });
+
+  const addStore = useMutation({
+    mutationFn: () => api.addSelfOperatedStore({
+      merchantNo: done!.merchantNo,
+      name: storeName.trim(),
+      address: storeAddress.trim() || undefined,
+    }),
+    onSuccess: (st) => {
+      setAddedStores((prev) => [...prev, st]);
+      setStoreName("");
+      setStoreAddress("");
+      notify.success(c.soStoreAdded);
     },
   });
 
@@ -199,6 +216,58 @@ export function SelfOperatedTab({ c, canCreate }: { c: MerchantsCopy; canCreate:
         </div>
       </ConfigCard>
 
+      {/*
+        开店这张卡只在**已经有主体**之后出现。
+        平台自己的店没有「商家」去点 B 端那个建店按钮 —— 与建主体是同一个形状的缺口。
+        入口挂在这里而不是门店档案页：拿到主体号的那一刻正是要开店的那一刻，
+        让人再去另一个页面按主体号搜一遍是白绕。
+      */}
+      {done && (
+        <ConfigCard title={c.soStoreTitle} notice={c.soStoreDesc}>
+          <div className="max-w-xl space-y-4">
+            <div>
+              <Label>{c.soStoreName}</Label>
+              <Input
+                className="mt-1"
+                value={storeName}
+                onChange={(e) => setStoreName(e.target.value)}
+                placeholder={c.soStoreNamePlaceholder}
+                disabled={!canCreate}
+              />
+            </div>
+            <div>
+              <Label>{c.soStoreAddress}</Label>
+              <Input
+                className="mt-1"
+                value={storeAddress}
+                onChange={(e) => setStoreAddress(e.target.value)}
+                disabled={!canCreate}
+              />
+            </div>
+            <Button
+              onClick={() => addStore.mutate()}
+              disabled={!canCreate || !storeName.trim() || addStore.isPending}
+            >
+              {addStore.isPending ? c.soStoreAdding : c.soStoreSubmit}
+            </Button>
+
+            {addedStores.length > 0 && (
+              <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 txt-body">
+                {addedStores.map((st) => (
+                  <Fragment key={st.storeNo}>
+                    <dt className="text-muted-foreground tabular-nums">{st.storeNo}</dt>
+                    <dd className="font-medium">
+                      {st.name}
+                      <span className="ml-2 txt-caption text-muted-foreground">{st.businessMode}</span>
+                    </dd>
+                  </Fragment>
+                ))}
+              </dl>
+            )}
+          </div>
+        </ConfigCard>
+      )}
+
       {done && (
         <ConfigCard title={c.soResultTitle}>
           <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 txt-body">
@@ -219,6 +288,8 @@ export function SelfOperatedTab({ c, canCreate }: { c: MerchantsCopy; canCreate:
             <dd className="font-medium">{done.businessMode}</dd>
             <dt className="text-muted-foreground">{c.soResultScope}</dt>
             <dd className="font-medium">{done.serviceScope}</dd>
+            <dt className="text-muted-foreground">{c.soResultSelfOp}</dt>
+            <dd className="font-medium">{done.selfOperated ? c.soYes : c.soNo}</dd>
             <dt className="text-muted-foreground">{c.soResultReach}</dt>
             <dd className="font-medium tabular-nums">{done.reachableCommunities}</dd>
           </dl>

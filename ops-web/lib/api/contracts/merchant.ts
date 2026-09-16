@@ -4,6 +4,7 @@ import type {
   ModeRisk,
   FundsMode,
   SelfOperatedResult,
+  SelfOperatedStore,
   Qualification,
   MerchantPlanRow,
   PlanDef,
@@ -60,6 +61,22 @@ export interface MerchantApi {
     industry?: string;
     description?: string;
   }): Promise<SelfOperatedResult>;
+
+  /**
+   * 给**平台自营主体**再开一家门店。
+   *
+   * 不走订阅额度（额度是卖给商家的商品，平台自己的店不该被自己的定价限制），
+   * 也不需要进件（自营按自营结算）。**非自营主体调它会 409** ——
+   * 第三方开店的入口在 B 端，那里有额度闸也有商家自己的操作记录。
+   *
+   * @param categoryNos 这家店的货架；空 = 复制默认店的
+   */
+  addSelfOperatedStore(v: {
+    merchantNo: string;
+    name: string;
+    address?: string;
+    categoryNos?: string[];
+  }): Promise<SelfOperatedStore>;
 
   // ── 资质（P1-7）。后端三个接口早已实现，此前**前端零调用** ─────────
   /** 某商家已登记的资质。上架的两个闸门读的就是这张表 */

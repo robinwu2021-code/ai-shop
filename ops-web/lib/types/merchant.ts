@@ -622,7 +622,32 @@ export interface PlanUpgradeSignal {
  * （主体级：钱先进平台账户；门店级：平台是销售主体），
  * 少任何一个都会得到一家「看起来是自营」的店，而售后会派给商家自己。
  */
+/**
+ * 运营给平台自营主体开出来的门店。
+ *
+ * `payMerchantNo` 为空是**正常的** —— 自营门店不进件，钱先进平台户。
+ * 只有第三方模式下它为空才是硬阻塞。
+ */
+export interface SelfOperatedStore {
+  /** 门店业务键 */
+  storeNo: string;
+  /** 它挂在哪个主体下 */
+  merchantNo: string;
+  /** 门店名。与主体名可以不同（分店） */
+  name: string;
+  /** 门店地址，可空 */
+  address?: string | null;
+  /** 回读值，应为 `SELF_OPERATED` */
+  businessMode: string;
+  /**
+   * 收款号。**为空是正常的** —— 自营门店不进件，钱先进平台户；
+   * 只有第三方模式下它为空才是硬阻塞。
+   */
+  payMerchantNo?: string | null;
+}
+
 export interface SelfOperatedResult {
+  /** 建出来（或幂等命中）的主体业务键 */
   merchantNo: string;
   /** 随主体一并建出来的默认门店 */
   storeNo: string;
@@ -634,6 +659,12 @@ export interface SelfOperatedResult {
   businessMode: string;
   /** 回读值：COMMUNITY / CITY / PLATFORM */
   serviceScope: string;
+  /**
+   * 回读值，应为 true。它是**免证件与运营建店的唯一判据** ——
+   * `fundsMode` 认不出平台自己（归集同时盖着代销），
+   * `businessMode` 也认不出（门店级，且建表默认值就是自营）。
+   */
+  selfOperated: boolean;
   /**
    * **这家店现在对多少个小区可见。**
    *

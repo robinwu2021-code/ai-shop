@@ -158,6 +158,30 @@ export const merchantMock: MerchantApi = {
   },
 
   /*
+   * 给自营主体开店。**mock 也拦非自营** —— 那条守卫（运营别绕过商家吃掉他的额度）
+   * 是这个端点最要紧的一条，mock 里放行的话开发期永远演不出它。
+   */
+  addSelfOperatedStore: async ({ merchantNo, name, address }) => {
+    const m = find(merchantNo);
+    if (!name?.trim()) {
+      fail("门店名称不能为空", "Store name is required");
+    }
+    if (![...selfOperatedByPhone.values()].includes(merchantNo)) {
+      fail("只有平台自营主体能由运营开店", "Only platform self-operated entities can have stores added by ops");
+    }
+    const n = db.stores.filter((s2) => s2.merchantNo === merchantNo).length + 1;
+    return wait({
+      storeNo: `${merchantNo}-S${n}`,
+      merchantNo,
+      name: name.trim(),
+      address: address ?? null,
+      businessMode: "SELF_OPERATED",
+      // 自营门店不进件，空是正常的
+      payMerchantNo: null,
+    }, 600);
+  },
+
+  /*
    * 建平台自营商家。**mock 也做幂等**（按手机号找已有主体）——
    * 只「每次新建一个」的话，「连点两次会怎样」这件事在开发期永远演不出来，
    * 而那正是这个入口最需要看清的一种行为。
@@ -182,6 +206,7 @@ export const merchantMock: MerchantApi = {
         merchantNo: owned, storeNo: `${owned}-S1`,
         ownerUserNo: `U-${phone}`, fundsMode: "AGGREGATED" as const,
         businessMode: "SELF_OPERATED", serviceScope: scope, created: false,
+        selfOperated: true,
         reachableCommunities: reachOf(scope, communityNos),
       }, 500);
     }
@@ -198,7 +223,7 @@ export const merchantMock: MerchantApi = {
     return wait({
       merchantNo, storeNo: `${merchantNo}-S1`, ownerUserNo: `U-${phone}`,
       fundsMode: "AGGREGATED" as const, businessMode: "SELF_OPERATED",
-      serviceScope: scope, created: true,
+      serviceScope: scope, created: true, selfOperated: true,
       reachableCommunities: reachOf(scope, communityNos),
     }, 700);
   },

@@ -886,11 +886,44 @@ components:
         - "entityCount"
       additionalProperties: false
       description: "升档信号的一行（`GET /ops/merchant-plans/upgrade-signals`）。\n\n**按 owner 分组而不是按主体**：「同一个人开了两个主体」正是要找的人 —— 他已经在多店经营，只是绕过了额度。主体表上没有联系电话（那在申请单上）， 所以这里只给 owner 号，销售拿它去后台查人。"
+    SelfOperatedStore: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+          description: "门店业务键"
+        merchantNo: 
+          type: "string"
+          description: "它挂在哪个主体下"
+        name: 
+          type: "string"
+          description: "门店名。与主体名可以不同（分店）"
+        address: 
+          type: 
+            - "string"
+            - "null"
+          description: "门店地址，可空"
+        businessMode: 
+          type: "string"
+          description: "回读值，应为 `SELF_OPERATED`"
+        payMerchantNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "收款号。**为空是正常的** —— 自营门店不进件，钱先进平台户； 只有第三方模式下它为空才是硬阻塞。"
+      required: 
+        - "storeNo"
+        - "merchantNo"
+        - "name"
+        - "businessMode"
+      additionalProperties: false
+      description: "运营给平台自营主体开出来的门店。\n\n`payMerchantNo` 为空是**正常的** —— 自营门店不进件，钱先进平台户。 只有第三方模式下它为空才是硬阻塞。"
     SelfOperatedResult: 
       type: "object"
       properties: 
         merchantNo: 
           type: "string"
+          description: "建出来（或幂等命中）的主体业务键"
         storeNo: 
           type: "string"
           description: "随主体一并建出来的默认门店"
@@ -906,6 +939,9 @@ components:
         serviceScope: 
           type: "string"
           description: "回读值：COMMUNITY / CITY / PLATFORM"
+        selfOperated: 
+          type: "boolean"
+          description: "回读值，应为 true。它是**免证件与运营建店的唯一判据** —— `fundsMode` 认不出平台自己（归集同时盖着代销）， `businessMode` 也认不出（门店级，且建表默认值就是自营）。"
         reachableCommunities: 
           type: "number"
           description: "**这家店现在对多少个小区可见。**\n\n不是装饰：ADR-009 的「必须勾社区」只拦得住「一个都没勾」， 而可见性最终一律展开成小区号 —— 库里一个小区都没有时 CITY 档同样是 0 （区划表里有深圳，不代表深圳有小区）。建完是 0 就是「建好了，谁也看不到」。"
@@ -919,10 +955,10 @@ components:
         - "fundsMode"
         - "businessMode"
         - "serviceScope"
+        - "selfOperated"
         - "reachableCommunities"
         - "created"
       additionalProperties: false
-      description: "建平台自营商家的结果（`POST /ops/merchants/self-operated`）。\n\n三个「回读值」是有意的：`fundsMode` / `businessMode` 不是把入参回显给你看， 而是**建完之后从库里再读一次**。自营这件事由这两个字段共同成立 （主体级：钱先进平台账户；门店级：平台是销售主体）， 少任何一个都会得到一家「看起来是自营」的店，而售后会派给商家自己。"
     OnboardingStatus: 
       type: "string"
       enum: 
@@ -15621,6 +15657,44 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchants/{merchantNo}/stores": 
+    post: 
+      operationId: "addSelfOperatedStore"
+      summary: "给**平台自营主体**再开一家门店"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/SelfOperatedStore"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "merchantNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       requestBody: 
         required: true
         content: 

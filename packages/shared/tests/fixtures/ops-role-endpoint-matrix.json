@@ -777,6 +777,7 @@
     "GET /ops/merchants/{merchantNo}/staff",
     "POST /ops/merchants/{merchantNo}/status",
     "GET /ops/merchants/{merchantNo}/store-modes",
+    "POST /ops/merchants/{merchantNo}/stores",
     "POST /ops/merchants/{merchantNo}/unarchive",
     "POST /ops/merchants/{merchantNo}/verified",
     "POST /ops/merchants/{merchantNo}/violations",

@@ -5273,6 +5273,32 @@ storeModes
 类型：[`StoreMode`](#storemode)\[\]
 
 
+#### POST `/ops/merchants/{merchantNo}/stores`
+
+给**平台自营主体**再开一家门店
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `merchantNo` | path | `string` | 是 | 商家单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`SelfOperatedStore`](#selfoperatedstore)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店业务键 |
+| `merchantNo` | `string` | 是 | 它挂在哪个主体下 |
+| `name` | `string` | 是 | 门店名。与主体名可以不同（分店） |
+| `address` | `string,null` | 否 | 门店地址，可空 |
+| `businessMode` | `string` | 是 | 回读值，应为 `SELF_OPERATED` |
+| `payMerchantNo` | `string,null` | 否 | 收款号。**为空是正常的** —— 自营门店不进件，钱先进平台户； 只有第三方模式下它为空才是硬阻塞。 |
+
+
 #### POST `/ops/merchants/{merchantNo}/unarchive`
 
 unarchiveMerchant
@@ -5420,12 +5446,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `merchantNo` | `string` | 是 | — |
+| `merchantNo` | `string` | 是 | 建出来（或幂等命中）的主体业务键 |
 | `storeNo` | `string` | 是 | 随主体一并建出来的默认门店 |
 | `ownerUserNo` | `string` | 是 | 手机号对应的账号；没有就按登录那条路新建一个 |
 | `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 是 | 回读值，应为 `AGGREGATED` |
 | `businessMode` | `string` | 是 | 回读值，应为 `SELF_OPERATED` |
 | `serviceScope` | `string` | 是 | 回读值：COMMUNITY / CITY / PLATFORM |
+| `selfOperated` | `boolean` | 是 | 回读值，应为 true。它是**免证件与运营建店的唯一判据** —— `fundsMode` 认不出平台自己（归集同时盖着代销）， `businessMode` 也认不出（门店级，且建表默认值就是自营）。 |
 | `reachableCommunities` | `number` | 是 | **这家店现在对多少个小区可见。** 不是装饰：ADR-009 的「必须勾社区」只拦得住「一个都没勾」， 而可见性最终一律展开成小区号 —— 库里一个小区都没有时 CITY 档同样是 0 （区划表里有深圳，不代表深圳有小区）。建完是 0 就是「建好了，谁也看不到」。 |
 | `created` | `boolean` | 是 | 本次是否**真的新建**了主体。false = 这个手机号名下已经有主体，原样返回它。 界面上要分开说：运营连点两次时，「又建了一个」与「就是刚才那个」是不同的事实。 |
 
@@ -11309,18 +11336,30 @@ KPI 卡（金额为最小货币单位整数）。
 
 ### SelfOperatedResult
 
-建平台自营商家的结果（`POST /ops/merchants/self-operated`）。 三个「回读值」是有意的：`fundsMode` / `businessMode` 不是把入参回显给你看， 而是**建完之后从库里再读一次**。自营这件事由这两个字段共同成立 （主体级：钱先进平台账户；门店级：平台是销售主体）， 少任何一个都会得到一家「看起来是自营」的店，而售后会派给商家自己。
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `merchantNo` | `string` | 是 | — |
+| `merchantNo` | `string` | 是 | 建出来（或幂等命中）的主体业务键 |
 | `storeNo` | `string` | 是 | 随主体一并建出来的默认门店 |
 | `ownerUserNo` | `string` | 是 | 手机号对应的账号；没有就按登录那条路新建一个 |
 | `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 是 | 回读值，应为 `AGGREGATED` |
 | `businessMode` | `string` | 是 | 回读值，应为 `SELF_OPERATED` |
 | `serviceScope` | `string` | 是 | 回读值：COMMUNITY / CITY / PLATFORM |
+| `selfOperated` | `boolean` | 是 | 回读值，应为 true。它是**免证件与运营建店的唯一判据** —— `fundsMode` 认不出平台自己（归集同时盖着代销）， `businessMode` 也认不出（门店级，且建表默认值就是自营）。 |
 | `reachableCommunities` | `number` | 是 | **这家店现在对多少个小区可见。** 不是装饰：ADR-009 的「必须勾社区」只拦得住「一个都没勾」， 而可见性最终一律展开成小区号 —— 库里一个小区都没有时 CITY 档同样是 0 （区划表里有深圳，不代表深圳有小区）。建完是 0 就是「建好了，谁也看不到」。 |
 | `created` | `boolean` | 是 | 本次是否**真的新建**了主体。false = 这个手机号名下已经有主体，原样返回它。 界面上要分开说：运营连点两次时，「又建了一个」与「就是刚才那个」是不同的事实。 |
+
+### SelfOperatedStore
+
+运营给平台自营主体开出来的门店。 `payMerchantNo` 为空是**正常的** —— 自营门店不进件，钱先进平台户。 只有第三方模式下它为空才是硬阻塞。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店业务键 |
+| `merchantNo` | `string` | 是 | 它挂在哪个主体下 |
+| `name` | `string` | 是 | 门店名。与主体名可以不同（分店） |
+| `address` | `string,null` | 否 | 门店地址，可空 |
+| `businessMode` | `string` | 是 | 回读值，应为 `SELF_OPERATED` |
+| `payMerchantNo` | `string,null` | 否 | 收款号。**为空是正常的** —— 自营门店不进件，钱先进平台户； 只有第三方模式下它为空才是硬阻塞。 |
 
 ### ServiceScopeConfig
 

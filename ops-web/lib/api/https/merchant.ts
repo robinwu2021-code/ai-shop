@@ -13,6 +13,8 @@ export const merchantHttp: MerchantApi = {
   setFundsMode: ({ merchantNo, ...body }) =>
     client.put(`/ops/merchants/${merchantNo}/funds-mode`, body),
   createSelfOperated: (v) => client.post("/ops/merchants/self-operated", v),
+  addSelfOperatedStore: ({ merchantNo, ...body }) =>
+    client.post(`/ops/merchants/${merchantNo}/stores`, body),
   qualifications: (merchantNo) => client.get(`/ops/merchants/${merchantNo}/qualifications`),
   saveQualification: ({ merchantNo, ...body }) =>
     client.post(`/ops/merchants/${merchantNo}/qualifications`, body),
