@@ -302,13 +302,15 @@ async function toggle(g: Goods) {
    * **闸门关着时这一段整个不走**（运营端开关，走 /biz/context）：后端此刻会放行，
    * 端上再拦就成了「点不动一个其实能按的按钮」，而且他无从知道为什么。
    */
-  const need = merchant.categoryGateEnforced && !g.onSale ? gateOf(g) : null;
+  // 同上：要不要上架、闸门该不该拦，判据都是**这家店**的状态，不是主体总闸
+  const willBeOnSale = stateOf(g) !== "ON_SALE";
+  const need = merchant.categoryGateEnforced && willBeOnSale ? gateOf(g) : null;
   if (need) {
     uni.showToast({ title: t("goods.gateBlocked", { s: need }), icon: "none" });
     return;
   }
   try {
-    await api.mToggleGoods(g.goodsNo, !g.onSale);
+    await api.mToggleGoods(g.goodsNo, willBeOnSale);
     await load();
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -494,7 +496,17 @@ function actsOf(g: Goods): GoodsAct[] {
   if (g.status === "DRAFT" && canGoods) out.push("submit");
   // 审核中/已驳回**不给上下架**：后端必拒（70003），
   // 留着它等于给商家一个永远点不动的按钮，而错在哪一句话都没有
-  if (canGoods && !pending(g) && g.status !== "DRAFT") out.push(g.onSale ? "offSale" : "onSale");
+  /*
+   * ★ **按钮文案必须读 `stateOf(g)`（门店级），不能读 `g.onSale`（主体级）。**
+   *
+   * 主体级的 `onSale` 是「任一门店在售就为真」的总闸。多门店时，店长在自己店里
+   * 下架完，主体级仍是 true —— 于是状态标已经写「已下架」，按钮却还写「下架」。
+   * 他再点一次等于又把这家店开回去，而两次点击看起来做的是同一件事。
+   * 2026-09-16 线上实测撞到：默认店 on_sale=0、分店 1、主体 1，标与按钮互相矛盾。
+   */
+  if (canGoods && !pending(g) && g.status !== "DRAFT") {
+    out.push(stateOf(g) === "ON_SALE" ? "offSale" : "onSale");
+  }
   if (canGoods) out.push("edit");
   // 只给在售商品：分享一件审核中/已下架的货，买家点进去要么看不见要么下不了单
   if (stateOf(g) === "ON_SALE" && merchant.can("biz:store")) out.push("share");
