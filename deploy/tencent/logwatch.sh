@@ -8,8 +8,10 @@
 # 只保证日志自己写不满盘；这里管的是另一半 —— **失控能在小时级被发现**。
 #
 # 超阈值：打一行 WARN / CRIT，并写进 journal（`journalctl -t logwatch`）。
-# 主动推送：在 logwatch.env 里配 WEBHOOK_URL（企业微信群机器人格式），同一项 6 小时内只推一次。
-# **通道没定之前不配** —— 那时就只有日志与 journal，等于要有人来看。
+# 主动推送：同一项 6 小时内只推一次。两条通道，配哪条走哪条，都配就都走：
+#   ALERT_MAIL_TO  收件人邮箱（SMTP 凭据不在这儿，见下面 MAIL_ENV_FILE）
+#   WEBHOOK_URL    企业微信群机器人
+# **一条都不配时只有日志与 journal，等于要有人主动来看。**
 #
 # 阈值是测试档（方案 §6）；转生产只改 logwatch.env 里的数，不改脚本：
 #   DISK_WARN=80  DISK_CRIT=90  LOG_TOTAL_MB=1024  RATE_MB_PER_H=50  WEBHOOK_URL=
@@ -29,6 +31,14 @@ LOG_TOTAL_MB="${LOG_TOTAL_MB:-1024}"
 RATE_MB_PER_H="${RATE_MB_PER_H:-50}"
 BINLOG_MAX_MB="${BINLOG_MAX_MB:-1024}"
 WEBHOOK_URL="${WEBHOOK_URL:-}"
+# 邮件通道。ALERT_MAIL_TO 是收件人（不是凭据，可以进 logwatch.env）。
+#
+# **SMTP 凭据不在这儿，也不复制一份** —— 运行时直接去读应用已经在用的那份
+# （M365，shop-app.env 里的 MAIL_HOST/PORT/USERNAME/PASSWORD/FROM）。
+# 理由：这台机器上已经有一套验证过能发信的凭据，再抄一份就是多一个要轮换的地方，
+# 而且抄的过程本身就是一次泄露机会。
+ALERT_MAIL_TO="${ALERT_MAIL_TO:-}"
+MAIL_ENV_FILE="${MAIL_ENV_FILE:-$DATA/app/ai-shop/shop-app/shop-app.env}"
 # 数据库客户端。2026-09-16 切 MySQL 9.7 后，裸 `mysql` 连的是已停的 MariaDB(3306)，
 # 这一条会一直报「查不了 outbox」—— 报得对，但它该查的是新库。
 MYSQL_CLI="${MYSQL_CLI:-/opt/mysql/current/bin/mysql --defaults-file=/etc/mysql97/my.cnf -uroot}"
@@ -158,7 +168,8 @@ for a in "${alerts[@]}"; do
     logger -t logwatch -p "$pri" "$lv $item $msg"
 done
 
-[ -n "$WEBHOOK_URL" ] || exit 0
+# 一条通道都没配就到此为止（结果仍在 logwatch.log 与 journal 里）
+if [ -z "$WEBHOOK_URL" ] && [ -z "$ALERT_MAIL_TO" ]; then exit 0; fi
 send=(); keys=()
 for a in "${alerts[@]}"; do
     IFS='|' read -r lv item msg <<<"$a"
@@ -169,12 +180,41 @@ for a in "${alerts[@]}"; do
 done
 [ "${#send[@]}" -gt 0 ] || exit 0
 
-body="$(printf '%s\n' "【$(hostname) 巡检】" "${send[@]}" \
-    | python3 -c 'import json, sys; print(json.dumps({"msgtype": "text", "text": {"content": sys.stdin.read()}}, ensure_ascii=False))')"
-# URL 里带着机器人的密钥：只进 curl 参数，不回显、不写日志
-if curl -fsS -m 10 -H 'Content-Type: application/json' -d "$body" "$WEBHOOK_URL" >/dev/null; then
-    touch "${keys[@]}"   # 推成功才记「已推」，失败的下一轮还会再试
-    echo "$stamp 已推送 ${#send[@]} 条"
-else
-    echo "$stamp 推送失败（curl 退出码 $?），下一轮重试"
+# 最坏的那一级进标题：手机锁屏上只看得到标题，**标题不说清就等于没告警**
+worst=WARN
+for a in "${alerts[@]}"; do case "$a" in CRIT*) worst=CRIT ;; esac; done
+text="$(printf '%s\n' "${send[@]}")"
+
+delivered=0
+
+# ── 企业微信群机器人 ──
+if [ -n "$WEBHOOK_URL" ]; then
+    body="$(printf '%s\n' "【$(hostname) 巡检】" "${send[@]}" \
+        | python3 -c 'import json, sys; print(json.dumps({"msgtype": "text", "text": {"content": sys.stdin.read()}}, ensure_ascii=False))')"
+    # URL 里带着机器人的密钥：只进 curl 参数，不回显、不写日志
+    if curl -fsS -m 10 -H 'Content-Type: application/json' -d "$body" "$WEBHOOK_URL" >/dev/null; then
+        delivered=1; echo "$stamp 已推送企业微信 ${#send[@]} 条"
+    else
+        echo "$stamp 企业微信推送失败（curl 退出码 $?），下一轮重试"
+    fi
 fi
+
+# ── 邮件 ──
+#
+# 凭据由 python 自己去 $MAIL_ENV_FILE 里取，**不经过 shell 变量、不进命令行、不落日志**。
+# 不用 `set -a; . env`：那条路会把含 `&` 的值截断（JDBC URL 栽过），而且会把
+# 整份 env 灌进本进程的环境，`ps e` 就能看见。
+if [ -n "$ALERT_MAIL_TO" ]; then
+    if MAIL_ENV_FILE="$MAIL_ENV_FILE" ALERT_MAIL_TO="$ALERT_MAIL_TO" \
+       ALERT_SUBJECT="[$worst] $(hostname) 巡检 · $(printf '%s' "${send[0]}" | cut -c1-60)" \
+       ALERT_COUNT="${#send[@]}" \
+       python3 "$(dirname "$0")/logwatch-mail.py" <<<"$text"; then
+        delivered=1; echo "$stamp 已发邮件 ${#send[@]} 条 → $ALERT_MAIL_TO"
+    else
+        echo "$stamp 邮件发送失败（退出码 $?），下一轮重试"
+    fi
+fi
+
+# **有一条通道送达才记「已推」** —— 全失败时下一轮还会再试。
+# 反过来（先记后送）会把一条真告警永久吞掉六小时。
+[ "$delivered" = 1 ] && touch "${keys[@]}"
