@@ -547,14 +547,29 @@ function soleMoreOf(g: Goods): GoodsAct | null {
 /**
  * 动作的显示名。
  *
+ * <p><b>键写成显式映射表，不要拼 `t("goods." + act)`，也不要
+ * `` t(`goods.${act}`) ``。</b> 前者 `check-i18n-orphan` 看不见，那几条词条会被
+ * 报成孤儿、进而被人当死词条删掉；后者它认得，但「裸命名空间前缀一条就放行整片」
+ * —— 整个 `goods.*` 从此对这道闸是瞎的（那道闸自己的注释里记着这个坑）。
+ * 映射表两头都占：每个 key 都是字面量，而 `Record<GoodsAct, string>` 让漏一个变成编译错。
+ *
  * <p><b>标签必须在脚本里算好，模板里不能写反引号模板串。</b>
  * 第一版写的是 <code>{{ $t(`goods.${primaryOf(g)}`) }}</code>，结果 UnoCSS 的
  * pre 转换器直接崩在整个文件上：
  * <code>[plugin:unocss:transformers:pre] Cannot split a chunk that has already been edited</code>
  * —— 整页白屏，而 vue-tsc 与 vitest 全绿，本地不跑一次根本发现不了。
  */
+const ACT_LABEL: Record<GoodsAct, string> = {
+  submit: "goods.submit",
+  onSale: "goods.onSale",
+  offSale: "goods.offSale",
+  edit: "goods.edit",
+  share: "goods.share",
+  editStorePrice: "goods.editStorePrice",
+};
+
 function labelOf(act: GoodsAct): string {
-  return t("goods." + act);
+  return t(ACT_LABEL[act]);
 }
 
 /*

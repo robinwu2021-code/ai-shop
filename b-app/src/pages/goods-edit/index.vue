@@ -1191,7 +1191,6 @@ async function save(thenSubmit = false) {
           @remove="removePhoto"
           @tap-item="tapPhoto"
         ></sh-uploader>
-        <text class="sh-muted hint">{{ $t("goods.photosHint") }}</text>
       </view>
 
       <!-- 三语：一个框 + 语言 tab，不给三个框并排 -->
@@ -1343,7 +1342,6 @@ async function save(thenSubmit = false) {
             <sh-icon v-else name="plus" :size="40" color="var(--sh-sub)"></sh-icon>
           </view>
         </view>
-        <text class="sh-muted hint">{{ $t("goods.detailImagesHint") }}</text>
       </view>
 
     </view>
@@ -1507,7 +1505,6 @@ async function save(thenSubmit = false) {
             {{ fresh.weighed ? $t("common.yes") : $t("common.no") }}
           </text>
         </sh-kv>
-        <text class="sh-muted hint">{{ $t("goods.freshTip") }}</text>
       </view>
 
       <!-- 服务段 -->
@@ -1721,7 +1718,6 @@ async function save(thenSubmit = false) {
         这件货没有的点掉）。两块长得像、行为不同，得说出来。
       -->
       <!-- 一个参数都没有时不说「每项单选」—— 那句话此刻没有对象 -->
-      <text v-if="propDims.length" class="sh-muted hint">{{ $t("goods.paramsPick") }}</text>
       <view v-for="d in propDims" :key="d.templateNo" class="param">
         <text class="txt-sub param__k">{{ d.name }}</text>
         <!--
@@ -1864,13 +1860,6 @@ async function save(thenSubmit = false) {
           </text>
         </view>
       </sh-section>
-      <!-- 「按市场分别定价」的说明只在多市场打开时才有意义 -->
-      <text v-if="MULTI_MARKET_UI" class="sh-muted hint">{{ $t("goods.marketPriceHint") }}</text>
-      <!-- 归集路径必须说清「这不是最终售价」—— 只改标签不解释，
-           商家会以为平台擅自改了他的价 -->
-      <text v-if="aggregated" class="sh-muted hint">
-        {{ $t("goods.priceAggregatedHint") }}
-      </text>
 
       <!--
         **多规格改成纵向分组，不再是一行一行的表。**
@@ -1933,7 +1922,6 @@ async function save(thenSubmit = false) {
           />
         </view>
         <text v-if="belowCost(rows[0]!)" class="txt-caption pr__warn">{{ $t("goods.belowCost") }}</text>
-        <text class="sh-muted hint">{{ $t("goods.costHint") }}</text>
         <view class="pr sh-row">
           <text class="txt-sub pr__k sh-fill">{{ $t("goods.originPrice") }}</text>
           <text class="txt-sub pr__cur">￥</text>
@@ -2030,7 +2018,6 @@ async function save(thenSubmit = false) {
           <sh-kv :label="String($t('goods.groupPrice'))">
             <input maxlength="10" v-model="groupBuy.price" class="field__input" type="digit" />
           </sh-kv>
-          <text class="sh-muted hint">{{ $t("goods.groupBuyOnHint") }}</text>
         </template>
       </view>
     </view>
@@ -2044,7 +2031,6 @@ async function save(thenSubmit = false) {
     -->
     <view class="sh-card sh-mt-sm">
       <sh-section :title="String($t('goods.secStock'))"></sh-section>
-      <text class="sh-muted hint">{{ $t("goods.stockHint") }}</text>
 
       <!-- 与价格卡同构：同样的分组、同样的规格名、同样的「统一填入」 -->
       <view v-if="multi" class="bulk sh-row">
@@ -2109,7 +2095,6 @@ async function save(thenSubmit = false) {
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <template v-else>
-        <text class="sh-muted hint">{{ $t("goods.codeHint") }}</text>
         <!-- 一行一个字段；多规格时每个规格一行，与价格卡同构 -->
         <view v-for="f in extFields" :key="f.key" class="codeblock">
           <text class="txt-strong codeblock__k">{{ $t(f.labelKey) }}</text>
