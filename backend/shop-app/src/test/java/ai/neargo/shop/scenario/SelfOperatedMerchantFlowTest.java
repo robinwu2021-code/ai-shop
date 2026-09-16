@@ -52,9 +52,22 @@ class SelfOperatedMerchantFlowTest {
     @Autowired
     private ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
 
-    /** 手机号各用例互不相同 —— 幂等判据是人，共用一个号会让用例之间互相喂结果。 */
+    /**
+     * 手机号各用例互不相同 —— 幂等判据是人，共用一个号会让用例之间互相喂结果。
+     *
+     * <p><b>前缀 1595001 是本类专用，不要改成常见的 139/138 段。</b>
+     * 第一版用的是 {@code "1390000"+%04d}，而 {@code PersonBindFlowTest} 的
+     * {@code phone()} 逐字相同（同前缀 + 自增序号）—— 本类经
+     * {@code ensureUserByPhone} 给那几个号建了账号，那边随后拿到同一个号，
+     * 它「这个号还没有账号」的前置断言当场就假了。
+     *
+     * <p>症状极具误导性：<b>单独跑两个类都绿</b>，只有全量跑才红，
+     * 而报错指向的是别人的用例，与本类毫无字面关联
+     * （实测就是这么被 check-head-compiles 抓到的）。
+     * 新增造号的用例时，先 grep 一遍这个前缀有没有被别人用。
+     */
     private static String phone(int n) {
-        return "1390000" + String.format("%04d", n);
+        return "1595001" + String.format("%04d", n);
     }
 
     @Test
