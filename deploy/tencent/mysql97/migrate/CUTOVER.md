@@ -74,7 +74,12 @@
 - [x] `curl -s http://127.0.0.1:8081/actuator/info | grep gitSha` 对得上刚发的版本。
 - [x] Flyway 日志：`journalctl -u ai-shop --since -5min | grep -i flyway` 出现"is up to date / No migration necessary"。
 - [x] 关键读：`curl -s "http://127.0.0.1:8081/mp/community/nearby" | head -c 120` 返回 `{"code":0,...}`（**单实例才准**）。
-- [ ] 关键写：让**运营账号**的人登一次运营端、做一个读写动作（我没有账号，这步要人点）。
+- [x] 关键写：运营账号登一次运营端并做读写动作。**2026-09-16 12:23 由人完成**，
+      MySQL 上留下的痕迹：`ops_login_log` 新增一条 `LOGIN ST-ADMIN success=1`、
+      `ops_session` 切后第一条会话、`sys_ops_staff.last_login_at` 被更新；
+      业务页读到真数（经营看板在售商品 194、任务页 22 个任务），同期 ERROR 0。
+      登录本身就是读写闭环：验口令读 `sys_ops_staff`、取权限读 `sys_role_member`，
+      再写登录日志、写会话、更新 last_login_at。。
 - [x] 两个投递任务在跑：`sudo mariadb -N -B ai_shop_job -e "SELECT job_name,last_status FROM job_run WHERE job_name LIKE '%outbox%'"`
       —— ⚠️ 注意这查的是 MariaDB 的 job_run；切后要查 **MySQL** 的：改用 mysql97 客户端。
 
@@ -107,12 +112,18 @@
 
 **下面四条还空着，每条都有理由**：
 
+**验收已全部完成**（关键写那条 2026-09-16 12:23 由人补上）。剩下三条空着的都不是「验证」而是「动作」：
+
 | 空着的 | 为什么 |
 |---|---|
 | 公告 / 维护页 | 现在没有真实用户，不适用 |
-| **关键写（运营端登录 + 一个读写动作）** | **要人来点** —— Claude 没有运营账号，也不该猜口令。这是唯一一项真正的验收缺口 |
 | `disable --now mariadb` | 按本手册要等观察期过（约 9-23）。现在是「已停但仍 enabled」，机器重启它会回来 |
 | `mysql97/README` 改「主库」 | 等 disable 那一步一起做，两处措辞同时改才不会前后矛盾 |
+
+**顺带记一件验收时看到的**：运营端任务页显示「1 个连败」—— `inv-recon` 连败 19 次，
+`DIFF_NOT_CLEAN：扫描 210，差异 5 条，待搬 2 个 —— 不得切换真相源`。
+那是进销存双写对账**设计成会红**的闸门，不是切库引起的，属库存域的业务待办。
+值得记的是另一半：**它连败 19 次而没有任何人知道** —— 告警通道还没配（见日志方案 §11.3）。
 
 ## 收尾（观察期过、确认稳）—— M5
 
