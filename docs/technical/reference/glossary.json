@@ -6806,22 +6806,10 @@
           "ar": "جارٍ تحميل طرق التوصيل المفعّلة لهذا المتجر…"
         },
         {
-          "key": "goods.codeHint",
-          "zh-CN": "供 ERP、收银秤、供应商对接使用。非必填，不影响正常销售。",
-          "en": "For ERP, scales and suppliers. Optional — selling works without them.",
-          "ar": "لأنظمة ERP والموازين والموردين. اختياري."
-        },
-        {
-          "key": "goods.costHint",
-          "zh-CN": "仅本店可见，不展示给顾客",
-          "en": "Visible to your store only, never to customers",
-          "ar": "مرئي لمتجرك فقط، لا يظهر للعملاء"
-        },
-        {
           "key": "goods.costPrice",
-          "zh-CN": "成本价",
-          "en": "Cost price",
-          "ar": "سعر التكلفة"
+          "zh-CN": "成本价（仅本店可见）",
+          "en": "Cost price (visible only to you)",
+          "ar": "سعر التكلفة (مرئي لك فقط)"
         },
         {
           "key": "goods.coverBadge",
@@ -6864,12 +6852,6 @@
           "zh-CN": "详情图",
           "en": "Description photos",
           "ar": "صور الوصف"
-        },
-        {
-          "key": "goods.detailImagesHint",
-          "zh-CN": "跟在正文下面，↑↓ 调顺序",
-          "en": "Below the body. ↑↓ to reorder",
-          "ar": "أسفل النص؛ ↑↓ لإعادة الترتيب"
         },
         {
           "key": "goods.detailLen",
@@ -7014,12 +6996,6 @@
           "zh-CN": "生鲜信息",
           "en": "Fresh details",
           "ar": "تفاصيل الطازج"
-        },
-        {
-          "key": "goods.freshTip",
-          "zh-CN": "截单时间＝当日最晚下单时刻",
-          "en": "Cut-off = latest order time today",
-          "ar": "الإغلاق = آخر وقت للطلب اليوم"
         },
         {
           "key": "goods.fromPriceShort",
@@ -7184,12 +7160,6 @@
           "ar": "تفعيل الشراء الجماعي"
         },
         {
-          "key": "goods.groupBuyOnHint",
-          "zh-CN": "满人数按团购价成交，未成团按原价发货",
-          "en": "At the minimum headcount it closes at the group price, otherwise the original",
-          "ar": "عند اكتمال العدد يتم البيع بسعر المجموعة، وإلا بالسعر الأصلي"
-        },
-        {
           "key": "goods.groupMinCount",
           "zh-CN": "起团人数",
           "en": "Min group size",
@@ -7262,16 +7232,16 @@
           "ar": "الربح ￥{a} · {r}%"
         },
         {
-          "key": "goods.marketPriceHint",
-          "zh-CN": "切换币种分别填价，不做汇率换算",
-          "en": "Switch currency to price each market. No FX conversion",
-          "ar": "بدّل العملة لتسعير كل سوق. بلا تحويل صرف"
-        },
-        {
           "key": "goods.missing",
           "zh-CN": "待填写：{s}",
           "en": "To fill in: {s}",
           "ar": "للتعبئة: {s}"
+        },
+        {
+          "key": "goods.more",
+          "zh-CN": "更多",
+          "en": "More",
+          "ar": "المزيد"
         },
         {
           "key": "goods.moreFold",
@@ -7418,22 +7388,10 @@
           "ar": "يمكنك إنشاء خاصية خاصة بمتجرك"
         },
         {
-          "key": "goods.paramsPick",
-          "zh-CN": "每项单选。参数不生成 SKU，不影响价格与库存",
-          "en": "One value each — unlike variants, which list every tier this item has",
-          "ar": "قيمة واحدة لكل بند؛ بخلاف الخيارات التي تسرد كل فئات هذا الصنف"
-        },
-        {
           "key": "goods.photos",
           "zh-CN": "商品图",
           "en": "Photos",
           "ar": "صور المنتج"
-        },
-        {
-          "key": "goods.photosHint",
-          "zh-CN": "点其它图可设为主图",
-          "en": "Tap another photo to make it the main one",
-          "ar": "اضغط صورة أخرى لجعلها الرئيسية"
         },
         {
           "key": "goods.pickStd",
@@ -7449,15 +7407,9 @@
         },
         {
           "key": "goods.priceAggregated",
-          "zh-CN": "期望收购价",
-          "en": "Your asking price",
-          "ar": "سعر الشراء المطلوب"
-        },
-        {
-          "key": "goods.priceAggregatedHint",
-          "zh-CN": "平台统一销售，此处填写期望收购价",
-          "en": "Sold through the platform. Enter your target buying price",
-          "ar": "يُباع عبر المنصة. أدخل سعر الشراء المستهدف"
+          "zh-CN": "期望收购价（平台统一销售）",
+          "en": "Your asking price (platform sells)",
+          "ar": "سعر الشراء المطلوب (المنصة تبيع)"
         },
         {
           "key": "goods.priceInvalid",
@@ -7716,12 +7668,6 @@
           "zh-CN": "库存改在进销存里",
           "en": "Stock is managed in Inventory",
           "ar": "يُدار المخزون في نظام المخزون"
-        },
-        {
-          "key": "goods.stockHint",
-          "zh-CN": "库存为 0 时 C 端置灰，并提供到货提醒",
-          "en": "At 0 the item greys out and offers restock alerts",
-          "ar": "عند 0 يصبح المنتج رمادياً مع تنبيه توفر"
         },
         {
           "key": "goods.stockInvHint",
@@ -13280,6 +13226,12 @@
           "ar": "المتاح"
         },
         {
+          "key": "stock.crossGo",
+          "zh-CN": "看各店的货",
+          "en": "See every store",
+          "ar": "عرض كل المتاجر"
+        },
+        {
           "key": "stock.empty",
           "zh-CN": "没有需要处理的商品",
           "en": "Nothing to handle",
@@ -13340,16 +13292,34 @@
           "ar": "تحويل"
         },
         {
+          "key": "stock.entryBlocked.transfer",
+          "zh-CN": "要两个放货的地方，现在只有 {n} 个",
+          "en": "Needs two places for goods, has {n}",
+          "ar": "يحتاج مكانين للبضاعة، والموجود {n}"
+        },
+        {
           "key": "stock.formulaHint",
           "zh-CN": "可用 = 实存 − 预留。预留为已下单未付款的量",
           "en": "Available = on hand − reserved. Reserved is what customers ordered but have not paid for; it is deducted only on payment.",
           "ar": "المتاح = الفعلي − المحجوز. المحجوز طلبه العملاء ولم يدفعوا بعد، ولا يُباع مرتين."
         },
         {
+          "key": "stock.goAddLocation",
+          "zh-CN": "去添加",
+          "en": "Add one",
+          "ar": "إضافة مكان"
+        },
+        {
           "key": "stock.idleDays",
           "zh-CN": "{n} 天未动",
           "en": "Idle {n} d",
           "ar": "راكد {n} يوم"
+        },
+        {
+          "key": "stock.more",
+          "zh-CN": "更多",
+          "en": "More",
+          "ar": "المزيد"
         },
         {
           "key": "stock.offSale",
@@ -15915,13 +15885,13 @@
         },
         {
           "key": "stores.currentTag",
-          "zh-CN": "当前",
-          "en": "Current",
-          "ar": "الحالي"
+          "zh-CN": "当前经营",
+          "en": "Currently managing",
+          "ar": "قيد التشغيل"
         },
         {
           "key": "stores.default",
-          "zh-CN": "默认店",
+          "zh-CN": "默认",
           "en": "Default",
           "ar": "الافتراضي"
         },
@@ -15945,7 +15915,7 @@
         },
         {
           "key": "stores.hint",
-          "zh-CN": "这里管有几家店；单店的门面（公告/营业时间/主推）在店铺设置里改",
+          "zh-CN": "管理门店的开设、启停与收款账户。单店门面（公告、营业时间、主推商品）在「店铺设置」中维护。",
           "en": "How many shops you run. A single shop's front (notice / hours / picks) lives in Shop settings",
           "ar": "هنا عدد المتاجر؛ أما واجهة المتجر الواحد فتُعدَّل في إعدادات المتجر"
         },
@@ -15969,20 +15939,20 @@
         },
         {
           "key": "stores.payDefault",
-          "zh-CN": "主体默认号",
-          "en": "Entity default",
+          "zh-CN": "主体默认账户",
+          "en": "Entity default account",
           "ar": "حساب الكيان الافتراضي"
         },
         {
           "key": "stores.payNotReady",
-          "zh-CN": "收不了钱",
-          "en": "Cannot receive",
-          "ar": "لا يمكن التحصيل"
+          "zh-CN": "收款未开通",
+          "en": "Payments not enabled",
+          "ar": "التحصيل غير مفعّل"
         },
         {
           "key": "stores.payment",
-          "zh-CN": "收款到",
-          "en": "Payouts to",
+          "zh-CN": "收款账户",
+          "en": "Payout account",
           "ar": "التحصيل إلى"
         },
         {
@@ -16005,7 +15975,7 @@
         },
         {
           "key": "stores.quotaHint",
-          "zh-CN": "当前套餐有门店数量上限，超出会被拒绝",
+          "zh-CN": "门店数量受当前套餐额度限制，超出额度将无法创建",
           "en": "Your plan caps how many stores you can open; going over is rejected",
           "ar": "باقتك تحدّ عدد المتاجر، وتجاوز الحد يُرفض"
         },
@@ -16017,7 +15987,7 @@
         },
         {
           "key": "stores.rename",
-          "zh-CN": "改名",
+          "zh-CN": "重命名",
           "en": "Rename",
           "ar": "إعادة تسمية"
         },
@@ -16028,20 +15998,26 @@
           "ar": "اجعله الافتراضي"
         },
         {
-          "key": "stores.staffCount",
-          "zh-CN": "已授权员工 {n} 人",
-          "en": "{n} staff authorised",
-          "ar": "{n} موظفين مخوّلين"
+          "key": "stores.staffLabel",
+          "zh-CN": "授权员工",
+          "en": "Authorised staff",
+          "ar": "الموظفون المخوّلون"
+        },
+        {
+          "key": "stores.staffValue",
+          "zh-CN": "{n} 人",
+          "en": "{n}",
+          "ar": "{n}"
         },
         {
           "key": "stores.switchTo",
-          "zh-CN": "切到这家",
-          "en": "Switch to this",
-          "ar": "التبديل إلى هذا"
+          "zh-CN": "切换至此店",
+          "en": "Switch to this store",
+          "ar": "التبديل إلى هذا المتجر"
         },
         {
           "key": "stores.switched",
-          "zh-CN": "已切换到 {name}",
+          "zh-CN": "已切换至 {name}",
           "en": "Now on {name}",
           "ar": "أنت الآن في {name}"
         },

@@ -68,7 +68,7 @@
 | 单件库存明细 | GET | `/biz/inventory/items/:itemId` | `mStockItem` | stock-detail |
 | 按条码找货（没绑过回 null，不是 404） | GET | `/biz/inventory/items/by-barcode` | `mItemByBarcode` | stock-check |
 | 库存变动明细 | GET | `/biz/inventory/ledger` | `mStockLedger` | stock-detail、stock-docs |
-| 库位与仓 | GET | `/biz/inventory/locations` | `mStockLocations` | locations、transfer |
+| 库位与仓 | GET | `/biz/inventory/locations` | `mStockLocations` | locations、stock、transfer |
 | 加一个仓 | POST | `/biz/inventory/locations` | `mWarehouseCreate` | locations |
 | 报损/领用出库 | POST | `/biz/inventory/outbounds` | `mOutboundCreate` | stock-out |
 | 出库过账 | POST | `/biz/inventory/outbounds/:no/post` | `mOutboundPost` | stock-out |
