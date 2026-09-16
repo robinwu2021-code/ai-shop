@@ -275,6 +275,16 @@ function onCardTap(s: Store) {
   if (canSwitchTo(s)) switchTo(s);
 }
 
+/**
+ * 这张卡还有没有「状态操作」要摆（设为默认 / 停用 / 去看套餐 / 切换提示）。
+ *
+ * <p>没有就整行不渲染。默认店的动作只剩改名，而改名已经贴到店名旁边了 ——
+ * 留一个空的带上边框的行，等于凭空多一条横线。
+ */
+function hasActs(s: Store) {
+  return canSwitchTo(s) || s.planSuspended || !s.isDefault;
+}
+
 /** 传空 = 回到主体默认收款号，是合法操作 */
 function pickPayment(s: Store, payMerchantNo?: string) {
   run(() => api.mSetStorePayment(s.storeNo, payMerchantNo));
@@ -300,7 +310,16 @@ function pickPayment(s: Store, payMerchantNo?: string) {
       @tap="onCardTap(s)"
     >
       <view class="st__top sh-row sh-row--between">
-        <text class="txt-title st__name">{{ s.name }}</text>
+        <!--
+          ★ **「重命名」贴着店名，不占一整行。**
+          它改的就是这个名字，放在名字旁边是它本来该在的位置；而挪走之后，
+          默认店那张卡（唯一动作就是改名）连动作行带那条分隔线一起消失 ——
+          改版前那是一整行 + 一条横线只为放三个字。
+        -->
+        <view class="st__name sh-row">
+          <text class="txt-title">{{ s.name }}</text>
+          <text class="txt-caption st__rename" @tap.stop="rename(s)">{{ $t("stores.rename") }}</text>
+        </view>
         <view class="tags">
           <text v-if="s.storeNo === merchant.storeNo" class="sh-chip sh-chip--primary">{{ $t("stores.currentTag") }}</text>
           <text v-if="s.isDefault" class="sh-chip">{{ $t("stores.default") }}</text>
@@ -398,13 +417,16 @@ function pickPayment(s: Store, payMerchantNo?: string) {
       <!--
         动作一排，**全部同一视觉层级**。改版前「切到这家」是按钮、其余是链接，
         四个动作两种样式，看着像两类不同的东西。
-        切店已经由整张卡承担（见 st--switchable），这里不再重复一个按钮。
+        切店已经由整张卡承担（见 st--switchable），这里不再重复一个按钮；
+        改名挪去了店名旁边 —— 它改的就是那个名字。
+
+        **整行带 v-if**：默认店没有任何状态操作，渲染一个空的带上边框的行
+        等于凭空多一条横线，那正是「重命名独立一行浪费空间」的另一半。
 
         `@tap.stop` 一个都不能少：卡片本身是切店的点击区，
         不拦住冒泡的话，点「停用」会**顺带把当前店切过去**。
       -->
-      <view class="acts">
-        <text class="sh-link" @tap.stop="rename(s)">{{ $t("stores.rename") }}</text>
+      <view v-if="hasActs(s)" class="acts">
         <text v-if="!s.isDefault && s.status === 'ACTIVE'" class="sh-link" @tap.stop="makeDefault(s)">
           {{ $t("stores.setDefault") }}
         </text>
@@ -523,6 +545,13 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   flex: 1;
   min-width: 0;
   margin-right: 16rpx;
+  align-items: baseline;
+  gap: 16rpx;
+}
+/* 改名是次要动作：跟着店名走，但不与店名争视线 */
+.st__rename {
+  flex: none;
+  color: var(--sh-primary-text);
 }
 /* 整张卡是切店的点击区时给一个可点的暗示 —— 没有它，「能点」这件事无从得知 */
 .st--switchable {
