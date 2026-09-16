@@ -3,7 +3,11 @@ package ai.neargo.shop.paybridge;
 import ai.neargo.shop.pay.entity.StlReconDiff;
 import ai.neargo.shop.pay.service.ReconService;
 import ai.neargo.shop.spi.trade.OrderRepairPort;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -44,6 +48,37 @@ public class PaymentReconReconciler {
     private final OrderRepairPort orderRepair;
     /** 退款行的终态写在支付域自己的账上，不经订单域 */
     private final ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger;
+
+    /**
+     * 「这个渠道全部判不了」持续期间，隔多久重述一次。
+     *
+     * <p>这条轴约 8~9 分钟一轮（实测 24 小时 167 轮）。渠道查不通往往一连几天都不好，
+     * 而此前每轮都原样打一条 WARN —— <b>一天约 167 条一模一样的告警</b>，
+     * 占了 WARN 通道的一半以上。后果不是占盘（有封顶），是**看的人分不出
+     * 「这是新出的，还是坏了好几天」**，与 ERROR 通道被 AuthorizationDenied 占满同一个形状。
+     */
+    private static final Duration RESTATE_EVERY = Duration.ofHours(1);
+
+    /**
+     * 每个渠道「全部判不了」的持续状态。key = payChannel。
+     *
+     * <p>只在这个类里用来决定「这一轮要不要打」，不进任何账 —— 进程重启后从头算，
+     * 代价只是重启后多打一条，而那条恰好是重启后第一次、本来就该打。
+     */
+    private final Map<String, Stuck> stuck = new ConcurrentHashMap<>();
+
+    /** 一个渠道从哪一刻起连续多少轮全部判不了，上次重述是什么时候。 */
+    private static final class Stuck {
+        final Instant since;
+        int rounds;
+        Instant lastLogged;
+
+        Stuck(Instant now) {
+            this.since = now;
+            this.rounds = 1;
+            this.lastLogged = now;
+        }
+    }
 
     public PaymentReconReconciler(ReconService recon, OrderRepairPort orderRepair,
                                   ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger) {
@@ -170,20 +205,63 @@ public class PaymentReconReconciler {
                 .toList();
         log.info("[recon] 自查 {} 笔：补回 {} · 关单 {} · 留待下轮 {}",
                 findings.size(), repaired, closed, deferred);
+        reportStuckChannels(slices, Instant.now());
+        return new Result(findings.size(), repaired, closed, deferred, slices);
+    }
+
+    /**
+     * 报「这个渠道扫到的每一笔都判不了」——<b>按状态变化报，不是按轮次报</b>。
+     *
+     * <h2>为什么不每轮都打</h2>
+     * 一个渠道查不通往往一连几天都不好，而这条轴 8~9 分钟一轮：每轮原样打一条，
+     * 一天就是约 167 条一模一样的 WARN，把 WARN 通道占掉一半以上。
+     * 那条告警本身写着「它要人立刻去看」—— <b>重复 167 次恰恰毁掉了这个性质</b>：
+     * 看的人分不出这是新出的还是坏了好几天。
+     *
+     * <h2>改成什么</h2>
+     * <ul>
+     *   <li><b>刚开始</b>（这一轮才进入这个状态）→ 照打完整 WARN，与此前一样，一刻不推迟；</li>
+     *   <li><b>持续中</b> → 每 {@link #RESTATE_EVERY} 重述一次，且<b>带上持续了多久、多少轮</b>
+     *       —— 一条「持续 167 轮、自 09-15 09:40 起」比 167 条一模一样的更有信息量；</li>
+     *   <li><b>恢复了</b> → 打一条 INFO。<b>此前根本没有这一条</b>：通道好了没人知道，
+     *       只能靠「WARN 不再出现」去反推，而那与「任务挂了、压根没跑」长得一模一样。</li>
+     * </ul>
+     *
+     * <p><b>刻意不做的：不把它降级、不把它静音。</b> 这条 WARN 是真问题的信号
+     * （写这段时线上 WECHAT 已连续多轮 21 笔查不通）。这里改的只是「同一件事说几遍」，
+     * 不是「还说不说」—— 修日志噪音时把问题一起消音，是比噪音更坏的结果。
+     *
+     * @param slices 这一轮按渠道的分解
+     * @param now    传进来而不是内部取，便于测试推进时间
+     */
+    void reportStuckChannels(List<ChannelSlice> slices, Instant now) {
         for (ChannelSlice sl : slices) {
+            String ch = sl.payChannel();
             if (sl.allDeferred()) {
-                /*
-                 * **这一条是加按渠道分解的全部理由。**
-                 * 一个渠道扫到的每一笔都判不了 —— 这不是「有几笔在路上」，
-                 * 这是这家通道我方查不通（凭据过期、出口 IP 变了、对方在维护）。
-                 * 它在总数里看不出来，而它要人立刻去看。
-                 */
-                log.warn("[recon] **{} 这一轮 {} 笔全部判不了** —— "
-                                + "不是几笔在路上，是这家通道查不通：查凭据、出口 IP、对方公告",
-                        sl.payChannel(), sl.scanned());
+                Stuck st = stuck.get(ch);
+                if (st == null) {
+                    stuck.put(ch, new Stuck(now));
+                    log.warn("[recon] **{} 这一轮 {} 笔全部判不了** —— "
+                                    + "不是几笔在路上，是这家通道查不通：查凭据、出口 IP、对方公告",
+                            ch, sl.scanned());
+                } else {
+                    st.rounds++;
+                    if (!now.isBefore(st.lastLogged.plus(RESTATE_EVERY))) {
+                        st.lastLogged = now;
+                        log.warn("[recon] **{} 仍然全部判不了**：已持续 {} 轮 / {} 分钟"
+                                        + "（本轮 {} 笔，自 {} 起）—— 查凭据、出口 IP、对方公告",
+                                ch, st.rounds, Duration.between(st.since, now).toMinutes(),
+                                sl.scanned(), st.since);
+                    }
+                }
+            } else {
+                Stuck st = stuck.remove(ch);
+                if (st != null) {
+                    log.info("[recon] {} 恢复了：判得动了（此前连续 {} 轮 / {} 分钟全部判不了，自 {} 起）",
+                            ch, st.rounds, Duration.between(st.since, now).toMinutes(), st.since);
+                }
             }
         }
-        return new Result(findings.size(), repaired, closed, deferred, slices);
     }
 
     /**
