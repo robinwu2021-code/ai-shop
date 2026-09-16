@@ -12,7 +12,14 @@ import { SHOW_CATEGORY_GATE } from "@/shared/flags";
 import { money } from "@shared/utils/money";
 import { saveBase64Image } from "@/utils/image";
 import type { Category, Goods, GoodsStatus, Poster, StoreCategory } from "@shared/types";
-import { confirm, prompt } from "@ai-shop/ui/prompt";
+import { confirm, pick, prompt } from "@ai-shop/ui/prompt";
+/**
+ * 这一行上可能出现的动作。**具名联合而不是 string** ——
+ * `runAct` 与菜单项都按它分发，写错一个拼法在 string 下是运行时静默无反应，
+ * 在这里是编译期红字。
+ */
+type GoodsAct = "submit" | "onSale" | "offSale" | "edit" | "share" | "editStorePrice";
+
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -471,6 +478,100 @@ async function submit(g: Goods) {
   }
 }
 
+/**
+ * 这一行上**除库存之外**的所有动作，按「该不该给他」筛完之后的完整清单。
+ *
+ * <p>顺序就是菜单里的顺序，也是挑主动作的优先级 —— 第一项即主动作。
+ * 抽成一处而不是散在模板里：改版前六个按钮各带各的 `v-if`，
+ * 条件重叠又互不相干（`pending(g)` 与 `status !== 'DRAFT'` 分别写在两个按钮上），
+ * 想回答「这一行到底会出现几个按钮」只能把六个条件在脑子里合并一遍。
+ */
+function actsOf(g: Goods): GoodsAct[] {
+  const out: GoodsAct[] = [];
+  const canGoods = merchant.can("biz:goods");
+  // 草稿只给「提交审核」：上架对它必被拒，而拒绝的理由（还没过审）
+  // 对一个自己都没提交的商品说不通
+  if (g.status === "DRAFT" && canGoods) out.push("submit");
+  // 审核中/已驳回**不给上下架**：后端必拒（70003），
+  // 留着它等于给商家一个永远点不动的按钮，而错在哪一句话都没有
+  if (canGoods && !pending(g) && g.status !== "DRAFT") out.push(g.onSale ? "offSale" : "onSale");
+  if (canGoods) out.push("edit");
+  // 只给在售商品：分享一件审核中/已下架的货，买家点进去要么看不见要么下不了单
+  if (stateOf(g) === "ON_SALE" && merchant.can("biz:store")) out.push("share");
+  // 本店价只在多门店时出现：单店商家改的就是主体价（编辑页那个），
+  // 多给一个入口只会让他分不清自己改的是哪个数
+  if (merchant.multiStore && canGoods) out.push("editStorePrice");
+  return out;
+}
+
+/** 摆在最左、给主色的那一个。每种状态其实只有一件显然该做的事 */
+function primaryOf(g: Goods): GoodsAct | null {
+  return actsOf(g)[0] ?? null;
+}
+
+/** 收进「更多」的那些 —— 主动作之外的全部 */
+function moreOf(g: Goods): GoodsAct[] {
+  return actsOf(g).slice(1);
+}
+
+/**
+ * 「更多」里只剩一项时的那一项。
+ *
+ * <p>模板要的是 `GoodsAct | null`；直接写 `moreOf(g)[0]` 在开了
+ * `noUncheckedIndexedAccess` 的这份配置下是 `| undefined`，过不了类型检查。
+ *
+ * <p>⚠️ **不要用 `arr[0]!` 那种非空断言**。`]` 后面紧跟 `!` 会被 UnoCSS 的
+ * `transformerVariantGroup` 当成「任意值 + important」语法去改写源码，
+ * 与另一个 transformer 撞在同一块上，整个文件编译失败：
+ * `[plugin:unocss:transformers:pre] Cannot split a chunk that has already been edited`。
+ * **报错指向文件第 1 行、不指向这里**，而 vue-tsc 与 vitest 全绿 ——
+ * 2026-09-16 为此二分了十几轮才定位到这一个字符。
+ */
+function soleMoreOf(g: Goods): GoodsAct | null {
+  const [first, ...rest] = moreOf(g);
+  return first !== undefined && rest.length === 0 ? first : null;
+}
+
+/**
+ * 动作的显示名。
+ *
+ * <p><b>标签必须在脚本里算好，模板里不能写反引号模板串。</b>
+ * 第一版写的是 <code>{{ $t(`goods.${primaryOf(g)}`) }}</code>，结果 UnoCSS 的
+ * pre 转换器直接崩在整个文件上：
+ * <code>[plugin:unocss:transformers:pre] Cannot split a chunk that has already been edited</code>
+ * —— 整页白屏，而 vue-tsc 与 vitest 全绿，本地不跑一次根本发现不了。
+ */
+function labelOf(act: GoodsAct): string {
+  return t("goods." + act);
+}
+
+/*
+ * 模板只调这四个 —— **不在模板里写 `!` 非空断言**。
+ * 除了上面记的 UnoCSS 那个坑，模板里的断言本身也读不出「什么时候会是空」。
+ */
+function runPrimary(g: Goods) { const a = primaryOf(g); if (a) runAct(g, a); }
+function primaryLabel(g: Goods) { const a = primaryOf(g); return a ? labelOf(a) : ""; }
+function runSoleMore(g: Goods) { const a = soleMoreOf(g); if (a) runAct(g, a); }
+function soleMoreLabel(g: Goods) { const a = soleMoreOf(g); return a ? labelOf(a) : ""; }
+
+/** 一个动作一个入口，模板里不再各写各的 @tap */
+function runAct(g: Goods, act: GoodsAct) {
+  if (act === "submit") void submit(g);
+  else if (act === "onSale" || act === "offSale") void toggle(g);
+  else if (act === "edit") edit(g);
+  else if (act === "share") void shareGoods(g);
+  else if (act === "editStorePrice") void editStorePrice(g);
+}
+
+async function openMore(g: Goods) {
+  const acts = moreOf(g);
+  const i = await pick({
+    title: g.title,
+    items: acts.map(labelOf),
+  });
+  if (i != null && acts[i]) runAct(g, acts[i]);
+}
+
 function edit(g?: Goods) {
   uni.navigateTo({ url: g ? `${ROUTES.goodsEdit}?goodsNo=${g.goodsNo}` : ROUTES.goodsEdit });
 }
@@ -648,52 +749,42 @@ onShow(() => {
         <text v-if="SHOW_CATEGORY_GATE && gateOf(g)" class="txt-caption reason is-warning">
           {{ $t("goods.gateRow") }}
         </text>
-        <view class="row__btns sh-wrap">
-          <!-- 编辑与上下架都会改价/改可见性 → biz:goods；改库存只是数量 → biz:stock。
-               这条缝就是店员的权限边界：卖完了能马上改数，但改不了价 -->
-          <text v-if="merchant.can('biz:goods')" class="txt-caption mini" @tap="edit(g)">
-            {{ $t("goods.edit") }}
-          </text>
-          <!-- 草稿只给「提交审核」：上架按钮对它必被拒，而拒绝的理由（还没过审）
-               对一个自己都没提交的商品说不通 -->
+        <!--
+          ★ **一行最多两个按钮，其余收进「更多」。**
+
+          改版前这里最多同时摆六个（编辑/提交审核/上下架/改库存/分享/本店价），
+          全是同一种 `txt-caption mini`，于是**没有一个是主动作** ——
+          多门店的在售商品一行五个按钮换行成两排，而其中四个一周也点不到一次。
+
+          留下的两个的取法：
+            · 主动作按状态定。每种状态其实只有一件显然该做的事
+              （草稿→提交审核、审核中/已驳回→编辑、在售→下架、已下架→上架），
+              摆最左并给主色。
+            · 改库存**恒在**：它是最高频的（生鲜一天改几次），
+              也是店员唯一点得动的那一个（biz:stock 不含 biz:goods）。
+          其余全进「更多」。收纳走库里的 `pick()` 而不是 uni.showActionSheet ——
+          系统面板在四个端上长相各不相同（statement 页的注释里记着同一条）。
+        -->
+        <view class="row__btns sh-row">
           <text
-            v-if="g.status === 'DRAFT' && merchant.can('biz:goods')"
-            class="txt-caption mini"
-            @tap="submit(g)"
-          >
-            {{ $t("goods.submit") }}
-          </text>
-          <!-- 审核中/已驳回时**不给上架按钮**：后端必拒（70003），
-               留着它等于给商家一个永远点不动的按钮，而错在哪一句话都没有 -->
-          <text
-            v-if="merchant.can('biz:goods') && !pending(g) && g.status !== 'DRAFT'"
-            class="txt-caption mini"
-            @tap="toggle(g)"
-          >
-            {{ g.onSale ? $t("goods.offSale") : $t("goods.onSale") }}
-          </text>
+            v-if="primaryOf(g)"
+            class="txt-caption mini mini--primary"
+            @tap="runPrimary(g)"
+          >{{ primaryLabel(g) }}</text>
           <text v-if="merchant.can('biz:stock')" class="txt-caption mini" @tap="editStock(g)">
             {{ $t("goods.editStock") }}
           </text>
-          <!-- 只给在售商品：分享一件审核中/已下架的货，买家点进去要么看不见要么下不了单 -->
+          <!-- 只剩一项时不做成菜单：多一次点击换不来任何东西 -->
           <text
-            v-if="stateOf(g) === 'ON_SALE' && merchant.can('biz:store')"
-            class="txt-caption mini"
-            @tap="shareGoods(g)"
-          >
-            {{ $t("goods.share") }}
-          </text>
-          <!--
-            本店价只在多门店时出现：单店商家改的就是主体价（编辑页那个），
-            多给一个入口只会让他分不清自己改的是哪个数。
-          -->
+            v-if="moreOf(g).length > 1"
+            class="txt-caption mini mini--more"
+            @tap="openMore(g)"
+          >{{ $t("goods.more") }}</text>
           <text
-            v-if="merchant.multiStore && merchant.can('biz:goods')"
+            v-else-if="soleMoreOf(g)"
             class="txt-caption mini"
-            @tap="editStorePrice(g)"
-          >
-            {{ $t("goods.editStorePrice") }}
-          </text>
+            @tap="runSoleMore(g)"
+          >{{ soleMoreLabel(g) }}</text>
         </view>
       </view>
     </view>
@@ -873,12 +964,29 @@ onShow(() => {
    五个（将来再加）就换行，而不是把上面那行挤没 */
 .row__btns {
   justify-content: flex-end;
+  align-items: center;
+  gap: 16rpx;
   margin-top: 16rpx;
 }
 .mini {
   padding: 8rpx 16rpx;
   border-radius: 16rpx;
   background: var(--sh-faint);
+}
+/*
+ * 主动作给主色。改版前六个按钮长得一模一样，**哪个是这一行该做的事无从看出** ——
+ * 而每种状态其实只有一件（草稿→提交审核、在售→下架…）。
+ */
+.mini--primary {
+  background: var(--sh-primary-tint);
+  color: var(--sh-primary-text);
+}
+/* 「更多」是收纳口不是动作：不给底色，免得看着像第三个并列按钮 */
+.mini--more {
+  background: transparent;
+  padding-left: 8rpx;
+  padding-right: 8rpx;
+  color: var(--sh-sub);
 }
 
 /* 分享单品浮层：底部弹出，与 biz-region-picker 的 .sheet 同一形态，商家不用重新学 */

@@ -463,6 +463,7 @@ export default {
     multiSkuStock: "多规格商品请在编辑页按规格修改",
     stockInvalid: "库存须为 0 或正整数",
     share: "分享",
+    more: "更多",
     shareTitle: "分享「{s}」",
     langZh: "中",
     langEn: "EN",
