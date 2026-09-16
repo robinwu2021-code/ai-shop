@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# 本机巡检：磁盘、日志总量、日志增速、outbox 死信。
+# 本机巡检：磁盘、日志总量、日志增速、outbox 死信、binlog 总量、**服务是否还活着**。
 # 安装位置：/data/app/ai-shop/ops/logwatch.sh
 # 由 /etc/cron.d/ai-shop-logwatch 每小时第 7 分跑，输出进 /data/log/ai-shop/ops/logwatch.log。
 #
@@ -38,6 +38,12 @@ WEBHOOK_URL="${WEBHOOK_URL:-}"
 # 理由：这台机器上已经有一套验证过能发信的凭据，再抄一份就是多一个要轮换的地方，
 # 而且抄的过程本身就是一次泄露机会。
 ALERT_MAIL_TO="${ALERT_MAIL_TO:-}"
+# 要巡的服务与探针。空则跳过该项。
+# 用 ${VAR-默认} 而不是 ${VAR:-默认}：后者在 VAR="" 时也取默认，于是**关不掉**这一项，
+# 消融时想单独验某个分支会验错对象（实测已栽过一次）。
+HEALTH_UNITS="${HEALTH_UNITS-ai-shop ai-shop-job ai-shop-pay mysql97 nginx}"
+HEALTH_HTTP="${HEALTH_HTTP-http://127.0.0.1:8081/actuator/health=200 http://127.0.0.1:8083/internal/pay/fee-rules=401}"
+HEALTH_MYSQL="${HEALTH_MYSQL-1}"
 MAIL_ENV_FILE="${MAIL_ENV_FILE:-$DATA/app/ai-shop/shop-app/shop-app.env}"
 # 数据库客户端。2026-09-16 切 MySQL 9.7 后，裸 `mysql` 连的是已停的 MariaDB(3306)，
 # 这一条会一直报「查不了 outbox」—— 报得对，但它该查的是新库。
@@ -157,6 +163,73 @@ elif [ "$binlog_bytes" -gt $((BINLOG_MAX_MB * 1048576)) ]; then
     say WARN "binlog" "$(mb "$binlog_bytes") / $binlog_n 个（上限 ${BINLOG_MAX_MB}M）—— 过期清理可能没生效，查 binlog_expire_logs_seconds"
 else
     say OK "binlog" "$(mb "$binlog_bytes") / $binlog_n 个（上限 ${BINLOG_MAX_MB}M）"
+fi
+
+# ── 4c. 服务还活着没有（2026-09-16 补）──────────────────────────────────────
+#
+# **这一节此前完全不存在**，而它才是最常出事的那一类。
+# 判据不是推测：2026-09-16 12:29 mysqld 被 OOM 杀、Requires= 把三个应用服务
+# 一起带停 81 秒，而事故前 12:07 那轮巡检报的是一整屏 OK ——
+# **在那 81 秒里它报的还会是一整屏 OK**，因为服务死了磁盘不涨、日志不涨。
+#
+# 更糟的是第 3 节那把尺：服务一死，日志速率归零，读作「OK 0.0K/h」。
+# **死掉的服务比活着的看起来更健康。**
+#
+# 一小时一轮对 81 秒的中断仍然太粗，它换不来「立刻知道」；
+# 它换来的是把「挂了一整夜」变成「挂了一小时」——而在这一节存在之前，
+# 那个数是「永远不知道」。
+#
+# **失败要复查一次再报。** 部署本身就会让服务离线十几秒，
+# 巡检正好撞上就报 CRIT 是误报；而误报会训练人忽略这个通道，
+# 那比没有告警更坏（§11.2 记过同一个形状）。
+recheck() {   # recheck <命令...> —— 先试一次，失败等 12 秒再试一次
+    "$@" >/dev/null 2>&1 && return 0
+    sleep 12
+    "$@" >/dev/null 2>&1
+}
+
+for u in $HEALTH_UNITS; do
+    # `|| true` 不能省：`set -e` 下 is-active 对「服务不在」返回非零，整个脚本会当场退出 ——
+    # 而那恰恰是唯一有东西要报的时刻。消融时这条把分支①②整个吞掉了。
+    st="$(systemctl is-active "$u" 2>/dev/null || true)"
+    case "$st" in
+        active)
+            say OK "svc $u" "active" ;;
+        activating|deactivating|reloading)
+            # 在途状态：等一轮再判，别把一次正常重启报成事故
+            sleep 12
+            st2="$(systemctl is-active "$u" 2>/dev/null || true)"
+            if [ "$st2" = active ]; then say OK "svc $u" "active（探到时正在 $st，复查已就绪）"
+            else say CRIT "svc $u" "**$st2**（12 秒前是 $st）—— 起不来，看 journalctl -u $u"; fi ;;
+        *)
+            say CRIT "svc $u" "**$st** —— 服务不在了。看 systemctl status $u 与 journalctl -u $u -n 50" ;;
+    esac
+done
+
+for probe in $HEALTH_HTTP; do
+    url="${probe%=*}"; want="${probe##*=}"
+    # 同理：连不上时 curl 返回非零，不加 `|| true` 脚本就死在这儿
+    got="$(curl -s -o /dev/null -w '%{http_code}' -m 8 "$url" 2>/dev/null || true)"
+    if [ "$got" != "$want" ]; then
+        sleep 12
+        got="$(curl -s -o /dev/null -w '%{http_code}' -m 8 "$url" 2>/dev/null || true)"
+    fi
+    if [ "$got" = "$want" ]; then
+        say OK "http $(basename "$url")" "$got"
+    elif [ "$got" = 000 ]; then
+        # 000 与「返回了别的码」要分开说：前者是进程没起/端口不通，后者是应用起来了但不健康
+        say CRIT "http $(basename "$url")" "**连不上**（期望 $want）—— 进程没起或端口不通：$url"
+    else
+        say CRIT "http $(basename "$url")" "**$got**（期望 $want）—— 容器起来了但不健康：$url"
+    fi
+done
+
+if [ -n "$HEALTH_MYSQL" ]; then
+    if recheck $MYSQL_CLI -N -e 'SELECT 1'; then
+        say OK "mysql" "查得动"
+    else
+        say CRIT "mysql" "**连不上或查不动** —— 三个服务都靠它，看 systemctl status mysql97 与 /data/log/infra/mysql97/error.log"
+    fi
 fi
 
 # ── 5. 告警出口 ─────────────────────────────────────────────────────────────
