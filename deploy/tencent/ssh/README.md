@@ -105,7 +105,16 @@ exited MaxStartups throttling after 00:00:33, 3 connections dropped
 > ⚠️ 量并发**不能用 `ss state all`** —— 它把 `TIME_WAIT`/`FIN_WAIT` 也算进去，
 > 会看到「6 条并发」而实际未认证的只有 1 条。判据是 `ps -eo args | grep 'sshd: \[net\]'`。
 
-### ② fail2ban（fail2ban-jail.local）—— 治本
+### ② fail2ban（`fail2ban-jail.conf` → 装成 `/etc/fail2ban/jail.local`）—— 治本
+
+```bash
+sudo install -m 644 fail2ban-jail.conf /etc/fail2ban/jail.local
+sudo fail2ban-client -t && sudo systemctl restart fail2ban
+```
+
+> 仓库里叫 `.conf` 不叫 `.local`：`.gitignore` 第 10 行有 `*.local`，
+> 直接放 `jail.local` 会被**静默忽略** —— `git add <目录>` 不报错，文件就是没进去。
+
 
 **`mode = aggressive` 不是可选项。** 默认的 `normal` 只匹配认证失败，
 而这次攻击的大头是 `kex_exchange_identification` 和 `Connection closed ... [preauth]`，
