@@ -249,6 +249,32 @@ function switchTo(s: Store) {
   uni.showToast({ title: t("stores.switched", { name: s.name }), icon: "none" });
 }
 
+/**
+ * 这家店现在能不能切过去。
+ *
+ * <p>**只对能进的店给**：停业店切过去，每一页都查出空数据，而人只会觉得
+ * 「今天没单」。当前那家也不给 —— 点了什么都不会发生。
+ *
+ * <p>抽成函数是因为它现在有三个用处（整卡的点击区、卡片的可点样式、
+ * 右下角那句提示）。散在模板里写三遍，迟早有一处忘了改。
+ */
+function canSwitchTo(s: Store) {
+  return s.storeNo !== merchant.storeNo && s.status === "ACTIVE";
+}
+
+/**
+ * 整张卡就是切店的点击区。
+ *
+ * <p>改版前只有一个小小的「切到这家」按钮可点，而卡片本体点了毫无反应 ——
+ * 店主的原话是「点击后不能切换」。他点的是店名。
+ *
+ * <p>写成具名函数而不是模板里的 `canSwitchTo(s) && switchTo(s)`：
+ * 那种内联短路表达式在小程序编译下不保险，而这一页三端都要跑。
+ */
+function onCardTap(s: Store) {
+  if (canSwitchTo(s)) switchTo(s);
+}
+
 /** 传空 = 回到主体默认收款号，是合法操作 */
 function pickPayment(s: Store, payMerchantNo?: string) {
   run(() => api.mSetStorePayment(s.storeNo, payMerchantNo));
@@ -266,9 +292,15 @@ function pickPayment(s: Store, payMerchantNo?: string) {
       一段时间里谁更好是另一类问题，在「经营数据 › 跨店对比」——
       同一屏里既摆今天又摆近 30 天，两个数会被读成互相矛盾。
     -->
-    <view v-for="s in rows" :key="s.storeNo" class="sh-card st">
+    <view
+      v-for="s in rows"
+      :key="s.storeNo"
+      class="sh-card st"
+      :class="{ 'st--switchable': canSwitchTo(s) }"
+      @tap="onCardTap(s)"
+    >
       <view class="st__top sh-row sh-row--between">
-        <text class="txt-title">{{ s.name }}</text>
+        <text class="txt-title st__name">{{ s.name }}</text>
         <view class="tags">
           <text v-if="s.storeNo === merchant.storeNo" class="sh-chip sh-chip--primary">{{ $t("stores.currentTag") }}</text>
           <text v-if="s.isDefault" class="sh-chip">{{ $t("stores.default") }}</text>
@@ -279,13 +311,19 @@ function pickPayment(s: Store, payMerchantNo?: string) {
           -->
           <text v-if="s.planSuspended" class="sh-chip sh-chip--danger">{{ $t("stores.planSuspended") }}</text>
           <text v-else-if="s.status !== 'ACTIVE'" class="sh-chip">{{ $t("stores.disabled") }}</text>
-          <!-- 收不了钱要显眼：店开着但钱进不来，是最容易被忽略的一种坏 -->
-          <text v-if="!s.payReady" class="sh-chip sh-chip--danger">{{ $t("stores.payNotReady") }}</text>
+          <!--
+            ★ **归集商户不显示这一条。** 钱先进平台户、再由平台结算给他，
+            他压根不走自己的收款通道 —— 而 `payReady` 读的就是通道进件状态。
+            于是它对每一家归集门店恒亮、也点不掉：这家店本来就能做生意。
+            与工作台那条「还不能收款」是同一个缺陷的第二份。
+          -->
+          <text v-if="!s.payReady && !merchant.fundsAggregated" class="sh-chip sh-chip--danger">
+            {{ $t("stores.payNotReady") }}
+          </text>
         </view>
       </view>
 
-      <text v-if="s.address" class="addr">{{ s.address }}</text>
-      <text class="txt-caption meta">{{ $t("stores.staffCount", { n: s.staffCount }) }}</text>
+      <text v-if="s.address" class="txt-caption addr">{{ s.address }}</text>
 
       <!--
         今天这家店怎么样。**待办三项照抄跨店总览的口径**（待发货/待自送/待备货）：
@@ -321,45 +359,53 @@ function pickPayment(s: Store, payMerchantNo?: string) {
         </view>
       </view>
 
-      <!-- 收款号：空 = 用主体默认号，这是常态不是缺配置 -->
-      <view class="pay">
-        <text class="txt-caption pay__label">{{ $t("stores.payment") }}</text>
-        <view class="pay__opts sh-wrap">
-          <text
-            class="sh-chip"
-            :class="{ 'sh-chip--primary': !s.payMerchantNo }"
-            @tap="pickPayment(s, undefined)"
-          >
-            {{ $t("stores.payDefault") }}
-          </text>
-          <text
-            v-for="p in payOptions"
-            :key="p.payMerchantNo"
-            class="sh-chip"
-            :class="{ 'sh-chip--primary': s.payMerchantNo === p.payMerchantNo }"
-            @tap="pickPayment(s, p.payMerchantNo)"
-          >
-            {{ p.channelName }}
-          </text>
+      <!--
+        ★ **标签与取值同一行。**
+        改版前「收款账户」与它的值、「授权员工」与它的数各占一行，于是一张卡上
+        散着五六行长短不一的文字，眼睛要上下扫一遍才拼得出一条信息
+        （店主原话：「主体默认号、改名、收款到都在不同的行，一下看不明白」）。
+        标签定宽左列、取值右列，横着读完一条。
+      -->
+      <view class="facts">
+        <view class="fact sh-row">
+          <text class="txt-caption fact__k">{{ $t("stores.payment") }}</text>
+          <!-- 收款号：空 = 用主体默认号，这是常态不是缺配置 -->
+          <view class="fact__v sh-wrap">
+            <text
+              class="sh-chip"
+              :class="{ 'sh-chip--primary': !s.payMerchantNo }"
+              @tap.stop="pickPayment(s, undefined)"
+            >
+              {{ $t("stores.payDefault") }}
+            </text>
+            <text
+              v-for="p in payOptions"
+              :key="p.payMerchantNo"
+              class="sh-chip"
+              :class="{ 'sh-chip--primary': s.payMerchantNo === p.payMerchantNo }"
+              @tap.stop="pickPayment(s, p.payMerchantNo)"
+            >
+              {{ p.channelName }}
+            </text>
+          </view>
+        </view>
+        <view class="fact sh-row">
+          <text class="txt-caption fact__k">{{ $t("stores.staffLabel") }}</text>
+          <text class="txt-body fact__v">{{ $t("stores.staffValue", { n: s.staffCount }) }}</text>
         </view>
       </view>
 
+      <!--
+        动作一排，**全部同一视觉层级**。改版前「切到这家」是按钮、其余是链接，
+        四个动作两种样式，看着像两类不同的东西。
+        切店已经由整张卡承担（见 st--switchable），这里不再重复一个按钮。
+
+        `@tap.stop` 一个都不能少：卡片本身是切店的点击区，
+        不拦住冒泡的话，点「停用」会**顺带把当前店切过去**。
+      -->
       <view class="acts">
-        <!--
-          切当前店。**只对能进的店给**：停业店切过去，每一页都查出空数据，
-          而人只会觉得「今天没单」。当前那家不给 —— 点了什么都不会发生。
-        -->
-        <text
-          v-if="s.storeNo !== merchant.storeNo && s.status === 'ACTIVE'"
-          class="sh-btn sh-btn--soft sh-btn--sm"
-          @tap="switchTo(s)"
-        >{{ $t("stores.switchTo") }}</text>
-        <!--
-          改名。后端与契约一直都在，**这一页却只有建店/停用/设默认/挂收款号四个动作** ——
-          于是开错一个字的店名只能停用重建，而重建会丢掉这家店的历史。
-        -->
-        <text class="sh-link" @tap="rename(s)">{{ $t("stores.rename") }}</text>
-        <text v-if="!s.isDefault && s.status === 'ACTIVE'" class="sh-link" @tap="makeDefault(s)">
+        <text class="sh-link" @tap.stop="rename(s)">{{ $t("stores.rename") }}</text>
+        <text v-if="!s.isDefault && s.status === 'ACTIVE'" class="sh-link" @tap.stop="makeDefault(s)">
           {{ $t("stores.setDefault") }}
         </text>
         <!-- 默认店没有停用入口：后端也会拒，但按钮就不该出现在那儿 -->
@@ -367,12 +413,14 @@ function pickPayment(s: Store, payMerchantNo?: string) {
           降级压下的店**不给「启用」按钮**：点了后端也不会放行（额度还是不够），
           而一个点了没反应的按钮比没有按钮更让人困惑。给的是「去看套餐」。
         -->
-        <text v-if="s.planSuspended" class="sh-link" @tap="goPlan">{{ $t("stores.planSuspendedAct") }}</text>
-        <text v-else-if="!s.isDefault" class="sh-link" @tap="toggleStatus(s)">
+        <text v-if="s.planSuspended" class="sh-link" @tap.stop="goPlan">{{ $t("stores.planSuspendedAct") }}</text>
+        <text v-else-if="!s.isDefault" class="sh-link" @tap.stop="toggleStatus(s)">
           {{ s.status === "ACTIVE" ? $t("stores.disable") : $t("stores.enable") }}
         </text>
+        <text v-if="canSwitchTo(s)" class="txt-caption acts__hint">{{ $t("stores.switchTo") }} ›</text>
       </view>
     </view>
+
 
     <view v-if="!adding" class="sh-btn sh-btn--soft add" @tap="adding = true">
       {{ $t("stores.add") }}
@@ -470,24 +518,54 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   display: flex;
   gap: 8rpx;
 }
-.addr,
-.meta {
+.st__name {
+  /* 店名可能很长，标签区要保得住：名字压缩，标签不被挤到下一行 */
+  flex: 1;
+  min-width: 0;
+  margin-right: 16rpx;
+}
+/* 整张卡是切店的点击区时给一个可点的暗示 —— 没有它，「能点」这件事无从得知 */
+.st--switchable {
+  border: var(--sh-hairline-soft);
+}
+.addr {
   display: block;
   margin-top: 8rpx;
 }
-.pay {
+
+/* 标签 + 取值横排。左列定宽，多条信息的取值才会对齐成一条竖线 */
+.facts {
   margin-top: 20rpx;
+  padding-top: 16rpx;
+  border-top: var(--sh-hairline-soft);
 }
-.pay__label {
-  display: block;
+.fact {
+  align-items: flex-start;
 }
-.pay__opts {
-  margin-top: 12rpx;
+.fact + .fact {
+  margin-top: 16rpx;
+}
+.fact__k {
+  width: 140rpx;
+  flex: none;
+  /* 与右侧取值的首行对齐：取值那边可能是 chip（带内边距），纯文本会偏上 */
+  padding-top: 6rpx;
+}
+.fact__v {
+  flex: 1;
+  min-width: 0;
 }
 .acts {
   display: flex;
-  gap: 24rpx;
+  align-items: center;
+  gap: 28rpx;
   margin-top: 20rpx;
+  padding-top: 16rpx;
+  border-top: var(--sh-hairline-soft);
+}
+/* 「切换至此店 ›」推到最右：它说的是整张卡的行为，不是与左边并列的第四个动作 */
+.acts__hint {
+  margin-left: auto;
 }
 .field {
   margin-top: 20rpx;

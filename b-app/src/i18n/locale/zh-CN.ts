@@ -898,22 +898,29 @@ export default {
 
     qualEntry: "资质证照",
     title: "门店管理",
-    hint: "这里管有几家店；单店的门面（公告/营业时间/主推）在店铺设置里改",
-    default: "默认店",
-    currentTag: "当前",
-    switchTo: "切到这家",
+    hint: "管理门店的开设、启停与收款账户。单店门面（公告、营业时间、主推商品）在「店铺设置」中维护。",
+    default: "默认",
+    currentTag: "当前经营",
+    switchTo: "切换至此店",
+    tapHint: "点击门店卡片即可切换",
     todayLine: "今日 {n} 单 · {gmv}",
-    switched: "已切换到 {name}",
+    switched: "已切换至 {name}",
     disabled: "已停用",
-    payNotReady: "收不了钱",
-    staffCount: "已授权员工 {n} 人",
-    payment: "收款到",
-    payDefault: "主体默认号",
-    rename: "改名", setDefault: "设为默认",
+    /*
+     * 「收不了钱」太口语，且它说的其实是「收款通道尚未开通」。
+     * 两者差别不只在语气：通道没开通**不等于**这家店有问题 ——
+     * 归集商户的钱先进平台户，压根不走自己的通道（见下方 payNotReady 的显示条件）。
+     */
+    payNotReady: "收款未开通",
+    staffLabel: "授权员工",
+    staffValue: "{n} 人",
+    payment: "收款账户",
+    payDefault: "主体默认账户",
+    rename: "重命名", setDefault: "设为默认",
     disable: "停用",
     enable: "启用",
     add: "＋ 新建门店",
-    quotaHint: "当前套餐有门店数量上限，超出会被拒绝",
+    quotaHint: "门店数量受当前套餐额度限制，超出额度将无法创建",
     // 平台因欠费压下的只读，与「已停用」（店主自己关的）分开 —— 两者下一步完全不同
     planSuspended: "套餐降级 · 只读",
     planSuspendedAct: "去看套餐",
