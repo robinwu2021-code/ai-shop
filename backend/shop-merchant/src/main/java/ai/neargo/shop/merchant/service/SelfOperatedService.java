@@ -60,6 +60,9 @@ public interface SelfOperatedService {
      * @param fundsMode    回读值，不是入参回显。判据要来自库
      * @param businessMode 默认门店的经营模式，同样是回读值
      * @param serviceScope 回读值
+     * @param selfOperated 回读值，应为 true。它是<b>免证件与运营建店的唯一判据</b> ——
+     *        {@code fundsMode} 认不出平台自己（归集同时盖着代销），
+     *        {@code businessMode} 也认不出（门店级，且默认值就是自营）
      * @param reachableCommunities <b>这家店现在对多少个小区可见。</b>
      *
      *        <p>它是本入口最要紧的一个返回值，而不是装饰。ADR-009 那条约束防的是
@@ -72,8 +75,39 @@ public interface SelfOperatedService {
      */
     record ResultVO(String merchantNo, String storeNo, String ownerUserNo,
                     String fundsMode, String businessMode, String serviceScope,
-                    boolean created, int reachableCommunities) {
+                    boolean created, int reachableCommunities, boolean selfOperated) {
     }
 
     ResultVO create(CreateCommand cmd, String operatorNo);
+
+    /**
+     * 给<b>平台自营主体</b>再开一家门店。
+     *
+     * <p>第三方商家自己在 B 端开店（{@code POST /biz/store/create}），而平台自己的店
+     * 没有「商家」去点那个按钮 —— 与建主体是同一个形状的缺口，所以开在运营端。
+     *
+     * <p><b>只对 {@code self_operated=1} 的主体开放。</b> 否则运营就能绕过商家、
+     * 替第三方开店并吃掉他买的订阅额度，而商家那边看不到是谁开的。
+     *
+     * <p><b>不走订阅额度</b>：额度是卖给商家的商品，平台自己的店不该被自己的定价限制。
+     * <b>也不需要进件</b>：自营门店按自营结算（钱先进平台户），
+     * 「第三方模式要有二级商户号」那条硬前提对它不成立 —— 见
+     * {@code MerchantGovernService#setBusinessMode} 里的同一段理由。
+     *
+     * @param categoryNos 这家店的货架（经营类目）。空 = 复制默认店的
+     */
+    record AddStoreCommand(String merchantNo, String name, String address,
+                           List<String> categoryNos) {
+    }
+
+    /**
+     * @param businessMode 回读值，应为 {@code SELF_OPERATED}
+     * @param payMerchantNo 收款号。<b>为空是正常的</b> —— 自营门店不进件，
+     *        这一列空着不代表这家店有问题（第三方模式下它为空才是硬阻塞）
+     */
+    record StoreVO(String storeNo, String merchantNo, String name, String address,
+                   String businessMode, String payMerchantNo) {
+    }
+
+    StoreVO addStore(AddStoreCommand cmd, String operatorNo);
 }

@@ -12,6 +12,7 @@ import java.util.List;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -65,6 +66,32 @@ public class OpsSelfOperatedController {
                         + "，范围 " + vo.serviceScope()
                         + "，当前可达小区 " + vo.reachableCommunities() + " 个");
         return vo;
+    }
+
+    /**
+     * 给平台自营主体再开一家门店。
+     *
+     * <p>第三方商家自己在 B 端开店，而平台自己的店没有「商家」去点那个按钮 ——
+     * 与建主体是同一个形状的缺口。<b>不走订阅额度、也不需要进件</b>，
+     * 理由见 {@link SelfOperatedService#addStore}。
+     *
+     * <p>复用 {@code merchant:selfop:create}：它回答的是同一个问题
+     * ——「平台要不要自己下场经营」，而不是两件事。
+     */
+    @PostMapping("/ops/merchants/{merchantNo}/stores")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_SELFOP_CREATE + "')")
+    public SelfOperatedService.StoreVO addStore(@PathVariable String merchantNo,
+                                                @Valid @RequestBody AddStoreReq req) {
+        String operator = SecurityUtils.currentUserNo();
+        var vo = selfOperatedService.addStore(new SelfOperatedService.AddStoreCommand(
+                merchantNo, req.name(), req.address(), req.categoryNos()), operator);
+        auditLogPort.record("MERCHANT_SELFOP_STORE", merchantNo,
+                "新增自营门店 " + vo.name() + "（" + vo.storeNo() + "）");
+        return vo;
+    }
+
+    /** @param categoryNos 这家店的货架；空 = 复制默认店的 */
+    public record AddStoreReq(@NotBlank String name, String address, List<String> categoryNos) {
     }
 
     /**

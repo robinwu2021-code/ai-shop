@@ -46,6 +46,22 @@ public class MchEntity extends BaseEntity {
     private Integer isAgriProducer;
 
     /**
+     * <b>这个主体就是平台自己吗</b>（V329）。1=平台自营，0=第三方（含代销）。
+     *
+     * <p><b>刻意与 {@code fundsMode} / {@code businessMode} 分开</b>，因为那两个都认不出它：
+     * <ul>
+     *   <li>{@code fundsMode=AGGREGATED} 的定义原文是「归集…平台是销售主体（<b>代销</b>）」
+     *       —— 同时盖着平台自营与代销第三方的货；</li>
+     *   <li>{@code business_mode} 是门店级的，而且 V23 的建表默认值就是 {@code SELF_OPERATED}，
+     *       每一家新店一出生都是自营。</li>
+     * </ul>
+     * 把「自营免证件」挂在那两个字段上，会顺手豁免掉代销的第三方商户，而且不报错。
+     *
+     * <p>写入口只有 {@code POST /ops/merchants/self-operated}，没有改回来的接口。
+     */
+    private Integer selfOperated;
+
+    /**
      * 经营资格（轴①，法定）：{@code REGISTERED} / {@code EXEMPT} / {@code UNREGISTERED}。
      *
      * <p><b>决定能不能交易，与通道无关</b> —— {@code UNREGISTERED} 是违法经营，

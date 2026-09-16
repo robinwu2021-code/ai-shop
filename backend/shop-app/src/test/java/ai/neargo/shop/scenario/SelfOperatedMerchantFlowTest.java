@@ -52,6 +52,9 @@ class SelfOperatedMerchantFlowTest {
     @Autowired
     private ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
 
+    @Autowired
+    private ai.neargo.shop.spi.user.QualificationPort qualificationPort;
+
     /**
      * 手机号各用例互不相同 —— 幂等判据是人，共用一个号会让用例之间互相喂结果。
      *
@@ -185,6 +188,79 @@ class SelfOperatedMerchantFlowTest {
         Integer after = jdbc.queryForObject("select count(*) from mch_entity_apply", Integer.class);
 
         assertThat(after).isEqualTo(before);
+    }
+
+    @Test
+    @DisplayName("★★★ 自营主体不问证件 —— 它的证件就是平台自己的证件")
+    void selfOperatedNeedsNoQualification() {
+        var r = selfOperated.create(new SelfOperatedService.CreateCommand(
+                phone(8), "虹选鲜果·免证", "CITY", List.of(), null, null), "OPS");
+
+        assertThat(r.selfOperated()).isTrue();
+        assertThat(entity(r.merchantNo()).getSelfOperated()).isEqualTo(1);
+        // 一张证都没登记
+        Integer quals = jdbc.queryForObject(
+                "select count(*) from mch_qualification where entity_no = ?",
+                Integer.class, r.merchantNo());
+        assertThat(quals).isZero();
+
+        assertThat(qualificationPort.hasValidQualification(
+                r.merchantNo(), ai.neargo.shop.spi.user.QualificationPort.BUSINESS_LICENSE))
+                .as("自营主体无证件也应放行").isTrue();
+    }
+
+    @Test
+    @DisplayName("★★★ 代销主体仍然要证件 —— 这条是防静默放宽的那一条")
+    void aggregatedButNotSelfOperatedStillNeedsQualification() {
+        /*
+         * `funds_mode=AGGREGATED` 的定义原文是「归集…平台是销售主体（**代销**）」，
+         * 它同时盖着平台自营与代销第三方的货。代销的货来自第三方，
+         * 那个第三方仍然要被核验（ADR-017 §3.4：平台先担责、再向商家追偿）。
+         *
+         * 所以：把豁免判据从 self_operated 换成 funds_mode，这条用例必须变红。
+         * 它红不了，就说明豁免已经悄悄盖到代销头上了 —— 而那种放宽没有任何报错。
+         */
+        var r = selfOperated.create(new SelfOperatedService.CreateCommand(
+                phone(9), "代销主体", "CITY", List.of(), null, null), "OPS");
+        // 把自营标记摘掉，只留归集 —— 这正是一个代销主体的样子
+        jdbc.update("update mch_entity set self_operated = 0 where entity_no = ?", r.merchantNo());
+
+        assertThat(entity(r.merchantNo()).getFundsMode()).isEqualTo("AGGREGATED");
+        assertThat(qualificationPort.hasValidQualification(
+                r.merchantNo(), ai.neargo.shop.spi.user.QualificationPort.BUSINESS_LICENSE))
+                .as("归集但非自营（代销）仍然要证件").isFalse();
+    }
+
+    @Test
+    @DisplayName("★★★ 运营给自营主体开店：不吃订阅额度、不需要进件、经营模式仍是自营")
+    void opsCanAddSelfOperatedStore() {
+        var r = selfOperated.create(new SelfOperatedService.CreateCommand(
+                phone(10), "虹选鲜果·多店", "CITY", List.of(), null, null), "OPS");
+
+        var st = selfOperated.addStore(new SelfOperatedService.AddStoreCommand(
+                r.merchantNo(), "虹选鲜果·南山店", "深圳市南山区", List.of()), "OPS");
+
+        assertThat(st.businessMode()).isEqualTo(MchStore.SELF_OPERATED);
+        // 自营门店不进件，收款号为空是正常的
+        assertThat(st.payMerchantNo()).isNull();
+        assertThat(st.storeNo()).isNotEqualTo(r.storeNo());
+
+        Integer n = jdbc.queryForObject(
+                "select count(*) from mch_store where entity_no = ? and deleted = 0",
+                Integer.class, r.merchantNo());
+        assertThat(n).as("默认店 + 新开的那家").isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("★★★ 非自营主体不许由运营开店 —— 否则运营能绕过商家吃掉他买的额度")
+    void opsCannotAddStoreForThirdParty() {
+        var r = selfOperated.create(new SelfOperatedService.CreateCommand(
+                phone(11), "第三方主体", "CITY", List.of(), null, null), "OPS");
+        jdbc.update("update mch_entity set self_operated = 0 where entity_no = ?", r.merchantNo());
+
+        assertThatThrownBy(() -> selfOperated.addStore(new SelfOperatedService.AddStoreCommand(
+                r.merchantNo(), "不该建出来的店", null, List.of()), "OPS"))
+                .isInstanceOf(BizException.class);
     }
 
     private MchEntity entity(String no) {

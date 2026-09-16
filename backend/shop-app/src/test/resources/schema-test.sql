@@ -1333,6 +1333,7 @@ CREATE TABLE IF NOT EXISTS mch_entity
     exempt_type VARCHAR(24) DEFAULT NULL,
     acode_base64 MEDIUMTEXT NULL,
     market VARCHAR(8) NOT NULL DEFAULT 'CN',
+    self_operated TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_entity_no UNIQUE (entity_no),
     CONSTRAINT uk_store_code UNIQUE (store_code)

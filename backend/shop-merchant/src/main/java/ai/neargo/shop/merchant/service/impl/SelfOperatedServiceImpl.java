@@ -10,6 +10,8 @@ import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.service.MerchantGovernService;
+import ai.neargo.shop.merchant.service.StoreCategoryService;
+import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.merchant.service.SelfOperatedService;
 import ai.neargo.shop.spi.platform.MasterDataPort;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
@@ -39,6 +41,8 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
     private final MasterDataPort masterDataPort;
     /** 回读「现在对多少个小区可见」——可见性的唯一出口，别在这里另算一份 */
     private final MerchantQueryPort merchantQueryPort;
+    /** 新店的货架。空 = 复制默认店的 —— 平台多开一家店卖的多半是同一批货 */
+    private final StoreCategoryService storeCategoryService;
 
     public SelfOperatedServiceImpl(UserProvisionPort userProvision,
                                    MerchantAdminPort merchantAdminPort,
@@ -46,7 +50,8 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
                                    MchEntityMapper entityMapper,
                                    MchStoreMapper storeMapper,
                                    MasterDataPort masterDataPort,
-                                   MerchantQueryPort merchantQueryPort) {
+                                   MerchantQueryPort merchantQueryPort,
+                                   StoreCategoryService storeCategoryService) {
         this.userProvision = userProvision;
         this.merchantAdminPort = merchantAdminPort;
         this.governService = governService;
@@ -54,6 +59,7 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
         this.storeMapper = storeMapper;
         this.masterDataPort = masterDataPort;
         this.merchantQueryPort = merchantQueryPort;
+        this.storeCategoryService = storeCategoryService;
     }
 
     @Override
@@ -132,6 +138,22 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
          */
         governService.setFundsMode(entityNo, MerchantQueryPort.FUNDS_AGGREGATED, operatorNo);
 
+        /*
+         * **打上「这个主体就是平台自己」的标记（V329）。这是本入口唯一的写入口。**
+         *
+         * 不能靠 funds_mode 推：`AGGREGATED` 的定义原文是「归集…平台是销售主体（代销）」，
+         * 它同时盖着平台自营与代销第三方的货；也不能靠 business_mode 推：
+         * 那是门店级的，且建表默认值就是 SELF_OPERATED，每家新店一出生都是。
+         * 免证件之类的豁免只认这一列，认另外两列就会顺手豁免掉代销商户且不报错。
+         */
+        MchEntity flagged = DataScopeContext.executeWithoutScope(() ->
+                entityMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, entityNo).last("LIMIT 1")));
+        if (flagged != null && !Integer.valueOf(1).equals(flagged.getSelfOperated())) {
+            flagged.setSelfOperated(1);
+            DataScopeContext.executeWithoutScope(() -> entityMapper.updateById(flagged));
+        }
+
         MchStore store = defaultStoreOf(entityNo);
         if (store == null) {
             // activate 保证建默认门店。取不到说明那条保证断了，别当成「这次没门店」继续往下走
@@ -156,7 +178,82 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
                 fresh == null ? null : fresh.getFundsMode(),
                 freshStore.getBusinessMode(),
                 fresh == null ? scope : fresh.getServiceScope(),
-                created, reachable);
+                created, reachable,
+                fresh != null && Integer.valueOf(1).equals(fresh.getSelfOperated()));
+    }
+
+    @Override
+    @Transactional
+    public StoreVO addStore(AddStoreCommand cmd, String operatorNo) {
+        String name = cmd.name() == null ? "" : cmd.name().trim();
+        if (cmd.merchantNo() == null || cmd.merchantNo().isBlank() || name.isEmpty()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                entityMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, cmd.merchantNo()).last("LIMIT 1")));
+        if (m == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        /*
+         * **只给平台自营主体开。**
+         *
+         * 放开给第三方的话，运营就能绕过商家替他开店、并吃掉他买的订阅额度，
+         * 而商家那边看不出是谁开的 —— 第三方开店的入口在 B 端
+         * （{@code POST /biz/store/create}），那里有额度闸、也有他自己的操作记录。
+         */
+        if (!Integer.valueOf(1).equals(m.getSelfOperated())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        /*
+         * **不走 StoreAdminService.create** —— 那条路上有 {@code requireStoreQuota}，
+         * 而订阅额度是卖给商家的商品，平台自己的店不该被自己的定价限制。
+         * 其余字段与那条路逐字相同（默认店只认第一家、状态 ACTIVE、featured 空数组）。
+         */
+        boolean first = DataScopeContext.executeWithoutScope(() ->
+                !storeMapper.exists(Wrappers.<MchStore>lambdaQuery()
+                        .eq(MchStore::getEntityNo, cmd.merchantNo())));
+        MchStore st = new MchStore();
+        st.setStoreNo(BizKey.next(BizKey.STORE));
+        st.setEntityNo(cmd.merchantNo());
+        st.setName(name);
+        if (cmd.address() != null && !cmd.address().isBlank()) {
+            st.setAddress(cmd.address().trim());
+        }
+        st.setIsDefault(first);
+        st.setStatus(MchStore.ACTIVE);
+        st.setFeatured("[]");
+        st.setCreatedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> storeMapper.insert(st));
+
+        /*
+         * 经营模式显式写一遍。建表默认值（V23）正好就是 SELF_OPERATED，
+         * 所以「不写也对」—— 而这正是要写的理由：默认值改一次，
+         * 平台自己的店就悄悄变成第三方，售后从此派给商家自己，没有任何报错。
+         * 与建主体那条路上同一段理由。
+         */
+        governService.setBusinessMode(st.getStoreNo(), MchStore.SELF_OPERATED, operatorNo);
+
+        // 货架：不勾就复制默认店的（多开一家店卖的多半是同一批货）
+        String copyFrom = DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                        .eq(MchStore::getEntityNo, cmd.merchantNo())
+                        .ne(MchStore::getStoreNo, st.getStoreNo())
+                        .orderByDesc(MchStore::getIsDefault).orderByAsc(MchStore::getId)))
+                .stream().findFirst().map(MchStore::getStoreNo).orElse(null);
+        storeCategoryService.initForNewStore(cmd.merchantNo(), st.getStoreNo(),
+                cmd.categoryNos(), copyFrom);
+
+        MchStore fresh = DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                        .eq(MchStore::getStoreNo, st.getStoreNo()).last("LIMIT 1")));
+        /*
+         * payMerchantNo 留空是**正常的**：自营门店不进件，钱先进平台户。
+         * 「收款号为空」只有在第三方模式下才是硬阻塞。
+         */
+        return new StoreVO(fresh.getStoreNo(), fresh.getEntityNo(), fresh.getName(),
+                fresh.getAddress(), fresh.getBusinessMode(), null);
     }
 
     private MchStore defaultStoreOf(String entityNo) {
