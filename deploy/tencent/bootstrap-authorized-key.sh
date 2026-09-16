@@ -81,7 +81,8 @@ for _ in $(seq 1 30); do
     SUCCESS)
       printf '%s' "$OUT" | python3 -c 'import sys,json,base64;t=json.load(sys.stdin)["InvocationTaskSet"][0]["TaskResult"];print(base64.b64decode(t["Output"]).decode())'
       echo "✓ 完成。现在验证 SSH："
-      echo "  ssh -i $KEY_DIR/soukmind_tx $LOGIN_USER@$HOST_IP 'id'"
+      # -p 必须带：SSH 端口 2026-09-16 从 22 迁到 50722，22 已在云防火墙关闭
+      echo "  ssh -p ${TX_SSH_PORT:-50722} -i $KEY_DIR/soukmind_tx $LOGIN_USER@$HOST_IP 'id'"
       exit 0;;
     FAILED|TIMEOUT|CANCELLED)
       echo "✗ 执行失败（$STATE）："; printf '%s' "$OUT"; exit 1;;

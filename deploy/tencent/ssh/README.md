@@ -172,9 +172,29 @@ systemd 报 `Assignment outside of section. Ignoring.` 把三行全忽略了。
 ② 机器同时听 22 + 新端口   ← Port 两行 + systemctl restart ssh
 ③ 从外面验新端口通         ← 必须 -o ControlPath=none
 ④ 改本机 ~/.ssh/config     ← 加 Port；并清掉 ~/.ssh/cm-* 旧复用套接字
-⑤ 删掉 `Port 22`，restart
-⑥ 控制台关掉 22
+⑤ 控制台关掉 22
+⑥ 删掉 `Port 22`，restart ssh
 ```
+
+**2026-09-16 已全部完成，端口 = 50722。** 收尾时的实测：
+
+| | |
+|---|---|
+| 外部 22 | `Connection closed` —— 与从未放行的 51999 表现一致 |
+| 外部 50722 | `OK`（deploy / root，强制不复用） |
+| `ss -ltn` | 只剩 `0.0.0.0:50722` 与 `[::]:50722` |
+| **22 上的攻击流量** | 最近 5 分钟 **0 行**（迁移前约 20 次/分钟） |
+| `scp` 实传回读 | 通 —— 发布脚本走的就是这条路 |
+
+**⑤ 在 ⑥ 之前**：先让云防火墙挡住 22、确认新端口在用，再删机器上的监听。
+反过来做的话，中间那一刻两边都没有 22，而你还没验过新端口。
+
+仓库侧扫过一遍（对照量 67 处 `ssh` 调用，证明 grep 是活的）：
+**没有任何脚本写死 `-p 22`**；`deploy-backend.sh` / `deploy-frontend.sh` /
+`test-on-mysql.sh` / `release-bapp-apk.sh` 全部用别名，自动跟着 `~/.ssh/config`。
+`bootstrap-authorized-key.sh` 走腾讯云助手 API 不用 SSH，只有一行**打印给人看的**
+验证命令带了默认端口，已补 `-p ${TX_SSH_PORT:-50722}`——
+**一条印出来让人照抄的命令，过期了和代码过期一样有害。**
 
 **⑤ 放在最后，且要等「会被锁在门外的那个人」自己验过新端口能进。**
 过渡期两个端口都在听，前四步任何一处出错都还有 22 兜着。
