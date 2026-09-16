@@ -122,6 +122,19 @@ export const useMerchantStore = defineStore("merchant", {
     canOperate: (s) => s.profile?.status === "ACTIVE" || s.profile?.status === "PENDING_LICENSE",
     /** 开了店但还没交证照 —— 首页据此常驻一条「还不能开张营业」 */
     pendingLicense: (s) => s.profile?.status === "PENDING_LICENSE",
+    /**
+     * 钱是不是**先进平台户、再由平台结给他**（归集）。
+     *
+     * <p>它决定「还不能收款」这条告警成不成立：归集下买家付的是平台的收款号，
+     * 商家<b>不需要自己的二级商户号</b>，通道进件走没走完与他今天能不能做生意无关
+     * —— 后端 `MerchantBrief.canReceive` 就是 `status === "ACTIVE"`，
+     * 下单链路上也没有任何一处拿进件当闸门。
+     *
+     * <p><b>空值按归集</b>，与后端 `MerchantVO.Brief` 同一口径：今天线上在跑的只有归集，
+     * 而这里猜错的代价是不对称的 —— 少提示一条告警，他照常做生意；
+     * 多提示一条，他会去补一份根本用不上的资料。
+     */
+    fundsAggregated: (s) => !s.profile?.fundsMode || s.profile.fundsMode === "AGGREGATED",
     /** 是否承接自提点 → 决定工作台是否出现「履约台」入口（ADR-005） */
     isPickupPoint: (s) => !!s.profile?.isPickupPoint,
     /**

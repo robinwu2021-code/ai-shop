@@ -125,7 +125,15 @@ const blockers = computed(() => {
   if (merchant.pendingLicense) {
     list.push({ key: "license", route: ROUTES.apply });
   }
-  if (merchant.can("biz:finance") && !canReceive.value) {
+  /*
+   * **归集商户不提这一条。** 钱先进平台户、再由平台结算给他，他压根不需要
+   * 自己的二级商户号 —— 而这条告警读的是通道进件状态，于是它对归集商户
+   * **永远亮着、也永远点不掉**：点进去是一份与他的资金路径无关的进件表单。
+   *
+   * 这与上面那段说的是同一种失败：告警本身成了噪音，而真正要紧的两条
+   * （能不能开张、看不看得见）会被它挤得不再被当回事。
+   */
+  if (merchant.can("biz:finance") && !merchant.fundsAggregated && !canReceive.value) {
     list.push({ key: "payment", route: ROUTES.payment });
   }
   if (merchant.can("biz:store") && !visible.value) {

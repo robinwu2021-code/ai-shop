@@ -40,9 +40,20 @@ export function SelfOperatedTab({ c, canCreate }: { c: MerchantsCopy; canCreate:
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [industry, setIndustry] = useState("");
   const [scope, setScope] = useState("COMMUNITY");
   const [communityNos, setCommunityNos] = useState<string[]>([]);
   const [done, setDone] = useState<SelfOperatedResult | null>(null);
+
+  /*
+   * 行业不是类目。类目回答「这家店卖什么」（水果 → FRESH_FRUIT），
+   * 行业回答「它属于哪门生意」（线下零售）—— 后者决定能不能以小微主体进件、
+   * 也是 points_forced 的来源。两个都要，且都不该留空。
+   */
+  const industries = useQuery({
+    queryKey: ["industries", "for-self-operated"],
+    queryFn: () => api.listIndustries(),
+  });
 
   const communities = useQuery({
     queryKey: ["communities", "for-self-operated"],
@@ -52,6 +63,7 @@ export function SelfOperatedTab({ c, canCreate }: { c: MerchantsCopy; canCreate:
   const create = useMutation({
     mutationFn: () => api.createSelfOperated({
       phone: phone.trim(), name: name.trim(), serviceScope: scope,
+      industry: industry || undefined,
       communityNos: scope === "COMMUNITY" ? communityNos : [],
       description: description.trim() || undefined,
     }),
@@ -114,6 +126,19 @@ export function SelfOperatedTab({ c, canCreate }: { c: MerchantsCopy; canCreate:
               rows={2}
               disabled={!canCreate}
             />
+          </div>
+
+          <div>
+            <Label>{c.soIndustry}</Label>
+            <FilterSelect
+              className="mt-1"
+              value={industry}
+              onChange={setIndustry}
+              options={(industries.data ?? [])
+                .filter((i) => i.enabled)
+                .map((i) => ({ value: i.industry, label: i.name }))}
+            />
+            <p className="mt-1 txt-caption text-muted-foreground">{c.soIndustryHint}</p>
           </div>
 
           <div>
