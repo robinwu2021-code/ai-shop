@@ -49,8 +49,24 @@ public class StubSmsGateway implements SmsPort {
          * **debug 而不是 info**：验证码明文进日志等于把它交给日志采集、转发与留存
          * （安全整改方案 §2.4 点名的两处之一）。本地联调把这个包的级别调到 debug 即可。
          */
-        log.debug("[sms-stub] otp to {} = {}", phone, code);
+        log.debug("[sms-stub] otp to {} = {}", maskPhone(phone), code);
         return SendResult.none();
+    }
+
+    /**
+     * 手机号打码 —— <b>验证码照打、手机号不打全</b>。
+     *
+     * <p>日志方案 §7 那条「不得出现手机号明文」是无条件的，不区分级别：
+     * 本地把这个包调到 debug 时它就是明文，而联调机的日志一样会被采集、转发、留存。
+     *
+     * <p><b>只打码手机号、不动验证码</b>：桩的用途就是让联调的人从日志里读到码，
+     * 打码它等于废掉这个桩；而手机号是「自己刚填的那个」，打了码一样认得出。
+     */
+    private static String maskPhone(String phone) {
+        if (phone == null || phone.length() < 7) {
+            return "***";
+        }
+        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
     }
 
     /** 供测试断言：最近发出的一条。 */

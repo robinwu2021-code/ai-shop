@@ -352,6 +352,26 @@ shop:
 # 不设默认 profile 是有意的：忘了指定就起不出完整的服务，
 # 比默认起成 api（把运营面也带上公网）安全得多。
 # ─────────────────────────────────────────────────────────────────────────────
+
+# ── 日志级别：框架噪音降到 WARN ───────────────────────────────────────────────
+# 依据：[日志方案 §7 应用日志内容规范]。此前**这个服务一条 logging 配置都没有** ——
+# 而它正是 2026-09-14 写出 41.6G 的那个。
+#
+# 名字不是猜的，是从线上 `shop-app.log` 里实际打印的 logger 取的（524 行的一次取样）：
+#   com.zaxxer.hikari.HikariDataSource / .pool.HikariPool        80 行（框架噪音里最大的一块）
+#   c.b.m.e.s.MybatisSqlSessionFactoryBean                        8 行
+#   org.apache.tomcat / catalina                                  0 行（现在不吵，配着是防将来）
+#
+# **不动 `org.springframework.boot.tomcat`**：「Tomcat started on port 8081」那行是启动地标，
+# 出事时用来判断"进程到底起没起来"，不是噪音。规范说的"Tomcat 降 WARN"指的是容器内部。
+logging:
+  level:
+    com.zaxxer.hikari: WARN
+    com.baomidou.mybatisplus: WARN
+    org.mybatis: WARN
+    org.apache.tomcat: WARN
+    org.apache.catalina: WARN
+
 ---
 spring:
   config:

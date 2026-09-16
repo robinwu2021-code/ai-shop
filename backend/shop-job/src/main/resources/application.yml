@@ -44,3 +44,10 @@ shop:
 logging:
   level:
     ai.neargo.job: INFO
+    # 框架噪音降到 WARN（日志方案 §7）。logger 名取自线上实际打印的那些，
+    # 见 shop-app/application.yml 里同一段的说明
+    com.zaxxer.hikari: WARN
+    com.baomidou.mybatisplus: WARN
+    org.mybatis: WARN
+    org.apache.tomcat: WARN
+    org.apache.catalina: WARN

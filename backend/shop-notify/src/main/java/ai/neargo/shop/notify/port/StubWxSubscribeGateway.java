@@ -57,8 +57,18 @@ public class StubWxSubscribeGateway implements WxSubscribePort {
         while (sent.size() > KEEP) {
             sent.removeFirst();
         }
-        log.info("[wxsub-stub] {} openId={} {}", scene, openId, summary);
+        // openId 是能长期指向某个人的标识，日志方案 §7 把它与手机号同档处理。
+        // 这一条是 **info**：桩一开就打，比 sms 桩那条（debug）更容易进到留存里。
+        log.info("[wxsub-stub] {} openId={} {}", scene, maskOpenId(openId), summary);
         return SendResult.of(null, templateId(scene));
+    }
+
+    /** openId 打码：留头 6 尾 4，够在日志里认出是同一个人，又不是完整标识。 */
+    private static String maskOpenId(String openId) {
+        if (openId == null || openId.length() < 12) {
+            return "***";
+        }
+        return openId.substring(0, 6) + "****" + openId.substring(openId.length() - 4);
     }
 
     public synchronized List<Sent> sent() {
