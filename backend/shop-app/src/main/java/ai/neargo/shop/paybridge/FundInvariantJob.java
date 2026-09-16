@@ -6,6 +6,9 @@ import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 
+import java.time.Duration;
+import java.time.Instant;
+
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +46,25 @@ import org.springframework.stereotype.Component;
 public class FundInvariantJob implements JobHandler {
 
     private static final Logger log = LoggerFactory.getLogger(FundInvariantJob.class);
+
+    /**
+     * 「I1–I3 一行都没扫到」持续期间，隔多久重述一次。
+     *
+     * <p>这条轴一小时一轮，此前每轮原样打一条 —— 而它报的是「查询条件/时间窗可能写错了」，
+     * 那种事一旦成立就会一直成立，于是一天 24 条一模一样的 WARN。
+     * 条数远不如对账那条多（见 {@link StuckStateLog}），但毛病是同一个：
+     * 看的人分不出「这是今天早上开始的，还是上周就这样了」。
+     *
+     * <p><b>为什么是 6 小时而不是 1 小时</b>：1 小时对一小时一轮的任务等于没有抑制。
+     * 6 小时 = 一天 4 条，既压下了重复，又保证<b>一个工作日之内至少重述一次</b>，
+     * 不至于早上来看不到任何还在坏着的迹象。
+     */
+    private static final Duration RESTATE_EVERY = Duration.ofHours(6);
+
+    /** 只有一件事要节流，key 用固定串。见 {@link StuckStateLog} 的类注释。 */
+    private static final String K_NOTHING_SCANNED = "I1-I3-nothing-scanned";
+
+    private final StuckStateLog stuck = new StuckStateLog(RESTATE_EVERY);
 
     private final FundInvariantReconciler invariants;
     private final JobSupport jobs;
@@ -110,20 +132,11 @@ public class FundInvariantJob implements JobHandler {
         FundInvariantReconciler.Result r = invariants.scan(since, limit);
 
         /*
-         * **对照量先判。**「违反 0 条」与「一行都没扫到」在结果上一模一样，
-         * 而后者才是最该红的那种：查询条件写错、索引没走上、时间窗算反。
-         * 这里把它单独报出来，而不是混进「一切正常」。
+         * **对照量先判**，且报完不 return。I6 走的是另一个时间窗（分钟级），
+         * 提前返回会让「I1–I3 没数据」把 I6 一起带走 ——
+         * 而 I6 释放的是用户已经被扣走的分，最不该被别的检查的空转连累。
          */
-        if (!r.scannedAnything()) {
-            log.warn("[fund-invariant] **I1–I3 一行都没扫到**（回看 {} 小时）—— "
-                    + "这与「没有违反」长得一样，但通常意味着查询条件或时间窗有问题",
-                    lookbackHours);
-            /*
-             * **不在这里 return。** I6 走的是另一个时间窗（分钟级），
-             * 提前返回会让「I1–I3 没数据」把 I6 一起带走 ——
-             * 而 I6 释放的是用户已经被扣走的分，最不该被别的检查的空转连累。
-             */
-        }
+        reportNothingScanned(r.scannedAnything(), Instant.now());
 
         if (r.orphanBill() > 0) {
             // I2 已在 Service 里打过 error；这里只保证它出现在任务详情里，运营看得见
@@ -182,5 +195,49 @@ public class FundInvariantJob implements JobHandler {
                         r.scannedGranted(), r.grantedNoLedger(), r.clearedFlags(),
                         rel.scanned(), rel.dead(), rel.released(),
                         mismatches.size()));
+    }
+
+    /**
+     * 报「I1–I3 一行都没扫到」——<b>对照量先判</b>，且<b>按状态变化报、不按轮次报</b>。
+     *
+     * <h2>为什么要单独报这件事</h2>
+     * 「违反 0 条」与「一行都没扫到」在结果上一模一样，而后者才是最该红的那种：
+     * 查询条件写错、索引没走上、时间窗算反。混进「一切正常」里就没人看得见了。
+     *
+     * <h2>为什么不每轮都打</h2>
+     * 它一旦成立就会一直成立（写错的查询不会自己好），而这条轴一小时一轮 ——
+     * 于是一天 24 条一模一样的 WARN。条数不如对账那条多，毛病是同一个：
+     * 看的人分不出「这是今天早上开始的，还是上周就这样了」。节奏见 {@link StuckStateLog}。
+     *
+     * <p><b>好了也要留一条。</b> 此前没有这条 INFO：扫得动了只能靠「WARN 不再出现」去反推，
+     * 而那与「任务挂了、压根没跑」长得一模一样。
+     *
+     * <p><b>刻意不做的：不降级、不静音。</b> 第一次原级别原速打出去，一刻不推迟。
+     *
+     * @param scannedAnything 这一轮 I1–I3 的对照量是不是非 0
+     * @param now             传进来而不是内部取，便于测试推进时间
+     */
+    void reportNothingScanned(boolean scannedAnything, Instant now) {
+        if (!scannedAnything) {
+            StuckStateLog.State st = stuck.stillBad(K_NOTHING_SCANNED, now);
+            if (st == null) {
+                return;   // 还在重述间隔内：这一轮不说话
+            }
+            if (st.first()) {
+                log.warn("[fund-invariant] **I1–I3 一行都没扫到**（回看 {} 小时）—— "
+                        + "这与「没有违反」长得一样，但通常意味着查询条件或时间窗有问题",
+                        lookbackHours);
+            } else {
+                log.warn("[fund-invariant] **I1–I3 仍然一行都没扫到**：已持续 {} 轮 / {} 分钟"
+                        + "（自 {} 起，回看 {} 小时）—— 查询条件或时间窗有问题",
+                        st.rounds(), st.minutes(), st.since(), lookbackHours);
+            }
+        } else {
+            StuckStateLog.State ok = stuck.recovered(K_NOTHING_SCANNED, now);
+            if (ok != null) {
+                log.info("[fund-invariant] I1–I3 又扫得到数据了（此前连续 {} 轮 / {} 分钟一行都没扫到，自 {} 起）",
+                        ok.rounds(), ok.minutes(), ok.since());
+            }
+        }
     }
 }
