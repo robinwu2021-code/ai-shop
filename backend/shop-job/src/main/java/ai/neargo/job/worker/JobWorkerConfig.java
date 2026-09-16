@@ -14,6 +14,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.SmartLifecycle;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.time.Duration;
@@ -31,6 +32,54 @@ import java.time.Instant;
 public class JobWorkerConfig {
 
     private static final Logger log = LoggerFactory.getLogger(JobWorkerConfig.class);
+
+    /**
+     * 关停时**第一个**停下来的东西。
+     *
+     * <h2>为什么要有这个 Bean（2026-09-16 实测）</h2>
+     * <p>此前每一次 {@code systemctl stop/restart ai-shop-job} 都是这个样子：
+     * <pre>
+     *   10:37:36  HikariDataSource job-pool - Shutdown initiated
+     *   10:37:40  [job-4] ERROR ... CannotGetJdbcConnectionException: Failed to obtain JDBC Connection
+     *   10:38:06  WARN  Timed out while waiting for executor 'jobTaskScheduler' to terminate
+     *   （随后 systemd 等满 TimeoutStopSec=45 把进程 SIGKILL，单元状态 failed）
+     * </pre>
+     * 三次停机逐字一样，不是偶发：**连接池先关，而调度线程还在跑任务**，
+     * 于是它们在那 30 秒里反复去抢一个已经关掉的池，每次都记一条 ERROR ——
+     * 而控制台阈值正是 ERROR，这条假故障会进 journal。
+     *
+     * <p>根因是 Bean 销毁顺序：调度器没有声明依赖数据源，Spring 就可能先销毁数据源。
+     * 靠 {@code @DependsOn} 去排顺序是把正确性押在一串声明上；用 {@link SmartLifecycle}
+     * 则是**显式**规定「停的时候我先停」—— 容器在销毁任何单例之前会先走 stop()。
+     *
+     * <p>{@code getPhase()} 取 {@link Integer#MIN_VALUE}：phase 越小越先停。
+     */
+    @Bean
+    SmartLifecycle jobSchedulerLifecycle(ThreadPoolTaskScheduler jobTaskScheduler) {
+        return new SmartLifecycle() {
+            private volatile boolean running;
+
+            @Override public void start() {
+                running = true;
+            }
+
+            @Override public void stop() {
+                running = false;
+                // 不等任务跑完 —— 等的事交给调度器自己的 awaitTermination（30 秒），
+                // 这里只负责「别再排新的」，让那 30 秒是有意义的等待而不是空转。
+                jobTaskScheduler.getScheduledThreadPoolExecutor().shutdown();
+                log.info("调度器已停止排期，等在跑的任务收尾");
+            }
+
+            @Override public boolean isRunning() {
+                return running;
+            }
+
+            @Override public int getPhase() {
+                return Integer.MIN_VALUE;   // 越小越先停
+            }
+        };
+    }
 
     @Bean(destroyMethod = "shutdown")
     ThreadPoolTaskScheduler jobTaskScheduler(JobWorkerProperties props) {
