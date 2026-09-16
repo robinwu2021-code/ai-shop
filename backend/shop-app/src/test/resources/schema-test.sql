@@ -8821,3 +8821,10 @@ UPDATE sys_function_point SET gated_by='shop.inventory.enabled', updated_at=NOW(
    'OPS_INVENTORY__TAB_CREDENTIALS');
 UPDATE sys_function_point SET gated_by='shop.job.enabled', updated_at=NOW()
  WHERE point_code = 'OPS_JOBS';
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MERCHANT__TAB_SELF_OPERATED', 'OPS_MERCHANT', '建平台自营商家', '入驻与资质', '/merchants?tab=self-operated', 'merchant:selfop:create', 'merchant:selfop:create', 'IMPLEMENTED', 1, 'P-11.1', 'MENU', 42, NOW(), NOW()
+  FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MERCHANT__TAB_SELF_OPERATED');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MERCHANT__TAB_SELF_OPERATED', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MERCHANT__TAB_SELF_OPERATED');

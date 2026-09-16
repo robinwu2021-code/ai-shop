@@ -614,6 +614,31 @@ export interface PlanUpgradeSignal {
   entityCount: number;
 }
 
+/**
+ * 建平台自营商家的结果（`POST /ops/merchants/self-operated`）。
+ *
+ * 三个「回读值」是有意的：`fundsMode` / `businessMode` 不是把入参回显给你看，
+ * 而是**建完之后从库里再读一次**。自营这件事由这两个字段共同成立
+ * （主体级：钱先进平台账户；门店级：平台是销售主体），
+ * 少任何一个都会得到一家「看起来是自营」的店，而售后会派给商家自己。
+ */
+export interface SelfOperatedResult {
+  merchantNo: string;
+  /** 随主体一并建出来的默认门店 */
+  storeNo: string;
+  /** 手机号对应的账号；没有就按登录那条路新建一个 */
+  ownerUserNo: string;
+  /** 回读值，应为 `AGGREGATED` */
+  fundsMode: FundsMode;
+  /** 回读值，应为 `SELF_OPERATED` */
+  businessMode: string;
+  /**
+   * 本次是否**真的新建**了主体。false = 这个手机号名下已经有主体，原样返回它。
+   * 界面上要分开说：运营连点两次时，「又建了一个」与「就是刚才那个」是不同的事实。
+   */
+  created: boolean;
+}
+
 /** 进件（收款开户）状态：占位 / 审核中 / 已开通 / 被拒 / 冻结。 */
 export type OnboardingStatus = "NONE" | "APPLYING" | "ACTIVE" | "REJECTED" | "FROZEN";
 

@@ -29,6 +29,7 @@ import { MerchantChainLine } from "./chain-line";
 import { PlansTab, PlanDefsTab } from "./plans-tab";
 import { ModeRiskTab } from "./mode-risk-tab";
 import { OnboardingTab } from "./onboarding-tab";
+import { SelfOperatedTab } from "./self-operated-tab";
 import { QualificationTab } from "./qualification-tab";
 import { StaffBlock } from "./staff-block";
 import { FulfillmentBlock } from "./fulfillment-block";
@@ -52,7 +53,7 @@ const TIER_OPTIONS = (c: Copy) => [
   { value: "COMPANY", label: c.tierCompany },
 ];
 
-const TAB_KEYS = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "onboarding", "mode-risk", "ban", "plans", "plan-defs", "chain"] as const;
+const TAB_KEYS = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "onboarding", "self-operated", "mode-risk", "ban", "plans", "plan-defs", "chain"] as const;
 
 /** 入驻审核视图只看**还没走完审核**的那几档 —— 已通过/已封禁的属于档案，不该混在待办里。 */
 const AUDIT_STATUSES = ["SUBMITTED", "REVIEWING"];
@@ -87,6 +88,12 @@ function MerchantsInner() {
   const canVerify = allow("merchant:verify:grant");
   const canGrantCat = allow("merchant:category:grant");
   const canBan = allow("merchant:merchant:ban");
+  /*
+   * 这个码**不在任何角色的码表里**，只有持 "*" 的超管能过。
+   * 所以这里对绝大多数运营是 false —— 那正是要的：入口看得见（知道有这件事），
+   * 但点不动，且 ReadOnlyNotice 会说清卡在哪个码上。
+   */
+  const canSelfOp = allow("merchant:selfop:create");
 
   // 审核视图：没选具体状态时只带出待审的两档（选了就按选的来，筛选优先于视图默认）
   const q = {
@@ -255,6 +262,13 @@ function MerchantsInner() {
       {tab === "qualifications" && <QualificationTab c={c} />}
       {tab === "mode-risk" && <ModeRiskTab c={c} />}
       {tab === "onboarding" && <OnboardingTab c={c} />}
+
+      {tab === "self-operated" && (
+        <>
+          {!canSelfOp && <ReadOnlyNotice what={c.soReadOnlyWhat} perm="merchant:selfop:create" className="mb-3" />}
+          <SelfOperatedTab c={c} canCreate={canSelfOp} />
+        </>
+      )}
 
       {tab === "ban" && (
         <>

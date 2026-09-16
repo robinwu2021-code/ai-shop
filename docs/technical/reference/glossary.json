@@ -29650,6 +29650,14 @@
     },
     {
       "host": "Perms",
+      "name": "MERCHANT_SELFOP_CREATE",
+      "type": "String",
+      "value": "\"merchant:selfop:create\"",
+      "zh": "建平台自营商家（跳过进件与审核）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
       "name": "MESSAGE_TEMPLATE_READ",
       "type": "String",
       "value": "\"message:template:read\"",

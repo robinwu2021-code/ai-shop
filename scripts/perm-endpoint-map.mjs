@@ -51,6 +51,10 @@ export const RULES = [
   // 资金路径（轴②：钱先进谁的账户）。与经营模式共用一组码 ——
   // 两者都决定钱怎么走，分成两套权限只会让配的人漏配其中一半
   ["PUT", /^\/ops\/merchants\/[^/]+\/funds-mode$/, "merchant:mode:update"],
+  // 建平台自营商家（跳过进件与审核）。**单独一个码，且不配给任何角色** ——
+  // 于是只有持 "*" 的 SUPER_ADMIN 能用。不复用 merchant:admission:update：
+  // 那个码 BD 手里有，而「平台成为这批货的销售主体」不该由招商日常决定
+  ["POST", /^\/ops\/merchants\/self-operated$/, "merchant:selfop:create"],
   // 进件看板与人工回查：与准入同一拨人在管（都决定这家店能不能真把生意做成），
   // 复用 merchant:admission:*，不新增权限码
   ["GET", /^\/ops\/onboarding$/, "merchant:admission:read"],

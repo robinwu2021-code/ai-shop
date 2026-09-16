@@ -283,6 +283,17 @@ public final class Perms {
     /** 锁路/解锁某门店的一条送货方式（方案 v4 §7.3）。投诉处置用，商家配置原样保留 */
     public static final String MERCHANT_FULFILLMENT_UPDATE = "merchant:fulfillment:update";
 
+    /**
+     * 建平台自营商家（跳过进件与审核）。
+     *
+     * <p><b>刻意不写进任何角色的码表</b> —— 于是只有 {@code SUPER_ADMIN}（持 {@code "*"}）
+     * 能用。这不是漏配：自营主体决定资金归集路径与售后责任归属，
+     * 建出来之后平台就是那批货的销售主体，不该是招商日常能点的东西。
+     *
+     * <p>要给别的角色，请连同「谁为这些货的售后负责」一起想清楚再加进 {@code ROLE_PERMS}。
+     */
+    public static final String MERCHANT_SELFOP_CREATE = "merchant:selfop:create";
+
     // ── 消息与客服 ──────────────────────────────────────────────────────────
     public static final String MESSAGE_TEMPLATE_READ = "message:template:read";
     public static final String MESSAGE_TEMPLATE_UPDATE = "message:template:update";

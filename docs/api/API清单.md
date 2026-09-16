@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 707 个接口**：后端已实现 635（90%）· 前端在调 636
+**合计 708 个接口**：后端已实现 636（90%）· 前端在调 637
 
 ---
 
@@ -739,7 +739,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **390** 个接口 ｜ 后端已实现 **324**（83%）｜ 前端在调 **319**
+共 **391** 个接口 ｜ 后端已实现 **325**（83%）｜ 前端在调 **320**
 
 ### aftersale（4）
 
@@ -995,7 +995,7 @@
 | POST | `/ops/promotion/activities/{activityNo}/stop` | 强制停止一个活动 | — | `OpsPromoActivity` | — | ✅ | ✅ |
 | GET | `/ops/promotion/coupons` | 全平台券（新模型）：归属、敞口、异常标记 */ | — | `数组` | — | ✅ | ✅ |
 
-### merchant（41）
+### merchant（42）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1031,6 +1031,7 @@
 | POST | `/ops/merchants/{merchantNo}/violations` | 记一条违规并执行处置 | — | `Violation` | — | ✅ | ✅ |
 | GET | `/ops/merchants/auth-codes` | 授权码目录 | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/merchants/mode-risk` | 无照主体 × 自营门店的税务敞口清单 | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/merchants/self-operated` | 建**平台自营商家**（跳过进件与审核） | — | `SelfOperatedResult` | — | ✅ | ✅ |
 | GET | `/ops/merchants/violations` | 违规记录 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/onboarding` | 进件看板 | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/onboarding/refresh` | 人工回查：替卡在进件上的商家去通道问一次结果并落库 | — | `object` | — | ✅ | ✅ |

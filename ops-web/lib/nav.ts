@@ -120,6 +120,11 @@ export const NAV: NavSection[] = [
       // 能不能真正把生意做成），复用 merchant:admission:read，不新增权限码。
       // 紧挨准入：同 group 的叶子必须相邻（nav.test.ts 锁这条）。
       { href: "/merchants?tab=onboarding", label: "进件看板", perm: "merchant:admission:read", group: "入驻与资质", matrix: "P-11.1", ready: true },
+      // 建平台自营商家：**刻意与「入驻审核」放在同一组、紧挨进件看板**。
+      // 它是入驻链路上的一条岔路（平台自己那条），不是另一件事 ——
+      // 放到别处会让人以为「建自营」和「建商家」是两套模型。
+      // 码单列且不配给任何角色，于是只有超管点得动，见 Perms.MERCHANT_SELFOP_CREATE。
+      { href: "/merchants?tab=self-operated", label: "建平台自营商家", perm: "merchant:selfop:create", group: "入驻与资质", matrix: "P-11.1", ready: true },
       // 用 mode:read 而不是 merchant:read：这张表答的是「哪些店按自营结算」，
       // 与门店经营模式读的是同一个字段、同一批人在处置。
       // ⚠️ 该码目前归 BD 与超管，**财务看不到** —— 而这是一张税务表，

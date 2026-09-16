@@ -5406,6 +5406,28 @@ _无字段_
 类型：[`ModeRisk`](#moderisk)\[\]
 
 
+#### POST `/ops/merchants/self-operated`
+
+建**平台自营商家**（跳过进件与审核）
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`SelfOperatedResult`](#selfoperatedresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | 随主体一并建出来的默认门店 |
+| `ownerUserNo` | `string` | 是 | 手机号对应的账号；没有就按登录那条路新建一个 |
+| `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 是 | 回读值，应为 `AGGREGATED` |
+| `businessMode` | `string` | 是 | 回读值，应为 `SELF_OPERATED` |
+| `created` | `boolean` | 是 | 本次是否**真的新建**了主体。false = 这个手机号名下已经有主体，原样返回它。 界面上要分开说：运营连点两次时，「又建了一个」与「就是刚才那个」是不同的事实。 |
+
+
 #### GET `/ops/merchants/violations`
 
 违规记录
@@ -11282,6 +11304,19 @@ KPI 卡（金额为最小货币单位整数）。
 | `decayHalfLifeDays` | `number` | 是 | 时效衰减半衰期（天）：越久远的评价权重越低 |
 | `updatedAt` | `string` | 是 | 最后修改时间。改参数会**改变历史评价的呈现**，必须留痕 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
+
+### SelfOperatedResult
+
+建平台自营商家的结果（`POST /ops/merchants/self-operated`）。 三个「回读值」是有意的：`fundsMode` / `businessMode` 不是把入参回显给你看， 而是**建完之后从库里再读一次**。自营这件事由这两个字段共同成立 （主体级：钱先进平台账户；门店级：平台是销售主体）， 少任何一个都会得到一家「看起来是自营」的店，而售后会派给商家自己。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | 随主体一并建出来的默认门店 |
+| `ownerUserNo` | `string` | 是 | 手机号对应的账号；没有就按登录那条路新建一个 |
+| `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 是 | 回读值，应为 `AGGREGATED` |
+| `businessMode` | `string` | 是 | 回读值，应为 `SELF_OPERATED` |
+| `created` | `boolean` | 是 | 本次是否**真的新建**了主体。false = 这个手机号名下已经有主体，原样返回它。 界面上要分开说：运营连点两次时，「又建了一个」与「就是刚才那个」是不同的事实。 |
 
 ### ServiceScopeConfig
 

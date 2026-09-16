@@ -25,6 +25,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   商家治理: { en: "Merchants" },
   准入与保证金: { en: "Admission & deposit" },
   进件看板: { en: "Payment onboarding" },
+  建平台自营商家: { en: "New self-operated merchant" },
   无照自营风险: { en: "Unlicensed self-operated risk" },
   资质档案: { en: "Qualification records" },
   积分资金看板: { en: "Points fund overview" },

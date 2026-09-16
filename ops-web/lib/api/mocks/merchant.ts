@@ -9,6 +9,9 @@ import type { LegalForm, MerchantChainRow } from "@/lib/types";
 /** 本次会话里已经提醒过的「商家 × 事由」。真实实现按日期落库，mock 只要能演出第二次 */
 const nudgedToday = new Set<string>();
 
+/** 手机号 → 已建出的平台自营主体号。幂等判据按人，与真实实现同一口径 */
+const selfOperatedByPhone = new Map<string, string>();
+
 const mockChain: MerchantChainRow[] = [
   { entityNo: "M0001", merchantName: "老张粮油店", goods: 0, pendingAudit: 0, onSale: 0, items: 0,
     firstInbound: null, lastLedger: null, stuckAt: "NO_GOODS" },
@@ -142,6 +145,47 @@ export const merchantMock: MerchantApi = {
     }
     m.fundsMode = fundsMode;
     return wait(m, 400);
+  },
+
+  /*
+   * 建平台自营商家。**mock 也做幂等**（按手机号找已有主体）——
+   * 只「每次新建一个」的话，「连点两次会怎样」这件事在开发期永远演不出来，
+   * 而那正是这个入口最需要看清的一种行为。
+   */
+  createSelfOperated: async ({ phone, name, communityNos }) => {
+    if (!/^1[3-9]\d{9}$/.test(phone ?? "")) {
+      fail("手机号格式不对，应为 11 位大陆手机号", "Invalid mainland China mobile number");
+    }
+    if (!name?.trim()) {
+      fail("主体名称不能为空", "Merchant name is required");
+    }
+    // 没有覆盖社区的商家上着架却对谁都不可见，而这个故障没有任何报错（ADR-009）
+    if (!communityNos?.length) {
+      fail("必须至少选一个覆盖社区", "At least one covered community is required");
+    }
+    const tail = phone.slice(-4);
+    const owned = selfOperatedByPhone.get(phone);
+    if (owned) {
+      return wait({
+        merchantNo: owned, storeNo: `${owned}-S1`,
+        ownerUserNo: `U-${phone}`, fundsMode: "AGGREGATED" as const,
+        businessMode: "SELF_OPERATED", created: false,
+      }, 500);
+    }
+    const merchantNo = `M9${String(db.merchants.length + 10).padStart(2, "0")}`;
+    db.merchants.unshift({
+      merchantNo, name: name.trim(), legalForm: "ENTERPRISE", tier: "MEDIUM", status: "ACTIVE",
+      communityNos: [...communityNos],
+      contactName: "平台自营", contactPhone: `${phone.slice(0, 3)}****${tail}`,
+      categoryCodes: [], qualifications: [], verified: true, breachCount: 0,
+      settleAccountReady: false, createdAt: new Date().toISOString(),
+      fundsMode: "AGGREGATED",
+    });
+    selfOperatedByPhone.set(phone, merchantNo);
+    return wait({
+      merchantNo, storeNo: `${merchantNo}-S1`, ownerUserNo: `U-${phone}`,
+      fundsMode: "AGGREGATED" as const, businessMode: "SELF_OPERATED", created: true,
+    }, 700);
   },
 
   // ── 资质 ───────────────────────────────────────────────

@@ -886,6 +886,35 @@ components:
         - "entityCount"
       additionalProperties: false
       description: "升档信号的一行（`GET /ops/merchant-plans/upgrade-signals`）。\n\n**按 owner 分组而不是按主体**：「同一个人开了两个主体」正是要找的人 —— 他已经在多店经营，只是绕过了额度。主体表上没有联系电话（那在申请单上）， 所以这里只给 owner 号，销售拿它去后台查人。"
+    SelfOperatedResult: 
+      type: "object"
+      properties: 
+        merchantNo: 
+          type: "string"
+        storeNo: 
+          type: "string"
+          description: "随主体一并建出来的默认门店"
+        ownerUserNo: 
+          type: "string"
+          description: "手机号对应的账号；没有就按登录那条路新建一个"
+        fundsMode: 
+          "$ref": "#/definitions/FundsMode"
+          description: "回读值，应为 `AGGREGATED`"
+        businessMode: 
+          type: "string"
+          description: "回读值，应为 `SELF_OPERATED`"
+        created: 
+          type: "boolean"
+          description: "本次是否**真的新建**了主体。false = 这个手机号名下已经有主体，原样返回它。 界面上要分开说：运营连点两次时，「又建了一个」与「就是刚才那个」是不同的事实。"
+      required: 
+        - "merchantNo"
+        - "storeNo"
+        - "ownerUserNo"
+        - "fundsMode"
+        - "businessMode"
+        - "created"
+      additionalProperties: false
+      description: "建平台自营商家的结果（`POST /ops/merchants/self-operated`）。\n\n三个「回读值」是有意的：`fundsMode` / `businessMode` 不是把入参回显给你看， 而是**建完之后从库里再读一次**。自营这件事由这两个字段共同成立 （主体级：钱先进平台账户；门店级：平台是销售主体）， 少任何一个都会得到一家「看起来是自营」的店，而售后会派给商家自己。"
     OnboardingStatus: 
       type: "string"
       enum: 
@@ -15552,6 +15581,38 @@ paths:
           required: true
           schema: 
             type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchants/self-operated": 
+    post: 
+      operationId: "createSelfOperated"
+      summary: "建**平台自营商家**（跳过进件与审核）"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/SelfOperatedResult"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
       requestBody: 
         required: true
         content: 

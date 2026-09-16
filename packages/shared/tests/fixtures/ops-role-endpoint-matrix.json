@@ -782,6 +782,7 @@
     "POST /ops/merchants/{merchantNo}/violations",
     "GET /ops/merchants/auth-codes",
     "GET /ops/merchants/mode-risk",
+    "POST /ops/merchants/self-operated",
     "GET /ops/merchants/violations",
     "GET /ops/message",
     "POST /ops/message/{messageNo}/read",

@@ -79,6 +79,23 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
       .toBeLessThanOrEqual(have);
   });
 
+  /**
+   * **合并之后真正新加的叶子**，按 href 逐条登记。
+   *
+   * 基线是一次性快照（合并前导出），不重新生成 —— 重新生成等于拿改后的代码
+   * 给自己出题。但新功能落地时它必然会「多出来」一条，而这条断言本身
+   * 分不清「合并把一项搬丢了」和「这里新增了一项」。
+   *
+   * 于是把差别交给人来声明：新增要**手写一行进来并写清它是什么**，
+   * 而「少了」永远没有豁免口 —— 那一半才是这条断言存在的理由
+   * （少一条菜单，人只会以为自己没权限，不会报障）。
+   */
+  const ADDED_SINCE_MERGE = new Set<string>([
+    // 建平台自营商家（2026-09-16）。只有超管看得见：merchant:selfop:create
+    // 不在任何角色的码表里，所以它只会在 SUPER_ADMIN 那一行上出现。
+    "/merchants?tab=self-operated",
+  ]);
+
   it("★★★ AC2 · 合并前后每个角色看得见的功能点集合完全不变", () => {
     /*
      * **这条是整轮合并唯一会造成真实损失的失败模式**，而它在界面上看不出来：
@@ -96,7 +113,7 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
       for (const s of visibleSections(perms)) for (const l of visibleLeaves(s, perms)) now.add(l.href);
       const was = new Set(baseline[role] ?? []);
       const lost = [...was].filter((h) => !now.has(h));
-      const gained = [...now].filter((h) => !was.has(h));
+      const gained = [...now].filter((h) => !was.has(h) && !ADDED_SINCE_MERGE.has(h));
       if (lost.length) diffs.push(`${role} 少了：${lost.join(", ")}`);
       if (gained.length) diffs.push(`${role} 多了：${gained.join(", ")}`);
     }
