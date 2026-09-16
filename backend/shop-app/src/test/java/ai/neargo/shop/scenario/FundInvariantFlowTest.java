@@ -156,8 +156,15 @@ class FundInvariantFlowTest {
                     + " user_no, entity_no, type, reason, status, refund_minor,"
                     + " tenant_no, created_at, updated_at, version, deleted)"
                     + " VALUES ('AS-INV-1', ?, ?, ?, ?, 'REFUND_ONLY', '测试', 'REFUNDING', 100,"
-                    + " 'MAIN', CURRENT_TIMESTAMP, DATEADD('MINUTE', -60, CURRENT_TIMESTAMP), 0, 0)",
-                    ORDER, SUB, USER, ENTITY);
+                    // ⚠️ 时间用**参数传进来**，别在 SQL 里调日期函数：
+                    // 这里原本写的是 H2 的 DATEADD('MINUTE', -60, ...) —— MySQL 与 MariaDB
+                    // 都没有这个函数（2026-09-16 把全量对着真 MySQL 跑时当场报
+                    // 「FUNCTION ai_shop_autotest.DATEADD does not exist」）。
+                    // 它不是生产缺陷（生产代码里没有 DATEADD），但意味着**这条用例
+                    // 从来没有在真库上跑过** —— 而它验的是资金不变量。
+                    + " 'MAIN', CURRENT_TIMESTAMP, ?, 0, 0)",
+                    ORDER, SUB, USER, ENTITY,
+                    java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(3600)));
             return null;
         });
 

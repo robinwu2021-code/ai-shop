@@ -92,7 +92,25 @@ class MicroPayCapabilityFlowTest {
                 .isFalse();
     }
 
+    /**
+     * ⚠️ **这条只能在 H2 上跑。**
+     *
+     * <p>2026-09-16 把全量对着真 MySQL 跑时，它报
+     * {@code Check constraint 'mch_payment_merchant_chk_1' is violated}（错误码 3819）——
+     * 那条约束是 {@code json_valid(pay_methods)}，**真库根本不让这行坏数据插进去**。
+     * H2 不带 CHECK 约束，所以这个差异在本地永远看不见（见记忆
+     * {@code h2-misses-mariadb-check-constraints}）。
+     *
+     * <p>这不是缺陷，反而是**好消息**：应用层的「坏 JSON 按不支持处理」是第二道防线，
+     * 而第一道（库层约束）在真库上就已经堵死了。两道都要，但这条用例只能验第二道，
+     * 而它验的方式（塞一行坏数据）恰恰被第一道拦下。
+     *
+     * <p>所以在真库上跳过而不是红 —— 红会让人以为「MySQL 上支付能力算错了」。
+     */
     @Test
+    @org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable(
+            named = "SUITE_DB", matches = "mysql",
+            disabledReason = "真库有 json_valid CHECK 约束，这行坏数据插不进去")
     @DisplayName("★ 支付方式坏 JSON 按「什么都不支持」处理，不按「全都支持」放过去")
     void brokenPayMethodsJsonFailsClosed() {
         payAccount(MERCHANT, 0L, 0L, "{不是数组", false);
