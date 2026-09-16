@@ -14,6 +14,7 @@
 # 阈值是测试档（方案 §6）；转生产只改 logwatch.env 里的数，不改脚本：
 #   DISK_WARN=80  DISK_CRIT=90  LOG_TOTAL_MB=1024  RATE_MB_PER_H=50  WEBHOOK_URL=
 #   OUTBOX_FAILED_BASELINE=20   （outbox 死信的已知条数，见第 4 节）
+#   BINLOG_MAX_MB=1024          （binlog 总量上限，见第 4b 节）
 set -euo pipefail
 
 DATA="${DATA:-/data}"
@@ -26,6 +27,7 @@ DISK_WARN="${DISK_WARN:-80}"
 DISK_CRIT="${DISK_CRIT:-90}"
 LOG_TOTAL_MB="${LOG_TOTAL_MB:-1024}"
 RATE_MB_PER_H="${RATE_MB_PER_H:-50}"
+BINLOG_MAX_MB="${BINLOG_MAX_MB:-1024}"
 WEBHOOK_URL="${WEBHOOK_URL:-}"
 # 数据库客户端。2026-09-16 切 MySQL 9.7 后，裸 `mysql` 连的是已停的 MariaDB(3306)，
 # 这一条会一直报「查不了 outbox」—— 报得对，但它该查的是新库。
@@ -126,6 +128,25 @@ if f_sys="$($MYSQL_CLI -N -B -e "SELECT COUNT(*) FROM ai_shop.sys_outbox WHERE s
     fi
 else
     say WARN "outbox-failed" "查不了 outbox（库连不上或表不在）—— 死信有没有新增此刻不知道"
+fi
+
+# ── 4b. binlog 总量（2026-09-16 切到 MySQL 后补）───────────────────────────
+# **补的是第 2 节看不见的那一块。** 第 2 节量 `/data/log`，而 binlog 落在 `/data/db`——
+# 换库带来的最大新增日志类消费者，恰好在那把尺的扫描面之外（量具的扫描面就是结论的覆盖面）。
+#
+# binlog 自己有 7 天过期 + 单文件 100M 的上限，所以这里不是"防它涨"，而是**盯上限有没有失效**：
+# 改配置、大事务（迁移那次单个文件 173M 就超了 100M）、或从库没跟上导致不敢清，都会让它堆起来。
+# 按 /data/db/*/mysql-bin.* 通配：将来换实例目录名也照样量得到。
+binlog_bytes=0; binlog_n=0
+while IFS= read -r -d '' b; do
+    binlog_bytes=$((binlog_bytes + $(stat -c %s "$b"))); binlog_n=$((binlog_n + 1))
+done < <(find "$DATA"/db -maxdepth 2 -type f -name 'mysql-bin.[0-9]*' -print0 2>/dev/null)
+if [ "$binlog_n" = 0 ]; then
+    say OK "binlog" "没有 binlog 文件（没开，或还没产生）"
+elif [ "$binlog_bytes" -gt $((BINLOG_MAX_MB * 1048576)) ]; then
+    say WARN "binlog" "$(mb "$binlog_bytes") / $binlog_n 个（上限 ${BINLOG_MAX_MB}M）—— 过期清理可能没生效，查 binlog_expire_logs_seconds"
+else
+    say OK "binlog" "$(mb "$binlog_bytes") / $binlog_n 个（上限 ${BINLOG_MAX_MB}M）"
 fi
 
 # ── 5. 告警出口 ─────────────────────────────────────────────────────────────
