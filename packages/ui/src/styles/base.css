@@ -1789,9 +1789,11 @@ uni-page-wrapper[style*="--window-bottom"] {
  * 排在 `.sh-center` 之后，它的 `display: block` 把 `.sh-center` 的 `display: flex`
  * 压掉了。剩下的 `align-items/justify-content` 落在一个块级盒子上，**一点作用都没有**。
  *
- * 这不是假设：b-app `login` 与 c-app `phone-gate` 的「获取验证码」都写了 `.sh-center`，
- * 而实测文字中线仍比按钮中线高 12.5px（两处都给了死高度 88rpx 去对齐旁边的输入框，
- * 同时把 `.sh-btn` 那份靠 `padding: 32rpx 0` 撑出来的居中压成了 `0 28rpx`）。
+ * 这不是假设：b-app `login` 的「获取验证码」挂上 `.sh-center` 之后，computed 的
+ * `display` **仍是 block**，文字中线比按钮中线高 12.5px；加上这条规则后是 0.3px。
+ * c-app `phone-gate` 的同一枚按钮没去量，但形状一模一样 —— 同样两个类、同样给了
+ * 死高度 88rpx 去对齐旁边的输入框、同样把 `.sh-btn` 那份靠 `padding: 32rpx 0`
+ * 撑出来的居中压成了 `0 24rpx`，所以同一条规则一并兜住它。
  * 盒子是对齐的，所以症状看着只是「字歪了」，两处的注释还都写着「居中用 .sh-center」。
  *
  * 靠调换顺序修不牢（谁都可能再往后加一条）；这里用两个类的组合把它钉死。

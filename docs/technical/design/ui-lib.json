@@ -522,7 +522,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 114,
+        "b-app": 113,
         "c-app": 68
       }
     },
@@ -1334,7 +1334,7 @@
         "justify-content": "center"
       },
       "usage": {
-        "b-app": 18,
+        "b-app": 19,
         "c-app": 22
       }
     },
