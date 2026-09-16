@@ -2060,6 +2060,14 @@ entryHint: "谁在买 · 谁不来了",
     statTransit: "在途",
     tabTodo: "要处理",
     entry: { purchase: "进货", check: "盘点", out: "报损", docs: "单据", transfer: "调拨", report: "报表", suppliers: "供应商", locations: "库位", cross: "跨店库存" },
+    // 「更多」展开的那段菜单：低频的六个入口收在这里，**只有名字**。
+    // 分组标题与每条一句的说明都去掉了（2026-09-17 商家定的）——
+    // 这六个名字是这一行通用的说法，给每条配一句解释反而像在教人认字
+    more: "更多",
+    // 用不了的时候就地说清楚原因，别只给一个灰名字 —— 灰着看上去像坏了
+    entryBlocked: { transfer: "要两个放货的地方，现在只有 {n} 个" },
+    goAddLocation: "去添加",
+    crossGo: "看各店的货",
     tabAll: "全部",
     tabReserved: "有预留",
     available: "可用",
