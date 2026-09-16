@@ -5035,6 +5035,7 @@ getMerchant
 | `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) \| `null` | 否 | 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。 |
 | `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 否 | 资金路径（轴②）：钱先进谁的账户。 **与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。 |
 | `agriProducer` | `boolean` | 否 | 农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。 |
+| `selfOperated` | `boolean` | 否 | 这个主体是不是**平台自己**（V329）。类目授权那几个勾选框据此决定 要不要因为「缺证件」而禁用 —— 自营不问证件，它的证件就是平台自己的证件。 **不能用 `fundsMode` 代替**：归集（AGGREGATED）同时盖着平台自营与 代销第三方，而代销那一档仍然要核验（ADR-017 §3.4：平台先担责、再向商家追偿）。 |
 
 
 #### POST `/ops/merchants/{merchantNo}/archive`
@@ -5074,6 +5075,7 @@ _无字段_
 | `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) \| `null` | 否 | 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。 |
 | `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 否 | 资金路径（轴②）：钱先进谁的账户。 **与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。 |
 | `agriProducer` | `boolean` | 否 | 农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。 |
+| `selfOperated` | `boolean` | 否 | 这个主体是不是**平台自己**（V329）。类目授权那几个勾选框据此决定 要不要因为「缺证件」而禁用 —— 自营不问证件，它的证件就是平台自己的证件。 **不能用 `fundsMode` 代替**：归集（AGGREGATED）同时盖着平台自营与 代销第三方，而代销那一档仍然要核验（ADR-017 §3.4：平台先担责、再向商家追偿）。 |
 
 
 #### PUT `/ops/merchants/{merchantNo}/auth-codes`
@@ -5153,6 +5155,7 @@ _无字段_
 | `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) \| `null` | 否 | 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。 |
 | `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 否 | 资金路径（轴②）：钱先进谁的账户。 **与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。 |
 | `agriProducer` | `boolean` | 否 | 农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。 |
+| `selfOperated` | `boolean` | 否 | 这个主体是不是**平台自己**（V329）。类目授权那几个勾选框据此决定 要不要因为「缺证件」而禁用 —— 自营不问证件，它的证件就是平台自己的证件。 **不能用 `fundsMode` 代替**：归集（AGGREGATED）同时盖着平台自营与 代销第三方，而代销那一档仍然要核验（ADR-017 §3.4：平台先担责、再向商家追偿）。 |
 
 
 #### GET `/ops/merchants/{merchantNo}/qualifications`
@@ -5254,6 +5257,7 @@ _无字段_
 | `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) \| `null` | 否 | 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。 |
 | `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 否 | 资金路径（轴②）：钱先进谁的账户。 **与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。 |
 | `agriProducer` | `boolean` | 否 | 农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。 |
+| `selfOperated` | `boolean` | 否 | 这个主体是不是**平台自己**（V329）。类目授权那几个勾选框据此决定 要不要因为「缺证件」而禁用 —— 自营不问证件，它的证件就是平台自己的证件。 **不能用 `fundsMode` 代替**：归集（AGGREGATED）同时盖着平台自营与 代销第三方，而代销那一档仍然要核验（ADR-017 §3.4：平台先担责、再向商家追偿）。 |
 
 
 #### GET `/ops/merchants/{merchantNo}/store-modes`
@@ -5336,6 +5340,7 @@ _无字段_
 | `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) \| `null` | 否 | 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。 |
 | `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 否 | 资金路径（轴②）：钱先进谁的账户。 **与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。 |
 | `agriProducer` | `boolean` | 否 | 农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。 |
+| `selfOperated` | `boolean` | 否 | 这个主体是不是**平台自己**（V329）。类目授权那几个勾选框据此决定 要不要因为「缺证件」而禁用 —— 自营不问证件，它的证件就是平台自己的证件。 **不能用 `fundsMode` 代替**：归集（AGGREGATED）同时盖着平台自营与 代销第三方，而代销那一档仍然要核验（ADR-017 §3.4：平台先担责、再向商家追偿）。 |
 
 
 #### POST `/ops/merchants/{merchantNo}/verified`
@@ -5375,6 +5380,7 @@ _无字段_
 | `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) \| `null` | 否 | 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。 |
 | `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 否 | 资金路径（轴②）：钱先进谁的账户。 **与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。 |
 | `agriProducer` | `boolean` | 否 | 农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。 |
+| `selfOperated` | `boolean` | 否 | 这个主体是不是**平台自己**（V329）。类目授权那几个勾选框据此决定 要不要因为「缺证件」而禁用 —— 自营不问证件，它的证件就是平台自己的证件。 **不能用 `fundsMode` 代替**：归集（AGGREGATED）同时盖着平台自营与 代销第三方，而代销那一档仍然要核验（ADR-017 §3.4：平台先担责、再向商家追偿）。 |
 
 
 #### POST `/ops/merchants/{merchantNo}/violations`
@@ -10431,6 +10437,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `legalForm` | [`#/definitions/LegalForm`](#definitionslegalform) \| `null` | 否 | 主体档位。**准入档位完全由它决定** —— 保证金、限额、禁售品类都按它取策略。 此前档案里没有它：运营看得到「这家被限额 500」，看不到「因为它是无照自然人」， 于是只会来问为什么。 |
 | `fundsMode` | [`#/definitions/FundsMode`](#definitionsfundsmode) | 否 | 资金路径（轴②）：钱先进谁的账户。 **与经营模式（`StoreMode.businessMode`，轴③）是两件事** —— 这个说钱先进谁的账户，那个说谁是销售主体。两者正交： 「直连 + 自营」（钱进商家户却说平台是卖方）是非法组合，要拦。 而「要不要给积分补差」判的是**这一列** —— 钱在商家账户才需要补进去。 |
 | `agriProducer` | `boolean` | 否 | 农业生产者。**无照主体走归集的唯一例外** —— 平台可自开农产品收购发票，成本有合法凭证。 |
+| `selfOperated` | `boolean` | 否 | 这个主体是不是**平台自己**（V329）。类目授权那几个勾选框据此决定 要不要因为「缺证件」而禁用 —— 自营不问证件，它的证件就是平台自己的证件。 **不能用 `fundsMode` 代替**：归集（AGGREGATED）同时盖着平台自营与 代销第三方，而代销那一档仍然要核验（ADR-017 §3.4：平台先担责、再向商家追偿）。 |
 
 ### MerchantApply
 

@@ -162,8 +162,16 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
                   // 缺资质的直接禁掉：勾上再保存报错，等于让人白点一次。
                   // `?? []` 不是防御性冗余：后端此前不下发 qualifications，
                   // 少了它这一行会在真接口下抛 TypeError（见 types/merchant.ts 的注）。
+                  //
+                  // **平台自营主体不受这条限制**：它的证件就是平台自己的证件，
+                  // 逐个主体再登记一遍，登出来的既没人核验、也与平台的真实执照无关，
+                  // 只是为了把这个框点开（2026-09-16 建虹选鲜果时就是这么干的，
+                  // 补出来那条营业执照编号是空的 —— 半截记录比没有更坏）。
+                  // 判据只能是 selfOperated，**不能是 fundsMode**：归集同时盖着代销，
+                  // 拿它判会顺手放开所有代销商户，而且不报错。
                   const blocked =
                     !!a.requiredQualification &&
+                    !current.selfOperated &&
                     !(current.qualifications ?? []).includes(a.requiredQualification);
                   return (
                     <label key={a.code} className="flex items-start gap-2">

@@ -218,6 +218,8 @@ export const merchantMock: MerchantApi = {
       categoryCodes: [], qualifications: [], verified: true, breachCount: 0,
       settleAccountReady: false, createdAt: new Date().toISOString(),
       fundsMode: "AGGREGATED",
+      // 建出来的主体要带上这个标记，否则 mock 下「自营的类目授权不禁用」演不出来
+      selfOperated: true,
     });
     selfOperatedByPhone.set(phone, merchantNo);
     return wait({

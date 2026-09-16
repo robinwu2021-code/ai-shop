@@ -693,7 +693,8 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                 m.getFundsMode() == null || m.getFundsMode().isBlank()
                         ? ai.neargo.shop.spi.user.MerchantQueryPort.FUNDS_AGGREGATED
                         : m.getFundsMode(),
-                Integer.valueOf(1).equals(m.getIsAgriProducer()));
+                Integer.valueOf(1).equals(m.getIsAgriProducer()),
+                Integer.valueOf(1).equals(m.getSelfOperated()));
     }
 
     private List<String> readList(String raw) {

@@ -239,6 +239,10 @@ public interface MerchantGovernService {
      *                       <b>准入档位完全由它决定</b>——保证金、限额、禁售品类都按它取策略。
      *                       此前档案里没有它：运营看得到「这家被限额 500」，
      *                       看不到「因为它是小微」，于是只会来问为什么。
+     * @param selfOperated 这个主体是不是<b>平台自己</b>（V329）。运营端靠它决定
+     *        类目授权那几个勾选框要不要因为「缺证件」而禁用 —— 自营不问证件，
+     *        它的证件就是平台自己的证件。<b>不能用 {@code fundsMode} 代替</b>：
+     *        归集同时盖着平台自营与代销第三方，代销那一档仍然要核验
      * @param qualifications 已登记且有效的资质<b>证件名</b>（{@code mch_qualification.qual_name}）。
      *                       取名不取类型，因为 {@code sys_auth_code.required_qualification}
      *                       存的就是证件名，运营端要拿它们直接比对。
@@ -263,7 +267,8 @@ public interface MerchantGovernService {
                              boolean settleAccountReady, long createdAt, String auditRemark,
                              boolean asPickupPoint, String archivedAt, String legalForm,
                              List<String> qualifications,
-                             String fundsMode, boolean agriProducer) {
+                             String fundsMode, boolean agriProducer,
+                             boolean selfOperated) {
     }
 
     /** @param storeNo 门店级处置时的门店号，主体级处置为 null（V96） */

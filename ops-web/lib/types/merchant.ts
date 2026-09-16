@@ -130,6 +130,14 @@ export interface Merchant extends Archivable {
    * 平台可自开农产品收购发票，成本有合法凭证。
    */
   agriProducer?: boolean;
+  /**
+   * 这个主体是不是**平台自己**（V329）。类目授权那几个勾选框据此决定
+   * 要不要因为「缺证件」而禁用 —— 自营不问证件，它的证件就是平台自己的证件。
+   *
+   * **不能用 `fundsMode` 代替**：归集（AGGREGATED）同时盖着平台自营与
+   * 代销第三方，而代销那一档仍然要核验（ADR-017 §3.4：平台先担责、再向商家追偿）。
+   */
+  selfOperated?: boolean;
 }
 
 /**

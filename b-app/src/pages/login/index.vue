@@ -203,9 +203,9 @@ async function doLogin(method: LoginMethod) {
             maxlength="6"
             :placeholder="$t('login.codePh')"
           />
-          <text v-if="!byPwd" class="txt-sub sh-btn sh-btn--soft send" :class="{ 'is-off': left > 0 }" @tap="sendCode">
+          <view v-if="!byPwd" class="sh-btn sh-btn--soft sh-center send" :class="{ 'is-off': left > 0 }" @tap="sendCode">
             {{ left > 0 ? $t("login.resend", { s: left }) : $t("login.sendCode") }}
-          </text>
+          </view>
         </view>
         <!-- 没设过密码的人点进来会撞上 10457，这一行提前说清楚出路 -->
         <text v-if="byPwd" class="sh-muted pwd-tip">{{ $t("login.passwordTip") }}</text>
@@ -293,6 +293,13 @@ async function doLogin(method: LoginMethod) {
 /*
  * 「获取验证码」用设计系统的按钮，只收窄内边距 —— 原来是本页自造的圆角小块。
  * 高度对齐 `.field__input`（88rpx）：它和输入框并排站一行，差几像素就是歪的。
+ *
+ * ⚠️ **给死高度就必须自己接管竖向居中**：`.sh-btn` 是 `display:block`，
+ * 它把字摆正靠的是 `padding: 32rpx 0`。这里为了对齐输入框把内边距压成
+ * `0 28rpx`，那份居中就没了 —— 字贴在 88rpx 盒子的顶上，实测文字中线
+ * 比按钮中线高 13px（盒子本身是对齐的，所以看着只是「字歪了」）。
+ * 所以挂 `.sh-center`，与 c-app `phone-gate` 的同一枚按钮同一种写法；
+ * 不用 `line-height`——那个数既是行距又是盒高，两件事挤在一起。
  */
 .send {
   flex-shrink: 0;
