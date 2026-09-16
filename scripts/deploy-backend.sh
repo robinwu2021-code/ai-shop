@@ -50,6 +50,8 @@ cd "$ROOT"
 say()  { printf '\033[36m›\033[0m %s\n' "$1"; }
 ok()   { printf '  \033[32m✓\033[0m %s\n' "$1"; }
 die()  { printf '  \033[31m✗\033[0m %s\n' "$1" >&2; exit 1; }
+# 说出来但不中止：用在「这次上线已经成功、只是收尾那步没做干净」的地方
+warn() { printf '  \033[33m!\033[0m %s\n' "$1" >&2; }
 
 # **守到 health=200 才算完。** 2026-08-28 出过一次事故：重启后 health 一直是
 # 000，而我被新话题岔开就走了 —— 线上挂了六分钟没人知道，最后是同伴发现的。
@@ -306,12 +308,27 @@ fi
 # 每个包 86M，2026-08-29 时服务器上已堆了 13 个 / 2.8G。磁盘还宽裕，
 # 但没人会回头删。保留最近 5 个 **加上当前软链指向的那个**（即使它已排在
 # 5 名之外）—— 少了后半句，某次回滚到旧版之后下一次部署就会把脚下那个删掉。
-ssh "$HOST" "cd '$REMOTE_DIR' || exit 0
-    cur=\$(readlink shop-app.jar 2>/dev/null)
-    ls -1t shop-app-*.jar 2>/dev/null | tail -n +6 | while read -r f; do
+#
+# ⚠️ 2026-09-16 修掉两处：
+#
+# ① **服务名曾写死成 shop-app**，而这个脚本从 2026-09-01 起就带 pay-svc 了 ——
+#    于是发 pay-svc 时这段一个都不删。实测服务器上 pay-svc 囤了 7 个 / 321M，
+#    而它本该只有 6 个。用 $APP / $LINK_NAME，别再写死。
+#
+# ② **整段曾是 `>/dev/null 2>&1 || true`**，失败了也照样打印「上线完成」。
+#    这段要删文件，是最不该静音的那种 —— 现在把删了几个打出来，
+#    失败也说出来（但不 die：包已经在跑了，清不掉旧包不该让部署算失败）。
+say "清理旧版本包（保留最近 5 个 + 当前）"
+if ! ssh "$HOST" "cd '$REMOTE_DIR' || exit 0
+    cur=\$(readlink '$LINK_NAME' 2>/dev/null)
+    n=0
+    for f in \$(ls -1t '$APP'-*.jar 2>/dev/null | tail -n +6); do
         [ \"\$f\" = \"\$cur\" ] && continue
-        sudo rm -f -- \"\$f\"
-    done" >/dev/null 2>&1 || true
+        sudo rm -f -- \"\$f\" && n=\$((n+1))
+    done
+    echo \"  删了 \$n 个，现存 \$(ls -1 '$APP'-*.jar 2>/dev/null | wc -l) 个\""; then
+    warn "旧包清理没跑成（包已经在跑，不影响这次上线）—— 手动看：ssh $HOST 'ls -lt $REMOTE_DIR/$APP-*.jar'"
+fi
 
 printf '\n\033[32m上线完成\033[0m  %s  ←  %s %s\n' "$JAR_NAME" "$HEAD_SHA" "$HEAD_MSG"
 printf '回滚：ssh %s "sudo ln -sfn %s %s && sudo systemctl restart %s"\n' \
