@@ -18,9 +18,11 @@ RuntimeDirectory=mysqld97
 RuntimeDirectoryMode=0755
 LimitNOFILE=10000
 # 「尽量小的资源」的硬边界。按 my.cnf 的配置常驻约 200~300MB：
-# MemoryHigh 到了先回收、限速，MemoryMax 是天花板 —— 给足余量，免得正常峰值被 OOM 杀掉
-MemoryHigh=384M
-MemoryMax=640M
+# 内存限额**不在这里** —— 见 mysql97.service.d/10-memory.conf。
+# 放 drop-in 而不是放这儿：那两个数必须与 my.cnf 的 innodb_buffer_pool_size 一起改，
+# 而 2026-09-16 之前这里写着 MemoryHigh=384M、my.cnf 写着 pool=1G，两边直接矛盾，
+# 结果是 buffer pool 一申请就被 memcg 回收进 swap，「整库常驻」从未成立。
+# 同一件事只留一个真相源，改的时候才不会只改到一半。
 # InnoDB 正常关机要刷脏页，别被 systemd 默认的 90 秒掐断
 TimeoutStopSec=600
 Restart=on-failure
