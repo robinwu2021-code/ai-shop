@@ -7,6 +7,7 @@
 // **存草稿与过账是两件事**：草稿不动库存，过账才动。分成两个按钮而不是
 // 「保存」一个 —— 一个动库存的动作不该和「我先记一半」共用同一个词。
 import { computed, ref } from "vue";
+import { STORAGE } from "@shared/utils/constants";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
@@ -73,6 +74,7 @@ async function load() {
     pickable.value = await api.mStockPickable({ size: 200 });
     // 只要在用的：停用的不该出现在新单据里（管理页才传 activeOnly=false）
     suppliers.value = await api.mSuppliers({ activeOnly: true });
+    pickDefaultSupplier();
     failed.value = false;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -140,9 +142,42 @@ async function editCost(l: Line) {
  * 而分岔的表现是「界面说能建，建出来报错」。弹层里搜到同名时本来就不给「新建」，
  * 这里兜的是并发那一格。
  */
+/**
+ * 开单时给供应商一个**默认值**（2026-09-17 店主提的）。
+ *
+ * <p>小店多半固定从一两家进货，每开一张单都从空白重选一遍是重复劳动。
+ * 顺序：<b>上次用的 → 列表第一个 → 留空</b>。
+ *
+ * <p><b>上次用的那个要去列表里核一次</b>，不能直接拿来显示：它可能已经停用
+ * （列表只取 activeOnly）或被删。核不到就退回第一个 ——
+ * 把一个不存在的名字摆在那儿，比留空更糟：他会以为这单记在那家头上。
+ *
+ * <p><b>一件供应商都还没建时保持空白</b>：那时「默认」无从谈起，
+ * 而空白配上「请选择」正好把他推去建第一家。
+ *
+ * <p>只在还没选过时填 —— 已经选过就别覆盖他的选择。
+ */
+function pickDefaultSupplier() {
+  if (supplier.value || !suppliers.value.length) return;
+  let last: string | null = null;
+  try {
+    last = uni.getStorageSync(STORAGE.lastSupplierNo) || null;
+  } catch {
+    // 读不到不是错：隐私模式、清过数据都会这样，退回列表第一个就行
+    last = null;
+  }
+  supplier.value = suppliers.value.find((s) => s.supplierNo === last) ?? suppliers.value[0] ?? null;
+}
+
 function onPickSupplier(s: Supplier) {
   supplier.value = s;
   showSupplier.value = false;
+  // 记成下次的默认值。**写失败不该打断开单** —— 它只是个习惯，不是数据
+  try {
+    uni.setStorageSync(STORAGE.lastSupplierNo, s.supplierNo);
+  } catch {
+    /* 存不了就下次再从列表第一个开始，没有任何后果 */
+  }
 }
 
 async function createSupplier(name: string) {
