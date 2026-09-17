@@ -1363,6 +1363,72 @@ class M9bBizGoodsFlowTest {
         }
     }
 
+    /**
+     * <b>免审直通发布之后，回执必须说「没有未发布修改」。</b>
+     *
+     * <p>端上正是用返回值里的 {@code hasDraft} 选提示文案
+     * （{@code goods.publishedPending} vs {@code goods.published}），而且它的注释
+     * 明写着「用返回值区分，不在端上再查一遍审核开关 —— 两处判断迟早漂移」。
+     * 那个决定是对的，前提是<b>返回值说的是真话</b>。
+     *
+     * <p>2026-09-17 关掉 goods.audit 后在生产上实测：改动已经生效、价格已经换成新版，
+     * 商家看到的却是「已提交审核，线上仍在售旧版，过审后自动换新」——<b>说了反话</b>。
+     * 根因是 {@code swapFromDraft} 先 {@code save()}（VO 在那里面就构建好了）、
+     * 后 {@code purge()}，回执比真相晚一条语句。
+     *
+     * <p>这条断言钉的是那个顺序。它不测文案本身 —— 文案在端上，
+     * 而端上那个分支只有在这个字段说真话时才成立。
+     */
+    @Test
+    @DisplayName("★★★ 免审发布后回执 hasDraft=false —— 端上靠它选文案，说反了就是「已生效」被说成「等审核」")
+    void auditOffPublishReportsNoPendingDraft() throws Exception {
+        String ops = opsLogin("admin", "admin123");
+        String biz = merchant("12600199209", "免审回执店");
+        // 先在审核开着时把商品做成「在售 + 有草稿」—— 这正是商家点发布时的处境
+        String gBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT120\",\"title\":\"免审回执品\","
+                                + "\"subtitle\":\"t\",\"cover\":\"c\",\"images\":[],"
+                                + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":700,\"stock\":3}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(gBody).get("data").get("goodsNo").asString();
+        mvc().perform(post("/biz/goods/" + goodsNo + "/submit")
+                .header("Authorization", "Bearer " + biz)).andExpect(jsonPath("$.code").value(0));
+        mvc().perform(post("/ops/goods/" + goodsNo + "/audit").header("Authorization", "Bearer " + ops)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+        // 改一笔 → 在售商品只落草稿
+        mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"categoryNo\":\"CAT120\","
+                                + "\"title\":\"免审回执品·改\",\"subtitle\":\"t\",\"cover\":\"c\","
+                                + "\"images\":[],\"specGroups\":[],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":900,\"stock\":3}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.hasDraft").value(true));
+
+        // 关掉审核开关。**结尾必须恢复**（finally）—— 开关在共享库里
+        mvc().perform(post("/ops/feature-flags/goods.audit").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":false,\"rolloutPercent\":0}"))
+                .andExpect(jsonPath("$.code").value(0));
+        try {
+            mvc().perform(post("/biz/goods/" + goodsNo + "/publish")
+                            .header("Authorization", "Bearer " + biz))
+                    .andExpect(jsonPath("$.code").value(0))
+                    // ★ 这一条：换版已经完成，回执不能还说「有未发布修改」
+                    .andExpect(jsonPath("$.data.hasDraft").value(false))
+                    // 顺带钉住「真的换了版」，否则上面那条也可能只是「草稿被丢了」
+                    .andExpect(jsonPath("$.data.title").value("免审回执品·改"));
+        } finally {
+            mvc().perform(post("/ops/feature-flags/goods.audit").header("Authorization", "Bearer " + ops)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"enabled\":true,\"rolloutPercent\":0}"))
+                    .andExpect(jsonPath("$.code").value(0));
+        }
+    }
+
     @Test
     @DisplayName("★★★ 双版本：编辑在售商品只落草稿，线上照卖旧版")
     void savingOnSaleGoodsKeepsItSelling() throws Exception {

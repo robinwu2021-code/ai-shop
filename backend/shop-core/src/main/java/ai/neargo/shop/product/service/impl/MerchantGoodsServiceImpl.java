@@ -1232,9 +1232,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
         PUBLISHING.set(Boolean.TRUE);
         try {
-            GoodsVO vo = save(live.getEntityNo(), cmd);
+            /*
+             * ★ **先删草稿行，再 save。** 顺序反过来的话 save() 内部构建 VO 时
+             * 草稿行还在，返回的 {@code hasDraft} 就是 true —— 比真相晚一条语句。
+             *
+             * 而端上正是用这个字段选提示文案：免审直通发布之后，商家看到的是
+             * 「已提交审核，线上仍在售旧版，过审后自动换新」—— <b>说了反话</b>，
+             * 改动其实已经生效。2026-09-17 关掉 goods.audit 后在生产上实测到。
+             *
+             * payload 已经解析进 cmd，删行不影响 save()；它也不读草稿表
+             * （stayDraft 只看商品自身的 audit_status）。同一个事务里，
+             * save() 抛异常整体回滚，草稿不会被白删。
+             */
             DataScopeContext.executeWithoutScope(() -> draftMapper.purge(draft.getGoodsNo()));
-            return vo;
+            return save(live.getEntityNo(), cmd);
         } finally {
             PUBLISHING.remove();
         }
