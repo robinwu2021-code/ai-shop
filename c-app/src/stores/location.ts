@@ -6,6 +6,7 @@
 // 给父母下单时两者不一样。合成一个的后果是改了一个另一个跟着变。
 import { defineStore } from "pinia";
 import { api } from "@/api";
+import { ApiError } from "@shared/net/http-client";
 import { getLocationDetailed } from "@shared/ports/location";
 import { useCommunityStore } from "./community";
 import type { Address } from "@shared/types";
@@ -40,6 +41,11 @@ export const useLocationStore = defineStore("location", {
      * 而它在界面上与「这就是你这儿的货」长得一模一样，用户下单才发现送不到。
      */
     coarseRegion: null as { code: string; name: string } | null,
+    /**
+     * 这次会话有没有核过「存着的那个聚落还在不在」。
+     * 只核一次：核的是一条几乎不会变的事实，每次进首页都问一遍是白花的往返。
+     */
+    communityChecked: false,
     /**
      * 定位到底拿没拿到。`null` = 这次会话还没探过。
      * **false 才是那唯一该空屏的一格**：连模糊定位都被拒，此时要位置，不是列一屏买不到的东西。
@@ -100,9 +106,30 @@ export const useLocationStore = defineStore("location", {
      */
     async ensureCoarseRegion(): Promise<{ code: string; name: string } | null> {
       const community = useCommunityStore();
-      if (community.community || this.coarseRegion) {
-        return community.community ? null : this.coarseRegion;
+      if (community.community) {
+        /*
+         * **先确认那个聚落还在。**
+         *
+         * 归属是持久化的，而这里又是「有归属就早退」—— 两条加起来的后果是
+         * 升级前绑过的人**永远重新匹配不了**，哪怕他绑的那个聚落早已不存在。
+         * 真机实况：顶栏顶着一个杭州演示数据里的便利店名，而库里根本没有那条记录。
+         *
+         * **只在服务端明确答「没有这条」时才清**（`ApiError` = 后端答了话）。
+         * 网络不通那次不能清 —— 那会把一次地铁里的抖动变成「你的位置没了」。
+         *
+         * 一次会话只核一次：核的是一条几乎不会变的事实。
+         */
+        if (!this.communityChecked) {
+          this.communityChecked = true;
+          try {
+            await api.communityDetail(community.community.communityNo);
+          } catch (e) {
+            if (e instanceof ApiError) community.clear();
+          }
+        }
+        if (community.community) return null;
       }
+      if (this.coarseRegion) return this.coarseRegion;
       // 走 Detailed 那一份：这里要分清「拒了」与「只给了个大概」，而 getLocation 把两者都抹成 null
       const r = await getLocationDetailed().catch(() => null);
       if (!r?.ok) {

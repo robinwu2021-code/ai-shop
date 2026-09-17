@@ -315,7 +315,13 @@ onShareAppMessage(() =>
         -->
         <text v-if="location.isTransient" class="sh-chip sh-chip--primary place__here">{{ $t("home.hereTag") }}</text>
         <text class="txt-body place__name">
-          {{ location.label || community.pickup?.name || $t("home.choosePickup") }}
+          <!--
+            回落到**聚落名**，不是自提点名。此前这里是 `community.pickup?.name` ——
+            而买家早就不挑自提点了（M3 删掉了那一页），那个值只可能来自
+            升级前存在本地的旧状态。真机上表现为顶栏顶着一个便利店的名字，
+            而用户以为那是他所在的小区。
+          -->
+          {{ location.label || community.community?.name || $t("home.choosePickup") }}
         </text>
         <text class="txt-caption place__sub sh-fill">{{ placeSub }}</text>
       </view>

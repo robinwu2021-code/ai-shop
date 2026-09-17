@@ -149,6 +149,14 @@ export const useCommunityStore = defineStore("community", {
 
   persist: {
     key: STORAGE.community,
-    pick: ["community", "pickup"],
+    /*
+     * **只存聚落，不存自提点。**
+     *
+     * 自提点现在只用来显示「每晚 8 点前到货」这类文案，而它是下单时才匹配的
+     * （TDD-C端位置选择 M4）。存下来的那个来自上一次绑定，可能早就不对了 ——
+     * 而一句过期的到货文案与一个过期的店名一样，都是假话。
+     * 不存的代价只是重启后那行文案要等下一次绑定才回来，而那就发生在首页加载时。
+     */
+    pick: ["community"],
   },
 });

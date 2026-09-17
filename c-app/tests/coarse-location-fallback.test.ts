@@ -20,6 +20,7 @@ function code(rel: string): string {
 
 const homePage = code("src/pages/home/index.vue");
 const locationStore = code("src/stores/location.ts");
+const communityStore = code("src/stores/community.ts");
 
 /** 演示数据全挂在西湖区 */
 const HANGZHOU_XIHU = "330106";
@@ -104,6 +105,33 @@ describe("粗定位兜底：按区看货", () => {
     const readAt = body.indexOf("const communityNo = community.community?.communityNo");
     expect(awaitAt).toBeGreaterThan(-1);
     expect(readAt).toBeGreaterThan(awaitAt);
+  });
+
+  it("★★★ 顶栏回落到**聚落名**，不是自提点名 —— 真机上顶着一个便利店的名字", () => {
+    /*
+     * 买家早就不挑自提点了（M3 删掉了那一页），`community.pickup` 只可能来自
+     * 升级前存在本地的旧状态。真机实况：首页顶部显示「翡翠便利店」，
+     * 而用户以为那是他所在的小区 —— 那条记录甚至已经不在库里了。
+     */
+    expect(homePage).toContain("community.community?.name");
+    expect(homePage).not.toContain("community.pickup?.name");
+  });
+
+  it("★★★ 存着的聚落要核一次还在不在 —— 否则升级前绑过的人永远重新匹配不了", () => {
+    /*
+     * 「归属是持久化的」+「有归属就早退」两条加起来，会把存量用户钉死在
+     * 一个可能早已不存在的聚落上。而症状是顶栏显示一个查不到的名字、
+     * 商品按一个不存在的社区筛 —— 一条错误都没有。
+     */
+    expect(locationStore).toContain("communityChecked");
+    expect(locationStore).toContain("api.communityDetail");
+    // **只在服务端明确答「没有」时才清**：网络抖动不能变成「你的位置没了」
+    expect(locationStore).toContain("e instanceof ApiError");
+  });
+
+  it("★★ 自提点不再持久化 —— 过期的到货文案与过期的店名一样是假话", () => {
+    expect(communityStore).toContain('pick: ["community"]');
+    expect(communityStore).not.toContain('pick: ["community", "pickup"]');
   });
 
   it("★★ 「拒了」与「只给了个大概」要分得开", () => {
