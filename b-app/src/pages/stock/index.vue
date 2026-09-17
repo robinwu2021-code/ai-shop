@@ -405,12 +405,23 @@ onShow(load);
             ></sh-icon>
             <text>{{ $t(`stock.entry.${e.key}`) }}</text>
           </view>
+          <!--
+            ★ **「更多」是一枚圆，不是第三个按钮。**
+
+            它开的是另一段抽屉，不写任何数据 —— 这个判断原本就写在下面的
+            `.act--more` 注释里，但表达成了「窄一点的文字胶囊」，读出来仍是
+            「第三个按钮，只是小一号」。店主的原话：「按钮左右不协调」。
+            改成用**形状**说这件事：两个真动作严格等分、左右对称，它缩成一枚圆。
+            与库里「危险操作靠形态而不是靠颜色区分」是同一条原则。
+
+            文字去掉之后 `stock.more` 留作读屏标签 —— 图标按钮不该是哑的。
+          -->
           <view
             v-if="entries.more.length"
             class="sh-btn sh-btn--md sh-btn--muted sh-center act act--more"
+            :aria-label="$t('stock.more')"
             @tap="moreOpen = !moreOpen"
           >
-            <text>{{ $t("stock.more") }}</text>
             <sh-icon
               :name="moreOpen ? 'chevronDown' : 'chevronUp'"
               :size="26"
@@ -458,8 +469,18 @@ onShow(load);
   flex: 1;
   gap: 8rpx;
 }
-.act--more {
+/*
+ * 一枚 88rpx（44px）的圆：与两个动作同高，但**形状不同类**。
+ *
+ * 选择器写成 `.act.act--more` 而不是 `.act--more`：要压过库件的
+ * `.sh-btn--md`（它给了 padding），而两者都是单类名、特异度相同 ——
+ * 那时谁赢只看加载顺序，而顺序不是我能保证的东西。
+ */
+.act.act--more {
   flex: none;
+  width: 88rpx;
+  height: 88rpx;
+  padding: 0;
 }
 
 /*
