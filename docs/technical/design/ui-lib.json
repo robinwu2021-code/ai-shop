@@ -839,6 +839,24 @@
       }
     },
     {
+      "class": ".sh-btn--md",
+      "group": "按钮",
+      "when": "中间档：**贴底操作条里的按钮**（stock 的进货/报损/更多）。44px，压在可点下限上",
+      "avoid": "它对比的是别的页面的贴底主按钮，不是文字 —— 一行文字动作里的主操作仍用 --sm",
+      "decl": {
+        "padding": "24rpx 28rpx",
+        "font-size": "28rpx"
+      },
+      "px": {
+        "padding": "12px 14px",
+        "font-size": "14px"
+      },
+      "usage": {
+        "b-app": 2,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".sh-btn--muted",
       "group": "按钮",
       "when": "不强调的操作（取消、稍后）",
@@ -870,7 +888,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 24,
+        "b-app": 22,
         "c-app": 11
       }
     },
@@ -4965,7 +4983,7 @@
   "gaps": [],
   "counts": {
     "tokens": 16,
-    "blocks": 80,
+    "blocks": 81,
     "components": 34,
     "pages": 113,
     "gapKinds": 0

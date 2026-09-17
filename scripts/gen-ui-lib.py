@@ -124,6 +124,8 @@ BLOCK_NOTES = {
     ".sh-link--warn": ("按钮", "要当心的文字动作（申诉、撤回）", "真危险的操作用 .sh-btn--danger"),
     ".sh-btn": ("按钮", "一屏一个主操作，实心胶囊", "并排两个主按钮时次要那个降成 --soft"),
     ".sh-btn--sm": ("按钮", "小一号：**放在一行文字动作里当主操作**（stores 的「切到这家」）", "整屏的主操作用默认尺寸"),
+    ".sh-btn--md": ("按钮", "中间档：**贴底操作条里的按钮**（stock 的进货/报损/更多）。44px，压在可点下限上",
+                    "它对比的是别的页面的贴底主按钮，不是文字 —— 一行文字动作里的主操作仍用 --sm"),
     ".sh-btn--soft": ("按钮", "次要操作：tint 底 + 主色字", "—"),
     ".sh-btn--muted": ("按钮", "不强调的操作（取消、稍后）", "—"),
     ".sh-btn--danger": ("按钮", "危险操作：**描边 + 墨字**，靠形态与主按钮区分", "红实心留给二次确认"),
@@ -1300,6 +1302,9 @@ BLOCK_DEMOS = {
     ".sh-btn": '<div class="sh-btn">确认接单</div>',
     ".sh-btn--sm": '<span class="sh-btn sh-btn--soft sh-btn--sm">切到这家</span>'
                    '<span class="sh-link" style="margin-inline-start:10px">改名</span>',
+    ".sh-btn--md": '<span class="sh-btn sh-btn--md" style="display:inline-block">进货</span>'
+                   '<span class="sh-btn sh-btn--md sh-btn--muted" style="display:inline-block;'
+                   'margin-inline-start:8px">更多</span>',
     ".sh-btn--soft": '<div class="sh-btn sh-btn--soft">再来一单</div>',
     ".sh-btn--muted": '<div class="sh-btn sh-btn--muted">稍后再说</div>',
     ".sh-btn--danger": '<div class="sh-btn sh-btn--danger">停用员工</div>',

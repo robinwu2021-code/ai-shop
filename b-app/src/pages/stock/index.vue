@@ -394,7 +394,7 @@ onShow(load);
           <view
             v-for="e in entries.primary"
             :key="e.key"
-            class="sh-btn sh-btn--sm sh-center act"
+            class="sh-btn sh-btn--md sh-center act"
             :class="{ 'sh-btn--soft': e.key === 'out' }"
             @tap="go(e.route)"
           >
@@ -407,7 +407,7 @@ onShow(load);
           </view>
           <view
             v-if="entries.more.length"
-            class="sh-btn sh-btn--sm sh-btn--muted sh-center act act--more"
+            class="sh-btn sh-btn--md sh-btn--muted sh-center act act--more"
             @tap="moreOpen = !moreOpen"
           >
             <text>{{ $t("stock.more") }}</text>

@@ -1836,6 +1836,26 @@ uni-page-wrapper[style*="--window-bottom"] {
   padding: 12rpx 28rpx;
   font-size: 26rpx;
 }
+/*
+ * 中间那一档：**贴底操作条里的按钮**。
+ *
+ * <p>为什么不能用 `--sm`：那一档的定义写在上面 —— 「放在一行文字动作里当主操作用」，
+ * 它对比的是**文字**，所以 30px 够用。而贴底操作条是一页的主操作区，
+ * 三个按钮平铺、下面没有别的东西，它对比的是别的页面的贴底主按钮（52px），
+ * 于是显得扁。2026-09-17 店主的原话：「底部 button 是否太扁？大小是否不够协调」。
+ *
+ * <p>为什么不能直接用 `.sh-btn`：那是 52px，贴底条会从 46px 长到 ~70px，
+ * 挡掉更多列表内容 —— 而把条做矮本来就是库存页要解的问题。
+ *
+ * <p><b>44px 不是审美取值，是可点下限</b>（iOS HIG 44pt / Android 48dp）。
+ * `--sm` 的 30px 已经在下限之下。算式：24rpx×2 + 28rpx×1.4 = 87.2rpx = 43.6px。
+ * 字号取 28rpx 而不是 26rpx —— 与 `.sh-btn` 同一档（字阶的 `.txt-strong`，
+ * 「按钮正是它」），主操作不该比正文还小。
+ */
+.sh-btn--md {
+  padding: 24rpx 28rpx;
+  font-size: 28rpx;
+}
 .sh-btn--soft {
   background: var(--sh-primary-tint);
   color: var(--sh-primary-text);
