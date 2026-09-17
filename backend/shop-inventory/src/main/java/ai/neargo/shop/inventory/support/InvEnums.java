@@ -34,6 +34,14 @@ public final class InvEnums {
     /** 单据状态。**只有 POSTED 改余额**，前面加多少中间态都不影响这一条。 */
     public static final class DocStatus {
         public static final String DRAFT = "DRAFT";
+        /**
+         * 盘点单专有的「正在盘」。**盘点没有 DRAFT** —— 开单那一刻就把账面数锁住了，
+         * 它从一开始就不是草稿。
+         *
+         * <p>此前这个值以字面量散在三处（开单、首页查开着的那张、本次新增的那道闸），
+         * 写错一个字母的症状是「首页永远说没有开着的单」，而三处都不报错。
+         */
+        public static final String COUNTING = "COUNTING";
         public static final String POSTED = "POSTED";
         public static final String VOIDED = "VOIDED";
 

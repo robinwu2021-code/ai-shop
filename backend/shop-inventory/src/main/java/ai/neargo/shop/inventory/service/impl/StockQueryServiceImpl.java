@@ -109,7 +109,7 @@ public class StockQueryServiceImpl implements StockQueryService {
         InvStockCount open = countMapper.selectOne(Wrappers.<InvStockCount>lambdaQuery()
                 .eq(InvStockCount::getOwnerId, ownerId)
                 .eq(locationId != null, InvStockCount::getLocationId, locationId)
-                .eq(InvStockCount::getStatus, "COUNTING")
+                .eq(InvStockCount::getStatus, InvEnums.DocStatus.COUNTING)
                 .orderByDesc(InvStockCount::getId)
                 .last("LIMIT 1"));
         return new SummaryVO(all.size(), shortage, stale, inTransit,

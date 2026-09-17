@@ -91,13 +91,37 @@ public class StockCountServiceImpl implements StockCountService {
         if (itemIds == null || itemIds.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        /*
+         * **一个库位同时只许有一张盘点单开着。**
+         *
+         * 开单这一刻会把每件货的账面数快照下来（见下面那行 `setBookQty`），而开单之后
+         * 照常卖。同时开两张，两张锁的是两个时刻的数：先开那张过账时，会把这中间
+         * 卖掉的量当成盘亏再扣一遍 —— **账朝一个方向错，而且不报错**。
+         *
+         * **按库位判而不是按业主**：账面数是按 (货, 库位) 锁的，两个库位各盘各的不冲突。
+         * 判据与首页那个 `openCountNo` 用的是同一条（`StockQueryServiceImpl`），
+         * 两边对不上的话，界面说没有开着的单、接口却拒绝，没人查得出来。
+         *
+         * 抛的时候**带上那张单的单号**：不带的话商家只知道「有一张」，
+         * 而首页只显示最近的那一张，先开的那张要翻单据才找得到。
+         */
+        InvStockCount opened = countMapper.selectOne(Wrappers.<InvStockCount>lambdaQuery()
+                .eq(InvStockCount::getOwnerId, ownerId)
+                .eq(locationId != null, InvStockCount::getLocationId, locationId)
+                .eq(InvStockCount::getStatus, InvEnums.DocStatus.COUNTING)
+                .orderByDesc(InvStockCount::getId)
+                .last("LIMIT 1"));
+        if (opened != null) {
+            throw BizException.of(ErrorCode.COUNT_ALREADY_OPEN, opened.getCountNo());
+        }
+
         String no = InvKeys.next(InvKeys.COUNT);
         InvStockCount head = new InvStockCount();
         head.setCountNo(no);
         head.setOwnerId(ownerId);
         head.setLocationId(locationId);
         head.setScope("SELECTED");
-        head.setStatus("COUNTING");
+        head.setStatus(InvEnums.DocStatus.COUNTING);
         head.setStartedAt(LocalDateTime.now());
         head.setOperator(operator);
         head.setCreatedBy(operator);

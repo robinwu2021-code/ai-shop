@@ -459,6 +459,58 @@ class InventoryBizEndpointTest {
 
 
     @Test
+    @DisplayName("★★★ 一个库位同时只许开一张盘点单 —— 第二张会把期间的销售当成盘亏再扣一遍")
+    void secondOpenCountIsRefused() throws Exception {
+        Shop s = shop();
+
+        String first = okText(post("/biz/inventory/counts")
+                .content("{\"itemIds\":[\"" + s.itemA + "\"]}"), s.token);
+
+        /*
+         * 第二张必须开不出来。**这不是洁癖**：账面数是开单那一刻锁的，
+         * 两张单锁的是两个时刻的数 —— 先开那张过账时，会把这中间卖掉的量
+         * 当成盘亏再扣一遍，账朝一个方向错且不报错。
+         */
+        String body = mvc().perform(post("/biz/inventory/counts")
+                        .header("Authorization", "Bearer " + s.token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"itemIds\":[\"" + s.itemA + "\"]}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode env = json.readTree(body);
+        assertThat(env.get("code").asInt())
+                .as("第二张必须被拒（20006 COUNT_ALREADY_OPEN）；放过去账就会朝一个方向错")
+                .isEqualTo(20006);
+
+        /*
+         * **文案里必须有那张单的单号。** 不带的话商家只知道「有一张开着」，
+         * 而首页只显示最近的那一张 —— 先开的那张要翻单据才找得到。
+         * 这一条也顺带验了带参抛出没被吞：文案里有 {0}、抛出时传了参。
+         */
+        assertThat(env.get("msg").asText())
+                .as("错误文案要指名是哪一张单，否则商家无从下手")
+                .contains(first);
+
+        /*
+         * **退路要通**：拦的是「同时两张」，不是「这辈子只许一张」。
+         * 把前一张过账掉就又开得出来 —— 而一件都没填的单过账是**空操作**
+         * （`post` 跳过 `diff == null` 的行），库存一件不动。
+         *
+         * ⚠️ 顺带记下来：**盘点单今天没有作废入口**（调拨在 INV-W15 补了，盘点没有）。
+         * 于是「开错了想扔掉」这条路只能走「过账一张空单」。这道闸让那件事从
+         * 「反正还能再开一张」变成了「必须处理掉」，所以作废入口该补 —— 另开一件事。
+         */
+        int before = onHand(s, s.itemA);
+        ok(post("/biz/inventory/counts/" + first + "/post"), s.token);
+        assertThat(onHand(s, s.itemA)).as("一件没填的单过账是空操作，库存不该动").isEqualTo(before);
+
+        String second = okText(post("/biz/inventory/counts")
+                .content("{\"itemIds\":[\"" + s.itemA + "\"]}"), s.token);
+        assertThat(second).as("前一张处理掉之后要开得出新的").isNotBlank();
+    }
+
+
+    @Test
     @DisplayName("★★★ 建品就要上账 —— 否则那个 SKU 在库存里根本不存在，且不报错")
     void newSkuLandsOnTheBooks() throws Exception {
         /*
