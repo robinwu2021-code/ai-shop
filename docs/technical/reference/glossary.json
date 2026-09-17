@@ -1931,15 +1931,15 @@
         },
         {
           "key": "home.choosePickup",
-          "zh-CN": "选择自提点",
-          "en": "Choose a pickup point",
-          "ar": "اختر نقطة الاستلام"
+          "zh-CN": "选择地址",
+          "en": "Pick an address",
+          "ar": "اختر عنواناً"
         },
         {
           "key": "home.choosePickupHint",
-          "zh-CN": "点击选择你所在的社区",
-          "en": "Tap to pick your neighbourhood",
-          "ar": "اضغط لاختيار حيّك"
+          "zh-CN": "点击选择你在哪儿",
+          "en": "Tap to tell us where you are",
+          "ar": "اضغط لتخبرنا أين أنت"
         },
         {
           "key": "home.coarsePlaceHint",
