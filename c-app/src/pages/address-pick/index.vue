@@ -67,8 +67,19 @@ const nearbyPickable = computed(() =>
  * 不说的话，住在第 6 近那个小区的人会以为这一带没有他家。
  */
 const NEARBY_MAX = 5;
-const nearbyShown = computed(() => nearbyPickable.value.slice(0, NEARBY_MAX));
-const nearbyTruncated = computed(() => nearbyPickable.value.length > NEARBY_MAX);
+/**
+ * **上面那张卡给过的那个，不在「附近」里再给一遍。**
+ *
+ * 实测（龙华，2783 个小区导入之后）：站在景龙新邨东区，
+ * 「当前位置」写着它，「附近」第一条又是它 —— 而且因为距离是 0，
+ * 那一行连距离都不显示，看起来像另一个同名的地方。
+ * 同一个东西在一屏上出现两次，读的人要先判断"这俩是不是一回事"。
+ */
+const nearbyRest = computed(() =>
+  nearbyPickable.value.filter((c) => c.name !== hereName.value),
+);
+const nearbyShown = computed(() => nearbyRest.value.slice(0, NEARBY_MAX));
+const nearbyTruncated = computed(() => nearbyRest.value.length > NEARBY_MAX);
 
 /**
  * 当前位置落在哪个聚落里。**这一页最关键的一次决定靠它** ——
@@ -280,12 +291,17 @@ onLoad((q?: Record<string, string>) => {
       </view>
     </template>
 
-    <view class="sh-card block">
-      <view v-if="canMap" class="sh-row--divided" @tap="onMap">
-        <text class="txt-body row__name txt-primary">{{ $t("addressPick.onMap") }}</text>
+    <!--
+      两条兜底的路**并排**，不再上下堆成两行列表。
+      它们是与上面那些「选一个地点」并列的另一类动作（自己去找 / 自己去写），
+      堆成列表行会被读成「附近的第 6、第 7 个地点」。
+    -->
+    <view class="outs sh-row">
+      <view v-if="canMap" class="sh-btn sh-btn--soft sh-fill" @tap="onMap">
+        {{ $t("addressPick.onMap") }}
       </view>
-      <view class="sh-row--divided" @tap="manual">
-        <text class="txt-body row__name">{{ $t("addressPick.manual") }}</text>
+      <view class="sh-btn sh-btn--soft sh-fill" @tap="manual">
+        {{ $t("addressPick.manual") }}
       </view>
     </view>
   </sh-scaffold>
@@ -324,6 +340,10 @@ onLoad((q?: Record<string, string>) => {
 .nb__dist {
   flex-shrink: 0;
   margin-inline-start: 16rpx;
+}
+/* 只管两颗按钮之间的缝；与上一块之间那道 sh-scaffold 已经给了（--sh-gap-block） */
+.outs {
+  gap: 20rpx;
 }
 .row__name {
   display: block;

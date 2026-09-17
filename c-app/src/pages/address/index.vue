@@ -495,7 +495,20 @@ onShow(() => {
       </view>
       <text class="txt-caption card__addr">{{ a.region }} {{ a.detail }} {{ a.houseNo }}</text>
 
-      <view class="card__ops">
+      <!--
+        **没坐标的地址在列表上也要看得出来。** 此前只有编辑页里说一句 ——
+        而他根本不会去编辑一条"看起来好好的"地址。
+        自送半径判不了、骑手导航打不开，三件事在列表上都看不出区别。
+        动作直接给「地图选点」：说了问题就要给出路，否则这一条只是让人不安。
+      -->
+      <view v-if="a.latE6 == null || a.lngE6 == null"
+            class="sh-notice sh-notice--warning card__nocoord sh-row sh-row--between"
+            @tap.stop="openEdit(a)">
+        <text class="txt-caption sh-fill">{{ $t("address.noCoordHint") }}</text>
+        <text class="txt-caption card__fix">{{ $t("address.pick") }}</text>
+      </view>
+
+      <view class="card__ops sh-row">
         <!--
           **只保留「当前位置」这个状态标，不再单给一个「设为当前位置」按钮** ——
           整张卡点一下就是切换（见 pick），再摆一个按钮就是同一件事的第二个入口，
@@ -506,6 +519,8 @@ onShow(() => {
         <text v-if="!a.isDefault" class="txt-caption op txt-primary" @tap.stop="setDefault(a)">
           {{ $t("address.setDefault") }}
         </text>
+        <!-- 左边是状态与「设为默认」，右边是编辑/删除：两组语义不同，挤在一起读不出分组 -->
+        <text class="sh-fill"></text>
         <text class="txt-caption op txt-primary" @tap.stop="openEdit(a)">{{ $t("address.edit") }}</text>
         <text class="txt-caption op is-danger" @tap.stop="remove(a)">{{ $t("address.remove") }}</text>
       </view>
@@ -535,62 +550,76 @@ onShow(() => {
       @close="editing = false"
     >
         <!--
-          **放在最上面，不放省市区那一行。** 它填的是整张表，
-          而那一行已经有「请选择 / 地图选点 / 微信地址」三个按钮 ——
-          小程序上再挤一个，输入框只剩指甲盖那么宽。
+          **所在位置摆在最上面，而且已选点时收成一张只读的卡。**
+
+          此前这里是两行输入框：省市区那一行挤着「请选择 / 地图选点 / 微信地址」
+          三个按钮（输入框只剩指甲盖那么宽），底下再一行详细地址。
+          而能选点的端上这两样**本来就是选点填进来的、改不了** ——
+          摆成输入框只会让人以为可以改，改了坐标也不跟着动。
+
+          没有选点能力的端（H5）保持原来那两行可输入：否则他连存量地址都改不了。
         -->
-        <!-- 只留动作：原先左边那句「有现成的一段「姓名 手机 地址」？」是反问句，
-             而按钮名本身已经说明了它干什么 -->
-        <view class="sh-notice sh-notice--muted pasterow sh-center" @tap="pasteAndFill">
-          <text class="txt-caption txt-primary">{{ $t("address.paste") }}</text>
-        </view>
-        <input maxlength="64" v-model="draft.name" class="field__input" :placeholder="$t('address.name')" />
-        <input
-          v-model="draft.phone"
-          class="field__input"
-          type="number"
-          maxlength="11"
-          :placeholder="$t('address.phone')"
-        />
-        <view class="regionrow sh-row">
-          <input
-            maxlength="96"
-            v-model="draft.region"
-            class="field__input sh-fill"
-            :placeholder="$t('address.region')"
-            @blur="onRegionInput"
-          />
-          <text class="txt-caption regionrow__pick" @tap="pickingRegion = true">{{ $t("address.regionSelect") }}</text>
-          <text class="txt-caption regionrow__pick" :class="{ 'is-ok': picked }" @tap="pickOnMap">
-            {{ picked ? $t("address.repick") : $t("address.pick") }}
-          </text>
-          <text v-if="canWx" class="txt-caption regionrow__pick" @tap="fillFromWx">{{ $t("address.fromWx") }}</text>
-        </view>
-        <text v-if="regionUnsplit" class="sh-hint">{{ $t("address.regionIncomplete") }}</text>
-        <!--
-          地址主体：能选点的端上**只读**，改要回选点页。
-          它是跟坐标一起来的，在这里随手改几个字，坐标不会跟着动 ——
-          于是「文字写着 A、坐标指着 B」，而页面上完全看不出来。
-          没有任何选点路的端（H5）保持可输入，否则他连存量地址都改不了。
-        -->
-        <view class="regionrow sh-row">
-          <input
-            maxlength="255"
-            v-model="draft.detail"
-            class="field__input sh-fill"
-            :disabled="canPick"
-            :placeholder="$t('address.detail')"
-          />
-          <text v-if="canPick" class="txt-caption regionrow__pick" @tap="repick">
+        <view v-if="picked" class="sh-notice sh-notice--muted placecard sh-row">
+          <view class="sh-fill placecard__body">
+            <text class="txt-strong placecard__name">{{ draft.detail }}</text>
+            <text class="txt-caption placecard__region">{{ draft.region }}</text>
+          </view>
+          <text class="txt-caption txt-primary placecard__act" @tap="repick">
             {{ $t("address.repickPlace") }}
           </text>
         </view>
+        <template v-else>
+          <view class="regionrow sh-row">
+            <input
+              maxlength="96"
+              v-model="draft.region"
+              class="field__input sh-fill"
+              :placeholder="$t('address.region')"
+              @blur="onRegionInput"
+            />
+            <text class="txt-caption regionrow__pick" @tap="pickingRegion = true">{{ $t("address.regionSelect") }}</text>
+            <text v-if="canPick" class="txt-caption regionrow__pick" @tap="pickOnMap">
+              {{ $t("address.pick") }}
+            </text>
+            <text v-if="canWx" class="txt-caption regionrow__pick" @tap="fillFromWx">{{ $t("address.fromWx") }}</text>
+          </view>
+          <text v-if="regionUnsplit" class="sh-hint">{{ $t("address.regionIncomplete") }}</text>
+          <!--
+            **能选点的端上仍然只读**，改要回选点页。它是跟坐标一起来的，
+            在这里随手改几个字坐标不会跟着动 —— 于是「文字写着 A、坐标指着 B」，
+            而页面上完全看不出来。没有任何选点路的端（H5）保持可输入，
+            否则他连存量地址都改不了。
+            （这一条我重排表单时弄丢过一次，守卫当场抓了回来。）
+          -->
+          <input
+            maxlength="255"
+            v-model="draft.detail"
+            class="field__input"
+            :disabled="canPick"
+            :placeholder="$t('address.detail')"
+          />
+        </template>
         <input
           maxlength="40"
           v-model="draft.houseNo"
           class="field__input"
           :placeholder="$t('address.houseNo')"
         />
+        <!--
+          姓名与手机**同一行**：两个都是短字段，各占一整行会把这张表拉得很长，
+          而表越长「还要填多少」越看不到头。
+        -->
+        <view class="namerow sh-row">
+          <input maxlength="64" v-model="draft.name" class="field__input sh-fill"
+                 :placeholder="$t('address.name')" />
+          <input
+            v-model="draft.phone"
+            class="field__input sh-fill"
+            type="number"
+            maxlength="11"
+            :placeholder="$t('address.phone')"
+          />
+        </view>
         <!--
           标签：预设三个点一下就填好，旁边仍留一个输入框。
           **不做成「预设/自定义」两种模式** —— 输入框始终是唯一真源，
@@ -626,6 +655,14 @@ onShow(() => {
           <text v-if="canPick" class="txt-caption txt-primary" @tap="pickOnMap">
             {{ $t("address.pick") }}
           </text>
+        </view>
+
+        <!--
+          **挪到底部。** 它是「我有现成的一段文字」这条捷径，不是第一步 ——
+          摆在最上面时，第一次用的人会先读它、再意识到自己没有那段文字。
+        -->
+        <view class="sh-notice sh-notice--muted pasterow sh-center" @tap="pasteAndFill">
+          <text class="txt-caption txt-primary">{{ $t("address.paste") }}</text>
         </view>
 
         <view class="sh-btn sheet__save" :class="{ 'is-disabled': !valid }" @tap="save">
@@ -673,10 +710,18 @@ onShow(() => {
   margin-top: 16rpx;
 }
 .card__ops {
-  display: flex;
-  justify-content: flex-end;
   gap: 32rpx;
   margin-top: 20rpx;
+  padding-top: 20rpx;
+  /* 一条分隔线：上面是这条地址本身，下面是对它的操作 —— 没有线时两组读成一段 */
+  border-top: var(--sh-hairline-soft);
+}
+.card__nocoord {
+  margin-top: 16rpx;
+  gap: 16rpx;
+}
+.card__fix {
+  flex-shrink: 0;
 }
 /* 共用的 `.field__input`（88rpx 高 / md 圆角 / faint 底 / 30rpx）已经是这个形状 ——
    此前这里把它重写了一遍，而且字号写成 26rpx，比 base.css 的 30rpx 小两档。
@@ -724,6 +769,27 @@ onShow(() => {
   border: 2rpx solid var(--sh-primary);
   border-radius: 16rpx;
   padding: 8rpx 20rpx;
+}
+/* 所在位置：已选点时收成一张只读的卡 —— 摆成输入框会让人以为可以改 */
+.placecard {
+  gap: 16rpx;
+}
+.placecard__body {
+  min-width: 0;
+}
+.placecard__name {
+  display: block;
+}
+.placecard__region {
+  display: block;
+  margin-top: 4rpx;
+}
+.placecard__act {
+  flex-shrink: 0;
+}
+/* 姓名与手机同行：两个都是短字段，各占一行会把表拉得看不到头 */
+.namerow {
+  gap: 16rpx;
 }
 .tagrow {
   gap: 12rpx;
