@@ -316,7 +316,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
           默认店那张卡（唯一动作就是改名）连动作行带那条分隔线一起消失 ——
           改版前那是一整行 + 一条横线只为放三个字。
         -->
-        <view class="st__name sh-row">
+        <view class="st__name sh-row sh-fill">
           <text class="txt-title">{{ s.name }}</text>
           <text class="txt-caption st__rename" @tap.stop="rename(s)">{{ $t("stores.rename") }}</text>
         </view>
@@ -389,7 +389,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
         <view class="fact sh-row">
           <text class="txt-caption fact__k">{{ $t("stores.payment") }}</text>
           <!-- 收款号：空 = 用主体默认号，这是常态不是缺配置 -->
-          <view class="fact__v sh-wrap">
+          <view class="sh-fill sh-wrap">
             <text
               class="sh-chip"
               :class="{ 'sh-chip--primary': !s.payMerchantNo }"
@@ -410,7 +410,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
         </view>
         <view class="fact sh-row">
           <text class="txt-caption fact__k">{{ $t("stores.staffLabel") }}</text>
-          <text class="txt-body fact__v">{{ $t("stores.staffValue", { n: s.staffCount }) }}</text>
+          <text class="txt-body sh-fill">{{ $t("stores.staffValue", { n: s.staffCount }) }}</text>
         </view>
       </view>
 
@@ -426,7 +426,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
         `@tap.stop` 一个都不能少：卡片本身是切店的点击区，
         不拦住冒泡的话，点「停用」会**顺带把当前店切过去**。
       -->
-      <view v-if="hasActs(s)" class="acts">
+      <view v-if="hasActs(s)" class="acts sh-row">
         <text v-if="!s.isDefault && s.status === 'ACTIVE'" class="sh-link" @tap.stop="makeDefault(s)">
           {{ $t("stores.setDefault") }}
         </text>
@@ -541,9 +541,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
   gap: 8rpx;
 }
 .st__name {
-  /* 店名可能很长，标签区要保得住：名字压缩，标签不被挤到下一行 */
-  flex: 1;
-  min-width: 0;
+  /* 店名可能很长，标签区要保得住：名字压缩，标签不被挤到下一行 —— 靠库件 .sh-fill */
   margin-inline-end: 16rpx;
   align-items: baseline;
   gap: 16rpx;
@@ -581,13 +579,8 @@ function pickPayment(s: Store, payMerchantNo?: string) {
      4rpx 而不是 6rpx —— 间距一律落在 4rpx 网格上，闸门核这个 */
   padding-top: 4rpx;
 }
-.fact__v {
-  flex: 1;
-  min-width: 0;
-}
 .acts {
-  display: flex;
-  align-items: center;
+  /* 横排走 .sh-row（库件），这里只留这张卡特有的分隔与间距 */
   gap: 28rpx;
   margin-top: 20rpx;
   padding-top: 16rpx;
