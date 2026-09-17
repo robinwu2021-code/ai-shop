@@ -904,28 +904,10 @@
           "ar": "أُضيف إلى السلة"
         },
         {
-          "key": "common.allTip",
-          "zh-CN": "以下是全部已开通社区，按需自行选择",
-          "en": "All open neighbourhoods — pick the one you need",
-          "ar": "كل الأحياء المتاحة؛ اختر ما يناسبك"
-        },
-        {
-          "key": "common.browseAll",
-          "zh-CN": "查看全部已开通社区",
-          "en": "See all open neighbourhoods",
-          "ar": "عرض كل الأحياء المتاحة"
-        },
-        {
           "key": "common.cancel",
           "zh-CN": "取消",
           "en": "Cancel",
           "ar": "إلغاء"
-        },
-        {
-          "key": "common.changeRegion",
-          "zh-CN": "换个区域",
-          "en": "Change area",
-          "ar": "تغيير المنطقة"
         },
         {
           "key": "common.confirm",
@@ -946,18 +928,6 @@
           "ar": "لا يوجد شيء هنا بعد"
         },
         {
-          "key": "common.farTip",
-          "zh-CN": "约 {d}。确定要把归属绑在这里吗？异地下单请确认有人能去取货。",
-          "en": "About {d} away. Bind here anyway? Make sure someone can collect.",
-          "ar": "على بعد {d} تقريباً. هل تريد الربط بها؟ تأكد من وجود من يستلم."
-        },
-        {
-          "key": "common.farTitle",
-          "zh-CN": "这个自提点离你很远",
-          "en": "That pickup point is far away",
-          "ar": "نقطة الاستلام بعيدة عنك"
-        },
-        {
           "key": "common.loadFailed",
           "zh-CN": "没能加载出来",
           "en": "Could not load",
@@ -976,40 +946,10 @@
           "ar": "جارٍ التحميل…"
         },
         {
-          "key": "common.nCommunities",
-          "zh-CN": "{n} 个小区",
-          "en": "{n} neighbourhoods",
-          "ar": "{n} أحياء"
-        },
-        {
-          "key": "common.noLocation",
-          "zh-CN": "未获取定位，以下是全部已开通社区",
-          "en": "No location — showing all open neighbourhoods",
-          "ar": "تعذّر تحديد الموقع؛ هذه كل الأحياء المتاحة"
-        },
-        {
-          "key": "common.pickRegion",
-          "zh-CN": "你这一带还没开通，先选个区域看看",
-          "en": "Not open near you — pick an area to browse",
-          "ar": "غير متاح قربك؛ اختر منطقة للتصفح"
-        },
-        {
           "key": "common.retry",
           "zh-CN": "重试",
           "en": "Retry",
           "ar": "إعادة المحاولة"
-        },
-        {
-          "key": "common.searchEmpty",
-          "zh-CN": "没有匹配的小区或自提点",
-          "en": "No matching neighbourhood or pickup point",
-          "ar": "لا يوجد حي أو نقطة استلام مطابقة"
-        },
-        {
-          "key": "common.searchHint",
-          "zh-CN": "搜小区名、地址或自提点，如「西湖区」",
-          "en": "Search by name, address or pickup point",
-          "ar": "ابحث بالاسم أو العنوان أو نقطة الاستلام"
         },
         {
           "key": "common.sold",
@@ -1018,76 +958,10 @@
           "ar": "تم بيع {n}"
         },
         {
-          "key": "community.bound",
-          "zh-CN": "已绑定自提点",
-          "en": "Pickup point set",
-          "ar": "تم تعيين نقطة الاستلام"
-        },
-        {
-          "key": "community.empty",
-          "zh-CN": "这一带还没有自提点",
-          "en": "No pickup points here yet",
-          "ar": "لا توجد نقاط استلام هنا بعد"
-        },
-        {
-          "key": "community.emptyTip",
-          "zh-CN": "我们正在开通更多社区，先逛逛商品吧",
-          "en": "We are opening more neighbourhoods — have a look at the goods meanwhile",
-          "ar": "نعمل على فتح أحياء أخرى؛ تصفّح المنتجات في هذه الأثناء"
-        },
-        {
-          "key": "community.failed",
-          "zh-CN": "没能加载附近的自提点",
-          "en": "Could not load nearby pickup points",
-          "ar": "تعذّر تحميل نقاط الاستلام القريبة"
-        },
-        {
-          "key": "community.located",
-          "zh-CN": "已定位到 {city}{region}，下面是这一带的取货点",
-          "en": "Located in {city} {region} — pickup points nearby",
-          "ar": "موقعك: {city} {region}"
-        },
-        {
-          "key": "community.locatedFuzzy",
-          "zh-CN": "大致位置：{city}{region}，下面是这一带的取货点",
-          "en": "Approx. {city} {region} — pickup points nearby",
-          "ar": "الموقع التقريبي: {city} {region}"
-        },
-        {
-          "key": "community.locating",
-          "zh-CN": "正在定位附近社区…",
-          "en": "Finding nearby neighbourhoods…",
-          "ar": "جارٍ تحديد الأحياء القريبة…"
-        },
-        {
           "key": "community.navigate",
           "zh-CN": "导航",
           "en": "Directions",
           "ar": "الاتجاهات"
-        },
-        {
-          "key": "community.pickOnMap",
-          "zh-CN": "📍 在地图上选择我的位置",
-          "en": "📍 Pick my location on map",
-          "ar": "📍 اختر موقعي على الخريطة"
-        },
-        {
-          "key": "community.switchTip",
-          "zh-CN": "切换后购物车中在新社区不可售的商品会被移除，确定切换？",
-          "en": "Items unavailable at the new point will be removed from your cart. Continue?",
-          "ar": "ستُحذف المنتجات غير المتوفرة في النقطة الجديدة من سلتك. هل تريد المتابعة؟"
-        },
-        {
-          "key": "community.switchTitle",
-          "zh-CN": "切换自提点",
-          "en": "Change pickup point",
-          "ar": "تغيير نقطة الاستلام"
-        },
-        {
-          "key": "community.title",
-          "zh-CN": "选择社区自提点",
-          "en": "Choose pickup point",
-          "ar": "اختر نقطة الاستلام"
         },
         {
           "key": "confirm.add",
@@ -1246,12 +1120,6 @@
           "ar": "اختر قسيمة"
         },
         {
-          "key": "confirm.pickPickupFirst",
-          "zh-CN": "先选一个自提点",
-          "en": "Choose a pickup point first",
-          "ar": "اختر نقطة استلام أولاً"
-        },
-        {
           "key": "confirm.pickSlot",
           "zh-CN": "选择上门时间",
           "en": "Choose a time slot",
@@ -1262,6 +1130,24 @@
           "zh-CN": "请选择上门时段，师傅按这个时间到",
           "en": "Pick a slot — the technician arrives at this time",
           "ar": "اختر موعدًا؛ يصل الفني في هذا الوقت"
+        },
+        {
+          "key": "confirm.pickupGroups",
+          "zh-CN": "本单 {n} 个取货点，分别去取",
+          "en": "{n} pickup points for this order",
+          "ar": "{n} نقاط استلام لهذا الطلب"
+        },
+        {
+          "key": "confirm.pickupMatching",
+          "zh-CN": "正在按你的地址找取货点…",
+          "en": "Finding a pickup point near your address…",
+          "ar": "جارٍ البحث عن نقطة استلام قرب عنوانك…"
+        },
+        {
+          "key": "confirm.pickupNoneFor",
+          "zh-CN": "{names} 在你这一带没有可用的取货点，换个送货方式或先把它的商品移出本单",
+          "en": "{names} has no usable pickup point near you",
+          "ar": "لا توجد نقطة استلام متاحة لـ {names} بالقرب منك"
         },
         {
           "key": "confirm.points",
@@ -2056,6 +1942,12 @@
           "ar": "اضغط لاختيار حيّك"
         },
         {
+          "key": "home.coarsePlaceHint",
+          "zh-CN": "按这个区显示 · 点击选择具体地址",
+          "en": "Showing this district · tap to pick an exact address",
+          "ar": "العرض حسب هذه المنطقة · اضغط لاختيار عنوان محدد"
+        },
+        {
           "key": "home.communityFeed",
           "zh-CN": "社区在卖",
           "en": "On sale nearby",
@@ -2096,6 +1988,24 @@
           "zh-CN": "当前位置",
           "en": "Here now",
           "ar": "موقعك الآن"
+        },
+        {
+          "key": "home.noPlaceAction",
+          "zh-CN": "选择地址",
+          "en": "Pick an address",
+          "ar": "اختيار عنوان"
+        },
+        {
+          "key": "home.noPlaceText",
+          "zh-CN": "还不知道你在哪儿",
+          "en": "We don't know where you are yet",
+          "ar": "لا نعرف مكانك بعد"
+        },
+        {
+          "key": "home.noPlaceTip",
+          "zh-CN": "选个地址，就能看到送得到你这儿的东西",
+          "en": "Pick an address to see what can reach you",
+          "ar": "اختر عنواناً لترى ما يمكن توصيله إليك"
         },
         {
           "key": "home.promoted",
@@ -2428,16 +2338,10 @@
           "ar": "ستحتاج إلى تسجيل الدخول مرة أخرى لعرض الطلبات والقسائم."
         },
         {
-          "key": "me.myCommunity",
-          "zh-CN": "我的社区",
-          "en": "My neighbourhood",
-          "ar": "حيّي"
-        },
-        {
-          "key": "me.myStores",
-          "zh-CN": "我的常去店",
-          "en": "My shops",
-          "ar": "متاجري"
+          "key": "me.myPlace",
+          "zh-CN": "我的位置",
+          "en": "My location",
+          "ar": "موقعي"
         },
         {
           "key": "me.unset",
@@ -7898,6 +7802,12 @@
           "ar": "قيد المراجعة، وبعد الموافقة يمكنك عرض المنتجات"
         },
         {
+          "key": "home.blocker.agreement",
+          "zh-CN": "还差你确认一份协议",
+          "en": "One agreement still needs your confirmation",
+          "ar": "بقيت اتفاقية تنتظر تأكيدك"
+        },
+        {
           "key": "home.blocker.license",
           "zh-CN": "还不能开张营业",
           "en": "Not open for business yet",
@@ -7920,6 +7830,12 @@
           "zh-CN": "去处理",
           "en": "Fix it",
           "ar": "معالجة"
+        },
+        {
+          "key": "home.blockerHint.agreement",
+          "zh-CN": "你的资料由平台运营人员代为提交，《商家服务协议》需要你本人确认。生意照做不受影响。",
+          "en": "Your details were submitted for you by platform staff. The Merchant Service Agreement needs your own confirmation. Trading is unaffected.",
+          "ar": "قدّم موظفو المنصة بياناتك نيابةً عنك، و«اتفاقية التاجر» تحتاج تأكيدك أنت. لا يتأثر عملك."
         },
         {
           "key": "home.blockerHint.license",
@@ -19575,6 +19491,12 @@
           "ar": "محاولات كثيرة جدًا، يرجى المحاولة لاحقًا"
         },
         {
+          "key": "err.trade.count_already_open",
+          "zh-CN": "已经有一张盘点单开着（{0}），先把它盘完或作废",
+          "en": "A stocktake is already open ({0}); finish or void it first",
+          "ar": "هناك جرد مفتوح بالفعل ({0})، أنهِه أو ألغِه أولاً"
+        },
+        {
           "key": "err.trade.fulfillment_not_supported",
           "zh-CN": "所选商品不支持该配送方式，请更换",
           "en": "Some items do not support the selected delivery method.",
@@ -25409,6 +25331,13 @@
       },
       {
         "host": "DocStatus",
+        "name": "COUNTING",
+        "value": "COUNTING",
+        "zh": "盘点单专有的「正在盘」。",
+        "module": "shop-inventory"
+      },
+      {
+        "host": "DocStatus",
         "name": "POSTED",
         "value": "POSTED",
         "zh": "",
@@ -26492,6 +26421,7 @@
           "INTERNAL_ERROR",
           "STOCK_NOT_ENOUGH",
           "STOCK_SHORT_ITEMS",
+          "COUNT_ALREADY_OPEN",
           "PRICE_CHANGED",
           "OUT_OF_DELIVERY_RANGE",
           "ORDER_STATE_ILLEGAL",
@@ -28062,7 +27992,6 @@
           "/pages/groups/index",
           "/pages/request/index",
           "/pages/login/index",
-          "/pages/community/index",
           "/pages/home/index",
           "/pages/category/index",
           "/pages/cart/index",

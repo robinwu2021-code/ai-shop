@@ -289,7 +289,7 @@
       },
       "usage": {
         "b-app": 81,
-        "c-app": 54
+        "c-app": 50
       }
     },
     {
@@ -327,7 +327,7 @@
       },
       "usage": {
         "b-app": 283,
-        "c-app": 239
+        "c-app": 234
       }
     },
     {
@@ -403,7 +403,7 @@
       },
       "usage": {
         "b-app": 12,
-        "c-app": 20
+        "c-app": 19
       }
     },
     {
@@ -501,7 +501,7 @@
       },
       "usage": {
         "b-app": 132,
-        "c-app": 39
+        "c-app": 37
       }
     },
     {
@@ -523,7 +523,7 @@
       },
       "usage": {
         "b-app": 112,
-        "c-app": 68
+        "c-app": 61
       }
     },
     {
@@ -627,7 +627,7 @@
       },
       "usage": {
         "b-app": 212,
-        "c-app": 70
+        "c-app": 69
       }
     },
     {
@@ -645,7 +645,7 @@
       },
       "usage": {
         "b-app": 13,
-        "c-app": 17
+        "c-app": 16
       }
     },
     {
@@ -691,7 +691,7 @@
       },
       "usage": {
         "b-app": 21,
-        "c-app": 30
+        "c-app": 29
       }
     },
     {
@@ -795,7 +795,7 @@
       },
       "usage": {
         "b-app": 118,
-        "c-app": 48
+        "c-app": 47
       }
     },
     {
@@ -871,7 +871,7 @@
       },
       "usage": {
         "b-app": 24,
-        "c-app": 12
+        "c-app": 11
       }
     },
     {
@@ -889,7 +889,7 @@
       },
       "usage": {
         "b-app": 27,
-        "c-app": 9
+        "c-app": 8
       }
     },
     {
@@ -1045,7 +1045,7 @@
       },
       "usage": {
         "b-app": 223,
-        "c-app": 130
+        "c-app": 129
       }
     },
     {
@@ -1109,7 +1109,7 @@
       },
       "usage": {
         "b-app": 131,
-        "c-app": 63
+        "c-app": 61
       }
     },
     {
@@ -1353,7 +1353,7 @@
       },
       "usage": {
         "b-app": 91,
-        "c-app": 39
+        "c-app": 37
       }
     },
     {
@@ -1409,7 +1409,7 @@
       },
       "usage": {
         "b-app": 282,
-        "c-app": 143
+        "c-app": 137
       }
     },
     {
@@ -1441,7 +1441,7 @@
       },
       "usage": {
         "b-app": 127,
-        "c-app": 77
+        "c-app": 75
       }
     },
     {
@@ -2111,7 +2111,7 @@
       ],
       "usage": {
         "b-app": 49,
-        "c-app": 29,
+        "c-app": 28,
         "lib": 1
       },
       "note": "空态",
@@ -2527,7 +2527,7 @@
       ],
       "usage": {
         "b-app": 68,
-        "c-app": 36,
+        "c-app": 35,
         "lib": 1
       },
       "note": "页面外壳",
@@ -4418,20 +4418,6 @@
     },
     {
       "app": "c-app",
-      "page": "community",
-      "key": "c-app/community",
-      "file": "c-app/src/pages/community/index.vue",
-      "components": [
-        "sh-empty",
-        "sh-scaffold"
-      ],
-      "libClassHits": 37,
-      "localSelectors": 23,
-      "localCssLines": 105,
-      "rolled": []
-    },
-    {
-      "app": "c-app",
       "page": "coupons",
       "key": "c-app/coupons",
       "file": "c-app/src/pages/coupons/index.vue",
@@ -4520,7 +4506,7 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 32,
+      "libClassHits": 34,
       "localSelectors": 15,
       "localCssLines": 81,
       "rolled": []
@@ -4561,7 +4547,7 @@
         "sh-sheet",
         "sh-theme-sheet"
       ],
-      "libClassHits": 113,
+      "libClassHits": 108,
       "localSelectors": 11,
       "localCssLines": 50,
       "rolled": []
@@ -4650,7 +4636,7 @@
         "sh-scaffold",
         "sh-switch"
       ],
-      "libClassHits": 123,
+      "libClassHits": 125,
       "localSelectors": 29,
       "localCssLines": 118,
       "rolled": []
@@ -5017,7 +5003,7 @@
     "tokens": 16,
     "blocks": 80,
     "components": 34,
-    "pages": 114,
+    "pages": 113,
     "gapKinds": 0
   }
 }
