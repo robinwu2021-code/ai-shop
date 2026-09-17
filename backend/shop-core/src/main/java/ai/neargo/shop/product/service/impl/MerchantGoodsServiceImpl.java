@@ -258,11 +258,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 && merchantNo != null && !merchantNo.isBlank()
                 && ("ON_SALE".equals(status) || "OFF_SALE".equals(status));
         if (byStore) {
-            List<String> nos = storeScopedGoodsNos(merchantNo, storeNo, "ON_SALE".equals(status));
-            if (nos.isEmpty()) {
-                return PageData.empty(page, size);
-            }
-            w.in(PrdGoods::getGoodsNo, nos).eq(PrdGoods::getAuditStatus, APPROVED);
+            applyStoreScopedSale(w, merchantNo, storeNo, "ON_SALE".equals(status));
         } else {
             applyStatus(w, status);
         }
@@ -281,36 +277,53 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     /**
-     * 「本店在售 / 本店已下架」的货号集合。<b>判据与端上的 {@code stateOf} 同一套</b>：
+     * 把「本店在售 / 本店已下架」拼成查询条件。<b>判据与端上的 {@code stateOf} 同一套</b>：
      * 按店管理的看本店那一行，没按店管理的跟随主体级。
      *
-     * <p>为什么先圈货号再拼 IN：本店上下架落在 {@code prd_store_goods} 上，
-     * 而列表查的是 {@code prd_goods} —— 与「缺货」那一筛同一个形状（见 list 里的注释）。
+     * <p><b>只查 prd_store_goods，不二次查 prd_goods。</b> 第一版是先把该商家的货号
+     * 全捞出来再拼 IN —— 那需要在 prd_goods 上再开一次 {@code executeWithoutScope}，
+     * 而数据域闸门当场把它判成「ops 查询绕过已注册表的数据域」（1 → 3）。
+     * 那道闸是按类归因的，拿不到「这一支只在 merchantNo 与 storeNo 都非空时才进」
+     * 这个条件；而登记进 SCOPE_BYPASS_OK 是在替一个它看不见的前提背书。
+     * 改成把条件叠在**既有的**那个 wrapper 上，绕过就不存在了 —— 闸门不用放宽。
      *
-     * <p>⚠️ 只取已过审的：审核态优先于上下架，没过审时说「已下架」会让人以为
-     * 点一下就能卖（{@code statusOf} 里记着同一条）。
+     * <p>店级行本身带 entity_no，所以一次查询就能同时拿到
+     * 「哪些货按店管理」与「本店哪些在卖」。
      */
-    private List<String> storeScopedGoodsNos(String merchantNo, String storeNo, boolean wantOnSale) {
-        List<PrdGoods> all = DataScopeContext.executeWithoutScope(() ->
-                goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
-                        .select(PrdGoods::getGoodsNo, PrdGoods::getOnSale)
-                        .eq(PrdGoods::getEntityNo, merchantNo)
-                        .eq(PrdGoods::getAuditStatus, APPROVED)));
-        if (all.isEmpty()) {
-            return List.of();
+    private void applyStoreScopedSale(
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<PrdGoods> w,
+            String merchantNo, String storeNo, boolean wantOnSale) {
+        List<ai.neargo.shop.product.entity.PrdStoreGoods> rows =
+                DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.selectList(
+                        Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getEntityNo, merchantNo)));
+        Set<String> managed = rows.stream()
+                .map(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo)
+                .collect(java.util.stream.Collectors.toSet());
+        Set<String> onHere = rows.stream()
+                .filter(r -> storeNo.equals(r.getStoreNo()) && Boolean.TRUE.equals(r.getOnSale()))
+                .map(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo)
+                .collect(java.util.stream.Collectors.toSet());
+
+        // 审核态优先：没过审时说「已下架」会让人以为点一下就能卖（statusOf 里同一条）
+        w.eq(PrdGoods::getAuditStatus, APPROVED);
+
+        if (managed.isEmpty()) {
+            // 一件都没按店管理 = 这家商家还在主体级时代，行为与改造前逐字相同
+            w.eq(PrdGoods::getOnSale, wantOnSale);
+            return;
         }
-        StoreProjection proj = loadStoreProjection(storeNo,
-                all.stream().map(PrdGoods::getGoodsNo).toList(), List.of());
-        return all.stream()
-                .filter(g -> {
-                    // 一条店级行都没有 = 未按店管理，跟随主体级（与 toVOs 里那句同源）
-                    boolean onSale = proj.managedGoods().contains(g.getGoodsNo())
-                            ? proj.onSaleAtStore().contains(g.getGoodsNo())
-                            : Boolean.TRUE.equals(g.getOnSale());
-                    return onSale == wantOnSale;
-                })
-                .map(PrdGoods::getGoodsNo)
-                .toList();
+        Set<String> hit = wantOnSale ? onHere
+                : managed.stream().filter(no -> !onHere.contains(no))
+                        .collect(java.util.stream.Collectors.toSet());
+        /*
+         * 两支并起来：按店管理的看本店那一行；没按店管理的跟随主体级。
+         * **后一支不能省** —— 省掉的话，多门店商家里那些还没转成店级的货
+         * 会从两个页签里同时消失，而它们明明在卖。
+         */
+        w.and(q -> q.in(!hit.isEmpty(), PrdGoods::getGoodsNo, hit)
+                .or(x -> x.notIn(PrdGoods::getGoodsNo, managed)
+                        .eq(PrdGoods::getOnSale, wantOnSale)));
     }
 
     /** 对外的「缺货」筛选值。库里没有这个状态，它是按 SKU 可用量算出来的 */
