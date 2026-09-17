@@ -49,8 +49,39 @@ const OPEN_OPTIONS = (c: Copy) => [
   { value: "0", label: c.openedNo },
 ];
 
+/**
+ * 深圳九个区。**写死而不是拉整棵区划树**：这一页现在要回答的是
+ * 「我批量导进来的那批在不在、对不对」，而有数据的只有深圳。
+ * 多城市之后换成从「已开通区域」聚合出来的清单 —— 那时它是另一个问题，
+ * 现在拉整棵树只会让运营在 2978 个区县里找那九个。
+ */
+const SZ_DISTRICTS = (c: Copy) => [
+  { value: "440303", label: c.d440303 },
+  { value: "440304", label: c.d440304 },
+  { value: "440305", label: c.d440305 },
+  { value: "440306", label: c.d440306 },
+  { value: "440307", label: c.d440307 },
+  { value: "440308", label: c.d440308 },
+  { value: "440309", label: c.d440309 },
+  { value: "440310", label: c.d440310 },
+  { value: "440311", label: c.d440311 },
+];
+
 /** 费率以万分比存（P-2.2.4），展示成百分比 —— 运营说的是"1.5%"不是"150 个万分点"。 */
 const fmtRate = (bp: number) => `${(bp / 100).toFixed(2)}%`;
+
+/**
+ * 类型与来源的显示名。**取不到就原样显示码，不回落成空白** ——
+ * 空白会让人以为那一行数据坏了，而实际上只是多了一个这儿还没登记的新取值。
+ * 建成函数而不是常量：文案跟着语言走，模块级常量拿不到当前语言。
+ */
+const kindLabels = (c: Copy): Record<string, string> => ({
+  ESTATE: c.kindEstate, VILLAGE: c.kindVillage, BUILDING: c.kindBuilding,
+});
+const sourceLabels = (c: Copy): Record<string, string> => ({
+  MAP: c.sourceMap, OFFICIAL: c.sourceOfficial,
+  MERCHANT: c.sourceMerchant, OPS: c.sourceOps,
+});
 
 export default function CommunitiesPage() {
   return <Suspense fallback={null}><CommunitiesInner /></Suspense>;
@@ -60,6 +91,9 @@ function CommunitiesInner() {
   const cp = useCopy(COMMUNITIES_COPY);
   const tabs = useNavTabs("/communities", TAB_KEYS);
   const openOptions = OPEN_OPTIONS(cp);
+  const districts = SZ_DISTRICTS(cp);
+  const kindLabel = kindLabels(cp);
+  const sourceLabel = sourceLabels(cp);
   const sp = useSearchParams();
   const qc = useQueryClient();
   const allow = useCan();
@@ -77,6 +111,14 @@ function CommunitiesInner() {
    * 比没有链接更糟，它让人以为自己看到的就是筛过的结果。
    */
   const [opened, setOpened] = useState(sp.get("opened") ?? "");
+  /**
+   * 按行政区筛。**批量导入之后一个区几千条，没有它这一页没法用。**
+   *
+   * 选项写死深圳九个区而不是拉整棵区划树：这一页要回答的是
+   * 「我导进来的那批在不在、对不对」，而现在只有深圳有数据。
+   * 真到了多城市再换成从已开通区域聚合出来的清单 —— 那时它是另一个问题。
+   */
+  const [regionPrefix, setRegionPrefix] = useState(sp.get("region") ?? "");
   /*
    * ⚠️ **光有 useState 的初值不够。**
    *
@@ -105,7 +147,7 @@ function CommunitiesInner() {
   const typeMap = usePickupPointTypeMap();
   const statusMap = usePickupStatusMap();
 
-  const communityQ = { keyword, opened, showArchived, page, size };
+  const communityQ = { keyword, opened, regionPrefix, showArchived, page, size };
   const communities = useQuery({
     queryKey: ["communities", communityQ],
     queryFn: () => api.listCommunities(communityQ),
@@ -130,6 +172,11 @@ function CommunitiesInner() {
     qc.invalidateQueries({ queryKey: ["communities"] });
     qc.invalidateQueries({ queryKey: ["pickups"] });
   };
+
+  const openMapMut = useMutation({
+    mutationFn: (prefix: string) => api.openMapCommunities(prefix),
+    onSuccess: () => invalidate(),
+  });
 
   const openMut = useMutation({
     mutationFn: (v: { communityNo: string; opened: boolean }) => api.setCommunityOpen(v.communityNo, v.opened),
@@ -196,6 +243,10 @@ function CommunitiesInner() {
 
   const communityColumns: Column<Community>[] = [
     { header: cp.colCommunityNo, cell: (c) => c.communityNo, numeric: true, align: "start" },
+    // 批量导入之后一个区里小区与楼栋各有几千条，混在一起就没法核对
+    { header: cp.colKind, cell: (c) => kindLabel[c.kind ?? ""] ?? (c.kind ?? "—") },
+    // 「机器扒进来的」与「人一条条维护的」要分得开 —— 前者是要抽查的，后者不是
+    { header: cp.colSource, cell: (c) => sourceLabel[c.source ?? ""] ?? (c.source ?? "—") },
     {
       header: cp.colCommunity,
       // 楼栋要能一眼看出挂在谁下面：平铺的话「阳光里」和「阳光里 3 幢」并排两行，
@@ -455,7 +506,25 @@ function CommunitiesInner() {
           searchPlaceholder={tab === "grid" ? cp.searchGrid : cp.searchPickup}
         >
           {tab === "grid" && (
-            <FilterSelect aria-label={cp.filterOpened} value={opened} onChange={(v) => { setOpened(v); setPage(1); }} options={openOptions} allLabel={cp.filterOpenedAll} />
+            <>
+              <FilterSelect aria-label={cp.filterOpened} value={opened} onChange={(v) => { setOpened(v); setPage(1); }} options={openOptions} allLabel={cp.filterOpenedAll} />
+              <FilterSelect aria-label={cp.filterRegion} value={regionPrefix} onChange={(v) => { setRegionPrefix(v); setPage(1); }} options={districts} allLabel={cp.filterRegionAll} />
+              {/* 批量开城：**只在选了区之后才给**。不选区就点，等于把全国地图导入的
+                  聚落一次开城 —— 后端也拒空前缀，这里是第二道，让人根本点不到那一下 */}
+              {canEditCommunity && (
+                <Button
+                  variant="outline"
+                  disabled={!regionPrefix || openMapMut.isPending}
+                  onClick={() => confirm({
+                    title: cp.openMapBtn,
+                    desc: cp.openMapConfirm,
+                    action: () => openMapMut.mutateAsync(regionPrefix),
+                  })}
+                >
+                  {cp.openMapBtn}
+                </Button>
+              )}
+            </>
           )}
           {tab === "pickups" && (
             <>

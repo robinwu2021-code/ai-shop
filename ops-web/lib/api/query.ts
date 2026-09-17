@@ -57,7 +57,11 @@ export type OnboardingQ = PageQ & { status?: string; payChannel?: string };
 export type OrderQ = ScopedQ & { status?: string; fulfillType?: string; trafficSource?: string; storeNo?: string };
 
 /** 社区：城市 + 开城状态 + 归档开关（P-2.1）。 */
-export type CommunityQ = ArchiveQ & { city?: string; opened?: string };
+/**
+ * @param regionPrefix 按区划前缀筛（国标码天然分层：`4403` 深圳、`440309` 龙华区）。
+ *                     批量导入之后一个区几千条，不按区筛这一页没法用
+ */
+export type CommunityQ = ArchiveQ & { city?: string; opened?: string; regionPrefix?: string };
 
 /** 商家提报的新社区：按状态筛。`ALL` = 不筛（默认只给待审——这是队列，历史是次要视图） */
 export type CommunityApplyQ = PageQ & { status?: string };

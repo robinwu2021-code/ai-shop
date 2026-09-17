@@ -102,13 +102,63 @@ public class OpsCommunityController {
     @PreAuthorize("@perm.can('" + Perms.COMMUNITY_READ + "')")
     public ai.neargo.shop.common.PageData<CommunityAdminService.CommunityVO> communities(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String regionPrefix,
             @RequestParam(defaultValue = "false") boolean showClosed,
             @RequestParam(defaultValue = "false") boolean showArchived,
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size) {
         // 运营端列表页按 {records,total} 渲染 —— 返回裸数组会被当成空页
         return ai.neargo.shop.common.PageData.ofAll(
-                adminService.communities(keyword, showClosed, showArchived), page, size);
+                adminService.communities(keyword, showClosed, showArchived, regionPrefix), page, size);
+    }
+
+    // ---------------------------------------------------------------- 地图小区批量建档（冷启动）
+
+    /**
+     * 把一个区的小区一次建进来。取舍见 {@link CommunityAdminService#importEstates}。
+     *
+     * <p><b>先跑 {@code dryRun=true}</b>：这一次动几千行，而它的错误要到买家那一端
+     * 才看得见（匹配到一个坐标是空的小区 = 那个小区的人永远搜不到货，且不报错）。
+     *
+     * <p>判 {@code COMMUNITY_UPDATE} 而不是新造一个码：它干的事就是「改社区主数据」，
+     * 与开城、调围栏同一档。为一次批量操作单开一个权限码，
+     * 只会让权限表多一行而没有任何人真的分开授。
+     */
+    @PostMapping("/ops/communities/import-estates")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_UPDATE + "')")
+    public CommunityAdminService.ImportResult importEstates(
+            @RequestBody ImportEstatesReq req) {
+        var r = adminService.importEstates(req.regionCode(), req.status(),
+                !Boolean.FALSE.equals(req.dryRun()), req.items(), SecurityUtils.currentUserNo());
+        // 试算不留痕：留了的话审计日志里全是「导入了 0 条」，真正那一次反而淹在里面
+        if (!r.dryRun()) {
+            auditLogPort.record("COMMUNITY_IMPORT_ESTATES", req.regionCode(),
+                    "新建 " + r.created() + " 更新 " + r.updated() + " 跳过 " + r.skipped());
+        }
+        return r;
+    }
+
+    /**
+     * @param status 建成什么状态。**默认 CLOSED** —— 导入与放出来是两步，理由见 service
+     * @param dryRun **默认 true**：这个接口的默认值刻意是「不写」。
+     *               一次动几千行的接口，默认值应该是安全的那一边
+     */
+    public record ImportEstatesReq(String regionCode, String status, Boolean dryRun,
+                                   List<CommunityAdminService.EstateIn> items) {
+    }
+
+    /**
+     * 把某个区划前缀下、地图来源的聚落批量放出来。
+     *
+     * <p><b>放之前先确认商家的经营范围铺到了这个区</b>：没铺的话买家会被匹配到
+     * 自家小区、然后看到一屏空货架 —— 比匹配到远处那个有货的还糟。
+     */
+    @PostMapping("/ops/communities/open-map")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_UPDATE + "')")
+    public java.util.Map<String, Object> openMapCommunities(@RequestParam String regionPrefix) {
+        int n = adminService.openMapCommunities(regionPrefix, SecurityUtils.currentUserNo());
+        auditLogPort.record("COMMUNITY_OPEN_MAP", regionPrefix, "开城 " + n + " 个");
+        return java.util.Map.of("opened", n);
     }
 
     // ---------------------------------------------------------------- 商家提报的新社区（ADR-013 阶段三）

@@ -35,6 +35,15 @@ function findPickup(no: string): PickupPoint {
 }
 
 export const communityMock: CommunityApi = {
+  openMapCommunities: (regionPrefix) => {
+    // mock 里也要真的改状态 —— 恒返回 0 的话，「开城之后列表变了没有」
+    // 在开发期看不出来，而那正是这个按钮唯一的可见效果
+    const hit = db.communities.filter(
+      (c) => c.source === "MAP" && !c.opened && (c.regionCode ?? "").startsWith(regionPrefix));
+    hit.forEach((c) => { c.opened = true; });
+    return wait({ opened: hit.length });
+  },
+
   listCommunities: (q = {}) =>
     wait(
       db.paginate(db.communities, q.page, q.size, (c) =>
@@ -43,6 +52,9 @@ export const communityMock: CommunityApi = {
         db.eqHit(q.city, c.city) &&
         // opened 从下拉来，是字符串 "1"/"0"，不是 boolean
         (!q.opened || (q.opened === "1") === c.opened) &&
+        // mock 里也要真的按前缀筛 —— 恒不筛的话，「按区查」这条在开发期
+        // 与「没做」长得一模一样（都是整张表）
+        (!q.regionPrefix || (c.regionCode ?? "").startsWith(q.regionPrefix)) &&
         db.kwHit(q.keyword, c.communityNo, c.name, c.grid, c.city),
       ),
     ),

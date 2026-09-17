@@ -173,6 +173,7 @@ _无字段_
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
 | `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 |
 | `kind` | `string,null` | 否 | ESTATE / VILLAGE / BUILDING |
+| `source` | `string,null` | 否 | `MAP` 地图导入 / `OFFICIAL` 官方名录 / `MERCHANT` 商家提报 / `OPS` 运营手建。 **批量导入之后一个区有几千条**，不标出来源就没法把「机器扒进来的」 与「人一条条维护的」分开核对 —— 而前者是要抽查的，后者不是。 |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
@@ -208,6 +209,7 @@ _无字段_
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
 | `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 |
 | `kind` | `string,null` | 否 | ESTATE / VILLAGE / BUILDING |
+| `source` | `string,null` | 否 | `MAP` 地图导入 / `OFFICIAL` 官方名录 / `MERCHANT` 商家提报 / `OPS` 运营手建。 **批量导入之后一个区有几千条**，不标出来源就没法把「机器扒进来的」 与「人一条条维护的」分开核对 —— 而前者是要抽查的，后者不是。 |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
@@ -268,6 +270,7 @@ _无字段_
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
 | `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 |
 | `kind` | `string,null` | 否 | ESTATE / VILLAGE / BUILDING |
+| `source` | `string,null` | 否 | `MAP` 地图导入 / `OFFICIAL` 官方名录 / `MERCHANT` 商家提报 / `OPS` 运营手建。 **批量导入之后一个区有几千条**，不标出来源就没法把「机器扒进来的」 与「人一条条维护的」分开核对 —— 而前者是要抽查的，后者不是。 |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
@@ -303,6 +306,7 @@ _无字段_
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
 | `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 |
 | `kind` | `string,null` | 否 | ESTATE / VILLAGE / BUILDING |
+| `source` | `string,null` | 否 | `MAP` 地图导入 / `OFFICIAL` 官方名录 / `MERCHANT` 商家提报 / `OPS` 运营手建。 **批量导入之后一个区有几千条**，不标出来源就没法把「机器扒进来的」 与「人一条条维护的」分开核对 —— 而前者是要抽查的，后者不是。 |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
@@ -338,6 +342,7 @@ _无字段_
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
 | `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 |
 | `kind` | `string,null` | 否 | ESTATE / VILLAGE / BUILDING |
+| `source` | `string,null` | 否 | `MAP` 地图导入 / `OFFICIAL` 官方名录 / `MERCHANT` 商家提报 / `OPS` 运营手建。 **批量导入之后一个区有几千条**，不标出来源就没法把「机器扒进来的」 与「人一条条维护的」分开核对 —— 而前者是要抽查的，后者不是。 |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
@@ -428,6 +433,7 @@ _无字段_
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
 | `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 |
 | `kind` | `string,null` | 否 | ESTATE / VILLAGE / BUILDING |
+| `source` | `string,null` | 否 | `MAP` 地图导入 / `OFFICIAL` 官方名录 / `MERCHANT` 商家提报 / `OPS` 运营手建。 **批量导入之后一个区有几千条**，不标出来源就没法把「机器扒进来的」 与「人一条条维护的」分开核对 —— 而前者是要抽查的，后者不是。 |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
@@ -472,6 +478,7 @@ _无字段_
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
 | `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 |
 | `kind` | `string,null` | 否 | ESTATE / VILLAGE / BUILDING |
+| `source` | `string,null` | 否 | `MAP` 地图导入 / `OFFICIAL` 官方名录 / `MERCHANT` 商家提报 / `OPS` 运营手建。 **批量导入之后一个区有几千条**，不标出来源就没法把「机器扒进来的」 与「人一条条维护的」分开核对 —— 而前者是要抽查的，后者不是。 |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
@@ -491,6 +498,19 @@ _无字段_
 **出参**（`data`）
 
 类型：[`NearbyCommunity`](#nearbycommunity)\[\]
+
+
+#### POST `/ops/communities/open-map`
+
+把某个区划前缀下、**地图导入**的聚落批量开城
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
 
 
 #### GET `/ops/coverage/distribution`
@@ -9637,6 +9657,7 @@ _无字段_
 | `fenceRadius` | `number` | 是 | 覆盖围栏半径，米（P-2.1.3） |
 | `parentNo` | `string,null` | 否 | 所属聚落（楼栋 → 小区/园区）。空 = 顶层。列表要能看出谁在谁里面 |
 | `kind` | `string,null` | 否 | ESTATE / VILLAGE / BUILDING |
+| `source` | `string,null` | 否 | `MAP` 地图导入 / `OFFICIAL` 官方名录 / `MERCHANT` 商家提报 / `OPS` 运营手建。 **批量导入之后一个区有几千条**，不标出来源就没法把「机器扒进来的」 与「人一条条维护的」分开核对 —— 而前者是要抽查的，后者不是。 |
 | `pickupCount` | `number` | 是 | 本社区的自提点数量（列表直接给，避免逐行再查一次） |
 | `createdAt` | `string` | 是 | 建档时间 |
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |

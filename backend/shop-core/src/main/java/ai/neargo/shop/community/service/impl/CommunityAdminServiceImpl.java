@@ -405,7 +405,8 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
     }
 
     @Override
-    public List<CommunityVO> communities(String keyword, boolean showClosed, boolean showArchived) {
+    public List<CommunityVO> communities(String keyword, boolean showClosed, boolean showArchived,
+                                         String regionPrefix) {
         var w = Wrappers.<CmtCommunity>lambdaQuery();
         if (!showClosed) {
             w.eq(CmtCommunity::getStatus, OPEN);
@@ -423,6 +424,12 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         if (keyword != null && !keyword.isBlank()) {
             w.and(x -> x.like(CmtCommunity::getName, keyword)
                     .or().like(CmtCommunity::getCommunityNo, keyword));
+        }
+        // 国标码天然是层级前缀：4403 命中整个深圳、440309 只命中龙华区。
+        // 空前缀**不筛**（与 openMapCommunities 那边的「空前缀拒绝」不同：
+        // 这里是只读列表，不筛是合理默认；那边是批量写，空前缀会开全国的城）
+        if (regionPrefix != null && !regionPrefix.isBlank()) {
+            w.likeRight(CmtCommunity::getRegionCode, regionPrefix.trim());
         }
         w.orderByDesc(CmtCommunity::getId);
         List<CmtCommunity> rows = DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(w));
@@ -522,6 +529,116 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         c.setCreatedBy(operatorNo);
         DataScopeContext.executeWithoutScope(() -> communityMapper.insert(c));
         return toVO(c, 0);
+    }
+
+    /**
+     * 地图小区批量建档。契约与取舍见 {@link CommunityAdminService#importEstates}。
+     *
+     * <p><b>围栏给 300 米，不是小区默认的 1000。</b> 深圳的小区挨得很近 ——
+     * 实测龙华 2783 个小区、平均密度 15.8 个/km²，市中心更密。
+     * 1000 米会让一个坐标同时落进十几个围栏，而「最内层」在同档之间只比距离，
+     * 于是选出来的那个取决于谁的中心点碰巧更近，不是谁真的包含他。
+     */
+    private static final int MAP_ESTATE_FENCE_M = 300;
+
+    @Override
+    @Transactional
+    public ImportResult importEstates(String regionCode, String status, boolean dryRun,
+                                      java.util.List<EstateIn> items, String operatorNo) {
+        if (regionCode == null || regionCode.isBlank() || items == null || items.isEmpty()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String st = status == null || status.isBlank() ? CLOSED : status.trim();
+        if (!OPEN.equals(st) && !CLOSED.equals(st)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 已有的按 origin_code 认 —— 一次查完，别在循环里逐条查（几千次往返）
+        java.util.Map<String, CmtCommunity> existing = DataScopeContext.executeWithoutScope(() ->
+                communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getSource, CmtCommunity.SOURCE_MAP)
+                        .isNotNull(CmtCommunity::getOriginCode))).stream()
+                .collect(java.util.stream.Collectors.toMap(CmtCommunity::getOriginCode,
+                        c -> c, (a, b) -> a));
+        int created = 0;
+        int updated = 0;
+        int skipped = 0;
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (EstateIn in : items) {
+            /*
+             * **没坐标的一律跳过**，不是建一个空坐标的。withinRadius 对空坐标恒 false，
+             * 建出来买家永远搜不到它，而这件事没有任何报错 —— 只是那个小区的人
+             * 打开首页看到的是别人家小区的货。
+             */
+            if (in == null || in.originCode() == null || in.originCode().isBlank()
+                    || in.name() == null || in.name().isBlank()
+                    || in.latE6() == null || in.lngE6() == null
+                    || !seen.add(in.originCode())) {
+                skipped++;
+                continue;
+            }
+            CmtCommunity old = existing.get(in.originCode());
+            if (old != null) {
+                updated++;
+                if (!dryRun) {
+                    old.setName(in.name().trim());
+                    old.setAddress(in.address() == null || in.address().isBlank()
+                            ? null : in.address().trim());
+                    old.setLatE6(in.latE6());
+                    old.setLngE6(in.lngE6());
+                    // **状态不覆盖**：这一条可能已经被运营开过或关过，
+                    // 重扫一次把它按默认值改回去，是一次没人察觉的批量开/关城
+                    DataScopeContext.executeWithoutScope(() -> communityMapper.updateById(old));
+                }
+                continue;
+            }
+            created++;
+            if (!dryRun) {
+                var c = new CmtCommunity();
+                c.setCommunityNo(ai.neargo.shop.common.BizKey.next(
+                        ai.neargo.shop.common.BizKey.COMMUNITY));
+                c.setName(in.name().trim());
+                c.setAddress(in.address() == null || in.address().isBlank()
+                        ? null : in.address().trim());
+                c.setRegionCode(regionCode.trim());
+                c.setKind(CmtCommunity.KIND_ESTATE);
+                c.setLatE6(in.latE6());
+                c.setLngE6(in.lngE6());
+                c.setCoordsSource("AMAP");
+                c.setSource(CmtCommunity.SOURCE_MAP);
+                c.setOriginCode(in.originCode());
+                c.setStatus(st);
+                c.setFenceRadius(MAP_ESTATE_FENCE_M);
+                c.setCreatedBy(operatorNo);
+                DataScopeContext.executeWithoutScope(() -> communityMapper.insert(c));
+            }
+        }
+        return new ImportResult(items.size(), created, updated, skipped, dryRun);
+    }
+
+    @Override
+    @Transactional
+    public int openMapCommunities(String regionPrefix, String operatorNo) {
+        /*
+         * **空前缀不放行。** 空串在 likeRight 下匹配一切 —— 那会把全国所有
+         * 地图来源的聚落一次开城，而这个接口本来是给「一个区」用的。
+         */
+        if (regionPrefix == null || regionPrefix.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        var rows = DataScopeContext.executeWithoutScope(() ->
+                communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getSource, CmtCommunity.SOURCE_MAP)
+                        .eq(CmtCommunity::getStatus, CLOSED)
+                        .isNull(CmtCommunity::getArchivedAt)
+                        .likeRight(CmtCommunity::getRegionCode, regionPrefix.trim())));
+        for (CmtCommunity c : rows) {
+            c.setStatus(OPEN);
+            c.setUpdatedBy(operatorNo);
+            DataScopeContext.executeWithoutScope(() -> communityMapper.updateById(c));
+        }
+        // 不打日志：这个类本来就没有 logger，而返回值已经把「改了几条」说清楚了，
+        // 审计留痕由控制器那一层统一写（与同类的开城/调围栏一致）
+        return rows.size();
     }
 
     @Override
@@ -885,7 +1002,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                 c.getCreatedAt() == null ? 0L
                         : c.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
                 c.getRegionCode(), regionPathOf(c.getRegionCode()),
-                c.getLatE6(), c.getLngE6());
+                c.getLatE6(), c.getLngE6(), c.getKind(), c.getSource());
     }
 
     @Override

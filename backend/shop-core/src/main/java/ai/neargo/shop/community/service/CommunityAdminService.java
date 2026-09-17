@@ -5,7 +5,13 @@ import java.util.List;
 /** 社区与自提点治理（P-2.1 / P-2.2）。 */
 public interface CommunityAdminService {
 
-    List<CommunityVO> communities(String keyword, boolean showClosed, boolean showArchived);
+    /**
+     * @param regionPrefix 按区划前缀筛（国标码天然是层级前缀：{@code 4403} 是深圳、
+     *                     {@code 440309} 是龙华区）。空 = 不筛。
+     *                     批量导入之后一个区几千条，不按区筛这一页没法用
+     */
+    List<CommunityVO> communities(String keyword, boolean showClosed, boolean showArchived,
+                                  String regionPrefix);
 
     /**
      * 开城开关（P-2.1.2）。
@@ -164,6 +170,54 @@ public interface CommunityAdminService {
      *                   <b>建议挂到街道级</b> —— 不挂的话这个新社区在任何「按区覆盖」里都出不来
      * @param reason     驳回原因，驳回时必填 —— 它原样出现在商家 B 端
      */
+    /**
+     * 批量把地图上的小区建成聚落（P-2.1 · 冷启动期把一个区一次铺满）。
+     *
+     * <p><b>为什么要批量</b>：线上此刻全平台只有 1 个已开通聚落，深圳任何地方的买家
+     * 都落不进围栏。一条一条建是几千次点击，而这件事还要重复九次（深圳九个区）。
+     *
+     * <p><b>默认建成 {@code CLOSED}，不是 OPEN。</b> 这是刻意的：
+     * 聚落一旦 OPEN 就同时参与「买家匹配」与「商品池投影」两件事，
+     * 而后者取决于商家的经营范围 —— 范围没铺开就 OPEN，买家会被匹配到自家小区，
+     * 然后看到一屏空货架，比匹配到远处那个**有货**的还糟。
+     * 所以导入与放出来分两步，中间留出核对数据与确认经营范围的时间。
+     *
+     * <p><b>幂等靠 {@code origin_code}</b>（地图 POI id）：重跑只更新名字/地址/坐标，
+     * 不会再插一遍。没有它，重扫一次就是几千条重复，而重复的聚落会让同一个坐标
+     * 落进两个围栏，选出来的那个取决于扫表顺序。
+     *
+     * @param status 建成什么状态；只接受 OPEN / CLOSED
+     * @param dryRun 只算不写。**先跑一次 dryRun 是规矩不是建议** ——
+     *               这个接口一次动几千行，而它的错误要到买家那一端才看得见
+     * @return 收到多少、新建多少、更新多少、跳过多少
+     */
+    ImportResult importEstates(String regionCode, String status, boolean dryRun,
+                               java.util.List<EstateIn> items, String operatorNo);
+
+    /**
+     * @param originCode 地图 POI id —— 幂等键
+     * @param latE6      没有坐标的一律**跳过**：{@code withinRadius} 对空坐标恒 false，
+     *                   建出来买家永远搜不到它，而这件事没有任何报错
+     */
+    record EstateIn(String originCode, String name, String address, Integer latE6, Integer lngE6) {
+    }
+
+    record ImportResult(int received, int created, int updated, int skipped, boolean dryRun) {
+    }
+
+    /**
+     * 把某个区划前缀下、**地图来源**的聚落批量放出来（CLOSED → OPEN）。
+     *
+     * <p>与 {@link #importEstates} 分开的理由见那边：放出来这一步要等
+     * 「商家经营范围铺到这个区」之后才做，否则买家匹配到自家小区却看到空货架。
+     *
+     * <p><b>只动 {@code source=MAP} 的</b>：运营手建的、商家提报的聚落各有各的
+     * 开关时机，被一次批量操作顺手改掉是没人能追溯的。
+     *
+     * @return 真正被改过的条数
+     */
+    int openMapCommunities(String regionPrefix, String operatorNo);
+
     ApplyVO decideApply(String applyNo, boolean pass, String regionCode,
                         String reason, String operatorNo);
 
@@ -278,10 +332,17 @@ public interface CommunityAdminService {
      */
     CommunityVO merge(String fromNo, String intoNo, String operatorNo);
 
+    /**
+     * @param kind   ESTATE 小区 / VILLAGE 村 / BUILDING 楼宇。
+     *               运营端列表要把「小区」与「楼宇」分得开 —— 批量导入之后
+     *               一个区里两种都有几千条，混在一起就没法核对了
+     * @param source MAP 地图导入 / OFFICIAL 官方名录 / MERCHANT 商家提报 / OPS 运营手建。
+     *               同上：批量导入进来的那几千条要能一眼与手工维护的区分开
+     */
     record CommunityVO(String communityNo, String name, String city, String grid, boolean opened,
                        int fenceRadius, int pickupCount, long createdAt,
                        String regionCode, String regionPath,
-                       Integer latE6, Integer lngE6) {
+                       Integer latE6, Integer lngE6, String kind, String source) {
     }
 
     /**

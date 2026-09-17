@@ -24,6 +24,16 @@ export interface CommunityApi {
   listCommunities(q?: CommunityQ): Promise<Page<Community>>;
   /** 开城/停城（P-2.1.2）。停城不影响已有订单，只是 C 端不再展示。 */
   setCommunityOpen(communityNo: string, opened: boolean): Promise<Community>;
+  /**
+   * 把某个区划前缀下、**地图导入**的聚落批量开城。
+   *
+   * <p>批量导入进来的默认是关着的（导入与放出来分两步）。放之前要先确认
+   * 商家的经营范围铺到了这个区 —— 没铺的话买家会被匹配到自家小区、
+   * 然后看到一屏空货架，比匹配到远处那个有货的还糟。
+   *
+   * <p>只动 `source=MAP` 的：运营手建、商家提报的各有各的开关时机。
+   */
+  openMapCommunities(regionPrefix: string): Promise<{ opened: number }>;
   /** 覆盖围栏半径，米（P-2.1.3）。 */
   setCommunityFence(communityNo: string, fenceRadius: number): Promise<Community>;
   /**

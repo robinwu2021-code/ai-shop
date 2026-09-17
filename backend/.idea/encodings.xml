@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/pay/pay-channel/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/pay/pay-domain/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/pay/pay-svc/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/shop-app/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/shop-auth-store/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/shop-base-auth/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/shop-base/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/shop-channel/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/shop-core/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/shop-inventory/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/shop-job-api/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/shop-job-core/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/shop-job-store/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/shop-job/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/shop-merchant/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/shop-notify/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/shop-store-mybatis/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
+  </component>
+</project>

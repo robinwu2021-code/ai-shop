@@ -84,6 +84,13 @@ export interface Community extends Archivable {
   parentNo?: string | null;
   /** ESTATE / VILLAGE / BUILDING */
   kind?: string | null;
+  /**
+   * `MAP` 地图导入 / `OFFICIAL` 官方名录 / `MERCHANT` 商家提报 / `OPS` 运营手建。
+   *
+   * **批量导入之后一个区有几千条**，不标出来源就没法把「机器扒进来的」
+   * 与「人一条条维护的」分开核对 —— 而前者是要抽查的，后者不是。
+   */
+  source?: string | null;
   /** 本社区的自提点数量（列表直接给，避免逐行再查一次） */
   pickupCount: number;
   /** 建档时间 */

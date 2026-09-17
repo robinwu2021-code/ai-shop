@@ -1886,6 +1886,11 @@ components:
             - "string"
             - "null"
           description: "ESTATE / VILLAGE / BUILDING"
+        source: 
+          type: 
+            - "string"
+            - "null"
+          description: "`MAP` 地图导入 / `OFFICIAL` 官方名录 / `MERCHANT` 商家提报 / `OPS` 运营手建。\n\n**批量导入之后一个区有几千条**，不标出来源就没法把「机器扒进来的」 与「人一条条维护的」分开核对 —— 而前者是要抽查的，后者不是。"
         pickupCount: 
           type: "number"
           description: "本社区的自提点数量（列表直接给，避免逐行再查一次）"
@@ -9033,6 +9038,38 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/communities/open-map": 
+    post: 
+      operationId: "openMapCommunities"
+      summary: "把某个区划前缀下、**地图导入**的聚落批量开城"
+      tags: 
+        - "community"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/communities": 
     get: 
       operationId: "listCommunities"
