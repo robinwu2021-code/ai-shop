@@ -5336,12 +5336,6 @@
           "ar": "إلغاء"
         },
         {
-          "key": "common.change",
-          "zh-CN": "更换",
-          "en": "Change",
-          "ar": "تغيير"
-        },
-        {
           "key": "common.comingSoon",
           "zh-CN": "该功能将在后续版本上线",
           "en": "This feature is coming in a later release",
@@ -13184,12 +13178,6 @@
           "ar": "المتاح"
         },
         {
-          "key": "stock.crossGo",
-          "zh-CN": "看各店的货",
-          "en": "See every store",
-          "ar": "عرض كل المتاجر"
-        },
-        {
           "key": "stock.empty",
           "zh-CN": "没有需要处理的商品",
           "en": "Nothing to handle",
@@ -13526,6 +13514,18 @@
           "ar": "أُقفلت الكميات الدفترية في {at}؛ تابع البيع أثناء الجرد، لن يؤثر على الفرق"
         },
         {
+          "key": "stockCheck.openBody",
+          "zh-CN": "开单这一刻锁定账面数。之后卖掉的不计入差异，你照常出货就行。",
+          "en": "The book quantity is locked the moment the sheet opens. Sales after that are excluded from the variance, so keep selling as usual.",
+          "ar": "تُقفل الكميات الدفترية لحظة فتح الجرد. ما يُباع بعدها لا يدخل في الفرق، فتابع البيع كالمعتاد."
+        },
+        {
+          "key": "stockCheck.openTitle",
+          "zh-CN": "开始盘点这 {n} 件？",
+          "en": "Start counting these {n} items?",
+          "ar": "بدء جرد هذه العناصر الـ {n}؟"
+        },
+        {
           "key": "stockCheck.pickAll",
           "zh-CN": "全选",
           "en": "Select all",
@@ -13536,12 +13536,6 @@
           "zh-CN": "暂无可盘点的商品",
           "en": "No products available to count",
           "ar": "لا يوجد ما يُجرد بعد."
-        },
-        {
-          "key": "stockCheck.pickHint",
-          "zh-CN": "选择需要盘点的商品。开单时锁定账面数，盘点期间的销售不计入差异",
-          "en": "Select the products to count. The book quantity is locked when the sheet opens; sales during the count are excluded.",
-          "ar": "اختر ما تريد جرده. تُقفل الكميات الدفترية لحظة فتح الجرد؛ يمكنك متابعة البيع أثناء الجرد دون التأثير على الفرق."
         },
         {
           "key": "stockCheck.postHint",
