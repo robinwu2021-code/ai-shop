@@ -152,6 +152,48 @@ public class CommunityQueryPortImpl implements CommunityQueryPort {
     }
 
     @Override
+    public java.util.List<PickupOption> pickupOptions(Integer latE6, Integer lngE6,
+                                                      java.util.Collection<String> allowed) {
+        /*
+         * **归属链复用 resolve**，不在这儿再写一遍围栏判定（同本文件上面那一处）。
+         * chainNos 是「从内到外」的整条链：站在 3 幢，链上有 3 幢与它所在的小区 ——
+         * 两级的点都该是候选，否则楼里的人取不到小区门口那个点。
+         */
+        var ctx = latE6 == null || lngE6 == null
+                ? null : communityService.getObject().resolve(latE6, lngE6, false);
+        java.util.List<String> chain = ctx == null || ctx.chainNos() == null
+                ? java.util.List.of() : ctx.chainNos();
+        if (chain.isEmpty()) {
+            // 一个围栏都没落进（新城区 / 没标点的地址）：没有归属链就没有候选，
+            // **返回空而不是「全部」** —— 给一个跑不到的点比不给更糟
+            return java.util.List.of();
+        }
+        var rows = DataScopeContext.executeWithoutScope(() -> pickupPointMapper.selectList(
+                Wrappers.<ai.neargo.shop.community.entity.CmtPickupPoint>lambdaQuery()
+                        .in(ai.neargo.shop.community.entity.CmtPickupPoint::getCommunityNo, chain)
+                        .eq(ai.neargo.shop.community.entity.CmtPickupPoint::getStatus, "ACTIVE")));
+        return rows.stream()
+                // 空集 = 这家店没配过取货点，按兼容期放行（与 requirePickupServed 同一条约定）
+                .filter(p -> allowed == null || allowed.isEmpty() || allowed.contains(p.getPickupNo()))
+                .map(p -> new PickupOption(p.getPickupNo(), p.getName(), p.getAddress(),
+                        p.getCommunityNo(),
+                        /*
+                         * 坐标为空给 -1 而不是 0：0 会被端上显示成「0 米」，那是一句假话。
+                         * 存量点是手填地址建的，没有坐标不代表不能用，只是排不出远近。
+                         */
+                        p.getLatE6() == null || p.getLngE6() == null ? -1
+                                : ai.neargo.shop.common.Geo.meters(latE6, lngE6,
+                                        p.getLatE6(), p.getLngE6())))
+                .sorted(java.util.Comparator
+                        // 没坐标的排最后（-1 会排在最前，所以先按「有没有距离」分档）
+                        .comparingInt((PickupOption o) -> o.distanceM() < 0 ? 1 : 0)
+                        .thenComparingInt(PickupOption::distanceM)
+                        // 平手按点号稳定排序 —— 不稳定的话同一个人两次看到的顺序会不一样
+                        .thenComparing(PickupOption::pickupNo))
+                .toList();
+    }
+
+    @Override
     public String communityName(String communityNo) {
         if (communityNo == null || communityNo.isBlank()) {
             return communityNo;

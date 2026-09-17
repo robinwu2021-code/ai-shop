@@ -70,6 +70,33 @@ public interface CommunityQueryPort {
      * 页面上宁可显示 C0001，也不要显示一个空白的覆盖项：
      * 空白会让商家以为「这一条坏了」而去删掉它。
      */
+    /**
+     * 按买家坐标匹配自提点：**归属链上的在用点，按离买家最近排**。
+     *
+     * <p><b>规则只放这一处。</b> 它同时需要三样东西：归属链（聚落域）、
+     * 自提点与它们的坐标（聚落域）、以及与围栏判定同一份的距离算法（{@code Geo.meters}）。
+     * 让调用方自己拼，下单那条路与「换点」那个列表迟早会给出不同的顺序 ——
+     * 而两个顺序看起来都合理，只有买家跑错地方时才发现。
+     *
+     * <p>商家的许可点作为**过滤集**传进来：那是商家域的知识，不该由聚落域去查。
+     *
+     * @param allowed 这家商家承接的点；<b>空集视为不限</b> ——
+     *                与 {@code requirePickupServed} 同一条兼容期约定：
+     *                存量商家（只开了自提、从没进过取货点配置）不该在发布当天一单都下不了
+     * @return 按距离升序；坐标为空的点排在最后（**不丢掉** —— 存量点是手填地址建的，
+     *         没有坐标不代表它不能用，只是排不出远近）
+     */
+    java.util.List<PickupOption> pickupOptions(Integer latE6, Integer lngE6,
+                                               java.util.Collection<String> allowed);
+
+    /**
+     * @param distanceM 到买家的米数；<b>坐标为空时是 -1</b>，不是 0 ——
+     *                  0 会被端上显示成「0 米」，那是一句假话
+     */
+    record PickupOption(String pickupNo, String name, String address,
+                        String communityNo, int distanceM) {
+    }
+
     String communityName(String communityNo);
 
     /**

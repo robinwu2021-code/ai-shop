@@ -27,6 +27,9 @@ import java.util.stream.Collectors;
 @Service
 public class CommunityServiceImpl implements CommunityService {
 
+    private static final org.slf4j.Logger LOG =
+            org.slf4j.LoggerFactory.getLogger(CommunityServiceImpl.class);
+
     private final CommunityMapper communityMapper;
     private final PickupPointMapper pickupMapper;
     /*
@@ -445,11 +448,36 @@ public class CommunityServiceImpl implements CommunityService {
     /**
      * 从最内层沿归属链向上，由内到外。
      *
-     * <p>**今天只有一层** —— `parent_no` 是二批才加的列。这里先把形状定下来，
-     * 二批只需要把上溯填进来，调用方（端上、商品池查询）一行不用改。
+     * <p>⚠️ 这里**曾经是个桩**：注释写着「今天只有一层，二批把上溯填进来」，
+     * 而二批（V321）加完 `parent_no`、楼栋也建出来之后，这一步一直没补 ——
+     * 于是 `chainNos` 恒为一个元素，谁也没发现，因为当时没有任何真实调用方。
+     * 第一个真实用它的是自提点匹配（站在 3 幢，要能取到小区门口那个点）。
+     *
+     * <p><b>只上溯一层</b>，与 V321 的模型一致（园区 › 楼，不再往下分单元）。
+     * 仍然按「找到就停」写成循环并设上限：`parent_no` 是声明出来的，
+     * 一条指向自己或成环的坏数据会让这里转不出来，而症状是整个下单链路挂住。
      */
     private List<String> chainOf(CmtCommunity innermost) {
-        return List.of(innermost.getCommunityNo());
+        List<String> chain = new java.util.ArrayList<>();
+        chain.add(innermost.getCommunityNo());
+        String parent = innermost.getParentNo();
+        int guard = 0;
+        while (parent != null && !parent.isBlank() && guard++ < 4) {
+            if (chain.contains(parent)) {
+                // 成环：记一笔就停。不抛错 —— 这一条路上挂着下单，
+                // 为一条坏数据让所有人下不了单是更糟的选择
+                LOG.warn("[community] 归属链成环，已截断：{} → {}", innermost.getCommunityNo(), parent);
+                break;
+            }
+            chain.add(parent);
+            String current = parent;
+            CmtCommunity up = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                    () -> communityMapper.selectOne(
+                    Wrappers.<CmtCommunity>lambdaQuery()
+                            .eq(CmtCommunity::getCommunityNo, current).last("limit 1")));
+            parent = up == null ? null : up.getParentNo();
+        }
+        return List.copyOf(chain);
     }
 
     /** 未传定位返回 0：端上按 0 隐藏距离展示，比编一个假距离诚实。 */
