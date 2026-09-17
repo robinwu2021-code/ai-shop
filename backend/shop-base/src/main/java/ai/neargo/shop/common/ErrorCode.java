@@ -469,6 +469,16 @@ public enum ErrorCode {
     PICKUP_POINT_NOT_SERVED(70029, "err.trade.pickup_point_not_served"),
     /** 自建取货点归不到任何社区：没定位到、经营范围也空。要他先框一个小区，而不是一句「参数有误」 */
     PICKUP_COMMUNITY_REQUIRED(70030, "err.community.pickup_community_required"),
+    /**
+     * 这家商家在买家所在那一带<b>一个可用自提点都没有</b>（{@code {0}} = 商家名）。
+     *
+     * <p>与 {@link #PICKUP_POINT_REQUIRED} 不是一回事：那条是「你还没选点」，
+     * 而自提点已经改成下单时自动匹配，买家没有可选的东西。这条说的是
+     * <b>配不出来</b>，且**只挡这一家** —— 其余商家照常成单。
+     * 点名是必须的：车里有三家店时，只说「没有可用取货点」的话，
+     * 他不知道该换履约方式还是该把哪件商品拿出来。
+     */
+    PICKUP_POINT_NONE_FOR_MERCHANT(70064, "err.trade.pickup_point_none_for_merchant"),
     /** 这一路被运营锁了：商家改不了开关。置灰的按钮点不到，这条只挡绕过界面的请求 */
     CHANNEL_LOCKED(70031, "err.merchant.channel_locked"),
     /*

@@ -98,6 +98,32 @@ public class UserQueryPortImpl implements UserQueryPort {
                 .toList();
     }
 
+    @Override
+    public java.util.Optional<Point> buyerPoint(String userNo, String addressId) {
+        String id = addressId;
+        if (id == null || id.isBlank()) {
+            var user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                    .eq(UsrAccount::getUserNo, userNo).last("limit 1"));
+            id = user == null ? null : user.getActiveAddressId();
+        }
+        if (id == null || id.isBlank()) {
+            // 第三级：默认地址。新用户存完第一条就去下单，那条是默认、但不是「生效」
+            var fallback = addressMapper.selectOne(
+                    Wrappers.<ai.neargo.shop.user.entity.UsrAddress>lambdaQuery()
+                            .eq(ai.neargo.shop.user.entity.UsrAddress::getUserNo, userNo)
+                            .eq(ai.neargo.shop.user.entity.UsrAddress::getIsDefault, true)
+                            .isNotNull(ai.neargo.shop.user.entity.UsrAddress::getLatE6)
+                            .last("limit 1"));
+            id = fallback == null ? null : fallback.getAddressId();
+        }
+        if (id == null || id.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        return receiverOf(userNo, id)
+                .filter(r -> r.latE6() != null && r.lngE6() != null)
+                .map(r -> new Point(r.latE6(), r.lngE6()));
+    }
+
     private static String nz(String s) {
         return s == null ? "" : s;
     }

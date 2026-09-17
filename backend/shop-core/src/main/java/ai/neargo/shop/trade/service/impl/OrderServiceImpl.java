@@ -120,6 +120,8 @@ public class OrderServiceImpl implements OrderService {
     private final SettlePort settlePort;
     private final StatusLogMapper statusLogMapper;
     private final PickupQueryPort pickupPort;
+    /** 自提点匹配的规则在聚落域一处（归属链 + 距离），这里只负责把商家的许可点喂进去 */
+    private final ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort;
     /** 取买家绑定的社区，下单时固化到主单 —— 运营按社区做数据域隔离 */
     private final ai.neargo.shop.spi.user.UserQueryPort userPort;
     /** 挑「服务这个社区的最近门店」时要它给社区坐标 */
@@ -150,6 +152,7 @@ public class OrderServiceImpl implements OrderService {
                             SettlePort settlePort,
                             StatusLogMapper statusLogMapper,
                             PickupQueryPort pickupPort,
+                            ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
                             ai.neargo.shop.spi.user.UserQueryPort userPort,
                             ai.neargo.shop.spi.user.CommunityQueryPort communityPort,
                             IdempotencyService idempotency, OutboxEventBus eventBus,
@@ -180,6 +183,7 @@ public class OrderServiceImpl implements OrderService {
         this.settlePort = settlePort;
         this.statusLogMapper = statusLogMapper;
         this.pickupPort = pickupPort;
+        this.communityQueryPort = communityQueryPort;
         this.userPort = userPort;
         this.communityPort = communityPort;
         this.idempotency = idempotency;
@@ -556,7 +560,15 @@ public class OrderServiceImpl implements OrderService {
         String payMode = requirePayModeSupported(cmd, split, storeOfMerchant);
         requireReceiverWhenShipped(cmd, userNo);
         requireWithinDeliveryRadius(cmd, split, userNo);
-        requirePickupPointWhenPickup(cmd);
+        /*
+         * **自提点在这一刻配出来，不再要求买家事先选**
+         * （TDD-C端位置选择-地址取代自提点 §M4）。
+         *
+         * 端上显式传了点（「换一个取货点」）就用他传的，仍走下面那道
+         * 「这家店服不服务这个点」的校验；没传就按买家坐标逐个商家配，
+         * 配出来的本来就过滤过许可点，所以那道校验对它是恒真的。
+         */
+        java.util.Map<String, String> pickupByMerchant = resolvePickups(cmd, split, userNo);
         requirePickupServed(cmd, split);
         requireAppointmentWhenNeeded(cmd, split, storeOfMerchant);
 
@@ -774,13 +786,19 @@ public class OrderServiceImpl implements OrderService {
                 sub.setAppointmentAt(slot != null ? slot.startAt() : cmd.appointmentAt());
                 sub.setAppointmentSlotNo(slot == null ? null : cmd.appointmentSlotNo());
             }
-            sub.setPickupNo(cmd.pickupNo());
+            /*
+             * **按商家取各自的点**：属于多个就是多个（子单本来就按商家拆，
+             * 而 pickup_no / pickup_name / pickup_owner_ref 全在子单上）。
+             * 端上显式传了点时这张表里每家都是同一个值，行为与改造前逐字相同。
+             */
+            String pickupNo = pickupByMerchant.getOrDefault(g.merchantNo, cmd.pickupNo());
+            sub.setPickupNo(pickupNo);
             /*
              * 自提点快照。名称是给页面看的（改名不该影响历史订单），
              * **承接方是给钱看的**（换了承接门店不该改写历史订单算谁的）——
              * 两者一次取出，别分两处查，那会在并发改点时取到不一致的两半。
              */
-            var brief = pickupPort.find(cmd.pickupNo());
+            var brief = pickupPort.find(pickupNo);
             sub.setPickupName(brief.map(p -> p.name()).orElse(null));
             sub.setPickupOwnerRef(brief.map(p -> p.ownerRef()).orElse(null));
             sub.setPickupOwnerStoreNo(brief.map(p -> p.ownerStoreNo()).orElse(null));
@@ -1861,14 +1879,49 @@ public class OrderServiceImpl implements OrderService {
      * <p>连「点存不存在」一起校：只判空的话，传一个不存在的点号照样落到同一个坑里，
      * 而那种请求恰恰是端上传错参数时最常见的样子。
      */
-    private void requirePickupPointWhenPickup(CreateOrderCommand cmd) {
+    private java.util.Map<String, String> resolvePickups(CreateOrderCommand cmd, Split split,
+                                                        String userNo) {
         if (cmd.fulfillment() == null || !Fulfillments.isPickup(cmd.fulfillment())) {
-            return;
+            return java.util.Map.of();
         }
-        if (cmd.pickupNo() == null || cmd.pickupNo().isBlank()
-                || pickupPort.find(cmd.pickupNo()).isEmpty()) {
+        /*
+         * 端上显式传了点：**行为与改造前逐字相同** —— 连「点存不存在」一起校，
+         * 只判空的话，传一个不存在的点号照样落到同一个坑里（原 TB-B-6-2 抓到的那个），
+         * 而那种请求恰恰是端上传错参数时最常见的样子。
+         */
+        if (cmd.pickupNo() != null && !cmd.pickupNo().isBlank()) {
+            if (pickupPort.find(cmd.pickupNo()).isEmpty()) {
+                throw BizException.of(ErrorCode.PICKUP_POINT_REQUIRED);
+            }
+            return split.groups.stream().collect(java.util.stream.Collectors.toMap(
+                    g -> g.merchantNo, g -> cmd.pickupNo(), (a, b) -> a));
+        }
+        /*
+         * 没传：按买家坐标逐个商家配。坐标取「这一单的地址，没有就用生效地址」
+         * （回落规则在 UserQueryPort#buyerPoint 一处）。
+         *
+         * **拿不到坐标就退回原来的话**：没有位置就配不出点，而这时候让他
+         * 「先选个地址」是他真正能做的下一步 —— 比「没有可用取货点」准确。
+         */
+        var point = userPort.buyerPoint(userNo, cmd.addressId()).orElse(null);
+        if (point == null) {
             throw BizException.of(ErrorCode.PICKUP_POINT_REQUIRED);
         }
+        java.util.Map<String, String> out = new java.util.LinkedHashMap<>();
+        for (Group g : split.groups) {
+            var options = communityQueryPort.pickupOptions(point.latE6(), point.lngE6(),
+                    merchantPort.allowedPickupNos(g.merchantNo));
+            if (options.isEmpty()) {
+                /*
+                 * **只挡这一家，并点名。** 车里有三家店时，只说「没有可用取货点」
+                 * 的话，他不知道该换履约方式还是该把哪件商品拿出来。
+                 */
+                throw BizException.of(ErrorCode.PICKUP_POINT_NONE_FOR_MERCHANT,
+                        merchantPort.find(g.merchantNo).map(m -> m.merchantName()).orElse(g.merchantNo));
+            }
+            out.put(g.merchantNo, options.get(0).pickupNo());
+        }
+        return out;
     }
 
     /**
