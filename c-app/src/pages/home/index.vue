@@ -104,7 +104,16 @@ async function load() {
    * 它在单测与源码守卫里都看不出来（那两者判的是有没有调、传了什么），
    * 是小程序运行时截图抓到的。
    */
-  const region = community.community ? null : await location.ensureCoarseRegion();
+  /*
+   * **无条件调用。** 它内部会分两种情况处理：已有归属就核一次那个聚落还在不在
+   * （核完还在就返回 null），没有归属才去定位。
+   *
+   * ⚠️ 这里原先写的是 `community.community ? null : await ensureCoarseRegion()` ——
+   * 于是**有旧归属时它根本不跑**，而校验「那个聚落还在不在」正写在它里面：
+   * 代码在它唯一该起作用的场景里是死的。真机上的症状是顶栏一直显示
+   * 一个库里根本没有的社区名，重开多少次都不变。
+   */
+  const region = await location.ensureCoarseRegion();
   const communityNo = community.community?.communityNo;
   const regionCode = communityNo ? undefined : region?.code;
   noPlace.value = !communityNo && !regionCode;

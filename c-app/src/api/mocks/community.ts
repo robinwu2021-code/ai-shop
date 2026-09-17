@@ -5,7 +5,11 @@
 
 import { allCommunitySeeds, db, delay, toCommunity } from "@shared/mock/db";
 import type { RegionNode } from "@shared/types";
+import { ApiError } from "@shared/net/http-client";
 import type { ShopApi } from "../contract";
+
+/** 后端 `ErrorCode.NOT_FOUND`。写死一个数是因为 mock 的职责就是长得像服务端 */
+const NOT_FOUND = 10404;
 
 export const communityMock: Pick<ShopApi,
   "nearbyCommunities"
@@ -71,7 +75,13 @@ export const communityMock: Pick<ShopApi,
 
   async communityDetail(communityNo) {
     const seed = allCommunitySeeds().find((c) => c.communityNo === communityNo);
-    if (!seed) throw new Error("社区不存在");
+    /*
+     * **抛 ApiError，不是普通 Error。** 端上「这个聚落还在不在」那条判断
+     * 靠的就是「后端答了话」（ApiError）与「网络不通」（别的异常）的区别 ——
+     * mock 抛普通 Error 的话，那条判断在 mock 下是死的，
+     * 而开发期看起来一切正常（归属照样留着，没有任何报错）。
+     */
+    if (!seed) throw new ApiError(NOT_FOUND, "社区不存在");
     return delay(toCommunity(seed));
   },
 

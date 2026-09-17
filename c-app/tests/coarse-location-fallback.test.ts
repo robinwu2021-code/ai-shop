@@ -117,6 +117,17 @@ describe("粗定位兜底：按区看货", () => {
     expect(homePage).not.toContain("community.pickup?.name");
   });
 
+  it("★★★ ensureCoarseRegion 必须**无条件**调用 —— 有旧归属时它才是那个要跑的人", () => {
+    /*
+     * 原先写成 `community.community ? null : await ensureCoarseRegion()`，
+     * 于是有旧归属时它根本不跑 —— 而「核一次那个聚落还在不在」正写在它里面。
+     * 代码在它唯一该起作用的场景里是死的，真机上表现为顶栏一直顶着一个
+     * 库里没有的社区名，重开多少次都不变。
+     */
+    expect(homePage).toContain("const region = await location.ensureCoarseRegion();");
+    expect(homePage).not.toContain("community.community ? null : await location.ensureCoarseRegion()");
+  });
+
   it("★★★ 存着的聚落要核一次还在不在 —— 否则升级前绑过的人永远重新匹配不了", () => {
     /*
      * 「归属是持久化的」+「有归属就早退」两条加起来，会把存量用户钉死在
