@@ -203,7 +203,15 @@ onShow(() => {
       </text>
     </view>
 
-    <!-- 四层数字即入口：点一个就按那一层筛，再点一下取消 -->
+    <!--
+      四层数字即入口：点一个就按那一层筛，再点一下取消。
+
+      ⚠️ **事件名是 `change` 不是 `pick`**（2026-09-17 修）。这一页此前写的是
+      `@pick`，而 `sh-stat` 从来只 emit `change` —— `pick` 那个名字留给了
+      picker 一族（「挑中了这一个，给你」）。于是这四层数字点下去**一点反应都没有**，
+      而上面这句注释一直写着它是能点的。不报错，`vue-tsc` 也看不见：
+      未声明的 `@pick` 只是个落到根节点上的普通属性。库存页同一处见 `d0569f2e`。
+    -->
     <sh-stat
       boxed
       :active="level"
@@ -213,7 +221,7 @@ onShow(() => {
         label: String($t(`members.level.${lv}`)),
         tone: lv === 'SLEEPING' ? 'primary' : undefined,
       }))"
-      @pick="pickLevel"
+      @change="pickLevel"
     ></sh-stat>
 
     <text v-if="stats" class="txt-caption sh-muted sub">
