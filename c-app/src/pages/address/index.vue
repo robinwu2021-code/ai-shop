@@ -541,7 +541,7 @@ onShow(() => {
         -->
         <!-- 只留动作：原先左边那句「有现成的一段「姓名 手机 地址」？」是反问句，
              而按钮名本身已经说明了它干什么 -->
-        <view class="sh-notice sh-notice--muted pasterow sh-row sh-row--center" @tap="pasteAndFill">
+        <view class="sh-notice sh-notice--muted pasterow sh-center" @tap="pasteAndFill">
           <text class="txt-caption txt-primary">{{ $t("address.paste") }}</text>
         </view>
         <input maxlength="64" v-model="draft.name" class="field__input" :placeholder="$t('address.name')" />
@@ -722,7 +722,7 @@ onShow(() => {
 .here__save {
   flex-shrink: 0;
   border: 2rpx solid var(--sh-primary);
-  border-radius: 8rpx;
+  border-radius: 16rpx;
   padding: 8rpx 20rpx;
 }
 .tagrow {
