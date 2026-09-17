@@ -60,12 +60,26 @@ function calledPaths() {
 }
 
 export function orphans() {
-  const called = [...calledPaths()];
-  return scanEndpoints().filter((e) => {
-    const p = norm(e.path);
-    // 前缀命中也算：调用方可能写 `/ops/x` 再拼 `/${no}/y`
-    return !called.some((c) => c === p || p.startsWith(c));
-  });
+  const called = new Set(calledPaths());
+  /*
+   * **精确匹配，不再认前缀。**
+   *
+   * 原来那一行是 `p === c || p.startsWith(c)`，理由写的是「调用方可能写
+   * `/ops/x` 再拼 `/${no}/y`」—— 而那种写法归一之后本来就是精确相等：
+   * 调用点的模板串与后端的花括号都被 norm 压成同一个通配符，两边逐字相同。
+   * **前缀规则一个真实用例都不服务。**
+   *
+   * （⚠️ 别在这段注释里写出那个通配符的字面形式 —— 它后面跟着斜杠就是
+   * 块注释的结束符，整个文件当场语法错。写这段时就踩了一次。）
+   *
+   * 它服务的是反面：任何挂在已被调用的前缀下的新端点都自动算「有出口」。
+   * 2026-09-17 新开 `POST /ops/merchants/apply-on-behalf` 时撞到 ——
+   * 一行 ops-web 代码都还没写，闸门就说它有出口了。
+   *
+   * 收紧之后当场露出 8 条一直藏着的：闸门此前报「无出口 1」，实际是 9。
+   * 它们逐条登记进基线（那是这道闸自己给的出口），**债因此可见了**。
+   */
+  return scanEndpoints().filter((e) => !called.has(norm(e.path)));
 }
 
 const rows = orphans();

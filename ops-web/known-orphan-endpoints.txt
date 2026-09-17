@@ -17,3 +17,34 @@
 # 订单总览：运营端走的是别的入口，可能是重复能力，待确认后删或补
 GET /ops/order
 # 社区池重算，运维动作，可能本来就不该有界面
+
+# ══ 2026-09-17：收紧判据后露出来的 8 条 ═══════════════════════════════
+#
+# **它们不是新欠的债，是一直欠着、而闸门此前看不见的债。**
+# 旧判据是「精确命中 **或** 前缀命中」，理由写的是「调用方可能写 /ops/x
+# 再拼 /${no}/y」—— 而那种写法归一之后本来就精确相等，前缀规则一个真实用例
+# 都不服务。它只服务反面：任何挂在已被调用前缀下的端点自动算「有出口」。
+#
+# 发现经过：新开 POST /ops/merchants/apply-on-behalf 时，一行 ops-web 代码
+# 都还没写，闸门就说它有出口了 —— 因为 /ops/merchants 被自营那条调过。
+# 收紧后做了消融：撤掉该端点的调用点它会被抓到，加回去就不报；旧判据下
+# 两种情形都不报。
+#
+# 下面每一条都用两把正交的尺查过：lib/api/https 里没有，整个 app/ 与 lib/
+# 里也没有（含拼接写法）。**不是「我没找到」，是确实没有。**
+#
+# 详情端点，列表那条有入口而它没有
+GET /ops/channel-messages/{messageNo}
+# 团购中止：运营端有团购列表，没有中止动作
+POST /ops/groups/{groupNo}/abort
+# 商家触达通道配置：与上面「触达配置」同一条线（shop-notify 那批）
+GET /ops/notify-channels/merchant
+POST /ops/notify-channels/merchant
+# 规则文案历史版本：现版本可改，改过什么看不到
+GET /ops/rule-texts/history
+# 规格值合并：脏数据治理动作，今天只能靠人工提工单
+POST /ops/spec-values/merge
+# 改员工角色 / 改自己的密码：**IAM 这两条是能力缺口，不是重复能力**
+# —— 运营账号今天改不了自己的密码，也调不了别人的角色
+POST /ops/staffs/{staffNo}/role
+POST /ops/staffs/me/password
