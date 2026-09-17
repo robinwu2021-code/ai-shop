@@ -40,7 +40,6 @@ b-app POST /biz/geo/geocode
 b-app POST /biz/quote/*/revise
 c-app GET /mp/after-sale/*
 c-app GET /mp/category/tree
-c-app GET /mp/community/*
 c-app GET /mp/config/bootstrap
 c-app GET /mp/coupon/mine
 c-app GET /mp/goods/*/sku-price
