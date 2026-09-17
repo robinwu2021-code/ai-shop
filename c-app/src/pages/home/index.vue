@@ -94,8 +94,19 @@ async function load() {
    * 拿回来的是全平台的货，而它在界面上与「你这儿能买到的」长得一模一样。
    * 按精度依次降级：聚落 → 区县 → 都没有才空态要位置。
    */
+  /*
+   * ⚠️ **`ensureCoarseRegion` 会在 await 期间把聚落绑上**（M6 的第 2 级），
+   * 所以归属要在它**之后**再读一次。
+   *
+   * 第一版在 await 之前读了一次就不管了，于是龙华那种「围栏外、绑最近聚落」的人
+   * 拿到的是：顶栏写着「最近的取货点 · 约 19 公里」、社区名也对，
+   * 而商品区是「还不知道你在哪儿」—— 三块东西互相矛盾，且一条错误都没有。
+   * 它在单测与源码守卫里都看不出来（那两者判的是有没有调、传了什么），
+   * 是小程序运行时截图抓到的。
+   */
+  const region = community.community ? null : await location.ensureCoarseRegion();
   const communityNo = community.community?.communityNo;
-  const regionCode = communityNo ? undefined : (await location.ensureCoarseRegion())?.code;
+  const regionCode = communityNo ? undefined : region?.code;
   noPlace.value = !communityNo && !regionCode;
   if (noPlace.value) {
     // 连区都推不出来：这是**唯一**该空屏的一格，列一屏买不到的东西比空着更糟

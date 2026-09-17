@@ -93,6 +93,19 @@ describe("粗定位兜底：按区看货", () => {
     expect(locationStore).toContain("ctx.innermostNo ? 0 :");
   });
 
+  it("★★★ 归属要在 ensureCoarseRegion **之后**再读 —— 它会在 await 期间把聚落绑上", () => {
+    /*
+     * 在 await 之前读一次就不管，会让「围栏外绑最近聚落」的人看到三块互相矛盾的东西：
+     * 顶栏写着「最近的取货点 · 约 19 公里」、社区名也对，而商品区是「还不知道你在哪儿」。
+     * 一条错误都没有，单测与源码守卫也看不出来 —— 是小程序运行时截图抓到的。
+     */
+    const body = homePage.slice(homePage.indexOf("async function load()"));
+    const awaitAt = body.indexOf("await location.ensureCoarseRegion()");
+    const readAt = body.indexOf("const communityNo = community.community?.communityNo");
+    expect(awaitAt).toBeGreaterThan(-1);
+    expect(readAt).toBeGreaterThan(awaitAt);
+  });
+
   it("★★ 「拒了」与「只给了个大概」要分得开", () => {
     // getLocation 把两者都抹成 null，于是「被拒」与「拿到了模糊坐标」变成同一件事
     expect(locationStore).toContain("getLocationDetailed");
