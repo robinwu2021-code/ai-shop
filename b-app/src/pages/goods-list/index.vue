@@ -957,7 +957,7 @@ onShow(() => {
   margin-inline-start: 4rpx;
   /* --sh-sub 不是 --sh-faint：后者是 #E4E5E8，分隔线那一档，白底上量出来几乎看不见 */
   color: var(--sh-sub);
-  font-size: 32rpx;
+  font-size: 34rpx;
   line-height: 1;
 }
 .row__cover {

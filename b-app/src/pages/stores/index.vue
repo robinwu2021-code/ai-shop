@@ -577,8 +577,9 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 .fact__k {
   width: 140rpx;
   flex: none;
-  /* 与右侧取值的首行对齐：取值那边可能是 chip（带内边距），纯文本会偏上 */
-  padding-top: 6rpx;
+  /* 与右侧取值的首行对齐：取值那边可能是 chip（带内边距），纯文本会偏上。
+     4rpx 而不是 6rpx —— 间距一律落在 4rpx 网格上，闸门核这个 */
+  padding-top: 4rpx;
 }
 .fact__v {
   flex: 1;
