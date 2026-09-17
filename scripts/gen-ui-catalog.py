@@ -225,15 +225,30 @@ PROTO_URL_BY_ROUTE = {
         "pages/settle/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
         # 进销存九屏（另一份 artifact）：库存 / 明细 / 盘点 / 进货 / 单据 / 报损 / 调拨 / 报表 / 库位
     },
+    # C 端收货地址（2026-09-17）。**画布式原型，没有页内锚点** ——
+    # 四屏并排摆着（没有地址 / 地址列表 / 新建 / 选择），外加一张文案对照表。
+    # 所以这两条只登记地址不登记锚点，链接落到画布本身，见 proto_of 的说明。
+    "c-app": {
+        "pages/address/index": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
+        "pages/address-pick/index": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
+    },
 }
 
 
 def proto_of(app, path):
-    """→ (锚点, 原型地址)。没有原型时两个都是 None。"""
+    """→ (锚点, 原型地址)。没有原型时两个都是 None。
+
+    **锚点可以缺，地址不能缺。** 早先两者绑死：没登记锚点就当成「没有原型」，
+    于是原型是一张画布（各屏并排摆着、没有 `#sNN` 这种页内锚点）时无处登记 ——
+    只能编一个跳不到任何地方的锚点，或者干脆不挂链接。
+    编锚点是往数据里写一句假话；不挂链接是让清单说「这一页没有原型稿」，而它有。
+    所以改成：只在 PROTO_URL_BY_ROUTE 里登记地址也算数，链接落到画布本身。
+    """
     anchor = PROTO_ANCHORS.get(app, {}).get(path)
-    if not anchor:
+    url = PROTO_URL_BY_ROUTE.get(app, {}).get(path)
+    if not anchor and not url:
         return None, None
-    return anchor, PROTO_URL_BY_ROUTE.get(app, {}).get(path, PROTO_URL)
+    return anchor, url or PROTO_URL
 
 # 路由 → 原型里的锚点。已经有页面的也可以挂 —— 它们同样有原型稿
 PROTO_ANCHORS = {
@@ -370,8 +385,10 @@ def render(cat: dict) -> str:
                 extra = " · ".join(x for x in [p.get("group"), p.get("matrix")] if x)
                 links = ""
                 proto_href = p.get("protoUrl") or PROTO_URL
-                if p.get("proto"):
-                    links += (f'<a class="lk proto-lk" href="{proto_href}#{p["proto"]}" '
+                if p.get("proto") or p.get("protoUrl"):
+                    # 有锚点就跳那一屏，没有就落到原型本身（画布式原型没有页内锚点）
+                    href = f'{proto_href}#{p["proto"]}' if p.get("proto") else proto_href
+                    links += (f'<a class="lk proto-lk" href="{href}" '
                               f'target="_blank" rel="noopener">原型</a>')
                 if p.get("preview"):
                     links += (f'<a class="lk" href="{escape(p["preview"])}" '
