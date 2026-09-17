@@ -324,7 +324,7 @@ onShow(load);
     <view v-if="moreOpen" class="catch" @tap="moreOpen = false"></view>
 
     <sh-actionbar v-if="entries.primary.length || entries.more.length" :pad="barPad">
-      <view class="bar">
+      <view class="sh-card bar">
         <!--
           伸缩菜单：**从这条自己往上长**，不是另开一层。
           用 `max-height` 过渡而不是 `v-if` —— `v-if` 的元素没有可过渡的起点，
@@ -338,7 +338,7 @@ onShow(load);
           <view
             v-for="e in entries.more"
             :key="e.key"
-            class="opt"
+            class="sh-row opt"
             :class="{ 'is-off': !!e.blocked }"
             @tap="pickEntry(e)"
           >
@@ -381,7 +381,7 @@ onShow(load);
         <view
           v-for="u in urgent"
           :key="u.key"
-          class="opt wait"
+          class="sh-row opt wait"
           @tap="go(u.route)"
         >
           <text class="txt-strong opt__t sh-fill">{{ u.label }}</text>
@@ -390,11 +390,11 @@ onShow(load);
           </view>
         </view>
 
-        <view class="bar__row">
+        <view class="sh-row">
           <view
             v-for="e in entries.primary"
             :key="e.key"
-            class="sh-btn sh-btn--sm act"
+            class="sh-btn sh-btn--sm sh-center act"
             :class="{ 'sh-btn--soft': e.key === 'out' }"
             @tap="go(e.route)"
           >
@@ -407,7 +407,7 @@ onShow(load);
           </view>
           <view
             v-if="entries.more.length"
-            class="sh-btn sh-btn--sm sh-btn--muted act act--more"
+            class="sh-btn sh-btn--sm sh-btn--muted sh-center act act--more"
             @tap="moreOpen = !moreOpen"
           >
             <text>{{ $t("stock.more") }}</text>
@@ -436,29 +436,26 @@ onShow(load);
 }
 
 /*
- * 贴底那条的壳。**自己画而不用 `sh-actionbar` 的 `pill` 档** ——
+ * 贴底那条的壳。**不用 `sh-actionbar` 的 `pill` 档** ——
  * 那一档是药丸（`border-radius: 9999px`），而这条要能往上长出一段菜单，
  * 药丸长高了就成了一颗胶囊。圆角矩形才像一块面板。
+ *
+ * 但白底 + 32rpx 圆角这两条是 `.sh-card` 本来就给的，原先在这儿又抄了一遍
+ * （闸门点名的正是这个：它要的是 `sh-card`，而上面那句拒绝的是 `actionbar`，
+ * 两件事）。所以壳用 `.sh-card`，这里只留它盖不住的两条：
+ * padding 比卡片窄一档（16 vs 32，贴底那条本来就该紧），和向上的投影。
+ * scoped 会给 `.bar` 加属性选择器，权重高一档，盖得住 `.sh-card` 的 padding。
  */
 .bar {
-  background: var(--sh-surface);
-  border-radius: 32rpx;
   padding: 16rpx;
   box-shadow: var(--sh-shadow-up);
 }
-.bar__row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
+/* `.bar__row` 曾经在这儿把 `.sh-row` 的三条声明逐字又写了一遍，已换成库件本身 */
 /* 两个写动作等分，「更多」不等分 —— 它是开另一段的口子，不是第三个动作。
-   `.sh-btn` 是 display:block，这里要图标与字并排，所以显式接回 flex
-   （与 base.css 里 `.sh-btn.sh-center` 同一个道理，那儿写着为什么） */
+   居中那三条交给 `.sh-btn.sh-center`（base.css 里就是为「.sh-btn 是 block、
+   要图标与字并排」写的），这里只留它给不了的等分与图标间距 */
 .act {
   flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   gap: 8rpx;
 }
 .act--more {
@@ -496,10 +493,8 @@ onShow(load);
     transition: none;
   }
 }
+/* 横排那三条交给 `.sh-row`（取值一字不差），这里只留它给不了的内边距与分隔线 */
 .opt {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   padding: 20rpx 12rpx;
   border-bottom: var(--sh-hairline-soft);
 }

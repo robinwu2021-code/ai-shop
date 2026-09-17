@@ -626,7 +626,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 212,
+        "b-app": 213,
         "c-app": 69
       }
     },
@@ -1334,7 +1334,7 @@
         "justify-content": "center"
       },
       "usage": {
-        "b-app": 19,
+        "b-app": 21,
         "c-app": 22
       }
     },
@@ -1408,7 +1408,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 282,
+        "b-app": 285,
         "c-app": 137
       }
     },
@@ -4038,25 +4038,10 @@
         "sh-tabs",
         "biz-store-tag"
       ],
-      "libClassHits": 31,
-      "localSelectors": 22,
-      "localCssLines": 92,
-      "rolled": [
-        {
-          "id": "blockdup",
-          "label": "白块自画",
-          "lib": ".sh-block / .sh-card",
-          "rule": "(background:\\s*var\\(--sh-surface\\)[^}]*border-radius:\\s*32rpx\\s*;|border-radius:\\s*32rpx\\s*;[^}]*background:\\s*var\\(--sh-surface\\))",
-          "gap": false
-        },
-        {
-          "id": "listrow",
-          "label": "横排行",
-          "lib": ".sh-row",
-          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-          "gap": false
-        }
-      ]
+      "libClassHits": 37,
+      "localSelectors": 21,
+      "localCssLines": 79,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -4977,28 +4962,7 @@
       "rolled": []
     }
   ],
-  "gaps": [
-    {
-      "id": "blockdup",
-      "label": "白块自画",
-      "lib": ".sh-block / .sh-card",
-      "gap": false,
-      "rule": "(background:\\s*var\\(--sh-surface\\)[^}]*border-radius:\\s*32rpx\\s*;|border-radius:\\s*32rpx\\s*;[^}]*background:\\s*var\\(--sh-surface\\))",
-      "pages": [
-        "b-app/stock"
-      ]
-    },
-    {
-      "id": "listrow",
-      "label": "横排行",
-      "lib": ".sh-row",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-      "pages": [
-        "b-app/stock"
-      ]
-    }
-  ],
+  "gaps": [],
   "counts": {
     "tokens": 16,
     "blocks": 80,
