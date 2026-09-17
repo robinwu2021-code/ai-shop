@@ -4535,6 +4535,12 @@ components:
         asPickupPoint: 
           type: "boolean"
           description: "是否愿意承接自提点（ADR-005）。\n\n**只是意愿，不代表点已建立** —— 建点要谈服务费口径，一期由运营在通过后另行处理。 所以商家勾了这一项、通过后却还没看到履约台，是正常的中间状态而不是故障。"
+        onBehalf: 
+          type: "boolean"
+          description: "<b>这张单是运营代填的</b>（三期）。\n\n<p>商户首次登录时必须看到这件事 —— 否则他会发现自己名下凭空有一家店， 而资料是谁在什么时候录的无从得知。\n\n<p>给的是布尔而不是代填人账号：他要知道的是「这不是我自己填的」， 运营的员工标识不该发给外部商户。要查是谁填的走审计日志。"
+        agreedAt: 
+          type: "number"
+          description: "本人同意《商家服务协议》的时刻（毫秒）；<b>0 / 空 = 尚未同意</b>。\n\n<p>⚠️ 空<b>不等于</b>「他拒绝了」，也不等于「这是代填单」—— 存量单子同样是空的（协议勾选此前从没落过库，`agreed` 传到 `LoginCommand` 就断了）。要分开看  {@link  onBehalf } 。"
       required: 
         - "applyNo"
         - "name"
@@ -8430,6 +8436,34 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/MerchantProfile"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/merchant/agreement/accept": 
+    post: 
+      operationId: "mAcceptAgreement"
+      summary: "本人同意商家服务协议"
+      tags: 
+        - "merchant"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "number"
                 required: 
                   - "code"
                   - "msg"

@@ -3054,6 +3054,17 @@ _无字段_
 
 ### merchant
 
+#### POST `/biz/merchant/agreement/accept`
+
+本人同意商家服务协议　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`number`
+
+
 #### POST `/biz/merchant/apply`
 
 提交入驻申请　🔒

@@ -54,6 +54,17 @@ class BizEndpointPermTest {
             // 入驻链路：申请人此刻还没有 merchantNo，一律 403 的话被驳回的人
             // 就永远看不到驳回原因，闭环在这里断掉
             "/biz/merchant/apply", "/biz/merchant/profile",
+            /*
+             * 补勾《商家服务协议》（三期）。与上面同一条理由，而且更硬：
+             * **这个人多半是运营代他进件时凭手机号建出来的账号** ——
+             * 他名下还没有主体、一个 biz:* 码都没有，挂任何权限码都等于永远 403，
+             * 而那一勾是解锁后续的唯一一步，闭环当场断掉。
+             *
+             * 作用对象是调用者本人：后端取 SecurityUtils.currentUserNo()，
+             * 不接受「替谁勾」的参数 —— 开那个参数才是越权口子，
+             * 而那正是「运营不能替商户同意」在这一层的落点。
+             */
+            "/biz/merchant/agreement/accept",
             // 无证照快速开店：**这条路存在的意义就是给「还没有任何主体的人」用的** ——
             // 那时 BizContext.merchantNo 是空的，挂任何 biz:* 码都等于永远 403。
             // 作用对象是调用者本人（SecurityUtils.currentUserNo），建出来的主体归他自己

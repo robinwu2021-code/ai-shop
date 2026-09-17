@@ -219,6 +219,25 @@ public class BizMerchantController {
      * @return 提交后的最新资料，前端直接替换本地状态；被驳回重提失败时状态仍是 REJECTED，
      *         前端据此留在原页显示驳回原因，而不是跳去一个空的工作台
      */
+    /**
+     * <b>补勾《商家服务协议》</b>（三期）。
+     *
+     * <p>为什么需要一个单独的动作：运营代商家进件时<b>不能替他勾协议</b>，
+     * 那张单落库时 {@code agreed_at} 是空的。而商户自己走的入驻表单里
+     * 今天也<b>没有</b>协议这一勾 —— 登录页那一勾一路传到
+     * {@code AuthService.LoginCommand.agreed} 就断了，实现里一次都没引用过它。
+     * 所以这个端点对两条路都有意义：它是这套系统第一次真的记录协议同意。
+     *
+     * <p><b>只能勾自己的</b>：参数取自登录身份，不接受「替谁勾」——
+     * 开那个参数等于把「运营不能替商户同意」这件事从后门放回来。
+     *
+     * @return 同意的时刻（毫秒）；没有申请单时 0
+     */
+    @PostMapping("/biz/merchant/agreement/accept")
+    public long acceptAgreement() {
+        return opsService.acceptAgreement(SecurityUtils.currentUserNo());
+    }
+
     @PostMapping("/biz/merchant/apply")
     public MerchantProfileVO apply(@RequestBody ApplyReq req) {
         opsService.createApply(new OpsService.SubmitApplyCommand(

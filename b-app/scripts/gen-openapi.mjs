@@ -295,6 +295,10 @@ const RESPONSE_TYPES = {
   mProfile: "MerchantProfile",
   mApply: "MerchantProfile",
   mApplyDraft: "MerchantApplyReq",
+  // 补勾协议返回的是同意时刻（毫秒），不是对象 —— 已经勾过时返回的是原来那一次
+  mAcceptAgreement: "number",
+  // 补勾协议返回的是同意时刻（毫秒），不是对象 —— 已经勾过时返回的是原来那一次
+
   mMasterData: "MasterData",
   mPayments: "PaymentApplyment[]",
   mPayChannels: "PaymentApplyment[]",

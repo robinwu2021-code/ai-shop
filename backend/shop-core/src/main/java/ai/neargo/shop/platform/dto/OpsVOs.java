@@ -61,7 +61,24 @@ public final class OpsVOs {
                                    * 「这是执照还是食品证」「什么时候过期」，
                                    * 而通过之后转存进 mch_qualification 的正是这一份。
                                    */
-                                  List<QualificationItemVO> qualificationItems) {
+                                  List<QualificationItemVO> qualificationItems,
+                                  /**
+                                   * <b>这张单是运营代填的</b>（三期）。
+                                   *
+                                   * <p>给的是布尔而不是代填人的 user_no：商户要知道的是
+                                   * 「这不是我自己填的」，而不是某个运营的账号标识 ——
+                                   * 把员工标识发给外部商户是另一件事，且没有人需要它。
+                                   * 运营端要查是谁填的，走审计日志。
+                                   */
+                                  boolean onBehalf,
+                                  /**
+                                   * 商户本人同意《商家服务协议》的时刻（毫秒）；<b>0 = 尚未同意</b>。
+                                   *
+                                   * <p>⚠️ 0 不等于「他拒绝了」，也不等于「代填的单子」——
+                                   * 存量单子这一列同样是空的（协议勾选此前从没落过库）。
+                                   * 要分开看 {@link #onBehalf}。
+                                   */
+                                  long agreedAt) {
     }
 
     /** @param expireAt 有效期截止（毫秒）；<b>null = 长期有效</b> */

@@ -463,6 +463,35 @@ public class OpsServiceImpl implements OpsService {
         return apply.getApplyNo();
     }
 
+    @Override
+    @Transactional
+    public long acceptAgreement(String userNo) {
+        MchEntityApply apply = DataScopeContext.executeWithoutScope(() ->
+                applyMapper.selectOne(Wrappers.<MchEntityApply>lambdaQuery()
+                        .eq(MchEntityApply::getUserNo, userNo)
+                        .orderByDesc(MchEntityApply::getId).last("limit 1")));
+        if (apply == null) {
+            // 没申请过不是异常 —— 他可能只是还没走到那一步
+            return 0L;
+        }
+        if (apply.getAgreedAt() != null) {
+            // 幂等：已经勾过就原样返回。刷新成现在会让「他什么时候同意的」
+            // 每次打开 App 都换一个答案，而那是这一列唯一的用途
+            return apply.getAgreedAt();
+        }
+        long now = System.currentTimeMillis();
+        apply.setAgreedAt(now);
+        DataScopeContext.executeWithoutScope(() -> applyMapper.updateById(apply));
+        /*
+         * 留痕：协议同意是一条法律事实，不能只存在于一个可被 UPDATE 的字段里。
+         * target 用申请单号而不是 userNo —— 查的时候问的是「这张单上的协议谁什么时候勾的」。
+         */
+        audit("MERCHANT_AGREEMENT_ACCEPT", apply.getApplyNo(),
+                "商户本人同意《商家服务协议》" + (notBlank(apply.getSubmittedBy())
+                        ? "（这张单由运营代填，本次是补勾）" : ""));
+        return now;
+    }
+
     private MchEntityApply requireApply(String applyNo) {
         MchEntityApply apply = DataScopeContext.executeWithoutScope(() ->
                 applyMapper.selectOne(Wrappers.<MchEntityApply>lambdaQuery()
@@ -1146,7 +1175,9 @@ public class OpsServiceImpl implements OpsService {
                 a.getCreatedAt() == null ? 0L
                         : a.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
                 a.getAuditedAt() == null ? 0L : a.getAuditedAt(),
-                readQualItems(a.getQualificationItems()));
+                readQualItems(a.getQualificationItems()),
+                notBlank(a.getSubmittedBy()),
+                a.getAgreedAt() == null ? 0L : a.getAgreedAt());
     }
 
     /** 申请单上的结构化资质 → VO。解析不出来给空 —— 审核页不该被脏数据整页打不开 */

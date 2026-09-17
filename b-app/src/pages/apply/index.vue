@@ -94,6 +94,32 @@ const communities = ref<Community[]>([]);
  */
 /** 草稿没取到。**与「这是第一次填」是两件事** —— 后者才该是空表单 */
 const draftFailed = ref(false);
+
+/**
+ * 这张申请单是**运营代填**的，而本人当时并不知道（三期）。
+ *
+ * <p>运营代商家进件时会按手机号建出账号 —— 不建的话审核通过时没有 owner 可挂。
+ * 代价是这个人第一次进来会发现自己名下凭空有一家店。**这一屏就是为了不让那件事发生**：
+ * 告诉他资料是谁在什么时候录的，并请他自己补勾协议（运营不能替他勾）。
+ */
+const onBehalf = ref(false);
+/** 本人同意协议的时刻（毫秒）；0 = 还没勾 */
+const agreedAt = ref(0);
+const agreeing = ref(false);
+
+async function acceptAgreement() {
+  if (agreeing.value) return;
+  agreeing.value = true;
+  try {
+    // 回写服务端返回的那个时刻，**不用 Date.now()** ——
+    // 已经勾过时后端返回的是原来那一次，端上自己造一个数会盖掉它
+    agreedAt.value = await api.mAcceptAgreement();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    agreeing.value = false;
+  }
+}
 const communitiesFailed = ref(false);
 
 function pickScope(v: ServiceScope) {
@@ -241,6 +267,12 @@ async function load() {
     return;
   }
   if (!draft) return;
+  /*
+   * 代填与协议（三期）。**从申请单上读，不从本地推**：
+   * 「这张单是不是别人替我填的」只有后端答得出，端上没有任何别的线索。
+   */
+  onBehalf.value = draft.onBehalf === true;
+  agreedAt.value = draft.agreedAt ?? 0;
   form.value = {
     name: draft.name,
     subject: draft.subject,
@@ -380,6 +412,30 @@ async function submit() {
          那正是 `mApplyDraft` 那段注释警告的事。 -->
     <view v-if="draftFailed" class="sh-card status">
       <sh-empty line failed @retry="load"></sh-empty>
+    </view>
+
+    <!--
+      ★ **代填告知**（三期）。摆在所有状态块之前，因为它回答的是更靠前的一个问题：
+      「我怎么会有一家店？」
+
+      运营代商家进件时会按手机号把账号建出来 —— 不建的话审核通过时没有 owner 可挂。
+      于是这个人第一次进来时名下已经有一张待审的单，而他从没填过任何东西。
+      不说清楚的话，他要么以为被盗用了，要么以为自己忘了。
+
+      协议那一勾**必须由他自己点**：运营代填时后端一律留空，
+      而这里是唯一能把它填上的地方。
+    -->
+    <view v-if="onBehalf" class="sh-card onbehalf">
+      <text class="txt-title">{{ $t("apply.onBehalfTitle") }}</text>
+      <text class="sh-muted sh-mt-xs blk">{{ $t("apply.onBehalfHint") }}</text>
+      <view v-if="!agreedAt" class="sh-mt-sm">
+        <text class="txt-body blk">{{ $t("apply.agreementAsk") }}</text>
+        <text class="txt-caption sh-muted blk sh-mt-xs">{{ $t("apply.agreementWhy") }}</text>
+        <text class="sh-btn sh-mt-sm" @tap="acceptAgreement">
+          {{ agreeing ? $t("common.loading") : $t("apply.agreementAccept") }}
+        </text>
+      </view>
+      <text v-else class="txt-caption sh-muted blk sh-mt-sm">{{ $t("apply.agreementDone") }}</text>
     </view>
 
     <!-- 审核中/驳回：不重复渲染整张表，先把状态说清楚 -->
@@ -645,6 +701,10 @@ async function submit() {
 
 .rejected {
   background: var(--sh-danger-tint);
+}
+/* 代填告知：用 warning 底而不是 danger —— 它不是出错了，是「有件事你得知道」 */
+.onbehalf {
+  background: var(--sh-warning-tint);
 }
 .reason {
   display: block;

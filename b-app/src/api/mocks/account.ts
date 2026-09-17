@@ -20,6 +20,7 @@ export const accountMock: Pick<MerchantApi,
   | "mApply"
   | "mQuickStart"
   | "mApplyDraft"
+  | "mAcceptAgreement"
 > = {
   // ---------------------------------------------------------------- 账号与入驻
   async mLogin(req) {
@@ -118,5 +119,19 @@ export const accountMock: Pick<MerchantApi,
 
   async mApplyDraft() {
     return delay(db.merchantApply ? { ...db.merchantApply } : null);
+  },
+
+  /**
+   * 补勾协议。**mock 也做幂等** —— 已经勾过就返回原来那个时刻。
+   * 每次都给「现在」的话，「他什么时候同意的」在开发期看起来永远是对的，
+   * 而那正是这一列唯一的用途，也是最容易写错的地方。
+   */
+  async mAcceptAgreement() {
+    if (!db.merchantApply) return delay(0);
+    if (!db.merchantApply.agreedAt) {
+      db.merchantApply.agreedAt = Date.now();
+      persist();
+    }
+    return delay(db.merchantApply.agreedAt);
   },
 };

@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 710 个接口**：后端已实现 638（90%）· 前端在调 639
+**合计 711 个接口**：后端已实现 639（90%）· 前端在调 640
 
 ---
 
@@ -211,7 +211,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **229** 个接口 ｜ 后端已实现 **224**（98%）｜ 前端在调 **229**
+共 **230** 个接口 ｜ 后端已实现 **225**（98%）｜ 前端在调 **230**
 
 ### activities（4）
 
@@ -484,10 +484,11 @@
 | GET | `/biz/members/stats` | 四层人数与未计入买家 | — | `MemberStats` | 🔒 | ✅ | ✅ |
 | POST | `/biz/members/tags` | 批量打标 / 去标 | — | — | 🔒 | ✅ | ✅ |
 
-### merchant（10）
+### merchant（11）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
+| POST | `/biz/merchant/agreement/accept` | 本人同意商家服务协议 | — | `number` | 🔒 | ✅ | ✅ |
 | POST | `/biz/merchant/apply` | 提交入驻申请 | `MerchantApplyReqBody` | `MerchantProfile` | 🔒 | ✅ | ✅ |
 | GET | `/biz/merchant/apply` | 上次入驻申请 | — | `MerchantApplyReq` | 🔒 | ✅ | ✅ |
 | GET | `/biz/merchant/debt` | 我的欠款与流水 | — | `MyDebt` | 🔒 | ✅ | ✅ |

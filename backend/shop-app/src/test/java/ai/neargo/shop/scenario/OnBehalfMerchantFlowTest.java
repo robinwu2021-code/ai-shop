@@ -247,6 +247,35 @@ class OnBehalfMerchantFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 商户本人补勾之后 agreed_at 才有值，且 submitted_by 不被抹掉")
+    void merchantAcceptsAgreementLater() {
+        String owner = userProvision.ensureUserByPhone(phone(11));
+        String applyNo = opsService.createApplyOnBehalf(full(owner, "补勾水果店"), "OPS-BD-6");
+        assertThat(applyRow(applyNo).get("agreed_at")).as("代填时必须是空的").isNull();
+
+        long at = opsService.acceptAgreement(owner);
+        assertThat(at).isPositive();
+
+        var row = applyRow(applyNo);
+        assertThat(row.get("agreed_at")).isNotNull();
+        /*
+         * ★ 代填留痕**不随补勾消失**。它是历史不是当前状态 ——
+         * 抹掉之后「这家店当初是谁录的」就再也答不出来，而那正是代填唯一的风险点。
+         */
+        assertThat(row.get("submitted_by")).isEqualTo("OPS-BD-6");
+
+        // 幂等：再勾一次拿到同一个时刻，不刷新成现在
+        assertThat(opsService.acceptAgreement(owner)).isEqualTo(at);
+    }
+
+    @Test
+    @DisplayName("★★ 没申请过的人补勾返回 0，不报错 —— 没申请过是正常状态")
+    void acceptWithoutApplyIsNotAnError() {
+        String stranger = userProvision.ensureUserByPhone(phone(12));
+        assertThat(opsService.acceptAgreement(stranger)).isZero();
+    }
+
+    @Test
     @DisplayName("★★★ 代建出来的主体 self_operated 恒为 0 —— 没有任何路径能把它置 1")
     void onBehalfNeverMarksSelfOperated() {
         String owner = userProvision.ensureUserByPhone(phone(8));

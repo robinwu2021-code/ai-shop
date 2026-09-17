@@ -30,7 +30,9 @@ class MerchantStatusMappingTest {
                 List.of(), List.of(), false, "GROCERY",
                 status, null, 0L, 0L,
                 // 结构化资质（V79）：本测试只关心状态映射，给空即可
-                List.of());
+                List.of(),
+                // 代填与协议（三期）：同上，与状态映射无关
+                false, 0L);
     }
 
     @Test
