@@ -143,6 +143,11 @@ class BizEndpointPermTest {
         put("/biz/inventory/counts/{no}", BizPerms.STOCK);
         put("/biz/inventory/counts/{no}/lines", BizPerms.STOCK);
         put("/biz/inventory/counts/{no}/post", BizPerms.STOCK);
+        // 作废还在盘的那张单（c4f51800）：与同资源另外四条同一个码。
+        // **这不是放宽** —— 同一个 STOCK 已经能开单、填数、并且过账（post 才是不可逆
+        // 且动账面的那一步）。作废的权限严格弱于它已经有的，所以判 STOCK 不会让
+        // 任何人多拿到一样东西。⚠️ 代记：开这个端点的会话已结束，见 known-plural-paths.txt。
+        put("/biz/inventory/counts/{no}/void", BizPerms.STOCK);
         put("/biz/inventory/inbounds", BizPerms.STOCK);
         put("/biz/inventory/inbounds/{no}", BizPerms.STOCK);
         put("/biz/inventory/inbounds/{no}/post", BizPerms.STOCK);
