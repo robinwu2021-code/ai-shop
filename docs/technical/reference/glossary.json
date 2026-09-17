@@ -13628,6 +13628,36 @@
           "ar": "إجمالي الفرق"
         },
         {
+          "key": "stockCheck.voidConfirm",
+          "zh-CN": "确认作废",
+          "en": "Void it",
+          "ar": "تأكيد الإلغاء"
+        },
+        {
+          "key": "stockCheck.voidDoc",
+          "zh-CN": "作废这张单",
+          "en": "Void this sheet",
+          "ar": "إلغاء هذا الجرد"
+        },
+        {
+          "key": "stockCheck.voidHint",
+          "zh-CN": "{no} 还没过账，作废不会动库存。作废之后这个库位才能重新开单。",
+          "en": "{no} has not been posted, so voiding will not change stock. It frees this location for a new count.",
+          "ar": "{no} لم يُرحَّل، والإلغاء لن يغيّر المخزون. بعده يمكن فتح جرد جديد لهذا الموقع."
+        },
+        {
+          "key": "stockCheck.voidTitle",
+          "zh-CN": "作废盘点单",
+          "en": "Void stocktake",
+          "ar": "إلغاء الجرد"
+        },
+        {
+          "key": "stockCheck.voided",
+          "zh-CN": "已作废",
+          "en": "Voided",
+          "ar": "تم الإلغاء"
+        },
+        {
           "key": "stockCross.empty",
           "zh-CN": "还没有库存记录",
           "en": "No stock records yet",

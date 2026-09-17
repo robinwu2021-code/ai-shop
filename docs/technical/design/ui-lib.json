@@ -326,7 +326,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 283,
+        "b-app": 284,
         "c-app": 234
       }
     },
@@ -1408,7 +1408,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 285,
+        "b-app": 286,
         "c-app": 137
       }
     },
@@ -1440,7 +1440,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 127,
+        "b-app": 128,
         "c-app": 75
       }
     },
@@ -4055,9 +4055,9 @@
         "sh-scaffold",
         "biz-store-tag"
       ],
-      "libClassHits": 56,
-      "localSelectors": 7,
-      "localCssLines": 27,
+      "libClassHits": 59,
+      "localSelectors": 8,
+      "localCssLines": 30,
       "rolled": []
     },
     {

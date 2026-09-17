@@ -180,6 +180,7 @@ const RESPONSE_TYPES = {
   mCountFill: "void",
   mCountOpen: "string",
   mCountPost: "void",
+  mCountVoid: "void",
   mCoupon: "MerchantCoupon",
   mCouponIssues: "CouponIssueBatch[]",
   mCoupons: "MerchantCoupon[]",

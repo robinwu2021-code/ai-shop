@@ -2197,6 +2197,21 @@ _无字段_
 类型：`any`
 
 
+#### POST `/biz/inventory/counts/{no}/void`
+
+作废还在盘的盘点单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+**出参**（`data`）
+
+类型：`any`
+
+
 #### GET `/biz/inventory/cross-store`
 
 跨店库存总览　🔒

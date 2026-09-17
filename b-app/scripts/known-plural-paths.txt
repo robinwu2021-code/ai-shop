@@ -16,10 +16,20 @@
 # （inbounds / outbounds / counts / locations / items / balances，本表已登记 13 条）。
 # 单独把 suppliers 改成单数，它会成为模块里唯一那个 —— 而「同一件事在这儿长得
 # 不一样」比「不合 ADR-007」更容易让人写错。要改就整模块一起改，不是一条一条改。
+#
+# 2026-09-17 新增 mCountVoid：与上面那条**同一个判断**，而且更直白 ——
+# 它是 `counts/:no/void`，而本表里早就有一条一模一样形状的 `mInboundVoid`
+# （`inbounds/:no/void`），同资源的另外三条（Detail / Fill / Post）也都在册。
+# 单独把 void 这一条改成单数，counts 这个资源会自己和自己不一致。
+#
+# ⚠️ **不是它的作者加的**：开这个端点的会话（c4f51800）已经结束，而这道闸
+# 挂在 pre-push 上 —— 它红着，整条分支谁都推不出去。所以由撞上它的人代记一行，
+# 判断依据就是上面 2026-08-30 那段。要整模块改成单数时，这一行跟着一起删。
 mAppointmentSlots	/biz/stores/:storeNo/appointment-slots
 mCountDetail	/biz/inventory/counts/:no
 mCountFill	/biz/inventory/counts/:no/lines
 mCountPost	/biz/inventory/counts/:no/post
+mCountVoid	/biz/inventory/counts/:no/void
 mFulfillmentImpact	/biz/stores/:storeNo/fulfillment/:channel/impact
 mInboundPost	/biz/inventory/inbounds/:no/post
 mInboundUpdate	/biz/inventory/inbounds/:no

@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 711 个接口**：后端已实现 639（90%）· 前端在调 640
+**合计 712 个接口**：后端已实现 640（90%）· 前端在调 641
 
 ---
 
@@ -211,7 +211,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **230** 个接口 ｜ 后端已实现 **225**（98%）｜ 前端在调 **230**
+共 **231** 个接口 ｜ 后端已实现 **226**（98%）｜ 前端在调 **231**
 
 ### activities（4）
 
@@ -400,7 +400,7 @@
 | GET | `/biz/groups` | 我的商家团 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/groups` | 开团 | `CreateGroupReq` | `GroupBuy` | 🔒 | ✅ | ✅ |
 
-### inventory（36）
+### inventory（37）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -410,6 +410,7 @@
 | GET | `/biz/inventory/counts/{no}` | 读回盘点单（含账面快照） | — | `StockCount` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/inventory/counts/{no}/lines` | 填实盘数 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/inventory/counts/{no}/post` | 盘点过账 | — | — | 🔒 | ✅ | ✅ |
+| POST | `/biz/inventory/counts/{no}/void` | 作废还在盘的盘点单 | — | — | 🔒 | ✅ | ✅ |
 | GET | `/biz/inventory/cross-store` | 跨店库存总览 | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/biz/inventory/documents` | 出入库单据 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/inventory/inbounds` | 记一笔进货 | — | `string` | 🔒 | ✅ | ✅ |
