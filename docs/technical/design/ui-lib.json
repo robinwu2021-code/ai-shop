@@ -544,7 +544,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 106,
+        "b-app": 107,
         "c-app": 28
       }
     },
@@ -3472,9 +3472,9 @@
         "sh-tabs",
         "biz-store-tag"
       ],
-      "libClassHits": 39,
+      "libClassHits": 40,
       "localSelectors": 30,
-      "localCssLines": 129,
+      "localCssLines": 127,
       "rolled": []
     },
     {
