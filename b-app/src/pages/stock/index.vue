@@ -457,11 +457,6 @@ onShow(() => {
   padding-bottom: 0;
 }
 /* 跨店贴在数字下沿、靠行尾 —— 它是这四个数的另一个切法，不是第五个数 */
-.ov__cross {
-  display: flex;
-  justify-content: flex-end;
-  padding: 16rpx 0 20rpx;
-}
 
 /*
  * 贴底那条的壳。**不用 `sh-actionbar` 的 `pill` 档** ——
