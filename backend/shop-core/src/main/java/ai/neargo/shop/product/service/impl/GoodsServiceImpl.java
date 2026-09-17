@@ -55,11 +55,14 @@ public class GoodsServiceImpl implements GoodsService {
     private final ai.neargo.shop.spi.marketing.CampaignPort campaignPort;
     /** 首页推荐位的运营配置。没配时 promoted() 仍走销量兜底 */
     private final ai.neargo.shop.spi.marketing.ContentSlotPort contentSlotPort;
+    /** 按区筛商品池要先把区展开成社区。product → community 走 Port（ArchUnit 守着不许直连） */
+    private final ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort;
 
     public GoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper, CommunityPoolMapper poolMapper,
                             MerchantQueryPort merchantPort, ObjectMapper json,
                             ai.neargo.shop.spi.marketing.CampaignPort campaignPort,
-                            ai.neargo.shop.spi.marketing.ContentSlotPort contentSlotPort) {
+                            ai.neargo.shop.spi.marketing.ContentSlotPort contentSlotPort,
+                            ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort) {
         this.goodsMapper = goodsMapper;
         this.skuMapper = skuMapper;
         this.poolMapper = poolMapper;
@@ -67,10 +70,41 @@ public class GoodsServiceImpl implements GoodsService {
         this.json = json;
         this.campaignPort = campaignPort;
         this.contentSlotPort = contentSlotPort;
+        this.communityQueryPort = communityQueryPort;
+    }
+
+    /**
+     * 这次要看的商品池 —— <b>「位置不明」不等于「看全平台」。</b>
+     *
+     * <p>两级：精确定位给 {@code communityNo}，模糊定位只给得出区县码，
+     * 那就把区展开成它底下的开放社区，按这一批的池子筛。
+     * 两级都没有才是真正的「不筛」，而端上不该走到那儿 ——
+     * 连模糊定位都拒的人看到的是空态要位置，不是一屏他买不到的货。
+     *
+     * @return {@code null} = 不筛；<b>空列表 = 筛出来一件都没有</b>，
+     *         调用方必须回空而不是当成「不筛」—— 这两件事混在一起，
+     *         正是「没铺货的区看到全平台商品」的由来
+     */
+    private List<String> poolGoodsNos(String communityNo, String regionCode) {
+        List<String> communityNos;
+        if (communityNo != null && !communityNo.isBlank()) {
+            communityNos = List.of(communityNo);
+        } else if (regionCode != null && !regionCode.isBlank()) {
+            communityNos = communityQueryPort.openCommunityNosUnderRegion(regionCode);
+            if (communityNos.isEmpty()) {
+                // 这个区一个开放社区都没有 —— 那就是一件都买不到，不是「随便看看全平台」
+                return List.of();
+            }
+        } else {
+            return null;
+        }
+        return poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
+                        .in(PrdCommunityPool::getCommunityNo, communityNos)).stream()
+                .map(PrdCommunityPool::getGoodsNo).distinct().toList();
     }
 
     @Override
-    public List<GoodsVO> promoted(String communityNo, Integer size) {
+    public List<GoodsVO> promoted(String communityNo, String regionCode, Integer size) {
         int limit = size == null || size <= 0 ? 6 : size;
         /*
          * **运营配的内容位优先**。配了就按运营给的顺序展示 —— 首页上写的是「推荐」，
@@ -92,10 +126,8 @@ public class GoodsServiceImpl implements GoodsService {
                 .eq(PrdGoods::getAuditStatus, "APPROVED");
 
         // 与 list() 同一条规矩：社区池之外的商品不该出现 —— 用户看到也买不到
-        if (communityNo != null && !communityNo.isBlank()) {
-            List<String> goodsNos = poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
-                            .eq(PrdCommunityPool::getCommunityNo, communityNo)).stream()
-                    .map(PrdCommunityPool::getGoodsNo).toList();
+        List<String> goodsNos = poolGoodsNos(communityNo, regionCode);
+        if (goodsNos != null) {
             if (goodsNos.isEmpty()) {
                 return List.of();
             }
@@ -154,16 +186,16 @@ public class GoodsServiceImpl implements GoodsService {
 
         if (q.merchantNo() != null && !q.merchantNo().isBlank()) {
             w.eq(PrdGoods::getEntityNo, q.merchantNo());
-        } else if (q.communityNo() != null && !q.communityNo().isBlank()) {
-            // 社区池是筛选视图：先取该社区可见的 goodsNo，再查商品。
-            // 没有池数据 = 该社区还没铺货，返回空列表而不是全量 —— 否则用户会看到根本买不到的东西
-            List<String> goodsNos = poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
-                            .eq(PrdCommunityPool::getCommunityNo, q.communityNo())).stream()
-                    .map(PrdCommunityPool::getGoodsNo).toList();
-            if (goodsNos.isEmpty()) {
-                return PageData.empty(q.page(), q.size());
+        } else {
+            // 社区池是筛选视图：先取可见的 goodsNo，再查商品。
+            // 没有池数据 = 那儿还没铺货，返回空列表而不是全量 —— 否则用户会看到根本买不到的东西
+            List<String> goodsNos = poolGoodsNos(q.communityNo(), q.regionCode());
+            if (goodsNos != null) {
+                if (goodsNos.isEmpty()) {
+                    return PageData.empty(q.page(), q.size());
+                }
+                w.in(PrdGoods::getGoodsNo, goodsNos);
             }
-            w.in(PrdGoods::getGoodsNo, goodsNos);
         }
 
         if (q.type() != null && !q.type().isBlank()) {

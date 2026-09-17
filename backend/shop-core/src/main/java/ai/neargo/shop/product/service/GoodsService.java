@@ -35,7 +35,7 @@ public interface GoodsService {
      * <p>一期还没有运营后台，用销量兜底；接上配置时只换这里的实现，端上不动。
      * 刻意与主商品流<b>不同序</b>（主流按距离，这里按销量），否则两处内容会完全重合。
      */
-    java.util.List<GoodsVO> promoted(String communityNo, Integer size);
+    java.util.List<GoodsVO> promoted(String communityNo, String regionCode, Integer size);
 
     /** 规格选中后的实时价格与库存（C-PD-04）。下单前的最后一次校准。 */
     ai.neargo.shop.product.dto.SkuPriceVO skuPrice(String goodsNo, String skuNo);
@@ -46,7 +46,13 @@ public interface GoodsService {
     /** 热搜词（C-SR-04）。 */
     java.util.List<String> hotWords();
 
-    record GoodsQuery(String communityNo, String merchantNo, String type,
+    /**
+     * @param communityNo 精确定位落到的聚落。有它就按它筛，{@code regionCode} 不再参与
+     * @param regionCode  模糊定位只落得准区县 —— 用它把区展开成社区再筛。
+     *                    <b>两个都没有才是不筛</b>，而端上不该走到那一步：
+     *                    「位置不明」该是空态要位置，不是一屏买不到的全平台商品
+     */
+    record GoodsQuery(String communityNo, String regionCode, String merchantNo, String type,
                       String categoryNo, String keyword, long page, long size) {
     }
 }

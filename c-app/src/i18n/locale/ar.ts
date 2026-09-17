@@ -31,6 +31,10 @@ export default {
     choosePickup: "اختر نقطة الاستلام",
     hereTag: "موقعك الآن",
     choosePickupHint: "اضغط لاختيار حيّك",
+    coarsePlaceHint: "العرض حسب هذه المنطقة · اضغط لاختيار عنوان محدد",
+    noPlaceText: "لا نعرف مكانك بعد",
+    noPlaceTip: "اختر عنواناً لترى ما يمكن توصيله إليك",
+    noPlaceAction: "اختيار عنوان",
     shareTitle: "منتجات يشتريها جيرانك؛ شاركهم",
   },
   category: {

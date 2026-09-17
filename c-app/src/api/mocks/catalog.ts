@@ -4,7 +4,7 @@
 // 合并在 `mocks/index.ts`，那里的类型标注保证**一个接口都不能少**。
 
 import type { GoodsQuery } from "../contract";
-import { allGoods, db, delay, findGoodsSeed, paginate, persist, toGoods } from "@shared/mock/db";
+import { allCommunitySeeds, allGoods, db, delay, findGoodsSeed, paginate, persist, toGoods } from "@shared/mock/db";
 import { defaultFulfillment } from "@shared/utils/goods";
 import { buyNGetM, giftQtyFor } from "@shared/utils/promotion";
 import {
@@ -65,6 +65,18 @@ export const catalogMock: Pick<ShopApi,
       list = list.filter((g) => reaches(g.merchant.merchantNo, cno));
       // 同在范围内时按距离近的在前 —— 近的能更早拿到货，也更可能是熟脸
       list = list.sort((a, b) => distanceOf(a) - distanceOf(b));
+    } else if (q.regionCode) {
+      /*
+       * **粗定位兜底：按区筛。** 精确的结论压过它，所以只在没有 communityNo 时走这一支。
+       *
+       * mock 里也要真的筛 —— 恒不筛的话，端上「位置不明时看什么」这条分支
+       * 在开发期与改造前长得一模一样（都是一屏全平台的货），改没改看不出来。
+       */
+      const prefix = q.regionCode;
+      const inRegion = allCommunitySeeds()
+        .filter((c) => (c.regionCode ?? "").startsWith(prefix))
+        .map((c) => c.communityNo);
+      list = list.filter((g) => inRegion.some((cno) => reaches(g.merchant.merchantNo, cno)));
     }
     if (q.merchantNo) list = list.filter((g) => g.merchant.merchantNo === q.merchantNo);
     if (q.type) list = list.filter((g) => g.type === q.type);

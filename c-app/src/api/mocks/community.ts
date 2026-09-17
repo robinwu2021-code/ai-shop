@@ -3,7 +3,7 @@
 // 从 `api/mock.ts`（1728 行 / 86 个接口）按域拆出来；实现一个字没改。
 // 合并在 `mocks/index.ts`，那里的类型标注保证**一个接口都不能少**。
 
-import { allCommunitySeeds, delay, toCommunity } from "@shared/mock/db";
+import { allCommunitySeeds, db, delay, toCommunity } from "@shared/mock/db";
 import type { RegionNode } from "@shared/types";
 import type { ShopApi } from "../contract";
 
@@ -24,13 +24,36 @@ export const communityMock: Pick<ShopApi,
    * 恒返回第一个社区的话，端上那条降级分支在开发期一次都看不见，等于没做。
    */
   async resolveLocation(latE6, lngE6, coarse) {
+    /*
+     * **模糊坐标仍然给得出区县** —— 而那一条恰恰是端上按区看货的依据。
+     * mock 里不给的话，「按区兜底」这条分支在开发期永远走不到，
+     * 端上会一直落在「不带条件去要商品」那一支上，也就是全平台。
+     */
+    const seed = allCommunitySeeds().find((c) => c.regionCode);
+    const district = seed?.regionCode?.slice(0, 6) ?? null;
+    const districtName = district
+      ? db.regionSeeds.find((r) => r.regionCode === district)?.name ?? null
+      : null;
     if (coarse || latE6 == null || lngE6 == null) {
-      return delay({ innermostNo: null, innermostName: null, chainNos: [], coarse: !!coarse });
+      // 没坐标就连区也推不出来 —— 那一格是空态要位置，不是「随便看看」
+      const hasCoords = latE6 != null && lngE6 != null;
+      return delay({
+        innermostNo: null, innermostName: null, chainNos: [], coarse: !!coarse,
+        regionCode: hasCoords ? district : null,
+        regionName: hasCoords ? districtName : null,
+      });
     }
     const first = allCommunitySeeds().map(toCommunity)[0];
     return delay(first
-      ? { innermostNo: first.communityNo, innermostName: first.name, chainNos: [first.communityNo], coarse: false }
-      : { innermostNo: null, innermostName: null, chainNos: [], coarse: false });
+      ? {
+        innermostNo: first.communityNo, innermostName: first.name,
+        chainNos: [first.communityNo], coarse: false,
+        regionCode: district, regionName: districtName,
+      }
+      : {
+        innermostNo: null, innermostName: null, chainNos: [], coarse: false,
+        regionCode: district, regionName: districtName,
+      });
   },
 
   async allCommunities() {

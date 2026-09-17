@@ -89,8 +89,18 @@ public class CommunityServiceImpl implements CommunityService {
         return list.stream().filter(v -> hit.contains(v.communityNo())).toList();
     }
 
-    /** 区县码：社区可能挂在街道级（9 位），聚合到区县要截到前 6 位 */
+    /**
+     * 区县码：社区可能挂在街道级（9 位），聚合到区县要截到前 6 位。
+     *
+     * <p>不到 6 位的（省、市）原样返回 —— 那说明它本来就没挂到区，
+     * 截不出来也不能编一个：拿它当前缀去筛，筛出来的仍是「他确实在的那个范围」，只是粗一档。
+     *
+     * @return 空码返回 null，调用方据此走「推不出位置」那一支
+     */
     private static String districtOf(String regionCode) {
+        if (regionCode == null || regionCode.isBlank()) {
+            return null;
+        }
         return regionCode.length() >= 6 ? regionCode.substring(0, 6) : regionCode;
     }
 
@@ -414,10 +424,15 @@ public class CommunityServiceImpl implements CommunityService {
          * 而噪音在界面上与真结果**长得一模一样**：顶栏一样显示一个小区名，
          * 商品一样列出来，只是全都不是他那一带的。
          *
-         * 它够用的地方只有一个：把人落到所在的区，再给候选列表让他挑。
+         * 它够用的地方只有一个：把人落到所在的**区**。而那一条恰恰够用 ——
+         * 商品池按区筛出来的货，至少都是这个区能买到的；
+         * 此前这一支什么都不给，端上于是不带任何筛选条件去要商品，
+         * 拿回来的是**全平台**的货：那不是一个决定，是过滤被跳过的副作用。
          */
         if (coarse || latE6 == null || lngE6 == null) {
-            return new LocationVO(null, null, List.of(), coarse);
+            // 只解析一次：最近邻那一查会扫 500 行，调两次就是两次
+            String district = districtOf(latE6, lngE6);
+            return new LocationVO(null, null, List.of(), coarse, district, districtName(district));
         }
 
         List<CmtCommunity> hits = communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
@@ -426,8 +441,13 @@ public class CommunityServiceImpl implements CommunityService {
                 .filter(c -> withinRadius(c, latE6, lngE6))
                 .toList();
         if (hits.isEmpty()) {
-            // 一个围栏都没落进不是异常：新城区就是这个状态，端上回落到候选列表
-            return new LocationVO(null, null, List.of(), false);
+            /*
+             * 一个围栏都没落进不是异常：新城区就是这个状态。
+             * **这一支也要给区**：坐标是精确的，区就更落得准，
+             * 没理由因为「这儿还没建聚落」就退回去看全平台的货。
+             */
+            String district = districtOf(latE6, lngE6);
+            return new LocationVO(null, null, List.of(), false, district, districtName(district));
         }
 
         /*
@@ -441,8 +461,38 @@ public class CommunityServiceImpl implements CommunityService {
                         .thenComparingInt(c -> distance(c.getLatE6(), c.getLngE6(), latE6, lngE6)))
                 .orElseThrow();
 
+        // 落到了聚落，区县直接从它挂的区划码上截 —— 不用再按坐标查一次
+        String district = districtOf(innermost.getRegionCode());
         return new LocationVO(innermost.getCommunityNo(), innermost.getName(),
-                chainOf(innermost), false);
+                chainOf(innermost), false, district, districtName(district));
+    }
+
+    /**
+     * 坐标 → **区县码**（6 位）。模糊定位这一级唯一站得住的结论。
+     *
+     * <p>走 {@code resolveRegion} 而不是自己再写一遍最近邻：那一份已经在运营裁决那一屏
+     * 用了很久，两份实现迟早会对同一个坐标给出不同的区。
+     *
+     * <p>它给的是**街道**（9 位），这里截到区县：5 公里误差下街道那一级是猜的，
+     * 而区县在这个误差里基本稳定。截前缀而不是再查一次库 —— 国标码本身就是层级前缀。
+     *
+     * @return 推不出来返回 null。<b>不兜底成任何一个码</b> ——
+     *         兜底出来的区会让端上把一屏别处的货显示成「你这儿的」
+     */
+    private String districtOf(Integer latE6, Integer lngE6) {
+        if (latE6 == null || lngE6 == null) {
+            return null;
+        }
+        return masterDataPort.resolveRegion(null, latE6, lngE6).stream()
+                .map(MasterDataPort.RegionSuggestion::regionCode)
+                .map(CommunityServiceImpl::districtOf)
+                .filter(java.util.Objects::nonNull)
+                .findFirst().orElse(null);
+    }
+
+    /** 区县名。查不到返回 null —— 顶栏宁可只说「当前定位」，也不要显示一串数字码 */
+    private String districtName(String districtCode) {
+        return districtCode == null ? null : masterDataPort.regionNames(List.of(districtCode)).get(districtCode);
     }
 
     /**

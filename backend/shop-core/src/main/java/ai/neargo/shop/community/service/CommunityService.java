@@ -26,7 +26,8 @@ public interface CommunityService {
      * @param coarse 坐标是不是**模糊定位**给的（区级，误差约 5 公里）。
      *               是的话<b>不做聚落匹配</b>：围栏是 1000 米（小区）到 150 米（楼栋）量级，
      *               用 5 公里误差的坐标去匹配，出来的是噪音不是结果。
-     *               此时返回空的 innermost，端上据此降级为「按区给候选列表」。
+     *               此时返回空的 innermost，但**仍然给出所在区县**（{@code regionCode}）——
+     *               端上据此按区看货，而不是回落到「全平台商品」。
      */
     LocationVO resolve(Integer latE6, Integer lngE6, boolean coarse);
 
@@ -39,9 +40,17 @@ public interface CommunityService {
      * @param chainNos      归属链上的全部聚落（含 innermost，从内到外）。
      *                      商品池按「链上任一命中」取并集
      * @param coarse        原样回传，端上据此决定要不要显示距离
+     * @param regionCode    所在**区县**码（6 位）。模糊定位这一级唯一能给出的结论 ——
+     *                      5 公里误差落不准小区，但落得准区。端上把它当商品池的筛选条件，
+     *                      于是「位置不明」不再等于「看全平台的货」：后者是过滤被跳过的副作用，
+     *                      用户看到的是一屏买不到的东西。<b>推不出来时为 null</b>，
+     *                      那一级才是空态要位置
+     * @param regionName    「西湖区」。顶栏要把它说出来 —— 只有说明白「当前按 XX 区在看」，
+     *                      用户才知道这一屏为什么不精确，以及该去点哪儿
      */
     record LocationVO(String innermostNo, String innermostName,
-                      java.util.List<String> chainNos, boolean coarse) {
+                      java.util.List<String> chainNos, boolean coarse,
+                      String regionCode, String regionName) {
     }
 
     /** 社区详情（含其下常驻自提点）。 */

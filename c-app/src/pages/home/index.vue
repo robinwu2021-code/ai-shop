@@ -42,6 +42,12 @@ const placeSub = computed(() => {
   if (arrival) return arrival;
   const a = location.active;
   if (a) return a.detail || a.region || "";
+  /*
+   * **粗定位这一级必须把话说明白。** 这一屏的货是按整个区筛出来的，
+   * 与「按我家地址在看」不是一回事 —— 两种状态显示成同一个样子，
+   * 用户会把一屏送不到他那儿的货当成家门口能买到的。
+   */
+  if (location.coarseRegion) return String(t("home.coarsePlaceHint"));
   return String(t("home.choosePickupHint"));
 });
 const cart = useCartStore();
@@ -64,16 +70,38 @@ function cutdownOf(g: Goods): string {
 const loaded = ref(false);
 /** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
 const failed = ref(false);
+/**
+ * 连**区**都推不出来（定位被拒且没有任何位置）。
+ * 与「这儿还没有货」也是两件事：那一格要的是位置，不是一句「还没有商品」。
+ */
+const noPlace = ref(false);
 
 async function load() {
+  /*
+   * **位置永远要有一个，哪怕只精确到区。**
+   *
+   * 此前没绑社区就不带任何筛选条件去要商品 —— 那不是「兜底」，是过滤被跳过：
+   * 拿回来的是全平台的货，而它在界面上与「你这儿能买到的」长得一模一样。
+   * 按精度依次降级：聚落 → 区县 → 都没有才空态要位置。
+   */
+  const communityNo = community.community?.communityNo;
+  const regionCode = communityNo ? undefined : (await location.ensureCoarseRegion())?.code;
+  noPlace.value = !communityNo && !regionCode;
+  if (noPlace.value) {
+    // 连区都推不出来：这是**唯一**该空屏的一格，列一屏买不到的东西比空着更糟
+    goods.value = [];
+    promoted.value = [];
+    groups.value = [];
+    failed.value = false;
+    loaded.value = true;
+    return;
+  }
   try {
-    // 没绑社区时不带 communityNo —— 拿全量兜底，总比空首页强（随后会弹自提点选择）
-    const communityNo = community.community?.communityNo;
     const [res, gs, promo] = await Promise.all([
-      api.goodsList({ size: 20, communityNo }),
+      api.goodsList({ size: 20, communityNo, regionCode }),
       api.groupBuyList(community.pickup?.pickupNo),
       // 关着的模块**不发请求** —— 开关关掉却照样打接口，是白白的一次往返
-      api.promotedGoods({ communityNo }),
+      api.promotedGoods({ communityNo, regionCode }),
     ]);
     goods.value = res.records;
     promoted.value = promo;
@@ -344,9 +372,19 @@ onShareAppMessage(() =>
         </text>
       </view>
 
+      <!--
+        **要位置的空态与「这儿还没有货」是两件事。** 前者给一个出口（去选地址），
+        后者只能等上货。两件事共用一句「还没有商品」，会让定位被拒的人
+        以为平台上什么都没有，然后离开。
+      -->
+      <sh-empty v-if="noPlace" bare :text="$t('home.noPlaceText')" :tip="$t('home.noPlaceTip')">
+        <template #action>
+          <view class="sh-btn sh-btn--sm" @tap="gotoPlace">{{ $t("home.noPlaceAction") }}</view>
+        </template>
+      </sh-empty>
       <sh-empty
         bare
-        v-if="!goods.length" :pending="!loaded" :failed="failed" @retry="load"
+        v-else-if="!goods.length" :pending="!loaded" :failed="failed" @retry="load"
         :text="$t('home.communityFeedEmpty')"
       ></sh-empty>
       <biz-goods-card

@@ -161,8 +161,13 @@ public class MpCatalogController {
         return communityService.pickupDetail(pickupNo);
     }
 
+    /**
+     * @param regionCode 模糊定位时的兜底筛选（区县码）。{@code communityNo} 在时它不参与 ——
+     *                   精确的结论压过粗的那个
+     */
     @GetMapping("/mp/goods")
     public PageData<GoodsVO> goodsList(@RequestParam(required = false) String communityNo,
+                                       @RequestParam(required = false) String regionCode,
                                        @RequestParam(required = false) String merchantNo,
                                        @RequestParam(required = false) String type,
                                        @RequestParam(required = false) String categoryNo,
@@ -170,7 +175,7 @@ public class MpCatalogController {
                                        @RequestParam(defaultValue = "1") long page,
                                        @RequestParam(defaultValue = "10") long size) {
         return goodsService.list(new GoodsService.GoodsQuery(
-                communityNo, merchantNo, type, categoryNo, keyword, page, Math.min(size, 50)));
+                communityNo, regionCode, merchantNo, type, categoryNo, keyword, page, Math.min(size, 50)));
     }
 
     @GetMapping("/mp/goods/{goodsNo}")
@@ -210,8 +215,9 @@ public class MpCatalogController {
     /** 推荐商品（运营位）。游客可见 —— 没登录也该看到平台在推什么 */
     @GetMapping("/mp/goods/promoted")
     public List<GoodsVO> promotedGoods(@RequestParam(required = false) String communityNo,
+                                       @RequestParam(required = false) String regionCode,
                                        @RequestParam(required = false) Integer size) {
-        return goodsService.promoted(communityNo, size);
+        return goodsService.promoted(communityNo, regionCode, size);
     }
 
     /** 推荐门店（运营位）。用途是新店冷启动，刻意不看历史成绩 */

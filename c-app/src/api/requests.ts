@@ -139,6 +139,13 @@ export interface GoodsListQuery {
   keyword?: string;
   /** 按社区过滤 —— **决定这个小区的人能看到哪些商家的货**。不传则按当前绑定社区 */
   communityNo?: string;
+  /**
+   * 模糊定位时的兜底筛选（区县码）。`communityNo` 在时它不参与 —— 精确的结论压过粗的。
+   *
+   * **两个都不传才是不筛**，而端上不该走到那儿：那样拿回来的是全平台的货，
+   * 而用户会把它当成「我这儿能买到的」。
+   */
+  regionCode?: string;
 }
 
 export interface PromotedMerchantsQuery {
@@ -151,6 +158,8 @@ export interface PromotedMerchantsQuery {
 export interface PromotedGoodsQuery {
   /** 按社区取推荐。不传则按当前绑定社区 */
   communityNo?: string;
+  /** 模糊定位时的兜底筛选（区县码）。与 GoodsQuery 同一条规矩 */
+  regionCode?: string;
   /** 取几条，默认由服务端定 */
   size?: number;
 }

@@ -78,6 +78,13 @@ export interface GoodsQuery extends PageQuery {
   categoryNo?: string;
   keyword?: string;
   communityNo?: string;
+  /**
+   * 粗定位兜底：按区县码筛商品池。`communityNo` 在时它不参与 —— 精确的结论压过粗的。
+   *
+   * **两个都不传才是不筛**，而端上不该走到那儿：那样拿回来的是全平台的货，
+   * 而用户会把它当成「我这儿能买到的」。
+   */
+  regionCode?: string;
 }
 
 export interface CreateOrderReq {
@@ -234,7 +241,7 @@ export interface ShopApi {
    * 它的价值在于平台/商家能主动推某样东西（新店冷启动、滞销清仓、节日主推）。
    * 一期后台配置还没有，先用销量兜底；接上配置时只换这个接口的实现，端上不动。
    */
-  promotedGoods(q?: { communityNo?: string; size?: number }): Promise<Goods[]>;
+  promotedGoods(q?: { communityNo?: string; regionCode?: string; size?: number }): Promise<Goods[]>;
   /**
    * 推荐门店（运营位）。和 promotedGoods 同一套心智：**运营意图，不是销量事实**。
    * 用途是新店冷启动 —— 一家刚入驻的店没有订单、没有评分，

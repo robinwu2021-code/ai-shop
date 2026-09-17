@@ -71,7 +71,7 @@ public class StoreServiceImpl implements StoreService {
          * 上限 200 是防呆：真有店铺到那个量级时，这一页要改成分页，而不是继续放大这个数。
          */
         var hot = goodsService.list(new GoodsService.GoodsQuery(
-                null, merchantNo, null, null, null, 1, 200));
+                null, null, merchantNo, null, null, null, 1, 200));
 
         // 门面文案取店主自己填的那份 —— 没有门店时给空文案，页面按空串不渲染那两块
         var frontOpt = merchantPort.storeFront(merchantNo);

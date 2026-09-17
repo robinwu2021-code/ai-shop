@@ -6,6 +6,7 @@
 // 给父母下单时两者不一样。合成一个的后果是改了一个另一个跟着变。
 import { defineStore } from "pinia";
 import { api } from "@/api";
+import { getLocationDetailed } from "@shared/ports/location";
 import { useCommunityStore } from "./community";
 import type { Address } from "@shared/types";
 import { metersBetweenE6 } from "@shared/utils/geo";
@@ -31,6 +32,19 @@ export const useLocationStore = defineStore("location", {
     transientName: "",
     list: [] as Address[],
     loading: false,
+    /**
+     * 粗定位落到的**区县**。「位置不明」与「看全平台的货」之间的那一格。
+     *
+     * <p>此前没有这一格：解析不出聚落，端上就不带任何筛选条件去要商品，
+     * 拿回来的是全平台的货 —— 那不是一个决定，是过滤被跳过的副作用。
+     * 而它在界面上与「这就是你这儿的货」长得一模一样，用户下单才发现送不到。
+     */
+    coarseRegion: null as { code: string; name: string } | null,
+    /**
+     * 定位到底拿没拿到。`null` = 这次会话还没探过。
+     * **false 才是那唯一该空屏的一格**：连模糊定位都被拒，此时要位置，不是列一屏买不到的东西。
+     */
+    located: null as boolean | null,
   }),
 
   getters: {
@@ -42,13 +56,46 @@ export const useLocationStore = defineStore("location", {
      */
     label: (s) => (s.transientAt
       ? s.transientName
-      : s.active ? s.active.tag || s.active.detail || s.active.region : ""),
+      : s.active ? s.active.tag || s.active.detail || s.active.region
+        // 一个地址都还没有时退到粗定位的区名 —— 顶栏那一行任何时候都要有内容，
+        // 而「西湖区」至少是句真话：这一屏的货正是按那个区筛出来的
+        : s.coarseRegion?.name ?? ""),
     /** 这一次逛的是不是「当前位置」（而不是地址簿里的某一条） */
     isTransient: (s) => !!s.transientAt,
     has: (s) => !!s.active,
   },
 
   actions: {
+    /**
+     * 拿到「按哪个区看货」。**没有精确归属时的唯一出路。**
+     *
+     * <p>顺序与美团一致，按精度依次降级：精确定位 → 模糊定位 → 都拒。
+     * 前两级都落到一个区县码，端上据此筛商品池；只有第三级才是空态要位置。
+     *
+     * <p>**结果缓存到会话结束**：这条挂在首页加载上，不缓存就是每次回首页都定位一次
+     * （而定位会弹授权框）。只有还没绑定位置的用户会走到这里，绑上之后这一格就不再参与，
+     * 所以缓存不会把人钉在一个过时的区上。
+     *
+     * @returns 推不出区县时返回 null —— 调用方据此走空态，**不要**退化成「不筛」
+     */
+    async ensureCoarseRegion(): Promise<{ code: string; name: string } | null> {
+      if (this.coarseRegion) return this.coarseRegion;
+      // 走 Detailed 那一份：这里要分清「拒了」与「只给了个大概」，而 getLocation 把两者都抹成 null
+      const r = await getLocationDetailed().catch(() => null);
+      if (!r?.ok) {
+        this.located = false;
+        return null;
+      }
+      this.located = true;
+      const ctx = await api
+        .resolveLocation(Math.round(r.coords.lat * 1e6), Math.round(r.coords.lng * 1e6),
+          r.fuzzy === true)
+        .catch(() => null);
+      if (!ctx?.regionCode) return null;
+      this.coarseRegion = { code: ctx.regionCode, name: ctx.regionName ?? "" };
+      return this.coarseRegion;
+    },
+
     async load() {
       this.loading = true;
       try {
