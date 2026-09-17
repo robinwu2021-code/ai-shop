@@ -10,6 +10,7 @@ import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
 import PhoneGate from "@/components/phone-gate.vue";
 import { useCommunityStore } from "@/stores/community";
+import { useLocationStore } from "@/stores/location";
 import { FEATURES, ROUTES } from "@shared/utils/constants";
 import { confirm } from "@ai-shop/ui/prompt";
 import { isPhone } from "@shared/utils/validate";
@@ -22,6 +23,7 @@ const user = useUserStore();
 /** 「我的」页的绑定入口。静默登录之后「有账号没手机号」是常态 */
 const phoneGate = ref(false);
 const community = useCommunityStore();
+const location = useLocationStore();
 const themeVisible = ref(false);
 const points = ref(0);
 const unread = ref(0);
@@ -79,8 +81,9 @@ async function onDeregister() {
   }
 }
 
+/** 位置就是地址 —— 选社区自提点那一页已经删了（买家不再挑点） */
 function gotoCommunity() {
-  uni.navigateTo({ url: ROUTES.community });
+  uni.navigateTo({ url: ROUTES.address });
 }
 
 function gotoPoints() {
@@ -225,13 +228,18 @@ onShow(() => {
     </view>
 
     <view class="sh-cells">
+      <!--
+        「我的位置」：显示的是**位置**，不是自提点。
+        自提点已经改成下单时按地址匹配（TDD-C端位置选择-地址取代自提点），
+        这一行再显示某个点就是在说一件已经不存在的事。
+
+        原来它下面还有一行「我的常去店」，取的是绑定自提点的承接商家 ——
+        没有绑定自提点之后它恒为「—」。**一行永远是「—」比没有这一行更糟**：
+        每次进来都要看一眼，每次都没有内容。删掉。
+      -->
       <view class="sh-cell sh-row sh-row--between" @tap="gotoCommunity">
-        <text class="txt-body cell__label">{{ $t("me.myCommunity") }}</text>
-        <text class="txt-caption cell__value">{{ community.pickup?.name || $t("me.unset") }}</text>
-      </view>
-      <view class="sh-cell sh-row sh-row--between">
-        <text class="txt-body cell__label">{{ $t("me.myStores") }}</text>
-        <text class="txt-caption cell__value">{{ community.hostName || "—" }}</text>
+        <text class="txt-body cell__label">{{ $t("me.myPlace") }}</text>
+        <text class="txt-caption cell__value">{{ location.label || $t("me.unset") }}</text>
       </view>
     </view>
 

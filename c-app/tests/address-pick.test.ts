@@ -447,21 +447,27 @@ describe("粘贴识别：只填空格子，且不冒充选点", () => {
  * 但一声不吭他就分不清「设计如此」与「坏了」。
  */
 describe("模糊定位与无坐标地址：都要说话", () => {
-  const communityPage = code("src/pages/community/index.vue");
   const addressPage = code("src/pages/address/index.vue");
+  const pickPage = code("src/pages/address-pick/index.vue");
   const store = code("src/stores/location.ts");
 
-  it("★★★ 模糊坐标不喂给聚落匹配 —— 藏起距离挡不住选错", () => {
+  /*
+   * ⚠️ 这两条原先钉的是「选择社区自提点」页，而那一页在
+   * TDD-C端位置选择-地址取代自提点 §M3 删掉了（买家不再挑自提点）。
+   * **能力没有消失，它本来就在地址这条路上**（下面两个断言就是证据）——
+   * 所以是把守卫迁过来，不是放松它。
+   */
+  it("★★★ 模糊坐标不喂给匹配 —— 藏起距离挡不住选错", () => {
     /*
-     * 此前只是「模糊时不显示距离」。藏数字挡不住他照着一个隔壁片区的自提点选下去，
-     * 而那个点他根本走不到。围栏 1000 米量级 vs 模糊定位 5 公里误差 ——
+     * 此前只是「模糊时不显示距离」。藏数字挡不住他照着一个隔壁片区的地方选下去，
+     * 而那个地方他根本走不到。围栏 1000 米量级 vs 模糊定位 5 公里误差 ——
      * 这一档的坐标只够把人落到区。
      */
-    expect(communityPage).toMatch(/loadNearby\([\s\S]{0,120}fuzzy \? undefined/);
+    expect(addressPage).toMatch(/if \(!r\.ok \|\| r\.fuzzy\) return;/);
   });
 
   it("★★ 模糊时仍然不显示距离（原有行为不许退化）", () => {
-    expect(communityPage).toMatch(/v-if="!coarse"/);
+    expect(pickPage).toMatch(/v-if="!coarse/);
   });
 
   it("★★★ 切到没坐标的地址：归属不变，但**必须说一句**", () => {

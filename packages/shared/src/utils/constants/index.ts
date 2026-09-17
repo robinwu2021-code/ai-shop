@@ -584,7 +584,6 @@ export const ROUTES = {
   groups: "/pages/groups/index",
   request: "/pages/request/index",
   login: "/pages/login/index",
-  community: "/pages/community/index",
   home: "/pages/home/index",
   category: "/pages/category/index",
   cart: "/pages/cart/index",

@@ -51,15 +51,18 @@ describe("生效位置 ≠ 默认收货地址", () => {
     expect(home).toMatch(/if \(a\) return a\.detail \|\| a\.region/);
   });
 
-  it("★★★ 有位置时，点顶栏去位置列表；一个都没有时才去选社区页", () => {
+  it("★★★ 点顶栏**永远**去地址页 —— 他要切位置，不是挑代收点", () => {
     const home = code("src/pages/home/index.vue");
     /*
      * 顶栏显示的是「我在哪」（家/公司），点它的心智就是「换个地方」。
-     * 永远落到「选择社区自提点」是答非所问 —— 他要切位置，不是挑代收点。
-     * 这条曾经就是错的：顶栏已经显示「公司」，点开却是选社区页。
+     * 这条曾经是错的：顶栏已经显示「公司」，点开却是选社区页。
+     *
+     * ⚠️ 上一版这里还留着一个分叉：「一个位置都没有时去选社区页」。
+     * 那一页在 §M3 删了（买家不再挑自提点），而新用户在地址页一样定得下位置 ——
+     * 那儿有「用当前位置」与地图选点。**分叉没了，断言也不该再写着它。**
      */
-    expect(home).toMatch(/location\.has \|\| location\.list\.length[\s\S]{0,120}ROUTES\.address/);
-    expect(home, "一个位置都没有时仍要能去探索").toContain("ROUTES.community");
+    expect(home).toContain("ROUTES.address");
+    expect(home, "选社区页已删，不该再有任何入口指着它").not.toContain("ROUTES.community");
   });
 
   it("★★ 生效位置没有坐标时，不许清掉现有归属", () => {

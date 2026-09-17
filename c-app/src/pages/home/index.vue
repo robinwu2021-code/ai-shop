@@ -142,11 +142,12 @@ async function quickSwitch(a: (typeof location.list)[number]) {
 }
 
 function gotoPlace() {
-  if (location.has || location.list.length) {
-    uni.navigateTo({ url: ROUTES.address });
-    return;
-  }
-  uni.navigateTo({ url: ROUTES.community });
+  /*
+   * **永远去地址页。** 此前没有地址时会被送去「选择社区自提点」——
+   * 那一页已经删了：买家选的是地址，不是自提点。
+   * 地址页自带「用当前位置」与地图选点，新用户在那儿一样能定下位置。
+   */
+  uni.navigateTo({ url: ROUTES.address });
 }
 
 /**

@@ -309,18 +309,7 @@
         }
       }
     },
-    {
-      "path": "pages/community/index",
-      "style": {
-        "navigationBarTitleText": "选择社区自提点",
-        "app-plus": {
-          "navigationStyle": "custom"
-        },
-        "h5": {
-          "navigationStyle": "custom"
-        }
-      }
-    },
+    
     {
       "path": "pages/login/index",
       "style": {
