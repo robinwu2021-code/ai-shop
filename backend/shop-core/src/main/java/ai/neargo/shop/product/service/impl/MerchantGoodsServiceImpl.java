@@ -237,7 +237,35 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             }
             w.in(PrdGoods::getGoodsNo, nos);
         }
-        applyStatus(w, status);
+        /*
+         * ★ **「在售 / 已下架」这两个页签要按当前门店筛，不能按主体级。**
+         *
+         * 这一页整个是门店维度的（页头挂着只读的「当前门店」胶囊，行内状态与
+         * 上下架按钮读的都是 storeOnSale），而筛选此前落在 prd_goods.on_sale 上 ——
+         * 主体级的 on_sale 是「任一门店在售就为真」的总闸。**同一个列表两个主语。**
+         *
+         * 2026-09-17 线上实测（默认店 on_sale=0、分店 1、主体 1）：
+         *   · 点「在售」→ 出来一件写着「已下架」的货；
+         *   · 点「已下架」→ **空的**。
+         * 店主想把下架的货重新上架，在「已下架」里什么都找不到。
+         *
+         * 判据与端上的 stateOf 逐条对齐：按店管理的看本店，没按店管理的跟随主体级。
+         * 审核态优先 —— PENDING/REJECTED/DRAFT 那三个页签不走这里。
+         *
+         * ⚠️ 跨商家查（运营端）不走这条：那时没有「当前门店」这个概念。
+         */
+        boolean byStore = storeNo != null && !storeNo.isBlank()
+                && merchantNo != null && !merchantNo.isBlank()
+                && ("ON_SALE".equals(status) || "OFF_SALE".equals(status));
+        if (byStore) {
+            List<String> nos = storeScopedGoodsNos(merchantNo, storeNo, "ON_SALE".equals(status));
+            if (nos.isEmpty()) {
+                return PageData.empty(page, size);
+            }
+            w.in(PrdGoods::getGoodsNo, nos).eq(PrdGoods::getAuditStatus, APPROVED);
+        } else {
+            applyStatus(w, status);
+        }
         // 新建的排在前面：店主刚录完一件商品，第一件事是看它在不在
         w.orderByDesc(PrdGoods::getId);
         /*
@@ -250,6 +278,39 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         Page<PrdGoods> p = DataScopeContext.executeWithoutScope(() ->
                 goodsMapper.selectPage(Page.of(page, size), w));
         return PageData.of(toVOs(p.getRecords(), storeNo), p.getTotal(), page, size);
+    }
+
+    /**
+     * 「本店在售 / 本店已下架」的货号集合。<b>判据与端上的 {@code stateOf} 同一套</b>：
+     * 按店管理的看本店那一行，没按店管理的跟随主体级。
+     *
+     * <p>为什么先圈货号再拼 IN：本店上下架落在 {@code prd_store_goods} 上，
+     * 而列表查的是 {@code prd_goods} —— 与「缺货」那一筛同一个形状（见 list 里的注释）。
+     *
+     * <p>⚠️ 只取已过审的：审核态优先于上下架，没过审时说「已下架」会让人以为
+     * 点一下就能卖（{@code statusOf} 里记着同一条）。
+     */
+    private List<String> storeScopedGoodsNos(String merchantNo, String storeNo, boolean wantOnSale) {
+        List<PrdGoods> all = DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
+                        .select(PrdGoods::getGoodsNo, PrdGoods::getOnSale)
+                        .eq(PrdGoods::getEntityNo, merchantNo)
+                        .eq(PrdGoods::getAuditStatus, APPROVED)));
+        if (all.isEmpty()) {
+            return List.of();
+        }
+        StoreProjection proj = loadStoreProjection(storeNo,
+                all.stream().map(PrdGoods::getGoodsNo).toList(), List.of());
+        return all.stream()
+                .filter(g -> {
+                    // 一条店级行都没有 = 未按店管理，跟随主体级（与 toVOs 里那句同源）
+                    boolean onSale = proj.managedGoods().contains(g.getGoodsNo())
+                            ? proj.onSaleAtStore().contains(g.getGoodsNo())
+                            : Boolean.TRUE.equals(g.getOnSale());
+                    return onSale == wantOnSale;
+                })
+                .map(PrdGoods::getGoodsNo)
+                .toList();
     }
 
     /** 对外的「缺货」筛选值。库里没有这个状态，它是按 SKU 可用量算出来的 */

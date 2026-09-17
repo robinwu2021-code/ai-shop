@@ -189,7 +189,68 @@ class StoreGoodsFlowTest {
         assertThat(statusOf(biz, null, goodsNo)).isEqualTo("OFF_SALE");
     }
 
+    /**
+     * <b>页签也要按门店筛</b>，否则同一个列表里两个主语（2026-09-17 线上实测）。
+     *
+     * <p>这一页整个是门店维度的：行内状态与上下架按钮读的都是本店那一行。
+     * 而筛选此前落在 {@code prd_goods.on_sale} 上 —— 那是「任一门店在售就为真」的总闸。
+     *
+     * <p>店主的原话：「针对已经下架的商品，可以重新上架，现在已下架的商品，菜单还是下架」。
+     * 线上复现出来是这样（默认店 0 / 分店 1 / 主体 1）：
+     * <ul>
+     *   <li>点「在售」→ 出来一件写着<b>已下架</b>的货；</li>
+     *   <li>点「已下架」→ <b>空的</b>，他想重新上架的那件货在这儿找不到。</li>
+     * </ul>
+     */
+    @Test
+    @DisplayName("★★★ 「在售/已下架」两个页签按当前门店筛 —— 不按的话下架的货在「已下架」里找不到")
+    void tabsFilterByCurrentStore() throws Exception {
+        String biz = merchant("12600220060", "页签按店筛店");
+        String goodsNo = approvedGoods(biz);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "页签按店筛·分店");
+
+        // 造出线上那个形状：A 店下架、B 店在售 → 主体级总闸仍是 true
+        toggle(biz, storeA, goodsNo, true);
+        toggle(biz, storeB, goodsNo, true);
+        toggle(biz, storeA, goodsNo, false);
+        assertThat(statusOf(biz, storeA, goodsNo)).isEqualTo("OFF_SALE");
+        assertThat(statusOf(biz, storeB, goodsNo)).as("主体级总闸靠它为真").isEqualTo("ON_SALE");
+
+        /*
+         * ★ 站在 A 店：这件货必须出现在「已下架」里，不能出现在「在售」里。
+         * 撤掉按店筛的那一段，这两条会正好反过来 —— 而那正是店主看到的。
+         */
+        assertThat(listNos(biz, storeA, "OFF_SALE"))
+                .as("A 店下架的货，必须能在「已下架」页签里找到 —— 找不到就没法重新上架")
+                .contains(goodsNo);
+        assertThat(listNos(biz, storeA, "ON_SALE"))
+                .as("A 店没在卖的货不该出现在「在售」里")
+                .doesNotContain(goodsNo);
+
+        // 对照：站在 B 店，同一件货是反过来的。没有这一半，上面两条也可能只是
+        // 「这个筛选把什么都筛没了」
+        assertThat(listNos(biz, storeB, "ON_SALE")).contains(goodsNo);
+        assertThat(listNos(biz, storeB, "OFF_SALE")).doesNotContain(goodsNo);
+    }
+
     // ---------------------------------------------------------------- 装配
+
+    /** 某个页签下的货号清单。storeNo 决定「当前门店」 */
+    private java.util.List<String> listNos(String token, String storeNo, String status) throws Exception {
+        var req = get("/biz/goods").param("status", status).param("size", "50")
+                .header("Authorization", "Bearer " + token);
+        if (storeNo != null) {
+            req = req.header("X-Store-No", storeNo);
+        }
+        String body = mvc().perform(req).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        var out = new java.util.ArrayList<String>();
+        json.readTree(body).get("data").get("records")
+                .forEach(n -> out.add(n.get("goodsNo").asString()));
+        return out;
+    }
 
     private void toggle(String token, String storeNo, String goodsNo, boolean onSale) throws Exception {
         var req = post("/biz/goods/" + goodsNo + "/toggle")
