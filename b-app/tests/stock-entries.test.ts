@@ -9,18 +9,25 @@ const clerk = (p: string) => p === "biz:stock";
 
 const keys = (list: { key: string }[]) => list.map((e) => e.key);
 
+/*
+ * ★ **2026-09-17 从两枚扩到四枚**（商家定的）：贴底条只放两枚时每枚 136px，
+ * 而内容只需 73px。按文件头那条判据（多久用一次）往上提的顺位就是盘点、调拨。
+ *
+ * 这一组用例钉的不是「哪四个」，是**三条退化路径都不需要第二套布局**：
+ *   盘点没了 → 三枚　·　调拨被拦 → 三枚（回抽屉，那儿写得下原因）　·　都没 → 两枚
+ */
 describe("stock-entries", () => {
   it("底下那条只留进货和报损", () => {
     const { primary, more } = stockEntries({ can: boss, multiStore: false, canStartCount: true, usableLocations: 3 });
-    expect(keys(primary)).toEqual(["purchase", "out"]);
+    expect(keys(primary)).toEqual(["purchase", "out", "check", "transfer"]);
     // 盘点与调拨**不在**底下那条里 —— 它们一周到一月才一次
-    expect(keys(more)).toContain("check");
-    expect(keys(more)).toContain("transfer");
+    expect(keys(more)).not.toContain("check");
+    expect(keys(more)).not.toContain("transfer");
   });
 
   it("「更多」里是六条，按多久用一次排", () => {
     const { more } = stockEntries({ can: boss, multiStore: false, canStartCount: true, usableLocations: 3 });
-    expect(keys(more)).toEqual(["check", "transfer", "docs", "report", "locations", "suppliers"]);
+    expect(keys(more)).toEqual(["docs", "report", "locations", "suppliers"]);
   });
 
   it("跨店只给多门店商家，且不在那六条里", () => {
@@ -35,7 +42,9 @@ describe("stock-entries", () => {
   });
 
   it("放货的地方不足两个时调拨不可点，并给出去处", () => {
-    const { more } = stockEntries({ can: boss, multiStore: false, canStartCount: true, usableLocations: 1 });
+    const { primary, more } = stockEntries({ can: boss, multiStore: false, canStartCount: true, usableLocations: 1 });
+    // ★ 被拦住的不往上提：条上放不下一句解释，抽屉里放得下
+    expect(keys(primary)).not.toContain("transfer");
     const transfer = more.find((e) => e.key === "transfer")!;
     expect(transfer.blocked).toBeTruthy();
     expect(transfer.blocked!.reasonKey).toBe("stock.entryBlocked.transfer");
@@ -52,8 +61,12 @@ describe("stock-entries", () => {
   });
 
   it("还没取到库位数时不灰掉 —— 不知道不等于不足两个", () => {
-    const { more } = stockEntries({ can: boss, multiStore: false, canStartCount: true, usableLocations: null });
-    expect(more.find((e) => e.key === "transfer")!.blocked).toBeUndefined();
+    // 「不知道」不等于「不足两个」：还没取到时照样提上条，不该先灰再变回来
+    const { primary, more } = stockEntries({
+      can: boss, multiStore: false, canStartCount: true, usableLocations: null,
+    });
+    expect(keys(primary)).toContain("transfer");
+    expect(more.find((e) => e.key === "transfer")).toBeUndefined();
   });
 
   it("每条按它自己那一页的权限判", () => {
@@ -61,8 +74,8 @@ describe("stock-entries", () => {
     // 报表要 biz:customer、库位要 biz:store:admin —— 店员两条都看不见
     expect(keys(more)).not.toContain("report");
     expect(keys(more)).not.toContain("locations");
-    expect(keys(more)).toEqual(["check", "transfer", "docs", "suppliers"]);
-    expect(keys(primary)).toEqual(["purchase", "out"]);
+    expect(keys(more)).toEqual(["docs", "suppliers"]);
+    expect(keys(primary)).toEqual(["purchase", "out", "check", "transfer"]);
   });
 
   it("一个码都没有的人：菜单是空的，不是一排点不动的名字", () => {
@@ -78,14 +91,15 @@ describe("stock-entries", () => {
       can: boss, multiStore: false, canStartCount: false, usableLocations: 3,
     });
     // 整条拿掉，不是灰掉 —— 这件事正由上面那条「继续盘点」接着
-    expect(keys(open.more)).toEqual(["transfer", "docs", "report", "locations", "suppliers"]);
-    expect(keys(open.more)).not.toContain("check");
+    expect(keys(open.more)).toEqual(["docs", "report", "locations", "suppliers"]);
+    expect(keys(open.primary)).toEqual(["purchase", "out", "transfer"]);
+    expect(keys(open.primary)).not.toContain("check");
 
-    // 没单开着时它照常在第一条
+    // 没单开着时它照常占条上第三枚
     const idle = stockEntries({
       can: boss, multiStore: false, canStartCount: true, usableLocations: 3,
     });
-    expect(keys(idle.more)[0]).toBe("check");
+    expect(keys(idle.primary)[2]).toBe("check");
   });
 
   it("canStartNewCount：有单号就开不了新的", () => {

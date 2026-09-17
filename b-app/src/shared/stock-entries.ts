@@ -1,10 +1,18 @@
 // 库存首页那九个入口**摆在哪一层**。
 //
 // 分层的判据只有一个：**多久用一次**。
-//   · 进货、报损     几乎每天    → 贴底那条的两枚按钮
-//   · 盘点、调拨     一周到一月  ┐
-//   · 单据、报表     一周到一月  ├ 「更多」展开的那段菜单里，六条一个顺序
+//   · 进货、报损     几乎每天    ┐ 贴底那条的四枚按钮
+//   · 盘点、调拨     一周到一月  ┘
+//   · 单据、报表     要查的时候  ┐ 「更多」展开的那段菜单里
 //   · 库位、供应商   建好就不动  ┘
+//
+// **2026-09-17 从两枚扩到四枚**（商家定的）：两枚时每枚 136px，而内容只需 73px，
+// 整条横在那儿没吃满。四枚时每枚 64px —— 按钮的左右内边距同时从 28rpx 收到 16rpx，
+// 内容降到 61px，`＋/－` 两个图标才保得住（那是「进货是加、报损是减」那一眼）。
+//
+// **将来按真实使用频次换人**：现在的顺位是拍出来的（「一周到一月」是估的），
+// 等埋点攒够数据，如果报表比盘点还常用，就把报表换上去 —— 这一层的形状不用动，
+// 只改下面两个数组的成员。
 //   · 看各店的货     它不是一件要办的事，是把上面那四个数按门店再拆一遍 → 贴在数字下面
 //
 // 此前九条分两处摆：四个写动作在贴底条，另外五个在总览卡里排成一行**等大的文字链接**。
@@ -82,26 +90,45 @@ export function stockEntries(ctx: StockEntriesCtx): {
 } {
   const { can, multiStore, usableLocations } = ctx;
 
+  /*
+   * ★ **用不了的不往上提。**
+   *
+   * 贴底条上放不下一句解释：抽屉里「调拨」被拦时能就地写
+   * 「要两个放货的地方，现在只有 1 个」，条上就只剩一枚灰按钮 ——
+   * 而这个文件自己写着「只是灰掉的按钮会让人以为是坏了」。
+   *
+   * 盘点同理：有单开着时它整条不出现（见下面 more 里那段），自然也提不上来。
+   *
+   * 于是三种退化路径都不需要第二套布局：
+   *   盘点没了 → 三枚　·　调拨被拦 → 三枚　·　两个都没 → 两枚（就是扩之前那个样子）
+   */
+  const transferBlocked =
+    usableLocations !== null && usableLocations < TRANSFER_MIN_LOCATIONS;
+
   const primary: StockEntry[] = (
     [
       { key: "purchase", route: ROUTES.purchaseEdit, perm: "biz:stock" },
       { key: "out", route: ROUTES.stockOut, perm: "biz:stock" },
+      ...(ctx.canStartCount
+        ? [{ key: "check", route: ROUTES.stockCheck, perm: "biz:stock" }] : []),
+      ...(transferBlocked
+        ? [] : [{ key: "transfer", route: ROUTES.transfer, perm: "biz:stock" }]),
     ] satisfies Def[]
   )
     .filter((e) => can(e.perm))
     .map(strip);
 
   /*
-   * 顺序按「多久用一次」从高到低：盘点 / 调拨（一周到一月）→ 单据 / 报表（查）
+   * 顺序按「多久用一次」从高到低：单据 / 报表（要查的时候）
    * → 库位 / 供应商（建好就不动）。**不写分组标题** —— 见文件头。
    */
   const more: StockEntry[] = (
     [
-      // 有单开着时整条拿掉 —— 不是灰掉：这不是「你缺个什么」，
-      // 而是「这件事正由上面那条『继续盘点』接着」，摆一个灰名字只会让人问为什么
-      ...(ctx.canStartCount
-        ? [{ key: "check", route: ROUTES.stockCheck, perm: "biz:stock" }] : []),
-      { key: "transfer", route: ROUTES.transfer, perm: "biz:stock" },
+      // 调拨被拦时**回到抽屉里**：这儿放得下那句「要两个放货的地方，现在只有 1 个」，
+      // 条上放不下。有单开着时盘点整条不出现 —— 不是灰掉：这不是「你缺个什么」，
+      // 而是「这件事正由工作台那条『继续盘点』接着」，摆个灰名字只会让人问为什么
+      ...(transferBlocked
+        ? [{ key: "transfer", route: ROUTES.transfer, perm: "biz:stock" }] : []),
       { key: "docs", route: ROUTES.stockDocs, perm: "biz:stock" },
       { key: "report", route: ROUTES.stockReport, perm: "biz:customer" },
       { key: "locations", route: ROUTES.locations, perm: "biz:store:admin" },

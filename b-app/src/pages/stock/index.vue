@@ -398,7 +398,15 @@ onShow(load);
             :class="{ 'sh-btn--soft': e.key === 'out' }"
             @tap="go(e.route)"
           >
+            <!--
+              ★ **只有进货与报损带符号。** 它们是一对反义的写动作
+              （一个把货加进来、一个把货减出去），`＋/－` 就是那一眼。
+              盘点与调拨不改变总量 —— 一个是对账、一个是挪地方，给它们画符号是说错话。
+              扩到四枚之前这里写的是「不是 purchase 就画减号」，
+              那时 primary 恰好只有两条，所以是对的；现在有四条了。
+            -->
             <sh-icon
+              v-if="e.key === 'purchase' || e.key === 'out'"
               :name="e.key === 'purchase' ? 'plus' : 'minus'"
               :size="26"
               :color="e.key === 'purchase' ? 'var(--sh-on-primary)' : 'var(--sh-primary-text)'"
@@ -468,6 +476,15 @@ onShow(load);
 .act {
   flex: 1;
   gap: 8rpx;
+  /*
+   * 左右内边距收到 16rpx（库件的 .sh-btn--md 给的是 28rpx）。
+   *
+   * 四枚并排时每枚只有 64px，而「图标 13 + 间隙 4 + 两个汉字 28」＝ 45px，
+   * 加上 28rpx×2 的内边距要 73px —— 差 9px，`＋/－` 就被挤掉了。
+   * 收到 16rpx 之后需要 61px，塞得下，符号保得住。
+   * 两枚时按钮本来就宽得多，收内边距看不出区别。
+   */
+  padding-inline: 16rpx;
 }
 /*
  * 一枚 88rpx（44px）的圆：与两个动作同高，但**形状不同类**。
