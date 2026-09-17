@@ -499,6 +499,7 @@ describe("模糊定位与无坐标地址：都要说话", () => {
  */
 describe("定位只匹配收货地址", () => {
   const home = code("src/pages/home/index.vue");
+  const pickPage = code("src/pages/address-pick/index.vue");
   const addressPage = code("src/pages/address/index.vue");
   const store = code("src/stores/location.ts");
 
@@ -523,6 +524,36 @@ describe("定位只匹配收货地址", () => {
     const body = bodyOf(addressPage, "async function useCurrentLocation(");
     expect(body, "没有 useCurrentLocation").not.toBeNull();
     expect(body).toContain("location.useTransient");
+  });
+
+  it("★★★ 「当前位置」那张卡要说清**在哪儿** —— 否则用户判不了该不该用它", () => {
+    /*
+     * 此前那一行只有「使用当前位置」五个字。而这一页要他做的正是
+     * 「这个位置对不对」这个判断 —— 不给地名，他只能盲点。
+     * 取不到地名时回落到原来那行文字（新城区、定位落在围栏之外）。
+     */
+    expect(pickPage).toContain("hereName");
+    expect(pickPage).toMatch(/hereName \|\| \$t\("addressPick\.useHere"\)/);
+  });
+
+  it("★★★ 「附近」要截断，而且**把截断说出来**", () => {
+    /*
+     * 龙华一个区导进来 2783 个小区之后，同一个点周围几十米内就有三四个名字相近的
+     * （景龙新邨东区 / 景龙新村 / 景龙新邨西区）。平铺十几条不是「选择多」，
+     * 是认不出哪个是自己家。
+     *
+     * **不说截断更糟**：住在第 6 近那个小区的人会以为这一带没有他家，
+     * 而正确的下一步（地图选点）就在底下常驻着。
+     */
+    /*
+     * ⚠️ 钉的是**截断这个动作**，不是变量名。
+     * 第一版写的是 `toContain("nearbyShown")` —— 而把 slice 去掉之后
+     * 那个名字还在，用例照样绿。消融当场验出来的。
+     */
+    expect(pickPage, "列表没有真的截断").toMatch(/slice\(0,\s*NEARBY_MAX\)/);
+    expect(pickPage, "截断的判据也要是真比较过的").toMatch(/length > NEARBY_MAX/);
+    expect(pickPage, "截断了却不说 —— 那等于告诉他这一带没有他家")
+      .toContain("addressPick.moreOnMap");
   });
 
   it("★★★ 一条地址都没有时，当前位置要能**一键存成收货地址**", () => {

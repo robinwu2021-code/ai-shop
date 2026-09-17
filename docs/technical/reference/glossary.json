@@ -340,6 +340,12 @@
           "ar": "إدخال يدوي"
         },
         {
+          "key": "addressPick.moreOnMap",
+          "zh-CN": "只列出最近的几个，其他请用地图选点",
+          "en": "Showing the closest few — pick others on the map",
+          "ar": "نعرض الأقرب فقط — استخدم الخريطة لغير ذلك"
+        },
+        {
           "key": "addressPick.nearby",
           "zh-CN": "附近",
           "en": "Nearby",
@@ -392,6 +398,12 @@
           "zh-CN": "使用当前位置",
           "en": "Use current location",
           "ar": "استخدام الموقع الحالي"
+        },
+        {
+          "key": "addressPick.useShort",
+          "zh-CN": "使用",
+          "en": "Use",
+          "ar": "استخدام"
         },
         {
           "key": "afterSale.applied",

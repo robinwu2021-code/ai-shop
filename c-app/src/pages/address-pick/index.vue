@@ -56,6 +56,29 @@ const nearbyPickable = computed(() =>
 );
 
 /**
+ * 「附近」最多给几条。
+ *
+ * <p>龙华一个区导进来 2783 个小区之后，同一个点周围几十米内就有三四个名字相近的
+ * （景龙新邨东区 / 景龙新村 / 景龙新邨西区）。平铺十几条的结果不是「选择多」，
+ * 是**认不出哪个是自己家** —— 而底下常驻着「地图选点」，在地图上点一下比
+ * 翻十几个相近的名字容易得多。
+ *
+ * <p>所以截断，并且**把截断这件事说出来**（下面那行提示）——
+ * 不说的话，住在第 6 近那个小区的人会以为这一带没有他家。
+ */
+const NEARBY_MAX = 5;
+const nearbyShown = computed(() => nearbyPickable.value.slice(0, NEARBY_MAX));
+const nearbyTruncated = computed(() => nearbyPickable.value.length > NEARBY_MAX);
+
+/**
+ * 当前位置落在哪个聚落里。**这一页最关键的一次决定靠它** ——
+ * 此前这张卡只有一行「使用当前位置」，不说在哪儿，用户无从判断该不该用。
+ * 取不到就留空，界面回落到那一行原来的文字：宁可少一行，不要编一个地名。
+ */
+const hereName = ref("");
+const hereAddress = ref("");
+
+/**
  * 定位失败时说哪一句。**只说这个端真有的路** ——
  * H5 既没有原生搜索也没配地图 key，对着他说「可以直接搜索、在地图上选点」
  * 是在许诺屏幕上根本不存在的两个东西。
@@ -77,6 +100,17 @@ async function locate() {
       try {
         nearby.value = await api.nearbyCommunities(at.value.lat, at.value.lng);
         failed.value = false;
+        /*
+         * 顺带把「我在哪」取出来给上面那张卡。**复用已经拿回来的那一批** ——
+         * 围栏命中的那个就在 nearby 里，再发一次 resolve 是白花的往返。
+         * 一个都没命中时留空（新城区），卡上回落到原来那行文字。
+         */
+        const ctx = await api
+          .resolveLocation(Math.round(at.value.lat * 1e6), Math.round(at.value.lng * 1e6))
+          .catch(() => null);
+        const hit = nearby.value.find((c) => c.communityNo === ctx?.innermostNo);
+        hereName.value = hit?.name ?? ctx?.innermostName ?? "";
+        hereAddress.value = hit?.address ?? "";
       } catch {
         failed.value = true;
       }
@@ -205,8 +239,19 @@ onLoad((q?: Record<string, string>) => {
         </view>
         <!-- 模糊定位时不显示距离，理由见 script 里 coarse 那段 -->
         <text v-if="coarse" class="sh-hint">{{ $t("addressPick.coarseHint") }}</text>
-        <view class="sh-row--divided" @tap="chooseHere">
-          <text class="txt-body row__name">{{ $t("addressPick.useHere") }}</text>
+        <!--
+          **把「在哪儿」说出来。** 此前这一行只有「使用当前位置」五个字 ——
+          而用户在这一页要做的正是「这个位置对不对」这个判断，不给地名他判不了。
+          取不到地名时回落到原来那行文字（新城区、定位刚好落在围栏之外）。
+        -->
+        <view class="sh-row sh-row--divided hererow" @tap="chooseHere">
+          <view class="sh-fill hererow__body">
+            <text class="txt-body row__name">{{ hereName || $t("addressPick.useHere") }}</text>
+            <text v-if="hereAddress" class="txt-caption row__sub">{{ hereAddress }}</text>
+          </view>
+          <text v-if="hereName" class="txt-caption txt-primary hererow__use">
+            {{ $t("addressPick.useShort") }}
+          </text>
         </view>
       </view>
       <text v-else-if="!locating" class="sh-hint">{{ $t(locateFailedKey) }}</text>
@@ -219,12 +264,19 @@ onLoad((q?: Record<string, string>) => {
              放到标题上面会读成「这张卡整个没加载」，而卡里还有别的东西。
              第一版摆错了位置 —— 小程序截图上一眼看出来的（H5 上我没看这一块）。 -->
         <sh-empty v-if="failed" line failed @retry="locate"></sh-empty>
-        <view v-for="c in nearbyPickable" :key="c.communityNo" class="sh-row--divided" @tap="chooseCommunity(c)">
-          <text class="txt-body row__name">{{ c.name }}</text>
-          <text class="txt-caption row__sub">
-            {{ c.address }}<text v-if="!coarse && c.distance"> · {{ fmtDistance(c.distance) }}</text>
-          </text>
+        <!-- 距离单独一列右对齐：它是这一屏用来比较的那个量，塞在地址行尾要一行行读 -->
+        <view v-for="c in nearbyShown" :key="c.communityNo" class="sh-row sh-row--divided" @tap="chooseCommunity(c)">
+          <view class="sh-fill nb__body">
+            <text class="txt-body row__name">{{ c.name }}</text>
+            <text class="txt-caption row__sub">{{ c.address }}</text>
+          </view>
+          <text v-if="!coarse && c.distance" class="txt-caption nb__dist">{{ fmtDistance(c.distance) }}</text>
         </view>
+        <!--
+          **截断要说出来。** 不说的话，住在第 6 近那个小区的人会以为这一带没有他家，
+          而正确的下一步（地图选点）就在底下常驻着。
+        -->
+        <text v-if="nearbyTruncated" class="sh-hint">{{ $t("addressPick.moreOnMap") }}</text>
       </view>
     </template>
 
@@ -254,6 +306,24 @@ onLoad((q?: Record<string, string>) => {
   display: block;
   padding: 24rpx 0;
   text-align: center;
+}
+/* 当前位置那一行：左边说清在哪儿，右边一个动作 */
+.hererow {
+  gap: 16rpx;
+}
+.hererow__body {
+  min-width: 0;
+}
+.hererow__use {
+  flex-shrink: 0;
+}
+/* 附近：距离单独一列右对齐 —— 它是这一屏用来比较的那个量 */
+.nb__body {
+  min-width: 0;
+}
+.nb__dist {
+  flex-shrink: 0;
+  margin-inline-start: 16rpx;
 }
 .row__name {
   display: block;
