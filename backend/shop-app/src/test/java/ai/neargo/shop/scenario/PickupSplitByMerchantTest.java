@@ -126,6 +126,24 @@ class PickupSplitByMerchantTest {
             assertThat(json.readTree(body).path("code").asInt())
                     .as("不传自提点就下不了自提单 = 买家还得先去挑一个点：%s", body)
                     .isZero();
+            /*
+             * ★ **付款前就要看得到分组**（判据 4）。
+             *
+             * 等下单响应才知道「原来要跑两个点」就晚了 —— 那时钱已经付了。
+             * 所以预览这条路也得把配到的点算出来，并且带名字：
+             * 只给点号的话确认页只能显示一串 PP0001。
+             */
+            var previewSubs = json.readTree(body).path("data").path("subOrders");
+            assertThat(previewSubs.size()).isEqualTo(2);
+            var previewPicked = new java.util.ArrayList<String>();
+            for (var sub : previewSubs) previewPicked.add(sub.path("pickupNo").asString());
+            assertThat(previewPicked)
+                    .as("预览不给匹配结果 = 买家付完钱才知道要跑两个点")
+                    .containsExactlyInAnyOrder(pointA, pointB);
+            for (var sub : previewSubs) {
+                assertThat(sub.path("pickupName").asString())
+                        .as("只给点号不给名字，确认页只能显示一串 PP0001").isNotBlank();
+            }
 
             String order = mvc().perform(post("/mp/order")
                             .header("Authorization", "Bearer " + token)

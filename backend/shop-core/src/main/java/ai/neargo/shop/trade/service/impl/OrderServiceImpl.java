@@ -278,9 +278,23 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderVO preview(CreateOrderCommand cmd) {
         Split split = split(cmd);
+        String userNo = SecurityUtils.currentUserNo();
+        /*
+         * **预览也要把配到的自提点算出来**：确认页要在**付款前**按取货点分组说清楚
+         * 「本单 2 个取货点」。等到下单响应才知道就晚了 —— 那时钱已经付了。
+         * 非 strict：配不出来的商家留空，由确认页标出来，而不是把整页打死。
+         */
+        var matched = resolvePickups(cmd, split, userNo, false);
+        /*
+         * 名字在这儿查好一起传进去：Split 是静态类，够不着 port。
+         * **预览就要给名字** —— 只给点号的话确认页只能显示一串 PP0001。
+         */
+        java.util.Map<String, String[]> pickups = new java.util.LinkedHashMap<>();
+        matched.forEach((merchantNo, pickupNo) ->
+                pickups.put(merchantNo, new String[] {pickupNo, pickupNameOf(pickupNo)}));
         // 预览不落库、不锁库存：用户可能在结算页反复改地址与履约方式。
         // 但**优惠要按下单时同一套规则算**，否则结算页显示的金额和实付对不上
-        return split.toVO(discountsOf(cmd, split, SecurityUtils.currentUserNo()));
+        return split.toVO(discountsOf(cmd, split, userNo), pickups);
     }
 
     /**
@@ -1515,8 +1529,14 @@ public class OrderServiceImpl implements OrderService {
             return goodsAmount() + freightAmount();
         }
 
-        /** 预览走**支付视角**：结算页要看的是合计金额与按商家的分组。 */
-        OrderVO toVO(Discounts discounts) {
+        /**
+         * 预览走**支付视角**：结算页要看的是合计金额与按商家的分组。
+         *
+         * @param pickups 这一单每家商家配到的自提点（自提单才有）。
+         *     确认页据它按取货点分组 —— 两家配到同一个点要合并成一组，
+         *     按商家分会让人以为要跑两趟
+         */
+        OrderVO toVO(Discounts discounts, java.util.Map<String, String[]> pickups) {
             List<OrderVO> children = groups.stream().map(g -> new OrderVO(
                     null, null, OrdOrder.WAIT_PAY, null, g.merchantNo, g.merchantName,
                     g.lines.stream().map(l -> new OrderVO.ItemVO(
@@ -1525,8 +1545,11 @@ public class OrderServiceImpl implements OrderService {
                             l.amount(), l.snapshot.categoryType(), false)).toList(),
                     OrderVO.Amount.of(g.goodsAmount(), g.freight,
                             discounts.of(g.merchantNo), 0L, CURRENCY_CNY),
-                    // 预览还没有单，收件人与预约时间自然也没有
-                    null, null, null, null, 0L, null, null, null, null, null, List.of(), null,
+                    // 预览还没有单，收件人与预约时间自然也没有；自提点是**已经配好的那个**
+                    null,
+                    pickups.containsKey(g.merchantNo) ? pickups.get(g.merchantNo)[0] : null,
+                    pickups.containsKey(g.merchantNo) ? pickups.get(g.merchantNo)[1] : null,
+                    null, 0L, null, null, null, null, null, List.of(), null,
                 // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
                 null,
                 // 预览还没有单：评价、售后、支付分组三样都无从谈起
@@ -1879,8 +1902,23 @@ public class OrderServiceImpl implements OrderService {
      * <p>连「点存不存在」一起校：只判空的话，传一个不存在的点号照样落到同一个坑里，
      * 而那种请求恰恰是端上传错参数时最常见的样子。
      */
+    /** 自提点名：**预览就要给名字**，只给点号的话确认页只能显示一串 PP0001 */
+    private String pickupNameOf(String pickupNo) {
+        return pickupNo == null ? null : pickupPort.find(pickupNo).map(p -> p.name()).orElse(null);
+    }
+
     private java.util.Map<String, String> resolvePickups(CreateOrderCommand cmd, Split split,
                                                         String userNo) {
+        return resolvePickups(cmd, split, userNo, true);
+    }
+
+    /**
+     * @param strict 下单是 true（配不出来就拦住）；<b>预览是 false</b> ——
+     *     预览是信息，不是闸门。还没填地址的人连价格都看不到，
+     *     比「看到了但下不了单」糟得多；而真正拦住他的地方在 create。
+     */
+    private java.util.Map<String, String> resolvePickups(CreateOrderCommand cmd, Split split,
+                                                        String userNo, boolean strict) {
         if (cmd.fulfillment() == null || !Fulfillments.isPickup(cmd.fulfillment())) {
             return java.util.Map.of();
         }
@@ -1905,6 +1943,9 @@ public class OrderServiceImpl implements OrderService {
          */
         var point = userPort.buyerPoint(userNo, cmd.addressId()).orElse(null);
         if (point == null) {
+            if (!strict) {
+                return java.util.Map.of();
+            }
             throw BizException.of(ErrorCode.PICKUP_POINT_REQUIRED);
         }
         java.util.Map<String, String> out = new java.util.LinkedHashMap<>();
@@ -1912,6 +1953,10 @@ public class OrderServiceImpl implements OrderService {
             var options = communityQueryPort.pickupOptions(point.latE6(), point.lngE6(),
                     merchantPort.allowedPickupNos(g.merchantNo));
             if (options.isEmpty()) {
+                if (!strict) {
+                    // 预览：这家就是配不出来，留空让确认页把它标出来，别把整页打死
+                    continue;
+                }
                 /*
                  * **只挡这一家，并点名。** 车里有三家店时，只说「没有可用取货点」
                  * 的话，他不知道该换履约方式还是该把哪件商品拿出来。
