@@ -30,9 +30,10 @@ export default {
     communityFeedHint: "先选社区，看看邻居都在买什么",
     communityFeedEmpty: "这个社区还没有商家上架",
     cutoffIn: "距截单 {t}",
-    choosePickup: "选择自提点",
+    // 买家选的是地址，不是自提点（自提点在下单时匹配）—— 这两句是删掉选点页时漏改的
+    choosePickup: "选择地址",
     hereTag: "当前位置",
-    choosePickupHint: "点击选择你所在的社区",
+    choosePickupHint: "点击选择你在哪儿",
     // 粗定位那一级：这一屏的货是按整个区筛的，不说明白用户会当成家门口的
     coarsePlaceHint: "按这个区显示 · 点击选择具体地址",
     // M6：绑的是「最近的聚落」时，距离必须摆出来 —— 见 home 的 placeSub

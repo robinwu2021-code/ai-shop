@@ -82,7 +82,16 @@ function cli(args) {
 }
 await cli(["close", "--project", PROJECT]);
 await sleep(2000);
-await cli(["cache", "--clean", "all", "--project", PROJECT]);
+/*
+ * **只清 storage 与 session，不清 auth。**
+ * `--clean all` 把定位授权也清了，于是每次跑都弹一次授权框挂在那儿 ——
+ * 而 `getLocation` 就卡在弹框上，`ensureCoarseRegion` 拿不到坐标、返回 null，
+ * 首页落到「还不知道你在哪儿」。截图上那个空态看起来完全像一条真缺陷，
+ * 实际是这条 e2e 自己造出来的。
+ */
+await cli(["cache", "--clean", "storage", "--project", PROJECT]);
+await sleep(1500);
+await cli(["cache", "--clean", "session", "--project", PROJECT]);
 await sleep(2000);
 await cli(["open", "--project", PROJECT]);
 await sleep(8000);
@@ -139,6 +148,25 @@ function goodsOf(data) {
   return empty ? [] : null;
 }
 
+/**
+ * 定位授权框有没有挂在那儿。**它一挂，下面每一条断言量的都是「没拿到坐标」。**
+ *
+ * <p>第 8 处 automator 不兼容：`mockWxMethod("getLocation", …)` **拦不住授权框** ——
+ * 工具仍然先走权限检查，弹框是模态的，`getLocation` 就停在那儿不返回。
+ * 于是首页落到「还不知道你在哪儿」，截图看起来完全像一条真缺陷。
+ * 我为此追错了两轮（先怪按区筛、又怪 `cache --clean all` 把授权清了）。
+ *
+ * <p>没有接口能读到那个框，所以按**症状**判：定位一直不返回。
+ * 判出来就**明说是环境没就绪**，不报成产品缺陷 —— 假红比没有断言更坏。
+ */
+async function locationBlocked() {
+  const r = await mp.evaluate(() => new Promise((res) => {
+    wx.getLocation({ type: "gcj02", success: () => res("ok"), fail: () => res("fail") });
+    setTimeout(() => res("挂住"), 4000);
+  }));
+  return String(r) === "挂住";
+}
+
 async function goHome(where, label) {
   await mp.mockWxMethod("getLocation", { ...where, errMsg: "getLocation:ok" });
   // 模糊定位走的是另一个 API：两个都盖上，否则真机上那一支测不到
@@ -147,6 +175,14 @@ async function goHome(where, label) {
   await sleep(6000);
   await mp.screenshot({ path: resolve(OUT, `mp-m5-${label}.png`) });
   return mp.currentPage();
+}
+
+if (await locationBlocked()) {
+  console.error("\n⚠️ 定位授权框挂在开发者工具上，`getLocation` 不返回 —— 这条 e2e 测不了。");
+  console.error("   在工具里点一次「允许」，之后它会记住（本脚本刻意不清 auth）。");
+  console.error("   **不把下面的断言跑完再报红**：那种红量的是环境，不是产品。");
+  try { await mp.disconnect(); } catch { /* ignore */ }
+  process.exit(2);
 }
 
 // ① 真实运营区：没有任何归属，靠定位也要看得到这个区的货
