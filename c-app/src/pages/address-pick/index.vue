@@ -156,8 +156,19 @@ function manual() {
   uni.navigateBack();
 }
 
-onLoad(() => {
-  void locate();
+onLoad((q?: Record<string, string>) => {
+  /*
+   * `useHere=1`：从收货地址页那颗「存为收货地址」进来的。
+   *
+   * **为什么绕这一道而不是在那边直接解析**：把坐标变成一条带省市区的地址，
+   * 逻辑全在这一页的 `choose()` 里。在地址页再写一份，两处迟早给出不一样的
+   * 省市区拆法 —— 而那种不一致在界面上看不出来，只会让「按区派单」偶尔落错。
+   * 对用户仍然是一次点击：这一页只是过一下，定位拿到就自己交回去。
+   */
+  const auto = q?.useHere === "1";
+  void locate().then(() => {
+    if (auto && at.value) chooseHere();
+  });
 });
 </script>
 

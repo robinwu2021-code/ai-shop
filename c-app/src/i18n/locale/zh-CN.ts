@@ -667,34 +667,38 @@ export default {
     searchPh: "搜小区、写字楼、街道",
     results: "搜索结果",
     searching: "搜索中…",
-    noResults: "没找到这个地点，换个说法试试，或在地图上选点",
-    here: "当前定位",
-    useHere: "就用我现在的位置",
+    noResults: "没有找到，可在地图上选点",
+    here: "当前位置",
+    useHere: "使用当前位置",
     relocate: "重新定位",
     /** 区级坐标误差约 5 公里，写出「733m」是假精确——所以只说话不给数字 */
-    coarseHint: "只拿到大致位置，下面不显示距离",
+    coarseHint: "仅获取到大致位置，不显示距离",
     locateFailed: "没拿到定位",
     /** 这个端既没有搜索也没有地图选点时说的话——别去许诺它给不了的路 */
-    locateFailedManualOnly: "没拿到定位。手动填写地址即可",
+    locateFailedManualOnly: "未获取到定位，请手动填写",
     nearby: "附近",
-    onMap: "在地图上选点",
-    manual: "找不到？手动填写地址",
+    onMap: "地图选点",
+    manual: "手动填写",
   },
   address: {
     /** 与「设为默认」是两个动作：这个管看货，那个管下单预填 */
-    useHere: "设为当前位置",
+    
     /** 定位匹配到的那条：只标出来，点一下就切，不弹窗 */
-    youAreHere: "你在这儿",
-    useCurrentLocation: "就用我现在的位置",
-    useIt: "用这个",
-    noMatchHint: "定位没匹配到你存过的地址 —— 先按现在这儿看货，下单时再决定存不存",
+    youAreHere: "当前位置",
+    useCurrentLocation: "使用当前位置",
+    // 没有收货地址时的主动作：把当前定位一键变成可下单的地址
+    saveAsAddress: "存为收货地址",
+    saveAsAddressShort: "存为地址",
+    emptyHint: "已按当前位置为你显示商品，存为地址后可用于下单",
+    useIt: "使用",
+    noMatchHint: "当前位置不在已存地址中",
     nowAtCurrent: "已按当前位置显示商品",
     here: "当前位置",
-    nowHere: "已切到「{name}」，商品按这里显示",
+    nowHere: "已切换到 {name}",
     /** 没坐标推不出聚落：归属保持不变，但必须说，否则他以为坏了 */
-    nowHereNoCoord: "已切到「{name}」。它还没有定位点，商品仍按原来那片显示 —— 去编辑里补一次地图选点即可",
+    nowHereNoCoord: "已切换到 {name}。该地址未设置定位点，商品仍按原范围显示",
     pick: "地图选点",
-    repick: "已定位·重选",
+    repick: "重选",
     mapUnsupported: "这个端不支持地图选点，手动填写即可",
     title: "收货地址",
     entryHint: "送货上门 · 快递",
@@ -705,24 +709,24 @@ export default {
     removeTitle: "删除地址",
     add: "新增地址",
     /** 到上限时按钮上就是这句，别等他填完才说 */
-    limitReached: "最多 {n} 条，删一条再加",
+    limitReached: "最多 {n} 条",
     empty: "还没有收货地址",
     name: "收货人姓名",
     phone: "手机号",
     region: "省 / 市 / 区",
     regionTitle: "选择省 / 市 / 区",
-    regionHint: "选出来的省市区会分别存下，按区派单、按省算运费才用得上",
+    
     regionSelect: "请选择",
     /** 一键导入微信通讯录里的收货地址（只小程序有） */
     fromWx: "微信地址",
     /** 粘贴一段「张三 138… 浙江省…」，认出来填进各格。**只填空着的，不覆盖** */
     paste: "粘贴识别",
-    pasteHint: "有现成的一段「姓名 手机 地址」？",
+    
     pasteEmpty: "剪贴板是空的",
     pasteFailed: "没认出来，手动填写即可",
     pasteDone: "已填入，请核对一遍",
     /** 手填/微信导入/粘贴三条路都没坐标，而没坐标的地址商家判不了配送范围 */
-    noCoordHint: "这个地址还没有定位点，商家可能判断不了能否送达",
+    noCoordHint: "未设置定位点，可能影响配送判断",
     province: "省",
     city: "市",
     district: "区 / 县",

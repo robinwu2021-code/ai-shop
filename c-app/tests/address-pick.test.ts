@@ -513,10 +513,30 @@ describe("定位只匹配收货地址", () => {
      * 「没匹配到」不是死路：他照样能逛、能下单。
      * 回落到无位置首屏只留给**连定位都拿不到**的情况。
      */
-    expect(addressPage).toMatch(/v-if="locatedAt && !locatedMatch"/);
+    /*
+     * 判**行为**不判那一行字面量：这一块后来拆成了两档
+     * （一条地址都没有 → 整块卡；已有地址而当前位置不在其中 → 收成一行），
+     * 钉着旧表达式会让一次正当的拆分变红，而它保护的东西一点没少。
+     */
+    expect(addressPage, "「当前位置」这一档整个没了").toMatch(/locatedAt && !list\.length/);
+    expect(addressPage, "已有地址时那一行没了").toMatch(/locatedAt && !locatedMatch/);
     const body = bodyOf(addressPage, "async function useCurrentLocation(");
     expect(body, "没有 useCurrentLocation").not.toBeNull();
     expect(body).toContain("location.useTransient");
+  });
+
+  it("★★★ 一条地址都没有时，当前位置要能**一键存成收货地址**", () => {
+    /*
+     * 此前新用户的第一条地址要走「选点 → 逐格填表」，而他人就站在那儿、
+     * 定位已经知道是哪个小区。这一颗按钮把那一段省掉。
+     *
+     * 解析仍然只有一份（选点页的 choose）—— 地址页只是带着 useHere=1 过去，
+     * 两处各写一份省市区拆法，迟早给出不一样的结果，而界面上看不出来。
+     */
+    const body = bodyOf(addressPage, "function saveHereAsAddress(");
+    expect(body, "没有 saveHereAsAddress").not.toBeNull();
+    expect(body).toContain("useHere=1");
+    expect(addressPage).toContain("address.saveAsAddress");
   });
 
   it("★★★ 当前位置**不入地址簿、不写服务端** —— 它是上下文不是资料", () => {

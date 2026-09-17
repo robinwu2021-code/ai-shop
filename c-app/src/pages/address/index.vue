@@ -258,6 +258,8 @@ const TAG_PRESETS = ["tagHome", "tagWork", "tagSchool"] as const;
 const locatedMatch = ref<string>("");
 /** 拿到了定位但一条地址都没匹配上 —— 此时以「当前位置」为准，而不是回落到无位置 */
 const locatedAt = ref<{ lat: number; lng: number } | null>(null);
+/** 当前位置的地名（「桂澜新村」）。取不到就空着 —— 不编 */
+const locatedName = ref("");
 
 async function detectHere() {
   const r = await getLocationDetailed();
@@ -265,6 +267,37 @@ async function detectHere() {
   if (!r.ok || r.fuzzy) return;
   locatedAt.value = { lat: r.coords.lat, lng: r.coords.lng };
   locatedMatch.value = location.suggestNearest(r.coords)?.addressId ?? "";
+  /*
+   * **把地名也取出来。** 只说「当前位置」而不说是哪儿，用户无从判断这个位置对不对 ——
+   * 而他正要据此决定要不要把它存成收货地址。
+   * 取不到就留空，界面回落到「当前位置」四个字（见模板）：宁可少一行，不要编一个地名。
+   */
+  const ctx = await api
+    .resolveLocation(Math.round(r.coords.lat * 1e6), Math.round(r.coords.lng * 1e6))
+    .catch(() => null);
+  locatedName.value = ctx?.innermostName ?? ctx?.nearestName ?? "";
+}
+
+/**
+ * 「存为收货地址」——把当前定位变成一条能下单的地址。
+ *
+ * <p>**新用户的第一条地址此前要走「选点 → 逐格填表」**，而他人就站在那儿，
+ * 定位已经知道他在哪个小区。这一颗按钮把那一段省掉。
+ *
+ * <p>跳选点页并带 `useHere=1`，由它自己交回一条带省市区的地址 ——
+ * 坐标变地址的拆法只能有一份，理由见那一页 onLoad 的注释。
+ */
+function saveHereAsAddress() {
+  if (atLimit.value) {
+    uni.showToast({ title: String(t("address.limitReached", { n: ADDRESS_RULES.maxCount })), icon: "none" });
+    return;
+  }
+  if (!canPick.value) {
+    // 没有选点能力的端（H5）：照旧开空表单，至少不把人堵在这儿
+    openNew();
+    return;
+  }
+  uni.navigateTo({ url: `${ROUTES.addressPick}?useHere=1` });
 }
 
 /**
@@ -416,12 +449,35 @@ onShow(() => {
       不是死路：他照样能逛、能下单；要不要存成地址，下单时再问。
       有匹配的话不显示这一条 —— 那条地址就在下面，标着「你在这儿」。
     -->
-    <view v-if="locatedAt && !locatedMatch" class="sh-card here" @tap="useCurrentLocation">
-      <view class="sh-row sh-row--between">
-        <text class="txt-strong">{{ $t("address.useCurrentLocation") }}</text>
-        <text class="txt-caption txt-primary">{{ $t("address.useIt") }}</text>
+    <!--
+      **一条地址都没有时，这一张是主角。** 他人就站在那儿，定位已经知道是哪个小区 ——
+      此前新用户要走「选点 → 逐格填表」才有第一条地址，而那一段是可以省掉的。
+      所以这一档给整块卡 + 实心主按钮；下面的空态只说事实，不再催他去建。
+    -->
+    <view v-if="locatedAt && !list.length" class="sh-card herebig">
+      <view class="sh-row herebig__head">
+        <sh-icon name="pin" :size="26" color="var(--sh-primary)"></sh-icon>
+        <text class="txt-caption txt-primary">{{ $t("address.youAreHere") }}</text>
       </view>
-      <text class="txt-caption here__sub">{{ $t("address.noMatchHint") }}</text>
+      <text class="txt-strong herebig__name">{{ locatedName || $t("address.youAreHere") }}</text>
+      <view class="sh-btn herebig__save" @tap="saveHereAsAddress">
+        {{ $t("address.saveAsAddress") }}
+      </view>
+    </view>
+
+    <!--
+      已经有地址、而当前位置不在其中：收成一行。
+      **不能给整块卡** —— 它会压在默认地址上面，而那条才是他多数时候要用的。
+    -->
+    <view v-else-if="locatedAt && !locatedMatch" class="sh-card here sh-row">
+      <sh-icon name="pin" :size="24" color="var(--sh-primary)"></sh-icon>
+      <view class="sh-fill here__body">
+        <text class="txt-strong here__name">{{ locatedName || $t("address.youAreHere") }}</text>
+        <text class="txt-caption here__sub">{{ $t("address.noMatchHint") }}</text>
+      </view>
+      <text class="txt-caption txt-primary here__save" @tap="saveHereAsAddress">
+        {{ $t("address.saveAsAddressShort") }}
+      </text>
     </view>
 
     <view v-for="a in list" :key="a.addressId" class="sh-card card" @tap="pick(a)">
@@ -455,12 +511,14 @@ onShow(() => {
       </view>
     </view>
 
+    <!-- 空态只说事实：他现在就能逛，只是还不能下单。上面那张卡才是下一步 -->
     <sh-empty
       bare
       v-if="!list.length"
       :pending="!loaded"
       :failed="failed"
       :text='$t("address.empty")'
+      :tip='locatedAt ? String($t("address.emptyHint")) : ""'
       @retry="load"
     ></sh-empty>
 
@@ -481,8 +539,9 @@ onShow(() => {
           而那一行已经有「请选择 / 地图选点 / 微信地址」三个按钮 ——
           小程序上再挤一个，输入框只剩指甲盖那么宽。
         -->
-        <view class="sh-notice sh-notice--muted pasterow sh-row sh-row--between" @tap="pasteAndFill">
-          <text class="txt-caption pasterow__text">{{ $t("address.pasteHint") }}</text>
+        <!-- 只留动作：原先左边那句「有现成的一段「姓名 手机 地址」？」是反问句，
+             而按钮名本身已经说明了它干什么 -->
+        <view class="sh-notice sh-notice--muted pasterow sh-row sh-row--center" @tap="pasteAndFill">
           <text class="txt-caption txt-primary">{{ $t("address.paste") }}</text>
         </view>
         <input maxlength="64" v-model="draft.name" class="field__input" :placeholder="$t('address.name')" />
@@ -625,12 +684,46 @@ onShow(() => {
 .field__input {
   margin-top: 16rpx;
 }
+/*
+ * 两档「当前位置」：
+ * · herebig —— 一条地址都没有时，它是这一页的主角，实心按钮
+ * · here    —— 已有地址时收成一行，**不许压过默认地址那张卡**
+ */
+.herebig {
+  margin-bottom: 20rpx;
+  border: 2rpx solid var(--sh-primary);
+}
+.herebig__head {
+  gap: 8rpx;
+}
+.herebig__name {
+  display: block;
+  margin-top: 12rpx;
+}
+.herebig__save {
+  margin-top: 24rpx;
+}
 .here {
   margin-bottom: 20rpx;
+  gap: 16rpx;
+}
+.here__body {
+  min-width: 0;
+}
+.here__name {
+  display: block;
 }
 .here__sub {
   display: block;
-  margin-top: 12rpx;
+  margin-top: 4rpx;
+}
+/* 次要动作：描边而不是实心 —— 这一行不该抢下面默认地址的注意力。
+   颜色走库里的 .txt-primary（模板上挂着），这儿只管形状 */
+.here__save {
+  flex-shrink: 0;
+  border: 2rpx solid var(--sh-primary);
+  border-radius: 8rpx;
+  padding: 8rpx 20rpx;
 }
 .tagrow {
   gap: 12rpx;

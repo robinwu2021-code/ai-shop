@@ -58,6 +58,12 @@
           "ar": "لا توجد عناوين بعد"
         },
         {
+          "key": "address.emptyHint",
+          "zh-CN": "已按当前位置为你显示商品，存为地址后可用于下单",
+          "en": "Showing products for your current location. Save it as an address to order.",
+          "ar": "نعرض المنتجات حسب موقعك الحالي. احفظه كعنوان لتتمكن من الطلب."
+        },
+        {
           "key": "address.entryHint",
           "zh-CN": "送货上门 · 快递",
           "en": "Home delivery · Courier",
@@ -89,9 +95,9 @@
         },
         {
           "key": "address.limitReached",
-          "zh-CN": "最多 {n} 条，删一条再加",
-          "en": "Up to {n} saved — remove one first",
-          "ar": "الحد {n} عناوين — احذف واحدًا أولًا"
+          "zh-CN": "最多 {n} 条",
+          "en": "Up to {n} saved",
+          "ar": "الحد {n} عناوين"
         },
         {
           "key": "address.mapUnsupported",
@@ -107,15 +113,15 @@
         },
         {
           "key": "address.noCoordHint",
-          "zh-CN": "这个地址还没有定位点，商家可能判断不了能否送达",
-          "en": "No map pin yet; the shop may not be able to tell if it can deliver",
-          "ar": "لا يوجد موقع على الخريطة بعد؛ قد لا يستطيع المتجر تحديد إمكانية التوصيل"
+          "zh-CN": "未设置定位点，可能影响配送判断",
+          "en": "No map pin set; delivery range may not be checkable",
+          "ar": "لم يتم تحديد الموقع على الخريطة؛ قد يتعذّر التحقق من نطاق التوصيل"
         },
         {
           "key": "address.noMatchHint",
-          "zh-CN": "定位没匹配到你存过的地址 —— 先按现在这儿看货，下单时再决定存不存",
-          "en": "None of your saved addresses is nearby — browsing from here for now; decide whether to save it at checkout",
-          "ar": "لا يوجد عنوان محفوظ قريب — نعرض من هنا مؤقتًا؛ قرّر حفظه عند الدفع"
+          "zh-CN": "当前位置不在已存地址中",
+          "en": "Current location is not among your saved addresses",
+          "ar": "الموقع الحالي ليس ضمن عناوينك المحفوظة"
         },
         {
           "key": "address.nowAtCurrent",
@@ -125,15 +131,15 @@
         },
         {
           "key": "address.nowHere",
-          "zh-CN": "已切到「{name}」，商品按这里显示",
-          "en": "Now browsing from {name}",
-          "ar": "يتم العرض من {name}"
+          "zh-CN": "已切换到 {name}",
+          "en": "Switched to {name}",
+          "ar": "تم التبديل إلى {name}"
         },
         {
           "key": "address.nowHereNoCoord",
-          "zh-CN": "已切到「{name}」。它还没有定位点，商品仍按原来那片显示 —— 去编辑里补一次地图选点即可",
-          "en": "Switched to {name}. It has no map pin yet, so products still follow the previous area — add one from Edit",
-          "ar": "تم التبديل إلى {name}. لا يوجد موقع على الخريطة بعد، لذا تبقى المنتجات حسب المنطقة السابقة — أضِفه من التعديل"
+          "zh-CN": "已切换到 {name}。该地址未设置定位点，商品仍按原范围显示",
+          "en": "Switched to {name}. No map pin set, so products still follow the previous area",
+          "ar": "تم التبديل إلى {name}. لم يتم تحديد الموقع، لذا تبقى المنتجات حسب النطاق السابق"
         },
         {
           "key": "address.paste",
@@ -158,12 +164,6 @@
           "zh-CN": "没认出来，手动填写即可",
           "en": "Couldn't read that — please type it in",
           "ar": "لم يتم التعرف عليه — اكتبه يدويًا"
-        },
-        {
-          "key": "address.pasteHint",
-          "zh-CN": "有现成的一段「姓名 手机 地址」？",
-          "en": "Got a line with name, phone and address?",
-          "ar": "لديك سطر يحتوي الاسم والهاتف والعنوان؟"
         },
         {
           "key": "address.phone",
@@ -202,12 +202,6 @@
           "ar": "تعذّر تحميل المناطق"
         },
         {
-          "key": "address.regionHint",
-          "zh-CN": "选出来的省市区会分别存下，按区派单、按省算运费才用得上",
-          "en": "Each level is stored separately — routing by district and shipping by province need them",
-          "ar": "يُحفظ كل مستوى على حدة؛ التوزيع حسب الحي والشحن حسب المحافظة يحتاجان ذلك"
-        },
-        {
           "key": "address.regionIncomplete",
           "zh-CN": "请把省 / 市 / 区选完整",
           "en": "Please finish selecting province / city / district",
@@ -239,15 +233,27 @@
         },
         {
           "key": "address.repick",
-          "zh-CN": "已定位·重选",
-          "en": "Pinned · change",
-          "ar": "تم التحديد · تغيير"
+          "zh-CN": "重选",
+          "en": "Change",
+          "ar": "تغيير"
         },
         {
           "key": "address.repickPlace",
           "zh-CN": "重选",
           "en": "Change",
           "ar": "تغيير"
+        },
+        {
+          "key": "address.saveAsAddress",
+          "zh-CN": "存为收货地址",
+          "en": "Save as address",
+          "ar": "حفظ كعنوان توصيل"
+        },
+        {
+          "key": "address.saveAsAddressShort",
+          "zh-CN": "存为地址",
+          "en": "Save",
+          "ar": "حفظ"
         },
         {
           "key": "address.setDefault",
@@ -287,37 +293,31 @@
         },
         {
           "key": "address.useCurrentLocation",
-          "zh-CN": "就用我现在的位置",
-          "en": "Use my current location",
-          "ar": "استخدم موقعي الحالي"
-        },
-        {
-          "key": "address.useHere",
-          "zh-CN": "设为当前位置",
-          "en": "Browse here",
-          "ar": "تصفح من هنا"
+          "zh-CN": "使用当前位置",
+          "en": "Use current location",
+          "ar": "استخدام الموقع الحالي"
         },
         {
           "key": "address.useIt",
-          "zh-CN": "用这个",
-          "en": "Use it",
-          "ar": "استخدمه"
+          "zh-CN": "使用",
+          "en": "Use",
+          "ar": "استخدام"
         },
         {
           "key": "address.youAreHere",
-          "zh-CN": "你在这儿",
-          "en": "You are here",
-          "ar": "أنت هنا"
+          "zh-CN": "当前位置",
+          "en": "Current location",
+          "ar": "الموقع الحالي"
         },
         {
           "key": "addressPick.coarseHint",
-          "zh-CN": "只拿到大致位置，下面不显示距离",
-          "en": "Approximate location only — distances hidden",
-          "ar": "الموقع تقريبي فقط — لن تظهر المسافات"
+          "zh-CN": "仅获取到大致位置，不显示距离",
+          "en": "Approximate location only; distances hidden",
+          "ar": "الموقع تقريبي فقط؛ لا تظهر المسافات"
         },
         {
           "key": "addressPick.here",
-          "zh-CN": "当前定位",
+          "zh-CN": "当前位置",
           "en": "Current location",
           "ar": "الموقع الحالي"
         },
@@ -329,15 +329,15 @@
         },
         {
           "key": "addressPick.locateFailedManualOnly",
-          "zh-CN": "没拿到定位。手动填写地址即可",
-          "en": "No location. Just type the address in",
-          "ar": "تعذّر تحديد الموقع. اكتب العنوان يدويًا"
+          "zh-CN": "未获取到定位，请手动填写",
+          "en": "No location — please type the address in",
+          "ar": "تعذّر تحديد الموقع، يُرجى الإدخال يدويًا"
         },
         {
           "key": "addressPick.manual",
-          "zh-CN": "找不到？手动填写地址",
-          "en": "Can't find it? Type the address",
-          "ar": "لم تجده؟ اكتب العنوان يدويًا"
+          "zh-CN": "手动填写",
+          "en": "Type it in",
+          "ar": "إدخال يدوي"
         },
         {
           "key": "addressPick.nearby",
@@ -347,14 +347,14 @@
         },
         {
           "key": "addressPick.noResults",
-          "zh-CN": "没找到这个地点，换个说法试试，或在地图上选点",
-          "en": "No match. Try another wording, or pick it on the map",
-          "ar": "لا توجد نتائج. جرّب صياغة أخرى أو حدّده على الخريطة"
+          "zh-CN": "没有找到，可在地图上选点",
+          "en": "No match. Pick it on the map instead",
+          "ar": "لا توجد نتائج. حدّده على الخريطة"
         },
         {
           "key": "addressPick.onMap",
-          "zh-CN": "在地图上选点",
-          "en": "Pick on the map",
+          "zh-CN": "地图选点",
+          "en": "Pick on map",
           "ar": "تحديد على الخريطة"
         },
         {
@@ -389,9 +389,9 @@
         },
         {
           "key": "addressPick.useHere",
-          "zh-CN": "就用我现在的位置",
-          "en": "Use my current location",
-          "ar": "استخدم موقعي الحالي"
+          "zh-CN": "使用当前位置",
+          "en": "Use current location",
+          "ar": "استخدام الموقع الحالي"
         },
         {
           "key": "afterSale.applied",

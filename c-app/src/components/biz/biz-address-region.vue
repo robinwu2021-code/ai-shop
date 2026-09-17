@@ -125,7 +125,7 @@ function crumbs() {
     stacked
     :visible="visible"
     :title="String($t('address.regionTitle'))"
-    :hint="current ? String(current) : String($t('address.regionHint'))"
+    :hint="current ? String(current) : ''"
     @close="emit('close')"
   >
     <sh-tabs :items="crumbs()" :active="String(step)" @change="back(Number($event))"></sh-tabs>

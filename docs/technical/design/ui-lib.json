@@ -463,7 +463,7 @@
       },
       "usage": {
         "b-app": 27,
-        "c-app": 26
+        "c-app": 27
       }
     },
     {
@@ -501,7 +501,7 @@
       },
       "usage": {
         "b-app": 133,
-        "c-app": 37
+        "c-app": 38
       }
     },
     {
@@ -627,7 +627,7 @@
       },
       "usage": {
         "b-app": 212,
-        "c-app": 69
+        "c-app": 70
       }
     },
     {
@@ -795,7 +795,7 @@
       },
       "usage": {
         "b-app": 118,
-        "c-app": 47
+        "c-app": 48
       }
     },
     {
@@ -1371,7 +1371,7 @@
       },
       "usage": {
         "b-app": 92,
-        "c-app": 37
+        "c-app": 38
       }
     },
     {
@@ -1427,7 +1427,7 @@
       },
       "usage": {
         "b-app": 286,
-        "c-app": 137
+        "c-app": 138
       }
     },
     {
@@ -1459,7 +1459,7 @@
       },
       "usage": {
         "b-app": 128,
-        "c-app": 75
+        "c-app": 73
       }
     },
     {
@@ -2285,7 +2285,7 @@
       ],
       "usage": {
         "b-app": 62,
-        "c-app": 5,
+        "c-app": 7,
         "lib": 13
       },
       "note": "单色图标",
@@ -4057,8 +4057,8 @@
         "sh-tabs"
       ],
       "libClassHits": 37,
-      "localSelectors": 21,
-      "localCssLines": 83,
+      "localSelectors": 20,
+      "localCssLines": 78,
       "rolled": []
     },
     {
@@ -4332,13 +4332,14 @@
       "components": [
         "sh-actionbar",
         "sh-empty",
+        "sh-icon",
         "sh-scaffold",
         "sh-sheet",
         "sh-switch"
       ],
-      "libClassHits": 67,
-      "localSelectors": 18,
-      "localCssLines": 65,
+      "libClassHits": 71,
+      "localSelectors": 25,
+      "localCssLines": 92,
       "rolled": []
     },
     {
