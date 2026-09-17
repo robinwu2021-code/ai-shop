@@ -773,7 +773,7 @@ onShow(() => {
           <text class="txt-caption state__txt">{{ $t(`goods.status${stateOf(g)}`) }}</text>
         </view>
         <!-- 可点相。只在真的点得动时出现（见 onRowTap 的注释） -->
-        <text v-if="merchant.can('biz:goods')" class="row__chev">›</text>
+        <text v-if="merchant.can('biz:goods')" class="txt-title row__chev">›</text>
       </view>
       <view class="row__ops">
         <!--
@@ -957,8 +957,6 @@ onShow(() => {
   margin-inline-start: 4rpx;
   /* --sh-sub 不是 --sh-faint：后者是 #E4E5E8，分隔线那一档，白底上量出来几乎看不见 */
   color: var(--sh-sub);
-  font-size: 34rpx;
-  line-height: 1;
 }
 .row__cover {
   font-size: 60rpx;
