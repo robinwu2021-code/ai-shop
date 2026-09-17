@@ -19,7 +19,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
-import { urgentStockItems } from "@/shared/stock-urgent";
+import { urgentStockItems, canStartNewCount } from "@/shared/stock-urgent";
 import { stockEntries, countUsableLocations, type StockEntry } from "@/shared/stock-entries";
 import { ROUTES } from "@/shared/nav";
 import type { StockBalance, StockSummary } from "@shared/types";
@@ -175,6 +175,7 @@ const entries = computed(() =>
   stockEntries({
     can: (perm) => merchant.can(perm),
     multiStore: merchant.multiStore,
+    canStartCount: canStartNewCount(summary.value),
     usableLocations: usableLocations.value,
   }),
 );

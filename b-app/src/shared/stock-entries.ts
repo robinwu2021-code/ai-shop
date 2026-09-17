@@ -40,6 +40,12 @@ export interface StockEntry {
 
 export interface StockEntriesCtx {
   can: (perm: string) => boolean;
+  /**
+   * 现在开得了新盘点单吗（`canStartNewCount()` 的结果）。
+   * **开不了就不摆「盘点」这个入口** —— 有单开着时，那一格的事由「继续盘点」接着，
+   * 两个都摆出来的下场是开出第二张，而两张单锁的账面数是两个时刻的。
+   */
+  canStartCount: boolean;
   /** 开了不止一家店。**数的是门店不是库位** */
   multiStore: boolean;
   /**
@@ -91,7 +97,10 @@ export function stockEntries(ctx: StockEntriesCtx): {
    */
   const more: StockEntry[] = (
     [
-      { key: "check", route: ROUTES.stockCheck, perm: "biz:stock" },
+      // 有单开着时整条拿掉 —— 不是灰掉：这不是「你缺个什么」，
+      // 而是「这件事正由上面那条『继续盘点』接着」，摆一个灰名字只会让人问为什么
+      ...(ctx.canStartCount
+        ? [{ key: "check", route: ROUTES.stockCheck, perm: "biz:stock" }] : []),
       { key: "transfer", route: ROUTES.transfer, perm: "biz:stock" },
       { key: "docs", route: ROUTES.stockDocs, perm: "biz:stock" },
       { key: "report", route: ROUTES.stockReport, perm: "biz:customer" },

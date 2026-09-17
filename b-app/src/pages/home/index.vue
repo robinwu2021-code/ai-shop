@@ -9,7 +9,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useI18n } from "vue-i18n";
 import { useMerchantStore } from "@/stores/merchant";
-import { urgentStockItems } from "@/shared/stock-urgent";
+import { urgentStockItems, canStartNewCount } from "@/shared/stock-urgent";
 import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
 import { SERVICE_SCOPE } from "@shared/utils/constants";
@@ -51,6 +51,9 @@ const invActs = computed(() => {
     ["docs", ROUTES.stockDocs],
   ] as const) {
     if (acts.length >= 3) break;
+    // 有单开着时不补「盘点」：上面 urgent 里已经有「继续盘点」，
+    // 两个并排摆着，点错一个就开出第二张单 —— 而两张锁的账面数是两个时刻的
+    if (key === "check" && !canStartNewCount(stockSummary.value)) continue;
     acts.push({ key, label: String(t(`stock.entry.${key}`)), route, urgent: false });
   }
   return acts;
