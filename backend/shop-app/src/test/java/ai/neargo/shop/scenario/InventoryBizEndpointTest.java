@@ -511,6 +511,45 @@ class InventoryBizEndpointTest {
 
 
     @Test
+    @DisplayName("★★★ 作废还在盘的那张盘点单 —— 开错了的唯一退路，已过账的不给")
+    void openCountCanBeVoided() throws Exception {
+        Shop s = shop();
+        int before = onHand(s, s.itemA);
+
+        String no = okText(post("/biz/inventory/counts")
+                .content("{\"itemIds\":[\"" + s.itemA + "\"]}"), s.token);
+
+        // 作废不动库存 —— 这张单从来没过账，没有任何一笔要退回去
+        ok(post("/biz/inventory/counts/" + no + "/void"), s.token);
+        assertThat(onHand(s, s.itemA)).as("作废一张没过账的单，库存一件不该动").isEqualTo(before);
+
+        JsonNode voided = ok(get("/biz/inventory/counts/" + no), s.token);
+        assertThat(voided.get("status").asText()).isEqualTo("VOIDED");
+        assertThat(voided.get("lines").size())
+                .as("行不删 —— 上面的 bookQty 是开单那一刻的快照，删掉「为什么作废」就查不回来了")
+                .isGreaterThan(0);
+
+        // **退路真的通**：作废之后这个库位重新开得出单（这正是它存在的理由）
+        String again = okText(post("/biz/inventory/counts")
+                .content("{\"itemIds\":[\"" + s.itemA + "\"]}"), s.token);
+        assertThat(again).as("作废之后要开得出新的，否则这个库位就永远盘不了了").isNotBlank();
+
+        /*
+         * **已过账的不给作废。** 那时盘盈／盘亏单已经落账、余额已经改了 ——
+         * 把它弄回去是「反向再盘一次」，不是作废。与调拨拒绝已发出的是同一条道理。
+         */
+        ok(post("/biz/inventory/counts/" + again + "/post"), s.token);
+        String body = mvc().perform(post("/biz/inventory/counts/" + again + "/void")
+                        .header("Authorization", "Bearer " + s.token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(body).get("code").asInt())
+                .as("已过账的必须被拒（10409 CONFLICT）；放过去账会朝哪边走谁都说不清")
+                .isEqualTo(10409);
+    }
+
+
+    @Test
     @DisplayName("★★★ 建品就要上账 —— 否则那个 SKU 在库存里根本不存在，且不报错")
     void newSkuLandsOnTheBooks() throws Exception {
         /*

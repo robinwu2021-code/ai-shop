@@ -175,6 +175,33 @@ public class StockCountServiceImpl implements StockCountService {
 
     @Override
     @Transactional(transactionManager = "invTransactionManager")
+    public void cancel(String ownerId, String countNo, String operator) {
+        InvStockCount head = mine(ownerId, countNo);
+        if (InvEnums.DocStatus.VOIDED.equals(head.getStatus())) {
+            return;   // 幂等：弱网下重复提交是常事
+        }
+        /*
+         * **只放行还在盘的那张。** 已过账的盘盈／盘亏单都已经落了账、余额已经改了，
+         * 把它弄回去是「反向再盘一次」，不是作废 —— 两件事塞进同一个动作，
+         * 商家点下去之后账会朝哪边走谁都说不清。
+         *
+         * 与调拨 `cancel` 拒绝已发出的是同一条道理，那儿写着为什么。
+         */
+        if (!InvEnums.DocStatus.COUNTING.equals(head.getStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        /*
+         * **行不删。** 那些行上有 `bookQty` —— 开单那一刻的账面快照，
+         * 是这张单当时看到什么的唯一记录。删掉之后「为什么作废」就再也查不回来了，
+         * 而作废本身正是要留痕的那一类动作。
+         */
+        head.setStatus(InvEnums.DocStatus.VOIDED);
+        head.setUpdatedBy(operator);
+        countMapper.updateById(head);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
     public void post(String ownerId, String countNo, String operator) {
         InvStockCount head = mine(ownerId, countNo);
         if (InvEnums.DocStatus.POSTED.equals(head.getStatus())) {

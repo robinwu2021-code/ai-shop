@@ -1657,6 +1657,8 @@ export interface MerchantApi {
    * 已发出的会回 CONFLICT：货正停在在途库位上，把它弄回去是**退回**不是作废，
    * 要再走一遍成对的一出一入 —— 混成一个动作的话，账上会凭空少一批货。
    */
+  /** 作废还在盘的那张盘点单。**已过账的会被拒（10409）** —— 那是「反向再盘一次」，不是作废 */
+  mCountVoid(no: string): Promise<void>;
   mTransferVoid(no: string): Promise<void>;
 
   /** 单据中心。`kind` 空=全部，否则 IN / OUT / COUNT / TRANSFER */

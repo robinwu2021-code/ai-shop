@@ -1177,5 +1177,15 @@ export function invDocuments(): StockDocument[] {
     { kind: "TRANSFER", docNo: "TRF-24082507", status: "SHIPPED", label: "TRANSFER",
       subtitle: "城西仓 → 文三路店",
       totalQty: 20, occurredAt: "2026-08-26T07:30:00" },
+    /*
+     * 还在盘的那张盘点单。**替身里非有不可**（2026-09-17）：
+     * 单据列表的作废按钮是按 `kind + status` 判的，而这份种子里
+     * 一张 `COUNTING` 都没有 —— 于是「盘点单能不能作废」这条分支
+     * 在 mock 上一次都走不到，只会在真机上第一次露面。
+     * 与上面那条「故意不给 skuNo」是同一个理由。
+     */
+    { kind: "COUNT", docNo: "CNT-24082601", status: "COUNTING", label: "COUNT",
+      subtitle: "选定 3 件",
+      totalQty: 0, occurredAt: "2026-08-26T09:02:00", operator: "老板" },
   ];
 }

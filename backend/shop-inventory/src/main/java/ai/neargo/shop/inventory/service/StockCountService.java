@@ -26,6 +26,24 @@ public interface StockCountService {
     void post(String ownerId, String countNo, String operator);
 
     /**
+     * 作废一张<b>还在盘的</b>盘点单 —— 「开错了怎么办」的答案。
+     *
+     * <p><b>为什么现在才需要它</b>：此前开错一张无所谓，再开一张就是了。
+     * 自从「一个库位同时只许开一张」那道闸立起来（{@code COUNT_ALREADY_OPEN}），
+     * 开错的那张就从「不管它」变成了<b>挡路的</b> —— 不处理掉，这个库位再也盘不了。
+     * 而在这之前唯一的退路是「过账一张一件都没填的单」：它确实是空操作
+     * （{@link #post} 跳过 {@code diff == null} 的行），但没人看得出那是退路。
+     *
+     * <p><b>已过账的不许作废。</b>那时盘盈／盘亏单都已经落账、余额已经改了，
+     * 把它弄回去是「反向再盘一次」，不是作废 —— 两件事塞进同一个动作，
+     * 商家点下去之后账会朝哪边走谁都说不清。与调拨
+     * {@link TransferService#cancel} 拒绝已发出的是同一条道理。
+     *
+     * <p>幂等：已作废的再作废一次直接返回。弱网下重复提交是常事。
+     */
+    void cancel(String ownerId, String countNo, String operator);
+
+    /**
      * 单件「改数」：开单 + 录一行 + 过账，一次调用做完。
      *
      * <p>界面上的按钮叫「改数」，但底下**仍然是一张盘点单** ——

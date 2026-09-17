@@ -53,6 +53,7 @@ export const inventoryMock: Pick<MerchantApi,
   | "mCarriers"
   | "mTransferShip"
   | "mTransferReceive"
+  | "mCountVoid"
   | "mTransferVoid"
   | "mStockDocuments"
   | "mStockMonthly"
@@ -374,6 +375,9 @@ export const inventoryMock: Pick<MerchantApi,
     return delay(undefined);
   },
   async mCountPost() {
+    return delay(undefined);
+  },
+  async mCountVoid() {
     return delay(undefined);
   },
 

@@ -173,6 +173,19 @@ public class BizStockDocController {
      * 而调拨详情页也没有口子，于是建错一张就永远挂在那儿（2026-09-02 生产上
      * 有三张这样的草稿）。已发出的不给作废，见 {@link TransferService#cancel}。
      */
+    /**
+     * 作废一张<b>还在盘的</b>盘点单 —— 「开错了怎么办」的答案。
+     *
+     * <p>自从「一个库位同时只许开一张」那道闸立起来，开错的那张就从
+     * 「不管它」变成了<b>挡路的</b>：不处理掉，这个库位再也盘不了。
+     * 已过账的不给作废，见 {@link StockCountService#cancel}。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
+    @PostMapping("/biz/inventory/counts/{no}/void")
+    public void voidCount(@PathVariable String no) {
+        counts.cancel(owner(), no, SecurityUtils.currentUserNo());
+    }
+
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers/{no}/void")
     public void voidTransfer(@PathVariable String no) {

@@ -2174,6 +2174,13 @@ entryHint: "谁在买 · 谁不来了",
     start: "开始盘点（{n} 件）",
     counting: "进行中",
     lockedAt: "账面数已于 {at} 锁定，盘点期间的销售不计入差异",
+    // 作废这张单。**是「一个库位只许开一张」那道闸之后才需要的** ——
+    // 在那之前开错一张不管它就是了，闸立起来之后错单会把这个库位的盘点挡死
+    voidDoc: "作废这张单",
+    voidTitle: "作废盘点单",
+    voidHint: "{no} 还没过账，作废不会动库存。作废之后这个库位才能重新开单。",
+    voidConfirm: "确认作废",
+    voided: "已作废",
     reasonRequired: "原因必填",
     reasonLabel: "差异原因",
     totalDiff: "合计差异",

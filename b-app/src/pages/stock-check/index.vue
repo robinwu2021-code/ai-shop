@@ -210,6 +210,39 @@ const filledCount = computed(() =>
   Object.values(counted.value).filter((v) => v !== "").length,
 );
 
+/**
+ * 作废这张单 —— 「开错了怎么办」的答案。
+ *
+ * **它是 2026-09-17 才需要的**：在「一个库位同时只许开一张」那道闸之前，
+ * 开错一张不管它就是了；闸立起来之后，那张错单会**把这个库位的盘点整个挡死**。
+ * 而在这个入口出现之前，唯一的退路是「提交一张一件都没填的单」——
+ * 它确实是空操作，但没人看得出那是退路。
+ *
+ * 放在单据头里而不是贴底条上：底下那枚是「提交并过账」，
+ * 一个是收工、一个是扔掉，摆一起迟早点错（旁边那句注释写的是同一件事）。
+ */
+async function voidDoc() {
+  if (!doc.value || busy.value) return;
+  const ok = await confirm({
+    title: String(t("stockCheck.voidTitle")),
+    hint: String(t("stockCheck.voidHint", { no: doc.value.countNo })),
+    confirmText: String(t("stockCheck.voidConfirm")),
+    danger: true,
+  });
+  if (!ok) return;
+  busy.value = true;
+  try {
+    await api.mCountVoid(doc.value.countNo);
+    uni.showToast({ title: String(t("stockCheck.voided")), icon: "none" });
+    // 回上一页：这张单没了，留在它的详情上没有意义
+    uni.navigateBack();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
 async function submit() {
   if (!doc.value || !filledCount.value) return;
   const ok = await confirm({
@@ -331,21 +364,39 @@ function at(iso?: string): string {
           <text class="sh-chip sh-chip--warning">{{ $t("stockCheck.counting") }}</text>
         </view>
         <text class="txt-caption">{{ $t("stockCheck.lockedAt", { at: at(doc.startedAt) }) }}</text>
+
         <!--
           连续扫码贴在单据头下面，不进底部动作条：底下那枚是「提交并过账」，
           两者一个是干活、一个是收工，摆一起迟早点错。
         -->
-        <text v-if="!scanning" class="sh-link scan" @tap="scanLoop">
-          {{ $t("stockCheck.scanStart") }}
-        </text>
         <!--
-          扫码中压暗且不响应。**两个静态文案而不是一个三元** —— 界面清单的
-          生成器只认 `$t("…")` 紧跟引号的写法，三元里的词条它一个都抽不到，
-          于是这枚按钮在清单上凭空消失，而 `--check` 照样绿。
+          一行两枚，**退路在左、干活的在右**：
+          「作废」与「连续扫码」不是一档东西 —— 一个是扔掉、一个是接着干，
+          退路不该长得像入口，所以它用 caption 字号 + 危险色，确认框走 `danger` 档。
+          各自单独占一行的话，两枚一左一右吊在那儿，看不出谁跟谁有关系。
         -->
-        <text v-else class="sh-link scan sh-muted">
-          {{ $t("stockCheck.scanning") }}
-        </text>
+        <!--
+          一行两枚，**退路在左、干活的在右**：
+          「作废」与「连续扫码」不是一档东西 —— 一个是扔掉、一个是接着干，
+          退路不该长得像入口，所以它用 caption 字号 + 危险色，确认框走 `danger` 档。
+          各自单独占一行的话，两枚一左一右吊在那儿，看不出谁跟谁有关系。
+        -->
+        <view class="sh-row sh-row--between acts">
+          <text class="txt-caption voidlink" @tap="voidDoc">
+            {{ $t("stockCheck.voidDoc") }}
+          </text>
+          <!--
+            扫码中压暗且不响应。**两个静态文案而不是一个三元** —— 界面清单的
+            生成器只认 `$t("…")` 紧跟引号的写法，三元里的词条它一个都抽不到，
+            于是这枚按钮在清单上凭空消失，而 `--check` 照样绿。
+          -->
+          <text v-if="!scanning" class="sh-link" @tap="scanLoop">
+            {{ $t("stockCheck.scanStart") }}
+          </text>
+          <text v-else class="sh-link sh-muted">
+            {{ $t("stockCheck.scanning") }}
+          </text>
+        </view>
       </view>
 
       <view v-for="l in doc.lines" :key="l.itemId" class="sh-card sh-mb-sm">
@@ -415,11 +466,17 @@ function at(iso?: string): string {
 </template>
 
 <style scoped>
-/* 连扫入口贴在单号右下：它属于这张单，不是一个独立功能 */
-.scan {
+/* 作废：弱化到底，与「连续扫码」那枚不是一档东西 —— 退路不该长得像入口 */
+.voidlink {
   display: block;
-  text-align: end;
-  padding-top: 8rpx;
+  margin-top: 12rpx;
+  color: var(--sh-danger);
+}
+
+/* 连扫入口贴在单号右下：它属于这张单，不是一个独立功能 */
+/* 作废与连续扫码那一行。`.sh-row--between` 把两枚推到两端 */
+.acts {
+  padding-top: 12rpx;
 }
 
 .row__top {
