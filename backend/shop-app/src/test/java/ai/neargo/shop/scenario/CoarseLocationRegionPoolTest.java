@@ -53,9 +53,22 @@ class CoarseLocationRegionPoolTest {
     private static final String EMPTY_DISTRICT = "997700";
     private static final String DISTRICT_NAME = "位置兜底测试区";
 
-    /** 探测点。村就插在这个点上 */
-    private static final int LAT_E6 = 30281234;
-    private static final int LNG_E6 = 120101234;
+    /**
+     * 探测点。村与 {@link #C_IN} 都插在这个点上。
+     *
+     * <p><b>挑一个荒无人烟的坐标</b>（新疆东部），不用演示社区那一带 ——
+     * 「最近的聚落是哪个」对**全库**求最小值，而演示种子 C0001/C0002 就在杭州那个点上，
+     * 放在一起时最近的那个是谁取决于扫表顺序。第一版就栽在这儿：
+     * 断言写的是自己那个社区，跑出来是别人的，而报错长得像「围栏判定坏了」。
+     */
+    private static final int LAT_E6 = 45000000;
+    private static final int LNG_E6 = 95000000;
+    /** 约 20 公里外 —— 落不进围栏（1000 米），但在默认上限（50 公里）之内 */
+    private static final int LAT_E6_20KM = LAT_E6 + 180000;
+    /** 约 550 公里外 —— 超出默认上限 */
+    private static final int LAT_E6_FAR = LAT_E6 + 5000000;
+    /** 对照区的聚落挪开 3 个经度（约 235 公里）：它不该在任何一条用例里赢得「最近」 */
+    private static final int LNG_E6_OUT = LNG_E6 + 3000000;
 
     private static final String C_IN = "CT5R01";
     private static final String C_OUT = "CT5R02";
@@ -87,8 +100,8 @@ class CoarseLocationRegionPoolTest {
         region(DISTRICT + "001001", DISTRICT + "001", "VILLAGE", "兜底测试村", LAT_E6, LNG_E6);
 
         // 两个聚落，分属两个区。**对照组**：没有它，「筛没筛」看不出来
-        community(C_IN, "按区筛-本区", DISTRICT);
-        community(C_OUT, "按区筛-别区", OTHER_DISTRICT);
+        community(C_IN, "按区筛-本区", DISTRICT, LAT_E6, LNG_E6);
+        community(C_OUT, "按区筛-别区", OTHER_DISTRICT, LAT_E6, LNG_E6_OUT);
         goods(G_IN);
         goods(G_OUT);
         pool(C_IN, G_IN);
@@ -110,10 +123,10 @@ class CoarseLocationRegionPoolTest {
                 code, parent, level, name, lat, lng);
     }
 
-    private void community(String no, String name, String regionCode) {
+    private void community(String no, String name, String regionCode, int latE6, int lngE6) {
         jdbc.update("INSERT INTO cmt_community (community_no, name, status, region_code, "
                         + "lat_e6, lng_e6, created_at, updated_at) VALUES (?,?,'OPEN',?,?,?,NOW(),NOW())",
-                no, name, regionCode, LAT_E6, LNG_E6);
+                no, name, regionCode, latE6, lngE6);
     }
 
     private void goods(String no) {
@@ -205,10 +218,51 @@ class CoarseLocationRegionPoolTest {
     }
 
     @Test
+    @DisplayName("★★★ M6 判据 1：围栏外 20 公里 → 给出最近的已开通聚落，端上据此默认归属")
+    void outsideAnyFenceStillGetsTheNearestCommunity() throws Exception {
+        /*
+         * 冷启动期「不在任何围栏里」是**常态**：全市只有一两个聚落。
+         * 此前这一支只回落到按区筛，而那个区往往一个聚落都没有 —— 首页就是空的。
+         */
+        JsonNode ctx = data("/mp/location/resolve?latE6=" + LAT_E6_20KM + "&lngE6=" + LNG_E6);
+        assertThat(ctx.get("innermostNo").isNull())
+                .as("20 公里外落进了围栏 = 围栏判定坏了，这条用例的前提不成立").isTrue();
+        assertThat(ctx.get("nearestNo").asString())
+                .as("围栏外就什么都不给 —— 那正是首页空掉的原因").isEqualTo(C_IN);
+        assertThat(ctx.get("nearestName").asString()).isNotBlank();
+        int m = ctx.get("nearestDistanceM").asInt();
+        assertThat(m).as("距离要是真算出来的 —— 顶栏靠它说「约 N 公里」").isBetween(15000, 25000);
+    }
+
+    @Test
+    @DisplayName("★★★ M6 判据 3：落进围栏时**不给** nearest —— 两个主语迟早会被选错")
+    void insideAFenceGivesNoNearest() throws Exception {
+        JsonNode ctx = data("/mp/location/resolve?latE6=" + LAT_E6 + "&lngE6=" + LNG_E6);
+        assertThat(ctx.get("innermostNo").asString()).isEqualTo(C_IN);
+        assertThat(ctx.get("nearestNo").isNull())
+                .as("落进围栏了还给「最近的」，端上就有两个主语").isTrue();
+    }
+
+    @Test
+    @DisplayName("★★★ M6 判据 4：超出上限 → 不给归属，但**距离照给**")
+    void beyondTheCapGivesDistanceButNoBinding() throws Exception {
+        // 往北挪 5 个纬度 ≈ 550 公里，远超默认的 50 公里上限
+        JsonNode ctx = data("/mp/location/resolve?latE6=" + LAT_E6_FAR + "&lngE6=" + LNG_E6);
+        assertThat(ctx.get("nearestNo").isNull())
+                .as("五百公里外也给默认归属 = 让人看一屏送不到的货").isTrue();
+        assertThat(ctx.get("nearestDistanceM").asInt())
+                .as("连距离都不给，端上就只能写一句干巴巴的「还没开通」").isGreaterThan(400000);
+    }
+
+    @Test
     @DisplayName("★★ 判据 9：连坐标都没有 → 区县为 null，端上据此走空态要位置")
     void noCoordsMeansNoDistrict() throws Exception {
         JsonNode ctx = data("/mp/location/resolve?coarse=true");
         assertThat(ctx.get("regionCode").isNull())
                 .as("没坐标却编出一个区 = 把一屏别处的货说成「你这儿的」").isTrue();
+        assertThat(ctx.get("nearestNo").isNull())
+                .as("没坐标却算得出「最近的」= 那个数是编的").isTrue();
+        assertThat(ctx.get("nearestDistanceM").asInt())
+                .as("算不出距离要给 -1，不是 0 —— 0 会被显示成「0 米」").isEqualTo(-1);
     }
 }

@@ -45,6 +45,17 @@ export const useLocationStore = defineStore("location", {
      * **false 才是那唯一该空屏的一格**：连模糊定位都被拒，此时要位置，不是列一屏买不到的东西。
      */
     located: null as boolean | null,
+    /**
+     * 默认归属离他有多远（米）。**绑的是「最近的聚落」时必须说出来**（M6）。
+     *
+     * <p>这不是文案，是这一级成不成立的前提。M5 当初拒绝按模糊坐标猜聚落，
+     * 理由是「噪音在界面上与真结果长得一模一样」；M6 开始猜了，
+     * 就必须让它**长得不一样** —— 不说距离的话，二十公里外的店在顶栏上
+     * 与楼下那家一模一样，而货要从二十公里外送过来。
+     *
+     * <p>`0` = 不是这一级（落进围栏了，或者按区看）。
+     */
+    nearestDistanceM: 0,
   }),
 
   getters: {
@@ -67,19 +78,31 @@ export const useLocationStore = defineStore("location", {
 
   actions: {
     /**
-     * 拿到「按哪个区看货」。**没有精确归属时的唯一出路。**
+     * 没有地址时，**靠定位把「看哪儿的货」定下来**。
      *
-     * <p>顺序与美团一致，按精度依次降级：精确定位 → 模糊定位 → 都拒。
-     * 前两级都落到一个区县码，端上据此筛商品池；只有第三级才是空态要位置。
+     * <p>按精度依次降级（M5 + M6）：
+     * <ol>
+     *   <li>落进某个围栏 → 就是它（精确）</li>
+     *   <li>没落进，但最近的已开通聚落在上限内 → <b>绑它</b>，并记下距离让顶栏说出来</li>
+     *   <li>够不着 → 退到按区筛（M5）</li>
+     *   <li>连坐标都没有 → null，调用方走空态要位置</li>
+     * </ol>
+     *
+     * <p>第 2 级是 M6 加的，而它正是冷启动期的常态：全市只有一两个聚落，
+     * 「不在围栏里」不是异常；此前那时只能按区筛，而那个区往往一个聚落都没有 ——
+     * 首页就空着，且没有任何线索说明为什么。
      *
      * <p>**结果缓存到会话结束**：这条挂在首页加载上，不缓存就是每次回首页都定位一次
-     * （而定位会弹授权框）。只有还没绑定位置的用户会走到这里，绑上之后这一格就不再参与，
-     * 所以缓存不会把人钉在一个过时的区上。
+     * （而定位会弹授权框）。只有还没绑定位置的用户会走到这里，绑上之后这一格就不再参与。
      *
-     * @returns 推不出区县时返回 null —— 调用方据此走空态，**不要**退化成「不筛」
+     * @returns 区县码与名字；**绑上了聚落时返回 null** —— 那时调用方该按 communityNo 取货，
+     *          再带上 regionCode 只会让后端有两个主语（精确的那个本来就压过粗的）
      */
     async ensureCoarseRegion(): Promise<{ code: string; name: string } | null> {
-      if (this.coarseRegion) return this.coarseRegion;
+      const community = useCommunityStore();
+      if (community.community || this.coarseRegion) {
+        return community.community ? null : this.coarseRegion;
+      }
       // 走 Detailed 那一份：这里要分清「拒了」与「只给了个大概」，而 getLocation 把两者都抹成 null
       const r = await getLocationDetailed().catch(() => null);
       if (!r?.ok) {
@@ -91,7 +114,23 @@ export const useLocationStore = defineStore("location", {
         .resolveLocation(Math.round(r.coords.lat * 1e6), Math.round(r.coords.lng * 1e6),
           r.fuzzy === true)
         .catch(() => null);
-      if (!ctx?.regionCode) return null;
+      if (!ctx) return null;
+
+      /*
+       * **落进围栏、或者有个够得着的最近聚落 —— 两种都绑。**
+       * 绑不上（社区详情拉失败）就往下走按区筛，不让一次网络抖动变成空首页。
+       */
+      const bindNo = ctx.innermostNo ?? ctx.nearestNo;
+      if (bindNo) {
+        const c = await api.communityDetail(bindNo).catch(() => null);
+        if (c) {
+          await community.bind(c);
+          // 落进围栏那一支距离为 0：顶栏据此**不显示**距离，不能把精确的说成「最近的」
+          this.nearestDistanceM = ctx.innermostNo ? 0 : Math.max(ctx.nearestDistanceM, 0);
+          return null;
+        }
+      }
+      if (!ctx.regionCode) return null;
       this.coarseRegion = { code: ctx.regionCode, name: ctx.regionName ?? "" };
       return this.coarseRegion;
     },

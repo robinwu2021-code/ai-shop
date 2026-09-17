@@ -32,6 +32,7 @@ export default {
     hereTag: "موقعك الآن",
     choosePickupHint: "اضغط لاختيار حيّك",
     coarsePlaceHint: "العرض حسب هذه المنطقة · اضغط لاختيار عنوان محدد",
+    nearestPlaceHint: "أقرب نقطة استلام · نحو {km} كم · اضغط لاختيار عنوان",
     noPlaceText: "لا نعرف مكانك بعد",
     noPlaceTip: "اختر عنواناً لترى ما يمكن توصيله إليك",
     noPlaceAction: "اختيار عنوان",

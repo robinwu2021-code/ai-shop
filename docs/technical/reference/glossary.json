@@ -1990,6 +1990,12 @@
           "ar": "موقعك الآن"
         },
         {
+          "key": "home.nearestPlaceHint",
+          "zh-CN": "最近的取货点 · 约 {km} 公里 · 点击选择具体地址",
+          "en": "Nearest pickup · about {km} km away · tap to pick an address",
+          "ar": "أقرب نقطة استلام · نحو {km} كم · اضغط لاختيار عنوان"
+        },
+        {
           "key": "home.noPlaceAction",
           "zh-CN": "选择地址",
           "en": "Pick an address",

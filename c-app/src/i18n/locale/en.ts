@@ -32,6 +32,7 @@ export default {
     hereTag: "Here now",
     choosePickupHint: "Tap to pick your neighbourhood",
     coarsePlaceHint: "Showing this district · tap to pick an exact address",
+    nearestPlaceHint: "Nearest pickup · about {km} km away · tap to pick an address",
     noPlaceText: "We don't know where you are yet",
     noPlaceTip: "Pick an address to see what can reach you",
     noPlaceAction: "Pick an address",

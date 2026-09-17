@@ -5591,6 +5591,19 @@ components:
             - "string"
             - "null"
           description: "「西湖区」。顶栏要说明白「当前按 XX 区在看」，只给一串码等于没说"
+        nearestNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "**没落进任何围栏时**，最近的那个已开通聚落（M6）。端上拿它当默认归属。\n\n<p>冷启动期全市只有一两个聚落，「不在围栏里」是**常态**而不是异常， 而那时按区筛几乎总是空的 —— 首页就空着。\n\n<p>`null` 有两种：超出上限（够不着，给了也是让人看一屏送不到的货）， 或者已经落进围栏（那时 `innermostNo` 就是答案，两个主语迟早会被选错）。"
+        nearestName: 
+          type: 
+            - "string"
+            - "null"
+          description: "顶栏直接显示"
+        nearestDistanceM: 
+          type: "number"
+          description: "到最近那个聚落的米数。**超上限时仍然给** —— 端上才说得出「最近的也有 80 公里」。\n**算不出时是 -1**，不是 0（0 会被显示成「0 米」，那是一句假话）。"
       required: 
         - "innermostNo"
         - "innermostName"
@@ -5598,6 +5611,9 @@ components:
         - "coarse"
         - "regionCode"
         - "regionName"
+        - "nearestNo"
+        - "nearestName"
+        - "nearestDistanceM"
       additionalProperties: false
       description: "一个坐标解析出来的位置上下文（`/mp/location/resolve`）。\n\n**不要用 `nearbyCommunities` 的第一条代替它**：「最内层」的判据是 层级优先于距离 —— 站在楼门口时，隔壁小区的中心可能比本楼中心更近。 那是业务规则，放端上就会有三份实现，而它们迟早不一样。"
     ServiceArea: 

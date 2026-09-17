@@ -51,15 +51,30 @@ public class CommunityServiceImpl implements CommunityService {
      */
     private final int nearbyRadiusM;
 
+    /**
+     * 「没落进任何围栏时，最远肯给到多远的默认归属」（米，M6）。
+     *
+     * <p><b>它是「同城」这个业务边界的代理，不是判定。</b> 冷启动期全市只有一两个聚落，
+     * 「不在围栏里」是常态 —— 龙华的买家离福田的聚落 20 公里，他该看得到那儿的货；
+     * 北京的买家不该。而端上手里只有坐标，没有城市判定，聚落距离是已有数据里最接近它的那把尺。
+     *
+     * <p>默认 50 公里。做成配置不是常量：这条闸管着 C 端第一屏，
+     * 而「同城」在不同城市尺度差得很远（深圳约 80 公里、上海约 120 公里）。
+     */
+    private final int defaultBindRadiusM;
+
     public CommunityServiceImpl(CommunityMapper communityMapper, PickupPointMapper pickupMapper,
                                 MerchantQueryPort merchantQueryPort,
                                 MasterDataPort masterDataPort,
-                                @Value("${shop.community.nearby-radius-m:5000}") int nearbyRadiusM) {
+                                @Value("${shop.community.nearby-radius-m:5000}") int nearbyRadiusM,
+                                @Value("${shop.community.default-bind-radius-m:50000}")
+                                int defaultBindRadiusM) {
         this.communityMapper = communityMapper;
         this.pickupMapper = pickupMapper;
         this.merchantQueryPort = merchantQueryPort;
         this.masterDataPort = masterDataPort;
         this.nearbyRadiusM = nearbyRadiusM;
+        this.defaultBindRadiusM = defaultBindRadiusM;
     }
 
     @Override
@@ -432,7 +447,7 @@ public class CommunityServiceImpl implements CommunityService {
         if (coarse || latE6 == null || lngE6 == null) {
             // 只解析一次：最近邻那一查会扫 500 行，调两次就是两次
             String district = districtOf(latE6, lngE6);
-            return new LocationVO(null, null, List.of(), coarse, district, districtName(district));
+            return withNearest(coarse, district, latE6, lngE6);
         }
 
         List<CmtCommunity> hits = communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
@@ -447,7 +462,7 @@ public class CommunityServiceImpl implements CommunityService {
              * 没理由因为「这儿还没建聚落」就退回去看全平台的货。
              */
             String district = districtOf(latE6, lngE6);
-            return new LocationVO(null, null, List.of(), false, district, districtName(district));
+            return withNearest(false, district, latE6, lngE6);
         }
 
         /*
@@ -463,8 +478,48 @@ public class CommunityServiceImpl implements CommunityService {
 
         // 落到了聚落，区县直接从它挂的区划码上截 —— 不用再按坐标查一次
         String district = districtOf(innermost.getRegionCode());
+        /*
+         * **落进围栏时不给 nearest。** 那时 innermost 就是答案，再给一个「最近的」
+         * 只会让端上有两个主语 —— 而两个主语的分叉迟早会在某一页上被选错。
+         */
         return new LocationVO(innermost.getCommunityNo(), innermost.getName(),
-                chainOf(innermost), false, district, districtName(district));
+                chainOf(innermost), false, district, districtName(district), null, null, -1);
+    }
+
+    /**
+     * 「没落进任何围栏」这一支：把**最近的已开通聚落**算出来（M6）。
+     *
+     * <p>为什么不复用 {@link #nearby}：那个带 5 公里半径，而这里要的恰恰是
+     * 「半径之外还有没有」—— 用它会永远返回空，而空看起来完全正常。
+     *
+     * <p>没坐标就不算：{@code Geo.meters} 对空坐标没有意义，
+     * 而返回一个算出来的 0 会被端上显示成「0 米」。
+     */
+    private LocationVO withNearest(boolean coarse, String district, Integer latE6, Integer lngE6) {
+        String regionName = districtName(district);
+        if (latE6 == null || lngE6 == null) {
+            return new LocationVO(null, null, List.of(), coarse, district, regionName, null, null, -1);
+        }
+        CmtCommunity nearest = communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getStatus, "OPEN")
+                        .isNull(CmtCommunity::getArchivedAt)
+                        .isNotNull(CmtCommunity::getLatE6)).stream()
+                .min(java.util.Comparator.comparingInt(
+                        c -> distance(c.getLatE6(), c.getLngE6(), latE6, lngE6)))
+                .orElse(null);
+        if (nearest == null) {
+            return new LocationVO(null, null, List.of(), coarse, district, regionName, null, null, -1);
+        }
+        int m = distance(nearest.getLatE6(), nearest.getLngE6(), latE6, lngE6);
+        /*
+         * **超上限只砍 no 与 name，距离照给。**
+         * 端上要能说出「最近的也有 80 公里」——连距离都不给的话，
+         * 那一屏只能写一句干巴巴的「这一带还没开通」，而用户无从判断差多远。
+         */
+        boolean within = m <= defaultBindRadiusM;
+        return new LocationVO(null, null, List.of(), coarse, district, regionName,
+                within ? nearest.getCommunityNo() : null,
+                within ? nearest.getName() : null, m);
     }
 
     /**

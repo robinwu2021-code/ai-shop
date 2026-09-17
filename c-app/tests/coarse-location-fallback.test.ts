@@ -76,6 +76,23 @@ describe("粗定位兜底：按区看货", () => {
     expect(homePage).toContain('v-else-if="!goods.length"');
   });
 
+  it("★★★ M6：没落进围栏时绑最近的聚落 —— 冷启动期那是常态，不是异常", () => {
+    // 全市只有一两个聚落时，「不在围栏里」的人才是多数；此前他们只能按区筛，而那个区往往是空的
+    expect(locationStore).toContain("ctx.innermostNo ?? ctx.nearestNo");
+    expect(locationStore).toContain("api.communityDetail");
+  });
+
+  it("★★★ M6：绑最近聚落时顶栏要说距离，落进围栏时不说", () => {
+    /*
+     * 不说距离的话，二十公里外那家店在顶栏上与楼下那家没有任何区别 ——
+     * 而这正是 M5 当初拒绝猜聚落的理由（「噪音与真结果长得一模一样」）。
+     */
+    expect(homePage).toContain("home.nearestPlaceHint");
+    expect(homePage).toContain("location.nearestDistanceM > 0");
+    // 精确那一支必须把距离清成 0，否则「落进围栏」也会被说成「最近的」
+    expect(locationStore).toContain("ctx.innermostNo ? 0 :");
+  });
+
   it("★★ 「拒了」与「只给了个大概」要分得开", () => {
     // getLocation 把两者都抹成 null，于是「被拒」与「拿到了模糊坐标」变成同一件事
     expect(locationStore).toContain("getLocationDetailed");

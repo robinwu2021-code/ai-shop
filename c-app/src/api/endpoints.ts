@@ -129,6 +129,14 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
     auth: false,
     summary: "全部已开通社区（附近为空时的出路）",
   },
+  // M6 要按号取一个**半径之外**的社区（默认归属），而 nearbyCommunities 带 5 公里半径、
+  // allCommunities 会把全部社区都拉下来。按号取一条是这两者都给不了的
+  communityDetail: {
+    method: "GET",
+    path: "/mp/community/:communityNo",
+    auth: false,
+    summary: "按号取一个社区",
+  },
   openRegions: {
     method: "GET",
     path: "/mp/community/regions",

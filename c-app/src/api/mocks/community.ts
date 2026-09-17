@@ -11,6 +11,7 @@ export const communityMock: Pick<ShopApi,
   "nearbyCommunities"
   | "resolveLocation"
   | "allCommunities"
+  | "communityDetail"
   | "openRegions"
   | "regions"
 > = {
@@ -37,10 +38,19 @@ export const communityMock: Pick<ShopApi,
     if (coarse || latE6 == null || lngE6 == null) {
       // 没坐标就连区也推不出来 —— 那一格是空态要位置，不是「随便看看」
       const hasCoords = latE6 != null && lngE6 != null;
+      // 走 toCommunity 而不是直接读 seed.name —— 种子里的名字是三语对象，
+      // 直接塞进去类型就不对，而 vue-tsc 会拦下来（那正是它在这儿的价值）
+      const nearSeed = hasCoords ? allCommunitySeeds()[0] : undefined;
+      const near = nearSeed ? toCommunity(nearSeed) : undefined;
       return delay({
         innermostNo: null, innermostName: null, chainNos: [], coarse: !!coarse,
         regionCode: hasCoords ? district : null,
         regionName: hasCoords ? districtName : null,
+        // mock 里也要真给出「最近的聚落」—— 不给的话端上那条默认归属的分支
+        // 在开发期永远走不到，与改造前长得一模一样（首页空着）
+        nearestNo: near?.communityNo ?? null,
+        nearestName: near?.name ?? null,
+        nearestDistanceM: near ? 20000 : -1,
       });
     }
     const first = allCommunitySeeds().map(toCommunity)[0];
@@ -49,11 +59,20 @@ export const communityMock: Pick<ShopApi,
         innermostNo: first.communityNo, innermostName: first.name,
         chainNos: [first.communityNo], coarse: false,
         regionCode: district, regionName: districtName,
+        // 落进围栏了就不给「最近的」：两个主语迟早会被选错
+        nearestNo: null, nearestName: null, nearestDistanceM: -1,
       }
       : {
         innermostNo: null, innermostName: null, chainNos: [], coarse: false,
         regionCode: district, regionName: districtName,
+        nearestNo: null, nearestName: null, nearestDistanceM: -1,
       });
+  },
+
+  async communityDetail(communityNo) {
+    const seed = allCommunitySeeds().find((c) => c.communityNo === communityNo);
+    if (!seed) throw new Error("社区不存在");
+    return delay(toCommunity(seed));
   },
 
   async allCommunities() {

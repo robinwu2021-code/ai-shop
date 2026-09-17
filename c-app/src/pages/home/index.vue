@@ -43,7 +43,17 @@ const placeSub = computed(() => {
   const a = location.active;
   if (a) return a.detail || a.region || "";
   /*
-   * **粗定位这一级必须把话说明白。** 这一屏的货是按整个区筛出来的，
+   * **绑的是「最近的聚落」时必须说出距离。**
+   *
+   * 这一句是 M6 成不成立的前提，不是文案：M5 当初拒绝按坐标猜聚落，理由是
+   * 「噪音在界面上与真结果长得一模一样」。M6 开始猜了，就得让它长得不一样 ——
+   * 不说距离的话，二十公里外那家店在顶栏上与楼下那家没有任何区别。
+   */
+  if (location.nearestDistanceM > 0) {
+    return String(t("home.nearestPlaceHint", { km: (location.nearestDistanceM / 1000).toFixed(0) }));
+  }
+  /*
+   * **粗定位这一级也必须把话说明白。** 这一屏的货是按整个区筛出来的，
    * 与「按我家地址在看」不是一回事 —— 两种状态显示成同一个样子，
    * 用户会把一屏送不到他那儿的货当成家门口能买到的。
    */

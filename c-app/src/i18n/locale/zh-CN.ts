@@ -35,6 +35,8 @@ export default {
     choosePickupHint: "点击选择你所在的社区",
     // 粗定位那一级：这一屏的货是按整个区筛的，不说明白用户会当成家门口的
     coarsePlaceHint: "按这个区显示 · 点击选择具体地址",
+    // M6：绑的是「最近的聚落」时，距离必须摆出来 —— 见 home 的 placeSub
+    nearestPlaceHint: "最近的取货点 · 约 {km} 公里 · 点击选择具体地址",
     noPlaceText: "还不知道你在哪儿",
     noPlaceTip: "选个地址，就能看到送得到你这儿的东西",
     noPlaceAction: "选择地址",

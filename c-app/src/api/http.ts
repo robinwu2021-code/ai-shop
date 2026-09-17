@@ -126,6 +126,8 @@ export const httpApi: ShopApi = {
     call<LocationContext>("resolveLocation", undefined, { latE6, lngE6, coarse }),
   allCommunities: (regionCode) =>
     call<Community[]>("allCommunities", undefined, { regionCode }),
+  communityDetail: (communityNo) =>
+    call<Community>("communityDetail", { communityNo }),
   openRegions: () => call<RegionOption[]>("openRegions"),
   regions: (parent) => call<RegionNode[]>("regions", undefined, { parent }),
 

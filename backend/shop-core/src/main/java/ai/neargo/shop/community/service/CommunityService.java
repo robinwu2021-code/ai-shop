@@ -47,10 +47,22 @@ public interface CommunityService {
      *                      那一级才是空态要位置
      * @param regionName    「西湖区」。顶栏要把它说出来 —— 只有说明白「当前按 XX 区在看」，
      *                      用户才知道这一屏为什么不精确，以及该去点哪儿
+     * @param nearestNo     **没落进任何围栏时**，最近的那个已开通聚落（M6）。
+     *                      端上拿它当默认归属 —— 冷启动期全市只有一两个聚落，
+     *                      「不在围栏里」是常态而不是异常，而按区筛在那时几乎总是空的。
+     *                      <b>超出上限时为 null</b>（配置 {@code shop.community.default-bind-radius-m}）：
+     *                      够不着的地方给一个默认归属，等于让人看一屏送不到的货。
+     *                      落进围栏时也是 null —— 那时 {@code innermostNo} 就是答案，
+     *                      再给一个「最近的」只会让端上有两个主语
+     * @param nearestName   顶栏直接显示
+     * @param nearestDistanceM 到最近那个聚落的米数。<b>超上限时仍然给</b> ——
+     *                      端上才说得出「最近的也有 80 公里」；<b>算不出时是 -1</b>，
+     *                      不是 0（0 会被显示成「0 米」，那是一句假话）
      */
     record LocationVO(String innermostNo, String innermostName,
                       java.util.List<String> chainNos, boolean coarse,
-                      String regionCode, String regionName) {
+                      String regionCode, String regionName,
+                      String nearestNo, String nearestName, int nearestDistanceM) {
     }
 
     /** 社区详情（含其下常驻自提点）。 */

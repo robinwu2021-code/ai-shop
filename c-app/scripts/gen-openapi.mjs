@@ -148,6 +148,7 @@ const RESPONSE_TYPES = {
   bindPhoneByWx: "User",
   phoneCapable: "PhoneCapable",
   allCommunities: "Community[]",
+  communityDetail: "Community",
   openRegions: "RegionOption[]",
   regions: "RegionNode[]",
   // fb230e7b 加了这两个端点却没登记 —— 漏配的后果是静默产出 data:{type:"object"}，

@@ -200,6 +200,11 @@ export interface ShopApi {
    */
   allCommunities(regionCode?: string): Promise<Community[]>;
   /**
+   * 按号取一个社区。**M6 的默认归属要用它** —— 那个社区在 5 公里半径之外，
+   * `nearbyCommunities` 拿不到它，而 `allCommunities` 会把全部社区都拉下来。
+   */
+  communityDetail(communityNo: string): Promise<Community>;
+  /**
    * 可选区域清单。**只含有已开通社区的区** —— 区划全表 2978 个区县，
    * 把整棵树给用户挑，十有八九挑到一个一家店都没有的区。
    */

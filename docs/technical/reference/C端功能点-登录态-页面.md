@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**89 个功能点**，其中 **23 个游客可用**；**2 个没有任何页面调用**。
+统计：**90 个功能点**，其中 **24 个游客可用**；**2 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -36,6 +36,7 @@
 | `cartRemove` | `POST /mp/cart/remove` | 是 | (stores) | — |
 | `cartUpdate` | `POST /mp/cart/update` | 是 | (stores) | — |
 | `allCommunities` | `GET /mp/community` | 游客 | (stores) | — |
+| `communityDetail` | `GET /mp/community/:communityNo` | 游客 | (stores) | — |
 | `nearbyCommunities` | `GET /mp/community/nearby` | 游客 | (stores) · address-pick | — |
 | `openRegions` | `GET /mp/community/regions` | 游客 | (stores) | — |
 | `couponList` | `GET /mp/coupon` | 游客 | coupons · order-confirm | — |
