@@ -400,11 +400,24 @@ onShow(() => {
         </view>
 
         <view class="sh-row">
+          <!--
+            ★ **一行里三档权重，不是三枚一样红。**
+
+            扩到四枚之后，新提上来的盘点与调拨默认落进了 .sh-btn 的实心主色 ——
+            于是四枚里三枚抢同一个视觉重量，一眼看过去分不出主次
+            （2026-09-17 真机截图上才看出来：浏览器上我量了宽高与图标，唯独没量底色）。
+
+            现在：进货 实心（唯一的主操作）· 报损 tint（次）·
+            盘点/调拨 灰（与右边那枚圆同一档）。权重读作 1 / 1 / 2 / 圆。
+          -->
           <view
             v-for="e in entries.primary"
             :key="e.key"
             class="sh-btn sh-btn--md sh-center act"
-            :class="{ 'sh-btn--soft': e.key === 'out' }"
+            :class="{
+              'sh-btn--soft': e.key === 'out',
+              'sh-btn--muted': e.key !== 'purchase' && e.key !== 'out',
+            }"
             @tap="go(e.route)"
           >
             <!--
