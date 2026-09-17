@@ -188,6 +188,16 @@ const urgent = computed(() =>
   })),
 );
 
+/**
+ * 贴底那块面板要占多高。**`sh-actionbar` 的占位块算不出来** ——
+ * 面板是 fixed，CSS 量不到它的高，所以这里明写。
+ *
+ * 两个数都是**量出来的**：一排按钮加面板内边距 85rpx、离底 28rpx，取 140 留一点余量；
+ * 「有人在等」每多一条加 88rpx（一行 `.opt` 量到 85rpx）。
+ * 不跟着长的话，列表最后一行会被面板压住 —— 而那不报错，只是看不见。
+ */
+const barPad = computed(() => 140 + urgent.value.length * 88);
+
 function go(route: string) {
   uni.navigateTo({ url: route });
 }
@@ -239,22 +249,6 @@ onShow(load);
       <view v-if="entries.cross" class="ov__cross" @tap="go(entries.cross.route)">
         <sh-go :text="String($t('stock.crossGo'))"></sh-go>
       </view>
-    </view>
-
-    <!--
-      「有人在等」**单独一张卡**。此前它和那排链接共用同一个容器，
-      真有事的时候两排长得一模一样 —— 而上面那排是等着人去处理的事。
-      **只在真有事时出现** —— 没有在途、没有开着的盘点单时一行都不占。
-    -->
-    <view v-if="urgent.length" class="sh-card wait">
-      <text
-        v-for="u in urgent"
-        :key="u.key"
-        class="txt-primary txt-bold wait__link"
-        @tap="go(u.route)"
-      >
-        {{ u.label }}
-      </text>
     </view>
 
     <sh-tabs :items="TABS" :active="filter" @change="pickFilter"></sh-tabs>
@@ -317,7 +311,7 @@ onShow(load);
          它没有「把你圈在这件事里」的意思 -->
     <view v-if="moreOpen" class="catch" @tap="moreOpen = false"></view>
 
-    <sh-actionbar v-if="entries.primary.length || entries.more.length" :pad="164">
+    <sh-actionbar v-if="entries.primary.length || entries.more.length" :pad="barPad">
       <view class="bar">
         <!--
           伸缩菜单：**从这条自己往上长**，不是另开一层。
@@ -364,6 +358,26 @@ onShow(load);
           </view>
         </view>
 
+        <!--
+          「有人在等」。**并进这块面板，不再单独占一张卡**（2026-09-17）——
+          页面上两处都能点，看着就是散的；而它原来在滚动流里，
+          列表一滚就没了，真有货在等的时候反而看不见。
+
+          它加在**按钮上面**：多出来的行往上长，底下那排按钮贴着屏幕底边，
+          位置一动不动 —— 每天按几次的东西不能因为「今天有货到了」就挪位置。
+        -->
+        <view
+          v-for="u in urgent"
+          :key="u.key"
+          class="opt wait"
+          @tap="go(u.route)"
+        >
+          <text class="txt-strong opt__t sh-fill">{{ u.label }}</text>
+          <view class="opt__end">
+            <sh-icon name="chevronRight" :size="22" color="var(--sh-primary-text)"></sh-icon>
+          </view>
+        </view>
+
         <view class="bar__row">
           <view
             v-for="e in entries.primary"
@@ -407,15 +421,6 @@ onShow(load);
   display: flex;
   justify-content: flex-end;
   padding: 16rpx 0 20rpx;
-}
-
-/* 「有人在等」：单独一张卡，几项并排 */
-.wait {
-  display: flex;
-  justify-content: space-around;
-}
-.wait__link {
-  padding: 4rpx 8rpx;
 }
 
 /*
@@ -486,9 +491,9 @@ onShow(load);
   padding: 20rpx 12rpx;
   border-bottom: var(--sh-hairline-soft);
 }
-/* 最后一条不画线：它下面紧挨着的是按钮那一排，多一条线像是把按钮也框进了菜单 */
-.opt:last-child {
-  border-bottom: none;
+/* 「有人在等」的那几行：名字用主色 —— 它不是一个去处，是一件正等着人办的事 */
+.wait .opt__t {
+  color: var(--sh-primary-text);
 }
 /* 用不了的那条：名字压暗，但**原因那句不压** —— 压掉了就没人看得见为什么 */
 .opt.is-off .opt__t {
