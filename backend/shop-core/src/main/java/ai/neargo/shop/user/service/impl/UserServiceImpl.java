@@ -146,17 +146,42 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserVO bindCommunity(String communityNo, String pickupNo) {
-        // 校验「自提点属于该社区」而不是只查存在性：端上可以随便传两个不相干的号，
-        // 存进去之后商品池按社区取、履约按自提点走，用户会看到一个永远到不了货的组合
-        if (pickupQueryPort.find(pickupNo)
+        boolean withPickup = pickupNo != null && !pickupNo.isBlank();
+        /*
+         * **自提点可空**（TDD-C端位置选择-地址取代自提点 §M1）。
+         *
+         * 买家选的是地址，聚落由地址坐标推出来；自提点是履约期的事，下单那一刻才匹配。
+         * 此前这里强制成对，代价是：一个**没有自提点的聚落，买家根本绑不上**，
+         * 于是也看不到任何货 —— 静默，没有任何提示。而端上为了凑够这一对，
+         * 只能替他挑 `pickups[0]`，等于让数组顺序决定了履约服务费归谁。
+         *
+         * 传了点的调用一个字不改：仍然校验「点属于该社区」。端上可以随便传两个
+         * 不相干的号，存进去之后商品池按社区取、履约按自提点走，
+         * 用户会看到一个永远到不了货的组合。
+         */
+        if (withPickup && pickupQueryPort.find(pickupNo)
                 .filter(p -> communityNo.equals(p.communityNo())).isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
 
         UsrAccount user = currentUser();
         user.setCommunityNo(communityNo);
-        user.setPickupNo(pickupNo);
-        userMapper.updateById(user);
+        /*
+         * ⚠️ 不传点时要**显式清空**，不能只是「不写」——
+         * `updateById` 跳过 null 字段，那句 set 根本不会生成，
+         * 换了个聚落的人会留着上一个聚落的自提点，而两者不在一起。
+         * 用 UpdateWrapper 把这一列写成 null。
+         */
+        user.setPickupNo(withPickup ? pickupNo : null);
+        if (withPickup) {
+            userMapper.updateById(user);
+        } else {
+            userMapper.update(null, com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<UsrAccount>lambdaUpdate()
+                    .eq(UsrAccount::getUserNo, user.getUserNo())
+                    .set(UsrAccount::getCommunityNo, communityNo)
+                    .set(UsrAccount::getPickupNo, null));
+        }
         return UserVO.of(user);
     }
 

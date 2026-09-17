@@ -269,6 +269,12 @@ public class MpUserController {
     public record OtpReq(@NotBlank String phone) {
     }
 
-    public record BindCommunityReq(@NotBlank String communityNo, @NotBlank String pickupNo) {
+    /**
+     * @param pickupNo <b>可空</b>。买家选的是地址，不是自提点 ——
+     *     聚落由地址坐标推出来，自提点在下单那一刻按规则匹配
+     *     （见 TDD-C端位置选择-地址取代自提点 §M1）。
+     *     传了仍会校验「点属于该社区」：B 端与运营端的既有调用不受影响。
+     */
+    public record BindCommunityReq(@NotBlank String communityNo, String pickupNo) {
     }
 }
