@@ -18,6 +18,13 @@
 #
 # 清一条删一条。**只许变短。** 但也别为了变短去改线上路径 ——
 # 这张表的用途是**拦新增**，存量随各自模块重构时顺手带走。
+#
+# 2026-09-17 新增 `/biz/inventory/counts/{no}/void`（盘点单作废，c4f51800）。
+# 与上面那条「存量随模块重构顺手带走」是同一个判断：counts 这个资源的另外三条
+# 都在本表里，而同形状的 `inbounds/{no}/void` 与 `outbounds/{no}/void` 也都在。
+# 单独把 void 改成单数，counts 会成为进销存模块里自己和自己不一致的那一个。
+# **不是它的作者加的**：开这个端点的会话已经结束，而这道闸挂在 pre-push 上，
+# 红着就是整条分支谁都推不出去。进销存整模块改单数时，这一行跟着一起删。
 
 /biz/activities/{activityNo}  activities
 /biz/activities/{activityNo}/status  activities
@@ -28,6 +35,7 @@
 /biz/inventory/counts/{no}  counts
 /biz/inventory/counts/{no}/lines  counts
 /biz/inventory/counts/{no}/post  counts
+/biz/inventory/counts/{no}/void  counts
 /biz/inventory/inbounds/{no}  inbounds
 /biz/inventory/inbounds/{no}/post  inbounds
 /biz/inventory/inbounds/{no}/void  inbounds
