@@ -63,6 +63,8 @@ function toggleAll() {
 }
 
 onLoad(async (q) => {
+  // 同 stock：门店名搬进标题之后，得由页面自己拉 —— 胶囊原本替它做了这件事
+  void merchant.ensureStores();
   countNo.value = String((q as Record<string, string>)?.no ?? "");
   if (countNo.value) await loadDoc();
   else await loadPick();
@@ -105,6 +107,20 @@ function toggle(itemId: string) {
 /** 开单。**这一刻锁账面数** —— 之后卖掉多少都不影响差异 */
 async function open() {
   if (!picked.value.length) return;
+  /*
+   * ★ **「账面数在这一刻被锁住」只在这一刻说。**
+   *
+   * 这句话原本常年占着首屏（「开单时锁定账面数，盘点期间的销售不计入差异」）。
+   * 它回答的是一个人猜不到的问题 —— 我盘的时候卖出去的算不算差异 ——
+   * 所以不能删；但它与「现在要不要开单」是同一个决定，摆在这儿才用得上。
+   *
+   * 2026-09-17 店主要求去掉页面顶部的解释，这是那句话的新去处。
+   */
+  const ok = await confirm({
+    title: String(t("stockCheck.openTitle")),
+    hint: String(t("stockCheck.openBody", { n: picked.value.length })),
+  });
+  if (!ok) return;
   busy.value = true;
   try {
     countNo.value = await api.mCountOpen(picked.value);
@@ -296,17 +312,15 @@ function at(iso?: string): string {
 </script>
 
 <template>
-  <sh-scaffold title-key="stockCheck.title" :denied="!merchant.can('biz:stock')">
-    <!-- 当前门店只读标记：盘点改的是**这家店**的库存（库位由 currentStoreNo 解出）——
-         界面上不说清是哪家店，多店店主会在另一家店上动手，而且没有任何症状。
-         只在多店时渲染（单店没有歧义可消）；切店入口在工作台，这里不带动作。 -->
-    <biz-store-tag readonly></biz-store-tag>
-
-    <!-- ① 还没开单：先选要盘哪几件 -->
-    <template v-if="!doc">
-      <view class="sh-card">
-        <text class="txt-caption">{{ $t("stockCheck.pickHint") }}</text>
-      </view>
+  <sh-scaffold
+    title-key="stockCheck.title"
+    :title-suffix="merchant.multiStore ? merchant.currentStore?.name : ''"
+    :denied="!merchant.can('biz:stock')"
+  >
+      <!-- ① 还没开单：先选要盘哪几件。
+           **顶部那句解释去掉了**（2026-09-17 店主要求）：前半句「选择需要盘点的商品」
+           是在念页面名字；后半句「开单时锁定账面数」有信息，挪到开单确认那一刻说 -->
+      <template v-if="!doc">
 
       <view v-if="picking.length" class="sh-card sh-mb-sm">
         <view class="sh-row">

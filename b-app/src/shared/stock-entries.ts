@@ -134,6 +134,10 @@ export function stockEntries(ctx: StockEntriesCtx): {
       { key: "locations", route: ROUTES.locations, perm: "biz:store:admin" },
       // 供应商与进货同一个码：能记进货的人就该能建供应商
       { key: "suppliers", route: ROUTES.suppliers, perm: "biz:stock" },
+      // 跨店总览收进抽屉（2026-09-17 店主要求「顶部简洁一点」）。
+      // **不是删掉** —— 它是那一页的唯一入口，删了就再也进不去。
+      // 只给多门店：单店商家的「跨店」就是这一页本身
+      ...(multiStore ? [{ key: "cross", route: ROUTES.stockCross, perm: "biz:stock" }] : []),
     ] satisfies Def[]
   )
     .filter((e) => can(e.perm))

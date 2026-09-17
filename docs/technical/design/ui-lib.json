@@ -304,7 +304,7 @@
         "font-weight": "600"
       },
       "usage": {
-        "b-app": 18,
+        "b-app": 17,
         "c-app": 16
       }
     },
@@ -326,7 +326,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 284,
+        "b-app": 282,
         "c-app": 234
       }
     },
@@ -500,7 +500,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 132,
+        "b-app": 133,
         "c-app": 37
       }
     },
@@ -626,7 +626,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 213,
+        "b-app": 212,
         "c-app": 69
       }
     },
@@ -1352,7 +1352,7 @@
         "justify-content": "center"
       },
       "usage": {
-        "b-app": 21,
+        "b-app": 22,
         "c-app": 22
       }
     },
@@ -1370,7 +1370,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 91,
+        "b-app": 92,
         "c-app": 37
       }
     },
@@ -1915,7 +1915,7 @@
       "name": "sh-add",
       "file": "packages/ui/src/components/sh-add.vue",
       "scope": "跨端",
-      "lines": 80,
+      "lines": 97,
       "props": [
         "text: string",
         "activeText?: string",
@@ -1931,14 +1931,14 @@
       "why": "收编自 goods-edit 与 my-specs 里**逐字节相同**的 `.btn-add`。`active` 是展开态：同一个按钮管开合",
       "uses": {
         "tiers": [
-          "txt-bold",
-          "txt-caption"
+          "txt-strong"
         ],
         "rawFontSize": [],
         "spacing": [
           2,
           4,
-          8
+          8,
+          24
         ],
         "radius": [],
         "deps": [
@@ -1946,13 +1946,13 @@
         ]
       },
       "rootClasses": [
-        "add"
+        "add",
+        "sh-center"
       ],
       "rootDecl": {
-        "display": "flex",
-        "align-items": "center",
         "gap": "8rpx",
-        "padding": "8rpx 24rpx",
+        "box-sizing": "border-box",
+        "padding": "24rpx",
         "border-radius": "9999px",
         "background": "var(--sh-primary-tint)"
       }
@@ -2210,7 +2210,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 17,
+        "b-app": 16,
         "c-app": 0,
         "lib": 0
       },
@@ -2532,10 +2532,11 @@
       "name": "sh-scaffold",
       "file": "packages/ui/src/components/sh-scaffold.vue",
       "scope": "跨端",
-      "lines": 314,
+      "lines": 332,
       "props": [
         "padded?: boolean",
         "titleKey?: string",
+        "titleSuffix?: string",
         "tab?: string",
         "denied?: boolean",
         "deniedText?: string",
@@ -3139,7 +3140,7 @@
         "readonly?: boolean"
       ],
       "usage": {
-        "b-app": 9,
+        "b-app": 7,
         "c-app": 0,
         "lib": 0
       },
@@ -3871,9 +3872,9 @@
         "biz-item-picker",
         "biz-supplier-picker"
       ],
-      "libClassHits": 37,
-      "localSelectors": 9,
-      "localCssLines": 31,
+      "libClassHits": 38,
+      "localSelectors": 8,
+      "localCssLines": 28,
       "rolled": []
     },
     {
@@ -4053,8 +4054,7 @@
         "sh-icon",
         "sh-scaffold",
         "sh-stat",
-        "sh-tabs",
-        "biz-store-tag"
+        "sh-tabs"
       ],
       "libClassHits": 37,
       "localSelectors": 21,
@@ -4070,10 +4070,9 @@
         "sh-actionbar",
         "sh-check",
         "sh-empty",
-        "sh-scaffold",
-        "biz-store-tag"
+        "sh-scaffold"
       ],
-      "libClassHits": 59,
+      "libClassHits": 57,
       "localSelectors": 8,
       "localCssLines": 30,
       "rolled": []

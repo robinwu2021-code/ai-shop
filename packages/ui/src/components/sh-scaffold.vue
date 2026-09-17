@@ -12,6 +12,18 @@ const props = withDefaults(
     /** 导航栏标题的 i18n key。pages.json 的 navigationBarTitleText 是静态的，
      *  切语言必须运行时改写，否则标题永远停在建包时那门语言。 */
     titleKey?: string;
+    /**
+     * 标题后面缀一段**运行时才知道的字**，如「库存 · 福田店」。
+     *
+     * <p>为什么不是再开一个 titleKey：门店名不是词条，它是数据。
+     * 而这一段存在的理由是**腾出首屏那一行** —— 门店维度的页面本来要在正文顶部
+     * 挂一枚「当前门店」胶囊（`biz-store-tag`），那一行在列表页上很贵。
+     * 缀进标题栏一个像素都不占，而「我在哪家店」还答得出。
+     *
+     * <p>⚠️ 它<b>不改变</b>那条不变量：门店维度的页面必须让人看得见自己在哪家店。
+     * `biz-store-scope` 闸门认这两种写法中的任意一种，认不到仍然红。
+     */
+    titleSuffix?: string;
     /** 传入即渲染自定义底部菜单，值为当前高亮的 tab key */
     tab?: string;
     /**
@@ -104,7 +116,11 @@ const canBack = computed(() => {
   }
 });
 
-const navTitle = computed(() => (props.titleKey ? String(t(props.titleKey)) : ""));
+const navTitle = computed(() => {
+  if (!props.titleKey) return "";
+  const base = String(t(props.titleKey));
+  return props.titleSuffix ? `${base} · ${props.titleSuffix}` : base;
+});
 
 function goBack() {
   uni.navigateBack();
@@ -112,7 +128,7 @@ function goBack() {
 
 function applyTitle() {
   if (!props.titleKey) return;
-  uni.setNavigationBarTitle({ title: String(t(props.titleKey)) });
+  uni.setNavigationBarTitle({ title: navTitle.value });
 }
 
 // 导航栏颜色/标题在 onLaunch 时可能还没就绪，每页挂载时补一次
@@ -131,6 +147,8 @@ watch(() => app.lang, applyTitle);
  * 导航栏却一直写着「新建商品」，两个标题在同一屏上互相矛盾。
  */
 watch(() => props.titleKey, applyTitle);
+// 门店名是异步拉回来的：不跟着它重刷，标题会一直停在没有后缀的那一版
+watch(() => props.titleSuffix, applyTitle);
 </script>
 
 <template>

@@ -233,13 +233,25 @@ function openItem(b: StockBalance) {
   uni.navigateTo({ url: `/pages/stock-detail/index?itemId=${encodeURIComponent(b.itemId)}` });
 }
 
-onShow(load);
+/*
+ * 门店名现在缀在标题栏上（原本是正文顶部那枚 biz-store-tag 胶囊）。
+ * **胶囊自己会在 onMounted 里拉门店，标题不会** —— 这一行是它搬家之后
+ * 留下的空缺：不补的话冷启动时 currentStore 还没回来，标题就一直是
+ * 没有后缀的那一版，而「我在哪家店」正是它要答的。
+ */
+onShow(() => {
+  void merchant.ensureStores();
+  load();
+});
 </script>
 
 <template>
-  <sh-scaffold title-key="stock.title" :denied="!merchant.can('biz:stock')">
+  <sh-scaffold
+    title-key="stock.title"
+    :title-suffix="merchant.multiStore ? merchant.currentStore?.name : ''"
+    :denied="!merchant.can('biz:stock')"
+  >
     <!-- 库存是这家店的：不标出来，人会照着另一家的数去补货 -->
-    <biz-store-tag readonly></biz-store-tag>
     <!--
       总览卡：**只有数**。原来它下面还挂着一排等大的文字链接（单据/跨店/报表/库位/供应商），
       那五个一周到一月才用一次，却常年占着这一屏 —— 已经全部收进贴底条的「更多」里。
@@ -258,9 +270,6 @@ onShow(load);
         @change="pickStat"
       ></sh-stat>
       <!-- 跨店贴在数字下沿：人才在该找它的地方找到它。只给开了不止一家店的商家 -->
-      <view v-if="entries.cross" class="ov__cross" @tap="go(entries.cross.route)">
-        <sh-go :text="String($t('stock.crossGo'))"></sh-go>
-      </view>
     </view>
 
     <sh-tabs :items="TABS" :active="filter" @change="pickFilter"></sh-tabs>

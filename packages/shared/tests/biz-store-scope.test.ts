@@ -66,7 +66,18 @@ function scopedCallsOf(dir: string): string[] {
 }
 
 const ALL_DIRS = readdirSync(PAGES).filter((d) => existsSync(join(PAGES, d)));
-const RENDERS_TAG = /<biz-store-tag\b/;
+/*
+ * **不变量是「店主看得见自己在哪家店」，不是「页面里有这个组件」。**
+ *
+ * 两种写法都算数：
+ *   · `<biz-store-tag readonly>` —— 正文顶部一枚胶囊，多数页面用它；
+ *   · `<sh-scaffold :title-suffix>` —— 缀进标题栏「库存 · 福田店」。
+ *     列表页的首屏很贵，胶囊那一行常被要求去掉（2026-09-17 店主提的），
+ *     而直接删掉就把不变量一起删了。缀进标题不占像素，答案还在。
+ *
+ * 认不到任何一种仍然红 —— 放宽的是表达，不是要求。
+ */
+const RENDERS_TAG = /<biz-store-tag\b|title-suffix\s*=/;
 
 describe("B 端门店维度", () => {
   it("★★★ 清单必须与代码算出来的一致 —— 手写的清单会慢慢变成三条谎话", () => {

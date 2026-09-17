@@ -32,22 +32,33 @@ const label = computed(() => (props.active && props.activeText ? props.activeTex
 </script>
 
 <template>
-  <view class="add" :class="{ 'add--on': active, 'add--sm': small }" @tap="$emit('tap')">
+  <!-- 横排居中挂 .sh-center（库件），不在下面再敲一遍 display/align/justify -->
+  <view class="add sh-center" :class="{ 'add--on': active, 'add--sm': small }" @tap="$emit('tap')">
     <sh-icon
       :name="active ? 'close' : 'plus'"
       :size="small ? 20 : 24"
       :color="active ? 'var(--sh-sub)' : 'var(--sh-primary)'"
     ></sh-icon>
-    <text class="txt-caption txt-bold add__t">{{ label }}</text>
+    <text class="txt-strong add__t">{{ label }}</text>
   </view>
 </template>
 
 <style scoped>
+/*
+ * **高度压在可点下限上（44px）。**
+ *
+ * 2026-09-17 之前是 8rpx 内边距 + 24rpx 字，量出来 25px ——
+ * 比 iOS 44pt / Android 48dp 的下限的一半还少，而它在进货/报损页上
+ * 是第一个要点的东西（店主：「添加商品按钮有点扁」）。
+ *
+ * 算式：24rpx×2 + 28rpx×1.4 = 87.2rpx = 43.6px。字号跟着上到 .txt-strong
+ * （字阶里「需要比正文重一档的行」那一档，按钮正是它）—— 主操作不该比正文还小。
+ * 宽度不用管：display:flex 本来就是块级，实测已经占满整行（351px）。
+ */
 .add {
-  display: flex;
-  align-items: center;
   gap: 8rpx;
-  padding: 8rpx 24rpx;
+  box-sizing: border-box;
+  padding: 24rpx;
   border-radius: 9999px;
   background: var(--sh-primary-tint);
 }
@@ -62,7 +73,13 @@ const label = computed(() => (props.active && props.activeText ? props.activeTex
 .add--on {
   background: transparent;
   border: 2rpx solid var(--sh-line);
-  padding: 8rpx 20rpx;
+  /*
+   * 描边不改变盒高：`box-sizing: border-box` 让那 2rpx 长在内边距里，
+   * 内边距因此**不用减**。上一版是减 2rpx（22rpx），而间距必须落在 4rpx 网格上 ——
+   * 凑一个 20rpx 会让描边态矮 4rpx，这才是真正要防的那件事（按钮在展开那一下抖）。
+   */
+  box-sizing: border-box;
+  padding: 24rpx;
 }
 /* 小一号：跟在一排 chip 后面时不该比它们高（goods-edit 的「＋ 加值」就是这个位置） */
 .add--sm {

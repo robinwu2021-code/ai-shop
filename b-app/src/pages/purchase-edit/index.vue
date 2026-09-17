@@ -205,7 +205,12 @@ onShow(load);
         <text :class="supplier ? 'txt-body' : 'sh-muted'">
           {{ supplier ? supplier.name : $t("purchase.supplierPh") }}
         </text>
-        <text class="sh-muted">{{ $t("common.change") }}</text>
+        <!--
+          右边是「›」而不是「更换」：全站「点进去选」的行都用这个记号，
+          不用读字就知道它会弹东西。写「更换」的毛病是**还没选过时它是句空话** ——
+          于是这一行读起来像个能打字的框（2026-09-17 店主：「供应商要选择列表」）。
+        -->
+        <text class="sh-muted">›</text>
       </view>
       <text class="sh-hint">{{ $t("purchase.supplierHint") }}</text>
     </view>
@@ -264,7 +269,7 @@ onShow(load);
       <view class="btns">
         <view class="sh-btn sh-btn--muted sh-fill" @tap="save(false)">{{ $t("purchase.draft") }}</view>
         <view
-          class="sh-btn flex14"
+          class="sh-btn sh-fill"
           :class="{ 'sh-btn--muted': !lines.length || busy }"
           @tap="save(true)"
         >
@@ -323,9 +328,6 @@ onShow(load);
   gap: 20rpx;
 }
 
-.flex14 {
-  flex: 1.4;
-}
 .hint {
   padding: 0 4rpx;
 }

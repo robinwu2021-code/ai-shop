@@ -36,8 +36,15 @@ describe("stock-entries", () => {
 
     const many = stockEntries({ can: boss, multiStore: true, canStartCount: true, usableLocations: 3 });
     expect(many.cross?.key).toBe("cross");
-    // 它是「看」不是「去办一件事」：不该混进那六条里，也不在底下那条
-    expect(keys(many.more)).not.toContain("cross");
+    /*
+     * ★ **2026-09-17 收进抽屉**（店主：库存页顶部要简洁）。
+     * 它原本贴在总览卡的四个数下面，占着首屏一整行。
+     *
+     * **不是删掉** —— 它是跨店总览那一页的唯一入口，删了就再也进不去。
+     * `cross` 这个返回值仍然留着：页面用它判断「要不要在抽屉里摆这一条」，
+     * 而不是自己再算一遍 multiStore。
+     */
+    expect(keys(many.more)).toContain("cross");
     expect(keys(many.primary)).not.toContain("cross");
   });
 
@@ -74,7 +81,8 @@ describe("stock-entries", () => {
     // 报表要 biz:customer、库位要 biz:store:admin —— 店员两条都看不见
     expect(keys(more)).not.toContain("report");
     expect(keys(more)).not.toContain("locations");
-    expect(keys(more)).toEqual(["docs", "suppliers"]);
+    // 店员也是多门店商家的店员，跨店那一条跟着 multiStore 走
+    expect(keys(more)).toEqual(["docs", "suppliers", "cross"]);
     expect(keys(primary)).toEqual(["purchase", "out", "check", "transfer"]);
   });
 
