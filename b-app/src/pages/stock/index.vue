@@ -122,6 +122,12 @@ function pickFilter(key: string) {
  * 点「滞销」给出的列表里混着缺货 —— 数字说一个数，点下去给另一个，且不报错。
  *
  * 再点一次回到「全部」：点了没有退路的筛选很容易把人困住。
+ *
+ * ⚠️ **事件名是 `change` 不是 `pick`**（2026-09-17 修）。这一页此前写的是
+ * `@pick`，而 `sh-stat` 从来只 emit `change` —— `pick` 那个名字留给了 picker 一族
+ * （「挑中了这一个，给你」）。于是四个数字点下去**一点反应都没有**：
+ * 没有报错、`vue-tsc` 也不报（未声明的 `@pick` 只是个落到根节点上的普通属性），
+ * 而文件头那句「三个数字即入口」还写着它是能点的。
  */
 function pickStat(key: string) {
   // 在途不是本页的筛选 —— 那批货既不在 A 也不在 B，列表里没有它。
@@ -198,7 +204,12 @@ const urgent = computed(() =>
  */
 const barPad = computed(() => 140 + urgent.value.length * 88);
 
+/**
+ * 走到另一页。**先把菜单收起来** —— 开着菜单点「进货」，回来时菜单还摊在那儿，
+ * 而人并不记得自己开过它（H5 mock 上验到的：点进货再返回，六行还摊开着）。
+ */
 function go(route: string) {
+  moreOpen.value = false;
   uni.navigateTo({ url: route });
 }
 
@@ -243,7 +254,7 @@ onShow(load);
           { key: 'stale', value: summary?.staleCount ?? '—', label: String($t('stock.statStale')) },
           { key: 'transit', value: summary?.inTransitCount ?? '—', label: String($t('stock.statTransit')), tone: 'warn' },
         ]"
-        @pick="pickStat"
+        @change="pickStat"
       ></sh-stat>
       <!-- 跨店贴在数字下沿：人才在该找它的地方找到它。只给开了不止一家店的商家 -->
       <view v-if="entries.cross" class="ov__cross" @tap="go(entries.cross.route)">
