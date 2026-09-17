@@ -130,6 +130,22 @@ export interface OrderPreview {
   amount: OrderAmount;
   /** 试算出来的订单行，含赠品行（价格 0）。数量与下单后落库的一致 */
   items: OrderItem[];
+  /**
+   * 按商家拆出来的子单，**带后端为每家配好的自提点**。
+   *
+   * 买家不再挑自提点：地址决定他在哪，点由后端按
+   * 「这家商家承接哪些 ∩ 归属链上 ∩ 离他最近」配出来，属于多个就是多个。
+   * 端上据此按**取货点**分组显示 —— 要在付款前说清楚「本单几个取货点」，
+   * 等下单响应才知道就晚了，那时钱已经付了。
+   *
+   * `pickupNo` 为空 = 这家在买家那一带没有可用的点，付款前就要标出来。
+   */
+  subOrders?: Array<{
+    merchantNo?: string;
+    merchantName?: string;
+    pickupNo?: string;
+    pickupName?: string;
+  }>;
 }
 /**
  * 结算页的<b>能力提示</b>：这一车货能不能开票、能用哪些支付方式、额度还够不够。

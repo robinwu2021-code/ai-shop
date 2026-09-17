@@ -156,7 +156,11 @@ export interface ShopApi {
    * 而同一个微信再进来是一个全新账号。
    */
   deregister(): Promise<void>;
-  bindCommunity(communityNo: string, pickupNo: string): Promise<User>;
+  /**
+   * 绑定聚落。**`pickupNo` 可空** —— 买家选的是地址，聚落由地址坐标推出来；
+   * 自提点是履约期的事，下单那一刻由后端按规则匹配。
+   */
+  bindCommunity(communityNo: string, pickupNo?: string): Promise<User>;
 
   // ---- 地址簿（送货上门 / 快递的前置）
   /**

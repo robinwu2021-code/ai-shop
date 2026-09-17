@@ -128,7 +128,12 @@ export const useLocationStore = defineStore("location", {
         .catch(() => null);
       const c = list.find((x) => x.communityNo === ctx?.innermostNo) ?? list[0];
       const p = c?.pickups?.[0];
-      if (c && p) await community.bind(c, p);
+      /*
+       * **只要解析出聚落就绑**。此前是 `if (c && p)` ——
+       * 聚落没有自提点时整个不绑，用户静默看不到任何货。
+       * 点由下单时匹配，这里不再替他挑一个（那等于让数组顺序决定佣金归谁）。
+       */
+      if (c) await community.bind(c, p);
       /*
        * 解析不出地名时给一句「当前位置」而不是空串：顶栏那一行**任何时候都要有内容**，
        * 空着会让人以为页面没加载完，而这里恰恰是「已经切过去了」。
@@ -189,7 +194,8 @@ export const useLocationStore = defineStore("location", {
       const ctx = await api.resolveLocation(a.latE6, a.lngE6).catch(() => null);
       const c = list.find((x) => x.communityNo === ctx?.innermostNo) ?? list[0];
       const p = c?.pickups?.[0];
-      if (c && p) {
+      // 同上：有聚落就绑得上，点交给下单时匹配
+      if (c) {
         await community.bind(c, p);
         return true;
       }

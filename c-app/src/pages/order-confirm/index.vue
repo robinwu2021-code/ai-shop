@@ -181,6 +181,18 @@ const merchantSegments = computed(() => segmentByMerchant(items.value));
  */
 const serverAmount = ref<OrderAmount | null>(null);
 /**
+ * 后端为这一单配好的自提点，**按取货点分组**。
+ *
+ * 买家不再挑点（TDD-C端位置选择-地址取代自提点）：地址决定他在哪，
+ * 点由后端按「这家商家承接哪些 ∩ 归属链上 ∩ 离他最近」配出来。
+ * 属于多个就是多个 —— 子单本来就按商家拆，各落各的。
+ *
+ * <b>两家配到同一个点要合并成一组</b>：按商家分会让人以为要跑两趟。
+ */
+const pickupGroups = ref<Array<{ pickupNo: string; pickupName: string; merchants: string[] }>>([]);
+/** 后端没给点的那几家 —— 它们在这一带没有可用的取货点，付款前就要说 */
+const pickupMissing = ref<string[]>([]);
+/**
  * 试算是不是**在途**，以及上一次有没有失败。
  *
  * 金额会随地址、券、积分、支付方式一起变，每变一次就要重问一次后端。
@@ -311,6 +323,35 @@ const amount = computed(() => serverAmount.value ?? localEstimate.value);
  * 屏幕上是**上一次的价**，而页面看起来完全正常（金额有、没报错、也不转圈）。
  * 这种错只在网络慢的那一台手机上出现，本机永远复现不了。
  */
+/**
+ * 把预览回来的子单按**取货点**归并。
+ *
+ * 两家配到同一个点时合并成一组 —— 按商家分组会让买家以为要跑两趟，
+ * 而他只需要去一个地方。没配到点的那几家单列，付款前就标出来。
+ */
+function applyPickupGroups(subs: Array<{ merchantName?: string; pickupNo?: string; pickupName?: string }>) {
+  if (!needPickup.value) {
+    pickupGroups.value = [];
+    pickupMissing.value = [];
+    return;
+  }
+  const byPoint = new Map<string, { pickupNo: string; pickupName: string; merchants: string[] }>();
+  const missing: string[] = [];
+  for (const sub of subs) {
+    const name = sub.merchantName ?? "";
+    if (!sub.pickupNo) {
+      missing.push(name);
+      continue;
+    }
+    const g = byPoint.get(sub.pickupNo)
+      ?? { pickupNo: sub.pickupNo, pickupName: sub.pickupName ?? sub.pickupNo, merchants: [] };
+    g.merchants.push(name);
+    byPoint.set(sub.pickupNo, g);
+  }
+  pickupGroups.value = [...byPoint.values()];
+  pickupMissing.value = missing;
+}
+
 let amountSeq = 0;
 async function refreshAmount() {
   if (!items.value.length) {
@@ -324,7 +365,7 @@ async function refreshAmount() {
     const p = await api.orderPreview({
       items: items.value.map((it) => ({ goodsNo: it.goodsNo, skuNo: it.skuNo, qty: it.qty })),
       fulfillment: fulfillment.value,
-      pickupNo: needPickup.value ? community.pickup?.pickupNo : undefined,
+      // **不传 pickupNo**：点由后端配。传一个端上挑的，等于让数组顺序决定佣金归谁
       addressId: needAddress.value ? addressId.value : undefined,
       couponNo: couponNo.value || undefined,
       payMode: payMode.value,
@@ -334,6 +375,7 @@ async function refreshAmount() {
     if (seq !== amountSeq) return;
     serverAmount.value = p.amount;
     amountStale.value = false;
+    applyPickupGroups(p.subOrders ?? []);
   } catch {
     if (seq !== amountSeq) return;
     // 预览失败不挡下单：兜底显示本地估算，真实金额在提交时由后端定 —— 但要说出来
@@ -359,7 +401,7 @@ async function refreshCapability() {
     const cap = await api.orderCapability({
       items: items.value.map((it) => ({ goodsNo: it.goodsNo, skuNo: it.skuNo, qty: it.qty })),
       fulfillment: fulfillment.value,
-      pickupNo: needPickup.value ? community.pickup?.pickupNo : undefined,
+      // 不传 pickupNo：由后端按地址逐个商家配（与 preview 同一套规则）
     });
     // 同 refreshAmount：过期响应整份丢掉，否则「改成快递」之后
     // 迟到的自提能力会把当面付那个选项又放回屏幕上
@@ -522,9 +564,17 @@ async function submit() {
    *
    * 这里把他直接送到选社区页，那页有「查看全部已开通社区」的出路。
    */
-  if (needPickup.value && !community.pickup) {
-    uni.showToast({ title: String(t("confirm.pickPickupFirst")), icon: "none" });
-    setTimeout(() => uni.navigateTo({ url: ROUTES.community }), 800);
+  /*
+   * **不再拦「你还没选自提点」** —— 买家已经不选点了（点由后端按地址匹配）。
+   * 真正会挡住他的是「这一带配不出点」，那时后端点名是哪一家，
+   * 而这里拦的话只会把他送去一个已经没有选择功能的页面。
+   */
+  if (needPickup.value && pickupMissing.value.length) {
+    uni.showToast({
+      title: String(t("confirm.pickupNoneFor", { names: pickupMissing.value.join("、") })),
+      icon: "none",
+      duration: 3000,
+    });
     return;
   }
   /*
@@ -549,7 +599,7 @@ async function submit() {
         qty: it.qty,
       })),
       fulfillment: fulfillment.value,
-      pickupNo: needPickup.value ? community.pickup?.pickupNo : undefined,
+      // 同上：点由后端配
       addressId: needAddress.value ? addressId.value : undefined,
       couponNo: couponNo.value || undefined,
       payMode: payMode.value,
@@ -655,13 +705,27 @@ onMounted(async () => {
     <view class="sh-card">
       <text class="sh-chip sh-chip--primary">{{ $t(`fulfillment.${fulfillment}`) }}</text>
 
-      <!-- 自提 -->
+      <!--
+        自提：**按取货点分组，且在付款前**。
+        两家配到同一个点要合并成一组 —— 按商家分会让人以为要跑两趟，
+        而他只需要去一个地方。属于多个点时说清是几个。
+      -->
       <view v-if="needPickup" class="recv">
-        <text class="txt-strong">{{ community.pickup?.name }}</text>
-        <text class="txt-caption recv__sub">
-          {{ community.hostName }} · {{ community.pickup?.arrivalDesc }}
+        <text v-if="pickupGroups.length > 1" class="txt-caption recv__multi">
+          {{ $t("confirm.pickupGroups", { n: pickupGroups.length }) }}
         </text>
-        <text class="txt-caption recv__sub">{{ community.pickup?.address }}</text>
+        <view v-for="g in pickupGroups" :key="g.pickupNo" class="recv__group">
+          <text class="txt-strong">{{ g.pickupName }}</text>
+          <text class="txt-caption recv__sub">{{ g.merchants.join("、") }}</text>
+        </view>
+        <!-- 配不出点的那几家：付款前就说，别等他付完钱 -->
+        <text v-if="pickupMissing.length" class="txt-caption recv__warn">
+          {{ $t("confirm.pickupNoneFor", { names: pickupMissing.join("、") }) }}
+        </text>
+        <!-- 还没算出来（首屏/改地址中）：别显示一个空块让人以为坏了 -->
+        <text v-if="!pickupGroups.length && !pickupMissing.length" class="txt-caption recv__sub">
+          {{ $t("confirm.pickupMatching") }}
+        </text>
       </view>
 
       <!-- 送货上门 / 快递 -->

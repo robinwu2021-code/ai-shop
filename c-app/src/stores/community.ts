@@ -22,7 +22,14 @@ export const useCommunityStore = defineStore("community", {
   }),
 
   getters: {
-    bound: (s) => !!s.pickup,
+    /**
+     * 绑没绑 = **有没有位置**，不是有没有自提点。
+     *
+     * 此前判的是 `!!s.pickup`，于是一个没有自提点的聚落里的人
+     * 永远算「没绑」—— 而他明明选好了地址。自提点已经改成下单时匹配
+     * （TDD-C端位置选择-地址取代自提点）。
+     */
+    bound: (s) => !!s.community,
     /** 承接自提点的商家名（ADR-005：承接方是入驻商家，不再是团长） */
     hostName: (s) => s.pickup?.hostName ?? "",
   },
@@ -89,13 +96,14 @@ export const useCommunityStore = defineStore("community", {
      *
      * <p>所以：未登录只存本地，登录时再补同步（见 {@link syncBinding}）。
      */
-    async bind(community: Community, pickup: Pickup) {
+    async bind(community: Community, pickup?: Pickup | null) {
       const user = useUserStore();
       if (user.isLogin) {
-        await api.bindCommunity(community.communityNo, pickup.pickupNo);
+        // 不传点：后端只写聚落，并**清掉**上一个聚落留下的点
+        await api.bindCommunity(community.communityNo, pickup?.pickupNo);
       }
       this.community = community;
-      this.pickup = pickup;
+      this.pickup = pickup ?? null;
     },
 
     /**
