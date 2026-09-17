@@ -870,7 +870,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 32,
+        "b-app": 33,
         "c-app": 3
       }
     },
@@ -4056,7 +4056,7 @@
         "sh-stat",
         "sh-tabs"
       ],
-      "libClassHits": 37,
+      "libClassHits": 38,
       "localSelectors": 20,
       "localCssLines": 78,
       "rolled": []
