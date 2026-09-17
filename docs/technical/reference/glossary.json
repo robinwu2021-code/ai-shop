@@ -19605,6 +19605,12 @@
           "ar": "هذا العنوان خارج نطاق توصيل المتجر — غيّر العنوان أو طريقة التوصيل"
         },
         {
+          "key": "err.trade.pickup_point_none_for_merchant",
+          "zh-CN": "{0} 在你这一带没有可用的取货点，换个送货方式或先把它的商品移出本单",
+          "en": "{0} has no usable pickup point near you — switch fulfilment or remove its items from this order",
+          "ar": "لا توجد نقطة استلام متاحة لـ {0} بالقرب منك — غيّر طريقة الاستلام أو أزل منتجاته من الطلب"
+        },
+        {
           "key": "err.trade.pickup_point_not_served",
           "zh-CN": "这家店不送到你选的自提点，换一个试试",
           "en": "This shop does not deliver to the pickup point you chose — pick another",
@@ -26559,6 +26565,7 @@
           "PICKUP_POINT_REQUIRED",
           "PICKUP_POINT_NOT_SERVED",
           "PICKUP_COMMUNITY_REQUIRED",
+          "PICKUP_POINT_NONE_FOR_MERCHANT",
           "CHANNEL_LOCKED",
           "STORE_ADDRESS_REQUIRED",
           "PICKUP_LANDING_REQUIRED",

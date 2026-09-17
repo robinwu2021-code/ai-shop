@@ -115,6 +115,12 @@ export const applies: MerchantApply[] = [
     // ← 服务范围空着：通过时运营必须补，否则这家店对谁都不可见
     licenses: ["https://cdn/license-903.jpg"], asPickupPoint: false, status: "PENDING",
     createdAt: Date.parse("2026-08-01T01:00:00Z"),
+    /*
+     * ★ 代填单（三期）。**种子里必须有一张** —— 不然「这单是运营代录的」
+     * 那条提示在开发期一次也演不出来，而它恰恰是审核员最需要看到的一条。
+     * agreedAt 留空是对的：运营不能替商户勾，等他首次登录自己补。
+     */
+    onBehalf: true,
   },
 ];
 

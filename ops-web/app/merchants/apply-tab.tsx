@@ -207,6 +207,27 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
                   <StatusBadge value={current.status} map={STATUS_MAP} />
                 </Field>
               </FieldGrid>
+              {/*
+                ★ **代填标记**（三期）。摆在资料正文之前，因为它改变的是
+                「这份资料该怎么读」：下面每一格都不是商户自己录的。
+
+                代填这件事的全部风险就在核验这一步 —— 资料是运营录的，
+                核验不该也是同一个人。后端按 submitted_by 拦自审（403），
+                所以这条提示不是装饰：它解释了你可能会被拒的原因。
+              */}
+              {current.onBehalf && (
+                <Notice tone="warning" className="mt-3">
+                  {c.applyOnBehalf}
+                  {/*
+                    协议状态跟着代填一起说。分开放两处的话，
+                    「这单是代填的」与「协议还没人勾」会被当成两件不相干的事 ——
+                    而后者正是前者的必然结果（运营不能替商户勾）。
+                  */}
+                  <span className="mt-1 block txt-caption">
+                    {current.agreedAt ? c.applyAgreed : c.applyNotAgreed}
+                  </span>
+                </Notice>
+              )}
               <p className="mt-2 txt-body text-[var(--muted)]">{current.desc}</p>
               {current.asPickupPoint && <Badge className="mt-2">{c.applyAsPickup}</Badge>}
               {current.rejectReason && (
