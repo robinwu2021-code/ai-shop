@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 13 个权限点 × 178 个受控端点**。
+统计：**6 个角色 × 13 个权限点 × 179 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -16,7 +16,7 @@
 
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
-| `STOCK` | 改库存（含门店库存） | 36 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `STOCK` | 改库存（含门店库存） | 37 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 27 | ✅ | ✅ | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 20 | ✅ | ✅ | — | — | — | — |
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 20 | ✅ | — | — | — | — | — |
@@ -48,6 +48,7 @@
 - `/biz/inventory/counts/{no}`
 - `/biz/inventory/counts/{no}/lines`
 - `/biz/inventory/counts/{no}/post`
+- `/biz/inventory/counts/{no}/void`
 - `/biz/inventory/cross-store`
 - `/biz/inventory/documents`
 - `/biz/inventory/inbounds`
