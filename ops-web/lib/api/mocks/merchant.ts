@@ -186,6 +186,28 @@ export const merchantMock: MerchantApi = {
    * 只「每次新建一个」的话，「连点两次会怎样」这件事在开发期永远演不出来，
    * 而那正是这个入口最需要看清的一种行为。
    */
+  /**
+   * 代商家进件。**mock 里也拦执照**，而且拦的条件与后端同口径
+   * （`requireLicenseIfNeeded`：只在客户端传了 qualificationItems 时生效）——
+   * 不拦的话，开发期永远演不出「代填不放宽证件」这条，而那是这一期的全部要点。
+   */
+  applyOnBehalf: async ({ phone, name, subject, qualificationItems }) => {
+    if (!/^1[3-9]\d{9}$/.test(phone ?? "")) {
+      fail("手机号格式不对，应为 11 位大陆手机号", "Invalid mainland China mobile number");
+    }
+    if (!name?.trim()) {
+      fail("主体名称不能为空", "Merchant name is required");
+    }
+    if (subject === "ENTERPRISE" && qualificationItems
+        && !qualificationItems.some((it) => it.type === "BUSINESS_LICENSE")) {
+      fail("企业主体必须上传营业执照", "Business license is required for enterprises");
+    }
+    return wait({
+      applyNo: `A9${String(Math.floor(Math.random() * 900) + 100)}`,
+      ownerUserNo: `U-${phone}`,
+    }, 500);
+  },
+
   createSelfOperated: async ({ phone, name, serviceScope, communityNos }) => {
     if (!/^1[3-9]\d{9}$/.test(phone ?? "")) {
       fail("手机号格式不对，应为 11 位大陆手机号", "Invalid mainland China mobile number");

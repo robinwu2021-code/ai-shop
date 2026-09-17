@@ -654,6 +654,17 @@ export interface SelfOperatedStore {
   payMerchantNo?: string | null;
 }
 
+/** 代商家进件的回执（三期）。**不是主体** —— 主体要等审核通过才存在。 */
+export interface ApplyOnBehalfResult {
+  /** 落库的申请单号。队列里就是这一张 */
+  applyNo: string;
+  /**
+   * 商户本人的 userNo。**可能是这一刻新建的** ——
+   * 界面上要据此提示「这个号是新开的，本人还不知道」。
+   */
+  ownerUserNo: string;
+}
+
 export interface SelfOperatedResult {
   /** 建出来（或幂等命中）的主体业务键 */
   merchantNo: string;

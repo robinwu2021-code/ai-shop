@@ -5412,6 +5412,24 @@ _无字段_
 | `at` | `string` | 是 | 处置时间 |
 
 
+#### POST `/ops/merchants/apply-on-behalf`
+
+**代商家提交入驻申请**（三期）
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ApplyOnBehalfResult`](#applyonbehalfresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `applyNo` | `string` | 是 | 落库的申请单号。队列里就是这一张 |
+| `ownerUserNo` | `string` | 是 | 商户本人的 userNo。**可能是这一刻新建的** —— 界面上要据此提示「这个号是新开的，本人还不知道」。 |
+
+
 #### GET `/ops/merchants/auth-codes`
 
 授权码目录
@@ -9331,6 +9349,15 @@ _无字段_
 | `fallbackLang` | `string` | 是 | 语言回落规则（R9）：缺译时回落到哪个语言 |
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
+
+### ApplyOnBehalfResult
+
+代商家进件的回执（三期）。**不是主体** —— 主体要等审核通过才存在。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `applyNo` | `string` | 是 | 落库的申请单号。队列里就是这一张 |
+| `ownerUserNo` | `string` | 是 | 商户本人的 userNo。**可能是这一刻新建的** —— 界面上要据此提示「这个号是新开的，本人还不知道」。 |
 
 ### ArrivalBatch
 

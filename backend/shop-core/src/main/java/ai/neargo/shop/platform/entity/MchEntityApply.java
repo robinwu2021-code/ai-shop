@@ -131,4 +131,26 @@ public class MchEntityApply extends BaseEntity {
      * 它决定商家<b>可选的主体类型</b> —— 线上业态不能选小微。
      */
     private String industry;
+
+    /**
+     * 代填人（{@code sys_user.user_no}）。<b>商户自己提交时为 NULL</b>。
+     *
+     * <p>运营代商家进件时记下是谁录的资料。审核那一步天然是另一个人看一眼 ——
+     * 而「资料是运营录的、核验也是同一个人」正是代填这件事最需要挡住的。
+     * 有了这一列，审核页才答得出「这份资料我该不该更仔细地看」。
+     *
+     * <p>商户后来自己补勾协议之后<b>也不清空</b>：它是历史，不是当前状态。
+     */
+    private String submittedBy;
+
+    /**
+     * 商户本人同意《商家服务协议》的时刻（毫秒）。<b>NULL = 尚未同意</b>。
+     *
+     * <p><b>运营不能代勾</b>：代填的单子这一列一律留空，等商户首次登录自己补。
+     *
+     * <p>⚠️ 存量行也全是 NULL —— 不是「都没同意」，是当时根本没记
+     * （登录页那一勾传到 {@code LoginCommand.agreed} 就断了）。
+     * 要把两者分开看 {@link #submittedBy}：它为 NULL 的才是存量自填单。
+     */
+    private Long agreedAt;
 }

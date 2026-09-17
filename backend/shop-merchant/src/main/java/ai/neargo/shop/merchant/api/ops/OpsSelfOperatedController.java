@@ -69,17 +69,22 @@ public class OpsSelfOperatedController {
     }
 
     /**
-     * 给平台自营主体再开一家门店。
-     *
-     * <p>第三方商家自己在 B 端开店，而平台自己的店没有「商家」去点那个按钮 ——
-     * 与建主体是同一个形状的缺口。<b>不走订阅额度、也不需要进件</b>，
+     * 在运营端给一个主体再开一家门店。<b>自营与第三方两支，只差订阅额度</b>，
      * 理由见 {@link SelfOperatedService#addStore}。
      *
-     * <p>复用 {@code merchant:selfop:create}：它回答的是同一个问题
-     * ——「平台要不要自己下场经营」，而不是两件事。
+     * <p><b>两个码都放行，而不是合成一个。</b>
+     * {@code merchant:selfop:create} 回答「平台要不要自己下场经营」，只给超管；
+     * {@code merchant:apply:onbehalf} 回答「谁来替第三方录资料」，是招商日常、要给 BD。
+     * 合成一个的话，要么 BD 顺手拿到了建平台自营主体的能力（放宽，且不报错），
+     * 要么 BD 替商家开不了店（那这一期等于没做）。
+     *
+     * <p>⚠️ 这里<b>不按码分支</b>：能不能开、开出来吃不吃额度由主体的
+     * {@code self_operated} 决定，不由调用者持哪个码决定。
+     * 让权限码去决定业务语义，是同一个动作有两种结果的开始。
      */
     @PostMapping("/ops/merchants/{merchantNo}/stores")
-    @PreAuthorize("@perm.can('" + Perms.MERCHANT_SELFOP_CREATE + "')")
+    @PreAuthorize("@perm.can('" + Perms.MERCHANT_SELFOP_CREATE + "')"
+            + " or @perm.can('" + Perms.MERCHANT_APPLY_ONBEHALF + "')")
     public SelfOperatedService.StoreVO addStore(@PathVariable String merchantNo,
                                                 @Valid @RequestBody AddStoreReq req) {
         String operator = SecurityUtils.currentUserNo();

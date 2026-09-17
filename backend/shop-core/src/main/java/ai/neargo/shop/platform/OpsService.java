@@ -145,6 +145,29 @@ public interface OpsService {
     String createApply(SubmitApplyCommand cmd);
 
     /**
+     * <b>运营代商家提交入驻申请</b>（三期）。BD 在店里把执照拍下来、当场替老板填完。
+     *
+     * <p>走的是 {@link #createApply} 同一条路 ——
+     * {@code requireSubjectAllowedByIndustry}、{@code requireLicenseIfNeeded}、
+     * {@code assertServiceScopeAllowed}、「一人一份进行中的申请」这几道闸一条都不放宽。
+     * <b>代填不是豁免</b>：自营能免证件是因为不存在第三方，而代填的时候第三方是存在的。
+     *
+     * <p>与自填只差两件事，都记在单子上：
+     * <ul>
+     *   <li>{@code submitted_by} 记下是谁录的 —— 审核那一步才知道该多看一眼；</li>
+     *   <li>{@code agreed_at} 留空 —— <b>运营不能替商户勾协议</b>，等他自己补。</li>
+     * </ul>
+     *
+     * <p><b>刻意不做「填完即激活」。</b> 制单与审核分离在这个仓库里是有先例的，
+     * 而代填恰恰最需要那一层：资料是运营录的，核验不该也是同一个人。
+     *
+     * @param cmd         与自填逐字相同的一份资料，{@code userNo} 是<b>商户本人</b>的
+     *                    （由手机号解析出来），不是运营的
+     * @param submittedBy 代填人 user_no，非空
+     */
+    String createApplyOnBehalf(SubmitApplyCommand cmd, String submittedBy);
+
+    /**
      * 我的入驻申请状态（C 端）。<b>此前提交完就查不到了</b> ——
      * 商家不知道审到哪一步，只能打电话问运营。
      *

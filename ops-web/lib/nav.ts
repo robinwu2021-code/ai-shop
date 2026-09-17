@@ -125,6 +125,11 @@ export const NAV: NavSection[] = [
       // 放到别处会让人以为「建自营」和「建商家」是两套模型。
       // 码单列且不配给任何角色，于是只有超管点得动，见 Perms.MERCHANT_SELFOP_CREATE。
       { href: "/merchants?tab=self-operated", label: "建平台自营商家", perm: "merchant:selfop:create", group: "入驻与资质", matrix: "P-11.1", ready: true },
+      // 代商家进件：BD 在店里替老板填完，落进**同一条审核队列**。
+      // 与上面那条刻意分码：那个回答「平台要不要自己下场经营」（只给超管），
+      // 这个回答「谁来替第三方录资料」（要给 BD）。合成一个码的话，
+      // 要么 BD 顺手拿到建平台自营主体的能力（放宽且不报错），要么这一期等于没做。
+      { href: "/merchants?tab=on-behalf", label: "代商家进件", perm: "merchant:apply:onbehalf", group: "入驻与资质", matrix: "P-11.1", ready: true },
       // 用 mode:read 而不是 merchant:read：这张表答的是「哪些店按自营结算」，
       // 与门店经营模式读的是同一个字段、同一批人在处置。
       // ⚠️ 该码目前归 BD 与超管，**财务看不到** —— 而这是一张税务表，

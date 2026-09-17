@@ -1370,6 +1370,8 @@ CREATE TABLE IF NOT EXISTS mch_entity_apply
     industry VARCHAR(24) DEFAULT NULL,
     qualification_items TEXT DEFAULT NULL,
     category_codes TEXT DEFAULT NULL,
+    submitted_by VARCHAR(64) NULL,
+    agreed_at BIGINT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_apply_no UNIQUE (apply_no),
     CONSTRAINT uk_apply_active_owner UNIQUE (active_owner)
@@ -8829,3 +8831,13 @@ SELECT 'OPS_MERCHANT__TAB_SELF_OPERATED', 'OPS_MERCHANT', '建平台自营商家
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'SUPER_ADMIN', 'OPS_MERCHANT__TAB_SELF_OPERATED', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MERCHANT__TAB_SELF_OPERATED');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MERCHANT__TAB_ON_BEHALF', 'OPS_MERCHANT', '代商家进件', '入驻与资质', '/merchants?tab=on-behalf', 'merchant:apply:onbehalf', 'merchant:apply:onbehalf', 'IMPLEMENTED', 1, 'P-11.1', 'MENU', 43, NOW(), NOW()
+  FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MERCHANT__TAB_ON_BEHALF');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MERCHANT__TAB_ON_BEHALF', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MERCHANT__TAB_ON_BEHALF');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'BD', 'OPS_MERCHANT__TAB_ON_BEHALF', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='BD' AND x.point_code='OPS_MERCHANT__TAB_ON_BEHALF');

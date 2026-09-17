@@ -43,6 +43,12 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
     private final MerchantQueryPort merchantQueryPort;
     /** 新店的货架。空 = 复制默认店的 —— 平台多开一家店卖的多半是同一批货 */
     private final StoreCategoryService storeCategoryService;
+    /**
+     * 订阅额度闸。**只在第三方那一支用** —— 额度是卖给商家的商品，
+     * 平台自己的店不该被自己的定价限制；而代建第三方的店要是不吃额度，
+     * 运营就能绕过商家给他凭空多开一家。
+     */
+    private final ai.neargo.shop.merchant.service.MerchantPlanService planService;
 
     public SelfOperatedServiceImpl(UserProvisionPort userProvision,
                                    MerchantAdminPort merchantAdminPort,
@@ -51,7 +57,8 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
                                    MchStoreMapper storeMapper,
                                    MasterDataPort masterDataPort,
                                    MerchantQueryPort merchantQueryPort,
-                                   StoreCategoryService storeCategoryService) {
+                                   StoreCategoryService storeCategoryService,
+                                   ai.neargo.shop.merchant.service.MerchantPlanService planService) {
         this.userProvision = userProvision;
         this.merchantAdminPort = merchantAdminPort;
         this.governService = governService;
@@ -60,6 +67,7 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
         this.masterDataPort = masterDataPort;
         this.merchantQueryPort = merchantQueryPort;
         this.storeCategoryService = storeCategoryService;
+        this.planService = planService;
     }
 
     @Override
@@ -196,14 +204,25 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         /*
-         * **只给平台自营主体开。**
+         * **两支：自营跳过额度，第三方照吃。**（三期把原来的硬拒改成了这里）
          *
-         * 放开给第三方的话，运营就能绕过商家替他开店、并吃掉他买的订阅额度，
-         * 而商家那边看不出是谁开的 —— 第三方开店的入口在 B 端
-         * （{@code POST /biz/store/create}），那里有额度闸、也有他自己的操作记录。
+         * 二期这里是「非自营一律拒」，理由是「运营能绕过商家吃掉他买的额度」。
+         * 那个理由现在由额度闸本身挡住，而不是由「不许代开」挡住 ——
+         * 三期要的就是运营能替商家开店（BD 在店里替老板配第二家）。
+         *
+         * **额度是这两支唯一的区别。** 订阅额度是卖给商家的商品：
+         * 平台自己的店不该被自己的定价限制；第三方的店一家就是一家，
+         * 代开不该让他凭空多出来一个。
+         *
+         * 超额时报的错是 requireStoreQuota 抛的额度错，**不是 BAD_REQUEST** ——
+         * 否则 BD 会站在店里反复改店名，以为是名字有问题。
          */
         if (!Integer.valueOf(1).equals(m.getSelfOperated())) {
-            throw BizException.of(ErrorCode.CONFLICT);
+            planService.requireStoreQuota(cmd.merchantNo(),
+                    () -> (int) DataScopeContext.executeWithoutScope(() ->
+                            storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                                    .eq(MchStore::getEntityNo, cmd.merchantNo())))
+                            .stream().filter(x -> MchStore.ACTIVE.equals(x.getStatus())).count());
         }
 
         /*

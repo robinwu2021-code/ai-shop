@@ -270,6 +270,23 @@ public class OpsServiceImpl implements OpsService {
         MchEntityApply apply = requireApply(applyNo);
 
         /*
+         * ★ **代填的人不能审自己填的那一张。**（三期）
+         *
+         * 代填这件事的全部风险就在这里：资料是运营录的，核验不该也是同一个人。
+         * 而<b>光靠角色配置挡不住</b> —— BD 同时持有 merchant:apply:audit
+         * 与 merchant:apply:onbehalf，两个码都在他手里，界面上两个入口都点得开。
+         * 所以这道闸钉在数据上（submitted_by vs 当前审核人），
+         * 不钉在权限表上：角色怎么配都绕不过去。
+         *
+         * 只拦「同一个人」，不拦「代填过的单子」—— 换个人审是正常流程，
+         * 拦掉它等于代填的单子永远审不了。
+         */
+        String auditor = SecurityUtils.currentUserNo();
+        if (apply.getSubmittedBy() != null && apply.getSubmittedBy().equals(auditor)) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+
+        /*
          * 通过时**先把服务范围定下来**，再走状态机。
          *
          * 商家申请时可以留空（ADR-009），但通过时不能空 —— 空的后果是
@@ -362,6 +379,27 @@ public class OpsServiceImpl implements OpsService {
     @Override
     @Transactional
     public String createApply(SubmitApplyCommand cmd) {
+        return doCreateApply(cmd, null);
+    }
+
+    @Override
+    @Transactional
+    public String createApplyOnBehalf(SubmitApplyCommand cmd, String submittedBy) {
+        if (submittedBy == null || submittedBy.isBlank()) {
+            /*
+             * 代填人为空就落成一张看不出是谁录的单子 —— 而「谁录的」正是这条路
+             * 与自填唯一的区别。宁可当场拒，也不要一张分辨不出来源的单子。
+             */
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return doCreateApply(cmd, submittedBy);
+    }
+
+    /**
+     * 自填与代填共用的那一份。**两条路只在末尾分叉**（submitted_by / agreed_at），
+     * 前面的几道闸一字不差 —— 抄一份出来的话，日后加一道闸只会加在其中一条上。
+     */
+    private String doCreateApply(SubmitApplyCommand cmd, String submittedBy) {
         /*
          * 一人同时只能有一份进行中的申请。
          * 先查是为了给出人话错误；**真正兜底的是 uk_apply_active_owner 唯一键** ——
@@ -398,6 +436,17 @@ public class OpsServiceImpl implements OpsService {
         apply.setIndustry(cmd.industry());
         apply.setStatus(MchEntityApply.PENDING);
         apply.setActiveOwner(cmd.userNo());   // 进行中才占名额，终态时置 NULL
+        /*
+         * 代填留痕。自填这条路写 NULL —— **不是"没记"，是"本人自己填的"**。
+         *
+         * agreed_at 两条路都不写：
+         *   · 代填：运营不能替商户勾协议，等他自己补（三期决策②）；
+         *   · 自填：今天的表单根本没有协议这一勾 —— 登录页那一勾传到
+         *     AuthService.LoginCommand.agreed 就断了，AuthServiceImpl 一次都没引用它。
+         * 所以这一列的语义是「有没有拿到过同意的凭据」，而今天两条路都还没有。
+         * 按"反正是他自己提交的所以算同意"去填，等于凭空造一条法律事实。
+         */
+        apply.setSubmittedBy(submittedBy);
         /*
          * **认领「待补证照」的占位主体**（无证照先开店那条路的收口）。
          *

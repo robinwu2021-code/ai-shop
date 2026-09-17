@@ -55,8 +55,14 @@ export const RULES = [
   // 于是只有持 "*" 的 SUPER_ADMIN 能用。不复用 merchant:admission:update：
   // 那个码 BD 手里有，而「平台成为这批货的销售主体」不该由招商日常决定
   ["POST", /^\/ops\/merchants\/self-operated$/, "merchant:selfop:create"],
-  // 给自营主体开店。**同一个码** —— 它回答的是同一个问题「平台要不要自己下场经营」，
-  // 而不是两件事。拆成两个码只会让配的人漏配其中一半
+  // 代商家提交入驻申请（BD 在店里替老板填）。**与 selfop 刻意分开的另一个码**：
+  // 那个回答「平台要不要自己下场经营」只给超管，这个回答「谁来替第三方录资料」要给 BD。
+  // 合成一个的话，要么 BD 顺手拿到建平台自营主体的能力（放宽且不报错），
+  // 要么 BD 代填不了（这一期等于没做）
+  ["POST", /^\/ops\/merchants\/apply-on-behalf$/, "merchant:apply:onbehalf"],
+  // 在运营端给主体开店。**两个码都放行** —— 自营与第三方两支只差订阅额度，
+  // 而「开出来吃不吃额度」由主体的 self_operated 决定，不由调用者持哪个码决定。
+  // 让权限码去决定业务语义，是同一个动作有两种结果的开始
   ["POST", /^\/ops\/merchants\/[^/]+\/stores$/, "merchant:selfop:create"],
   // 进件看板与人工回查：与准入同一拨人在管（都决定这家店能不能真把生意做成），
   // 复用 merchant:admission:*，不新增权限码

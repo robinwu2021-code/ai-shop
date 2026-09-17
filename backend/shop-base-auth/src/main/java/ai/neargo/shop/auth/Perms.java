@@ -294,6 +294,21 @@ public final class Perms {
      */
     public static final String MERCHANT_SELFOP_CREATE = "merchant:selfop:create";
 
+    /**
+     * <b>代商家提交入驻申请</b>（BD 在店里替老板填）。
+     *
+     * <p><b>与 {@link #MERCHANT_SELFOP_CREATE} 刻意分开</b>，虽然两个入口在界面上
+     * 长得几乎一模一样。那一个回答的是「平台要不要自己下场经营」——
+     * 建出来平台就是销售主体、售后进平台仲裁，所以只给超管。
+     * 这一个回答的是「谁来录这家第三方的资料」，是招商日常，要给 BD。
+     * 合成一个码的话，要么 BD 拿到了建平台自营主体的能力（放宽，且不报错），
+     * 要么 BD 代填不了（那这一期等于没做）。
+     *
+     * <p>代填<b>不放宽任何一道闸</b>：证件照要、进件照走、订阅额度照吃、
+     * 单子照进审核队列。它只改变「谁来填这张表」。
+     */
+    public static final String MERCHANT_APPLY_ONBEHALF = "merchant:apply:onbehalf";
+
     // ── 消息与客服 ──────────────────────────────────────────────────────────
     public static final String MESSAGE_TEMPLATE_READ = "message:template:read";
     public static final String MESSAGE_TEMPLATE_UPDATE = "message:template:update";
@@ -554,7 +569,16 @@ public final class Perms {
                     // MERCHANT_NUDGE（M2）：链条画像指出「这家卡在哪一层」之后的那个动作。
                     // 只给 BD —— 找到人之后打电话、发消息的就是他
                     MERCHANT_NUDGE,
-                    MERCHANT_APPLY_AUDIT, MERCHANT_CATEGORY_GRANT, MERCHANT_CATEGORY_READ,
+                    MERCHANT_APPLY_AUDIT,
+                    /*
+                     * 代商家进件（三期）。**BD 同时持有 APPLY_AUDIT 与 APPLY_ONBEHALF**，
+                     * 也就是同一个人既能制单又能审核 —— 而制单与审核分离正是这一期的论证。
+                     * 分离因此**钉在数据上而不是权限表上**：OpsServiceImpl.auditApply 里
+                     * 拦「submitted_by == 当前审核人」。角色怎么配都绕不过去，
+                     * 而把码从 BD 手里拿走只会让这一期没人用得了。
+                     */
+                    MERCHANT_APPLY_ONBEHALF,
+                    MERCHANT_CATEGORY_GRANT, MERCHANT_CATEGORY_READ,
                     MERCHANT_BAN, MERCHANT_READ, MERCHANT_MODE_READ, MERCHANT_MODE_UPDATE,
                     MERCHANT_FULFILLMENT_UPDATE,
                     MERCHANT_VERIFY_GRANT, ORDER_READ, STORE_PAGE_AUDIT,

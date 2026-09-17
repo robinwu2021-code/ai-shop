@@ -921,6 +921,20 @@ components:
         - "businessMode"
       additionalProperties: false
       description: "运营给平台自营主体开出来的门店。\n\n`payMerchantNo` 为空是**正常的** —— 自营门店不进件，钱先进平台户。 只有第三方模式下它为空才是硬阻塞。"
+    ApplyOnBehalfResult: 
+      type: "object"
+      properties: 
+        applyNo: 
+          type: "string"
+          description: "落库的申请单号。队列里就是这一张"
+        ownerUserNo: 
+          type: "string"
+          description: "商户本人的 userNo。**可能是这一刻新建的** —— 界面上要据此提示「这个号是新开的，本人还不知道」。"
+      required: 
+        - "applyNo"
+        - "ownerUserNo"
+      additionalProperties: false
+      description: "代商家进件的回执（三期）。**不是主体** —— 主体要等审核通过才存在。"
     SelfOperatedResult: 
       type: "object"
       properties: 
@@ -15656,6 +15670,38 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/SelfOperatedResult"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/merchants/apply-on-behalf": 
+    post: 
+      operationId: "applyOnBehalf"
+      summary: "**代商家提交入驻申请**（三期）"
+      tags: 
+        - "merchant"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ApplyOnBehalfResult"
                 required: 
                   - "code"
                   - "msg"

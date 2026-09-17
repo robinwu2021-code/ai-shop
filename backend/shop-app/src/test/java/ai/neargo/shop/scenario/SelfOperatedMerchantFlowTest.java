@@ -49,6 +49,10 @@ class SelfOperatedMerchantFlowTest {
     @Autowired
     private JdbcTemplate jdbc;
 
+    /** 三期改写 opsAddStoreForThirdPartyStillEatsQuota 时引入：要把额度按到 1 家 */
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+
     @Autowired
     private ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
 
@@ -251,16 +255,32 @@ class SelfOperatedMerchantFlowTest {
         assertThat(n).as("默认店 + 新开的那家").isEqualTo(2);
     }
 
+    /**
+     * <b>本用例在三期被改写过，这段说明是它的全部理由。</b>
+     *
+     * <p>二期这里断言的是「非自营主体一律拒」，理由写的是
+     * 「否则运营能绕过商家吃掉他买的额度」。三期要让 BD 能替商家开第二家店，
+     * 于是那个理由<b>交还给额度闸本身</b>：挡住超额的应该是额度，而不是「不许代开」。
+     *
+     * <p>照着新实现把断言改成「不抛了」是不行的 —— 那样这条用例就只是在给
+     * 当前实现背书。**它要钉的东西没变**：运营不能凭空给第三方多开一家店。
+     * 只是判据从「拒绝这个动作」变成「这个动作照吃他买的额度」。
+     * 额度到顶仍然拒，而这正是下面断言的那一条（第三方那一支的完整用例在
+     * {@code OnBehalfMerchantFlowTest#thirdPartyStoreEatsQuota}）。
+     */
     @Test
-    @DisplayName("★★★ 非自营主体不许由运营开店 —— 否则运营能绕过商家吃掉他买的额度")
-    void opsCannotAddStoreForThirdParty() {
+    @DisplayName("★★★ 第三方主体由运营开店照吃额度 —— 额度到顶仍然拒（三期改写）")
+    void opsAddStoreForThirdPartyStillEatsQuota() {
         var r = selfOperated.create(new SelfOperatedService.CreateCommand(
                 phone(11), "第三方主体", "CITY", List.of(), null, null), "OPS");
         jdbc.update("update mch_entity set self_operated = 0 where entity_no = ?", r.merchantNo());
+        // 额度按到 1 家，而默认店已经占掉了那一家
+        ai.neargo.shop.support.TestPlan.grantQuota(planMapper, r.merchantNo(), 1);
 
         assertThatThrownBy(() -> selfOperated.addStore(new SelfOperatedService.AddStoreCommand(
                 r.merchantNo(), "不该建出来的店", null, List.of()), "OPS"))
-                .isInstanceOf(BizException.class);
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("STORE_QUOTA_EXCEEDED");
     }
 
     private MchEntity entity(String no) {

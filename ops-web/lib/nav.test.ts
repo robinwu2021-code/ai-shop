@@ -94,6 +94,16 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
     // 建平台自营商家（2026-09-16）。只有超管看得见：merchant:selfop:create
     // 不在任何角色的码表里，所以它只会在 SUPER_ADMIN 那一行上出现。
     "/merchants?tab=self-operated",
+    /*
+     * 代商家进件（2026-09-17，三期）。**超管与 BD 两行都会多出它** ——
+     * 与上面那条刻意不同：那个只给超管（平台自己下场经营不是招商日常），
+     * 这个是招商日常本身，BD 站在店里替老板录资料。
+     *
+     * BD 因此同时持有 merchant:apply:audit 与 merchant:apply:onbehalf，
+     * 也就是同一个人既能制单又能审核。制单与审核的分离**没有靠这张表**，
+     * 而是钉在数据上：OpsServiceImpl.auditApply 拦「submitted_by == 当前审核人」。
+     */
+    "/merchants?tab=on-behalf",
   ]);
 
   it("★★★ AC2 · 合并前后每个角色看得见的功能点集合完全不变", () => {

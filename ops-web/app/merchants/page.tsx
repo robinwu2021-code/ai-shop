@@ -30,6 +30,7 @@ import { PlansTab, PlanDefsTab } from "./plans-tab";
 import { ModeRiskTab } from "./mode-risk-tab";
 import { OnboardingTab } from "./onboarding-tab";
 import { SelfOperatedTab } from "./self-operated-tab";
+import { OnBehalfTab } from "./on-behalf-tab";
 import { QualificationTab } from "./qualification-tab";
 import { StaffBlock } from "./staff-block";
 import { FulfillmentBlock } from "./fulfillment-block";
@@ -53,7 +54,7 @@ const TIER_OPTIONS = (c: Copy) => [
   { value: "COMPANY", label: c.tierCompany },
 ];
 
-const TAB_KEYS = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "onboarding", "self-operated", "mode-risk", "ban", "plans", "plan-defs", "chain"] as const;
+const TAB_KEYS = ["audit", "list", "stores", "categories", "qualifications", "verify", "credit", "admission", "onboarding", "self-operated", "on-behalf", "mode-risk", "ban", "plans", "plan-defs", "chain"] as const;
 
 /** 入驻审核视图只看**还没走完审核**的那几档 —— 已通过/已封禁的属于档案，不该混在待办里。 */
 const AUDIT_STATUSES = ["SUBMITTED", "REVIEWING"];
@@ -94,6 +95,8 @@ function MerchantsInner() {
    * 但点不动，且 ReadOnlyNotice 会说清卡在哪个码上。
    */
   const canSelfOp = allow("merchant:selfop:create");
+  // 与 canSelfOp 分开：那个只给超管，这个要给 BD。合成一个就是放宽
+  const canOnBehalf = allow("merchant:apply:onbehalf");
 
   // 审核视图：没选具体状态时只带出待审的两档（选了就按选的来，筛选优先于视图默认）
   const q = {
@@ -267,6 +270,13 @@ function MerchantsInner() {
         <>
           {!canSelfOp && <ReadOnlyNotice what={c.soReadOnlyWhat} perm="merchant:selfop:create" className="mb-3" />}
           <SelfOperatedTab c={c} canCreate={canSelfOp} />
+        </>
+      )}
+
+      {tab === "on-behalf" && (
+        <>
+          {!canOnBehalf && <ReadOnlyNotice what={c.obReadOnlyWhat} perm="merchant:apply:onbehalf" className="mb-3" />}
+          <OnBehalfTab c={c} canSubmit={canOnBehalf} />
         </>
       )}
 

@@ -3,6 +3,7 @@
 import type {
   ModeRisk,
   FundsMode,
+  ApplyOnBehalfResult,
   SelfOperatedResult,
   SelfOperatedStore,
   Qualification,
@@ -61,6 +62,42 @@ export interface MerchantApi {
     industry?: string;
     description?: string;
   }): Promise<SelfOperatedResult>;
+
+  /**
+   * **代商家提交入驻申请**（三期）。BD 在店里把执照拍下来、当场替老板填完。
+   *
+   * **它不建主体，只落一张单**，走的是与商户自填完全相同的那条路：
+   * 证件照要、进件照走、订阅额度照吃、单子照进审核队列。本期只改「谁来填这张表」。
+   * 自营能免证件是因为不存在第三方 —— 代填的时候第三方是存在的，那个论证不成立。
+   *
+   * **会给这个手机号建一个账号**，而本人当时并不知道。不建的话审核通过时
+   * 没有 owner 可挂，所以只能建 —— 代价是商户首次登录必须看到这件事。
+   *
+   * **协议不在这里勾**：`agreed_at` 落库时一律为空，运营不能替商户同意。
+   *
+   * ⚠️ **代填的人审不了自己填的那张单**（后端按 `submitted_by` 拦，403）——
+   * BD 同时持有审核码与代填码，光靠权限配置挡不住。
+   */
+  applyOnBehalf(v: {
+    /** 商户本人手机号。**它决定这张单最终挂给谁** —— 填错就是挂到别人名下 */
+    phone: string;
+    name: string;
+    /** 主体类型（ENTERPRISE / INDIVIDUAL / …）。决定要不要执照 */
+    subject: string;
+    contactName?: string;
+    contactPhone?: string;
+    category?: string;
+    description?: string;
+    serviceScope?: string;
+    communityNos?: string[];
+    qualifications?: string[];
+    asPickupPoint?: boolean;
+    industry?: string;
+    qualificationItems?: {
+      type: string; code?: string; imageUrl?: string;
+      expireAt?: number | null; issuer?: string;
+    }[];
+  }): Promise<ApplyOnBehalfResult>;
 
   /**
    * 给**平台自营主体**再开一家门店。

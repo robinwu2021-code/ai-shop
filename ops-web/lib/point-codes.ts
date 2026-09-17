@@ -18,6 +18,7 @@ export const POINT_CODES: Record<string, string> = {
   "/merchants?tab=admission": "OPS_MERCHANT__TAB_ADMISSION",
   "/merchants?tab=onboarding": "OPS_MERCHANT__TAB_ONBOARDING",
   "/merchants?tab=self-operated": "OPS_MERCHANT__TAB_SELF_OPERATED",
+  "/merchants?tab=on-behalf": "OPS_MERCHANT__TAB_ON_BEHALF",
   "/merchants?tab=mode-risk": "OPS_MERCHANT__TAB_MODE_RISK",
   "/merchants?tab=verify": "OPS_MERCHANT__TAB_VERIFY",
   "/merchants?tab=credit": "OPS_MERCHANT__TAB_CREDIT",

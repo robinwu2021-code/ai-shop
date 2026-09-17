@@ -29634,6 +29634,14 @@
     },
     {
       "host": "Perms",
+      "name": "MERCHANT_APPLY_ONBEHALF",
+      "type": "String",
+      "value": "\"merchant:apply:onbehalf\"",
+      "zh": "代商家提交入驻申请（BD 在店里替老板填）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
       "name": "MESSAGE_TEMPLATE_READ",
       "type": "String",
       "value": "\"message:template:read\"",

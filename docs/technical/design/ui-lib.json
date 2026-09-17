@@ -304,7 +304,7 @@
         "font-weight": "600"
       },
       "usage": {
-        "b-app": 19,
+        "b-app": 18,
         "c-app": 16
       }
     },
@@ -462,7 +462,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 28,
+        "b-app": 27,
         "c-app": 26
       }
     },
@@ -500,7 +500,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 131,
+        "b-app": 132,
         "c-app": 39
       }
     },
@@ -626,7 +626,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 212,
+        "b-app": 211,
         "c-app": 70
       }
     },
@@ -1352,7 +1352,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 87,
+        "b-app": 91,
         "c-app": 39
       }
     },
@@ -1408,7 +1408,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 281,
+        "b-app": 282,
         "c-app": 143
       }
     },
@@ -2266,7 +2266,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 61,
+        "b-app": 62,
         "c-app": 5,
         "lib": 13
       },
@@ -4038,9 +4038,9 @@
         "sh-tabs",
         "biz-store-tag"
       ],
-      "libClassHits": 32,
-      "localSelectors": 24,
-      "localCssLines": 99,
+      "libClassHits": 31,
+      "localSelectors": 22,
+      "localCssLines": 92,
       "rolled": [
         {
           "id": "blockdup",
@@ -4251,25 +4251,10 @@
         "sh-option",
         "sh-scaffold"
       ],
-      "libClassHits": 64,
-      "localSelectors": 25,
-      "localCssLines": 101,
-      "rolled": [
-        {
-          "id": "listrow",
-          "label": "横排行",
-          "lib": ".sh-row",
-          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-          "gap": false
-        },
-        {
-          "id": "fill",
-          "label": "占满剩余自写",
-          "lib": ".sh-fill",
-          "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
-          "gap": false
-        }
-      ]
+      "libClassHits": 68,
+      "localSelectors": 24,
+      "localCssLines": 93,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -5008,17 +4993,6 @@
   ],
   "gaps": [
     {
-      "id": "listrow",
-      "label": "横排行",
-      "lib": ".sh-row",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-      "pages": [
-        "b-app/stock",
-        "b-app/stores"
-      ]
-    },
-    {
       "id": "blockdup",
       "label": "白块自画",
       "lib": ".sh-block / .sh-card",
@@ -5029,13 +5003,13 @@
       ]
     },
     {
-      "id": "fill",
-      "label": "占满剩余自写",
-      "lib": ".sh-fill",
+      "id": "listrow",
+      "label": "横排行",
+      "lib": ".sh-row",
       "gap": false,
-      "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
+      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
       "pages": [
-        "b-app/stores"
+        "b-app/stock"
       ]
     }
   ],
