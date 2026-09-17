@@ -12,7 +12,6 @@
 # 为什么不一次改完：这 41 页各有各的加载变量名（loading / pending / loaded / failed
 # 四种写法），逐页要看清「哪个变量代表首屏到过」，机械替换会把刷新态也判成空。
 
-c-app/community
 c-app/group-host
 c-app/order
 c-app/order-confirm
