@@ -182,14 +182,30 @@ public class BizMerchantController {
                     // 还没进件：资金路径未定，不猜一个默认值。
                     // 猜 AGGREGATED 的话，申请人会在入驻页看到「期望收购价」——
                     // 而他此刻还不知道自己会被分到哪条路径
-                    null);
+                    null,
+                    agreementPending(apply));
         }
         return new MerchantProfileVO(
                 account.merchantNo(), account.name(), account.logo(),
                 bizStatus(account.status()), account.subject(), account.tier(),
                 phone, !pickups.isEmpty(), pickups.isEmpty() ? null : pickups.get(0),
                 null, account.industry(), account.description(),
-                merchantQueryPort.fundsModeOf(account.merchantNo()));
+                merchantQueryPort.fundsModeOf(account.merchantNo()),
+                agreementPending(apply));
+    }
+
+    /**
+     * 协议待补勾 = <b>代填的单子</b> 且 <b>还没勾</b>。两个条件缺一不可。
+     *
+     * <p>少了 {@code onBehalf} 那一半，全体存量商家都会被判成「没同意」——
+     * 他们当初确实勾过，只是那一勾从没落过库。**一条对所有人恒亮的提示
+     * 等于没有提示**，还会把真正要紧的那两条（能不能开张、看不看得见）挤掉。
+     */
+    // 包级可见：本包的 MerchantStatusMappingTest 直接钉这个「且」。
+    // 私有的话，用例只能去测 VO 上的两个字段 —— 而那测的不是这个判据本身
+    // （实测过：把 onBehalf 那一半去掉，那种写法一条都不红）
+    static boolean agreementPending(MerchantApplyVO apply) {
+        return apply != null && apply.onBehalf() && apply.agreedAt() == 0L;
     }
 
     /**
@@ -841,6 +857,23 @@ public class BizMerchantController {
     public record MerchantProfileVO(String merchantNo, String name, String logo, String status,
                                     String subject, String tier, String phone,
                                     boolean isPickupPoint, String pickupNo, String rejectReason,
-                                    String industry, String description, String fundsMode) {
+                                    String industry, String description, String fundsMode,
+                                    /**
+                                     * <b>《商家服务协议》还没人勾</b>（三期）。
+                                     *
+                                     * <p>只在<b>代填的单子</b>上为真：运营代商家进件时不能替他勾协议，
+                                     * 那张单落库时 {@code agreed_at} 是空的。
+                                     *
+                                     * <p><b>为什么不是「agreed_at 为空就为真」</b>：存量单子这一列
+                                     * 同样全是空的（协议勾选此前从没落过库，{@code agreed} 传到
+                                     * {@code LoginCommand} 就断了）。那样判的话，
+                                     * 全体存量商家明天一早都会看到一条「你还没同意协议」——
+                                     * 而他们当初确实勾过，只是没人记下来。
+                                     *
+                                     * <p>当前<b>只提示不拦截</b>（三期决策②）：今天没有提现可挂，
+                                     * 而拦上架或拦收款会打断一家已经审核通过的店的生意 ——
+                                     * 协议没勾是平台流程造成的（运营代填），代价不该由商户承担。
+                                     */
+                                    boolean agreementPending) {
     }
 }

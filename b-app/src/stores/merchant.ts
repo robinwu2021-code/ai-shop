@@ -135,6 +135,11 @@ export const useMerchantStore = defineStore("merchant", {
      * 多提示一条，他会去补一份根本用不上的资料。
      */
     fundsAggregated: (s) => !s.profile?.fundsMode || s.profile.fundsMode === "AGGREGATED",
+    /**
+     * 协议待本人补勾（三期）。后端派生，端上不自己算 ——
+     * 判据是「代填 **且** 没勾」，少任何一半都会对全体存量商家恒亮。
+     */
+    agreementPending: (s) => s.profile?.agreementPending === true,
     /** 是否承接自提点 → 决定工作台是否出现「履约台」入口（ADR-005） */
     isPickupPoint: (s) => !!s.profile?.isPickupPoint,
     /**

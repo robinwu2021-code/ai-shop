@@ -35,6 +35,41 @@ class MerchantStatusMappingTest {
                 false, 0L);
     }
 
+    /** 造一张单，只调这两个维度 —— 其余字段与本组断言无关 */
+    private static MerchantApplyVO apply(boolean onBehalf, long agreedAt) {
+        return new MerchantApplyVO("MA1", "", "老张粮油店", "PERSONAL",
+                "张三", "13800000000", "", "", "COMMUNITY",
+                List.of(), List.of(), false, "GROCERY",
+                "PENDING", null, 0L, 0L, List.of(), onBehalf, agreedAt);
+    }
+
+    /**
+     * 「协议待本人补勾」的判据是 <b>代填 且 没勾</b>，两半缺一不可。
+     *
+     * <p><b>为什么这条要打在 {@code agreementPending} 上，而不是打在 VO 的字段上</b>：
+     * 第一版写在场景测试里、断言 {@code vo.onBehalf()} 与 {@code vo.agreedAt()} ——
+     * 把实现里的 {@code onBehalf() &&} 那一半删掉，<b>那 12 条一条都不红</b>。
+     * 断言的是原料，不是那个「且」。
+     *
+     * <p>少了 onBehalf 那一半会怎样：<b>存量单子的 agreed_at 同样全是空的</b>
+     * （协议勾选此前从没落过库，{@code agreed} 传到 {@code LoginCommand} 就断了），
+     * 于是明天一早全体商家的工作台上都会多一条「你还没同意协议」——
+     * 而他们当初确实勾过。一条对所有人恒亮的提示等于没有提示，
+     * 还会把真正要紧的那两条（能不能开张、看不看得见）挤得不再被当回事。
+     */
+    @Test
+    @DisplayName("★★★ 协议待勾 = 代填 且 没勾 —— 少「代填」那一半会对全体存量商家恒亮")
+    void agreementPendingNeedsBothHalves() {
+        assertThat(BizMerchantController.agreementPending(apply(true, 0L)))
+                .as("代填且没勾 —— 只有这一种要提示").isTrue();
+        assertThat(BizMerchantController.agreementPending(apply(false, 0L)))
+                .as("★ 自填且没勾 = 存量商家的样子，删掉 onBehalf 那一半这条就红").isFalse();
+        assertThat(BizMerchantController.agreementPending(apply(true, 1L)))
+                .as("代填但已补勾 —— 勾完就不该再提示").isFalse();
+        assertThat(BizMerchantController.agreementPending(null))
+                .as("没申请过").isFalse();
+    }
+
     @Test
     @DisplayName("没申请过是 NONE —— 那不是错误，是「你还没开始」")
     void noApplyIsNone() {

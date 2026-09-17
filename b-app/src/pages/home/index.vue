@@ -142,6 +142,21 @@ const blockers = computed(() => {
   if (merchant.can("biz:store") && !visible.value) {
     list.push({ key: "scope", route: ROUTES.storeScope });
   }
+  /*
+   * 协议待本人补勾（三期）。**排在最后**：上面三条是「生意做不成」，
+   * 这一条不挡任何事 —— 当前实现只提示不拦截（今天没有提现可挂，
+   * 而拦上架或拦收款会打断一家已经审核通过的店的生意，
+   * 而协议没勾是平台流程造成的：运营代填时不能替他勾）。
+   *
+   * 但它要**常驻到他勾为止**：代填的商户只在入驻页见过一次这件事，
+   * 而审核通过之后他就不去那一页了 —— 那条提示等于只出现过一瞬。
+   *
+   * 判据来自后端的 agreementPending（代填 **且** 没勾）。
+   * 端上自己按「agreedAt 为空」判的话，全体存量商家都会恒亮这一条。
+   */
+  if (merchant.agreementPending) {
+    list.push({ key: "agreement", route: ROUTES.apply });
+  }
   return list;
 });
 

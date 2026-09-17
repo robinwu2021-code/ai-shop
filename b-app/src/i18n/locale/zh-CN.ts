@@ -212,13 +212,15 @@ export default {
     ownedTrafficHint: "自带客流的订单费率更低",
     fulfillEntry: "核销与分拣",
     storeEntry: "店铺设置",
-    blocker: { license: "还不能开张营业", payment: "还不能收款", scope: "顾客尚不可见" },
+    blocker: { license: "还不能开张营业", payment: "还不能收款", scope: "顾客尚不可见", agreement: "还差你确认一份协议" },
     blockerHint: {
       license: "补交营业执照后店铺才对顾客可见。已录入的商品全部保留，审核通过后立即上架。",
       payment: "收款进件未完成。商品可上架，但顾客无法付款。",
       // 「一个都没选」对只写了排除项的人是假话（他选了，只是全是排除）——
       // 说「一个纳入的地方都没有」才两种情形都对得上
       scope: "经营范围里没有一个纳入的地方（只有排除也算），货对谁都不可见",
+      // 不说「否则不能经营」——当前实现只提示不拦截，说重了就是吓唬人
+      agreement: "你的资料由平台运营人员代为提交，《商家服务协议》需要你本人确认。生意照做不受影响。",
     },
     blockerGo: "去处理",
     marketingEntry: "营销活动",
