@@ -2408,6 +2408,10 @@ interface GroupSeed {
   createdAt: number;
   members: { avatar: string; nickname: string }[];
   joined: boolean;
+  /** 商家散团 / 平台中止 / 到期未成。mock 里只有散团会写它 */
+  failed?: boolean;
+  /** 开团依据的拼团活动名（团详情「活动」那一行） */
+  activityName?: string;
 }
 
 /**
@@ -2435,7 +2439,7 @@ export function buildGroupBuy(seed: GroupSeed): GroupBuy {
   return {
     groupNo: seed.groupNo,
     // 与后端同一口径：够人数即 FORMED，否则仍在 OPEN（mock 里没有平台中止）
-    status: reached ? "FORMED" : "OPEN",
+    status: seed.failed ? "FAILED" : reached ? "FORMED" : "OPEN",
     goodsNo: seed.goodsNo,
     title: goods.title,
     cover: goods.cover,
@@ -2456,6 +2460,7 @@ export function buildGroupBuy(seed: GroupSeed): GroupBuy {
     joined: seed.joined,
     neighborPickup: seed.neighborPickup,
     isOwner: !!seed.ownedByMe,
+    activityName: seed.activityName ?? null,
     // 送到发起人家时，取货点名与地址走临时点，不再指向门店
     ...(seed.neighborPickup
       ? { pickupNo: seed.neighborPickup.pickupNo, pickupName: seed.neighborPickup.name }

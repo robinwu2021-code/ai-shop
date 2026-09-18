@@ -1,6 +1,6 @@
 # TDD · 营销：活动统一模型与社区集单
 
-> 状态：**P1a 已实现** · 2026-09-18（P1b 拼团接通下单待做）
+> 状态：**P1a · P1b 已实现** · 2026-09-19（集单 + 拼团接通下单）
 > 档位：**2**（新表族 `pmt_period` · 跨 B/C 端 · 改订单与履约口径）
 > 关联需求：[PRD-营销-活动统一模型](../requirements/PRD-营销-活动统一模型.md)
 > 决策：[ADR-024 拼团与社区集单并存](ADR/ADR-024-拼团与社区集单并存.md)
@@ -349,6 +349,30 @@ AC-1、AC-15 是界面：`vue-tsc` + 按原型在 mock 下自查截图。AC-4、
 
 测试：`PeriodFlowTest` 12 条全走真 HTTP 下单付款；五处消融（挂期、到货日、截单判定、取消退款、看板日期）各自变红，已还原。
 
+## §6b 对账二 · 设计 → 实现（P1b 拼团接通下单，2026-09-19）
+
+| 设计条目（详细设计 §1.4 · §2.4 · F3 · D1/D2/D5/D6） | 实际落点 | 状态 |
+|---|---|---|
+| V336：团挂活动号、成员挂子单号 + 唯一键 | `V336__group_order_link.sql`；另加 `idx_sub_order_group`（退款按团号找子单） | ✅ |
+| 下单认 `groupNo` / `openGroup`，按团价算价，子单写 `group_no` | `CreateOrderReq` / `CreateOrderCommand` 两字段；`OrderServiceImpl#groupQuoteOf` + `repriced`（预览与下单同一处）；落库前 `GroupJoinPort#bind` | ✅ |
+| 付款成功才落成员（按子单号幂等），够人数 FORMED | `markPaid` → `GroupJoinPort#onPaid`：带状态条件的 `UPDATE` 占人数、再插成员；团已散则提交后系统退款 | ✅ |
+| 到期 / 散团 / 中止 → 逐单退款 | `GroupServiceImpl#expireOverdue` / `dissolve` / `abortGroup` / `setGroupStatus(FAILED)` → `GroupOrderPort#refundAll`；近 3 天失败的团补扫 | ✅ |
+| 团时限取活动 | 商家团与买家团都取 `GroupRulePort` 的 `groupHours`；买家团的价与人数也改从活动取（D7 的买家团一半提前做了） | ✅ |
+| B 端团详情 / 散团 / 开团选活动与自提点 | `GET /biz/group/{groupNo}`、`POST /biz/group/{groupNo}/dissolve`、`POST /biz/groups {goodsNo, activityNo, pickupNo}`、`GET /biz/group/pickups`；页面 s09 / s10 / s34 | ✅ |
+| C 端参团改为下单 | 商品详情拼团块 `GET /mp/goods/{goodsNo}/group`（s21）；团页（s22）参团 → 结算带 `groupNo`；商品页开团 → 结算带 `openGroup` | ✅ |
+| 旧版 `join` 返回「请升级」 | `GROUP_JOIN_NEEDS_UPGRADE`（40033），仍要求登录 | ✅ |
+
+测试：`GroupOrderFlowTest` 10 条全走真 HTTP（下单、付款回调、查团）；消融：下单即加成员 → 3 条红；到期不退款 → 1 条红。已还原。
+
+**P1b 的偏差**：
+- 路径改单数 `/biz/group/{groupNo}`（设计写 `/biz/groups/{no}`），理由同 §7-1；列表与开团沿用存量的 `/biz/groups`。
+- 多了 `GET /biz/group/pickups`：开团页要列自提点，而门店送货方式端点要门店权限，开团是营销权限。
+- **已成团的团仍收付款**：两个人为最后一个名额同时下单，后付的不退，团价照给、人数照加（`onPaid` 对 FORMED 也加人）。
+  下单那一刻仍只认 OPEN（成了就不再接新单）。
+- **成团按人算**：同一人在同一团付第二单，货照发、人数不变。
+- 团限定自提点时，只有 `NEIGHBOR_PICKUP` 的参团单会被改到团的点；其余履约方式照常。
+- MySQL 单表 `UPDATE` 从左往右求值：占人数那条语句 `status` 写在 `joined_count` 前面，否则生产上差一人就成团，而 H2 全绿（代码注释里写着）。
+
 ---
 
 ## §7 偏差说明
@@ -356,8 +380,7 @@ AC-1、AC-15 是界面：`vue-tsc` + 按原型在 mock 下自查截图。AC-4、
 1. **端点改单数 `/biz/period*`**。设计写的是 `/biz/periods`，`api-path-naming` 守卫要求 /biz 单数。
 2. **C 端集单块是独立端点 `GET /mp/goods/{goodsNo}/batch`**，没有塞进 `GoodsVO`：
    那个 record 在列表、详情、购物车三处构造，多一个要查库的块会让列表变成 N+1。只读、不建期。
-3. **团到期只置 FAILED、不退款**。读代码发现参团今天根本不下单（`join` 只落成员行，`ord_sub_order.group_no` 无人写），
-   没有钱可退；退款随 P1b「参团接通下单」一起做。
+3. ~~团到期只置 FAILED、不退款~~ → **P1b 已补**（见 §6b）：参团接到下单上之后，到期 / 散团 / 中止都逐张退款。
 4. **营销首页的数字是独立端点 `/biz/marketing/summary`**，不是工作台上的一块；团的两个数在门户层拼
    （promotion 不直接依赖 marketing 域，`ArchitectureTest` 拦）。
 5. **玩法模板只放后端算得出的八种**：满减、满件减、立减、新客立减、特价、买赠、拼团、社区集单。

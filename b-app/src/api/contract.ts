@@ -79,6 +79,7 @@ import type {
   PageResult,
   PickingRow,
   GroupBuy,
+  GroupPickupOption,
   GroupRequest,
   CampaignDraft,
   MarketingCampaign,
@@ -518,6 +519,7 @@ export interface PublishDiffRow {
 }
 
 import type {
+  CreateGroupReq,
   DescribeGoodsReq,
   PickupSelfBuildReq,
   PointsRecordQuery,
@@ -1282,9 +1284,16 @@ export interface MerchantApi {
   mConfirmReturn(afterSaleNo: string): Promise<AfterSale>;
 
   // ---- 团购与报价（B-11.6）
-  mGroupList(): Promise<GroupBuy[]>;
-  /** 商家在已上架商品上开团。商品未配 groupBuy 则不能开 */
-  mCreateGroup(goodsNo: string): Promise<GroupBuy>;
+  /** 我的团（s09）。status：OPEN（含待审）/ FORMED / FAILED；不传给全部 */
+  mGroupList(status?: string): Promise<GroupBuy[]>;
+  /** 开团（s34）：选活动、商品、自提点；人数与成团价从活动带出来 */
+  mCreateGroup(req: CreateGroupReq): Promise<GroupBuy>;
+  /** 团详情（s10） */
+  mGroup(groupNo: string): Promise<GroupBuy>;
+  /** 散团（s10）：还在拼的团置为已散，参团已付款的单逐张全额退款 */
+  mDissolveGroup(groupNo: string, reason?: string): Promise<GroupBuy>;
+  /** 开团可选的自提点（s34） */
+  mGroupPickups(): Promise<GroupPickupOption[]>;
   /** 可报价的邻里需求单 */
   mRequestList(): Promise<GroupRequest[]>;
   /** 报价。改价留痕并公示涨价（ADR-003）；已锁价的不可改 */

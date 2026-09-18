@@ -31,6 +31,9 @@ public interface GroupRulePort {
      */
     Optional<GroupRule> activeRuleFor(String entityNo, String goodsNo);
 
+    /** 活动名（团详情页「活动」那一行）。活动不存在时为空 */
+    Optional<String> activityName(String activityNo);
+
     /**
      * @param minCount        几人成团。<b>下限 2</b> 由建活动那一步保证
      * @param groupPriceMinor 成团价（分）

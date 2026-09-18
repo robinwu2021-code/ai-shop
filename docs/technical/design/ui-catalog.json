@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 79,
+      "count": 81,
       "domains": [
         {
           "name": "工作台",
@@ -296,6 +296,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/entity-detail/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/group-open/index",
+              "title": "开团",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s34",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/group-open/index"
             },
             {
               "app": "b-app",
@@ -600,8 +611,19 @@
             },
             {
               "app": "b-app",
+              "route": "/pages/group/index",
+              "title": "团详情",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s10",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/group/index"
+            },
+            {
+              "app": "b-app",
               "route": "/pages/groups/index",
-              "title": "团购",
+              "title": "团",
               "domain": "团购与求团",
               "tab": false,
               "status": "已实现",
@@ -3148,5 +3170,5 @@
       ]
     }
   ],
-  "total": 257
+  "total": 259
 }

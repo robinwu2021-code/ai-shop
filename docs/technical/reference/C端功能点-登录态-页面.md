@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**92 个功能点**，其中 **26 个游客可用**；**2 个没有任何页面调用**。
+统计：**92 个功能点**，其中 **27 个游客可用**；**2 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -42,13 +42,13 @@
 | `couponList` | `GET /mp/coupon` | 游客 | coupons · order-confirm | — |
 | `receiveCoupon` | `POST /mp/coupon/:couponNo/receive` | 是 | coupons | — |
 | `goodsList` | `GET /mp/goods` | 游客 | category · groups · home · merchant · search | — |
-| `goodsDetail` | `GET /mp/goods/:goodsNo` | 游客 | goods | — |
+| `goodsDetail` | `GET /mp/goods/:goodsNo` | 游客 | goods · group | — |
 | `goodsBatch` | `GET /mp/goods/:goodsNo/batch` | 游客 | goods | — |
+| `goodsGroup` | `GET /mp/goods/:goodsNo/group` | 游客 | goods | — |
 | `promotedGoods` | `GET /mp/goods/promoted` | 游客 | home | — |
 | `groupBuyList` | `GET /mp/group-buy` | 游客 | groups · home | — |
 | `createGroupBuy` | `POST /mp/group-buy` | 是 | groups | — |
 | `groupBuyDetail` | `GET /mp/group-buy/:groupNo` | 游客 | group | — |
-| `joinGroupBuy` | `POST /mp/group-buy/:groupNo/join` | 是 | group | — |
 | `groupPickupOrders` | `GET /mp/group-buy/:groupNo/orders` | 是 | group-host | — |
 | `confirmGroupBatch` | `POST /mp/group-buy/:groupNo/receive` | 是 | group-host | — |
 | `verifyGroupPickup` | `POST /mp/group-buy/:groupNo/verify` | 是 | group-host | — |

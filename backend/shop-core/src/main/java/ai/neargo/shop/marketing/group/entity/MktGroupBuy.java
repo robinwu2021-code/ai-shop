@@ -55,4 +55,10 @@ public class MktGroupBuy extends BaseEntity {
      * 此前库里没有这一列 —— 团按什么范围成、货送到哪个点，表达不了。
      */
     private String pickupNo;
+
+    /**
+     * 开团时依据的拼团活动（V336）。价、人数、时限都从它拷来；
+     * 详情页据它说出「属于哪个活动」。存量 2 行为空。
+     */
+    private String activityNo;
 }

@@ -188,11 +188,13 @@ export interface GroupRequest {
  * 人数可能已经够了**，只看 reached 会把一个已经作废的团显示成正常可参的团。
  */
 export type GroupBuyStatus =
+  /** 等平台审核（开关 group.audit 开着时才有）。买家看不到 */
+  | "PENDING"
   /** 开团中，还能参 */
   | "OPEN"
   /** 已成团 */
   | "FORMED"
-  /** 没成团 / 被平台中止。不作废订单：按原价照常发货 */
+  /** 没成团 / 商家散团 / 平台中止。参团已付款的单逐张全额退款 */
   | "FAILED";
 export interface GroupBuy {
   /** 团单号 */
@@ -246,6 +248,43 @@ export interface GroupBuy {
   neighborPickup?: PickupPoint;
   /** 我是不是这个团的发起人 —— 决定是否显示轻核销入口 */
   isOwner?: boolean;
+  /** 开团时依据的拼团活动。存量团为空 */
+  activityNo?: string | null;
+  /** 活动名（团详情「活动」那一行）。存量团为空 */
+  activityName?: string | null;
+}
+
+/**
+ * 商品详情的拼团块（原型 s21，`GET /mp/goods/{goodsNo}/group`）。
+ * 这件货没有在跑的拼团活动时接口给 null，详情页不出「开团」按钮。
+ */
+export interface GoodsGroup {
+  /** 商品单号 */
+  goodsNo: string;
+  /** 在跑的拼团活动 */
+  activityNo: string;
+  /** 成团价（最小货币单位），「开团 ¥8」 */
+  groupPrice: number;
+  /** 几人成团 */
+  minCount: number;
+  /** 开团后多少小时内成团 */
+  groupHours: number;
+  /** 正在拼的团，差人最少的在前，最多 3 个 */
+  openGroups: GroupBuy[];
+}
+
+/** 开团可选的自提点（原型 s34，`GET /biz/group/pickups`） */
+export interface GroupPickupOption {
+  /** 自提点单号 */
+  pickupNo: string;
+  /** 名称 */
+  name: string;
+  /** 地址 */
+  address: string;
+  /** 点的类型 */
+  type: string;
+  /** 核实状态；这里只会是 ACTIVE */
+  status: string;
 }
 // ================================================================ 营销（B 端配置侧）
 

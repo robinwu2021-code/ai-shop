@@ -58,6 +58,23 @@ export const tradeMock: Pick<ShopApi,
       if (!req.addressId) throw new Error("上门服务需要收货地址");
     }
 
+    // 开团：下单这一刻建团，下单人即发起人；付了款才算第一人（与后端同一口径）
+    let groupNo = req.groupNo;
+    if (req.openGroup && req.items[0]) {
+      groupNo = nextNo("GB");
+      db.groupSeeds.unshift({
+        groupNo,
+        goodsNo: req.items[0].goodsNo,
+        pickupNo: req.pickupNo ?? allCommunitySeeds()[0]!.pickups[0]!.pickupNo,
+        initiatorNickname: db.user.nickname,
+        initiatorAvatar: db.user.avatar,
+        ownedByMe: true,
+        createdAt: Date.now(),
+        members: [],
+        joined: false,
+      });
+    }
+
     const items: OrderItem[] = req.items.map((it) => {
       const seed = findGoodsSeed(it.goodsNo);
       const g = toGoods(seed);
@@ -154,7 +171,7 @@ export const tradeMock: Pick<ShopApi,
         timeline: [{ status: "WAIT_PAY", label: "已下单，待支付", at: Date.now() }],
         // 幂等 key 只挂在首单上：重复提交时靠它命中，返回同一组
         idempotencyKey: isFirst ? req.idempotencyKey : undefined,
-        groupNo: req.groupNo,
+        groupNo,
         merchantNo,
         merchantName: merchantBrief(merchantNo).name,
         // mock 内部的分组键。**不是契约字段** —— 后端没有这一列，
@@ -215,6 +232,13 @@ export const tradeMock: Pick<ShopApi,
       o.status = "PAID";
       o.amount.paidMinor = o.amount.payableMinor;
       pushTimeline(o, "支付成功");
+
+      // 参团单：付款成功才算成员（与后端同一口径）
+      const gs = o.groupNo ? db.groupSeeds.find((x) => x.groupNo === o.groupNo) : undefined;
+      if (gs && !gs.joined) {
+        gs.members = [...gs.members, { avatar: db.user.avatar, nickname: db.user.nickname }];
+        gs.joined = true;
+      }
 
       const strategy = fulfillmentFor(o.fulfillment);
 

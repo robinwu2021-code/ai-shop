@@ -84,4 +84,18 @@ public class GroupRulePortImpl implements GroupRulePort {
         }
         return Optional.empty();
     }
+
+    @Override
+    public Optional<String> activityName(String activityNo) {
+        if (activityNo == null || activityNo.isBlank()) {
+            return Optional.empty();
+        }
+        // 绕域：C 端看团详情没有商家会话；活动号已经钉死了是哪一条
+        return Optional.ofNullable(ai.neargo.common.data.scope.DataScopeContext
+                .executeWithoutScope(() -> activityMapper.selectOne(
+                        Wrappers.<PmtActivity>lambdaQuery()
+                                .eq(PmtActivity::getActivityNo, activityNo)
+                                .last("limit 1"))))
+                .map(PmtActivity::getName);
+    }
 }

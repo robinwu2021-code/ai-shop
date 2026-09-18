@@ -16,9 +16,15 @@ public interface GroupService {
 
     GroupBuyVO groupBuyDetail(String groupNo);
 
+    /**
+     * 商品详情的拼团块（原型 s21）：这件货现在能不能开团、按什么价几人成团，以及正在拼的团（最多 3 个）。
+     * 这件货没有在跑的拼团活动时为空。
+     */
+    java.util.Optional<ai.neargo.shop.marketing.group.dto.GroupVOs.GoodsGroupVO> goodsGroup(String goodsNo);
+
     JoinResultVO join(String groupNo);
 
-    /** 到期未成团的团置为 FAILED，返回改了几个。由 {@code GroupExpireJob} 每分钟调 */
+    /** 到期未成团的团置为 FAILED 并退款，返回改了几个。由 {@code GroupExpireJob} 每分钟调 */
     int expireOverdue(long now);
 
     /**
@@ -43,7 +49,13 @@ public interface GroupService {
      * 商家开团。团购价与起团人数都来自**商品上已配好的拼团设置** ——
      * 商家不能在开团这一步临时定价，否则同一件货会有两个价，而 C 端已经看到过旧的那个。
      */
-    GroupBuyVO createMerchantGroup(String merchantNo, String goodsNo);
+    GroupBuyVO createMerchantGroup(String merchantNo, String goodsNo, String activityNo, String pickupNo);
+
+    /** 商家看自己的一个团（s10）。别家的团当不存在 */
+    GroupBuyVO merchantGroup(String merchantNo, String groupNo);
+
+    /** 商家散团（s10）：还在拼的团置 FAILED，参团的已付款子单逐张全额退款 */
+    GroupBuyVO dissolve(String merchantNo, String groupNo, String reason);
 
     /** 本团待取订单。<b>作用域限本团</b>，且只有发起人能看 */
     List<GroupPickupOrderVO> groupPickupOrders(String groupNo);

@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 724 个接口**：后端已实现 652（90%）· 前端在调 653
+**合计 727 个接口**：后端已实现 655（90%）· 前端在调 656
 
 ---
 
@@ -56,23 +56,23 @@
 | GET | `/mp/coupon` | 优惠券列表 | — | `数组` | — | ✅ | ✅ |
 | POST | `/mp/coupon/{couponNo}/receive` | 领取优惠券 | — | `Coupon` | 🔒 | ✅ | ✅ |
 
-### goods（4）
+### goods（5）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/mp/goods` | 商品列表 | — | `object` | — | ✅ | ✅ |
 | GET | `/mp/goods/{goodsNo}` | 商品详情 | — | `Goods` | — | ✅ | ✅ |
 | GET | `/mp/goods/{goodsNo}/batch` | 商品的社区集单信息（截单、提货、已订份数） | — | `GoodsBatch` | — | ✅ | ✅ |
+| GET | `/mp/goods/{goodsNo}/group` | 商品的拼团信息（开团价、正在拼的团） | — | `GoodsGroup` | — | ✅ | ✅ |
 | GET | `/mp/goods/promoted` | 推荐商品（运营位） | — | `数组` | — | ✅ | ✅ |
 
-### group-buy（8）
+### group-buy（7）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/mp/group-buy` | 商家团列表 | — | `数组` | — | ✅ | ✅ |
 | POST | `/mp/group-buy` | 发起商家团 | `CreateGroupBuyReq` | `GroupBuy` | 🔒 | ✅ | ✅ |
 | GET | `/mp/group-buy/{groupNo}` | 商家团详情 | — | `GroupBuy` | — | ✅ | ✅ |
-| POST | `/mp/group-buy/{groupNo}/join` | 参团 | `JoinGroupBuyReq` | `GroupBuy` | 🔒 | ✅ | ✅ |
 | GET | `/mp/group-buy/{groupNo}/orders` | 本团待取订单 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/mp/group-buy/{groupNo}/receive` | 批次签收 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/mp/group-buy/{groupNo}/verify` | 发起人核销 | — | `Order` | 🔒 | ✅ | ✅ |
@@ -219,7 +219,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **237** 个接口 ｜ 后端已实现 **232**（98%）｜ 前端在调 **237**
+共 **240** 个接口 ｜ 后端已实现 **235**（98%）｜ 前端在调 **240**
 
 ### activities（4）
 
@@ -393,6 +393,14 @@
 | POST | `/biz/goods/describe` | 自动生成图文详情 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/recognize` | 拍照识别商品 | `RecognizeGoodsReq` | `GoodsGuess` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/save` | 新建/编辑商品 | `SaveGoodsReqBody` | `Goods` | 🔒 | ✅ | ✅ |
+
+### group（3）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/group/{groupNo}` | 团详情 | — | `GroupBuy` | 🔒 | ✅ | ✅ |
+| POST | `/biz/group/{groupNo}/dissolve` | 散团（参团已付款的单全额退款） | `DissolveGroupReq` | `GroupBuy` | 🔒 | ✅ | ✅ |
+| GET | `/biz/group/pickups` | 开团可选的自提点 | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### group-request（2）
 

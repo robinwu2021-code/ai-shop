@@ -1156,6 +1156,18 @@
           "ar": "قيمة المنتجات"
         },
         {
+          "key": "confirm.groupJoinNote",
+          "zh-CN": "参团单按成团价结算，没凑齐会自动全额退款",
+          "en": "Charged at the group price. Fully refunded automatically if the group doesn’t fill",
+          "ar": "يُحتسب بسعر المجموعة، ويُسترد المبلغ كاملًا تلقائيًا إن لم تكتمل"
+        },
+        {
+          "key": "confirm.groupOpenNote",
+          "zh-CN": "付款后团即开出，没凑齐会自动全额退款",
+          "en": "Your group opens once you pay. Fully refunded automatically if it doesn’t fill",
+          "ar": "تُفتح مجموعتك بعد الدفع، ويُسترد المبلغ كاملًا تلقائيًا إن لم تكتمل"
+        },
+        {
           "key": "confirm.noCoupon",
           "zh-CN": "不使用优惠券",
           "en": "Don't use a voucher",
@@ -1618,6 +1630,12 @@
           "ar": "{n}"
         },
         {
+          "key": "goods.buyAlone",
+          "zh-CN": "单买 {p}",
+          "en": "Buy alone {p}",
+          "ar": "شراء منفرد {p}"
+        },
+        {
           "key": "goods.buyNow",
           "zh-CN": "立即购买",
           "en": "Buy now",
@@ -1664,6 +1682,36 @@
           "zh-CN": "配送方式",
           "en": "Delivery",
           "ar": "طريقة الاستلام"
+        },
+        {
+          "key": "goods.groupMerchant",
+          "zh-CN": "商家团",
+          "en": "Store group",
+          "ar": "مجموعة المتجر"
+        },
+        {
+          "key": "goods.groupNeed",
+          "zh-CN": "差 {n} 人",
+          "en": "{n} more",
+          "ar": "يتبقى {n}"
+        },
+        {
+          "key": "goods.groupOf",
+          "zh-CN": "{name}的团",
+          "en": "{name}’s group",
+          "ar": "مجموعة {name}"
+        },
+        {
+          "key": "goods.groupOpenList",
+          "zh-CN": "正在拼",
+          "en": "Groups forming",
+          "ar": "مجموعات قيد التكوين"
+        },
+        {
+          "key": "goods.groupStart",
+          "zh-CN": "开团 {p}",
+          "en": "Start group {p}",
+          "ar": "افتح مجموعة {p}"
         },
         {
           "key": "goods.limit",
@@ -1780,34 +1828,40 @@
           "ar": "اختر موعد الزيارة للمتابعة"
         },
         {
-          "key": "group.closed",
-          "zh-CN": "已截单",
-          "en": "Closed",
-          "ar": "أُغلق"
+          "key": "group.anyPickup",
+          "zh-CN": "下单时选",
+          "en": "Chosen at checkout",
+          "ar": "تُختار عند الدفع"
         },
         {
-          "key": "group.cutoff",
-          "zh-CN": "距今日截单",
-          "en": "Closes in",
-          "ar": "يغلق خلال"
+          "key": "group.closed",
+          "zh-CN": "已结束",
+          "en": "Closed",
+          "ar": "انتهت"
         },
         {
           "key": "group.done",
-          "zh-CN": "已成团，先参团的邻居差价已退回",
-          "en": "Group complete — the difference has been refunded to everyone",
-          "ar": "اكتملت المجموعة؛ أُعيد الفرق للجميع"
+          "zh-CN": "已成团",
+          "en": "Group complete",
+          "ar": "اكتملت المجموعة"
         },
         {
-          "key": "group.fallback",
-          "zh-CN": "未达 3 人不会作废：按原价照常配送到自提点，货照拿，只是没享受到折扣。",
-          "en": "Below 3 people nothing is cancelled: your order still arrives at the pickup point at the normal price — you just miss the discount.",
-          "ar": "أقل من ٣ أشخاص لا يُلغى شيء: يصل طلبك إلى نقطة الاستلام بالسعر العادي، لكن دون الخصم."
+          "key": "group.goods",
+          "zh-CN": "商品",
+          "en": "Product",
+          "ar": "المنتج"
         },
         {
           "key": "group.join",
           "zh-CN": "参团",
           "en": "Join",
           "ar": "انضم"
+        },
+        {
+          "key": "group.joinAt",
+          "zh-CN": "参团 {p}",
+          "en": "Join {p}",
+          "ar": "انضم {p}"
         },
         {
           "key": "group.joined",
@@ -1822,10 +1876,16 @@
           "ar": "انضممت"
         },
         {
-          "key": "group.joinedOk",
-          "zh-CN": "参团成功",
-          "en": "You're in",
-          "ar": "تم انضمامك"
+          "key": "group.joinedOf",
+          "zh-CN": "{n} / {m} 人",
+          "en": "{n} / {m}",
+          "ar": "{n} / {m}"
+        },
+        {
+          "key": "group.leftNeed",
+          "zh-CN": "后截止 · 差 {n} 人成团",
+          "en": "left · {n} more to complete",
+          "ar": "متبقٍ · يلزم {n} لإتمامها"
         },
         {
           "key": "group.needMore",
@@ -1834,22 +1894,28 @@
           "ar": "يتبقى {n} لإتمام المجموعة"
         },
         {
-          "key": "group.neighbours",
-          "zh-CN": "参团邻居 {n}",
-          "en": "Neighbours joined {n}",
-          "ar": "الجيران المنضمون {n}"
+          "key": "group.pickup",
+          "zh-CN": "自提点",
+          "en": "Pickup point",
+          "ar": "نقطة الاستلام"
         },
         {
-          "key": "group.progress",
-          "zh-CN": "成团进度",
-          "en": "Progress",
-          "ar": "التقدم"
+          "key": "group.price",
+          "zh-CN": "成团价",
+          "en": "Group price",
+          "ar": "سعر المجموعة"
         },
         {
-          "key": "group.shareMax",
-          "zh-CN": "{title}｜已拼到最低价，快来",
-          "en": "{title} — lowest price reached, come join",
-          "ar": "{title} · وصلنا لأدنى سعر، انضم"
+          "key": "group.refundNote",
+          "zh-CN": "没凑齐会自动退款",
+          "en": "Refunded automatically if the group doesn’t fill",
+          "ar": "يُسترد المبلغ تلقائيًا إن لم تكتمل المجموعة"
+        },
+        {
+          "key": "group.share",
+          "zh-CN": "分享",
+          "en": "Share",
+          "ar": "مشاركة"
         },
         {
           "key": "group.shareNeed",
@@ -1858,16 +1924,52 @@
           "ar": "{title} · يتبقى {n} لإتمام المجموعة"
         },
         {
-          "key": "group.tierHint",
-          "zh-CN": "够人数即成团。已参团的邻居同享成团价，差价原路退回。",
-          "en": "Once enough neighbours join, everyone gets the group price — the difference is refunded.",
-          "ar": "بمجرد اكتمال العدد يحصل الجميع على سعر المجموعة ويُرد الفرق."
+          "key": "group.soldOut",
+          "zh-CN": "已售罄",
+          "en": "Sold out",
+          "ar": "نفدت الكمية"
         },
         {
-          "key": "group.upgraded",
-          "zh-CN": "降档成功！已参团的邻居每份退回 {p}",
-          "en": "New tier unlocked — {p} refunded to every neighbour who already joined",
-          "ar": "فئة جديدة! تم رد {p} لكل جار انضم سابقًا"
+          "key": "group.status.FAILED",
+          "zh-CN": "未成团，已退款",
+          "en": "Not completed, refunded",
+          "ar": "لم تكتمل، تم الاسترداد"
+        },
+        {
+          "key": "group.status.FORMED",
+          "zh-CN": "已成团",
+          "en": "Complete",
+          "ar": "مكتملة"
+        },
+        {
+          "key": "group.status.OPEN",
+          "zh-CN": "拼团中",
+          "en": "Open",
+          "ar": "جارية"
+        },
+        {
+          "key": "group.status.PENDING",
+          "zh-CN": "审核中",
+          "en": "In review",
+          "ar": "قيد المراجعة"
+        },
+        {
+          "key": "group.titleMerchant",
+          "zh-CN": "商家团",
+          "en": "Store group",
+          "ar": "مجموعة المتجر"
+        },
+        {
+          "key": "group.titleOf",
+          "zh-CN": "{name}的团",
+          "en": "{name}’s group",
+          "ar": "مجموعة {name}"
+        },
+        {
+          "key": "group.you",
+          "zh-CN": "你",
+          "en": "You",
+          "ar": "أنت"
         },
         {
           "key": "groupHost.addressPh",
@@ -7970,64 +8072,280 @@
           "ar": "التسوية بالوزن الفعلي"
         },
         {
-          "key": "groups.canOpen",
-          "zh-CN": "可开团商品",
-          "en": "Products you can group",
-          "ar": "منتجات قابلة للتجميع"
+          "key": "group.activity",
+          "zh-CN": "活动",
+          "en": "Activity",
+          "ar": "النشاط"
         },
         {
-          "key": "groups.created",
-          "zh-CN": "已开团",
-          "en": "Group opened",
-          "ar": "تم فتح المجموعة"
+          "key": "group.anyPickup",
+          "zh-CN": "不限",
+          "en": "Any",
+          "ar": "أي نقطة"
         },
         {
-          "key": "groups.joined",
-          "zh-CN": "已参团 {n} 人",
-          "en": "{n} joined",
-          "ar": "انضم {n}"
+          "key": "group.copied",
+          "zh-CN": "链接已复制",
+          "en": "Link copied",
+          "ar": "تم نسخ الرابط"
+        },
+        {
+          "key": "group.dissolve",
+          "zh-CN": "散团",
+          "en": "Dissolve",
+          "ar": "إلغاء"
+        },
+        {
+          "key": "group.dissolveBody",
+          "zh-CN": "已付款的 {n} 人将全额退款，此操作不可撤销",
+          "en": "{n} paid members will be fully refunded. This cannot be undone",
+          "ar": "سيُردّ المبلغ كاملًا إلى {n} من الأعضاء الذين دفعوا، ولا يمكن التراجع"
+        },
+        {
+          "key": "group.dissolveTitle",
+          "zh-CN": "散团",
+          "en": "Dissolve group",
+          "ar": "إلغاء المجموعة"
+        },
+        {
+          "key": "group.dissolved",
+          "zh-CN": "已散团，退款已发起",
+          "en": "Group dissolved, refunds started",
+          "ar": "أُلغيت المجموعة وبدأ الاسترداد"
+        },
+        {
+          "key": "group.goods",
+          "zh-CN": "商品",
+          "en": "Product",
+          "ar": "المنتج"
+        },
+        {
+          "key": "group.leftNeed",
+          "zh-CN": "后截止 · 差 {n} 人",
+          "en": "left · {n} more needed",
+          "ar": "متبقٍ · يلزم {n}"
+        },
+        {
+          "key": "group.pickup",
+          "zh-CN": "自提点",
+          "en": "Pickup point",
+          "ar": "نقطة الاستلام"
+        },
+        {
+          "key": "group.price",
+          "zh-CN": "成团价",
+          "en": "Group price",
+          "ar": "سعر المجموعة"
+        },
+        {
+          "key": "group.seatEmpty",
+          "zh-CN": "待加入",
+          "en": "Open",
+          "ar": "شاغر"
+        },
+        {
+          "key": "group.share",
+          "zh-CN": "分享",
+          "en": "Share",
+          "ar": "مشاركة"
+        },
+        {
+          "key": "group.shareText",
+          "zh-CN": "{title} 拼团，还差 {n} 人",
+          "en": "{title} group buy, {n} more needed",
+          "ar": "شراء جماعي {title}، يلزم {n}"
+        },
+        {
+          "key": "group.title",
+          "zh-CN": "团详情",
+          "en": "Group details",
+          "ar": "تفاصيل المجموعة"
+        },
+        {
+          "key": "groupOpen.activity",
+          "zh-CN": "活动",
+          "en": "Activity",
+          "ar": "النشاط"
+        },
+        {
+          "key": "groupOpen.anyPickup",
+          "zh-CN": "不限",
+          "en": "Any",
+          "ar": "أي نقطة"
+        },
+        {
+          "key": "groupOpen.byRule",
+          "zh-CN": "按活动规则",
+          "en": "From activity rules",
+          "ar": "حسب قواعد النشاط"
+        },
+        {
+          "key": "groupOpen.cancel",
+          "zh-CN": "取消",
+          "en": "Cancel",
+          "ar": "إلغاء"
+        },
+        {
+          "key": "groupOpen.deadline",
+          "zh-CN": "截止",
+          "en": "Deadline",
+          "ar": "المهلة"
+        },
+        {
+          "key": "groupOpen.deadlineValue",
+          "zh-CN": "开团后 {h} 小时",
+          "en": "{h} h after start",
+          "ar": "{h} ساعة بعد الفتح"
+        },
+        {
+          "key": "groupOpen.goods",
+          "zh-CN": "商品",
+          "en": "Product",
+          "ar": "المنتج"
+        },
+        {
+          "key": "groupOpen.noActivity",
+          "zh-CN": "暂无进行中的拼团活动",
+          "en": "No group-buy activity is running",
+          "ar": "لا يوجد نشاط شراء جماعي جارٍ"
+        },
+        {
+          "key": "groupOpen.noActivityTip",
+          "zh-CN": "请先在「活动」中新建拼团",
+          "en": "Create a group-buy activity under Activities first",
+          "ar": "أنشئ نشاط شراء جماعي من الأنشطة أولًا"
+        },
+        {
+          "key": "groupOpen.pick",
+          "zh-CN": "请选择",
+          "en": "Select",
+          "ar": "اختر"
+        },
+        {
+          "key": "groupOpen.pickup",
+          "zh-CN": "自提点",
+          "en": "Pickup point",
+          "ar": "نقطة الاستلام"
+        },
+        {
+          "key": "groupOpen.rule",
+          "zh-CN": "成团",
+          "en": "Forms at",
+          "ar": "تكتمل عند"
+        },
+        {
+          "key": "groupOpen.ruleValue",
+          "zh-CN": "{n} 人 · {p}",
+          "en": "{n} people · {p}",
+          "ar": "{n} أشخاص · {p}"
+        },
+        {
+          "key": "groupOpen.submit",
+          "zh-CN": "开团",
+          "en": "Start group",
+          "ar": "فتح مجموعة"
+        },
+        {
+          "key": "groupOpen.title",
+          "zh-CN": "开团",
+          "en": "Start group",
+          "ar": "فتح مجموعة"
+        },
+        {
+          "key": "groups.byBuyer",
+          "zh-CN": "{name}发起",
+          "en": "Started by {name}",
+          "ar": "أنشأها {name}"
+        },
+        {
+          "key": "groups.byMerchant",
+          "zh-CN": "商家开团",
+          "en": "Store group",
+          "ar": "مجموعة المتجر"
+        },
+        {
+          "key": "groups.empty",
+          "zh-CN": "暂无团",
+          "en": "No groups",
+          "ar": "لا توجد مجموعات"
+        },
+        {
+          "key": "groups.emptyTip",
+          "zh-CN": "开团后，买家付款参团，凑齐人数即成团",
+          "en": "Buyers join by paying; the group forms when the headcount is reached",
+          "ar": "ينضم المشترون بالدفع، وتكتمل المجموعة عند بلوغ العدد"
+        },
+        {
+          "key": "groups.joinedOf",
+          "zh-CN": "{n} / {m} 人",
+          "en": "{n} / {m}",
+          "ar": "{n} / {m}"
+        },
+        {
+          "key": "groups.left",
+          "zh-CN": "{t} 后截止",
+          "en": "Ends in {t}",
+          "ar": "تنتهي بعد {t}"
         },
         {
           "key": "groups.need",
-          "zh-CN": "还差 {n} 人",
-          "en": "{n} more needed",
+          "zh-CN": "差 {n} 人",
+          "en": "{n} more",
           "ar": "يتبقى {n}"
-        },
-        {
-          "key": "groups.noGroupable",
-          "zh-CN": "暂无生效中的团购活动，请先在「活动」中创建",
-          "en": "No group-buy activity is running; create one under Activities first",
-          "ar": "لا يوجد نشاط شراء جماعي فعّال؛ أنشئ واحدًا من الأنشطة أولًا"
-        },
-        {
-          "key": "groups.noRunning",
-          "zh-CN": "暂无进行中的团",
-          "en": "No groups running",
-          "ar": "لا مجموعات جارية"
         },
         {
           "key": "groups.open",
           "zh-CN": "开团",
-          "en": "Open",
-          "ar": "فتح"
+          "en": "Start group",
+          "ar": "فتح مجموعة"
         },
         {
-          "key": "groups.reached",
+          "key": "groups.status.FAILED",
+          "zh-CN": "已散",
+          "en": "Dissolved",
+          "ar": "ملغاة"
+        },
+        {
+          "key": "groups.status.FORMED",
           "zh-CN": "已成团",
-          "en": "Target met",
-          "ar": "اكتمل العدد"
+          "en": "Formed",
+          "ar": "مكتملة"
         },
         {
-          "key": "groups.running",
+          "key": "groups.status.OPEN",
           "zh-CN": "进行中",
-          "en": "Running",
+          "en": "Open",
+          "ar": "جارية"
+        },
+        {
+          "key": "groups.status.PENDING",
+          "zh-CN": "待审核",
+          "en": "In review",
+          "ar": "قيد المراجعة"
+        },
+        {
+          "key": "groups.tab.FAILED",
+          "zh-CN": "已散",
+          "en": "Dissolved",
+          "ar": "ملغاة"
+        },
+        {
+          "key": "groups.tab.FORMED",
+          "zh-CN": "已成团",
+          "en": "Formed",
+          "ar": "مكتملة"
+        },
+        {
+          "key": "groups.tab.OPEN",
+          "zh-CN": "进行中",
+          "en": "Open",
           "ar": "جارية"
         },
         {
           "key": "groups.title",
-          "zh-CN": "团购",
-          "en": "Group buys",
-          "ar": "شراء جماعي"
+          "zh-CN": "团",
+          "en": "Groups",
+          "ar": "المجموعات"
         },
         {
           "key": "home.blocker.agreement",
@@ -19383,6 +19701,18 @@
           "ar": "منتجات الطلب المسبق لا يمكن ضمها إلى الطلب الجماعي"
         },
         {
+          "key": "err.marketing.group_closed",
+          "zh-CN": "团已成团、已散或已过期，不能再参团",
+          "en": "This group has closed and can no longer be joined",
+          "ar": "أُغلقت هذه المجموعة ولم يعد بالإمكان الانضمام إليها"
+        },
+        {
+          "key": "err.marketing.group_join_needs_upgrade",
+          "zh-CN": "参团改为下单付款，请升级到最新版本",
+          "en": "Joining a group now goes through checkout. Please update the app",
+          "ar": "أصبح الانضمام إلى المجموعة يتم عبر الدفع. يُرجى تحديث التطبيق"
+        },
+        {
           "key": "err.marketing.period_cut_off",
           "zh-CN": "本期已截单，不能取消",
           "en": "This batch has closed and can no longer be cancelled",
@@ -27029,6 +27359,8 @@
           "PERIOD_MIXED",
           "PERIOD_FULL",
           "GOODS_IN_PRESALE",
+          "GROUP_CLOSED",
+          "GROUP_JOIN_NEEDS_UPGRADE",
           "SPLIT_RECEIVER_NOT_READY",
           "SPLIT_EXPIRED",
           "WITHDRAW_STATE_ILLEGAL",
@@ -27211,6 +27543,16 @@
           "REMOTE_ERROR"
         ],
         "zh": "失败的三种：改配置 / 等对方 / 看对方日志",
+        "module": "shop-base"
+      },
+      {
+        "name": "PaidOutcome",
+        "values": [
+          "JOINED",
+          "ALREADY",
+          "CLOSED"
+        ],
+        "zh": "",
         "module": "shop-base"
       },
       {
@@ -28589,6 +28931,9 @@
           "/pages/marketing/index",
           "/pages/periods/index",
           "/pages/period/index",
+          "/pages/group/index",
+          "/pages/group-open/index",
+          "/pages/activity-edit/index",
           "/pages/stock/index",
           "/pages/stock-detail/index",
           "/pages/stock-cross/index",

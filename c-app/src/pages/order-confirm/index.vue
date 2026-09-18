@@ -406,6 +406,8 @@ async function refreshAmount() {
       payMode: payMode.value,
       usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
       appointmentAt: appointmentAt.value,
+      groupNo: groupNo.value || undefined,
+      openGroup: openGroup.value || undefined,
     });
     if (seq !== amountSeq) return;
     serverAmount.value = p.amount;
@@ -655,6 +657,8 @@ async function submit() {
       usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
       remark: remark.value || undefined,
       appointmentAt: appointmentAt.value,
+      groupNo: groupNo.value || undefined,
+      openGroup: openGroup.value || undefined,
       // 幂等 key 在**提交时**生成一次，重复点击提交的是同一个 key，后端返回同一单
       idempotencyKey: idempotencyKey(),
     });
@@ -667,7 +671,17 @@ async function submit() {
   }
 }
 
+/**
+ * 拼团：从团页来的带团号（参团），从商品页「开团」来的带 openGroup。
+ * 只是把意图带给后端 —— 团价、团还能不能参、开团建团，全在后端判；预览就按团价算。
+ */
+const groupNo = ref("");
+const openGroup = ref(false);
+const grouped = computed(() => !!groupNo.value || openGroup.value);
+
 onLoad((q) => {
+  groupNo.value = (q?.groupNo as string) || "";
+  openGroup.value = q?.openGroup === "1";
   fulfillment.value = (q?.fulfillment as FulfillmentType) || FULFILLMENT.PICKUP;
   appointmentAt.value = q?.appointmentAt ? Number(q.appointmentAt) : undefined;
 
@@ -734,6 +748,10 @@ onMounted(async () => {
     </sh-empty>
 
     <template v-else>
+    <!-- 拼团单：按成团价结算；没凑齐自动全额退款 —— 付款前说清楚 -->
+    <view v-if="grouped" class="txt-sub sh-notice cap">
+      <text>{{ openGroup ? $t("confirm.groupOpenNote") : $t("confirm.groupJoinNote") }}</text>
+    </view>
     <!--
       能力提示：**必须在付款前**说。
       三条的共同后果都是付款那一刻才炸 —— 而那时候平台既解释不清也补救不了。

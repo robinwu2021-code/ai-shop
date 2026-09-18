@@ -226,7 +226,14 @@ public class MpTradeController {
                                   * 预约时段编号。这家店开了时段就必填 —— 没开则忽略，
                                   * 走 appointmentAt 那条旧路（存量端上没有这个字段）。
                                   */
-                                 String appointmentSlotNo) {
+                                 String appointmentSlotNo,
+                                 /*
+                                  * 参团：团号。按团价收，付款成功才算成员（TDD-营销域-详细设计 §1.4）。
+                                  * 与 openGroup 二选一；都不传就是普通单
+                                  */
+                                 String groupNo,
+                                 /* 开团：按这件货在跑的拼团活动开一个新团，下单人即发起人 */
+                                 Boolean openGroup) {
 
         public record Item(String goodsNo, String skuNo, int qty) {
         }
@@ -237,7 +244,7 @@ public class MpTradeController {
                             .map(i -> new OrderService.CreateOrderCommand.Item(i.goodsNo(), i.skuNo(), i.qty()))
                             .toList(),
                     fulfillment, pickupNo, addressId, couponNo, usePoints, remark, appointmentAt,
-                    payMode, payScene, appointmentSlotNo);
+                    payMode, payScene, appointmentSlotNo, groupNo, Boolean.TRUE.equals(openGroup));
         }
     }
 }

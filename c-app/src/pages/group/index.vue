@@ -1,67 +1,101 @@
 <script setup lang="ts">
-// 团详情：阶梯价、参团邻居、参团。
-// 这页要讲清楚一件事 —— **人越多，所有人（含已参团的）都更便宜**。
-// 这是与美团/拼多多最大的不同，所以阶梯表是页面主体，不是附属信息。
+/*
+ * 参团（原型 s22）。与 B 端团详情（s10）同一版式：倒计时、人头、信息列表，
+ * 只是底部按钮换成买家的动作 —— 分享、参团 ¥8。
+ *
+ * **参团 = 带团号下单，按团价付款，付了款才算一人**（TDD-营销域-详细设计 §1.4）。
+ * 此前这里直接调「参团」接口插一行成员，不产生订单与付款：成团价从未被收过，
+ * 到期也无钱可退，而提示还写着「先参团的邻居差价已退回」—— 那句话兑现不了，删掉了。
+ * 没凑齐的团到期自动整单退款，这一条写在页面上，是买家敢付钱的前提。
+ */
 import { computed, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { onLoad, onShareAppMessage } from "@dcloudio/uni-app";
+import { onLoad, onShareAppMessage, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
+import { useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
-import { buildShareMessage } from "@shared/ports/share";
-import { GOODS_COVER_FALLBACK, ROUTES } from "@shared/utils/constants";
-import { countdown, money } from "@shared/utils/format";
+import { buildShareMessage, canNativeShare } from "@shared/ports/share";
+import { ROUTES } from "@shared/utils/constants";
+import { defaultFulfillment } from "@shared/utils/goods";
+import { money } from "@shared/utils/format";
 import type { GroupBuy } from "@shared/types";
 
 const { t } = useI18n();
 const user = useUserStore();
+const cart = useCartStore();
 const community = useCommunityStore();
 
 const group = ref<GroupBuy | null>(null);
-const now = ref(Date.now());
-let timer: ReturnType<typeof setInterval> | undefined;
-
-const closed = computed(() => !!group.value && now.value > group.value.expireAt);
-const off = computed(() =>
-  group.value
-    ? Math.round((1 - group.value.groupPrice / group.value.basePrice) * 100)
-    : 0,
-);
-
-/** 这次没取到。**与「这个东西不存在」是两件事** —— 整页都挂在 `group` 后面，
- *  拉不到连外壳都不渲染，是一整块白屏：没有导航栏、没有一个字、退不回去 */
 const failed = ref(false);
-/** 重试要把单号带回去 —— `@retry` 不带参数 */
+const busy = ref(false);
 const currentNo = ref("");
+/** 小程序有原生转发；H5 上不画这个按钮（点了什么都不发生），分享走浏览器自己的菜单 */
+const nativeShare = canNativeShare();
+const now = ref(Date.now());
+const tick = setInterval(() => { now.value = Date.now(); }, 1000);
+onUnmounted(() => clearInterval(tick));
 
-async function load(groupNo: string) {
-  currentNo.value = groupNo;
+async function load() {
+  if (!currentNo.value) return;
   try {
-    group.value = await api.groupBuyDetail(groupNo);
-    uni.setNavigationBarTitle({ title: group.value.title });
+    group.value = await api.groupBuyDetail(currentNo.value);
+    uni.setNavigationBarTitle({ title: title.value });
     failed.value = false;
   } catch {
     failed.value = true;
   }
 }
 
+const title = computed(() => {
+  const g = group.value;
+  if (!g) return "";
+  return g.initiatorNickname
+    ? String(t("group.titleOf", { name: g.initiatorNickname }))
+    : String(t("group.titleMerchant"));
+});
+
+/** 能参 = 进行中、没过截止、我还不是成员 */
+const open = computed(() => !!group.value && group.value.status === "OPEN" && group.value.expireAt > now.value);
+const canJoin = computed(() => open.value && !group.value?.joined);
+
+const countdown = computed(() => {
+  if (!group.value) return "";
+  const s = Math.max(0, Math.floor((group.value.expireAt - now.value) / 1000));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
+});
+
+/** 人头：已付款的成员 + 空位；我还没参时，第一个空位写「你」 */
+const seats = computed(() => {
+  const g = group.value;
+  if (!g) return [];
+  const heads = g.members.map((m) => ({ k: (m.nickname || "·").slice(0, 1), empty: false, me: false }));
+  const gap = Math.max(0, g.minCount - heads.length);
+  const empties = Array.from({ length: gap }, (_, i) => ({ k: "", empty: true, me: canJoin.value && i === 0 }));
+  return [...heads, ...empties];
+});
+
+/**
+ * 参团：取这件货默认的那个规格加进购物车，带团号去结算。
+ * 结算页统一从购物车取数（与详情页「立即购买」同一条路），不另开一条直购链路。
+ */
 async function join() {
   const g = group.value;
-  if (!g || g.joined || closed.value) return;
+  if (!g || !canJoin.value || busy.value) return;
+  busy.value = true;
   try {
-    const res = await api.joinGroupBuy(g.groupNo, 1);
-    group.value = res.group;
-    // 把团推到新档位时，明确告诉用户「先买的邻居也退钱了」——
-    // 这正是本方案区别于其它拼团的地方，不说出来用户感知不到
-    uni.showToast({
-      title: res.justReached
-        ? String(t("group.upgraded", { p: money(res.refundPerMember) }))
-        : String(t("group.joinedOk")),
-      icon: "none",
-      duration: 2600,
+    const goods = await api.goodsDetail(g.goodsNo);
+    const sku = goods.skus.find((s) => s.stock > 0) ?? goods.skus[0];
+    if (!sku) throw new Error(String(t("group.soldOut")));
+    await cart.add(g.goodsNo, sku.skuNo, 1);
+    uni.navigateTo({
+      url: `${ROUTES.orderConfirm}?fulfillment=${defaultFulfillment(goods)}&skus=${sku.skuNo}&groupNo=${g.groupNo}`,
     });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
   }
 }
 
@@ -70,21 +104,17 @@ function openGoods() {
 }
 
 onLoad((q) => {
-  const no = (q?.groupNo as string) || "";
-  if (no) load(no);
-  timer = setInterval(() => (now.value = Date.now()), 1000);
+  currentNo.value = (q?.groupNo as string) || "";
+});
+onShow(() => {
+  void load();
 });
 
-onUnmounted(() => clearInterval(timer));
-
-// 分享文案自动带进度 —— 「还差 1 人到 85 折」比「快来拼团」有效得多
+// 分享文案带进度 —— 「还差 1 人」比「快来拼团」有效得多
 onShareAppMessage(() => {
   const g = group.value;
-  const title = g && !g.reached
-    ? String(t("group.shareNeed", { n: g.need, title: g.title }))
-    : String(t("group.shareMax", { title: g?.title ?? "" }));
   return buildShareMessage({
-    title,
+    title: g ? String(t("group.shareNeed", { n: g.need, title: g.title })) : "",
     path: `${ROUTES.group}?groupNo=${g?.groupNo ?? ""}`,
     merchantNo: community.pickup?.hostMerchantNo,
     inviterNo: user.user?.cUserNo,
@@ -93,130 +123,99 @@ onShareAppMessage(() => {
 </script>
 
 <template>
-  <sh-scaffold
-    :pending="!group"
-    :failed="failed"
-    @retry="() => load(currentNo)"
-  >
-    <!-- 正文全靠 `group` 解引用，所以要一层 `v-if` 让 vue-tsc 收窄类型。
-         **不写在 `<sh-scaffold>` 上**：写在那儿的话，`group` 为空时连外壳都不渲染 ——
-         没有导航栏、没有一个字，退不回去。守卫留在这里，外壳照常在。 -->
+  <sh-scaffold :pending="!group && !failed" :failed="failed" @retry="load">
     <template v-if="group">
-        <!-- 头部：当前价 + 自提点 -->
-        <view class="sh-card">
-          <view class="head sh-row">
-            <sh-cover class="head__cover sh-center" :src="group.cover || GOODS_COVER_FALLBACK" @tap="openGoods"></sh-cover>
-            <view class="sh-fill">
-              <text class="txt-title">{{ group.title }}</text>
-              <text class="txt-caption head__pickup">📍 {{ group.pickupName }}</text>
-            </view>
-          </view>
+      <view class="hero">
+        <template v-if="open">
+          <text class="txt-display sh-num">{{ countdown }}</text>
+          <text class="txt-sub sh-muted hero__sub">{{ $t("group.leftNeed", { n: group.need }) }}</text>
+        </template>
+        <template v-else>
+          <text class="txt-title">{{ $t(`group.status.${group.status}`) }}</text>
+          <text class="txt-sub sh-muted hero__sub sh-num">{{ $t("group.joinedOf", { n: group.joinedCount, m: group.minCount }) }}</text>
+        </template>
+      </view>
 
-          <view class="price sh-row sh-row--baseline">
-            <text class="txt-hero sh-num">{{ money(group.groupPrice) }}</text>
-            <text v-if="off > 0" class="sh-was sh-num">{{ money(group.basePrice) }}</text>
-            <text v-if="off > 0" class="sh-chip sh-chip--danger sh-num">-{{ off }}%</text>
-          </view>
+      <view class="sh-row seats">
+        <view v-for="(s, i) in seats" :key="i" class="seat" :class="{ 'seat--empty': s.empty, 'seat--me': s.me }">
+          <text v-if="!s.empty" class="txt-body">{{ s.k }}</text>
+          <text v-else-if="s.me" class="txt-caption txt-primary">{{ $t("group.you") }}</text>
+        </view>
+      </view>
 
-          <view class="sh-notice sh-notice--warning cd sh-row sh-row--between">
-            <text class="txt-caption cd__label is-warning">{{ $t("group.cutoff") }}</text>
-            <text class="txt-body cd__v sh-num is-warning">{{ countdown(group.expireAt - now) }}</text>
+      <view class="sh-cells">
+        <view class="sh-cell sh-row sh-row--between" @tap="openGoods">
+          <text class="txt-body sh-muted">{{ $t("group.goods") }}</text>
+          <text class="txt-body">{{ group.title }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("group.price") }}</text>
+          <text class="txt-body sh-num">{{ money(group.groupPrice) }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("group.pickup") }}</text>
+          <text class="txt-body">{{ group.pickupName || $t("group.anyPickup") }}</text>
+        </view>
+      </view>
+
+      <view class="sh-notice">
+        <text class="txt-caption">{{ $t("group.refundNote") }}</text>
+      </view>
+
+      <sh-actionbar>
+        <view class="sh-row bar">
+          <button v-if="nativeShare" class="sh-btn sh-btn--muted sh-fill share" open-type="share">
+            {{ $t("group.share") }}
+          </button>
+          <view class="sh-btn bar__main" :class="{ 'is-disabled': !canJoin || busy }" @tap="join">
+            {{ group.joined ? $t("group.joinedBtn") : open ? $t("group.joinAt", { p: money(group.groupPrice) }) : $t("group.closed") }}
           </view>
         </view>
-
-        <!-- 成团进度：单档，够人就成 -->
-        <view class="sh-card block">
-          <text class="txt-title">{{ $t("group.progress") }}</text>
-          <text class="sh-muted tierhint">{{ $t("group.tierHint") }}</text>
-
-          <view v-if="!group.reached" class="sh-notice goal">
-            <text class="txt-strong goal__text txt-primary">{{ $t("group.needMore", { n: group.need }) }}</text>
-          </view>
-          <view v-else class="sh-notice goal goal--max">
-            <text class="txt-strong goal__text txt-primary">{{ $t("group.done") }}</text>
-          </view>
-        </view>
-
-        <!-- 参团邻居 -->
-        <view class="sh-card block">
-          <text class="txt-title">{{ $t("group.neighbours", { n: group.joinedCount }) }}</text>
-          <view class="members sh-wrap">
-            <view v-for="(m, i) in group.members" :key="i" class="member sh-row">
-              <text class="txt-body">{{ m.avatar }}</text>
-              <text class="txt-caption member__n txt-ink">{{ m.nickname }}</text>
-            </view>
-          </view>
-        </view>
-
-        <!-- 不成团怎么办 —— 必须写清楚，这是用户敢下单的前提 -->
-        <view class="sh-card block notice">
-          <text class="txt-caption">{{ $t("group.fallback") }}</text>
-        </view>
-
-        <sh-actionbar :pad="180">
-          <view
-            class="sh-btn"
-            :class="{ 'is-disabled': group.joined || closed }"
-            @tap="join"
-          >
-            {{ closed ? $t("group.closed") : group.joined ? $t("group.joinedBtn") : $t("group.join") }}
-          </view>
-        </sh-actionbar>
-  
-  
+      </sh-actionbar>
     </template>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.head {
-  gap: 24rpx;
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16rpx 0 8rpx;
 }
-.head__cover {
-  width: 130rpx;
-  height: 130rpx;
-  border-radius: 32rpx;
-  background: var(--sh-primary-tint);
-  font-size: 64rpx;
-  flex-shrink: 0;
-}
-
-.head__pickup {
-  display: block;
+.hero__sub {
   margin-top: 8rpx;
 }
-.price {
-  margin-top: 28rpx;
-}
-
-.cd {
-  margin-top: 24rpx;
-}
-.tierhint {
-  display: block;
-  margin-top: 8rpx;
-}
-.goal {
-  margin-top: 24rpx;
-}
-.goal--max {
-  background: var(--sh-success-tint);
-}
-.goal--max .goal__text {
-  color: var(--sh-success);
-}
-.members {
+.seats {
+  justify-content: center;
   gap: 16rpx;
-  margin-top: 24rpx;
+  flex-wrap: wrap;
 }
-.member {
-  gap: 8rpx;
-  background: var(--sh-faint);
+.seat {
+  width: 88rpx;
+  height: 88rpx;
   border-radius: 9999px;
-  padding: 12rpx 24rpx;
+  background: var(--sh-primary-tint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-
-.notice {
-  background: var(--sh-faint);
+.seat--empty {
+  background: transparent;
+  border: 2rpx dashed var(--sh-line);
+}
+.seat--me {
+  border-color: var(--sh-primary);
+}
+.bar {
+  gap: 16rpx;
+  width: 100%;
+}
+.bar__main {
+  flex: 2;
+}
+.share {
+  margin: 0;
+  line-height: inherit;
 }
 </style>

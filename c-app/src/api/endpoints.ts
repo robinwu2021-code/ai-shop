@@ -224,12 +224,7 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
     auth: false,
     summary: "商家团详情",
   },
-  joinGroupBuy: {
-    method: "POST",
-    path: "/mp/group-buy/:groupNo/join",
-    auth: true,
-    summary: "参团",
-  },
+  goodsGroup: { method: "GET", path: "/mp/goods/:goodsNo/group", auth: false, summary: "商品的拼团信息（开团价、正在拼的团）" },
   createGroupBuy: { method: "POST", path: "/mp/group-buy", auth: true, summary: "发起商家团" },
 
   // ---------------------------------------------------------------- 邻里求团

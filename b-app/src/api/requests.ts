@@ -350,6 +350,16 @@ export interface HandleAfterSaleReq {
 export interface CreateGroupReq {
   /** 要开团的商品，必须是本店已上架商品 */
   goodsNo: string;
+  /** 页面上选的拼团活动；与这件货此刻所在的活动对不上时后端拒 */
+  activityNo?: string;
+  /** 成团范围（自提点）；不传 = 不限点 */
+  pickupNo?: string;
+}
+
+/** 散团 */
+export interface DissolveGroupReq {
+  /** 散团原因，写进参团买家的退款记录；可空 */
+  reason?: string;
 }
 
 /**

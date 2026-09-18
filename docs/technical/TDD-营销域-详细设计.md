@@ -368,8 +368,9 @@ CREATE TABLE IF NOT EXISTS pmt_activity_rule
 | s07 · s08 | 暂停 / 结束 | PUT `/biz/activities/{no}/status` | `{status}` | `ActivityVO` | 有 |
 | s35 | 编辑进行中 | POST `/biz/activities`（同上） | 只允许改 A6 那几项 | | 改（A6 校验） |
 | s09 | 团列表 | GET `/biz/groups?status=` | — | `GroupBuyVO[]` | 改：按 status 筛 |
-| s10 | 团详情 | GET `/biz/groups/{no}` | — | `GroupBuyVO` + `members[]` | **新** |
-| s10 | 散团退款 | POST `/biz/groups/{no}/dissolve` | `{reason}` | `GroupBuyVO` | **新**（置 FAILED + 退款） |
+| s10 | 团详情 | GET `/biz/group/{groupNo}` | — | `GroupBuyVO`（含 `members[]` · `activityName`） | **新（P1b 已实现）** |
+| s10 | 散团退款 | POST `/biz/group/{groupNo}/dissolve` | `{reason}` | `GroupBuyVO` | **新（P1b 已实现）**（置 FAILED + 退款） |
+| s34 | 开团可选自提点 | GET `/biz/group/pickups` | — | `PickupRef[]` | **新（P1b）** |
 | s34 | 开团 | POST `/biz/groups` | `{activityNo, goodsNo, pickupNo}` | `GroupBuyVO` | 改：加 activityNo · pickupNo |
 | s31 | 集单列表 | GET `/biz/period?status=` | — | `PeriodVO[]` | **新（已写）** |
 | s20 · s33 | 一期详情 | GET `/biz/period/{no}` | — | `PeriodDetailVO` | **新（已写）** |
@@ -452,9 +453,10 @@ EnrollmentVO { enrollmentNo, activityNo, entityNo, entityName, goodsNos[], quota
 | 40027 | `PERIOD_FULL` | 本期份数已满（已写） |
 | 40028 | `GOODS_IN_PRESALE` | 集单选了预售商品（已写） |
 | 40029 | `ACTIVITY_RULE_LOCKED` | 进行中改规则（P2） |
-| 40030 | `GROUP_CLOSED` | 参团时团已成 / 已散 / 已过期 |
+| 40030 | `GROUP_CLOSED` | 参团时团已成 / 已散 / 已过期（P1b 已实现） |
 | 40031 | `ENROLLMENT_CLOSED` | 过了报名截止或不满足门槛（P3） |
 | 40032 | `ENROLLMENT_OVER_BUDGET` | 通过后超出平台预算（P3） |
+| 40033 | `GROUP_JOIN_NEEDS_UPGRADE` | 旧版 C 端调「直接参团」：参团已改为下单付款，提示升级（P1b） |
 
 ---
 

@@ -3,7 +3,8 @@
 // 从 `api/mock.ts`（5240 行 / 228 个接口）按域拆出来；实现一个字没改。
 // 合并在 `mocks/index.ts`，那里的类型标注保证**一个接口都不能少**。
 
-import { allCommunitySeeds, buildGroupBuy, db, delay, findGoodsSeed, nextNo, persist, toGoods, toGroupRequest } from "@shared/mock/db";
+import { allCommunitySeeds, buildGroupBuy, db, delay, findGoodsSeed, nextNo, persist, pick, toGoods, toGroupRequest } from "@shared/mock/db";
+import { ApiError } from "@shared/net/http-client";
 import { MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
 import {
   requireMerchant,
@@ -13,39 +14,67 @@ import type { MerchantApi } from "../contract";
 export const groupMock: Pick<MerchantApi,
   "mGroupList"
   | "mCreateGroup"
+  | "mGroup"
+  | "mDissolveGroup"
+  | "mGroupPickups"
   | "mRequestList"
   | "mQuote"
 > = {
   // ---------------------------------------------------------------- 团购与报价
-  async mGroupList() {
+  async mGroupList(status) {
     const merchantNo = db.merchant.merchantNo;
     return delay(
       db.groupSeeds
         .map(buildGroupBuy)
-        .filter((g) => g.merchant.merchantNo === merchantNo),
+        .filter((g) => g.merchant.merchantNo === merchantNo)
+        .filter((g) => !status || g.status === status),
     );
   },
 
-  async mCreateGroup(goodsNo) {
+  async mGroup(groupNo) {
+    const seed = db.groupSeeds.find((g) => g.groupNo === groupNo);
+    if (!seed) throw new ApiError(10404, "团不存在");
+    return delay(buildGroupBuy(seed));
+  },
+
+  async mDissolveGroup(groupNo) {
     requireMerchant();
-    const goods = toGoods(findGoodsSeed(goodsNo));
-    // 商品没配 {起团人数, 团购价} 就不能开团 —— 团价从哪来？（需求 §五之四）
-    if (!goods.groupBuy) throw new Error("该商品未配置团购价，先在商品里配置");
-    // 截止时间取「团有效期」与「当日截单」的更早者：截单已过就只能开出一个死团
-    // （倒计时直接 00:00:00），不如当场说清楚
-    if (goods.cutoffAt && goods.cutoffAt <= Date.now()) {
-      throw new Error("今日已截单，明天再开团");
-    }
+    const seed = db.groupSeeds.find((g) => g.groupNo === groupNo);
+    if (!seed) throw new ApiError(10404, "团不存在");
+    const g = buildGroupBuy(seed);
+    // 与后端同一口径：只能散还在拼的团；已成团的买家已经在等货了
+    if (g.status === "FORMED") throw new ApiError(10409, "已成团，不能散团");
+    seed.failed = true;
+    persist();
+    return delay(buildGroupBuy(seed));
+  },
+
+  async mGroupPickups() {
+    return delay(allCommunitySeeds().flatMap((c) => c.pickups).slice(0, 3).map((p) => ({
+      pickupNo: p.pickupNo,
+      name: pick(p.name),
+      address: "",
+      type: "NEIGHBOR",
+      status: "ACTIVE",
+    })));
+  },
+
+  async mCreateGroup(req) {
+    requireMerchant();
+    const goods = toGoods(findGoodsSeed(req.goodsNo));
+    // 真后端从活动取价与人数；mock 的团价仍挂在商品上（buildGroupBuy 从那儿算）
+    if (!goods.groupBuy) throw new ApiError(20004, "这件商品不在进行中的拼团活动里");
     const seed = {
       groupNo: nextNo("GB"),
-      goodsNo,
-      // 成团单位是自提点：拼的是一车送到一个点的成本，跨点凑人对成本无帮助
-      pickupNo: db.merchant.pickupNo ?? allCommunitySeeds()[0]!.pickups[0]!.pickupNo,
+      goodsNo: req.goodsNo,
+      // 成团单位是自提点：拼的是一车送到一个点的成本
+      pickupNo: req.pickupNo ?? db.merchant.pickupNo ?? allCommunitySeeds()[0]!.pickups[0]!.pickupNo,
       initiatorNickname: db.merchant.name || "商家",
       initiatorAvatar: db.merchant.logo || MERCHANT_LOGO_FALLBACK,
       createdAt: Date.now(),
       members: [],
       joined: false,
+      activityName: "拼团",
     };
     db.groupSeeds.unshift(seed as (typeof db.groupSeeds)[number]);
     persist();

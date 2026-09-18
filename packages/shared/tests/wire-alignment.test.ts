@@ -138,11 +138,6 @@ function frontendBodies(app: string): Map<string, { type: string; fields: string
  * 且每条必须写清「差在哪 / 谁该改 / 为什么」。空着理由的条目下次就没人看得懂了。
  */
 const KNOWN_BODY_DRIFT: Record<string, string> = {
-  "/mp/order":
-    "前端多发 usePoints / groupNo / appointmentAt，后端 CreateOrderReq 不认。" +
-    "**这三个是真功能不是多余字段**：积分抵扣（一期 FEATURES.points=false，可缓）、" +
-    "参团下单、预约时段。后两条是 C 端已实现的下单路径 —— 后端不补字段，接上去就是**静默丢数据**：" +
-    "参团单变普通单、预约单没有时段。→ 后端补字段。",
   "/mp/order/{orderNo}/after-sale":
     "后端要 refundMinor（退款金额）、前端发 reasonCode（原因编码）。" +
     "退款金额该由服务端按订单算还是前端传，属于口径问题（部分退款要不要支持）→ 待定 M4。",

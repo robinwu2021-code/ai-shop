@@ -271,6 +271,10 @@ class BizEndpointPermTest {
         put("/biz/campaign", BizPerms.CAMPAIGN);
         put("/biz/campaign/{campaignNo}/toggle", BizPerms.CAMPAIGN);
         put("/biz/groups", BizPerms.CAMPAIGN);
+        // 团详情与散团（s10）：散团会给参团买家退款，与开团同一档
+        put("/biz/group/{groupNo}", BizPerms.CAMPAIGN);
+        put("/biz/group/pickups", BizPerms.CAMPAIGN);
+        put("/biz/group/{groupNo}/dissolve", BizPerms.CAMPAIGN);
         put("/biz/group-request/pool", BizPerms.CAMPAIGN);
         put("/biz/group-request/{requestNo}/quote", BizPerms.CAMPAIGN);
         put("/biz/quote/{quoteNo}/revise", BizPerms.CAMPAIGN);

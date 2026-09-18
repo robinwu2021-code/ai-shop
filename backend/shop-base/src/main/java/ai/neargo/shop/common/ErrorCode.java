@@ -344,6 +344,13 @@ public enum ErrorCode {
     PERIOD_FULL(40027, "err.marketing.period_full"),
     /** 预售中的商品不能加进集单：两套截单与到货口径叠在一件货上，买家看到的是两个日子 */
     GOODS_IN_PRESALE(40028, "err.marketing.goods_in_presale"),
+    /** 参团时团已成、已散或已过期 —— 下单那一刻判，付款前买家就知道 */
+    GROUP_CLOSED(40030, "err.marketing.group_closed"),
+    /**
+     * 旧版 C 端还在调「直接参团」。参团改成了带团号下单、付款才算成员，
+     * 老接口不再落成员行 —— 返回这一条让旧版本提示升级，而不是静默成功。
+     */
+    GROUP_JOIN_NEEDS_UPGRADE(40033, "err.marketing.group_join_needs_upgrade"),
 
     // ---- 5xxxx 资金 ----
     SPLIT_RECEIVER_NOT_READY(50001, "err.settle.receiver_not_ready"),

@@ -137,10 +137,28 @@ public interface OrderService {
      *                          没开则忽略（走 {@code appointmentAt} 的旧路）。
      *                          归属会在占位那条 SQL 里比对 —— 端上传别家店的时段号占不到
      */
+    /**
+     * @param groupNo   参团：团号（参团 = 带团号下单，按团价收，付款成功才算成员）
+     * @param openGroup 开团：按这件货在跑的拼团活动开一个新团，下单人即发起人。与 groupNo 二选一
+     */
     record CreateOrderCommand(List<Item> items, String fulfillment, String pickupNo,
                               String addressId, String couponNo, Long usePoints, String remark,
                               Long appointmentAt, String payMode, String payScene,
-                              String appointmentSlotNo) {
+                              String appointmentSlotNo, String groupNo, boolean openGroup) {
+
+        /** 不参团的下单（代客下单、测试与存量调用方）。行为与加团字段之前逐字相同 */
+        public CreateOrderCommand(List<Item> items, String fulfillment, String pickupNo,
+                                  String addressId, String couponNo, Long usePoints, String remark,
+                                  Long appointmentAt, String payMode, String payScene,
+                                  String appointmentSlotNo) {
+            this(items, fulfillment, pickupNo, addressId, couponNo, usePoints, remark,
+                    appointmentAt, payMode, payScene, appointmentSlotNo, null, false);
+        }
+
+        /** 这张单要不要走团：参团或开团 */
+        public boolean grouped() {
+            return (groupNo != null && !groupNo.isBlank()) || openGroup;
+        }
 
         public record Item(String goodsNo, String skuNo, int qty) {
         }

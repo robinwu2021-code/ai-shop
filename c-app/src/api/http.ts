@@ -25,7 +25,6 @@ import type {
   CreateReviewReq,
   GoodsListQuery,
   GroupBuyListQuery,
-  JoinGroupBuyReq,
   LoginReqBody,
   MarkArrivedReq,
   MerchantListQuery,
@@ -53,6 +52,7 @@ import type {
   GroupPickupOrder,
   Goods,
   GoodsBatch,
+  GoodsGroup,
   GroupBuy,
   GroupRequest,
   LoginReq,
@@ -186,12 +186,7 @@ export const httpApi: ShopApi = {
   // ---- 拼团
   groupBuyList: (pickupNo) => call<GroupBuy[]>("groupBuyList", undefined, { pickupNo } satisfies GroupBuyListQuery),
   groupBuyDetail: (groupNo) => call<GroupBuy>("groupBuyDetail", { groupNo }),
-  joinGroupBuy: (groupNo, qty) =>
-    call<{ group: GroupBuy; justReached: boolean; refundPerMember: number }>(
-      "joinGroupBuy",
-      { groupNo },
-      { qty } satisfies JoinGroupBuyReq,
-    ),
+  goodsGroup: (goodsNo) => call<GoodsGroup | null>("goodsGroup", { goodsNo }),
   createGroupBuy: (goodsNo, pickupNo, neighbor) =>
     call<GroupBuy>("createGroupBuy", undefined, {
       goodsNo,

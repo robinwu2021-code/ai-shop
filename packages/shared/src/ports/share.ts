@@ -38,3 +38,15 @@ export function resolveAttribution(
   }
   return null;
 }
+
+/**
+ * 当前端有没有原生的「转发给好友」（小程序的 `<button open-type="share">`）。
+ * 页面据它决定要不要画分享按钮 —— H5 上那个按钮点了什么都不发生，画出来就是一个死按钮。
+ */
+export function canNativeShare(): boolean {
+  let yes = false;
+  // #ifdef MP-WEIXIN
+  yes = true;
+  // #endif
+  return yes;
+}

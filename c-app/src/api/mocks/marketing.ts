@@ -26,7 +26,6 @@ export const marketingMock: Pick<ShopApi,
   | "groupPickupOrders"
   | "confirmGroupBatch"
   | "verifyGroupPickup"
-  | "joinGroupBuy"
 > = {
   // ---------------------------------------------------------------- 营销
   async couponList() {
@@ -182,8 +181,9 @@ export const marketingMock: Pick<ShopApi,
       initiatorNickname: db.user.nickname,
       initiatorAvatar: db.user.avatar,
       createdAt: Date.now(),
-      members: [{ avatar: db.user.avatar, nickname: db.user.nickname }],
-      joined: true,
+      // 发起人不自动算第一人：付了款才是（与后端同一口径）
+      members: [],
+      joined: false,
     };
     db.groupSeeds.unshift(seed);
     persist();
@@ -247,26 +247,4 @@ export const marketingMock: Pick<ShopApi,
     return delay(toPickupOrder(o));
   },
 
-  /** 参团：加入后重算。达到新档时，先参团的人同享 —— 差价退回由结算侧处理 */
-  async joinGroupBuy(groupNo, qty) {
-    const seed = db.groupSeeds.find((x) => x.groupNo === groupNo);
-    if (!seed) throw new Error("拼团不存在");
-    if (seed.joined) throw new Error("你已参团");
-    const before = buildGroupBuy(seed);
-    seed.members = [
-      ...seed.members,
-      { avatar: db.user.avatar, nickname: db.user.nickname },
-    ];
-    seed.joined = true;
-    persist();
-    const after = buildGroupBuy(seed);
-    return delay({
-      group: after,
-      /** 本次参团是否正好把团凑成 —— 成团后先参团的人同享团购价，差价退回 */
-      justReached: after.reached && !before.reached,
-      refundPerMember: after.reached && !before.reached
-        ? after.basePrice - after.groupPrice
-        : 0,
-    });
-  },
 };

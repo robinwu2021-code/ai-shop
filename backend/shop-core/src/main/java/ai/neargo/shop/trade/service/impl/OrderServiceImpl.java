@@ -148,6 +148,17 @@ public class OrderServiceImpl implements OrderService {
         this.periodPort = periodPort;
     }
 
+    /**
+     * 拼团：参团 / 开团接到下单上（TDD-营销域-详细设计 §1.4）。setter 注入，理由同 {@link #periodPort}；
+     * 缺了的装配里带团号的单一律拒（BAD_REQUEST），不静默变成普通单。
+     */
+    private ai.neargo.shop.spi.marketing.GroupJoinPort groupJoinPort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setGroupJoinPort(ai.neargo.shop.spi.marketing.GroupJoinPort groupJoinPort) {
+        this.groupJoinPort = groupJoinPort;
+    }
+
     public OrderServiceImpl(ai.neargo.shop.spi.user.AppointmentSlotPort appointmentSlotPort,
                             ai.neargo.shop.spi.product.ReviewQueryPort reviewQueryPort,
                             AfterSaleService afterSaleService,
@@ -288,8 +299,10 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderVO preview(CreateOrderCommand cmd) {
-        Split split = split(cmd);
         String userNo = SecurityUtils.currentUserNo();
+        // 团价在预览就要算进去：确认页显示的是「参团 ¥8」，提交后不能变成原价
+        Split raw = split(cmd);
+        Split split = repriced(raw, groupQuoteOf(cmd, raw, userNo));
         /*
          * **预览也要把配到的自提点算出来**：确认页要在**付款前**按取货点分组说清楚
          * 「本单 2 个取货点」。等到下单响应才知道就晚了 —— 那时钱已经付了。
@@ -563,10 +576,16 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderVO doCreate(CreateOrderCommand cmd, String userNo, Integer payMinutes) {
-        Split split = split(cmd);
-        if (split.items.isEmpty()) {
+        Split raw = split(cmd);
+        if (raw.items.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        /*
+         * 参团 / 开团：团还能不能参、按什么价，**在锁库存与任何写入之前**判 ——
+         * 团已散 / 已过期要在付款前就让买家知道，而不是付完再退。
+         */
+        var group = groupQuoteOf(cmd, raw, userNo);
+        Split split = repriced(raw, group);
         /*
          * 履约门店：**在锁库存之前算好，并与写进子单的那个值同一个来源**。
          *
@@ -594,6 +613,12 @@ public class OrderServiceImpl implements OrderService {
          * 配出来的本来就过滤过许可点，所以那道校验对它是恒真的。
          */
         java.util.Map<String, String> pickupByMerchant = resolvePickups(cmd, split, userNo);
+        if (group != null && group.pickupNo() != null
+                && Fulfillments.NEIGHBOR_PICKUP.equals(cmd.fulfillment())) {
+            // 团按自提点成团（一车送到一个点）：参团的单一律送团的那个点，不按买家坐标另配
+            pickupByMerchant = new java.util.HashMap<>(pickupByMerchant);
+            pickupByMerchant.put(group.merchantNo(), group.pickupNo());
+        }
         requirePickupServed(cmd, split);
         requireAppointmentWhenNeeded(cmd, split, storeOfMerchant);
 
@@ -750,7 +775,8 @@ public class OrderServiceImpl implements OrderService {
          * 归属按「下单这一刻」判 —— 截单前 1 秒的单属于今天，与任务什么时候扫到无关。
          */
         Map<String, ai.neargo.shop.spi.marketing.PeriodPort.PeriodTicket> ticketOf = new java.util.HashMap<>();
-        if (periodPort != null) {
+        // 团单不挂期：一件货同时在拼团与集单里时，按团走（团价已经算进去了，两套截单口径不叠）
+        if (periodPort != null && group == null) {
             for (Group g : split.groups) {
                 List<String> goodsNos = g.lines.stream().map(l -> l.snapshot.goodsNo()).distinct().toList();
                 int qty = g.lines.stream().mapToInt(Line::qty).sum();
@@ -874,6 +900,10 @@ public class OrderServiceImpl implements OrderService {
                     Boolean.TRUE.equals(needsConfirm.get(g.merchantNo)) ? 1 : 0);
             sub.setStatus(OrdSubOrder.WAIT_PAY);
             sub.setRemark(cmd.remark());
+            if (group != null) {
+                // 开团在这一刻建团（发起人 = 下单人），参团再判一次 —— 与订单同一个事务，下单失败团也不留
+                sub.setGroupNo(groupJoinPort.bind(userNo, group, pickupNo));
+            }
             var ticket = ticketOf.get(g.merchantNo);
             if (ticket != null) {
                 // 提货日写进子单：履约批次与自提点看板按它分天，而不是按下单日（集单是今天下明天提）
@@ -1132,6 +1162,21 @@ public class OrderServiceImpl implements OrderService {
             appendStatusLog(sub.getSubOrderNo(), next,
                     serviceLike ? "支付成功，凭码到店使用" : "支付成功，待备货",
                     OrdStatusLog.BY_SYSTEM, null);
+
+            /*
+             * 参团单：**付款成功才算成员**（设计 D1）。团在付款之前已经散了 / 过期了的，
+             * 钱付进来了却没有团可参 —— 提交后整张子单系统全额退款。
+             * 放在提交之后：退款要读到已支付的子单，且不能让退款的失败回滚掉这笔支付。
+             */
+            if (sub.getGroupNo() != null && groupJoinPort != null) {
+                var joined = groupJoinPort.onPaid(sub.getGroupNo(), sub.getSubOrderNo(), order.getUserNo());
+                if (joined == ai.neargo.shop.spi.marketing.GroupJoinPort.PaidOutcome.CLOSED) {
+                    final String subNo = sub.getSubOrderNo();
+                    AfterCommit.run("团已结束退款 subOrderNo=" + subNo,
+                            () -> afterSaleService.systemRefund(subNo, "拼团已结束，自动退款",
+                                    "付款时团已结束，自动退款"));
+                }
+            }
 
             /*
              * 入会与会员指标（P1）。**在发分之前** —— 两者互不依赖，
@@ -1564,6 +1609,58 @@ public class OrderServiceImpl implements OrderService {
             return new Group(e.getKey(), merchantName, e.getValue(), 0L);
         }).toList();
 
+        return new Split(lines, groups);
+    }
+
+    /**
+     * 这张单按哪个团、什么价；不是团单返回 null。
+     *
+     * <p>团单只能买<b>团的那一件货</b>（可以多件、可以选规格）：带着团号混进别的货，
+     * 等于拿团价的名义下一张普通单，而成团、到期退款都按整张子单处理。
+     */
+    private ai.neargo.shop.spi.marketing.GroupJoinPort.GroupQuote groupQuoteOf(
+            CreateOrderCommand cmd, Split split, String userNo) {
+        if (!cmd.grouped()) {
+            return null;
+        }
+        if (groupJoinPort == null || split.items.isEmpty()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        java.util.Set<String> goods = split.items.stream()
+                .map(l -> l.snapshot.goodsNo()).collect(Collectors.toSet());
+        if (goods.size() != 1) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        var q = groupJoinPort.quote(userNo, cmd.groupNo(), cmd.openGroup(), goods.iterator().next());
+        for (Line l : split.items) {
+            if (!q.merchantNo().equals(l.snapshot.merchantNo())
+                    || (q.skuNo() != null && !q.skuNo().equals(l.skuNo()))) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+        }
+        return q;
+    }
+
+    /**
+     * 团单按团价重算每一行。**替换快照上的单价**而不是事后打折：
+     * 订单行的 price / amount、子单的商品金额、满减门槛全都读它，
+     * 只在一处改，预览与下单、主单与子单就不会各算出一个数。
+     */
+    private static Split repriced(Split split,
+                                  ai.neargo.shop.spi.marketing.GroupJoinPort.GroupQuote q) {
+        if (q == null) {
+            return split;
+        }
+        List<Line> lines = split.items.stream().map(l -> {
+            var s = l.snapshot;
+            return new Line(new GoodsQueryPort.SkuSnapshot(s.skuNo(), s.goodsNo(), s.merchantNo(),
+                    s.title(), s.cover(), s.spec(), s.categoryType(), s.categoryNo(),
+                    q.groupPriceMinor(), s.available(), s.onSale(), s.fulfillments(),
+                    s.groupPriceMinor(), s.groupMinCount()), l.qty);
+        }).toList();
+        List<Group> groups = split.groups.stream().map(g -> new Group(g.merchantNo, g.merchantName,
+                lines.stream().filter(l -> l.snapshot.merchantNo().equals(g.merchantNo)).toList(),
+                g.freight)).toList();
         return new Split(lines, groups);
     }
 

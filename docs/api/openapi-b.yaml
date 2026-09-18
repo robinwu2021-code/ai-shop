@@ -1544,6 +1544,7 @@ components:
     GroupBuyStatus: 
       type: "string"
       enum: 
+        - "PENDING"
         - "OPEN"
         - "FORMED"
         - "FAILED"
@@ -1625,6 +1626,16 @@ components:
         isOwner: 
           type: "boolean"
           description: "我是不是这个团的发起人 —— 决定是否显示轻核销入口"
+        activityNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "开团时依据的拼团活动。存量团为空"
+        activityName: 
+          type: 
+            - "string"
+            - "null"
+          description: "活动名（团详情「活动」那一行）。存量团为空"
       required: 
         - "groupNo"
         - "status"
@@ -1646,6 +1657,64 @@ components:
         - "members"
         - "joined"
       additionalProperties: false
+    GoodsGroup: 
+      type: "object"
+      properties: 
+        goodsNo: 
+          type: "string"
+          description: "商品单号"
+        activityNo: 
+          type: "string"
+          description: "在跑的拼团活动"
+        groupPrice: 
+          type: "number"
+          description: "成团价（最小货币单位），「开团 ¥8」"
+        minCount: 
+          type: "number"
+          description: "几人成团"
+        groupHours: 
+          type: "number"
+          description: "开团后多少小时内成团"
+        openGroups: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/GroupBuy"
+          description: "正在拼的团，差人最少的在前，最多 3 个"
+      required: 
+        - "goodsNo"
+        - "activityNo"
+        - "groupPrice"
+        - "minCount"
+        - "groupHours"
+        - "openGroups"
+      additionalProperties: false
+      description: "商品详情的拼团块（原型 s21，`GET /mp/goods/{goodsNo}/group`）。 这件货没有在跑的拼团活动时接口给 null，详情页不出「开团」按钮。"
+    GroupPickupOption: 
+      type: "object"
+      properties: 
+        pickupNo: 
+          type: "string"
+          description: "自提点单号"
+        name: 
+          type: "string"
+          description: "名称"
+        address: 
+          type: "string"
+          description: "地址"
+        type: 
+          type: "string"
+          description: "点的类型"
+        status: 
+          type: "string"
+          description: "核实状态；这里只会是 ACTIVE"
+      required: 
+        - "pickupNo"
+        - "name"
+        - "address"
+        - "type"
+        - "status"
+      additionalProperties: false
+      description: "开团可选的自提点（原型 s34，`GET /biz/group/pickups`）"
     CampaignType: 
       type: "string"
       enum: 
@@ -8358,9 +8427,23 @@ components:
         goodsNo: 
           type: "string"
           description: "要开团的商品，必须是本店已上架商品"
+        activityNo: 
+          type: "string"
+          description: "页面上选的拼团活动；与这件货此刻所在的活动对不上时后端拒"
+        pickupNo: 
+          type: "string"
+          description: "成团范围（自提点）；不传 = 不限点"
       required: 
         - "goodsNo"
       additionalProperties: false
+    DissolveGroupReq: 
+      type: "object"
+      properties: 
+        reason: 
+          type: "string"
+          description: "散团原因，写进参团买家的退款记录；可空"
+      additionalProperties: false
+      description: "散团"
     QuoteReq: 
       type: "object"
       properties: 
@@ -13054,6 +13137,108 @@ paths:
           "application/json": 
             schema: 
               "$ref": "#/components/schemas/CreateGroupReq"
+  "/biz/group/{groupNo}": 
+    get: 
+      operationId: "mGroup"
+      summary: "团详情"
+      tags: 
+        - "group"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "groupNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/GroupBuy"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/group/{groupNo}/dissolve": 
+    post: 
+      operationId: "mDissolveGroup"
+      summary: "散团（参团已付款的单全额退款）"
+      tags: 
+        - "group"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "groupNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/GroupBuy"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              "$ref": "#/components/schemas/DissolveGroupReq"
+  "/biz/group/pickups": 
+    get: 
+      operationId: "mGroupPickups"
+      summary: "开团可选的自提点"
+      tags: 
+        - "group"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/GroupPickupOption"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/group-request/pool": 
     get: 
       operationId: "mRequestList"

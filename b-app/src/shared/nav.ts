@@ -56,6 +56,10 @@ export const ROUTES = {
   // 社区集单：期列表与一期。入口在营销页，不在工作台（ADR-024）
   periods: "/pages/periods/index",
   period: "/pages/period/index",
+  // 拼团：团详情（s10）与开团（s34）。团列表是上面的 groups
+  group: "/pages/group/index",
+  groupOpen: "/pages/group-open/index",
+  activityEdit: "/pages/activity-edit/index",
 
   // ── 进销存（P-18）。**库存页是这一块的枢纽** ——
   // 工作台只开一道门到它，其余五屏从它里面进。

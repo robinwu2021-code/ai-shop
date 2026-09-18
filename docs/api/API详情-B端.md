@@ -2016,6 +2016,121 @@ _无字段_
 | `price` | `number` | 是 | — |
 
 
+### group
+
+#### GET `/biz/group/{groupNo}`
+
+团详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `groupNo` | path | `string` | 是 | 团单号 |
+
+**出参**（`data`）
+
+类型：[`GroupBuy`](#groupbuy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `groupNo` | `string` | 是 | 团单号 |
+| `status` | [`GroupBuyStatus`](#groupbuystatus) | 是 | 团的状态 |
+| `goodsNo` | `string` | 是 | 开团的商品 |
+| `title` | `string` | 是 | 商品标题快照 |
+| `cover` | `string` | 是 | 商品封面快照 |
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 供货商家 |
+| `initiatorNickname` | `string` | 是 | 发起人昵称 |
+| `initiatorAvatar` | `string` | 是 | 发起人头像 |
+| `pickupNo` | `string` | 是 | ★ 成团范围：**成团单位是自提点**，拼的是一车送到一个点的成本 |
+| `pickupName` | `string` | 是 | 自提点名称快照 |
+| `basePrice` | `number` | 是 | 不成团时的价格（降级发货用此价） |
+| `groupPrice` | `number` | 是 | 成团价 |
+| `minCount` | `number` | 是 | 成团所需人数 |
+| `joinedCount` | `number` | 是 | 已参团人数 |
+| `reached` | `boolean` | 是 | 已成团 |
+| `need` | `number` | 是 | 还差几人 |
+| `expireAt` | `number` | 是 | 截止时间：发起后 validHours 与商品截单时间取更早 |
+| `members` | `object`（见下）\[\] | 是 | 已参团的邻居，展示用。 **没有件数**：参团是一人一份 —— 成团判断、「还差 N 人」的文案、`joinedCount` 全部按人算，库里也没存过件数。这里原先有个 `qty`，页面照着渲染 `×{qty}`， 而它从来没有值。 |
+| `joined` | `boolean` | 是 | 当前用户是否已参团 |
+| `neighborPickup` | [`PickupPoint`](#pickuppoint) | 否 | 邻里自提点（C-GB-06）：发起人勾选「送到我家」时有值。 参团者在这里取货，发起人负责签收与逐单核销 —— **零报酬**（ADR-005 §3）。 |
+| `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
+| `activityNo` | `string,null` | 否 | 开团时依据的拼团活动。存量团为空 |
+| `activityName` | `string,null` | 否 | 活动名（团详情「活动」那一行）。存量团为空 |
+
+`members[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `avatar` | `string` | 是 | — |
+| `nickname` | `string` | 是 | — |
+
+
+#### POST `/biz/group/{groupNo}/dissolve`
+
+散团（参团已付款的单全额退款）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `groupNo` | path | `string` | 是 | 团单号 |
+
+请求体：[`DissolveGroupReq`](#dissolvegroupreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reason` | `string` | 否 | 散团原因，写进参团买家的退款记录；可空 |
+
+**出参**（`data`）
+
+类型：[`GroupBuy`](#groupbuy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `groupNo` | `string` | 是 | 团单号 |
+| `status` | [`GroupBuyStatus`](#groupbuystatus) | 是 | 团的状态 |
+| `goodsNo` | `string` | 是 | 开团的商品 |
+| `title` | `string` | 是 | 商品标题快照 |
+| `cover` | `string` | 是 | 商品封面快照 |
+| `merchant` | [`MerchantBrief`](#merchantbrief) | 是 | 供货商家 |
+| `initiatorNickname` | `string` | 是 | 发起人昵称 |
+| `initiatorAvatar` | `string` | 是 | 发起人头像 |
+| `pickupNo` | `string` | 是 | ★ 成团范围：**成团单位是自提点**，拼的是一车送到一个点的成本 |
+| `pickupName` | `string` | 是 | 自提点名称快照 |
+| `basePrice` | `number` | 是 | 不成团时的价格（降级发货用此价） |
+| `groupPrice` | `number` | 是 | 成团价 |
+| `minCount` | `number` | 是 | 成团所需人数 |
+| `joinedCount` | `number` | 是 | 已参团人数 |
+| `reached` | `boolean` | 是 | 已成团 |
+| `need` | `number` | 是 | 还差几人 |
+| `expireAt` | `number` | 是 | 截止时间：发起后 validHours 与商品截单时间取更早 |
+| `members` | `object`（见下）\[\] | 是 | 已参团的邻居，展示用。 **没有件数**：参团是一人一份 —— 成团判断、「还差 N 人」的文案、`joinedCount` 全部按人算，库里也没存过件数。这里原先有个 `qty`，页面照着渲染 `×{qty}`， 而它从来没有值。 |
+| `joined` | `boolean` | 是 | 当前用户是否已参团 |
+| `neighborPickup` | [`PickupPoint`](#pickuppoint) | 否 | 邻里自提点（C-GB-06）：发起人勾选「送到我家」时有值。 参团者在这里取货，发起人负责签收与逐单核销 —— **零报酬**（ADR-005 §3）。 |
+| `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
+| `activityNo` | `string,null` | 否 | 开团时依据的拼团活动。存量团为空 |
+| `activityName` | `string,null` | 否 | 活动名（团详情「活动」那一行）。存量团为空 |
+
+`members[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `avatar` | `string` | 是 | — |
+| `nickname` | `string` | 是 | — |
+
+
+#### GET `/biz/group/pickups`
+
+开团可选的自提点　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`GroupPickupOption`](#grouppickupoption)\[\]
+
+
 ### group-request
 
 #### POST `/biz/group-request/{requestNo}/quote`
@@ -2108,6 +2223,8 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `goodsNo` | `string` | 是 | 要开团的商品，必须是本店已上架商品 |
+| `activityNo` | `string` | 否 | 页面上选的拼团活动；与这件货此刻所在的活动对不上时后端拒 |
+| `pickupNo` | `string` | 否 | 成团范围（自提点）；不传 = 不限点 |
 
 **出参**（`data`）
 
@@ -2136,6 +2253,8 @@ _无字段_
 | `joined` | `boolean` | 是 | 当前用户是否已参团 |
 | `neighborPickup` | [`PickupPoint`](#pickuppoint) | 否 | 邻里自提点（C-GB-06）：发起人勾选「送到我家」时有值。 参团者在这里取货，发起人负责签收与逐单核销 —— **零报酬**（ADR-005 §3）。 |
 | `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
+| `activityNo` | `string,null` | 否 | 开团时依据的拼团活动。存量团为空 |
+| `activityName` | `string,null` | 否 | 活动名（团详情「活动」那一行）。存量团为空 |
 
 `members[]` 的字段：
 
@@ -6036,6 +6155,8 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `goodsNo` | `string` | 是 | 要开团的商品，必须是本店已上架商品 |
+| `activityNo` | `string` | 否 | 页面上选的拼团活动；与这件货此刻所在的活动对不上时后端拒 |
+| `pickupNo` | `string` | 否 | 成团范围（自提点）；不传 = 不限点 |
 
 ### CrossStoreCompare
 
@@ -6124,6 +6245,14 @@ _无字段_
 | `minOrderMinor` | `number` | 是 | 起送价，最小货币单位 |
 | `feeMinor` | `number` | 是 | 配送费，最小货币单位 |
 | `freeThresholdMinor` | `number` | 是 | 免配送费门槛，最小货币单位；0 表示不免 |
+
+### DissolveGroupReq
+
+散团
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reason` | `string` | 否 | 散团原因，写进参团买家的退款记录；可空 |
 
 ### Entity
 
@@ -6334,6 +6463,8 @@ _无字段_
 | `joined` | `boolean` | 是 | 当前用户是否已参团 |
 | `neighborPickup` | [`PickupPoint`](#pickuppoint) | 否 | 邻里自提点（C-GB-06）：发起人勾选「送到我家」时有值。 参团者在这里取货，发起人负责签收与逐单核销 —— **零报酬**（ADR-005 §3）。 |
 | `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
+| `activityNo` | `string,null` | 否 | 开团时依据的拼团活动。存量团为空 |
+| `activityName` | `string,null` | 否 | 活动名（团详情「活动」那一行）。存量团为空 |
 
 `members[]` 的字段：
 
@@ -6348,9 +6479,22 @@ _无字段_
 
 枚举取值：
 
+- `PENDING`
 - `OPEN`
 - `FORMED`
 - `FAILED`
+
+### GroupPickupOption
+
+开团可选的自提点（原型 s34，`GET /biz/group/pickups`）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `pickupNo` | `string` | 是 | 自提点单号 |
+| `name` | `string` | 是 | 名称 |
+| `address` | `string` | 是 | 地址 |
+| `type` | `string` | 是 | 点的类型 |
+| `status` | `string` | 是 | 核实状态；这里只会是 ACTIVE |
 
 ### GroupRequest
 

@@ -21,7 +21,7 @@ import {
 } from "@/shared/fly";
 import { buyNGetM, giftQtyFor, promoLabelArgs } from "@shared/utils/promotion";
 import { defaultFulfillment } from "@shared/utils/goods";
-import type { Goods, GoodsBatch, Review, Sku } from "@shared/types";
+import type { Goods, GoodsBatch, GoodsGroup, Review, Sku } from "@shared/types";
 
 const { t } = useI18n();
 const cart = useCartStore();
@@ -190,6 +190,29 @@ const currentNo = ref("");
  */
 const batch = ref<GoodsBatch | null>(null);
 
+/**
+ * 拼团（原型 s21）：正在拼的团（最多 3 个）与「开团 ¥8」。与集单块一样**独立加载**：
+ * 挂在详情的加载链上的话，它失败会把整页拖成「加载失败」，而它只是一个可选的块。
+ */
+const grp = ref<GoodsGroup | null>(null);
+
+async function loadGroup(goodsNo: string) {
+  try {
+    grp.value = await api.goodsGroup(goodsNo);
+  } catch {
+    grp.value = null;
+  }
+}
+
+/** 某个团离截止还有多久。每秒跟着 now 走（本页已有的时钟） */
+function groupLeft(expireAt: number): string {
+  return countdown(expireAt - now.value);
+}
+
+function openGroupPage(groupNo: string) {
+  uni.navigateTo({ url: `${ROUTES.group}?groupNo=${groupNo}` });
+}
+
 async function loadBatch(goodsNo: string) {
   try {
     batch.value = await api.goodsBatch(goodsNo);
@@ -216,6 +239,7 @@ async function load(goodsNo: string) {
   // 社区集单块（s26）：**独立加载、不等它**。它是补充信息 —— 放在这条链中间的话，
   // 它一失败，下面默认选规格那几步就不跑了，买家看到的是「选不了规格、买不了」
   void loadBatch(goodsNo);
+  void loadGroup(goodsNo);
   // 默认选中第一个有货的 SKU 的组合
   const first = g.skus.find((s) => s.stock > 0) ?? g.skus[0];
   chosen.value = first ? [...first.optionValues] : [];
@@ -280,6 +304,23 @@ async function addToCart(e: unknown) {
     flyToCart(p.x, p.y, g.cover);
   } catch (err) {
     uni.showToast({ title: (err as Error).message, icon: "none" });
+  }
+}
+
+/**
+ * 开团：与立即购买同一条路（先加购再进结算），只是带上 openGroup —— 团在下单那一刻建，
+ * 付了款我就是第一人。团价由后端按活动算，端上只负责把意图带过去。
+ */
+async function openGroupBuy() {
+  const g = goods.value;
+  if (!g || !sku.value || !buyable.value) return;
+  try {
+    await cart.add(g.goodsNo, sku.value.skuNo, 1);
+    uni.navigateTo({
+      url: `${ROUTES.orderConfirm}?fulfillment=${defaultFulfillment(g)}&skus=${sku.value.skuNo}&openGroup=1`,
+    });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
   }
 }
 
@@ -530,6 +571,23 @@ onShareAppMessage(() =>
           </view>
         </view>
 
+        <!-- 拼团：正在拼的团，点进去参团（s21） -->
+        <view v-if="grp && grp.openGroups.length" class="sh-card block">
+          <text class="txt-sub sh-muted">{{ $t("goods.groupOpenList") }}</text>
+          <view
+            v-for="og in grp.openGroups"
+            :key="og.groupNo"
+            class="fact sh-row sh-row--between"
+            @tap="openGroupPage(og.groupNo)"
+          >
+            <text class="txt-sub fact__label">
+              {{ og.initiatorNickname ? $t("goods.groupOf", { name: og.initiatorNickname }) : $t("goods.groupMerchant") }}
+              · {{ $t("goods.groupNeed", { n: og.need }) }}
+            </text>
+            <text class="txt-sub fact__value sh-num">{{ groupLeft(og.expireAt) }}</text>
+          </view>
+        </view>
+
         <!-- 事实区 -->
         <view class="sh-card block">
           <view class="fact sh-row sh-row--between sh-row--top">
@@ -652,20 +710,39 @@ onShareAppMessage(() =>
               {{ cart.count > 99 ? "99+" : cart.count }}
             </text>
           </view>
-          <view
-            class="sh-btn actionbar__add"
-            :class="{ 'is-disabled': !buyable }"
-            @tap="buyable && addToCart($event)"
-          >
-            {{ soldOut ? $t("goods.soldOut") : $t("goods.addCart") }}
-          </view>
-          <view
-            class="txt-sub sh-btn actionbar__buy sh-fill"
-            :class="{ 'is-disabled': !buyable }"
-            @tap="buyable && buyNow()"
-          >
-            {{ $t("goods.buyNow") }}
-          </view>
+          <!-- 拼团商品：单买 / 开团（s21）。参团在团页上，开团价由活动定 -->
+          <template v-if="grp">
+            <view
+              class="sh-btn actionbar__add"
+              :class="{ 'is-disabled': !buyable }"
+              @tap="buyable && buyNow()"
+            >
+              {{ soldOut ? $t("goods.soldOut") : $t("goods.buyAlone", { p: money(sku?.price ?? goods.price) }) }}
+            </view>
+            <view
+              class="txt-sub sh-btn actionbar__buy sh-fill"
+              :class="{ 'is-disabled': !buyable }"
+              @tap="openGroupBuy"
+            >
+              {{ $t("goods.groupStart", { p: money(grp.groupPrice) }) }}
+            </view>
+          </template>
+          <template v-else>
+            <view
+              class="sh-btn actionbar__add"
+              :class="{ 'is-disabled': !buyable }"
+              @tap="buyable && addToCart($event)"
+            >
+              {{ soldOut ? $t("goods.soldOut") : $t("goods.addCart") }}
+            </view>
+            <view
+              class="txt-sub sh-btn actionbar__buy sh-fill"
+              :class="{ 'is-disabled': !buyable }"
+              @tap="buyable && buyNow()"
+            >
+              {{ $t("goods.buyNow") }}
+            </view>
+          </template>
         </sh-actionbar>
   
   

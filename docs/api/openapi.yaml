@@ -1545,6 +1545,7 @@ components:
     GroupBuyStatus: 
       type: "string"
       enum: 
+        - "PENDING"
         - "OPEN"
         - "FORMED"
         - "FAILED"
@@ -1626,6 +1627,16 @@ components:
         isOwner: 
           type: "boolean"
           description: "我是不是这个团的发起人 —— 决定是否显示轻核销入口"
+        activityNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "开团时依据的拼团活动。存量团为空"
+        activityName: 
+          type: 
+            - "string"
+            - "null"
+          description: "活动名（团详情「活动」那一行）。存量团为空"
       required: 
         - "groupNo"
         - "status"
@@ -1647,6 +1658,64 @@ components:
         - "members"
         - "joined"
       additionalProperties: false
+    GoodsGroup: 
+      type: "object"
+      properties: 
+        goodsNo: 
+          type: "string"
+          description: "商品单号"
+        activityNo: 
+          type: "string"
+          description: "在跑的拼团活动"
+        groupPrice: 
+          type: "number"
+          description: "成团价（最小货币单位），「开团 ¥8」"
+        minCount: 
+          type: "number"
+          description: "几人成团"
+        groupHours: 
+          type: "number"
+          description: "开团后多少小时内成团"
+        openGroups: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/GroupBuy"
+          description: "正在拼的团，差人最少的在前，最多 3 个"
+      required: 
+        - "goodsNo"
+        - "activityNo"
+        - "groupPrice"
+        - "minCount"
+        - "groupHours"
+        - "openGroups"
+      additionalProperties: false
+      description: "商品详情的拼团块（原型 s21，`GET /mp/goods/{goodsNo}/group`）。 这件货没有在跑的拼团活动时接口给 null，详情页不出「开团」按钮。"
+    GroupPickupOption: 
+      type: "object"
+      properties: 
+        pickupNo: 
+          type: "string"
+          description: "自提点单号"
+        name: 
+          type: "string"
+          description: "名称"
+        address: 
+          type: "string"
+          description: "地址"
+        type: 
+          type: "string"
+          description: "点的类型"
+        status: 
+          type: "string"
+          description: "核实状态；这里只会是 ACTIVE"
+      required: 
+        - "pickupNo"
+        - "name"
+        - "address"
+        - "type"
+        - "status"
+      additionalProperties: false
+      description: "开团可选的自提点（原型 s34，`GET /biz/group/pickups`）"
     CampaignType: 
       type: "string"
       enum: 
@@ -8109,7 +8178,10 @@ components:
           description: "买家留言"
         groupNo: 
           type: "string"
-          description: "参团下单时传团单号。**后端 CreateOrderReq 目前不认这个字段**，接上去会静默变成普通单"
+          description: "参团：团号。按团价收，付款成功才算成员（TDD-营销域-详细设计 §1.4）。与 openGroup 二选一"
+        openGroup: 
+          type: "boolean"
+          description: "开团：按这件货在跑的拼团活动开一个新团，下单人即发起人"
         appointmentAt: 
           type: "number"
           description: "APPOINTMENT：预约开始时间戳"
@@ -8167,15 +8239,6 @@ components:
         pickupNo: 
           type: "string"
           description: "按自提点过滤 —— **成团单位就是自提点**。不传则按当前绑定的自提点"
-      additionalProperties: false
-    JoinGroupBuyReq: 
-      type: "object"
-      properties: 
-        qty: 
-          type: "number"
-          description: "参团件数，正整数"
-      required: 
-        - "qty"
       additionalProperties: false
     CreateGroupBuyReq: 
       type: "object"
@@ -10223,16 +10286,15 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/mp/group-buy/{groupNo}/join": 
-    post: 
-      operationId: "joinGroupBuy"
-      summary: "参团"
+  "/mp/goods/{goodsNo}/group": 
+    get: 
+      operationId: "goodsGroup"
+      summary: "商品的拼团信息（开团价、正在拼的团）"
       tags: 
-        - "group-buy"
-      security: 
-        - bearerAuth: []
+        - "goods"
+      security: []
       parameters: 
-        - name: "groupNo"
+        - name: "goodsNo"
           in: "path"
           required: true
           schema: 
@@ -10251,17 +10313,11 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    "$ref": "#/components/schemas/GroupBuy"
+                    "$ref": "#/components/schemas/GoodsGroup"
                 required: 
                   - "code"
                   - "msg"
                   - "data"
-      requestBody: 
-        required: true
-        content: 
-          "application/json": 
-            schema: 
-              "$ref": "#/components/schemas/JoinGroupBuyReq"
   "/mp/group-buy/hosted": 
     get: 
       operationId: "myHostedGroups"

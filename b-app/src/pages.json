@@ -430,9 +430,33 @@
       }
     },
     {
+      "path": "pages/group/index",
+      "style": {
+        "navigationBarTitleText": "团详情",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/group-open/index",
+      "style": {
+        "navigationBarTitleText": "开团",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/groups/index",
       "style": {
-        "navigationBarTitleText": "团购",
+        "navigationBarTitleText": "团",
         "app-plus": {
           "navigationStyle": "custom"
         },

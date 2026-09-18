@@ -74,6 +74,8 @@ public class GroupServiceImpl implements GroupService {
     private final FulfillmentQueryPort fulfillmentPort;
     private final GoodsQueryPort goodsPort;
     private final ai.neargo.shop.spi.marketing.GroupRulePort groupRulePort;
+    private final ai.neargo.shop.spi.trade.GroupOrderPort groupOrderPort;
+    private final ai.neargo.shop.marketing.group.port.GroupJoinPortImpl joinPort;
     public GroupServiceImpl(GroupBuyMapper groupBuyMapper, GroupMemberMapper memberMapper,
                             RequestMapper requestMapper, RequestInterestMapper interestMapper,
                             QuoteMapper quoteMapper, QuoteRevisionMapper revisionMapper,
@@ -83,8 +85,12 @@ public class GroupServiceImpl implements GroupService {
                             GroupPickupPort groupPickupPort, FulfillmentQueryPort fulfillmentPort, GoodsQueryPort goodsPort,
                             ai.neargo.shop.spi.user.MerchantGovernPort governPort,
                             ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort,
-                            ai.neargo.shop.spi.marketing.GroupRulePort groupRulePort) {
+                            ai.neargo.shop.spi.marketing.GroupRulePort groupRulePort,
+                            ai.neargo.shop.spi.trade.GroupOrderPort groupOrderPort,
+                            ai.neargo.shop.marketing.group.port.GroupJoinPortImpl joinPort) {
         this.groupRulePort = groupRulePort;
+        this.groupOrderPort = groupOrderPort;
+        this.joinPort = joinPort;
         this.switchPort = switchPort;
         this.governPort = governPort;
         this.pickupPort = pickupPort;
@@ -108,8 +114,43 @@ public class GroupServiceImpl implements GroupService {
     public List<GroupBuyVO> groupBuyList() {
         return scoped(() -> groupBuyMapper.selectList(Wrappers.<MktGroupBuy>lambdaQuery()
                         .in(MktGroupBuy::getStatus, List.of(MktGroupBuy.OPEN, MktGroupBuy.FORMED))
+                        /*
+                         * 买家开的团要等发起人付了款（成员 ≥ 1）才露出来：
+                         * 下单即建团，而下了单不付的人会留下一个零人的团 —— 挂在列表里没人能懂。
+                         * 商家开的团一开出来就该被看见，那是它存在的意义。
+                         */
+                        .and(w -> w.isNull(MktGroupBuy::getInitiatorUserNo)
+                                .or().gt(MktGroupBuy::getJoinedCount, 0))
                         .orderByDesc(MktGroupBuy::getId))).stream()
                 .map(g -> toGroupBuyVO(g, false)).toList();
+    }
+
+    @Override
+    public java.util.Optional<GroupVOs.GoodsGroupVO> goodsGroup(String goodsNo) {
+        var snap = goodsPort.snapshotOfGoods(goodsNo).filter(s -> s.onSale()).orElse(null);
+        if (snap == null) {
+            return java.util.Optional.empty();
+        }
+        var rule = groupRulePort.activeRuleFor(snap.merchantNo(), goodsNo).orElse(null);
+        if (rule == null || rule.groupPriceMinor() <= 0 || rule.groupPriceMinor() >= snap.price()) {
+            // 与开团同一道校验：开不出来的团，详情页就不给「开团」按钮
+            return java.util.Optional.empty();
+        }
+        long now = System.currentTimeMillis();
+        List<GroupBuyVO> open = scoped(() -> groupBuyMapper.selectList(Wrappers.<MktGroupBuy>lambdaQuery()
+                        .eq(MktGroupBuy::getGoodsNo, goodsNo)
+                        .eq(MktGroupBuy::getStatus, MktGroupBuy.OPEN)
+                        .gt(MktGroupBuy::getEndAt, now)
+                        // 零人的买家团不露出来，理由同 groupBuyList
+                        .and(w -> w.isNull(MktGroupBuy::getInitiatorUserNo)
+                                .or().gt(MktGroupBuy::getJoinedCount, 0))
+                        .last("limit 20"))).stream()
+                // 差人最少的在前：离成团最近的那个最值得点
+                .sorted(java.util.Comparator.comparingInt(g -> nz(g.getMinCount()) - nz(g.getJoinedCount())))
+                .limit(3)
+                .map(g -> toGroupBuyVO(g, false)).toList();
+        return java.util.Optional.of(new GroupVOs.GoodsGroupVO(goodsNo, rule.activityNo(),
+                rule.groupPriceMinor(), Math.max(2, rule.minCount()), rule.groupHours(), open));
     }
 
     @Override
@@ -120,64 +161,59 @@ public class GroupServiceImpl implements GroupService {
     }
 
     /**
-     * 到期未成团的团置为 {@code FAILED}（TDD-营销-活动统一模型与集单 §1.3 ①）。
+     * 到期未成团的团置为 {@code FAILED}，<b>并把参团的钱退回去</b>（设计 F3 ③）。
      *
-     * <p><b>此前没有任何东西读 {@code end_at}</b>：它只在建团时被写，
-     * 凑不齐的团永远停在 OPEN，C 端一直显示「还差 N 人」，而截止时间早就过了。
+     * <p>逐团一条带状态条件的 UPDATE（OPEN → FAILED）：与付款落成员并发时，
+     * 先成团的那一边赢，这里不会把刚成团的团改回失败；改成功的那一个才退款。
      *
-     * <p><b>只改状态、不退款</b>：参团今天不产生订单与付款（{@link #join} 只落成员行，
-     * {@code ord_sub_order.group_no} 全仓无人写入），没有钱可退。
-     * 参团接上下单之后，这里要补退款 —— 见 TDD §7 偏差说明。
-     *
-     * <p>一批一条 UPDATE、条件里带状态：与 join 并发时，先成团的那一边赢，
-     * 这里不会把刚成团的团改回失败。
+     * <p><b>补扫</b>：近 3 天失败的团再退一遍。退款逐张独立、幂等 ——
+     * 某张在分账回退上失败的，或团失败之后才付进来的，下一轮会被接住。
      */
     @Override
     public int expireOverdue(long now) {
-        return scoped(() -> groupBuyMapper.update(null,
-                Wrappers.<MktGroupBuy>lambdaUpdate()
-                        .set(MktGroupBuy::getStatus, MktGroupBuy.FAILED)
-                        .eq(MktGroupBuy::getStatus, MktGroupBuy.OPEN)
-                        .lt(MktGroupBuy::getEndAt, now)));
+        List<MktGroupBuy> due = scoped(() -> groupBuyMapper.selectList(Wrappers.<MktGroupBuy>lambdaQuery()
+                .eq(MktGroupBuy::getStatus, MktGroupBuy.OPEN)
+                .lt(MktGroupBuy::getEndAt, now)
+                .last("limit 200")));
+        int failed = 0;
+        for (MktGroupBuy g : due) {
+            if (fail(g.getGroupNo(), List.of(MktGroupBuy.OPEN))) {
+                failed++;
+                groupOrderPort.refundAll(g.getGroupNo(), "拼团未成团，自动退款");
+            }
+        }
+        java.time.LocalDateTime since = java.time.LocalDateTime.now().minusDays(3);
+        scoped(() -> groupBuyMapper.selectList(Wrappers.<MktGroupBuy>lambdaQuery()
+                        .eq(MktGroupBuy::getStatus, MktGroupBuy.FAILED)
+                        .ge(MktGroupBuy::getUpdatedAt, since)
+                        .select(MktGroupBuy::getGroupNo)))
+                .forEach(g -> groupOrderPort.refundAll(g.getGroupNo(), "拼团未成团，自动退款"));
+        return failed;
     }
 
+    /**
+     * 把团改成 FAILED。**带状态条件**：只有 {@code from} 里的状态能改，
+     * 并发时后到的一方 0 行、不退款 —— 同一个团不会被两条路径各退一次。
+     * 显式写 updated_at：补扫按它找近几天失败的团，而条件更新不经过实体的自动填充。
+     */
+    private boolean fail(String groupNo, List<String> from) {
+        return scoped(() -> groupBuyMapper.update(null, Wrappers.<MktGroupBuy>lambdaUpdate()
+                .set(MktGroupBuy::getStatus, MktGroupBuy.FAILED)
+                .set(MktGroupBuy::getUpdatedAt, java.time.LocalDateTime.now())
+                .eq(MktGroupBuy::getGroupNo, groupNo)
+                .in(MktGroupBuy::getStatus, from))) > 0;
+    }
+
+    /**
+     * 旧版「直接参团」。参团已改成带团号下单、付款成功才算成员（设计 D1）——
+     * 这里不再落成员行：没付钱的成员会让「还差 N 人」变少，而到期也没有钱可退。
+     * 旧版 C 端收到这条会提示升级，而不是以为自己参上了。
+     */
     @Override
-    @Transactional
     public GroupVOs.JoinResultVO join(String groupNo) {
-        String userNo = SecurityUtils.currentUserNo();
-        MktGroupBuy g = requireGroupBuy(groupNo);
-        if (!MktGroupBuy.OPEN.equals(g.getStatus())) {
-            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
-        }
-        if (findMember(groupNo, userNo) != null) {
-            // 一人一团只能参一次 —— 否则「还差 N 人」会被同一个人刷满
-            throw BizException.of(ErrorCode.CONFLICT);
-        }
-
-        MktGroupMember member = new MktGroupMember();
-        member.setGroupNo(groupNo);
-        member.setUserNo(userNo);
-        member.setNickname(userPort.find(userNo).map(UserQueryPort.UserBrief::nickname).orElse("邻居"));
-        member.setJoinedAt(System.currentTimeMillis());
-        scoped(() -> memberMapper.insert(member));
-
-        boolean wasFormed = MktGroupBuy.FORMED.equals(g.getStatus());
-        g.setJoinedCount(nz(g.getJoinedCount()) + 1);
-        if (g.getJoinedCount() >= nz(g.getMinCount())) {
-            g.setStatus(MktGroupBuy.FORMED);
-        }
-        scoped(() -> groupBuyMapper.updateById(g));
-
-        /*
-         * **只有踢成团的那一下** justReached 才为 true —— 之后再有人参团，
-         * 团早就成了，不该再弹一次「先参团的邻居也退了差价」。
-         * 差价是原价与团价之差：达成时每位已参团的邻居各退这么多。
-         */
-        boolean justReached = !wasFormed && MktGroupBuy.FORMED.equals(g.getStatus());
-        long refundPerMember = justReached
-                ? Math.max(0, nz(g.getOriginPriceMinor()) - nz(g.getGroupPriceMinor()))
-                : 0L;
-        return new GroupVOs.JoinResultVO(toGroupBuyVO(g, true), justReached, refundPerMember);
+        // 仍然要求登录：路由是放行的，登录与否靠这一句判 —— 匿名调用该拿 401，而不是一句「请升级」
+        SecurityUtils.currentUserNo();
+        throw BizException.of(ErrorCode.GROUP_JOIN_NEEDS_UPGRADE);
     }
 
     // ---------------------------------------------------------------- 求团
@@ -405,50 +441,14 @@ public class GroupServiceImpl implements GroupService {
     @Transactional
     public GroupBuyVO createGroupBuy(CreateGroupBuyCommand cmd) {
         String userNo = SecurityUtils.currentUserNo();
-
         /*
-         * 按**商品**取快照。此前这里把 goodsNo 传进 snapshot(skuNos)，
-         * 而那个方法查的是 SKU —— 于是永远查不到，C 端开团一律「商品不存在」。
-         */
-        var snap = goodsPort.snapshotOfGoods(cmd.goodsNo())
-                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
-        if (!snap.onSale()) {
-            throw BizException.of(ErrorCode.NOT_FOUND);
-        }
-        /*
-         * 验收清单：「该商品未开放拼团」。
-         * 团购价由**商家在商品上配**，开团人只是把它开出来 —— 让开团人自己填价，
-         * 等于任何人都能以任意价格卖别人的货。
-         */
-        if (snap.groupPriceMinor() == null || snap.groupPriceMinor() <= 0) {
-            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
-        }
-        requireCheaperThanOrigin(snap);
-
-        MktGroupBuy g = new MktGroupBuy();
-        g.setGroupNo(BizKey.next(BizKey.GROUP_BUY));
-        g.setInitiatorUserNo(userNo);
-        g.setGoodsNo(snap.goodsNo());
-        g.setSkuNo(snap.skuNo());
-        g.setEntityNo(snap.merchantNo());
-        g.setTitle(snap.title());
-        g.setCover(snap.cover());
-        g.setGroupPriceMinor(snap.groupPriceMinor());
-        g.setOriginPriceMinor(snap.price());
-        // 一个人不叫团：商家没配就按 2 人起
-        g.setMinCount(snap.groupMinCount() == null || snap.groupMinCount() < 2 ? 2 : snap.groupMinCount());
-        g.setJoinedCount(0);
-        g.setPickupNo(cmd.pickupNo());
-        /*
-         * 要不要先审：**开关说了算**（`group.audit`，默认关）。
+         * 价、人数、时限取这件货在跑的拼团活动（设计 D7），与下单开团（openGroup）同一个实现。
+         * 此前读的是商品上的两列，而那两列已经挪进活动、恒为空 —— 这条路一律「未开放拼团」。
          *
-         * 关着 = 建团即上线，与加这个开关之前逐字相同 —— 不改变任何现存平台的行为。
-         * 开着 = 落 PENDING，等运营审。审核通过才进 OPEN。
+         * **不再自动把发起人算成第一人**：成员只在付款成功时落。
+         * 开完团端上紧接着带团号去下单，付了款他才是第一人。
          */
-        g.setStatus(switchPort.bool("group.audit", false) ? MktGroupBuy.PENDING : MktGroupBuy.OPEN);
-        // 团的有效期。7 天是发起人能等、商家能备货的折中；到期未成团自动失败
-        g.setEndAt(System.currentTimeMillis() + Duration.ofDays(7).toMillis());
-        scoped(() -> groupBuyMapper.insert(g));
+        MktGroupBuy g = joinPort.openBuyerGroup(userNo, cmd.goodsNo(), cmd.pickupNo());
 
         /*
          * 勾了「送到我家」→ 建团粒度临时自提点（ADR-005）。
@@ -459,9 +459,7 @@ public class GroupServiceImpl implements GroupService {
             groupPickupPort.createForGroup(g.getGroupNo(), userNo,
                     nicknameOf(userNo) + "家", cmd.neighborAddress(), cmd.neighborTimeSlot());
         }
-
-        // 发起人自动算参团第一人 —— 开了团自己不买，「还差 N 人」就永远差一个
-        return join(g.getGroupNo()).group();
+        return toGroupBuyVO(g, false);
     }
 
     @Override
@@ -601,7 +599,9 @@ public class GroupServiceImpl implements GroupService {
                 // 「差几人」由后端算：它是成团规则的一部分，端上再算一遍迟早分叉
                 joinedCount >= minCount, Math.max(0, minCount - joinedCount),
                 nz(g.getEndAt()), members(g.getGroupNo()),
-                joined, owner, g.getStatus(), neighbor);
+                joined, owner, g.getStatus(), neighbor,
+                g.getActivityNo(),
+                groupRulePort.activityName(g.getActivityNo()).orElse(null));
     }
 
     /** 「阳光里小区 3 幢 101」→「阳光里小区 3 幢（成团后显示门牌）」 */
@@ -824,8 +824,12 @@ public class GroupServiceImpl implements GroupService {
                 .toList();
     }
 
+    /*
+     * **不加 @Transactional**：退款逐张各自一个事务（售后是代理），
+     * 包在外层事务里的话，一张退失败会把整个事务标成只能回滚 —— 连「置 FAILED」一起没了。
+     * 置 FAILED 本身是一条带条件的 UPDATE，不需要外层事务。
+     */
     @Override
-    @Transactional
     public GroupBuyVO abortGroup(String groupNo, String reason, String operatorNo) {
         if (reason == null || reason.isBlank()) {
             // 团没了总得给参团的人一个说法。空理由的中止在客服那里是解释不了的
@@ -847,9 +851,14 @@ public class GroupServiceImpl implements GroupService {
         if (MktGroupBuy.FAILED.equals(g.getStatus())) {
             return toGroupBuyVO(g, false);   // 幂等
         }
-        g.setStatus(MktGroupBuy.FAILED);
-        scoped(() -> groupBuyMapper.updateById(g));
-        return toGroupBuyVO(g, false);
+        /*
+         * 中止 = 置 FAILED **并退款**（设计 D5 / X5）。此前只改状态：
+         * 参团的人付的钱一分没退，而团已经从列表里消失了。
+         */
+        if (fail(groupNo, List.of(MktGroupBuy.PENDING, MktGroupBuy.OPEN))) {
+            groupOrderPort.refundAll(groupNo, "平台中止拼团：" + reason);
+        }
+        return toGroupBuyVO(requireGroup(groupNo), false);
     }
 
     @Override
@@ -894,8 +903,8 @@ public class GroupServiceImpl implements GroupService {
             MktGroupBuy.PENDING, java.util.Set.of(MktGroupBuy.OPEN, MktGroupBuy.FAILED),
             MktGroupBuy.OPEN, java.util.Set.of(MktGroupBuy.FORMED, MktGroupBuy.FAILED));
 
+    /* 不加 @Transactional：改成 FAILED 时要退款，理由同 abortGroup */
     @Override
-    @Transactional
     public GroupBuyVO setGroupStatus(String groupNo, String status, String operatorNo) {
         MktGroupBuy g = requireGroup(groupNo);
         if (status == null || status.equals(g.getStatus())) {
@@ -907,6 +916,13 @@ public class GroupServiceImpl implements GroupService {
          */
         if (!STATUS_MOVES.getOrDefault(g.getStatus(), java.util.Set.of()).contains(status)) {
             throw BizException.of(ErrorCode.CONFLICT);
+        }
+        if (MktGroupBuy.FAILED.equals(status)) {
+            // 改成失败与中止同一个后果：钱要退。只改状态会留下「团没了、钱还扣着」
+            if (fail(groupNo, List.of(g.getStatus()))) {
+                groupOrderPort.refundAll(groupNo, "平台关闭拼团");
+            }
+            return toGroupBuyVO(requireGroup(groupNo), false);
         }
         g.setStatus(status);
         scoped(() -> groupBuyMapper.updateById(g));
@@ -1067,7 +1083,7 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional
-    public GroupBuyVO createMerchantGroup(String merchantNo, String goodsNo) {
+    public GroupBuyVO createMerchantGroup(String merchantNo, String goodsNo, String activityNo, String pickupNo) {
         var snap = goodsPort.snapshotOfGoods(goodsNo)
                 .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
         // 只能给自己的货开团 —— 不校验的话，任何商家都能拿别人的货开团并把单收进自己店
@@ -1094,6 +1110,16 @@ public class GroupServiceImpl implements GroupService {
          */
         var rule = groupRulePort.activeRuleFor(merchantNo, snap.goodsNo())
                 .orElseThrow(() -> BizException.of(ErrorCode.ORDER_STATE_ILLEGAL));
+        if (activityNo != null && !activityNo.isBlank() && !activityNo.equals(rule.activityNo())) {
+            /*
+             * 页面上选的活动（s34 第一行）与这件货此刻真正所在的活动对不上：
+             * 活动在选完之后被结束 / 换了货。按页面的开，价就是另一个活动的价。
+             */
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+        if (pickupNo != null && !pickupNo.isBlank() && pickupPort.find(pickupNo).isEmpty()) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
         if (rule.groupPriceMinor() <= 0 || rule.groupPriceMinor() >= snap.price()) {
             // 成团价不低于原价 = 一个不省钱的团。建活动那一步没拦住就在这儿拦
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
@@ -1107,8 +1133,12 @@ public class GroupServiceImpl implements GroupService {
          * 而那一页的签收与核销是按个人发起人设计的（货送到他家），语义完全不同。
          */
         g.setInitiatorUserNo(null);
+        g.setActivityNo(rule.activityNo());
+        // 成团范围（s34 第三行）：一车送到一个点。不选 = 不限点，按各人下单配到的点
+        g.setPickupNo(pickupNo == null || pickupNo.isBlank() ? null : pickupNo);
         g.setGoodsNo(snap.goodsNo());
-        g.setSkuNo(snap.skuNo());
+        // 不钉规格：团按商品开，参团的人买哪个规格都按团价（与买家开团一致）
+        g.setSkuNo(null);
         g.setEntityNo(merchantNo);
         g.setTitle(snap.title());
         g.setCover(snap.cover());
@@ -1129,5 +1159,40 @@ public class GroupServiceImpl implements GroupService {
         g.setEndAt(System.currentTimeMillis() + Duration.ofHours(rule.groupHours()).toMillis());
         scoped(() -> groupBuyMapper.insert(g));
         return toGroupBuyVO(g, false);
+    }
+
+    @Override
+    public GroupBuyVO merchantGroup(String merchantNo, String groupNo) {
+        return toGroupBuyVO(requireMerchantGroup(merchantNo, groupNo), false);
+    }
+
+    /**
+     * 商家散团（s10）：置 FAILED 并把参团的钱退回去。
+     *
+     * <p>只能散<b>还在拼</b>的团：已成团的那一刻起买家已经按团价付了款、在等货，
+     * 散掉等于商家单方面毁约 —— 要退只能逐单走售后，与 {@link #abortGroup} 同一条理由。
+     * 不加 @Transactional，理由同 abortGroup。
+     */
+    @Override
+    public GroupBuyVO dissolve(String merchantNo, String groupNo, String reason) {
+        MktGroupBuy g = requireMerchantGroup(merchantNo, groupNo);
+        if (MktGroupBuy.FAILED.equals(g.getStatus())) {
+            return toGroupBuyVO(g, false);   // 幂等：点了两次散团
+        }
+        if (!fail(groupNo, List.of(MktGroupBuy.PENDING, MktGroupBuy.OPEN))) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        String why = reason == null || reason.isBlank() ? "商家散团，自动退款" : "商家散团：" + reason;
+        groupOrderPort.refundAll(groupNo, why);
+        return toGroupBuyVO(requireGroup(groupNo), false);
+    }
+
+    /** 团必须是这家的。别家的团一律当不存在（404），不说「无权」—— 那会确认团号有效 */
+    private MktGroupBuy requireMerchantGroup(String merchantNo, String groupNo) {
+        MktGroupBuy g = requireGroup(groupNo);
+        if (!merchantNo.equals(g.getEntityNo())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return g;
     }
 }

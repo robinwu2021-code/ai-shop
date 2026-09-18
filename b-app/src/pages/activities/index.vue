@@ -163,7 +163,7 @@ onShow(() => {
       v-if="!shown.length"
       :pending="!loaded"
       :text="String($t('activities.empty'))"
-      :hint="String($t('activities.emptyTip'))"
+      :tip="String($t('activities.emptyTip'))"
     ></sh-empty>
 
     <sh-actionbar>

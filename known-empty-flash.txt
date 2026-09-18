@@ -17,7 +17,6 @@ c-app/order
 c-app/order-confirm
 c-app/search
 b-app/cross-store
-b-app/groups
 b-app/settle
 b-app/staff
 b-app/stock-check

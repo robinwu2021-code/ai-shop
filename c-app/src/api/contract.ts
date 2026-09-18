@@ -21,6 +21,7 @@ import type {
   GroupPickupOrder,
   Goods,
   GoodsBatch,
+  GoodsGroup,
   GroupBuy,
   LoginReq,
   LoginResp,
@@ -100,8 +101,10 @@ export interface CreateOrderReq {
   remark?: string;
   /** 幂等 key，防重复提交 */
   idempotencyKey: string;
-  /** 拼团：参与的团 */
+  /** 参团：团号。按团价收，付款成功才算成员。与 openGroup 二选一 */
   groupNo?: string;
+  /** 开团：按这件货在跑的拼团活动开一个新团，下单人即发起人 */
+  openGroup?: boolean;
   /** APPOINTMENT：用户选定的预约开始时间戳 */
   appointmentAt?: number;
   /**
@@ -371,10 +374,8 @@ export interface ShopApi {
   /** 只取当前自提点的团 —— 成团单位是自提点 */
   groupBuyList(pickupNo?: string): Promise<GroupBuy[]>;
   groupBuyDetail(groupNo: string): Promise<GroupBuy>;
-  joinGroupBuy(
-    groupNo: string,
-    qty: number,
-  ): Promise<{ group: GroupBuy; justReached: boolean; refundPerMember: number }>;
+  /** 商品详情的拼团块（s21）。不是拼团商品时为 null。参团 / 开团走下单（createOrder 带 groupNo / openGroup） */
+  goodsGroup(goodsNo: string): Promise<GoodsGroup | null>;
   /**
    * 用户自发发起一个团。
    * `toMyHome` = 送到我家（邻里自提，ADR-005）—— 求团买床垫、校服这类东西

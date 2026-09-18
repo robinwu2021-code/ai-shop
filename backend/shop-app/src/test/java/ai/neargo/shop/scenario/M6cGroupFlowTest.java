@@ -300,42 +300,21 @@ class M6cGroupFlowTest {
     // ---------------------------------------------------------------- 商家团
 
     @Test
-    @DisplayName("参团：人数累加；够起团人数即成团")
-    void joinGroupBuyUntilFormed() throws Exception {
+    @DisplayName("★★ 旧版「直接参团」不再落成员：返回请升级，团的人数不变")
+    void legacyJoinAsksToUpgrade() throws Exception {
         String groupNo = openGroupBuy("M0001", "G0001", 4500L, 2);
 
         /*
-         * 参团返回的是 `{ group, justReached, refundPerMember }` 而不是裸的团 ——
-         * 端上要知道「这一脚是不是把团踢成了」，才能告诉他
-         * **先参团的邻居也退了差价**（这个方案区别于其它拼团的地方）。
-         * 后端原先直接返回团本身，于是端上 `res.group` 是 undefined，
-         * 赋回去之后整个团详情页变成一片空白：点了参团、看到「参团成功」、然后什么都没了。
+         * 参团已改成带团号下单、付款成功才算成员（TDD-营销域-详细设计 §1.4）。
+         * 旧接口若还静默落成员：没付钱的人会让「还差 N 人」变少，团到期时也没有钱可退 ——
+         * 那正是这次要堵上的缺口。付款落成员的正向路径见 GroupOrderFlowTest。
          */
         String a = login("12900129030");
         mvc().perform(post("/mp/group-buy/" + groupNo + "/join").header("Authorization", "Bearer " + a))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.group.joinedCount").value(1))
-                .andExpect(jsonPath("$.data.group.status").value("OPEN"))
-                .andExpect(jsonPath("$.data.justReached").value(false));
-
-        String b = login("12900129031");
-        mvc().perform(post("/mp/group-buy/" + groupNo + "/join").header("Authorization", "Bearer " + b))
-                .andExpect(jsonPath("$.data.group.joinedCount").value(2))
-                .andExpect(jsonPath("$.data.group.status").value("FORMED"))
-                // 恰好踢成团的那一下才是 true，且要给出每人退多少
-                .andExpect(jsonPath("$.data.justReached").value(true))
-                .andExpect(jsonPath("$.data.refundPerMember").value(1000));
-    }
-
-    @Test
-    @DisplayName("同一个人不能重复参团（否则「还差 N 人」会被一个人刷满）")
-    void cannotJoinTwice() throws Exception {
-        String groupNo = openGroupBuy("M0001", "G0001", 4500L, 5);
-        String a = login("12900129032");
-
-        mvc().perform(post("/mp/group-buy/" + groupNo + "/join").header("Authorization", "Bearer " + a));
-        mvc().perform(post("/mp/group-buy/" + groupNo + "/join").header("Authorization", "Bearer " + a))
-                .andExpect(jsonPath("$.code").value(10409));
+                .andExpect(jsonPath("$.code").value(40033));
+        mvc().perform(get("/mp/group-buy/" + groupNo))
+                .andExpect(jsonPath("$.data.joinedCount").value(0))
+                .andExpect(jsonPath("$.data.members.length()").value(0));
     }
 
     @Test
@@ -649,8 +628,6 @@ class M6cGroupFlowTest {
     @DisplayName("★ 平台中止违规团：团置 FAILED，且从 C 端在售列表消失")
     void opsAbortsGroup() throws Exception {
         String groupNo = openGroupBuy("M0001", "G0001", 4500L, 3);
-        String a = login("12900129090");
-        mvc().perform(post("/mp/group-buy/" + groupNo + "/join").header("Authorization", "Bearer " + a));
 
         String goods = opsLogin("goods", "goods123");
         mvc().perform(post("/ops/groups/" + groupNo + "/abort")
@@ -669,11 +646,12 @@ class M6cGroupFlowTest {
     @DisplayName("已成团的不许中止：那一刻用户已付钱、商家已备货，要退得走售后")
     void formedGroupCannotBeAborted() throws Exception {
         String groupNo = openGroupBuy("M0001", "G0001", 4500L, 2);
-        mvc().perform(post("/mp/group-buy/" + groupNo + "/join")
-                .header("Authorization", "Bearer " + login("12900129091")));
-        mvc().perform(post("/mp/group-buy/" + groupNo + "/join")
-                        .header("Authorization", "Bearer " + login("12900129092")))
-                .andExpect(jsonPath("$.data.group.status").value("FORMED"));
+        // 成团的正向路径（付款落成员）在 GroupOrderFlowTest；这里只要一个已成团的团
+        groupBuyMapper.update(null, com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.marketing.group.entity.MktGroupBuy>lambdaUpdate()
+                .set(ai.neargo.shop.marketing.group.entity.MktGroupBuy::getStatus, "FORMED")
+                .set(ai.neargo.shop.marketing.group.entity.MktGroupBuy::getJoinedCount, 2)
+                .eq(ai.neargo.shop.marketing.group.entity.MktGroupBuy::getGroupNo, groupNo));
 
         mvc().perform(post("/ops/groups/" + groupNo + "/abort")
                         .header("Authorization", "Bearer " + opsLogin("goods", "goods123"))

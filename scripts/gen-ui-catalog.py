@@ -239,6 +239,8 @@ PROTO_URL_BY_ROUTE = {
         "pages/platform-activity-apply/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
         "pages/period/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
         "pages/periods/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/group/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/group-open/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
     },
     # C 端收货地址（2026-09-17，2026-09-18 补到七屏）。**画布式原型，没有页内锚点** ——
     # 各屏并排摆着（没有地址 / 列表 / 新建整页 / 选择地点 / 选城市 / 海外 / 搜不到时），
@@ -291,6 +293,8 @@ PROTO_ANCHORS = {
         # 营销 v2 的四条指到另一份 artifact（见 PROTO_URL_BY_ROUTE）
         "pages/marketing/index": "s01", "pages/activities/index": "s02",
         "pages/activity-edit/index": "s03", "pages/groups/index": "s09",
+        # 拼团接通下单（P1b）：团详情 s10、商家开团 s34
+        "pages/group/index": "s10", "pages/group-open/index": "s34",
         "pages/marketing/new": "s09",
         "pages/marketing/audience": "s10",
         # 券 s12–s17 在营销 v2 那份里（见 PROTO_URL_BY_ROUTE）。coupon-issues 是真页面

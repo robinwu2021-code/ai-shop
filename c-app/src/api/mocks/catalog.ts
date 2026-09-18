@@ -4,7 +4,7 @@
 // 合并在 `mocks/index.ts`，那里的类型标注保证**一个接口都不能少**。
 
 import type { GoodsQuery } from "../contract";
-import { allCommunitySeeds, allGoods, db, delay, findGoodsSeed, paginate, persist, toGoods } from "@shared/mock/db";
+import { allCommunitySeeds, allGoods, buildGroupBuy, db, delay, findGoodsSeed, paginate, persist, toGoods } from "@shared/mock/db";
 import { defaultFulfillment } from "@shared/utils/goods";
 import { buyNGetM, giftQtyFor } from "@shared/utils/promotion";
 import {
@@ -47,6 +47,7 @@ export const catalogMock: Pick<ShopApi,
   "goodsList"
   | "goodsDetail"
   | "goodsBatch"
+  | "goodsGroup"
   | "cartList"
   | "cartAdd"
   | "cartUpdate"
@@ -93,6 +94,26 @@ export const catalogMock: Pick<ShopApi,
 
   async goodsDetail(goodsNo) {
     return delay(toGoods(findGoodsSeed(goodsNo)));
+  },
+
+  /** 拼团块：商品上配了团购价的才有；正在拼的团取这件货还没成的团 */
+  async goodsGroup(goodsNo) {
+    const g = toGoods(findGoodsSeed(goodsNo));
+    if (!g.groupBuy) return delay(null);
+    const open = db.groupSeeds
+      .filter((s) => s.goodsNo === goodsNo)
+      .map(buildGroupBuy)
+      .filter((x) => x.status === "OPEN")
+      .sort((a, b) => a.need - b.need)
+      .slice(0, 3);
+    return delay({
+      goodsNo,
+      activityNo: "PA-G1",
+      groupPrice: open[0]?.groupPrice ?? g.groupBuy.price,
+      minCount: g.groupBuy.minCount,
+      groupHours: 24,
+      openGroups: open,
+    });
   },
 
   /** 集单块：mock 里只有生鲜类商品在集单（与原型 s26 同一件货的样子） */

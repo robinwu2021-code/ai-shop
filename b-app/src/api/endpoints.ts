@@ -222,6 +222,9 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
 
   mGroupList: { method: "GET", path: "/biz/groups", auth: true, summary: "我的商家团" },
   mCreateGroup: { method: "POST", path: "/biz/groups", auth: true, summary: "开团" },
+  mGroup: { method: "GET", path: "/biz/group/:groupNo", auth: true, summary: "团详情" },
+  mDissolveGroup: { method: "POST", path: "/biz/group/:groupNo/dissolve", auth: true, summary: "散团（参团已付款的单全额退款）" },
+  mGroupPickups: { method: "GET", path: "/biz/group/pickups", auth: true, summary: "开团可选的自提点" },
   mRequestList: { method: "GET", path: "/biz/group-request/pool", auth: true, summary: "可报价需求单" },
   mQuote: { method: "POST", path: "/biz/group-request/:requestNo/quote", auth: true, summary: "报价" },
 

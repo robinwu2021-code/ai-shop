@@ -12,6 +12,7 @@ import type {
   AppealReviewReq,
   SaveGoodsReqBody,
   CreateGroupReq,
+  DissolveGroupReq,
   CrossStoreCompareQuery,
   GoodsListQuery,
   HandleAfterSaleReq,
@@ -107,6 +108,7 @@ import type {
   PageResult,
   PickingRow,
   GroupBuy,
+  GroupPickupOption,
   GroupRequest,
   CampaignDraft,
   MarketingCampaign,
@@ -450,9 +452,12 @@ export const httpApi: MerchantApi = {
   mConfirmReturn: (afterSaleNo) =>
     http.post<AfterSale>(buildPath(E.mConfirmReturn.path, { afterSaleNo }), {}),
 
-  mGroupList: () => http.get<GroupBuy[]>(E.mGroupList.path),
-  mCreateGroup: (goodsNo) =>
-    http.post<GroupBuy>(E.mCreateGroup.path, { goodsNo } satisfies CreateGroupReq),
+  mGroupList: (status) => http.get<GroupBuy[]>(E.mGroupList.path, status ? { status } : undefined),
+  mCreateGroup: (req) => http.post<GroupBuy>(E.mCreateGroup.path, req satisfies CreateGroupReq),
+  mGroup: (groupNo) => http.get<GroupBuy>(buildPath(E.mGroup.path, { groupNo })),
+  mDissolveGroup: (groupNo, reason) =>
+    http.post<GroupBuy>(buildPath(E.mDissolveGroup.path, { groupNo }), { reason } satisfies DissolveGroupReq),
+  mGroupPickups: () => http.get<GroupPickupOption[]>(E.mGroupPickups.path),
   mRequestList: () => http.get<GroupRequest[]>(E.mRequestList.path),
   mQuote: (requestNo, payload) =>
     http.post<Quote>(buildPath(E.mQuote.path, { requestNo }), {

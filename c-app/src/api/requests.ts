@@ -211,8 +211,10 @@ export interface CreateOrderReqBody {
   usePoints?: number;
   /** 买家留言 */
   remark?: string;
-  /** 参团下单时传团单号。**后端 CreateOrderReq 目前不认这个字段**，接上去会静默变成普通单 */
+  /** 参团：团号。按团价收，付款成功才算成员（TDD-营销域-详细设计 §1.4）。与 openGroup 二选一 */
   groupNo?: string;
+  /** 开团：按这件货在跑的拼团活动开一个新团，下单人即发起人 */
+  openGroup?: boolean;
   /** APPOINTMENT：预约开始时间戳 */
   appointmentAt?: number;
   /**
@@ -257,11 +259,6 @@ export interface AfterSaleReq {
 export interface GroupBuyListQuery {
   /** 按自提点过滤 —— **成团单位就是自提点**。不传则按当前绑定的自提点 */
   pickupNo?: string;
-}
-
-export interface JoinGroupBuyReq {
-  /** 参团件数，正整数 */
-  qty: number;
 }
 
 export interface CreateGroupBuyReq {

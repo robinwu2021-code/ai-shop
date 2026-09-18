@@ -42,7 +42,11 @@ public final class GroupVOs {
                               * 会把一个已经作废的团显示成正常可参的团。
                               */
                              String status,
-                             NeighborPickupVO neighborPickup) {
+                             NeighborPickupVO neighborPickup,
+                             /** 开团时依据的拼团活动。存量团为空 */
+                             String activityNo,
+                             /** 活动名（团详情「活动」那一行）。存量团为空 */
+                             String activityName) {
     }
 
     /**
@@ -53,6 +57,18 @@ public final class GroupVOs {
      * 页面照着渲染 `×{qty}`，而它<b>从来没有值</b>。
      */
     public record MemberVO(String avatar, String nickname) {
+    }
+
+    /**
+     * 商品详情的拼团块（s21）。
+     *
+     * @param groupPrice 成团价（分），「开团 ¥8」
+     * @param minCount   几人成团
+     * @param groupHours 开团后多少小时内成团
+     * @param openGroups 正在拼的团，差人最少的在前，最多 3 个
+     */
+    public record GoodsGroupVO(String goodsNo, String activityNo, long groupPrice, int minCount,
+                               int groupHours, List<GroupBuyVO> openGroups) {
     }
 
     /**

@@ -266,6 +266,7 @@ CREATE TABLE IF NOT EXISTS mkt_group_buy
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     pickup_no VARCHAR(64) DEFAULT NULL,
     initiator_user_no VARCHAR(64) DEFAULT NULL,
+    activity_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_group_no UNIQUE (group_no)
 );
@@ -284,8 +285,10 @@ CREATE TABLE IF NOT EXISTS mkt_group_member
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    sub_order_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_group_user UNIQUE (group_no,user_no)
+    CONSTRAINT uk_group_user UNIQUE (group_no,user_no),
+    CONSTRAINT uk_group_member_sub UNIQUE (sub_order_no)
 );
 
 CREATE TABLE IF NOT EXISTS mkt_quote

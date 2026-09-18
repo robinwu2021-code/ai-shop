@@ -184,7 +184,7 @@ class GroupAuditFlowTest {
         setAuditFlag(ops, true);
         try {
             withGroupActivityOn("G0001", () -> {
-                var vo = groupService.createMerchantGroup("M0001", "G0001");
+                var vo = groupService.createMerchantGroup("M0001", "G0001", null, null);
                 assertThat(vo.status())
                         .as("★ 开关开着却直接上线了 —— 审核这一页永远是空的，没人会发现")
                         .isEqualTo(MktGroupBuy.PENDING);
@@ -224,7 +224,7 @@ class GroupAuditFlowTest {
                 PmtActivity.ONE_OFF, now - 1000, now + 86_400_000L, null, 100, null,
                 List.of(), List.of("G0001")), "TEST");
         try {
-            var vo = groupService.createMerchantGroup("M0001", "G0001");
+            var vo = groupService.createMerchantGroup("M0001", "G0001", null, null);
             assertThat(vo.groupPrice())
                     .as("★ 成团价要是活动里那个 8 元 —— 读商品的话这里会是商品上的旧价或者根本开不出团")
                     .isEqualTo(800L);
@@ -249,12 +249,12 @@ class GroupAuditFlowTest {
                 List.of(), List.of("G0001")), "TEST");
         try {
             // 先证明这条路本来是通的 —— 不然下面那条断言证明不了是「停掉」起的作用
-            assertThat(groupService.createMerchantGroup("M0001", "G0001").groupPrice())
+            assertThat(groupService.createMerchantGroup("M0001", "G0001", null, null).groupPrice())
                     .as("前提：活动在跑时开得出团")
                     .isEqualTo(900L);
 
             jdbc.update("update pmt_activity set status='PAUSED' where activity_no=?", a.activityNo());
-            assertThatThrownBy(() -> groupService.createMerchantGroup("M0001", "G0001"))
+            assertThatThrownBy(() -> groupService.createMerchantGroup("M0001", "G0001", null, null))
                     .as("★ 活动停了还能开团的话，商家点「暂停」之后团照样在开，而界面写着已暂停")
                     .isInstanceOf(BizException.class);
         } finally {

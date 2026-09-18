@@ -41,6 +41,15 @@ public class MpGroupController {
         return groupService.groupBuyDetail(groupNo);
     }
 
+    /**
+     * 商品详情的拼团块（s21）：开团价、几人成团、正在拼的团。不是拼团商品时 data 为 null。
+     * 单独一个端点而不是塞进商品详情：理由同 {@code /mp/goods/{goodsNo}/batch}。匿名可看。
+     */
+    @GetMapping("/mp/goods/{goodsNo}/group")
+    public ai.neargo.shop.marketing.group.dto.GroupVOs.GoodsGroupVO goodsGroup(@PathVariable String goodsNo) {
+        return groupService.goodsGroup(goodsNo).orElse(null);
+    }
+
     @PostMapping("/mp/group-buy/{groupNo}/join")
     public JoinResultVO join(@PathVariable String groupNo) {
         return groupService.join(groupNo);
