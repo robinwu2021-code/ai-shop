@@ -764,7 +764,7 @@ onShow(() => {
           <view class="row__meta sh-row sh-row--baseline">
             <text class="txt-strong row__price sh-num txt-primary">{{ money(g.price) }}</text>
             <text class="txt-sub row__stock sh-num" :class="{ 'is-danger': stockOf(g) === 0, 'txt-bold': stockOf(g) === 0 }">
-              {{ $t("goods.stock") }} {{ stockOf(g) }}
+              {{ stockOf(g) === 0 ? $t("goods.statusOUT_OF_STOCK") : `${$t("goods.stock")} ${stockOf(g)}` }}
             </text>
           </view>
         </view>
@@ -821,21 +821,21 @@ onShow(() => {
         <view class="row__btns sh-row">
           <text
             v-if="primaryOf(g)"
-            class="txt-caption mini mini--primary"
+            class="sh-btn sh-btn--sm sh-btn--soft"
             @tap="runPrimary(g)"
           >{{ primaryLabel(g) }}</text>
-          <text v-if="merchant.can('biz:stock')" class="txt-caption mini" @tap="editStock(g)">
+          <text v-if="merchant.can('biz:stock')" class="sh-btn sh-btn--sm sh-btn--muted" @tap="editStock(g)">
             {{ $t("goods.editStock") }}
           </text>
           <!-- 只剩一项时不做成菜单：多一次点击换不来任何东西 -->
           <text
             v-if="moreOf(g).length > 1"
-            class="txt-caption mini mini--more"
+            class="sh-btn sh-btn--sm sh-btn--muted"
             @tap="openMore(g)"
           >{{ $t("goods.more") }}</text>
           <text
             v-else-if="soleMoreOf(g)"
-            class="txt-caption mini"
+            class="sh-btn sh-btn--sm sh-btn--muted"
             @tap="runSoleMore(g)"
           >{{ soleMoreLabel(g) }}</text>
         </view>
@@ -1028,26 +1028,6 @@ onShow(() => {
   align-items: center;
   gap: 16rpx;
   margin-top: 16rpx;
-}
-.mini {
-  padding: 8rpx 16rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-}
-/*
- * 主动作给主色。改版前六个按钮长得一模一样，**哪个是这一行该做的事无从看出** ——
- * 而每种状态其实只有一件（草稿→提交审核、在售→下架…）。
- */
-.mini--primary {
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
-}
-/* 「更多」是收纳口不是动作：不给底色，免得看着像第三个并列按钮 */
-.mini--more {
-  background: transparent;
-  padding-inline-start: 8rpx;
-  padding-inline-end: 8rpx;
-  color: var(--sh-sub);
 }
 
 /* 分享单品浮层：底部弹出，与 biz-region-picker 的 .sheet 同一形态，商家不用重新学 */

@@ -1200,9 +1200,9 @@ async function save(thenSubmit = false) {
         -->
         <view v-if="stdNo" class="std-on sh-row sh-row--between">
           <text class="txt-sub">{{ $t("goods.fromStd", { s: stdTitle || stdNo }) }}</text>
-          <text class="txt-sub" @tap="detachStd">{{ $t("goods.detachStd") }}</text>
+          <text class="sh-link sh-link--quiet" @tap="detachStd">{{ $t("goods.detachStd") }}</text>
         </view>
-        <text v-else class="sh-link std-link" @tap="showStd = true">{{ $t("goods.pickStd") }}</text>
+        <text v-else class="sh-btn sh-btn--sm sh-btn--soft std-link" @tap="showStd = true">{{ $t("goods.pickStd") }}</text>
       </view>
       <view class="field">
         <!--
@@ -1257,7 +1257,7 @@ async function save(thenSubmit = false) {
             模型不知道这家店真实的产地与保质期，一键写进详情
             等于替商家做了他没做过的承诺。让他改，比让他从空白开始容易得多。
           -->
-          <text class="sh-link" @tap="genDetail">
+          <text class="sh-btn sh-btn--sm sh-btn--soft" @tap="genDetail">
             {{ generating ? $t("goods.genDetailing") : $t("goods.genDetail") }}
           </text>
         </view>
@@ -1394,10 +1394,6 @@ async function save(thenSubmit = false) {
         -->
         <text v-if="SHOW_CATEGORY_GATE && pickedGate && !pickedGate.granted" class="txt-caption cat-lv__gate">
           {{ $t("goods.gateMissing", { s: pickedGate.qualification || $t("goods.gateCert") }) }}
-        </text>
-        <!-- 形态：派生值。没选类目时不显示 —— 那时它是个凭空的默认值，只会误导 -->
-        <text v-if="categoryLabel" class="sh-muted hint">
-          {{ $t("goods.typeDerived", { s: $t(`goods.categoryType.${type}`) }) }}
         </text>
       </view>
 
@@ -1679,7 +1675,6 @@ async function save(thenSubmit = false) {
       <!-- 与规格同一条：常驻展开，理由见上面那段 -->
       <!-- 这一类还没配参数：说清现状，并把唯一的下一步摆在眼前 -->
       <text v-if="!propDims.length" class="sh-muted hint">{{ $t("goods.paramsEmpty") }}</text>
-      <text v-if="!propDims.length" class="sh-hint txt-quiet">{{ $t("goods.paramsEmptyTip") }}</text>
       <!--
         **参数是单值，规格是多值** —— 一件货有三档重量，但只有一个产地。
         所以这里的 chip 是单选（再点取消），而规格那边是开关（本店有的全列、
@@ -1735,9 +1730,8 @@ async function save(thenSubmit = false) {
           :placeholder="$t('goods.addParamPh')"
           @confirm="confirmAddParam"
         />
-        <text class="txt-strong sh-link" @tap="confirmAddParam">{{ $t("goods.save") }}</text>
+        <text class="sh-btn sh-btn--sm" @tap="confirmAddParam">{{ $t("goods.save") }}</text>
       </view>
-      <text class="txt-caption sh-muted build__s">{{ $t("goods.addParamCost") }}</text>
     </sh-sheet>
 
     <sh-sheet
@@ -1785,9 +1779,8 @@ async function save(thenSubmit = false) {
           :placeholder="$t('goods.paramFillPh')"
           @confirm="confirmParamValue"
         />
-        <text class="txt-strong sh-link" @tap="confirmParamValue">{{ $t("goods.save") }}</text>
+        <text class="sh-btn sh-btn--sm" @tap="confirmParamValue">{{ $t("goods.save") }}</text>
       </view>
-      <text class="txt-caption sh-muted build__s">{{ $t("goods.paramFillCost") }}</text>
     </sh-sheet>
 
     <!-- SKU 矩阵 -->
@@ -1847,7 +1840,7 @@ async function save(thenSubmit = false) {
           type="digit"
           :placeholder="$t(aggregated ? 'goods.priceAggregated' : 'goods.bulkPrice')"
         />
-        <text class="sh-link" @tap="applyBulkPrice">{{ $t("goods.applyAll") }}</text>
+        <text class="sh-btn sh-btn--sm sh-btn--soft" @tap="applyBulkPrice">{{ $t("goods.applyAll") }}</text>
       </view>
       <!-- 成本多半各规格一个数，但「都填同一个」也常见（同一箱货拆规格卖） -->
       <view v-if="multi && priceField === 'cost'" class="bulk sh-row">
@@ -1858,7 +1851,7 @@ async function save(thenSubmit = false) {
           type="digit"
           :placeholder="$t('goods.bulkCost')"
         />
-        <text class="sh-link" @tap="applyBulkCost">{{ $t("goods.applyAll") }}</text>
+        <text class="sh-btn sh-btn--sm sh-btn--soft" @tap="applyBulkCost">{{ $t("goods.applyAll") }}</text>
       </view>
 
       <!--
@@ -1990,7 +1983,7 @@ async function save(thenSubmit = false) {
           type="number"
           :placeholder="$t('goods.bulkStock')"
         />
-        <text class="sh-link" @tap="applyBulkStock">{{ $t("goods.applyAll") }}</text>
+        <text class="sh-btn sh-btn--sm sh-btn--soft" @tap="applyBulkStock">{{ $t("goods.applyAll") }}</text>
       </view>
 
       <view v-for="(r, i) in rows" :key="i" class="pr sh-row">
@@ -2308,7 +2301,8 @@ async function save(thenSubmit = false) {
 }
 
 .std-link {
-  display: block;
+  /* 按钮而不是整行：sh-btn 本体是 block，不收的话会撑成一条整宽胶囊 */
+  display: inline-block;
   margin-top: 12rpx;
 }
 

@@ -7562,12 +7562,6 @@
           "ar": "إضافة خاصية"
         },
         {
-          "key": "goods.addParamCost",
-          "zh-CN": "新建后全店通用，同类目商品可直接选用",
-          "en": "Available store-wide once created; reusable on this category",
-          "ar": "متاحة للمتجر كله بعد الإنشاء، وقابلة لإعادة الاستخدام في هذه الفئة"
-        },
-        {
           "key": "goods.addParamHint",
           "zh-CN": "平台未收录的参数可在此新建",
           "en": "Create a parameter the platform has not covered",
@@ -7646,52 +7640,22 @@
           "ar": "الفئة الفرعية"
         },
         {
-          "key": "goods.categoryType.CARD",
-          "zh-CN": "卡券",
-          "en": "Voucher",
-          "ar": "قسيمة"
-        },
-        {
-          "key": "goods.categoryType.FRESH",
-          "zh-CN": "生鲜",
-          "en": "Fresh produce",
-          "ar": "طازج"
-        },
-        {
-          "key": "goods.categoryType.NORMAL",
-          "zh-CN": "普通实物",
-          "en": "Standard goods",
-          "ar": "سلع عادية"
-        },
-        {
-          "key": "goods.categoryType.SERVICE",
-          "zh-CN": "服务",
-          "en": "Service",
-          "ar": "خدمة"
-        },
-        {
-          "key": "goods.categoryType.VIRTUAL",
-          "zh-CN": "虚拟商品",
-          "en": "Virtual goods",
-          "ar": "منتج رقمي"
-        },
-        {
           "key": "goods.channelOff",
-          "zh-CN": "未开",
+          "zh-CN": "未开通",
           "en": "not enabled",
           "ar": "غير مفعّل"
         },
         {
           "key": "goods.channelsFailed",
-          "zh-CN": "没读到本店的送货方式，下面按全部可选显示",
-          "en": "Could not load this store's methods — all are shown as selectable",
-          "ar": "تعذّر تحميل طرق المتجر؛ تُعرض جميعها كقابلة للاختيار"
+          "zh-CN": "配送方式读取失败，已显示全部",
+          "en": "Could not load delivery methods; showing all",
+          "ar": "تعذّر تحميل طرق التوصيل؛ تُعرض جميعها"
         },
         {
           "key": "goods.channelsLoading",
-          "zh-CN": "正在读取本店已开通的送货方式…",
-          "en": "Loading the methods this store has enabled…",
-          "ar": "جارٍ تحميل طرق التوصيل المفعّلة لهذا المتجر…"
+          "zh-CN": "正在读取配送方式…",
+          "en": "Loading delivery methods…",
+          "ar": "جارٍ تحميل طرق التوصيل…"
         },
         {
           "key": "goods.costPrice",
@@ -7749,9 +7713,9 @@
         },
         {
           "key": "goods.detailPh",
-          "zh-CN": "选填，如 产地、保存方式、包含项",
-          "en": "Optional, e.g. origin, storage, what is included",
-          "ar": "اختياري، مثال: المنشأ، طريقة الحفظ، ما يشمله"
+          "zh-CN": "选填",
+          "en": "Optional",
+          "ar": "اختياري"
         },
         {
           "key": "goods.dimAlready",
@@ -7809,7 +7773,7 @@
         },
         {
           "key": "goods.editStock",
-          "zh-CN": "修改库存",
+          "zh-CN": "改库存",
           "en": "Stock",
           "ar": "المخزون"
         },
@@ -7833,9 +7797,9 @@
         },
         {
           "key": "goods.extShow",
-          "zh-CN": "录条码与货号",
-          "en": "Add barcode & SKU code",
-          "ar": "إضافة باركود ورمز"
+          "zh-CN": "条码与货号",
+          "en": "Barcode & SKU code",
+          "ar": "الباركود والرمز"
         },
         {
           "key": "goods.fieldBarcode",
@@ -7887,9 +7851,9 @@
         },
         {
           "key": "goods.fromPriceShort",
-          "zh-CN": "C 端显示 ¥{s} 起",
-          "en": "Shows as “from {s}” to customers",
-          "ar": "يظهر للعملاء «ابتداءً من {s}»"
+          "zh-CN": "顾客看到 ¥{s} 起",
+          "en": "Customers see from ¥{s}",
+          "ar": "يراه العملاء ابتداءً من ¥{s}"
         },
         {
           "key": "goods.fromStd",
@@ -7899,9 +7863,9 @@
         },
         {
           "key": "goods.fulfillment",
-          "zh-CN": "履约方式",
-          "en": "Fulfilment",
-          "ar": "طريقة التسليم"
+          "zh-CN": "配送方式",
+          "en": "Delivery",
+          "ar": "طريقة التوصيل"
         },
         {
           "key": "goods.fulfillmentClosedAsk",
@@ -8192,12 +8156,6 @@
           "ar": "إضافة قيمة"
         },
         {
-          "key": "goods.paramFillCost",
-          "zh-CN": "新建后成为该参数的可选值，后续可直接选用",
-          "en": "Becomes a value of this parameter, reusable next time",
-          "ar": "تصبح قيمة لهذه الخاصية، قابلة للاختيار لاحقًا"
-        },
-        {
           "key": "goods.paramFillHint",
           "zh-CN": "该参数暂无平台可选值",
           "en": "No platform values for this parameter yet",
@@ -8241,15 +8199,9 @@
         },
         {
           "key": "goods.paramsEmpty",
-          "zh-CN": "这个类目还没有平台参数",
-          "en": "No platform parameters for this category yet",
-          "ar": "لم تُضبط خصائص لهذه الفئة بعد"
-        },
-        {
-          "key": "goods.paramsEmptyTip",
-          "zh-CN": "可以新建本店专用的",
-          "en": "You can create one for your store",
-          "ar": "يمكنك إنشاء خاصية خاصة بمتجرك"
+          "zh-CN": "暂无参数，可新建",
+          "en": "No parameters yet; you can add one",
+          "ar": "لا توجد خصائص بعد؛ يمكنك إضافة واحدة"
         },
         {
           "key": "goods.photos",
@@ -8271,9 +8223,9 @@
         },
         {
           "key": "goods.priceAggregated",
-          "zh-CN": "期望收购价（平台统一销售）",
-          "en": "Your asking price (platform sells)",
-          "ar": "سعر الشراء المطلوب (المنصة تبيع)"
+          "zh-CN": "供货价",
+          "en": "Supply price",
+          "ar": "سعر التوريد"
         },
         {
           "key": "goods.priceInvalid",
@@ -8367,15 +8319,15 @@
         },
         {
           "key": "goods.saveTip",
-          "zh-CN": "保存后需平台审核，通过后在 C 端可见",
-          "en": "Needs platform review before it goes live",
-          "ar": "يحتاج مراجعة المنصة قبل النشر"
+          "zh-CN": "保存后提交平台审核，通过后上架",
+          "en": "Goes to platform review; listed once approved",
+          "ar": "تُرسل لمراجعة المنصة وتُعرض بعد الموافقة"
         },
         {
           "key": "goods.saveTipOnSale",
-          "zh-CN": "保存只存为草稿，线上照卖旧版；到「发布修改」里生效",
-          "en": "Saving only stores a draft; buyers keep seeing the old version until you publish",
-          "ar": "الحفظ يخزّن مسودة فقط؛ يبقى المشترون يرون النسخة القديمة حتى تنشر"
+          "zh-CN": "保存为草稿，发布后生效",
+          "en": "Saved as a draft; publish to go live",
+          "ar": "تُحفظ كمسودة؛ انشرها لتصبح فعّالة"
         },
         {
           "key": "goods.savedAsDraft",
@@ -8397,9 +8349,9 @@
         },
         {
           "key": "goods.secCategory",
-          "zh-CN": "分类与履约",
-          "en": "Category & fulfillment",
-          "ar": "التصنيف والتسليم"
+          "zh-CN": "类目与配送",
+          "en": "Category & delivery",
+          "ar": "التصنيف والتوصيل"
         },
         {
           "key": "goods.secCode",
@@ -8559,9 +8511,9 @@
         },
         {
           "key": "goods.stockStoreScope",
-          "zh-CN": "改的是「{s}」的库存，其他门店不受影响",
-          "en": "Editing stock for {s}. Other stores are unaffected",
-          "ar": "أنت تعدّل مخزون {s}. المتاجر الأخرى لا تتأثر"
+          "zh-CN": "仅修改「{s}」的库存",
+          "en": "Only {s}",
+          "ar": "{s} فقط"
         },
         {
           "key": "goods.storePriceTip",
@@ -8598,12 +8550,6 @@
           "zh-CN": "去开启",
           "en": "Enable",
           "ar": "تفعيل"
-        },
-        {
-          "key": "goods.typeDerived",
-          "zh-CN": "商品形态：{s}（由类目确定）",
-          "en": "Product form: {s} (from the category)",
-          "ar": "نوع المنتج: {s} (من الفئة)"
         },
         {
           "key": "goods.unitPh",

@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 410,
+        "b-app": 407,
         "c-app": 54
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 304,
+        "b-app": 298,
         "c-app": 231
       }
     },
@@ -469,7 +469,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 39,
+        "b-app": 38,
         "c-app": 13
       }
     },
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 124,
+        "b-app": 122,
         "c-app": 37
       }
     },
@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 105,
+        "b-app": 104,
         "c-app": 78
       }
     },
@@ -785,7 +785,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 146,
+        "b-app": 157,
         "c-app": 52
       }
     },
@@ -861,7 +861,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 46,
+        "b-app": 49,
         "c-app": 4
       }
     },
@@ -879,7 +879,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 19,
+        "b-app": 30,
         "c-app": 11
       }
     },
@@ -897,7 +897,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 27,
+        "b-app": 33,
         "c-app": 9
       }
     },
@@ -937,7 +937,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 50,
+        "b-app": 44,
         "c-app": 3
       }
     },
@@ -953,7 +953,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 5,
+        "b-app": 6,
         "c-app": 0
       }
     },
@@ -993,7 +993,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 114,
+        "b-app": 113,
         "c-app": 14
       }
     },
@@ -3524,7 +3524,7 @@
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 276,
+      "libClassHits": 280,
       "localSelectors": 70,
       "localCssLines": 304,
       "rolled": []
@@ -3544,9 +3544,9 @@
         "sh-tabs",
         "biz-store-tag"
       ],
-      "libClassHits": 40,
-      "localSelectors": 30,
-      "localCssLines": 127,
+      "libClassHits": 48,
+      "localSelectors": 27,
+      "localCssLines": 112,
       "rolled": []
     },
     {
