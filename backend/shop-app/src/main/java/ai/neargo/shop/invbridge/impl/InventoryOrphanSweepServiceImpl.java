@@ -75,11 +75,26 @@ public class InventoryOrphanSweepServiceImpl implements InventoryOrphanSweepServ
                 }
                 orphans++;
                 /*
-                 * **dryRun 走同一个方法、只是不写**，不在这儿另写一份判据 ——
-                 * 「会归档几件」与「孤儿有几条」差的正是有库存那一批，
-                 * 而那一批恰恰是最要紧的；只报孤儿数的话试跑的数字会比真跑大一截。
+                 * **判与写分开**：先用同一个方法只判不写，拿到「会不会归档」，
+                 * 再决定写什么。不在这儿另写一份判据 —— 「会归档几件」与
+                 * 「孤儿有几条」差的正是有库存那一批，而那一批恰恰是最要紧的。
                  */
-                boolean empty = acl.retireItemIfEmpty(ownerEntity, skuNo, !dryRun);
+                boolean empty = acl.retireItemIfEmpty(ownerEntity, skuNo, false);
+                if (!dryRun) {
+                    /*
+                     * ★ **有库存的也要标记**，不是跳过（2026-09-18 真机查得）。
+                     *
+                     * SkuRetired 那条信号是**向前的**：它只在退休发生的那一刻触发。
+                     * 而线上已经躺着的那些 —— 比如香梨，加规格时旧 SKU 被软删、
+                     * 旧物料带着 1 件库存留下 —— 退休早就发生过了，事件永远不会补发，
+                     * 于是它一个标记都不会有，在挑货弹层里与旁边同名那行完全一样。
+                     * 店主看到的正是这两行。
+                     *
+                     * `retireItem` 自己会判：空的归档、有货的只标记。
+                     * 传 null 接位者 —— 事后补登判不出谁顶了谁，而记一个猜的比不记更坏。
+                     */
+                    acl.retireItem(ownerEntity, skuNo, null);
+                }
                 if (empty) {
                     retired++;
                 } else {

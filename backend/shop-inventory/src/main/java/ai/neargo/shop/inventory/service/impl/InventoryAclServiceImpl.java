@@ -249,7 +249,14 @@ public class InventoryAclServiceImpl implements InventoryAclService {
          * 记在归档分支里的话，有库存那一类（也就是真正需要店主去决定的那一类）
          * 反而一个线索都没有 —— 而它正是这一列存在的理由。
          */
-        item.setRetiredAt(java.time.LocalDateTime.now());
+        /*
+         * **只盖一次。** 每次都重新戳时间的话，事件重投、或跑批每天扫一遍，
+         * 都会让「什么时候退休的」一天天往后漂 —— 而那个时间是给人看的，
+         * 漂了之后「上周退的」会一直显示成「今天退的」。
+         */
+        if (item.getRetiredAt() == null) {
+            item.setRetiredAt(java.time.LocalDateTime.now());
+        }
         item.setSucceededBy(succeededBy);
         /*
          * 零库存就当场归档，与跑批 retireItemIfEmpty 同一个答案；

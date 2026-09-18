@@ -771,6 +771,18 @@ class InventoryBizEndpointTest {
         assertThat(orphanSweep.sweep(false, 500, s.entityNo).retired())
                 .as("重跑要归档 0 件 —— 已归档的再归档一次说明没判「已经处理过」")
                 .isZero();
+
+        /*
+         * ★★ **④ 有库存的那些要被补上退休标记**（2026-09-18 真机查得）。
+         *
+         * SkuRetired 那条信号是向前的，只在退休发生的那一刻触发。线上已经躺着的
+         * （旧 SKU 早被软删、旧物料带着库存留下）永远等不到它 —— 店主在挑货弹层里
+         * 看到的就是两行一模一样的「香梨 实存 1」，而其中一行早就不是货了。
+         * 跑批必须把它们补上标记，否则第一刀对**存量**等于没做。
+         */
+        assertThat(flagsIn(query.pickableItems(acl.ownerOfSku(s.skuA), null, null, 200), s.itemA))
+                .as("★★ 孤儿但有库存的，跑批要补上退休标记 —— 不标的话它与旁边同名那行分不开")
+                .contains("RETIRED");
     }
 
     /** 从挑货接口里取某件货的 flags —— 验的是**端上真正读到的那一份**，不是服务层内部状态 */
