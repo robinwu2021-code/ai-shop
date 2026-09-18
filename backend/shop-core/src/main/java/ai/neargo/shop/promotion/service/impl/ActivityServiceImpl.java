@@ -181,6 +181,25 @@ public class ActivityServiceImpl implements ActivityService {
             }
             default -> { /* NONE 与 GOODS 没有额外参数 */ }
         }
+        /*
+         * **算不出来的组合，存那一侧就拒**。
+         *
+         * 放行而定价无分支 = 一个存得下、列表上写着「进行中」、下单一分不减、
+         * 且不报错的死活动。今天拦住它的是 B 端 `TYPES` 只给四个入口 ——
+         * 靠前端不给按钮挡着的东西，换个调用方就没了。
+         *
+         * - `BENEFIT_COUPON`：发券有自己的一页，两处都能发会让人不知道去哪儿
+         *   （这是 activity-edit 里已写下的决定，这里把它从「前端不给」变成「后端不收」）
+         * - `GOODS × CUT`：`CampaignPort` 这一侧只有按商家汇总的金额，
+         *   减在哪一件上无从摊分；要支持得先给 Port 加按商品的减免通道
+         *
+         * 哪天真要支持，红的是这一行 —— 正好提醒把定价那侧一起补上。
+         */
+        if (PmtActivity.BENEFIT_COUPON.equals(a.getBenefitType())
+                || (PmtActivity.BENEFIT_CUT.equals(a.getBenefitType())
+                        && PmtActivity.TRIGGER_GOODS.equals(a.getTriggerType()))) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         switch (a.getBenefitType()) {
             case PmtActivity.BENEFIT_CUT, PmtActivity.BENEFIT_PRICE -> {
                 if (nz(a.getBenefitAmountMinor()) <= 0) {
@@ -189,11 +208,6 @@ public class ActivityServiceImpl implements ActivityService {
             }
             case PmtActivity.BENEFIT_GIFT -> {
                 if (nz(a.getBenefitQty()) <= 0 || blank(a.getBenefitRef())) {
-                    throw BizException.of(ErrorCode.BAD_REQUEST);
-                }
-            }
-            case PmtActivity.BENEFIT_COUPON -> {
-                if (blank(a.getBenefitRef())) {
                     throw BizException.of(ErrorCode.BAD_REQUEST);
                 }
             }

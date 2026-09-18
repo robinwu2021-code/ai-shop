@@ -69,8 +69,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 if (!PmtActivity.BENEFIT_CUT.equals(a.getBenefitType())) {
                     continue;
                 }
-                if (!PmtActivity.TRIGGER_AMOUNT.equals(a.getTriggerType())
-                        || g.goodsAmount() < nz(a.getTriggerAmountMinor())) {
+                if (!cutTriggerHits(a, g)) {
                     continue;
                 }
                 if (!audienceHits(a, g.merchantNo(), userNo)) {
@@ -93,6 +92,30 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         }
         return shares.isEmpty() ? CampaignPort.Discount.none()
                 : new CampaignPort.Discount(total, shares, applied);
+    }
+
+    /**
+     * 减钱类活动的门槛判定。<b>三种触发，各判各的字段</b>：
+     *
+     * <ul>
+     *   <li>{@code AMOUNT} —— 满额减，看金额</li>
+     *   <li>{@code QTY} —— 满件减，看件数（不含赠品，见 {@code MerchantAmount.goodsQty}）</li>
+     *   <li>{@code NONE} —— 无门槛立减，恒命中</li>
+     * </ul>
+     *
+     * <p><b>其余触发一律跳过而不是放行</b>：{@code GOODS × CUT}「买这几件货减 X」
+     * 这一侧拿到的是按商家汇总后的金额，没有逐件明细，减在哪一件上无从摊分。
+     * 放行的话它会变成一个整单减 —— 商家选了三件货，结果全店都减，且不报错。
+     * 存那一侧已在 {@code ActivityServiceImpl.assertSane} 里直接拒绝这个组合。
+     */
+    private boolean cutTriggerHits(PmtActivity a, CampaignPort.MerchantAmount g) {
+        return switch (a.getTriggerType() == null ? PmtActivity.TRIGGER_NONE : a.getTriggerType()) {
+            case PmtActivity.TRIGGER_AMOUNT -> g.goodsAmount() >= nz(a.getTriggerAmountMinor());
+            case PmtActivity.TRIGGER_QTY -> nz(a.getTriggerQty()) > 0
+                    && g.goodsQty() >= nz(a.getTriggerQty());
+            case PmtActivity.TRIGGER_NONE -> true;
+            default -> false;
+        };
     }
 
     @Override

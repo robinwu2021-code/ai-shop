@@ -83,12 +83,15 @@ public interface CampaignPort {
     }
 
     /**
+     * @param goodsQty 这笔货的<b>下单件数</b>，供「满 N 件减 M」判门槛用。
+     *                 <b>不含买赠送出的那些</b> —— 送的没收钱，拿它去凑满件数
+     *                 等于让优惠自己喂自己（买 2 送 1 凑够「满 3 件减 5」）
      * @param storeNo 这笔货<b>从哪家门店出</b>（下单时按自提点解析出来的）。
      *                门店级活动只对它生效；为空表示还没有门店上下文，
      *                此时只有全主体活动生效 —— <b>不是「所有门店活动都生效」</b>，
      *                那会让一家店的开业满减减到别家店的单上
      */
-    record MerchantAmount(String merchantNo, long goodsAmount, String storeNo) {
+    record MerchantAmount(String merchantNo, long goodsAmount, int goodsQty, String storeNo) {
     }
 
     /**

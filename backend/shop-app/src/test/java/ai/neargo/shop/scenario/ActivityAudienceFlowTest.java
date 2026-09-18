@@ -71,7 +71,7 @@ class ActivityAudienceFlowTest {
     }
 
     private static List<CampaignPort.MerchantAmount> basket(String entityNo, long amount) {
-        return List.of(new CampaignPort.MerchantAmount(entityNo, amount, null));
+        return List.of(new CampaignPort.MerchantAmount(entityNo, amount, 1, null));
     }
 
     @Test

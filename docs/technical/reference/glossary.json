@@ -4293,21 +4293,21 @@
       "terms": [
         {
           "key": "activities.always",
-          "zh-CN": "长期有效",
+          "zh-CN": "长期",
           "en": "Always on",
           "ar": "دائمة"
         },
         {
           "key": "activities.empty",
-          "zh-CN": "还没有活动",
-          "en": "No activities yet",
-          "ar": "لا توجد حملات بعد"
+          "zh-CN": "暂无活动",
+          "en": "No activities",
+          "ar": "لا توجد حملات"
         },
         {
           "key": "activities.emptyTip",
-          "zh-CN": "建一个，顾客下单时自动生效",
-          "en": "Create one and it applies automatically at checkout",
-          "ar": "أنشئ واحدة وستُطبق تلقائيًا عند الدفع"
+          "zh-CN": "创建后顾客下单自动生效",
+          "en": "Once created, it applies automatically at checkout",
+          "ar": "بعد الإنشاء تُطبق تلقائيًا عند الدفع"
         },
         {
           "key": "activities.end",
@@ -4317,9 +4317,9 @@
         },
         {
           "key": "activities.endBody",
-          "zh-CN": "结束之后不能再打开。要再用只能复制一个新的。",
-          "en": "It cannot be reopened afterwards. To run it again, copy it into a new one.",
-          "ar": "لا يمكن إعادة فتحها بعد ذلك. لتشغيلها مجددًا انسخها إلى حملة جديدة."
+          "zh-CN": "结束后不可恢复，如需再用请新建。",
+          "en": "Ending is final; create a new one to run it again.",
+          "ar": "الإنهاء نهائي؛ أنشئ حملة جديدة لتشغيلها مجددًا."
         },
         {
           "key": "activities.endTitle",
@@ -4329,8 +4329,8 @@
         },
         {
           "key": "activities.endedReason.BUDGET",
-          "zh-CN": "预算用尽",
-          "en": "Budget spent",
+          "zh-CN": "预算已用尽",
+          "en": "Budget used up",
           "ar": "نفدت الميزانية"
         },
         {
@@ -4347,7 +4347,7 @@
         },
         {
           "key": "activities.endedReason.QUOTA",
-          "zh-CN": "已到量",
+          "zh-CN": "已达限量",
           "en": "Quota reached",
           "ar": "بلغت الحد"
         },
@@ -4365,15 +4365,15 @@
         },
         {
           "key": "activities.group.idle",
-          "zh-CN": "在跑，但此刻不生效（{n}）",
-          "en": "Running, but not right now ({n})",
-          "ar": "قيد التشغيل، لكن ليست فعّالة الآن ({n})"
+          "zh-CN": "未在时段（{n}）",
+          "en": "Outside window ({n})",
+          "ar": "خارج النافذة ({n})"
         },
         {
           "key": "activities.group.live",
-          "zh-CN": "正在生效（{n}）",
-          "en": "Active now ({n})",
-          "ar": "فعّالة الآن ({n})"
+          "zh-CN": "生效中（{n}）",
+          "en": "Active ({n})",
+          "ar": "فعّالة ({n})"
         },
         {
           "key": "activities.group.paused",
@@ -4383,9 +4383,9 @@
         },
         {
           "key": "activities.idleHint",
-          "zh-CN": "周期活动只在设定的时段里减钱，此刻不在时段内",
-          "en": "Recurring activities only apply during their time window, and now is outside it",
-          "ar": "الحملات الدورية تُطبق ضمن أوقاتها فقط، والوقت الحالي خارجها"
+          "zh-CN": "周期活动仅在设定时段内生效",
+          "en": "Recurring activities apply only during their set window",
+          "ar": "الحملات الدورية تُطبق ضمن أوقاتها المحددة فقط"
         },
         {
           "key": "activities.left",
@@ -4425,9 +4425,9 @@
         },
         {
           "key": "activities.recurringBad",
-          "zh-CN": "周期规则读不出来，请重新设置",
-          "en": "The recurring rule cannot be read; set it again",
-          "ar": "تعذّرت قراءة قاعدة التكرار، أعد ضبطها"
+          "zh-CN": "周期规则异常，请重新设置",
+          "en": "Invalid recurring rule; set it again",
+          "ar": "قاعدة التكرار غير صالحة، أعد ضبطها"
         },
         {
           "key": "activities.resume",
@@ -4446,6 +4446,18 @@
           "zh-CN": "满 {n} 减 {m}",
           "en": "{m} off over {n}",
           "ar": "خصم {m} على {n}"
+        },
+        {
+          "key": "activities.ruleCutAny",
+          "zh-CN": "立减 {m}",
+          "en": "{m} off",
+          "ar": "خصم {m} مباشرة"
+        },
+        {
+          "key": "activities.ruleCutQty",
+          "zh-CN": "满 {n} 件减 {m}",
+          "en": "{m} off {n}+ items",
+          "ar": "خصم {m} على {n} قطع"
         },
         {
           "key": "activities.ruleGift",
@@ -4467,9 +4479,9 @@
         },
         {
           "key": "activities.spent",
-          "zh-CN": "已花",
-          "en": "Spent",
-          "ar": "أُنفق"
+          "zh-CN": "已用预算",
+          "en": "Budget used",
+          "ar": "الميزانية المستخدمة"
         },
         {
           "key": "activities.title",
@@ -4533,9 +4545,15 @@
         },
         {
           "key": "activityEdit.alwaysOnNeedsCap",
-          "zh-CN": "长期活动必须设置限量或预算，否则没有结束条件",
-          "en": "An always-on promotion needs a quantity or budget cap, otherwise it has no end condition",
-          "ar": "الحملة الدائمة تحتاج حدًا أو ميزانية، وإلا لن تتوقف أبدًا"
+          "zh-CN": "长期活动需设置限量或预算作为结束条件",
+          "en": "An always-on activity needs a quota or budget as its end condition",
+          "ar": "الحملة الدائمة تحتاج حدًا أو ميزانية كشرط لانتهائها"
+        },
+        {
+          "key": "activityEdit.anyHint",
+          "zh-CN": "谁下单都减，没有门槛 —— 记得配限量或预算",
+          "en": "Every order gets it, with no threshold — set a quota or budget",
+          "ar": "كل طلب يحصل عليه بلا حد أدنى — اضبط حدًا أو ميزانية"
         },
         {
           "key": "activityEdit.audience.ALL",
@@ -4563,9 +4581,9 @@
         },
         {
           "key": "activityEdit.audienceHint.ALL",
-          "zh-CN": "谁下单都减",
-          "en": "Applies to every order",
-          "ar": "تُطبق على كل طلب"
+          "zh-CN": "所有顾客可享",
+          "en": "Applies to every customer",
+          "ar": "تُطبق على كل العملاء"
         },
         {
           "key": "activityEdit.audienceHint.LEVEL:LOYAL",
@@ -4581,39 +4599,15 @@
         },
         {
           "key": "activityEdit.audienceHint.NON_MEMBER",
-          "zh-CN": "拉新用。已经是会员的人不再享受",
-          "en": "For winning new customers; existing members do not get it",
-          "ar": "لكسب عملاء جدد؛ الأعضاء الحاليون لا يحصلون عليها"
+          "zh-CN": "仅非会员可享，用于拉新",
+          "en": "Non-members only; for winning new customers",
+          "ar": "لغير الأعضاء فقط؛ لكسب عملاء جدد"
         },
         {
           "key": "activityEdit.audienceQ",
           "zh-CN": "适用人群",
           "en": "Audience",
           "ar": "الجمهور"
-        },
-        {
-          "key": "activityEdit.benefit.CUT",
-          "zh-CN": "满减",
-          "en": "Amount off",
-          "ar": "مبلغ"
-        },
-        {
-          "key": "activityEdit.benefit.GIFT",
-          "zh-CN": "买赠",
-          "en": "Buy and get",
-          "ar": "اشترِ واحصل"
-        },
-        {
-          "key": "activityEdit.benefit.PRICE",
-          "zh-CN": "特价",
-          "en": "Special price",
-          "ar": "سعر خاص"
-        },
-        {
-          "key": "activityEdit.benefitQ",
-          "zh-CN": "优惠方式",
-          "en": "Discount type",
-          "ar": "نوع الخصم"
         },
         {
           "key": "activityEdit.budget",
@@ -4641,9 +4635,9 @@
         },
         {
           "key": "activityEdit.conflictHint",
-          "zh-CN": "不影响保存：同类活动取最优，顾客获得更优惠的一个。此处仅提醒仍有活动在进行。",
-          "en": "Saving is unaffected: among promotions of the same type the customer gets the better one. This is only a reminder that another is still running.",
-          "ar": "لا يمنع الحفظ: الحملات المتشابهة تُختار الأفضل للعميل. هذا تذكير بأن تلك ما زالت تعمل"
+          "zh-CN": "不影响保存：同类活动取最优，顾客按更优惠的一个结算。",
+          "en": "Saving is unaffected: among promotions of the same type the customer gets the better one.",
+          "ar": "لا يمنع الحفظ: بين الحملات المتشابهة يحصل العميل على الأفضل."
         },
         {
           "key": "activityEdit.cut",
@@ -4671,21 +4665,21 @@
         },
         {
           "key": "activityEdit.goodsQ",
-          "zh-CN": "哪几件货",
-          "en": "Which products",
-          "ar": "أي منتجات"
+          "zh-CN": "适用商品",
+          "en": "Applicable products",
+          "ar": "المنتجات المشمولة"
         },
         {
           "key": "activityEdit.groupHint",
-          "zh-CN": "凑够人数才按这个价，不成团按原价照常发货",
+          "zh-CN": "成团后按此价结算；未成团按原价正常发货",
           "en": "This price applies once the group fills; otherwise the order ships at the normal price",
           "ar": "يُطبق هذا السعر عند اكتمال المجموعة؛ وإلا يُشحن الطلب بالسعر العادي"
         },
         {
           "key": "activityEdit.groupN",
-          "zh-CN": "几人成团",
-          "en": "Buyers to form a group",
-          "ar": "عدد المشترين للمجموعة"
+          "zh-CN": "成团人数",
+          "en": "Buyers needed",
+          "ar": "عدد المشترين المطلوب"
         },
         {
           "key": "activityEdit.groupPrice",
@@ -4701,26 +4695,26 @@
         },
         {
           "key": "activityEdit.namePh",
-          "zh-CN": "仅内部可见，如 开业满减",
+          "zh-CN": "仅内部可见，如「开业满减」",
           "en": "Internal only, e.g. Opening discount",
           "ar": "داخلي فقط، مثال: عرض الافتتاح"
         },
         {
           "key": "activityEdit.needGoods",
-          "zh-CN": "特价和买赠必须选商品",
-          "en": "Special price and buy-and-get need products",
+          "zh-CN": "特价与买赠需选择商品",
+          "en": "Special price and buy-and-get require products",
           "ar": "السعر الخاص والهدايا تحتاج منتجات"
         },
         {
           "key": "activityEdit.needName",
-          "zh-CN": "请先填写活动名称",
-          "en": "Enter a promotion name first",
-          "ar": "أدخل اسم الحملة أولًا"
+          "zh-CN": "请填写活动名",
+          "en": "Enter an activity name",
+          "ar": "أدخل اسم الحملة"
         },
         {
           "key": "activityEdit.needQuota",
-          "zh-CN": "特价和买赠必须设限量",
-          "en": "Special price and buy-and-get need a quota",
+          "zh-CN": "特价与买赠需设置限量",
+          "en": "Special price and buy-and-get require a quota",
           "ar": "السعر الخاص والهدايا تحتاج حدًا للكمية"
         },
         {
@@ -4731,9 +4725,9 @@
         },
         {
           "key": "activityEdit.noGoods",
-          "zh-CN": "本店还没有商品",
-          "en": "No products yet",
-          "ar": "لا منتجات بعد"
+          "zh-CN": "暂无商品",
+          "en": "No products",
+          "ar": "لا منتجات"
         },
         {
           "key": "activityEdit.prev",
@@ -4749,9 +4743,15 @@
         },
         {
           "key": "activityEdit.priceHint",
-          "zh-CN": "特价只对选中的商品生效。全店改价那叫调价，去商品页改",
-          "en": "Applies only to the products you pick. Changing every price is repricing — do that on the product page",
-          "ar": "يُطبق على المنتجات المختارة فقط. تغيير كل الأسعار يتم من صفحة المنتج"
+          "zh-CN": "特价仅对选中商品生效；调整常售价请在商品页操作",
+          "en": "Applies only to the products you pick; change the regular price on the product page",
+          "ar": "يُطبق على المنتجات المختارة فقط؛ لتعديل السعر العادي استخدم صفحة المنتج"
+        },
+        {
+          "key": "activityEdit.qtyN",
+          "zh-CN": "满几件",
+          "en": "Items required",
+          "ar": "عدد القطع المطلوب"
         },
         {
           "key": "activityEdit.quota",
@@ -4761,15 +4761,15 @@
         },
         {
           "key": "activityEdit.recurringHint",
-          "zh-CN": "按顾客所在时区算。20:00 表示 20:00 整就结束，不是还能再买一分钟",
-          "en": "Uses the customer’s time zone. 20:00 means it stops at 20:00 sharp",
+          "zh-CN": "按顾客所在时区计算，20:00 结束即该时刻整点停止",
+          "en": "Uses the customer’s time zone; 20:00 means it stops at 20:00 sharp",
           "ar": "حسب توقيت العميل. 20:00 تعني التوقف عند 20:00 تمامًا"
         },
         {
           "key": "activityEdit.save",
-          "zh-CN": "保存并开始",
-          "en": "Save and start",
-          "ar": "حفظ وبدء"
+          "zh-CN": "保存并启用",
+          "en": "Save and enable",
+          "ar": "حفظ وتفعيل"
         },
         {
           "key": "activityEdit.saved",
@@ -4809,21 +4809,27 @@
         },
         {
           "key": "activityEdit.step1",
-          "zh-CN": "是什么",
-          "en": "What",
-          "ar": "ما هو"
+          "zh-CN": "基本信息",
+          "en": "Basics",
+          "ar": "الأساسيات"
         },
         {
           "key": "activityEdit.step2",
-          "zh-CN": "什么时候",
-          "en": "When",
-          "ar": "متى"
+          "zh-CN": "生效时间",
+          "en": "Schedule",
+          "ar": "التوقيت"
         },
         {
           "key": "activityEdit.step3",
-          "zh-CN": "优惠什么",
-          "en": "Offer",
+          "zh-CN": "优惠内容",
+          "en": "Discount",
           "ar": "الخصم"
+        },
+        {
+          "key": "activityEdit.stepOf",
+          "zh-CN": "第 {i} / 3 步",
+          "en": "Step {i} of 3",
+          "ar": "الخطوة {i} من 3"
         },
         {
           "key": "activityEdit.threshold",
@@ -4833,9 +4839,9 @@
         },
         {
           "key": "activityEdit.timeRange",
-          "zh-CN": "每天几点到几点",
-          "en": "From / to",
-          "ar": "من / إلى"
+          "zh-CN": "每日时段",
+          "en": "Daily window",
+          "ar": "النافذة اليومية"
         },
         {
           "key": "activityEdit.title",
@@ -4854,6 +4860,18 @@
           "zh-CN": "满减",
           "en": "Spend & save",
           "ar": "خصم عند الإنفاق"
+        },
+        {
+          "key": "activityEdit.type.CUT_ANY",
+          "zh-CN": "无门槛立减",
+          "en": "Flat discount",
+          "ar": "خصم مباشر"
+        },
+        {
+          "key": "activityEdit.type.CUT_QTY",
+          "zh-CN": "满件减",
+          "en": "Qty discount",
+          "ar": "خصم بالكمية"
         },
         {
           "key": "activityEdit.type.GIFT",
@@ -4875,33 +4893,57 @@
         },
         {
           "key": "activityEdit.typeHint.CUT",
-          "zh-CN": "满多少减多少，整单生效",
-          "en": "Spend X, save Y — applies to the whole order",
-          "ar": "أنفق كذا ووفّر كذا، على الطلب كاملًا"
+          "zh-CN": "整单满额立减",
+          "en": "Whole-order discount once the amount is met",
+          "ar": "خصم على الطلب كاملًا عند بلوغ المبلغ"
+        },
+        {
+          "key": "activityEdit.typeHint.CUT_ANY",
+          "zh-CN": "不设门槛，下单就减",
+          "en": "No threshold; every order gets it",
+          "ar": "بلا حد أدنى؛ كل طلب يحصل عليه"
+        },
+        {
+          "key": "activityEdit.typeHint.CUT_QTY",
+          "zh-CN": "整单买满几件减一笔钱",
+          "en": "Buy this many items, take an amount off",
+          "ar": "اشترِ هذا العدد واحصل على خصم"
         },
         {
           "key": "activityEdit.typeHint.GIFT",
-          "zh-CN": "买几件送几件",
+          "zh-CN": "购买指定数量即赠",
           "en": "Buy N, get M free",
           "ar": "اشترِ N واحصل على M"
         },
         {
           "key": "activityEdit.typeHint.GROUP",
-          "zh-CN": "凑够人数按团购价走",
-          "en": "Enough buyers join, everyone gets the group price",
+          "zh-CN": "达到人数后按团购价成交",
+          "en": "Once enough buyers join, all get the group price",
           "ar": "عند اكتمال العدد يحصل الجميع على سعر المجموعة"
         },
         {
           "key": "activityEdit.typeHint.PRICE",
-          "zh-CN": "挑几件货，按特价卖",
-          "en": "Pick products and sell them at a set price",
-          "ar": "اختر أصنافًا وبِعها بسعر محدد"
+          "zh-CN": "指定商品按特价售卖",
+          "en": "Sell selected products at a set price",
+          "ar": "بيع منتجات مختارة بسعر محدد"
         },
         {
           "key": "activityEdit.typeName.CUT",
           "zh-CN": "满减",
           "en": "Spend & save",
           "ar": "خصم عند الإنفاق"
+        },
+        {
+          "key": "activityEdit.typeName.CUT_ANY",
+          "zh-CN": "立减",
+          "en": "Flat discount",
+          "ar": "خصم مباشر"
+        },
+        {
+          "key": "activityEdit.typeName.CUT_QTY",
+          "zh-CN": "满件减",
+          "en": "Qty discount",
+          "ar": "خصم بالكمية"
         },
         {
           "key": "activityEdit.typeName.GIFT",
@@ -5589,9 +5631,9 @@
         },
         {
           "key": "couponEdit.badRate",
-          "zh-CN": "折扣填 1 到 9.9 之间，如 8.5 表示八五折",
-          "en": "Enter a multiplier between 1 and 9.9, e.g. 8.5 for 15% off",
-          "ar": "أدخل معاملًا بين 1 و9.9، مثل 8.5 لخصم 15%"
+          "zh-CN": "折扣范围 1–9.9，如 8.5 即八五折",
+          "en": "Range 1–9.9, e.g. 8.5 for 15% off",
+          "ar": "النطاق 1–9.9، مثل 8.5 لخصم 15%"
         },
         {
           "key": "couponEdit.benefit",
@@ -5613,9 +5655,9 @@
         },
         {
           "key": "couponEdit.budgetTooLow",
-          "zh-CN": "预算兜不住这批券：按发行量算最多要花上面那个数",
-          "en": "Budget does not cover this batch — see the amount above",
-          "ar": "الميزانية لا تغطي هذه الدفعة؛ انظر المبلغ أعلاه"
+          "zh-CN": "预算低于按发行量测算的最高支出",
+          "en": "Budget is below the maximum cost for this issue count",
+          "ar": "الميزانية أقل من أقصى تكلفة لعدد الإصدار"
         },
         {
           "key": "couponEdit.cap",
@@ -5625,8 +5667,8 @@
         },
         {
           "key": "couponEdit.capHint",
-          "zh-CN": "折扣券必须封顶。不封顶的话，一笔大单能减掉多少事先算不出来",
-          "en": "Percentage coupons must have a cap — otherwise a large order can take off any amount",
+          "zh-CN": "折扣券须设封顶，否则大额订单的优惠不可控",
+          "en": "Percentage coupons need a cap; without one a large order can take off any amount",
           "ar": "قسائم النسبة يجب أن يكون لها حد أقصى، وإلا فطلب كبير قد يخصم أي مبلغ"
         },
         {
@@ -5673,21 +5715,21 @@
         },
         {
           "key": "couponEdit.namePh",
-          "zh-CN": "顾客可见，如 老客回归 满 30 减 5",
-          "en": "Visible to customers, e.g. Welcome back — 5 off 30",
-          "ar": "يراه العملاء، مثال: عودة العملاء، خصم 5 على 30"
+          "zh-CN": "顾客可见，如「满 30 减 5」",
+          "en": "Visible to customers, e.g. 5 off 30",
+          "ar": "يراه العملاء، مثال: خصم 5 على 30"
         },
         {
           "key": "couponEdit.needCap",
-          "zh-CN": "折扣券必须填封顶",
-          "en": "Percentage coupons need a cap",
+          "zh-CN": "折扣券需填写封顶金额",
+          "en": "Percentage coupons need a cap amount",
           "ar": "قسائم النسبة تحتاج حدًا أقصى"
         },
         {
           "key": "couponEdit.needTitle",
-          "zh-CN": "请先填写券名称",
-          "en": "Enter a voucher name first",
-          "ar": "أدخل اسم القسيمة أولًا"
+          "zh-CN": "请填写券名",
+          "en": "Enter a coupon name",
+          "ar": "أدخل اسم القسيمة"
         },
         {
           "key": "couponEdit.needValue",
@@ -5715,9 +5757,9 @@
         },
         {
           "key": "couponEdit.redeemHint",
-          "zh-CN": "到店核销的券不参与下单抵扣。一张券两条使用路径必然造成重复核销。",
-          "en": "In-store vouchers cannot also be offset at checkout. One voucher with two routes will be redeemed twice.",
-          "ar": "قسائم المتجر لا تُطبق عند الدفع؛ مسارين لقسيمة واحدة يعني استخدامها مرتين"
+          "zh-CN": "到店核销的券不参与下单抵扣，避免重复核销",
+          "en": "In-store vouchers are not applied at checkout, to avoid double redemption",
+          "ar": "قسائم المتجر لا تُطبق عند الدفع، تفاديًا للاستخدام مرتين"
         },
         {
           "key": "couponEdit.redeemMode.ORDER",
@@ -5745,8 +5787,8 @@
         },
         {
           "key": "couponEdit.times",
-          "zh-CN": "能核销几次",
-          "en": "Times it can be redeemed",
+          "zh-CN": "可核销次数",
+          "en": "Redemptions allowed",
           "ar": "عدد مرات الاستبدال"
         },
         {
@@ -5763,14 +5805,14 @@
         },
         {
           "key": "couponEdit.validDays",
-          "zh-CN": "领后几天有效",
+          "zh-CN": "领取后有效天数",
           "en": "Days valid after claiming",
           "ar": "أيام الصلاحية بعد الاستلام"
         },
         {
           "key": "couponEdit.validHint",
-          "zh-CN": "到期时间在顾客领到的那一刻就定下来了。以后改这个数，不影响已经发出去的券",
-          "en": "The expiry is fixed the moment a customer claims it; changing this later does not affect issued coupons",
+          "zh-CN": "有效期自领取时确定；修改此项不影响已发出的券",
+          "en": "Expiry is set when the customer claims it; changing this does not affect issued coupons",
           "ar": "تاريخ الانتهاء يُثبَّت لحظة الاستلام؛ تغييره لاحقًا لا يؤثر على ما صدر"
         },
         {
@@ -5895,15 +5937,15 @@
         },
         {
           "key": "coupons.empty",
-          "zh-CN": "还没有券",
-          "en": "No coupons yet",
-          "ar": "لا توجد قسائم بعد"
+          "zh-CN": "暂无优惠券",
+          "en": "No coupons",
+          "ar": "لا توجد قسائم"
         },
         {
           "key": "coupons.emptyTip",
-          "zh-CN": "建一张，再挑一群人发给他们",
-          "en": "Create one, then pick a group to send it to",
-          "ar": "أنشئ واحدة ثم اختر مجموعة لإرسالها"
+          "zh-CN": "创建后可选择人群发放",
+          "en": "Create one, then pick an audience to issue it to",
+          "ar": "أنشئ واحدة ثم اختر شريحة لإصدارها"
         },
         {
           "key": "coupons.exposure",
@@ -5913,15 +5955,15 @@
         },
         {
           "key": "coupons.issue",
-          "zh-CN": "发给一群人",
-          "en": "Send to a group",
-          "ar": "إرسال لمجموعة"
+          "zh-CN": "发放",
+          "en": "Issue",
+          "ar": "إصدار"
         },
         {
           "key": "coupons.issueBody",
-          "zh-CN": "这一群此刻 {n} 人，每人发一张「{title}」。发出去的券收不回来。",
-          "en": "{n} people match right now; each gets one “{title}”. Issued coupons cannot be taken back.",
-          "ar": "تنطبق الآن على {n} شخصًا، لكل منهم «{title}» واحدة. لا يمكن استرجاع ما يُرسل."
+          "zh-CN": "向该人群 {n} 人各发放一张「{title}」，发出后不可撤回。",
+          "en": "{n} people match now; each receives one “{title}”. Issued coupons cannot be recalled.",
+          "ar": "تنطبق الآن على {n} شخصًا، لكل منهم «{title}» واحدة. لا يمكن استرجاع ما صدر."
         },
         {
           "key": "coupons.issueTitle",
@@ -5943,15 +5985,15 @@
         },
         {
           "key": "coupons.new",
-          "zh-CN": "新建券",
+          "zh-CN": "建券",
           "en": "New coupon",
           "ar": "قسيمة جديدة"
         },
         {
           "key": "coupons.noSegment",
-          "zh-CN": "先去会员页筛一批人并「另存为人群」",
-          "en": "Filter members first and save the group as an audience",
-          "ar": "صفِّ الأعضاء أولًا واحفظ المجموعة كشريحة"
+          "zh-CN": "请先在会员页筛选并另存为人群",
+          "en": "Filter members first and save them as an audience",
+          "ar": "صفِّ الأعضاء أولًا واحفظهم كشريحة"
         },
         {
           "key": "coupons.pause",
@@ -5961,8 +6003,8 @@
         },
         {
           "key": "coupons.pauseHint",
-          "zh-CN": "暂停只是不再发新的，已经发到顾客手里的券照常能用",
-          "en": "Pausing only stops new issues; coupons already claimed still work",
+          "zh-CN": "暂停后不再发放新券，已发出的券仍可使用",
+          "en": "Pausing stops new issues; coupons already claimed still work",
           "ar": "الإيقاف يمنع الإصدار الجديد فقط؛ القسائم المستلمة تبقى صالحة"
         },
         {
@@ -5991,9 +6033,9 @@
         },
         {
           "key": "coupons.storeCode",
-          "zh-CN": "到店出示核销（不参与下单抵扣）",
-          "en": "Shown in store; not applied at checkout",
-          "ar": "تُبرز في المتجر؛ لا تُطبق عند الدفع"
+          "zh-CN": "到店出示核销，不参与下单抵扣",
+          "en": "Shown in store, not applied at checkout",
+          "ar": "تُبرز في المتجر، لا تُطبق عند الدفع"
         },
         {
           "key": "coupons.title",
@@ -7833,21 +7875,15 @@
         },
         {
           "key": "groups.canOpen",
-          "zh-CN": "可开团的商品",
+          "zh-CN": "可开团商品",
           "en": "Products you can group",
           "ar": "منتجات قابلة للتجميع"
         },
         {
           "key": "groups.created",
-          "zh-CN": "团已开出",
+          "zh-CN": "已开团",
           "en": "Group opened",
           "ar": "تم فتح المجموعة"
-        },
-        {
-          "key": "groups.intro",
-          "zh-CN": "社区内尚无人开团时，需由商家先开出；顾客看到「还差 3 人」才更容易参与。",
-          "en": "With no one in the community yet, the merchant opens the group first; customers are far likelier to join once it reads 「3 more needed」.",
-          "ar": "في البداية عليك فتح المجموعات بنفسك؛ ينضم الناس حين يرون «يتبقى ٣ أشخاص»."
         },
         {
           "key": "groups.joined",
@@ -7863,15 +7899,15 @@
         },
         {
           "key": "groups.noGroupable",
-          "zh-CN": "还没有在跑的团购活动 —— 先去「活动」里建一个",
-          "en": "No group-buy activity running — create one under Activities first",
-          "ar": "لا يوجد نشاط شراء جماعي قيد التشغيل — أنشئ واحدًا من الأنشطة أولًا"
+          "zh-CN": "暂无生效中的团购活动，请先在「活动」中创建",
+          "en": "No group-buy activity is running; create one under Activities first",
+          "ar": "لا يوجد نشاط شراء جماعي فعّال؛ أنشئ واحدًا من الأنشطة أولًا"
         },
         {
           "key": "groups.noRunning",
-          "zh-CN": "还没有开团",
-          "en": "No group buys yet",
-          "ar": "لا مجموعات بعد"
+          "zh-CN": "暂无进行中的团",
+          "en": "No groups running",
+          "ar": "لا مجموعات جارية"
         },
         {
           "key": "groups.open",
@@ -7884,12 +7920,6 @@
           "zh-CN": "已成团",
           "en": "Target met",
           "ar": "اكتمل العدد"
-        },
-        {
-          "key": "groups.rules",
-          "zh-CN": "成团单位是自提点；单档成团，不做阶梯价；不成团不作废，按原价照常发货。",
-          "en": "Groups form per pickup point; single tier, no ladder pricing; if it does not fill, it still ships at the normal price.",
-          "ar": "التجميع لكل نقطة استلام، وبمستوى واحد بلا أسعار تصاعدية، وإن لم يكتمل يُشحن بالسعر العادي."
         },
         {
           "key": "groups.running",
@@ -8823,21 +8853,21 @@
         },
         {
           "key": "marketing.entryHint.coupons",
-          "zh-CN": "发给人，下单时抵扣或到店核销",
-          "en": "Issued to people; redeemed at checkout or in store",
+          "zh-CN": "下单抵扣或到店核销",
+          "en": "Redeemed at checkout or in store",
           "ar": "تُصرف للعملاء؛ تُخصم عند الدفع أو تُستبدل في المتجر"
         },
         {
           "key": "marketing.entryHint.groups",
-          "zh-CN": "看团凑齐没有，也可以自己开一个",
-          "en": "See which groups have filled, or open one yourself",
+          "zh-CN": "查看成团进度，也可自行开团",
+          "en": "Track group progress, or open one yourself",
           "ar": "تابع اكتمال المجموعات أو افتح واحدة بنفسك"
         },
         {
           "key": "marketing.entryHint.quotes",
-          "zh-CN": "邻居发需求，你来报价",
-          "en": "Neighbours post what they want; you quote",
-          "ar": "الجيران يطلبون، وأنت تسعّر"
+          "zh-CN": "为邻居的求团需求报价",
+          "en": "Quote on what neighbours are asking for",
+          "ar": "سعّر ما يطلبه الجيران"
         },
         {
           "key": "marketing.title",
@@ -11313,13 +11343,13 @@
         },
         {
           "key": "quotes.breach",
-          "zh-CN": "毁约 {n} 次",
+          "zh-CN": "违约 {n} 次",
           "en": "{n} broken deals",
-          "ar": "{n} إخلال بالاتفاق"
+          "ar": "{n} مخالفة"
         },
         {
           "key": "quotes.budget",
-          "zh-CN": "心理价",
+          "zh-CN": "期望价格",
           "en": "Target price",
           "ar": "السعر المتوقع"
         },
@@ -11343,13 +11373,13 @@
         },
         {
           "key": "quotes.doQuote",
-          "zh-CN": "我要报价",
+          "zh-CN": "报价",
           "en": "Quote",
           "ar": "تقديم سعر"
         },
         {
           "key": "quotes.empty",
-          "zh-CN": "当前没有开放中的需求单",
+          "zh-CN": "暂无开放中的需求",
           "en": "No open requests",
           "ar": "لا طلبات مفتوحة"
         },
@@ -11360,16 +11390,10 @@
           "ar": "الكمية المطلوبة"
         },
         {
-          "key": "quotes.intro",
-          "zh-CN": "邻居先发布需求，商家报价。报价不审核，但选定后锁价，涨价将公示。",
-          "en": "Neighbours post a request and merchants quote. Quotes are not reviewed, but the price is locked once chosen and any increase is disclosed.",
-          "ar": "يطرح الجيران احتياجهم وتقدّم أنت السعر. لا مراجعة مسبقة، لكن السعر يُقفل عند الاختيار وتُعلن الزيادات."
-        },
-        {
           "key": "quotes.lockHint",
-          "zh-CN": "被发起人选定的瞬间价格锁定，此后改不了；涨价会在报价卡上公示。",
-          "en": "The price locks the moment the initiator picks you. Increases are shown on your quote card.",
-          "ar": "يُقفل السعر لحظة اختيارك من صاحب الطلب، وتُعرض أي زيادة على بطاقة السعر."
+          "zh-CN": "选定后价格锁定，不可修改；调价将在报价卡公示。",
+          "en": "The price locks once the initiator picks you; any increase is shown on your quote card.",
+          "ar": "يُقفل السعر عند الاختيار ولا يمكن تعديله؛ وتُعرض أي زيادة على بطاقة السعر."
         },
         {
           "key": "quotes.locked",
@@ -11397,15 +11421,15 @@
         },
         {
           "key": "quotes.raised",
-          "zh-CN": "曾报 {p}",
-          "en": "was {p}",
-          "ar": "كان {p}"
+          "zh-CN": "原报价 {p}",
+          "en": "previously {p}",
+          "ar": "السعر السابق {p}"
         },
         {
           "key": "quotes.required",
-          "zh-CN": "单价与起订量必填",
-          "en": "Price and minimum order are required",
-          "ar": "السعر والحد الأدنى إلزاميان"
+          "zh-CN": "请填写报价单价与起订量",
+          "en": "Enter the unit price and minimum order",
+          "ar": "أدخل سعر الوحدة والحد الأدنى"
         },
         {
           "key": "quotes.submit",

@@ -478,7 +478,7 @@ public class OrderServiceImpl implements OrderService {
         Map<String, String> stores = storesOf(cmd, split);
         CampaignPort.Discount auto = campaignPort.autoDiscount(split.groups.stream()
                 .map(g -> new CampaignPort.MerchantAmount(
-                        g.merchantNo, g.goodsAmount(), stores.get(g.merchantNo)))
+                        g.merchantNo, g.goodsAmount(), g.goodsQty(), stores.get(g.merchantNo)))
                 .toList());
         if (cmd.couponNo() == null || cmd.couponNo().isBlank()) {
             return new Discounts(auto, CouponPort.Allocation.none());
@@ -1513,6 +1513,11 @@ public class OrderServiceImpl implements OrderService {
     private record Group(String merchantNo, String merchantName, List<Line> lines, long freight) {
         long goodsAmount() {
             return lines.stream().mapToLong(Line::amount).sum();
+        }
+
+        /** 下单件数。买赠送出的不在 {@code lines} 里，所以这里天然不含赠品 */
+        int goodsQty() {
+            return lines.stream().mapToInt(Line::qty).sum();
         }
     }
 

@@ -135,7 +135,7 @@ class StoreCampaignFlowTest {
 
     private long discountOf(String entityNo, long amount, String storeNo) {
         var d = campaignPort.autoDiscount(java.util.List.of(
-                new ai.neargo.shop.spi.marketing.CampaignPort.MerchantAmount(entityNo, amount, storeNo)));
+                new ai.neargo.shop.spi.marketing.CampaignPort.MerchantAmount(entityNo, amount, 1, storeNo)));
         return d.of(entityNo);
     }
 

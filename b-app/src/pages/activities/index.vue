@@ -42,12 +42,22 @@ async function load() {
 }
 
 
-/** 一句话说清这个活动做什么：满 X 减 Y / 特价 X / 买 N 送 M / 送券 */
+/** 一句话说清这个活动做什么：满 X 减 Y / 满 N 件减 Y / 立减 Y / 特价 X / 买 N 送 M */
 function ruleText(a: StoreActivity) {
+  /*
+   * 三种减钱活动**都是 CUT**，分水岭是触发 —— 与团购/清库存那一对同一个坑。
+   * 只按 benefitType 分的话，「立减 3 元」会写成「满 0 减 3」：
+   * 数字全对、闸门全绿，只有商家会觉得这句话不是他建的那个活动。
+   */
   if (a.benefitType === "CUT") {
-    return t("activities.ruleCut", {
-      n: money(a.triggerAmountMinor ?? 0), m: money(a.benefitAmountMinor ?? 0),
-    });
+    const m = money(a.benefitAmountMinor ?? 0);
+    if (a.triggerType === "QTY") {
+      return t("activities.ruleCutQty", { n: a.triggerQty ?? 0, m });
+    }
+    if (a.triggerType === "NONE" || !a.triggerType) {
+      return t("activities.ruleCutAny", { m });
+    }
+    return t("activities.ruleCut", { n: money(a.triggerAmountMinor ?? 0), m });
   }
   /*
    * 团购与清库存**都是 PRICE**，靠 benefitType 分不开 —— 分水岭是触发。

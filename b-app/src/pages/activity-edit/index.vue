@@ -28,12 +28,17 @@ const saving = ref(false);
 const conflicts = ref<ActivityConflict[]>([]);
 
 const form = ref({
-  /** 类型：CUT / PRICE / GROUP / GIFT。**不是 goal** —— 见 TYPES 上面那段 */
+  /**
+   * 类型：`TYPES` 里的那个 key。**不是 goal** —— 见 TYPES 上面那段。
+   * 它是 triggerType × benefitType 的唯一出处，别的地方一律从它推。
+   */
   kind: "CUT",
   name: "",
   benefitType: "CUT",
   /** 满多少（元） */
   threshold: "50",
+  /** 满多少件 —— CUT_QTY 用 */
+  qtyN: "3",
   /** 减多少 / 特价多少（元） */
   amount: "5",
   buyN: "2",
@@ -72,6 +77,8 @@ const form = ref({
  */
 const TYPES = [
   { key: "CUT", trigger: "AMOUNT", benefit: "CUT" },
+  { key: "CUT_QTY", trigger: "QTY", benefit: "CUT" },
+  { key: "CUT_ANY", trigger: "NONE", benefit: "CUT" },
   { key: "PRICE", trigger: "GOODS", benefit: "PRICE" },
   { key: "GROUP", trigger: "GROUP", benefit: "PRICE" },
   { key: "GIFT", trigger: "QTY", benefit: "GIFT" },
@@ -143,9 +150,16 @@ function dayEnd(day: string): number {
   return new Date(y!, (m ?? 1) - 1, d ?? 1, 23, 59, 59, 999).getTime();
 }
 
+/*
+ * 反查要**同时看触发与优惠**。三种减钱活动共用 `benefit: "CUT"`，
+ * 只按 benefit 找的话它必然回到列表里第一个 —— 「立减 3 元」会显示成
+ * 「满 0 减 3」，而没有任何一处会报错。加枚举值时的老坑：
+ * 只按另一个字段分支的地方会默默当成老玩法。
+ */
 function kindOf(a: StoreActivity): string {
-  if (a.triggerType === "GROUP") return "GROUP";
-  const hit = TYPES.find((x) => x.benefit === a.benefitType);
+  const hit = TYPES.find(
+    (x) => x.benefit === a.benefitType && x.trigger === (a.triggerType || "NONE"),
+  );
   return hit ? hit.key : "CUT";
 }
 
@@ -248,6 +262,7 @@ async function loadExisting(no: string) {
   form.value.name = a.name;
   form.value.benefitType = a.benefitType;
   form.value.threshold = String(((a.triggerAmountMinor ?? 0) / 100).toFixed(2));
+  if (form.value.kind === "CUT_QTY") form.value.qtyN = String(a.triggerQty ?? 3);
   form.value.amount = String(((a.benefitAmountMinor ?? 0) / 100).toFixed(2));
   form.value.buyN = String(a.triggerQty ?? 2);
   form.value.groupN = String(a.triggerQty ?? 2);
@@ -304,13 +319,16 @@ async function save() {
     // 列先留着不删 —— 与 prd_goods 那两列同一处置，回滚窗口留长
     goal: null,
     benefitType: form.value.benefitType,
-    // 团购看目标不看优惠：它与「清库存」都是 PRICE，分不开就会把团存成特价
-    triggerType: isGroup.value ? "GROUP"
-      : form.value.benefitType === "GIFT" ? "QTY"
-        : form.value.benefitType === "PRICE" ? "GOODS" : "AMOUNT",
-    triggerAmountMinor: form.value.benefitType === "CUT" ? toMinor(form.value.threshold) : null,
+    /*
+     * 触发**由类型直接给**，不再从 benefitType 倒推。倒推在三种减钱活动
+     * 共用 `CUT` 之后必然出错：「立减」与「满件减」都会被写成 AMOUNT 触发，
+     * 存得下、列表写着进行中、下单一分不减，而且没有一处会报错。
+     */
+    triggerType: TYPES.find((x) => x.key === form.value.kind)!.trigger,
+    triggerAmountMinor: form.value.kind === "CUT" ? toMinor(form.value.threshold) : null,
     triggerQty: isGroup.value ? Number(form.value.groupN || 0)
-      : form.value.benefitType === "GIFT" ? Number(form.value.buyN || 0) : null,
+      : form.value.kind === "CUT_QTY" ? Number(form.value.qtyN || 0)
+        : form.value.benefitType === "GIFT" ? Number(form.value.buyN || 0) : null,
     benefitAmountMinor: form.value.benefitType === "GIFT" ? null : toMinor(form.value.amount),
     benefitQty: form.value.benefitType === "GIFT" ? Number(form.value.giftM || 0) : null,
     scheduleType: form.value.scheduleType,
@@ -382,31 +400,27 @@ onLoad((q) => {
 
     <!-- ③ 优惠什么样 -->
     <view v-if="step === 3" class="sh-card">
-      <!-- 团购没有可选项，那这个提问也不该出现：一个问句下面空着比没有问句更怪 -->
-      <text v-if="!isGroup" class="field__label">{{ $t("activityEdit.benefitQ") }}</text>
       <!--
-        ★ **团购不给选优惠类型**（2026-09-18）：它只可能是「成团价」。
-        给了三个选项而其中两个存不进去（后端拒），那不是自由，是让他试错。
+        ★ **这里不再问「优惠方式」**（2026-09-18）：第 1 步问的类型已经是
+        triggerType × benefitType 的那个组合，在这儿再给一排可点的方式，
+        等于同一件事两个来源 —— 选了「满件减」再把方式改成「特价」，
+        存下去就是 QTY × PRICE：定价那侧没有分支，活动永远不生效且不报错。
+        团购原本就已经藏掉这一排，理由是同一条。
       -->
-      <view v-if="!isGroup" class="chips sh-wrap">
-        <text
-          v-for="b in ['CUT', 'PRICE', 'GIFT']"
-          :key="b"
-          class="sh-chip"
-          :class="{ 'sh-chip--primary': form.benefitType === b }"
-          @tap="form.benefitType = b"
-        >{{ $t(`activityEdit.benefit.${b}`) }}</text>
-      </view>
-
       <template v-if="form.benefitType === 'CUT'">
-        <view class="sh-row sh-mt-sm sh-mt-xs">
+        <view v-if="form.kind === 'CUT'" class="sh-row sh-mt-sm sh-mt-xs">
           <text class="txt-sub row__label">{{ $t("activityEdit.threshold") }}</text>
           <input maxlength="10" v-model="form.threshold" class="field__input row__input" type="digit" />
+        </view>
+        <view v-if="form.kind === 'CUT_QTY'" class="sh-row sh-mt-sm sh-mt-xs">
+          <text class="txt-sub row__label">{{ $t("activityEdit.qtyN") }}</text>
+          <input maxlength="4" v-model="form.qtyN" class="field__input row__input" type="number" />
         </view>
         <view class="sh-row sh-mt-xs">
           <text class="txt-sub row__label">{{ $t("activityEdit.cut") }}</text>
           <input maxlength="10" v-model="form.amount" class="field__input row__input" type="digit" />
         </view>
+        <text v-if="form.kind === 'CUT_ANY'" class="sh-muted sh-hint">{{ $t("activityEdit.anyHint") }}</text>
       </template>
 
       <!--
