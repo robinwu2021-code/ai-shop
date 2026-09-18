@@ -199,7 +199,8 @@ export function PlatformTab({ c, canEdit }: { c: MarketingCopy; canEdit: boolean
                   onChange={(e) => set({ cut: e.target.value })} />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            {/* 两列：抽屉宽度下三列放不下「2026/09/26 + 日历图标」，年份会被截掉 */}
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="pa-start" required>{c.platformStart}</Label>
                 <Input id="pa-start" type="date" className="w-full" value={f.startDay} disabled={locked}
@@ -210,6 +211,8 @@ export function PlatformTab({ c, canEdit }: { c: MarketingCopy; canEdit: boolean
                 <Input id="pa-end" type="date" className="w-full" value={f.endDay} disabled={locked}
                   onChange={(e) => set({ endDay: e.target.value })} />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="pa-dl" required>{c.platformDeadline}</Label>
                 <Input id="pa-dl" type="date" className="w-full" value={f.deadlineDay}
