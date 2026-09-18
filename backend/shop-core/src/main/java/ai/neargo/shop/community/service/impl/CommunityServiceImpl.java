@@ -53,6 +53,15 @@ public class CommunityServiceImpl implements CommunityService {
 
     /** 坐标 → 「这儿叫什么」。聚落围栏那一档排在它前面，见 PlaceResolver 的类注释 */
     private final ai.neargo.shop.community.service.PlaceResolver placeResolver;
+    private final ai.neargo.shop.community.mapper.CommunityMappers.GeoPlaceMapper placeMapper;
+    /** **跨域只走 spi 的 Port** —— 直接注入 platform 域的 Service 会让两个域长在一起 */
+    private final ai.neargo.shop.spi.platform.GeoPort geoPort;
+    private final ai.neargo.shop.community.support.MapBreaker mapBreaker;
+
+    /** 本地与地图各取多少条。合并后端上还会再截，这里只防「一次拉回几百条」 */
+    private static final int PLACE_PER_SOURCE = 10;
+    /** 围着当前位置搜的半径。太大会把邻市的同名点搜进来 */
+    private static final int PLACE_AROUND_M = 5000;
 
     /**
      * 「没落进任何围栏时，最远肯给到多远的默认归属」（米，M6）。
@@ -70,6 +79,9 @@ public class CommunityServiceImpl implements CommunityService {
                                 MerchantQueryPort merchantQueryPort,
                                 MasterDataPort masterDataPort,
                                 ai.neargo.shop.community.service.PlaceResolver placeResolver,
+                                ai.neargo.shop.community.mapper.CommunityMappers.GeoPlaceMapper placeMapper,
+                                ai.neargo.shop.spi.platform.GeoPort geoPort,
+                                ai.neargo.shop.community.support.MapBreaker mapBreaker,
                                 @Value("${shop.community.nearby-radius-m:5000}") int nearbyRadiusM,
                                 @Value("${shop.community.default-bind-radius-m:50000}")
                                 int defaultBindRadiusM) {
@@ -78,6 +90,9 @@ public class CommunityServiceImpl implements CommunityService {
         this.merchantQueryPort = merchantQueryPort;
         this.masterDataPort = masterDataPort;
         this.placeResolver = placeResolver;
+        this.placeMapper = placeMapper;
+        this.geoPort = geoPort;
+        this.mapBreaker = mapBreaker;
         this.nearbyRadiusM = nearbyRadiusM;
         this.defaultBindRadiusM = defaultBindRadiusM;
     }
@@ -517,6 +532,65 @@ public class CommunityServiceImpl implements CommunityService {
                 chainOf(innermost), false, district, districtName(district), null, null, -1,
                 new CommunityService.PlaceVO(innermost.getName(), innermost.getAddress(),
                         "COMMUNITY", "COMMUNITY", false));
+    }
+
+    @Override
+    public List<PlaceHitVO> searchPlaces(String keyword, Integer latE6, Integer lngE6, String city) {
+        String kw = keyword == null ? "" : keyword.trim();
+        if (kw.isEmpty()) {
+            return List.of();
+        }
+        List<PlaceHitVO> out = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+
+        // ① 已开通聚落：**唯一带 communityNo 的一档**，所以排在最前
+        for (CmtCommunity c : communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                .eq(CmtCommunity::getStatus, "OPEN")
+                .isNull(CmtCommunity::getArchivedAt)
+                .isNotNull(CmtCommunity::getLatE6)
+                .like(CmtCommunity::getName, kw)
+                .last("limit " + PLACE_PER_SOURCE))) {
+            if (seen.add(c.getName())) {
+                out.add(new PlaceHitVO(c.getName(), c.getAddress(), c.getLatE6(), c.getLngE6(),
+                        c.getCommunityNo(), "COMMUNITY"));
+            }
+        }
+
+        // ② 固定地址库：问过一次就记着的那些地方
+        for (ai.neargo.shop.community.entity.GeoPlace p : placeMapper.selectList(
+                Wrappers.<ai.neargo.shop.community.entity.GeoPlace>lambdaQuery()
+                        .like(ai.neargo.shop.community.entity.GeoPlace::getName, kw)
+                        .last("limit " + PLACE_PER_SOURCE))) {
+            if (seen.add(p.getName())) {
+                out.add(new PlaceHitVO(p.getName(), p.getAddress(), p.getLatE6(), p.getLngE6(),
+                        null, "PLACE_DB"));
+            }
+        }
+
+        // ③ 地图。不可用就到此为止 —— **上面两档已经有东西了，搜索框不必消失**
+        if (!geoPort.available() || mapBreaker.isOpen()) {
+            return out;
+        }
+        List<ai.neargo.shop.spi.platform.GeoPort.Tip> tips;
+        try {
+            tips = latE6 != null && lngE6 != null
+                    ? geoPort.around(kw, latE6, lngE6, PLACE_AROUND_M, null)
+                    : geoPort.tips(kw, city);
+            mapBreaker.recordSuccess();
+        } catch (RuntimeException e) {
+            mapBreaker.recordFailure();
+            return out;
+        }
+        for (ai.neargo.shop.spi.platform.GeoPort.Tip t : tips) {
+            if (t.latE6() == null || t.lngE6() == null) {
+                // 没坐标的地点选了等于又得到一条没坐标的地址，这一页就白来了
+                continue;
+            }
+            if (seen.add(t.name())) {
+                out.add(new PlaceHitVO(t.name(), t.address(), t.latE6(), t.lngE6(), null, "MAP"));
+            }
+        }
+        return out;
     }
 
     /**

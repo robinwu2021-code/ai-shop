@@ -42,13 +42,11 @@ public interface GeoPort {
     List<Tip> around(String keyword, int latE6, int lngE6, int radiusM, String types);
 
     /**
+     * 坐标反查回来的地址。
+     *
      * @param recommend 带楼盘/门牌的人话版（端上填这个）
      * @param adcode    国标 6 位区县码，与 sys_region 同口径
      * @param township  街道/镇名（自动归属用）
-     */
-    /**
-     * 坐标反查回来的地址。
-     *
      * @param kind {@code recommend} 是**哪一档**：POI（建筑/兴趣点）、AOI（小区/楼盘）、
      *             STREET（街道门牌）。少了它，调用方拿到一个字符串就只能当它准了 ——
      *             而「龙华区地域馆」与「观澜大道 155 号」该不该沉淀成聚落、

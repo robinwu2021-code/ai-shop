@@ -15,7 +15,6 @@ import ai.neargo.shop.merchant.dto.MerchantScoreVO;
 import ai.neargo.shop.merchant.dto.MerchantVO;
 import ai.neargo.shop.merchant.dto.VisitedMerchantVO;
 import ai.neargo.shop.community.service.CommunityService;
-import ai.neargo.shop.community.service.PlaceSearchService;
 import ai.neargo.shop.merchant.service.MerchantService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -49,20 +48,17 @@ public class MpCatalogController {
     private final CategoryService categoryService;
     private final ai.neargo.shop.platform.OpsService opsService;
     private final ai.neargo.shop.platform.RegionService regionService;
-    private final PlaceSearchService placeSearchService;
 
     public MpCatalogController(CommunityService communityService, GoodsService goodsService,
                                MerchantService merchantService, CategoryService categoryService,
                                ai.neargo.shop.platform.OpsService opsService,
-                               ai.neargo.shop.platform.RegionService regionService,
-                               PlaceSearchService placeSearchService) {
+                               ai.neargo.shop.platform.RegionService regionService) {
         this.communityService = communityService;
         this.goodsService = goodsService;
         this.merchantService = merchantService;
         this.categoryService = categoryService;
         this.opsService = opsService;
         this.regionService = regionService;
-        this.placeSearchService = placeSearchService;
     }
 
     @GetMapping("/mp/community/nearby")
@@ -101,12 +97,12 @@ public class MpCatalogController {
      *             （在深圳搜「福安」会返回福建的福安市），所以有坐标一律围着坐标搜
      */
     @GetMapping("/mp/place/search")
-    public List<PlaceSearchService.PlaceHitVO> searchPlaces(
+    public List<CommunityService.PlaceHitVO> searchPlaces(
             @RequestParam String kw,
             @RequestParam(required = false) Integer latE6,
             @RequestParam(required = false) Integer lngE6,
             @RequestParam(required = false) String city) {
-        return placeSearchService.search(kw, latE6, lngE6, city);
+        return communityService.searchPlaces(kw, latE6, lngE6, city);
     }
 
     /**

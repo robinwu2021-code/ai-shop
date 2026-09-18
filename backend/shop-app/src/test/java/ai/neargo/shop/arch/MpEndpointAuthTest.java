@@ -149,6 +149,7 @@ class MpEndpointAuthTest {
             "GET /mp/coupon",
             "GET /mp/goods",
             "GET /mp/location/resolve",
+            "GET /mp/place/search",
             "GET /mp/goods/promoted",
             "GET /mp/group-buy",
             "GET /mp/group-request",

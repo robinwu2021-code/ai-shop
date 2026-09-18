@@ -32,6 +32,20 @@ public interface CommunityService {
     LocationVO resolve(Integer latE6, Integer lngE6, boolean coarse);
 
     /**
+     * 「输个名字找地方」。**本地优先，地图是补充。**
+     *
+     * <p>本地那一条带着 {@code communityNo} —— 选中它才能直接绑到聚落、才有商品池；
+     * 地图那一条只有名字与坐标。同名的两条里<b>留本地那条</b>。
+     *
+     * <p><b>地图不可用时它照样有结果</b>（只是少）。这不是优化，是产品判断：
+     * 端上今天的做法是整段搜索不渲染，而那等于告诉用户「这儿什么都没有」。
+     *
+     * @param city 没有坐标时按城市搜。**city 只是偏好不是约束**
+     *             （在深圳搜「福安」会返回福建的福安市），所以有坐标一律围着坐标搜
+     */
+    java.util.List<PlaceHitVO> searchPlaces(String keyword, Integer latE6, Integer lngE6, String city);
+
+    /**
      * 一个坐标的位置上下文。
      *
      * @param innermostNo   最内层聚落；**null 不是异常** —— 一个围栏都没落进（新城区）
@@ -82,6 +96,16 @@ public interface CommunityService {
      * @param stale  端上据此标「位置可能不是最新的」
      */
     record PlaceVO(String name, String address, String kind, String source, boolean stale) {
+    }
+
+    /**
+     * 搜出来的一个地点。
+     *
+     * @param communityNo 本地聚落才有。**端上据此决定选中之后能不能直接绑**
+     * @param source      COMMUNITY / PLACE_DB / MAP —— 排版用，也用于排查
+     */
+    record PlaceHitVO(String name, String address, Integer latE6, Integer lngE6,
+                      String communityNo, String source) {
     }
 
     /** 社区详情（含其下常驻自提点）。 */

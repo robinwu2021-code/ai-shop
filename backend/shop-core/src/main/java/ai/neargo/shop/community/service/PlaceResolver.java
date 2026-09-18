@@ -4,7 +4,6 @@ import ai.neargo.shop.community.entity.GeoPlace;
 import ai.neargo.shop.community.mapper.CommunityMappers.GeoPlaceMapper;
 import ai.neargo.shop.community.support.Geohash;
 import ai.neargo.shop.community.support.MapBreaker;
-import ai.neargo.shop.platform.GeoService;
 import ai.neargo.shop.spi.platform.GeoPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,7 +53,11 @@ public class PlaceResolver {
     }
 
     private final GeoPlaceMapper placeMapper;
-    private final GeoService geoService;
+    /**
+     * **跨域只走 spi 的 Port。** 直接注入 platform 域的 Service 会让两个域长在一起，
+     * 而且不报错 —— 架构闸门当场抓了这一条。
+     */
+    private final GeoPort geoPort;
     private final MapBreaker breaker;
     private final int precision;
     private final int freshDays;
@@ -78,11 +81,11 @@ public class PlaceResolver {
             },
             new ThreadPoolExecutor.DiscardPolicy());
 
-    public PlaceResolver(GeoPlaceMapper placeMapper, GeoService geoService, MapBreaker breaker,
+    public PlaceResolver(GeoPlaceMapper placeMapper, GeoPort geoPort, MapBreaker breaker,
                          @Value("${shop.geo.place-precision:8}") int precision,
                          @Value("${shop.geo.place-fresh-days:30}") int freshDays) {
         this.placeMapper = placeMapper;
-        this.geoService = geoService;
+        this.geoPort = geoPort;
         this.breaker = breaker;
         this.precision = precision;
         this.freshDays = freshDays;
@@ -133,7 +136,7 @@ public class PlaceResolver {
 
     /** 端上看不到这个开关，只看到 {@code source}。运营端看得到，那是唯一能提前发现问题的地方 */
     private boolean mapUsable() {
-        return geoService.available() && !breaker.isOpen();
+        return geoPort.available() && !breaker.isOpen();
     }
 
     private boolean fresh(GeoPlace row) {
@@ -144,7 +147,7 @@ public class PlaceResolver {
     private Optional<Place> askMap(String key, int latE6, int lngE6) {
         Optional<GeoPort.Reverse> r;
         try {
-            r = geoService.reverse(latE6, lngE6);
+            r = geoPort.reverse(latE6, lngE6);
         } catch (RuntimeException e) {
             breaker.recordFailure();
             return Optional.empty();
