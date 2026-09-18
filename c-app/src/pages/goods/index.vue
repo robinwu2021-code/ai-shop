@@ -365,7 +365,11 @@ onShareAppMessage(() =>
           </view>
 
           <view class="chips sh-wrap">
-            <text v-if="isFresh && !cutoffPassed" class="sh-chip sh-chip--warning">
+            <!--
+              没设截单时间的生鲜不出这个标签 —— 否则就是一个空的「距截单」，后面什么都没有。
+              判据与商品卡（biz-goods-card 的 showCutoff）同一条：有倒计时文字才显示。
+            -->
+            <text v-if="isFresh && cutoffText && !cutoffPassed" class="sh-chip sh-chip--warning">
               {{ $t("home.cutoffIn", { t: cutoffText }) }}
             </text>
             <text v-if="cutoffPassed" class="sh-chip sh-chip--danger">
