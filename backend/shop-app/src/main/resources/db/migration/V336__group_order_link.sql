@@ -15,6 +15,5 @@ ALTER TABLE mkt_group_member
 
 CREATE UNIQUE INDEX uk_group_member_sub ON mkt_group_member (sub_order_no);
 
--- ── 3. 团到期 / 散团退款按团号找已付款子单 ──────────────────────────────────────
-
-CREATE INDEX idx_sub_order_group ON ord_sub_order (group_no);
+-- 团到期 / 散团退款按团号找子单：ord_sub_order(group_no) 的索引 V1 基线里就有（idx_sub_order_group），
+-- 列一直在、只是从没人写。这里**不再建** —— 2026-09-19 第一次上线就撞在同名索引上，迁移失败、线上停了 5 分钟。
