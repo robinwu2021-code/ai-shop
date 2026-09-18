@@ -370,8 +370,8 @@
               "domain": "其它",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s02",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": "http://localhost:5175/#/pages/activities/index"
             },
             {
@@ -381,8 +381,8 @@
               "domain": "其它",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s03",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": "http://localhost:5175/#/pages/activity-edit/index"
             },
             {
@@ -583,8 +583,8 @@
               "domain": "团购与求团",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s11",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": "http://localhost:5175/#/pages/groups/index"
             }
           ]
@@ -626,8 +626,8 @@
               "domain": "会员与营销",
               "tab": false,
               "status": "已实现",
-              "proto": "s08",
-              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
+              "proto": "s01",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": "http://localhost:5175/#/pages/marketing/index"
             },
             {

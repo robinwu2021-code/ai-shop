@@ -224,6 +224,12 @@ PROTO_URL_BY_ROUTE = {
         "pages/payment/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
         "pages/settle/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
         # 进销存九屏（另一份 artifact）：库存 / 明细 / 盘点 / 进货 / 单据 / 报损 / 调拨 / 报表 / 库位
+        # 营销 v2（2026-09-18，十二屏）：按《营销域-活动统一模型》重画，覆盖 v1 的 s08–s10。
+        # 券那四屏没重画，仍指 v1（PROTO_URL）——所以 coupons* 不在这儿。
+        "pages/marketing/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/activities/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/activity-edit/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/groups/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
     },
     # C 端收货地址（2026-09-17，2026-09-18 补到七屏）。**画布式原型，没有页内锚点** ——
     # 各屏并排摆着（没有地址 / 列表 / 新建整页 / 选择地点 / 选城市 / 海外 / 搜不到时），
@@ -261,7 +267,10 @@ PROTO_ANCHORS = {
         "pages/customers/index": "s02", "pages/members/filter": "s03",
         "pages/member-detail/index": "s04", "pages/members/add": "s05",
         "pages/member-tags/index": "s06", "pages/member-settings/index": "s07",
-        "pages/marketing/index": "s08", "pages/marketing/new": "s09",
+        # 营销 v2 的四条指到另一份 artifact（见 PROTO_URL_BY_ROUTE）
+        "pages/marketing/index": "s01", "pages/activities/index": "s02",
+        "pages/activity-edit/index": "s03", "pages/groups/index": "s11",
+        "pages/marketing/new": "s09",
         "pages/marketing/audience": "s10", "pages/coupons/index": "s11",
         "pages/coupon-edit/index": "s12", "pages/coupon-issue/index": "s13",
         "pages/verify/index": "s14",
