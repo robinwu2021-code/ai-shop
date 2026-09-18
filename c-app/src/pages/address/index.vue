@@ -3,7 +3,7 @@
 // `picking=1` 时从结算页进入，选中即回填并返回。
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { onLoad } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useLocationStore } from "@/stores/location";
 import type { Address } from "@shared/types";
@@ -255,8 +255,25 @@ function pick(a: Address) {
 
 onLoad((q) => {
   picking.value = q?.picking === "1";
-  load();
   void location.load().then(() => detectHere());
+});
+
+/**
+ * **每次显示都重拉一次列表。**
+ *
+ * <p>新建与编辑改成整页之后（M4），存完是 `navigateBack` 回到这一页 ——
+ * 而这一页此前只在 `onLoad` 里拉过一次。于是**刚存的那条不出现在列表里**，
+ * 用户以为没存上，回去再存一遍。
+ *
+ * <p>弹层时代不需要这一句：那时 `save()` 就在这一页里，
+ * 直接把接口返回的新列表赋给了 `list`。把表单搬出去时，那条隐含的刷新路径
+ * 跟着断了 —— 而页面不报错、不空白，只是少一条。
+ *
+ * <p>`onShow` 在首次显示时也会跑，所以 `onLoad` 里那一句可以去掉，
+ * 不是两处各拉一次。
+ */
+onShow(() => {
+  load();
 });
 
 /*

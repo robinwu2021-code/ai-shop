@@ -281,6 +281,46 @@ describe("当前位置：一次性上下文", () => {
     expect(form, "海外的表单形状没了").toMatch(/v-if="overseas"/);
   });
 
+
+  // ---------------------------------------------------------------- 返回要看到刚存的那条
+
+  it("★★★ 存完回到列表,**刚存的那条要在** —— 页面靠 onShow 重拉", () => {
+    /*
+     * 新建与编辑改成整页之后,存完是 navigateBack 回列表,而列表此前只在
+     * onLoad 里拉过一次 —— 刚存的那条不出现,用户以为没存上,回去再存一遍。
+     *
+     * 弹层时代不需要这一句:那时 save() 就在列表页里,直接把接口返回的新列表
+     * 赋给了 list。把表单搬出去时,那条隐含的刷新路径跟着断了 ——
+     * 而页面不报错、不空白,只是少一条。
+     *
+     * 下单页早就是这么写的(它的注释里写着「只留在这里一处」),
+     * 所以这条守卫两页一起钉:**凡是「离开去改、回来要看到结果」的页面都要有**。
+     */
+    for (const [name, src, fn] of [
+      ["收货地址页", addressPage, "load("],
+      ["下单页", confirm, "loadAddresses("],
+    ] as const) {
+      expect(src, `${name}没有 onShow`).toContain("onShow(");
+      const body = src.slice(src.indexOf("onShow("));
+      expect(body.slice(0, 400), `${name}的 onShow 里没有重拉 —— 回来看到的是旧列表`)
+        .toContain(fn);
+    }
+  });
+
+  it("★★ 列表只在 onShow 里拉一次 —— onLoad 里别再拉一遍", () => {
+    /*
+     * onShow 首次显示时也会跑。两处各拉一次 = 每次进页面都发两条一样的请求。
+     *
+     * **不用 bodyOf**：`onLoad((q) => {…})` 是回调式调用，它的右括号在整段最后，
+     * 而 bodyOf 是「走到右括号再找第一个 `{`」—— 取到的是下一个函数的体。
+     * 这个坑我在城市切换那条守卫上刚记过一次，这儿又踩了，所以两处都写明。
+     */
+    const at = addressPage.indexOf("onLoad((q)");
+    expect(at, "收货地址页没有 onLoad").toBeGreaterThan(0);
+    const body = addressPage.slice(at, addressPage.indexOf("\n});", at));
+    expect(body, "onLoad 里又拉了一次").not.toMatch(/(?<!location\.)\bload\(\)/);
+  });
+
 });
 
 /**
