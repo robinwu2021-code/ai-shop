@@ -29,7 +29,13 @@ interface Groupable {
 const { t } = useI18n();
 
 const groups = ref<GroupBuy[]>([]);
-/** 可开团的商品 = 配过 {起团人数, 团购价} 的 —— 没配就没有团价可用 */
+/**
+ * 可开团的商品 = **在跑的团购活动里的货**（2026-09-18）。
+ *
+ * <p>改之前判的是 `g.groupBuy`，即商品上配过的 {起团人数, 团购价}。
+ * 那两列已经挪进活动（`GROUP × PRICE`），于是 `groupBuy` 恒为 null ——
+ * **不改的话这一栏永远是空的，开团入口整个消失，而两处都不报错**。
+ */
 const groupable = ref<Groupable[]>([]);
 const busy = ref(false);
 
@@ -38,10 +44,23 @@ const failed = ref(false);
 
 async function load() {
   try {
-    const [gs, res] = await Promise.all([api.mGroupList(), api.mGoodsList({ size: 100 })]);
+    const [gs, res, acts] = await Promise.all([
+      api.mGroupList(), api.mGoodsList({ size: 100 }), api.mActivities(),
+    ]);
     groups.value = gs;
+    /*
+     * **用已有的活动列表反查，不新开端点。** 一件货同时只能在一个团购活动里
+     * 是服务端硬校验，所以「在跑的团购活动」的商品并集就是可开团的那些。
+     *
+     * 只认 RUNNING：草稿与已结束的活动开不出团（后端 `isActiveAt` 会拒），
+     * 列在这儿只会让他点一下再被拒。
+     */
+    const openable = new Set(
+      acts.filter((a) => a.triggerType === "GROUP" && a.status === "RUNNING")
+        .flatMap((a) => a.goodsNos ?? []),
+    );
     groupable.value = res.records
-    .filter((g) => g.groupBuy && g.onSale)
+      .filter((g) => openable.has(g.goodsNo) && g.onSale)
       .map((g) => ({ goodsNo: g.goodsNo, title: g.title, cover: g.cover }));
     failed.value = false;
   } catch {

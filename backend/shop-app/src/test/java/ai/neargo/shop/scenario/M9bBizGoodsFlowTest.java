@@ -33,6 +33,8 @@ class M9bBizGoodsFlowTest {
 
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     @Autowired
     private WebApplicationContext context;
@@ -1863,6 +1865,35 @@ class M9bBizGoodsFlowTest {
     }
 
     /** 走完「入驻 → 通过 → 重新登录」，返回可用于 /biz/** 的 token。 */
+    @Test
+    @DisplayName("★★★ 建品再也不往 prd_goods 的两列拼团配置上写 —— 留着就是一份没人读却像在生效的配置")
+    void savingGoodsNoLongerWritesGroupColumns() throws Exception {
+        String token = merchant("12600299010", "停写验证·果蔬");
+        String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT110\",\"title\":\"停写验证梨\",\"subtitle\":\"x\","
+                                + "\"cover\":\"🍐\",\"images\":[],\"specGroups\":[],"
+                                /*
+                                 * **老版本客户端仍会带这一段** —— 入参没删，所以这里照带。
+                                 * 验的正是「收下即丢弃」：带了也不许落库。
+                                 * 不带的话这条用例证明不了停写，只证明了「没传就没写」。
+                                 */
+                                + "\"groupBuy\":{\"minCount\":3,\"price\":800},"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":1900,\"stock\":0,\"saleUnit\":\"袋\"}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+
+        assertThat(jdbc.queryForObject(
+                "select group_price_minor from prd_goods where goods_no=?", Long.class, goodsNo))
+                .as("★ 还在写团购价 —— 库里会留下一份没人读、却看起来还在生效的配置")
+                .isNull();
+        assertThat(jdbc.queryForObject(
+                "select group_min_count from prd_goods where goods_no=?", Integer.class, goodsNo))
+                .as("★ 还在写起团人数")
+                .isNull();
+    }
+
     private String merchant(String phone, String name) throws Exception {
         String user = login(phone);
         String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)

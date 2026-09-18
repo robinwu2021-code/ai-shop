@@ -356,7 +356,7 @@ export interface StoreActivity {
   goal?: string | null;
   /** 限定到某一家门店。空 = 主体下所有门店 */
   storeNo?: string | null;
-  /** `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 */
+  /** `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 / `GROUP` 拼够人数成团 */
   triggerType: string;
   /** 满额门槛（分）。triggerType=AMOUNT 时用 */
   triggerAmountMinor?: number | null;

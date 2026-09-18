@@ -1295,7 +1295,8 @@ export default {
     running: "进行中",
     noRunning: "还没有开团",
     canOpen: "可开团的商品",
-    noGroupable: "还没有配过团购价的商品",
+    // 口径变了：可开团的货来自「在跑的团购活动」，不再是商品上配过的团购价
+    noGroupable: "还没有在跑的团购活动 —— 先去「活动」里建一个",
     open: "开团",
     created: "团已开出",
     reached: "已成团",

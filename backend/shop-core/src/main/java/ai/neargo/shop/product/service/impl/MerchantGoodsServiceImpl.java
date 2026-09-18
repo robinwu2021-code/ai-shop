@@ -1280,27 +1280,18 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 g.setStoreName(s.storeName());
             }
         }
-        if (cmd.groupBuy() != null) {
-            var gb = cmd.groupBuy();
-            /*
-             * 两个值必须一起给 —— `groupBuyConf` 缺一个就返回 null，也就是「不能开团」。
-             * 只给一个的话，商家在界面上填了团价却开不出团，而没有任何提示。
-             * 两个都为空是**显式关闭拼团**，与「不传这一段」（不改）分开。
-             */
-            if (gb.minCount() == null && gb.priceMinor() == null) {
-                g.setGroupMinCount(null);
-                g.setGroupPriceMinor(null);
-            } else if (gb.minCount() == null || gb.priceMinor() == null) {
-                throw BizException.of(ErrorCode.BAD_REQUEST);
-            } else {
-                // 一个人不叫团（词典 §8）
-                if (gb.minCount() < 2 || gb.priceMinor() < 0) {
-                    throw BizException.of(ErrorCode.BAD_REQUEST);
-                }
-                g.setGroupMinCount(gb.minCount());
-                g.setGroupPriceMinor(gb.priceMinor());
-            }
-        }
+        /*
+         * ★ **不再往 group_min_count / group_price_minor 上写**（2026-09-18）。
+         *
+         * 团购的价格与人数已经挪进活动（`GROUP × PRICE`），开团读的是
+         * `GroupRulePort`。这里继续写的话，库里会留下一份**没有任何读者、
+         * 却看起来还在生效**的配置 —— 下一个人查「团购价在哪配的」会查到它，
+         * 然后改了半天不生效。
+         *
+         * **两列先留着不删**：线上 0 行，删掉是安全的，但这条链跨三端，
+         * 回滚窗口该留长一点。跑满一个发布周期再单开一条迁移删。
+         * 入参 `cmd.groupBuy()` 同样先留着（老版本客户端还会带它），**收下即丢弃**。
+         */
     }
 
     /**
