@@ -603,7 +603,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `rows` | [`#/definitions/GeoPlace`](#definitionsgeoplace)\[\] | 是 | — |
+| `rows` | [`#/definitions/GeoPlace`](#definitionsgeoplace)\[\] | 是 | 这一页的行。按命中次数降序 —— 最该沉淀的排最前 |
 | `total` | `number` | 是 | **全量的那个数**，不是这一页的 —— 只给一页的条数，「还要依赖地图多久」就判不出来 |
 | `mapStatus` | `string` | 是 | CLOSED / OPEN / QUOTA_EXHAUSTED。这一行是唯一能提前发现「地图快不行了」的地方 |
 
@@ -622,10 +622,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `received` | `number` | 是 | — |
-| `created` | `number` | 是 | — |
-| `updated` | `number` | 是 | — |
-| `skipped` | `number` | 是 | — |
+| `received` | `number` | 是 | 收到多少条 |
+| `created` | `number` | 是 | 新建了多少条 |
+| `updated` | `number` | 是 | 更新了多少条（按幂等键命中既有行） |
+| `skipped` | `number` | 是 | 跳过多少条。**没坐标的一律跳** —— 建出来买家永远搜不到它，而这件事没有任何报错 |
 | `dryRun` | `boolean` | 是 | 试算。**默认就是它** —— 一次动几百行的接口，默认值要在安全那一边 |
 
 
@@ -9744,10 +9744,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `received` | `number` | 是 | — |
-| `created` | `number` | 是 | — |
-| `updated` | `number` | 是 | — |
-| `skipped` | `number` | 是 | — |
+| `received` | `number` | 是 | 收到多少条 |
+| `created` | `number` | 是 | 新建了多少条 |
+| `updated` | `number` | 是 | 更新了多少条（按幂等键命中既有行） |
+| `skipped` | `number` | 是 | 跳过多少条。**没坐标的一律跳** —— 建出来买家永远搜不到它，而这件事没有任何报错 |
 | `dryRun` | `boolean` | 是 | 试算。**默认就是它** —— 一次动几百行的接口，默认值要在安全那一边 |
 
 ### ContentSlot
@@ -10023,7 +10023,7 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `rows` | [`#/definitions/GeoPlace`](#definitionsgeoplace)\[\] | 是 | — |
+| `rows` | [`#/definitions/GeoPlace`](#definitionsgeoplace)\[\] | 是 | 这一页的行。按命中次数降序 —— 最该沉淀的排最前 |
 | `total` | `number` | 是 | **全量的那个数**，不是这一页的 —— 只给一页的条数，「还要依赖地图多久」就判不出来 |
 | `mapStatus` | `string` | 是 | CLOSED / OPEN / QUOTA_EXHAUSTED。这一行是唯一能提前发现「地图快不行了」的地方 |
 

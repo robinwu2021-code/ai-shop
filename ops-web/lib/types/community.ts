@@ -157,11 +157,15 @@ export interface NearbyCommunity {
 export interface GeoPlace {
   /** geohash 精度 8（约 38m×19m）—— 同一栋楼里所有人命中同一行 */
   geoKey: string;
+  /** 最具体的那个名字：建筑 > 小区/楼盘 > 街道门牌 */
   name: string;
   /** POI/AOI/STREET/REGION —— 说清这个名字是哪一档 */
   kind: string;
+  /** 带门牌的标准地址。取不到就 null */
   address: string | null;
+  /** 这个格子里**首次落库的那个点**（gcj02 ×1e6），不是格子中心 */
   latE6: number | null;
+  /** 与 latE6 成对 */
   lngE6: number | null;
   /** 沉淀成聚落的依据：用得最多的那些地方值得我们自己认识 */
   hitCount: number;
@@ -172,6 +176,7 @@ export interface GeoPlace {
 }
 
 export interface GeoPlacePage {
+  /** 这一页的行。按命中次数降序 —— 最该沉淀的排最前 */
   rows: GeoPlace[];
   /** **全量的那个数**，不是这一页的 —— 只给一页的条数，「还要依赖地图多久」就判不出来 */
   total: number;
@@ -180,9 +185,13 @@ export interface GeoPlacePage {
 }
 
 export interface CommunityImportResult {
+  /** 收到多少条 */
   received: number;
+  /** 新建了多少条 */
   created: number;
+  /** 更新了多少条（按幂等键命中既有行） */
   updated: number;
+  /** 跳过多少条。**没坐标的一律跳** —— 建出来买家永远搜不到它，而这件事没有任何报错 */
   skipped: number;
   /** 试算。**默认就是它** —— 一次动几百行的接口，默认值要在安全那一边 */
   dryRun: boolean;
