@@ -225,11 +225,16 @@ PROTO_URL_BY_ROUTE = {
         "pages/settle/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
         # 进销存九屏（另一份 artifact）：库存 / 明细 / 盘点 / 进货 / 单据 / 报损 / 调拨 / 报表 / 库位
         # 营销 v2（2026-09-18，十二屏）：按《营销域-活动统一模型》重画，覆盖 v1 的 s08–s10。
-        # 券那四屏没重画，仍指 v1（PROTO_URL）——所以 coupons* 不在这儿。
+        # 券（2026-09-18 按同一套约定重画为 s12–s17）也指这一份；v1 那四屏作废。
         "pages/marketing/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
         "pages/activities/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
         "pages/activity-edit/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
         "pages/groups/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/coupons/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/coupon-edit/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/coupon-issues/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/coupon-issue/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/verify/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
     },
     # C 端收货地址（2026-09-17，2026-09-18 补到七屏）。**画布式原型，没有页内锚点** ——
     # 各屏并排摆着（没有地址 / 列表 / 新建整页 / 选择地点 / 选城市 / 海外 / 搜不到时），
@@ -271,9 +276,12 @@ PROTO_ANCHORS = {
         "pages/marketing/index": "s01", "pages/activities/index": "s02",
         "pages/activity-edit/index": "s03", "pages/groups/index": "s09",
         "pages/marketing/new": "s09",
-        "pages/marketing/audience": "s10", "pages/coupons/index": "s11",
-        "pages/coupon-edit/index": "s12", "pages/coupon-issue/index": "s13",
-        "pages/verify/index": "s14",
+        "pages/marketing/audience": "s10",
+        # 券 s12–s17 在营销 v2 那份里（见 PROTO_URL_BY_ROUTE）。coupon-issues 是真页面
+        # （复数）；coupon-issue（单数）是 PROTOTYPES 里的旧原型行，两条都指发放结果
+        "pages/coupons/index": "s12", "pages/coupon-edit/index": "s13",
+        "pages/coupon-issues/index": "s16", "pages/coupon-issue/index": "s16",
+        "pages/verify/index": "s17",
         # 规格原型（另一份 artifact，见 PROTO_URL_BY_ROUTE）
         "pages/goods-edit/index": "s19",
         "pages/my-specs/index": "s23",

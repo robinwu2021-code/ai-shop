@@ -53,8 +53,8 @@
               "domain": "订单与履约",
               "tab": false,
               "status": "已实现",
-              "proto": "s14",
-              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
+              "proto": "s17",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": "http://localhost:5175/#/pages/verify/index"
             },
             {
@@ -359,8 +359,8 @@
               "domain": "其它",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s16",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": "http://localhost:5175/#/pages/coupon-issues/index"
             },
             {
@@ -681,8 +681,8 @@
               "domain": "会员与营销",
               "tab": false,
               "status": "已实现",
-              "proto": "s11",
-              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
+              "proto": "s12",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": "http://localhost:5175/#/pages/coupons/index"
             },
             {
@@ -692,8 +692,8 @@
               "domain": "会员与营销",
               "tab": false,
               "status": "已实现",
-              "proto": "s12",
-              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
+              "proto": "s13",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": "http://localhost:5175/#/pages/coupon-edit/index"
             },
             {
@@ -747,8 +747,8 @@
               "domain": "会员与营销",
               "tab": false,
               "status": "原型",
-              "proto": "s11",
-              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
+              "proto": "s12",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": null
             },
             {
@@ -758,8 +758,8 @@
               "domain": "会员与营销",
               "tab": false,
               "status": "原型",
-              "proto": "s12",
-              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
+              "proto": "s13",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": null
             },
             {
@@ -769,8 +769,8 @@
               "domain": "会员与营销",
               "tab": false,
               "status": "原型",
-              "proto": "s13",
-              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
+              "proto": "s16",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": null
             }
           ]
