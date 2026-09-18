@@ -8,7 +8,7 @@
 // 「保存」一个 —— 一个动库存的动作不该和「我先记一半」共用同一个词。
 import { computed, ref } from "vue";
 import { ROUTES } from "@/shared/nav";
-import { isoDay, useIsQuick, useQuickDates } from "@/shared/quick-dates";
+import { isoDay } from "@/shared/quick-dates";
 import { STORAGE } from "@shared/utils/constants";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
@@ -85,8 +85,6 @@ const totalMinor = computed(() =>
   lines.value.reduce((s, l) => s + l.qty * l.unitCostMinor, 0),
 );
 
-const quickDates = useQuickDates(t, ["purchase.dToday", "purchase.dYesterday", "purchase.dBefore"]);
-const isQuick = useIsQuick(quickDates, occurredAt);
 
 /** 分 → 元。展示用，**不参与计算** */
 function yuan(minor: number): string {
@@ -286,31 +284,20 @@ onShow(load);
       </sh-kv>
 
       <!--
-        ★ **日期是三枚快捷 + 兜底滚轮**（2026-09-18 店主：「日期选择需要优化」）。
+        ★ **日期直接显示，不再给快捷钮**（2026-09-18 店主：「日期去掉今天、昨天、
+        前天，就直接显示日期信息即可，只要容易点击即可」）。
 
-        进货单的日期**九成是今天，剩下几乎都是昨天** —— 补记昨天的货是常态，
-        而原来为这个「多半不改」的字段要拨年、月、日三列滚轮再点确定。
-
-        滚轮没有删，收进「选日期」：真要挑别的日子，一个功能都没少。
-        默认「今天」本来就选中，九成情况下**一次都不用点**。
+        上一版是三枚快捷 + 兜底滚轮。店主要的是更简单的东西：这一行多数时候
+        不用动，看一眼就够；真要改时有一个**好点的**目标就行。
+        所以整块 88rpx（44px，可点下限）、日期用等宽数字排，右边「›」说明它点得开。
       -->
       <sh-kv between :label="String($t('purchase.date'))">
-        <view class="dates sh-row">
-          <text
-            v-for="d in quickDates"
-            :key="d.value"
-            class="sh-chip date__c"
-            :class="{ 'sh-chip--primary': occurredAt === d.value }"
-            @tap="occurredAt = d.value"
-          >{{ d.label }}</text>
-          <picker mode="date" :value="occurredAt" @change="occurredAt = $event.detail.value">
-            <!-- 挑到快捷之外的日子时，把那一天显示出来 —— 否则三枚都不亮，
-                 而他明明选过，会以为没生效 -->
-            <text class="sh-chip date__c" :class="{ 'sh-chip--primary': !isQuick }">
-              {{ isQuick ? $t("purchase.dPick") : occurredAt }}
-            </text>
-          </picker>
-        </view>
+        <picker mode="date" :value="occurredAt" @change="occurredAt = $event.detail.value">
+          <view class="date sh-row">
+            <text class="txt-body sh-num">{{ occurredAt }}</text>
+            <text class="sh-muted">›</text>
+          </view>
+        </picker>
       </sh-kv>
     </view>
 
@@ -441,24 +428,15 @@ onShow(load);
   gap: 20rpx;
 }
 
-/* 四枚并排，跟着标题在同一行的右半边 */
-.dates {
-  gap: 12rpx;
+/* 44px：整块是可点目标，不是一行字。「›」与日期之间留一点，别贴着 */
+.date {
+  min-height: 88rpx;
+  gap: 8rpx;
+  align-items: center;
 }
 /* 供应商名与「›」之间留一点，别贴着 */
 .sup {
   gap: 8rpx;
-}
-/*
- * 72rpx（36px）。**比 44px 的可点下限矮一档，这是有意的**：
- * 那条下限是给主操作的，而这一排是四枚并列的筛选式选择 ——
- * 88rpx 时一排占掉半张卡，店主的原话是「日期按钮太高」。
- * chip 自带的 ~30px 又太扁，36px 是这两者之间站得住的那一档。
- */
-.date__c {
-  height: 72rpx;
-  display: flex;
-  align-items: center;
 }
 .hint {
   padding: 0 4rpx;

@@ -1857,7 +1857,6 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     posted: "Posted",
   },
   purchase: {
-    dToday: "Today", dYesterday: "Yesterday", dBefore: "2 days ago", dPick: "Pick a date",
     title: "Record a purchase",
     supplier: "Supplier",
     supplierPh: "e.g. Old Zhou Grain & Oil",
@@ -1934,7 +1933,6 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     qtyBad: "Enter a whole number above 0",
     qtyOver: "At most {n} — stock may not go negative",
     reasonLabel: "Reason",
-    dToday: "Today", dYesterday: "Yesterday", dBefore: "2 days ago", dPick: "Pick a date",
     purposeLabel: "Type",
     purpose: { SCRAP: "Scrap", RETURN_SUPPLIER: "Return to supplier", INTERNAL: "Internal use" },
     supplierLabel: "Return to",

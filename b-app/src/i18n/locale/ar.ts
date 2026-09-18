@@ -1855,7 +1855,6 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
     posted: "تم الترحيل",
   },
   purchase: {
-    dToday: "اليوم", dYesterday: "أمس", dBefore: "قبل يومين", dPick: "اختر تاريخًا",
     title: "تسجيل شراء",
     supplier: "المورّد",
     supplierPh: "مثال: مورّد الحبوب والزيوت",
@@ -1932,7 +1931,6 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
     qtyBad: "أدخل عددًا صحيحًا أكبر من 0",
     qtyOver: "بحد أقصى {n}؛ المخزون لا يصير سالبًا",
     reasonLabel: "السبب",
-    dToday: "اليوم", dYesterday: "أمس", dBefore: "قبل يومين", dPick: "اختر تاريخًا",
     purposeLabel: "نوع الإخراج",
     purpose: { SCRAP: "إتلاف", RETURN_SUPPLIER: "إرجاع للمورد", INTERNAL: "استخدام داخلي" },
     supplierLabel: "إرجاع إلى",

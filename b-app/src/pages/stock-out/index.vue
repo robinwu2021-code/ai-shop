@@ -10,7 +10,7 @@
 // 数量填不到超过可用 —— **库存不允许为负**，错误停在这里比流进报表便宜。
 import { computed, ref } from "vue";
 import { ROUTES } from "@/shared/nav";
-import { isoDay, useIsQuick, useQuickDates } from "@/shared/quick-dates";
+import { isoDay } from "@/shared/quick-dates";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
@@ -85,13 +85,6 @@ function openPick(scan: boolean) {
   showPick.value = true;
 }
 
-/*
- * 日期快捷与进货页**共用一份判据**（2026-09-18）。报损原来只有一枚滚轮，
- * 而报损同样是「九成是今天、剩下几乎都是昨天」—— 昨天下班前发现坏了一箱，
- * 今早才来记。两页各写一份的话「昨天怎么算」迟早分岔，见 quick-dates.ts。
- */
-const quickDates = useQuickDates(t, ["stockOut.dToday", "stockOut.dYesterday", "stockOut.dBefore"]);
-const isQuick = useIsQuick(quickDates, occurredAt);
 
 const totalQty = computed(() => lines.value.reduce((s, l) => s + l.qty, 0));
 
@@ -232,22 +225,21 @@ onShow(load);
       >
         <text class="sh-link">{{ supplier?.name || $t("stockOut.supplierPh") }}</text>
       </sh-kv>
+      <!--
+        ★ **日期直接显示，不再给快捷钮**（2026-09-18 店主：「日期去掉今天、昨天、
+        前天，就直接显示日期信息即可，只要容易点击即可」）。
+
+        上一版是三枚快捷 + 兜底滚轮。店主要的是更简单的东西：这一行多数时候
+        不用动，看一眼就够；真要改时有一个**好点的**目标就行。
+        所以整块 88rpx（44px，可点下限）、日期用等宽数字排，右边「›」说明它点得开。
+      -->
       <sh-kv between :label="String($t('stockOut.date'))">
-        <view class="dates sh-row">
-          <text
-            v-for="d in quickDates"
-            :key="d.value"
-            class="sh-chip date__c"
-            :class="{ 'sh-chip--primary': occurredAt === d.value }"
-            @tap="occurredAt = d.value"
-          >{{ d.label }}</text>
-          <picker mode="date" :value="occurredAt" @change="occurredAt = $event.detail.value">
-            <!-- 挑到快捷之外的日子时把那一天显示出来，否则三枚都不亮、他会以为没生效 -->
-            <text class="sh-chip date__c" :class="{ 'sh-chip--primary': !isQuick }">
-              {{ isQuick ? $t("stockOut.dPick") : occurredAt }}
-            </text>
-          </picker>
-        </view>
+        <picker mode="date" :value="occurredAt" @change="occurredAt = $event.detail.value">
+          <view class="date sh-row">
+            <text class="txt-body sh-num">{{ occurredAt }}</text>
+            <text class="sh-muted">›</text>
+          </view>
+        </picker>
       </sh-kv>
     </view>
 
@@ -330,8 +322,7 @@ onShow(load);
 
 <style scoped>
 /* 四枚并排跟在标题右边；挤不下就换行并靠右，不把标题顶走 */
-.reasons,
-.dates {
+.reasons {
   gap: 12rpx;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -341,14 +332,17 @@ onShow(load);
  * 那条下限是给主操作的，而这一排是并列的筛选式选择，四枚一起构成一个控件。
  */
 /*
- * 与日期那排同高。**原因这四枚改之前只有 24px** —— 量到的，不是估的 ——
- * 而它们是要用手指点的。24px 连 44 的一半都不到，且与旁边日期那排
- * 一高一矮，并排之后一眼就看得出来不是一套东西。
+ * **原因这四枚保持原样，不放大**（2026-09-18 店主：「报损原因保持目前的形状，
+ * 不要运用圆形，占用空间太多」）。
+ *
+ * 我此前把它们从 24px 抬到了 44px（可点下限），店主看过之后要的是省地方 ——
+ * 这一排是四枚并列的筛选式选择，一起构成一个控件，不是四个主操作按钮。
+ * **这条是店主的决定，不是漏改**：24px 确实低于可点下限，代价他认了。
  */
-.date__c,
-.reasons .sh-chip {
-  height: 72rpx;
-  display: flex;
+/* 44px：整块是可点目标，不是一行字。「›」与日期之间留一点，别贴着 */
+.date {
+  min-height: 88rpx;
+  gap: 8rpx;
   align-items: center;
 }
 .addrow {
