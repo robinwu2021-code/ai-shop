@@ -6,6 +6,8 @@ import ai.neargo.shop.inventory.entity.InvItemRef;
 import ai.neargo.shop.inventory.entity.InvLedger;
 import ai.neargo.shop.inventory.entity.InvLocation;
 import ai.neargo.shop.inventory.entity.InvOwner;
+import ai.neargo.shop.inventory.entity.InvStockBalance;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.BalanceMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemRefMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.LedgerMapper;
@@ -32,16 +34,19 @@ public class InventoryAclServiceImpl implements InventoryAclService {
     private final ItemMapper itemMapper;
     private final ItemRefMapper refMapper;
     private final LedgerMapper ledgerMapper;
+    private final BalanceMapper balanceMapper;
     private final LocationService locations;
 
     public InventoryAclServiceImpl(OwnerMapper ownerMapper, LocationMapper locationMapper,
                                    ItemMapper itemMapper, ItemRefMapper refMapper,
-                                   LedgerMapper ledgerMapper, LocationService locations) {
+                                   LedgerMapper ledgerMapper, BalanceMapper balanceMapper,
+                                   LocationService locations) {
         this.ownerMapper = ownerMapper;
         this.locationMapper = locationMapper;
         this.itemMapper = itemMapper;
         this.refMapper = refMapper;
         this.ledgerMapper = ledgerMapper;
+        this.balanceMapper = balanceMapper;
         this.locations = locations;
     }
 
@@ -184,6 +189,40 @@ public class InventoryAclServiceImpl implements InventoryAclService {
         }
         item.setSourceOnSale(onSale ? 1 : 0);
         itemMapper.updateById(item);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public boolean retireItemIfEmpty(String entityNo, String skuNo, boolean apply) {
+        String ownerId = ownerIdOf(entityNo);
+        InvItemRef ref = findRef(ownerId, InvEnums.RefSystem.AISHOP, skuNo);
+        if (ref == null) {
+            return false;
+        }
+        InvItem item = itemMapper.selectOne(Wrappers.<InvItem>lambdaQuery()
+                .eq(InvItem::getOwnerId, ownerId).eq(InvItem::getItemId, ref.getItemId()));
+        if (item == null || InvEnums.MasterStatus.ARCHIVED.equals(item.getStatus())) {
+            return false;   // 幂等：已经归档过的重跑一遍什么也不做
+        }
+        /*
+         * **一个库位有数就不归档**，不是「合计为 0」就行。
+         *
+         * 合计会把「A 库位 +5、B 库位 -5」算成 0 —— 那正是最该有人去看的一种账，
+         * 而归档掉它等于把两笔错都藏起来。预留也算有数：货被订单占着，
+         * 归档之后那笔单去扣减时找不到这件货。
+         */
+        Long busy = balanceMapper.selectCount(Wrappers.<InvStockBalance>lambdaQuery()
+                .eq(InvStockBalance::getOwnerId, ownerId)
+                .eq(InvStockBalance::getItemId, item.getItemId())
+                .and(w -> w.ne(InvStockBalance::getOnHand, 0).or().ne(InvStockBalance::getReserved, 0)));
+        if (busy != null && busy > 0) {
+            return false;
+        }
+        if (apply) {
+            item.setStatus(InvEnums.MasterStatus.ARCHIVED);
+            itemMapper.updateById(item);
+        }
+        return true;
     }
 
     // ────────────────────────────────────────────────────────────────────

@@ -69,6 +69,8 @@ class InventoryBizEndpointTest {
     private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
     @Autowired
     private ai.neargo.shop.inventory.service.StockQueryService query;
+    @Autowired
+    private ai.neargo.shop.invbridge.InventoryOrphanSweepService orphanSweep;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -633,6 +635,50 @@ class InventoryBizEndpointTest {
                 .doesNotContain("OFF_SALE");
     }
 
+    @Test
+    @DisplayName("★★★ 来源商品没了的空壳物料被归档；而有库存的孤儿一件都不许动")
+    void orphanItemsAreRetiredOnlyWhenEmpty() throws Exception {
+        Shop s = shop();
+        /*
+         * 这个夹具里的物料**本来就都是孤儿** —— `acl.upsertItem` 直接建物料，
+         * 从不往 `prd_sku` 写一行。这正是线上那 209 件的形状（2026-09-18：
+         * `prd_goods` 全库 1 条，`inv_item` 211 条），拿它当被测对象是对的。
+         *
+         * 两件货的差别只有一个自变量：itemA 入过 10 件，土鸡蛋一件都没有。
+         */
+        assertThat(pickableIds(s)).as("前提：两件货此刻都挑得到").contains(s.itemA);
+
+        int before = pickableIds(s).size();
+
+        // ① 先试跑：一个字都不该写
+        var dry = orphanSweep.sweep(true, 500, s.entityNo);
+        assertThat(dry.orphans()).as("这家的引用全是孤儿").isGreaterThan(0);
+        assertThat(dry.retired()).as("试跑要报出「会归档几件」，不是孤儿总数").isGreaterThan(0);
+        assertThat(pickableIds(s))
+                .as("★ 试跑写了库 —— dryRun 的整个意义就是这一条")
+                .hasSize(before);
+
+        // ② 真跑
+        var run = orphanSweep.sweep(false, 500, s.entityNo);
+        assertThat(run.retired())
+                .as("真跑归档的件数要与试跑说的一样；不一样说明两处判据分岔了")
+                .isEqualTo(dry.retired());
+        assertThat(run.kept()).as("有库存的孤儿要被留下并计数").isGreaterThan(0);
+
+        List<String> after = pickableIds(s);
+        assertThat(after)
+                .as("★★ 有库存的孤儿**必须留着** —— 归档掉它商家就再也盘不着这 10 件，账永远平不了")
+                .contains(s.itemA);
+        assertThat(after)
+                .as("★★ 零库存的空壳必须消失 —— 它既不是货也开不出单，只会让弹层变脏")
+                .hasSizeLessThan(before);
+
+        // ③ 幂等：再跑一遍不该再归档任何一件
+        assertThat(orphanSweep.sweep(false, 500, s.entityNo).retired())
+                .as("重跑要归档 0 件 —— 已归档的再归档一次说明没判「已经处理过」")
+                .isZero();
+    }
+
     /** 从挑货接口里取某件货的 flags —— 验的是**端上真正读到的那一份**，不是服务层内部状态 */
     private List<String> pickableFlagsOf(Shop s, String itemId) throws Exception {
         JsonNode arr = ok(get("/biz/inventory/pickable"), s.token);
@@ -815,6 +861,14 @@ class InventoryBizEndpointTest {
     }
 
     // ------------------------------------------------------------------ 脚手架
+
+    /** 挑货接口此刻列出的 itemId —— 验的是**端上真正读到的那一份** */
+    private List<String> pickableIds(Shop s) throws Exception {
+        List<String> out = new java.util.ArrayList<>();
+        ok(get("/biz/inventory/pickable"), s.token)
+                .forEach(n -> out.add(n.path("itemId").asString()));
+        return out;
+    }
 
     private record Shop(String token, String entityNo, String location, String itemA, String skuA) {
     }

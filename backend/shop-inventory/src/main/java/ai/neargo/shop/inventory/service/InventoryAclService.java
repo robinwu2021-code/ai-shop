@@ -54,6 +54,28 @@ public interface InventoryAclService {
     void markItemOnSale(String entityNo, String skuNo, boolean onSale);
 
     /**
+     * 来源 SKU <b>已经不存在了</b>（不是下架，是没了）—— 把物料归档，让它从挑货列表里消失。
+     *
+     * <h2>为什么「下架不能滤、消失可以滤」不是同一件事</h2>
+     * 下架的货仍然是货：商家还要盘点、报损、调拨它，滤掉之后那些货就再也动不了了
+     *（见 {@code markItemOnSale} 与 {@code InventoryOnSaleConsumer} 的注释）。
+     * 而来源没了 <b>且库存为 0</b> 的物料，既不是货、也开不出任何单 —— 它只是噪声。
+     *
+     * <h2>有库存的一律不归档</h2>
+     * 那是真实存在的货，只是它的来源档案没了。归档掉等于让商家再也盘不着它，
+     * 账就永远平不了。这一类要留着，并由健康度扫描点名 ——
+     * <b>看得见的坏账比看不见的干净更值钱</b>。
+     *
+     * @param apply {@code false} = 只判不写。<b>试跑必须走这一个方法</b>，
+     *              而不是在调用方另写一份判据 —— 两份判据迟早分岔，
+     *              而分岔的症状是「试跑说会动 3 件、真跑动了 5 件」
+     * @return 归档了（或 {@code apply=false} 时「会归档」）才是 {@code true}。
+     *         物料不存在、已归档、或还有库存都返回 {@code false} ——
+     *         调用方靠它区分「处理了」与「有意跳过」
+     */
+    boolean retireItemIfEmpty(String entityNo, String skuNo, boolean apply);
+
+    /**
      * 按平台 SKU 反查业主 —— <b>交易域手里只有 skuNo，没有主体号</b>。
      *
      * <p>走 {@code inv_item_ref}（{@code system=AISHOP}）反查：SKU 在平台内全局唯一，
