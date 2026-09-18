@@ -522,7 +522,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 115,
+        "b-app": 114,
         "c-app": 61
       }
     },
@@ -1126,7 +1126,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 132,
+        "b-app": 131,
         "c-app": 64
       }
     },
@@ -1220,7 +1220,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 69,
+        "b-app": 68,
         "c-app": 29
       }
     },
@@ -1426,7 +1426,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 296,
+        "b-app": 295,
         "c-app": 146
       }
     },
@@ -1628,7 +1628,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 53,
+        "b-app": 52,
         "c-app": 22
       }
     },
@@ -1722,7 +1722,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 100,
+        "b-app": 99,
         "c-app": 24
       }
     },
@@ -1744,7 +1744,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 72,
+        "b-app": 71,
         "c-app": 0
       }
     },
@@ -1852,7 +1852,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 95,
+        "b-app": 93,
         "c-app": 3
       }
     },
@@ -1868,7 +1868,7 @@
         "margin-top": "4px"
       },
       "usage": {
-        "b-app": 38,
+        "b-app": 37,
         "c-app": 0
       }
     }
@@ -2128,7 +2128,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 47,
+        "b-app": 46,
         "c-app": 30,
         "lib": 1
       },
@@ -3282,11 +3282,10 @@
       "key": "b-app/activity-edit",
       "file": "b-app/src/pages/activity-edit/index.vue",
       "components": [
-        "sh-empty",
         "sh-option",
         "sh-scaffold"
       ],
-      "libClassHits": 101,
+      "libClassHits": 91,
       "localSelectors": 15,
       "localCssLines": 50,
       "rolled": []
