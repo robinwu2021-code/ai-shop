@@ -225,6 +225,10 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mGroup: { method: "GET", path: "/biz/group/:groupNo", auth: true, summary: "团详情" },
   mDissolveGroup: { method: "POST", path: "/biz/group/:groupNo/dissolve", auth: true, summary: "散团（参团已付款的单全额退款）" },
   mGroupPickups: { method: "GET", path: "/biz/group/pickups", auth: true, summary: "开团可选的自提点" },
+  mPlatformActivities: { method: "GET", path: "/biz/platform-activity", auth: true, summary: "平台活动（可报名 / 已报名 / 已结束）" },
+  mPlatformActivity: { method: "GET", path: "/biz/platform-activity/:activityNo", auth: true, summary: "平台活动详情（含我的报名）" },
+  mEnroll: { method: "POST", path: "/biz/platform-activity/:activityNo/enrollment", auth: true, summary: "报名平台活动（审核前可改）" },
+  mWithdrawEnrollment: { method: "POST", path: "/biz/platform-activity/:activityNo/withdraw", auth: true, summary: "撤回待审的报名" },
   mRequestList: { method: "GET", path: "/biz/group-request/pool", auth: true, summary: "可报价需求单" },
   mQuote: { method: "POST", path: "/biz/group-request/:requestNo/quote", auth: true, summary: "报价" },
 

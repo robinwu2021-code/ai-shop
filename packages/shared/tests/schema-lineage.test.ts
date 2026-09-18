@@ -194,6 +194,8 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
   group_no: { table: "mkt_group_buy" },
   // 社区集单的期（V335）：ord_sub_order.period_no 指向 pmt_period
   period_no: { table: "pmt_period" },
+  // 平台活动报名单（V337）：pmt_enrollment_goods.enrollment_no 指向它
+  enrollment_no: { table: "pmt_enrollment" },
   review_no: { table: "rvw_review" },
   staff_no: { table: "sys_ops_staff" },
   settle_no: { table: "stl_bill" },

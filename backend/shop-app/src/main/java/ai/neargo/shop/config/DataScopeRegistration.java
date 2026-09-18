@@ -309,6 +309,17 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
+         * 平台活动报名单（2026-09-19，详细设计 §2.7）。锚点是报名的商家：
+         * 只看某些商家的运营在审核页只看到那些商家的报名 —— 这是它要登记的理由。
+         *
+         * 绕开的地方：商家读自己的报名（钉 entity_no = 自己）、下单算价取已通过的报名（钉 entity_no = 这一单的商家）。
+         * 平台活动那一行本身（entity_no = 'PLATFORM'）不属于任何商家，读它、占它的预算时绕域，
+         * 边界靠 owner = PLATFORM。pmt_enrollment_goods 挂在报名号上，从不作为检索入口，不登记。
+         */
+        registry.register("pmt_enrollment", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
          * 触达流水。**登记它今天不改变任何可见行为，这一点要写清楚**。
          *
          * 我一开始以为触达健康度那一页会漏：每行是「这家商家发了多少条 / 有多少会员 /

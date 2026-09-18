@@ -107,6 +107,8 @@ const OVERLAY: Record<string, Record<string, string>> = {
   触达健康度: { en: "Messaging health" },
   券敞口: { en: "Coupon exposure" },
   活动敞口: { en: "Activity exposure" },
+  平台活动: { en: "Platform campaigns" },
+  报名审核: { en: "Enrollment review" },
   敞口: { en: "Exposure" },
   营销活动: { en: "Marketing" },
   券模板: { en: "Coupon templates" },

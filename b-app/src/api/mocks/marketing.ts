@@ -602,7 +602,7 @@ export const marketingMock: Pick<MerchantApi,
       periodsShort: mockPeriods.filter((p) => p.status === "SHORT").length,
       groupsShort: 2,
       quotesPending: 2,
-      enrollable: 0,
+      enrollable: 1, // 与 platform.ts 里那个还能报的「中秋大促」对得上
     });
   },
 

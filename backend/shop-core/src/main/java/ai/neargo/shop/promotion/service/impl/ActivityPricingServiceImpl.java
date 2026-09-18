@@ -39,6 +39,20 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
     /** 活动效果按 promo_no 聚合，读的就是这张表 —— 与券的每一次使用同一张 */
     private final ApplyMapper applyMapper;
 
+    /**
+     * 平台活动的报名单与报名的货（P3）。setter 注入：切片测试里没有它们时，平台活动不参与算价，
+     * 其余行为与加这一段之前逐字相同。
+     */
+    private ai.neargo.shop.promotion.mapper.PromotionMappers.EnrollmentMapper enrollmentMapper;
+    private ai.neargo.shop.promotion.mapper.PromotionMappers.EnrollmentGoodsMapper enrollmentGoodsMapper;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setEnrollmentMappers(ai.neargo.shop.promotion.mapper.PromotionMappers.EnrollmentMapper enrollmentMapper,
+                                     ai.neargo.shop.promotion.mapper.PromotionMappers.EnrollmentGoodsMapper enrollmentGoodsMapper) {
+        this.enrollmentMapper = enrollmentMapper;
+        this.enrollmentGoodsMapper = enrollmentGoodsMapper;
+    }
+
     public ActivityPricingServiceImpl(ActivityMapper activityMapper,
                                       ActivityAudienceMapper audienceMapper,
                                       ActivityGoodsMapper goodsMapper,
@@ -65,6 +79,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         for (CampaignPort.MerchantAmount g : groups) {
             PmtActivity best = null;
             long bestOff = 0L;
+            PlatformHit bestPlatform = null;
             for (PmtActivity a : live(g.merchantNo(), g.storeNo(), now)) {
                 if (!PmtActivity.BENEFIT_CUT.equals(a.getBenefitType())) {
                     continue;
@@ -83,7 +98,23 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                     best = a;
                 }
             }
-            if (best != null && bestOff > 0) {
+            /*
+             * 平台活动（P3）与商家活动**同类取最优**：一单只减一个满减类活动，按买家能省多少比 ——
+             * 同样的钱，谁出资不影响买家该减多少。平台活动只按报名里那几件货的小计判门槛与封顶。
+             */
+            for (PlatformHit h : platformHits(g, now)) {
+                if (h.off() > bestOff) {
+                    bestOff = h.off();
+                    best = null;
+                    bestPlatform = h;
+                }
+            }
+            if (bestPlatform != null && bestOff > 0) {
+                shares.add(new CampaignPort.MerchantDiscount(g.merchantNo(), bestOff));
+                applied.add(new CampaignPort.AppliedActivity(bestPlatform.activity().getActivityNo(),
+                        g.merchantNo(), bestOff, 1, bestPlatform.platformMinor(), bestPlatform.enrollmentNo()));
+                total += bestOff;
+            } else if (best != null && bestOff > 0) {
                 shares.add(new CampaignPort.MerchantDiscount(g.merchantNo(), bestOff));
                 applied.add(new CampaignPort.AppliedActivity(best.getActivityNo(),
                         g.merchantNo(), bestOff, 1));
@@ -92,6 +123,71 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         }
         return shares.isEmpty() ? CampaignPort.Discount.none()
                 : new CampaignPort.Discount(total, shares, applied);
+    }
+
+    /**
+     * 平台活动在这一家上的命中（P3 · 详细设计 §1.6）。
+     *
+     * @param off           买家这一单少付多少（按报名货的小计封顶）
+     * @param platformMinor 其中平台出的部分 = off × 出资比例（向下取整，零头归商家）
+     */
+    private record PlatformHit(PmtActivity activity, String enrollmentNo, long off, long platformMinor) {
+    }
+
+    /**
+     * 这家店<b>已通过、还有份数</b>的报名里，此刻在跑的平台活动能减多少。
+     *
+     * <p>生效范围是报名里的货：门槛按那几件货的小计判（{@code MerchantAmount.lines}）。
+     * 老调用方不传逐件明细时这里返回空 —— 平台活动不生效，而不是退回按整单判
+     * （那会让「买一件报名的货加一堆别的货」凑够满减）。
+     *
+     * <p>绕数据域读报名，边界靠 {@code entity_no = 这一单的商家}（买家会话下不绕就恒为空）。
+     */
+    private List<PlatformHit> platformHits(CampaignPort.MerchantAmount g, long now) {
+        if (enrollmentMapper == null || g.lines() == null || g.lines().isEmpty()) {
+            return List.of();
+        }
+        List<ai.neargo.shop.promotion.entity.PmtEnrollment> es = DataScopeContext.executeWithoutScope(() ->
+                enrollmentMapper.selectList(Wrappers.<ai.neargo.shop.promotion.entity.PmtEnrollment>lambdaQuery()
+                        .eq(ai.neargo.shop.promotion.entity.PmtEnrollment::getEntityNo, g.merchantNo())
+                        .eq(ai.neargo.shop.promotion.entity.PmtEnrollment::getStatus,
+                                ai.neargo.shop.promotion.entity.PmtEnrollment.APPROVED)
+                        .apply("quota_used < quota")));
+        List<PlatformHit> out = new ArrayList<>();
+        for (var e : es) {
+            PmtActivity a = DataScopeContext.executeWithoutScope(() ->
+                    activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
+                            .eq(PmtActivity::getActivityNo, e.getActivityNo())
+                            .eq(PmtActivity::getOwner, PmtActivity.OWNER_PLATFORM)
+                            .last("limit 1")));
+            if (a == null || !PmtActivity.BENEFIT_CUT.equals(a.getBenefitType()) || !a.isActiveAt(now, MARKET_ZONE)) {
+                continue;
+            }
+            java.util.Set<String> goods = DataScopeContext.executeWithoutScope(() ->
+                            enrollmentGoodsMapper.selectList(Wrappers.<ai.neargo.shop.promotion.entity.PmtEnrollmentGoods>lambdaQuery()
+                                    .eq(ai.neargo.shop.promotion.entity.PmtEnrollmentGoods::getEnrollmentNo, e.getEnrollmentNo())))
+                    .stream().map(ai.neargo.shop.promotion.entity.PmtEnrollmentGoods::getGoodsNo)
+                    .collect(java.util.stream.Collectors.toSet());
+            long amount = 0L;
+            int qty = 0;
+            for (CampaignPort.GoodsLine l : g.lines()) {
+                if (goods.contains(l.goodsNo())) {
+                    amount += l.amount();
+                    qty += l.qty();
+                }
+            }
+            if (amount <= 0) {
+                continue;
+            }
+            CampaignPort.MerchantAmount scoped = new CampaignPort.MerchantAmount(g.merchantNo(), amount, qty, g.storeNo());
+            if (!cutTriggerHits(a, scoped)) {
+                continue;
+            }
+            long off = Math.min(nz(a.getBenefitAmountMinor()), amount);
+            int bp = a.getPlatformShareBp() == null ? 0 : a.getPlatformShareBp();
+            out.add(new PlatformHit(a, e.getEnrollmentNo(), off, off * bp / 10_000));
+        }
+        return out;
     }
 
     /**
@@ -193,6 +289,10 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             return;
         }
         for (CampaignPort.AppliedActivity it : discount.applied()) {
+            if (it.enrollmentNo() != null) {
+                commitPlatform(userNo, orderNo, it);
+                continue;
+            }
             int affected = DataScopeContext.executeWithoutScope(() ->
                     activityMapper.update(null, Wrappers.<PmtActivity>lambdaUpdate()
                             .eq(PmtActivity::getActivityNo, it.activityNo())
@@ -246,6 +346,51 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 log.info("[活动] {} 到量自动结束", it.activityNo());
             }
         }
+    }
+
+    /**
+     * 平台活动这一单用掉的份数与钱（P3）。
+     *
+     * <p>限量扣在<b>报名单</b>上（商家报了多少份就是多少份），带条件的 UPDATE；平台花掉的钱记到活动的
+     * {@code budget_used_minor}。{@code pmt_apply} 按出资方拆两行（平台、商家各一行），
+     * 与子单 {@code discount_platform} / {@code discount_merchant} 对得上 —— 结算按子单那两列走。
+     * 没抢到最后一份时与商家活动同一个处理：不抛，记 WARN。
+     */
+    private void commitPlatform(String userNo, String orderNo, CampaignPort.AppliedActivity it) {
+        int affected = DataScopeContext.executeWithoutScope(() -> enrollmentMapper.update(null,
+                Wrappers.<ai.neargo.shop.promotion.entity.PmtEnrollment>lambdaUpdate()
+                        .eq(ai.neargo.shop.promotion.entity.PmtEnrollment::getEnrollmentNo, it.enrollmentNo())
+                        .apply("quota_used + {0} <= quota", it.qty())
+                        .setSql("quota_used = quota_used + " + it.qty())));
+        if (affected == 0) {
+            log.warn("[平台活动] 报名份数已满仍命中：报名 {} 订单 {}", it.enrollmentNo(), orderNo);
+            return;
+        }
+        DataScopeContext.executeWithoutScope(() -> activityMapper.update(null, Wrappers.<PmtActivity>lambdaUpdate()
+                .eq(PmtActivity::getActivityNo, it.activityNo())
+                .setSql("budget_used_minor = budget_used_minor + " + it.platformMinor())));
+        long merchantPart = it.amountMinor() - it.platformMinor();
+        if (it.platformMinor() > 0) {
+            insertApply(userNo, orderNo, it, it.platformMinor(), ai.neargo.shop.promotion.entity.PmtCoupon.BY_PLATFORM);
+        }
+        if (merchantPart > 0) {
+            insertApply(userNo, orderNo, it, merchantPart, ai.neargo.shop.promotion.entity.PmtCoupon.BY_MERCHANT);
+        }
+    }
+
+    private void insertApply(String userNo, String orderNo, CampaignPort.AppliedActivity it, long amount, String funder) {
+        PmtApply row = new PmtApply();
+        row.setApplyNo(BizKey.next(BizKey.PROMO_APPLY));
+        row.setPromoType(PmtApply.ACTIVITY);
+        row.setPromoNo(it.activityNo());
+        row.setUserNo(userNo);
+        row.setEntityNo(it.merchantNo());
+        row.setOrderNo(orderNo);
+        row.setRedeemMode(ai.neargo.shop.promotion.entity.PmtCoupon.REDEEM_ORDER);
+        row.setAmountMinor(amount);
+        row.setFunder(funder);
+        row.setAppliedAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> applyMapper.insert(row));
     }
 
     /**

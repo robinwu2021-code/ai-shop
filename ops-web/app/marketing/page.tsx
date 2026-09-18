@@ -24,6 +24,8 @@ import { ReadOnlyNotice } from "@/components/read-only-notice";
 // 会员卡自成一块 —— 与券/活动/内容位三个 tab 只共用文案表
 import { MemberTab } from "./member-tab";
 import { ExposureTab } from "./exposure-tab";
+import { PlatformTab } from "./platform-tab";
+import { PlatformAuditTab } from "./platform-audit-tab";
 import { ArchiveActions, ShowArchivedToggle, ARCHIVE_LABEL_KEY, UNARCHIVE_LABEL_KEY, archiveConfirm, archivedRowClass, unarchiveConfirm } from "@/components/archive";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -51,7 +53,7 @@ type Copy = (typeof MARKETING_COPY)["zh"];
  * 挂到会员下面会让看会员的人顺带拿到营销的入口。
  */
 const TAB_KEYS = ["coupons", "issues", "campaigns", "slots", "member",
-                  "promoCoupons", "promoActivities"] as const;
+                  "promoCoupons", "promoActivities", "platform", "platformAudit"] as const;
 
 const TARGET_OPTIONS = (c: Copy): { value: IssueTarget; label: string }[] => [
   { value: "ALL", label: c.targetAll },
@@ -491,6 +493,9 @@ function MarketingInner() {
         </>
       )}
 
+      {tab === "platform" && <PlatformTab c={c} canEdit={allow("marketing:campaign:update")} />}
+      {tab === "platformAudit" && <PlatformAuditTab c={c} canReview={allow("marketing:campaign:update")} />}
+
       {(tab === "promoCoupons" || tab === "promoActivities") && (
         <ExposureTab
           c={c}
@@ -499,7 +504,8 @@ function MarketingInner() {
         />
       )}
 
-      {tab !== "member" && tab !== "promoCoupons" && tab !== "promoActivities" && (
+      {tab !== "member" && tab !== "promoCoupons" && tab !== "promoActivities"
+        && tab !== "platform" && tab !== "platformAudit" && (
       <>
       <Toolbar
         search={keyword}

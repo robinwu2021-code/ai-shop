@@ -2,7 +2,7 @@
 //
 // 与商家侧的差别只有一条：**跨商家**。字段与脱敏口径完全一样 ——
 // 运营看得到「谁是谁家的会员」，但看不到完整手机号。
-import type { OpsMember, OpsPerson, OpsPromoActivity, OpsPromoCoupon, Page, ReachStat }
+import type { OpsEnrollment, OpsMember, OpsPerson, OpsPlatformActivity, OpsPlatformDraft, OpsPromoActivity, OpsPromoCoupon, Page, ReachStat }
   from "@/lib/types";
 
 export interface MemberApi {
@@ -41,4 +41,13 @@ export interface MemberApi {
    * 不给理由的话，商家看到的是「我的活动莫名其妙没了」。
    */
   stopOpsActivity(activityNo: string, reason: string): Promise<OpsPromoActivity>;
+
+  /** 平台活动（s29）：全部，含草稿，带审核计数与预算占用 */
+  listPlatformActivities(): Promise<OpsPlatformActivity[]>;
+  /** 建 / 改平台活动。发布后只能改报名截止与预算 */
+  savePlatformActivity(draft: OpsPlatformDraft): Promise<OpsPlatformActivity>;
+  /** 一个平台活动的报名（s30）；status 空 = 全部 */
+  listEnrollments(activityNo: string, status?: string): Promise<OpsEnrollment[]>;
+  /** 通过 / 驳回。通过占预算，超了拒（40032）；驳回理由必填，商家原样看到 */
+  reviewEnrollment(enrollmentNo: string, pass: boolean, reason?: string): Promise<OpsEnrollment>;
 }

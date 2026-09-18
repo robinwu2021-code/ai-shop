@@ -7035,7 +7035,7 @@ components:
           description: "等待报价的求团需求数（黄标）"
         enrollable: 
           type: "number"
-          description: "可报名的平台活动数（平台活动上线前恒为 0）"
+          description: "还能报名的平台活动数"
       required: 
         - "monthDiscountMinor"
         - "monthOrders"
@@ -7048,6 +7048,205 @@ components:
         - "enrollable"
       additionalProperties: false
       description: "营销入口一屏的数字（s01）。全部现算"
+    PlatformEnrollRule: 
+      type: "object"
+      properties: 
+        minRating: 
+          type: 
+            - "number"
+            - "null"
+          description: "评分下限；空 = 不限"
+        noViolation: 
+          type: "boolean"
+          description: "是否要求无违规"
+        categoryNos: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "只收这些类目的货；空 = 不限"
+        cityCodes: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "只收这些城市的店；空 = 不限（暂只展示、不校验）"
+      required: 
+        - "noViolation"
+        - "categoryNos"
+        - "cityCodes"
+      additionalProperties: false
+      description: "平台活动的报名门槛（原型 s29「报名门槛」「类目」「城市」）"
+    EnrollmentStatus: 
+      type: "string"
+      enum: 
+        - "SUBMITTED"
+        - "APPROVED"
+        - "REJECTED"
+        - "WITHDRAWN"
+      description: "报名状态"
+    PlatformEnrollment: 
+      type: "object"
+      properties: 
+        enrollmentNo: 
+          type: "string"
+          description: "报名单号"
+        activityNo: 
+          type: "string"
+          description: "平台活动"
+        entityNo: 
+          type: "string"
+          description: "报名的商家"
+        merchantName: 
+          type: "string"
+          description: "商家名"
+        goodsNos: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "报名的货"
+        quota: 
+          type: "number"
+          description: "报的份数"
+        quotaUsed: 
+          type: "number"
+          description: "已用份数"
+        platformMaxMinor: 
+          type: "number"
+          description: "最多平台补贴（最小货币单位）= 份数 × 每单平台补贴"
+        merchantMaxMinor: 
+          type: "number"
+          description: "最多商家承担 = 份数 × 每单商家承担"
+        rating: 
+          type: "number"
+          description: "商家评分（审核时看）"
+        status: 
+          "$ref": "#/components/schemas/EnrollmentStatus"
+          description: "状态"
+        rejectReason: 
+          type: 
+            - "string"
+            - "null"
+          description: "驳回理由"
+        reviewedAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "审核时间"
+        createdAt: 
+          type: "number"
+          description: "提交时间"
+      required: 
+        - "enrollmentNo"
+        - "activityNo"
+        - "entityNo"
+        - "merchantName"
+        - "goodsNos"
+        - "quota"
+        - "quotaUsed"
+        - "platformMaxMinor"
+        - "merchantMaxMinor"
+        - "rating"
+        - "status"
+        - "createdAt"
+      additionalProperties: false
+      description: "一份报名（原型 s28 提交后 · s30 审核表的一行）"
+    PlatformActivity: 
+      type: "object"
+      properties: 
+        activityNo: 
+          type: "string"
+          description: "活动单号"
+        name: 
+          type: "string"
+          description: "名称"
+        triggerType: 
+          type: "string"
+          description: "触发：NONE 立减 / AMOUNT 满额 / QTY 满件"
+        triggerAmountMinor: 
+          type: 
+            - "number"
+            - "null"
+          description: "满多少（分）"
+        triggerQty: 
+          type: 
+            - "number"
+            - "null"
+          description: "满几件"
+        benefitType: 
+          type: "string"
+          description: "优惠：现只有 CUT（减钱）"
+        benefitAmountMinor: 
+          type: 
+            - "number"
+            - "null"
+          description: "减多少（分）"
+        startAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "活动开始"
+        endAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "活动结束"
+        enrollDeadline: 
+          type: 
+            - "number"
+            - "null"
+          description: "报名截止"
+        platformShareBp: 
+          type: "number"
+          description: "平台出资万分比：10000 全额 / 5000 一半 / 0 不出"
+        budgetMinor: 
+          type: 
+            - "number"
+            - "null"
+          description: "平台预算（分）"
+        reservedMinor: 
+          type: "number"
+          description: "已通过的报名占掉的预算"
+        perOrderPlatformMinor: 
+          type: "number"
+          description: "每单平台最多补贴"
+        perOrderMerchantMinor: 
+          type: "number"
+          description: "每单商家最多承担"
+        enrollRule: 
+          "$ref": "#/components/schemas/PlatformEnrollRule"
+          description: "报名门槛"
+        status: 
+          type: "string"
+          description: "DRAFT / RUNNING / ENDED"
+        submitted: 
+          type: "number"
+          description: "待审报名数"
+        approved: 
+          type: "number"
+          description: "已通过报名数"
+        rejected: 
+          type: "number"
+          description: "已驳回报名数"
+        mine: 
+          anyOf: 
+            - "$ref": "#/components/schemas/PlatformEnrollment"
+            - type: "null"
+          description: "商家端：我的报名；没报过为空"
+      required: 
+        - "activityNo"
+        - "name"
+        - "triggerType"
+        - "benefitType"
+        - "platformShareBp"
+        - "reservedMinor"
+        - "perOrderPlatformMinor"
+        - "perOrderMerchantMinor"
+        - "enrollRule"
+        - "status"
+        - "submitted"
+        - "approved"
+        - "rejected"
+      additionalProperties: false
+      description: "平台活动（原型 s27 · s28 · s29 · s30）。规则与商家活动同一个模型；多出来的只有出资、预算、报名。 出资写成**每单金额**（s28 的约定）：商家看的是「一单我出多少」。"
     AfterSaleReason: 
       type: "string"
       enum: 

@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 188 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 192 个受控功能点**
 （另有 29 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -22,8 +22,8 @@
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 37 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 27 | ✅ | ✅ | — | — | — | — |
-| `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 25 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 20 | ✅ | ✅ | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 20 | ✅ | — | — | — | — | — |
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 19 | ✅ | — | — | — | — | — |
@@ -48,7 +48,7 @@
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
 | 承运方可选列表（只列启用的） | GET | `/biz/fulfillment/carriers` | `mCarriers` | transfer |
-| 商品列表 | GET | `/biz/goods` | `mGoodsList` | activity-edit、goods-list、group-open |
+| 商品列表 | GET | `/biz/goods` | `mGoodsList` | activity-edit、goods-list、group-open、platform-activity-apply |
 | 商品详情 | GET | `/biz/goods/:goodsNo` | `mGoodsDetail` | goods-edit、goods-publish |
 | 改库存 | POST | `/biz/goods/:goodsNo/stock` | `mSaveStock` | goods-list |
 | 改当前门店库存 | POST | `/biz/goods/:goodsNo/store-stock` | `mSaveStoreStock` | goods-list |
@@ -87,6 +87,46 @@
 | 调拨发出 | POST | `/biz/inventory/transfers/:no/ship` | `mTransferShip` | transfer |
 | 作废调拨草稿 | POST | `/biz/inventory/transfers/:no/void` | `mTransferVoid` | stock-docs、transfer |
 
+### `biz:campaign`　营销活动、开团、报价
+
+**可用角色**：老板、店长
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 活动列表 | GET | `/biz/activities` | `mActivities` | activities、group-open |
+| 建 / 改活动（敞口在这一步算清） | POST | `/biz/activities` | `mSaveActivity` | activity-edit |
+| 活动详情 | GET | `/biz/activities/{activityNo}` | `mActivity` | activity-edit |
+| 启停 / 结束 | PUT | `/biz/activities/{activityNo}/status` | `mSetActivityStatus` | activity-edit |
+| 这些商品已经在哪些活动里 | POST | `/biz/activity-conflicts` | `mActivityConflicts` | activity-edit |
+| 营销活动列表 | GET | `/biz/campaign` | `mCampaignList` | — |
+| 新建/编辑活动 | POST | `/biz/campaign` | `mSaveCampaign` | — |
+| 活动启停 | POST | `/biz/campaign/:campaignNo/toggle` | `mToggleCampaign` | — |
+| 发放记录（含跳过明细） | GET | `/biz/coupon-issues` | `mCouponIssues` | coupon、coupon-issues |
+| 券列表 | GET | `/biz/coupons` | `mCoupons` | coupon-issues、coupons |
+| 建券 / 改券（敞口在这一步算清） | POST | `/biz/coupons` | `mSaveCoupon` | coupon-edit |
+| 券详情 | GET | `/biz/coupons/{couponNo}` | `mCoupon` | coupon、coupon-edit、coupon-send |
+| 按人群定向发券 | POST | `/biz/coupons/{couponNo}/issue` | `mIssueCoupon` | coupon-send |
+| 暂停 / 恢复 / 结束 | PUT | `/biz/coupons/{couponNo}/status` | `mSetCouponStatus` | coupon |
+| 报价 | POST | `/biz/group-request/:requestNo/quote` | `mQuote` | quotes |
+| 可报价需求单 | GET | `/biz/group-request/pool` | `mRequestList` | quotes |
+| 团详情 | GET | `/biz/group/:groupNo` | `mGroup` | group |
+| 散团（参团已付款的单全额退款） | POST | `/biz/group/:groupNo/dissolve` | `mDissolveGroup` | group |
+| 开团可选的自提点 | GET | `/biz/group/pickups` | `mGroupPickups` | group-open |
+| 我的商家团 | GET | `/biz/groups` | `mGroupList` | groups |
+| 开团 | POST | `/biz/groups` | `mCreateGroup` | group-open |
+| 营销入口一屏的数字 | GET | `/biz/marketing/summary` | `mMarketingSummary` | marketing |
+| 群发（会打扰真实用户） | POST | `/biz/member-reach/send` | `mSendReach` | member-reach |
+| 社区集单：按状态列期 | GET | `/biz/period` | `mPeriods` | periods |
+| 社区集单：一期详情（按商品 / 自提点汇总） | GET | `/biz/period/{periodNo}` | `mPeriod` | period |
+| 社区集单：提前截单 | POST | `/biz/period/{periodNo}/cutoff` | `mCutoffPeriod` | period |
+| 社区集单：未达起订量时取消本期或照常发货 | POST | `/biz/period/{periodNo}/decision` | `mDecidePeriod` | period |
+| 社区集单：按 SKU 汇总给进货单 | GET | `/biz/period/{periodNo}/purchase-lines` | `mPeriodPurchaseLines` | purchase-edit |
+| 平台活动（可报名 / 已报名 / 已结束） | GET | `/biz/platform-activity` | `mPlatformActivities` | platform-activities |
+| 平台活动详情（含我的报名） | GET | `/biz/platform-activity/:activityNo` | `mPlatformActivity` | platform-activity-apply |
+| 报名平台活动（审核前可改） | POST | `/biz/platform-activity/:activityNo/enrollment` | `mEnroll` | platform-activity-apply |
+| 撤回待审的报名 | POST | `/biz/platform-activity/:activityNo/withdraw` | `mWithdrawEnrollment` | platform-activity-apply |
+| —（b-app 未接） | — | `/biz/quote/{}/revise` | — | — |
+
 ### `biz:goods`　建/改商品、上下架、规格模板、识图
 
 **可用角色**：老板、店长
@@ -122,42 +162,6 @@
 | 在平台维度下加一个自有规格值 | POST | `/biz/spec-values` | `mAddSpecValue` | goods-edit、my-specs |
 | 标准品搜索（建品用） | GET | `/biz/spu-std` | `mSpuStdSearch` | goods-edit |
 | 本店货架类目各自能用的规格 | GET | `/biz/store-spec-dims` | `mStoreSpecDims` | my-specs |
-
-### `biz:campaign`　营销活动、开团、报价
-
-**可用角色**：老板、店长
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 活动列表 | GET | `/biz/activities` | `mActivities` | activities、group-open |
-| 建 / 改活动（敞口在这一步算清） | POST | `/biz/activities` | `mSaveActivity` | activity-edit |
-| 活动详情 | GET | `/biz/activities/{activityNo}` | `mActivity` | activity-edit |
-| 启停 / 结束 | PUT | `/biz/activities/{activityNo}/status` | `mSetActivityStatus` | activity-edit |
-| 这些商品已经在哪些活动里 | POST | `/biz/activity-conflicts` | `mActivityConflicts` | activity-edit |
-| 营销活动列表 | GET | `/biz/campaign` | `mCampaignList` | — |
-| 新建/编辑活动 | POST | `/biz/campaign` | `mSaveCampaign` | — |
-| 活动启停 | POST | `/biz/campaign/:campaignNo/toggle` | `mToggleCampaign` | — |
-| 发放记录（含跳过明细） | GET | `/biz/coupon-issues` | `mCouponIssues` | coupon、coupon-issues |
-| 券列表 | GET | `/biz/coupons` | `mCoupons` | coupon-issues、coupons |
-| 建券 / 改券（敞口在这一步算清） | POST | `/biz/coupons` | `mSaveCoupon` | coupon-edit |
-| 券详情 | GET | `/biz/coupons/{couponNo}` | `mCoupon` | coupon、coupon-edit、coupon-send |
-| 按人群定向发券 | POST | `/biz/coupons/{couponNo}/issue` | `mIssueCoupon` | coupon-send |
-| 暂停 / 恢复 / 结束 | PUT | `/biz/coupons/{couponNo}/status` | `mSetCouponStatus` | coupon |
-| 报价 | POST | `/biz/group-request/:requestNo/quote` | `mQuote` | quotes |
-| 可报价需求单 | GET | `/biz/group-request/pool` | `mRequestList` | quotes |
-| 团详情 | GET | `/biz/group/:groupNo` | `mGroup` | group |
-| 散团（参团已付款的单全额退款） | POST | `/biz/group/:groupNo/dissolve` | `mDissolveGroup` | group |
-| 开团可选的自提点 | GET | `/biz/group/pickups` | `mGroupPickups` | group-open |
-| 我的商家团 | GET | `/biz/groups` | `mGroupList` | groups |
-| 开团 | POST | `/biz/groups` | `mCreateGroup` | group-open |
-| 营销入口一屏的数字 | GET | `/biz/marketing/summary` | `mMarketingSummary` | marketing |
-| 群发（会打扰真实用户） | POST | `/biz/member-reach/send` | `mSendReach` | member-reach |
-| 社区集单：按状态列期 | GET | `/biz/period` | `mPeriods` | periods |
-| 社区集单：一期详情（按商品 / 自提点汇总） | GET | `/biz/period/{periodNo}` | `mPeriod` | period |
-| 社区集单：提前截单 | POST | `/biz/period/{periodNo}/cutoff` | `mCutoffPeriod` | period |
-| 社区集单：未达起订量时取消本期或照常发货 | POST | `/biz/period/{periodNo}/decision` | `mDecidePeriod` | period |
-| 社区集单：按 SKU 汇总给进货单 | GET | `/biz/period/{periodNo}/purchase-lines` | `mPeriodPurchaseLines` | purchase-edit |
-| —（b-app 未接） | — | `/biz/quote/{}/revise` | — | — |
 
 ### `biz:store`　门店经营面：装修、配送规则、店铺码、分享物料
 
@@ -393,6 +397,8 @@
 | `periods` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `picking` | `biz:receive` | `biz:receive`、`biz:verify` | 老板、店长、店员、理货员 | 理货员（缺 biz:verify） |
 | `plan` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
+| `platform-activities` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
+| `platform-activity-apply` | `biz:campaign` | `biz:campaign`、`biz:stock` | 老板、店长 | — |
 | `points` | `biz:finance` | `biz:finance` | 老板 | — |
 | `points-records` | `biz:finance` | `biz:finance` | 老板 | — |
 | `purchase-edit` | `biz:stock` | `biz:stock`、`biz:campaign` | 老板、店长、店员、理货员 | 店员（缺 biz:campaign）　理货员（缺 biz:campaign） |

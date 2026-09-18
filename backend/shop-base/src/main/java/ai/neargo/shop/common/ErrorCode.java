@@ -356,6 +356,13 @@ public enum ErrorCode {
      * 老接口不再落成员行 —— 返回这一条让旧版本提示升级，而不是静默成功。
      */
     GROUP_JOIN_NEEDS_UPGRADE(40033, "err.marketing.group_join_needs_upgrade"),
+    /** 报名不成：过了报名截止，或不满足报名门槛（评分、违规、类目） */
+    ENROLLMENT_CLOSED(40031, "err.marketing.enrollment_closed"),
+    /**
+     * 通过这份报名会超出平台预算。占预算是一条带条件的 UPDATE：
+     * 两个运营同时点通过，后到的那个在这里被拒，而不是事后发现预算超了
+     */
+    ENROLLMENT_OVER_BUDGET(40032, "err.marketing.enrollment_over_budget"),
 
     // ---- 5xxxx 资金 ----
     SPLIT_RECEIVER_NOT_READY(50001, "err.settle.receiver_not_ready"),

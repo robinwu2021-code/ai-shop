@@ -73,6 +73,8 @@ export const POINT_CODES: Record<string, string> = {
   "/marketing?tab=member": "OPS_MARKETING__TAB_MEMBER",
   "/marketing?tab=promoCoupons": "OPS_MARKETING__TAB_PROMOCOUPONS",
   "/marketing?tab=promoActivities": "OPS_MARKETING__TAB_PROMOACTIVITIES",
+  "/marketing?tab=platform": "OPS_MARKETING__TAB_PLATFORM",
+  "/marketing?tab=platformAudit": "OPS_MARKETING__TAB_PLATFORMAUDIT",
   "/members": "OPS_MEMBER",
   "/members?tab=persons": "OPS_MEMBER__TAB_PERSONS",
   "/members?tab=reach": "OPS_MEMBER__TAB_REACH",

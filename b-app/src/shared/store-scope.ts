@@ -65,6 +65,7 @@ export const NOT_STORE_SCOPED_REASONS: Record<string, string> = {
   "after-sale": "同 order：售后跟着那一单走",
   groups: "团挂在主体上（mkt_group_buy.entity_no），列表不按门店",
   "group-open": "开团是主体级的：团挂在主体上，商品列表只用来显示活动里那几件货的名字",
+  "platform-activity-apply": "平台活动的报名挂在主体上（一个主体报一次），商品列表只用来选报名的货",
   "goods-edit": "编辑单件商品，页内「本店售卖」那一栏自己写着门店",
   "store-notice": "从门店资料页进来的二级页，门店在上一屏已经确定",
   "purchase-edit": "采购单是主体级的，收货入哪个库位在单据里选",

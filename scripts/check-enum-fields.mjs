@@ -68,6 +68,17 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  */
 export const FIELDS = [
   {
+    concept: "平台活动报名单的状态",
+    field: "pmt_enrollment.status",
+    backend: {
+      javaConst: "shop-core/src/main/java/ai/neargo/shop/promotion/entity/PmtEnrollment.java",
+      only: ["SUBMITTED", "APPROVED", "REJECTED", "WITHDRAWN"],
+    },
+    clients: [
+      { file: SHARED_TYPES, type: "EnrollmentStatus" },
+    ],
+  },
+  {
     concept: "社区集单一期的状态",
     field: "pmt_period.status",
     backend: {
@@ -564,6 +575,8 @@ export const DISMISSED = [
   { key: "stl_recon_diff.bill_date", why: "日期格式 YYYY/MM/DD，同上" },
   { key: "pmt_period.period_date", why: "日期格式 YYYY/MM/DD，同上" },
   { key: "pmt_period.pickup_date", why: "日期格式 YYYY/MM/DD，同上" },
+  { key: "pmt_activity.owner", why: "服务端内部的归属标记（MERCHANT / PLATFORM），不下发给任何端 —— 平台活动走单独的端点与类型" },
+  { key: "pmt_activity_rule.kind", why: "自己组合的行类型（CONDITION / BENEFIT），只在服务端读写，端上拿到的是拼好的一句话" },
   {
     key: "geo_place.kind",
     why: "端上 PLACE_KIND 的**真子集**，不是同一个取值域。"

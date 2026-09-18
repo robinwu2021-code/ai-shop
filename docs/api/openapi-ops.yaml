@@ -8867,6 +8867,262 @@ components:
         - "flags"
       additionalProperties: false
       description: "运营看到的一张券（新模型）。"
+    PlatformEnrollRule: 
+      type: "object"
+      properties: 
+        minRating: 
+          type: 
+            - "number"
+            - "null"
+          description: "评分下限；空 = 不限"
+        noViolation: 
+          type: "boolean"
+          description: "是否要求无违规"
+        categoryNos: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "只收这些类目的货"
+        cityCodes: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "只收这些城市的店（暂只展示、不校验）"
+      required: 
+        - "minRating"
+        - "noViolation"
+        - "categoryNos"
+        - "cityCodes"
+      additionalProperties: false
+      description: "平台活动的报名门槛（原型 s29「报名门槛」「类目」「城市」）"
+    OpsPlatformActivity: 
+      type: "object"
+      properties: 
+        activityNo: 
+          type: "string"
+          description: "活动号"
+        name: 
+          type: "string"
+          description: "名称"
+        triggerType: 
+          type: "string"
+          description: "触发：NONE 立减 / AMOUNT 满额 / QTY 满件"
+        triggerAmountMinor: 
+          type: 
+            - "number"
+            - "null"
+          description: "满多少（分）"
+        triggerQty: 
+          type: 
+            - "number"
+            - "null"
+          description: "满几件"
+        benefitType: 
+          type: "string"
+          description: "优惠方式（现只有 CUT）"
+        benefitAmountMinor: 
+          type: 
+            - "number"
+            - "null"
+          description: "减多少（分）"
+        startAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "活动开始"
+        endAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "活动结束"
+        enrollDeadline: 
+          type: 
+            - "number"
+            - "null"
+          description: "报名截止"
+        platformShareBp: 
+          type: "number"
+          description: "平台出资万分比"
+        budgetMinor: 
+          type: 
+            - "number"
+            - "null"
+          description: "平台预算（分）"
+        reservedMinor: 
+          type: "number"
+          description: "已通过的报名占掉的预算（分）"
+        perOrderPlatformMinor: 
+          type: "number"
+          description: "每单平台最多补贴（分）"
+        perOrderMerchantMinor: 
+          type: "number"
+          description: "每单商家最多承担（分）"
+        enrollRule: 
+          "$ref": "#/definitions/PlatformEnrollRule"
+          description: "报名门槛"
+        status: 
+          type: "string"
+          description: "DRAFT / RUNNING / ENDED"
+        submitted: 
+          type: "number"
+          description: "待审"
+        approved: 
+          type: "number"
+          description: "已通过"
+        rejected: 
+          type: "number"
+          description: "已驳回"
+      required: 
+        - "activityNo"
+        - "name"
+        - "triggerType"
+        - "triggerAmountMinor"
+        - "triggerQty"
+        - "benefitType"
+        - "benefitAmountMinor"
+        - "startAt"
+        - "endAt"
+        - "enrollDeadline"
+        - "platformShareBp"
+        - "budgetMinor"
+        - "reservedMinor"
+        - "perOrderPlatformMinor"
+        - "perOrderMerchantMinor"
+        - "enrollRule"
+        - "status"
+        - "submitted"
+        - "approved"
+        - "rejected"
+      additionalProperties: false
+      description: "平台活动（原型 s29 · s30）。与商家活动同一个模型；多出来的只有出资、预算、报名。 出资比例用万分比：10000 全额 / 5000 一半 / 0 不出。"
+    OpsPlatformDraft: 
+      type: "object"
+      properties: 
+        activityNo: 
+          type: "string"
+          description: "空 = 新建"
+        name: 
+          type: "string"
+          description: "名称"
+        triggerType: 
+          type: "string"
+          description: "NONE / AMOUNT / QTY"
+        triggerAmountMinor: 
+          type: 
+            - "number"
+            - "null"
+          description: "满多少（分）"
+        triggerQty: 
+          type: 
+            - "number"
+            - "null"
+          description: "满几件"
+        benefitAmountMinor: 
+          type: "number"
+          description: "减多少（分）"
+        startAt: 
+          type: "number"
+          description: "活动开始"
+        endAt: 
+          type: "number"
+          description: "活动结束"
+        enrollDeadline: 
+          type: "number"
+          description: "报名截止，须早于开始"
+        platformShareBp: 
+          type: "number"
+          description: "平台出资万分比"
+        budgetMinor: 
+          type: 
+            - "number"
+            - "null"
+          description: "平台预算（分），平台出资时必填"
+        enrollRule: 
+          "$ref": "#/definitions/PlatformEnrollRule"
+          description: "报名门槛"
+        publish: 
+          type: "boolean"
+          description: "发布报名还是存草稿"
+      required: 
+        - "name"
+        - "triggerType"
+        - "benefitAmountMinor"
+        - "startAt"
+        - "endAt"
+        - "enrollDeadline"
+        - "platformShareBp"
+        - "enrollRule"
+        - "publish"
+      additionalProperties: false
+      description: "建 / 改平台活动的入参（s29）。publish = true 即发布报名"
+    OpsEnrollment: 
+      type: "object"
+      properties: 
+        enrollmentNo: 
+          type: "string"
+          description: "报名单号"
+        activityNo: 
+          type: "string"
+          description: "平台活动"
+        entityNo: 
+          type: "string"
+          description: "商家"
+        merchantName: 
+          type: "string"
+          description: "商家名"
+        goodsNos: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "报名的货"
+        quota: 
+          type: "number"
+          description: "报的份数"
+        quotaUsed: 
+          type: "number"
+          description: "已用份数"
+        platformMaxMinor: 
+          type: "number"
+          description: "最多平台出资（分）"
+        merchantMaxMinor: 
+          type: "number"
+          description: "最多商家承担（分）"
+        rating: 
+          type: "number"
+          description: "商家评分"
+        status: 
+          type: "string"
+          description: "SUBMITTED / APPROVED / REJECTED / WITHDRAWN"
+        rejectReason: 
+          type: 
+            - "string"
+            - "null"
+          description: "驳回理由"
+        reviewedAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "审核时间"
+        createdAt: 
+          type: "number"
+          description: "提交时间"
+      required: 
+        - "enrollmentNo"
+        - "activityNo"
+        - "entityNo"
+        - "merchantName"
+        - "goodsNos"
+        - "quota"
+        - "quotaUsed"
+        - "platformMaxMinor"
+        - "merchantMaxMinor"
+        - "rating"
+        - "status"
+        - "rejectReason"
+        - "reviewedAt"
+        - "createdAt"
+      additionalProperties: false
+      description: "一份报名（s30 审核表的一行）"
     OpsPromoActivity: 
       type: "object"
       properties: 
@@ -15612,6 +15868,137 @@ paths:
                   - "data"
       parameters: 
         - name: "activityNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/promotion/platform-activities": 
+    get: 
+      operationId: "listPlatformActivities"
+      summary: "平台活动（s29）：全部，含草稿，带审核计数与预算占用 */"
+      tags: 
+        - "member"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/OpsPlatformActivity"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "savePlatformActivity"
+      summary: "建 / 改平台活动"
+      tags: 
+        - "member"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/OpsPlatformActivity"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/promotion/platform-activities/{activityNo}/enrollments": 
+    get: 
+      operationId: "listEnrollments"
+      summary: "一个平台活动的报名（s30）"
+      tags: 
+        - "member"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/OpsEnrollment"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "activityNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/promotion/enrollments/{enrollmentNo}/review": 
+    post: 
+      operationId: "reviewEnrollment"
+      summary: "通过 / 驳回"
+      tags: 
+        - "member"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/OpsEnrollment"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "enrollmentNo"
           in: "path"
           required: true
           schema: 

@@ -91,7 +91,21 @@ public interface CampaignPort {
      *                此时只有全主体活动生效 —— <b>不是「所有门店活动都生效」</b>，
      *                那会让一家店的开业满减减到别家店的单上
      */
-    record MerchantAmount(String merchantNo, long goodsAmount, int goodsQty, String storeNo) {
+    record MerchantAmount(String merchantNo, long goodsAmount, int goodsQty, String storeNo,
+                          /*
+                           * 这笔货按商品拆开的金额与件数。平台活动只对报名里的那几件货生效，
+                           * 门槛要按那几件货的小计判 —— 只给总额的话，买一件报名的货加一堆别的货就凑够了满减。
+                           * 老调用方不传（空列表）：平台活动在这一家上不生效，行为与加字段之前一致。
+                           */
+                          List<GoodsLine> lines) {
+
+        public MerchantAmount(String merchantNo, long goodsAmount, int goodsQty, String storeNo) {
+            this(merchantNo, goodsAmount, goodsQty, storeNo, List.of());
+        }
+    }
+
+    /** 一件货在这一单里的小计（不含买赠送的那些） */
+    record GoodsLine(String goodsNo, long amount, int qty) {
     }
 
     /**
@@ -139,12 +153,31 @@ public interface CampaignPort {
             return shares.stream().filter(s -> s.merchantNo().equals(merchantNo))
                     .mapToLong(MerchantDiscount::amount).sum();
         }
+
+        /**
+         * 这一家的活动优惠里<b>平台出的那部分</b>（平台活动按出资比例拆出来的）。
+         * 落进子单 {@code discount_platform}，结算时算回给商家（{@code gross = 实付 + 平台补贴}）。
+         * 只看 {@code applied}：那里只有真正用上的活动，老模型的活动恒为商家出资。
+         */
+        public long platformOf(String merchantNo) {
+            return applied.stream().filter(a -> a.merchantNo().equals(merchantNo))
+                    .mapToLong(AppliedActivity::platformMinor).sum();
+        }
     }
 
     record MerchantDiscount(String merchantNo, long amount) {
     }
 
-    /** @param qty 这一单用掉几份限量。满减类是 1 单 1 份 */
-    record AppliedActivity(String activityNo, String merchantNo, long amountMinor, int qty) {
+    /**
+     * @param qty           这一单用掉几份限量。满减类是 1 单 1 份
+     * @param platformMinor 优惠额里平台出资的部分；商家活动恒为 0
+     * @param enrollmentNo  平台活动时是这家店的报名单号（限量扣在报名上，不扣在活动上）；商家活动为空
+     */
+    record AppliedActivity(String activityNo, String merchantNo, long amountMinor, int qty,
+                           long platformMinor, String enrollmentNo) {
+
+        public AppliedActivity(String activityNo, String merchantNo, long amountMinor, int qty) {
+            this(activityNo, merchantNo, amountMinor, qty, 0L, null);
+        }
     }
 }

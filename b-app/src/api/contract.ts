@@ -81,6 +81,8 @@ import type {
   GroupBuy,
   GroupPickupOption,
   GroupRequest,
+  PlatformActivity,
+  PlatformEnrollment,
   CampaignDraft,
   MarketingCampaign,
   Poster,
@@ -520,6 +522,7 @@ export interface PublishDiffRow {
 
 import type {
   CreateGroupReq,
+  EnrollReq,
   DescribeGoodsReq,
   PickupSelfBuildReq,
   PointsRecordQuery,
@@ -1294,6 +1297,15 @@ export interface MerchantApi {
   mDissolveGroup(groupNo: string, reason?: string): Promise<GroupBuy>;
   /** 开团可选的自提点（s34） */
   mGroupPickups(): Promise<GroupPickupOption[]>;
+
+  // ---- 平台活动（s27 · s28）
+  /** tab：ENROLLABLE / ENROLLED / ENDED；不传给全部 */
+  mPlatformActivities(tab?: string): Promise<PlatformActivity[]>;
+  mPlatformActivity(activityNo: string): Promise<PlatformActivity>;
+  /** 报名（审核前可改）；「最多承担」由后端在这一刻算定 */
+  mEnroll(activityNo: string, req: EnrollReq): Promise<PlatformEnrollment>;
+  /** 撤回待审的报名 */
+  mWithdrawEnrollment(activityNo: string): Promise<PlatformEnrollment>;
   /** 可报价的邻里需求单 */
   mRequestList(): Promise<GroupRequest[]>;
   /** 报价。改价留痕并公示涨价（ADR-003）；已锁价的不可改 */

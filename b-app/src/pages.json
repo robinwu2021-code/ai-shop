@@ -454,6 +454,30 @@
       }
     },
     {
+      "path": "pages/platform-activities/index",
+      "style": {
+        "navigationBarTitleText": "平台活动",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/platform-activity-apply/index",
+      "style": {
+        "navigationBarTitleText": "活动报名",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/groups/index",
       "style": {
         "navigationBarTitleText": "团",

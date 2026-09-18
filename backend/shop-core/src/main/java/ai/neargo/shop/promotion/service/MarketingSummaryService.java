@@ -19,7 +19,7 @@ public interface MarketingSummaryService {
      * @param periodsShort       未达起订量、等商家处理的期数（黄标）
      * @param groupsShort        还差人的团数（黄标）
      * @param quotesPending      等待报价的求团需求数（黄标）
-     * @param enrollable         可报名的平台活动数（P3 之前恒为 0）
+     * @param enrollable         还能报名的平台活动数（截止前、没报过或被驳回 / 撤回的）
      */
     record SummaryVO(long monthDiscountMinor, int monthOrders,
                      int activityRunning, int couponIssuing,

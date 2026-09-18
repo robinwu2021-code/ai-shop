@@ -10,6 +10,7 @@ import { dashboardMock } from "./dashboard";
 import { productMock } from "./product";
 import { orderMock } from "./order";
 import { groupMock } from "./group";
+import { platformMock } from "./platform";
 import { reviewMock } from "./review";
 import { marketingMock } from "./marketing";
 import { settleMock } from "./settle";
@@ -23,6 +24,7 @@ export const mockApi: MerchantApi = {
   ...productMock,
   ...orderMock,
   ...groupMock,
+  ...platformMock,
   ...reviewMock,
   ...marketingMock,
   ...settleMock,

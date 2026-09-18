@@ -583,6 +583,102 @@ export interface MarketingSummary {
   groupsShort: number;
   /** 等待报价的求团需求数（黄标） */
   quotesPending: number;
-  /** 可报名的平台活动数（平台活动上线前恒为 0） */
+  /** 还能报名的平台活动数 */
   enrollable: number;
+}
+
+/** 平台活动的报名门槛（原型 s29「报名门槛」「类目」「城市」） */
+export interface PlatformEnrollRule {
+  /** 评分下限；空 = 不限 */
+  minRating?: number | null;
+  /** 是否要求无违规 */
+  noViolation: boolean;
+  /** 只收这些类目的货；空 = 不限 */
+  categoryNos: string[];
+  /** 只收这些城市的店；空 = 不限（暂只展示、不校验） */
+  cityCodes: string[];
+}
+
+/** 报名状态 */
+export type EnrollmentStatus = "SUBMITTED" | "APPROVED" | "REJECTED" | "WITHDRAWN";
+
+/** 一份报名（原型 s28 提交后 · s30 审核表的一行） */
+export interface PlatformEnrollment {
+  /** 报名单号 */
+  enrollmentNo: string;
+  /** 平台活动 */
+  activityNo: string;
+  /** 报名的商家 */
+  entityNo: string;
+  /** 商家名 */
+  merchantName: string;
+  /** 报名的货 */
+  goodsNos: string[];
+  /** 报的份数 */
+  quota: number;
+  /** 已用份数 */
+  quotaUsed: number;
+  /** 最多平台补贴（最小货币单位）= 份数 × 每单平台补贴 */
+  platformMaxMinor: number;
+  /** 最多商家承担 = 份数 × 每单商家承担 */
+  merchantMaxMinor: number;
+  /** 商家评分（审核时看） */
+  rating: number;
+  /** 状态 */
+  status: EnrollmentStatus;
+  /** 驳回理由 */
+  rejectReason?: string | null;
+  /** 审核时间 */
+  reviewedAt?: number | null;
+  /** 提交时间 */
+  createdAt: number;
+}
+
+/**
+ * 平台活动（原型 s27 · s28 · s29 · s30）。规则与商家活动同一个模型；多出来的只有出资、预算、报名。
+ * 出资写成**每单金额**（s28 的约定）：商家看的是「一单我出多少」。
+ */
+export interface PlatformActivity {
+  /** 活动单号 */
+  activityNo: string;
+  /** 名称 */
+  name: string;
+  /** 触发：NONE 立减 / AMOUNT 满额 / QTY 满件 */
+  triggerType: string;
+  /** 满多少（分） */
+  triggerAmountMinor?: number | null;
+  /** 满几件 */
+  triggerQty?: number | null;
+  /** 优惠：现只有 CUT（减钱） */
+  benefitType: string;
+  /** 减多少（分） */
+  benefitAmountMinor?: number | null;
+  /** 活动开始 */
+  startAt?: number | null;
+  /** 活动结束 */
+  endAt?: number | null;
+  /** 报名截止 */
+  enrollDeadline?: number | null;
+  /** 平台出资万分比：10000 全额 / 5000 一半 / 0 不出 */
+  platformShareBp: number;
+  /** 平台预算（分） */
+  budgetMinor?: number | null;
+  /** 已通过的报名占掉的预算 */
+  reservedMinor: number;
+  /** 每单平台最多补贴 */
+  perOrderPlatformMinor: number;
+  /** 每单商家最多承担 */
+  perOrderMerchantMinor: number;
+  /** 报名门槛 */
+  enrollRule: PlatformEnrollRule;
+  /** DRAFT / RUNNING / ENDED */
+  status: string;
+  /** 待审报名数 */
+  submitted: number;
+  /** 已通过报名数 */
+  approved: number;
+  /** 已驳回报名数 */
+  rejected: number;
+  /** 商家端：我的报名；没报过为空 */
+  mine?: PlatformEnrollment | null;
 }

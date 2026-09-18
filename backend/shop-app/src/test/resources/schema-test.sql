@@ -3562,6 +3562,11 @@ CREATE TABLE IF NOT EXISTS pmt_activity
     period_quota INT(11) DEFAULT NULL,
     decide_hours INT(11) DEFAULT NULL,
     group_hours INT(11) DEFAULT NULL,
+    owner VARCHAR(16) NOT NULL DEFAULT 'MERCHANT',
+    platform_share_bp INT(11) DEFAULT NULL,
+    enroll_deadline BIGINT(20) DEFAULT NULL,
+    enroll_rule TEXT DEFAULT NULL,
+    enroll_reserved_minor BIGINT(20) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_pmt_activity_no UNIQUE (activity_no)
 );
@@ -4172,6 +4177,66 @@ CREATE TABLE IF NOT EXISTS pmt_period
     PRIMARY KEY (id),
     CONSTRAINT uk_pmt_period_no UNIQUE (period_no),
     CONSTRAINT uk_pmt_period_day UNIQUE (tenant_no, activity_no, period_date)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_enrollment
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    enrollment_no VARCHAR(64) NOT NULL,
+    activity_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    quota INT(11) NOT NULL,
+    quota_used INT(11) NOT NULL DEFAULT 0,
+    platform_max_minor BIGINT(20) NOT NULL,
+    merchant_max_minor BIGINT(20) NOT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'SUBMITTED',
+    reviewed_by VARCHAR(64) DEFAULT NULL,
+    reviewed_at BIGINT(20) DEFAULT NULL,
+    reject_reason VARCHAR(255) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_enrollment_no UNIQUE (enrollment_no),
+    CONSTRAINT uk_enrollment_once UNIQUE (tenant_no, activity_no, entity_no)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_enrollment_goods
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    enrollment_no VARCHAR(64) NOT NULL,
+    goods_no VARCHAR(64) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_enrollment_goods UNIQUE (enrollment_no, goods_no)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_activity_rule
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    activity_no VARCHAR(64) NOT NULL,
+    kind VARCHAR(16) NOT NULL,
+    seq INT(11) NOT NULL,
+    rule_type VARCHAR(16) NOT NULL,
+    params TEXT NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
 );
 
 -- 种子数据
@@ -8947,3 +9012,27 @@ INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated
 SELECT 'ANALYST', 'OPS_COMMUNITY__TAB_PLACES', 'OPS', NOW(), NOW()
 FROM DUAL WHERE NOT EXISTS (
   SELECT 1 FROM sys_role_point x WHERE x.role_code='ANALYST' AND x.point_code='OPS_COMMUNITY__TAB_PLACES');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MARKETING__TAB_PLATFORM', 'OPS_MARKETING', '平台活动', '平台活动', '/marketing?tab=platform', 'marketing:campaign:read', 'marketing:campaign:read', 'IMPLEMENTED', 1, 'P-7.2', 'MENU', 80, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MARKETING__TAB_PLATFORM');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_MARKETING__TAB_PLATFORMAUDIT', 'OPS_MARKETING', '报名审核', '平台活动', '/marketing?tab=platformAudit', 'marketing:campaign:read', 'marketing:campaign:read', 'IMPLEMENTED', 1, 'P-7.2', 'MENU', 90, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_MARKETING__TAB_PLATFORMAUDIT');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MARKETING__TAB_PLATFORM', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MARKETING__TAB_PLATFORM' AND x.end_code='OPS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_MARKETING__TAB_PLATFORMAUDIT', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_MARKETING__TAB_PLATFORMAUDIT' AND x.end_code='OPS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'CAMPAIGN_OPS', 'OPS_MARKETING__TAB_PLATFORM', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='CAMPAIGN_OPS' AND x.point_code='OPS_MARKETING__TAB_PLATFORM' AND x.end_code='OPS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'CAMPAIGN_OPS', 'OPS_MARKETING__TAB_PLATFORMAUDIT', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='CAMPAIGN_OPS' AND x.point_code='OPS_MARKETING__TAB_PLATFORMAUDIT' AND x.end_code='OPS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'GOODS_OPS', 'OPS_MARKETING__TAB_PLATFORM', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='GOODS_OPS' AND x.point_code='OPS_MARKETING__TAB_PLATFORM' AND x.end_code='OPS');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'GOODS_OPS', 'OPS_MARKETING__TAB_PLATFORMAUDIT', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='GOODS_OPS' AND x.point_code='OPS_MARKETING__TAB_PLATFORMAUDIT' AND x.end_code='OPS');

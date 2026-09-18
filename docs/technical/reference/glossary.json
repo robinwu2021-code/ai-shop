@@ -9674,6 +9674,12 @@
           "ar": "القسائم"
         },
         {
+          "key": "marketing.enrollable",
+          "zh-CN": "{n} 可报名",
+          "en": "{n} open",
+          "ar": "{n} متاحة"
+        },
+        {
           "key": "marketing.groups",
           "zh-CN": "团",
           "en": "Group buys",
@@ -9726,6 +9732,12 @@
           "zh-CN": "{n} 待处理",
           "en": "{n} to handle",
           "ar": "{n} بانتظار المعالجة"
+        },
+        {
+          "key": "marketing.platform",
+          "zh-CN": "平台活动",
+          "en": "Platform campaigns",
+          "ar": "حملات المنصة"
         },
         {
           "key": "marketing.quotes",
@@ -12060,6 +12072,276 @@
           "zh-CN": "试用已用过（一家商户仅一次）",
           "en": "Trial already used (once per merchant)",
           "ar": "تم استخدام التجربة (مرة واحدة لكل تاجر)"
+        },
+        {
+          "key": "platformActs.deadline",
+          "zh-CN": "{d} 截止",
+          "en": "Closes {d}",
+          "ar": "تُغلق {d}"
+        },
+        {
+          "key": "platformActs.empty",
+          "zh-CN": "暂无平台活动",
+          "en": "No platform campaigns",
+          "ar": "لا توجد حملات للمنصة"
+        },
+        {
+          "key": "platformActs.ended",
+          "zh-CN": "已结束",
+          "en": "Ended",
+          "ar": "منتهية"
+        },
+        {
+          "key": "platformActs.ruleAmount",
+          "zh-CN": "满 {m} 减 {n}",
+          "en": "{n} off over {m}",
+          "ar": "خصم {n} فوق {m}"
+        },
+        {
+          "key": "platformActs.ruleAny",
+          "zh-CN": "立减 {n}",
+          "en": "{n} off",
+          "ar": "خصم {n}"
+        },
+        {
+          "key": "platformActs.ruleQty",
+          "zh-CN": "满 {m} 件减 {n}",
+          "en": "{n} off {m}+ items",
+          "ar": "خصم {n} لـ {m}+ قطع"
+        },
+        {
+          "key": "platformActs.share",
+          "zh-CN": "平台补贴 {p}%",
+          "en": "Platform pays {p}%",
+          "ar": "تدفع المنصة {p}٪"
+        },
+        {
+          "key": "platformActs.status.APPROVED",
+          "zh-CN": "已通过",
+          "en": "Approved",
+          "ar": "مقبول"
+        },
+        {
+          "key": "platformActs.status.SUBMITTED",
+          "zh-CN": "待审核",
+          "en": "In review",
+          "ar": "قيد المراجعة"
+        },
+        {
+          "key": "platformActs.tab.ENDED",
+          "zh-CN": "已结束",
+          "en": "Ended",
+          "ar": "منتهية"
+        },
+        {
+          "key": "platformActs.tab.ENROLLABLE",
+          "zh-CN": "可报名",
+          "en": "Open",
+          "ar": "متاحة"
+        },
+        {
+          "key": "platformActs.tab.ENROLLED",
+          "zh-CN": "已报名",
+          "en": "Joined",
+          "ar": "مسجَّل"
+        },
+        {
+          "key": "platformActs.title",
+          "zh-CN": "平台活动",
+          "en": "Platform campaigns",
+          "ar": "حملات المنصة"
+        },
+        {
+          "key": "platformActs.to",
+          "zh-CN": "至",
+          "en": "to",
+          "ar": "إلى"
+        },
+        {
+          "key": "platformApply.activity",
+          "zh-CN": "活动",
+          "en": "Campaign",
+          "ar": "الحملة"
+        },
+        {
+          "key": "platformApply.approved",
+          "zh-CN": "已通过，按活动时间自动开始",
+          "en": "Approved; starts automatically on the campaign dates",
+          "ar": "مقبول؛ يبدأ تلقائيًا في مواعيد الحملة"
+        },
+        {
+          "key": "platformApply.cancel",
+          "zh-CN": "取消",
+          "en": "Cancel",
+          "ar": "إلغاء"
+        },
+        {
+          "key": "platformApply.goods",
+          "zh-CN": "商品",
+          "en": "Products",
+          "ar": "المنتجات"
+        },
+        {
+          "key": "platformApply.goodsN",
+          "zh-CN": "已选 {n} 件",
+          "en": "{n} selected",
+          "ar": "تم اختيار {n}"
+        },
+        {
+          "key": "platformApply.groupEnroll",
+          "zh-CN": "报名信息",
+          "en": "Your enrollment",
+          "ar": "بيانات التسجيل"
+        },
+        {
+          "key": "platformApply.groupRule",
+          "zh-CN": "活动规则",
+          "en": "Campaign rules",
+          "ar": "قواعد الحملة"
+        },
+        {
+          "key": "platformApply.maxMerchant",
+          "zh-CN": "最多承担",
+          "en": "Your max cost",
+          "ar": "أقصى تكلفة عليك"
+        },
+        {
+          "key": "platformApply.merchantPer",
+          "zh-CN": "商家承担",
+          "en": "You pay",
+          "ar": "تدفع أنت"
+        },
+        {
+          "key": "platformApply.needGoods",
+          "zh-CN": "请选择商品",
+          "en": "Select products",
+          "ar": "اختر المنتجات"
+        },
+        {
+          "key": "platformApply.needQuota",
+          "zh-CN": "请填写份数",
+          "en": "Enter a quantity",
+          "ar": "أدخل الكمية"
+        },
+        {
+          "key": "platformApply.noGoods",
+          "zh-CN": "暂无在售商品",
+          "en": "No products on sale",
+          "ar": "لا توجد منتجات معروضة"
+        },
+        {
+          "key": "platformApply.note",
+          "zh-CN": "审核通过后按活动时间自动开始",
+          "en": "Starts automatically on the campaign dates once approved",
+          "ar": "تبدأ تلقائيًا في مواعيد الحملة بعد الموافقة"
+        },
+        {
+          "key": "platformApply.pending",
+          "zh-CN": "已提交，等待平台审核；审核前可修改",
+          "en": "Submitted and awaiting review; you can edit until then",
+          "ar": "أُرسل وينتظر المراجعة؛ يمكنك التعديل حتى ذلك الحين"
+        },
+        {
+          "key": "platformApply.perOrder",
+          "zh-CN": "{n} / 单",
+          "en": "{n} / order",
+          "ar": "{n} / طلب"
+        },
+        {
+          "key": "platformApply.pick",
+          "zh-CN": "请选择",
+          "en": "Select",
+          "ar": "اختر"
+        },
+        {
+          "key": "platformApply.platformPer",
+          "zh-CN": "平台补贴",
+          "en": "Platform pays",
+          "ar": "تدفع المنصة"
+        },
+        {
+          "key": "platformApply.quota",
+          "zh-CN": "份数",
+          "en": "Quantity",
+          "ar": "الكمية"
+        },
+        {
+          "key": "platformApply.quotaPh",
+          "zh-CN": "份",
+          "en": "Orders",
+          "ar": "طلبات"
+        },
+        {
+          "key": "platformApply.rejected",
+          "zh-CN": "未通过：{r}。可修改后重新提交",
+          "en": "Not approved: {r}. Edit and resubmit",
+          "ar": "لم يُقبل: {r}. عدّل وأعد الإرسال"
+        },
+        {
+          "key": "platformApply.resubmit",
+          "zh-CN": "重新提交",
+          "en": "Resubmit",
+          "ar": "إعادة الإرسال"
+        },
+        {
+          "key": "platformApply.rule",
+          "zh-CN": "规则",
+          "en": "Rule",
+          "ar": "القاعدة"
+        },
+        {
+          "key": "platformApply.settle",
+          "zh-CN": "结算",
+          "en": "Settlement",
+          "ar": "التسوية"
+        },
+        {
+          "key": "platformApply.settleValue",
+          "zh-CN": "随订单结算",
+          "en": "With each order",
+          "ar": "مع كل طلب"
+        },
+        {
+          "key": "platformApply.submit",
+          "zh-CN": "提交报名",
+          "en": "Submit",
+          "ar": "إرسال"
+        },
+        {
+          "key": "platformApply.submitted",
+          "zh-CN": "已提交",
+          "en": "Submitted",
+          "ar": "تم الإرسال"
+        },
+        {
+          "key": "platformApply.time",
+          "zh-CN": "时间",
+          "en": "Dates",
+          "ar": "المدة"
+        },
+        {
+          "key": "platformApply.title",
+          "zh-CN": "活动报名",
+          "en": "Join campaign",
+          "ar": "التسجيل في الحملة"
+        },
+        {
+          "key": "platformApply.withdraw",
+          "zh-CN": "撤回报名",
+          "en": "Withdraw",
+          "ar": "سحب"
+        },
+        {
+          "key": "platformApply.withdrawBody",
+          "zh-CN": "撤回后可在截止前重新报名",
+          "en": "You can enroll again before the deadline",
+          "ar": "يمكنك التسجيل مجددًا قبل الموعد النهائي"
+        },
+        {
+          "key": "platformApply.withdrawTitle",
+          "zh-CN": "撤回报名",
+          "en": "Withdraw enrollment",
+          "ar": "سحب التسجيل"
         },
         {
           "key": "plays.desc.BATCH",
@@ -20151,6 +20433,18 @@
           "ar": "يجب أن يكون العدد الإجمالي أكبر من 0"
         },
         {
+          "key": "err.marketing.enrollment_closed",
+          "zh-CN": "报名已截止或不满足报名门槛",
+          "en": "Enrollment has closed, or the store does not meet the requirements",
+          "ar": "انتهى التسجيل أو لا يستوفي المتجر الشروط"
+        },
+        {
+          "key": "err.marketing.enrollment_over_budget",
+          "zh-CN": "通过这份报名会超出平台预算",
+          "en": "Approving this enrollment would exceed the platform budget",
+          "ar": "الموافقة على هذا التسجيل تتجاوز ميزانية المنصة"
+        },
+        {
           "key": "err.marketing.fission_reward_count_invalid",
           "zh-CN": "邀请人与被邀请人至少一方有奖励，且张数不能为负",
           "en": "At least one side has to get something, and counts cannot be negative",
@@ -21583,6 +21877,13 @@
       "package": "ai.neargo.shop.promotion.entity"
     },
     {
+      "table": "pmt_activity_rule",
+      "class": "PmtActivityRule",
+      "zh": "自己组合的一行（原型 s11）：一个条件或一个优惠。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
       "table": "pmt_apply",
       "class": "PmtApply",
       "zh": "优惠发生记录：一单命中了什么、一张券被用了第几次。",
@@ -21607,6 +21908,20 @@
       "table": "pmt_coupon_scope",
       "class": "PmtCouponScope",
       "zh": "券的适用范围（规则）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_enrollment",
+      "class": "PmtEnrollment",
+      "zh": "平台活动报名单（详细设计 §1.6）：一个商家对一个平台活动的一次报名。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_enrollment_goods",
+      "class": "PmtEnrollmentGoods",
+      "zh": "报名的商品。",
       "module": "shop-core",
       "package": "ai.neargo.shop.promotion.entity"
     },
@@ -23137,6 +23452,13 @@
         "name": "PROMO_PERIOD",
         "value": "PD",
         "zh": "集单的一期（pmt_period）",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "PROMO_ENROLLMENT",
+        "value": "PE",
+        "zh": "平台活动报名单（pmt_enrollment）",
         "module": "shop-base"
       },
       {
@@ -25898,6 +26220,27 @@
         "module": "shop-core"
       },
       {
+        "host": "PmtActivity",
+        "name": "OWNER_MERCHANT",
+        "value": "MERCHANT",
+        "zh": "谁发起的活动。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtActivity",
+        "name": "OWNER_PLATFORM",
+        "value": "PLATFORM",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtActivity",
+        "name": "PLATFORM_ENTITY",
+        "value": "PLATFORM",
+        "zh": "平台活动的 entity_no 哨兵值。",
+        "module": "shop-core"
+      },
+      {
         "host": "PmtActivityAudience",
         "name": "TAG",
         "value": "TAG",
@@ -25951,6 +26294,62 @@
         "name": "ALL",
         "value": "ALL",
         "zh": "全店。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtActivityRule",
+        "name": "CONDITION",
+        "value": "CONDITION",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtActivityRule",
+        "name": "BENEFIT",
+        "value": "BENEFIT",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtActivityRule",
+        "name": "COND_AMOUNT",
+        "value": "AMOUNT",
+        "zh": "条件：满金额 / 满件数 / 指定商品",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtActivityRule",
+        "name": "COND_QTY",
+        "value": "QTY",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtActivityRule",
+        "name": "COND_GOODS",
+        "value": "GOODS",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtActivityRule",
+        "name": "BEN_CUT",
+        "value": "CUT",
+        "zh": "优惠：减钱 / 打折（带封顶）/ 送积分",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtActivityRule",
+        "name": "BEN_PERCENT",
+        "value": "PERCENT",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtActivityRule",
+        "name": "BEN_POINTS",
+        "value": "POINTS",
+        "zh": "",
         "module": "shop-core"
       },
       {
@@ -26111,6 +26510,34 @@
         "host": "PmtCoupon",
         "name": "BY_MERCHANT",
         "value": "MERCHANT",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtEnrollment",
+        "name": "SUBMITTED",
+        "value": "SUBMITTED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtEnrollment",
+        "name": "APPROVED",
+        "value": "APPROVED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtEnrollment",
+        "name": "REJECTED",
+        "value": "REJECTED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtEnrollment",
+        "name": "WITHDRAWN",
+        "value": "WITHDRAWN",
         "zh": "",
         "module": "shop-core"
       },
@@ -27830,6 +28257,8 @@
           "ACTIVITY_RULE_LOCKED",
           "GROUP_CLOSED",
           "GROUP_JOIN_NEEDS_UPGRADE",
+          "ENROLLMENT_CLOSED",
+          "ENROLLMENT_OVER_BUDGET",
           "SPLIT_RECEIVER_NOT_READY",
           "SPLIT_EXPIRED",
           "WITHDRAW_STATE_ILLEGAL",
@@ -28473,6 +28902,17 @@
           "NEARBY"
         ],
         "zh": "判重的依据。"
+      },
+      {
+        "name": "EnrollmentStatus",
+        "client": "shared",
+        "values": [
+          "SUBMITTED",
+          "APPROVED",
+          "REJECTED",
+          "WITHDRAWN"
+        ],
+        "zh": "报名状态"
       },
       {
         "name": "ExemptType",
@@ -29407,6 +29847,8 @@
           "/pages/group/index",
           "/pages/group-open/index",
           "/pages/activity-edit/index",
+          "/pages/platform-activities/index",
+          "/pages/platform-activity-apply/index",
           "/pages/stock/index",
           "/pages/stock-detail/index",
           "/pages/stock-cross/index",

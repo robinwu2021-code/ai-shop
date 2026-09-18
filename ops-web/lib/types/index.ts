@@ -126,6 +126,127 @@ export interface OpsPromoCoupon {
   flags: string[];
 }
 
+/** 平台活动的报名门槛（原型 s29「报名门槛」「类目」「城市」） */
+export interface PlatformEnrollRule {
+  /** 评分下限；空 = 不限 */
+  minRating: number | null;
+  /** 是否要求无违规 */
+  noViolation: boolean;
+  /** 只收这些类目的货 */
+  categoryNos: string[];
+  /** 只收这些城市的店（暂只展示、不校验） */
+  cityCodes: string[];
+}
+
+/**
+ * 平台活动（原型 s29 · s30）。与商家活动同一个模型；多出来的只有出资、预算、报名。
+ * 出资比例用万分比：10000 全额 / 5000 一半 / 0 不出。
+ */
+export interface OpsPlatformActivity {
+  /** 活动号 */
+  activityNo: string;
+  /** 名称 */
+  name: string;
+  /** 触发：NONE 立减 / AMOUNT 满额 / QTY 满件 */
+  triggerType: string;
+  /** 满多少（分） */
+  triggerAmountMinor: number | null;
+  /** 满几件 */
+  triggerQty: number | null;
+  /** 优惠方式（现只有 CUT） */
+  benefitType: string;
+  /** 减多少（分） */
+  benefitAmountMinor: number | null;
+  /** 活动开始 */
+  startAt: number | null;
+  /** 活动结束 */
+  endAt: number | null;
+  /** 报名截止 */
+  enrollDeadline: number | null;
+  /** 平台出资万分比 */
+  platformShareBp: number;
+  /** 平台预算（分） */
+  budgetMinor: number | null;
+  /** 已通过的报名占掉的预算（分） */
+  reservedMinor: number;
+  /** 每单平台最多补贴（分） */
+  perOrderPlatformMinor: number;
+  /** 每单商家最多承担（分） */
+  perOrderMerchantMinor: number;
+  /** 报名门槛 */
+  enrollRule: PlatformEnrollRule;
+  /** DRAFT / RUNNING / ENDED */
+  status: string;
+  /** 待审 */
+  submitted: number;
+  /** 已通过 */
+  approved: number;
+  /** 已驳回 */
+  rejected: number;
+}
+
+/** 建 / 改平台活动的入参（s29）。publish = true 即发布报名 */
+export interface OpsPlatformDraft {
+  /** 空 = 新建 */
+  activityNo?: string;
+  /** 名称 */
+  name: string;
+  /** NONE / AMOUNT / QTY */
+  triggerType: string;
+  /** 满多少（分） */
+  triggerAmountMinor?: number | null;
+  /** 满几件 */
+  triggerQty?: number | null;
+  /** 减多少（分） */
+  benefitAmountMinor: number;
+  /** 活动开始 */
+  startAt: number;
+  /** 活动结束 */
+  endAt: number;
+  /** 报名截止，须早于开始 */
+  enrollDeadline: number;
+  /** 平台出资万分比 */
+  platformShareBp: number;
+  /** 平台预算（分），平台出资时必填 */
+  budgetMinor?: number | null;
+  /** 报名门槛 */
+  enrollRule: PlatformEnrollRule;
+  /** 发布报名还是存草稿 */
+  publish: boolean;
+}
+
+/** 一份报名（s30 审核表的一行） */
+export interface OpsEnrollment {
+  /** 报名单号 */
+  enrollmentNo: string;
+  /** 平台活动 */
+  activityNo: string;
+  /** 商家 */
+  entityNo: string;
+  /** 商家名 */
+  merchantName: string;
+  /** 报名的货 */
+  goodsNos: string[];
+  /** 报的份数 */
+  quota: number;
+  /** 已用份数 */
+  quotaUsed: number;
+  /** 最多平台出资（分） */
+  platformMaxMinor: number;
+  /** 最多商家承担（分） */
+  merchantMaxMinor: number;
+  /** 商家评分 */
+  rating: number;
+  /** SUBMITTED / APPROVED / REJECTED / WITHDRAWN */
+  status: string;
+  /** 驳回理由 */
+  rejectReason: string | null;
+  /** 审核时间 */
+  reviewedAt: number | null;
+  /** 提交时间 */
+  createdAt: number;
+}
+
 /** 运营看到的一场活动（新模型）。`audienceCount === 0` 表示对所有人生效 */
 export interface OpsPromoActivity {
   /** 活动号 */

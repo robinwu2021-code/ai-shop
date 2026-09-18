@@ -30,6 +30,14 @@ public class MarketingSummaryServiceImpl implements MarketingSummaryService {
     private final CouponMapper couponMapper;
     private final PeriodService periodService;
 
+    /** 可报名的平台活动数（s01「平台活动」那一格）。setter 注入，缺了就是 0 */
+    private ai.neargo.shop.promotion.service.PlatformActivityService platformService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPlatformService(ai.neargo.shop.promotion.service.PlatformActivityService platformService) {
+        this.platformService = platformService;
+    }
+
     public MarketingSummaryServiceImpl(ApplyMapper applyMapper, ActivityMapper activityMapper,
                                        CouponMapper couponMapper, PeriodService periodService) {
         this.applyMapper = applyMapper;
@@ -74,6 +82,7 @@ public class MarketingSummaryServiceImpl implements MarketingSummaryService {
 
         // 团的两个数（差人的团、待报价）由门户层补：团在 marketing 域，见 SummaryVO#withGroups
         return new SummaryVO(discount, orders, activities, coupons,
-                periodQty, cutoff, periodsShort, 0, 0, 0);
+                periodQty, cutoff, periodsShort, 0, 0,
+                platformService == null ? 0 : platformService.forMerchant(entityNo, "ENROLLABLE").size());
     }
 }

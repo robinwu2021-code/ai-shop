@@ -32,7 +32,8 @@ DOMAINS = [
     ("会员与营销", ["customers", "marketing", "coupons", "member", "cards", "members",
                     "member-detail",
                     "member-tags", "member-settings", "segments", "coupon-edit", "coupon-issue", "member-card",
-                    "coupon", "coupon-send", "coupon-issues", "coupon-code"]),
+                    "coupon", "coupon-send", "coupon-issues", "coupon-code",
+                    "platform-activities", "platform-activity-apply"]),
     ("团购与求团", ["groups", "quotes", "requests", "group", "request", "request-create", "group-host",
                     "group-open"]),
     ("钱", ["settle", "payment", "plan", "wallet", "points", "points-records",
@@ -267,7 +268,7 @@ PROTO_URL_BY_ROUTE = {
 
 PROTO_URL_BY_ROUTE["ops-web"] = {
     "marketing?tab=platform": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-    "marketing?tab=platform-audit": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+    "marketing?tab=platformAudit": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
 }
 
 
@@ -329,7 +330,7 @@ PROTO_ANCHORS = {
         # 订单详情只挂集单那一屏（s37）；其它订单状态的原型不在这份里
         "pages/order/index": "s37",
     },
-    "ops-web": {"marketing?tab=platform": "s29", "marketing?tab=platform-audit": "s30"},
+    "ops-web": {"marketing?tab=platform": "s29", "marketing?tab=platformAudit": "s30"},
 }
 
 # 本机 dev server 端口（mock 模式）。点「预览」直接进那一页，不用自己拼路由
@@ -347,11 +348,7 @@ PROTOTYPES = [
     ("ops-web", "/members", "会员总览（跨商家）", "会员与营销"),
     ("ops-web", "/members?tab=person", "人档与合并", "会员与营销"),
     ("ops-web", "/members?tab=reach", "触达监控", "会员与营销"),
-    # 营销原型里还没有页面的四屏（集单两页已于 P1a 落地，从这里删掉）
-    ("b-app", "/pages/platform-activities/index", "平台活动", "会员与营销"),
-    ("b-app", "/pages/platform-activity-apply/index", "报名平台活动", "会员与营销"),
-    ("ops-web", "/marketing?tab=platform", "新建平台活动", "会员与营销"),
-    ("ops-web", "/marketing?tab=platform-audit", "平台活动报名审核", "会员与营销"),
+    # 营销原型的平台活动四屏已于 P3 落地（b-app 两页、运营端营销页两个 tab），从这里删掉
     # 进销存九屏：需求见 docs/requirements/进销存-需求.md，落地后从这里删掉
     # 商家资金全链路：接口都在、B 端没有出口的那几页
 ]

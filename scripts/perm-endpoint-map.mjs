@@ -271,6 +271,10 @@ export const RULES = [
 
   // 促销（活动与券的只读面 + 停投）。停投是**处置**：它当场改变 C 端看到的价格，
   // 与新建活动同码，而与只读分开
+  // 平台活动与报名审核（s29 · s30）：看是 read，建与审是 update
+  ["GET", /^\/ops\/promotion\/platform-activities/, "marketing:campaign:read"],
+  ["*", /^\/ops\/promotion\/platform-activities/, "marketing:campaign:update"],
+  ["*", /^\/ops\/promotion\/enrollments/, "marketing:campaign:update"],
   ["GET", /^\/ops\/promotion\/activities/, "marketing:campaign:read"],
   ["*", /^\/ops\/promotion\/activities/, "marketing:campaign:update"],
   ["GET", /^\/ops\/promotion\/coupons/, "marketing:coupon:read"],

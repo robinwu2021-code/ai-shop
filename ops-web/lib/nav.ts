@@ -338,6 +338,12 @@ export const NAV: NavSection[] = [
        */
       { href: "/marketing?tab=promoCoupons", label: "券敞口", perm: "marketing:coupon:read", group: "敞口", matrix: "P-7.1", ready: true },
       { href: "/marketing?tab=promoActivities", label: "活动敞口", perm: "marketing:campaign:read", group: "敞口", matrix: "P-7.2", ready: true },
+      /*
+       * 平台活动（原型 s29 · s30）：平台发起、商家报名、运营审核。建与审是 update，看是 read ——
+       * 两条都挂 read，页面里按 marketing:campaign:update 决定能不能点「新建」「通过」。
+       */
+      { href: "/marketing?tab=platform", label: "平台活动", perm: "marketing:campaign:read", group: "平台活动", matrix: "P-7.2", ready: true },
+      { href: "/marketing?tab=platformAudit", label: "报名审核", perm: "marketing:campaign:read", group: "平台活动", matrix: "P-7.2", ready: true },
     
 
       // ── P-8 团购与求团 ──────────────────────────────────────────────────────

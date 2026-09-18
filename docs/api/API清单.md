@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 727 个接口**：后端已实现 655（90%）· 前端在调 656
+**合计 735 个接口**：后端已实现 663（90%）· 前端在调 664
 
 ---
 
@@ -219,7 +219,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **240** 个接口 ｜ 后端已实现 **235**（98%）｜ 前端在调 **240**
+共 **244** 个接口 ｜ 后端已实现 **239**（98%）｜ 前端在调 **244**
 
 ### activities（4）
 
@@ -593,6 +593,15 @@
 | GET | `/biz/plan` | 我的套餐（档位/用量/三档对比） | — | `MerchantPlan` | 🔒 | ✅ | ✅ |
 | POST | `/biz/plan/trial` | 自助开通试用（一主体一次） | — | `MerchantPlan` | 🔒 | ✅ | ✅ |
 
+### platform-activity（4）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/platform-activity` | 平台活动（可报名 / 已报名 / 已结束） | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/platform-activity/{activityNo}` | 平台活动详情（含我的报名） | — | `PlatformActivity` | 🔒 | ✅ | ✅ |
+| POST | `/biz/platform-activity/{activityNo}/enrollment` | 报名平台活动（审核前可改） | `EnrollReq` | `PlatformEnrollment` | 🔒 | ✅ | ✅ |
+| POST | `/biz/platform-activity/{activityNo}/withdraw` | 撤回待审的报名 | — | `PlatformEnrollment` | 🔒 | ✅ | ✅ |
+
 ### points（3）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
@@ -773,7 +782,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **396** 个接口 ｜ 后端已实现 **330**（83%）｜ 前端在调 **325**
+共 **400** 个接口 ｜ 后端已实现 **334**（84%）｜ 前端在调 **329**
 
 ### aftersale（4）
 
@@ -1020,7 +1029,7 @@
 | POST | `/ops/marketing/member-cards/{cardNo}/status` | 状态推进（草稿→启用⇄暂停→停售），非法迁移抛错 | — | `MemberCard` | — | ⬜ | ✅ |
 | POST | `/ops/marketing/member-cards/{cardNo}/unarchive` | unarchiveMemberCard | — | `MemberCard` | — | ⬜ | ✅ |
 
-### member（7）
+### member（11）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1031,6 +1040,10 @@
 | GET | `/ops/promotion/activities` | 全平台活动（新模型）：归属、受众、限量 */ | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/promotion/activities/{activityNo}/stop` | 强制停止一个活动 | — | `OpsPromoActivity` | — | ✅ | ✅ |
 | GET | `/ops/promotion/coupons` | 全平台券（新模型）：归属、敞口、异常标记 */ | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/promotion/enrollments/{enrollmentNo}/review` | 通过 / 驳回 | — | `OpsEnrollment` | — | ✅ | ✅ |
+| GET | `/ops/promotion/platform-activities` | 平台活动（s29）：全部，含草稿，带审核计数与预算占用 */ | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/promotion/platform-activities` | 建 / 改平台活动 | — | `OpsPlatformActivity` | — | ✅ | ✅ |
+| GET | `/ops/promotion/platform-activities/{activityNo}/enrollments` | 一个平台活动的报名（s30） | — | `数组` | — | ✅ | ✅ |
 
 ### merchant（44）
 

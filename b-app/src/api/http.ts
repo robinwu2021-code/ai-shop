@@ -13,6 +13,7 @@ import type {
   SaveGoodsReqBody,
   CreateGroupReq,
   DissolveGroupReq,
+  EnrollReq,
   CrossStoreCompareQuery,
   GoodsListQuery,
   HandleAfterSaleReq,
@@ -109,6 +110,8 @@ import type {
   PickingRow,
   GroupBuy,
   GroupPickupOption,
+  PlatformActivity,
+  PlatformEnrollment,
   GroupRequest,
   CampaignDraft,
   MarketingCampaign,
@@ -458,6 +461,12 @@ export const httpApi: MerchantApi = {
   mDissolveGroup: (groupNo, reason) =>
     http.post<GroupBuy>(buildPath(E.mDissolveGroup.path, { groupNo }), { reason } satisfies DissolveGroupReq),
   mGroupPickups: () => http.get<GroupPickupOption[]>(E.mGroupPickups.path),
+  mPlatformActivities: (tab) => http.get<PlatformActivity[]>(E.mPlatformActivities.path, tab ? { tab } : undefined),
+  mPlatformActivity: (activityNo) => http.get<PlatformActivity>(buildPath(E.mPlatformActivity.path, { activityNo })),
+  mEnroll: (activityNo, req) =>
+    http.post<PlatformEnrollment>(buildPath(E.mEnroll.path, { activityNo }), req satisfies EnrollReq),
+  mWithdrawEnrollment: (activityNo) =>
+    http.post<PlatformEnrollment>(buildPath(E.mWithdrawEnrollment.path, { activityNo }), {}),
   mRequestList: () => http.get<GroupRequest[]>(E.mRequestList.path),
   mQuote: (requestNo, payload) =>
     http.post<Quote>(buildPath(E.mQuote.path, { requestNo }), {

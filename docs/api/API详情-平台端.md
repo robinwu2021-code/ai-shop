@@ -4717,6 +4717,106 @@ _无字段_
 类型：[`OpsPromoCoupon`](#opspromocoupon)\[\]
 
 
+#### POST `/ops/promotion/enrollments/{enrollmentNo}/review`
+
+通过 / 驳回
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `enrollmentNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`OpsEnrollment`](#opsenrollment)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `enrollmentNo` | `string` | 是 | 报名单号 |
+| `activityNo` | `string` | 是 | 平台活动 |
+| `entityNo` | `string` | 是 | 商家 |
+| `merchantName` | `string` | 是 | 商家名 |
+| `goodsNos` | `string`\[\] | 是 | 报名的货 |
+| `quota` | `number` | 是 | 报的份数 |
+| `quotaUsed` | `number` | 是 | 已用份数 |
+| `platformMaxMinor` | `number` | 是 | 最多平台出资（分） |
+| `merchantMaxMinor` | `number` | 是 | 最多商家承担（分） |
+| `rating` | `number` | 是 | 商家评分 |
+| `status` | `string` | 是 | SUBMITTED / APPROVED / REJECTED / WITHDRAWN |
+| `rejectReason` | `string,null` | 是 | 驳回理由 |
+| `reviewedAt` | `number,null` | 是 | 审核时间 |
+| `createdAt` | `number` | 是 | 提交时间 |
+
+
+#### GET `/ops/promotion/platform-activities`
+
+平台活动（s29）：全部，含草稿，带审核计数与预算占用 */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`OpsPlatformActivity`](#opsplatformactivity)\[\]
+
+
+#### POST `/ops/promotion/platform-activities`
+
+建 / 改平台活动
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`OpsPlatformActivity`](#opsplatformactivity)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activityNo` | `string` | 是 | 活动号 |
+| `name` | `string` | 是 | 名称 |
+| `triggerType` | `string` | 是 | 触发：NONE 立减 / AMOUNT 满额 / QTY 满件 |
+| `triggerAmountMinor` | `number,null` | 是 | 满多少（分） |
+| `triggerQty` | `number,null` | 是 | 满几件 |
+| `benefitType` | `string` | 是 | 优惠方式（现只有 CUT） |
+| `benefitAmountMinor` | `number,null` | 是 | 减多少（分） |
+| `startAt` | `number,null` | 是 | 活动开始 |
+| `endAt` | `number,null` | 是 | 活动结束 |
+| `enrollDeadline` | `number,null` | 是 | 报名截止 |
+| `platformShareBp` | `number` | 是 | 平台出资万分比 |
+| `budgetMinor` | `number,null` | 是 | 平台预算（分） |
+| `reservedMinor` | `number` | 是 | 已通过的报名占掉的预算（分） |
+| `perOrderPlatformMinor` | `number` | 是 | 每单平台最多补贴（分） |
+| `perOrderMerchantMinor` | `number` | 是 | 每单商家最多承担（分） |
+| `enrollRule` | [`#/definitions/PlatformEnrollRule`](#definitionsplatformenrollrule) | 是 | 报名门槛 |
+| `status` | `string` | 是 | DRAFT / RUNNING / ENDED |
+| `submitted` | `number` | 是 | 待审 |
+| `approved` | `number` | 是 | 已通过 |
+| `rejected` | `number` | 是 | 已驳回 |
+
+
+#### GET `/ops/promotion/platform-activities/{activityNo}/enrollments`
+
+一个平台活动的报名（s30）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `activityNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`OpsEnrollment`](#opsenrollment)\[\]
+
+
 ### merchant
 
 #### GET `/ops/admission/deposits/{merchantNo}`
@@ -10850,6 +10950,27 @@ KPI 卡（金额为最小货币单位整数）。
 | `ageMs` | `number,null` | 是 | 从提交到现在的停留时长（毫秒）；null = 还没提交。越大越该有人去问 |
 | `canReceiveMoney` | `boolean` | 是 | applyStatus === "ACTIVE" |
 
+### OpsEnrollment
+
+一份报名（s30 审核表的一行）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `enrollmentNo` | `string` | 是 | 报名单号 |
+| `activityNo` | `string` | 是 | 平台活动 |
+| `entityNo` | `string` | 是 | 商家 |
+| `merchantName` | `string` | 是 | 商家名 |
+| `goodsNos` | `string`\[\] | 是 | 报名的货 |
+| `quota` | `number` | 是 | 报的份数 |
+| `quotaUsed` | `number` | 是 | 已用份数 |
+| `platformMaxMinor` | `number` | 是 | 最多平台出资（分） |
+| `merchantMaxMinor` | `number` | 是 | 最多商家承担（分） |
+| `rating` | `number` | 是 | 商家评分 |
+| `status` | `string` | 是 | SUBMITTED / APPROVED / REJECTED / WITHDRAWN |
+| `rejectReason` | `string,null` | 是 | 驳回理由 |
+| `reviewedAt` | `number,null` | 是 | 审核时间 |
+| `createdAt` | `number` | 是 | 提交时间 |
+
 ### OpsPerson
 
 人档：一份人档串起几家商家的会员关系 —— 这正是它存在的理由
@@ -10861,6 +10982,33 @@ KPI 卡（金额为最小货币单位整数）。
 | `userNo` | `string,null` | 是 | 用户号 |
 | `memberships` | [`#/definitions/OpsMember`](#definitionsopsmember)\[\] | 是 | 他在各商家的会员关系。**一份人档串起几家** —— 这正是人档存在的理由 |
 | `merges` | `string`\[\] | 是 | 合并过的人档号。合并不可逆，留痕是唯一的回溯手段 |
+
+### OpsPlatformActivity
+
+平台活动（原型 s29 · s30）。与商家活动同一个模型；多出来的只有出资、预算、报名。 出资比例用万分比：10000 全额 / 5000 一半 / 0 不出。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activityNo` | `string` | 是 | 活动号 |
+| `name` | `string` | 是 | 名称 |
+| `triggerType` | `string` | 是 | 触发：NONE 立减 / AMOUNT 满额 / QTY 满件 |
+| `triggerAmountMinor` | `number,null` | 是 | 满多少（分） |
+| `triggerQty` | `number,null` | 是 | 满几件 |
+| `benefitType` | `string` | 是 | 优惠方式（现只有 CUT） |
+| `benefitAmountMinor` | `number,null` | 是 | 减多少（分） |
+| `startAt` | `number,null` | 是 | 活动开始 |
+| `endAt` | `number,null` | 是 | 活动结束 |
+| `enrollDeadline` | `number,null` | 是 | 报名截止 |
+| `platformShareBp` | `number` | 是 | 平台出资万分比 |
+| `budgetMinor` | `number,null` | 是 | 平台预算（分） |
+| `reservedMinor` | `number` | 是 | 已通过的报名占掉的预算（分） |
+| `perOrderPlatformMinor` | `number` | 是 | 每单平台最多补贴（分） |
+| `perOrderMerchantMinor` | `number` | 是 | 每单商家最多承担（分） |
+| `enrollRule` | [`#/definitions/PlatformEnrollRule`](#definitionsplatformenrollrule) | 是 | 报名门槛 |
+| `status` | `string` | 是 | DRAFT / RUNNING / ENDED |
+| `submitted` | `number` | 是 | 待审 |
+| `approved` | `number` | 是 | 已通过 |
+| `rejected` | `number` | 是 | 已驳回 |
 
 ### OpsPromoActivity
 

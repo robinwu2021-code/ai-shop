@@ -500,9 +500,18 @@ public class OrderServiceImpl implements OrderService {
         // 门店级满减只对这单出货的那家店生效 —— 预览与下单走同一个解析，
         // 否则会出现「确认页减了 8 块、提交后没减」
         Map<String, String> stores = storesOf(cmd, split);
+        /*
+         * 线下付款的单**不带逐件小计**，平台活动在这一单上不生效：平台出资要从资金流里补给商家，
+         * 线下没有资金流可补（与平台券不能线下用同一条理由）。平台活动是自动生效的、买家没法不选，
+         * 所以这里是「不参与」而不是像平台券那样「拒单」—— 拒了的话活动期间线下单一律下不了。
+         */
+        boolean offline = PayModes.OFFLINE.equals(cmd.payMode());
         CampaignPort.Discount auto = campaignPort.autoDiscount(split.groups.stream()
                 .map(g -> new CampaignPort.MerchantAmount(
-                        g.merchantNo, g.goodsAmount(), g.goodsQty(), stores.get(g.merchantNo)))
+                        g.merchantNo, g.goodsAmount(), g.goodsQty(), stores.get(g.merchantNo),
+                        // 逐件小计：平台活动只对报名的货生效，门槛按那几件货判（P3）
+                        offline ? List.<CampaignPort.GoodsLine>of() : g.lines.stream().map(l -> new CampaignPort.GoodsLine(
+                                l.snapshot.goodsNo(), l.amount(), l.qty)).toList()))
                 .toList());
         if (cmd.couponNo() == null || cmd.couponNo().isBlank()) {
             return new Discounts(auto, CouponPort.Allocation.none());
@@ -536,13 +545,20 @@ public class OrderServiceImpl implements OrderService {
             return auto.of(merchantNo) + coupon.discountOf(merchantNo);
         }
 
-        /** 商家出资部分。活动**恒为商家出资**（店铺级活动平台不掏这个钱） */
+        /**
+         * 商家出资部分。店铺活动恒为商家出资；**平台活动**（P3）按出资比例拆开，平台那份不算在这里。
+         */
         long merchantFunded(String merchantNo) {
-            return auto.of(merchantNo) + (coupon.byMerchant() ? coupon.discountOf(merchantNo) : 0L);
+            return auto.of(merchantNo) - auto.platformOf(merchantNo)
+                    + (coupon.byMerchant() ? coupon.discountOf(merchantNo) : 0L);
         }
 
+        /**
+         * 平台出资部分：平台券 + 平台活动里平台出的那份。落进子单 {@code discount_platform}，
+         * 结算时算回给商家（{@code gross = 实付 + 平台补贴}），平台随统一结算周期付这笔钱。
+         */
         long platformFunded(String merchantNo) {
-            return coupon.byMerchant() ? 0L : coupon.discountOf(merchantNo);
+            return auto.platformOf(merchantNo) + (coupon.byMerchant() ? 0L : coupon.discountOf(merchantNo));
         }
     }
 

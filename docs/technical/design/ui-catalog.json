@@ -623,35 +623,30 @@
           ]
         },
         {
-          "name": "数据",
+          "name": "会员与营销",
           "pages": [
             {
               "app": "b-app",
-              "route": "/pages/stats/index",
-              "title": "经营数据",
-              "domain": "数据",
+              "route": "/pages/platform-activities/index",
+              "title": "平台活动",
+              "domain": "会员与营销",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/stats/index"
+              "proto": "s27",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/platform-activities/index"
             },
             {
               "app": "b-app",
-              "route": "/pages/cross-store/index",
-              "title": "跨店对比",
-              "domain": "数据",
+              "route": "/pages/platform-activity-apply/index",
+              "title": "活动报名",
+              "domain": "会员与营销",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/cross-store/index"
-            }
-          ]
-        },
-        {
-          "name": "会员与营销",
-          "pages": [
+              "proto": "s28",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/platform-activity-apply/index"
+            },
             {
               "app": "b-app",
               "route": "/pages/marketing/index",
@@ -805,28 +800,33 @@
               "proto": null,
               "protoUrl": null,
               "preview": null
+            }
+          ]
+        },
+        {
+          "name": "数据",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/stats/index",
+              "title": "经营数据",
+              "domain": "数据",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stats/index"
             },
             {
               "app": "b-app",
-              "route": "/pages/platform-activities/index",
-              "title": "平台活动",
-              "domain": "会员与营销",
+              "route": "/pages/cross-store/index",
+              "title": "跨店对比",
+              "domain": "数据",
               "tab": false,
-              "status": "原型",
-              "proto": "s27",
-              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-              "preview": null
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/platform-activity-apply/index",
-              "title": "报名平台活动",
-              "domain": "会员与营销",
-              "tab": false,
-              "status": "原型",
-              "proto": "s28",
-              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-              "preview": null
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/cross-store/index"
             }
           ]
         },
@@ -2223,6 +2223,30 @@
             },
             {
               "app": "ops-web",
+              "route": "/marketing?tab=platform",
+              "title": "平台活动",
+              "domain": "营销与增长",
+              "group": "平台活动",
+              "matrix": "P-7.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/marketing?tab=platform"
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing?tab=platformAudit",
+              "title": "报名审核",
+              "domain": "营销与增长",
+              "group": "平台活动",
+              "matrix": "P-7.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/marketing?tab=platformAudit"
+            },
+            {
+              "app": "ops-web",
               "route": "/groups",
               "title": "商家团",
               "domain": "营销与增长",
@@ -3130,28 +3154,6 @@
               "status": "原型",
               "proto": null,
               "protoUrl": null,
-              "preview": null
-            },
-            {
-              "app": "ops-web",
-              "route": "/marketing?tab=platform",
-              "title": "新建平台活动",
-              "domain": "会员与营销",
-              "tab": false,
-              "status": "原型",
-              "proto": "s29",
-              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-              "preview": null
-            },
-            {
-              "app": "ops-web",
-              "route": "/marketing?tab=platform-audit",
-              "title": "平台活动报名审核",
-              "domain": "会员与营销",
-              "tab": false,
-              "status": "原型",
-              "proto": "s30",
-              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": null
             }
           ]

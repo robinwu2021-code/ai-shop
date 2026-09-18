@@ -14,4 +14,10 @@ export const memberHttp: MemberApi = {
   listOpsPromoActivities: (entityNo) => client.get("/ops/promotion/activities", { entityNo }),
   stopOpsActivity: (activityNo, reason) =>
     client.post(`/ops/promotion/activities/${activityNo}/stop`, { reason }),
+  listPlatformActivities: () => client.get("/ops/promotion/platform-activities"),
+  savePlatformActivity: (draft) => client.post("/ops/promotion/platform-activities", draft),
+  listEnrollments: (activityNo, status) =>
+    client.get(`/ops/promotion/platform-activities/${activityNo}/enrollments`, { status }),
+  reviewEnrollment: (enrollmentNo, pass, reason) =>
+    client.post(`/ops/promotion/enrollments/${enrollmentNo}/review`, { pass, reason }),
 };

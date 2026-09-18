@@ -65,6 +65,9 @@ export const ROUTES = {
   group: "/pages/group/index",
   groupOpen: "/pages/group-open/index",
   activityEdit: "/pages/activity-edit/index",
+  // 平台活动（s27）与报名（s28）：入口在营销首页
+  platformActivities: "/pages/platform-activities/index",
+  platformApply: "/pages/platform-activity-apply/index",
 
   // ── 进销存（P-18）。**库存页是这一块的枢纽** ——
   // 工作台只开一道门到它，其余五屏从它里面进。

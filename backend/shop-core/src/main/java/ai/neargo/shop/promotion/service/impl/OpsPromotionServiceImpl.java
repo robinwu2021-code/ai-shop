@@ -82,6 +82,8 @@ public class OpsPromotionServiceImpl implements OpsPromotionService {
         return activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
                         .eq(entityNo != null && !entityNo.isBlank(),
                                 PmtActivity::getEntityNo, entityNo)
+                        // 这一页是「商家的活动会不会失控」；平台活动在「平台活动」那一栏看（s29 · s30）
+                        .ne(PmtActivity::getOwner, PmtActivity.OWNER_PLATFORM)
                         .orderByDesc(PmtActivity::getId))
                 .stream().map(this::vo).toList();
     }

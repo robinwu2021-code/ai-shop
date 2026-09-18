@@ -66,6 +66,25 @@ public final class PromotionMappers {
     public interface PeriodMapper extends BaseMapper<ai.neargo.shop.promotion.entity.PmtPeriod> {
     }
 
+    /** 平台活动报名单。唯一键 (tenant_no, activity_no, entity_no)：一个商家对一个活动只报一次 */
+    public interface EnrollmentMapper extends BaseMapper<ai.neargo.shop.promotion.entity.PmtEnrollment> {
+    }
+
+    public interface EnrollmentGoodsMapper extends BaseMapper<ai.neargo.shop.promotion.entity.PmtEnrollmentGoods> {
+
+        /**
+         * 物理删一份报名的货。理由同 {@link ActivityGoodsMapper#hardDeleteByActivity}：
+         * 唯一键不含 deleted，逻辑删之后重报同一件货必撞键。报名的货是纯派生数据（报名单说了算）。
+         */
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM pmt_enrollment_goods WHERE enrollment_no = #{enrollmentNo}")
+        int hardDeleteByEnrollment(@org.apache.ibatis.annotations.Param("enrollmentNo") String enrollmentNo);
+    }
+
+    /** 自己组合的条件与优惠行 */
+    public interface ActivityRuleMapper extends BaseMapper<ai.neargo.shop.promotion.entity.PmtActivityRule> {
+    }
+
     /** 优惠发生记录。**只增不改**，撤销是往 {@code reverted_at} 上写一笔 */
     public interface ApplyMapper extends BaseMapper<PmtApply> {
     }

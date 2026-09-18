@@ -50,6 +50,8 @@ public final class BizKey {
     public static final String PROMO_ACTIVITY = "PT";
     /** 集单的一期（pmt_period） */
     public static final String PROMO_PERIOD = "PD";
+    /** 平台活动报名单（pmt_enrollment） */
+    public static final String PROMO_ENROLLMENT = "PE";
     /** 触达记录：谁在什么时候被发过什么 */
     public static final String REACH = "RC";
     /** 内容位（首页楼层/轮播/频道）。与预约时段 APS 分开：那是时间段，这是版位 */

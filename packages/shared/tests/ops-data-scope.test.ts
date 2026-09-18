@@ -66,6 +66,12 @@ const OPS_DIMS = ["MERCHANT", "COMMUNITY", "PICKUP"] as const;
  * 不过写端点本来就不在 G1 的扫描范围里（G1 只看 GET），所以它们不必登记。
  */
 const SCOPE_BYPASS_OK: Record<string, string> = {
+  "PlatformActivityServiceImpl#opsList":
+    "平台活动那一行 entity_no = 'PLATFORM'，不属于任何商家：走 MERCHANT 维度的话，"
+    + "只看某些商家的运营连一个平台活动都看不到（整页空白）。边界靠显式 owner = PLATFORM，"
+    + "读不到任何商家的活动；报名单那一侧（按商家登记）照常走域",
+  "PlatformActivityServiceImpl#requirePlatform":
+    "同上：按活动号取平台活动那一行，钉死 owner = PLATFORM。审核页随后列报名走域，只看得到授权商家的报名",
   /*
    * ── 2026-08-29 逐条处置的六处 ──
    *
@@ -479,6 +485,11 @@ const ANCHOR_WAIVED: Record<string, string> = {
     + "一期里的订单可以落在多个自提点、多个社区 —— 按片区裁会把同一期拆散，汇总就不是那一期了",
   "pmt_period:PICKUP":
     "同上。「按自提点看份数」是期详情里的一个汇总维度，不是期的归属",
+  "pmt_enrollment:COMMUNITY":
+    "平台活动的报名单属于报名的商家，不属于片区。**看到空白的是**：配了社区域的运营打开报名审核。"
+    + "审核是 CAMPAIGN_OPS 的活，社区运营本来就不该有 marketing:*",
+  "pmt_enrollment:PICKUP":
+    "同上，自提点运营者不审平台活动的报名",
   "mbr_reach_log:COMMUNITY":
     "触达流水属于商家。**看到空白的是**：配了社区域的运营打开触达健康度。"
     + "**注意这一页的空白比别处更值得提** —— 它同一行里还有会员数（mbr_member 有 MERCHANT 锚点），"

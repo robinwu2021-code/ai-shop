@@ -126,6 +126,31 @@ public class PmtActivity extends BaseEntity {
     /** GROUP：开团后多少小时内成团。空 = 24 */
     private Integer groupHours;
 
+    // ---------------------------------------------------------------- 平台活动（V337 · 详细设计 §1.6）
+
+    /** 谁发起的活动。商家活动 = MERCHANT（缺省），平台活动 = PLATFORM */
+    public static final String OWNER_MERCHANT = "MERCHANT";
+    public static final String OWNER_PLATFORM = "PLATFORM";
+    /**
+     * 平台活动的 entity_no 哨兵值。**不用 null**：每一条按「entity_no = 这家商家」的查询
+     * 天然看不到它 —— 商家活动列表、算价、数据域都不会误把平台活动当成自己的。
+     */
+    public static final String PLATFORM_ENTITY = "PLATFORM";
+
+    private String owner;
+    /** 平台出资占优惠额的万分比（10000 全额 / 5000 一半 / 0 不出）；商家活动为空 */
+    private Integer platformShareBp;
+    /** 报名截止（毫秒） */
+    private Long enrollDeadline;
+    /** 报名门槛 JSON：minRating / noViolationDays / categoryNos / cityCodes */
+    private String enrollRule;
+    /** 已通过的报名占掉的平台预算（分）。带条件 UPDATE 占，不超过 budget_minor */
+    private Long enrollReservedMinor;
+
+    public boolean isPlatform() {
+        return OWNER_PLATFORM.equals(owner);
+    }
+
     /**
      * 此刻生不生效。<b>排期判断只有这一处</b>。
      *

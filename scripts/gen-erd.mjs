@@ -106,6 +106,7 @@ export const KEY_OWNERS = {
   quote_no: "mkt_quote",
   group_no: "mkt_group_buy",
   period_no: "pmt_period",
+  enrollment_no: "pmt_enrollment",
   review_no: "rvw_review",
   staff_no: "sys_ops_staff",
   settle_no: "stl_bill",

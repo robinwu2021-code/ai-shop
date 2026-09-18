@@ -2890,7 +2890,7 @@ _无字段_
 | `periodsShort` | `number` | 是 | 未达起订量、等处理的期数（黄标） |
 | `groupsShort` | `number` | 是 | 还差人的团数（黄标） |
 | `quotesPending` | `number` | 是 | 等待报价的求团需求数（黄标） |
-| `enrollable` | `number` | 是 | 可报名的平台活动数（平台活动上线前恒为 0） |
+| `enrollable` | `number` | 是 | 还能报名的平台活动数 |
 
 
 ### master-data
@@ -4244,6 +4244,129 @@ _无字段_
 | `trialDays` | `number,null` | 否 | 试用天数，配合 `trialTier` 显示「免费试用 14 天」 |
 | `suspendedStores` | `string`\[\] | 是 | 因降级被压成只读的门店名。 <p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。 |
 | `tiers` | [`PlanTier`](#plantier)\[\] | 是 | 三档对比，顺序即展示顺序（后端按 sort 排好） |
+
+
+### platform-activity
+
+#### GET `/biz/platform-activity`
+
+平台活动（可报名 / 已报名 / 已结束）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PlatformActivity`](#platformactivity)\[\]
+
+
+#### GET `/biz/platform-activity/{activityNo}`
+
+平台活动详情（含我的报名）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `activityNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`PlatformActivity`](#platformactivity)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activityNo` | `string` | 是 | 活动单号 |
+| `name` | `string` | 是 | 名称 |
+| `triggerType` | `string` | 是 | 触发：NONE 立减 / AMOUNT 满额 / QTY 满件 |
+| `triggerAmountMinor` | `number,null` | 否 | 满多少（分） |
+| `triggerQty` | `number,null` | 否 | 满几件 |
+| `benefitType` | `string` | 是 | 优惠：现只有 CUT（减钱） |
+| `benefitAmountMinor` | `number,null` | 否 | 减多少（分） |
+| `startAt` | `number,null` | 否 | 活动开始 |
+| `endAt` | `number,null` | 否 | 活动结束 |
+| `enrollDeadline` | `number,null` | 否 | 报名截止 |
+| `platformShareBp` | `number` | 是 | 平台出资万分比：10000 全额 / 5000 一半 / 0 不出 |
+| `budgetMinor` | `number,null` | 否 | 平台预算（分） |
+| `reservedMinor` | `number` | 是 | 已通过的报名占掉的预算 |
+| `perOrderPlatformMinor` | `number` | 是 | 每单平台最多补贴 |
+| `perOrderMerchantMinor` | `number` | 是 | 每单商家最多承担 |
+| `enrollRule` | [`PlatformEnrollRule`](#platformenrollrule) | 是 | 报名门槛 |
+| `status` | `string` | 是 | DRAFT / RUNNING / ENDED |
+| `submitted` | `number` | 是 | 待审报名数 |
+| `approved` | `number` | 是 | 已通过报名数 |
+| `rejected` | `number` | 是 | 已驳回报名数 |
+| `mine` | [`PlatformEnrollment`](#platformenrollment) \| `null` | 否 | 商家端：我的报名；没报过为空 |
+
+
+#### POST `/biz/platform-activity/{activityNo}/enrollment`
+
+报名平台活动（审核前可改）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `activityNo` | path | `string` | 是 | — |
+
+请求体：[`EnrollReq`](#enrollreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNos` | `string`\[\] | 是 | 报名的货：必须是自己的、在售的 |
+| `quota` | `number` | 是 | 报多少份 |
+
+**出参**（`data`）
+
+类型：[`PlatformEnrollment`](#platformenrollment)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `enrollmentNo` | `string` | 是 | 报名单号 |
+| `activityNo` | `string` | 是 | 平台活动 |
+| `entityNo` | `string` | 是 | 报名的商家 |
+| `merchantName` | `string` | 是 | 商家名 |
+| `goodsNos` | `string`\[\] | 是 | 报名的货 |
+| `quota` | `number` | 是 | 报的份数 |
+| `quotaUsed` | `number` | 是 | 已用份数 |
+| `platformMaxMinor` | `number` | 是 | 最多平台补贴（最小货币单位）= 份数 × 每单平台补贴 |
+| `merchantMaxMinor` | `number` | 是 | 最多商家承担 = 份数 × 每单商家承担 |
+| `rating` | `number` | 是 | 商家评分（审核时看） |
+| `status` | [`EnrollmentStatus`](#enrollmentstatus) | 是 | 状态 |
+| `rejectReason` | `string,null` | 否 | 驳回理由 |
+| `reviewedAt` | `number,null` | 否 | 审核时间 |
+| `createdAt` | `number` | 是 | 提交时间 |
+
+
+#### POST `/biz/platform-activity/{activityNo}/withdraw`
+
+撤回待审的报名　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `activityNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`PlatformEnrollment`](#platformenrollment)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `enrollmentNo` | `string` | 是 | 报名单号 |
+| `activityNo` | `string` | 是 | 平台活动 |
+| `entityNo` | `string` | 是 | 报名的商家 |
+| `merchantName` | `string` | 是 | 商家名 |
+| `goodsNos` | `string`\[\] | 是 | 报名的货 |
+| `quota` | `number` | 是 | 报的份数 |
+| `quotaUsed` | `number` | 是 | 已用份数 |
+| `platformMaxMinor` | `number` | 是 | 最多平台补贴（最小货币单位）= 份数 × 每单平台补贴 |
+| `merchantMaxMinor` | `number` | 是 | 最多商家承担 = 份数 × 每单商家承担 |
+| `rating` | `number` | 是 | 商家评分（审核时看） |
+| `status` | [`EnrollmentStatus`](#enrollmentstatus) | 是 | 状态 |
+| `rejectReason` | `string,null` | 否 | 驳回理由 |
+| `reviewedAt` | `number,null` | 否 | 审核时间 |
+| `createdAt` | `number` | 是 | 提交时间 |
 
 
 ### points
@@ -6260,6 +6383,26 @@ _无字段_
 |---|---|:---:|---|
 | `reason` | `string` | 否 | 散团原因，写进参团买家的退款记录；可空 |
 
+### EnrollReq
+
+报名平台活动（s28 下半「报名信息」）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNos` | `string`\[\] | 是 | 报名的货：必须是自己的、在售的 |
+| `quota` | `number` | 是 | 报多少份 |
+
+### EnrollmentStatus
+
+报名状态
+
+枚举取值：
+
+- `SUBMITTED`
+- `APPROVED`
+- `REJECTED`
+- `WITHDRAWN`
+
 ### Entity
 
 一张**证照**（营业执照）。库里叫 `mch_entity`，**对外一律叫「证照」**—— 老板不认识「主体」「实体」这两个词。
@@ -6610,7 +6753,7 @@ _无字段_
 | `periodsShort` | `number` | 是 | 未达起订量、等处理的期数（黄标） |
 | `groupsShort` | `number` | 是 | 还差人的团数（黄标） |
 | `quotesPending` | `number` | 是 | 等待报价的求团需求数（黄标） |
-| `enrollable` | `number` | 是 | 可报名的平台活动数（平台活动上线前恒为 0） |
+| `enrollable` | `number` | 是 | 还能报名的平台活动数 |
 
 ### MasterData
 
@@ -7436,6 +7579,66 @@ _无字段_
 | `crossStoreStats` | `boolean` | 是 | 这一档给不给跨店统计 |
 | `trialDays` | `number` | 是 | 0 = 这一档不提供试用 |
 | `current` | `boolean` | 是 | 是不是他现在用的那一档 |
+
+### PlatformActivity
+
+平台活动（原型 s27 · s28 · s29 · s30）。规则与商家活动同一个模型；多出来的只有出资、预算、报名。 出资写成**每单金额**（s28 的约定）：商家看的是「一单我出多少」。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activityNo` | `string` | 是 | 活动单号 |
+| `name` | `string` | 是 | 名称 |
+| `triggerType` | `string` | 是 | 触发：NONE 立减 / AMOUNT 满额 / QTY 满件 |
+| `triggerAmountMinor` | `number,null` | 否 | 满多少（分） |
+| `triggerQty` | `number,null` | 否 | 满几件 |
+| `benefitType` | `string` | 是 | 优惠：现只有 CUT（减钱） |
+| `benefitAmountMinor` | `number,null` | 否 | 减多少（分） |
+| `startAt` | `number,null` | 否 | 活动开始 |
+| `endAt` | `number,null` | 否 | 活动结束 |
+| `enrollDeadline` | `number,null` | 否 | 报名截止 |
+| `platformShareBp` | `number` | 是 | 平台出资万分比：10000 全额 / 5000 一半 / 0 不出 |
+| `budgetMinor` | `number,null` | 否 | 平台预算（分） |
+| `reservedMinor` | `number` | 是 | 已通过的报名占掉的预算 |
+| `perOrderPlatformMinor` | `number` | 是 | 每单平台最多补贴 |
+| `perOrderMerchantMinor` | `number` | 是 | 每单商家最多承担 |
+| `enrollRule` | [`PlatformEnrollRule`](#platformenrollrule) | 是 | 报名门槛 |
+| `status` | `string` | 是 | DRAFT / RUNNING / ENDED |
+| `submitted` | `number` | 是 | 待审报名数 |
+| `approved` | `number` | 是 | 已通过报名数 |
+| `rejected` | `number` | 是 | 已驳回报名数 |
+| `mine` | [`PlatformEnrollment`](#platformenrollment) \| `null` | 否 | 商家端：我的报名；没报过为空 |
+
+### PlatformEnrollRule
+
+平台活动的报名门槛（原型 s29「报名门槛」「类目」「城市」）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `minRating` | `number,null` | 否 | 评分下限；空 = 不限 |
+| `noViolation` | `boolean` | 是 | 是否要求无违规 |
+| `categoryNos` | `string`\[\] | 是 | 只收这些类目的货；空 = 不限 |
+| `cityCodes` | `string`\[\] | 是 | 只收这些城市的店；空 = 不限（暂只展示、不校验） |
+
+### PlatformEnrollment
+
+一份报名（原型 s28 提交后 · s30 审核表的一行）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `enrollmentNo` | `string` | 是 | 报名单号 |
+| `activityNo` | `string` | 是 | 平台活动 |
+| `entityNo` | `string` | 是 | 报名的商家 |
+| `merchantName` | `string` | 是 | 商家名 |
+| `goodsNos` | `string`\[\] | 是 | 报名的货 |
+| `quota` | `number` | 是 | 报的份数 |
+| `quotaUsed` | `number` | 是 | 已用份数 |
+| `platformMaxMinor` | `number` | 是 | 最多平台补贴（最小货币单位）= 份数 × 每单平台补贴 |
+| `merchantMaxMinor` | `number` | 是 | 最多商家承担 = 份数 × 每单商家承担 |
+| `rating` | `number` | 是 | 商家评分（审核时看） |
+| `status` | [`EnrollmentStatus`](#enrollmentstatus) | 是 | 状态 |
+| `rejectReason` | `string,null` | 否 | 驳回理由 |
+| `reviewedAt` | `number,null` | 否 | 审核时间 |
+| `createdAt` | `number` | 是 | 提交时间 |
 
 ### Poster
 

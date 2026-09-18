@@ -95,6 +95,15 @@ onShow(async () => {
     </view>
 
     <view class="sh-cells">
+      <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.platformActivities)">
+        <text class="txt-body">{{ $t("marketing.platform") }}</text>
+        <view class="sh-row">
+          <text v-if="sum && sum.enrollable" class="txt-body sh-muted sh-num">
+            {{ $t("marketing.enrollable", { n: sum.enrollable }) }}
+          </text>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+        </view>
+      </view>
       <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.quotes)">
         <text class="txt-body">{{ $t("marketing.quotes") }}</text>
         <view class="sh-row">

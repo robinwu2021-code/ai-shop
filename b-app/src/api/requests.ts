@@ -356,6 +356,14 @@ export interface CreateGroupReq {
   pickupNo?: string;
 }
 
+/** 报名平台活动（s28 下半「报名信息」） */
+export interface EnrollReq {
+  /** 报名的货：必须是自己的、在售的 */
+  goodsNos: string[];
+  /** 报多少份 */
+  quota: number;
+}
+
 /** 散团 */
 export interface DissolveGroupReq {
   /** 散团原因，写进参团买家的退款记录；可空 */

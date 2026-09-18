@@ -274,6 +274,11 @@ class BizEndpointPermTest {
         // 团详情与散团（s10）：散团会给参团买家退款，与开团同一档
         put("/biz/group/{groupNo}", BizPerms.CAMPAIGN);
         put("/biz/group/pickups", BizPerms.CAMPAIGN);
+        // 平台活动报名（s27 · s28）：承诺的是「每单我出多少」，与建活动同一档
+        put("/biz/platform-activity", BizPerms.CAMPAIGN);
+        put("/biz/platform-activity/{activityNo}", BizPerms.CAMPAIGN);
+        put("/biz/platform-activity/{activityNo}/enrollment", BizPerms.CAMPAIGN);
+        put("/biz/platform-activity/{activityNo}/withdraw", BizPerms.CAMPAIGN);
         put("/biz/group/{groupNo}/dissolve", BizPerms.CAMPAIGN);
         put("/biz/group-request/pool", BizPerms.CAMPAIGN);
         put("/biz/group-request/{requestNo}/quote", BizPerms.CAMPAIGN);
