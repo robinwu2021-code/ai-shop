@@ -269,7 +269,7 @@ PROTO_ANCHORS = {
         "pages/member-tags/index": "s06", "pages/member-settings/index": "s07",
         # 营销 v2 的四条指到另一份 artifact（见 PROTO_URL_BY_ROUTE）
         "pages/marketing/index": "s01", "pages/activities/index": "s02",
-        "pages/activity-edit/index": "s03", "pages/groups/index": "s11",
+        "pages/activity-edit/index": "s03", "pages/groups/index": "s09",
         "pages/marketing/new": "s09",
         "pages/marketing/audience": "s10", "pages/coupons/index": "s11",
         "pages/coupon-edit/index": "s12", "pages/coupon-issue/index": "s13",
