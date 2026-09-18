@@ -216,11 +216,6 @@ public class MpUserController {
 
     @PostMapping("/address")
     public List<AddressVO> saveAddress(@jakarta.validation.Valid @RequestBody SaveAddressReq req) {
-        if (!ai.neargo.shop.common.Phones.valid(req.phone(), req.countryCode())) {
-            throw ai.neargo.shop.common.BizException.of(
-                    ai.neargo.shop.common.ErrorCode.BAD_REQUEST,
-                    ai.neargo.shop.common.Phones.MESSAGE);
-        }
         return addressService.save(new AddressService.SaveCommand(
                 req.addressId(), req.name(), req.phone(), req.region(), req.province(), req.city(),
                 req.district(), req.detail(), req.houseNo(), req.isDefault(), req.tag(),

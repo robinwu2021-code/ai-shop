@@ -6,6 +6,7 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.Phones;
 import ai.neargo.shop.user.dto.AddressVO;
 import ai.neargo.shop.user.entity.UsrAddress;
 import ai.neargo.shop.user.mapper.UserMappers.AddressMapper;
@@ -48,6 +49,21 @@ public class AddressServiceImpl implements AddressService {
             throw BizException.of(ErrorCode.ADDRESS_LIMIT_EXCEEDED, MAX_ADDRESSES);
         }
         UsrAddress row = creating ? newRow() : requireOwn(cmd.addressId());
+
+        /*
+         * **手机号的判据按国家挑，而「哪个国家」要连库里那一行一起算。**
+         *
+         * 放在请求体的 @Pattern 上不行：海外号码不是 11 位，那三列白加。
+         * 只看 `cmd.countryCode()` 也不行 —— 旧版本端上编辑一条海外地址时压根
+         * 不发这个字段，于是它被当成大陆号拒掉，那个用户从此改不了自己的地址，
+         * 而他看到的只是「手机号格式不对」。
+         *
+         * 所以用「这次传的」优先、没传就用「库里存的」。
+         */
+        String country = cmd.countryCode() != null ? cmd.countryCode() : row.getCountryCode();
+        if (!Phones.valid(cmd.phone(), country)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST, Phones.MESSAGE);
+        }
 
         row.setName(cmd.name());
         row.setPhone(cmd.phone());
