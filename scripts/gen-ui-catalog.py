@@ -225,12 +225,15 @@ PROTO_URL_BY_ROUTE = {
         "pages/settle/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
         # 进销存九屏（另一份 artifact）：库存 / 明细 / 盘点 / 进货 / 单据 / 报损 / 调拨 / 报表 / 库位
     },
-    # C 端收货地址（2026-09-17）。**画布式原型，没有页内锚点** ——
-    # 四屏并排摆着（没有地址 / 地址列表 / 新建 / 选择），外加一张文案对照表。
-    # 所以这两条只登记地址不登记锚点，链接落到画布本身，见 proto_of 的说明。
+    # C 端收货地址（2026-09-17，2026-09-18 补到七屏）。**画布式原型，没有页内锚点** ——
+    # 各屏并排摆着（没有地址 / 列表 / 新建整页 / 选择地点 / 选城市 / 海外 / 搜不到时），
+    # 外加一张文案对照表。所以这几条只登记地址不登记锚点，链接落到画布本身，
+    # 见 proto_of 的说明。
     "c-app": {
         "pages/address/index": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
+        "pages/address-edit/index": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
         "pages/address-pick/index": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
+        "pages/city-pick/index": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
     },
 }
 
