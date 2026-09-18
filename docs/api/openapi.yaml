@@ -5671,14 +5671,17 @@ components:
       properties: 
         name: 
           type: "string"
+          description: "地点名（「桂澜新村」「龙华区地域馆」）"
         address: 
           type: 
             - "string"
             - "null"
+          description: "带门牌的标准地址。取不到就 null"
         latE6: 
           type: 
             - "number"
             - "null"
+          description: "gcj02 ×1e6。**为 null 的不该列出来** —— 选了它等于又得到一条没坐标的地址"
         lngE6: 
           type: 
             - "number"

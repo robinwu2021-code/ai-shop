@@ -3362,9 +3362,9 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `name` | `string` | 是 | — |
-| `address` | `string,null` | 是 | — |
-| `latE6` | `number,null` | 是 | — |
+| `name` | `string` | 是 | 地点名（「桂澜新村」「龙华区地域馆」） |
+| `address` | `string,null` | 是 | 带门牌的标准地址。取不到就 null |
+| `latE6` | `number,null` | 是 | gcj02 ×1e6。**为 null 的不该列出来** —— 选了它等于又得到一条没坐标的地址 |
 | `lngE6` | `number,null` | 是 | — |
 | `communityNo` | `string,null` | 是 | 只有本地聚落那几条有。**端上据此决定选中之后能不能直接绑** |
 | `source` | `string` | 是 | COMMUNITY / PLACE_DB / MAP —— 排版用，也用于排查 |

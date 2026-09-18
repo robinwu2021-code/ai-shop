@@ -241,8 +241,11 @@ export interface LocationContext {
  * 合成一个类型的话，「这一条能不能直接绑」就只能靠猜。
  */
 export interface PlaceSearchHit {
+  /** 地点名（「桂澜新村」「龙华区地域馆」） */
   name: string;
+  /** 带门牌的标准地址。取不到就 null */
   address: string | null;
+  /** gcj02 ×1e6。**为 null 的不该列出来** —— 选了它等于又得到一条没坐标的地址 */
   latE6: number | null;
   lngE6: number | null;
   /** 只有本地聚落那几条有。**端上据此决定选中之后能不能直接绑** */
