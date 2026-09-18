@@ -17,6 +17,17 @@ public interface GoodsService {
     GoodsVO detail(String goodsNo);
 
     /**
+     * 买家侧的商品详情：{@link #detail} 再补上<b>销售范围</b>那一行。
+     *
+     * <p><b>为什么另开一个方法而不是塞进 {@code detail}：</b> 商家端与运营端的单件详情
+     * 也走 {@code detail}，而他们不要这一行（店主在门店设置里看自己的经营范围）。
+     * 塞进去的代价不只是一次白查 —— 范围要读 {@code mch_entity}，
+     * 而运营端的查询路径一律不许绕过数据域（G1 守卫），
+     * 于是 {@code GET /ops/goods/\{no\}} 会凭空多出一处越权，且不报错。
+     */
+    GoodsVO detailForBuyer(String goodsNo);
+
+    /**
      * 批量取详情，{@code goodsNo → GoodsVO}。查不到的编号不出现在返回里。
      *
      * <p><b>为列表页而加</b>：商家侧列表原先是逐行调 {@link #detail}，而那一条每次都会

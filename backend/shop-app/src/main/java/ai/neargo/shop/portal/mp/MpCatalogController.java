@@ -213,7 +213,7 @@ public class MpCatalogController {
 
     @GetMapping("/mp/goods/{goodsNo}")
     public GoodsVO goodsDetail(@PathVariable String goodsNo) {
-        return goodsService.detail(goodsNo);
+        return goodsService.detailForBuyer(goodsNo);
     }
 
     @GetMapping("/mp/category/tree")

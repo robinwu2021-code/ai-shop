@@ -238,10 +238,14 @@ public class GoodsServiceImpl implements GoodsService {
         if (g == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        return withSaleScope(
-                toVO(g, loadSkus(List.of(goodsNo)).getOrDefault(goodsNo, List.of()),
-                        campaignPort.flashPrices(List.of(goodsNo)).get(goodsNo)),
-                g.getEntityNo());
+        return toVO(g, loadSkus(List.of(goodsNo)).getOrDefault(goodsNo, List.of()),
+                campaignPort.flashPrices(List.of(goodsNo)).get(goodsNo));
+    }
+
+    @Override
+    public GoodsVO detailForBuyer(String goodsNo) {
+        GoodsVO v = detail(goodsNo);
+        return withSaleScope(v, v.merchant() == null ? null : v.merchant().merchantNo());
     }
 
     @Override
