@@ -5648,6 +5648,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "带门牌的标准地址（「深圳市龙华区观澜大道 155 号」）。取不到就 null"
         kind: 
           "$ref": "#/components/schemas/PlaceKind"
           description: "这个名字**有多具体**。取值见  {@link  PlaceKind }"
