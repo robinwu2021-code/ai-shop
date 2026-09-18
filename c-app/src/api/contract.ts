@@ -2,6 +2,7 @@
 // 端点对齐后端 C 端 BFF `/mp/**`（见 docs/api）。
 import type {
   MyMembership,
+  PlaceSearchHit,
   MyStoreCoupon,
   InvoiceRequest,
   InvoiceTitleType,
@@ -194,6 +195,21 @@ export interface ShopApi {
    * 而模糊定位误差约 5 公里，匹配出来的是噪音不是结果。
    */
   resolveLocation(latE6?: number | null, lngE6?: number | null, coarse?: boolean): Promise<LocationContext>;
+
+  /**
+   * 「输个名字找地方」。**本地优先，地图是补充。**
+   *
+   * <p>本地那一条带着 `communityNo` —— 选中它才能直接绑到聚落、才有商品池；
+   * 地图那一条只有名字与坐标。同名的两条里留本地那条。
+   *
+   * <p><b>地图不可用时它照样有结果</b>（只是少）。这一条不是优化，是产品判断：
+   * 端上此前的做法是整段搜索不渲染，而那等于告诉用户「这儿什么都没有」。
+   *
+   * @param city 没有坐标时按城市搜。**city 只是偏好不是约束**
+   *             （在深圳搜「福安」会返回福建的福安市），所以有坐标一律围着坐标搜
+   */
+  searchPlaces(kw: string, latE6?: number | null, lngE6?: number | null,
+               city?: string): Promise<PlaceSearchHit[]>;
   /**
    * 全部已开通社区。**附近为空时的出路** —— 异地下单是真实场景
    * （给父母下单、出差前囤货），而把用户停在「暂未开通」等于在第一屏劝退。

@@ -70,6 +70,7 @@ function bodyOf(src: string, signature: string): string | null {
  */
 describe("结算页选地址 ≠ 改默认地址", () => {
   const addressPage = code("src/pages/address/index.vue");
+  const addressForm = code("src/components/biz/biz-address-form.vue");
   const confirmPage = code("src/pages/order-confirm/index.vue");
 
   it("★★★ 地址簿的 picking 分支不许改默认地址", () => {
@@ -205,6 +206,8 @@ describe("placeFrom：地点 → 可入库的地址", () => {
 describe("选点页：把「选」提为主路", () => {
   const pickPage = code("src/pages/address-pick/index.vue");
   const addressPage = code("src/pages/address/index.vue");
+  /** 表单已经搬进共用件（M4：弹层改整页），扫它 */
+  const addressForm = code("src/components/biz/biz-address-form.vue");
 
   it("★★★ 「新增地址」要先去选点页", () => {
     const body = bodyOf(addressPage, "function addNew(");
@@ -221,17 +224,20 @@ describe("选点页：把「选」提为主路", () => {
      * 断言的是**这条性质**，不是某一种写法：canPick 为假时开表单、为真时才跳选点页。
      * （canPick 自己由那两个端能力算出来，另一条守卫在管。）
      */
-    expect(body).toMatch(/!canPick\.value[\s\S]{0,80}openNew\(\)/);
+    expect(body, "给不了选点路的端要直接进新建页，不该白挡一次点击")
+      .toMatch(/!canPick\.value[\s\S]{0,120}addressEdit/);
     expect(body).toContain("ROUTES.addressPick");
   });
 
   it("★★★ 选点页交回来的地点要带坐标落进草稿", () => {
     const body = bodyOf(addressPage, "onShow(");
     expect(body, "地址簿没有 onShow 了 —— 从选点页回来什么都不会发生").not.toBeNull();
-    expect(body).toContain("pickedPlace.take");
+    expect(body, "收货地址页只负责跳过去，取走信箱的是新建页").toContain("pickedPlace.peek");
     // 什么都没交回来（点了系统返回）时不许开表单：否则每次退出选点页都被塞一张
     expect(body).toMatch(/if \(!p\) return/);
-    const openNew = bodyOf(addressPage, "function openNew(");
+    // 预填现在发生在表单组件的草稿初始化里（M4：弹层改整页之后，
+    // 收货地址页不再持有草稿）
+    const openNew = bodyOf(addressForm, "const draft = ref<");
     expect(openNew, "openNew 不见了").not.toBeNull();
     expect(openNew, "预填了地址却把坐标丢了 = 这一趟白走").toContain("latE6");
   });
@@ -246,10 +252,20 @@ describe("选点页：把「选」提为主路", () => {
     expect(body).toContain('kind: "manual"');
   });
 
-  it("★★ 每一段都自检：这个端给不了的整段不显示", () => {
-    expect(pickPage, "搜索段要看 canSearchPlaces").toContain("canSearchPlaces()");
+  it("★★ 这个端给不了的整段不显示 —— 但搜索已经不是「端」给的了", () => {
+    /*
+     * **规则变了，不是守卫松了。**
+     *
+     * 搜索段此前判 `canSearchPlaces()`（这个端有没有原生高德 SDK），
+     * 于是 H5 与小程序上整段不渲染 —— 而那等于告诉用户「这儿什么都没有」。
+     * 改走后端的统一搜索之后，能力在服务端：任何端、甚至地图整个挂掉，
+     * 它都至少搜得到我们自己库里的地方。所以它**不再该有 v-if**。
+     *
+     * 地图选点仍然是端能力（`wx.chooseLocation` / JS key），那一条不变。
+     */
+    expect(pickPage, "搜索改走后端了，不该再判端上的 SDK").not.toContain("canSearchPlaces()");
+    expect(pickPage, "搜索要走后端那条统一入口").toContain("api.searchPlaces(");
     expect(pickPage, "地图选点要看 canChooseLocation").toContain("canChooseLocation()");
-    expect(pickPage).toMatch(/v-if="canSearch"/);
     expect(pickPage).toMatch(/v-if="canMap"/);
   });
 
@@ -327,9 +343,11 @@ describe("送不到要提前说 —— 且口径与后端一字不差", () => {
  */
 describe("门牌号与地址簿上限", () => {
   const addressPage = code("src/pages/address/index.vue");
+  /** 表单已搬进共用件（M4：弹层改整页） */
+  const addressForm = code("src/components/biz/biz-address-form.vue");
 
   it("★★★ 门牌号在端上必填", () => {
-    const body = bodyOf(addressPage, "const valid = computed(");
+    const body = bodyOf(addressForm, "const valid = computed(");
     expect(body, "valid 不见了").not.toBeNull();
     expect(body).toContain("draft.value.houseNo");
   });
@@ -340,7 +358,7 @@ describe("门牌号与地址簿上限", () => {
      * 于是「文字写着 A、坐标指着 B」，而页面上完全看不出来。
      * 但没有任何选点路的端（H5）必须保持可输入，否则他连存量地址都改不了。
      */
-    expect(addressPage).toMatch(/:disabled="canPick"/);
+    expect(addressForm).toMatch(/:disabled="canPick"/);
     expect(addressPage).toMatch(/canSearchPlaces\(\) \|\| canChooseLocation\(\)/);
   });
 
@@ -374,7 +392,8 @@ describe("门牌号与地址簿上限", () => {
  * 这几条守卫补的是另一半：结构别被人顺手改回去。
  */
 describe("标签：预设 chip，输入框仍是唯一真源", () => {
-  const addressPage = code("src/pages/address/index.vue");
+  /** 表单已搬进共用件（M4：弹层改整页）—— 这一组量的全是表单内部 */
+  const addressPage = code("src/components/biz/biz-address-form.vue");
 
   it("★★ 三个预设都在，且 chip 只写 draft.tag", () => {
     expect(addressPage).toContain("TAG_PRESETS");
@@ -404,7 +423,8 @@ describe("标签：预设 chip，输入框仍是唯一真源", () => {
  * 这里守的是**接线上的两条性质**，它们都属于「错了也不会响」那一类。
  */
 describe("粘贴识别：只填空格子，且不冒充选点", () => {
-  const addressPage = code("src/pages/address/index.vue");
+  /** 表单已搬进共用件（M4：弹层改整页）—— 这一组量的全是表单内部 */
+  const addressPage = code("src/components/biz/biz-address-form.vue");
 
   it("★★★ 只填空着的格子，不覆盖他已经敲的字", () => {
     const body = bodyOf(addressPage, "async function pasteAndFill(");

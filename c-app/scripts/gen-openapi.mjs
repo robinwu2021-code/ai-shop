@@ -162,6 +162,7 @@ const RESPONSE_TYPES = {
   setDefaultAddress: "Address[]",
   nearbyCommunities: "Community[]",
   resolveLocation: "LocationContext",
+  searchPlaces: "PlaceSearchHit[]",
   goodsList: "PageResult<Goods>",
   goodsDetail: "Goods",
   cartList: "CartItem[]",

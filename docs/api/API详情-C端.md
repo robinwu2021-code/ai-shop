@@ -1705,6 +1705,19 @@
 | `pickupName` | `string` | 否 | — |
 
 
+### place
+
+#### GET `/mp/place/search`
+
+按名字找地方（本地优先，地图是补充）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PlaceSearchHit`](#placesearchhit)\[\]
+
+
 ### points
 
 #### GET `/mp/points/account`
@@ -3342,6 +3355,19 @@
 - `AOI`
 - `STREET`
 - `REGION`
+
+### PlaceSearchHit
+
+后端搜出来的一个地点（`/mp/place/search`）。 <p><b>与端口里那个 `PlaceHit` 不是同一个东西，刻意不合并</b>：那个是 App 里 原生高德 SDK 直接给的结果，只有名字与坐标；这一个是后端合并过的， 本地聚落那几条带着  {@link  PlaceSearchHit.communityNo }  —— 选中它才能直接绑聚落。 合成一个类型的话，「这一条能不能直接绑」就只能靠猜。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | — |
+| `address` | `string,null` | 是 | — |
+| `latE6` | `number,null` | 是 | — |
+| `lngE6` | `number,null` | 是 | — |
+| `communityNo` | `string,null` | 是 | 只有本地聚落那几条有。**端上据此决定选中之后能不能直接绑** |
+| `source` | `string` | 是 | COMMUNITY / PLACE_DB / MAP —— 排版用，也用于排查 |
 
 ### PlaceSource
 

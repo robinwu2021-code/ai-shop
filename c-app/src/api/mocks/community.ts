@@ -18,6 +18,7 @@ export const communityMock: Pick<ShopApi,
   | "communityDetail"
   | "openRegions"
   | "regions"
+  | "searchPlaces"
 > = {
   // ---------------------------------------------------------------- 社区
   async nearbyCommunities() {
@@ -84,6 +85,28 @@ export const communityMock: Pick<ShopApi,
         nearestNo: null, nearestName: null, nearestDistanceM: -1,
         place: null,
       });
+  },
+
+  /**
+   * mock 也要**分出「本地那条」与「地图那条」** —— 只给一种的话，
+   * 端上「选中本地那条可以直接绑聚落」那条分支在开发期一次都看不见。
+   */
+  async searchPlaces(kw) {
+    const q = (kw ?? "").trim();
+    if (!q) return delay([]);
+    const local = allCommunitySeeds()
+      .map(toCommunity)
+      .filter((c) => c.name.includes(q))
+      .map((c) => ({
+        name: c.name, address: c.address ?? null,
+        latE6: c.latE6 ?? null, lngE6: c.lngE6 ?? null,
+        communityNo: c.communityNo, source: "COMMUNITY",
+      }));
+    return delay([
+      ...local,
+      { name: `${q}大厦`, address: `深圳市龙华区${q}路 1 号`, latE6: 22689965, lngE6: 114030532,
+        communityNo: null, source: "MAP" },
+    ]);
   },
 
   async communityDetail(communityNo) {

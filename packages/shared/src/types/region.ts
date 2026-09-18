@@ -232,6 +232,25 @@ export interface LocationContext {
   place: ResolvedPlace | null;
 }
 
+/**
+ * 后端搜出来的一个地点（`/mp/place/search`）。
+ *
+ * <p><b>与端口里那个 `PlaceHit` 不是同一个东西，刻意不合并</b>：那个是 App 里
+ * 原生高德 SDK 直接给的结果，只有名字与坐标；这一个是后端合并过的，
+ * 本地聚落那几条带着 {@link PlaceSearchHit.communityNo} —— 选中它才能直接绑聚落。
+ * 合成一个类型的话，「这一条能不能直接绑」就只能靠猜。
+ */
+export interface PlaceSearchHit {
+  name: string;
+  address: string | null;
+  latE6: number | null;
+  lngE6: number | null;
+  /** 只有本地聚落那几条有。**端上据此决定选中之后能不能直接绑** */
+  communityNo: string | null;
+  /** COMMUNITY / PLACE_DB / MAP —— 排版用，也用于排查 */
+  source: string;
+}
+
 /** 解析出来的一个地点。 */
 export interface ResolvedPlace {
   /** 「龙华区地域馆」。解析不出来就是空串 */

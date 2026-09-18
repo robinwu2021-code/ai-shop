@@ -614,6 +614,8 @@ export const ROUTES = {
   groupHost: "/pages/group-host/index",
   search: "/pages/search/index",
   address: "/pages/address/index",
+  /** 新建/编辑收货地址。**整页，不是弹层** —— 入口只有这一种形态 */
+  addressEdit: "/pages/address-edit/index",
   addressPick: "/pages/address-pick/index",
   orderConfirm: "/pages/order-confirm/index",
   pay: "/pages/pay/index",

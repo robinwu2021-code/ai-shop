@@ -895,7 +895,7 @@
     {
       "key": "c-app",
       "label": "买家小程序",
-      "count": 31,
+      "count": 32,
       "domains": [
         {
           "name": "工作台",
@@ -1170,6 +1170,33 @@
           ]
         },
         {
+          "name": "其它",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/address-edit/index",
+              "title": "address-edit",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/address-edit/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/my-memberships/index",
+              "title": "我的会员与消息",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/my-memberships/index"
+            }
+          ]
+        },
+        {
           "name": "消息与评价",
           "pages": [
             {
@@ -1209,22 +1236,6 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/points/index"
-            }
-          ]
-        },
-        {
-          "name": "其它",
-          "pages": [
-            {
-              "app": "c-app",
-              "route": "/pages/my-memberships/index",
-              "title": "我的会员与消息",
-              "domain": "其它",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5176/#/pages/my-memberships/index"
             }
           ]
         },
@@ -3048,5 +3059,5 @@
       ]
     }
   ],
-  "total": 248
+  "total": 249
 }

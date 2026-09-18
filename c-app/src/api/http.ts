@@ -5,7 +5,7 @@
 import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS } from "./endpoints";
 import type { CreateOrderReq, GoodsQuery, ShopApi , PayInit, PayMethodList} from "./contract";
-import type { InvoiceRequest, MyMembership, MyStoreCoupon, RegionNode, RegionOption,
+import type { InvoiceRequest, MyMembership, MyStoreCoupon, PlaceSearchHit, RegionNode, RegionOption,
   PhoneCapable,
 } from "@shared/types";
 // 入参的 wire 契约。satisfies 让「实际发出去的 body」在编译期受检 ——
@@ -120,6 +120,8 @@ export const httpApi: ShopApi = {
   setDefaultAddress: (addressId) => call<Address[]>("setDefaultAddress", { addressId }),
 
   // ---- 社区
+  searchPlaces: (kw, latE6, lngE6, city) =>
+    call<PlaceSearchHit[]>("searchPlaces", undefined, { kw, latE6, lngE6, city }),
   nearbyCommunities: (lat, lng) =>
     call<Community[]>("nearbyCommunities", undefined, { lat, lng } satisfies NearbyQuery),
   resolveLocation: (latE6, lngE6, coarse) =>

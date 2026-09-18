@@ -65,7 +65,3 @@ c-app POST /mp/store/*/enter
 c-app POST /mp/store/*/rebuy
 c-app POST /mp/ticket
 c-app POST /mp/user/token/refresh
-# 统一地点搜索（TDD-C端收货地址-录入与定位重排 · 批次 A 做的端点，批次 D 接端上）。
-# **待办型**：选择地点页要靠它在地图不可用时仍然搜得到本地库 ——
-# 今天那一段是整段不渲染，等于告诉用户「这儿什么都没有」。D 落地后删掉这一行。
-c-app GET /mp/place/search

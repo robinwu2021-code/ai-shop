@@ -10,8 +10,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
-import { canSearchPlaces, searchPlacesNearNative, searchPlacesNative } from "@shared/ports/geo-search";
-import type { PlaceHit } from "@shared/ports/geo-search";
+import type { PlaceSearchHit } from "@shared/types";
 import { canChooseLocation, chooseLocation } from "@shared/ports/location";
 import { useLocationStore } from "@/stores/location";
 import { distance as fmtDistance } from "@shared/utils/format";
@@ -21,13 +20,20 @@ import type { Community } from "@shared/types";
 const { t } = useI18n();
 const location = useLocationStore();
 
-/** 这个端支不支持原生地点搜索。H5 / 小程序没有 plus，整个搜索段不显示 */
-const canSearch = canSearchPlaces();
+/**
+ * **搜索段永远显示。**
+ *
+ * <p>此前它判的是「这个端有没有原生高德 SDK」（`canSearchPlaces()`），
+ * 于是 H5 与小程序上整段不渲染 —— 而那等于告诉用户「这儿什么都没有」。
+ * 改走后端的统一搜索之后，任何端、甚至地图整个挂掉，它都至少搜得到
+ * 我们自己库里的地方。
+ */
+const canSearch = true;
 /** 地图选点。H5 没配 JS key —— 提前问，别等点下去才弹「不支持」 */
 const canMap = canChooseLocation();
 
 const keyword = ref("");
-const hits = ref<PlaceHit[]>([]);
+const hits = ref<PlaceSearchHit[]>([]);
 const searching = ref(false);
 
 /** 这一趟的定位。null = 没拿到，那不是错误：首屏本来就不许依赖静默精确定位 */
@@ -162,14 +168,23 @@ async function runSearch(kw: string) {
   searching.value = true;
   try {
     /*
-     * 有坐标就在坐标周围搜。**这是「输名字找小区」的正确形状** ——
-     * 按城市搜时 city 只是偏好不是约束，在深圳搜「福安」会返回福建的福安市
-     * （geo-search 里记着这条实测）。围着当前位置几公里搜，真小区才排得进来。
+     * **走后端那一条，不再只走端上的原生 SDK。**
+     *
+     * 后端把「已开通聚落 + 我们自己的地名库 + 地图」合并过，而且**本地优先**：
+     * 本地那条带着 communityNo，选中它才能直接绑聚落。原生 SDK 只有名字与坐标。
+     *
+     * 更要紧的是**地图挂了它照样有结果**（只是少）—— 端上此前是整段搜索不渲染，
+     * 而那等于告诉用户「这儿什么都没有」，一个搜不到东西的空列表比那强得多。
+     *
+     * 有坐标就围着坐标搜：按城市搜时 city 只是偏好不是约束，
+     * 在深圳搜「福安」会返回福建的福安市（geo-search 里记着这条实测）。
      */
-    const r = at.value
-      ? await searchPlacesNearNative(kw, at.value)
-      : await searchPlacesNative(kw);
-    hits.value = r ?? [];
+    const r = await api.searchPlaces(
+      kw,
+      at.value ? Math.round(at.value.lat * 1e6) : undefined,
+      at.value ? Math.round(at.value.lng * 1e6) : undefined,
+    ).catch(() => [] as PlaceSearchHit[]);
+    hits.value = r;
   } finally {
     searching.value = false;
   }
@@ -181,8 +196,9 @@ function choose(p: { name?: string; address?: string; lat: number; lng: number }
   uni.navigateBack();
 }
 
-function chooseHit(h: PlaceHit) {
-  choose({ name: h.name, address: h.address, lat: h.lat, lng: h.lng });
+function chooseHit(h: PlaceSearchHit) {
+  if (h.latE6 == null || h.lngE6 == null) return;   // 没坐标的不列，见模板
+  choose({ name: h.name, address: h.address ?? "", lat: h.latE6 / 1e6, lng: h.lngE6 / 1e6 });
 }
 
 function chooseCommunity(c: Community) {
@@ -248,6 +264,15 @@ onLoad((q?: Record<string, string>) => {
         <text class="txt-body row__name">{{ h.name }}</text>
         <text class="txt-caption row__sub">{{ h.address }}</text>
       </view>
+      <!--
+        **搜不到才给「手动填写」，而且只在这儿给。**
+        它是这一页的最后一条出路，常驻在底部时会被读成与「地图选点」平级的
+        另一种选法 —— 而两者的产出不一样（一条带坐标、一条不带），
+        让买家去选一件他看不见后果的事。
+      -->
+      <view v-if="!searching && !hits.length" class="sh-center noresult" @tap="manual">
+        <text class="txt-caption txt-primary">{{ $t("addressPick.manual") }}</text>
+      </view>
       <text v-if="searching" class="txt-caption block__empty">{{ $t("addressPick.searching") }}</text>
       <text v-else-if="!hits.length" class="txt-caption block__empty">
         {{ $t("addressPick.noResults") }}
@@ -304,16 +329,18 @@ onLoad((q?: Record<string, string>) => {
     </template>
 
     <!--
-      两条兜底的路**并排**，不再上下堆成两行列表。
-      它们是与上面那些「选一个地点」并列的另一类动作（自己去找 / 自己去写），
-      堆成列表行会被读成「附近的第 6、第 7 个地点」。
+      **只剩「地图选点」一条，而且降成次级动作。**
+      此前这里是两颗并排的兜底按钮（地图选点 / 手动填写）——
+      它们的产出不一样（一条带坐标、一条不带），而这个差别决定了
+      商家自送半径判不判得了、骑手导航打不打得开，**页面上看不出任何区别**。
+      把这个选择丢给买家，等于让他替我们决定一件他看不见的事。
+
+      现在「手动填写」只在搜不到时出现（见上面那一段），
+      这一颗留着是因为它常有用：名字叫不上来、但地图上指得出来。
     -->
-    <view class="outs sh-row">
-      <view v-if="canMap" class="sh-btn sh-btn--soft sh-fill" @tap="onMap">
+    <view v-if="canMap" class="outs">
+      <view class="sh-btn sh-btn--soft" @tap="onMap">
         {{ $t("addressPick.onMap") }}
-      </view>
-      <view class="sh-btn sh-btn--soft sh-fill" @tap="manual">
-        {{ $t("addressPick.manual") }}
       </view>
     </view>
   </sh-scaffold>
@@ -353,9 +380,8 @@ onLoad((q?: Record<string, string>) => {
   flex-shrink: 0;
   margin-inline-start: 16rpx;
 }
-/* 只管两颗按钮之间的缝；与上一块之间那道 sh-scaffold 已经给了（--sh-gap-block） */
-.outs {
-  gap: 20rpx;
+.noresult {
+  padding: 24rpx 0;
 }
 .row__name {
   display: block;

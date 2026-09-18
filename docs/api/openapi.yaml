@@ -5666,6 +5666,40 @@ components:
         - "stale"
       additionalProperties: false
       description: "解析出来的一个地点。"
+    PlaceSearchHit: 
+      type: "object"
+      properties: 
+        name: 
+          type: "string"
+        address: 
+          type: 
+            - "string"
+            - "null"
+        latE6: 
+          type: 
+            - "number"
+            - "null"
+        lngE6: 
+          type: 
+            - "number"
+            - "null"
+        communityNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "只有本地聚落那几条有。**端上据此决定选中之后能不能直接绑**"
+        source: 
+          type: "string"
+          description: "COMMUNITY / PLACE_DB / MAP —— 排版用，也用于排查"
+      required: 
+        - "name"
+        - "address"
+        - "latE6"
+        - "lngE6"
+        - "communityNo"
+        - "source"
+      additionalProperties: false
+      description: "后端搜出来的一个地点（`/mp/place/search`）。\n\n<p><b>与端口里那个 `PlaceHit` 不是同一个东西，刻意不合并</b>：那个是 App 里 原生高德 SDK 直接给的结果，只有名字与坐标；这一个是后端合并过的， 本地聚落那几条带着  {@link  PlaceSearchHit.communityNo }  —— 选中它才能直接绑聚落。 合成一个类型的话，「这一条能不能直接绑」就只能靠猜。"
     ServiceArea: 
       type: "object"
       properties: 
@@ -8468,6 +8502,35 @@ paths:
                     type: "array"
                     items: 
                       "$ref": "#/components/schemas/Community"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/place/search": 
+    get: 
+      operationId: "searchPlaces"
+      summary: "按名字找地方（本地优先，地图是补充）"
+      tags: 
+        - "place"
+      security: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/PlaceSearchHit"
                 required: 
                   - "code"
                   - "msg"
