@@ -941,6 +941,11 @@ function toPublishPage() {
 
 // ── 八、保存 ──────────────────────────────────────────────────────────────
 //    存草稿 / 存并提交审核
+/** 贴底条的「取消」：不存、回上一页。改了一半的内容不拦 —— 与建活动的取消同一行为 */
+function back() {
+  uni.navigateBack();
+}
+
 async function save(thenSubmit = false) {
   if (!canSave.value || saving.value) return;
   saving.value = true;
@@ -1124,6 +1129,14 @@ async function save(thenSubmit = false) {
         {{ $t("goods.viewDiff") }}
       </text>
     </view>
+    <!--
+      保存会发生什么，**写在动手之前**。此前压在保存键下面，按之前看不到。
+      草稿（含新建）不出：底部两颗按钮「保存草稿 / 保存并提交」已经说清了。
+      有草稿横幅时也不出：那一条说的就是这件事，页顶不该说两遍。
+    -->
+    <view v-if="!hydrating && !isDraft && !editingDraft && !draftFailed" class="sh-notice sh-notice--warning draft-banner">
+      <text class="txt-caption">{{ $t(wasOnSale ? "goods.saveTipOnSale" : "goods.saveTip") }}</text>
+    </view>
     <view class="sh-card">
       <!--
         分区标题。此前**整页只有规格卡与 SKU 卡有标题**，前面 11 个字段组挤在
@@ -1202,7 +1215,7 @@ async function save(thenSubmit = false) {
           <text class="txt-sub">{{ $t("goods.fromStd", { s: stdTitle || stdNo }) }}</text>
           <text class="sh-link sh-link--quiet" @tap="detachStd">{{ $t("goods.detachStd") }}</text>
         </view>
-        <text v-else class="sh-btn sh-btn--sm sh-btn--soft std-link" @tap="showStd = true">{{ $t("goods.pickStd") }}</text>
+        <text v-else class="sh-btn sh-btn--sm sh-btn--soft sh-hit std-link" @tap="showStd = true">{{ $t("goods.pickStd") }}</text>
       </view>
       <view class="field">
         <!--
@@ -1257,7 +1270,7 @@ async function save(thenSubmit = false) {
             模型不知道这家店真实的产地与保质期，一键写进详情
             等于替商家做了他没做过的承诺。让他改，比让他从空白开始容易得多。
           -->
-          <text class="sh-btn sh-btn--sm sh-btn--soft" @tap="genDetail">
+          <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="genDetail">
             {{ generating ? $t("goods.genDetailing") : $t("goods.genDetail") }}
           </text>
         </view>
@@ -1794,18 +1807,6 @@ async function save(thenSubmit = false) {
           现在切换的是「这一列看哪个字段」，任何时候都只有
           「一行一个规格、一个数字」这一种形状。
         -->
-        <!-- 单规格不需要字段切换：总共两三个数，直接排开比切来切去快 -->
-        <view v-if="multi && priceFields.length > 1" class="segs">
-          <text
-            v-for="f in priceFields"
-            :key="f.key"
-            class="sh-chip"
-            :class="{ 'sh-chip--primary': priceField === f.key }"
-            @tap="priceField = f.key"
-          >
-            {{ $t(f.labelKey) }}
-          </text>
-        </view>
         <view v-if="MULTI_MARKET_UI" class="langs">
           <text
             v-for="m in MARKET_CURRENCIES"
@@ -1821,6 +1822,22 @@ async function save(thenSubmit = false) {
           </text>
         </view>
       </sh-section>
+      <!--
+        单规格不需要字段切换：总共两三个数，直接排开比切来切去快。
+        **放在标题栏下面、独占一行**：sh-section 是「标题左、插槽右」的一行，
+        分段格塞进插槽只剩标题右边约 196px，三格平分后「成本价」折成两行（量出来 63×60）。
+      -->
+      <view v-if="multi && priceFields.length > 1" class="segs sh-mt-sm">
+        <text
+          v-for="f in priceFields"
+          :key="f.key"
+          class="sh-seg sh-seg--fill"
+          :class="{ 'sh-seg--on': priceField === f.key }"
+          @tap="priceField = f.key"
+        >
+          {{ $t(f.labelKey) }}
+        </text>
+      </view>
 
       <!--
         **多规格改成纵向分组，不再是一行一行的表。**
@@ -1840,7 +1857,7 @@ async function save(thenSubmit = false) {
           type="digit"
           :placeholder="$t(aggregated ? 'goods.priceAggregated' : 'goods.bulkPrice')"
         />
-        <text class="sh-btn sh-btn--sm sh-btn--soft" @tap="applyBulkPrice">{{ $t("goods.applyAll") }}</text>
+        <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="applyBulkPrice">{{ $t("goods.applyAll") }}</text>
       </view>
       <!-- 成本多半各规格一个数，但「都填同一个」也常见（同一箱货拆规格卖） -->
       <view v-if="multi && priceField === 'cost'" class="bulk sh-row">
@@ -1851,7 +1868,7 @@ async function save(thenSubmit = false) {
           type="digit"
           :placeholder="$t('goods.bulkCost')"
         />
-        <text class="sh-btn sh-btn--sm sh-btn--soft" @tap="applyBulkCost">{{ $t("goods.applyAll") }}</text>
+        <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="applyBulkCost">{{ $t("goods.applyAll") }}</text>
       </view>
 
       <!--
@@ -1983,7 +2000,7 @@ async function save(thenSubmit = false) {
           type="number"
           :placeholder="$t('goods.bulkStock')"
         />
-        <text class="sh-btn sh-btn--sm sh-btn--soft" @tap="applyBulkStock">{{ $t("goods.applyAll") }}</text>
+        <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="applyBulkStock">{{ $t("goods.applyAll") }}</text>
       </view>
 
       <view v-for="(r, i) in rows" :key="i" class="pr sh-row">
@@ -2080,24 +2097,23 @@ async function save(thenSubmit = false) {
       灰按钮在商家眼里是「我哪里填得不对」，他会去一格格找 —— 而真相是还没读完。
       一个都不显示反而诚实：上面那行写着「读取中」。
     -->
-    <view v-if="!hydrating" class="acts">
-      <view class="sh-btn save" :class="{ 'sh-btn--muted': !canSave }" @tap="save(false)">
-        {{ isDraft ? $t("goods.saveDraft") : $t("common.save") }}
+    <!--
+      贴底操作条，与建活动 / 建券同一形态：左边次要（灰底），右边主操作。
+      草稿：保存草稿 | 保存并提交。已有商品：取消 | 保存。
+      填不全时两颗保存都压暗（is-disabled 只降透明度）、save() 直接返回；
+      缺哪几项由上面那行 .missing 说 —— 与改版前同一套行为，只换了位置。
+    -->
+    <sh-actionbar v-if="!hydrating">
+      <view class="sh-row bar">
+        <view v-if="isDraft" class="sh-btn sh-btn--muted sh-fill" :class="{ 'is-disabled': !canSave }" @tap="save(false)">
+          {{ $t("goods.saveDraft") }}
+        </view>
+        <view v-else class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("common.cancel") }}</view>
+        <view class="sh-btn bar__main" :class="{ 'is-disabled': !canSave }" @tap="save(isDraft)">
+          {{ isDraft ? $t("goods.saveAndSubmit") : $t("common.save") }}
+        </view>
       </view>
-      <view
-        v-if="isDraft"
-        class="sh-btn save"
-        :class="{ 'sh-btn--muted': !canSave }"
-        @tap="save(true)"
-      >
-        {{ $t("goods.saveAndSubmit") }}
-      </view>
-    </view>
-    <!-- 在售商品的保存落草稿（双版本）——「保存后需平台审核」对它是假话：
-         保存这一步既不送审也不动线上，送不送审是发布那一步的事 -->
-    <text class="tip sh-hint">
-      {{ $t(isDraft ? "goods.draftTip" : wasOnSale ? "goods.saveTipOnSale" : "goods.saveTip") }}
-    </text>
+    </sh-actionbar>
   </sh-scaffold>
 </template>
 
@@ -2491,13 +2507,12 @@ async function save(thenSubmit = false) {
   margin-top: 8rpx;
 }
 /* 差什么：**不是报错**（他还没做错任何事），所以用警示色不用危险色 */
-.acts {
-  display: flex;
+.bar {
   gap: 16rpx;
+  width: 100%;
 }
-
-.acts .save {
-  flex: 1;
+.bar__main {
+  flex: 2;
 }
 
 .missing {
@@ -2516,7 +2531,8 @@ async function save(thenSubmit = false) {
 }
 
 .bulk {
-  gap: 12rpx;
+  /* 24rpx = sh-hit 撑出去的 12px：缝更窄的话，点输入框右缘会落进按钮的点按区 */
+  gap: 24rpx;
   margin: 20rpx 0;
 }
 .bulk__input {
@@ -2581,11 +2597,5 @@ async function save(thenSubmit = false) {
 .cat-sheet__empty {
   padding: 40rpx 24rpx;
   text-align: center;
-}
-.save {
-  margin-top: 24rpx;
-}
-.tip {
-  margin: 20rpx 8rpx;
 }
 </style>

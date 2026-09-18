@@ -155,6 +155,23 @@ function stateOf(g: Goods) {
   return g.storeOnSale ? "ON_SALE" : "OFF_SALE";
 }
 
+/**
+ * 状态 chip 的配色，与活动列表（`activities` 的 chipOf）同一口径：
+ * 在卖的给 success；**等他自己动手的**（被驳回）给 warning；其余素色。
+ * 缺货不在这里 —— 它写在库存那一格，状态这一格只说上架与审核。
+ *
+ * **此前这里刻意不用灰底圆角**（色点 + 字）：状态曾和「编辑/改库存」挤在同一排、
+ * 同样是灰底圆角块，人得逐个试才知道哪个能按。现在两者不再同排 ——
+ * chip 在上段、挨着商品名，而上段整条本身可点（进商品）；按钮独占下段。
+ * 点到 chip 不会「没反应」，这条顾虑就不成立了。
+ */
+function chipOf(g: Goods) {
+  const s = stateOf(g);
+  if (s === "ON_SALE") return "sh-chip--success";
+  if (s === "REJECTED") return "sh-chip--warning";
+  return "";
+}
+
 /** 审核中或被驳回 —— 这两种状态下商家自己按不了上架 */
 function pending(g: Goods) {
   const s = stateOf(g);
@@ -768,12 +785,9 @@ onShow(() => {
             </text>
           </view>
         </view>
-        <view class="state sh-row" :class="'state--' + stateOf(g)">
-          <text class="state__dot"></text>
-          <text class="txt-caption state__txt">{{ $t(`goods.status${stateOf(g)}`) }}</text>
-        </view>
+        <text class="sh-chip" :class="chipOf(g)">{{ $t(`goods.status${stateOf(g)}`) }}</text>
         <!-- 可点相。只在真的点得动时出现（见 onRowTap 的注释） -->
-        <text v-if="merchant.can('biz:goods')" class="txt-title row__chev">›</text>
+        <sh-icon v-if="merchant.can('biz:goods')" name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <view class="row__ops">
         <!--
@@ -821,21 +835,21 @@ onShow(() => {
         <view class="row__btns sh-row">
           <text
             v-if="primaryOf(g)"
-            class="sh-btn sh-btn--sm sh-btn--soft"
+            class="sh-btn sh-btn--sm sh-hit sh-btn--soft"
             @tap="runPrimary(g)"
           >{{ primaryLabel(g) }}</text>
-          <text v-if="merchant.can('biz:stock')" class="sh-btn sh-btn--sm sh-btn--muted" @tap="editStock(g)">
+          <text v-if="merchant.can('biz:stock')" class="sh-btn sh-btn--sm sh-hit sh-btn--muted" @tap="editStock(g)">
             {{ $t("goods.editStock") }}
           </text>
           <!-- 只剩一项时不做成菜单：多一次点击换不来任何东西 -->
           <text
             v-if="moreOf(g).length > 1"
-            class="sh-btn sh-btn--sm sh-btn--muted"
+            class="sh-btn sh-btn--sm sh-hit sh-btn--muted"
             @tap="openMore(g)"
           >{{ $t("goods.more") }}</text>
           <text
             v-else-if="soleMoreOf(g)"
-            class="sh-btn sh-btn--sm sh-btn--muted"
+            class="sh-btn sh-btn--sm sh-hit sh-btn--muted"
             @tap="runSoleMore(g)"
           >{{ soleMoreLabel(g) }}</text>
         </view>
@@ -953,11 +967,6 @@ onShow(() => {
 .row__top--tap:active {
   opacity: 0.6;
 }
-.row__chev {
-  margin-inline-start: 4rpx;
-  /* --sh-sub 不是 --sh-faint：后者是 #E4E5E8，分隔线那一档，白底上量出来几乎看不见 */
-  color: var(--sh-sub);
-}
 .row__cover {
   font-size: 60rpx;
   width: 96rpx;
@@ -989,35 +998,6 @@ onShow(() => {
 /* 降到属性档：仍是深红（可读性由 primary-text 保证），但不再抢标题的位 */
 
 /* 卖完了要一眼扫得到 —— 它是「今天要干的活」，而 0 和 180 现在长得一样 */
-/* 状态：色点 + 文字，**无底色** —— 与动作按钮在形态上分开。
-   原先它和「编辑/改库存」同样是灰底圆角：一屏六行、每行三个圆角块，
-   人得逐个试才知道哪个能按。状态是状态，不是动作。 */
-.state {
-  gap: 8rpx;
-  flex: none;
-}
-.state__dot {
-  width: 12rpx;
-  height: 12rpx;
-  border-radius: 9999px;
-  background: var(--sh-sub);
-}
-
-.state--ON_SALE .state__dot {
-  background: var(--sh-success);
-}
-.state--ON_SALE .state__txt {
-  color: var(--sh-ink);
-}
-.state--PENDING .state__dot {
-  background: var(--sh-warning);
-}
-.state--REJECTED .state__dot {
-  background: var(--sh-danger);
-}
-.state--REJECTED .state__txt {
-  color: var(--sh-danger);
-}
 .row__ops {
   text-align: end;
 }
@@ -1026,7 +1006,8 @@ onShow(() => {
 .row__btns {
   justify-content: flex-end;
   align-items: center;
-  gap: 16rpx;
+  /* 48rpx = 两颗按钮各自 sh-hit 撑出去的 12px 之和：缝再窄，相邻两颗的点按区就叠住了 */
+  gap: 48rpx;
   margin-top: 16rpx;
 }
 

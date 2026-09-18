@@ -7784,12 +7784,6 @@
           "ar": "تعذّر قراءة مسودتك المحفوظة؛ أنت تحرّر النسخة المعروضة، والنشر سيستبدل المسودة"
         },
         {
-          "key": "goods.draftTip",
-          "zh-CN": "草稿仅本人可见，提交后由平台审核",
-          "en": "Drafts are visible only to you; review starts after you submit",
-          "ar": "المسودات تظهر لك وحدك؛ تبدأ المراجعة بعد الإرسال"
-        },
-        {
           "key": "goods.durationMin",
           "zh-CN": "服务时长（分钟）",
           "en": "Duration (min)",
@@ -8373,9 +8367,9 @@
         },
         {
           "key": "goods.secBasic",
-          "zh-CN": "商品信息",
-          "en": "Product info",
-          "ar": "معلومات المنتج"
+          "zh-CN": "基本信息",
+          "en": "Basics",
+          "ar": "الأساسيات"
         },
         {
           "key": "goods.secCategory",
