@@ -21,7 +21,7 @@ import {
 } from "@/shared/fly";
 import { buyNGetM, giftQtyFor, promoLabelArgs } from "@shared/utils/promotion";
 import { defaultFulfillment } from "@shared/utils/goods";
-import type { Goods, Review, Sku } from "@shared/types";
+import type { Goods, GoodsBatch, Review, Sku } from "@shared/types";
 
 const { t } = useI18n();
 const cart = useCartStore();
@@ -184,11 +184,38 @@ const failed = ref(false);
 /** 重试要把单号带回去 —— `@retry` 不带参数 */
 const currentNo = ref("");
 
+/**
+ * 社区集单（原型 s26 · ADR-024）：几点截单、哪天到哪取、这一期已订多少。
+ * 买家要记住的只有两个时间，所以只给这三行；集单价已经是上面那个现价。
+ */
+const batch = ref<GoodsBatch | null>(null);
+
+async function loadBatch(goodsNo: string) {
+  try {
+    batch.value = await api.goodsBatch(goodsNo);
+  } catch {
+    batch.value = null;
+  }
+}
+
+function batchDay(ms: number): string {
+  const d = new Date(ms);
+  return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function batchTime(ms: number): string {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 async function load(goodsNo: string) {
   currentNo.value = goodsNo;
   try {
     const g = await api.goodsDetail(goodsNo);
   goods.value = g;
+  // 社区集单块（s26）：**独立加载、不等它**。它是补充信息 —— 放在这条链中间的话，
+  // 它一失败，下面默认选规格那几步就不跑了，买家看到的是「选不了规格、买不了」
+  void loadBatch(goodsNo);
   // 默认选中第一个有货的 SKU 的组合
   const first = g.skus.find((s) => s.stock > 0) ?? g.skus[0];
   chosen.value = first ? [...first.optionValues] : [];
@@ -480,6 +507,26 @@ onShareAppMessage(() =>
             <text class="txt-caption notice__text">
               {{ $t("goods.changeRule", { n: TRADE_RULES.appointmentChangeBeforeHours }) }}
             </text>
+          </view>
+        </view>
+
+        <!-- 社区集单：截单 / 提货 / 已订（s26） -->
+        <view v-if="batch" class="sh-card block">
+          <view class="fact sh-row sh-row--between sh-row--top">
+            <text class="txt-sub fact__label">{{ $t("goods.batchCutoff") }}</text>
+            <text class="txt-sub fact__value sh-num">
+              {{ $t("goods.batchCutoffAt", { d: batchDay(batch.cutoffAt), t: batchTime(batch.cutoffAt) }) }}
+            </text>
+          </view>
+          <view class="fact sh-row sh-row--between sh-row--top">
+            <text class="txt-sub fact__label">{{ $t("goods.batchPickup") }}</text>
+            <text class="txt-sub fact__value sh-num">
+              {{ $t("goods.batchPickupAt", { d: batch.pickupDate.slice(5), t: batch.pickupFrom || "" }) }}
+            </text>
+          </view>
+          <view class="fact sh-row sh-row--between sh-row--top">
+            <text class="txt-sub fact__label">{{ $t("goods.batchOrdered") }}</text>
+            <text class="txt-sub fact__value sh-num">{{ $t("goods.batchQty", { n: batch.orderedQty }) }}</text>
           </view>
         </view>
 

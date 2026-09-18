@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 277,
+        "b-app": 330,
         "c-app": 43
       }
     },
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 84,
+        "b-app": 172,
         "c-app": 51
       }
     },
@@ -295,7 +295,7 @@
         "font-weight": "600"
       },
       "usage": {
-        "b-app": 17,
+        "b-app": 19,
         "c-app": 16
       }
     },
@@ -317,8 +317,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 281,
-        "c-app": 242
+        "b-app": 288,
+        "c-app": 245
       }
     },
     {
@@ -339,7 +339,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 33,
+        "b-app": 35,
         "c-app": 8
       }
     },
@@ -437,7 +437,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 15,
+        "b-app": 16,
         "c-app": 10
       }
     },
@@ -453,7 +453,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 26,
+        "b-app": 29,
         "c-app": 32
       }
     },
@@ -469,7 +469,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 40,
+        "b-app": 39,
         "c-app": 13
       }
     },
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 130,
+        "b-app": 126,
         "c-app": 41
       }
     },
@@ -513,8 +513,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 116,
-        "c-app": 61
+        "b-app": 108,
+        "c-app": 67
       }
     },
     {
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 106,
+        "b-app": 107,
         "c-app": 27
       }
     },
@@ -617,8 +617,8 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 207,
-        "c-app": 74
+        "b-app": 205,
+        "c-app": 75
       }
     },
     {
@@ -635,7 +635,7 @@
         "padding": "12px var(--sh-pad-page, 14px)"
       },
       "usage": {
-        "b-app": 13,
+        "b-app": 63,
         "c-app": 16
       }
     },
@@ -659,7 +659,7 @@
         "overflow": "hidden"
       },
       "usage": {
-        "b-app": 4,
+        "b-app": 18,
         "c-app": 4
       }
     },
@@ -682,7 +682,7 @@
       },
       "usage": {
         "b-app": 21,
-        "c-app": 30
+        "c-app": 31
       }
     },
     {
@@ -753,8 +753,8 @@
         "color": "var(--sh-warning)"
       },
       "usage": {
-        "b-app": 9,
-        "c-app": 9
+        "b-app": 10,
+        "c-app": 10
       }
     },
     {
@@ -785,7 +785,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 118,
+        "b-app": 126,
         "c-app": 48
       }
     },
@@ -807,7 +807,7 @@
         "padding": "14px 0"
       },
       "usage": {
-        "b-app": 4,
+        "b-app": 5,
         "c-app": 1
       }
     },
@@ -861,7 +861,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 32,
+        "b-app": 36,
         "c-app": 3
       }
     },
@@ -897,7 +897,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 28,
+        "b-app": 27,
         "c-app": 9
       }
     },
@@ -993,7 +993,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 122,
+        "b-app": 119,
         "c-app": 14
       }
     },
@@ -1053,8 +1053,8 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 216,
-        "c-app": 128
+        "b-app": 255,
+        "c-app": 132
       }
     },
     {
@@ -1117,7 +1117,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 125,
+        "b-app": 127,
         "c-app": 62
       }
     },
@@ -1155,7 +1155,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 8,
+        "b-app": 7,
         "c-app": 0
       }
     },
@@ -1211,7 +1211,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 63,
+        "b-app": 60,
         "c-app": 28
       }
     },
@@ -1234,6 +1234,24 @@
       }
     },
     {
+      "class": ".sh-chip--success",
+      "group": "标签",
+      "when": "进行中 / 已成功（活动进行中、集单已成）—— 状态标签的绿档",
+      "avoid": "别用来表达「可点」：那是主色的活",
+      "decl": {
+        "background": "var(--sh-success-tint)",
+        "color": "var(--sh-success)"
+      },
+      "px": {
+        "background": "var(--sh-success-tint)",
+        "color": "var(--sh-success)"
+      },
+      "usage": {
+        "b-app": 1,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".sh-chip--warning",
       "group": "标签",
       "when": "要留意但还不算错（待审、将过期）",
@@ -1247,7 +1265,7 @@
         "color": "var(--sh-warning)"
       },
       "usage": {
-        "b-app": 10,
+        "b-app": 13,
         "c-app": 6
       }
     },
@@ -1361,7 +1379,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 98,
+        "b-app": 104,
         "c-app": 50
       }
     },
@@ -1417,8 +1435,8 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 295,
-        "c-app": 146
+        "b-app": 349,
+        "c-app": 150
       }
     },
     {
@@ -1449,8 +1467,8 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 127,
-        "c-app": 75
+        "b-app": 177,
+        "c-app": 79
       }
     },
     {
@@ -1482,7 +1500,7 @@
       },
       "usage": {
         "b-app": 1,
-        "c-app": 29
+        "c-app": 33
       }
     },
     {
@@ -1545,7 +1563,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 0,
+        "b-app": 3,
         "c-app": 6
       }
     },
@@ -1599,7 +1617,7 @@
         "font-weight": "600"
       },
       "usage": {
-        "b-app": 0,
+        "b-app": 3,
         "c-app": 6
       }
     },
@@ -1619,7 +1637,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 48,
+        "b-app": 46,
         "c-app": 22
       }
     },
@@ -1713,7 +1731,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 89,
+        "b-app": 77,
         "c-app": 24
       }
     },
@@ -1735,7 +1753,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 61,
+        "b-app": 57,
         "c-app": 0
       }
     },
@@ -1843,7 +1861,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 97,
+        "b-app": 85,
         "c-app": 3
       }
     },
@@ -1859,7 +1877,7 @@
         "margin-top": "4px"
       },
       "usage": {
-        "b-app": 38,
+        "b-app": 26,
         "c-app": 0
       }
     }
@@ -1876,7 +1894,7 @@
         "pad?: number"
       ],
       "usage": {
-        "b-app": 9,
+        "b-app": 14,
         "c-app": 12,
         "lib": 0
       },
@@ -2119,7 +2137,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 46,
+        "b-app": 47,
         "c-app": 30,
         "lib": 1
       },
@@ -2157,7 +2175,7 @@
         "text: string"
       ],
       "usage": {
-        "b-app": 2,
+        "b-app": 1,
         "c-app": 0,
         "lib": 0
       },
@@ -2275,7 +2293,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 65,
+        "b-app": 76,
         "c-app": 6,
         "lib": 13
       },
@@ -2314,7 +2332,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 48,
+        "b-app": 46,
         "c-app": 0,
         "lib": 0
       },
@@ -2347,7 +2365,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 7,
+        "b-app": 5,
         "c-app": 1,
         "lib": 0
       },
@@ -2536,7 +2554,7 @@
         "pending?: boolean"
       ],
       "usage": {
-        "b-app": 68,
+        "b-app": 70,
         "c-app": 37,
         "lib": 1
       },
@@ -2622,7 +2640,7 @@
         "flush?: boolean"
       ],
       "usage": {
-        "b-app": 9,
+        "b-app": 12,
         "c-app": 3,
         "lib": 1
       },
@@ -2663,7 +2681,7 @@
         "active?: string"
       ],
       "usage": {
-        "b-app": 8,
+        "b-app": 10,
         "c-app": 0,
         "lib": 0
       },
@@ -2828,7 +2846,7 @@
         "active: string"
       ],
       "usage": {
-        "b-app": 10,
+        "b-app": 12,
         "c-app": 9,
         "lib": 0
       },
@@ -3258,13 +3276,14 @@
       "key": "b-app/activities",
       "file": "b-app/src/pages/activities/index.vue",
       "components": [
+        "sh-actionbar",
         "sh-empty",
-        "sh-fab",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-tabs"
       ],
-      "libClassHits": 18,
-      "localSelectors": 8,
-      "localCssLines": 33,
+      "libClassHits": 16,
+      "localSelectors": 4,
+      "localCssLines": 19,
       "rolled": []
     },
     {
@@ -3273,15 +3292,16 @@
       "key": "b-app/activity-edit",
       "file": "b-app/src/pages/activity-edit/index.vue",
       "components": [
+        "sh-actionbar",
         "sh-empty",
-        "sh-kv",
-        "sh-option",
+        "sh-icon",
         "sh-scaffold",
+        "sh-sheet",
         "sh-stat"
       ],
-      "libClassHits": 115,
-      "localSelectors": 16,
-      "localCssLines": 53,
+      "libClassHits": 350,
+      "localSelectors": 10,
+      "localCssLines": 34,
       "rolled": []
     },
     {
@@ -3604,11 +3624,12 @@
       "file": "b-app/src/pages/marketing/index.vue",
       "components": [
         "sh-icon",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-stat"
       ],
-      "libClassHits": 7,
-      "localSelectors": 2,
-      "localCssLines": 7,
+      "libClassHits": 41,
+      "localSelectors": 1,
+      "localCssLines": 4,
       "rolled": []
     },
     {
@@ -3791,6 +3812,36 @@
       "libClassHits": 45,
       "localSelectors": 19,
       "localCssLines": 66,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "period",
+      "key": "b-app/period",
+      "file": "b-app/src/pages/period/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-scaffold",
+        "sh-stat"
+      ],
+      "libClassHits": 48,
+      "localSelectors": 5,
+      "localCssLines": 20,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "periods",
+      "key": "b-app/periods",
+      "file": "b-app/src/pages/periods/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 16,
+      "localSelectors": 4,
+      "localCssLines": 19,
       "rolled": []
     },
     {
@@ -4465,7 +4516,7 @@
         "sh-scaffold",
         "sh-stepper"
       ],
-      "libClassHits": 132,
+      "libClassHits": 151,
       "localSelectors": 41,
       "localCssLines": 162,
       "rolled": []
@@ -4642,7 +4693,7 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 120,
+      "libClassHits": 129,
       "localSelectors": 30,
       "localCssLines": 116,
       "rolled": []
@@ -5039,9 +5090,9 @@
   "gaps": [],
   "counts": {
     "tokens": 16,
-    "blocks": 81,
+    "blocks": 82,
     "components": 34,
-    "pages": 118,
+    "pages": 120,
     "gapKinds": 0
   }
 }

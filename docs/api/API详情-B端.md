@@ -73,6 +73,13 @@
 | `status` | `string` | 是 | `DRAFT` / `RUNNING` / `PAUSED` / `ENDED` |
 | `endedReason` | `string,null` | 否 | `EXPIRED` / `QUOTA` / `BUDGET` / `MANUAL`。商家问「怎么停了」要有答案 |
 | `liveNow` | `boolean` | 是 | 此刻是不是真的在生效。**与 status 分开**：周期活动在非时段里 status 仍是 RUNNING， 而商家问的是「现在减不减」。 |
+| `cutoffTime` | `string,null` | 否 | 社区集单（`CUTOFF`）：每期截单时刻 HH:mm，市场时区 |
+| `pickupOffset` | `number,null` | 否 | 社区集单：提货日 = 截单日 + N 天，缺省 1 |
+| `pickupFrom` | `string,null` | 否 | 社区集单：提货日几点起可取 HH:mm |
+| `minQty` | `number,null` | 否 | 社区集单：起订量（份）。空 = 不设，截单即成 |
+| `periodQuota` | `number,null` | 否 | 社区集单：每期份数上限。空 = 不限 |
+| `decideHours` | `number,null` | 否 | 社区集单：未达起订量时的处理时限（小时）。空 = 平台缺省 14，每个活动可单独配 |
+| `groupHours` | `number,null` | 否 | 拼团（`GROUP`）：开团后多少小时内成团。空 = 24 |
 
 `audiences[]` 的字段：
 
@@ -120,6 +127,13 @@
 | `status` | `string` | 是 | `DRAFT` / `RUNNING` / `PAUSED` / `ENDED` |
 | `endedReason` | `string,null` | 否 | `EXPIRED` / `QUOTA` / `BUDGET` / `MANUAL`。商家问「怎么停了」要有答案 |
 | `liveNow` | `boolean` | 是 | 此刻是不是真的在生效。**与 status 分开**：周期活动在非时段里 status 仍是 RUNNING， 而商家问的是「现在减不减」。 |
+| `cutoffTime` | `string,null` | 否 | 社区集单（`CUTOFF`）：每期截单时刻 HH:mm，市场时区 |
+| `pickupOffset` | `number,null` | 否 | 社区集单：提货日 = 截单日 + N 天，缺省 1 |
+| `pickupFrom` | `string,null` | 否 | 社区集单：提货日几点起可取 HH:mm |
+| `minQty` | `number,null` | 否 | 社区集单：起订量（份）。空 = 不设，截单即成 |
+| `periodQuota` | `number,null` | 否 | 社区集单：每期份数上限。空 = 不限 |
+| `decideHours` | `number,null` | 否 | 社区集单：未达起订量时的处理时限（小时）。空 = 平台缺省 14，每个活动可单独配 |
+| `groupHours` | `number,null` | 否 | 拼团（`GROUP`）：开团后多少小时内成团。空 = 24 |
 
 `audiences[]` 的字段：
 
@@ -167,6 +181,13 @@
 | `status` | `string` | 是 | `DRAFT` / `RUNNING` / `PAUSED` / `ENDED` |
 | `endedReason` | `string,null` | 否 | `EXPIRED` / `QUOTA` / `BUDGET` / `MANUAL`。商家问「怎么停了」要有答案 |
 | `liveNow` | `boolean` | 是 | 此刻是不是真的在生效。**与 status 分开**：周期活动在非时段里 status 仍是 RUNNING， 而商家问的是「现在减不减」。 |
+| `cutoffTime` | `string,null` | 否 | 社区集单（`CUTOFF`）：每期截单时刻 HH:mm，市场时区 |
+| `pickupOffset` | `number,null` | 否 | 社区集单：提货日 = 截单日 + N 天，缺省 1 |
+| `pickupFrom` | `string,null` | 否 | 社区集单：提货日几点起可取 HH:mm |
+| `minQty` | `number,null` | 否 | 社区集单：起订量（份）。空 = 不设，截单即成 |
+| `periodQuota` | `number,null` | 否 | 社区集单：每期份数上限。空 = 不限 |
+| `decideHours` | `number,null` | 否 | 社区集单：未达起订量时的处理时限（小时）。空 = 平台缺省 14，每个活动可单独配 |
+| `groupHours` | `number,null` | 否 | 拼团（`GROUP`）：开团后多少小时内成团。空 = 24 |
 
 `audiences[]` 的字段：
 
@@ -249,6 +270,8 @@
 | `merchantName` | `string` | 否 | 商家名快照 |
 | `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
+| `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
+| `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 
 
 #### POST `/biz/after-sale/{afterSaleNo}/receive`
@@ -292,6 +315,8 @@
 | `merchantName` | `string` | 否 | 商家名快照 |
 | `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
+| `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
+| `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 
 
 #### POST `/biz/after-sale/{afterSaleNo}/reject`
@@ -341,6 +366,8 @@
 | `merchantName` | `string` | 否 | 商家名快照 |
 | `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
+| `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
+| `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 
 
 ### appointment-slots
@@ -2715,6 +2742,32 @@ _无字段_
 类型：`any`
 
 
+### marketing
+
+#### GET `/biz/marketing/summary`
+
+营销入口一屏的数字　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MarketingSummary`](#marketingsummary)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `monthDiscountMinor` | `number` | 是 | 本月让利（分），活动 + 券，撤销的不算 |
+| `monthOrders` | `number` | 是 | 本月享受过优惠的订单数 |
+| `activityRunning` | `number` | 是 | 进行中的活动数 |
+| `couponIssuing` | `number` | 是 | 在发的券数 |
+| `periodTodayQty` | `number` | 是 | 今天收单中的各期份数之和 |
+| `periodTodayCutoffAt` | `number,null` | 否 | 今天最早的截单时刻；没有收单中的期时为空 |
+| `periodsShort` | `number` | 是 | 未达起订量、等处理的期数（黄标） |
+| `groupsShort` | `number` | 是 | 还差人的团数（黄标） |
+| `quotesPending` | `number` | 是 | 等待报价的求团需求数（黄标） |
+| `enrollable` | `number` | 是 | 可报名的平台活动数（平台活动上线前恒为 0） |
+
+
 ### master-data
 
 #### GET `/common/master-data`
@@ -3498,6 +3551,8 @@ _无字段_
 | `merchantName` | `string` | 否 | 商家名快照 |
 | `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
+| `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
+| `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 
 
 #### POST `/biz/order/{orderNo}/confirm-offline-pay`
@@ -3541,6 +3596,8 @@ _无字段_
 | `merchantName` | `string` | 否 | 商家名快照 |
 | `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
+| `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
+| `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 
 
 #### POST `/biz/order/{orderNo}/delivered`
@@ -3584,6 +3641,8 @@ _无字段_
 | `merchantName` | `string` | 否 | 商家名快照 |
 | `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
+| `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
+| `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 
 
 #### POST `/biz/order/{orderNo}/ship`
@@ -3633,6 +3692,121 @@ _无字段_
 | `merchantName` | `string` | 否 | 商家名快照 |
 | `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
+| `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
+| `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
+
+
+### period
+
+#### GET `/biz/period`
+
+社区集单：按状态列期　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`BatchPeriod`](#batchperiod)\[\]
+
+
+#### GET `/biz/period/{periodNo}`
+
+社区集单：一期详情（按商品 / 自提点汇总）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`BatchPeriodDetail`](#batchperioddetail)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `period` | [`BatchPeriod`](#batchperiod) | 是 | 这一期本身（份数、人数、金额已现算） |
+| `byGoods` | `object`（见下）\[\] | 是 | 按商品汇总的份数，只算已付款且未退的 —— 采购按它 |
+| `byPickup` | `object`（见下）\[\] | 是 | 按自提点汇总的份数 —— 配送按它 |
+
+`byGoods[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | — |
+| `title` | `string` | 是 | — |
+| `qty` | `number` | 是 | — |
+
+`byPickup[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `pickupNo` | `string,null` | 是 | — |
+| `pickupName` | `string,null` | 是 | — |
+| `qty` | `number` | 是 | — |
+
+
+#### POST `/biz/period/{periodNo}/cutoff`
+
+社区集单：提前截单　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`BatchPeriod`](#batchperiod)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `periodNo` | `string` | 是 | 期号（`PD…`） |
+| `activityNo` | `string` | 是 | 这一期属于哪个集单活动 |
+| `activityName` | `string,null` | 否 | 活动名，列表上「09-18 · 每日鲜果」的后半段 |
+| `periodDate` | `string` | 是 | 截单日 YYYY-MM-DD |
+| `cutoffAt` | `number` | 是 | 截单时刻（毫秒）。商家提前截单后是那一刻 |
+| `pickupDate` | `string` | 是 | 提货日 YYYY-MM-DD |
+| `pickupFrom` | `string,null` | 否 | 提货日几点起 HH:mm |
+| `status` | [`BatchPeriodStatus`](#batchperiodstatus) | 是 | 见  {@link  BatchPeriodStatus } |
+| `qty` | `number` | 是 | 已付款且未退的份数 |
+| `customers` | `number` | 是 | 下单人数（去重） |
+| `amountMinor` | `number` | 是 | 已付款且未退的金额（分） |
+| `minQty` | `number,null` | 否 | 起订量，空 = 不设 |
+| `periodQuota` | `number,null` | 否 | 每期上限，空 = 不限 |
+| `decideDeadline` | `number,null` | 否 | SHORT 时：过了这个点不处理就自动取消并退款 |
+
+
+#### POST `/biz/period/{periodNo}/decision`
+
+社区集单：未达起订量时取消本期或照常发货　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`BatchPeriod`](#batchperiod)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `periodNo` | `string` | 是 | 期号（`PD…`） |
+| `activityNo` | `string` | 是 | 这一期属于哪个集单活动 |
+| `activityName` | `string,null` | 否 | 活动名，列表上「09-18 · 每日鲜果」的后半段 |
+| `periodDate` | `string` | 是 | 截单日 YYYY-MM-DD |
+| `cutoffAt` | `number` | 是 | 截单时刻（毫秒）。商家提前截单后是那一刻 |
+| `pickupDate` | `string` | 是 | 提货日 YYYY-MM-DD |
+| `pickupFrom` | `string,null` | 否 | 提货日几点起 HH:mm |
+| `status` | [`BatchPeriodStatus`](#batchperiodstatus) | 是 | 见  {@link  BatchPeriodStatus } |
+| `qty` | `number` | 是 | 已付款且未退的份数 |
+| `customers` | `number` | 是 | 下单人数（去重） |
+| `amountMinor` | `number` | 是 | 已付款且未退的金额（分） |
+| `minQty` | `number,null` | 否 | 起订量，空 = 不设 |
+| `periodQuota` | `number,null` | 否 | 每期上限，空 = 不限 |
+| `decideDeadline` | `number,null` | 否 | SHORT 时：过了这个点不处理就自动取消并退款 |
+
+
+#### GET `/biz/period/{periodNo}/purchase-lines`
+
+社区集单：按 SKU 汇总给进货单　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`BatchPurchaseLine`](#batchpurchaseline)\[\]
 
 
 ### pickable-props
@@ -3700,6 +3874,8 @@ _无字段_
 | `merchantName` | `string` | 否 | 商家名快照 |
 | `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
+| `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
+| `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 
 
 #### POST `/biz/pickup/arrived`
@@ -3805,6 +3981,8 @@ _无字段_
 | `merchantName` | `string` | 否 | 商家名快照 |
 | `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
+| `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
+| `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 
 
 #### POST `/biz/pickup/verify/batch`
@@ -5564,6 +5742,74 @@ _无字段_
 | `qualType` | [`QualificationType`](#qualificationtype) \| `null` | 否 | 机器判的类型，与  {@link  QualificationType }  同值域。空 = 无需证件 |
 | `categoryNames` | `string`\[\] | 是 | 这个码能解锁的类目名。**由应用层拼** —— 商家看的是「食品经营许可证能解锁：肉禽蛋、乳制品」，不是三个码 |
 
+### BatchPeriod
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `periodNo` | `string` | 是 | 期号（`PD…`） |
+| `activityNo` | `string` | 是 | 这一期属于哪个集单活动 |
+| `activityName` | `string,null` | 否 | 活动名，列表上「09-18 · 每日鲜果」的后半段 |
+| `periodDate` | `string` | 是 | 截单日 YYYY-MM-DD |
+| `cutoffAt` | `number` | 是 | 截单时刻（毫秒）。商家提前截单后是那一刻 |
+| `pickupDate` | `string` | 是 | 提货日 YYYY-MM-DD |
+| `pickupFrom` | `string,null` | 否 | 提货日几点起 HH:mm |
+| `status` | [`BatchPeriodStatus`](#batchperiodstatus) | 是 | 见  {@link  BatchPeriodStatus } |
+| `qty` | `number` | 是 | 已付款且未退的份数 |
+| `customers` | `number` | 是 | 下单人数（去重） |
+| `amountMinor` | `number` | 是 | 已付款且未退的金额（分） |
+| `minQty` | `number,null` | 否 | 起订量，空 = 不设 |
+| `periodQuota` | `number,null` | 否 | 每期上限，空 = 不限 |
+| `decideDeadline` | `number,null` | 否 | SHORT 时：过了这个点不处理就自动取消并退款 |
+
+### BatchPeriodDetail
+
+一期的详情：按商品、按自提点的份数（s20）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `period` | [`BatchPeriod`](#batchperiod) | 是 | 这一期本身（份数、人数、金额已现算） |
+| `byGoods` | `object`（见下）\[\] | 是 | 按商品汇总的份数，只算已付款且未退的 —— 采购按它 |
+| `byPickup` | `object`（见下）\[\] | 是 | 按自提点汇总的份数 —— 配送按它 |
+
+`byGoods[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | — |
+| `title` | `string` | 是 | — |
+| `qty` | `number` | 是 | — |
+
+`byPickup[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `pickupNo` | `string,null` | 是 | — |
+| `pickupName` | `string,null` | 是 | — |
+| `qty` | `number` | 是 | — |
+
+### BatchPeriodStatus
+
+集单一期的状态（与后端 `PmtPeriod` 常量同源）。 `OPEN` 收单中 / `SHORT` 未达起订量待处理 / `CONFIRMED` 已成 / `CANCELLED` 已取消
+
+枚举取值：
+
+- `OPEN`
+- `SHORT`
+- `CONFIRMED`
+- `CANCELLED`
+
+### BatchPurchaseLine
+
+「去采购」：按 SKU 汇总，给进货单预填
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuNo` | `string` | 是 | SKU 号。进货单按它匹配库存物料 |
+| `goodsNo` | `string` | 是 | 商品号 |
+| `title` | `string` | 是 | 商品名 |
+| `spec` | `string,null` | 否 | 规格，如「5 斤装」 |
+| `qty` | `number` | 是 | 这一期要进的份数 |
+
 ### BizScope
 
 我在**当前门店**能做什么（`GET /biz/context`）。B 端每次会话恢复与切门店后都要重取。
@@ -6199,6 +6445,23 @@ _无字段_
 | `usedCount` | `number` | 是 | 已核销/已使用次数，衡量效果 |
 | `storeNo` | `string` | 否 | 只对这家门店生效；**空 = 全主体**（存量活动都是它）。 多门店商家必须看得见 —— 否则两条同名的「开业满减」分不清是哪家店的。 |
 
+### MarketingSummary
+
+营销入口一屏的数字（s01）。全部现算
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `monthDiscountMinor` | `number` | 是 | 本月让利（分），活动 + 券，撤销的不算 |
+| `monthOrders` | `number` | 是 | 本月享受过优惠的订单数 |
+| `activityRunning` | `number` | 是 | 进行中的活动数 |
+| `couponIssuing` | `number` | 是 | 在发的券数 |
+| `periodTodayQty` | `number` | 是 | 今天收单中的各期份数之和 |
+| `periodTodayCutoffAt` | `number,null` | 否 | 今天最早的截单时刻；没有收单中的期时为空 |
+| `periodsShort` | `number` | 是 | 未达起订量、等处理的期数（黄标） |
+| `groupsShort` | `number` | 是 | 还差人的团数（黄标） |
+| `quotesPending` | `number` | 是 | 等待报价的求团需求数（黄标） |
+| `enrollable` | `number` | 是 | 可报名的平台活动数（平台活动上线前恒为 0） |
+
 ### MasterData
 
 平台主数据快照（`GET /common/master-data`）。 合成一个响应而不是三条接口，是因为它们在**同一屏上被同时用到**： 「选行业 → 据此过滤可选主体 → 主体决定要不要传营业执照」。 分三次请求会出现「行业回来了、主体还没回来」的中间态， 而那个中间态里表单不知道该不该禁用某个选项。
@@ -6748,6 +7011,8 @@ _无字段_
 | `merchantName` | `string` | 否 | 商家名快照 |
 | `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
 | `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
+| `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
+| `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 
 ### OrderAmount
 
@@ -8016,6 +8281,13 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `status` | `string` | 是 | `DRAFT` / `RUNNING` / `PAUSED` / `ENDED` |
 | `endedReason` | `string,null` | 否 | `EXPIRED` / `QUOTA` / `BUDGET` / `MANUAL`。商家问「怎么停了」要有答案 |
 | `liveNow` | `boolean` | 是 | 此刻是不是真的在生效。**与 status 分开**：周期活动在非时段里 status 仍是 RUNNING， 而商家问的是「现在减不减」。 |
+| `cutoffTime` | `string,null` | 否 | 社区集单（`CUTOFF`）：每期截单时刻 HH:mm，市场时区 |
+| `pickupOffset` | `number,null` | 否 | 社区集单：提货日 = 截单日 + N 天，缺省 1 |
+| `pickupFrom` | `string,null` | 否 | 社区集单：提货日几点起可取 HH:mm |
+| `minQty` | `number,null` | 否 | 社区集单：起订量（份）。空 = 不设，截单即成 |
+| `periodQuota` | `number,null` | 否 | 社区集单：每期份数上限。空 = 不限 |
+| `decideHours` | `number,null` | 否 | 社区集单：未达起订量时的处理时限（小时）。空 = 平台缺省 14，每个活动可单独配 |
+| `groupHours` | `number,null` | 否 | 拼团（`GROUP`）：开团后多少小时内成团。空 = 24 |
 
 `audiences[]` 的字段：
 

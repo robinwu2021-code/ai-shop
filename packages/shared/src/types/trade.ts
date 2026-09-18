@@ -146,6 +146,13 @@ export interface OrderPreview {
     pickupNo?: string;
     pickupName?: string;
   }>;
+  /**
+   * 社区集单的提货日。**预览时恒为空** —— 期是下单那一刻才落定的（截单前后下单会进不同的期），
+   * 预览只算钱，不预占期。与 `Order.arriveDate` 同一个后端字段。
+   */
+  arriveDate?: string | null;
+  /** 同上：预览时恒为空。见 `Order.cancellableUntil` */
+  cancellableUntil?: number | null;
 }
 /**
  * 结算页的<b>能力提示</b>：这一车货能不能开票、能用哪些支付方式、额度还够不够。
@@ -373,6 +380,33 @@ export interface Order {
    * 中间付款那一步却只有一个总额。
    */
   subOrders?: Order[];
+  /**
+   * 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。
+   */
+  arriveDate?: string | null;
+  /**
+   * 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。
+   * 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。
+   */
+  cancellableUntil?: number | null;
+}
+
+/** 商品详情的社区集单块（原型 s26）。不是集单商品时接口返回 null */
+export interface GoodsBatch {
+  /** 集单活动号 */
+  activityNo: string;
+  /** 活动名，如「每日鲜果」 */
+  activityName: string;
+  /** 集单价（分）。与商品详情里的现价一致 —— 现价已经按它算过了 */
+  batchPriceMinor: number;
+  /** 若此刻下单会落进的那一期的截单时刻（毫秒） */
+  cutoffAt: number;
+  /** 提货日 YYYY-MM-DD */
+  pickupDate: string;
+  /** 提货日几点起 HH:mm */
+  pickupFrom?: string | null;
+  /** 这一期已订份数（已付款且未退） */
+  orderedQty: number;
 }
 export interface OrderTimelineNode {
   /** 流转到的状态 */

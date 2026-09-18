@@ -227,7 +227,14 @@ public class FulfillmentStatsPortImpl implements FulfillmentStatsPort {
     }
 
     /** 下单日 YYYY-MM-DD。到货日一期就取它（TDD-运营端履约调度 §4.3）。 */
+    /**
+     * 这一单算哪一天到货。<b>集单单取子单上的提货日</b>（今天下单、明天提），
+     * 其余仍取下单日 —— 非集单单 {@code arrive_date} 为空，口径一个字节都不变。
+     */
     private static String dayOf(OrdSubOrder s) {
+        if (s.getArriveDate() != null && !s.getArriveDate().isBlank()) {
+            return s.getArriveDate();
+        }
         return s.getCreatedAt() == null ? "" : s.getCreatedAt().toLocalDate().toString();
     }
 

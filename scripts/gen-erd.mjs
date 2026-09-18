@@ -105,6 +105,7 @@ export const KEY_OWNERS = {
   coupon_no: "mkt_coupon",
   quote_no: "mkt_quote",
   group_no: "mkt_group_buy",
+  period_no: "pmt_period",
   review_no: "rvw_review",
   staff_no: "sys_ops_staff",
   settle_no: "stl_bill",

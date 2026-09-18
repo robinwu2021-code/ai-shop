@@ -165,6 +165,7 @@ const RESPONSE_TYPES = {
   searchPlaces: "PlaceSearchHit[]",
   goodsList: "PageResult<Goods>",
   goodsDetail: "Goods",
+  goodsBatch: "GoodsBatch",
   cartList: "CartItem[]",
   cartAdd: "CartItem[]",
   cartUpdate: "CartItem[]",

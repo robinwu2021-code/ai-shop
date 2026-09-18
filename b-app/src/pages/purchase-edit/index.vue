@@ -10,7 +10,7 @@ import { computed, ref } from "vue";
 import { ROUTES } from "@/shared/nav";
 import { isoDay } from "@/shared/quick-dates";
 import { STORAGE } from "@shared/utils/constants";
-import { onShow } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
@@ -252,7 +252,40 @@ async function save(post: boolean) {
   }
 }
 
-onShow(load);
+/*
+ * 从社区集单「去采购」进来（营销原型 s20）：按那一期已付款的 SKU 汇总预填进货行。
+ * **只预填一次**：onShow 每次回到这一页都会跑，回来时再填一遍会把商家改过的数量冲掉。
+ * 认不出的 SKU（没建过库存物料的货）跳过 —— 进货只能进已有物料，这与手动挑货同一条规矩。
+ */
+const fromPeriod = ref("");
+let prefilled = false;
+
+async function prefillFromPeriod() {
+  // 预填要 biz:campaign（期属于营销）：只有 biz:stock 的理货员进得来这一页，但拿不到期 —— 那就不预填
+  if (!fromPeriod.value || prefilled || !pickable.value.length || !merchant.can("biz:campaign")) return;
+  prefilled = true;
+  try {
+    const want = await api.mPeriodPurchaseLines(fromPeriod.value);
+    for (const w of want) {
+      const b = pickable.value.find((x) => x.skuNo && x.skuNo === w.skuNo);
+      if (!b || lines.value.some((l) => l.itemId === b.itemId)) continue;
+      lines.value = [...lines.value, {
+        itemId: b.itemId, name: b.name, specText: b.specText, uom: b.baseUom,
+        qty: w.qty, unitCostMinor: 0,
+      }];
+    }
+  } catch {
+    // 预填失败不挡手动挑货：这一页本来就能自己选
+  }
+}
+
+onLoad((q) => {
+  fromPeriod.value = String(q?.periodNo ?? "");
+});
+onShow(async () => {
+  await load();
+  await prefillFromPeriod();
+});
 </script>
 
 <template>

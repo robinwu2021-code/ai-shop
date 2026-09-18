@@ -136,6 +136,8 @@ class MpEndpointAuthTest {
     /** 匿名访问回成功。游客可看。 */
     private static final Set<String> ANONYMOUS = Set.of(
             "GET /mp/goods/{goodsNo}",
+            // 集单块（s26）：未登录的人也要看得到截单时间才会下单；不是集单商品时 data 为 null
+            "GET /mp/goods/{goodsNo}/batch",
             "GET /mp/merchant/{merchantNo}",
             "GET /mp/merchant/{merchantNo}/score",
             "GET /mp/pickup/{pickupNo}",

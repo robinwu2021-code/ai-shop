@@ -98,7 +98,35 @@ public record OrderVO(String orderNo,
                        * 真实模型里这件事由「主单下有几张子单」表达，所以这里发的是个数而不是编号：
                        * 端上要判的本来就是「是不是多于一笔」。
                        */
-                      int payGroupSize) {
+                      int payGroupSize,
+                      // ↓ 社区集单（s37）。非集单单两者皆空
+                      String arriveDate,
+                      Long cancellableUntil) {
+
+    /** 不带集单字段的旧签名：存量构造处不必跟着改 */
+    public OrderVO(String orderNo, String payOrderNo, String status, String fulfillment,
+                   String merchantNo, String merchantName, List<ItemVO> items, Amount amount,
+                   String verifyCode, String pickupNo, String pickupName, Long payDeadlineAt,
+                   long createdAt, Long paidAt, String expressNo, String trafficSource,
+                   Long appointmentAt, Receiver receiver, List<TimelineNode> timeline,
+                   List<OrderVO> subOrders, String buyerNickname, boolean reviewed,
+                   AfterSaleVO afterSale, int payGroupSize) {
+        this(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items, amount,
+                verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
+                trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname,
+                reviewed, afterSale, payGroupSize, null, null);
+    }
+
+    /**
+     * 挂上集单信息。{@code cancellableUntil} 是截单时刻：此前可撤单（走退款），此后不能；
+     * 已截单时给空 —— 端上只看「有没有」，不必自己再比一次时钟。
+     */
+    public OrderVO withBatch(String arriveDate, Long cancellableUntil) {
+        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
+                items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
+                paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
+                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil);
+    }
 
     /**
      * 补上**只有详情视角才查**的那三样。
@@ -110,7 +138,7 @@ public record OrderVO(String orderNo,
         return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
-                buyerNickname, reviewed, afterSale, payGroupSize);
+                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil);
     }
 
     /**

@@ -38,6 +38,15 @@ public class PmtActivity extends BaseEntity {
      * 「活动结束了」与「这一团散了」会变成同一件事，而它们不是。
      */
     public static final String TRIGGER_GROUP = "GROUP";
+    /**
+     * 到截单时刻成交（社区集单）。<b>与 {@link #TRIGGER_GROUP} 同属「集体达成」</b>，
+     * 区别只在成团条件：团数的是人，集单看的是钟 —— 到点就成，有多少单算多少单
+     *（起订量是商家的保护线，见 {@link #minQty}）。
+     *
+     * <p>优惠只能是 {@link #BENEFIT_PRICE}（集单价）。实例是「一期」：
+     * {@code pmt_period}，一个截单日一行（ADR-024）。
+     */
+    public static final String TRIGGER_CUTOFF = "CUTOFF";
 
     /** 减金额 */
     public static final String BENEFIT_CUT = "CUT";
@@ -98,6 +107,24 @@ public class PmtActivity extends BaseEntity {
     /** 商家问「怎么停了」要有答案 —— 停了但说不出为什么，他会以为是系统坏了 */
     private String endedReason;
     private java.time.LocalDateTime archivedAt;
+
+    /** CUTOFF：每期截单时刻 HH:mm，市场时区 */
+    private String cutoffTime;
+    /** CUTOFF：提货日 = 截单日 + N 天 */
+    private Integer pickupOffset;
+    /** CUTOFF：提货日几点起可取 HH:mm */
+    private String pickupFrom;
+    /** CUTOFF：起订量（份）。空 = 不设，截单即成 */
+    private Integer minQty;
+    /** CUTOFF：每期份数上限。空 = 不限 */
+    private Integer periodQuota;
+    /**
+     * CUTOFF：未达起订量时商家的处理时限（小时）。空 = 取配置默认。
+     * <b>每个活动单独配</b>（店主 2026-09-18 定）。
+     */
+    private Integer decideHours;
+    /** GROUP：开团后多少小时内成团。空 = 24 */
+    private Integer groupHours;
 
     /**
      * 此刻生不生效。<b>排期判断只有这一处</b>。

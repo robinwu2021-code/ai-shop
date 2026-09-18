@@ -30,6 +30,25 @@ public interface AfterSaleService {
 
     AfterSaleVO cancel(String afterSaleNo);
 
+    /**
+     * <b>系统发起的全额退款</b>：集单取消、集单截单前买家撤单（TDD-营销-活动统一模型与集单 §1.3 / R3）。
+     *
+     * <p>为什么不能走 {@link #apply}：它要求买家本人的会话，自营单还会先进平台仲裁 ——
+     * 而这里「退不退」已经由商家或规则定了，没有人需要再审一次。
+     * 为什么不能只改状态：{@code abortGroup} 就是那么做的，结果是钱一分没退。
+     *
+     * <p>所以这里只做一件事：替买家建一张「仅退款、全额」的售后单，<b>直接走
+     * {@code doRefund}</b> —— 与商家同意、平台裁决、极速退同一条收尾路径
+     * （先回退分账再退款、子单转 REFUNDED、发事件）。
+     *
+     * <p><b>幂等</b>：子单已 REFUNDED 或已有退款中 / 已退款的售后单，直接返回那一张；
+     * 买家自己的售后正在处理（APPLIED / ARBITRATING 等）时不另建第二张，也返回它，
+     * 由那一张走完。未支付或已取消的子单没有钱可退，返回空。
+     *
+     * <p><b>循环调用放在调用方的代理上</b>：本类自调用不走事务代理（见 {@link #stuckRefundNos}）。
+     */
+    java.util.Optional<AfterSaleVO> systemRefund(String subOrderNo, String reason, String label);
+
     AfterSaleVO shipBack(String afterSaleNo, String company, String expressNo);
 
     AfterSaleVO escalate(String afterSaleNo, String appeal);

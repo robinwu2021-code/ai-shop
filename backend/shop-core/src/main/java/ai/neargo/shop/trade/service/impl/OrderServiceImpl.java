@@ -136,6 +136,17 @@ public class OrderServiceImpl implements OrderService {
     /** 订单详情要说「评价过没有」与「有没有挂着售后单」。**只在详情用**，列表不查 */
     private final ai.neargo.shop.spi.product.ReviewQueryPort reviewQueryPort;
     private final AfterSaleService afterSaleService;
+    /**
+     * 社区集单：下单时问「这一单属于哪一期」（TDD-营销域-详细设计 §1.3）。
+     * 用 setter 注入而不是再加一个构造参数：构造函数已经 30 个参数，
+     * 可选依赖放 setter 让没有集单能力的装配（部分切片测试）也能起来 —— 缺了按「不是集单」处理。
+     */
+    private ai.neargo.shop.spi.marketing.PeriodPort periodPort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPeriodPort(ai.neargo.shop.spi.marketing.PeriodPort periodPort) {
+        this.periodPort = periodPort;
+    }
 
     public OrderServiceImpl(ai.neargo.shop.spi.user.AppointmentSlotPort appointmentSlotPort,
                             ai.neargo.shop.spi.product.ReviewQueryPort reviewQueryPort,
@@ -733,6 +744,20 @@ public class OrderServiceImpl implements OrderService {
          * 订单号消耗掉、日志里留下一条永远查不到的单。
          */
         Map<String, Boolean> needsConfirm = new java.util.HashMap<>();
+        /*
+         * 社区集单：每个商家这一批货此刻属于哪一期（没有集单商品的为空）。
+         * **在落库之前取**：份数满、两个集单混在一单这两种拒绝要在任何写入之前发生。
+         * 归属按「下单这一刻」判 —— 截单前 1 秒的单属于今天，与任务什么时候扫到无关。
+         */
+        Map<String, ai.neargo.shop.spi.marketing.PeriodPort.PeriodTicket> ticketOf = new java.util.HashMap<>();
+        if (periodPort != null) {
+            for (Group g : split.groups) {
+                List<String> goodsNos = g.lines.stream().map(l -> l.snapshot.goodsNo()).distinct().toList();
+                int qty = g.lines.stream().mapToInt(Line::qty).sum();
+                periodPort.ticketFor(g.merchantNo, goodsNos, qty, now)
+                        .ifPresent(t -> ticketOf.put(g.merchantNo, t));
+            }
+        }
         for (Group g : split.groups) {
             long merchantPay = g.goodsAmount() + g.freight - discounts.of(g.merchantNo);
             admissionPort.requireOrderAllowed(g.merchantNo, merchantPay,
@@ -849,6 +874,12 @@ public class OrderServiceImpl implements OrderService {
                     Boolean.TRUE.equals(needsConfirm.get(g.merchantNo)) ? 1 : 0);
             sub.setStatus(OrdSubOrder.WAIT_PAY);
             sub.setRemark(cmd.remark());
+            var ticket = ticketOf.get(g.merchantNo);
+            if (ticket != null) {
+                // 提货日写进子单：履约批次与自提点看板按它分天，而不是按下单日（集单是今天下明天提）
+                sub.setPeriodNo(ticket.periodNo());
+                sub.setArriveDate(ticket.pickupDate());
+            }
             subOrderMapper.insert(sub);
             appendStatusLog(subOrderNo, OrdSubOrder.WAIT_PAY, "已下单，待付款",
                     OrdStatusLog.BY_USER, userNo);
@@ -1270,11 +1301,18 @@ public class OrderServiceImpl implements OrderService {
              * 「已评价的单照样显示去评价」「售后进行中整张卡不显示」
              * 「拆单提示不显示」，三条都不报错。见 TDD-交互清单缺口修复 G15。
              */
-            return orderView(sub, order).withDetail(
+            OrderVO vo = orderView(sub, order).withDetail(
                     reviewQueryPort.reviewed(sub.getSubOrderNo()),
                     afterSaleService.ofSubOrder(sub.getSubOrderNo()).orElse(null),
                     subOrderMapper.selectCount(Wrappers.<OrdSubOrder>lambdaQuery()
                             .eq(OrdSubOrder::getOrderNo, sub.getOrderNo())).intValue());
+            if (sub.getPeriodNo() != null) {
+                // 集单（s37）：提货日与「截单前可取消」。已截单、已退款的不再给可取消时刻
+                Long until = periodPort == null || OrdSubOrder.REFUNDED.equals(sub.getStatus())
+                        ? null : periodPort.openUntil(sub.getPeriodNo(), System.currentTimeMillis());
+                vo = vo.withBatch(sub.getArriveDate(), until);
+            }
+            return vo;
         }
         OrdOrder order = requireOwnOrder(orderNo, userNo);
         return payView(order, subOrders(orderNo));
@@ -1327,6 +1365,12 @@ public class OrderServiceImpl implements OrderService {
     public OrderVO cancel(String orderNo, String reason) {
         // 端上可能传子单号（订单列表上点取消）：解析成主单，一次支付整体取消
         OrdOrder order = resolveOrder(orderNo);
+        if (OrdOrder.PAID.equals(order.getStatus())) {
+            OrderVO undone = cancelPaidPeriodOrder(order);
+            if (undone != null) {
+                return undone;
+            }
+        }
         OrderStateMachine.assertOrderTransit(order.getStatus(), OrdOrder.CANCELLED);
 
         order.setStatus(OrdOrder.CANCELLED);
@@ -1357,6 +1401,37 @@ public class OrderServiceImpl implements OrderService {
                     () -> pointsPort.reverse(subNo, "订单已取消"));
             // 名额还回去。幂等标记在子单上 —— 与超时关闭那条路同时到达也只还一次
             releaseAppointmentSlot(sub);
+        }
+        return detail(order.getOrderNo());
+    }
+
+    /**
+     * 社区集单：<b>已付款</b>的单在截单前可以撤（PRD §4.3.2 · AC-7）。
+     *
+     * <p>已付款的主单在状态机里没有出口 —— 这里不改主单状态，而是逐张子单走
+     * 系统全额退款（与商家同意退款同一条收尾路径：先回退分账再退款、子单转 REFUNDED）。
+     * <b>只有整单都是集单子单时才走这条路</b>；混着普通商品的单不在这里处理，
+     * 返回空让调用方按原规则拒绝 —— 普通商品已付款后该走售后，不该被「撤单」绕过。
+     *
+     * @return 已按集单撤单处理时返回订单详情；不适用时返回空
+     */
+    private OrderVO cancelPaidPeriodOrder(OrdOrder order) {
+        if (periodPort == null) {
+            return null;
+        }
+        List<OrdSubOrder> subs = subOrders(order.getOrderNo());
+        if (subs.isEmpty() || subs.stream().anyMatch(s -> s.getPeriodNo() == null)) {
+            return null;
+        }
+        long now = System.currentTimeMillis();
+        for (OrdSubOrder s : subs) {
+            if (!OrdSubOrder.REFUNDED.equals(s.getStatus()) && periodPort.isCutOff(s.getPeriodNo(), now)) {
+                // 商家已经按这一期的量去采购了：截单后不能撤，只能收货后走售后
+                throw BizException.of(ErrorCode.PERIOD_CUT_OFF);
+            }
+        }
+        for (OrdSubOrder s : subs) {
+            afterSaleService.systemRefund(s.getSubOrderNo(), "截单前取消", "买家在截单前取消了订单");
         }
         return detail(order.getOrderNo());
     }

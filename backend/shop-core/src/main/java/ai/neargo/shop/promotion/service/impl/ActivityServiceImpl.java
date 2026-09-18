@@ -42,12 +42,15 @@ public class ActivityServiceImpl implements ActivityService {
     private final ActivityMapper activityMapper;
     private final ActivityAudienceMapper audienceMapper;
     private final ActivityGoodsMapper goodsMapper;
+    private final ai.neargo.shop.spi.product.GoodsQueryPort goodsPort;
 
     public ActivityServiceImpl(ActivityMapper activityMapper, ActivityAudienceMapper audienceMapper,
-                               ActivityGoodsMapper goodsMapper) {
+                               ActivityGoodsMapper goodsMapper,
+                               ai.neargo.shop.spi.product.GoodsQueryPort goodsPort) {
         this.activityMapper = activityMapper;
         this.audienceMapper = audienceMapper;
         this.goodsMapper = goodsMapper;
+        this.goodsPort = goodsPort;
     }
 
     @Override
@@ -115,6 +118,28 @@ public class ActivityServiceImpl implements ActivityService {
         a.setScheduleRule(d.scheduleRule());
         a.setQuota(d.quota());
         a.setBudgetMinor(d.budgetMinor());
+        /*
+         * 集单 / 拼团参数**只在对应触发下落库**，其余玩法一律清空 ——
+         * 否则把一个集单活动改成满减后，它身上还挂着截单时刻，
+         * 而凡是「有截单时刻就当集单」的地方都会被它骗到（新值漏进老分支）。
+         */
+        boolean cutoff = PmtActivity.TRIGGER_CUTOFF.equals(a.getTriggerType());
+        a.setCutoffTime(cutoff ? blankToNull(d.cutoffTime()) : null);
+        a.setPickupOffset(cutoff ? d.pickupOffset() : null);
+        a.setPickupFrom(cutoff ? blankToNull(d.pickupFrom()) : null);
+        a.setMinQty(cutoff ? d.minQty() : null);
+        a.setPeriodQuota(cutoff ? d.periodQuota() : null);
+        a.setDecideHours(cutoff ? d.decideHours() : null);
+        a.setGroupHours(PmtActivity.TRIGGER_GROUP.equals(a.getTriggerType()) ? d.groupHours() : null);
+    }
+
+    private static String blankToNull(String v) {
+        return v == null || v.isBlank() ? null : v.trim();
+    }
+
+    /** HH:mm，00:00–23:59 */
+    private static boolean isClock(String v) {
+        return v != null && v.matches("([01]\\d|2[0-3]):[0-5]\\d");
     }
 
     /**
@@ -177,6 +202,30 @@ public class ActivityServiceImpl implements ActivityService {
                 if (nz(a.getTriggerQty()) < 2
                         || !PmtActivity.BENEFIT_PRICE.equals(a.getBenefitType())) {
                     throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+            }
+            case PmtActivity.TRIGGER_CUTOFF -> {
+                /*
+                 * 社区集单（ADR-024）：
+                 * - 截单时刻必填且合法 —— 算不出截单时刻，就没有「一期」
+                 * - 优惠只能是改单价（集单价），理由与团购那条相同
+                 * - P1 只支持每天一期：周期排期（每周几）的期怎么排还没定，存进来会按天开期，
+                 *   与商家以为的「只在周三」不一致 —— 拦住比悄悄按天开好
+                 * - 起订量、每期上限、处理时限只要填了就得是正数；提货偏移不能是负数
+                 */
+                if (!isClock(a.getCutoffTime())
+                        || !PmtActivity.BENEFIT_PRICE.equals(a.getBenefitType())
+                        || PmtActivity.RECURRING.equals(a.getScheduleType())
+                        || (a.getPickupFrom() != null && !isClock(a.getPickupFrom()))
+                        || (a.getPickupOffset() != null && a.getPickupOffset() < 0)
+                        || (a.getMinQty() != null && a.getMinQty() <= 0)
+                        || (a.getPeriodQuota() != null && a.getPeriodQuota() <= 0)
+                        || (a.getDecideHours() != null && a.getDecideHours() <= 0)) {
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+                if (d.goodsNos() != null && !d.goodsNos().isEmpty()
+                        && !goodsPort.presaleGoods(d.goodsNos()).isEmpty()) {
+                    throw BizException.of(ErrorCode.GOODS_IN_PRESALE);
                 }
             }
             default -> { /* NONE 与 GOODS 没有额外参数 */ }
@@ -357,7 +406,9 @@ public class ActivityServiceImpl implements ActivityService {
                 a.getScheduleRule(), a.getQuota(), nz(a.getQuotaUsed()), left,
                 a.getBudgetMinor(), nz(a.getBudgetUsedMinor()), exposure,
                 audiences, goods, a.getStatus(), a.getEndedReason(),
-                a.isActiveAt(System.currentTimeMillis(), MARKET_ZONE) && a.hasQuotaLeft());
+                a.isActiveAt(System.currentTimeMillis(), MARKET_ZONE) && a.hasQuotaLeft(),
+                a.getCutoffTime(), a.getPickupOffset(), a.getPickupFrom(),
+                a.getMinQty(), a.getPeriodQuota(), a.getDecideHours(), a.getGroupHours());
     }
 
     /** 单次优惠。改单价那种算不出来（要看原价），保守记 0 —— 敞口以限量为准 */

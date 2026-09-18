@@ -331,6 +331,20 @@ public enum ErrorCode {
      */
     ACTIVITY_ENDED_IMMUTABLE(40023, "err.marketing.activity_ended_immutable"),
 
+    /*
+     * 社区集单（TDD-营销-活动统一模型与集单 §2.2）。
+     */
+    /** 集单已截单，买家不能再撤单 —— 商家已经按这一期的量去采购了 */
+    PERIOD_CUT_OFF(40024, "err.marketing.period_cut_off"),
+    /** 对不在那个状态的期做了动作：提前截单只能对收单中的期，处理只能对未达起订量的期 */
+    PERIOD_STATE_CONFLICT(40025, "err.marketing.period_state_conflict"),
+    /** 一张子单里有两个不同集单活动的货：一单只能挂一期，否则其中一期的汇总会少掉这几件 */
+    PERIOD_MIXED(40026, "err.marketing.period_mixed"),
+    /** 这一期的份数已满 */
+    PERIOD_FULL(40027, "err.marketing.period_full"),
+    /** 预售中的商品不能加进集单：两套截单与到货口径叠在一件货上，买家看到的是两个日子 */
+    GOODS_IN_PRESALE(40028, "err.marketing.goods_in_presale"),
+
     // ---- 5xxxx 资金 ----
     SPLIT_RECEIVER_NOT_READY(50001, "err.settle.receiver_not_ready"),
     SPLIT_EXPIRED(50002, "err.settle.split_expired"),

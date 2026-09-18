@@ -46,6 +46,7 @@ function refreshCart() {
 export const catalogMock: Pick<ShopApi,
   "goodsList"
   | "goodsDetail"
+  | "goodsBatch"
   | "cartList"
   | "cartAdd"
   | "cartUpdate"
@@ -92,6 +93,26 @@ export const catalogMock: Pick<ShopApi,
 
   async goodsDetail(goodsNo) {
     return delay(toGoods(findGoodsSeed(goodsNo)));
+  },
+
+  /** 集单块：mock 里只有生鲜类商品在集单（与原型 s26 同一件货的样子） */
+  async goodsBatch(goodsNo) {
+    const g = toGoods(findGoodsSeed(goodsNo));
+    if (g.type !== "FRESH") return delay(null);
+    const cut = new Date();
+    cut.setHours(20, 0, 0, 0);
+    if (Date.now() >= cut.getTime()) cut.setDate(cut.getDate() + 1);
+    const pick = new Date(cut.getTime() + 86400_000);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return delay({
+      activityNo: "PT-B1",
+      activityName: "每日鲜果",
+      batchPriceMinor: g.price,
+      cutoffAt: cut.getTime(),
+      pickupDate: `${pick.getFullYear()}-${pad(pick.getMonth() + 1)}-${pad(pick.getDate())}`,
+      pickupFrom: "09:00",
+      orderedQty: 86,
+    });
   },
 
   // ---------------------------------------------------------------- 购物车

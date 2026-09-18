@@ -403,6 +403,20 @@ export interface StoreActivity {
    * 而商家问的是「现在减不减」。
    */
   liveNow: boolean;
+  /** 社区集单（`CUTOFF`）：每期截单时刻 HH:mm，市场时区 */
+  cutoffTime?: string | null;
+  /** 社区集单：提货日 = 截单日 + N 天，缺省 1 */
+  pickupOffset?: number | null;
+  /** 社区集单：提货日几点起可取 HH:mm */
+  pickupFrom?: string | null;
+  /** 社区集单：起订量（份）。空 = 不设，截单即成 */
+  minQty?: number | null;
+  /** 社区集单：每期份数上限。空 = 不限 */
+  periodQuota?: number | null;
+  /** 社区集单：未达起订量时的处理时限（小时）。空 = 平台缺省 14，每个活动可单独配 */
+  decideHours?: number | null;
+  /** 拼团（`GROUP`）：开团后多少小时内成团。空 = 24 */
+  groupHours?: number | null;
 }
 /** 建活动入参。`activityNo` 为空 = 新建 */
 export interface StoreActivityDraft {
@@ -414,7 +428,7 @@ export interface StoreActivityDraft {
   goal?: string | null;
   /** 限定到某一家门店。空 = 主体下所有门店 */
   storeNo?: string | null;
-  /** `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 */
+  /** `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 / `GROUP` 拼团 / `CUTOFF` 社区集单 */
   triggerType?: string;
   /** 满额门槛（分）。triggerType=AMOUNT 时用 */
   triggerAmountMinor?: number | null;
@@ -444,6 +458,20 @@ export interface StoreActivityDraft {
   audiences?: Array<{ type: string; value: string }>;
   /** 参与的商品。空 = 全店商品都参与 */
   goodsNos?: string[];
+  /** 社区集单（`CUTOFF`）：每期截单时刻 HH:mm，市场时区 */
+  cutoffTime?: string | null;
+  /** 社区集单：提货日 = 截单日 + N 天，缺省 1 */
+  pickupOffset?: number | null;
+  /** 社区集单：提货日几点起可取 HH:mm */
+  pickupFrom?: string | null;
+  /** 社区集单：起订量（份）。空 = 不设，截单即成 */
+  minQty?: number | null;
+  /** 社区集单：每期份数上限。空 = 不限 */
+  periodQuota?: number | null;
+  /** 社区集单：未达起订量时的处理时限（小时）。空 = 平台缺省 14，每个活动可单独配 */
+  decideHours?: number | null;
+  /** 拼团（`GROUP`）：开团后多少小时内成团。空 = 24 */
+  groupHours?: number | null;
 }
 /**
  * 「我的规格」里的一组：**这家店的一个货架类目**，以及它能用到的规格。
@@ -467,4 +495,94 @@ export interface StoreCategorySpecs {
    * 合成一列端上每处都要先过滤，而漏过滤一次就是「产地」被当成规格。
    */
   props?: SpecTemplate[];
+}
+
+
+/**
+ * 社区集单的一期（B 端 s20 / s31 / s33）。
+ * **份数、人数、金额都是从订单现算的**，不是存的 —— 只算已付款且未退的。
+ */
+/**
+ * 集单一期的状态（与后端 `PmtPeriod` 常量同源）。
+ * `OPEN` 收单中 / `SHORT` 未达起订量待处理 / `CONFIRMED` 已成 / `CANCELLED` 已取消
+ */
+export type BatchPeriodStatus = "OPEN" | "SHORT" | "CONFIRMED" | "CANCELLED";
+
+export interface BatchPeriod {
+  /** 期号（`PD…`） */
+  periodNo: string;
+  /** 这一期属于哪个集单活动 */
+  activityNo: string;
+  /** 活动名，列表上「09-18 · 每日鲜果」的后半段 */
+  activityName?: string | null;
+  /** 截单日 YYYY-MM-DD */
+  periodDate: string;
+  /** 截单时刻（毫秒）。商家提前截单后是那一刻 */
+  cutoffAt: number;
+  /** 提货日 YYYY-MM-DD */
+  pickupDate: string;
+  /** 提货日几点起 HH:mm */
+  pickupFrom?: string | null;
+  /** 见 {@link BatchPeriodStatus} */
+  status: BatchPeriodStatus;
+  /** 已付款且未退的份数 */
+  qty: number;
+  /** 下单人数（去重） */
+  customers: number;
+  /** 已付款且未退的金额（分） */
+  amountMinor: number;
+  /** 起订量，空 = 不设 */
+  minQty?: number | null;
+  /** 每期上限，空 = 不限 */
+  periodQuota?: number | null;
+  /** SHORT 时：过了这个点不处理就自动取消并退款 */
+  decideDeadline?: number | null;
+}
+
+/** 一期的详情：按商品、按自提点的份数（s20） */
+export interface BatchPeriodDetail {
+  /** 这一期本身（份数、人数、金额已现算） */
+  period: BatchPeriod;
+  /** 按商品汇总的份数，只算已付款且未退的 —— 采购按它 */
+  byGoods: Array<{ goodsNo: string; title: string; qty: number }>;
+  /** 按自提点汇总的份数 —— 配送按它 */
+  byPickup: Array<{ pickupNo: string | null; pickupName: string | null; qty: number }>;
+}
+
+/** 「去采购」：按 SKU 汇总，给进货单预填 */
+export interface BatchPurchaseLine {
+  /** SKU 号。进货单按它匹配库存物料 */
+  skuNo: string;
+  /** 商品号 */
+  goodsNo: string;
+  /** 商品名 */
+  title: string;
+  /** 规格，如「5 斤装」 */
+  spec?: string | null;
+  /** 这一期要进的份数 */
+  qty: number;
+}
+
+/** 营销入口一屏的数字（s01）。全部现算 */
+export interface MarketingSummary {
+  /** 本月让利（分），活动 + 券，撤销的不算 */
+  monthDiscountMinor: number;
+  /** 本月享受过优惠的订单数 */
+  monthOrders: number;
+  /** 进行中的活动数 */
+  activityRunning: number;
+  /** 在发的券数 */
+  couponIssuing: number;
+  /** 今天收单中的各期份数之和 */
+  periodTodayQty: number;
+  /** 今天最早的截单时刻；没有收单中的期时为空 */
+  periodTodayCutoffAt?: number | null;
+  /** 未达起订量、等处理的期数（黄标） */
+  periodsShort: number;
+  /** 还差人的团数（黄标） */
+  groupsShort: number;
+  /** 等待报价的求团需求数（黄标） */
+  quotesPending: number;
+  /** 可报名的平台活动数（平台活动上线前恒为 0） */
+  enrollable: number;
 }

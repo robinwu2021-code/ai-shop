@@ -626,6 +626,8 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     appointment_released_at BIGINT DEFAULT NULL,
     pickup_owner_ref VARCHAR(32) NULL,
     pickup_owner_store_no VARCHAR(32) NULL,
+    period_no VARCHAR(64) DEFAULT NULL,
+    arrive_date VARCHAR(10) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sub_order_no UNIQUE (sub_order_no),
     CONSTRAINT uk_verify_code UNIQUE (verify_code)
@@ -3550,6 +3552,13 @@ CREATE TABLE IF NOT EXISTS pmt_activity
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    cutoff_time VARCHAR(5) DEFAULT NULL,
+    pickup_offset INT(11) DEFAULT NULL,
+    pickup_from VARCHAR(5) DEFAULT NULL,
+    min_qty INT(11) DEFAULT NULL,
+    period_quota INT(11) DEFAULT NULL,
+    decide_hours INT(11) DEFAULT NULL,
+    group_hours INT(11) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_pmt_activity_no UNIQUE (activity_no)
 );
@@ -4135,6 +4144,31 @@ CREATE TABLE IF NOT EXISTS geo_place
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_geo_place_key UNIQUE (geo_key)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_period
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    period_no VARCHAR(64) NOT NULL,
+    activity_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    period_date VARCHAR(10) NOT NULL,
+    cutoff_at BIGINT(20) NOT NULL,
+    pickup_date VARCHAR(10) NOT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'OPEN',
+    decide_deadline BIGINT(20) DEFAULT NULL,
+    decided_by VARCHAR(64) DEFAULT NULL,
+    decided_at BIGINT(20) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pmt_period_no UNIQUE (period_no),
+    CONSTRAINT uk_pmt_period_day UNIQUE (tenant_no, activity_no, period_date)
 );
 
 -- 种子数据

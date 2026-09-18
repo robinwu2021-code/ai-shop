@@ -192,6 +192,8 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
   coupon_no: { table: "mkt_coupon" },
   quote_no: { table: "mkt_quote" },
   group_no: { table: "mkt_group_buy" },
+  // 社区集单的期（V335）：ord_sub_order.period_no 指向 pmt_period
+  period_no: { table: "pmt_period" },
   review_no: { table: "rvw_review" },
   staff_no: { table: "sys_ops_staff" },
   settle_no: { table: "stl_bill" },

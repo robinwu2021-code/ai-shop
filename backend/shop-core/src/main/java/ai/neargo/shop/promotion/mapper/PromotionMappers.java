@@ -62,6 +62,10 @@ public final class PromotionMappers {
         int hardDeleteByActivity(@org.apache.ibatis.annotations.Param("activityNo") String activityNo);
     }
 
+    /** 集单的一期。唯一键 (tenant_no, activity_no, period_date) 兜住并发建期 */
+    public interface PeriodMapper extends BaseMapper<ai.neargo.shop.promotion.entity.PmtPeriod> {
+    }
+
     /** 优惠发生记录。**只增不改**，撤销是往 {@code reverted_at} 上写一笔 */
     public interface ApplyMapper extends BaseMapper<PmtApply> {
     }

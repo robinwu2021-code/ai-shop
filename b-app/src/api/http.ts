@@ -91,6 +91,10 @@ import type {
   CouponRedeemView,
   MerchantCoupon,
   StoreActivity,
+  BatchPeriod,
+  BatchPeriodDetail,
+  BatchPurchaseLine,
+  MarketingSummary,
   MemberMergePreview,
   MemberSegment,
   MemberSegmentPreview,
@@ -524,6 +528,14 @@ export const httpApi: MerchantApi = {
     http.put<StoreActivity>(buildPath(E.mSetActivityStatus.path, { activityNo }), { status }),
   mActivityConflicts: (goodsNos) =>
     http.post<ActivityConflict[]>(E.mActivityConflicts.path, { goodsNos }),
+  mMarketingSummary: () => http.get<MarketingSummary>(E.mMarketingSummary.path),
+  mPeriods: (status) => http.get<BatchPeriod[]>(E.mPeriods.path, status ? { status } : undefined),
+  mPeriod: (periodNo) => http.get<BatchPeriodDetail>(buildPath(E.mPeriod.path, { periodNo })),
+  mCutoffPeriod: (periodNo) => http.post<BatchPeriod>(buildPath(E.mCutoffPeriod.path, { periodNo })),
+  mDecidePeriod: (periodNo, action) =>
+    http.post<BatchPeriod>(buildPath(E.mDecidePeriod.path, { periodNo }), { action }),
+  mPeriodPurchaseLines: (periodNo) =>
+    http.get<BatchPurchaseLine[]>(buildPath(E.mPeriodPurchaseLines.path, { periodNo })),
   mPlanReach: (payload) => http.post<ReachPlan>(E.mPlanReach.path, payload),
   mSendReach: (payload) => http.post<ReachResult>(E.mSendReach.path, payload),
 

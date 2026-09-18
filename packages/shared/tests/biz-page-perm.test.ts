@@ -57,6 +57,9 @@ const cutsBy = (src: string, code: string) =>
  */
 const EXEMPT: Record<string, string> = {
   // ① 页内逐块裁
+  "purchase-edit/biz:campaign":
+    "只有从社区集单「去采购」进来时才调 mPeriodPurchaseLines 预填，调用前先 can('biz:campaign')、失败单独 catch —— "
+    + "理货员与店员进得来这一页（门禁是 biz:stock），他们手动挑货不受影响，只是没有预填",
   "home/biz:customer":
     "工作台每个格子跟着自己的 perm（cells 按 c.perm 过滤），经营数据卡按 can() 判；调用前也先 can()",
   "home/biz:finance":

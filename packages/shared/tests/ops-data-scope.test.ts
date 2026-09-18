@@ -474,6 +474,11 @@ const ANCHOR_WAIVED: Record<string, string> = {
     + "而那一页是 CAMPAIGN_OPS 的活，社区运营本来就不该有 marketing:*",
   "pmt_activity:PICKUP":
     "同上，自提点运营者更不该出现在活动治理页里",
+  "pmt_period:COMMUNITY":
+    "集单的一期是活动的实例，同 pmt_activity：属于商家，不属于片区。"
+    + "一期里的订单可以落在多个自提点、多个社区 —— 按片区裁会把同一期拆散，汇总就不是那一期了",
+  "pmt_period:PICKUP":
+    "同上。「按自提点看份数」是期详情里的一个汇总维度，不是期的归属",
   "mbr_reach_log:COMMUNITY":
     "触达流水属于商家。**看到空白的是**：配了社区域的运营打开触达健康度。"
     + "**注意这一页的空白比别处更值得提** —— 它同一行里还有会员数（mbr_member 有 MERCHANT 锚点），"

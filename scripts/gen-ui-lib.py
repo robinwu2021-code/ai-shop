@@ -118,6 +118,7 @@ BLOCK_NOTES = {
     ".sh-chip--dashed": ("标签", "**候选**：点一下当场加进来", "点了还要再填一屏的是入口，用 `sh-add`"),
     ".sh-chip--dashed-quiet": ("标签", "压一档的候选（跨类目通用的那些）", "—"),
     ".sh-chip--warning": ("标签", "要留意但还不算错（待审、将过期）", "—"),
+    ".sh-chip--success": ("标签", "进行中 / 已成功（活动进行中、集单已成）—— 状态标签的绿档", "别用来表达「可点」：那是主色的活"),
     ".sh-chip--danger": ("标签", "已经出错或被拒", "危险**操作**用 .sh-btn--danger"),
     ".sh-link": ("按钮", "文字动作：列表行尾的「改名 / 停用」、卡里的「展开 / 去管理」", "它不是按钮 —— 要底色就用 .sh-btn--soft"),
     ".sh-link--quiet": ("按钮", "压成灰：「收起」这类不该抢眼的", "—"),
@@ -947,7 +948,6 @@ FAMILIES = [
         ("store-scope", "row__check", "is-on", '<div class="row__check {on}"></div>'),
     ]),
     ("选项卡片", "整块可选，选中时描边变主色。五页各画一个 —— 描边 2/3/4rpx 三种、颜色 faint/line/transparent 三种", [
-        ("activity-edit", "opt", "is-on", '<div class="opt {on}">按人数封顶</div>'),
         ("member-settings", "opt", "is-on", '<div class="opt {on}">按自然月</div>'),
         ("store-categories", "opt", "opt--on", '<div class="opt {on}">粮油调味</div>'),
         ("stores", "pick", "is-on", '<div class="pick {on}">城南店</div>'),
@@ -1295,6 +1295,7 @@ BLOCK_DEMOS = {
     ".sh-chip--dashed": '<span class="sh-chip sh-chip--dashed">＋ 重量</span>',
     ".sh-chip--dashed-quiet": '<span class="sh-chip sh-chip--dashed sh-chip--dashed-quiet">＋ 颜色</span>',
     ".sh-chip--warning": '<span class="sh-chip sh-chip--warning">待审核</span>',
+    ".sh-chip--success": '<span class="sh-chip sh-chip--success">进行中</span>',
     ".sh-chip--danger": '<span class="sh-chip sh-chip--danger">已拒绝</span>',
     ".sh-link": '<span class="sh-link">改名</span>',
     ".sh-link--quiet": '<span class="sh-link sh-link--quiet">收起</span>',

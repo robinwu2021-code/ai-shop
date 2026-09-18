@@ -18,6 +18,9 @@ public interface GroupService {
 
     JoinResultVO join(String groupNo);
 
+    /** 到期未成团的团置为 FAILED，返回改了几个。由 {@code GroupExpireJob} 每分钟调 */
+    int expireOverdue(long now);
+
     /**
      * C 端发起团（C-GB-05）。商品必须已开放拼团 —— 团购价由商家在商品上配，
      * 用户只是把它「开出来」，不能自己定价。

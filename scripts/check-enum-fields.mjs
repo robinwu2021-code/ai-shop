@@ -68,6 +68,18 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  */
 export const FIELDS = [
   {
+    concept: "社区集单一期的状态",
+    field: "pmt_period.status",
+    backend: {
+      javaConst: "shop-core/src/main/java/ai/neargo/shop/promotion/entity/PmtPeriod.java",
+      // 同一个类里还有 BY_SYSTEM（decided_by 的取值），按名字排掉
+      only: ["OPEN", "SHORT", "CONFIRMED", "CANCELLED"],
+    },
+    clients: [
+      { file: SHARED_TYPES, type: "BatchPeriodStatus" },
+    ],
+  },
+  {
     concept: "订单状态（下发口径）",
     field: "ord_sub_order.status → OrderStatusView",
     backend: { javaConst: "shop-core/src/main/java/ai/neargo/shop/trade/service/OrderStatusView.java" },
@@ -550,6 +562,8 @@ export const DISMISSED = [
   { key: "stl_settle_invoice.period", why: "日期格式 YYYY/MM，不是取值域 —— 候选启发式的误报" },
   { key: "ful_batch.arrive_date", why: "日期格式 YYYY/MM/DD，同上" },
   { key: "stl_recon_diff.bill_date", why: "日期格式 YYYY/MM/DD，同上" },
+  { key: "pmt_period.period_date", why: "日期格式 YYYY/MM/DD，同上" },
+  { key: "pmt_period.pickup_date", why: "日期格式 YYYY/MM/DD，同上" },
   {
     key: "geo_place.kind",
     why: "端上 PLACE_KIND 的**真子集**，不是同一个取值域。"

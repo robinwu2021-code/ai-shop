@@ -20,6 +20,7 @@ import type {
   UserCoupon,
   GroupPickupOrder,
   Goods,
+  GoodsBatch,
   GroupBuy,
   LoginReq,
   LoginResp,
@@ -236,6 +237,8 @@ export interface ShopApi {
   // ---- 商品
   goodsList(q: GoodsQuery): Promise<PageResult<Goods>>;
   goodsDetail(goodsNo: string): Promise<Goods>;
+  /** 社区集单块（s26）：不是集单商品时为 null。匿名可看 —— 未登录的人也要看得到截单时间才会下单 */
+  goodsBatch(goodsNo: string): Promise<GoodsBatch | null>;
 
   // ---- 购物车（服务端购物车；本地 store 做乐观更新）
   cartList(): Promise<CartItem[]>;

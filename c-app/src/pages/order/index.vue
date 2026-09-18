@@ -60,8 +60,20 @@ const NO_INVOICE_STATES: readonly OrderStatus[] = ["WAIT_PAY", "WAIT_OFFLINE_PAY
  * 已付款要退钱走的是**售后**，不是取消 —— 也就是上面那条刚修好的路。
  */
 const canCancel = computed(
-  () => order.value?.status === "WAIT_PAY" || order.value?.status === "WAIT_OFFLINE_PAY",
+  () => order.value?.status === "WAIT_PAY" || order.value?.status === "WAIT_OFFLINE_PAY" || batchCancellable.value,
 );
+/**
+ * 社区集单（原型 s37）：**已付款**的集单单在截单前也能取消 —— 后端走全额退款，不是关单。
+ * 截单时刻由后端给（`cancellableUntil`），过了它就不再给，端上只看「有没有」且没过点。
+ */
+const batchCancellable = computed(
+  () => !!order.value?.cancellableUntil && order.value.cancellableUntil > Date.now(),
+);
+function batchTime(ms: number): string {
+  const d = new Date(ms);
+  return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} `
+    + `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 const canAfterSale = computed(
   () => !!order.value && AFTER_SALE_STATES.includes(order.value.status),
 );
@@ -159,7 +171,10 @@ async function load() {
 async function cancel() {
   const o = order.value;
   if (!o) return;
-  const ok = await confirm({ title: String(t("pay.cancelTitle")), hint: String(t("pay.cancelTip")) });
+  const ok = await confirm({
+    title: String(t("pay.cancelTitle")),
+    hint: String(batchCancellable.value ? t("order.batchCancelTip") : t("pay.cancelTip")),
+  });
   if (!ok) return;
   try {
     order.value = await api.cancelOrder(o.orderNo);
@@ -267,6 +282,10 @@ onShow(load);
       </text>
     </view>
 
+    <view v-if="batchCancellable" class="sh-notice sh-notice--warning">
+      <text class="txt-caption">{{ $t("order.batchCancelBefore", { t: batchTime(order.cancellableUntil!) }) }}</text>
+    </view>
+
     <!-- 状态 + 时间线 -->
     <view class="sh-card block">
       <text class="txt-title status" :class="statusTone(order.status)">
@@ -352,6 +371,10 @@ onShow(load);
       <view v-if="order.pickupName" class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.pickup") }}</text>
         <text class="txt-caption fact__v">{{ order.pickupName }}</text>
+      </view>
+      <view v-if="order.arriveDate" class="fact sh-row sh-row--between sh-row--top">
+        <text class="txt-caption fact__k">{{ $t("order.batchPickup") }}</text>
+        <text class="txt-caption fact__v sh-num">{{ order.arriveDate }}</text>
       </view>
       <view v-if="order.appointmentAt" class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.appointment") }}</text>

@@ -119,6 +119,28 @@ public class GroupServiceImpl implements GroupService {
         return toGroupBuyVO(g, userNo != null && findMember(groupNo, userNo) != null);
     }
 
+    /**
+     * 到期未成团的团置为 {@code FAILED}（TDD-营销-活动统一模型与集单 §1.3 ①）。
+     *
+     * <p><b>此前没有任何东西读 {@code end_at}</b>：它只在建团时被写，
+     * 凑不齐的团永远停在 OPEN，C 端一直显示「还差 N 人」，而截止时间早就过了。
+     *
+     * <p><b>只改状态、不退款</b>：参团今天不产生订单与付款（{@link #join} 只落成员行，
+     * {@code ord_sub_order.group_no} 全仓无人写入），没有钱可退。
+     * 参团接上下单之后，这里要补退款 —— 见 TDD §7 偏差说明。
+     *
+     * <p>一批一条 UPDATE、条件里带状态：与 join 并发时，先成团的那一边赢，
+     * 这里不会把刚成团的团改回失败。
+     */
+    @Override
+    public int expireOverdue(long now) {
+        return scoped(() -> groupBuyMapper.update(null,
+                Wrappers.<MktGroupBuy>lambdaUpdate()
+                        .set(MktGroupBuy::getStatus, MktGroupBuy.FAILED)
+                        .eq(MktGroupBuy::getStatus, MktGroupBuy.OPEN)
+                        .lt(MktGroupBuy::getEndAt, now)));
+    }
+
     @Override
     @Transactional
     public GroupVOs.JoinResultVO join(String groupNo) {
@@ -1100,7 +1122,11 @@ public class GroupServiceImpl implements GroupService {
          * （把原价标高再打「团购价」）。
          */
         g.setStatus(switchPort.bool("group.audit", false) ? MktGroupBuy.PENDING : MktGroupBuy.OPEN);
-        g.setEndAt(System.currentTimeMillis() + java.time.Duration.ofDays(7).toMillis());
+        /*
+         * 成团时限**取活动的配置**（TDD-营销-活动统一模型与集单 §1.3 ②）。
+         * 此前写死 7 天：活动里配的时限不生效，而界面上显示的是活动里那个数。
+         */
+        g.setEndAt(System.currentTimeMillis() + Duration.ofHours(rule.groupHours()).toMillis());
         scoped(() -> groupBuyMapper.insert(g));
         return toGroupBuyVO(g, false);
     }

@@ -1,214 +1,94 @@
 <script setup lang="ts">
-// 建活动：四步向导（P5）。
-//
-// **为什么是向导而不是一张长表单**：这四步里每一步都可能让商家改主意
-// （「原来长期活动必须设限量，那我改成一周」），而一张 12 个输入框的表单
-// 要填到最后一个才知道前面填错了。老的营销页就是那样，它有 8 个字段
-// 按活动类型显示/隐藏，商家切一次类型就有一半字段变空。
-//
-// 四步：① 想干什么（目标）② 优惠什么样 ③ 什么时候有效 ④ 给谁
-// 目标那一步不是装饰：它决定后面三步的默认值 —— 拉新默认受众是「非会员」，
-// 唤回默认是「沉睡」。商家从来不是先想「触发条件」的。
+/*
+ * 活动：新建 / 编辑 / 详情（原型 s03–s08 · s19 · s32 · TDD-营销域-详细设计 §1.2）。
+ *
+ * **新建两步：填写 → 确认**。玩法是表单第二行（选择面板），不是进表单前的一道门 ——
+ * 店主给过语序：「活动名、活动类型、开始以及结束日期以及其他选项」。
+ * 每种玩法都是**同一张表**，分四组：基本 / 范围 / 规则 / 上限；换玩法只换「规则」一组，
+ * 行由 `packages/shared` 的玩法模板决定（`PLAY_TEMPLATES`）。没选玩法时不出现「规则」组 ——
+ * 否则先填了满减的门槛再改成拼团，前面白填。
+ *
+ * **带活动号进来是详情**（s07 / s32）：三个数 + 与填写页同序的只读行 +
+ * 实例入口（拼团「已开的团」、集单「今日一期」）+ 底部「暂停 / 结束」。
+ * 结束的确认框说清「已开的团、已下单的集单不受影响」—— 规则与实例分层在界面上唯一必须露出的地方。
+ */
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { isoDay } from "@/shared/quick-dates";
+import { ROUTES } from "@/shared/nav";
 import { confirm } from "@ai-shop/ui/prompt";
 import { useMerchantStore } from "@/stores/merchant";
 import { money, toMinor } from "@shared/utils/money";
+import { PLAY_TEMPLATES, playOf, playOfActivity, type PlayTemplate } from "@shared/utils/play-templates";
 import type { ActivityConflict, Goods, StoreActivity, StoreActivityDraft } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
-const step = ref(1);
-const activityNo = ref("");
+/** 详情（带单号进来）还是表单 */
+const mode = ref<"form" | "detail">("form");
+const step = ref<1 | 2>(1);
+const current = ref<StoreActivity | null>(null);
+const currentNo = ref("");
+const failed = ref(false);
 const saving = ref(false);
+const busy = ref(false);
 const conflicts = ref<ActivityConflict[]>([]);
 
 const form = ref({
-  /**
-   * 类型：`TYPES` 里的那个 key。**不是 goal** —— 见 TYPES 上面那段。
-   * 它是 triggerType × benefitType 的唯一出处，别的地方一律从它推。
-   */
-  kind: "CUT",
   name: "",
-  benefitType: "CUT",
-  /** 满多少（元） */
-  threshold: "50",
-  /** 满多少件 —— CUT_QTY 用 */
-  qtyN: "3",
-  /** 减多少 / 特价多少（元） */
-  amount: "5",
-  buyN: "2",
-  giftM: "1",
-  goodsNos: [] as string[],
+  playKey: "",
   scheduleType: "ONE_OFF",
-  /** 起止。店主说的是「这周六到下周日」，不是「限时 7 天」 */
   startDay: isoDay(),
   endDay: isoDay(-7),
   weekdays: [] as number[],
   from: "08:00",
   to: "20:00",
-  quota: "100",
+  goodsNos: [] as string[],
+  /** "" 所有人 / NON_MEMBER / SLEEPING / LOYAL */
+  audience: "",
+  threshold: "",
+  qtyN: "",
+  amount: "",
+  price: "",
+  buyN: "",
+  giftM: "",
+  groupN: "3",
+  groupHours: "24",
+  cutoffTime: "20:00",
+  pickupOffset: 1,
+  pickupFrom: "09:00",
+  minQty: "",
+  decideHours: "",
+  quota: "",
   budget: "",
-  audienceType: "",
-  /** 成团人数。**下限 2** —— 1 个人不叫团，后端也拒 */
-  groupN: "2",
+  periodQuota: "",
 });
 
-/*
- * ★ **类型，不是「目标」**（2026-09-18 店主：「整理逻辑应该是活动名、活动类型、
- * 开始以及结束日期以及其他选项」）。
- *
- * 改之前第一步问的是「你想达成什么」（拉新客 / 唤回老客 / 清库存 / 提高客单），
- * 而那五个**只是默认值生成器** —— 它们在第 1 步写一次 benefit 与 audience，
- * 之后第 2/4 步可以改回去，而 `goal` 是**存下来的**。于是「拉新客」的活动
- * 可以对所有人生效、名字还叫「新客立减」，没有任何一处校验。
- *
- * 现在第一步直接问**类型**：它就是 `triggerType × benefitType` 的那几个组合，
- * 与库里那一行一一对应，不会与别的字段互相矛盾。
- *
- * 「拉新客 / 唤回老客」降级成**受众那一步的预设** —— 它们本来就是受众的别名。
- *
- * **发券不放进来**（方案 §6.1）：模型支持 BENEFIT_COUPON，但券有自己的一页，
- * 两处都能发券会让人不知道该去哪儿。
- */
-const TYPES = [
-  { key: "CUT", trigger: "AMOUNT", benefit: "CUT" },
-  { key: "CUT_QTY", trigger: "QTY", benefit: "CUT" },
-  { key: "CUT_ANY", trigger: "NONE", benefit: "CUT" },
-  { key: "PRICE", trigger: "GOODS", benefit: "PRICE" },
-  { key: "GROUP", trigger: "GROUP", benefit: "PRICE" },
-  { key: "GIFT", trigger: "QTY", benefit: "GIFT" },
-];
+const play = computed<PlayTemplate | undefined>(() => playOf(form.value.playKey));
+const has = (f: string) => !!play.value?.rules.includes(f as never);
 
-function pickType(key: string) {
-  const t2 = TYPES.find((x) => x.key === key)!;
-  form.value.kind = key;
-  form.value.benefitType = t2.benefit;
-  if (!form.value.name) form.value.name = String(t(`activityEdit.typeName.${key}`));
+// ---------------------------------------------------------------- 选择面板
+const showPlay = ref(false);
+const showGoods = ref(false);
+const showAudience = ref(false);
+const AUDIENCES = ["", "NON_MEMBER", "SLEEPING", "LOYAL"] as const;
+
+function pickPlay(key: string) {
+  const prev = form.value.playKey;
+  form.value.playKey = key;
+  const p = playOf(key)!;
+  if (p.fixedSchedule) form.value.scheduleType = p.fixedSchedule;
+  else if (prev && playOf(prev)?.fixedSchedule) form.value.scheduleType = "ONE_OFF";
+  if (p.audience) form.value.audience = p.audience;
+  if (!form.value.name.trim()) form.value.name = String(t(`plays.name.${key}`));
+  showPlay.value = false;
 }
 
-/** 是不是团购活动。判的是目标，不是优惠类型 —— 清库存也是 PRICE */
-/** 是不是团购活动。判的是类型 —— 它与「特价」都是 PRICE，靠 benefitType 分不开 */
-const isGroup = computed(() => form.value.kind === "GROUP");
-
-/*
- * ★ **暂停 / 恢复 / 结束搬到这一页**（2026-09-18）。
- *
- * 它们原来在活动列表上，是三个 24×15px 的纯文字 —— 看不出能点、也点不中。
- * 列表改成整条可点之后那三个字撤掉了，**但能力不能跟着没**：
- * 光撤不搬就是把「怎么停一个活动」这件事从产品里删掉了。
- */
-async function setStatus(next: string) {
-  if (!current.value || busy.value) return;
-  if (next === "ENDED") {
-    // 结束不可逆：确认框里要说清「不能再打开」，而不是只问「确定吗」
-    const ok = await confirm({
-      title: String(t("activities.endTitle", { name: current.value.name })),
-      hint: String(t("activities.endBody")),
-      danger: true,
-    });
-    if (!ok) return;
-  }
-  busy.value = true;
-  try {
-    await api.mSetActivityStatus(current.value.activityNo, next);
-    uni.showToast({ title: String(t("activityEdit.saved")), icon: "none" });
-    setTimeout(() => uni.navigateBack(), 600);
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  } finally {
-    busy.value = false;
-  }
-}
-
-const busy = ref(false);
-
-/**
- * 从库里那一行反推类型。<b>先判触发再判优惠</b> —— 团购与特价都是 PRICE，
- * 只有 triggerType 分得开；反过来判的话，所有团购活动打开都会显示成「特价」。
- */
-/** 毫秒 → `YYYY-MM-DD`（本地日历日）。回填时用，与 dayStart 互为逆 */
-function dayOf(ms: number): string {
-  const d = new Date(ms);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-
-/** `YYYY-MM-DD` → 那一天本地 00:00 的毫秒。**不用 Date.parse** —— 它按 UTC 解 */
-function dayStart(day: string): number {
-  const [y, m, d] = day.split("-").map(Number);
-  return new Date(y!, (m ?? 1) - 1, d ?? 1, 0, 0, 0, 0).getTime();
-}
-
-/** 那一天本地 23:59:59.999 —— 结束日是**含当天**的，店主说「到下周日」指整个周日 */
-function dayEnd(day: string): number {
-  const [y, m, d] = day.split("-").map(Number);
-  return new Date(y!, (m ?? 1) - 1, d ?? 1, 23, 59, 59, 999).getTime();
-}
-
-/*
- * 反查要**同时看触发与优惠**。三种减钱活动共用 `benefit: "CUT"`，
- * 只按 benefit 找的话它必然回到列表里第一个 —— 「立减 3 元」会显示成
- * 「满 0 减 3」，而没有任何一处会报错。加枚举值时的老坑：
- * 只按另一个字段分支的地方会默默当成老玩法。
- */
-function kindOf(a: StoreActivity): string {
-  const hit = TYPES.find(
-    (x) => x.benefit === a.benefitType && x.trigger === (a.triggerType || "NONE"),
-  );
-  return hit ? hit.key : "CUT";
-}
-
-const isItemCost = computed(
-  () => form.value.benefitType === "PRICE" || form.value.benefitType === "GIFT",
-);
-
-/** 最大敞口。**边填边显示** —— 他填的是份数，要为之负责的是钱 */
-const exposure = computed(() => {
-  if (form.value.benefitType !== "CUT") return 0;
-  const per = toMinor(form.value.amount);
-  const n = Number(form.value.quota || 0);
-  return per && n ? per * n : 0;
-});
-
-/** 长期活动没有限量也没有预算 = 永久敞口。这条与后端一字不差 */
-const alwaysOnUncapped = computed(
-  () => form.value.scheduleType === "ALWAYS_ON"
-    && !Number(form.value.quota || 0) && !toMinor(form.value.budget),
-);
-
-/** 这次没取到。**与「这个东西不存在」是两件事** —— 预填失败留下的是一张空表单，
- *  照着它填完保存，存出来的是一条新的，原来那条还在 */
-/** 重试要把单号带回去 —— `@retry` 不带参数，而 `activityNo`/`couponNo`
- *  是**加载成功之后**才设的，失败时它们是空的 */
-const currentNo = ref("");
-/**
- * 载入的那份活动。**效果三数与状态从它读**（2026-09-18）——
- * 它们原来长在活动列表的卡上，占掉每条 55px 而商家扫列表时并不看它们；
- * 看「这个花了多少」是专门来看的，那就该在这一页。
- */
-const current = ref<StoreActivity | null>(null);
-const failed = ref(false);
-
-/*
- * ★ **选货控件此前根本不存在**（2026-09-18 查实）。
- *
- * `goodsNos` 只在「载入一个已有活动」时被填过，新建时永远是空数组，
- * 而「改单价 / 送商品必须指定商品」那条校验拦在保存那一步 ——
- * 于是四个目标里的**「清库存」与「买赠」从这一页建不出来**，
- * 报的是「特价和买赠必须选商品」，而界面上没有任何地方能选。
- * 线上 pmt_activity 0 条，与这条正好对得上。
- *
- * 写法照营销页那一段（chip 多选），不新造件。
- */
 const goods = ref<Goods[]>([]);
-/** 首屏到过没有。**不是 loading** —— 没有它的话，数据回来之前会先闪一下「本店还没有商品」 */
 const goodsLoaded = ref(false);
-
 async function loadGoods() {
   try {
     goods.value = (await api.mGoodsList({ size: 100 })).records;
@@ -222,59 +102,223 @@ async function loadGoods() {
 function toggleGoods(no: string) {
   const cur = form.value.goodsNos;
   form.value.goodsNos = cur.includes(no) ? cur.filter((x) => x !== no) : [...cur, no];
-  void checkConflicts();
-}
-
-async function checkConflicts() {
-  if (!form.value.goodsNos.length) {
-    conflicts.value = [];
-    return;
-  }
-  conflicts.value = await api.mActivityConflicts(form.value.goodsNos).catch(() => []);
 }
 
 function toggleWeekday(d: number) {
-  form.value.weekdays = form.value.weekdays.includes(d)
-    ? form.value.weekdays.filter((x) => x !== d)
-    : [...form.value.weekdays, d];
+  const cur = form.value.weekdays;
+  form.value.weekdays = cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d];
 }
 
+const goodsText = computed(() => {
+  const n = form.value.goodsNos.length;
+  if (!n) return String(t("activityEdit.goodsNone"));
+  if (n === 1) return goods.value.find((g) => g.goodsNo === form.value.goodsNos[0])?.title
+    ?? String(t("activityEdit.goodsN", { n }));
+  return String(t("activityEdit.goodsN", { n }));
+});
+
+const audienceText = computed(() => String(t(`activityEdit.audienceOpt.${form.value.audience || "ALL"}`)));
+
+// ---------------------------------------------------------------- 日期
+function dayOf(ms: number): string {
+  const d = new Date(ms);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+/** `YYYY-MM-DD` → 本地 00:00。**不用 Date.parse** —— 它按 UTC 解，东八区会早八小时 */
+function dayStart(day: string): number {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(y!, (m ?? 1) - 1, d ?? 1, 0, 0, 0, 0).getTime();
+}
+/** 结束日含当天：店主说「到下周日」指整个周日 */
+function dayEnd(day: string): number {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(y!, (m ?? 1) - 1, d ?? 1, 23, 59, 59, 999).getTime();
+}
+
+// ---------------------------------------------------------------- 组草稿与校验
+const isItemCost = computed(() => play.value?.benefitType === "PRICE" || play.value?.benefitType === "GIFT");
+
+/** 最多让利。减钱类 = 份数 × 每次；改价与送货的单次成本由商品决定，按份数封顶 */
+const exposureText = computed(() => {
+  const n = Number(form.value.quota || 0);
+  if (play.value?.benefitType === "CUT" && n) return money(n * toMinor(form.value.amount));
+  if (toMinor(form.value.budget)) return money(toMinor(form.value.budget));
+  return String(t("activityEdit.exposureUnknown"));
+});
+
+function draft(): StoreActivityDraft {
+  const p = play.value!;
+  const aud = form.value.audience;
+  const audiences = !aud ? [] : aud === "NON_MEMBER" ? [{ type: "NON_MEMBER", value: "*" }]
+    : [{ type: "LEVEL", value: aud }];
+  const schedule = p.fixedSchedule ?? form.value.scheduleType;
+  const triggerQty = p.key === "GROUP" ? Number(form.value.groupN || 0)
+    : p.key === "CUT_QTY" ? Number(form.value.qtyN || 0)
+      : p.key === "GIFT" ? Number(form.value.buyN || 0) : null;
+  const benefitAmount = p.benefitType === "CUT" ? toMinor(form.value.amount)
+    : p.benefitType === "PRICE" ? toMinor(form.value.price) : null;
+  const n = (v: string) => (v === "" ? null : Number(v));
+  return {
+    activityNo: current.value?.activityNo,
+    name: form.value.name.trim(),
+    goal: null,
+    triggerType: p.triggerType,
+    triggerAmountMinor: p.key === "CUT" ? toMinor(form.value.threshold) : null,
+    triggerQty,
+    benefitType: p.benefitType,
+    benefitAmountMinor: benefitAmount,
+    benefitQty: p.benefitType === "GIFT" ? Number(form.value.giftM || 0) : null,
+    scheduleType: schedule,
+    startAt: schedule === "ONE_OFF" ? dayStart(form.value.startDay) : Date.now(),
+    endAt: schedule === "ONE_OFF" ? dayEnd(form.value.endDay) : null,
+    scheduleRule: schedule === "RECURRING"
+      ? JSON.stringify({ weekdays: form.value.weekdays, from: form.value.from, to: form.value.to })
+      : null,
+    quota: n(form.value.quota),
+    budgetMinor: toMinor(form.value.budget) || null,
+    audiences,
+    goodsNos: p.needsGoods ? form.value.goodsNos : [],
+    cutoffTime: p.triggerType === "CUTOFF" ? form.value.cutoffTime : null,
+    pickupOffset: p.triggerType === "CUTOFF" ? form.value.pickupOffset : null,
+    pickupFrom: p.triggerType === "CUTOFF" ? form.value.pickupFrom : null,
+    minQty: p.triggerType === "CUTOFF" ? n(form.value.minQty) : null,
+    periodQuota: p.triggerType === "CUTOFF" ? n(form.value.periodQuota) : null,
+    decideHours: p.triggerType === "CUTOFF" ? n(form.value.decideHours) : null,
+    groupHours: p.triggerType === "GROUP" ? n(form.value.groupHours) : null,
+  };
+}
+
+/** 与后端同一套硬校验，拦在「下一步」—— 到确认页才知道填错就晚了 */
+function problem(): string | null {
+  const p = play.value;
+  if (!form.value.name.trim()) return "activityEdit.need.name";
+  if (!p) return "activityEdit.need.play";
+  if (p.needsGoods && !form.value.goodsNos.length) return "activityEdit.need.goods";
+  const rules: Record<string, string> = {
+    threshold: form.value.threshold, qtyN: form.value.qtyN, amount: form.value.amount,
+    price: form.value.price, buyN: form.value.buyN, giftM: form.value.giftM, groupN: form.value.groupN,
+  };
+  for (const r of p.rules) {
+    if (r in rules && !(Number(rules[r]) > 0)) return "activityEdit.need.rule";
+  }
+  if (p.key === "GROUP" && Number(form.value.groupN) < 2) return "activityEdit.need.rule";
+  if (p.triggerType === "CUTOFF" && !/^([01]\d|2[0-3]):[0-5]\d$/.test(form.value.cutoffTime)) {
+    return "activityEdit.need.cutoff";
+  }
+  const schedule = p.fixedSchedule ?? form.value.scheduleType;
+  const capped = !!Number(form.value.quota || 0) || !!toMinor(form.value.budget);
+  if (schedule === "ALWAYS_ON" && !capped) return "activityEdit.need.cap";
+  if (isItemCost.value && !Number(form.value.quota || 0)) return "activityEdit.need.quota";
+  return null;
+}
+
+async function next() {
+  const key = problem();
+  if (key) {
+    uni.showToast({ title: String(t(key)), icon: "none" });
+    return;
+  }
+  conflicts.value = play.value?.needsGoods && form.value.goodsNos.length
+    ? await api.mActivityConflicts(form.value.goodsNos).catch(() => [])
+    : [];
+  step.value = 2;
+}
+
+async function publish() {
+  if (saving.value) return;
+  saving.value = true;
+  try {
+    await api.mSaveActivity(draft());
+    uni.showToast({ title: String(t("activityEdit.saved")), icon: "none" });
+    setTimeout(() => uni.navigateBack(), 600);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    saving.value = false;
+  }
+}
+
+// ---------------------------------------------------------------- 确认页的只读行
+const ruleSummary = computed(() => {
+  const p = play.value;
+  if (!p) return "";
+  const yuan = (v: string) => money(toMinor(v));
+  switch (p.key) {
+    case "CUT": return String(t("activities.ruleCut", { n: yuan(form.value.threshold), m: yuan(form.value.amount) }));
+    case "CUT_QTY": return String(t("activities.ruleCutQty", { n: form.value.qtyN, m: yuan(form.value.amount) }));
+    case "CUT_ANY":
+    case "NEW_CUSTOMER": return String(t("activities.ruleCutAny", { m: yuan(form.value.amount) }));
+    case "PRICE": return String(t("activities.rulePrice", { n: yuan(form.value.price) }));
+    case "GIFT": return String(t("activities.ruleGift", { n: form.value.buyN, m: form.value.giftM }));
+    case "GROUP": return String(t("activities.ruleGroup", { n: form.value.groupN, m: yuan(form.value.price) }));
+    case "BATCH": return String(t("activities.ruleBatch", { m: yuan(form.value.price) }));
+    default: return "";
+  }
+});
+
+const timeSummary = computed(() => {
+  const p = play.value;
+  if (p?.triggerType === "CUTOFF") return String(t("activities.batchDaily", { t: form.value.cutoffTime }));
+  const s = p?.fixedSchedule ?? form.value.scheduleType;
+  if (s === "ALWAYS_ON") return String(t("activities.always"));
+  if (s === "RECURRING") {
+    const d = form.value.weekdays.map((w) => String(t(`activities.weekday.${w}`))).join("、");
+    return String(t("activities.recurring", { d, f: form.value.from, e: form.value.to }));
+  }
+  return String(t("activities.range", { s: form.value.startDay.slice(5), e: form.value.endDay.slice(5) }));
+});
+
+const capSummary = computed(() => {
+  const parts: string[] = [];
+  if (form.value.quota) parts.push(`${form.value.quota} ${String(t("period.qty"))}`);
+  if (form.value.periodQuota) parts.push(`${String(t("activityEdit.periodQuota"))} ${form.value.periodQuota}`);
+  if (toMinor(form.value.budget)) parts.push(money(toMinor(form.value.budget)));
+  return parts.join(" · ") || String(t("activityEdit.unlimited"));
+});
+
+// ---------------------------------------------------------------- 详情
 async function loadExisting(no: string) {
   currentNo.value = no;
-  /*
-   * **`.catch(() => null)` 脱掉**。兜成 null 之后 `if (!a) return` 悄悄退出，
-   * 留下一张空表单，而 `activityNo` 停在空 —— 商家照着空白填完点保存，
-   * 存出来的是**一个新活动**，原来那个还在。他要过一阵才会发现多了一条。
-   */
-  let a;
+  let a: StoreActivity;
   try {
     a = await api.mActivity(no);
-    current.value = a;
     failed.value = false;
   } catch {
     failed.value = true;
     return;
   }
-  activityNo.value = a.activityNo;
-  form.value.kind = kindOf(a);
-  if (a.startAt) form.value.startDay = dayOf(a.startAt);
-  if (a.endAt) form.value.endDay = dayOf(a.endAt);
-  form.value.name = a.name;
-  form.value.benefitType = a.benefitType;
-  form.value.threshold = String(((a.triggerAmountMinor ?? 0) / 100).toFixed(2));
-  if (form.value.kind === "CUT_QTY") form.value.qtyN = String(a.triggerQty ?? 3);
-  form.value.amount = String(((a.benefitAmountMinor ?? 0) / 100).toFixed(2));
-  form.value.buyN = String(a.triggerQty ?? 2);
-  form.value.groupN = String(a.triggerQty ?? 2);
-  form.value.giftM = String(a.benefitQty ?? 1);
-  form.value.goodsNos = [...a.goodsNos];
-  form.value.scheduleType = a.scheduleType;
-  form.value.quota = a.quota == null ? "" : String(a.quota);
-  form.value.budget = a.budgetMinor ? String((a.budgetMinor / 100).toFixed(2)) : "";
-  form.value.audienceType = a.audiences.length
-    ? (a.audiences[0]!.type === "LEVEL"
-      ? `LEVEL:${a.audiences[0]!.value}` : a.audiences[0]!.type)
-    : "";
+  current.value = a;
+  mode.value = "detail";
+  const p = playOfActivity(a);
+  const yuan = (m?: number | null) => (m == null ? "" : (m / 100).toFixed(2));
+  form.value = {
+    ...form.value,
+    name: a.name,
+    playKey: p?.key ?? "",
+    scheduleType: a.scheduleType,
+    startDay: a.startAt ? dayOf(a.startAt) : form.value.startDay,
+    endDay: a.endAt ? dayOf(a.endAt) : form.value.endDay,
+    goodsNos: [...a.goodsNos],
+    audience: a.audiences[0]?.type === "NON_MEMBER" ? "NON_MEMBER"
+      : a.audiences[0]?.type === "LEVEL" ? String(a.audiences[0]?.value) : "",
+    threshold: yuan(a.triggerAmountMinor),
+    qtyN: a.triggerType === "QTY" && a.benefitType === "CUT" ? String(a.triggerQty ?? "") : "",
+    amount: a.benefitType === "CUT" ? yuan(a.benefitAmountMinor) : "",
+    price: a.benefitType === "PRICE" ? yuan(a.benefitAmountMinor) : "",
+    buyN: a.benefitType === "GIFT" ? String(a.triggerQty ?? "") : "",
+    giftM: a.benefitType === "GIFT" ? String(a.benefitQty ?? "") : "",
+    groupN: a.triggerType === "GROUP" ? String(a.triggerQty ?? 3) : "3",
+    groupHours: a.groupHours == null ? "24" : String(a.groupHours),
+    cutoffTime: a.cutoffTime ?? "20:00",
+    pickupOffset: a.pickupOffset ?? 1,
+    pickupFrom: a.pickupFrom ?? "09:00",
+    minQty: a.minQty == null ? "" : String(a.minQty),
+    decideHours: a.decideHours == null ? "" : String(a.decideHours),
+    quota: a.quota == null ? "" : String(a.quota),
+    budget: a.budgetMinor ? (a.budgetMinor / 100).toFixed(2) : "",
+    periodQuota: a.periodQuota == null ? "" : String(a.periodQuota),
+  };
   if (a.scheduleRule) {
     try {
       const r = JSON.parse(a.scheduleRule) as { weekdays?: number[]; from?: string; to?: string };
@@ -283,81 +327,44 @@ async function loadExisting(no: string) {
       form.value.to = r.to ?? "20:00";
     } catch { /* 坏规则读不出来就用默认值，保存时后端会拦 */ }
   }
-  await checkConflicts();
 }
 
-async function save() {
-  if (saving.value) return;
-  if (!form.value.name.trim()) {
-    uni.showToast({ title: t("activityEdit.needName"), icon: "none" });
-    return;
-  }
-  if (alwaysOnUncapped.value) {
-    uni.showToast({ title: t("activityEdit.alwaysOnNeedsCap"), icon: "none" });
-    return;
-  }
-  if (isItemCost.value && !form.value.goodsNos.length) {
-    uni.showToast({ title: t("activityEdit.needGoods"), icon: "none" });
-    return;
-  }
-  if (isItemCost.value && !Number(form.value.quota || 0)) {
-    uni.showToast({ title: t("activityEdit.needQuota"), icon: "none" });
-    return;
-  }
+function edit() {
+  mode.value = "form";
+  step.value = 1;
+}
 
-  const now = Date.now();
-  const audiences = form.value.audienceType
-    ? [form.value.audienceType.startsWith("LEVEL:")
-      ? { type: "LEVEL", value: form.value.audienceType.slice(6) }
-      : { type: form.value.audienceType, value: "*" }]
-    : [];
-
-  const draft: StoreActivityDraft = {
-    activityNo: activityNo.value || undefined,
-    name: form.value.name.trim(),
-    // ★ goal 停写：它与 benefitType/audience 可以互相矛盾且无人校验（方案 §4.1）。
-    // 列先留着不删 —— 与 prd_goods 那两列同一处置，回滚窗口留长
-    goal: null,
-    benefitType: form.value.benefitType,
-    /*
-     * 触发**由类型直接给**，不再从 benefitType 倒推。倒推在三种减钱活动
-     * 共用 `CUT` 之后必然出错：「立减」与「满件减」都会被写成 AMOUNT 触发，
-     * 存得下、列表写着进行中、下单一分不减，而且没有一处会报错。
-     */
-    triggerType: TYPES.find((x) => x.key === form.value.kind)!.trigger,
-    triggerAmountMinor: form.value.kind === "CUT" ? toMinor(form.value.threshold) : null,
-    triggerQty: isGroup.value ? Number(form.value.groupN || 0)
-      : form.value.kind === "CUT_QTY" ? Number(form.value.qtyN || 0)
-        : form.value.benefitType === "GIFT" ? Number(form.value.buyN || 0) : null,
-    benefitAmountMinor: form.value.benefitType === "GIFT" ? null : toMinor(form.value.amount),
-    benefitQty: form.value.benefitType === "GIFT" ? Number(form.value.giftM || 0) : null,
-    scheduleType: form.value.scheduleType,
-    /*
-     * 起止取**本地日历日的边界**：开始那天的 00:00、结束那天的 23:59:59。
-     * 直接用 `Date.parse(day)` 的话拿到的是 UTC 零点 —— 在东八区会把活动
-     * 提前八小时开始、提前八小时结束，而界面上写着的日期一个字都没变。
-     */
-    startAt: form.value.scheduleType === "ONE_OFF" ? dayStart(form.value.startDay) : null,
-    endAt: form.value.scheduleType === "ONE_OFF" ? dayEnd(form.value.endDay) : null,
-    scheduleRule: form.value.scheduleType === "RECURRING"
-      ? JSON.stringify({ weekdays: form.value.weekdays, from: form.value.from, to: form.value.to })
-      : null,
-    quota: form.value.quota ? Number(form.value.quota) : null,
-    budgetMinor: toMinor(form.value.budget) || null,
-    audiences,
-    goodsNos: form.value.goodsNos,
-  };
-
-  saving.value = true;
+async function setStatus(next: string) {
+  if (!current.value || busy.value) return;
+  if (next === "ENDED") {
+    const ok = await confirm({
+      title: String(t("activities.endTitle", { name: current.value.name })),
+      hint: String(t("activities.endBody")),
+      danger: true,
+    });
+    if (!ok) return;
+  }
+  busy.value = true;
   try {
-    await api.mSaveActivity(draft);
-    uni.showToast({ title: t("activityEdit.saved"), icon: "none" });
-    setTimeout(() => uni.navigateBack(), 600);
+    await api.mSetActivityStatus(current.value.activityNo, next);
+    await loadExisting(current.value.activityNo);
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
-    saving.value = false;
+    busy.value = false;
   }
+}
+
+function openInstances() {
+  const a = current.value;
+  if (!a) return;
+  uni.navigateTo({ url: a.triggerType === "CUTOFF" ? ROUTES.periods : ROUTES.groups });
+}
+
+function back() {
+  if (step.value === 2) step.value = 1;
+  else if (current.value) mode.value = "detail";
+  else uni.navigateBack();
 }
 
 onLoad((q) => {
@@ -367,317 +374,380 @@ onLoad((q) => {
 </script>
 
 <template>
-  <sh-scaffold :title-key="current ? 'activityEdit.titleEdit' : 'activityEdit.title'" :denied="!merchant.can('biz:campaign')"
+  <sh-scaffold
+    :title-key="current ? 'activityEdit.titleEdit' : 'activityEdit.title'"
+    :denied="!merchant.can('biz:campaign')"
     :failed="failed"
     @retry="() => loadExisting(currentNo)"
   >
-    <!--
-      进度只做指示，不做导航：走动靠底部的「上一步 / 下一步」。
-      做成三颗可点的 chip 等于同一件事两套控件，且每一步都固定吃掉一行。
-    -->
-    <text class="txt-caption steps">{{ $t("activityEdit.stepOf", { i: step }) }} · {{ $t(`activityEdit.step${step}`) }}</text>
-
-    <!-- ① 想干什么 -->
-    <view v-if="step === 1" class="sh-card">
-      <text class="field__label">{{ $t("activityEdit.typeQ") }}</text>
-      <view class="opts">
-        <sh-option
-          v-for="ty in TYPES"
-          :key="ty.key"
-          :selected="form.kind === ty.key"
-          @tap="pickType(ty.key)"
-        >
-          <text class="txt-strong opt__t">{{ $t(`activityEdit.type.${ty.key}`) }}</text>
-          <text class="txt-caption sh-muted opt__d">{{ $t(`activityEdit.typeHint.${ty.key}`) }}</text>
-        </sh-option>
+    <!-- ============================== 详情（s07 / s32） -->
+    <template v-if="mode === 'detail' && current">
+      <view class="sh-card">
+        <sh-stat :items="[
+          { value: current.quotaUsed, label: String($t('activityEdit.statUsed')) },
+          { value: money(current.budgetUsedMinor), label: String($t('activityEdit.statSpent')) },
+          { value: current.quotaLeft == null ? String($t('activityEdit.unlimited')) : current.quotaLeft,
+            label: String($t('activityEdit.statLeft')) },
+        ]"></sh-stat>
       </view>
-      <view class="sh-row sh-mt-sm sh-mt-xs">
-        <text class="txt-sub row__label">{{ $t("activityEdit.name") }}</text>
-        <input maxlength="64" v-model="form.name" class="field__input row__input"
-               :placeholder="$t('activityEdit.namePh')" />
-      </view>
-    </view>
 
-    <!-- ③ 优惠什么样 -->
-    <view v-if="step === 3" class="sh-card">
-      <!--
-        ★ **这里不再问「优惠方式」**（2026-09-18）：第 1 步问的类型已经是
-        triggerType × benefitType 的那个组合，在这儿再给一排可点的方式，
-        等于同一件事两个来源 —— 选了「满件减」再把方式改成「特价」，
-        存下去就是 QTY × PRICE：定价那侧没有分支，活动永远不生效且不报错。
-        团购原本就已经藏掉这一排，理由是同一条。
-      -->
-      <template v-if="form.benefitType === 'CUT'">
-        <view v-if="form.kind === 'CUT'" class="sh-row sh-mt-sm sh-mt-xs">
-          <text class="txt-sub row__label">{{ $t("activityEdit.threshold") }}</text>
-          <input maxlength="10" v-model="form.threshold" class="field__input row__input" type="digit" />
+      <view class="sh-cells">
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.name") }}</text>
+          <view class="sh-row">
+            <text class="txt-body">{{ current.name }}</text>
+            <text class="sh-chip" :class="{ 'sh-chip--success': current.status === 'RUNNING' }">
+              {{ $t(`activityEdit.status.${current.status}`) }}
+            </text>
+          </view>
         </view>
-        <view v-if="form.kind === 'CUT_QTY'" class="sh-row sh-mt-sm sh-mt-xs">
-          <text class="txt-sub row__label">{{ $t("activityEdit.qtyN") }}</text>
-          <input maxlength="4" v-model="form.qtyN" class="field__input row__input" type="number" />
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.play") }}</text>
+          <text class="txt-body">{{ play ? $t(`plays.name.${play.key}`) : "" }}</text>
         </view>
-        <view class="sh-row sh-mt-xs">
-          <text class="txt-sub row__label">{{ $t("activityEdit.cut") }}</text>
-          <input maxlength="10" v-model="form.amount" class="field__input row__input" type="digit" />
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.schedule") }}</text>
+          <text class="txt-body sh-num">{{ timeSummary }}</text>
         </view>
-        <text v-if="form.kind === 'CUT_ANY'" class="sh-muted sh-hint">{{ $t("activityEdit.anyHint") }}</text>
-      </template>
-
-      <!--
-        团购多问一个人数，排在价格**前面**：他脑子里先有「几个人一起买」，
-        才有「那便宜多少」。反过来问的话，填价时还不知道是几人的价。
-      -->
-      <view v-if="isGroup" class="sh-row sh-mt-sm sh-mt-xs">
-        <text class="txt-sub row__label">{{ $t("activityEdit.groupN") }}</text>
-        <input maxlength="3" v-model="form.groupN" class="field__input row__input" type="number" />
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.groupRule") }}</text>
+          <text class="txt-body sh-num">{{ ruleSummary }}</text>
+        </view>
+        <view v-if="play?.needsGoods" class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.goods") }}</text>
+          <text class="txt-body">{{ goodsText }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.groupCap") }}</text>
+          <text class="txt-body sh-num">{{ capSummary }}</text>
+        </view>
       </view>
 
-      <template v-if="form.benefitType === 'PRICE'">
-        <view class="sh-row sh-mt-sm sh-mt-xs">
-          <text class="txt-sub row__label">{{ isGroup ? $t("activityEdit.groupPrice") : $t("activityEdit.price") }}</text>
-          <input maxlength="10" v-model="form.amount" class="field__input row__input" type="digit" />
+      <view v-if="play?.instance" class="sh-cells">
+        <view class="sh-cell sh-row sh-row--between" @tap="openInstances">
+          <text class="txt-body">{{ play.instance === "PERIOD" ? $t("activityEdit.periodsAll") : $t("activityEdit.openGroups") }}</text>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
-        <text class="sh-muted sh-hint">{{ isGroup ? $t("activityEdit.groupHint") : $t("activityEdit.priceHint") }}</text>
-      </template>
+      </view>
 
-      <template v-if="form.benefitType === 'GIFT'">
-        <view class="sh-row sh-mt-sm sh-mt-xs">
-          <text class="txt-sub row__label">{{ $t("activityEdit.buyN") }}</text>
-          <input maxlength="6" v-model="form.buyN" class="field__input row__input" type="number" />
+      <sh-actionbar v-if="current.status !== 'ENDED'">
+        <view class="sh-row bar">
+          <view class="sh-btn sh-btn--soft sh-fill" :class="{ 'is-disabled': busy }" @tap="edit">
+            {{ $t("activityEdit.edit") }}
+          </view>
+          <view class="sh-btn sh-btn--muted sh-fill" :class="{ 'is-disabled': busy }"
+                @tap="setStatus(current.status === 'RUNNING' ? 'PAUSED' : 'RUNNING')">
+            {{ current.status === "RUNNING" ? $t("activities.pause") : $t("activities.resume") }}
+          </view>
+          <view class="sh-btn sh-btn--danger sh-fill" :class="{ 'is-disabled': busy }" @tap="setStatus('ENDED')">
+            {{ $t("activities.end") }}
+          </view>
         </view>
-        <view class="sh-row sh-mt-xs">
-          <text class="txt-sub row__label">{{ $t("activityEdit.giftM") }}</text>
-          <input maxlength="6" v-model="form.giftM" class="field__input row__input" type="number" />
-        </view>
-      </template>
-
-      <!--
-        选货。**只在「改单价 / 送商品」时出现** —— 满减是整单的，问他挑哪几件
-        没有意义，而多一个控件就多一次「这个要不要填」。
-      -->
-      <template v-if="isItemCost">
-        <text class="field__label sh-mt-sm">{{ $t("activityEdit.goodsQ") }}</text>
-        <view class="chips sh-wrap">
-          <text
-            v-for="g in goods"
-            :key="g.goodsNo"
-            class="sh-chip"
-            :class="{ 'sh-chip--primary': form.goodsNos.includes(g.goodsNo) }"
-            @tap="toggleGoods(g.goodsNo)"
-          >{{ g.title }}</text>
-        </view>
-        <!--
-          三态交给件（:pending）：数据回来之前不许显示「本店还没有商品」——
-          那句话在加载中是假的，而它与「真的一件都没有」长得一模一样。
-        -->
-        <sh-empty v-if="!goods.length" :pending="!goodsLoaded"
-            :text="String($t('activityEdit.noGoods'))"></sh-empty>
-      </template>
-
-      <!-- 冲突提示：不阻止，但要在保存前说出来 -->
-      <view v-if="conflicts.length" class="sh-notice sh-notice--warning conflict">
-        <text v-for="c in conflicts" :key="c.activityNo + c.goodsNo" class="txt-caption conflict__l">
-          {{ $t("activityEdit.conflict", { g: c.goodsNo, name: c.activityName }) }}
-        </text>
-        <text class="txt-caption sh-muted conflict__h">{{ $t("activityEdit.conflictHint") }}</text>
-      </view>
-    </view>
-
-    <!--
-      受众折在优惠之后，**不再单独占一步**：多数活动不挑人，
-      单独一步会让每建一个活动都多点一次「所有人」。
-    -->
-    <view v-if="step === 3" class="sh-card sh-mt-sm">
-      <text class="field__label">{{ $t("activityEdit.audienceQ") }}</text>
-      <view class="opts">
-        <sh-option
-          v-for="a in ['', 'NON_MEMBER', 'LEVEL:SLEEPING', 'LEVEL:LOYAL']"
-          :key="a || 'all'"
-          :selected="form.audienceType === a"
-          @tap="form.audienceType = a"
-        >
-          <text class="txt-strong opt__t">{{ $t(`activityEdit.audience.${a || "ALL"}`) }}</text>
-          <text class="txt-caption sh-muted opt__d">{{ $t(`activityEdit.audienceHint.${a || "ALL"}`) }}</text>
-        </sh-option>
-      </view>
-    </view>
-
-
-    <!-- ③ 什么时候有效 -->
-    <!-- ② 什么时候 —— 提到第 2 位：他先说出口的是「这周六到下周日」 -->
-    <view v-if="step === 2" class="sh-card">
-      <text class="field__label">{{ $t("activityEdit.scheduleQ") }}</text>
-      <view class="chips sh-wrap">
-        <text
-          v-for="s in ['ONE_OFF', 'ALWAYS_ON', 'RECURRING']"
-          :key="s"
-          class="sh-chip"
-          :class="{ 'sh-chip--primary': form.scheduleType === s }"
-          @tap="form.scheduleType = s"
-        >{{ $t(`activityEdit.schedule.${s}`) }}</text>
-      </view>
-
-      <!--
-        ★ **给两个日期，不让他算天数**（2026-09-18）。
-        店主说的是「这周六到下周日」；改之前这里问的是「限时几天」，
-        他得自己把日期换算成天数，而那个数存下来之后谁也看不出原本是哪两天。
-      -->
-      <template v-if="form.scheduleType === 'ONE_OFF'">
-        <sh-kv between :label="String($t('activityEdit.startDay'))">
-          <picker mode="date" :value="form.startDay" @change="form.startDay = $event.detail.value">
-            <view class="day sh-row">
-              <text class="txt-body sh-num">{{ form.startDay }}</text>
-              <text class="sh-muted">›</text>
-            </view>
-          </picker>
-        </sh-kv>
-        <sh-kv between :label="String($t('activityEdit.endDay'))">
-          <picker mode="date" :value="form.endDay" :start="form.startDay"
-                  @change="form.endDay = $event.detail.value">
-            <view class="day sh-row">
-              <text class="txt-body sh-num">{{ form.endDay }}</text>
-              <text class="sh-muted">›</text>
-            </view>
-          </picker>
-        </sh-kv>
-      </template>
-
-      <template v-if="form.scheduleType === 'RECURRING'">
-        <view class="week sh-mt-sm sh-wrap">
-          <text
-            v-for="d in [1, 2, 3, 4, 5, 6, 7]"
-            :key="d"
-            class="sh-chip"
-            :class="{ 'sh-chip--primary': form.weekdays.includes(d) }"
-            @tap="toggleWeekday(d)"
-          >{{ $t(`activities.weekday.${d}`) }}</text>
-        </view>
-        <view class="sh-row sh-mt-xs">
-          <text class="txt-sub row__label">{{ $t("activityEdit.timeRange") }}</text>
-          <input maxlength="5" v-model="form.from" class="field__input row__input" placeholder="08:00" />
-          <input maxlength="5" v-model="form.to" class="field__input row__input" placeholder="20:00" />
-        </view>
-        <text class="sh-muted sh-hint">{{ $t("activityEdit.recurringHint") }}</text>
-      </template>
-
-      <view class="sh-row sh-mt-sm sh-mt-xs">
-        <text class="txt-sub row__label">{{ $t("activityEdit.quota") }}</text>
-        <input maxlength="6" v-model="form.quota" class="field__input row__input" type="number" />
-      </view>
-      <view class="sh-row sh-mt-xs">
-        <text class="txt-sub row__label">{{ $t("activityEdit.budget") }}</text>
-        <input maxlength="10" v-model="form.budget" class="field__input row__input" type="digit"
-               :placeholder="$t('activityEdit.budgetPh')" />
-      </view>
-
-      <view v-if="exposure > 0" class="txt-strong sh-notice exposure">
-        {{ $t("activityEdit.exposure", { n: money(exposure) }) }}
-      </view>
-      <text v-if="alwaysOnUncapped" class="txt-caption bad">{{ $t("activityEdit.alwaysOnNeedsCap") }}</text>
-    </view>
-
-    <!-- ④ 给谁 -->
-    <!--
-      效果与停用：**只有改既有活动时才有**。新建时这三个数都是 0、也没得停，
-      画出来只是让新建流程多一屏要跳过的东西。
-    -->
-    <template v-if="current">
-      <view class="sh-card sh-mt-sm">
-        <view class="effect"><sh-stat
-          :items="[
-            { value: current.quotaUsed, label: String($t('activities.used')) },
-            { value: money(current.budgetUsedMinor), label: String($t('activities.spent')) },
-            { value: current.quotaLeft == null ? String($t('activities.unlimited')) : current.quotaLeft,
-              label: String($t('activities.left')),
-              tone: (current.quotaLeft ?? 99) <= 10 ? 'warn' : undefined },
-          ]"
-        ></sh-stat></view>
-      </view>
-
-      <!--
-        两枚按钮形态，不是两行字（店主提过「按钮不要纯文字」）。
-        结束用危险态：它不可逆，与暂停不是一类动作。
-      -->
-      <view v-if="current.status !== 'ENDED'" class="acts sh-row sh-mt-sm">
-        <view class="sh-btn sh-btn--soft sh-fill" :class="{ 'is-disabled': busy }"
-              @tap="setStatus(current.status === 'RUNNING' ? 'PAUSED' : 'RUNNING')">
-          {{ current.status === "RUNNING" ? $t("activities.pause") : $t("activities.resume") }}
-        </view>
-        <view class="sh-btn sh-btn--danger sh-fill" :class="{ 'is-disabled': busy }"
-              @tap="setStatus('ENDED')">{{ $t("activities.end") }}</view>
-      </view>
+      </sh-actionbar>
     </template>
 
-    <view class="nav">
-      <text v-if="step > 1" class="sh-btn sh-btn--soft nav__b" @tap="step -= 1">
-        {{ $t("activityEdit.prev") }}
-      </text>
-      <view v-if="step < 3" class="sh-btn nav__b" @tap="step += 1">
-        {{ $t("activityEdit.next") }}
+    <!-- ============================== 填写（s03–s05 · s19） -->
+    <template v-else-if="step === 1">
+      <view class="sh-row sh-row--between prog">
+        <text class="txt-body txt-bold">{{ $t("activityEdit.stepFill") }}</text>
+        <text class="txt-caption sh-muted sh-num">{{ $t("activityEdit.progress", { i: 1 }) }}</text>
       </view>
-      <view v-else class="sh-btn nav__b" :class="{ 'is-disabled': saving }" @tap="save">
-        {{ $t("activityEdit.save") }}
+
+      <view class="sh-cells">
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.name") }}</text>
+          <input v-model="form.name" maxlength="64" class="txt-body cell__input" :placeholder="$t('activityEdit.namePh')" />
+        </view>
+        <view class="sh-cell sh-row sh-row--between" @tap="showPlay = true">
+          <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.play") }}</text>
+          <view class="sh-row">
+            <text class="txt-body" :class="{ 'sh-muted': !play }">
+              {{ play ? $t(`plays.name.${play.key}`) : $t("activityEdit.pickPh") }}
+            </text>
+            <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+          </view>
+        </view>
+        <view v-if="!play?.fixedSchedule" class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.schedule") }}</text>
+          <view class="sh-row segs">
+            <text v-for="s in ['ONE_OFF', 'ALWAYS_ON', 'RECURRING']" :key="s"
+                  class="sh-seg seg" :class="{ 'sh-seg--on': form.scheduleType === s }"
+                  @tap="form.scheduleType = s">{{ $t(`activityEdit.scheduleType.${s}`) }}</text>
+          </view>
+        </view>
+        <template v-if="!play?.fixedSchedule && form.scheduleType === 'ONE_OFF'">
+          <picker mode="date" :value="form.startDay" @change="form.startDay = $event.detail.value">
+            <view class="sh-cell sh-row sh-row--between">
+              <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.start") }}</text>
+              <text class="txt-body sh-num">{{ form.startDay }}</text>
+            </view>
+          </picker>
+          <picker mode="date" :value="form.endDay" :start="form.startDay" @change="form.endDay = $event.detail.value">
+            <view class="sh-cell sh-row sh-row--between">
+              <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.end") }}</text>
+              <text class="txt-body sh-num">{{ form.endDay }}</text>
+            </view>
+          </picker>
+        </template>
+        <template v-if="!play?.fixedSchedule && form.scheduleType === 'RECURRING'">
+          <view class="sh-cell">
+            <text class="txt-body sh-muted">{{ $t("activityEdit.weekdays") }}</text>
+            <view class="sh-wrap weeks">
+              <text v-for="d in [1, 2, 3, 4, 5, 6, 7]" :key="d" class="sh-seg seg"
+                    :class="{ 'sh-seg--on': form.weekdays.includes(d) }"
+                    @tap="toggleWeekday(d)">{{ $t(`activities.weekday.${d}`) }}</text>
+            </view>
+          </view>
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.timeRange") }}</text>
+            <view class="sh-row">
+              <picker mode="time" :value="form.from" @change="form.from = $event.detail.value">
+                <text class="txt-body sh-num">{{ form.from }}</text>
+              </picker>
+              <text class="sh-muted">–</text>
+              <picker mode="time" :value="form.to" @change="form.to = $event.detail.value">
+                <text class="txt-body sh-num">{{ form.to }}</text>
+              </picker>
+            </view>
+          </view>
+        </template>
       </view>
-    </view>
+
+      <template v-if="play">
+        <text class="txt-caption sh-muted grp">{{ $t("activityEdit.groupScope") }}</text>
+        <view class="sh-cells">
+          <view v-if="play.needsGoods" class="sh-cell sh-row sh-row--between" @tap="showGoods = true">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.goods") }}</text>
+            <view class="sh-row">
+              <text class="txt-body" :class="{ 'sh-muted': !form.goodsNos.length }">{{ goodsText }}</text>
+              <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+            </view>
+          </view>
+          <view class="sh-cell sh-row sh-row--between" @tap="showAudience = true">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.audience") }}</text>
+            <view class="sh-row">
+              <text class="txt-body">{{ audienceText }}</text>
+              <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+            </view>
+          </view>
+        </view>
+
+        <text class="txt-caption sh-muted grp">{{ $t("activityEdit.groupRule") }}</text>
+        <view class="sh-cells">
+          <view v-if="has('cutoffTime')" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.rule.cutoffTime") }}</text>
+            <picker mode="time" :value="form.cutoffTime" @change="form.cutoffTime = $event.detail.value">
+              <text class="txt-body sh-num">{{ form.cutoffTime }}</text>
+            </picker>
+          </view>
+          <view v-if="has('pickup')" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.rule.pickupOffset") }}</text>
+            <view class="sh-row segs">
+              <text v-for="d in [0, 1, 2]" :key="d" class="sh-seg seg"
+                    :class="{ 'sh-seg--on': form.pickupOffset === d }"
+                    @tap="form.pickupOffset = d">{{ $t(`activityEdit.pickupDay.${d}`) }}</text>
+            </view>
+          </view>
+          <view v-if="has('pickup')" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.rule.pickupFrom") }}</text>
+            <picker mode="time" :value="form.pickupFrom" @change="form.pickupFrom = $event.detail.value">
+              <text class="txt-body sh-num">{{ form.pickupFrom }}</text>
+            </picker>
+          </view>
+          <view v-if="has('threshold')" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.rule.threshold") }}</text>
+            <input v-model="form.threshold" type="digit" maxlength="10" class="txt-body sh-num cell__input" />
+          </view>
+          <view v-if="has('qtyN')" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.rule.qtyN") }}</text>
+            <input v-model="form.qtyN" type="number" maxlength="4" class="txt-body sh-num cell__input" />
+          </view>
+          <view v-if="has('buyN')" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.rule.buyN") }}</text>
+            <input v-model="form.buyN" type="number" maxlength="4" class="txt-body sh-num cell__input" />
+          </view>
+          <view v-if="has('giftM')" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.rule.giftM") }}</text>
+            <input v-model="form.giftM" type="number" maxlength="4" class="txt-body sh-num cell__input" />
+          </view>
+          <view v-if="has('groupN')" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.rule.groupN") }}</text>
+            <input v-model="form.groupN" type="number" maxlength="3" class="txt-body sh-num cell__input" />
+          </view>
+          <view v-if="has('amount')" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.rule.amount") }}</text>
+            <input v-model="form.amount" type="digit" maxlength="10" class="txt-body sh-num cell__input" />
+          </view>
+          <view v-if="has('price')" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.rule.price") }}</text>
+            <input v-model="form.price" type="digit" maxlength="10" class="txt-price sh-num cell__input" />
+          </view>
+          <view v-if="has('groupHours')" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.rule.groupHours") }}</text>
+            <input v-model="form.groupHours" type="number" maxlength="3" class="txt-body sh-num cell__input" />
+          </view>
+          <view v-if="has('minQty')" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.rule.minQty") }}</text>
+            <input v-model="form.minQty" type="number" maxlength="6" class="txt-body sh-num cell__input"
+                   :placeholder="$t('activityEdit.optional')" />
+          </view>
+          <view v-if="has('decideHours') && form.minQty" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.rule.decideHours") }}</text>
+            <input v-model="form.decideHours" type="number" maxlength="3" class="txt-body sh-num cell__input"
+                   placeholder="14" />
+          </view>
+        </view>
+
+        <text class="txt-caption sh-muted grp">{{ $t("activityEdit.groupCap") }}</text>
+        <view class="sh-cells">
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.quota") }}</text>
+            <input v-model="form.quota" type="number" maxlength="6" class="txt-body sh-num cell__input"
+                   :placeholder="isItemCost ? '' : $t('activityEdit.optional')" />
+          </view>
+          <view v-if="play.triggerType === 'CUTOFF'" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.periodQuota") }}</text>
+            <input v-model="form.periodQuota" type="number" maxlength="6" class="txt-body sh-num cell__input"
+                   :placeholder="$t('activityEdit.optional')" />
+          </view>
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.budget") }}</text>
+            <input v-model="form.budget" type="digit" maxlength="10" class="txt-body sh-num cell__input"
+                   :placeholder="$t('activityEdit.optional')" />
+          </view>
+        </view>
+      </template>
+
+      <sh-actionbar>
+        <view class="sh-row bar">
+          <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("activityEdit.prev") }}</view>
+          <view class="sh-btn bar__main" @tap="next">{{ $t("activityEdit.next") }}</view>
+        </view>
+      </sh-actionbar>
+    </template>
+
+    <!-- ============================== 确认（s06） -->
+    <template v-else>
+      <view class="sh-row sh-row--between prog">
+        <text class="txt-body txt-bold">{{ $t("activityEdit.stepConfirm") }}</text>
+        <text class="txt-caption sh-muted sh-num">{{ $t("activityEdit.progress", { i: 2 }) }}</text>
+      </view>
+      <view class="sh-cells">
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.name") }}</text>
+          <text class="txt-body">{{ form.name }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.play") }}</text>
+          <text class="txt-body">{{ play ? $t(`plays.name.${play.key}`) : "" }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.schedule") }}</text>
+          <text class="txt-body sh-num">{{ timeSummary }}</text>
+        </view>
+        <view v-if="play?.needsGoods" class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.goods") }}</text>
+          <text class="txt-body">{{ goodsText }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.audience") }}</text>
+          <text class="txt-body">{{ audienceText }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.groupRule") }}</text>
+          <text class="txt-body sh-num">{{ ruleSummary }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.groupCap") }}</text>
+          <text class="txt-body sh-num">{{ capSummary }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.exposure") }}</text>
+          <text class="txt-body sh-num">{{ exposureText }}</text>
+        </view>
+      </view>
+      <view v-for="c in conflicts" :key="c.activityNo + c.goodsNo" class="sh-notice sh-notice--warning">
+        <text class="txt-caption">{{ $t("activityEdit.conflict", { name: c.activityName }) }}</text>
+      </view>
+
+      <sh-actionbar>
+        <view class="sh-row bar">
+          <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("activityEdit.prev") }}</view>
+          <view class="sh-btn bar__main" :class="{ 'is-disabled': saving }" @tap="publish">
+            {{ $t("activityEdit.publish") }}
+          </view>
+        </view>
+      </sh-actionbar>
+    </template>
+
+    <!-- 选择面板：单选列表，选中项右侧打勾 -->
+    <sh-sheet :visible="showPlay" :title="String($t('activityEdit.playPick'))" @close="showPlay = false">
+      <view class="sh-cells">
+        <view v-for="p in PLAY_TEMPLATES" :key="p.key" class="sh-cell sh-row sh-row--between" @tap="pickPlay(p.key)">
+          <view>
+            <text class="txt-body" :class="{ 'txt-primary': form.playKey === p.key }">{{ $t(`plays.name.${p.key}`) }}</text>
+            <text class="txt-caption sh-muted pick__d">{{ $t(`plays.desc.${p.key}`) }}</text>
+          </view>
+          <sh-icon v-if="form.playKey === p.key" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
+        </view>
+      </view>
+    </sh-sheet>
+
+    <sh-sheet :visible="showAudience" :title="String($t('activityEdit.audience'))" @close="showAudience = false">
+      <view class="sh-cells">
+        <view v-for="a in AUDIENCES" :key="a || 'ALL'" class="sh-cell sh-row sh-row--between"
+              @tap="form.audience = a; showAudience = false">
+          <text class="txt-body" :class="{ 'txt-primary': form.audience === a }">{{ $t(`activityEdit.audienceOpt.${a || "ALL"}`) }}</text>
+          <sh-icon v-if="form.audience === a" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
+        </view>
+      </view>
+    </sh-sheet>
+
+    <sh-sheet :visible="showGoods" :title="String($t('activityEdit.goodsPick'))" @close="showGoods = false">
+      <view class="sh-cells">
+        <view v-for="g in goods" :key="g.goodsNo" class="sh-cell sh-row sh-row--between" @tap="toggleGoods(g.goodsNo)">
+          <text class="txt-body" :class="{ 'txt-primary': form.goodsNos.includes(g.goodsNo) }">{{ g.title }}</text>
+          <sh-icon v-if="form.goodsNos.includes(g.goodsNo)" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
+        </view>
+      </view>
+      <sh-empty v-if="!goods.length" :pending="!goodsLoaded" line :text="String($t('activityEdit.goodsEmpty'))"></sh-empty>
+    </sh-sheet>
   </sh-scaffold>
 </template>
 
 <style scoped>
-/* 两枚并排。**不自己写纵向 margin** —— 顶层块的块间距归外壳管，
-   自己写就压过那条，这一页的间距从此和别处不一样 */
-.acts {
-  gap: 16rpx;
+.prog {
+  padding: 0 8rpx;
 }
-.steps {
+.grp {
   display: block;
+  padding: 0 8rpx;
 }
-.opts {
-  margin-top: 12rpx;
+.cell__k {
+  flex-shrink: 0;
 }
-.opt__t {
-  display: block;
+.cell__input {
+  flex: 1;
+  text-align: right;
 }
-.opt__d {
-  display: block;
-  margin-top: 8rpx;
-}
-.chips {
-  margin-top: 12rpx;
-}
-.week {
+.segs {
   gap: 8rpx;
 }
-
-.row__label {
-  width: 200rpx;
+.seg {
+  padding: 12rpx 20rpx;
 }
-.row__input {
-  flex: 1;
+.weeks {
+  margin-top: 12rpx;
+  gap: 8rpx;
 }
-
-.conflict {
-  margin-top: 16rpx;
-}
-.conflict__l {
+.pick__d {
   display: block;
 }
-.conflict__h {
-  display: block;
-  margin-top: 8rpx;
-}
-.exposure {
-  margin-top: 16rpx;
-}
-.bad {
-  display: block;
-  margin-top: 8rpx;
-  color: var(--sh-danger);
-}
-.nav {
-  display: flex;
+.bar {
   gap: 16rpx;
+  width: 100%;
 }
-.nav__b {
-  flex: 1;
+.bar__main {
+  flex: 2;
 }
 </style>

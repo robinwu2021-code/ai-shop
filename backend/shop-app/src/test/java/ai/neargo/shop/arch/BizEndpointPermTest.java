@@ -316,6 +316,13 @@ class BizEndpointPermTest {
         put("/biz/activities/{activityNo}", BizPerms.CAMPAIGN);
         put("/biz/activities/{activityNo}/status", BizPerms.CAMPAIGN);
         put("/biz/activity-conflicts", BizPerms.CAMPAIGN);
+        // 社区集单的期与营销入口：期是活动的实例，能建集单活动的人就该能处理它的期
+        put("/biz/marketing/summary", BizPerms.CAMPAIGN);
+        put("/biz/period", BizPerms.CAMPAIGN);
+        put("/biz/period/{periodNo}", BizPerms.CAMPAIGN);
+        put("/biz/period/{periodNo}/cutoff", BizPerms.CAMPAIGN);
+        put("/biz/period/{periodNo}/decision", BizPerms.CAMPAIGN);
+        put("/biz/period/{periodNo}/purchase-lines", BizPerms.CAMPAIGN);
         // 试算给看会员的人（店员）；真发要 campaign —— 给几百人推消息不是店员该按的
         put("/biz/member-reach/plan", BizPerms.CUSTOMER);
         put("/biz/member-reach/send", BizPerms.CAMPAIGN);

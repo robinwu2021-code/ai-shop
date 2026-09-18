@@ -371,11 +371,11 @@ CREATE TABLE IF NOT EXISTS pmt_activity_rule
 | s10 | 团详情 | GET `/biz/groups/{no}` | — | `GroupBuyVO` + `members[]` | **新** |
 | s10 | 散团退款 | POST `/biz/groups/{no}/dissolve` | `{reason}` | `GroupBuyVO` | **新**（置 FAILED + 退款） |
 | s34 | 开团 | POST `/biz/groups` | `{activityNo, goodsNo, pickupNo}` | `GroupBuyVO` | 改：加 activityNo · pickupNo |
-| s31 | 集单列表 | GET `/biz/periods?status=` | — | `PeriodVO[]` | **新（已写）** |
-| s20 · s33 | 一期详情 | GET `/biz/periods/{no}` | — | `PeriodDetailVO` | **新（已写）** |
-| s20 | 提前截单 | POST `/biz/periods/{no}/cutoff` | — | `PeriodVO` | **新（已写）** |
-| s33 | 取消本期 / 照常发货 | POST `/biz/periods/{no}/decision` | `{action: CANCEL \| PROCEED}` | `PeriodVO` | **新（已写）** |
-| s20 | 去采购 | GET `/biz/periods/{no}/purchase-lines` | — | `PurchaseLineVO[]` | **新（已写）** |
+| s31 | 集单列表 | GET `/biz/period?status=` | — | `PeriodVO[]` | **新（已写）** |
+| s20 · s33 | 一期详情 | GET `/biz/period/{no}` | — | `PeriodDetailVO` | **新（已写）** |
+| s20 | 提前截单 | POST `/biz/period/{no}/cutoff` | — | `PeriodVO` | **新（已写）** |
+| s33 | 取消本期 / 照常发货 | POST `/biz/period/{no}/decision` | `{action: CANCEL \| PROCEED}` | `PeriodVO` | **新（已写）** |
+| s20 | 去采购 | GET `/biz/period/{no}/purchase-lines` | — | `PurchaseLineVO[]` | **新（已写）** |
 | s12 | 券列表 | GET `/biz/coupons?status=` | — | `CouponVO[]` | 有 |
 | s13–s14 | 新建券 | POST `/biz/coupons` | `CouponDraft` | `CouponVO` | 有 |
 | s15 | 券详情 | GET `/biz/coupons/{no}` | — | `CouponVO` | 有 |

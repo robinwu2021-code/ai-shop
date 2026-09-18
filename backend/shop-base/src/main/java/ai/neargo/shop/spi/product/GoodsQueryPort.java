@@ -63,6 +63,14 @@ public interface GoodsQueryPort {
     Map<String, Integer> skuCounts(java.util.Collection<String> goodsNos);
 
     /**
+     * 这几件商品里，<b>有 SKU 正在做预售</b>（{@code presale_quota > 0}）的那些商品号。
+     *
+     * <p>给集单建活动时拦：预售与集单各有一套截单与到货口径，
+     * 叠在一件货上，买家在商品页会看到两个日子（PRD §4.3.6）。
+     */
+    java.util.Set<String> presaleGoods(java.util.Collection<String> goodsNos);
+
+    /**
      * 待审商品的积压情况 —— <b>数量与最久等待，一起给</b>。
      *
      * <p>只给数量答不出该做什么：「194 件待审」既可能是今天涌进来的一批，

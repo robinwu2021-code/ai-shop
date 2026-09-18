@@ -1582,6 +1582,42 @@
           "ar": "موعد الوصول"
         },
         {
+          "key": "goods.batchCutoff",
+          "zh-CN": "截单",
+          "en": "Order by",
+          "ar": "آخر موعد للطلب"
+        },
+        {
+          "key": "goods.batchCutoffAt",
+          "zh-CN": "{d} {t}",
+          "en": "{d} {t}",
+          "ar": "{d} {t}"
+        },
+        {
+          "key": "goods.batchOrdered",
+          "zh-CN": "已订",
+          "en": "Ordered",
+          "ar": "تم طلبه"
+        },
+        {
+          "key": "goods.batchPickup",
+          "zh-CN": "提货",
+          "en": "Pickup",
+          "ar": "الاستلام"
+        },
+        {
+          "key": "goods.batchPickupAt",
+          "zh-CN": "{d} {t} 起",
+          "en": "From {d} {t}",
+          "ar": "من {d} {t}"
+        },
+        {
+          "key": "goods.batchQty",
+          "zh-CN": "{n} 份",
+          "en": "{n}",
+          "ar": "{n}"
+        },
+        {
           "key": "goods.buyNow",
           "zh-CN": "立即购买",
           "en": "Buy now",
@@ -2840,6 +2876,24 @@
           "zh-CN": "预约时段",
           "en": "Appointment",
           "ar": "الموعد"
+        },
+        {
+          "key": "order.batchCancelBefore",
+          "zh-CN": "{t} 截单前可以取消，全额退款",
+          "en": "Cancel before {t} for a full refund",
+          "ar": "يمكن الإلغاء قبل {t} مع استرداد كامل"
+        },
+        {
+          "key": "order.batchCancelTip",
+          "zh-CN": "截单前取消将全额退款，确定取消？",
+          "en": "Cancelling before cut-off refunds you in full. Cancel?",
+          "ar": "الإلغاء قبل الإغلاق يعيد المبلغ كاملًا. هل تريد الإلغاء؟"
+        },
+        {
+          "key": "order.batchPickup",
+          "zh-CN": "提货日",
+          "en": "Pickup day",
+          "ar": "يوم الاستلام"
         },
         {
           "key": "order.buyAgain",
@@ -4295,19 +4349,25 @@
           "key": "activities.always",
           "zh-CN": "长期",
           "en": "Always on",
-          "ar": "دائمة"
+          "ar": "دائم"
+        },
+        {
+          "key": "activities.batchDaily",
+          "zh-CN": "每天 {t} 截单",
+          "en": "Closes daily at {t}",
+          "ar": "يغلق يوميًا {t}"
         },
         {
           "key": "activities.empty",
           "zh-CN": "暂无活动",
-          "en": "No activities",
-          "ar": "لا توجد حملات"
+          "en": "No promotions",
+          "ar": "لا توجد عروض"
         },
         {
           "key": "activities.emptyTip",
-          "zh-CN": "创建后顾客下单自动生效",
-          "en": "Once created, it applies automatically at checkout",
-          "ar": "بعد الإنشاء تُطبق تلقائيًا عند الدفع"
+          "zh-CN": "发布后顾客下单自动生效",
+          "en": "Once published, it applies automatically at checkout",
+          "ar": "بعد النشر يُطبق تلقائيًا عند الدفع"
         },
         {
           "key": "activities.end",
@@ -4317,15 +4377,15 @@
         },
         {
           "key": "activities.endBody",
-          "zh-CN": "结束后不可恢复，如需再用请新建。",
-          "en": "Ending is final; create a new one to run it again.",
-          "ar": "الإنهاء نهائي؛ أنشئ حملة جديدة لتشغيلها مجددًا."
+          "zh-CN": "结束后不可恢复。已开的团、已下单的集单不受影响，照常完成。",
+          "en": "This cannot be undone. Open groups and placed batch orders are not affected.",
+          "ar": "لا يمكن التراجع. المجموعات المفتوحة والطلبات المجمعة لا تتأثر."
         },
         {
           "key": "activities.endTitle",
-          "zh-CN": "结束「{name}」",
-          "en": "End “{name}”",
-          "ar": "إنهاء «{name}»"
+          "zh-CN": "结束「{name}」？",
+          "en": "End \"{name}\"?",
+          "ar": "إنهاء «{name}»؟"
         },
         {
           "key": "activities.endedReason.BUDGET",
@@ -4343,91 +4403,49 @@
           "key": "activities.endedReason.MANUAL",
           "zh-CN": "手动结束",
           "en": "Ended manually",
-          "ar": "أُنهيت يدويًا"
+          "ar": "أُنهي يدويًا"
         },
         {
           "key": "activities.endedReason.QUOTA",
           "zh-CN": "已达限量",
           "en": "Quota reached",
-          "ar": "بلغت الحد"
+          "ar": "بلغ الحد"
         },
         {
           "key": "activities.everyday",
           "zh-CN": "每天",
-          "en": "day",
-          "ar": "يوم"
-        },
-        {
-          "key": "activities.group.ended",
-          "zh-CN": "已结束（{n}）",
-          "en": "Ended ({n})",
-          "ar": "منتهية ({n})"
-        },
-        {
-          "key": "activities.group.idle",
-          "zh-CN": "未在时段（{n}）",
-          "en": "Outside window ({n})",
-          "ar": "خارج النافذة ({n})"
-        },
-        {
-          "key": "activities.group.live",
-          "zh-CN": "生效中（{n}）",
-          "en": "Active ({n})",
-          "ar": "فعّالة ({n})"
-        },
-        {
-          "key": "activities.group.paused",
-          "zh-CN": "已暂停（{n}）",
-          "en": "Paused ({n})",
-          "ar": "موقوفة ({n})"
-        },
-        {
-          "key": "activities.idleHint",
-          "zh-CN": "周期活动仅在设定时段内生效",
-          "en": "Recurring activities apply only during their set window",
-          "ar": "الحملات الدورية تُطبق ضمن أوقاتها المحددة فقط"
-        },
-        {
-          "key": "activities.left",
-          "zh-CN": "还剩",
-          "en": "Left",
-          "ar": "متبقٍ"
-        },
-        {
-          "key": "activities.leftN",
-          "zh-CN": "还剩 {n}",
-          "en": "{n} left",
-          "ar": "متبقٍ {n}"
+          "en": "Every day",
+          "ar": "كل يوم"
         },
         {
           "key": "activities.new",
-          "zh-CN": "建活动",
-          "en": "New activity",
-          "ar": "حملة جديدة"
-        },
-        {
-          "key": "activities.oneOff",
-          "zh-CN": "限时",
-          "en": "Limited time",
-          "ar": "لفترة محدودة"
+          "zh-CN": "新建活动",
+          "en": "New promotion",
+          "ar": "عرض جديد"
         },
         {
           "key": "activities.pause",
           "zh-CN": "暂停",
           "en": "Pause",
-          "ar": "إيقاف"
+          "ar": "إيقاف مؤقت"
+        },
+        {
+          "key": "activities.range",
+          "zh-CN": "{s} 至 {e}",
+          "en": "{s} to {e}",
+          "ar": "{s} إلى {e}"
         },
         {
           "key": "activities.recurring",
           "zh-CN": "每周 {d} · {f}–{e}",
-          "en": "Every {d} · {f}–{e}",
-          "ar": "كل {d} · {f}–{e}"
+          "en": "Weekly {d} · {f}–{e}",
+          "ar": "أسبوعيًا {d} · {f}–{e}"
         },
         {
           "key": "activities.recurringBad",
           "zh-CN": "周期规则异常，请重新设置",
-          "en": "Invalid recurring rule; set it again",
-          "ar": "قاعدة التكرار غير صالحة، أعد ضبطها"
+          "en": "Invalid weekly rule, please reset",
+          "ar": "قاعدة أسبوعية غير صالحة، أعد ضبطها"
         },
         {
           "key": "activities.resume",
@@ -4436,28 +4454,34 @@
           "ar": "استئناف"
         },
         {
+          "key": "activities.ruleBatch",
+          "zh-CN": "集单价 {m}",
+          "en": "Batch price {m}",
+          "ar": "سعر الدفعة {m}"
+        },
+        {
           "key": "activities.ruleCoupon",
           "zh-CN": "下单送券",
-          "en": "Coupon on order",
+          "en": "Coupon with order",
           "ar": "قسيمة مع الطلب"
         },
         {
           "key": "activities.ruleCut",
           "zh-CN": "满 {n} 减 {m}",
           "en": "{m} off over {n}",
-          "ar": "خصم {m} على {n}"
+          "ar": "خصم {m} عند {n}"
         },
         {
           "key": "activities.ruleCutAny",
           "zh-CN": "立减 {m}",
           "en": "{m} off",
-          "ar": "خصم {m} مباشرة"
+          "ar": "خصم {m}"
         },
         {
           "key": "activities.ruleCutQty",
           "zh-CN": "满 {n} 件减 {m}",
-          "en": "{m} off {n}+ items",
-          "ar": "خصم {m} على {n} قطع"
+          "en": "{m} off for {n}+ items",
+          "ar": "خصم {m} عند {n} قطع"
         },
         {
           "key": "activities.ruleGift",
@@ -4467,9 +4491,9 @@
         },
         {
           "key": "activities.ruleGroup",
-          "zh-CN": "{n} 人成团 · 每件 {m}",
-          "en": "{n} buyers · {m} each",
-          "ar": "{n} مشترين · {m} للقطعة"
+          "zh-CN": "{n} 人成团 · {m}",
+          "en": "{n}-person group · {m}",
+          "ar": "مجموعة {n} أشخاص · {m}"
         },
         {
           "key": "activities.rulePrice",
@@ -4478,34 +4502,82 @@
           "ar": "سعر خاص {n}"
         },
         {
-          "key": "activities.spent",
-          "zh-CN": "已用预算",
-          "en": "Budget used",
-          "ar": "الميزانية المستخدمة"
+          "key": "activities.status.idle",
+          "zh-CN": "不在时段",
+          "en": "Off-hours",
+          "ar": "خارج الوقت"
         },
         {
-          "key": "activities.title",
-          "zh-CN": "店铺活动",
-          "en": "Store activities",
-          "ar": "حملات المتجر"
+          "key": "activities.status.live",
+          "zh-CN": "进行中",
+          "en": "Running",
+          "ar": "جاري"
         },
         {
-          "key": "activities.unlimited",
-          "zh-CN": "不限",
-          "en": "No limit",
+          "key": "activities.status.paused",
+          "zh-CN": "已暂停",
+          "en": "Paused",
+          "ar": "متوقف"
+        },
+        {
+          "key": "activities.status.pending",
+          "zh-CN": "未开始",
+          "en": "Upcoming",
+          "ar": "قادم"
+        },
+        {
+          "key": "activities.status.uncapped",
+          "zh-CN": "未设上限",
+          "en": "No cap",
           "ar": "بلا حد"
         },
         {
-          "key": "activities.used",
-          "zh-CN": "已用",
-          "en": "Used",
-          "ar": "مستخدم"
+          "key": "activities.tab.ended",
+          "zh-CN": "已结束",
+          "en": "Ended",
+          "ar": "منتهية"
+        },
+        {
+          "key": "activities.tab.live",
+          "zh-CN": "进行中",
+          "en": "Running",
+          "ar": "جارية"
+        },
+        {
+          "key": "activities.tab.paused",
+          "zh-CN": "已暂停",
+          "en": "Paused",
+          "ar": "متوقفة"
+        },
+        {
+          "key": "activities.tab.pending",
+          "zh-CN": "未开始",
+          "en": "Upcoming",
+          "ar": "قادمة"
+        },
+        {
+          "key": "activities.title",
+          "zh-CN": "活动",
+          "en": "Promotions",
+          "ar": "العروض"
+        },
+        {
+          "key": "activities.usedOf",
+          "zh-CN": "{u} / {q} 份",
+          "en": "{u} / {q}",
+          "ar": "{u} / {q}"
+        },
+        {
+          "key": "activities.usedTimes",
+          "zh-CN": "已用 {n} 次 · {m}",
+          "en": "Used {n} times · {m}",
+          "ar": "استُخدم {n} مرات · {m}"
         },
         {
           "key": "activities.weekday.1",
           "zh-CN": "一",
           "en": "Mon",
-          "ar": "الاثنين"
+          "ar": "الإثنين"
         },
         {
           "key": "activities.weekday.2",
@@ -4544,70 +4616,34 @@
           "ar": "الأحد"
         },
         {
-          "key": "activityEdit.alwaysOnNeedsCap",
-          "zh-CN": "长期活动需设置限量或预算作为结束条件",
-          "en": "An always-on activity needs a quota or budget as its end condition",
-          "ar": "الحملة الدائمة تحتاج حدًا أو ميزانية كشرط لانتهائها"
+          "key": "activityEdit.audience",
+          "zh-CN": "人群",
+          "en": "Customers",
+          "ar": "العملاء"
         },
         {
-          "key": "activityEdit.anyHint",
-          "zh-CN": "谁下单都减，没有门槛 —— 记得配限量或预算",
-          "en": "Every order gets it, with no threshold — set a quota or budget",
-          "ar": "كل طلب يحصل عليه بلا حد أدنى — اضبط حدًا أو ميزانية"
-        },
-        {
-          "key": "activityEdit.audience.ALL",
+          "key": "activityEdit.audienceOpt.ALL",
           "zh-CN": "所有人",
           "en": "Everyone",
           "ar": "الجميع"
         },
         {
-          "key": "activityEdit.audience.LEVEL:LOYAL",
+          "key": "activityEdit.audienceOpt.LOYAL",
           "zh-CN": "熟客",
           "en": "Regulars",
-          "ar": "العملاء المنتظمون"
+          "ar": "عملاء دائمون"
         },
         {
-          "key": "activityEdit.audience.LEVEL:SLEEPING",
-          "zh-CN": "很久没来的人",
-          "en": "People who stopped coming",
-          "ar": "من انقطعوا"
+          "key": "activityEdit.audienceOpt.NON_MEMBER",
+          "zh-CN": "非会员",
+          "en": "Non-members",
+          "ar": "غير الأعضاء"
         },
         {
-          "key": "activityEdit.audience.NON_MEMBER",
-          "zh-CN": "还不是我的会员",
-          "en": "Not a member yet",
-          "ar": "ليسوا أعضاء بعد"
-        },
-        {
-          "key": "activityEdit.audienceHint.ALL",
-          "zh-CN": "所有顾客可享",
-          "en": "Applies to every customer",
-          "ar": "تُطبق على كل العملاء"
-        },
-        {
-          "key": "activityEdit.audienceHint.LEVEL:LOYAL",
-          "zh-CN": "回馈常来的人",
-          "en": "Thank the people who come often",
-          "ar": "شكرًا لمن يأتي كثيرًا"
-        },
-        {
-          "key": "activityEdit.audienceHint.LEVEL:SLEEPING",
-          "zh-CN": "唤回用。60 天没来的人",
-          "en": "For bringing back people who have not come in 60 days",
-          "ar": "لإعادة من لم يأتِ منذ 60 يومًا"
-        },
-        {
-          "key": "activityEdit.audienceHint.NON_MEMBER",
-          "zh-CN": "仅非会员可享，用于拉新",
-          "en": "Non-members only; for winning new customers",
-          "ar": "لغير الأعضاء فقط؛ لكسب عملاء جدد"
-        },
-        {
-          "key": "activityEdit.audienceQ",
-          "zh-CN": "适用人群",
-          "en": "Audience",
-          "ar": "الجمهور"
+          "key": "activityEdit.audienceOpt.SLEEPING",
+          "zh-CN": "沉睡会员",
+          "en": "Dormant members",
+          "ar": "أعضاء خاملون"
         },
         {
           "key": "activityEdit.budget",
@@ -4616,106 +4652,136 @@
           "ar": "الميزانية"
         },
         {
-          "key": "activityEdit.budgetPh",
-          "zh-CN": "留空即不限",
-          "en": "Leave blank for no limit",
-          "ar": "اتركها فارغة لبلا حد"
-        },
-        {
-          "key": "activityEdit.buyN",
-          "zh-CN": "购买数量",
-          "en": "Quantity bought",
-          "ar": "الكمية المشتراة"
-        },
-        {
           "key": "activityEdit.conflict",
-          "zh-CN": "商品 {g} 已经在「{name}」里",
-          "en": "Product {g} is already in “{name}”",
-          "ar": "المنتج {g} موجود بالفعل في «{name}»"
+          "zh-CN": "与「{name}」商品重叠，同一单只享更优惠的一个",
+          "en": "Overlaps with \"{name}\"; an order gets only the better one",
+          "ar": "يتداخل مع «{name}»؛ الطلب يحصل على الأفضل فقط"
         },
         {
-          "key": "activityEdit.conflictHint",
-          "zh-CN": "不影响保存：同类活动取最优，顾客按更优惠的一个结算。",
-          "en": "Saving is unaffected: among promotions of the same type the customer gets the better one.",
-          "ar": "لا يمنع الحفظ: بين الحملات المتشابهة يحصل العميل على الأفضل."
+          "key": "activityEdit.edit",
+          "zh-CN": "编辑",
+          "en": "Edit",
+          "ar": "تعديل"
         },
         {
-          "key": "activityEdit.cut",
-          "zh-CN": "优惠金额（元）",
-          "en": "Discount amount (CNY)",
-          "ar": "قيمة الخصم (يوان)"
-        },
-        {
-          "key": "activityEdit.endDay",
+          "key": "activityEdit.end",
           "zh-CN": "结束",
-          "en": "Ends",
-          "ar": "ينتهي"
+          "en": "End",
+          "ar": "النهاية"
         },
         {
           "key": "activityEdit.exposure",
-          "zh-CN": "这个活动最多花 {n}",
-          "en": "This activity costs at most {n}",
-          "ar": "هذه الحملة تكلف {n} كحد أقصى"
+          "zh-CN": "最多让利",
+          "en": "Max discount",
+          "ar": "أقصى خصم"
         },
         {
-          "key": "activityEdit.giftM",
-          "zh-CN": "赠送数量",
-          "en": "Quantity gifted",
-          "ar": "الكمية المهداة"
+          "key": "activityEdit.exposureUnknown",
+          "zh-CN": "按份数封顶",
+          "en": "Capped by quota",
+          "ar": "محدود بالحصة"
         },
         {
-          "key": "activityEdit.goodsQ",
-          "zh-CN": "适用商品",
-          "en": "Applicable products",
-          "ar": "المنتجات المشمولة"
+          "key": "activityEdit.goods",
+          "zh-CN": "商品",
+          "en": "Products",
+          "ar": "المنتجات"
         },
         {
-          "key": "activityEdit.groupHint",
-          "zh-CN": "成团后按此价结算；未成团按原价正常发货",
-          "en": "This price applies once the group fills; otherwise the order ships at the normal price",
-          "ar": "يُطبق هذا السعر عند اكتمال المجموعة؛ وإلا يُشحن الطلب بالسعر العادي"
+          "key": "activityEdit.goodsEmpty",
+          "zh-CN": "本店暂无商品",
+          "en": "No products yet",
+          "ar": "لا منتجات بعد"
         },
         {
-          "key": "activityEdit.groupN",
-          "zh-CN": "成团人数",
-          "en": "Buyers needed",
-          "ar": "عدد المشترين المطلوب"
+          "key": "activityEdit.goodsN",
+          "zh-CN": "已选 {n} 件",
+          "en": "{n} selected",
+          "ar": "{n} مختارة"
         },
         {
-          "key": "activityEdit.groupPrice",
-          "zh-CN": "成团价（元）",
-          "en": "Group price",
-          "ar": "سعر المجموعة"
+          "key": "activityEdit.goodsNone",
+          "zh-CN": "未选",
+          "en": "None",
+          "ar": "لا شيء"
+        },
+        {
+          "key": "activityEdit.goodsPick",
+          "zh-CN": "选择商品",
+          "en": "Choose products",
+          "ar": "اختر المنتجات"
+        },
+        {
+          "key": "activityEdit.groupCap",
+          "zh-CN": "上限",
+          "en": "Limits",
+          "ar": "الحدود"
+        },
+        {
+          "key": "activityEdit.groupRule",
+          "zh-CN": "规则",
+          "en": "Rules",
+          "ar": "القواعد"
+        },
+        {
+          "key": "activityEdit.groupScope",
+          "zh-CN": "范围",
+          "en": "Scope",
+          "ar": "النطاق"
         },
         {
           "key": "activityEdit.name",
-          "zh-CN": "活动名",
-          "en": "Activity name",
-          "ar": "اسم الحملة"
+          "zh-CN": "名称",
+          "en": "Name",
+          "ar": "الاسم"
         },
         {
           "key": "activityEdit.namePh",
-          "zh-CN": "仅内部可见，如「开业满减」",
-          "en": "Internal only, e.g. Opening discount",
-          "ar": "داخلي فقط، مثال: عرض الافتتاح"
+          "zh-CN": "活动名称",
+          "en": "Promotion name",
+          "ar": "اسم العرض"
         },
         {
-          "key": "activityEdit.needGoods",
-          "zh-CN": "特价与买赠需选择商品",
-          "en": "Special price and buy-and-get require products",
-          "ar": "السعر الخاص والهدايا تحتاج منتجات"
+          "key": "activityEdit.need.cap",
+          "zh-CN": "长期活动需设置份数或预算",
+          "en": "Always-on promotions need a quota or budget",
+          "ar": "العروض الدائمة تحتاج حصة أو ميزانية"
         },
         {
-          "key": "activityEdit.needName",
-          "zh-CN": "请填写活动名",
-          "en": "Enter an activity name",
-          "ar": "أدخل اسم الحملة"
+          "key": "activityEdit.need.cutoff",
+          "zh-CN": "请设置截单时间",
+          "en": "Set the cut-off time",
+          "ar": "حدد وقت الإغلاق"
         },
         {
-          "key": "activityEdit.needQuota",
-          "zh-CN": "特价与买赠需设置限量",
-          "en": "Special price and buy-and-get require a quota",
-          "ar": "السعر الخاص والهدايا تحتاج حدًا للكمية"
+          "key": "activityEdit.need.goods",
+          "zh-CN": "请选择商品",
+          "en": "Choose products",
+          "ar": "اختر المنتجات"
+        },
+        {
+          "key": "activityEdit.need.name",
+          "zh-CN": "请填写名称",
+          "en": "Enter a name",
+          "ar": "أدخل الاسم"
+        },
+        {
+          "key": "activityEdit.need.play",
+          "zh-CN": "请选择玩法",
+          "en": "Choose a type",
+          "ar": "اختر النوع"
+        },
+        {
+          "key": "activityEdit.need.quota",
+          "zh-CN": "请设置份数",
+          "en": "Set a quota",
+          "ar": "حدد الحصة"
+        },
+        {
+          "key": "activityEdit.need.rule",
+          "zh-CN": "请填写完整规则",
+          "en": "Complete the rules",
+          "ar": "أكمل القواعد"
         },
         {
           "key": "activityEdit.next",
@@ -4724,250 +4790,280 @@
           "ar": "التالي"
         },
         {
-          "key": "activityEdit.noGoods",
-          "zh-CN": "暂无商品",
-          "en": "No products",
-          "ar": "لا منتجات"
+          "key": "activityEdit.openGroups",
+          "zh-CN": "已开的团",
+          "en": "Open groups",
+          "ar": "المجموعات المفتوحة"
+        },
+        {
+          "key": "activityEdit.optional",
+          "zh-CN": "不设",
+          "en": "None",
+          "ar": "بلا"
+        },
+        {
+          "key": "activityEdit.periodQuota",
+          "zh-CN": "每期份数",
+          "en": "Per batch",
+          "ar": "لكل دفعة"
+        },
+        {
+          "key": "activityEdit.periodsAll",
+          "zh-CN": "全部期",
+          "en": "All batches",
+          "ar": "كل الدفعات"
+        },
+        {
+          "key": "activityEdit.pickPh",
+          "zh-CN": "请选择",
+          "en": "Select",
+          "ar": "اختر"
+        },
+        {
+          "key": "activityEdit.pickupDay.0",
+          "zh-CN": "当天",
+          "en": "Same day",
+          "ar": "نفس اليوم"
+        },
+        {
+          "key": "activityEdit.pickupDay.1",
+          "zh-CN": "次日",
+          "en": "Next day",
+          "ar": "اليوم التالي"
+        },
+        {
+          "key": "activityEdit.pickupDay.2",
+          "zh-CN": "后天",
+          "en": "In 2 days",
+          "ar": "بعد يومين"
+        },
+        {
+          "key": "activityEdit.play",
+          "zh-CN": "玩法",
+          "en": "Type",
+          "ar": "النوع"
+        },
+        {
+          "key": "activityEdit.playPick",
+          "zh-CN": "选择玩法",
+          "en": "Choose type",
+          "ar": "اختر النوع"
         },
         {
           "key": "activityEdit.prev",
           "zh-CN": "上一步",
           "en": "Back",
-          "ar": "السابق"
+          "ar": "رجوع"
         },
         {
-          "key": "activityEdit.price",
-          "zh-CN": "特价（元）",
-          "en": "Special price",
-          "ar": "السعر الخاص"
+          "key": "activityEdit.progress",
+          "zh-CN": "{i} / 2",
+          "en": "{i} / 2",
+          "ar": "{i} / 2"
         },
         {
-          "key": "activityEdit.priceHint",
-          "zh-CN": "特价仅对选中商品生效；调整常售价请在商品页操作",
-          "en": "Applies only to the products you pick; change the regular price on the product page",
-          "ar": "يُطبق على المنتجات المختارة فقط؛ لتعديل السعر العادي استخدم صفحة المنتج"
-        },
-        {
-          "key": "activityEdit.qtyN",
-          "zh-CN": "满几件",
-          "en": "Items required",
-          "ar": "عدد القطع المطلوب"
+          "key": "activityEdit.publish",
+          "zh-CN": "发布",
+          "en": "Publish",
+          "ar": "نشر"
         },
         {
           "key": "activityEdit.quota",
-          "zh-CN": "限量（份）",
+          "zh-CN": "份数",
           "en": "Quota",
-          "ar": "الحد"
+          "ar": "الحصة"
         },
         {
-          "key": "activityEdit.recurringHint",
-          "zh-CN": "按顾客所在时区计算，20:00 结束即该时刻整点停止",
-          "en": "Uses the customer’s time zone; 20:00 means it stops at 20:00 sharp",
-          "ar": "حسب توقيت العميل. 20:00 تعني التوقف عند 20:00 تمامًا"
-        },
-        {
-          "key": "activityEdit.save",
-          "zh-CN": "保存并启用",
-          "en": "Save and enable",
-          "ar": "حفظ وتفعيل"
-        },
-        {
-          "key": "activityEdit.saved",
-          "zh-CN": "已保存",
-          "en": "Saved",
-          "ar": "تم الحفظ"
-        },
-        {
-          "key": "activityEdit.schedule.ALWAYS_ON",
-          "zh-CN": "长期",
-          "en": "Always on",
-          "ar": "دائمة"
-        },
-        {
-          "key": "activityEdit.schedule.ONE_OFF",
-          "zh-CN": "限时",
-          "en": "Limited time",
-          "ar": "لفترة"
-        },
-        {
-          "key": "activityEdit.schedule.RECURRING",
-          "zh-CN": "每周固定时段",
-          "en": "Weekly window",
-          "ar": "نافذة أسبوعية"
-        },
-        {
-          "key": "activityEdit.scheduleQ",
-          "zh-CN": "生效时间",
-          "en": "Active period",
-          "ar": "فترة السريان"
-        },
-        {
-          "key": "activityEdit.startDay",
-          "zh-CN": "开始",
-          "en": "Starts",
-          "ar": "يبدأ"
-        },
-        {
-          "key": "activityEdit.step1",
-          "zh-CN": "基本信息",
-          "en": "Basics",
-          "ar": "الأساسيات"
-        },
-        {
-          "key": "activityEdit.step2",
-          "zh-CN": "生效时间",
-          "en": "Schedule",
-          "ar": "التوقيت"
-        },
-        {
-          "key": "activityEdit.step3",
-          "zh-CN": "优惠内容",
+          "key": "activityEdit.rule.amount",
+          "zh-CN": "减（元）",
           "en": "Discount",
           "ar": "الخصم"
         },
         {
-          "key": "activityEdit.stepOf",
-          "zh-CN": "第 {i} / 3 步",
-          "en": "Step {i} of 3",
-          "ar": "الخطوة {i} من 3"
+          "key": "activityEdit.rule.buyN",
+          "zh-CN": "买（件）",
+          "en": "Buy",
+          "ar": "اشترِ"
         },
         {
-          "key": "activityEdit.threshold",
-          "zh-CN": "门槛金额（元）",
-          "en": "Spend threshold (CNY)",
-          "ar": "الحد الأدنى للإنفاق (يوان)"
+          "key": "activityEdit.rule.cutoffTime",
+          "zh-CN": "每天截单",
+          "en": "Daily cut-off",
+          "ar": "الإغلاق اليومي"
+        },
+        {
+          "key": "activityEdit.rule.decideHours",
+          "zh-CN": "未达起订处理时限（小时）",
+          "en": "Time to decide if short (h)",
+          "ar": "مهلة القرار عند النقص (ساعة)"
+        },
+        {
+          "key": "activityEdit.rule.giftM",
+          "zh-CN": "送（件）",
+          "en": "Get free",
+          "ar": "مجانًا"
+        },
+        {
+          "key": "activityEdit.rule.groupHours",
+          "zh-CN": "成团时限（小时）",
+          "en": "Group time limit (h)",
+          "ar": "مهلة المجموعة (ساعة)"
+        },
+        {
+          "key": "activityEdit.rule.groupN",
+          "zh-CN": "成团人数",
+          "en": "Group size",
+          "ar": "حجم المجموعة"
+        },
+        {
+          "key": "activityEdit.rule.minQty",
+          "zh-CN": "起订量（份）",
+          "en": "Minimum (units)",
+          "ar": "الحد الأدنى (قطع)"
+        },
+        {
+          "key": "activityEdit.rule.pickupFrom",
+          "zh-CN": "提货时间",
+          "en": "Pickup from",
+          "ar": "الاستلام من"
+        },
+        {
+          "key": "activityEdit.rule.pickupOffset",
+          "zh-CN": "提货日",
+          "en": "Pickup day",
+          "ar": "يوم الاستلام"
+        },
+        {
+          "key": "activityEdit.rule.price",
+          "zh-CN": "价格（元）",
+          "en": "Price",
+          "ar": "السعر"
+        },
+        {
+          "key": "activityEdit.rule.qtyN",
+          "zh-CN": "满（件）",
+          "en": "Buy at least",
+          "ar": "عند شراء"
+        },
+        {
+          "key": "activityEdit.rule.threshold",
+          "zh-CN": "满（元）",
+          "en": "Spend over",
+          "ar": "عند الإنفاق"
+        },
+        {
+          "key": "activityEdit.saved",
+          "zh-CN": "已发布",
+          "en": "Published",
+          "ar": "تم النشر"
+        },
+        {
+          "key": "activityEdit.schedule",
+          "zh-CN": "时间",
+          "en": "Schedule",
+          "ar": "الوقت"
+        },
+        {
+          "key": "activityEdit.scheduleType.ALWAYS_ON",
+          "zh-CN": "长期",
+          "en": "Always",
+          "ar": "دائم"
+        },
+        {
+          "key": "activityEdit.scheduleType.ONE_OFF",
+          "zh-CN": "一次",
+          "en": "Once",
+          "ar": "مرة"
+        },
+        {
+          "key": "activityEdit.scheduleType.RECURRING",
+          "zh-CN": "每周",
+          "en": "Weekly",
+          "ar": "أسبوعي"
+        },
+        {
+          "key": "activityEdit.start",
+          "zh-CN": "开始",
+          "en": "Start",
+          "ar": "البداية"
+        },
+        {
+          "key": "activityEdit.statLeft",
+          "zh-CN": "剩余",
+          "en": "Left",
+          "ar": "المتبقي"
+        },
+        {
+          "key": "activityEdit.statSpent",
+          "zh-CN": "已让利",
+          "en": "Discounted",
+          "ar": "الخصومات"
+        },
+        {
+          "key": "activityEdit.statUsed",
+          "zh-CN": "已用份数",
+          "en": "Used",
+          "ar": "المستخدم"
+        },
+        {
+          "key": "activityEdit.status.ENDED",
+          "zh-CN": "已结束",
+          "en": "Ended",
+          "ar": "منتهي"
+        },
+        {
+          "key": "activityEdit.status.PAUSED",
+          "zh-CN": "已暂停",
+          "en": "Paused",
+          "ar": "متوقف"
+        },
+        {
+          "key": "activityEdit.status.RUNNING",
+          "zh-CN": "进行中",
+          "en": "Running",
+          "ar": "جاري"
+        },
+        {
+          "key": "activityEdit.stepConfirm",
+          "zh-CN": "确认",
+          "en": "Confirm",
+          "ar": "التأكيد"
+        },
+        {
+          "key": "activityEdit.stepFill",
+          "zh-CN": "填写",
+          "en": "Details",
+          "ar": "التفاصيل"
         },
         {
           "key": "activityEdit.timeRange",
-          "zh-CN": "每日时段",
-          "en": "Daily window",
-          "ar": "النافذة اليومية"
+          "zh-CN": "时段",
+          "en": "Hours",
+          "ar": "الساعات"
         },
         {
           "key": "activityEdit.title",
           "zh-CN": "新建活动",
-          "en": "New activity",
-          "ar": "حملة جديدة"
+          "en": "New promotion",
+          "ar": "عرض جديد"
         },
         {
           "key": "activityEdit.titleEdit",
-          "zh-CN": "改活动",
-          "en": "Edit activity",
-          "ar": "تعديل النشاط"
+          "zh-CN": "编辑活动",
+          "en": "Edit promotion",
+          "ar": "تعديل العرض"
         },
         {
-          "key": "activityEdit.type.CUT",
-          "zh-CN": "满减",
-          "en": "Spend & save",
-          "ar": "خصم عند الإنفاق"
+          "key": "activityEdit.unlimited",
+          "zh-CN": "不限",
+          "en": "Unlimited",
+          "ar": "غير محدود"
         },
         {
-          "key": "activityEdit.type.CUT_ANY",
-          "zh-CN": "无门槛立减",
-          "en": "Flat discount",
-          "ar": "خصم مباشر"
-        },
-        {
-          "key": "activityEdit.type.CUT_QTY",
-          "zh-CN": "满件减",
-          "en": "Qty discount",
-          "ar": "خصم بالكمية"
-        },
-        {
-          "key": "activityEdit.type.GIFT",
-          "zh-CN": "买赠",
-          "en": "Buy & get",
-          "ar": "اشترِ واحصل"
-        },
-        {
-          "key": "activityEdit.type.GROUP",
-          "zh-CN": "团购",
-          "en": "Group buy",
-          "ar": "شراء جماعي"
-        },
-        {
-          "key": "activityEdit.type.PRICE",
-          "zh-CN": "特价",
-          "en": "Special price",
-          "ar": "سعر خاص"
-        },
-        {
-          "key": "activityEdit.typeHint.CUT",
-          "zh-CN": "整单满额立减",
-          "en": "Whole-order discount once the amount is met",
-          "ar": "خصم على الطلب كاملًا عند بلوغ المبلغ"
-        },
-        {
-          "key": "activityEdit.typeHint.CUT_ANY",
-          "zh-CN": "不设门槛，下单就减",
-          "en": "No threshold; every order gets it",
-          "ar": "بلا حد أدنى؛ كل طلب يحصل عليه"
-        },
-        {
-          "key": "activityEdit.typeHint.CUT_QTY",
-          "zh-CN": "整单买满几件减一笔钱",
-          "en": "Buy this many items, take an amount off",
-          "ar": "اشترِ هذا العدد واحصل على خصم"
-        },
-        {
-          "key": "activityEdit.typeHint.GIFT",
-          "zh-CN": "购买指定数量即赠",
-          "en": "Buy N, get M free",
-          "ar": "اشترِ N واحصل على M"
-        },
-        {
-          "key": "activityEdit.typeHint.GROUP",
-          "zh-CN": "达到人数后按团购价成交",
-          "en": "Once enough buyers join, all get the group price",
-          "ar": "عند اكتمال العدد يحصل الجميع على سعر المجموعة"
-        },
-        {
-          "key": "activityEdit.typeHint.PRICE",
-          "zh-CN": "指定商品按特价售卖",
-          "en": "Sell selected products at a set price",
-          "ar": "بيع منتجات مختارة بسعر محدد"
-        },
-        {
-          "key": "activityEdit.typeName.CUT",
-          "zh-CN": "满减",
-          "en": "Spend & save",
-          "ar": "خصم عند الإنفاق"
-        },
-        {
-          "key": "activityEdit.typeName.CUT_ANY",
-          "zh-CN": "立减",
-          "en": "Flat discount",
-          "ar": "خصم مباشر"
-        },
-        {
-          "key": "activityEdit.typeName.CUT_QTY",
-          "zh-CN": "满件减",
-          "en": "Qty discount",
-          "ar": "خصم بالكمية"
-        },
-        {
-          "key": "activityEdit.typeName.GIFT",
-          "zh-CN": "买赠",
-          "en": "Buy & get",
-          "ar": "اشترِ واحصل"
-        },
-        {
-          "key": "activityEdit.typeName.GROUP",
-          "zh-CN": "团购",
-          "en": "Group buy",
-          "ar": "شراء جماعي"
-        },
-        {
-          "key": "activityEdit.typeName.PRICE",
-          "zh-CN": "特价",
-          "en": "Special price",
-          "ar": "سعر خاص"
-        },
-        {
-          "key": "activityEdit.typeQ",
-          "zh-CN": "活动类型",
-          "en": "Activity type",
-          "ar": "نوع النشاط"
+          "key": "activityEdit.weekdays",
+          "zh-CN": "周几",
+          "en": "Days",
+          "ar": "الأيام"
         },
         {
           "key": "afterSale.agree",
@@ -8822,52 +8918,88 @@
           "ar": "المنطقة والعملة"
         },
         {
-          "key": "marketing.entry.activities",
+          "key": "marketing.activities",
           "zh-CN": "活动",
-          "en": "Activities",
-          "ar": "الأنشطة"
+          "en": "Promotions",
+          "ar": "العروض"
         },
         {
-          "key": "marketing.entry.coupons",
+          "key": "marketing.coupons",
           "zh-CN": "优惠券",
           "en": "Coupons",
           "ar": "القسائم"
         },
         {
-          "key": "marketing.entry.groups",
-          "zh-CN": "团购",
+          "key": "marketing.groups",
+          "zh-CN": "团",
           "en": "Group buys",
           "ar": "الشراء الجماعي"
         },
         {
-          "key": "marketing.entry.quotes",
+          "key": "marketing.groupsShort",
+          "zh-CN": "{n} 差人",
+          "en": "{n} short",
+          "ar": "{n} ينقصها أعضاء"
+        },
+        {
+          "key": "marketing.issuing",
+          "zh-CN": "{n} 在发",
+          "en": "{n} issuing",
+          "ar": "{n} قيد الإصدار"
+        },
+        {
+          "key": "marketing.monthDiscount",
+          "zh-CN": "本月让利",
+          "en": "Discounts this month",
+          "ar": "خصومات هذا الشهر"
+        },
+        {
+          "key": "marketing.monthOrders",
+          "zh-CN": "带来订单",
+          "en": "Orders driven",
+          "ar": "طلبات محققة"
+        },
+        {
+          "key": "marketing.periodNone",
+          "zh-CN": "今日无收单",
+          "en": "No batch open today",
+          "ar": "لا توجد دفعة مفتوحة اليوم"
+        },
+        {
+          "key": "marketing.periodToday",
+          "zh-CN": "今日 {n} 份 · {t} 截单",
+          "en": "{n} today · closes {t}",
+          "ar": "{n} اليوم · يغلق {t}"
+        },
+        {
+          "key": "marketing.periods",
+          "zh-CN": "集单",
+          "en": "Batch orders",
+          "ar": "الطلبات المجمعة"
+        },
+        {
+          "key": "marketing.periodsShort",
+          "zh-CN": "{n} 待处理",
+          "en": "{n} to handle",
+          "ar": "{n} بانتظار المعالجة"
+        },
+        {
+          "key": "marketing.quotes",
           "zh-CN": "求团报价",
-          "en": "Group requests",
-          "ar": "طلبات المجموعات"
+          "en": "Group quote requests",
+          "ar": "طلبات التسعير الجماعي"
         },
         {
-          "key": "marketing.entryHint.activities",
-          "zh-CN": "满减、特价、团购、买赠",
-          "en": "Spend & save, special price, group buy, buy & get",
-          "ar": "خصم عند الإنفاق، سعر خاص، شراء جماعي، اشترِ واحصل"
+          "key": "marketing.quotesPending",
+          "zh-CN": "{n} 待报价",
+          "en": "{n} awaiting quote",
+          "ar": "{n} بانتظار التسعير"
         },
         {
-          "key": "marketing.entryHint.coupons",
-          "zh-CN": "下单抵扣或到店核销",
-          "en": "Redeemed at checkout or in store",
-          "ar": "تُصرف للعملاء؛ تُخصم عند الدفع أو تُستبدل في المتجر"
-        },
-        {
-          "key": "marketing.entryHint.groups",
-          "zh-CN": "查看成团进度，也可自行开团",
-          "en": "Track group progress, or open one yourself",
-          "ar": "تابع اكتمال المجموعات أو افتح واحدة بنفسك"
-        },
-        {
-          "key": "marketing.entryHint.quotes",
-          "zh-CN": "为邻居的求团需求报价",
-          "en": "Quote on what neighbours are asking for",
-          "ar": "سعّر ما يطلبه الجيران"
+          "key": "marketing.running",
+          "zh-CN": "{n} 进行中",
+          "en": "{n} running",
+          "ar": "{n} جارية"
         },
         {
           "key": "marketing.title",
@@ -10574,6 +10706,228 @@
           "ar": "إعدادات التحصيل"
         },
         {
+          "key": "period.amount",
+          "zh-CN": "金额",
+          "en": "Amount",
+          "ar": "المبلغ"
+        },
+        {
+          "key": "period.byGoods",
+          "zh-CN": "按商品",
+          "en": "By product",
+          "ar": "حسب المنتج"
+        },
+        {
+          "key": "period.byPickup",
+          "zh-CN": "按自提点",
+          "en": "By pickup point",
+          "ar": "حسب نقطة الاستلام"
+        },
+        {
+          "key": "period.cancelBody",
+          "zh-CN": "{n} 位顾客将全额退款，不可撤销。",
+          "en": "{n} customers will be fully refunded. This cannot be undone.",
+          "ar": "سيُسترد المبلغ كاملًا لـ {n} عملاء. لا يمكن التراجع."
+        },
+        {
+          "key": "period.cancelPeriod",
+          "zh-CN": "取消本期",
+          "en": "Cancel batch",
+          "ar": "إلغاء الدفعة"
+        },
+        {
+          "key": "period.cancelTitle",
+          "zh-CN": "取消本期？",
+          "en": "Cancel this batch?",
+          "ar": "إلغاء هذه الدفعة؟"
+        },
+        {
+          "key": "period.countdown",
+          "zh-CN": "后截单",
+          "en": "until cut-off",
+          "ar": "حتى الإغلاق"
+        },
+        {
+          "key": "period.customers",
+          "zh-CN": "位顾客",
+          "en": "Customers",
+          "ar": "العملاء"
+        },
+        {
+          "key": "period.cutAt",
+          "zh-CN": "{t} 已截单",
+          "en": "Closed at {t}",
+          "ar": "أُغلقت {t}"
+        },
+        {
+          "key": "period.cutoffBody",
+          "zh-CN": "截单后顾客不能再下单或取消，之后的订单进入下一期。",
+          "en": "Customers can no longer order or cancel; new orders go to the next batch.",
+          "ar": "لن يتمكن العملاء من الطلب أو الإلغاء؛ الطلبات الجديدة تذهب للدفعة التالية."
+        },
+        {
+          "key": "period.cutoffNow",
+          "zh-CN": "提前截单",
+          "en": "Close now",
+          "ar": "إغلاق الآن"
+        },
+        {
+          "key": "period.cutoffTitle",
+          "zh-CN": "现在截单？",
+          "en": "Close this batch now?",
+          "ar": "إغلاق هذه الدفعة الآن؟"
+        },
+        {
+          "key": "period.done",
+          "zh-CN": "已处理",
+          "en": "Done",
+          "ar": "تم"
+        },
+        {
+          "key": "period.pickupAt",
+          "zh-CN": "{d} {t} 起提货",
+          "en": "Pickup from {d} {t}",
+          "ar": "الاستلام من {d} {t}"
+        },
+        {
+          "key": "period.pieces",
+          "zh-CN": "{n} 份",
+          "en": "{n}",
+          "ar": "{n}"
+        },
+        {
+          "key": "period.proceed",
+          "zh-CN": "照常发货",
+          "en": "Fulfil anyway",
+          "ar": "التنفيذ على أي حال"
+        },
+        {
+          "key": "period.purchase",
+          "zh-CN": "去采购",
+          "en": "Purchase",
+          "ar": "شراء"
+        },
+        {
+          "key": "period.qty",
+          "zh-CN": "份",
+          "en": "Units",
+          "ar": "القطع"
+        },
+        {
+          "key": "period.shortHead",
+          "zh-CN": "{q} / {m} 份",
+          "en": "{q} / {m}",
+          "ar": "{q} / {m}"
+        },
+        {
+          "key": "period.shortNote",
+          "zh-CN": "{t} 前不处理，本期自动取消并退款",
+          "en": "If not handled by {t}, this batch is cancelled and refunded",
+          "ar": "إن لم تُعالج قبل {t} تُلغى الدفعة ويُسترد المبلغ"
+        },
+        {
+          "key": "period.shortSub",
+          "zh-CN": "已截单 · 未达起订量",
+          "en": "Closed · below minimum",
+          "ar": "مغلقة · دون الحد الأدنى"
+        },
+        {
+          "key": "periods.empty",
+          "zh-CN": "暂无集单",
+          "en": "No batches",
+          "ar": "لا توجد دفعات"
+        },
+        {
+          "key": "periods.emptyTip",
+          "zh-CN": "在活动里新建「社区集单」后，每天自动开一期",
+          "en": "Create a \"Community batch order\" promotion to open one every day",
+          "ar": "أنشئ عرض «طلب مجمّع للحي» لفتح دفعة كل يوم"
+        },
+        {
+          "key": "periods.item",
+          "zh-CN": "{d} · {name}",
+          "en": "{d} · {name}",
+          "ar": "{d} · {name}"
+        },
+        {
+          "key": "periods.meta",
+          "zh-CN": "{t} 截单 · {p} 提货",
+          "en": "Closes {t} · pickup {p}",
+          "ar": "تغلق {t} · الاستلام {p}"
+        },
+        {
+          "key": "periods.minOf",
+          "zh-CN": "{q} / 起订 {m} 份",
+          "en": "{q} / min {m}",
+          "ar": "{q} / الحد {m}"
+        },
+        {
+          "key": "periods.qty",
+          "zh-CN": "{q} 份",
+          "en": "{q} units",
+          "ar": "{q} قطع"
+        },
+        {
+          "key": "periods.quotaOf",
+          "zh-CN": "{q} / {m} 份",
+          "en": "{q} / {m}",
+          "ar": "{q} / {m}"
+        },
+        {
+          "key": "periods.status.CANCELLED",
+          "zh-CN": "已取消",
+          "en": "Cancelled",
+          "ar": "ملغاة"
+        },
+        {
+          "key": "periods.status.CONFIRMED",
+          "zh-CN": "已成",
+          "en": "Confirmed",
+          "ar": "مؤكدة"
+        },
+        {
+          "key": "periods.status.OPEN",
+          "zh-CN": "收单中",
+          "en": "Open",
+          "ar": "مفتوحة"
+        },
+        {
+          "key": "periods.status.SHORT",
+          "zh-CN": "未达起订",
+          "en": "Below minimum",
+          "ar": "دون الحد الأدنى"
+        },
+        {
+          "key": "periods.tab.CANCELLED",
+          "zh-CN": "已取消",
+          "en": "Cancelled",
+          "ar": "ملغاة"
+        },
+        {
+          "key": "periods.tab.CONFIRMED",
+          "zh-CN": "已成",
+          "en": "Confirmed",
+          "ar": "مؤكدة"
+        },
+        {
+          "key": "periods.tab.OPEN",
+          "zh-CN": "收单中",
+          "en": "Open",
+          "ar": "مفتوحة"
+        },
+        {
+          "key": "periods.tab.SHORT",
+          "zh-CN": "待处理",
+          "en": "To handle",
+          "ar": "للمعالجة"
+        },
+        {
+          "key": "periods.title",
+          "zh-CN": "集单",
+          "en": "Batch orders",
+          "ar": "الطلبات المجمعة"
+        },
+        {
           "key": "perm.biz:aftersale",
           "zh-CN": "处理售后",
           "en": "Handle after-sales",
@@ -10962,6 +11316,102 @@
           "zh-CN": "试用已用过（一家商户仅一次）",
           "en": "Trial already used (once per merchant)",
           "ar": "تم استخدام التجربة (مرة واحدة لكل تاجر)"
+        },
+        {
+          "key": "plays.desc.BATCH",
+          "zh-CN": "每天截单，按量采购",
+          "en": "Daily cut-off, buy to order",
+          "ar": "إغلاق يومي والشراء حسب الطلب"
+        },
+        {
+          "key": "plays.desc.CUT",
+          "zh-CN": "满额减钱",
+          "en": "Discount over an amount",
+          "ar": "خصم عند بلوغ مبلغ"
+        },
+        {
+          "key": "plays.desc.CUT_ANY",
+          "zh-CN": "无门槛减钱",
+          "en": "No minimum",
+          "ar": "بلا حد أدنى"
+        },
+        {
+          "key": "plays.desc.CUT_QTY",
+          "zh-CN": "满件减钱",
+          "en": "Discount over a quantity",
+          "ar": "خصم عند بلوغ كمية"
+        },
+        {
+          "key": "plays.desc.GIFT",
+          "zh-CN": "买够送货",
+          "en": "Free items with purchase",
+          "ar": "منتجات مجانية مع الشراء"
+        },
+        {
+          "key": "plays.desc.GROUP",
+          "zh-CN": "凑够人数享团价",
+          "en": "Group price when full",
+          "ar": "سعر جماعي عند الاكتمال"
+        },
+        {
+          "key": "plays.desc.NEW_CUSTOMER",
+          "zh-CN": "首次购买减钱",
+          "en": "First order discount",
+          "ar": "خصم الطلب الأول"
+        },
+        {
+          "key": "plays.desc.PRICE",
+          "zh-CN": "指定商品改价",
+          "en": "Lower price on items",
+          "ar": "سعر أقل لمنتجات"
+        },
+        {
+          "key": "plays.name.BATCH",
+          "zh-CN": "社区集单",
+          "en": "Community batch order",
+          "ar": "طلب مجمّع للحي"
+        },
+        {
+          "key": "plays.name.CUT",
+          "zh-CN": "满减",
+          "en": "Spend & save",
+          "ar": "أنفق ووفّر"
+        },
+        {
+          "key": "plays.name.CUT_ANY",
+          "zh-CN": "立减",
+          "en": "Instant discount",
+          "ar": "خصم فوري"
+        },
+        {
+          "key": "plays.name.CUT_QTY",
+          "zh-CN": "满件减",
+          "en": "Multi-buy discount",
+          "ar": "خصم الكمية"
+        },
+        {
+          "key": "plays.name.GIFT",
+          "zh-CN": "买赠",
+          "en": "Buy & get",
+          "ar": "اشترِ واحصل"
+        },
+        {
+          "key": "plays.name.GROUP",
+          "zh-CN": "拼团",
+          "en": "Group buy",
+          "ar": "شراء جماعي"
+        },
+        {
+          "key": "plays.name.NEW_CUSTOMER",
+          "zh-CN": "新客立减",
+          "en": "New customer discount",
+          "ar": "خصم العميل الجديد"
+        },
+        {
+          "key": "plays.name.PRICE",
+          "zh-CN": "特价",
+          "en": "Special price",
+          "ar": "سعر خاص"
         },
         {
           "key": "points.closeOnlyFuture",
@@ -18927,6 +19377,36 @@
           "ar": "مكافآت الدعوة قسائم فقط، وليست نقداً"
         },
         {
+          "key": "err.marketing.goods_in_presale",
+          "zh-CN": "预售中的商品不能参加集单",
+          "en": "Items on pre-sale cannot join a group order batch",
+          "ar": "منتجات الطلب المسبق لا يمكن ضمها إلى الطلب الجماعي"
+        },
+        {
+          "key": "err.marketing.period_cut_off",
+          "zh-CN": "本期已截单，不能取消",
+          "en": "This batch has closed and can no longer be cancelled",
+          "ar": "أُغلقت هذه الدفعة ولا يمكن الإلغاء الآن"
+        },
+        {
+          "key": "err.marketing.period_full",
+          "zh-CN": "本期份数已满，请下一期再来",
+          "en": "This batch is full; please order in the next one",
+          "ar": "اكتملت هذه الدفعة؛ اطلب في الدفعة التالية"
+        },
+        {
+          "key": "err.marketing.period_mixed",
+          "zh-CN": "不同截单时间的商品请分开下单",
+          "en": "Items with different cut-off times must be ordered separately",
+          "ar": "اطلب المنتجات ذات مواعيد الإغلاق المختلفة بشكل منفصل"
+        },
+        {
+          "key": "err.marketing.period_state_conflict",
+          "zh-CN": "本期状态已变化，请刷新后再试",
+          "en": "This batch has changed; refresh and try again",
+          "ar": "تغيّرت حالة هذه الدفعة؛ حدّث الصفحة وحاول مجددًا"
+        },
+        {
           "key": "err.member.phone_required",
           "zh-CN": "加入会员需要先绑定手机号",
           "en": "Add your phone number to join",
@@ -20329,6 +20809,13 @@
       "table": "pmt_coupon_scope",
       "class": "PmtCouponScope",
       "zh": "券的适用范围（规则）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_period",
+      "class": "PmtPeriod",
+      "zh": "社区集单的一期：一个集单活动在一个截单日的全部订单（ADR-024）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.promotion.entity"
     },
@@ -21845,6 +22332,13 @@
         "name": "PROMO_ACTIVITY",
         "value": "PT",
         "zh": "活动（新模型 pmt_activity）。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "PROMO_PERIOD",
+        "value": "PD",
+        "zh": "集单的一期（pmt_period）",
         "module": "shop-base"
       },
       {
@@ -24495,6 +24989,13 @@
       },
       {
         "host": "PmtActivity",
+        "name": "TRIGGER_CUTOFF",
+        "value": "CUTOFF",
+        "zh": "到截单时刻成交（社区集单）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtActivity",
         "name": "BENEFIT_CUT",
         "value": "CUT",
         "zh": "减金额",
@@ -24813,6 +25314,41 @@
         "name": "BY_MERCHANT",
         "value": "MERCHANT",
         "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtPeriod",
+        "name": "OPEN",
+        "value": "OPEN",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtPeriod",
+        "name": "SHORT",
+        "value": "SHORT",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtPeriod",
+        "name": "CONFIRMED",
+        "value": "CONFIRMED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtPeriod",
+        "name": "CANCELLED",
+        "value": "CANCELLED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtPeriod",
+        "name": "BY_SYSTEM",
+        "value": "SYSTEM",
+        "zh": "超时自动取消时写进 decided_by 的值：与人工处理区分开，商家问「谁取消的」要答得上",
         "module": "shop-core"
       },
       {
@@ -26399,6 +26935,15 @@
         "module": "shop-merchant"
       },
       {
+        "name": "Decision",
+        "values": [
+          "CANCEL",
+          "PROCEED"
+        ],
+        "zh": "s33 的两个选择",
+        "module": "shop-core"
+      },
+      {
         "name": "ErrorCode",
         "values": [
           "BAD_REQUEST",
@@ -26479,6 +27024,11 @@
           "ACTIVITY_RECURRING_RULE_INVALID",
           "ACTIVITY_QUOTA_BELOW_USED",
           "ACTIVITY_ENDED_IMMUTABLE",
+          "PERIOD_CUT_OFF",
+          "PERIOD_STATE_CONFLICT",
+          "PERIOD_MIXED",
+          "PERIOD_FULL",
+          "GOODS_IN_PRESALE",
           "SPLIT_RECEIVER_NOT_READY",
           "SPLIT_EXPIRED",
           "WITHDRAW_STATE_ILLEGAL",
@@ -26739,6 +27289,19 @@
         "zh": "覆盖项的生效状态。"
       },
       {
+        "name": "ActivityTrigger",
+        "client": "shared",
+        "values": [
+          "NONE",
+          "AMOUNT",
+          "QTY",
+          "GOODS",
+          "GROUP",
+          "CUTOFF"
+        ],
+        "zh": "活动的触发。"
+      },
+      {
         "name": "AfterSaleReason",
         "client": "shared",
         "values": [
@@ -26836,6 +27399,17 @@
           "CHANNEL"
         ],
         "zh": "归因来源。"
+      },
+      {
+        "name": "BatchPeriodStatus",
+        "client": "shared",
+        "values": [
+          "OPEN",
+          "SHORT",
+          "CONFIRMED",
+          "CANCELLED"
+        ],
+        "zh": "集单一期的状态（与后端 `PmtPeriod` 常量同源）。"
       },
       {
         "name": "BatchStatus",
@@ -27875,6 +28449,25 @@
         "zh": "平台营销场次的类型。"
       },
       {
+        "name": "PlayBenefit",
+        "client": "shared",
+        "values": [
+          "CUT",
+          "PRICE",
+          "GIFT"
+        ],
+        "zh": "活动的优惠。"
+      },
+      {
+        "name": "PlayInstance",
+        "client": "shared",
+        "values": [
+          "GROUP",
+          "PERIOD"
+        ],
+        "zh": "玩法开出的实例：拼团开出团，社区集单开出期"
+      },
+      {
         "name": "PostAuthorType",
         "client": "ops-web",
         "values": [
@@ -27994,6 +28587,8 @@
           "/pages/activities/index",
           "/pages/coupons/index",
           "/pages/marketing/index",
+          "/pages/periods/index",
+          "/pages/period/index",
           "/pages/stock/index",
           "/pages/stock-detail/index",
           "/pages/stock-cross/index",
@@ -28179,6 +28774,25 @@
           "TECH_OPS"
         ],
         "zh": ""
+      },
+      {
+        "name": "RuleField",
+        "client": "shared",
+        "values": [
+          "threshold",
+          "qtyN",
+          "amount",
+          "price",
+          "buyN",
+          "giftM",
+          "groupN",
+          "groupHours",
+          "cutoffTime",
+          "pickup",
+          "minQty",
+          "decideHours"
+        ],
+        "zh": "「规则」那一组里可能出现的行"
       },
       {
         "name": "SERVICE_SCOPE",

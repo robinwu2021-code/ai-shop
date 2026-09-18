@@ -34,7 +34,8 @@ public interface GroupRulePort {
     /**
      * @param minCount        几人成团。<b>下限 2</b> 由建活动那一步保证
      * @param groupPriceMinor 成团价（分）
+     * @param groupHours      开团后多少小时内成团。活动没配时由实现给缺省（24）
      */
-    record GroupRule(String activityNo, int minCount, long groupPriceMinor) {
+    record GroupRule(String activityNo, int minCount, long groupPriceMinor, int groupHours) {
     }
 }

@@ -1,6 +1,6 @@
 # TDD · 营销：活动统一模型与社区集单
 
-> 状态：**草稿 · 待确认** · 2026-09-18
+> 状态：**P1a 已实现** · 2026-09-18（P1b 拼团接通下单待做）
 > 档位：**2**（新表族 `pmt_period` · 跨 B/C 端 · 改订单与履约口径）
 > 关联需求：[PRD-营销-活动统一模型](../requirements/PRD-营销-活动统一模型.md)
 > 决策：[ADR-024 拼团与社区集单并存](ADR/ADR-024-拼团与社区集单并存.md)
@@ -162,11 +162,11 @@ ALTER TABLE ord_sub_order
 
 | 方法 | 路径 | 原型 | 说明 |
 |---|---|---|---|
-| GET | `/biz/periods?status=` | s31 | 按状态列期 |
-| GET | `/biz/periods/{no}` | s20 · s33 | 期详情 + 按商品 / 按自提点汇总 |
-| POST | `/biz/periods/{no}/cutoff` | s20 | 提前截单（只能从 OPEN） |
-| POST | `/biz/periods/{no}/decision` | s33 | `{action: CANCEL \| PROCEED}`，只能从 SHORT |
-| GET | `/biz/periods/{no}/purchase-lines` | s20 | 按 SKU 汇总，给进销存进货单预填 |
+| GET | `/biz/period?status=` | s31 | 按状态列期 |
+| GET | `/biz/period/{no}` | s20 · s33 | 期详情 + 按商品 / 按自提点汇总 |
+| POST | `/biz/period/{no}/cutoff` | s20 | 提前截单（只能从 OPEN） |
+| POST | `/biz/period/{no}/decision` | s33 | `{action: CANCEL \| PROCEED}`，只能从 SHORT |
+| GET | `/biz/period/{no}/purchase-lines` | s20 | 按 SKU 汇总，给进销存进货单预填 |
 
 新增 `/biz` 端点要走七处登记（判权表、两份白名单、生成产物），pre-push 才报 —— 提交前跑一次 `check-shared-guards`。
 
@@ -317,19 +317,52 @@ public interface PeriodService {
 | AC-9 | `PeriodFlowTest#summary_matchesOrderLines` | | |
 | AC-10 | `PeriodFlowTest#short_merchantProceeds` · `#short_undecided_autoCancelsAndRefunds` | | |
 | AC-11 | `ActivityServiceTest#cutoff_withPresaleSku_rejected` | | |
-| 数据域 | `OpsDataScopeFlowTest` 同形：`/biz/periods` 跨商家不可见；C 端下单能取到期 | | |
+| 数据域 | `OpsDataScopeFlowTest` 同形：`/biz/period` 跨商家不可见；C 端下单能取到期 | | |
 | 截单边界 | `PeriodFlowTest#orderAt_cutoffMinus1s_staysToday` · `#afterCutoff_goesNextPeriod` | | |
 
 AC-1、AC-15 是界面：`vue-tsc` + 按原型在 mock 下自查截图。AC-4、AC-12、AC-13 属 P2；AC-14 属 P3。
 
 ---
 
-## §6 对账二 · 设计 → 实现
+## §6 对账二 · 设计 → 实现（P1a，2026-09-18）
 
-实现完把 `git diff --stat` 贴在这里，与 §2.4 逐行比。
+§2.4 的模块全部落地，另多出四处（见 §7）：
+
+| §2.4 条目 | 实际落点 | 状态 |
+|---|---|---|
+| V335 迁移 | `V335__batch_sale_period.sql`（号已核，334 之后） | ✅ |
+| PmtPeriod / PeriodMapper / PmtActivity 七列 / OrdSubOrder 两列 | 同名 | ✅ |
+| PeriodService + Impl · PeriodCutoffJob | 同名；`advanceDue` / `cancelUndecided` 带状态条件更新 | ✅ |
+| BizPeriodController | 同名，路径改单数 `/biz/period*`（§7-1） | ✅ |
+| PeriodPort + Impl | 同名，另加只读的 `openUntil` / `viewFor`（§7-2） | ✅ |
+| PeriodOrderPort + Impl（trade） | 同名 | ✅ |
+| ActivityServiceImpl 集单校验 + 预售互斥 | 同名；`GoodsQueryPort#presaleGoods` | ✅ |
+| ActivityPricingServiceImpl | **未改**：`CUTOFF × PRICE` 本来就走 `flashPrices`（只排除 GROUP），用例钉住 | ✅ |
+| OrderServiceImpl：下单挂期 / 截单前撤单 | `createFor` 落库前取票；`cancel` 对已付款集单单走 `cancelPaidPeriodOrder` | ✅ |
+| FulfillmentStatsPort 到货日 | `FulfillmentStatsPortImpl#dayOf` | ✅ |
+| GroupServiceImpl end_at 取规则 · GroupExpireJob | 同名；**到期只置 FAILED、不退款**（§7-3） | ✅ |
+| DataScopeRegistration | 登记 `pmt_period`（MERCHANT） | ✅ |
+| BizDashboardController periodToday | 改为独立的 `GET /biz/marketing/summary`（§7-4） | ✅ |
+| 错误码 + 三语 | 40024–40028 | ✅ |
+| 共享类型 · 端上契约 · 生成物 | `store.ts` / `trade.ts` · b-app / c-app endpoints-contract-http-mocks · 24 个生成器 | ✅ |
+| 界面 | b-app 营销 / 活动列表 / 新建活动（两步）/ 集单列表 / 一期；c-app 商品详情集单块 / 订单详情 | ✅ |
+
+测试：`PeriodFlowTest` 12 条全走真 HTTP 下单付款；五处消融（挂期、到货日、截单判定、取消退款、看板日期）各自变红，已还原。
 
 ---
 
 ## §7 偏差说明
 
-（实现后填写）
+1. **端点改单数 `/biz/period*`**。设计写的是 `/biz/periods`，`api-path-naming` 守卫要求 /biz 单数。
+2. **C 端集单块是独立端点 `GET /mp/goods/{goodsNo}/batch`**，没有塞进 `GoodsVO`：
+   那个 record 在列表、详情、购物车三处构造，多一个要查库的块会让列表变成 N+1。只读、不建期。
+3. **团到期只置 FAILED、不退款**。读代码发现参团今天根本不下单（`join` 只落成员行，`ord_sub_order.group_no` 无人写），
+   没有钱可退；退款随 P1b「参团接通下单」一起做。
+4. **营销首页的数字是独立端点 `/biz/marketing/summary`**，不是工作台上的一块；团的两个数在门户层拼
+   （promotion 不直接依赖 marketing 域，`ArchitectureTest` 拦）。
+5. **玩法模板只放后端算得出的八种**：满减、满件减、立减、新客立减、特价、买赠、拼团、社区集单。
+   原型里的「折扣」「第二件」需要按比例的优惠（`PERCENT`），活动模型今天没有；「秒杀」就是限量的特价。三者随 P3 补。
+6. **多规格商品吃不到集单价**：`GoodsQueryPortImpl#snapshot` 对多 SKU 商品不套商品级活动价（防「20 斤装被拉成 10 斤装的价」）。
+   集单价同样受此限制 —— 集单请用单规格商品，或 P2 把活动价下沉到 SKU 级。
+7. **一张子单里有两个集单活动的货会被拒**（`PERIOD_MIXED`）：一单只能挂一期，否则其中一期的汇总少掉这几件。
+8. **期取消时未付款的子单不处理**：它们由超时关单关掉；截单后才付款的单由 `cancelUndecided` 补扫近 3 天已取消的期退掉。

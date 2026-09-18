@@ -210,6 +210,14 @@ public class OrdSubOrder extends BaseEntity {
      */
     private String groupNo;
 
+    /** 集单下单时的期号（{@code pmt_period}）。非集单单为空 */
+    private String periodNo;
+    /**
+     * 提货日 YYYY-MM-DD。<b>空 = 沿用下单日</b> —— 非集单单的口径一个字节都不变。
+     * 集单是「今天下单、明天提」，不存这一列的话履约批次会整批算早一天。
+     */
+    private String arriveDate;
+
     /** EXPRESS 履约：快递单号，发货后才有。 */
     private String expressNo;
 

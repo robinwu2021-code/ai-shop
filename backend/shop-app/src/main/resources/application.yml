@@ -138,6 +138,10 @@ shop:
       # 三道防线：① 默认空；② 开着时每次启动打一条 ERROR 级横幅；
       # ③ prod profile 下直接拒绝启动（见 FixedOtpGuard）。
       fixed: ${SHOP_OTP_FIXED:}
+  period:
+    # 社区集单：未达起订量时商家的处理时限（小时）的**缺省值**。
+    # 活动上配了 decide_hours 以活动为准（店主 2026-09-18 定：每个活动单独配置）
+    decide-hours: ${SHOP_PERIOD_DECIDE_HOURS:14}
   default-skin: fresh
   min-app-ver: 1.0.0
   service-hours: "09:00-21:00"
@@ -263,6 +267,13 @@ shop:
       # **配置时长本身在 /orders?tab=close**，不在这里 —— 这条只管「多久扫一次」，
       # 「多久算超时」是运营配的业务参数，两者不是一回事
       cron: ${SHOP_JOB_ORDER_AUTO_CLOSE_CRON:0 * * * * *}
+    group-expire:
+      # 一分钟一轮：团过了截止还挂着「还差 N 人」，买家会一直等
+      cron: ${SHOP_JOB_GROUP_EXPIRE_CRON:15 * * * * *}
+    period-cutoff:
+      # 一分钟一轮：集单到点截单、未达起订量的期超时自动取消并退款。
+      # 截单归属看订单时间与 cutoff_at，不看这个任务跑到没有 —— 晚一分钟扫到不改变谁属于哪一期
+      cron: ${SHOP_JOB_PERIOD_CUTOFF_CRON:30 * * * * *}
     points-activate:
       cron: ${SHOP_JOB_POINTS_ACTIVATE_CRON:0 5 0 * * *}
     points-expire:

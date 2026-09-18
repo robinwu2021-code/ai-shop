@@ -22,6 +22,9 @@ public class GroupRulePortImpl implements GroupRulePort {
      */
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
 
+    /** 活动没配成团时限时的缺省（PRD §4.2.2：默认开团后 24 小时） */
+    static final int DEFAULT_GROUP_HOURS = 24;
+
     private final ActivityMapper activityMapper;
     private final ActivityGoodsMapper goodsMapper;
 
@@ -75,7 +78,9 @@ public class GroupRulePortImpl implements GroupRulePort {
             }
             return Optional.of(new GroupRule(a.getActivityNo(),
                     a.getTriggerQty() == null ? 2 : a.getTriggerQty(),
-                    a.getBenefitAmountMinor() == null ? 0L : a.getBenefitAmountMinor()));
+                    a.getBenefitAmountMinor() == null ? 0L : a.getBenefitAmountMinor(),
+                    a.getGroupHours() == null || a.getGroupHours() <= 0
+                            ? DEFAULT_GROUP_HOURS : a.getGroupHours()));
         }
         return Optional.empty();
     }

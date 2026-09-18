@@ -53,6 +53,9 @@ export const ROUTES = {
   activities: "/pages/activities/index",
   coupons: "/pages/coupons/index",
   marketing: "/pages/marketing/index",
+  // 社区集单：期列表与一期。入口在营销页，不在工作台（ADR-024）
+  periods: "/pages/periods/index",
+  period: "/pages/period/index",
 
   // ── 进销存（P-18）。**库存页是这一块的枢纽** ——
   // 工作台只开一道门到它，其余五屏从它里面进。

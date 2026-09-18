@@ -20,7 +20,25 @@ public final class ActivityVOs {
                                 String benefitRef,
                                 String scheduleType, Long startAt, Long endAt, String scheduleRule,
                                 Integer quota, Long budgetMinor,
-                                List<AudienceItem> audiences, List<String> goodsNos) {
+                                List<AudienceItem> audiences, List<String> goodsNos,
+                                // ↓ 社区集单（CUTOFF）与拼团（GROUP）的参数，其余玩法全为空
+                                String cutoffTime, Integer pickupOffset, String pickupFrom,
+                                Integer minQty, Integer periodQuota, Integer decideHours,
+                                Integer groupHours) {
+
+        /** 不带集单 / 拼团参数的旧签名：存量调用方（含测试）不必跟着改 */
+        public ActivityDraft(String activityNo, String name, String goal, String storeNo,
+                             String triggerType, Long triggerAmountMinor, Integer triggerQty,
+                             String benefitType, Long benefitAmountMinor, Integer benefitQty,
+                             String benefitRef,
+                             String scheduleType, Long startAt, Long endAt, String scheduleRule,
+                             Integer quota, Long budgetMinor,
+                             List<AudienceItem> audiences, List<String> goodsNos) {
+            this(activityNo, name, goal, storeNo, triggerType, triggerAmountMinor, triggerQty,
+                    benefitType, benefitAmountMinor, benefitQty, benefitRef,
+                    scheduleType, startAt, endAt, scheduleRule, quota, budgetMinor,
+                    audiences, goodsNos, null, null, null, null, null, null, null);
+        }
     }
 
     /** @param type TAG / LEVEL / SOURCE / SEGMENT / NON_MEMBER */
@@ -42,7 +60,10 @@ public final class ActivityVOs {
                              Integer quota, Integer quotaUsed, Integer quotaLeft,
                              Long budgetMinor, Long budgetUsedMinor, Long maxExposureMinor,
                              List<AudienceItem> audiences, List<String> goodsNos,
-                             String status, String endedReason, boolean liveNow) {
+                             String status, String endedReason, boolean liveNow,
+                             String cutoffTime, Integer pickupOffset, String pickupFrom,
+                             Integer minQty, Integer periodQuota, Integer decideHours,
+                             Integer groupHours) {
     }
 
     /** @param activityName 冲突的那个活动叫什么 —— 只给活动号，商家认不出是哪个 */

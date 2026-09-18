@@ -29,7 +29,6 @@ const GLOBAL_PREFIXES = ["sh-", "txt-", "is-", "uni-"];
 
 /** 立此存照的欠账：文件 → 该文件里还没归位的类名 */
 const KNOWN: Record<string, string[]> = {
-  "b-app/src/pages/activities/index.vue": ["acts", "effect", "item__head", "line", "rule"],
   "b-app/src/pages/cross-store/index.vue": ["grid", "grid__i", "grid__v", "month", "todo", "todo__i", "todo__l"],
   "b-app/src/pages/login/index.vue": ["blk"],
   "b-app/src/pages/purchase-edit/index.vue": ["pick"],

@@ -1117,6 +1117,15 @@ uni-page-wrapper[style*="--window-bottom"] {
   border-color: var(--sh-line);
   color: var(--sh-sub);
 }
+/*
+ * 成功 / 进行中（2026-09-18，营销原型的状态标签约定：绿 = 进行中或已成功，黄 = 需要处理，灰 = 其它）。
+ * 此前状态只有「主色 / 黄 / 红 / 灰」四档，「进行中」只能借主色 —— 而主色在本系统里是「可点」，
+ * 一枚红色「进行中」读起来像告警。与 `.sh-notice--success` 同一套 tint 底 + 语义字色。
+ */
+.sh-chip--success {
+  background: var(--sh-success-tint);
+  color: var(--sh-success);
+}
 .sh-chip--warning {
   background: var(--sh-warning-tint);
   color: var(--sh-warning);

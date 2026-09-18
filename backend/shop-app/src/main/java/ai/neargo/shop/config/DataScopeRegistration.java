@@ -297,6 +297,18 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
+         * 集单的一期（2026-09-18，TDD-营销域-详细设计 §2.7）。与活动同一维度同一锚点：
+         * 期是活动的实例，能看活动的人就该能看它的期，不能看的也不该从期上看到。
+         *
+         * **三处必须绕开**，且各自用显式条件钉死边界：买家下单取期（PeriodPortImpl，钉 entity_no）、
+         * 定时任务推进与取消（PeriodServiceImpl.scoped，按状态与时刻扫全量正是任务的本意）、
+         * 期内订单行（PeriodOrderPortImpl，钉 period_no）。不绕的话任务里查出来恒为空 ——
+         * 表现是「没有一期会被截单」，零报错。
+         */
+        registry.register("pmt_period", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
          * 触达流水。**登记它今天不改变任何可见行为，这一点要写清楚**。
          *
          * 我一开始以为触达健康度那一页会漏：每行是「这家商家发了多少条 / 有多少会员 /

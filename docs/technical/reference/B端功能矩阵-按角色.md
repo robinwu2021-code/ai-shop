@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 13 个权限点 × 179 个受控端点**。
+统计：**6 个角色 × 13 个权限点 × 185 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -18,11 +18,11 @@
 |---|---|---|---|---|---|---|---|---|
 | `STOCK` | 改库存（含门店库存） | 37 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 27 | ✅ | ✅ | — | — | — | — |
+| `CAMPAIGN` | 营销活动、开团、报价 | 22 | ✅ | ✅ | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 20 | ✅ | ✅ | — | — | — | — |
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 20 | ✅ | — | — | — | — | — |
 | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 19 | ✅ | — | — | — | — | — |
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 18 | ✅ | ✅ | — | — | — | — |
-| `CAMPAIGN` | 营销活动、开团、报价 | 16 | ✅ | ✅ | — | — | — | — |
 | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `AFTERSALE` | 售后同意/驳回/收货 | 4 | ✅ | ✅ | — | — | — | ✅ |
@@ -104,6 +104,31 @@
 - `/biz/spec-values`
 - `/biz/spu-std`
 - `/biz/store-spec-dims`
+
+### `CAMPAIGN`　（OWNER、MANAGER）
+
+- `/biz/activities`
+- `/biz/activities/{activityNo}`
+- `/biz/activities/{activityNo}/status`
+- `/biz/activity-conflicts`
+- `/biz/campaign`
+- `/biz/campaign/{campaignNo}/toggle`
+- `/biz/coupon-issues`
+- `/biz/coupons`
+- `/biz/coupons/{couponNo}`
+- `/biz/coupons/{couponNo}/issue`
+- `/biz/coupons/{couponNo}/status`
+- `/biz/group-request/pool`
+- `/biz/group-request/{requestNo}/quote`
+- `/biz/groups`
+- `/biz/marketing/summary`
+- `/biz/member-reach/send`
+- `/biz/period`
+- `/biz/period/{periodNo}`
+- `/biz/period/{periodNo}/cutoff`
+- `/biz/period/{periodNo}/decision`
+- `/biz/period/{periodNo}/purchase-lines`
+- `/biz/quote/{quoteNo}/revise`
 
 ### `STORE`　（OWNER、MANAGER）
 
@@ -193,25 +218,6 @@
 - `/biz/members/stats`
 - `/biz/members/tags`
 - `/biz/members/{memberNo}`
-
-### `CAMPAIGN`　（OWNER、MANAGER）
-
-- `/biz/activities`
-- `/biz/activities/{activityNo}`
-- `/biz/activities/{activityNo}/status`
-- `/biz/activity-conflicts`
-- `/biz/campaign`
-- `/biz/campaign/{campaignNo}/toggle`
-- `/biz/coupon-issues`
-- `/biz/coupons`
-- `/biz/coupons/{couponNo}`
-- `/biz/coupons/{couponNo}/issue`
-- `/biz/coupons/{couponNo}/status`
-- `/biz/group-request/pool`
-- `/biz/group-request/{requestNo}/quote`
-- `/biz/groups`
-- `/biz/member-reach/send`
-- `/biz/quote/{quoteNo}/revise`
 
 ### `VERIFY`　（OWNER、MANAGER、CLERK）
 

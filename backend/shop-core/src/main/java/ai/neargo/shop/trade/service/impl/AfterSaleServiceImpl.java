@@ -185,6 +185,52 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     @Override
+    @Transactional
+    public java.util.Optional<AfterSaleVO> systemRefund(String subOrderNo, String reason, String label) {
+        OrdSubOrder sub = subOrderOf(subOrderNo);
+        if (sub == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        // 没付过钱的单无钱可退：调用方该走关单 / 取消，不是售后
+        if (OrdSubOrder.WAIT_PAY.equals(sub.getStatus()) || OrdSubOrder.CANCELLED.equals(sub.getStatus())) {
+            return java.util.Optional.empty();
+        }
+        OrdAfterSale active = activeOf(subOrderNo);
+        if (active != null) {
+            // 已有一张在路上：退款中的交给重试任务，买家自己的交给它自己的流程。不建第二张
+            return java.util.Optional.of(detailOf(active));
+        }
+        if (OrdSubOrder.REFUNDED.equals(sub.getStatus())) {
+            return latestOf(subOrderNo).map(this::detailOf);
+        }
+
+        OrdAfterSale as = new OrdAfterSale();
+        as.setAfterSaleNo(BizKey.next(BizKey.AFTER_SALE));
+        as.setSubOrderNo(subOrderNo);
+        as.setOrderNo(sub.getOrderNo());
+        as.setUserNo(sub.getUserNo());
+        as.setEntityNo(sub.getEntityNo());
+        as.setType(OrdAfterSale.REFUND_ONLY);
+        as.setReason(reason);
+        as.setImages(writeJson(null));
+        as.setRefundMinor(sub.getPayAmount() == null ? 0L : sub.getPayAmount());
+        as.setStatus(OrdAfterSale.APPLIED);
+        as.setSplitReversed(false);
+        as.setInstant(false);
+        DataScopeContext.executeWithoutScope(() -> afterSaleMapper.insert(as));
+        appendLog(subOrderNo, OrdAfterSale.APPLIED, label, OrdStatusLog.BY_SYSTEM, null);
+        doRefund(as, label);
+        return java.util.Optional.of(detailOf(as));
+    }
+
+    private java.util.Optional<OrdAfterSale> latestOf(String subOrderNo) {
+        return java.util.Optional.ofNullable(DataScopeContext.executeWithoutScope(() ->
+                afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
+                        .eq(OrdAfterSale::getSubOrderNo, subOrderNo)
+                        .orderByDesc(OrdAfterSale::getId).last("limit 1"))));
+    }
+
+    @Override
     public List<AfterSaleVO> myList() {
         return afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
                         .eq(OrdAfterSale::getUserNo, SecurityUtils.currentUserNo())

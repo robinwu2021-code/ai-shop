@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 717 个接口**：后端已实现 645（90%）· 前端在调 646
+**合计 724 个接口**：后端已实现 652（90%）· 前端在调 653
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **90** 个接口 ｜ 后端已实现 **89**（99%）｜ 前端在调 **90**
+共 **91** 个接口 ｜ 后端已实现 **90**（99%）｜ 前端在调 **91**
 
 ### after-sale（4）
 
@@ -56,12 +56,13 @@
 | GET | `/mp/coupon` | 优惠券列表 | — | `数组` | — | ✅ | ✅ |
 | POST | `/mp/coupon/{couponNo}/receive` | 领取优惠券 | — | `Coupon` | 🔒 | ✅ | ✅ |
 
-### goods（3）
+### goods（4）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/mp/goods` | 商品列表 | — | `object` | — | ✅ | ✅ |
 | GET | `/mp/goods/{goodsNo}` | 商品详情 | — | `Goods` | — | ✅ | ✅ |
+| GET | `/mp/goods/{goodsNo}/batch` | 商品的社区集单信息（截单、提货、已订份数） | — | `GoodsBatch` | — | ✅ | ✅ |
 | GET | `/mp/goods/promoted` | 推荐商品（运营位） | — | `数组` | — | ✅ | ✅ |
 
 ### group-buy（8）
@@ -218,7 +219,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **231** 个接口 ｜ 后端已实现 **226**（98%）｜ 前端在调 **231**
+共 **237** 个接口 ｜ 后端已实现 **232**（98%）｜ 前端在调 **237**
 
 ### activities（4）
 
@@ -449,6 +450,12 @@
 | POST | `/biz/inventory/transfers/{no}/ship` | 调拨发出 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/inventory/transfers/{no}/void` | 作废调拨草稿 | — | — | 🔒 | ✅ | ✅ |
 
+### marketing（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/marketing/summary` | 营销入口一屏的数字 | — | `MarketingSummary` | 🔒 | ✅ | ✅ |
+
 ### member-reach（2）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
@@ -534,6 +541,16 @@
 | POST | `/biz/order/{orderNo}/confirm-offline-pay` | 确认线下收款 | — | `Order` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/delivered` | 自送已送达 | — | `Order` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/ship` | 快递发货 | `ShipReq` | `Order` | 🔒 | ⬜ | ✅ |
+
+### period（5）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/period` | 社区集单：按状态列期 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/period/{periodNo}` | 社区集单：一期详情（按商品 / 自提点汇总） | — | `BatchPeriodDetail` | 🔒 | ✅ | ✅ |
+| POST | `/biz/period/{periodNo}/cutoff` | 社区集单：提前截单 | — | `BatchPeriod` | 🔒 | ✅ | ✅ |
+| POST | `/biz/period/{periodNo}/decision` | 社区集单：未达起订量时取消本期或照常发货 | — | `BatchPeriod` | 🔒 | ✅ | ✅ |
+| GET | `/biz/period/{periodNo}/purchase-lines` | 社区集单：按 SKU 汇总给进货单 | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### pickable-props（1）
 

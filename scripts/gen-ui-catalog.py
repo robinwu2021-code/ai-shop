@@ -342,11 +342,9 @@ PROTOTYPES = [
     ("ops-web", "/members", "会员总览（跨商家）", "会员与营销"),
     ("ops-web", "/members?tab=person", "人档与合并", "会员与营销"),
     ("ops-web", "/members?tab=reach", "触达监控", "会员与营销"),
-    # 营销原型里还没有页面的六屏（2026-09-18；路由按 TDD-营销-活动统一模型与集单 §2.4）
+    # 营销原型里还没有页面的四屏（集单两页已于 P1a 落地，从这里删掉）
     ("b-app", "/pages/platform-activities/index", "平台活动", "会员与营销"),
     ("b-app", "/pages/platform-activity-apply/index", "报名平台活动", "会员与营销"),
-    ("b-app", "/pages/periods/index", "集单", "会员与营销"),
-    ("b-app", "/pages/period/index", "集单 · 一期", "会员与营销"),
     ("ops-web", "/marketing?tab=platform", "新建平台活动", "会员与营销"),
     ("ops-web", "/marketing?tab=platform-audit", "平台活动报名审核", "会员与营销"),
     # 进销存九屏：需求见 docs/requirements/进销存-需求.md，落地后从这里删掉

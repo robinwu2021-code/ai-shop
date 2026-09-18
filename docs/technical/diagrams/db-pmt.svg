@@ -1,12 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="680" height="332" viewBox="0 0 680 332" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
-<title>券与活动 表关系</title><desc>8 张表，箭头由引用方指向被引用方。</desc>
+<title>券与活动 表关系</title><desc>9 张表，箭头由引用方指向被引用方。</desc>
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
 <style>.n{font-weight:500;fill:#161A21}.s{font-size:11px;fill:#5A6472}
 .l{font-size:10.5px;fill:#5A6472;paint-order:stroke;stroke:#F7F9FB;stroke-width:3.5;stroke-linejoin:round}.b{font-size:11px;fill:#5A6472;letter-spacing:.1em}
-.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}</style></defs><path class="ar" d="M148 262 L148 208 L436 208 L436 193" marker-end="url(#a)"/>
-<path class="ar" d="M340 262 L340 220 L436 220 L436 193" marker-end="url(#a)"/>
-<path class="ar" d="M532 262 L532 232 L436 232 L436 193" marker-end="url(#a)"/>
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}</style></defs><path class="ar" d="M100 262 L100 208 L436 208 L436 193" marker-end="url(#a)"/>
+<path class="ar" d="M260 262 L260 220 L436 220 L436 193" marker-end="url(#a)"/>
+<path class="ar" d="M420 262 L420 232 L436 232 L436 193" marker-end="url(#a)"/>
+<path class="ar" d="M580 262 L580 208 L436 208 L436 193" marker-end="url(#a)"/>
 <rect x="63" y="30" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="148" y="50" text-anchor="middle" font-size="13">pmt_coupon</text>
 <text class="s" x="148" y="65" text-anchor="middle">券模板：权益 × 门槛 × 范围…</text>
@@ -22,15 +23,19 @@
 <rect x="351" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="436" y="166" text-anchor="middle" font-size="13">pmt_activity</text>
 <text class="s" x="436" y="181" text-anchor="middle">活动：触发条件 × 优惠形式 ×…</text>
-<rect x="63" y="262" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="148" y="282" text-anchor="middle" font-size="13">pmt_coupon_issue</text>
-<text class="s" x="148" y="297" text-anchor="middle">发放批次：发给谁、发了多少、跳…</text>
-<rect x="255" y="262" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="340" y="282" text-anchor="middle" font-size="13">pmt_activity_audience</text>
-<text class="s" x="340" y="297" text-anchor="middle">活动受众：一行都没有 = 对所…</text>
-<rect x="447" y="262" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="532" y="282" text-anchor="middle" font-size="13">pmt_activity_goods</text>
-<text class="s" x="532" y="297" text-anchor="middle">活动作用范围。用表不用 TEXT…</text>
-<text class="l" x="292" y="204" text-anchor="middle">activity_no</text>
-<text class="l" x="388" y="216" text-anchor="middle">activity_no</text>
-<text class="l" x="484" y="228" text-anchor="middle">activity_no</text></svg>
+<rect x="31" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="100" y="282" text-anchor="middle" font-size="13">pmt_coupon_issue</text>
+<text class="s" x="100" y="297" text-anchor="middle">发放批次：发给谁、发了…</text>
+<rect x="191" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="260" y="282" text-anchor="middle" font-size="9.5">pmt_activity_audience</text>
+<text class="s" x="260" y="297" text-anchor="middle">活动受众：一行都没有 =…</text>
+<rect x="351" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="420" y="282" text-anchor="middle" font-size="11">pmt_activity_goods</text>
+<text class="s" x="420" y="297" text-anchor="middle">活动作用范围。用表不用…</text>
+<rect x="511" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="580" y="282" text-anchor="middle" font-size="13">pmt_period</text>
+<text class="s" x="580" y="297" text-anchor="middle">集单的一期。份数与金额…</text>
+<text class="l" x="268" y="204" text-anchor="middle">activity_no</text>
+<text class="l" x="348" y="216" text-anchor="middle">activity_no</text>
+<text class="l" x="428" y="228" text-anchor="middle">activity_no</text>
+<text class="l" x="508" y="204" text-anchor="middle">activity_no</text></svg>

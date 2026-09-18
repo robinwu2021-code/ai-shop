@@ -5,7 +5,7 @@
 
 import { db, delay, nextNo, persist } from "@shared/mock/db";
 import { ApiError } from "@shared/net/http-client";
-import type { ActivityConflict, CouponIssueBatch, MarketingCampaign, MerchantCoupon, StoreActivity } from "@shared/types";
+import type { ActivityConflict, BatchPeriod, BatchPeriodDetail, CouponIssueBatch, MarketingCampaign, MerchantCoupon, StoreActivity } from "@shared/types";
 import { isPhone } from "@shared/utils/validate";
 import {
   allMockMembers,
@@ -56,6 +56,12 @@ export const marketingMock: Pick<MerchantApi,
   | "mPeekCouponCode"
   | "mRedeemCoupon"
   | "mCouponIssues"
+  | "mMarketingSummary"
+  | "mPeriods"
+  | "mPeriod"
+  | "mCutoffPeriod"
+  | "mDecidePeriod"
+  | "mPeriodPurchaseLines"
 > = {
   // ---------------------------------------------------------------- 营销
   async mCampaignList() {
@@ -496,6 +502,10 @@ export const marketingMock: Pick<MerchantApi,
     if (itemCost && !payload.goodsNos?.length) {
       throw new ApiError(40020, "请选择参加活动的商品");
     }
+    if (payload.triggerType === "CUTOFF"
+        && (!/^([01]\d|2[0-3]):[0-5]\d$/.test(payload.cutoffTime ?? "") || schedule === "RECURRING")) {
+      throw new ApiError(10400, "请设置每天几点截单");
+    }
     if (schedule === "RECURRING" && !payload.scheduleRule?.includes("weekdays")) {
       throw new ApiError(40021, "请设置周期规则（周几、几点到几点）");
     }
@@ -534,6 +544,13 @@ export const marketingMock: Pick<MerchantApi,
       status: exist?.status ?? "RUNNING",
       endedReason: exist?.endedReason ?? null,
       liveNow: (exist?.status ?? "RUNNING") === "RUNNING" && schedule !== "RECURRING",
+      cutoffTime: payload.triggerType === "CUTOFF" ? (payload.cutoffTime ?? null) : null,
+      pickupOffset: payload.triggerType === "CUTOFF" ? (payload.pickupOffset ?? 1) : null,
+      pickupFrom: payload.triggerType === "CUTOFF" ? (payload.pickupFrom ?? null) : null,
+      minQty: payload.triggerType === "CUTOFF" ? (payload.minQty ?? null) : null,
+      periodQuota: payload.triggerType === "CUTOFF" ? (payload.periodQuota ?? null) : null,
+      decideHours: payload.triggerType === "CUTOFF" ? (payload.decideHours ?? null) : null,
+      groupHours: payload.triggerType === "GROUP" ? (payload.groupHours ?? null) : null,
     };
     if (exist) Object.assign(exist, row);
     else db.storeActivities.unshift(row);
@@ -552,6 +569,70 @@ export const marketingMock: Pick<MerchantApi,
     if (status === "ENDED") a.endedReason = "MANUAL";
     persist();
     return delay({ ...a });
+  },
+
+  // ---------------------------------------------------------------- 营销入口与社区集单
+  async mMarketingSummary() {
+    const today = mockDay(0);
+    const open = mockPeriods.filter((p) => p.status === "OPEN" && p.periodDate === today);
+    return delay({
+      monthDiscountMinor: 128_400,
+      monthOrders: 96,
+      activityRunning: db.storeActivities.filter((a) => a.status === "RUNNING").length,
+      couponIssuing: 2,
+      periodTodayQty: open.reduce((n, p) => n + p.qty, 0),
+      periodTodayCutoffAt: open.length ? Math.min(...open.map((p) => p.cutoffAt)) : null,
+      periodsShort: mockPeriods.filter((p) => p.status === "SHORT").length,
+      groupsShort: 2,
+      quotesPending: 2,
+      enrollable: 0,
+    });
+  },
+
+  async mPeriods(status) {
+    return delay(mockPeriods.filter((p) => !status || p.status === status).map((p) => ({ ...p })));
+  },
+
+  async mPeriod(periodNo) {
+    const p = mockPeriods.find((x) => x.periodNo === periodNo);
+    if (!p) throw new ApiError(10404, "这一期不存在");
+    const detail: BatchPeriodDetail = {
+      period: { ...p },
+      byGoods: p.status === "SHORT"
+        ? [{ goodsNo: "G0001", title: "东北大米 10 斤", qty: p.qty }]
+        : [{ goodsNo: "G0003", title: "秋月梨 5 斤装", qty: 52 }, { goodsNo: "G0004", title: "红心猕猴桃", qty: 34 }],
+      byPickup: p.status === "SHORT"
+        ? [{ pickupNo: "PP0001", pickupName: "阳光里南门", qty: p.qty }]
+        : [{ pickupNo: "PP0001", pickupName: "阳光里南门", qty: 48 }, { pickupNo: "PP0002", pickupName: "总店", qty: 38 }],
+    };
+    return delay(detail);
+  },
+
+  async mCutoffPeriod(periodNo) {
+    const p = mockPeriods.find((x) => x.periodNo === periodNo);
+    if (!p) throw new ApiError(10404, "这一期不存在");
+    if (p.status !== "OPEN") throw new ApiError(40025, "本期状态已变化，请刷新后再试");
+    p.cutoffAt = Date.now();
+    if (p.minQty != null && p.qty < p.minQty) {
+      p.status = "SHORT";
+      p.decideDeadline = p.cutoffAt + 14 * 3600_000;
+    } else {
+      p.status = "CONFIRMED";
+    }
+    return delay({ ...p });
+  },
+
+  async mDecidePeriod(periodNo, action) {
+    const p = mockPeriods.find((x) => x.periodNo === periodNo);
+    if (!p) throw new ApiError(10404, "这一期不存在");
+    if (p.status !== "SHORT") throw new ApiError(40025, "本期状态已变化，请刷新后再试");
+    p.status = action === "CANCEL" ? "CANCELLED" : "CONFIRMED";
+    return delay({ ...p });
+  },
+
+  async mPeriodPurchaseLines(periodNo) {
+    const d = await this.mPeriod(periodNo);
+    return d.byGoods.map((g) => ({ skuNo: `SK-${g.goodsNo}`, goodsNo: g.goodsNo, title: g.title, spec: null, qty: g.qty }));
   },
 
   async mActivityConflicts(goodsNos) {
@@ -787,3 +868,33 @@ export const marketingMock: Pick<MerchantApi,
         .map((b) => ({ ...b })));
   },
 };
+
+
+/** mock 的日期：今天起第 n 天（本地时区），YYYY-MM-DD */
+function mockDay(n: number): string {
+  const d = new Date(Date.now() + n * 86400_000);
+  const pad = (x: number) => String(x).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** 今天 HH:mm 的毫秒时刻 */
+function mockAt(hhmm: string): number {
+  const [h = 0, m = 0] = hhmm.split(":").map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d.getTime();
+}
+
+/** 集单的期：与原型 s31 同一组数据（一期收单中、一期未达起订、一期已成） */
+const mockPeriods: BatchPeriod[] = [
+  { periodNo: "PD-1", activityNo: "PT-B1", activityName: "每日鲜果", periodDate: mockDay(0),
+    cutoffAt: mockAt("20:00"), pickupDate: mockDay(1), pickupFrom: "09:00", status: "OPEN",
+    qty: 86, customers: 41, amountMinor: 75_700, minQty: null, periodQuota: 300, decideDeadline: null },
+  { periodNo: "PD-2", activityNo: "PT-B2", activityName: "周末粮油", periodDate: mockDay(0),
+    cutoffAt: mockAt("20:00"), pickupDate: mockDay(1), pickupFrom: "09:00", status: "SHORT",
+    qty: 32, customers: 19, amountMinor: 121_600, minQty: 50, periodQuota: null,
+    decideDeadline: mockAt("20:00") + 14 * 3600_000 },
+  { periodNo: "PD-3", activityNo: "PT-B1", activityName: "每日鲜果", periodDate: mockDay(-1),
+    cutoffAt: mockAt("20:00") - 86400_000, pickupDate: mockDay(0), pickupFrom: "09:00", status: "CONFIRMED",
+    qty: 112, customers: 57, amountMinor: 98_400, minQty: null, periodQuota: 300, decideDeadline: null },
+];

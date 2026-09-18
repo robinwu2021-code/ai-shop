@@ -52,6 +52,7 @@ import type {
   UserCoupon,
   GroupPickupOrder,
   Goods,
+  GoodsBatch,
   GroupBuy,
   GroupRequest,
   LoginReq,
@@ -136,6 +137,7 @@ export const httpApi: ShopApi = {
   // ---- 商品
   goodsList: (q: GoodsQuery) => call<PageResult<Goods>>("goodsList", undefined, { ...q } satisfies GoodsListQuery),
   goodsDetail: (goodsNo) => call<Goods>("goodsDetail", { goodsNo }),
+  goodsBatch: (goodsNo) => call<GoodsBatch | null>("goodsBatch", { goodsNo }),
 
   // ---- 购物车
   cartList: () => call<CartItem[]>("cartList"),

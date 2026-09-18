@@ -232,6 +232,18 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
         return out;
     }
 
+    @Override
+    public java.util.Set<String> presaleGoods(java.util.Collection<String> goodsNos) {
+        if (goodsNos == null || goodsNos.isEmpty()) {
+            return java.util.Set.of();
+        }
+        return DataScopeContext.executeWithoutScope(() ->
+                        skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
+                                .in(PrdSku::getGoodsNo, goodsNos)
+                                .gt(PrdSku::getPresaleQuota, 0)))
+                .stream().map(PrdSku::getGoodsNo).collect(java.util.stream.Collectors.toSet());
+    }
+
     private List<String> readList(String jsonArray) {
         if (jsonArray == null || jsonArray.isBlank()) {
             return List.of();

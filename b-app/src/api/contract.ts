@@ -59,6 +59,10 @@ import type {
   MerchantCouponDraft,
   StoreActivity,
   StoreActivityDraft,
+  BatchPeriod,
+  BatchPeriodDetail,
+  BatchPurchaseLine,
+  MarketingSummary,
   Member,
   MemberDetail,
   MemberSegment,
@@ -1460,6 +1464,25 @@ export interface MerchantApi {
 
   /** 冲突提示。不阻止保存，但要在保存前说出来 */
   mActivityConflicts(goodsNos: string[]): Promise<ActivityConflict[]>;
+
+  // ---- 营销入口与社区集单（TDD-营销域-详细设计）
+  /** 营销入口一屏的数字（s01）。全部现算 */
+  mMarketingSummary(): Promise<MarketingSummary>;
+
+  /** 集单的期，按状态筛（s31）。不传状态给全部 */
+  mPeriods(status?: string): Promise<BatchPeriod[]>;
+
+  /** 一期详情（s20 / s33） */
+  mPeriod(periodNo: string): Promise<BatchPeriodDetail>;
+
+  /** 提前截单。只能对收单中的期 */
+  mCutoffPeriod(periodNo: string): Promise<BatchPeriod>;
+
+  /** 未达起订量时的处理：`CANCEL` 取消本期（逐单全额退款）/ `PROCEED` 照常发货 */
+  mDecidePeriod(periodNo: string, action: "CANCEL" | "PROCEED"): Promise<BatchPeriod>;
+
+  /** 去采购：按 SKU 汇总 */
+  mPeriodPurchaseLines(periodNo: string): Promise<BatchPurchaseLine[]>;
 
   // ---- 触达（P7）
   /**

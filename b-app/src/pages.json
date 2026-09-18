@@ -636,7 +636,31 @@
     {
       "path": "pages/activities/index",
       "style": {
-        "navigationBarTitleText": "店铺活动",
+        "navigationBarTitleText": "活动",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/periods/index",
+      "style": {
+        "navigationBarTitleText": "集单",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/period/index",
+      "style": {
+        "navigationBarTitleText": "集单",
         "app-plus": {
           "navigationStyle": "custom"
         },

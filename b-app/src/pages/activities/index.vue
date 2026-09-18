@@ -1,39 +1,40 @@
 <script setup lang="ts">
-// 活动列表（P5 新模型）。**四分组，不是一张平铺的列表**：
-//
-//   在跑 / 没在跑（周期活动不在时段里）/ 已暂停 / 已结束
-//
-// 关键是把「在跑」和「现在真的在减」分开。周期活动在非时段里 status 仍是 RUNNING，
-// 而商家问的是「顾客现在下单减不减」—— 平铺列表回答不了这个问题，
-// 他只能自己去看今天周几、现在几点。
+/*
+ * 活动列表（原型 s02 · 约定：顶部分栏筛状态；卡片三行 —— 名称 + 状态 / 一行信息 / 一行指标；
+ * 卡内不放按钮，操作都在详情页；新建在底部操作栏）。
+ *
+ * 「进行中」与「现在真的在减」分开：周期活动在非时段里 status 仍是 RUNNING，
+ * 它的状态标签写「不在时段」而不是「进行中」—— 商家问的是顾客现在下单减不减。
+ *
+ * 玩法**不做标签**，写在信息行里：标签只表达状态，颜色不和状态抢。
+ */
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
+import { playOfActivity } from "@shared/utils/play-templates";
 import type { StoreActivity } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
+const TABS = [
+  { key: "live", label: String(t("activities.tab.live")) },
+  { key: "pending", label: String(t("activities.tab.pending")) },
+  { key: "paused", label: String(t("activities.tab.paused")) },
+  { key: "ended", label: String(t("activities.tab.ended")) },
+] as const;
+const tab = ref<string>("live");
+
 const list = ref<StoreActivity[]>([]);
-const includeEnded = ref(true);
-const busy = ref(false);
-
-const live = computed(() => list.value.filter((a) => a.status === "RUNNING" && a.liveNow));
-const idle = computed(() => list.value.filter((a) => a.status === "RUNNING" && !a.liveNow));
-const paused = computed(() => list.value.filter((a) => a.status === "PAUSED"));
-const ended = computed(() => list.value.filter((a) => a.status === "ENDED"));
-
-/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
 const loaded = ref(false);
-/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
 const failed = ref(false);
 
 async function load() {
   try {
-    list.value = await api.mActivities(includeEnded.value);
+    list.value = await api.mActivities(true);
     failed.value = false;
   } catch {
     failed.value = true;
@@ -41,195 +42,154 @@ async function load() {
   loaded.value = true;
 }
 
-
-/** 一句话说清这个活动做什么：满 X 减 Y / 满 N 件减 Y / 立减 Y / 特价 X / 买 N 送 M */
-function ruleText(a: StoreActivity) {
-  /*
-   * 三种减钱活动**都是 CUT**，分水岭是触发 —— 与团购/清库存那一对同一个坑。
-   * 只按 benefitType 分的话，「立减 3 元」会写成「满 0 减 3」：
-   * 数字全对、闸门全绿，只有商家会觉得这句话不是他建的那个活动。
-   */
-  if (a.benefitType === "CUT") {
-    const m = money(a.benefitAmountMinor ?? 0);
-    if (a.triggerType === "QTY") {
-      return t("activities.ruleCutQty", { n: a.triggerQty ?? 0, m });
-    }
-    if (a.triggerType === "NONE" || !a.triggerType) {
-      return t("activities.ruleCutAny", { m });
-    }
-    return t("activities.ruleCut", { n: money(a.triggerAmountMinor ?? 0), m });
-  }
-  /*
-   * 团购与清库存**都是 PRICE**，靠 benefitType 分不开 —— 分水岭是触发。
-   * 不分的话列表上一条团购写着「特价 ¥8.80」，而商家找的是「几人成团」。
-   */
-  if (a.triggerType === "GROUP") {
-    return t("activities.ruleGroup", {
-      n: a.triggerQty ?? 0, m: money(a.benefitAmountMinor ?? 0),
-    });
-  }
-  if (a.benefitType === "PRICE") {
-    return t("activities.rulePrice", { n: money(a.benefitAmountMinor ?? 0) });
-  }
-  if (a.benefitType === "GIFT") {
-    return t("activities.ruleGift", { n: a.triggerQty ?? 0, m: a.benefitQty ?? 0 });
-  }
-  return t("activities.ruleCoupon");
+/** 未开始：状态是进行中，但开始时刻还在未来 */
+function isPending(a: StoreActivity): boolean {
+  return a.status === "RUNNING" && !!a.startAt && a.startAt > Date.now();
 }
 
-/** 排期一句话。周期活动要把规则翻成人话，JSON 摆在商家面前等于没写 */
-function scheduleText(a: StoreActivity) {
-  if (a.scheduleType === "ALWAYS_ON") return t("activities.always");
+function tabOf(a: StoreActivity): string {
+  if (a.status === "ENDED") return "ended";
+  if (a.status === "PAUSED") return "paused";
+  return isPending(a) ? "pending" : "live";
+}
+
+const shown = computed(() => list.value.filter((a) => tabOf(a) === tab.value));
+
+/** 状态标签：绿 = 进行中；黄 = 需要处理（长期未设上限）；灰 = 其它 */
+function chipOf(a: StoreActivity): { text: string; cls: string } {
+  if (a.status === "ENDED") {
+    return { text: String(t(`activities.endedReason.${a.endedReason || "MANUAL"}`)), cls: "" };
+  }
+  if (a.status === "PAUSED") return { text: String(t("activities.status.paused")), cls: "" };
+  if (isPending(a)) return { text: String(t("activities.status.pending")), cls: "" };
+  if (a.scheduleType === "ALWAYS_ON" && a.quota == null && !a.budgetMinor) {
+    return { text: String(t("activities.status.uncapped")), cls: "sh-chip--warning" };
+  }
+  if (!a.liveNow) return { text: String(t("activities.status.idle")), cls: "" };
+  return { text: String(t("activities.status.live")), cls: "sh-chip--success" };
+}
+
+function hhmm(s?: string | null): string {
+  return s || "";
+}
+
+function day(ms?: number | null): string {
+  if (!ms) return "";
+  const d = new Date(ms);
+  return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** 信息行：玩法 · 时间 */
+function metaOf(a: StoreActivity): string {
+  const play = playOfActivity(a);
+  const name = play ? String(t(`plays.name.${play.key}`)) : ruleText(a);
+  return `${name} · ${scheduleText(a)}`;
+}
+
+function scheduleText(a: StoreActivity): string {
+  if (a.triggerType === "CUTOFF") return String(t("activities.batchDaily", { t: hhmm(a.cutoffTime) }));
+  if (a.scheduleType === "ALWAYS_ON") return String(t("activities.always"));
   if (a.scheduleType === "RECURRING") {
     try {
-      const r = JSON.parse(a.scheduleRule || "{}") as {
-        weekdays?: number[]; from?: string; to?: string;
-      };
-      const days = (r.weekdays ?? []).map((d) => t(`activities.weekday.${d}`)).join("、");
-      return t("activities.recurring", {
-        d: days || String(t("activities.everyday")), f: r.from ?? "00:00", e: r.to ?? "24:00",
-      });
+      const r = JSON.parse(a.scheduleRule || "{}") as { weekdays?: number[]; from?: string; to?: string };
+      const d = (r.weekdays ?? []).length === 7 || !(r.weekdays ?? []).length
+        ? String(t("activities.everyday"))
+        : (r.weekdays ?? []).map((w) => String(t(`activities.weekday.${w}`))).join("、");
+      return String(t("activities.recurring", { d, f: r.from ?? "", e: r.to ?? "" }));
     } catch {
-      return t("activities.recurringBad");
+      return String(t("activities.recurringBad"));
     }
   }
-  return t("activities.oneOff");
+  return String(t("activities.range", { s: day(a.startAt), e: day(a.endAt) }));
+}
+
+/** 认不出玩法时的兜底一句话 */
+function ruleText(a: StoreActivity): string {
+  const m = money(a.benefitAmountMinor ?? 0);
+  if (a.benefitType === "CUT") {
+    if (a.triggerType === "QTY") return String(t("activities.ruleCutQty", { n: a.triggerQty ?? 0, m }));
+    if (a.triggerType === "AMOUNT") return String(t("activities.ruleCut", { n: money(a.triggerAmountMinor ?? 0), m }));
+    return String(t("activities.ruleCutAny", { m }));
+  }
+  if (a.triggerType === "GROUP") return String(t("activities.ruleGroup", { n: a.triggerQty ?? 0, m }));
+  if (a.triggerType === "CUTOFF") return String(t("activities.ruleBatch", { m }));
+  if (a.benefitType === "PRICE") return String(t("activities.rulePrice", { n: m }));
+  if (a.benefitType === "GIFT") return String(t("activities.ruleGift", { n: a.triggerQty ?? 0, m: a.benefitQty ?? 0 }));
+  return String(t("activities.ruleCoupon"));
+}
+
+/** 指标行：有份数上限时画进度，没有时给已用次数与已让利 */
+function progressOf(a: StoreActivity): number {
+  if (!a.quota) return 0;
+  return Math.min(100, Math.round((a.quotaUsed / a.quota) * 100));
 }
 
 function go(url: string) {
   uni.navigateTo({ url });
 }
 
-
-
-onShow(load);
+onShow(() => {
+  void load();
+});
 </script>
 
 <template>
-  <sh-scaffold title-key="activities.title" :denied="!merchant.can('biz:campaign')">
+  <sh-scaffold title-key="activities.title" :denied="!merchant.can('biz:campaign')" :failed="failed" @retry="load">
+    <sh-tabs :items="TABS" :active="tab" @change="tab = $event"></sh-tabs>
 
-    <sh-empty v-if="!list.length" :pending="!loaded" :failed="failed" @retry="load" :text="String($t('activities.empty'))" :tip="String($t('activities.emptyTip'))"></sh-empty>
-
-    <template v-for="g in [
-      { key: 'live', rows: live },
-      { key: 'idle', rows: idle },
-      { key: 'paused', rows: paused },
-      { key: 'ended', rows: ended },
-    ]" :key="g.key">
-      <view v-if="g.rows.length" class="group">
-        <text class="txt-strong group__t txt-quiet">{{ $t(`activities.group.${g.key}`, { n: g.rows.length }) }}</text>
-        <text v-if="g.key === 'idle'" class="txt-caption sh-muted group__d">
-          {{ $t("activities.idleHint") }}
-        </text>
-
-        <!--
-          ★ **两行一条，整条可点**（2026-09-18）。
-
-          改之前每条 177px：名称 / 规则 / 排期 / 三个 20px 大数 / 三个纯文字动作，
-          四个活动占掉 947px ≈ 2.3 屏。而量到的硬毛病是那三个动作：
-          **各 24×15px 的纯文字**，不到可点下限 44 的三分之一，
-          既看不出能点、也点不中（店主提过「按钮不要纯文字」）。
-
-          改法不是把按钮做大，是**取消按钮**：整条点进编辑页，
-          暂停 / 结束在那儿做（那一页原来没有这两个动作，一并补上了 ——
-          光从列表撤掉就是把能力弄丢）。
-
-          列表只回答三件事：**有哪些、在不在跑、还剩多少**。
-          「已用 / 已花」是复盘用的，收进编辑页 —— 商家看「这个花了多少」时是
-          专门去看的，不是扫列表时顺带看的，留在这儿只让每条多占 55px。
-
-          右上角一枚徽章同时说完**排期与状态**：两者从来不会同时需要
-          （已结束的不必再说「每周三」）。
-        -->
-        <view
-          v-for="a in g.rows"
-          :key="a.activityNo"
-          class="sh-card sh-mt-xs item"
-          @tap="go(`/pages/activity-edit/index?activityNo=${a.activityNo}`)"
-        >
-          <view class="sh-row sh-row--between">
-            <text class="txt-strong">{{ a.name }}</text>
-            <!--
-              **只用库里真有的修饰**：sh-chip--sm / --muted 都不存在，
-              挂了等于没挂 —— 样式静默落空、页面照跑（ui-package 那道闸盯的就是它）。
-              已结束的用 dashed：虚线本身就说「这条不再生效」，不必另造一个灰态。
-            -->
-            <text class="sh-chip" :class="{ 'sh-chip--dashed': a.status === 'ENDED' }">
-              {{ a.endedReason
-                ? $t(`activities.endedReason.${a.endedReason}`)
-                : scheduleText(a) }}
-            </text>
-          </view>
-          <view class="sh-row sh-row--between item__b">
-            <!-- 与右边同一档字阶：层级交给颜色，不靠差一档字号（两端差一档在两个端上会差 1px） -->
-            <text class="txt-sub sh-fill">{{ ruleText(a) }}</text>
-            <!--
-              「还剩」留在列表：它是唯一影响「要不要现在管它」的数。
-              快见底时变色 —— 那一刻才是他需要动手的时候。
-            -->
-            <text
-              v-if="a.quotaLeft != null && a.status !== 'ENDED'"
-              class="txt-sub sh-num"
-              :class="(a.quotaLeft ?? 99) <= 10 ? 'is-warning' : 'sh-muted'"
-            >{{ $t("activities.leftN", { n: a.quotaLeft }) }}</text>
-          </view>
-        </view>
+    <view
+      v-for="a in shown"
+      :key="a.activityNo"
+      class="sh-card card"
+      @tap="go(`/pages/activity-edit/index?activityNo=${a.activityNo}`)"
+    >
+      <view class="sh-row sh-row--between">
+        <text class="txt-strong">{{ a.name }}</text>
+        <text class="sh-chip" :class="chipOf(a).cls">{{ chipOf(a).text }}</text>
       </view>
-    </template>
+      <text class="txt-sub sh-muted card__meta">{{ metaOf(a) }}</text>
+      <view class="sh-row card__metric">
+        <template v-if="a.quota">
+          <view class="bar sh-fill"><view class="bar__in" :style="{ width: progressOf(a) + '%' }"></view></view>
+          <text class="txt-caption sh-muted sh-num">{{ $t("activities.usedOf", { u: a.quotaUsed, q: a.quota }) }}</text>
+        </template>
+        <text v-else class="txt-caption sh-muted sh-num">
+          {{ $t("activities.usedTimes", { n: a.quotaUsed, m: money(a.budgetUsedMinor) }) }}
+        </text>
+      </view>
+    </view>
 
-    <!--
-      ★ **新建改成右下悬浮**（2026-09-18 店主：「新建活动的位置不对」）。
+    <sh-empty
+      v-if="!shown.length"
+      :pending="!loaded"
+      :text="String($t('activities.empty'))"
+      :hint="String($t('activities.emptyTip'))"
+    ></sh-empty>
 
-      原来是左上角一枚小 chip：它与下面的分组标题（「正在生效（2）」）挤在一起，
-      读起来像是那一组的一部分；而它是全页唯一的主动作。
-
-      用 sh-fab，与商品页的「＋ 新建商品」同一个件、同一个位置 ——
-      两页的主动作长在同一处，不用每页重新找。
-      不放导航栏右上：那在原生包里是系统导航栏，三端位置不一致。
-    -->
-    <sh-fab :text="`＋ ${$t('activities.new')}`" @tap="go('/pages/activity-edit/index')"></sh-fab>
+    <sh-actionbar>
+      <view class="sh-btn" @tap="go('/pages/activity-edit/index')">{{ $t("activities.new") }}</view>
+    </sh-actionbar>
   </sh-scaffold>
 </template>
 
 <style scoped>
-/* 整条是可点目标（不是三个 24×15 的字），两行内容 + 卡内边距已过 88rpx */
-.item {
-  min-height: 88rpx;
-}
-/* 8rpx 而不是 4rpx：4rpx 在两端会差 1px（页面规范那道闸盯的就是它） */
-.item__b {
+.card__meta {
+  display: block;
   margin-top: 8rpx;
+}
+.card__metric {
+  margin-top: 12rpx;
   gap: 16rpx;
 }
-
-.group__d {
-  display: block;
-  margin-top: 4rpx;
+.bar {
+  height: 8rpx;
+  border-radius: 9999px;
+  background: var(--sh-faint);
+  overflow: hidden;
 }
-
-.item__head {
-  gap: 12rpx;
-}
-
-.rule {
-  display: block;
-  margin-top: 8rpx;
-  color: var(--sh-primary-text);
-}
-.line {
-  display: block;
-  margin-top: 4rpx;
-}
-.acts {
-  display: flex;
-  gap: 24rpx;
-  margin-top: 16rpx;
-}
-/* 效果数据与上面的活动信息之间的分隔线。**只留版面，不留样式** ——
-   数字与标签的档位归 sh-stat，这里只说明「它和上面是两段」 */
-.effect {
-  margin-top: 16rpx;
-  padding-top: 16rpx;
-  border-top: var(--sh-hairline-soft);
+.bar__in {
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--sh-primary);
 }
 </style>

@@ -265,6 +265,12 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSaveActivity: { method: "POST", path: "/biz/activities", auth: true, summary: "建 / 改活动（敞口在这一步算清）" },
   mSetActivityStatus: { method: "PUT", path: "/biz/activities/{activityNo}/status", auth: true, summary: "启停 / 结束" },
   mActivityConflicts: { method: "POST", path: "/biz/activity-conflicts", auth: true, summary: "这些商品已经在哪些活动里" },
+  mMarketingSummary: { method: "GET", path: "/biz/marketing/summary", auth: true, summary: "营销入口一屏的数字" },
+  mPeriods: { method: "GET", path: "/biz/period", auth: true, summary: "社区集单：按状态列期" },
+  mPeriod: { method: "GET", path: "/biz/period/{periodNo}", auth: true, summary: "社区集单：一期详情（按商品 / 自提点汇总）" },
+  mCutoffPeriod: { method: "POST", path: "/biz/period/{periodNo}/cutoff", auth: true, summary: "社区集单：提前截单" },
+  mDecidePeriod: { method: "POST", path: "/biz/period/{periodNo}/decision", auth: true, summary: "社区集单：未达起订量时取消本期或照常发货" },
+  mPeriodPurchaseLines: { method: "GET", path: "/biz/period/{periodNo}/purchase-lines", auth: true, summary: "社区集单：按 SKU 汇总给进货单" },
   mPlanReach: { method: "POST", path: "/biz/member-reach/plan", auth: true, summary: "群发试算：能发多少、跳过多少" },
   mSendReach: { method: "POST", path: "/biz/member-reach/send", auth: true, summary: "群发（会打扰真实用户）" },
 
