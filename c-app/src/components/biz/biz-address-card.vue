@@ -104,10 +104,10 @@ const { t } = useI18n();
   flex-shrink: 0;
   color: var(--sh-primary-text);
 }
+/* 行高交给字阶（txt-caption）—— 自写会让它与别处同级的文字对不齐 */
 .card__addr {
   display: block;
   margin-top: 8rpx;
-  line-height: 1.5;
 }
 .card__nocoord {
   margin-top: 16rpx;
