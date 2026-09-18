@@ -50,6 +50,23 @@ public class MapBreaker {
         }
     }
 
+    /**
+     * 手动解除。
+     *
+     * <p>运营那边确认「对方已经好了 / 额度加过了」之后要有办法立刻恢复 ——
+     * 没有这个口子的话，唯一的办法是重启服务（熔断状态是进程内的）。
+     *
+     * <p>{@code recordSuccess} 只清失败计数，<b>不关熔断窗口</b>：
+     * 那是两件事，混起来会让「我重置过了」变成一句假话。
+     * 测试里踩过一次 —— 用它当清理，下一个用例拿不到地图，
+     * 而报错指向的是那个用例自己。
+     */
+    public void reset() {
+        consecutiveFailures.set(0);
+        openUntil.set(0);
+        quotaExhaustedOn = null;
+    }
+
     /** 额度用完：停到今天结束 */
     public void recordQuotaExhausted() {
         quotaExhaustedOn = LocalDate.now();

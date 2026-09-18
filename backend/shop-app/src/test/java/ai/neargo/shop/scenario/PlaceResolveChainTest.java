@@ -121,7 +121,13 @@ class PlaceResolveChainTest {
         jdbc.execute("DELETE FROM geo_place");
         DataScopeContext.executeWithoutScope(() -> communityMapper.delete(
                 Wrappers.<CmtCommunity>lambdaQuery().eq(CmtCommunity::getCommunityNo, FENCE_NO)));
-        breaker.recordSuccess();
+        /*
+         * **熔断器是单例，跨用例共享。** 第一版这里写的是 recordSuccess()，
+         * 而它只清失败计数、不关熔断窗口 —— 于是「熔断」那条用例打开的窗口
+         * 留到了下一个用例，后者拿不到地图、place 为 null，
+         * 而报错指向的是它自己（单独跑绿、在类里跑红）。
+         */
+        breaker.reset();
     }
 
     @Test
