@@ -11186,6 +11186,30 @@
           "ar": "سعر شراء {name} (يوان)"
         },
         {
+          "key": "purchase.dBefore",
+          "zh-CN": "前天",
+          "en": "2 days ago",
+          "ar": "قبل يومين"
+        },
+        {
+          "key": "purchase.dPick",
+          "zh-CN": "选日期",
+          "en": "Pick a date",
+          "ar": "اختر تاريخًا"
+        },
+        {
+          "key": "purchase.dToday",
+          "zh-CN": "今天",
+          "en": "Today",
+          "ar": "اليوم"
+        },
+        {
+          "key": "purchase.dYesterday",
+          "zh-CN": "昨天",
+          "en": "Yesterday",
+          "ar": "أمس"
+        },
+        {
           "key": "purchase.date",
           "zh-CN": "发生日期",
           "en": "Date",

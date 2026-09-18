@@ -124,6 +124,20 @@ function nameOf(id?: string): string {
   return loc.name || (id ?? "");
 }
 
+/**
+ * 对调两端。
+ *
+ * <p><b>已经挑好的货不动。</b> 调拨行上的 `available` 是「从这一端还剩多少」——
+ * 对调之后那个数不再成立，但**不能因此把行清掉**：商家点对调多半是发现方向填反了，
+ * 他要的正是「这些货，反过来送」。清掉等于罚他重挑一遍。
+ * 数量真的超了，发出那一步会拒 —— 那时说得出是哪一件、差多少。
+ */
+function swapEnds() {
+  const f = fromId.value;
+  fromId.value = toId.value;
+  toId.value = f;
+}
+
 async function pickEnd(which: "from" | "to") {
   const items = choosable.value;
   const res = await pick({ items: items.map((l) => l.name) });
@@ -394,12 +408,39 @@ onShow(load);
           而原来除了颜色没有任何提示 —— 商家看到「从：老张粮油店」，
           读起来像一条只读信息，不像一个选择器。
         -->
-        <sh-kv between :label="String($t('transfer.from'))">
-          <sh-go :text="nameOf(fromId) || '—'" @tap="pickEnd('from')"></sh-go>
-        </sh-kv>
-        <sh-kv between :label="String($t('transfer.to'))">
-          <sh-go :text="nameOf(toId) || '—'" @tap="pickEnd('to')"></sh-go>
-        </sh-kv>
+        <!--
+          ★ **整行可点，不是只有那几个字可点**（2026-09-18 店主：「选择不好点击」）。
+
+          线上量到的：改之前两行的可点区是 61×17 和 100×17 ——
+          **17px 不到可点下限 44 的一半**，而且只有店名那几个字能点：
+          手指落在「从」字上、或右边空白处，都没反应。
+
+          `@tap` 从 sh-go 挪到整行的 view 上，行本身给 88rpx 最小高。
+          sh-go 留着 —— 它那个「›」是「这一行点得开」的记号，不是可点区本身。
+        -->
+        <view class="end sh-row sh-row--between" @tap="pickEnd('from')">
+          <text class="txt-sub">{{ $t("transfer.from") }}</text>
+          <sh-go :text="nameOf(fromId) || '—'"></sh-go>
+        </view>
+        <!--
+          对调。**调拨最常见的错就是方向填反**，而发现之后现在要重选两次
+          （两个弹层各点一遍，还得记住原来选的是谁）。一枚 88rpx 的圆解决它。
+        -->
+        <view class="swap sh-center" @tap="swapEnds">
+          <!--
+            图标库里没有「对调」那一个（只有 chevronUp/Down 等 23 个），
+            用两枚箭头上下叠出 ⇅ —— 不为一处新造图标。
+            写 name="transfer" 那种不存在的名字**不会报错，只会画不出东西**。
+          -->
+          <view class="swap__ic">
+            <sh-icon name="chevronUp" :size="22" color="var(--sh-sub)"></sh-icon>
+            <sh-icon name="chevronDown" :size="22" color="var(--sh-sub)"></sh-icon>
+          </view>
+        </view>
+        <view class="end sh-row sh-row--between" @tap="pickEnd('to')">
+          <text class="txt-sub">{{ $t("transfer.to") }}</text>
+          <sh-go :text="nameOf(toId) || '—'"></sh-go>
+        </view>
       </view>
 
       <sh-empty v-if="!lines.length" :text="String($t('transfer.noLines'))"></sh-empty>
@@ -473,6 +514,25 @@ onShow(load);
 </template>
 
 <style scoped>
+/* 整行可点：88rpx（44px）是可点下限，改之前只有 17px 且只有文字那一段 */
+.end {
+  min-height: 88rpx;
+}
+/* 对调：与两端同宽的一条，圆钮居中 —— 它属于这两行之间，不是第三个字段 */
+.swap {
+  width: 88rpx;
+  height: 88rpx;
+  margin: 0 auto;
+  border-radius: 9999px;
+  background: var(--sh-faint);
+}
+/* 两枚箭头叠成 ⇅：负间距让它们靠拢，否则中间空一大截像两个独立按钮 */
+.swap__ic {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-block: -8rpx;
+}
 .ends {
   gap: 20rpx;
 }

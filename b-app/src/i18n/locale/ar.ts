@@ -1855,6 +1855,7 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
     posted: "تم الترحيل",
   },
   purchase: {
+    dToday: "اليوم", dYesterday: "أمس", dBefore: "قبل يومين", dPick: "اختر تاريخًا",
     title: "تسجيل شراء",
     supplier: "المورّد",
     supplierPh: "مثال: مورّد الحبوب والزيوت",

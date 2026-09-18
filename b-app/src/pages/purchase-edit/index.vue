@@ -59,6 +59,27 @@ function today(): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
+/**
+ * 日期快捷的三枚：今天 / 昨天 / 前天。
+ *
+ * <p><b>按本地日历日算，不按 24 小时减。</b> `Date.now() - 86400e3` 在夏令时
+ * 与闰秒那两天会错一天 —— 这个项目现在只跑中国大陆（没有夏令时），
+ * 但把「昨天」定义成「减 86400 秒」本身就是错的，换个市场就炸，
+ * 而症状是补记的那张单记到了前天。`setDate(-n)` 由运行时按日历退，没有这个问题。
+ */
+const quickDates = computed(() => [0, 1, 2].map((n) => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  const p = (x: number) => String(x).padStart(2, "0");
+  return {
+    value: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`,
+    label: String(t(["purchase.dToday", "purchase.dYesterday", "purchase.dBefore"][n] as string)),
+  };
+}));
+
+/** 当前选的是不是那三枚之一 —— 不是的话「选日期」那一枚要亮着并显示真实日期 */
+const isQuick = computed(() => quickDates.value.some((d) => d.value === occurredAt.value));
+
 /** 分 → 元。展示用，**不参与计算** */
 function yuan(minor: number): string {
   return (minor / 100).toFixed(2);
@@ -250,12 +271,33 @@ onShow(load);
       <text class="sh-hint">{{ $t("purchase.supplierHint") }}</text>
     </view>
 
+    <!--
+      ★ **日期改成三枚快捷 + 兜底滚轮**（2026-09-18 店主：「日期选择需要优化」）。
+
+      进货单的日期**九成是今天，剩下几乎都是昨天** —— 补记昨天的货是常态，
+      而原来为这个「多半不改」的字段要拨年、月、日三列滚轮再点确定。
+
+      滚轮没有删，收进「选日期」：真要挑别的日子，一个功能都没少。
+      默认「今天」本来就选中，九成情况下**一次都不用点**。
+    -->
     <view class="sh-card">
-      <sh-kv between :label="String($t('purchase.date'))">
+      <text class="field__label">{{ $t("purchase.date") }}</text>
+      <view class="dates sh-wrap">
+        <text
+          v-for="d in quickDates"
+          :key="d.value"
+          class="sh-chip date__c"
+          :class="{ 'sh-chip--primary': occurredAt === d.value }"
+          @tap="occurredAt = d.value"
+        >{{ d.label }}</text>
         <picker mode="date" :value="occurredAt" @change="occurredAt = $event.detail.value">
-          <text class="sh-link sh-num">{{ occurredAt }}</text>
+          <!-- 挑到快捷之外的日子时，把那一天显示出来 —— 否则三枚都不亮，
+               而他明明选过，会以为没生效 -->
+          <text class="sh-chip date__c" :class="{ 'sh-chip--primary': !isQuick }">
+            {{ isQuick ? $t("purchase.dPick") : occurredAt }}
+          </text>
         </picker>
-      </sh-kv>
+      </view>
     </view>
 
     <sh-empty v-if="!lines.length" :text="String($t('purchase.noLines'))"></sh-empty>
@@ -363,6 +405,16 @@ onShow(load);
   gap: 20rpx;
 }
 
+.dates {
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+/* 可点下限：chip 本身只有 ~30px 高，日期是要按的东西不是标签 */
+.date__c {
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+}
 .hint {
   padding: 0 4rpx;
 }

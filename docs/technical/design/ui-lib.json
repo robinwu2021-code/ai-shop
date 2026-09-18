@@ -522,7 +522,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 112,
+        "b-app": 114,
         "c-app": 61
       }
     },
@@ -946,7 +946,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 59,
+        "b-app": 58,
         "c-app": 3
       }
     },
@@ -1062,7 +1062,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 223,
+        "b-app": 222,
         "c-app": 129
       }
     },
@@ -1126,7 +1126,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 131,
+        "b-app": 133,
         "c-app": 61
       }
     },
@@ -1220,7 +1220,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 68,
+        "b-app": 70,
         "c-app": 28
       }
     },
@@ -1352,7 +1352,7 @@
         "justify-content": "center"
       },
       "usage": {
-        "b-app": 22,
+        "b-app": 23,
         "c-app": 23
       }
     },
@@ -1426,7 +1426,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 286,
+        "b-app": 288,
         "c-app": 143
       }
     },
@@ -1458,7 +1458,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 128,
+        "b-app": 130,
         "c-app": 74
       }
     },
@@ -1628,7 +1628,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 53,
+        "b-app": 54,
         "c-app": 19
       }
     },
@@ -1744,7 +1744,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 73,
+        "b-app": 74,
         "c-app": 0
       }
     },
@@ -2284,7 +2284,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 62,
+        "b-app": 64,
         "c-app": 7,
         "lib": 13
       },
@@ -2323,7 +2323,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 49,
+        "b-app": 46,
         "c-app": 0,
         "lib": 0
       },
@@ -3867,14 +3867,13 @@
         "sh-actionbar",
         "sh-add",
         "sh-empty",
-        "sh-kv",
         "sh-scaffold",
         "biz-item-picker",
         "biz-supplier-picker"
       ],
-      "libClassHits": 38,
-      "localSelectors": 8,
-      "localCssLines": 28,
+      "libClassHits": 42,
+      "localSelectors": 10,
+      "localCssLines": 37,
       "rolled": []
     },
     {
@@ -4289,9 +4288,9 @@
         "sh-sheet",
         "biz-item-picker"
       ],
-      "libClassHits": 52,
-      "localSelectors": 14,
-      "localCssLines": 51,
+      "libClassHits": 59,
+      "localSelectors": 17,
+      "localCssLines": 67,
       "rolled": []
     },
     {

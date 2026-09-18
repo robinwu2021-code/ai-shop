@@ -1857,6 +1857,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     posted: "Posted",
   },
   purchase: {
+    dToday: "Today", dYesterday: "Yesterday", dBefore: "2 days ago", dPick: "Pick a date",
     title: "Record a purchase",
     supplier: "Supplier",
     supplierPh: "e.g. Old Zhou Grain & Oil",
