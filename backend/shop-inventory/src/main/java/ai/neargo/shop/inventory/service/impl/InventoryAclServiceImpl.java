@@ -225,6 +225,42 @@ public class InventoryAclServiceImpl implements InventoryAclService {
         return true;
     }
 
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public void retireItem(String entityNo, String skuNo, String succeededBy) {
+        String ownerId = ownerIdOf(entityNo);
+        InvItemRef ref = findRef(ownerId, InvEnums.RefSystem.AISHOP, skuNo);
+        if (ref == null) {
+            /*
+             * **找不到就静静返回**，与 markItemOnSale 同一条处置：
+             * 这个 SKU 还没投影到进销存就被删了，那是「没来得及同步」不是错误。
+             * 这时建一条空壳物料只会让清单里多出一件没人解释得了的货。
+             */
+            return;
+        }
+        InvItem item = itemMapper.selectOne(Wrappers.<InvItem>lambdaQuery()
+                .eq(InvItem::getOwnerId, ownerId).eq(InvItem::getItemId, ref.getItemId()));
+        if (item == null) {
+            return;
+        }
+        /*
+         * **接位者先记下来，不管归不归档。**
+         *
+         * 记在归档分支里的话，有库存那一类（也就是真正需要店主去决定的那一类）
+         * 反而一个线索都没有 —— 而它正是这一列存在的理由。
+         */
+        item.setRetiredAt(java.time.LocalDateTime.now());
+        item.setSucceededBy(succeededBy);
+        /*
+         * 零库存就当场归档，与跑批 retireItemIfEmpty 同一个答案；
+         * 有库存的留在 ACTIVE 上等人处置。判据走同一个方法，别在这儿再写一遍。
+         */
+        if (retireItemIfEmpty(entityNo, skuNo, false)) {
+            item.setStatus(InvEnums.MasterStatus.ARCHIVED);
+        }
+        itemMapper.updateById(item);
+    }
+
     // ────────────────────────────────────────────────────────────────────
 
     private boolean hasLedger(String ownerId, String itemId) {

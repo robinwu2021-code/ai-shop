@@ -59,6 +59,8 @@ public class InventoryHealthServiceImpl implements InventoryHealthService {
 
     /** 一个商家一次最多取多少条余额。扫描上限落在 SKU 数上，这里只防单商家爆量 */
     private static final int PER_OWNER_MAX = 2000;
+    private static final String FLAG_RETIRED = "RETIRED";
+
     private static final String FLAG_STALE = "STALE";
 
     private final OwnerMapper ownerMapper;
@@ -130,6 +132,17 @@ public class InventoryHealthServiceImpl implements InventoryHealthService {
         }
         if (b.available() == 0 && skuNo != null && onSaleSkus.contains(skuNo)) {
             return "ZERO_ON_SALE";
+        }
+        /*
+         * **来源 SKU 已退休、货还在。** 零库存的那些在退休当场就归档了，
+         * 走不到这里 —— 能出现在这一类的，全是「有几件真货、但没人认领它」。
+         *
+         * <p>排在滞销前面：滞销是「卖得慢」，这一类是**账上对不上**，
+         * 而且它不会自己消失 —— 那个 skuNo 永远不再存在，
+         * 这件物料永远不会再收到任何同步。要人去并掉或报损掉。
+         */
+        if (b.flags() != null && b.flags().contains(FLAG_RETIRED)) {
+            return "RETIRED_WITH_STOCK";
         }
         if (b.flags() != null && b.flags().contains(FLAG_STALE)) {
             return "STALE";

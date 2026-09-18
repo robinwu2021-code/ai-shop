@@ -76,6 +76,25 @@ public interface InventoryAclService {
     boolean retireItemIfEmpty(String entityNo, String skuNo, boolean apply);
 
     /**
+     * 来源 SKU <b>退休了</b>（改规格时旧编号被逻辑删）—— 处置它那件物料。
+     *
+     * <h2>与 {@link #retireItemIfEmpty} 的分工</h2>
+     * 那一个是<b>跑批</b>：每天扫一遍，把早就没人管的空壳收掉。
+     * 这一个是<b>当场</b>：退休发生的那一刻就处置，不用等到第二天。
+     * <b>两条路对同一个输入必须给出同一个答案</b>（零库存 → 归档），
+     * 这条在测试里有一条专门的反向用例钉着。
+     *
+     * <h2>有库存的不归档</h2>
+     * 归档了商家就再也盘不着那几件，账永远平不了。那一类留在 ACTIVE 上、
+     * 记下 {@code succeededBy}，由健康度点名、由店主决定并到哪儿或报损掉 ——
+     * <b>系统判不出「是不是同一件货」，店主一眼就能分</b>。
+     *
+     * @param succeededBy 接位的 skuNo；判不出就传 {@code null}。
+     *                    <b>它只被记下来，不触发任何库存变动</b>
+     */
+    void retireItem(String entityNo, String skuNo, String succeededBy);
+
+    /**
      * 按平台 SKU 反查业主 —— <b>交易域手里只有 skuNo，没有主体号</b>。
      *
      * <p>走 {@code inv_item_ref}（{@code system=AISHOP}）反查：SKU 在平台内全局唯一，

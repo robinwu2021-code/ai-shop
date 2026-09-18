@@ -77,6 +77,48 @@ public final class ProductEvents {
     }
 
     /**
+     * 一个 SKU <b>退休了</b>（逻辑删）。消费方：进销存 —— 决定它那件物料怎么办。
+     *
+     * <h2>为什么必须有这个事件</h2>
+     * 改一次规格，平台侧会逻辑删旧 {@code skuNo}、新铸一个 —— 这是<b>对的</b>：
+     * 身份不能被改派，历史订单里买的就是「无规格」那一条。但进销存那侧
+     * <b>没有任何一处知道退休发生了</b>，于是它长出第二件同名物料，
+     * 旧那件带着库存搁浅，再也不会被上下架同步碰到。
+     *
+     * <p>2026-09-18 线上：香梨 {@code SK…12939} 与 {@code SK…1236} 在同一秒一删一建
+     *（{@code option_values} 从 {@code []} 变成 {@code ["约10斤"]}），
+     * 店主在挑货弹层里看到两行同名同规格同库位、库存都是 1 的货。
+     * <b>每改一次规格就多一条</b>。
+     *
+     * <p><b>发布点只有一个</b>：{@code MerchantGoodsServiceImpl.saveSkus} 里
+     * 那个逻辑删的循环 —— 与 {@link GoodsOnSaleChanged} 同一条理由，
+     * 逐个入口发必漏一个，而漏掉的那个会让物料停在上一个状态，比没有标记更坏。
+     *
+     * @param replacedBy 这次保存之后这件商品名下<b>还活着的</b> skuNo。
+     *                   它是**线索不是依据**：消费方只把它记下来，
+     *                   <b>不据此搬库存</b> —— 「恰好一条」并不等于「同一件货」，
+     *                   店主可能是把 10 斤装换成了 20 斤装，而旧物料上那几件
+     *                   物理上就是 10 斤装。系统分不出这两种，店主一眼就能分。
+     */
+    public record SkuRetired(String skuNo, String entityNo, String goodsNo,
+                             java.util.List<String> replacedBy) implements DomainEvent {
+        @Override
+        public String aggregateType() {
+            return "SKU";
+        }
+
+        @Override
+        public String aggregateId() {
+            return skuNo;
+        }
+
+        @Override
+        public String eventType() {
+            return "SKU_RETIRED";
+        }
+    }
+
+    /**
      * 新评价发布。消费方：message（B 端提醒，B-N-3）。
      *
      * @param rating 1–5。消费方靠它区分「新评价」与「差评」（≤2 星）——

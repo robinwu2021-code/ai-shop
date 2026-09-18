@@ -66,6 +66,29 @@ public class InvItem extends InvMutableEntity {
      */
     private Integer sourceOnSale;
 
+    /**
+     * 来源 SKU 退休于何时；{@code null} = 没退休。
+     *
+     * <p><b>与 {@link #succeededBy} 是两个问题</b>：「退休了没有」与「谁接的位」。
+     * 只记后者的话，判不出接位者的那一档（多规格矩阵）会一个标记都没有 ——
+     * 而那恰恰是最需要人去看的一档：有库存、没人认领、
+     * 界面上与旁边同名的那一行完全一样。
+     */
+    private java.time.LocalDateTime retiredAt;
+
+    /**
+     * 来源 SKU 退休时，它的位子由谁接了 —— <b>线索，不是依据</b>。
+     *
+     * <p>只在退休那一刻「这件商品名下还活着的 sku 恰好一条」时才有值。
+     * 拿它给店主看「这件大概是被那件顶了」，<b>不据此搬库存</b>：
+     * 「恰好一条」并不等于「同一件货」，店主可能是把 10 斤装换成了 20 斤装，
+     * 而旧物料上那几件物理上就是 10 斤装。系统分不出，店主一眼就能分。
+     *
+     * <p>有库存的退休物料<b>不归档</b>（归档了商家再也盘不着那几件），
+     * 所以 {@code status} 分不出它们，要靠这一列。
+     */
+    private String succeededBy;
+
     /** ACTIVE / ARCHIVED。归档不删流水 —— 历史账要能查 */
     private String status;
 

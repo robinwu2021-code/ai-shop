@@ -1501,12 +1501,30 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          */
         Set<String> keptSkuNos = kept.stream().map(k -> k.substring(0, k.indexOf('@')))
                 .collect(java.util.stream.Collectors.toSet());
+        /*
+         * ★ **退休要发一条信号出去**（2026-09-18）。
+         *
+         * 这一行逻辑删是对的（身份不能改派），但它此前**只发生在本域内**：
+         * 进销存不知道这个 skuNo 没了，于是它那件物料留在挑货列表里，
+         * 带着库存，再也不会被上下架同步碰到 —— 改一次规格多一条。
+         * 线上香梨就是这么变成两行的，见 ProductEvents.SkuRetired。
+         *
+         * **按 skuNo 去重**：SKU 行是 (skuNo × market) 的，三个市场会走三遍这个循环，
+         * 而退休这件事只发生一次。不去重的话进销存要收三条一模一样的事件 ——
+         * 消费方幂等不会出错，但那是白跑。
+         */
+        List<String> replacedBy = List.copyOf(keptSkuNos);
+        Set<String> retired = new java.util.HashSet<>();
         for (var e : byNo.entrySet()) {
             String skuNo = e.getKey().substring(0, e.getKey().indexOf('@'));
             if (keptSkuNos.contains(skuNo)) {
                 continue;
             }
             DataScopeContext.executeWithoutScope(() -> skuMapper.deleteById(e.getValue().getId()));
+            if (retired.add(skuNo)) {
+                events.publish(new ai.neargo.shop.spi.product.ProductEvents.SkuRetired(
+                        skuNo, merchantNo, goodsNo, replacedBy));
+            }
         }
         ensureStoreStockRows(merchantNo, keptSkuNos);
         // groups 已写在 goods 上，这里只用于生成 spec 文案，不再单独落库

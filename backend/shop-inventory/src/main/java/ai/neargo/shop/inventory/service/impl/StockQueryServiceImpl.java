@@ -67,6 +67,18 @@ public class StockQueryServiceImpl implements StockQueryService {
      * 那是「还没同步过」，给存量物料统统标上「已下架」等于凭空造事实。
      */
     private static final String FLAG_OFF_SALE = "OFF_SALE";
+    /**
+     * 来源 SKU <b>已经退休</b>（改规格时旧编号被逻辑删）—— 与「已下架」是两件事。
+     *
+     * <p>下架的货还会回来，退休的不会：那个 skuNo 永远不再存在，
+     * 这件物料也永远不会再收到任何同步。它之所以还留在这儿，
+     * 只因为<b>上面还有库存</b> —— 归档掉商家就再也盘不着那几件，账永远平不了。
+     *
+     * <p>所以这个 flag 的意思是一句话：<b>「这几件货得你来决定去哪儿」</b>
+     *（并到接位的那件、或者报损掉）。零库存的那些当场就归档了，
+     * 根本走不到这里。
+     */
+    private static final String FLAG_RETIRED = "RETIRED";
 
     private final BalanceMapper balanceMapper;
     private final ItemMapper itemMapper;
@@ -282,8 +294,20 @@ public class StockQueryServiceImpl implements StockQueryService {
      * 把 null 当成下架，就是给一整批还在正常卖的货凭空贴上「已下架」。
      */
     private static List<String> offSaleFlags(InvItem item) {
-        return Integer.valueOf(0).equals(item.getSourceOnSale())
-                ? List.of(FLAG_OFF_SALE) : List.of();
+        List<String> flags = new ArrayList<>();
+        if (Integer.valueOf(0).equals(item.getSourceOnSale())) {
+            flags.add(FLAG_OFF_SALE);
+        }
+        /*
+         * 退休的也要标。**它仍然挑得到** —— 上面那几件是真实存在的货，
+         * 商家还要把它们调走或报损掉，滤掉之后那些货就再也动不了了
+         * （与「下架的不许滤掉」同一条理由）。标出来是为了让他知道
+         * 这一行与旁边那条同名的不是同一件。
+         */
+        if (item.getRetiredAt() != null) {
+            flags.add(FLAG_RETIRED);
+        }
+        return flags;
     }
 
     @Override
@@ -507,6 +531,9 @@ public class StockQueryServiceImpl implements StockQueryService {
             }
             if (item != null && Integer.valueOf(0).equals(item.getSourceOnSale())) {
                 flags.add(FLAG_OFF_SALE);
+            }
+            if (item != null && item.getRetiredAt() != null) {
+                flags.add(FLAG_RETIRED);
             }
             out.add(new BalanceVO(b.getItemId(), skuNos.get(b.getItemId()),
                     item == null ? b.getItemId() : item.getName(),

@@ -552,6 +552,100 @@ class InventoryBizEndpointTest {
 
 
     @Test
+    @DisplayName("★★★ 改规格让旧 SKU 退休：零库存的当场归档，有库存的留着并标出来")
+    void retiredSkuItemIsArchivedOnlyWhenEmpty() throws Exception {
+        /*
+         * **线上查得的一幕**（2026-09-18）：店主给香梨加了一组规格「重量 · 约10斤」，
+         * 平台侧同一秒里逻辑删 SK…12939、新建 SK…1236 —— 这是对的，身份不能改派。
+         * 但进销存那侧没有任何一处知道退休发生了，于是长出第二件同名物料，
+         * 旧那件带着 1 件库存搁浅，店主在挑货弹层里看到两行同名同规格同库位、
+         * 库存都是 1 的货。**每改一次规格就多一条。**
+         *
+         * 两条支路只差一个自变量：退休时那件物料上有没有货。
+         */
+        String token = merchant("12600288010", "退休上账·果蔬");
+        String goodsNo = saveGoods(token, null, "[]", "[{\"optionValues\":[],\"price\":900,\"stock\":0,\"saleUnit\":\"袋\"}]");
+        dispatcher.dispatchPending();
+        String oldSku = onlyLiveSkuOf(goodsNo);
+        String oldItem = acl.itemIdOfSku(oldSku);
+        String ownerId = acl.ownerOfSku(oldSku);
+
+        // —— 支路 A：退休时零库存 ——
+        saveGoods(token, goodsNo,
+                "[{\"name\":\"重量\",\"options\":[\"约10斤\"]}]",
+                "[{\"optionValues\":[\"约10斤\"],\"price\":900,\"stock\":0,\"saleUnit\":\"袋\"}]");
+        dispatcher.dispatchPending();
+
+        assertThat(pickableIdsOf(token))
+                .as("★ 零库存的退休物料必须当场消失 —— 留着就是弹层里两行一模一样的货")
+                .doesNotContain(oldItem);
+
+        // —— 支路 B：退休时**有货** ——
+        String keptSku = onlyLiveSkuOf(goodsNo);
+        String keptItem = acl.itemIdOfSku(keptSku);
+        String no = okText(post("/biz/inventory/inbounds").content("""
+                {"sourceType":"PURCHASE","supplierName":"老周果蔬",
+                 "occurredAt":"2026-09-01T00:00:00",
+                 "lines":[{"itemId":"%s","qty":3,"uom":"袋","unitCostMinor":700}]}
+                """.formatted(keptItem)), token);
+        ok(post("/biz/inventory/inbounds/" + no + "/post"), token);
+
+        saveGoods(token, goodsNo,
+                "[{\"name\":\"重量\",\"options\":[\"约20斤\"]}]",
+                "[{\"optionValues\":[\"约20斤\"],\"price\":1700,\"stock\":0,\"saleUnit\":\"袋\"}]");
+        dispatcher.dispatchPending();
+
+        assertThat(pickableIdsOf(token))
+                .as("★★ 有库存的退休物料**必须留着** —— 那 3 袋是真货，归档掉商家再也盘不着，账永远平不了")
+                .contains(keptItem);
+        assertThat(flagsIn(query.balances(ownerId, null, "all", 200), keptItem))
+                .as("★★ 要标出来 —— 不标的话它与旁边同名那行在界面上完全一样，挑哪行都不知道挑的是什么")
+                .contains("RETIRED");
+        assertThat(flagsIn(query.pickableItems(ownerId, null, null, 200), keptItem))
+                .as("挑货那一条也要带上这个标：商家正是在这里挑到它、再把它调走或报损掉")
+                .contains("RETIRED");
+    }
+
+    /** 建品/改品。{@code goodsNo} 为 null 是新建 */
+    private String saveGoods(String token, String goodsNo, String specGroups, String skus) throws Exception {
+        String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{" + (goodsNo == null ? "" : "\"goodsNo\":\"" + goodsNo + "\",")
+                                + "\"categoryNo\":\"CAT110\",\"title\":\"香梨\",\"subtitle\":\"测试\","
+                                + "\"cover\":\"🍐\",\"images\":[],\"specGroups\":" + specGroups
+                                + ",\"skus\":" + skus + "}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("goodsNo").asString();
+    }
+
+    /** 这件商品名下还活着的那一条 sku_no。**不止一条就是用例自己写错了**，当场说出来 */
+    private String onlyLiveSkuOf(String goodsNo) {
+        List<ai.neargo.shop.product.entity.PrdSku> live =
+                ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                        skuMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdSku::getGoodsNo, goodsNo)));
+        List<String> nos = live.stream().map(ai.neargo.shop.product.entity.PrdSku::getSkuNo)
+                .distinct().toList();
+        assertThat(nos).as("前提：这件商品此刻应当只有一条活着的 SKU").hasSize(1);
+        return nos.get(0);
+    }
+
+    private List<String> pickableIdsOf(String token) throws Exception {
+        List<String> out = new java.util.ArrayList<>();
+        ok(get("/biz/inventory/pickable"), token).forEach(n -> out.add(n.path("itemId").asString()));
+        return out;
+    }
+
+    private List<String> flagsIn(
+            List<ai.neargo.shop.inventory.dto.InventoryVOs.BalanceVO> rows, String itemId) {
+        return rows.stream().filter(r -> itemId.equals(r.itemId())).findFirst()
+                .orElseThrow(() -> new AssertionError("这一份里没有 " + itemId + " —— 那是另一个缺陷"))
+                .flags();
+    }
+
+    @Test
     @DisplayName("★★★ 建品就要上账 —— 否则那个 SKU 在库存里根本不存在，且不报错")
     void newSkuLandsOnTheBooks() throws Exception {
         /*

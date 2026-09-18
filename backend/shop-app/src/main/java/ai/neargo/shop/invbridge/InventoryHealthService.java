@@ -30,6 +30,7 @@ public interface InventoryHealthService {
 
     /**
      * @param kind     NEGATIVE 负库存 · ZERO_ON_SALE 零库存仍在架 · STALE 长期未动销
+     *                 · RETIRED_WITH_STOCK 来源 SKU 已退休但还有库存
      * @param idleDays 仅 STALE 有值：多少天没动过
      */
     record HealthRow(String kind, String entityNo, String merchantName, String storeNo,
