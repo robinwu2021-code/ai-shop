@@ -219,7 +219,7 @@ onLoad((q) => {
 }
 .cell__input {
   flex: 1;
-  text-align: right;
+  text-align: end;
 }
 .bar {
   gap: 16rpx;

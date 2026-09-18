@@ -367,7 +367,7 @@ onLoad((q) => {
 }
 .cell__input {
   flex: 1;
-  text-align: right;
+  text-align: end;
 }
 .segs {
   gap: 8rpx;
