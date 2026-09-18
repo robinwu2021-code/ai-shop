@@ -2128,7 +2128,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 49,
+        "b-app": 46,
         "c-app": 30,
         "lib": 1
       },
@@ -3867,7 +3867,6 @@
       "components": [
         "sh-actionbar",
         "sh-add",
-        "sh-empty",
         "sh-icon",
         "sh-kv",
         "sh-scaffold",
@@ -4135,7 +4134,6 @@
       "components": [
         "sh-actionbar",
         "sh-add",
-        "sh-empty",
         "sh-icon",
         "sh-kv",
         "sh-scaffold",
