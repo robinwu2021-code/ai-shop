@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 278,
+        "b-app": 277,
         "c-app": 43
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 280,
+        "b-app": 281,
         "c-app": 242
       }
     },
@@ -453,7 +453,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 27,
+        "b-app": 26,
         "c-app": 32
       }
     },
@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 115,
+        "b-app": 116,
         "c-app": 61
       }
     },
@@ -1117,7 +1117,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 127,
+        "b-app": 125,
         "c-app": 62
       }
     },
@@ -1211,7 +1211,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 64,
+        "b-app": 63,
         "c-app": 28
       }
     },
@@ -1229,7 +1229,7 @@
         "color": "var(--sh-on-primary)"
       },
       "usage": {
-        "b-app": 3,
+        "b-app": 2,
         "c-app": 0
       }
     },
@@ -1417,7 +1417,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 294,
+        "b-app": 295,
         "c-app": 146
       }
     },
@@ -1619,7 +1619,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 50,
+        "b-app": 48,
         "c-app": 22
       }
     },
@@ -1713,7 +1713,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 88,
+        "b-app": 89,
         "c-app": 24
       }
     },
@@ -1735,7 +1735,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 62,
+        "b-app": 61,
         "c-app": 0
       }
     },
@@ -1843,7 +1843,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 95,
+        "b-app": 96,
         "c-app": 3
       }
     },
@@ -1859,7 +1859,7 @@
         "margin-top": "4px"
       },
       "usage": {
-        "b-app": 37,
+        "b-app": 38,
         "c-app": 0
       }
     }
@@ -3515,9 +3515,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 30,
-      "localSelectors": 12,
-      "localCssLines": 52,
+      "libClassHits": 28,
+      "localSelectors": 10,
+      "localCssLines": 45,
       "rolled": []
     },
     {
@@ -3896,9 +3896,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 48,
-      "localSelectors": 15,
-      "localCssLines": 61,
+      "libClassHits": 47,
+      "localSelectors": 14,
+      "localCssLines": 57,
       "rolled": []
     },
     {
@@ -4329,8 +4329,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 1,
-      "localSelectors": 31,
-      "localCssLines": 112,
+      "localSelectors": 1,
+      "localCssLines": 5,
       "rolled": []
     },
     {
@@ -4529,8 +4529,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 26,
-      "localSelectors": 15,
-      "localCssLines": 81,
+      "localSelectors": 12,
+      "localCssLines": 67,
       "rolled": []
     },
     {
@@ -4900,7 +4900,7 @@
       "components": [],
       "libClassHits": 35,
       "localSelectors": 9,
-      "localCssLines": 32,
+      "localCssLines": 34,
       "rolled": []
     },
     {
