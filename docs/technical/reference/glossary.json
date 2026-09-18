@@ -1666,6 +1666,24 @@
           "ar": "اختر الوقت"
         },
         {
+          "key": "goods.saleScope",
+          "zh-CN": "销售范围",
+          "en": "Sold in",
+          "ar": "نطاق البيع"
+        },
+        {
+          "key": "goods.scopeMore",
+          "zh-CN": "{names} 等 {n} 个地区",
+          "en": "{names} and {n} areas in total",
+          "ar": "{names} وما مجموعه {n} منطقة"
+        },
+        {
+          "key": "goods.scopeUnlimited",
+          "zh-CN": "不限地区",
+          "en": "No area limit",
+          "ar": "بدون حدود جغرافية"
+        },
+        {
           "key": "goods.slotLeft",
           "zh-CN": "余 {n}",
           "en": "{n} left",

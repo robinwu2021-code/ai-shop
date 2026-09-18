@@ -4868,9 +4868,34 @@ components:
         - "label"
       additionalProperties: false
       description: "一条商品参数。\n\n<p>`valueNo` 是平台值池里的编号，**有它才参与筛选与跨店比较**； 量纲型（功率、净重）平台不枚举值，那时只有 `label`。"
+    SaleScope: 
+      type: "object"
+      properties: 
+        unlimited: 
+          type: "boolean"
+          description: "true → 显示「不限地区」，此时 `areaNames` 为空"
+        areaNames: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "最多几个地名；区划是**叶子名**不是整条路径（「西湖区」不是「浙江省 / 杭州市 / 西湖区」）"
+        areaCount: 
+          type: "number"
+          description: "总数。只看截断后的列表会让「6 个」和「60 个」长得一模一样"
+      required: 
+        - "unlimited"
+        - "areaNames"
+        - "areaCount"
+      additionalProperties: false
+      description: "这件货卖到哪儿，给买家看的一行话。\n\n⚠️ **空不等于不限**：只做自提却一个范围都没配的商家，空的含义是「谁也看不到」； 开了快递或自送的商家，空的含义才是「不限」。同一个空数组两种意思 —— 所以这个判断由后端做完，端上只读 `unlimited`，别自己从 `areaNames.length` 推。"
     Goods: 
       type: "object"
       properties: 
+        saleScope: 
+          anyOf: 
+            - "$ref": "#/components/schemas/SaleScope"
+            - type: "null"
+          description: "销售范围。**只有商品详情 `/mp/goods/{no}` 下发，列表恒空** —— 列表一屏几十行，每行再查一次范围就是 N+1，而买家是点进详情才问「送到我这儿吗」。\n\n空（缺省）或 `!unlimited && !areaNames.length` → **整行不渲染**。"
         storeOnSale: 
           type: 
             - "boolean"
