@@ -259,6 +259,28 @@ describe("当前位置：一次性上下文", () => {
       .toMatch(/pickedCity\.take\(\)[\s\S]{0,240}runSearch\(/);
   });
 
+
+  // ---------------------------------------------------------------- 国家/地区先收着
+
+  it("★★★ 国家选择器关着，**而海外那条分支必须还在**", () => {
+    /*
+     * 入口先不露出来：露出来就是一句承诺 —— 用户选了阿联酋会以为这条地址
+     * 真能寄到，而那取决于有没有商家在发那儿的货。
+     *
+     * **两向都钉**。只钉「关着」的话，下一个人会顺手把海外那一整段删掉，
+     * 于是「将来再放开」变成「将来重写一遍」；只钉「分支还在」的话，
+     * 选择器又会被顺手放出来。关着的这一半才是生产常态。
+     */
+    const form = code("src/components/biz/biz-address-form.vue");
+    expect(form, "选择器又露出来了 —— 放开前先确认有商家在发那儿的货")
+      .toContain("const SHOW_COUNTRY_PICKER = false;");
+    expect(form, "选择器没挂在开关上，改常量不起作用")
+      .toMatch(/v-if="SHOW_COUNTRY_PICKER"/);
+    // 能力本身要留着：改一个常量就能放开，不用回头再接一遍线
+    expect(form, "海外那条分支被删了").toContain('draft.value.countryCode !== "CN"');
+    expect(form, "海外的表单形状没了").toMatch(/v-if="overseas"/);
+  });
+
 });
 
 /**

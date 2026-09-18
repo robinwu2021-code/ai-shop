@@ -286,6 +286,22 @@ const COUNTRIES = [
 ] as const;
 
 /**
+ * 国家/地区选择器**先不露出来**（2026-09-18）。
+ *
+ * <p>整套能力都在（库里三列、表单的海外形状、手机号按国家挑判据、
+ * 后端的 round-trip 用例），只是入口先收着 —— 露出来就是一句承诺：
+ * 用户选了阿联酋会以为这条地址真能寄到，而那取决于有没有商家在发那儿的货。
+ *
+ * <p><b>放开时改这一个常量就够了</b>，不用回头再接一遍线。
+ * 放开之前先确认：有商家的经营范围覆盖到那儿，且运费算得出来。
+ *
+ * <p>⚠️ 关着的这一半才是生产常态 —— 下面那条守卫两向都钉：
+ * 关着时选择器不许渲染，而 `overseas` 那条分支必须还在（不然「将来再放开」
+ * 会变成「将来重写一遍」）。
+ */
+const SHOW_COUNTRY_PICKER = false;
+
+/**
  * 换国家时**顺手把区号也换了**，但不覆盖他已经改过的。
  *
  * <p>不换的话，一个选了美国的人手机号前面还挂着 +86 —— 而那条地址
@@ -305,7 +321,7 @@ function pickCountry(code: string, cc: string) {
       **国家/地区在最上面**：它决定了下面整段长什么样，摆在后面的话
       用户会先填一半省市区、再发现自己要选的是美国。
     -->
-    <view class="countryrow sh-row sh-wrap">
+    <view v-if="SHOW_COUNTRY_PICKER" class="countryrow sh-row sh-wrap">
       <text
         v-for="c in COUNTRIES"
         :key="c.code"
