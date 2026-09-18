@@ -216,6 +216,5 @@ onShareAppMessage(() => {
 }
 .share {
   margin: 0;
-  line-height: inherit;
 }
 </style>

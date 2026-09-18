@@ -517,7 +517,7 @@ onShareAppMessage(() =>
         </view>
 
         <!-- 领券（s36）：只占一行，点开是面板 -->
-        <view v-if="coupons.length" class="sh-card block sh-row sh-row--between" @tap="showCoupons = true">
+        <view v-if="coupons.length" class="sh-card sh-row sh-row--between" @tap="showCoupons = true">
           <text class="txt-sub fact__label">{{ $t("goods.couponRow") }}</text>
           <view class="sh-row">
             <text class="txt-sub txt-primary sh-num">{{ couponRuleText(coupons[0]!) }}</text>
