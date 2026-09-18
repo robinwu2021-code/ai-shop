@@ -55,7 +55,7 @@ const { t } = useI18n();
         {{ t("address.youAreHere") }}
       </text>
       <text class="sh-fill"></text>
-      <text v-if="more" class="txt-caption card__more">{{ more }}</text>
+      <text v-if="more" class="txt-caption txt-primary card__more">{{ more }}</text>
     </view>
     <text class="txt-caption card__addr">
       {{ address.region }} {{ address.detail }} {{ address.houseNo }}
@@ -71,7 +71,7 @@ const { t } = useI18n();
           class="sh-notice sh-notice--warning card__nocoord sh-row sh-row--between"
           @tap.stop="emit('fix')">
       <text class="txt-caption sh-fill">{{ t("address.noCoordHint") }}</text>
-      <text class="txt-caption card__fix">{{ t("address.pick") }}</text>
+      <text class="txt-caption txt-primary card__fix">{{ t("address.pick") }}</text>
     </view>
 
     <view v-if="actions" class="card__ops sh-row">
@@ -102,7 +102,6 @@ const { t } = useI18n();
 }
 .card__more {
   flex-shrink: 0;
-  color: var(--sh-primary-text);
 }
 /* 行高交给字阶（txt-caption）—— 自写会让它与别处同级的文字对不齐 */
 .card__addr {
@@ -114,7 +113,6 @@ const { t } = useI18n();
 }
 .card__fix {
   flex-shrink: 0;
-  color: var(--sh-primary-text);
 }
 .card__ops {
   gap: 24rpx;
@@ -124,9 +122,6 @@ const { t } = useI18n();
 }
 .op {
   padding: 4rpx 0;
-}
-.is-danger {
-  color: var(--sh-danger);
 }
 .tiny {
   transform: scale(0.9);

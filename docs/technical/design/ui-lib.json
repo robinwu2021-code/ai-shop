@@ -463,7 +463,7 @@
       },
       "usage": {
         "b-app": 27,
-        "c-app": 30
+        "c-app": 32
       }
     },
     {
@@ -4880,18 +4880,10 @@
       "key": "c-app/biz-address-card",
       "file": "c-app/src/components/biz/biz-address-card.vue",
       "components": [],
-      "libClassHits": 33,
-      "localSelectors": 10,
-      "localCssLines": 37,
-      "rolled": [
-        {
-          "id": "semcolor",
-          "label": "语义色自写",
-          "lib": ".is-danger / .is-success / .is-warning",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "libClassHits": 35,
+      "localSelectors": 9,
+      "localCssLines": 32,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -5013,18 +5005,7 @@
       "rolled": []
     }
   ],
-  "gaps": [
-    {
-      "id": "semcolor",
-      "label": "语义色自写",
-      "lib": ".is-danger / .is-success / .is-warning",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-      "pages": [
-        "c-app/biz-address-card"
-      ]
-    }
-  ],
+  "gaps": [],
   "counts": {
     "tokens": 16,
     "blocks": 81,
