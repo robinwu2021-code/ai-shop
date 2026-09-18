@@ -946,7 +946,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 58,
+        "b-app": 59,
         "c-app": 3
       }
     },
@@ -2982,7 +2982,7 @@
       "name": "biz-item-picker",
       "file": "b-app/src/components/biz/biz-item-picker.vue",
       "scope": "B 端",
-      "lines": 264,
+      "lines": 290,
       "props": [
         "visible: boolean",
         "title: string",
@@ -4785,9 +4785,9 @@
         "sh-empty",
         "sh-sheet"
       ],
-      "libClassHits": 11,
-      "localSelectors": 7,
-      "localCssLines": 25,
+      "libClassHits": 12,
+      "localSelectors": 8,
+      "localCssLines": 29,
       "rolled": []
     },
     {

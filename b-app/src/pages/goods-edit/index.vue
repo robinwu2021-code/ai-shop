@@ -714,6 +714,20 @@ onLoad(async (q) => {
   // 用过一次条码/货号的人多半一直要用，不必每次去点（键名归价格块自己管）
   restoreExternal();
   if (!q?.goodsNo) {
+    /*
+     * ★ **带条码进来**（2026-09-18）：进货时扫到一个系统里没有的码，
+     * 从挑货弹层直接跳到这里建品，码预填在第一行的 SKU 上。
+     *
+     * <p>为什么走这条路而不是在弹层里就地建一个最简商品：建品有类目授权、
+     * 资质、审核那一串闸门，在别处复刻一个简化表单等于**开第二条建品路径**，
+     * 而那条路会绕开它们 —— 绕开不会报错，只会在上架那一刻才炸。
+     *
+     * <p>顺手把外部编码那一段展开：码已经填上了，收着的话他会以为没带过来。
+     */
+    if (q?.barcode) {
+      rows.value[0]!.barcode = decodeURIComponent(q.barcode);
+      rememberExternal(true);
+    }
     await Promise.all([loadTemplates(), loadCategories(), loadStoreChannels()]);
     return;
   }

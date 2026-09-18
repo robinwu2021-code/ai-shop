@@ -53,7 +53,13 @@ const props = withDefaults(
   { picked: () => [], qtyLabel: undefined, failed: false },
 );
 
-const emit = defineEmits<{ pick: [b: StockBalance]; close: []; retry: [] }>();
+const emit = defineEmits<{
+  pick: [b: StockBalance];
+  close: [];
+  retry: [];
+  /** 扫到的码在列表里找不到对应的货 —— 带着码去建品。页面负责跳转 */
+  create: [barcode: string];
+}>();
 
 const { t } = useI18n();
 const keyword = ref("");
@@ -193,9 +199,24 @@ async function choose(b: StockBalance) {
     <text class="sh-link pick__scan" @tap="scan">{{ $t("stockPick.scan") }}</text>
 
     <!-- 扫到了没绑过：这一屏此刻的意思变了，得说出来，否则他不知道点一行会发生什么 -->
-    <text v-if="pendingCode" class="sh-hint pick__pending">
-      {{ $t("stockPick.scanBindHint", { code: pendingCode }) }}
-    </text>
+    <view v-if="pendingCode" class="pick__pending">
+      <text class="sh-hint">{{ $t("stockPick.scanBindHint", { code: pendingCode }) }}</text>
+      <!--
+        ★ **这个码对应的货根本不在列表里时的出路**（2026-09-18 店主：
+        「扫描条码，如果不存在，可以新增」）。
+
+        上面那句让他「从下面选一件绑上」—— 前提是那件货已经建过。
+        第一次进一种新货时它不在列表里，而改之前这里是条死路：
+        只能退出去建品、回来重扫，而进货单的草稿还开着。
+
+        跳建品页并把码带过去，**不在这儿就地建一个最简商品** ——
+        建品有类目授权、资质、审核那一串闸门，在弹层里复刻一个简化表单
+        等于开第二条建品路径，而那条路会绕开它们。
+      -->
+      <text class="sh-link pick__new" @tap="emit('create', pendingCode)">
+        {{ $t("stockPick.scanCreate") }}
+      </text>
+    </view>
 
     <text v-if="picked.length" class="sh-hint pick__count">
       {{ $t("stockPick.picked", { n: picked.length }) }}
@@ -249,6 +270,11 @@ async function choose(b: StockBalance) {
 .pick__pending {
   display: block;
   padding-bottom: 8rpx;
+}
+/* 「新建」跟在那句提示后面：它是这句话的出路，不是另一个功能 */
+.pick__new {
+  display: block;
+  margin-top: 8rpx;
 }
 .pick {
   padding: 20rpx 0;

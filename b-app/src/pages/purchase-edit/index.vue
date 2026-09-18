@@ -7,6 +7,7 @@
 // **存草稿与过账是两件事**：草稿不动库存，过账才动。分成两个按钮而不是
 // 「保存」一个 —— 一个动库存的动作不该和「我先记一半」共用同一个词。
 import { computed, ref } from "vue";
+import { ROUTES } from "@/shared/nav";
 import { STORAGE } from "@shared/utils/constants";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
@@ -59,6 +60,20 @@ const showPick = ref(false);
  * 「没绑过的码怎么办」那条分支迟早在三处各自漂。
  */
 const autoScan = ref(false);
+
+/**
+ * 扫到的码在列表里找不到对应的货 —— 带着码去建品（2026-09-18）。
+ *
+ * <p>先关弹层再跳：留着的话回来时它还开着，而那时列表已经变了
+ * （新建的货在里面），他会看到一个「上一次」的界面。
+ *
+ * <p>本页是 navigateTo 进来的，草稿还在栈上 —— 建完返回，这张单的行原样都在。
+ */
+function createWithBarcode(barcode: string) {
+  showPick.value = false;
+  autoScan.value = false;
+  uni.navigateTo({ url: `${ROUTES.goodsEdit}?barcode=${encodeURIComponent(barcode)}` });
+}
 
 function openPick(scan: boolean) {
   autoScan.value = scan;
@@ -391,6 +406,7 @@ onShow(load);
       :qty-label="pickQty"
       @pick="addLine"
       @close="showPick = false; autoScan = false"
+      @create="createWithBarcode"
     ></biz-item-picker>
 
     <biz-supplier-picker
