@@ -41,6 +41,25 @@ public final class PromotionMappers {
     /** 作用范围。按 ref_no 反查就是冲突提示要的那条路 */
     public interface ActivityGoodsMapper
             extends BaseMapper<ai.neargo.shop.promotion.entity.PmtActivityGoods> {
+
+        /**
+         * <b>物理删这个活动的全部作用范围行。</b>
+         *
+         * <p>为什么不能用 {@code delete(wrapper)}：那是逻辑删（{@code deleted = 1}），
+         * 而唯一键 {@code uk_pmt_activity_goods(tenant_no, activity_no, scope_type, ref_no)}
+         * <b>不含 {@code deleted}</b> —— 于是「整批换掉」这个写法在第二次保存时必然撞键：
+         * 旧行还占着那个组合，新行插不进去。
+         *
+         * <p><b>2026-09-18 查实：任何活动只要编辑时保留原来那件商品，保存就会失败</b>，
+         * 报的是 DuplicateKey，而界面上看起来像「保存没反应」。
+         * 线上 {@code pmt_activity} 0 条，所以至今没有人撞到。
+         *
+         * <p>作用范围是<b>纯派生数据</b>（活动说了算，没有独立的历史价值），
+         * 物理删是对的；优惠发生记录 {@code pmt_apply} 那种才需要留痕。
+         */
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM pmt_activity_goods WHERE activity_no = #{activityNo}")
+        int hardDeleteByActivity(@org.apache.ibatis.annotations.Param("activityNo") String activityNo);
     }
 
     /** 优惠发生记录。**只增不改**，撤销是往 {@code reverted_at} 上写一笔 */

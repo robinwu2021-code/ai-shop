@@ -83,6 +83,7 @@ public class ActivityServiceImpl implements ActivityService {
         }
         apply(a, d);
         assertSane(a, d);
+        assertNoGroupOverlap(a, d);
 
         if (create) {
             activityMapper.insert(a);
@@ -114,6 +115,38 @@ public class ActivityServiceImpl implements ActivityService {
         a.setBudgetMinor(d.budgetMinor());
     }
 
+    /**
+     * <b>一件货同时只能在一个团购活动里</b>（2026-09-18 店主定）。
+     *
+     * <p><b>拦在服务端，不是靠端上那个 {@code /biz/activity-conflicts}</b> ——
+     * 那一条是给界面提前提示用的建议，绕开它（旧版本客户端、或直接调接口）
+     * 照样存得进去。而这里的代价是不对称的：拦住了商家改一下就行，
+     * 放过去是买家看到一个价、付另一个价。
+     *
+     * <p><b>只管团购之间</b>。团购与限时特价撞在一起是另一件事
+     *（那要算「哪个价优先」），这一轮不碰 —— 见方案 §6.2：
+     * 「暂时」的意思是这条限制可以将来放开，但放开时要先想清楚两个价怎么显示。
+     *
+     * <p>改自己不算撞：编辑一个已有的团购活动时要把它自己排除掉，
+     * 否则第二次保存必失败，而报错说的是「这件货已经在别的团里」。
+     */
+    private void assertNoGroupOverlap(PmtActivity a, ActivityDraft d) {
+        if (!PmtActivity.TRIGGER_GROUP.equals(a.getTriggerType())
+                || d.goodsNos() == null || d.goodsNos().isEmpty()) {
+            return;
+        }
+        for (ConflictVO c : conflicts(a.getEntityNo(), d.goodsNos())) {
+            if (c.activityNo().equals(a.getActivityNo())) {
+                continue;   // 改自己
+            }
+            PmtActivity other = activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
+                    .eq(PmtActivity::getActivityNo, c.activityNo()).last("limit 1"));
+            if (other != null && PmtActivity.TRIGGER_GROUP.equals(other.getTriggerType())) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+        }
+    }
+
     /** 建活动时的全部硬校验。每一条堵的都是「上线之后没人能补救」的事 */
     private void assertSane(PmtActivity a, ActivityDraft d) {
         if (blank(a.getName()) || blank(a.getBenefitType())) {
@@ -127,6 +160,20 @@ public class ActivityServiceImpl implements ActivityService {
             }
             case PmtActivity.TRIGGER_QTY -> {
                 if (nz(a.getTriggerQty()) <= 0) {
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+            }
+            case PmtActivity.TRIGGER_GROUP -> {
+                /*
+                 * **成团人数至少 2。** 1 个人不叫团 —— 放过去的话它就是一个
+                 * 谁买都生效的降价，而界面上写着「团购」，商家以为自己在攒人。
+                 *
+                 * **成团价必须是改单价。** 团购的优惠只可能是「这件货便宜多少」，
+                 * 配成满减或送券的话，算价那一侧根本不知道该怎么用它，
+                 * 而它不会报错 —— 团照样成，价照样是原价。
+                 */
+                if (nz(a.getTriggerQty()) < 2
+                        || !PmtActivity.BENEFIT_PRICE.equals(a.getBenefitType())) {
                     throw BizException.of(ErrorCode.BAD_REQUEST);
                 }
             }
@@ -213,8 +260,9 @@ public class ActivityServiceImpl implements ActivityService {
     }
 
     private void saveGoods(String entityNo, String activityNo, List<String> goodsNos) {
-        goodsMapper.delete(Wrappers.<PmtActivityGoods>lambdaQuery()
-                .eq(PmtActivityGoods::getActivityNo, activityNo));
+        // **物理删**，不是逻辑删 —— 唯一键不含 deleted，逻辑删会让第二次保存撞键。
+        // 见 ActivityGoodsMapper.hardDeleteByActivity 的注释
+        goodsMapper.hardDeleteByActivity(activityNo);
         if (goodsNos == null) {
             return;
         }

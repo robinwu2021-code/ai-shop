@@ -25,6 +25,19 @@ public class PmtActivity extends BaseEntity {
     public static final String TRIGGER_QTY = "QTY";
     /** 命中商品 */
     public static final String TRIGGER_GOODS = "GOODS";
+    /**
+     * 拼够人数成团（团购）。<b>与 {@link #TRIGGER_QTY} 不是一回事</b>：
+     * 那个数的是「这一单买了几件」，这个数的是「几个<b>不同的买家</b>进了同一个团」。
+     *
+     * <p>团购是 {@code GROUP × PRICE} 这个组合，不是一个新的活动类型 ——
+     * 见本类开头那句「新玩法是新组合，不是新枚举」。
+     *
+     * <p><b>活动只持有规则</b>（几人成团、成团价、哪些货、什么时候）。
+     * 「团」本身是有生命周期的实体（团号、发起人、自提点、成员、成没成），
+     * 它在 {@code mkt_group_buy} 里，不在这儿。混进来的话，
+     * 「活动结束了」与「这一团散了」会变成同一件事，而它们不是。
+     */
+    public static final String TRIGGER_GROUP = "GROUP";
 
     /** 减金额 */
     public static final String BENEFIT_CUT = "CUT";
