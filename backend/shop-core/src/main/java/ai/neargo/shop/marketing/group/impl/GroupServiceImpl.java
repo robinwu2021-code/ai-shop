@@ -73,6 +73,7 @@ public class GroupServiceImpl implements GroupService {
     private final GroupPickupPort groupPickupPort;
     private final FulfillmentQueryPort fulfillmentPort;
     private final GoodsQueryPort goodsPort;
+    private final ai.neargo.shop.spi.marketing.GroupRulePort groupRulePort;
     public GroupServiceImpl(GroupBuyMapper groupBuyMapper, GroupMemberMapper memberMapper,
                             RequestMapper requestMapper, RequestInterestMapper interestMapper,
                             QuoteMapper quoteMapper, QuoteRevisionMapper revisionMapper,
@@ -81,7 +82,9 @@ public class GroupServiceImpl implements GroupService {
                             ObjectMapper json,
                             GroupPickupPort groupPickupPort, FulfillmentQueryPort fulfillmentPort, GoodsQueryPort goodsPort,
                             ai.neargo.shop.spi.user.MerchantGovernPort governPort,
-                            ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort) {
+                            ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort,
+                            ai.neargo.shop.spi.marketing.GroupRulePort groupRulePort) {
+        this.groupRulePort = groupRulePort;
         this.switchPort = switchPort;
         this.governPort = governPort;
         this.pickupPort = pickupPort;
@@ -1054,13 +1057,25 @@ public class GroupServiceImpl implements GroupService {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         /*
-         * 团购价来自**商品上已配好的拼团设置**，开团这一步不能临时定价 ——
-         * 否则同一件货会有两个价，而 C 端已经看到过旧的那个。
+         * ★ **团购规则来自活动，不再来自商品**（2026-09-18）。
+         *
+         * 此前读的是 `snap.groupPriceMinor()` / `groupMinCount()`，两列长在
+         * `prd_goods` 上 —— 于是一件货一辈子只有一个团购价。挪进活动之后，
+         * 同一件货才可能在不同时间参加不同的团。
+         *
+         * **不要 activityNo 参数**：一件货同时只能在一个团购活动里是服务端硬校验，
+         * 从货就能唯一反查出活动。让调用方先挑活动是多一处可以挑错的地方 ——
+         * 挑了 A 活动却开了 B 活动的货，两边都说得通，账上是一个错价。
+         *
+         * 开团这一步仍然**不能临时定价**：价由活动定，与从前由商品定同一条理由 ——
+         * 否则同一件货会有两个价，而 C 端已经看到过另一个。
          */
-        if (snap.groupPriceMinor() == null || snap.groupPriceMinor() <= 0) {
+        var rule = groupRulePort.activeRuleFor(merchantNo, snap.goodsNo())
+                .orElseThrow(() -> BizException.of(ErrorCode.ORDER_STATE_ILLEGAL));
+        if (rule.groupPriceMinor() <= 0 || rule.groupPriceMinor() >= snap.price()) {
+            // 成团价不低于原价 = 一个不省钱的团。建活动那一步没拦住就在这儿拦
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
-        requireCheaperThanOrigin(snap);
 
         MktGroupBuy g = new MktGroupBuy();
         g.setGroupNo(BizKey.next(BizKey.GROUP_BUY));
@@ -1075,9 +1090,9 @@ public class GroupServiceImpl implements GroupService {
         g.setEntityNo(merchantNo);
         g.setTitle(snap.title());
         g.setCover(snap.cover());
-        g.setGroupPriceMinor(snap.groupPriceMinor());
+        g.setGroupPriceMinor(rule.groupPriceMinor());
         g.setOriginPriceMinor(snap.price());
-        g.setMinCount(snap.groupMinCount() == null || snap.groupMinCount() < 2 ? 2 : snap.groupMinCount());
+        g.setMinCount(Math.max(2, rule.minCount()));
         g.setJoinedCount(0);
         /*
          * 与用户发起的团**走同一个开关** —— 两条建团路径少管一条，

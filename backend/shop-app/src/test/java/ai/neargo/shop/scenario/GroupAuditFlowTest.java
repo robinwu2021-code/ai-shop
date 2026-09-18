@@ -3,6 +3,12 @@ package ai.neargo.shop.scenario;
 import ai.neargo.shop.marketing.group.entity.MktGroupBuy;
 import ai.neargo.shop.marketing.group.mapper.GroupMappers.GroupBuyMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import ai.neargo.shop.common.BizException;
+import java.util.List;
+import ai.neargo.shop.promotion.dto.ActivityVOs.ActivityDraft;
+import ai.neargo.shop.promotion.dto.ActivityVOs.ActivityVO;
+import ai.neargo.shop.promotion.entity.PmtActivity;
+import ai.neargo.shop.promotion.service.ActivityService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +21,7 @@ import org.springframework.web.context.WebApplicationContext;
 import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -37,6 +44,8 @@ class GroupAuditFlowTest {
 
     @Autowired
     private WebApplicationContext context;
+    @Autowired
+    private ActivityService activityService;
     @Autowired
     private ObjectMapper json;
     @Autowired
@@ -174,7 +183,7 @@ class GroupAuditFlowTest {
         String ops = opsLogin();
         setAuditFlag(ops, true);
         try {
-            withGroupPriceOn("G0001", () -> {
+            withGroupActivityOn("G0001", () -> {
                 var vo = groupService.createMerchantGroup("M0001", "G0001");
                 assertThat(vo.status())
                         .as("★ 开关开着却直接上线了 —— 审核这一页永远是空的，没人会发现")
@@ -204,18 +213,80 @@ class GroupAuditFlowTest {
      * 给某件货临时配上团购设置（开团要求「商品上已配好拼团价」），跑完**原样还原** ——
      * prd_goods 是所有场景测试共用的种子，留下改动会让别的用例在毫不相干的地方红。
      */
-    private void withGroupPriceOn(String goodsNo, ThrowingRunnable body) throws Exception {
-        Long price = jdbc.queryForObject(
-                "select group_price_minor from prd_goods where goods_no=?", Long.class, goodsNo);
-        Integer min = jdbc.queryForObject(
-                "select group_min_count from prd_goods where goods_no=?", Integer.class, goodsNo);
-        jdbc.update("update prd_goods set group_price_minor=?, group_min_count=? where goods_no=?",
-                1_000L, 2, goodsNo);
+    @Test
+    @DisplayName("★★★ 开团的价与人数来自活动，不再来自商品")
+    void groupRuleComesFromActivity() throws Exception {
+        long now = System.currentTimeMillis();
+        ActivityVO a = activityService.save("M0001", new ActivityDraft(
+                null, "五人团 8 元", "GROUP", null,
+                PmtActivity.TRIGGER_GROUP, null, 5,
+                PmtActivity.BENEFIT_PRICE, 800L, null, null,
+                PmtActivity.ONE_OFF, now - 1000, now + 86_400_000L, null, 100, null,
+                List.of(), List.of("G0001")), "TEST");
+        try {
+            var vo = groupService.createMerchantGroup("M0001", "G0001");
+            assertThat(vo.groupPrice())
+                    .as("★ 成团价要是活动里那个 8 元 —— 读商品的话这里会是商品上的旧价或者根本开不出团")
+                    .isEqualTo(800L);
+            assertThat(vo.minCount())
+                    .as("★ 成团人数也来自活动")
+                    .isEqualTo(5);
+        } finally {
+            jdbc.update("delete from pmt_activity_goods where activity_no=?", a.activityNo());
+            jdbc.update("delete from pmt_activity where activity_no=?", a.activityNo());
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 活动停掉就开不出团 —— 否则「结束了」这三个字在商家那儿是假的")
+    void pausedActivityBlocksNewGroup() throws Exception {
+        long now = System.currentTimeMillis();
+        ActivityVO a = activityService.save("M0001", new ActivityDraft(
+                null, "停掉的团", "GROUP", null,
+                PmtActivity.TRIGGER_GROUP, null, 2,
+                PmtActivity.BENEFIT_PRICE, 900L, null, null,
+                PmtActivity.ONE_OFF, now - 1000, now + 86_400_000L, null, 100, null,
+                List.of(), List.of("G0001")), "TEST");
+        try {
+            // 先证明这条路本来是通的 —— 不然下面那条断言证明不了是「停掉」起的作用
+            assertThat(groupService.createMerchantGroup("M0001", "G0001").groupPrice())
+                    .as("前提：活动在跑时开得出团")
+                    .isEqualTo(900L);
+
+            jdbc.update("update pmt_activity set status='PAUSED' where activity_no=?", a.activityNo());
+            assertThatThrownBy(() -> groupService.createMerchantGroup("M0001", "G0001"))
+                    .as("★ 活动停了还能开团的话，商家点「暂停」之后团照样在开，而界面写着已暂停")
+                    .isInstanceOf(BizException.class);
+        } finally {
+            jdbc.update("delete from pmt_activity_goods where activity_no=?", a.activityNo());
+            jdbc.update("delete from pmt_activity where activity_no=?", a.activityNo());
+        }
+    }
+
+    /**
+     * 给这件货挂一个**在跑的团购活动**，跑完删掉。
+     *
+     * <p><b>改之前写的是 {@code prd_goods.group_price_minor}</b> —— 那条路
+     * 2026-09-18 已经不通：团购规则挪进了活动（{@code GROUP × PRICE}），
+     * 开团读的是 {@code GroupRulePort}。夹具不跟着改的话，用例验的是一条
+     * 谁都不走的路，而它照样绿。
+     *
+     * <p><b>用完必须删。</b> 活动是跨测试共享的状态：留着的话，别的用例里
+     * 这件货会莫名其妙变成团购价，而报错会出现在毫不相干的地方。
+     */
+    private void withGroupActivityOn(String goodsNo, ThrowingRunnable body) throws Exception {
+        long now = System.currentTimeMillis();
+        ActivityVO a = activityService.save("M0001", new ActivityDraft(
+                null, "团购夹具 " + goodsNo, "GROUP", null,
+                PmtActivity.TRIGGER_GROUP, null, 2,
+                PmtActivity.BENEFIT_PRICE, 1_000L, null, null,
+                PmtActivity.ONE_OFF, now - 1000, now + 86_400_000L, null, 100, null,
+                List.of(), List.of(goodsNo)), "TEST");
         try {
             body.run();
         } finally {
-            jdbc.update("update prd_goods set group_price_minor=?, group_min_count=? where goods_no=?",
-                    price, min, goodsNo);
+            jdbc.update("delete from pmt_activity_goods where activity_no=?", a.activityNo());
+            jdbc.update("delete from pmt_activity where activity_no=?", a.activityNo());
         }
     }
 
