@@ -119,18 +119,9 @@
         "color": "#7A4CE0"
       }
     ],
-    "semantic": {
-      "--sh-success": "#12b76a",
-      "--sh-success-tint": "rgba(18, 183, 106, 0.14)",
-      "--sh-warning": "#f79009",
-      "--sh-warning-tint": "rgba(247, 144, 9, 0.14)",
-      "--sh-danger": "#f04438",
-      "--sh-danger-tint": "rgba(240, 68, 56, 0.14)"
-    },
+    "semantic": {},
     "constants": {
       "--sh-tabbar-h": "124rpx",
-      "--sh-app-max": "100%",
-      "--sh-scrim": "rgba(10, 12, 16, 0.45)",
       "--sh-shadow-up": "0 -6rpx 20rpx rgba(10, 12, 16, 0.08)",
       "--sh-shadow-float": "0 8rpx 24rpx rgba(10, 12, 16, 0.16)"
     },

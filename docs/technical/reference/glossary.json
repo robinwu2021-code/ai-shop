@@ -8834,256 +8834,46 @@
           "ar": "المنطقة والعملة"
         },
         {
-          "key": "marketing.activityEntryHint",
-          "zh-CN": "满减、特价、买赠，顾客下单时自动生效，无需额外操作",
-          "en": "Discounts, flash prices and gifts apply automatically at checkout with no action from the customer",
-          "ar": "خصومات وأسعار خاصة وهدايا؛ تُطبق تلقائيًا عند الدفع"
+          "key": "marketing.entry.activities",
+          "zh-CN": "活动",
+          "en": "Activities",
+          "ar": "الأنشطة"
         },
         {
-          "key": "marketing.allStores",
-          "zh-CN": "全部门店",
-          "en": "All stores",
-          "ar": "كل الفروع"
+          "key": "marketing.entry.coupons",
+          "zh-CN": "优惠券",
+          "en": "Coupons",
+          "ar": "القسائم"
         },
         {
-          "key": "marketing.buyGift",
-          "zh-CN": "买赠规则",
-          "en": "Rule",
-          "ar": "القاعدة"
+          "key": "marketing.entry.groups",
+          "zh-CN": "团购",
+          "en": "Group buys",
+          "ar": "الشراء الجماعي"
         },
         {
-          "key": "marketing.buyGiftMid",
-          "zh-CN": "送",
-          "en": "get",
-          "ar": "واحصل على"
+          "key": "marketing.entryHint.activities",
+          "zh-CN": "满减、特价、团购、买赠",
+          "en": "Spend & save, special price, group buy, buy & get",
+          "ar": "خصم عند الإنفاق، سعر خاص، شراء جماعي، اشترِ واحصل"
         },
         {
-          "key": "marketing.couponEntryHint",
-          "zh-CN": "选定人群后定向发券。活动作用于单笔订单，券作用于具体的人。",
-          "en": "Send vouchers to a chosen audience. Promotions act on a single order; vouchers act on a specific person.",
-          "ar": "اختر مجموعة وأرسل لهم قسيمة؛ الحملات تخص الطلب، والقسائم تخص الشخص"
+          "key": "marketing.entryHint.coupons",
+          "zh-CN": "发给人，下单时抵扣或到店核销",
+          "en": "Issued to people; redeemed at checkout or in store",
+          "ar": "تُصرف للعملاء؛ تُخصم عند الدفع أو تُستبدل في المتجر"
         },
         {
-          "key": "marketing.create",
-          "zh-CN": "+ 新建活动",
-          "en": "+ New",
-          "ar": "+ عرض جديد"
-        },
-        {
-          "key": "marketing.days",
-          "zh-CN": "持续天数",
-          "en": "Duration (days)",
-          "ar": "المدة (أيام)"
-        },
-        {
-          "key": "marketing.descBUY_GIFT",
-          "zh-CN": "买 N 送 M，赠品随单发出。适合清库存和推新品。",
-          "en": "Buy N get M, shipped with the order. Good for clearing stock and pushing new lines.",
-          "ar": "اشترِ N واحصل على M مع الطلب. مناسب لتصريف المخزون وإطلاق الجديد."
-        },
-        {
-          "key": "marketing.descCOUPON",
-          "zh-CN": "顾客主动领取，结算时抵扣。必须设置发放总量，否则没有上限。",
-          "en": "Claimed by customers and offset at checkout. An issue cap is required, otherwise there is no limit.",
-          "ar": "يحصل عليها العميل ثم تُطبَّق عند الدفع. العدد الإجمالي إلزامي؛ بلا سقف أنت توزّع المال."
-        },
-        {
-          "key": "marketing.descFLASH",
-          "zh-CN": "指定商品在时段内改价，必须选择具体商品。全店改价请在商品编辑中调整。",
-          "en": "Changes the price of selected products for a window. Products are required — changing every price is just repricing.",
-          "ar": "يغيّر سعر منتجات محددة خلال فترة. اختيار المنتجات إلزامي؛ تغيير كل الأسعار يسمّى تسعيرًا."
-        },
-        {
-          "key": "marketing.descFULL_CUT",
-          "zh-CN": "无需领取，满额自动减。操作最简单，适合冷启动。",
-          "en": "No claiming needed; the discount applies automatically. The simplest option, suited to a cold start.",
-          "ar": "بلا مطالبة، يُطبَّق تلقائيًا فوق الحد. الأبسط، ومناسب للبداية."
-        },
-        {
-          "key": "marketing.discount",
-          "zh-CN": "优惠金额（元）",
-          "en": "Discount amount (CNY)",
-          "ar": "قيمة الخصم (يوان)"
-        },
-        {
-          "key": "marketing.empty",
-          "zh-CN": "还没有活动",
-          "en": "No promotions yet",
-          "ar": "لا توجد حملات بعد"
-        },
-        {
-          "key": "marketing.emptyTip",
-          "zh-CN": "可以先建一个「满 30 减 5」",
-          "en": "Start with 「5 off 30」",
-          "ar": "ابدأ بـ«خصم 5 عند 30»"
-        },
-        {
-          "key": "marketing.flashPrice",
-          "zh-CN": "活动价",
-          "en": "Flash price",
-          "ar": "السعر المخفّض"
-        },
-        {
-          "key": "marketing.goods",
-          "zh-CN": "参与商品",
-          "en": "Products",
-          "ar": "المنتجات المشاركة"
-        },
-        {
-          "key": "marketing.name",
-          "zh-CN": "活动名称",
-          "en": "Name",
-          "ar": "اسم العرض"
-        },
-        {
-          "key": "marketing.namePh",
-          "zh-CN": "如 开业满减",
-          "en": "e.g. Opening offer",
-          "ar": "مثال: عرض الافتتاح"
-        },
-        {
-          "key": "marketing.needName",
-          "zh-CN": "请先填写活动名称",
-          "en": "Enter a promotion name first",
-          "ar": "أدخل اسم الحملة أولًا"
-        },
-        {
-          "key": "marketing.pause",
-          "zh-CN": "暂停",
-          "en": "Pause",
-          "ar": "إيقاف مؤقت"
-        },
-        {
-          "key": "marketing.resume",
-          "zh-CN": "开启",
-          "en": "Resume",
-          "ar": "تشغيل"
-        },
-        {
-          "key": "marketing.stackHint",
-          "zh-CN": "叠加规则由结算侧统一计算：同类活动取最优，不重复叠加；券与满减可叠加。",
-          "en": "Stacking is computed at checkout: best-of within a type, no double counting; coupons stack with spend-and-save.",
-          "ar": "يُحسب الدمج عند الدفع: الأفضل ضمن النوع بلا تكرار، والقسائم تُدمج مع خصم الحد."
-        },
-        {
-          "key": "marketing.statusDRAFT",
-          "zh-CN": "未开始",
-          "en": "Scheduled",
-          "ar": "لم يبدأ"
-        },
-        {
-          "key": "marketing.statusENDED",
-          "zh-CN": "已结束",
-          "en": "Ended",
-          "ar": "منتهٍ"
-        },
-        {
-          "key": "marketing.statusPAUSED",
-          "zh-CN": "已暂停",
-          "en": "Paused",
-          "ar": "متوقف"
-        },
-        {
-          "key": "marketing.statusRUNNING",
-          "zh-CN": "进行中",
-          "en": "Running",
-          "ar": "جارٍ"
-        },
-        {
-          "key": "marketing.store",
-          "zh-CN": "适用门店",
-          "en": "Applies to",
-          "ar": "الفروع المشمولة"
-        },
-        {
-          "key": "marketing.sumBuyGift",
-          "zh-CN": "买 {n} 送 {m}",
-          "en": "buy {n}, get {m}",
-          "ar": "اشترِ {n} واحصل على {m}"
-        },
-        {
-          "key": "marketing.sumCoupon",
-          "zh-CN": "满 {a} 减 {b}（需领取）",
-          "en": "spend {a}, save {b} (claim required)",
-          "ar": "اشترِ بـ{a} ووفّر {b} (بالمطالبة)"
-        },
-        {
-          "key": "marketing.sumFlash",
-          "zh-CN": "限时价 {a} · {n} 个商品",
-          "en": "flash price {a} · {n} products",
-          "ar": "سعر محدود {a} · {n} منتجات"
-        },
-        {
-          "key": "marketing.sumFullCut",
-          "zh-CN": "满 {a} 自动减 {b}",
-          "en": "spend {a}, save {b} automatically",
-          "ar": "اشترِ بـ{a} ووفّر {b} تلقائيًا"
-        },
-        {
-          "key": "marketing.taken",
-          "zh-CN": "已领 {a}/{b}",
-          "en": "claimed {a}/{b}",
-          "ar": "تم أخذ {a}/{b}"
-        },
-        {
-          "key": "marketing.threshold",
-          "zh-CN": "门槛金额（元）",
-          "en": "Spend threshold (CNY)",
-          "ar": "الحد الأدنى للإنفاق (يوان)"
+          "key": "marketing.entryHint.groups",
+          "zh-CN": "看团凑齐没有，也可以自己开一个",
+          "en": "See which groups have filled, or open one yourself",
+          "ar": "تابع اكتمال المجموعات أو افتح واحدة بنفسك"
         },
         {
           "key": "marketing.title",
-          "zh-CN": "营销活动",
-          "en": "Promotions",
-          "ar": "العروض"
-        },
-        {
-          "key": "marketing.totalCount",
-          "zh-CN": "发放总量",
-          "en": "Total issued",
-          "ar": "إجمالي الإصدار"
-        },
-        {
-          "key": "marketing.totalHint",
-          "zh-CN": "发完即止，这是预算上限。",
-          "en": "Runs until exhausted. This is the budget cap.",
-          "ar": "حتى نفاد الكمية. هذا سقف ميزانيتك، واكتشاف التجاوز لاحقًا يكون متأخرًا."
-        },
-        {
-          "key": "marketing.type",
-          "zh-CN": "活动类型",
-          "en": "Type",
-          "ar": "نوع العرض"
-        },
-        {
-          "key": "marketing.typeBUY_GIFT",
-          "zh-CN": "买赠",
-          "en": "Buy & gift",
-          "ar": "اشترِ واحصل"
-        },
-        {
-          "key": "marketing.typeCOUPON",
-          "zh-CN": "店铺券",
-          "en": "Shop coupon",
-          "ar": "قسيمة المتجر"
-        },
-        {
-          "key": "marketing.typeFLASH",
-          "zh-CN": "限时特价",
-          "en": "Flash price",
-          "ar": "سعر محدود"
-        },
-        {
-          "key": "marketing.typeFULL_CUT",
-          "zh-CN": "满减",
-          "en": "Spend & save",
-          "ar": "خصم عند حد"
-        },
-        {
-          "key": "marketing.used",
-          "zh-CN": "已用 {n}",
-          "en": "used {n}",
-          "ar": "استُخدم {n}"
+          "zh-CN": "营销",
+          "en": "Marketing",
+          "ar": "التسويق"
         },
         {
           "key": "me.appearance",
@@ -28208,6 +27998,7 @@
           "/pages/plan/index",
           "/pages/customers/index",
           "/pages/activities/index",
+          "/pages/coupons/index",
           "/pages/marketing/index",
           "/pages/stock/index",
           "/pages/stock-detail/index",

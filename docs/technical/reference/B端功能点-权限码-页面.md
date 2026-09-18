@@ -48,7 +48,7 @@
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
 | 承运方可选列表（只列启用的） | GET | `/biz/fulfillment/carriers` | `mCarriers` | transfer |
-| 商品列表 | GET | `/biz/goods` | `mGoodsList` | activity-edit、goods-list、groups、marketing |
+| 商品列表 | GET | `/biz/goods` | `mGoodsList` | activity-edit、goods-list、groups |
 | 商品详情 | GET | `/biz/goods/:goodsNo` | `mGoodsDetail` | goods-edit、goods-publish |
 | 改库存 | POST | `/biz/goods/:goodsNo/stock` | `mSaveStock` | goods-list |
 | 改当前门店库存 | POST | `/biz/goods/:goodsNo/store-stock` | `mSaveStoreStock` | goods-list |
@@ -254,9 +254,9 @@
 | 活动详情 | GET | `/biz/activities/{activityNo}` | `mActivity` | activity-edit |
 | 启停 / 结束 | PUT | `/biz/activities/{activityNo}/status` | `mSetActivityStatus` | activity-edit |
 | 这些商品已经在哪些活动里 | POST | `/biz/activity-conflicts` | `mActivityConflicts` | activity-edit |
-| 营销活动列表 | GET | `/biz/campaign` | `mCampaignList` | marketing |
-| 新建/编辑活动 | POST | `/biz/campaign` | `mSaveCampaign` | marketing |
-| 活动启停 | POST | `/biz/campaign/:campaignNo/toggle` | `mToggleCampaign` | marketing |
+| 营销活动列表 | GET | `/biz/campaign` | `mCampaignList` | — |
+| 新建/编辑活动 | POST | `/biz/campaign` | `mSaveCampaign` | — |
+| 活动启停 | POST | `/biz/campaign/:campaignNo/toggle` | `mToggleCampaign` | — |
 | 发放记录（含跳过明细） | GET | `/biz/coupon-issues` | `mCouponIssues` | coupon-issues |
 | 券列表 | GET | `/biz/coupons` | `mCoupons` | coupon-issues、coupons |
 | 建券 / 改券（敞口在这一步算清） | POST | `/biz/coupons` | `mSaveCoupon` | coupon-edit |
@@ -364,7 +364,6 @@
 | `income` | `biz:finance` | `biz:finance` | 老板 | — |
 | `invoice` | `biz:finance` | `biz:finance` | 老板 | — |
 | `locations` | `biz:store:admin` | `biz:stock`、`biz:store:admin` | 老板 | — |
-| `marketing` | `biz:campaign` | `biz:campaign`、`biz:stock` | 老板、店长 | — |
 | `me` | **无** | `biz:store:admin` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 biz:store:admin）　店员（缺 biz:store:admin）　理货员（缺 biz:store:admin）　配送员（缺 biz:store:admin）　客服（缺 biz:store:admin） |
 | `member-add` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `member-detail` | `biz:customer` | `biz:customer` | 老板、店长 | — |
@@ -431,6 +430,9 @@
 
 | 功能点 | 端点 | 契约方法 | 权限码 |
 |---|---|---|---|
+| 营销活动列表 | `/biz/campaign` | `mCampaignList` | `biz:campaign` |
+| 新建/编辑活动 | `/biz/campaign` | `mSaveCampaign` | `biz:campaign` |
+| 活动启停 | `/biz/campaign/:campaignNo/toggle` | `mToggleCampaign` | `biz:campaign` |
 | 提报平台还没有的小区 | `/biz/communities/apply` | `mApplyCommunity` | `biz:store` |
 | 地图上选中的小区直接开通 | `/biz/communities/from-map` | `mOpenCommunityFromMap` | `biz:store` |
 | 客户与复购（跨店总览在用） | `/biz/customers` | `mCustomers` | `biz:customer` |
