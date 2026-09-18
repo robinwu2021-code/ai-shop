@@ -266,7 +266,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 287,
+        "b-app": 285,
         "c-app": 43
       }
     },
@@ -288,7 +288,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 85,
+        "b-app": 83,
         "c-app": 51
       }
     },
@@ -522,7 +522,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 115,
+        "b-app": 116,
         "c-app": 61
       }
     },
@@ -1062,7 +1062,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 226,
+        "b-app": 224,
         "c-app": 128
       }
     },
@@ -1126,7 +1126,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 130,
+        "b-app": 131,
         "c-app": 64
       }
     },
@@ -1220,7 +1220,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 67,
+        "b-app": 68,
         "c-app": 29
       }
     },
@@ -1426,7 +1426,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 299,
+        "b-app": 298,
         "c-app": 146
       }
     },
@@ -1722,7 +1722,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 97,
+        "b-app": 98,
         "c-app": 24
       }
     },
@@ -1868,7 +1868,7 @@
         "margin-top": "4px"
       },
       "usage": {
-        "b-app": 37,
+        "b-app": 38,
         "c-app": 0
       }
     }
@@ -2166,7 +2166,7 @@
         "text: string"
       ],
       "usage": {
-        "b-app": 2,
+        "b-app": 1,
         "c-app": 0,
         "lib": 0
       },
@@ -2323,7 +2323,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 48,
+        "b-app": 46,
         "c-app": 0,
         "lib": 0
       },
@@ -3268,12 +3268,11 @@
       "file": "b-app/src/pages/activities/index.vue",
       "components": [
         "sh-empty",
-        "sh-fab",
         "sh-scaffold"
       ],
-      "libClassHits": 17,
-      "localSelectors": 8,
-      "localCssLines": 33,
+      "libClassHits": 19,
+      "localSelectors": 9,
+      "localCssLines": 37,
       "rolled": []
     },
     {
@@ -3283,12 +3282,11 @@
       "file": "b-app/src/pages/activity-edit/index.vue",
       "components": [
         "sh-empty",
-        "sh-kv",
         "sh-option",
         "sh-scaffold",
         "sh-stat"
       ],
-      "libClassHits": 114,
+      "libClassHits": 110,
       "localSelectors": 16,
       "localCssLines": 54,
       "rolled": []

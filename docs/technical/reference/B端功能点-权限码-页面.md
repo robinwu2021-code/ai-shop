@@ -252,7 +252,7 @@
 | 活动列表 | GET | `/biz/activities` | `mActivities` | activities、groups |
 | 建 / 改活动（敞口在这一步算清） | POST | `/biz/activities` | `mSaveActivity` | activity-edit |
 | 活动详情 | GET | `/biz/activities/{activityNo}` | `mActivity` | activity-edit |
-| 启停 / 结束 | PUT | `/biz/activities/{activityNo}/status` | `mSetActivityStatus` | activities |
+| 启停 / 结束 | PUT | `/biz/activities/{activityNo}/status` | `mSetActivityStatus` | activity-edit |
 | 这些商品已经在哪些活动里 | POST | `/biz/activity-conflicts` | `mActivityConflicts` | activity-edit |
 | 营销活动列表 | GET | `/biz/campaign` | `mCampaignList` | marketing |
 | 新建/编辑活动 | POST | `/biz/campaign` | `mSaveCampaign` | marketing |
@@ -345,7 +345,7 @@
 | 页面 | 门禁 | 该页需要的码 | 进得来的角色 | ⚠ 会撞码 |
 |---|---|---|---|---|
 | `activities` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
-| `activity-edit` | `biz:campaign` | `biz:stock`、`biz:campaign` | 老板、店长 | — |
+| `activity-edit` | `biz:campaign` | `biz:campaign`、`biz:stock` | 老板、店长 | — |
 | `after-sale` | `biz:aftersale` | `biz:aftersale`、`biz:order:view` | 老板、店长、客服 | — |
 | `coupon-edit` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `coupon-issues` | `biz:campaign` | `biz:campaign`、`biz:customer` | 老板、店长 | — |
