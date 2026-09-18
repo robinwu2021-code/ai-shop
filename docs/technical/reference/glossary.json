@@ -1601,19 +1601,19 @@
         },
         {
           "key": "goods.changeRule",
-          "zh-CN": "服务开始前 {n} 小时可免费改期",
+          "zh-CN": "开始前 {n} 小时可免费改期",
           "en": "Free to reschedule up to {n} hours before",
           "ar": "يمكن تغيير الموعد مجانًا قبل {n} ساعات"
         },
         {
           "key": "goods.cutoffPassed",
-          "zh-CN": "已过今日截单时间",
+          "zh-CN": "今日已截单",
           "en": "Today's cut-off has passed",
           "ar": "انتهى موعد الطلب لليوم"
         },
         {
           "key": "goods.detailTitle",
-          "zh-CN": "图文详情",
+          "zh-CN": "商品详情",
           "en": "Description",
           "ar": "الوصف"
         },
@@ -1625,7 +1625,7 @@
         },
         {
           "key": "goods.fulfillment",
-          "zh-CN": "履约方式",
+          "zh-CN": "配送方式",
           "en": "Delivery",
           "ar": "طريقة الاستلام"
         },
@@ -1727,19 +1727,19 @@
         },
         {
           "key": "goods.weighed",
-          "zh-CN": "约重商品，按实称多退少补",
-          "en": "Sold by approximate weight — final price adjusts to actual weight",
-          "ar": "يُباع بالوزن التقريبي؛ يُعدّل السعر حسب الوزن الفعلي"
+          "zh-CN": "按实际重量结算，多退少补",
+          "en": "Priced by actual weight",
+          "ar": "يُحسب السعر حسب الوزن الفعلي"
         },
         {
           "key": "goods.whyNoSku",
-          "zh-CN": "这个规格组合暂时买不到，换一个试试",
-          "en": "That combination is not available — try another",
-          "ar": "هذه التركيبة غير متاحة — جرّب غيرها"
+          "zh-CN": "该规格暂无现货",
+          "en": "This option is out of stock",
+          "ar": "هذا الخيار غير متوفر"
         },
         {
           "key": "goods.whyNoSlot",
-          "zh-CN": "先选一个上门时段才能下单",
+          "zh-CN": "请先选择上门时段",
           "en": "Pick a visit time to continue",
           "ar": "اختر موعد الزيارة للمتابعة"
         },
@@ -3749,9 +3749,9 @@
         },
         {
           "key": "review.emptyTip",
-          "zh-CN": "买过的邻居可以来说两句",
-          "en": "Be the first neighbour to share",
-          "ar": "كن أول جار يشارك"
+          "zh-CN": "购买后可发表评价",
+          "en": "Reviews appear after purchase",
+          "ar": "تظهر التقييمات بعد الشراء"
         },
         {
           "key": "review.images",
@@ -7904,24 +7904,6 @@
           "ar": "شراء جماعي"
         },
         {
-          "key": "home.activityEntry",
-          "zh-CN": "活动",
-          "en": "Activities",
-          "ar": "الأنشطة"
-        },
-        {
-          "key": "home.afterSale",
-          "zh-CN": "待售后",
-          "en": "After-sales",
-          "ar": "ما بعد البيع"
-        },
-        {
-          "key": "home.auditing",
-          "zh-CN": "资质审核中，通过后即可上架商品",
-          "en": "Under review. You can list products once approved.",
-          "ar": "قيد المراجعة، وبعد الموافقة يمكنك عرض المنتجات"
-        },
-        {
           "key": "home.blocker.agreement",
           "zh-CN": "还差你确认一份协议",
           "en": "One agreement still needs your confirmation",
@@ -7988,6 +7970,48 @@
           "ar": "الفئات التي يعرضها متجرك وكيف تسمّيها"
         },
         {
+          "key": "home.cell.afterSale",
+          "zh-CN": "待售后",
+          "en": "After-sales",
+          "ar": "ما بعد البيع"
+        },
+        {
+          "key": "home.cell.toDeliver",
+          "zh-CN": "待自送",
+          "en": "To deliver",
+          "ar": "بانتظار التوصيل"
+        },
+        {
+          "key": "home.cell.toPick",
+          "zh-CN": "待分拣",
+          "en": "To pick",
+          "ar": "بانتظار الفرز"
+        },
+        {
+          "key": "home.cell.toReply",
+          "zh-CN": "待回评",
+          "en": "To reply",
+          "ar": "بانتظار الرد"
+        },
+        {
+          "key": "home.cell.toShip",
+          "zh-CN": "待发货",
+          "en": "To ship",
+          "ar": "بانتظار الشحن"
+        },
+        {
+          "key": "home.cell.toStock",
+          "zh-CN": "待备货",
+          "en": "To prep",
+          "ar": "قيد التجهيز"
+        },
+        {
+          "key": "home.cell.toVerify",
+          "zh-CN": "待核销",
+          "en": "To redeem",
+          "ar": "بانتظار الاستلام"
+        },
+        {
           "key": "home.fulfillEntry",
           "zh-CN": "核销与分拣",
           "en": "Redeem & pick",
@@ -8000,22 +8024,10 @@
           "ar": "المبيعات"
         },
         {
-          "key": "home.goApply",
-          "zh-CN": "去入驻",
-          "en": "Apply",
-          "ar": "تقديم الطلب"
-        },
-        {
           "key": "home.goApplyWithLicense",
           "zh-CN": "有营业执照？直接走入驻",
           "en": "Got a business licence? Apply directly",
           "ar": "لديك سجل تجاري؟ قدّم مباشرة"
-        },
-        {
-          "key": "home.groupEntry",
-          "zh-CN": "团购",
-          "en": "Group buys",
-          "ar": "الشراء الجماعي"
         },
         {
           "key": "home.inv.all",
@@ -8144,18 +8156,6 @@
           "ar": "اسم المتجر"
         },
         {
-          "key": "home.quotable",
-          "zh-CN": "可报价",
-          "en": "To quote",
-          "ar": "بانتظار التسعير"
-        },
-        {
-          "key": "home.quoteEntry",
-          "zh-CN": "求团报价",
-          "en": "Quote requests",
-          "ar": "طلبات التسعير"
-        },
-        {
           "key": "home.rating",
           "zh-CN": "评分",
           "en": "Rating",
@@ -8198,52 +8198,10 @@
           "ar": "إعدادات المتجر"
         },
         {
-          "key": "home.toDeliver",
-          "zh-CN": "待自送",
-          "en": "To deliver",
-          "ar": "بانتظار التوصيل"
-        },
-        {
-          "key": "home.toPick",
-          "zh-CN": "待分拣",
-          "en": "To pick",
-          "ar": "بانتظار الفرز"
-        },
-        {
-          "key": "home.toReply",
-          "zh-CN": "待回评",
-          "en": "To reply",
-          "ar": "بانتظار الرد"
-        },
-        {
-          "key": "home.toShip",
-          "zh-CN": "待发货",
-          "en": "To ship",
-          "ar": "بانتظار الشحن"
-        },
-        {
-          "key": "home.toStock",
-          "zh-CN": "待备货",
-          "en": "To prep",
-          "ar": "قيد التجهيز"
-        },
-        {
-          "key": "home.toVerify",
-          "zh-CN": "待核销",
-          "en": "To redeem",
-          "ar": "بانتظار الاستلام"
-        },
-        {
           "key": "home.today",
           "zh-CN": "今日",
           "en": "Today",
           "ar": "اليوم"
-        },
-        {
-          "key": "home.todo",
-          "zh-CN": "待办",
-          "en": "To do",
-          "ar": "المهام"
         },
         {
           "key": "income.batchBills",
@@ -8852,6 +8810,12 @@
           "ar": "الشراء الجماعي"
         },
         {
+          "key": "marketing.entry.quotes",
+          "zh-CN": "求团报价",
+          "en": "Group requests",
+          "ar": "طلبات المجموعات"
+        },
+        {
           "key": "marketing.entryHint.activities",
           "zh-CN": "满减、特价、团购、买赠",
           "en": "Spend & save, special price, group buy, buy & get",
@@ -8868,6 +8832,12 @@
           "zh-CN": "看团凑齐没有，也可以自己开一个",
           "en": "See which groups have filled, or open one yourself",
           "ar": "تابع اكتمال المجموعات أو افتح واحدة بنفسك"
+        },
+        {
+          "key": "marketing.entryHint.quotes",
+          "zh-CN": "邻居发需求，你来报价",
+          "en": "Neighbours post what they want; you quote",
+          "ar": "الجيران يطلبون، وأنت تسعّر"
         },
         {
           "key": "marketing.title",

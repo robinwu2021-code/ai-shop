@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 107,
+        "b-app": 106,
         "c-app": 27
       }
     },
@@ -617,7 +617,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 208,
+        "b-app": 207,
         "c-app": 74
       }
     },
@@ -3531,7 +3531,7 @@
         "sh-stat",
         "biz-store-tag"
       ],
-      "libClassHits": 82,
+      "libClassHits": 80,
       "localSelectors": 26,
       "localCssLines": 102,
       "rolled": []
