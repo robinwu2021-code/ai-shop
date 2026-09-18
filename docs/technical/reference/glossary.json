@@ -2044,40 +2044,10 @@
           "ar": "مجموعات الحي"
         },
         {
-          "key": "home.choosePickup",
-          "zh-CN": "选择地址",
-          "en": "Pick an address",
-          "ar": "اختر عنواناً"
-        },
-        {
-          "key": "home.choosePickupHint",
-          "zh-CN": "点击选择你在哪儿",
-          "en": "Tap to tell us where you are",
-          "ar": "اضغط لتخبرنا أين أنت"
-        },
-        {
-          "key": "home.coarsePlaceHint",
-          "zh-CN": "按这个区显示 · 点击选择具体地址",
-          "en": "Showing this district · tap to pick an exact address",
-          "ar": "العرض حسب هذه المنطقة · اضغط لاختيار عنوان محدد"
-        },
-        {
-          "key": "home.communityFeed",
-          "zh-CN": "社区在卖",
-          "en": "On sale nearby",
-          "ar": "معروض في حيّك"
-        },
-        {
           "key": "home.communityFeedEmpty",
           "zh-CN": "这个社区还没有商家上架",
           "en": "No one is selling here yet",
           "ar": "لا أحد يبيع هنا بعد"
-        },
-        {
-          "key": "home.communityFeedHint",
-          "zh-CN": "先选社区，看看邻居都在买什么",
-          "en": "Pick a community to see what neighbours buy",
-          "ar": "اختر حيّك لترى ما يشتريه الجيران"
         },
         {
           "key": "home.cutoffIn",
@@ -2096,18 +2066,6 @@
           "zh-CN": "全部团 ›",
           "en": "See all ›",
           "ar": "عرض الكل ›"
-        },
-        {
-          "key": "home.hereTag",
-          "zh-CN": "当前位置",
-          "en": "Here now",
-          "ar": "موقعك الآن"
-        },
-        {
-          "key": "home.nearestPlaceHint",
-          "zh-CN": "最近的取货点 · 约 {km} 公里 · 点击选择具体地址",
-          "en": "Nearest pickup · about {km} km away · tap to pick an address",
-          "ar": "أقرب نقطة استلام · نحو {km} كم · اضغط لاختيار عنوان"
         },
         {
           "key": "home.noPlaceAction",
