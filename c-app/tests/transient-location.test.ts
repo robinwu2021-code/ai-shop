@@ -61,17 +61,17 @@ describe("当前位置：一次性上下文", () => {
     expect(body).toContain("community.bind");
   });
 
-  it("★★★ 顶栏要把「当前位置」标出来 —— 与「按家的地址在逛」看到的货不是一回事", () => {
-    /*
-     * 两种状态显示成同一个样子的话，用户会把此刻的商品当成家里能买到的，
-     * 下单才发现送不到。label 也要压过生效地址，否则顶栏写着「家」而货是这儿的。
-     */
-    expect(store).toContain("isTransient:");
-    expect(bodyOf(store, "label: (s) =>") ?? store.slice(store.indexOf("label: (s) =>"), store.indexOf("isTransient:")))
-      .toContain("transientName");
-    expect(home).toContain("location.isTransient");
-    expect(home).toContain("home.hereTag");
-  });
+  /*
+   * **首页不再声称「你在哪」**（2026-09-18，产品决策）。
+   * 原来这儿有三条守卫，钉的都是顶栏那一行怎么显示位置：
+   * 「要把当前位置标出来」「回落到聚落名不是自提点名」「没有位置时也要有内容」。
+   *
+   * 现在首页要回答的是「有什么可买」—— 货能不能送到你那儿，
+   * 看商品详情页上的销售范围，不靠顶栏猜。那一行留着只因为它是
+   * 去收货地址的入口。
+   *
+   * 反向那一条在 tests/home-no-location.test.ts：**首页不许再印位置信息**。
+   */
 
   it("★★★ 切回地址簿里的一条，这一次的「当前位置」要结束", () => {
     // 不清的话顶栏一直挂着「当前位置 · XX」，而货已经按新地址换过了

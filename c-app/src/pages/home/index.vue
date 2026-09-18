@@ -68,6 +68,16 @@ const goods = ref<Goods[]>([]);
 const groups = ref<GroupBuy[]>([]);
 /** 推荐商品（运营位）。**运营意图，不是销量事实** —— 理由见 contract.promotedGoods */
 const promoted = ref<Goods[]>([]);
+
+/**
+ * 推荐位**先关掉**（2026-09-18）。
+ *
+ * <p>一个常量同时关掉请求与那一块 —— 只藏界面的话，首页每次加载还是会去要一次，
+ * 而那条请求对用户毫无用处，只是让首屏多等一个往返。
+ *
+ * <p>放开时改这一个常量就够了，接线都留着。
+ */
+const SHOW_PROMOTED = false;
 const now = ref(Date.now());
 let timer: ReturnType<typeof setInterval> | undefined;
 
@@ -136,7 +146,7 @@ async function load() {
       api.goodsList({ size: 20, communityNo, regionCode }),
       api.groupBuyList(community.pickup?.pickupNo),
       // 关着的模块**不发请求** —— 开关关掉却照样打接口，是白白的一次往返
-      api.promotedGoods({ communityNo, regionCode }),
+      SHOW_PROMOTED ? api.promotedGoods({ communityNo, regionCode }) : Promise.resolve([]),
     ]);
     goods.value = res.records;
     promoted.value = promo;
@@ -327,17 +337,16 @@ onShareAppMessage(() =>
           而两种状态若显示成同一个样子，用户会把此刻的商品当成家里能买到的，
           下单才发现送不到。标签放在名字前面 —— 放后面会被长地名挤出屏幕。
         -->
-        <text v-if="location.isTransient" class="sh-chip sh-chip--primary place__here">{{ $t("home.hereTag") }}</text>
-        <text class="txt-body place__name">
-          <!--
-            回落到**聚落名**，不是自提点名。此前这里是 `community.pickup?.name` ——
-            而买家早就不挑自提点了（M3 删掉了那一页），那个值只可能来自
-            升级前存在本地的旧状态。真机上表现为顶栏顶着一个便利店的名字，
-            而用户以为那是他所在的小区。
-          -->
-          {{ location.label || $t("home.choosePickup") }}
-        </text>
-        <text class="txt-caption place__sub sh-fill">{{ placeSub }}</text>
+        <!--
+          **首页不再声称「你在哪」**（2026-09-18）。
+          此前这一行显示「桂澜新村 · 点击选择你在哪儿」，还带一个「当前位置」标。
+          而首页要回答的是「有什么可买」—— 货能不能送到你那儿，
+          看商品详情页上的销售范围，不靠顶栏猜。
+
+          **这一行留着，因为它是去收货地址的入口**（点它就跳）。
+          整行拿掉的话，管理地址在首页上就没有路了。
+        -->
+        <text class="txt-body sh-fill place__name">{{ $t("address.title") }}</text>
       </view>
       <!--
         **顶栏不放「重新定位」。** 点这一行本来就跳收货地址页，而那一页上
@@ -345,17 +354,10 @@ onShareAppMessage(() =>
         本来就只有那么宽，多一颗会把地名挤出去。
       -->
       <!--
-        家 / 公司 一点即换。**替代「手动多选」的那一半** ——
-        多选的驱动力是「切换太麻烦」，那就让切换便宜，而不是把两个地方的货混在一屏。
+        「家 / 公司」快捷切换也先收起来（2026-09-18）：它显示的是地址标签，
+        同样是在首页上写位置。切换地址仍然走收货地址页 —— 多一次点击，
+        但首页不再替他声称在哪儿。
       -->
-      <view v-if="quickPlaces.length" class="place__quick sh-row">
-        <text
-          v-for="a in quickPlaces"
-          :key="a.addressId"
-          class="sh-chip"
-          @tap.stop="quickSwitch(a)"
-        >{{ a.tag }}</text>
-      </view>
       <!-- 搜索收成一个 icon 并入这一行：一个社区只覆盖三五家店、几十上百个 SKU，
            用户翻两屏就看完了全部 —— 搜索远没到值一整行主视觉的程度。
            省下的那一行给「再来一单」，那才是这个场景下真正的高频动作。 -->
@@ -385,7 +387,7 @@ onShareAppMessage(() =>
     </view>
 
     <!-- 推荐商品：运营位。横滑窄卡，不与下面的主商品流抢版面 -->
-    <view v-if="promoted.length" class="sh-block">
+    <view v-if="SHOW_PROMOTED && promoted.length" class="sh-block">
       <view class="sh-block__head">
         <text class="txt-title">{{ $t("home.promoted") }}</text>
         <text class="sh-muted">{{ $t("home.promotedHint") }}</text>
@@ -409,14 +411,13 @@ onShareAppMessage(() =>
       </view>
     </view>
 
-    <!-- 社区在卖：首页主体。已在 goodsList 里按覆盖范围滤过 + 按距离排过 -->
+    <!--
+      商品清单：首页主体。已在 goodsList 里按门店覆盖范围滤过 + 按距离排过。
+      **不写标题、不写位置**（2026-09-18）：此前这儿是「社区在卖 · 桂澜新村」——
+      而首页要回答的是「有什么可买」，不是「你在哪儿」。
+      商品能不能送到你那儿，看商品详情页上的销售范围。
+    -->
     <view class="sh-block">
-      <view class="sh-block__head">
-        <text class="txt-title">{{ $t("home.communityFeed") }}</text>
-        <text class="sh-muted">
-          {{ community.community?.name || $t("home.communityFeedHint") }}
-        </text>
-      </view>
 
       <!--
         **要位置的空态与「这儿还没有货」是两件事。** 前者给一个出口（去选地址），

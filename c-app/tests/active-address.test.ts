@@ -37,19 +37,6 @@ describe("生效位置 ≠ 默认收货地址", () => {
     expect(page).not.toMatch(/function setDefault[\s\S]{0,200}switchTo/);
   });
 
-  it("★★ 没有生效位置时首页仍要有内容 —— 空顶栏会让人以为没加载完", () => {
-    const home = code("src/pages/home/index.vue");
-    /*
-     * 顶栏那一行必须有回落链：生效位置 → 自提点 → 提示去选。
-     * 只写第一段的话，新用户看到的是一行空白。
-     */
-    expect(home).toMatch(/location\.label \|\|[\s\S]{0,120}choosePickup/);
-    /*
-     * 副标题也要有回落，而且**有生效位置时不许落到「点击选择」**——
-     * 他明明已经选过了。实测撞到过：主标题变成「公司」，副标题还在催他去选。
-     */
-    expect(home).toMatch(/if \(a\) return a\.detail \|\| a\.region/);
-  });
 
   it("★★★ 点顶栏**永远**去地址页 —— 他要切位置，不是挑代收点", () => {
     const home = code("src/pages/home/index.vue");

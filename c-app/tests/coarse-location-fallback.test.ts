@@ -107,15 +107,6 @@ describe("粗定位兜底：按区看货", () => {
     expect(readAt).toBeGreaterThan(awaitAt);
   });
 
-  it("★★★ 顶栏回落到**聚落名**，不是自提点名 —— 真机上顶着一个便利店的名字", () => {
-    /*
-     * 买家早就不挑自提点了（M3 删掉了那一页），`community.pickup` 只可能来自
-     * 升级前存在本地的旧状态。真机实况：首页顶部显示「翡翠便利店」，
-     * 而用户以为那是他所在的小区 —— 那条记录甚至已经不在库里了。
-     */
-    expect(homePage).toContain("community.community?.name");
-    expect(homePage).not.toContain("community.pickup?.name");
-  });
 
   it("★★★ ensureCoarseRegion 必须**无条件**调用 —— 有旧归属时它才是那个要跑的人", () => {
     /*
