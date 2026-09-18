@@ -8,6 +8,7 @@
 // 「保存」一个 —— 一个动库存的动作不该和「我先记一半」共用同一个词。
 import { computed, ref } from "vue";
 import { ROUTES } from "@/shared/nav";
+import { isoDay, useIsQuick, useQuickDates } from "@/shared/quick-dates";
 import { STORAGE } from "@shared/utils/constants";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
@@ -42,7 +43,7 @@ const supplier = ref<Supplier | null>(null);
 const suppliers = ref<Supplier[]>([]);
 const showSupplier = ref(false);
 const supplierBusy = ref(false);
-const occurredAt = ref(today());
+const occurredAt = ref(isoDay());
 const lines = ref<Line[]>([]);
 const busy = ref(false);
 
@@ -84,32 +85,8 @@ const totalMinor = computed(() =>
   lines.value.reduce((s, l) => s + l.qty * l.unitCostMinor, 0),
 );
 
-function today(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-
-/**
- * 日期快捷的三枚：今天 / 昨天 / 前天。
- *
- * <p><b>按本地日历日算，不按 24 小时减。</b> `Date.now() - 86400e3` 在夏令时
- * 与闰秒那两天会错一天 —— 这个项目现在只跑中国大陆（没有夏令时），
- * 但把「昨天」定义成「减 86400 秒」本身就是错的，换个市场就炸，
- * 而症状是补记的那张单记到了前天。`setDate(-n)` 由运行时按日历退，没有这个问题。
- */
-const quickDates = computed(() => [0, 1, 2].map((n) => {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  const p = (x: number) => String(x).padStart(2, "0");
-  return {
-    value: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`,
-    label: String(t(["purchase.dToday", "purchase.dYesterday", "purchase.dBefore"][n] as string)),
-  };
-}));
-
-/** 当前选的是不是那三枚之一 —— 不是的话「选日期」那一枚要亮着并显示真实日期 */
-const isQuick = computed(() => quickDates.value.some((d) => d.value === occurredAt.value));
+const quickDates = useQuickDates(t, ["purchase.dToday", "purchase.dYesterday", "purchase.dBefore"]);
+const isQuick = useIsQuick(quickDates, occurredAt);
 
 /** 分 → 元。展示用，**不参与计算** */
 function yuan(minor: number): string {
@@ -282,52 +259,59 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="purchase.title" :denied="!merchant.can('biz:stock')">
+    <!--
+      ★ **供应商与日期合成一张卡，标题挪到行首**（2026-09-18 店主：
+      「供应商和发生日期占用空间过多，考虑标题和空间放到同一行」）。
+
+      改之前两张卡、每个标题独占一行，两个字段吃掉近 240px ——
+      而这一屏真正的主角是下面那张货单。标题左、控件右是全站
+      「一行一个字段」的既有写法（sh-kv），这里不新造件。
+
+      「发生日期」缩成「日期」：四枚快捷钮要和标题挤在同一行里，
+      少两个字正好把余量留出来（量过：263 → 291px 可用，四枚需 262px）。
+    -->
     <view class="sh-card">
-      <text class="field__label">{{ $t("purchase.supplier") }}</text>
-      <!--
-        从输入框换成选择器。**留一行显示当前选的是谁**，而不是把名字塞回输入框：
-        塞回去的话它看起来还能改，而改了不会生效（真正生效的是 supplierNo）。
-      -->
-      <view class="field__input sup-pick sh-row sh-row--between" @tap="showSupplier = true">
-        <text :class="supplier ? 'txt-body' : 'sh-muted'">
-          {{ supplier ? supplier.name : $t("purchase.supplierPh") }}
-        </text>
+      <sh-kv between :label="String($t('purchase.supplier'))" @tap="showSupplier = true">
         <!--
           右边是「›」而不是「更换」：全站「点进去选」的行都用这个记号，
           不用读字就知道它会弹东西。写「更换」的毛病是**还没选过时它是句空话** ——
           于是这一行读起来像个能打字的框（2026-09-17 店主：「供应商要选择列表」）。
         -->
-        <text class="sh-muted">›</text>
-      </view>
-    </view>
-
-    <!--
-      ★ **日期改成三枚快捷 + 兜底滚轮**（2026-09-18 店主：「日期选择需要优化」）。
-
-      进货单的日期**九成是今天，剩下几乎都是昨天** —— 补记昨天的货是常态，
-      而原来为这个「多半不改」的字段要拨年、月、日三列滚轮再点确定。
-
-      滚轮没有删，收进「选日期」：真要挑别的日子，一个功能都没少。
-      默认「今天」本来就选中，九成情况下**一次都不用点**。
-    -->
-    <view class="sh-card">
-      <text class="field__label">{{ $t("purchase.date") }}</text>
-      <view class="dates sh-wrap">
-        <text
-          v-for="d in quickDates"
-          :key="d.value"
-          class="sh-chip date__c"
-          :class="{ 'sh-chip--primary': occurredAt === d.value }"
-          @tap="occurredAt = d.value"
-        >{{ d.label }}</text>
-        <picker mode="date" :value="occurredAt" @change="occurredAt = $event.detail.value">
-          <!-- 挑到快捷之外的日子时，把那一天显示出来 —— 否则三枚都不亮，
-               而他明明选过，会以为没生效 -->
-          <text class="sh-chip date__c" :class="{ 'sh-chip--primary': !isQuick }">
-            {{ isQuick ? $t("purchase.dPick") : occurredAt }}
+        <view class="sup sh-row">
+          <text :class="supplier ? 'txt-body' : 'sh-muted'">
+            {{ supplier ? supplier.name : $t("purchase.supplierPh") }}
           </text>
-        </picker>
-      </view>
+          <text class="sh-muted">›</text>
+        </view>
+      </sh-kv>
+
+      <!--
+        ★ **日期是三枚快捷 + 兜底滚轮**（2026-09-18 店主：「日期选择需要优化」）。
+
+        进货单的日期**九成是今天，剩下几乎都是昨天** —— 补记昨天的货是常态，
+        而原来为这个「多半不改」的字段要拨年、月、日三列滚轮再点确定。
+
+        滚轮没有删，收进「选日期」：真要挑别的日子，一个功能都没少。
+        默认「今天」本来就选中，九成情况下**一次都不用点**。
+      -->
+      <sh-kv between :label="String($t('purchase.date'))">
+        <view class="dates sh-row">
+          <text
+            v-for="d in quickDates"
+            :key="d.value"
+            class="sh-chip date__c"
+            :class="{ 'sh-chip--primary': occurredAt === d.value }"
+            @tap="occurredAt = d.value"
+          >{{ d.label }}</text>
+          <picker mode="date" :value="occurredAt" @change="occurredAt = $event.detail.value">
+            <!-- 挑到快捷之外的日子时，把那一天显示出来 —— 否则三枚都不亮，
+                 而他明明选过，会以为没生效 -->
+            <text class="sh-chip date__c" :class="{ 'sh-chip--primary': !isQuick }">
+              {{ isQuick ? $t("purchase.dPick") : occurredAt }}
+            </text>
+          </picker>
+        </view>
+      </sh-kv>
     </view>
 
     <sh-empty v-if="!lines.length" :text="String($t('purchase.noLines'))"></sh-empty>
@@ -457,9 +441,13 @@ onShow(load);
   gap: 20rpx;
 }
 
+/* 四枚并排，跟着标题在同一行的右半边 */
 .dates {
-  gap: 16rpx;
-  margin-top: 16rpx;
+  gap: 12rpx;
+}
+/* 供应商名与「›」之间留一点，别贴着 */
+.sup {
+  gap: 8rpx;
 }
 /*
  * 72rpx（36px）。**比 44px 的可点下限矮一档，这是有意的**：

@@ -10,6 +10,7 @@
 // 数量填不到超过可用 —— **库存不允许为负**，错误停在这里比流进报表便宜。
 import { computed, ref } from "vue";
 import { ROUTES } from "@/shared/nav";
+import { isoDay, useIsQuick, useQuickDates } from "@/shared/quick-dates";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
@@ -43,7 +44,7 @@ interface Line {
  */
 const PURPOSES = ["SCRAP", "RETURN_SUPPLIER", "INTERNAL"] as const;
 
-const occurredAt = ref(today());
+const occurredAt = ref(isoDay());
 const purpose = ref<(typeof PURPOSES)[number]>("SCRAP");
 const reason = ref<(typeof REASONS)[number]>("EXPIRED");
 /** 退供应商时退给谁。**只有 RETURN_SUPPLIER 用得上** */
@@ -84,11 +85,13 @@ function openPick(scan: boolean) {
   showPick.value = true;
 }
 
-function today(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
+/*
+ * 日期快捷与进货页**共用一份判据**（2026-09-18）。报损原来只有一枚滚轮，
+ * 而报损同样是「九成是今天、剩下几乎都是昨天」—— 昨天下班前发现坏了一箱，
+ * 今早才来记。两页各写一份的话「昨天怎么算」迟早分岔，见 quick-dates.ts。
+ */
+const quickDates = useQuickDates(t, ["stockOut.dToday", "stockOut.dYesterday", "stockOut.dBefore"]);
+const isQuick = useIsQuick(quickDates, occurredAt);
 
 const totalQty = computed(() => lines.value.reduce((s, l) => s + l.qty, 0));
 
@@ -230,9 +233,21 @@ onShow(load);
         <text class="sh-link">{{ supplier?.name || $t("stockOut.supplierPh") }}</text>
       </sh-kv>
       <sh-kv between :label="String($t('stockOut.date'))">
-        <picker mode="date" :value="occurredAt" @change="occurredAt = $event.detail.value">
-          <text class="sh-link sh-num">{{ occurredAt }}</text>
-        </picker>
+        <view class="dates sh-row">
+          <text
+            v-for="d in quickDates"
+            :key="d.value"
+            class="sh-chip date__c"
+            :class="{ 'sh-chip--primary': occurredAt === d.value }"
+            @tap="occurredAt = d.value"
+          >{{ d.label }}</text>
+          <picker mode="date" :value="occurredAt" @change="occurredAt = $event.detail.value">
+            <!-- 挑到快捷之外的日子时把那一天显示出来，否则三枚都不亮、他会以为没生效 -->
+            <text class="sh-chip date__c" :class="{ 'sh-chip--primary': !isQuick }">
+              {{ isQuick ? $t("stockOut.dPick") : occurredAt }}
+            </text>
+          </picker>
+        </view>
       </sh-kv>
     </view>
 
@@ -263,9 +278,15 @@ onShow(load);
     </view>
 
     <!-- 原因只有报损要问：退供应商说得出退给谁，再问一次「为什么」是多余的一步 -->
+    <!--
+      ★ **标题挪到行首**（2026-09-18 店主：「报损页面也类似，浪费太多空间」）。
+      原来标题独占一行、四枚原因另起一行，一个字段吃掉两行高 ——
+      而它与上面那张卡里的「去向/日期」是同一类东西（一行一个字段），
+      写法却不一样。统一成 sh-kv，不新造件。
+    -->
     <view v-if="purpose === 'SCRAP'" class="sh-card">
-      <text class="field__label">{{ $t("stockOut.reasonLabel") }}</text>
-      <view class="reasons sh-wrap">
+      <sh-kv between :label="String($t('stockOut.reasonLabel'))">
+      <view class="reasons sh-row">
         <text
           v-for="r in REASONS"
           :key="r"
@@ -276,6 +297,7 @@ onShow(load);
           {{ $t(`stock.reason.${r}`) }}
         </text>
       </view>
+      </sh-kv>
     </view>
 
     <view v-if="lines.length" class="sh-card hd sh-row sh-row--between">
@@ -307,6 +329,28 @@ onShow(load);
 </template>
 
 <style scoped>
+/* 四枚并排跟在标题右边；挤不下就换行并靠右，不把标题顶走 */
+.reasons,
+.dates {
+  gap: 12rpx;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+/*
+ * 与进货页同一档：72rpx（36px）比 44px 的可点下限矮一档，**这是有意的** ——
+ * 那条下限是给主操作的，而这一排是并列的筛选式选择，四枚一起构成一个控件。
+ */
+/*
+ * 与日期那排同高。**原因这四枚改之前只有 24px** —— 量到的，不是估的 ——
+ * 而它们是要用手指点的。24px 连 44 的一半都不到，且与旁边日期那排
+ * 一高一矮，并排之后一眼就看得出来不是一套东西。
+ */
+.date__c,
+.reasons .sh-chip {
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+}
 .addrow {
   gap: 16rpx;
 }
