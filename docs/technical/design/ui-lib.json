@@ -626,7 +626,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 211,
+        "b-app": 212,
         "c-app": 68
       }
     },
@@ -946,7 +946,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 58,
+        "b-app": 59,
         "c-app": 3
       }
     },
@@ -1062,7 +1062,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 221,
+        "b-app": 222,
         "c-app": 128
       }
     },
@@ -1126,7 +1126,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 135,
+        "b-app": 133,
         "c-app": 61
       }
     },
@@ -1220,7 +1220,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 72,
+        "b-app": 70,
         "c-app": 28
       }
     },
@@ -1426,7 +1426,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 295,
+        "b-app": 292,
         "c-app": 141
       }
     },
@@ -1458,7 +1458,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 129,
+        "b-app": 130,
         "c-app": 74
       }
     },
@@ -1628,7 +1628,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 52,
+        "b-app": 54,
         "c-app": 19
       }
     },
@@ -1722,7 +1722,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 99,
+        "b-app": 100,
         "c-app": 18
       }
     },
@@ -1744,7 +1744,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 71,
+        "b-app": 74,
         "c-app": 0
       }
     },
@@ -2323,7 +2323,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 49,
+        "b-app": 46,
         "c-app": 0,
         "lib": 0
       },
@@ -3869,14 +3869,13 @@
         "sh-add",
         "sh-empty",
         "sh-icon",
-        "sh-kv",
         "sh-scaffold",
         "biz-item-picker",
         "biz-supplier-picker"
       ],
-      "libClassHits": 39,
-      "localSelectors": 13,
-      "localCssLines": 49,
+      "libClassHits": 44,
+      "localSelectors": 12,
+      "localCssLines": 47,
       "rolled": []
     },
     {
@@ -4142,9 +4141,9 @@
         "biz-item-picker",
         "biz-store-tag"
       ],
-      "libClassHits": 34,
-      "localSelectors": 9,
-      "localCssLines": 39,
+      "libClassHits": 32,
+      "localSelectors": 7,
+      "localCssLines": 27,
       "rolled": []
     },
     {
