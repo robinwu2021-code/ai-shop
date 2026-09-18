@@ -13,7 +13,6 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import type { StoreActivity } from "@shared/types";
-import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -42,18 +41,6 @@ async function load() {
   loaded.value = true;
 }
 
-async function run(fn: () => Promise<unknown>) {
-  if (busy.value) return;
-  busy.value = true;
-  try {
-    await fn();
-    await load();
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  } finally {
-    busy.value = false;
-  }
-}
 
 /** 一句话说清这个活动做什么：满 X 减 Y / 特价 X / 买 N 送 M / 送券 */
 function ruleText(a: StoreActivity) {
@@ -103,16 +90,7 @@ function go(url: string) {
   uni.navigateTo({ url });
 }
 
-function toggle(a: StoreActivity) {
-  run(() => api.mSetActivityStatus(a.activityNo, a.status === "RUNNING" ? "PAUSED" : "RUNNING"));
-}
 
-/** 结束不可逆：确认框里要说清「不能再打开」，而不是只问「确定吗」 */
-async function end(a: StoreActivity) {
-  if (await confirm({ title: String(t("activities.endTitle", { name: a.name })), hint: String(t("activities.endBody")), danger: true })) {
-    run(() => api.mSetActivityStatus(a.activityNo, "ENDED"));
-  }
-}
 
 onShow(load);
 </script>
@@ -139,39 +117,51 @@ onShow(load);
           {{ $t("activities.idleHint") }}
         </text>
 
-        <view v-for="a in g.rows" :key="a.activityNo" class="sh-card sh-mt-xs">
-          <view class="item__head sh-row">
+        <!--
+          ★ **两行一条，整条可点**（2026-09-18）。
+
+          改之前每条 177px：名称 / 规则 / 排期 / 三个 20px 大数 / 三个纯文字动作，
+          四个活动占掉 947px ≈ 2.3 屏。而量到的硬毛病是那三个动作：
+          **各 24×15px 的纯文字**，不到可点下限 44 的三分之一，
+          既看不出能点、也点不中（店主提过「按钮不要纯文字」）。
+
+          改法不是把按钮做大，是**取消按钮**：整条点进编辑页，
+          暂停 / 结束在那儿做（那一页原来没有这两个动作，一并补上了 ——
+          光从列表撤掉就是把能力弄丢）。
+
+          列表只回答三件事：**有哪些、在不在跑、还剩多少**。
+          「已用 / 已花」是复盘用的，收进编辑页 —— 商家看「这个花了多少」时是
+          专门去看的，不是扫列表时顺带看的，留在这儿只让每条多占 55px。
+
+          右上角一枚徽章同时说完**排期与状态**：两者从来不会同时需要
+          （已结束的不必再说「每周三」）。
+        -->
+        <view
+          v-for="a in g.rows"
+          :key="a.activityNo"
+          class="sh-card sh-mt-xs item"
+          @tap="go(`/pages/activity-edit/index?activityNo=${a.activityNo}`)"
+        >
+          <view class="sh-row sh-row--between">
             <text class="txt-strong">{{ a.name }}</text>
-            <text v-if="a.endedReason" class="sh-chip">
-              {{ $t(`activities.endedReason.${a.endedReason}`) }}
+            <text class="sh-chip sh-chip--sm" :class="{ 'sh-chip--muted': a.status === 'ENDED' }">
+              {{ a.endedReason
+                ? $t(`activities.endedReason.${a.endedReason}`)
+                : scheduleText(a) }}
             </text>
           </view>
-          <text class="txt-sub rule">{{ ruleText(a) }}</text>
-          <text class="txt-caption sh-muted line">{{ scheduleText(a) }}</text>
-
-          <!--
-            效果卡：**用掉多少、花了多少、还剩多少**。
-            没有转化率、没有 UV —— 商家在这一页要决定的只有「要不要接着跑」。
-          -->
-          <!-- 分隔线与上留白包在外层：class 挂到组件上时，小程序会让宿主与根各画一条 -->
-          <view class="effect"><sh-stat
-            :items="[
-              { value: a.quotaUsed, label: String($t('activities.used')) },
-              { value: money(a.budgetUsedMinor), label: String($t('activities.spent')) },
-              { value: a.quotaLeft == null ? String($t('activities.unlimited')) : a.quotaLeft,
-                label: String($t('activities.left')),
-                tone: (a.quotaLeft ?? 99) <= 10 ? 'warn' : undefined },
-            ]"
-          ></sh-stat></view>
-
-          <view v-if="a.status !== 'ENDED'" class="acts">
-            <text class="sh-link" @tap="go(`/pages/activity-edit/index?activityNo=${a.activityNo}`)">
-              {{ $t("activities.edit") }}
-            </text>
-            <text class="sh-link" @tap="toggle(a)">
-              {{ a.status === "RUNNING" ? $t("activities.pause") : $t("activities.resume") }}
-            </text>
-            <text class="sh-link" @tap="end(a)">{{ $t("activities.end") }}</text>
+          <view class="sh-row sh-row--between item__b">
+            <!-- 与右边同一档字阶：层级交给颜色，不靠差一档字号（两端差一档在两个端上会差 1px） -->
+            <text class="txt-sub sh-fill">{{ ruleText(a) }}</text>
+            <!--
+              「还剩」留在列表：它是唯一影响「要不要现在管它」的数。
+              快见底时变色 —— 那一刻才是他需要动手的时候。
+            -->
+            <text
+              v-if="a.quotaLeft != null && a.status !== 'ENDED'"
+              class="txt-sub sh-num"
+              :class="(a.quotaLeft ?? 99) <= 10 ? 'is-warning' : 'sh-muted'"
+            >{{ $t("activities.leftN", { n: a.quotaLeft }) }}</text>
           </view>
         </view>
       </view>
@@ -180,6 +170,15 @@ onShow(load);
 </template>
 
 <style scoped>
+/* 整条是可点目标（不是三个 24×15 的字），两行内容 + 卡内边距已过 88rpx */
+.item {
+  min-height: 88rpx;
+}
+/* 8rpx 而不是 4rpx：4rpx 在两端会差 1px（页面规范那道闸盯的就是它） */
+.item__b {
+  margin-top: 8rpx;
+  gap: 16rpx;
+}
 .bar {
   display: flex;
   gap: 12rpx;

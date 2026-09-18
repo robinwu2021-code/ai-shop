@@ -13,9 +13,10 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { confirm } from "@ai-shop/ui/prompt";
 import { useMerchantStore } from "@/stores/merchant";
 import { money, toMinor } from "@shared/utils/money";
-import type { ActivityConflict, Goods, StoreActivityDraft } from "@shared/types";
+import type { ActivityConflict, Goods, StoreActivity, StoreActivityDraft } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -67,6 +68,38 @@ const GOALS = [
 /** 是不是团购活动。判的是目标，不是优惠类型 —— 清库存也是 PRICE */
 const isGroup = computed(() => form.value.goal === "GROUP");
 
+/*
+ * ★ **暂停 / 恢复 / 结束搬到这一页**（2026-09-18）。
+ *
+ * 它们原来在活动列表上，是三个 24×15px 的纯文字 —— 看不出能点、也点不中。
+ * 列表改成整条可点之后那三个字撤掉了，**但能力不能跟着没**：
+ * 光撤不搬就是把「怎么停一个活动」这件事从产品里删掉了。
+ */
+async function setStatus(next: string) {
+  if (!current.value || busy.value) return;
+  if (next === "ENDED") {
+    // 结束不可逆：确认框里要说清「不能再打开」，而不是只问「确定吗」
+    const ok = await confirm({
+      title: String(t("activities.endTitle", { name: current.value.name })),
+      hint: String(t("activities.endBody")),
+      danger: true,
+    });
+    if (!ok) return;
+  }
+  busy.value = true;
+  try {
+    await api.mSetActivityStatus(current.value.activityNo, next);
+    uni.showToast({ title: String(t("activityEdit.saved")), icon: "none" });
+    setTimeout(() => uni.navigateBack(), 600);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
+const busy = ref(false);
+
 function pickGoal(key: string) {
   const g = GOALS.find((x) => x.key === key)!;
   form.value.goal = key;
@@ -98,6 +131,12 @@ const alwaysOnUncapped = computed(
 /** 重试要把单号带回去 —— `@retry` 不带参数，而 `activityNo`/`couponNo`
  *  是**加载成功之后**才设的，失败时它们是空的 */
 const currentNo = ref("");
+/**
+ * 载入的那份活动。**效果三数与状态从它读**（2026-09-18）——
+ * 它们原来长在活动列表的卡上，占掉每条 55px 而商家扫列表时并不看它们；
+ * 看「这个花了多少」是专门来看的，那就该在这一页。
+ */
+const current = ref<StoreActivity | null>(null);
 const failed = ref(false);
 
 /*
@@ -155,6 +194,7 @@ async function loadExisting(no: string) {
   let a;
   try {
     a = await api.mActivity(no);
+    current.value = a;
     failed.value = false;
   } catch {
     failed.value = true;
@@ -260,7 +300,7 @@ onLoad((q) => {
 </script>
 
 <template>
-  <sh-scaffold title-key="activityEdit.title" :denied="!merchant.can('biz:campaign')"
+  <sh-scaffold :title-key="current ? 'activityEdit.titleEdit' : 'activityEdit.title'" :denied="!merchant.can('biz:campaign')"
     :failed="failed"
     @retry="() => loadExisting(currentNo)"
   >
@@ -453,6 +493,37 @@ onLoad((q) => {
       </view>
     </view>
 
+    <!--
+      效果与停用：**只有改既有活动时才有**。新建时这三个数都是 0、也没得停，
+      画出来只是让新建流程多一屏要跳过的东西。
+    -->
+    <template v-if="current">
+      <view class="sh-card sh-mt-sm">
+        <view class="effect"><sh-stat
+          :items="[
+            { value: current.quotaUsed, label: String($t('activities.used')) },
+            { value: money(current.budgetUsedMinor), label: String($t('activities.spent')) },
+            { value: current.quotaLeft == null ? String($t('activities.unlimited')) : current.quotaLeft,
+              label: String($t('activities.left')),
+              tone: (current.quotaLeft ?? 99) <= 10 ? 'warn' : undefined },
+          ]"
+        ></sh-stat></view>
+      </view>
+
+      <!--
+        两枚按钮形态，不是两行字（店主提过「按钮不要纯文字」）。
+        结束用危险态：它不可逆，与暂停不是一类动作。
+      -->
+      <view v-if="current.status !== 'ENDED'" class="acts sh-row">
+        <view class="sh-btn sh-btn--soft sh-fill" :class="{ 'is-disabled': busy }"
+              @tap="setStatus(current.status === 'RUNNING' ? 'PAUSED' : 'RUNNING')">
+          {{ current.status === "RUNNING" ? $t("activities.pause") : $t("activities.resume") }}
+        </view>
+        <view class="sh-btn sh-btn--danger sh-fill" :class="{ 'is-disabled': busy }"
+              @tap="setStatus('ENDED')">{{ $t("activities.end") }}</view>
+      </view>
+    </template>
+
     <view class="nav">
       <text v-if="step > 1" class="sh-btn sh-btn--soft nav__b" @tap="step -= 1">
         {{ $t("activityEdit.prev") }}
@@ -468,6 +539,11 @@ onLoad((q) => {
 </template>
 
 <style scoped>
+/* 两枚并排，与底部导航条分开 */
+.acts {
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
 .steps {
   gap: 8rpx;
 }

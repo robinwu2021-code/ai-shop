@@ -1604,8 +1604,8 @@ export default {
     used: "已用",
     spent: "已花",
     left: "还剩",
+    leftN: "还剩 {n}",
     unlimited: "不限",
-    edit: "编辑",
     pause: "暂停",
     resume: "恢复",
     end: "结束",
@@ -1620,6 +1620,8 @@ export default {
   },
   activityEdit: {
     title: "新建活动",
+    // 改既有活动时标题不能还写「新建」—— 这条改之前就在，只是没人走到
+    titleEdit: "改活动",
     step1: "活动类型",
     step2: "优惠",
     step3: "时间",
