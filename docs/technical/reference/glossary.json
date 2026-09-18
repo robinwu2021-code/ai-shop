@@ -11384,12 +11384,6 @@
           "ar": "حُفظت المسودة {no}"
         },
         {
-          "key": "purchase.noLines",
-          "zh-CN": "还没有货。补记昨天的，先把上面的日期改成昨天",
-          "en": "No items yet. Recording yesterday's delivery? Set the date above to yesterday",
-          "ar": "لا أصناف بعد. لتسجيل بضاعة الأمس، غيّر التاريخ أعلاه إلى الأمس"
-        },
-        {
           "key": "purchase.onHandN",
           "zh-CN": "实存 {n}",
           "en": "On hand {n}",
@@ -11403,9 +11397,9 @@
         },
         {
           "key": "purchase.postHint",
-          "zh-CN": "草稿不影响库存。过账后按本次进价更新成本",
-          "en": "A draft does not move stock; posting does. After posting, the cost price of these items is updated to this purchase price.",
-          "ar": "المسودة لا تحرّك المخزون، والترحيل يحرّكه. بعد الترحيل يُحدَّث سعر تكلفة هذه الأصناف بسعر هذا الشراء."
+          "zh-CN": "草稿不影响库存",
+          "en": "A draft does not move stock",
+          "ar": "المسودة لا تحرّك المخزون"
         },
         {
           "key": "purchase.posted",
@@ -14318,12 +14312,6 @@
           "ar": "اختر المورد الذي سيتم الإرجاع إليه"
         },
         {
-          "key": "stockOut.noLines",
-          "zh-CN": "尚未添加商品",
-          "en": "No products added yet",
-          "ar": "لا أصناف بعد."
-        },
-        {
           "key": "stockOut.noSupplier",
           "zh-CN": "还没有供应商 —— 记一笔进货时输入名称就能建",
           "en": "No suppliers yet — type a name while recording a purchase to create one",
@@ -16434,12 +16422,6 @@
           "zh-CN": "在途",
           "en": "In transit",
           "ar": "في الطريق"
-        },
-        {
-          "key": "transfer.noLines",
-          "zh-CN": "尚未添加商品",
-          "en": "No products added yet",
-          "ar": "لا أصناف بعد."
         },
         {
           "key": "transfer.notShipped",
