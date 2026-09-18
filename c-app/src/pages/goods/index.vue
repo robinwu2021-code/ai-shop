@@ -196,11 +196,14 @@ const batch = ref<GoodsBatch | null>(null);
  */
 const grp = ref<GoodsGroup | null>(null);
 
-async function loadGroup(goodsNo: string) {
+/** 取不到按「没有团」算 —— 拼团是补充信息，不该拖垮详情 */
+async function fetchGroup(goodsNo: string): Promise<GoodsGroup | null> {
+  // async + try 而不是 `.catch()`：调用本身同步抛错（比如接口不存在）时，`.catch` 接不住，
+  // 整个 load() 就断在这儿、页面一片空白 —— 与「补充信息不拖垮详情」正好相反
   try {
-    grp.value = await api.goodsGroup(goodsNo);
+    return await api.goodsGroup(goodsNo);
   } catch {
-    grp.value = null;
+    return null;
   }
 }
 
@@ -222,14 +225,19 @@ const coupons = ref<Coupon[]>([]);
 const showCoupons = ref(false);
 const claiming = ref("");
 
-async function loadCoupons(g: Goods) {
+/** 取不到就不出「领券」那一行 —— 同样不拖垮详情 */
+async function fetchCoupons(): Promise<Coupon[]> {
   try {
-    const all = await api.couponList();
-    coupons.value = all.filter((c) => c.endAt > Date.now()
-      && (c.merchantNo === g.merchant.merchantNo || c.funder === "PLATFORM"));
+    return await api.couponList();
   } catch {
-    coupons.value = [];
+    return [];
   }
+}
+
+/** 这件商品能用的券：本店的 + 平台出资的，且没过期。要等详情回来才知道是哪家店 */
+function couponsFor(all: Coupon[], g: Goods): Coupon[] {
+  return all.filter((c) => c.endAt > Date.now()
+    && (c.merchantNo === g.merchant.merchantNo || c.funder === "PLATFORM"));
 }
 
 /** 「满 50 减 5」「9 折 · 封顶 ¥20」 */
@@ -263,11 +271,12 @@ async function claim(c: Coupon) {
   }
 }
 
-async function loadBatch(goodsNo: string) {
+/** 取不到按「没有集单」算 */
+async function fetchBatch(goodsNo: string): Promise<GoodsBatch | null> {
   try {
-    batch.value = await api.goodsBatch(goodsNo);
+    return await api.goodsBatch(goodsNo);
   } catch {
-    batch.value = null;
+    return null;
   }
 }
 
@@ -281,16 +290,52 @@ function batchTime(ms: number): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+/** 首屏补充信息最多等这么久。超过就先出页面，它们到了再补上 —— 宁可偶尔晚一拍，不让整页干等 */
+const FIRST_SCREEN_WAIT_MS = 800;
+
+/** p 在 ms 内落地就用它的值；没落地返回 undefined（调用方据此决定「晚到再补」） */
+function within<T>(p: Promise<T>, ms: number): Promise<T | undefined> {
+  return Promise.race([p, new Promise<undefined>((r) => setTimeout(() => r(undefined), ms))]);
+}
+
 async function load(goodsNo: string) {
   currentNo.value = goodsNo;
+  /*
+   * **首屏会用到的三份一起发、一起落。**
+   *
+   * 此前是先等详情、渲染整页，再去取券与拼团 —— 它们晚 200ms 回来，
+   * 领券那一行插在价格卡下面，把商家卡、规格整片往下推 61px；
+   * 同一刻底部按钮从「加入购物车 / 立即购买」换成「单买 / 开团」。
+   * 用户看到的就是点进来之后「跳一下」（2026-09-19 逐次记录 DOM 变化量出来的）。
+   *
+   * 这两个请求本来就不依赖详情：券只是回来后要按商家过滤，拼团按商品号取。
+   * 所以三个同时发，总耗时约等于最慢那个，正常情况下与原来持平；
+   * 等它们都有了结果再给 goods 赋值 —— goods 一有值整页才渲染，于是只渲染一次。
+   *
+   * 失败不拖垮：fetchGroup / fetchCoupons 自己吞掉错误，落成「没有」。
+   * 太慢不干等：超过 FIRST_SCREEN_WAIT_MS 就先出页面，晚到的再补。
+   */
+  const groupP = fetchGroup(goodsNo);
+  const couponsP = fetchCoupons();
+  const batchP = fetchBatch(goodsNo);
   try {
     const g = await api.goodsDetail(goodsNo);
-  goods.value = g;
-  // 社区集单块（s26）：**独立加载、不等它**。它是补充信息 —— 放在这条链中间的话，
-  // 它一失败，下面默认选规格那几步就不跑了，买家看到的是「选不了规格、买不了」
-  void loadBatch(goodsNo);
-  void loadGroup(goodsNo);
-  void loadCoupons(g);
+    const [grpNow, allNow, batchNow] = await Promise.all([
+      within(groupP, FIRST_SCREEN_WAIT_MS),
+      within(couponsP, FIRST_SCREEN_WAIT_MS),
+      within(batchP, FIRST_SCREEN_WAIT_MS),
+    ]);
+    grp.value = grpNow ?? null;
+    coupons.value = allNow ? couponsFor(allNow, g) : [];
+    batch.value = batchNow ?? null;
+    // 最后才给 goods 赋值：上面两样先就位，第一次渲染就是完整的首屏
+    goods.value = g;
+    // 晚到的补上（只在超时那种少见情况下发生）
+    if (grpNow === undefined) void groupP.then((v) => { if (currentNo.value === goodsNo) grp.value = v; });
+    if (allNow === undefined) void couponsP.then((v) => { if (currentNo.value === goodsNo) coupons.value = couponsFor(v, g); });
+    // 社区集单块（s26）也一起并发：它通常在首屏以下，但高屏手机（896）上刚好露在底边，
+    // 晚到就是一块从底下冒出来。失败照样吞掉 —— 不会让下面默认选规格那几步跑不了
+    if (batchNow === undefined) void batchP.then((v) => { if (currentNo.value === goodsNo) batch.value = v; });
   // 默认选中第一个有货的 SKU 的组合
   const first = g.skus.find((s) => s.stock > 0) ?? g.skus[0];
   chosen.value = first ? [...first.optionValues] : [];
