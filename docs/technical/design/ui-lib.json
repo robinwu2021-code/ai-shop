@@ -266,7 +266,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 283,
+        "b-app": 285,
         "c-app": 43
       }
     },
@@ -288,7 +288,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 81,
+        "b-app": 83,
         "c-app": 48
       }
     },
@@ -626,7 +626,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 212,
+        "b-app": 211,
         "c-app": 68
       }
     },
@@ -946,7 +946,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 59,
+        "b-app": 58,
         "c-app": 3
       }
     },
@@ -1062,7 +1062,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 222,
+        "b-app": 223,
         "c-app": 128
       }
     },
@@ -1126,7 +1126,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 133,
+        "b-app": 131,
         "c-app": 61
       }
     },
@@ -1220,7 +1220,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 70,
+        "b-app": 68,
         "c-app": 28
       }
     },
@@ -1426,7 +1426,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 292,
+        "b-app": 295,
         "c-app": 141
       }
     },
@@ -1458,7 +1458,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 130,
+        "b-app": 129,
         "c-app": 74
       }
     },
@@ -1628,7 +1628,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 54,
+        "b-app": 52,
         "c-app": 19
       }
     },
@@ -1722,7 +1722,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 100,
+        "b-app": 99,
         "c-app": 18
       }
     },
@@ -1744,7 +1744,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 74,
+        "b-app": 71,
         "c-app": 0
       }
     },
@@ -2323,7 +2323,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 46,
+        "b-app": 49,
         "c-app": 0,
         "lib": 0
       },
@@ -3869,13 +3869,14 @@
         "sh-add",
         "sh-empty",
         "sh-icon",
+        "sh-kv",
         "sh-scaffold",
         "biz-item-picker",
         "biz-supplier-picker"
       ],
-      "libClassHits": 44,
+      "libClassHits": 38,
       "localSelectors": 12,
-      "localCssLines": 47,
+      "localCssLines": 46,
       "rolled": []
     },
     {
@@ -4141,9 +4142,9 @@
         "biz-item-picker",
         "biz-store-tag"
       ],
-      "libClassHits": 32,
-      "localSelectors": 7,
-      "localCssLines": 27,
+      "libClassHits": 33,
+      "localSelectors": 10,
+      "localCssLines": 42,
       "rolled": []
     },
     {
