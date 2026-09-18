@@ -50,14 +50,14 @@ function statusChip(o: Order): string {
 function statusText(o: Order): string {
   const f = o.fulfillment;
   if (o.status === "PAID") {
-    if (f === FULFILLMENT.PICKUP || f === FULFILLMENT.NEIGHBOR_PICKUP) return t("home.toVerify");
-    if (f === FULFILLMENT.DELIVERY) return t("home.toDeliver");
+    if (f === FULFILLMENT.PICKUP || f === FULFILLMENT.NEIGHBOR_PICKUP) return t("home.cell.toVerify");
+    if (f === FULFILLMENT.DELIVERY) return t("home.cell.toDeliver");
     return t("order.statusPAID");
   }
   if (o.status === "FULFILLING") {
     // 自送单在路上说「配送中」更准；自提/到店核销说「待核销」；快递才是「已发货」
     if (f === FULFILLMENT.DELIVERY) return t("order.delivering");
-    if (PICKUP_LIKE.has(f)) return t("home.toVerify");
+    if (PICKUP_LIKE.has(f)) return t("home.cell.toVerify");
     return t("order.statusSHIPPED");
   }
   return t(`order.status${o.status}`);

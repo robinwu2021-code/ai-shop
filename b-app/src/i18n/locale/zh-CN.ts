@@ -160,6 +160,17 @@ export default {
   },
 
   home: {
+    // 工作台待办格。**独立子命名空间** —— 模板里是 $t(`home.cell.${key}`)，
+    // 平铺在 home.* 下的话那个动态键会让整个 home 命名空间免检（45 条）
+    cell: {
+    toShip: "待发货",
+    toDeliver: "待自送",
+    toStock: "待备货",
+    toVerify: "待核销",
+    toPick: "待分拣",
+    afterSale: "待售后",
+    toReply: "待回评",
+    },
     noticeNone: "未发布",
     noticeUntil: "{s}到期",
     scopeEntry: "经营范围与送货",
@@ -172,21 +183,11 @@ export default {
     skuIdentityEntryHint: "条码 / 货号 / 单位，批量改",
     notMerchant: "还没有开店",
     notMerchantHint: "填一张表就能开张，个人主体免资质",
-    goApply: "去入驻",
     quickStart: "先把店开起来",
     goApplyWithLicense: "有营业执照？直接走入驻",
     quickStartTitle: "店铺名称",
     quickStartBody: "填写店名即可开店。营业执照可稍后在「去入驻」中补交；补齐前店铺对顾客不可见，但商品、经营范围与员工均可先行配置。",
     quickStartPh: "如 张记粮油",
-    auditing: "资质审核中，通过后即可上架商品",
-    todo: "待办",
-    toShip: "待发货",
-    toDeliver: "待自送",
-    toStock: "待备货",
-    toVerify: "待核销",
-    toPick: "待分拣",
-    afterSale: "待售后",
-    toReply: "待回评",
     /*
      * 进销存那张卡。**原来它是九宫格里的一格，数字是「缺货 + 滞销」** ——
      * 店铺健康时那两个数恒为 0，于是格子永远写着「0 库存」，混在七个订单
@@ -202,7 +203,6 @@ export default {
       receiveN: "收货 {n}",
       resumeCount: "继续盘点",
     },
-    quotable: "可报价",
     today: "今日",
     orders: "订单",
     gmv: "成交额",
@@ -222,10 +222,7 @@ export default {
       agreement: "你的资料由平台运营人员代为提交，《商家服务协议》需要你本人确认。生意照做不受影响。",
     },
     blockerGo: "去处理",
-    activityEntry: "活动",
     marketingEntry: "营销",
-    groupEntry: "团购",
-    quoteEntry: "求团报价",
     laterBatch: "该功能在后续批次交付",
   },
 
@@ -1518,11 +1515,13 @@ export default {
       activities: "活动",
       coupons: "优惠券",
       groups: "团购",
+      quotes: "求团报价",
     },
     entryHint: {
       activities: "满减、特价、团购、买赠",
       coupons: "发给人，下单时抵扣或到店核销",
       groups: "看团凑齐没有，也可以自己开一个",
+      quotes: "邻居发需求，你来报价",
     },
     title: "营销",
   },

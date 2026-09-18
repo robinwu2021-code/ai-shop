@@ -357,7 +357,7 @@ onShow(load);
       <view class="tiles sh-wrap">
         <view v-for="c in cells" :key="c.key" class="sh-card tiles__cell" @tap="open(c.route)">
           <text class="txt-hero tiles__n sh-num" :class="c.n ? 'txt-primary' : 'txt-faint'">{{ c.n }}</text>
-          <text class="txt-caption tiles__label">{{ $t(`home.${c.key}`) }}</text>
+          <text class="txt-caption tiles__label">{{ $t(`home.cell.${c.key}`) }}</text>
         </view>
       </view>
 
@@ -464,11 +464,11 @@ onShow(load);
         <view class="fulfill__row">
           <view v-if="merchant.can('biz:receive')" class="fulfill__half" @tap="open(ROUTES.picking)">
             <text class="txt-display fulfill__n sh-num" :class="todo?.toPick ? 'txt-primary' : 'txt-faint'">{{ todo?.toPick ?? 0 }}</text>
-            <text class="sh-muted">{{ $t("home.toPick") }}</text>
+            <text class="sh-muted">{{ $t("home.cell.toPick") }}</text>
           </view>
           <view v-if="merchant.can('biz:verify')" class="fulfill__half" @tap="open(ROUTES.verify)">
             <text class="txt-display fulfill__n sh-num" :class="todo?.toVerify ? 'txt-primary' : 'txt-faint'">{{ todo?.toVerify ?? 0 }}</text>
-            <text class="sh-muted">{{ $t("home.toVerify") }}</text>
+            <text class="sh-muted">{{ $t("home.cell.toVerify") }}</text>
           </view>
         </view>
       </view>
@@ -527,9 +527,6 @@ onShow(load);
         <text class="txt-title">{{ $t("home.marketingEntry") }}</text>
       </view>
 
-      <view v-if="merchant.can('biz:campaign')" class="sh-card entry" @tap="open(ROUTES.quotes)">
-        <text class="txt-title">{{ $t("home.quoteEntry") }}</text>
-      </view>
     </template>
   </sh-scaffold>
 </template>

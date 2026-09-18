@@ -33,6 +33,12 @@ const ENTRIES = [
   { key: "activities", route: ROUTES.activities },
   { key: "coupons", route: ROUTES.coupons },
   { key: "groups", route: ROUTES.groups },
+  /*
+   * 求团报价：**别人发需求、你去报价**，是进来的活不是配置 ——
+   * 与另外三个不同，它有「今天有几单等着你」这种时效性。
+   * 但它属于团那条线，留在工作台一级会让营销这条线有两个口。
+   */
+  { key: "quotes", route: ROUTES.quotes },
 ] as const;
 
 function go(url: string) {
