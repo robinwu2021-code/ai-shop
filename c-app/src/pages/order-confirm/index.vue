@@ -779,15 +779,20 @@ onMounted(async () => {
 
       <!-- 送货上门 / 快递 -->
       <view v-else-if="needAddress" class="recv" @tap="gotoAddress">
+        <!--
+          **与收货地址页是同一件**（bare = 不要卡片外壳，它在这张卡里面）。
+          此前两处各画一遍：那边是「列表行 + 五个动作」，这边是「姓名电话一行 +
+          地址一行」—— 同一条地址在两屏上的样子不一样，用户要重新认一遍
+          哪个是姓名、哪个是门牌。
+        -->
         <template v-if="address">
-          <view class="sh-row sh-row--baseline">
-            <text class="txt-strong">{{ address.name }}</text>
-            <text class="txt-caption sh-num">{{ address.phone }}</text>
-            <text class="txt-caption recv__more">{{ $t("confirm.change") }}</text>
-          </view>
-          <text class="txt-caption recv__sub">
-            {{ address.region }} {{ address.detail }} {{ address.houseNo }}
-          </text>
+          <biz-address-card
+            :address="address"
+            bare
+            :more="String($t('confirm.change'))"
+            @tap="gotoAddress"
+            @fix="gotoAddress"
+          ></biz-address-card>
           <!--
             送不到要**点名是哪一家**。只说「超出配送范围」的话，
             车里有三家店时他不知道该换地址还是该把某一家的货拿出来。

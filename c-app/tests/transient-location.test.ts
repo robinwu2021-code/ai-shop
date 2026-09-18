@@ -178,6 +178,45 @@ describe("当前位置：一次性上下文", () => {
     expect(pickPage, "选择地点页没有重新定位").toContain("location.relocate(");
   });
 
+
+  // ---------------------------------------------------------------- 批次 C：共用件
+
+  it("★★★ 一条地址长什么样**只有一份实现** —— 两屏不能各画一遍", () => {
+    /*
+     * 此前下单页是「姓名电话一行 + 地址一行」，收货地址页是「列表行 + 五个动作」。
+     * 同一条地址在两屏上的样子不一样时，用户要重新认一遍哪个是姓名、哪个是门牌 ——
+     * 而这种不一致没有任何闸门拦得住，它每一处单独看都很合理。
+     *
+     * 判据分两半（**只判前一半的话，页面里再画一遍它也绿**）：
+     *   · 两处都引用了共用件；
+     *   · 两处都不再自己拼那几个字段。
+     */
+    expect(addressPage, "收货地址页没用共用件").toContain("biz-address-card");
+    expect(confirm, "下单页没用共用件").toContain("biz-address-card");
+    for (const [name, src] of [["收货地址页", addressPage], ["下单页", confirm]] as const) {
+      expect(src, `${name}还在自己拼地址那一行 —— 那就是第二份实现`)
+        .not.toMatch(/\{\{ *address\.region *\}\}|a\.region \}\} \{\{ a\.detail/);
+    }
+  });
+
+  it("★★★ 收货地址页上**实心按钮只有一个**", () => {
+    /*
+     * 早先空态给的是整块卡 + 整条实心「存为收货地址」，底部还有一条同样大的
+     * 「新增地址」—— 一屏两个同等份量的主按钮，而它们不是同一个量级的动作：
+     * 这一页的主动作是「挑一条地址去下单」，存不存当前位置是顺手的事。
+     *
+     * `sh-btn` 不带 --soft/--ghost 修饰就是实心。数它。
+     *
+     * **只数弹层外面那一屏。** 编辑弹层里的「保存」是另一屏的主动作，
+     * 它本来就该是实心 —— 把整个文件一起数会把一条正确的设计算成违规
+     * （第一版就是这样，报了 2 颗）。
+     */
+    const listScreen = addressPage.slice(0, addressPage.indexOf("<sh-sheet"));
+    expect(listScreen.length, "找不到弹层的分界，这条守卫量的范围不对了").toBeGreaterThan(0);
+    const solid = (listScreen.match(/class="sh-btn(?![a-z-])(?![^"]*--)/g) ?? []).length;
+    expect(solid, `收货地址页的列表那一屏有 ${solid} 颗实心按钮 —— 只该有底部那一颗`).toBe(1);
+  });
+
 });
 
 /**

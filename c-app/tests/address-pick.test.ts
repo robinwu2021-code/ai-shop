@@ -507,6 +507,7 @@ describe("模糊定位与无坐标地址：都要说话", () => {
  * 他点一下就切，不追问。
  */
 describe("定位只匹配收货地址", () => {
+  const placeBar = code("src/components/biz/biz-place-bar.vue");
   const home = code("src/pages/home/index.vue");
   const pickPage = code("src/pages/address-pick/index.vue");
   const addressPage = code("src/pages/address/index.vue");
@@ -524,12 +525,16 @@ describe("定位只匹配收货地址", () => {
      * 回落到无位置首屏只留给**连定位都拿不到**的情况。
      */
     /*
-     * 判**行为**不判那一行字面量：这一块后来拆成了两档
-     * （一条地址都没有 → 整块卡；已有地址而当前位置不在其中 → 收成一行），
-     * 钉着旧表达式会让一次正当的拆分变红，而它保护的东西一点没少。
+     * 判**行为**不判那一行字面量。这一块改过两次形状：先拆成两档
+     * （没有地址 → 整块卡；已有地址 → 收成一行），后来两档合成一件共用的
+     * `biz-place-bar`（M3：那个整块卡 + 实心大按钮与底部的「新增地址」
+     * 在一屏上成了两个同等份量的主按钮）。
+     *
+     * **两次改动都没动它保护的东西**：定位拿到了、又没匹配上任何地址时，
+     * 这一档必须在。钉着某一版的表达式只会让正当的整理变红。
      */
-    expect(addressPage, "「当前位置」这一档整个没了").toMatch(/locatedAt && !list\.length/);
-    expect(addressPage, "已有地址时那一行没了").toMatch(/locatedAt && !locatedMatch/);
+    expect(addressPage, "「当前位置」这一档整个没了").toContain("biz-place-bar");
+    expect(addressPage, "它该在「有定位但没匹配上」时出现").toMatch(/locatedAt && !locatedMatch/);
     const body = bodyOf(addressPage, "async function useCurrentLocation(");
     expect(body, "没有 useCurrentLocation").not.toBeNull();
     expect(body).toContain("location.useTransient");
@@ -593,7 +598,9 @@ describe("定位只匹配收货地址", () => {
     const body = bodyOf(addressPage, "function saveHereAsAddress(");
     expect(body, "没有 saveHereAsAddress").not.toBeNull();
     expect(body, "该调 store 里唯一那一份").toContain("gotoSaveHere");
-    expect(addressPage).toContain("address.saveAsAddress");
+    // 那个动作已经搬进共用件 biz-place-bar，页面这边接的是它的事件
+    expect(addressPage, "「存为地址」那个动作没接上").toMatch(/@save="saveHereAsAddress"/);
+    expect(placeBar, "共用件里没有「存为地址」").toContain("address.saveAsAddressShort");
   });
 
   it("★★★ 当前位置**不入地址簿、不写服务端** —— 它是上下文不是资料", () => {

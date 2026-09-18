@@ -458,90 +458,36 @@ onShow(() => {
 <template>
   <sh-scaffold title-key="address.title">
     <!--
-      **一条都没匹配到时，以当前位置为准。**（PRD §6.1.0）
-      不是死路：他照样能逛、能下单；要不要存成地址，下单时再问。
-      有匹配的话不显示这一条 —— 那条地址就在下面，标着「你在这儿」。
+      **当前位置收成一行，不是一块。**（PRD §6.1.0 + M3）
+      早先空态给的是整块卡 + 整条实心大按钮，底部还有一条同样大的「新增地址」——
+      一屏两个同等份量的主按钮。而「存为地址」不是这一页的主动作：
+      这一页的主动作是「挑一条地址去下单」。
+
+      有匹配的话不显示这一行 —— 那条地址就在下面，标着「你在这儿」。
     -->
-    <!--
-      **一条地址都没有时，这一张是主角。** 他人就站在那儿，定位已经知道是哪个小区 ——
-      此前新用户要走「选点 → 逐格填表」才有第一条地址，而那一段是可以省掉的。
-      所以这一档给整块卡 + 实心主按钮；下面的空态只说事实，不再催他去建。
-    -->
-    <view v-if="locatedAt && !list.length" class="sh-card herebig">
-      <view class="sh-row herebig__head">
-        <sh-icon name="pin" :size="26" color="var(--sh-primary)"></sh-icon>
-        <text class="txt-caption txt-primary">{{ $t("address.youAreHere") }}</text>
-        <text class="sh-fill"></text>
-        <!-- 「重新定位」与首页、选择地点页共用同一个动作 -->
-        <text class="txt-caption txt-primary sh-hit" @tap.stop="relocate">{{ $t("home.relocate") }}</text>
-      </view>
-      <text class="txt-strong herebig__name">{{ locatedName || $t("address.youAreHere") }}</text>
-      <text v-if="location.placeStale" class="sh-hint">{{ $t("address.placeStale") }}</text>
-      <view class="sh-btn herebig__save" @tap="saveHereAsAddress">
-        {{ $t("address.saveAsAddress") }}
-      </view>
-    </view>
+    <biz-place-bar
+      v-if="locatedAt && !locatedMatch"
+      :name="locatedName"
+      :sub="list.length ? String($t('address.noMatchHint')) : ''"
+      :stale="location.placeStale"
+      can-save
+      @relocate="relocate"
+      @save="saveHereAsAddress"
+    ></biz-place-bar>
 
-    <!--
-      已经有地址、而当前位置不在其中：收成一行。
-      **不能给整块卡** —— 它会压在默认地址上面，而那条才是他多数时候要用的。
-    -->
-    <view v-else-if="locatedAt && !locatedMatch" class="sh-card here sh-row">
-      <sh-icon name="pin" :size="24" color="var(--sh-primary)"></sh-icon>
-      <view class="sh-fill here__body">
-        <text class="txt-strong here__name">{{ locatedName || $t("address.youAreHere") }}</text>
-        <text class="txt-caption here__sub">{{ $t("address.noMatchHint") }}</text>
-      </view>
-      <text class="txt-caption txt-primary here__save" @tap="saveHereAsAddress">
-        {{ $t("address.saveAsAddressShort") }}
-      </text>
-    </view>
-
-    <view v-for="a in list" :key="a.addressId" class="sh-card card" @tap="pick(a)">
-      <view class="card__head sh-wrap">
-        <text class="txt-strong">{{ a.name }}</text>
-        <text class="txt-caption sh-num">{{ a.phone }}</text>
-        <text v-if="a.tag" class="txt-caption sh-chip tiny">{{ a.tag }}</text>
-        <text v-if="a.isDefault" class="txt-caption sh-chip sh-chip--primary tiny">
-          {{ $t("address.default") }}
-        </text>
-        <!-- 定位匹配到的那条：标出来即可，**点一下就切**，不弹窗不追问 -->
-        <text v-if="a.addressId === locatedMatch" class="txt-caption sh-chip sh-chip--primary tiny">
-          {{ $t("address.youAreHere") }}
-        </text>
-      </view>
-      <text class="txt-caption card__addr">{{ a.region }} {{ a.detail }} {{ a.houseNo }}</text>
-
-      <!--
-        **没坐标的地址在列表上也要看得出来。** 此前只有编辑页里说一句 ——
-        而他根本不会去编辑一条"看起来好好的"地址。
-        自送半径判不了、骑手导航打不开，三件事在列表上都看不出区别。
-        动作直接给「地图选点」：说了问题就要给出路，否则这一条只是让人不安。
-      -->
-      <view v-if="a.latE6 == null || a.lngE6 == null"
-            class="sh-notice sh-notice--warning card__nocoord sh-row sh-row--between"
-            @tap.stop="openEdit(a)">
-        <text class="txt-caption sh-fill">{{ $t("address.noCoordHint") }}</text>
-        <text class="txt-caption card__fix">{{ $t("address.pick") }}</text>
-      </view>
-
-      <view class="card__ops sh-row">
-        <!--
-          **只保留「当前位置」这个状态标，不再单给一个「设为当前位置」按钮** ——
-          整张卡点一下就是切换（见 pick），再摆一个按钮就是同一件事的第二个入口，
-          而两个入口里总有一个会先坏掉、且没人发现。
-        -->
-        <text v-if="location.active?.addressId === a.addressId"
-              class="txt-caption txt-strong op txt-primary">{{ $t("address.here") }}</text>
-        <text v-if="!a.isDefault" class="txt-caption op txt-primary" @tap.stop="setDefault(a)">
-          {{ $t("address.setDefault") }}
-        </text>
-        <!-- 左边是状态与「设为默认」，右边是编辑/删除：两组语义不同，挤在一起读不出分组 -->
-        <text class="sh-fill"></text>
-        <text class="txt-caption op txt-primary" @tap.stop="openEdit(a)">{{ $t("address.edit") }}</text>
-        <text class="txt-caption op is-danger" @tap.stop="remove(a)">{{ $t("address.remove") }}</text>
-      </view>
-    </view>
+    <biz-address-card
+      v-for="a in list"
+      :key="a.addressId"
+      :address="a"
+      actions
+      :here="a.addressId === locatedMatch"
+      :active="location.active?.addressId === a.addressId"
+      @tap="pick(a)"
+      @edit="openEdit(a)"
+      @remove="remove(a)"
+      @default="setDefault(a)"
+      @fix="openEdit(a)"
+    ></biz-address-card>
 
     <!-- 空态只说事实：他现在就能逛，只是还不能下单。上面那张卡才是下一步 -->
     <sh-empty
