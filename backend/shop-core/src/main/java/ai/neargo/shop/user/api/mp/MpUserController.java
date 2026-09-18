@@ -216,6 +216,11 @@ public class MpUserController {
 
     @PostMapping("/address")
     public List<AddressVO> saveAddress(@jakarta.validation.Valid @RequestBody SaveAddressReq req) {
+        if (!ai.neargo.shop.common.Phones.valid(req.phone(), req.countryCode())) {
+            throw ai.neargo.shop.common.BizException.of(
+                    ai.neargo.shop.common.ErrorCode.BAD_REQUEST,
+                    ai.neargo.shop.common.Phones.MESSAGE);
+        }
         return addressService.save(new AddressService.SaveCommand(
                 req.addressId(), req.name(), req.phone(), req.region(), req.province(), req.city(),
                 req.district(), req.detail(), req.houseNo(), req.isDefault(), req.tag(),
@@ -246,9 +251,13 @@ public class MpUserController {
 
     /** @param latE6 地图选点给的坐标（gcj02，E6）；不传 = 不改 */
     public record SaveAddressReq(String addressId, @NotBlank String name,
-                                 @NotBlank @jakarta.validation.constraints.Pattern(
-                                         regexp = ai.neargo.shop.common.Phones.CN_MOBILE,
-                                         message = ai.neargo.shop.common.Phones.MESSAGE) String phone,
+                                 /*
+                                  * **不在这儿钉大陆格式**（V333）：海外地址的号码不是 11 位，
+                                  * 钉在注解上的话新加的那三列白加 —— 地址照样存不下，
+                                  * 而报的是「手机号格式不对」，与国家毫无关系。
+                                  * 判据挪到方法体里，按 countryCode 挑（见 Phones.valid）。
+                                  */
+                                 @NotBlank String phone,
                                  String region,
                                  String province, String city, String district,
                                  @NotBlank String detail,

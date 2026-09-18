@@ -24,6 +24,32 @@ public final class Phones {
     /** 拒绝时的提示。**要点名字段** —— 只说「参数错误」的话，用户改哪儿全靠猜。 */
     public static final String MESSAGE = "手机号格式不对，应为 11 位大陆手机号";
 
+    /**
+     * 海外号码的**宽判据**：3–20 位数字（可带一个前导 +）。
+     *
+     * <p><b>为什么不逐国校验</b>：各国的号码规则加起来是一张永远过期的表，
+     * 而它错了的后果是「一个真号被拒收」—— 比放行一个假号更糟：
+     * 后者在履约时还能人工补救，前者让人根本存不了地址。
+     * 一期只拦「明显不是号码」的东西（空、太短、带字母）。
+     */
+    public static final String INTL_MOBILE = "^\\+?\\d{3,20}$";
+
+    /**
+     * 按国家挑判据。
+     *
+     * <p>中国大陆仍走严格那条（理由见类注释：只查位数会放行 00000000000，
+     * 而问题要到骑手打不通那一刻才暴露）。
+     *
+     * @param countryCode ISO 两位码；空或 {@code CN} 都按大陆算 —— 旧端不发这个字段
+     */
+    public static boolean valid(String phone, String countryCode) {
+        if (phone == null || phone.isBlank()) {
+            return false;
+        }
+        boolean mainland = countryCode == null || countryCode.isBlank() || "CN".equals(countryCode);
+        return phone.matches(mainland ? CN_MOBILE : INTL_MOBILE);
+    }
+
     private Phones() {
     }
 }

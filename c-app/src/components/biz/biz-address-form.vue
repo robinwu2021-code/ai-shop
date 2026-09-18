@@ -182,7 +182,8 @@ const valid = computed(
   () =>
     notBlank(draft.value.name) &&
     // 此前是 `/^\d{11}$/` —— 只查长度，`00000000000` 一路存进地址簿
-    isPhone(draft.value.phone) &&
+    // 海外号码不是 11 位大陆格式 —— 端上也要按国家放宽，否则按钮一直是灰的
+    (overseas.value ? /^\+?\d{3,20}$/.test(draft.value.phone) : isPhone(draft.value.phone)) &&
     notBlank(draft.value.region) &&
     notBlank(draft.value.detail) &&
     /*
