@@ -235,17 +235,31 @@ PROTO_URL_BY_ROUTE = {
         "pages/coupon-issues/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
         "pages/coupon-issue/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
         "pages/verify/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/platform-activities/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/platform-activity-apply/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/batch-period/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
     },
     # C 端收货地址（2026-09-17，2026-09-18 补到七屏）。**画布式原型，没有页内锚点** ——
     # 各屏并排摆着（没有地址 / 列表 / 新建整页 / 选择地点 / 选城市 / 海外 / 搜不到时），
     # 外加一张文案对照表。所以这几条只登记地址不登记锚点，链接落到画布本身，
     # 见 proto_of 的说明。
     "c-app": {
+        # 营销 C 端六屏（营销原型 s21–s26）
+        "pages/goods/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/group/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/order-confirm/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/coupons/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
         "pages/address/index": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
         "pages/address-edit/index": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
         "pages/address-pick/index": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
         "pages/city-pick/index": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
     },
+}
+
+
+PROTO_URL_BY_ROUTE["ops-web"] = {
+    "marketing?tab=platform": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+    "marketing?tab=platform-audit": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
 }
 
 
@@ -282,6 +296,8 @@ PROTO_ANCHORS = {
         "pages/coupons/index": "s12", "pages/coupon-edit/index": "s13",
         "pages/coupon-issues/index": "s16", "pages/coupon-issue/index": "s16",
         "pages/verify/index": "s17",
+        "pages/platform-activities/index": "s27", "pages/platform-activity-apply/index": "s28",
+        "pages/batch-period/index": "s20",
         # 规格原型（另一份 artifact，见 PROTO_URL_BY_ROUTE）
         "pages/goods-edit/index": "s19",
         "pages/my-specs/index": "s23",
@@ -296,8 +312,11 @@ PROTO_ANCHORS = {
     },
     "c-app": {
         "pages/store/index": "s15", "pages/member-card/index": "s16",
-        "pages/coupons/index": "s17",
+        # 营销原型 s21–s26；券包从 v1 的 s17 挪到这一份的 s24
+        "pages/goods/index": "s21", "pages/group/index": "s22",
+        "pages/order-confirm/index": "s23", "pages/coupons/index": "s24",
     },
+    "ops-web": {"marketing?tab=platform": "s29", "marketing?tab=platform-audit": "s30"},
 }
 
 # 本机 dev server 端口（mock 模式）。点「预览」直接进那一页，不用自己拼路由
@@ -319,6 +338,12 @@ PROTOTYPES = [
     ("ops-web", "/members", "会员总览（跨商家）", "会员与营销"),
     ("ops-web", "/members?tab=person", "人档与合并", "会员与营销"),
     ("ops-web", "/members?tab=reach", "触达监控", "会员与营销"),
+    # 营销原型里还没有页面的五屏（2026-09-18）
+    ("b-app", "/pages/platform-activities/index", "平台活动", "会员与营销"),
+    ("b-app", "/pages/platform-activity-apply/index", "报名平台活动", "会员与营销"),
+    ("b-app", "/pages/batch-period/index", "集单 · 一期", "会员与营销"),
+    ("ops-web", "/marketing?tab=platform", "新建平台活动", "会员与营销"),
+    ("ops-web", "/marketing?tab=platform-audit", "平台活动报名审核", "会员与营销"),
     # 进销存九屏：需求见 docs/requirements/进销存-需求.md，落地后从这里删掉
     # 商家资金全链路：接口都在、B 端没有出口的那几页
 ]

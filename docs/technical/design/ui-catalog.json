@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 75,
+      "count": 78,
       "domains": [
         {
           "name": "工作台",
@@ -772,6 +772,39 @@
               "proto": "s16",
               "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": null
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/platform-activities/index",
+              "title": "平台活动",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型",
+              "proto": "s27",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": null
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/platform-activity-apply/index",
+              "title": "报名平台活动",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型",
+              "proto": "s28",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": null
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/batch-period/index",
+              "title": "集单 · 一期",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型",
+              "proto": "s20",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": null
             }
           ]
         },
@@ -934,8 +967,8 @@
               "domain": "商品",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s21",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": "http://localhost:5176/#/pages/goods/index"
             },
             {
@@ -972,8 +1005,8 @@
               "domain": "订单与履约",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s23",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": "http://localhost:5176/#/pages/order-confirm/index"
             },
             {
@@ -1119,8 +1152,8 @@
               "domain": "团购与求团",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s22",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": "http://localhost:5176/#/pages/group/index"
             },
             {
@@ -1260,8 +1293,8 @@
               "domain": "会员与营销",
               "tab": false,
               "status": "已实现",
-              "proto": "s17",
-              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
+              "proto": "s24",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": "http://localhost:5176/#/pages/coupons/index"
             },
             {
@@ -1293,8 +1326,8 @@
               "domain": "会员与营销",
               "tab": false,
               "status": "原型",
-              "proto": "s17",
-              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
+              "proto": "s24",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": null
             }
           ]
@@ -1320,7 +1353,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 143,
+      "count": 145,
       "domains": [
         {
           "name": "经营看板",
@@ -3076,11 +3109,33 @@
               "proto": null,
               "protoUrl": null,
               "preview": null
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing?tab=platform",
+              "title": "新建平台活动",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型",
+              "proto": "s29",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": null
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing?tab=platform-audit",
+              "title": "平台活动报名审核",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型",
+              "proto": "s30",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": null
             }
           ]
         }
       ]
     }
   ],
-  "total": 251
+  "total": 256
 }
