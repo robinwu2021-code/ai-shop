@@ -144,7 +144,7 @@ export const communityMock: Pick<ShopApi,
    * 但形状必须与真后端一致：直辖市（市即省）、区县是叶子、没有街道。
    * 形状不一致的 mock 比没有 mock 更糟：端上按 mock 调通了，接真后端才发现走不通。
    */
-  async regions(parent?: string) {
+  async regions(parent?: string, level?: string) {
     const rows: RegionNode[] = [
       { regionCode: "33", parentCode: null, level: "PROVINCE", name: "浙江省", hasChild: true },
       { regionCode: "31", parentCode: null, level: "PROVINCE", name: "上海市", hasChild: true },
@@ -154,12 +154,16 @@ export const communityMock: Pick<ShopApi,
       // 直辖市的第二级在国标里就是它自己 —— 端上要能一路点下去，不能在这里断掉
       { regionCode: "3101", parentCode: "31", level: "CITY", name: "上海市", hasChild: true },
       { regionCode: "4419", parentCode: "44", level: "CITY", name: "东莞市", hasChild: true },
+      { regionCode: "4403", parentCode: "44", level: "CITY", name: "深圳市", hasChild: true },
+      { regionCode: "1101", parentCode: "11", level: "CITY", name: "北京市", hasChild: true },
       { regionCode: "330106", parentCode: "3301", level: "DISTRICT", name: "西湖区", hasChild: false },
       { regionCode: "330108", parentCode: "3301", level: "DISTRICT", name: "滨江区", hasChild: false },
       { regionCode: "330203", parentCode: "3302", level: "DISTRICT", name: "海曙区", hasChild: false },
       { regionCode: "310115", parentCode: "3101", level: "DISTRICT", name: "浦东新区", hasChild: false },
       { regionCode: "441900", parentCode: "4419", level: "DISTRICT", name: "东莞市", hasChild: false },
     ];
+    // level=CITY：一次给全部市（城市选择器用）。它忽略 parent —— 与后端同一口径
+    if (level) return delay(rows.filter((r) => r.level === level));
     // 不传 parent = 取省级。判 `== null` 而不是 `!parent`：空串也当成「取顶层」
     return delay(rows.filter((r) => (parent ? r.parentCode === parent : r.parentCode === null)));
   },

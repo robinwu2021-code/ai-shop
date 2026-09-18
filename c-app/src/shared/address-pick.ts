@@ -47,6 +47,9 @@ function oneShot<T>() {
   };
 }
 
+/** 城市选择页 → 选择地点页：选中的那个市。 */
+export const pickedCity = oneShot<{ code: string; name: string }>();
+
 /** 地址簿 → 结算页：选中的那条地址的 id。 */
 export const pickedAddress = oneShot<string>();
 

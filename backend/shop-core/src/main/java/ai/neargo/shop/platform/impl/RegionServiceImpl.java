@@ -223,6 +223,24 @@ public class RegionServiceImpl implements RegionService {
         return toVOs(rows);
     }
 
+    @Override
+    public List<RegionVO> allOfLevel(String level, boolean enabledOnly) {
+        /*
+         * **只放行市级。** 区县 3000+、街道 4 万、村 62 万 —— 一次给全会把首屏拖垮。
+         * 做成「传什么给什么」的通用查询，就一定有人拿它去拉村，
+         * 而那件事不会报错、只会慢得莫名其妙。
+         */
+        if (!SysRegion.LEVEL_CITY.equals(level)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        List<SysRegion> rows = DataScopeContext.executeWithoutScope(() ->
+                mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                        .eq(enabledOnly, SysRegion::getEnabled, true)
+                        .eq(SysRegion::getLevel, level)
+                        .orderByAsc(SysRegion::getRegionCode)));
+        return toVOs(rows);
+    }
+
     /** 下一级的 level 由父级推导 —— 不让人选，选错的代价是整棵树的层级从此对不上 */
     private static String childLevel(String parentLevel) {
         return switch (parentLevel) {

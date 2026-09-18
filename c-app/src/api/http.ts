@@ -131,7 +131,7 @@ export const httpApi: ShopApi = {
   communityDetail: (communityNo) =>
     call<Community>("communityDetail", { communityNo }),
   openRegions: () => call<RegionOption[]>("openRegions"),
-  regions: (parent) => call<RegionNode[]>("regions", undefined, { parent }),
+  regions: (parent, level) => call<RegionNode[]>("regions", undefined, { parent, level }),
 
   // ---- 商品
   goodsList: (q: GoodsQuery) => call<PageResult<Goods>>("goodsList", undefined, { ...q } satisfies GoodsListQuery),

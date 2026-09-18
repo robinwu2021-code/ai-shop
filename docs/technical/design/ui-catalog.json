@@ -895,7 +895,7 @@
     {
       "key": "c-app",
       "label": "买家小程序",
-      "count": 32,
+      "count": 33,
       "domains": [
         {
           "name": "工作台",
@@ -1182,6 +1182,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/address-edit/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/city-pick/index",
+              "title": "city-pick",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/city-pick/index"
             },
             {
               "app": "c-app",
@@ -3059,5 +3070,5 @@
       ]
     }
   ],
-  "total": 249
+  "total": 250
 }

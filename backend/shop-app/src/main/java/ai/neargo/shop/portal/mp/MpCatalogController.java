@@ -148,9 +148,19 @@ public class MpCatalogController {
      * <p>游客可访问：填地址前先要登录，但**区划是公共参照数据**，
      * 不该因为没登录就查不到 —— 那会让「先选地址再登录」这条路走不通。
      */
+    /**
+     * @param level 传 {@code CITY} 时**一次给全国所有市**（约 370 条），忽略 {@code parent}。
+     *              城市选择器要按拼音索引与搜索找全国任意一个城市，一个省一次是 34 次往返。
+     *              只放行市级，理由见 {@code RegionService#allOfLevel}
+     */
     @GetMapping("/mp/regions")
-    public List<MpRegionVO> regions(@RequestParam(required = false) String parent) {
-        return regionService.children(parent, true).stream()
+    public List<MpRegionVO> regions(@RequestParam(required = false) String parent,
+                                    @RequestParam(required = false) String level) {
+        List<ai.neargo.shop.platform.RegionService.RegionVO> src =
+                level != null && !level.isBlank()
+                        ? regionService.allOfLevel(level, true)
+                        : regionService.children(parent, true);
+        return src.stream()
                 .filter(r -> !SysRegion.LEVEL_STREET.equals(r.level()) && !SysRegion.LEVEL_VILLAGE.equals(r.level()))
                 // 区县这一级把 hasChild 压成 false（见方法注释：地址表没有街道那一列）
                 .map(r -> new MpRegionVO(r.regionCode(), r.parentCode(), r.level(), r.name(),

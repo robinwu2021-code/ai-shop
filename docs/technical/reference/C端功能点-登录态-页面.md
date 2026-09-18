@@ -92,7 +92,7 @@
 | `pointRecords` | `GET /mp/points/records` | 是 | points | — |
 | `registerPushToken` | `POST /mp/push-token` | 是 | (stores) | — |
 | `unregisterPushToken` | `POST /mp/push-token/unregister` | 是 | (stores) | — |
-| `regions` | `GET /mp/regions` | 游客 | (components)/biz | — |
+| `regions` | `GET /mp/regions` | 游客 | (components)/biz · city-pick | — |
 | `reviewList` | `GET /mp/review` | 游客 | goods · merchant | — |
 | `createReview` | `POST /mp/review` | 是 | review-write | — |
 | `toggleReviewLike` | `POST /mp/review/:reviewNo/like` | 是 | goods · merchant | — |

@@ -166,6 +166,18 @@
       }
     },
     {
+      "path": "pages/city-pick/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/address-pick/index",
       "style": {
         "navigationBarTitleText": "",

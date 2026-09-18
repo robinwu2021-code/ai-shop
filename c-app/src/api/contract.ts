@@ -226,7 +226,12 @@ export interface ShopApi {
    */
   openRegions(): Promise<RegionOption[]>;
   /** @param parent 上级区划码；不传 = 取省级 */
-  regions(parent?: string): Promise<RegionNode[]>;
+  /**
+   * @param level 传 `CITY` 时**一次给全国所有市**（约 370 条），忽略 `parent`。
+   *              城市选择器要按拼音索引与搜索找全国任意一个城市 ——
+   *              一个省一次是 34 次往返。只放行市级（区县 3000+、村 62 万）
+   */
+  regions(parent?: string, level?: string): Promise<RegionNode[]>;
 
   // ---- 商品
   goodsList(q: GoodsQuery): Promise<PageResult<Goods>>;

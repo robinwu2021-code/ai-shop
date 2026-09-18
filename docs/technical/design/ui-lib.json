@@ -289,7 +289,7 @@
       },
       "usage": {
         "b-app": 83,
-        "c-app": 48
+        "c-app": 51
       }
     },
     {
@@ -327,7 +327,7 @@
       },
       "usage": {
         "b-app": 282,
-        "c-app": 241
+        "c-app": 243
       }
     },
     {
@@ -463,7 +463,7 @@
       },
       "usage": {
         "b-app": 27,
-        "c-app": 33
+        "c-app": 34
       }
     },
     {
@@ -501,7 +501,7 @@
       },
       "usage": {
         "b-app": 133,
-        "c-app": 37
+        "c-app": 41
       }
     },
     {
@@ -627,7 +627,7 @@
       },
       "usage": {
         "b-app": 211,
-        "c-app": 68
+        "c-app": 74
       }
     },
     {
@@ -1003,7 +1003,7 @@
       },
       "usage": {
         "b-app": 123,
-        "c-app": 13
+        "c-app": 14
       }
     },
     {
@@ -1127,7 +1127,7 @@
       },
       "usage": {
         "b-app": 131,
-        "c-app": 61
+        "c-app": 63
       }
     },
     {
@@ -1371,7 +1371,7 @@
       },
       "usage": {
         "b-app": 96,
-        "c-app": 46
+        "c-app": 47
       }
     },
     {
@@ -1427,7 +1427,7 @@
       },
       "usage": {
         "b-app": 295,
-        "c-app": 141
+        "c-app": 144
       }
     },
     {
@@ -1459,7 +1459,7 @@
       },
       "usage": {
         "b-app": 129,
-        "c-app": 74
+        "c-app": 75
       }
     },
     {
@@ -1475,7 +1475,7 @@
       },
       "usage": {
         "b-app": 7,
-        "c-app": 3
+        "c-app": 5
       }
     },
     {
@@ -1629,7 +1629,7 @@
       },
       "usage": {
         "b-app": 52,
-        "c-app": 19
+        "c-app": 21
       }
     },
     {
@@ -1723,7 +1723,7 @@
       },
       "usage": {
         "b-app": 99,
-        "c-app": 18
+        "c-app": 19
       }
     },
     {
@@ -2129,7 +2129,7 @@
       ],
       "usage": {
         "b-app": 49,
-        "c-app": 29,
+        "c-app": 30,
         "lib": 1
       },
       "note": "空态",
@@ -2546,7 +2546,7 @@
       ],
       "usage": {
         "b-app": 68,
-        "c-app": 36,
+        "c-app": 37,
         "lib": 1
       },
       "note": "页面外壳",
@@ -4365,9 +4365,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 38,
-      "localSelectors": 12,
-      "localCssLines": 41,
+      "libClassHits": 46,
+      "localSelectors": 14,
+      "localCssLines": 48,
       "rolled": []
     },
     {
@@ -4431,6 +4431,20 @@
       "libClassHits": 5,
       "localSelectors": 1,
       "localCssLines": 3,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "city-pick",
+      "key": "c-app/city-pick",
+      "file": "c-app/src/pages/city-pick/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 21,
+      "localSelectors": 4,
+      "localCssLines": 13,
       "rolled": []
     },
     {
@@ -5036,7 +5050,7 @@
     "tokens": 16,
     "blocks": 81,
     "components": 34,
-    "pages": 117,
+    "pages": 118,
     "gapKinds": 0
   }
 }

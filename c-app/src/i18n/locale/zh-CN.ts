@@ -666,7 +666,20 @@ export default {
     refunded: "退款已到账",
     refundedHint: "款项已原路退回，到账时间以支付渠道为准",
   },
+  /** 选城市。**让「在别处填地址」成立** —— 搜索此前只围着当前定位搜 */
+  cityPick: {
+    title: "选择城市",
+    searchPh: "搜索城市",
+    located: "当前定位",
+    recent: "最近使用",
+    hot: "热门城市",
+    all: "全部城市",
+    noResults: "没有找到这个城市",
+  },
   addressPick: {
+    searchIn: "搜索范围",
+    nearHere: "当前位置附近",
+    changeCity: "切换城市",
     title: "选择收货地址",
     /** 这一段的存在是为了让地址带上坐标——手打出来的那串字，自送半径判不了、导航也打不开 */
     searchPh: "搜小区、写字楼、街道",

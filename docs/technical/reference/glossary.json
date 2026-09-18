@@ -316,6 +316,12 @@
           "ar": "الموقع الحالي"
         },
         {
+          "key": "addressPick.changeCity",
+          "zh-CN": "切换城市",
+          "en": "Change",
+          "ar": "تغيير"
+        },
+        {
           "key": "addressPick.coarseHint",
           "zh-CN": "仅获取到大致位置，不显示距离",
           "en": "Approximate location only; distances hidden",
@@ -352,6 +358,12 @@
           "ar": "نعرض الأقرب فقط — استخدم الخريطة لغير ذلك"
         },
         {
+          "key": "addressPick.nearHere",
+          "zh-CN": "当前位置附近",
+          "en": "Near you",
+          "ar": "بالقرب منك"
+        },
+        {
           "key": "addressPick.nearby",
           "zh-CN": "附近",
           "en": "Nearby",
@@ -380,6 +392,12 @@
           "zh-CN": "搜索结果",
           "en": "Results",
           "ar": "النتائج"
+        },
+        {
+          "key": "addressPick.searchIn",
+          "zh-CN": "搜索范围",
+          "en": "Searching in",
+          "ar": "نطاق البحث"
         },
         {
           "key": "addressPick.searchPh",
@@ -914,6 +932,48 @@
           "zh-CN": "虚拟商品",
           "en": "Digital",
           "ar": "منتجات رقمية"
+        },
+        {
+          "key": "cityPick.all",
+          "zh-CN": "全部城市",
+          "en": "All cities",
+          "ar": "كل المدن"
+        },
+        {
+          "key": "cityPick.hot",
+          "zh-CN": "热门城市",
+          "en": "Popular",
+          "ar": "المدن الشائعة"
+        },
+        {
+          "key": "cityPick.located",
+          "zh-CN": "当前定位",
+          "en": "Located",
+          "ar": "الموقع الحالي"
+        },
+        {
+          "key": "cityPick.noResults",
+          "zh-CN": "没有找到这个城市",
+          "en": "No city found",
+          "ar": "لم يتم العثور على المدينة"
+        },
+        {
+          "key": "cityPick.recent",
+          "zh-CN": "最近使用",
+          "en": "Recent",
+          "ar": "المستخدمة مؤخرًا"
+        },
+        {
+          "key": "cityPick.searchPh",
+          "zh-CN": "搜索城市",
+          "en": "Search cities",
+          "ar": "ابحث عن مدينة"
+        },
+        {
+          "key": "cityPick.title",
+          "zh-CN": "选择城市",
+          "en": "Select city",
+          "ar": "اختر المدينة"
         },
         {
           "key": "common.added",
@@ -28155,6 +28215,7 @@
           "/pages/address/index",
           "/pages/address-edit/index",
           "/pages/address-pick/index",
+          "/pages/city-pick/index",
           "/pages/order-confirm/index",
           "/pages/pay/index",
           "/pages/orders/index",

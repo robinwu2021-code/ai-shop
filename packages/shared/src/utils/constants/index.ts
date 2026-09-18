@@ -233,6 +233,26 @@ export const COMMUNITY_APPLY_STATUS = {
 } as const;
 
 /**
+ * 「最近用过的城市」存在本机的键。
+ *
+ * <p>**刻意不进服务端**：它是顺手不是资料。换设备就没了，那是对的 ——
+ * 一个人在另一台设备上的「最近」本来就该是另一串。
+ */
+export const RECENT_CITY_KEY = "shcr_recent_cities";
+
+/**
+ * 热门城市（市级国标码）。
+ *
+ * <p>**它不是「已开通的城市」**：那一份由 `openRegions` 给，会随经营范围变。
+ * 这一份回答的是「多数人要填的地址在哪几个城市」—— 按人口与快递量排，
+ * 与我们开没开通无关。混起来的话，一个住在没开通城市的人会发现
+ * 「热门」里没有他的城市，而他要填的正是那儿。
+ */
+export const HOT_CITY_CODES = [
+  "1101", "3101", "4401", "4403", "3301", "5101", "4201", "3201", "3202", "1201",
+] as const;
+
+/**
  * 解析出来的地名**有多具体**。
  *
  * <p>与 {@link PLACE_SOURCE}（从哪儿来）是两件事，必须都读 —— 合成一个字段的话，
@@ -617,6 +637,8 @@ export const ROUTES = {
   /** 新建/编辑收货地址。**整页，不是弹层** —— 入口只有这一种形态 */
   addressEdit: "/pages/address-edit/index",
   addressPick: "/pages/address-pick/index",
+  /** 选城市。**让「在别处填地址」成立** —— 搜索此前只围着当前定位搜 */
+  cityPick: "/pages/city-pick/index",
   orderConfirm: "/pages/order-confirm/index",
   pay: "/pages/pay/index",
   orders: "/pages/orders/index",

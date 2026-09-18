@@ -25,6 +25,19 @@ public interface RegionService {
     List<RegionVO> children(String parentCode, boolean enabledOnly);
 
     /**
+     * 某一级的**全部**区划，一次给全。
+     *
+     * <p>为城市选择器而加：要让人按拼音索引与搜索找全国任意一个城市，
+     * 就得手里有全部的市。走 {@link #children} 的话是「一个省一次」——
+     * 34 次往返，而且端上还要自己拼回一张表。
+     *
+     * <p>只对**市级**有意义（约 370 条）。区县 3000+、街道 4 万、村 62 万，
+     * 一次给全会把首屏拖垮 —— 所以这里刻意只留一个参数而不做成通用的分页查询：
+     * 通用了就一定有人拿它去拉村。
+     */
+    List<RegionVO> allOfLevel(String level, boolean enabledOnly);
+
+    /**
      * 某区划的直接下级，<b>带上这家商家自己补录的那些</b>。
      *
      * <p>与上面那个的差别只在可见范围：商家补录的村在运营确认之前

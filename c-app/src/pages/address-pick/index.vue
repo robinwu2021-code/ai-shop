@@ -8,13 +8,14 @@
 // 每一段都自检：这个端给不了的整段不显示，而不是给一个点了没反应的入口。
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { onLoad } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
+import { ROUTES } from "@shared/utils/constants";
 import type { PlaceSearchHit } from "@shared/types";
 import { canChooseLocation, chooseLocation } from "@shared/ports/location";
 import { useLocationStore } from "@/stores/location";
 import { distance as fmtDistance } from "@shared/utils/format";
-import { pickedPlace, placeFrom } from "@/shared/address-pick";
+import { pickedCity, pickedPlace, placeFrom } from "@/shared/address-pick";
 import type { Community } from "@shared/types";
 
 const { t } = useI18n();
@@ -31,6 +32,17 @@ const location = useLocationStore();
 const canSearch = true;
 /** 地图选点。H5 没配 JS key —— 提前问，别等点下去才弹「不支持」 */
 const canMap = canChooseLocation();
+
+/**
+ * 在**哪个城市**里搜。空 = 围着当前定位搜。
+ *
+ * <p>此前只有后者，于是人在深圳给北京的家填地址时搜「望京」什么也搜不到 ——
+ * 而那不是一条报错，是一个空列表，他会以为那个地方不存在。
+ *
+ * <p>选了城市就**不再传坐标**：坐标在的话后端会围着坐标搜（那是对的默认），
+ * 两个都传等于让后端猜他要哪个。
+ */
+const city = ref<{ code: string; name: string } | null>(null);
 
 const keyword = ref("");
 const hits = ref<PlaceSearchHit[]>([]);
@@ -181,8 +193,10 @@ async function runSearch(kw: string) {
      */
     const r = await api.searchPlaces(
       kw,
-      at.value ? Math.round(at.value.lat * 1e6) : undefined,
-      at.value ? Math.round(at.value.lng * 1e6) : undefined,
+      // 选了城市就不传坐标：两个都传等于让后端猜他要哪个
+      city.value || !at.value ? undefined : Math.round(at.value.lat * 1e6),
+      city.value || !at.value ? undefined : Math.round(at.value.lng * 1e6),
+      city.value?.name,
     ).catch(() => [] as PlaceSearchHit[]);
     hits.value = r;
   } finally {
@@ -224,10 +238,26 @@ async function onMap() {
  * 「都搜不到，我自己打」。**要显式交回一个 manual**，不能只是 navigateBack ——
  * 那与「用户点了系统返回」分不开，而那两种情况该做的事正好相反。
  */
+/** 去选城市。回来时 onShow 取信箱 */
+function gotoCity() {
+  uni.navigateTo({ url: ROUTES.cityPick });
+}
+
 function manual() {
   pickedPlace.offer({ kind: "manual" });
   uni.navigateBack();
 }
+
+/**
+ * 从城市选择页回来。**取到就重搜一次** —— 不重搜的话他换了城市却看到上一个
+ * 城市的结果，而列表本身没有任何地方写着它是哪儿的。
+ */
+onShow(() => {
+  const c = pickedCity.take();
+  if (!c) return;
+  city.value = c;
+  if (keyword.value.trim()) void runSearch(keyword.value.trim());
+});
 
 onLoad((q?: Record<string, string>) => {
   /*
@@ -247,6 +277,17 @@ onLoad((q?: Record<string, string>) => {
 
 <template>
   <sh-scaffold title-key="addressPick.title">
+    <!--
+      **在哪个城市里搜**。默认跟着定位走，点一下能换 ——
+      「给父母下单」「出差前囤货」在这个品类里是真实高频，
+      而那时他要填的地址不在他站着的城市。
+    -->
+    <view class="sh-card cityrow sh-row sh-row--between" @tap="gotoCity">
+      <text class="txt-caption">{{ $t("addressPick.searchIn") }}</text>
+      <text class="txt-body sh-fill cityrow__name">{{ city?.name || location.here?.place?.name || $t("addressPick.nearHere") }}</text>
+      <text class="txt-caption txt-primary">{{ $t("addressPick.changeCity") }}</text>
+    </view>
+
     <view v-if="canSearch" class="sh-card searchbox">
       <input
         v-model="keyword"
@@ -347,6 +388,13 @@ onLoad((q?: Record<string, string>) => {
 </template>
 
 <style scoped>
+.cityrow {
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+.cityrow__name {
+  min-width: 0;
+}
 .searchbox {
   margin-bottom: 20rpx;
 }
