@@ -1843,7 +1843,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 96,
+        "b-app": 97,
         "c-app": 3
       }
     },
@@ -2029,7 +2029,7 @@
       "name": "sh-cover",
       "file": "packages/ui/src/components/sh-cover.vue",
       "scope": "跨端",
-      "lines": 68,
+      "lines": 92,
       "props": [
         "src?: string",
         "mode?: CoverMode"
@@ -2037,7 +2037,7 @@
       "usage": {
         "b-app": 7,
         "c-app": 10,
-        "lib": 1
+        "lib": 3
       },
       "note": "商品封面",
       "why": "`cover` 字段二义：种子是 emoji、商家上传后是 COS URL。14 处渲染点都没分流过",
@@ -3515,7 +3515,7 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 28,
+      "libClassHits": 29,
       "localSelectors": 10,
       "localCssLines": 45,
       "rolled": []
