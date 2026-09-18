@@ -2,7 +2,7 @@
 
 > 状态：**草稿 · 待确认** · 2026-09-18
 > 起因：店主「团购不要在商品编辑页面做，新增一个活动功能，在活动中管理团购」
-> 相关：[TDD-商品规格与发布](./TDD-商品规格与发布.md)、`promotion` 包的 `package-info`
+> 相关：TDD-商品规格与发布（这一篇还没有；`docs/technical/design/` 下最接近的是 TDD-规格与SKU模型）、`promotion` 包的 `package-info`
 
 ---
 
