@@ -16,6 +16,7 @@ import { countdown, money } from "@shared/utils/format";
 import type { Order } from "@shared/types";
 import type { PayMethodItem, PayMethodList } from "@/api/contract";
 import { confirm } from "@ai-shop/ui/prompt";
+import { clearCheckoutKey } from "@/shared/checkout-key";
 
 const { t } = useI18n();
 
@@ -152,6 +153,8 @@ async function pay() {
     }
     // 以回查为准，不用端侧返回值判成功
     order.value = await api.orderDetail(o.orderNo);
+    // 付掉了：结算页的幂等键作废。不清的话，紧接着再买一份一模一样的会被回放成这张已付的单
+    if (paid.value) clearCheckoutKey();
 
     // 订阅消息必须由用户点击行为触发，支付成功这一刻是收集授权的最佳时机。
     // 收集与上报是两步：不上报的话后端额度永远是 0，到货/退款一条都发不出

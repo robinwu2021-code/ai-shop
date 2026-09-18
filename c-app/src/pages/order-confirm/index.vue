@@ -12,7 +12,8 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { onLoad, onShow } from "@dcloudio/uni-app";
-import { api, idempotencyKey } from "@/api";
+import { api } from "@/api";
+import { checkoutKey, checkoutKeyBoundTo } from "@/shared/checkout-key";
 import { segmentByMerchant, useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
 import { useLocationStore } from "@/stores/location";
@@ -643,7 +644,7 @@ async function submit() {
   }
   submitting.value = true;
   try {
-    const order = await api.createOrder({
+    const body = {
       items: items.value.map((it) => ({
         goodsNo: it.goodsNo,
         skuNo: it.skuNo,
@@ -659,9 +660,18 @@ async function submit() {
       appointmentAt: appointmentAt.value,
       groupNo: groupNo.value || undefined,
       openGroup: openGroup.value || undefined,
-      // 幂等 key 在**提交时**生成一次，重复点击提交的是同一个 key，后端返回同一单
-      idempotencyKey: idempotencyKey(),
-    });
+    };
+    /*
+     * **幂等键按「这一单的内容」认，不按「这一次点击」认。**
+     *
+     * 此前这里每次 submit() 现生成一个随机键 —— 注释写着「重复点击提交的是同一个 key」，
+     * 实际只在同一次调用里成立。于是绑完手机号自动提交一单、他退回来再点一次，
+     * 就是两张一模一样的待付款单（2026-09-18 真机，13 秒内 SO…001389 / SO…005683）。
+     * 内容相同 → 同一个键 → 后端回放同一单；内容一变就是新单。寿命与清理见 checkout-key.ts。
+     */
+    const fingerprint = JSON.stringify(body);
+    const order = await api.createOrder({ ...body, idempotencyKey: checkoutKey(fingerprint) });
+    checkoutKeyBoundTo(fingerprint, order.payDeadlineAt);
     await cart.load();
     uni.redirectTo({ url: `${ROUTES.pay}?orderNo=${order.orderNo}` });
   } catch (e) {
