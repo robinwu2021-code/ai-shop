@@ -225,9 +225,9 @@ ALTER TABLE usr_address ADD COLUMN phone_cc VARCHAR(8) NOT NULL DEFAULT '86';
 ```
 坐标
  ├─1. 本地聚落库   cmt_community 围栏命中   ← 免费、即时、已开通的最权威
- ├─2. 地名缓存表   geo_place_cache 未过期   ← 免费
+ ├─2. 自己的地名库 geo_place 未超核对期    ← 免费
  ├─3. 高德逆地理   /geocode/regeo           ← 花额度，结果写回 2
- ├─4. 过期缓存     同一张表，标为陈旧        ← 地图不可用时的兜底
+ ├─4. 超期的那条   同一张表，标为陈旧        ← 地图不可用时的兜底
  └─5. 只给区县     resolve 的 coarse 分支    ← 最后一档，不编地名
 ```
 
@@ -247,36 +247,37 @@ pois[0]（距离 < 50m，建筑/公共设施类）  「龙华区地域馆」
 **缓存表**（一条迁移）：
 
 ```sql
-CREATE TABLE geo_place_cache (
+CREATE TABLE geo_place (
   geo_key      VARCHAR(16) NOT NULL COMMENT 'geohash 精度 8（约 38m×19m）—— 建筑级够用，同一栋楼反复进入命中同一行',
-  provider     VARCHAR(16) NOT NULL DEFAULT 'AMAP',
-  lat_e6 INT NOT NULL, lng_e6 INT NOT NULL COMMENT '首次落库的那个点',
+  lat_e6 INT NOT NULL, lng_e6 INT NOT NULL COMMENT '这个格子里首次落库的那个点',
   name         VARCHAR(128) NOT NULL COMMENT '最具体的那个名字',
   kind         VARCHAR(16)  NOT NULL COMMENT 'POI/AOI/STREET/REGION —— 说清这是哪一档',
   address      VARCHAR(255) NULL,
   region_code  VARCHAR(12)  NULL,
   township     VARCHAR(64)  NULL,
-  payload      JSON         NULL COMMENT '原样留一份：换取名口径时不必再花一次额度',
-  expires_at   DATETIME     NOT NULL COMMENT '30 天',
+  verified_at  DATETIME     NOT NULL COMMENT '上次核对的时刻；超过 30 天就回头核一次',
   hit_count    INT NOT NULL DEFAULT 0,
   last_hit_at  DATETIME NULL,
-  UNIQUE KEY uk_geo (geo_key, provider)
+  UNIQUE KEY uk_geo (geo_key)
 );
 ```
 
-三处要点：
+**这是我们自己的地名库，不是「高德结果的缓存」。** 它按**坐标**匹配，
+与谁帮我们认出这个名字无关 —— 今天是高德，明天换谁、或者由运营直接录入，
+这张表的形状与用法都不变。三处要点：
 
-- **过期不删**。过期只意味着「不再当作新鲜答案」；地图挂了、额度用完、或者干脆
-  换不起厂商的时候，这张表就是兜底，端上按陈旧标出来（「位置可能不是最新的」）。
-  删掉它等于把已经花过钱买来的东西扔了。
-- **`payload` 原样留一份**。上面那套取名规则一定还会改；留了原文，改口径时
-  重算即可，不用对着 62 万个点再买一次。
+- **不留第三方的原始返回**。只存我们自己整理出来的那几个字段（名字、档位、地址、
+  区划）。留原文会把这张表变成「某一家的结果副本」，既多一层授权问题，
+  也会让人以为换厂商时它作废 —— 而它不作废，它是我们的。
+- **过期不删**，`verified_at` 只说「该回头核一次了」。地图挂了、额度用完、
+  或者干脆换不起厂商的时候，这张表就是兜底，端上按陈旧标出来
+  （「位置可能不是最新的」）。删掉它等于把已经认出来的地方重新变成未知。
 - **格子大小要量，不能拍**。精度 8 是起点：命中率太低就退到 7（约 153m，
   掉到小区级）。上线后看 `hit_count` 分布再定，**判据是命中率，不是格子大小**。
 
 ### M8 · 缓存沉淀成我们自己的地名库（你说的「逐步批量完善」）
 
-`geo_place_cache` 里 `kind=POI` 且 `hit_count` 过阈值的行，运营端一键收进
+`geo_place` 里 `kind=POI` 且 `hit_count` 过阈值的行，运营端一键收进
 `cmt_community`（`kind=BUILDING`、`source=MAP`、默认 CLOSED）——
 与龙华那 2783 个小区走的是同一条已经跑通的导入路（`importEstates`）。
 
@@ -320,6 +321,51 @@ CREATE TABLE geo_place_cache (
   **不再绕一次选择地点页**（今天是 `?useHere=1` 绕过去再交回来）——
   M7 之后省市区的拆分在后端只有一处，端上不必再借那一页的逻辑。
 
+### M11 · 地址交互收敛成一套 —— **今天同一个动作有两份实现**
+
+先把实测的四处不一致摆出来（2026-09-18 逐页读源码）：
+
+| 不一致 | 现状 | 出处 |
+|---|---|---|
+| **「存为收货地址」有两份实现、两条路** | 收货地址页 → 先跳选择地点页（`?useHere=1`）再交回来；下单页 → 直接跳新建并带坐标预填（`?new=1&latE6=…`） | `address/index.vue` vs `order-confirm/index.vue` |
+| **「我在哪」有四个取法** | 首页拼 `community` + `nearestDistanceM` + `coarseRegion`；我的页读 `location.label`；收货地址页读 `community.community?.name`；选择地点页读本次 resolve | 四个文件各一份 |
+| **地址卡有两种形态** | 下单页是「一张卡，点一下换」；收货地址页是「列表行 + 每条五个动作」。没有共用件 | 两处各写各的 |
+| **新建地址有两个入口形态** | 收货地址页里是弹层；下单页靠 `?new=1` 去把那个弹层打开 | 同上 |
+
+**这不是「风格不统一」，是同一个动作在不同地方做不同的事。**
+「存为收货地址」那两条路产出就不一样：一条绕选点页（会多问一次地点），
+一条直接预填（不问）。用户在两个地方点同一个字，得到两种流程。
+
+收敛成三件共用件 + 一个真源：
+
+```
+components/biz/
+  biz-place-bar.vue     当前位置行：地名 + 重新定位 + 存为地址
+                        用在 → 首页顶栏 / 收货地址页 / 下单页 / 选择地点页
+  biz-address-card.vue  一条地址长什么样（姓名 电话 标签 默认 地址 缺坐标提示）
+                        用在 → 收货地址页（带动作行）/ 下单页（只读）/ 选择页
+  biz-address-form.vue  新建/编辑的那张表（M4 的整页壳子里放它）
+
+stores/location.ts
+  here                  「我在哪」的唯一真源（M2）
+  relocate()            唯一的重新定位
+  saveHereAsAddress()   唯一的「存为收货地址」，只有一条路由
+```
+
+三条规矩：
+
+- **同一个字 = 同一件事**。「存为地址」在哪儿点都走 `saveHereAsAddress()`，
+  统一成**带坐标直接进新建页预填**（下单页那条）——
+  它少问一次，而地点已经解析好了，再过一遍选点页是多余的一步。
+- **地名只有一个来源**。四个页面都读 `location.here.place.name`，
+  没有第二种拼法。今天那四种拼法迟早给出四个答案，而它们不同时界面上没有提示。
+- **地址卡的差别只在「带不带动作」**，不在长相。`biz-address-card` 收一个
+  `actions` 开关，不是两个组件。
+
+**判据**：`grep` 全端，`saveHereAsAddress` 只有一处定义；
+地名的取法只有 `location.here.place.name` 一处；
+`biz-address-card` 在三处被引用而没有第二份同形状的卡片标记。
+
 ## L3.5 API 与代码逻辑
 
 ### 端点一览
@@ -329,8 +375,8 @@ CREATE TABLE geo_place_cache (
 | `GET /mp/location/resolve` | **扩展返回** | 多一个 `place{name,kind,source,stale,address}`；原有字段一个不动（旧端照跑） |
 | `GET /mp/community/nearby` | **改实现** | M1 的外接矩形，出参不变 |
 | `GET /mp/place/search` | **新增** | 统一地点搜索：本地聚落库 + 高德，地图不可用时只走本地 |
-| `GET /ops/geo/cache` | **新增** | 看缓存与命中率（运营端，`GEO_READ`） |
-| `POST /ops/geo/cache/promote` | **新增** | 高频 POI 沉淀成 `cmt_community(kind=BUILDING)`（`COMMUNITY_UPDATE`） |
+| `GET /ops/geo/places` | **新增** | 看地名库与命中率（运营端，`GEO_READ`） |
+| `POST /ops/geo/places/promote` | **新增** | 高频 POI 沉淀成 `cmt_community(kind=BUILDING)`（`COMMUNITY_UPDATE`） |
 
 `/mp/*` 三个都是匿名（`auth: false`）——首页一进来就要用，那时还没登录。
 
@@ -344,7 +390,7 @@ type Place = {
   name: string;               // 「龙华区地域馆」；解析不出来就空串，**不编**
   address: string;            // 「深圳市龙华区观澜大道 155 号」
   kind: "POI" | "AOI" | "COMMUNITY" | "STREET" | "REGION";
-  source: "LOCAL" | "CACHE" | "MAP" | "CACHE_STALE";
+  source: "COMMUNITY" | "PLACE_DB" | "MAP" | "PLACE_DB_STALE";
   stale: boolean;             // true → 端上标「位置可能不是最新的」
 };
 ```
@@ -407,7 +453,7 @@ boolean mapUsable() {
 }
 ```
 
-端上**看不到这个开关**，只看到 `source`。运营端在 `/ops/geo/cache` 里看得到
+端上**看不到这个开关**，只看到 `source`。运营端在 `/ops/geo/places` 里看得到
 熔断次数与额度状态 —— 这是唯一能提前发现「地图快不行了」的地方。
 
 ### `GET /mp/place/search`：搜索也要有本地兜底
@@ -442,7 +488,7 @@ App 的进程比一次性加载活得久，「拉过没有」那种写法在 App
 | 类 | 动作 |
 |---|---|
 | `PlaceResolver` | 新增，上面那条主链，`shop-core/community/service` |
-| `GeoPlaceCacheMapper` / `GeoPlaceCache` | 新增，`selectFresh` / `selectAny` / `upsert` / `touch` |
+| `GeoPlaceMapper` / `GeoPlace` | 新增，`selectFresh` / `selectAny` / `upsert` / `touch` |
 | `Geohash` | 新增工具类，只做 encode（精度可配） |
 | `MapBreaker` | 新增，熔断 + 额度状态，单例 |
 | `GeoServiceImpl#reverse` | 改取名顺序（POI→AOI→街道），返回里带 `kind` |
@@ -475,7 +521,7 @@ App 的进程比一次性加载活得久，「拉过没有」那种写法在 App
 | `country_code` 加列后旧端上传不带它 | `NOT NULL DEFAULT 'CN'`，旧端行为不变 |
 | 城市选择器的数据量（全国 300+ 市） | 走已有区划表，按 4 位码筛，一次拉全量约 20KB |
 | M1 的矩形过滤把没坐标的聚落筛掉 | `OR lat_e6 IS NULL` 单独放行，且有消融判据 |
-| **高德条款对结果缓存有限制** | 存 30 天前要对一遍现有商用授权的条款；不允许就把 `payload` 留存改成只留我们自己算出来的 `name/kind`，并缩短 TTL |
+| 误把地名库当成「某一家的结果副本」 | 不留第三方原始返回，只存我们自己整理出的字段；换厂商时这张表不作废 |
 | geohash 格子太细 → 命中率低、额度照花 | 上线后看 `hit_count` 分布再调，判据是命中率不是格子大小 |
 | 缓存陈旧（楼拆了、名字改了） | 30 天到期自动重取；陈旧兜底时端上标出来 |
 
@@ -500,3 +546,6 @@ App 的进程比一次性加载活得久，「拉过没有」那种写法在 App
 17. 熔断打开时**一次外部调用都不发**（打桩计数为 0），仍然返回结果（L3.5）
 18. `place/search` 在地图不可用时仍返回本地库的结果（L3.5）
 19. 本地与地图同名时只留本地那条，且它带 `communityNo`（L3.5）
+20. 全端 `saveHereAsAddress` 只有一处定义，两个入口走同一条路由（M11）
+21. 四个页面的地名都取自 `location.here.place.name`，没有第二种拼法（M11）
+22. `biz-address-card` 在收货地址页、下单页、选择页各被引用一次（M11）
