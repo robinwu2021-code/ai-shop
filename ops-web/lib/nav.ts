@@ -480,6 +480,10 @@ export const NAV: NavSection[] = [
       // 坐标健康度：位置模块的分母（没标点的门店 = 自送半径是哑的）
       { href: "/communities?tab=health", label: "坐标健康", perm: "community:community:read", group: "社区网格", matrix: "P-2.1", ready: true },
       { href: "/communities?tab=distribution", label: "位置分布", perm: "community:community:read", group: "社区网格", matrix: "P-2.1", ready: true },
+      // 固定地址库：**唯一能提前发现「地图快不行了」的地方**（熔断与额度是后端
+      // 进程内状态，买家那边只看得到「地名标没标陈旧」）。顺带在这儿把高频建筑
+      // 沉淀成聚落 —— 沉淀之后那些地方就不再依赖地图了
+      { href: "/communities?tab=places", label: "固定地址库", perm: "community:community:read", group: "社区网格", matrix: "P-2.1", ready: true },
       { href: "/communities?tab=pickups", label: "自提点", perm: "community:pickup:read", group: "自提点", matrix: "P-2.2", ready: true },
       { href: "/communities?tab=neighbor", label: "临时点监控", perm: "community:pickup:read", group: "自提点", matrix: "P-2.2", ready: true },
     ],

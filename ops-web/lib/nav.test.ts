@@ -104,6 +104,13 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
      * 而是钉在数据上：OpsServiceImpl.auditApply 拦「submitted_by == 当前审核人」。
      */
     "/merchants?tab=on-behalf",
+    /*
+     * 固定地址库（TDD-C端收货地址-录入与定位重排 · 批次 G）。
+     *
+     * 判 `community:community:read` —— 与社区网格同一档，所以持有那个码的
+     * 八个角色都多了这一条。**这是新增，不是合并把谁的菜单搬丢了。**
+     */
+    "/communities?tab=places",
   ]);
 
   it("★★★ AC2 · 合并前后每个角色看得见的功能点集合完全不变", () => {

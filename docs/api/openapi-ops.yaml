@@ -1952,6 +1952,93 @@ components:
         - "regionPath"
       additionalProperties: false
       description: "附近已开通的聚落。裁决查重用：名字不同、位置只差 50 米的两条，靠文字比对看不出来"
+    GeoPlace: 
+      type: "object"
+      properties: 
+        geoKey: 
+          type: "string"
+          description: "geohash 精度 8（约 38m×19m）—— 同一栋楼里所有人命中同一行"
+        name: 
+          type: "string"
+        kind: 
+          type: "string"
+          description: "POI/AOI/STREET/REGION —— 说清这个名字是哪一档"
+        address: 
+          type: 
+            - "string"
+            - "null"
+        latE6: 
+          type: 
+            - "number"
+            - "null"
+        lngE6: 
+          type: 
+            - "number"
+            - "null"
+        hitCount: 
+          type: "number"
+          description: "沉淀成聚落的依据：用得最多的那些地方值得我们自己认识"
+        verifiedAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "上次核对的时刻。超期不等于作废 —— 它只说「该回头核一次了」"
+        promotedNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "已经升级成聚落的话指过去"
+      required: 
+        - "geoKey"
+        - "name"
+        - "kind"
+        - "address"
+        - "latE6"
+        - "lngE6"
+        - "hitCount"
+        - "verifiedAt"
+        - "promotedNo"
+      additionalProperties: false
+      description: "固定地址库的一条：**某个坐标格子叫什么名字，上次核对是什么时候**。\n\n它同时是答案库、是防止频繁调地图的挡板、也是逐步长大的自有资产 —— 这三样本来就该是同一份数据。"
+    GeoPlacePage: 
+      type: "object"
+      properties: 
+        rows: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/GeoPlace"
+        total: 
+          type: "number"
+          description: "**全量的那个数**，不是这一页的 —— 只给一页的条数，「还要依赖地图多久」就判不出来"
+        mapStatus: 
+          type: "string"
+          description: "CLOSED / OPEN / QUOTA_EXHAUSTED。这一行是唯一能提前发现「地图快不行了」的地方"
+      required: 
+        - "rows"
+        - "total"
+        - "mapStatus"
+      additionalProperties: false
+    CommunityImportResult: 
+      type: "object"
+      properties: 
+        received: 
+          type: "number"
+        created: 
+          type: "number"
+        updated: 
+          type: "number"
+        skipped: 
+          type: "number"
+        dryRun: 
+          type: "boolean"
+          description: "试算。**默认就是它** —— 一次动几百行的接口，默认值要在安全那一边"
+      required: 
+        - "received"
+        - "created"
+        - "updated"
+        - "skipped"
+        - "dryRun"
+      additionalProperties: false
     CommunityDuplicate: 
       type: "object"
       properties: 
@@ -1974,7 +2061,6 @@ components:
         - "right"
         - "reason"
       additionalProperties: false
-      description: "疑似重复的一对聚落。\n\n`reason` 是**判据不是结论**：SAME_NAME 归一名相同、NEARBY 坐标很近且名字相似。 两条都可能是误报（同一条街道里真有「一期」「二期」两个小区）， 所以界面上给的是「合并」按钮而不是自动合并 —— 合并会改一批商家的可见范围， 错了要一条条捞回来。"
     DuplicateReason: 
       type: "string"
       enum: 
@@ -9513,10 +9599,68 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/geo/places": 
+    get: 
+      operationId: "listGeoPlaces"
+      summary: "固定地址库这一屏"
+      tags: 
+        - "community"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/GeoPlacePage"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/geo/places/promote": 
+    post: 
+      operationId: "promoteGeoPlaces"
+      summary: "把高频建筑沉淀成聚落（kind=BUILDING、source=MAP、默认 CLOSED）"
+      tags: 
+        - "community"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/CommunityImportResult"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/communities/duplicates": 
     get: 
       operationId: "duplicateCommunities"
-      summary: "疑似重复的聚落两两清单"
+      summary: "duplicateCommunities"
       tags: 
         - "community"
       responses: 

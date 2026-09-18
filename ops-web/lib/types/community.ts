@@ -148,6 +148,46 @@ export interface NearbyCommunity {
  * 所以界面上给的是「合并」按钮而不是自动合并 —— 合并会改一批商家的可见范围，
  * 错了要一条条捞回来。
  */
+/**
+ * 固定地址库的一条：**某个坐标格子叫什么名字，上次核对是什么时候**。
+ *
+ * 它同时是答案库、是防止频繁调地图的挡板、也是逐步长大的自有资产 ——
+ * 这三样本来就该是同一份数据。
+ */
+export interface GeoPlace {
+  /** geohash 精度 8（约 38m×19m）—— 同一栋楼里所有人命中同一行 */
+  geoKey: string;
+  name: string;
+  /** POI/AOI/STREET/REGION —— 说清这个名字是哪一档 */
+  kind: string;
+  address: string | null;
+  latE6: number | null;
+  lngE6: number | null;
+  /** 沉淀成聚落的依据：用得最多的那些地方值得我们自己认识 */
+  hitCount: number;
+  /** 上次核对的时刻。超期不等于作废 —— 它只说「该回头核一次了」 */
+  verifiedAt: string | null;
+  /** 已经升级成聚落的话指过去 */
+  promotedNo: string | null;
+}
+
+export interface GeoPlacePage {
+  rows: GeoPlace[];
+  /** **全量的那个数**，不是这一页的 —— 只给一页的条数，「还要依赖地图多久」就判不出来 */
+  total: number;
+  /** CLOSED / OPEN / QUOTA_EXHAUSTED。这一行是唯一能提前发现「地图快不行了」的地方 */
+  mapStatus: string;
+}
+
+export interface CommunityImportResult {
+  received: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  /** 试算。**默认就是它** —— 一次动几百行的接口，默认值要在安全那一边 */
+  dryRun: boolean;
+}
+
 export interface CommunityDuplicate {
   /** 疑似重复的一方 */
   left: Community;

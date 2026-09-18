@@ -116,6 +116,7 @@ export const POINT_CODES: Record<string, string> = {
   "/communities?tab=regions": "OPS_COMMUNITY__TAB_REGIONS",
   "/communities?tab=health": "OPS_COMMUNITY__TAB_HEALTH",
   "/communities?tab=distribution": "OPS_COMMUNITY__TAB_DISTRIBUTION",
+  "/communities?tab=places": "OPS_COMMUNITY__TAB_PLACES",
   "/communities?tab=pickups": "OPS_COMMUNITY__TAB_PICKUPS",
   "/communities?tab=neighbor": "OPS_COMMUNITY__TAB_NEIGHBOR",
   "/contents": "OPS_CONTENT",

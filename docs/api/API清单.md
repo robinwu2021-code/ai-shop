@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 715 个接口**：后端已实现 643（90%）· 前端在调 644
+**合计 717 个接口**：后端已实现 645（90%）· 前端在调 646
 
 ---
 
@@ -748,7 +748,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **394** 个接口 ｜ 后端已实现 **328**（83%）｜ 前端在调 **323**
+共 **396** 个接口 ｜ 后端已实现 **330**（83%）｜ 前端在调 **325**
 
 ### aftersale（4）
 
@@ -759,7 +759,7 @@
 | GET | `/ops/after-sales/fast-refund-rule` | getFastRefundRule | — | `FastRefundRule` | — | ✅ | ✅ |
 | POST | `/ops/after-sales/fast-refund-rule` | 极速退阈值（P-6.1.2）：金额上限 > 0、时限 ≥ 1 小时 | — | `FastRefundRule` | — | ✅ | ✅ |
 
-### community（30）
+### community（32）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -773,12 +773,14 @@
 | GET | `/ops/communities/applies` | 提报队列 | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/communities/applies/{applyNo}/decide` | 裁决 | — | `CommunityApply` | — | ✅ | ✅ |
 | POST | `/ops/communities/buildings` | 建一栋楼 | — | `Community` | — | ✅ | ✅ |
-| GET | `/ops/communities/duplicates` | 疑似重复的聚落两两清单 | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/communities/duplicates` | duplicateCommunities | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/communities/merge` | 合并：把 fromNo 并进 intoNo | — | `Community` | — | ✅ | ✅ |
 | GET | `/ops/communities/near` | 一个坐标附近已开通的聚落，按距离升序 —— 裁决时查重用 */ | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/communities/open-map` | 把某个区划前缀下、**地图导入**的聚落批量开城 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/coverage/distribution` | 位置分布（P-2.1） | — | `CoverageDistribution` | — | ✅ | ✅ |
 | GET | `/ops/coverage/health` | 坐标健康度（P-2.1） | — | `CoverageHealth` | — | ✅ | ✅ |
+| GET | `/ops/geo/places` | 固定地址库这一屏 | — | `GeoPlacePage` | — | ✅ | ✅ |
+| POST | `/ops/geo/places/promote` | 把高频建筑沉淀成聚落（kind=BUILDING、source=MAP、默认 CLOSED） | — | `CommunityImportResult` | — | ✅ | ✅ |
 | GET | `/ops/pickups` | listPickups | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/pickups` | 建自提点 | — | `PickupPoint` | — | ✅ | ✅ |
 | POST | `/ops/pickups/{no}/archive` | archivePickup | — | `PickupPoint` | — | ⬜ | ✅ |

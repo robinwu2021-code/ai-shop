@@ -2007,6 +2007,9 @@
 | `city` | `string,null` | 否 | 市 |
 | `district` | `string,null` | 否 | 区/县 |
 | `detail` | `string` | 是 | 详细地址（街道门牌） |
+| `countryCode` | `string,null` | 否 | ISO 3166-1 两位码，默认 `CN`（V333）。 **非 CN 时整段换形状**：关掉地点搜索、附近、地图选点、省市区拆分 —— 高德不覆盖海外，给一个点了搜不到东西的搜索框比没有更糟。 那时 `province/city/district` 三格不再是国标行政区划， 而是用户自己填的 City / State —— 这一点只有靠这一列才判得出来。 |
+| `postalCode` | `string,null` | 否 | 邮编。中国大陆为空，海外多数国家必填 |
+| `phoneCc` | `string,null` | 否 | 手机国家区号（不带 +），默认 `86`。位数校验按国家放宽，不再写死 11 位 |
 | `houseNo` | `string,null` | 否 | 门牌号（楼号-单元-室），V319 从 `detail` 里分出来。 **与 `detail` 的区别不是长短，是来源**：`detail` 是地址主体，由选点页给出、带坐标； 门牌只能手打。合在一列里时，用户改一个字就可能让坐标与文字对不上，而没地方看得出来。 存量地址这一列为空 —— 那时它还混在 `detail` 里，照旧只显示那一串。 |
 | `isDefault` | `boolean` | 是 | 是否默认地址。整个地址簿至多一条为 true |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
@@ -2038,6 +2041,9 @@
 | `city` | `string,null` | 否 | 市 |
 | `district` | `string,null` | 否 | 区/县 |
 | `detail` | `string` | 是 | 详细地址（街道门牌） |
+| `countryCode` | `string,null` | 否 | ISO 3166-1 两位码，默认 `CN`（V333）。 **非 CN 时整段换形状**：关掉地点搜索、附近、地图选点、省市区拆分 —— 高德不覆盖海外，给一个点了搜不到东西的搜索框比没有更糟。 那时 `province/city/district` 三格不再是国标行政区划， 而是用户自己填的 City / State —— 这一点只有靠这一列才判得出来。 |
+| `postalCode` | `string,null` | 否 | 邮编。中国大陆为空，海外多数国家必填 |
+| `phoneCc` | `string,null` | 否 | 手机国家区号（不带 +），默认 `86`。位数校验按国家放宽，不再写死 11 位 |
 | `houseNo` | `string,null` | 否 | 门牌号（楼号-单元-室），V319 从 `detail` 里分出来。 **与 `detail` 的区别不是长短，是来源**：`detail` 是地址主体，由选点页给出、带坐标； 门牌只能手打。合在一列里时，用户改一个字就可能让坐标与文字对不上，而没地方看得出来。 存量地址这一列为空 —— 那时它还混在 `detail` 里，照旧只显示那一串。 |
 | `isDefault` | `boolean` | 是 | 是否默认地址。整个地址簿至多一条为 true |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |
@@ -2313,6 +2319,9 @@
 | `city` | `string,null` | 否 | 市 |
 | `district` | `string,null` | 否 | 区/县 |
 | `detail` | `string` | 是 | 详细地址（街道门牌） |
+| `countryCode` | `string,null` | 否 | ISO 3166-1 两位码，默认 `CN`（V333）。 **非 CN 时整段换形状**：关掉地点搜索、附近、地图选点、省市区拆分 —— 高德不覆盖海外，给一个点了搜不到东西的搜索框比没有更糟。 那时 `province/city/district` 三格不再是国标行政区划， 而是用户自己填的 City / State —— 这一点只有靠这一列才判得出来。 |
+| `postalCode` | `string,null` | 否 | 邮编。中国大陆为空，海外多数国家必填 |
+| `phoneCc` | `string,null` | 否 | 手机国家区号（不带 +），默认 `86`。位数校验按国家放宽，不再写死 11 位 |
 | `houseNo` | `string,null` | 否 | 门牌号（楼号-单元-室），V319 从 `detail` 里分出来。 **与 `detail` 的区别不是长短，是来源**：`detail` 是地址主体，由选点页给出、带坐标； 门牌只能手打。合在一列里时，用户改一个字就可能让坐标与文字对不上，而没地方看得出来。 存量地址这一列为空 —— 那时它还混在 `detail` 里，照旧只显示那一串。 |
 | `isDefault` | `boolean` | 是 | 是否默认地址。整个地址簿至多一条为 true |
 | `tag` | `string` | 否 | 标签：家 / 公司 / 其他 |

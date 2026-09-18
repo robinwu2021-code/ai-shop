@@ -28,6 +28,12 @@
           "ar": "المدينة"
         },
         {
+          "key": "address.cityField",
+          "zh-CN": "城市 City",
+          "en": "City",
+          "ar": "المدينة"
+        },
+        {
           "key": "address.default",
           "zh-CN": "默认",
           "en": "Default",
@@ -98,6 +104,18 @@
           "zh-CN": "最多 {n} 条",
           "en": "Up to {n} saved",
           "ar": "الحد {n} عناوين"
+        },
+        {
+          "key": "address.line1",
+          "zh-CN": "街道地址（Address line 1）",
+          "en": "Address line 1",
+          "ar": "العنوان – السطر 1"
+        },
+        {
+          "key": "address.line2",
+          "zh-CN": "公寓/门牌（Address line 2）",
+          "en": "Address line 2 (apt, suite)",
+          "ar": "العنوان – السطر 2"
         },
         {
           "key": "address.mapUnsupported",
@@ -172,6 +190,12 @@
           "ar": "رقم الجوال"
         },
         {
+          "key": "address.phoneCc",
+          "zh-CN": "区号",
+          "en": "Code",
+          "ar": "المفتاح"
+        },
+        {
           "key": "address.pick",
           "zh-CN": "地图选点",
           "en": "Pick on map",
@@ -182,6 +206,12 @@
           "zh-CN": "位置可能不是最新的",
           "en": "This location may be out of date",
           "ar": "قد لا يكون هذا الموقع محدثًا"
+        },
+        {
+          "key": "address.postalCode",
+          "zh-CN": "邮编 Postal code",
+          "en": "Postal code",
+          "ar": "الرمز البريدي"
         },
         {
           "key": "address.province",
@@ -266,6 +296,12 @@
           "zh-CN": "设为默认",
           "en": "Set default",
           "ar": "اجعله افتراضيًا"
+        },
+        {
+          "key": "address.stateField",
+          "zh-CN": "州/省 State",
+          "en": "State / Province",
+          "ar": "الولاية / المحافظة"
         },
         {
           "key": "address.tagHome",
@@ -1340,6 +1376,66 @@
           "zh-CN": "有商家本期收款额度不足，暂时下不了单",
           "en": "A shop has used up its collection quota for this period",
           "ar": "نفد حدّ التحصيل لأحد المتاجر هذه الفترة"
+        },
+        {
+          "key": "country.AU",
+          "zh-CN": "澳大利亚",
+          "en": "Australia",
+          "ar": "أستراليا"
+        },
+        {
+          "key": "country.CN",
+          "zh-CN": "中国大陆",
+          "en": "Chinese mainland",
+          "ar": "الصين"
+        },
+        {
+          "key": "country.GB",
+          "zh-CN": "英国",
+          "en": "United Kingdom",
+          "ar": "المملكة المتحدة"
+        },
+        {
+          "key": "country.HK",
+          "zh-CN": "中国香港",
+          "en": "Hong Kong, China",
+          "ar": "هونغ كونغ، الصين"
+        },
+        {
+          "key": "country.JP",
+          "zh-CN": "日本",
+          "en": "Japan",
+          "ar": "اليابان"
+        },
+        {
+          "key": "country.MO",
+          "zh-CN": "中国澳门",
+          "en": "Macao, China",
+          "ar": "ماكاو، الصين"
+        },
+        {
+          "key": "country.MY",
+          "zh-CN": "马来西亚",
+          "en": "Malaysia",
+          "ar": "ماليزيا"
+        },
+        {
+          "key": "country.SG",
+          "zh-CN": "新加坡",
+          "en": "Singapore",
+          "ar": "سنغافورة"
+        },
+        {
+          "key": "country.TW",
+          "zh-CN": "中国台湾",
+          "en": "Taiwan, China",
+          "ar": "تايوان، الصين"
+        },
+        {
+          "key": "country.US",
+          "zh-CN": "美国",
+          "en": "United States",
+          "ar": "الولايات المتحدة"
         },
         {
           "key": "coupon.autoUse",
@@ -18633,6 +18729,12 @@
       ],
       "terms": [
         {
+          "key": "err.address.phone_format",
+          "zh-CN": "收货人手机号格式不对：中国大陆应为 11 位手机号，其他国家/地区填当地号码（3–20 位数字）",
+          "en": "Recipient phone number looks wrong: 11 digits for the Chinese mainland, 3-20 digits elsewhere",
+          "ar": "رقم هاتف المستلم غير صحيح: 11 رقمًا للصين، و3 إلى 20 رقمًا لبقية الدول"
+        },
+        {
           "key": "err.appointment.slot_full",
           "zh-CN": "该时段已约满，请换一个时段",
           "en": "That time slot is fully booked — please pick another",
@@ -26613,6 +26715,7 @@
           "OTP_LOCKED",
           "OTP_INVALID",
           "PHONE_ALREADY_BOUND",
+          "ADDRESS_PHONE_FORMAT",
           "PASSWORD_INVALID",
           "PASSWORD_NOT_SET",
           "NOT_IMPLEMENTED",
@@ -29170,6 +29273,14 @@
       "type": "String",
       "value": "\"手机号格式不对，应为 11 位大陆手机号\"",
       "zh": "拒绝时的提示。",
+      "module": "shop-base"
+    },
+    {
+      "host": "Phones",
+      "name": "INTL_MOBILE",
+      "type": "String",
+      "value": "\"^\\\\+?\\\\d{3,20}$\"",
+      "zh": "海外号码的**宽判据**：3–20 位数字（可带一个前导 +）。",
       "module": "shop-base"
     },
     {

@@ -1,6 +1,7 @@
 // 覆盖范围：社区网格（P-2.1）与自提点主数据（P-2.2）。
 import type {
-  Community, CommunityApply, CommunityDuplicate, CoverageDistribution, CoverageHealth, FenceImpact,
+  Community, CommunityApply, CommunityDuplicate, CommunityImportResult, CoverageDistribution,
+  CoverageHealth, FenceImpact, GeoPlacePage,
   NearbyCommunity, Page, PickupPoint, PickupStatus,
   Region, RegionSuggestion,
 } from "@/lib/types";
@@ -112,6 +113,26 @@ export interface CommunityApi {
    * 而改名、补坐标、误挂到隔壁街道都会让两条事后才撞上 —— 撞上不报错，
    * 表现为「商家甲选了 A、乙选了 B，买家在 B 里搜不到甲的货」。
    */
+  /**
+   * 固定地址库这一屏。
+   *
+   * **`mapStatus` 是这里最要紧的一个字段**：熔断与额度是后端进程内的状态，
+   * 端上（买家那边）只看得到「地名标没标陈旧」—— 这儿是**唯一**能提前发现
+   * 「地图快不行了」的地方。
+   */
+  listGeoPlaces(q?: { kind?: string; minHits?: number; limit?: number }): Promise<GeoPlacePage>;
+
+  /**
+   * 把高频建筑沉淀成聚落（kind=BUILDING、source=MAP、默认 CLOSED）。
+   *
+   * **这是「逐步完善到系统中」那件事的落点**：升级之后这些地方走的是聚落
+   * 那条更靠前的路，从此不再依赖地图，也就不怕额度、不怕对方挂掉。
+   *
+   * `dryRun` 默认 true —— 一次动几百行的接口，默认值要在安全那一边。
+   */
+  promoteGeoPlaces(req: { regionCode: string; minHits?: number; dryRun?: boolean }):
+    Promise<CommunityImportResult>;
+
   duplicateCommunities(limit?: number): Promise<CommunityDuplicate[]>;
   /** 合并：把 fromNo 并进 intoNo。经营范围、货架等「以后还会用」的引用一并改写 */
   mergeCommunities(fromNo: string, intoNo: string): Promise<Community>;

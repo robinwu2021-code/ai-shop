@@ -444,7 +444,7 @@ _无字段_
 
 #### GET `/ops/communities/duplicates`
 
-疑似重复的聚落两两清单
+duplicateCommunities
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
@@ -587,6 +587,46 @@ _无字段_
 |---|---|:---:|---|
 | `communityNo` | `string` | 是 | — |
 | `name` | `string` | 是 | — |
+
+
+#### GET `/ops/geo/places`
+
+固定地址库这一屏
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`GeoPlacePage`](#geoplacepage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`#/definitions/GeoPlace`](#definitionsgeoplace)\[\] | 是 | — |
+| `total` | `number` | 是 | **全量的那个数**，不是这一页的 —— 只给一页的条数，「还要依赖地图多久」就判不出来 |
+| `mapStatus` | `string` | 是 | CLOSED / OPEN / QUOTA_EXHAUSTED。这一行是唯一能提前发现「地图快不行了」的地方 |
+
+
+#### POST `/ops/geo/places/promote`
+
+把高频建筑沉淀成聚落（kind=BUILDING、source=MAP、默认 CLOSED）
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`CommunityImportResult`](#communityimportresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `received` | `number` | 是 | — |
+| `created` | `number` | 是 | — |
+| `updated` | `number` | 是 | — |
+| `skipped` | `number` | 是 | — |
+| `dryRun` | `boolean` | 是 | 试算。**默认就是它** —— 一次动几百行的接口，默认值要在安全那一边 |
 
 
 #### GET `/ops/pickups`
@@ -9693,14 +9733,22 @@ _无字段_
 
 ### CommunityDuplicate
 
-疑似重复的一对聚落。 `reason` 是**判据不是结论**：SAME_NAME 归一名相同、NEARBY 坐标很近且名字相似。 两条都可能是误报（同一条街道里真有「一期」「二期」两个小区）， 所以界面上给的是「合并」按钮而不是自动合并 —— 合并会改一批商家的可见范围， 错了要一条条捞回来。
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `left` | [`#/definitions/Community`](#definitionscommunity) | 是 | 疑似重复的一方 |
 | `right` | [`#/definitions/Community`](#definitionscommunity) | 是 | 另一方 |
 | `reason` | [`#/definitions/DuplicateReason`](#definitionsduplicatereason) | 是 | 原因 |
 | `distanceM` | `number,null` | 否 | 两点直线距离（米）。有一方没坐标时为空 |
+
+### CommunityImportResult
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `received` | `number` | 是 | — |
+| `created` | `number` | 是 | — |
+| `updated` | `number` | 是 | — |
+| `skipped` | `number` | 是 | — |
+| `dryRun` | `boolean` | 是 | 试算。**默认就是它** —— 一次动几百行的接口，默认值要在安全那一边 |
 
 ### ContentSlot
 
@@ -9970,6 +10018,14 @@ KPI 卡（金额为最小货币单位整数）。
 |---|---|:---:|---|
 | `step` | [`#/definitions/FunnelStep`](#definitionsfunnelstep) | 是 | 漏斗环节：扫码 → 进店 → 注册 → 首单 |
 | `count` | `number` | 是 | 该环节人数 |
+
+### GeoPlacePage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`#/definitions/GeoPlace`](#definitionsgeoplace)\[\] | 是 | — |
+| `total` | `number` | 是 | **全量的那个数**，不是这一页的 —— 只给一页的条数，「还要依赖地图多久」就判不出来 |
+| `mapStatus` | `string` | 是 | CLOSED / OPEN / QUOTA_EXHAUSTED。这一行是唯一能提前发现「地图快不行了」的地方 |
 
 ### GoodsAudit
 

@@ -36,13 +36,14 @@ import { TabHeader } from "@/components/ui/tab-header";
 import { ApplyTab } from "./apply-tab";
 import { RegionTab } from "./region-tab";
 import { HealthTab } from "./health-tab";
+import { PlacesTab } from "./places-tab";
 import { DistributionTab } from "./distribution-tab";
 import { DuplicatesPanel } from "./duplicates-panel";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof COMMUNITIES_COPY)["zh"];
-const TAB_KEYS = ["grid", "pickups", "neighbor", "applies", "regions", "health", "distribution"] as const;
+const TAB_KEYS = ["grid", "pickups", "neighbor", "applies", "regions", "health", "distribution", "places"] as const;
 
 const OPEN_OPTIONS = (c: Copy) => [
   { value: "1", label: c.openedYes },
@@ -468,6 +469,7 @@ function CommunitiesInner() {
       {tab === "regions" && <RegionTab c={cp} canDecide={allow("community:region:update")} />}
       {/* 坐标健康度：只读，判 community:community:read（与社区网格同一码） */}
       {tab === "health" && <HealthTab enabled={tab === "health"} />}
+      {tab === "places" && <PlacesTab enabled={tab === "places"} />}
       {tab === "distribution" && <DistributionTab enabled={tab === "distribution"} />}
 
       {tab === "regions" && !allow("community:region:update") && (
@@ -499,7 +501,8 @@ function CommunitiesInner() {
         </Notice>
       )}
 
-      {tab !== "neighbor" && tab !== "applies" && tab !== "health" && tab !== "distribution" && (
+      {tab !== "neighbor" && tab !== "applies" && tab !== "health" && tab !== "distribution"
+        && tab !== "places" && (
         <Toolbar
           search={keyword}
           onSearch={(v) => { setKeyword(v); setPage(1); }}

@@ -35,6 +35,29 @@ function findPickup(no: string): PickupPoint {
 }
 
 export const communityMock: CommunityApi = {
+  /**
+   * mock 也要**给出 mapStatus 的非 CLOSED 态** —— 只给正常态的话，
+   * 「地图快不行了」那一行在开发期一次都看不见，而它正是这一屏存在的理由。
+   */
+  listGeoPlaces: async () => ({
+    rows: [
+      { geoKey: "ws10s2b8", name: "龙华区地域馆", kind: "POI",
+        address: "深圳市龙华区观澜大道 155 号", latE6: 22689965, lngE6: 114030532,
+        hitCount: 187, verifiedAt: "2026-09-10T08:00:00", promotedNo: null },
+      { geoKey: "ws10s2c1", name: "桂澜新村", kind: "AOI",
+        address: "首信广场(松元厦地铁站E1口步行300米)", latE6: 22690100, lngE6: 114031000,
+        hitCount: 64, verifiedAt: "2026-08-02T08:00:00", promotedNo: "C202609171908442302225" },
+      { geoKey: "ws10s2d4", name: "观澜大道 155 号", kind: "STREET",
+        address: "深圳市龙华区观澜大道 155 号", latE6: 22690500, lngE6: 114031500,
+        hitCount: 3, verifiedAt: "2026-09-17T08:00:00", promotedNo: null },
+    ],
+    total: 2783,
+    mapStatus: "CLOSED",
+  }),
+  promoteGeoPlaces: async (req) => ({
+    received: 12, created: req.dryRun === false ? 12 : 0, updated: 0, skipped: 0,
+    dryRun: req.dryRun !== false,
+  }),
   openMapCommunities: (regionPrefix) => {
     // mock 里也要真的改状态 —— 恒返回 0 的话，「开城之后列表变了没有」
     // 在开发期看不出来，而那正是这个按钮唯一的可见效果

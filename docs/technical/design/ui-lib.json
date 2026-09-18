@@ -1127,7 +1127,7 @@
       },
       "usage": {
         "b-app": 131,
-        "c-app": 63
+        "c-app": 64
       }
     },
     {
@@ -1221,7 +1221,7 @@
       },
       "usage": {
         "b-app": 68,
-        "c-app": 28
+        "c-app": 29
       }
     },
     {
@@ -1371,7 +1371,7 @@
       },
       "usage": {
         "b-app": 96,
-        "c-app": 47
+        "c-app": 49
       }
     },
     {
@@ -1427,7 +1427,7 @@
       },
       "usage": {
         "b-app": 295,
-        "c-app": 144
+        "c-app": 146
       }
     },
     {
@@ -1629,7 +1629,7 @@
       },
       "usage": {
         "b-app": 52,
-        "c-app": 21
+        "c-app": 22
       }
     },
     {
@@ -1723,7 +1723,7 @@
       },
       "usage": {
         "b-app": 99,
-        "c-app": 19
+        "c-app": 24
       }
     },
     {
@@ -4920,9 +4920,9 @@
       "components": [
         "sh-switch"
       ],
-      "libClassHits": 43,
-      "localSelectors": 17,
-      "localCssLines": 58,
+      "libClassHits": 55,
+      "localSelectors": 19,
+      "localCssLines": 66,
       "rolled": []
     },
     {

@@ -89,6 +89,14 @@ public enum ErrorCode {
      */
     PHONE_ALREADY_BOUND(10458, "err.phone.already_bound"),
     /**
+     * 收货人手机号格式不对（V333）。
+     *
+     * <p><b>不复用 BAD_REQUEST</b>：那条的文案是「请求参数有误」，
+     * 用户看了会去改别的格子。而这里要说清是哪一格、以及为什么 ——
+     * 判据按国家不同（大陆 11 位、海外 3–20 位），泛话会让他反复试。
+     */
+    ADDRESS_PHONE_FORMAT(10459, "err.address.phone_format"),
+    /**
      * 手机号或密码不对。
      *
      * <p><b>刻意不区分「查无此人」与「密码错」</b>：分开说等于给撞库的人一个

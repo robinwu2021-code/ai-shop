@@ -62,7 +62,12 @@ public class AddressServiceImpl implements AddressService {
          */
         String country = cmd.countryCode() != null ? cmd.countryCode() : row.getCountryCode();
         if (!Phones.valid(cmd.phone(), country)) {
-            throw BizException.of(ErrorCode.BAD_REQUEST, Phones.MESSAGE);
+            /*
+             * **自己的码，不是 BAD_REQUEST + 一句参数。** 后者的文案是
+             * 「请求参数有误」，而它没有占位符 —— 传进去的那句话会被静默吞掉，
+             * 用户看到的是泛话，然后去改别的格子。
+             */
+            throw BizException.of(ErrorCode.ADDRESS_PHONE_FORMAT);
         }
 
         row.setName(cmd.name());
