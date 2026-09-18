@@ -35,6 +35,16 @@ const ready = ref(false);
  */
 const failed = ref(false);
 
+/** query 里的中文是编过的（见 onLoad 里那段）。解不开就用原样，别让整页白屏 */
+function decodeQuery(v?: string): string {
+  if (!v) return "";
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return v;
+  }
+}
+
 function onSaved() {
   uni.navigateBack();
 }
@@ -69,10 +79,21 @@ onLoad(async (q?: Record<string, string>) => {
      * **坐标是这条路的全部收获** —— 少了它，存下来的又是一条推不出聚落、
      * 判不了自送半径、导航打不开的地址，而界面上看不出区别。
      */
+    /*
+     * **要解码。** 发起方用 `encodeURIComponent` 把地名拼进 query
+     * （不编的话「路 1 号」里的空格与 `#` 会把 query 截断），
+     * 而 uni 的 `onLoad` **不会自动解回来** —— 少这一步，用户看到的是
+     * 「%E5%98%89%E9%80%B8%E8%8A%B1%E5%9B%AD」这样一串，
+     * 真机上报上来的「乱码」就是它。
+     *
+     * `decodeURIComponent` 对残缺的百分号序列会抛，所以兜一下 ——
+     * 解不开就用原样，宁可显示得难看，也别让整页白屏。
+     */
+    const region = decodeQuery(q.region);
     place.value = {
       kind: "place",
-      name: q.region ?? "",
-      region: q.region ?? "",
+      name: region,
+      region,
       province: "", city: "", district: "",
       latE6: Number(q.latE6), lngE6: Number(q.lngE6),
     };

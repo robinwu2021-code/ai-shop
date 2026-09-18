@@ -321,6 +321,32 @@ describe("当前位置：一次性上下文", () => {
     expect(body, "onLoad 里又拉了一次").not.toMatch(/(?<!location\.)\bload\(\)/);
   });
 
+
+  // ---------------------------------------------------------------- 编了要解回来
+
+  it("★★★ query 里编过的中文，接收方必须解回来", () => {
+    /*
+     * 真机上报上来的「乱码」就是这个：新建页把
+     * `%E5%98%89%E9%80%B8%E8%8A%B1%E5%9B%AD` 原样显示了出来 ——
+     * 它其实是「嘉逸花园」。
+     *
+     * 发起方 `gotoSaveHere` 用 encodeURIComponent 编（不编的话地名里的空格与
+     * `#` 会把 query 截断），而 uni 的 onLoad **不会自动解回来**。
+     * 这一条页面照跑、不报错、不空白，只是显示成一串百分号 ——
+     * vue-tsc、单测、构建全都看不见它，只有真机截图看得出来。
+     *
+     * **两端一起钉**：编的那一头与解的那一头缺任何一边都还是坏的。
+     */
+    const store = code("src/stores/location.ts");
+    const edit = code("src/pages/address-edit/index.vue");
+    expect(store, "发起方不编，地名里的空格与 # 会把 query 截断")
+      .toContain("encodeURIComponent(name)");
+    expect(edit, "接收方不解，用户看到的是一串 %E5%98%89…")
+      .toContain("decodeURIComponent");
+    expect(edit, "解码要兜住异常 —— 残缺的百分号序列会抛，不该让整页白屏")
+      .toMatch(/try \{[\s\S]{0,120}decodeURIComponent[\s\S]{0,80}catch/);
+  });
+
 });
 
 /**
