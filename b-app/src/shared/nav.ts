@@ -50,6 +50,7 @@ export const ROUTES = {
   crossStore: "/pages/cross-store/index",
   plan: "/pages/plan/index",
   customers: "/pages/customers/index",
+  activities: "/pages/activities/index",
   marketing: "/pages/marketing/index",
 
   // ── 进销存（P-18）。**库存页是这一块的枢纽** ——

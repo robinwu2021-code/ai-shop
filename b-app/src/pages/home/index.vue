@@ -513,6 +513,20 @@ onShow(load);
         <text class="sh-muted">{{ $t("home.skuIdentityEntryHint") }}</text>
       </view>
 
+      <!--
+        ★ **活动提到一级**（2026-09-18 店主：「活动可以放到工作台一级」）。
+
+        它此前埋在 工作台 → 营销 → 活动 第三层。团购的价格与人数挪进活动之后，
+        开团前必先来这里建一个，第三层不合适。
+
+        **营销那张卡保留**：两个入口指向同一片功能不是重复，是两条不同的心智路径
+        ——「我要做一轮营销」与「我要开个团」。合并入口只合名字、把里面那页弄没门，
+        这个仓库栽过（见 store-categories 的注释）。
+      -->
+      <view v-if="merchant.can('biz:campaign')" class="sh-card entry" @tap="open(ROUTES.activities)">
+        <text class="txt-title">{{ $t("home.activityEntry") }}</text>
+      </view>
+
       <view v-if="merchant.can('biz:campaign')" class="sh-card entry" @tap="open(ROUTES.marketing)">
         <text class="txt-title">{{ $t("home.marketingEntry") }}</text>
       </view>
