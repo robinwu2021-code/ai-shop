@@ -48,7 +48,7 @@
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
 | 承运方可选列表（只列启用的） | GET | `/biz/fulfillment/carriers` | `mCarriers` | transfer |
-| 商品列表 | GET | `/biz/goods` | `mGoodsList` | goods-list、groups、marketing |
+| 商品列表 | GET | `/biz/goods` | `mGoodsList` | activity-edit、goods-list、groups、marketing |
 | 商品详情 | GET | `/biz/goods/:goodsNo` | `mGoodsDetail` | goods-edit、goods-publish |
 | 改库存 | POST | `/biz/goods/:goodsNo/stock` | `mSaveStock` | goods-list |
 | 改当前门店库存 | POST | `/biz/goods/:goodsNo/store-stock` | `mSaveStoreStock` | goods-list |
@@ -345,7 +345,7 @@
 | 页面 | 门禁 | 该页需要的码 | 进得来的角色 | ⚠ 会撞码 |
 |---|---|---|---|---|
 | `activities` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
-| `activity-edit` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
+| `activity-edit` | `biz:campaign` | `biz:stock`、`biz:campaign` | 老板、店长 | — |
 | `after-sale` | `biz:aftersale` | `biz:aftersale`、`biz:order:view` | 老板、店长、客服 | — |
 | `coupon-edit` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `coupon-issues` | `biz:campaign` | `biz:campaign`、`biz:customer` | 老板、店长 | — |
