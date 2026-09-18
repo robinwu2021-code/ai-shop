@@ -327,7 +327,7 @@
       },
       "usage": {
         "b-app": 282,
-        "c-app": 242
+        "c-app": 241
       }
     },
     {
@@ -463,7 +463,7 @@
       },
       "usage": {
         "b-app": 27,
-        "c-app": 33
+        "c-app": 32
       }
     },
     {
@@ -691,7 +691,7 @@
       },
       "usage": {
         "b-app": 21,
-        "c-app": 31
+        "c-app": 30
       }
     },
     {
@@ -727,7 +727,7 @@
       },
       "usage": {
         "b-app": 0,
-        "c-app": 9
+        "c-app": 8
       }
     },
     {
@@ -1353,7 +1353,7 @@
       },
       "usage": {
         "b-app": 26,
-        "c-app": 24
+        "c-app": 23
       }
     },
     {
@@ -4337,8 +4337,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 1,
-      "localSelectors": 33,
-      "localCssLines": 118,
+      "localSelectors": 31,
+      "localCssLines": 112,
       "rolled": []
     },
     {
@@ -4919,9 +4919,9 @@
       "components": [
         "sh-switch"
       ],
-      "libClassHits": 55,
-      "localSelectors": 19,
-      "localCssLines": 66,
+      "libClassHits": 50,
+      "localSelectors": 17,
+      "localCssLines": 60,
       "rolled": []
     },
     {

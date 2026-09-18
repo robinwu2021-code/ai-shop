@@ -8,8 +8,6 @@ import { api } from "@/api";
 import { useLocationStore } from "@/stores/location";
 import type { Address } from "@shared/types";
 import { canChooseLocation, canChooseWxAddress, chooseLocation, chooseWxAddress, getLocationDetailed } from "@shared/ports/location";
-import { readClipboard } from "@shared/ports/clipboard";
-import { parsePastedAddress } from "@shared/utils/address-paste";
 import { confirm } from "@ai-shop/ui/prompt";
 import { isPhone, notBlank } from "@shared/utils/validate";
 import { pickedAddress, pickedPlace, placeFrom } from "@/shared/address-pick";
@@ -460,12 +458,6 @@ onShow(() => {
 .tagrow {
   gap: 12rpx;
   margin-top: 16rpx;
-}
-.pasterow {
-  gap: 16rpx;
-}
-.pasterow__text {
-  flex: 1;
 }
 .nocoord {
   margin-top: 24rpx;

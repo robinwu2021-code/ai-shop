@@ -14,8 +14,6 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import type { Address } from "@shared/types";
 import { canChooseLocation, canChooseWxAddress, chooseLocation, chooseWxAddress } from "@shared/ports/location";
-import { readClipboard } from "@shared/ports/clipboard";
-import { parsePastedAddress } from "@shared/utils/address-paste";
 import { isPhone, notBlank } from "@shared/utils/validate";
 import { canSearchPlaces } from "@shared/ports/geo-search";
 import { ROUTES } from "@shared/utils/constants";
@@ -125,42 +123,6 @@ function applyPicked(p: { name?: string; address?: string; lat: number; lng: num
   }
 }
 
-/**
- * 粘贴一段文字，认出姓名 / 手机 / 省市区 / 地址主体 / 门牌。
- *
- * <p><b>只填空着的格子，绝不覆盖他已经填了的字。</b>与旁边「微信地址」那个
- * 入口同一条规矩（见 `fillFromWx`）：他可能先手填了一半才想起来有这个按钮，
- * 一键把刚敲的字冲掉是最让人恼火的那种「贴心」。
- *
- * <p><b>它不给坐标</b>，所以不是选点页的替代 —— 粘完仍然要点一次地图选点，
- * 否则商家的自送半径判不了。这件事由保存按钮上方那句提示负责说。
- */
-async function pasteAndFill() {
-  const text = await readClipboard();
-  if (!text.trim()) {
-    uni.showToast({ title: String(t("address.pasteEmpty")), icon: "none" });
-    return;
-  }
-  const r = parsePastedAddress(text);
-  if (!r) {
-    uni.showToast({ title: String(t("address.pasteFailed")), icon: "none" });
-    return;
-  }
-  const put = (k: "name" | "phone" | "detail" | "houseNo" | "region", v: string) => {
-    if (v && !String(draft.value[k] ?? "").trim()) draft.value[k] = v;
-  };
-  put("name", r.name);
-  put("phone", r.phone);
-  put("detail", r.detail);
-  put("houseNo", r.houseNo);
-  if (r.region && !draft.value.region.trim()) {
-    draft.value.region = r.region;
-    draft.value.province = r.province;
-    draft.value.city = r.city;
-    draft.value.district = r.district;
-  }
-  uni.showToast({ title: String(t("address.pasteDone")), icon: "none" });
-}
 
 const pickingRegion = ref(false);
 
@@ -461,13 +423,6 @@ function pickCountry(code: string, cc: string) {
       </text>
     </view>
 
-    <!--
-      **挪到底部。** 它是「我有现成的一段文字」这条捷径，不是第一步 ——
-      摆在最上面时，第一次用的人会先读它、再意识到自己没有那段文字。
-    -->
-    <view class="sh-notice sh-notice--muted pasterow sh-center" @tap="pasteAndFill">
-      <text class="txt-caption txt-primary">{{ $t("address.paste") }}</text>
-    </view>
 
     <view class="sh-btn form__save" :class="{ 'is-disabled': !valid }" @tap="save">
       {{ $t("common.confirm") }}
@@ -526,12 +481,6 @@ function pickCountry(code: string, cc: string) {
 .tagrow {
   gap: 12rpx;
   margin-top: 16rpx;
-}
-.pasterow {
-  gap: 16rpx;
-}
-.pasterow__text {
-  flex: 1;
 }
 .nocoord {
   margin-top: 24rpx;

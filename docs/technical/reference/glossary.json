@@ -160,30 +160,6 @@
           "ar": "تم التبديل إلى {name}. لم يتم تحديد الموقع، لذا تبقى المنتجات حسب النطاق السابق"
         },
         {
-          "key": "address.paste",
-          "zh-CN": "粘贴识别",
-          "en": "Paste",
-          "ar": "لصق وتعرّف"
-        },
-        {
-          "key": "address.pasteDone",
-          "zh-CN": "已填入，请核对一遍",
-          "en": "Filled in — please check it",
-          "ar": "تم التعبئة — تحقّق منها"
-        },
-        {
-          "key": "address.pasteEmpty",
-          "zh-CN": "剪贴板是空的",
-          "en": "Clipboard is empty",
-          "ar": "الحافظة فارغة"
-        },
-        {
-          "key": "address.pasteFailed",
-          "zh-CN": "没认出来，手动填写即可",
-          "en": "Couldn't read that — please type it in",
-          "ar": "لم يتم التعرف عليه — اكتبه يدويًا"
-        },
-        {
           "key": "address.phone",
           "zh-CN": "手机号",
           "en": "Phone number",
@@ -4502,6 +4478,12 @@
           "ar": "اشترِ {n} واحصل على {m}"
         },
         {
+          "key": "activities.ruleGroup",
+          "zh-CN": "{n} 人成团 · 每件 {m}",
+          "en": "{n} buyers · {m} each",
+          "ar": "{n} مشترين · {m} للقطعة"
+        },
+        {
           "key": "activities.rulePrice",
           "zh-CN": "特价 {n}",
           "en": "Special price {n}",
@@ -4730,6 +4712,12 @@
           "ar": "تصريف المخزون"
         },
         {
+          "key": "activityEdit.goal.GROUP",
+          "zh-CN": "开团购",
+          "en": "Group buy",
+          "ar": "شراء جماعي"
+        },
+        {
           "key": "activityEdit.goal.WAKEUP",
           "zh-CN": "唤回老客",
           "en": "Bring people back",
@@ -4752,6 +4740,12 @@
           "zh-CN": "把压着的货用特价走掉",
           "en": "Move slow stock with a special price",
           "ar": "حرّك البضاعة الراكدة بسعر خاص"
+        },
+        {
+          "key": "activityEdit.goalHint.GROUP",
+          "zh-CN": "凑够人数按团购价走",
+          "en": "Enough buyers join, everyone gets the group price",
+          "ar": "عند اكتمال العدد يحصل الجميع على سعر المجموعة"
         },
         {
           "key": "activityEdit.goalHint.WAKEUP",
@@ -4778,6 +4772,12 @@
           "ar": "سعر خاص لفترة"
         },
         {
+          "key": "activityEdit.goalName.GROUP",
+          "zh-CN": "团购",
+          "en": "Group buy",
+          "ar": "شراء جماعي"
+        },
+        {
           "key": "activityEdit.goalName.WAKEUP",
           "zh-CN": "老客回归",
           "en": "Welcome back",
@@ -4788,6 +4788,30 @@
           "zh-CN": "活动目标",
           "en": "Goal",
           "ar": "هدف الحملة"
+        },
+        {
+          "key": "activityEdit.goodsQ",
+          "zh-CN": "哪几件货",
+          "en": "Which products",
+          "ar": "أي منتجات"
+        },
+        {
+          "key": "activityEdit.groupHint",
+          "zh-CN": "凑够人数才按这个价，不成团按原价照常发货",
+          "en": "This price applies once the group fills; otherwise the order ships at the normal price",
+          "ar": "يُطبق هذا السعر عند اكتمال المجموعة؛ وإلا يُشحن الطلب بالسعر العادي"
+        },
+        {
+          "key": "activityEdit.groupN",
+          "zh-CN": "几人成团",
+          "en": "Buyers to form a group",
+          "ar": "عدد المشترين للمجموعة"
+        },
+        {
+          "key": "activityEdit.groupPrice",
+          "zh-CN": "成团价（元）",
+          "en": "Group price",
+          "ar": "سعر المجموعة"
         },
         {
           "key": "activityEdit.name",
@@ -4824,6 +4848,12 @@
           "zh-CN": "下一步",
           "en": "Next",
           "ar": "التالي"
+        },
+        {
+          "key": "activityEdit.noGoods",
+          "zh-CN": "本店还没有商品",
+          "en": "No products yet",
+          "ar": "لا منتجات بعد"
         },
         {
           "key": "activityEdit.prev",
@@ -7230,30 +7260,6 @@
           "zh-CN": "生成中…",
           "en": "Generating…",
           "ar": "جارٍ التوليد…"
-        },
-        {
-          "key": "goods.groupBuyIncomplete",
-          "zh-CN": "拼团信息不完整",
-          "en": "Group-buy tier is half filled",
-          "ar": "بيانات المجموعة ناقصة"
-        },
-        {
-          "key": "goods.groupBuyOn",
-          "zh-CN": "开放拼团",
-          "en": "Enable group buy",
-          "ar": "تفعيل الشراء الجماعي"
-        },
-        {
-          "key": "goods.groupMinCount",
-          "zh-CN": "起团人数",
-          "en": "Min group size",
-          "ar": "أقل عدد للمجموعة"
-        },
-        {
-          "key": "goods.groupPrice",
-          "zh-CN": "团购价",
-          "en": "Group price",
-          "ar": "سعر المجموعة"
         },
         {
           "key": "goods.hasDraftRow",

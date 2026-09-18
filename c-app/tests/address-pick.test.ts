@@ -452,45 +452,19 @@ describe("粘贴识别：只填空格子，且不冒充选点", () => {
   /** 表单已搬进共用件（M4：弹层改整页）—— 这一组量的全是表单内部 */
   const addressPage = code("src/components/biz/biz-address-form.vue");
 
-  it("★★★ 只填空着的格子，不覆盖他已经敲的字", () => {
-    const body = bodyOf(addressPage, "async function pasteAndFill(");
-    expect(body, "粘贴入口不见了").not.toBeNull();
-    /*
-     * 他可能先手填了一半才想起来有这个按钮。一键把刚敲的字冲掉，
-     * 是最让人恼火的那种「贴心」——旁边 fillFromWx 也是这条规矩。
-     */
-    expect(body).toMatch(/!String\(draft\.value\[k\] \?\? ""\)\.trim\(\)/);
-    expect(body, "省市区那一组也要判空再填").toMatch(/!draft\.value\.region\.trim\(\)/);
-  });
-
-  it("★★★ 认不出来要说一声，不能静默什么都不做", () => {
-    const body = bodyOf(addressPage, "async function pasteAndFill(");
-    expect(body).toContain("pasteFailed");
-    expect(body, "剪贴板空着与认不出来是两回事，文案也该是两句").toContain("pasteEmpty");
-  });
-
-  it("★★★ 没有坐标时必须说一句，但**不许拦保存**", () => {
-    /*
-     * 手填、微信导入、粘贴三条路都只给字不给坐标。没坐标的地址上
-     * 商家自送半径判不了（后端明写着「没坐标就放行」）、导航也打不开 ——
-     * 三件事在界面上都看不出区别。
-     *
-     * 拦保存同样不行：存量地址、POI 搜不到的地方本来就没有坐标，
-     * 拦了等于让一部分人存不了地址。与 regionUnsplit 那句同一种口径。
-     */
-    expect(addressPage).toMatch(/v-if="!picked"[\s\S]{0,200}noCoordHint/);
-    /*
-     * **不用 bodyOf**：`valid` 是个没有花括号的箭头表达式，
-     * 而 bodyOf 是「走到右括号再找第一个 `{`」—— 对这种写法它取到的是
-     * **后面那个函数的体**。第一版一直绿只是因为那时后面那个函数里恰好没有
-     * `picked` 这个词；我加了 `applyPicked` 之后它当场假红。
-     * 改成按文本截 `const valid = computed(` 到本行结束的那一段。
-     */
-    const validExpr = addressPage.slice(addressPage.indexOf("const valid = computed("));
-    const valid = validExpr.slice(0, validExpr.indexOf("\n);"));
-    expect(valid.length, "找不到 valid 了 —— 这条守卫量的范围不对").toBeGreaterThan(20);
-    expect(valid, "valid 里出现 picked = 把提示变成了闸").not.toContain("picked");
-  });
+  /*
+   * **粘贴识别已经去掉**（2026-09-18）。原来这儿有两条守卫：
+   * 「只填空着的格子」与「认不出来要说一声」。
+   *
+   * 去掉它的理由不是它没用 —— 「代下单」那一场它确实省事。是新增地址改成
+   * 默认直接开地图之后，它被挤到了一个尴尬的位置：用户点新增，地图先弹出来，
+   * 他得先在地图上点一个点，才看得到那行粘贴。**要先做完一件他这次根本不想
+   * 做的事。**
+   *
+   * `parsePastedAddress` 与 `readClipboard` 留着没删：解析本身在
+   * `packages/shared/tests/address-paste.test.ts` 里逐条测过，
+   * 哪天换个位置接回来（比如新增那一步先探一下剪贴板）直接用。
+   */
 });
 
 /**
