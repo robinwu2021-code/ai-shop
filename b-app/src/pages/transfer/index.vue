@@ -36,6 +36,22 @@ const toId = ref("");
 const lines = ref<Line[]>([]);
 const pickable = ref<StockBalance[]>([]);
 const showPick = ref(false);
+/**
+ * 开挑货弹层的同时直接开相机（2026-09-18 店主：「扫码考虑放到外层，减少点击」）。
+ *
+ * <p>改之前扫码埋在第二层：添加商品 → 弹层 → 扫码，**相机打开前要点两下**。
+ * 现在页面上并排一枚扫码钮，一下到相机。
+ *
+ * <p>扫码的流程本身没搬出来 —— 它仍在 `biz-item-picker` 里，三处共用一份。
+ * 页面只负责「开着就扫」：把 scanCode 抄到三个页面上，
+ * 「没绑过的码怎么办」那条分支迟早在三处各自漂。
+ */
+const autoScan = ref(false);
+
+function openPick(scan: boolean) {
+  autoScan.value = scan;
+  showPick.value = true;
+}
 
 /** 可选的两端。**在途不能选** —— 它是系统库位，货停在那儿是过程不是目的地 */
 const choosable = computed(() => locations.value.filter((l) => l.kind !== "TRANSIT"));
@@ -455,7 +471,16 @@ onShow(load);
         </view>
       </view>
 
-      <sh-add :text="String($t('transfer.addItem'))" @tap="showPick = true"></sh-add>
+      <view class="addrow sh-row">
+      <sh-add class="sh-fill" :text="String($t('transfer.addItem'))" @tap="openPick(false)"></sh-add>
+      <!--
+        扫码与「添加商品」并排：**它们是同一件事的两种做法**（找到那件货）。
+        藏进弹层的话商家会以为扫码是另一个功能，而且每次要多点一下。
+      -->
+      <view class="scan sh-center" @tap="openPick(true)">
+        <sh-icon name="scan" :size="26" color="var(--sh-on-primary)"></sh-icon>
+      </view>
+    </view>
 
       <view v-if="lines.length" class="sh-card hd sh-row sh-row--between">
         <text class="txt-strong">{{ $t("transfer.totalQty") }}</text>
@@ -471,12 +496,13 @@ onShow(load);
 
       <biz-item-picker
         :visible="showPick"
+      :auto-scan="autoScan"
         :title="String($t('transfer.addItem'))"
         :items="pickable"
         :picked="lines.map((l) => l.itemId)"
         :qty-label="pickQty"
         @pick="addLine"
-        @close="showPick = false"
+        @close="showPick = false; autoScan = false"
       ></biz-item-picker>
     </template>
 
@@ -514,6 +540,17 @@ onShow(load);
 </template>
 
 <style scoped>
+.addrow {
+  gap: 16rpx;
+}
+/* 与「添加商品」同高（44px），圆形 —— 形状说明它是另一种做法，不是第三个动作 */
+.scan {
+  flex: none;
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 9999px;
+  background: var(--sh-primary);
+}
 /* 整行可点：88rpx（44px）是可点下限，改之前只有 17px 且只有文字那一段 */
 .end {
   min-height: 88rpx;

@@ -1352,7 +1352,7 @@
         "justify-content": "center"
       },
       "usage": {
-        "b-app": 23,
+        "b-app": 26,
         "c-app": 23
       }
     },
@@ -1370,7 +1370,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 92,
+        "b-app": 95,
         "c-app": 46
       }
     },
@@ -1426,7 +1426,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 288,
+        "b-app": 291,
         "c-app": 143
       }
     },
@@ -2284,7 +2284,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 64,
+        "b-app": 67,
         "c-app": 7,
         "lib": 13
       },
@@ -2982,14 +2982,15 @@
       "name": "biz-item-picker",
       "file": "b-app/src/components/biz/biz-item-picker.vue",
       "scope": "B 端",
-      "lines": 236,
+      "lines": 264,
       "props": [
         "visible: boolean",
         "title: string",
         "items: StockBalance[]",
         "picked?: string[]",
         "qtyLabel?: (b: StockBalance) => string",
-        "failed?: boolean"
+        "failed?: boolean",
+        "autoScan?: boolean"
       ],
       "usage": {
         "b-app": 3,
@@ -3867,13 +3868,14 @@
         "sh-actionbar",
         "sh-add",
         "sh-empty",
+        "sh-icon",
         "sh-scaffold",
         "biz-item-picker",
         "biz-supplier-picker"
       ],
-      "libClassHits": 42,
-      "localSelectors": 10,
-      "localCssLines": 37,
+      "libClassHits": 45,
+      "localSelectors": 12,
+      "localCssLines": 47,
       "rolled": []
     },
     {
@@ -4133,14 +4135,15 @@
         "sh-actionbar",
         "sh-add",
         "sh-empty",
+        "sh-icon",
         "sh-kv",
         "sh-scaffold",
         "biz-item-picker",
         "biz-store-tag"
       ],
-      "libClassHits": 29,
-      "localSelectors": 5,
-      "localCssLines": 17,
+      "libClassHits": 32,
+      "localSelectors": 7,
+      "localCssLines": 27,
       "rolled": []
     },
     {
@@ -4288,9 +4291,9 @@
         "sh-sheet",
         "biz-item-picker"
       ],
-      "libClassHits": 59,
-      "localSelectors": 17,
-      "localCssLines": 67,
+      "libClassHits": 62,
+      "localSelectors": 19,
+      "localCssLines": 77,
       "rolled": []
     },
     {

@@ -34,6 +34,21 @@ const props = withDefaults(
      * 而这两句话在界面上一模一样、该给的东西正相反（建货 vs 重试）。
      */
     failed?: boolean;
+    /**
+     * 打开的同时直接开相机（2026-09-18）。
+     *
+     * <p>页面上那枚扫码钮走的就是这条：**扫码本来埋在第二层**
+     * （添加商品 → 弹层 → 扫码），相机打开前要点两下。
+     *
+     * <p>为什么不让页面自己调 scanCode：那样进货/报损/调拨三处各写一遍扫码流程，
+     * 而「没绑过的码怎么办」这条分支迟早在三处各自漂。页面只负责「开着就扫」，
+     * 逻辑仍然只有这一份。
+     *
+     * <p>扫不中时弹层已经开着、`pendingCode` 也已就位 —— 他正好从列表里选一件绑上。
+     * 这不是退路，是<b>第一次扫的必经之路</b>：条码库就是这么攒起来的
+     * （运营端此刻的覆盖率是 0%）。
+     */
+    autoScan?: boolean;
   }>(),
   { picked: () => [], qtyLabel: undefined, failed: false },
 );
@@ -80,6 +95,19 @@ function isPicked(b: StockBalance): boolean {
 const scanning = ref(false);
 /** 扫到了但没绑过的那个码。有值时列表处于「选一件货绑给它」的状态 */
 const pendingCode = ref("");
+
+watch(() => props.visible, (v) => {
+  /*
+   * 关掉时清掉待绑的码：下次打开是一次新的开始。
+   * 留着的话他会看到一句「扫到 690…，选一件绑给它」，而这一次他根本没扫 ——
+   * 那条提示会把整屏的意思说错。
+   */
+  if (!v) {
+    pendingCode.value = "";
+    return;
+  }
+  if (props.autoScan) void scan();
+});
 
 async function scan() {
   if (scanning.value) return;
