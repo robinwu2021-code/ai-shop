@@ -359,6 +359,7 @@ function pickCountry(code: string, cc: string) {
       class="field__input"
       :placeholder="$t('address.houseNo')"
     />
+    </template>
     <!--
       姓名与手机**同一行**：两个都是短字段，各占一整行会把这张表拉得很长，
       而表越长「还要填多少」越看不到头。
