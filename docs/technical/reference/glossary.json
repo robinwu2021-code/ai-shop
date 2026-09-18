@@ -89,9 +89,9 @@
         },
         {
           "key": "address.houseNo",
-          "zh-CN": "门牌号（如 3 幢 2 单元 601）",
-          "en": "Unit no. (e.g. Blk 3, Unit 601)",
-          "ar": "رقم الوحدة (مثال: مبنى 3، شقة 601)"
+          "zh-CN": "门牌号",
+          "en": "Unit no.",
+          "ar": "رقم الوحدة"
         },
         {
           "key": "address.invalid",
@@ -287,8 +287,8 @@
         },
         {
           "key": "address.tagPh",
-          "zh-CN": "标签（选填）",
-          "en": "Label (optional)",
+          "zh-CN": "标签，选填",
+          "en": "Label, optional",
           "ar": "وسم (اختياري)"
         },
         {
@@ -1289,9 +1289,9 @@
         },
         {
           "key": "confirm.remarkPh",
-          "zh-CN": "选填，如放门口",
-          "en": "Optional, e.g. leave at door",
-          "ar": "اختياري، مثال: اتركه عند الباب"
+          "zh-CN": "备注，选填",
+          "en": "Note, optional",
+          "ar": "ملاحظة، اختياري"
         },
         {
           "key": "confirm.saveHere",
@@ -1817,9 +1817,9 @@
         },
         {
           "key": "groupHost.addressPh",
-          "zh-CN": "如 阳光里 3 幢 2 单元 601",
-          "en": "e.g. Block 3, Unit 2, Apt 601",
-          "ar": "مثال: مبنى ٣، وحدة ٢، شقة ٦٠١"
+          "zh-CN": "收货地址",
+          "en": "Delivery address",
+          "ar": "عنوان التوصيل"
         },
         {
           "key": "groupHost.addressPrivacy",
@@ -1907,9 +1907,9 @@
         },
         {
           "key": "groupHost.timeSlotPh",
-          "zh-CN": "如 今晚 19:00–21:00",
-          "en": "e.g. tonight 19:00–21:00",
-          "ar": "مثال: الليلة ١٩:٠٠–٢١:٠٠"
+          "zh-CN": "期望送达时间",
+          "en": "Preferred delivery time",
+          "ar": "وقت التوصيل المفضل"
         },
         {
           "key": "groupHost.title",
@@ -2549,8 +2549,8 @@
         },
         {
           "key": "merchant.category",
-          "zh-CN": "主营类目（如 生鲜、家政）",
-          "en": "Main category (e.g. fresh, home care)",
+          "zh-CN": "主营类目",
+          "en": "Main category",
           "ar": "التصنيف الرئيسي (مثل: طازج، خدمات منزلية)"
         },
         {
@@ -3617,9 +3617,9 @@
         },
         {
           "key": "request.descPh",
-          "zh-CN": "选填，如 规格、预期、为什么想团",
-          "en": "Optional, e.g. size, expectations, why you want to group up",
-          "ar": "اختياري، مثال: المقاس، التوقعات، سبب الطلب"
+          "zh-CN": "补充说明，选填",
+          "en": "More details, optional",
+          "ar": "تفاصيل إضافية، اختياري"
         },
         {
           "key": "request.expect",
@@ -3725,9 +3725,9 @@
         },
         {
           "key": "request.titlePh",
-          "zh-CN": "如 儿童护脊床垫 1.2m",
-          "en": "e.g. kids mattress 1.2m",
-          "ar": "مثال: مرتبة أطفال ١٫٢م"
+          "zh-CN": "想团什么",
+          "en": "What to group-buy",
+          "ar": "ماذا تريد أن تشتري جماعيًا"
         },
         {
           "key": "request.validUntil",
@@ -3899,7 +3899,7 @@
         },
         {
           "key": "search.placeholder",
-          "zh-CN": "搜商品、搜商家，如「苹果」「家政」",
+          "zh-CN": "搜商品、搜商家",
           "en": "Search products or shops",
           "ar": "ابحث عن منتجات أو متاجر"
         },
@@ -4322,12 +4322,6 @@
           "ar": "دائمة"
         },
         {
-          "key": "activities.edit",
-          "zh-CN": "编辑",
-          "en": "Edit",
-          "ar": "تعديل"
-        },
-        {
           "key": "activities.empty",
           "zh-CN": "还没有活动",
           "en": "No activities yet",
@@ -4422,6 +4416,12 @@
           "zh-CN": "还剩",
           "en": "Left",
           "ar": "متبقٍ"
+        },
+        {
+          "key": "activities.leftN",
+          "zh-CN": "还剩 {n}",
+          "en": "{n} left",
+          "ar": "متبقٍ {n}"
         },
         {
           "key": "activities.new",
@@ -4962,6 +4962,12 @@
           "zh-CN": "新建活动",
           "en": "New activity",
           "ar": "حملة جديدة"
+        },
+        {
+          "key": "activityEdit.titleEdit",
+          "zh-CN": "改活动",
+          "en": "Edit activity",
+          "ar": "تعديل النشاط"
         },
         {
           "key": "afterSale.agree",
