@@ -7899,9 +7899,9 @@
         },
         {
           "key": "groups.noGroupable",
-          "zh-CN": "还没有配过团购价的商品",
-          "en": "No product has a group price configured",
-          "ar": "لا يوجد منتج مضبوط له سعر جماعي"
+          "zh-CN": "还没有在跑的团购活动 —— 先去「活动」里建一个",
+          "en": "No group-buy activity running — create one under Activities first",
+          "ar": "لا يوجد نشاط شراء جماعي قيد التشغيل — أنشئ واحدًا من الأنشطة أولًا"
         },
         {
           "key": "groups.noRunning",

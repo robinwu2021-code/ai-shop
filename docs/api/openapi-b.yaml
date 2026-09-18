@@ -6423,7 +6423,7 @@ components:
           description: "限定到某一家门店。空 = 主体下所有门店"
         triggerType: 
           type: "string"
-          description: "`NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品"
+          description: "`NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 / `GROUP` 拼够人数成团"
         triggerAmountMinor: 
           type: 
             - "number"
