@@ -238,8 +238,10 @@ public class GoodsServiceImpl implements GoodsService {
         if (g == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        return toVO(g, loadSkus(List.of(goodsNo)).getOrDefault(goodsNo, List.of()),
-                campaignPort.flashPrices(List.of(goodsNo)).get(goodsNo));
+        return withSaleScope(
+                toVO(g, loadSkus(List.of(goodsNo)).getOrDefault(goodsNo, List.of()),
+                        campaignPort.flashPrices(List.of(goodsNo)).get(goodsNo)),
+                g.getEntityNo());
     }
 
     @Override
@@ -392,7 +394,34 @@ public class GoodsServiceImpl implements GoodsService {
                 readParams(g.getParams()),
                 null,
                 // C 端不分门店视角：门店上下架由可售池决定，不在这条链上
+                null,
+                // 销售范围只有详情页要 —— 列表在这儿填就是 N+1，见 withSaleScope
                 null);
+    }
+
+    /**
+     * 给一条已经装好的 VO 补上销售范围。
+     *
+     * <p><b>不做进 {@code toVO}</b>：那一个被列表与 {@code detailAll} 共用，
+     * 一屏几十行、每行一次范围查询就是 N+1。而列表本来也不标范围
+     * （买家在列表上要的是「有什么」，点进来才问「送不送到我这儿」）。
+     *
+     * <p>Java record 没有 with，只能整份重建 —— 字段一多就容易漏填一个，
+     * 所以这里逐个透传、不做任何加工，新增字段时这一段要跟着补。
+     */
+    private GoodsVO withSaleScope(GoodsVO v, String entityNo) {
+        var scope = merchantPort.saleScope(entityNo);
+        if (scope == null || scope.isEmpty()) {
+            return v;
+        }
+        return new GoodsVO(v.goodsNo(), v.title(), v.subtitle(), v.cover(), v.images(),
+                v.detail(), v.detailImages(), v.type(), v.categoryNo(), v.merchant(),
+                v.rating(), v.ratingCount(), v.price(), v.originPrice(), v.fulfillments(),
+                v.specGroups(), v.skus(), v.sales(), v.cutoffAt(), v.arrivalDesc(),
+                v.weighed(), v.origin(), v.durationMin(), v.storeName(), v.limitPerUser(),
+                v.onSale(), v.status(), v.titleI18n(), v.subtitleI18n(), v.stdNo(),
+                v.auditReason(), v.groupBuy(), v.params(), v.hasDraft(), v.storeOnSale(),
+                new GoodsVO.SaleScopeVO(scope.unlimited(), scope.areaNames(), scope.areaCount()));
     }
 
     /**

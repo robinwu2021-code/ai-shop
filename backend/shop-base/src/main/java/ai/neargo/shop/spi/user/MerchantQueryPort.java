@@ -347,6 +347,47 @@ public interface MerchantQueryPort {
     java.util.List<String> storeNos(String merchantNo);
 
     /**
+     * 这家主体的**销售范围**，<b>给买家看的那一份</b>。
+     *
+     * <p>与 {@link #reachableCommunities(String)} 回答的不是同一个问题：
+     * 那个给的是展开之后的聚落号，几十上百条，是可见性的内部口径；
+     * 这个给的是商家<b>框过的那几块</b>的名字，印在商品详情页上。
+     * 把前者印给买家等于把实现细节当文案 —— 他会看到一串自己没听说过的小区名，
+     * 而他要的只是「这儿卖不卖到我家」。
+     *
+     * <p>只算 {@code ACTIVE} 且 {@code INCLUDE} 的项：
+     * <ul>
+     *   <li>{@code PENDING} 还没生效，出现在买家页上就是承诺了一件还没成立的事；</li>
+     *   <li>{@code EXCLUDE} 不印 —— 他看得到这件商品就说明没被排除掉，
+     *       把排除项列出来只会被读成「这些地方也卖」。</li>
+     * </ul>
+     *
+     * @return 见 {@link SaleScope}；主体不存在时返回 {@code unlimited=false} 的空范围
+     *         （对买家是「不显示这一行」，不是「全国都卖」）
+     */
+    SaleScope saleScope(String merchantNo);
+
+    /**
+     * 一句话销售范围。
+     *
+     * @param unlimited 没框过地理范围、且不是「只做自提」—— 端上显示「不限地区」。
+     *                  <b>空范围不能一律翻成不限</b>：只做自提却一个自提点/范围都没配的商家，
+     *                  空的含义是「谁也看不到」（见 {@code store.ts} 里 {@code serviceAreas} 那段）。
+     *                  同一个空数组两种意思，所以这里把判断做完再下发，不留给端上。
+     * @param areaNames 框过的那几块的名字，最多几条。区划取<b>叶子名</b>不取整条路径：
+     *                  运营看「浙江省 / 杭州市 / 西湖区」是为了不看错，
+     *                  买家看到自己家那三个字就够，路径只会把这一行挤成两行。
+     * @param areaCount 总数。只给截断后的列表会让「6 个」和「60 个」长得一模一样
+     */
+    record SaleScope(boolean unlimited, java.util.List<String> areaNames, int areaCount) {
+
+        /** 端上据此整行不渲染：不是「不限」，也没有一个地名说得出来 */
+        public boolean isEmpty() {
+            return !unlimited && (areaNames == null || areaNames.isEmpty());
+        }
+    }
+
+    /**
      * 门店 → 它属于哪个主体。批量，列表页专用。
      *
      * <p>自提点归属改到门店（V16）之后，community 域拿着 {@code store_no} 却要显示

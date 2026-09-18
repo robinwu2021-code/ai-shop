@@ -227,7 +227,30 @@ export interface GoodsParam {
   /** 展示文案 */
   label: string;
 }
+/**
+ * 这件货卖到哪儿，给买家看的一行话。
+ *
+ * ⚠️ **空不等于不限**：只做自提却一个范围都没配的商家，空的含义是「谁也看不到」；
+ * 开了快递或自送的商家，空的含义才是「不限」。同一个空数组两种意思 ——
+ * 所以这个判断由后端做完，端上只读 `unlimited`，别自己从 `areaNames.length` 推。
+ */
+export interface SaleScope {
+  /** true → 显示「不限地区」，此时 `areaNames` 为空 */
+  unlimited: boolean;
+  /** 最多几个地名；区划是**叶子名**不是整条路径（「西湖区」不是「浙江省 / 杭州市 / 西湖区」）*/
+  areaNames: string[];
+  /** 总数。只看截断后的列表会让「6 个」和「60 个」长得一模一样 */
+  areaCount: number;
+}
 export interface Goods {
+  /**
+   * 销售范围。**只有商品详情 `/mp/goods/{no}` 下发，列表恒空** ——
+   * 列表一屏几十行，每行再查一次范围就是 N+1，而买家是点进详情才问「送到我这儿吗」。
+   *
+   * 空（缺省）或 `!unlimited && !areaNames.length` → **整行不渲染**。
+   */
+  saleScope?: SaleScope | null;
+
   /**
    * <b>本店</b>上不上架（多门店，B 端列表下发）。
    *

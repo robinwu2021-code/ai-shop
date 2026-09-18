@@ -2006,6 +2006,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                  */
                 null,
                 // 无门店上下文（ops 视角 / 单店）：storeOnSale 留空 = 未按店管理
+                null,
+                // 商家侧不标销售范围：店主知道自己的经营范围，那是他在门店设置里配的
                 null);
     }
 
@@ -3148,7 +3150,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 // 商家侧回显：不回显的话「打开编辑页再保存一次就把参数清空了」
                 readParams(g.getParams()),
                 hasDraft(g.getGoodsNo()),
-                storeOnSale);
+                storeOnSale,
+                // 同上：销售范围是买家页的一行话，商家侧在门店设置里看
+                null);
     }
 
     /**

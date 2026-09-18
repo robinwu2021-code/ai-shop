@@ -699,6 +699,65 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         return s == null ? "" : s;
     }
 
+    /** 买家页那一行最多列几个地名。再多就该说「等 N 个地区」了 */
+    private static final int SALE_SCOPE_SAMPLE = 6;
+
+    @Override
+    public SaleScope saleScope(String merchantNo) {
+        MchEntity m = merchantNo == null || merchantNo.isBlank() ? null
+                : DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
+        if (m == null) {
+            return new SaleScope(false, java.util.List.of(), 0);
+        }
+        List<MchServiceArea> includes = DataScopeContext.executeWithoutScope(() ->
+                        serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
+                                .eq(MchServiceArea::getEntityNo, merchantNo)
+                                .eq(MchServiceArea::getStatus, AREA_ACTIVE)))
+                .stream()
+                .filter(a -> !MchServiceArea.MODE_EXCLUDE.equals(a.getMode()))
+                .toList();
+        if (!includes.isEmpty()) {
+            return new SaleScope(false,
+                    includes.stream().limit(SALE_SCOPE_SAMPLE).map(this::buyerAreaName).toList(),
+                    includes.size());
+        }
+        /*
+         * 一条 INCLUDE 都没有时，空的含义**由履约路决定** —— 这是本方法唯一真正的判断，
+         * 也是把它做在后端而不是留给端上的理由：同一个空数组，
+         * 开了快递或自送是「不限」，只做自提是「谁也看不到」。
+         * 端上拿到一个空列表判不出来，而判反的代价是给买家一句正好相反的承诺。
+         *
+         * 判据与 reachableCommunities 同一段（channel 集合为空则回落旧列），
+         * 不另写一遍：另写的那份迟早与可见性分叉，届时页面上写着「不限地区」
+         * 而这件商品在买家那儿根本搜不到。
+         */
+        java.util.Set<String> channels = enabledFulfillments(merchantNo, null);
+        boolean unlimited;
+        if (channels.isEmpty()) {
+            String reach = m.getFulfillmentReach() == null ? PICKUP : m.getFulfillmentReach();
+            unlimited = !PICKUP.equals(reach);
+        } else {
+            unlimited = channels.contains(ai.neargo.shop.common.Fulfillments.EXPRESS)
+                    || channels.contains(ai.neargo.shop.common.Fulfillments.MERCHANT_DELIVERY);
+        }
+        return new SaleScope(unlimited, java.util.List.of(), 0);
+    }
+
+    /**
+     * 覆盖项给买家看的名字。区划取<b>叶子名</b>：
+     * 运营那份走 {@code regionPathName}（整条路径，为的是不看错），
+     * 买家看到自己家那三个字就够，路径只会把详情页那一行挤成两行。
+     * 取不到名就退回编码，<b>不返回空</b> —— 空会让整行少一个地方，看不出来。
+     */
+    private String buyerAreaName(MchServiceArea a) {
+        String name = "COMMUNITY".equals(a.getLevel())
+                ? communityQueryPort.communityName(a.getRefCode())
+                : masterDataPort.regionNames(java.util.List.of(a.getRefCode())).get(a.getRefCode());
+        return name == null || name.isBlank() ? a.getRefCode() : name;
+    }
+
     @Override
     public java.util.List<String> storeNos(String merchantNo) {
         if (merchantNo == null || merchantNo.isBlank()) {

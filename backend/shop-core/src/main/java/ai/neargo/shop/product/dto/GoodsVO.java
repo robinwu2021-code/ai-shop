@@ -119,7 +119,17 @@ public record GoodsVO(String goodsNo,
                        * {@code onSale} —— A 店店长点「下架」，B 店还在卖、主体 on_sale 仍是 true，
                        * <b>刷新后这件货还写着「在售」</b>，他会以为没点上然后再点一次。
                        */
-                      Boolean storeOnSale) {
+                      Boolean storeOnSale,
+                      /**
+                       * 这件货卖到哪儿，一行话。<b>只有 {@code /mp/goods/\{no\}} 详情下发，
+                       * 列表恒 null</b> —— 列表一屏几十行，每行再去查一次范围就是 N+1，
+                       * 而买家是点进详情才问「送到我这儿吗」。
+                       *
+                       * <p>null 或 {@code isEmpty()} → 端上<b>整行不渲染</b>。
+                       * 注意「不渲染」与「不限」是两件事，别在端上把空当成不限：
+                       * 那个判断已经在 {@code MerchantQueryPort#saleScope} 里做完了。
+                       */
+                      SaleScopeVO saleScope) {
 
     /** 一条商品参数。量纲型（功率、净重）平台不枚举值，那时只有 label */
     /**
@@ -128,6 +138,16 @@ public record GoodsVO(String goodsNo,
      *             它是下单那一刻的快照，商家事后改本店叫法不影响已卖出的商品。
      */
     public record GoodsParamVO(String dimNo, String name, String valueNo, String code, String label) {
+    }
+
+    /**
+     * 销售范围（买家侧展示用），形状对齐 {@code MerchantQueryPort.SaleScope}。
+     *
+     * @param unlimited 端上显示「不限地区」
+     * @param areaNames 最多几个地名；区划是叶子名不是整条路径
+     * @param areaCount 总数 —— 只给截断后的列表会让「6 个」和「60 个」长得一样
+     */
+    public record SaleScopeVO(boolean unlimited, List<String> areaNames, int areaCount) {
     }
 
     /** 商品上配好的拼团设置。开团那一步不能临时定价，价与人数都取自这里 */

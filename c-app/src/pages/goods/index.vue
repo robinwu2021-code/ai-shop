@@ -66,6 +66,31 @@ const isFresh = computed(() => goods.value?.type === CATEGORY_TYPE.FRESH);
 const hasOriginParam = computed(
   () => (goods.value?.params ?? []).some((p) => p.name === "产地" || p.dimNo.includes("ORIGIN")),
 );
+/**
+ * 销售范围那一行的文案。空串 = 整行不渲染。
+ *
+ * 三支各有一句，且**「空」与「不限」必须分开**：
+ * 后端已经把「同一个空数组两种意思」判完了（只做自提的空 = 谁也看不到，
+ * 开了配送的空 = 不限），端上只读 `unlimited`。
+ * 在这儿按 `areaNames.length` 推的话，会把前一种说成「不限地区」——
+ * 一句正好相反的承诺，而页面上看不出任何异常。
+ */
+const saleScopeText = computed(() => {
+  const s = goods.value?.saleScope;
+  if (!s) {
+    return "";
+  }
+  if (s.unlimited) {
+    return t("goods.scopeUnlimited");
+  }
+  if (!s.areaNames.length) {
+    return "";
+  }
+  const names = s.areaNames.join("、");
+  return s.areaCount > s.areaNames.length
+    ? t("goods.scopeMore", { names, n: s.areaCount })
+    : names;
+});
 const isService = computed(() => goods.value?.type === CATEGORY_TYPE.SERVICE);
 const isVirtual = computed(() => goods.value?.type === CATEGORY_TYPE.VIRTUAL);
 const isCard = computed(() => goods.value?.type === CATEGORY_TYPE.CARD);
@@ -371,6 +396,16 @@ onShareAppMessage(() =>
         <!-- 商家信息：商品与服务都要展示，点进商家详情 -->
         <view class="sh-card block">
           <biz-merchant-bar :merchant="goods.merchant" @tap="openMerchant"></biz-merchant-bar>
+          <!--
+            销售范围只在详情页出现，列表不标 —— 买家在列表上要的是「有什么」，
+            点进来才问「送不送到我这儿」。整行不渲染的判据是后端给的 saleScopeText，
+            **不是 areaNames 为空**：只做自提却没配范围的商家也是空的，
+            而那个空的意思正好相反（谁也看不到），在端上判必然判反一半。
+          -->
+          <view v-if="saleScopeText" class="sh-row scope">
+            <text class="txt-caption sh-muted">{{ $t("goods.saleScope") }}</text>
+            <text class="txt-caption sh-fill scope__text">{{ saleScopeText }}</text>
+          </view>
         </view>
 
         <!-- 规格矩阵：每个维度一行，不可组合的取值置灰 -->
@@ -588,6 +623,21 @@ onShareAppMessage(() =>
 </template>
 
 <style scoped>
+/* 销售范围那一行，跟在商家条下面。上边一条分隔线把它与商家信息分开 ——
+   不分开的话它看起来像商家资料的一部分，而它说的是这件商品 */
+.scope {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  gap: 12rpx;
+  border-top: 2rpx solid var(--sh-line);
+}
+
+/* 地名可能很长（「粤海街道」「南山区」列六个），让它换行别把商家条挤变形 */
+.scope__text {
+  color: var(--sh-ink);
+  word-break: break-all;
+}
+
 /* 买不了的原因。用 warning 不用 danger：**它不是故障，是还差一步**
    （与 order-confirm 的 .why 同一档） */
 .why {
