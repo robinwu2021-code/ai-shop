@@ -206,6 +206,47 @@ public interface CommunityAdminService {
     }
 
     /**
+     * 固定地址库的一页 + 地图当前状态。
+     *
+     * <p><b>`mapStatus` 是这里最要紧的一个字段</b>：熔断与额度是进程内状态，
+     * 端上只看得到「地名有没有标陈旧」，运营这一屏是**唯一**能提前发现
+     * 「地图快不行了」的地方。
+     */
+    record PlacePageVO(java.util.List<GeoPlaceVO> rows, int total, String mapStatus) {
+    }
+
+    /**
+     * @param hitCount   沉淀成聚落的依据 —— 用得最多的那些地方值得我们自己认识
+     * @param promotedNo 已经升级成聚落的话指过去
+     */
+    record GeoPlaceVO(String geoKey, String name, String kind, String address,
+                      Integer latE6, Integer lngE6, Integer hitCount,
+                      java.time.LocalDateTime verifiedAt, String promotedNo) {
+    }
+
+    /**
+     * 看固定地址库：**它长成什么样，决定了我们还要依赖地图多久**。
+     *
+     * @param minHits 只看被命中过几次以上的 —— 一次性的路过点不值得看
+     */
+    PlacePageVO places(String kind, Integer minHits, int limit);
+
+    /**
+     * 把高频建筑沉淀成聚落（{@code kind=BUILDING}、{@code source=MAP}、默认 CLOSED）。
+     *
+     * <p><b>这是「逐步完善到系统中」那件事的落点。</b> 升级之后这些地方走的是
+     * 聚落那条更靠前的路 —— 从此不再依赖地图，也就不怕额度、不怕对方挂掉。
+     *
+     * <p>幂等键用 {@code geo_key}（当 {@code origin_code} 用）：同一个格子
+     * 升级两次不会建出两条。走的是 {@link #importEstates} 那条已经跑通的路，
+     * 不另写一套建档逻辑。
+     *
+     * @param minHits 命中次数门槛
+     * @param dryRun  **默认应当是 true** —— 一次动几百行的接口，默认值要在安全那一边
+     */
+    ImportResult promotePlaces(String regionCode, int minHits, boolean dryRun, String operatorNo);
+
+    /**
      * 把某个区划前缀下、**地图来源**的聚落批量放出来（CLOSED → OPEN）。
      *
      * <p>与 {@link #importEstates} 分开的理由见那边：放出来这一步要等

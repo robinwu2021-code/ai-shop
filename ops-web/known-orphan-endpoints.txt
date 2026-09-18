@@ -55,3 +55,9 @@ POST /ops/spec-values/merge
 # —— 运营账号今天改不了自己的密码，也调不了别人的角色
 POST /ops/staffs/{staffNo}/role
 POST /ops/staffs/me/password
+# 固定地址库（TDD-C端收货地址-录入与定位重排 · 批次 A）。
+# **待办型，不是止血线**：这一屏是唯一能提前发现「地图快不行了」的地方
+# （熔断与额度是进程内状态，端上只看得到地名标没标陈旧）——
+# 端点做了没界面，等于把那个信号扔了。计划里排在批次 G，做完把这两行删掉。
+GET /ops/geo/places
+POST /ops/geo/places/promote

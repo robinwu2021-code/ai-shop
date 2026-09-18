@@ -396,6 +396,9 @@ export const RULES = [
   ["*", /^\/ops\/pickups/, "community:pickup:update"],
   // 坐标健康度：读的是聚落/门店/地址的分母，判 community 的读码（与社区网格同一页）
   ["GET", /^\/ops\/coverage\//, "community:community:read"],
+  // 固定地址库与社区同一档：它干的事就是「看/改社区主数据的上游」
+  ["GET", /^\/ops\/geo\//, "community:community:read"],
+  ["*", /^\/ops\/geo\//, "community:community:update"],
   ["GET", /^\/ops\/communities/, "community:community:read"],
   ["*", /^\/ops\/communities/, "community:community:update"],
   ["GET", /^\/ops\/regions/, "community:region:read",

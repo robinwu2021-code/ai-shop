@@ -77,6 +77,8 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
 
     /** 逆地理：从坐标定出区县码与街道名。走 spi Port，不直连 platform.GeoService（ArchUnit 第 1 条） */
     private final ai.neargo.shop.spi.platform.GeoPort geoPort;
+    private final ai.neargo.shop.community.mapper.CommunityMappers.GeoPlaceMapper placeMapper;
+    private final ai.neargo.shop.community.support.MapBreaker mapBreaker;
 
     public CommunityAdminServiceImpl(CommunityMapper communityMapper, PickupPointMapper pickupMapper,
                                      ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
@@ -90,7 +92,9 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                                      ai.neargo.shop.spi.platform.GeoPort geoPort,
                                      java.util.List<ai.neargo.shop.spi.user.SettlementRefPort> refPorts,
                                      @org.springframework.beans.factory.annotation.Value(
-                                             "${shop.community.auto-open:MAP,OFFICIAL}") String autoOpen) {
+                                             "${shop.community.auto-open:MAP,OFFICIAL}") String autoOpen,
+            ai.neargo.shop.community.mapper.CommunityMappers.GeoPlaceMapper placeMapper,
+            ai.neargo.shop.community.support.MapBreaker mapBreaker) {
         this.refPorts = refPorts;
         this.autoOpenSources = java.util.Arrays.stream(autoOpen.split(","))
                 .map(String::trim).filter(x -> !x.isEmpty()).map(String::toUpperCase)
@@ -104,6 +108,8 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         this.userQueryPort = userQueryPort;
         this.poolStatsPort = poolStatsPort;
         this.communityService = communityService;
+        this.placeMapper = placeMapper;
+        this.mapBreaker = mapBreaker;
     }
 
     /**
@@ -549,6 +555,77 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
      * 判据见 {@code DenseEstateMatchTest.fenceKeepsFarBuyersOut}。
      */
     private static final int MAP_ESTATE_FENCE_M = 300;
+
+    @Override
+    public PlacePageVO places(String kind, Integer minHits, int limit) {
+        var q = com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.community.entity.GeoPlace>lambdaQuery()
+                .orderByDesc(ai.neargo.shop.community.entity.GeoPlace::getHitCount);
+        if (kind != null && !kind.isBlank()) {
+            q.eq(ai.neargo.shop.community.entity.GeoPlace::getKind, kind);
+        }
+        if (minHits != null) {
+            q.ge(ai.neargo.shop.community.entity.GeoPlace::getHitCount, minHits);
+        }
+        java.util.List<ai.neargo.shop.community.entity.GeoPlace> all = placeMapper.selectList(q);
+        java.util.List<GeoPlaceVO> rows = all.stream().limit(Math.max(1, limit))
+                .map(p -> new GeoPlaceVO(p.getGeoKey(), p.getName(), p.getKind(), p.getAddress(),
+                        p.getLatE6(), p.getLngE6(), p.getHitCount(), p.getVerifiedAt(),
+                        p.getPromotedNo()))
+                .toList();
+        /*
+         * **总数给全量的那个，不是这一页的。** 「这张表长成什么样」决定了我们还要
+         * 依赖地图多久 —— 只给一页的条数，那个判断就做不出来。
+         */
+        return new PlacePageVO(rows, all.size(), mapBreaker.describe());
+    }
+
+    @Override
+    @Transactional
+    public ImportResult promotePlaces(String regionCode, int minHits, boolean dryRun,
+                                      String operatorNo) {
+        /*
+         * **只沉淀 POI。** AOI（小区/楼盘）多半已经在聚落库里了，再建一遍会让
+         * 同一个坐标落进两个围栏，选出来的那个取决于扫表顺序；
+         * STREET 是「街道+门牌」，不是一个能服务的单位。
+         *
+         * **已经升级过的跳过**（promoted_no 非空）—— 不靠 importEstates 的幂等兜底：
+         * 那一层按 origin_code 去重，而这里还要把 promoted_no 写回去。
+         */
+        java.util.List<ai.neargo.shop.community.entity.GeoPlace> hot = placeMapper.selectList(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.community.entity.GeoPlace>lambdaQuery()
+                        .eq(ai.neargo.shop.community.entity.GeoPlace::getKind,
+                                ai.neargo.shop.community.entity.GeoPlace.KIND_POI)
+                        .ge(ai.neargo.shop.community.entity.GeoPlace::getHitCount, minHits)
+                        .isNull(ai.neargo.shop.community.entity.GeoPlace::getPromotedNo)
+                        .isNotNull(ai.neargo.shop.community.entity.GeoPlace::getLatE6));
+
+        java.util.List<EstateIn> items = hot.stream()
+                // geo_key 当 origin_code 用：同一个格子升级两次不会建出两条
+                .map(p -> new EstateIn(p.getGeoKey(), p.getName(), p.getAddress(),
+                        p.getLatE6(), p.getLngE6()))
+                .toList();
+        ImportResult r = importEstates(regionCode, "CLOSED", dryRun, items, operatorNo);
+        if (dryRun) {
+            return r;
+        }
+        // 建完把 promoted_no 写回去，下一次就不会重复挑到它们
+        for (ai.neargo.shop.community.entity.GeoPlace p : hot) {
+            CmtCommunity built = communityMapper.selectOne(
+                    com.baomidou.mybatisplus.core.toolkit.Wrappers.<CmtCommunity>lambdaQuery()
+                            .eq(CmtCommunity::getOriginCode, p.getGeoKey()).last("limit 1"));
+            if (built == null) {
+                continue;   // 被 importEstates 跳过了（没坐标等），下次再说
+            }
+            ai.neargo.shop.community.entity.GeoPlace patch =
+                    new ai.neargo.shop.community.entity.GeoPlace();
+            patch.setId(p.getId());
+            patch.setPromotedNo(built.getCommunityNo());
+            placeMapper.updateById(patch);
+        }
+        return r;
+    }
 
     @Override
     @Transactional

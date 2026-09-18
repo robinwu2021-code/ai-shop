@@ -37,4 +37,4 @@ CREATE TABLE IF NOT EXISTS geo_place
     PRIMARY KEY (id),
     UNIQUE KEY uk_geo_place_key (geo_key),
     KEY idx_geo_place_promote (kind,hit_count)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='固定地址库：坐标格子到地名';
+) COMMENT='固定地址库：坐标格子到地名';
