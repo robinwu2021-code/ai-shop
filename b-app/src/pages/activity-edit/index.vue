@@ -112,12 +112,16 @@ const failed = ref(false);
  * 写法照营销页那一段（chip 多选），不新造件。
  */
 const goods = ref<Goods[]>([]);
+/** 首屏到过没有。**不是 loading** —— 没有它的话，数据回来之前会先闪一下「本店还没有商品」 */
+const goodsLoaded = ref(false);
 
 async function loadGoods() {
   try {
     goods.value = (await api.mGoodsList({ size: 100 })).records;
   } catch {
     // 拉不到就让它空着：选不了货保存会被拦，比在这儿弹一个错更清楚
+  } finally {
+    goodsLoaded.value = true;
   }
 }
 
@@ -364,7 +368,12 @@ onLoad((q) => {
             @tap="toggleGoods(g.goodsNo)"
           >{{ g.title }}</text>
         </view>
-        <sh-empty v-if="!goods.length" :text="String($t('activityEdit.noGoods'))"></sh-empty>
+        <!--
+          三态交给件（:pending）：数据回来之前不许显示「本店还没有商品」——
+          那句话在加载中是假的，而它与「真的一件都没有」长得一模一样。
+        -->
+        <sh-empty v-if="!goods.length" :pending="!goodsLoaded"
+            :text="String($t('activityEdit.noGoods'))"></sh-empty>
       </template>
 
       <!-- 冲突提示：不阻止，但要在保存前说出来 -->

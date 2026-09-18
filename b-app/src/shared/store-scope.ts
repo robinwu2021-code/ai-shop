@@ -57,6 +57,9 @@ export const STORE_SCOPED_ENDPOINTS: Record<string, string> = {
 export const NOT_STORE_SCOPED_REASONS: Record<string, string> = {
   customers: "页内自带门店选择器（可选「全部门店」），它比一枚固定胶囊表达力更强；再挂一枚会出现两个互相矛盾的门店提示",
   marketing: "活动可以按店也可以全店，页内自己选",
+  // 它是 marketing 那一页的编辑器，同一条理由：活动本身有 storeNo，按不按店是这张表单里的一项，
+  // 而选货用的是商品列表（按店取数）—— 页头挂一枚固定胶囊会与表单里那一项互相矛盾
+  "activity-edit": "活动可以按店也可以全店，表单里自己选",
   orders: "已在筛选条上直接写出当前门店范围（allStores 时写「全部门店」），不重复标",
   order: "订单详情页的门店写在单据本身上（这一单从哪家店出），比页头胶囊更准",
   "after-sale": "同 order：售后跟着那一单走",
