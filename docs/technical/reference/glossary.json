@@ -4676,10 +4676,10 @@
           "ar": "قيمة الخصم (يوان)"
         },
         {
-          "key": "activityEdit.days",
-          "zh-CN": "持续几天",
-          "en": "Days",
-          "ar": "عدد الأيام"
+          "key": "activityEdit.endDay",
+          "zh-CN": "结束",
+          "en": "Ends",
+          "ar": "ينتهي"
         },
         {
           "key": "activityEdit.exposure",
@@ -4692,102 +4692,6 @@
           "zh-CN": "赠送数量",
           "en": "Quantity gifted",
           "ar": "الكمية المهداة"
-        },
-        {
-          "key": "activityEdit.goal.ACQUIRE",
-          "zh-CN": "拉新客",
-          "en": "Win new customers",
-          "ar": "كسب عملاء جدد"
-        },
-        {
-          "key": "activityEdit.goal.BASKET",
-          "zh-CN": "提高客单",
-          "en": "Raise basket size",
-          "ar": "رفع قيمة السلة"
-        },
-        {
-          "key": "activityEdit.goal.CLEAR",
-          "zh-CN": "清库存",
-          "en": "Clear stock",
-          "ar": "تصريف المخزون"
-        },
-        {
-          "key": "activityEdit.goal.GROUP",
-          "zh-CN": "开团购",
-          "en": "Group buy",
-          "ar": "شراء جماعي"
-        },
-        {
-          "key": "activityEdit.goal.WAKEUP",
-          "zh-CN": "唤回老客",
-          "en": "Bring people back",
-          "ar": "إعادة العملاء"
-        },
-        {
-          "key": "activityEdit.goalHint.ACQUIRE",
-          "zh-CN": "面向尚未在本店下单的顾客",
-          "en": "For customers who have not ordered from this shop",
-          "ar": "امنح من لم يشترِ منك سببًا للتجربة"
-        },
-        {
-          "key": "activityEdit.goalHint.BASKET",
-          "zh-CN": "让本来买 30 的人买到 50",
-          "en": "Nudge a 30 basket towards 50",
-          "ar": "ادفع سلة الـ30 نحو الـ50"
-        },
-        {
-          "key": "activityEdit.goalHint.CLEAR",
-          "zh-CN": "把压着的货用特价走掉",
-          "en": "Move slow stock with a special price",
-          "ar": "حرّك البضاعة الراكدة بسعر خاص"
-        },
-        {
-          "key": "activityEdit.goalHint.GROUP",
-          "zh-CN": "凑够人数按团购价走",
-          "en": "Enough buyers join, everyone gets the group price",
-          "ar": "عند اكتمال العدد يحصل الجميع على سعر المجموعة"
-        },
-        {
-          "key": "activityEdit.goalHint.WAKEUP",
-          "zh-CN": "给很久没来的人一个回来的理由",
-          "en": "Give people who stopped coming a reason to return",
-          "ar": "امنح من انقطع سببًا للعودة"
-        },
-        {
-          "key": "activityEdit.goalName.ACQUIRE",
-          "zh-CN": "新客立减",
-          "en": "New customer discount",
-          "ar": "خصم العملاء الجدد"
-        },
-        {
-          "key": "activityEdit.goalName.BASKET",
-          "zh-CN": "满减",
-          "en": "Spend and save",
-          "ar": "اشترِ ووفّر"
-        },
-        {
-          "key": "activityEdit.goalName.CLEAR",
-          "zh-CN": "限时特价",
-          "en": "Limited-time special",
-          "ar": "سعر خاص لفترة"
-        },
-        {
-          "key": "activityEdit.goalName.GROUP",
-          "zh-CN": "团购",
-          "en": "Group buy",
-          "ar": "شراء جماعي"
-        },
-        {
-          "key": "activityEdit.goalName.WAKEUP",
-          "zh-CN": "老客回归",
-          "en": "Welcome back",
-          "ar": "عودة العملاء"
-        },
-        {
-          "key": "activityEdit.goalQ",
-          "zh-CN": "活动目标",
-          "en": "Goal",
-          "ar": "هدف الحملة"
         },
         {
           "key": "activityEdit.goodsQ",
@@ -4922,28 +4826,28 @@
           "ar": "فترة السريان"
         },
         {
+          "key": "activityEdit.startDay",
+          "zh-CN": "开始",
+          "en": "Starts",
+          "ar": "يبدأ"
+        },
+        {
           "key": "activityEdit.step1",
-          "zh-CN": "活动类型",
-          "en": "Promotion type",
-          "ar": "نوع الحملة"
+          "zh-CN": "是什么",
+          "en": "What",
+          "ar": "ما هو"
         },
         {
           "key": "activityEdit.step2",
-          "zh-CN": "优惠",
-          "en": "Benefit",
-          "ar": "الخصم"
+          "zh-CN": "什么时候",
+          "en": "When",
+          "ar": "متى"
         },
         {
           "key": "activityEdit.step3",
-          "zh-CN": "时间",
-          "en": "When",
-          "ar": "التوقيت"
-        },
-        {
-          "key": "activityEdit.step4",
-          "zh-CN": "适用人群",
-          "en": "Audience",
-          "ar": "الجمهور"
+          "zh-CN": "优惠什么",
+          "en": "Offer",
+          "ar": "الخصم"
         },
         {
           "key": "activityEdit.threshold",
@@ -4968,6 +4872,84 @@
           "zh-CN": "改活动",
           "en": "Edit activity",
           "ar": "تعديل النشاط"
+        },
+        {
+          "key": "activityEdit.type.CUT",
+          "zh-CN": "满减",
+          "en": "Spend & save",
+          "ar": "خصم عند الإنفاق"
+        },
+        {
+          "key": "activityEdit.type.GIFT",
+          "zh-CN": "买赠",
+          "en": "Buy & get",
+          "ar": "اشترِ واحصل"
+        },
+        {
+          "key": "activityEdit.type.GROUP",
+          "zh-CN": "团购",
+          "en": "Group buy",
+          "ar": "شراء جماعي"
+        },
+        {
+          "key": "activityEdit.type.PRICE",
+          "zh-CN": "特价",
+          "en": "Special price",
+          "ar": "سعر خاص"
+        },
+        {
+          "key": "activityEdit.typeHint.CUT",
+          "zh-CN": "满多少减多少，整单生效",
+          "en": "Spend X, save Y — applies to the whole order",
+          "ar": "أنفق كذا ووفّر كذا، على الطلب كاملًا"
+        },
+        {
+          "key": "activityEdit.typeHint.GIFT",
+          "zh-CN": "买几件送几件",
+          "en": "Buy N, get M free",
+          "ar": "اشترِ N واحصل على M"
+        },
+        {
+          "key": "activityEdit.typeHint.GROUP",
+          "zh-CN": "凑够人数按团购价走",
+          "en": "Enough buyers join, everyone gets the group price",
+          "ar": "عند اكتمال العدد يحصل الجميع على سعر المجموعة"
+        },
+        {
+          "key": "activityEdit.typeHint.PRICE",
+          "zh-CN": "挑几件货，按特价卖",
+          "en": "Pick products and sell them at a set price",
+          "ar": "اختر أصنافًا وبِعها بسعر محدد"
+        },
+        {
+          "key": "activityEdit.typeName.CUT",
+          "zh-CN": "满减",
+          "en": "Spend & save",
+          "ar": "خصم عند الإنفاق"
+        },
+        {
+          "key": "activityEdit.typeName.GIFT",
+          "zh-CN": "买赠",
+          "en": "Buy & get",
+          "ar": "اشترِ واحصل"
+        },
+        {
+          "key": "activityEdit.typeName.GROUP",
+          "zh-CN": "团购",
+          "en": "Group buy",
+          "ar": "شراء جماعي"
+        },
+        {
+          "key": "activityEdit.typeName.PRICE",
+          "zh-CN": "特价",
+          "en": "Special price",
+          "ar": "سعر خاص"
+        },
+        {
+          "key": "activityEdit.typeQ",
+          "zh-CN": "活动类型",
+          "en": "Activity type",
+          "ar": "نوع النشاط"
         },
         {
           "key": "afterSale.agree",

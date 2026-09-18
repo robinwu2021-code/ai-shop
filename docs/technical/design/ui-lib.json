@@ -266,7 +266,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 285,
+        "b-app": 287,
         "c-app": 43
       }
     },
@@ -288,7 +288,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 83,
+        "b-app": 85,
         "c-app": 51
       }
     },
@@ -522,7 +522,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 116,
+        "b-app": 115,
         "c-app": 61
       }
     },
@@ -1062,7 +1062,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 224,
+        "b-app": 226,
         "c-app": 128
       }
     },
@@ -1126,7 +1126,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 131,
+        "b-app": 130,
         "c-app": 64
       }
     },
@@ -1164,7 +1164,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 7,
+        "b-app": 8,
         "c-app": 0
       }
     },
@@ -1220,7 +1220,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 68,
+        "b-app": 67,
         "c-app": 29
       }
     },
@@ -1426,7 +1426,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 298,
+        "b-app": 299,
         "c-app": 146
       }
     },
@@ -1722,7 +1722,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 98,
+        "b-app": 97,
         "c-app": 24
       }
     },
@@ -1852,7 +1852,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 96,
+        "b-app": 97,
         "c-app": 3
       }
     },
@@ -1868,7 +1868,7 @@
         "margin-top": "4px"
       },
       "usage": {
-        "b-app": 38,
+        "b-app": 37,
         "c-app": 0
       }
     }
@@ -2166,7 +2166,7 @@
         "text: string"
       ],
       "usage": {
-        "b-app": 1,
+        "b-app": 2,
         "c-app": 0,
         "lib": 0
       },
@@ -2323,7 +2323,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 46,
+        "b-app": 48,
         "c-app": 0,
         "lib": 0
       },
@@ -3268,11 +3268,12 @@
       "file": "b-app/src/pages/activities/index.vue",
       "components": [
         "sh-empty",
+        "sh-fab",
         "sh-scaffold"
       ],
-      "libClassHits": 19,
-      "localSelectors": 9,
-      "localCssLines": 37,
+      "libClassHits": 18,
+      "localSelectors": 8,
+      "localCssLines": 33,
       "rolled": []
     },
     {
@@ -3282,13 +3283,14 @@
       "file": "b-app/src/pages/activity-edit/index.vue",
       "components": [
         "sh-empty",
+        "sh-kv",
         "sh-option",
         "sh-scaffold",
         "sh-stat"
       ],
-      "libClassHits": 110,
+      "libClassHits": 115,
       "localSelectors": 16,
-      "localCssLines": 54,
+      "localCssLines": 53,
       "rolled": []
     },
     {
