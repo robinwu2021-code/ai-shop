@@ -336,6 +336,39 @@ class BizDashboardAndReviewFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 商家从 /biz 读得到自己刚建的活动 —— 带域表不绕域时这一页恒空，而接口成功")
+    void merchantSeesOwnActivitiesOverHttp() throws Exception {
+        String token = merchant("12600144020", "活动可见性·真 HTTP");
+        currentEntityNo = json.readTree(mvc().perform(get("/biz/context")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("merchantNo").asString();
+        String goodsNo = saveGoods(token, "活动可见性商品");
+        setGroupPrice(goodsNo, 400L);
+
+        /*
+         * ★ **必须走真 HTTP。**
+         *
+         * `pmt_activity` 登记了数据域（MERCHANT → entity_no），而 B 端会话读带域表
+         * 会被滤空 —— 表现是「店铺活动」那一页永远是「还没有活动」，
+         * **而接口返回 200、日志干净、库里那一行好好躺着**。
+         *
+         * 直接注入 service 调的用例**一条都抓不到这个**：没有请求上下文，
+         * 域根本不生效。2026-09-18 真机上撞出来的：活动建成了、库里查得到，
+         * 界面上一条都没有。
+         */
+        String body = mvc().perform(get("/biz/activities").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(body).get("data").size())
+                .as("★ 商家看不到自己刚建的活动 —— 多半是带域表没绕域，而它不报错")
+                .isGreaterThan(0);
+        assertThat(body)
+                .as("作用商品也要下发：商家团页靠它筛「可开团的商品」")
+                .contains(goodsNo);
+    }
+
+    @Test
     @DisplayName("★★★ 团购价不低于原价就开不了团 —— 否则「团购」是假的")
     void groupPriceMustBeatOriginPrice() throws Exception {
         /*

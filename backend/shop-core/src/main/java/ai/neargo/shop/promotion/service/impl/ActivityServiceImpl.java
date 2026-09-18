@@ -15,6 +15,7 @@ import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityAudienceMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityGoodsMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityMapper;
 import ai.neargo.shop.promotion.service.ActivityService;
+import ai.neargo.common.data.scope.DataScopeContext;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,11 +52,12 @@ public class ActivityServiceImpl implements ActivityService {
 
     @Override
     public List<ActivityVO> list(String entityNo, boolean includeEnded) {
-        return activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
-                        .eq(PmtActivity::getEntityNo, entityNo)
-                        .ne(!includeEnded, PmtActivity::getStatus, PmtActivity.ENDED)
-                        .isNull(PmtActivity::getArchivedAt)
-                        .orderByDesc(PmtActivity::getId))
+        return DataScopeContext.executeWithoutScope(() ->
+                        activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
+                                .eq(PmtActivity::getEntityNo, entityNo)
+                                .ne(!includeEnded, PmtActivity::getStatus, PmtActivity.ENDED)
+                                .isNull(PmtActivity::getArchivedAt)
+                                .orderByDesc(PmtActivity::getId)))
                 .stream().map(this::vo).toList();
     }
 
@@ -301,15 +303,16 @@ public class ActivityServiceImpl implements ActivityService {
         if (goodsNos == null || goodsNos.isEmpty()) {
             return List.of();
         }
-        List<PmtActivityGoods> hits = goodsMapper.selectList(
+        List<PmtActivityGoods> hits = DataScopeContext.executeWithoutScope(() -> goodsMapper.selectList(
                 Wrappers.<PmtActivityGoods>lambdaQuery()
                         .eq(PmtActivityGoods::getEntityNo, entityNo)
                         .eq(PmtActivityGoods::getScopeType, PmtActivityGoods.GOODS)
-                        .in(PmtActivityGoods::getRefNo, goodsNos));
+                        .in(PmtActivityGoods::getRefNo, goodsNos)));
         List<ConflictVO> out = new ArrayList<>();
         for (PmtActivityGoods g : hits) {
-            PmtActivity a = activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
-                    .eq(PmtActivity::getActivityNo, g.getActivityNo()).last("limit 1"));
+            PmtActivity a = DataScopeContext.executeWithoutScope(() ->
+                activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
+                    .eq(PmtActivity::getActivityNo, g.getActivityNo()).last("limit 1")));
             // 只报还在跑的：已结束的活动不构成冲突，报出来只会让人以为要处理
             if (a == null || !PmtActivity.RUNNING.equals(a.getStatus())) {
                 continue;
@@ -321,13 +324,14 @@ public class ActivityServiceImpl implements ActivityService {
     }
 
     private ActivityVO vo(PmtActivity a) {
-        List<AudienceItem> audiences = audienceMapper.selectList(
-                        Wrappers.<PmtActivityAudience>lambdaQuery()
-                                .eq(PmtActivityAudience::getActivityNo, a.getActivityNo()))
+        List<AudienceItem> audiences = DataScopeContext.executeWithoutScope(() ->
+                        audienceMapper.selectList(Wrappers.<PmtActivityAudience>lambdaQuery()
+                                .eq(PmtActivityAudience::getActivityNo, a.getActivityNo())))
                 .stream().map(x -> new AudienceItem(x.getAudienceType(), x.getAudienceValue()))
                 .toList();
-        List<String> goods = goodsMapper.selectList(Wrappers.<PmtActivityGoods>lambdaQuery()
-                        .eq(PmtActivityGoods::getActivityNo, a.getActivityNo()))
+        List<String> goods = DataScopeContext.executeWithoutScope(() ->
+                        goodsMapper.selectList(Wrappers.<PmtActivityGoods>lambdaQuery()
+                                .eq(PmtActivityGoods::getActivityNo, a.getActivityNo())))
                 .stream().map(PmtActivityGoods::getRefNo).toList();
         Integer left = a.getQuota() == null ? null
                 : Math.max(0, a.getQuota() - nz(a.getQuotaUsed()));
@@ -349,9 +353,10 @@ public class ActivityServiceImpl implements ActivityService {
     }
 
     private PmtActivity require(String entityNo, String activityNo) {
-        PmtActivity a = activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
+        PmtActivity a = DataScopeContext.executeWithoutScope(() ->
+                activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
                 .eq(PmtActivity::getEntityNo, entityNo)
-                .eq(PmtActivity::getActivityNo, activityNo).last("limit 1"));
+                .eq(PmtActivity::getActivityNo, activityNo).last("limit 1")));
         if (a == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
