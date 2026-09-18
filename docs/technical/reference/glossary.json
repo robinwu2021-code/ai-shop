@@ -1378,64 +1378,16 @@
           "ar": "نفد حدّ التحصيل لأحد المتاجر هذه الفترة"
         },
         {
-          "key": "country.AU",
-          "zh-CN": "澳大利亚",
-          "en": "Australia",
-          "ar": "أستراليا"
+          "key": "country.AE",
+          "zh-CN": "阿联酋",
+          "en": "United Arab Emirates",
+          "ar": "الإمارات العربية المتحدة"
         },
         {
           "key": "country.CN",
           "zh-CN": "中国大陆",
           "en": "Chinese mainland",
           "ar": "الصين"
-        },
-        {
-          "key": "country.GB",
-          "zh-CN": "英国",
-          "en": "United Kingdom",
-          "ar": "المملكة المتحدة"
-        },
-        {
-          "key": "country.HK",
-          "zh-CN": "中国香港",
-          "en": "Hong Kong, China",
-          "ar": "هونغ كونغ، الصين"
-        },
-        {
-          "key": "country.JP",
-          "zh-CN": "日本",
-          "en": "Japan",
-          "ar": "اليابان"
-        },
-        {
-          "key": "country.MO",
-          "zh-CN": "中国澳门",
-          "en": "Macao, China",
-          "ar": "ماكاو، الصين"
-        },
-        {
-          "key": "country.MY",
-          "zh-CN": "马来西亚",
-          "en": "Malaysia",
-          "ar": "ماليزيا"
-        },
-        {
-          "key": "country.SG",
-          "zh-CN": "新加坡",
-          "en": "Singapore",
-          "ar": "سنغافورة"
-        },
-        {
-          "key": "country.TW",
-          "zh-CN": "中国台湾",
-          "en": "Taiwan, China",
-          "ar": "تايوان، الصين"
-        },
-        {
-          "key": "country.US",
-          "zh-CN": "美国",
-          "en": "United States",
-          "ar": "الولايات المتحدة"
         },
         {
           "key": "coupon.autoUse",

@@ -172,10 +172,19 @@ describe("当前位置：一次性上下文", () => {
     expect(body, "relocate 要强制重取，不能吃缓存").toContain("ensureHere(true)");
   });
 
-  it("★★ 三处入口都接到同一个 relocate 上", () => {
-    expect(home, "首页顶栏没有重新定位").toContain("location.relocate(");
+  it("★★ 两处入口接到同一个 relocate 上 —— 顶栏那颗刻意不放", () => {
+    /*
+     * **首页顶栏不放「重新定位」**：点那一行本来就跳收货地址页，
+     * 而那一页上当前位置那一行带着重新定位 —— 两颗按钮做同一件事，
+     * 而顶栏那一行本来就只有那么宽，多一颗会把地名挤出去。
+     *
+     * 反向也钉住：顶栏再长出一颗就变红，否则「去掉」这个决定会被下一次
+     * 顺手加回来，而没有人记得当初为什么去掉。
+     */
     expect(addressPage, "收货地址页没有重新定位").toContain("location.relocate(");
     expect(pickPage, "选择地点页没有重新定位").toContain("location.relocate(");
+    expect(home, "顶栏又长出一颗重新定位了 —— 与收货地址页那颗是同一件事")
+      .not.toContain("location.relocate(");
   });
 
 

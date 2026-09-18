@@ -327,7 +327,7 @@
       },
       "usage": {
         "b-app": 282,
-        "c-app": 243
+        "c-app": 242
       }
     },
     {
@@ -463,7 +463,7 @@
       },
       "usage": {
         "b-app": 27,
-        "c-app": 34
+        "c-app": 33
       }
     },
     {
@@ -1387,7 +1387,7 @@
       },
       "usage": {
         "b-app": 7,
-        "c-app": 11
+        "c-app": 10
       }
     },
     {
@@ -4535,7 +4535,7 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 37,
+      "libClassHits": 34,
       "localSelectors": 15,
       "localCssLines": 81,
       "rolled": []

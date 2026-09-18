@@ -638,17 +638,13 @@ timeSlotPh: "e.g. tonight 19:00–21:00",
    * 国家/地区。**一期只做「存得下、说得清、寄得出」** ——
    * 不做行政区划校验，也不做地址格式本地化。
    */
+  /**
+   * 国家/地区。**只有两个，这是有意的** —— 每多一个就是一句承诺，
+   * 而「寄不寄得出去」取决于商家有没有那条线路，不取决于表单里有没有这一格。
+   */
   country: {
     CN: "Chinese mainland",
-    HK: "Hong Kong, China",
-    MO: "Macao, China",
-    TW: "Taiwan, China",
-    SG: "Singapore",
-    MY: "Malaysia",
-    US: "United States",
-    AU: "Australia",
-    GB: "United Kingdom",
-    JP: "Japan",
+    AE: "United Arab Emirates",
   },
   addressPick: {
     searchIn: "Searching in",

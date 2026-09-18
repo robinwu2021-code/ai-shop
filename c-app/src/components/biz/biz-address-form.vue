@@ -236,20 +236,17 @@ const canPick = computed(() => canSearchPlaces() || canChooseLocation());
 const overseas = computed(() => !!draft.value.countryCode && draft.value.countryCode !== "CN");
 
 /**
- * 常用的国家/地区。**一期只做「存得下、说得清、寄得出」** ——
- * 不做行政区划校验，也不做地址格式本地化（日本的番地、英国的 postcode 格式）。
+ * 可选的国家/地区。**只有两个，这是有意的。**
+ *
+ * <p>多摆几个不花什么力气，但每多一个就是一句承诺 —— 用户选了美国，
+ * 他会以为这条地址真能寄到。而「寄不寄得出去」取决于商家有没有那条线路，
+ * 不取决于表单里有没有这一格。所以这里只留**确实在做的那两个**。
+ *
+ * <p>要加第三个时：先确认有商家在发那儿的货，再加。
  */
 const COUNTRIES = [
   { code: "CN", cc: "86" },
-  { code: "HK", cc: "852" },
-  { code: "MO", cc: "853" },
-  { code: "TW", cc: "886" },
-  { code: "SG", cc: "65" },
-  { code: "MY", cc: "60" },
-  { code: "US", cc: "1" },
-  { code: "AU", cc: "61" },
-  { code: "GB", cc: "44" },
-  { code: "JP", cc: "81" },
+  { code: "AE", cc: "971" },
 ] as const;
 
 /**

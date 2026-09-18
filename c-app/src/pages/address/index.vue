@@ -12,7 +12,7 @@ import { readClipboard } from "@shared/ports/clipboard";
 import { parsePastedAddress } from "@shared/utils/address-paste";
 import { confirm } from "@ai-shop/ui/prompt";
 import { isPhone, notBlank } from "@shared/utils/validate";
-import { pickedAddress, pickedPlace } from "@/shared/address-pick";
+import { pickedAddress, pickedPlace, placeFrom } from "@/shared/address-pick";
 import type { PlacePick } from "@/shared/address-pick";
 import { canSearchPlaces } from "@shared/ports/geo-search";
 import { ADDRESS_RULES, ROUTES } from "@shared/utils/constants";
@@ -130,19 +130,47 @@ async function useCurrentLocation() {
  */
 const canPick = computed(() => canSearchPlaces() || canChooseLocation());
 
+/** 这个端能不能开地图选点。**只问一次** —— 它在一次运行里不会变 */
+const canMap = canChooseLocation();
+
 /** 到上限了。真正的闸在后端（老版本 App 不知道有这回事），这里只是提前说一声 */
 const atLimit = computed(() => list.value.length >= ADDRESS_RULES.maxCount);
 
-function addNew() {
+/**
+ * 「新增地址」**默认直接开地图**。
+ *
+ * <p>在地图上点一下是这条路上最省的一步：名字叫不上来也指得出来，
+ * 而且拿回来的一定带坐标 —— 那正是这一整条链的全部收获
+ * （没坐标的地址：自送半径判不了、骑手导航打不开、推不出聚落）。
+ *
+ * <p><b>取消不回到原地，落到选择地点页。</b> 直接退回列表的话，
+ * 搜索与「附近」就没有入口了 —— 而它们恰恰是「我知道小区叫什么」那条更快的路。
+ *
+ * <p>给不了地图的端（H5 没配 JS key）直接开表单：让他对着一个点不动的
+ * 「地图选点」发呆，比没有更糟。
+ */
+async function addNew() {
   if (atLimit.value) {
     uni.showToast({ title: String(t("address.limitReached", { n: ADDRESS_RULES.maxCount })), icon: "none" });
     return;
   }
-  if (!canPick.value) {
-    uni.navigateTo({ url: ROUTES.addressEdit });
+  if (!canMap) {
+    uni.navigateTo({ url: canPick.value ? ROUTES.addressPick : ROUTES.addressEdit });
     return;
   }
-  uni.navigateTo({ url: ROUTES.addressPick });
+  const r = await chooseLocation(location.here?.coords ?? null);
+  if (!r.ok) {
+    // 取消 / 不支持：都落到选择地点页，那儿还有搜索与「附近」
+    uni.navigateTo({ url: ROUTES.addressPick });
+    return;
+  }
+  /*
+   * 交给选择地点页那份 `placeFrom` 去拆省市区 —— **拆法只能有一处**。
+   * 在这里再写一份，两处迟早给出不一样的省市区，而那种不一致在界面上
+   * 看不出来，只会让「按区派单」偶尔落错。
+   */
+  pickedPlace.offer(placeFrom(r.picked));
+  uni.navigateTo({ url: ROUTES.addressEdit });
 }
 
 /** 编辑一条：**跳整页**，不再在这一页开弹层 */

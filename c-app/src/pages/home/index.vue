@@ -204,15 +204,6 @@ async function quickSwitch(a: (typeof location.list)[number]) {
   load();
 }
 
-/**
- * 「重新定位」。**强制重取，并把依赖这一次定位的东西一起清掉** ——
- * 清完重新加载，否则顶栏变了而商品还是上一处的。
- */
-async function relocate() {
-  await location.relocate();
-  await load();
-}
-
 function gotoPlace() {
   /*
    * **永远去地址页。** 此前没有地址时会被送去「选择社区自提点」——
@@ -349,12 +340,10 @@ onShareAppMessage(() =>
         <text class="txt-caption place__sub sh-fill">{{ placeSub }}</text>
       </view>
       <!--
-        **「重新定位」三处共用一个动作**（首页、收货地址页、选择地点页）。
-        没有它的话，位置一旦落错就只能等五分钟的过期，而用户不知道要等。
+        **顶栏不放「重新定位」。** 点这一行本来就跳收货地址页，而那一页上
+        当前位置那一行带着重新定位 —— 两颗按钮做同一件事，而顶栏这一行
+        本来就只有那么宽，多一颗会把地名挤出去。
       -->
-      <text class="txt-caption txt-primary place__relocate sh-hit" @tap.stop="relocate">
-        {{ $t("home.relocate") }}
-      </text>
       <!--
         家 / 公司 一点即换。**替代「手动多选」的那一半** ——
         多选的驱动力是「切换太麻烦」，那就让切换便宜，而不是把两个地方的货混在一屏。

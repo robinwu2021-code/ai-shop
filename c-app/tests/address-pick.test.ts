@@ -224,8 +224,16 @@ describe("选点页：把「选」提为主路", () => {
      * 断言的是**这条性质**，不是某一种写法：canPick 为假时开表单、为真时才跳选点页。
      * （canPick 自己由那两个端能力算出来，另一条守卫在管。）
      */
-    expect(body, "给不了选点路的端要直接进新建页，不该白挡一次点击")
-      .toMatch(/!canPick\.value[\s\S]{0,120}addressEdit/);
+    /*
+     * 「新增地址」现在默认直接开地图（在地图上点一下最省，而且拿回来的一定带坐标）。
+     * 两级回落都要在：给不了地图的端落到选择地点页（那儿还有搜索与附近），
+     * **连选点路都没有的端**（H5）直接开表单 —— 让他对着一个点不动的
+     * 「地图选点」发呆，比没有更糟。
+     */
+    expect(body, "给不了地图的端要落到选择地点页，不该白挡一次点击")
+      .toMatch(/!canMap[\s\S]{0,160}addressPick/);
+    expect(body, "连选点路都没有的端要直接开表单")
+      .toMatch(/canPick\.value \? ROUTES\.addressPick : ROUTES\.addressEdit/);
     expect(body).toContain("ROUTES.addressPick");
   });
 
