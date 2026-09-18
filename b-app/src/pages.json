@@ -516,7 +516,7 @@
     {
       "path": "pages/marketing/index",
       "style": {
-        "navigationBarTitleText": "营销活动",
+        "navigationBarTitleText": "营销",
         "app-plus": {
           "navigationStyle": "custom"
         },

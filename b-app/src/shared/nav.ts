@@ -51,6 +51,7 @@ export const ROUTES = {
   plan: "/pages/plan/index",
   customers: "/pages/customers/index",
   activities: "/pages/activities/index",
+  coupons: "/pages/coupons/index",
   marketing: "/pages/marketing/index",
 
   // ── 进销存（P-18）。**库存页是这一块的枢纽** ——

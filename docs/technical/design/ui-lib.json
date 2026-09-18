@@ -266,7 +266,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 287,
+        "b-app": 278,
         "c-app": 43
       }
     },
@@ -288,7 +288,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 85,
+        "b-app": 84,
         "c-app": 51
       }
     },
@@ -326,7 +326,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 281,
+        "b-app": 280,
         "c-app": 242
       }
     },
@@ -348,7 +348,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 34,
+        "b-app": 33,
         "c-app": 8
       }
     },
@@ -500,7 +500,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 133,
+        "b-app": 130,
         "c-app": 41
       }
     },
@@ -544,7 +544,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 109,
+        "b-app": 107,
         "c-app": 27
       }
     },
@@ -626,7 +626,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 213,
+        "b-app": 208,
         "c-app": 74
       }
     },
@@ -794,7 +794,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 120,
+        "b-app": 118,
         "c-app": 48
       }
     },
@@ -870,7 +870,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 33,
+        "b-app": 32,
         "c-app": 3
       }
     },
@@ -888,7 +888,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 22,
+        "b-app": 20,
         "c-app": 11
       }
     },
@@ -946,7 +946,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 55,
+        "b-app": 53,
         "c-app": 3
       }
     },
@@ -1002,7 +1002,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 123,
+        "b-app": 122,
         "c-app": 14
       }
     },
@@ -1062,7 +1062,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 226,
+        "b-app": 216,
         "c-app": 128
       }
     },
@@ -1126,7 +1126,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 130,
+        "b-app": 127,
         "c-app": 62
       }
     },
@@ -1220,7 +1220,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 67,
+        "b-app": 64,
         "c-app": 28
       }
     },
@@ -1256,7 +1256,7 @@
         "color": "var(--sh-warning)"
       },
       "usage": {
-        "b-app": 11,
+        "b-app": 10,
         "c-app": 6
       }
     },
@@ -1370,7 +1370,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 99,
+        "b-app": 98,
         "c-app": 50
       }
     },
@@ -1426,7 +1426,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 299,
+        "b-app": 294,
         "c-app": 146
       }
     },
@@ -1458,7 +1458,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 131,
+        "b-app": 127,
         "c-app": 75
       }
     },
@@ -1628,7 +1628,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 53,
+        "b-app": 50,
         "c-app": 22
       }
     },
@@ -1644,7 +1644,7 @@
         "margin-top": "10px"
       },
       "usage": {
-        "b-app": 50,
+        "b-app": 40,
         "c-app": 0
       }
     },
@@ -1722,7 +1722,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 97,
+        "b-app": 88,
         "c-app": 24
       }
     },
@@ -1744,7 +1744,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 72,
+        "b-app": 62,
         "c-app": 0
       }
     },
@@ -1852,7 +1852,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 97,
+        "b-app": 95,
         "c-app": 3
       }
     },
@@ -2128,7 +2128,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 47,
+        "b-app": 46,
         "c-app": 30,
         "lib": 1
       },
@@ -2284,7 +2284,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 67,
+        "b-app": 65,
         "c-app": 6,
         "lib": 13
       },
@@ -3540,7 +3540,7 @@
         "sh-stat",
         "biz-store-tag"
       ],
-      "libClassHits": 86,
+      "libClassHits": 82,
       "localSelectors": 26,
       "localCssLines": 102,
       "rolled": []
@@ -3612,13 +3612,12 @@
       "key": "b-app/marketing",
       "file": "b-app/src/pages/marketing/index.vue",
       "components": [
-        "sh-empty",
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 94,
-      "localSelectors": 11,
-      "localCssLines": 40,
+      "libClassHits": 7,
+      "localSelectors": 2,
+      "localCssLines": 7,
       "rolled": []
     },
     {

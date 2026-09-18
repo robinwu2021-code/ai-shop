@@ -622,7 +622,7 @@
             {
               "app": "b-app",
               "route": "/pages/marketing/index",
-              "title": "营销活动",
+              "title": "营销",
               "domain": "会员与营销",
               "tab": false,
               "status": "已实现",
