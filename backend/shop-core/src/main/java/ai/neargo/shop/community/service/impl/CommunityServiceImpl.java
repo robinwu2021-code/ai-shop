@@ -168,9 +168,32 @@ public class CommunityServiceImpl implements CommunityService {
 
     @Override
     public List<CommunityVO> nearby(Integer latE6, Integer lngE6) {
-        List<CmtCommunity> communities = communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+        boolean located = latE6 != null && lngE6 != null;
+        List<CmtCommunity> open = communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
                 .eq(CmtCommunity::getStatus, "OPEN")
                 .isNull(CmtCommunity::getArchivedAt));
+
+        /*
+         * **先按半径筛，再去富化。顺序错了这条接口就是秒级的。**
+         *
+         * 2026-09-18 线上实测：这个端点要 8.8 秒，而且**与返回条数无关**
+         * （27 条与 6 条同为 8.7s）—— 典型的「代价乘在输入上、不在输出上」。
+         * 原来的顺序是「全读 → 富化 → 过滤」：龙华开城之后 OPEN 聚落有 2783 条，
+         * 下面那两句 `masterDataPort.regionNames/regionRural` 就拿着 2783 个
+         * origin_code 去 62 万行的区划表里反查，而这些结果里 99% 当场被半径筛掉。
+         * 开城之前全库只有 2 条，这段代价一直看不见。
+         *
+         * 症状伪装得很像端上的缺陷：选择地点页首屏「附近」整块空着、
+         * 「当前位置」只有一行占位文字 —— 看起来是页面没渲染，其实是还没回来。
+         *
+         * **没用外接矩形下推到 SQL**：`withinRadius` 判的是每个聚落**自己的**
+         * `fence_radius`，不是全局那一个值。按全局半径框矩形会把宽围栏的聚落
+         * 误删，而那种删除是静默的。2783 行本身读起来不慢，贵的是富化 ——
+         * 把过滤提前就够了。表再大一个量级时再谈下推，那时要框的是 max(fence_radius)。
+         */
+        List<CmtCommunity> communities = located
+                ? open.stream().filter(c -> withinRadius(c, latE6, lngE6)).toList()
+                : open;
         if (communities.isEmpty()) {
             return List.of();
         }
@@ -208,9 +231,7 @@ public class CommunityServiceImpl implements CommunityService {
          *
          * 不带定位时（all()）全部为 0，此时保持库序 —— 那种场景本来就没有「近」可言。
          */
-        boolean located = latE6 != null && lngE6 != null;
         return communities.stream()
-                .filter(c -> !located || withinRadius(c, latE6, lngE6))
                 .map(c -> toVO(c, byCommunity.getOrDefault(c.getCommunityNo(), List.of()), owners, latE6, lngE6,
                         c.getOriginCode() == null ? null : originNames.get(c.getOriginCode()),
                         c.getOriginCode() != null && Boolean.TRUE.equals(originRural.get(c.getOriginCode()))))
