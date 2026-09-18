@@ -13,6 +13,7 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { isoDay } from "@/shared/quick-dates";
 import { confirm } from "@ai-shop/ui/prompt";
 import { useMerchantStore } from "@/stores/merchant";
 import { money, toMinor } from "@shared/utils/money";
@@ -27,7 +28,8 @@ const saving = ref(false);
 const conflicts = ref<ActivityConflict[]>([]);
 
 const form = ref({
-  goal: "BASKET",
+  /** 类型：CUT / PRICE / GROUP / GIFT。**不是 goal** —— 见 TYPES 上面那段 */
+  kind: "CUT",
   name: "",
   benefitType: "CUT",
   /** 满多少（元） */
@@ -38,7 +40,9 @@ const form = ref({
   giftM: "1",
   goodsNos: [] as string[],
   scheduleType: "ONE_OFF",
-  days: "7",
+  /** 起止。店主说的是「这周六到下周日」，不是「限时 7 天」 */
+  startDay: isoDay(),
+  endDay: isoDay(-7),
   weekdays: [] as number[],
   from: "08:00",
   to: "20:00",
@@ -49,24 +53,40 @@ const form = ref({
   groupN: "2",
 });
 
-/** 目标 → 后面几步的默认值。商家想的是「拉新」，不是「触发条件 = 满额」 */
-const GOALS = [
-  { key: "ACQUIRE", benefit: "CUT", audience: "NON_MEMBER" },
-  { key: "WAKEUP", benefit: "CUT", audience: "LEVEL:SLEEPING" },
-  { key: "CLEAR", benefit: "PRICE", audience: "" },
-  { key: "BASKET", benefit: "CUT", audience: "" },
-  /*
-   * ★ **团购**（2026-09-18）：价格与人数此前长在商品上，一件货一辈子只有一个
-   * 团购价。挪进活动之后它才可能在不同时间参加不同的团。
-   *
-   * 与「清库存」都是 PRICE，**目标才是分水岭** —— 所以下面凡是判团购的地方
-   * 一律看 `goal === "GROUP"`，不看 benefitType。
-   */
-  { key: "GROUP", benefit: "PRICE", audience: "" },
+/*
+ * ★ **类型，不是「目标」**（2026-09-18 店主：「整理逻辑应该是活动名、活动类型、
+ * 开始以及结束日期以及其他选项」）。
+ *
+ * 改之前第一步问的是「你想达成什么」（拉新客 / 唤回老客 / 清库存 / 提高客单），
+ * 而那五个**只是默认值生成器** —— 它们在第 1 步写一次 benefit 与 audience，
+ * 之后第 2/4 步可以改回去，而 `goal` 是**存下来的**。于是「拉新客」的活动
+ * 可以对所有人生效、名字还叫「新客立减」，没有任何一处校验。
+ *
+ * 现在第一步直接问**类型**：它就是 `triggerType × benefitType` 的那几个组合，
+ * 与库里那一行一一对应，不会与别的字段互相矛盾。
+ *
+ * 「拉新客 / 唤回老客」降级成**受众那一步的预设** —— 它们本来就是受众的别名。
+ *
+ * **发券不放进来**（方案 §6.1）：模型支持 BENEFIT_COUPON，但券有自己的一页，
+ * 两处都能发券会让人不知道该去哪儿。
+ */
+const TYPES = [
+  { key: "CUT", trigger: "AMOUNT", benefit: "CUT" },
+  { key: "PRICE", trigger: "GOODS", benefit: "PRICE" },
+  { key: "GROUP", trigger: "GROUP", benefit: "PRICE" },
+  { key: "GIFT", trigger: "QTY", benefit: "GIFT" },
 ];
 
+function pickType(key: string) {
+  const t2 = TYPES.find((x) => x.key === key)!;
+  form.value.kind = key;
+  form.value.benefitType = t2.benefit;
+  if (!form.value.name) form.value.name = String(t(`activityEdit.typeName.${key}`));
+}
+
 /** 是不是团购活动。判的是目标，不是优惠类型 —— 清库存也是 PRICE */
-const isGroup = computed(() => form.value.goal === "GROUP");
+/** 是不是团购活动。判的是类型 —— 它与「特价」都是 PRICE，靠 benefitType 分不开 */
+const isGroup = computed(() => form.value.kind === "GROUP");
 
 /*
  * ★ **暂停 / 恢复 / 结束搬到这一页**（2026-09-18）。
@@ -100,12 +120,33 @@ async function setStatus(next: string) {
 
 const busy = ref(false);
 
-function pickGoal(key: string) {
-  const g = GOALS.find((x) => x.key === key)!;
-  form.value.goal = key;
-  form.value.benefitType = g.benefit;
-  form.value.audienceType = g.audience;
-  if (!form.value.name) form.value.name = String(t(`activityEdit.goalName.${key}`));
+/**
+ * 从库里那一行反推类型。<b>先判触发再判优惠</b> —— 团购与特价都是 PRICE，
+ * 只有 triggerType 分得开；反过来判的话，所有团购活动打开都会显示成「特价」。
+ */
+/** 毫秒 → `YYYY-MM-DD`（本地日历日）。回填时用，与 dayStart 互为逆 */
+function dayOf(ms: number): string {
+  const d = new Date(ms);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** `YYYY-MM-DD` → 那一天本地 00:00 的毫秒。**不用 Date.parse** —— 它按 UTC 解 */
+function dayStart(day: string): number {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(y!, (m ?? 1) - 1, d ?? 1, 0, 0, 0, 0).getTime();
+}
+
+/** 那一天本地 23:59:59.999 —— 结束日是**含当天**的，店主说「到下周日」指整个周日 */
+function dayEnd(day: string): number {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(y!, (m ?? 1) - 1, d ?? 1, 23, 59, 59, 999).getTime();
+}
+
+function kindOf(a: StoreActivity): string {
+  if (a.triggerType === "GROUP") return "GROUP";
+  const hit = TYPES.find((x) => x.benefit === a.benefitType);
+  return hit ? hit.key : "CUT";
 }
 
 const isItemCost = computed(
@@ -201,7 +242,9 @@ async function loadExisting(no: string) {
     return;
   }
   activityNo.value = a.activityNo;
-  form.value.goal = a.goal ?? "BASKET";
+  form.value.kind = kindOf(a);
+  if (a.startAt) form.value.startDay = dayOf(a.startAt);
+  if (a.endAt) form.value.endDay = dayOf(a.endAt);
   form.value.name = a.name;
   form.value.benefitType = a.benefitType;
   form.value.threshold = String(((a.triggerAmountMinor ?? 0) / 100).toFixed(2));
@@ -257,7 +300,9 @@ async function save() {
   const draft: StoreActivityDraft = {
     activityNo: activityNo.value || undefined,
     name: form.value.name.trim(),
-    goal: form.value.goal,
+    // ★ goal 停写：它与 benefitType/audience 可以互相矛盾且无人校验（方案 §4.1）。
+    // 列先留着不删 —— 与 prd_goods 那两列同一处置，回滚窗口留长
+    goal: null,
     benefitType: form.value.benefitType,
     // 团购看目标不看优惠：它与「清库存」都是 PRICE，分不开就会把团存成特价
     triggerType: isGroup.value ? "GROUP"
@@ -269,9 +314,13 @@ async function save() {
     benefitAmountMinor: form.value.benefitType === "GIFT" ? null : toMinor(form.value.amount),
     benefitQty: form.value.benefitType === "GIFT" ? Number(form.value.giftM || 0) : null,
     scheduleType: form.value.scheduleType,
-    startAt: form.value.scheduleType === "ONE_OFF" ? now : null,
-    endAt: form.value.scheduleType === "ONE_OFF"
-      ? now + Number(form.value.days || 7) * 86400_000 : null,
+    /*
+     * 起止取**本地日历日的边界**：开始那天的 00:00、结束那天的 23:59:59。
+     * 直接用 `Date.parse(day)` 的话拿到的是 UTC 零点 —— 在东八区会把活动
+     * 提前八小时开始、提前八小时结束，而界面上写着的日期一个字都没变。
+     */
+    startAt: form.value.scheduleType === "ONE_OFF" ? dayStart(form.value.startDay) : null,
+    endAt: form.value.scheduleType === "ONE_OFF" ? dayEnd(form.value.endDay) : null,
     scheduleRule: form.value.scheduleType === "RECURRING"
       ? JSON.stringify({ weekdays: form.value.weekdays, from: form.value.from, to: form.value.to })
       : null,
@@ -304,10 +353,10 @@ onLoad((q) => {
     :failed="failed"
     @retry="() => loadExisting(currentNo)"
   >
-    <!-- 四步的进度：让他知道还剩几步，而不是面对一屏输入框 -->
+    <!-- 三步的进度：让他知道还剩几步，而不是面对一屏输入框 -->
     <view class="steps sh-wrap">
       <text
-        v-for="s in [1, 2, 3, 4]"
+        v-for="s in [1, 2, 3]"
         :key="s"
         class="sh-chip steps__i"
         :class="{ 'sh-chip--solid': step === s, 'is-done txt-primary': step > s }"
@@ -317,16 +366,16 @@ onLoad((q) => {
 
     <!-- ① 想干什么 -->
     <view v-if="step === 1" class="sh-card">
-      <text class="field__label">{{ $t("activityEdit.goalQ") }}</text>
+      <text class="field__label">{{ $t("activityEdit.typeQ") }}</text>
       <view class="opts">
         <sh-option
-          v-for="g in GOALS"
-          :key="g.key"
-          :selected="form.goal === g.key"
-          @tap="pickGoal(g.key)"
+          v-for="ty in TYPES"
+          :key="ty.key"
+          :selected="form.kind === ty.key"
+          @tap="pickType(ty.key)"
         >
-          <text class="txt-strong opt__t">{{ $t(`activityEdit.goal.${g.key}`) }}</text>
-          <text class="txt-caption sh-muted opt__d">{{ $t(`activityEdit.goalHint.${g.key}`) }}</text>
+          <text class="txt-strong opt__t">{{ $t(`activityEdit.type.${ty.key}`) }}</text>
+          <text class="txt-caption sh-muted opt__d">{{ $t(`activityEdit.typeHint.${ty.key}`) }}</text>
         </sh-option>
       </view>
       <view class="sh-row sh-mt-sm sh-mt-xs">
@@ -336,8 +385,8 @@ onLoad((q) => {
       </view>
     </view>
 
-    <!-- ② 优惠什么样 -->
-    <view v-if="step === 2" class="sh-card">
+    <!-- ③ 优惠什么样 -->
+    <view v-if="step === 3" class="sh-card">
       <!-- 团购没有可选项，那这个提问也不该出现：一个问句下面空着比没有问句更怪 -->
       <text v-if="!isGroup" class="field__label">{{ $t("activityEdit.benefitQ") }}</text>
       <!--
@@ -425,8 +474,29 @@ onLoad((q) => {
       </view>
     </view>
 
+    <!--
+      受众折在优惠之后，**不再单独占一步**：多数活动不挑人，
+      单独一步会让每建一个活动都多点一次「所有人」。
+    -->
+    <view v-if="step === 3" class="sh-card sh-mt-sm">
+      <text class="field__label">{{ $t("activityEdit.audienceQ") }}</text>
+      <view class="opts">
+        <sh-option
+          v-for="a in ['', 'NON_MEMBER', 'LEVEL:SLEEPING', 'LEVEL:LOYAL']"
+          :key="a || 'all'"
+          :selected="form.audienceType === a"
+          @tap="form.audienceType = a"
+        >
+          <text class="txt-strong opt__t">{{ $t(`activityEdit.audience.${a || "ALL"}`) }}</text>
+          <text class="txt-caption sh-muted opt__d">{{ $t(`activityEdit.audienceHint.${a || "ALL"}`) }}</text>
+        </sh-option>
+      </view>
+    </view>
+
+
     <!-- ③ 什么时候有效 -->
-    <view v-if="step === 3" class="sh-card">
+    <!-- ② 什么时候 —— 提到第 2 位：他先说出口的是「这周六到下周日」 -->
+    <view v-if="step === 2" class="sh-card">
       <text class="field__label">{{ $t("activityEdit.scheduleQ") }}</text>
       <view class="chips sh-wrap">
         <text
@@ -438,10 +508,30 @@ onLoad((q) => {
         >{{ $t(`activityEdit.schedule.${s}`) }}</text>
       </view>
 
-      <view v-if="form.scheduleType === 'ONE_OFF'" class="sh-row sh-mt-sm sh-mt-xs">
-        <text class="txt-sub row__label">{{ $t("activityEdit.days") }}</text>
-        <input maxlength="4" v-model="form.days" class="field__input row__input" type="number" />
-      </view>
+      <!--
+        ★ **给两个日期，不让他算天数**（2026-09-18）。
+        店主说的是「这周六到下周日」；改之前这里问的是「限时几天」，
+        他得自己把日期换算成天数，而那个数存下来之后谁也看不出原本是哪两天。
+      -->
+      <template v-if="form.scheduleType === 'ONE_OFF'">
+        <sh-kv between :label="String($t('activityEdit.startDay'))">
+          <picker mode="date" :value="form.startDay" @change="form.startDay = $event.detail.value">
+            <view class="day sh-row">
+              <text class="txt-body sh-num">{{ form.startDay }}</text>
+              <text class="sh-muted">›</text>
+            </view>
+          </picker>
+        </sh-kv>
+        <sh-kv between :label="String($t('activityEdit.endDay'))">
+          <picker mode="date" :value="form.endDay" :start="form.startDay"
+                  @change="form.endDay = $event.detail.value">
+            <view class="day sh-row">
+              <text class="txt-body sh-num">{{ form.endDay }}</text>
+              <text class="sh-muted">›</text>
+            </view>
+          </picker>
+        </sh-kv>
+      </template>
 
       <template v-if="form.scheduleType === 'RECURRING'">
         <view class="week sh-mt-sm sh-wrap">
@@ -478,21 +568,6 @@ onLoad((q) => {
     </view>
 
     <!-- ④ 给谁 -->
-    <view v-if="step === 4" class="sh-card">
-      <text class="field__label">{{ $t("activityEdit.audienceQ") }}</text>
-      <view class="opts">
-        <sh-option
-          v-for="a in ['', 'NON_MEMBER', 'LEVEL:SLEEPING', 'LEVEL:LOYAL']"
-          :key="a || 'all'"
-          :selected="form.audienceType === a"
-          @tap="form.audienceType = a"
-        >
-          <text class="txt-strong opt__t">{{ $t(`activityEdit.audience.${a || "ALL"}`) }}</text>
-          <text class="txt-caption sh-muted opt__d">{{ $t(`activityEdit.audienceHint.${a || "ALL"}`) }}</text>
-        </sh-option>
-      </view>
-    </view>
-
     <!--
       效果与停用：**只有改既有活动时才有**。新建时这三个数都是 0、也没得停，
       画出来只是让新建流程多一屏要跳过的东西。
@@ -514,7 +589,7 @@ onLoad((q) => {
         两枚按钮形态，不是两行字（店主提过「按钮不要纯文字」）。
         结束用危险态：它不可逆，与暂停不是一类动作。
       -->
-      <view v-if="current.status !== 'ENDED'" class="acts sh-row">
+      <view v-if="current.status !== 'ENDED'" class="acts sh-row sh-mt-sm">
         <view class="sh-btn sh-btn--soft sh-fill" :class="{ 'is-disabled': busy }"
               @tap="setStatus(current.status === 'RUNNING' ? 'PAUSED' : 'RUNNING')">
           {{ current.status === "RUNNING" ? $t("activities.pause") : $t("activities.resume") }}
@@ -528,7 +603,7 @@ onLoad((q) => {
       <text v-if="step > 1" class="sh-btn sh-btn--soft nav__b" @tap="step -= 1">
         {{ $t("activityEdit.prev") }}
       </text>
-      <view v-if="step < 4" class="sh-btn nav__b" @tap="step += 1">
+      <view v-if="step < 3" class="sh-btn nav__b" @tap="step += 1">
         {{ $t("activityEdit.next") }}
       </view>
       <view v-else class="sh-btn nav__b" :class="{ 'is-disabled': saving }" @tap="save">
@@ -539,10 +614,10 @@ onLoad((q) => {
 </template>
 
 <style scoped>
-/* 两枚并排，与底部导航条分开 */
+/* 两枚并排。**不自己写纵向 margin** —— 顶层块的块间距归外壳管，
+   自己写就压过那条，这一页的间距从此和别处不一样 */
 .acts {
   gap: 16rpx;
-  margin-top: 16rpx;
 }
 .steps {
   gap: 8rpx;

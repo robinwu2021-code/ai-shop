@@ -97,11 +97,6 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="activities.title" :denied="!merchant.can('biz:campaign')">
-    <view class="bar">
-      <text class="sh-chip sh-chip--primary" @tap="go('/pages/activity-edit/index')">
-        ＋ {{ $t("activities.new") }}
-      </text>
-    </view>
 
     <sh-empty v-if="!list.length" :pending="!loaded" :failed="failed" @retry="load" :text="String($t('activities.empty'))" :tip="String($t('activities.emptyTip'))"></sh-empty>
 
@@ -144,7 +139,12 @@ onShow(load);
         >
           <view class="sh-row sh-row--between">
             <text class="txt-strong">{{ a.name }}</text>
-            <text class="sh-chip sh-chip--sm" :class="{ 'sh-chip--muted': a.status === 'ENDED' }">
+            <!--
+              **只用库里真有的修饰**：sh-chip--sm / --muted 都不存在，
+              挂了等于没挂 —— 样式静默落空、页面照跑（ui-package 那道闸盯的就是它）。
+              已结束的用 dashed：虚线本身就说「这条不再生效」，不必另造一个灰态。
+            -->
+            <text class="sh-chip" :class="{ 'sh-chip--dashed': a.status === 'ENDED' }">
               {{ a.endedReason
                 ? $t(`activities.endedReason.${a.endedReason}`)
                 : scheduleText(a) }}
@@ -166,6 +166,18 @@ onShow(load);
         </view>
       </view>
     </template>
+
+    <!--
+      ★ **新建改成右下悬浮**（2026-09-18 店主：「新建活动的位置不对」）。
+
+      原来是左上角一枚小 chip：它与下面的分组标题（「正在生效（2）」）挤在一起，
+      读起来像是那一组的一部分；而它是全页唯一的主动作。
+
+      用 sh-fab，与商品页的「＋ 新建商品」同一个件、同一个位置 ——
+      两页的主动作长在同一处，不用每页重新找。
+      不放导航栏右上：那在原生包里是系统导航栏，三端位置不一致。
+    -->
+    <sh-fab :text="`＋ ${$t('activities.new')}`" @tap="go('/pages/activity-edit/index')"></sh-fab>
   </sh-scaffold>
 </template>
 
@@ -178,10 +190,6 @@ onShow(load);
 .item__b {
   margin-top: 8rpx;
   gap: 16rpx;
-}
-.bar {
-  display: flex;
-  gap: 12rpx;
 }
 
 .group__d {
