@@ -55,10 +55,8 @@ function chipOf(c: MerchantCoupon): { text: string; cls: string } {
 
 /** 信息行：类型 · 规则或有效期（次卡带次数，折扣带封顶，现金带有效期） */
 function metaOf(c: MerchantCoupon): string {
-  const kind = couponKind(c);
-  const name = tt(`couponText.kind.${kind}`);
-  if (kind === "TIMES" || kind === "PERCENT") return `${name} · ${couponRule(tt, c)}`;
-  return `${name} · ${couponValidity(tt, c)}`;
+  // 「满减券 · 满 ¥50 减 ¥5 · 领后 7 天」：类型是第一个词 —— 商家扫列表先认类型
+  return `${tt(`couponText.kind.${couponKind(c)}`)} · ${couponRule(tt, c)} · ${couponValidity(tt, c)}`;
 }
 
 function go(url: string) {

@@ -28934,6 +28934,18 @@
         "zh": "券的出资方。"
       },
       {
+        "name": "CouponKind",
+        "client": "b-app",
+        "values": [
+          "FULL_CUT",
+          "CASH",
+          "PERCENT",
+          "GOODS",
+          "FREE_SHIP"
+        ],
+        "zh": "券的类型：满减券 / 现金券 / 折扣券 / 商品券（免运费券后端有、B 端不建）。"
+      },
+      {
         "name": "CouponStatus",
         "client": "ops-web",
         "values": [

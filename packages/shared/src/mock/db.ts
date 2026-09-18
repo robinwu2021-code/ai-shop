@@ -1153,7 +1153,7 @@ export const db = {
       benefitMode: "GIFT",
       benefitValue: 0,
       benefitCapMinor: null,
-      benefitRef: "G-DOUJIANG",
+      benefitRef: "豆浆 1 杯",
       minAmountMinor: null,
       minQty: null,
       scopeType: "ALL",

@@ -169,10 +169,13 @@ public class PmtCouponServiceImpl implements CouponService {
         return out;
     }
 
-    /** 券面上那句人话。**折扣券要把「几折」说出来** —— 一个金额字段表达不了它 */
+    /**
+     * 券面上那句人话。**折扣券要把「几折」说出来** —— 一个金额字段表达不了它；
+     * **商品券要把兑换什么说出来** —— 「凭券兑换」不说是什么，买家到店才知道换的是一杯豆浆。
+     */
     private String benefitText(PmtCoupon c) {
         return switch (c.getBenefitMode()) {
-            case PmtCoupon.GIFT -> "凭券兑换";
+            case PmtCoupon.GIFT -> blank(c.getBenefitRef()) ? "凭券兑换" : "兑换 " + c.getBenefitRef();
             case PmtCoupon.PERCENT -> (nz(c.getBenefitValue()) / 1000.0) + " 折";
             case PmtCoupon.FREE_SHIP -> "免运费";
             default -> "减 " + (nz(c.getBenefitValue()) / 100.0) + " 元";

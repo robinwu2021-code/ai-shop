@@ -1,11 +1,14 @@
 <script setup lang="ts">
 /*
  * 新建券（原型 s13 填写 → s14 确认）。结构照搬新建活动：两步、一组组列表行；
- * **类型是一个字段**，改类型只换「规则」那一组 —— 选折扣时多出「封顶」，选次卡时换成「次数」。
+ * **类型是一个字段**，改类型只换「规则」那一组 —— 选折扣时多出「封顶」，选商品券时换成「兑换商品 + 次数」。
  *
- * 三种类型对应到库里（详细设计 §1.5）：
- *   现金 = CASH，下单抵扣；折扣 = PERCENT，下单抵扣，必须封顶；
- *   次卡 = GIFT × 次数 > 1，到店出示核销（一张卡核几次，核销页扣次数）。
+ * 四类券对应到库里（TDD-券与活动模型 §4.5）—— 类型不是一列，由权益方式 + 门槛推出来：
+ *   满减券 = CASH + 门槛必填，下单抵扣；现金券 = CASH 无门槛，下单抵扣；
+ *   折扣券 = PERCENT，下单抵扣，必须封顶；
+ *   商品券 = GIFT × 兑换次数（1 = 单次，> 1 = 次卡），到店出示核销（核销页扣次数）。
+ * 与活动的关系：满减券 / 折扣券与满减 / 打折活动是同一种优惠 —— 活动对范围内所有人自动生效，
+ * 券要发到人手上才算数；下单先算活动，再在活动后的金额上用券。
  *
  * 确认页（s14）与活动确认页同一个位置放「最多支出」= 数量 × 单张最大优惠 × 次数。
  * 商家填的是张数，要为之负责的是钱。
@@ -20,15 +23,15 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { money, toMinor } from "@shared/utils/money";
-import { couponQuantity, couponRule, couponThreshold, couponValidity } from "@/shared/coupon-text";
+import { couponKind, couponQuantity, couponRule, couponThreshold, couponValidity } from "@/shared/coupon-text";
 import type { MerchantCoupon, MerchantCouponDraft } from "@shared/types";
 
 const { t } = useI18n();
 const tt = (k: string, a?: Record<string, unknown>) => String(t(k, a ?? {}));
 const merchant = useMerchantStore();
 
-type Kind = "CASH" | "PERCENT" | "TIMES";
-const KINDS: Kind[] = ["CASH", "PERCENT", "TIMES"];
+type Kind = "FULL_CUT" | "CASH" | "PERCENT" | "GOODS";
+const KINDS: Kind[] = ["FULL_CUT", "CASH", "PERCENT", "GOODS"];
 
 const couponNo = ref("");
 const step = ref<1 | 2>(1);
@@ -42,13 +45,14 @@ function today(offsetDays = 0): string {
 
 const form = ref({
   title: "",
-  kind: "CASH" as Kind,
-  /** 现金：元；折扣：几折（8.5）；次卡：不用 */
+  kind: "FULL_CUT" as Kind,
+  /** 满减 / 现金：元；折扣：几折（8.5）；商品券：不用 */
   value: "",
   cap: "",
   minAmount: "",
-  times: "5",
-  /** 次卡每次兑换什么（「豆浆 1 杯」）。存进 benefitRef，核销页原样显示给店员 */
+  /** 商品券兑换几次。1 = 单次，> 1 = 次卡 */
+  times: "1",
+  /** 商品券兑换什么（「豆浆 1 杯」）。存进 benefitRef，核销页原样显示给店员 */
   gift: "",
   validityMode: "RELATIVE" as "RELATIVE" | "ABSOLUTE",
   validDays: "7",
@@ -72,14 +76,17 @@ async function loadExisting(no: string) {
     return;
   }
   couponNo.value = c.couponNo;
-  const kind: Kind = c.timesTotal > 1 ? "TIMES" : c.benefitMode === "PERCENT" ? "PERCENT" : "CASH";
+  // 免运费券 B 端不建；真碰上一张就按现金券打开，别让页面空着
+  const k = couponKind(c);
+  const kind: Kind = k === "FREE_SHIP" ? "CASH" : k;
   form.value = {
     title: c.title,
     kind,
-    value: kind === "PERCENT" ? String(c.benefitValue / 1000) : kind === "CASH" ? String((c.benefitValue / 100).toFixed(2)) : "",
+    value: kind === "PERCENT" ? String(c.benefitValue / 1000)
+      : kind === "GOODS" ? "" : String((c.benefitValue / 100).toFixed(2)),
     cap: c.benefitCapMinor ? String((c.benefitCapMinor / 100).toFixed(2)) : "",
     minAmount: c.minAmountMinor ? String((c.minAmountMinor / 100).toFixed(2)) : "",
-    times: String(c.timesTotal > 1 ? c.timesTotal : 5),
+    times: String(c.timesTotal > 1 ? c.timesTotal : 1),
     gift: c.benefitRef ?? "",
     validityMode: c.validityMode === "ABSOLUTE" ? "ABSOLUTE" : "RELATIVE",
     validDays: String(c.validDays ?? 7),
@@ -98,16 +105,17 @@ const draft = computed<MerchantCouponDraft>(() => {
    * 他迟早会填 85 —— 那在这个口径里是「顾客付 0.85%」，等于白送。
    */
   const benefitValue = kind === "PERCENT" ? Math.round(Number(f.value || 0) * 1000)
-    : kind === "CASH" ? toMinor(f.value) : 0;
+    : kind === "GOODS" ? 0 : toMinor(f.value);
   const endAt = f.validityMode === "ABSOLUTE" ? new Date(`${f.endDay}T23:59:59`).getTime() : null;
   return {
     couponNo: couponNo.value || undefined,
     title: f.title.trim(),
-    benefitMode: kind === "TIMES" ? "GIFT" : kind,
+    // 满减券与现金券库里都是 CASH，差别只在门槛：现金券的门槛固定为空
+    benefitMode: kind === "GOODS" ? "GIFT" : kind === "FULL_CUT" ? "CASH" : kind,
     benefitValue,
     benefitCapMinor: kind === "PERCENT" ? toMinor(f.cap) : null,
-    benefitRef: kind === "TIMES" ? f.gift.trim() : null,
-    minAmountMinor: kind === "TIMES" ? null : toMinor(f.minAmount) || null,
+    benefitRef: kind === "GOODS" ? f.gift.trim() : null,
+    minAmountMinor: kind === "GOODS" || kind === "CASH" ? null : toMinor(f.minAmount) || null,
     scopeType: "ALL",
     scopeRefs: [],
     validityMode: f.validityMode,
@@ -115,9 +123,9 @@ const draft = computed<MerchantCouponDraft>(() => {
     startAt: f.validityMode === "ABSOLUTE" ? Date.now() : null,
     endAt,
     issueMode: "TARGETED",
-    // 次卡要一次次扣，只能到店核销；现金与折扣在下单时自动抵扣
-    redeemMode: kind === "TIMES" ? "STORE_CODE" : "ORDER",
-    timesTotal: kind === "TIMES" ? Number(f.times || 1) : 1,
+    // 商品券要到店拿货、按次扣，只能到店核销；满减 / 现金 / 折扣在下单时自动抵扣
+    redeemMode: kind === "GOODS" ? "STORE_CODE" : "ORDER",
+    timesTotal: kind === "GOODS" ? Number(f.times || 1) : 1,
     totalCount: f.totalCount ? Number(f.totalCount) : null,
     perUserLimit: Number(f.perUserLimit || 1),
     budgetMinor: null,
@@ -138,7 +146,7 @@ const preview = computed<MerchantCoupon>(() => ({
   spentMinor: 0,
 }));
 
-/** 最多支出 = 数量 × 单张最大优惠 × 次数；次卡是兑换，不算钱 */
+/** 最多支出 = 数量 × 单张最大优惠 × 次数；商品券是兑换，不算钱 */
 const maxSpend = computed(() => {
   const d = draft.value;
   const per = d.benefitMode === "CASH" ? d.benefitValue : d.benefitMode === "PERCENT" ? d.benefitCapMinor ?? 0 : 0;
@@ -149,14 +157,16 @@ const maxSpend = computed(() => {
 function checkFill(): string | null {
   const f = form.value;
   if (!f.title.trim()) return "couponEdit.needTitle";
-  if (f.kind === "CASH" && !(toMinor(f.value) > 0)) return "couponEdit.needValue";
+  if ((f.kind === "CASH" || f.kind === "FULL_CUT") && !(toMinor(f.value) > 0)) return "couponEdit.needValue";
+  // 满减券没有门槛就是现金券 —— 两个类型在库里同一列，门槛是唯一区别，所以这里必填
+  if (f.kind === "FULL_CUT" && !(toMinor(f.minAmount) > 0)) return "couponEdit.needMin";
   if (f.kind === "PERCENT") {
     const rate = Math.round(Number(f.value || 0) * 1000);
     if (rate < 1000 || rate >= 10000) return "couponEdit.badRate";
     if (!(toMinor(f.cap) > 0)) return "couponEdit.needCap";
   }
-  if (f.kind === "TIMES" && !(Number(f.times) > 1)) return "couponEdit.needTimes";
-  if (f.kind === "TIMES" && !f.gift.trim()) return "couponEdit.needGift";
+  if (f.kind === "GOODS" && !(Number(f.times) >= 1)) return "couponEdit.needTimes";
+  if (f.kind === "GOODS" && !f.gift.trim()) return "couponEdit.needGift";
   if (f.validityMode === "ABSOLUTE" && f.endDay < today()) return "couponEdit.badEnd";
   if (!(Number(f.perUserLimit) >= 1)) return "couponEdit.needPerUser";
   return null;
@@ -222,7 +232,7 @@ onLoad((q) => {
 
       <text class="txt-caption sh-muted grp">{{ $t("couponEdit.groupRule") }}</text>
       <view class="sh-cells">
-        <view v-if="form.kind === 'CASH'" class="sh-cell sh-row sh-row--between">
+        <view v-if="form.kind === 'CASH' || form.kind === 'FULL_CUT'" class="sh-cell sh-row sh-row--between">
           <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.face") }}</text>
           <input v-model="form.value" maxlength="10" type="digit" class="txt-body cell__input sh-num" :placeholder="$t('couponEdit.facePh')" />
         </view>
@@ -236,7 +246,7 @@ onLoad((q) => {
             <input v-model="form.cap" maxlength="10" type="digit" class="txt-body cell__input sh-num" :placeholder="$t('couponEdit.capPh')" />
           </view>
         </template>
-        <template v-if="form.kind === 'TIMES'">
+        <template v-if="form.kind === 'GOODS'">
           <view class="sh-cell sh-row sh-row--between">
             <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.gift") }}</text>
             <input v-model="form.gift" maxlength="32" class="txt-body cell__input" :placeholder="$t('couponEdit.giftPh')" />
@@ -246,9 +256,11 @@ onLoad((q) => {
             <input v-model="form.times" maxlength="6" type="number" class="txt-body cell__input sh-num" :placeholder="$t('couponEdit.timesPh')" />
           </view>
         </template>
-        <view v-if="form.kind !== 'TIMES'" class="sh-cell sh-row sh-row--between">
+        <!-- 门槛：满减券必填、折扣券可选；现金券按定义无门槛、商品券不看金额，都不给这一行 -->
+        <view v-if="form.kind === 'FULL_CUT' || form.kind === 'PERCENT'" class="sh-cell sh-row sh-row--between">
           <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.min") }}</text>
-          <input v-model="form.minAmount" maxlength="10" type="digit" class="txt-body cell__input sh-num" :placeholder="$t('couponEdit.minPh')" />
+          <input v-model="form.minAmount" maxlength="10" type="digit" class="txt-body cell__input sh-num"
+                 :placeholder="$t(form.kind === 'FULL_CUT' ? 'couponEdit.minReqPh' : 'couponEdit.minPh')" />
         </view>
         <view class="sh-cell sh-row sh-row--between">
           <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.scope") }}</text>
@@ -313,7 +325,7 @@ onLoad((q) => {
           <text class="txt-body sh-muted">{{ $t("couponEdit.kind") }}</text>
           <text class="txt-body sh-num">{{ $t(`couponText.kind.${form.kind}`) }} {{ couponRule(tt, preview) }}</text>
         </view>
-        <view v-if="form.kind !== 'TIMES'" class="sh-cell sh-row sh-row--between">
+        <view v-if="form.kind === 'FULL_CUT' || form.kind === 'PERCENT'" class="sh-cell sh-row sh-row--between">
           <text class="txt-body sh-muted">{{ $t("couponEdit.min") }}</text>
           <text class="txt-body sh-num">{{ couponThreshold(tt, preview) }}</text>
         </view>
