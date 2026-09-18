@@ -88,8 +88,6 @@ onShow(load);
 <template>
   <sh-scaffold title-key="groups.title" :denied="!merchant.can('biz:campaign')">
     <text class="txt-display">{{ $t("groups.title") }}</text>
-    <text class="sh-muted intro">{{ $t("groups.intro") }}</text>
-
     <text class="txt-title sec">{{ $t("groups.running") }}</text>
     <sh-empty v-if="!groups.length"
           :failed="failed"
@@ -127,16 +125,10 @@ onShow(load);
       <text class="txt-body sh-fill">{{ g.title }}</text>
       <text class="sh-btn sh-btn--sm btn" @tap="create(g.goodsNo)">{{ $t("groups.open") }}</text>
     </view>
-
-    <text class="tip sh-hint">{{ $t("groups.rules") }}</text>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.intro {
-  display: block;
-  margin: 0 8rpx;
-}
 .sec {
   display: block;
   margin: 0 8rpx;
@@ -186,8 +178,5 @@ onShow(load);
 
   padding: 16rpx 32rpx;
 
-}
-.tip {
-  margin: 0 8rpx;
 }
 </style>

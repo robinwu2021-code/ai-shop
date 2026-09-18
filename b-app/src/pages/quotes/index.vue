@@ -85,8 +85,6 @@ onShow(load);
 <template>
   <sh-scaffold title-key="quotes.title" :denied="!merchant.can('biz:campaign')">
     <text class="txt-display">{{ $t("quotes.title") }}</text>
-    <text class="sh-muted intro">{{ $t("quotes.intro") }}</text>
-
     <sh-empty v-if="!list.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("quotes.empty")'></sh-empty>
 
     <view v-for="r in list" :key="r.requestNo" class="sh-card sh-mt-sm">
@@ -163,11 +161,6 @@ onShow(load);
 </template>
 
 <style scoped>
-.intro {
-  display: block;
-  margin: 0 8rpx;
-}
-
 .item__title {
   flex: 1;
 }
