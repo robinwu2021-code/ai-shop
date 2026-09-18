@@ -64,7 +64,7 @@ export default {
     navigate: "الاتجاهات",
   },
   goods: {
-    whyNoSku: "هذه التركيبة غير متاحة — جرّب غيرها",
+    whyNoSku: "هذا الخيار غير متوفر",
     whyNoSlot: "اختر موعد الزيارة للمتابعة",
     detailTitle: "الوصف",
     limit: "الحد {n} لكل عميل",
@@ -74,7 +74,7 @@ export default {
     scopeUnlimited: "بدون حدود جغرافية",
     scopeMore: "{names} وما مجموعه {n} منطقة",
     origin: "مباشرة من المصدر",
-    weighed: "يُباع بالوزن التقريبي؛ يُعدّل السعر حسب الوزن الفعلي",
+    weighed: "يُحسب السعر حسب الوزن الفعلي",
     arrival: "موعد الوصول",
     store: "الموقع",
     duration: "مدة الخدمة {n} دقيقة",
@@ -297,7 +297,7 @@ export default {
     star3: "مقبول",
     star4: "جيد",
     star5: "ممتاز",
-    title: "التقييمات {n}", empty: "لا توجد تقييمات بعد", emptyTip: "كن أول جار يشارك" },
+    title: "التقييمات {n}", empty: "لا توجد تقييمات بعد", emptyTip: "تظهر التقييمات بعد الشراء" },
   search: {
     title: "بحث",
     placeholder: "ابحث عن منتجات أو متاجر",

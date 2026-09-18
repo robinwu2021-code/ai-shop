@@ -64,7 +64,7 @@ export default {
     navigate: "Directions",
   },
   goods: {
-    whyNoSku: "That combination is not available — try another",
+    whyNoSku: "This option is out of stock",
     whyNoSlot: "Pick a visit time to continue",
     detailTitle: "Description",
     limit: "Limit {n} per customer",
@@ -74,7 +74,7 @@ export default {
     scopeUnlimited: "No area limit",
     scopeMore: "{names} and {n} areas in total",
     origin: "Direct from source",
-    weighed: "Sold by approximate weight — final price adjusts to actual weight",
+    weighed: "Priced by actual weight",
     arrival: "Arrives",
     store: "Location",
     duration: "{n} min service",
@@ -297,7 +297,7 @@ export default {
     star3: "OK",
     star4: "Good",
     star5: "Great",
-    title: "Reviews {n}", empty: "No reviews yet", emptyTip: "Be the first neighbour to share" },
+    title: "Reviews {n}", empty: "No reviews yet", emptyTip: "Reviews appear after purchase" },
   search: {
     title: "Search",
     placeholder: "Search products or shops",
