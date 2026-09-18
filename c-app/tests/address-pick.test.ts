@@ -652,10 +652,4 @@ describe("定位只匹配收货地址", () => {
     expect(body).toMatch(/bestM <= MATCH_NEAR_M/);
   });
 
-  it("★★ 顶栏 chip 不含当前那个，且最多两个", () => {
-    const body = bodyOf(home, "const quickPlaces = computed(");
-    expect(body, "quickPlaces 不见了").not.toBeNull();
-    expect(body).toContain("!== location.active?.addressId");
-    expect(body, "顶栏那一行还要放定位图标、地名与搜索").toContain("slice(0, 2)");
-  });
 });

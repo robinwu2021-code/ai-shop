@@ -27,39 +27,6 @@ const { t } = useI18n();
 const community = useCommunityStore();
 const location = useLocationStore();
 
-/**
- * 顶栏第二行。**四种状态各说各的话，一个都不能落到「点击选择」上。**
- *
- * <p>有生效位置却还显示「点击选择你所在的社区」是自相矛盾的：
- * 他明明已经选过了。实测撞到过 —— 切了位置、顶栏主标题变成「公司」，
- * 副标题却还在催他去选。
- *
- * <p>没绑到自提点时显示地址本身，而不是催他 ——
- * 那种情况是「这个位置附近还没有取货点」，催也没用。
- */
-const placeSub = computed(() => {
-  const arrival = community.pickup?.arrivalDesc;
-  if (arrival) return arrival;
-  const a = location.active;
-  if (a) return a.detail || a.region || "";
-  /*
-   * **绑的是「最近的聚落」时必须说出距离。**
-   *
-   * 这一句是 M6 成不成立的前提，不是文案：M5 当初拒绝按坐标猜聚落，理由是
-   * 「噪音在界面上与真结果长得一模一样」。M6 开始猜了，就得让它长得不一样 ——
-   * 不说距离的话，二十公里外那家店在顶栏上与楼下那家没有任何区别。
-   */
-  if (location.nearestDistanceM > 0) {
-    return String(t("home.nearestPlaceHint", { km: (location.nearestDistanceM / 1000).toFixed(0) }));
-  }
-  /*
-   * **粗定位这一级也必须把话说明白。** 这一屏的货是按整个区筛出来的，
-   * 与「按我家地址在看」不是一回事 —— 两种状态显示成同一个样子，
-   * 用户会把一屏送不到他那儿的货当成家门口能买到的。
-   */
-  if (location.coarseRegion) return String(t("home.coarsePlaceHint"));
-  return String(t("home.choosePickupHint"));
-});
 const cart = useCartStore();
 const user = useUserStore();
 
@@ -190,29 +157,6 @@ function openGroup(g: GroupBuy) {
  * <p>还一个位置都没有时才去选社区页 —— 那一页此时承担的是
  * 「这一带有什么」的探索，正好是新用户需要的。
  */
-/**
- * 顶栏常驻的快捷切换 chip：家 / 公司。**最多两个，且不含当前那个。**
- *
- * <p>这是「手动多选」被否掉之后的替代方案：多选的真实驱动力是「切换太麻烦」，
- * 所以把切换做到一点即换 —— 而不是让他同时挂着两个地方、看一锅混合的货。
- * 超过两个就别塞了：顶栏那一行还要放定位图标、地名与搜索。
- */
-const quickPlaces = computed(() =>
-  location.list
-    .filter((a) => a.tag && a.addressId !== location.active?.addressId)
-    .slice(0, 2));
-
-async function quickSwitch(a: (typeof location.list)[number]) {
-  const { rebound } = await location.switchTo(a.addressId);
-  uni.showToast({
-    title: String(rebound
-      ? t("address.nowHere", { name: a.tag || a.detail })
-      : t("address.nowHereNoCoord", { name: a.tag || a.detail })),
-    icon: "none",
-    duration: rebound ? 1500 : 3000,
-  });
-  load();
-}
 
 function gotoPlace() {
   /*

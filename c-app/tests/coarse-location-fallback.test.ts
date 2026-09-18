@@ -83,16 +83,15 @@ describe("粗定位兜底：按区看货", () => {
     expect(locationStore).toContain("api.communityDetail");
   });
 
-  it("★★★ M6：绑最近聚落时顶栏要说距离，落进围栏时不说", () => {
+  it("★★★ M6：绑最近聚落时距离要算出来，落进围栏时清零", () => {
     /*
-     * 不说距离的话，二十公里外那家店在顶栏上与楼下那家没有任何区别 ——
-     * 而这正是 M5 当初拒绝猜聚落的理由（「噪音与真结果长得一模一样」）。
+     * 顶栏已经不写位置（首页只留一个去收货地址的入口），所以这里只钉 store 这一侧：
+     * 精确那一支必须把距离清成 0，否则下游任何一处拿它去说「最近的」都会把
+     * 「落进围栏」也说成「最近的」。
      */
-    expect(homePage).toContain("home.nearestPlaceHint");
-    expect(homePage).toContain("location.nearestDistanceM > 0");
-    // 精确那一支必须把距离清成 0，否则「落进围栏」也会被说成「最近的」
     expect(locationStore).toContain("ctx.innermostNo ? 0 :");
   });
+
 
   it("★★★ 归属要在 ensureCoarseRegion **之后**再读 —— 它会在 await 期间把聚落绑上", () => {
     /*

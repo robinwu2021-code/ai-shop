@@ -26,20 +26,11 @@ export default {
     groupsMore: "全部团 ›",
     promoted: "推荐商品",
     promotedHint: "平台为你挑的",
-    communityFeed: "社区在卖",
-    communityFeedHint: "先选社区，看看邻居都在买什么",
     communityFeedEmpty: "这个社区还没有商家上架",
     cutoffIn: "距截单 {t}",
     // 买家选的是地址，不是自提点（自提点在下单时匹配）—— 这两句是删掉选点页时漏改的
     /** 顶栏那颗「重新定位」。三处入口共用同一个动作 */
     relocate: "重新定位",
-    choosePickup: "选择地址",
-    hereTag: "当前位置",
-    choosePickupHint: "点击选择你在哪儿",
-    // 粗定位那一级：这一屏的货是按整个区筛的，不说明白用户会当成家门口的
-    coarsePlaceHint: "按这个区显示 · 点击选择具体地址",
-    // M6：绑的是「最近的聚落」时，距离必须摆出来 —— 见 home 的 placeSub
-    nearestPlaceHint: "最近的取货点 · 约 {km} 公里 · 点击选择具体地址",
     noPlaceText: "还不知道你在哪儿",
     noPlaceTip: "选个地址，就能看到送得到你这儿的东西",
     noPlaceAction: "选择地址",
