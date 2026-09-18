@@ -102,6 +102,23 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         }
         Map<String, Long> out = new HashMap<>();
         for (PmtActivity a : liveByGoods(goodsNos, PmtActivity.BENEFIT_PRICE)) {
+            /*
+             * ★ **团购的成团价不是限时特价**（2026-09-18）。
+             *
+             * 两者的优惠都是 `BENEFIT_PRICE`，只有触发分得开。不判触发的话，
+             * 商家建一个团购活动会让**所有人**按成团价买到 ——
+             * 不用凑人数、不用进团，团购这件事整个失去意义。
+             *
+             * <b>而它一个字都不报</b>：价照样算得出来，订单照样成，
+             * 只有对账时才看得出每一单都少收了钱。
+             * 2026-09-18 被 groupPriceMustBeatOriginPrice 撞出来 ——
+             * 那条用例里商品原价与成团价一路相等，正是这条在悄悄改价。
+             *
+             * 成团价只在**团里**生效，由开团那条链（mkt_group_buy）自己算。
+             */
+            if (PmtActivity.TRIGGER_GROUP.equals(a.getTriggerType())) {
+                continue;
+            }
             if (!audienceHits(a, a.getEntityNo(), userNo)) {
                 continue;
             }

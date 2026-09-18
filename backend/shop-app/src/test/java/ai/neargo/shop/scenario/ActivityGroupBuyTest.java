@@ -32,6 +32,8 @@ class ActivityGroupBuyTest {
 
     @Autowired
     private ActivityService activityService;
+    @Autowired
+    private ai.neargo.shop.promotion.service.ActivityPricingService pricing;
 
     private static int seq = 7300;
 
@@ -97,6 +99,33 @@ class ActivityGroupBuyTest {
         assertThat(activityService.save(e, edit, "OP").triggerQty())
                 .as("改自己要存得进，否则团购活动建完就再也改不了")
                 .isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("★★★ 团购的成团价不是限时特价 —— 不判触发的话所有人都按成团价买到")
+    void groupPriceIsNotAFlashPrice() {
+        String e = "M-GB-" + (++seq);
+        String goods = "G-E" + seq;
+        activityService.save(e, group(3, 800L, List.of(goods)), "OP");
+
+        assertThat(pricing.flashPrices(null, List.of(goods)))
+                .as("★ 团购活动被当成限时特价了 —— 不用凑人数、不用进团，"
+                        + "所有人直接按成团价买到，而它一个字都不报，只有对账时才看得出每单少收了钱")
+                .doesNotContainKey(goods);
+
+        /*
+         * **反向也要验**：同一件货挂一个真的限时特价，必须算得出来 ——
+         * 否则「不含团购」这条断言可能只是因为 flashPrices 整个坏了。
+         */
+        ActivityDraft flash = new ActivityDraft(null, "真特价 " + seq, "CLEAR", null,
+                PmtActivity.TRIGGER_GOODS, null, null,
+                PmtActivity.BENEFIT_PRICE, 700L, null, null,
+                PmtActivity.ONE_OFF, NOW, NOW + DAY, null, 100, null,
+                List.of(), List.of(goods));
+        activityService.save(e, flash, "OP");
+        assertThat(pricing.flashPrices(null, List.of(goods)))
+                .as("对照：真的限时特价要算得出来，否则上面那条证明不了是「排掉了团购」")
+                .containsEntry(goods, 700L);
     }
 
     @Test

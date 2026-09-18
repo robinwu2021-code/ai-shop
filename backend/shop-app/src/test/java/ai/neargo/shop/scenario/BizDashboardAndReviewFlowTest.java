@@ -348,6 +348,11 @@ class BizDashboardAndReviewFlowTest {
          * 而凑齐人数的买家实际上多付了钱。
          */
         String token = merchant("12600144010", "开团测试·价格倒挂");
+        // 活动是按主体建的，夹具要知道挂给谁 —— 从 /biz/context 拿，不猜
+        currentEntityNo = json.readTree(mvc().perform(get("/biz/context")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("merchantNo").asString();
         // saveGoods 的原价是 500 分
         String goodsNo = saveGoods(token, "倒挂商品");
         approveGoods(goodsNo);
@@ -378,15 +383,35 @@ class BizDashboardAndReviewFlowTest {
     @Autowired
     private ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapperForGroup;
 
-    /** 拼团价配在商品上（开团这一步不能临时定价），这里直接落库 */
+    /**
+     * 把这件货挂到一个**在跑的团购活动**上，成团价 {@code groupPriceMinor}。
+     *
+     * <p><b>改之前写的是 {@code prd_goods} 的两列</b> —— 那条路 2026-09-18 已经不通：
+     * 团购规则挪进了活动（{@code GROUP × PRICE}）。夹具不跟着改的话，
+     * 这条用例的前两句断言会**因为错误的理由通过**（没有活动 → 开团被拒），
+     * 而用例自己的注释正好点着这件事：「两条一起才说明判断是对的，
+     * 而不是把开团整个挡死了」。
+     *
+     * <p>重复调用时先把上一个活动清掉：一件货同时只能在一个团购活动里是硬校验，
+     * 不清的话第二次调用会撞在那条校验上，而报错说的是「已经在别的团里」。
+     */
     private void setGroupPrice(String goodsNo, long groupPriceMinor) {
-        var g = goodsMapperForGroup.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                .<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
-                .eq(ai.neargo.shop.product.entity.PrdGoods::getGoodsNo, goodsNo).last("limit 1"));
-        g.setGroupPriceMinor(groupPriceMinor);
-        g.setGroupMinCount(3);
-        goodsMapperForGroup.updateById(g);
+        jdbcForGroup.update("delete from pmt_activity_goods where ref_no=?", goodsNo);
+        long now = System.currentTimeMillis();
+        activityServiceForGroup.save(currentEntityNo, new ai.neargo.shop.promotion.dto.ActivityVOs.ActivityDraft(
+                null, "团购夹具 " + groupPriceMinor, "GROUP", null,
+                ai.neargo.shop.promotion.entity.PmtActivity.TRIGGER_GROUP, null, 3,
+                ai.neargo.shop.promotion.entity.PmtActivity.BENEFIT_PRICE, groupPriceMinor, null, null,
+                ai.neargo.shop.promotion.entity.PmtActivity.ONE_OFF, now - 1000, now + 86_400_000L, null,
+                100, null, java.util.List.of(), java.util.List.of(goodsNo)), "TEST");
     }
+
+    @Autowired
+    private ai.neargo.shop.promotion.service.ActivityService activityServiceForGroup;
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcForGroup;
+    /** 当前用例的主体号 —— 活动是按主体建的，夹具要知道挂给谁 */
+    private String currentEntityNo;
 
     @Test
     @DisplayName("商家团列表默认为空，不是报错")

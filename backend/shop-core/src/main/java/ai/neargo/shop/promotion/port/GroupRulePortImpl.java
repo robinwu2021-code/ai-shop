@@ -35,15 +35,33 @@ public class GroupRulePortImpl implements GroupRulePort {
         if (entityNo == null || goodsNo == null) {
             return Optional.empty();
         }
-        List<PmtActivityGoods> scopes = goodsMapper.selectList(
-                Wrappers.<PmtActivityGoods>lambdaQuery()
-                        .eq(PmtActivityGoods::getEntityNo, entityNo)
-                        .eq(PmtActivityGoods::getScopeType, PmtActivityGoods.GOODS)
-                        .eq(PmtActivityGoods::getRefNo, goodsNo));
+        /*
+         * ★ **绕开数据域**，与算价那一侧同一条理由（见 ActivityPricingServiceImpl.live）。
+         *
+         * `pmt_activity` 按 entity_no 登记数据域，而开团时的会话是**商家自己**，
+         * 不绕的话查出来恒为空 —— 表现是「这件货没有在跑的团购活动」，
+         * **而接口成功、日志干净**。
+         *
+         * 2026-09-18 被闸门抓到：我先写的两条用例都直接调 service，没有请求上下文，
+         * 域根本不生效，于是两条都绿；只有走真 HTTP 的那条（POST /biz/groups）
+         * 才暴露出来 —— **替身太干净，盖住了真缺陷**。
+         *
+         * 安全边界靠下面显式的 entityNo 等值条件，不靠域：这两条查询都钉死了主体。
+         */
+        List<PmtActivityGoods> scopes = ai.neargo.common.data.scope.DataScopeContext
+                .executeWithoutScope(() -> goodsMapper.selectList(
+                        Wrappers.<PmtActivityGoods>lambdaQuery()
+                                .eq(PmtActivityGoods::getEntityNo, entityNo)
+                                .eq(PmtActivityGoods::getScopeType, PmtActivityGoods.GOODS)
+                                .eq(PmtActivityGoods::getRefNo, goodsNo)));
         long now = System.currentTimeMillis();
         for (PmtActivityGoods s : scopes) {
-            PmtActivity a = activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
-                    .eq(PmtActivity::getActivityNo, s.getActivityNo()).last("limit 1"));
+            PmtActivity a = ai.neargo.common.data.scope.DataScopeContext
+                    .executeWithoutScope(() -> activityMapper.selectOne(
+                            Wrappers.<PmtActivity>lambdaQuery()
+                                    .eq(PmtActivity::getActivityNo, s.getActivityNo())
+                                    .eq(PmtActivity::getEntityNo, entityNo)
+                                    .last("limit 1")));
             if (a == null || !PmtActivity.TRIGGER_GROUP.equals(a.getTriggerType())) {
                 continue;
             }
