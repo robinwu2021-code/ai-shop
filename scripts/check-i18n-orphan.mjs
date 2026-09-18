@@ -19,7 +19,7 @@
 //   node scripts/check-i18n-orphan.mjs           # 列出来
 //   node scripts/check-i18n-orphan.mjs --check   # 超出基线就非零退出
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -45,6 +45,27 @@ function keysOf(file) {
       if (nxt === "" || `"'\``.includes(nxt) || clean.trimEnd().endsWith(":")) {
         out.add([...stack.map(([, n]) => n), m[1]].join("."));
       }
+    }
+    depth += (clean.match(/\{/g)?.length ?? 0) - (clean.match(/\}/g)?.length ?? 0);
+    while (stack.length && stack[stack.length - 1][0] >= depth) stack.pop();
+  }
+  return out;
+}
+
+/**
+ * 词条表里 key → 文案。**只收同一行就给出字符串值的**（`a: "x"`）——
+ * 占位符检查只需要看得见文案的那些，值写在下一行的多行文案不带 `{}`。
+ */
+function entriesOf(file) {
+  const src = readFileSync(file, "utf8");
+  const out = [];
+  const stack = [];
+  let depth = 0;
+  for (const line of src.split("\n")) {
+    const clean = line.replace(/\/\/.*$/, "");
+    for (const m of clean.matchAll(/([A-Za-z_]\w*)\s*:\s*\{/g)) stack.push([depth, m[1]]);
+    for (const m of clean.matchAll(/([A-Za-z_]\w*)\s*:\s*"((?:[^"\\]|\\.)*)"/g)) {
+      out.push([[...stack.map(([, n]) => n), m[1]].join("."), m[2]]);
     }
     depth += (clean.match(/\{/g)?.length ?? 0) - (clean.match(/\}/g)?.length ?? 0);
     while (stack.length && stack[stack.length - 1][0] >= depth) stack.pop();
@@ -151,6 +172,7 @@ const known = existsSync(BASELINE)
 
 let missing = [];
 let orphan = [];
+let phMiss = [];
 for (const { app, locale, src } of APPS) {
   const file = join(ROOT, locale);
   if (!existsSync(file)) continue;
@@ -167,6 +189,7 @@ for (const { app, locale, src } of APPS) {
     if (![...defined].some((d) => d.startsWith(ns + "."))) continue;
     if (!defined.has(k)) missing.push(`${app} ${k}`);
   }
+  phMiss.push(...placeholderMisses(sources(src), entriesOf(file)));
   for (const d of defined) {
     if (keys.has(d)) continue;
     if ([...prefixes].some((p) => d.startsWith(p))) continue;
@@ -178,11 +201,44 @@ const freshOrphan = orphan.filter((o) => !known.has(o));
 console.log(`词条对账：用了但没有 ${missing.length}｜有了但没人用 ${orphan.length}（已知欠账 ${known.size}）`);
 for (const m of missing) console.log(`   ✗ 缺 ${m}`);
 for (const o of freshOrphan) console.log(`   ★新增 ${o}`);
+for (const p of phMiss) console.log(`   ✗ 占位符没传参 ${p.file} ${p.key}（缺 ${p.names.join(", ")}）`);
 
 const stale = [...known].filter((k) => !orphan.includes(k));
 if (stale.length) {
   console.log(`\n✅ 这 ${stale.length} 条已经有人用了（或已删掉），把它们从基线里删掉：`);
   for (const k of stale) console.log(`      ${k}`);
+}
+
+/*
+ * ★ **第三条对账：词条里有 {x}，调用点却一个参数都没传**（2026-09-18 加）。
+ *
+ * 症状是界面上原样印出 `{n}`，**而它一个字都不报**：vue-i18n 查得到这个 key、
+ * 也渲染得出来，只是把占位符当普通文字。真机截图为证：盘点的确认框写着
+ * 「开始盘点这 {n} 件？」—— 正文那一句传了参，标题那一句忘了，
+ * 两句挨着写，漏的那句没人看得出来。
+ *
+ * 上面两条对账都盯不到它：key 存在、也有人用，两个方向都是绿的。
+ *
+ * **只判「一个参数都没传」这一种。** 传了但传错名字（`{n}` 传成 `count`）
+ * 这里不管 —— 那要解析实参对象，而这条闸要的是简单可靠：
+ * 真正高频的失误是整个第二参数忘了写。
+ */
+function placeholderMisses(files, entries) {
+  const want = new Map();
+  for (const [key, val] of entries) {
+    const names = [...String(val).matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+    if (names.length) want.set(key, [...new Set(names)]);
+  }
+  const out = [];
+  for (const f of files) {
+    const src = stripComments(readFileSync(f, "utf8"));
+    for (const m of src.matchAll(/\$?t\(\s*["'`]([\w.]+)["'`]\s*([,)])/g)) {
+      if (m[2] === ")" && want.has(m[1])) {
+        out.push({ file: relative(ROOT, f), key: m[1], names: want.get(m[1]) });
+      }
+    }
+  }
+  return out;
 }
 
 if (process.argv.includes("--check")) {
@@ -195,6 +251,11 @@ if (process.argv.includes("--check")) {
   if (freshOrphan.length) {
     console.error(`\n✗ 新增了 ${freshOrphan.length} 条没人引用的词条。`);
     console.error("  要么接上，要么删掉，要么登记进 known-orphan-i18n.txt 并写明为什么。");
+    bad = true;
+  }
+  if (phMiss.length) {
+    console.error(`\n✗ ${phMiss.length} 处词条带占位符，调用点却一个参数都没传。`);
+    console.error("  ⚠️ 这类问题不报错：界面上会原样印出 {n} 这样的花括号。");
     bad = true;
   }
   if (stale.length) {

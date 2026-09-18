@@ -117,7 +117,9 @@ async function open() {
    * 2026-09-17 店主要求去掉页面顶部的解释，这是那句话的新去处。
    */
   const ok = await confirm({
-    title: String(t("stockCheck.openTitle")),
+    // 标题里也有 {n}。**两处都要传** —— 只给正文传的话标题会原样印出
+    // 「开始盘点这 {n} 件？」，而它不报错（2026-09-18 真机截图为证）
+    title: String(t("stockCheck.openTitle", { n: picked.value.length })),
     hint: String(t("stockCheck.openBody", { n: picked.value.length })),
   });
   if (!ok) return;
