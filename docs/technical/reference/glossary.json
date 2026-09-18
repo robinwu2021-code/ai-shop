@@ -6213,9 +6213,9 @@
         },
         {
           "key": "couponEdit.gift",
-          "zh-CN": "每次兑换",
-          "en": "Each use",
-          "ar": "كل استخدام"
+          "zh-CN": "兑换商品",
+          "en": "Product",
+          "ar": "المنتج"
         },
         {
           "key": "couponEdit.giftPh",
@@ -6249,21 +6249,27 @@
         },
         {
           "key": "couponEdit.kindDesc.CASH",
-          "zh-CN": "下单时直接减钱",
-          "en": "Takes money off at checkout",
-          "ar": "خصم مباشر عند الدفع"
+          "zh-CN": "无门槛，下单时直接减钱",
+          "en": "Money off at checkout, no minimum",
+          "ar": "خصم مباشر عند الدفع بلا حد أدنى"
+        },
+        {
+          "key": "couponEdit.kindDesc.FULL_CUT",
+          "zh-CN": "订单满一定金额，下单时减钱",
+          "en": "Money off at checkout once the order reaches a minimum",
+          "ar": "خصم مباشر عند الدفع عندما يبلغ الطلب حدًا أدنى"
+        },
+        {
+          "key": "couponEdit.kindDesc.GOODS",
+          "zh-CN": "凭券到店兑换指定商品，可设兑换次数",
+          "en": "Shown in store to redeem a specific product; can allow several uses",
+          "ar": "تُعرض في المتجر لاستبدال منتج محدد، ويمكن تحديد عدد مرات الاستبدال"
         },
         {
           "key": "couponEdit.kindDesc.PERCENT",
           "zh-CN": "按比例打折，须设封顶",
           "en": "Percentage off, with a cap",
           "ar": "خصم بنسبة مع حد أقصى"
-        },
-        {
-          "key": "couponEdit.kindDesc.TIMES",
-          "zh-CN": "到店出示，按次核销",
-          "en": "Shown in store, redeemed per visit",
-          "ar": "تُعرض في المتجر وتُستبدل لكل زيارة"
         },
         {
           "key": "couponEdit.maxSpend",
@@ -6282,6 +6288,12 @@
           "zh-CN": "满多少元，不填即无门槛",
           "en": "Minimum spend, blank for none",
           "ar": "الحد الأدنى للشراء، اتركه فارغًا لعدم التقييد"
+        },
+        {
+          "key": "couponEdit.minReqPh",
+          "zh-CN": "满多少元",
+          "en": "Minimum spend",
+          "ar": "الحد الأدنى للشراء"
         },
         {
           "key": "couponEdit.name",
@@ -6303,9 +6315,15 @@
         },
         {
           "key": "couponEdit.needGift",
-          "zh-CN": "请填写每次兑换的内容",
-          "en": "Enter what each use gets",
-          "ar": "أدخل ما يحصل عليه كل استخدام"
+          "zh-CN": "请填写兑换商品",
+          "en": "Enter the product to redeem",
+          "ar": "أدخل المنتج المراد استبداله"
+        },
+        {
+          "key": "couponEdit.needMin",
+          "zh-CN": "满减券需填写门槛",
+          "en": "Spend-and-save coupons need a minimum",
+          "ar": "قسائم الخصم عند بلوغ الحد تحتاج حدًا أدنى"
         },
         {
           "key": "couponEdit.needPerUser",
@@ -6315,9 +6333,9 @@
         },
         {
           "key": "couponEdit.needTimes",
-          "zh-CN": "次卡至少 2 次",
-          "en": "A multi-use card needs at least 2 uses",
-          "ar": "البطاقة متعددة الاستخدام تحتاج مرتين على الأقل"
+          "zh-CN": "兑换次数至少 1 次",
+          "en": "At least 1 use",
+          "ar": "مرة واحدة على الأقل"
         },
         {
           "key": "couponEdit.needTitle",
@@ -6387,15 +6405,15 @@
         },
         {
           "key": "couponEdit.times",
-          "zh-CN": "次数",
+          "zh-CN": "兑换次数",
           "en": "Uses",
-          "ar": "مرات الاستخدام"
+          "ar": "مرات الاستبدال"
         },
         {
           "key": "couponEdit.timesPh",
-          "zh-CN": "次",
-          "en": "Uses",
-          "ar": "مرات"
+          "zh-CN": "1 即单次，大于 1 为次卡",
+          "en": "1 for single use, more for a multi-use card",
+          "ar": "1 لمرة واحدة، وأكثر لبطاقة متعددة الاستخدام"
         },
         {
           "key": "couponEdit.title",
@@ -6627,33 +6645,33 @@
         },
         {
           "key": "couponText.kind.CASH",
-          "zh-CN": "现金",
+          "zh-CN": "现金券",
           "en": "Cash",
           "ar": "نقدية"
         },
         {
           "key": "couponText.kind.FREE_SHIP",
-          "zh-CN": "免运费",
+          "zh-CN": "免运费券",
           "en": "Free delivery",
           "ar": "توصيل مجاني"
         },
         {
-          "key": "couponText.kind.GIFT",
-          "zh-CN": "兑换",
-          "en": "Voucher",
-          "ar": "استبدال"
+          "key": "couponText.kind.FULL_CUT",
+          "zh-CN": "满减券",
+          "en": "Spend & save",
+          "ar": "خصم عند بلوغ الحد"
+        },
+        {
+          "key": "couponText.kind.GOODS",
+          "zh-CN": "商品券",
+          "en": "Product voucher",
+          "ar": "قسيمة منتج"
         },
         {
           "key": "couponText.kind.PERCENT",
-          "zh-CN": "折扣",
-          "en": "Discount",
-          "ar": "خصم"
-        },
-        {
-          "key": "couponText.kind.TIMES",
-          "zh-CN": "次卡",
-          "en": "Multi-use",
-          "ar": "متعددة الاستخدام"
+          "zh-CN": "折扣券",
+          "en": "Percentage",
+          "ar": "خصم بنسبة"
         },
         {
           "key": "couponText.min",
@@ -6681,9 +6699,9 @@
         },
         {
           "key": "couponText.ruleCash",
-          "zh-CN": "{n}",
-          "en": "{n}",
-          "ar": "{n}"
+          "zh-CN": "减 {n}",
+          "en": "{n} off",
+          "ar": "خصم {n}"
         },
         {
           "key": "couponText.ruleFreeShip",
@@ -6692,22 +6710,34 @@
           "ar": "توصيل مجاني"
         },
         {
-          "key": "couponText.ruleGift",
-          "zh-CN": "凭券兑换",
-          "en": "Voucher",
-          "ar": "استبدال"
+          "key": "couponText.ruleFullCut",
+          "zh-CN": "满 {m} 减 {n}",
+          "en": "{n} off over {m}",
+          "ar": "خصم {n} فوق {m}"
+        },
+        {
+          "key": "couponText.ruleGoods",
+          "zh-CN": "{g}",
+          "en": "{g}",
+          "ar": "{g}"
+        },
+        {
+          "key": "couponText.ruleGoodsAny",
+          "zh-CN": "指定商品",
+          "en": "Selected product",
+          "ar": "منتج محدد"
+        },
+        {
+          "key": "couponText.ruleGoodsTimes",
+          "zh-CN": "{g} · {n} 次",
+          "en": "{g} · {n} uses",
+          "ar": "{g} · {n} مرات"
         },
         {
           "key": "couponText.rulePercent",
           "zh-CN": "{z} 折 · 封顶 {cap}",
           "en": "{z}/10 · cap {cap}",
           "ar": "{z}/10 · حد {cap}"
-        },
-        {
-          "key": "couponText.ruleTimes",
-          "zh-CN": "{n} 次",
-          "en": "{n} uses",
-          "ar": "{n} مرات"
         },
         {
           "key": "couponText.scopeAll",
