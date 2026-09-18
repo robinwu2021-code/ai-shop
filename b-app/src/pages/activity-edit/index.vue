@@ -22,7 +22,7 @@ import { confirm } from "@ai-shop/ui/prompt";
 import { useMerchantStore } from "@/stores/merchant";
 import { money, toMinor } from "@shared/utils/money";
 import { PLAY_TEMPLATES, playOf, playOfActivity, type PlayTemplate } from "@shared/utils/play-templates";
-import type { ActivityConflict, Goods, StoreActivity, StoreActivityDraft } from "@shared/types";
+import type { ActivityConflict, ActivityRuleItem, Goods, StoreActivity, StoreActivityDraft } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -65,6 +65,60 @@ const form = ref({
   quota: "",
   budget: "",
   periodQuota: "",
+  /** 自己组合（s11）：条件（全部满足）与优惠（按顺序叠加）。「指定商品」的货放在 goodsNos 里 */
+  conds: [] as ComboRow[],
+  bens: [] as ComboRow[],
+});
+
+/**
+ * 自己组合的一行。value：满金额 / 减 = 元；满件数 = 件；打折 = 几折（8 = 8 折）；送积分 = 分。cap：打折的封顶（元）
+ */
+interface ComboRow {
+  type: string;
+  value: string;
+  cap: string;
+}
+const COND_TYPES = ["GOODS", "QTY", "AMOUNT"] as const;
+const BEN_TYPES = ["CUT", "PERCENT", "POINTS"] as const;
+const showAddCond = ref(false);
+const showAddBen = ref(false);
+
+function addCond(type: string) {
+  if (!form.value.conds.some((c) => c.type === type)) form.value.conds.push({ type, value: "", cap: "" });
+  showAddCond.value = false;
+}
+
+function addBen(type: string) {
+  if (!form.value.bens.some((b) => b.type === type)) form.value.bens.push({ type, value: "", cap: "" });
+  showAddBen.value = false;
+}
+
+/** 表单 → 组合行（与后端 RuleItem 同形） */
+function comboRules(): ActivityRuleItem[] {
+  const conds: ActivityRuleItem[] = form.value.conds.map((c) => c.type === "GOODS"
+    ? { kind: "CONDITION", type: "GOODS", goodsNos: [...form.value.goodsNos] }
+    : c.type === "QTY"
+      ? { kind: "CONDITION", type: "QTY", n: Number(c.value || 0) }
+      : { kind: "CONDITION", type: "AMOUNT", amountMinor: toMinor(c.value) });
+  const bens: ActivityRuleItem[] = form.value.bens.map((b) => b.type === "CUT"
+    ? { kind: "BENEFIT", type: "CUT", amountMinor: toMinor(b.value) }
+    // 「8 折」按万分比提交：8 → 8000。让商家直接填 8000 的话他迟早会填 80
+    : b.type === "PERCENT"
+      ? { kind: "BENEFIT", type: "PERCENT", bp: Math.round(Number(b.value || 0) * 1000), capMinor: toMinor(b.cap) }
+      : { kind: "BENEFIT", type: "POINTS", n: Number(b.value || 0) });
+  return [...conds, ...bens];
+}
+
+/** 组合读成一句话（s11 底部）：读不通顺，多半是配错了 */
+const comboSentence = computed(() => {
+  const yuan = (v: string) => money(toMinor(v));
+  const conds = form.value.conds.map((c) => c.type === "GOODS"
+    ? String(t("activityEdit.comboS.GOODS", { n: form.value.goodsNos.length }))
+    : String(t(`activityEdit.comboS.${c.type}`, { n: c.type === "AMOUNT" ? yuan(c.value) : c.value || "?" }))).join("");
+  const bens = form.value.bens.map((b) => b.type === "PERCENT"
+    ? String(t("activityEdit.comboS.PERCENT", { z: b.value || "?", c: yuan(b.cap) }))
+    : String(t(`activityEdit.comboS.${b.type}`, { n: b.type === "CUT" ? yuan(b.value) : b.value || "?" }))).join("，");
+  return conds && bens ? `${conds}：${bens}` : "";
 });
 
 const play = computed<PlayTemplate | undefined>(() => playOf(form.value.playKey));
@@ -186,6 +240,7 @@ function draft(): StoreActivityDraft {
     periodQuota: p.triggerType === "CUTOFF" ? n(form.value.periodQuota) : null,
     decideHours: p.triggerType === "CUTOFF" ? n(form.value.decideHours) : null,
     groupHours: p.triggerType === "GROUP" ? n(form.value.groupHours) : null,
+    rules: p.key === "COMBO" ? comboRules() : null,
   };
 }
 
@@ -195,6 +250,19 @@ function problem(): string | null {
   if (!form.value.name.trim()) return "activityEdit.need.name";
   if (!p) return "activityEdit.need.play";
   if (p.needsGoods && !form.value.goodsNos.length) return "activityEdit.need.goods";
+  if (p.key === "COMBO") {
+    // 与后端 assertCombo 同一口径：至少一个条件、一个优惠，每一行都填得成立；打折必须封顶
+    if (!form.value.conds.length || !form.value.bens.length) return "activityEdit.need.combo";
+    for (const c of form.value.conds) {
+      if (c.type === "GOODS" ? !form.value.goodsNos.length : !(Number(c.value) > 0)) return "activityEdit.need.combo";
+    }
+    for (const b of form.value.bens) {
+      if (!(Number(b.value) > 0)) return "activityEdit.need.combo";
+      if (b.type === "PERCENT" && (!(Number(b.value) >= 1 && Number(b.value) < 10) || !(toMinor(b.cap) > 0))) {
+        return "activityEdit.need.comboPercent";
+      }
+    }
+  }
   const rules: Record<string, string> = {
     threshold: form.value.threshold, qtyN: form.value.qtyN, amount: form.value.amount,
     price: form.value.price, buyN: form.value.buyN, giftM: form.value.giftM, groupN: form.value.groupN,
@@ -258,6 +326,7 @@ function lockedDraft(): StoreActivityDraft {
     minQty: a.minQty ?? null,
     periodQuota: a.triggerType === "CUTOFF" ? n(form.value.periodQuota) : null,
     decideHours: a.decideHours ?? null, groupHours: a.groupHours ?? null,
+    rules: a.rules ?? null,
   };
 }
 
@@ -304,6 +373,7 @@ const ruleSummary = computed(() => {
     case "GIFT": return String(t("activities.ruleGift", { n: form.value.buyN, m: form.value.giftM }));
     case "GROUP": return String(t("activities.ruleGroup", { n: form.value.groupN, m: yuan(form.value.price) }));
     case "BATCH": return String(t("activities.ruleBatch", { m: yuan(form.value.price) }));
+    case "COMBO": return comboSentence.value;
     default: return "";
   }
 });
@@ -370,6 +440,20 @@ async function loadExisting(no: string) {
     budget: a.budgetMinor ? (a.budgetMinor / 100).toFixed(2) : "",
     periodQuota: a.periodQuota == null ? "" : String(a.periodQuota),
   };
+  if (a.triggerType === "COMBO") {
+    const rules = a.rules ?? [];
+    form.value.conds = rules.filter((r) => r.kind === "CONDITION").map((r) => ({
+      type: r.type,
+      value: r.type === "AMOUNT" ? yuan(r.amountMinor) : r.type === "QTY" ? String(r.n ?? "") : "",
+      cap: "",
+    }));
+    form.value.bens = rules.filter((r) => r.kind === "BENEFIT").map((r) => ({
+      type: r.type,
+      value: r.type === "CUT" ? yuan(r.amountMinor) : r.type === "PERCENT" ? String((r.bp ?? 0) / 1000) : String(r.n ?? ""),
+      cap: r.type === "PERCENT" ? yuan(r.capMinor) : "",
+    }));
+    form.value.goodsNos = [...(rules.find((r) => r.type === "GOODS")?.goodsNos ?? [])];
+  }
   if (a.scheduleRule) {
     try {
       const r = JSON.parse(a.scheduleRule) as { weekdays?: number[]; from?: string; to?: string };
@@ -635,8 +719,54 @@ onLoad((q) => {
           </view>
         </view>
 
-        <text class="txt-caption sh-muted grp">{{ $t("activityEdit.groupRule") }}</text>
-        <view class="sh-cells">
+        <!-- 自己组合（s11）：条件与优惠两张清单，各自「＋ 添加」；底部读成一句话 -->
+        <template v-if="play.key === 'COMBO'">
+          <text class="txt-caption sh-muted grp">{{ $t("activityEdit.comboCond") }}</text>
+          <view class="sh-cells">
+            <view v-for="(c, i) in form.conds" :key="'c' + c.type" class="sh-cell sh-row sh-row--between">
+              <text class="txt-body sh-muted cell__k">{{ $t(`activityEdit.comboType.${c.type}`) }}</text>
+              <view class="sh-row combo__v">
+                <text v-if="c.type === 'GOODS'" class="txt-body" @tap="showGoods = true">{{ goodsText }}</text>
+                <input v-else v-model="c.value" :type="c.type === 'QTY' ? 'number' : 'digit'" maxlength="10"
+                       class="txt-body sh-num cell__input" :placeholder="$t(`activityEdit.comboPh.${c.type}`)" />
+                <view class="combo__x" @tap="form.conds.splice(i, 1)">
+                  <sh-icon name="close" :size="22" color="var(--sh-sub)"></sh-icon>
+                </view>
+              </view>
+            </view>
+            <view v-if="form.conds.length < COND_TYPES.length" class="sh-cell sh-row" @tap="showAddCond = true">
+              <sh-icon name="plus" :size="22" color="var(--sh-primary-text)"></sh-icon>
+              <text class="txt-body txt-primary">{{ $t("activityEdit.comboAddCond") }}</text>
+            </view>
+          </view>
+
+          <text class="txt-caption sh-muted grp">{{ $t("activityEdit.comboBen") }}</text>
+          <view class="sh-cells">
+            <view v-for="(b, i) in form.bens" :key="'b' + b.type" class="sh-cell sh-row sh-row--between">
+              <text class="txt-body sh-muted cell__k">{{ $t(`activityEdit.comboType.${b.type}`) }}</text>
+              <view class="sh-row combo__v">
+                <input v-model="b.value" :type="b.type === 'POINTS' ? 'number' : 'digit'" maxlength="10"
+                       class="txt-body sh-num cell__input" :placeholder="$t(`activityEdit.comboPh.${b.type}`)" />
+                <input v-if="b.type === 'PERCENT'" v-model="b.cap" type="digit" maxlength="10"
+                       class="txt-body sh-num cell__input" :placeholder="$t('activityEdit.comboPh.CAP')" />
+                <view class="combo__x" @tap="form.bens.splice(i, 1)">
+                  <sh-icon name="close" :size="22" color="var(--sh-sub)"></sh-icon>
+                </view>
+              </view>
+            </view>
+            <view v-if="form.bens.length < BEN_TYPES.length" class="sh-cell sh-row" @tap="showAddBen = true">
+              <sh-icon name="plus" :size="22" color="var(--sh-primary-text)"></sh-icon>
+              <text class="txt-body txt-primary">{{ $t("activityEdit.comboAddBen") }}</text>
+            </view>
+          </view>
+
+          <view v-if="comboSentence" class="sh-notice">
+            <text class="txt-caption">{{ comboSentence }}</text>
+          </view>
+        </template>
+
+        <text v-if="play.key !== 'COMBO'" class="txt-caption sh-muted grp">{{ $t("activityEdit.groupRule") }}</text>
+        <view v-if="play.key !== 'COMBO'" class="sh-cells">
           <view v-if="has('cutoffTime')" class="sh-cell sh-row sh-row--between">
             <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.rule.cutoffTime") }}</text>
             <picker mode="time" :value="form.cutoffTime" @change="form.cutoffTime = $event.detail.value">
@@ -784,6 +914,24 @@ onLoad((q) => {
     </template>
 
     <!-- 选择面板：单选列表，选中项右侧打勾 -->
+    <sh-sheet :visible="showAddCond" :title="String($t('activityEdit.comboAddCond'))" @close="showAddCond = false">
+      <view class="sh-cells">
+        <view v-for="c in COND_TYPES.filter((x) => !form.conds.some((r) => r.type === x))" :key="c"
+              class="sh-cell sh-row sh-row--between" @tap="addCond(c)">
+          <text class="txt-body">{{ $t(`activityEdit.comboType.${c}`) }}</text>
+        </view>
+      </view>
+    </sh-sheet>
+
+    <sh-sheet :visible="showAddBen" :title="String($t('activityEdit.comboAddBen'))" @close="showAddBen = false">
+      <view class="sh-cells">
+        <view v-for="b in BEN_TYPES.filter((x) => !form.bens.some((r) => r.type === x))" :key="b"
+              class="sh-cell sh-row sh-row--between" @tap="addBen(b)">
+          <text class="txt-body">{{ $t(`activityEdit.comboType.${b}`) }}</text>
+        </view>
+      </view>
+    </sh-sheet>
+
     <sh-sheet :visible="showPlay" :title="String($t('activityEdit.playPick'))" @close="showPlay = false">
       <view class="sh-cells">
         <view v-for="p in PLAY_TEMPLATES" :key="p.key" class="sh-cell sh-row sh-row--between" @tap="pickPlay(p.key)">
@@ -845,6 +993,14 @@ onLoad((q) => {
 }
 .pick__d {
   display: block;
+}
+.combo__v {
+  gap: 12rpx;
+  flex: 1;
+  justify-content: flex-end;
+}
+.combo__x {
+  padding: 4rpx;
 }
 .bar {
   gap: 16rpx;

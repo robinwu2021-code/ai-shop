@@ -84,6 +84,11 @@ public class CampaignPortRouter implements CampaignPort {
     }
 
     @Override
+    public long bonusPoints(String orderNo, String merchantNo) {
+        return promo.bonusPoints(orderNo, merchantNo);
+    }
+
+    @Override
     public Map<String, Long> flashPrices(Collection<String> goodsNos) {
         Map<String, Long> out = new HashMap<>(legacy.flashPrices(goodsNos));
         // 取更低的那个价 —— 与满减取最优同一侧

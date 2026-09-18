@@ -67,9 +67,6 @@ class TableHasProducerTest {
 
     static {
         // 已核实：有意让范围
-        NO_PRODUCER.put("pmt_activity_rule",
-                "营销域 P3：V337 与平台活动同批建表，写入方是紧接着的「自己组合」（开发计划 P3b · 原型 s11）。"
-                        + "P3b 落地时从这里删掉 —— 闸门会报这条陈行");
         // stl_withdraw 已于 2026-09-02（V288）落地 B 端申请入口，从本表移除 —— 闸门自己报的陈行
         NO_PRODUCER.put("stl_settle_invoice",
                 "同上 —— 商家申请结算发票的入口未做，运营侧的开票/驳回先落地");

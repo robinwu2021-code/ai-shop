@@ -83,6 +83,11 @@ public final class PromotionMappers {
 
     /** 自己组合的条件与优惠行 */
     public interface ActivityRuleMapper extends BaseMapper<ai.neargo.shop.promotion.entity.PmtActivityRule> {
+
+        /** 物理删一个活动的全部组合行（整批换掉；理由同 ActivityGoodsMapper#hardDeleteByActivity） */
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM pmt_activity_rule WHERE activity_no = #{activityNo}")
+        int hardDeleteByActivity(@org.apache.ibatis.annotations.Param("activityNo") String activityNo);
     }
 
     /** 优惠发生记录。**只增不改**，撤销是往 {@code reverted_at} 上写一笔 */

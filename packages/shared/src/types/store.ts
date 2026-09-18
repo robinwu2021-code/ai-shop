@@ -347,6 +347,29 @@ export interface ReorderResult {
  * 四类玩法在这里是**取值组合**而不是一个 type：
  * 满减 = AMOUNT × CUT，限时特价 = GOODS × PRICE，买赠 = QTY × GIFT，发券 = NONE × COUPON。
  */
+/** 自己组合一行的种类：条件（全部满足才生效）/ 优惠（按顺序叠加） */
+export type ActivityRuleKind = "CONDITION" | "BENEFIT";
+
+/**
+ * 自己组合的一行（原型 s11）：一个条件或一个优惠。条件全部满足才生效，优惠按顺序叠加。
+ */
+export interface ActivityRuleItem {
+  /** CONDITION / BENEFIT */
+  kind: ActivityRuleKind;
+  /** 条件：AMOUNT 满金额 / QTY 满件数 / GOODS 指定商品；优惠：CUT 减 / PERCENT 打折 / POINTS 送积分 */
+  type: string;
+  /** AMOUNT 的门槛、CUT 的减额（最小货币单位） */
+  amountMinor?: number | null;
+  /** QTY 的件数、POINTS 的分数 */
+  n?: number | null;
+  /** PERCENT 的折扣（万分比，8000 = 8 折） */
+  bp?: number | null;
+  /** PERCENT 的封顶（最小货币单位），必填 */
+  capMinor?: number | null;
+  /** GOODS 的商品 */
+  goodsNos?: string[] | null;
+}
+
 export interface StoreActivity {
   /** 活动号 */
   activityNo: string;
@@ -417,6 +440,8 @@ export interface StoreActivity {
   decideHours?: number | null;
   /** 拼团（`GROUP`）：开团后多少小时内成团。空 = 24 */
   groupHours?: number | null;
+  /** 自己组合（COMBO）的条件与优惠；其余玩法为空 */
+  rules?: ActivityRuleItem[] | null;
 }
 /** 建活动入参。`activityNo` 为空 = 新建 */
 export interface StoreActivityDraft {
@@ -472,6 +497,8 @@ export interface StoreActivityDraft {
   decideHours?: number | null;
   /** 拼团（`GROUP`）：开团后多少小时内成团。空 = 24 */
   groupHours?: number | null;
+  /** 自己组合（COMBO）的条件与优惠；其余玩法为空 */
+  rules?: ActivityRuleItem[] | null;
 }
 /**
  * 「我的规格」里的一组：**这家店的一个货架类目**，以及它能用到的规格。

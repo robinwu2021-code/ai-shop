@@ -131,6 +131,15 @@ public interface CampaignPort {
     void commit(String userNo, String orderNo, Discount discount);
 
     /**
+     * 这一单在这家店用上的活动要额外送多少积分（自己组合的「送积分」，原型 s11）。
+     * 付款成功时随常规积分一起发 —— 同一次发放、同一笔费用金，不另走一条发分路径。
+     * 老模型没有这个概念，缺省 0。
+     */
+    default long bonusPoints(String orderNo, String merchantNo) {
+        return 0L;
+    }
+
+    /**
      * 活动优惠的分摊结果。
      *
      * <p>没有 {@code byMerchant} 字段 —— 店铺活动的出资方**恒为商家**。

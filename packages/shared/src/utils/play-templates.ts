@@ -26,10 +26,10 @@ export type RuleField =
   | "decideHours"; // 未达起订的处理时限
 
 /** 活动的触发。与后端 `PmtActivity.TRIGGER_*` 同一套取值 */
-export type ActivityTrigger = "NONE" | "AMOUNT" | "QTY" | "GOODS" | "GROUP" | "CUTOFF";
+export type ActivityTrigger = "NONE" | "AMOUNT" | "QTY" | "GOODS" | "GROUP" | "CUTOFF" | "COMBO";
 
-/** 活动的优惠。模板只用得到这三种；`COUPON` 随「自己组合」在 P3 放开 */
-export type PlayBenefit = "CUT" | "PRICE" | "GIFT";
+/** 活动的优惠。`COMBO` = 自己组合：条件与优惠都在组合行里，可以几样叠加 */
+export type PlayBenefit = "CUT" | "PRICE" | "GIFT" | "COMBO";
 
 /** 玩法开出的实例：拼团开出团，社区集单开出期 */
 export type PlayInstance = "GROUP" | "PERIOD";
@@ -64,6 +64,8 @@ export const PLAY_TEMPLATES: readonly PlayTemplate[] = [
   { key: "BATCH", triggerType: "CUTOFF", benefitType: "PRICE",
     rules: ["cutoffTime", "pickup", "price", "minQty", "decideHours"],
     needsGoods: true, fixedSchedule: "ALWAYS_ON", instance: "PERIOD" },
+  // 玩法面板的最后一项（原型 s11）：条件与优惠自己搭，规则组换成两张可增删的清单
+  { key: "COMBO", triggerType: "COMBO", benefitType: "COMBO", rules: [], needsGoods: false },
 ] as const;
 
 export function playOf(key: string): PlayTemplate | undefined {

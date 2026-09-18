@@ -6515,6 +6515,53 @@ components:
         - "priceUp"
       additionalProperties: false
       description: "一键再来一单的结果（C-ST-03）。**丢了什么必须说清楚**，静默少加是投诉源头"
+    ActivityRuleKind: 
+      type: "string"
+      enum: 
+        - "CONDITION"
+        - "BENEFIT"
+      description: "自己组合一行的种类：条件（全部满足才生效）/ 优惠（按顺序叠加）"
+    ActivityRuleItem: 
+      type: "object"
+      properties: 
+        kind: 
+          "$ref": "#/components/schemas/ActivityRuleKind"
+          description: "CONDITION / BENEFIT"
+        type: 
+          type: "string"
+          description: "条件：AMOUNT 满金额 / QTY 满件数 / GOODS 指定商品；优惠：CUT 减 / PERCENT 打折 / POINTS 送积分"
+        amountMinor: 
+          type: 
+            - "number"
+            - "null"
+          description: "AMOUNT 的门槛、CUT 的减额（最小货币单位）"
+        n: 
+          type: 
+            - "number"
+            - "null"
+          description: "QTY 的件数、POINTS 的分数"
+        bp: 
+          type: 
+            - "number"
+            - "null"
+          description: "PERCENT 的折扣（万分比，8000 = 8 折）"
+        capMinor: 
+          type: 
+            - "number"
+            - "null"
+          description: "PERCENT 的封顶（最小货币单位），必填"
+        goodsNos: 
+          anyOf: 
+            - type: "array"
+              items: 
+                type: "string"
+            - type: "null"
+          description: "GOODS 的商品"
+      required: 
+        - "kind"
+        - "type"
+      additionalProperties: false
+      description: "自己组合的一行（原型 s11）：一个条件或一个优惠。条件全部满足才生效，优惠按顺序叠加。"
     StoreActivity: 
       type: "object"
       properties: 
@@ -6674,6 +6721,13 @@ components:
             - "number"
             - "null"
           description: "拼团（`GROUP`）：开团后多少小时内成团。空 = 24"
+        rules: 
+          anyOf: 
+            - type: "array"
+              items: 
+                "$ref": "#/components/schemas/ActivityRuleItem"
+            - type: "null"
+          description: "自己组合（COMBO）的条件与优惠；其余玩法为空"
       required: 
         - "activityNo"
         - "name"
@@ -6687,7 +6741,6 @@ components:
         - "status"
         - "liveNow"
       additionalProperties: false
-      description: "商家活动（P5，新模型 `pmt_activity`）。"
     StoreActivityDraft: 
       type: "object"
       properties: 
@@ -6820,6 +6873,13 @@ components:
             - "number"
             - "null"
           description: "拼团（`GROUP`）：开团后多少小时内成团。空 = 24"
+        rules: 
+          anyOf: 
+            - type: "array"
+              items: 
+                "$ref": "#/components/schemas/ActivityRuleItem"
+            - type: "null"
+          description: "自己组合（COMBO）的条件与优惠；其余玩法为空"
       required: 
         - "name"
         - "benefitType"

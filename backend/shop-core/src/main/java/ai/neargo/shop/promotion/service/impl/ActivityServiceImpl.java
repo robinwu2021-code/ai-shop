@@ -8,6 +8,7 @@ import ai.neargo.shop.promotion.dto.ActivityVOs.ActivityVO;
 import ai.neargo.shop.promotion.dto.ActivityVOs.AudienceItem;
 import ai.neargo.shop.promotion.dto.ActivityVOs.ConflictVO;
 import ai.neargo.shop.promotion.entity.PmtActivity;
+import ai.neargo.shop.promotion.entity.PmtActivityRule;
 import ai.neargo.shop.promotion.entity.PmtActivityAudience;
 import ai.neargo.shop.promotion.entity.PmtActivityGoods;
 import ai.neargo.shop.promotion.entity.RecurringRule;
@@ -43,6 +44,14 @@ public class ActivityServiceImpl implements ActivityService {
     private final ActivityAudienceMapper audienceMapper;
     private final ActivityGoodsMapper goodsMapper;
     private final ai.neargo.shop.spi.product.GoodsQueryPort goodsPort;
+
+    /** 自己组合的行（P3b）。setter 注入：没有它的切片测试里组合行不落库，其余行为不变 */
+    private ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityRuleMapper ruleMapper;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setRuleMapper(ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityRuleMapper ruleMapper) {
+        this.ruleMapper = ruleMapper;
+    }
 
     public ActivityServiceImpl(ActivityMapper activityMapper, ActivityAudienceMapper audienceMapper,
                                ActivityGoodsMapper goodsMapper,
@@ -106,6 +115,7 @@ public class ActivityServiceImpl implements ActivityService {
         }
         saveAudiences(entityNo, a.getActivityNo(), d.audiences());
         saveGoods(entityNo, a.getActivityNo(), d.goodsNos());
+        saveRules(a.getActivityNo(), PmtActivity.TRIGGER_COMBO.equals(a.getTriggerType()), d.rules());
         log.info("[活动] {} {} by {}", create ? "建" : "改", a.getActivityNo(), operatorNo);
         return vo(a);
     }
@@ -121,11 +131,22 @@ public class ActivityServiceImpl implements ActivityService {
      * 商品与人群按集合比（顺序无关），其余按值比。
      */
     private static String lockedSignature(ActivityVO v) {
-        return lockedSignature(v, v.goodsNos(), v.audiences());
+        return lockedSignature(v, v.goodsNos(), v.audiences()) + "|" + rulesSig(v.rules());
     }
 
     private static String lockedSignature(ActivityVO v, ActivityDraft d) {
-        return lockedSignature(v, d.goodsNos(), d.audiences());
+        boolean combo = PmtActivity.TRIGGER_COMBO.equals(v.triggerType());
+        return lockedSignature(v, d.goodsNos(), d.audiences()) + "|" + rulesSig(combo ? d.rules() : List.of());
+    }
+
+    /** 组合行也是规则的一部分：开始之后改条件或优惠一样被锁（A6） */
+    private static String rulesSig(List<ai.neargo.shop.promotion.dto.ActivityVOs.RuleItem> rules) {
+        return rules == null ? "[]" : rules.stream().map(ActivityServiceImpl::writeRuleSig).toList().toString();
+    }
+
+    private static String writeRuleSig(ai.neargo.shop.promotion.dto.ActivityVOs.RuleItem r) {
+        List<String> goods = r.goodsNos() == null ? List.of() : new java.util.TreeSet<>(r.goodsNos()).stream().toList();
+        return r.kind() + ":" + r.type() + ":" + r.amountMinor() + ":" + r.n() + ":" + r.bp() + ":" + r.capMinor() + ":" + goods;
     }
 
     private static String lockedSignature(ActivityVO v, List<String> goods, List<AudienceItem> audiences) {
@@ -165,6 +186,15 @@ public class ActivityServiceImpl implements ActivityService {
          * 否则把一个集单活动改成满减后，它身上还挂着截单时刻，
          * 而凡是「有截单时刻就当集单」的地方都会被它骗到（新值漏进老分支）。
          */
+        if (PmtActivity.TRIGGER_COMBO.equals(a.getTriggerType())) {
+            // 组合活动的条件与优惠都在 pmt_activity_rule 里：主表那一组清空，免得被当成某个旧玩法读
+            a.setBenefitType(PmtActivity.BENEFIT_COMBO);
+            a.setTriggerAmountMinor(null);
+            a.setTriggerQty(null);
+            a.setBenefitAmountMinor(null);
+            a.setBenefitQty(null);
+            a.setBenefitRef(null);
+        }
         boolean cutoff = PmtActivity.TRIGGER_CUTOFF.equals(a.getTriggerType());
         a.setCutoffTime(cutoff ? blankToNull(d.cutoffTime()) : null);
         a.setPickupOffset(cutoff ? d.pickupOffset() : null);
@@ -217,6 +247,123 @@ public class ActivityServiceImpl implements ActivityService {
     }
 
     /** 建活动时的全部硬校验。每一条堵的都是「上线之后没人能补救」的事 */
+    /**
+     * 自己组合（原型 s11）的硬校验：至少一个条件、至少一个优惠，每一行的参数成立。
+     * 触发与优惠两列必须同时是 COMBO —— 只改一列的话，老代码按另一列走进某个旧分支（新值漏进老分支）。
+     */
+    private void assertCombo(PmtActivity a, ActivityDraft d) {
+        if (!PmtActivity.TRIGGER_COMBO.equals(a.getTriggerType())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        List<ai.neargo.shop.promotion.dto.ActivityVOs.RuleItem> rules = d.rules() == null ? List.of() : d.rules();
+        long conditions = rules.stream().filter(r -> PmtActivityRule.CONDITION.equals(r.kind())).count();
+        long benefits = rules.stream().filter(r -> PmtActivityRule.BENEFIT.equals(r.kind())).count();
+        if (conditions == 0 || benefits == 0) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        for (var r : rules) {
+            boolean ok = switch (r.kind() + ":" + r.type()) {
+                case "CONDITION:AMOUNT" -> r.amountMinor() != null && r.amountMinor() > 0;
+                case "CONDITION:QTY" -> r.n() != null && r.n() > 0;
+                case "CONDITION:GOODS" -> r.goodsNos() != null && !r.goodsNos().isEmpty();
+                case "BENEFIT:CUT" -> r.amountMinor() != null && r.amountMinor() > 0;
+                // 打折必须封顶：大额订单上不封顶的折扣是不可控的敞口（与折扣券同一条）
+                case "BENEFIT:PERCENT" -> r.bp() != null && r.bp() >= 1000 && r.bp() < 10_000
+                        && r.capMinor() != null && r.capMinor() > 0;
+                case "BENEFIT:POINTS" -> r.n() != null && r.n() > 0;
+                default -> false;
+            };
+            if (!ok) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+        }
+    }
+
+    /** 整批换掉这个活动的组合行；不是组合活动时清空（从组合改成别的玩法，旧行不能留着） */
+    private void saveRules(String activityNo, boolean combo, List<ai.neargo.shop.promotion.dto.ActivityVOs.RuleItem> rules) {
+        if (ruleMapper == null) {
+            return;
+        }
+        ruleMapper.hardDeleteByActivity(activityNo);
+        if (!combo || rules == null) {
+            return;
+        }
+        int seq = 0;
+        for (var r : rules) {
+            PmtActivityRule row = new PmtActivityRule();
+            row.setActivityNo(activityNo);
+            row.setKind(r.kind());
+            row.setSeq(seq++);
+            row.setRuleType(r.type());
+            row.setParams(writeParams(r));
+            ruleMapper.insert(row);
+        }
+    }
+
+    private List<ai.neargo.shop.promotion.dto.ActivityVOs.RuleItem> rulesOf(String activityNo) {
+        if (ruleMapper == null) {
+            return List.of();
+        }
+        return DataScopeContext.executeWithoutScope(() -> ruleMapper.selectList(
+                        Wrappers.<PmtActivityRule>lambdaQuery()
+                                .eq(PmtActivityRule::getActivityNo, activityNo)
+                                .orderByAsc(PmtActivityRule::getSeq)))
+                .stream().map(ActivityServiceImpl::readParams).toList();
+    }
+
+    /** 参数按 JSON 存（每种行的字段不同）。只写有值的那几项 */
+    static String writeParams(ai.neargo.shop.promotion.dto.ActivityVOs.RuleItem r) {
+        StringBuilder b = new StringBuilder("{");
+        java.util.function.BiConsumer<String, Object> put = (k, v) -> {
+            if (v == null) {
+                return;
+            }
+            if (b.length() > 1) {
+                b.append(',');
+            }
+            b.append('"').append(k).append("\":");
+            if (v instanceof List<?> l) {
+                b.append('[').append(l.stream().map(x -> "\"" + String.valueOf(x).replace("\"", "") + "\"")
+                        .collect(java.util.stream.Collectors.joining(","))).append(']');
+            } else {
+                b.append(v);
+            }
+        };
+        put.accept("amountMinor", r.amountMinor());
+        put.accept("n", r.n());
+        put.accept("bp", r.bp());
+        put.accept("capMinor", r.capMinor());
+        put.accept("goodsNos", r.goodsNos());
+        return b.append('}').toString();
+    }
+
+    static ai.neargo.shop.promotion.dto.ActivityVOs.RuleItem readParams(PmtActivityRule row) {
+        String p = row.getParams() == null ? "" : row.getParams();
+        List<String> goods = new java.util.ArrayList<>();
+        java.util.regex.Matcher gm = java.util.regex.Pattern.compile("\"goodsNos\":\\[([^\\]]*)\\]").matcher(p);
+        if (gm.find()) {
+            for (String s : gm.group(1).split(",")) {
+                String v = s.trim().replace("\"", "");
+                if (!v.isEmpty()) {
+                    goods.add(v);
+                }
+            }
+        }
+        return new ai.neargo.shop.promotion.dto.ActivityVOs.RuleItem(row.getKind(), row.getRuleType(),
+                longOf(p, "amountMinor"), intOf(p, "n"), intOf(p, "bp"), longOf(p, "capMinor"),
+                goods.isEmpty() ? null : goods);
+    }
+
+    private static Long longOf(String json, String key) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"" + key + "\":(-?\\d+)").matcher(json);
+        return m.find() ? Long.valueOf(m.group(1)) : null;
+    }
+
+    private static Integer intOf(String json, String key) {
+        Long v = longOf(json, key);
+        return v == null ? null : v.intValue();
+    }
+
     private void assertSane(PmtActivity a, ActivityDraft d) {
         if (blank(a.getName()) || blank(a.getBenefitType())) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -302,6 +449,7 @@ public class ActivityServiceImpl implements ActivityService {
                     throw BizException.of(ErrorCode.BAD_REQUEST);
                 }
             }
+            case PmtActivity.BENEFIT_COMBO -> assertCombo(a, d);
             default -> throw BizException.of(ErrorCode.BAD_REQUEST);
         }
 
@@ -450,7 +598,8 @@ public class ActivityServiceImpl implements ActivityService {
                 audiences, goods, a.getStatus(), a.getEndedReason(),
                 a.isActiveAt(System.currentTimeMillis(), MARKET_ZONE) && a.hasQuotaLeft(),
                 a.getCutoffTime(), a.getPickupOffset(), a.getPickupFrom(),
-                a.getMinQty(), a.getPeriodQuota(), a.getDecideHours(), a.getGroupHours());
+                a.getMinQty(), a.getPeriodQuota(), a.getDecideHours(), a.getGroupHours(),
+                PmtActivity.TRIGGER_COMBO.equals(a.getTriggerType()) ? rulesOf(a.getActivityNo()) : List.of());
     }
 
     /** 单次优惠。改单价那种算不出来（要看原价），保守记 0 —— 敞口以限量为准 */

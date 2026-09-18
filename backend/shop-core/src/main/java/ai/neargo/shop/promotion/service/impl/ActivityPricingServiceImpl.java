@@ -46,6 +46,14 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
     private ai.neargo.shop.promotion.mapper.PromotionMappers.EnrollmentMapper enrollmentMapper;
     private ai.neargo.shop.promotion.mapper.PromotionMappers.EnrollmentGoodsMapper enrollmentGoodsMapper;
 
+    /** 自己组合的行（P3b）。setter 注入，缺了组合活动不参与算价 */
+    private ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityRuleMapper ruleMapper;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setRuleMapper(ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityRuleMapper ruleMapper) {
+        this.ruleMapper = ruleMapper;
+    }
+
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setEnrollmentMappers(ai.neargo.shop.promotion.mapper.PromotionMappers.EnrollmentMapper enrollmentMapper,
                                      ai.neargo.shop.promotion.mapper.PromotionMappers.EnrollmentGoodsMapper enrollmentGoodsMapper) {
@@ -81,6 +89,21 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             long bestOff = 0L;
             PlatformHit bestPlatform = null;
             for (PmtActivity a : live(g.merchantNo(), g.storeNo(), now)) {
+                if (PmtActivity.BENEFIT_COMBO.equals(a.getBenefitType())) {
+                    /*
+                     * 自己组合（P3b）与满减类**同类取最优**：一单只减一个满减类活动，按买家省多少比。
+                     * 只送积分、不减钱的组合（off = 0）在没有别的活动时照样生效 —— 否则它永远赢不了任何比较。
+                     */
+                    if (!audienceHits(a, g.merchantNo(), userNo)) {
+                        continue;
+                    }
+                    ComboHit h = comboHit(a, g);
+                    if (h != null && (h.off() > bestOff || (best == null && bestOff == 0 && h.points() > 0))) {
+                        bestOff = h.off();
+                        best = a;
+                    }
+                    continue;
+                }
                 if (!PmtActivity.BENEFIT_CUT.equals(a.getBenefitType())) {
                     continue;
                 }
@@ -119,10 +142,112 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 applied.add(new CampaignPort.AppliedActivity(best.getActivityNo(),
                         g.merchantNo(), bestOff, 1));
                 total += bestOff;
+            } else if (best != null && PmtActivity.BENEFIT_COMBO.equals(best.getBenefitType())) {
+                // 只送积分的组合：不减钱，但要记下「这一单用上了它」—— 付款时按它发积分、扣它的量
+                applied.add(new CampaignPort.AppliedActivity(best.getActivityNo(), g.merchantNo(), 0L, 1));
             }
         }
         return shares.isEmpty() ? CampaignPort.Discount.none()
                 : new CampaignPort.Discount(total, shares, applied);
+    }
+
+    /**
+     * 自己组合在这一家上的命中。
+     *
+     * @param off    买家少付多少（减钱与打折按顺序叠加，不超过作用范围的小计）
+     * @param points 付款后额外送的积分
+     */
+    private record ComboHit(long off, long points) {
+    }
+
+    /**
+     * 条件全部满足才生效（原型 s11「条件 · 全部满足」）。有「指定商品」时，
+     * 件数与金额都按那几件货的小计判、优惠也只作用在它们上；没有就按整家的货。
+     * 老调用方不传逐件明细时，带「指定商品」的组合不生效（不退回按整单判）。
+     */
+    private ComboHit comboHit(PmtActivity a, CampaignPort.MerchantAmount g) {
+        if (ruleMapper == null) {
+            return null;
+        }
+        List<ai.neargo.shop.promotion.entity.PmtActivityRule> rules = DataScopeContext.executeWithoutScope(() ->
+                ruleMapper.selectList(Wrappers.<ai.neargo.shop.promotion.entity.PmtActivityRule>lambdaQuery()
+                        .eq(ai.neargo.shop.promotion.entity.PmtActivityRule::getActivityNo, a.getActivityNo())
+                        .orderByAsc(ai.neargo.shop.promotion.entity.PmtActivityRule::getSeq)));
+        var items = rules.stream().map(ActivityServiceImpl::readParams).toList();
+        long amount = g.goodsAmount();
+        int qty = g.goodsQty();
+        var scope = items.stream().filter(r -> "CONDITION".equals(r.kind()) && "GOODS".equals(r.type()))
+                .findFirst().orElse(null);
+        if (scope != null) {
+            if (g.lines() == null || g.lines().isEmpty()) {
+                return null;
+            }
+            java.util.Set<String> goods = new java.util.HashSet<>(scope.goodsNos() == null ? List.of() : scope.goodsNos());
+            amount = 0L;
+            qty = 0;
+            for (CampaignPort.GoodsLine l : g.lines()) {
+                if (goods.contains(l.goodsNo())) {
+                    amount += l.amount();
+                    qty += l.qty();
+                }
+            }
+            if (amount <= 0) {
+                return null;
+            }
+        }
+        for (var r : items) {
+            if (!"CONDITION".equals(r.kind())) {
+                continue;
+            }
+            if ("AMOUNT".equals(r.type()) && amount < nz(r.amountMinor())) {
+                return null;
+            }
+            if ("QTY".equals(r.type()) && qty < (r.n() == null ? 0 : r.n())) {
+                return null;
+            }
+        }
+        long off = 0L;
+        long points = 0L;
+        for (var r : items) {
+            if (!"BENEFIT".equals(r.kind())) {
+                continue;
+            }
+            switch (r.type()) {
+                case "CUT" -> off += Math.min(nz(r.amountMinor()), amount - off);
+                case "PERCENT" -> {
+                    long cut = (amount - off) * (10_000 - (r.bp() == null ? 10_000 : r.bp())) / 10_000;
+                    off += Math.min(cut, nz(r.capMinor()));
+                }
+                case "POINTS" -> points += r.n() == null ? 0 : r.n();
+                default -> { }
+            }
+        }
+        return new ComboHit(Math.max(0, Math.min(off, amount)), points);
+    }
+
+    @Override
+    public long bonusPoints(String orderNo, String merchantNo) {
+        if (ruleMapper == null || orderNo == null) {
+            return 0L;
+        }
+        List<String> promos = DataScopeContext.executeWithoutScope(() -> applyMapper.selectList(
+                        Wrappers.<PmtApply>lambdaQuery()
+                                .eq(PmtApply::getOrderNo, orderNo)
+                                .eq(PmtApply::getEntityNo, merchantNo)
+                                .eq(PmtApply::getPromoType, PmtApply.ACTIVITY)
+                                .isNull(PmtApply::getRevertedAt)))
+                .stream().map(PmtApply::getPromoNo).distinct().toList();
+        long total = 0L;
+        for (String activityNo : promos) {
+            total += DataScopeContext.executeWithoutScope(() -> ruleMapper.selectList(
+                            Wrappers.<ai.neargo.shop.promotion.entity.PmtActivityRule>lambdaQuery()
+                                    .eq(ai.neargo.shop.promotion.entity.PmtActivityRule::getActivityNo, activityNo)
+                                    .eq(ai.neargo.shop.promotion.entity.PmtActivityRule::getKind, "BENEFIT")
+                                    .eq(ai.neargo.shop.promotion.entity.PmtActivityRule::getRuleType, "POINTS")))
+                    .stream().map(ActivityServiceImpl::readParams)
+                    .mapToLong(r -> r.n() == null ? 0 : r.n()).sum();
+        }
+        return total;
     }
 
     /**

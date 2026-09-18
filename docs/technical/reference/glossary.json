@@ -4814,6 +4814,138 @@
           "ar": "إلغاء"
         },
         {
+          "key": "activityEdit.comboAddBen",
+          "zh-CN": "添加优惠",
+          "en": "Add benefit",
+          "ar": "إضافة ميزة"
+        },
+        {
+          "key": "activityEdit.comboAddCond",
+          "zh-CN": "添加条件",
+          "en": "Add condition",
+          "ar": "إضافة شرط"
+        },
+        {
+          "key": "activityEdit.comboBen",
+          "zh-CN": "优惠",
+          "en": "Benefits",
+          "ar": "المزايا"
+        },
+        {
+          "key": "activityEdit.comboCond",
+          "zh-CN": "条件 · 全部满足",
+          "en": "Conditions · all must hold",
+          "ar": "الشروط · يجب تحقّقها كلها"
+        },
+        {
+          "key": "activityEdit.comboPh.AMOUNT",
+          "zh-CN": "≥ 元",
+          "en": "≥ amount",
+          "ar": "≥ مبلغ"
+        },
+        {
+          "key": "activityEdit.comboPh.CAP",
+          "zh-CN": "封顶元",
+          "en": "Cap",
+          "ar": "الحد الأقصى"
+        },
+        {
+          "key": "activityEdit.comboPh.CUT",
+          "zh-CN": "元",
+          "en": "Amount",
+          "ar": "المبلغ"
+        },
+        {
+          "key": "activityEdit.comboPh.PERCENT",
+          "zh-CN": "几折",
+          "en": "e.g. 8 = 20% off",
+          "ar": "مثلًا 8"
+        },
+        {
+          "key": "activityEdit.comboPh.POINTS",
+          "zh-CN": "分",
+          "en": "Points",
+          "ar": "نقاط"
+        },
+        {
+          "key": "activityEdit.comboPh.QTY",
+          "zh-CN": "≥ 件",
+          "en": "≥ items",
+          "ar": "≥ قطع"
+        },
+        {
+          "key": "activityEdit.comboS.AMOUNT",
+          "zh-CN": "满 {n}",
+          "en": " (over {n})",
+          "ar": " (فوق {n})"
+        },
+        {
+          "key": "activityEdit.comboS.CUT",
+          "zh-CN": "减 {n}",
+          "en": "{n} off",
+          "ar": "خصم {n}"
+        },
+        {
+          "key": "activityEdit.comboS.GOODS",
+          "zh-CN": "买指定 {n} 件",
+          "en": "Buy {n} selected products",
+          "ar": "شراء {n} منتجات محددة"
+        },
+        {
+          "key": "activityEdit.comboS.PERCENT",
+          "zh-CN": "{z} 折（封顶 {c}）",
+          "en": "{z}/10 (cap {c})",
+          "ar": "{z}/10 (حد {c})"
+        },
+        {
+          "key": "activityEdit.comboS.POINTS",
+          "zh-CN": "送 {n} 积分",
+          "en": "{n} bonus points",
+          "ar": "{n} نقاط إضافية"
+        },
+        {
+          "key": "activityEdit.comboS.QTY",
+          "zh-CN": "满 {n} 件",
+          "en": " ({n}+ items)",
+          "ar": " ({n}+ قطع)"
+        },
+        {
+          "key": "activityEdit.comboType.AMOUNT",
+          "zh-CN": "金额",
+          "en": "Spend",
+          "ar": "المبلغ"
+        },
+        {
+          "key": "activityEdit.comboType.CUT",
+          "zh-CN": "减",
+          "en": "Off",
+          "ar": "خصم"
+        },
+        {
+          "key": "activityEdit.comboType.GOODS",
+          "zh-CN": "商品",
+          "en": "Products",
+          "ar": "المنتجات"
+        },
+        {
+          "key": "activityEdit.comboType.PERCENT",
+          "zh-CN": "打折",
+          "en": "Discount",
+          "ar": "تخفيض"
+        },
+        {
+          "key": "activityEdit.comboType.POINTS",
+          "zh-CN": "送积分",
+          "en": "Bonus points",
+          "ar": "نقاط إضافية"
+        },
+        {
+          "key": "activityEdit.comboType.QTY",
+          "zh-CN": "件数",
+          "en": "Items",
+          "ar": "القطع"
+        },
+        {
           "key": "activityEdit.conflict",
           "zh-CN": "与「{name}」商品重叠，同一单只享更优惠的一个",
           "en": "Overlaps with \"{name}\"; an order gets only the better one",
@@ -4920,6 +5052,18 @@
           "zh-CN": "长期活动需设置份数或预算",
           "en": "Always-on promotions need a quota or budget",
           "ar": "العروض الدائمة تحتاج حصة أو ميزانية"
+        },
+        {
+          "key": "activityEdit.need.combo",
+          "zh-CN": "条件与优惠都至少要一项，且每一项都要填好",
+          "en": "Add at least one condition and one benefit, and fill in each",
+          "ar": "أضف شرطًا وميزة على الأقل واملأ كل بند"
+        },
+        {
+          "key": "activityEdit.need.comboPercent",
+          "zh-CN": "打折填 1–9.9 折，并设封顶",
+          "en": "Discount must be 1–9.9 with a cap",
+          "ar": "التخفيض بين 1 و9.9 مع حد أقصى"
         },
         {
           "key": "activityEdit.need.cutoff",
@@ -12350,6 +12494,12 @@
           "ar": "إغلاق يومي والشراء حسب الطلب"
         },
         {
+          "key": "plays.desc.COMBO",
+          "zh-CN": "条件与优惠自己搭，可以几样叠加",
+          "en": "Mix your own conditions and benefits",
+          "ar": "اجمع الشروط والمزايا بنفسك"
+        },
+        {
           "key": "plays.desc.CUT",
           "zh-CN": "满额减钱",
           "en": "Discount over an amount",
@@ -12396,6 +12546,12 @@
           "zh-CN": "社区集单",
           "en": "Community batch order",
           "ar": "طلب مجمّع للحي"
+        },
+        {
+          "key": "plays.name.COMBO",
+          "zh-CN": "自己组合",
+          "en": "Custom combo",
+          "ar": "تركيبة مخصّصة"
         },
         {
           "key": "plays.name.CUT",
@@ -26116,9 +26272,23 @@
       },
       {
         "host": "PmtActivity",
+        "name": "TRIGGER_COMBO",
+        "value": "COMBO",
+        "zh": "自己组合（原型 s11）：条件与优惠不在主表那一组字段里，在 pmt_activity_rule。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtActivity",
+        "name": "BENEFIT_COMBO",
+        "value": "COMBO",
+        "zh": "自己组合：优惠在 pmt_activity_rule 里，可以是几样叠加",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtActivity",
         "name": "BENEFIT_CUT",
         "value": "CUT",
-        "zh": "减金额",
+        "zh": "",
         "module": "shop-core"
       },
       {
@@ -28529,6 +28699,15 @@
         "zh": "覆盖项的生效状态。"
       },
       {
+        "name": "ActivityRuleKind",
+        "client": "shared",
+        "values": [
+          "CONDITION",
+          "BENEFIT"
+        ],
+        "zh": "自己组合一行的种类：条件（全部满足才生效）/ 优惠（按顺序叠加）"
+      },
+      {
         "name": "ActivityTrigger",
         "client": "shared",
         "values": [
@@ -28537,7 +28716,8 @@
           "QTY",
           "GOODS",
           "GROUP",
-          "CUTOFF"
+          "CUTOFF",
+          "COMBO"
         ],
         "zh": "活动的触发。"
       },
@@ -29705,7 +29885,8 @@
         "values": [
           "CUT",
           "PRICE",
-          "GIFT"
+          "GIFT",
+          "COMBO"
         ],
         "zh": "活动的优惠。"
       },

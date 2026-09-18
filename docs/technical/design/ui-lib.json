@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 406,
+        "b-app": 410,
         "c-app": 54
       }
     },
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 299,
+        "b-app": 309,
         "c-app": 60
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 301,
+        "b-app": 304,
         "c-app": 231
       }
     },
@@ -453,7 +453,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 38,
+        "b-app": 40,
         "c-app": 32
       }
     },
@@ -635,7 +635,7 @@
         "padding": "12px var(--sh-pad-page, 14px)"
       },
       "usage": {
-        "b-app": 128,
+        "b-app": 134,
         "c-app": 21
       }
     },
@@ -659,7 +659,7 @@
         "overflow": "hidden"
       },
       "usage": {
-        "b-app": 42,
+        "b-app": 46,
         "c-app": 7
       }
     },
@@ -681,7 +681,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 25,
+        "b-app": 26,
         "c-app": 30
       }
     },
@@ -1053,7 +1053,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 302,
+        "b-app": 305,
         "c-app": 130
       }
     },
@@ -1435,7 +1435,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 434,
+        "b-app": 442,
         "c-app": 154
       }
     },
@@ -1467,7 +1467,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 250,
+        "b-app": 254,
         "c-app": 86
       }
     },
@@ -2293,7 +2293,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 93,
+        "b-app": 97,
         "c-app": 7,
         "lib": 13
       },
@@ -2640,7 +2640,7 @@
         "flush?: boolean"
       ],
       "usage": {
-        "b-app": 18,
+        "b-app": 20,
         "c-app": 4,
         "lib": 1
       },
@@ -3299,9 +3299,9 @@
         "sh-sheet",
         "sh-stat"
       ],
-      "libClassHits": 408,
-      "localSelectors": 10,
-      "localCssLines": 34,
+      "libClassHits": 453,
+      "localSelectors": 12,
+      "localCssLines": 42,
       "rolled": []
     },
     {

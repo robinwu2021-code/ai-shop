@@ -1255,8 +1255,10 @@ public class OrderServiceImpl implements OrderService {
                 final long base = sub.getPayAmount() == null ? 0L
                         : sub.getPayAmount() - (sub.getFreightAmount() == null ? 0L : sub.getFreightAmount());
                 final String scene = order.getPayScene();
+                // 自己组合的「送积分」：随常规积分一起发（同一次发放幂等、同一笔费用金）
+                final long bonus = campaignPort.bonusPoints(orderNo, entityNo);
                 AfterCommit.run("发放积分 subOrderNo=" + subNo,
-                        () -> grantPointsAfterPay(subNo, userNo, entityNo, base, payChannel, scene));
+                        () -> grantPointsAfterPay(subNo, userNo, entityNo, base, payChannel, scene, bonus));
             }
         }
 
@@ -1301,14 +1303,24 @@ public class OrderServiceImpl implements OrderService {
      * 流水幂等保证不会多发。
      */
     private void grantPointsAfterPay(String subOrderNo, String userNo, String entityNo, long base,
-                                     String payChannel, String payScene) {
+                                     String payChannel, String payScene, long bonusPoints) {
         /*
          * 通道与场景**传进去**，不让支付域回查订单（2026-09-01）。
          * 它们是支付那一刻的事实，这边本来就拿着：payChannel 是 markPaid 的参数，
          * payScene 在 ord_order 上。
          */
-        var g = pointsPort.grant(userNo, entityNo, earnLines(subOrderNo, base), subOrderNo,
-                payChannel, payScene);
+        List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> lines = new ArrayList<>(earnLines(subOrderNo, base));
+        if (bonusPoints > 0) {
+            /*
+             * 活动送的积分作为**一行定额**并进同一次发放：FIXED 规则按值原样发（基数只要 > 0），
+             * 费用金照常按分数向商家收 —— 活动由商家出资，送的积分也是。
+             * 不单独调一次 grant：发放按子单幂等，第二次调用会被当成重复回调吞掉。
+             */
+            lines.add(new ai.neargo.shop.spi.settle.PointsPort.EarnLine(null, null, 1L,
+                    new ai.neargo.shop.spi.settle.PointsPort.EarnRule(
+                            ai.neargo.shop.spi.settle.PointsPort.FIXED, bonusPoints)));
+        }
+        var g = pointsPort.grant(userNo, entityNo, lines, subOrderNo, payChannel, payScene);
         if (g.points() <= 0) {
             return;
         }

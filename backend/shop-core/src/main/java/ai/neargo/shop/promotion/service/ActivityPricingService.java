@@ -41,4 +41,10 @@ public interface ActivityPricingService {
      * 那是限量与并发之间必然存在的一点点重叠，而不是错误。
      */
     void commit(String userNo, String orderNo, CampaignPort.Discount discount);
+
+    /**
+     * 这一单在这家店用上的「自己组合」要额外送多少积分（原型 s11「送积分」）。
+     * 读的是下单时落的优惠发生记录，已回退的不算。付款成功时随常规积分一起发（同一次发放、同一笔费用金）。
+     */
+    long bonusPoints(String orderNo, String merchantNo);
 }

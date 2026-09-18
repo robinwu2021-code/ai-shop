@@ -80,6 +80,7 @@
 | `periodQuota` | `number,null` | 否 | 社区集单：每期份数上限。空 = 不限 |
 | `decideHours` | `number,null` | 否 | 社区集单：未达起订量时的处理时限（小时）。空 = 平台缺省 14，每个活动可单独配 |
 | `groupHours` | `number,null` | 否 | 拼团（`GROUP`）：开团后多少小时内成团。空 = 24 |
+| `rules` | [`ActivityRuleItem`](#activityruleitem)\[\] \| `null` | 否 | 自己组合（COMBO）的条件与优惠；其余玩法为空 |
 
 `audiences[]` 的字段：
 
@@ -134,6 +135,7 @@
 | `periodQuota` | `number,null` | 否 | 社区集单：每期份数上限。空 = 不限 |
 | `decideHours` | `number,null` | 否 | 社区集单：未达起订量时的处理时限（小时）。空 = 平台缺省 14，每个活动可单独配 |
 | `groupHours` | `number,null` | 否 | 拼团（`GROUP`）：开团后多少小时内成团。空 = 24 |
+| `rules` | [`ActivityRuleItem`](#activityruleitem)\[\] \| `null` | 否 | 自己组合（COMBO）的条件与优惠；其余玩法为空 |
 
 `audiences[]` 的字段：
 
@@ -188,6 +190,7 @@
 | `periodQuota` | `number,null` | 否 | 社区集单：每期份数上限。空 = 不限 |
 | `decideHours` | `number,null` | 否 | 社区集单：未达起订量时的处理时限（小时）。空 = 平台缺省 14，每个活动可单独配 |
 | `groupHours` | `number,null` | 否 | 拼团（`GROUP`）：开团后多少小时内成团。空 = 24 |
+| `rules` | [`ActivityRuleItem`](#activityruleitem)\[\] \| `null` | 否 | 自己组合（COMBO）的条件与优惠；其余玩法为空 |
 
 `audiences[]` 的字段：
 
@@ -5849,6 +5852,29 @@ _无字段_
 | `activityName` | `string` | 是 | 活动名 |
 | `benefitType` | `string` | 是 | 优惠方式 |
 
+### ActivityRuleItem
+
+自己组合的一行（原型 s11）：一个条件或一个优惠。条件全部满足才生效，优惠按顺序叠加。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `kind` | [`ActivityRuleKind`](#activityrulekind) | 是 | CONDITION / BENEFIT |
+| `type` | `string` | 是 | 条件：AMOUNT 满金额 / QTY 满件数 / GOODS 指定商品；优惠：CUT 减 / PERCENT 打折 / POINTS 送积分 |
+| `amountMinor` | `number,null` | 否 | AMOUNT 的门槛、CUT 的减额（最小货币单位） |
+| `n` | `number,null` | 否 | QTY 的件数、POINTS 的分数 |
+| `bp` | `number,null` | 否 | PERCENT 的折扣（万分比，8000 = 8 折） |
+| `capMinor` | `number,null` | 否 | PERCENT 的封顶（最小货币单位），必填 |
+| `goodsNos` | `string`\[\] \| `null` | 否 | GOODS 的商品 |
+
+### ActivityRuleKind
+
+自己组合一行的种类：条件（全部满足才生效）/ 优惠（按顺序叠加）
+
+枚举取值：
+
+- `CONDITION`
+- `BENEFIT`
+
 ### AddStaffReq
 
 加员工。只要手机号 —— 不发密码、不建 C 端账号
@@ -8606,8 +8632,6 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 ### StoreActivity
 
-商家活动（P5，新模型 `pmt_activity`）。
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `activityNo` | `string` | 是 | 活动号 |
@@ -8643,6 +8667,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `periodQuota` | `number,null` | 否 | 社区集单：每期份数上限。空 = 不限 |
 | `decideHours` | `number,null` | 否 | 社区集单：未达起订量时的处理时限（小时）。空 = 平台缺省 14，每个活动可单独配 |
 | `groupHours` | `number,null` | 否 | 拼团（`GROUP`）：开团后多少小时内成团。空 = 24 |
+| `rules` | [`ActivityRuleItem`](#activityruleitem)\[\] \| `null` | 否 | 自己组合（COMBO）的条件与优惠；其余玩法为空 |
 
 `audiences[]` 的字段：
 

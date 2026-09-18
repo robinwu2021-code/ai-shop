@@ -1671,6 +1671,13 @@ export default {
     },
   },
   activityEdit: {
+    comboCond: "条件 · 全部满足",
+    comboBen: "优惠",
+    comboAddCond: "添加条件",
+    comboAddBen: "添加优惠",
+    comboType: { GOODS: "商品", QTY: "件数", AMOUNT: "金额", CUT: "减", PERCENT: "打折", POINTS: "送积分" },
+    comboPh: { QTY: "≥ 件", AMOUNT: "≥ 元", CUT: "元", PERCENT: "几折", POINTS: "分", CAP: "封顶元" },
+    comboS: { GOODS: "买指定 {n} 件", QTY: "满 {n} 件", AMOUNT: "满 {n}", CUT: "减 {n}", PERCENT: "{z} 折（封顶 {c}）", POINTS: "送 {n} 积分" },
     quotaPh: "不填即不限",
     editable: "可改",
     lockedNote: "进行中只能改结束时间和上限；改规则请结束后另建",
@@ -1730,6 +1737,8 @@ export default {
     publish: "发布",
     saved: "已发布",
     need: {
+      combo: "条件与优惠都至少要一项，且每一项都要填好",
+      comboPercent: "打折填 1–9.9 折，并设封顶",
       name: "请填写名称",
       play: "请选择玩法",
       goods: "请选择商品",
@@ -1757,6 +1766,7 @@ export default {
       GIFT: "买赠",
       GROUP: "拼团",
       BATCH: "社区集单",
+      COMBO: "自己组合",
     },
     desc: {
       CUT: "满额减钱",
@@ -1767,6 +1777,7 @@ export default {
       GIFT: "买够送货",
       GROUP: "凑够人数享团价",
       BATCH: "每天截单，按量采购",
+      COMBO: "条件与优惠自己搭，可以几样叠加",
     },
   },
   periods: {

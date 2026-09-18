@@ -501,6 +501,7 @@ export const marketingMock: Pick<MerchantApi,
         JSON.stringify([x.name, x.triggerType ?? "NONE", x.triggerAmountMinor ?? null, x.triggerQty ?? null,
           x.benefitType, x.benefitAmountMinor ?? null, x.benefitQty ?? null, x.scheduleType ?? "ONE_OFF",
           x.startAt ?? null, x.scheduleRule ?? null, x.cutoffTime ?? null, x.groupHours ?? null,
+          JSON.stringify(x.rules ?? []),
           [...(goods ?? [])].sort(), (aud ?? []).map((a) => `${a.type}=${a.value}`).sort()]);
       if (sig(before as unknown as Record<string, unknown>, before.goodsNos, before.audiences)
           !== sig(payload as unknown as Record<string, unknown>, payload.goodsNos, payload.audiences)) {
@@ -518,6 +519,12 @@ export const marketingMock: Pick<MerchantApi,
     }
     if (itemCost && !payload.goodsNos?.length) {
       throw new ApiError(40020, "请选择参加活动的商品");
+    }
+    if (payload.triggerType === "COMBO") {
+      const rs = payload.rules ?? [];
+      const ok = rs.some((r) => r.kind === "CONDITION") && rs.some((r) => r.kind === "BENEFIT")
+        && rs.every((r) => r.type !== "PERCENT" || ((r.bp ?? 0) >= 1000 && (r.bp ?? 0) < 10000 && (r.capMinor ?? 0) > 0));
+      if (!ok) throw new ApiError(10400, "条件与优惠都至少要一项；打折须封顶");
     }
     if (payload.triggerType === "CUTOFF"
         && (!/^([01]\d|2[0-3]):[0-5]\d$/.test(payload.cutoffTime ?? "") || schedule === "RECURRING")) {
@@ -568,6 +575,8 @@ export const marketingMock: Pick<MerchantApi,
       periodQuota: payload.triggerType === "CUTOFF" ? (payload.periodQuota ?? null) : null,
       decideHours: payload.triggerType === "CUTOFF" ? (payload.decideHours ?? null) : null,
       groupHours: payload.triggerType === "GROUP" ? (payload.groupHours ?? null) : null,
+      // 自己组合的条件与优惠原样存；其余玩法清空（与后端「从组合改成别的玩法，旧行不留」一致）
+      rules: payload.triggerType === "COMBO" ? (payload.rules ?? []) : null,
     };
     if (exist) Object.assign(exist, row);
     else db.storeActivities.unshift(row);

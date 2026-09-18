@@ -47,8 +47,15 @@ public class PmtActivity extends BaseEntity {
      * {@code pmt_period}，一个截单日一行（ADR-024）。
      */
     public static final String TRIGGER_CUTOFF = "CUTOFF";
+    /**
+     * 自己组合（原型 s11）：条件与优惠不在主表那一组字段里，在 {@code pmt_activity_rule}。
+     * 触发与优惠两列都写 COMBO —— 只看其中一列分支的老代码会跳过它，而不是把它当成某个旧玩法。
+     */
+    public static final String TRIGGER_COMBO = "COMBO";
 
     /** 减金额 */
+    /** 自己组合：优惠在 {@code pmt_activity_rule} 里，可以是几样叠加 */
+    public static final String BENEFIT_COMBO = "COMBO";
     public static final String BENEFIT_CUT = "CUT";
     /** 改单价（限时特价） */
     public static final String BENEFIT_PRICE = "PRICE";
