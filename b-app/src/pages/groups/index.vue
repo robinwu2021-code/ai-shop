@@ -88,7 +88,7 @@ onShow(load);
 <template>
   <sh-scaffold title-key="groups.title" :denied="!merchant.can('biz:campaign')">
     <text class="txt-display">{{ $t("groups.title") }}</text>
-    <text class="txt-title sec">{{ $t("groups.running") }}</text>
+    <text class="txt-title sec sh-mt-sm">{{ $t("groups.running") }}</text>
     <sh-empty v-if="!groups.length"
           :failed="failed"
           @retry="load" :text='$t("groups.noRunning")'></sh-empty>
