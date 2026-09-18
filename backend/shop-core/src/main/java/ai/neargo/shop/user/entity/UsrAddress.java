@@ -44,6 +44,22 @@ public class UsrAddress extends BaseEntity {
      */
     private String houseNo;
 
+    /**
+     * ISO 3166-1 两位码，默认 {@code CN}。
+     *
+     * <p><b>非 CN 时端上整段换形状</b>：关掉地点搜索、附近、地图选点、省市区拆分 ——
+     * 高德不覆盖海外，给一个点了搜不到东西的搜索框比没有更糟。
+     * 那时 {@code province/city/district} 三列不再是国标行政区划，
+     * 而是用户自己填的 City / State —— 这一点必须靠这一列才判得出来。
+     */
+    private String countryCode;
+
+    /** 邮编。中国大陆不用，海外多数国家必填 */
+    private String postalCode;
+
+    /** 手机国家区号（不带 +），默认 86。位数校验按国家放宽，不再写死 11 位 */
+    private String phoneCc;
+
     private Integer latE6;
     private Integer lngE6;
 

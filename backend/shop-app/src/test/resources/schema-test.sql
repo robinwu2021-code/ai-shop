@@ -1285,6 +1285,9 @@ CREATE TABLE IF NOT EXISTS usr_address
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     region VARCHAR(96) NULL,
     house_no VARCHAR(40) NULL,
+    country_code CHAR(2) NOT NULL DEFAULT 'CN',
+    postal_code VARCHAR(16) DEFAULT NULL,
+    phone_cc VARCHAR(8) NOT NULL DEFAULT '86',
     PRIMARY KEY (id),
     CONSTRAINT uk_address_id UNIQUE (address_id)
 );

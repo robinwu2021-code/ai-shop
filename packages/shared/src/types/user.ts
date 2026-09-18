@@ -151,6 +151,19 @@ export interface Address {
   /** 详细地址（街道门牌） */
   detail: string;
   /**
+   * ISO 3166-1 两位码，默认 `CN`（V333）。
+   *
+   * **非 CN 时整段换形状**：关掉地点搜索、附近、地图选点、省市区拆分 ——
+   * 高德不覆盖海外，给一个点了搜不到东西的搜索框比没有更糟。
+   * 那时 `province/city/district` 三格不再是国标行政区划，
+   * 而是用户自己填的 City / State —— 这一点只有靠这一列才判得出来。
+   */
+  countryCode?: string | null;
+  /** 邮编。中国大陆为空，海外多数国家必填 */
+  postalCode?: string | null;
+  /** 手机国家区号（不带 +），默认 `86`。位数校验按国家放宽，不再写死 11 位 */
+  phoneCc?: string | null;
+  /**
    * 门牌号（楼号-单元-室），V319 从 `detail` 里分出来。
    *
    * **与 `detail` 的区别不是长短，是来源**：`detail` 是地址主体，由选点页给出、带坐标；

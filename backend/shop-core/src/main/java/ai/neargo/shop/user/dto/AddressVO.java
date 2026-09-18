@@ -21,6 +21,12 @@ public record AddressVO(String addressId,
                         String houseNo,
                         boolean isDefault,
                         String tag,
+                        /** ISO 3166-1 两位码。非 CN 时端上整段换形状（见实体上的说明） */
+                        String countryCode,
+                        /** 邮编。中国大陆为空 */
+                        String postalCode,
+                        /** 手机国家区号（不带 +） */
+                        String phoneCc,
                         /** 坐标（gcj02，E6）。可能为 null —— 存量地址是纯手填的，没有坐标 */
                         Integer latE6,
                         Integer lngE6) {
@@ -41,6 +47,9 @@ public record AddressVO(String addressId,
                 a.getRegion(), a.getProvince(), a.getCity(), a.getDistrict(), a.getDetail(),
                 a.getHouseNo(),
                 Boolean.TRUE.equals(a.getIsDefault()), a.getTag(),
+                // **加了列要真的读出来**：只改写入的话这三列永远读回 null，
+                // 界面上看不出区别（海外地址会被当成 CN 渲染），闸门也全绿
+                a.getCountryCode(), a.getPostalCode(), a.getPhoneCc(),
                 a.getLatE6(), a.getLngE6());
     }
 }

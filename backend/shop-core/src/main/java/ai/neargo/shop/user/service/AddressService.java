@@ -58,14 +58,24 @@ public interface AddressService {
                        String province, String city, String district, String detail,
                        String houseNo,
                        Boolean isDefault, String tag,
-                       Integer latE6, Integer lngE6) {
+                       Integer latE6, Integer lngE6,
+                       String countryCode, String postalCode, String phoneCc) {
 
         /** 不带坐标、也不带门牌的老形状 */
         public SaveCommand(String addressId, String name, String phone, String region,
                            String province, String city, String district, String detail,
                            Boolean isDefault, String tag) {
             this(addressId, name, phone, region, province, city, district, detail,
-                    null, isDefault, tag, null, null);
+                    null, isDefault, tag, null, null, null, null, null);
+        }
+
+        /** 不带国家/邮编/区号的形状（旧版本端上不发这三个字段） */
+        public SaveCommand(String addressId, String name, String phone, String region,
+                           String province, String city, String district, String detail,
+                           String houseNo, Boolean isDefault, String tag,
+                           Integer latE6, Integer lngE6) {
+            this(addressId, name, phone, region, province, city, district, detail,
+                    houseNo, isDefault, tag, latE6, lngE6, null, null, null);
         }
     }
 }

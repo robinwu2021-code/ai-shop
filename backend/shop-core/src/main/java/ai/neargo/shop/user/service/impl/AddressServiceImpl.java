@@ -57,6 +57,21 @@ public class AddressServiceImpl implements AddressService {
         row.setDistrict(cmd.district());
         row.setDetail(cmd.detail());
         row.setHouseNo(cmd.houseNo());
+        /*
+         * **null = 这次不改**，与坐标同一口径：旧版本端上不发这三个字段，
+         * 把缺省当清空会把一条海外地址的国家悄悄改成 CN，
+         * 而那时它的 province/city 还是用户自己填的 City/State —— 两边都错，
+         * 且界面上看不出来（省市区那三格照样有字）。
+         */
+        if (cmd.countryCode() != null) {
+            row.setCountryCode(cmd.countryCode());
+        }
+        if (cmd.postalCode() != null) {
+            row.setPostalCode(cmd.postalCode());
+        }
+        if (cmd.phoneCc() != null) {
+            row.setPhoneCc(cmd.phoneCc());
+        }
         // 两个都给才写：只来一半是端上的 bug，写进去会得到一个落在赤道或本初子午线上的收货地址
         if (cmd.latE6() != null && cmd.lngE6() != null) {
             row.setLatE6(cmd.latE6());

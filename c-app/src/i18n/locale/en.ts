@@ -634,6 +634,22 @@ timeSlotPh: "e.g. tonight 19:00–21:00",
     all: "All cities",
     noResults: "No city found",
   },
+  /**
+   * 国家/地区。**一期只做「存得下、说得清、寄得出」** ——
+   * 不做行政区划校验，也不做地址格式本地化。
+   */
+  country: {
+    CN: "Chinese mainland",
+    HK: "Hong Kong, China",
+    MO: "Macao, China",
+    TW: "Taiwan, China",
+    SG: "Singapore",
+    MY: "Malaysia",
+    US: "United States",
+    AU: "Australia",
+    GB: "United Kingdom",
+    JP: "Japan",
+  },
   addressPick: {
     searchIn: "Searching in",
     nearHere: "Near you",
@@ -659,6 +675,12 @@ timeSlotPh: "e.g. tonight 19:00–21:00",
     /** 与「设为默认」是两个动作：这个管看货，那个管下单预填 */
     /** 地图挂了、用的是库里旧的那条 —— 要说出来，不能让人以为它是刚测的 */
     placeStale: "This location may be out of date",
+    line1: "Address line 1",
+    line2: "Address line 2 (apt, suite)",
+    cityField: "City",
+    stateField: "State / Province",
+    postalCode: "Postal code",
+    phoneCc: "Code",
     youAreHere: "Current location",
     useCurrentLocation: "Use current location",
     saveAsAddress: "Save as address",

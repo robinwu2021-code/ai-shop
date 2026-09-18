@@ -676,6 +676,22 @@ export default {
     all: "全部城市",
     noResults: "没有找到这个城市",
   },
+  /**
+   * 国家/地区。**一期只做「存得下、说得清、寄得出」** ——
+   * 不做行政区划校验，也不做地址格式本地化。
+   */
+  country: {
+    CN: "中国大陆",
+    HK: "中国香港",
+    MO: "中国澳门",
+    TW: "中国台湾",
+    SG: "新加坡",
+    MY: "马来西亚",
+    US: "美国",
+    AU: "澳大利亚",
+    GB: "英国",
+    JP: "日本",
+  },
   addressPick: {
     searchIn: "搜索范围",
     nearHere: "当前位置附近",
@@ -708,6 +724,12 @@ export default {
     /** 定位匹配到的那条：只标出来，点一下就切，不弹窗 */
     /** 地图挂了、用的是库里旧的那条 —— 要说出来，不能让人以为它是刚测的 */
     placeStale: "位置可能不是最新的",
+    line1: "街道地址（Address line 1）",
+    line2: "公寓/门牌（Address line 2）",
+    cityField: "城市 City",
+    stateField: "州/省 State",
+    postalCode: "邮编 Postal code",
+    phoneCc: "区号",
     youAreHere: "当前位置",
     useCurrentLocation: "使用当前位置",
     // 没有收货地址时的主动作：把当前定位一键变成可下单的地址

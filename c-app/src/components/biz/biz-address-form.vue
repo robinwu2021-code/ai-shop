@@ -51,6 +51,9 @@ const draft = ref<Omit<Address, "addressId"> & { addressId?: string }>(
       detail: props.place?.name ?? "",
       houseNo: "",
       isDefault: !!props.first, tag: "",
+      countryCode: "CN",
+      postalCode: "",
+      phoneCc: "86",
       latE6: props.place?.latE6 ?? null,
       lngE6: props.place?.lngE6 ?? null,
     },
@@ -218,9 +221,87 @@ const TAG_PRESETS = ["tagHome", "tagWork", "tagSchool"] as const;
  * 两处分开写的话，H5 上会出现「进不了选点页、地址主体却锁着」——他就永远存不了地址。
  */
 const canPick = computed(() => canSearchPlaces() || canChooseLocation());
+
+/**
+ * 中国大陆以外。**整段换形状的唯一开关**。
+ *
+ * <p>关掉的：地点搜索、附近、地图选点、省市区拆分 —— 高德不覆盖海外，
+ * 给一个点了搜不到东西的搜索框，比干脆没有更糟。
+ * 打开的：Address line / City / State / 邮编，手机号带区号且不再写死 11 位。
+ *
+ * <p>存量地址读出来是 `CN`（库里那一列 NOT NULL DEFAULT 'CN'），
+ * 所以这条判断对老数据天然成立，不需要回填。
+ */
+const overseas = computed(() => !!draft.value.countryCode && draft.value.countryCode !== "CN");
+
+/**
+ * 常用的国家/地区。**一期只做「存得下、说得清、寄得出」** ——
+ * 不做行政区划校验，也不做地址格式本地化（日本的番地、英国的 postcode 格式）。
+ */
+const COUNTRIES = [
+  { code: "CN", cc: "86" },
+  { code: "HK", cc: "852" },
+  { code: "MO", cc: "853" },
+  { code: "TW", cc: "886" },
+  { code: "SG", cc: "65" },
+  { code: "MY", cc: "60" },
+  { code: "US", cc: "1" },
+  { code: "AU", cc: "61" },
+  { code: "GB", cc: "44" },
+  { code: "JP", cc: "81" },
+] as const;
+
+/**
+ * 换国家时**顺手把区号也换了**，但不覆盖他已经改过的。
+ *
+ * <p>不换的话，一个选了美国的人手机号前面还挂着 +86 —— 而那条地址
+ * 保存得下、看起来也正常，只有发短信那一刻才发现发不出去。
+ */
+function pickCountry(code: string, cc: string) {
+  const prev = COUNTRIES.find((c) => c.code === draft.value.countryCode);
+  if (!draft.value.phoneCc || draft.value.phoneCc === prev?.cc) {
+    draft.value.phoneCc = cc;
+  }
+  draft.value.countryCode = code;
+}
 </script>
 
 <template>
+    <!--
+      **国家/地区在最上面**：它决定了下面整段长什么样，摆在后面的话
+      用户会先填一半省市区、再发现自己要选的是美国。
+    -->
+    <view class="countryrow sh-row sh-wrap">
+      <text
+        v-for="c in COUNTRIES"
+        :key="c.code"
+        class="sh-chip"
+        :class="{ 'sh-chip--primary': draft.countryCode === c.code }"
+        @tap="pickCountry(c.code, c.cc)"
+      >{{ $t(`country.${c.code}`) }}</text>
+    </view>
+
+    <!--
+      **海外：整段换形状。** 地点搜索、附近、地图选点、省市区拆分全关掉 ——
+      高德不覆盖海外，给一个点了搜不到东西的搜索框比干脆没有更糟。
+      一期只保证「存得下、说得清、寄得出」，不做地址格式本地化。
+    -->
+    <template v-if="overseas">
+      <input maxlength="96" v-model="draft.detail" class="field__input"
+             :placeholder="$t('address.line1')" />
+      <input maxlength="96" v-model="draft.houseNo" class="field__input"
+             :placeholder="$t('address.line2')" />
+      <view class="namerow sh-row">
+        <input maxlength="64" v-model="draft.city" class="field__input sh-fill"
+               :placeholder="$t('address.cityField')" />
+        <input maxlength="64" v-model="draft.province" class="field__input sh-fill"
+               :placeholder="$t('address.stateField')" />
+      </view>
+      <input maxlength="16" v-model="draft.postalCode" class="field__input"
+             :placeholder="$t('address.postalCode')" />
+    </template>
+
+    <template v-else>
     <!--
       **所在位置摆在最上面，而且已选点时收成一张只读的卡。**
 
@@ -380,6 +461,14 @@ const canPick = computed(() => canSearchPlaces() || canChooseLocation());
   flex-shrink: 0;
 }
 /* 姓名与手机同行：两个都是短字段，各占一行会把表拉得看不到头 */
+.countryrow {
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+.phonecc {
+  width: 140rpx;
+  flex-shrink: 0;
+}
 .namerow {
   gap: 16rpx;
 }

@@ -219,7 +219,8 @@ public class MpUserController {
         return addressService.save(new AddressService.SaveCommand(
                 req.addressId(), req.name(), req.phone(), req.region(), req.province(), req.city(),
                 req.district(), req.detail(), req.houseNo(), req.isDefault(), req.tag(),
-                req.latE6(), req.lngE6()));
+                req.latE6(), req.lngE6(),
+                req.countryCode(), req.postalCode(), req.phoneCc()));
     }
 
     @PostMapping("/address/{addressId}/archive")
@@ -259,7 +260,17 @@ public class MpUserController {
                                   */
                                  String houseNo,
                                  Boolean isDefault, String tag,
-                                 Integer latE6, Integer lngE6) {
+                                 Integer latE6, Integer lngE6,
+                                 /*
+                                  * 海外三件套（V333）。**三个都不设 @NotBlank，也不设默认值** ——
+                                  * 旧版本 App 不发它们，而 null 在服务层的含义是「这次不改」
+                                  * （与坐标同一口径）。给默认值的话，一条海外地址被旧端
+                                  * 改了一次手机号，国家就悄悄变回 CN，而省市区那三格照样有字，
+                                  * 界面上看不出任何异常。
+                                  */
+                                 String countryCode,
+                                 String postalCode,
+                                 String phoneCc) {
     }
 
     public record LoginReq(@NotBlank String grantType, @NotBlank String principal, String credential,
