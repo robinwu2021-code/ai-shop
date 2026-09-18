@@ -1,6 +1,6 @@
 # TDD-C端商品详情·销售范围标识
 
-状态：已确认（口头，2026-09-18）
+状态：已实现（2026-09-18）
 关联需求：口头 —— 「首页根据门店范围展示商品清单即可，不要写社区在买以及位置信息，
 但是可以在商品详情页标识商品的销售范围，列表页面暂时可以不标识」
 创建日期：2026-09-18
@@ -83,8 +83,18 @@ record SaleScope(boolean unlimited, java.util.List<String> areaNames, int areaCo
 
 ## 6. 实现任务
 
-- [ ] `MerchantQueryPort#saleScope` + `MerchantPortImpl` 实现
-- [ ] `GoodsVO.SaleScopeVO` + `GoodsServiceImpl#detail` 填充
-- [ ] `packages/shared` 契约字段
-- [ ] c-app 详情页渲染 + i18n 三语
-- [ ] 后端场景测试 4 条 + 端上守卫
+- [x] `MerchantQueryPort#saleScope` + `MerchantPortImpl` 实现
+- [x] `GoodsVO.SaleScopeVO` + **`GoodsServiceImpl#detailForBuyer`** 填充
+- [x] `packages/shared` 契约字段
+- [x] c-app 详情页渲染 + i18n 三语
+- [x] 后端场景测试 5 条（`GoodsSaleScopeFlowTest`）+ 端上守卫（`c-app/tests/sale-scope.test.ts`）
+
+## 7. 落地时改掉的一处设计
+
+方案里写的是「在 `detail()` 里填」，实现时必须改成**另开 `detailForBuyer()`**：
+商家端与运营端的单件详情也走 `detail()`，而读销售范围要读 `mch_entity` ——
+运营端的查询路径一律不许绕过数据域，于是 `GET /ops/goods/{no}` 凭空多出两处越权
+（G1 守卫当场报了出来：配了「只看某商家」的运营会照样看到全量，页面上无任何线索）。
+
+这一处在方案阶段看不出来：「复用同一个 detail」在功能上完全正确，
+是数据域那条横切规则把它变成了错的。
