@@ -34,6 +34,13 @@
 #     到点就硬踢。已改成「用着就不过期」，见 DbTokenStore#touchIfStale。）
 #   · GET /mp/coupon/mine  与端上在用的 /mp/my-coupons 疑似同一件事的两套实现，
 #     接之前先判是不是该删后端那个，而不是给它补入口。
+#
+# 2026-09-19 加 1 条，**有意保留、有删除时点**：
+#   · POST /mp/group-buy/*/join  拼团 P1b（64e83533）把参团并进了下单（带团号下单、
+#     付款才算成员），新版 c-app 不再调它；后端只剩一件事 —— 回 40033「请升级」。
+#     **留着是给线上旧版小程序的**：新版还没过审上架，旧版点「参团」要看到升级提示，
+#     删了就变成 404。新版小程序全量之后删掉后端这个端点与本行
+#     （连带 MpEndpointAuthTest 名单、gen-openapi.py、M6cGroupFlowTest.legacyJoinAsksToUpgrade）。
 b-app GET /biz/inventory/export
 b-app GET /biz/settle/bills/*
 b-app POST /biz/geo/geocode
@@ -59,6 +66,7 @@ c-app GET /mp/topics/*/goods
 c-app POST /mp/after-sale/*/cancel
 c-app POST /mp/attribution/report
 c-app POST /mp/coupon/best
+c-app POST /mp/group-buy/*/join
 c-app POST /mp/order/*/confirm-receipt
 c-app POST /mp/risk/appeal
 c-app POST /mp/store/*/enter
