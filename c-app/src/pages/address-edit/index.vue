@@ -28,17 +28,42 @@ const first = ref(false);
  * 于是用户看到的是一张空表，他会以为这条地址的内容丢了。
  */
 const ready = ref(false);
+/**
+ * 这一次没取到。**与「这是新建」是两件事** ——
+ * 不分开的话，编辑时网络抖一下他就会拿到一张空白的「新建」表单，
+ * 而页面上没有任何痕迹：他会以为这条地址的内容丢了。
+ */
+const failed = ref(false);
 
 function onSaved() {
   uni.navigateBack();
 }
 
-onLoad(async (q?: Record<string, string>) => {
-  const list = await api.addressList().catch(() => [] as Address[]);
+/** 要编辑的那一条的 id；新建时为空 */
+const editingId = ref("");
+
+async function load() {
+  failed.value = false;
+  let list: Address[];
+  try {
+    list = await api.addressList();
+  } catch {
+    // **编辑模式下这是致命的**：拿不到那一条就不能假装在新建
+    failed.value = !!editingId.value;
+    ready.value = true;
+    return;
+  }
   first.value = !list.length;
-  if (q?.addressId) {
-    address.value = list.find((a) => a.addressId === q.addressId) ?? null;
-  } else if (q?.latE6 && q?.lngE6) {
+  if (editingId.value) {
+    address.value = list.find((a) => a.addressId === editingId.value) ?? null;
+    failed.value = !address.value;
+  }
+  ready.value = true;
+}
+
+onLoad(async (q?: Record<string, string>) => {
+  editingId.value = q?.addressId ?? "";
+  if (q?.latE6 && q?.lngE6) {
     /*
      * 带着坐标进来的（「把当前位置存成收货地址」那条路）。
      * **坐标是这条路的全部收获** —— 少了它，存下来的又是一条推不出聚落、
@@ -52,7 +77,7 @@ onLoad(async (q?: Record<string, string>) => {
       latE6: Number(q.latE6), lngE6: Number(q.lngE6),
     };
   }
-  ready.value = true;
+  await load();
 });
 
 /**
@@ -77,8 +102,10 @@ const formKey = ref(0);
 
 <template>
   <sh-scaffold :title-key="address ? 'address.edit' : 'address.add'">
+    <!-- 没取到 ≠ 新建：说出来，并给一条回去的路 -->
+    <sh-empty v-if="ready && failed" line failed @retry="load"></sh-empty>
     <biz-address-form
-      v-if="ready"
+      v-else-if="ready"
       :key="formKey"
       :address="address"
       :place="place"

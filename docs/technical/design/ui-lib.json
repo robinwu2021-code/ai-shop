@@ -2129,7 +2129,7 @@
       ],
       "usage": {
         "b-app": 49,
-        "c-app": 28,
+        "c-app": 29,
         "lib": 1
       },
       "note": "空态",
@@ -4348,6 +4348,7 @@
       "key": "c-app/address-edit",
       "file": "c-app/src/pages/address-edit/index.vue",
       "components": [
+        "sh-empty",
         "sh-scaffold"
       ],
       "libClassHits": 0,
