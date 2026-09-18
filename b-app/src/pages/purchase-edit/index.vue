@@ -301,7 +301,16 @@ onShow(load);
       </sh-kv>
     </view>
 
-    <sh-empty v-if="!lines.length" :text="String($t('purchase.noLines'))"></sh-empty>
+    <!--
+      ★ **新建单据时不放空态卡**（2026-09-18 店主：进销存几页「浪费太多空间」）。
+
+      量到的：那张卡 70px + 上下间距 10px，**而它正下方就是「+ 添加商品」** ——
+      一句「尚未添加商品」既没告诉他发生了什么，也没告诉他该做什么，
+      那枚按钮两件都做到了。空着的位置本身就是「还没加」。
+
+      **已有单据那一侧的空态留着**（见上面 doc 分支）：那里「没有行」是
+      「这张单还没发出」，是一条真消息，而且那一屏没有别的东西替它说话。
+    -->
 
     <view v-for="l in lines" :key="l.itemId" class="sh-card sh-mb-sm">
       <view class="row__top sh-row">
