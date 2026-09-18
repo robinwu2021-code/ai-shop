@@ -15,7 +15,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { money, toMinor } from "@shared/utils/money";
-import type { ActivityConflict, StoreActivityDraft } from "@shared/types";
+import type { ActivityConflict, Goods, StoreActivityDraft } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -44,6 +44,8 @@ const form = ref({
   quota: "100",
   budget: "",
   audienceType: "",
+  /** 成团人数。**下限 2** —— 1 个人不叫团，后端也拒 */
+  groupN: "2",
 });
 
 /** 目标 → 后面几步的默认值。商家想的是「拉新」，不是「触发条件 = 满额」 */
@@ -52,7 +54,18 @@ const GOALS = [
   { key: "WAKEUP", benefit: "CUT", audience: "LEVEL:SLEEPING" },
   { key: "CLEAR", benefit: "PRICE", audience: "" },
   { key: "BASKET", benefit: "CUT", audience: "" },
+  /*
+   * ★ **团购**（2026-09-18）：价格与人数此前长在商品上，一件货一辈子只有一个
+   * 团购价。挪进活动之后它才可能在不同时间参加不同的团。
+   *
+   * 与「清库存」都是 PRICE，**目标才是分水岭** —— 所以下面凡是判团购的地方
+   * 一律看 `goal === "GROUP"`，不看 benefitType。
+   */
+  { key: "GROUP", benefit: "PRICE", audience: "" },
 ];
+
+/** 是不是团购活动。判的是目标，不是优惠类型 —— 清库存也是 PRICE */
+const isGroup = computed(() => form.value.goal === "GROUP");
 
 function pickGoal(key: string) {
   const g = GOALS.find((x) => x.key === key)!;
@@ -86,6 +99,33 @@ const alwaysOnUncapped = computed(
  *  是**加载成功之后**才设的，失败时它们是空的 */
 const currentNo = ref("");
 const failed = ref(false);
+
+/*
+ * ★ **选货控件此前根本不存在**（2026-09-18 查实）。
+ *
+ * `goodsNos` 只在「载入一个已有活动」时被填过，新建时永远是空数组，
+ * 而「改单价 / 送商品必须指定商品」那条校验拦在保存那一步 ——
+ * 于是四个目标里的**「清库存」与「买赠」从这一页建不出来**，
+ * 报的是「特价和买赠必须选商品」，而界面上没有任何地方能选。
+ * 线上 pmt_activity 0 条，与这条正好对得上。
+ *
+ * 写法照营销页那一段（chip 多选），不新造件。
+ */
+const goods = ref<Goods[]>([]);
+
+async function loadGoods() {
+  try {
+    goods.value = (await api.mGoodsList({ size: 100 })).records;
+  } catch {
+    // 拉不到就让它空着：选不了货保存会被拦，比在这儿弹一个错更清楚
+  }
+}
+
+function toggleGoods(no: string) {
+  const cur = form.value.goodsNos;
+  form.value.goodsNos = cur.includes(no) ? cur.filter((x) => x !== no) : [...cur, no];
+  void checkConflicts();
+}
 
 async function checkConflicts() {
   if (!form.value.goodsNos.length) {
@@ -123,6 +163,7 @@ async function loadExisting(no: string) {
   form.value.threshold = String(((a.triggerAmountMinor ?? 0) / 100).toFixed(2));
   form.value.amount = String(((a.benefitAmountMinor ?? 0) / 100).toFixed(2));
   form.value.buyN = String(a.triggerQty ?? 2);
+  form.value.groupN = String(a.triggerQty ?? 2);
   form.value.giftM = String(a.benefitQty ?? 1);
   form.value.goodsNos = [...a.goodsNos];
   form.value.scheduleType = a.scheduleType;
@@ -174,10 +215,13 @@ async function save() {
     name: form.value.name.trim(),
     goal: form.value.goal,
     benefitType: form.value.benefitType,
-    triggerType: form.value.benefitType === "GIFT" ? "QTY"
-      : form.value.benefitType === "PRICE" ? "GOODS" : "AMOUNT",
+    // 团购看目标不看优惠：它与「清库存」都是 PRICE，分不开就会把团存成特价
+    triggerType: isGroup.value ? "GROUP"
+      : form.value.benefitType === "GIFT" ? "QTY"
+        : form.value.benefitType === "PRICE" ? "GOODS" : "AMOUNT",
     triggerAmountMinor: form.value.benefitType === "CUT" ? toMinor(form.value.threshold) : null,
-    triggerQty: form.value.benefitType === "GIFT" ? Number(form.value.buyN || 0) : null,
+    triggerQty: isGroup.value ? Number(form.value.groupN || 0)
+      : form.value.benefitType === "GIFT" ? Number(form.value.buyN || 0) : null,
     benefitAmountMinor: form.value.benefitType === "GIFT" ? null : toMinor(form.value.amount),
     benefitQty: form.value.benefitType === "GIFT" ? Number(form.value.giftM || 0) : null,
     scheduleType: form.value.scheduleType,
@@ -206,6 +250,7 @@ async function save() {
 }
 
 onLoad((q) => {
+  void loadGoods();
   if (q?.activityNo) void loadExisting(q.activityNo as string);
 });
 </script>
@@ -249,8 +294,13 @@ onLoad((q) => {
 
     <!-- ② 优惠什么样 -->
     <view v-if="step === 2" class="sh-card">
-      <text class="field__label">{{ $t("activityEdit.benefitQ") }}</text>
-      <view class="chips sh-wrap">
+      <!-- 团购没有可选项，那这个提问也不该出现：一个问句下面空着比没有问句更怪 -->
+      <text v-if="!isGroup" class="field__label">{{ $t("activityEdit.benefitQ") }}</text>
+      <!--
+        ★ **团购不给选优惠类型**（2026-09-18）：它只可能是「成团价」。
+        给了三个选项而其中两个存不进去（后端拒），那不是自由，是让他试错。
+      -->
+      <view v-if="!isGroup" class="chips sh-wrap">
         <text
           v-for="b in ['CUT', 'PRICE', 'GIFT']"
           :key="b"
@@ -271,12 +321,21 @@ onLoad((q) => {
         </view>
       </template>
 
+      <!--
+        团购多问一个人数，排在价格**前面**：他脑子里先有「几个人一起买」，
+        才有「那便宜多少」。反过来问的话，填价时还不知道是几人的价。
+      -->
+      <view v-if="isGroup" class="sh-row sh-mt-sm sh-mt-xs">
+        <text class="txt-sub row__label">{{ $t("activityEdit.groupN") }}</text>
+        <input maxlength="3" v-model="form.groupN" class="field__input row__input" type="number" />
+      </view>
+
       <template v-if="form.benefitType === 'PRICE'">
         <view class="sh-row sh-mt-sm sh-mt-xs">
-          <text class="txt-sub row__label">{{ $t("activityEdit.price") }}</text>
+          <text class="txt-sub row__label">{{ isGroup ? $t("activityEdit.groupPrice") : $t("activityEdit.price") }}</text>
           <input maxlength="10" v-model="form.amount" class="field__input row__input" type="digit" />
         </view>
-        <text class="sh-muted sh-hint">{{ $t("activityEdit.priceHint") }}</text>
+        <text class="sh-muted sh-hint">{{ isGroup ? $t("activityEdit.groupHint") : $t("activityEdit.priceHint") }}</text>
       </template>
 
       <template v-if="form.benefitType === 'GIFT'">
@@ -288,6 +347,24 @@ onLoad((q) => {
           <text class="txt-sub row__label">{{ $t("activityEdit.giftM") }}</text>
           <input maxlength="6" v-model="form.giftM" class="field__input row__input" type="number" />
         </view>
+      </template>
+
+      <!--
+        选货。**只在「改单价 / 送商品」时出现** —— 满减是整单的，问他挑哪几件
+        没有意义，而多一个控件就多一次「这个要不要填」。
+      -->
+      <template v-if="isItemCost">
+        <text class="field__label sh-mt-sm">{{ $t("activityEdit.goodsQ") }}</text>
+        <view class="chips sh-wrap">
+          <text
+            v-for="g in goods"
+            :key="g.goodsNo"
+            class="sh-chip"
+            :class="{ 'sh-chip--primary': form.goodsNos.includes(g.goodsNo) }"
+            @tap="toggleGoods(g.goodsNo)"
+          >{{ g.title }}</text>
+        </view>
+        <sh-empty v-if="!goods.length" :text="String($t('activityEdit.noGoods'))"></sh-empty>
       </template>
 
       <!-- 冲突提示：不阻止，但要在保存前说出来 -->

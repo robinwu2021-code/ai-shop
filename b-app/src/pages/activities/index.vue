@@ -62,6 +62,15 @@ function ruleText(a: StoreActivity) {
       n: money(a.triggerAmountMinor ?? 0), m: money(a.benefitAmountMinor ?? 0),
     });
   }
+  /*
+   * 团购与清库存**都是 PRICE**，靠 benefitType 分不开 —— 分水岭是触发。
+   * 不分的话列表上一条团购写着「特价 ¥8.80」，而商家找的是「几人成团」。
+   */
+  if (a.triggerType === "GROUP") {
+    return t("activities.ruleGroup", {
+      n: a.triggerQty ?? 0, m: money(a.benefitAmountMinor ?? 0),
+    });
+  }
   if (a.benefitType === "PRICE") {
     return t("activities.rulePrice", { n: money(a.benefitAmountMinor ?? 0) });
   }

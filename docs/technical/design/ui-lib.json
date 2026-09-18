@@ -522,7 +522,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 114,
+        "b-app": 115,
         "c-app": 61
       }
     },
@@ -1426,7 +1426,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 295,
+        "b-app": 296,
         "c-app": 146
       }
     },
@@ -1628,7 +1628,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 52,
+        "b-app": 53,
         "c-app": 22
       }
     },
@@ -1644,7 +1644,7 @@
         "margin-top": "10px"
       },
       "usage": {
-        "b-app": 51,
+        "b-app": 50,
         "c-app": 0
       }
     },
@@ -1722,7 +1722,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 99,
+        "b-app": 98,
         "c-app": 24
       }
     },
@@ -1744,7 +1744,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 71,
+        "b-app": 72,
         "c-app": 0
       }
     },
@@ -1852,7 +1852,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 93,
+        "b-app": 95,
         "c-app": 3
       }
     },
@@ -1868,7 +1868,7 @@
         "margin-top": "4px"
       },
       "usage": {
-        "b-app": 37,
+        "b-app": 38,
         "c-app": 0
       }
     }
@@ -2128,7 +2128,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 46,
+        "b-app": 47,
         "c-app": 30,
         "lib": 1
       },
@@ -2323,7 +2323,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 49,
+        "b-app": 46,
         "c-app": 0,
         "lib": 0
       },
@@ -3282,10 +3282,11 @@
       "key": "b-app/activity-edit",
       "file": "b-app/src/pages/activity-edit/index.vue",
       "components": [
+        "sh-empty",
         "sh-option",
         "sh-scaffold"
       ],
-      "libClassHits": 91,
+      "libClassHits": 101,
       "localSelectors": 15,
       "localCssLines": 50,
       "rolled": []
@@ -3472,7 +3473,7 @@
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 281,
+      "libClassHits": 276,
       "localSelectors": 70,
       "localCssLines": 304,
       "rolled": []

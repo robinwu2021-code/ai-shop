@@ -315,27 +315,6 @@ const limitPerUser = ref("");
  */
 const fresh = ref({ cutoffAt: "", arrivalDesc: "", weighed: false, origin: "" });
 const service = ref({ durationMin: "", storeName: "" });
-/** 拼团档：两个值要么都填要么都不填 —— 缺一个开不出团，而界面上看着是配着的 */
-const groupBuy = ref({ minCount: "", price: "" });
-/**
- * 拼团开关。**不是新字段** —— 它只是「这两个框填不填」的可见表示：
- * 后端认的仍旧是 groupPriceMinor / groupMinCount，两个都空即关闭。
- *
- * 单独立一个 ref 而不是用 `groupBuy.price !== ""` 推导：那样一来，
- * 打开开关但还没输价格的那一刻，开关会自己弹回去。
- */
-const groupBuyOpen = ref(false);
-
-/** 起团人数默认 2 —— 后端本来就按 `< 2 → 2` 兜底，端上不给默认等于让人猜 */
-function toggleGroupBuy() {
-  groupBuyOpen.value = !groupBuyOpen.value;
-  if (groupBuyOpen.value) {
-    if (!groupBuy.value.minCount) groupBuy.value.minCount = "2";
-  } else {
-    // 关掉就是真的关掉：留着值会在保存时把拼团又开出去
-    groupBuy.value = { minCount: "", price: "" };
-  }
-}
 
 const isFresh = computed(() => type.value === CATEGORY_TYPE.FRESH);
 const isService = computed(() => type.value === CATEGORY_TYPE.SERVICE);
@@ -503,14 +482,7 @@ const missing = computed<string[]>(() => {
    */
   if (!categoryNo.value) out.push(t("goods.category"));
   // 一种履约都不选的商品谁也买不了 —— 后端会拒，这里先说出来
-  if (!fulfillments.value.length) out.push(t("goods.fulfillment"));
-  /*
-   * 拼团两个值要么都填要么都不填。**只填一个不是"填了一半"，是配了一个开不出的团** ——
-   * 后端按两者都齐来判「能不能开团」，只填团价的商家会以为自己开了团。
-   */
-  const gbFilled = [groupBuy.value.minCount, groupBuy.value.price].filter((v) => Number(v) > 0);
-  if (gbFilled.length === 1) out.push(t("goods.groupBuyIncomplete"));
-  const noPrice = rows.value.filter(
+  if (!fulfillments.value.length) out.push(t("goods.fulfillment"));  const noPrice = rows.value.filter(
     (r) => !Object.values(r.priceMajor).some((v) => Number(v) > 0),
   );
   if (noPrice.length) {
@@ -836,12 +808,6 @@ onLoad(async (q) => {
     durationMin: g.durationMin ? String(g.durationMin) : "",
     storeName: g.storeName ?? "",
   };
-  groupBuy.value = {
-    minCount: g.groupBuy ? String(g.groupBuy.minCount) : "",
-    price: g.groupBuy ? toMajor(g.groupBuy.price) : "",
-  };
-  // 已配过拼团的商品，进来就该是打开的 —— 否则那两个值存在却看不见
-  groupBuyOpen.value = Boolean(g.groupBuy);
   groups.value = g.specGroups.map((sg) => ({
     name: sg.name,
     options: [...sg.options],
@@ -927,13 +893,6 @@ function applyDraft(d: NonNullable<Awaited<ReturnType<typeof api.mGoodsDraft>>>,
       durationMin: d.service.durationMin ? String(d.service.durationMin) : service.value.durationMin,
       storeName: d.service.storeName ?? service.value.storeName,
     };
-  }
-  if (d.groupBuy) {
-    groupBuy.value = {
-      minCount: d.groupBuy.minCount ? String(d.groupBuy.minCount) : "",
-      price: d.groupBuy.price ? toMajor(d.groupBuy.price) : "",
-    };
-    groupBuyOpen.value = d.groupBuy.minCount !== undefined;
   }
   groups.value = d.specGroups.map((sg) => ({
     name: sg.name,
@@ -1035,11 +994,6 @@ async function save(thenSubmit = false) {
             storeName: service.value.storeName.trim(),
           }
         : undefined,
-      // 两个都空 = 显式关掉拼团；只填一个后端会拒（`missing` 已经先拦一道）
-      groupBuy: {
-        minCount: Number(groupBuy.value.minCount) || undefined,
-        price: groupBuy.value.price ? toMinor(groupBuy.value.price) : undefined,
-      },
       // 封面必须带上：上传完只存在 ref 里的话，店主看着图在、保存后 C 端却是空白
       cover: cover.value,
       specGroups: groups.value
@@ -2005,35 +1959,16 @@ async function save(thenSubmit = false) {
       </text>
 
       <!--
-        拼团。**从基本信息卡挪到这里**：它是价格，不是商品属性。
+        ★ **拼团的价格与人数已经挪进「活动」**（2026-09-18 店主：
+        「团购不要在商品编辑页面做，新增一个活动功能，在活动中管理团购」）。
 
-        默认折叠成一个开关，因为它是可选玩法而不是必填项 —— 此前三个输入框
-        常驻在基本信息卡底部，既占地方又不说明填了会发生什么，
-        线上 198 条商品**没有一条填过**。
+        原来这里有一个开关加两个输入框，后端认的是 `groupPriceMinor` /
+        `groupMinCount` 两列。挪走的收益不是省了三个控件，是**同一件货
+        从此可以在不同时间参加不同的团** —— 配在商品上时它一辈子只有一个团购价。
 
-        ⚠️ 这两个字段是拼团功能的**唯一开关**：`GroupServiceImpl` 开团时硬校验
-        `groupPriceMinor > 0`，缺了就抛「该商品未开放拼团」。所以不能删，
-        只能讲清楚 —— 团价由商家在商品上配，开团人不能自己定价。
+        新的落点：工作台 → 活动 → 开团购（`GROUP × PRICE`）。
+        见 docs/technical/design/TDD-团购从商品挪进活动.md
       -->
-      <view class="field">
-        <sh-kv :label="String($t('goods.groupBuyOn'))">
-          <text
-            class="sh-chip"
-            :class="{ 'sh-chip--primary': groupBuyOpen }"
-            @tap="toggleGroupBuy"
-          >
-            {{ groupBuyOpen ? $t("common.yes") : $t("common.no") }}
-          </text>
-        </sh-kv>
-        <template v-if="groupBuyOpen">
-          <sh-kv :label="String($t('goods.groupMinCount'))">
-            <input maxlength="6" v-model="groupBuy.minCount" class="field__input" type="number" />
-          </sh-kv>
-          <sh-kv :label="String($t('goods.groupPrice'))">
-            <input maxlength="10" v-model="groupBuy.price" class="field__input" type="digit" />
-          </sh-kv>
-        </template>
-      </view>
     </view>
 
     <!--
