@@ -298,40 +298,57 @@ onShow(() => {
 
       有匹配的话不显示这一行 —— 那条地址就在下面，标着「你在这儿」。
     -->
-    <biz-place-bar
-      v-if="locatedAt && !locatedMatch"
-      :name="locatedName"
-      :sub="list.length ? String($t('address.noMatchHint')) : ''"
-      :stale="location.placeStale"
-      can-save
-      @relocate="relocate"
-      @save="saveHereAsAddress"
-    ></biz-place-bar>
+    <!--
+      **这一页自己给块间距，不靠 sh-scaffold 那条。**
 
-    <biz-address-card
-      v-for="a in list"
-      :key="a.addressId"
-      :address="a"
-      actions
-      :here="a.addressId === locatedMatch"
-      :active="location.active?.addressId === a.addressId"
-      @tap="pick(a)"
-      @edit="openEdit(a)"
-      @remove="remove(a)"
-      @default="setDefault(a)"
-      @fix="openEdit(a)"
-    ></biz-address-card>
+      脚手架的块间距写在全局样式里，选择器是 `.sh-scaffold > biz-address-card`
+      这一类 —— 而 `.sh-scaffold` 是 sh-scaffold **组件内部**的节点，
+      卡片是本页的节点：这条选择器要跨组件边界，小程序真机上匹配不到，
+      于是两条地址是贴着的（H5 上有缝，只有把两端摆在一起才看得出来）。
 
-    <!-- 空态只说事实：他现在就能逛，只是还不能下单。上面那张卡才是下一步 -->
-    <sh-empty
-      bare
-      v-if="!list.length"
-      :pending="!loaded"
-      :failed="failed"
-      :text='$t("address.empty")'
-      :tip='locatedAt ? String($t("address.emptyHint")) : ""'
-      @retry="load"
-    ></sh-empty>
+      这里改成**容器自己给 gap**：容器与卡片都归本页所有，不跨任何边界，
+      而且 gap 是容器属性，根本不需要选中子元素。原型那一屏用的也是这个写法
+      （`display:flex; gap:10px`），两边因此是同一个模型。
+
+      只修了这一页 —— 同样的写法在其它页是不是也失效，要等真机确认，
+      别照着这一处就去改那七十处。
+    -->
+    <view class="stack">
+      <biz-place-bar
+        v-if="locatedAt && !locatedMatch"
+        :name="locatedName"
+        :sub="list.length ? String($t('address.noMatchHint')) : ''"
+        :stale="location.placeStale"
+        can-save
+        @relocate="relocate"
+        @save="saveHereAsAddress"
+      ></biz-place-bar>
+
+      <biz-address-card
+        v-for="a in list"
+        :key="a.addressId"
+        :address="a"
+        actions
+        :here="a.addressId === locatedMatch"
+        :active="location.active?.addressId === a.addressId"
+        @tap="pick(a)"
+        @edit="openEdit(a)"
+        @remove="remove(a)"
+        @default="setDefault(a)"
+        @fix="openEdit(a)"
+      ></biz-address-card>
+
+      <!-- 空态只说事实：他现在就能逛，只是还不能下单。上面那张卡才是下一步 -->
+      <sh-empty
+        bare
+        v-if="!list.length"
+        :pending="!loaded"
+        :failed="failed"
+        :text='$t("address.empty")'
+        :tip='locatedAt ? String($t("address.emptyHint")) : ""'
+        @retry="load"
+      ></sh-empty>
+    </view>
 
     <sh-actionbar :pad="160">
       <view class="sh-btn" :class="{ 'is-disabled': atLimit }" @tap="addNew">
@@ -344,132 +361,38 @@ onShow(() => {
 </template>
 
 <style scoped>
-
-.regionrow {
-  gap: 12rpx;
-}
-
-.regionrow__pick {
-  flex-shrink: 0;
-  padding: 12rpx 20rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-}
-.regionrow__pick.is-ok {
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
-}
-.card {
-  margin-bottom: 20rpx;
-}
-.card__head {
-  align-items: center;
-}
-
-.tiny {
-  padding: 4rpx 16rpx;
-}
-.card__addr {
-  display: block;
-  margin-top: 16rpx;
-}
-.card__ops {
-  gap: 32rpx;
-  margin-top: 20rpx;
-  padding-top: 20rpx;
-  /* 一条分隔线：上面是这条地址本身，下面是对它的操作 —— 没有线时两组读成一段 */
-  border-top: var(--sh-hairline-soft);
-}
-.card__nocoord {
-  margin-top: 16rpx;
-  gap: 16rpx;
-}
-.card__fix {
-  flex-shrink: 0;
-}
-/* 共用的 `.field__input`（88rpx 高 / md 圆角 / faint 底 / 30rpx）已经是这个形状 ——
-   此前这里把它重写了一遍，而且字号写成 26rpx，比 base.css 的 30rpx 小两档。
-   这里只留这一页特有的：字段之间的纵向间距。 */
-.field__input {
-  margin-top: 16rpx;
-}
 /*
- * 两档「当前位置」：
- * · herebig —— 一条地址都没有时，它是这一页的主角，实心按钮
- * · here    —— 已有地址时收成一行，**不许压过默认地址那张卡**
+ * **这一页只剩一条样式，是刻意的。**
+ *
+ * 此前这里有一百来行 `.card__*` / `.placecard__*` / `.here*`，
+ * 全是 biz-address-card / biz-address-form 抽成组件之前留下的。它们分三类，
+ * 没有一类该留在这儿：
+ *
+ * · 与组件里那份**一模一样**的 —— 纯冗余；
+ * · 与组件里那份**不一样**的（分隔线颜色、操作行间距、标签内边距…）——
+ *   这类最坏：H5 上页面这份赢，小程序上**两份都不生效**，
+ *   于是同一张卡在两端长得不一样，而两边都不报错。
+ *   原因是 Vue 的 scoped 选择器编译成 `.card__ops.data-v-页面`，
+ *   而小程序里「card__ops」在组件内部的根上（带组件的 data-v）、
+ *   页面的 data-v 在宿主节点上 —— 没有任何一个节点同时有这两样。
+ * · 早就没人用的（`.here*`、`.sheet__save`）—— 抽组件时忘了删。
+ *
+ * 结论很简单：**别从页面去描组件的内部**。要调就调组件自己那一份。
  */
-.herebig {
-  margin-bottom: 20rpx;
-  border: 2rpx solid var(--sh-primary);
-}
-.herebig__head {
-  gap: 8rpx;
-}
-.herebig__name {
-  display: block;
-  margin-top: 12rpx;
-}
-.herebig__save {
-  margin-top: 24rpx;
-}
-.here {
-  margin-bottom: 20rpx;
-  gap: 16rpx;
-}
-.here__body {
-  min-width: 0;
-}
-.here__name {
-  display: block;
-}
-.here__sub {
-  display: block;
-  margin-top: 4rpx;
-}
-/* 次要动作：描边而不是实心 —— 这一行不该抢下面默认地址的注意力。
-   颜色走库里的 .txt-primary（模板上挂着），这儿只管形状 */
-.here__save {
-  flex-shrink: 0;
-  border: 2rpx solid var(--sh-primary);
-  border-radius: 16rpx;
-  padding: 8rpx 20rpx;
-}
-/* 所在位置：已选点时收成一张只读的卡 —— 摆成输入框会让人以为可以改 */
-.placecard {
-  gap: 16rpx;
-}
-.placecard__body {
-  min-width: 0;
-}
-.placecard__name {
-  display: block;
-}
-.placecard__region {
-  display: block;
-  margin-top: 4rpx;
-}
-.placecard__act {
-  flex-shrink: 0;
-}
-/* 姓名与手机同行：两个都是短字段，各占一行会把表拉得看不到头 */
-.namerow {
-  gap: 16rpx;
-}
-.tagrow {
-  gap: 12rpx;
-  margin-top: 16rpx;
-}
-.nocoord {
-  margin-top: 24rpx;
-  gap: 16rpx;
-}
-.nocoord__text {
-  flex: 1;
-}
-.switchrow {
-  margin-top: 28rpx;
-}
-.sheet__save {
-  margin-top: 36rpx;
+
+/*
+ * 块间距走**容器的 gap**，不走子元素的 margin。
+ *
+ * 原来两条地址之间的缝来自页面的 `.card { margin-bottom: 20rpx }` ——
+ * 同样是上面那个坑：小程序上它一个节点都选不中，于是**两张卡是贴着的**，
+ * 而 H5 有缝。用户报的就是这个。
+ *
+ * gap 是容器属性，根本不需要选中子元素，容器与卡片又都归本页所有，
+ * 不跨任何边界。原型那一屏用的也是 `display:flex; gap:10px`，两边同一个模型。
+ */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sh-gap-block, 20rpx);
 }
 </style>

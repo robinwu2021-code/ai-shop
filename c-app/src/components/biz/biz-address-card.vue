@@ -92,8 +92,14 @@ const { t } = useI18n();
 </template>
 
 <style scoped>
+/* 原型上这一行是 `align-items: center`：姓名 16px、手机 14px、标签 11px 三种字号
+   同排，不居中会各自贴着基线，读起来像三段没对齐的东西。
+   **这一条此前只写在页面的 scoped 样式里** —— 而页面的 scoped 选择器要的是
+   「既有 card__head、又有页面的 data-v」的节点，小程序上没有这样的节点
+   （类在组件内部的根上，页面的 data-v 在宿主节点上），于是 H5 居中、小程序不居中。 */
 .card__head {
   gap: 12rpx;
+  align-items: center;
 }
 /* 用在别人的卡里：去掉外壳，只留内容的纵向节奏 */
 .card--bare {
@@ -104,20 +110,25 @@ const { t } = useI18n();
   flex-shrink: 0;
 }
 /* 行高交给字阶（txt-caption）—— 自写会让它与别处同级的文字对不齐 */
+/* 原型：地址正文距上面那行 8px = 16rpx */
 .card__addr {
   display: block;
-  margin-top: 8rpx;
+  margin-top: 16rpx;
 }
 .card__nocoord {
   margin-top: 16rpx;
+  gap: 16rpx;
 }
 .card__fix {
   flex-shrink: 0;
 }
+/* 分隔线上下各 12px = 24rpx，动作之间 20px = 40rpx（都按原型）。
+   线用 --sh-line 不用 --sh-faint：原型上是 #DCDEE2，而 faint 比它更淡，
+   淡到分不出「这条地址」与「对它的操作」是两段。 */
 .card__ops {
-  gap: 24rpx;
-  margin-top: 16rpx;
-  padding-top: 16rpx;
+  gap: 40rpx;
+  margin-top: 24rpx;
+  padding-top: 24rpx;
   border-top: 2rpx solid var(--sh-line);
 }
 .op {

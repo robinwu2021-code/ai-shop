@@ -406,11 +406,6 @@ onShareAppMessage(() =>
   gap: 8rpx;
 }
 /* 搜索缩成 icon 后要保住可点面积：40×40 的圆底，不是一个裸图标 */
-.place__quick {
-  gap: 12rpx;
-  margin-inline-start: 12rpx;
-  flex-shrink: 0;
-}
 .place__search {
   flex-shrink: 0;
   width: 64rpx;
@@ -421,21 +416,12 @@ onShareAppMessage(() =>
   background: var(--sh-primary-tint);
 }
 /* 「当前位置」标：与地名同一行，靠颜色区分，不占额外高度 */
-.place__here {
-  flex-shrink: 0;
-  margin-inline-end: 8rpx;
-}
 .place__name {
   /* 英文店名比中文长得多（Sunnyside Block 3 Point vs 阳光里 3 幢自提点）：
      原本 flex-shrink: 0 会让它独占整行、把右边的到货时间挤到只剩省略号。
      两边都可收缩，长的那个先让步。 */
   min-width: 0;
   flex-shrink: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.place__sub {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
