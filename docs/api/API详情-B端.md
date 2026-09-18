@@ -51,7 +51,7 @@
 | `name` | `string` | 是 | 活动名。商家自己起，出现在活动列表与冲突提示里 |
 | `goal` | `string,null` | 否 | `ACQUIRE` 拉新 / `WAKEUP` 唤回 / `CLEAR` 清库存 / `BASKET` 提客单。只影响建的时候的默认值 |
 | `storeNo` | `string,null` | 否 | 限定到某一家门店。空 = 主体下所有门店 |
-| `triggerType` | `string` | 是 | `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 |
+| `triggerType` | `string` | 是 | `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 / `GROUP` 拼够人数成团 |
 | `triggerAmountMinor` | `number,null` | 否 | 满额门槛（分）。triggerType=AMOUNT 时用 |
 | `triggerQty` | `number,null` | 否 | 满件门槛。triggerType=QTY 时用 |
 | `benefitType` | `string` | 是 | `CUT` 减钱 / `PRICE` 改单价 / `GIFT` 送商品 / `COUPON` 发券 |
@@ -98,7 +98,7 @@
 | `name` | `string` | 是 | 活动名。商家自己起，出现在活动列表与冲突提示里 |
 | `goal` | `string,null` | 否 | `ACQUIRE` 拉新 / `WAKEUP` 唤回 / `CLEAR` 清库存 / `BASKET` 提客单。只影响建的时候的默认值 |
 | `storeNo` | `string,null` | 否 | 限定到某一家门店。空 = 主体下所有门店 |
-| `triggerType` | `string` | 是 | `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 |
+| `triggerType` | `string` | 是 | `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 / `GROUP` 拼够人数成团 |
 | `triggerAmountMinor` | `number,null` | 否 | 满额门槛（分）。triggerType=AMOUNT 时用 |
 | `triggerQty` | `number,null` | 否 | 满件门槛。triggerType=QTY 时用 |
 | `benefitType` | `string` | 是 | `CUT` 减钱 / `PRICE` 改单价 / `GIFT` 送商品 / `COUPON` 发券 |
@@ -145,7 +145,7 @@
 | `name` | `string` | 是 | 活动名。商家自己起，出现在活动列表与冲突提示里 |
 | `goal` | `string,null` | 否 | `ACQUIRE` 拉新 / `WAKEUP` 唤回 / `CLEAR` 清库存 / `BASKET` 提客单。只影响建的时候的默认值 |
 | `storeNo` | `string,null` | 否 | 限定到某一家门店。空 = 主体下所有门店 |
-| `triggerType` | `string` | 是 | `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 |
+| `triggerType` | `string` | 是 | `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 / `GROUP` 拼够人数成团 |
 | `triggerAmountMinor` | `number,null` | 否 | 满额门槛（分）。triggerType=AMOUNT 时用 |
 | `triggerQty` | `number,null` | 否 | 满件门槛。triggerType=QTY 时用 |
 | `benefitType` | `string` | 是 | `CUT` 减钱 / `PRICE` 改单价 / `GIFT` 送商品 / `COUPON` 发券 |
@@ -7973,7 +7973,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `name` | `string` | 是 | 活动名。商家自己起，出现在活动列表与冲突提示里 |
 | `goal` | `string,null` | 否 | `ACQUIRE` 拉新 / `WAKEUP` 唤回 / `CLEAR` 清库存 / `BASKET` 提客单。只影响建的时候的默认值 |
 | `storeNo` | `string,null` | 否 | 限定到某一家门店。空 = 主体下所有门店 |
-| `triggerType` | `string` | 是 | `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 |
+| `triggerType` | `string` | 是 | `NONE` / `AMOUNT` 满额 / `QTY` 件数 / `GOODS` 命中商品 / `GROUP` 拼够人数成团 |
 | `triggerAmountMinor` | `number,null` | 否 | 满额门槛（分）。triggerType=AMOUNT 时用 |
 | `triggerQty` | `number,null` | 否 | 满件门槛。triggerType=QTY 时用 |
 | `benefitType` | `string` | 是 | `CUT` 减钱 / `PRICE` 改单价 / `GIFT` 送商品 / `COUPON` 发券 |

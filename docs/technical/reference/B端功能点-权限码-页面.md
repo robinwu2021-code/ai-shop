@@ -249,7 +249,7 @@
 
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
-| 活动列表 | GET | `/biz/activities` | `mActivities` | activities |
+| 活动列表 | GET | `/biz/activities` | `mActivities` | activities、groups |
 | 建 / 改活动（敞口在这一步算清） | POST | `/biz/activities` | `mSaveActivity` | activity-edit |
 | 活动详情 | GET | `/biz/activities/{activityNo}` | `mActivity` | activity-edit |
 | 启停 / 结束 | PUT | `/biz/activities/{activityNo}/status` | `mSetActivityStatus` | activities |
