@@ -3506,7 +3506,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `name` | `string` | 是 | 「龙华区地域馆」。解析不出来就是空串 |
-| `address` | `string,null` | 是 | — |
+| `address` | `string,null` | 是 | 带门牌的标准地址（「深圳市龙华区观澜大道 155 号」）。取不到就 null |
 | `kind` | [`PlaceKind`](#placekind) | 是 | 这个名字**有多具体**。取值见  {@link  PlaceKind } |
 | `source` | [`PlaceSource`](#placesource) | 是 | 这个名字**从哪儿来**。与  {@link  ResolvedPlace.kind }  是两件事，必须都读 —— 合成一个字段的话，「库里拿到的建筑名」与「现问的街道名」就分不开了。 |
 | `stale` | `boolean` | 是 | true → 界面上要说一句「位置可能不是最新的」 |
