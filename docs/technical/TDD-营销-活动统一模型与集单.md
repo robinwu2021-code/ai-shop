@@ -22,12 +22,13 @@
 | AC-7 | 集单截单前可取消，之后不可 | `OrderServiceImpl#cancel` 调 `PeriodPort#isCutOff` · 错误码 `PERIOD_CUT_OFF` | P1 |
 | AC-8 | 提货日取活动规则，不取下单日 | 新列 `ord_sub_order.arrive_date`；`FulfillmentStatsPort` 取 `COALESCE(arrive_date, 下单日)` | P1 |
 | AC-9 | 截单后按商品、按自提点汇总 | `PeriodService#summary`（现算，不存计数） | P1 |
-| AC-10 | 未达起订：商家决定，超时自动取消退款 | `pmt_period.status=SHORT` + `decide_deadline`；`PeriodCutoffJob` | P1 |
+| AC-10 | 未达起订：商家决定，超过活动配置的时限自动取消退款 | `pmt_activity.decide_hours` → `pmt_period.decide_deadline`；`PeriodCutoffJob` | P1 |
 | AC-11 | 预售中的 SKU 不能进集单 | `ActivityServiceImpl#save` 经 `ProductPort#presaleSkus` 拦 · `GOODS_IN_PRESALE` | P1 |
 | AC-12 | 券保存前显示最多支出；折扣券须封顶 | `PmtCouponServiceImpl` 既有预算前置（[TDD-营销预算前置](design/TDD-营销预算前置.md)），界面改版 | P2 |
 | AC-13 | 发券跳过的人分项计数 | `CouponAllocServiceImpl` 既有 `skipped` 分项，界面改版 | P2 |
 | AC-14 | 平台活动超预算不能通过 | **另起** TDD（P3） | P3 |
 | AC-15 | 首页集单排团前，异常用黄标 | `BizDashboardController` 增 `periodToday` 块 | P1 |
+| AC-16 | 平台出资随统一结算周期 | 复用 `ord_sub_order.discount_platform` → `SettleSourcePortImpl`（§2.6） | P3 |
 
 **孤立项**
 
@@ -119,6 +120,7 @@ ALTER TABLE pmt_activity
     ADD COLUMN pickup_from   VARCHAR(5)  DEFAULT NULL COMMENT 'HH:mm，提货日几点起可取',
     ADD COLUMN min_qty       INT(11)     DEFAULT NULL COMMENT '起订量（份）。NULL = 不设',
     ADD COLUMN period_quota  INT(11)     DEFAULT NULL COMMENT '每期份数上限。NULL = 不限',
+    ADD COLUMN decide_hours  INT(11)     DEFAULT NULL COMMENT '集单未达起订量时商家的处理时限（小时）。NULL = 取配置默认',
     ADD COLUMN group_hours   INT(11)     DEFAULT NULL COMMENT '拼团成团时限（小时）。NULL = 24';
 
 CREATE TABLE IF NOT EXISTS pmt_period (
@@ -150,7 +152,7 @@ ALTER TABLE ord_sub_order
 
 - **份数不存**：与 `FulfillmentStatsPort` 同一条原则 —— 存一份计数，迟早「总览 86、点进去 85」。
 - 建表收尾 `) COMMENT=...;` 单行（生成器按这个解析）；不写 `ENGINE/CHARSET/COLLATE`，跟随库默认。
-- 加列要同步补实体字段：`PmtActivity` 六个、`OrdSubOrder` 两个；跑 entity-alignment 守卫。
+- 加列要同步补实体字段：`PmtActivity` 七个、`OrdSubOrder` 两个；跑 entity-alignment 守卫。
 
 **常量**：`PmtActivity.TRIGGER_CUTOFF = "CUTOFF"`；`PmtPeriod` 四个状态常量。
 
@@ -181,7 +183,8 @@ ALTER TABLE ord_sub_order
 C 端下单、定时任务读它时经 `PeriodPort` 并 `executeWithoutScope`，边界靠显式 `entityNo` / `activityNo` 条件 ——
 与 `GroupRulePortImpl` 同一做法。**不登记会过度可见，登记了不绕会 fail-closed 成空页**，两头都零报错，用例必须走真 HTTP。
 
-**配置项**：`shop.period.decide-hours`（默认 14：SHORT 后多少小时自动取消）。
+**配置项**：`shop.period.decide-hours`（默认 14）—— **只是缺省值**：活动上 `decide_hours` 非空时以活动为准（店主 2026-09-18 定：每个活动单独配置）。
+进入 SHORT 那一刻把 `decide_deadline = 截单时刻 + 时限` 写进期，之后改活动不影响已进入 SHORT 的期。
 
 ### 2.3 状态机
 
@@ -250,7 +253,9 @@ public interface PeriodService {
 
 - **P2 活动编辑锁定**：RUNNING 时允许改的字段白名单 = `end_at`、`quota`、`budget_minor`、`period_quota`；其余字段与库里不同即拒。
 - **P2 券改版**：只动界面；数据与接口不变。
-- **P3 平台活动**：需要新表（报名单）、出资分摊落到 `pmt_apply`、结算口径（PRD §七.3 待定）。另起 TDD。
+- **P3 平台活动**：需要新表（报名单）、出资分摊落到 `pmt_apply`。**结算口径已定：统一结算周期**（PRD §4.5.5）——
+  不新建打款通道，平台出资写进子单既有的 `discount_platform`，`SettleSourcePortImpl` 已把它带进结算源（`:285`），
+  商家在常规结算单里看到这一项。另起 TDD 时要核的只是「商家实收」公式是否已把 `discount_platform` 当作平台应付。
 - **「自己组合」（s11）**：一条活动多条件、多利益，现有两列存不下。**P3 与平台活动一起做**，届时把条件与利益拆成子表；P1 在玩法面板里不放这一项。
 
 ---
