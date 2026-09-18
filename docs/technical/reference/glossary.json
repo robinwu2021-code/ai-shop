@@ -11210,30 +11210,6 @@
           "ar": "سعر شراء {name} (يوان)"
         },
         {
-          "key": "purchase.dBefore",
-          "zh-CN": "前天",
-          "en": "2 days ago",
-          "ar": "قبل يومين"
-        },
-        {
-          "key": "purchase.dPick",
-          "zh-CN": "选日期",
-          "en": "Pick a date",
-          "ar": "اختر تاريخًا"
-        },
-        {
-          "key": "purchase.dToday",
-          "zh-CN": "今天",
-          "en": "Today",
-          "ar": "اليوم"
-        },
-        {
-          "key": "purchase.dYesterday",
-          "zh-CN": "昨天",
-          "en": "Yesterday",
-          "ar": "أمس"
-        },
-        {
           "key": "purchase.date",
           "zh-CN": "日期",
           "en": "Date",
@@ -14172,30 +14148,6 @@
           "zh-CN": "可用 {n}",
           "en": "Available {n}",
           "ar": "المتاح {n}"
-        },
-        {
-          "key": "stockOut.dBefore",
-          "zh-CN": "前天",
-          "en": "2 days ago",
-          "ar": "قبل يومين"
-        },
-        {
-          "key": "stockOut.dPick",
-          "zh-CN": "选日期",
-          "en": "Pick a date",
-          "ar": "اختر تاريخًا"
-        },
-        {
-          "key": "stockOut.dToday",
-          "zh-CN": "今天",
-          "en": "Today",
-          "ar": "اليوم"
-        },
-        {
-          "key": "stockOut.dYesterday",
-          "zh-CN": "昨天",
-          "en": "Yesterday",
-          "ar": "أمس"
         },
         {
           "key": "stockOut.date",
