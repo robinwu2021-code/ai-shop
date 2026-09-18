@@ -95,7 +95,7 @@ public enum ErrorCode {
      * 用户看了会去改别的格子。而这里要说清是哪一格、以及为什么 ——
      * 判据按国家不同（大陆 11 位、海外 3–20 位），泛话会让他反复试。
      */
-    ADDRESS_PHONE_FORMAT(10459, "err.address.phone_format"),
+    ADDRESS_PHONE_FORMAT(10460, "err.address.phone_format"),
     /**
      * 手机号或密码不对。
      *

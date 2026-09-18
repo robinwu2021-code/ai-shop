@@ -340,7 +340,12 @@ class M1UserFlowTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"name\":\"张三\",\"phone\":\"" + bad
                                     + "\",\"detail\":\"文一西路 1 号\",\"isDefault\":false}"))
-                    .andExpect(jsonPath("$.code").value(10400))
+                    /*
+                     * 10460 ADDRESS_PHONE_FORMAT，不再是 10400。V333 之后判据按国家挑
+                     * （大陆 11 位、海外 3–20 位），泛的「请求参数有误」说不清是哪一格 ——
+                     * 而这条用例的第二句断言要的正是那个：说清是哪个字段。
+                     */
+                    .andExpect(jsonPath("$.code").value(10460))
                     .andExpect(result -> assertThat(result.getResponse().getContentAsString())
                             .as("拒了要说清是哪个字段 —— 只回「参数错误」的话，用户改哪儿全靠猜")
                             .contains("手机号"));
