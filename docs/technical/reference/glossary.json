@@ -11282,12 +11282,6 @@
           "ar": "المورّد"
         },
         {
-          "key": "purchase.supplierHint",
-          "zh-CN": "选一家，或直接输入名称新建",
-          "en": "Pick one, or type a name to create it",
-          "ar": "اختر مورّدًا أو اكتب اسمًا لإنشائه"
-        },
-        {
           "key": "purchase.supplierPh",
           "zh-CN": "如 老周粮油",
           "en": "e.g. Old Zhou Grain & Oil",
@@ -13281,9 +13275,9 @@
         },
         {
           "key": "stock.formulaHint",
-          "zh-CN": "可用 = 实存 − 预留。预留为已下单未付款的量",
-          "en": "Available = on hand − reserved. Reserved is what customers ordered but have not paid for; it is deducted only on payment.",
-          "ar": "المتاح = الفعلي − المحجوز. المحجوز طلبه العملاء ولم يدفعوا بعد، ولا يُباع مرتين."
+          "zh-CN": "预留 = 已下单未付款",
+          "en": "Reserved = ordered, not yet paid",
+          "ar": "المحجوز = مطلوب ولم يُدفع بعد"
         },
         {
           "key": "stock.goAddLocation",
@@ -16359,9 +16353,9 @@
         },
         {
           "key": "transfer.shipHint",
-          "zh-CN": "承运方与运单号都可以不填 —— 自己送就空着",
-          "en": "Carrier and tracking number are both optional — leave blank if you deliver it yourself",
-          "ar": "شركة الشحن ورقم التتبع كلاهما اختياري — اتركهما فارغين إن كنت تُوصِّل بنفسك"
+          "zh-CN": "承运方与运单号可不填",
+          "en": "Carrier and tracking number are optional",
+          "ar": "شركة الشحن ورقم التتبع اختياريان"
         },
         {
           "key": "transfer.shipTitle",

@@ -284,7 +284,6 @@ onShow(load);
         -->
         <text class="sh-muted">›</text>
       </view>
-      <text class="sh-hint">{{ $t("purchase.supplierHint") }}</text>
     </view>
 
     <!--
@@ -446,9 +445,14 @@ onShow(load);
   gap: 16rpx;
   margin-top: 16rpx;
 }
-/* 可点下限：chip 本身只有 ~30px 高，日期是要按的东西不是标签 */
+/*
+ * 72rpx（36px）。**比 44px 的可点下限矮一档，这是有意的**：
+ * 那条下限是给主操作的，而这一排是四枚并列的筛选式选择 ——
+ * 88rpx 时一排占掉半张卡，店主的原话是「日期按钮太高」。
+ * chip 自带的 ~30px 又太扁，36px 是这两者之间站得住的那一档。
+ */
 .date__c {
-  min-height: 88rpx;
+  height: 72rpx;
   display: flex;
   align-items: center;
 }
