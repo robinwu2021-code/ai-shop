@@ -233,6 +233,43 @@ export const COMMUNITY_APPLY_STATUS = {
 } as const;
 
 /**
+ * 解析出来的地名**有多具体**。
+ *
+ * <p>与 {@link PLACE_SOURCE}（从哪儿来）是两件事，必须都读 —— 合成一个字段的话，
+ * 「库里拿到的建筑名」与「现问的街道名」就分不开了，
+ * 而前者该不该沉淀成聚落、该不该显示在顶栏上，答案并不一样。
+ */
+export const PLACE_KIND = {
+  /** 我们自己的聚落。**最权威的一档** —— 围栏、商品池都挂在它上面 */
+  COMMUNITY: "COMMUNITY",
+  /** 建筑 / 兴趣点（「龙华区地域馆」）。唯一值得沉淀成聚落的一档 */
+  POI: "POI",
+  /** 小区 / 楼盘（「桂澜新村」） */
+  AOI: "AOI",
+  /** 街道 + 门牌（「观澜大道 155 号」） */
+  STREET: "STREET",
+  /** 只推得出区县 */
+  REGION: "REGION",
+} as const;
+
+/**
+ * 那个地名**从哪儿来的**。
+ *
+ * <p>端上据此决定要不要标「位置可能不是最新的」；运营端据此看
+ * 「我们还要依赖地图多久」。
+ */
+export const PLACE_SOURCE = {
+  /** 落进了我们自己的聚落围栏 */
+  COMMUNITY: "COMMUNITY",
+  /** 固定地址库命中且没超核对期 —— **这一次没有花额度** */
+  PLACE_DB: "PLACE_DB",
+  /** 这个格子从没见过，现问的地图 */
+  MAP: "MAP",
+  /** 库里那条已超期而地图刷不动（挂了 / 额度用完）。**要在界面上说出来** */
+  PLACE_DB_STALE: "PLACE_DB_STALE",
+} as const;
+
+/**
  * 覆盖项的粒度。可跨粒度组合 —— 「三个小区 + 一个区」是两条 COMMUNITY 加一条 DISTRICT。
  */
 export const AREA_LEVEL = {

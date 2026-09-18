@@ -46,6 +46,8 @@ function bodyOf(src: string, signature: string): string | null {
 const store = code("src/stores/location.ts");
 const confirm = code("src/pages/order-confirm/index.vue");
 const home = code("src/pages/home/index.vue");
+const addressPage = code("src/pages/address/index.vue");
+const pickPage = code("src/pages/address-pick/index.vue");
 
 describe("当前位置：一次性上下文", () => {
   it("★★★ useTransient **不写地址簿、不写服务端**", () => {
@@ -79,12 +81,34 @@ describe("当前位置：一次性上下文", () => {
   });
 
   it("★★★ 存成地址是**问出来的**，不是替他存的", () => {
-    const body = bodyOf(confirm, "function saveHereAsAddress(");
-    expect(body, "saveHereAsAddress 找不到了").not.toBeNull();
-    // 跳到新建地址页让他补姓名电话，而不是当场落一条
+    /*
+     * 实现已经收进 store（此前下单页与收货地址页各写一份、走两条路）。
+     * **量的是那唯一一份**：跳到新建地址页让他补姓名电话，而不是当场落一条。
+     */
+    const body = bodyOf(store, "gotoSaveHere(");
+    expect(body, "store 里没有 gotoSaveHere").not.toBeNull();
     expect(body).toContain("navigateTo");
-    expect(body).not.toContain("saveAddress");
+    expect(body, "当场落一条 = 地址簿 20 条上限很快塞满，且姓名电话都还没有")
+      .not.toContain("saveAddress");
     expect(body).not.toContain("api.");
+  });
+
+  it("★★★ 「存为收货地址」**全端只有一处实现** —— 同一个字不能有两种流程", () => {
+    /*
+     * 此前两份两条路：收货地址页先跳选择地点页（`?useHere=1`）再交回来，
+     * 下单页直接带坐标进新建预填。用户在两个地方点同一个字，得到两种流程 ——
+     * 前者会多问一次地点，而地点其实已经解析好了。
+     *
+     * 判据是「跳转那一句只出现在 store 里」：调用点可以有很多个，
+     * **实现只能有一个**。
+     */
+    for (const [name, src] of [["下单页", confirm], ["收货地址页", addressPage]] as const) {
+      const body = bodyOf(src, "function saveHereAsAddress(");
+      expect(body, `${name}没有 saveHereAsAddress`).not.toBeNull();
+      expect(body, `${name}又自己拼了一次跳转 —— 两处迟早走成两条路`)
+        .not.toContain("latE6=");
+      expect(body, `${name}该调 store 那一份`).toContain("gotoSaveHere");
+    }
   });
 
   it("★★★ 这一问**只在这一单真的要送**时出现 —— 自提不留地址也照样下单", () => {
@@ -101,6 +125,59 @@ describe("当前位置：一次性上下文", () => {
     expect(branch, "needAddress 那个分支找不到了 —— 下面的断言会空转").not.toBeNull();
     expect(branch).toContain("confirm.saveHere");
   });
+
+  // ---------------------------------------------------------------- 批次 B：单一真源
+
+  it("★★★ 「我在哪」只有一个取法 —— 四个页面不许各拼一份", () => {
+    /*
+     * 此前：首页拼归属+距离+粗定位、我的页读 label、收货地址页读归属名、
+     * 选择地点页读本次 resolve。**四处迟早给出四个答案，而它们不同时
+     * 界面上没有任何提示** —— 实测截图里两页并排显示的就不是同一个位置。
+     *
+     * 判据是「页面里不再出现自己解析的那两句」。它们都收进了 store 的 ensureHere。
+     */
+    for (const [name, src] of [
+      ["收货地址页", addressPage],
+      ["选择地点页", pickPage],
+    ] as const) {
+      expect(src, `${name}还在自己调 resolveLocation —— 那就是第二个真源`)
+        .not.toContain("api.resolveLocation");
+      expect(src, `${name}还在自己取坐标 —— 坐标与地名要一起来，否则又是两个时刻`)
+        .not.toContain("getLocationDetailed(");
+    }
+  });
+
+  it("★★★ ensureHere 的过期判据是**时刻**，不是「拉过没有」", () => {
+    /*
+     * App 的进程比一次性加载活得久：「拉过没有」那种写法在 App 上等于
+     * 整段会话都用第一次的结果 —— 人走出两公里，顶栏还写着出门前那个地方。
+     * H5 每次刷新都是新进程，所以这个缺陷在 H5 上永远看不见。
+     */
+    const body = bodyOf(store, "async ensureHere(");
+    expect(body, "store 里没有 ensureHere").not.toBeNull();
+    expect(body, "没有按时刻判过期 = 这一趟会话里它只会取一次")
+      .toMatch(/Date\.now\(\)\s*-\s*this\.here\.at\s*<\s*HERE_TTL_MS/);
+  });
+
+  it("★★★ relocate 要把依赖这次定位的下游一起清掉", () => {
+    /*
+     * 留着的话，点完只有一半会变 —— 而哪一半会变取决于上一次走的是哪条分支。
+     * 那种不一致没人查得出来：两次点击表现不同，却都「有反应」。
+     */
+    const body = bodyOf(store, "async relocate(");
+    expect(body, "store 里没有 relocate").not.toBeNull();
+    for (const f of ["coarseRegion", "nearestDistanceM", "communityChecked"]) {
+      expect(body, `relocate 没清 ${f}`).toContain(f);
+    }
+    expect(body, "relocate 要强制重取，不能吃缓存").toContain("ensureHere(true)");
+  });
+
+  it("★★ 三处入口都接到同一个 relocate 上", () => {
+    expect(home, "首页顶栏没有重新定位").toContain("location.relocate(");
+    expect(addressPage, "收货地址页没有重新定位").toContain("location.relocate(");
+    expect(pickPage, "选择地点页没有重新定位").toContain("location.relocate(");
+  });
+
 });
 
 /**

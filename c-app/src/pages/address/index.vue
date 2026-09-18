@@ -258,24 +258,34 @@ const TAG_PRESETS = ["tagHome", "tagWork", "tagSchool"] as const;
 const locatedMatch = ref<string>("");
 /** 拿到了定位但一条地址都没匹配上 —— 此时以「当前位置」为准，而不是回落到无位置 */
 const locatedAt = ref<{ lat: number; lng: number } | null>(null);
-/** 当前位置的地名（「桂澜新村」）。取不到就空着 —— 不编 */
-const locatedName = ref("");
+/**
+ * 当前位置的地名（「龙华区地域馆」）。**读 store 的单一真源，这一页不自己算。**
+ * 取不到就是空串，界面回落到「当前位置」四个字 —— 宁可少一行，不要编一个地名。
+ */
+const locatedName = computed(() => location.here?.place?.name ?? "");
 
+/**
+ * 「我在哪」**走 store 的单一真源**，这一页不再自己定位、自己解析。
+ *
+ * <p>此前这儿有一份独立实现（`getLocationDetailed` + `resolveLocation`，
+ * 地名取 `innermostName ?? nearestName`），而首页取的是另一套、
+ * 选择地点页又是第三套。实测截图里两页并排显示的不是同一个位置：
+ * 这一页写着「桂澜新村」（几天前绑的归属），选择地点页写着「使用当前位置」。
+ *
+ * <p>收敛之后，「重新定位」在任何一处点下去，三处同时变。
+ */
 async function detectHere() {
-  const r = await getLocationDetailed();
+  const here = await location.ensureHere();
   // 模糊坐标（区级，误差 5 公里）匹配收货地址同样是噪音，一律不用
-  if (!r.ok || r.fuzzy) return;
-  locatedAt.value = { lat: r.coords.lat, lng: r.coords.lng };
-  locatedMatch.value = location.suggestNearest(r.coords)?.addressId ?? "";
-  /*
-   * **把地名也取出来。** 只说「当前位置」而不说是哪儿，用户无从判断这个位置对不对 ——
-   * 而他正要据此决定要不要把它存成收货地址。
-   * 取不到就留空，界面回落到「当前位置」四个字（见模板）：宁可少一行，不要编一个地名。
-   */
-  const ctx = await api
-    .resolveLocation(Math.round(r.coords.lat * 1e6), Math.round(r.coords.lng * 1e6))
-    .catch(() => null);
-  locatedName.value = ctx?.innermostName ?? ctx?.nearestName ?? "";
+  if (!here || here.coarse) return;
+  locatedAt.value = here.coords;
+  locatedMatch.value = location.suggestNearest(here.coords)?.addressId ?? "";
+}
+
+/** 「重新定位」。与首页、选择地点页是同一个动作 */
+async function relocate() {
+  await location.relocate();
+  await detectHere();
 }
 
 /**
@@ -292,12 +302,15 @@ function saveHereAsAddress() {
     uni.showToast({ title: String(t("address.limitReached", { n: ADDRESS_RULES.maxCount })), icon: "none" });
     return;
   }
-  if (!canPick.value) {
-    // 没有选点能力的端（H5）：照旧开空表单，至少不把人堵在这儿
+  /*
+   * **走 store 里唯一的那一份。** 此前这儿先跳选择地点页（`?useHere=1`）
+   * 再让它交回来，而下单页是直接带坐标进新建预填 —— 同一个字，两种流程。
+   * 统一走后者：地点已经解析好了，再过一遍选点页是多余的一步。
+   */
+  if (!location.gotoSaveHere({ address: ROUTES.address })) {
+    // 连坐标都还没有（H5、定位被拒）：照旧开空表单，至少不把人堵在这儿
     openNew();
-    return;
   }
-  uni.navigateTo({ url: `${ROUTES.addressPick}?useHere=1` });
 }
 
 /**
@@ -458,8 +471,12 @@ onShow(() => {
       <view class="sh-row herebig__head">
         <sh-icon name="pin" :size="26" color="var(--sh-primary)"></sh-icon>
         <text class="txt-caption txt-primary">{{ $t("address.youAreHere") }}</text>
+        <text class="sh-fill"></text>
+        <!-- 「重新定位」与首页、选择地点页共用同一个动作 -->
+        <text class="txt-caption txt-primary sh-hit" @tap.stop="relocate">{{ $t("home.relocate") }}</text>
       </view>
       <text class="txt-strong herebig__name">{{ locatedName || $t("address.youAreHere") }}</text>
+      <text v-if="location.placeStale" class="sh-hint">{{ $t("address.placeStale") }}</text>
       <view class="sh-btn herebig__save" @tap="saveHereAsAddress">
         {{ $t("address.saveAsAddress") }}
       </view>

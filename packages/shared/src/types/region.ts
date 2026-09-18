@@ -7,6 +7,8 @@ import type {
   AREA_MODE,
   AREA_STATUS,
   COMMUNITY_APPLY_STATUS,
+  PLACE_KIND,
+  PLACE_SOURCE,
 } from "@shared/utils/constants";
 import type { Pickup } from "./fulfillment";
 
@@ -81,6 +83,8 @@ export interface RegionSearchResult {
    */
   places?: GeoTip[];
 }
+export type PlaceKind = (typeof PLACE_KIND)[keyof typeof PLACE_KIND];
+export type PlaceSource = (typeof PLACE_SOURCE)[keyof typeof PLACE_SOURCE];
 export type AreaMode = (typeof AREA_MODE)[keyof typeof AREA_MODE];
 export type AreaLevel = (typeof AREA_LEVEL)[keyof typeof AREA_LEVEL];
 export type AreaStatus = (typeof AREA_STATUS)[keyof typeof AREA_STATUS];
@@ -216,6 +220,32 @@ export interface LocationContext {
    * **算不出时是 -1**，不是 0（0 会被显示成「0 米」，那是一句假话）。
    */
   nearestDistanceM: number;
+  /**
+   * **端上唯一要读的那个「我在哪」**。
+   *
+   * <p>四个页面此前各拼一份地名（首页拼归属+距离+粗定位、我的页读 label、
+   * 收货地址页读归属名、选择地点页读本次 resolve）—— 四处迟早给出四个答案，
+   * 而它们不同时界面上没有任何提示。
+   *
+   * <p>取不到时为 null，端上退回 {@link LocationContext.regionName}，**不编地名**。
+   */
+  place: ResolvedPlace | null;
+}
+
+/** 解析出来的一个地点。 */
+export interface ResolvedPlace {
+  /** 「龙华区地域馆」。解析不出来就是空串 */
+  name: string;
+  address: string | null;
+  /** 这个名字**有多具体**。取值见 {@link PlaceKind} */
+  kind: PlaceKind;
+  /**
+   * 这个名字**从哪儿来**。与 {@link ResolvedPlace.kind} 是两件事，必须都读 ——
+   * 合成一个字段的话，「库里拿到的建筑名」与「现问的街道名」就分不开了。
+   */
+  source: PlaceSource;
+  /** true → 界面上要说一句「位置可能不是最新的」 */
+  stale: boolean;
 }
 
 /** 一条地理覆盖项。名字由后端拼好下发 —— 端上只拿到 330106 的话，要么显示一串数字，要么自己再查一次 */

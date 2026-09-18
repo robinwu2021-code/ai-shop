@@ -463,7 +463,16 @@ describe("模糊定位与无坐标地址：都要说话", () => {
      * 而那个地方他根本走不到。围栏 1000 米量级 vs 模糊定位 5 公里误差 ——
      * 这一档的坐标只够把人落到区。
      */
-    expect(addressPage).toMatch(/if \(!r\.ok \|\| r\.fuzzy\) return;/);
+    /*
+     * **钉不变量，不钉变量名。** 第一版写的是 `/!r\.ok \|\| r\.fuzzy/` ——
+     * 定位改走 store 的单一真源之后它当场变红，而那次改动一点没动这条规则
+     * （只是把 `r.fuzzy` 换成了 `here.coarse`）。守卫钉住当前实现的形状，
+     * 就会在每一次无关的整理里发出假红，而假红会训练人去改守卫。
+     *
+     * 现在量的是：detectHere 里**必须有一句「模糊就早退」**。
+     * 把那一句删掉仍然变红（已验），换个变量名不会。
+     */
+    expect(addressPage).toMatch(/(fuzzy|coarse)\)\s*return;/);
   });
 
   it("★★ 模糊时仍然不显示距离（原有行为不许退化）", () => {
@@ -574,9 +583,16 @@ describe("定位只匹配收货地址", () => {
      * 解析仍然只有一份（选点页的 choose）—— 地址页只是带着 useHere=1 过去，
      * 两处各写一份省市区拆法，迟早给出不一样的结果，而界面上看不出来。
      */
+    /*
+     * 实现收进了 store（`gotoSaveHere`）。此前这一页先跳选择地点页（`useHere=1`）
+     * 再让它交回来，而下单页是直接带坐标进新建预填 —— 同一个字，两种流程。
+     * 统一走后者：地点已经解析好了，再过一遍选点页是多余的一步。
+     *
+     * **判据换成「这一页调没调那唯一一份」**，不再钉具体的 query 参数。
+     */
     const body = bodyOf(addressPage, "function saveHereAsAddress(");
     expect(body, "没有 saveHereAsAddress").not.toBeNull();
-    expect(body).toContain("useHere=1");
+    expect(body, "该调 store 里唯一那一份").toContain("gotoSaveHere");
     expect(addressPage).toContain("address.saveAsAddress");
   });
 
@@ -591,7 +607,8 @@ describe("定位只匹配收货地址", () => {
   it("★★★ 模糊坐标不参与地址匹配 —— 5 公里误差配 1 公里判据是噪音", () => {
     const body = bodyOf(addressPage, "async function detectHere(");
     expect(body, "没有 detectHere").not.toBeNull();
-    expect(body).toMatch(/!r\.ok \|\| r\.fuzzy\) return/);
+    // 同上：钉「有没有这句早退」，不钉变量叫什么
+    expect(body).toMatch(/(fuzzy|coarse)\)\s*return;/);
   });
 
   it("★★ 匹配要足够近 —— 再远就是「附近碰巧存过一个地址」", () => {

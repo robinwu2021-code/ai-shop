@@ -197,6 +197,15 @@ export const ENUM_REGISTRY: EnumEntry[] = [
       + "2026-09-09 从 ServiceArea.mode 上的内联字面量联合提出来 —— §D5 为它红着，"
       + "而它的两个邻居 AREA_LEVEL / AREA_STATUS 本来就是常量对象写法" },
 
+  { decl: "shared:PLACE_KIND", dom: "core", shape: "CLASS", verdict: "OK",
+    note: "解析出来的地名**有多具体**（COMMUNITY/POI/AOI/STREET/REGION）。"
+      + "与 PLACE_SOURCE 是两个正交的轴，**刻意不合并** —— 合并之后"
+      + "「库里拿到的建筑名」与「现问的街道名」就分不开了，而前者该不该沉淀成"
+      + "聚落、该不该显示在顶栏上，答案并不一样。后端 GeoPlace.KIND_* 同一套取值" },
+  { decl: "shared:PLACE_SOURCE", dom: "core", shape: "CLASS", verdict: "OK",
+    note: "那个地名**从哪儿来**（COMMUNITY/PLACE_DB/MAP/PLACE_DB_STALE）。"
+      + "端上据此决定要不要标「位置可能不是最新的」，运营端据此看「还要依赖地图多久」。"
+      + "后端 PlaceResolver.SOURCE_* 同一套取值" },
   { decl: "shared:AREA_LEVEL", dom: "core", shape: "CLASS", verdict: "OK",
     note: "覆盖项粒度。取值与 sys_region.level 同源（COMMUNITY 除外——那是社区不是区划），后端不写字面量，值从库里带出来。2026-08-23 补 PROVINCE：经营范围本就是「任意一级的并集」，走快递的商家框的就是省；后端无需新分支——展开走国标码前缀（省码 2 位），审核归入「非社区非街道即待审」那一档" },
   { decl: "ops-web:Role", dom: "auth", shape: "CLASS", verdict: "OK",

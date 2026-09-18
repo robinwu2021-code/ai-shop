@@ -31,6 +31,8 @@ export default {
     communityFeedEmpty: "这个社区还没有商家上架",
     cutoffIn: "距截单 {t}",
     // 买家选的是地址，不是自提点（自提点在下单时匹配）—— 这两句是删掉选点页时漏改的
+    /** 顶栏那颗「重新定位」。三处入口共用同一个动作 */
+    relocate: "重新定位",
     choosePickup: "选择地址",
     hereTag: "当前位置",
     choosePickupHint: "点击选择你在哪儿",
@@ -463,6 +465,9 @@ export default {
     estimateOnly: "网络不稳，这里是估算金额，以提交后为准",
     emptyItems: "这些商品已不在购物车",
     backToCart: "回购物车",
+    /** M9 那道闸：顶栏跟定位，那自提/社区配送就必须问一句「这条地址在不在这一带」 */
+    placeMismatchTitle: "这条地址不在当前这一带",
+    placeMismatchBody: "你现在看的是「{place}」的货，而这条收货地址在约 {km} 公里外。自提与社区配送只在这一带可用。",
     whyNoAddress: "先选一个收货地址才能提交",
     whyNoSlot: "先选一个上门时段才能提交",
     whyOutOfRange: "有商家送不到这个地址，换个地址或把这家的货挪出这一单",
@@ -688,6 +693,8 @@ export default {
     /** 与「设为默认」是两个动作：这个管看货，那个管下单预填 */
     
     /** 定位匹配到的那条：只标出来，点一下就切，不弹窗 */
+    /** 地图挂了、用的是库里旧的那条 —— 要说出来，不能让人以为它是刚测的 */
+    placeStale: "位置可能不是最新的",
     youAreHere: "当前位置",
     useCurrentLocation: "使用当前位置",
     // 没有收货地址时的主动作：把当前定位一键变成可下单的地址

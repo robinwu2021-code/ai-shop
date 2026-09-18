@@ -55,6 +55,15 @@ export const communityMock: Pick<ShopApi,
         nearestNo: near?.communityNo ?? null,
         nearestName: near?.name ?? null,
         nearestDistanceM: near ? 20000 : -1,
+        /*
+         * **mock 也要给建筑级的那一档。** 只给聚落名的话，
+         * 「取名取到建筑」这条在开发期一次都看不见，而它正是这一轮的重点。
+         * `source=PLACE_DB` 顺带让「库里命中」那条分支跑得到。
+         */
+        place: hasCoords
+          ? { name: "龙华区地域馆", address: "深圳市龙华区观澜大道 155 号",
+            kind: "POI" as const, source: "PLACE_DB" as const, stale: false }
+          : null,
       });
     }
     const first = allCommunitySeeds().map(toCommunity)[0];
@@ -65,11 +74,15 @@ export const communityMock: Pick<ShopApi,
         regionCode: district, regionName: districtName,
         // 落进围栏了就不给「最近的」：两个主语迟早会被选错
         nearestNo: null, nearestName: null, nearestDistanceM: -1,
+        // 落进围栏时 place 就是这个聚落 —— 它比任何外部地名都权威
+        place: { name: first.name, address: first.address ?? null,
+          kind: "COMMUNITY" as const, source: "COMMUNITY" as const, stale: false },
       }
       : {
         innermostNo: null, innermostName: null, chainNos: [], coarse: false,
         regionCode: district, regionName: districtName,
         nearestNo: null, nearestName: null, nearestDistanceM: -1,
+        place: null,
       });
   },
 

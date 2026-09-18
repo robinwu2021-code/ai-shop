@@ -9,16 +9,53 @@ import { api } from "@/api";
 import { ApiError } from "@shared/net/http-client";
 import { getLocationDetailed } from "@shared/ports/location";
 import { useCommunityStore } from "./community";
-import type { Address } from "@shared/types";
+import type { Address, ResolvedPlace } from "@shared/types";
 import { metersBetweenE6 } from "@shared/utils/geo";
 
 /** 定位要多近才算「匹配到了这条地址」。再远就是「附近碰巧存过一个地址」 */
 const MATCH_NEAR_M = 1000;
 
+/**
+ * 「我在哪」多久重取一次。
+ *
+ * <p>五分钟：短到走出几条街会跟上，长到反复进出首页不会一直弹定位。
+ * **判据是时刻不是次数** —— 见 {@code ensureHere}。
+ */
+const HERE_TTL_MS = 5 * 60 * 1000;
+
 export const useLocationStore = defineStore("location", {
   state: () => ({
     /** 当前生效位置。**null 是常态**，不是错误：新用户一个都没有 */
     active: null as Address | null,
+    /**
+     * **「我在哪」的唯一真源。**
+     *
+     * <p>此前四个页面各拼一份：首页拼归属+距离+粗定位、我的页读 `label`、
+     * 收货地址页读归属名、选择地点页读本次 resolve —— 四处迟早给出四个答案，
+     * 而它们不同时界面上没有任何提示。实测截图里就出现过：
+     * 收货地址页写着「桂澜新村」（几天前绑的归属），
+     * 选择地点页写着「使用当前位置」（这一次的定位，还没回来）。
+     *
+     * <p>`at` 是取到的**时刻**，过期判据用它。
+     * **不能写成「拉过没有」** —— App 的进程比一次性加载活得久，
+     * 那种写法在 App 上等于整段会话都用第一次的结果。
+     */
+    here: null as {
+      coords: { lat: number; lng: number };
+      coarse: boolean;
+      place: ResolvedPlace | null;
+      at: number;
+    } | null,
+    /**
+     * 这次会话里用户**显式挑过**一条收货地址来逛。
+     *
+     * <p>M9 定了顶栏跟当前定位（快递能送到任何地方，顶栏回答的是
+     * 「我在看哪一带的货」）。但用户自己点过某条地址就该听他的 ——
+     * 那是一个明确的动作，被自动定位悄悄顶掉比不跟定位更糟。
+     *
+     * <p><b>刻意不持久化</b>：下次打开又回到「跟定位」。
+     */
+    pickedByUser: false,
     /**
      * 「当前位置」这一次逛的坐标。**不入地址簿、不写服务端** ——
      * 它是上下文不是资料（PRD §6.1.0）。App 重开就没了，那正是「现在这儿」的定义。
@@ -71,12 +108,21 @@ export const useLocationStore = defineStore("location", {
      * <p><b>「当前位置」压过生效地址</b>：他刚点了「用现在这儿」，
      * 此刻看到的货就是按那个点算的 —— 顶栏还显示「家」就是在说假话。
      */
-    label: (s) => (s.transientAt
-      ? s.transientName
-      : s.active ? s.active.tag || s.active.detail || s.active.region
-        // 一个地址都还没有时退到粗定位的区名 —— 顶栏那一行任何时候都要有内容，
-        // 而「西湖区」至少是句真话：这一屏的货正是按那个区筛出来的
-        : s.coarseRegion?.name ?? ""),
+    label: (s) => {
+      // 用户显式挑过地址就听他的（见 pickedByUser）
+      if (s.pickedByUser && s.active) {
+        return s.active.tag || s.active.detail || s.active.region || "";
+      }
+      // M9：顶栏 = 当前定位。它回答的是「我在看哪一带的货」，不是「送到哪」
+      if (s.here?.place?.name) return s.here.place.name;
+      if (s.transientAt && s.transientName) return s.transientName;
+      if (s.active) return s.active.tag || s.active.detail || s.active.region || "";
+      // 退到粗定位的区名 —— 顶栏那一行任何时候都要有内容，
+      // 而「西湖区」至少是句真话：这一屏的货正是按那个区筛出来的
+      return s.coarseRegion?.name ?? "";
+    },
+    /** 顶栏那个地名可能不是最新的（地图挂了、用的是库里旧的那条） */
+    placeStale: (s) => s.here?.place?.stale === true,
     /** 这一次逛的是不是「当前位置」（而不是地址簿里的某一条） */
     isTransient: (s) => !!s.transientAt,
     has: (s) => !!s.active,
@@ -104,6 +150,80 @@ export const useLocationStore = defineStore("location", {
      * @returns 区县码与名字；**绑上了聚落时返回 null** —— 那时调用方该按 communityNo 取货，
      *          再带上 regionCode 只会让后端有两个主语（精确的那个本来就压过粗的）
      */
+    /**
+     * **取一次「我在哪」。这是全端唯一的入口。**
+     *
+     * <p>过期判据是**时刻**不是「拉过没有」：App 的进程比一次性加载活得久，
+     * 「拉过没有」那种写法在 App 上等于整段会话都用第一次的结果 ——
+     * 人走出两公里，顶栏还写着出门前那个地方。
+     *
+     * @param force 用户点了「重新定位」。**强制重取，连同下游一起清** ——
+     *              不清的话他点完看到同一个名字，会以为按钮坏了
+     */
+    async ensureHere(force = false) {
+      if (!force && this.here && Date.now() - this.here.at < HERE_TTL_MS) {
+        return this.here;
+      }
+      const r = await getLocationDetailed().catch(() => null);
+      if (!r?.ok) {
+        this.located = false;
+        return null;
+      }
+      this.located = true;
+      const ctx = await api
+        .resolveLocation(Math.round(r.coords.lat * 1e6), Math.round(r.coords.lng * 1e6),
+          r.fuzzy === true)
+        .catch(() => null);
+      this.here = {
+        coords: { lat: r.coords.lat, lng: r.coords.lng },
+        coarse: r.fuzzy === true,
+        // 拿不到就留 null，界面退回区名。**不编地名**
+        place: ctx?.place ?? null,
+        at: Date.now(),
+      };
+      return this.here;
+    },
+
+    /**
+     * 「重新定位」。**三处入口共用这一个** ——
+     * 首页顶栏、收货地址页的当前位置行、选择地点页。
+     *
+     * <p>把依赖这一次定位的东西一起清掉：粗定位落的区、最近归属的距离、
+     * 「这次会话核过归属没有」。留着的话点完只有一半会变，
+     * 而哪一半会变取决于上一次走的是哪条分支 —— 那种不一致没人查得出来。
+     */
+    /**
+     * 「把当前位置存成收货地址」。**全端唯一的一份。**
+     *
+     * <p>此前有两份、两条路：收货地址页先跳选择地点页（`?useHere=1`）再交回来，
+     * 下单页直接带坐标进新建预填。同一个字，两种流程 —— 前者会多问一次地点，
+     * 而地点其实已经解析好了。统一走后者。
+     *
+     * <p><b>不自动存</b>：地址簿上限 20 条，每次「用一下现在这儿」都存一条会很快塞满；
+     * 而且送到这儿要姓名电话门牌，那些他还没填。带着坐标跳去新建，让他补完 ——
+     * 存下来的那条才是一条**能送到的**地址。
+     *
+     * @returns 跳没跳。false = 连坐标都还没有，调用方自己决定说什么
+     */
+    gotoSaveHere(routes: { address: string }): boolean {
+      const at = this.here?.coords ?? this.transientAt;
+      if (!at) return false;
+      const name = this.here?.place?.name || this.transientName;
+      uni.navigateTo({
+        url: `${routes.address}?new=1&latE6=${Math.round(at.lat * 1e6)}`
+          + `&lngE6=${Math.round(at.lng * 1e6)}&region=${encodeURIComponent(name)}`,
+      });
+      return true;
+    },
+
+    async relocate() {
+      this.coarseRegion = null;
+      this.nearestDistanceM = 0;
+      this.communityChecked = false;
+      this.pickedByUser = false;
+      return this.ensureHere(true);
+    },
+
     async ensureCoarseRegion(): Promise<{ code: string; name: string } | null> {
       const community = useCommunityStore();
       if (community.community) {
@@ -267,6 +387,12 @@ export const useLocationStore = defineStore("location", {
     async switchTo(addressId: string) {
       const addr = await api.switchActiveAddress(addressId);
       this.active = addr;
+      /*
+       * **他自己点的，就听他的。** M9 定了顶栏跟当前定位，但那是「没人发话时的默认」；
+       * 一个明确的动作被自动定位悄悄顶掉，比不跟定位更糟。
+       * 不持久化 —— 下次打开又回到跟定位。
+       */
+      this.pickedByUser = true;
       /*
        * 切回地址簿里的某一条，这一次的「当前位置」就结束了。
        * 不清的话顶栏会一直挂着「当前位置 · XX」，而货已经按新地址换过了 ——

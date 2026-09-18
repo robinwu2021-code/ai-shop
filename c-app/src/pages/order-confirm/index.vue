@@ -19,14 +19,14 @@ import { useLocationStore } from "@/stores/location";
 import { useUserStore } from "@/stores/user";
 import PhoneGate from "@/components/phone-gate.vue";
 import { FEATURES, FULFILLMENT, PAY_MODE, POINTS, ROUTES, TRADE_RULES } from "@shared/utils/constants";
-import { withinDeliveryRange } from "@shared/utils/geo";
 import { datetime, money } from "@shared/utils/format";
 import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
 // 券能减多少与后端同一套算法算 —— 两处各写一遍就会出现「页面说减 8，付完只减 5」
 import { couponDiscount } from "@shared/strategies/pricing/types";
 import { currentCurrency } from "@shared/utils/money";
 import type { Address, CartItem, CheckoutCapability, Coupon, FulfillmentType, OrderItem, OrderAmount, PointsDeductible } from "@shared/types";
-import { pick } from "@ai-shop/ui/prompt";
+import { confirm, pick } from "@ai-shop/ui/prompt";
+import { metersBetweenE6, withinDeliveryRange } from "@shared/utils/geo";
 import { pickedAddress } from "@/shared/address-pick";
 
 const { t } = useI18n();
@@ -114,15 +114,50 @@ const location = useLocationStore();
  * 让他自己补完 —— 存下来的那条才是一条**能送到的**地址。
  */
 function saveHereAsAddress() {
-  const at = location.transientAt;
-  if (!at) return;
-  uni.navigateTo({
-    url: `${ROUTES.address}?new=1&latE6=${Math.round(at.lat * 1e6)}&lngE6=${Math.round(at.lng * 1e6)}`
-      + `&region=${encodeURIComponent(location.transientName)}`,
-  });
+  // 唯一的一份在 store 里 —— 这一页与收货地址页此前各写一份、走两条路
+  location.gotoSaveHere({ address: ROUTES.address });
 }
 
 const address = computed(() => addresses.value.find((a) => a.addressId === addressId.value));
+
+/** 这一单的履约方式认不认聚落。快递不认 —— 它能送到任何地方 */
+const boundToCommunity = computed(
+  () => fulfillment.value === FULFILLMENT.PICKUP
+    || fulfillment.value === FULFILLMENT.DELIVERY,
+);
+
+/**
+ * 收货地址与「这一屏的货所属聚落」对不对得上。
+ *
+ * <p>只在**认聚落的履约方式**下判，且两边都要有坐标 ——
+ * 没坐标推不出聚落，那时拦下来只会挡住一批本来就没问题的人。
+ *
+ * @returns true = 可以继续（对得上，或者判不了，或者他确认了）
+ */
+async function confirmPlaceMismatch(): Promise<boolean> {
+  if (!boundToCommunity.value) return true;
+  const a = address.value;
+  const c = community.community;
+  if (!a || a.latE6 == null || a.lngE6 == null) return true;
+  if (!c || c.latE6 == null || c.lngE6 == null) return true;
+  const m = metersBetweenE6(a.latE6, a.lngE6, c.latE6, c.lngE6);
+  if (m <= COMMUNITY_REACH_M) return true;
+  // ⚠️ 说明文字的字段名是 `hint` 不是 `content` —— ConfirmOptions 没有 content，
+  // 写成 content 的话说明文字被静默丢掉，弹框只剩一个标题（vue-tsc 会拦）
+  return confirm({
+    title: String(t("confirm.placeMismatchTitle")),
+    hint: String(t("confirm.placeMismatchBody", { place: c.name, km: (m / 1000).toFixed(0) })),
+  });
+}
+
+/**
+ * 地址离这一屏的聚落多远就算「不是同一个地方」。
+ *
+ * <p>两公里：比围栏（1000 米量级）宽一档 —— 围栏是「算不算这个小区的人」，
+ * 而这里问的是「这一单会不会送不到」，后者该松一些，
+ * 否则住在小区斜对面的人每次下单都被问一遍。
+ */
+const COMMUNITY_REACH_M = 2000;
 const coupon = computed(() => coupons.value.find((c) => c.couponNo === couponNo.value));
 
 /** 可用券：已领取、未过期、且达到门槛 */
@@ -569,6 +604,20 @@ async function submit() {
    * 真正会挡住他的是「这一带配不出点」，那时后端点名是哪一家，
    * 而这里拦的话只会把他送去一个已经没有选择功能的页面。
    */
+  /*
+   * **顶栏跟定位，那这里就必须有一道闸**（M9）。
+   *
+   * 顶栏回答的是「我在看哪一带的货」，而快递能送到任何地方 —— 所以浏览按位置走、
+   * 收货按地址走，两件事各管各的，没有冲突。
+   *
+   * <b>但自提与社区配送仍然与聚落绑死</b>：那两种履约方式下，
+   * 「在这儿看得到」不等于「能送到你那条地址」。人在公司逛、货寄回家，
+   * 是这个品类最常见的用法 —— 不拦的话他会下一单送不到的，
+   * 而界面上一点痕迹都没有（顶栏写的是公司，地址写的是家，两行都对）。
+   *
+   * 拦但不禁止：说清楚再让他自己定。他可能就是要寄到公司。
+   */
+  if (!(await confirmPlaceMismatch())) return;
   if (needPickup.value && pickupMissing.value.length) {
     uni.showToast({
       title: String(t("confirm.pickupNoneFor", { names: pickupMissing.value.join("、") })),

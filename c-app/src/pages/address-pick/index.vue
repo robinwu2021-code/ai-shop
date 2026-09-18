@@ -12,12 +12,14 @@ import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { canSearchPlaces, searchPlacesNearNative, searchPlacesNative } from "@shared/ports/geo-search";
 import type { PlaceHit } from "@shared/ports/geo-search";
-import { canChooseLocation, chooseLocation, getLocationDetailed } from "@shared/ports/location";
+import { canChooseLocation, chooseLocation } from "@shared/ports/location";
+import { useLocationStore } from "@/stores/location";
 import { distance as fmtDistance } from "@shared/utils/format";
 import { pickedPlace, placeFrom } from "@/shared/address-pick";
 import type { Community } from "@shared/types";
 
 const { t } = useI18n();
+const location = useLocationStore();
 
 /** 这个端支不支持原生地点搜索。H5 / 小程序没有 plus，整个搜索段不显示 */
 const canSearch = canSearchPlaces();
@@ -98,12 +100,21 @@ const locateFailedKey = computed(() =>
   canSearch || canMap ? "addressPick.locateFailed" : "addressPick.locateFailedManualOnly",
 );
 
-async function locate() {
+/**
+ * 取一次位置并把「附近」拉回来。
+ *
+ * <p>**坐标与地名走 store 的单一真源**（`ensureHere`）—— 这一页此前自己定位、
+ * 自己解析，而首页与收货地址页各有另一套。三处迟早给出三个答案，
+ * 实测截图里就出现过两页说的不是同一个地方。
+ *
+ * @param force 用户点了「重新定位」
+ */
+async function locate(force = false) {
   locating.value = true;
   try {
-    const r = await getLocationDetailed();
-    at.value = r.ok ? { lat: r.coords.lat, lng: r.coords.lng } : null;
-    coarse.value = r.ok && r.fuzzy === true;
+    const here = force ? await location.relocate() : await location.ensureHere();
+    at.value = here ? here.coords : null;
+    coarse.value = here?.coarse === true;
     if (at.value) {
       // 复用「附近已开通社区」——它本来就是按坐标查的，且带 name / address / 坐标。
       // **不兜底**：兜成空之后下面那个 `v-if="nearbyPickable.length"`
@@ -116,12 +127,13 @@ async function locate() {
          * 围栏命中的那个就在 nearby 里，再发一次 resolve 是白花的往返。
          * 一个都没命中时留空（新城区），卡上回落到原来那行文字。
          */
-        const ctx = await api
-          .resolveLocation(Math.round(at.value.lat * 1e6), Math.round(at.value.lng * 1e6))
-          .catch(() => null);
-        const hit = nearby.value.find((c) => c.communityNo === ctx?.innermostNo);
-        hereName.value = hit?.name ?? ctx?.innermostName ?? "";
-        hereAddress.value = hit?.address ?? "";
+        /*
+         * 地名同样来自单一真源。**围栏命中时优先用「附近」里那一条的地址** ——
+         * 它带着更完整的门牌，而 store 里那个只有名字。
+         */
+        const hit = nearby.value.find((c) => c.name === here?.place?.name);
+        hereName.value = here?.place?.name ?? "";
+        hereAddress.value = hit?.address ?? here?.place?.address ?? "";
       } catch {
         failed.value = true;
       }
@@ -246,7 +258,7 @@ onLoad((q?: Record<string, string>) => {
       <view v-if="hasHere" class="sh-card block">
         <view class="sh-row sh-row--between">
           <text class="txt-strong block__title">{{ $t("addressPick.here") }}</text>
-          <text class="txt-caption txt-primary" @tap="locate">{{ $t("addressPick.relocate") }}</text>
+          <text class="txt-caption txt-primary" @tap="locate(true)">{{ $t("addressPick.relocate") }}</text>
         </view>
         <!-- 模糊定位时不显示距离，理由见 script 里 coarse 那段 -->
         <text v-if="coarse" class="sh-hint">{{ $t("addressPick.coarseHint") }}</text>

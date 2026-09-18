@@ -550,6 +550,14 @@ export const DISMISSED = [
   { key: "stl_settle_invoice.period", why: "日期格式 YYYY/MM，不是取值域 —— 候选启发式的误报" },
   { key: "ful_batch.arrive_date", why: "日期格式 YYYY/MM/DD，同上" },
   { key: "stl_recon_diff.bill_date", why: "日期格式 YYYY/MM/DD，同上" },
+  {
+    key: "geo_place.kind",
+    why: "端上 PLACE_KIND 的**真子集**，不是同一个取值域。"
+      + "PLACE_KIND 多一档 COMMUNITY（「落进了我们自己的聚落围栏」），"
+      + "而那一档按定义永远不会落到这张表里 —— 一个 geo_place 行不是聚落。"
+      + "登记成同一个字段会逐字比对出一个必然的差异，"
+      + "而把 COMMUNITY 加进建表注释才是真的错：那会让人以为这张表里存得下它",
+  },
 ];
 
 /**

@@ -113,6 +113,11 @@ async function load() {
    * 代码在它唯一该起作用的场景里是死的。真机上的症状是顶栏一直显示
    * 一个库里根本没有的社区名，重开多少次都不变。
    */
+  /*
+   * **「我在哪」先取，而且每次进首页都取一次**（内部按时刻判过期，五分钟内直接给）。
+   * 它是顶栏那一行的唯一真源 —— 少了这一句，顶栏读到的是上一次会话留下的东西。
+   */
+  await location.ensureHere();
   const region = await location.ensureCoarseRegion();
   const communityNo = community.community?.communityNo;
   const regionCode = communityNo ? undefined : region?.code;
@@ -197,6 +202,15 @@ async function quickSwitch(a: (typeof location.list)[number]) {
     duration: rebound ? 1500 : 3000,
   });
   load();
+}
+
+/**
+ * 「重新定位」。**强制重取，并把依赖这一次定位的东西一起清掉** ——
+ * 清完重新加载，否则顶栏变了而商品还是上一处的。
+ */
+async function relocate() {
+  await location.relocate();
+  await load();
 }
 
 function gotoPlace() {
@@ -330,10 +344,17 @@ onShareAppMessage(() =>
             升级前存在本地的旧状态。真机上表现为顶栏顶着一个便利店的名字，
             而用户以为那是他所在的小区。
           -->
-          {{ location.label || community.community?.name || $t("home.choosePickup") }}
+          {{ location.label || $t("home.choosePickup") }}
         </text>
         <text class="txt-caption place__sub sh-fill">{{ placeSub }}</text>
       </view>
+      <!--
+        **「重新定位」三处共用一个动作**（首页、收货地址页、选择地点页）。
+        没有它的话，位置一旦落错就只能等五分钟的过期，而用户不知道要等。
+      -->
+      <text class="txt-caption txt-primary place__relocate sh-hit" @tap.stop="relocate">
+        {{ $t("home.relocate") }}
+      </text>
       <!--
         家 / 公司 一点即换。**替代「手动多选」的那一半** ——
         多选的驱动力是「切换太麻烦」，那就让切换便宜，而不是把两个地方的货混在一屏。

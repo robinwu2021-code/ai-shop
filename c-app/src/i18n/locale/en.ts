@@ -28,6 +28,8 @@ export default {
     communityFeedHint: "Pick a community to see what neighbours buy",
     communityFeedEmpty: "No one is selling here yet",
     cutoffIn: "Closes in {t}",
+    /** 顶栏那颗「重新定位」。三处入口共用同一个动作 */
+    relocate: "Relocate",
     choosePickup: "Pick an address",
     hereTag: "Here now",
     choosePickupHint: "Tap to tell us where you are",
@@ -430,6 +432,9 @@ timeSlotPh: "e.g. tonight 19:00–21:00",
     estimateOnly: "Network is shaky — this is an estimate; the amount at submit wins",
     emptyItems: "These items are no longer in the cart",
     backToCart: "Back to cart",
+    /** M9 那道闸：顶栏跟定位，那自提/社区配送就必须问一句「这条地址在不在这一带」 */
+    placeMismatchTitle: "This address is outside the current area",
+    placeMismatchBody: "You are browsing goods for {place}, but this address is about {km} km away. Pickup and community delivery only work in that area.",
     whyNoAddress: "Pick a delivery address to continue",
     whyNoSlot: "Pick a visit time to continue",
     whyOutOfRange: "A shop cannot deliver here — change the address or drop that shop",
@@ -639,6 +644,8 @@ timeSlotPh: "e.g. tonight 19:00–21:00",
   },
   address: {
     /** 与「设为默认」是两个动作：这个管看货，那个管下单预填 */
+    /** 地图挂了、用的是库里旧的那条 —— 要说出来，不能让人以为它是刚测的 */
+    placeStale: "This location may be out of date",
     youAreHere: "Current location",
     useCurrentLocation: "Use current location",
     saveAsAddress: "Save as address",
