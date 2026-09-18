@@ -1,44 +1,38 @@
 <script setup lang="ts">
-// 商家自己的券（P4）。
-//
-// 这一页只回答三个问题：**这张券会花多少钱、发出去多少、还能不能发**。
-// 不做数据图表 —— 小店老板要的是「这张券我还敢不敢再发一批」，不是转化漏斗。
-//
-// ⚠️ 「最大敞口」那一行是这一页最重要的数字：商家填「200 张 × 5 元」时
-// 心里想的是「发 200 张」，不是「最多赔一千」。把它显示出来，
-// 比在他发完之后再解释便宜得多。
+/*
+ * 券（原型 s12）。与活动列表同一种卡：名称 + 状态 / 一行信息 / 一行指标；
+ * 卡内不放按钮，停发与发放都在券详情里（s15）；新建在底部操作栏。
+ *
+ * 指标行：次卡的进度按**核销次数**算，不按张数 —— 次卡发出去一张，要紧的是还剩多少次没核；
+ * 其余按领取张数。
+ */
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
-import { money } from "@shared/utils/money";
-import type { MemberSegment, MerchantCoupon } from "@shared/types";
-import { confirm, pick } from "@ai-shop/ui/prompt";
+import { ROUTES } from "@/shared/nav";
+import { couponKind, couponProgress, couponRule, couponValidity } from "@/shared/coupon-text";
+import type { MerchantCoupon } from "@shared/types";
 
 const { t } = useI18n();
+const tt = (k: string, a?: Record<string, unknown>) => String(t(k, a ?? {}));
 const merchant = useMerchantStore();
 
+const TABS = [
+  { key: "ACTIVE", label: tt("coupons.tab.ACTIVE") },
+  { key: "PAUSED", label: tt("coupons.tab.PAUSED") },
+  { key: "ENDED", label: tt("coupons.tab.ENDED") },
+] as const;
+const tab = ref<string>("ACTIVE");
+
 const list = ref<MerchantCoupon[]>([]);
-const segments = ref<MemberSegment[]>([]);
-const includeEnded = ref(false);
-const busy = ref(false);
-
-const active = computed(() => list.value.filter((c) => c.status === "ACTIVE"));
-
-/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
 const loaded = ref(false);
-/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
 const failed = ref(false);
 
 async function load() {
   try {
-    const [cs, sg] = await Promise.all([
-      api.mCoupons(includeEnded.value),
-      api.mMemberSegments(),
-    ]);
-    list.value = cs;
-    segments.value = sg;
+    list.value = await api.mCoupons(true);
     failed.value = false;
   } catch {
     failed.value = true;
@@ -46,162 +40,85 @@ async function load() {
   loaded.value = true;
 }
 
-async function run(fn: () => Promise<unknown>) {
-  if (busy.value) return;
-  busy.value = true;
-  try {
-    await fn();
-    await load();
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  } finally {
-    busy.value = false;
+const shown = computed(() => list.value.filter((c) => c.status === tab.value));
+
+/** 快发完：剩下不到一成。黄 = 该补货或该停了；绿 = 在发；灰 = 其它 */
+function chipOf(c: MerchantCoupon): { text: string; cls: string } {
+  if (c.status === "ACTIVE") {
+    const low = c.totalCount != null && c.totalCount - c.receivedCount <= Math.max(1, c.totalCount / 10);
+    return low
+      ? { text: tt("coupons.status.LOW"), cls: "sh-chip--warning" }
+      : { text: tt("coupons.status.ACTIVE"), cls: "sh-chip--success" };
   }
+  return { text: tt(`coupons.status.${c.status}`), cls: "" };
 }
 
-/** 权益一句话：折扣券要把「打几折 + 最多减多少」一起说，只说折扣是不完整的 */
-function benefitText(c: MerchantCoupon) {
-  if (c.benefitMode === "PERCENT") {
-    const zhe = (c.benefitValue / 1000).toFixed(1);
-    return t("coupons.benefitPercent", { z: zhe, cap: money(c.benefitCapMinor ?? 0) });
-  }
-  if (c.benefitMode === "GIFT") return t("coupons.benefitGift");
-  if (c.benefitMode === "FREE_SHIP") return t("coupons.benefitFreeShip");
-  return c.minAmountMinor
-    ? t("coupons.benefitCashWithMin", { n: money(c.benefitValue), m: money(c.minAmountMinor) })
-    : t("coupons.benefitCash", { n: money(c.benefitValue) });
+/** 信息行：类型 · 规则或有效期（次卡带次数，折扣带封顶，现金带有效期） */
+function metaOf(c: MerchantCoupon): string {
+  const kind = couponKind(c);
+  const name = tt(`couponText.kind.${kind}`);
+  if (kind === "TIMES" || kind === "PERCENT") return `${name} · ${couponRule(tt, c)}`;
+  return `${name} · ${couponValidity(tt, c)}`;
 }
 
 function go(url: string) {
   uni.navigateTo({ url });
 }
 
-function toggleStatus(c: MerchantCoupon) {
-  const next = c.status === "ACTIVE" ? "PAUSED" : "ACTIVE";
-  run(() => api.mSetCouponStatus(c.couponNo, next));
-}
-
-/**
- * 发券。**先选人群，再确认一次** —— 发出去的券收不回来。
- * 确认框里要把「发给哪一群、多少人」说清楚，只写「确定发放吗」等于没说。
- */
-async function issue(c: MerchantCoupon) {
-  if (!segments.value.length) {
-    uni.showToast({ title: t("coupons.noSegment"), icon: "none" });
-    return;
-  }
-  const idx = await pick({
-    items: segments.value.map((s) => `${s.name}（${s.lastCount}）`),
-  });
-  if (idx === null) return;
-  const seg = segments.value[idx]!;
-
-  const ok = await confirm({ title: String(t("coupons.issueTitle", { name: seg.name })), hint: String(t("coupons.issueBody", { n: seg.lastCount, title: c.title })) });
-  if (!ok) return;
-
-  try {
-    const res = await api.mIssueCoupon(c.couponNo, seg.segmentNo);
-    await load();
-    // 结果页而不是一句 toast：跳过了多少、为什么跳过，一句话装不下
-    go(`/pages/coupon-issues/index?couponNo=${c.couponNo}&issueNo=${res.issueNo}`);
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  }
-}
-
-onShow(load);
+onShow(() => {
+  void load();
+});
 </script>
 
 <template>
-  <sh-scaffold title-key="coupons.title" :denied="!merchant.can('biz:campaign')">
-    <!-- 当前门店只读标记：券按门店发放与核销（/biz/coupons 走 currentStoreScope）——
-         界面上不说清是哪家店，多店店主会在另一家店上动手，而且没有任何症状。
-         只在多店时渲染（单店没有歧义可消）；切店入口在工作台，这里不带动作。 -->
+  <sh-scaffold title-key="coupons.title" :denied="!merchant.can('biz:campaign')" :failed="failed" @retry="load">
+    <sh-tabs :items="TABS" :active="tab" @change="tab = $event"></sh-tabs>
 
-    <view class="bar sh-wrap">
-      <text class="sh-chip sh-chip--primary" @tap="go('/pages/coupon-edit/index')">
-        ＋ {{ $t("coupons.new") }}
-      </text>
-      <text class="sh-chip" @tap="go('/pages/coupon-issues/index')">
-        {{ $t("coupons.issues") }}
-      </text>
-      <text
-        class="sh-chip"
-        :class="{ 'sh-chip--primary': includeEnded }"
-        @tap="includeEnded = !includeEnded; load()"
-      >
-        {{ $t("coupons.showEnded") }}
-      </text>
-    </view>
-
-    <sh-empty v-if="!list.length" :pending="!loaded" :failed="failed" @retry="load" :text="String($t('coupons.empty'))" :tip="String($t('coupons.emptyTip'))"></sh-empty>
-
-    <view v-for="c in list" :key="c.couponNo" class="sh-card sh-mb-sm">
-      <view class="item__head sh-row">
+    <view v-for="c in shown" :key="c.couponNo" class="sh-card card" @tap="go(`${ROUTES.coupon}?couponNo=${c.couponNo}`)">
+      <view class="sh-row sh-row--between">
         <text class="txt-strong">{{ c.title }}</text>
-        <text v-if="c.status !== 'ACTIVE'" class="sh-chip">
-          {{ $t(`coupons.status.${c.status}`) }}
-        </text>
+        <text class="sh-chip" :class="chipOf(c).cls">{{ chipOf(c).text }}</text>
       </view>
-      <text class="txt-sub benefit">{{ benefitText(c) }}</text>
-
-      <view class="txt-caption nums">
-        <text class="sh-muted sh-num">
-          {{ $t("coupons.issued", { n: c.receivedCount, m: c.totalCount ?? "—" }) }}
-        </text>
-        <!-- 敞口：他填的是张数，看到的必须是钱 -->
-        <text v-if="c.maxExposureMinor != null" class="sh-muted sh-num">
-          {{ $t("coupons.exposure", { n: money(c.maxExposureMinor) }) }}
-        </text>
-      </view>
-      <text v-if="c.validityMode === 'RELATIVE'" class="txt-caption sh-muted valid">
-        {{ $t("coupons.validRelative", { n: c.validDays }) }}
-      </text>
-      <text v-if="c.redeemMode === 'STORE_CODE'" class="txt-caption sh-muted valid">
-        {{ $t("coupons.storeCode") }}
-      </text>
-
-      <view class="acts">
-        <text v-if="c.status === 'ACTIVE'" class="sh-link" @tap="issue(c)">
-          {{ $t("coupons.issue") }}
-        </text>
-        <text class="sh-link" @tap="go(`/pages/coupon-edit/index?couponNo=${c.couponNo}`)">
-          {{ $t("coupons.edit") }}
-        </text>
-        <text v-if="c.status !== 'ENDED'" class="sh-link" @tap="toggleStatus(c)">
-          {{ c.status === "ACTIVE" ? $t("coupons.pause") : $t("coupons.resume") }}
-        </text>
+      <text class="txt-sub sh-muted card__meta">{{ metaOf(c) }}</text>
+      <view class="sh-row card__metric">
+        <template v-if="couponProgress(tt, c).pct != null">
+          <view class="bar sh-fill"><view class="bar__in" :style="{ width: couponProgress(tt, c).pct + '%' }"></view></view>
+        </template>
+        <text class="txt-caption sh-muted sh-num">{{ couponProgress(tt, c).text }}</text>
       </view>
     </view>
 
-    <text v-if="active.length" class="sh-hint sh-mt-sm">{{ $t("coupons.pauseHint") }}</text>
+    <sh-empty
+      v-if="!shown.length"
+      :pending="!loaded"
+      :text="tt('coupons.empty')"
+      :tip="tt('coupons.emptyTip')"
+    ></sh-empty>
+
+    <sh-actionbar>
+      <view class="sh-btn" @tap="go(ROUTES.couponEdit)">{{ $t("coupons.new") }}</view>
+    </sh-actionbar>
   </sh-scaffold>
 </template>
 
 <style scoped>
-
-
-.item__head {
-  gap: 12rpx;
-}
-
-.benefit {
+.card__meta {
   display: block;
   margin-top: 8rpx;
-  color: var(--sh-primary-text);
 }
-.nums {
-  display: flex;
-  gap: 24rpx;
-  margin-top: 8rpx;
+.card__metric {
+  margin-top: 12rpx;
+  gap: 16rpx;
 }
-.valid {
-  display: block;
-  margin-top: 4rpx;
+.bar {
+  height: 8rpx;
+  border-radius: 9999px;
+  background: var(--sh-faint);
+  overflow: hidden;
 }
-.acts {
-  display: flex;
-  gap: 24rpx;
-  margin-top: 16rpx;
+.bar__in {
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--sh-primary);
 }
 </style>

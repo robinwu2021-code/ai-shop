@@ -1,71 +1,69 @@
 <script setup lang="ts">
-// 建券（P4）。五段式：**权益 → 门槛 → 范围 → 有效期 → 发行量与预算**。
-//
-// 为什么分段而不是一张长表单：这五段里每一段都可能让商家改主意
-// （「原来折扣券必须封顶，那我改成满减」），而一张 12 个输入框的表单
-// 要填到最后一个才知道前面填错了。
-//
-// ⚠️ 这一页的校验**与后端一字不差**（mock 里也一样）。页面放宽的话，
-// 商家在演示环境填得过、连真后端就被拒，而那时没人记得是哪一条拦的。
+/*
+ * 新建券（原型 s13 填写 → s14 确认）。结构照搬新建活动：两步、一组组列表行；
+ * **类型是一个字段**，改类型只换「规则」那一组 —— 选折扣时多出「封顶」，选次卡时换成「次数」。
+ *
+ * 三种类型对应到库里（详细设计 §1.5）：
+ *   现金 = CASH，下单抵扣；折扣 = PERCENT，下单抵扣，必须封顶；
+ *   次卡 = GIFT × 次数 > 1，到店出示核销（一张卡核几次，核销页扣次数）。
+ *
+ * 确认页（s14）与活动确认页同一个位置放「最多支出」= 数量 × 单张最大优惠 × 次数。
+ * 商家填的是张数，要为之负责的是钱。
+ *
+ * ⚠️ 这一页的校验**与后端一字不差**（mock 里也一样）。页面放宽的话，
+ * 演示环境填得过、连真后端就被拒，而那时没人记得是哪一条拦的。
+ */
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
+import { ROUTES } from "@/shared/nav";
 import { money, toMinor } from "@shared/utils/money";
-import type { MerchantCouponDraft } from "@shared/types";
+import { couponQuantity, couponRule, couponThreshold, couponValidity } from "@/shared/coupon-text";
+import type { MerchantCoupon, MerchantCouponDraft } from "@shared/types";
 
 const { t } = useI18n();
+const tt = (k: string, a?: Record<string, unknown>) => String(t(k, a ?? {}));
 const merchant = useMerchantStore();
 
+type Kind = "CASH" | "PERCENT" | "TIMES";
+const KINDS: Kind[] = ["CASH", "PERCENT", "TIMES"];
+
 const couponNo = ref("");
+const step = ref<1 | 2>(1);
 const saving = ref(false);
+const showKind = ref(false);
+
+function today(offsetDays = 0): string {
+  const d = new Date(Date.now() + offsetDays * 86_400_000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 const form = ref({
   title: "",
-  benefitMode: "CASH",
-  /** CASH：元；PERCENT：几折（8.5），存的时候换成万分比 */
+  kind: "CASH" as Kind,
+  /** 现金：元；折扣：几折（8.5）；次卡：不用 */
   value: "",
   cap: "",
   minAmount: "",
+  times: "5",
+  /** 次卡每次兑换什么（「豆浆 1 杯」）。存进 benefitRef，核销页原样显示给店员 */
+  gift: "",
+  validityMode: "RELATIVE" as "RELATIVE" | "ABSOLUTE",
   validDays: "7",
-  redeemMode: "ORDER",
-  timesTotal: "1",
+  endDay: today(30),
   totalCount: "100",
   perUserLimit: "1",
-  budget: "",
 });
 
-const isPercent = computed(() => form.value.benefitMode === "PERCENT");
-
-/**
- * 单张最大优惠 × 发行量。**边填边显示** ——
- * 商家填的是张数，而他要为之负责的是钱。
- */
-const exposure = computed(() => {
-  const per = isPercent.value ? toMinor(form.value.cap) : toMinor(form.value.value);
-  const n = Number(form.value.totalCount || 0);
-  const times = Number(form.value.timesTotal || 1);
-  if (!per || !n) return 0;
-  return per * n * times;
-});
-
-const budgetTooLow = computed(() => {
-  const b = toMinor(form.value.budget);
-  return b > 0 && exposure.value > 0 && b < exposure.value;
-});
-
-/** 这次没取到。**与「这个东西不存在」是两件事** —— 预填失败留下的是一张空表单，
- *  照着它填完保存，存出来的是一条新的，原来那条还在 */
-/** 重试要把单号带回去 —— `@retry` 不带参数，而 `activityNo`/`couponNo`
- *  是**加载成功之后**才设的，失败时它们是空的 */
 const currentNo = ref("");
 const failed = ref(false);
 
 async function loadExisting(no: string) {
   currentNo.value = no;
-  // 同 activity-edit：兜成 null 会让「编辑这张券」静默变成「新建一张空券」
-  let c;
+  // 兜成 null 会让「编辑这张券」静默变成「新建一张空券」—— 失败就让页面说失败
+  let c: MerchantCoupon;
   try {
     c = await api.mCoupon(no);
     failed.value = false;
@@ -74,83 +72,121 @@ async function loadExisting(no: string) {
     return;
   }
   couponNo.value = c.couponNo;
+  const kind: Kind = c.timesTotal > 1 ? "TIMES" : c.benefitMode === "PERCENT" ? "PERCENT" : "CASH";
   form.value = {
     title: c.title,
-    benefitMode: c.benefitMode,
-    value: c.benefitMode === "PERCENT"
-      ? String(c.benefitValue / 1000)
-      : String((c.benefitValue / 100).toFixed(2)),
+    kind,
+    value: kind === "PERCENT" ? String(c.benefitValue / 1000) : kind === "CASH" ? String((c.benefitValue / 100).toFixed(2)) : "",
     cap: c.benefitCapMinor ? String((c.benefitCapMinor / 100).toFixed(2)) : "",
     minAmount: c.minAmountMinor ? String((c.minAmountMinor / 100).toFixed(2)) : "",
+    times: String(c.timesTotal > 1 ? c.timesTotal : 5),
+    gift: c.benefitRef ?? "",
+    validityMode: c.validityMode === "ABSOLUTE" ? "ABSOLUTE" : "RELATIVE",
     validDays: String(c.validDays ?? 7),
-    redeemMode: c.redeemMode,
-    timesTotal: String(c.timesTotal),
+    endDay: c.endAt ? today(Math.round((c.endAt - Date.now()) / 86_400_000)) : today(30),
     totalCount: c.totalCount == null ? "" : String(c.totalCount),
     perUserLimit: String(c.perUserLimit),
-    budget: c.budgetMinor ? String((c.budgetMinor / 100).toFixed(2)) : "",
   };
+}
+
+/** 表单 → 入参。确认页的每一行也由它算，保证「看到的」就是「提交的」 */
+const draft = computed<MerchantCouponDraft>(() => {
+  const f = form.value;
+  const kind = f.kind;
+  /*
+   * 折扣按「几折」输入、按万分比提交：8.5 折 → 8500。让商家直接填 8500 的话，
+   * 他迟早会填 85 —— 那在这个口径里是「顾客付 0.85%」，等于白送。
+   */
+  const benefitValue = kind === "PERCENT" ? Math.round(Number(f.value || 0) * 1000)
+    : kind === "CASH" ? toMinor(f.value) : 0;
+  const endAt = f.validityMode === "ABSOLUTE" ? new Date(`${f.endDay}T23:59:59`).getTime() : null;
+  return {
+    couponNo: couponNo.value || undefined,
+    title: f.title.trim(),
+    benefitMode: kind === "TIMES" ? "GIFT" : kind,
+    benefitValue,
+    benefitCapMinor: kind === "PERCENT" ? toMinor(f.cap) : null,
+    benefitRef: kind === "TIMES" ? f.gift.trim() : null,
+    minAmountMinor: kind === "TIMES" ? null : toMinor(f.minAmount) || null,
+    scopeType: "ALL",
+    scopeRefs: [],
+    validityMode: f.validityMode,
+    validDays: f.validityMode === "RELATIVE" ? Number(f.validDays || 7) : null,
+    startAt: f.validityMode === "ABSOLUTE" ? Date.now() : null,
+    endAt,
+    issueMode: "TARGETED",
+    // 次卡要一次次扣，只能到店核销；现金与折扣在下单时自动抵扣
+    redeemMode: kind === "TIMES" ? "STORE_CODE" : "ORDER",
+    timesTotal: kind === "TIMES" ? Number(f.times || 1) : 1,
+    totalCount: f.totalCount ? Number(f.totalCount) : null,
+    perUserLimit: Number(f.perUserLimit || 1),
+    budgetMinor: null,
+  };
+});
+
+/** 确认页当作一张券来描述（与列表、详情同一套说法） */
+const preview = computed<MerchantCoupon>(() => ({
+  ...(draft.value as MerchantCoupon),
+  couponNo: couponNo.value,
+  minQty: null,
+  scopeType: "ALL",
+  scopeRefs: [],
+  receivedCount: 0,
+  maxExposureMinor: null,
+  status: "ACTIVE",
+  usedTimes: 0,
+  spentMinor: 0,
+}));
+
+/** 最多支出 = 数量 × 单张最大优惠 × 次数；次卡是兑换，不算钱 */
+const maxSpend = computed(() => {
+  const d = draft.value;
+  const per = d.benefitMode === "CASH" ? d.benefitValue : d.benefitMode === "PERCENT" ? d.benefitCapMinor ?? 0 : 0;
+  return d.totalCount == null ? null : per * d.totalCount * (d.timesTotal ?? 1);
+});
+
+/** 第一步能不能往下走。每条与后端同一个口径，不过就说哪一条 */
+function checkFill(): string | null {
+  const f = form.value;
+  if (!f.title.trim()) return "couponEdit.needTitle";
+  if (f.kind === "CASH" && !(toMinor(f.value) > 0)) return "couponEdit.needValue";
+  if (f.kind === "PERCENT") {
+    const rate = Math.round(Number(f.value || 0) * 1000);
+    if (rate < 1000 || rate >= 10000) return "couponEdit.badRate";
+    if (!(toMinor(f.cap) > 0)) return "couponEdit.needCap";
+  }
+  if (f.kind === "TIMES" && !(Number(f.times) > 1)) return "couponEdit.needTimes";
+  if (f.kind === "TIMES" && !f.gift.trim()) return "couponEdit.needGift";
+  if (f.validityMode === "ABSOLUTE" && f.endDay < today()) return "couponEdit.badEnd";
+  if (!(Number(f.perUserLimit) >= 1)) return "couponEdit.needPerUser";
+  return null;
+}
+
+function next() {
+  const bad = checkFill();
+  if (bad) {
+    uni.showToast({ title: tt(bad), icon: "none" });
+    return;
+  }
+  step.value = 2;
 }
 
 async function save() {
   if (saving.value) return;
-  if (!form.value.title.trim()) {
-    uni.showToast({ title: t("couponEdit.needTitle"), icon: "none" });
-    return;
-  }
-  /*
-   * 折扣按「几折」输入、按万分比提交：8.5 折 → 8500。
-   * 让商家直接填 8500 的话，他迟早会填 85 或 88 —— 那在这个口径里是
-   * 「顾客付 0.88%」，等于白送。单位转换放在端上，出错的机会就少一次。
-   */
-  const benefitValue = isPercent.value
-    ? Math.round(Number(form.value.value || 0) * 1000)
-    : toMinor(form.value.value);
-  if (isPercent.value && (benefitValue < 1000 || benefitValue >= 10000)) {
-    uni.showToast({ title: t("couponEdit.badRate"), icon: "none" });
-    return;
-  }
-  if (isPercent.value && !toMinor(form.value.cap)) {
-    uni.showToast({ title: t("couponEdit.needCap"), icon: "none" });
-    return;
-  }
-  if (!isPercent.value && !benefitValue) {
-    uni.showToast({ title: t("couponEdit.needValue"), icon: "none" });
-    return;
-  }
-  if (budgetTooLow.value) {
-    uni.showToast({ title: t("couponEdit.budgetTooLow"), icon: "none" });
-    return;
-  }
-
-  const draft: MerchantCouponDraft = {
-    couponNo: couponNo.value || undefined,
-    title: form.value.title.trim(),
-    benefitMode: form.value.benefitMode,
-    benefitValue,
-    benefitCapMinor: isPercent.value ? toMinor(form.value.cap) : null,
-    minAmountMinor: toMinor(form.value.minAmount) || null,
-    scopeType: "ALL",
-    scopeRefs: [],
-    validityMode: "RELATIVE",
-    validDays: Number(form.value.validDays || 7),
-    issueMode: "TARGETED",
-    redeemMode: form.value.redeemMode,
-    timesTotal: Number(form.value.timesTotal || 1),
-    totalCount: form.value.totalCount ? Number(form.value.totalCount) : null,
-    perUserLimit: Number(form.value.perUserLimit || 1),
-    budgetMinor: toMinor(form.value.budget) || null,
-  };
-
   saving.value = true;
   try {
-    await api.mSaveCoupon(draft);
-    uni.showToast({ title: t("couponEdit.saved"), icon: "none" });
-    setTimeout(() => uni.navigateBack(), 600);
+    const c = await api.mSaveCoupon(draft.value);
+    uni.redirectTo({ url: `${ROUTES.coupon}?couponNo=${c.couponNo}` });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
     saving.value = false;
   }
+}
+
+function cancel() {
+  if (step.value === 2) step.value = 1;
+  else uni.navigateBack();
 }
 
 onLoad((q) => {
@@ -163,137 +199,193 @@ onLoad((q) => {
     :failed="failed"
     @retry="() => loadExisting(currentNo)"
   >
-    <view class="sh-card">
-      <text class="field__label">{{ $t("couponEdit.name") }}</text>
-      <input maxlength="64" v-model="form.title" class="field__input" :placeholder="$t('couponEdit.namePh')" />
-    </view>
-
-    <!-- ① 权益 -->
-    <view class="sh-card sh-mt-sm">
-      <text class="field__label">{{ $t("couponEdit.benefit") }}</text>
-      <view class="chips">
-        <text
-          v-for="m in ['CASH', 'PERCENT']"
-          :key="m"
-          class="sh-chip"
-          :class="{ 'sh-chip--primary': form.benefitMode === m }"
-          @tap="form.benefitMode = m"
-        >
-          {{ $t(`couponEdit.mode.${m}`) }}
-        </text>
+    <!-- ============================== 填写（s13） -->
+    <template v-if="step === 1">
+      <view class="sh-row sh-row--between prog">
+        <text class="txt-body txt-bold">{{ $t("couponEdit.stepFill") }}</text>
+        <text class="txt-caption sh-muted sh-num">{{ $t("couponEdit.progress", { i: 1 }) }}</text>
       </view>
 
-      <view class="sh-row mt2 sh-mt-xs">
-        <text class="txt-sub row__label">
-          {{ isPercent ? $t("couponEdit.rate") : $t("couponEdit.face") }}
-        </text>
-        <input maxlength="10" v-model="form.value" class="field__input row__input" type="digit"
-               :placeholder="isPercent ? '8.5' : '5.00'" />
-      </view>
-      <!-- 折扣券必须封顶：不封顶的敞口随订单金额无限放大 -->
-      <view v-if="isPercent" class="sh-row sh-mt-xs">
-        <text class="txt-sub row__label">{{ $t("couponEdit.cap") }}</text>
-        <input maxlength="10" v-model="form.cap" class="field__input row__input" type="digit" placeholder="20.00" />
-      </view>
-      <text v-if="isPercent" class="sh-muted sh-hint">{{ $t("couponEdit.capHint") }}</text>
-    </view>
-
-    <!-- ② 门槛 -->
-    <view class="sh-card sh-mt-sm">
-      <view class="sh-row sh-mt-xs">
-        <text class="txt-sub row__label">{{ $t("couponEdit.minAmount") }}</text>
-        <input maxlength="10" v-model="form.minAmount" class="field__input row__input" type="digit"
-               :placeholder="$t('couponEdit.minAmountPh')" />
-      </view>
-    </view>
-
-    <!-- ③ 核销方式（范围一期只做全店，见 contract 里的说明） -->
-    <view class="sh-card sh-mt-sm">
-      <text class="field__label">{{ $t("couponEdit.redeem") }}</text>
-      <view class="chips">
-        <text
-          v-for="m in ['ORDER', 'STORE_CODE']"
-          :key="m"
-          class="sh-chip"
-          :class="{ 'sh-chip--primary': form.redeemMode === m }"
-          @tap="form.redeemMode = m"
-        >
-          {{ $t(`couponEdit.redeemMode.${m}`) }}
-        </text>
-      </view>
-      <text class="sh-muted sh-hint">{{ $t("couponEdit.redeemHint") }}</text>
-
-      <view v-if="form.redeemMode === 'STORE_CODE'" class="sh-row mt2 sh-mt-xs">
-        <text class="txt-sub row__label">{{ $t("couponEdit.times") }}</text>
-        <input maxlength="6" v-model="form.timesTotal" class="field__input row__input" type="number" />
-      </view>
-    </view>
-
-    <!-- ④ 有效期 -->
-    <view class="sh-card sh-mt-sm">
-      <view class="sh-row sh-mt-xs">
-        <text class="txt-sub row__label">{{ $t("couponEdit.validDays") }}</text>
-        <input maxlength="4" v-model="form.validDays" class="field__input row__input" type="number" />
-      </view>
-      <text class="sh-muted sh-hint">{{ $t("couponEdit.validHint") }}</text>
-    </view>
-
-    <!-- ⑤ 发行量与预算 -->
-    <view class="sh-card sh-mt-sm">
-      <view class="sh-row sh-mt-xs">
-        <text class="txt-sub row__label">{{ $t("couponEdit.total") }}</text>
-        <input maxlength="6" v-model="form.totalCount" class="field__input row__input" type="number" />
-      </view>
-      <view class="sh-row sh-mt-xs">
-        <text class="txt-sub row__label">{{ $t("couponEdit.perUser") }}</text>
-        <input maxlength="6" v-model="form.perUserLimit" class="field__input row__input" type="number" />
-      </view>
-      <view class="sh-row sh-mt-xs">
-        <text class="txt-sub row__label">{{ $t("couponEdit.budget") }}</text>
-        <input maxlength="10" v-model="form.budget" class="field__input row__input" type="digit"
-               :placeholder="$t('couponEdit.budgetPh')" />
+      <view class="sh-cells">
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.name") }}</text>
+          <input v-model="form.title" maxlength="64" class="txt-body cell__input" :placeholder="$t('couponEdit.namePh')" />
+        </view>
+        <view class="sh-cell sh-row sh-row--between" @tap="showKind = true">
+          <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.kind") }}</text>
+          <view class="sh-row">
+            <text class="txt-body">{{ $t(`couponText.kind.${form.kind}`) }}</text>
+            <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+          </view>
+        </view>
       </view>
 
-      <!-- 他填的是张数，要为之负责的是钱 -->
-      <view v-if="exposure > 0" class="txt-strong sh-notice exposure" :class="{ 'is-bad': budgetTooLow }">
-        {{ $t("couponEdit.exposure", { n: money(exposure) }) }}
+      <text class="txt-caption sh-muted grp">{{ $t("couponEdit.groupRule") }}</text>
+      <view class="sh-cells">
+        <view v-if="form.kind === 'CASH'" class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.face") }}</text>
+          <input v-model="form.value" maxlength="10" type="digit" class="txt-body cell__input sh-num" :placeholder="$t('couponEdit.facePh')" />
+        </view>
+        <template v-if="form.kind === 'PERCENT'">
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.rate") }}</text>
+            <input v-model="form.value" maxlength="10" type="digit" class="txt-body cell__input sh-num" :placeholder="$t('couponEdit.ratePh')" />
+          </view>
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.cap") }}</text>
+            <input v-model="form.cap" maxlength="10" type="digit" class="txt-body cell__input sh-num" :placeholder="$t('couponEdit.capPh')" />
+          </view>
+        </template>
+        <template v-if="form.kind === 'TIMES'">
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.gift") }}</text>
+            <input v-model="form.gift" maxlength="32" class="txt-body cell__input" :placeholder="$t('couponEdit.giftPh')" />
+          </view>
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.times") }}</text>
+            <input v-model="form.times" maxlength="6" type="number" class="txt-body cell__input sh-num" :placeholder="$t('couponEdit.timesPh')" />
+          </view>
+        </template>
+        <view v-if="form.kind !== 'TIMES'" class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.min") }}</text>
+          <input v-model="form.minAmount" maxlength="10" type="digit" class="txt-body cell__input sh-num" :placeholder="$t('couponEdit.minPh')" />
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.scope") }}</text>
+          <text class="txt-body">{{ $t("couponText.scopeAll") }}</text>
+        </view>
       </view>
-      <text v-if="budgetTooLow" class="txt-caption bad">{{ $t("couponEdit.budgetTooLow") }}</text>
-    </view>
 
-    <view class="sh-btn save" :class="{ 'is-disabled': saving }" @tap="save">
-      {{ $t("couponEdit.save") }}
-    </view>
+      <text class="txt-caption sh-muted grp">{{ $t("couponEdit.groupValidity") }}</text>
+      <view class="sh-cells">
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.validityMode") }}</text>
+          <view class="sh-row segs">
+            <text v-for="m in ['RELATIVE', 'ABSOLUTE']" :key="m" class="sh-seg seg"
+                  :class="{ 'sh-seg--on': form.validityMode === m }"
+                  @tap="form.validityMode = m as 'RELATIVE' | 'ABSOLUTE'">{{ $t(`couponEdit.validity.${m}`) }}</text>
+          </view>
+        </view>
+        <view v-if="form.validityMode === 'RELATIVE'" class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.days") }}</text>
+          <input v-model="form.validDays" maxlength="6" type="number" class="txt-body cell__input sh-num" :placeholder="$t('couponEdit.daysPh')" />
+        </view>
+        <picker v-else mode="date" :value="form.endDay" :start="today()" @change="form.endDay = $event.detail.value">
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.until") }}</text>
+            <text class="txt-body sh-num">{{ form.endDay }}</text>
+          </view>
+        </picker>
+      </view>
+
+      <text class="txt-caption sh-muted grp">{{ $t("couponEdit.groupIssue") }}</text>
+      <view class="sh-cells">
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.total") }}</text>
+          <input v-model="form.totalCount" maxlength="6" type="number" class="txt-body cell__input sh-num" :placeholder="$t('couponEdit.totalPh')" />
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.perUser") }}</text>
+          <input v-model="form.perUserLimit" maxlength="6" type="number" class="txt-body cell__input sh-num" />
+        </view>
+      </view>
+
+      <sh-actionbar>
+        <view class="sh-row bar">
+          <view class="sh-btn sh-btn--muted sh-fill" @tap="cancel">{{ $t("couponEdit.cancel") }}</view>
+          <view class="sh-btn bar__main" @tap="next">{{ $t("couponEdit.next") }}</view>
+        </view>
+      </sh-actionbar>
+    </template>
+
+    <!-- ============================== 确认（s14） -->
+    <template v-else>
+      <view class="sh-row sh-row--between prog">
+        <text class="txt-body txt-bold">{{ $t("couponEdit.stepConfirm") }}</text>
+        <text class="txt-caption sh-muted sh-num">{{ $t("couponEdit.progress", { i: 2 }) }}</text>
+      </view>
+      <view class="sh-cells">
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("couponEdit.name") }}</text>
+          <text class="txt-body">{{ preview.title }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("couponEdit.kind") }}</text>
+          <text class="txt-body sh-num">{{ $t(`couponText.kind.${form.kind}`) }} {{ couponRule(tt, preview) }}</text>
+        </view>
+        <view v-if="form.kind !== 'TIMES'" class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("couponEdit.min") }}</text>
+          <text class="txt-body sh-num">{{ couponThreshold(tt, preview) }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("couponEdit.groupValidity") }}</text>
+          <text class="txt-body sh-num">{{ couponValidity(tt, preview) }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("couponEdit.total") }}</text>
+          <text class="txt-body sh-num">{{ couponQuantity(tt, preview) }}</text>
+        </view>
+      </view>
+
+      <view class="sh-row sh-row--between spend">
+        <text class="txt-body sh-muted">{{ $t("couponEdit.maxSpend") }}</text>
+        <text class="txt-title sh-num">{{ maxSpend == null ? $t("couponEdit.unlimited") : money(maxSpend) }}</text>
+      </view>
+
+      <sh-actionbar>
+        <view class="sh-row bar">
+          <view class="sh-btn sh-btn--muted sh-fill" @tap="cancel">{{ $t("couponEdit.back") }}</view>
+          <view class="sh-btn bar__main" :class="{ 'is-disabled': saving }" @tap="save">{{ $t("couponEdit.save") }}</view>
+        </view>
+      </sh-actionbar>
+    </template>
+
+    <sh-sheet :visible="showKind" :title="tt('couponEdit.kind')" @close="showKind = false">
+      <view class="sh-cells">
+        <view v-for="k in KINDS" :key="k" class="sh-cell sh-row sh-row--between" @tap="form.kind = k; showKind = false">
+          <view>
+            <text class="txt-body" :class="{ 'txt-primary': form.kind === k }">{{ $t(`couponText.kind.${k}`) }}</text>
+            <text class="txt-caption sh-muted pick__d">{{ $t(`couponEdit.kindDesc.${k}`) }}</text>
+          </view>
+          <sh-icon v-if="form.kind === k" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
+        </view>
+      </view>
+    </sh-sheet>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.mt2 {
-  margin-top: 16rpx;
+.prog {
+  padding: 0 8rpx;
 }
-.chips {
-  display: flex;
-  gap: 12rpx;
-  margin-top: 12rpx;
-}
-
-.row__label {
-  width: 180rpx;
-}
-.row__input {
-  flex: 1;
-}
-
-.exposure {
-  margin-top: 16rpx;
-}
-.exposure.is-bad {
-  background: var(--sh-danger-tint);
-}
-.bad {
+.grp {
   display: block;
-  margin-top: 8rpx;
-  color: var(--sh-danger);
+  padding: 0 8rpx;
 }
-
+.cell__k {
+  flex-shrink: 0;
+}
+.cell__input {
+  flex: 1;
+  text-align: right;
+}
+.segs {
+  gap: 8rpx;
+}
+.seg {
+  padding: 12rpx 20rpx;
+}
+.pick__d {
+  display: block;
+}
+.spend {
+  padding: 8rpx 8rpx 0;
+}
+.bar {
+  gap: 16rpx;
+  width: 100%;
+}
+.bar__main {
+  flex: 2;
+}
 </style>

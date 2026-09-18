@@ -225,6 +225,57 @@ async function next() {
   step.value = 2;
 }
 
+/**
+ * A6（原型 s35）：**开始了的活动只能改结束时间与上限**。已有订单按旧规则算过价，
+ * 这时改门槛 / 优惠 / 商品，同一个活动就有两种价。判据与后端 `ActivityServiceImpl#started` 一致：
+ * 进行中或暂停着，且开始时刻已过（长期活动建好即开始）。
+ */
+const locked = computed(() => {
+  const a = current.value;
+  if (!a) return false;
+  const live = a.status === "RUNNING" || a.status === "PAUSED";
+  return live && (!a.startAt || a.startAt <= Date.now());
+});
+
+/**
+ * 锁定时的入参：规则**从已存的那一条原样回传**，不从表单重算 ——
+ * 表单会把长期活动的开始时刻算成「此刻」，回传出去后端就当成改了规则。只换四项：结束、份数、预算、每期份数。
+ */
+function lockedDraft(): StoreActivityDraft {
+  const a = current.value!;
+  const n = (v: string) => (v === "" ? null : Number(v));
+  return {
+    activityNo: a.activityNo, name: a.name, goal: a.goal ?? null, storeNo: a.storeNo ?? null,
+    triggerType: a.triggerType ?? undefined, triggerAmountMinor: a.triggerAmountMinor ?? null,
+    triggerQty: a.triggerQty ?? null, benefitType: a.benefitType,
+    benefitAmountMinor: a.benefitAmountMinor ?? null, benefitQty: a.benefitQty ?? null,
+    benefitRef: a.benefitRef ?? null, scheduleType: a.scheduleType, startAt: a.startAt ?? null,
+    endAt: a.scheduleType === "ONE_OFF" ? dayEnd(form.value.endDay) : a.endAt ?? null,
+    scheduleRule: a.scheduleRule ?? null,
+    quota: n(form.value.quota), budgetMinor: toMinor(form.value.budget) || null,
+    audiences: a.audiences, goodsNos: a.goodsNos,
+    cutoffTime: a.cutoffTime ?? null, pickupOffset: a.pickupOffset ?? null, pickupFrom: a.pickupFrom ?? null,
+    minQty: a.minQty ?? null,
+    periodQuota: a.triggerType === "CUTOFF" ? n(form.value.periodQuota) : null,
+    decideHours: a.decideHours ?? null, groupHours: a.groupHours ?? null,
+  };
+}
+
+async function saveLocked() {
+  if (saving.value || !current.value) return;
+  saving.value = true;
+  try {
+    await api.mSaveActivity(lockedDraft());
+    uni.showToast({ title: String(t("activityEdit.saved")), icon: "none" });
+    await loadExisting(current.value.activityNo);
+    mode.value = "detail";
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    saving.value = false;
+  }
+}
+
 async function publish() {
   if (saving.value) return;
   saving.value = true;
@@ -447,6 +498,58 @@ onLoad((q) => {
     </template>
 
     <!-- ============================== 填写（s03–s05 · s19） -->
+    <!-- ============================== 编辑进行中的活动（s35）：锁住的行去掉 ›，只有结束与上限可改 -->
+    <template v-else-if="locked && current">
+      <view class="sh-cells">
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.name") }}</text>
+          <text class="txt-body">{{ current.name }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.play") }}</text>
+          <text class="txt-body">{{ play ? $t(`plays.name.${play.key}`) : "—" }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.groupRule") }}</text>
+          <text class="txt-body sh-num">{{ ruleSummary }}</text>
+        </view>
+        <view v-if="current.goodsNos.length" class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.goods") }}</text>
+          <text class="txt-body">{{ $t("activityEdit.goodsN", { n: current.goodsNos.length }) }}</text>
+        </view>
+      </view>
+
+      <text class="txt-caption sh-muted grp">{{ $t("activityEdit.editable") }}</text>
+      <view class="sh-cells">
+        <picker v-if="current.scheduleType === 'ONE_OFF'" mode="date" :value="form.endDay"
+                @change="form.endDay = $event.detail.value">
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.end") }}</text>
+            <text class="txt-body sh-num">{{ form.endDay }}</text>
+          </view>
+        </picker>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.quota") }}</text>
+          <input v-model="form.quota" type="number" maxlength="6" class="txt-body cell__input sh-num" :placeholder="$t('activityEdit.quotaPh')" />
+        </view>
+        <view v-if="current.triggerType === 'CUTOFF'" class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.periodQuota") }}</text>
+          <input v-model="form.periodQuota" type="number" maxlength="6" class="txt-body cell__input sh-num" />
+        </view>
+      </view>
+
+      <view class="sh-notice sh-notice--warning">
+        <text class="txt-caption">{{ $t("activityEdit.lockedNote") }}</text>
+      </view>
+
+      <sh-actionbar>
+        <view class="sh-row bar">
+          <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("activityEdit.cancel") }}</view>
+          <view class="sh-btn bar__main" :class="{ 'is-disabled': saving }" @tap="saveLocked">{{ $t("activityEdit.save") }}</view>
+        </view>
+      </sh-actionbar>
+    </template>
+
     <template v-else-if="step === 1">
       <view class="sh-row sh-row--between prog">
         <text class="txt-body txt-bold">{{ $t("activityEdit.stepFill") }}</text>

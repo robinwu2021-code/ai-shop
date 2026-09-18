@@ -92,6 +92,12 @@ async function redeemCoupon() {
 const overview = ref<PickupOverview | null>(null);
 const code = ref("");
 const busy = ref(false);
+
+/** 「09-30」：核销页只要月日，年份柜台上用不着 */
+function ymd(ms: number): string {
+  const d = new Date(ms);
+  return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 const orders = ref<PickupOrder[]>([]);
 /** 刚核销成功的单号，用于列表高亮，让店主确认「我刚点的是这单」 */
 const justDone = ref("");
@@ -284,28 +290,39 @@ onShow(load);
       <view class="sh-btn sh-btn--soft scan" @tap="scanCoupon">{{ $t("verify.scan") }}</view>
       <text v-if="couponError" class="txt-body sh-notice sh-notice--danger err">{{ couponError }}</text>
 
+      <!-- 扫码后的样子（原型 s17）：码和剩余次数放最上面，隔着柜台看得清 -->
       <view v-if="couponView" class="peek">
-        <text class="txt-strong peek__t">{{ couponView.title }}</text>
-        <text class="txt-sub peek__b">{{ couponView.benefitText }}</text>
-        <text class="txt-caption sh-muted peek__d">
-          {{ $t("verify.couponHolder", { tail: couponView.phoneTail || "----" }) }}
-          <template v-if="couponView.timesTotal > 1">
-            · {{ $t("verify.couponRemaining", { n: couponView.remaining, m: couponView.timesTotal }) }}
-          </template>
-        </text>
+        <view class="peek__hero">
+          <text class="txt-display sh-num">
+            {{ couponView.timesTotal > 1 ? $t("verify.couponLeftHero", { n: couponView.remaining }) : couponView.benefitText }}
+          </text>
+          <text class="txt-sub sh-muted peek__sub">
+            {{ couponView.title }}<template v-if="couponView.timesTotal > 1"> · {{ $t("verify.couponTotal", { n: couponView.timesTotal }) }}</template>
+          </text>
+        </view>
+        <view class="sh-cells peek__cells">
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ $t("verify.couponCustomer") }}</text>
+            <text class="txt-body sh-num">···{{ couponView.phoneTail || "----" }}</text>
+          </view>
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ $t("verify.couponValid") }}</text>
+            <text class="txt-body sh-num">{{ $t("verify.couponUntil", { d: ymd(couponView.expireAt) }) }}</text>
+          </view>
+        </view>
         <text v-if="!couponView.redeemable" class="txt-body sh-notice sh-notice--danger err">
           {{ $t(`verify.couponReason.${couponView.reason}`) }}
         </text>
-
-        <!-- 按钮上就写「不可撤销」：确认框里再写一遍已经晚了半步 -->
-        <view
-          v-if="couponView.redeemable"
-          class="sh-btn redeem"
-          :class="{ 'is-disabled': busy }"
-          @tap="redeemCoupon"
-        >
-          {{ $t("verify.couponRedeem") }}
-        </view>
+        <template v-else>
+          <!-- 写在按钮上方就说「不可撤销」：确认框里再写一遍已经晚了半步 -->
+          <text class="txt-caption sh-notice sh-notice--warning err">{{ $t("verify.couponIrreversible") }}</text>
+          <view class="sh-row peek__bar">
+            <view class="sh-btn sh-btn--muted sh-fill" @tap="couponView = null">{{ $t("verify.couponCancel") }}</view>
+            <view class="sh-btn peek__main" :class="{ 'is-disabled': busy }" @tap="redeemCoupon">
+              {{ couponView.timesTotal > 1 ? $t("verify.couponRedeemOnce") : $t("verify.couponRedeem") }}
+            </view>
+          </view>
+        </template>
       </view>
 
       <view v-if="couponDone" class="txt-sub sh-notice sh-notice--success done">{{ couponDone }}</view>
@@ -463,20 +480,23 @@ onShow(load);
   padding-top: 20rpx;
   border-top: var(--sh-hairline-soft);
 }
-.peek__t {
-  display: block;
+.peek__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
-.peek__b {
-  display: block;
-  margin-top: 8rpx;
-  color: var(--sh-primary-text);
-}
-.peek__d {
-  display: block;
+.peek__sub {
   margin-top: 8rpx;
 }
-.redeem {
+.peek__cells {
   margin-top: 20rpx;
+}
+.peek__bar {
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+.peek__main {
+  flex: 2;
 }
 .done {
   margin-top: 16rpx;

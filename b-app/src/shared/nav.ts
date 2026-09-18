@@ -52,6 +52,11 @@ export const ROUTES = {
   customers: "/pages/customers/index",
   activities: "/pages/activities/index",
   coupons: "/pages/coupons/index",
+  // 券：详情（s15）、新建（s13/s14）、发放选人群（s18）、发放结果与记录（s16）
+  coupon: "/pages/coupon/index",
+  couponEdit: "/pages/coupon-edit/index",
+  couponSend: "/pages/coupon-send/index",
+  couponIssues: "/pages/coupon-issues/index",
   marketing: "/pages/marketing/index",
   // 社区集单：期列表与一期。入口在营销页，不在工作台（ADR-024）
   periods: "/pages/periods/index",

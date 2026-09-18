@@ -795,6 +795,8 @@ _无字段_
 | `budgetMinor` | `number,null` | 否 | 预算上限（分）。空 = 不限 |
 | `maxExposureMinor` | `number,null` | 否 | 最大敞口 = 发行量 × 单张最大优惠。 **建券页要显示它** —— 商家填「1000 张 × 20 元」时心里想的是「发 1000 张」， 不是「最多赔两万」。 |
 | `status` | `string` | 是 | `ACTIVE` / `PAUSED` 暂停发放（已领的不受影响）/ `ENDED` |
+| `usedTimes` | `number` | 是 | 已核销次数（下单抵扣与到店核销都算，已回退的不算）。次卡按次、其余一张一次 |
+| `spentMinor` | `number` | 是 | 已支出（最小货币单位）：核销时实际减掉的钱之和 |
 
 
 #### GET `/biz/coupons/{couponNo}`
@@ -833,6 +835,8 @@ _无字段_
 | `budgetMinor` | `number,null` | 否 | 预算上限（分）。空 = 不限 |
 | `maxExposureMinor` | `number,null` | 否 | 最大敞口 = 发行量 × 单张最大优惠。 **建券页要显示它** —— 商家填「1000 张 × 20 元」时心里想的是「发 1000 张」， 不是「最多赔两万」。 |
 | `status` | `string` | 是 | `ACTIVE` / `PAUSED` 暂停发放（已领的不受影响）/ `ENDED` |
+| `usedTimes` | `number` | 是 | 已核销次数（下单抵扣与到店核销都算，已回退的不算）。次卡按次、其余一张一次 |
+| `spentMinor` | `number` | 是 | 已支出（最小货币单位）：核销时实际减掉的钱之和 |
 
 
 #### POST `/biz/coupons/{couponNo}/issue`
@@ -902,6 +906,8 @@ _无字段_
 | `budgetMinor` | `number,null` | 否 | 预算上限（分）。空 = 不限 |
 | `maxExposureMinor` | `number,null` | 否 | 最大敞口 = 发行量 × 单张最大优惠。 **建券页要显示它** —— 商家填「1000 张 × 20 元」时心里想的是「发 1000 张」， 不是「最多赔两万」。 |
 | `status` | `string` | 是 | `ACTIVE` / `PAUSED` 暂停发放（已领的不受影响）/ `ENDED` |
+| `usedTimes` | `number` | 是 | 已核销次数（下单抵扣与到店核销都算，已回退的不算）。次卡按次、其余一张一次 |
+| `spentMinor` | `number` | 是 | 已支出（最小货币单位）：核销时实际减掉的钱之和 |
 
 
 ### cross-store
@@ -6855,6 +6861,8 @@ _无字段_
 | `budgetMinor` | `number,null` | 否 | 预算上限（分）。空 = 不限 |
 | `maxExposureMinor` | `number,null` | 否 | 最大敞口 = 发行量 × 单张最大优惠。 **建券页要显示它** —— 商家填「1000 张 × 20 元」时心里想的是「发 1000 张」， 不是「最多赔两万」。 |
 | `status` | `string` | 是 | `ACTIVE` / `PAUSED` 暂停发放（已领的不受影响）/ `ENDED` |
+| `usedTimes` | `number` | 是 | 已核销次数（下单抵扣与到店核销都算，已回退的不算）。次卡按次、其余一张一次 |
+| `spentMinor` | `number` | 是 | 已支出（最小货币单位）：核销时实际减掉的钱之和 |
 
 ### MerchantCustomer
 

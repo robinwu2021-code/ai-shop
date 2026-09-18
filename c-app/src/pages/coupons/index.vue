@@ -1,59 +1,46 @@
 <script setup lang="ts">
-// 领券中心 + 我的券包（同一页两 tab）。
-// 不做两个页面：券的信息结构完全一样，只是「领没领」不同；
-// 分成两页会让用户领完券还要自己找到另一个入口去看。
+/*
+ * 我的券（原型 s24）。与 B 端券列表同一种卡：名称 + 状态 / 一行信息。
+ * 买家那边的「状态」就是**还能不能用、还能用多久**：「7 天后过期」「剩 3 次」「可用」。
+ *
+ * 领券不在这一页：在商品详情的「领券」那一行（s36）—— 买家是在看货的时候才想起领券，
+ * 专门跑到券中心去领是店家的想象。
+ *
+ * 到店出示的券（次卡等）点进去是出示码（s25）；下单抵扣的券不用点，结算时自动减。
+ */
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
-import { api } from "@/api";
 import { useI18n } from "vue-i18n";
-import { isoDate, money } from "@shared/utils/format";
+import { api } from "@/api";
+import { ROUTES } from "@shared/utils/constants";
+import { money } from "@shared/utils/format";
 import type { Coupon, MyStoreCoupon } from "@shared/types";
-import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
-const tab = ref<"center" | "mine">("center");
-const coupons = ref<Coupon[]>([]);
-const busy = ref("");
+const tt = (k: string, a?: Record<string, unknown>) => String(t(k, a ?? {}));
 
-const now = Date.now();
-const available = computed(() => coupons.value.filter((c) => !c.received && c.endAt > now));
+type Tab = "usable" | "used" | "expired";
+const TABS = [
+  { key: "usable", label: tt("coupon.tab.usable") },
+  { key: "used", label: tt("coupon.tab.used") },
+  { key: "expired", label: tt("coupon.tab.expired") },
+] as const;
+const tab = ref<Tab>("usable");
 
-/**
- * 券面上的那个大字。**两种券要分开写** ——
- * 满减券是「减 5 元」，折扣券是「八五折」，一个金额字段表达不了后者。
- * 契约此前只有一个 `discountMinor`，于是折扣券要么显示成 ¥0，要么显示成面额。
- */
-function faceText(c: Coupon): string {
-  return c.type === "DISCOUNT"
-    ? String(t("coupon.rate", { n: (c.discountRate / 1000).toFixed(1) }))
-    : money(c.faceMinor);
-}
-const mine = computed(() => coupons.value.filter((c) => c.received));
-const shown = computed(() => (tab.value === "center" ? available.value : mine.value));
-
-/**
- * 商家发给我的券（新模型）。**与领券中心那批分开显示**：
- * 那批是自己领的，这批是被动收到的；而且这批里有到店券 —— 要出示码、
- * 有次卡余次，混在一起会让人以为到店券也能在结算时抵扣。
- */
-const storeCoupons = ref<MyStoreCoupon[]>([]);
-const mineUsable = computed(() => storeCoupons.value.filter((c) => c.usableNow));
-const mineDead = computed(() => storeCoupons.value.filter((c) => !c.usableNow));
-
-/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const store = ref<MyStoreCoupon[]>([]);
+const center = ref<Coupon[]>([]);
 const loaded = ref(false);
-/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
 const failed = ref(false);
 
 async function load() {
   try {
-    const [list, mineList] = await Promise.all([
-      api.couponList(),
-      // 没登录时这条会 401，券包空着就好，不该把整页搞挂
-      api.myStoreCoupons().catch(() => [] as MyStoreCoupon[]),
+    const [mine, list] = await Promise.all([
+      api.myStoreCoupons(),
+      // 领券中心那一套（平台券 / 老的店铺券）：领过的也算我的券。取不到不拖垮整页
+      api.couponList().catch(() => [] as Coupon[]),
     ]);
-    coupons.value = list;
-    storeCoupons.value = mineList;
+    store.value = mine;
+    center.value = list.filter((c) => c.received);
     failed.value = false;
   } catch {
     failed.value = true;
@@ -61,192 +48,90 @@ async function load() {
   loaded.value = true;
 }
 
-/**
- * 把码放大给店员看。**用 showModal 而不是跳一页**：
- * 顾客是把手机递过去的，多一次跳转就多一次「返回键按错」。
- * 码里去掉了 0/O/1/I/L，店员照着屏幕手输不会认错。
- */
-function showCode(c: MyStoreCoupon) {
-  if (!c.redeemCode) return;
-  // `showCancel: false` 对应 `alert: true` —— 只有一个「知道了」，没有取消
-  void confirm({
-    title: c.title,
-    hint: String(t("coupon.codeBody", { code: c.redeemCode, n: c.remaining })),
-    confirmText: String(t("coupon.codeClose")),
-    alert: true,
-  });
+const DAY = 86_400_000;
+
+function md(ms: number): string {
+  const d = new Date(ms);
+  return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-async function receive(c: Coupon) {
-  if (c.received || busy.value) return;
-  busy.value = c.couponNo;
-  try {
-    await api.receiveCoupon(c.couponNo);
-    await load();
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  } finally {
-    busy.value = "";
+interface Row {
+  key: string;
+  title: string;
+  tab: Tab;
+  state: string;
+  /** 状态字用主色（还能用）还是灰（用完 / 过期） */
+  live: boolean;
+  meta: string;
+  /** 到店出示的券：点进去出示码 */
+  userCouponNo?: string;
+}
+
+function storeRow(c: MyStoreCoupon): Row {
+  const used = c.status === "USED" || c.remaining <= 0;
+  const tabOf: Tab = c.usableNow ? "usable" : used ? "used" : "expired";
+  let state = tt("coupon.state.usable");
+  if (tabOf === "used") state = tt("coupon.state.used");
+  else if (tabOf === "expired") state = tt("coupon.state.expired");
+  else if (c.timesTotal > 1) state = tt("coupon.state.left", { n: c.remaining });
+  else if (c.expireAt && c.expireAt - Date.now() < 7 * DAY) {
+    state = tt("coupon.state.expireIn", { n: Math.max(1, Math.ceil((c.expireAt - Date.now()) / DAY)) });
   }
+  const shop = c.merchantName || "";
+  const meta = c.redeemMode === "STORE_CODE"
+    ? [shop, tt("coupon.inStore"), tt("coupon.until", { d: md(c.expireAt) })].filter(Boolean).join(" · ")
+    : [shop, c.scopeType && c.scopeType !== "ALL" ? tt("coupon.scopeSome") : tt("coupon.scopeAll")]
+      .filter(Boolean).join(" · ");
+  return {
+    key: c.userCouponNo, title: c.title, tab: tabOf, state, live: tabOf === "usable", meta,
+    userCouponNo: c.redeemMode === "STORE_CODE" && tabOf === "usable" ? c.userCouponNo : undefined,
+  };
 }
 
-function expired(c: Coupon) {
-  return c.endAt <= now;
+function centerRow(c: Coupon): Row {
+  const live = c.endAt > Date.now();
+  const rule = c.type === "DISCOUNT"
+    ? tt("coupon.rate", { n: (c.discountRate / 1000).toFixed(1).replace(/\.0$/, "") })
+    : money(c.faceMinor);
+  return {
+    key: c.couponNo, title: c.title, tab: live ? "usable" : "expired",
+    state: live ? tt("coupon.state.usable") : tt("coupon.state.expired"), live,
+    meta: [c.scopeDesc || tt("coupon.scopeAll"),
+      c.thresholdMinor ? tt("coupon.threshold", { p: money(c.thresholdMinor) }) : rule].join(" · "),
+  };
 }
 
-onShow(load);
+const rows = computed(() => [...store.value.map(storeRow), ...center.value.map(centerRow)]);
+const shown = computed(() => rows.value.filter((r) => r.tab === tab.value));
+
+function open(r: Row) {
+  if (r.userCouponNo) uni.navigateTo({ url: `${ROUTES.couponCode}?userCouponNo=${r.userCouponNo}` });
+}
+
+onShow(() => {
+  void load();
+});
 </script>
 
 <template>
-  <sh-scaffold title-key="coupon.title">
-    <sh-tabs
-      :items="[
-        { key: 'center', label: String($t('coupon.center', { n: available.length })) },
-        { key: 'mine', label: String($t('coupon.mine', { n: mine.length + mineUsable.length })) },
-      ]"
-      :active="tab"
-      @change="(k: string) => (tab = k as typeof tab)"
-    ></sh-tabs>
+  <sh-scaffold title-key="coupon.title" :failed="failed" @retry="load">
+    <sh-tabs :items="TABS" :active="tab" @change="(k: string) => (tab = k as Tab)"></sh-tabs>
 
-    <!--
-      商家发给我的券。放在券包顶部：它们是**别人主动发过来的**，
-      用户不知道自己有，藏在下面等于没发。
-    -->
-    <template v-if="tab === 'mine'">
-      <view v-for="c in mineUsable" :key="c.userCouponNo" class="sh-card ticket sh-row">
-        <view class="ticket__amount">
-          <text class="txt-display ticket__v sh-num">{{ c.benefitText }}</text>
-          <text class="txt-caption ticket__cond sh-num">
-            {{ c.minAmountMinor
-              ? $t("coupon.threshold", { p: money(c.minAmountMinor) })
-              : $t("coupon.noThreshold") }}
-          </text>
-        </view>
-
-        <view class="sh-fill">
-          <text class="txt-strong ticket__name">{{ c.title }}</text>
-          <!-- 到店券要说清「不能在结算时抵扣」，否则顾客会在收银台等着自动减 -->
-          <text v-if="c.redeemMode === 'STORE_CODE'" class="txt-caption ticket__scope">
-            {{ $t("coupon.storeOnly") }}
-            <template v-if="c.timesTotal > 1">
-              · {{ $t("coupon.remaining", { n: c.remaining, m: c.timesTotal }) }}
-            </template>
-          </text>
-          <text class="txt-caption ticket__exp sh-num">{{ $t("coupon.until", { d: isoDate(c.expireAt) }) }}</text>
-        </view>
-
-        <view v-if="c.redeemCode" class="txt-caption txt-bold ticket__btn" @tap="showCode(c)">
-          {{ $t("coupon.showCode") }}
-        </view>
-        <text v-else class="txt-caption ticket__state ticket__state--ok txt-primary">{{ $t("coupon.autoUse") }}</text>
+    <view v-for="r in shown" :key="r.key" class="sh-card card" @tap="open(r)">
+      <view class="sh-row sh-row--between">
+        <text class="txt-strong">{{ r.title }}</text>
+        <text class="txt-caption" :class="r.live ? 'txt-primary' : 'sh-muted'">{{ r.state }}</text>
       </view>
-
-      <!-- 过期/用完的折叠在下面，但**不删掉**：券包里少一张，用户会以为平台吞了它 -->
-      <view v-for="c in mineDead" :key="c.userCouponNo" class="sh-card ticket is-expired sh-row">
-        <view class="ticket__amount">
-          <text class="txt-display ticket__v sh-num">{{ c.benefitText }}</text>
-        </view>
-        <view class="sh-fill">
-          <text class="txt-strong ticket__name">{{ c.title }}</text>
-          <text class="txt-caption ticket__exp sh-num">{{ $t("coupon.until", { d: isoDate(c.expireAt) }) }}</text>
-        </view>
-        <text class="txt-caption ticket__state">
-          {{ c.remaining <= 0 ? $t("coupon.usedUp") : $t("coupon.expired") }}
-        </text>
-      </view>
-    </template>
-
-    <!-- 券的形状：左边金额、右边规则，中间用色块分隔而不是虚线（扁平风） -->
-    <view
-      v-for="c in shown"
-      :key="c.couponNo"
-      class="sh-card ticket sh-row"
-      :class="{ 'is-expired': expired(c) }"
-    >
-      <view class="ticket__amount">
-        <text class="txt-display ticket__v sh-num">{{ faceText(c) }}</text>
-        <text class="txt-caption ticket__cond sh-num">
-          {{ c.thresholdMinor
-            ? $t("coupon.threshold", { p: money(c.thresholdMinor) })
-            : $t("coupon.noThreshold") }}
-        </text>
-      </view>
-
-      <view class="sh-fill">
-        <text class="txt-strong ticket__name">{{ c.title }}</text>
-        <text class="txt-caption ticket__scope">{{ c.scopeDesc }}</text>
-        <text class="txt-caption ticket__exp sh-num">{{ $t("coupon.until", { d: isoDate(c.endAt) }) }}</text>
-      </view>
-
-      <view
-        v-if="!c.received"
-        class="txt-caption txt-bold ticket__btn"
-        :class="{ 'is-busy': busy === c.couponNo }"
-        @tap="receive(c)"
-      >
-        {{ $t("coupon.receive") }}
-      </view>
-      <text v-else-if="expired(c)" class="txt-caption ticket__state">{{ $t("coupon.expired") }}</text>
-      <text v-else class="txt-caption ticket__state ticket__state--ok txt-primary">{{ $t("coupon.got") }}</text>
+      <text class="txt-sub sh-muted card__meta sh-num">{{ r.meta }}</text>
     </view>
 
-    <sh-empty
-      bare
-      v-if="!shown.length && !(tab === 'mine' && storeCoupons.length)" :pending="!loaded" :failed="failed" @retry="load" :text='tab === "center" ? $t("coupon.centerEmpty") : $t("coupon.mineEmpty")'></sh-empty>
+    <sh-empty v-if="!shown.length" :pending="!loaded" :text="tt('coupon.empty')" :tip="tt('coupon.emptyTip')"></sh-empty>
   </sh-scaffold>
 </template>
 
 <style scoped>
-/* 面色 / 圆角 / 内边距交给 `.sh-card` —— 此前这三行是把它照抄了一遍。
-   内边距因此从 28rpx 变成 C 端的密度档 32rpx（`--sh-pad-card` 没被 C 端覆盖），
-   差 2px：**那正是密度变量存在的意义** —— 各页各写一个数，调密度时就得逐页找。 */
-.ticket {
-  gap: 24rpx;
-  margin-bottom: 20rpx;
-}
-.ticket.is-expired {
-  opacity: 0.5;
-}
-.ticket__amount {
-  flex: 0 0 auto;
-  min-width: 150rpx;
-  background: var(--sh-danger-tint);
-  border-radius: 24rpx;
-  padding: 24rpx 16rpx;
-  text-align: center;
-}
-.ticket__v {
-  display: block;
-  color: var(--sh-danger);
-}
-.ticket__cond {
-  display: block;
-  color: var(--sh-danger);
-  margin-top: 8rpx;
-}
-
-.ticket__name {
-  display: block;
-}
-.ticket__scope {
+.card__meta {
   display: block;
   margin-top: 8rpx;
-}
-.ticket__exp {
-  display: block;
-  margin-top: 8rpx;
-}
-.ticket__btn {
-  flex: 0 0 auto;
-  padding: 16rpx 32rpx;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-}
-.ticket__btn.is-busy {
-  opacity: 0.5;
-}
-.ticket__state {
-  flex: 0 0 auto;
 }
 </style>

@@ -86,7 +86,16 @@ public class ActivityServiceImpl implements ActivityService {
             // 已结束的不能改：时段已过、限量已用，改完只会立刻又结束一次
             throw BizException.of(ErrorCode.ACTIVITY_ENDED_IMMUTABLE);
         }
+        /*
+         * A6（原型 s35）：**开始了的活动只能改结束时间与上限**（份数、预算、每期份数）。
+         * 已有订单按旧规则算过价，这时改门槛 / 优惠 / 商品 / 人群，同一个活动就有了两种价 ——
+         * 对账时说不清哪一单按哪一版算。改规则请结束后另建。还没开始的活动照常全改。
+         */
+        String lockedBefore = create || !started(a) ? null : lockedSignature(vo(a));
         apply(a, d);
+        if (lockedBefore != null && !lockedBefore.equals(lockedSignature(vo(a), d))) {
+            throw BizException.of(ErrorCode.ACTIVITY_RULE_LOCKED);
+        }
         assertSane(a, d);
         assertNoGroupOverlap(a, d);
 
@@ -99,6 +108,39 @@ public class ActivityServiceImpl implements ActivityService {
         saveGoods(entityNo, a.getActivityNo(), d.goodsNos());
         log.info("[活动] {} {} by {}", create ? "建" : "改", a.getActivityNo(), operatorNo);
         return vo(a);
+    }
+
+    /** 开始了没有：进行中或暂停着、且开始时刻已过（长期活动没有开始时刻，建好即开始） */
+    private static boolean started(PmtActivity a) {
+        boolean live = PmtActivity.RUNNING.equals(a.getStatus()) || PmtActivity.PAUSED.equals(a.getStatus());
+        return live && (a.getStartAt() == null || a.getStartAt() <= System.currentTimeMillis());
+    }
+
+    /**
+     * 开始之后<b>不许变</b>的那些字段拼成一串。结束时间、份数、预算、每期份数不在里面 —— 那是 A6 放开的四项。
+     * 商品与人群按集合比（顺序无关），其余按值比。
+     */
+    private static String lockedSignature(ActivityVO v) {
+        return lockedSignature(v, v.goodsNos(), v.audiences());
+    }
+
+    private static String lockedSignature(ActivityVO v, ActivityDraft d) {
+        return lockedSignature(v, d.goodsNos(), d.audiences());
+    }
+
+    private static String lockedSignature(ActivityVO v, List<String> goods, List<AudienceItem> audiences) {
+        java.util.TreeSet<String> g = new java.util.TreeSet<>(goods == null ? List.of() : goods);
+        java.util.TreeSet<String> au = new java.util.TreeSet<>();
+        (audiences == null ? List.<AudienceItem>of() : audiences).forEach(x -> au.add(x.type() + "=" + x.value()));
+        return String.join("|", java.util.Arrays.asList(
+                String.valueOf(v.name()), String.valueOf(v.storeNo()), String.valueOf(v.triggerType()),
+                String.valueOf(v.triggerAmountMinor()), String.valueOf(v.triggerQty()),
+                String.valueOf(v.benefitType()), String.valueOf(v.benefitAmountMinor()),
+                String.valueOf(v.benefitQty()), String.valueOf(v.benefitRef()),
+                String.valueOf(v.scheduleType()), String.valueOf(v.startAt()), String.valueOf(v.scheduleRule()),
+                String.valueOf(v.cutoffTime()), String.valueOf(v.pickupOffset()), String.valueOf(v.pickupFrom()),
+                String.valueOf(v.minQty()), String.valueOf(v.decideHours()), String.valueOf(v.groupHours()),
+                g.toString(), au.toString()));
     }
 
     private void apply(PmtActivity a, ActivityDraft d) {

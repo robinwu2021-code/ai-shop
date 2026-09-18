@@ -298,6 +298,18 @@
       }
     },
     {
+      "path": "pages/coupon-code/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/cards/index",
       "style": {
         "navigationBarTitleText": "",

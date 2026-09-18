@@ -72,11 +72,49 @@ public class MemberQueryPortImpl implements MemberQueryPort {
         });
     }
 
+    /** 按分层筛人要用；setter 注入，免得改构造函数（切片测试里没有它时预设人群不可用） */
+    private ai.neargo.shop.member.service.MemberService memberService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setMemberService(ai.neargo.shop.member.service.MemberService memberService) {
+        this.memberService = memberService;
+    }
+
+    /**
+     * 预设人群的键：{@code @ALL} / {@code @NEW} / {@code @REGULAR} / {@code @LOYAL} / {@code @SLEEPING}。
+     * 以 @ 开头是为了与存下来的人群号（{@code SG…}）永不相撞。不是预设时返回 null。
+     */
+    static String presetLevel(String segmentNo) {
+        if (segmentNo == null || !segmentNo.startsWith("@")) {
+            return null;
+        }
+        String level = segmentNo.substring(1);
+        return java.util.Set.of(PRESET_ALL, "NEW", "REGULAR", "LOYAL", "SLEEPING").contains(level) ? level : null;
+    }
+
+    private static final String PRESET_ALL = "ALL";
+
     @Override
     public SegmentAudience resolveSegment(String entityNo, String segmentNo) {
-        // resolve 给的已经是「可触达」的那一批（线索与退订的人不在内）
-        List<String> reachableNos = segmentService.resolve(entityNo, segmentNo);
-        int matched = segmentService.matchedCount(entityNo, segmentNo);
+        List<String> reachableNos;
+        int matched;
+        String level = presetLevel(segmentNo);
+        if (level != null) {
+            /*
+             * 预设人群（原型 s18：全部会员 / 新客 / 熟客 / 沉睡）按分层现筛，不要求商家先存一个人群 ——
+             * 「发给沉睡会员」是最常见的一次发放，让他先去会员页存人群是多出来的一步。
+             * 与存下来的人群走同一个筛人实现（MemberService.match），不另写一份。
+             */
+            var q = new ai.neargo.shop.member.dto.MemberVOs.MemberQuery(null,
+                    PRESET_ALL.equals(level) ? null : level, null, null, null, List.of(),
+                    null, null, null, null, 1, 0);
+            reachableNos = memberService.matchReachable(entityNo, q);
+            matched = memberService.match(entityNo, q).size();
+        } else {
+            // resolve 给的已经是「可触达」的那一批（线索与退订的人不在内）
+            reachableNos = segmentService.resolve(entityNo, segmentNo);
+            matched = segmentService.matchedCount(entityNo, segmentNo);
+        }
 
         List<Audience> out = new ArrayList<>();
         for (String memberNo : reachableNos) {

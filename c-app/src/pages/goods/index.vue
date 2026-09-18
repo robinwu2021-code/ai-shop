@@ -21,7 +21,7 @@ import {
 } from "@/shared/fly";
 import { buyNGetM, giftQtyFor, promoLabelArgs } from "@shared/utils/promotion";
 import { defaultFulfillment } from "@shared/utils/goods";
-import type { Goods, GoodsBatch, GoodsGroup, Review, Sku } from "@shared/types";
+import type { Coupon, Goods, GoodsBatch, GoodsGroup, Review, Sku } from "@shared/types";
 
 const { t } = useI18n();
 const cart = useCartStore();
@@ -213,6 +213,56 @@ function openGroupPage(groupNo: string) {
   uni.navigateTo({ url: `${ROUTES.group}?groupNo=${groupNo}` });
 }
 
+/**
+ * 领券（原型 s36）：这家店的券与平台券，在「领券」那一行里领。
+ * 行尾一个字的状态 —— 能领是红字「领取」，领过是灰字「已领」；不做成按钮，避免一屏一排红胶囊。
+ * 同样独立加载：取不到就不出这一行，不拖垮详情。
+ */
+const coupons = ref<Coupon[]>([]);
+const showCoupons = ref(false);
+const claiming = ref("");
+
+async function loadCoupons(g: Goods) {
+  try {
+    const all = await api.couponList();
+    coupons.value = all.filter((c) => c.endAt > Date.now()
+      && (c.merchantNo === g.merchant.merchantNo || c.funder === "PLATFORM"));
+  } catch {
+    coupons.value = [];
+  }
+}
+
+/** 「满 50 减 5」「9 折 · 封顶 ¥20」 */
+function couponRuleText(c: Coupon): string {
+  if (c.type === "DISCOUNT") {
+    return String(t("goods.couponRate", { n: (c.discountRate / 1000).toFixed(1).replace(/\.0$/, ""),
+      cap: money(c.maxDiscountMinor) }));
+  }
+  return c.thresholdMinor
+    ? String(t("goods.couponCut", { m: money(c.thresholdMinor), n: money(c.faceMinor) }))
+    : String(t("goods.couponCutAny", { n: money(c.faceMinor) }));
+}
+
+function couponUntil(c: Coupon): string {
+  const d = new Date(c.endAt);
+  return String(t("goods.couponUntil", {
+    d: `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+  }));
+}
+
+async function claim(c: Coupon) {
+  if (c.received || claiming.value) return;
+  claiming.value = c.couponNo;
+  try {
+    await api.receiveCoupon(c.couponNo);
+    c.received = true;
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    claiming.value = "";
+  }
+}
+
 async function loadBatch(goodsNo: string) {
   try {
     batch.value = await api.goodsBatch(goodsNo);
@@ -240,6 +290,7 @@ async function load(goodsNo: string) {
   // 它一失败，下面默认选规格那几步就不跑了，买家看到的是「选不了规格、买不了」
   void loadBatch(goodsNo);
   void loadGroup(goodsNo);
+  void loadCoupons(g);
   // 默认选中第一个有货的 SKU 的组合
   const first = g.skus.find((s) => s.stock > 0) ?? g.skus[0];
   chosen.value = first ? [...first.optionValues] : [];
@@ -462,6 +513,15 @@ onShareAppMessage(() =>
               {{ $t("points.earnChip", { n: goods.points }) }}
             </text>
             <text class="sh-chip sh-num">{{ $t("common.sold", { n: goods.sales }) }}</text>
+          </view>
+        </view>
+
+        <!-- 领券（s36）：只占一行，点开是面板 -->
+        <view v-if="coupons.length" class="sh-card block sh-row sh-row--between" @tap="showCoupons = true">
+          <text class="txt-sub fact__label">{{ $t("goods.couponRow") }}</text>
+          <view class="sh-row">
+            <text class="txt-sub txt-primary sh-num">{{ couponRuleText(coupons[0]!) }}</text>
+            <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
           </view>
         </view>
 
@@ -695,6 +755,18 @@ onShareAppMessage(() =>
 
         <!-- 底部操作条。详情页不是 tab 页，没有底部菜单，
              所以购物车入口必须在这里给 —— 否则加完购没有任何落点与反馈。 -->
+        <sh-sheet :visible="showCoupons" :title="String($t('goods.couponRow'))" @close="showCoupons = false">
+          <view class="sh-cells">
+            <view v-for="c in coupons" :key="c.couponNo" class="sh-cell sh-row sh-row--between" @tap="claim(c)">
+              <text class="txt-body sh-num">{{ couponRuleText(c) }} <text class="sh-muted">· {{ couponUntil(c) }}</text></text>
+              <text class="txt-body" :class="c.received ? 'sh-muted' : 'txt-primary'">
+                {{ c.received ? $t("goods.couponGot") : $t("goods.couponClaim") }}
+              </text>
+            </view>
+          </view>
+          <view class="sh-btn coupon__done" @tap="showCoupons = false">{{ $t("goods.couponDone") }}</view>
+        </sh-sheet>
+
         <sh-actionbar pill="plain" :pad="220">
           <view class="actionbar__icon sh-center" @tap="() => {}">
             <sh-icon name="share" :size="40" color="var(--sh-sub)"></sh-icon>
@@ -764,6 +836,10 @@ onShareAppMessage(() =>
 .scope__text {
   color: var(--sh-ink);
   word-break: break-all;
+}
+
+.coupon__done {
+  margin-top: 24rpx;
 }
 
 /* 买不了的原因。用 warning 不用 danger：**它不是故障，是还差一步**

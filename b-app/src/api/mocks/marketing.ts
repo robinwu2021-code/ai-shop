@@ -490,6 +490,23 @@ export const marketingMock: Pick<MerchantApi,
      */
     payload = JSON.parse(JSON.stringify(payload)) as typeof payload;
     if (!payload.name?.trim()) throw new ApiError(10400, "请给活动起个名");
+    /*
+     * A6：开始了的活动只能改结束时间与上限（与后端 ActivityServiceImpl 同一个判据与字段）。
+     * mock 放行而后端拒收，演示时改得了、上线就报错 —— 所以这里一样拦。
+     */
+    const before = payload.activityNo ? db.storeActivities.find((a) => a.activityNo === payload.activityNo) : undefined;
+    if (before && (before.status === "RUNNING" || before.status === "PAUSED")
+        && (!before.startAt || before.startAt <= Date.now())) {
+      const sig = (x: Record<string, unknown>, goods?: string[], aud?: Array<{ type: string; value: string }>) =>
+        JSON.stringify([x.name, x.triggerType ?? "NONE", x.triggerAmountMinor ?? null, x.triggerQty ?? null,
+          x.benefitType, x.benefitAmountMinor ?? null, x.benefitQty ?? null, x.scheduleType ?? "ONE_OFF",
+          x.startAt ?? null, x.scheduleRule ?? null, x.cutoffTime ?? null, x.groupHours ?? null,
+          [...(goods ?? [])].sort(), (aud ?? []).map((a) => `${a.type}=${a.value}`).sort()]);
+      if (sig(before as unknown as Record<string, unknown>, before.goodsNos, before.audiences)
+          !== sig(payload as unknown as Record<string, unknown>, payload.goodsNos, payload.audiences)) {
+        throw new ApiError(40029, "活动已开始，只能改结束时间和上限；改规则请结束后另建");
+      }
+    }
     const schedule = payload.scheduleType ?? "ONE_OFF";
     const capped = payload.quota != null || (payload.budgetMinor ?? 0) > 0;
     if (schedule === "ALWAYS_ON" && !capped) {
@@ -653,15 +670,16 @@ export const marketingMock: Pick<MerchantApi,
 
   // ---------------------------------------------------------------- 券（P4）
   async mCoupons(includeEnded) {
+    // 本机早先存下的替身数据没有这两列（真后端一定给）：补 0，别让页面出 NaN
     return delay(db.merchantCoupons
         .filter((c) => includeEnded || c.status !== "ENDED")
-        .map((c) => ({ ...c })));
+        .map((c) => ({ ...c, usedTimes: c.usedTimes ?? 0, spentMinor: c.spentMinor ?? 0 })));
   },
 
   async mCoupon(couponNo) {
     const c = db.merchantCoupons.find((x) => x.couponNo === couponNo);
     if (!c) throw new ApiError(10404, "券不存在");
-    return delay({ ...c });
+    return delay({ ...c, usedTimes: c.usedTimes ?? 0, spentMinor: c.spentMinor ?? 0 });
   },
 
   /**
@@ -678,6 +696,7 @@ export const marketingMock: Pick<MerchantApi,
       if (!payload.benefitCapMinor) throw new ApiError(40003, "折扣券必须设封顶");
     }
     if (mode === "CASH" && !(payload.benefitValue > 0)) throw new ApiError(10400, "请填面额");
+    if (mode === "GIFT" && !payload.benefitRef?.trim()) throw new ApiError(10400, "请填每次兑换什么");
     const itemScoped = payload.scopeType === "CATEGORY" || payload.scopeType === "GOODS";
     if (itemScoped && (payload.redeemMode ?? "ORDER") === "ORDER") {
       throw new ApiError(40012, "下单抵扣的券暂不支持按类目或商品限定，可改成到店核销");
@@ -724,6 +743,8 @@ export const marketingMock: Pick<MerchantApi,
       budgetMinor: payload.budgetMinor ?? null,
       maxExposureMinor: exposure,
       status: exist?.status ?? "ACTIVE",
+      usedTimes: exist?.usedTimes ?? 0,
+      spentMinor: exist?.spentMinor ?? 0,
     };
     if (exist) Object.assign(exist, row);
     else db.merchantCoupons.push(row);
@@ -750,7 +771,10 @@ export const marketingMock: Pick<MerchantApi,
     if (c.status !== "ACTIVE") throw new ApiError(40014, "这张券已暂停或已结束，发不出去");
 
     const sg = db.memberSegments.find((x) => x.segmentNo === segmentNo);
-    const hit = sg ? matchSegment(sg.rule) : allMockMembers();
+    // 预设人群「@ALL / @NEW / @LOYAL / @SLEEPING」按分层现筛，与后端同一口径
+    const level = segmentNo?.startsWith("@") ? segmentNo.slice(1) : null;
+    const hit = sg ? matchSegment(sg.rule)
+      : allMockMembers().filter((m) => !level || level === "ALL" || m.level === level);
     const reachable = hit.filter((m) => m.status === "ACTIVE" && !m.reachOptOut);
     const unreachable = hit.length - reachable.length;
 

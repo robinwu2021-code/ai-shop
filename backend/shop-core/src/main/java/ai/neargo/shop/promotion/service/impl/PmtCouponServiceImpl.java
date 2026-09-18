@@ -52,6 +52,33 @@ public class PmtCouponServiceImpl implements CouponService {
     private final CouponIssueMapper issueMapper;
     private final MemberQueryPort memberPort;
 
+    /**
+     * 核销账本（{@code pmt_apply}）：列表与详情上的「已用 / 已支出」从它现算，不另存计数 ——
+     * 存一份计数迟早「列表 76、点进去 75」。setter 注入：切片测试里没有它时两个数给 0。
+     */
+    private ai.neargo.shop.promotion.mapper.PromotionMappers.ApplyMapper applyMapper;
+
+    /** 买家券包上的店名（s24）。setter 注入，缺了就不写店名 */
+    private ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setMerchantPort(ai.neargo.shop.spi.user.MerchantQueryPort merchantPort) {
+        this.merchantPort = merchantPort;
+    }
+
+    private String merchantNameOf(String entityNo) {
+        if (merchantPort == null || entityNo == null) {
+            return null;
+        }
+        return merchantPort.find(entityNo).map(ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief::merchantName)
+                .orElse(null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setApplyMapper(ai.neargo.shop.promotion.mapper.PromotionMappers.ApplyMapper applyMapper) {
+        this.applyMapper = applyMapper;
+    }
+
     public PmtCouponServiceImpl(CouponMapper couponMapper, CouponScopeMapper scopeMapper,
                              UserCouponMapper userCouponMapper, CouponIssueMapper issueMapper,
                              MemberQueryPort memberPort) {
@@ -71,12 +98,35 @@ public class PmtCouponServiceImpl implements CouponService {
                         .ne(!includeEnded, PmtCoupon::getStatus, PmtCoupon.ENDED)
                         .isNull(PmtCoupon::getArchivedAt)
                         .orderByDesc(PmtCoupon::getId))
-                .stream().map(this::vo).toList();
+                .stream().map(c -> vo(c, usage(entityNo))).toList();
     }
 
     @Override
     public CouponVO detail(String entityNo, String couponNo) {
-        return vo(require(entityNo, couponNo));
+        return vo(require(entityNo, couponNo), usage(entityNo));
+    }
+
+    /** 券号 → {已核销次数, 已支出}。一条分组查询管一整页，不按券逐个查 */
+    private java.util.Map<String, long[]> usage(String entityNo) {
+        java.util.Map<String, long[]> out = new java.util.HashMap<>();
+        if (applyMapper == null) {
+            return out;
+        }
+        applyMapper.selectMaps(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<ai.neargo.shop.promotion.entity.PmtApply>()
+                        .select("promo_no AS no", "COUNT(*) AS n", "COALESCE(SUM(amount_minor), 0) AS amt")
+                        .eq("promo_type", ai.neargo.shop.promotion.entity.PmtApply.COUPON)
+                        .eq("entity_no", entityNo)
+                        .isNull("reverted_at")
+                        .groupBy("promo_no"))
+                .forEach(m -> out.put(String.valueOf(pick(m, "no")), new long[] {
+                        ((Number) pick(m, "n")).longValue(), ((Number) pick(m, "amt")).longValue()}));
+        return out;
+    }
+
+    /** 分组查询的列名大小写随方言变（H2 大写、MySQL 按别名）：两种都认 */
+    private static Object pick(java.util.Map<String, Object> m, String key) {
+        Object v = m.get(key);
+        return v != null ? v : m.get(key.toUpperCase());
     }
 
     @Override
@@ -113,7 +163,8 @@ public class PmtCouponServiceImpl implements CouponService {
                     PmtCoupon.REDEEM_STORE_CODE.equals(c.getRedeemMode())
                             ? uc.getRedeemCode() : null,
                     c.getMinAmountMinor(), total, used, Math.max(0, total - used),
-                    nz(uc.getExpireAt()), uc.getStatus(), usable));
+                    nz(uc.getExpireAt()), uc.getStatus(), usable,
+                    merchantNameOf(c.getEntityNo()), c.getScopeType()));
         }
         return out;
     }
@@ -473,6 +524,10 @@ public class PmtCouponServiceImpl implements CouponService {
     }
 
     private CouponVO vo(PmtCoupon c) {
+        return vo(c, usage(c.getEntityNo()));
+    }
+
+    private CouponVO vo(PmtCoupon c, java.util.Map<String, long[]> usage) {
         List<String> refs = scopeMapper.selectList(Wrappers.<PmtCouponScope>lambdaQuery()
                         .eq(PmtCouponScope::getCouponNo, c.getCouponNo()))
                 .stream().map(PmtCouponScope::getRefNo).toList();
@@ -483,7 +538,9 @@ public class PmtCouponServiceImpl implements CouponService {
                 c.getStartAt(), c.getEndAt(), c.getValidDays(), c.getIssueMode(),
                 c.getRedeemMode(), c.timesTotalOrOne(), c.getTotalCount(),
                 nz(c.getReceivedCount()), nz(c.getPerUserLimit()), c.getBudgetMinor(),
-                exposure, c.getStatus());
+                exposure, c.getStatus(),
+                (int) usage.getOrDefault(c.getCouponNo(), new long[] {0, 0})[0],
+                usage.getOrDefault(c.getCouponNo(), new long[] {0, 0})[1]);
     }
 
     private PmtCoupon require(String entityNo, String couponNo) {

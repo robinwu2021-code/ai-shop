@@ -645,6 +645,8 @@ export const ROUTES = {
   order: "/pages/order/index",
   afterSale: "/pages/after-sale/index",
   coupons: "/pages/coupons/index",
+  // 出示券码（原型 s25）：到店出示的券从「我的券」点进来
+  couponCode: "/pages/coupon-code/index",
   myMemberships: "/pages/my-memberships/index",
   cards: "/pages/cards/index",
   messages: "/pages/messages/index",

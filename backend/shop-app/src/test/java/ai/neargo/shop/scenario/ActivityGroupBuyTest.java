@@ -90,15 +90,18 @@ class ActivityGroupBuyTest {
         /*
          * **改自己不算撞。** 不排除自己的话，编辑一个已有的团购活动第二次保存必失败，
          * 而报错说的是「这件货已经在别的团里」—— 指的正是它自己。
+         *
+         * 改的是份数：活动已经开始了，A6 只放开结束时间与上限（改人数 / 价见 ActivityRuleLockTest）。
+         * 撞团校验每次保存都跑，改哪一项都走得到它。
          */
-        ActivityDraft edit = new ActivityDraft(first.activityNo(), first.name(), "CLEAR", null,
-                PmtActivity.TRIGGER_GROUP, null, 4,
-                PmtActivity.BENEFIT_PRICE, 850L, null, null,
-                PmtActivity.ONE_OFF, NOW, NOW + DAY, null, 100, null,
-                List.of(), List.of(goods));
-        assertThat(activityService.save(e, edit, "OP").triggerQty())
+        ActivityDraft edit = new ActivityDraft(first.activityNo(), first.name(), first.goal(), first.storeNo(),
+                first.triggerType(), first.triggerAmountMinor(), first.triggerQty(),
+                first.benefitType(), first.benefitAmountMinor(), first.benefitQty(), first.benefitRef(),
+                first.scheduleType(), first.startAt(), first.endAt(), first.scheduleRule(), 200,
+                first.budgetMinor(), first.audiences(), List.of(goods));
+        assertThat(activityService.save(e, edit, "OP").quota())
                 .as("改自己要存得进，否则团购活动建完就再也改不了")
-                .isEqualTo(4);
+                .isEqualTo(200);
     }
 
     @Test

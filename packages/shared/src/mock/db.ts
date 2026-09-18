@@ -1144,6 +1144,8 @@ export const db = {
       budgetMinor: 100000,
       maxExposureMinor: 100000,
       status: "ACTIVE",
+      usedTimes: 0,
+      spentMinor: 0,
     },
     {
       couponNo: "PC-DEMO-2",
@@ -1171,6 +1173,8 @@ export const db = {
       budgetMinor: null,
       maxExposureMinor: 0,
       status: "ACTIVE",
+      usedTimes: 2,
+      spentMinor: 0,
     },
   ] as MerchantCoupon[],
 

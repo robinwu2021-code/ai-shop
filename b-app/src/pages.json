@@ -634,6 +634,30 @@
       }
     },
     {
+      "path": "pages/coupon/index",
+      "style": {
+        "navigationBarTitleText": "券详情",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/coupon-send/index",
+      "style": {
+        "navigationBarTitleText": "发放",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/coupon-edit/index",
       "style": {
         "navigationBarTitleText": "新建券",

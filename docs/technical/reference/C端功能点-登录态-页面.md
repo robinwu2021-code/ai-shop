@@ -39,8 +39,8 @@
 | `communityDetail` | `GET /mp/community/:communityNo` | 游客 | (stores) | — |
 | `nearbyCommunities` | `GET /mp/community/nearby` | 游客 | (stores) · address-pick | — |
 | `openRegions` | `GET /mp/community/regions` | 游客 | (stores) | — |
-| `couponList` | `GET /mp/coupon` | 游客 | coupons · order-confirm | — |
-| `receiveCoupon` | `POST /mp/coupon/:couponNo/receive` | 是 | coupons | — |
+| `couponList` | `GET /mp/coupon` | 游客 | coupons · goods · order-confirm | — |
+| `receiveCoupon` | `POST /mp/coupon/:couponNo/receive` | 是 | goods | — |
 | `goodsList` | `GET /mp/goods` | 游客 | category · groups · home · merchant · search | — |
 | `goodsDetail` | `GET /mp/goods/:goodsNo` | 游客 | goods · group | — |
 | `goodsBatch` | `GET /mp/goods/:goodsNo/batch` | 游客 | goods | — |
@@ -74,7 +74,7 @@
 | `readAllMessages` | `POST /mp/message/read-all` | 是 | messages | — |
 | `subscribeReport` | `POST /mp/message/subscribe` | 是 | pay | — |
 | `unreadMessages` | `GET /mp/message/unread-count` | 是 | me | — |
-| `myStoreCoupons` | `GET /mp/my-coupons` | 是 | coupons | — |
+| `myStoreCoupons` | `GET /mp/my-coupons` | 是 | coupon-code · coupons | — |
 | `myMemberships` | `GET /mp/my-memberships` | 是 | my-memberships | — |
 | `setMembershipReach` | `PUT /mp/my-memberships/:entityNo/reach` | 是 | my-memberships | — |
 | `createOrder` | `POST /mp/order` | 是 | order-confirm | — |

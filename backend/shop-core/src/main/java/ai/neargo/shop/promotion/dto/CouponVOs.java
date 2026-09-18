@@ -29,6 +29,8 @@ public final class CouponVOs {
      * @param maxExposureMinor 最大敞口 = 发行量 × 单张最大优惠。
      *                         <b>建券页要显示它</b> —— 商家填「1000 张 × 20 元」时
      *                         心里想的是「发 1000 张」，不是「最多赔两万」
+     * @param usedTimes  已核销次数（下单抵扣与到店核销都算，已回退的不算）。次卡按次、其余一张一次
+     * @param spentMinor 已支出（分）：核销时实际减掉的钱之和，已回退的不算
      */
     public record CouponVO(String couponNo, String title, String benefitMode, Long benefitValue,
                            Long benefitCapMinor, String benefitRef,
@@ -37,7 +39,8 @@ public final class CouponVOs {
                            String validityMode, Long startAt, Long endAt, Integer validDays,
                            String issueMode, String redeemMode, Integer timesTotal,
                            Integer totalCount, Integer receivedCount, Integer perUserLimit,
-                           Long budgetMinor, Long maxExposureMinor, String status) {
+                           Long budgetMinor, Long maxExposureMinor, String status,
+                           int usedTimes, long spentMinor) {
     }
 
     /**
@@ -52,7 +55,11 @@ public final class CouponVOs {
                              String benefitText, String entityNo, String redeemMode,
                              String redeemCode, Long minAmountMinor,
                              int timesTotal, int timesUsed, int remaining,
-                             long expireAt, String status, boolean usableNow) {
+                             long expireAt, String status, boolean usableNow,
+                             /** 发券的店（原型 s24「张记粮油 · 全店」）；取不到时为空 */
+                             String merchantName,
+                             /** 适用范围一句话（「全店」「指定商品」）；由端上按 scopeType 说，这里给原值 */
+                             String scopeType) {
     }
 
     /**

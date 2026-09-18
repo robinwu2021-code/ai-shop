@@ -1378,124 +1378,130 @@
           "ar": "الصين"
         },
         {
-          "key": "coupon.autoUse",
-          "zh-CN": "下单自动抵扣",
-          "en": "Applied at checkout",
-          "ar": "تُطبق تلقائيًا عند الدفع"
+          "key": "coupon.codeTitle",
+          "zh-CN": "出示券码",
+          "en": "Show code",
+          "ar": "عرض الرمز"
         },
         {
-          "key": "coupon.center",
-          "zh-CN": "领券中心 {n}",
-          "en": "Available {n}",
-          "ar": "المتاحة {n}"
+          "key": "coupon.empty",
+          "zh-CN": "暂无优惠券",
+          "en": "No coupons",
+          "ar": "لا توجد قسائم"
         },
         {
-          "key": "coupon.centerEmpty",
-          "zh-CN": "暂时没有可领的券",
-          "en": "Nothing to claim right now",
-          "ar": "لا توجد قسائم متاحة الآن"
-        },
-        {
-          "key": "coupon.codeBody",
-          "zh-CN": "把这个码给店员：\n\n{code}\n\n还可核销 {n} 次。核销后不可撤销。",
-          "en": "Show this code to the staff:\n\n{code}\n\n{n} redemptions left. Redeeming cannot be undone.",
-          "ar": "أظهر هذا الرمز للموظف:\n\n{code}\n\nمتبقٍ {n} مرات. لا يمكن التراجع بعد الاستبدال."
-        },
-        {
-          "key": "coupon.codeClose",
-          "zh-CN": "知道了",
-          "en": "Got it",
-          "ar": "حسنًا"
+          "key": "coupon.emptyTip",
+          "zh-CN": "在商品详情的「领券」里领取",
+          "en": "Claim them under “Coupons” on a product page",
+          "ar": "استلمها من «القسائم» في صفحة المنتج"
         },
         {
           "key": "coupon.entryHint",
-          "zh-CN": "领券 · 我的券",
-          "en": "Claim · My vouchers",
-          "ar": "الحصول · قسائمي"
+          "zh-CN": "可用 · 已用 · 过期",
+          "en": "Usable · Used · Expired",
+          "ar": "صالحة · مستخدمة · منتهية"
         },
         {
-          "key": "coupon.expired",
+          "key": "coupon.inStore",
+          "zh-CN": "到店出示",
+          "en": "Show in store",
+          "ar": "تُعرض في المتجر"
+        },
+        {
+          "key": "coupon.rate",
+          "zh-CN": "{n} 折",
+          "en": "{n}/10",
+          "ar": "{n}/10"
+        },
+        {
+          "key": "coupon.scopeAll",
+          "zh-CN": "全店",
+          "en": "Whole store",
+          "ar": "المتجر كله"
+        },
+        {
+          "key": "coupon.scopeSome",
+          "zh-CN": "指定商品",
+          "en": "Selected products",
+          "ar": "منتجات محددة"
+        },
+        {
+          "key": "coupon.shop",
+          "zh-CN": "门店",
+          "en": "Store",
+          "ar": "المتجر"
+        },
+        {
+          "key": "coupon.state.expireIn",
+          "zh-CN": "{n} 天后过期",
+          "en": "Expires in {n} days",
+          "ar": "تنتهي خلال {n} أيام"
+        },
+        {
+          "key": "coupon.state.expired",
           "zh-CN": "已过期",
           "en": "Expired",
           "ar": "منتهية"
         },
         {
-          "key": "coupon.got",
-          "zh-CN": "已领取",
-          "en": "Claimed",
-          "ar": "تم الحصول"
+          "key": "coupon.state.left",
+          "zh-CN": "剩 {n} 次",
+          "en": "{n} left",
+          "ar": "متبقٍ {n}"
         },
         {
-          "key": "coupon.mine",
-          "zh-CN": "我的券包 {n}",
-          "en": "Mine {n}",
-          "ar": "قسائمي {n}"
+          "key": "coupon.state.usable",
+          "zh-CN": "可用",
+          "en": "Usable",
+          "ar": "صالحة"
         },
         {
-          "key": "coupon.mineEmpty",
-          "zh-CN": "券包是空的，去领券中心看看",
-          "en": "No vouchers yet — check what's available",
-          "ar": "لا قسائم بعد؛ تصفح المتاح"
+          "key": "coupon.state.used",
+          "zh-CN": "已用",
+          "en": "Used",
+          "ar": "مستخدمة"
         },
         {
-          "key": "coupon.noThreshold",
-          "zh-CN": "无门槛",
-          "en": "No minimum",
-          "ar": "بدون حد أدنى"
+          "key": "coupon.tab.expired",
+          "zh-CN": "过期",
+          "en": "Expired",
+          "ar": "منتهية"
         },
         {
-          "key": "coupon.rate",
-          "zh-CN": "{n} 折",
-          "en": "{n}0% off",
-          "ar": "خصم {n}0%"
+          "key": "coupon.tab.usable",
+          "zh-CN": "可用",
+          "en": "Usable",
+          "ar": "صالحة"
         },
         {
-          "key": "coupon.receive",
-          "zh-CN": "领取",
-          "en": "Claim",
-          "ar": "احصل عليها"
-        },
-        {
-          "key": "coupon.remaining",
-          "zh-CN": "还剩 {n} / {m} 次",
-          "en": "{n} of {m} left",
-          "ar": "متبقٍ {n} من {m}"
-        },
-        {
-          "key": "coupon.showCode",
-          "zh-CN": "出示",
-          "en": "Show",
-          "ar": "إبراز"
-        },
-        {
-          "key": "coupon.storeOnly",
-          "zh-CN": "到店出示核销，不在结算时抵扣",
-          "en": "Show in store; not applied at checkout",
-          "ar": "تُبرز في المتجر، لا تُطبق عند الدفع"
+          "key": "coupon.tab.used",
+          "zh-CN": "已用",
+          "en": "Used",
+          "ar": "مستخدمة"
         },
         {
           "key": "coupon.threshold",
           "zh-CN": "满 {p} 可用",
-          "en": "Spend {p}+",
-          "ar": "عند إنفاق {p}+"
+          "en": "Over {p}",
+          "ar": "فوق {p}"
         },
         {
           "key": "coupon.title",
-          "zh-CN": "优惠券",
-          "en": "Vouchers",
-          "ar": "القسائم"
+          "zh-CN": "我的券",
+          "en": "My coupons",
+          "ar": "قسائمي"
+        },
+        {
+          "key": "coupon.totalTimes",
+          "zh-CN": "共 {n} 次",
+          "en": "{n} in total",
+          "ar": "الإجمالي {n}"
         },
         {
           "key": "coupon.until",
-          "zh-CN": "有效至 {d}",
-          "en": "Valid until {d}",
-          "ar": "صالحة حتى {d}"
-        },
-        {
-          "key": "coupon.usedUp",
-          "zh-CN": "已用完",
-          "en": "Used up",
-          "ar": "استُهلكت"
+          "zh-CN": "至 {d}",
+          "en": "until {d}",
+          "ar": "حتى {d}"
         },
         {
           "key": "fulfillment.APPOINTMENT",
@@ -1658,6 +1664,54 @@
           "zh-CN": "开始前 {n} 小时可免费改期",
           "en": "Free to reschedule up to {n} hours before",
           "ar": "يمكن تغيير الموعد مجانًا قبل {n} ساعات"
+        },
+        {
+          "key": "goods.couponClaim",
+          "zh-CN": "领取",
+          "en": "Claim",
+          "ar": "استلام"
+        },
+        {
+          "key": "goods.couponCut",
+          "zh-CN": "满 {m} 减 {n}",
+          "en": "{n} off over {m}",
+          "ar": "خصم {n} فوق {m}"
+        },
+        {
+          "key": "goods.couponCutAny",
+          "zh-CN": "减 {n}",
+          "en": "{n} off",
+          "ar": "خصم {n}"
+        },
+        {
+          "key": "goods.couponDone",
+          "zh-CN": "完成",
+          "en": "Done",
+          "ar": "تم"
+        },
+        {
+          "key": "goods.couponGot",
+          "zh-CN": "已领",
+          "en": "Claimed",
+          "ar": "مستلمة"
+        },
+        {
+          "key": "goods.couponRate",
+          "zh-CN": "{n} 折 · 封顶 {cap}",
+          "en": "{n}/10 · cap {cap}",
+          "ar": "{n}/10 · حد {cap}"
+        },
+        {
+          "key": "goods.couponRow",
+          "zh-CN": "领券",
+          "en": "Coupons",
+          "ar": "القسائم"
+        },
+        {
+          "key": "goods.couponUntil",
+          "zh-CN": "至 {d}",
+          "en": "until {d}",
+          "ar": "حتى {d}"
         },
         {
           "key": "goods.cutoffPassed",
@@ -4754,6 +4808,12 @@
           "ar": "الميزانية"
         },
         {
+          "key": "activityEdit.cancel",
+          "zh-CN": "取消",
+          "en": "Cancel",
+          "ar": "إلغاء"
+        },
+        {
           "key": "activityEdit.conflict",
           "zh-CN": "与「{name}」商品重叠，同一单只享更优惠的一个",
           "en": "Overlaps with \"{name}\"; an order gets only the better one",
@@ -4764,6 +4824,12 @@
           "zh-CN": "编辑",
           "en": "Edit",
           "ar": "تعديل"
+        },
+        {
+          "key": "activityEdit.editable",
+          "zh-CN": "可改",
+          "en": "Editable",
+          "ar": "قابل للتعديل"
         },
         {
           "key": "activityEdit.end",
@@ -4830,6 +4896,12 @@
           "zh-CN": "范围",
           "en": "Scope",
           "ar": "النطاق"
+        },
+        {
+          "key": "activityEdit.lockedNote",
+          "zh-CN": "进行中只能改结束时间和上限；改规则请结束后另建",
+          "en": "While running, only the end time and caps can change. To change the rules, end it and create a new one",
+          "ar": "أثناء التشغيل يمكن تعديل وقت الانتهاء والحدود فقط؛ لتغيير القواعد أنهِه وأنشئ نشاطًا جديدًا"
         },
         {
           "key": "activityEdit.name",
@@ -4976,6 +5048,12 @@
           "ar": "الحصة"
         },
         {
+          "key": "activityEdit.quotaPh",
+          "zh-CN": "不填即不限",
+          "en": "Blank for unlimited",
+          "ar": "اتركه فارغًا لعدد غير محدود"
+        },
+        {
           "key": "activityEdit.rule.amount",
           "zh-CN": "减（元）",
           "en": "Discount",
@@ -5052,6 +5130,12 @@
           "zh-CN": "满（元）",
           "en": "Spend over",
           "ar": "عند الإنفاق"
+        },
+        {
+          "key": "activityEdit.save",
+          "zh-CN": "保存",
+          "en": "Save",
+          "ar": "حفظ"
         },
         {
           "key": "activityEdit.saved",
@@ -5828,148 +5912,310 @@
           "ar": "نعم"
         },
         {
+          "key": "coupon.issues",
+          "zh-CN": "发放记录",
+          "en": "Send history",
+          "ar": "سجل الإرسال"
+        },
+        {
+          "key": "coupon.issuesN",
+          "zh-CN": "{n} 次",
+          "en": "{n}",
+          "ar": "{n}"
+        },
+        {
+          "key": "coupon.pause",
+          "zh-CN": "停发",
+          "en": "Stop issuing",
+          "ar": "إيقاف الإصدار"
+        },
+        {
+          "key": "coupon.pauseBody",
+          "zh-CN": "不再发放新券，已领的 {n} 张照常可用",
+          "en": "No new coupons will go out; the {n} already claimed stay valid",
+          "ar": "لن تُصدر قسائم جديدة، وتبقى الـ {n} المستلمة صالحة"
+        },
+        {
+          "key": "coupon.pauseTitle",
+          "zh-CN": "停发这张券",
+          "en": "Stop issuing this coupon",
+          "ar": "إيقاف إصدار هذه القسيمة"
+        },
+        {
+          "key": "coupon.quantity",
+          "zh-CN": "数量",
+          "en": "Quantity",
+          "ar": "الكمية"
+        },
+        {
+          "key": "coupon.received",
+          "zh-CN": "已领",
+          "en": "Claimed",
+          "ar": "مستلمة"
+        },
+        {
+          "key": "coupon.resume",
+          "zh-CN": "恢复发放",
+          "en": "Resume issuing",
+          "ar": "استئناف الإصدار"
+        },
+        {
+          "key": "coupon.send",
+          "zh-CN": "发放",
+          "en": "Send",
+          "ar": "إرسال"
+        },
+        {
+          "key": "coupon.spent",
+          "zh-CN": "已支出",
+          "en": "Spent",
+          "ar": "المصروف"
+        },
+        {
+          "key": "coupon.status",
+          "zh-CN": "状态",
+          "en": "Status",
+          "ar": "الحالة"
+        },
+        {
+          "key": "coupon.threshold",
+          "zh-CN": "门槛",
+          "en": "Minimum",
+          "ar": "الحد الأدنى"
+        },
+        {
+          "key": "coupon.title",
+          "zh-CN": "券详情",
+          "en": "Coupon details",
+          "ar": "تفاصيل القسيمة"
+        },
+        {
+          "key": "coupon.type",
+          "zh-CN": "类型",
+          "en": "Type",
+          "ar": "النوع"
+        },
+        {
+          "key": "coupon.used",
+          "zh-CN": "已用",
+          "en": "Used",
+          "ar": "مستخدمة"
+        },
+        {
+          "key": "coupon.validity",
+          "zh-CN": "有效期",
+          "en": "Validity",
+          "ar": "الصلاحية"
+        },
+        {
+          "key": "couponEdit.back",
+          "zh-CN": "上一步",
+          "en": "Back",
+          "ar": "رجوع"
+        },
+        {
+          "key": "couponEdit.badEnd",
+          "zh-CN": "截止日期不能早于今天",
+          "en": "End date can't be in the past",
+          "ar": "تاريخ الانتهاء لا يسبق اليوم"
+        },
+        {
           "key": "couponEdit.badRate",
-          "zh-CN": "折扣范围 1–9.9，如 8.5 即八五折",
-          "en": "Range 1–9.9, e.g. 8.5 for 15% off",
-          "ar": "النطاق 1–9.9، مثل 8.5 لخصم 15%"
+          "zh-CN": "折扣范围 1–9.9",
+          "en": "Discount must be 1–9.9",
+          "ar": "الخصم بين 1 و9.9"
         },
         {
-          "key": "couponEdit.benefit",
-          "zh-CN": "优惠方式",
-          "en": "Benefit",
-          "ar": "نوع الخصم"
-        },
-        {
-          "key": "couponEdit.budget",
-          "zh-CN": "预算（元）",
-          "en": "Budget",
-          "ar": "الميزانية"
-        },
-        {
-          "key": "couponEdit.budgetPh",
-          "zh-CN": "留空即不限",
-          "en": "Leave blank for no limit",
-          "ar": "اتركها فارغة لبلا حد"
-        },
-        {
-          "key": "couponEdit.budgetTooLow",
-          "zh-CN": "预算低于按发行量测算的最高支出",
-          "en": "Budget is below the maximum cost for this issue count",
-          "ar": "الميزانية أقل من أقصى تكلفة لعدد الإصدار"
+          "key": "couponEdit.cancel",
+          "zh-CN": "取消",
+          "en": "Cancel",
+          "ar": "إلغاء"
         },
         {
           "key": "couponEdit.cap",
-          "zh-CN": "最多减（元）",
-          "en": "Max discount",
-          "ar": "أقصى خصم"
+          "zh-CN": "封顶",
+          "en": "Cap",
+          "ar": "الحد الأقصى"
         },
         {
-          "key": "couponEdit.capHint",
-          "zh-CN": "折扣券须设封顶，否则大额订单的优惠不可控",
-          "en": "Percentage coupons need a cap; without one a large order can take off any amount",
-          "ar": "قسائم النسبة يجب أن يكون لها حد أقصى، وإلا فطلب كبير قد يخصم أي مبلغ"
+          "key": "couponEdit.capPh",
+          "zh-CN": "元",
+          "en": "Amount",
+          "ar": "المبلغ"
         },
         {
-          "key": "couponEdit.exposure",
-          "zh-CN": "这批券最多花 {n}",
-          "en": "This batch costs at most {n}",
-          "ar": "هذه الدفعة تكلف {n} كحد أقصى"
+          "key": "couponEdit.days",
+          "zh-CN": "天数",
+          "en": "Days",
+          "ar": "الأيام"
+        },
+        {
+          "key": "couponEdit.daysPh",
+          "zh-CN": "天",
+          "en": "Days",
+          "ar": "أيام"
         },
         {
           "key": "couponEdit.face",
-          "zh-CN": "面额（元）",
-          "en": "Face value (CNY)",
-          "ar": "القيمة الاسمية (يوان)"
+          "zh-CN": "面额",
+          "en": "Amount",
+          "ar": "القيمة"
         },
         {
-          "key": "couponEdit.minAmount",
-          "zh-CN": "使用门槛（元）",
-          "en": "Spend threshold (CNY)",
-          "ar": "الحد الأدنى للإنفاق (يوان)"
+          "key": "couponEdit.facePh",
+          "zh-CN": "元",
+          "en": "Amount",
+          "ar": "المبلغ"
         },
         {
-          "key": "couponEdit.minAmountPh",
-          "zh-CN": "留空即不限",
-          "en": "Leave blank for no limit",
-          "ar": "اتركه فارغًا لبلا حد"
+          "key": "couponEdit.gift",
+          "zh-CN": "每次兑换",
+          "en": "Each use",
+          "ar": "كل استخدام"
         },
         {
-          "key": "couponEdit.mode.CASH",
-          "zh-CN": "满减",
-          "en": "Amount off",
-          "ar": "مبلغ"
+          "key": "couponEdit.giftPh",
+          "zh-CN": "如 豆浆 1 杯",
+          "en": "e.g. 1 cup of soy milk",
+          "ar": "مثلًا كوب حليب صويا"
         },
         {
-          "key": "couponEdit.mode.PERCENT",
-          "zh-CN": "折扣",
-          "en": "Percentage",
-          "ar": "نسبة"
+          "key": "couponEdit.groupIssue",
+          "zh-CN": "发放",
+          "en": "Issuing",
+          "ar": "الإصدار"
+        },
+        {
+          "key": "couponEdit.groupRule",
+          "zh-CN": "规则",
+          "en": "Rules",
+          "ar": "القواعد"
+        },
+        {
+          "key": "couponEdit.groupValidity",
+          "zh-CN": "有效期",
+          "en": "Validity",
+          "ar": "الصلاحية"
+        },
+        {
+          "key": "couponEdit.kind",
+          "zh-CN": "类型",
+          "en": "Type",
+          "ar": "النوع"
+        },
+        {
+          "key": "couponEdit.kindDesc.CASH",
+          "zh-CN": "下单时直接减钱",
+          "en": "Takes money off at checkout",
+          "ar": "خصم مباشر عند الدفع"
+        },
+        {
+          "key": "couponEdit.kindDesc.PERCENT",
+          "zh-CN": "按比例打折，须设封顶",
+          "en": "Percentage off, with a cap",
+          "ar": "خصم بنسبة مع حد أقصى"
+        },
+        {
+          "key": "couponEdit.kindDesc.TIMES",
+          "zh-CN": "到店出示，按次核销",
+          "en": "Shown in store, redeemed per visit",
+          "ar": "تُعرض في المتجر وتُستبدل لكل زيارة"
+        },
+        {
+          "key": "couponEdit.maxSpend",
+          "zh-CN": "最多支出",
+          "en": "Max spend",
+          "ar": "أقصى مصروف"
+        },
+        {
+          "key": "couponEdit.min",
+          "zh-CN": "门槛",
+          "en": "Minimum",
+          "ar": "الحد الأدنى"
+        },
+        {
+          "key": "couponEdit.minPh",
+          "zh-CN": "满多少元，不填即无门槛",
+          "en": "Minimum spend, blank for none",
+          "ar": "الحد الأدنى للشراء، اتركه فارغًا لعدم التقييد"
         },
         {
           "key": "couponEdit.name",
-          "zh-CN": "券名",
+          "zh-CN": "名称",
           "en": "Name",
           "ar": "الاسم"
         },
         {
           "key": "couponEdit.namePh",
-          "zh-CN": "顾客可见，如「满 30 减 5」",
-          "en": "Visible to customers, e.g. 5 off 30",
-          "ar": "يراه العملاء، مثال: خصم 5 على 30"
+          "zh-CN": "顾客可见",
+          "en": "Shown to customers",
+          "ar": "يظهر للعملاء"
         },
         {
           "key": "couponEdit.needCap",
-          "zh-CN": "折扣券需填写封顶金额",
-          "en": "Percentage coupons need a cap amount",
+          "zh-CN": "折扣券需填写封顶",
+          "en": "Percentage coupons need a cap",
           "ar": "قسائم النسبة تحتاج حدًا أقصى"
         },
         {
+          "key": "couponEdit.needGift",
+          "zh-CN": "请填写每次兑换的内容",
+          "en": "Enter what each use gets",
+          "ar": "أدخل ما يحصل عليه كل استخدام"
+        },
+        {
+          "key": "couponEdit.needPerUser",
+          "zh-CN": "每人至少 1 张",
+          "en": "At least 1 per person",
+          "ar": "واحدة على الأقل لكل شخص"
+        },
+        {
+          "key": "couponEdit.needTimes",
+          "zh-CN": "次卡至少 2 次",
+          "en": "A multi-use card needs at least 2 uses",
+          "ar": "البطاقة متعددة الاستخدام تحتاج مرتين على الأقل"
+        },
+        {
           "key": "couponEdit.needTitle",
-          "zh-CN": "请填写券名",
-          "en": "Enter a coupon name",
-          "ar": "أدخل اسم القسيمة"
+          "zh-CN": "请填写名称",
+          "en": "Enter a name",
+          "ar": "أدخل الاسم"
         },
         {
           "key": "couponEdit.needValue",
           "zh-CN": "请填写面额",
-          "en": "Enter the face value",
-          "ar": "أدخل القيمة الاسمية"
+          "en": "Enter an amount",
+          "ar": "أدخل القيمة"
+        },
+        {
+          "key": "couponEdit.next",
+          "zh-CN": "下一步",
+          "en": "Next",
+          "ar": "التالي"
         },
         {
           "key": "couponEdit.perUser",
-          "zh-CN": "每人最多领",
-          "en": "Max per person",
-          "ar": "الحد لكل شخص"
+          "zh-CN": "每人",
+          "en": "Per person",
+          "ar": "لكل شخص"
+        },
+        {
+          "key": "couponEdit.progress",
+          "zh-CN": "{i} / 2",
+          "en": "{i} / 2",
+          "ar": "{i} / 2"
         },
         {
           "key": "couponEdit.rate",
-          "zh-CN": "打几折",
-          "en": "Price multiplier",
-          "ar": "معامل السعر"
+          "zh-CN": "折扣",
+          "en": "Discount",
+          "ar": "الخصم"
         },
         {
-          "key": "couponEdit.redeem",
-          "zh-CN": "核销方式",
-          "en": "Redemption",
-          "ar": "طريقة الاستبدال"
-        },
-        {
-          "key": "couponEdit.redeemHint",
-          "zh-CN": "到店核销的券不参与下单抵扣，避免重复核销",
-          "en": "In-store vouchers are not applied at checkout, to avoid double redemption",
-          "ar": "قسائم المتجر لا تُطبق عند الدفع، تفاديًا للاستخدام مرتين"
-        },
-        {
-          "key": "couponEdit.redeemMode.ORDER",
-          "zh-CN": "下单自动抵扣",
-          "en": "Applied at checkout",
-          "ar": "تُطبق عند الدفع"
-        },
-        {
-          "key": "couponEdit.redeemMode.STORE_CODE",
-          "zh-CN": "到店出示核销",
-          "en": "Shown in store",
-          "ar": "تُبرز في المتجر"
+          "key": "couponEdit.ratePh",
+          "zh-CN": "如 9 即 9 折",
+          "en": "e.g. 9 = 10% off",
+          "ar": "مثلًا 9 تعني خصم 10٪"
         },
         {
           "key": "couponEdit.save",
@@ -5978,16 +6224,34 @@
           "ar": "حفظ"
         },
         {
-          "key": "couponEdit.saved",
-          "zh-CN": "已保存",
-          "en": "Saved",
-          "ar": "تم الحفظ"
+          "key": "couponEdit.scope",
+          "zh-CN": "商品",
+          "en": "Products",
+          "ar": "المنتجات"
+        },
+        {
+          "key": "couponEdit.stepConfirm",
+          "zh-CN": "确认",
+          "en": "Confirm",
+          "ar": "التأكيد"
+        },
+        {
+          "key": "couponEdit.stepFill",
+          "zh-CN": "填写",
+          "en": "Details",
+          "ar": "التفاصيل"
         },
         {
           "key": "couponEdit.times",
-          "zh-CN": "可核销次数",
-          "en": "Redemptions allowed",
-          "ar": "عدد مرات الاستبدال"
+          "zh-CN": "次数",
+          "en": "Uses",
+          "ar": "مرات الاستخدام"
+        },
+        {
+          "key": "couponEdit.timesPh",
+          "zh-CN": "次",
+          "en": "Uses",
+          "ar": "مرات"
         },
         {
           "key": "couponEdit.title",
@@ -5997,141 +6261,351 @@
         },
         {
           "key": "couponEdit.total",
-          "zh-CN": "发行量（张）",
-          "en": "Issue count",
-          "ar": "عدد الإصدار"
+          "zh-CN": "数量",
+          "en": "Quantity",
+          "ar": "الكمية"
         },
         {
-          "key": "couponEdit.validDays",
-          "zh-CN": "领取后有效天数",
-          "en": "Days valid after claiming",
-          "ar": "أيام الصلاحية بعد الاستلام"
+          "key": "couponEdit.totalPh",
+          "zh-CN": "张，不填即不限",
+          "en": "Blank for unlimited",
+          "ar": "اتركه فارغًا لعدد غير محدود"
         },
         {
-          "key": "couponEdit.validHint",
-          "zh-CN": "有效期自领取时确定；修改此项不影响已发出的券",
-          "en": "Expiry is set when the customer claims it; changing this does not affect issued coupons",
-          "ar": "تاريخ الانتهاء يُثبَّت لحظة الاستلام؛ تغييره لاحقًا لا يؤثر على ما صدر"
+          "key": "couponEdit.unlimited",
+          "zh-CN": "不限量",
+          "en": "Unlimited",
+          "ar": "غير محدود"
         },
         {
-          "key": "couponIssues.allMembers",
+          "key": "couponEdit.until",
+          "zh-CN": "截止",
+          "en": "Ends",
+          "ar": "تنتهي"
+        },
+        {
+          "key": "couponEdit.validity.ABSOLUTE",
+          "zh-CN": "固定",
+          "en": "Fixed",
+          "ar": "محددة"
+        },
+        {
+          "key": "couponEdit.validity.RELATIVE",
+          "zh-CN": "领后",
+          "en": "After claim",
+          "ar": "بعد الاستلام"
+        },
+        {
+          "key": "couponEdit.validityMode",
+          "zh-CN": "方式",
+          "en": "Type",
+          "ar": "النوع"
+        },
+        {
+          "key": "couponIssues.done",
+          "zh-CN": "完成",
+          "en": "Done",
+          "ar": "تم"
+        },
+        {
+          "key": "couponIssues.empty",
+          "zh-CN": "暂无发放记录",
+          "en": "No sends yet",
+          "ar": "لا يوجد سجل إرسال"
+        },
+        {
+          "key": "couponIssues.line",
+          "zh-CN": "发出 {i} · 跳过 {s} · 最多支出 {a}",
+          "en": "Sent {i} · skipped {s} · max spend {a}",
+          "ar": "أُرسلت {i} · تُخطيت {s} · أقصى مصروف {a}"
+        },
+        {
+          "key": "couponIssues.maxSpend",
+          "zh-CN": "本次最多支出",
+          "en": "Max spend this time",
+          "ar": "أقصى مصروف هذه المرة"
+        },
+        {
+          "key": "couponIssues.people",
+          "zh-CN": "{n} 人",
+          "en": "{n} people",
+          "ar": "{n} شخصًا"
+        },
+        {
+          "key": "couponIssues.reason.ALREADY_HAS",
+          "zh-CN": "已达每人上限",
+          "en": "Reached the per-person limit",
+          "ar": "بلغ الحد لكل شخص"
+        },
+        {
+          "key": "couponIssues.reason.SOLD_OUT",
+          "zh-CN": "券已发完",
+          "en": "Coupons ran out",
+          "ar": "نفدت القسائم"
+        },
+        {
+          "key": "couponIssues.reason.UNREACHABLE",
+          "zh-CN": "未注册或已退订",
+          "en": "Not registered or unsubscribed",
+          "ar": "غير مسجل أو ألغى الاشتراك"
+        },
+        {
+          "key": "couponIssues.resultTitle",
+          "zh-CN": "发放结果",
+          "en": "Send result",
+          "ar": "نتيجة الإرسال"
+        },
+        {
+          "key": "couponIssues.sentTo",
+          "zh-CN": "已发出 · {name}",
+          "en": "Sent · {name}",
+          "ar": "أُرسلت · {name}"
+        },
+        {
+          "key": "couponIssues.skippedN",
+          "zh-CN": "跳过 {n} 人",
+          "en": "Skipped {n}",
+          "ar": "تم تخطي {n}"
+        },
+        {
+          "key": "couponIssues.title",
+          "zh-CN": "发放记录",
+          "en": "Send history",
+          "ar": "سجل الإرسال"
+        },
+        {
+          "key": "couponSend.cancel",
+          "zh-CN": "取消",
+          "en": "Cancel",
+          "ar": "إلغاء"
+        },
+        {
+          "key": "couponSend.confirmBody",
+          "zh-CN": "向 {n} 人各发放一张「{title}」，发出后不可撤回",
+          "en": "Each of {n} people gets one “{title}”. This can't be recalled",
+          "ar": "يحصل كل واحد من {n} على «{title}»، ولا يمكن الاسترجاع"
+        },
+        {
+          "key": "couponSend.confirmTitle",
+          "zh-CN": "发给「{name}」",
+          "en": "Send to “{name}”",
+          "ar": "إرسال إلى «{name}»"
+        },
+        {
+          "key": "couponSend.coupon",
+          "zh-CN": "券",
+          "en": "Coupon",
+          "ar": "القسيمة"
+        },
+        {
+          "key": "couponSend.left",
+          "zh-CN": "剩余",
+          "en": "Remaining",
+          "ar": "المتبقي"
+        },
+        {
+          "key": "couponSend.leftN",
+          "zh-CN": "{n} 张",
+          "en": "{n}",
+          "ar": "{n}"
+        },
+        {
+          "key": "couponSend.maxSpend",
+          "zh-CN": "最多支出",
+          "en": "Max spend",
+          "ar": "أقصى مصروف"
+        },
+        {
+          "key": "couponSend.mine",
+          "zh-CN": "我的人群",
+          "en": "My groups",
+          "ar": "فئاتي"
+        },
+        {
+          "key": "couponSend.mineEmpty",
+          "zh-CN": "暂无人群，可在会员页筛选后保存",
+          "en": "No saved groups yet. Filter and save one on the Members page",
+          "ar": "لا توجد فئات محفوظة؛ صفِّ واحفظ فئة من صفحة الأعضاء"
+        },
+        {
+          "key": "couponSend.mineN",
+          "zh-CN": "{n} 个",
+          "en": "{n}",
+          "ar": "{n}"
+        },
+        {
+          "key": "couponSend.preset.ALL",
           "zh-CN": "全部会员",
           "en": "All members",
           "ar": "كل الأعضاء"
         },
         {
-          "key": "couponIssues.amount",
-          "zh-CN": "这一批最多花 {n}",
-          "en": "This batch costs at most {n}",
-          "ar": "هذه الدفعة تكلف {n} كحد أقصى"
+          "key": "couponSend.preset.LOYAL",
+          "zh-CN": "熟客",
+          "en": "Regulars",
+          "ar": "العملاء الدائمون"
         },
         {
-          "key": "couponIssues.done",
-          "zh-CN": "「{title}」发放完成",
-          "en": "“{title}” sent",
-          "ar": "تم إرسال «{title}»"
+          "key": "couponSend.preset.NEW",
+          "zh-CN": "新客",
+          "en": "New customers",
+          "ar": "العملاء الجدد"
         },
         {
-          "key": "couponIssues.empty",
-          "zh-CN": "还没有发放记录",
-          "en": "No issues yet",
-          "ar": "لا يوجد سجل إصدار"
+          "key": "couponSend.preset.SLEEPING",
+          "zh-CN": "沉睡会员",
+          "en": "Dormant members",
+          "ar": "الأعضاء الخاملون"
         },
         {
-          "key": "couponIssues.hint",
-          "zh-CN": "跳过的人不会收到任何东西，也不会占用发行量",
-          "en": "Skipped people receive nothing and do not use up the issue count",
-          "ar": "المتخطّون لا يستلمون شيئًا ولا يستهلكون من عدد الإصدار"
+          "key": "couponSend.submit",
+          "zh-CN": "发放",
+          "en": "Send",
+          "ar": "إرسال"
         },
         {
-          "key": "couponIssues.issued",
-          "zh-CN": "发出",
-          "en": "Sent",
-          "ar": "أُرسلت"
+          "key": "couponSend.title",
+          "zh-CN": "发放",
+          "en": "Send",
+          "ar": "إرسال"
         },
         {
-          "key": "couponIssues.line",
-          "zh-CN": "发出 {i} · 跳过 {s} · 最多花 {a}",
-          "en": "{i} sent · {s} skipped · at most {a}",
-          "ar": "{i} أُرسلت · {s} متخطّى · بحد أقصى {a}"
+          "key": "couponSend.to",
+          "zh-CN": "发给",
+          "en": "Send to",
+          "ar": "إرسال إلى"
         },
         {
-          "key": "couponIssues.planned",
-          "zh-CN": "命中",
-          "en": "Matched",
-          "ar": "مطابقون"
+          "key": "couponSend.unlimited",
+          "zh-CN": "不限",
+          "en": "Unlimited",
+          "ar": "غير محدود"
         },
         {
-          "key": "couponIssues.reason.ALREADY_HAS",
-          "zh-CN": "{n} 人已达每人上限",
-          "en": "{n} already at their limit",
-          "ar": "{n} بلغوا الحد الأقصى"
+          "key": "couponText.kind.CASH",
+          "zh-CN": "现金",
+          "en": "Cash",
+          "ar": "نقدية"
         },
         {
-          "key": "couponIssues.reason.SOLD_OUT",
-          "zh-CN": "{n} 人没赶上，券发完了",
-          "en": "{n} missed out; the coupon ran out",
-          "ar": "{n} لم يلحقوا، نفدت القسائم"
-        },
-        {
-          "key": "couponIssues.reason.UNREACHABLE",
-          "zh-CN": "{n} 人还没注册或已退订",
-          "en": "{n} not registered or opted out",
-          "ar": "{n} غير مسجلين أو ألغوا الاشتراك"
-        },
-        {
-          "key": "couponIssues.skipped",
-          "zh-CN": "跳过",
-          "en": "Skipped",
-          "ar": "متخطّون"
-        },
-        {
-          "key": "couponIssues.title",
-          "zh-CN": "发放记录",
-          "en": "Issue log",
-          "ar": "سجل الإصدار"
-        },
-        {
-          "key": "couponIssues.toSegment",
-          "zh-CN": "发给 {name}",
-          "en": "Sent to {name}",
-          "ar": "أُرسلت إلى {name}"
-        },
-        {
-          "key": "coupons.benefitCash",
-          "zh-CN": "减 {n}",
-          "en": "{n} off",
-          "ar": "خصم {n}"
-        },
-        {
-          "key": "coupons.benefitCashWithMin",
-          "zh-CN": "满 {m} 减 {n}",
-          "en": "{n} off orders over {m}",
-          "ar": "خصم {n} للطلبات فوق {m}"
-        },
-        {
-          "key": "coupons.benefitFreeShip",
+          "key": "couponText.kind.FREE_SHIP",
           "zh-CN": "免运费",
-          "en": "Free shipping",
-          "ar": "شحن مجاني"
+          "en": "Free delivery",
+          "ar": "توصيل مجاني"
         },
         {
-          "key": "coupons.benefitGift",
+          "key": "couponText.kind.GIFT",
+          "zh-CN": "兑换",
+          "en": "Voucher",
+          "ar": "استبدال"
+        },
+        {
+          "key": "couponText.kind.PERCENT",
+          "zh-CN": "折扣",
+          "en": "Discount",
+          "ar": "خصم"
+        },
+        {
+          "key": "couponText.kind.TIMES",
+          "zh-CN": "次卡",
+          "en": "Multi-use",
+          "ar": "متعددة الاستخدام"
+        },
+        {
+          "key": "couponText.min",
+          "zh-CN": "满 {n}",
+          "en": "Over {n}",
+          "ar": "فوق {n}"
+        },
+        {
+          "key": "couponText.noMin",
+          "zh-CN": "无门槛",
+          "en": "No minimum",
+          "ar": "بلا حد أدنى"
+        },
+        {
+          "key": "couponText.perUser",
+          "zh-CN": "每人 {n} 张",
+          "en": "{n} per person",
+          "ar": "{n} لكل شخص"
+        },
+        {
+          "key": "couponText.receivedOf",
+          "zh-CN": "领 {n} / {m}",
+          "en": "Claimed {n} / {m}",
+          "ar": "استُلم {n} / {m}"
+        },
+        {
+          "key": "couponText.ruleCash",
+          "zh-CN": "{n}",
+          "en": "{n}",
+          "ar": "{n}"
+        },
+        {
+          "key": "couponText.ruleFreeShip",
+          "zh-CN": "免运费",
+          "en": "Free delivery",
+          "ar": "توصيل مجاني"
+        },
+        {
+          "key": "couponText.ruleGift",
           "zh-CN": "凭券兑换",
-          "en": "Redeem an item",
-          "ar": "استبدال صنف"
+          "en": "Voucher",
+          "ar": "استبدال"
         },
         {
-          "key": "coupons.benefitPercent",
-          "zh-CN": "{z} 折，最多减 {cap}",
-          "en": "{z}0% of price, up to {cap} off",
-          "ar": "{z}0% من السعر، بحد أقصى {cap}"
+          "key": "couponText.rulePercent",
+          "zh-CN": "{z} 折 · 封顶 {cap}",
+          "en": "{z}/10 · cap {cap}",
+          "ar": "{z}/10 · حد {cap}"
         },
         {
-          "key": "coupons.edit",
-          "zh-CN": "编辑",
-          "en": "Edit",
-          "ar": "تعديل"
+          "key": "couponText.ruleTimes",
+          "zh-CN": "{n} 次",
+          "en": "{n} uses",
+          "ar": "{n} مرات"
+        },
+        {
+          "key": "couponText.scopeAll",
+          "zh-CN": "全店",
+          "en": "Whole store",
+          "ar": "المتجر كله"
+        },
+        {
+          "key": "couponText.scopeSome",
+          "zh-CN": "指定商品",
+          "en": "Selected products",
+          "ar": "منتجات محددة"
+        },
+        {
+          "key": "couponText.total",
+          "zh-CN": "{n} 张",
+          "en": "{n}",
+          "ar": "{n}"
+        },
+        {
+          "key": "couponText.usedOf",
+          "zh-CN": "核销 {n} / {m} 次",
+          "en": "Redeemed {n} / {m}",
+          "ar": "استُبدل {n} / {m}"
+        },
+        {
+          "key": "couponText.validNone",
+          "zh-CN": "长期",
+          "en": "No expiry",
+          "ar": "بلا انتهاء"
+        },
+        {
+          "key": "couponText.validRelative",
+          "zh-CN": "领后 {n} 天",
+          "en": "{n} days after claim",
+          "ar": "{n} أيام بعد الاستلام"
+        },
+        {
+          "key": "couponText.validUntil",
+          "zh-CN": "至 {d}",
+          "en": "Until {d}",
+          "ar": "حتى {d}"
         },
         {
           "key": "coupons.empty",
@@ -6141,81 +6615,21 @@
         },
         {
           "key": "coupons.emptyTip",
-          "zh-CN": "创建后可选择人群发放",
-          "en": "Create one, then pick an audience to issue it to",
-          "ar": "أنشئ واحدة ثم اختر شريحة لإصدارها"
-        },
-        {
-          "key": "coupons.exposure",
-          "zh-CN": "最多花 {n}",
-          "en": "Costs at most {n}",
-          "ar": "بحد أقصى {n}"
-        },
-        {
-          "key": "coupons.issue",
-          "zh-CN": "发放",
-          "en": "Issue",
-          "ar": "إصدار"
-        },
-        {
-          "key": "coupons.issueBody",
-          "zh-CN": "向该人群 {n} 人各发放一张「{title}」，发出后不可撤回。",
-          "en": "{n} people match now; each receives one “{title}”. Issued coupons cannot be recalled.",
-          "ar": "تنطبق الآن على {n} شخصًا، لكل منهم «{title}» واحدة. لا يمكن استرجاع ما صدر."
-        },
-        {
-          "key": "coupons.issueTitle",
-          "zh-CN": "发给「{name}」",
-          "en": "Send to “{name}”",
-          "ar": "إرسال إلى «{name}»"
-        },
-        {
-          "key": "coupons.issued",
-          "zh-CN": "已发 {n} / {m}",
-          "en": "{n} of {m} issued",
-          "ar": "صدر {n} من {m}"
-        },
-        {
-          "key": "coupons.issues",
-          "zh-CN": "发放记录",
-          "en": "Issue log",
-          "ar": "سجل الإصدار"
+          "zh-CN": "新建后可选择人群发放",
+          "en": "Create one, then send it to a customer group",
+          "ar": "أنشئ قسيمة ثم أرسلها إلى فئة من العملاء"
         },
         {
           "key": "coupons.new",
-          "zh-CN": "建券",
+          "zh-CN": "新建券",
           "en": "New coupon",
           "ar": "قسيمة جديدة"
         },
         {
-          "key": "coupons.noSegment",
-          "zh-CN": "请先在会员页筛选并另存为人群",
-          "en": "Filter members first and save them as an audience",
-          "ar": "صفِّ الأعضاء أولًا واحفظهم كشريحة"
-        },
-        {
-          "key": "coupons.pause",
-          "zh-CN": "暂停发放",
-          "en": "Pause issuing",
-          "ar": "إيقاف الإصدار"
-        },
-        {
-          "key": "coupons.pauseHint",
-          "zh-CN": "暂停后不再发放新券，已发出的券仍可使用",
-          "en": "Pausing stops new issues; coupons already claimed still work",
-          "ar": "الإيقاف يمنع الإصدار الجديد فقط؛ القسائم المستلمة تبقى صالحة"
-        },
-        {
-          "key": "coupons.resume",
-          "zh-CN": "恢复发放",
-          "en": "Resume issuing",
-          "ar": "استئناف الإصدار"
-        },
-        {
-          "key": "coupons.showEnded",
-          "zh-CN": "含已结束",
-          "en": "Include ended",
-          "ar": "تشمل المنتهية"
+          "key": "coupons.status.ACTIVE",
+          "zh-CN": "在发",
+          "en": "Issuing",
+          "ar": "قيد الإصدار"
         },
         {
           "key": "coupons.status.ENDED",
@@ -6224,28 +6638,40 @@
           "ar": "منتهية"
         },
         {
-          "key": "coupons.status.PAUSED",
-          "zh-CN": "已暂停",
-          "en": "Paused",
-          "ar": "موقوفة"
+          "key": "coupons.status.LOW",
+          "zh-CN": "快发完",
+          "en": "Running low",
+          "ar": "توشك على النفاد"
         },
         {
-          "key": "coupons.storeCode",
-          "zh-CN": "到店出示核销，不参与下单抵扣",
-          "en": "Shown in store, not applied at checkout",
-          "ar": "تُبرز في المتجر، لا تُطبق عند الدفع"
+          "key": "coupons.status.PAUSED",
+          "zh-CN": "已停",
+          "en": "Stopped",
+          "ar": "متوقفة"
+        },
+        {
+          "key": "coupons.tab.ACTIVE",
+          "zh-CN": "在发",
+          "en": "Issuing",
+          "ar": "قيد الإصدار"
+        },
+        {
+          "key": "coupons.tab.ENDED",
+          "zh-CN": "已结束",
+          "en": "Ended",
+          "ar": "منتهية"
+        },
+        {
+          "key": "coupons.tab.PAUSED",
+          "zh-CN": "已停",
+          "en": "Stopped",
+          "ar": "متوقفة"
         },
         {
           "key": "coupons.title",
           "zh-CN": "优惠券",
           "en": "Coupons",
           "ar": "القسائم"
-        },
-        {
-          "key": "coupons.validRelative",
-          "zh-CN": "领后 {n} 天有效",
-          "en": "Valid {n} days after claiming",
-          "ar": "صالحة {n} يومًا بعد الاستلام"
         },
         {
           "key": "crossStore.best",
@@ -17132,6 +17558,12 @@
           "ar": "أدخل رمز الاستلام"
         },
         {
+          "key": "verify.couponCancel",
+          "zh-CN": "取消",
+          "en": "Cancel",
+          "ar": "إلغاء"
+        },
+        {
           "key": "verify.couponCodePh",
           "zh-CN": "请输入顾客出示的券码",
           "en": "Enter the voucher code shown by the customer",
@@ -17162,22 +17594,34 @@
           "ar": "استبدال «{title}»"
         },
         {
+          "key": "verify.couponCustomer",
+          "zh-CN": "顾客",
+          "en": "Customer",
+          "ar": "العميل"
+        },
+        {
           "key": "verify.couponDuplicated",
           "zh-CN": "刚才那次已经核销成功了，没有重复扣",
           "en": "That one already went through — nothing was charged twice",
           "ar": "تمت العملية السابقة بنجاح؛ لم يُخصم مرتين"
         },
         {
-          "key": "verify.couponHolder",
-          "zh-CN": "顾客 ···{tail}",
-          "en": "Customer ···{tail}",
-          "ar": "العميل ···{tail}"
+          "key": "verify.couponIrreversible",
+          "zh-CN": "核销后不能撤销",
+          "en": "Redemption cannot be undone",
+          "ar": "لا يمكن التراجع عن الاستبدال"
         },
         {
           "key": "verify.couponLeft",
           "zh-CN": "核销成功，还剩 {n} 次",
           "en": "Redeemed; {n} left",
           "ar": "تم الاستبدال، متبقٍ {n}"
+        },
+        {
+          "key": "verify.couponLeftHero",
+          "zh-CN": "还剩 {n} 次",
+          "en": "{n} left",
+          "ar": "متبقٍ {n}"
         },
         {
           "key": "verify.couponPeek",
@@ -17217,21 +17661,39 @@
         },
         {
           "key": "verify.couponRedeem",
-          "zh-CN": "确认核销（不可撤销）",
-          "en": "Redeem (cannot be undone)",
-          "ar": "استبدال (لا يمكن التراجع)"
+          "zh-CN": "核销",
+          "en": "Redeem",
+          "ar": "استبدال"
         },
         {
-          "key": "verify.couponRemaining",
-          "zh-CN": "还可核销 {n} / {m} 次",
-          "en": "{n} of {m} redemptions left",
-          "ar": "متبقٍ {n} من {m}"
+          "key": "verify.couponRedeemOnce",
+          "zh-CN": "核销一次",
+          "en": "Redeem once",
+          "ar": "استبدال مرة"
+        },
+        {
+          "key": "verify.couponTotal",
+          "zh-CN": "共 {n} 次",
+          "en": "{n} in total",
+          "ar": "الإجمالي {n}"
+        },
+        {
+          "key": "verify.couponUntil",
+          "zh-CN": "至 {d}",
+          "en": "{d}",
+          "ar": "{d}"
         },
         {
           "key": "verify.couponUsedUp",
           "zh-CN": "核销成功，这张券已用完",
           "en": "Redeemed; this coupon is now fully used",
           "ar": "تم الاستبدال، استُهلكت القسيمة بالكامل"
+        },
+        {
+          "key": "verify.couponValid",
+          "zh-CN": "有效期",
+          "en": "Valid until",
+          "ar": "صالح حتى"
         },
         {
           "key": "verify.doIt",
@@ -19591,6 +20053,12 @@
           "zh-CN": "请设置周期规则（周几、几点到几点）",
           "en": "Set the recurring rule (days and hours)",
           "ar": "اضبط قاعدة التكرار (الأيام والساعات)"
+        },
+        {
+          "key": "err.marketing.activity_rule_locked",
+          "zh-CN": "活动已开始，只能改结束时间和上限；改规则请结束后另建",
+          "en": "This activity has started. Only the end time and caps can change; end it and create a new one to change the rules",
+          "ar": "بدأ هذا النشاط؛ يمكن تعديل وقت الانتهاء والحدود فقط، ولتغيير القواعد أنهِه وأنشئ نشاطًا جديدًا"
         },
         {
           "key": "err.marketing.attribution_factor_required",
@@ -27359,6 +27827,7 @@
           "PERIOD_MIXED",
           "PERIOD_FULL",
           "GOODS_IN_PRESALE",
+          "ACTIVITY_RULE_LOCKED",
           "GROUP_CLOSED",
           "GROUP_JOIN_NEEDS_UPGRADE",
           "SPLIT_RECEIVER_NOT_READY",
@@ -28928,6 +29397,10 @@
           "/pages/customers/index",
           "/pages/activities/index",
           "/pages/coupons/index",
+          "/pages/coupon/index",
+          "/pages/coupon-edit/index",
+          "/pages/coupon-send/index",
+          "/pages/coupon-issues/index",
           "/pages/marketing/index",
           "/pages/periods/index",
           "/pages/period/index",
@@ -28968,6 +29441,7 @@
           "/pages/order/index",
           "/pages/after-sale/index",
           "/pages/coupons/index",
+          "/pages/coupon-code/index",
           "/pages/my-memberships/index",
           "/pages/cards/index",
           "/pages/messages/index",

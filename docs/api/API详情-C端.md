@@ -3209,6 +3209,8 @@
 | `expireAt` | `number` | 是 | 过期时刻（毫秒） |
 | `status` | `string` | 是 | `UNUSED` / `USED` / `EXPIRED` / `REVOKED` |
 | `usableNow` | `boolean` | 是 | 此刻能不能用。按时间窗、门槛、剩余次数实时判 —— 不落库，落了就要有人定时刷 |
+| `merchantName` | `string,null` | 否 | 发券的店（原型 s24「张记粮油 · 全店」）；取不到时为空 |
+| `scopeType` | `string,null` | 否 | 适用范围：`ALL` 全店 / `STORE` 指定门店 / `CATEGORY` / `GOODS` |
 
 ### Order
 

@@ -137,12 +137,12 @@
 | 营销活动列表 | GET | `/biz/campaign` | `mCampaignList` | — |
 | 新建/编辑活动 | POST | `/biz/campaign` | `mSaveCampaign` | — |
 | 活动启停 | POST | `/biz/campaign/:campaignNo/toggle` | `mToggleCampaign` | — |
-| 发放记录（含跳过明细） | GET | `/biz/coupon-issues` | `mCouponIssues` | coupon-issues |
+| 发放记录（含跳过明细） | GET | `/biz/coupon-issues` | `mCouponIssues` | coupon、coupon-issues |
 | 券列表 | GET | `/biz/coupons` | `mCoupons` | coupon-issues、coupons |
 | 建券 / 改券（敞口在这一步算清） | POST | `/biz/coupons` | `mSaveCoupon` | coupon-edit |
-| 券详情 | GET | `/biz/coupons/{couponNo}` | `mCoupon` | coupon-edit |
-| 按人群定向发券 | POST | `/biz/coupons/{couponNo}/issue` | `mIssueCoupon` | coupons |
-| 暂停 / 恢复 / 结束 | PUT | `/biz/coupons/{couponNo}/status` | `mSetCouponStatus` | coupons |
+| 券详情 | GET | `/biz/coupons/{couponNo}` | `mCoupon` | coupon、coupon-edit、coupon-send |
+| 按人群定向发券 | POST | `/biz/coupons/{couponNo}/issue` | `mIssueCoupon` | coupon-send |
+| 暂停 / 恢复 / 结束 | PUT | `/biz/coupons/{couponNo}/status` | `mSetCouponStatus` | coupon |
 | 报价 | POST | `/biz/group-request/:requestNo/quote` | `mQuote` | quotes |
 | 可报价需求单 | GET | `/biz/group-request/pool` | `mRequestList` | quotes |
 | 团详情 | GET | `/biz/group/:groupNo` | `mGroup` | group |
@@ -263,7 +263,7 @@
 | 进销存月报 | GET | `/biz/inventory/report/monthly` | `mStockMonthly` | stock-report |
 | 动销/滞销榜 | GET | `/biz/inventory/report/ranking` | `mStockRanking` | stock-report |
 | 群发试算：能发多少、跳过多少 | POST | `/biz/member-reach/plan` | `mPlanReach` | member-reach |
-| 人群列表 | GET | `/biz/member-segments` | `mMemberSegments` | coupon-issues、coupons、member-reach、member-segments |
+| 人群列表 | GET | `/biz/member-segments` | `mMemberSegments` | coupon-issues、coupon-send、member-reach、member-segments |
 | 存人群（存条件不存名单） | POST | `/biz/member-segments` | `mSaveMemberSegment` | customers、member-segments |
 | 删人群（端上没有 DELETE，见 http-client） | POST | `/biz/member-segments/{segmentNo}/remove` | `mRemoveMemberSegment` | member-segments |
 | 试算命中与可触达 | POST | `/biz/member-segments/preview` | `mPreviewMemberSegment` | customers |
@@ -275,7 +275,7 @@
 | 手工录入（未注册记为线索） | POST | `/biz/members` | `mEnrollMember` | member-add |
 | 会员详情：各店往来与来源轨迹 | GET | `/biz/members/{memberNo}` | `mMemberDetail` | member-detail |
 | 改备注 / 拉黑 | PUT | `/biz/members/{memberNo}` | `mPatchMember` | — |
-| 四层人数与未计入买家 | GET | `/biz/members/stats` | `mMemberStats` | customers |
+| 四层人数与未计入买家 | GET | `/biz/members/stats` | `mMemberStats` | coupon-send、customers |
 | 批量打标 / 去标 | POST | `/biz/members/tags` | `mTagMembers` | — |
 | —（b-app 未接） | — | `/biz/inventory/export` | — | — |
 
@@ -356,9 +356,11 @@
 | `activities` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `activity-edit` | `biz:campaign` | `biz:stock`、`biz:campaign` | 老板、店长 | — |
 | `after-sale` | `biz:aftersale` | `biz:aftersale`、`biz:order:view` | 老板、店长、客服 | — |
+| `coupon` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `coupon-edit` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `coupon-issues` | `biz:campaign` | `biz:campaign`、`biz:customer` | 老板、店长 | — |
-| `coupons` | `biz:campaign` | `biz:campaign`、`biz:customer` | 老板、店长 | — |
+| `coupon-send` | `biz:campaign` | `biz:campaign`、`biz:customer` | 老板、店长 | — |
+| `coupons` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `cross-store` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `customers` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `delivery` | `biz:ship` | `biz:store`、`biz:order:view`、`biz:ship` | 老板、店长、店员、配送员 | 店员（缺 biz:store）　配送员（缺 biz:store） |

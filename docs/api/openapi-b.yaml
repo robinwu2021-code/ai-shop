@@ -1970,6 +1970,12 @@ components:
         status: 
           type: "string"
           description: "`ACTIVE` / `PAUSED` 暂停发放（已领的不受影响）/ `ENDED`"
+        usedTimes: 
+          type: "number"
+          description: "已核销次数（下单抵扣与到店核销都算，已回退的不算）。次卡按次、其余一张一次"
+        spentMinor: 
+          type: "number"
+          description: "已支出（最小货币单位）：核销时实际减掉的钱之和"
       required: 
         - "couponNo"
         - "title"
@@ -1984,6 +1990,8 @@ components:
         - "receivedCount"
         - "perUserLimit"
         - "status"
+        - "usedTimes"
+        - "spentMinor"
       additionalProperties: false
       description: "商家自己的券（P4，新模型 `pmt_coupon`）。"
     MerchantCouponDraft: 
@@ -2190,6 +2198,16 @@ components:
         usableNow: 
           type: "boolean"
           description: "此刻能不能用。按时间窗、门槛、剩余次数实时判 —— 不落库，落了就要有人定时刷"
+        merchantName: 
+          type: 
+            - "string"
+            - "null"
+          description: "发券的店（原型 s24「张记粮油 · 全店」）；取不到时为空"
+        scopeType: 
+          type: 
+            - "string"
+            - "null"
+          description: "适用范围：`ALL` 全店 / `STORE` 指定门店 / `CATEGORY` / `GOODS`"
       required: 
         - "userCouponNo"
         - "couponNo"

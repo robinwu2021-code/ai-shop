@@ -16,7 +16,7 @@ public interface MemberQueryPort {
     /**
      * 人群此刻命中谁。<b>当场算，不吃缓存</b> —— 名单每天都在变。
      *
-     * @param segmentNo 存下来的人群
+     * @param segmentNo 存下来的人群；或预设人群 {@code @ALL} / {@code @NEW} / {@code @REGULAR} / {@code @LOYAL} / {@code @SLEEPING}（按分层现筛，发券页 s18 的前四行）
      */
     SegmentAudience resolveSegment(String entityNo, String segmentNo);
 

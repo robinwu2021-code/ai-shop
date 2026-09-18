@@ -177,4 +177,30 @@ class StoreCodeRedeemTest {
                 .isInstanceOf(BizException.class)
                 .hasMessage(ErrorCode.COUPON_CODE_NOT_FOUND.name());
     }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("★★ 发给预设人群（@ALL / @NEW）不用先存人群；不认识的 @ 键照旧拒（原型 s18）")
+    void issueToPresetAudience() {
+        String e = "M-PRE-" + (++seq);
+        String phone = "1360000" + (++seq);
+        String userNo = "U-PRE-" + seq;
+        String personNo = personService.resolveOrCreateByPhone(phone).getPersonNo();
+        personService.bindOnLogin(userNo, phone);
+        memberService.onOrderPaid("SUB-PRE-" + seq, userNo, personNo, e, "ST-1", 5_000,
+                System.currentTimeMillis());
+        CouponVO c = couponService.save(e, new CouponSaveCmd(null, "预设人群" + seq,
+                PmtCoupon.CASH, 300L, null, null, 0L, null,
+                PmtCoupon.SCOPE_ALL, List.of(), null,
+                PmtCoupon.RELATIVE, null, null, 30,
+                PmtCoupon.ISSUE_TARGETED, PmtCoupon.REDEEM_ORDER, 1,
+                50, 1, null), "OP");
+
+        var batch = couponService.issue(e, c.couponNo(), "@ALL", "OP");
+        org.assertj.core.api.Assertions.assertThat(batch.issued())
+                .as("★ 全部会员里那一个人应当收到").isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(couponService.issue(e, c.couponNo(), "@SLEEPING", "OP").planned())
+                .as("刚下过单的人不是沉睡会员").isZero();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> couponService.issue(e, c.couponNo(), "@NOPE", "OP"))
+                .isInstanceOf(ai.neargo.shop.common.BizException.class);
+    }
 }

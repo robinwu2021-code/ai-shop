@@ -452,6 +452,10 @@ export interface MerchantCoupon {
   maxExposureMinor?: number | null;
   /** `ACTIVE` / `PAUSED` 暂停发放（已领的不受影响）/ `ENDED` */
   status: string;
+  /** 已核销次数（下单抵扣与到店核销都算，已回退的不算）。次卡按次、其余一张一次 */
+  usedTimes: number;
+  /** 已支出（最小货币单位）：核销时实际减掉的钱之和 */
+  spentMinor: number;
 }
 /** 建券入参。`couponNo` 为空 = 新建 */
 export interface MerchantCouponDraft {
@@ -567,6 +571,10 @@ export interface MyStoreCoupon {
   status: string;
   /** 此刻能不能用。按时间窗、门槛、剩余次数实时判 —— 不落库，落了就要有人定时刷 */
   usableNow: boolean;
+  /** 发券的店（原型 s24「张记粮油 · 全店」）；取不到时为空 */
+  merchantName?: string | null;
+  /** 适用范围：`ALL` 全店 / `STORE` 指定门店 / `CATEGORY` / `GOODS` */
+  scopeType?: string | null;
 }
 /**
  * 到店核销：先看后核里「看」的那一步（P6）。

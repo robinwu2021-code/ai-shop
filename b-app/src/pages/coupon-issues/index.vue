@@ -1,12 +1,11 @@
 <script setup lang="ts">
-// 发放结果与发放记录（P4）。
-//
-// **这一页存在的唯一理由是那句「跳过 12 个」**。
-// 商家选了 37 个人、实发 25 张，如果只弹一句「发放成功」，
-// 他会以为 37 个人都收到了 —— 直到某个顾客说没收到，而那时已经隔了几天，
-// 谁也说不清是没发还是没送到。
-//
-// 所以三个数字要并排显示：命中、发出、跳过；跳过还要写明白分别是为什么。
+/*
+ * 发放结果（原型 s16）与发放记录。
+ *
+ * 带 issueNo 进来 = 刚发完那一批：大字写「25 人 · 已发出」，跳过的人**按原因分行列出** ——
+ * 不说原因，商家会以为少发了、再发一遍。底部「完成」回券详情。
+ * 不带 = 这张券（或全部券）的发放记录，一批一张卡。
+ */
 import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
@@ -16,20 +15,15 @@ import { money } from "@shared/utils/money";
 import type { CouponIssueBatch, MemberSegment, MerchantCoupon } from "@shared/types";
 
 const { t } = useI18n();
+const tt = (k: string, a?: Record<string, unknown>) => String(t(k, a ?? {}));
 const merchant = useMerchantStore();
 
 const couponNo = ref("");
-/** 刚发完那一批：从列表跳过来时高亮它 */
-const highlight = ref("");
+const issueNo = ref("");
 const list = ref<CouponIssueBatch[]>([]);
 const coupons = ref<MerchantCoupon[]>([]);
 const segments = ref<MemberSegment[]>([]);
-
-const latest = computed(() => list.value.find((b) => b.issueNo === highlight.value));
-
-/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
 const loaded = ref(false);
-/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
 const failed = ref(false);
 
 async function load() {
@@ -49,12 +43,16 @@ async function load() {
   loaded.value = true;
 }
 
+const one = computed(() => (issueNo.value ? list.value.find((b) => b.issueNo === issueNo.value) ?? null : null));
+
 function couponTitle(no: string) {
   return coupons.value.find((c) => c.couponNo === no)?.title || no;
 }
 
+/** 人群名：预设键（@ALL 等）翻成字，存下来的人群查名字 */
 function segmentName(no?: string | null) {
-  if (!no) return t("couponIssues.allMembers");
+  if (!no || no === "@ALL") return tt("couponSend.preset.ALL");
+  if (no.startsWith("@")) return tt(`couponSend.preset.${no.slice(1)}`);
   return segments.value.find((s) => s.segmentNo === no)?.name || no;
 }
 
@@ -64,89 +62,93 @@ function stamp(ts: number) {
   return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+function done() {
+  uni.navigateBack();
+}
+
 onLoad((q) => {
   couponNo.value = (q?.couponNo as string) ?? "";
-  highlight.value = (q?.issueNo as string) ?? "";
+  issueNo.value = (q?.issueNo as string) ?? "";
 });
-onShow(load);
+onShow(() => {
+  void load();
+});
 </script>
 
 <template>
-  <sh-scaffold title-key="couponIssues.title" :denied="!merchant.can('biz:campaign')">
-    <!-- 当前门店只读标记：发放记录按门店（同 coupons）——
-         界面上不说清是哪家店，多店店主会在另一家店上动手，而且没有任何症状。
-         只在多店时渲染（单店没有歧义可消）；切店入口在工作台，这里不带动作。 -->
+  <sh-scaffold
+    :title-key="issueNo ? 'couponIssues.resultTitle' : 'couponIssues.title'"
+    :denied="!merchant.can('biz:campaign')"
+    :failed="failed"
+    @retry="load"
+  >
+    <!-- 刚发完那一批 -->
+    <template v-if="one">
+      <view class="hero">
+        <text class="txt-display sh-num">{{ $t("couponIssues.people", { n: one.issued }) }}</text>
+        <text class="txt-sub sh-muted hero__sub">{{ $t("couponIssues.sentTo", { name: segmentName(one.segmentNo) }) }}</text>
+      </view>
 
-    <!-- 刚发完那一批：三个数字并排，跳过原因逐条列出 -->
-    <view v-if="latest" class="sh-card fresh">
-      <text class="txt-strong">{{ $t("couponIssues.done", { title: couponTitle(latest.couponNo) }) }}</text>
-      <sh-stat
-        :items="[
-          { value: latest.planned, label: String($t('couponIssues.planned')) },
-          { value: latest.issued, label: String($t('couponIssues.issued')), tone: 'ok' },
-          { value: latest.skipped, label: String($t('couponIssues.skipped')),
-            tone: latest.skipped > 0 ? 'warn' : undefined },
-        ]"
-      ></sh-stat>
+      <template v-if="one.skipped">
+        <text class="txt-caption sh-muted grp">{{ $t("couponIssues.skippedN", { n: one.skipped }) }}</text>
+        <view class="sh-cells">
+          <view v-for="r in one.skipReasons" :key="r.reason" class="sh-cell sh-row sh-row--between">
+            <text class="txt-body">{{ $t(`couponIssues.reason.${r.reason}`) }}</text>
+            <text class="txt-body sh-num">{{ r.count }}</text>
+          </view>
+        </view>
+      </template>
 
-      <view v-if="latest.skipReasons.length" class="reasons sh-wrap">
-        <text v-for="r in latest.skipReasons" :key="r.reason" class="txt-caption reason">
-          {{ $t(`couponIssues.reason.${r.reason}`, { n: r.count }) }}
+      <view class="sh-row sh-row--between spend">
+        <text class="txt-body sh-muted">{{ $t("couponIssues.maxSpend") }}</text>
+        <text class="txt-title sh-num">{{ money(one.amountMinor) }}</text>
+      </view>
+
+      <sh-actionbar>
+        <view class="sh-btn" @tap="done">{{ $t("couponIssues.done") }}</view>
+      </sh-actionbar>
+    </template>
+
+    <!-- 发放记录 -->
+    <template v-else>
+      <view v-for="b in list" :key="b.issueNo" class="sh-card card">
+        <view class="sh-row sh-row--between">
+          <text class="txt-strong">{{ segmentName(b.segmentNo) }}</text>
+          <text class="txt-caption sh-muted sh-num">{{ stamp(b.issuedAt) }}</text>
+        </view>
+        <text v-if="!couponNo" class="txt-sub sh-muted card__meta">{{ couponTitle(b.couponNo) }}</text>
+        <text class="txt-caption sh-muted sh-num card__metric">
+          {{ $t("couponIssues.line", { i: b.issued, s: b.skipped, a: money(b.amountMinor) }) }}
         </text>
       </view>
-      <text class="txt-caption sh-muted amount">
-        {{ $t("couponIssues.amount", { n: money(latest.amountMinor) }) }}
-      </text>
-    </view>
-
-    <sh-empty v-if="!list.length" :pending="!loaded" :failed="failed" @retry="load" :text="String($t('couponIssues.empty'))"></sh-empty>
-
-    <view v-for="b in list" :key="b.issueNo" class="sh-card sh-mb-sm">
-      <view class="item__head sh-row sh-row--between sh-row--baseline">
-        <text class="txt-strong">{{ couponTitle(b.couponNo) }}</text>
-        <text class="sh-muted">{{ stamp(b.issuedAt) }}</text>
-      </view>
-      <text class="txt-caption sh-muted seg">
-        {{ $t("couponIssues.toSegment", { name: segmentName(b.segmentNo) }) }}
-      </text>
-      <text class="txt-sub sh-num nums">
-        {{ $t("couponIssues.line", { i: b.issued, s: b.skipped, a: money(b.amountMinor) }) }}
-      </text>
-      <view v-if="b.skipReasons.length" class="reasons sh-wrap">
-        <text v-for="r in b.skipReasons" :key="r.reason" class="txt-caption reason">
-          {{ $t(`couponIssues.reason.${r.reason}`, { n: r.count }) }}
-        </text>
-      </view>
-    </view>
-
-    <text v-if="list.length" class="sh-hint sh-mt-sm">{{ $t("couponIssues.hint") }}</text>
+      <sh-empty v-if="!list.length" :pending="!loaded" :text="tt('couponIssues.empty')"></sh-empty>
+    </template>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.fresh {
-  border: 2rpx solid var(--sh-primary);
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16rpx 0 8rpx;
 }
-
-.reasons {
-  margin-top: 12rpx;
+.hero__sub {
+  margin-top: 8rpx;
 }
-.reason {
-  background: var(--sh-faint);
-  border-radius: 16rpx;
-  padding: 8rpx 12rpx;
-}
-.amount {
+.grp {
   display: block;
-  margin-top: 12rpx;
+  padding: 0 8rpx;
 }
-
-.seg {
-  display: block;
-  margin-top: 4rpx;
+.spend {
+  padding: 8rpx 8rpx 0;
 }
-.nums {
+.card__meta {
   display: block;
   margin-top: 8rpx;
+}
+.card__metric {
+  display: block;
+  margin-top: 12rpx;
 }
 </style>

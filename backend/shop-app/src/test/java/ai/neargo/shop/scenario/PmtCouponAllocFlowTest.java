@@ -226,4 +226,34 @@ class PmtCouponAllocFlowTest {
                 .isInstanceOf(BizException.class)
                 .hasMessage(ErrorCode.COUPON_NOT_APPLICABLE.name());
     }
+
+    @Autowired
+    private ai.neargo.shop.promotion.service.CouponService pmtCouponService;
+
+    @Test
+    @DisplayName("★★ 券详情的「已用 / 已支出」从核销账本现算，已回退的不算（原型 s12 · s15）")
+    void usageComesFromApplyLedger() {
+        String entity = "M-USE-" + (++seq);
+        String uc = give("U-USE-" + seq, entity, 500L, 0L, PmtCoupon.REDEEM_ORDER, 1);
+        String couponNo = userCouponMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<PmtUserCoupon>lambdaQuery().eq(PmtUserCoupon::getUserCouponNo, uc)).getCouponNo();
+        for (int i = 0; i < 3; i++) {
+            PmtApply a = new PmtApply();
+            a.setApplyNo("PA-USE-" + seq + "-" + i);
+            a.setPromoType(PmtApply.COUPON);
+            a.setPromoNo(couponNo);
+            a.setUserNo("U-USE-" + seq);
+            a.setEntityNo(entity);
+            a.setOrderNo("O-USE-" + seq + "-" + i);
+            a.setAmountMinor(500L);
+            a.setAppliedAt(System.currentTimeMillis());
+            // 第三笔已回退（订单退款）：不该算进已用
+            a.setRevertedAt(i == 2 ? System.currentTimeMillis() : null);
+            applyMapper.insert(a);
+        }
+        var vo = pmtCouponService.detail(entity, couponNo);
+        assertThat(vo.usedTimes()).isEqualTo(2);
+        assertThat(vo.spentMinor()).as("★ 已回退的那笔不该算进已支出").isEqualTo(1000L);
+        assertThat(pmtCouponService.list(entity, true).get(0).usedTimes()).isEqualTo(2);
+    }
 }
