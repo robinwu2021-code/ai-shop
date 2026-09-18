@@ -271,6 +271,22 @@ PROTO_URL_BY_ROUTE["ops-web"] = {
     "marketing?tab=platformAudit": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
 }
 
+# 会员标签与定向营销（PRD-会员标签与定向营销）：会员几页改指到这一份，取代 v1 的 s02–s07。
+# 锚点是 m01…/o01…，与营销 v2 的 s01… 不撞；活动编辑仍指 v2（这份只画了它的差异屏 m14–m16）
+MEMBER_LOOP_URL = "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc"
+MEMBER_LOOP_ANCHORS = {
+    "b-app": {
+        "pages/customers/index": "m01", "pages/member-detail/index": "m04",
+        "pages/member-tags/index": "m07", "pages/member-segments/index": "m10",
+        "pages/coupon-send/index": "m17", "pages/member-reach/index": "m18",
+        "pages/member-settings/index": "m21",
+    },
+    "ops-web": {"members?tab=reach": "o01"},
+}
+for _app, _routes in MEMBER_LOOP_ANCHORS.items():
+    for _r in _routes:
+        PROTO_URL_BY_ROUTE.setdefault(_app, {})[_r] = MEMBER_LOOP_URL
+
 
 def proto_of(app, path):
     """→ (锚点, 原型地址)。没有原型时两个都是 None。
@@ -332,6 +348,8 @@ PROTO_ANCHORS = {
     },
     "ops-web": {"marketing?tab=platform": "s29", "marketing?tab=platformAudit": "s30"},
 }
+for _app, _routes in MEMBER_LOOP_ANCHORS.items():
+    PROTO_ANCHORS.setdefault(_app, {}).update(_routes)
 
 # 本机 dev server 端口（mock 模式）。点「预览」直接进那一页，不用自己拼路由
 DEV_ORIGIN = {"b-app": "http://localhost:5175/#", "c-app": "http://localhost:5176/#",
