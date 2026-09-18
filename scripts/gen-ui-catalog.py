@@ -237,7 +237,8 @@ PROTO_URL_BY_ROUTE = {
         "pages/verify/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
         "pages/platform-activities/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
         "pages/platform-activity-apply/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/batch-period/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/period/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/periods/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
     },
     # C 端收货地址（2026-09-17，2026-09-18 补到七屏）。**画布式原型，没有页内锚点** ——
     # 各屏并排摆着（没有地址 / 列表 / 新建整页 / 选择地点 / 选城市 / 海外 / 搜不到时），
@@ -248,6 +249,7 @@ PROTO_URL_BY_ROUTE = {
         "pages/goods/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
         "pages/group/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
         "pages/order-confirm/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+        "pages/order/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
         "pages/coupons/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
         "pages/address/index": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
         "pages/address-edit/index": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
@@ -297,7 +299,7 @@ PROTO_ANCHORS = {
         "pages/coupon-issues/index": "s16", "pages/coupon-issue/index": "s16",
         "pages/verify/index": "s17",
         "pages/platform-activities/index": "s27", "pages/platform-activity-apply/index": "s28",
-        "pages/batch-period/index": "s20",
+        "pages/period/index": "s20", "pages/periods/index": "s31",
         # 规格原型（另一份 artifact，见 PROTO_URL_BY_ROUTE）
         "pages/goods-edit/index": "s19",
         "pages/my-specs/index": "s23",
@@ -315,6 +317,8 @@ PROTO_ANCHORS = {
         # 营销原型 s21–s26；券包从 v1 的 s17 挪到这一份的 s24
         "pages/goods/index": "s21", "pages/group/index": "s22",
         "pages/order-confirm/index": "s23", "pages/coupons/index": "s24",
+        # 订单详情只挂集单那一屏（s37）；其它订单状态的原型不在这份里
+        "pages/order/index": "s37",
     },
     "ops-web": {"marketing?tab=platform": "s29", "marketing?tab=platform-audit": "s30"},
 }
@@ -338,10 +342,11 @@ PROTOTYPES = [
     ("ops-web", "/members", "会员总览（跨商家）", "会员与营销"),
     ("ops-web", "/members?tab=person", "人档与合并", "会员与营销"),
     ("ops-web", "/members?tab=reach", "触达监控", "会员与营销"),
-    # 营销原型里还没有页面的五屏（2026-09-18）
+    # 营销原型里还没有页面的六屏（2026-09-18；路由按 TDD-营销-活动统一模型与集单 §2.4）
     ("b-app", "/pages/platform-activities/index", "平台活动", "会员与营销"),
     ("b-app", "/pages/platform-activity-apply/index", "报名平台活动", "会员与营销"),
-    ("b-app", "/pages/batch-period/index", "集单 · 一期", "会员与营销"),
+    ("b-app", "/pages/periods/index", "集单", "会员与营销"),
+    ("b-app", "/pages/period/index", "集单 · 一期", "会员与营销"),
     ("ops-web", "/marketing?tab=platform", "新建平台活动", "会员与营销"),
     ("ops-web", "/marketing?tab=platform-audit", "平台活动报名审核", "会员与营销"),
     # 进销存九屏：需求见 docs/requirements/进销存-需求.md，落地后从这里删掉
