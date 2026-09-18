@@ -471,8 +471,18 @@ export const inventoryMock: Pick<MerchantApi,
 
   async mStockLocations() {
     return delay([
-      { locationId: "L1", name: "文三路店", kind: "STORE", externalRef: "S0001", sourceLocationId: "L3" },
-      { locationId: "L2", name: "古墩路店", kind: "STORE", externalRef: "S0002" },
+      /*
+       * ★ **门店库位的 name 是门店编号，不是门店名** —— 逐字照线上。
+       *
+       * 改之前这里写的是「文三路店」这样的友好名，于是调拨页无论读 `l.name`
+       * 还是读解析后的名字都一样好看，**替身分辨不出这两种写法**。
+       * 线上 `inv_location.name` 存的是 `ST-M0001`（进销存不认识平台的门店表，
+       * 建库位时只拿得到 storeNo），端上必须按 externalRef 对回门店列表才有名字。
+       *
+       * externalRef 指向 mock 门店表里真实存在的 storeNo，对得回去。
+       */
+      { locationId: "L1", name: "ST-MOCK-1", kind: "STORE", externalRef: "ST-MOCK-1", sourceLocationId: "L3" },
+      { locationId: "L2", name: "ST-MOCK-2", kind: "STORE", externalRef: "ST-MOCK-2" },
       { locationId: "L3", name: "城西仓", kind: "WAREHOUSE" },
       // 在途是**真实的库位**，不是「暂时没有」—— 调拨途中的货停在这里，合计才守恒
       { locationId: "L0", name: "在途", kind: "TRANSIT", status: "SYSTEM" },

@@ -1957,6 +1957,8 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     shipConfirm: "Ship it",
     title: "Transfer",
     from: "From",
+    pickFrom: "Transfer out from",
+    pickTo: "Transfer in to",
     to: "To",
     status: { DRAFT: "Draft", SHIPPED: "Shipped", RECEIVED: "Received", VOIDED: "Voided" },
     shippedAt: "Shipped {at} · awaiting receipt",

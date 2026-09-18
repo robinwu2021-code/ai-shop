@@ -169,9 +169,26 @@ function swapEnds() {
   toId.value = f;
 }
 
+/*
+ * ★ **弹层里要与页面上是同一个名字**（2026-09-18 店主：「点击门店信息，
+ * 出来的列表弹框中的内容不清楚是什么」）。
+ *
+ * <p>改之前这里用的是 `l.name` —— 库位表里存的原始名，即 `ST-M0001`
+ * 这样的门店编号（见 `nameOf` 上面那段：进销存不认识平台的门店表）。
+ * 于是页面上写着「老张粮油店」，点开弹层却是一串编号，**两个名字对不上**，
+ * 他不知道自己在选什么。
+ *
+ * <p>弹层也给个标题：一个没有标题的选项列表要靠上下文猜它在问什么。
+ */
 async function pickEnd(which: "from" | "to") {
   const items = choosable.value;
-  const res = await pick({ items: items.map((l) => l.name) });
+  const cur = which === "from" ? fromId.value : toId.value;
+  const res = await pick({
+    title: String(t(which === "from" ? "transfer.pickFrom" : "transfer.pickTo")),
+    items: items.map((l) => nameOf(l.locationId)),
+    // 当前这一端打上勾：不标的话弹层看不出「现在选的是哪个」
+    selected: items.findIndex((l) => l.locationId === cur),
+  });
   if (res === null) return;
   const id = items[res]!.locationId;
   if (which === "from") fromId.value = id;
@@ -449,14 +466,25 @@ onShow(load);
           `@tap` 从 sh-go 挪到整行的 view 上，行本身给 88rpx 最小高。
           sh-go 留着 —— 它那个「›」是「这一行点得开」的记号，不是可点区本身。
         -->
+        <!--
+          ★ **对调钮挪到右侧，与两端并排**（2026-09-18 店主：「头部的空间过大」）。
+
+          改之前是三行摞着：从 88rpx + 对调 88rpx + 到 88rpx = 264rpx，
+          再加卡片内边距，一张只说「从哪到哪」的卡占掉了 150px。
+          对调本来就不是第三个字段，它是这两行之间的一个动作 ——
+          摆在右侧竖跨两行，**一眼就是「把这两行调个个儿」**，还省掉一整行。
+        -->
+        <view class="ends2 sh-row">
+          <view class="sh-fill">
         <view class="end sh-row sh-row--between" @tap="pickEnd('from')">
           <text class="txt-sub">{{ $t("transfer.from") }}</text>
           <sh-go :text="nameOf(fromId) || '—'"></sh-go>
         </view>
-        <!--
-          对调。**调拨最常见的错就是方向填反**，而发现之后现在要重选两次
-          （两个弹层各点一遍，还得记住原来选的是谁）。一枚 88rpx 的圆解决它。
-        -->
+        <view class="end sh-row sh-row--between" @tap="pickEnd('to')">
+          <text class="txt-sub">{{ $t("transfer.to") }}</text>
+          <sh-go :text="nameOf(toId) || '—'"></sh-go>
+        </view>
+          </view>
         <view class="swap sh-center" @tap="swapEnds">
           <!--
             图标库里没有「对调」那一个（只有 chevronUp/Down 等 23 个），
@@ -468,9 +496,6 @@ onShow(load);
             <sh-icon name="chevronDown" :size="22" color="var(--sh-sub)"></sh-icon>
           </view>
         </view>
-        <view class="end sh-row sh-row--between" @tap="pickEnd('to')">
-          <text class="txt-sub">{{ $t("transfer.to") }}</text>
-          <sh-go :text="nameOf(toId) || '—'"></sh-go>
         </view>
       </view>
 
@@ -571,11 +596,15 @@ onShow(load);
 .end {
   min-height: 88rpx;
 }
-/* 对调：与两端同宽的一条，圆钮居中 —— 它属于这两行之间，不是第三个字段 */
+/* 两端一列、对调一列：整卡从三行 264rpx 收到两行 176rpx */
+.ends2 {
+  gap: 16rpx;
+}
+/* 对调：竖跨两行的圆钮，不占自己的一行 */
 .swap {
+  flex: none;
   width: 88rpx;
   height: 88rpx;
-  margin: 0 auto;
   border-radius: 9999px;
   background: var(--sh-faint);
 }

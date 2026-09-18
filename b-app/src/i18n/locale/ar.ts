@@ -1955,6 +1955,8 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
     shipConfirm: "إرسال",
     title: "التحويل",
     from: "من",
+    pickFrom: "التحويل من",
+    pickTo: "التحويل إلى",
     to: "إلى",
     status: { DRAFT: "مسودة", SHIPPED: "أُرسل", RECEIVED: "تم الاستلام", VOIDED: "ملغى" },
     shippedAt: "أُرسل {at} · بانتظار الاستلام",
