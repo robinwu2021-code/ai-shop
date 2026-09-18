@@ -37,6 +37,8 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class PlaceResolver {
 
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(PlaceResolver.class);
+
     /** 名字从哪儿来的。与 {@code kind}（名字有多具体）是两件事，必须都给 */
     public static final String SOURCE_PLACE_DB = "PLACE_DB";
     public static final String SOURCE_MAP = "MAP";
@@ -91,7 +93,23 @@ public class PlaceResolver {
         this.freshDays = freshDays;
     }
 
+    /**
+     * **这条链永远有结果，不抛异常。**
+     *
+     * <p>它挂在首页第一屏上：地名解析失败的正确表现是「不显示地名」，
+     * 不是白屏。这个 try 不是防御性编程的客套 —— 测试当场抓到过一次
+     * 真的 500（两个人同时第一次走进同一栋楼，插入撞唯一键）。
+     */
     public Optional<Place> resolve(int latE6, int lngE6) {
+        try {
+            return resolveInner(latE6, lngE6);
+        } catch (RuntimeException e) {
+            LOG.warn("地名解析失败，这一次不给地名: {}", e.toString());
+            return Optional.empty();
+        }
+    }
+
+    private Optional<Place> resolveInner(int latE6, int lngE6) {
         String key = Geohash.encode(latE6, lngE6, precision);
         GeoPlace row = placeMapper.selectOne(Wrappers.<GeoPlace>lambdaQuery()
                 .eq(GeoPlace::getGeoKey, key).last("limit 1"));
@@ -170,19 +188,35 @@ public class PlaceResolver {
         askMap(key, latE6, lngE6);
     }
 
+    /**
+     * 写一格。**插入要顶得住并发**：两个人同时第一次走进同一栋楼，
+     * 两个请求都会走到「库里没有 → 插入」，后一个撞唯一键。
+     * 撞了就改成更新 —— 那正是它本来想做的事。
+     */
     private void upsert(String key, int latE6, int lngE6, GeoPort.Reverse hit) {
+        try {
+            upsertOnce(key, latE6, lngE6, hit);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            updateByKey(key, hit);
+        }
+    }
+
+    private void updateByKey(String key, GeoPort.Reverse hit) {
+        GeoPlace patch = new GeoPlace();
+        patch.setName(hit.recommend());
+        patch.setKind(hit.kind());
+        patch.setAddress(hit.address());
+        patch.setRegionCode(hit.adcode());
+        patch.setTownship(hit.township());
+        patch.setVerifiedAt(LocalDateTime.now());
+        placeMapper.update(patch, Wrappers.<GeoPlace>lambdaUpdate().eq(GeoPlace::getGeoKey, key));
+    }
+
+    private void upsertOnce(String key, int latE6, int lngE6, GeoPort.Reverse hit) {
         GeoPlace existing = placeMapper.selectOne(Wrappers.<GeoPlace>lambdaQuery()
                 .eq(GeoPlace::getGeoKey, key).last("limit 1"));
         if (existing != null) {
-            GeoPlace patch = new GeoPlace();
-            patch.setId(existing.getId());
-            patch.setName(hit.recommend());
-            patch.setKind(hit.kind());
-            patch.setAddress(hit.address());
-            patch.setRegionCode(hit.adcode());
-            patch.setTownship(hit.township());
-            patch.setVerifiedAt(LocalDateTime.now());
-            placeMapper.updateById(patch);
+            updateByKey(key, hit);
             return;
         }
         GeoPlace row = new GeoPlace();

@@ -75,6 +75,8 @@ class PlaceResolveChainTest {
     private GeoPlaceMapper placeMapper;
     @Autowired
     private MapBreaker breaker;
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     /**
      * 用 mock 不用 spy：测试环境没配高德密钥，真实实现的 {@code available()} 恒 false，
@@ -110,12 +112,15 @@ class PlaceResolveChainTest {
 
     @AfterEach
     void cleanUp() {
-        // 种子与熔断状态都是共用的：自己造的自己收走，否则后面的用例莫名其妙变红
-        DataScopeContext.executeWithoutScope(() -> {
-            placeMapper.delete(Wrappers.<GeoPlace>lambdaQuery().likeRight(GeoPlace::getGeoKey, ""));
-            communityMapper.delete(Wrappers.<CmtCommunity>lambdaQuery()
-                    .eq(CmtCommunity::getCommunityNo, FENCE_NO));
-        });
+        /*
+         * **geo_place 要物理删。** BaseEntity 带逻辑删除，`delete()` 只是把
+         * deleted 置 1 —— 而 geo_key 上的唯一索引仍然被那一行占着。
+         * 于是下一个用例往同一个格子插入时撞唯一键，报错与「谁删过」毫无关系。
+         * 这也是这条测试当场抓到的那个生产缺陷的同一个面（见 PlaceResolver#upsert）。
+         */
+        jdbc.execute("DELETE FROM geo_place");
+        DataScopeContext.executeWithoutScope(() -> communityMapper.delete(
+                Wrappers.<CmtCommunity>lambdaQuery().eq(CmtCommunity::getCommunityNo, FENCE_NO)));
         breaker.recordSuccess();
     }
 
