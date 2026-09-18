@@ -5419,6 +5419,21 @@ components:
         - "communities"
       additionalProperties: false
       description: "跨级搜索（P1）：区划命中带从省到父级的路径，聚落命中带所在街道路径"
+    PlaceKind: 
+      type: "string"
+      enum: 
+        - "COMMUNITY"
+        - "POI"
+        - "AOI"
+        - "STREET"
+        - "REGION"
+    PlaceSource: 
+      type: "string"
+      enum: 
+        - "COMMUNITY"
+        - "PLACE_DB"
+        - "MAP"
+        - "PLACE_DB_STALE"
     AreaMode: 
       type: "string"
       enum: 
@@ -5604,6 +5619,11 @@ components:
         nearestDistanceM: 
           type: "number"
           description: "到最近那个聚落的米数。**超上限时仍然给** —— 端上才说得出「最近的也有 80 公里」。\n**算不出时是 -1**，不是 0（0 会被显示成「0 米」，那是一句假话）。"
+        place: 
+          anyOf: 
+            - "$ref": "#/components/schemas/ResolvedPlace"
+            - type: "null"
+          description: "**端上唯一要读的那个「我在哪」**。\n\n<p>四个页面此前各拼一份地名（首页拼归属+距离+粗定位、我的页读 label、 收货地址页读归属名、选择地点页读本次 resolve）—— 四处迟早给出四个答案， 而它们不同时界面上没有任何提示。\n\n<p>取不到时为 null，端上退回  {@link  LocationContext.regionName } ，**不编地名**。"
       required: 
         - "innermostNo"
         - "innermostName"
@@ -5614,8 +5634,36 @@ components:
         - "nearestNo"
         - "nearestName"
         - "nearestDistanceM"
+        - "place"
       additionalProperties: false
       description: "一个坐标解析出来的位置上下文（`/mp/location/resolve`）。\n\n**不要用 `nearbyCommunities` 的第一条代替它**：「最内层」的判据是 层级优先于距离 —— 站在楼门口时，隔壁小区的中心可能比本楼中心更近。 那是业务规则，放端上就会有三份实现，而它们迟早不一样。"
+    ResolvedPlace: 
+      type: "object"
+      properties: 
+        name: 
+          type: "string"
+          description: "「龙华区地域馆」。解析不出来就是空串"
+        address: 
+          type: 
+            - "string"
+            - "null"
+        kind: 
+          "$ref": "#/components/schemas/PlaceKind"
+          description: "这个名字**有多具体**。取值见  {@link  PlaceKind }"
+        source: 
+          "$ref": "#/components/schemas/PlaceSource"
+          description: "这个名字**从哪儿来**。与  {@link  ResolvedPlace.kind }  是两件事，必须都读 —— 合成一个字段的话，「库里拿到的建筑名」与「现问的街道名」就分不开了。"
+        stale: 
+          type: "boolean"
+          description: "true → 界面上要说一句「位置可能不是最新的」"
+      required: 
+        - "name"
+        - "address"
+        - "kind"
+        - "source"
+        - "stale"
+      additionalProperties: false
+      description: "解析出来的一个地点。"
     ServiceArea: 
       type: "object"
       properties: 
