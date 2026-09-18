@@ -3,7 +3,7 @@
 // `picking=1` 时从结算页进入，选中即回填并返回。
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { onLoad, onShow } from "@dcloudio/uni-app";
+import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useLocationStore } from "@/stores/location";
 import type { Address } from "@shared/types";
@@ -161,7 +161,7 @@ async function addNew() {
   const r = await chooseLocation(location.here?.coords ?? null);
   if (!r.ok) {
     // 取消 / 不支持：都落到选择地点页，那儿还有搜索与「附近」
-    uni.navigateTo({ url: ROUTES.addressPick });
+    uni.navigateTo({ url: `${ROUTES.addressPick}?next=edit` });
     return;
   }
   /*
@@ -259,21 +259,18 @@ onLoad((q) => {
   void location.load().then(() => detectHere());
 });
 
-/**
- * 从选点页回来：**选中的地点要立刻带进新建页**，别让他自己再点一次「新增」。
+/*
+ * **这一页刻意不读那个一次性信箱了。**
  *
- * <p>三种回法要分开：交回地点 → 带着它进新建页；交回 manual → 进空表单；
- * 什么都没交回（点了系统返回）→ **什么都不做**。
- * 把第三种也当成「选了」的话，用户每次退出选点页都会被塞一张表单。
+ * 此前这儿是 `onShow` 里 `pickedPlace.peek()`，非空就往新建页跳。
+ * 而 `peek` 不消费 —— 只要信箱里还留着东西（选点页交回来的、或者一条
+ * `manual`），这一页**每次显示都会再弹一次新建页**：用户从新建页返回，
+ * 刚落到列表上又被弹走，看起来就是「自动跳到了别的页面」。
  *
- * <p>地点本身由 `pickedPlace` 这个一次性信箱传给新建页 —— 这里只负责跳过去，
- * 不再把它拆成 query 参数：拆一次就是第二份省市区拆法。
+ * 改法是把跳转交给发起方：选点页知道自己是被谁打开的（`next=edit`），
+ * 选完直接 `redirectTo` 新建页，中间不经过这一页。
+ * 于是这里既不需要 peek，也不需要 take —— 一个不该由它承担的职责被拿掉了。
  */
-onShow(() => {
-  const p = pickedPlace.peek();
-  if (!p) return;
-  uni.navigateTo({ url: ROUTES.addressEdit });
-});
 </script>
 
 <template>

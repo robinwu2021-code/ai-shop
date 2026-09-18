@@ -238,11 +238,29 @@ describe("选点页：把「选」提为主路", () => {
   });
 
   it("★★★ 选点页交回来的地点要带坐标落进草稿", () => {
-    const body = bodyOf(addressPage, "onShow(");
-    expect(body, "地址簿没有 onShow 了 —— 从选点页回来什么都不会发生").not.toBeNull();
-    expect(body, "收货地址页只负责跳过去，取走信箱的是新建页").toContain("pickedPlace.peek");
-    // 什么都没交回来（点了系统返回）时不许开表单：否则每次退出选点页都被塞一张
-    expect(body).toMatch(/if \(!p\) return/);
+    /*
+     * **交接改由选点页自己完成**（`next=edit` → `redirectTo` 新建页）。
+     *
+     * 此前是选点页 `navigateBack` 回列表、列表 `onShow` 里 `peek` 到东西再弹去
+     * 新建页 —— 而 `peek` 不消费：信箱里留着东西时，列表每次显示都再弹一次，
+     * 用户从新建页返回刚落到列表又被弹走。真机上报上来的就是这个。
+     *
+     * 判据两半：列表不许再读那个信箱（读了就还会弹），选点页要认 next。
+     */
+    expect(addressPage, "列表又去读信箱了 —— 那正是「自动跳到别的页面」的来源")
+      .not.toContain("pickedPlace.peek");
+    /*
+     * **两条出口都要认 next**，不能只查「出现过」——
+     * 消融时删掉其中一处，`toContain` 照样绿，而少的那一处正是「手动填写」：
+     * 它会 navigateBack 回列表，而列表已经不接了，用户刚交的东西就地丢掉。
+     */
+    for (const fn of ["function choose(", "function manual("]) {
+      const body = bodyOf(pickPage, fn);
+      expect(body, `选点页没有 ${fn}`).not.toBeNull();
+      expect(body, `${fn} 不认 next —— 这条出口会把用户交回的东西丢掉`)
+        .toContain('next === "edit"');
+      expect(body, `${fn} 要 redirect 不是 navigateTo`).toContain("uni.redirectTo");
+    }
     // 预填现在发生在表单组件的草稿初始化里（M4：弹层改整页之后，
     // 收货地址页不再持有草稿）
     const openNew = bodyOf(addressForm, "const draft = ref<");
@@ -461,7 +479,16 @@ describe("粘贴识别：只填空格子，且不冒充选点", () => {
      * 拦了等于让一部分人存不了地址。与 regionUnsplit 那句同一种口径。
      */
     expect(addressPage).toMatch(/v-if="!picked"[\s\S]{0,200}noCoordHint/);
-    const valid = bodyOf(addressPage, "const valid = computed(");
+    /*
+     * **不用 bodyOf**：`valid` 是个没有花括号的箭头表达式，
+     * 而 bodyOf 是「走到右括号再找第一个 `{`」—— 对这种写法它取到的是
+     * **后面那个函数的体**。第一版一直绿只是因为那时后面那个函数里恰好没有
+     * `picked` 这个词；我加了 `applyPicked` 之后它当场假红。
+     * 改成按文本截 `const valid = computed(` 到本行结束的那一段。
+     */
+    const validExpr = addressPage.slice(addressPage.indexOf("const valid = computed("));
+    const valid = validExpr.slice(0, validExpr.indexOf("\n);"));
+    expect(valid.length, "找不到 valid 了 —— 这条守卫量的范围不对").toBeGreaterThan(20);
     expect(valid, "valid 里出现 picked = 把提示变成了闸").not.toContain("picked");
   });
 });

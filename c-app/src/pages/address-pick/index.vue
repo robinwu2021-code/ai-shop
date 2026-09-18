@@ -42,6 +42,12 @@ const canMap = canChooseLocation();
  * <p>选了城市就**不再传坐标**：坐标在的话后端会围着坐标搜（那是对的默认），
  * 两个都传等于让后端猜他要哪个。
  */
+/**
+ * 选完往哪儿走。`edit` = 从「新增地址」过来，选完直接去新建页；
+ * 空 = 从新建页的「重选」过来，原样返回。见 {@link choose}。
+ */
+let next = "";
+
 const city = ref<{ code: string; name: string } | null>(null);
 
 const keyword = ref("");
@@ -205,8 +211,27 @@ async function runSearch(kw: string) {
 }
 
 /** 交回去并返回。三种来源都收敛到 placeFrom，省市区的拆分只有一处 */
+/**
+ * 交回去并离开。
+ *
+ * <p><b>去哪儿取决于是谁打开的这一页</b>：
+ * <ul>
+ *   <li>`next=edit`（从收货地址页的「新增」过来）→ <b>直接 redirect 去新建页</b>。
+ *       此前是 `navigateBack` 回列表、由列表再弹去新建 —— 而列表那段判断用的是
+ *       非消费的 `peek`，信箱里留着东西时它每次显示都再弹一次，
+ *       用户从新建页返回刚落到列表又被弹走，看起来就是「自动跳到了别的页面」。</li>
+ *   <li>没有 `next`（从新建页的「重选」过来）→ 原样返回，草稿还在那儿。</li>
+ * </ul>
+ *
+ * <p>`redirectTo` 而不是 `navigateTo`：这一页的任务到此为止，
+ * 留在栈上的话用户从新建页往回退会又看到它一次。
+ */
 function choose(p: { name?: string; address?: string; lat: number; lng: number }) {
   pickedPlace.offer(placeFrom(p));
+  if (next === "edit") {
+    uni.redirectTo({ url: ROUTES.addressEdit });
+    return;
+  }
   uni.navigateBack();
 }
 
@@ -245,6 +270,10 @@ function gotoCity() {
 
 function manual() {
   pickedPlace.offer({ kind: "manual" });
+  if (next === "edit") {
+    uni.redirectTo({ url: ROUTES.addressEdit });
+    return;
+  }
   uni.navigateBack();
 }
 
@@ -268,6 +297,7 @@ onLoad((q?: Record<string, string>) => {
    * 省市区拆法 —— 而那种不一致在界面上看不出来，只会让「按区派单」偶尔落错。
    * 对用户仍然是一次点击：这一页只是过一下，定位拿到就自己交回去。
    */
+    next = q?.next ?? "";
   const auto = q?.useHere === "1";
   void locate().then(() => {
     if (auto && at.value) chooseHere();

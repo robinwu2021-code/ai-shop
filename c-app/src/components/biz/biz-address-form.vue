@@ -88,7 +88,20 @@ async function pickOnMap() {
     if (r.reason === "unsupported") uni.showToast({ title: String(t("address.mapUnsupported")), icon: "none" });
     return;
   }
-  const p = r.picked;
+  applyPicked(r.picked);
+}
+
+/**
+ * 把地图选到的那个点落进草稿。**两处共用**（「重选」与「没有坐标」那条提示里的
+ * 「地图选点」）—— 各写一份的话省市区的拆法迟早不一样，而那种不一致在界面上
+ * 看不出来，只会让「按区派单」偶尔落错。
+ *
+ * @param replace 「重选」传 true：他就是来换地点的，地址主体要跟着换。
+ *                默认 false —— 那时不覆盖他已经敲的字（先手填了一半才想起来
+ *                有这个按钮，一键把刚敲的冲掉是最让人恼火的那种「贴心」）
+ */
+function applyPicked(p: { name?: string; address?: string; lat: number; lng: number },
+                     replace = false) {
   draft.value.latE6 = Math.round(p.lat * 1e6);
   draft.value.lngE6 = Math.round(p.lng * 1e6);
   /*
@@ -103,9 +116,13 @@ async function pickOnMap() {
     draft.value.district = parts.district;
     // 拆不出省市区的（只有门牌的写法）保持原样，别把一整串塞进 region 又清空三列
     draft.value.region = isCompleteRegion(parts) ? joinRegion(parts) : p.address.slice(0, 96);
-    if (!draft.value.detail.trim() && parts.rest.trim()) draft.value.detail = parts.rest.trim().slice(0, 60);
+    if ((replace || !draft.value.detail.trim()) && parts.rest.trim()) {
+      draft.value.detail = parts.rest.trim().slice(0, 60);
+    }
   }
-  if (!draft.value.detail.trim() && p.name) draft.value.detail = p.name.slice(0, 60);
+  if ((replace || !draft.value.detail.trim()) && p.name) {
+    draft.value.detail = p.name.slice(0, 60);
+  }
 }
 
 /**
@@ -193,8 +210,27 @@ const valid = computed(
     notBlank(draft.value.houseNo ?? ""),
 );
 
-/** 从表单里回选点页重选地址主体。草稿留着 —— 姓名手机他已经填了 */
-function repick() {
+/**
+ * 「重选」—— **直接开地图**，与「新增地址」那一颗同一条路。
+ *
+ * <p>两处都从地图起步，用户才不用先记住「哪个入口给的是地图、哪个是列表」。
+ * 而且在地图上点一下拿回来的一定带坐标，那正是这一整条链的全部收获。
+ *
+ * <p>取消就落到选择地点页（搜索与「附近」在那儿），**草稿留着** ——
+ * 姓名手机他已经填过了，为了换个地点让他重填一遍是最让人恼火的那种。
+ */
+async function repick() {
+  if (canChooseLocation()) {
+    const r = await chooseLocation(
+      draft.value.latE6 != null && draft.value.lngE6 != null
+        ? { lat: draft.value.latE6 / 1e6, lng: draft.value.lngE6 / 1e6 }
+        : null,
+    );
+    if (r.ok) {
+      applyPicked(r.picked, true);
+      return;
+    }
+  }
   uni.navigateTo({ url: ROUTES.addressPick });
 }
 

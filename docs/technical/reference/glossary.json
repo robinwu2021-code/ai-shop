@@ -7934,6 +7934,12 @@
           "ar": "شراء جماعي"
         },
         {
+          "key": "home.activityEntry",
+          "zh-CN": "活动",
+          "en": "Activities",
+          "ar": "الأنشطة"
+        },
+        {
           "key": "home.afterSale",
           "zh-CN": "待售后",
           "en": "After-sales",
@@ -8091,9 +8097,9 @@
         },
         {
           "key": "home.marketingEntry",
-          "zh-CN": "营销活动",
-          "en": "Promotions",
-          "ar": "العروض"
+          "zh-CN": "营销",
+          "en": "Marketing",
+          "ar": "التسويق"
         },
         {
           "key": "home.notMerchant",
@@ -24728,6 +24734,13 @@
       },
       {
         "host": "PmtActivity",
+        "name": "TRIGGER_GROUP",
+        "value": "GROUP",
+        "zh": "拼够人数成团（团购）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtActivity",
         "name": "BENEFIT_CUT",
         "value": "CUT",
         "zh": "减金额",
@@ -28224,6 +28237,7 @@
           "/pages/cross-store/index",
           "/pages/plan/index",
           "/pages/customers/index",
+          "/pages/activities/index",
           "/pages/marketing/index",
           "/pages/stock/index",
           "/pages/stock-detail/index",
