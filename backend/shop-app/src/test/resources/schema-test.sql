@@ -4108,6 +4108,32 @@ CREATE TABLE IF NOT EXISTS trd_shipping_upload
     CONSTRAINT uk_shipping_order UNIQUE (order_no, tenant_no, deleted)
 );
 
+CREATE TABLE IF NOT EXISTS geo_place
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    geo_key VARCHAR(16) NOT NULL,
+    lat_e6 INT(11) NOT NULL,
+    lng_e6 INT(11) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    kind VARCHAR(16) NOT NULL,
+    address VARCHAR(255) DEFAULT NULL,
+    region_code VARCHAR(12) DEFAULT NULL,
+    township VARCHAR(64) DEFAULT NULL,
+    verified_at DATETIME NOT NULL,
+    hit_count INT(11) NOT NULL DEFAULT 0,
+    last_hit_at DATETIME DEFAULT NULL,
+    promoted_no VARCHAR(64) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_geo_place_key UNIQUE (geo_key)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

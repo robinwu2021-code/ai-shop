@@ -59,10 +59,29 @@ public interface CommunityService {
      *                      端上才说得出「最近的也有 80 公里」；<b>算不出时是 -1</b>，
      *                      不是 0（0 会被显示成「0 米」，那是一句假话）
      */
+    /**
+     * @param place **端上唯一要读的那个「我在哪」**。四个页面各拼一份地名，
+     *              迟早给出四个答案，而它们不同时界面上没有任何提示。
+     *              取不到时为 null，端上退回 {@code regionName}，<b>不编地名</b>。
+     */
     record LocationVO(String innermostNo, String innermostName,
                       java.util.List<String> chainNos, boolean coarse,
                       String regionCode, String regionName,
-                      String nearestNo, String nearestName, int nearestDistanceM) {
+                      String nearestNo, String nearestName, int nearestDistanceM,
+                      PlaceVO place) {
+    }
+
+    /**
+     * 一个解析出来的地点。
+     *
+     * @param kind   名字有多具体：COMMUNITY（我们自己的聚落）/ POI（建筑）/
+     *               AOI（小区楼盘）/ STREET（街道门牌）
+     * @param source 名字**从哪儿来**：COMMUNITY / PLACE_DB / MAP / PLACE_DB_STALE。
+     *               与 {@code kind} 是两件事，必须都给 —— 合成一个字段的话，
+     *               「库里拿到的建筑名」与「现问的街道名」就分不开了
+     * @param stale  端上据此标「位置可能不是最新的」
+     */
+    record PlaceVO(String name, String address, String kind, String source, boolean stale) {
     }
 
     /** 社区详情（含其下常驻自提点）。 */

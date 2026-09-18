@@ -21,6 +21,11 @@ public final class CommunityMappers {
     public interface PickupPointMapper extends BaseMapper<CmtPickupPoint> {
     }
 
+    /** 固定地址库。系统写、谁都读 —— 与社区同一类主数据 */
+    public interface GeoPlaceMapper
+            extends BaseMapper<ai.neargo.shop.community.entity.GeoPlace> {
+    }
+
     public interface CommunityApplyMapper
             extends BaseMapper<ai.neargo.shop.community.entity.CmtCommunityApply> {
     }

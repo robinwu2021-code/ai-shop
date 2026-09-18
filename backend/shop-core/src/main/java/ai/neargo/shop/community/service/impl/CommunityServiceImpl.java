@@ -51,6 +51,9 @@ public class CommunityServiceImpl implements CommunityService {
      */
     private final int nearbyRadiusM;
 
+    /** 坐标 → 「这儿叫什么」。聚落围栏那一档排在它前面，见 PlaceResolver 的类注释 */
+    private final ai.neargo.shop.community.service.PlaceResolver placeResolver;
+
     /**
      * 「没落进任何围栏时，最远肯给到多远的默认归属」（米，M6）。
      *
@@ -66,6 +69,7 @@ public class CommunityServiceImpl implements CommunityService {
     public CommunityServiceImpl(CommunityMapper communityMapper, PickupPointMapper pickupMapper,
                                 MerchantQueryPort merchantQueryPort,
                                 MasterDataPort masterDataPort,
+                                ai.neargo.shop.community.service.PlaceResolver placeResolver,
                                 @Value("${shop.community.nearby-radius-m:5000}") int nearbyRadiusM,
                                 @Value("${shop.community.default-bind-radius-m:50000}")
                                 int defaultBindRadiusM) {
@@ -73,6 +77,7 @@ public class CommunityServiceImpl implements CommunityService {
         this.pickupMapper = pickupMapper;
         this.merchantQueryPort = merchantQueryPort;
         this.masterDataPort = masterDataPort;
+        this.placeResolver = placeResolver;
         this.nearbyRadiusM = nearbyRadiusM;
         this.defaultBindRadiusM = defaultBindRadiusM;
     }
@@ -503,8 +508,30 @@ public class CommunityServiceImpl implements CommunityService {
          * **落进围栏时不给 nearest。** 那时 innermost 就是答案，再给一个「最近的」
          * 只会让端上有两个主语 —— 而两个主语的分叉迟早会在某一页上被选错。
          */
+        /*
+         * **落进围栏时 place 就是这个聚落，不再去问地名库。**
+         * 聚落是我们自己维护的业务对象（围栏、商品池、开没开通），它比任何
+         * 外部地名都权威；再去问一次既多花一次往返，又可能给出第二个名字。
+         */
         return new LocationVO(innermost.getCommunityNo(), innermost.getName(),
-                chainOf(innermost), false, district, districtName(district), null, null, -1);
+                chainOf(innermost), false, district, districtName(district), null, null, -1,
+                new CommunityService.PlaceVO(innermost.getName(), innermost.getAddress(),
+                        "COMMUNITY", "COMMUNITY", false));
+    }
+
+    /**
+     * 没落进围栏时问地名库。**模糊坐标也照问** —— 区级误差下拿回来的是
+     * 那一带的街道名，比什么都不给强；具体到哪一档由 {@code kind} 说明。
+     *
+     * @return 取不到就 null，端上退回区县名，<b>不编地名</b>
+     */
+    private CommunityService.PlaceVO placeAt(Integer latE6, Integer lngE6) {
+        if (latE6 == null || lngE6 == null) {
+            return null;
+        }
+        return placeResolver.resolve(latE6, lngE6)
+                .map(p -> new CommunityService.PlaceVO(p.name(), p.address(), p.kind(), p.source(), p.stale()))
+                .orElse(null);
     }
 
     /**
@@ -519,7 +546,8 @@ public class CommunityServiceImpl implements CommunityService {
     private LocationVO withNearest(boolean coarse, String district, Integer latE6, Integer lngE6) {
         String regionName = districtName(district);
         if (latE6 == null || lngE6 == null) {
-            return new LocationVO(null, null, List.of(), coarse, district, regionName, null, null, -1);
+            return new LocationVO(null, null, List.of(), coarse, district, regionName, null, null, -1,
+                    placeAt(latE6, lngE6));
         }
         CmtCommunity nearest = communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
                         .eq(CmtCommunity::getStatus, "OPEN")
@@ -529,7 +557,8 @@ public class CommunityServiceImpl implements CommunityService {
                         c -> distance(c.getLatE6(), c.getLngE6(), latE6, lngE6)))
                 .orElse(null);
         if (nearest == null) {
-            return new LocationVO(null, null, List.of(), coarse, district, regionName, null, null, -1);
+            return new LocationVO(null, null, List.of(), coarse, district, regionName, null, null, -1,
+                    placeAt(latE6, lngE6));
         }
         int m = distance(nearest.getLatE6(), nearest.getLngE6(), latE6, lngE6);
         /*
@@ -540,7 +569,8 @@ public class CommunityServiceImpl implements CommunityService {
         boolean within = m <= defaultBindRadiusM;
         return new LocationVO(null, null, List.of(), coarse, district, regionName,
                 within ? nearest.getCommunityNo() : null,
-                within ? nearest.getName() : null, m);
+                within ? nearest.getName() : null, m,
+                placeAt(latE6, lngE6));
     }
 
     /**

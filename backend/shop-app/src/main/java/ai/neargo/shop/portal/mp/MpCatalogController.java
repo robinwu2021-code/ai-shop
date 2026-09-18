@@ -15,6 +15,7 @@ import ai.neargo.shop.merchant.dto.MerchantScoreVO;
 import ai.neargo.shop.merchant.dto.MerchantVO;
 import ai.neargo.shop.merchant.dto.VisitedMerchantVO;
 import ai.neargo.shop.community.service.CommunityService;
+import ai.neargo.shop.community.service.PlaceSearchService;
 import ai.neargo.shop.merchant.service.MerchantService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -48,17 +49,20 @@ public class MpCatalogController {
     private final CategoryService categoryService;
     private final ai.neargo.shop.platform.OpsService opsService;
     private final ai.neargo.shop.platform.RegionService regionService;
+    private final PlaceSearchService placeSearchService;
 
     public MpCatalogController(CommunityService communityService, GoodsService goodsService,
                                MerchantService merchantService, CategoryService categoryService,
                                ai.neargo.shop.platform.OpsService opsService,
-                               ai.neargo.shop.platform.RegionService regionService) {
+                               ai.neargo.shop.platform.RegionService regionService,
+                               PlaceSearchService placeSearchService) {
         this.communityService = communityService;
         this.goodsService = goodsService;
         this.merchantService = merchantService;
         this.categoryService = categoryService;
         this.opsService = opsService;
         this.regionService = regionService;
+        this.placeSearchService = placeSearchService;
     }
 
     @GetMapping("/mp/community/nearby")
@@ -82,6 +86,27 @@ public class MpCatalogController {
             @RequestParam(required = false) Integer lngE6,
             @RequestParam(required = false, defaultValue = "false") boolean coarse) {
         return communityService.resolve(latE6, lngE6, coarse);
+    }
+
+    /**
+     * 「输个名字找地方」。**本地优先，地图是补充。**
+     *
+     * <p>本地那一条带着 {@code communityNo}，选中它才能直接绑到聚落；
+     * 地图那一条只有名字与坐标。同名的两条里留本地那条。
+     *
+     * <p><b>地图不可用时它照样有结果</b>（只是少）—— 端上的搜索框因此不必消失。
+     * 整段不渲染等于告诉用户「这儿什么都没有」，而那不是事实。
+     *
+     * @param city 没有坐标时按城市搜。**city 只是偏好不是约束**
+     *             （在深圳搜「福安」会返回福建的福安市），所以有坐标一律围着坐标搜
+     */
+    @GetMapping("/mp/place/search")
+    public List<PlaceSearchService.PlaceHitVO> searchPlaces(
+            @RequestParam String kw,
+            @RequestParam(required = false) Integer latE6,
+            @RequestParam(required = false) Integer lngE6,
+            @RequestParam(required = false) String city) {
+        return placeSearchService.search(kw, latE6, lngE6, city);
     }
 
     /**

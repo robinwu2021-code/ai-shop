@@ -46,8 +46,20 @@ public interface GeoPort {
      * @param adcode    国标 6 位区县码，与 sys_region 同口径
      * @param township  街道/镇名（自动归属用）
      */
+    /**
+     * 坐标反查回来的地址。
+     *
+     * @param kind {@code recommend} 是**哪一档**：POI（建筑/兴趣点）、AOI（小区/楼盘）、
+     *             STREET（街道门牌）。少了它，调用方拿到一个字符串就只能当它准了 ——
+     *             而「龙华区地域馆」与「观澜大道 155 号」该不该沉淀成聚落、
+     *             该不该显示在顶栏上，答案并不一样。
+     */
     record Reverse(String recommend, String address, String adcode, String township,
-                   String city, int latE6, int lngE6) {
+                   String city, int latE6, int lngE6, String kind) {
+
+        public static final String KIND_POI = "POI";
+        public static final String KIND_AOI = "AOI";
+        public static final String KIND_STREET = "STREET";
     }
 
     record Geocode(boolean ok, String level, String formatted, int latE6, int lngE6, String adcode) {

@@ -36,6 +36,15 @@ import java.util.Optional;
 public class GeoServiceImpl implements GeoService {
 
     private static final String BASE = "https://restapi.amap.com/v3";
+
+    /**
+     * POI 要多近才算「我在这儿」。
+     *
+     * <p>不设这个门槛的话，半径内的第一个 POI 可能是 180 米外的便利店 ——
+     * 而「你在 XX 便利店」比「你在 XX 小区」错得更离谱：后者至少是对的那一片。
+     * 50 米是同一栋楼 / 同一个门脸的尺度。
+     */
+    private static final int POI_NEAR_M = 50;
     /** 输入提示限住宅区/住宅小区/村庄级地名 —— 提报小区与取货点选址只关心这三类 */
     private static final String TIP_TYPES = "120300|120302|190108";
     /** 地理编码到这些级别才算「找得到门」 */
@@ -80,21 +89,47 @@ public class GeoServiceImpl implements GeoService {
         JsonNode rg = r.path("regeocode");
         JsonNode ac = rg.path("addressComponent");
         String formatted = rg.path("formatted_address").asText("");
-        // 人话版：优先最近的小区/楼盘名 + 门牌，没有就用标准地址
+
+        /*
+         * **按具体程度取名：建筑 > 小区/楼盘 > 街道门牌。**
+         *
+         * 此前这里只看 `aois[0]`（小区/楼盘）。于是站在龙华区地域馆里，
+         * 拿回来的是那一片的小区名 —— 不是接不通，是**取名那一步只看了一档**。
+         * 顶栏上写着一个自己根本不在的小区，而界面上完全看不出问题。
+         *
+         * POI 要**近**才算数：`place/around` 半径内的第一个 POI 可能是 180 米外的
+         * 便利店，拿它当「我在哪」比小区名更糟。50 米是「同一栋楼/同一个门脸」的尺度。
+         * 撑不到这个尺度就老老实实退回 AOI。
+         */
         String recommend = "";
+        String kind = "";
+        JsonNode pois = rg.path("pois");
+        if (pois.isArray()) {
+            for (JsonNode p : pois) {
+                String name = p.path("name").asText("");
+                double dist = p.path("distance").asDouble(Double.MAX_VALUE);
+                if (!name.isBlank() && dist <= POI_NEAR_M) {
+                    recommend = name;
+                    kind = Reverse.KIND_POI;
+                    break;
+                }
+            }
+        }
         JsonNode aois = rg.path("aois");
-        if (aois.isArray() && !aois.isEmpty()) {
+        if (recommend.isBlank() && aois.isArray() && !aois.isEmpty()) {
             recommend = aois.get(0).path("name").asText("");
+            kind = Reverse.KIND_AOI;
         }
         if (recommend.isBlank()) {
             JsonNode sn = ac.path("streetNumber");
             String street = sn.path("street").asText("");
             String number = sn.path("number").asText("");
             recommend = (street + number).isBlank() ? formatted : street + number;
+            kind = Reverse.KIND_STREET;
         }
         String city = ac.path("city").isArray() ? ac.path("province").asText("") : ac.path("city").asText("");
         return Optional.of(new Reverse(recommend, formatted, ac.path("adcode").asText(""),
-                ac.path("township").asText(""), city, latE6, lngE6));
+                ac.path("township").asText(""), city, latE6, lngE6, kind));
     }
 
     @Override
