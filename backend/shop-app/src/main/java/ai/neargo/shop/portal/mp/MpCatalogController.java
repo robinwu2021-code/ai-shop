@@ -98,7 +98,9 @@ public class MpCatalogController {
      */
     @GetMapping("/mp/place/search")
     public List<CommunityService.PlaceHitVO> searchPlaces(
-            @RequestParam String kw,
+            // 关键词可空：服务层对空关键词返回空表。写成必填的话，
+            // 端上首屏（还没输入）拿到的是一个 400，而它本该是「还没搜」
+            @RequestParam(required = false) String kw,
             @RequestParam(required = false) Integer latE6,
             @RequestParam(required = false) Integer lngE6,
             @RequestParam(required = false) String city) {
