@@ -247,6 +247,7 @@ export interface PlaceSearchHit {
   address: string | null;
   /** gcj02 ×1e6。**为 null 的不该列出来** —— 选了它等于又得到一条没坐标的地址 */
   latE6: number | null;
+  /** 与 latE6 成对。两个都非空才算「这条能用」 */
   lngE6: number | null;
   /** 只有本地聚落那几条有。**端上据此决定选中之后能不能直接绑** */
   communityNo: string | null;
