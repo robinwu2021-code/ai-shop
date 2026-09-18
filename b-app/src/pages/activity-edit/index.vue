@@ -353,16 +353,11 @@ onLoad((q) => {
     :failed="failed"
     @retry="() => loadExisting(currentNo)"
   >
-    <!-- 三步的进度：让他知道还剩几步，而不是面对一屏输入框 -->
-    <view class="steps sh-wrap">
-      <text
-        v-for="s in [1, 2, 3]"
-        :key="s"
-        class="sh-chip steps__i"
-        :class="{ 'sh-chip--solid': step === s, 'is-done txt-primary': step > s }"
-        @tap="step = s"
-      >{{ s }}. {{ $t(`activityEdit.step${s}`) }}</text>
-    </view>
+    <!--
+      进度只做指示，不做导航：走动靠底部的「上一步 / 下一步」。
+      做成三颗可点的 chip 等于同一件事两套控件，且每一步都固定吃掉一行。
+    -->
+    <text class="txt-caption steps">{{ $t("activityEdit.stepOf", { i: step }) }} · {{ $t(`activityEdit.step${step}`) }}</text>
 
     <!-- ① 想干什么 -->
     <view v-if="step === 1" class="sh-card">
@@ -620,7 +615,7 @@ onLoad((q) => {
   gap: 16rpx;
 }
 .steps {
-  gap: 8rpx;
+  display: block;
 }
 .opts {
   margin-top: 12rpx;

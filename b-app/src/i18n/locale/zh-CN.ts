@@ -1585,6 +1585,7 @@ export default {
     },
   },
   activityEdit: {
+    stepOf: "第 {i} / 3 步",
     title: "新建活动",
     // 改既有活动时标题不能还写「新建」—— 这条改之前就在，只是没人走到
     titleEdit: "改活动",
@@ -1609,9 +1610,9 @@ export default {
     },
     startDay: "开始",
     endDay: "结束",
-    step1: "是什么",
-    step2: "什么时候",
-    step3: "优惠什么",
+    step1: "基本信息",
+    step2: "生效时间",
+    step3: "优惠内容",
     name: "活动名",
     namePh: "仅内部可见，如「开业满减」",
     benefitQ: "优惠方式",
