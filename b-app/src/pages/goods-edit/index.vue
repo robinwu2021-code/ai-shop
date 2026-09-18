@@ -2176,10 +2176,6 @@ async function save(thenSubmit = false) {
   background: var(--sh-faint);
 }
 
-.build__s {
-  display: block;
-  margin-top: 12rpx;
-}
 
 /* 专业商家的入口：与切换器同一行右侧，压到最轻 */
 /*
