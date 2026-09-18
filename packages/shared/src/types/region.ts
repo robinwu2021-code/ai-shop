@@ -236,6 +236,7 @@ export interface LocationContext {
 export interface ResolvedPlace {
   /** 「龙华区地域馆」。解析不出来就是空串 */
   name: string;
+  /** 带门牌的标准地址（「深圳市龙华区观澜大道 155 号」）。取不到就 null */
   address: string | null;
   /** 这个名字**有多具体**。取值见 {@link PlaceKind} */
   kind: PlaceKind;

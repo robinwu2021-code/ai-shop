@@ -178,6 +178,12 @@
           "ar": "اختيار من الخريطة"
         },
         {
+          "key": "address.placeStale",
+          "zh-CN": "位置可能不是最新的",
+          "en": "This location may be out of date",
+          "ar": "قد لا يكون هذا الموقع محدثًا"
+        },
+        {
           "key": "address.province",
           "zh-CN": "省",
           "en": "Province",
@@ -1162,6 +1168,18 @@
           "ar": "لا توجد نقطة استلام متاحة لـ {names} بالقرب منك"
         },
         {
+          "key": "confirm.placeMismatchBody",
+          "zh-CN": "你现在看的是「{place}」的货，而这条收货地址在约 {km} 公里外。自提与社区配送只在这一带可用。",
+          "en": "You are browsing goods for {place}, but this address is about {km} km away. Pickup and community delivery only work in that area.",
+          "ar": "أنت تتصفح بضائع {place}، لكن هذا العنوان يبعد نحو {km} كم. الاستلام والتوصيل المجتمعي متاحان في تلك المنطقة فقط."
+        },
+        {
+          "key": "confirm.placeMismatchTitle",
+          "zh-CN": "这条地址不在当前这一带",
+          "en": "This address is outside the current area",
+          "ar": "هذا العنوان خارج المنطقة الحالية"
+        },
+        {
           "key": "confirm.points",
           "zh-CN": "积分抵扣",
           "en": "Pay with points",
@@ -2036,6 +2054,12 @@
           "zh-CN": "平台为你挑的",
           "en": "Chosen by the platform",
           "ar": "اختارتها المنصّة"
+        },
+        {
+          "key": "home.relocate",
+          "zh-CN": "重新定位",
+          "en": "Relocate",
+          "ar": "إعادة تحديد الموقع"
         },
         {
           "key": "home.shareTitle",
@@ -14294,6 +14318,12 @@
           "ar": "تم الربط"
         },
         {
+          "key": "stockPick.scanCreate",
+          "zh-CN": "列表里没有？用这个码新建商品",
+          "en": "Not in the list? Create a product with this code",
+          "ar": "غير موجود في القائمة؟ أنشئ منتجًا بهذا الرمز"
+        },
+        {
           "key": "stockPick.scanNoSku",
           "zh-CN": "这件货没有商品映射，绑不了码 —— 已直接加进单子",
           "en": "No product mapping for this item — added without binding the code",
@@ -16284,6 +16314,18 @@
           "zh-CN": "发出后显示明细",
           "en": "Not shipped yet — the lines live on the outbound document, which exists only after shipping.",
           "ar": "لم يُرسل بعد؛ السطور على مستند الإخراج، ولا يوجد إلا بعد الإرسال."
+        },
+        {
+          "key": "transfer.pickFrom",
+          "zh-CN": "从哪个地方调出",
+          "en": "Transfer out from",
+          "ar": "التحويل من"
+        },
+        {
+          "key": "transfer.pickTo",
+          "zh-CN": "调到哪个地方",
+          "en": "Transfer in to",
+          "ar": "التحويل إلى"
         },
         {
           "key": "transfer.qtyBad",
@@ -19780,6 +19822,13 @@
       "package": "ai.neargo.shop.fulfillment.entity"
     },
     {
+      "table": "geo_place",
+      "class": "GeoPlace",
+      "zh": "固定地址库的一条：**某个坐标格子叫什么名字，上次核对是什么时候**。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.community.entity"
+    },
+    {
       "table": "geo_poi_cache",
       "class": "GeoPoiCache",
       "zh": "一片地方的地图结果缓存（V206）。",
@@ -22548,6 +22597,27 @@
         "module": "shop-base"
       },
       {
+        "host": "Reverse",
+        "name": "KIND_POI",
+        "value": "POI",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "Reverse",
+        "name": "KIND_AOI",
+        "value": "AOI",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "Reverse",
+        "name": "KIND_STREET",
+        "value": "STREET",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "host": "Cert",
         "name": "BUSINESS_LICENSE",
         "value": "BUSINESS_LICENSE",
@@ -22747,6 +22817,55 @@
         "host": "CmtCommunityApply",
         "name": "REJECTED",
         "value": "REJECTED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "GeoPlace",
+        "name": "KIND_POI",
+        "value": "POI",
+        "zh": "建筑/兴趣点 —— 最具体的一档，也是唯一值得沉淀成聚落的一档",
+        "module": "shop-core"
+      },
+      {
+        "host": "GeoPlace",
+        "name": "KIND_AOI",
+        "value": "AOI",
+        "zh": "小区 / 楼盘",
+        "module": "shop-core"
+      },
+      {
+        "host": "GeoPlace",
+        "name": "KIND_STREET",
+        "value": "STREET",
+        "zh": "街道 + 门牌",
+        "module": "shop-core"
+      },
+      {
+        "host": "GeoPlace",
+        "name": "KIND_REGION",
+        "value": "REGION",
+        "zh": "只推得出区县",
+        "module": "shop-core"
+      },
+      {
+        "host": "PlaceResolver",
+        "name": "SOURCE_PLACE_DB",
+        "value": "PLACE_DB",
+        "zh": "名字从哪儿来的。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PlaceResolver",
+        "name": "SOURCE_MAP",
+        "value": "MAP",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PlaceResolver",
+        "name": "SOURCE_PLACE_DB_STALE",
+        "value": "PLACE_DB_STALE",
         "zh": "",
         "module": "shop-core"
       },
@@ -27726,6 +27845,29 @@
           "OFFLINE"
         ],
         "zh": "支付方式。"
+      },
+      {
+        "name": "PLACE_KIND",
+        "client": "shared",
+        "values": [
+          "COMMUNITY",
+          "POI",
+          "AOI",
+          "STREET",
+          "REGION"
+        ],
+        "zh": "解析出来的地名**有多具体**。"
+      },
+      {
+        "name": "PLACE_SOURCE",
+        "client": "shared",
+        "values": [
+          "COMMUNITY",
+          "PLACE_DB",
+          "MAP",
+          "PLACE_DB_STALE"
+        ],
+        "zh": "那个地名**从哪儿来的**。"
       },
       {
         "name": "PayChannel",

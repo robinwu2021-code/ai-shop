@@ -1051,6 +1051,7 @@
 | `nearestNo` | `string,null` | 是 | **没落进任何围栏时**，最近的那个已开通聚落（M6）。端上拿它当默认归属。 <p>冷启动期全市只有一两个聚落，「不在围栏里」是**常态**而不是异常， 而那时按区筛几乎总是空的 —— 首页就空着。 <p>`null` 有两种：超出上限（够不着，给了也是让人看一屏送不到的货）， 或者已经落进围栏（那时 `innermostNo` 就是答案，两个主语迟早会被选错）。 |
 | `nearestName` | `string,null` | 是 | 顶栏直接显示 |
 | `nearestDistanceM` | `number` | 是 | 到最近那个聚落的米数。**超上限时仍然给** —— 端上才说得出「最近的也有 80 公里」。 **算不出时是 -1**，不是 0（0 会被显示成「0 米」，那是一句假话）。 |
+| `place` | [`ResolvedPlace`](#resolvedplace) \| `null` | 是 | **端上唯一要读的那个「我在哪」**。 <p>四个页面此前各拼一份地名（首页拼归属+距离+粗定位、我的页读 label、 收货地址页读归属名、选择地点页读本次 resolve）—— 四处迟早给出四个答案， 而它们不同时界面上没有任何提示。 <p>取不到时为 null，端上退回  {@link  LocationContext.regionName } ，**不编地名**。 |
 
 
 ### master-data
@@ -2893,6 +2894,7 @@
 | `nearestNo` | `string,null` | 是 | **没落进任何围栏时**，最近的那个已开通聚落（M6）。端上拿它当默认归属。 <p>冷启动期全市只有一两个聚落，「不在围栏里」是**常态**而不是异常， 而那时按区筛几乎总是空的 —— 首页就空着。 <p>`null` 有两种：超出上限（够不着，给了也是让人看一屏送不到的货）， 或者已经落进围栏（那时 `innermostNo` 就是答案，两个主语迟早会被选错）。 |
 | `nearestName` | `string,null` | 是 | 顶栏直接显示 |
 | `nearestDistanceM` | `number` | 是 | 到最近那个聚落的米数。**超上限时仍然给** —— 端上才说得出「最近的也有 80 公里」。 **算不出时是 -1**，不是 0（0 会被显示成「0 米」，那是一句假话）。 |
+| `place` | [`ResolvedPlace`](#resolvedplace) \| `null` | 是 | **端上唯一要读的那个「我在哪」**。 <p>四个页面此前各拼一份地名（首页拼归属+距离+粗定位、我的页读 label、 收货地址页读归属名、选择地点页读本次 resolve）—— 四处迟早给出四个答案， 而它们不同时界面上没有任何提示。 <p>取不到时为 null，端上退回  {@link  LocationContext.regionName } ，**不编地名**。 |
 
 ### LoginReqBody
 
@@ -3331,6 +3333,25 @@
 - `PERMANENT`
 - `GROUP_INSTANCE`
 
+### PlaceKind
+
+枚举取值：
+
+- `COMMUNITY`
+- `POI`
+- `AOI`
+- `STREET`
+- `REGION`
+
+### PlaceSource
+
+枚举取值：
+
+- `COMMUNITY`
+- `PLACE_DB`
+- `MAP`
+- `PLACE_DB_STALE`
+
 ### PointAccount
 
 用户积分账户。**单位是积分个数** —— 商家侧是钱，用  {@link  MerchantPointAccount }
@@ -3477,6 +3498,18 @@
 | `added` | `number` | 是 | 成功加入购物车的件数 |
 | `dropped` | `string`\[\] | 是 | 已失效、没加进购物车的商品名 |
 | `priceUp` | `string`\[\] | 是 | 涨价了但仍加入的商品名 |
+
+### ResolvedPlace
+
+解析出来的一个地点。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 「龙华区地域馆」。解析不出来就是空串 |
+| `address` | `string,null` | 是 | — |
+| `kind` | [`PlaceKind`](#placekind) | 是 | 这个名字**有多具体**。取值见  {@link  PlaceKind } |
+| `source` | [`PlaceSource`](#placesource) | 是 | 这个名字**从哪儿来**。与  {@link  ResolvedPlace.kind }  是两件事，必须都读 —— 合成一个字段的话，「库里拿到的建筑名」与「现问的街道名」就分不开了。 |
+| `stale` | `boolean` | 是 | true → 界面上要说一句「位置可能不是最新的」 |
 
 ### Review
 
