@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 744 个接口**：后端已实现 672（90%）· 前端在调 673
+**合计 747 个接口**：后端已实现 675（90%）· 前端在调 676
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **92** 个接口 ｜ 后端已实现 **91**（99%）｜ 前端在调 **92**
+共 **95** 个接口 ｜ 后端已实现 **94**（99%）｜ 前端在调 **95**
 
 ### after-sale（4）
 
@@ -56,12 +56,21 @@
 | GET | `/mp/coupon` | 优惠券列表 | — | `数组` | — | ✅ | ✅ |
 | POST | `/mp/coupon/{couponNo}/receive` | 领取优惠券 | — | `Coupon` | 🔒 | ✅ | ✅ |
 
+### favorite（4）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/mp/favorite/goods` | 我的收藏 · 商品 | — | `object` | 🔒 | ✅ | ✅ |
+| POST | `/mp/favorite/goods/{goodsNo}` | 收藏 / 取消收藏商品 | — | `object` | 🔒 | ✅ | ✅ |
+| GET | `/mp/favorite/store` | 我的收藏 · 店铺 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/mp/favorite/store/{merchantNo}` | 收藏 / 取消收藏店铺 | — | `object` | 🔒 | ✅ | ✅ |
+
 ### goods（5）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/mp/goods` | 商品列表 | — | `object` | — | ✅ | ✅ |
-| GET | `/mp/goods/{goodsNo}` | 商品详情 | — | `Goods` | — | ✅ | ✅ |
+| GET | `/mp/goods/{goodsNo}` | 商品详情（可带 communityNo 判送达） | — | `Goods` | — | ✅ | ✅ |
 | GET | `/mp/goods/{goodsNo}/batch` | 商品的社区集单信息（截单、提货、已订份数） | — | `GoodsBatch` | — | ✅ | ✅ |
 | GET | `/mp/goods/{goodsNo}/group` | 商品的拼团信息（开团价、正在拼的团） | — | `GoodsGroup` | — | ✅ | ✅ |
 | GET | `/mp/goods/promoted` | 推荐商品（运营位） | — | `数组` | — | ✅ | ✅ |
@@ -193,12 +202,11 @@
 | POST | `/mp/review` | 发表评价 | `CreateReviewReq` | `Review` | 🔒 | ✅ | ✅ |
 | POST | `/mp/review/{reviewNo}/like` | 点赞/取消 | — | `Review` | 🔒 | ✅ | ✅ |
 
-### store（5）
+### store（4）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/mp/store/{merchantNo}` | 门店主页 | — | `StoreHome` | — | ✅ | ✅ |
-| POST | `/mp/store/{merchantNo}/favorite` | 收藏本店 | — | `object` | 🔒 | ✅ | ✅ |
 | GET | `/mp/store/{merchantNo}/frequent` | 常买清单 | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/mp/store/by-code` | 扫码进店 | — | `StoreHome` | — | ✅ | ✅ |
 | GET | `/mp/store/mine` | 我的常去店 | — | `数组` | 🔒 | ✅ | ✅ |

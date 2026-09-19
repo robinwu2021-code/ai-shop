@@ -961,7 +961,7 @@
     {
       "key": "c-app",
       "label": "买家小程序",
-      "count": 33,
+      "count": 34,
       "domains": [
         {
           "name": "工作台",
@@ -1270,6 +1270,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/my-memberships/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/favorites/index",
+              "title": "我的收藏",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": "g08",
+              "protoUrl": "https://claude.ai/artifact/UyG6Rj21TqqFZWxvyo7pN1",
+              "preview": "http://localhost:5176/#/pages/favorites/index"
             }
           ]
         },
@@ -3263,5 +3274,5 @@
       ]
     }
   ],
-  "total": 256
+  "total": 257
 }

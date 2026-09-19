@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**93 个功能点**，其中 **27 个游客可用**；**2 个没有任何页面调用**。
+统计：**96 个功能点**，其中 **27 个游客可用**；**2 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -41,6 +41,10 @@
 | `openRegions` | `GET /mp/community/regions` | 游客 | (stores) | — |
 | `couponList` | `GET /mp/coupon` | 游客 | coupons · goods · order-confirm | — |
 | `receiveCoupon` | `POST /mp/coupon/:couponNo/receive` | 是 | goods | — |
+| `favoriteGoods` | `GET /mp/favorite/goods` | 是 | favorites | — |
+| `toggleFavoriteGoods` | `POST /mp/favorite/goods/:goodsNo` | 是 | favorites · goods | — |
+| `favoriteStores` | `GET /mp/favorite/store` | 是 | favorites | — |
+| `toggleFavoriteStore` | `POST /mp/favorite/store/:merchantNo` | 是 | store | — |
 | `goodsList` | `GET /mp/goods` | 游客 | category · groups · home · merchant · search | — |
 | `goodsDetail` | `GET /mp/goods/:goodsNo` | 游客 | goods · group | — |
 | `goodsBatch` | `GET /mp/goods/:goodsNo/batch` | 游客 | goods | — |
@@ -99,7 +103,6 @@
 | `createReview` | `POST /mp/review` | 是 | review-write | — |
 | `toggleReviewLike` | `POST /mp/review/:reviewNo/like` | 是 | goods · merchant | — |
 | `storeHome` | `GET /mp/store/:merchantNo` | 游客 | store | — |
-| `toggleFavoriteStore` | `POST /mp/store/:merchantNo/favorite` | 是 | store | — |
 | `frequentItems` | `GET /mp/store/:merchantNo/frequent` | 是 | store | — |
 | `storeByCode` | `GET /mp/store/by-code` | 游客 | store | — |
 | `myStores` | `GET /mp/store/mine` | 是 | **无** | — |
