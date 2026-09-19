@@ -10371,9 +10371,9 @@
         },
         {
           "key": "memberAdd.remarkPh",
-          "zh-CN": "如 三单元，晚上来",
-          "en": "e.g. Unit 3, comes evenings",
-          "ar": "مثال: الوحدة ٣، يأتي مساءً"
+          "zh-CN": "选填",
+          "en": "Optional",
+          "ar": "اختياري"
         },
         {
           "key": "memberAdd.saved",
@@ -11055,9 +11055,9 @@
         },
         {
           "key": "memberTags.newPh",
-          "zh-CN": "如 爱囤货",
-          "en": "e.g. Stocks up",
-          "ar": "مثال: يشتري بالجملة"
+          "zh-CN": "请输入标签名称",
+          "en": "Enter a tag name",
+          "ar": "أدخل اسم الوسم"
         },
         {
           "key": "memberTags.newTitle",
@@ -11205,9 +11205,9 @@
         },
         {
           "key": "members.segmentNamePh",
-          "zh-CN": "如 南门店沉睡老客",
-          "en": "e.g. South-gate lapsed regulars",
-          "ar": "مثال: فرع الجنوب · انقطعوا"
+          "zh-CN": "请输入人群名称",
+          "en": "Enter a segment name",
+          "ar": "أدخل اسم الشريحة"
         },
         {
           "key": "members.segmentPreview",
@@ -13761,9 +13761,9 @@
         },
         {
           "key": "reach.bodyPh",
-          "zh-CN": "正文，可留空",
-          "en": "Body, optional",
-          "ar": "النص، اختياري"
+          "zh-CN": "选填",
+          "en": "Optional",
+          "ar": "اختياري"
         },
         {
           "key": "reach.confirmBody",
@@ -13935,9 +13935,9 @@
         },
         {
           "key": "reach.titlePh",
-          "zh-CN": "如：本周牛奶第二件半价",
-          "en": "e.g. Half price on your second milk this week",
-          "ar": "مثال: نصف السعر على العلبة الثانية من الحليب هذا الأسبوع"
+          "zh-CN": "请输入标题",
+          "en": "Enter a title",
+          "ar": "أدخل العنوان"
         },
         {
           "key": "reach.toWhom",
