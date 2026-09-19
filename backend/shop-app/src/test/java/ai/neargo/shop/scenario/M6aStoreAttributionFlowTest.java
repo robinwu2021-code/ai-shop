@@ -286,11 +286,17 @@ class M6aStoreAttributionFlowTest {
     void favoriteStore() throws Exception {
         String token = login("13100131023");
 
-        mvc().perform(post("/mp/store/M0001/favorite").header("Authorization", "Bearer " + token))
+        // 收藏本店挪到了 POST /mp/favorite/store/{merchantNo}，回的是 {favorited}（TDD-C端商品收藏与送达判断）。
+        // 旧的 /mp/store/{merchantNo}/favorite 回的是列表，门店主页一直当布尔用 —— 已删
+        mvc().perform(post("/mp/favorite/store/M0001").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.favorited").value(true));
+        mvc().perform(get("/mp/store/mine").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.data.length()").value(org.hamcrest.Matchers.greaterThan(0)));
 
-        mvc().perform(post("/mp/store/M0001/favorite").header("Authorization", "Bearer " + token))
+        mvc().perform(post("/mp/favorite/store/M0001").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.favorited").value(false));
+        mvc().perform(get("/mp/favorite/store").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.data.length()").value(0));
     }
 
