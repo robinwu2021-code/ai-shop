@@ -1913,7 +1913,7 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     deleteHint: "لا تُحذف الوسوم بل تُوقف؛ الحذف يكسر الحملات التي تشير إليها",
   },
   members: {
-    phoneTail: "ينتهي بـ {n}",
+    phoneTail: "****{n}",
     tagsAll: "يحمل كل هذه الوسوم",
     forThese: "إجراءات جماعية ({n})",
     thisBatch: "هذه المجموعة",

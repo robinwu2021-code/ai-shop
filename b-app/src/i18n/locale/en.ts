@@ -1915,7 +1915,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     deleteHint: "Tags cannot be deleted, only disabled. Deleting would break the promotions and filters that reference them.",
   },
   members: {
-    phoneTail: "Ends in {n}",
+    phoneTail: "****{n}",
     tagsAll: "Has all of these tags",
     forThese: "Bulk actions ({n})",
     thisBatch: "This group",

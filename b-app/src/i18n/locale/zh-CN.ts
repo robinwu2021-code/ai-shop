@@ -2154,7 +2154,7 @@ export default {
     deleteHint: "标签不可删除，仅可停用。删除会使引用该标签的活动与筛选条件失效。",
   },
   members: {
-    phoneTail: "尾号 {n}",
+    phoneTail: "****{n}",
     tagsAll: "同时含以下标签",
     forThese: "批量操作（{n} 人）",
     thisBatch: "这批人",
