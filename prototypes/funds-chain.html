@@ -1,0 +1,264 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>商家资金全链路原型</title>
+<!-- 真源在仓库 prototypes/funds-chain.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">原型 · 2026-08-26</div>
+  <h1>商家的钱：从入驻到到账</h1>
+  <p class="sub">B 端订单 / 积分 / 资金三组屏，加上它们各自对应的运营端功能，串在一条链上看：<b>入驻 → 审核 → 账户 → 积分 → 出款</b>。串起来才看得出断在哪 —— 而这条链<b>今天在最后一环断了</b>。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">00</span><h2>先看整条链</h2></div>
+  <p class="why">每一格标的是<b>今天的真实状态</b>，不是规划。</p>
+  <div class="tw" style="margin-top:22px"><table class="spec">
+    <tr><th>step</th><th>环节</th><th>做什么</th><th>状态</th></tr>
+    <tr><td>step 1</td><td><b>入驻申请</b></td><td>B 端填主体、证照、经营范围</td><td>✅ 在跑</td></tr>
+    <tr><td>step 2</td><td><b>平台审核</b></td><td>运营端逐条过；驳回原因原样回商家</td><td>✅ 在跑</td></tr>
+    <tr><td>step 3</td><td><b>收款进件</b></td><td>小微 / 个体 / 企业三档，通道侧开户</td><td>⚠️ 有页面，通道未接</td></tr>
+    <tr><td>step 4</td><td><b>资金路径</b></td><td>归集（钱在平台户）/ 直连（进商家二级户）</td><td>✅ 可配</td></tr>
+    <tr><td>step 5</td><td><b>积分开关</b></td><td>社区 → 商家逐级灰度，默认全关</td><td>⚠️ 全关，0 类目已配</td></tr>
+    <tr><td>step 6</td><td><b>结算计提</b></td><td>支付成功即生成结算单，算佣金与费用</td><td>✅ 在跑</td></tr>
+    <tr><td>step 7</td><td><b>出款</b></td><td>第三方走分账 / 自营走应付账款</td><td>❌ 分账是桩</td></tr>
+  </table></div>
+  <p class="why" style="margin-top:22px"><b>第 7 格是这份原型存在的理由。</b>结算单照常生成、状态照常推到「已分账」，但底下调的是桩实现 —— <b>一分钱都没真的动过，而商家看着以为钱在路上</b>。所以下面 B 端资金那一组屏，第一职责不是「让他提现」，而是<b>让他看得出钱还没到</b>。</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 03</span><h2>B 端 · 订单</h2></div>
+  <p class="why">订单页已经落地，这里挂的是<b>本批新增的两处</b>与一处仍缺的。</p>
+  <div class="grid" style="margin-top:22px">
+
+    <figure id="s01">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">订单</span><span></span></div>
+        <div class="scr">
+          <div class="tabs"><span class="on">待收款 3</span><span>待发货 12</span><span>已发货</span><span>待核销</span><span>售后</span></div>
+          <div class="card">
+            <div class="hd"><span class="nm">王女士</span><span class="chip ok">待当面收款</span></div>
+            <div class="meta">上门保洁 3 小时 · 明天 09:00</div>
+            <div class="metric"><span>应收</span><span class="num" style="color:var(--sh-ink)">¥168.00</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">李先生</span><span class="chip ok">待当面收款</span></div>
+            <div class="meta">门店自提 · 今天 15:30 前</div>
+            <div class="metric"><span>应收</span><span class="num" style="color:var(--sh-ink)">¥42.00</span><span>已抵 ¥8</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>01 订单列表 · 待收款分组</b></figcaption>
+      <p class="why"><b>待收款排在待发货前面。</b>那一组的动作是「把货交出去」，这一组是「把钱收进来」—— 混在一起，店员会照着列表先发后收。</p>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr"></div>
+        <div class="mask"><div class="sheet">
+          <div class="h">确认已当面收到货款</div>
+          <div class="big"><div class="l">应收金额</div><div class="n num">¥42.00</div></div>
+          <div class="d" style="color:var(--sh-primary-text)">已用积分抵扣 ¥8.00，顾客只需支付上方金额</div>
+          <div class="d">平台不代收此款 —— 钱由顾客直接付给你，平台只记录这一次确认</div>
+          <div class="acts"><div class="btn sec">还没收到</div><div class="btn">确认收款</div></div>
+        </div></div>
+      </div>
+      <figcaption class="cap"><b>02 确认收款弹窗</b></figcaption>
+      <p class="why">三样缺一不可：<b>大字应收</b>（照它收，不是照原价）、<b>已抵扣多少</b>（少了它顾客的积分白花）、<b>平台不代收</b>（出纠纷时双方无分歧）。</p>
+    </figure>
+
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">预约排期</span><span></span></div>
+        <div class="scr">
+          <div class="gt">开一个时段</div>
+          <div class="group">
+            <div class="frow"><span class="k">时段</span><span class="v go">明天 09:00 · 1 小时</span></div>
+            <div class="frow"><span class="k">名额</span><span class="v num">名额 3</span></div>
+          </div>
+          <div class="btn">开出时段</div>
+          <div class="card">
+            <div class="hd"><span class="nm num">08-27 09:00</span><span class="chip ok">剩 2</span></div>
+            <div class="meta num">已约 1 / 共 3</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm num">08-27 14:00</span><span class="chip warn">已约满</span></div>
+            <div class="meta num">已约 1 / 共 1</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>03 预约排期（已落地）</b></figcaption>
+      <p class="why">连约满的和停掉的一起列。只给「还能约的」，店主看不出「这周没人约」是<b>没开时段</b>还是<b>开的都满了</b> —— 两件事该做的动作相反。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">04 — 05</span><h2>B 端 · 积分（今天一个页面都没有）</h2></div>
+  <p class="why">后端 /biz/points/account、/biz/points/records、/biz/points/toggle 三个接口都在，<b>B 端没有任何出口</b>。商家看不到自己发了多少分、花了多少钱，也关不掉。</p>
+  <div class="grid" style="margin-top:22px">
+
+    <figure id="s04">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">积分</span><span></span></div>
+        <div class="scr">
+          <div class="pz">
+            <div class="meta">本期发分服务费</div>
+            <div class="p"><b class="num">¥126.40</b></div>
+            <div class="meta num">2026-08 · 结算时从货款里扣</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">本店积分</span><span class="chip ok">已开启</span></div>
+            <div class="meta">关闭只影响将来：已发出的分仍然有效，已扣的服务费不退</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="meta">发放规则</span><span>由平台按类目统一设置</span></div>
+            <div class="meta num">生鲜 千分之五 · 家电 千分之二 · 服务 定额 1 元</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>04 积分成本总览</b></figcaption>
+      <p class="why"><b>商家不感知积分抵扣</b>（他按订单全额收款），所以这一屏只有「我发分花了多少」，没有「我收到多少分」—— 后者在他这儿不存在。</p>
+    </figure>
+
+    <figure id="s05">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">发分明细 · 2026-08</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm num">SUB20260826001</span><span class="num" style="font-weight:600">¥1.20</span></div>
+            <div class="meta num">发放 120 分 · 08-26 14:22</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm num">SUB20260826007</span><span class="num" style="font-weight:600">¥0.80</span></div>
+            <div class="meta num">发放 80 分 · 08-26 16:05</div>
+          </div>
+          <div class="card" style="background:var(--sh-warning-tint)">
+            <div class="hd"><span class="nm num">SUB20260826011</span><span class="chip warn">未发放</span></div>
+            <div class="meta">当面付款的订单不发放积分</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>05 发分明细</b></figcaption>
+      <p class="why">最后一条是<b>本批新加的规则</b>：线下单不发分，因为那笔费用金收不到。<b>要写出原因</b> —— 否则商家问「为什么这单没发」没人答得上来。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">06 — 08</span><h2>B 端 · 资金（不是「提现」）</h2></div>
+  <p class="why"><b>这一组屏刻意不叫「提现」。</b>ADR-002 定的是<b>分账</b>：钱进平台商户号后处于冻结待分状态，由微信直接划给商家 —— 平台从头到尾没有资金支配权。而「商家申请提现 → 平台审批 → 平台打款」是那条决策里被明确排除掉的形态（<b>二次清算</b>，无牌照不可做）。所以 B 端该给的是<b>「我的钱到哪一步了」</b>，不是一个申请按钮。</p>
+  <div class="grid" style="margin-top:22px">
+
+    <figure id="s06">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">我的收入</span><span></span></div>
+        <div class="scr">
+          <div class="pz">
+            <div class="meta">已到账（本月）</div>
+            <div class="p"><b class="num">¥3,420.00</b></div>
+            <div class="meta">直接划入你的收款账户，平台不经手</div>
+          </div>
+          <div class="card" style="background:var(--sh-warning-tint)">
+            <div class="hd"><span class="meta">已发起，等通道确认</span><span class="num" style="font-weight:600">¥880.00</span></div>
+            <div class="meta num">12 笔 · 最早一笔 08-24 发起</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="meta">待结算</span><span class="num" style="font-weight:600">¥1,260.00</span></div>
+            <div class="meta">售后期结束后自动结算</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="meta">当面收款</span><span class="num" style="font-weight:600">¥560.00</span></div>
+            <div class="meta">这部分你已经收到了，无需结算</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>06 到账总览</b></figcaption>
+      <p class="why"><b>四个数是四种状态，不是四个口袋。</b>今天结算页只显示一个「商家实得」，读起来像已到手 —— 商家拿它对银行流水，对不上就找客服，而客服看到的状态也只有一个。</p>
+    </figure>
+
+    <figure id="s07">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">收款账户</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm">微信支付 · 小微商户</span><span class="chip ok">已开通</span></div>
+            <div class="meta num">商户号 16·····892</div>
+            <div class="meta">钱由微信直接划到这里</div>
+          </div>
+          <div class="card" style="background:var(--sh-primary-tint)">
+            <div class="hd"><span class="nm">支付宝</span><span class="chip warn">未进件</span></div>
+            <div class="meta" style="color:var(--sh-primary-text)">买家用支付宝下的单目前无法结算给你</div>
+          </div>
+          <div class="btn">去进件</div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>07 收款账户</b></figcaption>
+      <p class="why">进件状态是<b>能不能收到钱</b>的前提，不是设置项。没进件的通道要说清后果 —— 而不是显示一个灰色的「未开通」。</p>
+    </figure>
+
+    <figure id="s08">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">结算单 SB20260824003</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">订单金额</span><span class="v num">¥100.00</span></div>
+            <div class="frow"><span class="k">平台佣金 5%</span><span class="v num">−¥5.00</span></div>
+            <div class="frow"><span class="k">发分服务费</span><span class="v num">−¥1.20</span></div>
+            <div class="frow"><span class="k" style="color:var(--sh-ink);font-weight:600">你应得</span><span class="v num hot">¥93.80</span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k num">08-24 10:02</span><span class="v">已计提</span></div>
+            <div class="frow"><span class="k num">08-26 03:00</span><span class="v">已发起划转</span></div>
+            <div class="frow"><span class="k">—</span><span class="v" style="color:var(--sh-sub)">等通道确认到账</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>08 一笔钱的去向</b></figcaption>
+      <p class="why">三行时间轴回答的是「<b>卡在哪一步</b>」。只给一个终态的话，商家问「钱呢」时客服也只能说「已结算」。</p>
+    </figure>
+
+  </div>
+  <p class="why" style="margin-top:36px"><b>提现只在一种情况下才成立。</b><b>归集模式</b>（钱确实停在平台户）下，平台对商家形成负债，出款才有「提现」这个动作 —— 但那正是 ADR-002 要避开的形态。所以它不是一个待做的功能，是一个<b>待决的资金路径问题</b>：见 PRD §5 待确认第 2 条。在拿到分账参数书面口径（B7）之前，这一组屏<b>不画申请按钮</b>。</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">对照</span><h2>对应的运营端功能清单</h2></div>
+  <p class="why">左边是 B 端的动作，右边是平台侧必须有人能处理的那一手。<b>缺</b> = 今天没有。</p>
+  <div class="tw" style="margin-top:22px"><table class="spec">
+    <tr><th>环节</th><th>B 端</th><th>运营端</th><th>状态</th></tr>
+    <tr><td>入驻</td><td>入驻申请</td><td>/merchants 入驻审核</td><td>✅</td></tr>
+    <tr><td>审核</td><td>资质证照上传</td><td>?tab=qualifications 资质档案</td><td>✅</td></tr>
+    <tr><td>准入</td><td>—</td><td>?tab=admission 准入与保证金</td><td>✅</td></tr>
+    <tr><td>账户</td><td>S07 收款账户</td><td>?tab=mode-risk 无照自营风险 · 资金路径</td><td>⚠️ 通道未接</td></tr>
+    <tr><td>积分</td><td>S04 本店开关</td><td>/finance?tab=points-policy 端开关</td><td>✅ 本批</td></tr>
+    <tr><td>积分规则</td><td>只读展示</td><td>/products?tab=category-points 类目 × 积分</td><td>✅ 本批</td></tr>
+    <tr><td>积分资金</td><td>S04 成本总览</td><td>/finance?tab=points 积分资金看板</td><td>⚠️ 恒等式无告警</td></tr>
+    <tr><td>结算</td><td>S08 结算单</td><td>/finance 结算单与分账</td><td>✅</td></tr>
+    <tr><td>出款</td><td>S06 到账总览</td><td>?tab=splits 分账明细</td><td>❌ 网关是桩</td></tr>
+    <tr><td>出款对账</td><td>—</td><td><b>分账轴对账</b></td><td>❌ 缺</td></tr>
+    <tr><td>发票个税</td><td>开票申请</td><td>?tab=invoice 发票与个税</td><td>✅</td></tr>
+    <tr><td>（提现）</td><td><b>不做</b></td><td>?tab=withdraw 提现审批</td><td>⚠️ 无生产者，见 §03</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">决定</span><h2>这份原型要推动的三个决定</h2></div>
+  <div class="tw"><table class="spec">
+    <tr><th>#</th><th>决定</th><th>说明</th></tr>
+    <tr><td>1</td><td><b>B 端积分那两屏做不做？</b></td><td>接口都在，只差出口。做了商家才知道自己发分花了多少钱 —— 而积分开关是「商家自己开」的，看不到成本却让他决定开不开，这个要求不合理。</td></tr>
+    <tr><td>2</td><td><b>资金那一组按「到账进度」做，还是等分账接通再说？</b></td><td>按进度做的成本是三屏 + 一个状态拆分；不做的代价是商家在整个过渡期里看到的都是「已结算」而钱没到。</td></tr>
+    <tr><td>3</td><td><b>过渡期第三方商家的货款怎么办？</b></td><td>暂不引入第三方 / 走自营代销（那条路已经通）/ 接受风险并书面记录。<b>这是商务与法务的决定，原型改不了它。</b></td></tr>
+  </table></div>
+</section>
+
+<footer>
+  真源：prototypes/funds-chain.html · 登记：prototypes/registry.json · 原 artifact：<a href="https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24">feceebc7</a> · 相关文档：ADR-002（分账）· 商家资金 PRD §5 待确认<br>
+  屏号 S01–S08 已登记进 scripts/gen-ui-catalog.py 的 PROTO_ANCHORS，三端界面清单里点「原型」可直接跳到对应那一屏。落地之后从 PROTOTYPES 里删掉，它会自动从 pages.json 里出现。
+</footer>
+</div>
+</html>

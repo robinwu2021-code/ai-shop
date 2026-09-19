@@ -1,0 +1,283 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>进销存 · 九屏一次看全（初稿）</title>
+<!-- 真源在仓库 prototypes/inventory-nine-v0.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · 进销存 · 九屏 · 初稿 · 2026-08-28</div>
+  <h1>进销存：九屏一次看全</h1>
+  <p class="sub">每一屏的文案都取自仓库里的真词条（见《进销存 · 界面清单》，那份是生成的）。这里不是重画一遍现状 —— 是把九屏按商家做的四件事排在一起，好让「哪两屏该长得一样而现在不一样」自己浮出来。「为什么」注里的「改」= 与现状的差异。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 02</span><h2>看 · 每天多次：库存 与 库存明细</h2></div>
+  <p class="sub" style="margin-bottom:22px">枢纽在这儿。商家一天进来十几次，多数时候只是想知道「还有多少」。</p>
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">库存</span><span></span></div>
+        <div class="scr">
+          <div class="stats" style="grid-template-columns:repeat(4,1fr);padding-bottom:0">
+            <div><div class="n num">204</div><div class="l">在售 SKU</div></div>
+            <div><div class="n num" style="color:var(--sh-primary-text)">6</div><div class="l">缺货</div></div>
+            <div><div class="n num">12</div><div class="l">滞销</div></div>
+            <div><div class="n num" style="color:var(--sh-warning-text)">3</div><div class="l">在途</div></div>
+            <div class="frow" style="grid-column:1/-1;justify-content:space-around;margin-top:8px;padding:0 12px"><span class="v hot">单据</span><span class="v hot">报表</span><span class="v hot">库位</span></div>
+          </div>
+          <div class="tabs"><span>要处理 6</span><span class="on">全部</span><span>有预留</span></div>
+          <div class="card">
+            <div class="hd"><span class="nm">五常大米 · 10斤装</span><span class="nm num">120</span></div>
+            <div class="hd meta"><span>实存 120　预留 0</span><span>可用</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">小米 · 2斤装</span><span class="nm num" style="color:var(--sh-primary-text)">0</span></div>
+            <div class="hd meta"><span class="chip">已售罄</span><span>可用</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">陈醋 · 500ml</span><span class="nm num">24</span></div>
+            <div class="hd meta"><span class="chip warn">94 天未动</span><span>可用</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">土鸡蛋 · 30枚装</span><span class="nm num">48</span></div>
+            <div class="hd meta"><span>实存 48　预留 0</span><span>可用</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">进货</div><div class="btn sec">盘点</div><div class="btn sec">报损</div><div class="btn sec">调拨</div></div>
+      </div>
+      <figcaption class="cap"><b>01 库存</b>上方一张卡装四个数与三个去处；筛选贴着列表；四个写动作在底部。</figcaption>
+      <p class="why">改：四个写动作<b>移到贴底悬浮条</b>（库里的 <code>sh-actionbar</code>，进货／盘点／报损／调拨四页自己就在用它）——「看」占满整屏，「记」落在拇指处，与频率一致。上方一张卡装四个数与三个去处，筛选贴着列表。<b>占位块不能忘</b>：条是浮的，不留占位最后一行被压住，而不报错。</p>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">库存明细</span><span></span></div>
+        <div class="scr">
+          <div class="nm">五常大米 10斤装 · 10斤装</div>
+          <div class="stats">
+            <div><div class="n num">120</div><div class="l">实存</div></div>
+            <div><div class="n num" style="color:var(--sh-warning-text)">0</div><div class="l">预留</div></div>
+            <div><div class="n num">120</div><div class="l">可用</div></div>
+          </div>
+          <div class="card"><div class="meta">条码 —　货号 —　单位 件</div></div>
+          <div class="group">
+            <div class="frow"><span class="nm">按库位</span></div>
+            <div class="frow"><span class="k">默认库位</span><span class="v num">120</span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="nm">变动明细</span><span class="meta">点一行看那张单</span></div>
+            <div class="frow"><span>期初</span><span class="v num" style="color:var(--sh-success-text)">+120</span></div>
+            <div class="frow"><span class="meta num" style="color:var(--sh-primary-text)">IN20260827…3861</span><span class="v num meta">0 → 120</span></div>
+            <div class="frow" style="justify-content:center"><span class="v hot">再读一页</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn main">盘这一件</div></div>
+      </div>
+      <figcaption class="cap"><b>02 库存明细</b>三个数、按库位、变动明细；主按钮「盘这一件」。</figcaption>
+      <p class="why">改：「差异原因」那张卡撤下 —— 它现在常驻，而只有点了「盘这一件」才用得到。挪进弹层，这一屏少一整张卡。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">03 — 06</span><h2>记 · 每天 1–3 次：进货 · 盘点 · 报损 · 调拨</h2></div>
+  <p class="sub" style="margin-bottom:22px">四屏形状本该一样：挑货 → 填数 → 过账。下面四屏摆在一起，就能看见第三屏的按钮为什么不对。</p>
+  <div class="grid">
+
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">进货</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">供应商</span><span class="v">老周粮油</span></div>
+          </div>
+          <div class="meta">仅作记录，不建立供应商档案</div>
+          <div class="group">
+            <div class="frow"><span class="k">发生日期</span><span class="v go num">2026-08-28</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">陈醋 · 500ml</span><span class="num">¥42.00</span></div>
+            <div class="hd"><span class="num" style="color:var(--sh-primary-text)">1 瓶　¥42.00</span><span class="meta">移除</span></div>
+          </div>
+          <div class="group"><div class="frow add">＋ 添加货品</div></div>
+          <div class="group"><div class="frow"><span class="nm">合计</span><span class="v num nm">¥42.00</span></div></div>
+          <div class="meta">草稿不影响库存。过账后按本次进价更新成本</div>
+        </div>
+        <div class="foot"><div class="btn sec">存草稿</div><div class="btn main">过账入库</div></div>
+      </div>
+      <figcaption class="cap"><b>03 进货</b>供应商 → 发生日期 → 货品行 → 合计；存草稿 / 过账入库。</figcaption>
+      <p class="why">空态里那句「昨天的货今天记？把发生日期改成昨天」<b>中文原来没有、英文有</b> —— 已补。</p>
+    </figure>
+
+    <figure id="s04">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">盘点</span><span></span></div>
+        <div class="scr">
+          <div class="meta">选择需要盘点的货品。开单时锁定账面数，盘点期间的销售不计入差异</div>
+          <div class="group">
+            <div class="frow"><span class="v ph-" style="text-align:left;flex:1">搜商品名或规格</span><span class="v hot">全选</span></div>
+          </div>
+          <div class="card"><div class="hd"><span class="nm">五常大米 · 10斤装</span><span class="meta">账面 120</span></div></div>
+          <div class="card"><div class="hd"><span class="nm">陈醋 · 500ml</span><span class="meta">账面 24</span></div></div>
+          <div class="card"><div class="hd"><span class="nm">aaa</span><span class="meta">账面 0</span></div></div>
+          <div class="btn">开始盘点（3 件）</div>
+          <div class="meta">过账后：盘盈生成入库单，盘亏生成出库单</div>
+        </div>
+        <div class="foot"><div class="btn main">过账盘点 <span style="font-weight:400">← 原「提交并过账」</span></div></div>
+      </div>
+      <figcaption class="cap"><b>04 盘点</b>挑货 → 开始盘点 → 过账盘点。</figcaption>
+      <p class="why">改：「提交并过账」→「过账盘点」。它和进货、报损做的是同一件事，不该多两个字、多一个动词。</p>
+    </figure>
+
+    <figure id="s05">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">报损</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">发生日期</span><span class="v go num">2026-08-28</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">陈醋 · 500ml</span><span class="meta">可用 24</span></div>
+            <div class="hd"><span class="num" style="color:var(--sh-primary-text)">2 瓶</span><span class="meta">移除</span></div>
+          </div>
+          <div class="group"><div class="frow add">＋ 添加货品</div></div>
+          <div class="gt">原因</div>
+          <div class="group">
+            <div class="frow"><span class="chip warn">损坏</span><span class="chip">过期</span><span class="chip">赠送</span><span class="chip">其他</span></div>
+          </div>
+          <div class="group"><div class="frow"><span class="nm">合计出库</span><span class="v num nm">2</span></div></div>
+        </div>
+        <div class="foot"><div class="btn main">过账出库</div></div>
+      </div>
+      <figcaption class="cap"><b>05 报损</b>发生日期 → 货品行 → 原因（枚举）→ 合计出库。</figcaption>
+      <p class="why">原因是<b>枚举不是自由文本</b> —— 自由文本汇总不出「这个月报损了多少」，而那是月底唯一想知道的数。</p>
+    </figure>
+
+    <figure id="s06">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">调拨</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">从</span><span class="v go hot">城西仓</span></div>
+            <div class="frow"><span class="k">到</span><span class="v go hot">文三路店</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">东北大米 · 5斤装</span><span class="meta">可用 40</span></div>
+            <div class="hd"><span class="num" style="color:var(--sh-primary-text)">20 袋</span><span class="meta">移除</span></div>
+          </div>
+          <div class="group"><div class="frow add">＋ 添加货品</div></div>
+          <div class="group"><div class="frow"><span class="nm">合计</span><span class="v num nm">20</span></div></div>
+          <div class="btn">确认发出</div>
+          <div class="card">
+            <div class="hd"><span class="nm">在途</span><span class="chip warn">08-26 07:30 发出 · 待收货</span></div>
+            <div class="meta">在途货品仍计入合计</div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn main">确认收货</div></div>
+      </div>
+      <figcaption class="cap"><b>06 调拨</b>从 / 到 → 货品行 → 确认发出；在途一段 → 确认收货。</figcaption>
+      <p class="why"><b>「确认发出 / 确认收货」是对的</b>，不该跟着改成「过账」—— 它确实是两段式交接，在途那一段本来就存在。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">07 — 09</span><h2>查 · 每周／每月　　配 · 一次性：单据 · 报表 · 库位</h2></div>
+  <div class="grid">
+
+    <figure id="s07">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">单据</span><span></span></div>
+        <div class="scr">
+          <div class="tabs"><span class="on">全部</span><span>入库</span><span>出库</span><span>盘点</span><span>调拨</span></div>
+          <div class="meta">按单看变动。想知道某一件货怎么变的，去库存点开那件货</div>
+          <div class="card">
+            <div class="hd"><span class="nm">入库</span><span class="nm num" style="color:var(--sh-success-text)">+120</span></div>
+            <div class="hd meta"><span class="num">IN20260827…3861 · 老板</span><span>已过账</span></div>
+            <div class="meta" style="border-top:1px solid var(--sh-line);padding-top:5px">这张单动了这些货</div>
+            <div class="hd"><span>五常大米 10斤装</span><span class="num" style="color:var(--sh-success-text)">+120 ›</span></div>
+            <div class="meta" style="text-align:center;color:var(--sh-primary-text)">作废这张单</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">出库</span><span class="nm num" style="color:var(--sh-primary-text)">−2</span></div>
+            <div class="hd meta"><span class="num">OUT-2408260031 · 系统</span><span>已过账</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>07 单据</b>按类型筛；点一张单展开它动了哪些货；作废在展开区里。</figcaption>
+      <p class="why"><b>作废在展开区里</b>，不在列表行上 —— 得先看见这张单动了哪几件货再决定。放行上一次误触就是一笔反向流水。</p>
+    </figure>
+
+    <figure id="s08">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">报表</span><span></span></div>
+        <div class="scr">
+          <div class="group"><div class="frow"><span class="nm">月份</span><span class="v go hot num">2026-08</span></div></div>
+          <div class="group">
+            <div class="frow"><span class="nm">本月数量</span></div>
+            <div class="frow"><span class="k">期初</span><span class="v num">0</span></div>
+            <div class="frow"><span class="k">进</span><span class="v num" style="color:var(--sh-success-text)">+0</span></div>
+            <div class="frow"><span class="k">销</span><span class="v num" style="color:var(--sh-primary-text)">−0</span></div>
+            <div class="frow"><span class="k">损（报损 + 盘亏）</span><span class="v num" style="color:var(--sh-primary-text)">−0</span></div>
+            <div class="frow"><span class="k">调整</span><span class="v num">+155311</span></div>
+            <div class="frow"><span class="nm">期末</span><span class="v num nm">155311</span></div>
+            <div class="frow"><span class="meta num" style="color:var(--sh-success-text)">0 + 0 − 0 − 0 + 155311 = 155311　台账平衡</span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="nm">本月金额</span></div>
+            <div class="frow"><span class="k">销货成本</span><span class="v num">¥0.00</span></div>
+            <div class="frow"><span class="k">损失成本</span><span class="v num" style="color:var(--sh-primary-text)">¥0.00</span></div>
+          </div>
+          <div class="meta">按每笔实际进价累计。库存不记售价，故不含毛利</div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>08 报表</b>本月数量：期初 + 进 − 销 − 损 + 调整 = 期末；本月金额只记成本。</figcaption>
+      <p class="why"><b>算式摆出来让人自己核</b>。对不上时显眼 —— 那不是显示问题，是台账漏了一笔，而那正是这张表存在的理由。</p>
+    </figure>
+
+    <figure id="s09">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">库位</span><span></span></div>
+        <div class="scr">
+          <div class="card"><div class="hd"><span class="nm">城西仓</span><span class="meta">仓库</span></div><div class="meta">使用自有库存</div></div>
+          <div class="card"><div class="hd"><span class="nm">文三路店</span><span class="meta">门店</span></div><div class="meta">发货源：城西仓</div></div>
+          <div class="card"><div class="hd"><span class="nm">在途</span><span class="meta">不可删</span></div><div class="meta">调拨在途货品</div></div>
+          <div class="group"><div class="frow add">＋ 新建仓库</div></div>
+          <div class="card">
+            <div class="nm">发货源</div>
+            <div class="meta">设置后，该门店的订单扣减源仓库存</div>
+            <div class="meta">发货源不可接力：仓不能再指向其他库位</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>09 库位</b>仓库 / 门店 / 在途三种；门店配发货源。</figcaption>
+      <p class="why">这一屏一辈子用一两次，所以在库存页收进小字那一行 —— 但它<b>必须存在</b>：不配发货源，门店订单扣不到仓的库存。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">对照</span><h2>九屏摆在一起才看得见的四条</h2></div>
+  <div class="tw"><table class="spec">
+    <thead><tr><th>比什么</th><th>现状</th><th>判断</th></tr></thead>
+    <tbody>
+      <tr><td>主按钮</td><td>过账入库 / 过账出库 / <b>提交并过账</b> / 确认发出</td><td>盘点那个要改；调拨那两个是对的（两段式交接不是过账）</td></tr>
+      <tr><td>空态</td><td>三屏共用一句「尚未添加货品」，但是三个词条</td><td>英文里已经漂了：进货那条多一句提示，中文没有 —— <b>已补</b></td></tr>
+      <tr><td>「可用 {n}」</td><td>同一页里 <code>Available {n}</code> 与 <code>{n} available</code></td><td><b>已统一</b></td></tr>
+      <tr><td>草稿</td><td>进货有「存草稿」，报损没有</td><td>可能是对的（报损当场确定），但那是没被写下来的决定</td></tr>
+    </tbody>
+  </table></div>
+  <p class="why" style="margin-top:18px"><b>为什么这些只在这一屏看得见</b>　逐屏检查时，每一屏都自洽 —— 「过账出库」在报损页读着毫无问题。只有把四屏摆成一排，「提交并过账」多出来的那两个字才刺眼。清单能列出全部文案，但<b>列不出「它们该不该一样」</b>；那需要并排看。</p>
+</section>
+
+<footer>
+  真源：prototypes/inventory-nine-v0.html · 登记：prototypes/registry.json · 原 artifact：<a href="https://claude.ai/code/artifact/3daacf45-7604-49aa-8fa5-0befdce24d2b">claude.ai/code/artifact/3daacf45-…</a><br>
+  相关文档：docs/technical/design/进销存-界面清单.md（生成物） · 后续稿：prototypes/inventory-rearrange.html
+</footer>
+</div>
+</html>

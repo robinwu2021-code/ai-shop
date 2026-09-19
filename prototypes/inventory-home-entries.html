@@ -1,0 +1,167 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>库存首页入口排布</title>
+<!-- 真源在仓库 prototypes/inventory-home-entries.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+<style>
+/* 本稿专用：仅本稿的对比排版，不是通用积木 */
+.prose{display:flex;flex-direction:column;gap:10px;max-width:68ch}
+.prose p,.prose ul{margin:0}
+.prose ul{padding-inline-start:18px}
+.cap .after{color:var(--note);font-weight:600;margin-inline-start:8px}
+.changes{display:grid;grid-template-columns:26px 1fr;gap:12px 12px;max-width:72ch}
+.changes .n{padding-top:2px}
+.changes p{margin:0 0 4px}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · 方案稿 · 2026-09-17 · 第二稿</div>
+  <h1>库存首页入口排布</h1>
+  <p class="sub">第一稿按<b>多久用一次</b>分层，结果是一个叫「更多」的抽屉里装了三种不相干的东西。频率只能告诉你一个入口<b>要多显眼</b>，不能告诉你它<b>属于哪儿</b>——第二个问题得先问「这是什么」。这一稿按「是什么」重排，<b>「更多」这个词整个取消</b>。</p>
+  <p class="eyebrow" style="margin-top:14px">示例数据 · 真实文案取自 b-app/src/i18n/locale/zh-CN.ts</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">分类</span><h2>九个入口各自是什么</h2></div>
+  <div class="tw"><table class="spec">
+    <tr><th>入口</th><th>它回答的是哪个问题</th><th>多久一次</th><th>归到哪儿</th></tr>
+    <tr><td>四个数</td><td>我的货现在怎么样</td><td>每天几十次</td><td style="color:var(--note)">总览卡</td></tr>
+    <tr><td>看各店的货</td><td>同上，按门店再拆一遍</td><td>不常</td><td style="color:var(--note)">总览卡</td></tr>
+    <tr><td>单据</td><td>以前记过什么</td><td>每周</td><td style="color:var(--note)">总览卡 · 细线下</td></tr>
+    <tr><td>报表</td><td>上个月生意怎么样</td><td>每月</td><td style="color:var(--note)">总览卡 · 细线下</td></tr>
+    <tr><td>进货</td><td>我要记一笔</td><td>每天</td><td style="color:var(--note)">贴底 · 主</td></tr>
+    <tr><td>报损</td><td>我要记一笔</td><td>每天</td><td style="color:var(--note)">贴底 · 主</td></tr>
+    <tr><td>盘点</td><td>我要记一笔（对账那种）</td><td>周／月</td><td style="color:var(--note)">贴底 · 次</td></tr>
+    <tr><td>调拨</td><td>我要记一笔</td><td>很少，常用不了</td><td style="color:var(--note)">贴底 · 次</td></tr>
+    <tr><td>库位</td><td>我要改档案</td><td>建好就不动</td><td style="color:var(--note)">列表底 · 设置</td></tr>
+    <tr><td>供应商</td><td>我要改档案</td><td>建好就不动</td><td style="color:var(--note)">列表底 · 设置</td></tr>
+    <tr><td>收货 N ／ 继续盘点</td><td>有事正等着我</td><td>有才出现</td><td style="color:var(--note)">贴底 · 最上</td></tr>
+  </table></div>
+  <p class="why" style="margin-top:14px">四类，四处。<b>每一处内部都是同一类东西</b>——这正是第一版缺的：那排五个等大的链接里混着「看过去」「看别处」「改档案」，而「更多」抽屉里混着「记一笔」「看过去」「改档案」。换个地方藏，混的还是那三类。</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 03</span><h2>今天这版 → 提案</h2></div>
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">库存 <span class="meta">文三路店</span></span><span></span></div>
+        <div class="scr">
+          <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+            <div><div class="n num">216</div><div class="l">在售 SKU</div></div>
+            <div><div class="n num" style="color:var(--sh-danger)">6</div><div class="l">缺货</div></div>
+            <div><div class="n num">12</div><div class="l">滞销</div></div>
+            <div><div class="n num" style="color:var(--sh-warning-text)">1</div><div class="l">在途</div></div>
+          </div>
+          <div class="tabs"><span class="on">要处理 18</span><span>全部</span><span>有预留</span></div>
+          <div class="group">
+            <div class="frow"><span>东北大米 · 5斤装</span><span class="v meta num">可用 3</span></div>
+            <div class="frow"><span>小米 · 2斤装</span><span class="v meta num">可用 0</span></div>
+          </div>
+          <div class="group" style="margin-top:auto">
+            <div class="frow"><span style="color:var(--sh-primary-text);font-weight:600">收货 1</span><span class="v go"></span></div>
+            <div class="frow"><span style="color:var(--sh-primary-text);font-weight:600">继续盘点</span><span class="v go"></span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn">＋ 进货</div><div class="btn">－ 报损</div><div class="btn sec">更多 ⌃</div></div>
+      </div>
+      <figcaption class="cap"><b>01 今天这版</b>「更多」后面是盘点 · 调拨 · 单据 · 报表 · 库位 · 供应商——<strong>三类东西一个抽屉</strong>，而抽屉的名字什么都没说。</figcaption>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">库存 <span class="meta">文三路店</span></span><span></span></div>
+        <div class="scr">
+          <div class="card" style="padding:10px 0 0;gap:0">
+            <div class="stats" style="grid-template-columns:repeat(4,1fr);padding:0">
+              <div><div class="n num">216</div><div class="l">在售 SKU</div></div>
+              <div><div class="n num" style="color:var(--sh-danger)">6</div><div class="l">缺货</div></div>
+              <div><div class="n num">12</div><div class="l">滞销</div></div>
+              <div><div class="n num" style="color:var(--sh-warning-text)">1</div><div class="l">在途</div></div>
+            </div>
+            <div class="frow" style="justify-content:space-around;margin-top:8px;color:var(--sh-primary-text)"><span>看各店的货</span><span>单据</span><span>报表</span></div>
+          </div>
+          <div class="tabs"><span class="on">要处理 18</span><span>全部</span><span>有预留</span></div>
+          <div class="group">
+            <div class="frow"><span>东北大米 · 5斤装</span><span class="v meta num">可用 3</span></div>
+            <div class="frow"><span>小米 · 2斤装</span><span class="v meta num">可用 0</span></div>
+            <div class="frow"><span>陈醋 · 500ml</span><span class="v meta num">可用 24</span></div>
+          </div>
+          <div class="group" style="margin-top:auto">
+            <div class="frow"><span style="color:var(--sh-primary-text);font-weight:600">收货 1</span><span class="v go"></span></div>
+            <div class="frow"><span style="color:var(--sh-primary-text);font-weight:600">继续盘点</span><span class="v go"></span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn main">＋ 进货</div><div class="btn main">－ 报损</div><div class="btn sec">盘点</div><div class="btn sec" style="opacity:.5">调拨</div></div>
+      </div>
+      <figcaption class="cap"><b>02 提案 · 首屏</b>四个写动作<strong>全部露出来</strong>，按频率分两档深浅，没有抽屉。调拨点不动时是灰的，点它弹一句「要两个放货的地方，现在只有 1 个 · 去添加」。</figcaption>
+    </figure>
+
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">库存 <span class="meta">文三路店</span></span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span>金龙鱼调和油 5L</span><span class="v meta num">可用 80</span></div>
+            <div class="frow"><span>农夫山泉 · 550ml×24</span><span class="v meta num">可用 6</span></div>
+          </div>
+          <div class="card"><span class="meta">可用 = 实存 − 预留</span></div>
+          <div class="gt">库存设置</div>
+          <div class="group">
+            <div class="frow"><span class="nm">库位</span><span class="v go meta">门店、仓库</span></div>
+            <div class="frow"><span class="nm">供应商</span><span class="v go meta">3 家</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn main">＋ 进货</div><div class="btn main">－ 报损</div><div class="btn sec">盘点</div><div class="btn sec">调拨</div></div>
+      </div>
+      <figcaption class="cap"><b>03 提案 · 滚到底</b>两个档案页在<strong>列表最下面</strong>：建好就不动的东西，滚到底才见到是对的——它不该和每天按的按钮抢位置。</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">改动</span><h2>与上一版比，改了四处</h2></div>
+  <div class="changes">
+    <div class="n sec-num">1</div>
+    <div>
+      <p><b>「更多」整个取消</b></p>
+      <p class="sub">一个说不出后面是什么的按钮，装着三类东西。取消之后九个入口全部露在外面，但<b>分在四处，每处内部同类</b>——这与最初那种「散」不是一回事：最初是九个长得差不多的入口挤在一屏，分不出轻重。</p>
+    </div>
+    <div class="n sec-num">2</div>
+    <div>
+      <p><b>四个写动作回到同一排，按频率分深浅</b></p>
+      <p class="sub">进货、报损实心与浅底；盘点、调拨灰底小一档。<b>它们本来就是一类东西</b>，把其中两个藏进抽屉是按频率切了一刀，切在了类别中间。</p>
+      <p class="sub">调拨用不了时<b>灰着但点得动</b>：点一下弹一句原因，有库位权限的人再给一个「去添加」。比一个点不动的灰按钮好——灰着看上去像坏了。</p>
+    </div>
+    <div class="n sec-num">3</div>
+    <div>
+      <p><b>单据与报表回到数字那张卡，细线之下</b></p>
+      <p class="sub">它们回答的是「以前记过什么 / 上个月怎么样」，和上面那四个数是<b>同一类问题</b>。而且「在途」那个数<b>本来就跳单据页</b>——单据早就是数字的去处，只是入口没放在一起。</p>
+      <p class="sub">这一行现在是三个，且三个同类；上一版撤掉的那一行是五个、混着三类。</p>
+    </div>
+    <div class="n sec-num">4</div>
+    <div>
+      <p><b>库位与供应商挪到列表最下面，标题写「库存设置」</b></p>
+      <p class="sub">它们是<b>档案</b>不是动作，建好就不动。而且常用的那半路本来就不走这儿——进货页选供应商时<b>就能直接新建</b>，调拨缺库位时那一行给「去添加」。留在这一页的是「改名 / 停用 / 设发货源」这些偶尔要做的事，滚到底才见到正合适。</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">取舍</span><h2>取舍写在这儿</h2></div>
+  <div class="prose">
+    <ul>
+      <li><b>贴底那排从三个变四个，宽度会紧。</b>390px 宽下每格约 85px，「进货」「报损」带图标放得下，「盘点」「调拨」两字不带图标也放得下——但阿语更长，要在阿语下量一次再定。</li>
+      <li><b>「库存设置」滚到底才见到，发现性确实变差。</b>这是有意换来的：它一年用不了几次，而每天用几十次的那一屏不该为它让位。真找不到的话，两条路都通（进货页建供应商、调拨那行去库位）。</li>
+      <li><b>「收货 / 继续盘点」保持上一版的做法</b>：贴底面板最上面，常驻不滚走。这条上一轮已经定了，这次不动。</li>
+      <li><b>还没解决的那件事</b>：有盘点单开着时，「盘点」按钮点下去仍会<b>开出第二张</b>，后端一道闸都没有。它和「继续盘点」现在一上一下摆着，重复更明显。改法上一条消息里写了，等你定。</li>
+    </ul>
+  </div>
+</section>
+
+<footer>真源：prototypes/inventory-home-entries.html · 登记：prototypes/registry.json · 原 artifact：<a href="https://claude.ai/artifact/KW55sBD4DFCAE92EcCVXJN">https://claude.ai/artifact/KW55sBD4DFCAE92EcCVXJN</a> · 相关文档：b-app/src/i18n/locale/zh-CN.ts（文案来源）／ prototypes/inventory-bar-entries.html（第一稿）</footer>
+</div>
+</html>

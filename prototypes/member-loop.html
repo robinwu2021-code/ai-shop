@@ -1,0 +1,727 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>会员标签与定向营销</title>
+<!-- 真源在仓库 prototypes/member-loop.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · C 端小程序 · 运营端 · 界面原型 · 2026-09-19</div>
+  <h1>会员标签与定向营销</h1>
+  <p class="sub">把会员接到营销上：给人打标签、归成人群，再在活动、发券、发消息三处用<b>同一块选人面板</b>选人；
+  发出去之后看谁来了、谁下单，再把这批人打标或存成人群，回到起点。二十四屏。</p>
+  <p class="sub" style="margin-top:10px">写法全部沿用<a href="https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt">营销 v2 画布</a>的七条约定（底部操作栏、三行卡、分组列表、≤3 用分段、状态才用标签、每屏最多一条提示）；
+  营销那边已画的屏只标差异，不重画。标「待拍板」的说明条对应需求文档 §十 待拍板的那几条。</p>
+
+  <p class="sub" style="margin-top:14px">闭环：<a href="#m01"><b>会员名单</b> m01–m03</a> → <a href="#m04"><b>打标签</b> m04–m09</a> → <a href="#m10"><b>存成人群</b> m10–m11</a> → <a href="#m12"><b>选人面板</b> m12–m13</a> → <a href="#m14"><b>活动 · 发券 · 发消息</b> m14–m18</a> → <a href="#c01"><b>买家收到、进店、下单</b> c01</a> → <a href="#m19"><b>效果回看</b> m19–m20</a> ↺ <a href="#m06"><b>回到打标 / 人群</b> m20 → m06 · m11</a></p>
+  <p class="sub">底座是分层口径（<a href="#m21">m21</a>）：「沉睡 24 人」每天凌晨重算，否则整条链从第一个数字就是错的。运营端只看、不改商家的标签（<a href="#o01">o01–o02</a>）。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">对账</span><h2>需求验收标准 → 画在哪一屏</h2></div>
+  <p class="sub">依据 docs/requirements/PRD-会员标签与定向营销.md。每条 AC 至少落在一屏上；没有落点的 AC 与挂不上 AC 的屏都算缺陷。</p>
+  <div class="tw"><table class="spec">
+    <tr><th>AC</th><th>要看到什么</th><th>屏</th></tr>
+    <tr><td>AC-1</td><td>详情页打「爱囤货」，列表按它筛得到；去掉后筛不到</td><td><a href="#m04">m04</a> · <a href="#m05">m05</a> · <a href="#m02">m02</a></td></tr>
+    <tr><td>AC-2</td><td>批量打标确认前写明人数，已有的不重复计</td><td><a href="#m06">m06</a></td></tr>
+    <tr><td>AC-3</td><td>每人 ≤ 10 个、每店 ≤ 50 个，上限写在选择面板里</td><td><a href="#m05">m05</a> · <a href="#m07">m07</a></td></tr>
+    <tr><td>AC-4</td><td>线索会员能打标签，但进不了受众，「发不出」里分档写明</td><td><a href="#m05">m05</a> · <a href="#m12">m12</a></td></tr>
+    <tr><td>AC-5–7</td><td>分层每天重算、口径可见；重算不推送</td><td><a href="#m01">m01</a> · <a href="#m21">m21</a> · <a href="#o02">o02</a></td></tr>
+    <tr><td>AC-8</td><td>活动受众可选标签 / 人群</td><td><a href="#m14">m14</a> · <a href="#m13">m13</a></td></tr>
+    <tr><td>AC-9</td><td>活动按发布时的人群条件生效</td><td><a href="#m11">m11</a> · <a href="#m15">m15</a></td></tr>
+    <tr><td>AC-10</td><td>覆盖 0 人不让发布，原因写在按钮上方</td><td><a href="#m16">m16</a></td></tr>
+    <tr><td>AC-11</td><td>发券直接选标签</td><td><a href="#m17">m17</a></td></tr>
+    <tr><td>AC-12–14</td><td>发出 / 来了 / 成单三个数；7 天窗口，归最近一次</td><td><a href="#c01">c01</a> · <a href="#m19">m19</a> · <a href="#m20">m20</a></td></tr>
+    <tr><td>AC-15</td><td>运营端看得到触达次数与跳过率，看不到标签名与人群条件</td><td><a href="#o01">o01</a></td></tr>
+  </table></div>
+</section>
+
+<!-- ══════════ 名单 ══════════ -->
+<section>
+  <div class="sec-head"><span class="sec-num">m01 — m03</span><h2>会员名单：筛出一批人</h2></div>
+  <p class="sub">入口仍在「我的 › 会员」。筛选的结果不是终点：底部「对这批人」一次给出四个去处，闭环从这里出发。</p>
+  <div class="grid">
+
+    <figure id="m01">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">会员</span><span></span></div>
+        <div class="scr">
+          <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+            <div><div class="n num">38</div><div class="l">新客</div></div>
+            <div><div class="n num">62</div><div class="l">常客</div></div>
+            <div><div class="n num">17</div><div class="l">熟客</div></div>
+            <div><div class="n num" style="color:var(--sh-primary-text)">24</div><div class="l">沉睡</div></div>
+          </div>
+          <div class="gt" style="display:flex;justify-content:space-between"><span>今天 03:00 按口径重算</span><span class="num">能收到消息 118 / 141</span></div>
+          <div class="group"><div class="frow"><span class="k">输入完整手机号查找</span></div></div>
+          <div class="card">
+            <div class="hd"><span class="nm num">张阿姨 ···1234</span><span class="chip warn">沉睡</span></div>
+            <div class="meta">爱囤货 · 不要辣</div>
+            <div class="metric num">近 90 天 0 单 · 上次 68 天前</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm num">李师傅 ···8802</span><span class="chip">熟客</span></div>
+            <div class="meta">只要土鸡蛋</div>
+            <div class="metric num">近 90 天 9 单 · 上次 2 天前</div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">添加</div><div class="btn main">筛选</div></div>
+      </div>
+      <figcaption class="cap"><b>m01 会员</b><span>改：分层下写重算时间；卡片第二行是标签</span></figcaption>
+      <p class="why">「今天 03:00 重算」是给商家的证据：昨天没下单的人今天变成沉睡，不是数据错了。只有沉睡用黄标签——它是唯一需要处理的层。</p>
+    </figure>
+
+    <figure id="m02">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">筛选</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">分层</span><span class="v go">沉睡</span></div>
+            <div class="frow"><span class="k">标签</span><span class="v go">爱囤货</span></div>
+            <div class="frow"><span class="k">来源</span><span class="v go ph-">不限</span></div>
+            <div class="frow"><span class="k">门店</span><span class="v go">南门店</span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">上次下单</span><span class="v go num">60 天以前</span></div>
+            <div class="frow"><span class="k">累计消费</span><span class="v go ph-">不限</span></div>
+          </div>
+          <div class="sum" style="display:flex;justify-content:space-between"><span>命中 <b class="num">37</b> 人</span><span>能收到消息 <b class="num">31</b></span></div>
+        </div>
+        <div class="foot"><div class="btn sec">重置</div><div class="btn main">看这 37 人</div></div>
+      </div>
+      <figcaption class="cap"><b>m02 筛选</b><span>各条件同时满足；选两个标签 = 同时含这两个</span></figcaption>
+      <p class="why">两个数一起给：命中是「符合条件的人」，能收到是「消息发得到的人」。只给一个，商家发完消息会以为少发了。</p>
+    </figure>
+
+    <figure id="m03">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">37 人</span><span></span></div>
+        <div class="scr">
+          <div class="meta">沉睡 · 爱囤货 · 南门店 · 上次下单 60 天以前</div>
+          <div class="card">
+            <div class="hd"><span class="nm num">张阿姨 ···1234</span><span class="chip warn">沉睡</span></div>
+            <div class="meta">爱囤货 · 不要辣</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm num">王叔 ···5510</span><span class="chip warn">沉睡</span></div>
+            <div class="meta">爱囤货</div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn main">对这批人</div></div>
+        <div class="mask"><div class="sheet">
+          <div class="h">对这 37 人</div>
+          <div class="group" style="background:var(--sh-bg)">
+            <div class="frow"><span>打标签</span><span class="v go"></span></div>
+            <div class="frow"><span>存为人群</span><span class="v go"></span></div>
+            <div class="frow"><span>发券</span><span class="v go num">能收到 31</span></div>
+            <div class="frow"><span>发消息</span><span class="v go num">能收到 31</span></div>
+          </div>
+          <div class="acts"><div class="btn sec">取消</div></div>
+        </div></div>
+      </div>
+      <figcaption class="cap"><b>m03 对这批人</b><span>四个去处 → m06 · m11 · m17 · m18</span></figcaption>
+      <p class="why">替换 v1 s03 那一排三个按钮：「存为人群」原来是个胶囊，找不到；四件事放进同一张面板，谁先谁后不用商家记。</p>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ══════════ 打标签 ══════════ -->
+<section>
+  <div class="sec-head"><span class="sec-num">m04 — m09</span><h2>打标签：一个一个打，或者一批打</h2></div>
+  <p class="sub">今天后端能打、页面没有入口。补两个入口（详情页一人、名单一批），再把标签管理页从「字典」升级成「这个标签被用在哪」。系统分层不在这里改。</p>
+  <div class="grid">
+
+    <figure id="m04">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">张阿姨</span><span></span></div>
+        <div class="scr">
+          <div class="stats">
+            <div><div class="n num">0</div><div class="l">近 90 天单数</div></div>
+            <div><div class="n num">¥1,842</div><div class="l">累计</div></div>
+            <div><div class="n num">68 天</div><div class="l">没来</div></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">分层</span><span class="v"><span class="chip warn">沉睡</span></span></div>
+            <div class="frow"><span class="k">加入</span><span class="v num">03-12 · 南门店</span></div>
+            <div class="frow"><span class="k">标签</span><span class="v go">爱囤货 · 不要辣</span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span>各店往来</span><span class="v go num">2 家</span></div>
+            <div class="frow"><span>来源轨迹</span><span class="v go">李姐分享</span></div>
+            <div class="frow"><span>最近触达</span><span class="v go num">09-12 唤回 · 已下单</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">发券</div><div class="btn main">发消息</div></div>
+      </div>
+      <figcaption class="cap"><b>m04 会员详情</b><span>加「标签」「最近触达」两行</span></figcaption>
+      <p class="why">「最近触达」是回看链路在单个人身上的落点：商家打电话前能先看到上周已经发过一次唤回，而且她来了。</p>
+    </figure>
+
+    <figure id="m05">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">张阿姨</span><span></span></div>
+        <div class="scr">
+          <div class="stats">
+            <div><div class="n num">0</div><div class="l">近 90 天单数</div></div>
+            <div><div class="n num">¥1,842</div><div class="l">累计</div></div>
+            <div><div class="n num">68 天</div><div class="l">没来</div></div>
+          </div>
+        </div>
+        <div class="mask"><div class="sheet">
+          <div class="h">张阿姨的标签</div>
+          <div class="group" style="background:var(--sh-bg)">
+            <div class="pickrow on"><span>爱囤货</span><span class="c num">41</span></div>
+            <div class="pickrow on"><span>不要辣</span><span class="c num">9</span></div>
+            <div class="pickrow"><span>只要土鸡蛋</span><span class="c num">6</span></div>
+            <div class="pickrow"><span>晚上来</span><span class="c num">4</span></div>
+            <div class="frow add">＋ 新建标签</div>
+          </div>
+          <div class="d num">已选 2 个，最多 10 个</div>
+          <div class="acts"><div class="btn sec">取消</div><div class="btn">保存</div></div>
+        </div></div>
+      </div>
+      <figcaption class="cap"><b>m05 选标签</b><span>多选；上限写在面板里，不等报错</span></figcaption>
+      <p class="why">分层（沉睡、熟客）不在这张面板里：它是按口径算出来的，能手改就三周后没人敢用它筛人。线索会员也能打，打了不等于能给他发消息。</p>
+    </figure>
+
+    <figure id="m06">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">37 人</span><span></span></div>
+        <div class="scr">
+          <div class="meta">沉睡 · 爱囤货 · 南门店</div>
+          <div class="card"><div class="hd"><span class="nm num">张阿姨 ···1234</span><span class="chip warn">沉睡</span></div></div>
+        </div>
+        <div class="mask"><div class="sheet">
+          <div class="h">给 37 人打标签</div>
+          <div class="group" style="background:var(--sh-bg)">
+            <div class="frow"><span class="k">动作</span><span class="seg" style="width:110px"><span class="on">打上</span><span>去掉</span></span></div>
+            <div class="frow"><span class="k">标签</span><span class="v go">中秋唤回</span></div>
+          </div>
+          <div class="d num">其中 5 人已经有这个标签，实际新增 32 人</div>
+          <div class="acts"><div class="btn sec">取消</div><div class="btn">打上</div></div>
+        </div></div>
+      </div>
+      <figcaption class="cap"><b>m06 批量打标</b><span>从 m03 或 m20 进来；一次一个标签</span></figcaption>
+      <p class="why">一次只打一个标签：批量同时打三个，撤的时候就说不清哪批人是哪次打的。确认前把「实际新增」算好，这是 AC-2。</p>
+    </figure>
+
+    <figure id="m07">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">标签</span><span></span></div>
+        <div class="scr">
+          <div class="gt"><span>分层 · 按口径每天自动算</span></div>
+          <div class="group">
+            <div class="frow"><span>新客</span><span class="v num">38</span></div>
+            <div class="frow"><span>常客</span><span class="v num">62</span></div>
+            <div class="frow"><span>熟客</span><span class="v num">17</span></div>
+            <div class="frow"><span>沉睡</span><span class="v num">24</span></div>
+            <div class="frow"><span class="k">口径</span><span class="v go">60 天没来算沉睡</span></div>
+          </div>
+          <div class="gt" style="display:flex;justify-content:space-between"><span>我的标签</span><span class="num">4 / 50</span></div>
+          <div class="group">
+            <div class="frow"><span>爱囤货</span><span class="v go num">41 人</span></div>
+            <div class="frow"><span>囤货党</span><span class="v go num">12 人</span></div>
+            <div class="frow"><span>不要辣</span><span class="v go num">9 人</span></div>
+            <div class="frow"><span>只要土鸡蛋</span><span class="v go num">6 人</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn main">新建标签</div></div>
+      </div>
+      <figcaption class="cap"><b>m07 标签</b><span>分层只读、去掉 ›；口径一行进 m21</span></figcaption>
+      <p class="why">原页面两组都长得像可编辑。按 v2 约定，只读行去掉 ›，商家一眼看得出哪组能动、哪组不能。</p>
+    </figure>
+
+    <figure id="m08">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">爱囤货</span><span></span></div>
+        <div class="scr">
+          <div class="stats">
+            <div><div class="n num">41</div><div class="l">人</div></div>
+            <div><div class="n num">+6</div><div class="l">本月</div></div>
+            <div><div class="n num">2</div><div class="l">处在用</div></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">名称</span><span class="v go">爱囤货</span></div>
+            <div class="frow"><span class="k">状态</span><span class="v"><span class="chip ok">使用中</span></span></div>
+          </div>
+          <div class="gt"><span>用在哪</span></div>
+          <div class="group">
+            <div class="frow"><span>活动 · 会员囤货</span><span class="v go"><span class="chip ok">进行中</span></span></div>
+            <div class="frow"><span>人群 · 南门店囤货老客</span><span class="v go num">37 人</span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span>看这 41 人</span><span class="v go"></span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">合并</div><div class="btn danger">停用</div></div>
+      </div>
+      <figcaption class="cap"><b>m08 标签详情</b><span>新增：「用在哪」</span></figcaption>
+      <p class="why">停用和合并都会影响引用它的活动与人群，所以先让商家看见引用；只有 0 处在用时，停用才不弹确认。</p>
+    </figure>
+
+    <figure id="m09">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">囤货党</span><span></span></div>
+        <div class="scr">
+          <div class="stats">
+            <div><div class="n num">12</div><div class="l">人</div></div>
+            <div><div class="n num">0</div><div class="l">本月</div></div>
+            <div><div class="n num">1</div><div class="l">处在用</div></div>
+          </div>
+        </div>
+        <div class="mask"><div class="sheet">
+          <div class="h">把「囤货党」并入「爱囤货」？</div>
+          <div class="group" style="background:var(--sh-bg)">
+            <div class="frow"><span class="k">改为爱囤货</span><span class="v num">12 人</span></div>
+            <div class="frow"><span class="k">两个都有，只留一个</span><span class="v num">5 人</span></div>
+            <div class="frow"><span class="k">引用自动改指</span><span class="v">1 个人群</span></div>
+          </div>
+          <div class="d">合并后不能撤销</div>
+          <div class="acts"><div class="btn sec">取消</div><div class="btn danger-solid">合并</div></div>
+        </div></div>
+      </div>
+      <figcaption class="cap"><b>m09 合并确认</b><span>影响面逐项列出</span></figcaption>
+      <p class="why">关系行存标签号不存文字，改名一行不动；合并才是不可逆的那个动作，所以只有它用红实心按钮。</p>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ══════════ 人群 ══════════ -->
+<section>
+  <div class="sec-head"><span class="sec-num">m10 — m11</span><h2>人群：存的是条件，不是名单</h2></div>
+  <p class="sub">人群是「下次还要用」的筛选。名单每天在变，每次使用时当场重算；列表上的人数只是上次算的结果，带时间。</p>
+  <div class="grid">
+
+    <figure id="m10">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">人群</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm">南门店沉睡老客</span></div>
+            <div class="meta">沉睡 · 爱囤货 · 南门店</div>
+            <div class="metric num">37 人 · 能收到 31 · 今天 09:12 算</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">扫码进来的新客</span></div>
+            <div class="meta">新客 · 来源扫码</div>
+            <div class="metric num">22 人 · 能收到 20 · 昨天算</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">手录的老街坊</span><span class="chip warn">收不到消息</span></div>
+            <div class="meta">来源录入</div>
+            <div class="metric num">15 人 · 能收到 0 · 今天 08:40 算</div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn main">新建人群</div></div>
+      </div>
+      <figcaption class="cap"><b>m10 人群列表</b><span>新建即回到 m02 筛选</span></figcaption>
+      <p class="why">「能收到 0」标黄：一群全是线索会员，发消息一条也发不出去——商家最该在点「发送」之前知道。</p>
+    </figure>
+
+    <figure id="m11">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">南门店沉睡老客</span><span></span></div>
+        <div class="scr">
+          <div class="stats">
+            <div><div class="n num">37</div><div class="l">命中</div></div>
+            <div><div class="n num">31</div><div class="l">能收到</div></div>
+            <div><div class="n num">3</div><div class="l">处在用</div></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">分层</span><span class="v">沉睡</span></div>
+            <div class="frow"><span class="k">标签</span><span class="v">爱囤货</span></div>
+            <div class="frow"><span class="k">门店</span><span class="v">南门店</span></div>
+            <div class="frow"><span class="k">条件</span><span class="v go">改条件</span></div>
+          </div>
+          <div class="gt"><span>用在哪</span></div>
+          <div class="group">
+            <div class="frow"><span>活动 · 中秋唤回</span><span class="v go"><span class="chip ok">进行中</span></span></div>
+            <div class="frow"><span>发券 · 09-12</span><span class="v go num">成单 3</span></div>
+            <div class="frow"><span>消息 · 09-10</span><span class="v go num">成单 2</span></div>
+          </div>
+          <div class="note">改条件不影响「中秋唤回」：进行中的活动按发布那一刻的条件生效</div>
+        </div>
+        <div class="foot"><div class="btn danger">删除</div><div class="btn main">发给他们</div></div>
+      </div>
+      <figcaption class="cap"><b>m11 人群详情</b><span>「用在哪」三类，发券 / 消息进 m20</span></figcaption>
+      <p class="why">待拍板 #2：活动引用人群时存条件快照（本屏按此画）。另一种是存引用、改条件时提示「有 1 个进行中的活动在用」——更直观，但改人群就等于改了活动规则。</p>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ══════════ 选人面板 ══════════ -->
+<section>
+  <div class="sec-head"><span class="sec-num">m12 — m13</span><h2>选人面板：三处共用的那一块</h2></div>
+  <p class="sub">活动、发券、发消息今天各有一份「选给谁」，选项还不一样（活动四项、发券四项加人群、发消息只有人群）。
+  合成一块：分层、标签、人群、来源四组多选，<b>组内组间都取或</b>；存下来的是这几项，不是人。活动多一个「非本店会员」，且与其余互斥。</p>
+  <div class="grid">
+
+    <figure id="m12">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">发给</span><span></span></div>
+        <div class="scr">
+          <div class="gt" style="display:flex;justify-content:space-between"><span>分层</span><span>满足任一即可</span></div>
+          <div class="group">
+            <div class="pickrow"><span>新客</span><span class="c num">38</span></div>
+            <div class="pickrow"><span>熟客</span><span class="c num">17</span></div>
+            <div class="pickrow on"><span>沉睡</span><span class="c num">24</span></div>
+            <div class="frow"><span class="k">全部分层</span><span class="v go num">4 个</span></div>
+          </div>
+          <div class="gt"><span>我的标签</span></div>
+          <div class="group">
+            <div class="pickrow on"><span>爱囤货</span><span class="c num">41</span></div>
+            <div class="frow"><span class="k">全部标签</span><span class="v go num">4 个</span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">我的人群</span><span class="v go ph-">未选</span></div>
+            <div class="frow"><span class="k">来源</span><span class="v go ph-">不限</span></div>
+          </div>
+          <div class="sum" style="display:flex;justify-content:space-between"><span>命中 <b class="num">52</b> 人</span><span>能收到 <b class="num">47</b></span></div>
+          <div class="meta num" style="padding:0 4px">发不出 5 人：最近收到过 2 · 关闭了消息 1 · 手录未同意 2</div>
+        </div>
+        <div class="foot"><div class="btn sec">取消</div><div class="btn main">确定</div></div>
+      </div>
+      <figcaption class="cap"><b>m12 选人 · 发券 / 发消息</b><span>多选，下方实时两数 + 发不出原因</span></figcaption>
+      <p class="why">面板里选的几项是「满足任一」，和筛选页「同时满足」相反，所以组标题写明。沉睡 24 + 爱囤货 41 = 52 而不是 65：两组有 13 人重叠，只算一次。要「既沉睡又爱囤货」，先在筛选里存成人群再选它。发不出的原因沿用发消息页已有的四档，一个字不新增。</p>
+    </figure>
+
+    <figure id="m13">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">人群</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="pickrow"><span>所有人</span><span class="c"></span></div>
+            <div class="pickrow on"><span>非本店会员</span><span class="c">只给陌生人</span></div>
+          </div>
+          <div class="gt"><span>分层</span></div>
+          <div class="group">
+            <div class="pickrow" style="opacity:.45"><span>沉睡</span><span class="c num">24</span></div>
+            <div class="pickrow" style="opacity:.45"><span>熟客</span><span class="c num">17</span></div>
+          </div>
+          <div class="gt"><span>我的标签 · 人群 · 来源</span></div>
+          <div class="group">
+            <div class="frow"><span class="k">选了「非本店会员」时不能再选</span></div>
+          </div>
+          <div class="sum" style="display:flex;justify-content:space-between"><span>覆盖</span><span>所有不是本店会员的人</span></div>
+        </div>
+        <div class="foot"><div class="btn sec">取消</div><div class="btn main">确定</div></div>
+      </div>
+      <figcaption class="cap"><b>m13 选人 · 活动</b><span>多两行：所有人、非本店会员</span></figcaption>
+      <p class="why">待拍板 #4：「非本店会员」B 端已上线，本版只补与其他项互斥。活动不推送，所以这里只给「覆盖」，没有「能收到」。</p>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ══════════ 三处接入 ══════════ -->
+<section>
+  <div class="sec-head"><span class="sec-num">m14 — m18</span><h2>接到营销上：活动、发券、发消息</h2></div>
+  <p class="sub">这五屏是营销 v2 已有屏的改版，只动「给谁」相关的行，其余照旧。发送结果页沿用 <a href="https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt#s16">v2 s16</a>，不重画。</p>
+  <div class="grid">
+
+    <figure id="m14">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">新建活动</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">名称</span><span class="v">中秋唤回</span></div>
+            <div class="frow"><span class="k">玩法</span><span class="v go">满减</span></div>
+            <div class="frow"><span class="k">起止</span><span class="v go num">09-19 至 09-27</span></div>
+          </div>
+          <div class="gt"><span>范围</span></div>
+          <div class="group">
+            <div class="frow"><span class="k">商品</span><span class="seg"><span class="on">全店</span><span>类目</span><span>指定</span></span></div>
+            <div class="frow"><span class="k">人群</span><span class="v go">沉睡 · 爱囤货</span></div>
+          </div>
+          <div class="gt"><span>规则</span></div>
+          <div class="group">
+            <div class="frow"><span class="k">满</span><span class="v num">100 元</span></div>
+            <div class="frow"><span class="k">减</span><span class="v num">15 元</span></div>
+          </div>
+          <div class="gt"><span>上限</span></div>
+          <div class="group">
+            <div class="frow"><span class="k">份数</span><span class="v num">60</span></div>
+            <div class="frow"><span class="k">每人</span><span class="v go">1 次</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">上一步</div><div class="btn main">下一步</div></div>
+      </div>
+      <figcaption class="cap"><b>m14 填写 · 人群</b><span>对照 <a href="https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt#s04">v2 s04</a>：只有「人群」一行变了</span></figcaption>
+      <p class="why">「人群」行点开是 m13。值写成商家选的那几项（「沉睡 · 爱囤货」），不写人数——人数在确认页，那时才当场算。</p>
+    </figure>
+
+    <figure id="m15">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">新建活动</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">名称</span><span class="v">中秋唤回</span></div>
+            <div class="frow"><span class="k">时间</span><span class="v num">09-19 至 09-27</span></div>
+            <div class="frow"><span class="k">规则</span><span class="v num">满 100 减 15</span></div>
+            <div class="frow"><span class="k">人群</span><span class="v">沉睡 · 爱囤货</span></div>
+            <div class="frow"><span class="k">覆盖</span><span class="v hot num">52 人</span></div>
+            <div class="frow"><span class="k">上限</span><span class="v num">60 份 · 每人 1 次</span></div>
+            <div class="frow"><span class="k">最多让利</span><span class="v num">¥900</span></div>
+          </div>
+          <div class="note">与「周三特价」商品重叠，同一单只享更优惠的一个</div>
+        </div>
+        <div class="foot"><div class="btn sec">存草稿</div><div class="btn main">发布</div></div>
+      </div>
+      <figcaption class="cap"><b>m15 确认 · 覆盖人数</b><span>对照 <a href="https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt#s06">v2 s06</a>：加「人群」「覆盖」两行</span></figcaption>
+      <p class="why">覆盖 52、份数 60：份数比人多，说明上限不会先到。反过来份数远小于覆盖时，商家要知道「只有前 N 个人抢得到」。</p>
+    </figure>
+
+    <figure id="m16">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">新建活动</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">名称</span><span class="v">熟客尝鲜</span></div>
+            <div class="frow"><span class="k">规则</span><span class="v num">第二件 5 折</span></div>
+            <div class="frow"><span class="k">人群</span><span class="v">熟客 · 只要土鸡蛋 · 北门店</span></div>
+            <div class="frow"><span class="k">覆盖</span><span class="v hot num">0 人</span></div>
+          </div>
+          <div class="note">这个人群里现在一个人也没有，发布了也没人能享受。回到上一步换个人群</div>
+        </div>
+        <div class="foot"><div class="btn sec">上一步</div><div class="btn sec main">发布</div></div>
+      </div>
+      <figcaption class="cap"><b>m16 确认 · 覆盖 0 人</b><span>发布置灰，原因在按钮上方</span></figcaption>
+      <p class="why">「存草稿」换成「上一步」：0 人时唯一有用的动作是回去改人群。按钮置灰但原因要写出来——光灰着，商家会以为是网络卡了。</p>
+    </figure>
+
+    <figure id="m17">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">发放</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">券</span><span class="v">满 50 减 5</span></div>
+            <div class="frow"><span class="k">剩余</span><span class="v num">72 张</span></div>
+          </div>
+          <div class="gt"><span>发给</span></div>
+          <div class="group">
+            <div class="frow"><span class="k">人群</span><span class="v go">沉睡 · 爱囤货</span></div>
+            <div class="frow"><span class="k">命中</span><span class="v num">52 人</span></div>
+            <div class="frow"><span class="k">能收到</span><span class="v num">47 人</span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">最多支出</span><span class="v num">¥235</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">取消</div><div class="btn main">发放 47 张</div></div>
+      </div>
+      <figcaption class="cap"><b>m17 发券 · 选人</b><span>对照 <a href="https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt#s18">v2 s18</a>：四选一换成 m12</span></figcaption>
+      <p class="why">按钮写实际张数「发放 47 张」而不是「发放」：最多支出按 47 算，不按 52。发完进 v2 s16 看跳过明细。</p>
+    </figure>
+
+    <figure id="m18">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">发消息</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">类型</span><span class="v go">唤回</span></div>
+            <div class="frow"><span class="k">内容</span><span class="v go">中秋新米到了，给你留了两袋</span></div>
+          </div>
+          <div class="gt"><span>发给</span></div>
+          <div class="group">
+            <div class="frow"><span class="k">人群</span><span class="v go">南门店沉睡老客</span></div>
+            <div class="frow"><span class="k">能收到</span><span class="v num">31 / 37 人</span></div>
+            <div class="frow"><span class="k">附一张券</span><span class="v go ph-">不附</span></div>
+          </div>
+          <div class="note">唤回消息：同一个人 14 天内最多收到一条</div>
+        </div>
+        <div class="foot"><div class="btn sec">取消</div><div class="btn main">发送</div></div>
+      </div>
+      <figcaption class="cap"><b>m18 发消息</b><span>「人群」行同样打开 m12</span></figcaption>
+      <p class="why">频次按消息类型各不同（公告 3 天、发券通知 7 天、唤回 14 天，与现有页面一致），所以提示跟着「类型」变，只写当前这一种。</p>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ══════════ C 端 ══════════ -->
+<section>
+  <div class="sec-head"><span class="sec-num">c01</span><h2>买家这一侧：「来了」从哪来</h2></div>
+  <p class="sub">回看的三个数里，「来了」与「成单」都靠买家这一侧打点：点消息进店页记一次「来了」，7 天内在本店下单记「成单」，归到最近一次触达。</p>
+  <div class="grid">
+
+    <figure id="c01">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">张记粮油</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="meta">张记粮油 · 唤回</span><span class="meta num">09-12 10:05</span></div>
+            <span class="nm">中秋新米到了，给你留了两袋</span>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">张记粮油</span><span class="chip">★ 4.9</span></div>
+            <div class="meta">阳光里小区南门 · 06:30–21:00</div>
+          </div>
+          <div class="group">
+            <div class="frow"><span>中秋唤回</span><span class="v hot num">满 100 减 15</span></div>
+            <div class="frow"><span>我的券</span><span class="v go num">1 张</span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span>接收这家店的消息</span><span class="sw on"></span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>c01 点消息进店</b><span>进这一页即记「来了」</span></figcaption>
+      <p class="why">退订开关就在消息落地的这一页：藏进设置，买家的选择就是去系统里关掉整个 App 的通知——那是整个平台的损失。</p>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ══════════ 回看 ══════════ -->
+<section>
+  <div class="sec-head"><span class="sec-num">m19 — m20</span><h2>效果回看：发出 → 来了 → 成单，再回到打标</h2></div>
+  <p class="sub">入口两处：营销首页（<a href="https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt#s01">v2 s01</a>）加一行「发出去的」，人群详情（m11）的「用在哪」。口径只有一种：7 天窗口、归最近一次触达。</p>
+  <div class="grid">
+
+    <figure id="m19">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">发出去的</span><span></span></div>
+        <div class="scr">
+          <div class="tabs"><span class="on">全部</span><span>消息</span><span>券</span></div>
+          <div class="card">
+            <div class="hd"><span class="nm">中秋新米到了</span><span class="chip ok">已统计</span></div>
+            <div class="meta num">唤回消息 · 南门店沉睡老客 · 09-12</div>
+            <div class="metric num"><span class="bar"><i style="width:12%"></i></span>25 发出 · 6 来了 · 3 成单</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">满 50 减 5</span><span class="chip ok">在用</span></div>
+            <div class="meta num">发券 · 沉睡 · 爱囤货 · 09-17</div>
+            <div class="metric num"><span class="bar"><i style="width:9%"></i></span>47 发出 · 4 已用 · ¥212</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">周末到货</span><span class="chip ok">已统计</span></div>
+            <div class="meta num">店铺公告 · 全部会员 · 09-06</div>
+            <div class="metric num"><span class="bar"><i style="width:4%"></i></span>112 发出 · 9 来了 · 5 成单</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>m19 发出去的</b><span>消息：发出 · 来了 · 成单（满 7 天「已统计」）；券：发出 · 已用 · 金额</span></figcaption>
+      <p class="why">券只是放进买家券包、不推送，所以没有「来了」，按已用算，且不套 7 天窗口。进度条是成单率 / 使用率，不是发出进度。「统计中」说明窗口还没满 7 天，数字还会涨——免得商家第二天看到 4 单就判定这次失败。</p>
+    </figure>
+
+    <figure id="m20">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">中秋新米到了</span><span></span></div>
+        <div class="scr">
+          <div class="big"><div class="n num">3 单 · ¥186</div><div class="l num">09-12 发给南门店沉睡老客 · 7 天内</div></div>
+          <div class="card">
+            <div class="metric"><span style="width:28px">发出</span><span class="bar"><i style="width:100%"></i></span><b class="num" style="color:var(--sh-ink)">25</b></div>
+            <div class="metric"><span style="width:28px">来了</span><span class="bar"><i style="width:24%"></i></span><b class="num" style="color:var(--sh-ink)">6</b></div>
+            <div class="metric"><span style="width:28px">成单</span><span class="bar"><i style="width:12%"></i></span><b class="num" style="color:var(--sh-ink)">3</b></div>
+          </div>
+          <div class="gt"><span>下单的 3 人</span></div>
+          <div class="group">
+            <div class="frow"><span class="num">张阿姨 ···1234</span><span class="v go num">¥62</span></div>
+            <div class="frow"><span class="num">王叔 ···5510</span><span class="v go num">¥88</span></div>
+            <div class="frow"><span class="num">陈姐 ···0917</span><span class="v go num">¥36</span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span>没来的 19 人</span><span class="v go"></span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">没来的存人群</div><div class="btn main">下单的打标签</div></div>
+      </div>
+      <figcaption class="cap"><b>m20 一次触达的效果</b><span>底部两个按钮 → m06 · m11，闭环回到起点</span></figcaption>
+      <p class="why">待拍板 #3：7 天、归最近一次，是否与分享归因（mkt_attribution）的窗口对齐。三个数用同一条尺画，宽度就是比例。</p>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ══════════ 口径 ══════════ -->
+<section>
+  <div class="sec-head"><span class="sec-num">m21</span><h2>分层口径：闭环的底座</h2></div>
+  <p class="sub">今天分层只在下单时算，一个不再下单的人永远不会变成「沉睡」；60 天写死在代码里。改成每天凌晨重算、阈值进平台配置，商家这边只读。</p>
+  <div class="grid">
+
+    <figure id="m21">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">会员设置</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">经营口径</span><span class="seg"><span class="on">按主体</span><span>按门店</span></span></div>
+            <div class="frow"><span>下单自动入会</span><span class="sw on"></span></div>
+          </div>
+          <div class="gt" style="display:flex;justify-content:space-between"><span>分层口径 · 平台统一</span><span class="num">今天 03:00 算</span></div>
+          <div class="group">
+            <div class="frow"><span>沉睡</span><span class="v num">60 天没下单</span></div>
+            <div class="frow"><span>熟客</span><span class="v num">近 90 天 ≥ 6 单</span></div>
+            <div class="frow"><span>常客</span><span class="v num">近 90 天 2–5 单</span></div>
+            <div class="frow"><span>新客</span><span class="v num">近 90 天 0–1 单</span></div>
+          </div>
+          <div class="meta" style="padding:0 4px">先判沉睡：一个熟客三个月没来，算沉睡，不算熟客</div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>m21 会员设置 · 口径</b><span>加一组只读；数字即现行代码阈值</span></figcaption>
+      <p class="why">待拍板 #1：凌晨全量重算（本屏按此画，保留下单即时算）还是读时懒算。写出「先判沉睡」是因为商家一定会问：他明明买了很多次，为什么是沉睡。</p>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ══════════ 运营端 ══════════ -->
+<section>
+  <div class="sec-head"><span class="sec-num">o01 — o02</span><h2>运营端：看得见谁在轰炸，改不了商家的标签</h2></div>
+  <p class="sub">挂在「会员与人档」下，与现有「触达健康度」合并为一个 tab。标签是商家的资产，平台不解释含义、不列标签名；只看数量、频次与跳过率。</p>
+  <div class="grid">
+
+    <figure id="o01" class="wide">
+      <div class="desk">
+        <div class="side"><b>会员与人档</b><span>会员名单</span><span>人档</span><span class="on">人群与触达</span><span>分层口径</span></div>
+        <div class="main">
+          <div class="hdr"><b>人群与触达 · 近 30 天</b><span class="meta">按跳过率从高到低</span></div>
+          <div class="tw"><table>
+            <tr><th>商家</th><th>会员</th><th>标签数</th><th>人群数</th><th>触达次数</th><th>发出人次</th><th>跳过率</th><th>退订</th></tr>
+            <tr><td>鲜果直供</td><td class="num">1,204</td><td class="num">18</td><td class="num">9</td><td class="num">12</td><td class="num">6,310</td><td><span class="chip warn">41%</span></td><td class="num">37</td></tr>
+            <tr><td>张记粮油</td><td class="num">141</td><td class="num">4</td><td class="num">3</td><td class="num">3</td><td class="num">184</td><td class="num">12%</td><td class="num">1</td></tr>
+            <tr><td>老王蔬菜</td><td class="num">96</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num">88</td><td class="num">8%</td><td class="num">0</td></tr>
+          </table></div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>o01 人群与触达</b><span>一行一个商家；没有标签名、没有人群条件</span></figcaption>
+      <p class="why">跳过率高＝商家在反复给同一批人发，被频次闸拦下；退订多＝发的内容没人要。这两列是运营找商家谈话的依据，不需要知道他给谁打了什么标签。</p>
+    </figure>
+
+    <figure id="o02" class="wide">
+      <div class="desk">
+        <div class="side"><b>会员与人档</b><span>会员名单</span><span>人档</span><span>人群与触达</span><span class="on">分层口径</span></div>
+        <div class="main">
+          <div class="hdr"><b>分层口径</b><span style="display:flex;gap:8px"><span class="btn sec">现在重算</span><span class="btn">保存</span></span></div>
+          <div class="cols">
+            <div class="group">
+              <div class="frow"><span class="k">沉睡：多少天没下单</span><span class="v num">60 天</span></div>
+              <div class="frow"><span class="k">熟客：近 90 天单数 ≥</span><span class="v num">6</span></div>
+              <div class="frow"><span class="k">常客：近 90 天单数 ≥</span><span class="v num">2</span></div>
+            </div>
+            <div class="group">
+              <div class="frow"><span class="k">上次重算</span><span class="v num">今天 03:00 · 用时 41 秒</span></div>
+              <div class="frow"><span class="k">变更的会员</span><span class="v num">1,318 人</span></div>
+              <div class="frow"><span class="k">其中新变沉睡</span><span class="v num">402 人</span></div>
+            </div>
+          </div>
+          <div class="note">改了明天 03:00 起生效；想马上看到效果点「现在重算」。重算不发任何消息</div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>o02 分层口径</b><span>三个阈值 + 上次重算</span></figcaption>
+      <p class="why">「其中新变沉睡 402 人」第一次上线时会很大——那是历史欠账一次性显形，不是事故；写出来，免得运营以为重算跑错了。</p>
+    </figure>
+
+  </div>
+</section>
+
+<footer>
+  真源：prototypes/member-loop.html · 登记：prototypes/registry.json · 原 artifact：<a href="https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc">https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc</a><br>
+  相关文档：docs/requirements/PRD-会员标签与定向营销.md ／ docs/requirements/会员体系与活动联动-需求.md ／ docs/requirements/PRD-营销-活动统一模型.md ／ docs/technical/TDD-会员标签与定向营销.md<br>
+  营销 v2 画布：s01 加「发出去的」一行 · s04/s05 人群行 → m14 · s06 → m15/m16 · s18 → m17；其余不变<br>
+  会员 v1 画布 s02–s07 由本画布 m01–m09、m21 取代；运营端两屏是示意，样式细节以 ops-web 为准
+</footer>
+</div>
+</html>

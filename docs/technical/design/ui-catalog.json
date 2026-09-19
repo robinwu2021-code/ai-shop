@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 80,
+      "count": 77,
       "domains": [
         {
           "name": "工作台",
@@ -767,39 +767,6 @@
               "proto": "s05",
               "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
               "preview": null
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/member-tags/index",
-              "title": "标签与合并",
-              "domain": "会员与营销",
-              "tab": false,
-              "status": "原型",
-              "proto": "m07",
-              "protoUrl": "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc",
-              "preview": null
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/member-settings/index",
-              "title": "会员口径设置",
-              "domain": "会员与营销",
-              "tab": false,
-              "status": "原型",
-              "proto": "m21",
-              "protoUrl": "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc",
-              "preview": null
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/segments/index",
-              "title": "人群",
-              "domain": "会员与营销",
-              "tab": false,
-              "status": "原型",
-              "proto": null,
-              "protoUrl": null,
-              "preview": null
             }
           ]
         },
@@ -840,8 +807,8 @@
               "domain": "进销存",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s01",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
               "preview": "http://localhost:5175/#/pages/stock/index"
             },
             {
@@ -851,8 +818,8 @@
               "domain": "进销存",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s02",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
               "preview": "http://localhost:5175/#/pages/stock-detail/index"
             },
             {
@@ -862,8 +829,8 @@
               "domain": "进销存",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s03",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
               "preview": "http://localhost:5175/#/pages/stock-check/index"
             },
             {
@@ -873,8 +840,8 @@
               "domain": "进销存",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s04",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
               "preview": "http://localhost:5175/#/pages/purchase-edit/index"
             },
             {
@@ -884,8 +851,8 @@
               "domain": "进销存",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s05",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
               "preview": "http://localhost:5175/#/pages/stock-docs/index"
             },
             {
@@ -895,8 +862,8 @@
               "domain": "进销存",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s06",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
               "preview": "http://localhost:5175/#/pages/stock-out/index"
             },
             {
@@ -906,8 +873,8 @@
               "domain": "进销存",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s07",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
               "preview": "http://localhost:5175/#/pages/transfer/index"
             },
             {
@@ -917,8 +884,8 @@
               "domain": "进销存",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s08",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
               "preview": "http://localhost:5175/#/pages/stock-report/index"
             },
             {
@@ -939,8 +906,8 @@
               "domain": "进销存",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s09",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
               "preview": "http://localhost:5175/#/pages/locations/index"
             }
           ]
@@ -1099,7 +1066,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
-              "protoUrl": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
+              "protoUrl": "https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i",
               "preview": "http://localhost:5176/#/pages/address/index"
             },
             {
@@ -1110,7 +1077,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
-              "protoUrl": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
+              "protoUrl": "https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i",
               "preview": "http://localhost:5176/#/pages/address-pick/index"
             },
             {
@@ -1235,7 +1202,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
-              "protoUrl": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
+              "protoUrl": "https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i",
               "preview": "http://localhost:5176/#/pages/address-edit/index"
             },
             {
@@ -1246,7 +1213,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
-              "protoUrl": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
+              "protoUrl": "https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i",
               "preview": "http://localhost:5176/#/pages/city-pick/index"
             },
             {
@@ -1375,7 +1342,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 145,
+      "count": 142,
       "domains": [
         {
           "name": "经营看板",
@@ -1415,6 +1382,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/merchants"
             },
             {
@@ -1427,6 +1395,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/merchants?tab=list"
             },
             {
@@ -1439,6 +1408,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/merchants?tab=stores"
             },
             {
@@ -1451,6 +1421,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/merchants?tab=categories"
             },
             {
@@ -1463,6 +1434,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/merchants?tab=qualifications"
             },
             {
@@ -1475,6 +1447,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/merchants?tab=admission"
             },
             {
@@ -1487,6 +1460,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/merchants?tab=onboarding"
             },
             {
@@ -1499,6 +1473,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/merchants?tab=self-operated"
             },
             {
@@ -1511,6 +1486,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/merchants?tab=on-behalf"
             },
             {
@@ -1523,6 +1499,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/merchants?tab=mode-risk"
             },
             {
@@ -1535,6 +1512,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/merchants?tab=verify"
             },
             {
@@ -1547,6 +1525,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/merchants?tab=credit"
             },
             {
@@ -1559,6 +1538,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/merchants?tab=ban"
             },
             {
@@ -1571,6 +1551,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/merchants?tab=plans"
             },
             {
@@ -1583,6 +1564,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/merchants?tab=plan-defs"
             },
             {
@@ -1595,6 +1577,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/merchants?tab=chain"
             },
             {
@@ -1607,6 +1590,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/stores"
             },
             {
@@ -1619,6 +1603,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/stores?tab=template"
             },
             {
@@ -1631,6 +1616,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/stores?tab=qrcode"
             },
             {
@@ -1643,6 +1629,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/stores?tab=effect"
             }
           ]
@@ -1670,6 +1657,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/products"
             },
             {
@@ -1682,6 +1670,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/products?tab=skus"
             },
             {
@@ -1694,6 +1683,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/products?tab=audit"
             },
             {
@@ -1706,6 +1696,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/products?tab=stock"
             },
             {
@@ -1718,6 +1709,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/products?tab=templates"
             },
             {
@@ -1730,6 +1722,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/products?tab=spec-common"
             },
             {
@@ -1742,6 +1735,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/products?tab=spec-special"
             },
             {
@@ -1754,6 +1748,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/products?tab=category-spec"
             },
             {
@@ -1766,6 +1761,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/products?tab=category-pay-mode"
             },
             {
@@ -1778,6 +1774,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/products?tab=category-points"
             },
             {
@@ -1790,6 +1787,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/products?tab=banned-word"
             },
             {
@@ -1802,6 +1800,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/products?tab=spu-std"
             },
             {
@@ -1814,6 +1813,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/products?tab=topics"
             },
             {
@@ -1826,6 +1826,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/products?tab=stats"
             },
             {
@@ -1838,6 +1839,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/inventory"
             },
             {
@@ -1850,6 +1852,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/inventory?tab=ledger"
             },
             {
@@ -1862,6 +1865,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/inventory?tab=recon"
             },
             {
@@ -1874,6 +1878,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/inventory?tab=link-health"
             },
             {
@@ -1886,6 +1891,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/inventory?tab=credentials"
             }
           ]
@@ -1913,6 +1919,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/orders"
             },
             {
@@ -1925,6 +1932,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/orders?tab=exception"
             },
             {
@@ -1937,6 +1945,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/orders?tab=proxy"
             },
             {
@@ -1949,6 +1958,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/orders?tab=pay"
             },
             {
@@ -1961,6 +1971,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/orders?tab=repair"
             },
             {
@@ -1973,6 +1984,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/orders?tab=close"
             },
             {
@@ -1985,6 +1997,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/fulfillment"
             },
             {
@@ -1997,6 +2010,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/fulfillment?tab=sorting"
             },
             {
@@ -2009,6 +2023,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/fulfillment?tab=redeem"
             },
             {
@@ -2021,6 +2036,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/fulfillment?tab=overdue"
             },
             {
@@ -2033,6 +2049,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/fulfillment?tab=express"
             },
             {
@@ -2045,6 +2062,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/fulfillment?tab=freight"
             },
             {
@@ -2057,6 +2075,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/fulfillment?tab=carrier"
             }
           ]
@@ -2084,6 +2103,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/after-sales"
             },
             {
@@ -2096,6 +2116,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/after-sales?tab=intervene"
             },
             {
@@ -2108,6 +2129,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/after-sales?tab=fastrefund"
             },
             {
@@ -2120,6 +2142,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/finance?tab=refund-back"
             }
           ]
@@ -2147,6 +2170,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/marketing"
             },
             {
@@ -2159,6 +2183,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/marketing?tab=issues"
             },
             {
@@ -2171,6 +2196,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/marketing?tab=campaigns"
             },
             {
@@ -2183,6 +2209,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/marketing?tab=slots"
             },
             {
@@ -2195,6 +2222,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/marketing?tab=member"
             },
             {
@@ -2207,6 +2235,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/marketing?tab=promoCoupons"
             },
             {
@@ -2219,6 +2248,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/marketing?tab=promoActivities"
             },
             {
@@ -2230,7 +2260,8 @@
               "matrix": "P-7.2",
               "tab": false,
               "status": "已实现",
-              "proto": null,
+              "proto": "s29",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": "http://localhost:3000/marketing?tab=platform"
             },
             {
@@ -2242,7 +2273,8 @@
               "matrix": "P-7.2",
               "tab": false,
               "status": "已实现",
-              "proto": null,
+              "proto": "s30",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": "http://localhost:3000/marketing?tab=platformAudit"
             },
             {
@@ -2255,6 +2287,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/groups"
             },
             {
@@ -2267,6 +2300,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/groups?tab=demands"
             },
             {
@@ -2279,6 +2313,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/groups?tab=quotes"
             },
             {
@@ -2291,6 +2326,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/growth"
             },
             {
@@ -2303,6 +2339,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/growth?tab=traces"
             },
             {
@@ -2315,6 +2352,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/growth?tab=fission"
             }
           ]
@@ -2342,6 +2380,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/members"
             },
             {
@@ -2354,6 +2393,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/members?tab=persons"
             },
             {
@@ -2365,7 +2405,8 @@
               "matrix": "P-7.4",
               "tab": false,
               "status": "已实现",
-              "proto": null,
+              "proto": "o01",
+              "protoUrl": "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc",
               "preview": "http://localhost:3000/members?tab=reach"
             }
           ]
@@ -2393,6 +2434,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/finance"
             },
             {
@@ -2405,6 +2447,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/finance?tab=splits"
             },
             {
@@ -2417,6 +2460,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/finance?tab=refund-back"
             },
             {
@@ -2429,6 +2473,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/finance?tab=payables"
             },
             {
@@ -2441,6 +2486,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/finance?tab=purchase-invoices"
             },
             {
@@ -2453,6 +2499,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/finance?tab=buyer-invoices"
             },
             {
@@ -2465,6 +2512,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/finance?tab=points"
             },
             {
@@ -2477,6 +2525,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/finance?tab=points-policy"
             },
             {
@@ -2489,6 +2538,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/finance?tab=rates"
             },
             {
@@ -2501,6 +2551,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/finance?tab=pay-channels"
             },
             {
@@ -2513,6 +2564,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/finance?tab=settle-batches"
             },
             {
@@ -2525,6 +2577,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/finance?tab=debts"
             },
             {
@@ -2537,6 +2590,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/finance?tab=withdraw"
             },
             {
@@ -2549,6 +2603,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/finance?tab=invoice"
             },
             {
@@ -2561,6 +2616,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/finance?tab=channel-messages"
             }
           ]
@@ -2588,6 +2644,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/reviews"
             },
             {
@@ -2600,6 +2657,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/reviews?tab=appeals"
             },
             {
@@ -2612,6 +2670,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/reviews?tab=score"
             },
             {
@@ -2624,6 +2683,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/contents"
             },
             {
@@ -2636,6 +2696,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/contents?tab=audit"
             },
             {
@@ -2648,6 +2709,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/contents?tab=rank"
             }
           ]
@@ -2675,6 +2737,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/messages"
             },
             {
@@ -2687,6 +2750,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/messages?tab=sms"
             },
             {
@@ -2699,6 +2763,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/messages?tab=mail"
             },
             {
@@ -2711,6 +2776,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/messages?tab=wxsub"
             },
             {
@@ -2723,6 +2789,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/messages?tab=apppush"
             },
             {
@@ -2735,6 +2802,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/messages?tab=inapp"
             },
             {
@@ -2747,6 +2815,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/messages?tab=routing"
             },
             {
@@ -2759,6 +2828,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/messages?tab=notifyLog"
             },
             {
@@ -2771,6 +2841,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/messages?tab=broadcast"
             },
             {
@@ -2783,6 +2854,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/messages?tab=tickets"
             },
             {
@@ -2795,6 +2867,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/messages?tab=faq"
             }
           ]
@@ -2822,6 +2895,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/communities"
             },
             {
@@ -2834,6 +2908,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/communities?tab=applies"
             },
             {
@@ -2846,6 +2921,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/communities?tab=regions"
             },
             {
@@ -2858,6 +2934,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/communities?tab=health"
             },
             {
@@ -2870,6 +2947,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/communities?tab=distribution"
             },
             {
@@ -2882,6 +2960,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/communities?tab=places"
             },
             {
@@ -2894,6 +2973,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/communities?tab=pickups"
             },
             {
@@ -2906,6 +2986,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/communities?tab=neighbor"
             }
           ]
@@ -2933,6 +3014,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/risk"
             },
             {
@@ -2945,6 +3027,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/risk?tab=blacklist"
             },
             {
@@ -2957,6 +3040,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/risk?tab=rules"
             }
           ]
@@ -2984,6 +3068,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/iam"
             },
             {
@@ -2996,6 +3081,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/iam?tab=roles"
             },
             {
@@ -3008,6 +3094,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/iam?tab=menu"
             },
             {
@@ -3020,6 +3107,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/iam?tab=audit"
             },
             {
@@ -3032,6 +3120,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/jobs"
             },
             {
@@ -3044,6 +3133,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/system"
             },
             {
@@ -3056,6 +3146,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/system?tab=market"
             },
             {
@@ -3068,6 +3159,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/system?tab=flags"
             },
             {
@@ -3080,6 +3172,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/system?tab=storage"
             },
             {
@@ -3092,6 +3185,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/system?tab=industry"
             },
             {
@@ -3104,6 +3198,7 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/system?tab=authCode"
             },
             {
@@ -3116,50 +3211,13 @@
               "tab": false,
               "status": "已实现",
               "proto": null,
+              "protoUrl": null,
               "preview": "http://localhost:3000/system?tab=scope"
-            }
-          ]
-        },
-        {
-          "name": "会员与营销",
-          "pages": [
-            {
-              "app": "ops-web",
-              "route": "/members",
-              "title": "会员总览（跨商家）",
-              "domain": "会员与营销",
-              "tab": false,
-              "status": "原型",
-              "proto": null,
-              "protoUrl": null,
-              "preview": null
-            },
-            {
-              "app": "ops-web",
-              "route": "/members?tab=person",
-              "title": "人档与合并",
-              "domain": "会员与营销",
-              "tab": false,
-              "status": "原型",
-              "proto": null,
-              "protoUrl": null,
-              "preview": null
-            },
-            {
-              "app": "ops-web",
-              "route": "/members?tab=reach",
-              "title": "触达监控",
-              "domain": "会员与营销",
-              "tab": false,
-              "status": "原型",
-              "proto": "o01",
-              "protoUrl": "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc",
-              "preview": null
             }
           ]
         }
       ]
     }
   ],
-  "total": 258
+  "total": 252
 }

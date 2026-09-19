@@ -1,0 +1,240 @@
+/* ai-shop · 界面原型共用样式（prototypes/proto.css）
+ *
+ * 每份原型只写内容，不写样式：<link rel="stylesheet" href="proto.css">。
+ * 两层：
+ *   · 文档层（--sheet/--ink/--muted/--rule/--note）：稿纸、标题、分节、图注、「为什么」注。
+ *   · 屏内层（--sh-*）：与产品同一套令牌（packages/shared/src/design/tokens.ts ·
+ *     packages/ui/src/styles/base.css）。屏内无描边、无阴影，分层只靠面色与 tint；
+ *     圆角、字号、按钮形态按 docs/technical/design/规范-*.md。
+ * 手机屏 .ph = 375pt × 0.8；桌面屏 .desk = 运营端。锚点用 <figure id="sNN">，
+ * 清单（scripts/gen-ui-catalog.py）按 sNN 跳到那一屏。
+ * 加样式先看这里有没有；原型里出现这里没有的圆角 / 字号 / 描边，落地时就要返工。
+ */
+:root{
+  --sheet:#F4F3F0; --ink:#16161A; --muted:#6C6B66; --rule:#DFDDD8;
+  --note:#8A6A2F; --note-bg:rgba(190,150,60,.12);
+  /* 手机屏内一律用产品自己的令牌（packages/shared tokens.ts · packages/ui base.css） */
+  --sh-primary:#E1251B; --sh-primary-tint:rgba(225,37,27,.12); --sh-primary-text:#B31710;
+  --sh-on-primary:#fff; --sh-bg:#ECEDEF; --sh-card:#fff; --sh-ink:#17181A; --sh-sub:#63676E;
+  --sh-faint:#E4E5E8; --sh-line:#EEEFF1;
+  --sh-success-tint:rgba(18,183,106,.14); --sh-success-text:#067647;
+  --sh-warning-tint:rgba(247,144,9,.14); --sh-warning-text:#9A5B00;
+  --sh-danger:#F04438; --sh-danger-tint:rgba(240,68,56,.14); --sh-danger-text:#B3271D;
+  --sh-disabled:#A3A6AC;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --sheet:#121214; --ink:#F2F1EE; --muted:#9C9A94; --rule:#2A2A2E;
+  --note:#D9B45F; --note-bg:rgba(217,180,95,.12);
+}}
+:root[data-theme="dark"]{
+  --sheet:#121214; --ink:#F2F1EE; --muted:#9C9A94; --rule:#2A2A2E;
+  --note:#D9B45F; --note-bg:rgba(217,180,95,.12);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--sheet);color:var(--ink);
+  font-family:Archivo,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1260px;margin:0 auto;padding-block:56px 96px;padding-inline:24px}
+header.top{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:10px}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:clamp(28px,4vw,44px);line-height:1.08;margin:10px 0 8px;font-weight:700;text-wrap:balance}
+.sub{color:var(--muted);font-size:15px;line-height:1.65;max-width:64ch;margin:0}
+section{margin-top:56px}
+.sec-head{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--rule);padding-bottom:10px;margin-bottom:22px}
+.sec-num{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted)}
+.sec-head h2{font-size:22px;margin:0;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:36px 24px}
+figure{margin:0;display:flex;flex-direction:column;gap:10px;scroll-margin-top:24px}
+figure:target .ph,figure:target .desk{outline:3px solid var(--ink);outline-offset:5px}
+.cap{font-size:13px;line-height:1.5}
+.cap b{display:block;font-size:14px}
+.why{font-size:12.5px;line-height:1.55;color:var(--note);background:var(--note-bg);
+  border-left:2px solid currentColor;padding:7px 10px;border-radius:0 6px 6px 0;margin:0}
+.tw{overflow-x:auto}
+table.spec{border-collapse:collapse;font-size:13px;width:100%;max-width:900px}
+table.spec th,table.spec td{text-align:left;padding:8px 12px 8px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+table.spec th{font-weight:600;font-size:12px;color:var(--muted)}
+table.spec td:first-child{white-space:nowrap;font-weight:600}
+footer{margin-top:72px;border-top:1px solid var(--rule);padding-top:18px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);line-height:1.8}
+footer a{color:inherit}
+
+/* ── 手机屏：375pt × 0.8。屏内无描边、无阴影；分层只靠面色与 tint ── */
+.ph{width:100%;max-width:300px;aspect-ratio:9/17.6;background:var(--sh-bg);border-radius:22px;overflow:hidden;
+  display:flex;flex-direction:column;font-family:-apple-system,"PingFang SC","Hiragino Sans GB",system-ui,sans-serif;
+  color:var(--sh-ink);font-size:11.5px;line-height:1.45;position:relative}
+.nav{flex:0 0 auto;background:var(--sh-card);height:40px;display:grid;grid-template-columns:24px 1fr 24px;align-items:center;padding:0 10px}
+.nav .bk{color:var(--sh-sub);font-size:16px}
+.nav .t{text-align:center;font-size:13px;font-weight:600}
+.scr{flex:1;overflow:hidden;padding:10px;display:flex;flex-direction:column;gap:10px}
+.foot{flex:0 0 auto;background:var(--sh-card);padding:8px 10px 12px;display:flex;gap:8px}
+.foot .btn{flex:1}.foot .btn.main{flex:2}
+
+/* 按钮：胶囊。主=实心 · 次=faint · 危险=描边墨字 · 二次确认=红实心 */
+.btn{border-radius:999px;text-align:center;padding:9px 0;font-size:12px;font-weight:600;background:var(--sh-primary);color:var(--sh-on-primary)}
+.btn.sec{background:var(--sh-faint);color:var(--sh-ink);font-weight:500}
+.btn.danger{background:transparent;box-shadow:inset 0 0 0 1px var(--sh-danger);color:var(--sh-ink);font-weight:500}
+.btn.danger-solid{background:var(--sh-danger)}
+
+/* 状态标签：绿=进行/成功 · 黄=需关注 · 灰=其它。类型不用标签 */
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;line-height:1.5;background:var(--sh-faint);color:var(--sh-sub);white-space:nowrap}
+.chip.ok{background:var(--sh-success-tint);color:var(--sh-success-text)}
+.chip.warn{background:var(--sh-warning-tint);color:var(--sh-warning-text)}
+
+/* 分段控件：≤3 个互斥选项。多于 3 个用选择行（›） */
+.seg{display:flex;background:var(--sh-faint);border-radius:9px;padding:2px;gap:2px}
+.seg span{flex:1;text-align:center;padding:4px 0;border-radius:7px;color:var(--sh-sub);font-size:10.5px}
+.seg span.on{background:var(--sh-card);color:var(--sh-ink);font-weight:600}
+.frow .seg{width:124px;flex:0 0 auto}
+
+/* 表单与只读信息：同一种分组列表，左标签右值 */
+.group{background:var(--sh-card);border-radius:13px;padding:0 12px}
+.gt{font-size:10.5px;color:var(--sh-sub);padding:0 4px;margin-bottom:-4px}
+.frow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:38px;border-top:1px solid var(--sh-line)}
+.frow:first-child{border-top:0}
+.frow .k{color:var(--sh-sub);flex:0 0 auto}
+.frow .v{text-align:right;color:var(--sh-ink)}
+.frow .v.ph-{color:var(--sh-disabled)}
+.frow .v.go::after{content:" ›";color:var(--sh-sub)}
+.frow .v.hot{color:var(--sh-primary-text);font-weight:700}
+.frow.add{color:var(--sh-primary-text);justify-content:flex-start}
+.num{font-variant-numeric:tabular-nums}
+.sw{width:30px;height:18px;border-radius:99px;background:var(--sh-faint);position:relative;flex:0 0 auto}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:99px;background:var(--sh-card)}
+.sw.on{background:var(--sh-primary)}.sw.on::after{left:14px}
+
+/* 列表卡：标题+状态 / 一行信息 / 一行指标。卡内不放按钮 */
+.card{background:var(--sh-card);border-radius:13px;padding:11px 12px;display:flex;flex-direction:column;gap:5px}
+.card .hd{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card .nm{font-size:12.5px;font-weight:600}
+.meta{color:var(--sh-sub);font-size:10.5px}
+.metric{display:flex;align-items:center;gap:8px;color:var(--sh-sub);font-size:10.5px}
+.bar{flex:1;height:4px;border-radius:99px;background:var(--sh-faint);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--sh-primary)}
+
+.tabs{display:flex;gap:18px;padding:0 4px;font-size:11.5px;color:var(--sh-sub)}
+.tabs span.on{color:var(--sh-ink);font-weight:600;box-shadow:inset 0 -2px 0 var(--sh-primary);padding-bottom:4px}
+.prog{display:flex;flex-direction:column;gap:5px;padding:0 2px}
+.prog .t{display:flex;justify-content:space-between;font-size:10.5px;color:var(--sh-sub)}
+.prog .t b{color:var(--sh-ink);font-weight:600}
+.note{background:var(--sh-warning-tint);color:var(--sh-warning-text);border-radius:10px;padding:8px 10px;font-size:10.5px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);background:var(--sh-card);border-radius:13px;padding:10px 0;text-align:center}
+.stats.two{grid-template-columns:repeat(2,1fr)}
+.stats .n{font-size:16px;font-weight:600;line-height:1.2}
+.stats .l{font-size:10px;color:var(--sh-sub)}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{background:var(--sh-card);border-radius:13px;padding:10px}
+.tile b{display:block;font-size:12px;font-weight:600}
+.tile span{font-size:10px;color:var(--sh-sub)}
+.tile.on{background:var(--sh-primary-tint)}
+.tile.on b,.tile.on span{color:var(--sh-primary-text)}
+.pz{background:var(--sh-card);border-radius:13px;padding:11px 12px;display:flex;flex-direction:column;gap:6px}
+.pz .p{display:flex;align-items:baseline;gap:6px}
+.pz .p b{font-size:20px;font-weight:700;color:var(--sh-primary-text)}
+.pz .p s{color:var(--sh-sub);font-size:11px}
+.img{height:92px;border-radius:13px;background:var(--sh-faint);display:flex;align-items:center;justify-content:center;color:var(--sh-sub);font-size:10.5px}
+.code{font-family:"IBM Plex Mono",monospace;letter-spacing:.16em;font-size:20px;text-align:center;font-weight:500}
+.qr{width:96px;height:96px;margin:0 auto;border-radius:8px;background:
+  repeating-linear-gradient(90deg,var(--sh-ink) 0 4px,transparent 4px 8px),
+  repeating-linear-gradient(0deg,var(--sh-ink) 0 4px,var(--sh-card) 4px 8px);background-blend-mode:multiply;opacity:.85}
+.pickrow{display:flex;justify-content:space-between;align-items:center;min-height:38px;border-top:1px solid var(--sh-line)}
+.pickrow:first-child{border-top:0}
+.pickrow.on{color:var(--sh-primary-text);font-weight:600}
+.pickrow.on::after{content:"✓"}
+.pickrow .c{color:var(--sh-sub);font-weight:400;margin-left:auto;margin-right:8px}
+.pickrow.on .c{color:var(--sh-primary-text)}
+figure.wide{grid-column:span 2}
+@media (max-width:640px){ figure.wide{grid-column:auto} }
+.desk{width:100%;aspect-ratio:16/10.4;background:var(--sh-bg);border-radius:12px;overflow:hidden;display:flex;
+  font-family:-apple-system,"PingFang SC",system-ui,sans-serif;color:var(--sh-ink);font-size:11px;line-height:1.45}
+.desk .side{width:118px;background:var(--sh-card);padding:12px 10px;display:flex;flex-direction:column;gap:4px;flex:0 0 auto}
+.desk .side span{padding:5px 8px;border-radius:7px;color:var(--sh-sub)}
+.desk .side span.on{background:var(--sh-primary-tint);color:var(--sh-primary-text);font-weight:600}
+.desk .side b{font-size:12px;margin:0 0 6px 8px}
+.desk .main{flex:1;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.desk .hdr{display:flex;justify-content:space-between;align-items:center}
+.desk .hdr b{font-size:14px}
+.desk .btn{padding:6px 14px;font-size:11px}
+.desk table{width:100%;border-collapse:collapse;background:var(--sh-card);border-radius:10px;overflow:hidden}
+.desk th,.desk td{text-align:left;padding:7px 10px;border-top:1px solid var(--sh-line);white-space:nowrap}
+.desk th{color:var(--sh-sub);font-weight:500;border-top:0;font-size:10.5px}
+.desk td.act{color:var(--sh-primary-text)}
+.desk .cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sum{background:var(--sh-primary-tint);color:var(--sh-primary-text);border-radius:13px;padding:10px 12px;font-size:11.5px}
+.who{display:flex;gap:10px;justify-content:center;padding:6px 0}
+.who i{width:34px;height:34px;border-radius:99px;background:var(--sh-faint);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:10px;color:var(--sh-sub)}
+.who i.in{background:var(--sh-primary-tint);color:var(--sh-primary-text)}
+.big{text-align:center;padding:8px 0 2px}
+.big .n{font-size:24px;font-weight:600}
+.big .l{font-size:10.5px;color:var(--sh-sub)}
+.mask{position:absolute;inset:0;background:rgba(0,0,0,.36);display:flex;align-items:flex-end;padding:10px}
+.sheet{background:var(--sh-card);border-radius:16px;padding:16px 14px 12px;display:flex;flex-direction:column;gap:10px;width:100%}
+.sheet .h{font-size:13px;font-weight:600;text-align:center}
+.sheet .d{font-size:11px;color:var(--sh-sub);text-align:center}
+.sheet .acts{display:flex;gap:8px}.sheet .acts .btn{flex:1}
+@media (max-width:640px){ .wrap{padding-inline:16px;padding-block:36px 64px} }
+
+/* ── 2026-09-19 收进来的积木（三份资金 / 进销存稿子转过来时缺的） ── */
+/* 底部主导航：图标位留空，文字 + 选中变主色。与 .foot 二选一 */
+.tabbar{flex:0 0 auto;background:var(--sh-card);display:flex;padding:6px 0 10px}
+.tabbar span{flex:1;text-align:center;font-size:10px;color:var(--sh-sub)}
+.tabbar span.on{color:var(--sh-primary-text);font-weight:600}
+/* 危险 / 阻断标签：红 tint（「未进件」「已约满」） */
+.chip.bad{background:var(--sh-danger-tint);color:var(--sh-danger-text)}
+/* 行内可编辑数值（盘点 / 报损每行的数量框）：faint 底才看得出能改 */
+.frow .v.in{background:var(--sh-faint);border-radius:8px;padding:4px 10px;min-width:44px}
+/* 竖向状态轴：已计提 → 已发起 → 等确认 */
+.tl{display:flex;flex-direction:column;gap:0;padding:2px 4px}
+.tl .st{display:flex;gap:8px;align-items:flex-start;padding:4px 0;font-size:10.5px;color:var(--sh-sub)}
+.tl .st::before{content:"";width:8px;height:8px;border-radius:99px;background:var(--sh-faint);margin-top:4px;flex:0 0 auto}
+.tl .st.done{color:var(--sh-ink)}.tl .st.done::before{background:var(--sh-success-text)}
+.tl .st.now::before{background:var(--sh-primary)}
+/* 待拍板：紫色注，与 .why 并列（会员闭环稿） */
+.why.pend{color:#5B4A9E;background:rgba(91,74,158,.10)}
+
+/* ── 会员 / 规格稿转过来时缺的 ── */
+a{color:inherit}
+.sec-note{color:var(--muted);font-size:14px;line-height:1.6;max-width:72ch;margin:0 0 24px}
+.cap span{color:var(--muted)}
+.stats.four{grid-template-columns:repeat(4,1fr)}
+.stats .n.hot{color:var(--sh-primary-text)}
+.gt,.sum{display:flex;justify-content:space-between;gap:8px}
+.frow .v.dim{color:var(--sh-sub)}
+.btn.off{background:var(--sh-faint);color:var(--sh-disabled)}
+.pickrow.dis,.pickrow.dis .c{color:var(--sh-disabled)}
+/* 搜索框：faint 底、占位灰 */
+.inp{background:var(--sh-card);border-radius:13px;padding:9px 12px;color:var(--sh-disabled);font-size:11px}
+.sheet .group{background:var(--sh-bg)}
+/* 可点的胶囊（「＋ 包装」）与关掉的档位（划线 + 虚线框） */
+.chip.act{background:var(--sh-primary-tint);color:var(--sh-primary-text)}
+.chip.off{background:transparent;outline:1px dashed var(--sh-sub);outline-offset:-1px;text-decoration:line-through}
+/* 漏斗（触达效果）：三列 = 步骤 / 条 / 数 */
+.funnel{background:var(--sh-card);border-radius:13px;padding:11px 12px;display:flex;flex-direction:column;gap:6px}
+.funnel .r{display:grid;grid-template-columns:36px 1fr 44px;align-items:center;gap:8px;font-size:10.5px;color:var(--sh-sub)}
+.funnel .r b{color:var(--sh-ink);text-align:right}
+/* ── 进销存稿转过来时缺的 ── */
+.btn.tint{background:var(--sh-primary-tint);color:var(--sh-primary-text)}
+.card .n{font-size:16px;font-weight:600;line-height:1.2}
+.cap .in{display:inline}
+/* ── 方案稿转过来时缺的 ── */
+.btn.soft{background:var(--sh-primary-tint);color:var(--sh-primary-text)}   /* 同 .btn.tint，与产品类名 sh-btn--soft 对齐 */
+.btn.sm{padding:5px 10px;font-size:10.5px}
+.foot .btn.sq{flex:0 0 32px;width:32px;padding-inline:0}
+.fab{position:absolute;right:12px;bottom:12px;padding-inline:16px}
+.inp.ph-{color:var(--sh-disabled)}
+/* 只画贴底段的手机框：贴底条方案稿用 */
+.ph.strip{aspect-ratio:auto}.ph.strip .scr{flex:0 0 auto}
+
+/* ── 总览页（index.html，由 gen-proto-index.py 生成）── */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:22px}
+.pcard{border:1px solid var(--rule);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;scroll-margin-top:24px}
+.pcard:target{outline:3px solid var(--ink);outline-offset:4px}
+.pcard__hd{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pcard__hd b{font-size:16px}
+.pcard__meta{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted)}
+.pcard__sum{margin:0;font-size:13px;line-height:1.55;color:var(--ink)}
+.screens{display:flex;flex-wrap:wrap;gap:5px}
+.scr{font-family:"IBM Plex Mono",monospace;font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid var(--rule);color:var(--muted);text-decoration:none}
+.scr:hover{color:var(--ink);border-color:var(--ink)}
+.pcard__links{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px}
+.pcard__links a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+.pcard__links a:hover{color:var(--ink)}
+.chip.dead{background:transparent;outline:1px solid var(--rule);outline-offset:-1px;color:var(--muted)}

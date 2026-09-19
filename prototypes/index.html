@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>界面原型总览</title>
+<!-- 生成物：python3 scripts/gen-proto-index.py（读 prototypes/registry.json）。别手改。 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">ai-shop · 三端界面原型 · 唯一入口 · 由登记表生成</div>
+  <h1>界面原型总览</h1>
+  <p class="sub">19 份有效稿子，其中页面稿 9 份、共 124 屏；2 份作废。
+  真源在仓库 <code>prototypes/</code>，claude.ai 上的是发布副本；样式只有一份 <code>proto.css</code>，
+  屏内用的就是产品的令牌。点屏号跳到那一屏；<a href="../docs/technical/design/ui-catalog.json">界面清单</a>反过来从页面跳到原型。</p>
+</header>
+<section>
+  <div class="sec-head"><span class="sec-num">01</span><h2>页面稿：每一屏长什么样</h2></div>
+  <div class="pgrid">
+<article class="pcard" id="marketing-unified">
+  <div class="pcard__hd">
+    <b>营销：活动统一模型</b>
+    <span class="chip ok">已落地</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 商家 App · 买家小程序 · 运营端 · 2026-09-18 · 37 屏</div>
+  <p class="pcard__sum">一个模型覆盖所有玩法：商家填一张表、确认发布；玩法是表里的一个字段。团是规则开出来的实例。拼团、社区集单、券、平台活动与 C 端露出共用一套约定。三十七屏。</p>
+  <div class="screens"><a class="scr" href="marketing-unified.html#s01" title="s01 营销">s01</a><a class="scr" href="marketing-unified.html#s02" title="s02 活动列表">s02</a><a class="scr" href="marketing-unified.html#s03" title="s03 选玩法">s03</a><a class="scr" href="marketing-unified.html#s04" title="s04 填写 · 满减">s04</a><a class="scr" href="marketing-unified.html#s05" title="s05 填写 · 拼团">s05</a><a class="scr" href="marketing-unified.html#s06" title="s06 确认">s06</a><a class="scr" href="marketing-unified.html#s07" title="s07 活动详情">s07</a><a class="scr" href="marketing-unified.html#s08" title="s08 结束确认">s08</a><a class="scr" href="marketing-unified.html#s35" title="s35 编辑进行中的活动">s35</a><a class="scr" href="marketing-unified.html#s09" title="s09 团列表">s09</a><a class="scr" href="marketing-unified.html#s10" title="s10 团详情">s10</a><a class="scr" href="marketing-unified.html#s34" title="s34 商家开团">s34</a><a class="scr" href="marketing-unified.html#s11" title="s11 自己组合">s11</a><a class="scr" href="marketing-unified.html#s12" title="s12 券列表">s12</a><a class="scr" href="marketing-unified.html#s13" title="s13 新建券 · 填写">s13</a><a class="scr" href="marketing-unified.html#s14" title="s14 新建券 · 确认">s14</a><a class="scr" href="marketing-unified.html#s15" title="s15 券详情">s15</a><a class="scr" href="marketing-unified.html#s16" title="s16 发放结果">s16</a><a class="scr" href="marketing-unified.html#s17" title="s17 券核销">s17</a><a class="scr" href="marketing-unified.html#s18" title="s18 发放 · 选人群">s18</a><a class="scr" href="marketing-unified.html#s19" title="s19 填写 · 社区集单">s19</a><a class="scr" href="marketing-unified.html#s20" title="s20 集单 · 一期">s20</a><a class="scr" href="marketing-unified.html#s31" title="s31 集单列表">s31</a><a class="scr" href="marketing-unified.html#s32" title="s32 集单活动详情">s32</a><a class="scr" href="marketing-unified.html#s33" title="s33 集单 · 未达起订量">s33</a><a class="scr" href="marketing-unified.html#s21" title="s21 商品详情 · 拼团">s21</a><a class="scr" href="marketing-unified.html#s22" title="s22 参团">s22</a><a class="scr" href="marketing-unified.html#s23" title="s23 确认订单">s23</a><a class="scr" href="marketing-unified.html#s24" title="s24 我的券">s24</a><a class="scr" href="marketing-unified.html#s25" title="s25 出示券码">s25</a><a class="scr" href="marketing-unified.html#s26" title="s26 商品详情 · 集单">s26</a><a class="scr" href="marketing-unified.html#s36" title="s36 领券">s36</a><a class="scr" href="marketing-unified.html#s37" title="s37 集单订单">s37</a><a class="scr" href="marketing-unified.html#s27" title="s27 平台活动（商家）">s27</a><a class="scr" href="marketing-unified.html#s28" title="s28 活动报名">s28</a><a class="scr" href="marketing-unified.html#s29" title="s29 运营端 · 新建平台活动">s29</a><a class="scr" href="marketing-unified.html#s30" title="s30 运营端 · 报名审核">s30</a></div>
+  <div class="pcard__links"><a href="marketing-unified.html">本地稿</a> <a href="https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt">claude.ai</a> <a href="../docs/requirements/PRD-营销-活动统一模型.md">PRD-营销-活动统一模型</a> <a href="../docs/technical/design/营销域-活动统一模型.md">营销域-活动统一模型</a> <a href="../docs/technical/开发计划-营销域.md">开发计划-营销域</a></div>
+  
+</article><article class="pcard" id="member-loop">
+  <div class="pcard__hd">
+    <b>会员标签与定向营销</b>
+    <span class="chip warn">在建</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 商家 App · 买家小程序 · 运营端 · 2026-09-19 · 24 屏</div>
+  <p class="pcard__sum">会员 → 筛选 → 标签 / 人群 → 发券 / 发消息 / 建活动 → 效果回看的闭环；运营端看人群与触达。取代会员 v1 的 s02–s07。</p>
+  <div class="screens"><a class="scr" href="member-loop.html#m01" title="m01 会员">m01</a><a class="scr" href="member-loop.html#m02" title="m02 筛选">m02</a><a class="scr" href="member-loop.html#m03" title="m03 对这批人">m03</a><a class="scr" href="member-loop.html#m04" title="m04 会员详情">m04</a><a class="scr" href="member-loop.html#m05" title="m05 选标签">m05</a><a class="scr" href="member-loop.html#m06" title="m06 批量打标">m06</a><a class="scr" href="member-loop.html#m07" title="m07 标签">m07</a><a class="scr" href="member-loop.html#m08" title="m08 标签详情">m08</a><a class="scr" href="member-loop.html#m09" title="m09 合并确认">m09</a><a class="scr" href="member-loop.html#m10" title="m10 人群列表">m10</a><a class="scr" href="member-loop.html#m11" title="m11 人群详情">m11</a><a class="scr" href="member-loop.html#m12" title="m12 选人 · 发券 / 发消息">m12</a><a class="scr" href="member-loop.html#m13" title="m13 选人 · 活动">m13</a><a class="scr" href="member-loop.html#m14" title="m14 填写 · 人群">m14</a><a class="scr" href="member-loop.html#m15" title="m15 确认 · 覆盖人数">m15</a><a class="scr" href="member-loop.html#m16" title="m16 确认 · 覆盖 0 人">m16</a><a class="scr" href="member-loop.html#m17" title="m17 发券 · 选人">m17</a><a class="scr" href="member-loop.html#m18" title="m18 发消息">m18</a><a class="scr" href="member-loop.html#c01" title="c01 点消息进店">c01</a><a class="scr" href="member-loop.html#m19" title="m19 发出去的">m19</a><a class="scr" href="member-loop.html#m20" title="m20 一次触达的效果">m20</a><a class="scr" href="member-loop.html#m21" title="m21 会员设置 · 口径">m21</a><a class="scr" href="member-loop.html#o01" title="o01 人群与触达">o01</a><a class="scr" href="member-loop.html#o02" title="o02 分层口径">o02</a></div>
+  <div class="pcard__links"><a href="member-loop.html">本地稿</a> <a href="https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc">claude.ai</a> <a href="../docs/requirements/PRD-会员标签与定向营销.md">PRD-会员标签与定向营销</a> <a href="../docs/technical/TDD-会员标签与定向营销.md">TDD-会员标签与定向营销</a></div>
+  
+</article><article class="pcard" id="member-marketing-v1">
+  <div class="pcard__hd">
+    <b>会员与营销 · 界面原型（v1）</b>
+    <span class="chip ">参考</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 商家 App · 买家小程序 · 2026-08-20 · 17 屏</div>
+  <p class="pcard__sum">会员与营销第一版十七屏。会员六屏已由「会员标签与定向营销」取代、活动与券由「营销：活动统一模型」取代，那些屏不再挂路由；手工录入（s05）与 C 端店铺页 / 加入会员 / 券包（s15–s17）仍是现行依据。</p>
+  <div class="screens"><a class="scr" href="member-marketing-v1.html#s01" title="s01 入口">s01</a><a class="scr" href="member-marketing-v1.html#s02" title="s02 会员总览">s02</a><a class="scr" href="member-marketing-v1.html#s03" title="s03 筛选 → 人群">s03</a><a class="scr" href="member-marketing-v1.html#s04" title="s04 会员详情">s04</a><a class="scr" href="member-marketing-v1.html#s05" title="s05 手工录入">s05</a><a class="scr" href="member-marketing-v1.html#s06" title="s06 标签与合并">s06</a><a class="scr" href="member-marketing-v1.html#s07" title="s07 会员口径">s07</a><a class="scr" href="member-marketing-v1.html#s08" title="s08 活动列表">s08</a><a class="scr" href="member-marketing-v1.html#s09" title="s09 新建 · 第一步">s09</a><a class="scr" href="member-marketing-v1.html#s10" title="s10 新建 · 给谁 + 预览">s10</a><a class="scr" href="member-marketing-v1.html#s11" title="s11 券列表">s11</a><a class="scr" href="member-marketing-v1.html#s12" title="s12 新建券">s12</a><a class="scr" href="member-marketing-v1.html#s13" title="s13 发放结果">s13</a><a class="scr" href="member-marketing-v1.html#s14" title="s14 券核销">s14</a><a class="scr" href="member-marketing-v1.html#s15" title="s15 店铺页 · 未加入">s15</a><a class="scr" href="member-marketing-v1.html#s16" title="s16 加入 · 手机号授权">s16</a><a class="scr" href="member-marketing-v1.html#s17" title="s17 券包 · 次卡出示">s17</a></div>
+  <div class="pcard__links"><a href="member-marketing-v1.html">本地稿</a> <a href="https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15">claude.ai</a> <a href="../docs/requirements/会员体系与活动联动-需求.md">会员体系与活动联动-需求</a> <a href="../docs/technical/design/TDD-券与活动模型.md">TDD-券与活动模型</a></div>
+  
+</article><article class="pcard" id="goods-spec">
+  <div class="pcard__hd">
+    <b>规格：建品页与商品规格</b>
+    <span class="chip ok">已落地</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 商家 App · 2026-08-27 · 6 屏</div>
+  <p class="pcard__sum">不分规格的货整块收起、默认只带出一个、只做减法、代价当场可见、没有自定义面板、新增只有一个入口。六屏，编号接会员 v1 的 s17 之后。</p>
+  <div class="screens"><a class="scr" href="goods-spec.html#s18" title="s18 不分规格的货：整块收起">s18</a><a class="scr" href="goods-spec.html#s19" title="s19 默认只带出一个">s19</a><a class="scr" href="goods-spec.html#s20" title="s20 只做减法，删掉能点回来">s20</a><a class="scr" href="goods-spec.html#s21" title="s21 代价当场可见">s21</a><a class="scr" href="goods-spec.html#s22" title="s22 没有选择面板，也没有「自定义」">s22</a><a class="scr" href="goods-spec.html#s23" title="s23 新增的唯一入口">s23</a></div>
+  <div class="pcard__links"><a href="goods-spec.html">本地稿</a> <a href="https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e">claude.ai</a> <a href="../docs/technical/design/TDD-规格与SKU模型.md">TDD-规格与SKU模型</a></div>
+  
+</article><article class="pcard" id="merchant-ui-v1">
+  <div class="pcard__hd">
+    <b>商家端界面原型：工作台到结算</b>
+    <span class="chip warn">在建</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 商家 App · 运营端 · 2026-08-26 · 10 屏</div>
+  <p class="pcard__sum">工作台、订单、收款、排期、积分、收入、账户、去向、结算十屏，外加运营端缺口表。积分与收入几屏接口都在、B 端还没出口。</p>
+  <div class="screens"><a class="scr" href="merchant-ui-v1.html#s01" title="s01 工作台">s01</a><a class="scr" href="merchant-ui-v1.html#s02" title="s02 订单列表">s02</a><a class="scr" href="merchant-ui-v1.html#s03" title="s03 确认收款">s03</a><a class="scr" href="merchant-ui-v1.html#s04" title="s04 预约排期">s04</a><a class="scr" href="merchant-ui-v1.html#s05" title="s05 积分成本">s05</a><a class="scr" href="merchant-ui-v1.html#s06" title="s06 发分明细">s06</a><a class="scr" href="merchant-ui-v1.html#s07" title="s07 我的收入">s07</a><a class="scr" href="merchant-ui-v1.html#s08" title="s08 收款账户">s08</a><a class="scr" href="merchant-ui-v1.html#s09" title="s09 一笔钱的去向">s09</a><a class="scr" href="merchant-ui-v1.html#s10" title="s10 结算单列表">s10</a></div>
+  <div class="pcard__links"><a href="merchant-ui-v1.html">本地稿</a> <a href="https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c">claude.ai</a> <a href="../docs/technical/reference/平台端功能清单-与现状对齐.md">平台端功能清单-与现状对齐</a> <a href="../docs/technical/reference/设计方案总索引-与系统对齐.md">设计方案总索引</a></div>
+  
+</article><article class="pcard" id="funds-chain">
+  <div class="pcard__hd">
+    <b>商家资金全链路</b>
+    <span class="chip warn">在建</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 商家 App · 运营端 · 2026-09-02 · 8 屏</div>
+  <p class="pcard__sum">从待收款到一笔钱的去向八屏，按资金链路的顺序排；运营端对照表写每一环平台看哪一页。与「商家端界面原型」是同一批页面的链路视角。</p>
+  <div class="screens"><a class="scr" href="funds-chain.html#s01" title="s01 订单列表 · 待收款分组">s01</a><a class="scr" href="funds-chain.html#s02" title="s02 确认收款弹窗">s02</a><a class="scr" href="funds-chain.html#s03" title="s03 预约排期">s03</a><a class="scr" href="funds-chain.html#s04" title="s04 积分成本总览">s04</a><a class="scr" href="funds-chain.html#s05" title="s05 发分明细">s05</a><a class="scr" href="funds-chain.html#s06" title="s06 到账总览">s06</a><a class="scr" href="funds-chain.html#s07" title="s07 收款账户">s07</a><a class="scr" href="funds-chain.html#s08" title="s08 一笔钱的去向">s08</a></div>
+  <div class="pcard__links"><a href="funds-chain.html">本地稿</a> <a href="https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24">claude.ai</a> <a href="../docs/requirements/商家全生命周期-入驻到出款-功能梳理.md">商家全生命周期-入驻到出款</a></div>
+  
+</article><article class="pcard" id="inventory-nine">
+  <div class="pcard__hd">
+    <b>进销存商家端九屏</b>
+    <span class="chip ok">已落地</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 商家 App · 2026-08-27 · 9 屏</div>
+  <p class="pcard__sum">库存、明细、盘点、进货、单据、报损、调拨、报表、库位九屏，按需求 B-1…B-21 逐屏标档位与权限码。用产品令牌重画的那一版（第一版踩了十二条里的九条）。</p>
+  <div class="screens"><a class="scr" href="inventory-nine.html#s01" title="s01 库存">s01</a><a class="scr" href="inventory-nine.html#s02" title="s02 库存明细">s02</a><a class="scr" href="inventory-nine.html#s03" title="s03 盘点">s03</a><a class="scr" href="inventory-nine.html#s04" title="s04 记一笔进货">s04</a><a class="scr" href="inventory-nine.html#s05" title="s05 出入库单据">s05</a><a class="scr" href="inventory-nine.html#s06" title="s06 报损出库">s06</a><a class="scr" href="inventory-nine.html#s07" title="s07 调拨">s07</a><a class="scr" href="inventory-nine.html#s08" title="s08 进销存报表">s08</a><a class="scr" href="inventory-nine.html#s09" title="s09 库位与仓">s09</a></div>
+  <div class="pcard__links"><a href="inventory-nine.html">本地稿</a> <a href="https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0">claude.ai</a> <a href="../docs/requirements/进销存-需求.md">进销存-需求</a> <a href="../docs/technical/design/进销存-三端落点与功能矩阵.md">进销存-三端落点与功能矩阵</a> <a href="../docs/technical/design/进销存-界面清单.md">进销存-界面清单</a></div>
+  
+</article><article class="pcard" id="c-address">
+  <div class="pcard__hd">
+    <b>C 端收货地址</b>
+    <span class="chip ok">已落地</span>
+  </div>
+  <div class="pcard__meta">画布稿 · 买家小程序 · 2026-09-18 · 8 屏</div>
+  <p class="pcard__sum">没有地址 / 列表 / 新建整页 / 选择地点 / 选城市 / 海外 / 搜不到时，外加文案对照。claude.ai 设计画布，各屏并排、没有页内锚点。</p>
+  <div class="screens"><a class="scr" href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i" title="s01 没有地址（新用户）">·</a><a class="scr" href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i" title="s02 地址列表">·</a><a class="scr" href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i" title="s03 新建收货地址（整页）">·</a><a class="scr" href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i" title="s04 选择地点">·</a><a class="scr" href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i" title="s05 文案对照">·</a><a class="scr" href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i" title="s06 选择城市">·</a><a class="scr" href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i" title="s07 海外地址">·</a><a class="scr" href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i" title="s08 搜不到时">·</a></div>
+  <div class="pcard__links"><a href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i">claude.ai</a> <a href="../docs/technical/TDD-C端收货地址-录入与定位重排.md">TDD-C端收货地址-录入与定位重排</a> <a href="../docs/technical/design/C端地址管理-交互方案.md">C端地址管理-交互方案</a></div>
+  
+</article><article class="pcard" id="goods-detail-opt">
+  <div class="pcard__hd">
+    <b>C 端商品详情页：现状与优化</b>
+    <span class="chip warn">在建</span>
+  </div>
+  <div class="pcard__meta">画布稿 · 买家小程序 · 2026-09-19 · 5 屏</div>
+  <p class="pcard__sum">现状 / 优化后首屏 / 整页 / 规格面板 / 拼团商品五块画布。</p>
+  <div class="screens"><a class="scr" href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn" title="现状">·</a><a class="scr" href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn" title="优化后 · 首屏">·</a><a class="scr" href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn" title="优化后 · 整页">·</a><a class="scr" href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn" title="规格面板">·</a><a class="scr" href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn" title="拼团商品">·</a></div>
+  <div class="pcard__links"><a href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn">claude.ai</a> <a href="../docs/technical/TDD-C端商品详情页重排.md">TDD-C端商品详情页重排</a></div>
+  
+</article>
+  </div>
+</section>
+<section>
+  <div class="sec-head"><span class="sec-num">02</span><h2>方案稿：几种排法怎么选</h2></div>
+  <div class="pgrid">
+<article class="pcard" id="inventory-interaction">
+  <div class="pcard__hd">
+    <b>进销存交互：按单查、盘这一件、添加货品</b>
+    <span class="chip ">参考</span>
+  </div>
+  <div class="pcard__meta">方案稿 · 商家 App · 2026-09-02 · 7 屏</div>
+  <p class="pcard__sum">三步交互的改前改后，❶–❻ 标出每一处改动。</p>
+  <div class="screens"><a class="scr" href="inventory-interaction.html#s01" title="s01 按单查 · 单据">s01</a><a class="scr" href="inventory-interaction.html#s02" title="s02 库存明细">s02</a><a class="scr" href="inventory-interaction.html#s03" title="s03 库存明细 · 改前">s03</a><a class="scr" href="inventory-interaction.html#s04" title="s04 库存明细 · 改后（盘这一件）">s04</a><a class="scr" href="inventory-interaction.html#s05" title="s05 进货 · 添加货品">s05</a><a class="scr" href="inventory-interaction.html#s06" title="s06 盘点">s06</a><a class="scr" href="inventory-interaction.html#s07" title="s07 库存（背景）">s07</a></div>
+  <div class="pcard__links"><a href="inventory-interaction.html">本地稿</a> <a href="https://claude.ai/code/artifact/c87cb6a7-a69f-473b-9c6c-4809056d9d2e">claude.ai</a> <a href="../docs/technical/design/进销存-B端交互梳理.md">进销存-B端交互梳理</a></div>
+  
+</article><article class="pcard" id="inventory-scan-date-transfer">
+  <div class="pcard__hd">
+    <b>扫码 · 日期 · 调拨</b>
+    <span class="chip ">参考</span>
+  </div>
+  <div class="pcard__meta">方案稿 · 商家 App · 2026-09-17 · 3 屏</div>
+  <p class="pcard__sum">扫码提到外层、发生日期、调拨的从 / 到点不中：三处现状与建议。</p>
+  <div class="screens"><a class="scr" href="inventory-scan-date-transfer.html#s01" title="s01 扫码提到外层">s01</a><a class="scr" href="inventory-scan-date-transfer.html#s02" title="s02 发生日期">s02</a><a class="scr" href="inventory-scan-date-transfer.html#s03" title="s03 调拨：从 / 到 点不中">s03</a></div>
+  <div class="pcard__links"><a href="inventory-scan-date-transfer.html">本地稿</a> <a href="https://claude.ai/artifact/MkbBnDDpfX1KKbZBqDdYgQ">claude.ai</a></div>
+  
+</article><article class="pcard" id="inventory-four-fixes">
+  <div class="pcard__hd">
+    <b>进销存四页优化</b>
+    <span class="chip ">参考</span>
+  </div>
+  <div class="pcard__meta">方案稿 · 商家 App · 2026-09-17 · 4 屏</div>
+  <p class="pcard__sum">库存页顶部瘦身、供应商看着像输入框、加货按钮太扁、盘点页去掉解释：四处现状与建议。</p>
+  <div class="screens"><a class="scr" href="inventory-four-fixes.html#s01" title="s01 库存页：顶部瘦身">s01</a><a class="scr" href="inventory-four-fixes.html#s02" title="s02 进货页：供应商看着像输入框">s02</a><a class="scr" href="inventory-four-fixes.html#s03" title="s03 进货 / 报损：加货按钮太扁">s03</a><a class="scr" href="inventory-four-fixes.html#s04" title="s04 盘点页：去掉顶部那句解释">s04</a></div>
+  <div class="pcard__links"><a href="inventory-four-fixes.html">本地稿</a> <a href="https://claude.ai/artifact/RDdFTiqjM6zFoEpf9BnYHu">claude.ai</a></div>
+  
+</article><article class="pcard" id="goods-two-pages-tweaks">
+  <div class="pcard__hd">
+    <b>商品两页的微调</b>
+    <span class="chip ok">已落地</span>
+  </div>
+  <div class="pcard__meta">方案稿 · 商家 App · 2026-09-18 · 4 屏</div>
+  <p class="pcard__sum">商品列表与编辑页对齐营销页的写法：只改按钮、文案与常驻说明，布局不动。八项改动已落地（208c1e25）。</p>
+  <div class="screens"><a class="scr" href="goods-two-pages-tweaks.html#s01" title="s01 商品列表 · 现在">s01</a><a class="scr" href="goods-two-pages-tweaks.html#s02" title="s02 商品列表 · 微调后">s02</a><a class="scr" href="goods-two-pages-tweaks.html#s03" title="s03 编辑商品 · 现在">s03</a><a class="scr" href="goods-two-pages-tweaks.html#s04" title="s04 编辑商品 · 微调后">s04</a></div>
+  <div class="pcard__links"><a href="goods-two-pages-tweaks.html">本地稿</a> <a href="https://claude.ai/artifact/Qfp4NvR21dgYH7ksi7H5Dj">claude.ai</a></div>
+  
+</article><article class="pcard" id="goods-rearrange">
+  <div class="pcard__hd">
+    <b>商品这一片的重排</b>
+    <span class="chip ">参考</span>
+  </div>
+  <div class="pcard__meta">方案稿 · 商家 App · 2026-09-18 · 6 屏</div>
+  <p class="pcard__sum">商品列表、改库存、编辑概览 / 价格、新建第一节的改后，与十六条文案对照。</p>
+  <div class="screens"><a class="scr" href="goods-rearrange.html#s01" title="s01 商品列表 · 现状">s01</a><a class="scr" href="goods-rearrange.html#s02" title="s02 列表 · 改后">s02</a><a class="scr" href="goods-rearrange.html#s03" title="s03 改库存 · 改后">s03</a><a class="scr" href="goods-rearrange.html#s04" title="s04 编辑 · 概览 · 改后">s04</a><a class="scr" href="goods-rearrange.html#s05" title="s05 编辑 · 价格 · 改后">s05</a><a class="scr" href="goods-rearrange.html#s06" title="s06 新建 · 第一节 · 改后">s06</a></div>
+  <div class="pcard__links"><a href="goods-rearrange.html">本地稿</a> <a href="https://claude.ai/artifact/LpZPJR14vFS1hxQc1Y7kHS">claude.ai</a></div>
+  
+</article><article class="pcard" id="marketing-rearrange">
+  <div class="pcard__hd">
+    <b>营销这一片的重排</b>
+    <span class="chip ">参考</span>
+  </div>
+  <div class="pcard__meta">方案稿 · 商家 App · 2026-09-18 · 10 屏</div>
+  <p class="pcard__sum">活动 / 优惠券 / 团购 / 求团报价四个列表与六个详情页的改后，与二十条文案对照。活动几页已由「营销：活动统一模型」落地。</p>
+  <div class="screens"><a class="scr" href="marketing-rearrange.html#s01" title="s01 活动">s01</a><a class="scr" href="marketing-rearrange.html#s02" title="s02 优惠券">s02</a><a class="scr" href="marketing-rearrange.html#s03" title="s03 团购">s03</a><a class="scr" href="marketing-rearrange.html#s04" title="s04 求团报价">s04</a><a class="scr" href="marketing-rearrange.html#s05" title="s05 建活动">s05</a><a class="scr" href="marketing-rearrange.html#s06" title="s06 活动详情">s06</a><a class="scr" href="marketing-rearrange.html#s07" title="s07 建券">s07</a><a class="scr" href="marketing-rearrange.html#s08" title="s08 发放记录">s08</a><a class="scr" href="marketing-rearrange.html#s09" title="s09 券核销">s09</a><a class="scr" href="marketing-rearrange.html#s10" title="s10 报价">s10</a></div>
+  <div class="pcard__links"><a href="marketing-rearrange.html">本地稿</a> <a href="https://claude.ai/artifact/YWn4fpaaqbwE4mQS6eVnX3">claude.ai</a> <a href="../docs/technical/design/营销域-概念对齐.md">营销域-概念对齐</a></div>
+  
+</article><article class="pcard" id="activity-list-layout">
+  <div class="pcard__hd">
+    <b>活动列表怎么排</b>
+    <span class="chip ">参考</span>
+  </div>
+  <div class="pcard__meta">方案稿 · 商家 App · 2026-09-18 · 3 屏</div>
+  <p class="pcard__sum">三种排法：现状 / 两行一条按状态分组（推荐）/ 一行一条右侧开关。</p>
+  <div class="screens"><a class="scr" href="activity-list-layout.html#s01" title="s01 A 现状">s01</a><a class="scr" href="activity-list-layout.html#s02" title="s02 B 两行一条 · 按状态分组">s02</a><a class="scr" href="activity-list-layout.html#s03" title="s03 C 一行一条 · 右侧开关">s03</a></div>
+  <div class="pcard__links"><a href="activity-list-layout.html">本地稿</a> <a href="https://claude.ai/artifact/Ey9uhPDXGsmnt31qzZoKP5">claude.ai</a></div>
+  
+</article><article class="pcard" id="inventory-bar-entries">
+  <div class="pcard__hd">
+    <b>贴底条放几个入口</b>
+    <span class="chip ">参考</span>
+  </div>
+  <div class="pcard__meta">方案稿 · 商家 App · 2026-09-17 · 5 屏</div>
+  <p class="pcard__sum">库存页贴底条的三个方案：现状两个 / 加盘点（推荐）/ 加盘点与调拨。</p>
+  <div class="screens"><a class="scr" href="inventory-bar-entries.html#s01" title="s01 A 现状 · 两个">s01</a><a class="scr" href="inventory-bar-entries.html#s02" title="s02 B ＋盘点">s02</a><a class="scr" href="inventory-bar-entries.html#s03" title="s03 C ＋盘点＋调拨">s03</a><a class="scr" href="inventory-bar-entries.html#s04" title="s04 有盘点单开着时">s04</a><a class="scr" href="inventory-bar-entries.html#s05" title="s05 C 才有的麻烦：调拨会被拦">s05</a></div>
+  <div class="pcard__links"><a href="inventory-bar-entries.html">本地稿</a> <a href="https://claude.ai/artifact/XnRnPraqetUjgCCvW61WF2">claude.ai</a></div>
+  
+</article><article class="pcard" id="inventory-bar-layout">
+  <div class="pcard__hd">
+    <b>库存页贴底条：三个按钮怎么排</b>
+    <span class="chip ">参考</span>
+  </div>
+  <div class="pcard__meta">方案稿 · 商家 App · 2026-09-17 · 4 屏</div>
+  <p class="pcard__sum">四种排法：现状 / 三格等分 / 两动作等分加圆形展开（推荐）/ 「更多」上移。</p>
+  <div class="screens"><a class="scr" href="inventory-bar-layout.html#s01" title="s01 A 现状">s01</a><a class="scr" href="inventory-bar-layout.html#s02" title="s02 B 三格等分">s02</a><a class="scr" href="inventory-bar-layout.html#s03" title="s03 C 两动作等分 ＋ 圆形展开">s03</a><a class="scr" href="inventory-bar-layout.html#s04" title="s04 D 「更多」上移">s04</a></div>
+  <div class="pcard__links"><a href="inventory-bar-layout.html">本地稿</a> <a href="https://claude.ai/artifact/WEu9WUhTodCofWMqKiZ8iw">claude.ai</a></div>
+  
+</article><article class="pcard" id="inventory-home-entries">
+  <div class="pcard__hd">
+    <b>库存首页入口排布</b>
+    <span class="chip ">参考</span>
+  </div>
+  <div class="pcard__meta">方案稿 · 商家 App · 2026-09-17 · 3 屏</div>
+  <p class="pcard__sum">今天这版与提案（首屏 / 滚到底）并排，九个入口怎么分类、四处改动与取舍。</p>
+  <div class="screens"><a class="scr" href="inventory-home-entries.html#s01" title="s01 今天这版">s01</a><a class="scr" href="inventory-home-entries.html#s02" title="s02 提案 · 首屏">s02</a><a class="scr" href="inventory-home-entries.html#s03" title="s03 提案 · 滚到底">s03</a></div>
+  <div class="pcard__links"><a href="inventory-home-entries.html">本地稿</a> <a href="https://claude.ai/artifact/KW55sBD4DFCAE92EcCVXJN">claude.ai</a> <a href="../docs/technical/TDD-库存首页入口排布.md">TDD-库存首页入口排布</a></div>
+  
+</article>
+  </div>
+</section>
+<section>
+  <div class="sec-head"><span class="sec-num">03</span><h2>作废：被后来的稿子取代</h2></div>
+  <div class="pgrid">
+<article class="pcard" id="inventory-nine-v0">
+  <div class="pcard__hd">
+    <b>进销存九屏（第一版）</b>
+    <span class="chip dead">作废</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 商家 App · 2026-08-26 · 9 屏</div>
+  <p class="pcard__sum">九屏的第一版，自造了一套样式（踩了十二条里的九条），被用产品令牌重画的那版取代。留着是为了看当时的取舍。</p>
+  <div class="screens"><a class="scr" href="inventory-nine-v0.html#s01" title="s01 库存">s01</a><a class="scr" href="inventory-nine-v0.html#s02" title="s02 库存明细">s02</a><a class="scr" href="inventory-nine-v0.html#s03" title="s03 进货">s03</a><a class="scr" href="inventory-nine-v0.html#s04" title="s04 盘点">s04</a><a class="scr" href="inventory-nine-v0.html#s05" title="s05 报损">s05</a><a class="scr" href="inventory-nine-v0.html#s06" title="s06 调拨">s06</a><a class="scr" href="inventory-nine-v0.html#s07" title="s07 单据">s07</a><a class="scr" href="inventory-nine-v0.html#s08" title="s08 报表">s08</a><a class="scr" href="inventory-nine-v0.html#s09" title="s09 库位">s09</a></div>
+  <div class="pcard__links"><a href="inventory-nine-v0.html">本地稿</a> <a href="https://claude.ai/code/artifact/3daacf45-7604-49aa-8fa5-0befdce24d2b">claude.ai</a> <a href="../docs/technical/design/B端UI规范-画原型的十二条.md">B端UI规范-画原型的十二条</a></div>
+  <p class="why">已由 <a href="#inventory-nine">inventory-nine</a> 取代</p>
+</article><article class="pcard" id="inventory-rearrange">
+  <div class="pcard__hd">
+    <b>进销存重排：工作台到在途</b>
+    <span class="chip dead">作废</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 商家 App · 2026-08-28 · 4 屏</div>
+  <p class="pcard__sum">三个问题的诊断、四屏（工作台 / 库存 / 明细 / 在途）与 SKU → 库存项 → 台账的流程图。结论并进九屏。</p>
+  <div class="screens"><a class="scr" href="inventory-rearrange.html#s01" title="s01 工作台">s01</a><a class="scr" href="inventory-rearrange.html#s02" title="s02 库存">s02</a><a class="scr" href="inventory-rearrange.html#s03" title="s03 库存明细">s03</a><a class="scr" href="inventory-rearrange.html#s04" title="s04 在途">s04</a></div>
+  <div class="pcard__links"><a href="inventory-rearrange.html">本地稿</a> <a href="https://claude.ai/code/artifact/9b9c2865-931b-48d1-91cb-42a9d5d86ace">claude.ai</a> <a href="../docs/technical/design/进销存-B端功能与流程.md">进销存-B端功能与流程</a></div>
+  <p class="why">已由 <a href="#inventory-nine">inventory-nine</a> 取代</p>
+</article>
+  </div>
+</section>
+
+<footer>页面稿 = 逐屏画出来、每屏有锚点，界面清单能跳进来 · 方案稿 = 几种排法并列比较，落地后只留结论 · 画布稿 = claude.ai 设计画布，没有页内锚点<br>
+加一份：prototypes/README.md · 重新生成：<code>python3 scripts/gen-proto-index.py</code></footer>
+</div>
+</html>

@@ -1,0 +1,179 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>进销存 · 四页优化</title>
+<!-- 真源在仓库 prototypes/inventory-four-fixes.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+<style>
+/* 本稿专用：仅本稿的对比排版，不是通用积木 */
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;align-items:start}
+.pair>div{display:flex;flex-direction:column;gap:10px;max-width:300px}
+.tag-new{color:var(--note)}
+.said{margin:0 0 18px}
+.del{text-decoration:line-through;opacity:.5}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · 进销存 · 方案稿 · 2026-09-17</div>
+  <h1>进销存：四页优化</h1>
+  <p class="sub">四条一起改，先看样子。其中两条有既有理由，代价我标在下面——不是反对，是让你知道换的是什么。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01</span><h2>库存页：顶部瘦身</h2></div>
+  <p class="sub said">「<b>去掉顶部的店名，去掉看各店的货，使顶部的内容简洁一点</b>」</p>
+  <figure id="s01">
+    <div class="pair">
+      <div>
+        <div class="eyebrow">现状 · 顶部占四行</div>
+        <div class="ph">
+          <div class="nav"><span class="bk">‹</span><span class="t">库存</span><span></span></div>
+          <div class="scr">
+            <div class="meta">▤ 虹选鲜果·福田店</div>
+            <div class="stats" style="grid-template-columns:repeat(4,1fr);padding-bottom:0">
+              <div><div class="n num">0</div><div class="l">在售 SKU</div></div>
+              <div><div class="n num">0</div><div class="l">缺货</div></div>
+              <div><div class="n num">0</div><div class="l">滞销</div></div>
+              <div><div class="n num">0</div><div class="l">在途</div></div>
+              <div class="frow" style="grid-column:1/-1;justify-content:flex-end;margin-top:6px;padding:0 12px"><span class="v go hot">看各店的货</span></div>
+            </div>
+            <div class="tabs"><span>要处理 0</span><span class="on">全部</span><span>有预留</span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="eyebrow tag-new">建议 · 店名进标题，跨店进抽屉</div>
+        <div class="ph">
+          <div class="nav"><span class="bk">‹</span><span class="t">库存 · 福田店</span><span></span></div>
+          <div class="scr">
+            <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+              <div><div class="n num">0</div><div class="l">在售 SKU</div></div>
+              <div><div class="n num">0</div><div class="l">缺货</div></div>
+              <div><div class="n num">0</div><div class="l">滞销</div></div>
+              <div><div class="n num">0</div><div class="l">在途</div></div>
+            </div>
+            <div class="tabs"><span>要处理 0</span><span class="on">全部</span><span>有预留</span></div>
+            <div class="meta" style="text-align:center;padding:14px 0">…列表往上提了两行</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption class="cap"><b>01 库存页：顶部瘦身</b>左：现状；右：建议。</figcaption>
+    <p class="why"><b>两处代价，都不是小事：</b><br>· <b>店名</b>不建议直接删。它当初是为了一次真实故障加的——多店店主在另一家店上动手，<b>没有任何症状</b>。建议<b>挪进标题栏</b>（「库存 · 福田店」）：一个字的高度都不占，而「我在哪家店」还答得出。单店商家本来就不显示这一行。<br>· <b>「看各店的货」</b>是跨店总览的<b>唯一入口</b>，直接删等于那一页再也进不去。建议收进右下角「更多」抽屉——它现在正好只剩四条，放得下。</p>
+  </figure>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">02</span><h2>进货页：供应商看着像输入框</h2></div>
+  <p class="sub said">「<b>供应商要选择列表</b>」</p>
+  <figure id="s02">
+    <div class="pair">
+      <div>
+        <div class="eyebrow">现状</div>
+        <div class="ph">
+          <div class="nav"><span class="bk">‹</span><span class="t">进货</span><span></span></div>
+          <div class="scr">
+            <div class="gt">供应商</div>
+            <div class="group">
+              <div class="frow"><span class="v ph-" style="text-align:left;flex:1">选择供应商</span><span class="meta">更换</span></div>
+            </div>
+            <div class="meta">进货单记的是下单当时的名字</div>
+          </div>
+        </div>
+        <p class="why">背后<b>已经是</b>选择器（点一下弹出带搜索的列表，还能新建）。但这一行长得和上下的输入框一模一样，右边写的是「更换」——<b>还没选过的时候「更换」是句空话</b>，于是它读起来像一个可以打字的框。</p>
+      </div>
+      <div>
+        <div class="eyebrow tag-new">建议 · 让它长得像选择器</div>
+        <div class="ph">
+          <div class="nav"><span class="bk">‹</span><span class="t">进货</span><span></span></div>
+          <div class="scr">
+            <div class="gt">供应商</div>
+            <div class="group"><div class="frow"><span class="k">供应商</span><span class="v go ph-">请选择</span></div></div>
+            <div class="meta">进货单记的是下单当时的名字</div>
+            <div class="gt">供应商</div>
+            <div class="group"><div class="frow"><span class="k">供应商</span><span class="v go">城北果蔬批发</span></div></div>
+          </div>
+        </div>
+        <p class="why">右边换成「<b>›</b>」——与全站其它「点进去选」的行同一个记号，不用再读文字就知道它会弹东西。没选过时占位写「请选择」，选过之后直接显示名字。</p>
+      </div>
+    </div>
+    <figcaption class="cap"><b>02 进货页：供应商</b>左：现状；右：建议（未选 / 已选）。</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">03</span><h2>进货 / 报损：加货按钮太扁，底部两枚不齐</h2></div>
+  <p class="sub said">「<b>添加商品按钮有点扁，同时优化 button 布局，报损页面也类似</b>」</p>
+  <figure id="s03">
+    <div class="pair">
+      <div>
+        <div class="eyebrow">现状</div>
+        <div class="ph">
+          <div class="nav"><span class="bk">‹</span><span class="t">进货</span><span></span></div>
+          <div class="scr">
+            <div class="gt">商品</div>
+            <div class="card"><div><span class="chip" style="background:var(--sh-primary-tint);color:var(--sh-primary-text);font-weight:600">＋ 添加商品</span></div></div>
+          </div>
+          <div class="foot"><div class="btn sec">存草稿</div><div class="btn" style="flex:1.4">确认入库</div></div>
+        </div>
+        <p class="why">加货按钮量出来只有 <b class="num">25px</b> 高——<b>比可点下限的一半还少</b>，而它是这一页第一个要点的东西。底部两枚 <b class="num">1 : 1.4</b>，既不是等分也不是明显的主次，看着像没对齐。</p>
+      </div>
+      <div>
+        <div class="eyebrow tag-new">建议</div>
+        <div class="ph">
+          <div class="nav"><span class="bk">‹</span><span class="t">进货</span><span></span></div>
+          <div class="scr">
+            <div class="gt">商品</div>
+            <div class="card"><div class="btn" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">＋ 添加商品</div></div>
+          </div>
+          <div class="foot"><div class="btn sec">存草稿</div><div class="btn">确认入库</div></div>
+        </div>
+        <p class="why">加货按钮抬到 <b class="num">44px</b> 并<b>占满整行</b>：它是「往这张单里放东西」，本来就该横跨整张卡，而不是缩在左上角。<br>底部改<b>等分</b>：主次已经由颜色说清（灰 / 实心），宽度再说一遍反而把 1.4 这个数暴露出来。<br>报损页同一处同样改。⚠️ 加货按钮是<b>库件</b> <code>sh-add</code>，另有 <b class="num">5</b> 个页面在用（供应商、规格、调拨、库位、商品编辑）——改它会一起变高，我认为是对的（那几处同样偏扁），但这是一次<b>跨页面</b>的改动。</p>
+      </div>
+    </div>
+    <figcaption class="cap"><b>03 进货 / 报损：加货按钮与底部两枚</b>左：现状；右：建议。</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">04</span><h2>盘点页：去掉顶部那句解释</h2></div>
+  <p class="sub said">「<b>盘点页面去掉顶部的解释</b>」</p>
+  <figure id="s04">
+    <div class="pair">
+      <div>
+        <div class="eyebrow">现状</div>
+        <div class="ph">
+          <div class="nav"><span class="bk">‹</span><span class="t">盘点</span><span></span></div>
+          <div class="scr">
+            <div class="meta">▤ 虹选鲜果·福田店</div>
+            <div class="card"><div class="meta">选择需要盘点的商品。开单时锁定账面数，盘点期间的销售不计入差异</div></div>
+            <div class="meta" style="text-align:center;padding:14px 0">…商品列表</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="eyebrow tag-new">建议</div>
+        <div class="ph">
+          <div class="nav"><span class="bk">‹</span><span class="t">盘点 · 福田店</span><span></span></div>
+          <div class="scr">
+            <div class="meta" style="text-align:center;padding:14px 0">…商品列表直接开始</div>
+          </div>
+        </div>
+        <p class="why">那句话里<b>第二半是有信息的</b>——「开单时锁定账面数，盘点期间的销售不计入差异」回答的是「我盘的时候卖出去的算不算」，而人猜不到。建议把它<b>挪到开单那一刻</b>（确认弹层里说一次），而不是常年占着首屏。第一半「选择需要盘点的商品」是在念页面名字，直接删。</p>
+      </div>
+    </div>
+    <figcaption class="cap"><b>04 盘点页：顶部解释</b>左：现状；右：建议。</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">待定</span><h2>要你点头的两处</h2></div>
+  <p class="why" style="max-width:900px"><b>要你点头的两处</b>：① 店名挪标题栏（而不是删）与「看各店的货」收进抽屉（而不是删）；③ <code>sh-add</code> 是库件，改高度会影响另外 5 个页面。<br>其余的我按这份直接做。</p>
+</section>
+
+<footer>
+  真源：prototypes/inventory-four-fixes.html · 登记：prototypes/registry.json · 原 artifact：<a href="https://claude.ai/artifact/RDdFTiqjM6zFoEpf9BnYHu">claude.ai/artifact/RDdFTiqjM6zFoEpf9BnYHu</a><br>
+  相关文档：docs/technical/design/进销存-B端交互梳理.md · docs/technical/design/规范-组件.md（sh-add 库件）
+</footer>
+</div>
+</html>

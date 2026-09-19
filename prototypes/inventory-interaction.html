@@ -1,0 +1,208 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>进销存 · 交互原型（三步方案）</title>
+<!-- 真源在仓库 prototypes/inventory-interaction.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+<style>
+/* 本稿专用：仅本稿的对比排版，不是通用积木 */
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:36px 24px;align-items:start}
+.pair figure{max-width:300px}
+.mark{color:var(--note);font-weight:700;margin-right:3px}
+.isnew{outline:2px solid var(--note);outline-offset:2px}
+.tag-new{color:var(--note)}
+.notes{display:flex;flex-direction:column;gap:8px;max-width:900px;margin-top:22px}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · 进销存 · 方案稿 · 2026-08-28</div>
+  <h1>进销存：交互原型</h1>
+  <p class="sub">三步方案的界面样子。屏内用的是 app 真实的设计令牌与字阶，数据取自模拟器上跑出来的那家店 —— 不是示意色块。<b>不新增页面</b>，界面清单不变；方案见「B 端交互梳理」。<span class="mark">❶</span>标记处为改动。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">STEP 01</span><h2>两个视角互相到得了</h2></div>
+  <p class="sub" style="margin-bottom:22px">「看变动」这一个能力落在两屏上：单据按<b>单</b>排，明细按<b>货</b>排。两种切法都要留 —— 会计问「上周那批米是谁记的」，店主问「这件米怎么少的」。改的是让人一眼分得出，以及互相到得了。</p>
+  <div class="pair">
+
+    <figure id="s01">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">按单查</span><span></span></div>
+        <div class="scr">
+          <div class="tabs"><span class="on">全部</span><span>入库</span><span>出库</span><span>盘点</span><span>调拨</span></div>
+          <div class="card isnew">
+            <div class="hd"><span class="nm">入库</span><span class="nm num" style="color:var(--sh-success-text)">+5</span></div>
+            <div class="hd meta"><span class="num">IN20260827212003</span><span>已过账</span></div>
+            <div class="hd meta"><span><span class="mark">❷</span>五常大米 10斤装 · 08-27 21:20</span><span class="v go hot">明细</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">入库</span><span class="nm num" style="color:var(--sh-success-text)">+5</span></div>
+            <div class="hd meta"><span class="num">IN20260827212003</span><span>已过账</span></div>
+            <div class="hd meta"><span>金龙鱼调和油 5L · 08-27 21:20</span><span class="v go hot">明细</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>01 单据 → 按单查</b>标题改名，每行多一条到货的路</figcaption>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">库存明细</span><span></span></div>
+        <div class="scr">
+          <div class="nm">五常大米 10斤装 · 10斤装</div>
+          <div class="stats">
+            <div><div class="n num">82</div><div class="l">实存</div></div>
+            <div><div class="n num">0</div><div class="l">预留</div></div>
+            <div><div class="n num">82</div><div class="l">可用</div></div>
+          </div>
+          <div class="group isnew" style="border-radius:13px">
+            <div class="frow"><span class="nm"><span class="mark">❸</span>按货查</span></div>
+            <div class="frow">
+              <span><span class="nm" style="display:block">期初</span><span class="meta num">IN20260827212000 · 08-27 21:20</span></span>
+              <span class="v"><span class="nm num" style="display:block;color:var(--sh-success-text)">+82</span><span class="meta num" style="display:block">0 → 82</span><span class="v go hot"><span class="mark">❷</span>单据</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>02 库存明细</b>「变动明细」改名「按货查」，每行可回到那张单</figcaption>
+    </figure>
+
+  </div>
+  <div class="notes">
+    <p class="why"><span class="mark">❷</span><b>三条回边</b>：单据行 → 那件货的明细；明细行 → 那张单；报表榜单行 → 那件货。都是「从一个结果走到它的对象」。</p>
+    <p class="why"><span class="mark">❸</span><b>两处改名</b>：「出入库单据」→ 按单查，「变动明细」→ 按货查。名字直接回答「我该去哪一页」。</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">STEP 02</span><h2>「调整数量」照实说：它就是盘点</h2></div>
+  <p class="sub" style="margin-bottom:22px"><code>POST /biz/inventory/adjust</code> 的实现是 <code>counts.adjustOne(...)</code>，控制器注释写着「界面上是一个按钮，底下是<b>开单 → 录一行 → 过账</b>」。商家不知道，于是他以为是「直接改个数」—— 而它会选差异原因、落一行流水，之后在单据页冒出一张他没印象开过的盘点单。</p>
+  <div class="pair">
+
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">库存明细</span><span></span></div>
+        <div class="scr">
+          <div class="gt">差异原因</div>
+          <div class="group">
+            <div class="frow"><span class="chip warn">损坏</span><span class="chip">过期</span><span class="chip">赠送</span><span class="chip">其他</span></div>
+          </div>
+          <div class="btn isnew"><span class="mark" style="color:var(--sh-on-primary)">❹</span>盘这一件</div>
+          <div class="meta">调整将生成盘点单并记录流水，需选择差异原因</div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>03 改前</b>按钮叫「调整数量」，读起来像直接改数</figcaption>
+    </figure>
+
+    <figure id="s04">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">库存明细</span><span></span></div>
+        <div class="scr">
+          <div class="gt">差异原因</div>
+          <div class="group">
+            <div class="frow"><span class="chip warn">损坏</span><span class="chip">过期</span></div>
+          </div>
+        </div>
+        <div class="mask"><div class="sheet">
+          <div class="h">盘这一件</div>
+          <div class="d">当前账面 82，填写实际盘点数量</div>
+          <div class="group" style="background:var(--sh-faint)"><div class="frow"><span class="v num" style="text-align:left;font-size:15px">78</span></div></div>
+          <div class="d"><span class="mark">❺</span>将生成一张盘点单，差异 −4 记为「损坏」</div>
+          <div class="acts"><div class="btn sec">取消</div><div class="btn">确认</div></div>
+        </div></div>
+      </div>
+      <figcaption class="cap"><b>04 改后</b>名字与确认文案都说明它开的是一张单</figcaption>
+    </figure>
+
+  </div>
+  <div class="notes">
+    <p class="why"><span class="mark">❹</span><b>按钮改名</b>：「调整数量」→「盘这一件」。它本来就是盘点的单件形态，名字照实说。</p>
+    <p class="why"><span class="mark">❺</span><b>确认里写明后果</b>：会生成一张盘点单、差异记在哪个原因上。商家之后在按单查里看到它就不会意外。</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">STEP 03</span><h2>「挑几件货」四处同一个件</h2></div>
+  <p class="sub" style="margin-bottom:22px">进货 / 报损 / 调拨用弹层，盘点用整页勾选 —— 同一个动作两套操作；而三个弹层是<b>裸列表</b>，几百个 SKU 时开不了单。抽一个件：搜索 + 列表 + 已选计数，四处共用。</p>
+  <div class="pair">
+
+    <figure id="s05">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">进货</span><span></span></div>
+        <div class="scr">
+          <div class="group"><div class="frow"><span class="k">供应商</span></div></div>
+        </div>
+        <div class="mask"><div class="sheet">
+          <div class="hd" style="display:flex;justify-content:space-between;align-items:center"><span class="nm">添加货品</span><span class="meta num"><span class="mark">❻</span>已选 2</span></div>
+          <div class="frow isnew" style="border-top:0;border-radius:9px"><span class="v ph-" style="text-align:left;flex:1">搜商品名或规格</span><span class="v hot">全选</span></div>
+          <div class="group" style="padding:0 2px">
+            <div class="frow"><span><span class="nm" style="display:block">五常大米 10斤装 · 10斤装</span><span class="meta num">实存 82</span></span><span class="v hot">加</span></div>
+            <div class="frow"><span><span class="nm" style="display:block">金龙鱼调和油 5L · 5L</span><span class="meta num">实存 72</span></span><span class="v hot">加</span></div>
+          </div>
+        </div></div>
+      </div>
+      <figcaption class="cap"><b>05 进货 / 报损 / 调拨</b>弹层内换成同一个件</figcaption>
+    </figure>
+
+    <figure id="s06">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">盘点</span><span></span></div>
+        <div class="scr">
+          <div class="group isnew" style="border-radius:13px">
+            <div class="frow"><span class="v ph-" style="text-align:left;flex:1">搜商品名或规格</span><span class="v hot">全选</span></div>
+          </div>
+          <div class="card">
+            <div class="hd" style="justify-content:flex-start"><span class="chip">☐</span><span><span class="nm" style="display:block">五常大米 10斤装 · 10斤装</span><span class="meta num">账面 82</span></span></div>
+          </div>
+          <div class="card">
+            <div class="hd" style="justify-content:flex-start"><span class="chip">☐</span><span><span class="nm" style="display:block">金龙鱼调和油 5L · 5L</span><span class="meta num">账面 72</span></span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec num">开始盘点（0 件）</div></div>
+      </div>
+      <figcaption class="cap"><b>06 盘点</b>保留整页勾选（要多选后开单），内部同一个件 · <span class="tag-new">本轮已做</span></figcaption>
+    </figure>
+
+  </div>
+  <div class="notes">
+    <p class="why"><span class="mark">❻</span><b>已选计数</b>：弹层里加一条到几件的反馈 —— 现在点一条加一条，加了几件只能靠回头数行。</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">CONTEXT</span><h2>枢纽这一屏不动</h2></div>
+  <p class="sub" style="margin-bottom:22px">库存页本轮已经改过：首屏「要处理」为空时落到「全部」（不再是一句「空着是好事」加一屏空白），七个入口从横滚 chip 改成定宽网格，一屏全可见。三步方案不再动它。</p>
+  <div class="pair">
+
+    <figure id="s07">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">库存</span><span></span></div>
+        <div class="scr">
+          <div class="stats">
+            <div><div class="n num">17</div><div class="l">在售 SKU</div></div>
+            <div><div class="n num" style="color:var(--sh-primary-text)">0</div><div class="l">缺货</div></div>
+            <div><div class="n num">0</div><div class="l">滞销</div></div>
+          </div>
+          <div class="tiles" style="grid-template-columns:repeat(4,1fr)">
+            <div class="tile" style="text-align:center"><b>进货</b></div><div class="tile" style="text-align:center"><b>盘点</b></div>
+            <div class="tile" style="text-align:center"><b>报损</b></div><div class="tile" style="text-align:center"><b>单据</b></div>
+            <div class="tile" style="text-align:center"><b>调拨</b></div><div class="tile" style="text-align:center"><b>报表</b></div><div class="tile" style="text-align:center"><b>库位</b></div>
+          </div>
+          <div class="tabs"><span>要处理 0</span><span class="on">全部</span><span>有预留</span></div>
+          <div class="card">
+            <div class="hd"><span><span class="nm" style="display:block">五常大米 10斤装 · 10斤装</span><span class="meta num">实存 82　预留 0</span></span><span class="v" style="text-align:right"><span class="nm num" style="display:block">82</span><span class="meta">可用</span></span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>07 库存</b>枢纽，<span class="tag-new">本轮已做</span></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<footer>
+  真源：prototypes/inventory-interaction.html · 登记：prototypes/registry.json · 原 artifact：<a href="https://claude.ai/code/artifact/c87cb6a7-a69f-473b-9c6c-4809056d9d2e">claude.ai/code/artifact/c87cb6a7-…</a><br>
+  相关文档：docs/technical/design/进销存-B端交互梳理.md · 屏内令牌取自 packages/ui/src/styles/base.css（主色 #E1251B、底 #ECEDEF、字阶 17/14/12）；数据取自模拟器上「联调-3店」的真实库存
+</footer>
+</div>
+</html>

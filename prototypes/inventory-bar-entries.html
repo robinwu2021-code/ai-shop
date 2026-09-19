@@ -1,0 +1,107 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>贴底条放几个入口</title>
+<!-- 真源在仓库 prototypes/inventory-bar-entries.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+<style>
+/* 本稿专用：仅本稿的对比排版，不是通用积木 */
+.prose{display:flex;flex-direction:column;gap:10px;max-width:68ch}
+.prose p{margin:0}
+.cap .pick{color:var(--note);font-weight:600;margin-inline-start:8px}
+figure.pick .ph{outline:2px solid var(--note);outline-offset:5px}
+.cap .metrics{display:block;margin-top:6px}
+.cap .metrics .no{color:var(--note)}
+/* 只画贴底那一段：手机框不撑满整屏 */
+.ph.strip{aspect-ratio:auto}
+.ph.strip .scr{flex:0 0 auto;padding-bottom:26px}
+.foot .btn.sq{flex:0 0 32px;width:32px}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · 方案稿 · 2026-09-17</div>
+  <h1>贴底条放几个入口</h1>
+  <p class="sub">现在只放了两个，整条横在那儿确实没吃满。问题不是「能不能塞下」，而是接下来那两条各自带着条件——塞进去之后，条会在不同状态下变形。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">分层</span><h2>九个入口现在怎么分</h2></div>
+  <div class="tw"><table class="spec">
+    <tr><th>入口</th><th>多久用一次</th><th>现在在哪</th></tr>
+    <tr><td style="color:var(--note)">进货 · 报损</td><td>几乎每天</td><td>贴底条</td></tr>
+    <tr><td style="color:var(--note)">盘点</td><td>一周到一月</td><td>「更多」抽屉，排第一</td></tr>
+    <tr><td style="color:var(--note)">调拨</td><td>一周到一月</td><td>抽屉，排第二</td></tr>
+    <tr><td>单据 · 报表</td><td>要查的时候</td><td>抽屉</td></tr>
+    <tr><td>库位 · 供应商</td><td>建好就不动</td><td>抽屉</td></tr>
+  </table></div>
+  <p class="why">分层判据是代码里写死的那一条：<b>多久用一次</b>。按它排，往上提的顺位就是<b>盘点</b>，然后<b>调拨</b>。</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 03</span><h2>塞进去之后</h2></div>
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph strip">
+        <div class="scr"><div class="card" style="align-items:center"><span class="meta">没有需要处理的商品</span></div></div>
+        <div class="foot"><div class="btn">＋ 进货</div><div class="btn sec" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">－ 报损</div><div class="btn sec sq">⌃</div></div>
+      </div>
+      <figcaption class="cap"><b>01 A · 现状 · 两个</b>条宽 332px，两枚各 136px——一枚按钮比它需要的宽了将近一倍。
+        <span class="metrics sec-num">每枚 136px　·　内容只需 73px</span></figcaption>
+    </figure>
+
+    <figure id="s02" class="pick">
+      <div class="ph strip">
+        <div class="scr"><div class="card" style="align-items:center"><span class="meta">没有需要处理的商品</span></div></div>
+        <div class="foot"><div class="btn">＋ 进货</div><div class="btn sec" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">－ 报损</div><div class="btn sec">盘点</div><div class="btn sec sq">⌃</div></div>
+      </div>
+      <figcaption class="cap"><b>02 B · ＋盘点<span class="pick">推荐</span></b>每枚 88px，<strong>图标保得住</strong>（需要 73px）。盘点是抽屉里频次最高的一条，提上来之后抽屉还剩五条，仍然成立。
+        <span class="metrics sec-num">每枚 88px　·　内容需 73px　·　余量 15px</span></figcaption>
+    </figure>
+
+    <figure id="s03">
+      <div class="ph strip">
+        <div class="scr"><div class="card" style="align-items:center"><span class="meta">没有需要处理的商品</span></div></div>
+        <div class="foot"><div class="btn">进货</div><div class="btn sec" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">报损</div><div class="btn sec">盘点</div><div class="btn sec">调拨</div><div class="btn sec sq">⌃</div></div>
+      </div>
+      <figcaption class="cap"><b>03 C · ＋盘点＋调拨</b>每枚只剩 64px，<strong>两个 ± 图标必须去掉</strong>——而它们正是「进货是加、报损是减」那一眼。为一个月用一次的调拨，付一个每天都在的代价。
+        <span class="metrics sec-num"><span class="no">每枚 64px　·　带图标需 73px　·　差 9px</span></span></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">04 — 05</span><h2>B 要处理的两种状态</h2></div>
+  <div class="grid">
+
+    <figure id="s04">
+      <div class="ph strip">
+        <div class="scr"><div class="card" style="align-items:center"><span class="meta">没有需要处理的商品</span></div></div>
+        <div class="foot"><div class="btn">＋ 进货</div><div class="btn sec" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">－ 报损</div><div class="btn sec sq">⌃</div></div>
+      </div>
+      <figcaption class="cap"><b>04 有盘点单开着时</b>「盘点」整条消失（不是灰掉）——那件事正由工作台的「继续盘点」接着。条自动退回今天这个样子，两枚各 136px。<strong>这是 B 的好处：退化路径就是现状。</strong></figcaption>
+    </figure>
+
+    <figure id="s05">
+      <div class="ph strip">
+        <div class="scr"><div class="card" style="align-items:center"><span class="meta">没有需要处理的商品</span></div></div>
+        <div class="foot"><div class="btn">进货</div><div class="btn sec" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">报损</div><div class="btn sec">盘点</div><div class="btn sec" style="opacity:.5">调拨</div><div class="btn sec sq">⌃</div></div>
+      </div>
+      <figcaption class="cap"><b>05 C 才有的麻烦：调拨会被拦</b>放货的地方不足两个时它用不了。摆在抽屉里可以就地写一句「要两个放货的地方，现在只有 1 个」；摆在条上只剩一枚灰按钮——而代码注释自己写着<strong>「只是灰掉的按钮会让人以为是坏了」</strong>。</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">结论</span><h2>推荐 B</h2></div>
+  <div class="prose">
+    <p><b>推荐 B</b>：按代码里既有的分层判据，盘点就是下一顺位；88px 保得住图标；而它消失时条恰好退回现状，没有第二套布局要维护。</p>
+    <p>不推荐 C 的理由不是「挤」，是<b>代价的期限不对等</b>：调拨一个月用一次，而去掉 ± 图标是每天每一眼都在付。真要上 C，我建议同时把「报损」改成别的写法，否则「进货/报损」这对反义动作没了符号就只剩两个词。</p>
+  </div>
+</section>
+
+<footer>真源：prototypes/inventory-bar-entries.html · 登记：prototypes/registry.json · 原 artifact：<a href="https://claude.ai/artifact/XnRnPraqetUjgCCvW61WF2">https://claude.ai/artifact/XnRnPraqetUjgCCvW61WF2</a> · 相关文档：prototypes/inventory-bar-layout.html（上一稿：排法）／ prototypes/inventory-home-entries.html（下一稿：按「是什么」重排）</footer>
+</div>
+</html>

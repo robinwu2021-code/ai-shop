@@ -1,0 +1,1321 @@
+{
+ "_readme": "界面原型登记表（真源，手工维护）。每份原型一条；screens[].client/route 让界面清单（gen-ui-catalog.py）能从页面跳到那一屏，路由还不存在的屏会在清单里列成「原型」行；同一路由被多份登记时，排在前面的赢。status: 在建 | 已落地 | 参考 | 作废（作废要写 supersededBy）。生成总览：python3 scripts/gen-proto-index.py；screens[].pageTitle 是清单里那一行的页名（屏名与页名不同时才写）",
+ "prototypes": [
+  {
+   "slug": "marketing-unified",
+   "file": "marketing-unified.html",
+   "title": "营销：活动统一模型",
+   "kind": "pages",
+   "clients": [
+    "b-app",
+    "c-app",
+    "ops-web"
+   ],
+   "status": "已落地",
+   "date": "2026-09-18",
+   "artifact": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+   "summary": "一个模型覆盖所有玩法：商家填一张表、确认发布；玩法是表里的一个字段。团是规则开出来的实例。拼团、社区集单、券、平台活动与 C 端露出共用一套约定。三十七屏。",
+   "docs": [
+    {
+     "label": "PRD-营销-活动统一模型",
+     "path": "docs/requirements/PRD-营销-活动统一模型.md"
+    },
+    {
+     "label": "营销域-活动统一模型",
+     "path": "docs/technical/design/营销域-活动统一模型.md"
+    },
+    {
+     "label": "开发计划-营销域",
+     "path": "docs/technical/开发计划-营销域.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "营销",
+     "client": "b-app",
+     "route": "pages/marketing/index"
+    },
+    {
+     "id": "s02",
+     "title": "活动列表",
+     "client": "b-app",
+     "route": "pages/activities/index"
+    },
+    {
+     "id": "s03",
+     "title": "选玩法",
+     "client": "b-app",
+     "route": "pages/activity-edit/index"
+    },
+    {
+     "id": "s04",
+     "title": "填写 · 满减"
+    },
+    {
+     "id": "s05",
+     "title": "填写 · 拼团"
+    },
+    {
+     "id": "s06",
+     "title": "确认"
+    },
+    {
+     "id": "s07",
+     "title": "活动详情"
+    },
+    {
+     "id": "s08",
+     "title": "结束确认"
+    },
+    {
+     "id": "s35",
+     "title": "编辑进行中的活动"
+    },
+    {
+     "id": "s09",
+     "title": "团列表",
+     "client": "b-app",
+     "route": "pages/groups/index"
+    },
+    {
+     "id": "s10",
+     "title": "团详情",
+     "client": "b-app",
+     "route": "pages/group/index"
+    },
+    {
+     "id": "s34",
+     "title": "商家开团",
+     "client": "b-app",
+     "route": "pages/group-open/index"
+    },
+    {
+     "id": "s11",
+     "title": "自己组合"
+    },
+    {
+     "id": "s12",
+     "title": "券列表",
+     "client": "b-app",
+     "route": "pages/coupons/index"
+    },
+    {
+     "id": "s13",
+     "title": "新建券 · 填写",
+     "client": "b-app",
+     "route": "pages/coupon-edit/index"
+    },
+    {
+     "id": "s14",
+     "title": "新建券 · 确认"
+    },
+    {
+     "id": "s15",
+     "title": "券详情",
+     "client": "b-app",
+     "route": "pages/coupon/index"
+    },
+    {
+     "id": "s16",
+     "title": "发放结果",
+     "client": "b-app",
+     "route": "pages/coupon-issues/index"
+    },
+    {
+     "id": "s17",
+     "title": "券核销",
+     "client": "b-app",
+     "route": "pages/verify/index"
+    },
+    {
+     "id": "s18",
+     "title": "发放 · 选人群"
+    },
+    {
+     "id": "s19",
+     "title": "填写 · 社区集单"
+    },
+    {
+     "id": "s20",
+     "title": "集单 · 一期",
+     "client": "b-app",
+     "route": "pages/period/index"
+    },
+    {
+     "id": "s31",
+     "title": "集单列表",
+     "client": "b-app",
+     "route": "pages/periods/index"
+    },
+    {
+     "id": "s32",
+     "title": "集单活动详情"
+    },
+    {
+     "id": "s33",
+     "title": "集单 · 未达起订量"
+    },
+    {
+     "id": "s21",
+     "title": "商品详情 · 拼团",
+     "client": "c-app",
+     "route": "pages/goods/index"
+    },
+    {
+     "id": "s22",
+     "title": "参团",
+     "client": "c-app",
+     "route": "pages/group/index"
+    },
+    {
+     "id": "s23",
+     "title": "确认订单",
+     "client": "c-app",
+     "route": "pages/order-confirm/index"
+    },
+    {
+     "id": "s24",
+     "title": "我的券",
+     "client": "c-app",
+     "route": "pages/coupons/index"
+    },
+    {
+     "id": "s25",
+     "title": "出示券码",
+     "client": "c-app",
+     "route": "pages/coupon-code/index"
+    },
+    {
+     "id": "s26",
+     "title": "商品详情 · 集单"
+    },
+    {
+     "id": "s36",
+     "title": "领券"
+    },
+    {
+     "id": "s37",
+     "title": "集单订单",
+     "client": "c-app",
+     "route": "pages/order/index"
+    },
+    {
+     "id": "s27",
+     "title": "平台活动（商家）",
+     "client": "b-app",
+     "route": "pages/platform-activities/index"
+    },
+    {
+     "id": "s28",
+     "title": "活动报名",
+     "client": "b-app",
+     "route": "pages/platform-activity-apply/index"
+    },
+    {
+     "id": "s29",
+     "title": "运营端 · 新建平台活动",
+     "client": "ops-web",
+     "route": "marketing?tab=platform"
+    },
+    {
+     "id": "s30",
+     "title": "运营端 · 报名审核",
+     "client": "ops-web",
+     "route": "marketing?tab=platformAudit"
+    }
+   ]
+  },
+  {
+   "slug": "member-loop",
+   "file": "member-loop.html",
+   "title": "会员标签与定向营销",
+   "kind": "pages",
+   "clients": [
+    "b-app",
+    "c-app",
+    "ops-web"
+   ],
+   "status": "在建",
+   "date": "2026-09-19",
+   "artifact": "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc",
+   "summary": "会员 → 筛选 → 标签 / 人群 → 发券 / 发消息 / 建活动 → 效果回看的闭环；运营端看人群与触达。取代会员 v1 的 s02–s07。",
+   "docs": [
+    {
+     "label": "PRD-会员标签与定向营销",
+     "path": "docs/requirements/PRD-会员标签与定向营销.md"
+    },
+    {
+     "label": "TDD-会员标签与定向营销",
+     "path": "docs/technical/TDD-会员标签与定向营销.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "m01",
+     "title": "会员",
+     "client": "b-app",
+     "route": "pages/customers/index"
+    },
+    {
+     "id": "m02",
+     "title": "筛选"
+    },
+    {
+     "id": "m03",
+     "title": "对这批人"
+    },
+    {
+     "id": "m04",
+     "title": "会员详情",
+     "client": "b-app",
+     "route": "pages/member-detail/index"
+    },
+    {
+     "id": "m05",
+     "title": "选标签"
+    },
+    {
+     "id": "m06",
+     "title": "批量打标"
+    },
+    {
+     "id": "m07",
+     "title": "标签",
+     "client": "b-app",
+     "route": "pages/member-tags/index"
+    },
+    {
+     "id": "m08",
+     "title": "标签详情"
+    },
+    {
+     "id": "m09",
+     "title": "合并确认"
+    },
+    {
+     "id": "m10",
+     "title": "人群列表",
+     "client": "b-app",
+     "route": "pages/member-segments/index"
+    },
+    {
+     "id": "m11",
+     "title": "人群详情"
+    },
+    {
+     "id": "m12",
+     "title": "选人 · 发券 / 发消息"
+    },
+    {
+     "id": "m13",
+     "title": "选人 · 活动"
+    },
+    {
+     "id": "m14",
+     "title": "填写 · 人群"
+    },
+    {
+     "id": "m15",
+     "title": "确认 · 覆盖人数"
+    },
+    {
+     "id": "m16",
+     "title": "确认 · 覆盖 0 人"
+    },
+    {
+     "id": "m17",
+     "title": "发券 · 选人",
+     "client": "b-app",
+     "route": "pages/coupon-send/index"
+    },
+    {
+     "id": "m18",
+     "title": "发消息",
+     "client": "b-app",
+     "route": "pages/member-reach/index"
+    },
+    {
+     "id": "c01",
+     "title": "点消息进店",
+     "client": "c-app"
+    },
+    {
+     "id": "m19",
+     "title": "发出去的"
+    },
+    {
+     "id": "m20",
+     "title": "一次触达的效果"
+    },
+    {
+     "id": "m21",
+     "title": "会员设置 · 口径",
+     "client": "b-app",
+     "route": "pages/member-settings/index"
+    },
+    {
+     "id": "o01",
+     "title": "人群与触达",
+     "client": "ops-web",
+     "route": "members?tab=reach"
+    },
+    {
+     "id": "o02",
+     "title": "分层口径",
+     "client": "ops-web"
+    }
+   ]
+  },
+  {
+   "slug": "member-marketing-v1",
+   "file": "member-marketing-v1.html",
+   "title": "会员与营销 · 界面原型（v1）",
+   "kind": "pages",
+   "clients": [
+    "b-app",
+    "c-app"
+   ],
+   "status": "参考",
+   "date": "2026-08-20",
+   "artifact": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
+   "summary": "会员与营销第一版十七屏。会员六屏已由「会员标签与定向营销」取代、活动与券由「营销：活动统一模型」取代，那些屏不再挂路由；手工录入（s05）与 C 端店铺页 / 加入会员 / 券包（s15–s17）仍是现行依据。",
+   "docs": [
+    {
+     "label": "会员体系与活动联动-需求",
+     "path": "docs/requirements/会员体系与活动联动-需求.md"
+    },
+    {
+     "label": "TDD-券与活动模型",
+     "path": "docs/technical/design/TDD-券与活动模型.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "入口",
+     "client": "b-app",
+     "route": "pages/me/index"
+    },
+    {
+     "id": "s02",
+     "title": "会员总览"
+    },
+    {
+     "id": "s03",
+     "title": "筛选 → 人群"
+    },
+    {
+     "id": "s04",
+     "title": "会员详情"
+    },
+    {
+     "id": "s05",
+     "title": "手工录入",
+     "client": "b-app",
+     "route": "pages/members/add",
+     "pageTitle": "手工录入会员"
+    },
+    {
+     "id": "s06",
+     "title": "标签与合并"
+    },
+    {
+     "id": "s07",
+     "title": "会员口径"
+    },
+    {
+     "id": "s08",
+     "title": "活动列表"
+    },
+    {
+     "id": "s09",
+     "title": "新建 · 第一步"
+    },
+    {
+     "id": "s10",
+     "title": "新建 · 给谁 + 预览"
+    },
+    {
+     "id": "s11",
+     "title": "券列表"
+    },
+    {
+     "id": "s12",
+     "title": "新建券"
+    },
+    {
+     "id": "s13",
+     "title": "发放结果"
+    },
+    {
+     "id": "s14",
+     "title": "券核销"
+    },
+    {
+     "id": "s15",
+     "title": "店铺页 · 未加入",
+     "client": "c-app",
+     "route": "pages/store/index"
+    },
+    {
+     "id": "s16",
+     "title": "加入 · 手机号授权",
+     "client": "c-app",
+     "route": "pages/member-card/index",
+     "pageTitle": "我的会员卡"
+    },
+    {
+     "id": "s17",
+     "title": "券包 · 次卡出示",
+     "client": "c-app"
+    }
+   ]
+  },
+  {
+   "slug": "goods-spec",
+   "file": "goods-spec.html",
+   "title": "规格：建品页与商品规格",
+   "kind": "pages",
+   "clients": [
+    "b-app"
+   ],
+   "status": "已落地",
+   "date": "2026-08-27",
+   "artifact": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
+   "summary": "不分规格的货整块收起、默认只带出一个、只做减法、代价当场可见、没有自定义面板、新增只有一个入口。六屏，编号接会员 v1 的 s17 之后。",
+   "docs": [
+    {
+     "label": "TDD-规格与SKU模型",
+     "path": "docs/technical/design/TDD-规格与SKU模型.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s18",
+     "title": "不分规格的货：整块收起"
+    },
+    {
+     "id": "s19",
+     "title": "默认只带出一个",
+     "client": "b-app",
+     "route": "pages/goods-edit/index"
+    },
+    {
+     "id": "s20",
+     "title": "只做减法，删掉能点回来"
+    },
+    {
+     "id": "s21",
+     "title": "代价当场可见"
+    },
+    {
+     "id": "s22",
+     "title": "没有选择面板，也没有「自定义」"
+    },
+    {
+     "id": "s23",
+     "title": "新增的唯一入口",
+     "client": "b-app",
+     "route": "pages/my-specs/index"
+    }
+   ]
+  },
+  {
+   "slug": "merchant-ui-v1",
+   "file": "merchant-ui-v1.html",
+   "title": "商家端界面原型：工作台到结算",
+   "kind": "pages",
+   "clients": [
+    "b-app",
+    "ops-web"
+   ],
+   "status": "在建",
+   "date": "2026-08-26",
+   "artifact": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+   "summary": "工作台、订单、收款、排期、积分、收入、账户、去向、结算十屏，外加运营端缺口表。积分与收入几屏接口都在、B 端还没出口。",
+   "docs": [
+    {
+     "label": "平台端功能清单-与现状对齐",
+     "path": "docs/technical/reference/平台端功能清单-与现状对齐.md"
+    },
+    {
+     "label": "设计方案总索引",
+     "path": "docs/technical/reference/设计方案总索引-与系统对齐.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "工作台",
+     "client": "b-app",
+     "route": "pages/home/index"
+    },
+    {
+     "id": "s02",
+     "title": "订单列表",
+     "client": "b-app",
+     "route": "pages/orders/index"
+    },
+    {
+     "id": "s03",
+     "title": "确认收款",
+     "client": "b-app",
+     "route": "pages/order/index"
+    },
+    {
+     "id": "s04",
+     "title": "预约排期",
+     "client": "b-app",
+     "route": "pages/schedule/index"
+    },
+    {
+     "id": "s05",
+     "title": "积分成本",
+     "client": "b-app",
+     "route": "pages/points/index"
+    },
+    {
+     "id": "s06",
+     "title": "发分明细",
+     "client": "b-app",
+     "route": "pages/points-records/index"
+    },
+    {
+     "id": "s07",
+     "title": "我的收入",
+     "client": "b-app",
+     "route": "pages/income/index"
+    },
+    {
+     "id": "s08",
+     "title": "收款账户",
+     "client": "b-app",
+     "route": "pages/payment/index"
+    },
+    {
+     "id": "s09",
+     "title": "一笔钱的去向",
+     "client": "b-app"
+    },
+    {
+     "id": "s10",
+     "title": "结算单列表",
+     "client": "b-app",
+     "route": "pages/settle/index"
+    }
+   ]
+  },
+  {
+   "slug": "funds-chain",
+   "file": "funds-chain.html",
+   "title": "商家资金全链路",
+   "kind": "pages",
+   "clients": [
+    "b-app",
+    "ops-web"
+   ],
+   "status": "在建",
+   "date": "2026-09-02",
+   "artifact": "https://claude.ai/code/artifact/feceebc7-49da-4b4b-bdf4-4411ae384c24",
+   "summary": "从待收款到一笔钱的去向八屏，按资金链路的顺序排；运营端对照表写每一环平台看哪一页。与「商家端界面原型」是同一批页面的链路视角。",
+   "docs": [
+    {
+     "label": "商家全生命周期-入驻到出款",
+     "path": "docs/requirements/商家全生命周期-入驻到出款-功能梳理.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "订单列表 · 待收款分组"
+    },
+    {
+     "id": "s02",
+     "title": "确认收款弹窗"
+    },
+    {
+     "id": "s03",
+     "title": "预约排期"
+    },
+    {
+     "id": "s04",
+     "title": "积分成本总览"
+    },
+    {
+     "id": "s05",
+     "title": "发分明细"
+    },
+    {
+     "id": "s06",
+     "title": "到账总览"
+    },
+    {
+     "id": "s07",
+     "title": "收款账户"
+    },
+    {
+     "id": "s08",
+     "title": "一笔钱的去向"
+    }
+   ]
+  },
+  {
+   "slug": "inventory-nine",
+   "file": "inventory-nine.html",
+   "title": "进销存商家端九屏",
+   "kind": "pages",
+   "clients": [
+    "b-app"
+   ],
+   "status": "已落地",
+   "date": "2026-08-27",
+   "artifact": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+   "summary": "库存、明细、盘点、进货、单据、报损、调拨、报表、库位九屏，按需求 B-1…B-21 逐屏标档位与权限码。用产品令牌重画的那一版（第一版踩了十二条里的九条）。",
+   "docs": [
+    {
+     "label": "进销存-需求",
+     "path": "docs/requirements/进销存-需求.md"
+    },
+    {
+     "label": "进销存-三端落点与功能矩阵",
+     "path": "docs/technical/design/进销存-三端落点与功能矩阵.md"
+    },
+    {
+     "label": "进销存-界面清单",
+     "path": "docs/technical/design/进销存-界面清单.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "库存",
+     "client": "b-app",
+     "route": "pages/stock/index"
+    },
+    {
+     "id": "s02",
+     "title": "库存明细",
+     "client": "b-app",
+     "route": "pages/stock-detail/index"
+    },
+    {
+     "id": "s03",
+     "title": "盘点",
+     "client": "b-app",
+     "route": "pages/stock-check/index"
+    },
+    {
+     "id": "s04",
+     "title": "记一笔进货",
+     "client": "b-app",
+     "route": "pages/purchase-edit/index"
+    },
+    {
+     "id": "s05",
+     "title": "出入库单据",
+     "client": "b-app",
+     "route": "pages/stock-docs/index"
+    },
+    {
+     "id": "s06",
+     "title": "报损出库",
+     "client": "b-app",
+     "route": "pages/stock-out/index"
+    },
+    {
+     "id": "s07",
+     "title": "调拨",
+     "client": "b-app",
+     "route": "pages/transfer/index"
+    },
+    {
+     "id": "s08",
+     "title": "进销存报表",
+     "client": "b-app",
+     "route": "pages/stock-report/index"
+    },
+    {
+     "id": "s09",
+     "title": "库位与仓",
+     "client": "b-app",
+     "route": "pages/locations/index"
+    }
+   ]
+  },
+  {
+   "slug": "c-address",
+   "file": null,
+   "title": "C 端收货地址",
+   "kind": "canvas",
+   "clients": [
+    "c-app"
+   ],
+   "status": "已落地",
+   "date": "2026-09-18",
+   "artifact": "https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i",
+   "summary": "没有地址 / 列表 / 新建整页 / 选择地点 / 选城市 / 海外 / 搜不到时，外加文案对照。claude.ai 设计画布，各屏并排、没有页内锚点。",
+   "docs": [
+    {
+     "label": "TDD-C端收货地址-录入与定位重排",
+     "path": "docs/technical/TDD-C端收货地址-录入与定位重排.md"
+    },
+    {
+     "label": "C端地址管理-交互方案",
+     "path": "docs/technical/design/C端地址管理-交互方案.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "",
+     "title": "s01 没有地址（新用户）",
+     "client": "c-app",
+     "route": "pages/address/index"
+    },
+    {
+     "id": "",
+     "title": "s02 地址列表"
+    },
+    {
+     "id": "",
+     "title": "s03 新建收货地址（整页）",
+     "client": "c-app",
+     "route": "pages/address-edit/index"
+    },
+    {
+     "id": "",
+     "title": "s04 选择地点",
+     "client": "c-app",
+     "route": "pages/address-pick/index"
+    },
+    {
+     "id": "",
+     "title": "s05 文案对照"
+    },
+    {
+     "id": "",
+     "title": "s06 选择城市",
+     "client": "c-app",
+     "route": "pages/city-pick/index"
+    },
+    {
+     "id": "",
+     "title": "s07 海外地址"
+    },
+    {
+     "id": "",
+     "title": "s08 搜不到时"
+    }
+   ]
+  },
+  {
+   "slug": "goods-detail-opt",
+   "file": null,
+   "title": "C 端商品详情页：现状与优化",
+   "kind": "canvas",
+   "clients": [
+    "c-app"
+   ],
+   "status": "在建",
+   "date": "2026-09-19",
+   "artifact": "https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn",
+   "summary": "现状 / 优化后首屏 / 整页 / 规格面板 / 拼团商品五块画布。",
+   "docs": [
+    {
+     "label": "TDD-C端商品详情页重排",
+     "path": "docs/technical/TDD-C端商品详情页重排.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "",
+     "title": "现状"
+    },
+    {
+     "id": "",
+     "title": "优化后 · 首屏"
+    },
+    {
+     "id": "",
+     "title": "优化后 · 整页"
+    },
+    {
+     "id": "",
+     "title": "规格面板"
+    },
+    {
+     "id": "",
+     "title": "拼团商品"
+    }
+   ]
+  },
+  {
+   "slug": "inventory-nine-v0",
+   "file": "inventory-nine-v0.html",
+   "title": "进销存九屏（第一版）",
+   "kind": "pages",
+   "clients": [
+    "b-app"
+   ],
+   "status": "作废",
+   "supersededBy": "inventory-nine",
+   "date": "2026-08-26",
+   "artifact": "https://claude.ai/code/artifact/3daacf45-7604-49aa-8fa5-0befdce24d2b",
+   "summary": "九屏的第一版，自造了一套样式（踩了十二条里的九条），被用产品令牌重画的那版取代。留着是为了看当时的取舍。",
+   "docs": [
+    {
+     "label": "B端UI规范-画原型的十二条",
+     "path": "docs/technical/design/B端UI规范-画原型的十二条.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "库存"
+    },
+    {
+     "id": "s02",
+     "title": "库存明细"
+    },
+    {
+     "id": "s03",
+     "title": "进货"
+    },
+    {
+     "id": "s04",
+     "title": "盘点"
+    },
+    {
+     "id": "s05",
+     "title": "报损"
+    },
+    {
+     "id": "s06",
+     "title": "调拨"
+    },
+    {
+     "id": "s07",
+     "title": "单据"
+    },
+    {
+     "id": "s08",
+     "title": "报表"
+    },
+    {
+     "id": "s09",
+     "title": "库位"
+    }
+   ]
+  },
+  {
+   "slug": "inventory-rearrange",
+   "file": "inventory-rearrange.html",
+   "title": "进销存重排：工作台到在途",
+   "kind": "pages",
+   "clients": [
+    "b-app"
+   ],
+   "status": "作废",
+   "supersededBy": "inventory-nine",
+   "date": "2026-08-28",
+   "artifact": "https://claude.ai/code/artifact/9b9c2865-931b-48d1-91cb-42a9d5d86ace",
+   "summary": "三个问题的诊断、四屏（工作台 / 库存 / 明细 / 在途）与 SKU → 库存项 → 台账的流程图。结论并进九屏。",
+   "docs": [
+    {
+     "label": "进销存-B端功能与流程",
+     "path": "docs/technical/design/进销存-B端功能与流程.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "工作台"
+    },
+    {
+     "id": "s02",
+     "title": "库存"
+    },
+    {
+     "id": "s03",
+     "title": "库存明细"
+    },
+    {
+     "id": "s04",
+     "title": "在途"
+    }
+   ]
+  },
+  {
+   "slug": "inventory-interaction",
+   "file": "inventory-interaction.html",
+   "title": "进销存交互：按单查、盘这一件、添加货品",
+   "kind": "proposal",
+   "clients": [
+    "b-app"
+   ],
+   "status": "参考",
+   "date": "2026-09-02",
+   "artifact": "https://claude.ai/code/artifact/c87cb6a7-a69f-473b-9c6c-4809056d9d2e",
+   "summary": "三步交互的改前改后，❶–❻ 标出每一处改动。",
+   "docs": [
+    {
+     "label": "进销存-B端交互梳理",
+     "path": "docs/technical/design/进销存-B端交互梳理.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "按单查 · 单据"
+    },
+    {
+     "id": "s02",
+     "title": "库存明细"
+    },
+    {
+     "id": "s03",
+     "title": "库存明细 · 改前"
+    },
+    {
+     "id": "s04",
+     "title": "库存明细 · 改后（盘这一件）"
+    },
+    {
+     "id": "s05",
+     "title": "进货 · 添加货品"
+    },
+    {
+     "id": "s06",
+     "title": "盘点"
+    },
+    {
+     "id": "s07",
+     "title": "库存（背景）"
+    }
+   ]
+  },
+  {
+   "slug": "inventory-scan-date-transfer",
+   "file": "inventory-scan-date-transfer.html",
+   "title": "扫码 · 日期 · 调拨",
+   "kind": "proposal",
+   "clients": [
+    "b-app"
+   ],
+   "status": "参考",
+   "date": "2026-09-17",
+   "artifact": "https://claude.ai/artifact/MkbBnDDpfX1KKbZBqDdYgQ",
+   "summary": "扫码提到外层、发生日期、调拨的从 / 到点不中：三处现状与建议。",
+   "docs": [],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "扫码提到外层"
+    },
+    {
+     "id": "s02",
+     "title": "发生日期"
+    },
+    {
+     "id": "s03",
+     "title": "调拨：从 / 到 点不中"
+    }
+   ]
+  },
+  {
+   "slug": "inventory-four-fixes",
+   "file": "inventory-four-fixes.html",
+   "title": "进销存四页优化",
+   "kind": "proposal",
+   "clients": [
+    "b-app"
+   ],
+   "status": "参考",
+   "date": "2026-09-17",
+   "artifact": "https://claude.ai/artifact/RDdFTiqjM6zFoEpf9BnYHu",
+   "summary": "库存页顶部瘦身、供应商看着像输入框、加货按钮太扁、盘点页去掉解释：四处现状与建议。",
+   "docs": [],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "库存页：顶部瘦身"
+    },
+    {
+     "id": "s02",
+     "title": "进货页：供应商看着像输入框"
+    },
+    {
+     "id": "s03",
+     "title": "进货 / 报损：加货按钮太扁"
+    },
+    {
+     "id": "s04",
+     "title": "盘点页：去掉顶部那句解释"
+    }
+   ]
+  },
+  {
+   "slug": "goods-two-pages-tweaks",
+   "file": "goods-two-pages-tweaks.html",
+   "title": "商品两页的微调",
+   "kind": "proposal",
+   "clients": [
+    "b-app"
+   ],
+   "status": "已落地",
+   "date": "2026-09-18",
+   "artifact": "https://claude.ai/artifact/Qfp4NvR21dgYH7ksi7H5Dj",
+   "summary": "商品列表与编辑页对齐营销页的写法：只改按钮、文案与常驻说明，布局不动。八项改动已落地（208c1e25）。",
+   "docs": [],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "商品列表 · 现在"
+    },
+    {
+     "id": "s02",
+     "title": "商品列表 · 微调后"
+    },
+    {
+     "id": "s03",
+     "title": "编辑商品 · 现在"
+    },
+    {
+     "id": "s04",
+     "title": "编辑商品 · 微调后"
+    }
+   ]
+  },
+  {
+   "slug": "goods-rearrange",
+   "file": "goods-rearrange.html",
+   "title": "商品这一片的重排",
+   "kind": "proposal",
+   "clients": [
+    "b-app"
+   ],
+   "status": "参考",
+   "date": "2026-09-18",
+   "artifact": "https://claude.ai/artifact/LpZPJR14vFS1hxQc1Y7kHS",
+   "summary": "商品列表、改库存、编辑概览 / 价格、新建第一节的改后，与十六条文案对照。",
+   "docs": [],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "商品列表 · 现状"
+    },
+    {
+     "id": "s02",
+     "title": "列表 · 改后"
+    },
+    {
+     "id": "s03",
+     "title": "改库存 · 改后"
+    },
+    {
+     "id": "s04",
+     "title": "编辑 · 概览 · 改后"
+    },
+    {
+     "id": "s05",
+     "title": "编辑 · 价格 · 改后"
+    },
+    {
+     "id": "s06",
+     "title": "新建 · 第一节 · 改后"
+    }
+   ]
+  },
+  {
+   "slug": "marketing-rearrange",
+   "file": "marketing-rearrange.html",
+   "title": "营销这一片的重排",
+   "kind": "proposal",
+   "clients": [
+    "b-app"
+   ],
+   "status": "参考",
+   "date": "2026-09-18",
+   "artifact": "https://claude.ai/artifact/YWn4fpaaqbwE4mQS6eVnX3",
+   "summary": "活动 / 优惠券 / 团购 / 求团报价四个列表与六个详情页的改后，与二十条文案对照。活动几页已由「营销：活动统一模型」落地。",
+   "docs": [
+    {
+     "label": "营销域-概念对齐",
+     "path": "docs/technical/design/营销域-概念对齐.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "活动"
+    },
+    {
+     "id": "s02",
+     "title": "优惠券"
+    },
+    {
+     "id": "s03",
+     "title": "团购"
+    },
+    {
+     "id": "s04",
+     "title": "求团报价"
+    },
+    {
+     "id": "s05",
+     "title": "建活动"
+    },
+    {
+     "id": "s06",
+     "title": "活动详情"
+    },
+    {
+     "id": "s07",
+     "title": "建券"
+    },
+    {
+     "id": "s08",
+     "title": "发放记录"
+    },
+    {
+     "id": "s09",
+     "title": "券核销"
+    },
+    {
+     "id": "s10",
+     "title": "报价"
+    }
+   ]
+  },
+  {
+   "slug": "activity-list-layout",
+   "file": "activity-list-layout.html",
+   "title": "活动列表怎么排",
+   "kind": "proposal",
+   "clients": [
+    "b-app"
+   ],
+   "status": "参考",
+   "date": "2026-09-18",
+   "artifact": "https://claude.ai/artifact/Ey9uhPDXGsmnt31qzZoKP5",
+   "summary": "三种排法：现状 / 两行一条按状态分组（推荐）/ 一行一条右侧开关。",
+   "docs": [],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "A 现状"
+    },
+    {
+     "id": "s02",
+     "title": "B 两行一条 · 按状态分组"
+    },
+    {
+     "id": "s03",
+     "title": "C 一行一条 · 右侧开关"
+    }
+   ]
+  },
+  {
+   "slug": "inventory-bar-entries",
+   "file": "inventory-bar-entries.html",
+   "title": "贴底条放几个入口",
+   "kind": "proposal",
+   "clients": [
+    "b-app"
+   ],
+   "status": "参考",
+   "date": "2026-09-17",
+   "artifact": "https://claude.ai/artifact/XnRnPraqetUjgCCvW61WF2",
+   "summary": "库存页贴底条的三个方案：现状两个 / 加盘点（推荐）/ 加盘点与调拨。",
+   "docs": [],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "A 现状 · 两个"
+    },
+    {
+     "id": "s02",
+     "title": "B ＋盘点"
+    },
+    {
+     "id": "s03",
+     "title": "C ＋盘点＋调拨"
+    },
+    {
+     "id": "s04",
+     "title": "有盘点单开着时"
+    },
+    {
+     "id": "s05",
+     "title": "C 才有的麻烦：调拨会被拦"
+    }
+   ]
+  },
+  {
+   "slug": "inventory-bar-layout",
+   "file": "inventory-bar-layout.html",
+   "title": "库存页贴底条：三个按钮怎么排",
+   "kind": "proposal",
+   "clients": [
+    "b-app"
+   ],
+   "status": "参考",
+   "date": "2026-09-17",
+   "artifact": "https://claude.ai/artifact/WEu9WUhTodCofWMqKiZ8iw",
+   "summary": "四种排法：现状 / 三格等分 / 两动作等分加圆形展开（推荐）/ 「更多」上移。",
+   "docs": [],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "A 现状"
+    },
+    {
+     "id": "s02",
+     "title": "B 三格等分"
+    },
+    {
+     "id": "s03",
+     "title": "C 两动作等分 ＋ 圆形展开"
+    },
+    {
+     "id": "s04",
+     "title": "D 「更多」上移"
+    }
+   ]
+  },
+  {
+   "slug": "inventory-home-entries",
+   "file": "inventory-home-entries.html",
+   "title": "库存首页入口排布",
+   "kind": "proposal",
+   "clients": [
+    "b-app"
+   ],
+   "status": "参考",
+   "date": "2026-09-17",
+   "artifact": "https://claude.ai/artifact/KW55sBD4DFCAE92EcCVXJN",
+   "summary": "今天这版与提案（首屏 / 滚到底）并排，九个入口怎么分类、四处改动与取舍。",
+   "docs": [
+    {
+     "label": "TDD-库存首页入口排布",
+     "path": "docs/technical/TDD-库存首页入口排布.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "今天这版"
+    },
+    {
+     "id": "s02",
+     "title": "提案 · 首屏"
+    },
+    {
+     "id": "s03",
+     "title": "提案 · 滚到底"
+    }
+   ]
+  }
+ ],
+ "index": "https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9"
+}

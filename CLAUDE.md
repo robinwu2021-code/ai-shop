@@ -21,8 +21,9 @@
 - 新增 / 删除页面（`b-app|c-app/src/pages.json`）
 - 改页面标题（`pages.json` 或 `<sh-scaffold title-key>` 指向的词条）
 - 运营端加菜单或子功能（`ops-web/lib/nav.ts`）
-- 画了新的界面原型（在 `scripts/gen-ui-catalog.py` 的 `PROTOTYPES` 里登记；
-  页面落地后从那儿删掉，它会自动从 `pages.json` 里出现）
+- 画了新的界面原型（真源放 `prototypes/<slug>.html`，在 `prototypes/registry.json` 登记，
+  再跑 `python3 scripts/gen-proto-index.py`；路由还没建的屏会自动列成「原型」行，
+  页面落地后什么都不用删，它会自动从 `pages.json` 里出现）
 
 ```bash
 python3 scripts/gen-ui-catalog.py          # 重新生成
@@ -33,8 +34,10 @@ python3 scripts/gen-ui-catalog.py --check  # 只校验（pre-push 会自动跑�
 （新增 / 删除 / 改名）。它是纯读文件，几十毫秒，不要因为「这次只改了一行」而跳过。
 
 原型稿也在清单里：每条目的「原型」链接直接跳到设计稿对应那一屏，
-「预览」链接跳本机 dev server 的那一页。**新画的原型要挂锚点**，
-在生成器的 `PROTO_ANCHORS` 里登记路由 → `#sNN`，清单才点得进去。
+「预览」链接跳本机 dev server 的那一页。**新画的原型要挂锚点**：每屏 `<figure id="sNN">`，
+在 `prototypes/registry.json` 的 `screens[]` 里写上 `client` 与 `route`，清单才点得进去。
+原型的唯一入口是 `prototypes/index.html`（发布版 [原型总览](https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9)；`prototypes/README.md` 有三条规矩：样式只在 `proto.css`、
+每屏一个锚点、状态写在登记表里）。
 
 ## 改了 `.vue`，跑的是 `vue-tsc` 不是 `tsc`
 

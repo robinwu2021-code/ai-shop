@@ -291,6 +291,7 @@
 
 | 文档 | 状态 |
 |---|---|
+| [**原型清单**](./design/原型清单.md) | **生成物 · 长期有效** · [原型总览（发布版）](https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9) · 三端所有界面原型的唯一登记：页面稿 / 方案稿 / 画布稿，各自的屏、状态、本地真源与 claude.ai 副本。真源在仓库根 `prototypes/`（登记表 `registry.json`、共用样式 `proto.css`、总览页 `index.html`），`gen-proto-index.py` 生成并挂在 pre-push |
 | [视觉设计方案-全项目](./design/视觉设计方案-全项目.md) | **已定方向，待执行（2026-08-19）** · 收口四套并存的视觉体系，真源定为 `brand/build.py`（红 `#e1251b` + 弧线母题 + 自绘 H/X）· 含各端 token/制版/商标申报与落地清单 · 可视规范 [brand/spec.html](../../brand/spec.html) |
 | [品牌方案-总纲](./design/品牌方案-总纲.md) | **v1.1（2026-08-20）· 入口文档** · 按渐进披露分四层：从哪儿开始 / 版本记录 / 几何参数与各端落点 / 待定与取舍 · 交付物总览 [brand/index.html](../../brand/index.html) · 视觉规范 [brand/spec.html](../../brand/spec.html) |
 | [TDD-hxmall-site](./TDD-hxmall-site.md) | **技术栈已定（2026-08-19）** · Next 16.3.1 + React 19.2.8 + Tailwind 4.3.3 + TS **5.9.3**（TS 7 被 typescript-eslint 的 peer 挡住）· `output:"export"` 静态导出 → nginx · 首页七屏按社区 LBS 定位重排 · 设计稿 [site/design/home.html](../../site/design/home.html) |

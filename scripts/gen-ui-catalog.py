@@ -8,7 +8,7 @@
 来源都是**代码里已有的真源**，不手工维护第二份：
   · b-app / c-app  → `src/pages.json`（路由 + 导航栏标题 + tabBar）
   · ops-web        → `lib/nav.ts`（模块 → 子功能，带权限码与矩阵编号）
-  · 原型（还没有页面的）→ 本文件末尾的 PROTOTYPES，落地后从这里删掉
+  · 原型 → prototypes/registry.json（每一屏挂的端与路由；路由还没建的列成「原型」行）
 
 为什么不手工列：手工清单第二周就会漏。凡是加了一页而清单没变的，
 都说明清单该重新生成 —— 所以它必须能一条命令跑出来。
@@ -199,93 +199,36 @@ def read_ops() -> list[dict]:
                 "matrix": matrix.group(1) if matrix else None,
                 "tab": False,
                 "status": "待建" if soon else "已实现",
-                "proto": None,
+                "proto": proto_of("ops-web", href.group(1).lstrip("/"))[0],
+                "protoUrl": proto_of("ops-web", href.group(1).lstrip("/"))[1],
                 "preview": DEV_ORIGIN["ops-web"] + href.group(1),
             })
     return out
 
 
-# 原型稿（Artifact）。清单里每一条能点进去看那一屏长什么样。
-PROTO_URL = "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15"
+# 原型稿。**登记表只有一份**：prototypes/registry.json（真源在仓库，claude.ai 上的是发布副本）。
+# 此前这里手写了四张表（默认地址、按路由指到哪一份、锚点、还没落地的页面），
+# 三份稿子先后覆盖同一批路由时，谁赢取决于几段 update 的先后 —— 没人说得清。
+# 现在按登记表的顺序：同一路由被多份登记时排在前面的赢；作废的稿子不参与。
+REGISTRY = json.loads((ROOT / "prototypes/registry.json").read_text(encoding="utf-8"))["prototypes"]
 
-# **原型不止一份**。会员与营销那批在上面那个 artifact 里，后来的各自成篇 ——
-# 一份文档塞进所有域，读的人要先滚过八屏无关的才看到自己那一屏。
-# 这里按路由指到各自的那一份；没登记的仍走 PROTO_URL。
-PROTO_URL_BY_ROUTE = {
-    "b-app": {
-        "pages/goods-edit/index": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
-        "pages/my-specs/index": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
-        # 商家端界面原型（十屏）。**另有一份链路视角的**（入驻→出款七环 + 运营端对照），
-        # 那份回答「断在哪」，这份回答「长什么样」—— 不合并是因为两种读法的人不同
-        "pages/home/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
-        "pages/orders/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
-        "pages/order/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
-        "pages/schedule/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
-        "pages/points/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
-        "pages/points-records/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
-        "pages/income/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
-        "pages/payment/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
-        "pages/settle/index": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
-        # 进销存九屏（另一份 artifact）：库存 / 明细 / 盘点 / 进货 / 单据 / 报损 / 调拨 / 报表 / 库位
-        # 营销 v2（2026-09-18，十二屏）：按《营销域-活动统一模型》重画，覆盖 v1 的 s08–s10。
-        # 券（2026-09-18 按同一套约定重画为 s12–s17）也指这一份；v1 那四屏作废。
-        "pages/marketing/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/activities/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/activity-edit/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/groups/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/coupons/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/coupon-edit/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/coupon-issues/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/coupon/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/coupon-send/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/verify/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/platform-activities/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/platform-activity-apply/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/period/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/periods/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/group/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/group-open/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-    },
-    # C 端收货地址（2026-09-17，2026-09-18 补到七屏）。**画布式原型，没有页内锚点** ——
-    # 各屏并排摆着（没有地址 / 列表 / 新建整页 / 选择地点 / 选城市 / 海外 / 搜不到时），
-    # 外加一张文案对照表。所以这几条只登记地址不登记锚点，链接落到画布本身，
-    # 见 proto_of 的说明。
-    "c-app": {
-        # 营销 C 端六屏（营销原型 s21–s26）
-        "pages/goods/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/group/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/order-confirm/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/order/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/coupons/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/coupon-code/index": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-        "pages/address/index": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
-        "pages/address-edit/index": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
-        "pages/address-pick/index": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
-        "pages/city-pick/index": "https://claude.ai/code/artifact/4SHtxPwEUkVBcW1LFUCF5i",
-    },
-}
-
-
-PROTO_URL_BY_ROUTE["ops-web"] = {
-    "marketing?tab=platform": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-    "marketing?tab=platformAudit": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-}
-
-# 会员标签与定向营销（PRD-会员标签与定向营销）：会员几页改指到这一份，取代 v1 的 s02–s07。
-# 锚点是 m01…/o01…，与营销 v2 的 s01… 不撞；活动编辑仍指 v2（这份只画了它的差异屏 m14–m16）
-MEMBER_LOOP_URL = "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc"
-MEMBER_LOOP_ANCHORS = {
-    "b-app": {
-        "pages/customers/index": "m01", "pages/member-detail/index": "m04",
-        "pages/member-tags/index": "m07", "pages/member-segments/index": "m10",
-        "pages/coupon-send/index": "m17", "pages/member-reach/index": "m18",
-        "pages/member-settings/index": "m21",
-    },
-    "ops-web": {"members?tab=reach": "o01"},
-}
-for _app, _routes in MEMBER_LOOP_ANCHORS.items():
-    for _r in _routes:
-        PROTO_URL_BY_ROUTE.setdefault(_app, {})[_r] = MEMBER_LOOP_URL
+#: app → 路由 → (锚点, 原型地址)。锚点可以缺（画布式原型），地址不能缺。
+PROTO_BY_ROUTE: dict = {}  # app → 路由 → (锚点 | None, 地址)
+#: 登记了路由的屏：(app, 路由, 屏名)。路由还不存在的会在清单里列成「原型」行
+PROTO_SCREENS: list = []
+for _p in REGISTRY:
+    if _p["status"] == "作废" or not _p.get("artifact"):
+        continue
+    for _s in _p.get("screens", []):
+        if not (_s.get("client") and _s.get("route")):
+            continue
+        _route = _s["route"].lstrip("/")
+        _mine = PROTO_BY_ROUTE.setdefault(_s["client"], {})
+        if _route in _mine:
+            continue
+        _mine[_route] = (_s["id"] or None, _p["artifact"])
+        # 清单里那一行叫页面的名字（pageTitle），没写就用屏名
+        PROTO_SCREENS.append((_s["client"], _route, _s.get("pageTitle") or re.sub(r"^s\d+\s+", "", _s["title"])))
 
 
 def proto_of(app, path):
@@ -295,91 +238,25 @@ def proto_of(app, path):
     于是原型是一张画布（各屏并排摆着、没有 `#sNN` 这种页内锚点）时无处登记 ——
     只能编一个跳不到任何地方的锚点，或者干脆不挂链接。
     编锚点是往数据里写一句假话；不挂链接是让清单说「这一页没有原型稿」，而它有。
-    所以改成：只在 PROTO_URL_BY_ROUTE 里登记地址也算数，链接落到画布本身。
+    所以：只登记地址也算数，链接落到画布本身。
     """
-    anchor = PROTO_ANCHORS.get(app, {}).get(path)
-    url = PROTO_URL_BY_ROUTE.get(app, {}).get(path)
-    if not anchor and not url:
-        return None, None
-    return anchor, url or PROTO_URL
+    return PROTO_BY_ROUTE.get(app, {}).get(path, (None, None))
 
-# 路由 → 原型里的锚点。已经有页面的也可以挂 —— 它们同样有原型稿
-PROTO_ANCHORS = {
-    "b-app": {
-        "pages/me/index": "s01",
-        # 会员页落地了：路由沿用 pages/customers（它是「我的客户」的升级版）
-        "pages/customers/index": "s02", "pages/members/filter": "s03",
-        "pages/member-detail/index": "s04", "pages/members/add": "s05",
-        "pages/member-tags/index": "s06", "pages/member-settings/index": "s07",
-        # 营销 v2 的四条指到另一份 artifact（见 PROTO_URL_BY_ROUTE）
-        "pages/marketing/index": "s01", "pages/activities/index": "s02",
-        "pages/activity-edit/index": "s03", "pages/groups/index": "s09",
-        # 拼团接通下单（P1b）：团详情 s10、商家开团 s34
-        "pages/group/index": "s10", "pages/group-open/index": "s34",
-        "pages/marketing/new": "s09",
-        "pages/marketing/audience": "s10",
-        # 券 s12–s18 在营销 v2 那份里（见 PROTO_URL_BY_ROUTE），P2 已全部落地
-        "pages/coupons/index": "s12", "pages/coupon-edit/index": "s13",
-        "pages/coupon/index": "s15", "pages/coupon-issues/index": "s16",
-        "pages/coupon-send/index": "s18",
-        "pages/verify/index": "s17",
-        "pages/platform-activities/index": "s27", "pages/platform-activity-apply/index": "s28",
-        "pages/period/index": "s20", "pages/periods/index": "s31",
-        # 规格原型（另一份 artifact，见 PROTO_URL_BY_ROUTE）
-        "pages/goods-edit/index": "s19",
-        "pages/my-specs/index": "s23",
-        # 商家端界面原型十屏（另一份 artifact）
-        "pages/home/index": "s01",
-        "pages/orders/index": "s02", "pages/order/index": "s03",
-        "pages/schedule/index": "s04",
-        "pages/points/index": "s05", "pages/points-records/index": "s06",
-        "pages/income/index": "s07", "pages/payment/index": "s08",
-        "pages/settle/index": "s10",
-        # 进销存九屏
-    },
-    "c-app": {
-        "pages/store/index": "s15", "pages/member-card/index": "s16",
-        # 营销原型 s21–s26；券包从 v1 的 s17 挪到这一份的 s24
-        "pages/goods/index": "s21", "pages/group/index": "s22",
-        "pages/order-confirm/index": "s23", "pages/coupons/index": "s24",
-        "pages/coupon-code/index": "s25",
-        # 订单详情只挂集单那一屏（s37）；其它订单状态的原型不在这份里
-        "pages/order/index": "s37",
-    },
-    "ops-web": {"marketing?tab=platform": "s29", "marketing?tab=platformAudit": "s30"},
-}
-for _app, _routes in MEMBER_LOOP_ANCHORS.items():
-    PROTO_ANCHORS.setdefault(_app, {}).update(_routes)
 
 # 本机 dev server 端口（mock 模式）。点「预览」直接进那一页，不用自己拼路由
 DEV_ORIGIN = {"b-app": "http://localhost:5175/#", "c-app": "http://localhost:5176/#",
               "ops-web": "http://localhost:3000"}
 
 
-# 还没有页面、只有设计的：落地之后从这里删掉，它就会从 nav/pages.json 里自然出现
-PROTOTYPES = [
-    ("b-app", "/pages/members/add", "手工录入会员", "会员与营销"),
-    ("b-app", "/pages/member-tags/index", "标签与合并", "会员与营销"),
-    ("b-app", "/pages/member-settings/index", "会员口径设置", "会员与营销"),
-    ("b-app", "/pages/segments/index", "人群", "会员与营销"),
-    ("c-app", "/pages/member-card/index", "我的会员卡", "会员与营销"),
-    ("ops-web", "/members", "会员总览（跨商家）", "会员与营销"),
-    ("ops-web", "/members?tab=person", "人档与合并", "会员与营销"),
-    ("ops-web", "/members?tab=reach", "触达监控", "会员与营销"),
-    # 营销原型的平台活动四屏已于 P3 落地（b-app 两页、运营端营销页两个 tab），从这里删掉
-    # 进销存九屏：需求见 docs/requirements/进销存-需求.md，落地后从这里删掉
-    # 商家资金全链路：接口都在、B 端没有出口的那几页
-]
-
-
 def main() -> None:
     check = "--check" in sys.argv
     rows = read_uni("b-app") + read_uni("c-app") + read_ops()
-    rows += [{"app": a, "route": r, "title": t, "domain": d, "tab": False, "status": "原型",
-              "proto": proto_of(a, r.lstrip("/"))[0],
-              "protoUrl": proto_of(a, r.lstrip("/"))[1],
-              "preview": None}
-             for a, r, t, d in PROTOTYPES]
+    # 登记了路由、页面还没建的屏：列成「原型」行。落地之后它自然从 pages.json / nav.ts 里出现，
+    # 这里不用删任何东西 —— 判据是路由存不存在，不是人记不记得
+    have = {(r["app"], r["route"]) for r in rows}
+    rows += [{"app": a, "route": "/" + r, "title": t, "domain": domain_of(r), "tab": False, "status": "原型",
+              "proto": proto_of(a, r)[0], "protoUrl": proto_of(a, r)[1], "preview": None}
+             for a, r, t in PROTO_SCREENS if (a, "/" + r) not in have]
 
     apps = {"b-app": "商家 App", "c-app": "买家小程序", "ops-web": "运营端"}
     catalog: dict = {"apps": [], "total": len(rows)}
@@ -452,7 +329,7 @@ def render(cat: dict) -> str:
                 badge = {"已实现": "ok", "原型": "proto", "待建": "soon"}[p["status"]]
                 extra = " · ".join(x for x in [p.get("group"), p.get("matrix")] if x)
                 links = ""
-                proto_href = p.get("protoUrl") or PROTO_URL
+                proto_href = p.get("protoUrl")
                 if p.get("proto") or p.get("protoUrl"):
                     # 有锚点就跳那一屏，没有就落到原型本身（画布式原型没有页内锚点）
                     href = f'{proto_href}#{p["proto"]}' if p.get("proto") else proto_href

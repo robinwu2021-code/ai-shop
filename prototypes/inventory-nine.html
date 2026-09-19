@@ -1,0 +1,336 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>进销存商家端九屏</title>
+<!-- 真源在仓库 prototypes/inventory-nine.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端原型 · 进销存 · v2</div>
+  <h1>进销存商家端九屏</h1>
+  <p class="sub">从「卖完了改个数」到「记一笔进货、盘一次账、调一次货」。同一套页面服侍菜摊、粮油店和三店连锁 —— 差别只在档位解锁了哪几屏。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">约定</span><h2>档位与图例</h2></div>
+  <div class="tw"><table class="spec">
+    <tr><th>标记</th><th>含义</th></tr>
+    <tr><td>端</td><td>b-app · 375pt</td></tr>
+    <tr><td>皮肤</td><td>brand 虹选红 × pure 浅色</td></tr>
+    <tr><td>积木</td><td>base.css 原类名，1rpx = 0.5px</td></tr>
+    <tr><td>规范</td><td>画原型的十二条</td></tr>
+    <tr><td>FREE</td><td>人人可用</td></tr>
+    <tr><td>PRO</td><td>进货与报表</td></tr>
+    <tr><td>CHAIN</td><td>仓与调拨</td></tr>
+    <tr><td>入库 ＋ / 出库 −</td><td>绿 = 入库，红 = 出库，黄 = 预留 / 在途</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 03</span><h2>看库存 · 查明细 · 盘点</h2></div>
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">库存</span><span></span></div>
+        <div class="scr">
+          <div class="group"><div class="frow"><span class="k">门店</span><span class="v go">文三路店 ▾</span></div></div>
+          <div class="stats">
+            <div><div class="n num">216</div><div class="l">在售 SKU</div></div>
+            <div><div class="n num" style="color:var(--sh-danger)">6</div><div class="l">缺货</div></div>
+            <div><div class="n num">12</div><div class="l">滞销</div></div>
+          </div>
+          <div class="tabs"><span class="on">要处理 18</span><span>全部</span><span>有预留</span></div>
+          <div class="card">
+            <div class="hd"><span class="nm">🌾 东北大米 · 5斤装</span><span class="num" style="color:var(--sh-danger);font-weight:600">3 <span class="meta">可用</span></span></div>
+            <div class="meta num">实存 5 · 预留 2</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">🌾 小米 · 2斤装</span><span class="num" style="color:var(--sh-danger);font-weight:600">0 <span class="meta">可用</span></span></div>
+            <div class="meta"><span class="chip">已售罄</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">🍶 陈醋 · 500ml</span><span class="num" style="font-weight:600">24 <span class="meta">可用</span></span></div>
+            <div class="meta"><span class="chip">92 天未动</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">🥚 土鸡蛋 · 30枚装</span><span class="num" style="font-weight:600">48 <span class="meta">可用</span></span></div>
+            <div class="meta num">实存 48 · 预留 0</div>
+          </div>
+          <div class="card"><div class="meta">可用 = 实存 − 预留。预留是别人下了单还没付钱的量，付了款才真扣。</div></div>
+        </div>
+        <div class="foot"><div class="tabs" style="flex:1;justify-content:space-around;gap:0"><span>工作台</span><span>订单</span><span>商品</span><span class="on">库存</span><span>我的</span></div></div>
+      </div>
+      <figcaption class="cap"><b>01 库存</b>/pages/stock/index · FREE · biz:stock</figcaption>
+      <p class="why"><b>要处理排在最前。</b>一屏 200 多个 SKU，按字母排等于没排 —— 商家打开这一页只为两件事：哪件断了、哪件压着。</p>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">东北大米 · 5斤装</span><span></span></div>
+        <div class="scr">
+          <div class="stats">
+            <div><div class="n num">57</div><div class="l">实存</div></div>
+            <div><div class="n num" style="color:var(--sh-warning-text)">2</div><div class="l">预留</div></div>
+            <div><div class="n num">55</div><div class="l">可用</div></div>
+          </div>
+          <div class="card"><div class="meta num">条码 6901234567892　货号 LM-05　单位 袋</div></div>
+          <div class="gt">按库位</div>
+          <div class="group">
+            <div class="frow"><span class="k">文三路店</span><span class="v num">5</span></div>
+            <div class="frow"><span class="k">古墩路店</span><span class="v num">12</span></div>
+            <div class="frow"><span class="k">城西仓</span><span class="v num">40</span></div>
+          </div>
+          <div class="gt">变动明细</div>
+          <div class="card">
+            <div class="hd"><span class="nm">销售出库</span><span class="num" style="color:var(--sh-danger);font-weight:600">−2</span></div>
+            <div class="meta num">OUT-2408260031 · 系统 · 08-26 14:22 · 5 → 3</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">盘点调整 · 损坏</span><span class="num" style="color:var(--sh-danger);font-weight:600">−1</span></div>
+            <div class="meta num">CNT-24082601 · 张伟 · 08-26 09:10 · 6 → 5</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">采购入库</span><span class="num" style="color:var(--sh-success-text);font-weight:600">+20</span></div>
+            <div class="meta num">IN-24082502 · 老板 · 08-25 18:40 · −14 → 6</div>
+          </div>
+          <div class="card"><div class="meta">每一行都带操作人、单据号、变动前后 —— 「昨天还有 20 袋今天剩 3 袋」这个问题，从这一屏开始能回答。</div></div>
+        </div>
+        <div class="foot"><div class="btn sec">改数</div></div>
+      </div>
+      <figcaption class="cap"><b>02 库存明细</b>/pages/stock-detail/index · FREE · biz:stock</figcaption>
+      <p class="why"><b>这一屏是本期真正的交付物。</b>改库存是店员和理货员每天的活（biz:stock 他们都有），而在此之前平台连「谁改的」都答不上来。</p>
+    </figure>
+
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">盘点</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm num">CNT-24082601</span><span class="chip warn">进行中</span></div>
+            <div class="meta">文三路店　账面数已于 09:02 锁定 —— 盘的过程中照常卖，不影响差异</div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">东北大米 · 5斤装<br><span class="meta num">账面 5</span></span><span class="v num">4　<b style="color:var(--sh-danger)">−1</b></span></div>
+            <div class="frow"><span class="k">土鸡蛋 · 30枚装<br><span class="meta num">账面 48</span></span><span class="v num">48　<b style="color:var(--sh-sub)">0</b></span></div>
+            <div class="frow"><span class="k">陈醋 · 500ml<br><span class="meta num">账面 24 <span class="chip warn">原因必填</span></span></span><span class="v num">22　<b style="color:var(--sh-danger)">−2</b></span></div>
+          </div>
+          <div class="gt">差异原因</div>
+          <div class="seg"><span class="on">损坏</span><span>过期</span><span>赠送</span><span>其他</span></div>
+          <div class="card"><div class="hd"><span class="nm">合计差异</span><span class="num" style="color:var(--sh-danger);font-weight:600;font-size:16px">−3</span></div></div>
+          <div class="card"><div class="meta">过账后盘盈生成入库单、盘亏生成出库单 —— 盘点自己不改库存，走的是同一个过账口。</div></div>
+        </div>
+        <div class="foot"><div class="btn sec">加商品</div><div class="btn main">提交并过账</div></div>
+      </div>
+      <figcaption class="cap"><b>03 盘点</b>/pages/stock-check/index · FREE · biz:stock</figcaption>
+      <p class="why"><b>原因是枚举不是自由文本。</b>自由文本汇总不出「这个月报损了多少」，而那正是盘完之后商家唯一想知道的数。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">04 — 06</span><h2>进货 · 单据 · 报损</h2></div>
+  <div class="grid">
+
+    <figure id="s04">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">记一笔进货</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">供应商</span><span class="v">老周粮油</span></div>
+            <div class="frow"><span class="k">发生日期</span><span class="v num">2026-08-25</span></div>
+            <div class="frow"><span class="k">入到</span><span class="v go">城西仓</span></div>
+          </div>
+          <div class="note">随手填就行，不建档案</div>
+          <div class="card">
+            <div class="hd"><span class="nm">东北大米 · 5斤装</span><span class="num" style="font-weight:600">¥840.00</span></div>
+            <div class="meta num">20 袋 × ¥42.00</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">土鸡蛋 · 30枚装</span><span class="num" style="font-weight:600">¥280.00</span></div>
+            <div class="meta num">10 箱 × ¥28.00</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">陈醋 · 500ml</span><span class="num" style="font-weight:600">¥120.00</span></div>
+            <div class="meta num">24 瓶 × ¥5.00</div>
+          </div>
+          <div class="card"><div class="hd"><span class="nm">合计</span><span class="num" style="font-weight:700;font-size:14px">¥1,240.00</span></div></div>
+          <div class="group">
+            <div class="frow"><span class="k">成本口径</span><span class="seg"><span class="on">按最新进价</span><span>手工价</span></span></div>
+          </div>
+          <div class="card"><div class="meta">过账后「大米」的成本价更新为 ¥42.00</div></div>
+        </div>
+        <div class="foot"><div class="btn sec">存草稿</div><div class="btn main">过账入库</div></div>
+      </div>
+      <figcaption class="cap"><b>04 记一笔进货</b>/pages/purchase-edit/index · PRO · biz:stock</figcaption>
+      <p class="why"><b>供应商是随手填的一行字，不是一张档案表。</b>小店的供应商是微信里那个人；建档案要维护、去重、合并，而商家填完一次不会再看第二眼。</p>
+    </figure>
+
+    <figure id="s05">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">出入库单据</span><span></span></div>
+        <div class="scr">
+          <div class="tabs"><span class="on">全部</span><span>入库</span><span>出库</span><span>盘点</span><span>调拨</span></div>
+          <div class="card">
+            <div class="hd"><span class="nm">销售出库</span><span class="chip ok">已过账</span></div>
+            <div class="meta num">OUT-2408260031 · 系统 · 订单 SO-88213 · 08-26 14:22</div>
+            <div class="metric"><span class="num" style="color:var(--sh-danger);font-weight:600">−2</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">盘点亏损</span><span class="chip ok">已过账</span></div>
+            <div class="meta num">OUT-2408260029 · 来自 CNT-24082601 · 09:10</div>
+            <div class="metric"><span class="num" style="color:var(--sh-danger);font-weight:600">−3</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">报损</span><span class="chip">草稿</span></div>
+            <div class="meta num">OUT-2408260028 · 张伟 · 08-26 08:50</div>
+            <div class="metric"><span class="num" style="font-weight:600">−2</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">采购入库</span><span class="chip ok">已过账</span></div>
+            <div class="meta num">IN-24082502 · 老周粮油 · 08-25 18:40</div>
+            <div class="metric"><span class="num" style="color:var(--sh-success-text);font-weight:600">+54</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">城西仓 → 文三路店</span><span class="chip warn">在途</span></div>
+            <div class="meta num">TRF-24082507 · 08-26 07:30</div>
+            <div class="metric"><span class="num" style="font-weight:600">20</span></div>
+          </div>
+          <div class="card"><div class="meta">销售出库也是一张单。「直接扣库存」在这里不存在 —— 会计问「这 200 斤米怎么少的」，要能点开一张单，而不是一行日志。</div></div>
+        </div>
+        <div class="foot"><div class="btn main">新建</div></div>
+      </div>
+      <figcaption class="cap"><b>05 出入库单据</b>/pages/stock-docs/index · FREE 看 · PRO 建 · biz:stock</figcaption>
+      <p class="why"><b>单据可作废，不可修改。</b>已过账的只能整单作废重录，作废写一行反向流水 —— 改单据等于改历史，而历史正是这些表存在的理由。</p>
+    </figure>
+
+    <figure id="s06">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">报损出库</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">从</span><span class="v go">文三路店</span></div>
+            <div class="frow"><span class="k">发生日期</span><span class="v num">2026-08-26</span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">土鸡蛋 · 30枚装<br><span class="meta num">可用 48 · 成本 ¥28.00</span></span><span class="v num">2</span></div>
+            <div class="frow"><span class="k">陈醋 · 500ml<br><span class="meta num">可用 24 · 成本 ¥5.00</span></span><span class="v num">0</span></div>
+          </div>
+          <div class="gt">原因</div>
+          <div class="seg"><span>损坏</span><span class="on">过期</span><span>赠送</span><span>其他</span></div>
+          <div class="card"><div class="hd"><span class="nm">损失成本（估算）</span><span class="num" style="font-weight:700;font-size:14px">¥56.00</span></div></div>
+          <div class="card"><div class="meta">出库单只带成本，不带售价 —— 售价是销售那边的事，同一件货不同渠道价不一样，写进来就有了第二个真源。</div></div>
+          <div class="note">数量填不到超过可用 48 —— 库存不允许为负，错误停在这里比流进报表便宜。</div>
+        </div>
+        <div class="foot"><div class="btn sec">加商品</div><div class="btn main">过账出库</div></div>
+      </div>
+      <figcaption class="cap"><b>06 报损出库</b>/pages/stock-out/index · PRO · biz:stock</figcaption>
+      <p class="why">报损与盘亏是两件事：<b>报损是主动的</b>（知道坏了几个），<b>盘亏是被动的</b>（盘完才发现少了）。都落出库单，但 reason_code 不同，月底汇总分得开。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">07 — 09</span><h2>调拨 · 报表 · 库位</h2></div>
+  <div class="grid">
+
+    <figure id="s07">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">调拨 TRF-24082507</span><span></span></div>
+        <div class="scr">
+          <div class="stats two">
+            <div><div class="l">从</div><div class="n">城西仓</div></div>
+            <div><div class="l">到</div><div class="n">文三路店</div></div>
+          </div>
+          <div class="seg"><span>草稿</span><span class="on">已发出</span><span>已收到</span></div>
+          <div class="card"><div class="meta num">08-26 07:30 发出 · 待收货</div></div>
+          <div class="card">
+            <div class="hd"><span class="nm">🌾 东北大米 · 5斤装</span><span class="num" style="font-weight:600">20</span></div>
+            <div class="meta">出库单 OUT-…26 已过账</div>
+          </div>
+          <div class="gt">这一刻的账</div>
+          <div class="group">
+            <div class="frow"><span class="k">城西仓</span><span class="v num">60 → 40</span></div>
+            <div class="frow"><span class="k">在途</span><span class="v num" style="color:var(--sh-warning-text)">0 → 20</span></div>
+            <div class="frow"><span class="k">文三路店</span><span class="v num">5 → 5</span></div>
+            <div class="frow"><span class="k" style="font-weight:600;color:var(--sh-ink)">合计</span><span class="v num" style="font-weight:600">65 → 65</span></div>
+          </div>
+          <div class="card"><div class="meta">货在路上的这几天，合计一件不差 —— 在途是一个真实的库位，不是「暂时没有」。</div></div>
+        </div>
+        <div class="foot"><div class="btn main">确认收货</div></div>
+      </div>
+      <figcaption class="cap"><b>07 调拨</b>/pages/transfer/index · CHAIN · biz:stock</figcaption>
+      <p class="why"><b>一定生成两张单，哪怕骑车十分钟就送到。</b>一期允许发出即收到两步连着走，但两张单都要落 —— 省掉一张的话，将来要在途就得改历史数据。</p>
+    </figure>
+
+    <figure id="s08">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">进销存报表</span><span></span></div>
+        <div class="scr">
+          <div class="group"><div class="frow"><span class="k">月份</span><span class="v go num">2026-08 ▾</span></div></div>
+          <div class="gt">这个月的货</div>
+          <div class="group">
+            <div class="frow"><span class="k">期初</span><span class="v num">320</span></div>
+            <div class="frow"><span class="k">进</span><span class="v num" style="color:var(--sh-success-text)">+480</span></div>
+            <div class="frow"><span class="k">销</span><span class="v num" style="color:var(--sh-danger)">−512</span></div>
+            <div class="frow"><span class="k">损（报损 + 盘亏）</span><span class="v num" style="color:var(--sh-danger)">−9</span></div>
+            <div class="frow"><span class="k" style="font-weight:600;color:var(--sh-ink)">期末</span><span class="v num" style="font-weight:700">279</span></div>
+          </div>
+          <div class="card"><div class="meta num"><span class="chip ok">账对得上</span> 320 + 480 − 512 − 9 = 279</div></div>
+          <div class="gt">动销榜 · 30 天</div>
+          <div class="group">
+            <div class="frow"><span class="k">东北大米 · 5斤装</span><span class="v num" style="font-weight:600">186</span></div>
+            <div class="frow"><span class="k">土鸡蛋 · 30枚装</span><span class="v num" style="font-weight:600">142</span></div>
+            <div class="frow"><span class="k">面粉 · 10斤装</span><span class="v num" style="font-weight:600">97</span></div>
+          </div>
+          <div class="gt">滞销 · 90 天零动销且还有货</div>
+          <div class="card">
+            <div class="hd"><span class="nm">陈醋 · 500ml</span><span class="chip">92 天</span></div>
+            <div class="meta num">压 24 瓶 · 约 ¥120</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">毛利（估算）</span><span class="num" style="font-weight:700;font-size:14px">¥7,840</span></div>
+            <div class="meta">按当前成本价 × 销量</div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">导出 CSV</div></div>
+      </div>
+      <figcaption class="cap"><b>08 进销存报表</b>/pages/stock-report/index · PRO · biz:customer</figcaption>
+      <p class="why"><b>毛利必须标「估算」并给出算式。</b>它用的是 SKU 当前的成本价，不是那一天的实际进货成本 —— 不标的话商家会拿它去报税。</p>
+    </figure>
+
+    <figure id="s09">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">库位与仓</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">文三路店<br><span class="meta"><span class="chip">门店</span> 发货源：城西仓</span></span><span class="v go"></span></div>
+            <div class="frow"><span class="k">古墩路店<br><span class="meta"><span class="chip">门店</span> 发货源：发自己的</span></span><span class="v go"></span></div>
+            <div class="frow"><span class="k">城西仓<br><span class="meta"><span class="chip ok">仓</span> 不对买家展示</span></span><span class="v go"></span></div>
+            <div class="frow"><span class="k">在途<br><span class="meta"><span class="chip warn">系统</span> 调拨途中的货停在这里</span></span><span class="v"><span class="meta">不可删</span></span></div>
+          </div>
+          <div class="gt">发货源</div>
+          <div class="card">
+            <div class="meta">门店设了发货源之后，顾客在这家店下单，扣的是<span style="color:var(--sh-ink)">源仓</span>的库存。</div>
+            <div class="meta" style="color:var(--sh-danger)">不允许接力：城西仓自己不能再指向别处。</div>
+          </div>
+          <div class="card"><div class="meta">仓是一种库位，不是一种门店 —— 所以它没有店招、没有收款、不出现在买家那一侧。</div></div>
+        </div>
+        <div class="foot"><div class="btn main">加仓</div></div>
+      </div>
+      <figcaption class="cap"><b>09 库位与仓</b>/pages/locations/index · CHAIN · biz:store:admin</figcaption>
+      <p class="why"><b>不允许链式指向</b>（A→B→C）：第一个后果是环，第二个是没人说得清货到底从哪出。保存时直接拦。</p>
+    </figure>
+
+  </div>
+</section>
+
+<footer>
+  真源：prototypes/inventory-nine.html · 登记：prototypes/registry.json · 原 artifact：<a href="https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0">f3904519</a> · 相关文档：docs/requirements/进销存-需求.md（B-1…B-21）<br>
+  九屏对应 docs/requirements/进销存-需求.md 的 B-1…B-21，样式逐值移植自 packages/ui/src/styles/base.css。
+  落地后从 scripts/gen-ui-catalog.py 的 PROTOTYPES 里删掉，它会自动从 pages.json 出现。
+</footer>
+</div>
+</html>
