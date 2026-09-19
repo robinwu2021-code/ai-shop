@@ -1594,12 +1594,6 @@
           "ar": "أضف إلى السلة"
         },
         {
-          "key": "goods.arrival",
-          "zh-CN": "到货时间",
-          "en": "Arrives",
-          "ar": "موعد الوصول"
-        },
-        {
           "key": "goods.batchCutoff",
           "zh-CN": "截单",
           "en": "Order by",
@@ -1660,10 +1654,28 @@
           "ar": "القيمة {v}"
         },
         {
+          "key": "goods.cart",
+          "zh-CN": "购物车",
+          "en": "Cart",
+          "ar": "السلة"
+        },
+        {
           "key": "goods.changeRule",
           "zh-CN": "开始前 {n} 小时可免费改期",
           "en": "Free to reschedule up to {n} hours before",
           "ar": "يمكن تغيير الموعد مجانًا قبل {n} ساعات"
+        },
+        {
+          "key": "goods.chosen",
+          "zh-CN": "已选",
+          "en": "Selected",
+          "ar": "المحدد"
+        },
+        {
+          "key": "goods.chosenValue",
+          "zh-CN": "{spec} · {n} 件",
+          "en": "{spec} · {n} pcs",
+          "ar": "{spec} · {n} قطعة"
         },
         {
           "key": "goods.couponClaim",
@@ -1780,16 +1792,28 @@
           "ar": "حد الشراء"
         },
         {
-          "key": "goods.noLimit",
-          "zh-CN": "不限购",
-          "en": "No purchase limit",
-          "ar": "بدون حد للشراء"
+          "key": "goods.lowStock",
+          "zh-CN": "仅剩 {n} 件",
+          "en": "Only {n} left",
+          "ar": "تبقّى {n} فقط"
         },
         {
           "key": "goods.origin",
           "zh-CN": "产地直发",
           "en": "Direct from source",
           "ar": "مباشرة من المصدر"
+        },
+        {
+          "key": "goods.paramsTitle",
+          "zh-CN": "商品参数",
+          "en": "Specifications",
+          "ar": "المواصفات"
+        },
+        {
+          "key": "goods.pickAddress",
+          "zh-CN": "选择收货地址",
+          "en": "Choose an address",
+          "ar": "اختر عنوانًا"
         },
         {
           "key": "goods.pickDate",
@@ -1804,10 +1828,16 @@
           "ar": "اختر الوقت"
         },
         {
-          "key": "goods.saleScope",
-          "zh-CN": "销售范围",
-          "en": "Sold in",
-          "ar": "نطاق البيع"
+          "key": "goods.qty",
+          "zh-CN": "数量",
+          "en": "Quantity",
+          "ar": "الكمية"
+        },
+        {
+          "key": "goods.saveAmount",
+          "zh-CN": "省 {p}",
+          "en": "Save {p}",
+          "ar": "وفّر {p}"
         },
         {
           "key": "goods.scopeMore",
@@ -1816,10 +1846,40 @@
           "ar": "{names} وما مجموعه {n} منطقة"
         },
         {
+          "key": "goods.scopeShort",
+          "zh-CN": "范围",
+          "en": "Area",
+          "ar": "النطاق"
+        },
+        {
           "key": "goods.scopeUnlimited",
           "zh-CN": "不限地区",
           "en": "No area limit",
           "ar": "بدون حدود جغرافية"
+        },
+        {
+          "key": "goods.share",
+          "zh-CN": "分享",
+          "en": "Share",
+          "ar": "مشاركة"
+        },
+        {
+          "key": "goods.shipTo",
+          "zh-CN": "送至",
+          "en": "Ship to",
+          "ar": "التوصيل إلى"
+        },
+        {
+          "key": "goods.shipVia",
+          "zh-CN": "配送",
+          "en": "Delivery",
+          "ar": "التوصيل"
+        },
+        {
+          "key": "goods.shop",
+          "zh-CN": "店铺",
+          "en": "Store",
+          "ar": "المتجر"
         },
         {
           "key": "goods.slotLeft",
@@ -1832,12 +1892,6 @@
           "zh-CN": "已售罄",
           "en": "Sold out",
           "ar": "نفدت الكمية"
-        },
-        {
-          "key": "goods.stock",
-          "zh-CN": "库存 {n}",
-          "en": "{n} in stock",
-          "ar": "متوفر {n}"
         },
         {
           "key": "goods.store",
@@ -4022,6 +4076,12 @@
           "zh-CN": "评价 {n}",
           "en": "Reviews {n}",
           "ar": "التقييمات {n}"
+        },
+        {
+          "key": "review.titleBare",
+          "zh-CN": "评价",
+          "en": "Reviews",
+          "ar": "التقييمات"
         },
         {
           "key": "review.writeTitle",
