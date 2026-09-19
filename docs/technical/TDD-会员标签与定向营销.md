@@ -1,6 +1,6 @@
 # TDD-会员标签与定向营销
 
-状态：已确认（2026-09-19）· 批 A 实现中
+状态：已确认（2026-09-19）· 批 A 已上线（待运营开任务）· 批 B 实现中
 关联需求：[PRD-会员标签与定向营销](../requirements/PRD-会员标签与定向营销.md)（AC-1 … AC-15）
 原型：[会员标签与定向营销](https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc)（m01–m21 · c01 · o01–o02）·
 [营销 v2](https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt)（s01 · s04–s06 · s16 · s18）
@@ -561,4 +561,6 @@ int retargetTag(String entityNo, String fromTagNo, String toTagNo);             
 | 日期 | 事件 |
 |---|---|
 | 2026-09-19 | 方案确认，§8 四条按假设定案；开始批 A |
+| 2026-09-19 | 批 A 上线 `aac9cf6a`：V338 成功、索引在；任务进程已登记 `member-level-recompute`，**初始为停**（生产新任务一律等运营打开）——需运营在「定时任务」打开并手动跑一次，`member.level.last-run` 有值才算批 A 验收完 |
+| 2026-09-19 | 开始批 B |
 | 2026-09-19 | 草稿；基于代码盘点（`BizMemberController` · `MemberQueryPortImpl` · `ActivityPricingServiceImpl#audienceHits` · `PmtCouponServiceImpl#issue` · `MemberReachServiceImpl` · V224/V226/V230/V242/V243） |
