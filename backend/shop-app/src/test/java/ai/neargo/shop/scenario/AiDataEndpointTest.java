@@ -40,7 +40,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 再拿同一家店的工作台 {@code /biz/dashboard/stats} 对照 —— 这个接口唯一的信任来源就是「和工作台对得上」。
  */
 @SpringBootTest
-@ActiveProfiles("test")
+// "aidata" 放最后：独立内存库，见 application-aidata.yml（另一个上下文会在共享库上重跑 schema-test.sql）
+@ActiveProfiles({"test", "aidata"})
 @TestPropertySource(properties = {"shop.ai.internal-token=" + AiDataEndpointTest.TOKEN,
         "shop.ai.low-stock-threshold=10"})
 class AiDataEndpointTest {
